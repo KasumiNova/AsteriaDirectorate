@@ -1,0 +1,47 @@
+{
+    "id": "astd_fdp4_charge",
+    "specClass": "missile",
+    "missileType": "MISSILE",
+    "onFireEffect": "cn.kasuminova.astd.combat.effect.generic.ProjectileSpecOnFireDispatcher",
+    "sprite": "graphics/missiles/missile_annihilator.png",
+    "size": [6, 16],
+    "center": [3, 8],
+    "collisionRadius": 10,
+    "collisionClass": "MISSILE_FF",
+    "explosionColor": [255, 170, 230, 255],
+    "explosionRadius": 70,
+    "armingTime": 1,
+    "flameoutTime": 0.5,
+    "noEngineGlowTime": 0.25,
+    "fadeTime": 0.25,
+    "engineSpec": {
+        "turnAcc": 200,
+        "turnRate": 40,
+        "acc": 400,
+        "dec": 100
+    },
+    "engineSlots": [
+        {
+            "id": "ES1",
+            "loc": [-8, 0],
+            "style": "CUSTOM",
+            "styleSpec": {
+                "mode": "QUAD_STRIP",
+                "engineColor": [255, 170, 230, 255],
+                "glowSizeMult": 1.5,
+                "contrailDuration": 1,
+                "contrailWidthMult": 1,
+                "contrailWidthAddedFractionAtEnd": 2,
+                "contrailMinSeg": 5,
+                "contrailMaxSpeedMult": 0,
+                "contrailAngularVelocityMult": 0.5,
+                "contrailSpawnDistMult": 0.5,
+                "contrailColor": [170, 70, 160, 110],
+                "type": "GLOW"
+            },
+            "width": 6,
+            "length": 20,
+            "angle": 180
+        }
+    ]
+}

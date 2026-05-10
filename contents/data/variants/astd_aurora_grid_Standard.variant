@@ -1,0 +1,10 @@
+{
+    "displayName": "Standard",
+    "fluxCapacitors": 0,
+    "fluxVents": 0,
+    "goalVariant": true,
+    "hullId": "astd_aurora_grid",
+    "quality": 0.0,
+    "variantId": "astd_aurora_grid_Standard",
+    "weaponGroups": []
+}

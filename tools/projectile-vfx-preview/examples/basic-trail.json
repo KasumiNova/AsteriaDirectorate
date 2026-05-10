@@ -1,0 +1,51 @@
+{
+  "name": "basic-trail",
+  "trailEntities": [
+    {
+      "id": "astd_basic_trail",
+      "nodes": [
+        { "position": [-240, 0] },
+        { "position": [-120, 28] },
+        { "position": [0, 0] },
+        { "position": [130, -24] },
+        { "position": [260, 0] }
+      ],
+      "startColor": [0.3, 1, 0.9, 1],
+      "endColor": [0.95, 0.25, 0.55, 0.06],
+      "startEmissive": [0.45, 1, 0.95, 1],
+      "endEmissive": [0.9, 0.35, 0.55, 0.2],
+      "startWidth": 42,
+      "endWidth": 8,
+      "texturePixels": 84,
+      "textureSpeed": 1.4,
+      "uvOffset": 0.15,
+      "fillStartAlpha": 0.9,
+      "fillEndAlpha": 0.12,
+      "fillStartFactor": 0.18,
+      "fillEndFactor": 0.3,
+      "jitterPower": 0.1,
+      "flick": true,
+      "syncFlick": false,
+      "stripLineMode": false,
+      "flowWhenPaused": true,
+      "flickWhenPaused": true,
+      "flickMixValue": 0.22,
+      "flickerSyncCode": 17,
+      "blendMode": "additive"
+    }
+  ],
+  "spriteEntities": [],
+  "segmentEntities": [],
+  "timeline": {
+    "fps": 60,
+    "durationSeconds": 3
+  },
+  "previewCamera": {
+    "center": [0, 0],
+    "zoom": 1
+  },
+  "simulation": {
+    "projectileVelocity": [420, 0],
+    "loop": true
+  }
+}

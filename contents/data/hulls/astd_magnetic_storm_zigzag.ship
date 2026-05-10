@@ -1,0 +1,90 @@
+{
+    "bounds": [
+        106,
+        0,
+        53,
+        90,
+        0,
+        90,
+        -53,
+        90,
+        -106,
+        0,
+        -53,
+        -90,
+        0,
+        -90,
+        53,
+        -90
+    ],
+    "center": [
+        112,
+        96
+    ],
+    "collisionRadius": 100,
+    "coversColor": "",
+    "engineSlots": [
+        {
+            "angle": 180,
+            "contrailSize": 64,
+            "length": 30,
+            "location": [
+                -78,
+                0
+            ],
+            "style": "HIGH_TECH",
+            "width": 20
+        }
+    ],
+    "height": 192,
+    "hullId": "astd_magnetic_storm_zigzag",
+    "hullName": "磁暴折线",
+    "hullSize": "DESTROYER",
+    "shieldCenter": [
+        0,
+        0
+    ],
+    "shieldRadius": 156,
+    "spriteName": "graphics/ships/astd_magnetic_storm_zigzag.png",
+    "style": "HIGH_TECH",
+    "viewOffset": 0,
+    "weaponSlots": [
+        {
+            "angle": 0,
+            "arc": 10,
+            "id": "WS 001",
+            "locations": [
+                -68,
+                0
+            ],
+            "mount": "HARDPOINT",
+            "size": "MEDIUM",
+            "type": "UNIVERSAL"
+        },
+        {
+            "angle": 0,
+            "arc": 120,
+            "id": "WS 002",
+            "locations": [
+                -101,
+                -48
+            ],
+            "mount": "TURRET",
+            "size": "SMALL",
+            "type": "UNIVERSAL"
+        },
+        {
+            "angle": 0,
+            "arc": 120,
+            "id": "WS 003",
+            "locations": [
+                -101,
+                48
+            ],
+            "mount": "TURRET",
+            "size": "SMALL",
+            "type": "UNIVERSAL"
+        }
+    ],
+    "width": 224
+}

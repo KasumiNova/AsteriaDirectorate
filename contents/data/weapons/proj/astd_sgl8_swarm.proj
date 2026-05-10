@@ -1,0 +1,24 @@
+{
+    "id": "astd_sgl8_swarm",
+    "specClass": "missile",
+    "missileType": "MISSILE",
+    "onFireEffect": "cn.kasuminova.astd.combat.effect.generic.ProjectileSpecOnFireDispatcher",
+    "onHitEffect": "cn.kasuminova.astd.combat.effect.lens.signature.singularity.SingularityOnHitEffect",
+    "sprite": "graphics/missiles/missile_annihilator.png",
+    "size": [4, 12],
+    "center": [2, 6],
+    "collisionRadius": 8,
+    "collisionClass": "MISSILE_NO_FF",
+    "explosionColor": [120, 200, 255, 255],
+    "explosionRadius": 50,
+    "flameoutTime": 0.5,
+    "noEngineGlowTime": 0.25,
+    "fadeTime": 0.25,
+    "engineSpec": {
+        "turnAcc": 800,
+        "turnRate": 200,
+        "acc": 600,
+        "dec": 200
+    },
+    "engineSlots": []
+}

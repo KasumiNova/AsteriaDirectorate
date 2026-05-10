@@ -1,0 +1,28 @@
+{
+    "displayName": "Standard",
+    "fluxCapacitors": 0,
+    "fluxVents": 0,
+    "goalVariant": true,
+    "hullId": "astd_arc_nova",
+    "hullMods": [
+        "astd_nano_restoration_protocol"
+    ],
+    "permaMods": [
+        "astd_thermodynamic_exchange",
+        "astd_damage_clamp_field"
+    ],
+    "quality": 0.0,
+    "variantId": "astd_arc_nova_Standard",
+    "weaponGroups": [
+        {
+            "autofire": false,
+            "mode": "LINKED",
+            "weapons": {
+                "WS 001": "astd_aod7",
+                "WS SYS": "astd_stellar_jet_emitter",
+                "WS 002": "astd_vpd6",
+                "WS 003": "astd_vpd6"
+            }
+        }
+    ]
+}

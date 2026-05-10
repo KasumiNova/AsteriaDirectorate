@@ -1,0 +1,111 @@
+{
+    "bounds": [
+        70, 0,
+        50, 15,
+        20, 30,
+        -10, 38,
+        -50, 30,
+        -70, 10,
+        -70, -10,
+        -50, -30,
+        -10, -38,
+        20, -30,
+        50, -15
+    ],
+    "builtInMods": [],
+    "center": [
+        48, 80
+    ],
+    "collisionRadius": 80,
+    "coversColor": "",
+    "engineSlots": [
+        {
+            "angle": 180,
+            "contrailSize": 10,
+            "length": 30,
+            "location": [
+                -68, 12
+            ],
+            "style": "HIGH_TECH",
+            "width": 8
+        },
+        {
+            "angle": 180,
+            "contrailSize": 10,
+            "length": 30,
+            "location": [
+                -68, -12
+            ],
+            "style": "HIGH_TECH",
+            "width": 8
+        },
+        {
+            "angle": 180,
+            "contrailSize": 6,
+            "length": 20,
+            "location": [
+                -65, 0
+            ],
+            "style": "HIGH_TECH",
+            "width": 6
+        }
+    ],
+    "height": 150,
+    "hullId": "astd_arc_flash",
+    "hullName": "电弧闪",
+    "hullSize": "FRIGATE",
+    "shieldCenter": [
+        0, 0
+    ],
+    "shieldRadius": 85,
+    "spriteName": "graphics/ships/astd_arc_flash.png",
+    "style": "HIGH_TECH",
+    "viewOffset": 0,
+    "weaponSlots": [
+        {
+            "angle": 0,
+            "arc": 150,
+            "id": "WS0001",
+            "locations": [
+                30, 18
+            ],
+            "mount": "TURRET",
+            "size": "SMALL",
+            "type": "ENERGY"
+        },
+        {
+            "angle": -0,
+            "arc": 150,
+            "id": "WS0002",
+            "locations": [
+                30, -18
+            ],
+            "mount": "TURRET",
+            "size": "SMALL",
+            "type": "ENERGY"
+        },
+        {
+            "angle": 90,
+            "arc": 5,
+            "id": "WS0003",
+            "locations": [
+                -15, 32
+            ],
+            "mount": "HARDPOINT",
+            "size": "SMALL",
+            "type": "MISSILE"
+        },
+        {
+            "angle": -90,
+            "arc": 5,
+            "id": "WS0004",
+            "locations": [
+                -15, -32
+            ],
+            "mount": "HARDPOINT",
+            "size": "SMALL",
+            "type": "MISSILE"
+        }
+    ],
+    "width": 96
+}

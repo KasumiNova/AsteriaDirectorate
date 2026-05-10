@@ -1,0 +1,23 @@
+{
+    "id": "astd_mnl_omega_grid",
+    "specClass": "missile",
+    "missileType": "MISSILE",
+    "onFireEffect": "cn.kasuminova.astd.combat.effect.generic.ProjectileSpecOnFireDispatcher",
+    "sprite": "graphics/missiles/heavy_mine.png",
+    "size": [14, 14],
+    "center": [7, 7],
+    "collisionRadius": 12,
+    "collisionClass": "MISSILE_FF",
+    "explosionColor": [180, 120, 255, 255],
+    "explosionRadius": 150,
+    "flameoutTime": 1,
+    "noEngineGlowTime": 0.5,
+    "fadeTime": 0.5,
+    "engineSpec": {
+        "turnAcc": 0,
+        "turnRate": 0,
+        "acc": 60,
+        "dec": 120
+    },
+    "engineSlots": []
+}

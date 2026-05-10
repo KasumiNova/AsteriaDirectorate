@@ -1,0 +1,90 @@
+{
+    "bounds": [
+        170,
+        0,
+        85,
+        106,
+        0,
+        106,
+        -85,
+        106,
+        -170,
+        0,
+        -85,
+        -106,
+        0,
+        -106,
+        85,
+        -106
+    ],
+    "center": [
+        176,
+        112
+    ],
+    "collisionRadius": 158,
+    "coversColor": "",
+    "engineSlots": [
+        {
+            "angle": 180,
+            "contrailSize": 64,
+            "length": 30,
+            "location": [
+                -123,
+                0
+            ],
+            "style": "HIGH_TECH",
+            "width": 20
+        }
+    ],
+    "height": 224,
+    "hullId": "astd_dark_tide_nebula",
+    "hullName": "暗潮星云",
+    "hullSize": "CRUISER",
+    "shieldCenter": [
+        0,
+        0
+    ],
+    "shieldRadius": 246,
+    "spriteName": "graphics/ships/astd_dark_tide_nebula.png",
+    "style": "HIGH_TECH",
+    "viewOffset": 0,
+    "weaponSlots": [
+        {
+            "angle": 0,
+            "arc": 10,
+            "id": "WS 001",
+            "locations": [
+                -106,
+                0
+            ],
+            "mount": "HARDPOINT",
+            "size": "LARGE",
+            "type": "UNIVERSAL"
+        },
+        {
+            "angle": 0,
+            "arc": 120,
+            "id": "WS 002",
+            "locations": [
+                -159,
+                -56
+            ],
+            "mount": "TURRET",
+            "size": "SMALL",
+            "type": "UNIVERSAL"
+        },
+        {
+            "angle": 0,
+            "arc": 120,
+            "id": "WS 003",
+            "locations": [
+                -159,
+                56
+            ],
+            "mount": "TURRET",
+            "size": "SMALL",
+            "type": "UNIVERSAL"
+        }
+    ],
+    "width": 352
+}

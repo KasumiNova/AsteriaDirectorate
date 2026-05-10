@@ -1,0 +1,90 @@
+{
+    "bounds": [
+        58,
+        0,
+        29,
+        42,
+        0,
+        42,
+        -29,
+        42,
+        -58,
+        0,
+        -29,
+        -42,
+        0,
+        -42,
+        29,
+        -42
+    ],
+    "center": [
+        64,
+        48
+    ],
+    "collisionRadius": 57,
+    "coversColor": "",
+    "engineSlots": [
+        {
+            "angle": 180,
+            "contrailSize": 64,
+            "length": 30,
+            "location": [
+                -44,
+                0
+            ],
+            "style": "HIGH_TECH",
+            "width": 20
+        }
+    ],
+    "height": 96,
+    "hullId": "astd_echo_shimmer",
+    "hullName": "回声微光",
+    "hullSize": "FRIGATE",
+    "shieldCenter": [
+        0,
+        0
+    ],
+    "shieldRadius": 88,
+    "spriteName": "graphics/ships/astd_echo_shimmer.png",
+    "style": "HIGH_TECH",
+    "viewOffset": 0,
+    "weaponSlots": [
+        {
+            "angle": 0,
+            "arc": 10,
+            "id": "WS 001",
+            "locations": [
+                -39,
+                0
+            ],
+            "mount": "HARDPOINT",
+            "size": "SMALL",
+            "type": "UNIVERSAL"
+        },
+        {
+            "angle": 0,
+            "arc": 120,
+            "id": "WS 002",
+            "locations": [
+                -58,
+                -24
+            ],
+            "mount": "TURRET",
+            "size": "SMALL",
+            "type": "UNIVERSAL"
+        },
+        {
+            "angle": 0,
+            "arc": 120,
+            "id": "WS 003",
+            "locations": [
+                -58,
+                24
+            ],
+            "mount": "TURRET",
+            "size": "SMALL",
+            "type": "UNIVERSAL"
+        }
+    ],
+    "width": 128
+}

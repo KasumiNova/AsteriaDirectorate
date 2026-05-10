@@ -1,0 +1,7 @@
+{
+    "id": "astd_signal_overload",
+    "type": "STAT_MOD",
+    "aiType": "WEAPON_BOOST",
+    "statsScript": "cn.kasuminova.astd.combat.shipsystems.PlaceholderShipSystemStats",
+    "useSound": "system_ammo_feeder"
+}

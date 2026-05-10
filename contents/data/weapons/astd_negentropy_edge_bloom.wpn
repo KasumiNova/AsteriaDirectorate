@@ -1,0 +1,50 @@
+{
+    "id": "astd_negentropy_edge_bloom",
+    "specClass": "beam",
+    "type": "DECORATIVE",
+    "size": "LARGE",
+    "everyFrameEffect": "cn.kasuminova.astd.renderer.effect.system.ArcFlareDecorativeLightsEffect",
+    "showDamageWhenDecorative": false,
+    "renderBelowAllWeapons": true,
+    "renderHints": [
+        "RENDER_ADDITIVE"
+    ],
+    "turretSprite": "graphics/ships/astd_negentropy_edge_bloom.png",
+    "hardpointSprite": "graphics/ships/astd_negentropy_edge_bloom.png",
+    "turretOffsets": [
+        0,
+        0
+    ],
+    "turretAngleOffsets": [
+        0
+    ],
+    "hardpointOffsets": [
+        0,
+        0
+    ],
+    "hardpointAngleOffsets": [
+        0
+    ],
+    "fringeColor": [
+        255,
+        255,
+        255,
+        255
+    ],
+    "coreColor": [
+        255,
+        255,
+        255,
+        255
+    ],
+    "glowColor": [
+        255,
+        255,
+        255,
+        255
+    ],
+    "width": 1.0,
+    "textureType": "ROUGH",
+    "textureScrollSpeed": 1.0,
+    "pixelsPerTexel": 1.0
+}

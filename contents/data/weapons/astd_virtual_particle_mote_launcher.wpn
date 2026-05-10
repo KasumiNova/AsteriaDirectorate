@@ -1,0 +1,20 @@
+{
+    "id": "astd_virtual_particle_mote_launcher",
+    "specClass": "projectile",
+    "type": "SYSTEM",
+    "size": "SMALL",
+    "turretSprite": "graphics/textures/BUtil_NONE.png",
+    "hardpointSprite": "graphics/textures/BUtil_NONE.png",
+    "turretGunSprite": "graphics/textures/BUtil_NONE.png",
+    "hardpointGunSprite": "graphics/textures/BUtil_NONE.png",
+    "hardpointOffsets": [0, 0],
+    "turretOffsets": [0, 0],
+    "hardpointAngleOffsets": [0],
+    "turretAngleOffsets": [0],
+    "barrelMode": "LINKED",
+    "noShieldImpactSounds": true,
+    "noNonShieldImpactSounds": true,
+    "animationType": "MUZZLE_FLASH",
+    "projectileSpecId": "astd_virtual_particle_mote",
+    "fireSoundTwo": "mote_attractor_launch_mote"
+}

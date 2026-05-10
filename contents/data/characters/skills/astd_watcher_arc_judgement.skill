@@ -1,0 +1,24 @@
+{
+  "id":"astd_watcher_arc_judgement",
+  "governingAptitude":"combat",
+  "compressHullmods":false,
+  "elite":true,
+  "scope":"PILOTED_SHIP",
+  "effectGroups":[
+    {
+      "requiredSkillLevel":1,
+      "effectBasedOnLevel":false,
+      "effects":[
+        {"type":"SHIP", "script":"cn.kasuminova.astd.combat.skills.WatcherArcJudgement$Level1"}
+      ]
+    },
+    {
+      "name":"Elite",
+      "requiredSkillLevel":2,
+      "effectBasedOnLevel":false,
+      "effects":[
+        {"type":"SHIP", "script":"cn.kasuminova.astd.combat.skills.WatcherArcJudgement$Level2"}
+      ]
+    }
+  ]
+}

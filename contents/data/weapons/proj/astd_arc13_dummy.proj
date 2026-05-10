@@ -1,0 +1,16 @@
+{
+    "id": "astd_arc13_dummy",
+    "specClass": "projectile",
+    "spawnType": "BALLISTIC",
+    "onFireEffect": "cn.kasuminova.astd.combat.effect.arc.arc13.Arc13OnFireEffect",
+    "collisionClass": "NONE",
+    "collisionClassByFighter": "NONE",
+    "length": 2,
+    "width": 2,
+    "fadeTime": 0,
+    "fringeColor": [255, 255, 255, 0],
+    "coreColor": [255, 255, 255, 0],
+    "textureScrollSpeed": 0,
+    "pixelsPerTexel": 1,
+    "bulletSprite": "graphics/textures/BUtil_NONE.png"
+}

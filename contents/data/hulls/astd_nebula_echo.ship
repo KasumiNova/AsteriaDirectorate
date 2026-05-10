@@ -1,0 +1,90 @@
+{
+    "bounds": [
+        90,
+        0,
+        45,
+        74,
+        0,
+        74,
+        -45,
+        74,
+        -90,
+        0,
+        -45,
+        -74,
+        0,
+        -74,
+        45,
+        -74
+    ],
+    "center": [
+        96,
+        80
+    ],
+    "collisionRadius": 86,
+    "coversColor": "",
+    "engineSlots": [
+        {
+            "angle": 180,
+            "contrailSize": 64,
+            "length": 30,
+            "location": [
+                -67,
+                0
+            ],
+            "style": "HIGH_TECH",
+            "width": 20
+        }
+    ],
+    "height": 160,
+    "hullId": "astd_nebula_echo",
+    "hullName": "星云回声",
+    "hullSize": "DESTROYER",
+    "shieldCenter": [
+        0,
+        0
+    ],
+    "shieldRadius": 134,
+    "spriteName": "graphics/ships/astd_nebula_echo.png",
+    "style": "HIGH_TECH",
+    "viewOffset": 0,
+    "weaponSlots": [
+        {
+            "angle": 0,
+            "arc": 10,
+            "id": "WS 001",
+            "locations": [
+                -58,
+                0
+            ],
+            "mount": "HARDPOINT",
+            "size": "MEDIUM",
+            "type": "UNIVERSAL"
+        },
+        {
+            "angle": 0,
+            "arc": 120,
+            "id": "WS 002",
+            "locations": [
+                -87,
+                -40
+            ],
+            "mount": "TURRET",
+            "size": "SMALL",
+            "type": "UNIVERSAL"
+        },
+        {
+            "angle": 0,
+            "arc": 120,
+            "id": "WS 003",
+            "locations": [
+                -87,
+                40
+            ],
+            "mount": "TURRET",
+            "size": "SMALL",
+            "type": "UNIVERSAL"
+        }
+    ],
+    "width": 192
+}

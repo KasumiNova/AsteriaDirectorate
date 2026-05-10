@@ -1,0 +1,90 @@
+{
+    "bounds": [
+        74,
+        0,
+        37,
+        58,
+        0,
+        58,
+        -37,
+        58,
+        -74,
+        0,
+        -37,
+        -58,
+        0,
+        -58,
+        37,
+        -58
+    ],
+    "center": [
+        80,
+        64
+    ],
+    "collisionRadius": 72,
+    "coversColor": "",
+    "engineSlots": [
+        {
+            "angle": 180,
+            "contrailSize": 64,
+            "length": 30,
+            "location": [
+                -56,
+                0
+            ],
+            "style": "HIGH_TECH",
+            "width": 20
+        }
+    ],
+    "height": 128,
+    "hullId": "astd_flickering_phantom",
+    "hullName": "闪烁虚影",
+    "hullSize": "FRIGATE",
+    "shieldCenter": [
+        0,
+        0
+    ],
+    "shieldRadius": 112,
+    "spriteName": "graphics/ships/astd_flickering_phantom.png",
+    "style": "HIGH_TECH",
+    "viewOffset": 0,
+    "weaponSlots": [
+        {
+            "angle": 0,
+            "arc": 10,
+            "id": "WS 001",
+            "locations": [
+                -48,
+                0
+            ],
+            "mount": "HARDPOINT",
+            "size": "SMALL",
+            "type": "UNIVERSAL"
+        },
+        {
+            "angle": 0,
+            "arc": 120,
+            "id": "WS 002",
+            "locations": [
+                -72,
+                -32
+            ],
+            "mount": "TURRET",
+            "size": "SMALL",
+            "type": "UNIVERSAL"
+        },
+        {
+            "angle": 0,
+            "arc": 120,
+            "id": "WS 003",
+            "locations": [
+                -72,
+                32
+            ],
+            "mount": "TURRET",
+            "size": "SMALL",
+            "type": "UNIVERSAL"
+        }
+    ],
+    "width": 160
+}

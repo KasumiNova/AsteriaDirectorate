@@ -1,0 +1,16 @@
+{
+    "id": "astd_jmb9_beam",
+    "specClass": "projectile",
+    "spawnType": "BALLISTIC",
+    "onFireEffect": "cn.kasuminova.astd.combat.effect.generic.ProjectileSpecOnFireDispatcher",
+    "collisionClass": "PROJECTILE_FF",
+    "collisionClassByFighter": "PROJECTILE_FIGHTER",
+    "length": 24,
+    "width": 8,
+    "fadeTime": 0.2,
+    "fringeColor": [120, 200, 255, 235],
+    "coreColor": [220, 245, 255, 200],
+    "textureScrollSpeed": 64,
+    "pixelsPerTexel": 5,
+    "bulletSprite": "graphics/textures/BUtil_NONE.png"
+}

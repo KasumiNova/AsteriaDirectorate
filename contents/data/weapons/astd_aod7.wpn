@@ -1,0 +1,31 @@
+{
+    "id": "astd_aod7",
+    "specClass": "projectile",
+    "type": "ENERGY",
+    "size": "LARGE",
+    "displayArcRadius": 700,
+    "turretSprite": "graphics/fx/empty.png",
+    "turretGunSprite": "graphics/fx/empty.png",
+    "hardpointSprite": "graphics/fx/empty.png",
+    "hardpointGunSprite": "graphics/fx/empty.png",
+    "visualRecoil": 4.0,
+    "turretOffsets": [
+        0,
+        0
+    ],
+    "turretAngleOffsets": [
+        0
+    ],
+    "hardpointOffsets": [
+        0,
+        0
+    ],
+    "hardpointAngleOffsets": [
+        0
+    ],
+    "barrelMode": "LINKED",
+    "animationType": "MUZZLE_FLASH",
+    "projectileSpecId": "astd_aod7_shot",
+    "everyFrameEffect": "cn.kasuminova.astd.combat.effect.generic.CombatVfxBootstrapEveryFrameEffect",
+    "fireSoundTwo": "autocannon_fire"
+}

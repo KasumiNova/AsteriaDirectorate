@@ -1,0 +1,8 @@
+{
+    "id": "astd_stellar_jet",
+    "type": "STAT_MOD",
+    "aiType": "CUSTOM",
+    "aiScript": "cn.kasuminova.astd.combat.shipsystems.StellarJetSystemAI",
+    "statsScript": "cn.kasuminova.astd.combat.shipsystems.StellarJetSystemStats",
+    "useSound": "system_ammo_feeder"
+}

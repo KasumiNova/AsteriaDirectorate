@@ -1,0 +1,168 @@
+{
+    "shipSprite": "/mnt/windows_data/Games/Starsector098-linux/mods/Asteria_Directorate/contents/graphics/ships/astd_arc_flare.png",
+    "templateSheet": "/mnt/windows_data/Games/Starsector098-linux/mods/Asteria_Directorate/tools/weapon_slots.png",
+    "axisX": 186.0,
+    "candidateCount": 10,
+    "candidates": [
+        {
+            "templateId": 7,
+            "score": 0.8239,
+            "mirroredScore": 0.8007,
+            "scale": 0.75,
+            "bbox": [
+                274,
+                206,
+                17,
+                17
+            ],
+            "center": [
+                282.5,
+                214.5
+            ]
+        },
+        {
+            "templateId": 8,
+            "score": 0.8007,
+            "mirroredScore": 0.8239,
+            "scale": 0.9,
+            "bbox": [
+                80,
+                216,
+                18,
+                14
+            ],
+            "center": [
+                89.0,
+                223.0
+            ]
+        },
+        {
+            "templateId": 7,
+            "score": 0.8235,
+            "mirroredScore": 0.8008,
+            "scale": 0.75,
+            "bbox": [
+                277,
+                227,
+                17,
+                17
+            ],
+            "center": [
+                285.5,
+                235.5
+            ]
+        },
+        {
+            "templateId": 8,
+            "score": 0.8008,
+            "mirroredScore": 0.8235,
+            "scale": 0.9,
+            "bbox": [
+                78,
+                231,
+                18,
+                14
+            ],
+            "center": [
+                87.0,
+                238.0
+            ]
+        },
+        {
+            "templateId": 7,
+            "score": 0.8249,
+            "mirroredScore": 0.7627,
+            "scale": 0.75,
+            "bbox": [
+                267,
+                271,
+                17,
+                17
+            ],
+            "center": [
+                275.5,
+                279.5
+            ]
+        },
+        {
+            "templateId": 12,
+            "score": 0.7627,
+            "mirroredScore": 0.8249,
+            "scale": 0.75,
+            "bbox": [
+                95,
+                267,
+                9,
+                8
+            ],
+            "center": [
+                99.5,
+                271.0
+            ]
+        },
+        {
+            "templateId": 12,
+            "score": 0.7823,
+            "mirroredScore": 0.7823,
+            "scale": 0.75,
+            "bbox": [
+                108,
+                315,
+                9,
+                8
+            ],
+            "center": [
+                112.5,
+                319.0
+            ]
+        },
+        {
+            "templateId": 12,
+            "score": 0.7823,
+            "mirroredScore": 0.7823,
+            "scale": 0.75,
+            "bbox": [
+                264,
+                315,
+                9,
+                8
+            ],
+            "center": [
+                268.5,
+                319.0
+            ]
+        },
+        {
+            "templateId": 12,
+            "score": 0.7646,
+            "mirroredScore": 0.7627,
+            "scale": 0.75,
+            "bbox": [
+                268,
+                257,
+                9,
+                8
+            ],
+            "center": [
+                272.5,
+                261.0
+            ]
+        },
+        {
+            "templateId": 11,
+            "score": 0.7493,
+            "mirroredScore": 0.0,
+            "scale": 0.75,
+            "bbox": [
+                168,
+                173,
+                12,
+                12
+            ],
+            "center": [
+                174.0,
+                179.0
+            ]
+        }
+    ]
+}

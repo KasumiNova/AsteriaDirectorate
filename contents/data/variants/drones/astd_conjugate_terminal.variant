@@ -1,0 +1,16 @@
+{
+    "displayName":"共轭终端",
+    "hullId":"astd_conjugate_terminal",
+    "variantId":"astd_conjugate_terminal",
+    "fluxVents":0,
+    "fluxCapacitors":0,
+    "mods":[],
+    "weaponGroups":[
+        {"mode":"LINKED",
+         "weapons":{
+                    "WS 001":"pdlaser",
+                    "WS 002":"ioncannon",
+                   },
+        },
+    ],
+}

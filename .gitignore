@@ -1,0 +1,15 @@
+.github/superpower
+.idea
+
+.kotlin
+bin
+.bin
+dev-resources
+
+node_modules
+dist
+
+.gradle
+
+*.code-workspace
+build

@@ -1,0 +1,24 @@
+{
+    "id": "astd_virtual_particle_mote",
+    "specClass": "missile",
+    "missileType": "MISSILE",
+    "onHitEffect": "cn.kasuminova.astd.combat.hullmods.arc.ASTDPursuitVirtualParticleOnHitEffect",
+    "sprite": "graphics/textures/BUtil_NONE.png",
+    "size": [4, 4],
+    "center": [2, 2],
+    "collisionRadius": 7,
+    "collisionClass": "MISSILE_NO_FF",
+    "explosionColor": [120, 210, 255, 180],
+    "explosionRadius": 36,
+    "armingTime": 0.05,
+    "flameoutTime": 0.5,
+    "noEngineGlowTime": 999,
+    "fadeTime": 0.25,
+    "engineSpec": {
+        "turnAcc": 1800,
+        "turnRate": 1440,
+        "acc": 1800,
+        "dec": 1600
+    },
+    "engineSlots": []
+}

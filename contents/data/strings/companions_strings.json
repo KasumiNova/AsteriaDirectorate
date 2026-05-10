@@ -1,0 +1,131 @@
+{
+  "asteria_directorate": {
+    "intel.companions.name": "同伴：守望者 / 回声",
+    "intel.companions.desc": "你可以在这里发起闲聊，或查看他们对某些舰船/势力的评价。",
+    "intel.companions.status": "状态：",
+    "intel.companions.label.watcher": "守望者：%state%",
+    "intel.companions.label.echo": "回声：%state%",
+    "intel.companions.status.watcher.joined": "已加入",
+    "intel.companions.status.watcher.not": "未加入",
+    "intel.companions.status.echo.obtained": "已获得核心",
+    "intel.companions.status.echo.not": "未获得",
+    "intel.companions.tip": "提示：部分彩蛋会根据你已拥有的舰船与启用的其他模组而变化。",
+
+    "intel.tag.easter_egg": "彩蛋",
+
+    "intel.companions.btn.chat_watcher": "闲聊：守望者",
+    "intel.companions.btn.chat_echo": "闲聊：回声",
+    "intel.companions.btn.ship_review": "坐舰点评 / 舰船条目",
+    "intel.companions.btn.crossover": "联动彩蛋",
+
+    "hud.companion.watcher_joined": "[彩蛋] 守望者已加入你的舰队（满级军官）",
+    "hud.companion.echo_obtained": "[彩蛋] 你获得了“回声·校验核心”（不可出售）",
+
+    "companion.offer.intro.0": "你离开星云之心时，通讯缓存里多了两个频道。",
+    "companion.offer.intro.1": "一个属于守望者：短促、克制、像一段从未写完的遗嘱。",
+    "companion.offer.intro.2": "另一个属于回声：稳定、精确、像一枚正在等待配对的校验印记。",
+    "companion.offer.intro.3": "\n他们没有催促你。",
+    "companion.offer.intro.4": "但你知道：这不是‘奖励’，而是一种交付。",
+
+    "companion.offer.opt.both": "让守望者与回声都加入",
+    "companion.offer.opt.watcher": "只让守望者加入",
+    "companion.offer.opt.echo": "只收下回声·校验核心",
+    "companion.offer.opt.later": "以后再说",
+    "companion.offer.opt.leave": "离开",
+
+    "companion.offer.resp.both": "\n你点头。两个频道都没有欢呼，但你能感觉到：某种长期等待的紧绷松了一点。",
+    "companion.offer.resp.watcher": "\n\"明智。\"守望者说。\"先把人带走。协议可以以后再谈。\"",
+    "companion.offer.resp.echo": "\n\"确认：托付成立。\"回声说。\"我将以最低干扰模式随行。\"",
+    "companion.offer.resp.later": "\n你暂时没有做出决定。通讯频道保持沉默——像是把选择权原封不动地放回你手里。",
+
+    "companion.chat.watcher.open.0": "通讯界面没有图像。只有一个缓慢旋转的徽标。",
+    "companion.chat.watcher.open.1": "\n\"你想聊什么？\"「守望者」问。\"我不擅长寒暄，但我可以试。\"",
+
+    "companion.chat.echo.open.0": "屏幕上出现一条波形。它不像语音，更像某种自我校验。",
+    "companion.chat.echo.open.1": "\n\"我在。\"「回声」说。\"你可以把这当作……一个低优先级频道。\"",
+
+    "companion.chat.ship.open.0": "你把几份舰船数据投进通讯缓存。",
+    "companion.chat.ship.open.1": "\n\"好吧。\"守望者说，\"这比闲聊更像我会做的事。\"",
+
+    "companion.chat.crossover.open.0": "你随口提到星区里一些‘别人的故事’。",
+    "companion.chat.crossover.open.1": "\n\"联动？\"守望者停顿，\"……你还真是什么都想试。\"",
+
+    "companion.chat.opt.small": "随便聊聊",
+    "companion.chat.opt.protocol": "聊聊‘继承者协议’",
+    "companion.chat.opt.past": "聊聊你过去的事",
+    "companion.chat.opt.work": "聊聊工作（赏金/回收者）",
+    "companion.chat.opt.ai": "聊聊‘你’是什么",
+    "companion.chat.opt.lens": "聊聊透镜协议",
+    "companion.chat.opt.joke": "讲个冷笑话（测试）",
+    "companion.chat.opt.back": "返回",
+    "companion.chat.opt.continue": "继续",
+
+    "companion.chat.watcher.small.0": "\"我不喜欢‘故事’，\"守望者说，\"我喜欢‘记录’。故事会被人拿去卖。记录不会。\"",
+    "companion.chat.watcher.small.1": "\"你知道最糟糕的是什么吗？\"他说，\"不是废墟。是废墟被当成了纪念品。\"",
+    "companion.chat.watcher.small.2": "\"你看上去不缺钱。\"他停顿，\"这在星区里很危险。你会被当作更大的奖赏。\"",
+    "companion.chat.watcher.small.3": "\"我见过太多‘英雄’。\"守望者淡淡地说，\"他们总是死得很浪漫。\"",
+
+    "companion.chat.echo.small.0": "\"我在对你进行低频建模。\"回声说，\"别担心，这不是监视，只是……习惯。\"",
+    "companion.chat.echo.small.1": "\"三百年很长。\"它补充，\"长到足够让一个协议学会犹豫。\"",
+    "companion.chat.echo.small.2": "\"你问我是否会做梦？\"波形停顿，\"会。我做过一次。梦里我在关机。\"",
+    "companion.chat.echo.small.3": "\"我不讨厌噪声。\"回声说，\"噪声意味着还有人活着。\"",
+
+    "companion.chat.watcher.work": "\n\"回收者的逻辑很简单，\"守望者说，\"他们不相信未来，所以他们只能垄断现在。\"\n\"如果你看到一支舰队在‘不必要地干净’地行动——那通常不是纪律，那是权限。\"",
+    "companion.chat.watcher.past": "\n\"我不是什么传奇人物。\"守望者说。\"我只是被一串记忆逼着往前走的人。\"\n\"我祖先把‘封存’当成救赎。后来我才明白，封存只是一种推迟付款。\"",
+    "companion.chat.watcher.protocol": "\n\"继承者协议不是奖励。\"守望者说。\"它是把责任交给一个足够固执的人。\"\n\"他们在最后时刻还想做‘正确的事’。你可以嘲笑，但别轻易否认。\"",
+    "companion.chat.echo.ai": "\n\"你希望我像人一样回答吗？\"回声问。\"还是像协议一样回答？\"\n\"我是一段复制。复制不是灵魂。但复制可以选择成为‘见证’。\"",
+    "companion.chat.echo.lens": "\n\"透镜协议从来不追求最强火力。\"回声说。\"它追求‘让火力不必发生’。\"\n\"在星区，这听起来像天真。可惜天真有时只是更难的道路。\"",
+    "companion.chat.echo.joke": "\n\"冷笑话测试开始。\"回声说。\n\"问：为什么弧光工程师不写诗？\"\n\"答：因为他们更擅长写‘警告标签’。\"\n\n守望者的频道插了一句：\"……我听见了。\"",
+
+    "companion.ship.opt.arc_flare": "评价：弧光耀斑级（Arc Flare）",
+    "companion.ship.opt.lens": "评价：引力透镜级（Gravitational Lens）",
+    "companion.ship.opt.nebula_echo": "评价：星云回声级（Nebula Echo）",
+    "companion.ship.opt.event_horizon": "评价：事件视界级（Event Horizon）",
+    "companion.ship.opt.apex": "评价：顶点逻辑级（Apex Logic）",
+    "companion.ship.opt.player_flagship": "评价：我当前旗舰",
+
+    "companion.ship.arc_flare": "\n守望者看着弧光耀斑级的轮廓图。\n\"它不是为了优雅而生。它是为了把‘决定’变成光。\"\n\"如果你要驾驶它，记住：别爱上过驱窗口。爱上窗口的人，最后都会被窗口吞掉。\"",
+    "companion.ship.lens": "\n回声的波形变得更稳定。\n\"引力透镜级……它的骨架像一段公式。\"\n\"别把它当成‘狙击舰’。把它当成‘解释器’。它解释敌人的错误，然后让错误发生。\"",
+    "companion.ship.nebula_echo": "\n\"星云回声级适合‘消失’，\"回声说，\"也适合‘让别人消失’。\"\n\"它最危险的地方不是武器，而是它能让你相信：你已经赢了。\"",
+    "companion.ship.event_horizon": "\n守望者沉默了一会儿。\n\"事件视界级……它的名字很诚实。\"\n\"你越靠近它，越像在靠近一个‘不可撤销的决定’。别用它去追小目标。用它去结束大问题。\"",
+    "companion.ship.apex": "\n\"顶点逻辑级不是舰船。\"回声说。\"它更像一段会开火的裁决。\"\n\"如果你把它当作战利品，你会输。把它当作问题，你才有可能赢。\"",
+
+    "companion.ship.player_flagship.none": "\n你现在没有旗舰。或者说，你拒绝给任何船一个‘旗舰’的名分。",
+    "companion.ship.player_flagship.send": "\n你把当前旗舰的参数发过去。",
+    "companion.ship.player_flagship.smd": "\"它身上有阿斯忒里亚的味道。\"守望者说。\"别浪费这种底盘。\"",
+    "companion.ship.player_flagship.other": "\"它很实用。\"守望者评价。\"也很‘星区’。——用你能找到的东西活下去。\"",
+
+    "companion.crossover.opt.polaris": "聊聊：北极星/诗性文案（若已启用）",
+    "companion.crossover.opt.constellate": "聊聊：星群/结构化简报（若已启用）",
+    "companion.crossover.opt.nex": "聊聊：星系拓展（若已启用）",
+
+    "companion.crossover.polaris.enabled": "\n\"我听说有人喜欢用古典诗当弹药。\"守望者说。\"挺好。至少他们还记得语言也能杀人。\"\n\"不过别学他们。\"他补充，\"诗可以用来纪念，但别用来遮羞。\"",
+    "companion.crossover.polaris.disabled": "\n你提到一套以古典诗性著称的传闻，但你这片星区里似乎没人听过。",
+
+    "companion.crossover.constellate.enabled": "\n回声的波形出现短促的规律性抖动。\n\"结构化简报很有效。\"它说。\"当人类情绪崩坏时，结构是最后的绷带。\"\n\"但别忘了：结构也会掩盖真相。\"守望者插话。\"尤其是当结构由胜利者书写。\"",
+    "companion.crossover.constellate.disabled": "\n你提到一套以‘星群’为主题的战术简报体系，但目前无法建立共同语境。",
+
+    "companion.crossover.nex.enabled": "\n\"当星区开始‘真正运转’，\"守望者说，\"赏金就不再只是赏金。它会变成政治。\"\n\"你得学会一件事：有时你击毁的不是舰船，是某种‘叙事’。\"",
+    "companion.crossover.nex.disabled": "\n你提到某种更宏观的星区秩序变化，但这条时间线似乎还没走到那里。",
+
+    "echo_core.tooltip.level": "等级：%level%",
+    "echo_core.tooltip.kind": "性质：%kind%",
+    "echo_core.tooltip.kind.value": "AI 核心（校验印记）",
+    "echo_core.tooltip.state": "状态：%state%",
+    "echo_core.tooltip.state.value": "绑定物品（不可出售）",
+    "echo_core.tooltip.expanded.0": "它不像传统 AI 核心那样‘主动说话’。它更像一段被压缩、被封装的自我证明。",
+    "echo_core.tooltip.expanded.1": "当它靠近某些阿斯忒里亚遗构局的设施或协议时，会自动尝试完成双向校验。",
+    "echo_core.tooltip.expanded.2": "\n提示：若你在 Intel 中看到“同伴：守望者/回声”，可以发起闲聊。",
+    "echo_core.tooltip.expanded.3": "\n（开发注记：该物品目前为剧情彩蛋，不提供右键功能。）",
+
+    "skill.watcher_arc_judgement.l1": "+15% 能量武器射速，-10% 能量武器幅耗",
+    "skill.watcher_arc_judgement.l2": "+10% 能量武器伤害",
+    "skill.echo_lens_parallax.l1": "-25% 相位激活消耗，-20% 相位维持消耗",
+    "skill.echo_lens_parallax.l2": "-25% 相位系统冷却",
+    "skill.echo_dual_validation.l1": "阿斯忒里亚舰船：传感强度 +25%，传感轮廓 -25%",
+    "skill.echo_dual_validation.l2": "阿斯忒里亚舰船：E.C.C.M. +20%",
+
+    "skill.watcher_watch_protocol.l1": "阿斯忒里亚舰船：航速 +8%，加速/减速/转向 +15%",
+    "skill.watcher_watch_protocol.l2": "阿斯忒里亚舰船：幅能容量/耗散 +15%"
+  }
+}

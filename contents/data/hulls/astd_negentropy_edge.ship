@@ -1,0 +1,139 @@
+{
+    "bounds": [
+        3,
+        105,
+        33,
+        53,
+        20,
+        47,
+        28,
+        3,
+        62,
+        -12,
+        54,
+        -34,
+        73,
+        -66,
+        51,
+        -58,
+        37,
+        -74,
+        41,
+        -92,
+        27,
+        -83,
+        -2,
+        -106,
+        2,
+        -106,
+        -27,
+        -83,
+        -41,
+        -92,
+        -37,
+        -74,
+        -51,
+        -58,
+        -73,
+        -66,
+        -54,
+        -34,
+        -62,
+        -12,
+        -28,
+        3,
+        -20,
+        47,
+        -33,
+        53,
+        -3,
+        105
+    ],
+    "builtInWeapons": {
+        "WS 001": "astd_spc3",
+        "WS BLOOM": "astd_negentropy_edge_bloom"
+    },
+    "center": [
+        74,
+        106
+    ],
+    "collisionRadius": 106,
+    "coversColor": "",
+    "engineSlots": [
+        {
+            "angle": 180,
+            "contrailSize": 64,
+            "length": 30,
+            "location": [
+                -64,
+                0
+            ],
+            "style": "HIGH_TECH",
+            "width": 20
+        }
+    ],
+    "height": 213,
+    "hullId": "astd_negentropy_edge",
+    "hullName": "断熵弧刃",
+    "hullSize": "DESTROYER",
+    "shieldCenter": [
+        0,
+        0
+    ],
+    "shieldRadius": 120,
+    "spriteName": "graphics/ships/astd_negentropy_edge.png",
+    "style": "HIGH_TECH",
+    "viewOffset": 0,
+    "weaponSlots": [
+        {
+            "angle": 0,
+            "arc": 10,
+            "id": "WS 001",
+            "locations": [
+                32,
+                0
+            ],
+            "mount": "HARDPOINT",
+            "size": "LARGE",
+            "type": "BUILT_IN"
+        },
+        {
+            "angle": 0,
+            "arc": 0,
+            "id": "WS BLOOM",
+            "locations": [
+                0,
+                0
+            ],
+            "mount": "TURRET",
+            "renderOrderMod": 3,
+            "size": "LARGE",
+            "type": "DECORATIVE"
+        },
+        {
+            "angle": 0,
+            "arc": 120,
+            "id": "WS 002",
+            "locations": [
+                -14,
+                31
+            ],
+            "mount": "TURRET",
+            "size": "MEDIUM",
+            "type": "HYBRID"
+        },
+        {
+            "angle": 0,
+            "arc": 120,
+            "id": "WS 003",
+            "locations": [
+                -14,
+                -31
+            ],
+            "mount": "TURRET",
+            "size": "MEDIUM",
+            "type": "HYBRID"
+        }
+    ],
+    "width": 148
+}

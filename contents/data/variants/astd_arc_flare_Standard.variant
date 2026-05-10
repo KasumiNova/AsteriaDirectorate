@@ -1,0 +1,17 @@
+{
+    "displayName": "Standard",
+    "fluxCapacitors": 0,
+    "fluxVents": 0,
+    "goalVariant": true,
+    "hullMods": [
+        "astd_arc_flare_mode_switcher"
+    ],
+    "hullId": "astd_arc_flare",
+    "permaMods": [
+        "astd_arc_flare_mode_crewed",
+        "astd_arc_flare_mode_next_crewed"
+    ],
+    "quality": 0.0,
+    "variantId": "astd_arc_flare_Standard",
+    "weaponGroups": []
+}

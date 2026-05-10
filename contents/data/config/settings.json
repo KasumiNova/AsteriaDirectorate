@@ -1,0 +1,11 @@
+{
+  "ruleCommandPackages": [
+    "cn.kasuminova.astd.campaign.rules"
+  ],
+  "designTypeColors": {
+    "弧光阵列": [142, 200, 255, 255],
+    "透镜矩阵": [200, 160, 255, 255],
+    "自律核心": [255, 200, 100, 255],
+    "灵能链路": [255, 100, 180, 255]
+  }
+}

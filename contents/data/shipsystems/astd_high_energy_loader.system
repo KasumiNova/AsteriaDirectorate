@@ -1,0 +1,7 @@
+{
+    "id": "astd_high_energy_loader",
+    "type": "STAT_MOD",
+    "aiType": "WEAPON_BOOST",
+    "statsScript": "cn.kasuminova.astd.combat.shipsystems.HighEnergyLoaderSystemStats",
+    "useSound": "system_ammo_feeder"
+}

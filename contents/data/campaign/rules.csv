@@ -1,0 +1,5 @@
+id,trigger,conditions,script,text,options,notes
+astd_bountyFleetEncounter,BeginFleetEncounter,"$astd_bounty_key score:1100","FleetDesc
+$shownFleetDescAlready = true 0
+AstdShowAffixPanel
+$fidpi_addContinue = true 0",,,

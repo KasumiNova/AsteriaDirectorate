@@ -1,0 +1,10 @@
+{
+    "displayName": "Standard",
+    "fluxCapacitors": 0,
+    "fluxVents": 0,
+    "goalVariant": true,
+    "hullId": "astd_radiation_belt",
+    "quality": 0.0,
+    "variantId": "astd_radiation_belt_Standard",
+    "weaponGroups": []
+}

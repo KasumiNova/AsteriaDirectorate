@@ -1,0 +1,17 @@
+{
+    "id": "astd_aod7_shot",
+    "specClass": "projectile",
+    "spawnType": "BALLISTIC",
+    "onFireEffect": "cn.kasuminova.astd.combat.effect.generic.ProjectileSpecOnFireDispatcher",
+    "onHitEffect": "cn.kasuminova.astd.combat.effect.generic.HighFluxShieldPressureOnHitEffect",
+    "collisionClass": "PROJECTILE_FF",
+    "collisionClassByFighter": "PROJECTILE_FIGHTER",
+    "length": 30,
+    "width": 10,
+    "fadeTime": 0.2,
+    "fringeColor": [255, 198, 126, 228],
+    "coreColor": [248, 242, 232, 205],
+    "textureScrollSpeed": 64,
+    "pixelsPerTexel": 5,
+    "bulletSprite": "graphics/textures/BUtil_NONE.png"
+}
