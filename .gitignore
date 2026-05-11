@@ -1,4 +1,6 @@
-.github/superpower
+.github/superpower/*
+!.github/superpower/copy-review/
+!.github/superpower/copy-review/**
 .idea
 
 .kotlin

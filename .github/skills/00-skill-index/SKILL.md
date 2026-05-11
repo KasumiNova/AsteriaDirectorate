@@ -66,3 +66,9 @@ description: "Skill 索引：按领域汇总本仓库可用的所有技能与路
 - **系统状态文本规范（台词风格）**
   - 路径：`.github/skills/system-status-text-guidelines/SKILL.md`
   - 适用：`getStatusData()` 返回台词风格文本；多状态/多模式键名约定；禁止在状态行写属性数值。
+
+## 文案风格
+
+- **文案风格硬约束（通用规则 / 分类模板 / 审查清单）**
+  - 路径：`.github/skills/copy-style-guidelines/SKILL.md`
+  - 适用：全部玩家可见文本的通用规则、分类模板、审查清单、双线词库与禁忌词表。新增/修改文案后强制调用 `@copy-review` 审查。

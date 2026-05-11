@@ -20,6 +20,7 @@ object ASTDProjectileVfxPresetCatalog {
         preset("jmb9_beam", blue(), 13f, 280f, glowScale = 2.6f),
         preset("jmb_omega_beam", omega(), 15f, 330f, glowScale = 3.0f),
         preset("singularity_nova_missile", singularity(), 20f, 340f, glowScale = 3.6f, head = true),
+        preset("stellar_jet_bolt", stellar(), 10f, 240f, glowScale = 2.4f),
         preset("fdp4_charge", amber(), 14f, 250f, glowScale = 2.6f, head = true),
         preset("ftb_omega_beam", omega(), 16f, 350f, glowScale = 3.2f),
         preset("mnl2_mine", teal(), 13f, 210f, glowScale = 2.4f, head = true),
@@ -98,4 +99,5 @@ object ASTDProjectileVfxPresetCatalog {
     private fun teal() = ASTDColor(0.22f, 1f, 0.78f, 0.9f)
     private fun rose() = ASTDColor(1f, 0.34f, 0.42f, 0.94f)
     private fun singularity() = ASTDColor(0.78f, 0.92f, 1f, 0.96f)
+    private fun stellar() = ASTDColor(1f, 0.92f, 0.74f, 0.92f)
 }

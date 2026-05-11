@@ -25,6 +25,7 @@
     { "projectileSpecId": "astd_jmb_omega_beam", "preset": "jmb_omega_beam" },
 
     { "projectileSpecId": "astd_sgl8_swarm", "preset": "singularity_nova_missile" },
+    { "projectileSpecId": "astd_stellar_jet_bolt", "preset": "stellar_jet_bolt" },
 
     { "projectileSpecId": "astd_fdp4_charge", "preset": "fdp4_charge" },
     { "projectileSpecId": "astd_ftb_omega_beam", "preset": "ftb_omega_beam" },

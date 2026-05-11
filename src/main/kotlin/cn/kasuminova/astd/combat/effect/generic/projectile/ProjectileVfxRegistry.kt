@@ -94,6 +94,7 @@ internal object ProjectileVfxRegistry {
         "astd_jmb9_beam" to "jmb9_beam",
         "astd_jmb_omega_beam" to "jmb_omega_beam",
         "astd_sgl8_swarm" to "singularity_nova_missile",
+        "astd_stellar_jet_bolt" to "stellar_jet_bolt",
         "astd_fdp4_charge" to "fdp4_charge",
         "astd_ftb_omega_beam" to "ftb_omega_beam",
         "astd_mnl2_mine" to "mnl2_mine",

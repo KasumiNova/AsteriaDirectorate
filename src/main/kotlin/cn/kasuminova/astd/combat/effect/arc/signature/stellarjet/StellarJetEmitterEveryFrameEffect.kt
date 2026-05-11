@@ -1,7 +1,8 @@
 package cn.kasuminova.astd.combat.effect.arc.signature.stellarjet
 
 import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
-import cn.kasuminova.astd.combat.effect.generic.projectile.ProjectileVfxPresets
+import cn.kasuminova.astd.combat.effect.generic.projectile.ProjectileVfxRegistry
+import cn.kasuminova.astd.renderer.projectile.ASTDProjectileVfxRuntimeManager
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BeamAPI
 import com.fs.starfarer.api.combat.CollisionClass
@@ -89,10 +90,6 @@ class StellarJetEmitterEveryFrameEffect : EveryFrameWeaponEffectPlugin {
         private const val BOLT_SPEED_MAX = 4000f
         private const val BOLT_DAMAGE_MIN_MUL = 0.10f
         private const val BOLT_DAMAGE_MAX_MUL = 0.20f
-
-        // 需求调整：弹体视觉大小过大，按 DRV-11 的量级收敛（joinWidth≈10）
-        private const val BOLT_VFX_SIZE_MIN = 8.5f
-        private const val BOLT_VFX_SIZE_MAX = 12.5f
 
         // 兜底 applyDamage 的倍率：用于“原版 beam 未结算但我们确认命中”的边界帧。
         // （主伤害仍以原版 beam 结算为主；这里仅保证不出现完全不掉血。）
@@ -204,15 +201,10 @@ class StellarJetEmitterEveryFrameEffect : EveryFrameWeaponEffectPlugin {
             } catch (_: Throwable) {
             }
 
-            // VFX：用本模组拖尾，大小随机 100~200（纯视觉）。
-            val vfxSize = lerp(BOLT_VFX_SIZE_MIN, BOLT_VFX_SIZE_MAX, rand01())
-            try {
-                dp.setCustomData(ProjectileVfxPresets.StellarJetBolt.VFX_SIZE_KEY, vfxSize)
-            } catch (_: Throwable) {
-            }
-            try {
-                ProjectileVfxPresets.StellarJetBolt.onSpawn(engine, dp)
-            } catch (_: Throwable) {
+            // VFX：接入统一 projectile runtime，特殊伤害与射程逻辑继续由本 effect 维护。
+            val preset = ProjectileVfxRegistry.presetFor("astd_stellar_jet_bolt")
+            if (preset != null) {
+                ASTDProjectileVfxRuntimeManager.track(engine, dp, preset)
             }
 
             // 兜底：若引擎侧出现“碰撞移除但不结算伤害”的边界情况，离开 play 时补一次 applyDamage。

@@ -13,74 +13,67 @@ import cn.kasuminova.astd.sscsv.i18n.SsI18n
 private fun desc(id: String, key: String, fallback: String = ""): String =
     SsI18n.t("desc.$id.$key", fallback)
 
-object Desc_astd_stellar_jet : DescriptionEntry() {
-    override val id: String = "astd_stellar_jet"
-    override val type: String = "SHIP_SYSTEM"
-
-    override val text1: String = desc(id, "text1")
-    override val text2: String = desc(id, "text2")
-    override val text3: String = desc(id, "text3")
-    override val text4: String = desc(id, "text4")
+abstract class LocalizedDescription(
+    final override val id: String,
+    final override val type: String,
+    private val notesId: String = id,
+) : DescriptionEntry() {
+    final override val text1: String = desc(id, "text1")
+    final override val text2: String = desc(id, "text2")
+    final override val text3: String = desc(id, "text3")
+    final override val text4: String = desc(id, "text4")
+    final override val notes: String = desc(notesId, "notes")
 }
 
-object Desc_astd_arc_flare_overdrive_crewed : DescriptionEntry() {
-    override val id: String = "astd_arc_flare_overdrive_crewed"
-    override val type: String = "SHIP_SYSTEM"
+object Desc_astd_arc_flare : LocalizedDescription("astd_arc_flare", "SHIP")
+object Desc_astd_arc_flash : LocalizedDescription("astd_arc_flash", "SHIP")
+object Desc_astd_arc_jet : LocalizedDescription("astd_arc_jet", "SHIP")
+object Desc_astd_arc_nova : LocalizedDescription("astd_arc_nova", "SHIP")
+object Desc_astd_aurora_grid : LocalizedDescription("astd_aurora_grid", "SHIP")
+object Desc_astd_dark_tide_nebula : LocalizedDescription("astd_dark_tide_nebula", "SHIP")
+object Desc_astd_diffraction : LocalizedDescription("astd_diffraction", "SHIP")
+object Desc_astd_echo_shimmer : LocalizedDescription("astd_echo_shimmer", "SHIP")
+object Desc_astd_event_horizon : LocalizedDescription("astd_event_horizon", "SHIP")
+object Desc_astd_flickering_phantom : LocalizedDescription("astd_flickering_phantom", "SHIP")
+object Desc_astd_gravitational_lens : LocalizedDescription("astd_gravitational_lens", "SHIP")
+object Desc_astd_magnetic_storm_zigzag : LocalizedDescription("astd_magnetic_storm_zigzag", "SHIP")
+object Desc_astd_magnetosphere_disturbance : LocalizedDescription("astd_magnetosphere_disturbance", "SHIP")
+object Desc_astd_nebula_echo : LocalizedDescription("astd_nebula_echo", "SHIP")
+object Desc_astd_negentropy_edge : LocalizedDescription("astd_negentropy_edge", "SHIP")
+object Desc_astd_plasma_arch : LocalizedDescription("astd_plasma_arch", "SHIP")
+object Desc_astd_radiation_belt : LocalizedDescription("astd_radiation_belt", "SHIP")
+object Desc_astd_apex_logic : LocalizedDescription("astd_apex_logic", "SHIP")
 
-    override val text1: String = desc(id, "text1")
-    override val text2: String = desc(id, "text2")
-    override val text3: String = desc(id, "text3")
-    override val text4: String = desc(id, "text4")
-}
+object Desc_astd_arc_flare_overdrive_crewed : LocalizedDescription("astd_arc_flare_overdrive_crewed", "SHIP_SYSTEM")
+object Desc_astd_arc_flare_overdrive_automated : LocalizedDescription("astd_arc_flare_overdrive_automated", "SHIP_SYSTEM")
+object Desc_astd_stellar_jet : LocalizedDescription("astd_stellar_jet", "SHIP_SYSTEM")
 
-object Desc_astd_arc_flare_overdrive_automated : DescriptionEntry() {
-    override val id: String = "astd_arc_flare_overdrive_automated"
-    override val type: String = "SHIP_SYSTEM"
-
-    override val text1: String = desc(id, "text1")
-    override val text2: String = desc(id, "text2")
-    override val text3: String = desc(id, "text3")
-    override val text4: String = desc(id, "text4")
-}
-
-object Desc_astd_stellar_jet_emitter : DescriptionEntry() {
-    override val id: String = "astd_stellar_jet_emitter"
-    override val type: String = "WEAPON"
-
-    override val text1: String = desc(id, "text1")
-    override val text2: String = desc(id, "text2")
-    override val text3: String = desc(id, "text3")
-    override val text4: String = desc(id, "text4")
-}
-
-object Desc_astd_gcp12 : DescriptionEntry() {
-    override val id: String = "astd_gcp12"
-    override val type: String = "WEAPON"
-
-    override val text1: String = desc(id, "text1")
-    override val notes: String = desc(id, "notes")
-}
-
-object Desc_astd_gcp8 : DescriptionEntry() {
-    override val id: String = "astd_gcp8"
-    override val type: String = "WEAPON"
-
-    override val text1: String = desc(id, "text1")
-    override val notes: String = desc(Desc_astd_gcp12.id, "notes")
-}
-
-object Desc_astd_gcp4 : DescriptionEntry() {
-    override val id: String = "astd_gcp4"
-    override val type: String = "WEAPON"
-
-    override val text1: String = desc(id, "text1")
-    override val notes: String = desc(Desc_astd_gcp12.id, "notes")
-}
-
-object Desc_astd_gcp2 : DescriptionEntry() {
-    override val id: String = "astd_gcp2"
-    override val type: String = "WEAPON"
-
-    override val text1: String = desc(id, "text1")
-    override val notes: String = desc(Desc_astd_gcp12.id, "notes")
-}
+object Desc_astd_arc13 : LocalizedDescription("astd_arc13", "WEAPON")
+object Desc_astd_drv11 : LocalizedDescription("astd_drv11", "WEAPON")
+object Desc_astd_drv9 : LocalizedDescription("astd_drv9", "WEAPON")
+object Desc_astd_drv_omega : LocalizedDescription("astd_drv_omega", "WEAPON")
+object Desc_astd_fdp4 : LocalizedDescription("astd_fdp4", "WEAPON")
+object Desc_astd_ftb_omega : LocalizedDescription("astd_ftb_omega", "WEAPON")
+object Desc_astd_gcp12 : LocalizedDescription("astd_gcp12", "WEAPON")
+object Desc_astd_gcp8 : LocalizedDescription("astd_gcp8", "WEAPON", notesId = "astd_gcp12")
+object Desc_astd_gcp4 : LocalizedDescription("astd_gcp4", "WEAPON", notesId = "astd_gcp12")
+object Desc_astd_gcp2 : LocalizedDescription("astd_gcp2", "WEAPON", notesId = "astd_gcp12")
+object Desc_astd_gsp12 : LocalizedDescription("astd_gsp12", "WEAPON")
+object Desc_astd_jmb2 : LocalizedDescription("astd_jmb2", "WEAPON")
+object Desc_astd_jmb9 : LocalizedDescription("astd_jmb9", "WEAPON")
+object Desc_astd_jmb_omega : LocalizedDescription("astd_jmb_omega", "WEAPON")
+object Desc_astd_mnl2 : LocalizedDescription("astd_mnl2", "WEAPON")
+object Desc_astd_mnl3 : LocalizedDescription("astd_mnl3", "WEAPON")
+object Desc_astd_mnl_omega : LocalizedDescription("astd_mnl_omega", "WEAPON")
+object Desc_astd_psi_omega : LocalizedDescription("astd_psi_omega", "WEAPON")
+object Desc_astd_rct6 : LocalizedDescription("astd_rct6", "WEAPON")
+object Desc_astd_sgl8 : LocalizedDescription("astd_sgl8", "WEAPON")
+object Desc_astd_slt3 : LocalizedDescription("astd_slt3", "WEAPON")
+object Desc_astd_slt4 : LocalizedDescription("astd_slt4", "WEAPON")
+object Desc_astd_slt_omega : LocalizedDescription("astd_slt_omega", "WEAPON")
+object Desc_astd_stasis_collapse_emitter : LocalizedDescription("astd_stasis_collapse_emitter", "WEAPON")
+object Desc_astd_stellar_jet_emitter : LocalizedDescription("astd_stellar_jet_emitter", "WEAPON")
+object Desc_astd_tsm2 : LocalizedDescription("astd_tsm2", "WEAPON")
+object Desc_astd_tsm_omega : LocalizedDescription("astd_tsm_omega", "WEAPON")
+object Desc_astd_vpd6 : LocalizedDescription("astd_vpd6", "WEAPON")
+object Desc_astd_vpd_omega : LocalizedDescription("astd_vpd_omega", "WEAPON")

@@ -2,6 +2,7 @@ package cn.kasuminova.astd.combat.effect.generic.projectile
 
 import java.nio.file.Files
 import java.nio.file.Path
+import kotlin.io.path.isRegularFile
 import kotlin.test.Test
 import kotlin.test.assertFalse
 
@@ -31,6 +32,40 @@ class ProjectileVfxOldPathRemovalTest {
         val text = Files.readString(Path.of("src/main/kotlin/cn/kasuminova/astd/combat/effect/generic/CombatVfxBootstrap.kt"))
 
         assertFalse(text.contains("ProjectileSpawnVfxDispatcher"), "combat bootstrap still installs scanner dispatcher")
+    }
+
+    @Test
+    fun `active combat sources only keep explicit old projectile manager internals`() {
+        val allowedFiles = setOf(
+            "ProjectileTracerManager.kt",
+            "ProjectileVfxPresets.kt",
+            "ProjectileVfxEnhancer.kt",
+            "CompositeProjectileVisual.kt",
+            "CodeProjectileRenderer.kt",
+            "BoxUtilProjectileTrails.kt",
+            "OglEllipseRingRenderer.kt",
+            "SingularityShotDownDetonationVisual.kt",
+            "SingularityRetargetPulseVisual.kt",
+            "SingularityAccretionDiskVisual.kt",
+        )
+        val forbiddenCalls = listOf(
+            "ProjectileTracerManager.track(",
+            "CodeProjectileRenderer.onSpawn(",
+            "ProjectileVfxPresets.",
+        )
+
+        Files.walk(Path.of("src/main/kotlin/cn/kasuminova/astd"))
+            .filter { it.isRegularFile() && it.toString().endsWith(".kt") }
+            .forEach { sourcePath ->
+                if (sourcePath.fileName.toString() in allowedFiles) return@forEach
+                val text = Files.readString(sourcePath)
+                forbiddenCalls.forEach { forbiddenCall ->
+                    assertFalse(
+                        text.contains(forbiddenCall),
+                        "${sourcePath.fileName} still calls old projectile VFX path: $forbiddenCall",
+                    )
+                }
+            }
     }
 
     private fun activeEntrySources(): List<Path> = listOf(

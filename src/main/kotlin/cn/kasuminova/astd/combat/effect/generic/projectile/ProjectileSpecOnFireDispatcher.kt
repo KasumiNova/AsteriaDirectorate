@@ -1,5 +1,6 @@
 package cn.kasuminova.astd.combat.effect.generic.projectile
 
+import cn.kasuminova.astd.combat.effect.arc.omega.DrvOmegaSlugInstantOnSpawn
 import cn.kasuminova.astd.renderer.projectile.ASTDProjectileVfxRuntimeManager
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
@@ -39,6 +40,10 @@ class ProjectileSpecOnFireDispatcher : OnFireEffectPlugin {
 
             val projId = projectile.projectileSpecId
             if (!projId.isNullOrBlank()) {
+                if (projId == "astd_drv_omega_slug") {
+                    DrvOmegaSlugInstantOnSpawn.onSpawn(engine, projectile, weapon)
+                }
+
                 val preset = ProjectileVfxRegistry.presetFor(projId)
                 if (preset != null) {
                     tracked = ASTDProjectileVfxRuntimeManager.track(engine, projectile, preset)

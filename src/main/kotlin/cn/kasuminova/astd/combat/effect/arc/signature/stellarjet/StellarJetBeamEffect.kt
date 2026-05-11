@@ -1,7 +1,6 @@
 package cn.kasuminova.astd.combat.effect.arc.signature.stellarjet
 
 import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
-import cn.kasuminova.astd.combat.effect.generic.projectile.ProjectileVfxPresets
 
 import com.fs.starfarer.api.combat.BeamAPI
 import com.fs.starfarer.api.combat.BeamEffectPlugin
