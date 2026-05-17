@@ -290,7 +290,7 @@ internal object BoxUtilCombatVfx {
         if (state != 0) {
             if (engine.customData[KEY_LOG_ADD_ENTITY_FAIL_ONCE] != true) {
                 engine.customData[KEY_LOG_ADD_ENTITY_FAIL_ONCE] = true
-                log.warn("BoxUtil addEntity failed (state=$state, target=${BoxEnum.ENTITY_TRAIL}). Will fallback to non-BoxUtil VFX.")
+                log.warn("BoxUtil addEntity failed (state=$state, target=${BoxEnum.ENTITY_TRAIL}). BoxUtil VFX entity was deleted.")
             }
             entity.delete()
             return null
@@ -352,7 +352,7 @@ internal object BoxUtilCombatVfx {
         if (state != 0) {
             if (engine.customData[KEY_LOG_ADD_ENTITY_FAIL_ONCE] != true) {
                 engine.customData[KEY_LOG_ADD_ENTITY_FAIL_ONCE] = true
-                log.warn("BoxUtil addEntity failed (state=$state, target=${BoxEnum.ENTITY_TRAIL}). Will fallback to non-BoxUtil VFX.")
+                log.warn("BoxUtil addEntity failed (state=$state, target=${BoxEnum.ENTITY_TRAIL}). BoxUtil VFX entity was deleted.")
             }
             entity.delete()
             return null
@@ -414,7 +414,7 @@ internal object BoxUtilCombatVfx {
         if (state != 0) {
             if (engine.customData[KEY_LOG_ADD_ENTITY_FAIL_ONCE] != true) {
                 engine.customData[KEY_LOG_ADD_ENTITY_FAIL_ONCE] = true
-                log.warn("BoxUtil addEntity failed (state=$state, target=${BoxEnum.ENTITY_TRAIL}). Will fallback to non-BoxUtil VFX.")
+                log.warn("BoxUtil addEntity failed (state=$state, target=${BoxEnum.ENTITY_TRAIL}). BoxUtil VFX entity was deleted.")
             }
             entity.delete()
             return null

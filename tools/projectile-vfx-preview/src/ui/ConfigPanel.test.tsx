@@ -47,4 +47,16 @@ describe('ConfigPanel', () => {
 
     expect((screen.getByLabelText('Export Preview') as HTMLTextAreaElement).value).toContain('ASTDProjectileVfxPreset');
   });
+
+  it('updates preview-only layer toggles without changing runtime export fields', async () => {
+    const user = userEvent.setup();
+    const onLayerVisibilityChange = vi.fn();
+    const preset = createDefaultPreset();
+
+    render(<ConfigPanel preset={preset} onPresetChange={vi.fn()} onLayerVisibilityChange={onLayerVisibilityChange} />);
+    await user.click(screen.getByLabelText('toggle-head'));
+
+    expect(onLayerVisibilityChange).toHaveBeenCalledWith(expect.objectContaining({ head: false }));
+    expect((screen.getByLabelText('Export Preview') as HTMLTextAreaElement).value).toContain('"headLayers"');
+  });
 });

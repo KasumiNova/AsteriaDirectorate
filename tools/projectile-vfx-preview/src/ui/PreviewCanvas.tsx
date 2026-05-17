@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type PointerEvent, type WheelEvent } from 'react';
 import { BoxUtilPreviewPreset } from '../model/preset';
-import { createPreviewOverlayRenderer, PreviewOverlayRenderer } from '../render/previewOverlayRenderer';
+import { createPreviewOverlayRenderer, PreviewOverlayLayerVisibility, PreviewOverlayRenderer } from '../render/previewOverlayRenderer';
 import { WebGLTrailRenderer, createWebGLTrailRenderer } from '../render/webglTrailRenderer';
 
 interface PanOffset {
@@ -20,9 +20,10 @@ export interface PreviewCanvasProps {
   preset: BoxUtilPreviewPreset;
   timeSeconds: number;
   onCanvasReady?: (canvas: HTMLCanvasElement | null) => void;
+  layerVisibility?: Partial<PreviewOverlayLayerVisibility>;
 }
 
-export function PreviewCanvas({ preset, timeSeconds, onCanvasReady }: PreviewCanvasProps) {
+export function PreviewCanvas({ preset, timeSeconds, onCanvasReady, layerVisibility }: PreviewCanvasProps) {
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const trailCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const overlayCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -75,8 +76,8 @@ export function PreviewCanvas({ preset, timeSeconds, onCanvasReady }: PreviewCan
     }
     renderer.clear(width, height);
 
-    overlayRenderer?.render(preset, timeSeconds);
-  }, [preset, timeSeconds]);
+    overlayRenderer?.render(preset, timeSeconds, layerVisibility);
+  }, [preset, timeSeconds, layerVisibility]);
 
   const handleWheel = (event: WheelEvent<HTMLDivElement>) => {
     if (isInteractiveTarget(event.target)) {

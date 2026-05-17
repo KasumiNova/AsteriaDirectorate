@@ -104,7 +104,11 @@ export function EntityInspector({ preset, onPresetChange }: EntityInspectorProps
 
   const updateRibbonDecoration = (index: number, patch: Partial<TrailRibbonDecorationConfig>) => {
     const ribbonDecorations = trail.ribbonDecorations.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item));
-    updateTrail({ ribbonDecorations });
+    onPresetChange({
+      ...preset,
+      ribbonDecorations,
+      trailEntities: preset.trailEntities.map((entity, entityIndex) => (entityIndex === 0 ? { ...entity, ribbonDecorations } : entity)),
+    });
   };
 
   const updateRibbonDecorationColor = (
@@ -135,11 +139,21 @@ export function EntityInspector({ preset, onPresetChange }: EntityInspectorProps
   };
 
   const addRibbonDecoration = () => {
-    updateTrail({ ribbonDecorations: [...trail.ribbonDecorations, createDefaultTrailRibbonDecorationConfig(`astd_default_ribbon_${trail.ribbonDecorations.length}`)] });
+    const ribbonDecorations = [...trail.ribbonDecorations, createDefaultTrailRibbonDecorationConfig(`astd_default_ribbon_${trail.ribbonDecorations.length}`)];
+    onPresetChange({
+      ...preset,
+      ribbonDecorations,
+      trailEntities: preset.trailEntities.map((entity, entityIndex) => (entityIndex === 0 ? { ...entity, ribbonDecorations } : entity)),
+    });
   };
 
   const removeRibbonDecoration = (index: number) => {
-    updateTrail({ ribbonDecorations: trail.ribbonDecorations.filter((_, itemIndex) => itemIndex !== index) });
+    const ribbonDecorations = trail.ribbonDecorations.filter((_, itemIndex) => itemIndex !== index);
+    onPresetChange({
+      ...preset,
+      ribbonDecorations,
+      trailEntities: preset.trailEntities.map((entity, entityIndex) => (entityIndex === 0 ? { ...entity, ribbonDecorations } : entity)),
+    });
   };
 
   const addRibbonGradientStop = (ribbonIndex: number) => {

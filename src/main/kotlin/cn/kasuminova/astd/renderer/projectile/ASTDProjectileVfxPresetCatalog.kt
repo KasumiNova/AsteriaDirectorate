@@ -2,7 +2,7 @@ package cn.kasuminova.astd.renderer.projectile
 
 object ASTDProjectileVfxPresetCatalog {
     private val presets: Map<String, ASTDProjectileVfxPreset> = listOf(
-        preset("aod7_shot", cyan(), 7f, 150f),
+        aod7Shot(),
         preset("spc3_shot", violet(), 6f, 135f),
         preset("drv9_slug", amber(), 10f, 190f),
         preset("drv11", amber(), 12f, 230f, glowScale = 2.6f),
@@ -31,6 +31,150 @@ object ASTDProjectileVfxPresetCatalog {
     fun preset(id: String): ASTDProjectileVfxPreset? = presets[id]
 
     fun presetIds(): Set<String> = presets.keys
+
+    private fun aod7Shot(): ASTDProjectileVfxPreset {
+        val trailLayer = ASTDTrailLayerSpec(
+            width = 80f,
+            color = ASTDColor(0.278431f, 0.847059f, 0.921569f, 0.92f),
+            length = 420f,
+            startColor = ASTDColor(0.278431f, 0.847059f, 0.921569f, 0.92f),
+            endColor = ASTDColor(0.039216f, 0.164706f, 0.219608f, 0.06f),
+            startEmissive = ASTDColor(1f, 0.95f, 0.98f, 1f),
+            endEmissive = ASTDColor(0.039216f, 0.223529f, 0.458824f, 0.16f),
+            startWidth = 80f,
+            endWidth = 4f,
+            texturePixels = 96f,
+            textureSpeed = 0.9f,
+            uvOffset = 0f,
+            fillStartAlpha = 0.84f,
+            fillEndAlpha = 0.03f,
+            fillStartFactor = 0.02f,
+            fillEndFactor = 0.12f,
+            jitterPower = 0f,
+            flick = false,
+            syncFlick = false,
+            stripLineMode = true,
+            flowWhenPaused = true,
+            flickWhenPaused = true,
+            flickMixValue = 0f,
+            flickerSyncCode = 17,
+            blendMode = "additive",
+        )
+        val ribbonDecoration = ASTDTrailRibbonDecorationSpec(
+            id = "astd_default_ribbon_0",
+            enabled = true,
+            renderMode = "byLength",
+            startOffset = 0f,
+            endOffset = 0f,
+            thickness = 0.05f,
+            alphaScale = 0.28f,
+            lengthScale = 1f,
+            nodeCountScale = 1f,
+            frequency = 1.1f,
+            amplitude = 1.35f,
+            waveSpeed = 1f,
+            waveType = "noise",
+            noiseScale = 2f,
+            blur = 9f,
+            startColor = ASTDColor(1f, 1f, 1f, 0.92f),
+            endColor = ASTDColor(0.494118f, 0.658824f, 0.92549f, 0.06f),
+            color = ASTDColor(0.756863f, 0.909804f, 0.984314f, 0.92f),
+        )
+        val headLayers = listOf(
+            ASTDProjectileVfxHeadLayerSpec(
+                id = "astd_default_head_0",
+                enabled = true,
+                length = 138f,
+                width = 24f,
+                shoulderRatio = 0.5f,
+                rearRatio = 0.95f,
+                shellColorStart = ASTDColor(0.039216f, 0.164706f, 0.219608f, 0.08f),
+                shellColorMid = ASTDColor(0.756863f, 0.909804f, 0.984314f, 0.46f),
+                shellColorEnd = ASTDColor(1f, 1f, 1f, 0.98f),
+                blur = 0.35f,
+                alphaScale = 1f,
+            ),
+        )
+        val glowLayers = listOf(
+            ASTDProjectileVfxGlowLayerSpec("astd_default_glow_0", widthScale = 5.4f, alphaScale = 0.18f, blur = 34f, yOffset = -0.36f, colorMixTail = 0.52f, colorMixHead = 0.44f),
+            ASTDProjectileVfxGlowLayerSpec("astd_default_glow_1", widthScale = 3.2f, alphaScale = 0.30f, blur = 18f, yOffset = 0.22f, colorMixTail = 0.52f, colorMixHead = 0.44f),
+            ASTDProjectileVfxGlowLayerSpec("astd_default_glow_2", widthScale = 1.4f, alphaScale = 0.58f, blur = 7f, yOffset = -0.08f, colorMixTail = 0.22f, colorMixHead = 1f),
+            ASTDProjectileVfxGlowLayerSpec("astd_default_glow_3", widthScale = 0.62f, alphaScale = 0.82f, blur = 4f, yOffset = 0f, colorMixTail = 0.48f, colorMixHead = 1f),
+        )
+        val mistLayers = listOf(
+            ASTDProjectileVfxMistLayerSpec(
+                id = "astd_default_mist_0",
+                enabled = true,
+                blobCount = 52,
+                lengthScale = 1f,
+                widthScale = 1f,
+                rxRange = ASTDFloatRangeSpec(2.4f, 7.2f),
+                ryRange = ASTDFloatRangeSpec(0.45f, 1.8f),
+                alphaRange = ASTDFloatRangeSpec(0.016f, 0.075f),
+                noiseScale = 5.2f,
+                driftSpeed = 0.32f,
+                colorStart = ASTDColor(0.039216f, 0.164706f, 0.219608f, 0.06f),
+                colorEnd = ASTDColor(1f, 0.95f, 0.98f, 1f),
+            ),
+        )
+        val sideWispLayers = listOf(
+            ASTDProjectileVfxSideWispLayerSpec(
+                id = "astd_default_side_wisp_0",
+                enabled = true,
+                offsets = listOf(-2.1f, -1.36f, 1.28f, 2f),
+                widthScale = 0.2f,
+                alphaScale = 0.24f,
+                blur = 10f,
+                lengthStartRatio = 0.64f,
+                lengthEndRatio = 0.28f,
+                color = ASTDColor(0.45f, 0.7f, 1f, 0.72f),
+            ),
+        )
+        return ASTDProjectileVfxPreset(
+            id = "aod7_shot",
+            layers = emptyList(),
+            trailEntities = listOf(
+                ASTDTrailEntitySpec(
+                    layerId = "astd_default_trail",
+                    id = "astd_default_trail",
+                    nodes = emptyList(),
+                    layerSpec = trailLayer,
+                    layers = listOf(trailLayer),
+                    ribbonDecorations = listOf(ribbonDecoration),
+                    orientationMode = ASTDProjectileVfxOrientationMode.ProjectileVelocity,
+                    anchorMode = ASTDProjectileVfxAnchorMode.HeadLocked,
+                ),
+            ),
+            headLayers = headLayers,
+            glowLayers = glowLayers,
+            mistLayers = mistLayers,
+            sideWispLayers = sideWispLayers,
+            ribbonDecorations = listOf(ribbonDecoration),
+            lifecycle = ASTDProjectileVfxLifecycleSpec(
+                durationSeconds = 1.25f,
+                flightEndRatio = 0.6f,
+                dissolveStartRatio = 0.6f,
+                preDissolveFraction = 0.82f,
+                projectileHeadSizeScale = 1.5f,
+                historySampleMultiplier = 3f,
+                historySmoothingPasses = 3,
+                ribbonWaveSoftening = 0.48f,
+            ),
+            samplingPolicy = ASTDProjectileVfxSamplingPolicy(
+                historyFps = 60f,
+                maxHistoryNodes = 96,
+                minDistancePerNode = 2f,
+                smoothingPasses = 1,
+                distanceWindow = 360f,
+            ),
+            fadePolicy = ASTDProjectileVfxFadePolicy(
+                fadeInSeconds = 0f,
+                fadeOutSeconds = 0.15f,
+                hitFadeOutSeconds = 0.15f,
+                expireFadeOutSeconds = 0.15f,
+            ),
+        )
+    }
 
     private fun preset(
         id: String,

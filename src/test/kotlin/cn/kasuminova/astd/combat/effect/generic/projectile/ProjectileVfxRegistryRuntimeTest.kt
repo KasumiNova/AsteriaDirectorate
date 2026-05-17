@@ -9,6 +9,7 @@ import kotlin.test.Test
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class ProjectileVfxRegistryRuntimeTest {
     @Test
@@ -16,6 +17,13 @@ class ProjectileVfxRegistryRuntimeTest {
         val preset: ASTDProjectileVfxPreset? = ProjectileVfxRegistry.presetFor("astd_aod7_shot")
 
         assertNotNull(preset)
+        assertTrue(preset.trailEntities.isNotEmpty(), "AOD-7 must use editor-exported TrailEntity preset")
+        assertTrue(preset.trailEntities.all { it.layers.isNotEmpty() })
+        assertTrue(preset.headLayers.all { it.enabled })
+        assertTrue(preset.glowLayers.all { it.enabled })
+        assertTrue(preset.mistLayers.all { it.enabled })
+        assertTrue(preset.sideWispLayers.all { it.enabled })
+        assertTrue(preset.ribbonDecorations.all { it.enabled })
     }
 
     @Test

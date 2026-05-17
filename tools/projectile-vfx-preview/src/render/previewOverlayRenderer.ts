@@ -1,14 +1,37 @@
 import {
   BoxUtilPreviewPreset,
+  ProjectileVfxGlowLayerConfig,
+  ProjectileVfxHeadLayerConfig,
+  ProjectileVfxMistLayerConfig,
+  ProjectileVfxSideWispLayerConfig,
   Rgba,
   TrailEntityConfig,
   TrailRibbonDecorationConfig,
   Vec2,
 } from '../model/preset';
+import { projectileVfxGlowLineWidth, projectileVfxHeadColors, projectileVfxHeadVertices, projectileVfxHeadTrailScale, projectileVfxSideWispLocalPaths, projectileVfxWidthBase } from './projectileVfxLayout';
+
+export interface PreviewOverlayLayerVisibility {
+  trail: boolean;
+  head: boolean;
+  glow: boolean;
+  mist: boolean;
+  sideWisps: boolean;
+  ribbon: boolean;
+}
+
+export const DEFAULT_PREVIEW_OVERLAY_LAYER_VISIBILITY: PreviewOverlayLayerVisibility = {
+  trail: true,
+  head: true,
+  glow: true,
+  mist: true,
+  sideWisps: true,
+  ribbon: true,
+};
 
 export interface PreviewOverlayRenderer {
   resize(width: number, height: number): void;
-  render(preset: BoxUtilPreviewPreset, timeSeconds: number): void;
+  render(preset: BoxUtilPreviewPreset, timeSeconds: number, layerVisibility?: Partial<PreviewOverlayLayerVisibility>): void;
 }
 
 export function createPreviewOverlayRenderer(canvas: HTMLCanvasElement): PreviewOverlayRenderer | null {
@@ -37,15 +60,16 @@ class CanvasPreviewOverlayRenderer implements PreviewOverlayRenderer {
     this.height = height;
   }
 
-  render(preset: BoxUtilPreviewPreset, timeSeconds: number): void {
+  render(preset: BoxUtilPreviewPreset, timeSeconds: number, layerVisibility: Partial<PreviewOverlayLayerVisibility> = {}): void {
     const ctx = this.context;
+    const visibility = { ...DEFAULT_PREVIEW_OVERLAY_LAYER_VISIBILITY, ...layerVisibility };
     ctx.clearRect(0, 0, this.width, this.height);
     drawBackdrop(ctx, this.width, this.height, timeSeconds);
     ctx.save();
     ctx.globalCompositeOperation = 'screen';
 
     for (const trail of preset.trailEntities) {
-      drawTrailLayers(ctx, trail, preset, timeSeconds, this.width, this.height);
+      drawTrailLayers(ctx, trail, preset, timeSeconds, this.width, this.height, visibility);
     }
 
     ctx.restore();
@@ -86,7 +110,15 @@ function drawBackdrop(ctx: CanvasRenderingContext2D, width: number, height: numb
   ctx.restore();
 }
 
-function drawTrailLayers(ctx: CanvasRenderingContext2D, trail: TrailEntityConfig, preset: BoxUtilPreviewPreset, timeSeconds: number, width: number, height: number): void {
+function drawTrailLayers(
+  ctx: CanvasRenderingContext2D,
+  trail: TrailEntityConfig,
+  preset: BoxUtilPreviewPreset,
+  timeSeconds: number,
+  width: number,
+  height: number,
+  visibility: PreviewOverlayLayerVisibility,
+): void {
   if (trail.nodes.length < 2) {
     return;
   }
@@ -96,7 +128,7 @@ function drawTrailLayers(ctx: CanvasRenderingContext2D, trail: TrailEntityConfig
   const flightTrack = computeFlightTrack(trail, preset, timeSeconds, width, height, flightDirection, flightNormal);
 
   const history = buildTrailHistory(trail, preset, timeSeconds, width, height, flightDirection, flightNormal, flightTrack);
-  drawTravelBeam(ctx, trail, preset, timeSeconds, flightTrack, width, height, flightDirection, flightNormal, history);
+  drawTravelBeam(ctx, trail, preset, timeSeconds, flightTrack, width, height, flightDirection, flightNormal, history, visibility);
 }
 
 interface FlightTrack {
@@ -112,14 +144,7 @@ interface FlightTrack {
   beamAlpha: number;
 }
 
-const FLIGHT_END_RATIO = 0.6;
-const DISSOLVE_START_RATIO = 0.6;
-const PRE_DISSOLVE_FRACTION = 0.82;
-const PROJECTILE_HEAD_SIZE_SCALE = 1.5;
 const MAX_TRAIL_HISTORY = 512;
-const TRAIL_HISTORY_SMOOTHING_PASSES = 3;
-const TRAIL_HISTORY_SAMPLE_MULTIPLIER = 3;
-const RIBBON_WAVE_SOFTENING = 0.48;
 
 function computeFlightTrack(
   trail: TrailEntityConfig,
@@ -133,10 +158,10 @@ function computeFlightTrack(
   const duration = Math.max(preset.timeline.durationSeconds, 1.2);
   const elapsed = preset.simulation.loop ? timeSeconds % duration : clamp(timeSeconds, 0, duration);
   const progress = clamp(elapsed / duration, 0, 1);
-  const flightEndSeconds = duration * FLIGHT_END_RATIO;
-  const dissolveStartSeconds = duration * DISSOLVE_START_RATIO;
-  const flightRange = PRE_DISSOLVE_FRACTION;
-  const dissolveRange = 1 - PRE_DISSOLVE_FRACTION;
+  const flightEndSeconds = duration * preset.lifecycle.flightEndRatio;
+  const dissolveStartSeconds = duration * preset.lifecycle.dissolveStartRatio;
+  const flightRange = preset.lifecycle.preDissolveFraction;
+  const dissolveRange = 1 - preset.lifecycle.preDissolveFraction;
   const dissolveDuration = Math.max(duration - dissolveStartSeconds, 0.0001);
   const flightSpeed = flightRange / Math.max(flightEndSeconds, 0.0001);
   const dissolveStartSpeed = flightSpeed;
@@ -145,7 +170,7 @@ function computeFlightTrack(
   const dissolveEndSlope = (dissolveEndSpeed * dissolveDuration) / Math.max(dissolveRange, 0.0001);
   const flightProgress = elapsed <= dissolveStartSeconds
     ? flightRange * clamp(elapsed / Math.max(flightEndSeconds, 0.0001), 0, 1)
-    : PRE_DISSOLVE_FRACTION + dissolveRange * hermite01(
+    : preset.lifecycle.preDissolveFraction + dissolveRange * hermite01(
       clamp((elapsed - dissolveStartSeconds) / dissolveDuration, 0, 1),
       dissolveStartSlope,
       dissolveEndSlope,
@@ -186,13 +211,14 @@ function buildTrailHistory(
 ): Vec2[] {
   const fps = Math.max(preset.timeline.fps, 1);
   const frameStep = 1 / fps;
-  const sampleStep = frameStep / TRAIL_HISTORY_SAMPLE_MULTIPLIER;
   const duration = Math.max(preset.timeline.durationSeconds, 1.2);
   const startX = width * 0.14;
   const endX = width * 0.88;
-  const flightEndSeconds = duration * FLIGHT_END_RATIO;
+  const sampleMultiplier = Math.max(1, preset.lifecycle.historySampleMultiplier);
+  const flightEndSeconds = duration * preset.lifecycle.flightEndRatio;
   const speedPxPerSecond = Math.max((endX - startX) / Math.max(flightEndSeconds, 0.0001), 1);
   const historySpanSeconds = clamp(track.visibleLength / speedPxPerSecond + frameStep * 2, frameStep * 8, duration);
+  const sampleStep = frameStep / sampleMultiplier;
   const historyLength = Math.min(MAX_TRAIL_HISTORY, Math.max(20, Math.ceil(historySpanSeconds / sampleStep)));
   const history: Vec2[] = [];
 
@@ -205,16 +231,16 @@ function buildTrailHistory(
     history.push([sampleTrack.head[0], sampleTrack.head[1]]);
   }
 
-  return smoothTrailHistory(history);
+  return smoothTrailHistory(history, preset.lifecycle.historySmoothingPasses);
 }
 
-function smoothTrailHistory(history: Vec2[]): Vec2[] {
+function smoothTrailHistory(history: Vec2[], smoothingPasses: number): Vec2[] {
   if (history.length < 3) {
     return history;
   }
 
   let current = history;
-  for (let pass = 0; pass < TRAIL_HISTORY_SMOOTHING_PASSES; pass += 1) {
+  for (let pass = 0; pass < smoothingPasses; pass += 1) {
     const next = current.map((point, index) => {
       const p0 = current[Math.max(0, index - 2)] ?? point;
       const p1 = current[Math.max(0, index - 1)] ?? point;
@@ -243,12 +269,13 @@ function drawTravelBeam(
   direction: Vec2,
   normal: Vec2,
   posHistory: Vec2[],
+  visibility: PreviewOverlayLayerVisibility,
 ): void {
   const [hx, hy] = track.head;
   const dir = normalize(direction);
   const tailLength = track.visibleLength;
   const pulse = track.beamAlpha;
-  const widthBase = Math.max(trail.startWidth * 0.075, 3.5);
+  const widthBase = projectileVfxWidthBase(trail);
 
   if (pulse <= 0.002 || tailLength <= 0.5) {
     return;
@@ -259,29 +286,31 @@ function drawTravelBeam(
   ctx.translate(hx, hy);
   ctx.rotate(Math.atan2(-dir[1], dir[0]));
 
-  drawTrailMist(ctx, trail, widthBase, tailLength, timeSeconds, track.dissolve, pulse);
-  drawTrailGlowLayers(ctx, trail, widthBase, tailLength, pulse);
-  drawBeamShape(ctx, trail, widthBase, tailLength, pulse);
+  if (visibility.mist) drawTrailMist(ctx, preset.mistLayers, trail, widthBase, tailLength, timeSeconds, track.dissolve, pulse);
+  if (visibility.glow) drawTrailGlowLayers(ctx, preset.glowLayers, trail, widthBase, tailLength, pulse);
+  if (visibility.trail) drawBeamShape(ctx, trail, widthBase, tailLength, pulse);
   drawTrailDecorations(ctx, trail, widthBase, tailLength, timeSeconds, track.progress, pulse);
-  drawSideWisps(ctx, trail, widthBase, tailLength, pulse);
-  drawProjectileHead(ctx, trail, widthBase, pulse);
+  if (visibility.sideWisps) drawSideWisps(ctx, preset.sideWispLayers, trail, widthBase, tailLength, pulse);
+  if (visibility.head) drawProjectileHead(ctx, preset.headLayers, preset.lifecycle.projectileHeadSizeScale, trail, widthBase, pulse);
 
   ctx.restore();
 
   // Ribbon 装饰在世界坐标系绘制（不受 translate/rotate 影响），以便使用真实世界坐标作为噪声空间频率输入。
   ctx.save();
   ctx.globalCompositeOperation = 'screen';
-  drawTrailRibbonDecorations(ctx, trail, preset, timeSeconds, track, posHistory);
+  if (visibility.ribbon) drawTrailRibbonDecorations(ctx, trail, preset, timeSeconds, track, posHistory, preset.lifecycle.ribbonWaveSoftening);
   ctx.restore();
 }
 
-function drawTrailGlowLayers(ctx: CanvasRenderingContext2D, trail: TrailEntityConfig, widthBase: number, length: number, alphaScale: number): void {
+function drawTrailGlowLayers(ctx: CanvasRenderingContext2D, layers: ProjectileVfxGlowLayerConfig[], trail: TrailEntityConfig, widthBase: number, length: number, alphaScale: number): void {
   const darkTail = mixRgba(trail.endColor, trail.endEmissive, 0.52);
   const hotCore = mixRgba(trail.startColor, trail.startEmissive, 0.44);
-  drawGlowStroke(ctx, length, widthBase * 5.4, darkTail, hotCore, 0.18 * alphaScale, 34 * alphaScale, -0.36);
-  drawGlowStroke(ctx, length, widthBase * 3.2, darkTail, hotCore, 0.3 * alphaScale, 18 * alphaScale, 0.22);
-  drawGlowStroke(ctx, length, widthBase * 1.4, mixRgba(darkTail, hotCore, 0.22), [1, 0.88, 0.94, 1], 0.58 * alphaScale, 7 * alphaScale, -0.08);
-  drawGlowStroke(ctx, length, widthBase * 0.62, mixRgba(darkTail, hotCore, 0.48), [1, 1, 1, 1], 0.82 * alphaScale, 4 * alphaScale, 0);
+  for (const layer of layers) {
+    if (!layer.enabled) continue;
+    const tail = mixRgba(darkTail, hotCore, layer.colorMixTail);
+    const head = layer.colorMixHead >= 1 ? [1, 1, 1, 1] as Rgba : mixRgba(trail.startColor, trail.startEmissive, layer.colorMixHead);
+    drawGlowStroke(ctx, length, projectileVfxGlowLineWidth(widthBase, layer), tail, head, layer.alphaScale * alphaScale, layer.blur * alphaScale, layer.yOffset);
+  }
 }
 
 function drawGlowStroke(ctx: CanvasRenderingContext2D, length: number, lineWidth: number, tail: Rgba, head: Rgba, alpha: number, blur: number, yOffset: number): void {
@@ -345,48 +374,54 @@ function drawBeamShape(ctx: CanvasRenderingContext2D, trail: TrailEntityConfig, 
   ctx.fill();
 }
 
-function drawProjectileHead(ctx: CanvasRenderingContext2D, trail: TrailEntityConfig, widthBase: number, pulse: number): void {
+function drawProjectileHead(ctx: CanvasRenderingContext2D, layers: ProjectileVfxHeadLayerConfig[], headSizeScale: number, trail: TrailEntityConfig, widthBase: number, pulse: number): void {
   const headVisible = smoothstep(0.2, 0.72, pulse);
   if (headVisible <= 0.01) {
     return;
   }
 
-  const length = Math.max(32, widthBase * 13.6) * headVisible * PROJECTILE_HEAD_SIZE_SCALE;
-  const width = Math.max(7, widthBase * 2.3) * headVisible * PROJECTILE_HEAD_SIZE_SCALE;
-  const shoulderX = -length * 0.5;
-  const rearX = -length * 0.95;
-  const hot = mixRgba(trail.startEmissive, [1, 1, 1, 1], 0.72);
-  const edge = mixRgba(trail.startColor, trail.startEmissive, 0.48);
+  const enabledLayers = layers.filter((layer) => layer.enabled);
+  if (enabledLayers.length === 0) return;
 
   ctx.save();
   ctx.globalCompositeOperation = 'lighter';
-  ctx.filter = 'blur(0.35px)';
-  ctx.shadowBlur = Math.max(8, widthBase * 2.8) * headVisible;
-  ctx.shadowColor = rgbaToCss(edge, 0.84 * pulse * headVisible);
-  const shell = ctx.createLinearGradient(rearX, 0, 0, 0);
-  shell.addColorStop(0, rgbaToCss(trail.endColor, 0.08 * pulse));
-  shell.addColorStop(0.36, rgbaToCss(edge, 0.46 * pulse));
-  shell.addColorStop(0.74, rgbaToCss(hot, 0.9 * pulse));
-  shell.addColorStop(1, rgbaToCss([1, 1, 1, 1], 0.98 * pulse));
-  ctx.fillStyle = shell;
-  ctx.lineJoin = 'round';
-  ctx.beginPath();
-  ctx.moveTo(rearX, -width * 0.2);
-  ctx.lineTo(shoulderX, -width * 0.52);
-  ctx.quadraticCurveTo(-length * 0.12, -width * 0.3, 0, 0);
-  ctx.quadraticCurveTo(-length * 0.12, width * 0.3, shoulderX, width * 0.52);
-  ctx.lineTo(rearX, width * 0.2);
-  ctx.closePath();
-  ctx.fill();
+  for (const layer of enabledLayers) {
+    const vertices = projectileVfxHeadVertices(layer, headVisible, headSizeScale, widthBase);
+    const width = Math.max(1, layer.width) * headVisible * headSizeScale * projectileVfxHeadTrailScale(widthBase);
+    const rearX = vertices.rearTop[0];
+    const alpha = pulse * headVisible * layer.alphaScale;
+    const colors = projectileVfxHeadColors(trail, layer);
+    ctx.filter = `blur(${layer.blur}px)`;
+    ctx.shadowBlur = Math.max(8, widthBase * 2.8) * headVisible;
+    ctx.shadowColor = rgbaToCss(colors.mid, 0.84 * alpha);
+    const shell = ctx.createLinearGradient(rearX, 0, 0, 0);
+    shell.addColorStop(0, rgbaToCss(colors.start, colors.start[3] * alpha));
+    shell.addColorStop(0.36, rgbaToCss(colors.mid, colors.mid[3] * alpha));
+    shell.addColorStop(0.74, rgbaToCss(colors.end, 0.9 * alpha));
+    shell.addColorStop(1, rgbaToCss([1, 1, 1, 1], 0.98 * alpha));
+    ctx.fillStyle = shell;
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    ctx.moveTo(vertices.rearTop[0], vertices.rearTop[1]);
+    ctx.lineTo(vertices.shoulderTop[0], vertices.shoulderTop[1]);
+    ctx.quadraticCurveTo(vertices.curveTop[0], vertices.curveTop[1], vertices.tip[0], vertices.tip[1]);
+    ctx.quadraticCurveTo(vertices.curveBottom[0], vertices.curveBottom[1], vertices.shoulderBottom[0], vertices.shoulderBottom[1]);
+    ctx.lineTo(vertices.rearBottom[0], vertices.rearBottom[1]);
+    ctx.closePath();
+    ctx.fill();
+  }
 
   ctx.restore();
 }
 
-function drawTrailMist(ctx: CanvasRenderingContext2D, trail: TrailEntityConfig, widthBase: number, length: number, timeSeconds: number, dissolve: number, pulse: number): void {
+function drawTrailMist(ctx: CanvasRenderingContext2D, layers: ProjectileVfxMistLayerConfig[], trail: TrailEntityConfig, widthBase: number, length: number, timeSeconds: number, dissolve: number, pulse: number): void {
   const alphaScale = pulse * (1 - dissolve * 0.72);
   if (alphaScale <= 0.004) {
     return;
   }
+
+  const enabledLayers = layers.filter((layer) => layer.enabled);
+  if (enabledLayers.length === 0) return;
 
   ctx.save();
   ctx.globalCompositeOperation = 'screen';
@@ -400,30 +435,32 @@ function drawTrailMist(ctx: CanvasRenderingContext2D, trail: TrailEntityConfig, 
   ctx.closePath();
   ctx.clip();
 
-  const blobs = Math.max(42, Math.round(length / 8));
-  for (let i = 0; i < blobs; i += 1) {
-    const seed = i * 13.71;
-    const t = (i + shaderNoise(seed, timeSeconds * 0.17)) / blobs;
-    const x = -length * t;
-    const envelope = Math.sin(Math.PI * clamp(t, 0, 1));
-    const noise = layeredNoise(t * 5.2 - timeSeconds * 0.32, seed * 0.017);
-    const y = (shaderNoise(seed, 8.4) - 0.5) * widthBase * 5.4 * envelope;
-    const rx = widthBase * lerp(2.4, 7.2, noise) * (0.3 + envelope);
-    const ry = widthBase * lerp(0.45, 1.8, shaderNoise(seed, 12.2)) * (0.4 + envelope * 0.7);
-    const color = mixRgba(trail.endColor, trail.startEmissive, clamp(1 - t * 0.62, 0, 1));
-    const alpha = alphaScale * lerp(0.016, 0.075, noise) * envelope;
-    const grad = ctx.createRadialGradient(x, y, 0, x, y, Math.max(rx, ry));
-    grad.addColorStop(0, rgbaToCss(color, alpha));
-    grad.addColorStop(0.58, rgbaToCss(color, alpha * 0.28));
-    grad.addColorStop(1, rgbaToCss(color, 0));
-    ctx.fillStyle = grad;
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.scale(rx / Math.max(rx, ry), ry / Math.max(rx, ry));
-    ctx.beginPath();
-    ctx.arc(0, 0, Math.max(rx, ry), 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
+  for (const layer of enabledLayers) {
+    const blobs = Math.max(0, Math.round(layer.blobCount));
+    for (let i = 0; i < blobs; i += 1) {
+      const seed = i * 13.71;
+      const t = (i + shaderNoise(seed, timeSeconds * 0.17)) / Math.max(blobs, 1);
+      const x = -length * layer.lengthScale * t;
+      const envelope = Math.sin(Math.PI * clamp(t, 0, 1));
+      const noise = layeredNoise(t * layer.noiseScale - timeSeconds * layer.driftSpeed, seed * 0.017);
+      const y = (shaderNoise(seed, 8.4) - 0.5) * widthBase * 5.4 * layer.widthScale * envelope;
+      const rx = widthBase * lerp(layer.rxRange.min, layer.rxRange.max, noise) * (0.3 + envelope);
+      const ry = widthBase * lerp(layer.ryRange.min, layer.ryRange.max, shaderNoise(seed, 12.2)) * (0.4 + envelope * 0.7);
+      const color = mixRgba(layer.colorStart, layer.colorEnd, clamp(1 - t * 0.62, 0, 1));
+      const alpha = alphaScale * lerp(layer.alphaRange.min, layer.alphaRange.max, noise) * envelope;
+      const grad = ctx.createRadialGradient(x, y, 0, x, y, Math.max(rx, ry));
+      grad.addColorStop(0, rgbaToCss(color, alpha));
+      grad.addColorStop(0.58, rgbaToCss(color, alpha * 0.28));
+      grad.addColorStop(1, rgbaToCss(color, 0));
+      ctx.fillStyle = grad;
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.scale(rx / Math.max(rx, ry), ry / Math.max(rx, ry));
+      ctx.beginPath();
+      ctx.arc(0, 0, Math.max(rx, ry), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
   }
 
   ctx.restore();
@@ -454,15 +491,17 @@ function drawTrailRibbonDecorations(
   timeSeconds: number,
   track: FlightTrack,
   posHistory: Vec2[],
+  ribbonWaveSoftening: number,
 ): void {
-  if (!trail.ribbonDecorations?.length) {
+  const ribbons = preset.ribbonDecorations.length > 0 ? preset.ribbonDecorations : trail.ribbonDecorations;
+  if (!ribbons?.length) {
     return;
   }
 
   ctx.save();
   ctx.globalCompositeOperation = 'source-over';
 
-  for (const ribbon of trail.ribbonDecorations) {
+  for (const ribbon of ribbons) {
     if (!ribbon.enabled) {
       continue;
     }
@@ -471,7 +510,7 @@ function drawTrailRibbonDecorations(
       ? Math.max(8, Math.round(trail.nodes.length * ribbon.nodeCountScale))
       : Math.max(8, Math.round(track.visibleLength * ribbon.lengthScale / 8));
 
-    drawRibbonDecoration(ctx, trail, ribbon, timeSeconds, track, sampleCount, posHistory);
+    drawRibbonDecoration(ctx, trail, ribbon, timeSeconds, track, sampleCount, posHistory, ribbonWaveSoftening);
   }
 
   ctx.restore();
@@ -510,6 +549,7 @@ function drawRibbonDecoration(
   track: FlightTrack,
   sampleCount: number,
   posHistory: Vec2[],
+  ribbonWaveSoftening: number,
 ): void {
   const baseColor = ribbon.color;
   const gradientStops = ribbon.colorGradient.enabled && ribbon.colorGradient.stops.length > 0
@@ -570,18 +610,18 @@ function drawRibbonDecoration(
     if (ribbon.waveType === 'noise') {
       const noiseVal = layeredNoise(worldX * ribbon.noiseScale * 0.005, worldTimePhase);
       const easedNoise = smoothstep(0.12, 0.88, noiseVal);
-      wave = (easedNoise - 0.5) * 2 * ribbon.waveAmplitude * RIBBON_WAVE_SOFTENING * lerp(0.62, 1, smokeEnvelope);
+      wave = (easedNoise - 0.5) * 2 * ribbon.waveAmplitude * ribbonWaveSoftening * lerp(0.62, 1, smokeEnvelope);
     } else if (ribbon.waveType === 'zigzag') {
       const zigzagPhase = worldX * ribbon.waveFrequency * 0.01 + timeSeconds * ribbon.waveSpeed;
       const zigzagRaw = 1 - 4 * Math.abs(fract(zigzagPhase + 0.25) - 0.5);
       const easedZigzag = zigzagRaw >= 0
         ? smoothstep(0, 1, zigzagRaw)
         : -smoothstep(0, 1, -zigzagRaw);
-      wave = easedZigzag * ribbon.waveAmplitude * RIBBON_WAVE_SOFTENING * lerp(0.68, 1, smokeEnvelope);
+      wave = easedZigzag * ribbon.waveAmplitude * ribbonWaveSoftening * lerp(0.68, 1, smokeEnvelope);
     } else {
       // sine
       const sinePhase = worldX * ribbon.waveFrequency * 0.01 + timeSeconds * ribbon.waveSpeed;
-      wave = Math.sin(sinePhase * Math.PI * 2 + trail.flickerSyncCode * 0.05) * ribbon.waveAmplitude * RIBBON_WAVE_SOFTENING * lerp(0.72, 1, smokeEnvelope);
+      wave = Math.sin(sinePhase * Math.PI * 2 + trail.flickerSyncCode * 0.05) * ribbon.waveAmplitude * ribbonWaveSoftening * lerp(0.72, 1, smokeEnvelope);
     }
 
     // 将垂直偏移（endOffset + wave）沿法线方向施加
@@ -666,27 +706,32 @@ function sampleTrailDecorationGradient(stops: { offset: number; color: Rgba }[],
   return stops[stops.length - 1].color;
 }
 
-function drawSideWisps(ctx: CanvasRenderingContext2D, trail: TrailEntityConfig, widthBase: number, length: number, alphaScale: number): void {
-  const sideColor = mixRgba(trail.endEmissive, trail.startColor, 0.36);
-  const offsets = [-widthBase * 2.1, -widthBase * 1.36, widthBase * 1.28, widthBase * 2.0];
-  for (const offset of offsets) {
-    const gradient = ctx.createLinearGradient(-length * 0.7, offset, -widthBase * 2.6, offset * 0.2);
-    gradient.addColorStop(0, 'rgba(0,0,0,0)');
-    gradient.addColorStop(0.28, rgbaToCss(darkenRgba(sideColor, 0.5), 0.1 * alphaScale));
-    gradient.addColorStop(0.7, rgbaToCss(sideColor, 0.24 * alphaScale));
-    gradient.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.save();
-    ctx.shadowBlur = 10;
-    ctx.shadowColor = rgbaToCss(sideColor, 0.28 * alphaScale);
-    ctx.strokeStyle = gradient;
-    ctx.lineWidth = Math.max(0.65, widthBase * 0.2);
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.moveTo(-length * 0.64, offset);
-    ctx.lineTo(-length * 0.28, offset * 0.66);
-    ctx.lineTo(-widthBase * 2.6, offset * 0.18);
-    ctx.stroke();
-    ctx.restore();
+function drawSideWisps(ctx: CanvasRenderingContext2D, layers: ProjectileVfxSideWispLayerConfig[], trail: TrailEntityConfig, widthBase: number, length: number, alphaScale: number): void {
+  const enabledLayers = layers.filter((layer) => layer.enabled);
+  for (const layer of enabledLayers) {
+    const sideColor = layer.color ?? mixRgba(trail.endEmissive, trail.startColor, 0.36);
+    for (const path of projectileVfxSideWispLocalPaths(layer, length, widthBase)) {
+      const start = path[0];
+      const middle = path[1];
+      const end = path[2];
+      const gradient = ctx.createLinearGradient(start[0], start[1], end[0], end[1]);
+      gradient.addColorStop(0, 'rgba(0,0,0,0)');
+      gradient.addColorStop(0.28, rgbaToCss(darkenRgba(sideColor, 0.5), 0.1 * alphaScale));
+      gradient.addColorStop(0.7, rgbaToCss(sideColor, layer.alphaScale * alphaScale));
+      gradient.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.save();
+      ctx.shadowBlur = layer.blur;
+      ctx.shadowColor = rgbaToCss(sideColor, 0.28 * alphaScale);
+      ctx.strokeStyle = gradient;
+      ctx.lineWidth = Math.max(0.65, widthBase * layer.widthScale);
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(start[0], start[1]);
+      ctx.lineTo(middle[0], middle[1]);
+      ctx.lineTo(end[0], end[1]);
+      ctx.stroke();
+      ctx.restore();
+    }
   }
 }
 

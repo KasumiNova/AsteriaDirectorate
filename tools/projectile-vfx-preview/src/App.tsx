@@ -1,5 +1,6 @@
 import { useEffect, useReducer, useState } from 'react';
 import { createDefaultPreset } from './model/preset';
+import { DEFAULT_PREVIEW_OVERLAY_LAYER_VISIBILITY, PreviewOverlayLayerVisibility } from './render/previewOverlayRenderer';
 import { createInitialTimelineState, timelineReducer } from './sim/timeline';
 import { ConfigPanel } from './ui/ConfigPanel';
 import { EntityInspector } from './ui/EntityInspector';
@@ -11,6 +12,7 @@ import { captureCanvasPng } from './ui/capture';
 export default function App() {
   const [preset, setPreset] = useState(() => loadPreset());
   const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null);
+  const [layerVisibility, setLayerVisibility] = useState<PreviewOverlayLayerVisibility>(DEFAULT_PREVIEW_OVERLAY_LAYER_VISIBILITY);
   const [timeline, dispatchTimeline] = useReducer(timelineReducer, createInitialTimelineState(preset.timeline));
 
   useEffect(() => {
@@ -50,7 +52,7 @@ export default function App() {
         </div>
       </header>
       <section className="preview-stage">
-        <PreviewCanvas preset={preset} timeSeconds={timeline.timeSeconds} onCanvasReady={setCanvas} />
+        <PreviewCanvas preset={preset} timeSeconds={timeline.timeSeconds} onCanvasReady={setCanvas} layerVisibility={layerVisibility} />
         <button
           type="button"
           className="capture-button"
@@ -63,7 +65,7 @@ export default function App() {
           Screenshot PNG
         </button>
       </section>
-      <ConfigPanel preset={preset} onPresetChange={setPreset} />
+      <ConfigPanel preset={preset} onPresetChange={setPreset} layerVisibility={layerVisibility} onLayerVisibilityChange={setLayerVisibility} />
       <div className="right-panel-stack">
         <EntityInspector preset={preset} onPresetChange={setPreset} />
         <VersionCompare preset={preset} onPresetChange={setPreset} />
@@ -92,6 +94,13 @@ function loadPreset() {
       ...defaults,
       ...parsed,
       trailEntities: mergeTrailEntities(parsed.trailEntities ?? defaults.trailEntities, defaults.trailEntities),
+      headLayers: mergeArrayByIndex(parsed.headLayers, defaults.headLayers),
+      glowLayers: mergeArrayByIndex(parsed.glowLayers, defaults.glowLayers),
+      mistLayers: mergeArrayByIndex(parsed.mistLayers, defaults.mistLayers),
+      sideWispLayers: mergeArrayByIndex(parsed.sideWispLayers, defaults.sideWispLayers),
+      ribbonDecorations: mergeArrayByIndex(parsed.ribbonDecorations, defaults.ribbonDecorations),
+      lifecycle: { ...defaults.lifecycle, ...parsed.lifecycle },
+      samplingPolicy: { ...defaults.samplingPolicy, ...parsed.samplingPolicy },
       timeline: { ...defaults.timeline, ...parsed.timeline },
       previewCamera: { ...defaults.previewCamera, ...parsed.previewCamera },
       simulation: { ...defaults.simulation, ...parsed.simulation },
@@ -119,6 +128,17 @@ function mergeTrailEntities(
         ...ribbon.colorGradient,
       },
     })),
+  }));
+}
+
+function mergeArrayByIndex<T>(source: T[] | undefined, defaults: T[]): T[] {
+  if (!Array.isArray(source)) {
+    return defaults;
+  }
+
+  return source.map((item, index) => ({
+    ...defaults[index % defaults.length],
+    ...item,
   }));
 }
 

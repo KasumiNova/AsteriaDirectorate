@@ -2,13 +2,25 @@ import { useEffect, useState } from 'react';
 import { BoxUtilPreviewPreset } from '../model/preset';
 import { ParsePresetError, formatPresetJson, parsePresetJson } from '../model/parsePreset';
 import { formatPresetKotlin } from '../export/kotlinExport';
+import { DEFAULT_PREVIEW_OVERLAY_LAYER_VISIBILITY, PreviewOverlayLayerVisibility } from '../render/previewOverlayRenderer';
 
 export interface ConfigPanelProps {
   preset: BoxUtilPreviewPreset;
   onPresetChange: (preset: BoxUtilPreviewPreset) => void;
+  layerVisibility?: PreviewOverlayLayerVisibility;
+  onLayerVisibilityChange?: (visibility: PreviewOverlayLayerVisibility) => void;
 }
 
-export function ConfigPanel({ preset, onPresetChange }: ConfigPanelProps) {
+const layerToggleLabels: Array<{ key: keyof PreviewOverlayLayerVisibility; label: string }> = [
+  { key: 'trail', label: 'Trail' },
+  { key: 'head', label: 'Head' },
+  { key: 'glow', label: 'Glow' },
+  { key: 'mist', label: 'Mist' },
+  { key: 'sideWisps', label: 'Side Wisps' },
+  { key: 'ribbon', label: 'Ribbon' },
+];
+
+export function ConfigPanel({ preset, onPresetChange, layerVisibility = DEFAULT_PREVIEW_OVERLAY_LAYER_VISIBILITY, onLayerVisibilityChange }: ConfigPanelProps) {
   const [open, setOpen] = useState(() => getStorageItem('astd-projectile-vfx-config-open') !== 'false');
   const [jsonText, setJsonText] = useState(() => formatPresetJson(preset));
   const [exportText, setExportText] = useState(() => formatPresetJson(preset));
@@ -51,6 +63,10 @@ export function ConfigPanel({ preset, onPresetChange }: ConfigPanelProps) {
     setStatus('Kotlin preset exported.');
   };
 
+  const updateLayerVisibility = (key: keyof PreviewOverlayLayerVisibility, checked: boolean) => {
+    onLayerVisibilityChange?.({ ...layerVisibility, [key]: checked });
+  };
+
   return (
     <aside className="config-panel">
       <button type="button" className="panel-toggle" onClick={() => setOpen((value) => !value)} aria-expanded={open}>
@@ -58,6 +74,25 @@ export function ConfigPanel({ preset, onPresetChange }: ConfigPanelProps) {
       </button>
       {open && (
         <div className="panel-body">
+          <div className="panel-section" aria-label="Layer Toggles">
+            <div className="panel-inline-head">
+              <strong>Layer Toggles</strong>
+              <span className="muted-chip">Preview Only</span>
+            </div>
+            <div className="button-row compact">
+              {layerToggleLabels.map((toggle) => (
+                <label key={toggle.key} className="layer-toggle">
+                  <input
+                    aria-label={`toggle-${toggle.key}`}
+                    type="checkbox"
+                    checked={layerVisibility[toggle.key]}
+                    onChange={(event) => updateLayerVisibility(toggle.key, event.currentTarget.checked)}
+                  />
+                  {toggle.label}
+                </label>
+              ))}
+            </div>
+          </div>
           <div className="panel-section">
             <label htmlFor="preset-json">Import JSON</label>
             <textarea id="preset-json" value={jsonText} onChange={(event) => setJsonText(event.currentTarget.value)} />

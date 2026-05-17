@@ -15,7 +15,7 @@ describe('projectile VFX export boundary labels', () => {
       </>,
     );
 
-    expect(screen.getByText(/Preview Only/i)).toBeTruthy();
+    expect(screen.getAllByText(/Preview Only/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/Game Export/i)).toBeTruthy();
     expect(screen.getByText(/export.*Game Export/i)).toBeTruthy();
   });
