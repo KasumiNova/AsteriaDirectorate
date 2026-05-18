@@ -143,11 +143,19 @@ trap cleanup_game EXIT INT TERM
 : > "$PROCESS_LOG_FILE" 2>/dev/null || true
 
 ORIGINAL_JAVA_TOOL_OPTIONS="${JAVA_TOOL_OPTIONS:-}"
-if [[ "$MODE" == "game" ]]; then
-    START_RES="${ASTD_SMOKE_START_RES:-1920x1080}"
+if [[ "$MODE" == "game" || "$MODE" == "automation" ]]; then
+    if [[ "$MODE" == "automation" ]]; then
+        START_RES="${ASTD_SMOKE_START_RES:-2560x1440}"
+    else
+        START_RES="${ASTD_SMOKE_START_RES:-1920x1080}"
+    fi
     START_FS="${ASTD_SMOKE_START_FS:-false}"
     START_SOUND="${ASTD_SMOKE_START_SOUND:-true}"
     EXTRA_OPTS="-Dssoptimizer.launcher.autostart=true -Dssoptimizer.launcher.autostart.res=${START_RES} -Dssoptimizer.launcher.autostart.fullscreen=${START_FS} -Dssoptimizer.launcher.autostart.sound=${START_SOUND} -DstartRes=${START_RES} -DstartFS=${START_FS} -DstartSound=${START_SOUND}"
+    if [[ "$MODE" == "automation" ]]; then
+        AUTOMATION_OUTPUT_DIR="${ASTD_AUTOMATION_OUTPUT_DIR:-$GAME_DIR/ssoptimizer-automation-output}"
+        EXTRA_OPTS="$EXTRA_OPTS -Dssoptimizer.automation.enabled=true -Dssoptimizer.automation.scenario=arc_flare_aod7_basic -Dssoptimizer.automation.outputDir=${AUTOMATION_OUTPUT_DIR} -Dssoptimizer.automation.requireScreenshotFile=true"
+    fi
     if [[ -n "$ORIGINAL_JAVA_TOOL_OPTIONS" ]]; then
         export JAVA_TOOL_OPTIONS="$ORIGINAL_JAVA_TOOL_OPTIONS $EXTRA_OPTS"
     else

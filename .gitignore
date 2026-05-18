@@ -10,6 +10,9 @@ dev-resources
 
 node_modules
 dist
+dist-export
+__pycache__/
+*.pyc
 
 .gradle
 

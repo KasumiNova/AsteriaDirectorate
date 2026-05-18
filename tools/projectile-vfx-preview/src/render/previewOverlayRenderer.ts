@@ -9,7 +9,14 @@ import {
   TrailRibbonDecorationConfig,
   Vec2,
 } from '../model/preset';
-import { projectileVfxGlowLineWidth, projectileVfxHeadColors, projectileVfxHeadVertices, projectileVfxHeadTrailScale, projectileVfxSideWispLocalPaths, projectileVfxWidthBase } from './projectileVfxLayout';
+import {
+  projectileVfxBodyGradientStops,
+  projectileVfxBodyPolygon,
+  projectileVfxGlowLineWidth,
+  projectileVfxHeadFillLayout,
+  projectileVfxSideWispLocalPaths,
+  projectileVfxWidthBase,
+} from './projectileVfxLayout';
 
 export interface PreviewOverlayLayerVisibility {
   trail: boolean;
@@ -340,68 +347,51 @@ function drawBeamShape(ctx: CanvasRenderingContext2D, trail: TrailEntityConfig, 
     return;
   }
 
-  const bodyColor = mixRgba(trail.endColor, trail.startColor, 0.42);
   const bodyEmissive = mixRgba(trail.endEmissive, trail.startEmissive, 0.55);
-  const tailWidth = Math.max(1.0, widthBase * 0.72);
-  const headVisible = smoothstep(0.28, 0.82, pulse);
-  const projectileWidth = Math.max(4.8, widthBase * 1.72) * headVisible;
-  const headLength = Math.max(30, widthBase * 12.4) * headVisible;
-  const coreLength = Math.max(20, widthBase * 8.8) * headVisible;
-  const shoulderX = -headLength * 0.42;
-  const tailReach = Math.max(length, 6);
+  const bodyPolygon = projectileVfxBodyPolygon(widthBase, length, pulse);
 
   const bodyGlow = ctx.createLinearGradient(-length * 0.6, 0, 0, 0);
-  bodyGlow.addColorStop(0, rgbaToCss(darkenRgba(trail.endColor, 0.16), 0));
-  bodyGlow.addColorStop(0.24, rgbaToCss(bodyColor, 0.08 * pulse));
-  bodyGlow.addColorStop(0.62, rgbaToCss(mixRgba(trail.startColor, trail.startEmissive, 0.22), 0.75 * pulse));
-  bodyGlow.addColorStop(0.84, rgbaToCss([1, 1, 1, 1], 0.92 * pulse));
-  bodyGlow.addColorStop(1, 'rgba(255,255,255,0)');
+  for (const stop of projectileVfxBodyGradientStops(trail, pulse)) {
+    bodyGlow.addColorStop(stop.offset, stop.css ?? rgbaToCss(stop.color, stop.alpha));
+  }
 
   ctx.shadowBlur = Math.max(8, widthBase * 2.4);
   ctx.shadowColor = rgbaToCss(bodyEmissive, 0.86 * pulse);
   ctx.fillStyle = bodyGlow;
   ctx.beginPath();
-  ctx.moveTo(-tailReach * 0.86, -tailWidth * 0.12);
-  ctx.lineTo(-tailReach * 0.36, -tailWidth * 0.32);
-  ctx.lineTo(-coreLength, -projectileWidth * 0.56);
-  ctx.lineTo(shoulderX, -projectileWidth * 0.76);
-  ctx.lineTo(0, 0);
-  ctx.lineTo(shoulderX, projectileWidth * 0.76);
-  ctx.lineTo(-coreLength, projectileWidth * 0.56);
-  ctx.lineTo(-tailReach * 0.36, tailWidth * 0.32);
-  ctx.lineTo(-tailReach * 0.86, tailWidth * 0.12);
+  ctx.moveTo(bodyPolygon[0][0], bodyPolygon[0][1]);
+  for (const point of bodyPolygon.slice(1)) {
+    ctx.lineTo(point[0], point[1]);
+  }
   ctx.closePath();
   ctx.fill();
 }
 
 function drawProjectileHead(ctx: CanvasRenderingContext2D, layers: ProjectileVfxHeadLayerConfig[], headSizeScale: number, trail: TrailEntityConfig, widthBase: number, pulse: number): void {
-  const headVisible = smoothstep(0.2, 0.72, pulse);
-  if (headVisible <= 0.01) {
-    return;
-  }
-
   const enabledLayers = layers.filter((layer) => layer.enabled);
   if (enabledLayers.length === 0) return;
+
+  const firstLayout = projectileVfxHeadFillLayout(trail, enabledLayers[0], headSizeScale, widthBase, pulse);
+  if (firstLayout.headVisible <= 0.01) {
+    return;
+  }
 
   ctx.save();
   ctx.globalCompositeOperation = 'lighter';
   for (const layer of enabledLayers) {
-    const vertices = projectileVfxHeadVertices(layer, headVisible, headSizeScale, widthBase);
-    const width = Math.max(1, layer.width) * headVisible * headSizeScale * projectileVfxHeadTrailScale(widthBase);
-    const rearX = vertices.rearTop[0];
-    const alpha = pulse * headVisible * layer.alphaScale;
-    const colors = projectileVfxHeadColors(trail, layer);
+    const layout = projectileVfxHeadFillLayout(trail, layer, headSizeScale, widthBase, pulse);
     ctx.filter = `blur(${layer.blur}px)`;
-    ctx.shadowBlur = Math.max(8, widthBase * 2.8) * headVisible;
-    ctx.shadowColor = rgbaToCss(colors.mid, 0.84 * alpha);
-    const shell = ctx.createLinearGradient(rearX, 0, 0, 0);
-    shell.addColorStop(0, rgbaToCss(colors.start, colors.start[3] * alpha));
-    shell.addColorStop(0.36, rgbaToCss(colors.mid, colors.mid[3] * alpha));
-    shell.addColorStop(0.74, rgbaToCss(colors.end, 0.9 * alpha));
-    shell.addColorStop(1, rgbaToCss([1, 1, 1, 1], 0.98 * alpha));
+    ctx.shadowBlur = Math.max(8, widthBase * 2.8) * layout.headVisible;
+    ctx.shadowColor = rgbaToCss(layout.colors.mid, 0.84 * layout.alpha);
+    const shell = ctx.createLinearGradient(layout.rearX, 0, 0, 0);
+    shell.addColorStop(0, rgbaToCss(layout.colors.start, layout.colors.start[3] * layout.alpha));
+    shell.addColorStop(0.36, rgbaToCss(layout.colors.mid, layout.colors.mid[3] * layout.alpha));
+    shell.addColorStop(0.74, rgbaToCss(layout.colors.end, 0.9 * layout.alpha));
+    shell.addColorStop(1, rgbaToCss([1, 1, 1, 1], 0.98 * layout.alpha));
     ctx.fillStyle = shell;
     ctx.lineJoin = 'round';
     ctx.beginPath();
+    const { vertices } = layout;
     ctx.moveTo(vertices.rearTop[0], vertices.rearTop[1]);
     ctx.lineTo(vertices.shoulderTop[0], vertices.shoulderTop[1]);
     ctx.quadraticCurveTo(vertices.curveTop[0], vertices.curveTop[1], vertices.tip[0], vertices.tip[1]);

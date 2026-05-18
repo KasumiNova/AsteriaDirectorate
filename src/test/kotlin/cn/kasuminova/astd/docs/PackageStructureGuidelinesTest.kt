@@ -11,8 +11,8 @@ class PackageStructureGuidelinesTest {
 
     @Test
     fun `package structure skill exists and is indexed`() {
-        val skillPath = repoRoot.resolve(".github/skills/package-structure-guidelines/SKILL.md")
-        val indexPath = repoRoot.resolve(".github/skills/00-skill-index/SKILL.md")
+        val skillPath = repoRoot.resolve(".agents/skills/package-structure-guidelines/SKILL.md")
+        val indexPath = repoRoot.resolve(".agents/skills/00-skill-index/SKILL.md")
 
         assertTrue(skillPath.exists(), "package structure skill file should exist")
         assertTrue(indexPath.readText().contains("package-structure-guidelines"), "skill index should reference package structure skill")
@@ -20,7 +20,7 @@ class PackageStructureGuidelinesTest {
 
     @Test
     fun `package structure skill contains required package conventions`() {
-        val text = repoRoot.resolve(".github/skills/package-structure-guidelines/SKILL.md").readText()
+        val text = repoRoot.resolve(".agents/skills/package-structure-guidelines/SKILL.md").readText()
         val required = listOf(
             "cn.kasuminova.astd",
             "astd.internal",

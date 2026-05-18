@@ -2,9 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { createDefaultPreset, Rgba } from '../model/preset';
 import {
   projectileVfxFlightLayout,
+  projectileVfxBodyGradientStops,
+  projectileVfxBodyPolygon,
   projectileVfxGlowLineWidth,
   projectileVfxGlowLocalNodes,
   projectileVfxHeadColors,
+  projectileVfxHeadFillLayout,
   projectileVfxHeadTrailScale,
   projectileVfxHeadVertices,
   projectileVfxSideWispLocalPaths,
@@ -26,9 +29,9 @@ describe('projectile VFX layout contract', () => {
     const trail = preset.trailEntities[0];
     const widthBase = projectileVfxWidthBase(trail);
 
-    expect(widthBase).toBeCloseTo(6, 4);
-    expect(projectileVfxGlowLineWidth(widthBase, preset.glowLayers[0])).toBeCloseTo(32.4, 4);
-    expect(projectileVfxGlowLineWidth(widthBase, preset.sideWispLayers[0])).toBeCloseTo(1.2, 4);
+    expect(widthBase).toBeCloseTo(3.5, 4);
+    expect(projectileVfxGlowLineWidth(widthBase, preset.glowLayers[0])).toBeCloseTo(18.9, 4);
+    expect(projectileVfxGlowLineWidth(widthBase, preset.sideWispLayers[0])).toBeCloseTo(0.7, 4);
   });
 
   it('matches Kotlin layout vectors for lifecycle and layers', () => {
@@ -47,7 +50,7 @@ describe('projectile VFX layout contract', () => {
     expect(head.rearTop[0]).toBeCloseTo(-157.32, 4);
     expect(head.tip).toEqual([0, 0]);
     expect(sideWisps[0][0][0]).toBeCloseTo(-145.152, 4);
-    expect(sideWisps[0][0][1]).toBeCloseTo(-12.6, 4);
+    expect(sideWisps[0][0][1]).toBeCloseTo(-7.35, 4);
   });
 
   it('scales projectile head from TrailEntity width base', () => {
@@ -57,10 +60,46 @@ describe('projectile VFX layout contract', () => {
     const widerWidthBase = projectileVfxWidthBase({ ...trail, startWidth: trail.startWidth * 2 });
     const defaultHead = projectileVfxHeadVertices(preset.headLayers[0], 0.8, preset.lifecycle.projectileHeadSizeScale, defaultWidthBase);
     const widerHead = projectileVfxHeadVertices(preset.headLayers[0], 0.8, preset.lifecycle.projectileHeadSizeScale, widerWidthBase);
+    const widthBaseRatio = widerWidthBase / defaultWidthBase;
 
-    expect(projectileVfxHeadTrailScale(defaultWidthBase)).toBeCloseTo(1, 4);
-    expect(widerHead.rearTop[0]).toBeCloseTo(defaultHead.rearTop[0] * 2, 4);
-    expect(widerHead.shoulderTop[1]).toBeCloseTo(defaultHead.shoulderTop[1] * 2, 4);
+    expect(projectileVfxHeadTrailScale(defaultWidthBase)).toBeCloseTo(0.583333, 4);
+    expect(widerHead.rearTop[0]).toBeCloseTo(defaultHead.rearTop[0] * widthBaseRatio, 4);
+    expect(widerHead.shoulderTop[1]).toBeCloseTo(defaultHead.shoulderTop[1] * widthBaseRatio, 4);
+  });
+
+  it('locks AOD-7 preview body geometry contract at full pulse', () => {
+    const body = projectileVfxBodyPolygon(6, 420, 1);
+
+    expect(body[4]).toEqual([0, 0]);
+    expect(body.every(([x]) => x <= 0)).toBe(true);
+    expect(Math.min(...body.map(([x]) => x))).toBeLessThan(0);
+    expect(Math.max(...body.map(([, y]) => y))).toBeCloseTo(-Math.min(...body.map(([, y]) => y)), 4);
+  });
+
+  it('locks AOD-7 preview body gradient contract at full pulse', () => {
+    const preset = createDefaultPreset();
+    const trail = preset.trailEntities[0];
+    const stops = projectileVfxBodyGradientStops(trail, 1);
+
+    expect(stops.map((stop) => stop.offset)).toEqual([0, 0.24, 0.62, 0.84, 1]);
+    expect(stops[0].alpha).toBe(0);
+    expect(stops[1].alpha).toBeCloseTo(0.08, 4);
+    expect(stops[2].alpha).toBeCloseTo(0.75, 4);
+    expect(stops[3].alpha).toBeCloseTo(0.92, 4);
+    expect(stops[4].alpha).toBe(0);
+    expect(stops[4].css).toBe('rgba(255,255,255,0)');
+  });
+
+  it('locks AOD-7 preview head fill contract at full pulse', () => {
+    const preset = createDefaultPreset();
+    const trail = preset.trailEntities[0];
+    const layer = preset.headLayers[0];
+    const widthBase = projectileVfxWidthBase(trail);
+    const layout = projectileVfxHeadFillLayout(trail, layer, preset.lifecycle.projectileHeadSizeScale, widthBase, 1);
+    const vertices = projectileVfxHeadVertices(layer, layout.headVisible, preset.lifecycle.projectileHeadSizeScale, widthBase);
+
+    expect(layout.vertices).toEqual(vertices);
+    expect(layout.alpha).toBeCloseTo(1 * layout.headVisible * layer.alphaScale, 4);
   });
 
   it('derives projectile head colors from TrailEntity colors', () => {

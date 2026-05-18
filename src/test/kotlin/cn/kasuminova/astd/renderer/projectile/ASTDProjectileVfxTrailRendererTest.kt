@@ -23,7 +23,7 @@ class ASTDProjectileVfxTrailRendererTest {
         val spec = ASTDProjectileVfxPresetCatalog.preset("aod7_shot")!!.trailEntities.single()
         val params = ASTDProjectileVfxTrailRenderer.parametersForTests(spec, testContext())
 
-        assertEquals(6f, params.startWidth)
+        assertEquals(3.5f, params.startWidth)
         assertEquals(0.3f, params.endWidth)
         assertEquals(ASTDProjectileVfxAnchorMode.HeadLocked, params.anchorMode)
         assertEquals(ASTDProjectileVfxOrientationMode.ProjectileVelocity, params.orientationMode)

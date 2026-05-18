@@ -1,8 +1,15 @@
 package cn.kasuminova.astd.renderer.projectile
 
+import com.fs.starfarer.api.Global
+import org.json.JSONObject
+import java.nio.file.Files
+import java.nio.file.Path
+
 object ASTDProjectileVfxPresetCatalog {
+    private const val GAME_EXPORT_PRESET_DIR = "data/config/astd_projectile_vfx_presets"
+
     private val presets: Map<String, ASTDProjectileVfxPreset> = listOf(
-        aod7Shot(),
+        gameExportPresetOrFallback("aod7_shot") { aod7Shot() },
         preset("spc3_shot", violet(), 6f, 135f),
         preset("drv9_slug", amber(), 10f, 190f),
         preset("drv11", amber(), 12f, 230f, glowScale = 2.6f),
@@ -32,16 +39,38 @@ object ASTDProjectileVfxPresetCatalog {
 
     fun presetIds(): Set<String> = presets.keys
 
+    internal fun loadGameExportPresetForTest(json: JSONObject): ASTDProjectileVfxPreset {
+        return ASTDProjectileVfxPresetJson.parse(json)
+    }
+
+    private fun gameExportPresetOrFallback(
+        id: String,
+        fallback: () -> ASTDProjectileVfxPreset,
+    ): ASTDProjectileVfxPreset {
+        return try {
+            val json = Global.getSettings()?.loadJSON("$GAME_EXPORT_PRESET_DIR/$id.json") as? JSONObject
+            if (json != null) ASTDProjectileVfxPresetJson.parse(json) else fallback()
+        } catch (_: Throwable) {
+            tryLoadLocalGameExportPreset(id) ?: fallback()
+        }
+    }
+
+    private fun tryLoadLocalGameExportPreset(id: String): ASTDProjectileVfxPreset? {
+        val path = Path.of("contents/$GAME_EXPORT_PRESET_DIR/$id.json")
+        if (!Files.exists(path)) return null
+        return ASTDProjectileVfxPresetJson.parse(JSONObject(Files.readString(path)))
+    }
+
     private fun aod7Shot(): ASTDProjectileVfxPreset {
         val trailLayer = ASTDTrailLayerSpec(
-            width = 80f,
-            color = ASTDColor(0.278431f, 0.847059f, 0.921569f, 0.92f),
+            width = 40f,
+            color = ASTDColor(0.278431f, 0.556863f, 0.921569f, 0.92f),
             length = 420f,
-            startColor = ASTDColor(0.278431f, 0.847059f, 0.921569f, 0.92f),
-            endColor = ASTDColor(0.039216f, 0.164706f, 0.219608f, 0.06f),
-            startEmissive = ASTDColor(1f, 0.95f, 0.98f, 1f),
-            endEmissive = ASTDColor(0.039216f, 0.223529f, 0.458824f, 0.16f),
-            startWidth = 80f,
+            startColor = ASTDColor(0.278431f, 0.556863f, 0.921569f, 0.92f),
+            endColor = ASTDColor(0.039216f, 0.141176f, 0.219608f, 0.06f),
+            startEmissive = ASTDColor(0.941176f, 0.972549f, 1f, 1f),
+            endEmissive = ASTDColor(0.039216f, 0.2f, 0.458824f, 0.16f),
+            startWidth = 40f,
             endWidth = 4f,
             texturePixels = 96f,
             textureSpeed = 0.9f,
@@ -66,7 +95,7 @@ object ASTDProjectileVfxPresetCatalog {
             renderMode = "byLength",
             startOffset = 0f,
             endOffset = 0f,
-            thickness = 0.05f,
+            thickness = 0.1f,
             alphaScale = 0.28f,
             lengthScale = 1f,
             nodeCountScale = 1f,
@@ -74,11 +103,11 @@ object ASTDProjectileVfxPresetCatalog {
             amplitude = 1.35f,
             waveSpeed = 1f,
             waveType = "noise",
-            noiseScale = 2f,
+            noiseScale = 4f,
             blur = 9f,
-            startColor = ASTDColor(1f, 1f, 1f, 0.92f),
-            endColor = ASTDColor(0.494118f, 0.658824f, 0.92549f, 0.06f),
-            color = ASTDColor(0.756863f, 0.909804f, 0.984314f, 0.92f),
+            startColor = ASTDColor(0.890196f, 0.921569f, 0.933333f, 0.92f),
+            endColor = ASTDColor(0.039216f, 0.109804f, 0.219608f, 0.06f),
+            color = ASTDColor(1f, 1f, 1f, 0.92f),
         )
         val headLayers = listOf(
             ASTDProjectileVfxHeadLayerSpec(
@@ -88,8 +117,8 @@ object ASTDProjectileVfxPresetCatalog {
                 width = 24f,
                 shoulderRatio = 0.5f,
                 rearRatio = 0.95f,
-                shellColorStart = ASTDColor(0.039216f, 0.164706f, 0.219608f, 0.08f),
-                shellColorMid = ASTDColor(0.756863f, 0.909804f, 0.984314f, 0.46f),
+                shellColorStart = ASTDColor(0.22f, 0.04f, 0.18f, 0.08f),
+                shellColorMid = ASTDColor(0.72f, 0.94f, 1f, 0.46f),
                 shellColorEnd = ASTDColor(1f, 1f, 1f, 0.98f),
                 blur = 0.35f,
                 alphaScale = 1f,
@@ -113,7 +142,7 @@ object ASTDProjectileVfxPresetCatalog {
                 alphaRange = ASTDFloatRangeSpec(0.016f, 0.075f),
                 noiseScale = 5.2f,
                 driftSpeed = 0.32f,
-                colorStart = ASTDColor(0.039216f, 0.164706f, 0.219608f, 0.06f),
+                colorStart = ASTDColor(0.22f, 0.04f, 0.18f, 0.06f),
                 colorEnd = ASTDColor(1f, 0.95f, 0.98f, 1f),
             ),
         )
@@ -164,8 +193,8 @@ object ASTDProjectileVfxPresetCatalog {
                 historyFps = 60f,
                 maxHistoryNodes = 96,
                 minDistancePerNode = 2f,
-                smoothingPasses = 1,
-                distanceWindow = 360f,
+                smoothingPasses = 3,
+                distanceWindow = 420f,
             ),
             fadePolicy = ASTDProjectileVfxFadePolicy(
                 fadeInSeconds = 0f,

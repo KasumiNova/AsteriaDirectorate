@@ -89,7 +89,7 @@ object ASTDProjectileVfxMath {
 
     fun visibleLength(baseLength: Float, dissolveValue: Float): Float = baseLength * (1f + (0.08f - 1f) * dissolveValue)
 
-    private fun lerp(start: Float, end: Float, t: Float): Float = start + (end - start) * t
+    fun lerp(start: Float, end: Float, t: Float): Float = start + (end - start) * t
 
     private fun fract(value: Float): Float = value - floor(value)
 

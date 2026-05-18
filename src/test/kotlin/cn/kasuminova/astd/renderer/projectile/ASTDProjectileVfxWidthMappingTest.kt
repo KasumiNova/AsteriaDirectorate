@@ -13,9 +13,9 @@ class ASTDProjectileVfxWidthMappingTest {
         val baseLayer = preset.trailEntities.single().layers.single()
         val widthBase = ASTDProjectileVfxLayout.widthBase(baseLayer)
 
-        assertEquals(6f, widthBase, 0.0001f)
-        assertEquals(32.4f, ASTDProjectileVfxLayout.glowLineWidth(widthBase, preset.glowLayers[0]), 0.0001f)
-        assertEquals(1.2f, widthBase * preset.sideWispLayers[0].widthScale, 0.0001f)
+        assertEquals(3.5f, widthBase, 0.0001f)
+        assertEquals(18.9f, ASTDProjectileVfxLayout.glowLineWidth(widthBase, preset.glowLayers[0]), 0.0001f)
+        assertEquals(0.7f, widthBase * preset.sideWispLayers[0].widthScale, 0.0001f)
     }
 
     @Test
@@ -27,10 +27,10 @@ class ASTDProjectileVfxWidthMappingTest {
         val widthBase = ASTDProjectileVfxLayout.widthBase(preset.trailEntities.single().layers.single())
         val sideWispWidth = widthBase * preset.sideWispLayers.single().widthScale
 
-        assertEquals(6f, trailParams.startWidth, 0.0001f)
+        assertEquals(3.5f, trailParams.startWidth, 0.0001f)
         assertEquals(0.3f, trailParams.endWidth, 0.0001f)
-        assertEquals(32.4f, glowParams[0].widthScale * widthBase, 0.0001f)
-        assertEquals(1.2f, sideWispWidth, 0.0001f)
+        assertEquals(18.9f, glowParams[0].widthScale * widthBase, 0.0001f)
+        assertEquals(0.7f, sideWispWidth, 0.0001f)
         assertTrue(glowParams[0].widthScale * widthBase < 80f)
     }
 }

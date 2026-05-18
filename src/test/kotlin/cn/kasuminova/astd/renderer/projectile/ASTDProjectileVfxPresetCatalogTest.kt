@@ -27,7 +27,11 @@ class ASTDProjectileVfxPresetCatalogTest {
         assertEquals(420f, layer.length)
         assertEquals(ASTDProjectileVfxAnchorMode.HeadLocked, trail.anchorMode)
         assertEquals(ASTDProjectileVfxOrientationMode.ProjectileVelocity, trail.orientationMode)
-        assertEquals(80f, layer.startWidth)
+        assertEquals(40f, layer.startWidth)
+        assertEquals(ASTDColor(0.278431f, 0.556863f, 0.921569f, 0.92f), layer.startColor)
+        assertEquals(ASTDColor(0.039216f, 0.141176f, 0.219608f, 0.06f), layer.endColor)
+        assertEquals(ASTDColor(0.941176f, 0.972549f, 1f, 1f), layer.startEmissive)
+        assertEquals(ASTDColor(0.039216f, 0.2f, 0.458824f, 0.16f), layer.endEmissive)
         assertEquals(4f, layer.endWidth)
         assertEquals(96f, layer.texturePixels)
         assertEquals(0.9f, layer.textureSpeed)
@@ -39,13 +43,32 @@ class ASTDProjectileVfxPresetCatalogTest {
         assertTrue(layer.flickWhenPaused)
         assertEquals(0f, layer.flickMixValue)
         assertEquals(17, layer.flickerSyncCode)
+        assertEquals(3, preset.samplingPolicy.smoothingPasses)
+        assertEquals(420f, preset.samplingPolicy.distanceWindow)
         assertEquals(0.15f, preset.fadePolicy.fadeOutSeconds)
         assertTrue(preset.headLayers.isNotEmpty())
+        assertEquals(ASTDColor(0.22f, 0.04f, 0.18f, 0.08f), preset.headLayers.single().shellColorStart)
+        assertEquals(ASTDColor(0.72f, 0.94f, 1f, 0.46f), preset.headLayers.single().shellColorMid)
         assertEquals(4, preset.glowLayers.size)
         assertTrue(preset.mistLayers.isNotEmpty())
+        assertEquals(ASTDColor(0.22f, 0.04f, 0.18f, 0.06f), preset.mistLayers.single().colorStart)
         assertTrue(preset.sideWispLayers.isNotEmpty())
         assertTrue(preset.ribbonDecorations.isNotEmpty())
+        assertEquals(0.1f, preset.ribbonDecorations.single().thickness)
+        assertEquals(4f, preset.ribbonDecorations.single().noiseScale)
+        assertEquals(ASTDColor(1f, 1f, 1f, 0.92f), preset.ribbonDecorations.single().color)
         assertEquals(1.25f, preset.lifecycle.durationSeconds)
+    }
+
+    @Test
+    fun `aod7 preset is loaded from frontend game export json`() {
+        val exportedPath = Path.of("contents/data/config/astd_projectile_vfx_presets/aod7_shot.json")
+        assertTrue(Files.exists(exportedPath), "missing frontend game export preset: $exportedPath")
+
+        val exportedPreset = ASTDProjectileVfxPresetCatalog.loadGameExportPresetForTest(
+            JSONObject(Files.readString(exportedPath)),
+        )
+        assertEquals(exportedPreset, ASTDProjectileVfxPresetCatalog.preset("aod7_shot"))
     }
 
     @Test

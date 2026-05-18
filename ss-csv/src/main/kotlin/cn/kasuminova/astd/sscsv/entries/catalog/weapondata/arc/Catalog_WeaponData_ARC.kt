@@ -54,13 +54,14 @@ object Wpn_astd_aod7 : WeaponDataEntry(), SsProjProjectileOutputs {
         onHitEffect = "cn.kasuminova.astd.combat.effect.generic.HighFluxShieldPressureOnHitEffect",
         collisionClass = "PROJECTILE_FF",
         collisionClassByFighter = "PROJECTILE_FIGHTER",
-        length = 30.0,
-        width = 10.0,
-        fadeTime = 0.2,
-        fringeColor = Rgba(255, 198, 126, 228),
-        coreColor = Rgba(248, 242, 232, 205),
-        textureScrollSpeed = 64.0,
-        pixelsPerTexel = 5.0,
+        // 原版 projectile visual 必须不可见，避免盖过 ASTD 自定义 VFX。
+        length = 2.0,
+        width = 2.0,
+        fadeTime = 0.0,
+        fringeColor = Rgba(255, 198, 126, 0),
+        coreColor = Rgba(248, 242, 232, 0),
+        textureScrollSpeed = 0.0,
+        pixelsPerTexel = 1.0,
         bulletSprite = "graphics/textures/BUtil_NONE.png",
     )
 }

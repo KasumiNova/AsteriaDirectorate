@@ -59,8 +59,8 @@ class ASTDProjectileVfxRenderGraphTest {
 
         assertEquals(
             listOf(
-                "ASTDProjectileVfxTrailRenderLayer",
                 "ASTDProjectileVfxGlowRenderLayer",
+                "ASTDProjectileVfxBodyRenderLayer",
                 "ASTDProjectileVfxSideWispRenderLayer",
                 "ASTDProjectileVfxHeadRenderLayer",
                 "ASTDProjectileVfxMistRenderLayer",

@@ -36,6 +36,22 @@ object ASTDProjectileVfxLayout {
         val emissive: ASTDColor,
     )
 
+    data class BodyGradientStop(
+        val offset: Float,
+        val color: ASTDColor,
+        val alpha: Float,
+        val css: String? = null,
+    )
+
+    data class HeadFillLayout(
+        val headVisible: Float,
+        val vertices: HeadVertices,
+        val width: Float,
+        val rearX: Float,
+        val alpha: Float,
+        val colors: HeadColors,
+    )
+
     fun widthBase(layer: ASTDTrailLayerSpec): Float = max(layer.startWidth * 0.075f, 3.5f)
 
     fun flightLayout(baseLength: Float, elapsed: Float, durationSeconds: Float, dissolveStartRatio: Float): FlightLayout {
@@ -97,6 +113,58 @@ object ASTDProjectileVfxLayout {
         )
     }
 
+    fun bodyPolygon(widthBase: Float, visibleLength: Float, pulse: Float): List<Vector2f> {
+        val tailWidth = max(1.0f, widthBase * 0.72f)
+        val headVisible = smoothstep(0.28f, 0.82f, pulse)
+        val projectileWidth = max(4.8f, widthBase * 1.72f) * headVisible
+        val headLength = max(30f, widthBase * 12.4f) * headVisible
+        val coreLength = max(20f, widthBase * 8.8f) * headVisible
+        val shoulderX = -headLength * 0.42f
+        val tailReach = max(visibleLength, 6f)
+        return listOf(
+            Vector2f(-tailReach * 0.86f, -tailWidth * 0.12f),
+            Vector2f(-tailReach * 0.36f, -tailWidth * 0.32f),
+            Vector2f(-coreLength, -projectileWidth * 0.56f),
+            Vector2f(shoulderX, -projectileWidth * 0.76f),
+            Vector2f(0f, 0f),
+            Vector2f(shoulderX, projectileWidth * 0.76f),
+            Vector2f(-coreLength, projectileWidth * 0.56f),
+            Vector2f(-tailReach * 0.36f, tailWidth * 0.32f),
+            Vector2f(-tailReach * 0.86f, tailWidth * 0.12f),
+        )
+    }
+
+    fun bodyGradientStops(baseLayer: ASTDTrailLayerSpec, pulse: Float): List<BodyGradientStop> {
+        val bodyColor = mix(baseLayer.endColor, baseLayer.startColor, 0.42f)
+        return listOf(
+            BodyGradientStop(offset = 0f, color = darken(baseLayer.endColor, 0.16f), alpha = 0f),
+            BodyGradientStop(offset = 0.24f, color = bodyColor, alpha = 0.08f * pulse),
+            BodyGradientStop(offset = 0.62f, color = mix(baseLayer.startColor, baseLayer.startEmissive, 0.22f), alpha = 0.75f * pulse),
+            BodyGradientStop(offset = 0.84f, color = ASTDColor(1f, 1f, 1f, 1f), alpha = 0.92f * pulse),
+            BodyGradientStop(offset = 1f, color = ASTDColor(1f, 1f, 1f, 1f), alpha = 0f, css = "rgba(255,255,255,0)"),
+        )
+    }
+
+    fun headFillLayout(
+        baseLayer: ASTDTrailLayerSpec,
+        layer: ASTDProjectileVfxHeadLayerSpec,
+        headSizeScale: Float,
+        widthBase: Float,
+        pulse: Float,
+    ): HeadFillLayout {
+        val headVisible = smoothstep(0.2f, 0.72f, pulse)
+        val vertices = headVertices(layer, headVisible, headSizeScale, widthBase)
+        val width = max(1f, layer.width) * headVisible * headSizeScale * headTrailScale(widthBase)
+        return HeadFillLayout(
+            headVisible = headVisible,
+            vertices = vertices,
+            width = width,
+            rearX = vertices.rearTop.x,
+            alpha = pulse * headVisible * layer.alphaScale,
+            colors = headColors(baseLayer, layer),
+        )
+    }
+
     fun sideWispLocalPaths(layer: ASTDProjectileVfxSideWispLayerSpec, visibleLength: Float, widthBase: Float): List<List<Vector2f>> {
         return layer.offsets.map { offsetScale ->
             val offset = widthBase * offsetScale
@@ -123,5 +191,17 @@ object ASTDProjectileVfxLayout {
             blue = a.blue + (b.blue - a.blue) * ratio,
             alpha = a.alpha + (b.alpha - a.alpha) * ratio,
         )
+    }
+
+    private fun darken(color: ASTDColor, factor: Float): ASTDColor = ASTDColor(
+        red = color.red * factor,
+        green = color.green * factor,
+        blue = color.blue * factor,
+        alpha = color.alpha,
+    )
+
+    private fun smoothstep(edge0: Float, edge1: Float, x: Float): Float {
+        val t = ((x - edge0) / max(edge1 - edge0, 0.0001f)).coerceIn(0f, 1f)
+        return t * t * (3f - 2f * t)
     }
 }

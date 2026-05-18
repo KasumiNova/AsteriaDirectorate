@@ -1,0 +1,293 @@
+{
+  "id": "aod7_shot",
+  "name": "ASTD Default TrailEntity Preview",
+  "trailEntities": [
+    {
+      "id": "astd_default_trail",
+      "length": 420,
+      "diffuseSpritePath": "graphics/fx/beamcoreb.png",
+      "emissiveSpritePath": "graphics/fx/beamfringeb.png",
+      "orientationMode": "projectileVelocity",
+      "anchorMode": "headLocked",
+      "startColor": [
+        0.278431,
+        0.556863,
+        0.921569,
+        0.92
+      ],
+      "endColor": [
+        0.039216,
+        0.141176,
+        0.219608,
+        0.06
+      ],
+      "startEmissive": [
+        0.941176,
+        0.972549,
+        1,
+        1
+      ],
+      "endEmissive": [
+        0.039216,
+        0.2,
+        0.458824,
+        0.16
+      ],
+      "startWidth": 40,
+      "endWidth": 4,
+      "texturePixels": 96,
+      "textureSpeed": 0.9,
+      "uvOffset": 0,
+      "fillStartAlpha": 0.84,
+      "fillEndAlpha": 0.03,
+      "fillStartFactor": 0.02,
+      "fillEndFactor": 0.12,
+      "jitterPower": 0,
+      "flick": false,
+      "syncFlick": false,
+      "stripLineMode": true,
+      "flowWhenPaused": true,
+      "flickWhenPaused": true,
+      "flickMixValue": 0,
+      "flickerSyncCode": 17,
+      "blendMode": "additive",
+      "ribbonDecorations": [
+        {
+          "id": "astd_default_ribbon_0",
+          "enabled": true,
+          "renderMode": "byLength",
+          "startOffset": 0,
+          "endOffset": 0,
+          "thickness": 0.1,
+          "alphaScale": 0.28,
+          "lengthScale": 1,
+          "nodeCountScale": 1,
+          "amplitude": 1.35,
+          "frequency": 1.1,
+          "waveSpeed": 1,
+          "waveType": "noise",
+          "noiseScale": 4,
+          "blur": 9,
+          "startColor": [
+            0.890196,
+            0.921569,
+            0.933333,
+            0.92
+          ],
+          "endColor": [
+            0.039216,
+            0.109804,
+            0.219608,
+            0.06
+          ],
+          "color": [
+            1,
+            1,
+            1,
+            0.92
+          ],
+          "colorGradient": {
+            "enabled": false,
+            "stops": []
+          }
+        }
+      ]
+    }
+  ],
+  "headLayers": [
+    {
+      "id": "astd_default_head_0",
+      "enabled": true,
+      "length": 138,
+      "width": 24,
+      "shoulderRatio": 0.5,
+      "rearRatio": 0.95,
+      "shellColorStart": [
+        0.22,
+        0.04,
+        0.18,
+        0.08
+      ],
+      "shellColorMid": [
+        0.72,
+        0.94,
+        1,
+        0.46
+      ],
+      "shellColorEnd": [
+        1,
+        1,
+        1,
+        0.98
+      ],
+      "blur": 0.35,
+      "alphaScale": 1,
+      "blendMode": "additive"
+    }
+  ],
+  "glowLayers": [
+    {
+      "id": "astd_default_glow_0",
+      "enabled": true,
+      "widthScale": 5.4,
+      "alphaScale": 0.18,
+      "blur": 34,
+      "yOffset": -0.36,
+      "colorMixTail": 0.52,
+      "colorMixHead": 0.44,
+      "gradientStops": []
+    },
+    {
+      "id": "astd_default_glow_1",
+      "enabled": true,
+      "widthScale": 3.2,
+      "alphaScale": 0.3,
+      "blur": 18,
+      "yOffset": 0.22,
+      "colorMixTail": 0.52,
+      "colorMixHead": 0.44,
+      "gradientStops": []
+    },
+    {
+      "id": "astd_default_glow_2",
+      "enabled": true,
+      "widthScale": 1.4,
+      "alphaScale": 0.58,
+      "blur": 7,
+      "yOffset": -0.08,
+      "colorMixTail": 0.22,
+      "colorMixHead": 1,
+      "gradientStops": []
+    },
+    {
+      "id": "astd_default_glow_3",
+      "enabled": true,
+      "widthScale": 0.62,
+      "alphaScale": 0.82,
+      "blur": 4,
+      "yOffset": 0,
+      "colorMixTail": 0.48,
+      "colorMixHead": 1,
+      "gradientStops": []
+    }
+  ],
+  "mistLayers": [
+    {
+      "id": "astd_default_mist_0",
+      "enabled": true,
+      "blobCount": 52,
+      "lengthScale": 1,
+      "widthScale": 1,
+      "rxRange": {
+        "min": 2.4,
+        "max": 7.2
+      },
+      "ryRange": {
+        "min": 0.45,
+        "max": 1.8
+      },
+      "alphaRange": {
+        "min": 0.016,
+        "max": 0.075
+      },
+      "noiseScale": 5.2,
+      "driftSpeed": 0.32,
+      "colorStart": [
+        0.22,
+        0.04,
+        0.18,
+        0.06
+      ],
+      "colorEnd": [
+        1,
+        0.95,
+        0.98,
+        1
+      ]
+    }
+  ],
+  "sideWispLayers": [
+    {
+      "id": "astd_default_side_wisp_0",
+      "enabled": true,
+      "offsets": [
+        -2.1,
+        -1.36,
+        1.28,
+        2
+      ],
+      "widthScale": 0.2,
+      "alphaScale": 0.24,
+      "blur": 10,
+      "lengthStartRatio": 0.64,
+      "lengthEndRatio": 0.28,
+      "color": [
+        0.45,
+        0.7,
+        1,
+        0.72
+      ]
+    }
+  ],
+  "ribbonDecorations": [
+    {
+      "id": "astd_default_ribbon_0",
+      "enabled": true,
+      "renderMode": "byLength",
+      "startOffset": 0,
+      "endOffset": 0,
+      "thickness": 0.1,
+      "alphaScale": 0.28,
+      "lengthScale": 1,
+      "nodeCountScale": 1,
+      "amplitude": 1.35,
+      "frequency": 1.1,
+      "waveSpeed": 1,
+      "waveType": "noise",
+      "noiseScale": 4,
+      "blur": 9,
+      "startColor": [
+        0.890196,
+        0.921569,
+        0.933333,
+        0.92
+      ],
+      "endColor": [
+        0.039216,
+        0.109804,
+        0.219608,
+        0.06
+      ],
+      "color": [
+        1,
+        1,
+        1,
+        0.92
+      ],
+      "colorGradient": {
+        "enabled": false,
+        "stops": []
+      }
+    }
+  ],
+  "hooks": [],
+  "lifecycle": {
+    "durationSeconds": 1.25,
+    "fadeInSeconds": 0,
+    "fadeOutSeconds": 0.15,
+    "flightEndRatio": 0.6,
+    "dissolveStartRatio": 0.6,
+    "preDissolveFraction": 0.82,
+    "projectileHeadSizeScale": 1.5,
+    "historySampleMultiplier": 3,
+    "historySmoothingPasses": 3,
+    "ribbonWaveSoftening": 0.48
+  },
+  "samplingPolicy": {
+    "historyFps": 60,
+    "maxHistoryNodes": 96,
+    "minDistancePerNode": 2,
+    "smoothingPasses": 3,
+    "distanceWindow": 420
+  }
+}

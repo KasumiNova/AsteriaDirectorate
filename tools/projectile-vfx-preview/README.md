@@ -27,6 +27,18 @@ npm run build
 npm run test:run
 ```
 
+## AOD-7 确定性验收截帧
+
+预览侧的 AOD-7 parity reference 由 `src/ui/capture.ts` 的 `DEFAULT_AOD7_PARITY_CAPTURE_SPEC` 固定：
+
+- preset id: `aod7_shot`
+- size: `1280x720`
+- elapsed: `0.42s`
+- layers: trail/head/glow/mist/sideWisps/ribbon 全开
+- output: `docs/dev-docs/projectile-vfx-parity/captures/preview/aod7-all-layers-reference.png`
+
+当前实现提供浏览器端 deterministic capture API，返回 PNG data URL 与上述 metadata。仓库尚未引入直接 Node canvas/Playwright 依赖，因此真实 PNG 落盘需要通过预览页面或后续 CLI runner 调用该 API。
+
 ## 输入格式
 
 - 顶层为 JSON object。

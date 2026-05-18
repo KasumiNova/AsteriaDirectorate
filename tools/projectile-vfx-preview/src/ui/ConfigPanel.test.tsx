@@ -36,7 +36,12 @@ describe('ConfigPanel', () => {
     render(<ConfigPanel preset={createDefaultPreset()} onPresetChange={vi.fn()} />);
     await user.click(screen.getByRole('button', { name: 'Export JSON' }));
 
-    expect((screen.getByLabelText('Import JSON') as HTMLTextAreaElement).value).toContain('"trailEntities"');
+    const exported = (screen.getByLabelText('Game Export') as HTMLTextAreaElement).value;
+    expect(exported).toContain('"id": "aod7_shot"');
+    expect(exported).toContain('"trailEntities"');
+    expect(exported).not.toContain('"timeline"');
+    expect(exported).not.toContain('"simulation"');
+    expect(exported).not.toContain('"previewCamera"');
   });
 
   it('exports Kotlin preset code', async () => {
@@ -45,7 +50,7 @@ describe('ConfigPanel', () => {
     render(<ConfigPanel preset={createDefaultPreset()} onPresetChange={vi.fn()} />);
     await user.click(screen.getByRole('button', { name: 'Export Kotlin' }));
 
-    expect((screen.getByLabelText('Export Preview') as HTMLTextAreaElement).value).toContain('ASTDProjectileVfxPreset');
+    expect((screen.getByLabelText('Game Export') as HTMLTextAreaElement).value).toContain('ASTDProjectileVfxPreset');
   });
 
   it('updates preview-only layer toggles without changing runtime export fields', async () => {
@@ -57,6 +62,6 @@ describe('ConfigPanel', () => {
     await user.click(screen.getByLabelText('toggle-head'));
 
     expect(onLayerVisibilityChange).toHaveBeenCalledWith(expect.objectContaining({ head: false }));
-    expect((screen.getByLabelText('Export Preview') as HTMLTextAreaElement).value).toContain('"headLayers"');
+    expect((screen.getByLabelText('Game Export') as HTMLTextAreaElement).value).toContain('"headLayers"');
   });
 });

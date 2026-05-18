@@ -24,6 +24,22 @@ export interface ProjectileVfxHeadColorLayout {
   emissive: Rgba;
 }
 
+export interface ProjectileVfxGradientStop {
+  offset: number;
+  color: Rgba;
+  alpha: number;
+  css?: string;
+}
+
+export interface ProjectileVfxHeadFillLayout {
+  headVisible: number;
+  vertices: ProjectileVfxHeadVertexLayout;
+  width: number;
+  rearX: number;
+  alpha: number;
+  colors: ProjectileVfxHeadColorLayout;
+}
+
 export function projectileVfxWidthBase(trail: Pick<TrailEntityConfig, 'startWidth'>): number {
   return Math.max(trail.startWidth * 0.075, 3.5);
 }
@@ -86,6 +102,61 @@ export function projectileVfxHeadColors(
   };
 }
 
+export function projectileVfxBodyPolygon(widthBase: number, visibleLengthValue: number, pulse: number): Vec2[] {
+  const tailWidth = Math.max(1.0, widthBase * 0.72);
+  const headVisible = smoothstep(0.28, 0.82, pulse);
+  const projectileWidth = Math.max(4.8, widthBase * 1.72) * headVisible;
+  const headLength = Math.max(30, widthBase * 12.4) * headVisible;
+  const coreLength = Math.max(20, widthBase * 8.8) * headVisible;
+  const shoulderX = -headLength * 0.42;
+  const tailReach = Math.max(visibleLengthValue, 6);
+  return [
+    [-tailReach * 0.86, -tailWidth * 0.12],
+    [-tailReach * 0.36, -tailWidth * 0.32],
+    [-coreLength, -projectileWidth * 0.56],
+    [shoulderX, -projectileWidth * 0.76],
+    [0, 0],
+    [shoulderX, projectileWidth * 0.76],
+    [-coreLength, projectileWidth * 0.56],
+    [-tailReach * 0.36, tailWidth * 0.32],
+    [-tailReach * 0.86, tailWidth * 0.12],
+  ];
+}
+
+export function projectileVfxBodyGradientStops(
+  trail: Pick<TrailEntityConfig, 'startColor' | 'endColor' | 'startEmissive' | 'endEmissive'>,
+  pulse: number,
+): ProjectileVfxGradientStop[] {
+  const bodyColor = mixRgba(trail.endColor, trail.startColor, 0.42);
+  return [
+    { offset: 0, color: darkenRgba(trail.endColor, 0.16), alpha: 0 },
+    { offset: 0.24, color: bodyColor, alpha: 0.08 * pulse },
+    { offset: 0.62, color: mixRgba(trail.startColor, trail.startEmissive, 0.22), alpha: 0.75 * pulse },
+    { offset: 0.84, color: [1, 1, 1, 1], alpha: 0.92 * pulse },
+    { offset: 1, color: [1, 1, 1, 1], alpha: 0, css: 'rgba(255,255,255,0)' },
+  ];
+}
+
+export function projectileVfxHeadFillLayout(
+  trail: Pick<TrailEntityConfig, 'startColor' | 'endColor' | 'startEmissive' | 'endEmissive'>,
+  layer: Pick<ProjectileVfxHeadLayerConfig, 'length' | 'width' | 'shoulderRatio' | 'rearRatio' | 'shellColorStart' | 'shellColorMid' | 'shellColorEnd' | 'alphaScale'>,
+  headSizeScale: number,
+  widthBase: number,
+  pulse: number,
+): ProjectileVfxHeadFillLayout {
+  const headVisible = smoothstep(0.2, 0.72, pulse);
+  const vertices = projectileVfxHeadVertices(layer, headVisible, headSizeScale, widthBase);
+  const width = Math.max(1, layer.width) * headVisible * headSizeScale * projectileVfxHeadTrailScale(widthBase);
+  return {
+    headVisible,
+    vertices,
+    width,
+    rearX: vertices.rearTop[0],
+    alpha: pulse * headVisible * layer.alphaScale,
+    colors: projectileVfxHeadColors(trail, layer),
+  };
+}
+
 export function projectileVfxSideWispLocalPaths(layer: Pick<ProjectileVfxSideWispLayerConfig, 'offsets' | 'lengthStartRatio' | 'lengthEndRatio'>, visibleLengthValue: number, widthBase: number): Vec2[][] {
   return layer.offsets.map((offsetScale) => {
     const offset = widthBase * offsetScale;
@@ -109,4 +180,13 @@ function mixRgba(start: Rgba, end: Rgba, t: number): Rgba {
     start[2] + (end[2] - start[2]) * ratio,
     start[3] + (end[3] - start[3]) * ratio,
   ];
+}
+
+function darkenRgba(color: Rgba, factor: number): Rgba {
+  return [color[0] * factor, color[1] * factor, color[2] * factor, color[3]];
+}
+
+function smoothstep(edge0: number, edge1: number, x: number): number {
+  const t = Math.max(0, Math.min(1, (x - edge0) / Math.max(edge1 - edge0, 0.0001)));
+  return t * t * (3 - 2 * t);
 }

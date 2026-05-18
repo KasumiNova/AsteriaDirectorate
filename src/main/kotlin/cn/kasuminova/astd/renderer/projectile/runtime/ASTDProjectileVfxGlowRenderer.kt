@@ -5,8 +5,9 @@ import cn.kasuminova.astd.renderer.projectile.ASTDTrailEntitySpec
 import cn.kasuminova.astd.renderer.projectile.ASTDTrailLayerSpec
 import cn.kasuminova.astd.renderer.projectile.ASTDColor
 import com.fs.starfarer.api.combat.CombatEngineAPI
-import org.boxutil.units.standard.entity.TrailEntity
+import com.fs.starfarer.api.combat.CombatEngineLayers
 import org.lwjgl.util.vector.Vector2f
+import kotlin.math.max
 
 object ASTDProjectileVfxGlowRenderer {
     data class Parameters(
@@ -41,6 +42,19 @@ object ASTDProjectileVfxGlowRenderer {
                 startColor = colors.first,
                 endColor = colors.second,
             )
+        }
+    }
+
+    fun meshesForTests(
+        trail: ASTDTrailEntitySpec,
+        layers: List<ASTDProjectileVfxGlowLayerSpec>,
+        context: ASTDProjectileVfxRenderContext,
+        alphaScale: Float = 1f,
+    ): List<ASTDProjectileVfxBodyRenderer.Mesh> {
+        val baseLayer = trail.layers.firstOrNull() ?: trail.layerSpec
+        val widthBase = ASTDProjectileVfxLayout.widthBase(baseLayer)
+        return layers.filter { it.enabled }.map { layer ->
+            glowStrokeMesh(baseLayer, layer, context, widthBase, alphaScale)
         }
     }
 
@@ -94,13 +108,93 @@ object ASTDProjectileVfxGlowRenderer {
             a.alpha + (b.alpha - a.alpha) * ratio,
         )
     }
+
+    private fun glowStrokeMesh(
+        baseLayer: ASTDTrailLayerSpec,
+        glow: ASTDProjectileVfxGlowLayerSpec,
+        context: ASTDProjectileVfxRenderContext,
+        widthBase: Float,
+        fadeAlpha: Float,
+    ): ASTDProjectileVfxBodyRenderer.Mesh {
+        val lineWidth = ASTDProjectileVfxLayout.glowLineWidth(widthBase, glow)
+        val headGap = max(14f, lineWidth * 0.55f)
+        val startX = -context.visibleLength * 0.72f
+        val endX = -headGap
+        val (tail, head) = colors(baseLayer, glow)
+        val samples = listOf(0f, 0.22f, 0.62f, 0.88f, 1f)
+        val vertices = ArrayList<ASTDProjectileVfxBodyRenderer.Vertex>(samples.size * 8)
+        for (band in 0..3) {
+            val bandScale = 0.26f + band * 0.36f
+            val bandAlphaScale = listOf(0.055f, 0.011f, 0.0035f, 0.0015f)[band]
+            val halfWidth = (lineWidth + glow.blur * bandScale) * 0.5f
+            for (t in samples) {
+                val x = ASTDProjectileVfxMath.lerp(startX, endX, t)
+                val y = ASTDProjectileVfxMath.lerp(glow.yOffset, glow.yOffset * 0.18f, t)
+                val color = glowColorAt(t, tail, head)
+                val alpha = glowAlphaAt(t, glow.alphaScale * context.beamAlpha * fadeAlpha) * bandAlphaScale
+                val vertexColor = color.copy(alpha = alpha.coerceIn(0f, 1f))
+                vertices += ASTDProjectileVfxBodyRenderer.Vertex(Vector2f(x, y - halfWidth), vertexColor)
+                vertices += ASTDProjectileVfxBodyRenderer.Vertex(Vector2f(x, y + halfWidth), vertexColor)
+            }
+        }
+        val triangles = ArrayList<ASTDProjectileVfxBodyRenderer.Triangle>()
+        val stripSize = samples.size * 2
+        for (band in 0..3) {
+            triangles += ASTDProjectileVfxBodyRenderer.triangulateStrip(vertices.subList(band * stripSize, band * stripSize + stripSize))
+        }
+        return ASTDProjectileVfxBodyRenderer.Mesh(
+            polygon = vertices.map { Vector2f(it.position) },
+            gradientStops = emptyList(),
+            vertices = vertices,
+            triangles = triangles,
+            blendMode = "additive",
+            combatLayer = CombatEngineLayers.ABOVE_PARTICLES,
+            xScale = 1.2f,
+            yScale = 0.34f,
+            shaderQuad = ASTDProjectileVfxShaderRenderer.glowQuadsForTests(
+                ASTDTrailEntitySpec(
+                    layerId = "astd_runtime_glow_shader",
+                    nodes = emptyList(),
+                    id = "astd_runtime_glow_shader",
+                    layerSpec = baseLayer,
+                    layers = listOf(baseLayer),
+                ),
+                listOf(glow),
+                context,
+                fadeAlpha,
+            ).single(),
+        )
+    }
+
+    private fun glowColorAt(t: Float, tail: ASTDColor, head: ASTDColor): ASTDColor = when {
+        t <= 0.22f -> darken(tail, 0.36f)
+        t <= 0.62f -> tail
+        t <= 0.88f -> mix(tail, head, 0.55f)
+        t < 1f -> head
+        else -> ASTDColor(1f, 0.9f, 0.98f, 1f)
+    }
+
+    private fun glowAlphaAt(t: Float, alpha: Float): Float = when {
+        t <= 0f -> 0f
+        t <= 0.22f -> alpha * 0.22f
+        t <= 0.62f -> alpha * 0.65f
+        t <= 0.88f -> alpha
+        else -> alpha * 0.46f
+    }
+
+    private fun darken(color: ASTDColor, factor: Float): ASTDColor = ASTDColor(
+        red = color.red * factor,
+        green = color.green * factor,
+        blue = color.blue * factor,
+        alpha = color.alpha,
+    )
 }
 
 class ASTDProjectileVfxGlowRenderLayer(
     private val trail: ASTDTrailEntitySpec,
     private val layers: List<ASTDProjectileVfxGlowLayerSpec>,
 ) : ASTDProjectileVfxRenderLayer {
-    private data class Handle(val spec: ASTDProjectileVfxGlowLayerSpec, val entity: TrailEntity)
+    private data class Handle(val spec: ASTDProjectileVfxGlowLayerSpec, val handle: ASTDProjectileVfxBodyRenderManager.Handle)
 
     private val handles = ArrayList<Handle>()
     private val fade = ASTDProjectileVfxLayerFadeState()
@@ -108,27 +202,11 @@ class ASTDProjectileVfxGlowRenderLayer(
     override fun create(engine: CombatEngineAPI?, context: ASTDProjectileVfxRenderContext): Boolean {
         if (engine == null) return false
         if (handles.isNotEmpty()) return true
-        val baseLayer = trail.layers.firstOrNull() ?: trail.layerSpec
         layers.filter { it.enabled }.forEach { glow ->
-            val spec = trail.copy(
-                layerId = glow.id,
-                id = glow.id,
-                layerSpec = ASTDProjectileVfxGlowRenderer.layerSpec(baseLayer, glow, context),
-                layers = listOf(ASTDProjectileVfxGlowRenderer.layerSpec(baseLayer, glow, context)),
-                ribbonDecorations = emptyList(),
-            )
-            val lineWidth = ASTDProjectileVfxLayout.glowLineWidth(ASTDProjectileVfxLayout.widthBase(baseLayer), glow)
-            ASTDProjectileVfxTrailRenderer.createEntity(
-                engine,
-                spec,
-                context,
-                yOffset = glow.yOffset,
-                alphaScale = glow.alphaScale,
-                headWidthOverride = lineWidth,
-                tailWidthOverride = lineWidth,
-            )?.let { entity ->
-                handles += Handle(glow, entity)
-            }
+            val handle = ASTDProjectileVfxBodyRenderManager.createHandle(engine)
+            val mesh = ASTDProjectileVfxGlowRenderer.meshesForTests(trail, listOf(glow), context, fade.alpha()).single()
+            handle.update(context.location, context.renderFacing, mesh)
+            handles += Handle(glow, handle)
         }
         return handles.size == layers.count { it.enabled }
     }
@@ -136,24 +214,9 @@ class ASTDProjectileVfxGlowRenderLayer(
     override fun advance(engine: CombatEngineAPI?, context: ASTDProjectileVfxRenderContext, amount: Float) {
         fade.advance(amount)
         if (handles.isEmpty()) create(engine, context)
-        val baseLayer = trail.layers.firstOrNull() ?: trail.layerSpec
         handles.forEach { handle ->
-            if (!handle.entity.hasDelete()) {
-                val layer = ASTDProjectileVfxGlowRenderer.layerSpec(baseLayer, handle.spec, context)
-                handle.entity.setNodes(ASTDProjectileVfxLayout.mutableGlowLocalNodes(context.visibleLength, handle.spec))
-                handle.entity.setNodeRefreshIndex(0)
-                handle.entity.setNodeRefreshAllFromCurrentIndex()
-                handle.entity.submitNodes()
-                val lineWidth = ASTDProjectileVfxLayout.glowLineWidth(ASTDProjectileVfxLayout.widthBase(baseLayer), handle.spec)
-                ASTDProjectileVfxTrailRenderer.applyLayer(
-                    handle.entity,
-                    layer,
-                    context.beamAlpha * fade.alpha() * handle.spec.alphaScale,
-                    headWidthOverride = lineWidth,
-                    tailWidthOverride = lineWidth,
-                )
-                handle.entity.setStateVanilla(context.location, context.renderFacing)
-            }
+            val mesh = ASTDProjectileVfxGlowRenderer.meshesForTests(trail, listOf(handle.spec), context, fade.alpha()).single()
+            handle.handle.update(context.location, context.renderFacing, mesh)
         }
         if (fade.complete()) delete()
     }
@@ -163,7 +226,7 @@ class ASTDProjectileVfxGlowRenderLayer(
     }
 
     override fun delete() {
-        handles.forEach { it.entity.delete() }
+        handles.forEach { it.handle.delete() }
         handles.clear()
     }
 }

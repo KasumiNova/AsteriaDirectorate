@@ -83,6 +83,7 @@ class ASTDProjectileVfxRuntime(
             val renderFacing = computeRenderFacing(location, facing)
             history.advance(location, renderFacing, elapsed)
             val context = buildContext(location, facing, renderFacing)
+            ASTDProjectileVfxRuntimeTelemetry.recordContext(context)
             ASTDProjectileVfxDebug.logLayoutOnce(preset, context)
             renderGraph.advance(engine, context, amount)
             lastLocation = Vector2f(location)

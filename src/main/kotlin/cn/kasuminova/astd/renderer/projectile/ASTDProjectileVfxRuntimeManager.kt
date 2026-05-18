@@ -10,6 +10,7 @@ object ASTDProjectileVfxRuntimeManager {
     fun track(engine: CombatEngineAPI, projectile: DamagingProjectileAPI, preset: ASTDProjectileVfxPreset): Boolean {
         if (runtimesByProjectile.containsKey(projectile)) return false
         runtimesByProjectile[projectile] = ASTDProjectileVfxRuntime(projectile, preset)
+        ASTDProjectileVfxRuntimeTelemetry.recordTracked(projectile, preset)
         return true
     }
 
@@ -28,6 +29,7 @@ object ASTDProjectileVfxRuntimeManager {
     fun clear() {
         runtimesByProjectile.values.forEach { it.dispose() }
         runtimesByProjectile.clear()
+        ASTDProjectileVfxRuntimeTelemetry.clear()
     }
 
     fun trackedCountForTests(): Int = runtimesByProjectile.size

@@ -22,10 +22,10 @@ class ASTDProjectileVfxLayoutParityTest {
         assertEquals(-0.36f, glowNodes[0].y, 0.0001f)
         assertEquals(0f, glowNodes[1].x, 0.0001f)
         assertEquals(-0.36f, glowNodes[1].y, 0.0001f)
-        assertEquals(-157.32f, head.rearTop.x, 0.0001f)
+        assertEquals(-91.77f, head.rearTop.x, 0.0001f)
         assertEquals(0f, head.tip.x, 0.0001f)
         assertEquals(-145.152f, sideWisps[0][0].x, 0.0001f)
-        assertEquals(-12.6f, sideWisps[0][0].y, 0.0001f)
+        assertEquals(-7.35f, sideWisps[0][0].y, 0.0001f)
     }
 
     @Test
@@ -37,8 +37,98 @@ class ASTDProjectileVfxLayoutParityTest {
         val defaultHead = ASTDProjectileVfxLayout.headVertices(preset.headLayers[0], 0.8f, preset.lifecycle.projectileHeadSizeScale, defaultWidthBase)
         val widerHead = ASTDProjectileVfxLayout.headVertices(preset.headLayers[0], 0.8f, preset.lifecycle.projectileHeadSizeScale, widerWidthBase)
 
-        assertEquals(1f, ASTDProjectileVfxLayout.headTrailScale(defaultWidthBase), 0.0001f)
-        assertEquals(defaultHead.rearTop.x * 2f, widerHead.rearTop.x, 0.0001f)
-        assertEquals(defaultHead.shoulderTop.y * 2f, widerHead.shoulderTop.y, 0.0001f)
+        assertEquals(0.5833333f, ASTDProjectileVfxLayout.headTrailScale(defaultWidthBase), 0.0001f)
+        val widthBaseRatio = widerWidthBase / defaultWidthBase
+        assertEquals(defaultHead.rearTop.x * widthBaseRatio, widerHead.rearTop.x, 0.0001f)
+        assertEquals(defaultHead.shoulderTop.y * widthBaseRatio, widerHead.shoulderTop.y, 0.0001f)
+    }
+
+    @Test
+    fun `body polygon matches TypeScript preview contract`() {
+        val polygon = ASTDProjectileVfxLayout.bodyPolygon(widthBase = 6f, visibleLength = 420f, pulse = 1f)
+
+        assertEquals(-361.2f, polygon[0].x, 0.0001f)
+        assertEquals(-0.5184f, polygon[0].y, 0.0001f)
+        assertEquals(-151.2f, polygon[1].x, 0.0001f)
+        assertEquals(-1.3824f, polygon[1].y, 0.0001f)
+        assertEquals(-52.8f, polygon[2].x, 0.0001f)
+        assertEquals(-5.7792f, polygon[2].y, 0.0001f)
+        assertEquals(-31.248f, polygon[3].x, 0.0001f)
+        assertEquals(-7.8432f, polygon[3].y, 0.0001f)
+        assertEquals(0f, polygon[4].x, 0.0001f)
+        assertEquals(0f, polygon[4].y, 0.0001f)
+        assertEquals(-31.248f, polygon[5].x, 0.0001f)
+        assertEquals(7.8432f, polygon[5].y, 0.0001f)
+        assertEquals(-52.8f, polygon[6].x, 0.0001f)
+        assertEquals(5.7792f, polygon[6].y, 0.0001f)
+        assertEquals(-151.2f, polygon[7].x, 0.0001f)
+        assertEquals(1.3824f, polygon[7].y, 0.0001f)
+        assertEquals(-361.2f, polygon[8].x, 0.0001f)
+        assertEquals(0.5184f, polygon[8].y, 0.0001f)
+    }
+
+    @Test
+    fun `head fill layout matches TypeScript preview dimensions`() {
+        val preset = ASTDProjectileVfxPresetCatalog.preset("aod7_shot")!!
+        val trail = preset.trailEntities.single().layers.single()
+        val layout = ASTDProjectileVfxLayout.headFillLayout(
+            baseLayer = trail,
+            layer = preset.headLayers.single(),
+            headSizeScale = preset.lifecycle.projectileHeadSizeScale,
+            widthBase = ASTDProjectileVfxLayout.widthBase(trail),
+            pulse = 1f,
+        )
+
+        assertEquals(1f, layout.headVisible, 0.0001f)
+        assertEquals(21f, layout.width, 0.0001f)
+        assertEquals(-114.7125f, layout.rearX, 0.0001f)
+        assertEquals(1f, layout.alpha, 0.0001f)
+        assertEquals(-114.7125f, layout.vertices.rearTop.x, 0.0001f)
+        assertEquals(-4.2f, layout.vertices.rearTop.y, 0.0001f)
+        assertEquals(0.00862752f, layout.colors.start.red, 0.0001f)
+        assertEquals(0.7110087f, layout.colors.mid.green, 0.0001f)
+        assertEquals(0.98f, layout.colors.end.alpha, 0.0001f)
+    }
+
+    @Test
+    fun `body gradient stops match TypeScript preview contract`() {
+        val preset = ASTDProjectileVfxPresetCatalog.preset("aod7_shot")!!
+        val trail = preset.trailEntities.single().layers.single()
+        val stops = ASTDProjectileVfxLayout.bodyGradientStops(trail, pulse = 0.5f)
+
+        assertEquals(0f, stops[0].offset, 0.0001f)
+        assertEquals(0f, stops[0].alpha, 0.0001f)
+        assertEquals(0.00627456f, stops[0].color.red, 0.0001f)
+        assertEquals(0.24f, stops[1].offset, 0.0001f)
+        assertEquals(0.04f, stops[1].alpha, 0.0001f)
+        assertEquals(0.1396863f, stops[1].color.red, 0.0001f)
+        assertEquals(0.62f, stops[2].offset, 0.0001f)
+        assertEquals(0.375f, stops[2].alpha, 0.0001f)
+        assertEquals(0.84f, stops[3].offset, 0.0001f)
+        assertEquals(0.46f, stops[3].alpha, 0.0001f)
+        assertEquals(1f, stops[4].offset, 0.0001f)
+        assertEquals(0f, stops[4].alpha, 0.0001f)
+        assertEquals("rgba(255,255,255,0)", stops[4].css)
+    }
+
+    @Test
+    fun `body and head shrink with TypeScript smoothstep thresholds`() {
+        val preset = ASTDProjectileVfxPresetCatalog.preset("aod7_shot")!!
+        val trail = preset.trailEntities.single().layers.single()
+        val headLayer = preset.headLayers.single()
+        val hiddenBody = ASTDProjectileVfxLayout.bodyPolygon(widthBase = 6f, visibleLength = 420f, pulse = 0.28f)
+        val visibleBody = ASTDProjectileVfxLayout.bodyPolygon(widthBase = 6f, visibleLength = 420f, pulse = 0.82f)
+        val hiddenHead = ASTDProjectileVfxLayout.headFillLayout(trail, headLayer, 1.5f, 6f, pulse = 0.2f)
+        val visibleHead = ASTDProjectileVfxLayout.headFillLayout(trail, headLayer, 1.5f, 6f, pulse = 0.72f)
+
+        assertEquals(0f, hiddenBody[2].x, 0.0001f)
+        assertEquals(0f, hiddenBody[3].y, 0.0001f)
+        assertEquals(-52.8f, visibleBody[2].x, 0.0001f)
+        assertEquals(-7.8432f, visibleBody[3].y, 0.0001f)
+        assertEquals(0f, hiddenHead.headVisible, 0.0001f)
+        assertEquals(0f, hiddenHead.width, 0.0001f)
+        assertEquals(1f, visibleHead.headVisible, 0.0001f)
+        assertEquals(36f, visibleHead.width, 0.0001f)
+        assertEquals(0.72f, visibleHead.alpha, 0.0001f)
     }
 }

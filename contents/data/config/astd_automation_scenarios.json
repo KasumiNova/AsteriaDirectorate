@@ -1,0 +1,13 @@
+{
+  "scenarios": [
+    {
+      "id": "arc_flare_aod7_basic",
+      "missionId": "arc_flare_aod7_basic",
+      "shipId": "astd_arc_flare",
+      "variantId": "astd_arc_flare_Standard",
+      "weaponId": "astd_aod7",
+      "projectileSpecId": "astd_aod7_shot",
+      "vfxPresetId": "aod7_shot"
+    }
+  ]
+}

@@ -3,6 +3,7 @@ package cn.kasuminova.astd.renderer.projectile
 import cn.kasuminova.astd.renderer.projectile.runtime.ASTDProjectileVfxFadeReason
 import cn.kasuminova.astd.renderer.projectile.runtime.ASTDProjectileVfxMath
 import cn.kasuminova.astd.renderer.projectile.runtime.ASTDProjectileVfxRenderContext
+import cn.kasuminova.astd.renderer.projectile.runtime.ASTDProjectileVfxRenderGraph
 import cn.kasuminova.astd.renderer.projectile.runtime.ASTDProjectileVfxRenderLayer
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import kotlin.test.Test
@@ -85,9 +86,10 @@ class ASTDProjectileVfxRuntimeTest {
 
     @Test
     fun `runtime creates render graph layers from preset by default`() {
-        val runtime = ASTDProjectileVfxRuntime.forTests(ASTDProjectileVfxPresetCatalog.preset("aod7_shot")!!)
+        val preset = ASTDProjectileVfxPresetCatalog.preset("aod7_shot")!!
+        val runtime = ASTDProjectileVfxRuntime.forTests(preset)
 
-        assertEquals(6, runtime.renderLayerCountForTests())
+        assertEquals(ASTDProjectileVfxRenderGraph.layersFor(preset).size, runtime.renderLayerCountForTests())
     }
 
     @Test
@@ -116,6 +118,19 @@ class ASTDProjectileVfxRuntimeTest {
         assertEquals(expectedDissolve, context.dissolve, 0.0001f)
         assertEquals(ASTDProjectileVfxMath.beamAlpha(expectedDissolve), context.beamAlpha, 0.0001f)
         assertEquals(ASTDProjectileVfxMath.visibleLength(420f, expectedDissolve), context.visibleLength, 0.0001f)
+    }
+
+    @Test
+    fun `runtime telemetry records last render context for automation evidence`() {
+        ASTDProjectileVfxRuntimeTelemetry.clear()
+        val runtime = ASTDProjectileVfxRuntime.forTests(testPreset(), listOf(RecordingRuntimeLayer()))
+
+        runtime.advanceForTests(0f, 0f, 0f, 0.42f, projectileAlive = true)
+
+        val snapshot = ASTDProjectileVfxRuntimeTelemetry.snapshot()
+        assertEquals(0.42f, snapshot.lastElapsed, 0.0001f)
+        assertTrue(snapshot.lastVisibleLength > 0f)
+        assertTrue(snapshot.lastBeamAlpha > 0f)
     }
 
     private fun testPreset() = ASTDProjectileVfxPreset(

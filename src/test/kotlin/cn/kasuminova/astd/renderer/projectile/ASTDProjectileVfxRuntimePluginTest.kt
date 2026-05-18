@@ -39,10 +39,24 @@ class ASTDProjectileVfxRuntimePluginTest {
         val engine = engineStub()
         ASTDProjectileVfxRuntimeManager.track(engine.api, projectileStub(), testPreset())
         assertEquals(1, ASTDProjectileVfxRuntimeManager.trackedCountForTests())
+        assertEquals(1, ASTDProjectileVfxRuntimeTelemetry.snapshot().trackedCount)
 
         ASTDProjectileVfxRuntimePlugin().init(engine.api)
 
         assertEquals(0, ASTDProjectileVfxRuntimeManager.trackedCountForTests())
+        assertEquals(0, ASTDProjectileVfxRuntimeTelemetry.snapshot().trackedCount)
+    }
+
+    @Test
+    fun `runtime telemetry records tracked projectile spec and preset`() {
+        val engine = engineStub()
+
+        ASTDProjectileVfxRuntimeManager.track(engine.api, projectileStub("astd_aod7_shot"), testPreset("aod7_shot"))
+
+        val snapshot = ASTDProjectileVfxRuntimeTelemetry.snapshot()
+        assertEquals(1, snapshot.trackedCount)
+        assertEquals("astd_aod7_shot", snapshot.lastProjectileSpecId)
+        assertEquals("aod7_shot", snapshot.lastPresetId)
     }
 
     @Test
@@ -65,8 +79,8 @@ class ASTDProjectileVfxRuntimePluginTest {
         )
     }
 
-    private fun testPreset() = ASTDProjectileVfxPreset(
-        id = "test_plugin",
+    private fun testPreset(id: String = "test_plugin") = ASTDProjectileVfxPreset(
+        id = id,
         layers = listOf(ASTDProjectileVfxLayer.Trail("trail", 8f, ASTDProjectileVfxLengthPolicy.Fixed(120f), ASTDColor(1f, 1f, 1f, 1f))),
         samplingPolicy = ASTDProjectileVfxSamplingPolicy(60f, 32, 1f, 0, 160f),
         fadePolicy = ASTDProjectileVfxFadePolicy(0f, 0.2f, 0.1f, 0.2f),
@@ -98,12 +112,13 @@ class ASTDProjectileVfxRuntimePluginTest {
         return state
     }
 
-    private fun projectileStub(): DamagingProjectileAPI {
+    private fun projectileStub(projectileSpecId: String = "test_projectile"): DamagingProjectileAPI {
         return Proxy.newProxyInstance(
             DamagingProjectileAPI::class.java.classLoader,
             arrayOf(DamagingProjectileAPI::class.java),
             InvocationHandler { _, method, _ ->
                 when (method.name) {
+                    "getProjectileSpecId" -> projectileSpecId
                     "getLocation" -> Vector2f(10f, 20f)
                     "getFacing" -> 30f
                     else -> defaultReturn(method.returnType)

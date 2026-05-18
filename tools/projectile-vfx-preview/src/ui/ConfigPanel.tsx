@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { BoxUtilPreviewPreset } from '../model/preset';
 import { ParsePresetError, formatPresetJson, parsePresetJson } from '../model/parsePreset';
+import { serializeGameExportPreset } from '../export/gameExport';
 import { formatPresetKotlin } from '../export/kotlinExport';
 import { DEFAULT_PREVIEW_OVERLAY_LAYER_VISIBILITY, PreviewOverlayLayerVisibility } from '../render/previewOverlayRenderer';
 
@@ -30,7 +31,7 @@ export function ConfigPanel({ preset, onPresetChange, layerVisibility = DEFAULT_
 
   useEffect(() => {
     setJsonText(formatPresetJson(preset));
-    setExportText(exportMode === 'json' ? formatPresetJson(preset) : formatPresetKotlin(preset));
+    setExportText(exportMode === 'json' ? serializeGameExportPreset(preset) : formatPresetKotlin(preset));
   }, [preset, exportMode]);
 
   useEffect(() => {
@@ -51,9 +52,9 @@ export function ConfigPanel({ preset, onPresetChange, layerVisibility = DEFAULT_
 
   const exportJson = () => {
     setExportMode('json');
-    setExportText(formatPresetJson(preset));
+    setExportText(serializeGameExportPreset(preset));
     setErrors([]);
-    setStatus('Preset exported.');
+    setStatus('Game JSON preset exported.');
   };
 
   const exportKotlin = () => {
@@ -104,7 +105,7 @@ export function ConfigPanel({ preset, onPresetChange, layerVisibility = DEFAULT_
           </div>
           <div className="panel-section">
             <div className="panel-inline-head">
-              <label htmlFor="preset-export">Export Preview</label>
+              <label htmlFor="preset-export">Game Export</label>
               <span className="muted-chip">{exportMode === 'json' ? 'JSON' : 'Kotlin'}</span>
             </div>
             <p className="panel-note">Export includes Game Export settings only.</p>

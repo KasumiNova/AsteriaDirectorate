@@ -94,17 +94,36 @@ class ASTDProjectileVfxRenderGraph(
         fun layersFor(preset: ASTDProjectileVfxPreset): List<ASTDProjectileVfxRenderLayer> {
             val layers = ArrayList<ASTDProjectileVfxRenderLayer>()
             val visibility = ASTDProjectileVfxDebug.visibility()
-            if (visibility.trail && preset.trailEntities.isNotEmpty()) layers += ASTDProjectileVfxTrailRenderLayer(preset.trailEntities)
+            if (visibility.trail && preset.trailEntities.isNotEmpty() && !usesEditorParityBody(preset)) {
+                layers += ASTDProjectileVfxTrailRenderLayer(preset.trailEntities)
+            }
             if (visibility.glow && preset.glowLayers.any { it.enabled } && preset.trailEntities.isNotEmpty()) {
                 layers += ASTDProjectileVfxGlowRenderLayer(preset.trailEntities.first(), preset.glowLayers)
             }
+            if (preset.trailEntities.isNotEmpty()) layers += ASTDProjectileVfxBodyRenderLayer(preset.trailEntities.first())
             if (visibility.sideWisps && preset.sideWispLayers.any { it.enabled } && preset.trailEntities.isNotEmpty()) {
                 layers += ASTDProjectileVfxSideWispRenderLayer(preset.trailEntities.first(), preset.sideWispLayers)
             }
-            if (visibility.head && preset.headLayers.any { it.enabled } && preset.trailEntities.isNotEmpty()) layers += ASTDProjectileVfxHeadRenderLayer(preset.trailEntities.first(), preset.headLayers)
+            if (visibility.head && preset.headLayers.any { it.enabled } && preset.trailEntities.isNotEmpty()) {
+                layers += ASTDProjectileVfxHeadRenderLayer(
+                    preset.trailEntities.first(),
+                    preset.headLayers,
+                    preset.lifecycle.projectileHeadSizeScale,
+                )
+            }
             if (visibility.mist && preset.mistLayers.any { it.enabled } && preset.trailEntities.isNotEmpty()) layers += ASTDProjectileVfxMistRenderLayer(preset.trailEntities.first(), preset.mistLayers)
-            if (visibility.ribbon && preset.ribbonDecorations.any { it.enabled }) layers += ASTDProjectileVfxRibbonRenderLayer(preset.ribbonDecorations)
+            if (visibility.ribbon && preset.ribbonDecorations.any { it.enabled } && preset.trailEntities.isNotEmpty()) {
+                layers += ASTDProjectileVfxRibbonRenderLayer(preset.trailEntities.first(), preset.ribbonDecorations)
+            }
             return layers
+        }
+
+        private fun usesEditorParityBody(preset: ASTDProjectileVfxPreset): Boolean {
+            return preset.headLayers.any { it.enabled } ||
+                preset.glowLayers.any { it.enabled } ||
+                preset.mistLayers.any { it.enabled } ||
+                preset.sideWispLayers.any { it.enabled } ||
+                preset.ribbonDecorations.any { it.enabled }
         }
     }
 }
