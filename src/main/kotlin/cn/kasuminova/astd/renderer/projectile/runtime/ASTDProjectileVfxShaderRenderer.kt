@@ -11,6 +11,9 @@ import org.lwjgl.util.vector.Vector2f
 import kotlin.math.max
 
 object ASTDProjectileVfxShaderRenderer {
+    const val PREVIEW_VERTICAL_SCALE: Float = 0.62f
+    const val PREVIEW_BODY_WIDTH_SCALE: Float = 1.12f
+
     enum class Kind(val id: Int) { Body(0), Glow(1), Head(2) }
 
     data class Bounds(
@@ -62,7 +65,7 @@ object ASTDProjectileVfxShaderRenderer {
         alphaScale: Float = 1f,
     ): Quad {
         val layer = trail.layers.firstOrNull() ?: trail.layerSpec
-        val widthBase = ASTDProjectileVfxLayout.widthBase(layer)
+        val widthBase = ASTDProjectileVfxLayout.widthBase(layer) * PREVIEW_BODY_WIDTH_SCALE
         val pulse = context.beamAlpha.coerceIn(0f, 1f) * alphaScale.coerceIn(0f, 1f)
         val blur = max(8f, widthBase * 2.4f)
         val halfHeight = (widthBase * 4.6f + blur * 0.55f).coerceAtLeast(18f)
@@ -74,7 +77,7 @@ object ASTDProjectileVfxShaderRenderer {
                 pulse = pulse,
                 widthBase = widthBase,
                 bodyXScale = 1.55f,
-                bodyYScale = 0.58f,
+                bodyYScale = PREVIEW_VERTICAL_SCALE,
                 bodyShadowBlur = blur,
                 tailColor = layer.endColor,
                 headColor = layer.startColor,
@@ -94,7 +97,7 @@ object ASTDProjectileVfxShaderRenderer {
         alphaScale: Float = 1f,
     ): Quad {
         val baseLayer = trail.layers.firstOrNull() ?: trail.layerSpec
-        val widthBase = ASTDProjectileVfxLayout.widthBase(baseLayer)
+        val widthBase = ASTDProjectileVfxLayout.widthBase(baseLayer) * PREVIEW_BODY_WIDTH_SCALE
         val layout = ASTDProjectileVfxLayout.headFillLayout(baseLayer, layer, headSizeScale, widthBase, context.beamAlpha.coerceIn(0f, 1f))
         val vertical = (layout.width * 1.6f + max(8f, widthBase * 2.8f) * layout.headVisible + layer.blur).coerceAtLeast(4f)
         return Quad(
@@ -105,7 +108,7 @@ object ASTDProjectileVfxShaderRenderer {
                 pulse = context.beamAlpha.coerceIn(0f, 1f) * alphaScale.coerceIn(0f, 1f),
                 widthBase = widthBase,
                 bodyXScale = 1.2f,
-                bodyYScale = 0.54f,
+                bodyYScale = PREVIEW_VERTICAL_SCALE,
                 headWidth = layout.width,
                 headAlpha = layout.alpha * alphaScale.coerceIn(0f, 1f),
                 headVisible = layout.headVisible,
@@ -128,7 +131,7 @@ object ASTDProjectileVfxShaderRenderer {
         alphaScale: Float = 1f,
     ): List<Quad> {
         val baseLayer = trail.layers.firstOrNull() ?: trail.layerSpec
-        val widthBase = ASTDProjectileVfxLayout.widthBase(baseLayer)
+        val widthBase = ASTDProjectileVfxLayout.widthBase(baseLayer) * PREVIEW_BODY_WIDTH_SCALE
         return layers.filter { it.enabled }.map { layer ->
             val lineWidth = ASTDProjectileVfxLayout.glowLineWidth(widthBase, layer)
             val headGap = max(14f, lineWidth * 0.55f)
@@ -142,7 +145,7 @@ object ASTDProjectileVfxShaderRenderer {
                     pulse = context.beamAlpha.coerceIn(0f, 1f) * alphaScale.coerceIn(0f, 1f),
                     widthBase = widthBase,
                     bodyXScale = 1.2f,
-                    bodyYScale = 0.34f,
+                    bodyYScale = PREVIEW_VERTICAL_SCALE,
                     glowLineWidth = lineWidth,
                     glowAlpha = layer.alphaScale * context.beamAlpha.coerceIn(0f, 1f) * alphaScale.coerceIn(0f, 1f),
                     glowBlur = layer.blur * context.beamAlpha.coerceIn(0f, 1f),
@@ -309,6 +312,11 @@ float sstep(float a, float b, float v) {
     return t * t * (3.0 - 2.0 * t);
 }
 vec4 mix4(vec4 a, vec4 b, float t) { return mix(a, b, saturate(t)); }
+vec4 straightFromPremul(vec4 premul) {
+    float alpha = saturate(premul.a);
+    if (alpha <= 0.0001) return vec4(0.0);
+    return vec4(premul.rgb / alpha, alpha);
+}
 
 float bodyHalf(float x) {
     float tailReach = max(uVisibleLength, 6.0);
@@ -344,12 +352,12 @@ vec4 bodyColor(float x, float halfBase) {
     color = mix4(color, mix4(uHeadColor, uHeadEmissive, 0.18), sstep(0.24, 0.70, g));
     color = mix4(color, vec4(1.0), sstep(0.70, 0.88, g));
     float fillAlpha = 0.0;
-    if (g < 0.24) fillAlpha = mix(0.0, 0.08 * uPulse, saturate(g / 0.24));
-    else if (g < 0.70) fillAlpha = mix(0.08 * uPulse, 0.58 * uPulse, saturate((g - 0.24) / 0.46));
-    else if (g < 0.88) fillAlpha = mix(0.58 * uPulse, 0.92 * uPulse, saturate((g - 0.70) / 0.18));
-    else fillAlpha = mix(0.92 * uPulse, 0.0, saturate((g - 0.88) / 0.12));
+    if (g < 0.24) fillAlpha = mix(0.0, 0.07 * uPulse, saturate(g / 0.24));
+    else if (g < 0.70) fillAlpha = mix(0.07 * uPulse, 0.34 * uPulse, saturate((g - 0.24) / 0.46));
+    else if (g < 0.88) fillAlpha = mix(0.34 * uPulse, 0.46 * uPulse, saturate((g - 0.70) / 0.18));
+    else fillAlpha = mix(0.46 * uPulse, 0.0, saturate((g - 0.88) / 0.12));
     float fill = 1.0 - sstep(halfBase * 0.74, halfBase, abs(vLocal.y));
-    float glow = exp(-pow(max(abs(vLocal.y) - halfBase, 0.0) / max(uBodyShadowBlur * 0.34, 0.001), 2.0)) * 0.075 * uPulse;
+    float glow = exp(-pow(max(abs(vLocal.y) - halfBase, 0.0) / max(uBodyShadowBlur * 0.38, 0.001), 2.0)) * 0.048 * uPulse;
     vec4 emissive = mix4(uTailEmissive, uHeadEmissive, 0.55);
     return color * fill * fillAlpha + emissive * glow;
 }
@@ -378,7 +386,7 @@ vec4 glowColor() {
     float blur = max(uGlowBlur, 0.001);
     float dist = abs(vLocal.y - centerY);
     float core = 1.0 - sstep(halfWidth * 0.72, halfWidth, dist);
-    float halo = exp(-pow(max(dist - halfWidth, 0.0) / max(blur * 0.24, 0.001), 2.0)) * 0.18;
+    float halo = exp(-pow(max(dist - halfWidth, 0.0) / max(blur * 0.24, 0.001), 2.0)) * 0.12;
     return color * alpha * max(core, halo);
 }
 
@@ -395,7 +403,7 @@ vec4 headColor() {
     if (p < 0.47) top = mix(uHeadWidth * 0.2, uHeadWidth * 0.52, p / 0.47);
     else top = mix(uHeadWidth * 0.52, 0.0, sstep(0.47, 1.0, p));
     float fill = 1.0 - sstep(top * 0.70, max(top, 0.001), abs(vLocal.y));
-    float halo = exp(-pow(max(abs(vLocal.y) - top, 0.0) / max(uHeadShadowBlur * 0.28, 0.001), 2.0)) * 0.12;
+    float halo = exp(-pow(max(abs(vLocal.y) - top, 0.0) / max(uHeadShadowBlur * 0.24, 0.001), 2.0)) * 0.055;
     vec4 color = shellGradient(p);
     return color * uHeadAlpha * max(fill, halo);
 }
@@ -410,7 +418,7 @@ void main() {
     } else {
         color = headColor();
     }
-    gl_FragColor = vec4(color.rgb, saturate(color.a));
+    gl_FragColor = straightFromPremul(color);
 }
 """
 }

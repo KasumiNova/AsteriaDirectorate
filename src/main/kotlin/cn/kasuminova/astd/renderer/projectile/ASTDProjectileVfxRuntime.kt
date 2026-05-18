@@ -11,6 +11,7 @@ import com.fs.starfarer.api.combat.DamagingProjectileAPI
 import org.boxutil.base.api.RenderDataAPI
 import org.lwjgl.util.vector.Vector2f
 import kotlin.math.atan2
+import kotlin.math.floor
 import kotlin.math.max
 
 enum class ASTDProjectileVfxRuntimeState { Active, Fading, Removed }
@@ -137,6 +138,7 @@ class ASTDProjectileVfxRuntime(
             projectileFacing = projectileFacing,
             renderFacing = renderFacing,
             elapsed = elapsed,
+            logicElapsed = quantizedLogicElapsed(),
             flightProgress = progress,
             dissolve = dissolve,
             visibleLength = ASTDProjectileVfxMath.visibleLength(baseLength, dissolve),
@@ -159,5 +161,10 @@ class ASTDProjectileVfxRuntime(
         ASTDProjectileVfxFadeReason.Expire -> preset.fadePolicy.expireFadeOutSeconds
         ASTDProjectileVfxFadeReason.Removed -> preset.fadePolicy.fadeOutSeconds
         ASTDProjectileVfxFadeReason.Dispose -> 0f
+    }
+
+    private fun quantizedLogicElapsed(): Float {
+        val fps = preset.samplingPolicy.historyFps.coerceAtLeast(1f)
+        return floor(elapsed * fps) / fps
     }
 }

@@ -28,7 +28,7 @@ object ASTDProjectileVfxGlowRenderer {
         context: ASTDProjectileVfxRenderContext,
     ): List<Parameters> {
         val baseLayer = trail.layers.firstOrNull() ?: trail.layerSpec
-        val widthBase = ASTDProjectileVfxLayout.widthBase(baseLayer)
+        val widthBase = ASTDProjectileVfxLayout.widthBase(baseLayer) * ASTDProjectileVfxShaderRenderer.PREVIEW_BODY_WIDTH_SCALE
         return layers.filter { it.enabled }.map { layer ->
             val colors = colors(baseLayer, layer)
             Parameters(
@@ -150,7 +150,7 @@ object ASTDProjectileVfxGlowRenderer {
             blendMode = "additive",
             combatLayer = CombatEngineLayers.ABOVE_PARTICLES,
             xScale = 1.2f,
-            yScale = 0.34f,
+            yScale = ASTDProjectileVfxShaderRenderer.PREVIEW_VERTICAL_SCALE,
             shaderQuad = ASTDProjectileVfxShaderRenderer.glowQuadsForTests(
                 ASTDTrailEntitySpec(
                     layerId = "astd_runtime_glow_shader",

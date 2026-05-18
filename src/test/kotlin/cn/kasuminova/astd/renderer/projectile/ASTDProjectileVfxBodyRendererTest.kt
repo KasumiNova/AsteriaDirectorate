@@ -5,6 +5,7 @@ import cn.kasuminova.astd.renderer.projectile.runtime.ASTDProjectileVfxBodyRende
 import cn.kasuminova.astd.renderer.projectile.runtime.ASTDProjectileVfxBodyRenderer
 import cn.kasuminova.astd.renderer.projectile.runtime.ASTDProjectileVfxLayout
 import cn.kasuminova.astd.renderer.projectile.runtime.ASTDProjectileVfxFadeReason
+import cn.kasuminova.astd.renderer.projectile.runtime.ASTDProjectileVfxShaderRenderer
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import org.lwjgl.util.vector.Vector2f
 import java.lang.reflect.InvocationHandler
@@ -22,7 +23,7 @@ class ASTDProjectileVfxBodyRendererTest {
         val baseLayer = trail.layers.single()
         val context = testContext(0.2f)
         val pulse = context.beamAlpha
-        val widthBase = ASTDProjectileVfxLayout.widthBase(baseLayer)
+        val widthBase = ASTDProjectileVfxLayout.widthBase(baseLayer) * ASTDProjectileVfxShaderRenderer.PREVIEW_BODY_WIDTH_SCALE
 
         val mesh = ASTDProjectileVfxBodyRenderer.meshForTests(trail, context)
         val expectedPolygon = ASTDProjectileVfxLayout.bodyPolygon(widthBase, context.visibleLength, pulse)
@@ -56,8 +57,8 @@ class ASTDProjectileVfxBodyRendererTest {
         )
         val polygon = mesh.polygon
 
-        assertEquals(0.002344043f, mesh.vertexAt(polygon[2]).color.alpha, 0.0001f)
-        assertEquals(0.002344043f, mesh.vertexAt(polygon[6]).color.alpha, 0.0001f)
+        assertEquals(0.0026253266f, mesh.vertexAt(polygon[2]).color.alpha, 0.0001f)
+        assertEquals(0.0026253266f, mesh.vertexAt(polygon[6]).color.alpha, 0.0001f)
     }
 
     @Test
@@ -69,7 +70,7 @@ class ASTDProjectileVfxBodyRendererTest {
         )
 
         assertEquals(1.55f, mesh.xScale, 0.0001f)
-        assertEquals(0.58f, mesh.yScale, 0.0001f)
+        assertEquals(ASTDProjectileVfxShaderRenderer.PREVIEW_VERTICAL_SCALE, mesh.yScale, 0.0001f)
     }
 
     @Test

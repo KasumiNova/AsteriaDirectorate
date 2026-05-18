@@ -38,7 +38,7 @@ object ASTDProjectileVfxBodyRenderer {
     ): Mesh {
         val baseLayer = baseLayer(trail)
         val pulse = context.beamAlpha.coerceIn(0f, 1f)
-        val widthBase = ASTDProjectileVfxLayout.widthBase(baseLayer)
+        val widthBase = ASTDProjectileVfxLayout.widthBase(baseLayer) * ASTDProjectileVfxShaderRenderer.PREVIEW_BODY_WIDTH_SCALE
         val polygon = ASTDProjectileVfxLayout.bodyPolygon(widthBase, context.visibleLength, pulse)
         val gradientStops = ASTDProjectileVfxLayout.bodyGradientStops(baseLayer, pulse)
         val vertices = bodyStripVertices(polygon, gradientStops, context.visibleLength, alphaScale)
@@ -53,7 +53,7 @@ object ASTDProjectileVfxBodyRenderer {
             blendMode = "additive",
             combatLayer = baseLayer.combatLayer,
             xScale = 1.55f,
-            yScale = 0.58f,
+            yScale = ASTDProjectileVfxShaderRenderer.PREVIEW_VERTICAL_SCALE,
             shaderQuad = ASTDProjectileVfxShaderRenderer.bodyQuadForTests(trail, context, alphaScale),
         )
     }
@@ -279,6 +279,7 @@ class ASTDProjectileVfxBodyRenderLayer(
         projectileFacing = 0f,
         renderFacing = 0f,
         elapsed = 0f,
+        logicElapsed = 0f,
         flightProgress = 0f,
         dissolve = 0f,
         visibleLength = 0f,

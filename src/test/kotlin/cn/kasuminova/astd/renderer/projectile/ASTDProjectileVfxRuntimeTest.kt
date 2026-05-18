@@ -121,6 +121,21 @@ class ASTDProjectileVfxRuntimeTest {
     }
 
     @Test
+    fun `runtime context exposes quantized logic elapsed from sampling fps`() {
+        val preset = testPreset().copy(
+            samplingPolicy = ASTDProjectileVfxSamplingPolicy(60f, 32, 1f, 0, 160f),
+        )
+        val layer = RecordingRuntimeLayer()
+        val runtime = ASTDProjectileVfxRuntime.forTests(preset, listOf(layer))
+
+        runtime.advanceForTests(0f, 0f, 0f, 0.109f, projectileAlive = true)
+
+        val context = layer.contexts.last()
+        assertEquals(0.109f, context.elapsed, 0.0001f)
+        assertEquals(6f / 60f, context.logicElapsed, 0.0001f)
+    }
+
+    @Test
     fun `runtime telemetry records last render context for automation evidence`() {
         ASTDProjectileVfxRuntimeTelemetry.clear()
         val runtime = ASTDProjectileVfxRuntime.forTests(testPreset(), listOf(RecordingRuntimeLayer()))

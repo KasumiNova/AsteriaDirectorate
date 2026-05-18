@@ -30,7 +30,7 @@ object ASTDProjectileVfxHeadRenderer {
             baseLayer = baseLayer,
             layer = layer,
             headSizeScale = headSizeScale,
-            widthBase = ASTDProjectileVfxLayout.widthBase(baseLayer),
+            widthBase = ASTDProjectileVfxLayout.widthBase(baseLayer) * ASTDProjectileVfxShaderRenderer.PREVIEW_BODY_WIDTH_SCALE,
             pulse = context.beamAlpha.coerceIn(0f, 1f),
         )
     }
@@ -58,7 +58,7 @@ object ASTDProjectileVfxHeadRenderer {
                 blendMode = layer.blendMode,
                 combatLayer = baseLayer.combatLayer,
                 xScale = 1.2f,
-                yScale = 0.54f,
+                yScale = ASTDProjectileVfxShaderRenderer.PREVIEW_VERTICAL_SCALE,
                 shaderQuad = ASTDProjectileVfxShaderRenderer.headQuadForTests(trail, layer, context, headSizeScale, alphaScale),
             )
         }

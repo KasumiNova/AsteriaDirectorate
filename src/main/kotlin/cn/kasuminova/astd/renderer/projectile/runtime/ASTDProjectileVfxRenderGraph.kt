@@ -18,6 +18,7 @@ data class ASTDProjectileVfxRenderContext(
     val projectileFacing: Float,
     val renderFacing: Float,
     val elapsed: Float,
+    val logicElapsed: Float = elapsed,
     val flightProgress: Float,
     val dissolve: Float,
     val visibleLength: Float,

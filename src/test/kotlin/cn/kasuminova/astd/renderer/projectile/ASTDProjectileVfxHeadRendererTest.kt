@@ -4,6 +4,7 @@ import cn.kasuminova.astd.renderer.projectile.runtime.ASTDProjectileVfxHeadRende
 import cn.kasuminova.astd.renderer.projectile.runtime.ASTDProjectileVfxHeadRenderLayer
 import cn.kasuminova.astd.renderer.projectile.runtime.ASTDProjectileVfxBodyRenderManager
 import cn.kasuminova.astd.renderer.projectile.runtime.ASTDProjectileVfxLayout
+import cn.kasuminova.astd.renderer.projectile.runtime.ASTDProjectileVfxShaderRenderer
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import java.lang.reflect.InvocationHandler
 import java.lang.reflect.Proxy
@@ -69,7 +70,7 @@ class ASTDProjectileVfxHeadRendererTest {
         val baseLayer = trail.layers.single()
         val layer = preset.headLayers.single()
         val context = testContext().copy(beamAlpha = 0.8f)
-        val widthBase = ASTDProjectileVfxLayout.widthBase(baseLayer)
+        val widthBase = ASTDProjectileVfxLayout.widthBase(baseLayer) * ASTDProjectileVfxShaderRenderer.PREVIEW_BODY_WIDTH_SCALE
         val expected = ASTDProjectileVfxLayout.headFillLayout(baseLayer, layer, preset.lifecycle.projectileHeadSizeScale, widthBase, context.beamAlpha)
 
         val layout = ASTDProjectileVfxHeadRenderer.fillLayoutForTests(baseLayer, layer, context, headSizeScale = preset.lifecycle.projectileHeadSizeScale)
@@ -152,7 +153,7 @@ class ASTDProjectileVfxHeadRendererTest {
         ).single()
 
         assertEquals(1.2f, mesh.xScale, 0.0001f)
-        assertEquals(0.54f, mesh.yScale, 0.0001f)
+        assertEquals(ASTDProjectileVfxShaderRenderer.PREVIEW_VERTICAL_SCALE, mesh.yScale, 0.0001f)
     }
 
     @Test
@@ -192,11 +193,13 @@ class ASTDProjectileVfxHeadRendererTest {
                 preset.trailEntities.single().layers.single(),
                 preset.headLayers.single(),
                 preset.lifecycle.projectileHeadSizeScale,
-                ASTDProjectileVfxLayout.widthBase(preset.trailEntities.single().layers.single()),
+                ASTDProjectileVfxLayout.widthBase(preset.trailEntities.single().layers.single()) *
+                    ASTDProjectileVfxShaderRenderer.PREVIEW_BODY_WIDTH_SCALE,
                 testContext().beamAlpha,
             ).headVisible,
             preset.lifecycle.projectileHeadSizeScale,
-            ASTDProjectileVfxLayout.widthBase(preset.trailEntities.single().layers.single()),
+            ASTDProjectileVfxLayout.widthBase(preset.trailEntities.single().layers.single()) *
+                ASTDProjectileVfxShaderRenderer.PREVIEW_BODY_WIDTH_SCALE,
         )
         assertEquals(1, engine.addedLayeredRenderingPlugins.size)
         assertEquals(7, snapshot.mesh.polygon.size)

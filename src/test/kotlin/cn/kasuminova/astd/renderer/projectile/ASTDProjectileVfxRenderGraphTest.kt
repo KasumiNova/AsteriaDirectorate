@@ -115,6 +115,7 @@ internal fun testContext(elapsed: Float = 0f): ASTDProjectileVfxRenderContext = 
     projectileFacing = 3f,
     renderFacing = 5f,
     elapsed = elapsed,
+    logicElapsed = elapsed,
     flightProgress = 0.5f,
     dissolve = 0.1f,
     visibleLength = 120f,

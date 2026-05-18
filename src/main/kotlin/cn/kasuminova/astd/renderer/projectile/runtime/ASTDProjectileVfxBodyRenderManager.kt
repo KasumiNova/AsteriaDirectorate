@@ -14,6 +14,13 @@ import kotlin.math.sin
 internal object ASTDProjectileVfxBodyRenderManager {
     private const val ENGINE_KEY = "astd_projectile_vfx_body_renderer"
 
+    enum class BlendFactor(val glValue: Int) { SrcAlpha(GL11.GL_SRC_ALPHA), One(GL11.GL_ONE) }
+
+    data class BlendState(
+        val sourceFactor: BlendFactor,
+        val destinationFactor: BlendFactor,
+    )
+
     data class Snapshot(
         val location: Vector2f,
         val facing: Float,
@@ -38,7 +45,13 @@ internal object ASTDProjectileVfxBodyRenderManager {
 
     fun transformLocalPointForTests(local: Vector2f, location: Vector2f, facing: Float): Vector2f = transformLocalPoint(local, location, facing)
 
+    fun blendStateForTests(mesh: ASTDProjectileVfxBodyRenderer.Mesh): BlendState = blendState(mesh)
+
     private fun rendererForTests(engine: CombatEngineAPI): Renderer? = engine.customData[ENGINE_KEY] as? Renderer
+
+    private fun blendState(mesh: ASTDProjectileVfxBodyRenderer.Mesh): BlendState {
+        return BlendState(BlendFactor.SrcAlpha, BlendFactor.One)
+    }
 
     private fun transformLocalPoint(local: Vector2f, location: Vector2f, facing: Float): Vector2f {
         val radians = Math.toRadians(facing.toDouble())
@@ -120,14 +133,13 @@ internal object ASTDProjectileVfxBodyRenderManager {
                 GL11.glDisable(GL11.GL_TEXTURE_2D)
                 GL11.glDisable(GL11.GL_CULL_FACE)
                 GL11.glEnable(GL11.GL_BLEND)
-                GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE)
-
                 val shaderSnapshots = renderSnapshots.filter { it.mesh.shaderQuad != null }
                 val meshSnapshots = renderSnapshots.filter { it.mesh.shaderQuad == null }
                 if (shaderSnapshots.isNotEmpty()) {
                     if (!org.lwjgl.opengl.GLContext.getCapabilities().OpenGL20) {
                         error("ASTD projectile shader renderer requires OpenGL 2.0")
                     }
+                    applyBlend(shaderSnapshots.first().mesh)
                     val program = shaderProgram ?: ASTDProjectileVfxShaderRenderer.Program().also { shaderProgram = it }
                     for (snapshot in shaderSnapshots) {
                         program.render(snapshot, snapshot.mesh.shaderQuad!!)
@@ -136,6 +148,7 @@ internal object ASTDProjectileVfxBodyRenderManager {
                 }
 
                 if (meshSnapshots.isNotEmpty()) {
+                    applyBlend(meshSnapshots.first().mesh)
                     GL11.glBegin(GL11.GL_TRIANGLES)
                     try {
                         for (snapshot in meshSnapshots) {
@@ -152,6 +165,11 @@ internal object ASTDProjectileVfxBodyRenderManager {
             } finally {
                 GL11.glPopAttrib()
             }
+        }
+
+        private fun applyBlend(mesh: ASTDProjectileVfxBodyRenderer.Mesh) {
+            val state = blendState(mesh)
+            GL11.glBlendFunc(state.sourceFactor.glValue, state.destinationFactor.glValue)
         }
 
         private fun emitVertex(snapshot: Snapshot, vertex: ASTDProjectileVfxBodyRenderer.Vertex) {

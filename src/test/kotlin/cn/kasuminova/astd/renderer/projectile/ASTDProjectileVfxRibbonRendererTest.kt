@@ -104,6 +104,25 @@ class ASTDProjectileVfxRibbonRendererTest {
     }
 
     @Test
+    fun `ribbon wave samples quantized logic time instead of render frame elapsed`() {
+        val ribbon = ASTDProjectileVfxPresetCatalog.preset("aod7_shot")!!.ribbonDecorations.single().copy(
+            waveType = "noise",
+            amplitude = 1.35f,
+            waveSpeed = 1f,
+        )
+        val firstFrame = testContext(elapsed = 0.1001f).copy(logicElapsed = 0.1f)
+        val sameFrame = testContext(elapsed = 0.109f).copy(logicElapsed = 0.1f)
+        val nextFrame = testContext(elapsed = 0.117f).copy(logicElapsed = 7f / 60f)
+
+        val first = ASTDProjectileVfxRibbonRenderer.pointsForTests(ribbon, firstFrame, 10)
+        val same = ASTDProjectileVfxRibbonRenderer.pointsForTests(ribbon, sameFrame, 10)
+        val next = ASTDProjectileVfxRibbonRenderer.pointsForTests(ribbon, nextFrame, 10)
+
+        assertEquals(first[5].position.y, same[5].position.y, 0.0001f)
+        assertNotEquals(first[5].position.y, next[5].position.y)
+    }
+
+    @Test
     fun `ribbon renderer samples runtime color gradient at start middle and end`() {
         val ribbon = ASTDProjectileVfxPresetCatalog.preset("aod7_shot")!!.ribbonDecorations.single().copy(
             colorGradient = ASTDTrailDecorationColorGradientSpec(

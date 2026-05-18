@@ -2,6 +2,7 @@ package cn.kasuminova.astd.renderer.projectile
 
 import cn.kasuminova.astd.renderer.projectile.runtime.ASTDProjectileVfxBodyRenderManager
 import cn.kasuminova.astd.renderer.projectile.runtime.ASTDProjectileVfxBodyRenderer
+import cn.kasuminova.astd.renderer.projectile.runtime.ASTDProjectileVfxShaderRenderer
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEngineLayers
 import org.lwjgl.util.vector.Vector2f
@@ -107,6 +108,30 @@ class ASTDProjectileVfxBodyRenderManagerTest {
         assertEquals(18f, facing0.y, 0.0001f)
         assertEquals(12f, facing90.x, 0.0001f)
         assertEquals(25f, facing90.y, 0.0001f)
+    }
+
+    @Test
+    fun `shader snapshots use canvas lighter compatible source alpha additive blend`() {
+        assertEquals(
+            ASTDProjectileVfxBodyRenderManager.BlendState(
+                sourceFactor = ASTDProjectileVfxBodyRenderManager.BlendFactor.SrcAlpha,
+                destinationFactor = ASTDProjectileVfxBodyRenderManager.BlendFactor.One,
+            ),
+            ASTDProjectileVfxBodyRenderManager.blendStateForTests(
+                ASTDProjectileVfxBodyRenderer.Mesh(
+                    polygon = emptyList(),
+                    gradientStops = emptyList(),
+                    vertices = emptyList(),
+                    triangles = emptyList(),
+                    blendMode = "additive",
+                    combatLayer = CombatEngineLayers.ABOVE_PARTICLES,
+                    shaderQuad = ASTDProjectileVfxShaderRenderer.bodyQuadForTests(
+                        ASTDProjectileVfxPresetCatalog.preset("aod7_shot")!!.trailEntities.single(),
+                        testContext(),
+                    ),
+                ),
+            ),
+        )
     }
 
     private class EngineStub {

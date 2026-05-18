@@ -14,7 +14,7 @@ object ASTDProjectileVfxRibbonRenderer {
     data class RibbonWidths(val startWidth: Float, val endWidth: Float)
 
     fun widthsForTests(ribbon: ASTDTrailRibbonDecorationSpec, baseTrailStartWidth: Float): RibbonWidths {
-        val widthBase = max(0.5f, baseTrailStartWidth * ribbon.thickness)
+        val widthBase = ribbonWidthBase(ribbon, baseTrailStartWidth)
         return RibbonWidths(widthBase, max(0.5f, widthBase * 0.76f))
     }
 
@@ -28,12 +28,12 @@ object ASTDProjectileVfxRibbonRenderer {
             val t = index.toFloat() / sampleCount.coerceAtLeast(1).toFloat()
             val dist = context.visibleLength * t * ribbon.lengthScale + ribbon.startOffset
             val base = Vector2f(-dist.coerceAtLeast(0f), 0f)
-            val widthBase = max(0.65f, baseTrailStartWidth * ribbon.thickness)
+            val widthBase = ribbonWidthBase(ribbon, baseTrailStartWidth)
             val smokeEnvelope = smokeEnvelope(t)
             val wave = ASTDProjectileVfxMath.ribbonWave(
                 ribbon.waveType,
                 context.location.x + base.x,
-                context.elapsed,
+                context.logicElapsed,
                 ribbon.frequency,
                 ribbon.waveSpeed,
                 ribbon.amplitude,
@@ -166,6 +166,10 @@ object ASTDProjectileVfxRibbonRenderer {
             a.blue + (b.blue - a.blue) * ratio,
             a.alpha + (b.alpha - a.alpha) * ratio,
         )
+    }
+
+    private fun ribbonWidthBase(ribbon: ASTDTrailRibbonDecorationSpec, baseTrailStartWidth: Float): Float {
+        return max(0.65f, baseTrailStartWidth * ribbon.thickness)
     }
 
     private fun estimateHistoryPixelsPerEntry(history: List<Vector2f>): Float {

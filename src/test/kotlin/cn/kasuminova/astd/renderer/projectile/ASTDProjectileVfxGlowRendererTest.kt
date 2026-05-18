@@ -1,6 +1,7 @@
 package cn.kasuminova.astd.renderer.projectile
 
 import cn.kasuminova.astd.renderer.projectile.runtime.ASTDProjectileVfxGlowRenderer
+import cn.kasuminova.astd.renderer.projectile.runtime.ASTDProjectileVfxShaderRenderer
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -97,6 +98,6 @@ class ASTDProjectileVfxGlowRendererTest {
         ).single()
 
         assertEquals(1.2f, mesh.xScale, 0.0001f)
-        assertEquals(0.34f, mesh.yScale, 0.0001f)
+        assertEquals(ASTDProjectileVfxShaderRenderer.PREVIEW_VERTICAL_SCALE, mesh.yScale, 0.0001f)
     }
 }
