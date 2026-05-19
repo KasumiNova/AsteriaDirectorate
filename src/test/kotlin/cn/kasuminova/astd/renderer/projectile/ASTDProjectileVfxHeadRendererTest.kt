@@ -114,10 +114,30 @@ class ASTDProjectileVfxHeadRendererTest {
             headSizeScale = preset.lifecycle.projectileHeadSizeScale,
         ).single()
 
-        assertEquals(8, mesh.vertices.size)
-        assertEquals(6, mesh.triangles.size)
         assertEquals(layout.vertices.asList().maxOf { it.y }, mesh.vertices.maxOf { it.position.y }, 0.0001f)
         assertEquals(layout.vertices.asList().minOf { it.y }, mesh.vertices.minOf { it.position.y }, 0.0001f)
+    }
+
+    @Test
+    fun `head renderer samples TypeScript quadratic curves for softened corners`() {
+        val preset = ASTDProjectileVfxPresetCatalog.preset("aod7_shot")!!
+        val trail = preset.trailEntities.single()
+        val layer = preset.headLayers.single()
+        val context = testContext().copy(beamAlpha = 0.8f)
+
+        val mesh = ASTDProjectileVfxHeadRenderer.meshForTests(
+            trail,
+            listOf(layer),
+            context,
+            headSizeScale = preset.lifecycle.projectileHeadSizeScale,
+        ).single()
+
+        assertTrue(mesh.vertices.size > 8)
+        assertTrue(mesh.triangles.size > 6)
+        val upperCurve = mesh.vertices.drop(8).filter { it.position.y < 0f }
+        assertTrue(upperCurve.size >= 4)
+        assertTrue(upperCurve.map { it.position.x }.distinct().size >= 4)
+        assertTrue(upperCurve.any { it.position.x > mesh.polygon[2].x && it.position.x < mesh.polygon[3].x })
     }
 
     @Test

@@ -56,7 +56,7 @@ object ASTDProjectileVfxHeadRenderer {
                 polygon = ASTDProjectileVfxLayout.scalePoints(polygon, context.worldUnitsPerPixel),
                 gradientStops = emptyList(),
                 vertices = scaledVertices,
-                triangles = ASTDProjectileVfxBodyRenderer.triangulateStrip(scaledVertices),
+                triangles = headTriangles(scaledVertices),
                 blendMode = layer.blendMode,
                 combatLayer = baseLayer.combatLayer,
             )
@@ -104,12 +104,34 @@ object ASTDProjectileVfxHeadRenderer {
             layout.vertices.curveTop to layout.vertices.curveBottom,
             layout.vertices.tip to layout.vertices.tip,
         )
-        return pairs.flatMap { (top, bottom) ->
+        val base = pairs.flatMap { (top, bottom) ->
             listOf(
                 ASTDProjectileVfxBodyRenderer.Vertex(Vector2f(top), sampleHeadColor(top, layout, alphaScale)),
                 ASTDProjectileVfxBodyRenderer.Vertex(Vector2f(bottom), sampleHeadColor(bottom, layout, alphaScale)),
             )
         }
+        val curveSamples = ArrayList<ASTDProjectileVfxBodyRenderer.Vertex>(10)
+        for (index in 1..5) {
+            val t = index.toFloat() / 5f
+            val top = quadratic(layout.vertices.shoulderTop, layout.vertices.curveTop, layout.vertices.tip, t)
+            val bottom = quadratic(layout.vertices.shoulderBottom, layout.vertices.curveBottom, layout.vertices.tip, t)
+            curveSamples += ASTDProjectileVfxBodyRenderer.Vertex(top, sampleHeadColor(top, layout, alphaScale))
+            curveSamples += ASTDProjectileVfxBodyRenderer.Vertex(bottom, sampleHeadColor(bottom, layout, alphaScale))
+        }
+        return base + curveSamples
+    }
+
+    private fun headTriangles(vertices: List<ASTDProjectileVfxBodyRenderer.Vertex>): List<ASTDProjectileVfxBodyRenderer.Triangle> {
+        if (vertices.size <= 8) return ASTDProjectileVfxBodyRenderer.triangulateStrip(vertices)
+        val triangles = ArrayList<ASTDProjectileVfxBodyRenderer.Triangle>()
+        triangles += ASTDProjectileVfxBodyRenderer.Triangle(vertices[0], vertices[1], vertices[2])
+        triangles += ASTDProjectileVfxBodyRenderer.Triangle(vertices[2], vertices[1], vertices[3])
+        val curveStrip = ArrayList<ASTDProjectileVfxBodyRenderer.Vertex>(2 + vertices.size - 8)
+        curveStrip += vertices[2]
+        curveStrip += vertices[3]
+        curveStrip += vertices.drop(8)
+        triangles += ASTDProjectileVfxBodyRenderer.triangulateStrip(curveStrip)
+        return triangles
     }
 
     private fun headShadowColumns(
@@ -126,10 +148,13 @@ object ASTDProjectileVfxHeadRenderer {
         val pairs = listOf(
             layout.vertices.rearTop to layout.vertices.rearBottom,
             layout.vertices.shoulderTop to layout.vertices.shoulderBottom,
-            layout.vertices.curveTop to layout.vertices.curveBottom,
-            layout.vertices.tip to layout.vertices.tip,
         )
-        return pairs.map { (top, bottom) ->
+        val curvedPairs = (1..5).map { index ->
+            val t = index.toFloat() / 5f
+            quadratic(layout.vertices.shoulderTop, layout.vertices.curveTop, layout.vertices.tip, t) to
+                quadratic(layout.vertices.shoulderBottom, layout.vertices.curveBottom, layout.vertices.tip, t)
+        }
+        return (pairs + curvedPairs).map { (top, bottom) ->
             val x = (top.x + bottom.x) * 0.5f
             val centerY = (top.y + bottom.y) * 0.5f
             val half = abs(bottom.y - top.y) * 0.5f
@@ -144,6 +169,15 @@ object ASTDProjectileVfxHeadRenderer {
                 alpha = (sourceAlpha * 0.84f * layout.alpha * alphaScale * ASTDProjectileVfxSoftMesh.CANVAS_SHADOW_KERNEL_ALPHA).coerceIn(0f, 1f),
             )
         }
+    }
+
+    private fun quadratic(start: Vector2f, control: Vector2f, end: Vector2f, t: Float): Vector2f {
+        val ratio = t.coerceIn(0f, 1f)
+        val inverse = 1f - ratio
+        return Vector2f(
+            inverse * inverse * start.x + 2f * inverse * ratio * control.x + ratio * ratio * end.x,
+            inverse * inverse * start.y + 2f * inverse * ratio * control.y + ratio * ratio * end.y,
+        )
     }
 
     private fun sampleHeadColor(point: Vector2f, layout: ASTDProjectileVfxLayout.HeadFillLayout, alphaScale: Float): ASTDColor {

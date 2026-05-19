@@ -108,6 +108,20 @@ class ASTDProjectileVfxRibbonRendererTest {
     }
 
     @Test
+    fun `ribbon secondary edge stroke uses preview constant alpha override`() {
+        val preset = ASTDProjectileVfxPresetCatalog.preset("aod7_shot")!!
+        val ribbon = preset.ribbonDecorations.single()
+        val trailWidth = preset.trailEntities.single().layers.single().startWidth
+
+        val mesh = ASTDProjectileVfxRibbonRenderer.meshForTests(ribbon, testContext(), 6, trailWidth)
+        val secondaryStroke = mesh.vertices.drop(14).take(14)
+
+        secondaryStroke.forEach { vertex ->
+            assertEquals(ribbon.alphaScale * 0.18f, vertex.color.alpha, 0.0001f)
+        }
+    }
+
+    @Test
     fun `ribbon renderer adds preview shadow blur envelope`() {
         val preset = ASTDProjectileVfxPresetCatalog.preset("aod7_shot")!!
         val ribbon = preset.ribbonDecorations.single()
@@ -232,6 +246,16 @@ class ASTDProjectileVfxRibbonRendererTest {
         assertEquals(0f, ASTDProjectileVfxRibbonRenderer.sampleColor(ribbon, 0f).red, 0.0001f)
         assertEquals(1f, ASTDProjectileVfxRibbonRenderer.sampleColor(ribbon, 0.5f).green, 0.0001f)
         assertEquals(1f, ASTDProjectileVfxRibbonRenderer.sampleColor(ribbon, 1f).red, 0.0001f)
+    }
+
+    @Test
+    fun `ribbon by length sample count follows TypeScript rounding`() {
+        val ribbon = ASTDProjectileVfxPresetCatalog.preset("aod7_shot")!!.ribbonDecorations.single()
+        val context = testContext().copy(visibleLength = 100.1f)
+
+        val sampleCount = ASTDProjectileVfxRibbonRenderer.sampleCountForTests(ribbon, context, trailNodeCount = 13)
+
+        assertEquals(13, sampleCount)
     }
 
     private fun curvedHistory(): List<ASTDProjectileHistoryNode> = listOf(

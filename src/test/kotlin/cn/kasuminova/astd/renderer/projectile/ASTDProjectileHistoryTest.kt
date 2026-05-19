@@ -53,6 +53,29 @@ class ASTDProjectileHistoryTest {
     }
 
     @Test
+    fun `history can retain a larger runtime distance window without changing preset policy`() {
+        val history = ASTDProjectileHistory(minDistancePerNode = 1f, maxHistoryNodes = 10, distanceWindow = 12f)
+        history.advance(Vector2f(0f, 0f), facing = 0f, elapsed = 0f, retainDistance = 25f)
+        history.advance(Vector2f(10f, 0f), facing = 0f, elapsed = 0.1f, retainDistance = 25f)
+        history.advance(Vector2f(20f, 0f), facing = 0f, elapsed = 0.2f, retainDistance = 25f)
+
+        val nodes = history.nodes()
+        assertEquals(0f, nodes.first().location.x)
+        assertEquals(20f, nodes.last().location.x)
+    }
+
+    @Test
+    fun `history retention by distance also allows enough samples for the window`() {
+        val history = ASTDProjectileHistory(minDistancePerNode = 1f, maxHistoryNodes = 3, distanceWindow = 100f)
+        for (i in 0..5) {
+            history.advance(Vector2f(i.toFloat() * 10f, 0f), facing = 0f, elapsed = i * 0.1f, retainNodeCount = 6)
+        }
+
+        assertEquals(6, history.nodes().size)
+        assertEquals(0f, history.nodes().first().location.x)
+    }
+
+    @Test
     fun `history ignores repeated identical location`() {
         val history = ASTDProjectileHistory(minDistancePerNode = 1f, maxHistoryNodes = 10, distanceWindow = 100f)
         history.advance(Vector2f(3f, 4f), facing = 0f, elapsed = 0f)

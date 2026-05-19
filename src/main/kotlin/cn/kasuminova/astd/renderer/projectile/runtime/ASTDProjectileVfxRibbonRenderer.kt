@@ -9,6 +9,7 @@ import com.fs.starfarer.api.combat.CombatEngineLayers
 import org.lwjgl.util.vector.Vector2f
 import kotlin.math.cos
 import kotlin.math.max
+import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.math.sqrt
 
@@ -20,6 +21,12 @@ object ASTDProjectileVfxRibbonRenderer {
         val widthBase = ribbonWidthBase(ribbon, baseTrailStartWidth)
         return RibbonWidths(widthBase, max(0.5f, widthBase * 0.76f))
     }
+
+    fun sampleCountForTests(
+        ribbon: ASTDTrailRibbonDecorationSpec,
+        context: ASTDProjectileVfxRenderContext,
+        trailNodeCount: Int,
+    ): Int = sampleCount(ribbon, context, trailNodeCount)
 
     fun pointsForTests(
         ribbon: ASTDTrailRibbonDecorationSpec,
@@ -104,7 +111,7 @@ object ASTDProjectileVfxRibbonRenderer {
             points = points,
             startWidth = max(0.5f * scale, widths.startWidth * 0.38f * scale),
             endWidth = max(0.5f * scale, widths.startWidth * 0.38f * scale),
-            alphaMultiplier = 0.38f,
+            alphaOverride = ribbon.alphaScale * 0.18f,
             vertices = vertices,
             polygon = polygon,
             triangles = triangles,
@@ -149,7 +156,8 @@ object ASTDProjectileVfxRibbonRenderer {
         points: List<RibbonPoint>,
         startWidth: Float,
         endWidth: Float,
-        alphaMultiplier: Float,
+        alphaMultiplier: Float = 1f,
+        alphaOverride: Float? = null,
         vertices: MutableList<ASTDProjectileVfxBodyRenderer.Vertex>,
         polygon: MutableList<Vector2f>,
         triangles: MutableList<ASTDProjectileVfxBodyRenderer.Triangle>,
@@ -167,7 +175,8 @@ object ASTDProjectileVfxRibbonRenderer {
             val normalY = dx / length
             val left = Vector2f(point.position.x + normalX * halfWidth, point.position.y + normalY * halfWidth)
             val right = Vector2f(point.position.x - normalX * halfWidth, point.position.y - normalY * halfWidth)
-            val color = point.color.copy(alpha = (point.alpha * alphaMultiplier).coerceIn(0f, 1f))
+            val alpha = alphaOverride ?: (point.alpha * alphaMultiplier)
+            val color = point.color.copy(alpha = alpha.coerceIn(0f, 1f))
             vertices += ASTDProjectileVfxBodyRenderer.Vertex(left, color)
             vertices += ASTDProjectileVfxBodyRenderer.Vertex(right, color)
             polygon += left
@@ -225,6 +234,14 @@ object ASTDProjectileVfxRibbonRenderer {
 
     private fun ribbonWidthBase(ribbon: ASTDTrailRibbonDecorationSpec, baseTrailStartWidth: Float): Float {
         return max(0.65f, baseTrailStartWidth * ribbon.thickness)
+    }
+
+    private fun sampleCount(ribbon: ASTDTrailRibbonDecorationSpec, context: ASTDProjectileVfxRenderContext, trailNodeCount: Int): Int {
+        return if (ribbon.renderMode == "byNodeCount") {
+            max(8, (trailNodeCount * ribbon.nodeCountScale).roundToInt())
+        } else {
+            max(8, (context.visibleLength * ribbon.lengthScale / 8f).roundToInt())
+        }
     }
 
     private fun estimateHistoryPixelsPerEntry(history: List<ASTDProjectileHistoryNode>): Float {
@@ -333,11 +350,7 @@ class ASTDProjectileVfxRibbonRenderLayer(
         context: ASTDProjectileVfxRenderContext,
         baseTrailStartWidth: Float,
     ): ASTDProjectileVfxBodyRenderer.Mesh {
-        val sampleCount = if (ribbon.renderMode == "byNodeCount") {
-            max(8, (context.historyNodes.size * ribbon.nodeCountScale).toInt())
-        } else {
-            max(8, (context.visibleLength * ribbon.lengthScale / 8f).toInt())
-        }
+        val sampleCount = ASTDProjectileVfxRibbonRenderer.sampleCountForTests(ribbon, context, trail.nodes.size)
         return ASTDProjectileVfxRibbonRenderer.meshForTests(ribbon, context, sampleCount, baseTrailStartWidth)
     }
 

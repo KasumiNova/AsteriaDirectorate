@@ -41,14 +41,18 @@ object ASTDProjectileVfxBodyRenderer {
         val polygon = ASTDProjectileVfxLayout.bodyPolygon(widthBase, context.visibleLength, pulse)
         val gradientStops = ASTDProjectileVfxLayout.bodyGradientStops(baseLayer, pulse)
         val vertices = bodyStripVertices(polygon, gradientStops, context.visibleLength, alphaScale)
+        val noiseVertices = bodyNoiseVertices(polygon, gradientStops, context, alphaScale)
         val scaledVertices = vertices.map { vertex ->
+            vertex.copy(position = ASTDProjectileVfxLayout.scalePoint(vertex.position, context.worldUnitsPerPixel))
+        }
+        val scaledNoiseVertices = noiseVertices.map { vertex ->
             vertex.copy(position = ASTDProjectileVfxLayout.scalePoint(vertex.position, context.worldUnitsPerPixel))
         }
         return Mesh(
             polygon = ASTDProjectileVfxLayout.scalePoints(polygon, context.worldUnitsPerPixel),
             gradientStops = gradientStops,
-            vertices = scaledVertices,
-            triangles = triangulateStrip(scaledVertices),
+            vertices = scaledVertices + scaledNoiseVertices,
+            triangles = triangulateStrip(scaledVertices) + triangulateNoiseColumns(scaledNoiseVertices),
             blendMode = "additive",
             combatLayer = baseLayer.combatLayer,
         )
@@ -108,6 +112,74 @@ object ASTDProjectileVfxBodyRenderer {
             val bottomColor = sampleGradient(gradientStops, gradientOffset(bottom, visibleLength), alphaScale)
             listOf(Vertex(Vector2f(top), topColor), Vertex(Vector2f(bottom), bottomColor))
         }
+    }
+
+    private fun bodyNoiseVertices(
+        polygon: List<Vector2f>,
+        gradientStops: List<ASTDProjectileVfxLayout.BodyGradientStop>,
+        context: ASTDProjectileVfxRenderContext,
+        alphaScale: Float,
+    ): List<Vertex> {
+        if (polygon.size < 9 || context.beamAlpha <= 0.001f) return emptyList()
+        val length = context.visibleLength.coerceAtLeast(6f)
+        val startX = max(polygon[1].x, -length * 0.58f)
+        val endX = -max(2f, length * 0.015f)
+        val columns = 9
+        val vertices = ArrayList<Vertex>(columns * 3)
+        for (index in 0 until columns) {
+            val t = index.toFloat() / (columns - 1).toFloat()
+            val x = ASTDProjectileVfxMath.lerp(startX, endX, t)
+            val half = halfHeightAt(polygon, x) * 0.66f
+            val baseColor = sampleGradient(gradientStops, gradientOffset(Vector2f(x, 0f), context.visibleLength), alphaScale)
+            vertices += Vertex(Vector2f(x, -half), noisyBodyColor(baseColor, x, -half, half, context, 0.32f))
+            vertices += Vertex(Vector2f(x, 0f), noisyBodyColor(baseColor, x, 0f, half, context, 0.42f))
+            vertices += Vertex(Vector2f(x, half), noisyBodyColor(baseColor, x, half, half, context, 0.32f))
+        }
+        return vertices
+    }
+
+    private fun triangulateNoiseColumns(vertices: List<Vertex>): List<Triangle> {
+        if (vertices.size < 6) return emptyList()
+        val triangles = ArrayList<Triangle>((vertices.size / 3 - 1) * 4)
+        var index = 0
+        while (index + 5 < vertices.size) {
+            val topA = vertices[index]
+            val midA = vertices[index + 1]
+            val bottomA = vertices[index + 2]
+            val topB = vertices[index + 3]
+            val midB = vertices[index + 4]
+            val bottomB = vertices[index + 5]
+            triangles += Triangle(topA, midA, topB)
+            triangles += Triangle(topB, midA, midB)
+            triangles += Triangle(midA, bottomA, midB)
+            triangles += Triangle(midB, bottomA, bottomB)
+            index += 3
+        }
+        return triangles
+    }
+
+    private fun noisyBodyColor(
+        base: ASTDColor,
+        x: Float,
+        y: Float,
+        halfHeight: Float,
+        context: ASTDProjectileVfxRenderContext,
+        alphaScale: Float,
+    ): ASTDColor {
+        val length = context.visibleLength.coerceAtLeast(6f)
+        val u = ((x + length) / length).coerceIn(0f, 1f)
+        val v = ((y / max(1f, halfHeight)) + 1f) * 0.5f
+        val time = context.logicElapsed
+        val grain = ASTDProjectileVfxMath.layeredNoise(u * 18f - time * 3.2f, v * 5f)
+        val vertical = ASTDProjectileVfxMath.layeredNoise(u * 5f - time * 0.8f, v * 22f)
+        val beamNoise = ASTDProjectileVfxMath.lerp(0.82f, 1.28f, grain) + vertical * 0.16f
+        val alpha = base.alpha * alphaScale * context.beamAlpha * ASTDProjectileVfxMath.smoothstep(0.02f, 0.22f, u)
+        return ASTDColor(
+            red = (base.red * beamNoise + (beamNoise - 1f) * 0.045f).coerceIn(0f, 1f),
+            green = (base.green * beamNoise + (beamNoise - 1f) * 0.055f).coerceIn(0f, 1f),
+            blue = (base.blue * (0.92f + (beamNoise - 1f) * 0.34f)).coerceIn(0f, 1f),
+            alpha = alpha.coerceIn(0f, 1f),
+        )
     }
 
     private fun bodyShadowColumns(

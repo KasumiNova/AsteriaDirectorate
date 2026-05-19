@@ -224,6 +224,72 @@ class ASTDProjectileVfxRuntimeTest {
     }
 
     @Test
+    fun `runtime locks screen to world scale for a projectile lifetime`() {
+        val preset = testPreset().copy(
+            trailEntities = listOf(
+                ASTDTrailEntitySpec(
+                    layerId = "test_runtime_stable_scale_trail",
+                    nodes = emptyList(),
+                    layerSpec = ASTDTrailLayerSpec(
+                        width = 40f,
+                        color = ASTDColor(1f, 1f, 1f, 1f),
+                        length = 900f,
+                        startWidth = 40f,
+                    ),
+                ),
+            ),
+            lifecycle = ASTDProjectileVfxLifecycleSpec(
+                durationSeconds = 1.25f,
+                dissolveStartRatio = 0.6f,
+                layoutReferenceWidth = 1846f,
+            ),
+        )
+        val layer = RecordingRuntimeLayer()
+        val runtime = ASTDProjectileVfxRuntime.forTests(preset, listOf(layer))
+
+        runtime.advanceForTests(0f, 0f, 0f, 0.1f, true, viewportVisibleWidth = 1067.0833f, viewportPixelWidth = 2560f)
+        val first = layer.contexts.last()
+        runtime.advanceForTests(120f, 0f, 0f, 0.1f, true, viewportVisibleWidth = 960f, viewportPixelWidth = 2560f)
+        val second = layer.contexts.last()
+
+        assertEquals(first.worldUnitsPerPixel, second.worldUnitsPerPixel, 0.0001f)
+        assertEquals(120f / first.worldUnitsPerPixel, second.visibleLength, 0.0001f)
+    }
+
+    @Test
+    fun `runtime retains projectile history for the full screen-space visible tail`() {
+        val preset = ASTDProjectileVfxPresetCatalog.preset("aod7_shot")!!
+        val layer = RecordingRuntimeLayer()
+        val runtime = ASTDProjectileVfxRuntime.forTests(preset, listOf(layer))
+        val amount = 1f / 60f
+        var x = 0f
+
+        repeat(45) {
+            runtime.advanceForTests(
+                locationX = x,
+                locationY = 0f,
+                facing = 0f,
+                amount = amount,
+                projectileAlive = true,
+                viewportVisibleWidth = 1067.0833f,
+                viewportPixelWidth = 2560f,
+            )
+            x += 20f
+        }
+
+        val context = layer.contexts.last()
+        val history = context.historyNodes
+        val retainedWorldDistance = history.last().location.x - history.first().location.x
+        val requiredWorldDistance = context.visibleLength * context.worldUnitsPerPixel
+
+        assertTrue(context.visibleLength > preset.samplingPolicy.distanceWindow)
+        assertTrue(
+            retainedWorldDistance >= requiredWorldDistance,
+            "history retained $retainedWorldDistance world units, required $requiredWorldDistance for visibleLength ${context.visibleLength}",
+        )
+    }
+
+    @Test
     fun `runtime context exposes quantized logic elapsed from sampling fps`() {
         val preset = testPreset().copy(
             samplingPolicy = ASTDProjectileVfxSamplingPolicy(60f, 32, 1f, 0, 160f),

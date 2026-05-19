@@ -13,6 +13,7 @@ import org.lwjgl.opengl.Display
 import org.boxutil.base.api.RenderDataAPI
 import org.lwjgl.util.vector.Vector2f
 import kotlin.math.atan2
+import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.sqrt
@@ -36,6 +37,7 @@ class ASTDProjectileVfxRuntime(
     private var traveledDistance = 0f
     private var lastLocation: Vector2f? = null
     private var lastContext: ASTDProjectileVfxRenderContext? = null
+    private var lockedWorldUnitsPerPixel: Float? = null
     private var currentFadeSeconds: Float = preset.fadePolicy.fadeOutSeconds
 
     var state: ASTDProjectileVfxRuntimeState = ASTDProjectileVfxRuntimeState.Active
@@ -118,14 +120,25 @@ class ASTDProjectileVfxRuntime(
         if (state == ASTDProjectileVfxRuntimeState.Active && projectileAlive && location != null) {
             val renderFacing = computeRenderFacing(location, facing)
             accumulateTravelDistance(location)
-            history.advance(location, renderFacing, elapsed)
             val viewportVisibleWidth = viewportVisibleWidth(engine, viewportVisibleWidthOverride)
+            val worldUnitsPerPixel = stableWorldUnitsPerPixel(
+                worldUnitsPerPixel(engine, viewportVisibleWidth, viewportPixelWidthOverride),
+                viewportVisibleWidth,
+            )
+            val flight = buildFlightLayout(viewportVisibleWidth, worldUnitsPerPixel)
+            history.advance(
+                location,
+                renderFacing,
+                elapsed,
+                retainDistance = historyRetainDistance(flight.visibleLength, worldUnitsPerPixel),
+                retainNodeCount = historyRetainNodeCount(flight.visibleLength, worldUnitsPerPixel),
+            )
             val context = buildContext(
                 location,
                 facing,
                 renderFacing,
-                viewportVisibleWidth,
-                worldUnitsPerPixel(engine, viewportVisibleWidth, viewportPixelWidthOverride),
+                flight,
+                worldUnitsPerPixel,
             )
             ASTDProjectileVfxRuntimeTelemetry.recordContext(context)
             ASTDProjectileVfxDebug.logLayoutOnce(preset, context)
@@ -151,6 +164,8 @@ class ASTDProjectileVfxRuntime(
     }
 
     companion object {
+        private const val MAX_RUNTIME_HISTORY_NODES = 512
+
         fun forTests(preset: ASTDProjectileVfxPreset, renderLayers: List<ASTDProjectileVfxRenderLayer>? = null): ASTDProjectileVfxRuntime {
             return ASTDProjectileVfxRuntime(
                 projectile = null,
@@ -173,30 +188,12 @@ class ASTDProjectileVfxRuntime(
         location: Vector2f,
         projectileFacing: Float,
         renderFacing: Float,
-        viewportVisibleWidth: Float?,
+        flight: ASTDProjectileVfxLayout.FlightLayout,
         worldUnitsPerPixel: Float,
     ): ASTDProjectileVfxRenderContext {
         val duration = max(preset.lifecycle.durationSeconds, 0.0001f)
         val progress = (elapsed / duration).coerceIn(0f, 1f)
-        val baseLength = preset.trailEntities.firstOrNull()?.layers?.firstOrNull()?.length ?: preset.samplingPolicy.distanceWindow
-        val baseLayer = preset.trailEntities.firstOrNull()?.layers?.firstOrNull()
         val scale = worldUnitsPerPixel.coerceAtLeast(0.0001f)
-        val flight = if (baseLayer != null) {
-            ASTDProjectileVfxLayout.distanceFlightLayout(
-                maxVisibleLength = maxVisibleLength(baseLayer, viewportVisibleWidth, scale),
-                traveledDistance = traveledDistance / scale,
-                elapsed = elapsed,
-                durationSeconds = duration,
-                dissolveStartRatio = preset.lifecycle.dissolveStartRatio,
-            )
-        } else {
-            val dissolve = ASTDProjectileVfxMath.dissolve(elapsed, duration, preset.lifecycle.dissolveStartRatio)
-            ASTDProjectileVfxLayout.FlightLayout(
-                dissolve = dissolve,
-                beamAlpha = ASTDProjectileVfxMath.beamAlpha(dissolve),
-                visibleLength = ASTDProjectileVfxMath.visibleLength(baseLength, dissolve),
-            )
-        }
         return ASTDProjectileVfxRenderContext(
             location = Vector2f(location),
             velocityFacing = renderFacing,
@@ -213,6 +210,32 @@ class ASTDProjectileVfxRuntime(
             projectileSpecId = projectile?.projectileSpecId ?: preset.id,
             worldUnitsPerPixel = scale,
         )
+    }
+
+    private fun buildFlightLayout(
+        viewportVisibleWidth: Float?,
+        worldUnitsPerPixel: Float,
+    ): ASTDProjectileVfxLayout.FlightLayout {
+        val duration = max(preset.lifecycle.durationSeconds, 0.0001f)
+        val baseLength = preset.trailEntities.firstOrNull()?.layers?.firstOrNull()?.length ?: preset.samplingPolicy.distanceWindow
+        val baseLayer = preset.trailEntities.firstOrNull()?.layers?.firstOrNull()
+        val scale = worldUnitsPerPixel.coerceAtLeast(0.0001f)
+        return if (baseLayer != null) {
+            ASTDProjectileVfxLayout.distanceFlightLayout(
+                maxVisibleLength = maxVisibleLength(baseLayer, viewportVisibleWidth, scale),
+                traveledDistance = traveledDistance / scale,
+                elapsed = elapsed,
+                durationSeconds = duration,
+                dissolveStartRatio = preset.lifecycle.dissolveStartRatio,
+            )
+        } else {
+            val dissolve = ASTDProjectileVfxMath.dissolve(elapsed, duration, preset.lifecycle.dissolveStartRatio)
+            ASTDProjectileVfxLayout.FlightLayout(
+                dissolve = dissolve,
+                beamAlpha = ASTDProjectileVfxMath.beamAlpha(dissolve),
+                visibleLength = ASTDProjectileVfxMath.visibleLength(baseLength, dissolve),
+            )
+        }
     }
 
     private fun projectileGoneReason(projectile: DamagingProjectileAPI?): ASTDProjectileVfxFadeReason {
@@ -242,6 +265,20 @@ class ASTDProjectileVfxRuntime(
         if (distance > 0.0001f) traveledDistance += distance
     }
 
+    private fun historyRetainDistance(visibleLength: Float, worldUnitsPerPixel: Float): Float {
+        val scale = worldUnitsPerPixel.coerceAtLeast(0.0001f)
+        val visibleWorldDistance = visibleLength.coerceAtLeast(0f) * scale
+        val samplingMargin = preset.samplingPolicy.minDistancePerNode.coerceAtLeast(0.5f) * 4f
+        return max(preset.samplingPolicy.distanceWindow, visibleWorldDistance + samplingMargin)
+    }
+
+    private fun historyRetainNodeCount(visibleLength: Float, worldUnitsPerPixel: Float): Int {
+        val retainDistance = historyRetainDistance(visibleLength, worldUnitsPerPixel)
+        val minDistance = preset.samplingPolicy.minDistancePerNode.coerceAtLeast(0.5f)
+        val byDistance = ceil(retainDistance / minDistance).toInt() + 4
+        return max(preset.samplingPolicy.maxHistoryNodes, byDistance).coerceAtMost(MAX_RUNTIME_HISTORY_NODES)
+    }
+
     private fun maxVisibleLength(baseLayer: ASTDTrailLayerSpec, viewportVisibleWidth: Float?, worldUnitsPerPixel: Float): Float {
         val viewportCap = viewportVisibleWidth?.takeIf { it > 0f }
             ?.let { ASTDProjectileVfxLayout.viewportTailCap(baseLayer.startWidth, preset.lifecycle.layoutReferenceWidth) }
@@ -260,6 +297,15 @@ class ASTDProjectileVfxRuntime(
             ?: override?.takeIf { it > 0f }
             ?: displayPixelWidth()
         return if (pixelWidth > 0f) visibleWidth / pixelWidth else 1f
+    }
+
+    private fun stableWorldUnitsPerPixel(measured: Float, viewportVisibleWidth: Float?): Float {
+        val current = measured.coerceAtLeast(0.0001f)
+        lockedWorldUnitsPerPixel?.let { return it }
+        if (viewportVisibleWidth != null && viewportVisibleWidth > 0f) {
+            lockedWorldUnitsPerPixel = current
+        }
+        return current
     }
 
     private fun displayPixelWidth(): Float {

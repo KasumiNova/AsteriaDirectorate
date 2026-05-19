@@ -104,10 +104,28 @@ class ASTDProjectileVfxBodyRendererTest {
 
         val mesh = ASTDProjectileVfxBodyRenderer.meshForTests(trail, context)
 
-        assertEquals(10, mesh.vertices.size)
-        assertEquals(8, mesh.triangles.size)
         assertEquals(baseOnly.maxOf { it.y }, mesh.vertices.maxOf { it.position.y }, 0.0001f)
         assertEquals(baseOnly.minOf { it.y }, mesh.vertices.minOf { it.position.y }, 0.0001f)
+    }
+
+    @Test
+    fun `body renderer applies stable shader-like noise across the fill mesh`() {
+        val preset = ASTDProjectileVfxPresetCatalog.preset("aod7_shot")!!
+        val trail = preset.trailEntities.single()
+        val context = testContext().copy(visibleLength = 420f, beamAlpha = 0.8f, logicElapsed = 0.4f)
+        val sameLogicFrame = context.copy(elapsed = 0.409f)
+        val nextLogicFrame = context.copy(elapsed = 0.42f, logicElapsed = 0.4166667f)
+
+        val mesh = ASTDProjectileVfxBodyRenderer.meshForTests(trail, context)
+        val same = ASTDProjectileVfxBodyRenderer.meshForTests(trail, sameLogicFrame)
+        val next = ASTDProjectileVfxBodyRenderer.meshForTests(trail, nextLogicFrame)
+        val noiseVertices = mesh.vertices.drop(10).filter { it.color.alpha > 0.02f }
+        val distinctBlue = noiseVertices.map { (it.color.blue * 10000f).toInt() }.distinct()
+
+        assertTrue(mesh.vertices.size > 10)
+        assertTrue(distinctBlue.size >= 4)
+        assertEquals(mesh.vertices.drop(10).map { it.color }, same.vertices.drop(10).map { it.color })
+        assertTrue(mesh.vertices.drop(10).zip(next.vertices.drop(10)).any { (a, b) -> kotlin.math.abs(a.color.blue - b.color.blue) > 0.001f })
     }
 
     @Test
