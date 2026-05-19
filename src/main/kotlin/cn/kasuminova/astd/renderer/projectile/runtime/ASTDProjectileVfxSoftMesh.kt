@@ -45,8 +45,8 @@ internal object ASTDProjectileVfxSoftMesh {
 
     private val BLOOM_PASSES = listOf(
         BloomPass(radiusScale = 1.0f, alphaScale = 0.72f),
-        BloomPass(radiusScale = 1.85f, alphaScale = 0.24f),
-        BloomPass(radiusScale = 3.15f, alphaScale = 0.072f),
+        BloomPass(radiusScale = 1.55f, alphaScale = 0.48f),
+        BloomPass(radiusScale = 2.15f, alphaScale = 0.34f),
     )
 
     private fun appendSymmetricBands(

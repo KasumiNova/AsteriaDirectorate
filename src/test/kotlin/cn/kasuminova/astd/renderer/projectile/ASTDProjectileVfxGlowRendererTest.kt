@@ -160,7 +160,7 @@ class ASTDProjectileVfxGlowRendererTest {
 
         val outerBand = mesh.vertices.takeLast(10)
         assertTrue(outerBand.any { it.color.blue > 0.2f && it.color.green > 0.16f })
-        assertTrue(outerBand.all { it.color.alpha <= 0.0022f })
+        assertTrue(outerBand.all { it.color.alpha <= 0.009f })
     }
 
     @Test
@@ -176,8 +176,30 @@ class ASTDProjectileVfxGlowRendererTest {
 
         assertTrue(mesh.vertices.isNotEmpty())
         assertTrue(mesh.triangles.isNotEmpty())
-        assertTrue(mesh.vertices.all { it.color.alpha <= 0.012f })
-        assertTrue(mesh.vertices.any { it.color.alpha <= 0.0022f })
+        assertTrue(mesh.vertices.all { it.color.alpha <= 0.03f })
+        assertTrue(mesh.vertices.any { it.color.alpha <= 0.004f })
+    }
+
+    @Test
+    fun `glow shadow mesh uses multi pass bloom falloff for soft visible halo`() {
+        val preset = ASTDProjectileVfxPresetCatalog.preset("aod7_shot")!!
+        val glow = preset.glowLayers.first()
+        val context = testContext().copy(visibleLength = 180f, beamAlpha = 0.8f)
+        val widthBase = ASTDProjectileVfxLayout.widthBase(preset.trailEntities.single().layers.single())
+        val lineWidth = ASTDProjectileVfxLayout.glowLineWidth(widthBase, glow)
+
+        val mesh = ASTDProjectileVfxGlowRenderer.shadowMeshesForTests(
+            preset.trailEntities.single(),
+            listOf(glow),
+            context,
+        ).single()
+        val baseHalf = lineWidth * 0.5f + kotlin.math.abs(glow.yOffset)
+        val nearHalo = mesh.vertices.filter { kotlin.math.abs(it.position.y) <= baseHalf + glow.blur * 0.75f }
+        val farHalo = mesh.vertices.filter { kotlin.math.abs(it.position.y) >= baseHalf + glow.blur * 0.75f }
+
+        assertTrue(farHalo.isNotEmpty(), "glow bloom should extend beyond the Canvas shadow kernel support")
+        assertTrue(farHalo.any { it.color.alpha in 0.001f..0.009f }, "outer halo should remain visible instead of being quantized away")
+        assertTrue(nearHalo.maxOf { it.color.alpha } > farHalo.maxOf { it.color.alpha }, "falloff should soften outward")
     }
 
     @Test
@@ -193,7 +215,7 @@ class ASTDProjectileVfxGlowRendererTest {
             listOf(glow),
             context,
         ).single()
-        val allowedHalf = lineWidth * 0.5f + glow.blur * 0.75f + kotlin.math.abs(glow.yOffset)
+        val allowedHalf = lineWidth * 0.5f + glow.blur * 1.6f + kotlin.math.abs(glow.yOffset)
 
         assertTrue(mesh.vertices.maxOf { kotlin.math.abs(it.position.y) } <= allowedHalf)
     }

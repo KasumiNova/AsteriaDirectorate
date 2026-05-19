@@ -37,7 +37,6 @@ class ASTDProjectileVfxRuntime(
     private var traveledDistance = 0f
     private var lastLocation: Vector2f? = null
     private var lastContext: ASTDProjectileVfxRenderContext? = null
-    private var lockedWorldUnitsPerPixel: Float? = null
     private var currentFadeSeconds: Float = preset.fadePolicy.fadeOutSeconds
 
     var state: ASTDProjectileVfxRuntimeState = ASTDProjectileVfxRuntimeState.Active
@@ -121,10 +120,7 @@ class ASTDProjectileVfxRuntime(
             val renderFacing = computeRenderFacing(location, facing)
             accumulateTravelDistance(location)
             val viewportVisibleWidth = viewportVisibleWidth(engine, viewportVisibleWidthOverride)
-            val worldUnitsPerPixel = stableWorldUnitsPerPixel(
-                worldUnitsPerPixel(engine, viewportVisibleWidth, viewportPixelWidthOverride),
-                viewportVisibleWidth,
-            )
+            val worldUnitsPerPixel = worldUnitsPerPixel(engine, viewportVisibleWidth, viewportPixelWidthOverride)
             val flight = buildFlightLayout(viewportVisibleWidth, worldUnitsPerPixel)
             history.advance(
                 location,
@@ -297,15 +293,6 @@ class ASTDProjectileVfxRuntime(
             ?: override?.takeIf { it > 0f }
             ?: displayPixelWidth()
         return if (pixelWidth > 0f) visibleWidth / pixelWidth else 1f
-    }
-
-    private fun stableWorldUnitsPerPixel(measured: Float, viewportVisibleWidth: Float?): Float {
-        val current = measured.coerceAtLeast(0.0001f)
-        lockedWorldUnitsPerPixel?.let { return it }
-        if (viewportVisibleWidth != null && viewportVisibleWidth > 0f) {
-            lockedWorldUnitsPerPixel = current
-        }
-        return current
     }
 
     private fun displayPixelWidth(): Float {

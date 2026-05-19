@@ -288,10 +288,10 @@ object ASTDProjectileVfxGlowRenderer {
                 innerHalf = coreHalf * scale,
                 outerHalf = outerHalf * scale,
                 color = shadowColor,
-                alpha = (alpha * 0.18f * ASTDProjectileVfxSoftMesh.CANVAS_SHADOW_KERNEL_ALPHA).coerceAtLeast(0f),
+                alpha = (alpha * 0.42f * ASTDProjectileVfxSoftMesh.CANVAS_SHADOW_KERNEL_ALPHA).coerceAtLeast(0f),
             )
         }
-        val soft = ASTDProjectileVfxSoftMesh.symmetricOuterFalloff(softColumns, 8)
+        val soft = ASTDProjectileVfxSoftMesh.symmetricBloomFalloff(softColumns, 8)
         return GlowMeshParts(vertices, soft)
     }
 

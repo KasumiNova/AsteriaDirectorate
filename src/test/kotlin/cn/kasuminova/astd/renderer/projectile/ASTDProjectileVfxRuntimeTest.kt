@@ -224,7 +224,7 @@ class ASTDProjectileVfxRuntimeTest {
     }
 
     @Test
-    fun `runtime locks screen to world scale for a projectile lifetime`() {
+    fun `runtime updates screen to world scale from active viewport instead of launch zoom`() {
         val preset = testPreset().copy(
             trailEntities = listOf(
                 ASTDTrailEntitySpec(
@@ -247,13 +247,17 @@ class ASTDProjectileVfxRuntimeTest {
         val layer = RecordingRuntimeLayer()
         val runtime = ASTDProjectileVfxRuntime.forTests(preset, listOf(layer))
 
-        runtime.advanceForTests(0f, 0f, 0f, 0.1f, true, viewportVisibleWidth = 1067.0833f, viewportPixelWidth = 2560f)
-        val first = layer.contexts.last()
-        runtime.advanceForTests(120f, 0f, 0f, 0.1f, true, viewportVisibleWidth = 960f, viewportPixelWidth = 2560f)
-        val second = layer.contexts.last()
+        runtime.advanceForTests(0f, 0f, 0f, 0.1f, true, viewportVisibleWidth = 1846f, viewportPixelWidth = 2560f)
+        runtime.advanceForTests(120f, 0f, 0f, 0.1f, true, viewportVisibleWidth = 1067.0833f, viewportPixelWidth = 2560f)
+        val zoomedIn = layer.contexts.last()
 
-        assertEquals(first.worldUnitsPerPixel, second.worldUnitsPerPixel, 0.0001f)
-        assertEquals(120f / first.worldUnitsPerPixel, second.visibleLength, 0.0001f)
+        runtime.advanceForTests(240f, 0f, 0f, 0.1f, true, viewportVisibleWidth = 4200f, viewportPixelWidth = 2560f)
+        val zoomedOut = layer.contexts.last()
+
+        assertEquals(1067.0833f / 1846f, zoomedIn.worldUnitsPerPixel, 0.0001f)
+        assertEquals(4200f / 1846f, zoomedOut.worldUnitsPerPixel, 0.0001f)
+        assertEquals(120f / zoomedIn.worldUnitsPerPixel, zoomedIn.visibleLength, 0.0001f)
+        assertEquals(240f / zoomedOut.worldUnitsPerPixel, zoomedOut.visibleLength, 0.0001f)
     }
 
     @Test
