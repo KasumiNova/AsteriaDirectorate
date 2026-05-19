@@ -105,6 +105,7 @@ export interface GameProjectileVfxLifecycleConfig {
   historySampleMultiplier: number;
   historySmoothingPasses: number;
   ribbonWaveSoftening: number;
+  layoutReferenceWidth: number;
 }
 
 export interface GameProjectileSamplePolicy {

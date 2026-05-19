@@ -5,7 +5,6 @@ import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEngineLayers
 import com.fs.starfarer.api.combat.ViewportAPI
 import org.lwjgl.opengl.GL11
-import org.lwjgl.opengl.GL20
 import org.lwjgl.util.vector.Vector2f
 import java.util.EnumSet
 import kotlin.math.cos
@@ -14,7 +13,11 @@ import kotlin.math.sin
 internal object ASTDProjectileVfxBodyRenderManager {
     private const val ENGINE_KEY = "astd_projectile_vfx_body_renderer"
 
-    enum class BlendFactor(val glValue: Int) { SrcAlpha(GL11.GL_SRC_ALPHA), One(GL11.GL_ONE) }
+    enum class BlendFactor(val glValue: Int) {
+        SrcAlpha(GL11.GL_SRC_ALPHA),
+        One(GL11.GL_ONE),
+        OneMinusSrcAlpha(GL11.GL_ONE_MINUS_SRC_ALPHA),
+    }
 
     data class BlendState(
         val sourceFactor: BlendFactor,
@@ -50,7 +53,10 @@ internal object ASTDProjectileVfxBodyRenderManager {
     private fun rendererForTests(engine: CombatEngineAPI): Renderer? = engine.customData[ENGINE_KEY] as? Renderer
 
     private fun blendState(mesh: ASTDProjectileVfxBodyRenderer.Mesh): BlendState {
-        return BlendState(BlendFactor.SrcAlpha, BlendFactor.One)
+        return when (mesh.blendMode.lowercase()) {
+            "normal", "source-over" -> BlendState(BlendFactor.SrcAlpha, BlendFactor.OneMinusSrcAlpha)
+            else -> BlendState(BlendFactor.SrcAlpha, BlendFactor.One)
+        }
     }
 
     private fun transformLocalPoint(local: Vector2f, location: Vector2f, facing: Float): Vector2f {
@@ -80,7 +86,6 @@ internal object ASTDProjectileVfxBodyRenderManager {
         private val snapshots = LinkedHashMap<Int, Snapshot>()
         private var nextId = 1
         private var expired = false
-        private var shaderProgram: ASTDProjectileVfxShaderRenderer.Program? = null
 
         fun createHandle(): Handle = Handle(this, nextId++)
 
@@ -118,8 +123,6 @@ internal object ASTDProjectileVfxBodyRenderManager {
 
         override fun cleanup() {
             snapshots.clear()
-            shaderProgram?.delete()
-            shaderProgram = null
             expired = true
         }
 
@@ -133,25 +136,11 @@ internal object ASTDProjectileVfxBodyRenderManager {
                 GL11.glDisable(GL11.GL_TEXTURE_2D)
                 GL11.glDisable(GL11.GL_CULL_FACE)
                 GL11.glEnable(GL11.GL_BLEND)
-                val shaderSnapshots = renderSnapshots.filter { it.mesh.shaderQuad != null }
-                val meshSnapshots = renderSnapshots.filter { it.mesh.shaderQuad == null }
-                if (shaderSnapshots.isNotEmpty()) {
-                    if (!org.lwjgl.opengl.GLContext.getCapabilities().OpenGL20) {
-                        error("ASTD projectile shader renderer requires OpenGL 2.0")
-                    }
-                    applyBlend(shaderSnapshots.first().mesh)
-                    val program = shaderProgram ?: ASTDProjectileVfxShaderRenderer.Program().also { shaderProgram = it }
-                    for (snapshot in shaderSnapshots) {
-                        program.render(snapshot, snapshot.mesh.shaderQuad!!)
-                    }
-                    GL20.glUseProgram(0)
-                }
-
-                if (meshSnapshots.isNotEmpty()) {
-                    applyBlend(meshSnapshots.first().mesh)
+                for ((blendMode, snapshots) in renderSnapshots.groupBy { it.mesh.blendMode.lowercase() }) {
+                    applyBlend(snapshots.first().mesh)
                     GL11.glBegin(GL11.GL_TRIANGLES)
                     try {
-                        for (snapshot in meshSnapshots) {
+                        for (snapshot in snapshots) {
                             for (triangle in snapshot.mesh.triangles) {
                                 emitVertex(snapshot, triangle.a)
                                 emitVertex(snapshot, triangle.b)
@@ -161,6 +150,8 @@ internal object ASTDProjectileVfxBodyRenderManager {
                     } finally {
                         GL11.glEnd()
                     }
+                    @Suppress("UNUSED_VARIABLE")
+                    val appliedBlendMode = blendMode
                 }
             } finally {
                 GL11.glPopAttrib()
@@ -174,8 +165,7 @@ internal object ASTDProjectileVfxBodyRenderManager {
 
         private fun emitVertex(snapshot: Snapshot, vertex: ASTDProjectileVfxBodyRenderer.Vertex) {
             val color = vertex.color
-            val scaled = Vector2f(vertex.position.x * snapshot.mesh.xScale, vertex.position.y * snapshot.mesh.yScale)
-            val world = transformLocalPoint(scaled, snapshot.location, snapshot.facing)
+            val world = transformLocalPoint(vertex.position, snapshot.location, snapshot.facing)
             GL11.glColor4f(
                 color.red.coerceIn(0f, 1f),
                 color.green.coerceIn(0f, 1f),

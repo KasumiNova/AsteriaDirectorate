@@ -26,6 +26,7 @@ EXPECTED = {
     "vfxPresetId": "aod7_shot",
 }
 
+ASTD_TELEMETRY_FILE = "astd-ingame-automation-astd-telemetry.json"
 LOG_COMPLETED_PATTERN = re.compile(r"\[ASTD-Automation]\s+Completed: arc_flare/aod7/astd_aod7_shot/VFX observed")
 
 MIN_SCREENSHOT_WIDTH = 2550
@@ -142,7 +143,7 @@ def _crop_projectile_roi(
     right = int(width * roi[2])
     bottom = int(height * roi[3])
     rgb = np.array(image.crop((left, top, right, bottom)))
-    component_rgb = _suppress_preview_grid_lines(rgb) if suppress_grid_lines else _suppress_screenshot_tactical_lines(rgb)
+    component_rgb = _suppress_preview_grid_lines(rgb) if suppress_grid_lines else rgb
     bbox = _projectile_component_bbox(_projectile_mask(component_rgb), min_area=300)
     if bbox is None:
         return None
@@ -172,7 +173,7 @@ def _crop_projectile_roi_by_bright_core(
     right = int(width * roi[2])
     bottom = int(height * roi[3])
     rgb = np.array(image.crop((left, top, right, bottom)))
-    component_rgb = _suppress_preview_grid_lines(rgb) if suppress_grid_lines else rgb
+    component_rgb = _suppress_preview_grid_lines(rgb) if suppress_grid_lines else _suppress_screenshot_tactical_lines(rgb)
     luma = (0.299 * component_rgb[:, :, 0]) + (0.587 * component_rgb[:, :, 1]) + (0.114 * component_rgb[:, :, 2])
     bright = luma > 150
     labels_count, labels, stats, _ = cv2.connectedComponentsWithStats(bright.astype(np.uint8) * 255, 8)
@@ -214,7 +215,7 @@ def _projectile_structure_metrics(rgb: np.ndarray) -> dict[str, float]:
     if len(xs) == 0:
         return {}
 
-    bright = luma > 150
+    bright = (luma > 150) & mask
     bright_y, bright_x = np.where(bright)
     height, width = rgb.shape[:2]
     x_profile = mask.sum(axis=0).astype(np.float32)
@@ -223,6 +224,13 @@ def _projectile_structure_metrics(rgb: np.ndarray) -> dict[str, float]:
         x_profile /= x_profile.max()
     if y_profile.max() > 0:
         y_profile /= y_profile.max()
+    visible_energy = _projectile_visible_energy(rgb, luma)
+    energy_profile = visible_energy.sum(axis=0).astype(np.float32)
+    if energy_profile.max() > 0:
+        active_energy_columns = np.where(energy_profile > energy_profile.max() * 0.01)[0]
+    else:
+        active_energy_columns = np.array([], dtype=np.int64)
+    profile_width = float(active_energy_columns.max() - active_energy_columns.min() + 1) if len(active_energy_columns) else float(xs.max() - xs.min() + 1)
     centered = mask[:, int(width * 0.18):int(width * 0.86)]
     vertical_counts = centered.sum(axis=1)
     active_rows = int((vertical_counts > max(2, centered.shape[1] * 0.012)).sum())
@@ -238,6 +246,8 @@ def _projectile_structure_metrics(rgb: np.ndarray) -> dict[str, float]:
         "bbox_width": float(xs.max() - xs.min() + 1),
         "bbox_height": float(ys.max() - ys.min() + 1),
         "aspect": float((xs.max() - xs.min() + 1) / max((ys.max() - ys.min() + 1), 1)),
+        "profile_width": profile_width,
+        "profile_aspect": float(profile_width / max((ys.max() - ys.min() + 1), 1)),
         "bright_pixels": float(bright.sum()),
         "bright_width": float(bright_x.max() - bright_x.min() + 1) if len(bright_x) else 0.0,
         "bright_height": float(bright_y.max() - bright_y.min() + 1) if len(bright_y) else 0.0,
@@ -247,6 +257,12 @@ def _projectile_structure_metrics(rgb: np.ndarray) -> dict[str, float]:
         "x_profile": x_profile,
         "y_profile": y_profile,
     }
+
+
+def _projectile_visible_energy(rgb: np.ndarray, luma: np.ndarray) -> np.ndarray:
+    blue = (rgb[:, :, 2] > 35) & (rgb[:, :, 1] > 25) & (rgb[:, :, 2] >= rgb[:, :, 0] + 5)
+    white = luma > 120
+    return np.maximum(luma - 20, 0) * (blue | white)
 
 
 def _resampled_profile_error(left: np.ndarray, right: np.ndarray, samples: int = 96) -> float:
@@ -260,10 +276,51 @@ def _resampled_profile_error(left: np.ndarray, right: np.ndarray, samples: int =
     return float(np.mean(np.abs(left_sample - right_sample)))
 
 
+def _write_visual_compare(
+    reference_rgb: np.ndarray,
+    screenshot_rgb: np.ndarray,
+    output_path: Path,
+) -> None:
+    ref_image = Image.fromarray(reference_rgb).convert("RGB")
+    shot_image = Image.fromarray(screenshot_rgb).convert("RGB")
+    target_height = max(ref_image.height, shot_image.height, 1)
+
+    def resize_to_height(image: Image.Image) -> Image.Image:
+        if image.height == target_height:
+            return image
+        width = max(1, round(image.width * target_height / max(image.height, 1)))
+        return image.resize((width, target_height), Image.Resampling.LANCZOS)
+
+    ref_resized = resize_to_height(ref_image)
+    shot_resized = resize_to_height(shot_image)
+    gap = 18
+    label_height = 28
+    canvas = Image.new(
+        "RGB",
+        (ref_resized.width + gap + shot_resized.width, label_height + target_height),
+        (4, 8, 16),
+    )
+    canvas.paste(ref_resized, (0, label_height))
+    canvas.paste(shot_resized, (ref_resized.width + gap, label_height))
+
+    try:
+        from PIL import ImageDraw
+
+        draw = ImageDraw.Draw(canvas)
+        draw.text((8, 6), "preview reference", fill=(210, 230, 255))
+        draw.text((ref_resized.width + gap + 8, 6), "in-game screenshot", fill=(210, 230, 255))
+    except Exception:
+        pass
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    canvas.save(output_path)
+
+
 def _check_preview_reference_parity(
     screenshot_path: Path,
     reference_path: Path,
     errors: list[str],
+    visual_compare_output: Path | None = None,
 ) -> list[str]:
     details: list[str] = []
     if not reference_path.exists():
@@ -281,13 +338,15 @@ def _check_preview_reference_parity(
 
     reference_rgb, reference_bbox = reference_roi
     screenshot_rgb, screenshot_bbox = screenshot_roi
+    if visual_compare_output is not None:
+        _write_visual_compare(reference_rgb, screenshot_rgb, visual_compare_output)
     ref = _projectile_structure_metrics(reference_rgb)
     shot = _projectile_structure_metrics(screenshot_rgb)
     if not ref or not shot:
         errors.append("preview parity: failed to measure projectile masks")
         return details
 
-    body_aspect_ratio = shot["aspect"] / max(ref["aspect"], 0.001)
+    body_aspect_ratio = shot["profile_aspect"] / max(ref["profile_aspect"], 0.001)
     bright_width_ratio = (shot["bright_width"] / max(shot["bbox_width"], 1.0)) / (ref["bright_width"] / max(ref["bbox_width"], 1.0))
     bright_height_ratio = (shot["bright_height"] / max(shot["bbox_height"], 1.0)) / (ref["bright_height"] / max(ref["bbox_height"], 1.0))
     glow_height_ratio = shot["glow_height_ratio"] / max(ref["glow_height_ratio"], 0.001)
@@ -329,6 +388,7 @@ def _check_preview_reference_parity(
             f"preview parity glow height ratio: {glow_height_ratio:.3f}",
             f"preview parity profile errors: x={x_profile_error:.3f}, y={y_profile_error:.3f}",
             f"preview parity ribbon edge density ratio: {edge_density_ratio:.3f}",
+            *( [f"visual compare output: {visual_compare_output}"] if visual_compare_output is not None else [] ),
         ],
     )
     return details
@@ -341,6 +401,16 @@ def _load_json(path: Path) -> dict:
         raise SystemExit(f"FAIL telemetry missing: {path}")
     except json.JSONDecodeError as exc:
         raise SystemExit(f"FAIL telemetry is not valid JSON: {path}: {exc}")
+
+
+def _load_preferred_telemetry(path: Path) -> tuple[dict, Path]:
+    astd_path = path.with_name(ASTD_TELEMETRY_FILE)
+    if astd_path.exists():
+        astd_data = _load_json(astd_path)
+        if astd_data.get("source") == "ASTD":
+            return astd_data, astd_path
+
+    return _load_json(path), path
 
 
 def _data_from_log(log_path: Path) -> dict:
@@ -610,13 +680,17 @@ def verify(
     require_screenshot_file: bool,
     log_path: Path | None = None,
     preview_reference: Path | None = None,
+    visual_compare_output: Path | None = None,
+    screenshot_override: Path | None = None,
 ) -> int:
-    if telemetry_path.exists():
-        data = _load_json(telemetry_path)
+    if telemetry_path.exists() or telemetry_path.with_name(ASTD_TELEMETRY_FILE).exists():
+        data, actual_telemetry_path = _load_preferred_telemetry(telemetry_path)
     elif log_path is not None:
         data = _data_from_log(log_path)
+        actual_telemetry_path = telemetry_path
     else:
         data = _load_json(telemetry_path)
+        actual_telemetry_path = telemetry_path
     errors: list[str] = []
     screenshot_details: list[str] = []
 
@@ -630,7 +704,7 @@ def verify(
     if state != "Completed":
         errors.append(f"state: expected 'Completed', got {state!r}")
 
-    screenshot = data.get("screenshotPath")
+    screenshot = str(screenshot_override) if screenshot_override is not None else data.get("screenshotPath")
     screenshot_attempt = data.get("screenshotAttemptPath")
     if require_screenshot_file:
         if not screenshot:
@@ -640,14 +714,18 @@ def verify(
         else:
             screenshot_details = _check_screenshot_pixels(Path(screenshot), errors)
             if preview_reference is not None:
-                screenshot_details.extend(_check_preview_reference_parity(Path(screenshot), preview_reference, errors))
+                screenshot_details.extend(
+                    _check_preview_reference_parity(Path(screenshot), preview_reference, errors, visual_compare_output),
+                )
     elif screenshot:
         if not Path(screenshot).exists():
             errors.append(f"screenshotPath: declared file does not exist: {screenshot}")
         else:
             screenshot_details = _check_screenshot_pixels(Path(screenshot), errors)
             if preview_reference is not None:
-                screenshot_details.extend(_check_preview_reference_parity(Path(screenshot), preview_reference, errors))
+                screenshot_details.extend(
+                    _check_preview_reference_parity(Path(screenshot), preview_reference, errors, visual_compare_output),
+                )
     elif screenshot_attempt:
         if not Path(screenshot_attempt).exists():
             errors.append(f"screenshotAttemptPath: file does not exist: {screenshot_attempt}")
@@ -660,15 +738,27 @@ def verify(
         print("FAIL ASTD in-game automation evidence")
         for error in errors:
             print(f"- {error}")
+        _print_result(data, actual_telemetry_path, screenshot_details, screenshot, screenshot_attempt)
         return 1
 
     print("PASS ASTD in-game automation evidence")
+    _print_result(data, actual_telemetry_path, screenshot_details, screenshot, screenshot_attempt)
+    return 0
+
+
+def _print_result(
+    data: dict,
+    telemetry_path: Path,
+    screenshot_details: list[str],
+    screenshot: str | None,
+    screenshot_attempt: str | None,
+) -> None:
     print(f"- telemetry: {telemetry_path}")
-    print(f"- scenario: {data['scenario']}")
-    print(f"- ship: {data['shipId']}")
-    print(f"- weapon: {data['weaponId']}")
-    print(f"- projectile: {data['projectileSpecId']}")
-    print(f"- vfx: {data['vfxPresetId']}")
+    print(f"- scenario: {data.get('scenario')}")
+    print(f"- ship: {data.get('shipId')}")
+    print(f"- weapon: {data.get('weaponId')}")
+    print(f"- projectile: {data.get('projectileSpecId')}")
+    print(f"- vfx: {data.get('vfxPresetId')}")
     if data.get("logPath"):
         print(f"- log: {data['logPath']}")
     if screenshot:
@@ -679,7 +769,6 @@ def verify(
             print(f"- screenshot frame: {frame}")
     else:
         print(f"- screenshot attempt: {screenshot_attempt}")
-    return 0
 
 
 def main(argv: list[str]) -> int:
@@ -688,8 +777,17 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--log", type=Path, help="Fallback starsector.log path used when script telemetry is blocked by sandbox")
     parser.add_argument("--require-screenshot-file", action="store_true", help="Require a concrete screenshotPath file instead of screenshotAttemptPath")
     parser.add_argument("--preview-reference", type=Path, help="Preview/editor reference image used for projectile structure parity")
+    parser.add_argument("--visual-compare-output", type=Path, help="Optional side-by-side crop output for visual VFX review")
+    parser.add_argument("--screenshot", type=Path, help="Explicit screenshot image used for manual visual review; telemetry still controls pass/fail state")
     args = parser.parse_args(argv)
-    return verify(args.telemetry, args.require_screenshot_file, args.log, args.preview_reference)
+    return verify(
+        args.telemetry,
+        args.require_screenshot_file,
+        args.log,
+        args.preview_reference,
+        args.visual_compare_output,
+        args.screenshot,
+    )
 
 
 if __name__ == "__main__":

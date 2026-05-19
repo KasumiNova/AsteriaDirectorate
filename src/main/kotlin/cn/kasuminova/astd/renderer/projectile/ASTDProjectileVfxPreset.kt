@@ -111,4 +111,5 @@ data class ASTDProjectileVfxLifecycleSpec(
     val historySampleMultiplier: Float = 3f,
     val historySmoothingPasses: Int = 3,
     val ribbonWaveSoftening: Float = 0.48f,
+    val layoutReferenceWidth: Float = 1280f,
 )

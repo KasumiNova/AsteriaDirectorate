@@ -2,7 +2,6 @@ package cn.kasuminova.astd.renderer.projectile
 
 import cn.kasuminova.astd.renderer.projectile.runtime.ASTDProjectileVfxBodyRenderManager
 import cn.kasuminova.astd.renderer.projectile.runtime.ASTDProjectileVfxBodyRenderer
-import cn.kasuminova.astd.renderer.projectile.runtime.ASTDProjectileVfxShaderRenderer
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEngineLayers
 import org.lwjgl.util.vector.Vector2f
@@ -111,7 +110,7 @@ class ASTDProjectileVfxBodyRenderManagerTest {
     }
 
     @Test
-    fun `shader snapshots use canvas lighter compatible source alpha additive blend`() {
+    fun `mesh snapshots use canvas lighter compatible source alpha additive blend`() {
         assertEquals(
             ASTDProjectileVfxBodyRenderManager.BlendState(
                 sourceFactor = ASTDProjectileVfxBodyRenderManager.BlendFactor.SrcAlpha,
@@ -125,10 +124,26 @@ class ASTDProjectileVfxBodyRenderManagerTest {
                     triangles = emptyList(),
                     blendMode = "additive",
                     combatLayer = CombatEngineLayers.ABOVE_PARTICLES,
-                    shaderQuad = ASTDProjectileVfxShaderRenderer.bodyQuadForTests(
-                        ASTDProjectileVfxPresetCatalog.preset("aod7_shot")!!.trailEntities.single(),
-                        testContext(),
-                    ),
+                ),
+            ),
+        )
+    }
+
+    @Test
+    fun `normal mesh snapshots use source-over compatible alpha blend`() {
+        assertEquals(
+            ASTDProjectileVfxBodyRenderManager.BlendState(
+                sourceFactor = ASTDProjectileVfxBodyRenderManager.BlendFactor.SrcAlpha,
+                destinationFactor = ASTDProjectileVfxBodyRenderManager.BlendFactor.OneMinusSrcAlpha,
+            ),
+            ASTDProjectileVfxBodyRenderManager.blendStateForTests(
+                ASTDProjectileVfxBodyRenderer.Mesh(
+                    polygon = emptyList(),
+                    gradientStops = emptyList(),
+                    vertices = emptyList(),
+                    triangles = emptyList(),
+                    blendMode = "normal",
+                    combatLayer = CombatEngineLayers.ABOVE_PARTICLES,
                 ),
             ),
         )

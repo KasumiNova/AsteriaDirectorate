@@ -18,6 +18,7 @@ object ASTDInGameAutomationScenario {
     const val OUTPUT_DIR_PROPERTY: String = "ssoptimizer.automation.outputDir"
 
     const val TELEMETRY_FILE: String = "astd-ingame-automation-telemetry.json"
+    const val ASTD_TELEMETRY_FILE: String = "astd-ingame-automation-astd-telemetry.json"
     const val DIAGNOSTICS_FILE: String = "astd-ingame-automation-diagnostics.json"
     const val SCREENSHOT_ATTEMPT_FILE: String = "astd-ingame-automation-screenshot-attempt.txt"
 

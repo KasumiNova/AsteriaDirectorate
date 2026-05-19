@@ -2,8 +2,10 @@ package cn.kasuminova.astd.combat.effect.generic
 
 import cn.kasuminova.astd.combat.effect.generic.projectile.ProjectileSpecOnFireDispatcher
 import cn.kasuminova.astd.internal.debug.ASTDInGameAutomationScenario
+import cn.kasuminova.astd.renderer.projectile.ASTDProjectileVfxPresetCatalog
 import cn.kasuminova.astd.renderer.projectile.ASTDProjectileVfxRuntimePlugin
 import cn.kasuminova.astd.renderer.projectile.ASTDProjectileVfxRuntimeTelemetry
+import cn.kasuminova.astd.renderer.projectile.runtime.ASTDProjectileVfxLayout
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseEveryFrameCombatPlugin
 import com.fs.starfarer.api.combat.CombatEngineAPI
@@ -15,17 +17,14 @@ import com.fs.starfarer.api.combat.WeaponAPI
 import com.fs.starfarer.api.input.InputEventAPI
 import org.lwjgl.opengl.Display
 import org.lwjgl.util.vector.Vector2f
-import java.nio.file.Files
-import java.nio.file.Path
-import java.nio.file.StandardOpenOption
 
 /**
  * Dev-only combat automation surface for validating Arc Flare + AOD-7 runtime VFX in game.
  */
 class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
-    private val captureCenter = Vector2f(0f, 0f)
-    private val playerAnchor = Vector2f(-360f, 0f)
-    private val projectilePreviewAnchor = Vector2f(300f, 0f)
+    private val captureCenter = Vector2f(100f, 0f)
+    private val playerAnchor = Vector2f(-260f, 0f)
+    private val projectilePreviewAnchor = Vector2f(40f, 0f)
     private val enemyAnchor = Vector2f(900f, 0f)
     private val log = Global.getLogger(ASTDAutomationCombatPlugin::class.java)
     private var engine: CombatEngineAPI? = null
@@ -39,13 +38,13 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     private var failureReason: String? = null
     private var fireMechanism: String? = null
     private var fallbackProjectile: DamagingProjectileAPI? = null
+    private var fallbackProjectileSpawnedAt = -1f
 
     override fun init(engine: CombatEngineAPI) {
         this.engine = engine
         ASTDProjectileVfxRuntimePlugin.ensureInstalled(engine)
         lockCamera(engine)
         arrangeShips(engine, findArcFlare(engine))
-        writeScreenshotAttempt("init")
         writeDiagnostics(engine, "CombatReady")
         writeTelemetry(engine, "CombatReady")
         log.info("[ASTD-Automation] scenario=${ASTDInGameAutomationScenario.SCENARIO_ID} combat plugin initialized")
@@ -60,7 +59,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         val weapon = ship?.allWeapons?.firstOrNull { it.id == ASTDInGameAutomationScenario.WEAPON_ID }
         lockCamera(combatEngine)
         arrangeShips(combatEngine, ship)
-        pinAod7ProjectilesForEvidence(combatEngine)
+        alignAod7ProjectilesForEvidence(combatEngine)
         if (completed && elapsed - completedAt >= 0.75f) return
 
         if (ship != null) {
@@ -107,7 +106,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         lockCamera(combatEngine)
         val ship = findArcFlare(combatEngine)
         arrangeShips(combatEngine, ship)
-        pinAod7ProjectilesForEvidence(combatEngine)
+        alignAod7ProjectilesForEvidence(combatEngine)
         lastVisualFrameAt = elapsed
         visualFramesWritten++
         writeDiagnostics(combatEngine, "Completed", ship)
@@ -186,29 +185,32 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
 
         if (projectile != null) {
             fallbackProjectile = projectile
-            pinFallbackProjectileForEvidence()
+            fallbackProjectileSpawnedAt = elapsed
+            projectile.velocity.x = FALLBACK_PROJECTILE_SPEED
+            projectile.velocity.y = 0f
+            alignFallbackProjectileForEvidence()
             ProjectileSpecOnFireDispatcher().onFire(projectile, weapon, engine)
             log.info("[ASTD-Automation] fallback spawned ${ASTDInGameAutomationScenario.PROJECTILE_SPEC_ID} through ${ASTDInGameAutomationScenario.WEAPON_ID}")
         }
     }
 
-    private fun pinFallbackProjectileForEvidence() {
+    private fun alignFallbackProjectileForEvidence() {
         val projectile = fallbackProjectile ?: return
-        pinProjectileForEvidence(projectile)
+        alignProjectileForEvidence(projectile)
     }
 
-    private fun pinAod7ProjectilesForEvidence(engine: CombatEngineAPI) {
-        fallbackProjectile?.let { pinProjectileForEvidence(it) }
+    private fun alignAod7ProjectilesForEvidence(engine: CombatEngineAPI) {
+        fallbackProjectile?.let { alignProjectileForEvidence(it) }
         engine.projectiles
             .filter { it.projectileSpecId == ASTDInGameAutomationScenario.PROJECTILE_SPEC_ID }
             .forEach { projectile ->
-                if (projectile is DamagingProjectileAPI) pinProjectileForEvidence(projectile)
+                if (projectile is DamagingProjectileAPI) alignProjectileForEvidence(projectile)
             }
     }
 
-    private fun pinProjectileForEvidence(projectile: DamagingProjectileAPI) {
-        projectile.location.set(projectilePreviewAnchor)
-        projectile.velocity.set(0f, 0f)
+    private fun alignProjectileForEvidence(projectile: DamagingProjectileAPI) {
+        projectile.location.y = projectilePreviewAnchor.y
+        projectile.velocity.y = 0f
         projectile.facing = 0f
     }
 
@@ -222,7 +224,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             failureReason = "aod7 weapon not found on arc_flare"
             return if (elapsed > 10f) "Failed" else "CombatReady"
         }
-        if (projectileObserved(engine) && vfxObserved()) return "Completed"
+        if (projectileObserved(engine) && vfxObserved() && evidenceReady()) return "Completed"
         if (projectileObserved(engine)) return "FireObserved"
         return "CombatReady"
     }
@@ -239,65 +241,35 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             runtime.lastPresetId == ASTDInGameAutomationScenario.VFX_PRESET_ID
     }
 
+    private fun evidenceReady(): Boolean {
+        val runtime = ASTDProjectileVfxRuntimeTelemetry.snapshot()
+        return runtime.lastVisibleLength >= referenceCaptureVisibleLength() &&
+            runtime.lastElapsed >= SCREENSHOT_FLIGHT_SECONDS
+    }
+
+    private fun referenceCaptureVisibleLength(): Float {
+        val preset = ASTDProjectileVfxPresetCatalog.preset(ASTDInGameAutomationScenario.VFX_PRESET_ID)
+            ?: throw IllegalStateException("AOD-7 automation reference preset missing: ${ASTDInGameAutomationScenario.VFX_PRESET_ID}")
+        val trail = preset.trailEntities.firstOrNull()?.layers?.firstOrNull()
+            ?: throw IllegalStateException("AOD-7 automation reference trail missing: ${ASTDInGameAutomationScenario.VFX_PRESET_ID}")
+        return ASTDProjectileVfxLayout.previewFlightLayout(
+            trailStartWidth = trail.startWidth,
+            elapsed = REFERENCE_CAPTURE_ELAPSED_SECONDS,
+            durationSeconds = preset.lifecycle.durationSeconds,
+            flightEndRatio = preset.lifecycle.flightEndRatio,
+            dissolveStartRatio = preset.lifecycle.dissolveStartRatio,
+            preDissolveFraction = preset.lifecycle.preDissolveFraction,
+            captureWidth = preset.lifecycle.layoutReferenceWidth,
+        ).visibleLength
+    }
+
     private fun writeTelemetry(
         engine: CombatEngineAPI,
         state: String,
         ship: ShipAPI? = findArcFlare(engine),
         weapon: WeaponAPI? = ship?.allWeapons?.firstOrNull { it.id == ASTDInGameAutomationScenario.WEAPON_ID },
     ) {
-        if (!ASTDInGameAutomationScenario.isEnabled()) return
-
-        val runtime = ASTDProjectileVfxRuntimeTelemetry.snapshot()
-        val projectileObserved = projectileObserved(engine)
-        val vfxObserved = vfxObserved()
-        val outputDir = ASTDInGameAutomationScenario.outputDir()
-        val screenshotAttemptPath = outputDir.resolve(ASTDInGameAutomationScenario.SCREENSHOT_ATTEMPT_FILE)
-        val telemetryPath = outputDir.resolve(ASTDInGameAutomationScenario.TELEMETRY_FILE)
-        val json = buildString {
-            appendLine("{")
-            appendLine("  \"source\": \"ASTD\",")
-            appendLine("  \"simulationMock\": false,")
-            appendLine("  \"scenario\": \"${ASTDInGameAutomationScenario.SCENARIO_ID}\",")
-            appendLine("  \"state\": \"$state\",")
-            appendLine("  \"combatSceneObserved\": ${ship != null},")
-            appendLine("  \"shipObserved\": ${ship != null},")
-            appendLine("  \"shipId\": \"${ASTDInGameAutomationScenario.SHIP_ID}\",")
-            appendLine("  \"variantId\": \"${ship?.variant?.hullVariantId ?: ASTDInGameAutomationScenario.VARIANT_ID}\",")
-            appendLine("  \"weaponObserved\": ${weapon != null},")
-            appendLine("  \"weaponId\": \"${ASTDInGameAutomationScenario.WEAPON_ID}\",")
-            appendLine("  \"projectileSpecId\": \"${ASTDInGameAutomationScenario.PROJECTILE_SPEC_ID}\",")
-            appendLine("  \"projectileObserved\": $projectileObserved,")
-            appendLine("  \"vfxPresetId\": \"${runtime.lastPresetId ?: ASTDInGameAutomationScenario.VFX_PRESET_ID}\",")
-            appendLine("  \"vfxObserved\": $vfxObserved,")
-            appendLine("  \"runtimeTrackedCount\": ${runtime.trackedCount},")
-            appendLine("  \"runtimeElapsedSeconds\": ${formatFloat(runtime.lastElapsed)},")
-            appendLine("  \"runtimeVisibleLength\": ${formatFloat(runtime.lastVisibleLength)},")
-            appendLine("  \"runtimeBeamAlpha\": ${formatFloat(runtime.lastBeamAlpha)},")
-            appendLine("  \"fireCommandIssued\": ${fireMechanism != null},")
-            appendLine("  \"fireMechanism\": ${jsonString(fireMechanism)},")
-            appendLine("  \"captureCenterX\": ${captureCenter.x},")
-            appendLine("  \"captureCenterY\": ${captureCenter.y},")
-            appendLine("  \"subjectAnchorX\": ${playerAnchor.x},")
-            appendLine("  \"subjectAnchorY\": ${playerAnchor.y},")
-            appendLine("  \"projectilePreviewX\": ${projectilePreviewAnchor.x},")
-            appendLine("  \"projectilePreviewY\": ${projectilePreviewAnchor.y},")
-            appendLine("  \"viewportVisibleWidth\": ${formatFloat(engine.viewport.visibleWidth)},")
-            appendLine("  \"viewportVisibleHeight\": ${formatFloat(engine.viewport.visibleHeight)},")
-            appendLine("  \"previewReferencePath\": \"tools/aod_7_effect.png\",")
-            appendLine("  \"screenshotPath\": null,")
-            appendLine("  \"screenshotAttemptPath\": \"${escapeJson(screenshotAttemptPath.toAbsolutePath().toString())}\",")
-            appendLine("  \"elapsedSeconds\": ${"%.3f".format(java.util.Locale.ROOT, elapsed)},")
-            appendLine("  \"failureReason\": ${jsonString(failureReason)}")
-            appendLine("}")
-        }
-
-        try {
-            Files.createDirectories(outputDir)
-            Files.writeString(telemetryPath, json, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
-            log.info("[ASTD-Automation] telemetry state=$state projectileObserved=$projectileObserved vfxObserved=$vfxObserved path=$telemetryPath")
-        } catch (t: Throwable) {
-            log.warn("[ASTD-Automation] failed to write telemetry: ${t.message}", t)
-        }
+        // SSOptimizer patches this method and writes telemetry/screenshots outside the Starsector script sandbox.
     }
 
     private fun writeDiagnostics(
@@ -313,6 +285,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         val displayPixelScale = try { Display.getPixelScaleFactor() } catch (_: Throwable) { -1f }
         val viewport = engine.viewport
         val shipSprite = try { ship?.spriteAPI } catch (_: Throwable) { null }
+        val runtime = ASTDProjectileVfxRuntimeTelemetry.snapshot()
         val json = buildString {
             appendLine("{")
             appendLine("  \"source\": \"ASTD\",")
@@ -335,22 +308,13 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             appendLine("  \"shipSpriteHeight\": ${formatFloat(shipSprite?.height ?: -1f)},")
             appendLine("  \"shipSpriteCenterX\": ${formatFloat(shipSprite?.centerX ?: -1f)},")
             appendLine("  \"shipSpriteCenterY\": ${formatFloat(shipSprite?.centerY ?: -1f)},")
+            appendLine("  \"runtimeElapsedSeconds\": ${formatFloat(runtime.lastElapsed)},")
+            appendLine("  \"runtimeVisibleLength\": ${formatFloat(runtime.lastVisibleLength)},")
+            appendLine("  \"runtimeBeamAlpha\": ${formatFloat(runtime.lastBeamAlpha)},")
             appendLine("  \"elapsedSeconds\": ${"%.3f".format(java.util.Locale.ROOT, elapsed)}")
             appendLine("}")
         }
         log.info("[ASTD-Automation] diagnostics state=$state json=${json.lines().joinToString(" ")}")
-    }
-
-    private fun writeScreenshotAttempt(stage: String) {
-        if (!ASTDInGameAutomationScenario.isEnabled()) return
-        val outputDir = ASTDInGameAutomationScenario.outputDir()
-        val path = outputDir.resolve(ASTDInGameAutomationScenario.SCREENSHOT_ATTEMPT_FILE)
-        val text = "stage=$stage\nresult=attempt-recorded\nreason=ASTD combat plugin has no active OpenGL readback hook; SSOptimizer smoke script records this path for first-version evidence.\n"
-        try {
-            Files.createDirectories(outputDir)
-            Files.writeString(path, text, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
-        } catch (_: Throwable) {
-        }
     }
 
     private fun jsonString(value: String?): String = value?.let { "\"${escapeJson(it)}\"" } ?: "null"
@@ -360,4 +324,10 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     private fun escapeJson(value: String): String = value
         .replace("\\", "\\\\")
         .replace("\"", "\\\"")
+
+    private companion object {
+        private const val FALLBACK_PROJECTILE_SPEED = 2400f
+        private const val SCREENSHOT_FLIGHT_SECONDS = 0.13333334f
+        private const val REFERENCE_CAPTURE_ELAPSED_SECONDS = 0.42f
+    }
 }

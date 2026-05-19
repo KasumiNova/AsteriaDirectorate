@@ -42,8 +42,8 @@ export const AOD7_PARITY_CAPTURE_OUTPUT_PATH = 'docs/dev-docs/projectile-vfx-par
 
 export const DEFAULT_AOD7_PARITY_CAPTURE_SPEC: ParityCaptureSpec = {
   presetId: 'aod7_shot',
-  width: 1280,
-  height: 720,
+  width: 1846,
+  height: 1055,
   elapsedSeconds: 0.42,
   background: 'preview-default',
   layerVisibility: { ...DEFAULT_PREVIEW_OVERLAY_LAYER_VISIBILITY },

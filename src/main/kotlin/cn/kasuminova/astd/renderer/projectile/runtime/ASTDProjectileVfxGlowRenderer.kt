@@ -22,13 +22,22 @@ object ASTDProjectileVfxGlowRenderer {
         val endColor: ASTDColor,
     )
 
+    data class BoxUtilGlowSegment(
+        val startT: Float,
+        val endT: Float,
+        val width: Float,
+        val startColor: ASTDColor,
+        val endColor: ASTDColor,
+        val glowPower: Float,
+    )
+
     fun parametersForTests(
         trail: ASTDTrailEntitySpec,
         layers: List<ASTDProjectileVfxGlowLayerSpec>,
         context: ASTDProjectileVfxRenderContext,
     ): List<Parameters> {
         val baseLayer = trail.layers.firstOrNull() ?: trail.layerSpec
-        val widthBase = ASTDProjectileVfxLayout.widthBase(baseLayer) * ASTDProjectileVfxShaderRenderer.PREVIEW_BODY_WIDTH_SCALE
+        val widthBase = ASTDProjectileVfxLayout.widthBase(baseLayer)
         return layers.filter { it.enabled }.map { layer ->
             val colors = colors(baseLayer, layer)
             Parameters(
@@ -38,7 +47,7 @@ object ASTDProjectileVfxGlowRenderer {
                 alpha = layer.alphaScale * context.beamAlpha,
                 blur = layer.blur,
                 yOffset = layer.yOffset,
-                nodes = ASTDProjectileVfxLayout.glowLocalNodes(context.visibleLength, layer),
+                nodes = runtimeNodes(context.visibleLength, widthBase, layer),
                 startColor = colors.first,
                 endColor = colors.second,
             )
@@ -58,19 +67,113 @@ object ASTDProjectileVfxGlowRenderer {
         }
     }
 
-    fun layerSpec(baseLayer: ASTDTrailLayerSpec, glow: ASTDProjectileVfxGlowLayerSpec, context: ASTDProjectileVfxRenderContext): ASTDTrailLayerSpec {
+    fun shadowMeshesForTests(
+        trail: ASTDTrailEntitySpec,
+        layers: List<ASTDProjectileVfxGlowLayerSpec>,
+        context: ASTDProjectileVfxRenderContext,
+        alphaScale: Float = 1f,
+    ): List<ASTDProjectileVfxBodyRenderer.Mesh> {
+        val baseLayer = trail.layers.firstOrNull() ?: trail.layerSpec
+        val widthBase = ASTDProjectileVfxLayout.widthBase(baseLayer)
+        return layers.filter { it.enabled }.map { layer ->
+            glowShadowMesh(baseLayer, layer, context, widthBase, alphaScale)
+        }
+    }
+
+    fun layerSpec(baseLayer: ASTDTrailLayerSpec, glow: ASTDProjectileVfxGlowLayerSpec): ASTDTrailLayerSpec {
         val (tail, head) = colors(baseLayer, glow)
         val width = ASTDProjectileVfxLayout.glowLineWidth(ASTDProjectileVfxLayout.widthBase(baseLayer), glow)
         return baseLayer.copy(
             width = width,
+            color = head,
             startWidth = width,
             endWidth = width,
             startColor = head,
             endColor = tail,
             startEmissive = head,
             endEmissive = tail,
-            jitterPower = baseLayer.jitterPower + glow.blur * 0.02f,
+            fillStartAlpha = 0.22f,
+            fillEndAlpha = 1f,
+            fillStartFactor = 0f,
+            fillEndFactor = 0f,
+            jitterPower = baseLayer.jitterPower,
         )
+    }
+
+    fun glowPower(glow: ASTDProjectileVfxGlowLayerSpec): Float {
+        return 1f
+    }
+
+    fun boxUtilSegmentsForTests(
+        baseLayer: ASTDTrailLayerSpec,
+        widthBase: Float,
+        glow: ASTDProjectileVfxGlowLayerSpec,
+        context: ASTDProjectileVfxRenderContext,
+        alphaScale: Float = 1f,
+    ): List<BoxUtilGlowSegment> {
+        val lineWidth = ASTDProjectileVfxLayout.glowLineWidth(widthBase, glow)
+        val (tail, head) = colors(baseLayer, glow)
+        val alpha = glow.alphaScale * context.beamAlpha * alphaScale
+        val samples = listOf(0f, 0.22f, 0.62f, 0.88f, 1f)
+        return samples.zipWithNext().map { (startT, endT) ->
+            val start = glowSampleAt(startT, tail, head, alpha)
+            val end = glowSampleAt(endT, tail, head, alpha)
+            BoxUtilGlowSegment(
+                startT = startT,
+                endT = endT,
+                width = lineWidth,
+                startColor = start.first.copy(alpha = start.second.coerceIn(0f, 1f)),
+                endColor = end.first.copy(alpha = end.second.coerceIn(0f, 1f)),
+                glowPower = glowPower(glow),
+            )
+        }
+    }
+
+    fun segmentLayerSpec(baseLayer: ASTDTrailLayerSpec, segment: BoxUtilGlowSegment): ASTDTrailLayerSpec {
+        return baseLayer.copy(
+            width = segment.width,
+            color = segment.endColor,
+            startWidth = segment.width,
+            endWidth = segment.width,
+            startColor = segment.endColor,
+            endColor = segment.startColor,
+            startEmissive = segment.endColor,
+            endEmissive = segment.startColor,
+            fillStartAlpha = 1f,
+            fillEndAlpha = 1f,
+            fillStartFactor = 0f,
+            fillEndFactor = 0f,
+            jitterPower = baseLayer.jitterPower,
+        )
+    }
+
+    fun mutableRuntimeNodes(
+        visibleLength: Float,
+        widthBase: Float,
+        glow: ASTDProjectileVfxGlowLayerSpec,
+        worldUnitsPerPixel: Float = 1f,
+        startT: Float = 0f,
+        endT: Float = 1f,
+    ): ArrayList<Vector2f> {
+        val lineWidth = ASTDProjectileVfxLayout.glowLineWidth(widthBase, glow)
+        val headGap = max(14f, lineWidth * 0.55f)
+        val startX = -visibleLength.coerceAtLeast(0f) * 0.72f
+        val endX = -headGap
+        fun point(t: Float): Vector2f {
+            val ratio = t.coerceIn(0f, 1f)
+            return Vector2f(
+                ASTDProjectileVfxMath.lerp(startX, endX, ratio),
+                ASTDProjectileVfxMath.lerp(glow.yOffset, glow.yOffset * 0.18f, ratio),
+            )
+        }
+        return ASTDProjectileVfxLayout.mutableScaledNodeList(
+            listOf(point(startT), point(endT)),
+            worldUnitsPerPixel,
+        )
+    }
+
+    fun runtimeNodes(visibleLength: Float, widthBase: Float, glow: ASTDProjectileVfxGlowLayerSpec): List<Vector2f> {
+        return mutableRuntimeNodes(visibleLength, widthBase, glow).map { Vector2f(it) }
     }
 
     fun colors(baseLayer: ASTDTrailLayerSpec, glow: ASTDProjectileVfxGlowLayerSpec): Pair<ASTDColor, ASTDColor> {
@@ -116,71 +219,127 @@ object ASTDProjectileVfxGlowRenderer {
         widthBase: Float,
         fadeAlpha: Float,
     ): ASTDProjectileVfxBodyRenderer.Mesh {
+        val parts = glowMeshParts(baseLayer, glow, context, widthBase, fadeAlpha)
+        val allVertices = parts.strokeVertices + parts.shadow.vertices
+        return ASTDProjectileVfxBodyRenderer.Mesh(
+            polygon = allVertices.map { Vector2f(it.position) },
+            gradientStops = emptyList(),
+            vertices = allVertices,
+            triangles = ASTDProjectileVfxBodyRenderer.triangulateStrip(parts.strokeVertices) + parts.shadow.triangles,
+            blendMode = "additive",
+            combatLayer = CombatEngineLayers.ABOVE_PARTICLES,
+        )
+    }
+
+    private fun glowShadowMesh(
+        baseLayer: ASTDTrailLayerSpec,
+        glow: ASTDProjectileVfxGlowLayerSpec,
+        context: ASTDProjectileVfxRenderContext,
+        widthBase: Float,
+        fadeAlpha: Float,
+    ): ASTDProjectileVfxBodyRenderer.Mesh {
+        val shadow = glowMeshParts(baseLayer, glow, context, widthBase, fadeAlpha).shadow
+        return ASTDProjectileVfxBodyRenderer.Mesh(
+            polygon = shadow.vertices.map { Vector2f(it.position) },
+            gradientStops = emptyList(),
+            vertices = shadow.vertices,
+            triangles = shadow.triangles,
+            blendMode = "additive",
+            combatLayer = CombatEngineLayers.ABOVE_PARTICLES,
+        )
+    }
+
+    private data class GlowMeshParts(
+        val strokeVertices: List<ASTDProjectileVfxBodyRenderer.Vertex>,
+        val shadow: ASTDProjectileVfxSoftMesh.MeshPart,
+    )
+
+    private fun glowMeshParts(
+        baseLayer: ASTDTrailLayerSpec,
+        glow: ASTDProjectileVfxGlowLayerSpec,
+        context: ASTDProjectileVfxRenderContext,
+        widthBase: Float,
+        fadeAlpha: Float,
+    ): GlowMeshParts {
         val lineWidth = ASTDProjectileVfxLayout.glowLineWidth(widthBase, glow)
         val headGap = max(14f, lineWidth * 0.55f)
         val startX = -context.visibleLength * 0.72f
         val endX = -headGap
         val (tail, head) = colors(baseLayer, glow)
-        val samples = listOf(0f, 0.22f, 0.62f, 0.88f, 1f)
-        val vertices = ArrayList<ASTDProjectileVfxBodyRenderer.Vertex>(samples.size * 8)
-        for (band in 0..3) {
-            val bandScale = 0.26f + band * 0.36f
-            val bandAlphaScale = listOf(0.055f, 0.011f, 0.0035f, 0.0015f)[band]
-            val halfWidth = (lineWidth + glow.blur * bandScale) * 0.5f
-            for (t in samples) {
-                val x = ASTDProjectileVfxMath.lerp(startX, endX, t)
-                val y = ASTDProjectileVfxMath.lerp(glow.yOffset, glow.yOffset * 0.18f, t)
-                val color = glowColorAt(t, tail, head)
-                val alpha = glowAlphaAt(t, glow.alphaScale * context.beamAlpha * fadeAlpha) * bandAlphaScale
-                val vertexColor = color.copy(alpha = alpha.coerceIn(0f, 1f))
-                vertices += ASTDProjectileVfxBodyRenderer.Vertex(Vector2f(x, y - halfWidth), vertexColor)
-                vertices += ASTDProjectileVfxBodyRenderer.Vertex(Vector2f(x, y + halfWidth), vertexColor)
+        val samples = glowStrokeSamples(context.visibleLength, headGap)
+        val vertices = ArrayList<ASTDProjectileVfxBodyRenderer.Vertex>(samples.size * 2)
+        val softColumns = ArrayList<ASTDProjectileVfxSoftMesh.Column>(samples.size)
+        val coreHalf = lineWidth * 0.5f
+        val outerHalf = coreHalf + glow.blur * ASTDProjectileVfxSoftMesh.CANVAS_SHADOW_VISIBLE_RADIUS
+        val scale = context.worldUnitsPerPixel.coerceAtLeast(0.0001f)
+        for (samplePoint in samples) {
+            val x = ASTDProjectileVfxMath.lerp(startX, endX, samplePoint.pathT)
+            val y = ASTDProjectileVfxMath.lerp(glow.yOffset, glow.yOffset * 0.18f, samplePoint.pathT)
+            val sample = glowSampleAt(samplePoint.gradientT, tail, head, glow.alphaScale * context.beamAlpha * fadeAlpha)
+            val color = sample.first
+            val alpha = sample.second
+            val vertexColor = color.copy(alpha = alpha.coerceIn(0f, 1f))
+            vertices += ASTDProjectileVfxBodyRenderer.Vertex(Vector2f(x * scale, (y - coreHalf) * scale), vertexColor)
+            vertices += ASTDProjectileVfxBodyRenderer.Vertex(Vector2f(x * scale, (y + coreHalf) * scale), vertexColor)
+            val shadowColor = mix(color, head, 0.65f)
+            softColumns += ASTDProjectileVfxSoftMesh.Column(
+                x = x * scale,
+                centerY = y * scale,
+                innerHalf = coreHalf * scale,
+                outerHalf = outerHalf * scale,
+                color = shadowColor,
+                alpha = (alpha * 0.18f * ASTDProjectileVfxSoftMesh.CANVAS_SHADOW_KERNEL_ALPHA).coerceAtLeast(0f),
+            )
+        }
+        val soft = ASTDProjectileVfxSoftMesh.symmetricOuterFalloff(softColumns, 8)
+        return GlowMeshParts(vertices, soft)
+    }
+
+    private data class GlowStrokeSample(val pathT: Float, val gradientT: Float)
+
+    private fun glowStrokeSamples(visibleLength: Float, headGap: Float): List<GlowStrokeSample> {
+        val length = visibleLength.coerceAtLeast(0f)
+        val pathStart = -length * 0.72f
+        val pathEnd = -headGap
+        val gradientStart = -length * 0.8f
+        val gradientEnd = pathEnd
+        val pathSpan = (pathEnd - pathStart).coerceAtLeast(0.0001f)
+        val gradientSpan = (gradientEnd - gradientStart).coerceAtLeast(0.0001f)
+        val gradientStops = listOf(0f, 0.22f, 0.62f, 0.88f, 1f)
+        val samples = ArrayList<GlowStrokeSample>(gradientStops.size + 1)
+        fun gradientOffsetAt(x: Float): Float = ((x - gradientStart) / gradientSpan).coerceIn(0f, 1f)
+        samples += GlowStrokeSample(pathT = 0f, gradientT = gradientOffsetAt(pathStart))
+        gradientStops.forEach { gradientT ->
+            val x = ASTDProjectileVfxMath.lerp(gradientStart, gradientEnd, gradientT)
+            if (x > pathStart && x <= pathEnd) {
+                samples += GlowStrokeSample(
+                    pathT = ((x - pathStart) / pathSpan).coerceIn(0f, 1f),
+                    gradientT = gradientT,
+                )
             }
         }
-        val triangles = ArrayList<ASTDProjectileVfxBodyRenderer.Triangle>()
-        val stripSize = samples.size * 2
-        for (band in 0..3) {
-            triangles += ASTDProjectileVfxBodyRenderer.triangulateStrip(vertices.subList(band * stripSize, band * stripSize + stripSize))
+        if (samples.lastOrNull()?.pathT != 1f) {
+            samples += GlowStrokeSample(pathT = 1f, gradientT = 1f)
         }
-        return ASTDProjectileVfxBodyRenderer.Mesh(
-            polygon = vertices.map { Vector2f(it.position) },
-            gradientStops = emptyList(),
-            vertices = vertices,
-            triangles = triangles,
-            blendMode = "additive",
-            combatLayer = CombatEngineLayers.ABOVE_PARTICLES,
-            xScale = 1.2f,
-            yScale = ASTDProjectileVfxShaderRenderer.PREVIEW_VERTICAL_SCALE,
-            shaderQuad = ASTDProjectileVfxShaderRenderer.glowQuadsForTests(
-                ASTDTrailEntitySpec(
-                    layerId = "astd_runtime_glow_shader",
-                    nodes = emptyList(),
-                    id = "astd_runtime_glow_shader",
-                    layerSpec = baseLayer,
-                    layers = listOf(baseLayer),
-                ),
-                listOf(glow),
-                context,
-                fadeAlpha,
-            ).single(),
+        return samples.distinctBy { (it.pathT * 10000f).toInt() }
+    }
+
+    private fun glowSampleAt(t: Float, tail: ASTDColor, head: ASTDColor, alpha: Float): Pair<ASTDColor, Float> {
+        val stops = listOf(
+            GradientStop(0f, darken(tail, 0.36f), 0f),
+            GradientStop(0.22f, tail, alpha * 0.22f),
+            GradientStop(0.62f, mix(tail, head, 0.55f), alpha * 0.65f),
+            GradientStop(0.88f, head, alpha),
+            GradientStop(1f, ASTDColor(1f, 0.9f, 0.98f, 1f), alpha * 0.46f),
         )
+        val offset = t.coerceIn(0f, 1f)
+        val left = stops.lastOrNull { it.offset <= offset } ?: stops.first()
+        val right = stops.firstOrNull { it.offset >= offset } ?: stops.last()
+        val ratio = ((offset - left.offset) / (right.offset - left.offset).coerceAtLeast(0.0001f)).coerceIn(0f, 1f)
+        return mix(left.color, right.color, ratio) to ASTDProjectileVfxMath.lerp(left.alpha, right.alpha, ratio)
     }
 
-    private fun glowColorAt(t: Float, tail: ASTDColor, head: ASTDColor): ASTDColor = when {
-        t <= 0.22f -> darken(tail, 0.36f)
-        t <= 0.62f -> tail
-        t <= 0.88f -> mix(tail, head, 0.55f)
-        t < 1f -> head
-        else -> ASTDColor(1f, 0.9f, 0.98f, 1f)
-    }
-
-    private fun glowAlphaAt(t: Float, alpha: Float): Float = when {
-        t <= 0f -> 0f
-        t <= 0.22f -> alpha * 0.22f
-        t <= 0.62f -> alpha * 0.65f
-        t <= 0.88f -> alpha
-        else -> alpha * 0.46f
-    }
+    private data class GradientStop(val offset: Float, val color: ASTDColor, val alpha: Float)
 
     private fun darken(color: ASTDColor, factor: Float): ASTDColor = ASTDColor(
         red = color.red * factor,
@@ -194,29 +353,26 @@ class ASTDProjectileVfxGlowRenderLayer(
     private val trail: ASTDTrailEntitySpec,
     private val layers: List<ASTDProjectileVfxGlowLayerSpec>,
 ) : ASTDProjectileVfxRenderLayer {
-    private data class Handle(val spec: ASTDProjectileVfxGlowLayerSpec, val handle: ASTDProjectileVfxBodyRenderManager.Handle)
-
-    private val handles = ArrayList<Handle>()
+    private val handles = ArrayList<ASTDProjectileVfxBodyRenderManager.Handle>()
+    private var meshes: List<ASTDProjectileVfxBodyRenderer.Mesh> = emptyList()
     private val fade = ASTDProjectileVfxLayerFadeState()
 
     override fun create(engine: CombatEngineAPI?, context: ASTDProjectileVfxRenderContext): Boolean {
         if (engine == null) return false
         if (handles.isNotEmpty()) return true
-        layers.filter { it.enabled }.forEach { glow ->
-            val handle = ASTDProjectileVfxBodyRenderManager.createHandle(engine)
-            val mesh = ASTDProjectileVfxGlowRenderer.meshesForTests(trail, listOf(glow), context, fade.alpha()).single()
-            handle.update(context.location, context.renderFacing, mesh)
-            handles += Handle(glow, handle)
-        }
-        return handles.size == layers.count { it.enabled }
+        meshes = ASTDProjectileVfxGlowRenderer.meshesForTests(trail, layers, context, fade.alpha())
+        ensureHandles(engine, meshes.size)
+        handles.zip(meshes).forEach { (handle, mesh) -> handle.update(context.location, context.renderFacing, mesh) }
+        return handles.size == meshes.size
     }
 
     override fun advance(engine: CombatEngineAPI?, context: ASTDProjectileVfxRenderContext, amount: Float) {
         fade.advance(amount)
         if (handles.isEmpty()) create(engine, context)
-        handles.forEach { handle ->
-            val mesh = ASTDProjectileVfxGlowRenderer.meshesForTests(trail, listOf(handle.spec), context, fade.alpha()).single()
-            handle.handle.update(context.location, context.renderFacing, mesh)
+        meshes = ASTDProjectileVfxGlowRenderer.meshesForTests(trail, layers, context, fade.alpha())
+        if (engine != null) {
+            ensureHandles(engine, meshes.size)
+            handles.zip(meshes).forEach { (handle, mesh) -> handle.update(context.location, context.renderFacing, mesh) }
         }
         if (fade.complete()) delete()
     }
@@ -226,7 +382,17 @@ class ASTDProjectileVfxGlowRenderLayer(
     }
 
     override fun delete() {
-        handles.forEach { it.handle.delete() }
+        handles.forEach { it.delete() }
         handles.clear()
+        meshes = emptyList()
+    }
+
+    private fun ensureHandles(engine: CombatEngineAPI, required: Int) {
+        while (handles.size < required) {
+            handles += ASTDProjectileVfxBodyRenderManager.createHandle(engine)
+        }
+        while (handles.size > required) {
+            handles.removeAt(handles.lastIndex).delete()
+        }
     }
 }

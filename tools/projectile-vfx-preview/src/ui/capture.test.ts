@@ -22,8 +22,8 @@ describe('deterministic parity capture', () => {
   it('pins the AOD-7 reference capture contract', () => {
     expect(DEFAULT_AOD7_PARITY_CAPTURE_SPEC).toEqual({
       presetId: 'aod7_shot',
-      width: 1280,
-      height: 720,
+      width: 1846,
+      height: 1055,
       elapsedSeconds: 0.42,
       background: 'preview-default',
       layerVisibility: {
@@ -46,7 +46,7 @@ describe('deterministic parity capture', () => {
     });
 
     expect(spec.width).toBe(960);
-    expect(spec.height).toBe(720);
+    expect(spec.height).toBe(1055);
     expect(spec.layerVisibility.mist).toBe(false);
     expect(spec.layerVisibility.head).toBe(true);
     expect(spec.outputPath).toBe('tmp/reference.png');
@@ -66,7 +66,7 @@ describe('deterministic parity capture', () => {
       rendererFactory: () => renderer,
     });
 
-    expect(renderer.resize).toHaveBeenCalledWith(1280, 720);
+    expect(renderer.resize).toHaveBeenCalledWith(1846, 1055);
     expect(renderer.render).toHaveBeenCalledWith(preset, 0.42, DEFAULT_AOD7_PARITY_CAPTURE_SPEC.layerVisibility);
     expect(result).toEqual({
       dataUrl: 'data:image/png;base64,reference',

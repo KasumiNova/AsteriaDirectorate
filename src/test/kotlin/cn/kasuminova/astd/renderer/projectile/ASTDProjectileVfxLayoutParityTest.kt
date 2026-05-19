@@ -29,6 +29,103 @@ class ASTDProjectileVfxLayoutParityTest {
     }
 
     @Test
+    fun `matches TypeScript preview flight track vectors for AOD7 capture`() {
+        val preset = ASTDProjectileVfxPresetCatalog.preset("aod7_shot")!!
+        val trail = preset.trailEntities.single().layers.single()
+
+        val captureFrame = ASTDProjectileVfxLayout.previewFlightLayout(
+            trailStartWidth = trail.startWidth,
+            elapsed = 0.42f,
+            durationSeconds = preset.lifecycle.durationSeconds,
+            flightEndRatio = preset.lifecycle.flightEndRatio,
+            dissolveStartRatio = preset.lifecycle.dissolveStartRatio,
+            preDissolveFraction = preset.lifecycle.preDissolveFraction,
+        )
+        val dissolveFrame = ASTDProjectileVfxLayout.previewFlightLayout(
+            trailStartWidth = trail.startWidth,
+            elapsed = 1.0f,
+            durationSeconds = preset.lifecycle.durationSeconds,
+            flightEndRatio = preset.lifecycle.flightEndRatio,
+            dissolveStartRatio = preset.lifecycle.dissolveStartRatio,
+            preDissolveFraction = preset.lifecycle.preDissolveFraction,
+        )
+
+        assertEquals(0f, captureFrame.dissolve, 0.0001f)
+        assertEquals(1f, captureFrame.beamAlpha, 0.0001f)
+        assertEquals(434.95424f, captureFrame.visibleLength, 0.0001f)
+        assertEquals(0.5f, dissolveFrame.dissolve, 0.0001f)
+        assertEquals(0.19f, dissolveFrame.beamAlpha, 0.0001f)
+        assertEquals(317.952f, dissolveFrame.visibleLength, 0.0001f)
+    }
+
+    @Test
+    fun `AOD7 reference capture uses exported layout reference width`() {
+        val preset = ASTDProjectileVfxPresetCatalog.preset("aod7_shot")!!
+        val trail = preset.trailEntities.single().layers.single()
+
+        val captureFrame = ASTDProjectileVfxLayout.previewFlightLayout(
+            trailStartWidth = trail.startWidth,
+            elapsed = 0.42f,
+            durationSeconds = preset.lifecycle.durationSeconds,
+            flightEndRatio = preset.lifecycle.flightEndRatio,
+            dissolveStartRatio = preset.lifecycle.dissolveStartRatio,
+            preDissolveFraction = preset.lifecycle.preDissolveFraction,
+            captureWidth = preset.lifecycle.layoutReferenceWidth,
+        )
+
+        assertEquals(0f, captureFrame.dissolve, 0.0001f)
+        assertEquals(1f, captureFrame.beamAlpha, 0.0001f)
+        assertEquals(627.2856f, captureFrame.visibleLength, 0.0001f)
+    }
+
+    @Test
+    fun `distance flight layout grows trail one to one until configured cap`() {
+        val viewportCap = ASTDProjectileVfxLayout.viewportTailCap(
+            trailStartWidth = 40f,
+            viewportVisibleWidth = 1280f,
+        )
+        val growing = ASTDProjectileVfxLayout.distanceFlightLayout(
+            maxVisibleLength = viewportCap,
+            traveledDistance = 180f,
+            elapsed = 0.3f,
+            durationSeconds = 1.25f,
+            dissolveStartRatio = 0.6f,
+        )
+        val capped = ASTDProjectileVfxLayout.distanceFlightLayout(
+            maxVisibleLength = viewportCap,
+            traveledDistance = 720f,
+            elapsed = 0.3f,
+            durationSeconds = 1.25f,
+            dissolveStartRatio = 0.6f,
+        )
+
+        assertEquals(0f, growing.dissolve, 0.0001f)
+        assertEquals(1f, growing.beamAlpha, 0.0001f)
+        assertEquals(180f, growing.visibleLength, 0.0001f)
+        assertEquals(588.8f, capped.visibleLength, 0.0001f)
+    }
+
+    @Test
+    fun `viewport tail cap mirrors TypeScript computeFlightTrack max tail length`() {
+        val aod7Default = ASTDProjectileVfxLayout.viewportTailCap(
+            trailStartWidth = 40f,
+            viewportVisibleWidth = 1280f,
+        )
+        val automationViewport = ASTDProjectileVfxLayout.viewportTailCap(
+            trailStartWidth = 40f,
+            viewportVisibleWidth = 600f * 16f / 9f,
+        )
+        val wideTrail = ASTDProjectileVfxLayout.viewportTailCap(
+            trailStartWidth = 220f,
+            viewportVisibleWidth = 640f,
+        )
+
+        assertEquals(588.8f, aod7Default, 0.0001f)
+        assertEquals(490.6667f, automationViewport, 0.0001f)
+        assertEquals(1056f, wideTrail, 0.0001f)
+    }
+
+    @Test
     fun `projectile head scales from trail width base`() {
         val preset = ASTDProjectileVfxPresetCatalog.preset("aod7_shot")!!
         val trail = preset.trailEntities.single().layers.single()

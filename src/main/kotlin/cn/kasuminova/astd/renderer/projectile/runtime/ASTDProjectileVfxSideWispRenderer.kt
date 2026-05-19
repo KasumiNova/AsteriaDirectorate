@@ -4,7 +4,6 @@ import cn.kasuminova.astd.renderer.projectile.ASTDProjectileVfxSideWispLayerSpec
 import cn.kasuminova.astd.renderer.projectile.ASTDTrailEntitySpec
 import cn.kasuminova.astd.renderer.projectile.ASTDTrailLayerSpec
 import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
-import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import org.boxutil.define.BoxEnum
 import org.boxutil.units.standard.entity.TrailEntity
@@ -62,7 +61,7 @@ class ASTDProjectileVfxSideWispRenderLayer(
             )
             ASTDProjectileVfxSideWispRenderer.localPathsForTests(layer, context.visibleLength, widthBase).forEachIndexed { index, path ->
                 val entity = TrailEntity()
-                path.forEach { entity.addNode(Vector2f(it)) }
+                ASTDProjectileVfxLayout.scalePoints(path, context.worldUnitsPerPixel).forEach { entity.addNode(Vector2f(it)) }
                 entity.submitNodes()
                 ASTDProjectileVfxTrailRenderer.applyLayer(
                     entity,
@@ -70,6 +69,7 @@ class ASTDProjectileVfxSideWispRenderLayer(
                     context.beamAlpha * layer.alphaScale,
                     headWidthOverride = layerSpec.startWidth,
                     tailWidthOverride = layerSpec.endWidth,
+                    worldUnitsPerPixel = context.worldUnitsPerPixel,
                 )
                 val state = BoxUtilCombatVfx.addEntity(engine, BoxEnum.ENTITY_TRAIL, entity)
                 if (state == 0) {
@@ -77,8 +77,10 @@ class ASTDProjectileVfxSideWispRenderLayer(
                     handles += Handle(layer, index, entity, layerSpec)
                 } else {
                     entity.delete()
-                    Global.getLogger(ASTDProjectileVfxSideWispRenderLayer::class.java).warn(
-                        "ASTD projectile VFX side wisp addEntity failed state=$state layer=${layer.id} preset=${context.presetId} projectile=${context.projectileSpecId}",
+                    delete()
+                    throw IllegalStateException(
+                        "ASTD projectile VFX side wisp BoxUtil TrailEntity addEntity failed: " +
+                            "state=$state layer=${layer.id} preset=${context.presetId} projectile=${context.projectileSpecId}",
                     )
                 }
             }
@@ -95,7 +97,7 @@ class ASTDProjectileVfxSideWispRenderLayer(
                 val widthBase = ASTDProjectileVfxLayout.widthBase(baseLayer)
                 val path = ASTDProjectileVfxSideWispRenderer.localPathsForTests(handle.layer, context.visibleLength, widthBase).getOrNull(handle.pathIndex)
                 if (path != null) {
-                    handle.entity.setNodes(ASTDProjectileVfxLayout.mutableNodeList(path))
+                    handle.entity.setNodes(ASTDProjectileVfxLayout.mutableScaledNodeList(path, context.worldUnitsPerPixel))
                     handle.entity.setNodeRefreshIndex(0)
                     handle.entity.setNodeRefreshAllFromCurrentIndex()
                     handle.entity.submitNodes()
@@ -106,6 +108,7 @@ class ASTDProjectileVfxSideWispRenderLayer(
                     context.beamAlpha * fade.alpha() * handle.layer.alphaScale,
                     headWidthOverride = handle.baseSpec.startWidth,
                     tailWidthOverride = handle.baseSpec.endWidth,
+                    worldUnitsPerPixel = context.worldUnitsPerPixel,
                 )
                 handle.entity.setStateVanilla(context.location, context.renderFacing)
             }

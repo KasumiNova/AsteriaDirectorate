@@ -32,7 +32,7 @@ npm run test:run
 预览侧的 AOD-7 parity reference 由 `src/ui/capture.ts` 的 `DEFAULT_AOD7_PARITY_CAPTURE_SPEC` 固定：
 
 - preset id: `aod7_shot`
-- size: `1280x720`
+- size: `1846x1055`
 - elapsed: `0.42s`
 - layers: trail/head/glow/mist/sideWisps/ribbon 全开
 - output: `docs/dev-docs/projectile-vfx-parity/captures/preview/aod7-all-layers-reference.png`

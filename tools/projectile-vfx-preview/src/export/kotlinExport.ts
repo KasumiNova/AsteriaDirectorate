@@ -185,6 +185,7 @@ function emitLifecycle(lifecycle: GameProjectileVfxLifecycleConfig): string {
 		`            historySampleMultiplier = ${formatFloat(lifecycle.historySampleMultiplier)},`,
 		`            historySmoothingPasses = ${Math.trunc(lifecycle.historySmoothingPasses)},`,
 		`            ribbonWaveSoftening = ${formatFloat(lifecycle.ribbonWaveSoftening)},`,
+		`            layoutReferenceWidth = ${formatFloat(lifecycle.layoutReferenceWidth)},`,
 		'        )',
 	].join('\n');
 }

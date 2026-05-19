@@ -46,6 +46,7 @@ describe('game projectile vfx export boundary', () => {
     expect(exported.ribbonDecorations[0]).not.toHaveProperty('waveAmplitude');
     expect(exported.ribbonDecorations[0]).not.toHaveProperty('waveFrequency');
     expect(exported.lifecycle.durationSeconds).toBeGreaterThan(0);
+    expect(exported.lifecycle.layoutReferenceWidth).toBe(1846);
     expect(exported.samplingPolicy.historyFps).toBe(60);
   });
 

@@ -3,7 +3,6 @@ package cn.kasuminova.astd.renderer.projectile.runtime
 import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
 import cn.kasuminova.astd.renderer.projectile.ASTDProjectileVfxMistLayerSpec
 import cn.kasuminova.astd.renderer.projectile.ASTDTrailEntitySpec
-import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import org.boxutil.base.api.InstanceDataAPI
 import org.boxutil.define.BoxEnum
@@ -74,8 +73,10 @@ class ASTDProjectileVfxMistRenderLayer(
                 handles += Handle(layer, entity, instances)
             } else {
                 entity.delete()
-                Global.getLogger(ASTDProjectileVfxMistRenderLayer::class.java).warn(
-                    "ASTD projectile VFX mist addEntity failed state=$state layer=${layer.id} preset=${context.presetId} projectile=${context.projectileSpecId}",
+                delete()
+                throw IllegalStateException(
+                    "ASTD projectile VFX mist BoxUtil SpriteEntity addEntity failed: " +
+                        "state=$state layer=${layer.id} preset=${context.presetId} projectile=${context.projectileSpecId}",
                 )
             }
         }
@@ -107,10 +108,11 @@ class ASTDProjectileVfxMistRenderLayer(
         val baseLayer = trail.layers.firstOrNull() ?: trail.layerSpec
         val widthBase = ASTDProjectileVfxLayout.widthBase(baseLayer)
         val samples = ASTDProjectileVfxMistRenderer.samplesForTests(layer, context, context.visibleLength, widthBase)
+        val scale = context.worldUnitsPerPixel.coerceAtLeast(0.0001f)
         samples.forEachIndexed { index, sample ->
             val data = instances[index]
-            data.setLocation(sample.position)
-            data.setScale(max(0.1f, sample.rx), max(0.1f, sample.ry))
+            data.setLocation(ASTDProjectileVfxLayout.scalePoint(sample.position, scale))
+            data.setScale(max(0.1f, sample.rx * scale), max(0.1f, sample.ry * scale))
             data.setFacing(0f)
             data.setColor(layer.colorStart.red, layer.colorStart.green, layer.colorStart.blue, 0f)
             data.setEmissiveColor(layer.colorEnd.red, layer.colorEnd.green, layer.colorEnd.blue, sample.alpha)

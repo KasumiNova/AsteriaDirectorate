@@ -6,6 +6,8 @@ import cn.kasuminova.astd.renderer.projectile.ASTDTrailEntitySpec
 import cn.kasuminova.astd.renderer.projectile.ASTDTrailLayerSpec
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import org.lwjgl.util.vector.Vector2f
+import kotlin.math.abs
+import kotlin.math.max
 
 object ASTDProjectileVfxHeadRenderer {
     fun verticesForTests(layer: ASTDProjectileVfxHeadLayerSpec, visible: Float, widthBase: Float = 6f, headSizeScale: Float = 1f): List<Vector2f> {
@@ -30,7 +32,7 @@ object ASTDProjectileVfxHeadRenderer {
             baseLayer = baseLayer,
             layer = layer,
             headSizeScale = headSizeScale,
-            widthBase = ASTDProjectileVfxLayout.widthBase(baseLayer) * ASTDProjectileVfxShaderRenderer.PREVIEW_BODY_WIDTH_SCALE,
+            widthBase = ASTDProjectileVfxLayout.widthBase(baseLayer),
             pulse = context.beamAlpha.coerceIn(0f, 1f),
         )
     }
@@ -47,19 +49,40 @@ object ASTDProjectileVfxHeadRenderer {
             val layout = fillLayoutForTests(baseLayer, layer, context, headSizeScale)
             val polygon = layout.vertices.asList().map { Vector2f(it) }
             val vertices = headStripVertices(layout, alphaScale)
-            val envelope = headShadowEnvelope(polygon, layout, alphaScale)
-            val tipBloom = headTipBloom(layout, alphaScale)
-            val allVertices = vertices + envelope.vertices + tipBloom.vertices
+            val scaledVertices = vertices.map { vertex ->
+                vertex.copy(position = ASTDProjectileVfxLayout.scalePoint(vertex.position, context.worldUnitsPerPixel))
+            }
             ASTDProjectileVfxBodyRenderer.Mesh(
-                polygon = polygon,
+                polygon = ASTDProjectileVfxLayout.scalePoints(polygon, context.worldUnitsPerPixel),
                 gradientStops = emptyList(),
-                vertices = allVertices,
-                triangles = ASTDProjectileVfxBodyRenderer.triangulateStrip(vertices) + envelope.triangles + tipBloom.triangles,
+                vertices = scaledVertices,
+                triangles = ASTDProjectileVfxBodyRenderer.triangulateStrip(scaledVertices),
                 blendMode = layer.blendMode,
                 combatLayer = baseLayer.combatLayer,
-                xScale = 1.2f,
-                yScale = ASTDProjectileVfxShaderRenderer.PREVIEW_VERTICAL_SCALE,
-                shaderQuad = ASTDProjectileVfxShaderRenderer.headQuadForTests(trail, layer, context, headSizeScale, alphaScale),
+            )
+        }
+    }
+
+    fun shadowMeshesForTests(
+        trail: ASTDTrailEntitySpec,
+        layers: List<ASTDProjectileVfxHeadLayerSpec>,
+        context: ASTDProjectileVfxRenderContext,
+        headSizeScale: Float = 1f,
+        alphaScale: Float = 1f,
+    ): List<ASTDProjectileVfxBodyRenderer.Mesh> {
+        val baseLayer = trail.layers.firstOrNull() ?: trail.layerSpec
+        val widthBase = ASTDProjectileVfxLayout.widthBase(baseLayer)
+        return layers.filter { it.enabled }.map { layer ->
+            val layout = fillLayoutForTests(baseLayer, layer, context, headSizeScale)
+            val columns = headShadowColumns(layer, layout, widthBase, context, alphaScale)
+            val shadow = ASTDProjectileVfxSoftMesh.symmetricOuterFalloff(columns, 8)
+            ASTDProjectileVfxBodyRenderer.Mesh(
+                polygon = shadow.vertices.map { Vector2f(it.position) },
+                gradientStops = emptyList(),
+                vertices = shadow.vertices,
+                triangles = shadow.triangles,
+                blendMode = layer.blendMode,
+                combatLayer = baseLayer.combatLayer,
             )
         }
     }
@@ -89,15 +112,45 @@ object ASTDProjectileVfxHeadRenderer {
         }
     }
 
+    private fun headShadowColumns(
+        layer: ASTDProjectileVfxHeadLayerSpec,
+        layout: ASTDProjectileVfxLayout.HeadFillLayout,
+        widthBase: Float,
+        context: ASTDProjectileVfxRenderContext,
+        alphaScale: Float,
+    ): List<ASTDProjectileVfxSoftMesh.Column> {
+        if (layout.headVisible <= 0.01f) return emptyList()
+        val scale = context.worldUnitsPerPixel.coerceAtLeast(0.0001f)
+        val shadowBlur = max(8f, widthBase * 2.8f) * layout.headVisible + layer.blur
+        val shadowColor = layout.colors.mid
+        val pairs = listOf(
+            layout.vertices.rearTop to layout.vertices.rearBottom,
+            layout.vertices.shoulderTop to layout.vertices.shoulderBottom,
+            layout.vertices.curveTop to layout.vertices.curveBottom,
+            layout.vertices.tip to layout.vertices.tip,
+        )
+        return pairs.map { (top, bottom) ->
+            val x = (top.x + bottom.x) * 0.5f
+            val centerY = (top.y + bottom.y) * 0.5f
+            val half = abs(bottom.y - top.y) * 0.5f
+            val progress = ((x - layout.rearX) / (0f - layout.rearX).coerceAtLeast(0.0001f)).coerceIn(0f, 1f)
+            val sourceAlpha = samplePreviewShellAlpha(layout, progress)
+            ASTDProjectileVfxSoftMesh.Column(
+                x = x * scale,
+                centerY = centerY * scale,
+                innerHalf = half * scale,
+                outerHalf = (half + shadowBlur * ASTDProjectileVfxSoftMesh.CANVAS_SHADOW_VISIBLE_RADIUS) * scale,
+                color = shadowColor,
+                alpha = (sourceAlpha * 0.84f * layout.alpha * alphaScale * ASTDProjectileVfxSoftMesh.CANVAS_SHADOW_KERNEL_ALPHA).coerceIn(0f, 1f),
+            )
+        }
+    }
+
     private fun sampleHeadColor(point: Vector2f, layout: ASTDProjectileVfxLayout.HeadFillLayout, alphaScale: Float): ASTDColor {
         val progress = ((point.x - layout.rearX) / (0f - layout.rearX).coerceAtLeast(0.0001f)).coerceIn(0f, 1f)
         val color = samplePreviewShellGradient(layout, progress)
-        val hotAttenuation = when {
-            progress >= 0.74f -> 0.008f
-            progress >= 0.36f -> 0.024f
-            else -> 0.16f
-        }
-        return color.copy(alpha = (layout.alpha * alphaScale * hotAttenuation).coerceIn(0f, 1f))
+        val stopAlpha = samplePreviewShellAlpha(layout, progress)
+        return color.copy(alpha = (stopAlpha * layout.alpha * alphaScale).coerceIn(0f, 1f))
     }
 
     private fun samplePreviewShellGradient(layout: ASTDProjectileVfxLayout.HeadFillLayout, progress: Float): ASTDColor {
@@ -109,69 +162,22 @@ object ASTDProjectileVfxHeadRenderer {
         }
     }
 
-    private data class MeshPart(
-        val vertices: List<ASTDProjectileVfxBodyRenderer.Vertex>,
-        val triangles: List<ASTDProjectileVfxBodyRenderer.Triangle>,
-    )
-
-    private fun headShadowEnvelope(
-        polygon: List<Vector2f>,
-        layout: ASTDProjectileVfxLayout.HeadFillLayout,
-        alphaScale: Float,
-    ): MeshPart {
-        if (polygon.size < 4 || layout.headVisible <= 0.01f) return MeshPart(emptyList(), emptyList())
-        val blur = kotlin.math.max(8f, layout.width * 0.7f) * layout.headVisible
-        val color = layout.colors.mid
-        val samples = listOf(0f, 0.28f, 0.58f, 0.82f, 1f)
-        val vertices = ArrayList<ASTDProjectileVfxBodyRenderer.Vertex>(samples.size * 4)
-        for (band in 0..1) {
-            val expand = blur * (0.42f + band * 0.36f)
-            val alpha = 0.84f * layout.alpha * alphaScale * (0.006f / (band + 1f))
-            for (t in samples) {
-                val x = ASTDProjectileVfxMath.lerp(layout.rearX, 0f, t)
-                val baseHalf = ASTDProjectileVfxBodyRenderer.halfHeightAt(polygon, x)
-                val profile = ASTDProjectileVfxMath.smoothstep(0.02f, 0.26f, t) *
-                    (1f - ASTDProjectileVfxMath.smoothstep(0.92f, 1f, t))
-                val half = baseHalf + expand * (0.35f + 0.65f * profile)
-                val vertexColor = color.copy(alpha = (alpha * profile).coerceIn(0f, 1f))
-                vertices += ASTDProjectileVfxBodyRenderer.Vertex(Vector2f(x, -half), vertexColor)
-                vertices += ASTDProjectileVfxBodyRenderer.Vertex(Vector2f(x, half), vertexColor)
+    private fun samplePreviewShellAlpha(layout: ASTDProjectileVfxLayout.HeadFillLayout, progress: Float): Float {
+        val t = progress.coerceIn(0f, 1f)
+        return when {
+            t <= 0.36f -> {
+                val local = t / 0.36f
+                ASTDProjectileVfxMath.lerp(layout.colors.start.alpha, layout.colors.mid.alpha, local)
+            }
+            t <= 0.74f -> {
+                val local = (t - 0.36f) / (0.74f - 0.36f)
+                ASTDProjectileVfxMath.lerp(layout.colors.mid.alpha, 0.9f, local)
+            }
+            else -> {
+                val local = (t - 0.74f) / (1f - 0.74f)
+                ASTDProjectileVfxMath.lerp(0.9f, 0.98f, local)
             }
         }
-        val triangles = ArrayList<ASTDProjectileVfxBodyRenderer.Triangle>()
-        val stripSize = samples.size * 2
-        for (band in 0..1) {
-            triangles += ASTDProjectileVfxBodyRenderer.triangulateStrip(vertices.subList(band * stripSize, band * stripSize + stripSize))
-        }
-        return MeshPart(vertices, triangles)
-    }
-
-    private fun headTipBloom(
-        layout: ASTDProjectileVfxLayout.HeadFillLayout,
-        alphaScale: Float,
-    ): MeshPart {
-        if (layout.headVisible <= 0.01f) return MeshPart(emptyList(), emptyList())
-        val length = (-layout.rearX).coerceAtLeast(1f)
-        val color = layout.colors.mid
-        val samples = listOf(0f, 0.34f, 0.68f, 1f)
-        val vertices = ArrayList<ASTDProjectileVfxBodyRenderer.Vertex>(samples.size * 6)
-        for (band in 0..2) {
-            val alpha = layout.alpha * alphaScale * (0.006f / (band + 1f))
-            for (t in samples) {
-                val x = ASTDProjectileVfxMath.lerp(-length * 0.58f, length * 0.08f, t)
-                val profile = ASTDProjectileVfxMath.smoothstep(0f, 0.45f, t) *
-                    (1f - ASTDProjectileVfxMath.smoothstep(0.9f, 1f, t))
-                val half = layout.width * (0.45f + band * 0.62f) * profile
-                vertices += ASTDProjectileVfxBodyRenderer.Vertex(Vector2f(x, -half), color.copy(alpha = alpha * profile))
-                vertices += ASTDProjectileVfxBodyRenderer.Vertex(Vector2f(x, half), color.copy(alpha = alpha * profile))
-            }
-        }
-        val triangles = ArrayList<ASTDProjectileVfxBodyRenderer.Triangle>()
-        val stripSize = samples.size * 2
-        for (band in 0..2) {
-            triangles += ASTDProjectileVfxBodyRenderer.triangulateStrip(vertices.subList(band * stripSize, band * stripSize + stripSize))
-        }
-        return MeshPart(vertices, triangles)
     }
 
     private fun mix(a: ASTDColor, b: ASTDColor, t: Float): ASTDColor {
@@ -192,24 +198,33 @@ class ASTDProjectileVfxHeadRenderLayer(
 ) : ASTDProjectileVfxRenderLayer {
     private val fade = ASTDProjectileVfxLayerFadeState()
     private var meshes: List<ASTDProjectileVfxBodyRenderer.Mesh> = emptyList()
+    private var shadowMeshes: List<ASTDProjectileVfxBodyRenderer.Mesh> = emptyList()
     private val handles = ArrayList<ASTDProjectileVfxBodyRenderManager.Handle>()
+    private val shadowHandles = ArrayList<ASTDProjectileVfxBodyRenderManager.Handle>()
 
     fun meshesForTests(): List<ASTDProjectileVfxBodyRenderer.Mesh> = meshes
+    fun shadowMeshesForTests(): List<ASTDProjectileVfxBodyRenderer.Mesh> = shadowMeshes
 
     override fun create(engine: CombatEngineAPI?, context: ASTDProjectileVfxRenderContext): Boolean {
         meshes = ASTDProjectileVfxHeadRenderer.meshForTests(trail, layers, context, headSizeScale, fade.alpha())
+        shadowMeshes = ASTDProjectileVfxHeadRenderer.shadowMeshesForTests(trail, layers, context, headSizeScale, fade.alpha())
         if (engine == null) return false
         ensureHandles(engine, meshes.size)
+        ensureShadowHandles(engine, shadowMeshes.size)
         handles.zip(meshes).forEach { (handle, mesh) -> handle.update(context.location, context.renderFacing, mesh) }
+        shadowHandles.zip(shadowMeshes).forEach { (handle, mesh) -> handle.update(context.location, context.renderFacing, mesh) }
         return true
     }
 
     override fun advance(engine: CombatEngineAPI?, context: ASTDProjectileVfxRenderContext, amount: Float) {
         fade.advance(amount)
         meshes = ASTDProjectileVfxHeadRenderer.meshForTests(trail, layers, context, headSizeScale, fade.alpha())
+        shadowMeshes = ASTDProjectileVfxHeadRenderer.shadowMeshesForTests(trail, layers, context, headSizeScale, fade.alpha())
         if (engine != null) {
             ensureHandles(engine, meshes.size)
+            ensureShadowHandles(engine, shadowMeshes.size)
             handles.zip(meshes).forEach { (handle, mesh) -> handle.update(context.location, context.renderFacing, mesh) }
+            shadowHandles.zip(shadowMeshes).forEach { (handle, mesh) -> handle.update(context.location, context.renderFacing, mesh) }
         }
         if (fade.complete()) delete()
     }
@@ -221,7 +236,10 @@ class ASTDProjectileVfxHeadRenderLayer(
     override fun delete() {
         handles.forEach { it.delete() }
         handles.clear()
+        shadowHandles.forEach { it.delete() }
+        shadowHandles.clear()
         meshes = emptyList()
+        shadowMeshes = emptyList()
     }
 
     private fun ensureHandles(engine: CombatEngineAPI, required: Int) {
@@ -230,6 +248,15 @@ class ASTDProjectileVfxHeadRenderLayer(
         }
         while (handles.size > required) {
             handles.removeAt(handles.lastIndex).delete()
+        }
+    }
+
+    private fun ensureShadowHandles(engine: CombatEngineAPI, required: Int) {
+        while (shadowHandles.size < required) {
+            shadowHandles += ASTDProjectileVfxBodyRenderManager.createHandle(engine)
+        }
+        while (shadowHandles.size > required) {
+            shadowHandles.removeAt(shadowHandles.lastIndex).delete()
         }
     }
 }

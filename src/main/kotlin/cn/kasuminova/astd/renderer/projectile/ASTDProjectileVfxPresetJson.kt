@@ -209,6 +209,7 @@ internal object ASTDProjectileVfxPresetJson {
             historySampleMultiplier = json.float("historySampleMultiplier"),
             historySmoothingPasses = json.getInt("historySmoothingPasses"),
             ribbonWaveSoftening = json.float("ribbonWaveSoftening"),
+            layoutReferenceWidth = json.optDouble("layoutReferenceWidth", 1280.0).toFloat(),
         )
     }
 

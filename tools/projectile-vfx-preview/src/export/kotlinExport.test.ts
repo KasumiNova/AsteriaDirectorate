@@ -31,6 +31,7 @@ describe('formatPresetKotlin', () => {
     expect(kotlinText).toContain('ASTDProjectileVfxMistLayerSpec');
     expect(kotlinText).toContain('ASTDProjectileVfxSideWispLayerSpec');
     expect(kotlinText).toContain('ASTDProjectileVfxLifecycleSpec');
+    expect(kotlinText).toContain('layoutReferenceWidth = 1846f');
     expect(kotlinText).toContain('ASTDProjectileVfxSamplingPolicy');
     expect(kotlinText).toContain('ASTDProjectileVfxAnchorMode.HeadLocked');
     expect(kotlinText).toContain('ASTDProjectileVfxOrientationMode.ProjectileVelocity');

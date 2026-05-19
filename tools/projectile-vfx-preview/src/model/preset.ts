@@ -151,6 +151,7 @@ export interface ProjectileVfxLifecycleConfig {
   historySampleMultiplier: number;
   historySmoothingPasses: number;
   ribbonWaveSoftening: number;
+  layoutReferenceWidth: number;
 }
 
 export interface ProjectileVfxSamplingPolicyConfig {
@@ -338,6 +339,7 @@ export function createDefaultPreset(): BoxUtilPreviewPreset {
       historySampleMultiplier: 3,
       historySmoothingPasses: 3,
       ribbonWaveSoftening: 0.48,
+      layoutReferenceWidth: 1846,
     },
     samplingPolicy: {
       historyFps: 60,

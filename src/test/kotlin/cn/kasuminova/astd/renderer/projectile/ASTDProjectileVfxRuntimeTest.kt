@@ -93,7 +93,7 @@ class ASTDProjectileVfxRuntimeTest {
     }
 
     @Test
-    fun `runtime context lifecycle fields use shared math`() {
+    fun `runtime context visible length follows traveled distance until trail cap`() {
         val preset = testPreset().copy(
             trailEntities = listOf(
                 ASTDTrailEntitySpec(
@@ -111,13 +111,116 @@ class ASTDProjectileVfxRuntimeTest {
         val layer = RecordingRuntimeLayer()
         val runtime = ASTDProjectileVfxRuntime.forTests(preset, listOf(layer))
 
-        runtime.advanceForTests(0f, 0f, 0f, 1.0f, projectileAlive = true)
+        runtime.advanceForTests(0f, 0f, 0f, 0.1f, projectileAlive = true)
+        runtime.advanceForTests(180f, 0f, 0f, 0.1f, projectileAlive = true)
+        val growing = layer.contexts.last()
+        runtime.advanceForTests(720f, 0f, 0f, 0.1f, projectileAlive = true)
+        val capped = layer.contexts.last()
+
+        assertEquals(180f, growing.visibleLength, 0.0001f)
+        assertEquals(420f, capped.visibleLength, 0.0001f)
+        assertEquals(1f, growing.beamAlpha, 0.0001f)
+        assertEquals(1f, capped.beamAlpha, 0.0001f)
+    }
+
+    @Test
+    fun `runtime tail cap uses active viewport width instead of only authored trail length`() {
+        val preset = testPreset().copy(
+            trailEntities = listOf(
+                ASTDTrailEntitySpec(
+                    layerId = "test_runtime_viewport_trail",
+                    nodes = emptyList(),
+                    layerSpec = ASTDTrailLayerSpec(
+                        width = 40f,
+                        color = ASTDColor(1f, 1f, 1f, 1f),
+                        length = 420f,
+                        startWidth = 40f,
+                    ),
+                ),
+            ),
+            lifecycle = ASTDProjectileVfxLifecycleSpec(durationSeconds = 1.25f, dissolveStartRatio = 0.6f),
+        )
+        val layer = RecordingRuntimeLayer()
+        val runtime = ASTDProjectileVfxRuntime.forTests(preset, listOf(layer))
+
+        runtime.advanceForTests(0f, 0f, 0f, 0.1f, projectileAlive = true, viewportVisibleWidth = 1280f)
+        runtime.advanceForTests(720f, 0f, 0f, 0.1f, projectileAlive = true, viewportVisibleWidth = 1280f)
+
+        assertEquals(588.8f, layer.contexts.last().visibleLength, 0.0001f)
+    }
+
+    @Test
+    fun `runtime viewport tail cap is not overridden by authored trail length`() {
+        val preset = testPreset().copy(
+            trailEntities = listOf(
+                ASTDTrailEntitySpec(
+                    layerId = "test_runtime_viewport_trail",
+                    nodes = emptyList(),
+                    layerSpec = ASTDTrailLayerSpec(
+                        width = 40f,
+                        color = ASTDColor(1f, 1f, 1f, 1f),
+                        length = 900f,
+                        startWidth = 40f,
+                    ),
+                ),
+            ),
+            lifecycle = ASTDProjectileVfxLifecycleSpec(durationSeconds = 1.25f, dissolveStartRatio = 0.6f),
+        )
+        val layer = RecordingRuntimeLayer()
+        val runtime = ASTDProjectileVfxRuntime.forTests(preset, listOf(layer))
+
+        runtime.advanceForTests(0f, 0f, 0f, 0.1f, projectileAlive = true, viewportVisibleWidth = 1280f)
+        runtime.advanceForTests(720f, 0f, 0f, 0.1f, projectileAlive = true, viewportVisibleWidth = 1280f)
+
+        assertEquals(588.8f, layer.contexts.last().visibleLength, 0.0001f)
+    }
+
+    @Test
+    fun `runtime expresses preview layout in screen pixels and exposes world conversion scale`() {
+        val preset = testPreset().copy(
+            trailEntities = listOf(
+                ASTDTrailEntitySpec(
+                    layerId = "test_runtime_screen_space_trail",
+                    nodes = emptyList(),
+                    layerSpec = ASTDTrailLayerSpec(
+                        width = 40f,
+                        color = ASTDColor(1f, 1f, 1f, 1f),
+                        length = 900f,
+                        startWidth = 40f,
+                    ),
+                ),
+            ),
+            lifecycle = ASTDProjectileVfxLifecycleSpec(
+                durationSeconds = 1.25f,
+                dissolveStartRatio = 0.6f,
+                layoutReferenceWidth = 1846f,
+            ),
+        )
+        val layer = RecordingRuntimeLayer()
+        val runtime = ASTDProjectileVfxRuntime.forTests(preset, listOf(layer))
+
+        runtime.advanceForTests(
+            locationX = 0f,
+            locationY = 0f,
+            facing = 0f,
+            amount = 0.1f,
+            projectileAlive = true,
+            viewportVisibleWidth = 1067.0833f,
+            viewportPixelWidth = 2560f,
+        )
+        runtime.advanceForTests(
+            locationX = 720f,
+            locationY = 0f,
+            facing = 0f,
+            amount = 0.1f,
+            projectileAlive = true,
+            viewportVisibleWidth = 1067.0833f,
+            viewportPixelWidth = 2560f,
+        )
 
         val context = layer.contexts.last()
-        val expectedDissolve = ASTDProjectileVfxMath.dissolve(1.0f, 1.25f, 0.6f)
-        assertEquals(expectedDissolve, context.dissolve, 0.0001f)
-        assertEquals(ASTDProjectileVfxMath.beamAlpha(expectedDissolve), context.beamAlpha, 0.0001f)
-        assertEquals(ASTDProjectileVfxMath.visibleLength(420f, expectedDissolve), context.visibleLength, 0.0001f)
+        assertEquals(1067.0833f / 1846f, context.worldUnitsPerPixel, 0.0001f)
+        assertEquals(1846f * 0.46f, context.visibleLength, 0.0001f)
     }
 
     @Test

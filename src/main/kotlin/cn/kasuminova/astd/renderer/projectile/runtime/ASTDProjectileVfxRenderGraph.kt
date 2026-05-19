@@ -26,6 +26,7 @@ data class ASTDProjectileVfxRenderContext(
     val historyNodes: List<ASTDProjectileHistoryNode>,
     val presetId: String,
     val projectileSpecId: String,
+    val worldUnitsPerPixel: Float = 1f,
 )
 
 enum class ASTDProjectileVfxFadeReason { Hit, Expire, Removed, Dispose }
@@ -98,9 +99,8 @@ class ASTDProjectileVfxRenderGraph(
             if (visibility.trail && preset.trailEntities.isNotEmpty() && !usesEditorParityBody(preset)) {
                 layers += ASTDProjectileVfxTrailRenderLayer(preset.trailEntities)
             }
-            if (visibility.glow && preset.glowLayers.any { it.enabled } && preset.trailEntities.isNotEmpty()) {
-                layers += ASTDProjectileVfxGlowRenderLayer(preset.trailEntities.first(), preset.glowLayers)
-            }
+            if (visibility.mist && preset.mistLayers.any { it.enabled } && preset.trailEntities.isNotEmpty()) layers += ASTDProjectileVfxMistRenderLayer(preset.trailEntities.first(), preset.mistLayers)
+            if (visibility.glow && preset.glowLayers.any { it.enabled } && preset.trailEntities.isNotEmpty()) layers += ASTDProjectileVfxGlowRenderLayer(preset.trailEntities.first(), preset.glowLayers)
             if (preset.trailEntities.isNotEmpty()) layers += ASTDProjectileVfxBodyRenderLayer(preset.trailEntities.first())
             if (visibility.sideWisps && preset.sideWispLayers.any { it.enabled } && preset.trailEntities.isNotEmpty()) {
                 layers += ASTDProjectileVfxSideWispRenderLayer(preset.trailEntities.first(), preset.sideWispLayers)
@@ -112,7 +112,6 @@ class ASTDProjectileVfxRenderGraph(
                     preset.lifecycle.projectileHeadSizeScale,
                 )
             }
-            if (visibility.mist && preset.mistLayers.any { it.enabled } && preset.trailEntities.isNotEmpty()) layers += ASTDProjectileVfxMistRenderLayer(preset.trailEntities.first(), preset.mistLayers)
             if (visibility.ribbon && preset.ribbonDecorations.any { it.enabled } && preset.trailEntities.isNotEmpty()) {
                 layers += ASTDProjectileVfxRibbonRenderLayer(preset.trailEntities.first(), preset.ribbonDecorations)
             }

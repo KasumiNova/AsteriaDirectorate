@@ -4,7 +4,6 @@ import cn.kasuminova.astd.renderer.projectile.runtime.ASTDProjectileVfxHeadRende
 import cn.kasuminova.astd.renderer.projectile.runtime.ASTDProjectileVfxHeadRenderLayer
 import cn.kasuminova.astd.renderer.projectile.runtime.ASTDProjectileVfxBodyRenderManager
 import cn.kasuminova.astd.renderer.projectile.runtime.ASTDProjectileVfxLayout
-import cn.kasuminova.astd.renderer.projectile.runtime.ASTDProjectileVfxShaderRenderer
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import java.lang.reflect.InvocationHandler
 import java.lang.reflect.Proxy
@@ -70,7 +69,7 @@ class ASTDProjectileVfxHeadRendererTest {
         val baseLayer = trail.layers.single()
         val layer = preset.headLayers.single()
         val context = testContext().copy(beamAlpha = 0.8f)
-        val widthBase = ASTDProjectileVfxLayout.widthBase(baseLayer) * ASTDProjectileVfxShaderRenderer.PREVIEW_BODY_WIDTH_SCALE
+        val widthBase = ASTDProjectileVfxLayout.widthBase(baseLayer)
         val expected = ASTDProjectileVfxLayout.headFillLayout(baseLayer, layer, preset.lifecycle.projectileHeadSizeScale, widthBase, context.beamAlpha)
 
         val layout = ASTDProjectileVfxHeadRenderer.fillLayoutForTests(baseLayer, layer, context, headSizeScale = preset.lifecycle.projectileHeadSizeScale)
@@ -95,7 +94,7 @@ class ASTDProjectileVfxHeadRendererTest {
     }
 
     @Test
-    fun `head renderer adds preview blur and shadow envelope around filled shell`() {
+    fun `head renderer does not add non TypeScript geometry around filled shell`() {
         val preset = ASTDProjectileVfxPresetCatalog.preset("aod7_shot")!!
         val trail = preset.trailEntities.single()
         val layer = preset.headLayers.single()
@@ -115,14 +114,96 @@ class ASTDProjectileVfxHeadRendererTest {
             headSizeScale = preset.lifecycle.projectileHeadSizeScale,
         ).single()
 
-        assertTrue(mesh.vertices.size > layout.vertices.asList().size)
-        assertTrue(mesh.vertices.maxOf { it.position.y } > layout.vertices.asList().maxOf { it.y } + 7f)
-        assertTrue(mesh.vertices.minOf { it.position.y } < layout.vertices.asList().minOf { it.y } - 7f)
-        assertTrue(mesh.vertices.any { it.color.alpha in 0.01f..0.16f })
+        assertEquals(8, mesh.vertices.size)
+        assertEquals(6, mesh.triangles.size)
+        assertEquals(layout.vertices.asList().maxOf { it.y }, mesh.vertices.maxOf { it.position.y }, 0.0001f)
+        assertEquals(layout.vertices.asList().minOf { it.y }, mesh.vertices.minOf { it.position.y }, 0.0001f)
     }
 
     @Test
-    fun `head renderer attenuates filled shell alpha for in-game bloom parity`() {
+    fun `head renderer keeps blur implicit in the direct fill path`() {
+        val preset = ASTDProjectileVfxPresetCatalog.preset("aod7_shot")!!
+        val trail = preset.trailEntities.single()
+        val layer = preset.headLayers.single()
+        val context = testContext().copy(beamAlpha = 0.8f)
+        val baseLayer = trail.layers.single()
+        val layout = ASTDProjectileVfxHeadRenderer.fillLayoutForTests(
+            baseLayer,
+            layer,
+            context,
+            headSizeScale = preset.lifecycle.projectileHeadSizeScale,
+        )
+        val mesh = ASTDProjectileVfxHeadRenderer.meshForTests(
+            trail,
+            listOf(layer),
+            context,
+            headSizeScale = preset.lifecycle.projectileHeadSizeScale,
+        ).single()
+        val baseHalf = layout.vertices.asList().maxOf { kotlin.math.abs(it.y) }
+
+        assertFalse(mesh.vertices.any { kotlin.math.abs(it.position.y) > baseHalf + 0.0001f })
+    }
+
+    @Test
+    fun `head renderer emits separate soft shadow mesh for TypeScript shadow blur`() {
+        val preset = ASTDProjectileVfxPresetCatalog.preset("aod7_shot")!!
+        val trail = preset.trailEntities.single()
+        val layer = preset.headLayers.single()
+        val context = testContext().copy(beamAlpha = 0.8f)
+        val baseLayer = trail.layers.single()
+        val widthBase = ASTDProjectileVfxLayout.widthBase(baseLayer)
+        val layout = ASTDProjectileVfxHeadRenderer.fillLayoutForTests(
+            baseLayer,
+            layer,
+            context,
+            headSizeScale = preset.lifecycle.projectileHeadSizeScale,
+        )
+        val baseHalf = layout.vertices.asList().maxOf { kotlin.math.abs(it.y) }
+        val shadowBlur = kotlin.math.max(8f, widthBase * 2.8f) * layout.headVisible
+
+        val shadow = ASTDProjectileVfxHeadRenderer.shadowMeshesForTests(
+            trail,
+            listOf(layer),
+            context,
+            headSizeScale = preset.lifecycle.projectileHeadSizeScale,
+        ).single()
+
+        assertTrue(shadow.vertices.isNotEmpty())
+        assertTrue(shadow.triangles.isNotEmpty())
+        assertTrue(shadow.vertices.maxOf { kotlin.math.abs(it.position.y) } > baseHalf + shadowBlur * 0.5f)
+        assertTrue(shadow.vertices.any { it.color.blue > it.color.red && it.color.alpha > 0.04f })
+        assertTrue(shadow.vertices.any { it.color.alpha <= 0.0025f })
+        assertTrue(shadow.vertices.maxOf { it.color.alpha } <= 0.16f)
+        assertEquals("additive", shadow.blendMode)
+    }
+
+    @Test
+    fun `head renderer does not widen runtime silhouette for bloom approximation`() {
+        val preset = ASTDProjectileVfxPresetCatalog.preset("aod7_shot")!!
+        val trail = preset.trailEntities.single()
+        val layer = preset.headLayers.single()
+        val context = testContext().copy(beamAlpha = 1f)
+        val baseLayer = trail.layers.single()
+        val layout = ASTDProjectileVfxHeadRenderer.fillLayoutForTests(
+            baseLayer,
+            layer,
+            context,
+            headSizeScale = preset.lifecycle.projectileHeadSizeScale,
+        )
+
+        val mesh = ASTDProjectileVfxHeadRenderer.meshForTests(
+            trail,
+            listOf(layer),
+            context,
+            headSizeScale = preset.lifecycle.projectileHeadSizeScale,
+        ).single()
+        val baseHalf = layout.vertices.asList().maxOf { kotlin.math.abs(it.y) }
+
+        assertFalse(mesh.vertices.any { kotlin.math.abs(it.position.y) > baseHalf + 0.0001f })
+    }
+
+    @Test
+    fun `head renderer samples preview shell alpha without hidden attenuation`() {
         val preset = ASTDProjectileVfxPresetCatalog.preset("aod7_shot")!!
         val trail = preset.trailEntities.single()
         val layer = preset.headLayers.single().copy(alphaScale = 0.5f)
@@ -132,14 +213,14 @@ class ASTDProjectileVfxHeadRendererTest {
 
         val mesh = ASTDProjectileVfxHeadRenderer.meshForTests(trail, listOf(layer), context).single()
 
-        assertTrue(mesh.vertices.take(mesh.polygon.size).all { it.color.alpha < expectedLayout.alpha })
-        assertEquals(expectedLayout.alpha * 0.16f, mesh.vertices[0].color.alpha, 0.0001f)
-        assertEquals(expectedLayout.alpha * 0.024f, mesh.vertices[2].color.alpha, 0.0001f)
-        assertEquals(expectedLayout.alpha * 0.008f, mesh.vertices[6].color.alpha, 0.0001f)
+        assertEquals(expectedLayout.colors.start.alpha * expectedLayout.alpha, mesh.vertices[0].color.alpha, 0.0001f)
+        assertEquals(previewShellAlphaAt(expectedLayout, mesh.vertices[2].position.x), mesh.vertices[2].color.alpha, 0.0001f)
+        assertEquals(0.98f * expectedLayout.alpha, mesh.vertices[6].color.alpha, 0.0001f)
+        assertTrue(mesh.vertices[2].color.alpha > mesh.vertices[0].color.alpha)
     }
 
     @Test
-    fun `head renderer keeps shell geometry thin and reserves vertical spread for shadow envelope`() {
+    fun `head renderer keeps direct TypeScript layout scale`() {
         val preset = ASTDProjectileVfxPresetCatalog.preset("aod7_shot")!!
         val trail = preset.trailEntities.single()
         val layer = preset.headLayers.single()
@@ -151,9 +232,42 @@ class ASTDProjectileVfxHeadRendererTest {
             context,
             headSizeScale = preset.lifecycle.projectileHeadSizeScale,
         ).single()
+        val expected = ASTDProjectileVfxLayout.headFillLayout(
+            trail.layers.single(),
+            layer,
+            preset.lifecycle.projectileHeadSizeScale,
+            ASTDProjectileVfxLayout.widthBase(trail.layers.single()),
+            context.beamAlpha,
+        )
 
-        assertEquals(1.2f, mesh.xScale, 0.0001f)
-        assertEquals(ASTDProjectileVfxShaderRenderer.PREVIEW_VERTICAL_SCALE, mesh.yScale, 0.0001f)
+        assertEquals(expected.vertices.rearTop.x, mesh.polygon.first().x, 0.0001f)
+        assertEquals(expected.vertices.shoulderTop.y, mesh.polygon[1].y, 0.0001f)
+    }
+
+    @Test
+    fun `head renderer converts TypeScript pixel geometry into world units at render boundary`() {
+        val preset = ASTDProjectileVfxPresetCatalog.preset("aod7_shot")!!
+        val trail = preset.trailEntities.single()
+        val layer = preset.headLayers.single()
+        val context = testContext().copy(beamAlpha = 0.8f, worldUnitsPerPixel = 0.5f)
+        val mesh = ASTDProjectileVfxHeadRenderer.meshForTests(
+            trail,
+            listOf(layer),
+            context,
+            headSizeScale = preset.lifecycle.projectileHeadSizeScale,
+        ).single()
+        val expected = ASTDProjectileVfxLayout.headFillLayout(
+            trail.layers.single(),
+            layer,
+            preset.lifecycle.projectileHeadSizeScale,
+            ASTDProjectileVfxLayout.widthBase(trail.layers.single()),
+            context.beamAlpha,
+        )
+
+        assertEquals(expected.vertices.rearTop.x * 0.5f, mesh.polygon.first().x, 0.0001f)
+        assertEquals(expected.vertices.shoulderTop.y * 0.5f, mesh.polygon[1].y, 0.0001f)
+        assertEquals(expected.vertices.tip.x * 0.5f, mesh.vertices[6].position.x, 0.0001f)
+        assertEquals(expected.vertices.tip.y * 0.5f, mesh.vertices[6].position.y, 0.0001f)
     }
 
     @Test
@@ -186,22 +300,22 @@ class ASTDProjectileVfxHeadRendererTest {
 
         assertTrue(layer.create(engine.api, testContext()))
 
-        val snapshot = ASTDProjectileVfxBodyRenderManager.activeSnapshotsForTests(engine.api).single()
+        val snapshots = ASTDProjectileVfxBodyRenderManager.activeSnapshotsForTests(engine.api)
+        val snapshot = snapshots.single { it.mesh.polygon.size == 7 }
         val expected = ASTDProjectileVfxLayout.headVertices(
             preset.headLayers.single(),
             ASTDProjectileVfxLayout.headFillLayout(
                 preset.trailEntities.single().layers.single(),
                 preset.headLayers.single(),
                 preset.lifecycle.projectileHeadSizeScale,
-                ASTDProjectileVfxLayout.widthBase(preset.trailEntities.single().layers.single()) *
-                    ASTDProjectileVfxShaderRenderer.PREVIEW_BODY_WIDTH_SCALE,
+                ASTDProjectileVfxLayout.widthBase(preset.trailEntities.single().layers.single()),
                 testContext().beamAlpha,
             ).headVisible,
             preset.lifecycle.projectileHeadSizeScale,
-            ASTDProjectileVfxLayout.widthBase(preset.trailEntities.single().layers.single()) *
-                ASTDProjectileVfxShaderRenderer.PREVIEW_BODY_WIDTH_SCALE,
+            ASTDProjectileVfxLayout.widthBase(preset.trailEntities.single().layers.single()),
         )
         assertEquals(1, engine.addedLayeredRenderingPlugins.size)
+        assertEquals(2, snapshots.size)
         assertEquals(7, snapshot.mesh.polygon.size)
         assertEquals(expected.rearTop.x, snapshot.mesh.polygon.first().x, 0.0001f)
         assertTrue(snapshot.mesh.triangles.size >= 5)
@@ -261,5 +375,24 @@ class ASTDProjectileVfxHeadRendererTest {
         java.lang.Double.TYPE -> 0.0
         java.lang.Character.TYPE -> '\u0000'
         else -> null
+    }
+
+    private fun previewShellAlphaAt(layout: ASTDProjectileVfxLayout.HeadFillLayout, x: Float): Float {
+        val progress = ((x - layout.rearX) / (0f - layout.rearX).coerceAtLeast(0.0001f)).coerceIn(0f, 1f)
+        val stopAlpha = when {
+            progress <= 0.36f -> {
+                val t = progress / 0.36f
+                layout.colors.start.alpha + (layout.colors.mid.alpha - layout.colors.start.alpha) * t
+            }
+            progress <= 0.74f -> {
+                val t = (progress - 0.36f) / (0.74f - 0.36f)
+                layout.colors.mid.alpha + (0.9f - layout.colors.mid.alpha) * t
+            }
+            else -> {
+                val t = (progress - 0.74f) / (1f - 0.74f)
+                0.9f + (0.98f - 0.9f) * t
+            }
+        }
+        return stopAlpha * layout.alpha
     }
 }

@@ -7,9 +7,11 @@ import cn.kasuminova.astd.renderer.projectile.ASTDTrailLayerSpec
 import cn.kasuminova.astd.renderer.projectile.ASTDColor
 import org.lwjgl.util.vector.Vector2f
 import kotlin.math.max
+import kotlin.math.min
 
 object ASTDProjectileVfxLayout {
     private const val HEAD_AUTHORED_WIDTH_BASE = 6f
+    private const val EDITOR_CAPTURE_WIDTH = 1280f
 
     data class FlightLayout(
         val dissolve: Float,
@@ -63,6 +65,70 @@ object ASTDProjectileVfxLayout {
         )
     }
 
+    fun distanceFlightLayout(
+        maxVisibleLength: Float,
+        traveledDistance: Float,
+        elapsed: Float,
+        durationSeconds: Float,
+        dissolveStartRatio: Float,
+    ): FlightLayout {
+        val dissolve = ASTDProjectileVfxMath.dissolve(elapsed, durationSeconds, dissolveStartRatio)
+        val liveLength = traveledDistance.coerceAtLeast(0f).coerceAtMost(maxVisibleLength.coerceAtLeast(0f))
+        return FlightLayout(
+            dissolve = dissolve,
+            beamAlpha = ASTDProjectileVfxMath.beamAlpha(dissolve),
+            visibleLength = liveLength * ASTDProjectileVfxMath.lerp(1f, 0.08f, dissolve),
+        )
+    }
+
+    fun viewportTailCap(trailStartWidth: Float, viewportVisibleWidth: Float): Float {
+        return max(viewportVisibleWidth.coerceAtLeast(0f) * 0.46f, trailStartWidth.coerceAtLeast(0f) * 4.8f)
+    }
+
+    fun previewFlightLayout(
+        trailStartWidth: Float,
+        elapsed: Float,
+        durationSeconds: Float,
+        flightEndRatio: Float,
+        dissolveStartRatio: Float,
+        preDissolveFraction: Float,
+        captureWidth: Float = EDITOR_CAPTURE_WIDTH,
+    ): FlightLayout {
+        val duration = max(durationSeconds, 1.2f)
+        val clampedElapsed = elapsed.coerceIn(0f, duration)
+        val flightEndSeconds = duration * flightEndRatio
+        val dissolveStartSeconds = duration * dissolveStartRatio
+        val flightRange = preDissolveFraction.coerceIn(0f, 1f)
+        val dissolveRange = 1f - flightRange
+        val dissolveDuration = max(duration - dissolveStartSeconds, 0.0001f)
+        val flightSpeed = flightRange / max(flightEndSeconds, 0.0001f)
+        val dissolveStartSlope = (flightSpeed * dissolveDuration) / max(dissolveRange, 0.0001f)
+        val dissolveEndSlope = (flightSpeed * 0.25f * dissolveDuration) / max(dissolveRange, 0.0001f)
+        val flightProgress = if (clampedElapsed <= dissolveStartSeconds) {
+            flightRange * (clampedElapsed / max(flightEndSeconds, 0.0001f)).coerceIn(0f, 1f)
+        } else {
+            flightRange + dissolveRange * ASTDProjectileVfxMath.hermite01(
+                ((clampedElapsed - dissolveStartSeconds) / dissolveDuration).coerceIn(0f, 1f),
+                dissolveStartSlope,
+                dissolveEndSlope,
+            )
+        }
+        val dissolveStart = min(dissolveStartSeconds, duration - 0.2f)
+        val dissolve = ASTDProjectileVfxMath.smoothstep(dissolveStart, duration, clampedElapsed)
+        val startX = captureWidth * 0.14f
+        val endX = captureWidth * 0.88f
+        val traveledLength = max(0f, ASTDProjectileVfxMath.lerp(startX, endX, flightProgress) - startX)
+        val maxTailLength = viewportTailCap(trailStartWidth, captureWidth)
+        val minTailLength = max(trailStartWidth * 0.22f, 6f)
+        val grownLength = min(maxTailLength, max(minTailLength * ASTDProjectileVfxMath.smoothstep(0f, 0.08f, flightProgress), traveledLength))
+        val visibleLength = grownLength * ASTDProjectileVfxMath.lerp(1f, 0.08f, dissolve)
+        return FlightLayout(
+            dissolve = dissolve,
+            beamAlpha = ASTDProjectileVfxMath.beamAlpha(dissolve),
+            visibleLength = visibleLength,
+        )
+    }
+
     fun trailLocalNodes(visibleLength: Float, yOffset: Float = 0f): List<Vector2f> {
         return listOf(Vector2f(-visibleLength.coerceAtLeast(0f), yOffset), Vector2f(0f, yOffset))
     }
@@ -79,6 +145,19 @@ object ASTDProjectileVfxLayout {
 
     fun mutableNodeList(nodes: List<Vector2f>): ArrayList<Vector2f> {
         return ArrayList(nodes.map { Vector2f(it) })
+    }
+
+    fun scalePoint(point: Vector2f, worldUnitsPerPixel: Float): Vector2f {
+        val scale = worldUnitsPerPixel.coerceAtLeast(0.0001f)
+        return Vector2f(point.x * scale, point.y * scale)
+    }
+
+    fun scalePoints(points: List<Vector2f>, worldUnitsPerPixel: Float): List<Vector2f> {
+        return points.map { scalePoint(it, worldUnitsPerPixel) }
+    }
+
+    fun mutableScaledNodeList(nodes: List<Vector2f>, worldUnitsPerPixel: Float): ArrayList<Vector2f> {
+        return ArrayList(scalePoints(nodes, worldUnitsPerPixel))
     }
 
     fun glowLineWidth(widthBase: Float, glow: ASTDProjectileVfxGlowLayerSpec): Float = widthBase * glow.widthScale

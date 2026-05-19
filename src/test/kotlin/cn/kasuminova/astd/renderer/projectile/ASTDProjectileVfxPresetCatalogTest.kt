@@ -58,6 +58,7 @@ class ASTDProjectileVfxPresetCatalogTest {
         assertEquals(4f, preset.ribbonDecorations.single().noiseScale)
         assertEquals(ASTDColor(1f, 1f, 1f, 0.92f), preset.ribbonDecorations.single().color)
         assertEquals(1.25f, preset.lifecycle.durationSeconds)
+        assertEquals(1846f, preset.lifecycle.layoutReferenceWidth)
     }
 
     @Test

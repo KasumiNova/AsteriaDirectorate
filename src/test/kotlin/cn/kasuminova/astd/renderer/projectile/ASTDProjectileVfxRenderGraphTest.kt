@@ -59,11 +59,11 @@ class ASTDProjectileVfxRenderGraphTest {
 
         assertEquals(
             listOf(
+                "ASTDProjectileVfxMistRenderLayer",
                 "ASTDProjectileVfxGlowRenderLayer",
                 "ASTDProjectileVfxBodyRenderLayer",
                 "ASTDProjectileVfxSideWispRenderLayer",
                 "ASTDProjectileVfxHeadRenderLayer",
-                "ASTDProjectileVfxMistRenderLayer",
                 "ASTDProjectileVfxRibbonRenderLayer",
             ),
             layers.map { it.javaClass.simpleName },

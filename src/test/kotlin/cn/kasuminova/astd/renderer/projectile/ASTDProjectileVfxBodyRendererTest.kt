@@ -5,7 +5,6 @@ import cn.kasuminova.astd.renderer.projectile.runtime.ASTDProjectileVfxBodyRende
 import cn.kasuminova.astd.renderer.projectile.runtime.ASTDProjectileVfxBodyRenderer
 import cn.kasuminova.astd.renderer.projectile.runtime.ASTDProjectileVfxLayout
 import cn.kasuminova.astd.renderer.projectile.runtime.ASTDProjectileVfxFadeReason
-import cn.kasuminova.astd.renderer.projectile.runtime.ASTDProjectileVfxShaderRenderer
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import org.lwjgl.util.vector.Vector2f
 import java.lang.reflect.InvocationHandler
@@ -23,7 +22,7 @@ class ASTDProjectileVfxBodyRendererTest {
         val baseLayer = trail.layers.single()
         val context = testContext(0.2f)
         val pulse = context.beamAlpha
-        val widthBase = ASTDProjectileVfxLayout.widthBase(baseLayer) * ASTDProjectileVfxShaderRenderer.PREVIEW_BODY_WIDTH_SCALE
+        val widthBase = ASTDProjectileVfxLayout.widthBase(baseLayer)
 
         val mesh = ASTDProjectileVfxBodyRenderer.meshForTests(trail, context)
         val expectedPolygon = ASTDProjectileVfxLayout.bodyPolygon(widthBase, context.visibleLength, pulse)
@@ -48,33 +47,52 @@ class ASTDProjectileVfxBodyRendererTest {
     }
 
     @Test
-    fun `body renderer attenuates hot additive stops for in-game bloom parity`() {
+    fun `body renderer samples preview body fill alpha without hidden attenuation`() {
         val preset = ASTDProjectileVfxPresetCatalog.preset("aod7_shot")!!
         val trail = preset.trailEntities.single()
+        val baseLayer = trail.layers.single()
         val mesh = ASTDProjectileVfxBodyRenderer.meshForTests(
             trail,
             testContext().copy(visibleLength = 420f, beamAlpha = 0.8f),
         )
         val polygon = mesh.polygon
+        val stops = ASTDProjectileVfxLayout.bodyGradientStops(baseLayer, 0.8f)
 
-        assertEquals(0.0026253266f, mesh.vertexAt(polygon[2]).color.alpha, 0.0001f)
-        assertEquals(0.0026253266f, mesh.vertexAt(polygon[6]).color.alpha, 0.0001f)
+        assertEquals(previewBodyAlphaAt(stops, polygon[2].x, 420f), mesh.vertexAt(polygon[2]).color.alpha, 0.0001f)
+        assertEquals(previewBodyAlphaAt(stops, polygon[6].x, 420f), mesh.vertexAt(polygon[6]).color.alpha, 0.0001f)
+        assertTrue(mesh.vertexAt(polygon[2]).color.alpha > 0.35f)
     }
 
     @Test
-    fun `body renderer keeps bright core thin and lets shadow envelope carry bloom`() {
+    fun `body renderer keeps direct TypeScript layout scale`() {
         val preset = ASTDProjectileVfxPresetCatalog.preset("aod7_shot")!!
         val mesh = ASTDProjectileVfxBodyRenderer.meshForTests(
             preset.trailEntities.single(),
             testContext().copy(visibleLength = 420f, beamAlpha = 0.8f),
         )
+        val widthBase = ASTDProjectileVfxLayout.widthBase(preset.trailEntities.single().layers.single())
+        val expectedPolygon = ASTDProjectileVfxLayout.bodyPolygon(widthBase, 420f, 0.8f)
 
-        assertEquals(1.55f, mesh.xScale, 0.0001f)
-        assertEquals(ASTDProjectileVfxShaderRenderer.PREVIEW_VERTICAL_SCALE, mesh.yScale, 0.0001f)
+        assertEquals(expectedPolygon[3].x, mesh.polygon[3].x, 0.0001f)
+        assertEquals(expectedPolygon[3].y, mesh.polygon[3].y, 0.0001f)
     }
 
     @Test
-    fun `body renderer adds preview shadow blur envelope around core polygon`() {
+    fun `body renderer converts TypeScript pixel geometry into world units at render boundary`() {
+        val preset = ASTDProjectileVfxPresetCatalog.preset("aod7_shot")!!
+        val context = testContext().copy(visibleLength = 420f, beamAlpha = 0.8f, worldUnitsPerPixel = 0.5f)
+        val mesh = ASTDProjectileVfxBodyRenderer.meshForTests(preset.trailEntities.single(), context)
+        val widthBase = ASTDProjectileVfxLayout.widthBase(preset.trailEntities.single().layers.single())
+        val expectedPolygon = ASTDProjectileVfxLayout.bodyPolygon(widthBase, 420f, 0.8f)
+
+        assertEquals(expectedPolygon[0].x * 0.5f, mesh.polygon[0].x, 0.0001f)
+        assertEquals(expectedPolygon[3].y * 0.5f, mesh.polygon[3].y, 0.0001f)
+        assertEquals(expectedPolygon[4].x * 0.5f, mesh.vertices[8].position.x, 0.0001f)
+        assertEquals(expectedPolygon[4].y * 0.5f, mesh.vertices[8].position.y, 0.0001f)
+    }
+
+    @Test
+    fun `body renderer does not add non TypeScript geometry around core polygon`() {
         val preset = ASTDProjectileVfxPresetCatalog.preset("aod7_shot")!!
         val trail = preset.trailEntities.single()
         val context = testContext().copy(visibleLength = 160f, beamAlpha = 0.8f)
@@ -86,11 +104,64 @@ class ASTDProjectileVfxBodyRendererTest {
 
         val mesh = ASTDProjectileVfxBodyRenderer.meshForTests(trail, context)
 
-        assertTrue(mesh.vertices.size > baseOnly.size)
-        assertTrue(mesh.triangles.size > baseOnly.size - 2)
-        assertTrue(mesh.vertices.maxOf { it.position.y } > baseOnly.maxOf { it.y } + 7f)
-        assertTrue(mesh.vertices.minOf { it.position.y } < baseOnly.minOf { it.y } - 7f)
-        assertTrue(mesh.vertices.any { it.color.alpha in 0.01f..0.18f })
+        assertEquals(10, mesh.vertices.size)
+        assertEquals(8, mesh.triangles.size)
+        assertEquals(baseOnly.maxOf { it.y }, mesh.vertices.maxOf { it.position.y }, 0.0001f)
+        assertEquals(baseOnly.minOf { it.y }, mesh.vertices.minOf { it.position.y }, 0.0001f)
+    }
+
+    @Test
+    fun `body renderer keeps shadow blur implicit in the direct fill path`() {
+        val preset = ASTDProjectileVfxPresetCatalog.preset("aod7_shot")!!
+        val trail = preset.trailEntities.single()
+        val context = testContext().copy(visibleLength = 160f, beamAlpha = 0.8f)
+        val baseOnly = ASTDProjectileVfxLayout.bodyPolygon(
+            ASTDProjectileVfxLayout.widthBase(trail.layers.single()),
+            context.visibleLength,
+            context.beamAlpha,
+        )
+        val mesh = ASTDProjectileVfxBodyRenderer.meshForTests(trail, context)
+        val baseHalf = baseOnly.maxOf { kotlin.math.abs(it.y) }
+
+        assertFalse(mesh.vertices.any { kotlin.math.abs(it.position.y) > baseHalf + 0.0001f })
+    }
+
+    @Test
+    fun `body renderer emits separate soft shadow mesh for TypeScript shadow blur`() {
+        val preset = ASTDProjectileVfxPresetCatalog.preset("aod7_shot")!!
+        val trail = preset.trailEntities.single()
+        val context = testContext().copy(visibleLength = 160f, beamAlpha = 0.8f)
+        val widthBase = ASTDProjectileVfxLayout.widthBase(trail.layers.single())
+        val baseOnly = ASTDProjectileVfxLayout.bodyPolygon(widthBase, context.visibleLength, context.beamAlpha)
+        val baseHalf = baseOnly.maxOf { kotlin.math.abs(it.y) }
+        val shadowBlur = kotlin.math.max(8f, widthBase * 2.4f)
+
+        val shadow = ASTDProjectileVfxBodyRenderer.shadowMeshForTests(trail, context)
+
+        assertTrue(shadow.vertices.isNotEmpty())
+        assertTrue(shadow.triangles.isNotEmpty())
+        assertTrue(shadow.vertices.maxOf { kotlin.math.abs(it.position.y) } > baseHalf + shadowBlur * 0.5f)
+        assertTrue(shadow.vertices.any { it.color.blue > it.color.red && it.color.alpha > 0.05f })
+        assertTrue(shadow.vertices.any { it.color.alpha <= 0.0025f })
+        assertTrue(shadow.vertices.maxOf { it.color.alpha } <= 0.16f)
+        assertEquals("additive", shadow.blendMode)
+    }
+
+    @Test
+    fun `body renderer does not widen runtime silhouette for bloom approximation`() {
+        val preset = ASTDProjectileVfxPresetCatalog.preset("aod7_shot")!!
+        val trail = preset.trailEntities.single()
+        val context = testContext().copy(visibleLength = 420f, beamAlpha = 1f)
+        val baseOnly = ASTDProjectileVfxLayout.bodyPolygon(
+            ASTDProjectileVfxLayout.widthBase(trail.layers.single()),
+            context.visibleLength,
+            context.beamAlpha,
+        )
+
+        val mesh = ASTDProjectileVfxBodyRenderer.meshForTests(trail, context)
+        val baseHalf = baseOnly.maxOf { kotlin.math.abs(it.y) }
+
+        assertFalse(mesh.vertices.any { kotlin.math.abs(it.position.y) > baseHalf + 0.0001f })
     }
 
     @Test
@@ -132,7 +203,7 @@ class ASTDProjectileVfxBodyRendererTest {
         val engine = engineStub()
 
         assertTrue(layer.create(engine.api, testContext()))
-        assertEquals(1, ASTDProjectileVfxBodyRenderManager.activeHandleCountForTests(engine.api))
+        assertEquals(2, ASTDProjectileVfxBodyRenderManager.activeHandleCountForTests(engine.api))
         assertEquals(1, engine.addedLayeredRenderingPlugins.size)
     }
 
@@ -147,12 +218,13 @@ class ASTDProjectileVfxBodyRendererTest {
 
         layer.create(engine.api, firstContext)
         layer.advance(engine.api, secondContext, 0.1f)
-        val snapshot = ASTDProjectileVfxBodyRenderManager.activeSnapshotsForTests(engine.api).single()
+        val snapshots = ASTDProjectileVfxBodyRenderManager.activeSnapshotsForTests(engine.api)
+        val snapshot = snapshots.single { it.mesh.polygon.size == 9 }
         layer.delete()
 
-        assertEquals(secondContext.location.x, snapshot.location.x, 0.0001f)
-        assertEquals(secondContext.location.y, snapshot.location.y, 0.0001f)
-        assertEquals(secondContext.renderFacing, snapshot.facing, 0.0001f)
+        assertTrue(snapshots.all { kotlin.math.abs(it.location.x - secondContext.location.x) < 0.0001f })
+        assertTrue(snapshots.all { kotlin.math.abs(it.location.y - secondContext.location.y) < 0.0001f })
+        assertTrue(snapshots.all { kotlin.math.abs(it.facing - secondContext.renderFacing) < 0.0001f })
         assertEquals(
             ASTDProjectileVfxBodyRenderer.meshForTests(trail, secondContext).polygon.first().x,
             snapshot.mesh.polygon.first().x,
@@ -217,5 +289,17 @@ class ASTDProjectileVfxBodyRendererTest {
             kotlin.math.abs(it.position.x - point.x) < 0.0001f &&
                 kotlin.math.abs(it.position.y - point.y) < 0.0001f
         }
+    }
+
+    private fun previewBodyAlphaAt(
+        stops: List<ASTDProjectileVfxLayout.BodyGradientStop>,
+        x: Float,
+        visibleLength: Float,
+    ): Float {
+        val offset = ((x + visibleLength * 0.6f) / (visibleLength * 0.6f).coerceAtLeast(0.0001f)).coerceIn(0f, 1f)
+        val left = stops.lastOrNull { it.offset <= offset } ?: stops.first()
+        val right = stops.firstOrNull { it.offset >= offset } ?: stops.last()
+        val t = ((offset - left.offset) / (right.offset - left.offset).coerceAtLeast(0.0001f)).coerceIn(0f, 1f)
+        return left.alpha + (right.alpha - left.alpha) * t
     }
 }

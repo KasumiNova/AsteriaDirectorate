@@ -188,6 +188,7 @@ object ASTDProjectileVfxPresetCatalog {
                 historySampleMultiplier = 3f,
                 historySmoothingPasses = 3,
                 ribbonWaveSoftening = 0.48f,
+                layoutReferenceWidth = 1846f,
             ),
             samplingPolicy = ASTDProjectileVfxSamplingPolicy(
                 historyFps = 60f,

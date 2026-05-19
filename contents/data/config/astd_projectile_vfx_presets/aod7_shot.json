@@ -281,7 +281,8 @@
     "projectileHeadSizeScale": 1.5,
     "historySampleMultiplier": 3,
     "historySmoothingPasses": 3,
-    "ribbonWaveSoftening": 0.48
+    "ribbonWaveSoftening": 0.48,
+    "layoutReferenceWidth": 1846
   },
   "samplingPolicy": {
     "historyFps": 60,

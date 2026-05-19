@@ -48,23 +48,30 @@ object ASTDProjectileVfxTrailRenderer {
         spec: ASTDTrailEntitySpec,
         context: ASTDProjectileVfxRenderContext,
         yOffset: Float = 0f,
+        nodesOverride: List<Vector2f>? = null,
         alphaScale: Float = 1f,
         headWidthOverride: Float? = null,
         tailWidthOverride: Float? = null,
-    ): TrailEntity? {
+        glowPowerOverride: Float? = null,
+        worldUnitsPerPixel: Float = context.worldUnitsPerPixel,
+    ): TrailEntity {
         BoxUtilCombatVfx.ensureReady(engine)
         val layer = spec.layers.firstOrNull() ?: spec.layerSpec
         val entity = TrailEntity()
-        ASTDProjectileVfxLayout.trailLocalNodes(context.visibleLength, yOffset).forEach { entity.addNode(Vector2f(it)) }
+        val nodes = nodesOverride ?: ASTDProjectileVfxLayout.scalePoints(
+            ASTDProjectileVfxLayout.trailLocalNodes(context.visibleLength, yOffset),
+            worldUnitsPerPixel,
+        )
+        nodes.forEach { entity.addNode(Vector2f(it)) }
         entity.submitNodes()
-        applyLayer(entity, layer, context.beamAlpha * alphaScale, headWidthOverride, tailWidthOverride)
+        applyLayer(entity, layer, context.beamAlpha * alphaScale, headWidthOverride, tailWidthOverride, glowPowerOverride, worldUnitsPerPixel)
         val state = BoxUtilCombatVfx.addEntity(engine, BoxEnum.ENTITY_TRAIL, entity)
         if (state != 0) {
             entity.delete()
-            Global.getLogger(ASTDProjectileVfxTrailRenderer::class.java).warn(
-                "ASTD projectile VFX addEntity failed state=$state layer=${spec.layerId} preset=${context.presetId} projectile=${context.projectileSpecId}",
+            throw IllegalStateException(
+                "ASTD projectile VFX BoxUtil TrailEntity addEntity failed: " +
+                    "state=$state layer=${spec.layerId} preset=${context.presetId} projectile=${context.projectileSpecId}",
             )
-            return null
         }
         entity.setStateVanilla(context.location, context.renderFacing)
         return entity
@@ -76,9 +83,12 @@ object ASTDProjectileVfxTrailRenderer {
         alpha: Float,
         headWidthOverride: Float? = null,
         tailWidthOverride: Float? = null,
+        glowPowerOverride: Float? = null,
+        worldUnitsPerPixel: Float = 1f,
     ) {
-        val headWidth = headWidthOverride ?: ASTDProjectileVfxLayout.widthBase(layer)
-        val tailWidth = tailWidthOverride ?: (layer.endWidth * 0.075f).coerceAtLeast(0.3f)
+        val unitsPerPixel = worldUnitsPerPixel.coerceAtLeast(0.0001f)
+        val headWidth = (headWidthOverride ?: ASTDProjectileVfxLayout.widthBase(layer)) * unitsPerPixel
+        val tailWidth = (tailWidthOverride ?: (layer.endWidth * 0.075f).coerceAtLeast(0.3f)) * unitsPerPixel
         entity.setLayer(layer.combatLayer)
         if (layer.additive || layer.blendMode.equals("additive", ignoreCase = true)) entity.setAdditiveBlend()
         entity.setGlobalTimer(0f, 3600f, 0f)
@@ -109,7 +119,8 @@ object ASTDProjectileVfxTrailRenderer {
         entity.materialData.setEmissive(Global.getSettings().getSprite(layer.emissiveSpritePath))
         entity.materialData.setAlphaToEmissive(0f)
         entity.materialData.setColorToEmissive(0f)
-        entity.materialData.setGlowPower(1f)
+        entity.materialData.setAdditionEmissive(true)
+        entity.materialData.setGlowPower(glowPowerOverride ?: 1f)
     }
 }
 
@@ -123,7 +134,7 @@ class ASTDProjectileVfxTrailRenderLayer(
         if (engine == null) return false
         if (handles.isNotEmpty()) return true
         specs.forEach { spec ->
-            ASTDProjectileVfxTrailRenderer.createEntity(engine, spec, context)?.let { handles += it }
+            handles += ASTDProjectileVfxTrailRenderer.createEntity(engine, spec, context)
         }
         return handles.size == specs.size
     }
@@ -135,11 +146,21 @@ class ASTDProjectileVfxTrailRenderLayer(
             if (!entity.hasDelete()) {
                 val spec = specs.getOrNull(index) ?: return@forEachIndexed
                 val layer = spec.layers.firstOrNull() ?: spec.layerSpec
-                entity.setNodes(ASTDProjectileVfxLayout.mutableTrailLocalNodes(context.visibleLength))
+                entity.setNodes(
+                    ASTDProjectileVfxLayout.mutableScaledNodeList(
+                        ASTDProjectileVfxLayout.trailLocalNodes(context.visibleLength),
+                        context.worldUnitsPerPixel,
+                    ),
+                )
                 entity.setNodeRefreshIndex(0)
                 entity.setNodeRefreshAllFromCurrentIndex()
                 entity.submitNodes()
-                ASTDProjectileVfxTrailRenderer.applyLayer(entity, layer, context.beamAlpha * fade.alpha())
+                ASTDProjectileVfxTrailRenderer.applyLayer(
+                    entity,
+                    layer,
+                    context.beamAlpha * fade.alpha(),
+                    worldUnitsPerPixel = context.worldUnitsPerPixel,
+                )
                 entity.setStateVanilla(context.location, context.renderFacing)
             }
         }
