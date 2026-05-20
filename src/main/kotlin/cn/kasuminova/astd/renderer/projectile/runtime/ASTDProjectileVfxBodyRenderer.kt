@@ -10,6 +10,14 @@ import kotlin.math.abs
 import kotlin.math.max
 
 object ASTDProjectileVfxBodyRenderer {
+    const val RENDER_ORDER_GLOW = 100
+    const val RENDER_ORDER_BODY_SHADOW = 180
+    const val RENDER_ORDER_BODY = 200
+    const val RENDER_ORDER_SIDE_WISP = 240
+    const val RENDER_ORDER_HEAD_SHADOW = 280
+    const val RENDER_ORDER_HEAD = 300
+    const val RENDER_ORDER_RIBBON = 360
+
     data class Vertex(
         val position: Vector2f,
         val color: ASTDColor,
@@ -28,6 +36,7 @@ object ASTDProjectileVfxBodyRenderer {
         val triangles: List<Triangle>,
         val blendMode: String,
         val combatLayer: CombatEngineLayers,
+        val renderOrder: Int = 0,
     )
 
     fun meshForTests(
@@ -55,6 +64,7 @@ object ASTDProjectileVfxBodyRenderer {
             triangles = triangulateStrip(scaledVertices) + triangulateNoiseColumns(scaledNoiseVertices),
             blendMode = "additive",
             combatLayer = baseLayer.combatLayer,
+            renderOrder = RENDER_ORDER_BODY,
         )
     }
 
@@ -77,6 +87,7 @@ object ASTDProjectileVfxBodyRenderer {
             triangles = shadow.triangles,
             blendMode = "additive",
             combatLayer = baseLayer.combatLayer,
+            renderOrder = RENDER_ORDER_BODY_SHADOW,
         )
     }
 

@@ -80,6 +80,34 @@ object ASTDProjectileVfxMath {
         }
     }
 
+    fun ribbonDistanceWave(type: String, trailT: Float, timeSeconds: Float, frequency: Float, speed: Float, amplitude: Float, noiseScale: Float, syncCode: Int, softening: Float): Float {
+        val distanceD = trailT.coerceIn(0f, 1f).toString().toDouble()
+        val timeD = timeSeconds.toString().toDouble()
+        val frequencyD = frequency.toString().toDouble()
+        val speedD = speed.toString().toDouble()
+        val amplitudeD = amplitude.toString().toDouble()
+        val noiseScaleD = noiseScale.toString().toDouble()
+        val softeningD = softening.toString().toDouble()
+        val phase = distanceD * frequencyD + syncCode * 0.031
+        return when (type.lowercase()) {
+            "noise" -> {
+                val drift = timeD * speedD * 0.035
+                val spread = kotlin.math.max(noiseScaleD, 0.0001) * 0.12
+                val coarse = layeredNoiseDouble(phase * spread + drift, syncCode * 0.071)
+                val fine = layeredNoiseDouble(phase * spread * 1.7 + drift * 0.62 + 9.4, syncCode * 0.113)
+                val noiseVal = coarse * 0.72 + fine * 0.28
+                ((smoothstepDouble(0.18, 0.82, noiseVal) - 0.5) * 2.0 * amplitudeD * softeningD).toFloat()
+            }
+            "zigzag" -> {
+                val raw = 1.0 - 4.0 * kotlin.math.abs(fractDouble(phase + timeD * speedD * 0.12 + 0.25) - 0.5)
+                ((if (raw >= 0.0) smoothstepDouble(0.0, 1.0, raw) else -smoothstepDouble(0.0, 1.0, -raw)) * amplitudeD * softeningD).toFloat()
+            }
+            else -> {
+                (kotlin.math.sin((phase + timeD * speedD * 0.12) * Math.PI * 2.0) * amplitudeD * softeningD).toFloat()
+            }
+        }
+    }
+
     fun dissolve(elapsed: Float, duration: Float, dissolveStartRatio: Float): Float {
         val start = duration * dissolveStartRatio
         return clamp((elapsed - start) / max(duration - start, 0.0001f), 0f, 1f)

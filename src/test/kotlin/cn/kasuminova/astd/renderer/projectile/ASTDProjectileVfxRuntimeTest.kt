@@ -93,7 +93,7 @@ class ASTDProjectileVfxRuntimeTest {
     }
 
     @Test
-    fun `runtime context visible length follows traveled distance until trail cap`() {
+    fun `runtime context visible length follows traveled distance until authored trail cap`() {
         val preset = testPreset().copy(
             trailEntities = listOf(
                 ASTDTrailEntitySpec(
@@ -118,13 +118,13 @@ class ASTDProjectileVfxRuntimeTest {
         val capped = layer.contexts.last()
 
         assertEquals(180f, growing.visibleLength, 0.0001f)
-        assertEquals(420f, capped.visibleLength, 0.0001f)
+        assertEquals(1280f * 0.46f, capped.visibleLength, 0.0001f)
         assertEquals(1f, growing.beamAlpha, 0.0001f)
         assertEquals(1f, capped.beamAlpha, 0.0001f)
     }
 
     @Test
-    fun `runtime tail cap uses active viewport width instead of only authored trail length`() {
+    fun `runtime tail cap uses authored reference width instead of active viewport zoom`() {
         val preset = testPreset().copy(
             trailEntities = listOf(
                 ASTDTrailEntitySpec(
@@ -150,7 +150,7 @@ class ASTDProjectileVfxRuntimeTest {
     }
 
     @Test
-    fun `runtime viewport tail cap is not overridden by authored trail length`() {
+    fun `runtime authored tail cap is not overridden by trail length`() {
         val preset = testPreset().copy(
             trailEntities = listOf(
                 ASTDTrailEntitySpec(
@@ -176,7 +176,7 @@ class ASTDProjectileVfxRuntimeTest {
     }
 
     @Test
-    fun `runtime expresses preview layout in screen pixels and exposes world conversion scale`() {
+    fun `runtime keeps authored preview geometry in world space while distance grows in world units`() {
         val preset = testPreset().copy(
             trailEntities = listOf(
                 ASTDTrailEntitySpec(
@@ -207,6 +207,7 @@ class ASTDProjectileVfxRuntimeTest {
             projectileAlive = true,
             viewportVisibleWidth = 1067.0833f,
             viewportPixelWidth = 2560f,
+            viewportViewMult = 0.6255f,
         )
         runtime.advanceForTests(
             locationX = 720f,
@@ -216,15 +217,17 @@ class ASTDProjectileVfxRuntimeTest {
             projectileAlive = true,
             viewportVisibleWidth = 1067.0833f,
             viewportPixelWidth = 2560f,
+            viewportViewMult = 0.6255f,
         )
 
         val context = layer.contexts.last()
-        assertEquals(1067.0833f / 1846f, context.worldUnitsPerPixel, 0.0001f)
-        assertEquals(1846f * 0.46f, context.visibleLength, 0.0001f)
+        assertEquals(1f, context.worldUnitsPerPixel, 0.0001f)
+        assertEquals(720f, context.visibleLength, 0.0001f)
+        assertEquals(720f, context.visibleLength * context.worldUnitsPerPixel, 0.0001f)
     }
 
     @Test
-    fun `runtime updates screen to world scale from active viewport instead of launch zoom`() {
+    fun `runtime keeps projectile geometry in world space across active viewport zoom`() {
         val preset = testPreset().copy(
             trailEntities = listOf(
                 ASTDTrailEntitySpec(
@@ -247,21 +250,21 @@ class ASTDProjectileVfxRuntimeTest {
         val layer = RecordingRuntimeLayer()
         val runtime = ASTDProjectileVfxRuntime.forTests(preset, listOf(layer))
 
-        runtime.advanceForTests(0f, 0f, 0f, 0.1f, true, viewportVisibleWidth = 1846f, viewportPixelWidth = 2560f)
-        runtime.advanceForTests(120f, 0f, 0f, 0.1f, true, viewportVisibleWidth = 1067.0833f, viewportPixelWidth = 2560f)
+        runtime.advanceForTests(0f, 0f, 0f, 0.1f, true, viewportVisibleWidth = 1846f, viewportPixelWidth = 2560f, viewportViewMult = 4f)
+        runtime.advanceForTests(120f, 0f, 0f, 0.1f, true, viewportVisibleWidth = 1067.0833f, viewportPixelWidth = 2560f, viewportViewMult = 0.6255f)
         val zoomedIn = layer.contexts.last()
 
-        runtime.advanceForTests(240f, 0f, 0f, 0.1f, true, viewportVisibleWidth = 4200f, viewportPixelWidth = 2560f)
+        runtime.advanceForTests(240f, 0f, 0f, 0.1f, true, viewportVisibleWidth = 4200f, viewportPixelWidth = 2560f, viewportViewMult = 4f)
         val zoomedOut = layer.contexts.last()
 
-        assertEquals(1067.0833f / 1846f, zoomedIn.worldUnitsPerPixel, 0.0001f)
-        assertEquals(4200f / 1846f, zoomedOut.worldUnitsPerPixel, 0.0001f)
-        assertEquals(120f / zoomedIn.worldUnitsPerPixel, zoomedIn.visibleLength, 0.0001f)
-        assertEquals(240f / zoomedOut.worldUnitsPerPixel, zoomedOut.visibleLength, 0.0001f)
+        assertEquals(1f, zoomedIn.worldUnitsPerPixel, 0.0001f)
+        assertEquals(1f, zoomedOut.worldUnitsPerPixel, 0.0001f)
+        assertEquals(120f, zoomedIn.visibleLength, 0.0001f)
+        assertEquals(240f, zoomedOut.visibleLength, 0.0001f)
     }
 
     @Test
-    fun `runtime retains projectile history for the full screen-space visible tail`() {
+    fun `runtime retains projectile history for the full world-space visible tail`() {
         val preset = ASTDProjectileVfxPresetCatalog.preset("aod7_shot")!!
         val layer = RecordingRuntimeLayer()
         val runtime = ASTDProjectileVfxRuntime.forTests(preset, listOf(layer))
@@ -319,6 +322,7 @@ class ASTDProjectileVfxRuntimeTest {
         assertEquals(0.42f, snapshot.lastElapsed, 0.0001f)
         assertTrue(snapshot.lastVisibleLength > 0f)
         assertTrue(snapshot.lastBeamAlpha > 0f)
+        assertEquals(1f, snapshot.lastWorldUnitsPerPixel, 0.0001f)
     }
 
     private fun testPreset() = ASTDProjectileVfxPreset(

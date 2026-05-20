@@ -43,6 +43,7 @@ class ASTDInGameAutomationScenarioTest {
             "runtimeElapsedSeconds",
             "runtimeVisibleLength",
             "runtimeBeamAlpha",
+            "runtimeWorldUnitsPerPixel",
         ).forEach { field ->
             assertTrue(source.contains("\\\"$field\\\""), "missing diagnostics field: $field")
         }
@@ -119,10 +120,11 @@ class ASTDInGameAutomationScenarioTest {
         assertTrue(source.contains("fallbackProjectileSpawnedAt"), "fallback projectile should expose its flight age for capture staging")
         assertTrue(source.contains("evidenceReady"), "automation should wait for a mature trail before screenshot capture")
         assertTrue(source.contains("SCREENSHOT_FLIGHT_SECONDS"), "capture delay should be an explicit automation constant")
+        assertTrue(source.contains("visualFramesWritten > 0 && elapsed - lastVisualFrameAt < 0.18f"), "first evidence frame should be captured on the completion frame")
         assertTrue(source.contains("FALLBACK_PROJECTILE_SPEED = ${projSpeed.toInt()}f"), "fallback projectile should use weapon_data proj speed instead of weapon range")
         assertTrue(source.contains("referenceCaptureVisibleLength"), "capture length should be derived from the preview reference contract")
         assertTrue(source.contains("previewFlightLayout"), "capture length should share the TS preview flight layout function")
-        assertTrue(source.contains("REFERENCE_CAPTURE_ELAPSED_SECONDS = 0.42f"), "automation should name the reference image capture frame")
+        assertTrue(source.contains("REFERENCE_CAPTURE_ELAPSED_SECONDS = 0.28f"), "automation should capture while the AOD-7 head remains inside the parity ROI")
         assertFalse(source.contains("CAPTURE_TRAIL_MIN_LENGTH = 840f"), "capture should not wait for a hardcoded full tail cap when the reference frame is shorter")
         assertTrue(source.contains("projectile.location.y = projectilePreviewAnchor.y"), "projectile may be kept on the visual lane without resetting traveled distance")
         assertFalse(source.contains("projectile.location.set(projectilePreviewAnchor)"), "projectile should not be pinned to the preview anchor every frame")

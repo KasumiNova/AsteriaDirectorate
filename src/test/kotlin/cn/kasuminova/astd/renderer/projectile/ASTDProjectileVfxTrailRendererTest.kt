@@ -47,7 +47,6 @@ class ASTDProjectileVfxTrailRendererTest {
     fun `projectile BoxUtil runtime layers do not warn and continue after addEntity failure`() {
         listOf(
             Path.of("src/main/kotlin/cn/kasuminova/astd/renderer/projectile/runtime/ASTDProjectileVfxTrailRenderer.kt"),
-            Path.of("src/main/kotlin/cn/kasuminova/astd/renderer/projectile/runtime/ASTDProjectileVfxSideWispRenderer.kt"),
             Path.of("src/main/kotlin/cn/kasuminova/astd/renderer/projectile/runtime/ASTDProjectileVfxMistRenderer.kt"),
         ).forEach { sourcePath ->
             val source = Files.readString(sourcePath)
@@ -55,5 +54,15 @@ class ASTDProjectileVfxTrailRendererTest {
             assertTrue(source.contains("throw IllegalStateException"), "${sourcePath.fileName} must throw on BoxUtil addEntity failure")
             assertTrue(source.contains("delete()"), "${sourcePath.fileName} must clean up partial BoxUtil state on addEntity failure")
         }
+    }
+
+    @Test
+    fun `side wisp runtime no longer bypasses mesh render ordering with BoxUtil TrailEntity`() {
+        val source = Files.readString(Path.of("src/main/kotlin/cn/kasuminova/astd/renderer/projectile/runtime/ASTDProjectileVfxSideWispRenderer.kt"))
+
+        assertFalse(source.contains("org.boxutil.units.standard.entity.TrailEntity"))
+        assertFalse(source.contains("BoxEnum.ENTITY_TRAIL"))
+        assertTrue(source.contains("ASTDProjectileVfxBodyRenderManager.createHandle"))
+        assertTrue(source.contains("RENDER_ORDER_SIDE_WISP"))
     }
 }

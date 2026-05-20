@@ -24,6 +24,9 @@ object ASTDProjectileVfxRuntimeTelemetry {
     @Volatile
     private var lastBeamAlpha: Float = 0f
 
+    @Volatile
+    private var lastWorldUnitsPerPixel: Float = 1f
+
     fun recordTracked(projectile: DamagingProjectileAPI, preset: ASTDProjectileVfxPreset) {
         trackedCount.incrementAndGet()
         lastProjectileSpecId = projectile.projectileSpecId
@@ -37,12 +40,14 @@ object ASTDProjectileVfxRuntimeTelemetry {
         lastElapsed = lastElapsed,
         lastVisibleLength = lastVisibleLength,
         lastBeamAlpha = lastBeamAlpha,
+        lastWorldUnitsPerPixel = lastWorldUnitsPerPixel,
     )
 
     fun recordContext(context: cn.kasuminova.astd.renderer.projectile.runtime.ASTDProjectileVfxRenderContext) {
         lastElapsed = context.elapsed
         lastVisibleLength = context.visibleLength
         lastBeamAlpha = context.beamAlpha
+        lastWorldUnitsPerPixel = context.worldUnitsPerPixel
     }
 
     fun clear() {
@@ -52,6 +57,7 @@ object ASTDProjectileVfxRuntimeTelemetry {
         lastElapsed = 0f
         lastVisibleLength = 0f
         lastBeamAlpha = 0f
+        lastWorldUnitsPerPixel = 1f
     }
 
     data class Snapshot(
@@ -61,5 +67,6 @@ object ASTDProjectileVfxRuntimeTelemetry {
         val lastElapsed: Float,
         val lastVisibleLength: Float,
         val lastBeamAlpha: Float,
+        val lastWorldUnitsPerPixel: Float,
     )
 }

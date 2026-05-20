@@ -193,8 +193,67 @@ class ASTDProjectileVfxHeadRendererTest {
         assertTrue(shadow.vertices.maxOf { kotlin.math.abs(it.position.y) } > baseHalf + shadowBlur * 0.5f)
         assertTrue(shadow.vertices.any { it.color.blue > it.color.red && it.color.alpha > 0.04f })
         assertTrue(shadow.vertices.any { it.color.alpha <= 0.0025f })
-        assertTrue(shadow.vertices.maxOf { it.color.alpha } <= 0.16f)
+        assertTrue(shadow.vertices.maxOf { it.color.alpha } <= 0.36f)
         assertEquals("additive", shadow.blendMode)
+    }
+
+    @Test
+    fun `head shadow tapers beyond tip instead of ending in a rectangular seam`() {
+        val preset = ASTDProjectileVfxPresetCatalog.preset("aod7_shot")!!
+        val trail = preset.trailEntities.single()
+        val layer = preset.headLayers.single()
+        val context = testContext().copy(beamAlpha = 0.8f)
+
+        val shadow = ASTDProjectileVfxHeadRenderer.shadowMeshesForTests(
+            trail,
+            listOf(layer),
+            context,
+            headSizeScale = preset.lifecycle.projectileHeadSizeScale,
+        ).single()
+        val maxX = shadow.vertices.maxOf { it.position.x }
+        val capVertices = shadow.vertices.filter { it.position.x > 0f }
+        val farCap = shadow.vertices.filter { kotlin.math.abs(it.position.x - maxX) <= 0.0001f }
+
+        assertTrue(maxX > 0f, "head bloom should extend past the tip as a soft cap")
+        assertTrue(capVertices.isNotEmpty())
+        assertTrue(farCap.all { kotlin.math.abs(it.position.y) <= 0.0001f })
+        assertTrue(farCap.all { it.color.alpha <= 0.0025f })
+    }
+
+    @Test
+    fun `head shadow does not emit a repeated vertical cap column`() {
+        val preset = ASTDProjectileVfxPresetCatalog.preset("aod7_shot")!!
+        val trail = preset.trailEntities.single()
+        val layer = preset.headLayers.single()
+        val context = testContext().copy(beamAlpha = 0.8f)
+
+        val shadow = ASTDProjectileVfxHeadRenderer.shadowMeshesForTests(
+            trail,
+            listOf(layer),
+            context,
+            headSizeScale = preset.lifecycle.projectileHeadSizeScale,
+        ).single()
+        val maxX = shadow.vertices.maxOf { it.position.x }
+        val capVertexCount = shadow.vertices.count { kotlin.math.abs(it.position.x - maxX) <= 0.0001f }
+
+        assertTrue(capVertexCount < 12, "head bloom should taper through polygon rings, not a repeated column cap; cap vertices=$capVertexCount")
+    }
+
+    @Test
+    fun `head shadow bloom is strong enough to cover the trail under the head`() {
+        val preset = ASTDProjectileVfxPresetCatalog.preset("aod7_shot")!!
+        val trail = preset.trailEntities.single()
+        val layer = preset.headLayers.single()
+        val context = testContext().copy(beamAlpha = 1f)
+
+        val shadow = ASTDProjectileVfxHeadRenderer.shadowMeshesForTests(
+            trail,
+            listOf(layer),
+            context,
+            headSizeScale = preset.lifecycle.projectileHeadSizeScale,
+        ).single()
+
+        assertTrue(shadow.vertices.maxOf { it.color.alpha } >= 0.22f)
     }
 
     @Test

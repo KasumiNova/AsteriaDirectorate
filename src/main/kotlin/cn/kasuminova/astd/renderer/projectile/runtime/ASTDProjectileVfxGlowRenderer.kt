@@ -228,6 +228,7 @@ object ASTDProjectileVfxGlowRenderer {
             triangles = ASTDProjectileVfxBodyRenderer.triangulateStrip(parts.strokeVertices) + parts.shadow.triangles,
             blendMode = "additive",
             combatLayer = CombatEngineLayers.ABOVE_PARTICLES,
+            renderOrder = ASTDProjectileVfxBodyRenderer.RENDER_ORDER_GLOW,
         )
     }
 
@@ -246,6 +247,7 @@ object ASTDProjectileVfxGlowRenderer {
             triangles = shadow.triangles,
             blendMode = "additive",
             combatLayer = CombatEngineLayers.ABOVE_PARTICLES,
+            renderOrder = ASTDProjectileVfxBodyRenderer.RENDER_ORDER_GLOW,
         )
     }
 

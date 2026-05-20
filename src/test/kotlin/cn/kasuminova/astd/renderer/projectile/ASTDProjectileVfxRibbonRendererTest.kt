@@ -163,9 +163,9 @@ class ASTDProjectileVfxRibbonRendererTest {
         val context = testContext()
         val points = ASTDProjectileVfxRibbonRenderer.pointsForTests(ribbon, context, 10)
         val middle = points[5]
-        val expectedWave = ASTDProjectileVfxMath.ribbonWave(
+        val expectedWave = ASTDProjectileVfxMath.ribbonDistanceWave(
             ribbon.waveType,
-            middle.base.x,
+            0.5f,
             context.logicElapsed,
             ribbon.frequency,
             ribbon.waveSpeed,
@@ -186,7 +186,7 @@ class ASTDProjectileVfxRibbonRendererTest {
         )
 
         assertNotEquals(expectedWave, actualOffset)
-        assertEquals(expectedOffset, actualOffset, 0.0001f)
+        assertEquals(kotlin.math.abs(expectedOffset), actualOffset, 0.0001f)
     }
 
     @Test
@@ -228,6 +228,53 @@ class ASTDProjectileVfxRibbonRendererTest {
 
         assertEquals(first[5].position.y, same[5].position.y, 0.0001f)
         assertNotEquals(first[5].position.y, next[5].position.y)
+    }
+
+    @Test
+    fun `ribbon noise follows trail distance coordinates instead of projectile world position`() {
+        val ribbon = ASTDProjectileVfxPresetCatalog.preset("aod7_shot")!!.ribbonDecorations.single().copy(
+            waveType = "noise",
+            amplitude = 1.35f,
+            waveSpeed = 1f,
+        )
+        val first = testContext(elapsed = 0.1f).copy(
+            logicElapsed = 0.1f,
+            location = Vector2f(200f, 120f),
+            historyNodes = straightHistory(),
+            visibleLength = 40f,
+        )
+        val advanced = testContext(elapsed = 0.1f).copy(
+            logicElapsed = 0.1f,
+            location = Vector2f(260f, 120f),
+            historyNodes = straightHistory().map {
+                ASTDProjectileHistoryNode(Vector2f(it.location.x + 60f, it.location.y), it.facing, it.elapsed)
+            },
+            visibleLength = 40f,
+        )
+
+        val firstPoint = ASTDProjectileVfxRibbonRenderer.pointsForTests(ribbon, first, 10)[5]
+        val advancedPoint = ASTDProjectileVfxRibbonRenderer.pointsForTests(ribbon, advanced, 10)[5]
+        val firstOffset = firstPoint.position.y - firstPoint.base.y
+        val advancedOffset = advancedPoint.position.y - advancedPoint.base.y
+
+        assertEquals(firstOffset, advancedOffset, 0.0001f)
+    }
+
+    @Test
+    fun `ribbon noise diffuses gradually across adjacent logic frames`() {
+        val ribbon = ASTDProjectileVfxPresetCatalog.preset("aod7_shot")!!.ribbonDecorations.single().copy(
+            waveType = "noise",
+            amplitude = 1.35f,
+            waveSpeed = 1f,
+        )
+        val firstFrame = testContext(elapsed = 0.1001f).copy(logicElapsed = 0.1f, visibleLength = 120f)
+        val nextFrame = testContext(elapsed = 0.117f).copy(logicElapsed = 7f / 60f, visibleLength = 120f)
+
+        val first = ASTDProjectileVfxRibbonRenderer.pointsForTests(ribbon, firstFrame, 16)[8]
+        val next = ASTDProjectileVfxRibbonRenderer.pointsForTests(ribbon, nextFrame, 16)[8]
+        val delta = kotlin.math.abs((next.position.y - next.base.y) - (first.position.y - first.base.y))
+
+        assertTrue(delta in 0.0001f..1.2f, "noise should drift gradually, delta=$delta")
     }
 
     @Test

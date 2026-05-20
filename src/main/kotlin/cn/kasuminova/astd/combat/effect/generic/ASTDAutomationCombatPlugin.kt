@@ -101,7 +101,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     override fun renderInUICoords(viewport: ViewportAPI) {
         val combatEngine = engine ?: return
         if (!completed || visualFramesWritten >= 3) return
-        if (elapsed - lastVisualFrameAt < 0.18f) return
+        if (visualFramesWritten > 0 && elapsed - lastVisualFrameAt < 0.18f) return
 
         lockCamera(combatEngine)
         val ship = findArcFlare(combatEngine)
@@ -311,6 +311,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             appendLine("  \"runtimeElapsedSeconds\": ${formatFloat(runtime.lastElapsed)},")
             appendLine("  \"runtimeVisibleLength\": ${formatFloat(runtime.lastVisibleLength)},")
             appendLine("  \"runtimeBeamAlpha\": ${formatFloat(runtime.lastBeamAlpha)},")
+            appendLine("  \"runtimeWorldUnitsPerPixel\": ${formatFloat(runtime.lastWorldUnitsPerPixel)},")
             appendLine("  \"elapsedSeconds\": ${"%.3f".format(java.util.Locale.ROOT, elapsed)}")
             appendLine("}")
         }
@@ -328,6 +329,6 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     private companion object {
         private const val FALLBACK_PROJECTILE_SPEED = 2400f
         private const val SCREENSHOT_FLIGHT_SECONDS = 0.13333334f
-        private const val REFERENCE_CAPTURE_ELAPSED_SECONDS = 0.42f
+        private const val REFERENCE_CAPTURE_ELAPSED_SECONDS = 0.28f
     }
 }

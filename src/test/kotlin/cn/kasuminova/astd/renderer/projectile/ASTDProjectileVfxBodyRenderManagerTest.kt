@@ -97,6 +97,30 @@ class ASTDProjectileVfxBodyRenderManagerTest {
     }
 
     @Test
+    fun `renderer sorts snapshots by explicit render order instead of handle creation order`() {
+        val engine = engineStub()
+        val renderer = ASTDProjectileVfxBodyRenderManager.ensure(engine.api)
+        val headHandle = ASTDProjectileVfxBodyRenderManager.createHandle(engine.api)
+        val glowHandle = ASTDProjectileVfxBodyRenderManager.createHandle(engine.api)
+        val baseMesh = ASTDProjectileVfxBodyRenderer.Mesh(
+            polygon = emptyList(),
+            gradientStops = emptyList(),
+            vertices = emptyList(),
+            triangles = emptyList(),
+            blendMode = "additive",
+            combatLayer = CombatEngineLayers.ABOVE_PARTICLES,
+        )
+        val head = baseMesh.copy(renderOrder = ASTDProjectileVfxBodyRenderer.RENDER_ORDER_HEAD)
+        val glow = baseMesh.copy(renderOrder = ASTDProjectileVfxBodyRenderer.RENDER_ORDER_GLOW)
+
+        headHandle.update(Vector2f(1f, 2f), 0f, head)
+        glowHandle.update(Vector2f(1f, 2f), 0f, glow)
+
+        val sorted = renderer.snapshotsForLayerForTests(CombatEngineLayers.ABOVE_PARTICLES)
+        assertEquals(listOf(glow, head), sorted.map { it.mesh })
+    }
+
+    @Test
     fun `transform local point rotates around origin and adds world location`() {
         val origin = Vector2f(10f, 20f)
 

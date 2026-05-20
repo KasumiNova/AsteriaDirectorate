@@ -28,6 +28,7 @@ internal object ASTDProjectileVfxBodyRenderManager {
         val location: Vector2f,
         val facing: Float,
         val mesh: ASTDProjectileVfxBodyRenderer.Mesh,
+        val renderOrder: Int = mesh.renderOrder,
     )
 
     fun ensure(engine: CombatEngineAPI): Renderer {
@@ -74,7 +75,7 @@ internal object ASTDProjectileVfxBodyRenderManager {
         private val id: Int,
     ) {
         fun update(location: Vector2f, facing: Float, mesh: ASTDProjectileVfxBodyRenderer.Mesh) {
-            renderer.update(id, Snapshot(Vector2f(location), facing, mesh))
+            renderer.update(id, Snapshot(Vector2f(location), facing, mesh, mesh.renderOrder))
         }
 
         fun delete() {
@@ -105,7 +106,9 @@ internal object ASTDProjectileVfxBodyRenderManager {
         fun snapshotsForLayerForTests(layer: CombatEngineLayers): List<Snapshot> = snapshotsForLayer(layer)
 
         private fun snapshotsForLayer(layer: CombatEngineLayers): List<Snapshot> {
-            return snapshots.values.filter { it.mesh.combatLayer == layer }
+            return snapshots.values
+                .filter { it.mesh.combatLayer == layer }
+                .sortedWith(compareBy<Snapshot> { it.renderOrder }.thenBy { it.mesh.blendMode })
         }
 
         override fun getActiveLayers(): EnumSet<CombatEngineLayers> {

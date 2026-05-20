@@ -50,9 +50,9 @@ object ASTDProjectileVfxRibbonRenderer {
             val normalY = tangentX / tangentLength
             val widthBase = ribbonWidthBase(ribbon, baseTrailStartWidth)
             val smokeEnvelope = smokeEnvelope(t)
-            val wave = ASTDProjectileVfxMath.ribbonWave(
+            val wave = ASTDProjectileVfxMath.ribbonDistanceWave(
                 ribbon.waveType,
-                base.x / scale,
+                t,
                 context.logicElapsed,
                 ribbon.frequency,
                 ribbon.waveSpeed,
@@ -92,6 +92,7 @@ object ASTDProjectileVfxRibbonRenderer {
             triangles = emptyList(),
             blendMode = "normal",
             combatLayer = CombatEngineLayers.ABOVE_PARTICLES,
+            renderOrder = ASTDProjectileVfxBodyRenderer.RENDER_ORDER_RIBBON,
             )
         }
 
@@ -133,6 +134,7 @@ object ASTDProjectileVfxRibbonRenderer {
             triangles = triangles,
             blendMode = "normal",
             combatLayer = CombatEngineLayers.ABOVE_PARTICLES,
+            renderOrder = ASTDProjectileVfxBodyRenderer.RENDER_ORDER_RIBBON,
         )
     }
 

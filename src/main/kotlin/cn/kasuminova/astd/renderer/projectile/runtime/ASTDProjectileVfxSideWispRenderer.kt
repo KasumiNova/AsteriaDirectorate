@@ -2,11 +2,9 @@ package cn.kasuminova.astd.renderer.projectile.runtime
 
 import cn.kasuminova.astd.renderer.projectile.ASTDProjectileVfxSideWispLayerSpec
 import cn.kasuminova.astd.renderer.projectile.ASTDTrailEntitySpec
-import cn.kasuminova.astd.renderer.projectile.ASTDTrailLayerSpec
-import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
+import cn.kasuminova.astd.renderer.projectile.ASTDColor
 import com.fs.starfarer.api.combat.CombatEngineAPI
-import org.boxutil.define.BoxEnum
-import org.boxutil.units.standard.entity.TrailEntity
+import com.fs.starfarer.api.combat.CombatEngineLayers
 import org.lwjgl.util.vector.Vector2f
 import kotlin.math.max
 
@@ -29,89 +27,147 @@ object ASTDProjectileVfxSideWispRenderer {
         val baseLayer = trail.layers.firstOrNull() ?: trail.layerSpec
         return max(0.65f, ASTDProjectileVfxLayout.widthBase(baseLayer) * layer.widthScale)
     }
+
+    fun meshesForTests(
+        trail: ASTDTrailEntitySpec,
+        layers: List<ASTDProjectileVfxSideWispLayerSpec>,
+        context: ASTDProjectileVfxRenderContext,
+        alphaScale: Float = 1f,
+    ): List<ASTDProjectileVfxBodyRenderer.Mesh> {
+        val baseLayer = trail.layers.firstOrNull() ?: trail.layerSpec
+        val widthBase = ASTDProjectileVfxLayout.widthBase(baseLayer)
+        return layers.filter { it.enabled }.flatMap { layer ->
+            val lineWidth = lineWidthForTests(trail, layer)
+            localPathsForTests(layer, context.visibleLength, widthBase).map { path ->
+                pathMesh(path, lineWidth, layer, context, alphaScale)
+            }
+        }
+    }
+
+    private fun pathMesh(
+        path: List<Vector2f>,
+        lineWidth: Float,
+        layer: ASTDProjectileVfxSideWispLayerSpec,
+        context: ASTDProjectileVfxRenderContext,
+        alphaScale: Float,
+    ): ASTDProjectileVfxBodyRenderer.Mesh {
+        if (path.size < 2) {
+            return ASTDProjectileVfxBodyRenderer.Mesh(
+                polygon = emptyList(),
+                gradientStops = emptyList(),
+                vertices = emptyList(),
+                triangles = emptyList(),
+                blendMode = "additive",
+                combatLayer = CombatEngineLayers.ABOVE_PARTICLES,
+                renderOrder = ASTDProjectileVfxBodyRenderer.RENDER_ORDER_SIDE_WISP,
+            )
+        }
+
+        val scale = context.worldUnitsPerPixel.coerceAtLeast(0.0001f)
+        val samples = pathSampleDistances(path)
+        val totalDistance = samples.last().distance.coerceAtLeast(0.0001f)
+        val half = lineWidth * 0.5f
+        val vertices = ArrayList<ASTDProjectileVfxBodyRenderer.Vertex>(path.size * 2)
+        for (sample in samples) {
+            val t = (sample.distance / totalDistance).coerceIn(0f, 1f)
+            val normal = normalForSample(samples, sample.index)
+            val color = sideWispColor(layer.color, t, context.beamAlpha * alphaScale)
+            val x = sample.point.x * scale
+            val y = sample.point.y * scale
+            vertices += ASTDProjectileVfxBodyRenderer.Vertex(Vector2f(x - normal.x * half * scale, y - normal.y * half * scale), color)
+            vertices += ASTDProjectileVfxBodyRenderer.Vertex(Vector2f(x + normal.x * half * scale, y + normal.y * half * scale), color)
+        }
+
+        return ASTDProjectileVfxBodyRenderer.Mesh(
+            polygon = vertices.map { Vector2f(it.position) },
+            gradientStops = emptyList(),
+            vertices = vertices,
+            triangles = ASTDProjectileVfxBodyRenderer.triangulateStrip(vertices),
+            blendMode = "additive",
+            combatLayer = CombatEngineLayers.ABOVE_PARTICLES,
+            renderOrder = ASTDProjectileVfxBodyRenderer.RENDER_ORDER_SIDE_WISP,
+        )
+    }
+
+    private data class PathSample(val index: Int, val point: Vector2f, val distance: Float)
+
+    private fun pathSampleDistances(path: List<Vector2f>): List<PathSample> {
+        var distance = 0f
+        val samples = ArrayList<PathSample>(path.size)
+        for (index in path.indices) {
+            if (index > 0) {
+                distance += distance(path[index - 1], path[index])
+            }
+            samples += PathSample(index, path[index], distance)
+        }
+        return samples
+    }
+
+    private fun normalForSample(samples: List<PathSample>, index: Int): Vector2f {
+        val previous = samples.getOrNull((index - 1).coerceAtLeast(0))?.point ?: samples[index].point
+        val next = samples.getOrNull((index + 1).coerceAtMost(samples.lastIndex))?.point ?: samples[index].point
+        val dx = next.x - previous.x
+        val dy = next.y - previous.y
+        val length = kotlin.math.sqrt(dx * dx + dy * dy).coerceAtLeast(0.0001f)
+        return Vector2f(-dy / length, dx / length)
+    }
+
+    private fun sideWispColor(color: ASTDColor, t: Float, alphaScale: Float): ASTDColor {
+        val alpha = when {
+            t <= 0.28f -> ASTDProjectileVfxMath.lerp(0f, 0.1f * alphaScale, t / 0.28f)
+            t <= 0.7f -> ASTDProjectileVfxMath.lerp(0.1f * alphaScale, color.alpha * alphaScale, (t - 0.28f) / (0.7f - 0.28f))
+            else -> ASTDProjectileVfxMath.lerp(color.alpha * alphaScale, 0f, (t - 0.7f) / 0.3f)
+        }
+        val rgb = if (t <= 0.7f) {
+            val dark = ASTDColor(color.red * 0.5f, color.green * 0.5f, color.blue * 0.5f, color.alpha)
+            mix(dark, color, (t / 0.7f).coerceIn(0f, 1f))
+        } else {
+            color
+        }
+        return rgb.copy(alpha = alpha.coerceIn(0f, 1f))
+    }
+
+    private fun mix(a: ASTDColor, b: ASTDColor, t: Float): ASTDColor {
+        val ratio = t.coerceIn(0f, 1f)
+        return ASTDColor(
+            a.red + (b.red - a.red) * ratio,
+            a.green + (b.green - a.green) * ratio,
+            a.blue + (b.blue - a.blue) * ratio,
+            a.alpha + (b.alpha - a.alpha) * ratio,
+        )
+    }
+
+    private fun distance(a: Vector2f, b: Vector2f): Float {
+        val dx = b.x - a.x
+        val dy = b.y - a.y
+        return kotlin.math.sqrt(dx * dx + dy * dy)
+    }
 }
 
 class ASTDProjectileVfxSideWispRenderLayer(
     private val trail: ASTDTrailEntitySpec,
     private val layers: List<ASTDProjectileVfxSideWispLayerSpec>,
 ) : ASTDProjectileVfxRenderLayer {
-    private data class Handle(val layer: ASTDProjectileVfxSideWispLayerSpec, val pathIndex: Int, val entity: TrailEntity, val baseSpec: ASTDTrailLayerSpec)
-
-    private val handles = ArrayList<Handle>()
+    private val handles = ArrayList<ASTDProjectileVfxBodyRenderManager.Handle>()
+    private var meshes: List<ASTDProjectileVfxBodyRenderer.Mesh> = emptyList()
     private val fade = ASTDProjectileVfxLayerFadeState()
 
     override fun create(engine: CombatEngineAPI?, context: ASTDProjectileVfxRenderContext): Boolean {
         if (engine == null) return false
         if (handles.isNotEmpty()) return true
-        BoxUtilCombatVfx.ensureReady(engine)
-        val baseLayer = trail.layers.firstOrNull() ?: trail.layerSpec
-        val widthBase = ASTDProjectileVfxLayout.widthBase(baseLayer)
-        layers.filter { it.enabled }.forEach { layer ->
-            val layerSpec = baseLayer.copy(
-                width = max(0.65f, widthBase * layer.widthScale),
-                startWidth = max(0.65f, widthBase * layer.widthScale),
-                endWidth = max(0.35f, widthBase * layer.widthScale * 0.55f),
-                startColor = layer.color,
-                endColor = layer.color.copy(alpha = 0f),
-                startEmissive = layer.color,
-                endEmissive = layer.color.copy(alpha = 0f),
-                fillStartAlpha = baseLayer.fillStartAlpha * layer.alphaScale,
-                fillEndAlpha = 0f,
-                jitterPower = baseLayer.jitterPower + layer.blur * 0.02f,
-            )
-            ASTDProjectileVfxSideWispRenderer.localPathsForTests(layer, context.visibleLength, widthBase).forEachIndexed { index, path ->
-                val entity = TrailEntity()
-                ASTDProjectileVfxLayout.scalePoints(path, context.worldUnitsPerPixel).forEach { entity.addNode(Vector2f(it)) }
-                entity.submitNodes()
-                ASTDProjectileVfxTrailRenderer.applyLayer(
-                    entity,
-                    layerSpec,
-                    context.beamAlpha * layer.alphaScale,
-                    headWidthOverride = layerSpec.startWidth,
-                    tailWidthOverride = layerSpec.endWidth,
-                    worldUnitsPerPixel = context.worldUnitsPerPixel,
-                )
-                val state = BoxUtilCombatVfx.addEntity(engine, BoxEnum.ENTITY_TRAIL, entity)
-                if (state == 0) {
-                    entity.setStateVanilla(context.location, context.renderFacing)
-                    handles += Handle(layer, index, entity, layerSpec)
-                } else {
-                    entity.delete()
-                    delete()
-                    throw IllegalStateException(
-                        "ASTD projectile VFX side wisp BoxUtil TrailEntity addEntity failed: " +
-                            "state=$state layer=${layer.id} preset=${context.presetId} projectile=${context.projectileSpecId}",
-                    )
-                }
-            }
-        }
-        return handles.isNotEmpty() || layers.none { it.enabled }
+        meshes = ASTDProjectileVfxSideWispRenderer.meshesForTests(trail, layers, context, fade.alpha())
+        ensureHandles(engine, meshes.size)
+        handles.zip(meshes).forEach { (handle, mesh) -> handle.update(context.location, context.renderFacing, mesh) }
+        return handles.size == meshes.size
     }
 
     override fun advance(engine: CombatEngineAPI?, context: ASTDProjectileVfxRenderContext, amount: Float) {
         fade.advance(amount)
         if (handles.isEmpty()) create(engine, context)
-        handles.forEach { handle ->
-            if (!handle.entity.hasDelete()) {
-                val baseLayer = trail.layers.firstOrNull() ?: trail.layerSpec
-                val widthBase = ASTDProjectileVfxLayout.widthBase(baseLayer)
-                val path = ASTDProjectileVfxSideWispRenderer.localPathsForTests(handle.layer, context.visibleLength, widthBase).getOrNull(handle.pathIndex)
-                if (path != null) {
-                    handle.entity.setNodes(ASTDProjectileVfxLayout.mutableScaledNodeList(path, context.worldUnitsPerPixel))
-                    handle.entity.setNodeRefreshIndex(0)
-                    handle.entity.setNodeRefreshAllFromCurrentIndex()
-                    handle.entity.submitNodes()
-                }
-                ASTDProjectileVfxTrailRenderer.applyLayer(
-                    handle.entity,
-                    handle.baseSpec,
-                    context.beamAlpha * fade.alpha() * handle.layer.alphaScale,
-                    headWidthOverride = handle.baseSpec.startWidth,
-                    tailWidthOverride = handle.baseSpec.endWidth,
-                    worldUnitsPerPixel = context.worldUnitsPerPixel,
-                )
-                handle.entity.setStateVanilla(context.location, context.renderFacing)
-            }
+        meshes = ASTDProjectileVfxSideWispRenderer.meshesForTests(trail, layers, context, fade.alpha())
+        if (engine != null) {
+            ensureHandles(engine, meshes.size)
+            handles.zip(meshes).forEach { (handle, mesh) -> handle.update(context.location, context.renderFacing, mesh) }
         }
         if (fade.complete()) delete()
     }
@@ -121,7 +177,17 @@ class ASTDProjectileVfxSideWispRenderLayer(
     }
 
     override fun delete() {
-        handles.forEach { it.entity.delete() }
+        handles.forEach { it.delete() }
         handles.clear()
+        meshes = emptyList()
+    }
+
+    private fun ensureHandles(engine: CombatEngineAPI, required: Int) {
+        while (handles.size < required) {
+            handles += ASTDProjectileVfxBodyRenderManager.createHandle(engine)
+        }
+        while (handles.size > required) {
+            handles.removeAt(handles.lastIndex).delete()
+        }
     }
 }

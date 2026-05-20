@@ -59,6 +59,7 @@ object ASTDProjectileVfxHeadRenderer {
                 triangles = headTriangles(scaledVertices),
                 blendMode = layer.blendMode,
                 combatLayer = baseLayer.combatLayer,
+                renderOrder = ASTDProjectileVfxBodyRenderer.RENDER_ORDER_HEAD,
             )
         }
     }
@@ -74,8 +75,7 @@ object ASTDProjectileVfxHeadRenderer {
         val widthBase = ASTDProjectileVfxLayout.widthBase(baseLayer)
         return layers.filter { it.enabled }.map { layer ->
             val layout = fillLayoutForTests(baseLayer, layer, context, headSizeScale)
-            val columns = headShadowColumns(layer, layout, widthBase, context, alphaScale)
-            val shadow = ASTDProjectileVfxSoftMesh.symmetricOuterFalloff(columns, 8)
+            val shadow = headBloomMesh(layer, layout, widthBase, context, alphaScale)
             ASTDProjectileVfxBodyRenderer.Mesh(
                 polygon = shadow.vertices.map { Vector2f(it.position) },
                 gradientStops = emptyList(),
@@ -83,6 +83,7 @@ object ASTDProjectileVfxHeadRenderer {
                 triangles = shadow.triangles,
                 blendMode = layer.blendMode,
                 combatLayer = baseLayer.combatLayer,
+                renderOrder = ASTDProjectileVfxBodyRenderer.RENDER_ORDER_HEAD_SHADOW,
             )
         }
     }
@@ -134,41 +135,104 @@ object ASTDProjectileVfxHeadRenderer {
         return triangles
     }
 
-    private fun headShadowColumns(
+    private fun headBloomMesh(
         layer: ASTDProjectileVfxHeadLayerSpec,
         layout: ASTDProjectileVfxLayout.HeadFillLayout,
         widthBase: Float,
         context: ASTDProjectileVfxRenderContext,
         alphaScale: Float,
-    ): List<ASTDProjectileVfxSoftMesh.Column> {
-        if (layout.headVisible <= 0.01f) return emptyList()
+    ): ASTDProjectileVfxSoftMesh.MeshPart {
+        if (layout.headVisible <= 0.01f) return ASTDProjectileVfxSoftMesh.MeshPart(emptyList(), emptyList())
         val scale = context.worldUnitsPerPixel.coerceAtLeast(0.0001f)
-        val shadowBlur = max(8f, widthBase * 2.8f) * layout.headVisible + layer.blur
+        val shadowBlur = max(8f, widthBase * 3.6f) * layout.headVisible + layer.blur * 1.35f
         val shadowColor = layout.colors.mid
-        val pairs = listOf(
-            layout.vertices.rearTop to layout.vertices.rearBottom,
-            layout.vertices.shoulderTop to layout.vertices.shoulderBottom,
-        )
-        val curvedPairs = (1..5).map { index ->
+        val outline = headBloomOutline(layout)
+        if (outline.size < 3) return ASTDProjectileVfxSoftMesh.MeshPart(emptyList(), emptyList())
+
+        val baseAlpha = 1.65f * layout.alpha * alphaScale * ASTDProjectileVfxSoftMesh.CANVAS_SHADOW_KERNEL_ALPHA
+        val radius = shadowBlur * ASTDProjectileVfxSoftMesh.CANVAS_SHADOW_VISIBLE_RADIUS * scale
+        val vertices = ArrayList<ASTDProjectileVfxBodyRenderer.Vertex>(outline.size * 8 * 4)
+        val triangles = ArrayList<ASTDProjectileVfxBodyRenderer.Triangle>(outline.size * 8 * 6)
+        val passes = listOf(1f to 0.72f, 1.55f to 0.48f, 2.15f to 0.34f)
+
+        passes.forEach { (radiusScale, alphaPassScale) ->
+            for (step in 0 until 8) {
+                val innerRatio = step.toFloat() / 8f
+                val outerRatio = (step + 1).toFloat() / 8f
+                val inner = outline.map { bloomVertex(it, layout, shadowColor, radius, radiusScale, innerRatio, baseAlpha, alphaPassScale, scale) }
+                val outer = outline.map { bloomVertex(it, layout, shadowColor, radius, radiusScale, outerRatio, baseAlpha, alphaPassScale, scale) }
+                val offset = vertices.size
+                vertices += inner
+                vertices += outer
+                for (index in 0 until outline.lastIndex) {
+                    val a = vertices[offset + index]
+                    val b = vertices[offset + index + 1]
+                    val c = vertices[offset + outline.size + index]
+                    val d = vertices[offset + outline.size + index + 1]
+                    triangles += ASTDProjectileVfxBodyRenderer.Triangle(a, b, c)
+                    triangles += ASTDProjectileVfxBodyRenderer.Triangle(c, b, d)
+                }
+            }
+        }
+
+        return ASTDProjectileVfxSoftMesh.MeshPart(vertices, triangles)
+    }
+
+    private data class BloomOutlinePoint(val position: Vector2f, val normal: Vector2f)
+
+    private fun headBloomOutline(layout: ASTDProjectileVfxLayout.HeadFillLayout): List<BloomOutlinePoint> {
+        val topCurve = (1..5).map { index ->
             val t = index.toFloat() / 5f
-            quadratic(layout.vertices.shoulderTop, layout.vertices.curveTop, layout.vertices.tip, t) to
-                quadratic(layout.vertices.shoulderBottom, layout.vertices.curveBottom, layout.vertices.tip, t)
+            quadratic(layout.vertices.shoulderTop, layout.vertices.curveTop, layout.vertices.tip, t)
         }
-        return (pairs + curvedPairs).map { (top, bottom) ->
-            val x = (top.x + bottom.x) * 0.5f
-            val centerY = (top.y + bottom.y) * 0.5f
-            val half = abs(bottom.y - top.y) * 0.5f
-            val progress = ((x - layout.rearX) / (0f - layout.rearX).coerceAtLeast(0.0001f)).coerceIn(0f, 1f)
-            val sourceAlpha = samplePreviewShellAlpha(layout, progress)
-            ASTDProjectileVfxSoftMesh.Column(
-                x = x * scale,
-                centerY = centerY * scale,
-                innerHalf = half * scale,
-                outerHalf = (half + shadowBlur * ASTDProjectileVfxSoftMesh.CANVAS_SHADOW_VISIBLE_RADIUS) * scale,
-                color = shadowColor,
-                alpha = (sourceAlpha * 0.84f * layout.alpha * alphaScale * ASTDProjectileVfxSoftMesh.CANVAS_SHADOW_KERNEL_ALPHA).coerceIn(0f, 1f),
-            )
+        val bottomCurve = (5 downTo 1).map { index ->
+            val t = index.toFloat() / 5f
+            quadratic(layout.vertices.shoulderBottom, layout.vertices.curveBottom, layout.vertices.tip, t)
         }
+        val outline = listOf(layout.vertices.rearTop, layout.vertices.shoulderTop) +
+            topCurve +
+            bottomCurve +
+            listOf(layout.vertices.shoulderBottom, layout.vertices.rearBottom)
+        return outline.map { point -> BloomOutlinePoint(Vector2f(point), bloomNormal(point, layout)) }
+    }
+
+    private fun bloomNormal(point: Vector2f, layout: ASTDProjectileVfxLayout.HeadFillLayout): Vector2f {
+        val tipEpsilon = max(1f, abs(layout.rearX) * 0.01f)
+        val raw = when {
+            abs(point.x) <= tipEpsilon -> Vector2f(1f, 0f)
+            point.x <= layout.rearX + tipEpsilon && point.y < 0f -> Vector2f(-0.35f, -1f)
+            point.x <= layout.rearX + tipEpsilon && point.y > 0f -> Vector2f(-0.35f, 1f)
+            point.y < 0f -> Vector2f(0f, -1f)
+            point.y > 0f -> Vector2f(0f, 1f)
+            else -> Vector2f(1f, 0f)
+        }
+        val length = kotlin.math.sqrt(raw.x * raw.x + raw.y * raw.y).coerceAtLeast(0.0001f)
+        return Vector2f(raw.x / length, raw.y / length)
+    }
+
+    private fun bloomVertex(
+        point: BloomOutlinePoint,
+        layout: ASTDProjectileVfxLayout.HeadFillLayout,
+        color: ASTDColor,
+        radius: Float,
+        radiusScale: Float,
+        ratio: Float,
+        baseAlpha: Float,
+        alphaPassScale: Float,
+        scale: Float,
+    ): ASTDProjectileVfxBodyRenderer.Vertex {
+        val t = ratio.coerceIn(0f, 1f)
+        val x = point.position.x * scale + point.normal.x * radius * radiusScale * t
+        val y = point.position.y * scale + point.normal.y * radius * radiusScale * t
+        val progress = ((point.position.x - layout.rearX) / (0f - layout.rearX).coerceAtLeast(0.0001f)).coerceIn(0f, 1f)
+        val sourceAlpha = samplePreviewShellAlpha(layout, progress)
+        val alpha = sourceAlpha * baseAlpha * alphaPassScale * bloomFalloff(t)
+        return ASTDProjectileVfxBodyRenderer.Vertex(Vector2f(x, y), color.copy(alpha = alpha.coerceIn(0f, 1f)))
+    }
+
+    private fun bloomFalloff(t: Float): Float {
+        val inverse = 1f - ASTDProjectileVfxMath.smoothstep(0f, 1f, t)
+        return inverse * inverse
     }
 
     private fun quadratic(start: Vector2f, control: Vector2f, end: Vector2f, t: Float): Vector2f {

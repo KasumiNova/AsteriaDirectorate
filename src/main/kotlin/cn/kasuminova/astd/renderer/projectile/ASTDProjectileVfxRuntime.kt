@@ -9,7 +9,6 @@ import cn.kasuminova.astd.renderer.projectile.runtime.ASTDProjectileVfxRenderGra
 import cn.kasuminova.astd.renderer.projectile.runtime.ASTDProjectileVfxRenderLayer
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.DamagingProjectileAPI
-import org.lwjgl.opengl.Display
 import org.boxutil.base.api.RenderDataAPI
 import org.lwjgl.util.vector.Vector2f
 import kotlin.math.atan2
@@ -83,9 +82,10 @@ class ASTDProjectileVfxRuntime(
         facing: Float,
         amount: Float,
         projectileAlive: Boolean,
+        @Suppress("UNUSED_PARAMETER")
         viewportVisibleWidth: Float?,
     ) {
-        advanceInternal(null, Vector2f(locationX, locationY), facing, amount, projectileAlive, viewportVisibleWidth)
+        advanceInternal(null, Vector2f(locationX, locationY), facing, amount, projectileAlive)
     }
 
     internal fun advanceForTests(
@@ -94,10 +94,14 @@ class ASTDProjectileVfxRuntime(
         facing: Float,
         amount: Float,
         projectileAlive: Boolean,
+        @Suppress("UNUSED_PARAMETER")
         viewportVisibleWidth: Float?,
+        @Suppress("UNUSED_PARAMETER")
         viewportPixelWidth: Float?,
+        @Suppress("UNUSED_PARAMETER")
+        viewportViewMult: Float? = null,
     ) {
-        advanceInternal(null, Vector2f(locationX, locationY), facing, amount, projectileAlive, viewportVisibleWidth, viewportPixelWidth)
+        advanceInternal(null, Vector2f(locationX, locationY), facing, amount, projectileAlive)
     }
 
     internal fun historyNodesForTests(): List<ASTDProjectileHistoryNode> = history.nodes()
@@ -110,8 +114,12 @@ class ASTDProjectileVfxRuntime(
         facing: Float,
         amount: Float,
         projectileAlive: Boolean,
+        @Suppress("UNUSED_PARAMETER")
         viewportVisibleWidthOverride: Float? = null,
+        @Suppress("UNUSED_PARAMETER")
         viewportPixelWidthOverride: Float? = null,
+        @Suppress("UNUSED_PARAMETER")
+        viewportViewMultOverride: Float? = null,
     ) {
         if (state == ASTDProjectileVfxRuntimeState.Removed) return
 
@@ -119,9 +127,8 @@ class ASTDProjectileVfxRuntime(
         if (state == ASTDProjectileVfxRuntimeState.Active && projectileAlive && location != null) {
             val renderFacing = computeRenderFacing(location, facing)
             accumulateTravelDistance(location)
-            val viewportVisibleWidth = viewportVisibleWidth(engine, viewportVisibleWidthOverride)
-            val worldUnitsPerPixel = worldUnitsPerPixel(engine, viewportVisibleWidth, viewportPixelWidthOverride)
-            val flight = buildFlightLayout(viewportVisibleWidth, worldUnitsPerPixel)
+            val worldUnitsPerPixel = worldUnitsPerPixel()
+            val flight = buildFlightLayout(worldUnitsPerPixel)
             history.advance(
                 location,
                 renderFacing,
@@ -209,7 +216,6 @@ class ASTDProjectileVfxRuntime(
     }
 
     private fun buildFlightLayout(
-        viewportVisibleWidth: Float?,
         worldUnitsPerPixel: Float,
     ): ASTDProjectileVfxLayout.FlightLayout {
         val duration = max(preset.lifecycle.durationSeconds, 0.0001f)
@@ -218,8 +224,8 @@ class ASTDProjectileVfxRuntime(
         val scale = worldUnitsPerPixel.coerceAtLeast(0.0001f)
         return if (baseLayer != null) {
             ASTDProjectileVfxLayout.distanceFlightLayout(
-                maxVisibleLength = maxVisibleLength(baseLayer, viewportVisibleWidth, scale),
-                traveledDistance = traveledDistance / scale,
+                maxVisibleLength = maxVisibleLength(baseLayer, scale),
+                traveledDistance = traveledDistance,
                 elapsed = elapsed,
                 durationSeconds = duration,
                 dissolveStartRatio = preset.lifecycle.dissolveStartRatio,
@@ -275,31 +281,10 @@ class ASTDProjectileVfxRuntime(
         return max(preset.samplingPolicy.maxHistoryNodes, byDistance).coerceAtMost(MAX_RUNTIME_HISTORY_NODES)
     }
 
-    private fun maxVisibleLength(baseLayer: ASTDTrailLayerSpec, viewportVisibleWidth: Float?, worldUnitsPerPixel: Float): Float {
-        val viewportCap = viewportVisibleWidth?.takeIf { it > 0f }
-            ?.let { ASTDProjectileVfxLayout.viewportTailCap(baseLayer.startWidth, preset.lifecycle.layoutReferenceWidth) }
-        return viewportCap ?: baseLayer.length
+    private fun maxVisibleLength(baseLayer: ASTDTrailLayerSpec, worldUnitsPerPixel: Float): Float {
+        val authoredCap = ASTDProjectileVfxLayout.viewportTailCap(baseLayer.startWidth, preset.lifecycle.layoutReferenceWidth)
+        return authoredCap / worldUnitsPerPixel.coerceAtLeast(0.0001f)
     }
 
-    private fun viewportVisibleWidth(engine: CombatEngineAPI?, override: Float?): Float? {
-        if (override != null) return override
-        return engine?.viewport?.visibleWidth?.takeIf { it > 0f }
-    }
-
-    private fun worldUnitsPerPixel(engine: CombatEngineAPI?, viewportVisibleWidth: Float?, override: Float?): Float {
-        val visibleWidth = viewportVisibleWidth?.takeIf { it > 0f } ?: return 1f
-        if (engine == null && override == null) return 1f
-        val pixelWidth = preset.lifecycle.layoutReferenceWidth.takeIf { it > 0f }
-            ?: override?.takeIf { it > 0f }
-            ?: displayPixelWidth()
-        return if (pixelWidth > 0f) visibleWidth / pixelWidth else 1f
-    }
-
-    private fun displayPixelWidth(): Float {
-        return try {
-            Display.getWidth().takeIf { it > 0 }?.toFloat() ?: 1f
-        } catch (_: Throwable) {
-            1f
-        }
-    }
+    private fun worldUnitsPerPixel(): Float = 1f
 }
