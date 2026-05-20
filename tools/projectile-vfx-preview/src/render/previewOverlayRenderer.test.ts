@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createDefaultPreset, type BoxUtilPreviewPreset } from '../model/preset';
-import { createPreviewOverlayRenderer } from './previewOverlayRenderer';
+import { createPreviewOverlayRenderer, type PreviewTrajectoryMode } from './previewOverlayRenderer';
 
 class TestGradient {
   readonly stops: Array<{ offset: number; color: string }> = [];
@@ -39,7 +39,7 @@ class TestCanvasContext {
   filter = '';
 }
 
-function renderWith(preset: BoxUtilPreviewPreset) {
+function renderWith(preset: BoxUtilPreviewPreset, trajectoryMode?: PreviewTrajectoryMode) {
   const ctx = new TestCanvasContext();
   const canvas = {
     width: 0,
@@ -49,7 +49,7 @@ function renderWith(preset: BoxUtilPreviewPreset) {
   const renderer = createPreviewOverlayRenderer(canvas);
   expect(renderer).not.toBeNull();
   renderer?.resize(960, 540);
-  renderer?.render(preset, 0.42);
+  renderer?.render(preset, 0.42, undefined, trajectoryMode);
   return ctx;
 }
 
@@ -103,5 +103,17 @@ describe('preview overlay render graph', () => {
     const ctx = renderWith(preset);
 
     expect(ctx.quadraticCurveTo.mock.calls.length).toBeGreaterThan(0);
+  });
+
+  it('keeps straight trajectory flat and bends curved trajectory without changing the preset', () => {
+    const preset = createDefaultPreset();
+    preset.simulation.curveAmount = 0;
+
+    const straight = renderWith(preset, 'straight');
+    const curved = renderWith(preset, 'curved');
+
+    expect(straight.translate.mock.calls[0][1]).toBeCloseTo(270, 3);
+    expect(curved.translate.mock.calls[0][1]).not.toBeCloseTo(straight.translate.mock.calls[0][1], 3);
+    expect(preset.simulation.curveAmount).toBe(0);
   });
 });

@@ -36,9 +36,16 @@ export const DEFAULT_PREVIEW_OVERLAY_LAYER_VISIBILITY: PreviewOverlayLayerVisibi
   ribbon: true,
 };
 
+export type PreviewTrajectoryMode = 'straight' | 'curved';
+
 export interface PreviewOverlayRenderer {
   resize(width: number, height: number): void;
-  render(preset: BoxUtilPreviewPreset, timeSeconds: number, layerVisibility?: Partial<PreviewOverlayLayerVisibility>): void;
+  render(
+    preset: BoxUtilPreviewPreset,
+    timeSeconds: number,
+    layerVisibility?: Partial<PreviewOverlayLayerVisibility>,
+    trajectoryMode?: PreviewTrajectoryMode,
+  ): void;
 }
 
 export function createPreviewOverlayRenderer(canvas: HTMLCanvasElement): PreviewOverlayRenderer | null {
@@ -67,7 +74,12 @@ class CanvasPreviewOverlayRenderer implements PreviewOverlayRenderer {
     this.height = height;
   }
 
-  render(preset: BoxUtilPreviewPreset, timeSeconds: number, layerVisibility: Partial<PreviewOverlayLayerVisibility> = {}): void {
+  render(
+    preset: BoxUtilPreviewPreset,
+    timeSeconds: number,
+    layerVisibility: Partial<PreviewOverlayLayerVisibility> = {},
+    trajectoryMode: PreviewTrajectoryMode = 'straight',
+  ): void {
     const ctx = this.context;
     const visibility = { ...DEFAULT_PREVIEW_OVERLAY_LAYER_VISIBILITY, ...layerVisibility };
     ctx.clearRect(0, 0, this.width, this.height);
@@ -76,7 +88,7 @@ class CanvasPreviewOverlayRenderer implements PreviewOverlayRenderer {
     ctx.globalCompositeOperation = 'screen';
 
     for (const trail of preset.trailEntities) {
-      drawTrailLayers(ctx, trail, preset, timeSeconds, this.width, this.height, visibility);
+      drawTrailLayers(ctx, trail, preset, timeSeconds, this.width, this.height, visibility, trajectoryMode);
     }
 
     ctx.restore();
@@ -125,6 +137,7 @@ function drawTrailLayers(
   width: number,
   height: number,
   visibility: PreviewOverlayLayerVisibility,
+  trajectoryMode: PreviewTrajectoryMode,
 ): void {
   if (trail.nodes.length < 2) {
     return;
@@ -132,9 +145,9 @@ function drawTrailLayers(
 
   const flightDirection = normalize(preset.simulation.projectileVelocity);
   const flightNormal: Vec2 = [-flightDirection[1], flightDirection[0]];
-  const flightTrack = computeFlightTrack(trail, preset, timeSeconds, width, height, flightDirection, flightNormal);
+  const flightTrack = computeFlightTrack(trail, preset, timeSeconds, width, height, flightDirection, flightNormal, trajectoryMode);
 
-  const history = buildTrailHistory(trail, preset, timeSeconds, width, height, flightDirection, flightNormal, flightTrack);
+  const history = buildTrailHistory(trail, preset, timeSeconds, width, height, flightDirection, flightNormal, flightTrack, trajectoryMode);
   drawTravelBeam(ctx, trail, preset, timeSeconds, flightTrack, width, height, flightDirection, flightNormal, history, visibility);
 }
 
@@ -161,6 +174,7 @@ function computeFlightTrack(
   height: number,
   direction: Vec2,
   normal: Vec2,
+  trajectoryMode: PreviewTrajectoryMode,
 ): FlightTrack {
   const duration = Math.max(preset.timeline.durationSeconds, 1.2);
   const elapsed = preset.simulation.loop ? timeSeconds % duration : clamp(timeSeconds, 0, duration);
@@ -190,8 +204,12 @@ function computeFlightTrack(
   const baseY = height * 0.5;
   const curveEnvelope = Math.pow(smoothstep(0.08, 0.28, progress) * (1 - smoothstep(0.72, 0.98, progress)), 0.9);
   const curveDissolve = Math.pow(1 - dissolve, 1.35);
-  const curveY = preset.simulation.curveAmount > 0
-    ? Math.sin(elapsed * preset.simulation.curveFrequency * Math.PI * 2) * preset.simulation.curveAmount * curveEnvelope * curveDissolve
+  const fallbackCurveAmount = Math.max(48, height * 0.16);
+  const curveAmount = trajectoryMode === 'curved'
+    ? Math.max(preset.simulation.curveAmount, fallbackCurveAmount)
+    : 0;
+  const curveY = curveAmount > 0
+    ? Math.sin(elapsed * preset.simulation.curveFrequency * Math.PI * 2) * curveAmount * curveEnvelope * curveDissolve
     : 0;
   const head = [travelX, baseY + curveY] as Vec2;
   const traveledLength = Math.max(0, travelX - startX);
@@ -215,6 +233,7 @@ function buildTrailHistory(
   direction: Vec2,
   normal: Vec2,
   track: FlightTrack,
+  trajectoryMode: PreviewTrajectoryMode,
 ): Vec2[] {
   const fps = Math.max(preset.timeline.fps, 1);
   const frameStep = 1 / fps;
@@ -234,7 +253,7 @@ function buildTrailHistory(
     const sampleTime = preset.simulation.loop
       ? ((rawTime % duration) + duration) % duration
       : Math.max(0, rawTime);
-    const sampleTrack = computeFlightTrack(trail, preset, sampleTime, width, height, direction, normal);
+    const sampleTrack = computeFlightTrack(trail, preset, sampleTime, width, height, direction, normal, trajectoryMode);
     history.push([sampleTrack.head[0], sampleTrack.head[1]]);
   }
 

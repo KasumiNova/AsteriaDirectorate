@@ -1,6 +1,10 @@
 import { useEffect, useReducer, useState } from 'react';
 import { createDefaultPreset } from './model/preset';
-import { DEFAULT_PREVIEW_OVERLAY_LAYER_VISIBILITY, PreviewOverlayLayerVisibility } from './render/previewOverlayRenderer';
+import {
+  DEFAULT_PREVIEW_OVERLAY_LAYER_VISIBILITY,
+  PreviewOverlayLayerVisibility,
+  PreviewTrajectoryMode,
+} from './render/previewOverlayRenderer';
 import { createInitialTimelineState, timelineReducer } from './sim/timeline';
 import { ConfigPanel } from './ui/ConfigPanel';
 import { EntityInspector } from './ui/EntityInspector';
@@ -13,6 +17,7 @@ export default function App() {
   const [preset, setPreset] = useState(() => loadPreset());
   const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null);
   const [layerVisibility, setLayerVisibility] = useState<PreviewOverlayLayerVisibility>(DEFAULT_PREVIEW_OVERLAY_LAYER_VISIBILITY);
+  const [trajectoryMode, setTrajectoryMode] = useState<PreviewTrajectoryMode>('straight');
   const [timeline, dispatchTimeline] = useReducer(timelineReducer, createInitialTimelineState(preset.timeline));
 
   useEffect(() => {
@@ -43,16 +48,52 @@ export default function App() {
   return (
     <main className="app-shell">
       <header className="app-header">
-        <div>
-          <h1>ASTD Projectile VFX Preview</h1>
-          <p>{preset.name}</p>
+        <div className="header-brand">
+          <div className="brand-logo">ASTD</div>
+          <div className="brand-texts">
+            <h1>Projectile VFX Preview</h1>
+            <p className="preset-name-display">{preset.name}</p>
+          </div>
         </div>
         <div className="header-metrics">
-          <span>{preset.trailEntities.length} trail</span>
+          <span className="metric-chip">
+            <span className="metric-dot"></span>
+            {preset.trailEntities.length} Trail Entity
+          </span>
+          <span className="metric-chip secondary">
+            SYS OK
+          </span>
         </div>
       </header>
+
       <section className="preview-stage">
-        <PreviewCanvas preset={preset} timeSeconds={timeline.timeSeconds} onCanvasReady={setCanvas} layerVisibility={layerVisibility} />
+        <PreviewCanvas
+          preset={preset}
+          timeSeconds={timeline.timeSeconds}
+          onCanvasReady={setCanvas}
+          layerVisibility={layerVisibility}
+          trajectoryMode={trajectoryMode}
+        />
+        <div className="trajectory-mode-control" role="group" aria-label="Trajectory preview mode">
+          <button
+            type="button"
+            className={trajectoryMode === 'straight' ? 'active' : ''}
+            aria-label="Straight trajectory preview"
+            aria-pressed={trajectoryMode === 'straight'}
+            onClick={() => setTrajectoryMode('straight')}
+          >
+            Straight
+          </button>
+          <button
+            type="button"
+            className={trajectoryMode === 'curved' ? 'active' : ''}
+            aria-label="Curved trajectory preview"
+            aria-pressed={trajectoryMode === 'curved'}
+            onClick={() => setTrajectoryMode('curved')}
+          >
+            Curve
+          </button>
+        </div>
         <button
           type="button"
           className="capture-button"
@@ -65,11 +106,14 @@ export default function App() {
           Screenshot PNG
         </button>
       </section>
+
       <ConfigPanel preset={preset} onPresetChange={setPreset} layerVisibility={layerVisibility} onLayerVisibilityChange={setLayerVisibility} />
+
       <div className="right-panel-stack">
         <EntityInspector preset={preset} onPresetChange={setPreset} />
         <VersionCompare preset={preset} onPresetChange={setPreset} />
       </div>
+
       <TimelineControls
         state={timeline}
         onPlayPause={() => dispatchTimeline({ type: 'toggle' })}

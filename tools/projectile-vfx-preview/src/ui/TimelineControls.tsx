@@ -16,9 +16,21 @@ export function TimelineControls({ state, onPlayPause, onStepBackward, onStepFor
   return (
     <section className="timeline-controls" aria-label="Timeline controls">
       <span className="muted-chip">Preview Only</span>
-      <button type="button" onClick={onPlayPause}>{state.playing ? 'Pause' : 'Play'}</button>
-      <button type="button" onClick={onStepBackward}>-1f</button>
-      <button type="button" onClick={onStepForward}>+1f</button>
+      <div className="timeline-btn-group">
+        <button
+          type="button"
+          onClick={onPlayPause}
+          className={`btn-play-pause ${state.playing ? 'playing' : 'paused'}`}
+        >
+          {state.playing ? 'Pause' : 'Play'}
+        </button>
+        <button type="button" className="btn-step" onClick={onStepBackward}>
+          -1f
+        </button>
+        <button type="button" className="btn-step" onClick={onStepForward}>
+          +1f
+        </button>
+      </div>
       <label>
         Time
         <span className="timeline-range-wrap">
@@ -29,6 +41,7 @@ export function TimelineControls({ state, onPlayPause, onStepBackward, onStepFor
             step={1 / state.fps}
             value={state.timeSeconds}
             onChange={(event) => onSeek(Number(event.currentTarget.value))}
+            className="timeline-slider"
           />
           <span className="timeline-keyframe-markers" aria-hidden="true">
             {keyframes.map((ratio, index) => (
