@@ -59,6 +59,33 @@ class ASTDProjectileVfxLayoutParityTest {
     }
 
     @Test
+    fun `preview flight track mirrors TypeScript curved automation trajectory`() {
+        val preset = ASTDProjectileVfxPresetCatalog.preset("aod7_shot")!!
+        val trail = preset.trailEntities.single().layers.single()
+
+        val track = ASTDProjectileVfxLayout.previewFlightTrack(
+            trailStartWidth = trail.startWidth,
+            elapsed = 0.3004f,
+            durationSeconds = preset.lifecycle.durationSeconds,
+            flightEndRatio = preset.lifecycle.flightEndRatio,
+            dissolveStartRatio = preset.lifecycle.dissolveStartRatio,
+            preDissolveFraction = preset.lifecycle.preDissolveFraction,
+            captureWidth = preset.lifecycle.layoutReferenceWidth,
+            captureHeight = 600f,
+            curveAmount = 96f,
+            curveFrequency = 0.8f,
+            curved = true,
+        )
+
+        assertEquals(448.65854f, track.headOffset.x, 0.0001f)
+        assertEquals(86.93850f, track.headOffset.y, 0.0001f)
+        assertEquals(0f, track.tailOffset.x, 0.0001f)
+        assertEquals(269.19513f, track.centerOffset.x, 0.0001f)
+        assertEquals(448.65854f, track.visibleLength, 0.0001f)
+        assertEquals(0.32843733f, track.flightProgress, 0.0001f)
+    }
+
+    @Test
     fun `AOD7 reference capture uses exported layout reference width`() {
         val preset = ASTDProjectileVfxPresetCatalog.preset("aod7_shot")!!
         val trail = preset.trailEntities.single().layers.single()

@@ -94,6 +94,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
 
         if (elapsed - lastWriteAt >= 0.18f || state == "Failed") {
             lastWriteAt = elapsed
+            writeDiagnostics(combatEngine, state, ship)
             writeTelemetry(combatEngine, state, ship, weapon)
         }
     }
@@ -196,7 +197,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
 
     private fun alignFallbackProjectileForEvidence() {
         val projectile = fallbackProjectile ?: return
-        alignProjectileForEvidence(projectile)
+        driveFallbackProjectileCurve(projectile)
     }
 
     private fun alignAod7ProjectilesForEvidence(engine: CombatEngineAPI) {
@@ -209,9 +210,62 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     }
 
     private fun alignProjectileForEvidence(projectile: DamagingProjectileAPI) {
-        projectile.location.y = projectilePreviewAnchor.y
-        projectile.velocity.y = 0f
+        if (projectile === fallbackProjectile) {
+            driveFallbackProjectileCurve(projectile)
+            return
+        }
+        projectile.location.y = curvePositionAt(0f).y
         projectile.facing = 0f
+    }
+
+    private fun driveFallbackProjectileCurve(projectile: DamagingProjectileAPI) {
+        val age = (elapsed - fallbackProjectileSpawnedAt).coerceAtLeast(0f)
+        projectile.location.set(curvePositionAt(age))
+        val velocity = curveVelocityAt(age)
+        projectile.velocity.set(velocity)
+        projectile.facing = org.lazywizard.lazylib.VectorUtils.getFacing(velocity)
+    }
+
+    private fun curvePositionAt(age: Float): Vector2f {
+        val track = automationPreviewTrack(age)
+        val scale = automationWorldUnitsPerPixel()
+        return Vector2f(
+            projectilePreviewAnchor.x + track.headOffset.x * scale,
+            projectilePreviewAnchor.y + track.headOffset.y * scale,
+        )
+    }
+
+    private fun curveVelocityAt(age: Float): Vector2f {
+        val step = 1f / 120f
+        val previous = curvePositionAt((age - step).coerceAtLeast(0f))
+        val next = curvePositionAt(age + step)
+        return Vector2f((next.x - previous.x) / (step * 2f), (next.y - previous.y) / (step * 2f))
+    }
+
+    private fun automationPreviewTrack(age: Float): ASTDProjectileVfxLayout.PreviewFlightTrack {
+        val preset = ASTDProjectileVfxPresetCatalog.preset(ASTDInGameAutomationScenario.VFX_PRESET_ID)
+            ?: throw IllegalStateException("AOD-7 automation reference preset missing: ${ASTDInGameAutomationScenario.VFX_PRESET_ID}")
+        val trail = preset.trailEntities.firstOrNull()?.layers?.firstOrNull()
+            ?: throw IllegalStateException("AOD-7 automation reference trail missing: ${ASTDInGameAutomationScenario.VFX_PRESET_ID}")
+        return ASTDProjectileVfxLayout.previewFlightTrack(
+            trailStartWidth = trail.startWidth,
+            elapsed = age,
+            durationSeconds = preset.lifecycle.durationSeconds,
+            flightEndRatio = preset.lifecycle.flightEndRatio,
+            dissolveStartRatio = preset.lifecycle.dissolveStartRatio,
+            preDissolveFraction = preset.lifecycle.preDissolveFraction,
+            captureWidth = preset.lifecycle.layoutReferenceWidth,
+            captureHeight = AUTOMATION_REFERENCE_CAPTURE_HEIGHT,
+            curveAmount = AUTOMATION_CURVE_AMOUNT,
+            curveFrequency = AUTOMATION_CURVE_FREQUENCY,
+            curved = true,
+        )
+    }
+
+    private fun automationWorldUnitsPerPixel(): Float {
+        val viewport = engine?.viewport ?: return 1f
+        val pixelWidth = try { Display.getWidth().toFloat().takeIf { it > 0f } ?: 1f } catch (_: Throwable) { 1f }
+        return (viewport.visibleWidth / pixelWidth).coerceAtLeast(0.0001f)
     }
 
     private fun currentState(engine: CombatEngineAPI, ship: ShipAPI?, weapon: WeaponAPI?): String {
@@ -237,7 +291,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
 
     private fun vfxObserved(): Boolean {
         val runtime = ASTDProjectileVfxRuntimeTelemetry.snapshot()
-        return runtime.lastProjectileSpecId == ASTDInGameAutomationScenario.PROJECTILE_SPEC_ID &&
+        return runtime.trackedCount > 0 &&
             runtime.lastPresetId == ASTDInGameAutomationScenario.VFX_PRESET_ID
     }
 
@@ -312,6 +366,13 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             appendLine("  \"runtimeVisibleLength\": ${formatFloat(runtime.lastVisibleLength)},")
             appendLine("  \"runtimeBeamAlpha\": ${formatFloat(runtime.lastBeamAlpha)},")
             appendLine("  \"runtimeWorldUnitsPerPixel\": ${formatFloat(runtime.lastWorldUnitsPerPixel)},")
+            appendLine("  \"runtimeTrackedCount\": ${runtime.trackedCount},")
+            appendLine("  \"runtimeLastProjectileSpecId\": ${jsonString(runtime.lastProjectileSpecId)},")
+            appendLine("  \"runtimeLastPresetId\": ${jsonString(runtime.lastPresetId)},")
+            appendLine("  \"referenceVisibleLength\": ${formatFloat(referenceCaptureVisibleLength())},")
+            appendLine("  \"fallbackInPlay\": ${fallbackProjectile?.let { engine.isEntityInPlay(it) } ?: false},")
+            appendLine("  \"fallbackExpired\": ${fallbackProjectile?.isExpired ?: false},")
+            appendLine("  \"fallbackFading\": ${fallbackProjectile?.isFading ?: false},")
             appendLine("  \"elapsedSeconds\": ${"%.3f".format(java.util.Locale.ROOT, elapsed)}")
             appendLine("}")
         }
@@ -328,7 +389,10 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
 
     private companion object {
         private const val FALLBACK_PROJECTILE_SPEED = 2400f
+        private const val AUTOMATION_CURVE_AMOUNT = 96f
+        private const val AUTOMATION_CURVE_FREQUENCY = 0.8f
+        private const val AUTOMATION_REFERENCE_CAPTURE_HEIGHT = 600f
         private const val SCREENSHOT_FLIGHT_SECONDS = 0.13333334f
-        private const val REFERENCE_CAPTURE_ELAPSED_SECONDS = 0.28f
+        private const val REFERENCE_CAPTURE_ELAPSED_SECONDS = 0.3004f
     }
 }

@@ -55,6 +55,27 @@ class ASTDProjectileVfxCenterlineTest {
         assertTrue(polygon.all { it.x in -45f..8f }, "mesh must stay projectile-local for the shared render transform")
     }
 
+    @Test
+    fun `centerline keeps preview pixel shape stable across world unit scale`() {
+        val zoomedIn = testContext().copy(
+            location = Vector2f(200f, 120f),
+            renderFacing = 0f,
+            visibleLength = 80f,
+            worldUnitsPerPixel = 0.5f,
+            historyNodes = curvedHistoryHeadFirst(),
+        )
+        val zoomedOut = zoomedIn.copy(
+            visibleLength = 40f,
+            worldUnitsPerPixel = 1f,
+        )
+
+        val inPixels = ASTDProjectileVfxCenterline.build(zoomedIn, sampleCount = 4)
+        val outPixels = ASTDProjectileVfxCenterline.build(zoomedOut, sampleCount = 4)
+
+        assertEquals(outPixels.last().position.x, inPixels.last().position.x * zoomedIn.worldUnitsPerPixel, 0.0001f)
+        assertEquals(outPixels.last().position.y, inPixels.last().position.y * zoomedIn.worldUnitsPerPixel, 0.0001f)
+    }
+
     private fun curvedHistoryHeadFirst(): List<ASTDProjectileHistoryNode> = listOf(
         ASTDProjectileHistoryNode(Vector2f(200f, 120f), 0f, 0f),
         ASTDProjectileHistoryNode(Vector2f(190f, 120f), 0f, 0f),

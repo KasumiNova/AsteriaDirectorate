@@ -33,6 +33,31 @@ class ASTDProjectileVfxBodyRendererTest {
     }
 
     @Test
+    fun `curved body samples TypeScript tail to head gradient direction`() {
+        val preset = ASTDProjectileVfxPresetCatalog.preset("aod7_shot")!!
+        val context = testContext().copy(
+            location = Vector2f(200f, 120f),
+            renderFacing = 0f,
+            visibleLength = 40f,
+            beamAlpha = 1f,
+            historyNodes = curvedHistory(),
+        )
+
+        val mesh = ASTDProjectileVfxBodyRenderer.meshForTests(preset.trailEntities.single(), context)
+        val stripVertices = mesh.vertices.take(58)
+        val headPair = stripVertices.take(2)
+        val tailPair = stripVertices.takeLast(2)
+        val maxAlpha = stripVertices.maxOf { it.color.alpha }
+        val maxAlphaIndex = stripVertices.indexOfFirst { kotlin.math.abs(it.color.alpha - maxAlpha) < 0.0001f }
+
+        assertTrue(headPair.all { it.position.x > -1f }, "first curved strip pair should be the projectile head")
+        assertTrue(tailPair.all { it.position.x < headPair.minOf { vertex -> vertex.position.x } - 20f }, "last curved strip pair should be behind the projectile head")
+        assertTrue(headPair.all { it.color.alpha <= 0.001f }, "TypeScript body gradient fades to transparent at the exact head tip")
+        assertTrue(tailPair.all { it.color.alpha <= 0.001f }, "TypeScript body gradient starts transparent at the trail tail")
+        assertTrue(maxAlphaIndex in 2 until (stripVertices.size * 0.35f).toInt(), "bright body core should sit near the head side, not the tail side")
+    }
+
+    @Test
     fun `body renderer mesh consumes preview body polygon and gradient stops`() {
         val preset = ASTDProjectileVfxPresetCatalog.preset("aod7_shot")!!
         val trail = preset.trailEntities.single()

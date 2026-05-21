@@ -10,6 +10,7 @@ import cn.kasuminova.astd.renderer.projectile.runtime.ASTDProjectileVfxRenderLay
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.DamagingProjectileAPI
 import org.boxutil.base.api.RenderDataAPI
+import org.lwjgl.opengl.Display
 import org.lwjgl.util.vector.Vector2f
 import kotlin.math.atan2
 import kotlin.math.ceil
@@ -82,10 +83,9 @@ class ASTDProjectileVfxRuntime(
         facing: Float,
         amount: Float,
         projectileAlive: Boolean,
-        @Suppress("UNUSED_PARAMETER")
         viewportVisibleWidth: Float?,
     ) {
-        advanceInternal(null, Vector2f(locationX, locationY), facing, amount, projectileAlive)
+        advanceInternal(null, Vector2f(locationX, locationY), facing, amount, projectileAlive, viewportVisibleWidth)
     }
 
     internal fun advanceForTests(
@@ -94,14 +94,12 @@ class ASTDProjectileVfxRuntime(
         facing: Float,
         amount: Float,
         projectileAlive: Boolean,
-        @Suppress("UNUSED_PARAMETER")
         viewportVisibleWidth: Float?,
-        @Suppress("UNUSED_PARAMETER")
         viewportPixelWidth: Float?,
         @Suppress("UNUSED_PARAMETER")
         viewportViewMult: Float? = null,
     ) {
-        advanceInternal(null, Vector2f(locationX, locationY), facing, amount, projectileAlive)
+        advanceInternal(null, Vector2f(locationX, locationY), facing, amount, projectileAlive, viewportVisibleWidth, viewportPixelWidth)
     }
 
     internal fun historyNodesForTests(): List<ASTDProjectileHistoryNode> = history.nodes()
@@ -114,9 +112,7 @@ class ASTDProjectileVfxRuntime(
         facing: Float,
         amount: Float,
         projectileAlive: Boolean,
-        @Suppress("UNUSED_PARAMETER")
         viewportVisibleWidthOverride: Float? = null,
-        @Suppress("UNUSED_PARAMETER")
         viewportPixelWidthOverride: Float? = null,
         @Suppress("UNUSED_PARAMETER")
         viewportViewMultOverride: Float? = null,
@@ -127,7 +123,7 @@ class ASTDProjectileVfxRuntime(
         if (state == ASTDProjectileVfxRuntimeState.Active && projectileAlive && location != null) {
             val renderFacing = computeRenderFacing(location, facing)
             accumulateTravelDistance(location)
-            val worldUnitsPerPixel = worldUnitsPerPixel()
+            val worldUnitsPerPixel = worldUnitsPerPixel(engine, viewportVisibleWidthOverride, viewportPixelWidthOverride)
             val flight = buildFlightLayout(worldUnitsPerPixel)
             history.advance(
                 location,
@@ -225,7 +221,7 @@ class ASTDProjectileVfxRuntime(
         return if (baseLayer != null) {
             ASTDProjectileVfxLayout.distanceFlightLayout(
                 maxVisibleLength = maxVisibleLength(baseLayer, scale),
-                traveledDistance = traveledDistance,
+                traveledDistance = traveledDistance / scale,
                 elapsed = elapsed,
                 durationSeconds = duration,
                 dissolveStartRatio = preset.lifecycle.dissolveStartRatio,
@@ -283,8 +279,21 @@ class ASTDProjectileVfxRuntime(
 
     private fun maxVisibleLength(baseLayer: ASTDTrailLayerSpec, worldUnitsPerPixel: Float): Float {
         val authoredCap = ASTDProjectileVfxLayout.viewportTailCap(baseLayer.startWidth, preset.lifecycle.layoutReferenceWidth)
-        return authoredCap / worldUnitsPerPixel.coerceAtLeast(0.0001f)
+        return authoredCap
     }
 
-    private fun worldUnitsPerPixel(): Float = 1f
+    private fun worldUnitsPerPixel(
+        engine: CombatEngineAPI?,
+        viewportVisibleWidthOverride: Float? = null,
+        viewportPixelWidthOverride: Float? = null,
+    ): Float {
+        val visibleWidth = viewportVisibleWidthOverride
+            ?: runCatching { engine?.viewport?.visibleWidth }.getOrNull()
+            ?: return 1f
+        val pixelWidth = viewportPixelWidthOverride
+            ?: runCatching { Display.getWidth().toFloat().takeIf { it > 0f } }.getOrNull()
+            ?: return 1f
+        if (visibleWidth <= 0f || pixelWidth <= 0f) return 1f
+        return (visibleWidth / pixelWidth).coerceAtLeast(0.0001f)
+    }
 }

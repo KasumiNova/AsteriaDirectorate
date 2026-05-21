@@ -44,6 +44,9 @@ class ASTDInGameAutomationScenarioTest {
             "runtimeVisibleLength",
             "runtimeBeamAlpha",
             "runtimeWorldUnitsPerPixel",
+            "runtimeLastProjectileSpecId",
+            "runtimeLastPresetId",
+            "referenceVisibleLength",
         ).forEach { field ->
             assertTrue(source.contains("\\\"$field\\\""), "missing diagnostics field: $field")
         }
@@ -74,6 +77,8 @@ class ASTDInGameAutomationScenarioTest {
         assertTrue(source.contains("private fun writeDiagnostics("), "diagnostics should not be embedded only in writeTelemetry")
         assertTrue(source.contains("writeDiagnostics(combatEngine, \"Completed\""), "render-time diagnostics should run after completed frame staging")
         assertTrue(source.contains("writeDiagnostics(engine, \"CombatReady\""), "init diagnostics should run even when telemetry is intercepted")
+        assertTrue(source.contains("runtime.lastPresetId == ASTDInGameAutomationScenario.VFX_PRESET_ID"), "VFX observation should key off the runtime preset actually used")
+        assertTrue(source.contains("runtime.trackedCount > 0"), "VFX observation should require a tracked runtime instead of only a projectile id string")
         listOf(
             "displayWidth",
             "displayHeight",
@@ -86,6 +91,9 @@ class ASTDInGameAutomationScenarioTest {
             "viewportWorldYToScreenY",
             "shipSpriteWidth",
             "shipSpriteHeight",
+            "runtimeLastProjectileSpecId",
+            "runtimeLastPresetId",
+            "referenceVisibleLength",
         ).forEach { field ->
             assertTrue(diagnosticsBody.contains("\\\"$field\\\""), "missing diagnostics field: $field")
         }
@@ -124,10 +132,18 @@ class ASTDInGameAutomationScenarioTest {
         assertTrue(source.contains("FALLBACK_PROJECTILE_SPEED = ${projSpeed.toInt()}f"), "fallback projectile should use weapon_data proj speed instead of weapon range")
         assertTrue(source.contains("referenceCaptureVisibleLength"), "capture length should be derived from the preview reference contract")
         assertTrue(source.contains("previewFlightLayout"), "capture length should share the TS preview flight layout function")
-        assertTrue(source.contains("REFERENCE_CAPTURE_ELAPSED_SECONDS = 0.28f"), "automation should capture while the AOD-7 head remains inside the parity ROI")
+        assertTrue(source.contains("REFERENCE_CAPTURE_ELAPSED_SECONDS = 0.3004f"), "automation should capture at the same time as the AOD-7 curved preview parity reference")
         assertFalse(source.contains("CAPTURE_TRAIL_MIN_LENGTH = 840f"), "capture should not wait for a hardcoded full tail cap when the reference frame is shorter")
-        assertTrue(source.contains("projectile.location.y = projectilePreviewAnchor.y"), "projectile may be kept on the visual lane without resetting traveled distance")
+        assertTrue(source.contains("driveFallbackProjectileCurve"), "automation should drive a real curved projectile path for curve parity screenshots")
+        assertTrue(source.contains("AUTOMATION_CURVE_AMOUNT = 96f"), "automation curve should match the preview curve reference amplitude")
+        assertTrue(source.contains("previewFlightTrack"), "automation curve should use the shared preview flight track instead of a private curve formula")
+        assertTrue(source.contains("projectile.location.set(curvePositionAt(age))"), "fallback projectile location should follow the shared preview curve path")
+        assertTrue(source.contains("automationWorldUnitsPerPixel"), "automation should convert authored preview pixels to world units before driving the projectile")
+        assertTrue(source.contains("track.headOffset.x * scale"), "automation curve x offset must be scaled into world units")
+        assertTrue(source.contains("track.headOffset.y * scale"), "automation curve y offset must be scaled into world units")
+        assertFalse(source.contains("FALLBACK_PROJECTILE_SPEED * age"), "automation should not drift away from preview track timing by integrating weapon speed")
         assertFalse(source.contains("projectile.location.set(projectilePreviewAnchor)"), "projectile should not be pinned to the preview anchor every frame")
+        assertFalse(source.contains("projectile.location.y = projectilePreviewAnchor.y"), "curve parity automation must not flatten projectile history to a straight visual lane")
         assertFalse(source.contains("projectile.velocity.set(0f, 0f)"), "projectile velocity should not be zeroed during visual evidence capture")
     }
 

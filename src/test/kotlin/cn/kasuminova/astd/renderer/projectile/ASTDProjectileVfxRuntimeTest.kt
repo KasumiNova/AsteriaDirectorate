@@ -176,7 +176,7 @@ class ASTDProjectileVfxRuntimeTest {
     }
 
     @Test
-    fun `runtime keeps authored preview geometry in world space while distance grows in world units`() {
+    fun `runtime maps authored preview geometry to active viewport pixels while distance grows in world units`() {
         val preset = testPreset().copy(
             trailEntities = listOf(
                 ASTDTrailEntitySpec(
@@ -221,13 +221,13 @@ class ASTDProjectileVfxRuntimeTest {
         )
 
         val context = layer.contexts.last()
-        assertEquals(1f, context.worldUnitsPerPixel, 0.0001f)
-        assertEquals(720f, context.visibleLength, 0.0001f)
-        assertEquals(720f, context.visibleLength * context.worldUnitsPerPixel, 0.0001f)
+        assertEquals(1067.0833f / 2560f, context.worldUnitsPerPixel, 0.0001f)
+        assertEquals(849.16f, context.visibleLength, 0.0001f)
+        assertEquals(353.95486f, context.visibleLength * context.worldUnitsPerPixel, 0.0001f)
     }
 
     @Test
-    fun `runtime keeps projectile geometry in world space across active viewport zoom`() {
+    fun `runtime keeps projectile geometry stable in screen pixels across active viewport zoom`() {
         val preset = testPreset().copy(
             trailEntities = listOf(
                 ASTDTrailEntitySpec(
@@ -250,17 +250,19 @@ class ASTDProjectileVfxRuntimeTest {
         val layer = RecordingRuntimeLayer()
         val runtime = ASTDProjectileVfxRuntime.forTests(preset, listOf(layer))
 
-        runtime.advanceForTests(0f, 0f, 0f, 0.1f, true, viewportVisibleWidth = 1846f, viewportPixelWidth = 2560f, viewportViewMult = 4f)
+        runtime.advanceForTests(0f, 0f, 0f, 0.1f, true, viewportVisibleWidth = 1067.0833f, viewportPixelWidth = 2560f, viewportViewMult = 0.6255f)
         runtime.advanceForTests(120f, 0f, 0f, 0.1f, true, viewportVisibleWidth = 1067.0833f, viewportPixelWidth = 2560f, viewportViewMult = 0.6255f)
         val zoomedIn = layer.contexts.last()
 
         runtime.advanceForTests(240f, 0f, 0f, 0.1f, true, viewportVisibleWidth = 4200f, viewportPixelWidth = 2560f, viewportViewMult = 4f)
         val zoomedOut = layer.contexts.last()
 
-        assertEquals(1f, zoomedIn.worldUnitsPerPixel, 0.0001f)
-        assertEquals(1f, zoomedOut.worldUnitsPerPixel, 0.0001f)
-        assertEquals(120f, zoomedIn.visibleLength, 0.0001f)
-        assertEquals(240f, zoomedOut.visibleLength, 0.0001f)
+        assertEquals(1067.0833f / 2560f, zoomedIn.worldUnitsPerPixel, 0.0001f)
+        assertEquals(4200f / 2560f, zoomedOut.worldUnitsPerPixel, 0.0001f)
+        assertEquals(287.88754f, zoomedIn.visibleLength, 0.0001f)
+        assertEquals(146.28572f, zoomedOut.visibleLength, 0.0001f)
+        assertEquals(120f, zoomedIn.visibleLength * zoomedIn.worldUnitsPerPixel, 0.0001f)
+        assertEquals(240f, zoomedOut.visibleLength * zoomedOut.worldUnitsPerPixel, 0.0001f)
     }
 
     @Test

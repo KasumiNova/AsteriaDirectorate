@@ -18,13 +18,20 @@ object ASTDProjectileVfxCenterline {
     fun build(context: ASTDProjectileVfxRenderContext, sampleCount: Int = 28): List<Point> {
         val count = sampleCount.coerceAtLeast(1)
         val history = currentFirstHistory(context)
-        val pixelsPerEntry = estimateHistoryPixelsPerEntry(history)
+        val worldUnitsPerPixel = context.worldUnitsPerPixel.coerceAtLeast(0.0001f)
+        val worldUnitsPerEntry = estimateHistoryWorldUnitsPerEntry(history)
         return (0..count).map { index ->
             val t = index.toFloat() / count.toFloat()
-            val distance = context.visibleLength * t
+            val previewDistance = context.visibleLength * t
             Point(
-                position = worldToLocal(sampleWorld(context, history, distance, pixelsPerEntry), context),
-                distance = distance,
+                position = scaleLocalToPreviewPixels(
+                    worldToLocal(
+                        sampleWorld(context, history, previewDistance * worldUnitsPerPixel, worldUnitsPerEntry),
+                        context,
+                    ),
+                    worldUnitsPerPixel,
+                ),
+                distance = previewDistance,
                 t = t,
             )
         }
@@ -114,7 +121,7 @@ object ASTDProjectileVfxCenterline {
         return emptyList()
     }
 
-    private fun estimateHistoryPixelsPerEntry(history: List<ASTDProjectileHistoryNode>): Float {
+    private fun estimateHistoryWorldUnitsPerEntry(history: List<ASTDProjectileHistoryNode>): Float {
         if (history.size < 2) return 4f
         var total = 0f
         val sampleN = minOf(history.size - 1, 8)
@@ -131,6 +138,11 @@ object ASTDProjectileVfxCenterline {
         val c = cos(radians).toFloat()
         val s = sin(radians).toFloat()
         return Vector2f(dx * c + dy * s, -dx * s + dy * c)
+    }
+
+    private fun scaleLocalToPreviewPixels(localWorld: Vector2f, worldUnitsPerPixel: Float): Vector2f {
+        val scale = worldUnitsPerPixel.coerceAtLeast(0.0001f)
+        return Vector2f(localWorld.x / scale, localWorld.y / scale)
     }
 
     private fun close(a: Vector2f, b: Vector2f): Boolean {

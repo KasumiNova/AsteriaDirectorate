@@ -163,9 +163,9 @@ class ASTDProjectileVfxRibbonRendererTest {
         val context = testContext()
         val points = ASTDProjectileVfxRibbonRenderer.pointsForTests(ribbon, context, 10)
         val middle = points[5]
-        val expectedWave = ASTDProjectileVfxMath.ribbonDistanceWave(
+        val expectedWave = ASTDProjectileVfxMath.ribbonWave(
             ribbon.waveType,
-            0.5f,
+            middle.base.x,
             context.logicElapsed,
             ribbon.frequency,
             ribbon.waveSpeed,
@@ -231,7 +231,7 @@ class ASTDProjectileVfxRibbonRendererTest {
     }
 
     @Test
-    fun `ribbon noise follows trail distance coordinates instead of projectile world position`() {
+    fun `ribbon noise follows projectile world position like TypeScript preview`() {
         val ribbon = ASTDProjectileVfxPresetCatalog.preset("aod7_shot")!!.ribbonDecorations.single().copy(
             waveType = "noise",
             amplitude = 1.35f,
@@ -257,7 +257,7 @@ class ASTDProjectileVfxRibbonRendererTest {
         val firstOffset = firstPoint.position.y - firstPoint.base.y
         val advancedOffset = advancedPoint.position.y - advancedPoint.base.y
 
-        assertEquals(firstOffset, advancedOffset, 0.0001f)
+        assertNotEquals(firstOffset, advancedOffset)
     }
 
     @Test
@@ -274,7 +274,7 @@ class ASTDProjectileVfxRibbonRendererTest {
         val next = ASTDProjectileVfxRibbonRenderer.pointsForTests(ribbon, nextFrame, 16)[8]
         val delta = kotlin.math.abs((next.position.y - next.base.y) - (first.position.y - first.base.y))
 
-        assertTrue(delta in 0.0001f..1.2f, "noise should drift gradually, delta=$delta")
+        assertTrue(delta in 0.0001f..2.4f, "noise should drift gradually within the TypeScript world-space wave envelope, delta=$delta")
     }
 
     @Test

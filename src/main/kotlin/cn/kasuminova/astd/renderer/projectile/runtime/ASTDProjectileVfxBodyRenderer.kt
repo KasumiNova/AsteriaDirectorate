@@ -266,7 +266,8 @@ object ASTDProjectileVfxBodyRenderer {
         return top.indices.flatMap { index ->
             val topPoint = top[index]
             val bottomPoint = bottom[index]
-            val t = index.toFloat() / (top.size - 1).coerceAtLeast(1).toFloat()
+            val headToTail = index.toFloat() / (top.size - 1).coerceAtLeast(1).toFloat()
+            val t = 1f - headToTail
             val color = sampleGradient(gradientStops, t, alphaScale)
             listOf(Vertex(Vector2f(topPoint), color), Vertex(Vector2f(bottomPoint), color))
         }

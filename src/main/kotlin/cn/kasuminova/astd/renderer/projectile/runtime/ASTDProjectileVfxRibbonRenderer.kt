@@ -50,9 +50,10 @@ object ASTDProjectileVfxRibbonRenderer {
             val normalY = tangentX / tangentLength
             val widthBase = ribbonWidthBase(ribbon, baseTrailStartWidth)
             val smokeEnvelope = smokeEnvelope(t)
-            val wave = ASTDProjectileVfxMath.ribbonDistanceWave(
+            val previewWorldX = base.x / scale
+            val wave = ASTDProjectileVfxMath.ribbonWave(
                 ribbon.waveType,
-                t,
+                previewWorldX,
                 context.logicElapsed,
                 ribbon.frequency,
                 ribbon.waveSpeed,
