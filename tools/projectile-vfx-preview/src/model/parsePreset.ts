@@ -215,6 +215,8 @@ function parseTrailRibbonDecoration(value: unknown, path: string, errors: ParseP
     id: typeof value.id === 'string' ? value.id : fallback.id,
     enabled: typeof value.enabled === 'boolean' ? value.enabled : fallback.enabled,
     renderMode: value.renderMode === 'byNodeCount' || value.renderMode === 'byLength' ? value.renderMode as TrailDecorationRenderMode : fallback.renderMode,
+    waveAmplitude: readFiniteNumber(value.waveAmplitude, value.amplitude, fallback.waveAmplitude),
+    waveFrequency: readFiniteNumber(value.waveFrequency, value.frequency, fallback.waveFrequency),
     waveType: value.waveType === 'sine' || value.waveType === 'noise' || value.waveType === 'zigzag' ? value.waveType as RibbonWaveType : fallback.waveType,
     noiseScale: isFiniteNumber(value.noiseScale) ? value.noiseScale : fallback.noiseScale,
     startColor: startColor as Rgba,
@@ -305,4 +307,14 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);
+}
+
+function readFiniteNumber(primary: unknown, secondary: unknown, fallback: number): number {
+  if (isFiniteNumber(primary)) {
+    return primary;
+  }
+  if (isFiniteNumber(secondary)) {
+    return secondary;
+  }
+  return fallback;
 }

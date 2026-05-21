@@ -12,6 +12,7 @@ import { PreviewCanvas } from './ui/PreviewCanvas';
 import { TimelineControls } from './ui/TimelineControls';
 import { VersionCompare } from './ui/VersionCompare';
 import { captureCanvasPng } from './ui/capture';
+import { AOD7_PRESET_STORAGE_VERSION, createAod7Preset } from './model/aod7Preset';
 
 export default function App() {
   const [preset, setPreset] = useState(() => loadPreset());
@@ -21,7 +22,7 @@ export default function App() {
   const [timeline, dispatchTimeline] = useReducer(timelineReducer, createInitialTimelineState(preset.timeline));
 
   useEffect(() => {
-    setStorageItem('astd-projectile-vfx-preset', JSON.stringify(preset));
+    setStorageItem('astd-projectile-vfx-preset', JSON.stringify({ ...preset, storageVersion: AOD7_PRESET_STORAGE_VERSION }));
   }, [preset]);
 
   useEffect(() => {
@@ -126,14 +127,18 @@ export default function App() {
 }
 
 function loadPreset() {
+  const baseline = createAod7Preset();
   const cached = getStorageItem('astd-projectile-vfx-preset');
   if (!cached) {
-    return createDefaultPreset();
+    return baseline;
   }
 
   try {
-    const parsed = JSON.parse(cached) as Partial<ReturnType<typeof createDefaultPreset>>;
-    const defaults = createDefaultPreset();
+    const parsed = JSON.parse(cached) as Partial<ReturnType<typeof createDefaultPreset>> & { storageVersion?: string };
+    if (parsed.storageVersion !== AOD7_PRESET_STORAGE_VERSION) {
+      return baseline;
+    }
+    const defaults = baseline;
     return {
       ...defaults,
       ...parsed,
@@ -150,7 +155,7 @@ function loadPreset() {
       simulation: { ...defaults.simulation, ...parsed.simulation },
     };
   } catch {
-    return createDefaultPreset();
+    return baseline;
   }
 }
 

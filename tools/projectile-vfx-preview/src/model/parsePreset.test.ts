@@ -69,6 +69,20 @@ describe('parsePresetJson', () => {
       expect(result.preset.ribbonDecorations[0]).toEqual(expect.objectContaining({ id: 'ribbon-only-alpha', alphaScale: 0.77, thickness: preset.ribbonDecorations[0].thickness }));
     }
   });
+
+  it('accepts game export ribbon amplitude and frequency aliases', () => {
+    const preset = createDefaultPreset();
+    const result = parsePresetJson(JSON.stringify({
+      ...preset,
+      ribbonDecorations: [{ id: 'game-export-ribbon', amplitude: 2.5, frequency: 3.25 }],
+    }));
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.preset.ribbonDecorations[0].waveAmplitude).toBe(2.5);
+      expect(result.preset.ribbonDecorations[0].waveFrequency).toBe(3.25);
+    }
+  });
 });
 
 describe('formatPresetJson', () => {

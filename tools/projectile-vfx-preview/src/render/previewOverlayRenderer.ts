@@ -11,7 +11,6 @@ import {
 } from '../model/preset';
 import {
   projectileVfxBodyGradientStops,
-  projectileVfxBodyPolygon,
   projectileVfxGlowLineWidth,
   projectileVfxHeadFillLayout,
   projectileVfxSideWispLocalPaths,
@@ -307,18 +306,25 @@ function drawTravelBeam(
     return;
   }
 
+  const centerline = buildTrailCenterline(posHistory, tailLength, 28);
+  const headDirection = centerlineTangentAt(centerline, 0, dir);
+
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+
+  if (visibility.mist) drawTrailMist(ctx, preset.mistLayers, trail, widthBase, tailLength, timeSeconds, track.dissolve, pulse, centerline);
+  if (visibility.glow) drawTrailGlowLayers(ctx, preset.glowLayers, trail, widthBase, tailLength, pulse, centerline);
+  if (visibility.trail) drawBeamShape(ctx, trail, widthBase, tailLength, pulse, centerline);
+  drawTrailDecorations(ctx, trail, widthBase, tailLength, timeSeconds, track.progress, pulse);
+  if (visibility.sideWisps) drawSideWisps(ctx, preset.sideWispLayers, trail, widthBase, tailLength, pulse, centerline);
+
+  ctx.restore();
+
   ctx.save();
   ctx.globalCompositeOperation = 'lighter';
   ctx.translate(hx, hy);
-  ctx.rotate(Math.atan2(-dir[1], dir[0]));
-
-  if (visibility.mist) drawTrailMist(ctx, preset.mistLayers, trail, widthBase, tailLength, timeSeconds, track.dissolve, pulse);
-  if (visibility.glow) drawTrailGlowLayers(ctx, preset.glowLayers, trail, widthBase, tailLength, pulse);
-  if (visibility.trail) drawBeamShape(ctx, trail, widthBase, tailLength, pulse);
-  drawTrailDecorations(ctx, trail, widthBase, tailLength, timeSeconds, track.progress, pulse);
-  if (visibility.sideWisps) drawSideWisps(ctx, preset.sideWispLayers, trail, widthBase, tailLength, pulse);
+  ctx.rotate(Math.atan2(headDirection[1], headDirection[0]));
   if (visibility.head) drawProjectileHead(ctx, preset.headLayers, preset.lifecycle.projectileHeadSizeScale, trail, widthBase, pulse);
-
   ctx.restore();
 
   // Ribbon 装饰在世界坐标系绘制（不受 translate/rotate 影响），以便使用真实世界坐标作为噪声空间频率输入。
@@ -328,20 +334,66 @@ function drawTravelBeam(
   ctx.restore();
 }
 
-function drawTrailGlowLayers(ctx: CanvasRenderingContext2D, layers: ProjectileVfxGlowLayerConfig[], trail: TrailEntityConfig, widthBase: number, length: number, alphaScale: number): void {
+interface TrailPathPoint {
+  position: Vec2;
+  distance: number;
+  t: number;
+}
+
+function buildTrailCenterline(history: Vec2[], length: number, sampleCount: number): TrailPathPoint[] {
+  if (history.length === 0) {
+    return [];
+  }
+
+  const histPixelsPerEntry = estimateHistoryPixelsPerEntry(history);
+  const points: TrailPathPoint[] = [];
+  for (let i = 0; i <= sampleCount; i += 1) {
+    const t = i / Math.max(sampleCount, 1);
+    const distance = length * t;
+    points.push({
+      position: sampleHistoryAt(history, distance, histPixelsPerEntry),
+      distance,
+      t,
+    });
+  }
+  return points;
+}
+
+function estimateHistoryPixelsPerEntry(history: Vec2[]): number {
+  if (history.length < 2) {
+    return 4;
+  }
+
+  let totalDist = 0;
+  const sampleN = Math.min(history.length - 1, 8);
+  for (let k = 0; k < sampleN; k += 1) {
+    const dx = history[k][0] - history[k + 1][0];
+    const dy = history[k][1] - history[k + 1][1];
+    totalDist += Math.sqrt(dx * dx + dy * dy);
+  }
+  return Math.max(0.5, totalDist / sampleN);
+}
+
+function drawTrailGlowLayers(ctx: CanvasRenderingContext2D, layers: ProjectileVfxGlowLayerConfig[], trail: TrailEntityConfig, widthBase: number, length: number, alphaScale: number, centerline: TrailPathPoint[]): void {
   const darkTail = mixRgba(trail.endColor, trail.endEmissive, 0.52);
   const hotCore = mixRgba(trail.startColor, trail.startEmissive, 0.44);
   for (const layer of layers) {
     if (!layer.enabled) continue;
     const tail = mixRgba(darkTail, hotCore, layer.colorMixTail);
     const head = layer.colorMixHead >= 1 ? [1, 1, 1, 1] as Rgba : mixRgba(trail.startColor, trail.startEmissive, layer.colorMixHead);
-    drawGlowStroke(ctx, length, projectileVfxGlowLineWidth(widthBase, layer), tail, head, layer.alphaScale * alphaScale, layer.blur * alphaScale, layer.yOffset);
+    drawGlowStroke(ctx, length, projectileVfxGlowLineWidth(widthBase, layer), tail, head, layer.alphaScale * alphaScale, layer.blur * alphaScale, layer.yOffset, centerline);
   }
 }
 
-function drawGlowStroke(ctx: CanvasRenderingContext2D, length: number, lineWidth: number, tail: Rgba, head: Rgba, alpha: number, blur: number, yOffset: number): void {
+function drawGlowStroke(ctx: CanvasRenderingContext2D, length: number, lineWidth: number, tail: Rgba, head: Rgba, alpha: number, blur: number, yOffset: number, centerline: TrailPathPoint[]): void {
+  if (centerline.length < 2) {
+    return;
+  }
+
   const headGap = Math.max(14, lineWidth * 0.55);
-  const gradient = ctx.createLinearGradient(-length * 0.8, 0, -headGap, 0);
+  const first = centerline[Math.min(centerline.length - 1, Math.max(0, Math.floor(centerline.length * 0.72)))];
+  const last = centerline[0];
+  const gradient = ctx.createLinearGradient(first.position[0], first.position[1], last.position[0], last.position[1]);
   gradient.addColorStop(0, rgbaToCss(darkenRgba(tail, 0.36), 0));
   gradient.addColorStop(0.22, rgbaToCss(tail, alpha * 0.22));
   gradient.addColorStop(0.62, rgbaToCss(mixRgba(tail, head, 0.55), alpha * 0.65));
@@ -354,22 +406,20 @@ function drawGlowStroke(ctx: CanvasRenderingContext2D, length: number, lineWidth
   ctx.strokeStyle = gradient;
   ctx.lineWidth = Math.max(1, lineWidth);
   ctx.lineCap = 'butt';
-  ctx.beginPath();
-  ctx.moveTo(-length * 0.72, yOffset);
-  ctx.lineTo(-headGap, yOffset * 0.18);
-  ctx.stroke();
+  strokeCenterline(ctx, centerline, length * 0.72, headGap, yOffset, yOffset * 0.18);
   ctx.restore();
 }
 
-function drawBeamShape(ctx: CanvasRenderingContext2D, trail: TrailEntityConfig, widthBase: number, length: number, pulse: number): void {
+function drawBeamShape(ctx: CanvasRenderingContext2D, trail: TrailEntityConfig, widthBase: number, length: number, pulse: number, centerline: TrailPathPoint[]): void {
   if (pulse <= 0.001) {
+    return;
+  }
+  if (centerline.length < 2) {
     return;
   }
 
   const bodyEmissive = mixRgba(trail.endEmissive, trail.startEmissive, 0.55);
-  const bodyPolygon = projectileVfxBodyPolygon(widthBase, length, pulse);
-
-  const bodyGlow = ctx.createLinearGradient(-length * 0.6, 0, 0, 0);
+  const bodyGlow = ctx.createLinearGradient(centerline[centerline.length - 1].position[0], centerline[centerline.length - 1].position[1], centerline[0].position[0], centerline[0].position[1]);
   for (const stop of projectileVfxBodyGradientStops(trail, pulse)) {
     bodyGlow.addColorStop(stop.offset, stop.css ?? rgbaToCss(stop.color, stop.alpha));
   }
@@ -378,10 +428,9 @@ function drawBeamShape(ctx: CanvasRenderingContext2D, trail: TrailEntityConfig, 
   ctx.shadowColor = rgbaToCss(bodyEmissive, 0.86 * pulse);
   ctx.fillStyle = bodyGlow;
   ctx.beginPath();
-  ctx.moveTo(bodyPolygon[0][0], bodyPolygon[0][1]);
-  for (const point of bodyPolygon.slice(1)) {
-    ctx.lineTo(point[0], point[1]);
-  }
+  const polygon = buildCenterlineRibbonPolygon(centerline, widthBase, pulse);
+  ctx.moveTo(polygon[0][0], polygon[0][1]);
+  for (const point of polygon.slice(1)) ctx.lineTo(point[0], point[1]);
   ctx.closePath();
   ctx.fill();
 }
@@ -423,7 +472,7 @@ function drawProjectileHead(ctx: CanvasRenderingContext2D, layers: ProjectileVfx
   ctx.restore();
 }
 
-function drawTrailMist(ctx: CanvasRenderingContext2D, layers: ProjectileVfxMistLayerConfig[], trail: TrailEntityConfig, widthBase: number, length: number, timeSeconds: number, dissolve: number, pulse: number): void {
+function drawTrailMist(ctx: CanvasRenderingContext2D, layers: ProjectileVfxMistLayerConfig[], trail: TrailEntityConfig, widthBase: number, length: number, timeSeconds: number, dissolve: number, pulse: number, centerline: TrailPathPoint[]): void {
   const alphaScale = pulse * (1 - dissolve * 0.72);
   if (alphaScale <= 0.004) {
     return;
@@ -434,36 +483,30 @@ function drawTrailMist(ctx: CanvasRenderingContext2D, layers: ProjectileVfxMistL
 
   ctx.save();
   ctx.globalCompositeOperation = 'screen';
-  ctx.beginPath();
-  ctx.moveTo(-length * 0.98, -widthBase * 3.6);
-  ctx.lineTo(-widthBase * 1.8, -widthBase * 1.25);
-  ctx.lineTo(0, -widthBase * 0.32);
-  ctx.lineTo(0, widthBase * 0.32);
-  ctx.lineTo(-widthBase * 1.8, widthBase * 1.25);
-  ctx.lineTo(-length * 0.98, widthBase * 3.6);
-  ctx.closePath();
-  ctx.clip();
 
   for (const layer of enabledLayers) {
     const blobs = Math.max(0, Math.round(layer.blobCount));
     for (let i = 0; i < blobs; i += 1) {
       const seed = i * 13.71;
       const t = (i + shaderNoise(seed, timeSeconds * 0.17)) / Math.max(blobs, 1);
-      const x = -length * layer.lengthScale * t;
+      const base = sampleCenterlineByRatio(centerline, t * layer.lengthScale);
       const envelope = Math.sin(Math.PI * clamp(t, 0, 1));
       const noise = layeredNoise(t * layer.noiseScale - timeSeconds * layer.driftSpeed, seed * 0.017);
+      const normal = centerlineNormalAt(centerline, t);
       const y = (shaderNoise(seed, 8.4) - 0.5) * widthBase * 5.4 * layer.widthScale * envelope;
+      const x = base.position[0] + normal[0] * y;
+      const cy = base.position[1] + normal[1] * y;
       const rx = widthBase * lerp(layer.rxRange.min, layer.rxRange.max, noise) * (0.3 + envelope);
       const ry = widthBase * lerp(layer.ryRange.min, layer.ryRange.max, shaderNoise(seed, 12.2)) * (0.4 + envelope * 0.7);
       const color = mixRgba(layer.colorStart, layer.colorEnd, clamp(1 - t * 0.62, 0, 1));
       const alpha = alphaScale * lerp(layer.alphaRange.min, layer.alphaRange.max, noise) * envelope;
-      const grad = ctx.createRadialGradient(x, y, 0, x, y, Math.max(rx, ry));
+      const grad = ctx.createRadialGradient(x, cy, 0, x, cy, Math.max(rx, ry));
       grad.addColorStop(0, rgbaToCss(color, alpha));
       grad.addColorStop(0.58, rgbaToCss(color, alpha * 0.28));
       grad.addColorStop(1, rgbaToCss(color, 0));
       ctx.fillStyle = grad;
       ctx.save();
-      ctx.translate(x, y);
+      ctx.translate(x, cy);
       ctx.scale(rx / Math.max(rx, ry), ry / Math.max(rx, ry));
       ctx.beginPath();
       ctx.arc(0, 0, Math.max(rx, ry), 0, Math.PI * 2);
@@ -715,14 +758,98 @@ function sampleTrailDecorationGradient(stops: { offset: number; color: Rgba }[],
   return stops[stops.length - 1].color;
 }
 
-function drawSideWisps(ctx: CanvasRenderingContext2D, layers: ProjectileVfxSideWispLayerConfig[], trail: TrailEntityConfig, widthBase: number, length: number, alphaScale: number): void {
+function buildCenterlineRibbonPolygon(centerline: TrailPathPoint[], widthBase: number, pulse: number): Vec2[] {
+  const top: Vec2[] = [];
+  const bottom: Vec2[] = [];
+  for (const point of centerline) {
+    const normal = centerlineNormalAt(centerline, point.t);
+    const halfWidth = bodyHalfWidthAt(point.t, widthBase, pulse);
+    top.push([point.position[0] + normal[0] * halfWidth, point.position[1] + normal[1] * halfWidth]);
+    bottom.push([point.position[0] - normal[0] * halfWidth, point.position[1] - normal[1] * halfWidth]);
+  }
+  return [...top.reverse(), ...bottom];
+}
+
+function bodyHalfWidthAt(t: number, widthBase: number, pulse: number): number {
+  const tailWidth = Math.max(1.0, widthBase * 0.72);
+  const headVisible = smoothstep(0.28, 0.82, pulse);
+  const projectileWidth = Math.max(4.8, widthBase * 1.72) * headVisible;
+  const shaped = smoothstep(0.05, 0.42, 1 - t) * (1 - smoothstep(0.92, 1, t) * 0.72);
+  return lerp(projectileWidth * 0.56, tailWidth * 0.12, t) * (0.52 + shaped * 0.48);
+}
+
+function strokeCenterline(ctx: CanvasRenderingContext2D, centerline: TrailPathPoint[], maxDistance: number, headGap: number, tailOffset: number, headOffset: number): void {
+  const points = centerline
+    .filter((point) => point.distance <= maxDistance && point.distance >= headGap)
+    .map((point) => offsetCenterlinePoint(centerline, point.distance, lerp(headOffset, tailOffset, clamp(point.distance / Math.max(maxDistance, 0.0001), 0, 1))));
+  if (points.length < 2) {
+    return;
+  }
+
+  ctx.beginPath();
+  ctx.moveTo(points[points.length - 1][0], points[points.length - 1][1]);
+  for (let i = points.length - 2; i >= 0; i -= 1) {
+    ctx.lineTo(points[i][0], points[i][1]);
+  }
+  ctx.stroke();
+}
+
+function sampleCenterlineByRatio(centerline: TrailPathPoint[], ratio: number): TrailPathPoint {
+  if (centerline.length === 0) {
+    return { position: [0, 0], distance: 0, t: 0 };
+  }
+  const target = clamp(ratio, 0, 1);
+  let best = centerline[0];
+  for (const point of centerline) {
+    if (Math.abs(point.t - target) < Math.abs(best.t - target)) {
+      best = point;
+    }
+  }
+  return best;
+}
+
+function offsetCenterlinePoint(centerline: TrailPathPoint[], distance: number, offset: number): Vec2 {
+  if (centerline.length === 0) {
+    return [0, 0];
+  }
+  const length = centerline[centerline.length - 1].distance || 1;
+  const ratio = clamp(distance / length, 0, 1);
+  const point = sampleCenterlineByRatio(centerline, ratio);
+  const normal = centerlineNormalAt(centerline, ratio);
+  return [point.position[0] + normal[0] * offset, point.position[1] + normal[1] * offset];
+}
+
+function centerlineNormalAt(centerline: TrailPathPoint[], ratio: number): Vec2 {
+  const tangent = centerlineTangentAt(centerline, ratio, [1, 0]);
+  return [-tangent[1], tangent[0]];
+}
+
+function centerlineTangentAt(centerline: TrailPathPoint[], ratio: number, fallback: Vec2): Vec2 {
+  if (centerline.length < 2) {
+    return normalize(fallback);
+  }
+  const index = Math.round(clamp(ratio, 0, 1) * (centerline.length - 1));
+  const previous = centerline[Math.max(0, index - 1)].position;
+  const next = centerline[Math.min(centerline.length - 1, index + 1)].position;
+  const tangent = normalize([previous[0] - next[0], previous[1] - next[1]]);
+  if (!Number.isFinite(tangent[0]) || !Number.isFinite(tangent[1])) {
+    return normalize(fallback);
+  }
+  return tangent;
+}
+
+function drawSideWisps(ctx: CanvasRenderingContext2D, layers: ProjectileVfxSideWispLayerConfig[], trail: TrailEntityConfig, widthBase: number, length: number, alphaScale: number, centerline: TrailPathPoint[]): void {
   const enabledLayers = layers.filter((layer) => layer.enabled);
   for (const layer of enabledLayers) {
     const sideColor = layer.color ?? mixRgba(trail.endEmissive, trail.startColor, 0.36);
-    for (const path of projectileVfxSideWispLocalPaths(layer, length, widthBase)) {
-      const start = path[0];
-      const middle = path[1];
-      const end = path[2];
+    for (const localPath of projectileVfxSideWispLocalPaths(layer, length, widthBase)) {
+      const points = buildSideWispCenterlinePath(centerline, localPath, widthBase);
+      if (points.length < 2) {
+        continue;
+      }
+      const start = points[0];
+      const end = points[points.length - 1];
+      const mid = points[Math.floor(points.length * 0.5)];
       const gradient = ctx.createLinearGradient(start[0], start[1], end[0], end[1]);
       gradient.addColorStop(0, 'rgba(0,0,0,0)');
       gradient.addColorStop(0.28, rgbaToCss(darkenRgba(sideColor, 0.5), 0.1 * alphaScale));
@@ -736,7 +863,13 @@ function drawSideWisps(ctx: CanvasRenderingContext2D, layers: ProjectileVfxSideW
       ctx.lineCap = 'round';
       ctx.beginPath();
       ctx.moveTo(start[0], start[1]);
-      ctx.lineTo(middle[0], middle[1]);
+      for (let i = 1; i < points.length - 1; i += 1) {
+        const current = points[i];
+        const next = points[i + 1];
+        const midX = (current[0] + next[0]) * 0.5;
+        const midY = (current[1] + next[1]) * 0.5;
+        ctx.quadraticCurveTo(current[0], current[1], midX, midY);
+      }
       ctx.lineTo(end[0], end[1]);
       ctx.stroke();
       ctx.restore();
@@ -744,66 +877,51 @@ function drawSideWisps(ctx: CanvasRenderingContext2D, layers: ProjectileVfxSideW
   }
 }
 
-interface TrailStrokeParams {
-  color: Rgba;
-  endColor: Rgba;
-  emissive: Rgba;
-  alpha: number;
-  jitter: number;
-  offset: number;
-  timeSeconds: number;
-  trail: TrailEntityConfig;
-  segmentIndex: number;
+function buildSideWispCenterlinePath(centerline: TrailPathPoint[], localPath: Vec2[], widthBase: number): Vec2[] {
+  if (centerline.length < 2 || localPath.length < 2) {
+    return [];
+  }
+
+  const startDistance = Math.max(...localPath.map((point) => Math.abs(point[0])));
+  const endDistance = Math.min(...localPath.map((point) => Math.abs(point[0])));
+  const headGap = Math.max(widthBase * 6.5, 18);
+  const clampedEnd = Math.max(endDistance, headGap);
+  const distanceSpan = Math.max(0, startDistance - clampedEnd);
+  if (distanceSpan <= 0.5) {
+    return [];
+  }
+
+  const sampleCount = Math.max(6, Math.ceil(distanceSpan / Math.max(12, widthBase * 2.4)));
+  const offsets = localPath
+    .map((point) => ({ distance: Math.abs(point[0]), offset: point[1] }))
+    .sort((a, b) => b.distance - a.distance);
+
+  const points: Vec2[] = [];
+  for (let i = 0; i <= sampleCount; i += 1) {
+    const t = i / sampleCount;
+    const distance = lerp(startDistance, clampedEnd, t);
+    const offset = sampleSideWispOffset(offsets, distance);
+    points.push(offsetCenterlinePoint(centerline, distance, offset));
+  }
+  return points;
 }
 
-function drawSegmentStroke(
-  ctx: CanvasRenderingContext2D,
-  preset: BoxUtilPreviewPreset,
-  start: Vec2,
-  end: Vec2,
-  startWidth: number,
-  endWidth: number,
-  width: number,
-  height: number,
-  params: TrailStrokeParams,
-): void {
-  const [sx, sy] = worldToCanvas(start, preset, width, height);
-  const [ex, ey] = worldToCanvas(end, preset, width, height);
-  const dx = ex - sx;
-  const dy = ey - sy;
-  const len = Math.hypot(dx, dy) || 1;
-  const nx = -dy / len;
-  const ny = dx / len;
-  const flick = params.trail.flick ? 0.76 + 0.24 * Math.sin(params.timeSeconds * 24 + params.segmentIndex * 2.4 + params.trail.flickerSyncCode * 0.21) : 1;
-  const jitterWave = Math.sin(params.timeSeconds * 16 + params.segmentIndex * 1.9 + params.trail.flickerSyncCode * 0.13) * params.jitter;
-  const shift = params.offset + jitterWave;
-  const lsx = sx + nx * shift;
-  const lsy = sy + ny * shift;
-  const lex = ex + nx * shift;
-  const ley = ey + ny * shift;
-  const gradient = ctx.createLinearGradient(lsx, lsy, lex, ley);
-  gradient.addColorStop(0, rgbaToCss(params.color, params.alpha * flick));
-  gradient.addColorStop(1, rgbaToCss(params.endColor, params.alpha * 0.55 * flick));
-
-  ctx.strokeStyle = gradient;
-  ctx.lineWidth = startWidth;
-  ctx.beginPath();
-  ctx.moveTo(lsx, lsy);
-  ctx.lineTo(lex, ley);
-  ctx.stroke();
-
-  ctx.shadowBlur = 18;
-  ctx.shadowColor = rgbaToCss(params.emissive, params.alpha * 0.85);
-  ctx.strokeStyle = rgbaToCss(params.emissive, params.alpha * 0.7 * flick);
-  ctx.lineWidth = Math.max(1, endWidth * 1.15);
-  ctx.stroke();
-}
-
-function worldToCanvas(position: Vec2, preset: BoxUtilPreviewPreset, width: number, height: number): Vec2 {
-  const scale = (width / 640) * Math.max(preset.previewCamera.zoom, 0.001);
-  const x = width / 2 + (position[0] - preset.previewCamera.center[0]) * scale;
-  const y = height / 2 - (position[1] - preset.previewCamera.center[1]) * scale;
-  return [x, y];
+function sampleSideWispOffset(samples: Array<{ distance: number; offset: number }>, distance: number): number {
+  if (samples.length === 0) {
+    return 0;
+  }
+  if (distance >= samples[0].distance) {
+    return samples[0].offset;
+  }
+  for (let i = 0; i < samples.length - 1; i += 1) {
+    const left = samples[i];
+    const right = samples[i + 1];
+    if (distance <= left.distance && distance >= right.distance) {
+      const ratio = (left.distance - distance) / Math.max(left.distance - right.distance, 0.0001);
+      return lerp(left.offset, right.offset, ratio);
+    }
+  }
+  return samples[samples.length - 1].offset;
 }
 
 function lerp(start: number, end: number, t: number): number {
@@ -821,26 +939,6 @@ function mixRgba(start: Rgba, end: Rgba, t: number): Rgba {
 function normalize(vec: Vec2): Vec2 {
   const length = Math.hypot(vec[0], vec[1]) || 1;
   return [vec[0] / length, vec[1] / length];
-}
-
-function computeNodeAge(trail: TrailEntityConfig, index: number, steps: number, progress: number): number {
-  const node = trail.nodes[Math.min(trail.nodes.length - 1, index)] ?? trail.nodes[trail.nodes.length - 1];
-  if (typeof node?.age === 'number' && Number.isFinite(node.age)) {
-    return clamp(node.age, 0, 1);
-  }
-
-  const lifeRatio = 1 - index / Math.max(steps, 1);
-  return clamp(lifeRatio + progress * 0.28, 0, 1);
-}
-
-function easeOutCubic(t: number): number {
-  const inv = 1 - clamp(t, 0, 1);
-  return 1 - inv * inv * inv;
-}
-
-function easeInCubic(t: number): number {
-  const value = clamp(t, 0, 1);
-  return value * value * value;
 }
 
 function smoothstep(edge0: number, edge1: number, x: number): number {
@@ -883,5 +981,3 @@ function fract(value: number): number {
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
-
-const DEG_TO_RAD = Math.PI / 180;
