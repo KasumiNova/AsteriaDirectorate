@@ -36,12 +36,54 @@ object ASTDProjectileVfxSideWispRenderer {
     ): List<ASTDProjectileVfxBodyRenderer.Mesh> {
         val baseLayer = trail.layers.firstOrNull() ?: trail.layerSpec
         val widthBase = ASTDProjectileVfxLayout.widthBase(baseLayer)
+        val centerline = if (context.historyNodes.size >= 3 && !ASTDProjectileVfxCenterline.isEffectivelyStraight(context)) {
+            ASTDProjectileVfxCenterline.build(context)
+        } else {
+            emptyList()
+        }
         return layers.filter { it.enabled }.flatMap { layer ->
             val lineWidth = lineWidthForTests(trail, layer)
             localPathsForTests(layer, context.visibleLength, widthBase).map { path ->
-                pathMesh(path, lineWidth, layer, context, alphaScale)
+                val sampledPath = if (centerline.isNotEmpty()) centerlinePath(centerline, path, widthBase) else path
+                pathMesh(sampledPath, lineWidth, layer, context, alphaScale)
+            }.filter { it.vertices.isNotEmpty() }
+        }
+    }
+
+    private fun centerlinePath(centerline: List<ASTDProjectileVfxCenterline.Point>, localPath: List<Vector2f>, widthBase: Float): List<Vector2f> {
+        if (centerline.size < 2 || localPath.size < 2) return emptyList()
+        val startDistance = localPath.maxOf { kotlin.math.abs(it.x) }
+        val endDistance = localPath.minOf { kotlin.math.abs(it.x) }
+        val headGap = max(widthBase * 6.5f, 18f)
+        val clampedEnd = max(endDistance, headGap)
+        val distanceSpan = max(0f, startDistance - clampedEnd)
+        if (distanceSpan <= 0.5f) return emptyList()
+        val sampleCount = max(6, kotlin.math.ceil(distanceSpan / max(12f, widthBase * 2.4f)).toInt())
+        val offsets = localPath
+            .map { PathOffset(kotlin.math.abs(it.x), it.y) }
+            .sortedByDescending { it.distance }
+        return (0..sampleCount).map { index ->
+            val t = index.toFloat() / sampleCount.toFloat()
+            val distance = ASTDProjectileVfxMath.lerp(startDistance, clampedEnd, t)
+            val offset = sampleSideWispOffset(offsets, distance)
+            ASTDProjectileVfxCenterline.offsetPoint(centerline, distance, offset)
+        }
+    }
+
+    private data class PathOffset(val distance: Float, val offset: Float)
+
+    private fun sampleSideWispOffset(samples: List<PathOffset>, distance: Float): Float {
+        if (samples.isEmpty()) return 0f
+        if (distance >= samples.first().distance) return samples.first().offset
+        for (index in 0 until samples.lastIndex) {
+            val left = samples[index]
+            val right = samples[index + 1]
+            if (distance <= left.distance && distance >= right.distance) {
+                val ratio = ((left.distance - distance) / (left.distance - right.distance).coerceAtLeast(0.0001f)).coerceIn(0f, 1f)
+                return ASTDProjectileVfxMath.lerp(left.offset, right.offset, ratio)
             }
         }
+        return samples.last().offset
     }
 
     private fun pathMesh(

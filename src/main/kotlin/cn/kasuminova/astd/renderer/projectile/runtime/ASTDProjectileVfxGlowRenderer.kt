@@ -274,19 +274,46 @@ object ASTDProjectileVfxGlowRenderer {
         val coreHalf = lineWidth * 0.5f
         val outerHalf = coreHalf + glow.blur * ASTDProjectileVfxSoftMesh.CANVAS_SHADOW_VISIBLE_RADIUS
         val scale = context.worldUnitsPerPixel.coerceAtLeast(0.0001f)
+        val centerline = if (context.historyNodes.size >= 3 && !ASTDProjectileVfxCenterline.isEffectivelyStraight(context)) {
+            ASTDProjectileVfxCenterline.build(context)
+        } else {
+            emptyList()
+        }
         for (samplePoint in samples) {
-            val x = ASTDProjectileVfxMath.lerp(startX, endX, samplePoint.pathT)
-            val y = ASTDProjectileVfxMath.lerp(glow.yOffset, glow.yOffset * 0.18f, samplePoint.pathT)
+            val distance = ASTDProjectileVfxMath.lerp(context.visibleLength * 0.72f, headGap, samplePoint.pathT)
+            val yOffset = ASTDProjectileVfxMath.lerp(glow.yOffset, glow.yOffset * 0.18f, samplePoint.pathT)
+            val center = if (centerline.isNotEmpty()) {
+                ASTDProjectileVfxCenterline.offsetPoint(centerline, distance, yOffset)
+            } else {
+                Vector2f(
+                    ASTDProjectileVfxMath.lerp(startX, endX, samplePoint.pathT),
+                    yOffset,
+                )
+            }
+            val normal = if (centerline.isNotEmpty()) {
+                ASTDProjectileVfxCenterline.normalAt(
+                    centerline,
+                    (distance / context.visibleLength.coerceAtLeast(0.0001f)).coerceIn(0f, 1f),
+                )
+            } else {
+                Vector2f(0f, 1f)
+            }
             val sample = glowSampleAt(samplePoint.gradientT, tail, head, glow.alphaScale * context.beamAlpha * fadeAlpha)
             val color = sample.first
             val alpha = sample.second
             val vertexColor = color.copy(alpha = alpha.coerceIn(0f, 1f))
-            vertices += ASTDProjectileVfxBodyRenderer.Vertex(Vector2f(x * scale, (y - coreHalf) * scale), vertexColor)
-            vertices += ASTDProjectileVfxBodyRenderer.Vertex(Vector2f(x * scale, (y + coreHalf) * scale), vertexColor)
+            vertices += ASTDProjectileVfxBodyRenderer.Vertex(
+                Vector2f((center.x - normal.x * coreHalf) * scale, (center.y - normal.y * coreHalf) * scale),
+                vertexColor,
+            )
+            vertices += ASTDProjectileVfxBodyRenderer.Vertex(
+                Vector2f((center.x + normal.x * coreHalf) * scale, (center.y + normal.y * coreHalf) * scale),
+                vertexColor,
+            )
             val shadowColor = mix(color, head, 0.65f)
             softColumns += ASTDProjectileVfxSoftMesh.Column(
-                x = x * scale,
-                centerY = y * scale,
+                x = center.x * scale,
+                centerY = center.y * scale,
                 innerHalf = coreHalf * scale,
                 outerHalf = outerHalf * scale,
                 color = shadowColor,

@@ -16,6 +16,23 @@ import kotlin.test.assertTrue
 
 class ASTDProjectileVfxBodyRendererTest {
     @Test
+    fun `body renderer follows curved projectile history when present`() {
+        val preset = ASTDProjectileVfxPresetCatalog.preset("aod7_shot")!!
+        val context = testContext().copy(
+            location = Vector2f(200f, 120f),
+            renderFacing = 0f,
+            visibleLength = 40f,
+            beamAlpha = 1f,
+            historyNodes = curvedHistory(),
+        )
+
+        val mesh = ASTDProjectileVfxBodyRenderer.meshForTests(preset.trailEntities.single(), context)
+
+        assertTrue(mesh.polygon.any { it.y > 18f }, "body should bend along projectile history")
+        assertTrue(mesh.polygon.all { it.x in -45f..8f }, "body mesh should remain local, not world-translated")
+    }
+
+    @Test
     fun `body renderer mesh consumes preview body polygon and gradient stops`() {
         val preset = ASTDProjectileVfxPresetCatalog.preset("aod7_shot")!!
         val trail = preset.trailEntities.single()
@@ -320,4 +337,11 @@ class ASTDProjectileVfxBodyRendererTest {
         val t = ((offset - left.offset) / (right.offset - left.offset).coerceAtLeast(0.0001f)).coerceIn(0f, 1f)
         return left.alpha + (right.alpha - left.alpha) * t
     }
+
+    private fun curvedHistory(): List<ASTDProjectileHistoryNode> = listOf(
+        ASTDProjectileHistoryNode(Vector2f(200f, 120f), 0f, 0f),
+        ASTDProjectileHistoryNode(Vector2f(190f, 120f), 0f, 0f),
+        ASTDProjectileHistoryNode(Vector2f(180f, 130f), 0f, 0f),
+        ASTDProjectileHistoryNode(Vector2f(170f, 150f), 0f, 0f),
+    )
 }

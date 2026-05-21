@@ -2,6 +2,7 @@ package cn.kasuminova.astd.renderer.projectile
 
 import cn.kasuminova.astd.renderer.projectile.runtime.ASTDProjectileVfxGlowRenderer
 import cn.kasuminova.astd.renderer.projectile.runtime.ASTDProjectileVfxLayout
+import org.lwjgl.util.vector.Vector2f
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.test.Test
@@ -10,6 +11,28 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class ASTDProjectileVfxGlowRendererTest {
+    @Test
+    fun `glow renderer follows curved projectile history when present`() {
+        val preset = ASTDProjectileVfxPresetCatalog.preset("aod7_shot")!!
+        val context = testContext().copy(
+            location = Vector2f(200f, 120f),
+            renderFacing = 0f,
+            visibleLength = 40f,
+            beamAlpha = 1f,
+            historyNodes = curvedHistory(),
+        )
+
+        val mesh = ASTDProjectileVfxGlowRenderer.meshesForTests(
+            preset.trailEntities.single(),
+            listOf(preset.glowLayers.first()),
+            context,
+        ).single()
+
+        val strokeCenterYs = mesh.vertices.take(12).chunked(2).map { (a, b) -> (a.position.y + b.position.y) * 0.5f }
+        assertTrue(strokeCenterYs.any { it > 8f }, "glow core centerline should bend along projectile history")
+        assertTrue(mesh.vertices.all { it.position.x in -45f..8f }, "glow mesh should remain local")
+    }
+
     @Test
     fun `aod7 glow layer parameters mirror preview graph`() {
         val preset = ASTDProjectileVfxPresetCatalog.preset("aod7_shot")!!
@@ -325,4 +348,11 @@ class ASTDProjectileVfxGlowRendererTest {
         assertTrue(renderLayerBody.contains("ASTDProjectileVfxBodyRenderManager"), "runtime glow should render through the shared mesh manager")
         assertTrue(renderLayerBody.contains("meshesForTests"), "runtime glow should use the full TS stroke plus shadow mesh covered by preview parity tests")
     }
+
+    private fun curvedHistory(): List<ASTDProjectileHistoryNode> = listOf(
+        ASTDProjectileHistoryNode(Vector2f(200f, 120f), 0f, 0f),
+        ASTDProjectileHistoryNode(Vector2f(190f, 120f), 0f, 0f),
+        ASTDProjectileHistoryNode(Vector2f(180f, 130f), 0f, 0f),
+        ASTDProjectileHistoryNode(Vector2f(170f, 150f), 0f, 0f),
+    )
 }

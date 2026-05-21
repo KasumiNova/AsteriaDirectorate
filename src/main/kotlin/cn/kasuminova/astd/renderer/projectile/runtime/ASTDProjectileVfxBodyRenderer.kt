@@ -47,10 +47,18 @@ object ASTDProjectileVfxBodyRenderer {
         val baseLayer = baseLayer(trail)
         val pulse = context.beamAlpha.coerceIn(0f, 1f)
         val widthBase = ASTDProjectileVfxLayout.widthBase(baseLayer)
-        val polygon = ASTDProjectileVfxLayout.bodyPolygon(widthBase, context.visibleLength, pulse)
+        val polygon = bodyPolygonForContext(context, widthBase, pulse)
         val gradientStops = ASTDProjectileVfxLayout.bodyGradientStops(baseLayer, pulse)
-        val vertices = bodyStripVertices(polygon, gradientStops, context.visibleLength, alphaScale)
-        val noiseVertices = bodyNoiseVertices(polygon, gradientStops, context, alphaScale)
+        val vertices = if (isCurvedContext(context)) {
+            centerlineBodyStripVertices(polygon, gradientStops, context.visibleLength, alphaScale)
+        } else {
+            bodyStripVertices(polygon, gradientStops, context.visibleLength, alphaScale)
+        }
+        val noiseVertices = if (isCurvedContext(context)) {
+            centerlineBodyNoiseVertices(gradientStops, context, widthBase, alphaScale)
+        } else {
+            bodyNoiseVertices(polygon, gradientStops, context, alphaScale)
+        }
         val scaledVertices = vertices.map { vertex ->
             vertex.copy(position = ASTDProjectileVfxLayout.scalePoint(vertex.position, context.worldUnitsPerPixel))
         }
@@ -76,9 +84,13 @@ object ASTDProjectileVfxBodyRenderer {
         val baseLayer = baseLayer(trail)
         val pulse = context.beamAlpha.coerceIn(0f, 1f)
         val widthBase = ASTDProjectileVfxLayout.widthBase(baseLayer)
-        val polygon = ASTDProjectileVfxLayout.bodyPolygon(widthBase, context.visibleLength, pulse)
+        val polygon = bodyPolygonForContext(context, widthBase, pulse)
         val gradientStops = ASTDProjectileVfxLayout.bodyGradientStops(baseLayer, pulse)
-        val columns = bodyShadowColumns(baseLayer, polygon, gradientStops, context, widthBase, alphaScale)
+        val columns = if (isCurvedContext(context)) {
+            centerlineBodyShadowColumns(baseLayer, context, widthBase, alphaScale)
+        } else {
+            bodyShadowColumns(baseLayer, polygon, gradientStops, context, widthBase, alphaScale)
+        }
         val shadow = ASTDProjectileVfxSoftMesh.symmetricOuterFalloff(columns, 8)
         return Mesh(
             polygon = shadow.vertices.map { Vector2f(it.position) },
@@ -92,6 +104,18 @@ object ASTDProjectileVfxBodyRenderer {
     }
 
     private fun baseLayer(trail: ASTDTrailEntitySpec): ASTDTrailLayerSpec = trail.layers.firstOrNull() ?: trail.layerSpec
+
+    private fun isCurvedContext(context: ASTDProjectileVfxRenderContext): Boolean {
+        return context.historyNodes.size >= 3 && !ASTDProjectileVfxCenterline.isEffectivelyStraight(context)
+    }
+
+    private fun bodyPolygonForContext(context: ASTDProjectileVfxRenderContext, widthBase: Float, pulse: Float): List<Vector2f> {
+        return if (isCurvedContext(context)) {
+            ASTDProjectileVfxCenterline.bodyPolygon(context, widthBase, pulse)
+        } else {
+            ASTDProjectileVfxLayout.bodyPolygon(widthBase, context.visibleLength, pulse)
+        }
+    }
 
     private fun triangulate(vertices: List<Vertex>): List<Triangle> {
         if (vertices.size < 3) return emptyList()
@@ -149,6 +173,37 @@ object ASTDProjectileVfxBodyRenderer {
         return vertices
     }
 
+    private fun centerlineBodyNoiseVertices(
+        gradientStops: List<ASTDProjectileVfxLayout.BodyGradientStop>,
+        context: ASTDProjectileVfxRenderContext,
+        widthBase: Float,
+        alphaScale: Float,
+    ): List<Vertex> {
+        if (context.beamAlpha <= 0.001f) return emptyList()
+        val length = context.visibleLength.coerceAtLeast(6f)
+        val centerline = ASTDProjectileVfxCenterline.build(context)
+        if (centerline.size < 2) return emptyList()
+        val startDistance = (length * 0.36f).coerceAtMost(length)
+        val endDistance = max(2f, length * 0.015f)
+        val columns = 9
+        val vertices = ArrayList<Vertex>(columns * 3)
+        for (index in 0 until columns) {
+            val t = index.toFloat() / (columns - 1).toFloat()
+            val distance = ASTDProjectileVfxMath.lerp(startDistance, endDistance, t)
+            val ratio = (distance / length).coerceIn(0f, 1f)
+            val center = ASTDProjectileVfxCenterline.sampleByRatio(centerline, ratio)
+            val normal = ASTDProjectileVfxCenterline.normalAt(centerline, ratio)
+            val half = ASTDProjectileVfxCenterline.bodyHalfWidthAt(ratio, widthBase, context.beamAlpha) * 0.66f
+            val baseColor = sampleGradient(gradientStops, 1f - distance / (length * 0.6f).coerceAtLeast(0.0001f), alphaScale)
+            val offsets = listOf(-half, 0f, half)
+            for (offset in offsets) {
+                val point = Vector2f(center.position.x + normal.x * offset, center.position.y + normal.y * offset)
+                vertices += Vertex(point, noisyBodyColor(baseColor, -distance, offset, half, context, if (offset == 0f) 0.42f else 0.32f))
+            }
+        }
+        return vertices
+    }
+
     private fun triangulateNoiseColumns(vertices: List<Vertex>): List<Triangle> {
         if (vertices.size < 6) return emptyList()
         val triangles = ArrayList<Triangle>((vertices.size / 3 - 1) * 4)
@@ -193,6 +248,30 @@ object ASTDProjectileVfxBodyRenderer {
         )
     }
 
+    private fun centerlineBodyStripVertices(
+        polygon: List<Vector2f>,
+        gradientStops: List<ASTDProjectileVfxLayout.BodyGradientStop>,
+        visibleLength: Float,
+        alphaScale: Float,
+    ): List<Vertex> {
+        if (polygon.size < 4 || polygon.size % 2 != 0) {
+            return polygon.map { point ->
+                Vertex(Vector2f(point), sampleGradient(gradientStops, gradientOffset(point, visibleLength), alphaScale))
+            }
+        }
+        val half = polygon.size / 2
+        val topReversed = polygon.take(half)
+        val bottom = polygon.drop(half)
+        val top = topReversed.asReversed()
+        return top.indices.flatMap { index ->
+            val topPoint = top[index]
+            val bottomPoint = bottom[index]
+            val t = index.toFloat() / (top.size - 1).coerceAtLeast(1).toFloat()
+            val color = sampleGradient(gradientStops, t, alphaScale)
+            listOf(Vertex(Vector2f(topPoint), color), Vertex(Vector2f(bottomPoint), color))
+        }
+    }
+
     private fun bodyShadowColumns(
         baseLayer: ASTDTrailLayerSpec,
         polygon: List<Vector2f>,
@@ -221,6 +300,34 @@ object ASTDProjectileVfxBodyRenderer {
             ASTDProjectileVfxSoftMesh.Column(
                 x = x * scale,
                 centerY = centerY * scale,
+                innerHalf = half * scale,
+                outerHalf = (half + shadowBlur * ASTDProjectileVfxSoftMesh.CANVAS_SHADOW_VISIBLE_RADIUS) * scale,
+                color = bodyEmissive,
+                alpha = (fillAlpha * shadowAlpha * ASTDProjectileVfxSoftMesh.CANVAS_SHADOW_KERNEL_ALPHA).coerceIn(0f, 1f),
+            )
+        }
+    }
+
+    private fun centerlineBodyShadowColumns(
+        baseLayer: ASTDTrailLayerSpec,
+        context: ASTDProjectileVfxRenderContext,
+        widthBase: Float,
+        alphaScale: Float,
+    ): List<ASTDProjectileVfxSoftMesh.Column> {
+        val scale = context.worldUnitsPerPixel.coerceAtLeast(0.0001f)
+        val pulse = context.beamAlpha.coerceIn(0f, 1f)
+        val centerline = ASTDProjectileVfxCenterline.build(context)
+        if (centerline.size < 2) return emptyList()
+        val bodyEmissive = mix(baseLayer.endEmissive, baseLayer.startEmissive, 0.55f)
+        val shadowBlur = max(8f, widthBase * 2.4f)
+        val shadowAlpha = 0.86f * pulse
+        val gradientStops = ASTDProjectileVfxLayout.bodyGradientStops(baseLayer, pulse)
+        return centerline.map { point ->
+            val half = ASTDProjectileVfxCenterline.bodyHalfWidthAt(point.t, widthBase, pulse)
+            val fillAlpha = sampleGradient(gradientStops, point.t, alphaScale).alpha
+            ASTDProjectileVfxSoftMesh.Column(
+                x = point.position.x * scale,
+                centerY = point.position.y * scale,
                 innerHalf = half * scale,
                 outerHalf = (half + shadowBlur * ASTDProjectileVfxSoftMesh.CANVAS_SHADOW_VISIBLE_RADIUS) * scale,
                 color = bodyEmissive,

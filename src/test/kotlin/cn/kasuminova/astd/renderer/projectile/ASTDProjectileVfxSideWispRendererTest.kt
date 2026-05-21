@@ -15,6 +15,28 @@ import kotlin.test.assertTrue
 
 class ASTDProjectileVfxSideWispRendererTest {
     @Test
+    fun `side wisp renderer follows curved projectile history with sampled path`() {
+        val preset = ASTDProjectileVfxPresetCatalog.preset("aod7_shot")!!
+        val context = testContext().copy(
+            location = Vector2f(200f, 120f),
+            renderFacing = 0f,
+            visibleLength = 40f,
+            beamAlpha = 1f,
+            historyNodes = curvedHistory(),
+        )
+
+        val mesh = ASTDProjectileVfxSideWispRenderer.meshesForTests(
+            preset.trailEntities.single(),
+            preset.sideWispLayers,
+            context,
+        ).first()
+
+        assertTrue(mesh.vertices.size > 6, "curved side wisp should use sampled centerline path instead of three-node chord")
+        assertTrue(mesh.vertices.maxOf { it.position.y } - mesh.vertices.minOf { it.position.y } > 2f, "side wisp should bend along projectile history")
+        assertTrue(mesh.vertices.all { it.position.x in -45f..8f }, "side wisp mesh should remain local")
+    }
+
+    @Test
     fun `side wisp renderer creates one local three-node path per offset`() {
         val preset = ASTDProjectileVfxPresetCatalog.preset("aod7_shot")!!
         val paths = ASTDProjectileVfxSideWispRenderer.localPathsForTests(preset.sideWispLayers.single(), 420f, 10f)
@@ -102,4 +124,11 @@ class ASTDProjectileVfxSideWispRendererTest {
         java.lang.Character.TYPE -> '\u0000'
         else -> null
     }
+
+    private fun curvedHistory(): List<ASTDProjectileHistoryNode> = listOf(
+        ASTDProjectileHistoryNode(Vector2f(200f, 120f), 0f, 0f),
+        ASTDProjectileHistoryNode(Vector2f(190f, 120f), 0f, 0f),
+        ASTDProjectileHistoryNode(Vector2f(180f, 130f), 0f, 0f),
+        ASTDProjectileHistoryNode(Vector2f(170f, 150f), 0f, 0f),
+    )
 }
