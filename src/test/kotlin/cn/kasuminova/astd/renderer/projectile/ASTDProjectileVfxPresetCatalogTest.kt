@@ -1,5 +1,6 @@
 package cn.kasuminova.astd.renderer.projectile
 
+import cn.kasuminova.astd.renderer.projectile.component.ASTDProjectileVfxComponentSpec
 import org.json.JSONObject
 import java.nio.file.Files
 import java.nio.file.Path
@@ -17,11 +18,11 @@ class ASTDProjectileVfxPresetCatalogTest {
     }
 
     @Test
-    fun `aod7 preset matches editor exported trail parameters`() {
+    fun `aod7 preset matches migrated kotlin component parameters`() {
         val preset = ASTDProjectileVfxPresetCatalog.preset("aod7_shot")
         assertNotNull(preset)
-        val trail = preset.trailEntities.single()
-        val layer = trail.layers.single()
+        val trail = preset.components.filterIsInstance<ASTDProjectileVfxComponentSpec.Trail>().single()
+        val layer = trail.layer
 
         assertEquals("astd_default_trail", trail.id)
         assertEquals(420f, layer.length)
@@ -62,14 +63,12 @@ class ASTDProjectileVfxPresetCatalogTest {
     }
 
     @Test
-    fun `aod7 preset is loaded from frontend game export json`() {
-        val exportedPath = Path.of("contents/data/config/astd_projectile_vfx_presets/aod7_shot.json")
-        assertTrue(Files.exists(exportedPath), "missing frontend game export preset: $exportedPath")
+    fun `aod7 preset is not backed by json game export`() {
+        val catalogText = Files.readString(Path.of("src/main/kotlin/cn/kasuminova/astd/renderer/projectile/ASTDProjectileVfxPresetCatalog.kt"))
 
-        val exportedPreset = ASTDProjectileVfxPresetCatalog.loadGameExportPresetForTest(
-            JSONObject(Files.readString(exportedPath)),
-        )
-        assertEquals(exportedPreset, ASTDProjectileVfxPresetCatalog.preset("aod7_shot"))
+        assertFalse(catalogText.contains("loadJSON"))
+        assertFalse(catalogText.contains("astd_projectile_vfx_presets"))
+        assertFalse(catalogText.contains("ASTDProjectileVfxPresetJson"))
     }
 
     @Test
@@ -86,15 +85,18 @@ class ASTDProjectileVfxPresetCatalogTest {
         for (id in ASTDProjectileVfxPresetCatalog.presetIds()) {
             val preset = ASTDProjectileVfxPresetCatalog.preset(id)
             assertNotNull(preset)
-            assertTrue(preset.layers.isNotEmpty() || preset.trailEntities.isNotEmpty(), "preset has no runtime layers: $id")
+            assertTrue(preset.components.isNotEmpty(), "preset has no runtime components: $id")
             assertTrue(
-                preset.layers.all {
-                    it is ASTDProjectileVfxLayer.Trail ||
-                        it is ASTDProjectileVfxLayer.Glow ||
-                        it is ASTDProjectileVfxLayer.Ribbon ||
-                        it is ASTDProjectileVfxLayer.HeadTrail
+                preset.components.all {
+                    it is ASTDProjectileVfxComponentSpec.Trail ||
+                        it is ASTDProjectileVfxComponentSpec.Body ||
+                        it is ASTDProjectileVfxComponentSpec.Glow ||
+                        it is ASTDProjectileVfxComponentSpec.Ribbon ||
+                        it is ASTDProjectileVfxComponentSpec.Head ||
+                        it is ASTDProjectileVfxComponentSpec.Mist ||
+                        it is ASTDProjectileVfxComponentSpec.SideWisp
                 },
-                "preset contains unsupported runtime layer: $id",
+                "preset contains unsupported runtime component: $id",
             )
         }
     }

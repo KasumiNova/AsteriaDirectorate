@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import exportedAod7 from '../../../../contents/data/config/astd_projectile_vfx_presets/aod7_shot.json';
+import exportedAod7 from '../fixtures/aod7Preset.json';
 import { createAod7Preset } from './aod7Preset';
 import type { GameProjectileVfxPreset } from './gameExport';
 
 describe('createAod7Preset', () => {
-  it('uses the checked-in game export as the editor baseline', () => {
+  it('uses the preview-local AOD-7 fixture as the editor baseline', () => {
     const exported = exportedAod7 as unknown as GameProjectileVfxPreset;
     const preset = createAod7Preset();
 

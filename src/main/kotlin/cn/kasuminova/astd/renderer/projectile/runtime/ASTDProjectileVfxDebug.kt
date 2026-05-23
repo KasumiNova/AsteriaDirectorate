@@ -1,6 +1,13 @@
 package cn.kasuminova.astd.renderer.projectile.runtime
 
 import cn.kasuminova.astd.renderer.projectile.ASTDProjectileVfxPreset
+import cn.kasuminova.astd.renderer.projectile.glowLayers
+import cn.kasuminova.astd.renderer.projectile.headLayers
+import cn.kasuminova.astd.renderer.projectile.mistLayers
+import cn.kasuminova.astd.renderer.projectile.primaryTrailLayer
+import cn.kasuminova.astd.renderer.projectile.ribbonDecorations
+import cn.kasuminova.astd.renderer.projectile.sideWispLayers
+import cn.kasuminova.astd.renderer.projectile.trailEntities
 import com.fs.starfarer.api.Global
 import org.json.JSONObject
 
@@ -46,7 +53,7 @@ object ASTDProjectileVfxDebug {
 
     fun logLayoutOnce(preset: ASTDProjectileVfxPreset, context: ASTDProjectileVfxRenderContext, visibility: Visibility = visibility()) {
         if (!visibility.logLayoutOnce || !loggedPresets.add(preset.id)) return
-        val baseLayer = preset.trailEntities.firstOrNull()?.layers?.firstOrNull() ?: return
+        val baseLayer = preset.primaryTrailLayer() ?: return
         log.info(
             "ASTD projectile VFX layout preset=${preset.id} projectile=${context.projectileSpecId} " +
                 "visibleLength=${context.visibleLength} widthBase=${ASTDProjectileVfxLayout.widthBase(baseLayer)} " +

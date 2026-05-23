@@ -1,5 +1,6 @@
 package cn.kasuminova.astd.renderer.projectile
 
+import cn.kasuminova.astd.renderer.projectile.component.ASTDProjectileVfxComponentSpec
 import kotlin.test.Test
 import kotlin.test.assertTrue
 
@@ -8,7 +9,7 @@ class ASTDProjectileVfxExportCompatibilityTest {
     fun `runtime exports class names used by frontend kotlin export`() {
         val names = listOf(
             ASTDProjectileVfxPreset::class.simpleName,
-            ASTDTrailEntitySpec::class.simpleName,
+            ASTDProjectileVfxComponentSpec::class.simpleName,
             ASTDTrailLayerSpec::class.simpleName,
             ASTDTrailRibbonDecorationSpec::class.simpleName,
             ASTDProjectileVfxFadePolicy::class.simpleName,
@@ -16,7 +17,7 @@ class ASTDProjectileVfxExportCompatibilityTest {
 
         listOf(
             "ASTDProjectileVfxPreset",
-            "ASTDTrailEntitySpec",
+            "ASTDProjectileVfxComponentSpec",
             "ASTDTrailLayerSpec",
             "ASTDTrailRibbonDecorationSpec",
             "ASTDProjectileVfxFadePolicy",

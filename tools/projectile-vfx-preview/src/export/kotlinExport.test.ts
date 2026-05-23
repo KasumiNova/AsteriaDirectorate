@@ -3,7 +3,7 @@ import { createDefaultPreset } from '../model/preset';
 import { formatPresetKotlin } from './kotlinExport';
 
 describe('formatPresetKotlin', () => {
-  it('exports game runtime preset code without preview-only fields', () => {
+  it('exports kotlin component runtime preset code without preview-only fields', () => {
     const preset = createDefaultPreset();
     preset.ribbonDecorations[0].colorGradient = {
       enabled: true,
@@ -23,7 +23,21 @@ describe('formatPresetKotlin', () => {
     expect(kotlinText).not.toContain('loop');
 
     expect(kotlinText).toContain('ASTDProjectileVfxPreset');
-    expect(kotlinText).toContain('ASTDTrailEntitySpec');
+    expect(kotlinText).toContain('components = listOf(');
+    expect(kotlinText).toContain('ASTDProjectileVfxComponentSpec.Trail');
+    expect(kotlinText).toContain('ASTDProjectileVfxComponentSpec.Mist');
+    expect(kotlinText).toContain('ASTDProjectileVfxComponentSpec.Glow');
+    expect(kotlinText).toContain('ASTDProjectileVfxComponentSpec.Body');
+    expect(kotlinText).toContain('ASTDProjectileVfxComponentSpec.SideWisp');
+    expect(kotlinText).toContain('ASTDProjectileVfxComponentSpec.Head');
+    expect(kotlinText).toContain('ASTDProjectileVfxComponentSpec.Ribbon');
+    expect(kotlinText).not.toContain('trailEntities =');
+    expect(kotlinText).not.toContain('headLayers =');
+    expect(kotlinText).not.toContain('glowLayers =');
+    expect(kotlinText).not.toContain('mistLayers =');
+    expect(kotlinText).not.toContain('sideWispLayers =');
+    expect(kotlinText).not.toContain('ribbonDecorations =');
+    expect(kotlinText).not.toContain('ASTDTrailEntitySpec');
     expect(kotlinText).toContain('ASTDTrailLayerSpec');
     expect(kotlinText).toContain('ASTDTrailRibbonDecorationSpec');
     expect(kotlinText).toContain('ASTDProjectileVfxHeadLayerSpec');

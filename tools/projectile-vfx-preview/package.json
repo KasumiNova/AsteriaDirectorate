@@ -8,7 +8,7 @@
     "build": "tsc && vite build",
     "test": "vitest",
     "test:run": "vitest run",
-    "export:game": "vite build --ssr src/export/gameExportCli.ts --outDir dist-export --emptyOutDir && node scripts/write-default-game-export.mjs"
+    "export:kotlin": "vitest run src/export/kotlinExport.test.ts"
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",

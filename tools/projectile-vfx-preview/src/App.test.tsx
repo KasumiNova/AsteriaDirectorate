@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it } from 'vitest';
-import exportedAod7 from '../../../contents/data/config/astd_projectile_vfx_presets/aod7_shot.json';
+import exportedAod7 from './fixtures/aod7Preset.json';
 import App from './App';
 import { AOD7_PRESET_STORAGE_VERSION } from './model/aod7Preset';
 import type { GameProjectileVfxPreset } from './model/gameExport';
@@ -45,7 +45,7 @@ describe('App', () => {
     expect(curved).toHaveAttribute('aria-pressed', 'true');
   });
 
-  it('ignores stale cached presets so the editor opens on the checked-in AOD-7 baseline', () => {
+  it('ignores stale cached presets so the editor opens on the preview-local AOD-7 baseline', () => {
     localStorage.setItem('astd-projectile-vfx-preset', JSON.stringify({ name: 'stale-local-cache', storageVersion: 'old' }));
     const exported = exportedAod7 as unknown as GameProjectileVfxPreset;
 

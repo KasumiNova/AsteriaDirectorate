@@ -1,6 +1,12 @@
 package cn.kasuminova.astd.combat.effect.generic.projectile
 
 import cn.kasuminova.astd.renderer.projectile.ASTDProjectileVfxPreset
+import cn.kasuminova.astd.renderer.projectile.glowLayers
+import cn.kasuminova.astd.renderer.projectile.headLayers
+import cn.kasuminova.astd.renderer.projectile.mistLayers
+import cn.kasuminova.astd.renderer.projectile.ribbonDecorations
+import cn.kasuminova.astd.renderer.projectile.sideWispLayers
+import cn.kasuminova.astd.renderer.projectile.trailEntities
 import org.json.JSONObject
 import java.nio.file.Files
 import java.nio.file.Path

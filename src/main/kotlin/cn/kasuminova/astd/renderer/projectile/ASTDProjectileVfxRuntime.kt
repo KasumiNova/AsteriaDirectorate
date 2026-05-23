@@ -217,8 +217,8 @@ class ASTDProjectileVfxRuntime(
         worldUnitsPerPixel: Float,
     ): ASTDProjectileVfxLayout.FlightLayout {
         val duration = max(preset.lifecycle.durationSeconds, 0.0001f)
-        val baseLength = preset.trailEntities.firstOrNull()?.layers?.firstOrNull()?.length ?: preset.samplingPolicy.distanceWindow
-        val baseLayer = preset.trailEntities.firstOrNull()?.layers?.firstOrNull()
+        val baseLength = preset.primaryTrailLayer()?.length ?: preset.samplingPolicy.distanceWindow
+        val baseLayer = preset.primaryTrailLayer()
         val scale = worldUnitsPerPixel.coerceAtLeast(0.0001f)
         return if (baseLayer != null) {
             ASTDProjectileVfxLayout.distanceFlightLayout(

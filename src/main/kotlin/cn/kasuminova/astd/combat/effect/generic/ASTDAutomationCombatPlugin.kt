@@ -5,6 +5,7 @@ import cn.kasuminova.astd.internal.debug.ASTDInGameAutomationScenario
 import cn.kasuminova.astd.renderer.projectile.ASTDProjectileVfxPresetCatalog
 import cn.kasuminova.astd.renderer.projectile.ASTDProjectileVfxRuntimePlugin
 import cn.kasuminova.astd.renderer.projectile.ASTDProjectileVfxRuntimeTelemetry
+import cn.kasuminova.astd.renderer.projectile.primaryTrailLayer
 import cn.kasuminova.astd.renderer.projectile.runtime.ASTDProjectileVfxLayout
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseEveryFrameCombatPlugin
@@ -245,7 +246,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     private fun automationPreviewTrack(age: Float): ASTDProjectileVfxLayout.PreviewFlightTrack {
         val preset = ASTDProjectileVfxPresetCatalog.preset(ASTDInGameAutomationScenario.VFX_PRESET_ID)
             ?: throw IllegalStateException("AOD-7 automation reference preset missing: ${ASTDInGameAutomationScenario.VFX_PRESET_ID}")
-        val trail = preset.trailEntities.firstOrNull()?.layers?.firstOrNull()
+        val trail = preset.primaryTrailLayer()
             ?: throw IllegalStateException("AOD-7 automation reference trail missing: ${ASTDInGameAutomationScenario.VFX_PRESET_ID}")
         return ASTDProjectileVfxLayout.previewFlightTrack(
             trailStartWidth = trail.startWidth,
@@ -303,7 +304,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     private fun referenceCaptureVisibleLength(): Float {
         val preset = ASTDProjectileVfxPresetCatalog.preset(ASTDInGameAutomationScenario.VFX_PRESET_ID)
             ?: throw IllegalStateException("AOD-7 automation reference preset missing: ${ASTDInGameAutomationScenario.VFX_PRESET_ID}")
-        val trail = preset.trailEntities.firstOrNull()?.layers?.firstOrNull()
+        val trail = preset.primaryTrailLayer()
             ?: throw IllegalStateException("AOD-7 automation reference trail missing: ${ASTDInGameAutomationScenario.VFX_PRESET_ID}")
         return ASTDProjectileVfxLayout.previewFlightLayout(
             trailStartWidth = trail.startWidth,

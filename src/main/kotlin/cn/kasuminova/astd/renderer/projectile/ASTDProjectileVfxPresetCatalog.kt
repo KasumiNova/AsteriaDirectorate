@@ -1,15 +1,16 @@
 package cn.kasuminova.astd.renderer.projectile
 
-import com.fs.starfarer.api.Global
-import org.json.JSONObject
-import java.nio.file.Files
-import java.nio.file.Path
+import cn.kasuminova.astd.renderer.projectile.component.ASTDProjectileVfxComponentSpec
+import cn.kasuminova.astd.renderer.projectile.reload.ASTDProjectileVfxHotReloadManager
+import cn.kasuminova.astd.renderer.projectile.reload.ASTDProjectileVfxHotReloadSource
+import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.atomic.AtomicReference
 
 object ASTDProjectileVfxPresetCatalog {
-    private const val GAME_EXPORT_PRESET_DIR = "data/config/astd_projectile_vfx_presets"
+    private const val DEFAULT_TRAIL_ID = "astd_default_trail"
 
-    private val presets: Map<String, ASTDProjectileVfxPreset> = listOf(
-        gameExportPresetOrFallback("aod7_shot") { aod7Shot() },
+    private val builtInPresets: Map<String, ASTDProjectileVfxPreset> = listOf(
+        aod7Shot(),
         preset("spc3_shot", violet(), 6f, 135f),
         preset("drv9_slug", amber(), 10f, 190f),
         preset("drv11", amber(), 12f, 230f, glowScale = 2.6f),
@@ -35,30 +36,25 @@ object ASTDProjectileVfxPresetCatalog {
         preset("mnl_omega_grid", omega(), 15f, 260f, glowScale = 3.0f, ribbon = true, head = true),
     ).associateBy { it.id }
 
-    fun preset(id: String): ASTDProjectileVfxPreset? = presets[id]
+    private val activePresets = AtomicReference(builtInPresets)
+    private val activeVersion = AtomicLong(1)
 
-    fun presetIds(): Set<String> = presets.keys
+    fun preset(id: String): ASTDProjectileVfxPreset? = activePresets.get()[id]
 
-    internal fun loadGameExportPresetForTest(json: JSONObject): ASTDProjectileVfxPreset {
-        return ASTDProjectileVfxPresetJson.parse(json)
+    fun presetIds(): Set<String> = activePresets.get().keys
+
+    fun version(): Long = activeVersion.get()
+
+    fun reloadForDev(source: ASTDProjectileVfxHotReloadSource): Int {
+        val reloaded = ASTDProjectileVfxHotReloadManager.reload(source)
+        activePresets.set(reloaded.presets)
+        activeVersion.set(reloaded.version)
+        return reloaded.presets.size
     }
 
-    private fun gameExportPresetOrFallback(
-        id: String,
-        fallback: () -> ASTDProjectileVfxPreset,
-    ): ASTDProjectileVfxPreset {
-        return try {
-            val json = Global.getSettings()?.loadJSON("$GAME_EXPORT_PRESET_DIR/$id.json") as? JSONObject
-            if (json != null) ASTDProjectileVfxPresetJson.parse(json) else fallback()
-        } catch (_: Throwable) {
-            tryLoadLocalGameExportPreset(id) ?: fallback()
-        }
-    }
-
-    private fun tryLoadLocalGameExportPreset(id: String): ASTDProjectileVfxPreset? {
-        val path = Path.of("contents/$GAME_EXPORT_PRESET_DIR/$id.json")
-        if (!Files.exists(path)) return null
-        return ASTDProjectileVfxPresetJson.parse(JSONObject(Files.readString(path)))
+    internal fun resetForTests() {
+        activePresets.set(builtInPresets)
+        activeVersion.set(1)
     }
 
     private fun aod7Shot(): ASTDProjectileVfxPreset {
@@ -161,24 +157,43 @@ object ASTDProjectileVfxPresetCatalog {
         )
         return ASTDProjectileVfxPreset(
             id = "aod7_shot",
-            layers = emptyList(),
-            trailEntities = listOf(
-                ASTDTrailEntitySpec(
-                    layerId = "astd_default_trail",
-                    id = "astd_default_trail",
-                    nodes = emptyList(),
-                    layerSpec = trailLayer,
-                    layers = listOf(trailLayer),
-                    ribbonDecorations = listOf(ribbonDecoration),
+            components = listOf(
+                ASTDProjectileVfxComponentSpec.Trail(
+                    id = DEFAULT_TRAIL_ID,
+                    layer = trailLayer,
                     orientationMode = ASTDProjectileVfxOrientationMode.ProjectileVelocity,
                     anchorMode = ASTDProjectileVfxAnchorMode.HeadLocked,
                 ),
+                ASTDProjectileVfxComponentSpec.Mist(
+                    id = "astd_default_mist",
+                    trailId = DEFAULT_TRAIL_ID,
+                    layers = mistLayers,
+                ),
+                ASTDProjectileVfxComponentSpec.Glow(
+                    id = "astd_default_glow",
+                    trailId = DEFAULT_TRAIL_ID,
+                    layers = glowLayers,
+                ),
+                ASTDProjectileVfxComponentSpec.Body(
+                    id = "astd_default_body",
+                    trailId = DEFAULT_TRAIL_ID,
+                ),
+                ASTDProjectileVfxComponentSpec.SideWisp(
+                    id = "astd_default_side_wisp",
+                    trailId = DEFAULT_TRAIL_ID,
+                    layers = sideWispLayers,
+                ),
+                ASTDProjectileVfxComponentSpec.Head(
+                    id = "astd_default_head",
+                    trailId = DEFAULT_TRAIL_ID,
+                    layers = headLayers,
+                ),
+                ASTDProjectileVfxComponentSpec.Ribbon(
+                    id = "astd_default_ribbon",
+                    trailId = DEFAULT_TRAIL_ID,
+                    ribbons = listOf(ribbonDecoration),
+                ),
             ),
-            headLayers = headLayers,
-            glowLayers = glowLayers,
-            mistLayers = mistLayers,
-            sideWispLayers = sideWispLayers,
-            ribbonDecorations = listOf(ribbonDecoration),
             lifecycle = ASTDProjectileVfxLifecycleSpec(
                 durationSeconds = 1.25f,
                 flightEndRatio = 0.6f,
@@ -215,40 +230,91 @@ object ASTDProjectileVfxPresetCatalog {
         ribbon: Boolean = false,
         head: Boolean = false,
     ): ASTDProjectileVfxPreset {
-        val layers = ArrayList<ASTDProjectileVfxLayer>()
-        layers += ASTDProjectileVfxLayer.Trail(
-            id = "${id}_trail",
+        val trailLayer = ASTDTrailLayerSpec(
             width = width,
-            length = ASTDProjectileVfxLengthPolicy.Fixed(length),
             color = color,
+            length = length,
+            startColor = color,
+            endColor = color.copy(alpha = (color.alpha * 0.12f).coerceIn(0.04f, 0.2f)),
+            startEmissive = color.copy(alpha = 1f),
+            endEmissive = color.copy(alpha = (color.alpha * 0.25f).coerceIn(0.08f, 0.3f)),
+            startWidth = width,
+            endWidth = (width * 0.16f).coerceAtLeast(1f),
+            texturePixels = 96f,
+            textureSpeed = 0.9f,
+            fillStartAlpha = 0.84f,
+            fillEndAlpha = 0.03f,
+            fillStartFactor = 0.02f,
+            fillEndFactor = 0.12f,
+            flowWhenPaused = true,
+            flickWhenPaused = true,
+            flickMixValue = 0f,
         )
-        layers += ASTDProjectileVfxLayer.Glow(
+        val components = ArrayList<ASTDProjectileVfxComponentSpec>()
+        components += ASTDProjectileVfxComponentSpec.Trail(
+            id = "${id}_trail",
+            layer = trailLayer,
+        )
+        components += ASTDProjectileVfxComponentSpec.Glow(
             id = "${id}_glow",
-            width = width * glowScale,
-            length = ASTDProjectileVfxLengthPolicy.Fixed(length * 0.82f),
-            color = color.copy(alpha = (color.alpha * 0.55f).coerceIn(0.2f, 0.8f)),
+            trailId = "${id}_trail",
+            layers = listOf(
+                ASTDProjectileVfxGlowLayerSpec(
+                    id = "${id}_glow_0",
+                    widthScale = glowScale,
+                    alphaScale = (color.alpha * 0.35f).coerceIn(0.18f, 0.55f),
+                    blur = width * 1.5f,
+                    yOffset = 0f,
+                    colorMixTail = 0.52f,
+                    colorMixHead = 1f,
+                ),
+            ),
+        )
+        components += ASTDProjectileVfxComponentSpec.Body(
+            id = "${id}_body",
+            trailId = "${id}_trail",
         )
         if (ribbon) {
-            layers += ASTDProjectileVfxLayer.Ribbon(
+            components += ASTDProjectileVfxComponentSpec.Ribbon(
                 id = "${id}_ribbon",
-                width = width * 0.45f,
-                length = ASTDProjectileVfxLengthPolicy.Fixed(length * 0.72f),
-                color = color.copy(alpha = (color.alpha * 0.68f).coerceIn(0.25f, 0.85f)),
-                frequency = 5.5f,
-                amplitude = width * 0.42f,
+                trailId = "${id}_trail",
+                ribbons = listOf(
+                    ASTDTrailRibbonDecorationSpec(
+                        id = "${id}_ribbon_0",
+                        frequency = 5.5f,
+                        amplitude = width * 0.42f,
+                        thickness = 0.45f,
+                        alphaScale = (color.alpha * 0.68f).coerceIn(0.25f, 0.85f),
+                        startColor = color,
+                        endColor = color.copy(alpha = (color.alpha * 0.18f).coerceIn(0.06f, 0.24f)),
+                        color = color.copy(alpha = (color.alpha * 0.68f).coerceIn(0.25f, 0.85f)),
+                    ),
+                ),
             )
         }
         if (head) {
-            layers += ASTDProjectileVfxLayer.HeadTrail(
+            components += ASTDProjectileVfxComponentSpec.Head(
                 id = "${id}_head",
-                width = width * 1.2f,
-                length = ASTDProjectileVfxLengthPolicy.LifetimeWindow(0.08f),
-                color = color.copy(alpha = 1f),
+                trailId = "${id}_trail",
+                layers = listOf(
+                    ASTDProjectileVfxHeadLayerSpec(
+                        id = "${id}_head_0",
+                        length = length * 0.33f,
+                        width = width * 1.2f,
+                        shoulderRatio = 0.5f,
+                        rearRatio = 0.95f,
+                        shellColorStart = color.copy(alpha = 0.08f),
+                        shellColorMid = color.copy(alpha = 0.46f),
+                        shellColorEnd = color.copy(alpha = 1f),
+                        blur = 0.35f,
+                        alphaScale = 1f,
+                    ),
+                ),
             )
         }
         return ASTDProjectileVfxPreset(
             id = id,
-            layers = layers,
+            components = components,
             samplingPolicy = ASTDProjectileVfxSamplingPolicy(
                 historyFps = 60f,
                 maxHistoryNodes = 96,

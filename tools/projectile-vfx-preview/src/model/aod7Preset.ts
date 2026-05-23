@@ -1,12 +1,12 @@
-import aod7GamePresetJson from '../../../../contents/data/config/astd_projectile_vfx_presets/aod7_shot.json';
+import aod7PreviewPresetJson from '../fixtures/aod7Preset.json';
 import type { GameProjectileVfxPreset, GameTrailEntityConfig, GameTrailRibbonDecorationConfig } from './gameExport';
 import type { BoxUtilPreviewPreset, TrailEntityConfig, TrailRibbonDecorationConfig } from './preset';
 import { createDefaultPreset } from './preset';
 
-export const AOD7_PRESET_STORAGE_VERSION = 'aod7_shot:game-export-v1';
+export const AOD7_PRESET_STORAGE_VERSION = 'aod7_shot:kotlin-component-v1';
 
 export function createAod7Preset(): BoxUtilPreviewPreset {
-  return fromGameExportPreset(aod7GamePresetJson as unknown as GameProjectileVfxPreset);
+  return fromGameExportPreset(aod7PreviewPresetJson as unknown as GameProjectileVfxPreset);
 }
 
 export function fromGameExportPreset(gamePreset: GameProjectileVfxPreset): BoxUtilPreviewPreset {

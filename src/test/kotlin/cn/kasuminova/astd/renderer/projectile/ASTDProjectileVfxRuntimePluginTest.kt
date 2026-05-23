@@ -81,7 +81,7 @@ class ASTDProjectileVfxRuntimePluginTest {
 
     private fun testPreset(id: String = "test_plugin") = ASTDProjectileVfxPreset(
         id = id,
-        layers = listOf(ASTDProjectileVfxLayer.Trail("trail", 8f, ASTDProjectileVfxLengthPolicy.Fixed(120f), ASTDColor(1f, 1f, 1f, 1f))),
+        components = emptyList(),
         samplingPolicy = ASTDProjectileVfxSamplingPolicy(60f, 32, 1f, 0, 160f),
         fadePolicy = ASTDProjectileVfxFadePolicy(0f, 0.2f, 0.1f, 0.2f),
     )

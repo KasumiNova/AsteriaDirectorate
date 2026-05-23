@@ -34,26 +34,27 @@ describe('ConfigPanel', () => {
     const user = userEvent.setup();
 
     render(<ConfigPanel preset={createDefaultPreset()} onPresetChange={vi.fn()} />);
-    await user.click(screen.getByRole('button', { name: 'Export JSON' }));
+    await user.click(screen.getByRole('button', { name: 'Export Preview JSON' }));
 
-    const exported = (screen.getByLabelText('Game Export') as HTMLTextAreaElement).value;
-    expect(exported).toContain('"id": "aod7_shot"');
+    const exported = (screen.getByLabelText('Preview JSON') as HTMLTextAreaElement).value;
+    expect(exported).toContain('"name": "ASTD Default TrailEntity Preview"');
     expect(exported).toContain('"trailEntities"');
-    expect(exported).not.toContain('"timeline"');
-    expect(exported).not.toContain('"simulation"');
-    expect(exported).not.toContain('"previewCamera"');
+    expect(exported).toContain('"timeline"');
+    expect(exported).toContain('"simulation"');
+    expect(exported).toContain('"previewCamera"');
   });
 
   it('exports Kotlin preset code', async () => {
     const user = userEvent.setup();
 
     render(<ConfigPanel preset={createDefaultPreset()} onPresetChange={vi.fn()} />);
-    await user.click(screen.getByRole('button', { name: 'Export Kotlin' }));
+    await user.click(screen.getByRole('button', { name: 'Export Kotlin Component Preset' }));
 
-    expect((screen.getByLabelText('Game Export') as HTMLTextAreaElement).value).toContain('ASTDProjectileVfxPreset');
+    expect((screen.getByLabelText('Kotlin Component Preset') as HTMLTextAreaElement).value).toContain('ASTDProjectileVfxPreset');
+    expect((screen.getByLabelText('Kotlin Component Preset') as HTMLTextAreaElement).value).toContain('ASTDProjectileVfxComponentSpec.Trail');
   });
 
-  it('updates preview-only layer toggles without changing runtime export fields', async () => {
+  it('updates preview-only layer toggles without changing preview json fields', async () => {
     const user = userEvent.setup();
     const onLayerVisibilityChange = vi.fn();
     const preset = createDefaultPreset();
@@ -62,6 +63,6 @@ describe('ConfigPanel', () => {
     await user.click(screen.getByLabelText('toggle-head'));
 
     expect(onLayerVisibilityChange).toHaveBeenCalledWith(expect.objectContaining({ head: false }));
-    expect((screen.getByLabelText('Game Export') as HTMLTextAreaElement).value).toContain('"headLayers"');
+    expect((screen.getByLabelText('Preview JSON') as HTMLTextAreaElement).value).toContain('"headLayers"');
   });
 });

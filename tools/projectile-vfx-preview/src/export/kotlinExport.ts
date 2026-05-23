@@ -1,6 +1,5 @@
 import type {
 	GameProjectileSamplePolicy,
-	GameProjectileVfxHookConfig,
 	GameProjectileVfxLifecycleConfig,
 	GameProjectileVfxPreset,
 	GameTrailDecorationColorStop,
@@ -17,8 +16,10 @@ import type {
 	ProjectileVfxMistLayerConfig,
 	ProjectileVfxSideWispLayerConfig,
 	Rgba,
+	TrailDecorationGradientStop,
+	TrailEntityConfig,
+	TrailRibbonDecorationConfig,
 } from '../model/preset';
-import { toGameExportPreset } from './gameExport';
 
 export interface KotlinExportOptions {
 	objectName?: string;
@@ -29,6 +30,101 @@ export function formatPresetKotlin(preset: BoxUtilPreviewPreset, options: Kotlin
 	return formatGamePresetKotlin(toGameExportPreset(preset), options);
 }
 
+function toGameExportPreset(preset: BoxUtilPreviewPreset): GameProjectileVfxPreset {
+	const ribbonDecorations = preset.ribbonDecorations.length > 0
+		? preset.ribbonDecorations
+		: preset.trailEntities.flatMap((entity) => entity.ribbonDecorations);
+	return {
+		id: 'aod7_shot',
+		name: preset.name,
+		trailEntities: preset.trailEntities.map(toGameTrailEntityConfig),
+		headLayers: preset.headLayers,
+		glowLayers: preset.glowLayers,
+		mistLayers: preset.mistLayers,
+		sideWispLayers: preset.sideWispLayers,
+		ribbonDecorations: ribbonDecorations.map(toGameTrailRibbonDecorationConfig),
+		hooks: [],
+		lifecycle: {
+			...preset.lifecycle,
+		},
+		samplingPolicy: {
+			historyFps: preset.samplingPolicy.historyFps,
+			maxHistoryNodes: preset.samplingPolicy.maxHistoryNodes,
+			minDistancePerNode: preset.samplingPolicy.minDistancePerNode,
+			smoothingPasses: preset.lifecycle.historySmoothingPasses,
+			distanceWindow: preset.samplingPolicy.distanceWindow,
+		},
+	};
+}
+
+function toGameTrailEntityConfig(entity: TrailEntityConfig): GameTrailEntityConfig {
+	return {
+		id: entity.id,
+		length: entity.length,
+		diffuseSpritePath: entity.diffuseSpritePath,
+		emissiveSpritePath: entity.emissiveSpritePath,
+		orientationMode: entity.orientationMode,
+		anchorMode: entity.anchorMode,
+		startColor: entity.startColor,
+		endColor: entity.endColor,
+		startEmissive: entity.startEmissive,
+		endEmissive: entity.endEmissive,
+		startWidth: entity.startWidth,
+		endWidth: entity.endWidth,
+		texturePixels: entity.texturePixels,
+		textureSpeed: entity.textureSpeed,
+		uvOffset: entity.uvOffset,
+		fillStartAlpha: entity.fillStartAlpha,
+		fillEndAlpha: entity.fillEndAlpha,
+		fillStartFactor: entity.fillStartFactor,
+		fillEndFactor: entity.fillEndFactor,
+		jitterPower: entity.jitterPower,
+		flick: entity.flick,
+		syncFlick: entity.syncFlick,
+		stripLineMode: entity.stripLineMode,
+		flowWhenPaused: entity.flowWhenPaused,
+		flickWhenPaused: entity.flickWhenPaused,
+		flickMixValue: entity.flickMixValue,
+		flickerSyncCode: entity.flickerSyncCode,
+		blendMode: entity.blendMode,
+		ribbonDecorations: entity.ribbonDecorations.map(toGameTrailRibbonDecorationConfig),
+	};
+}
+
+function toGameTrailRibbonDecorationConfig(decoration: TrailRibbonDecorationConfig): GameTrailRibbonDecorationConfig {
+	return {
+		id: decoration.id,
+		enabled: decoration.enabled,
+		renderMode: decoration.renderMode,
+		startOffset: decoration.startOffset,
+		endOffset: decoration.endOffset,
+		thickness: decoration.thickness,
+		alphaScale: decoration.alphaScale,
+		lengthScale: decoration.lengthScale,
+		nodeCountScale: decoration.nodeCountScale,
+		amplitude: decoration.waveAmplitude,
+		frequency: decoration.waveFrequency,
+		waveSpeed: decoration.waveSpeed,
+		waveType: decoration.waveType,
+		noiseScale: decoration.noiseScale,
+		blur: decoration.blur,
+		startColor: decoration.startColor,
+		endColor: decoration.endColor,
+		color: decoration.color,
+		colorGradient: {
+			enabled: decoration.colorGradient.enabled,
+			stops: decoration.colorGradient.stops.map(toGameTrailDecorationColorStop),
+		},
+	};
+}
+
+function toGameTrailDecorationColorStop(stop: TrailDecorationGradientStop): GameTrailDecorationColorStop {
+	return {
+		offset: stop.offset,
+		color: stop.color,
+	};
+}
+
 function formatGamePresetKotlin(preset: GameProjectileVfxPreset, options: KotlinExportOptions): string {
 	const objectName = options.objectName ?? 'ASTDProjectileVfxPresetExport';
 	const functionName = options.functionName ?? 'create';
@@ -37,7 +133,7 @@ function formatGamePresetKotlin(preset: GameProjectileVfxPreset, options: Kotlin
 		`internal object ${objectName} {`,
 		`    fun ${functionName}(): ASTDProjectileVfxPreset = ASTDProjectileVfxPreset(`,
 		`        id = ${quoteKotlin(preset.id)},`,
-		`        layers = emptyList(),`,
+		`        components = ${emitComponents(preset)},`,
 		`        samplingPolicy = ${emitSamplePolicy(preset.samplingPolicy)},`,
 		`        fadePolicy = ASTDProjectileVfxFadePolicy(`,
 		`            fadeInSeconds = ${formatFloat(preset.lifecycle.fadeInSeconds)},`,
@@ -45,12 +141,6 @@ function formatGamePresetKotlin(preset: GameProjectileVfxPreset, options: Kotlin
 		`            hitFadeOutSeconds = ${formatFloat(preset.lifecycle.fadeOutSeconds)},`,
 		`            expireFadeOutSeconds = ${formatFloat(preset.lifecycle.fadeOutSeconds)},`,
 		`        ),`,
-		`        trailEntities = ${emitTrailEntities(preset.trailEntities)},`,
-		`        headLayers = ${emitHeadLayers(preset.headLayers)},`,
-		`        glowLayers = ${emitGlowLayers(preset.glowLayers)},`,
-		`        mistLayers = ${emitMistLayers(preset.mistLayers)},`,
-		`        sideWispLayers = ${emitSideWispLayers(preset.sideWispLayers)},`,
-		`        ribbonDecorations = ${emitRibbonDecorations(preset.ribbonDecorations)},`,
 		`        lifecycle = ${emitLifecycle(preset.lifecycle)},`,
 		`    )`,
 		`}`,
@@ -58,23 +148,90 @@ function formatGamePresetKotlin(preset: GameProjectileVfxPreset, options: Kotlin
 	].join('\n');
 }
 
-function emitTrailEntities(entities: GameTrailEntityConfig[]): string {
-	return emitList(entities, emitTrailEntity);
+function emitComponents(preset: GameProjectileVfxPreset): string {
+	const components: string[] = [];
+	for (const entity of preset.trailEntities) {
+		components.push(emitTrailComponent(entity));
+	}
+	const trailId = preset.trailEntities[0]?.id;
+	if (trailId) {
+		if (preset.mistLayers.length > 0) components.push(emitMistComponent(trailId, preset.mistLayers));
+		if (preset.glowLayers.length > 0) components.push(emitGlowComponent(trailId, preset.glowLayers));
+		components.push(emitBodyComponent(trailId));
+		if (preset.sideWispLayers.length > 0) components.push(emitSideWispComponent(trailId, preset.sideWispLayers));
+		if (preset.headLayers.length > 0) components.push(emitHeadComponent(trailId, preset.headLayers));
+		const ribbons = preset.ribbonDecorations.length > 0 ? preset.ribbonDecorations : preset.trailEntities[0]?.ribbonDecorations ?? [];
+		if (ribbons.length > 0) components.push(emitRibbonComponent(trailId, ribbons));
+	}
+	return emitList(components, (component) => component);
 }
 
-function emitTrailEntity(entity: GameTrailEntityConfig): string {
+function emitTrailComponent(entity: GameTrailEntityConfig): string {
 	return [
-		'ASTDTrailEntitySpec(',
-		`            layerId = ${quoteKotlin(entity.id)},`,
+		'ASTDProjectileVfxComponentSpec.Trail(',
 		`            id = ${quoteKotlin(entity.id)},`,
-		`            nodes = emptyList(),`,
-		`            layerSpec = ${emitTrailLayer(entity)},`,
-		`            layers = listOf(`,
-		indent(emitTrailLayer(entity), 16),
-		`            ),`,
-		`            ribbonDecorations = ${emitRibbonDecorations(entity.ribbonDecorations)},`,
+		`            layer = ${emitTrailLayer(entity)},`,
 		`            orientationMode = ${emitOrientationMode(entity.orientationMode)},`,
 		`            anchorMode = ${emitAnchorMode(entity.anchorMode)},`,
+		'        )',
+	].join('\n');
+}
+
+function emitBodyComponent(trailId: string): string {
+	return [
+		'ASTDProjectileVfxComponentSpec.Body(',
+		`            id = ${quoteKotlin(`${trailId}_body`)},`,
+		`            trailId = ${quoteKotlin(trailId)},`,
+		'        )',
+	].join('\n');
+}
+
+function emitRibbonComponent(trailId: string, ribbons: GameTrailRibbonDecorationConfig[]): string {
+	return [
+		'ASTDProjectileVfxComponentSpec.Ribbon(',
+		`            id = ${quoteKotlin(`${trailId}_ribbon`)},`,
+		`            trailId = ${quoteKotlin(trailId)},`,
+		`            ribbons = ${emitRibbonDecorations(ribbons)},`,
+		'        )',
+	].join('\n');
+}
+
+function emitHeadComponent(trailId: string, layers: ProjectileVfxHeadLayerConfig[]): string {
+	return [
+		'ASTDProjectileVfxComponentSpec.Head(',
+		`            id = ${quoteKotlin(`${trailId}_head`)},`,
+		`            trailId = ${quoteKotlin(trailId)},`,
+		`            layers = ${emitHeadLayers(layers)},`,
+		'        )',
+	].join('\n');
+}
+
+function emitGlowComponent(trailId: string, layers: ProjectileVfxGlowLayerConfig[]): string {
+	return [
+		'ASTDProjectileVfxComponentSpec.Glow(',
+		`            id = ${quoteKotlin(`${trailId}_glow`)},`,
+		`            trailId = ${quoteKotlin(trailId)},`,
+		`            layers = ${emitGlowLayers(layers)},`,
+		'        )',
+	].join('\n');
+}
+
+function emitMistComponent(trailId: string, layers: ProjectileVfxMistLayerConfig[]): string {
+	return [
+		'ASTDProjectileVfxComponentSpec.Mist(',
+		`            id = ${quoteKotlin(`${trailId}_mist`)},`,
+		`            trailId = ${quoteKotlin(trailId)},`,
+		`            layers = ${emitMistLayers(layers)},`,
+		'        )',
+	].join('\n');
+}
+
+function emitSideWispComponent(trailId: string, layers: ProjectileVfxSideWispLayerConfig[]): string {
+	return [
+		'ASTDProjectileVfxComponentSpec.SideWisp(',
+		`            id = ${quoteKotlin(`${trailId}_side_wisp`)},`,
+		`            trailId = ${quoteKotlin(trailId)},`,
+		`            layers = ${emitSideWispLayers(layers)},`,
 		'        )',
 	].join('\n');
 }
@@ -158,19 +315,6 @@ function emitRibbonGradientStop(stop: GameTrailDecorationColorStop): string {
 		`                        offset = ${formatFloat(stop.offset)},`,
 		`                        color = ${emitRgba(stop.color)},`,
 		'                    )',
-	].join('\n');
-}
-
-function emitHooks(hooks: GameProjectileVfxHookConfig[]): string {
-	return emitList(hooks, emitHook);
-}
-
-function emitHook(hook: GameProjectileVfxHookConfig): string {
-	return [
-		'ASTDProjectileVfxHookSpec(',
-		`            id = ${quoteKotlin(hook.id)},`,
-		`            kind = ${quoteKotlin(hook.kind)},`,
-		'        )',
 	].join('\n');
 }
 

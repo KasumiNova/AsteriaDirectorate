@@ -1,5 +1,6 @@
 package cn.kasuminova.astd.renderer.projectile
 
+import cn.kasuminova.astd.renderer.projectile.component.ASTDProjectileVfxComponentSpec
 import cn.kasuminova.astd.renderer.projectile.runtime.ASTDProjectileVfxFadeReason
 import cn.kasuminova.astd.renderer.projectile.runtime.ASTDProjectileVfxMath
 import cn.kasuminova.astd.renderer.projectile.runtime.ASTDProjectileVfxRenderContext
@@ -94,20 +95,13 @@ class ASTDProjectileVfxRuntimeTest {
 
     @Test
     fun `runtime context visible length follows traveled distance until authored trail cap`() {
-        val preset = testPreset().copy(
-            trailEntities = listOf(
-                ASTDTrailEntitySpec(
-                    layerId = "test_runtime_trail",
-                    nodes = emptyList(),
-                    layerSpec = ASTDTrailLayerSpec(
-                        width = 8f,
-                        color = ASTDColor(1f, 1f, 1f, 1f),
-                        length = 420f,
-                    ),
-                ),
+        val preset = testPreset().withTrailLayer(
+            ASTDTrailLayerSpec(
+                width = 8f,
+                color = ASTDColor(1f, 1f, 1f, 1f),
+                length = 420f,
             ),
-            lifecycle = ASTDProjectileVfxLifecycleSpec(durationSeconds = 1.25f, dissolveStartRatio = 0.6f),
-        )
+        ).copy(lifecycle = ASTDProjectileVfxLifecycleSpec(durationSeconds = 1.25f, dissolveStartRatio = 0.6f))
         val layer = RecordingRuntimeLayer()
         val runtime = ASTDProjectileVfxRuntime.forTests(preset, listOf(layer))
 
@@ -125,21 +119,14 @@ class ASTDProjectileVfxRuntimeTest {
 
     @Test
     fun `runtime tail cap uses authored reference width instead of active viewport zoom`() {
-        val preset = testPreset().copy(
-            trailEntities = listOf(
-                ASTDTrailEntitySpec(
-                    layerId = "test_runtime_viewport_trail",
-                    nodes = emptyList(),
-                    layerSpec = ASTDTrailLayerSpec(
-                        width = 40f,
-                        color = ASTDColor(1f, 1f, 1f, 1f),
-                        length = 420f,
-                        startWidth = 40f,
-                    ),
-                ),
+        val preset = testPreset().withTrailLayer(
+            ASTDTrailLayerSpec(
+                width = 40f,
+                color = ASTDColor(1f, 1f, 1f, 1f),
+                length = 420f,
+                startWidth = 40f,
             ),
-            lifecycle = ASTDProjectileVfxLifecycleSpec(durationSeconds = 1.25f, dissolveStartRatio = 0.6f),
-        )
+        ).copy(lifecycle = ASTDProjectileVfxLifecycleSpec(durationSeconds = 1.25f, dissolveStartRatio = 0.6f))
         val layer = RecordingRuntimeLayer()
         val runtime = ASTDProjectileVfxRuntime.forTests(preset, listOf(layer))
 
@@ -151,21 +138,14 @@ class ASTDProjectileVfxRuntimeTest {
 
     @Test
     fun `runtime authored tail cap is not overridden by trail length`() {
-        val preset = testPreset().copy(
-            trailEntities = listOf(
-                ASTDTrailEntitySpec(
-                    layerId = "test_runtime_viewport_trail",
-                    nodes = emptyList(),
-                    layerSpec = ASTDTrailLayerSpec(
-                        width = 40f,
-                        color = ASTDColor(1f, 1f, 1f, 1f),
-                        length = 900f,
-                        startWidth = 40f,
-                    ),
-                ),
+        val preset = testPreset().withTrailLayer(
+            ASTDTrailLayerSpec(
+                width = 40f,
+                color = ASTDColor(1f, 1f, 1f, 1f),
+                length = 900f,
+                startWidth = 40f,
             ),
-            lifecycle = ASTDProjectileVfxLifecycleSpec(durationSeconds = 1.25f, dissolveStartRatio = 0.6f),
-        )
+        ).copy(lifecycle = ASTDProjectileVfxLifecycleSpec(durationSeconds = 1.25f, dissolveStartRatio = 0.6f))
         val layer = RecordingRuntimeLayer()
         val runtime = ASTDProjectileVfxRuntime.forTests(preset, listOf(layer))
 
@@ -177,19 +157,14 @@ class ASTDProjectileVfxRuntimeTest {
 
     @Test
     fun `runtime keeps authored preview geometry in world space while distance grows in world units`() {
-        val preset = testPreset().copy(
-            trailEntities = listOf(
-                ASTDTrailEntitySpec(
-                    layerId = "test_runtime_screen_space_trail",
-                    nodes = emptyList(),
-                    layerSpec = ASTDTrailLayerSpec(
-                        width = 40f,
-                        color = ASTDColor(1f, 1f, 1f, 1f),
-                        length = 900f,
-                        startWidth = 40f,
-                    ),
-                ),
+        val preset = testPreset().withTrailLayer(
+            ASTDTrailLayerSpec(
+                width = 40f,
+                color = ASTDColor(1f, 1f, 1f, 1f),
+                length = 900f,
+                startWidth = 40f,
             ),
+        ).copy(
             lifecycle = ASTDProjectileVfxLifecycleSpec(
                 durationSeconds = 1.25f,
                 dissolveStartRatio = 0.6f,
@@ -229,19 +204,14 @@ class ASTDProjectileVfxRuntimeTest {
 
     @Test
     fun `runtime keeps projectile geometry in world space across active viewport zoom`() {
-        val preset = testPreset().copy(
-            trailEntities = listOf(
-                ASTDTrailEntitySpec(
-                    layerId = "test_runtime_stable_scale_trail",
-                    nodes = emptyList(),
-                    layerSpec = ASTDTrailLayerSpec(
-                        width = 40f,
-                        color = ASTDColor(1f, 1f, 1f, 1f),
-                        length = 900f,
-                        startWidth = 40f,
-                    ),
-                ),
+        val preset = testPreset().withTrailLayer(
+            ASTDTrailLayerSpec(
+                width = 40f,
+                color = ASTDColor(1f, 1f, 1f, 1f),
+                length = 900f,
+                startWidth = 40f,
             ),
+        ).copy(
             lifecycle = ASTDProjectileVfxLifecycleSpec(
                 durationSeconds = 1.25f,
                 dissolveStartRatio = 0.6f,
@@ -319,9 +289,10 @@ class ASTDProjectileVfxRuntimeTest {
         val runtime = ASTDProjectileVfxRuntime.forTests(testPreset(), listOf(RecordingRuntimeLayer()))
 
         runtime.advanceForTests(0f, 0f, 0f, 0.42f, projectileAlive = true)
+        runtime.advanceForTests(10f, 0f, 0f, 0.01f, projectileAlive = true)
 
         val snapshot = ASTDProjectileVfxRuntimeTelemetry.snapshot()
-        assertEquals(0.42f, snapshot.lastElapsed, 0.0001f)
+        assertEquals(0.43f, snapshot.lastElapsed, 0.0001f)
         assertTrue(snapshot.lastVisibleLength > 0f)
         assertTrue(snapshot.lastBeamAlpha > 0f)
         assertEquals(1f, snapshot.lastWorldUnitsPerPixel, 0.0001f)
@@ -329,10 +300,18 @@ class ASTDProjectileVfxRuntimeTest {
 
     private fun testPreset() = ASTDProjectileVfxPreset(
         id = "test_runtime",
-        layers = listOf(ASTDProjectileVfxLayer.Trail("trail", 8f, ASTDProjectileVfxLengthPolicy.Fixed(120f), ASTDColor(1f, 1f, 1f, 1f))),
+        components = listOf(testTrail(), ASTDProjectileVfxComponentSpec.Body("body", trailId = "trail")),
         samplingPolicy = ASTDProjectileVfxSamplingPolicy(60f, 32, 1f, 0, 160f),
         fadePolicy = ASTDProjectileVfxFadePolicy(0f, 0.2f, 0.1f, 0.2f),
     )
+
+    private fun testTrail(layer: ASTDTrailLayerSpec = ASTDTrailLayerSpec(width = 8f, color = ASTDColor(1f, 1f, 1f, 1f), length = 120f)) =
+        ASTDProjectileVfxComponentSpec.Trail(id = "trail", layer = layer)
+
+    private fun ASTDProjectileVfxPreset.withTrailLayer(layer: ASTDTrailLayerSpec): ASTDProjectileVfxPreset =
+        copy(components = components.map { component ->
+            if (component is ASTDProjectileVfxComponentSpec.Trail) component.copy(layer = layer) else component
+        })
 
     private class RecordingRuntimeLayer : ASTDProjectileVfxRenderLayer {
         var created = false

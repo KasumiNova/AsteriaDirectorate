@@ -1,16 +1,12 @@
 package cn.kasuminova.astd.renderer.projectile
 
+import cn.kasuminova.astd.renderer.projectile.component.ASTDProjectileVfxComponentSpec
+
 data class ASTDProjectileVfxPreset(
     val id: String,
-    val layers: List<ASTDProjectileVfxLayer>,
     val samplingPolicy: ASTDProjectileVfxSamplingPolicy,
     val fadePolicy: ASTDProjectileVfxFadePolicy,
-    val trailEntities: List<ASTDTrailEntitySpec> = emptyList(),
-    val headLayers: List<ASTDProjectileVfxHeadLayerSpec> = emptyList(),
-    val glowLayers: List<ASTDProjectileVfxGlowLayerSpec> = emptyList(),
-    val mistLayers: List<ASTDProjectileVfxMistLayerSpec> = emptyList(),
-    val sideWispLayers: List<ASTDProjectileVfxSideWispLayerSpec> = emptyList(),
-    val ribbonDecorations: List<ASTDTrailRibbonDecorationSpec> = emptyList(),
+    val components: List<ASTDProjectileVfxComponentSpec>,
     val lifecycle: ASTDProjectileVfxLifecycleSpec = ASTDProjectileVfxLifecycleSpec(),
 )
 

@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { BoxUtilPreviewPreset } from '../model/preset';
 import { ParsePresetError, formatPresetJson, parsePresetJson } from '../model/parsePreset';
-import { serializeGameExportPreset } from '../export/gameExport';
 import { formatPresetKotlin } from '../export/kotlinExport';
 import { DEFAULT_PREVIEW_OVERLAY_LAYER_VISIBILITY, PreviewOverlayLayerVisibility } from '../render/previewOverlayRenderer';
 import { createDefaultPreset } from '../model/preset';
@@ -73,7 +72,7 @@ export function ConfigPanel({ preset, onPresetChange, layerVisibility = DEFAULT_
 
   useEffect(() => {
     setJsonText(formatPresetJson(preset));
-    setExportText(exportMode === 'json' ? serializeGameExportPreset(preset) : formatPresetKotlin(preset));
+    setExportText(exportMode === 'json' ? formatPresetJson(preset) : formatPresetKotlin(preset));
     setCopied(false);
   }, [preset, exportMode]);
 
@@ -95,9 +94,9 @@ export function ConfigPanel({ preset, onPresetChange, layerVisibility = DEFAULT_
 
   const exportJson = () => {
     setExportMode('json');
-    setExportText(serializeGameExportPreset(preset));
+    setExportText(formatPresetJson(preset));
     setErrors([]);
-    setStatus('Game JSON preset exported.');
+    setStatus('Preview JSON exported.');
   };
 
   const exportKotlin = () => {
@@ -167,17 +166,17 @@ export function ConfigPanel({ preset, onPresetChange, layerVisibility = DEFAULT_
             <textarea id="preset-json" value={jsonText} onChange={(event) => setJsonText(event.currentTarget.value)} />
             <div className="button-row compact">
               <button type="button" className="btn-primary" onClick={applyJson}>Apply JSON</button>
-              <button type="button" className="btn-secondary" onClick={exportJson}>Export JSON</button>
-              <button type="button" className="btn-secondary" onClick={exportKotlin}>Export Kotlin</button>
+              <button type="button" className="btn-secondary" onClick={exportJson}>Export Preview JSON</button>
+              <button type="button" className="btn-secondary" onClick={exportKotlin}>Export Kotlin Component Preset</button>
             </div>
           </div>
           <div className="panel-section">
             <div className="panel-inline-head border-b">
-              <label htmlFor="preset-export">Game Export</label>
+              <label htmlFor="preset-export">{exportMode === 'json' ? 'Preview JSON' : 'Kotlin Component Preset'}</label>
               <span className="muted-chip">{exportMode === 'json' ? 'JSON' : 'Kotlin'}</span>
             </div>
             <div className="export-action-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '4px 0' }}>
-              <p className="panel-note" style={{ margin: 0 }}>Export includes Game Export settings only.</p>
+              <p className="panel-note" style={{ margin: 0 }}>{exportMode === 'json' ? 'Preview-local JSON for editor exchange.' : 'Kotlin component preset for runtime migration.'}</p>
               <button type="button" className="btn-action-small" onClick={handleCopy} style={{ padding: '2px 8px', fontSize: '11px' }}>
                 {copied ? 'Copied' : 'Copy to Clipboard'}
               </button>

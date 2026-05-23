@@ -5,7 +5,7 @@ import { ConfigPanel } from './ConfigPanel';
 import { EntityInspector } from './EntityInspector';
 
 describe('projectile VFX export boundary labels', () => {
-  it('marks preview-only controls and game export controls', () => {
+  it('marks preview-only controls and kotlin component export controls', () => {
     const preset = createDefaultPreset();
 
     render(
@@ -16,7 +16,7 @@ describe('projectile VFX export boundary labels', () => {
     );
 
     expect(screen.getAllByText(/Preview Only/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Game Export/i).length).toBeGreaterThan(0);
-    expect(screen.getByText(/export.*Game Export/i)).toBeTruthy();
+    expect(screen.getAllByText(/Preview JSON/i).length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: /Export Kotlin Component Preset/i })).toBeTruthy();
   });
 });
