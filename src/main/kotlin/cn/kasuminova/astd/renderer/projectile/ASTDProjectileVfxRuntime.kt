@@ -112,7 +112,9 @@ class ASTDProjectileVfxRuntime(
         facing: Float,
         amount: Float,
         projectileAlive: Boolean,
+        @Suppress("UNUSED_PARAMETER")
         viewportVisibleWidthOverride: Float? = null,
+        @Suppress("UNUSED_PARAMETER")
         viewportPixelWidthOverride: Float? = null,
         @Suppress("UNUSED_PARAMETER")
         viewportViewMultOverride: Float? = null,
@@ -123,7 +125,7 @@ class ASTDProjectileVfxRuntime(
         if (state == ASTDProjectileVfxRuntimeState.Active && projectileAlive && location != null) {
             val renderFacing = computeRenderFacing(location, facing)
             accumulateTravelDistance(location)
-            val worldUnitsPerPixel = worldUnitsPerPixel(engine, viewportVisibleWidthOverride, viewportPixelWidthOverride)
+            val worldUnitsPerPixel = referenceWorldUnitsPerPixel(engine, viewportPixelWidthOverride)
             val flight = buildFlightLayout(worldUnitsPerPixel)
             history.advance(
                 location,
@@ -282,18 +284,20 @@ class ASTDProjectileVfxRuntime(
         return authoredCap
     }
 
-    private fun worldUnitsPerPixel(
-        engine: CombatEngineAPI?,
-        viewportVisibleWidthOverride: Float? = null,
-        viewportPixelWidthOverride: Float? = null,
-    ): Float {
-        val visibleWidth = viewportVisibleWidthOverride
-            ?: runCatching { engine?.viewport?.visibleWidth }.getOrNull()
-            ?: return 1f
-        val pixelWidth = viewportPixelWidthOverride
-            ?: runCatching { Display.getWidth().toFloat().takeIf { it > 0f } }.getOrNull()
-            ?: return 1f
-        if (visibleWidth <= 0f || pixelWidth <= 0f) return 1f
-        return (visibleWidth / pixelWidth).coerceAtLeast(0.0001f)
+    private fun referenceWorldUnitsPerPixel(engine: CombatEngineAPI?, viewportPixelWidthOverride: Float?): Float {
+        if (engine == null && viewportPixelWidthOverride == null) return 1f
+        val pixelHeight = viewportPixelWidthOverride
+            ?.takeIf { it > 0f }
+            ?.let { it / (16f / 9f) }
+            ?: displayPixelHeight()
+        return ASTDProjectileVfxLayout.referenceWorldUnitsPerPixel(pixelHeight)
+    }
+
+    private fun displayPixelHeight(): Float {
+        return try {
+            Display.getHeight().takeIf { it > 0 }?.toFloat() ?: 1f
+        } catch (_: Throwable) {
+            1f
+        }
     }
 }

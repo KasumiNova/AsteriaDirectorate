@@ -228,7 +228,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
 
     private fun curvePositionAt(age: Float): Vector2f {
         val track = automationPreviewTrack(age)
-        val scale = automationWorldUnitsPerPixel()
+        val scale = automationReferenceWorldUnitsPerPixel()
         return Vector2f(
             projectilePreviewAnchor.x + track.headOffset.x * scale,
             projectilePreviewAnchor.y + track.headOffset.y * scale,
@@ -262,10 +262,9 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         )
     }
 
-    private fun automationWorldUnitsPerPixel(): Float {
-        val viewport = engine?.viewport ?: return 1f
-        val pixelWidth = try { Display.getWidth().toFloat().takeIf { it > 0f } ?: 1f } catch (_: Throwable) { 1f }
-        return (viewport.visibleWidth / pixelWidth).coerceAtLeast(0.0001f)
+    private fun automationReferenceWorldUnitsPerPixel(): Float {
+        val pixelHeight = try { Display.getHeight().toFloat().takeIf { it > 0f } ?: 1f } catch (_: Throwable) { 1f }
+        return ASTDProjectileVfxLayout.referenceWorldUnitsPerPixel(pixelHeight)
     }
 
     private fun currentState(engine: CombatEngineAPI, ship: ShipAPI?, weapon: WeaponAPI?): String {

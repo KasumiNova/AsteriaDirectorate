@@ -14,6 +14,7 @@ import kotlin.math.sin
 object ASTDProjectileVfxLayout {
     private const val HEAD_AUTHORED_WIDTH_BASE = 6f
     private const val EDITOR_CAPTURE_WIDTH = 1280f
+    const val REFERENCE_MAX_ZOOM_VISIBLE_HEIGHT = 600f
 
     data class FlightLayout(
         val dissolve: Float,
@@ -244,6 +245,10 @@ object ASTDProjectileVfxLayout {
 
     fun mutableScaledNodeList(nodes: List<Vector2f>, worldUnitsPerPixel: Float): ArrayList<Vector2f> {
         return ArrayList(scalePoints(nodes, worldUnitsPerPixel))
+    }
+
+    fun referenceWorldUnitsPerPixel(displayPixelHeight: Float): Float {
+        return REFERENCE_MAX_ZOOM_VISIBLE_HEIGHT / displayPixelHeight.coerceAtLeast(1f)
     }
 
     fun glowLineWidth(widthBase: Float, glow: ASTDProjectileVfxGlowLayerSpec): Float = widthBase * glow.widthScale
