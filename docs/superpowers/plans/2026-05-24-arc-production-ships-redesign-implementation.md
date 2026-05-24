@@ -21,7 +21,17 @@
 - Runtime ship systems: `src/main/kotlin/cn/kasuminova/astd/combat/shipsystems/`
 - Runtime hullmods: `src/main/kotlin/cn/kasuminova/astd/combat/hullmods/arc/`
 - Tooltip renderer: `src/main/kotlin/cn/kasuminova/astd/combat/hullmods/base/ASTDHullModTooltipRenderer.kt`
+- Tooltip style references:
+  - `contents/data/strings/strings.json` keys around `ui.hullmod.arc_loop.*`
+  - `contents/data/strings/strings.json` keys around `ui.hullmod.negentropy.*`
+  - `contents/data/strings/strings.json` keys around `ui.hullmod.nano.*`
+  - `tools/tooltip-style-editor/` for the imported hullmod tooltip layout/style direction
 - Current ARC VFX examples: `src/main/kotlin/cn/kasuminova/astd/renderer/effect/hullmods/`
+- SSOptimizer automation hooks:
+  - `src/main/kotlin/cn/kasuminova/astd/internal/debug/ASTDInGameAutomationScenario.kt`
+  - `src/main/kotlin/cn/kasuminova/astd/combat/effect/generic/ASTDAutomationCombatPlugin.kt`
+  - `tools/smoke_test_game_launch.sh`
+  - `tools/verify_ingame_vfx_automation.py`
 
 ## Mandatory Skills And Constraints
 
@@ -30,6 +40,9 @@
 - Use `@localization-guidelines`: runtime-visible text goes through I18n keys; no hardcoded visible Chinese/English in Kotlin logic.
 - Use `@system-status-text-guidelines`: system status text must be keyed, stage-specific, and flavor-oriented.
 - Use `@rendering-vfx-guidelines`: VFX uses BoxUtil-first helpers; no broad fallback rendering branch.
+- Hullmod tooltip style must follow the imported hullmod tooltip structure and style already used by `ASTDHullModTooltipRenderer`: highlighted faction phrase, short narrative summary, section headings, and compact mechanics tables. Do not design a separate visual language for these six hullmods.
+- VFX is part of acceptance, not polish. Each redesigned ship must have a recognizable in-game visual signature, but effects must stay restrained and information-bearing.
+- SSOptimizer integration evidence is required before final handoff. Launcher smoke alone is insufficient because it does not verify combat VFX or tooltip presentation.
 - Keep `tools/exports/` untracked unless the user explicitly asks to include it.
 
 ## File Structure To Create Or Modify
@@ -90,6 +103,11 @@
   - Add tooltip block keys for each hullmod.
   - Add status keys for the three systems.
   - Add HUD labels for Plasma Arch shield sectors if HUD text is used.
+- Modify or extend SSOptimizer automation files when implementing acceptance evidence:
+  - `src/main/kotlin/cn/kasuminova/astd/internal/debug/ASTDInGameAutomationScenario.kt`
+  - `src/main/kotlin/cn/kasuminova/astd/combat/effect/generic/ASTDAutomationCombatPlugin.kt`
+  - `tools/verify_ingame_vfx_automation.py`
+  - `tools/smoke_test_game_launch.sh` only if new scenario plumbing requires CLI changes.
 
 ### Tests
 
@@ -99,6 +117,9 @@
   - Validate new hullmod ids, scripts, tags, and non-placeholder descriptions.
 - Create `src/test/kotlin/cn/kasuminova/astd/copy/ArcProductionCopyReviewTest.kt`
   - Enforce no placeholder `No description... yet`, no placeholder hullmod descriptions, and key presence in `strings.json`.
+- Extend or create SSOptimizer automation tests:
+  - `src/test/kotlin/cn/kasuminova/astd/internal/debug/ASTDInGameAutomationScenarioTest.kt`
+  - Ensure automation can request ARC production ship VFX/tooltip evidence.
 - Add focused pure helper tests if helpers are pure enough:
   - `ASTDArcAuraUtilTest`
   - `ASTDPlasmaShieldGridStateTest`
@@ -231,6 +252,13 @@ Required tooltip sections:
 - mechanics table
 - restrictions/incompatibility paragraph where relevant
 
+Style constraints:
+- Follow the existing imported hullmod style used by `ui.hullmod.arc_loop.*`, `ui.hullmod.negentropy.*`, and `ui.hullmod.nano.*`.
+- Each tooltip should start with the highlighted `<param:#FF9600:阿斯忒里亚遗构局>` framing phrase unless a more specific route label is already established nearby.
+- Use compact section headings such as `ui.hullmod.export.section.effect`, `impact`, `note`, and add only the new headings that are truly needed.
+- Mechanics tables may show numbers, but surrounding prose must remain world-facing and concise.
+- Do not use placeholder copy or generic "占位/调试/后续实现" wording.
+
 - [ ] **Step 4: Run copy review test red**
 
 Run:
@@ -343,12 +371,19 @@ Required mechanics:
 
 Use `ASTDHullModTooltipRenderer`; no hardcoded visible strings.
 
+Tooltip style requirements:
+- Match the structure of the earlier imported hullmod descriptions: highlighted faction phrase, one short narrative summary, one mechanics section, and one restriction/note section only when needed.
+- Use existing table styling and colors through `ASTDHullModTooltipRenderer.Theme` rather than custom ad-hoc tooltip code.
+- The Arc Jet tooltips must clearly distinguish sustained fire ramp-up from tactical-network aura without duplicating the same prose.
+
 - [ ] **Step 4: Add minimal VFX**
 
 Network VFX should include:
 - subdued blue lattice or line pulse around Arc Jet when aura has targets
 - short pulse on newly connected ships
 - low-frequency emission, no per-frame particle spam
+
+This is only the passive tactical-network hullmod effect. The active system gets a stronger linked-ship effect in Task 6.
 
 - [ ] **Step 5: Build**
 
@@ -423,7 +458,17 @@ Use keys:
 - `system.arc_shared_flux_network.status.default.active`
 - `system.arc_shared_flux_network.status.default.out`
 
-- [ ] **Step 5: Generate/write and test**
+- [ ] **Step 5: Add active linked-ship VFX**
+
+During `astd_arc_shared_flux_network`, every linked friendly ship must receive a distinct effect. The exact design is flexible, but it must be visible in screenshots and must communicate "power/flux sharing", not generic glow.
+
+Minimum visual contract:
+- A restrained blue-white transfer thread or segmented pulse between Arc Jet and each linked ship.
+- A small recurring receiving-node pulse on linked ships while the system is active.
+- A different visual intensity from the passive tactical-network hullmod effect.
+- No excessive filler particles; if a pixel/screenshot review cannot distinguish this from passive aura noise, it fails acceptance.
+
+- [ ] **Step 6: Generate/write and test**
 
 Run:
 ```bash
@@ -432,7 +477,7 @@ Run:
 ./gradlew test
 ```
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
 git add src/main/kotlin/cn/kasuminova/astd/combat/shipsystems/ASTDArcSharedFluxNetworkSystemStats.kt src/main/kotlin/cn/kasuminova/astd/combat/shipsystems/ASTDArcSharedFluxNetworkSystemAI.kt ss-csv/src/main/kotlin/cn/kasuminova/astd/sscsv/entries/catalog/shipsystems/arc/Catalog_ShipSystems_ARC.kt contents/data/shipsystems contents/data/shipsystems/ship_systems.csv contents/data/strings/strings.json
@@ -521,7 +566,11 @@ Required visual cues:
 - shield sector hit flash in electric blue/white
 - sector recovery shimmer
 - recoil arc discharge using built-in arc API or BoxUtil-compatible visual wrapper where practical
+- decorative flowing arcs randomly crawl across the expanded shield surface while the shield is open
+- flowing shield arcs must follow shield orientation/arc and should not appear on hull armor when the shield is down
 - no dense per-frame particle fallback
+
+The random shield arcs are a unique Plasma Arch identity requirement. They should feel like moving current across segmented micro-shield plates: short, curved, intermittent, and readable over the blue shield without turning into visual clutter.
 
 - [ ] **Step 7: Build/test**
 
@@ -576,7 +625,18 @@ Use keys:
 - `system.plasma_armor_shield_boost.status.default.active`
 - `system.plasma_armor_shield_boost.status.default.out`
 
-- [ ] **Step 5: Generate/write and test**
+- [ ] **Step 5: Add boosted shield VFX**
+
+System activation must visibly enhance the Plasma Arch shield beyond the baseline open-shield decorative arcs.
+
+Minimum visual contract:
+- flowing arcs become denser/brighter or gain a second thinner white-blue layer
+- shield sector hit flashes are stronger while boosted
+- a low-frequency pulse travels across the shield circumference while the system remains active
+- the effect must be tied to actual system state and disappear cleanly on system end
+- do not implement a generic all-ship glow as the main effect
+
+- [ ] **Step 6: Generate/write and test**
 
 Run:
 ```bash
@@ -585,7 +645,7 @@ Run:
 ./gradlew test
 ```
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
 git add src/main/kotlin/cn/kasuminova/astd/combat/shipsystems/ASTDPlasmaArmorShieldBoostSystemStats.kt ss-csv/src/main/kotlin/cn/kasuminova/astd/sscsv/entries/catalog/shipsystems/arc/Catalog_ShipSystems_ARC.kt contents/data/shipsystems contents/data/shipsystems/ship_systems.csv contents/data/strings/strings.json
@@ -636,9 +696,20 @@ Required visual cues:
 - low-frequency network pulse on Radiation Belt
 - no continuous heavy particle trail
 
+The pursuit-network link must have a distinct visual identity from Arc Jet's support network:
+- Prefer sharper, faster "tracking ping" segments or triangulated short links.
+- Links should appear only for selected network members, not every nearby friendly ship.
+- The effect must be visible enough for SSOptimizer screenshot review, but should not look like a beam weapon.
+- If linked target also has `astd_distributed_pursuit_network`, add a subtle secondary pulse or brighter node to communicate the +50% connection.
+
 - [ ] **Step 4: Add tooltip blocks**
 
 Use `ASTDHullModTooltipRenderer` and I18n keys.
+
+Tooltip style requirements:
+- Follow the same imported hullmod style references as Task 3.
+- The targeting-system tooltip must make incompatibility with other targeting systems obvious in a note section.
+- The pursuit-network tooltip must separate "network members" from "per-link bonuses" in a compact table.
 
 - [ ] **Step 5: Test registration**
 
@@ -749,6 +820,7 @@ Check:
 - hullmod tooltip flavor paragraphs are not raw stat lists
 - mechanics tables can include numbers, but prose must stay world-facing
 - no banned "不是...而是..." style
+- tooltip block order, highlight color usage, and table density match the earlier imported hullmod text style instead of drifting into raw CSV-style descriptions
 
 - [ ] **Step 3: Run copy tests**
 
@@ -787,6 +859,10 @@ Capabilities:
 - ensure BoxUtil readiness before entity creation
 - emit low-frequency network pulses
 - emit short shield-sector flashes
+- emit random flowing shield arcs bound to Plasma Arch shield state
+- emit boosted shield circumference pulses for Plasma Arch system state
+- emit Arc Jet active flux-transfer links with receiving-node pulses
+- emit Radiation Belt pursuit-network tracking links with optional stronger same-network nodes
 - emit temporal afterimage/streak
 - log and fail explicitly for unexpected addEntity failures
 
@@ -795,31 +871,45 @@ Capabilities:
 Arc Jet:
 - tactical network pulse while targets connected
 - flux network activation aura during system
+- linked ships receive a clear receiving-node effect while connected by the active system
 
 Plasma Arch:
+- decorative flowing electric arcs randomly appear across the expanded shield while the shield is open
 - sector shield flashes on sector damage
 - recoil arc strike visual
-- boosted shield shimmer during system
+- boosted shield shimmer/circumference pulse during system
 
 Radiation Belt:
-- pursuit link pings
+- pursuit link pings that differ visually from Arc Jet support links
 - temporal thruster afterimage/streak
 
 - [ ] **Step 3: Performance guard**
 
 Add minimum intervals:
 - network lines no more than several pulses per second per source
+- Plasma Arch decorative shield arcs use a seeded per-ship timer and bounded max active arcs
 - shield flashes only on sector damage
 - thruster effects only during active system
+- avoid rendering links for ships not selected by the actual network mechanics
 
-- [ ] **Step 4: Build**
+- [ ] **Step 4: Screenshot readability guard**
+
+Before relying on SSOptimizer screenshots, add developer diagnostic counters to telemetry or log output:
+- active Arc Jet linked ship count
+- active Radiation Belt pursuit link count
+- Plasma Arch shield open/boosted state
+- number of emitted shield arcs during the capture window
+
+These counters help distinguish "effect not visible" from "mechanic did not select targets".
+
+- [ ] **Step 5: Build**
 
 Run:
 ```bash
 ./gradlew test
 ```
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add src/main/kotlin/cn/kasuminova/astd/combat/hullmods/arc/ASTDArcProductionVfx.kt src/main/kotlin/cn/kasuminova/astd/renderer/effect/hullmods
@@ -828,7 +918,94 @@ git commit -m "feat: add arc production ship vfx"
 
 ---
 
-## Task 13: Full Generation, Build, And Smoke Validation
+## Task 13: SSOptimizer Integration Evidence
+
+**Files:**
+- Modify: `src/main/kotlin/cn/kasuminova/astd/internal/debug/ASTDInGameAutomationScenario.kt`
+- Modify: `src/main/kotlin/cn/kasuminova/astd/combat/effect/generic/ASTDAutomationCombatPlugin.kt`
+- Modify: `src/test/kotlin/cn/kasuminova/astd/internal/debug/ASTDInGameAutomationScenarioTest.kt`
+- Modify: `tools/verify_ingame_vfx_automation.py`
+- Possibly modify: `tools/smoke_test_game_launch.sh`
+
+- [ ] **Step 1: Add an ARC production ship automation scenario**
+
+Add a scenario id such as `arc_production_ships_vfx_tooltip`.
+
+The scenario must stage:
+- `astd_arc_jet` with friendly frigate/destroyer/cruiser targets inside network range
+- `astd_plasma_arch` with shield open and system activation window
+- `astd_radiation_belt` with at least one linked friendly frigate/destroyer and one same-network Radiation Belt
+
+- [ ] **Step 2: Add tooltip evidence capture**
+
+Automation must produce evidence that the three ship/hullmod tooltips render in-game.
+
+Minimum acceptable evidence:
+- screenshot or telemetry marker for Arc Jet hullmod tooltip panel
+- screenshot or telemetry marker for Plasma Arch hullmod tooltip panel
+- screenshot or telemetry marker for Radiation Belt hullmod tooltip panel
+- verifier rejects `No description... yet`, placeholder text, or missing expected hullmod names
+
+If direct tooltip screenshot automation is not available, add a deterministic in-game debug UI panel using the same `ASTDHullModTooltipRenderer` blocks and capture that panel through SSOptimizer screenshot output.
+
+- [ ] **Step 3: Add VFX evidence capture**
+
+Automation must capture screenshots or frame evidence for:
+- Plasma Arch shield open with random flowing decorative arcs visible
+- Plasma Arch shield boost active with visibly enhanced shield effect
+- Arc Jet system active with linked ships showing receiving-node/transfer effects
+- Radiation Belt pursuit network with visible link effect
+
+Telemetry must include counts/states:
+- `arcJetLinkedShips`
+- `arcJetActiveSystemLinks`
+- `plasmaArchShieldOpen`
+- `plasmaArchSystemActive`
+- `plasmaArchShieldArcEmissions`
+- `radiationBeltPursuitLinks`
+- screenshot frame paths
+
+- [ ] **Step 4: Extend verifier**
+
+Update `tools/verify_ingame_vfx_automation.py` so the new scenario fails when:
+- required telemetry counters are missing or zero
+- screenshot files are missing
+- screenshot resolution is wrong
+- VFX bright/colored pixels are absent from expected regions
+- tooltip evidence is missing expected names/text markers
+
+Do not use pixel-perfect comparison for these effects. Use visual-region checks and telemetry gates, then require manual visual review of the saved comparison/screenshot output.
+
+- [ ] **Step 5: Unit test automation plumbing**
+
+Run:
+```bash
+./gradlew test --tests cn.kasuminova.astd.internal.debug.ASTDInGameAutomationScenarioTest
+```
+
+- [ ] **Step 6: Run SSOptimizer game smoke scenario**
+
+Run through the SSOptimizer path:
+```bash
+./gradlew smokeTestGame
+```
+
+Expected:
+- `launch_injected_ss.sh` path is used when present.
+- SSOptimizer agent marker is present or the script reports why it is not.
+- New ARC production scenario writes telemetry and screenshots.
+- Verifier passes the new VFX/tooltip evidence checks.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add src/main/kotlin/cn/kasuminova/astd/internal/debug/ASTDInGameAutomationScenario.kt src/main/kotlin/cn/kasuminova/astd/combat/effect/generic/ASTDAutomationCombatPlugin.kt src/test/kotlin/cn/kasuminova/astd/internal/debug/ASTDInGameAutomationScenarioTest.kt tools/verify_ingame_vfx_automation.py tools/smoke_test_game_launch.sh
+git commit -m "test: add arc production vfx tooltip automation"
+```
+
+---
+
+## Task 14: Full Generation, Build, And Acceptance Validation
 
 **Files:**
 - Generated contents from ss-csv.
@@ -866,32 +1043,40 @@ Run:
 
 Expected: no ASTD data missing, class loading, JVM crash, or `CombatMain` fatal errors.
 
-- [ ] **Step 5: Optional in-game smoke test**
+- [ ] **Step 5: Run required SSOptimizer in-game acceptance**
 
-If environment permits:
+Run:
 ```bash
 ./gradlew smokeTestGame
 ```
 
-Expected: game reaches automated path without fatal ASTD errors.
+Expected: game reaches the ARC production automation path and writes VFX/tooltip screenshots plus telemetry. This is required for acceptance.
 
-- [ ] **Step 6: Manual combat visual checklist**
+- [ ] **Step 6: Review SSOptimizer screenshots**
 
-Spawn or simulate:
-- one `astd_arc_jet`
-- one `astd_plasma_arch`
-- one `astd_radiation_belt`
-- several friendly frigates/destroyers
+Open the generated screenshot paths printed by the verifier or telemetry.
 
 Check:
-- Arc Jet network and flux system effects are visible but not noisy.
-- Plasma Arch shield sectors visibly react and recover.
+- Arc Jet active system link effect is visible on linked ships and is not just passive aura noise.
+- Plasma Arch open shield shows random flowing decorative arcs.
+- Plasma Arch active system visibly enhances the shield effect.
+- Radiation Belt pursuit network link effect is visible and distinct from Arc Jet links.
 - Ionized recoil arcs target enemies and never friendlies.
 - Radiation Belt thruster produces a short temporal streak and no persistent clutter.
 - Tooltips show localized, polished text.
 - No `No description... yet` remains for the three ships/systems.
 
-- [ ] **Step 7: Final commit**
+- [ ] **Step 7: Record visual review notes**
+
+Add or update a short report if implementation needed manual visual judgement:
+- `docs/dev-docs/arc-production-ships-vfx-review.md`
+
+Include:
+- screenshot paths
+- pass/fail notes for each required effect
+- any remaining visual tradeoffs accepted
+
+- [ ] **Step 8: Final commit**
 
 Commit any final fixes:
 ```bash
@@ -912,6 +1097,11 @@ git commit -m "feat: complete arc production ship redesign"
 - [ ] Runtime-visible text uses I18n keys, not hardcoded strings.
 - [ ] System status text follows the stage-specific flavor text rule.
 - [ ] Visual effects exist for network, shield, recoil arc, and temporal thrust mechanics.
+- [ ] Plasma Arch open shield has random flowing decorative arcs while shield is up.
+- [ ] Plasma Arch system activation visibly enhances the shield VFX.
+- [ ] Arc Jet active system linked ships have a distinct receiving/transfer effect.
+- [ ] Radiation Belt pursuit network has a distinct link effect, including same-network emphasis.
 - [ ] BoxUtil failures are explicit; no large fallback rendering branch is added.
 - [ ] `./gradlew :ss-csv:generateSsCsv test` passes.
 - [ ] `./gradlew smokeTestLauncher` passes before final handoff.
+- [ ] `./gradlew smokeTestGame` passes with SSOptimizer automation evidence for VFX and tooltip acceptance before final handoff.
