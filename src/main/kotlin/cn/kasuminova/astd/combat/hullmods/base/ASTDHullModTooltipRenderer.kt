@@ -3,11 +3,14 @@ package cn.kasuminova.astd.combat.hullmods.base
 import cn.kasuminova.astd.ui.dsl.buildWith
 import cn.kasuminova.astd.internal.i18n.I18n
 import cn.kasuminova.astd.internal.i18n.I18nUi
+import com.fs.starfarer.api.ui.Alignment
 import com.fs.starfarer.api.ui.TooltipMakerAPI
 import com.fs.starfarer.api.util.Misc
 import java.awt.Color
 
 internal object ASTDHullModTooltipRenderer {
+
+    private const val TABLE_ROW_HEIGHT = 24f
 
     data class Theme(
         val nameColor: Color,
@@ -69,14 +72,12 @@ internal object ASTDHullModTooltipRenderer {
         theme: Theme,
         summaryKey: String,
         sections: List<Section>,
-        starTrails: Boolean = false,
     ) {
         tooltip.buildWith {
             spacer(6f)
-            withNebulaBackground(
-                color = theme.accentColor,
+            withLatticePulseBackground(
+                accentColor = theme.accentColor,
                 width = width,
-                starTrails = starTrails,
             ) {
                 heading(title, theme.nameColor, theme.headerBackground, 6f)
                 spacer(2f)
@@ -103,14 +104,12 @@ internal object ASTDHullModTooltipRenderer {
         title: String,
         theme: Theme,
         blocks: List<Block>,
-        starTrails: Boolean = false,
     ) {
         tooltip.buildWith {
             spacer(6f)
-            withNebulaBackground(
-                color = theme.accentColor,
+            withLatticePulseBackground(
+                accentColor = theme.accentColor,
                 width = width,
-                starTrails = starTrails,
             ) {
                 heading(title, theme.nameColor, theme.headerBackground, 6f)
                 for (block in blocks) {
@@ -143,16 +142,16 @@ internal object ASTDHullModTooltipRenderer {
         theme: Theme,
         width: Float,
     ) {
-        val labelWidth = (width * 0.52f).coerceAtLeast(180f)
-        val valueWidth = (width * 0.33f).coerceAtLeast(120f)
-        val tableWidth = labelWidth + valueWidth
+        val tableWidth = (width - 20f).coerceAtLeast(280f)
+        val labelWidth = tableWidth * 0.62f
+        val valueWidth = tableWidth - labelWidth
         tooltip.beginTable(
-            theme.sectionBackground,
-            theme.nameColor,
+            Misc.getBasePlayerColor(),
             Misc.getDarkPlayerColor(),
-            tableWidth,
+            Misc.getBrightPlayerColor(),
+            TABLE_ROW_HEIGHT,
             true,
-            false,
+            true,
             I18n[I18n.Categories.MOD, table.headerAKey],
             labelWidth,
             I18n[I18n.Categories.MOD, table.headerBKey],
@@ -160,8 +159,10 @@ internal object ASTDHullModTooltipRenderer {
         )
         for (row in table.rows) {
             tooltip.addRow(
+                Alignment.MID,
                 Misc.getTextColor(),
                 I18n[I18n.Categories.MOD, row.labelKey],
+                Alignment.MID,
                 theme.nameColor,
                 I18n[I18n.Categories.MOD, row.valueKey],
             )

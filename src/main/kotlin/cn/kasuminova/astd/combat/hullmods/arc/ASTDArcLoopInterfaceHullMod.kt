@@ -108,7 +108,6 @@ class ASTDArcLoopInterfaceHullMod : BaseHullMod() {
                 ),
                 ASTDHullModTooltipRenderer.paragraph("ui.hullmod.arc_loop.overdrive"),
             ),
-            starTrails = false,
         )
     }
 

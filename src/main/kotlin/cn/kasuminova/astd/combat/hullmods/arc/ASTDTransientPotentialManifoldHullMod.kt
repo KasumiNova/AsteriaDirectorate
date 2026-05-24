@@ -97,7 +97,6 @@ class ASTDTransientPotentialManifoldHullMod : BaseHullMod() {
                     ),
                 ),
             ),
-            starTrails = false,
         )
     }
 

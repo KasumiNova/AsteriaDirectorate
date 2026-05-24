@@ -89,7 +89,6 @@ class ASTDVirtualParticleLatticeWebHullMod : BaseHullMod() {
                 ASTDHullModTooltipRenderer.paragraph("ui.hullmod.negentropy.lattice.line.3"),
                 ASTDHullModTooltipRenderer.paragraph("ui.hullmod.negentropy.lattice.line.4"),
             ),
-            starTrails = false,
         )
     }
 

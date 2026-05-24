@@ -1,6 +1,6 @@
 package cn.kasuminova.astd.ui.dsl
 
-import cn.kasuminova.astd.ui.effect.ASTDParticleBackground
+import cn.kasuminova.astd.ui.effect.ASTDLatticePulseTooltipBackground
 import cn.kasuminova.astd.internal.i18n.I18n
 import cn.kasuminova.astd.internal.i18n.I18nUi
 import com.fs.starfarer.api.ui.Alignment
@@ -17,7 +17,7 @@ import java.awt.Color
  *     spacer(10f)
  *     para(I18n.Categories.MOD, "some.key", Misc.getTextColor(), "var1" to value1)
  *     separator(Misc.getDarkPlayerColor())
- *     withParticleBackground(Color(80, 160, 255)) {
+ *     withLatticePulseBackground(Color(80, 160, 255), width = 580f) {
  *         para(I18n.Categories.MOD, "bg.text", Misc.getTextColor())
  *     }
  * }
@@ -91,22 +91,17 @@ class TooltipBuilder(val tooltip: TooltipMakerAPI) {
     }
 
     /**
-     * 在星云渐变背景内渲染内容。
+     * 使用 tooltip 编辑器的 Lattice Pulse 背景主题渲染内容。
      *
      * 背景高度由实际内容精确决定，不使用预估值，不会溢出 Tooltip 范围。
-     *
-     * @param color 星云贴图主色调
-     * @param width 背景宽度
-     * @param starTrails 是否渲染延迟摄影星轨效果
      */
-    fun withNebulaBackground(
-        color: Color,
+    fun withLatticePulseBackground(
+        accentColor: Color,
         width: Float,
-        starTrails: Boolean = false,
         block: TooltipBuilder.() -> Unit,
     ) {
         val startHeight = tooltip.heightSoFar
-        val plugin = ASTDParticleBackground.create(tooltip, width, color, starTrails)
+        val plugin = ASTDLatticePulseTooltipBackground.create(tooltip, width, accentColor)
         block()
         plugin.contentHeight = tooltip.heightSoFar - startHeight
     }
