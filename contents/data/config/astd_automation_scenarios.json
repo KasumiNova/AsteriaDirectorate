@@ -8,6 +8,35 @@
       "weaponId": "astd_aod7",
       "projectileSpecId": "astd_aod7_shot",
       "vfxPresetId": "aod7_shot"
+    },
+    {
+      "id": "arc_production_ships_vfx_tooltip",
+      "missionId": "arc_production_ships_vfx_tooltip",
+      "shipIds": [
+        "astd_arc_jet",
+        "astd_plasma_arch",
+        "astd_radiation_belt"
+      ],
+      "variantIds": [
+        "astd_arc_jet_Standard",
+        "astd_plasma_arch_Standard",
+        "astd_radiation_belt_Standard"
+      ],
+      "requiredEvidence": [
+        "arcJetLinkedShips",
+        "arcJetActiveSystemLinks",
+        "plasmaArchShieldOpen",
+        "plasmaArchSystemActive",
+        "plasmaArchShieldArcEmissions",
+        "radiationBeltPursuitLinks",
+        "radiationBeltSystemAfterimages",
+        "arcJetTooltip",
+        "plasmaArchTooltip",
+        "radiationBeltTooltip",
+        "arcJetTooltipKeys",
+        "plasmaArchTooltipKeys",
+        "radiationBeltTooltipKeys"
+      ]
     }
   ]
 }

@@ -1,0 +1,8 @@
+{
+    "id": "astd_plasma_armor_shield_boost",
+    "type": "STAT_MOD",
+    "aiType": "CUSTOM",
+    "aiScript": "cn.kasuminova.astd.combat.shipsystems.ASTDPlasmaArmorShieldBoostSystemAI",
+    "statsScript": "cn.kasuminova.astd.combat.shipsystems.ASTDPlasmaArmorShieldBoostSystemStats",
+    "useSound": "system_fortress_shield_activate"
+}

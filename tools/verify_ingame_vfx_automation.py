@@ -25,9 +25,35 @@ EXPECTED = {
     "projectileSpecId": "astd_aod7_shot",
     "vfxPresetId": "aod7_shot",
 }
+ARC_PRODUCTION_SCENARIO = "arc_production_ships_vfx_tooltip"
+ARC_PRODUCTION_REQUIRED_EVIDENCE = (
+    "arcJetLinkedShips",
+    "arcJetActiveSystemLinks",
+    "plasmaArchShieldOpen",
+    "plasmaArchSystemActive",
+    "plasmaArchShieldArcEmissions",
+    "radiationBeltPursuitLinks",
+    "radiationBeltSystemAfterimages",
+    "arcJetTooltip",
+    "plasmaArchTooltip",
+    "radiationBeltTooltip",
+)
+ARC_PRODUCTION_REQUIRED_SHIP_IDS = ("astd_arc_jet", "astd_plasma_arch", "astd_radiation_belt")
+ARC_PRODUCTION_REQUIRED_VARIANT_IDS = ("astd_arc_jet_Standard", "astd_plasma_arch_Standard", "astd_radiation_belt_Standard")
+ARC_PRODUCTION_TOOLTIP_KEY_MINIMUMS = {
+    "arcJetTooltipKeys": 12,
+    "plasmaArchTooltipKeys": 12,
+    "radiationBeltTooltipKeys": 16,
+}
+ARC_PRODUCTION_SCREENSHOT_REGIONS = (
+    ("arc jet passive/active network", (0.02, 0.26, 0.42, 0.70), 900),
+    ("plasma arch shield arcs", (0.28, 0.24, 0.64, 0.78), 550),
+    ("radiation belt pursuit link", (0.48, 0.22, 0.88, 0.72), 350),
+)
 
 ASTD_TELEMETRY_FILE = "astd-ingame-automation-astd-telemetry.json"
 LOG_COMPLETED_PATTERN = re.compile(r"\[ASTD-Automation]\s+Completed: arc_flare/aod7/astd_aod7_shot/VFX observed")
+ASTD_DIAGNOSTICS_PATTERN = re.compile(r"\[ASTD-Automation]\s+diagnostics state=(?P<state>\S+)\s+json=(?P<json>\{.*\})")
 
 MIN_SCREENSHOT_WIDTH = 2550
 MIN_SCREENSHOT_HEIGHT = 1430
@@ -440,6 +466,51 @@ def _data_from_log(log_path: Path) -> dict:
     }
 
 
+def _merge_screenshot_evidence(astd_data: dict, sso_data: dict | None) -> dict:
+    if sso_data is None:
+        return dict(astd_data)
+
+    merged = dict(astd_data)
+    for key in ("screenshotPath", "screenshotFrames", "screenshotAttemptPath"):
+        if key in sso_data and sso_data[key] not in (None, ""):
+            merged.setdefault(key, sso_data[key])
+    return merged
+
+
+def _arc_production_data_from_log(log_path: Path, ssoptimizer_data: dict | None = None) -> dict | None:
+    try:
+        lines = log_path.read_text(encoding="utf-8", errors="replace").splitlines()
+    except FileNotFoundError:
+        raise SystemExit(f"FAIL automation log missing: {log_path}")
+
+    last_match: dict | None = None
+    last_completed: dict | None = None
+    for line in lines:
+        match = ASTD_DIAGNOSTICS_PATTERN.search(line)
+        if match is None:
+            continue
+
+        try:
+            diagnostics = json.loads(match.group("json"))
+        except json.JSONDecodeError:
+            continue
+        if diagnostics.get("scenario") != ARC_PRODUCTION_SCENARIO:
+            continue
+
+        diagnostics.setdefault("state", match.group("state"))
+        diagnostics.setdefault("source", "ASTD")
+        diagnostics.setdefault("logPath", str(log_path))
+        last_match = diagnostics
+        if diagnostics.get("state") == "Completed" or match.group("state") == "Completed":
+            diagnostics["state"] = "Completed"
+            last_completed = diagnostics
+
+    selected = last_completed if last_completed is not None else last_match
+    if selected is None:
+        return None
+    return _merge_screenshot_evidence(selected, ssoptimizer_data)
+
+
 def _check_equal(data: dict, key: str, expected: str, errors: list[str]) -> None:
     actual = data.get(key)
     if actual != expected:
@@ -463,6 +534,279 @@ def _check_screenshot_frames(data: dict, errors: list[str]) -> None:
             errors.append(f"screenshotFrames: invalid frame path {frame!r}")
         elif not Path(frame).exists():
             errors.append(f"screenshotFrames: file does not exist: {frame}")
+
+
+def _existing_screenshot_paths(data: dict, screenshot_override: Path | None) -> list[Path]:
+    if screenshot_override is not None:
+        return [screenshot_override]
+
+    paths: list[Path] = []
+    seen: set[Path] = set()
+    for key in ("screenshotPath", "screenshotFrames"):
+        value = data.get(key)
+        values = value if isinstance(value, list) else [value]
+        for item in values:
+            if not isinstance(item, str) or not item:
+                continue
+            path = Path(item)
+            if path in seen or not path.exists():
+                continue
+            seen.add(path)
+            paths.append(path)
+    return paths
+
+
+def _check_evidence_file(
+    data: dict,
+    errors: list[str],
+    require_screenshot_file: bool,
+    screenshot_override: Path | None,
+) -> tuple[str | None, str | None, list[str]]:
+    screenshot_details: list[str] = []
+    screenshot = str(screenshot_override) if screenshot_override is not None else data.get("screenshotPath")
+    screenshot_attempt = data.get("screenshotAttemptPath")
+    if require_screenshot_file:
+        if not screenshot:
+            errors.append("screenshotPath: required but missing")
+        elif not Path(screenshot).exists():
+            errors.append(f"screenshotPath: file does not exist: {screenshot}")
+        else:
+            screenshot_details.append(f"screenshot pixels available: {screenshot}")
+    elif screenshot:
+        if not Path(screenshot).exists():
+            errors.append(f"screenshotPath: declared file does not exist: {screenshot}")
+        else:
+            screenshot_details.append(f"screenshot pixels available: {screenshot}")
+    elif screenshot_attempt:
+        if not Path(screenshot_attempt).exists():
+            errors.append(f"screenshotAttemptPath: file does not exist: {screenshot_attempt}")
+    else:
+        errors.append("evidence: expected screenshotPath or screenshotAttemptPath")
+    _check_screenshot_frames(data, errors)
+    return screenshot, screenshot_attempt, screenshot_details
+
+
+def _verify_arc_production(
+    data: dict,
+    actual_telemetry_path: Path,
+    require_screenshot_file: bool,
+    screenshot_override: Path | None,
+) -> int:
+    errors: list[str] = []
+    if data.get("scenario") != ARC_PRODUCTION_SCENARIO:
+        errors.append(f"scenario: expected {ARC_PRODUCTION_SCENARIO!r}, got {data.get('scenario')!r}")
+    if data.get("state") != "Completed":
+        errors.append(f"state: expected 'Completed', got {data.get('state')!r}")
+    require_screenshot_file = True
+    missing_ships = data.get("arcProductionMissingShips")
+    if missing_ships != []:
+        errors.append(f"arcProductionMissingShips: expected [], got {missing_ships!r}")
+    deployed_ship_ids = data.get("arcProductionDeployedShipIds")
+    deployed_variant_ids = data.get("arcProductionDeployedVariantIds")
+    if not isinstance(deployed_ship_ids, list):
+        errors.append(f"arcProductionDeployedShipIds: expected deployed ship id list, got {deployed_ship_ids!r}")
+    else:
+        for ship_id in ARC_PRODUCTION_REQUIRED_SHIP_IDS:
+            if ship_id not in deployed_ship_ids:
+                errors.append(f"arcProductionDeployedShipIds: missing {ship_id!r} in {deployed_ship_ids!r}")
+    if not isinstance(deployed_variant_ids, list):
+        errors.append(f"arcProductionDeployedVariantIds: expected deployed variant id list, got {deployed_variant_ids!r}")
+    else:
+        for variant_id in ARC_PRODUCTION_REQUIRED_VARIANT_IDS:
+            if variant_id not in deployed_variant_ids:
+                errors.append(f"arcProductionDeployedVariantIds: missing {variant_id!r} in {deployed_variant_ids!r}")
+
+    for key in ARC_PRODUCTION_REQUIRED_EVIDENCE:
+        value = data.get(key)
+        if isinstance(value, bool):
+            if value is not True:
+                errors.append(f"{key}: expected true, got {value!r}")
+        else:
+            try:
+                numeric = float(value)
+            except (TypeError, ValueError):
+                errors.append(f"{key}: expected positive counter or true, got {value!r}")
+                continue
+            if numeric <= 0:
+                errors.append(f"{key}: expected positive counter, got {value!r}")
+    for key, minimum in ARC_PRODUCTION_TOOLTIP_KEY_MINIMUMS.items():
+        value = data.get(key)
+        try:
+            numeric = int(value)
+        except (TypeError, ValueError):
+            errors.append(f"{key}: expected resolved tooltip key count >= {minimum}, got {value!r}")
+            continue
+        if numeric < minimum:
+            errors.append(f"{key}: expected resolved tooltip key count >= {minimum}, got {numeric}")
+
+    screenshot, screenshot_attempt, screenshot_details = _check_evidence_file(
+        data,
+        errors,
+        require_screenshot_file,
+        screenshot_override,
+    )
+    if not screenshot:
+        errors.append("screenshotPath: ARC production requires a concrete screenshotPath for pixel verification")
+    if screenshot:
+        selected = _select_arc_production_screenshot(data, Path(screenshot), screenshot_override, errors)
+        if selected is not None:
+            screenshot = str(selected)
+            screenshot_details.extend(_check_arc_production_screenshot_pixels(selected, errors))
+
+    if errors:
+        print("FAIL ASTD ARC production automation evidence")
+        for error in errors:
+            print(f"- {error}")
+        _print_result(data, actual_telemetry_path, screenshot_details, screenshot, screenshot_attempt)
+        return 1
+
+    print("PASS ASTD ARC production automation evidence")
+    _print_result(data, actual_telemetry_path, screenshot_details, screenshot, screenshot_attempt)
+    return 0
+
+
+def _arc_colored_bright_mask(rgb: np.ndarray) -> np.ndarray:
+    luma = (0.299 * rgb[:, :, 0]) + (0.587 * rgb[:, :, 1]) + (0.114 * rgb[:, :, 2])
+    blue_cyan = (
+        (rgb[:, :, 2] > 80)
+        & (rgb[:, :, 1] > 55)
+        & (rgb[:, :, 2] >= rgb[:, :, 0] + 12)
+        & (luma > 70)
+    )
+    white_core = (
+        (luma > 160)
+        & (rgb[:, :, 1] >= rgb[:, :, 0] - 8)
+        & (rgb[:, :, 2] >= rgb[:, :, 0] - 8)
+    )
+    return blue_cyan | white_core
+
+
+def _arc_region_component_details(mask: np.ndarray) -> tuple[int, int, int, int, int, float] | None:
+    labels_count, _, stats, _ = cv2.connectedComponentsWithStats(mask.astype(np.uint8) * 255, 8)
+    best: tuple[int, int, int, int, int, float] | None = None
+    for label in range(1, labels_count):
+        x, y, width, height, area = stats[label]
+        aspect = float(width) / max(float(height), 1.0)
+        candidate = (int(area), int(x), int(y), int(width), int(height), aspect)
+        if best is None or candidate[0] > best[0]:
+            best = candidate
+    return best
+
+
+def _arc_production_deployment_overlay_score(path: Path) -> float:
+    with Image.open(path) as loaded:
+        image = loaded.convert("RGB")
+    width, height = image.size
+    rgb = np.array(image)
+    left = int(width * 0.30)
+    top = int(height * 0.30)
+    right = int(width * 0.70)
+    bottom = int(height * 0.83)
+    crop = rgb[top:bottom, left:right, :]
+    luma = (0.299 * crop[:, :, 0]) + (0.587 * crop[:, :, 1]) + (0.114 * crop[:, :, 2])
+    dark_fraction = float((luma < 8).mean())
+    teal_border = (
+        (crop[:, :, 1] > 45)
+        & (crop[:, :, 2] > 50)
+        & (crop[:, :, 0] < 85)
+        & (crop[:, :, 2] >= crop[:, :, 0] + 8)
+        & (luma > 35)
+    )
+    border_fraction = float(teal_border.mean())
+    return dark_fraction + border_fraction * 8.0
+
+
+def _select_arc_production_screenshot(
+    data: dict,
+    primary: Path,
+    screenshot_override: Path | None,
+    errors: list[str],
+) -> Path | None:
+    candidates = _existing_screenshot_paths(data, screenshot_override)
+    if not candidates:
+        candidates = [primary]
+
+    best_path: Path | None = None
+    best_score = -1
+    overlay_scores: dict[Path, float] = {}
+    detail_errors: dict[Path, list[str]] = {}
+    for candidate in candidates:
+        local_errors: list[str] = []
+        try:
+            overlay_scores[candidate] = _arc_production_deployment_overlay_score(candidate)
+            details = _check_arc_production_screenshot_pixels(candidate, local_errors)
+        except Exception as exc:
+            detail_errors[candidate] = [f"{candidate}: {exc}"]
+            continue
+        if overlay_scores[candidate] >= 0.90:
+            local_errors.append(f"arc production deployment overlay still visible: score={overlay_scores[candidate]:.3f}")
+        detail_errors[candidate] = local_errors
+        if local_errors:
+            continue
+        score = sum(int(match.group(1)) for detail in details for match in [re.search(r":\s+(\d+)$", detail)] if match)
+        if score > best_score:
+            best_score = score
+            best_path = candidate
+
+    if best_path is not None:
+        return best_path
+
+    for candidate, local_errors in detail_errors.items():
+        for error in local_errors:
+            errors.append(f"screenshotPath: {candidate.name}: {error}")
+    return None
+
+
+def _check_arc_production_screenshot_pixels(path: Path, errors: list[str]) -> list[str]:
+    details: list[str] = []
+    try:
+        with Image.open(path) as loaded:
+            image = loaded.convert("RGB")
+    except Exception as exc:
+        errors.append(f"screenshotPath: failed to read ARC production image pixels: {path}: {exc}")
+        return details
+
+    width, height = image.size
+    details.append(f"ARC production screenshot pixels: {width}x{height}")
+    if width < 1900 or height < 1000:
+        errors.append(f"screenshotPath: ARC production screenshot resolution too small: {width}x{height}")
+
+    full_rgb = np.array(image)
+    for label, roi, min_pixels in ARC_PRODUCTION_SCREENSHOT_REGIONS:
+        left = int(width * roi[0])
+        top = int(height * roi[1])
+        right = int(width * roi[2])
+        bottom = int(height * roi[3])
+        crop = full_rgb[top:bottom, left:right, :]
+        mask = _arc_colored_bright_mask(crop)
+        count = int(mask.sum())
+        largest = _arc_region_component_details(mask)
+        details.append(f"arc production VFX bright colored pixels ({label}): {count}")
+        if count < min_pixels:
+            errors.append(
+                "screenshotPath: arc production VFX bright colored pixels too sparse "
+                f"for {label}: {count} < {min_pixels}",
+            )
+        if largest is None:
+            errors.append(f"screenshotPath: arc production VFX structure missing for {label}")
+            continue
+        largest_area, _, _, largest_width, largest_height, largest_aspect = largest
+        details.append(
+            "arc production VFX largest connected component "
+            f"({label}): area={largest_area}, size={largest_width}x{largest_height}, aspect={largest_aspect:.3f}",
+        )
+        if largest_area < min_pixels * 0.55:
+            errors.append(
+                "screenshotPath: arc production VFX connected structure too small "
+                f"for {label}: {largest_area} < {int(min_pixels * 0.55)}",
+            )
+        if largest_width < 120 or largest_height < 120:
+            errors.append(
+                "screenshotPath: arc production VFX connected structure lacks combat-scale spread "
+                f"for {label}: {largest_width}x{largest_height}",
+            )
+
+    return details
 
 
 def _pixel_bbox(
@@ -685,14 +1029,22 @@ def verify(
 ) -> int:
     if telemetry_path.exists() or telemetry_path.with_name(ASTD_TELEMETRY_FILE).exists():
         data, actual_telemetry_path = _load_preferred_telemetry(telemetry_path)
+        if data.get("scenario") != ARC_PRODUCTION_SCENARIO and log_path is not None:
+            arc_production_data = _arc_production_data_from_log(log_path, data)
+            if arc_production_data is not None:
+                data = arc_production_data
     elif log_path is not None:
-        data = _data_from_log(log_path)
+        data = _arc_production_data_from_log(log_path)
+        if data is None:
+            data = _data_from_log(log_path)
         actual_telemetry_path = telemetry_path
     else:
         data = _load_json(telemetry_path)
         actual_telemetry_path = telemetry_path
     errors: list[str] = []
     screenshot_details: list[str] = []
+    if data.get("scenario") == ARC_PRODUCTION_SCENARIO:
+        return _verify_arc_production(data, actual_telemetry_path, require_screenshot_file, screenshot_override)
 
     for key, expected in EXPECTED.items():
         _check_equal(data, key, expected, errors)

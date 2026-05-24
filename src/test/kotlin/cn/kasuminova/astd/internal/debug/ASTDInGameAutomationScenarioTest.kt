@@ -25,6 +25,112 @@ class ASTDInGameAutomationScenarioTest {
     }
 
     @Test
+    fun `arc production automation scenario stages redesigned ships for vfx and tooltip evidence`() {
+        assertEquals(
+            "arc_production_ships_vfx_tooltip",
+            ASTDInGameAutomationScenario.ARC_PRODUCTION_SCENARIO_ID,
+        )
+        assertTrue(
+            Files.exists(Path.of("contents/data/missions/arc_production_ships_vfx_tooltip/MissionDefinition.java")),
+            "arc production scenario must have a concrete mission for SSOptimizer launch",
+        )
+
+        val scenarios = JSONObject(Files.readString(Path.of("contents/data/config/astd_automation_scenarios.json"))).getJSONArray("scenarios")
+        val scenario = (0 until scenarios.length())
+            .map { scenarios.getJSONObject(it) }
+            .firstOrNull { it.getString("id") == ASTDInGameAutomationScenario.ARC_PRODUCTION_SCENARIO_ID }
+        assertTrue(scenario != null, "missing arc production VFX/tooltip automation scenario")
+        assertEquals("arc_production_ships_vfx_tooltip", scenario.getString("missionId"))
+
+        val shipIds = scenario.getJSONArray("shipIds")
+        listOf("astd_arc_jet", "astd_plasma_arch", "astd_radiation_belt").forEach { id ->
+            assertTrue((0 until shipIds.length()).any { shipIds.getString(it) == id }, "scenario missing ship id: $id")
+        }
+
+        val requiredEvidence = scenario.getJSONArray("requiredEvidence")
+        listOf(
+            "arcJetLinkedShips",
+            "arcJetActiveSystemLinks",
+            "plasmaArchShieldOpen",
+            "plasmaArchSystemActive",
+            "plasmaArchShieldArcEmissions",
+            "radiationBeltPursuitLinks",
+            "radiationBeltSystemAfterimages",
+            "arcJetTooltip",
+            "plasmaArchTooltip",
+            "radiationBeltTooltip",
+            "arcJetTooltipKeys",
+            "plasmaArchTooltipKeys",
+            "radiationBeltTooltipKeys",
+        ).forEach { key ->
+            assertTrue((0 until requiredEvidence.length()).any { requiredEvidence.getString(it) == key }, "scenario missing evidence key: $key")
+        }
+    }
+
+    @Test
+    fun `arc production automation has combat plugin branch and verifier checks`() {
+        val scenario = Files.readString(Path.of("src/main/kotlin/cn/kasuminova/astd/internal/debug/ASTDInGameAutomationScenario.kt"))
+        val plugin = Files.readString(Path.of("src/main/kotlin/cn/kasuminova/astd/combat/effect/generic/ASTDAutomationCombatPlugin.kt"))
+        val verifier = Files.readString(Path.of("tools/verify_ingame_vfx_automation.py"))
+
+        assertTrue(scenario.contains("isArcProductionEnabled"), "scenario helper should expose the arc production mode")
+        assertTrue(plugin.contains("advanceArcProductionScenario"), "automation plugin must branch into ARC production staging")
+        assertFalse(plugin.contains("writeArcProductionTelemetry"), "SSOptimizer only patches writeTelemetry; ARC must not expose an unpatched empty hook")
+        assertTrue(plugin.contains("arcProductionTelemetryShip"), "ARC automation should route screenshot evidence through the patched telemetry hook")
+        listOf(
+            "arcJetLinkedShips",
+            "arcJetActiveSystemLinks",
+            "plasmaArchShieldOpen",
+            "plasmaArchSystemActive",
+            "plasmaArchShieldArcEmissions",
+            "radiationBeltPursuitLinks",
+            "radiationBeltSystemAfterimages",
+            "arcJetTooltip",
+            "plasmaArchTooltip",
+            "radiationBeltTooltip",
+            "arcJetTooltipKeys",
+            "plasmaArchTooltipKeys",
+            "radiationBeltTooltipKeys",
+        ).forEach { key ->
+            assertTrue(plugin.contains(key), "automation plugin missing evidence key: $key")
+            assertTrue(verifier.contains(key), "verification script missing evidence key: $key")
+        }
+        assertTrue(verifier.contains("arc_production_ships_vfx_tooltip"), "verification script must accept the ARC production scenario")
+    }
+
+    @Test
+    fun `arc production automation force deploys mission reserves instead of waiting at deployment screen`() {
+        val plugin = Files.readString(Path.of("src/main/kotlin/cn/kasuminova/astd/combat/effect/generic/ASTDAutomationCombatPlugin.kt"))
+        val arcAdvanceBody = plugin
+            .substringAfter("private fun advanceArcProductionScenario(")
+            .substringBefore("private fun arcProductionEvidenceReady(")
+        val initBody = plugin
+            .substringAfter("override fun init(engine: CombatEngineAPI)")
+            .substringBefore("override fun advance(")
+
+        assertTrue(plugin.contains("setPaused(false)"), "ARC automation must leave the paused deployment screen")
+        assertTrue(plugin.contains("setDoNotEndCombat(true)"), "ARC automation should keep the staged VFX scene alive")
+        assertTrue(plugin.contains("deployArcProductionReserveShips"), "ARC automation must force deploy mission reserve ships")
+        assertTrue(plugin.contains("spawnFleetMember"), "ARC automation should deploy the real mission fleet members")
+        assertTrue(plugin.contains("removeFromReserves"), "ARC automation should not repeatedly spawn reserve ships")
+        assertTrue(plugin.contains("arcProductionMissingShips"), "ARC diagnostics should report missing staged hulls")
+        assertTrue(plugin.contains("arcProductionDeployedShipIds"), "ARC automation diagnostics should list deployed production hull ids")
+        assertTrue(plugin.contains("arcProductionDeployedVariantIds"), "ARC automation diagnostics should list deployed production variant ids")
+        assertFalse(
+            arcAdvanceBody.contains("arcJet ?: plasmaArch ?: radiationBelt ?: return"),
+            "ARC automation must not silently return before diagnostics when ships are not deployed",
+        )
+        assertFalse(
+            initBody.contains("deployArcProductionReserveShips(engine)"),
+            "ARC automation must not spawn fleet members during init before Starsector combat renderers are initialized",
+        )
+        assertTrue(
+            arcAdvanceBody.contains("deployArcProductionReserveShips(engine)"),
+            "ARC automation should force deploy reserves during advance after combat initialization",
+        )
+    }
+
+    @Test
     fun `mission installs automation combat plugin`() {
         val mission = Files.readString(Path.of("contents/data/missions/arc_flare_aod7_basic/MissionDefinition.java"))
 
@@ -64,9 +170,10 @@ class ASTDInGameAutomationScenarioTest {
         assertFalse(source.contains("GL11.glReadPixels"), "Starsector script sandbox blocks ASTD direct framebuffer file capture")
         assertFalse(source.contains("ImageIO.write"), "Starsector script sandbox blocks ASTD direct screenshot file writes")
         assertTrue(source.contains("SSOptimizer patches this method"), "ASTD should delegate concrete evidence writes to SSOptimizer")
-        assertTrue(verifier.contains("ASTD_TELEMETRY_FILE"), "verifier should prefer ASTD-owned telemetry when the shared file is overwritten")
-        assertTrue(verifier.contains("_load_preferred_telemetry"), "verifier should load ASTD-owned telemetry before evaluating screenshot evidence")
-        assertTrue(verifier.contains("telemetry_path.with_name(ASTD_TELEMETRY_FILE).exists()"), "verifier should accept ASTD telemetry even when the shared telemetry file is missing")
+        assertTrue(verifier.contains("_arc_production_data_from_log"), "verifier should read ARC evidence from ASTD diagnostics when SSOptimizer telemetry is scenario-specific")
+        assertTrue(verifier.contains("_merge_screenshot_evidence"), "verifier should merge SSOptimizer screenshot files into ASTD ARC diagnostics")
+        assertTrue(verifier.contains("ASTD_DIAGNOSTICS_PATTERN"), "verifier should parse ASTD diagnostics JSON from starsector.log")
+        assertFalse(source.contains("writeArcProductionTelemetry"), "ARC automation must use the real SSOptimizer-patched hook")
     }
 
     @Test
@@ -151,12 +258,20 @@ class ASTDInGameAutomationScenarioTest {
     @Test
     fun `smoke automation mode requests high resolution screenshot capture`() {
         val script = Files.readString(Path.of("tools/smoke_test_game_launch.sh"))
+        val gradle = Files.readString(Path.of("build.gradle.kts"))
 
         assertTrue(script.contains("""[[ "${'$'}MODE" == "game" || "${'$'}MODE" == "automation" ]]"""), "automation mode should enter the game path")
         assertTrue(script.contains("ASTD_SMOKE_START_RES:-2560x1440"), "automation mode should default to 2560x1440")
         assertTrue(script.contains("-Dssoptimizer.automation.enabled=true"), "automation mode should enable SSOptimizer automation")
+        assertTrue(script.contains("ASTD_AUTOMATION_SCENARIO:-arc_flare_aod7_basic"), "automation mode should allow selecting the ARC production scenario")
         assertTrue(script.contains("-Dssoptimizer.automation.requireScreenshotFile=true"), "automation mode should require a concrete screenshot")
         assertTrue(script.contains("-Dssoptimizer.automation.outputDir="), "automation mode should write evidence to a known output dir")
+        assertTrue(gradle.contains("smokeTestGame"), "Gradle should expose the full in-game smoke task")
+        assertTrue(gradle.contains("\"automation\""), "smokeTestGame must use SSOptimizer automation mode")
+        assertTrue(
+            gradle.contains("ASTD_AUTOMATION_SCENARIO") && gradle.contains(ASTDInGameAutomationScenario.ARC_PRODUCTION_SCENARIO_ID),
+            "smokeTestGame should default to ARC production automation acceptance",
+        )
     }
 
     @Test

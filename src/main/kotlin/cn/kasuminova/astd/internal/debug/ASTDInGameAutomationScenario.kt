@@ -7,6 +7,7 @@ import java.nio.file.Path
  */
 object ASTDInGameAutomationScenario {
     const val SCENARIO_ID: String = "arc_flare_aod7_basic"
+    const val ARC_PRODUCTION_SCENARIO_ID: String = "arc_production_ships_vfx_tooltip"
     const val SHIP_ID: String = "astd_arc_flare"
     const val VARIANT_ID: String = "astd_arc_flare_Standard"
     const val WEAPON_ID: String = "astd_aod7"
@@ -26,6 +27,12 @@ object ASTDInGameAutomationScenario {
         val enabled = System.getProperty(ENABLED_PROPERTY)?.equals("true", ignoreCase = true) == true
         val scenario = System.getProperty(SCENARIO_PROPERTY, SCENARIO_ID)
         return enabled && scenario == SCENARIO_ID
+    }
+
+    fun isArcProductionEnabled(): Boolean {
+        val enabled = System.getProperty(ENABLED_PROPERTY)?.equals("true", ignoreCase = true) == true
+        val scenario = System.getProperty(SCENARIO_PROPERTY, SCENARIO_ID)
+        return enabled && scenario == ARC_PRODUCTION_SCENARIO_ID
     }
 
     fun outputDir(): Path {

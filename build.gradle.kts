@@ -154,7 +154,8 @@ tasks.register<Exec>("smokeTestLauncher") {
 
 tasks.register<Exec>("smokeTestGame") {
     group = "verification"
-    description = "部署模组并通过 SSOptimizer autostart 参数进入游戏路径做烟测。"
+    description = "部署模组并通过 SSOptimizer automation 路径进入 ARC production 实机验收场景。"
     dependsOn("deployMod")
-    commandLine("bash", "tools/smoke_test_game_launch.sh", starsectorGameDir, "90", "game")
+    environment("ASTD_AUTOMATION_SCENARIO", "arc_production_ships_vfx_tooltip")
+    commandLine("bash", "tools/smoke_test_game_launch.sh", starsectorGameDir, "120", "automation")
 }

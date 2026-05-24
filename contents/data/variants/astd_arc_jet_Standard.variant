@@ -4,7 +4,41 @@
     "fluxVents": 0,
     "goalVariant": true,
     "hullId": "astd_arc_jet",
+    "hullMods": [],
+    "permaMods": [
+        "advancedcore",
+        "armoredweapons",
+        "astd_arc_advanced_fire_control",
+        "astd_arc_shared_tactical_network"
+    ],
     "quality": 0.0,
     "variantId": "astd_arc_jet_Standard",
-    "weaponGroups": []
+    "weaponGroups": [
+        {
+            "autofire": false,
+            "mode": "LINKED",
+            "weapons": {
+                "WS0001": "astd_slt4",
+                "WS0002": "astd_slt4",
+                "WS0003": "astd_slt3",
+                "WS0004": "astd_slt3",
+                "WS0015": "astd_drv9",
+                "WS0016": "astd_drv9"
+            }
+        },
+        {
+            "autofire": true,
+            "mode": "LINKED",
+            "weapons": {
+                "WS0005": "astd_vpd6",
+                "WS0006": "astd_vpd6",
+                "WS0007": "astd_vpd6",
+                "WS0008": "astd_vpd6",
+                "WS0011": "astd_vpd6",
+                "WS0012": "astd_vpd6",
+                "WS0013": "astd_vpd6",
+                "WS0014": "astd_vpd6"
+            }
+        }
+    ]
 }

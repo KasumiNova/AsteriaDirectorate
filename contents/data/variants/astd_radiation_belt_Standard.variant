@@ -4,7 +4,41 @@
     "fluxVents": 0,
     "goalVariant": true,
     "hullId": "astd_radiation_belt",
+    "hullMods": [],
+    "permaMods": [
+        "magazines",
+        "auxiliarythrusters",
+        "astd_arc_advanced_targeting_system",
+        "astd_distributed_pursuit_network"
+    ],
     "quality": 0.0,
     "variantId": "astd_radiation_belt_Standard",
-    "weaponGroups": []
+    "weaponGroups": [
+        {
+            "autofire": false,
+            "mode": "LINKED",
+            "weapons": {
+                "WS0002": "astd_spc3",
+                "WS0003": "astd_spc3"
+            }
+        },
+        {
+            "autofire": true,
+            "mode": "LINKED",
+            "weapons": {
+                "WS0001": "astd_vpd6",
+                "WS0004": "astd_vpd6",
+                "WS0005": "astd_vpd6",
+                "WS0006": "astd_vpd6"
+            }
+        },
+        {
+            "autofire": false,
+            "mode": "ALTERNATING",
+            "weapons": {
+                "WS0007": "astd_rct6",
+                "WS0008": "astd_rct6"
+            }
+        }
+    ]
 }

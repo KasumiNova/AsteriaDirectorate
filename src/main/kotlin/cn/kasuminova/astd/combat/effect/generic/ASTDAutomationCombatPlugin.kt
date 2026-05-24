@@ -1,6 +1,10 @@
 package cn.kasuminova.astd.combat.effect.generic
 
 import cn.kasuminova.astd.combat.effect.generic.projectile.ProjectileSpecOnFireDispatcher
+import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcProductionTooltipContracts
+import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcProductionVfx
+import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcProductionShipIds
+import cn.kasuminova.astd.internal.i18n.I18n
 import cn.kasuminova.astd.internal.debug.ASTDInGameAutomationScenario
 import cn.kasuminova.astd.renderer.projectile.ASTDProjectileVfxPresetCatalog
 import cn.kasuminova.astd.renderer.projectile.ASTDProjectileVfxRuntimePlugin
@@ -16,6 +20,7 @@ import com.fs.starfarer.api.combat.ShipCommand
 import com.fs.starfarer.api.combat.ViewportAPI
 import com.fs.starfarer.api.combat.WeaponAPI
 import com.fs.starfarer.api.input.InputEventAPI
+import com.fs.starfarer.api.mission.FleetSide
 import org.lwjgl.opengl.Display
 import org.lwjgl.util.vector.Vector2f
 
@@ -27,6 +32,14 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     private val playerAnchor = Vector2f(-260f, 0f)
     private val projectilePreviewAnchor = Vector2f(40f, 0f)
     private val enemyAnchor = Vector2f(900f, 0f)
+    private val arcProductionAnchors = mapOf(
+        "astd_arc_jet" to Vector2f(-720f, 120f),
+        "astd_plasma_arch" to Vector2f(-80f, -40f),
+        "astd_radiation_belt" to Vector2f(520f, 135f),
+        "ally_frigate" to Vector2f(-500f, -280f),
+        "ally_destroyer" to Vector2f(360f, -255f),
+        "enemy_target" to Vector2f(980f, 20f),
+    )
     private val log = Global.getLogger(ASTDAutomationCombatPlugin::class.java)
     private var engine: CombatEngineAPI? = null
     private var elapsed = 0f
@@ -44,18 +57,34 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     override fun init(engine: CombatEngineAPI) {
         this.engine = engine
         ASTDProjectileVfxRuntimePlugin.ensureInstalled(engine)
-        lockCamera(engine)
-        arrangeShips(engine, findArcFlare(engine))
-        writeDiagnostics(engine, "CombatReady")
-        writeTelemetry(engine, "CombatReady")
-        log.info("[ASTD-Automation] scenario=${ASTDInGameAutomationScenario.SCENARIO_ID} combat plugin initialized")
+        if (ASTDInGameAutomationScenario.isArcProductionEnabled()) {
+            engine.setDoNotEndCombat(true)
+            lockArcProductionCamera(engine)
+            arrangeArcProductionShips(engine)
+            writeDiagnostics(engine, "CombatReady")
+            writeTelemetry(engine, "CombatReady", arcProductionTelemetryShip(engine), null)
+            log.info("[ASTD-Automation] scenario=${ASTDInGameAutomationScenario.ARC_PRODUCTION_SCENARIO_ID} combat plugin initialized")
+        } else {
+            lockCamera(engine)
+            arrangeShips(engine, findArcFlare(engine))
+            writeDiagnostics(engine, "CombatReady")
+            writeTelemetry(engine, "CombatReady")
+            log.info("[ASTD-Automation] scenario=${ASTDInGameAutomationScenario.SCENARIO_ID} combat plugin initialized")
+        }
     }
 
     override fun advance(amount: Float, events: MutableList<InputEventAPI>?) {
         val combatEngine = engine ?: return
+        if (ASTDInGameAutomationScenario.isArcProductionEnabled()) {
+            if (combatEngine.isPaused) combatEngine.setPaused(false)
+            elapsed += amount.coerceAtLeast(0f)
+            advanceArcProductionScenario(combatEngine)
+            return
+        }
         if (combatEngine.isPaused) return
 
         elapsed += amount.coerceAtLeast(0f)
+
         val ship = findArcFlare(combatEngine)
         val weapon = ship?.allWeapons?.firstOrNull { it.id == ASTDInGameAutomationScenario.WEAPON_ID }
         lockCamera(combatEngine)
@@ -102,6 +131,18 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
 
     override fun renderInUICoords(viewport: ViewportAPI) {
         val combatEngine = engine ?: return
+        if (ASTDInGameAutomationScenario.isArcProductionEnabled()) {
+            if (!completed || visualFramesWritten >= 3) return
+            if (visualFramesWritten > 0 && elapsed - lastVisualFrameAt < 0.18f) return
+            lockArcProductionCamera(combatEngine)
+            arrangeArcProductionShips(combatEngine)
+            lastVisualFrameAt = elapsed
+            visualFramesWritten++
+            writeDiagnostics(combatEngine, "Completed")
+            writeTelemetry(combatEngine, "Completed", arcProductionTelemetryShip(combatEngine), null)
+            return
+        }
+
         if (!completed || visualFramesWritten >= 3) return
         if (visualFramesWritten > 0 && elapsed - lastVisualFrameAt < 0.18f) return
 
@@ -129,6 +170,9 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 ship.variant?.hullVariantId == ASTDInGameAutomationScenario.VARIANT_ID
         }
     }
+
+    private fun findShipByHull(engine: CombatEngineAPI, hullId: String): ShipAPI? =
+        engine.ships.firstOrNull { ship -> ship.hullSpec?.hullId == hullId }
 
     private fun lockCamera(engine: CombatEngineAPI) {
         val viewport = engine.viewport
@@ -172,6 +216,149 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         ship.blockCommandForOneFrame(ShipCommand.TURN_RIGHT)
         if (!allowFire) ship.blockCommandForOneFrame(ShipCommand.FIRE)
     }
+
+    private fun lockArcProductionCamera(engine: CombatEngineAPI) {
+        val viewport = engine.viewport
+        val displayWidth = try { Display.getWidth().takeIf { it > 0 } ?: 2560 } catch (_: Throwable) { 2560 }
+        val displayHeight = try { Display.getHeight().takeIf { it > 0 } ?: 1440 } catch (_: Throwable) { 1440 }
+        val displayAspect = displayWidth.toFloat() / displayHeight.toFloat()
+        val visibleHeight = 980f
+        val visibleWidth = visibleHeight * displayAspect
+
+        viewport.setExternalControl(true)
+        viewport.set(-40f - visibleWidth * 0.5f, -20f - visibleHeight * 0.5f, visibleWidth, visibleHeight)
+        viewport.setEverythingNearViewport(true)
+    }
+
+    private fun deployArcProductionReserveShips(engine: CombatEngineAPI) {
+        engine.setDoNotEndCombat(true)
+        deployArcProductionSide(engine, FleetSide.PLAYER)
+        deployArcProductionSide(engine, FleetSide.ENEMY)
+    }
+
+    private fun deployArcProductionSide(engine: CombatEngineAPI, side: FleetSide) {
+        val manager = engine.getFleetManager(side)
+        manager.setSuppressDeploymentMessages(true)
+        val reserves = manager.getReservesCopy().toList()
+        if (reserves.isEmpty()) return
+
+        var allyIndex = 0
+        var enemyIndex = 0
+        for (member in reserves) {
+            val hullId = member.hullId ?: continue
+            if (findShipByHull(engine, hullId) != null && hullId in ARC_PRODUCTION_CORE_HULLS) {
+                manager.removeFromReserves(member)
+                continue
+            }
+
+            val anchor = when {
+                side == FleetSide.ENEMY -> {
+                    val base = arcProductionAnchors.getValue("enemy_target")
+                    Vector2f(base.x + enemyIndex++ * 170f, base.y)
+                }
+                hullId == ASTDArcProductionShipIds.HULL_ARC_JET -> arcProductionAnchors.getValue("astd_arc_jet")
+                hullId == ASTDArcProductionShipIds.HULL_PLASMA_ARCH -> arcProductionAnchors.getValue("astd_plasma_arch")
+                hullId == ASTDArcProductionShipIds.HULL_RADIATION_BELT -> arcProductionAnchors.getValue("astd_radiation_belt")
+                else -> {
+                    val base = if (allyIndex % 2 == 0) {
+                        arcProductionAnchors.getValue("ally_frigate")
+                    } else {
+                        arcProductionAnchors.getValue("ally_destroyer")
+                    }
+                    Vector2f(base.x + (allyIndex / 2) * 150f, base.y)
+                }
+            }
+            val facing = when {
+                side == FleetSide.ENEMY -> 180f
+                hullId == ASTDArcProductionShipIds.HULL_RADIATION_BELT -> 180f
+                else -> 0f
+            }
+            val spawned = manager.spawnFleetMember(member, Vector2f(anchor), facing, 0f)
+            manager.removeFromReserves(member)
+            stabilizeShip(spawned, anchor, facing, allowFire = false)
+            if (side == FleetSide.PLAYER && hullId !in ARC_PRODUCTION_CORE_HULLS) allyIndex++
+        }
+    }
+
+    private fun arrangeArcProductionShips(engine: CombatEngineAPI) {
+        val arcJet = findShipByHull(engine, "astd_arc_jet")
+        val plasmaArch = findShipByHull(engine, "astd_plasma_arch")
+        val radiationBelt = findShipByHull(engine, "astd_radiation_belt")
+        arcJet?.let { stabilizeShip(it, arcProductionAnchors.getValue("astd_arc_jet"), 0f, allowFire = false) }
+        plasmaArch?.let { stabilizeShip(it, arcProductionAnchors.getValue("astd_plasma_arch"), 0f, allowFire = false) }
+        radiationBelt?.let { stabilizeShip(it, arcProductionAnchors.getValue("astd_radiation_belt"), 180f, allowFire = false) }
+
+        engine.ships
+            .filter { it.hullSpec?.hullId !in setOf("astd_arc_jet", "astd_plasma_arch", "astd_radiation_belt") }
+            .filter { it.owner == arcJet?.owner || it.owner == plasmaArch?.owner || it.owner == radiationBelt?.owner }
+            .forEachIndexed { index, ship ->
+                val anchor = if (index % 2 == 0) arcProductionAnchors.getValue("ally_frigate") else arcProductionAnchors.getValue("ally_destroyer")
+                stabilizeShip(ship, anchor, 0f, allowFire = false)
+            }
+
+        engine.ships
+            .filter { ship -> ship.owner != 0 }
+            .forEach { stabilizeShip(it, arcProductionAnchors.getValue("enemy_target"), 180f, allowFire = false) }
+    }
+
+    private fun advanceArcProductionScenario(engine: CombatEngineAPI) {
+        engine.setDoNotEndCombat(true)
+        deployArcProductionReserveShips(engine)
+        lockArcProductionCamera(engine)
+        arrangeArcProductionShips(engine)
+
+        val arcJet = findShipByHull(engine, "astd_arc_jet")
+        val plasmaArch = findShipByHull(engine, "astd_plasma_arch")
+        val radiationBelt = findShipByHull(engine, "astd_radiation_belt")
+        val telemetryShip = arcJet ?: plasmaArch ?: radiationBelt
+        telemetryShip?.let { engine.setPlayerShipExternal(it) }
+
+        arcJet?.system?.let { if (!it.isOn && elapsed > 0.8f) arcJet.useSystem() }
+        plasmaArch?.shield?.let { if (!it.isOn) it.toggleOn() }
+        plasmaArch?.system?.let { if (!it.isOn && elapsed > 0.8f) plasmaArch.useSystem() }
+        radiationBelt?.system?.let { if (!it.isOn && elapsed > 0.8f) radiationBelt.useSystem() }
+
+        val missingShips = arcProductionMissingShips(engine)
+        val state = when {
+            arcProductionEvidenceReady(engine) -> "Completed"
+            missingShips.isNotEmpty() && elapsed > 8f -> {
+                failureReason = "arc production ships missing: ${missingShips.joinToString(",")}"
+                "Failed"
+            }
+            else -> "CombatReady"
+        }
+        if (state == "Completed" && !completed) {
+            completed = true
+            completedAt = elapsed
+            log.info("[ASTD-Automation] Completed: arc_production_ships_vfx_tooltip/VFX tooltip evidence observed")
+        }
+        if (elapsed - lastWriteAt >= 0.18f || state == "Completed") {
+            lastWriteAt = elapsed
+            writeDiagnostics(engine, state, telemetryShip)
+            writeTelemetry(engine, state, telemetryShip, null)
+        }
+    }
+
+    private fun arcProductionMissingShips(engine: CombatEngineAPI): List<String> =
+        ARC_PRODUCTION_CORE_HULLS.filter { findShipByHull(engine, it) == null }
+
+    private fun arcProductionEvidenceReady(engine: CombatEngineAPI): Boolean {
+        if (elapsed < 1.25f) return false
+        return listOf(
+            ASTDArcProductionVfx.TELEMETRY_ARC_JET_LINKED_SHIPS,
+            ASTDArcProductionVfx.TELEMETRY_ARC_JET_ACTIVE_SYSTEM_LINKS,
+            ASTDArcProductionVfx.TELEMETRY_PLASMA_ARCH_SHIELD_OPEN,
+            ASTDArcProductionVfx.TELEMETRY_PLASMA_ARCH_SYSTEM_ACTIVE,
+            ASTDArcProductionVfx.TELEMETRY_PLASMA_ARCH_SHIELD_ARC_EMISSIONS,
+            ASTDArcProductionVfx.TELEMETRY_RADIATION_BELT_PURSUIT_LINKS,
+            ASTDArcProductionVfx.TELEMETRY_RADIATION_BELT_SYSTEM_AFTERIMAGES,
+        ).all { ASTDArcProductionVfx.counter(engine, it) > 0 }
+    }
+
+    private fun arcProductionTelemetryShip(engine: CombatEngineAPI): ShipAPI? =
+        findShipByHull(engine, "astd_arc_jet")
+            ?: findShipByHull(engine, "astd_plasma_arch")
+            ?: findShipByHull(engine, "astd_radiation_belt")
 
     private fun spawnAod7Projectile(engine: CombatEngineAPI, ship: ShipAPI, weapon: WeaponAPI) {
         val location = Vector2f(projectilePreviewAnchor)
@@ -331,7 +518,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         state: String,
         ship: ShipAPI? = findArcFlare(engine),
     ) {
-        if (!ASTDInGameAutomationScenario.isEnabled()) return
+        if (!ASTDInGameAutomationScenario.isEnabled() && !ASTDInGameAutomationScenario.isArcProductionEnabled()) return
 
         val displayMode = try { Display.getDisplayMode() } catch (_: Throwable) { null }
         val displayWidth = try { Display.getWidth() } catch (_: Throwable) { -1 }
@@ -340,10 +527,15 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         val viewport = engine.viewport
         val shipSprite = try { ship?.spriteAPI } catch (_: Throwable) { null }
         val runtime = ASTDProjectileVfxRuntimeTelemetry.snapshot()
+        val scenarioId = if (ASTDInGameAutomationScenario.isArcProductionEnabled()) {
+            ASTDInGameAutomationScenario.ARC_PRODUCTION_SCENARIO_ID
+        } else {
+            ASTDInGameAutomationScenario.SCENARIO_ID
+        }
         val json = buildString {
             appendLine("{")
             appendLine("  \"source\": \"ASTD\",")
-            appendLine("  \"scenario\": \"${ASTDInGameAutomationScenario.SCENARIO_ID}\",")
+            appendLine("  \"scenario\": \"$scenarioId\",")
             appendLine("  \"state\": \"$state\",")
             appendLine("  \"displayWidth\": $displayWidth,")
             appendLine("  \"displayHeight\": $displayHeight,")
@@ -362,24 +554,88 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             appendLine("  \"shipSpriteHeight\": ${formatFloat(shipSprite?.height ?: -1f)},")
             appendLine("  \"shipSpriteCenterX\": ${formatFloat(shipSprite?.centerX ?: -1f)},")
             appendLine("  \"shipSpriteCenterY\": ${formatFloat(shipSprite?.centerY ?: -1f)},")
-            appendLine("  \"runtimeElapsedSeconds\": ${formatFloat(runtime.lastElapsed)},")
-            appendLine("  \"runtimeVisibleLength\": ${formatFloat(runtime.lastVisibleLength)},")
-            appendLine("  \"runtimeBeamAlpha\": ${formatFloat(runtime.lastBeamAlpha)},")
-            appendLine("  \"runtimeWorldUnitsPerPixel\": ${formatFloat(runtime.lastWorldUnitsPerPixel)},")
-            appendLine("  \"runtimeTrackedCount\": ${runtime.trackedCount},")
-            appendLine("  \"runtimeLastProjectileSpecId\": ${jsonString(runtime.lastProjectileSpecId)},")
-            appendLine("  \"runtimeLastPresetId\": ${jsonString(runtime.lastPresetId)},")
-            appendLine("  \"referenceVisibleLength\": ${formatFloat(referenceCaptureVisibleLength())},")
+            appendLine("  \"failureReason\": ${jsonString(failureReason)},")
+            if (ASTDInGameAutomationScenario.isArcProductionEnabled()) {
+                appendLine("  \"runtimeElapsedSeconds\": 0,")
+                appendLine("  \"runtimeVisibleLength\": 0,")
+                appendLine("  \"runtimeBeamAlpha\": 0,")
+                appendLine("  \"runtimeWorldUnitsPerPixel\": 0,")
+                appendLine("  \"runtimeTrackedCount\": 0,")
+                appendLine("  \"runtimeLastProjectileSpecId\": null,")
+                appendLine("  \"runtimeLastPresetId\": null,")
+                appendLine("  \"referenceVisibleLength\": 0,")
+                appendLine("  \"arcProductionMissingShips\": ${jsonStringList(arcProductionMissingShips(engine))},")
+                appendLine("  \"arcProductionDeployedShipIds\": ${jsonStringList(arcProductionDeployedShipIds(engine))},")
+                appendLine("  \"arcProductionDeployedVariantIds\": ${jsonStringList(arcProductionDeployedVariantIds(engine))},")
+                appendLine("  \"arcProductionPlayerReserves\": ${engine.getFleetManager(FleetSide.PLAYER).getReservesCopy().size},")
+                appendLine("  \"arcProductionEnemyReserves\": ${engine.getFleetManager(FleetSide.ENEMY).getReservesCopy().size},")
+            } else {
+                appendLine("  \"runtimeElapsedSeconds\": ${formatFloat(runtime.lastElapsed)},")
+                appendLine("  \"runtimeVisibleLength\": ${formatFloat(runtime.lastVisibleLength)},")
+                appendLine("  \"runtimeBeamAlpha\": ${formatFloat(runtime.lastBeamAlpha)},")
+                appendLine("  \"runtimeWorldUnitsPerPixel\": ${formatFloat(runtime.lastWorldUnitsPerPixel)},")
+                appendLine("  \"runtimeTrackedCount\": ${runtime.trackedCount},")
+                appendLine("  \"runtimeLastProjectileSpecId\": ${jsonString(runtime.lastProjectileSpecId)},")
+                appendLine("  \"runtimeLastPresetId\": ${jsonString(runtime.lastPresetId)},")
+                appendLine("  \"referenceVisibleLength\": ${formatFloat(referenceCaptureVisibleLength())},")
+            }
             appendLine("  \"fallbackInPlay\": ${fallbackProjectile?.let { engine.isEntityInPlay(it) } ?: false},")
             appendLine("  \"fallbackExpired\": ${fallbackProjectile?.isExpired ?: false},")
             appendLine("  \"fallbackFading\": ${fallbackProjectile?.isFading ?: false},")
+            appendLine("  \"arcJetLinkedShips\": ${ASTDArcProductionVfx.counter(engine, ASTDArcProductionVfx.TELEMETRY_ARC_JET_LINKED_SHIPS)},")
+            appendLine("  \"arcJetActiveSystemLinks\": ${ASTDArcProductionVfx.counter(engine, ASTDArcProductionVfx.TELEMETRY_ARC_JET_ACTIVE_SYSTEM_LINKS)},")
+            appendLine("  \"plasmaArchShieldOpen\": ${ASTDArcProductionVfx.counter(engine, ASTDArcProductionVfx.TELEMETRY_PLASMA_ARCH_SHIELD_OPEN)},")
+            appendLine("  \"plasmaArchSystemActive\": ${ASTDArcProductionVfx.counter(engine, ASTDArcProductionVfx.TELEMETRY_PLASMA_ARCH_SYSTEM_ACTIVE)},")
+            appendLine("  \"plasmaArchShieldArcEmissions\": ${ASTDArcProductionVfx.counter(engine, ASTDArcProductionVfx.TELEMETRY_PLASMA_ARCH_SHIELD_ARC_EMISSIONS)},")
+            appendLine("  \"radiationBeltPursuitLinks\": ${ASTDArcProductionVfx.counter(engine, ASTDArcProductionVfx.TELEMETRY_RADIATION_BELT_PURSUIT_LINKS)},")
+            appendLine("  \"radiationBeltSystemAfterimages\": ${ASTDArcProductionVfx.counter(engine, ASTDArcProductionVfx.TELEMETRY_RADIATION_BELT_SYSTEM_AFTERIMAGES)},")
+            val arcJetTooltipKeys = tooltipResolvedKeyCount("astd_arc_jet", ASTDArcProductionTooltipContracts.arcJetContracts)
+            val plasmaArchTooltipKeys = tooltipResolvedKeyCount("astd_plasma_arch", ASTDArcProductionTooltipContracts.plasmaArchContracts)
+            val radiationBeltTooltipKeys = tooltipResolvedKeyCount("astd_radiation_belt", ASTDArcProductionTooltipContracts.radiationBeltContracts)
+            appendLine("  \"arcJetTooltip\": ${tooltipBlocksResolved("astd_arc_jet", ASTDArcProductionTooltipContracts.arcJetContracts)},")
+            appendLine("  \"plasmaArchTooltip\": ${tooltipBlocksResolved("astd_plasma_arch", ASTDArcProductionTooltipContracts.plasmaArchContracts)},")
+            appendLine("  \"radiationBeltTooltip\": ${tooltipBlocksResolved("astd_radiation_belt", ASTDArcProductionTooltipContracts.radiationBeltContracts)},")
+            appendLine("  \"arcJetTooltipKeys\": $arcJetTooltipKeys,")
+            appendLine("  \"plasmaArchTooltipKeys\": $plasmaArchTooltipKeys,")
+            appendLine("  \"radiationBeltTooltipKeys\": $radiationBeltTooltipKeys,")
             appendLine("  \"elapsedSeconds\": ${"%.3f".format(java.util.Locale.ROOT, elapsed)}")
             appendLine("}")
         }
         log.info("[ASTD-Automation] diagnostics state=$state json=${json.lines().joinToString(" ")}")
     }
 
+    private fun tooltipBlocksResolved(hullId: String, contracts: List<ASTDArcProductionTooltipContracts.Contract>): Boolean {
+        val ship = engine?.let { findShipByHull(it, hullId) } ?: return false
+        return contracts.all { contract ->
+            hasHullmod(ship, contract.hullmodId) && contract.textKeys.all { key -> isResolvedTextKey(key) }
+        }
+    }
+
+    private fun arcProductionDeployedShipIds(engine: CombatEngineAPI): List<String> =
+        ARC_PRODUCTION_CORE_HULLS.filter { hullId -> findShipByHull(engine, hullId) != null }
+
+    private fun arcProductionDeployedVariantIds(engine: CombatEngineAPI): List<String> =
+        ARC_PRODUCTION_CORE_HULLS.mapNotNull { hullId -> findShipByHull(engine, hullId)?.variant?.hullVariantId }
+
+    private fun tooltipResolvedKeyCount(hullId: String, contracts: List<ASTDArcProductionTooltipContracts.Contract>): Int {
+        val ship = engine?.let { findShipByHull(it, hullId) } ?: return 0
+        return contracts
+            .filter { hasHullmod(ship, it.hullmodId) }
+            .sumOf { contract -> contract.textKeys.count { key -> isResolvedTextKey(key) } }
+    }
+
+    private fun hasHullmod(ship: ShipAPI, hullmodId: String): Boolean =
+        try { ship.variant?.hasHullMod(hullmodId) == true } catch (_: Throwable) { false }
+
+    private fun isResolvedTextKey(key: String): Boolean {
+        val text = I18n[I18n.Categories.MOD, key]
+        return text.isNotBlank() && text != "${I18n.Categories.MOD.id}:$key"
+    }
+
     private fun jsonString(value: String?): String = value?.let { "\"${escapeJson(it)}\"" } ?: "null"
+
+    private fun jsonStringList(values: List<String>): String =
+        values.joinToString(prefix = "[", postfix = "]") { jsonString(it) }
 
     private fun formatFloat(value: Float): String = "%.4f".format(java.util.Locale.ROOT, value)
 
@@ -388,6 +644,11 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         .replace("\"", "\\\"")
 
     private companion object {
+        private val ARC_PRODUCTION_CORE_HULLS = listOf(
+            ASTDArcProductionShipIds.HULL_ARC_JET,
+            ASTDArcProductionShipIds.HULL_PLASMA_ARCH,
+            ASTDArcProductionShipIds.HULL_RADIATION_BELT,
+        )
         private const val FALLBACK_PROJECTILE_SPEED = 2400f
         private const val AUTOMATION_CURVE_AMOUNT = 96f
         private const val AUTOMATION_CURVE_FREQUENCY = 0.8f

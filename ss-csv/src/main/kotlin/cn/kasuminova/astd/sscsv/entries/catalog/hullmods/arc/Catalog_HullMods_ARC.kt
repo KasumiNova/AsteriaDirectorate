@@ -196,3 +196,81 @@ object HullMod_astd_redundant_vents : HullModEntry() {
     override val short: String = PLACEHOLDER_SHORT
     override val sprite: String = "graphics/hullmods/astd_redundant_vents.png"
 }
+
+object HullMod_astd_arc_advanced_fire_control : HullModEntry() {
+    override val id: String = "astd_arc_advanced_fire_control"
+    override val name: String = hullmodName(id)
+    override val tier: Int = 2
+    override val rarity: Int = 1
+    override val tech: String = "ARC"
+    override val tags: String = TAGS_BUILTIN
+    override val script: String = "cn.kasuminova.astd.combat.hullmods.arc.ASTDArcAdvancedFireControlHullMod"
+    override val desc: String = SsI18n.t("hullmod.$id.desc")
+    override val short: String = SsI18n.t("hullmod.$id.short")
+    override val sprite: String = "graphics/hullmods/astd_arc_loop_interface.png"
+}
+
+object HullMod_astd_arc_shared_tactical_network : HullModEntry() {
+    override val id: String = "astd_arc_shared_tactical_network"
+    override val name: String = hullmodName(id)
+    override val tier: Int = 2
+    override val rarity: Int = 1
+    override val tech: String = "ARC"
+    override val tags: String = TAGS_BUILTIN
+    override val script: String = "cn.kasuminova.astd.combat.hullmods.arc.ASTDArcSharedTacticalNetworkHullMod"
+    override val desc: String = SsI18n.t("hullmod.$id.desc")
+    override val short: String = SsI18n.t("hullmod.$id.short")
+    override val sprite: String = "graphics/hullmods/astd_arc_loop_interface.png"
+}
+
+object HullMod_astd_plasma_armor_shield : HullModEntry() {
+    override val id: String = "astd_plasma_armor_shield"
+    override val name: String = hullmodName(id)
+    override val tier: Int = 2
+    override val rarity: Int = 1
+    override val tech: String = "ARC"
+    override val tags: String = TAGS_BUILTIN
+    override val script: String = "cn.kasuminova.astd.combat.hullmods.arc.ASTDPlasmaArmorShieldHullMod"
+    override val desc: String = SsI18n.t("hullmod.$id.desc")
+    override val short: String = SsI18n.t("hullmod.$id.short")
+    override val sprite: String = "graphics/hullmods/astd_arch_stabilizer.png"
+}
+
+object HullMod_astd_ionized_recoil_accumulator : HullModEntry() {
+    override val id: String = "astd_ionized_recoil_accumulator"
+    override val name: String = hullmodName(id)
+    override val tier: Int = 2
+    override val rarity: Int = 1
+    override val tech: String = "ARC"
+    override val tags: String = TAGS_BUILTIN
+    override val script: String = "cn.kasuminova.astd.combat.hullmods.arc.ASTDIonizedRecoilAccumulatorHullMod"
+    override val desc: String = SsI18n.t("hullmod.$id.desc")
+    override val short: String = SsI18n.t("hullmod.$id.short")
+    override val sprite: String = "graphics/hullmods/astd_thermodynamic_exchange.png"
+}
+
+object HullMod_astd_arc_advanced_targeting_system : HullModEntry() {
+    override val id: String = "astd_arc_advanced_targeting_system"
+    override val name: String = hullmodName(id)
+    override val tier: Int = 1
+    override val rarity: Int = 1
+    override val tech: String = "ARC"
+    override val tags: String = TAGS_BUILTIN
+    override val script: String = "cn.kasuminova.astd.combat.hullmods.arc.ASTDArcAdvancedTargetingSystemHullMod"
+    override val desc: String = SsI18n.t("hullmod.$id.desc")
+    override val short: String = SsI18n.t("hullmod.$id.short")
+    override val sprite: String = "graphics/hullmods/astd_arc_loop_interface.png"
+}
+
+object HullMod_astd_distributed_pursuit_network : HullModEntry() {
+    override val id: String = "astd_distributed_pursuit_network"
+    override val name: String = hullmodName(id)
+    override val tier: Int = 1
+    override val rarity: Int = 1
+    override val tech: String = "ARC"
+    override val tags: String = TAGS_BUILTIN
+    override val script: String = "cn.kasuminova.astd.combat.hullmods.arc.ASTDDistributedPursuitNetworkHullMod"
+    override val desc: String = SsI18n.t("hullmod.$id.desc")
+    override val short: String = SsI18n.t("hullmod.$id.short")
+    override val sprite: String = "graphics/hullmods/astd_vectorized_jet_array.png"
+}
