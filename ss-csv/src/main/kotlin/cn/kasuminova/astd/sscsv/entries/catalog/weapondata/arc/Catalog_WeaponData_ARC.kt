@@ -111,6 +111,36 @@ object Wpn_astd_negentropy_edge_bloom : WeaponDataEntry() {
     override val number: Int = 9126
 }
 
+/** Radiation Belt：整船 bloom 描边层（装配界面/战斗 decorative outline）。 */
+object Wpn_astd_radiation_belt_bloom : WeaponDataEntry() {
+    override val id: String = "astd_radiation_belt_bloom"
+    override val name: String = weaponName(id)
+    override val tier: Int = 5
+    override val baseValue: Int = 0
+    override val range: Int = 0
+    override val turnRate: Int = 0
+    override val type: String = "OTHER"
+    override val tags: String = "no_drop, no_drop_salvage"
+    override val tech: String = "弧光阵列"
+    override val noDpsInTooltip: Boolean = true
+    override val number: Int = 9128
+}
+
+/** Plasma Arch：整船 bloom 描边层（装配界面/战斗 decorative outline）。 */
+object Wpn_astd_plasma_arch_bloom : WeaponDataEntry() {
+    override val id: String = "astd_plasma_arch_bloom"
+    override val name: String = weaponName(id)
+    override val tier: Int = 5
+    override val baseValue: Int = 0
+    override val range: Int = 0
+    override val turnRate: Int = 0
+    override val type: String = "OTHER"
+    override val tags: String = "no_drop, no_drop_salvage"
+    override val tech: String = "弧光阵列"
+    override val noDpsInTooltip: Boolean = true
+    override val number: Int = 9129
+}
+
 /** Negentropy Edge：追击虚粒子真实导弹体（脚本生成，实体碰撞结算）。 */
 object Wpn_astd_virtual_particle_mote_launcher : WeaponDataEntry(), SsProjMissileOutputs {
     override val id: String = "astd_virtual_particle_mote_launcher"

@@ -1,5 +1,6 @@
 package cn.kasuminova.astd.combat.hullmods.arc
 
+import cn.kasuminova.astd.combat.hullmods.base.ASTDHullModTooltipRenderer
 import com.fs.starfarer.api.combat.BaseHullMod
 import com.fs.starfarer.api.combat.MutableShipStatsAPI
 import com.fs.starfarer.api.combat.ShipAPI
@@ -9,7 +10,7 @@ import java.awt.Color
 class ASTDArcFlareDualModeSwitcherHullMod : BaseHullMod() {
 
     companion object {
-        private val THEME = ASTDArcFlareHullModTooltip.Theme(
+        private val THEME = ASTDHullModTooltipRenderer.Theme(
             nameColor = Color(255, 214, 118),
             borderColor = Color(255, 168, 58),
             headerBackground = Color(76, 48, 10, 185),
@@ -27,23 +28,15 @@ class ASTDArcFlareDualModeSwitcherHullMod : BaseHullMod() {
     override fun isApplicableToShip(ship: ShipAPI): Boolean = ship.isASTDShip()
 
     override fun addPostDescriptionSection(tooltip: TooltipMakerAPI, hullSize: ShipAPI.HullSize, ship: ShipAPI?, width: Float, isForModSpec: Boolean) {
-        ASTDArcFlareHullModTooltip.render(
+        ASTDHullModTooltipRenderer.renderBlocks(
             tooltip = tooltip,
             width = width,
             title = spec?.displayName ?: "",
             theme = THEME,
-            summaryKey = "ui.hullmod.switcher.summary",
-            sections = listOf(
-                ASTDArcFlareHullModTooltip.section(
-                    "ui.hullmod.section.switch",
-                    "ui.hullmod.switcher.line.1",
-                    "ui.hullmod.switcher.line.2",
-                ),
-                ASTDArcFlareHullModTooltip.section(
-                    "ui.hullmod.section.mode",
-                    "ui.hullmod.switcher.line.3",
-                    "ui.hullmod.switcher.line.4",
-                ),
+            blocks = listOf(
+                ASTDHullModTooltipRenderer.paragraph("ui.hullmod.switcher.summary"),
+                ASTDHullModTooltipRenderer.paragraph("ui.hullmod.switcher.line.1"),
+                ASTDHullModTooltipRenderer.paragraph("ui.hullmod.switcher.line.2"),
             ),
         )
     }

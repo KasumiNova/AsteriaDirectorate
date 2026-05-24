@@ -1,5 +1,6 @@
 package cn.kasuminova.astd.combat.hullmods.arc
 
+import cn.kasuminova.astd.combat.hullmods.base.ASTDHullModTooltipRenderer
 import cn.kasuminova.astd.renderer.effect.hullmods.ASTDNegentropyChargeBarRenderer
 import cn.kasuminova.astd.combat.shipsystems.ASTDNegentropyEdgeState
 import cn.kasuminova.astd.combat.shipsystems.ASTDNegentropyEdgeDroneSubsystem
@@ -22,7 +23,7 @@ class ASTDTransientPotentialManifoldHullMod : BaseHullMod() {
         private const val MOD_ID = "astd_transient_potential_manifold"
         private const val RELOAD_MOD_ID = "astd_transient_potential_reload_heat"
 
-        private val THEME = ASTDArcFlareHullModTooltip.Theme(
+        private val THEME = ASTDHullModTooltipRenderer.Theme(
             nameColor = Color(150, 225, 255),
             borderColor = Color(86, 180, 255),
             headerBackground = Color(14, 46, 78, 190),
@@ -67,18 +68,33 @@ class ASTDTransientPotentialManifoldHullMod : BaseHullMod() {
     }
 
     override fun addPostDescriptionSection(tooltip: TooltipMakerAPI, hullSize: ShipAPI.HullSize, ship: ShipAPI?, width: Float, isForModSpec: Boolean) {
-        ASTDArcFlareHullModTooltip.render(
+        ASTDHullModTooltipRenderer.renderBlocks(
             tooltip = tooltip,
             width = width,
             title = spec?.displayName ?: "",
             theme = THEME,
-            summaryKey = "ui.hullmod.negentropy.manifold.summary",
-            sections = listOf(
-                ASTDArcFlareHullModTooltip.section(
-                    "ui.hullmod.section.integration",
-                    "ui.hullmod.negentropy.manifold.line.1",
-                    "ui.hullmod.negentropy.manifold.line.2",
-                    "ui.hullmod.negentropy.manifold.line.3",
+            blocks = listOf(
+                ASTDHullModTooltipRenderer.paragraph("ui.hullmod.negentropy.manifold.summary"),
+                ASTDHullModTooltipRenderer.heading("ui.hullmod.export.section.impact"),
+                ASTDHullModTooltipRenderer.table(
+                    rows = arrayOf(
+                        ASTDHullModTooltipRenderer.row("ui.hullmod.negentropy.manifold.attr.op", "ui.hullmod.negentropy.manifold.value.op"),
+                        ASTDHullModTooltipRenderer.row("ui.hullmod.negentropy.manifold.attr.range", "ui.hullmod.negentropy.manifold.value.range"),
+                        ASTDHullModTooltipRenderer.row("ui.hullmod.negentropy.manifold.attr.projectile_speed", "ui.hullmod.negentropy.manifold.value.projectile_speed"),
+                    ),
+                ),
+                ASTDHullModTooltipRenderer.heading("ui.hullmod.export.section.pulse"),
+                ASTDHullModTooltipRenderer.paragraph("ui.hullmod.negentropy.manifold.pulse.1"),
+                ASTDHullModTooltipRenderer.paragraph("ui.hullmod.negentropy.manifold.pulse.2"),
+                ASTDHullModTooltipRenderer.paragraph("ui.hullmod.negentropy.manifold.pulse.3"),
+                ASTDHullModTooltipRenderer.heading("ui.hullmod.export.section.pulse_active"),
+                ASTDHullModTooltipRenderer.table(
+                    rows = arrayOf(
+                        ASTDHullModTooltipRenderer.row("ui.hullmod.negentropy.manifold.attr.rof", "ui.hullmod.negentropy.manifold.value.rof"),
+                        ASTDHullModTooltipRenderer.row("ui.hullmod.negentropy.manifold.attr.damage", "ui.hullmod.negentropy.manifold.value.damage"),
+                        ASTDHullModTooltipRenderer.row("ui.hullmod.negentropy.manifold.attr.flux", "ui.hullmod.negentropy.manifold.value.flux"),
+                        ASTDHullModTooltipRenderer.row("ui.hullmod.negentropy.manifold.attr.ammo_regen", "ui.hullmod.negentropy.manifold.value.ammo_regen"),
+                    ),
                 ),
             ),
             starTrails = false,

@@ -1,5 +1,6 @@
 package cn.kasuminova.astd.combat.hullmods.arc
 
+import cn.kasuminova.astd.combat.hullmods.base.ASTDHullModTooltipRenderer
 import cn.kasuminova.astd.renderer.effect.hullmods.ASTDNegentropyEdgeVfx
 import cn.kasuminova.astd.combat.shipsystems.ASTDNegentropyEdgeState
 import com.fs.starfarer.api.Global
@@ -53,7 +54,7 @@ class ASTDVirtualParticleLatticeWebHullMod : BaseHullMod() {
         const val PURSUIT_MISSILE_PROJECTILE_ID = "astd_virtual_particle_mote"
         const val PURSUIT_MISSILE_DAMAGE = 150f
 
-        private val THEME = ASTDArcFlareHullModTooltip.Theme(
+        private val THEME = ASTDHullModTooltipRenderer.Theme(
             nameColor = Color(184, 236, 255),
             borderColor = Color(96, 194, 255),
             headerBackground = Color(18, 54, 86, 190),
@@ -75,19 +76,18 @@ class ASTDVirtualParticleLatticeWebHullMod : BaseHullMod() {
     }
 
     override fun addPostDescriptionSection(tooltip: TooltipMakerAPI, hullSize: ShipAPI.HullSize, ship: ShipAPI?, width: Float, isForModSpec: Boolean) {
-        ASTDArcFlareHullModTooltip.render(
+        ASTDHullModTooltipRenderer.renderBlocks(
             tooltip = tooltip,
             width = width,
             title = spec?.displayName ?: "",
             theme = THEME,
-            summaryKey = "ui.hullmod.negentropy.lattice.summary",
-            sections = listOf(
-                ASTDArcFlareHullModTooltip.section(
-                    "ui.hullmod.section.integration",
-                    "ui.hullmod.negentropy.lattice.line.1",
-                    "ui.hullmod.negentropy.lattice.line.2",
-                    "ui.hullmod.negentropy.lattice.line.3",
-                ),
+            blocks = listOf(
+                ASTDHullModTooltipRenderer.paragraph("ui.hullmod.negentropy.lattice.summary"),
+                ASTDHullModTooltipRenderer.heading("ui.hullmod.export.section.effect"),
+                ASTDHullModTooltipRenderer.paragraph("ui.hullmod.negentropy.lattice.line.1"),
+                ASTDHullModTooltipRenderer.paragraph("ui.hullmod.negentropy.lattice.line.2"),
+                ASTDHullModTooltipRenderer.paragraph("ui.hullmod.negentropy.lattice.line.3"),
+                ASTDHullModTooltipRenderer.paragraph("ui.hullmod.negentropy.lattice.line.4"),
             ),
             starTrails = false,
         )
