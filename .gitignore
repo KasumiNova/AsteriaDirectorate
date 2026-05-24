@@ -11,6 +11,7 @@ dev-resources
 node_modules
 dist
 dist-export
+.beam-vfx-preview.log
 __pycache__/
 *.pyc
 
