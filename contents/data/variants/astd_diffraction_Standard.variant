@@ -4,12 +4,7 @@
     "fluxVents": 0,
     "goalVariant": true,
     "hullId": "astd_diffraction",
-    "hullMods": [
-        "astd_nano_restoration_protocol"
-    ],
-    "permaMods": [
-        "astd_phase_diffraction_shield"
-    ],
+    "hullMods": [],
     "quality": 0.0,
     "variantId": "astd_diffraction_Standard",
     "weaponGroups": [

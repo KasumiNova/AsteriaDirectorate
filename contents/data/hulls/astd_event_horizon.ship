@@ -40,6 +40,11 @@
     "hullId": "astd_event_horizon",
     "hullName": "视界线",
     "hullSize": "CAPITAL_SHIP",
+    "builtInMods": [
+        "astd_nano_restoration_protocol",
+        "astd_singularity_displacement_armor",
+        "astd_lens_horizon_suppression_mesh"
+    ],
     "builtInWeapons": {
         "WS SYS": "astd_stasis_collapse_emitter"
     },

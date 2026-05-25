@@ -40,6 +40,10 @@
     "hullId": "astd_apex_logic",
     "hullName": "顶点逻辑",
     "hullSize": "CAPITAL_SHIP",
+    "builtInMods": [
+        "astd_nano_restoration_protocol",
+        "astd_zero_point_compute_core"
+    ],
     "shieldCenter": [
         0,
         0

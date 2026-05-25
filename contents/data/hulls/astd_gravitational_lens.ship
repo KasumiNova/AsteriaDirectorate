@@ -40,6 +40,10 @@
     "hullId": "astd_gravitational_lens",
     "hullName": "引力透镜",
     "hullSize": "CRUISER",
+    "builtInMods": [
+        "astd_nano_restoration_protocol",
+        "astd_lens_array_core"
+    ],
     "shieldCenter": [
         0,
         0

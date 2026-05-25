@@ -4,12 +4,7 @@
     "fluxVents": 0,
     "goalVariant": true,
     "hullId": "astd_apex_logic",
-    "hullMods": [
-        "astd_nano_restoration_protocol"
-    ],
-    "permaMods": [
-        "astd_zero_point_compute_core"
-    ],
+    "hullMods": [],
     "quality": 0.0,
     "variantId": "astd_apex_logic_Standard",
     "weaponGroups": [

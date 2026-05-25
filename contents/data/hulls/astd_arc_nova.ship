@@ -40,6 +40,11 @@
     "hullId": "astd_arc_nova",
     "hullName": "弧光新星",
     "hullSize": "CAPITAL_SHIP",
+    "builtInMods": [
+        "astd_nano_restoration_protocol",
+        "astd_thermodynamic_exchange",
+        "astd_damage_clamp_field"
+    ],
     "shieldCenter": [
         0,
         0

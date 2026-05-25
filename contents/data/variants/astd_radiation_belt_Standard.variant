@@ -5,12 +5,6 @@
     "goalVariant": true,
     "hullId": "astd_radiation_belt",
     "hullMods": [],
-    "permaMods": [
-        "magazines",
-        "auxiliarythrusters",
-        "astd_arc_advanced_targeting_system",
-        "astd_distributed_pursuit_network"
-    ],
     "quality": 0.0,
     "variantId": "astd_radiation_belt_Standard",
     "weaponGroups": [

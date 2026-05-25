@@ -4,13 +4,7 @@
     "fluxVents": 0,
     "goalVariant": true,
     "hullId": "astd_event_horizon",
-    "hullMods": [
-        "astd_nano_restoration_protocol"
-    ],
-    "permaMods": [
-        "astd_singularity_displacement_armor",
-        "astd_lens_horizon_suppression_mesh"
-    ],
+    "hullMods": [],
     "quality": 0.0,
     "variantId": "astd_event_horizon_Standard",
     "weaponGroups": [

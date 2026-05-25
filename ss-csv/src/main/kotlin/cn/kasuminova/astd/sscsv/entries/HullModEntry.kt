@@ -73,6 +73,11 @@ abstract class HullModEntry : SsCsvEntry {
 
     final override val key: String get() = id
 
+    private val isAstdBuiltIn: Boolean
+        get() = tags.split(',')
+            .map { it.trim() }
+            .any { it == "astd_builtin" }
+
     final override fun toRow(): Map<String, Any?> = linkedMapOf(
         "name" to name,
         "id" to id,
@@ -83,7 +88,7 @@ abstract class HullModEntry : SsCsvEntry {
         "uiTags" to uiTags,
         "base value" to baseValue,
         "unlocked" to if (unlocked) "TRUE" else "FALSE",
-        "hidden" to if (hidden) "TRUE" else "FALSE",
+        "hidden" to if (hidden || isAstdBuiltIn) "TRUE" else "FALSE",
         "hiddenEverywhere" to if (hiddenEverywhere) "TRUE" else "FALSE",
         "cost_frigate" to costFrigate,
         "cost_dest" to costDestroyer,

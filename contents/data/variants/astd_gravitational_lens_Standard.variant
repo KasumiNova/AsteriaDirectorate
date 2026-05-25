@@ -4,12 +4,7 @@
     "fluxVents": 0,
     "goalVariant": true,
     "hullId": "astd_gravitational_lens",
-    "hullMods": [
-        "astd_nano_restoration_protocol"
-    ],
-    "permaMods": [
-        "astd_lens_array_core"
-    ],
+    "hullMods": [],
     "quality": 0.0,
     "variantId": "astd_gravitational_lens_Standard",
     "weaponGroups": [

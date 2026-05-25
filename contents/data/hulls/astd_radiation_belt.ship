@@ -14,6 +14,12 @@
   "builtInWeapons": {
     "WS0009": "astd_radiation_belt_bloom"
   },
+  "builtInMods": [
+    "magazines",
+    "auxiliarythrusters",
+    "astd_arc_advanced_targeting_system",
+    "astd_distributed_pursuit_network"
+  ],
   "weaponSlots": [
     {
       "id": "WS0001",

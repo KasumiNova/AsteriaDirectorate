@@ -4,12 +4,7 @@
     "fluxVents": 0,
     "goalVariant": true,
     "hullId": "astd_magnetosphere_disturbance",
-    "hullMods": [
-        "astd_nano_restoration_protocol"
-    ],
-    "permaMods": [
-        "astd_fleet_coordination_relay"
-    ],
+    "hullMods": [],
     "quality": 0.0,
     "variantId": "astd_magnetosphere_disturbance_Standard",
     "weaponGroups": [

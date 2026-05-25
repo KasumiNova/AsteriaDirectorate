@@ -4,13 +4,7 @@
     "fluxVents": 0,
     "goalVariant": true,
     "hullId": "astd_arc_nova",
-    "hullMods": [
-        "astd_nano_restoration_protocol"
-    ],
-    "permaMods": [
-        "astd_thermodynamic_exchange",
-        "astd_damage_clamp_field"
-    ],
+    "hullMods": [],
     "quality": 0.0,
     "variantId": "astd_arc_nova_Standard",
     "weaponGroups": [

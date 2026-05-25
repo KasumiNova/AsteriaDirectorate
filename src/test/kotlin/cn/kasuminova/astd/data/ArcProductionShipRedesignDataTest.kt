@@ -66,8 +66,9 @@ class ArcProductionShipRedesignDataTest {
 
     @Test
     fun `production arc standard variants carry vanilla and unique built-ins`() {
-        assertVariantPermaMods(
-            path = Path.of("contents/data/variants/astd_arc_jet_Standard.variant"),
+        assertHullBuiltInMods(
+            hullPath = Path.of("contents/data/hulls/astd_arc_jet.ship"),
+            variantPath = Path.of("contents/data/variants/astd_arc_jet_Standard.variant"),
             required = listOf(
                 "advancedcore",
                 "armoredweapons",
@@ -86,8 +87,9 @@ class ArcProductionShipRedesignDataTest {
                 "WS0016" to "astd_drv9",
             ),
         )
-        assertVariantPermaMods(
-            path = Path.of("contents/data/variants/astd_plasma_arch_Standard.variant"),
+        assertHullBuiltInMods(
+            hullPath = Path.of("contents/data/hulls/astd_plasma_arch.ship"),
+            variantPath = Path.of("contents/data/variants/astd_plasma_arch_Standard.variant"),
             required = listOf(
                 "stabilizedshieldemitter",
                 "missleracks",
@@ -106,16 +108,17 @@ class ArcProductionShipRedesignDataTest {
                 "WS0013" to "astd_rct6",
             ),
         )
-        val radiationBelt = variantPermaMods(Path.of("contents/data/variants/astd_radiation_belt_Standard.variant"))
-        listOf(
-            "magazines",
-            "auxiliarythrusters",
-            "astd_arc_advanced_targeting_system",
-            "astd_distributed_pursuit_network",
-        ).forEach { id ->
-            assertTrue(id in radiationBelt, "astd_radiation_belt_Standard.variant missing permaMod: $id")
-        }
-        assertFalse("expanded_magazines" in radiationBelt, "Starsector canonical expanded magazines id is magazines")
+        val radiationBeltBuiltIns = assertHullBuiltInMods(
+            hullPath = Path.of("contents/data/hulls/astd_radiation_belt.ship"),
+            variantPath = Path.of("contents/data/variants/astd_radiation_belt_Standard.variant"),
+            required = listOf(
+                "magazines",
+                "auxiliarythrusters",
+                "astd_arc_advanced_targeting_system",
+                "astd_distributed_pursuit_network",
+            ),
+        )
+        assertFalse("expanded_magazines" in radiationBeltBuiltIns, "Starsector canonical expanded magazines id is magazines")
         assertVariantWeapons(
             path = Path.of("contents/data/variants/astd_radiation_belt_Standard.variant"),
             required = mapOf(
@@ -187,11 +190,16 @@ class ArcProductionShipRedesignDataTest {
         return CsvTestUtil.readRowsById(path)
     }
 
-    private fun assertVariantPermaMods(path: Path, required: List<String>) {
-        val permaMods = variantPermaMods(path)
+    private fun assertHullBuiltInMods(hullPath: Path, variantPath: Path, required: List<String>): Set<String> {
+        val builtIns = hullBuiltInMods(hullPath)
         required.forEach { id ->
-            assertTrue(id in permaMods, "${path.fileName} missing permaMod: $id")
+            assertTrue(id in builtIns, "${hullPath.fileName} missing builtInMod: $id")
         }
+        val variantPermaMods = variantPermaMods(variantPath)
+        required.forEach { id ->
+            assertFalse(id in variantPermaMods, "${variantPath.fileName} must not keep built-in hullmod as removable permaMod: $id")
+        }
+        return builtIns
     }
 
     private fun assertVariantWeapons(path: Path, required: Map<String, String>) {
@@ -222,7 +230,16 @@ class ArcProductionShipRedesignDataTest {
     }
 
     private fun variantPermaMods(path: Path): Set<String> {
-        val array = JSONObject(Files.readString(path)).getJSONArray("permaMods")
+        val json = JSONObject(Files.readString(path))
+        if (!json.has("permaMods")) return emptySet()
+        val array = json.getJSONArray("permaMods")
+        return (0 until array.length()).map { array.getString(it) }.toSet()
+    }
+
+    private fun hullBuiltInMods(path: Path): Set<String> {
+        val json = JSONObject(Files.readString(path))
+        if (!json.has("builtInMods")) return emptySet()
+        val array = json.getJSONArray("builtInMods")
         return (0 until array.length()).map { array.getString(it) }.toSet()
     }
 

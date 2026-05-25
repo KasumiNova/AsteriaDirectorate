@@ -11,6 +11,10 @@
   "shieldCenter": [0, 0],
   "shieldRadius": 120,
   "viewOffset": 0,
+  "builtInMods": [
+    "astd_virtual_particle_lattice_web",
+    "astd_transient_potential_manifold"
+  ],
   "builtInWeapons": {
     "WS 001": "astd_spc3",
     "WS BLOOM": "astd_negentropy_edge_bloom"

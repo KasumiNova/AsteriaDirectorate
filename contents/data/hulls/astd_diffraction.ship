@@ -40,6 +40,10 @@
     "hullId": "astd_diffraction",
     "hullName": "衍射",
     "hullSize": "DESTROYER",
+    "builtInMods": [
+        "astd_nano_restoration_protocol",
+        "astd_phase_diffraction_shield"
+    ],
     "shieldCenter": [
         0,
         0

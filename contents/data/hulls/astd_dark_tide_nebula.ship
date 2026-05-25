@@ -40,6 +40,10 @@
     "hullId": "astd_dark_tide_nebula",
     "hullName": "暗潮星云",
     "hullSize": "CRUISER",
+    "builtInMods": [
+        "astd_nano_restoration_protocol",
+        "astd_dark_tide_jammer"
+    ],
     "shieldCenter": [
         0,
         0

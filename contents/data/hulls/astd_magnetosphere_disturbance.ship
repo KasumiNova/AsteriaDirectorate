@@ -40,6 +40,10 @@
     "hullId": "astd_magnetosphere_disturbance",
     "hullName": "磁层扰动",
     "hullSize": "CAPITAL_SHIP",
+    "builtInMods": [
+        "astd_nano_restoration_protocol",
+        "astd_fleet_coordination_relay"
+    ],
     "shieldCenter": [
         0,
         0

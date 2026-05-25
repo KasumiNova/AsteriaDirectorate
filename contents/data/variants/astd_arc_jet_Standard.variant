@@ -5,12 +5,6 @@
     "goalVariant": true,
     "hullId": "astd_arc_jet",
     "hullMods": [],
-    "permaMods": [
-        "advancedcore",
-        "armoredweapons",
-        "astd_arc_advanced_fire_control",
-        "astd_arc_shared_tactical_network"
-    ],
     "quality": 0.0,
     "variantId": "astd_arc_jet_Standard",
     "weaponGroups": [

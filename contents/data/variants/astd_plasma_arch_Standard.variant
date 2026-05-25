@@ -5,12 +5,6 @@
     "goalVariant": true,
     "hullId": "astd_plasma_arch",
     "hullMods": [],
-    "permaMods": [
-        "stabilizedshieldemitter",
-        "missleracks",
-        "astd_plasma_armor_shield",
-        "astd_ionized_recoil_accumulator"
-    ],
     "quality": 0.0,
     "variantId": "astd_plasma_arch_Standard",
     "weaponGroups": [

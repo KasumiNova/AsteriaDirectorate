@@ -5,10 +5,6 @@
     "goalVariant": true,
     "hullId": "astd_negentropy_edge",
     "hullMods": [],
-    "permaMods": [
-        "astd_virtual_particle_lattice_web",
-        "astd_transient_potential_manifold"
-    ],
     "quality": 0.0,
     "variantId": "astd_negentropy_edge_Standard",
     "weaponGroups": [
