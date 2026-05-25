@@ -21,7 +21,6 @@ class ASTDPlasmaArmorShieldHullMod : BaseHullMod() {
 
     companion object {
         private const val SHIELD_SHUNT_ID = "shield_shunt"
-        private const val ARMOR_BONUS_CORRECTION_ID = "astd_plasma_armor_bonus_correction"
         private const val ARMOR_BONUS_GAIN_FRACTION = 0.66f
 
         private const val BASE_SHIELD_ARMOR_MIN = 0.05f
@@ -55,6 +54,8 @@ class ASTDPlasmaArmorShieldHullMod : BaseHullMod() {
         stats.kineticShieldDamageTakenMult.modifyMult(id, KINETIC_SHIELD_MULT)
         stats.highExplosiveShieldDamageTakenMult.modifyMult(id, HE_SHIELD_MULT)
         stats.fragmentationShieldDamageTakenMult.modifyMult(id, FRAG_SHIELD_MULT)
+        val baseArmor = stats.variant?.hullSpec?.armorRating ?: return
+        correctPositiveArmorBonuses(stats, baseArmor, id)
     }
 
     override fun advanceInCombat(ship: ShipAPI, amount: Float) {
@@ -72,7 +73,11 @@ class ASTDPlasmaArmorShieldHullMod : BaseHullMod() {
             ship.addListener(PlasmaArmorShieldListener(ship, state))
         }
 
-        correctPositiveArmorBonuses(ship)
+        correctPositiveArmorBonuses(
+            ship.mutableStats,
+            ship.armorGrid.armorRating,
+            ASTDArcProductionShipIds.HULLMOD_PLASMA_ARMOR_SHIELD,
+        )
         renderOpenShieldArcs(ship, engine, amount, boostLevel(ship))
         maintainPlayerHud(ship, engine, state)
     }
@@ -113,17 +118,16 @@ class ASTDPlasmaArmorShieldHullMod : BaseHullMod() {
         return created
     }
 
-    private fun correctPositiveArmorBonuses(ship: ShipAPI) {
-        val armorBonus = ship.mutableStats.armorBonus
-        val baseArmor = ship.armorGrid.armorRating
-        val uncorrected = armorBonus.createCopy().also { it.unmodify(ARMOR_BONUS_CORRECTION_ID) }.computeEffective(baseArmor)
+    private fun correctPositiveArmorBonuses(stats: MutableShipStatsAPI, baseArmor: Float, id: String) {
+        val armorBonus = stats.armorBonus
+        val uncorrected = armorBonus.createCopy().also { it.unmodify(id) }.computeEffective(baseArmor)
         val excess = (uncorrected - baseArmor).coerceAtLeast(0f)
         val desired = baseArmor + excess * ARMOR_BONUS_GAIN_FRACTION
         val correction = desired - uncorrected
         if (correction < -0.01f) {
-            armorBonus.modifyFlat(ARMOR_BONUS_CORRECTION_ID, correction)
+            armorBonus.modifyFlat(id, correction)
         } else {
-            armorBonus.unmodify(ARMOR_BONUS_CORRECTION_ID)
+            armorBonus.unmodify(id)
         }
     }
 
