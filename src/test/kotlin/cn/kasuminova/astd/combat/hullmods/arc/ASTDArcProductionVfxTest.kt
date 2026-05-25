@@ -139,6 +139,30 @@ class ASTDArcProductionVfxTest {
     }
 
     @Test
+    fun `distributed pursuit network applies bonuses to connected allies`() {
+        val pursuit = Files.readString(
+            Path.of("src/main/kotlin/cn/kasuminova/astd/combat/hullmods/arc/ASTDDistributedPursuitNetworkHullMod.kt"),
+        )
+
+        assertTrue(
+            pursuit.contains("applyNetworkStats(ship, target, linkStrength(target))"),
+            "distributed pursuit network should apply each connection bonus to the connected allied target",
+        )
+        assertTrue(
+            pursuit.contains("val stats = target.mutableStats"),
+            "distributed pursuit network bonuses must modify the connected target's stats",
+        )
+        assertTrue(
+            pursuit.contains("clearNetworkStats(source, target)"),
+            "distributed pursuit network must clear stale target modifiers when links change",
+        )
+        assertFalse(
+            pursuit.contains("applyNetworkStats(ship, linkStrength)"),
+            "distributed pursuit network must not aggregate connected allies into a self-only source buff",
+        )
+    }
+
+    @Test
     fun `arc shared networks clean target modifiers and honor system range stats`() {
         val tactical = Files.readString(
             Path.of("src/main/kotlin/cn/kasuminova/astd/combat/hullmods/arc/ASTDArcSharedTacticalNetworkHullMod.kt"),
@@ -189,6 +213,22 @@ class ASTDArcProductionVfxTest {
         assertFalse(
             source.contains("} else {\n                engine.timeMult.unmodify(\"" + "$" + "{id}_player\")"),
             "non-player ships must not clear the current player's time compensation",
+        )
+    }
+
+    @Test
+    fun `limit temporal thruster stat boost is limited to active window`() {
+        val source = Files.readString(
+            Path.of("src/main/kotlin/cn/kasuminova/astd/combat/shipsystems/ASTDLimitTemporalThrusterSystemStats.kt"),
+        )
+
+        assertTrue(
+            source.contains("val level = if (state == ShipSystemStatsScript.State.ACTIVE) 1f else 0f"),
+            "limit temporal thruster design says the instant stat boost lasts for the 2s active window only",
+        )
+        assertFalse(
+            source.contains("val level = if (state == ShipSystemStatsScript.State.IDLE) 0f else 1f"),
+            "limit temporal thruster must not extend full stat boosts across charge-up/down frames",
         )
     }
 

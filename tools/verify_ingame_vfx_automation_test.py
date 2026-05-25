@@ -44,9 +44,9 @@ class ProjectileStructureMetricsTest(unittest.TestCase):
             "arcJetTooltip": True,
             "plasmaArchTooltip": True,
             "radiationBeltTooltip": True,
-            "arcJetTooltipKeys": 18,
-            "plasmaArchTooltipKeys": 18,
-            "radiationBeltTooltipKeys": 26,
+            "arcJetTooltipKeys": 20,
+            "plasmaArchTooltipKeys": 26,
+            "radiationBeltTooltipKeys": 27,
             "screenshotPath": str(screenshot),
             "screenshotFrames": [str(frame) for frame in frames] if frames else None,
         }

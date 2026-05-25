@@ -23,7 +23,7 @@ class ASTDLimitTemporalThrusterSystemStats : BaseShipSystemScript() {
 
     override fun apply(stats: MutableShipStatsAPI, id: String, state: ShipSystemStatsScript.State, effectLevel: Float) {
         val ship = stats.entity as? ShipAPI
-        val level = if (state == ShipSystemStatsScript.State.IDLE) 0f else 1f
+        val level = if (state == ShipSystemStatsScript.State.ACTIVE) 1f else 0f
         if (level <= 0f) {
             unapply(stats, id)
             return

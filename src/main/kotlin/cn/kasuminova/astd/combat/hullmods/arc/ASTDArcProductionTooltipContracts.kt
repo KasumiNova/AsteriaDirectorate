@@ -32,6 +32,7 @@ internal object ASTDArcProductionTooltipContracts {
                 rows = arrayOf(
                     ASTDHullModTooltipRenderer.row("ui.hullmod.arc_advanced_fire_control.attr.weapon_flux", "ui.hullmod.arc_advanced_fire_control.value.weapon_flux"),
                     ASTDHullModTooltipRenderer.row("ui.hullmod.arc_advanced_fire_control.attr.weapon_rate", "ui.hullmod.arc_advanced_fire_control.value.weapon_rate"),
+                    ASTDHullModTooltipRenderer.row("ui.hullmod.arc_advanced_fire_control.attr.ramp", "ui.hullmod.arc_advanced_fire_control.value.ramp"),
                 ),
             ),
             ASTDHullModTooltipRenderer.paragraph("ui.hullmod.arc_advanced_fire_control.note"),
@@ -47,6 +48,9 @@ internal object ASTDArcProductionTooltipContracts {
                 rows = arrayOf(
                     ASTDHullModTooltipRenderer.row("ui.hullmod.arc_shared_tactical_network.attr.network", "ui.hullmod.arc_shared_tactical_network.value.network"),
                     ASTDHullModTooltipRenderer.row("ui.hullmod.arc_shared_tactical_network.attr.command", "ui.hullmod.arc_shared_tactical_network.value.command"),
+                    ASTDHullModTooltipRenderer.row("ui.hullmod.arc_shared_tactical_network.attr.frigate", "ui.hullmod.arc_shared_tactical_network.value.frigate"),
+                    ASTDHullModTooltipRenderer.row("ui.hullmod.arc_shared_tactical_network.attr.destroyer", "ui.hullmod.arc_shared_tactical_network.value.destroyer"),
+                    ASTDHullModTooltipRenderer.row("ui.hullmod.arc_shared_tactical_network.attr.cruiser", "ui.hullmod.arc_shared_tactical_network.value.cruiser"),
                 ),
             ),
             ASTDHullModTooltipRenderer.paragraph("ui.hullmod.arc_shared_tactical_network.note"),
@@ -61,7 +65,11 @@ internal object ASTDArcProductionTooltipContracts {
             ASTDHullModTooltipRenderer.table(
                 rows = arrayOf(
                     ASTDHullModTooltipRenderer.row("ui.hullmod.plasma_armor_shield.attr.armor_shield", "ui.hullmod.plasma_armor_shield.value.armor_shield"),
-                    ASTDHullModTooltipRenderer.row("ui.hullmod.plasma_armor_shield.attr.overload", "ui.hullmod.plasma_armor_shield.value.overload"),
+                    ASTDHullModTooltipRenderer.row("ui.hullmod.plasma_armor_shield.attr.damage_type", "ui.hullmod.plasma_armor_shield.value.damage_type"),
+                    ASTDHullModTooltipRenderer.row("ui.hullmod.plasma_armor_shield.attr.grid", "ui.hullmod.plasma_armor_shield.value.grid"),
+                    ASTDHullModTooltipRenderer.row("ui.hullmod.plasma_armor_shield.attr.boost", "ui.hullmod.plasma_armor_shield.value.boost"),
+                    ASTDHullModTooltipRenderer.row("ui.hullmod.plasma_armor_shield.attr.recovery", "ui.hullmod.plasma_armor_shield.value.recovery"),
+                    ASTDHullModTooltipRenderer.row("ui.hullmod.plasma_armor_shield.attr.limits", "ui.hullmod.plasma_armor_shield.value.limits"),
                 ),
             ),
             ASTDHullModTooltipRenderer.paragraph("ui.hullmod.plasma_armor_shield.note"),
@@ -77,6 +85,8 @@ internal object ASTDArcProductionTooltipContracts {
                 rows = arrayOf(
                     ASTDHullModTooltipRenderer.row("ui.hullmod.ionized_recoil_accumulator.attr.recoil", "ui.hullmod.ionized_recoil_accumulator.value.recoil"),
                     ASTDHullModTooltipRenderer.row("ui.hullmod.ionized_recoil_accumulator.attr.volley", "ui.hullmod.ionized_recoil_accumulator.value.volley"),
+                    ASTDHullModTooltipRenderer.row("ui.hullmod.ionized_recoil_accumulator.attr.damage", "ui.hullmod.ionized_recoil_accumulator.value.damage"),
+                    ASTDHullModTooltipRenderer.row("ui.hullmod.ionized_recoil_accumulator.attr.pierce", "ui.hullmod.ionized_recoil_accumulator.value.pierce"),
                 ),
             ),
             ASTDHullModTooltipRenderer.paragraph("ui.hullmod.ionized_recoil_accumulator.note"),

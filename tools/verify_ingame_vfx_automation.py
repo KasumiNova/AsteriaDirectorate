@@ -41,9 +41,9 @@ ARC_PRODUCTION_REQUIRED_EVIDENCE = (
 ARC_PRODUCTION_REQUIRED_SHIP_IDS = ("astd_arc_jet", "astd_plasma_arch", "astd_radiation_belt")
 ARC_PRODUCTION_REQUIRED_VARIANT_IDS = ("astd_arc_jet_Standard", "astd_plasma_arch_Standard", "astd_radiation_belt_Standard")
 ARC_PRODUCTION_TOOLTIP_KEY_MINIMUMS = {
-    "arcJetTooltipKeys": 12,
-    "plasmaArchTooltipKeys": 12,
-    "radiationBeltTooltipKeys": 16,
+    "arcJetTooltipKeys": 20,
+    "plasmaArchTooltipKeys": 26,
+    "radiationBeltTooltipKeys": 27,
 }
 ARC_PRODUCTION_SCREENSHOT_REGIONS = (
     ("arc jet passive/active network", (0.02, 0.26, 0.42, 0.70), 900),
