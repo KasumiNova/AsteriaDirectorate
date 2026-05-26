@@ -43,7 +43,7 @@ ARC_PRODUCTION_REQUIRED_VARIANT_IDS = ("astd_arc_jet_Standard", "astd_plasma_arc
 ARC_PRODUCTION_TOOLTIP_KEY_MINIMUMS = {
     "arcJetTooltipKeys": 20,
     "plasmaArchTooltipKeys": 26,
-    "radiationBeltTooltipKeys": 27,
+    "radiationBeltTooltipKeys": 26,
 }
 ARC_PRODUCTION_SCREENSHOT_REGIONS = (
     ("arc jet passive/active network", (0.02, 0.26, 0.42, 0.70), 900),
@@ -602,7 +602,7 @@ def _verify_arc_production(
     if missing_ships != []:
         errors.append(f"arcProductionMissingShips: expected [], got {missing_ships!r}")
     deployed_ship_ids = data.get("arcProductionDeployedShipIds")
-    deployed_variant_ids = data.get("arcProductionDeployedVariantIds")
+    deployed_variant_ids = data.get("arcProductionSourceVariantIds") or data.get("arcProductionDeployedVariantIds")
     if not isinstance(deployed_ship_ids, list):
         errors.append(f"arcProductionDeployedShipIds: expected deployed ship id list, got {deployed_ship_ids!r}")
     else:

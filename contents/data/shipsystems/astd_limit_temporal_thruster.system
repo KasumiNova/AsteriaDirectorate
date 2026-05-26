@@ -1,6 +1,6 @@
 {
     "id": "astd_limit_temporal_thruster",
-    "type": "STAT_MOD",
+    "type": "ENGINE_MOD",
     "aiType": "CUSTOM",
     "aiScript": "cn.kasuminova.astd.combat.shipsystems.ASTDLimitTemporalThrusterSystemAI",
     "statsScript": "cn.kasuminova.astd.combat.shipsystems.ASTDLimitTemporalThrusterSystemStats",

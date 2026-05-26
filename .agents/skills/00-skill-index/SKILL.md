@@ -67,6 +67,10 @@ description: "Skill 索引：按领域汇总本仓库可用的所有技能与路
   - 路径：`.agents/skills/system-status-text-guidelines/SKILL.md`
   - 适用：`getStatusData()` 返回台词风格文本；多状态/多模式键名约定；禁止在状态行写属性数值。
 
+- **船插互斥 / 禁装实现规范**
+  - 路径：`.agents/skills/hullmod-incompatibility-guidelines/SKILL.md`
+  - 适用：内置船插或特殊舰体需要禁止、清理或提示不兼容船插；区分硬清理、MagicLib warning 与 UI 灰掉方案。
+
 ## 文案风格
 
 - **文案风格硬约束（通用规则 / 分类模板 / 审查清单）**

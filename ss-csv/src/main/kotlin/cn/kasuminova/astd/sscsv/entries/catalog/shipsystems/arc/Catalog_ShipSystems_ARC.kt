@@ -173,17 +173,21 @@ object Sys_astd_plasma_armor_shield_boost : ShipSystemWithSystemFileEntry() {
 
     override val statsScript: String = "cn.kasuminova.astd.combat.shipsystems.ASTDPlasmaArmorShieldBoostSystemStats"
 
+    override val systemType: String = "SHIELD_MOD"
     override val aiType: String = "CUSTOM"
     override val aiScript: String = "cn.kasuminova.astd.combat.shipsystems.ASTDPlasmaArmorShieldBoostSystemAI"
 
     override val chargeUp: Double = 0.5
-    override val active: Double = 999.0
+    override val active: Double? = null
     override val down: Double = 0.5
-    override val cooldown: Double = 12.0
+    override val cooldown: Double = 0.0
     override val toggle: Boolean = true
+    override val hardFlux: Boolean = true
 
     override val icon: String = "graphics/icons/hullsys/fortress_shield.png"
-    override val useSound: String = "system_fortress_shield_activate"
+    override val useSound: String? = null
+    override val loopSound: String = "system_fortress_shield_loop"
+    override val outOfUsesSound: String = "gun_out_of_ammo"
 }
 
 object Sys_astd_high_energy_loader : ShipSystemWithSystemFileEntry() {
@@ -206,11 +210,12 @@ object Sys_astd_limit_temporal_thruster : ShipSystemWithSystemFileEntry() {
 
     override val statsScript: String = "cn.kasuminova.astd.combat.shipsystems.ASTDLimitTemporalThrusterSystemStats"
 
+    override val systemType: String = "ENGINE_MOD"
     override val aiType: String = "CUSTOM"
     override val aiScript: String = "cn.kasuminova.astd.combat.shipsystems.ASTDLimitTemporalThrusterSystemAI"
 
     override val maxUses: Int = 3
-    override val regen: Double = 10.0
+    override val regen: Double = 0.1
 
     override val chargeUp: Double = 0.2
     override val active: Double = 2.0

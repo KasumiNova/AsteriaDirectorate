@@ -28,7 +28,6 @@ internal object ASTDArcProductionShipIds {
     const val STAT_LIMIT_TEMPORAL_THRUSTER = "astd_limit_temporal_thruster"
 
     const val DATA_ARC_SHARED_FLUX_TARGETS = "astd_arc_shared_flux_network_targets"
-    const val DATA_PLASMA_SHIELD_GRID_STATE = "astd_plasma_shield_grid_state"
     const val DATA_PLASMA_SHIELD_BOOST_LEVEL = "astd_plasma_shield_boost_level"
     const val DATA_DISTRIBUTED_PURSUIT_TARGETS = "astd_distributed_pursuit_network_targets"
 

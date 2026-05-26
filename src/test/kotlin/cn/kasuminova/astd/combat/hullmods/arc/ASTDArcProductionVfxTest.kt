@@ -18,11 +18,74 @@ class ASTDArcProductionVfxTest {
         assertTrue(source.contains("ASTDInGameAutomationScenario.isArcProductionEnabled()"), "automation acceptance should keep fail-loud VFX failures")
         assertTrue(source.contains("Global.getLogger(ASTDArcProductionVfx::class.java)"), "production VFX failures should be logged")
         assertTrue(source.contains("?.setGlobalTimer("), "temporary BoxUtil trail entities must have explicit fade timers")
-        assertTrue(source.contains("emitSegmentedArc"), "plasma shield arcs should be routed through BoxUtil segmented trails")
-        assertFalse(source.contains("spawnEmpArcVisual"), "plasma shield arcs should not use original EMP arc visuals")
+        assertTrue(source.contains("spawnEmpArcVisual"), "plasma shield edge arcs should use original EMP arc visuals")
+        assertTrue(source.contains("EmpArcEntityAPI.EmpArcParams"), "plasma shield edge arcs should configure EMP arc fade behavior")
+        assertTrue(source.contains("setSingleFlickerMode"), "plasma shield edge arcs should flicker once instead of persisting as trail segments")
+        assertFalse(source.contains("fun emitSegmentedArc"), "plasma shield arcs should not use custom segmented trail rendering")
         assertFalse(source.contains("addHitParticle"), "do not add original particle fallback for link visuals")
         assertFalse(source.contains("addSmoothParticle"), "do not add original particle fallback for link visuals")
         assertFalse(source.contains("addNebulaParticle"), "node pulse visuals should not fall back to original nebula particles")
+    }
+
+    @Test
+    fun `plasma shield vfx uses shield edge arcs with required cadence colors and width`() {
+        val vfx = Files.readString(
+            Path.of("src/main/kotlin/cn/kasuminova/astd/combat/hullmods/arc/ASTDArcProductionVfx.kt"),
+        )
+        assertTrue(vfx.contains("PLASMA_ARC_WIDTH = 18f"), "plasma shield arc width should be doubled")
+        assertTrue(vfx.contains("shield.activeArc * 0.1675f"), "shield arcs should be 33% shorter than the previous quarter-shield span")
+        assertTrue(
+            vfx.contains("MathUtils.getRandomNumberInRange(0.85f, 1f)"),
+            "plasma shield arc endpoints should vary up to 15% inward from the shield edge",
+        )
+        assertTrue(vfx.contains("PLASMA_ARC_SEGMENTS = 3"), "shield arcs should be split into edge-following segments instead of one chord")
+        assertTrue(vfx.contains("edgeBiasedShieldPoint"), "shield arc segments should bias intermediate points toward the shield edge")
+        assertTrue(vfx.contains("MagicLensFlare.createSharpFlare"), "shield arc endpoints should get small MagicLib lens flare anchors")
+        assertTrue(vfx.contains("movementDurOverride = 0f"), "plasma shield arcs should not drift after spawning")
+        assertTrue(vfx.contains("movementDurMin = 0f"), "plasma shield arcs should not use internal movement duration")
+        assertTrue(vfx.contains("movementDurMax = 0f"), "plasma shield arcs should not use internal movement duration")
+        assertTrue(vfx.contains("arc.setWarping(0f)"), "plasma shield arcs should not warp their path after spawning")
+        assertFalse(vfx.contains("arc.setWarping(if"), "plasma shield arcs must not conditionally enable warping")
+        assertTrue(vfx.contains("PLASMA_SHIELD_BLUE_RING"), "passive shield ring color should be blue")
+        assertTrue(vfx.contains("PLASMA_SHIELD_PURPLE_RING"), "active shield ring color should shift to purple")
+
+        val hullmod = Files.readString(
+            Path.of("src/main/kotlin/cn/kasuminova/astd/combat/hullmods/arc/ASTDPlasmaArmorShieldHullMod.kt"),
+        )
+        assertTrue(
+            hullmod.contains("MathUtils.getRandomNumberInRange(0.5f, 1f)"),
+            "passive plasma shield edge arcs should spawn twice as fast as the previous 1 to 2 second cadence",
+        )
+        assertTrue(
+            hullmod.contains("MathUtils.getRandomNumberInRange(0.25f, 0.5f)"),
+            "boosted plasma shield edge arcs should keep the 2x cadence over the faster passive interval",
+        )
+        assertTrue(
+            hullmod.contains("maintainShieldVisualsEvenWhenPaused"),
+            "plasma shield colors must be maintained before paused-frame early return",
+        )
+
+        val system = Files.readString(
+            Path.of("src/main/kotlin/cn/kasuminova/astd/combat/shipsystems/ASTDPlasmaArmorShieldBoostSystemStats.kt"),
+        )
+        assertTrue(system.contains("ASTDArcProductionVfx.applyPlasmaShieldVisuals"), "system should apply purple shield colors while active")
+        assertTrue(system.contains("override fun unapply"), "system should have an explicit cleanup path")
+        assertTrue(system.contains("ASTDArcProductionVfx.applyPlasmaShieldVisuals(ship, 0f)"), "system cleanup should restore blue shield colors before the shield closes")
+        assertFalse(system.contains("PULSE_TIMER_KEY"), "system should not spawn a separate high-frequency shield arc timer")
+        assertFalse(system.contains("emitPlasmaShieldArc"), "shield arc cadence should be owned by the plasma shield hullmod")
+    }
+
+    @Test
+    fun `plasma arch recoil accumulator arcs use doubled visual widths`() {
+        val source = Files.readString(
+            Path.of("src/main/kotlin/cn/kasuminova/astd/combat/hullmods/arc/ASTDIonizedRecoilAccumulatorHullMod.kt"),
+        )
+
+        assertTrue(source.contains("ARC_THICKNESS = 18f"), "targeted recoil arcs should double the prior 9px width")
+        assertTrue(source.contains("ARC_VISUAL_THICKNESS = 12f"), "untargeted recoil arcs should double the prior 6px width")
+        assertTrue(source.contains("setCoreWidthOverride(ARC_CORE_WIDTH)"), "targeted recoil arcs should keep a proportional core width")
+        assertFalse(source.contains(", null, 9f,"), "targeted recoil arcs must not keep the old narrow width")
+        assertFalse(source.contains("ship, 6f,"), "untargeted recoil arcs must not keep the old narrow width")
     }
 
     @Test
@@ -51,7 +114,7 @@ class ASTDArcProductionVfxTest {
             "ASTDArcSharedFluxNetworkSystemStats.kt" to "emitArcJetActiveFluxLink",
             "ASTDDistributedPursuitNetworkHullMod.kt" to "emitRadiationPursuitPing",
             "ASTDPlasmaArmorShieldHullMod.kt" to "emitPlasmaShieldArc",
-            "ASTDPlasmaArmorShieldBoostSystemStats.kt" to "emitPlasmaShieldArc",
+            "ASTDPlasmaArmorShieldBoostSystemStats.kt" to "applyPlasmaShieldVisuals",
             "ASTDLimitTemporalThrusterSystemStats.kt" to "emitTemporalThrusterAfterimage",
         )
 
@@ -102,6 +165,11 @@ class ASTDArcProductionVfxTest {
         val ionized = Files.readString(
             Path.of("src/main/kotlin/cn/kasuminova/astd/combat/hullmods/arc/ASTDIonizedRecoilAccumulatorHullMod.kt"),
         )
+        assertTrue(ionized.contains("HARD_FLUX_CONVERT_FRACTION = 0.02f"), "ionized recoil should convert 2% of current hard flux")
+        assertTrue(ionized.contains("val conversionMult = 1f + boostLevel"), "boosted plasma shield should double ionized recoil conversion")
+        assertTrue(ionized.contains("convertHardFlux(conversionMult)"), "ionized recoil conversion should scale during the system boost")
+        assertTrue(ionized.contains("effectiveRecoilRange()"), "ionized recoil range should be affected by energy projectile weapon range")
+        assertTrue(ionized.contains("playSound(\"system_emp_emitter_impact\""), "ionized recoil trigger should play the vanilla EMP emitter impact sound")
         assertTrue(ionized.contains("private fun fluxLevel(): Float"), "ionized recoil proc chance should use total flux level")
         assertTrue(ionized.contains("val chance = procChance(fluxLevel())"), "proc chance must not be based on hard flux")
         assertTrue(ionized.contains("val hardFluxLevel = hardFluxLevel()"), "shield pierce chance should still use hard flux level")
@@ -115,6 +183,29 @@ class ASTDArcProductionVfxTest {
         assertTrue(
             fireControl.contains("TARGET_FULL_RAMP_WEAPON_FLUX_MULT = 0.60f"),
             "advanced fire control should reach final -40% weapon flux relative to the base ship, not only relative to its baseline penalty",
+        )
+
+        val tacticalNetwork = Files.readString(
+            Path.of("src/main/kotlin/cn/kasuminova/astd/combat/hullmods/arc/ASTDArcSharedTacticalNetworkHullMod.kt"),
+        )
+        val selfRangeBlock = tacticalNetwork
+            .substringAfter("override fun applyEffectsBeforeShipCreation")
+            .substringBefore("override fun advanceInCombat")
+        assertTrue(
+            selfRangeBlock.contains("stats.ballisticWeaponRangeBonus.modifyPercent(modId, SELF_WEAPON_RANGE_PERCENT)"),
+            "arc jet self range penalty should stack additively with advanced targeting core",
+        )
+        assertTrue(
+            selfRangeBlock.contains("stats.energyWeaponRangeBonus.modifyPercent(modId, SELF_WEAPON_RANGE_PERCENT)"),
+            "arc jet self range penalty should affect energy and beam weapons through the vanilla energy range stat",
+        )
+        assertFalse(
+            selfRangeBlock.contains("beamWeaponRangeBonus"),
+            "arc jet self range penalty must not apply an extra beam-specific penalty on top of energy range",
+        )
+        assertFalse(
+            selfRangeBlock.contains("modifyMult"),
+            "arc jet self range penalty must not multiplicatively shrink the advanced core bonus",
         )
 
         val targeting = Files.readString(
@@ -233,6 +324,21 @@ class ASTDArcProductionVfxTest {
     }
 
     @Test
+    fun `limit temporal thruster uses temporal shell style jitter and doubled arc flare afterimage cadence`() {
+        val source = Files.readString(
+            Path.of("src/main/kotlin/cn/kasuminova/astd/combat/shipsystems/ASTDLimitTemporalThrusterSystemStats.kt"),
+        )
+
+        assertTrue(source.contains("TIME_MULT = 3f"), "radiation belt system should provide 200% extra time flow")
+        assertTrue(source.contains("AFTERIMAGE_INTERVAL = 0.06f"), "radiation belt afterimage cadence should be twice as fast as the prior 0.12s cadence")
+        assertTrue(source.contains("ship.setJitterUnder(id, TEMPORAL_JITTER_UNDER, level, 25, 0f, 7f)"), "system should use temporal shell style under-jitter")
+        assertTrue(source.contains("ship.setJitter(id, TEMPORAL_JITTER, 0.30f * level, 3, 0f, 0f)"), "system should use temporal shell style hull jitter")
+        assertTrue(source.contains("ship.setJitterShields(false)"), "temporal thruster cleanup should clear shield jitter routing")
+        assertTrue(source.contains("ArcFlareAfterimageManager.spawn"), "temporal thruster should reuse the arc flare afterimage renderer")
+        assertTrue(source.contains("ArcFlareAfterimageManager.Snapshot"), "temporal thruster should snapshot the hull sprite like arc flare")
+    }
+
+    @Test
     fun `arc production tooltip evidence validates renderer block keys`() {
         val plugin = Files.readString(
             Path.of("src/main/kotlin/cn/kasuminova/astd/combat/effect/generic/ASTDAutomationCombatPlugin.kt"),
@@ -260,7 +366,30 @@ class ASTDArcProductionVfxTest {
             "temporal thruster helper should increment its own VFX telemetry",
         )
         assertTrue(system.contains("emitTemporalThrusterAfterimage"), "temporal thruster should route its VFX through the telemetry helper")
+        assertTrue(
+            system.contains("if (ship != null && engine != null && !engine.isPaused) {\n            renderTemporalStreak(ship, id, state)"),
+            "temporal thruster VFX should run through the system script before the active-only stat gate",
+        )
+        assertFalse(
+            plugin.contains("ensureRadiationBeltSystemVfx"),
+            "ARC automation must not synthesize radiation belt system VFX evidence outside the real system path",
+        )
+        assertTrue(plugin.contains("radiationBeltSystemState"), "ARC diagnostics should expose radiation belt system state when VFX evidence is missing")
         assertTrue(plugin.contains("radiationBeltSystemAfterimages"), "automation diagnostics should publish system VFX evidence")
         assertTrue(verifier.contains("radiationBeltSystemAfterimages"), "verifier should require system VFX evidence, not only pursuit network links")
+    }
+
+    @Test
+    fun `arc production verifier matches current tooltip contracts and standard variant ids`() {
+        val plugin = Files.readString(Path.of("src/main/kotlin/cn/kasuminova/astd/combat/effect/generic/ASTDAutomationCombatPlugin.kt"))
+        val verifier = Files.readString(Path.of("tools/verify_ingame_vfx_automation.py"))
+
+        assertTrue(plugin.contains("arcProductionSourceVariantIds"), "ARC automation should report the source Standard variant ids, not only mission clone ids")
+        assertTrue(plugin.contains("member?.variant?.hullVariantId"), "source variant id reporting should come from deployed fleet members")
+        assertTrue(plugin.contains("ARC_PRODUCTION_STANDARD_VARIANTS"), "mission clone ids should be normalized through explicit source variant ids")
+        assertTrue(plugin.contains("astd_arc_jet_Standard"), "ARC production source variant ids must include arc jet standard variant")
+        assertTrue(plugin.contains("astd_plasma_arch_Standard"), "ARC production source variant ids must include plasma arch standard variant")
+        assertTrue(plugin.contains("astd_radiation_belt_Standard"), "ARC production source variant ids must include radiation belt standard variant")
+        assertTrue(verifier.contains("\"radiationBeltTooltipKeys\": 26"), "verifier key minimum should match the current radiation belt renderer contract")
     }
 }

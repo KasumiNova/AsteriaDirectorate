@@ -10,7 +10,6 @@ import com.fs.starfarer.api.combat.MutableShipStatsAPI
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.impl.combat.BaseShipSystemScript
 import com.fs.starfarer.api.plugins.ShipSystemStatsScript
-import org.lazywizard.lazylib.MathUtils
 import java.awt.Color
 
 class ASTDPlasmaArmorShieldBoostSystemStats : BaseShipSystemScript() {
@@ -24,7 +23,6 @@ class ASTDPlasmaArmorShieldBoostSystemStats : BaseShipSystemScript() {
 
         private const val RAMP_START_KEY = "astd_plasma_boost_ramp_start:"
         private const val FLUX_TIME_KEY = "astd_plasma_boost_flux_time:"
-        private const val PULSE_TIMER_KEY = "astd_plasma_boost_pulse_timer:"
 
         private val ARC_FRINGE = Color(85, 205, 255, 220)
     }
@@ -55,20 +53,20 @@ class ASTDPlasmaArmorShieldBoostSystemStats : BaseShipSystemScript() {
             ASTDArcProductionVfx.setCounter(engine, ASTDArcProductionVfx.TELEMETRY_PLASMA_ARCH_SYSTEM_ACTIVE, 1)
         }
         generateHardFlux(engine, ship, shipKey)
-        renderBoostShield(ship, engine, shipKey, level)
+        renderBoostShield(ship, level)
     }
 
     override fun unapply(stats: MutableShipStatsAPI, id: String) {
         stats.shieldDamageTakenMult.unmodify(id)
         stats.armorDamageTakenMult.unmodify(id)
         val ship = stats.entity as? ShipAPI ?: return
+        ASTDArcProductionVfx.applyPlasmaShieldVisuals(ship, 0f)
         ship.removeCustomData(ASTDArcProductionShipIds.DATA_PLASMA_SHIELD_BOOST_LEVEL)
         ASTDArcCombatUtil.restoreRefireDelays(ship)
         val engine = Global.getCombatEngine() ?: return
         val shipKey = System.identityHashCode(ship).toString()
         engine.customData.remove("$RAMP_START_KEY$shipKey")
         engine.customData.remove("$FLUX_TIME_KEY$shipKey")
-        engine.customData.remove("$PULSE_TIMER_KEY$shipKey")
         ship.setJitterShields(false)
     }
 
@@ -108,22 +106,13 @@ class ASTDPlasmaArmorShieldBoostSystemStats : BaseShipSystemScript() {
         ship.fluxTracker.increaseFlux(ship.fluxTracker.maxFlux * HARD_FLUX_PER_SECOND * amount, true)
     }
 
-    private fun renderBoostShield(ship: ShipAPI, engine: CombatEngineAPI, shipKey: String, level: Float) {
+    private fun renderBoostShield(ship: ShipAPI, level: Float) {
         val shield = ship.shield ?: return
         if (!shield.isOn || level <= 0.02f) return
 
         ship.setJitterShields(true)
+        ASTDArcProductionVfx.applyPlasmaShieldVisuals(ship, level)
         ship.setJitter(ASTDArcProductionShipIds.STAT_PLASMA_ARMOR_SHIELD_BOOST, ARC_FRINGE, 0.04f + 0.05f * level, 3, 0f, 5f + 8f * level)
         ship.setJitterUnder(ASTDArcProductionShipIds.STAT_PLASMA_ARMOR_SHIELD_BOOST, Color(60, 160, 255, 125), 0.15f * level, 8, 0f, 12f)
-
-        var pulseTimer = (engine.customData["$PULSE_TIMER_KEY$shipKey"] as? Float ?: 0f) - engine.elapsedInLastFrame
-        if (pulseTimer > 0f) {
-            engine.customData["$PULSE_TIMER_KEY$shipKey"] = pulseTimer
-            return
-        }
-        pulseTimer = MathUtils.getRandomNumberInRange(0.32f, 0.48f)
-        engine.customData["$PULSE_TIMER_KEY$shipKey"] = pulseTimer
-
-        ASTDArcProductionVfx.emitPlasmaShieldArc(engine, ship, boosted = true)
     }
 }

@@ -37,10 +37,21 @@ public final class AsteriaDirectoratePlugin extends BaseModPlugin {
     }
 
     @Override
+    public void onNewGameAfterTimePass() {
+        AsteriaTestCampaignBootstrap.runIfEnabled();
+        AsteriaTestCampaignBootstrap.finalizeNewGameTeleportIfEnabled();
+    }
+
+    @Override
     public void onGameLoad(boolean newGame) {
         // 注册赏金动态生成/词缀/支线管理脚本。
         // 注意：允许多实例；脚本添加由 sector memory key 去重。
         BountyBootstrapper.onGameLoad();
+        if (!newGame) {
+            AsteriaTestCampaignBootstrap.repairExistingTestStorageIfEnabled();
+            AsteriaTestCampaignBootstrap.resumePendingTeleportIfEnabled();
+            AsteriaTestCampaignBootstrap.runStorageAcceptanceIfRequested();
+        }
     }
 
     public Logger logger() {

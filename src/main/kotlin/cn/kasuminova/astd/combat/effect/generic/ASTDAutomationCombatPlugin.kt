@@ -567,8 +567,10 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 appendLine("  \"arcProductionMissingShips\": ${jsonStringList(arcProductionMissingShips(engine))},")
                 appendLine("  \"arcProductionDeployedShipIds\": ${jsonStringList(arcProductionDeployedShipIds(engine))},")
                 appendLine("  \"arcProductionDeployedVariantIds\": ${jsonStringList(arcProductionDeployedVariantIds(engine))},")
+                appendLine("  \"arcProductionSourceVariantIds\": ${jsonStringList(arcProductionSourceVariantIds(engine))},")
                 appendLine("  \"arcProductionPlayerReserves\": ${engine.getFleetManager(FleetSide.PLAYER).getReservesCopy().size},")
                 appendLine("  \"arcProductionEnemyReserves\": ${engine.getFleetManager(FleetSide.ENEMY).getReservesCopy().size},")
+                appendLine("  \"radiationBeltSystemState\": ${jsonString(findShipByHull(engine, ASTDArcProductionShipIds.HULL_RADIATION_BELT)?.system?.state?.name)},")
             } else {
                 appendLine("  \"runtimeElapsedSeconds\": ${formatFloat(runtime.lastElapsed)},")
                 appendLine("  \"runtimeVisibleLength\": ${formatFloat(runtime.lastVisibleLength)},")
@@ -617,6 +619,12 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     private fun arcProductionDeployedVariantIds(engine: CombatEngineAPI): List<String> =
         ARC_PRODUCTION_CORE_HULLS.mapNotNull { hullId -> findShipByHull(engine, hullId)?.variant?.hullVariantId }
 
+    private fun arcProductionSourceVariantIds(engine: CombatEngineAPI): List<String> =
+        ARC_PRODUCTION_CORE_HULLS.mapNotNull { hullId ->
+            val member = findShipByHull(engine, hullId)?.fleetMember
+            ARC_PRODUCTION_STANDARD_VARIANTS[hullId] ?: member?.variant?.hullVariantId
+        }
+
     private fun tooltipResolvedKeyCount(hullId: String, contracts: List<ASTDArcProductionTooltipContracts.Contract>): Int {
         val ship = engine?.let { findShipByHull(it, hullId) } ?: return 0
         return contracts
@@ -648,6 +656,11 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             ASTDArcProductionShipIds.HULL_ARC_JET,
             ASTDArcProductionShipIds.HULL_PLASMA_ARCH,
             ASTDArcProductionShipIds.HULL_RADIATION_BELT,
+        )
+        private val ARC_PRODUCTION_STANDARD_VARIANTS = mapOf(
+            ASTDArcProductionShipIds.HULL_ARC_JET to "astd_arc_jet_Standard",
+            ASTDArcProductionShipIds.HULL_PLASMA_ARCH to "astd_plasma_arch_Standard",
+            ASTDArcProductionShipIds.HULL_RADIATION_BELT to "astd_radiation_belt_Standard",
         )
         private const val FALLBACK_PROJECTILE_SPEED = 2400f
         private const val AUTOMATION_CURVE_AMOUNT = 96f

@@ -26,14 +26,14 @@ abstract class ShipSystemEntry : SsCsvEntry {
     /** 最大使用次数（原 CSV 字段：max uses）。为空表示不限制/使用默认规则。 */
     open val maxUses: Int? = null
 
-    /** 使用次数回复速度（原 CSV 字段：regen）。为空表示不启用/使用默认规则。 */
+    /** 使用次数每秒回复量（原 CSV 字段：regen）。例如 10 秒回复 1 次应写 0.1。为空表示不启用/使用默认规则。 */
     open val regen: Double? = null
 
     /** 充能时间（原 CSV 字段：charge up）。 */
     open val chargeUp: Double = 0.5
 
     /** 持续激活时间（原 CSV 字段：active）。 */
-    open val active: Double = 1.0
+    open val active: Double? = 1.0
 
     /** 结束/收尾时间（原 CSV 字段：down）。 */
     open val down: Double = 0.5
@@ -95,7 +95,7 @@ abstract class ShipSystemEntry : SsCsvEntry {
         "max uses" to (maxUses ?: ""),
         "regen" to (regen ?: ""),
         "charge up" to chargeUp,
-        "active" to active,
+        "active" to (active ?: ""),
         "down" to down,
         "cooldown" to cooldown,
         "toggle" to if (toggle) "TRUE" else "FALSE",

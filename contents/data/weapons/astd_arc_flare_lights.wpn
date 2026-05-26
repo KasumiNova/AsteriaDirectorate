@@ -9,8 +9,8 @@
     "renderHints": [
         "RENDER_ADDITIVE"
     ],
-    "turretSprite": "graphics/ships/astd_arc_flare_emissive.png",
-    "hardpointSprite": "graphics/ships/astd_arc_flare_emissive.png",
+    "turretSprite": "graphics/ships/astd_arc_flare_bloom.png",
+    "hardpointSprite": "graphics/ships/astd_arc_flare_bloom.png",
     "turretOffsets": [
         0,
         0

@@ -12,7 +12,7 @@ import java.awt.Color
 class ASTDArcSharedTacticalNetworkHullMod : BaseHullMod() {
 
     companion object {
-        private const val SELF_WEAPON_RANGE_MULT = 0.80f
+        private const val SELF_WEAPON_RANGE_PERCENT = -20f
         private const val SELF_ECM_RATING = 0.04f
         private const val MAX_TARGETS = 12
         private const val CONNECT_PULSE_MIN_INTERVAL = 1.25f
@@ -36,9 +36,8 @@ class ASTDArcSharedTacticalNetworkHullMod : BaseHullMod() {
 
     override fun applyEffectsBeforeShipCreation(hullSize: ShipAPI.HullSize, stats: MutableShipStatsAPI, id: String) {
         val modId = ASTDArcProductionShipIds.STAT_ARC_SHARED_TACTICAL_NETWORK_SELF
-        stats.ballisticWeaponRangeBonus.modifyMult(modId, SELF_WEAPON_RANGE_MULT)
-        stats.energyWeaponRangeBonus.modifyMult(modId, SELF_WEAPON_RANGE_MULT)
-        stats.beamWeaponRangeBonus.modifyMult(modId, SELF_WEAPON_RANGE_MULT)
+        stats.ballisticWeaponRangeBonus.modifyPercent(modId, SELF_WEAPON_RANGE_PERCENT)
+        stats.energyWeaponRangeBonus.modifyPercent(modId, SELF_WEAPON_RANGE_PERCENT)
         stats.dynamic.getMod("opad_ecm_rating").modifyFlat(modId, SELF_ECM_RATING)
     }
 

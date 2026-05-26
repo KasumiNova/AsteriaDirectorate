@@ -58,6 +58,37 @@ tasks.withType<KotlinCompile>().configureEach {
 tasks.withType<Jar>().configureEach {
     isPreserveFileTimestamps = false
     isReproducibleFileOrder = true
+    manifest {
+        attributes(
+            "Premain-Class" to "cn.kasuminova.astd.agent.AsteriaDevStorageAcceptanceAgent",
+            "Can-Retransform-Classes" to "true",
+            "Can-Redefine-Classes" to "true",
+        )
+    }
+}
+
+val acceptanceAgentJar = tasks.register<Jar>("acceptanceAgentJar") {
+    archiveClassifier.set("acceptance-agent")
+    isPreserveFileTimestamps = false
+    isReproducibleFileOrder = true
+    from(sourceSets.main.get().output) {
+        include("cn/kasuminova/astd/agent/**")
+    }
+    from({
+        configurations.compileClasspath.get()
+            .filter { file -> file.extension == "jar" }
+            .map { file -> zipTree(file) }
+    }) {
+        include("org/objectweb/asm/**")
+    }
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    manifest {
+        attributes(
+            "Premain-Class" to "cn.kasuminova.astd.agent.AsteriaDevStorageAcceptanceAgent",
+            "Can-Retransform-Classes" to "true",
+            "Can-Redefine-Classes" to "true",
+        )
+    }
 }
 
 tasks.withType<DecompileSourcesTask>().configureEach {
@@ -132,6 +163,7 @@ tasks.named("copyContents") {
 // build 时自动生成 ss-csv 到 build/generated/ss-csv/
 tasks.named("build") {
     dependsOn(":ss-csv:generateSsCsv")
+    dependsOn(acceptanceAgentJar)
 }
 
 // 生产目录使用 build/generated/ss-csv 叠加静态 contents，保持 contents 不被自动覆盖。

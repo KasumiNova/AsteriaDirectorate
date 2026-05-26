@@ -260,7 +260,10 @@ class ASTDInGameAutomationScenarioTest {
         val script = Files.readString(Path.of("tools/smoke_test_game_launch.sh"))
         val gradle = Files.readString(Path.of("build.gradle.kts"))
 
-        assertTrue(script.contains("""[[ "${'$'}MODE" == "game" || "${'$'}MODE" == "automation" ]]"""), "automation mode should enter the game path")
+        assertTrue(
+            script.contains("""[[ "${'$'}MODE" == "game" || "${'$'}MODE" == "automation" || "${'$'}MODE" == "campaign-acceptance" ]]"""),
+            "automation and campaign acceptance modes should enter the game path",
+        )
         assertTrue(script.contains("ASTD_SMOKE_START_RES:-2560x1440"), "automation mode should default to 2560x1440")
         assertTrue(script.contains("-Dssoptimizer.automation.enabled=true"), "automation mode should enable SSOptimizer automation")
         assertTrue(script.contains("ASTD_AUTOMATION_SCENARIO:-arc_flare_aod7_basic"), "automation mode should allow selecting the ARC production scenario")

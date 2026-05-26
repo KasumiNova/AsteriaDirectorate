@@ -3,7 +3,9 @@ package cn.kasuminova.astd.copy
 import org.json.JSONObject
 import java.nio.file.Files
 import java.nio.file.Path
+import cn.kasuminova.astd.testutil.CsvTestUtil
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -61,11 +63,57 @@ class ArcProductionCopyReviewTest {
     }
 
     @Test
+    fun `production arc ship system type labels are short category words`() {
+        val descriptions = CsvTestUtil.readRowsById(Path.of("contents/data/strings/descriptions.csv"))
+
+        descriptions.values
+            .filter { it.getValue("type") == "SHIP_SYSTEM" }
+            .forEach { row ->
+                val id = row.getValue("id")
+                val label = row.getValue("text2")
+                assertTrue(label in allowedSystemTypeLabels, "ship system type label must be a known short category word: $id")
+                assertTrue(label.length <= 2, "ship system type label must be short: $id")
+                assertFalse(label.contains("，"), "system type label must not be a sentence: $id")
+                assertFalse(label.contains("。"), "system type label must not be a sentence: $id")
+            }
+
+        expectedSystemTypeLabels.forEach { (id, expectedType) ->
+            val row = descriptions.getValue(id)
+            assertEquals("SHIP_SYSTEM", row.getValue("type"), "description type mismatch for $id")
+            assertEquals(expectedType, row.getValue("text2"), "system type label mismatch for $id")
+            assertTrue(row.getValue("text3").isNotBlank(), "system short description must be present in text3: $id")
+        }
+    }
+
+    @Test
     fun `production arc runtime copy does not keep stale tooltip aliases`() {
         val strings = readRuntimeStrings(Path.of("contents/data/strings/strings.json"))
 
         staleRuntimeKeys.forEach { key ->
             assertFalse(strings.containsKey(key), "stale runtime copy key should be removed: $key")
+        }
+    }
+
+    @Test
+    fun `production arc design document is synchronized with current plasma arch mechanics`() {
+        val productionDesign = Files.readString(Path.of("docs/design/ships/blue/20-production.md"))
+        listOf(
+            "方位装甲计算",
+            "正前方 **60°**",
+            "左右侧前方 **60°~180°**",
+            "后方 **180°~360°**",
+            "当前 **2% 硬辐能**",
+            "系统启动期间，辐能转换量与软辐能生成同步翻倍",
+        ).forEach { text ->
+            assertTrue(productionDesign.contains(text), "production design doc missing updated plasma arch design text: $text")
+        }
+        listOf(
+            "12 个区域",
+            "虚拟装甲值",
+            "区域承压",
+            "当前 **0.5% 硬辐能**",
+        ).forEach { stale ->
+            assertFalse(productionDesign.contains(stale), "production design doc still contains stale plasma arch design text: $stale")
         }
     }
 
@@ -171,16 +219,16 @@ class ArcProductionCopyReviewTest {
             "ui.hullmod.arc_shared_tactical_network.value.destroyer" to "驱逐舰：射程+30%，机动+10%，护盾承伤-15%",
             "ui.hullmod.arc_shared_tactical_network.value.cruiser" to "巡洋舰：射程+20%，护盾承伤-10%",
             "ui.hullmod.arc_shared_tactical_network.note" to "阿斯忒里亚遗构局舰船效果+25%；弧光子型额外+25%。主力舰不获得加成。",
-            "ui.hullmod.plasma_armor_shield.value.armor_shield" to "护盾按最终装甲5%~20%参与装甲减伤",
+            "ui.hullmod.plasma_armor_shield.value.armor_shield" to "按受击方位取最终装甲5%~15%参与装甲减伤",
             "ui.hullmod.plasma_armor_shield.value.damage_type" to "护盾：能量-15%，动能-33%，高爆+33%，破片+20%；装甲：动能-33%",
-            "ui.hullmod.plasma_armor_shield.value.grid" to "12区段，每区段30度；区段强度=最终装甲75%，最低5%",
-            "ui.hullmod.plasma_armor_shield.value.boost" to "护盾减伤+50%；装甲减伤+25%；护盾装甲减伤提升至10%~40%",
-            "ui.hullmod.plasma_armor_shield.value.recovery" to "常态每秒1%；10秒未受击后每秒5%",
+            "ui.hullmod.plasma_armor_shield.value.grid" to "正前方60度=15%；侧前方线性10%~15%；后方线性5%~10%",
+            "ui.hullmod.plasma_armor_shield.value.boost" to "护盾减伤+50%；装甲减伤+25%；方位装甲计算值翻倍",
+            "ui.hullmod.plasma_armor_shield.value.recovery" to "护盾与装甲受击都会弹出被抵消伤害数字",
             "ui.hullmod.plasma_armor_shield.value.limits" to "护盾分流禁用；装甲提升船插仅享受66%",
             "ui.hullmod.plasma_armor_shield.note" to "微型护盾单元会把冲击摊入装甲骨架。",
             "ui.hullmod.ionized_recoil_accumulator.value.recoil" to "触发率25%~85%；冷却1秒；射程800su",
-            "ui.hullmod.ionized_recoil_accumulator.value.volley" to "转换当前硬辐能0.5%为2倍软辐能",
-            "ui.hullmod.ionized_recoil_accumulator.value.damage" to "电弧伤害=转换量100%；EMP=转换量200%",
+            "ui.hullmod.ionized_recoil_accumulator.value.volley" to "转换当前硬辐能2%为2倍软辐能；系统启动期间翻倍",
+            "ui.hullmod.ionized_recoil_accumulator.value.damage" to "电弧伤害=转换量100%；EMP=转换量200%；射程受能量射弹射程影响",
             "ui.hullmod.ionized_recoil_accumulator.value.pierce" to "按硬辐能水平获得15%~85%概率",
             "ui.hullmod.ionized_recoil_accumulator.note" to "电弧优先打击武器或引擎，不攻击友军。",
             "ui.hullmod.arc_advanced_targeting_system.value.range" to "非导弹武器射程+20%",
@@ -204,10 +252,24 @@ class ArcProductionCopyReviewTest {
         )
 
         val expectedSystemDescriptionIds = listOf(
+            "astd_arc_flare_overdrive_crewed",
+            "astd_arc_flare_overdrive_automated",
             "astd_arc_shared_flux_network",
             "astd_plasma_armor_shield_boost",
             "astd_limit_temporal_thruster",
+            "astd_stellar_jet",
         )
+
+        val expectedSystemTypeLabels = linkedMapOf(
+            "astd_arc_flare_overdrive_crewed" to "进攻",
+            "astd_arc_flare_overdrive_automated" to "进攻",
+            "astd_arc_shared_flux_network" to "支援",
+            "astd_plasma_armor_shield_boost" to "防御",
+            "astd_limit_temporal_thruster" to "机动",
+            "astd_stellar_jet" to "机动",
+        )
+
+        val allowedSystemTypeLabels = setOf("进攻", "防御", "机动", "支援", "特殊")
 
         val staleRuntimeKeys = listOf(
             "ui.hullmod.arc_advanced_targeting_system.attr.targeting",

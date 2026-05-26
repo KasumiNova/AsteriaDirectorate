@@ -33,6 +33,55 @@ else
     exit 1
 fi
 
+is_java_25() {
+    local candidate="$1"
+    if [[ ! -x "$candidate" ]]; then
+        return 1
+    fi
+    "$candidate" -version 2>&1 | grep -Eq 'version "25([."]|$)|openjdk version "25([."]|$)'
+}
+
+find_java_25_under() {
+    local search_root="$1"
+    local candidate
+    if [[ ! -d "$search_root" ]]; then
+        return 0
+    fi
+
+    while IFS= read -r candidate; do
+        if is_java_25 "$candidate"; then
+            printf '%s\n' "$candidate"
+            return 0
+        fi
+    done < <(find "$search_root" -type f -name java 2>/dev/null)
+}
+
+resolve_java_25() {
+    local candidate
+
+    candidate=$(find_java_25_under "$GAME_DIR" | head -n 1 || true)
+    if [[ -n "$candidate" ]]; then
+        printf '%s\n' "$candidate"
+        return 0
+    fi
+
+    if [[ -n "${JAVA_HOME:-}" ]] && is_java_25 "$JAVA_HOME/bin/java"; then
+        printf '%s\n' "$JAVA_HOME/bin/java"
+        return 0
+    fi
+
+    local system_root
+    for system_root in /usr/lib/jvm /usr/lib64/jvm /usr/java /opt/java /opt/jdk /opt/jdks; do
+        candidate=$(find_java_25_under "$system_root" | head -n 1 || true)
+        if [[ -n "$candidate" ]]; then
+            printf '%s\n' "$candidate"
+            return 0
+        fi
+    done
+
+    return 1
+}
+
 cleanup_game() {
     local pid="${GAME_PID:-}"
     local pgid="${GAME_PGID:-}"
@@ -137,13 +186,107 @@ print_log_matches() {
     grep -n -E "$pattern" "$LOG_FILE" "$PROCESS_LOG_FILE" 2>/dev/null || true
 }
 
+resolve_acceptance_save_dir() {
+    if [[ -n "${ASTD_ACCEPTANCE_SAVE_DIR:-}" ]]; then
+        echo "$ASTD_ACCEPTANCE_SAVE_DIR"
+        return 0
+    fi
+
+    local saves_root="${ASTD_ACCEPTANCE_SAVES_ROOT:-$GAME_DIR/saves}"
+    local best_dir=""
+    local best_mtime=0
+    local candidate mtime
+
+    shopt -s nullglob
+    for candidate in "$saves_root"/save_Dev_*; do
+        [[ -d "$candidate" ]] || continue
+        [[ -f "$candidate/descriptor.xml" ]] || continue
+        [[ -f "$candidate/campaign.xml" || -f "$candidate/campaign.xml.zip" ]] || continue
+
+        mtime=$(stat -c%Y "$candidate" 2>/dev/null || echo 0)
+        if ((mtime > best_mtime)); then
+            best_mtime="$mtime"
+            best_dir="$candidate"
+        fi
+    done
+    shopt -u nullglob
+
+    if [[ -z "$best_dir" ]]; then
+        echo "FAIL: no save_Dev_* campaign save found under $saves_root" >&2
+        exit 1
+    fi
+
+    echo "$best_dir"
+}
+
+launch_campaign_acceptance_direct() {
+    local java_exe="$1"
+    local acceptance_agent_jar="$2"
+    local acceptance_save_dir="$3"
+    shift 3
+
+    LAUNCH_CMD=(
+        "$java_exe"
+        -javaagent:./mods/ssoptimizer/jars/SSOptimizer.jar
+        "-javaagent:$acceptance_agent_jar"
+        -Dfile.encoding=UTF-8 \
+        -noverify \
+        -XX:+UnlockDiagnosticVMOptions \
+        -XX:+ShowCodeDetailsInExceptionMessages \
+        -XX:+PrintCommandLineFlags \
+        -XX:+TieredCompilation \
+        -XX:+DisableExplicitGC \
+        -XX:+AlwaysPreTouch \
+        -XX:+ParallelRefProcEnabled \
+        -XX:+UseZGC \
+        -XX:ReservedCodeCacheSize=256m \
+        -XX:CompilerDirectivesFile=./compiler_directives.txt \
+        -Djdk.xml.maxElementDepth=10000 \
+        -XX:-BytecodeVerificationLocal \
+        -XX:-BytecodeVerificationRemote \
+        -Djava.util.Arrays.useLegacyMergeSort=true \
+        --enable-preview \
+        --add-opens=java.base/sun.nio.ch=ALL-UNNAMED \
+        --add-opens=java.base/java.nio=ALL-UNNAMED \
+        --add-opens=java.base/java.nio.Buffer.UNSAFE=ALL-UNNAMED \
+        --add-opens=java.base/java.util=ALL-UNNAMED \
+        --add-opens=java.base/java.util.concurrent=ALL-UNNAMED \
+        --add-opens=java.base/java.util.concurrent.locks=ALL-UNNAMED \
+        --add-opens=java.base/jdk.internal.ref=ALL-UNNAMED \
+        --add-opens=java.base/java.lang.reflect=ALL-UNNAMED \
+        --add-opens=java.base/java.lang.ref=ALL-UNNAMED \
+        --add-opens=java.base/java.text=ALL-UNNAMED \
+        --add-opens=java.desktop/java.awt.font=ALL-UNNAMED \
+        --add-opens=java.desktop/java.awt.Rectangle=ALL-UNNAMED \
+        --add-opens=java.desktop/java.awt=ALL-UNNAMED \
+        --add-exports=java.base/jdk.internal.ref=ALL-UNNAMED \
+        --add-exports=java.base/jdk.internal.misc=ALL-UNNAMED \
+        --add-exports=java.base/sun.nio.ch=ALL-UNNAMED \
+        -Xms24g \
+        -Xmx24g \
+        -Xss4m \
+        -Dcom.fs.starfarer.settings.paths.saves=./saves \
+        -Dcom.fs.starfarer.settings.paths.screenshots=./screenshots \
+        -Dcom.fs.starfarer.settings.paths.mods=./mods \
+        -Dcom.fs.starfarer.settings.paths.logs=. \
+        -Djava.library.path=./native/linux \
+        -Dssoptimizer.font.ttf.enable=true \
+        -Dlog4j.configuration=file:./log4j.properties \
+        -Dcom.fs.starfarer.settings.linux=true \
+        -Dastd.devStorageAcceptance=true \
+        "-Dastd.devStorageAcceptanceSaveDir=$acceptance_save_dir" \
+        "$@" \
+        -classpath janino.jar:commons-compiler.jar:commons-compiler-jdk.jar:starfarer.api.jar:starfarer_obf.jar:jogg-0.0.7.jar:jorbis-0.0.15.jar:json.jar:lwjgl.jar:jinput.jar:log4j-1.2.9.jar:lwjgl_util.jar:fs.sound_obf.jar:fs.common_obf.jar:xstream-1.4.21_miko.jar:txw2-3.0.2.jar:jaxb-api-2.4.0-b180830.0359.jar:webp-imageio-0.1.6.jar \
+        com.fs.starfarer.StarfarerLauncher
+    )
+}
+
 trap cleanup_game EXIT INT TERM
 
 : > "$LOG_FILE" 2>/dev/null || true
 : > "$PROCESS_LOG_FILE" 2>/dev/null || true
 
-ORIGINAL_JAVA_TOOL_OPTIONS="${JAVA_TOOL_OPTIONS:-}"
-if [[ "$MODE" == "game" || "$MODE" == "automation" ]]; then
+if [[ "$MODE" == "game" || "$MODE" == "automation" || "$MODE" == "campaign-acceptance" ]]; then
     if [[ "$MODE" == "automation" ]]; then
         START_RES="${ASTD_SMOKE_START_RES:-2560x1440}"
     else
@@ -157,10 +300,29 @@ if [[ "$MODE" == "game" || "$MODE" == "automation" ]]; then
         AUTOMATION_SCENARIO="${ASTD_AUTOMATION_SCENARIO:-arc_flare_aod7_basic}"
         EXTRA_OPTS="$EXTRA_OPTS -Dssoptimizer.automation.enabled=true -Dssoptimizer.automation.scenario=${AUTOMATION_SCENARIO} -Dssoptimizer.automation.outputDir=${AUTOMATION_OUTPUT_DIR} -Dssoptimizer.automation.requireScreenshotFile=true"
     fi
-    if [[ -n "$ORIGINAL_JAVA_TOOL_OPTIONS" ]]; then
-        export JAVA_TOOL_OPTIONS="$ORIGINAL_JAVA_TOOL_OPTIONS $EXTRA_OPTS"
-    else
-        export JAVA_TOOL_OPTIONS="$EXTRA_OPTS"
+    if [[ "$MODE" == "campaign-acceptance" ]]; then
+        ACCEPTANCE_SAVE_DIR="$(resolve_acceptance_save_dir)"
+        ASTD_ACCEPTANCE_AGENT_JAR="${ASTD_ACCEPTANCE_AGENT_JAR:-$GAME_DIR/mods/asteria_directorate/jars/AsteriaDirectorate-1.0-SNAPSHOT-acceptance-agent.jar}"
+        ACCEPTANCE_JAVA_EXE="${ASTD_ACCEPTANCE_JAVA_EXE:-$(resolve_java_25 || true)}"
+        if [[ ! -f "$ASTD_ACCEPTANCE_AGENT_JAR" ]]; then
+            echo "FAIL: ASTD acceptance agent jar not found: $ASTD_ACCEPTANCE_AGENT_JAR" >&2
+            exit 1
+        fi
+        if [[ -z "$ACCEPTANCE_JAVA_EXE" ]]; then
+            echo "FAIL: no Java 25 runtime found for direct campaign acceptance launch" >&2
+            exit 1
+        fi
+        launch_campaign_acceptance_direct "$ACCEPTANCE_JAVA_EXE" "$ASTD_ACCEPTANCE_AGENT_JAR" "$ACCEPTANCE_SAVE_DIR" $EXTRA_OPTS
+        echo "Campaign acceptance save: ${ACCEPTANCE_SAVE_DIR}"
+        echo "Campaign acceptance agent: ${ASTD_ACCEPTANCE_AGENT_JAR}"
+        echo "Campaign acceptance Java: ${ACCEPTANCE_JAVA_EXE}"
+    fi
+    if [[ "$MODE" != "campaign-acceptance" ]]; then
+        if [[ -n "${JAVA_TOOL_OPTIONS:-}" ]]; then
+            export JAVA_TOOL_OPTIONS="${JAVA_TOOL_OPTIONS} $EXTRA_OPTS"
+        else
+            export JAVA_TOOL_OPTIONS="${EXTRA_OPTS}"
+        fi
     fi
     echo "Auto-enter game: enabled (${START_RES}, fullscreen=${START_FS}, sound=${START_SOUND})"
 fi
@@ -196,6 +358,11 @@ for ((elapsed = 0; elapsed < TIMEOUT_SEC; elapsed++)); do
         echo "Fatal marker detected in log, stopping early"
         break
     fi
+
+    if [[ "$MODE" == "campaign-acceptance" ]] && log_contains "Dev storage acceptance passed|Dev storage acceptance failed"; then
+        echo "Campaign acceptance marker detected, stopping early"
+        break
+    fi
 done
 
 cleanup_game
@@ -214,7 +381,7 @@ fi
 if grep -q "\[ASTD\] Asteria Directorate loaded" "$LOG_FILE" 2>/dev/null; then
     echo "OK: ASTD onApplicationLoad marker found"
 else
-    if [[ "$MODE" == "game" ]]; then
+    if [[ "$MODE" == "game" || "$MODE" == "campaign-acceptance" ]]; then
         echo "FAIL: ASTD onApplicationLoad marker not found within timeout"
         PASS=false
     else
@@ -226,6 +393,20 @@ if grep -q "\[SSOptimizer\] Agent loaded" "$LOG_FILE" 2>/dev/null; then
     echo "OK: SSOptimizer agent loaded"
 else
     echo "INFO: SSOptimizer agent marker not found"
+fi
+
+if [[ "$MODE" == "campaign-acceptance" ]]; then
+    if grep -q "Dev storage acceptance passed" "$LOG_FILE" "$PROCESS_LOG_FILE" 2>/dev/null; then
+        echo "OK: dev storage acceptance marker found"
+        print_log_matches "Dev storage acceptance passed"
+    elif grep -q "Dev storage acceptance failed" "$LOG_FILE" "$PROCESS_LOG_FILE" 2>/dev/null; then
+        echo "FAIL: dev storage acceptance failure marker found"
+        print_log_matches "Dev storage acceptance failed"
+        PASS=false
+    else
+        echo "FAIL: dev storage acceptance marker not found; campaign save was not loaded within timeout"
+        PASS=false
+    fi
 fi
 
 echo ""

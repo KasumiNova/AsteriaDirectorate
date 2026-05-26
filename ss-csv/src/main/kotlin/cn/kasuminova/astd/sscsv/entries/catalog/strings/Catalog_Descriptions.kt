@@ -22,6 +22,7 @@ abstract class LocalizedDescription(
     final override val text2: String = desc(id, "text2")
     final override val text3: String = desc(id, "text3")
     final override val text4: String = desc(id, "text4")
+    final override val text5: String = desc(id, "text5")
     final override val notes: String = desc(notesId, "notes")
 }
 

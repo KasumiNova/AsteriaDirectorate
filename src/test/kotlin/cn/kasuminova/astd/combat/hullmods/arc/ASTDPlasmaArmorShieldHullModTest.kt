@@ -42,4 +42,52 @@ class ASTDPlasmaArmorShieldHullModTest {
             "panel-visible armor correction should use the installed hullmod id as the stat source",
         )
     }
+
+    @Test
+    fun `plasma armor shield strips forbidden shield shunt in creation paths`() {
+        val source = Files.readString(
+            Path.of("src/main/kotlin/cn/kasuminova/astd/combat/hullmods/arc/ASTDPlasmaArmorShieldHullMod.kt"),
+        )
+
+        assertTrue(source.contains("FORBIDDEN_HULLMOD_IDS = setOf("), "forbidden hullmods should be centralized")
+        assertTrue(source.contains("HullMods.SHIELD_SHUNT"), "plasma armor shield must explicitly forbid vanilla shield shunt")
+        assertTrue(
+            source.contains("override fun applyEffectsAfterShipCreation(ship: ShipAPI, id: String)"),
+            "invalid refit or save states must be cleaned after ship creation",
+        )
+        assertTrue(
+            source.contains("private fun stripForbiddenHullMods(variant: ShipVariantAPI?)"),
+            "forbidden hullmod stripping should be shared by refit and combat creation paths",
+        )
+        assertTrue(source.contains("variant.removeMod(forbiddenId)"), "ordinary installed forbidden hullmods must be removed")
+        assertTrue(source.contains("variant.removePermaMod(forbiddenId)"), "built-in or S-modded forbidden hullmods must be removed")
+        assertTrue(source.contains("variant.getSMods().remove(forbiddenId)"), "S-mod bookkeeping must be cleared with the forbidden hullmod")
+        assertTrue(source.contains("variant.getSModdedBuiltIns().remove(forbiddenId)"), "built-in S-mod bookkeeping must be cleared with the forbidden hullmod")
+        assertFalse(
+            source.contains("MagicIncompatibleHullmods"),
+            "do not depend on warning hullmod fallback for hard-forbidden plasma arch hullmods",
+        )
+    }
+
+    @Test
+    fun `plasma armor shield uses directional armor calculation without virtual shield sectors`() {
+        val source = Files.readString(
+            Path.of("src/main/kotlin/cn/kasuminova/astd/combat/hullmods/arc/ASTDPlasmaArmorShieldHullMod.kt"),
+        )
+
+        assertTrue(source.contains("directionalArmorFraction(ship, hitPoint)"), "shield and armor mitigation should be based on hit direction")
+        assertTrue(source.contains("FRONT_ARMOR_FRACTION = 0.15f"), "front 60 degree shield should get 15% armor calculation")
+        assertTrue(source.contains("SIDE_ARMOR_FRACTION_MIN = 0.10f"), "side/front arc should start at 10% armor calculation")
+        assertTrue(source.contains("SIDE_ARMOR_FRACTION_MAX = 0.15f"), "side/front arc should reach 15% armor calculation")
+        assertTrue(source.contains("REAR_ARMOR_FRACTION_MIN = 0.05f"), "rear arc should start at 5% armor calculation")
+        assertTrue(source.contains("REAR_ARMOR_FRACTION_MAX = 0.10f"), "rear arc should reach 10% armor calculation")
+        assertTrue(source.contains("val boostMult = 1f + boostLevel(ship)"), "system boost should double directional armor calculation at full level")
+        assertTrue(source.contains("!shieldHit"), "armor hits should also use the extra directional armor calculation")
+        assertTrue(source.contains("addFloatingDamageText"), "prevented damage should be shown with vanilla floating damage text")
+        assertTrue(source.contains("preventedDamageColor(ship)"), "prevented damage text should use shield-blue or boost-purple colors")
+        assertFalse(source.contains("plasmaGridState"), "virtual sector state should be removed from the hullmod")
+        assertFalse(source.contains("ASTDPlasmaShieldGridState"), "virtual sector state should not drive plasma armor shield anymore")
+        assertFalse(source.contains("maintainPlayerHud"), "old sector HUD should be removed with the sector mechanic")
+        assertFalse(source.contains("applyAbsorbedDamage"), "directional armor calculation should not consume virtual armor")
+    }
 }

@@ -25,8 +25,17 @@ abstract class ShipSystemWithSystemFileEntry : ShipSystemEntry(), SsExtraOutputs
     /** `.system` 的 statsScript 字段：系统效果脚本类（完整限定名）。 */
     open val statsScript: String = "cn.kasuminova.astd.combat.shipsystems.PlaceholderShipSystemStats"
 
-    /** `.system` 的 useSound 字段：激活音效 id。 */
-    open val useSound: String = "system_ammo_feeder"
+    /** `.system` 的 useSound 字段：激活音效 id；为 null 时不写入。 */
+    open val useSound: String? = "system_ammo_feeder"
+
+    /** `.system` 的 loopSound 字段：持续音效 id；为 null 时不写入。 */
+    open val loopSound: String? = null
+
+    /** `.system` 的 deactivateSound 字段：关闭音效 id；为 null 时不写入。 */
+    open val deactivateSound: String? = null
+
+    /** `.system` 的 outOfUsesSound 字段：不可用音效 id；为 null 时不写入。 */
+    open val outOfUsesSound: String? = null
 
     override fun extraFiles(): List<GeneratedFile> {
         val fields = linkedMapOf<String, String>(
@@ -40,7 +49,10 @@ abstract class ShipSystemWithSystemFileEntry : ShipSystemEntry(), SsExtraOutputs
         }
 
         fields["statsScript"] = statsScript
-        fields["useSound"] = useSound
+        useSound?.let { fields["useSound"] = it }
+        loopSound?.let { fields["loopSound"] = it }
+        deactivateSound?.let { fields["deactivateSound"] = it }
+        outOfUsesSound?.let { fields["outOfUsesSound"] = it }
 
         val body = fields.entries.joinToString(",\n") { (k, v) ->
             "    \"$k\": \"$v\""
