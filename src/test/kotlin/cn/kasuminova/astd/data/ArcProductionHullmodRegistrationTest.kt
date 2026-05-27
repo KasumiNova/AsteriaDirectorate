@@ -20,7 +20,11 @@ class ArcProductionHullmodRegistrationTest {
             assertEquals("ARC", row.getValue("tech/manufacturer"), "hullmod must use ARC tech: $id")
             assertTrue(row.getValue("tags").split("|").contains("astd_builtin"), "hullmod must be a ship-specific built-in: $id")
             assertIsRealText(row.getValue("short"), "short", id)
-            assertIsRealText(row.getValue("desc"), "desc", id)
+            if (id in customRenderedTooltipHullmodIds) {
+                assertTrue(row.getValue("desc").isBlank(), "custom rendered tooltip must leave native desc blank: $id")
+            } else {
+                assertIsRealText(row.getValue("desc"), "desc", id)
+            }
 
             val script = row.getValue("script")
             assertTrue(script.isNotBlank(), "script must not be blank: $id")
@@ -80,6 +84,11 @@ class ArcProductionHullmodRegistrationTest {
             "astd_ionized_recoil_accumulator",
             "astd_arc_advanced_targeting_system",
             "astd_distributed_pursuit_network",
+        )
+
+        val customRenderedTooltipHullmodIds = setOf(
+            "astd_plasma_armor_shield",
+            "astd_ionized_recoil_accumulator",
         )
     }
 }

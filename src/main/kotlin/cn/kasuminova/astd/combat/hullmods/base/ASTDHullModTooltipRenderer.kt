@@ -18,6 +18,14 @@ internal object ASTDHullModTooltipRenderer {
         val headerBackground: Color,
         val sectionBackground: Color,
         val accentColor: Color,
+        val warningColor: Color = Color(255, 224, 36),
+        val positiveColor: Color = Color(96, 224, 126),
+        val orangeColor: Color = Color(255, 148, 42),
+    )
+
+    data class Highlight(
+        val value: String,
+        val color: Color,
     )
 
     data class Section(
@@ -32,6 +40,7 @@ internal object ASTDHullModTooltipRenderer {
     data class Paragraph(
         val key: String,
         override val padTop: Float = 8f,
+        val highlights: List<Highlight> = emptyList(),
     ) : Block
 
     data class Heading(
@@ -49,15 +58,23 @@ internal object ASTDHullModTooltipRenderer {
     data class Row(
         val labelKey: String,
         val valueKey: String,
+        val labelRole: String? = null,
+        val valueRole: String? = null,
     )
 
     fun section(headingKey: String, vararg lineKeys: String): Section = Section(headingKey, lineKeys.toList())
 
-    fun paragraph(key: String, padTop: Float = 8f): Paragraph = Paragraph(key, padTop)
+    fun paragraph(key: String, padTop: Float = 8f, vararg highlights: Highlight): Paragraph =
+        Paragraph(key, padTop, highlights.toList())
+
+    fun highlight(value: String, hexColor: String): Highlight = Highlight(value, Color.decode(hexColor))
 
     fun heading(key: String, padTop: Float = 12f): Heading = Heading(key, padTop)
 
-    fun row(labelKey: String, valueKey: String): Row = Row(labelKey, valueKey)
+    fun row(labelKey: String, valueKey: String, role: String? = null): Row = Row(labelKey, valueKey, role, role)
+
+    fun row(labelKey: String, valueKey: String, labelRole: String?, valueRole: String?): Row =
+        Row(labelKey, valueKey, labelRole, valueRole)
 
     fun table(
         headerAKey: String = "ui.hullmod.table.attribute",
@@ -114,13 +131,7 @@ internal object ASTDHullModTooltipRenderer {
                 heading(title, theme.nameColor, theme.headerBackground, 6f)
                 for (block in blocks) {
                     when (block) {
-                        is Paragraph -> I18nUi.addPara(
-                            tooltip,
-                            I18n.Categories.MOD,
-                            block.key,
-                            block.padTop,
-                            Misc.getTextColor(),
-                        )
+                        is Paragraph -> renderParagraph(tooltip, block)
 
                         is Heading -> heading(
                             I18n[I18n.Categories.MOD, block.key],
@@ -160,13 +171,39 @@ internal object ASTDHullModTooltipRenderer {
         for (row in table.rows) {
             tooltip.addRow(
                 Alignment.MID,
-                Misc.getTextColor(),
+                colorForRole(theme, row.labelRole, Misc.getTextColor()),
                 I18n[I18n.Categories.MOD, row.labelKey],
                 Alignment.MID,
-                theme.nameColor,
+                colorForRole(theme, row.valueRole, theme.nameColor),
                 I18n[I18n.Categories.MOD, row.valueKey],
             )
         }
         tooltip.addTable("", 0, table.padTop)
+    }
+
+    private fun renderParagraph(tooltip: TooltipMakerAPI, block: Paragraph) {
+        if (block.highlights.isEmpty()) {
+            I18nUi.addPara(
+                tooltip,
+                I18n.Categories.MOD,
+                block.key,
+                block.padTop,
+                Misc.getTextColor(),
+            )
+            return
+        }
+
+        val rendered = I18n.Rendered(
+            text = I18n[I18n.Categories.MOD, block.key],
+            highlights = block.highlights.map { I18n.Highlight(it.value, it.color) },
+        )
+        I18nUi.addParaRendered(tooltip, rendered, block.padTop, Misc.getTextColor())
+    }
+
+    private fun colorForRole(theme: Theme, role: String?, fallback: Color): Color = when (role) {
+        "warning" -> theme.warningColor
+        "positive" -> theme.positiveColor
+        "orange" -> theme.orangeColor
+        else -> fallback
     }
 }

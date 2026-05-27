@@ -3,6 +3,7 @@ package cn.kasuminova.astd.combat.hullmods.arc
 import cn.kasuminova.astd.combat.hullmods.base.ASTDHullModTooltipRenderer
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseHullMod
+import com.fs.starfarer.api.combat.BeamAPI
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEntityAPI
 import com.fs.starfarer.api.combat.DamageAPI
@@ -25,12 +26,22 @@ class ASTDIonizedRecoilAccumulatorHullMod : BaseHullMod() {
         private const val COOLDOWN_SECONDS = 1f
         private const val RANGE = 800f
         private const val HARD_FLUX_CONVERT_FRACTION = 0.02f
-        private const val SOFT_FLUX_MULT = 2f
+        private const val SOFT_FLUX_MULT = 1f
         private const val EMP_MULT = 2f
         private const val BASE_PROC_CHANCE = 0.25f
         private const val MAX_PROC_CHANCE = 0.85f
         private const val PROC_START_FLUX_LEVEL = 0.25f
         private const val PROC_MAX_FLUX_LEVEL = 0.85f
+        private const val KINETIC_SHIELD_PROC_MULT = 1.75f
+        private const val HIGH_EXPLOSIVE_SHIELD_PROC_MULT = 0.50f
+        private const val FRAGMENTATION_SHIELD_PROC_MULT = 0.25f
+        private const val KINETIC_ARMOR_PROC_MULT = 0.50f
+        private const val HIGH_EXPLOSIVE_ARMOR_PROC_MULT = 2.50f
+        private const val FRAGMENTATION_ARMOR_PROC_MULT = 0.25f
+        private const val BEAM_PROC_MULT = 0.25f
+        private const val HIT_STRENGTH_BASE_FLUX_FRACTION = 0.02f
+        private const val MIN_HIT_STRENGTH_PROC_MULT = 0.10f
+        private const val MAX_HIT_STRENGTH_PROC_MULT = 3f
         private const val ARC_THICKNESS = 18f
         private const val ARC_VISUAL_THICKNESS = 12f
         private const val ARC_CORE_WIDTH = 6f
@@ -84,9 +95,10 @@ class ASTDIonizedRecoilAccumulatorHullMod : BaseHullMod() {
 
         override fun modifyDamageTaken(param: Any?, target: CombatEntityAPI?, damage: DamageAPI?, point: Vector2f?, shieldHit: Boolean): String? {
             if (target !== ship || damage == null || point == null || cooldown > 0f) return null
-            if (!shieldHit && !isArmorHit(point)) return null
+            val armorHit = !shieldHit && isArmorHit(point)
+            if (!shieldHit && !armorHit) return null
 
-            val chance = procChance(fluxLevel())
+            val chance = procChance(param, damage, armorHit, fluxLevel())
             if (chance <= 0f) return null
             if (Math.random().toFloat() > chance) return null
 
@@ -155,11 +167,39 @@ class ASTDIonizedRecoilAccumulatorHullMod : BaseHullMod() {
             }
         }
 
-        private fun procChance(hardFluxLevel: Float): Float {
-            if (hardFluxLevel < PROC_START_FLUX_LEVEL) return 0f
+        private fun procChance(param: Any?, damage: DamageAPI, armorHit: Boolean, fluxLevel: Float): Float {
+            if (fluxLevel < PROC_START_FLUX_LEVEL) return 0f
             val span = (PROC_MAX_FLUX_LEVEL - PROC_START_FLUX_LEVEL).coerceAtLeast(0.0001f)
-            val t = ((hardFluxLevel - PROC_START_FLUX_LEVEL) / span).coerceIn(0f, 1f)
-            return BASE_PROC_CHANCE + (MAX_PROC_CHANCE - BASE_PROC_CHANCE) * t
+            val t = ((fluxLevel - PROC_START_FLUX_LEVEL) / span).coerceIn(0f, 1f)
+            val base = BASE_PROC_CHANCE + (MAX_PROC_CHANCE - BASE_PROC_CHANCE) * t
+            val beamMult = if (param is BeamAPI) BEAM_PROC_MULT else 1f
+            return (base *
+                damageTypeProcMult(damage.type, armorHit) *
+                beamMult *
+                hitStrengthProcMult(damage.baseDamage)).coerceIn(0f, 1f)
+        }
+
+        private fun damageTypeProcMult(type: DamageType, armorHit: Boolean): Float =
+            if (armorHit) {
+                when (type) {
+                    DamageType.KINETIC -> KINETIC_ARMOR_PROC_MULT
+                    DamageType.HIGH_EXPLOSIVE -> HIGH_EXPLOSIVE_ARMOR_PROC_MULT
+                    DamageType.FRAGMENTATION -> FRAGMENTATION_ARMOR_PROC_MULT
+                    else -> 1f
+                }
+            } else {
+                when (type) {
+                    DamageType.KINETIC -> KINETIC_SHIELD_PROC_MULT
+                    DamageType.HIGH_EXPLOSIVE -> HIGH_EXPLOSIVE_SHIELD_PROC_MULT
+                    DamageType.FRAGMENTATION -> FRAGMENTATION_SHIELD_PROC_MULT
+                    else -> 1f
+                }
+            }
+
+        private fun hitStrengthProcMult(baseDamage: Float): Float {
+            val base = ship.fluxTracker.maxFlux * HIT_STRENGTH_BASE_FLUX_FRACTION
+            if (base <= 0f) return MIN_HIT_STRENGTH_PROC_MULT
+            return (baseDamage.coerceAtLeast(0f) / base).coerceIn(MIN_HIT_STRENGTH_PROC_MULT, MAX_HIT_STRENGTH_PROC_MULT)
         }
 
         private fun effectiveRecoilRange(): Float {

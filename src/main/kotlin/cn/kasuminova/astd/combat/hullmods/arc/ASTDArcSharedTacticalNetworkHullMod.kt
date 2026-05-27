@@ -6,6 +6,8 @@ import com.fs.starfarer.api.combat.BaseHullMod
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.MutableShipStatsAPI
 import com.fs.starfarer.api.combat.ShipAPI
+import com.fs.starfarer.api.combat.WeaponAPI
+import com.fs.starfarer.api.combat.listeners.WeaponRangeModifier
 import com.fs.starfarer.api.ui.TooltipMakerAPI
 import java.awt.Color
 
@@ -13,6 +15,7 @@ class ASTDArcSharedTacticalNetworkHullMod : BaseHullMod() {
 
     companion object {
         private const val SELF_WEAPON_RANGE_PERCENT = -20f
+        private const val SELF_POINT_DEFENSE_RANGE_COMPENSATION_MULT = 1.25f
         private const val SELF_ECM_RATING = 0.04f
         private const val MAX_TARGETS = 12
         private const val CONNECT_PULSE_MIN_INTERVAL = 1.25f
@@ -41,8 +44,13 @@ class ASTDArcSharedTacticalNetworkHullMod : BaseHullMod() {
         stats.dynamic.getMod("opad_ecm_rating").modifyFlat(modId, SELF_ECM_RATING)
     }
 
+    override fun applyEffectsAfterShipCreation(ship: ShipAPI, id: String) {
+        ensurePointDefenseRangeCompensation(ship)
+    }
+
     override fun advanceInCombat(ship: ShipAPI, amount: Float) {
         val engine = Global.getCombatEngine() ?: return
+        ensurePointDefenseRangeCompensation(ship)
         if (engine.isPaused || amount <= 0f) return
         if (ship.isHulk || ship.hitpoints <= 0f) {
             clearStaleTargets(engine, ship, emptySet())
@@ -174,6 +182,40 @@ class ASTDArcSharedTacticalNetworkHullMod : BaseHullMod() {
         val maneuverBonus: Float,
         val shieldDamageReduction: Float,
     )
+
+    private fun ensurePointDefenseRangeCompensation(ship: ShipAPI) {
+        if (!ship.hasListenerOfClass(PointDefenseRangeCompensationModifier::class.java)) {
+            ship.addListener(PointDefenseRangeCompensationModifier())
+        }
+    }
+
+    private class PointDefenseRangeCompensationModifier : WeaponRangeModifier {
+        override fun getWeaponRangePercentMod(ship: ShipAPI, weapon: WeaponAPI): Float = 0f
+
+        override fun getWeaponRangeMultMod(ship: ShipAPI, weapon: WeaponAPI): Float =
+            if (isAffectedNonMissileWeapon(weapon) && ASTDArcCombatUtil.isPointDefenseWeapon(weapon)) {
+                SELF_POINT_DEFENSE_RANGE_COMPENSATION_MULT
+            } else {
+                1f
+            }
+
+        override fun getWeaponRangeFlatMod(ship: ShipAPI, weapon: WeaponAPI): Float = 0f
+
+        private fun isAffectedNonMissileWeapon(weapon: WeaponAPI): Boolean {
+            if (safeIsDecorative(weapon)) return false
+            return when (safeType(weapon)) {
+                WeaponAPI.WeaponType.MISSILE,
+                WeaponAPI.WeaponType.LAUNCH_BAY,
+                WeaponAPI.WeaponType.DECORATIVE,
+                WeaponAPI.WeaponType.SYSTEM,
+                WeaponAPI.WeaponType.STATION_MODULE -> false
+                else -> true
+            }
+        }
+
+        private fun safeIsDecorative(weapon: WeaponAPI): Boolean = try { weapon.isDecorative } catch (_: Throwable) { false }
+        private fun safeType(weapon: WeaponAPI): WeaponAPI.WeaponType? = try { weapon.type } catch (_: Throwable) { null }
+    }
 
     private fun affinityScale(ship: ShipAPI): Float {
         var scale = 1f

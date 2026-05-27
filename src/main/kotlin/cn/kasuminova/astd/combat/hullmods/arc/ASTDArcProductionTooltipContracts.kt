@@ -60,36 +60,119 @@ internal object ASTDArcProductionTooltipContracts {
     val plasmaArmorShield = Contract(
         hullmodId = ASTDArcProductionShipIds.HULLMOD_PLASMA_ARMOR_SHIELD,
         blocks = listOf(
-            ASTDHullModTooltipRenderer.paragraph("ui.hullmod.plasma_armor_shield.summary"),
-            ASTDHullModTooltipRenderer.heading("ui.hullmod.export.section.effect"),
+            ASTDHullModTooltipRenderer.paragraph(
+                "ui.hullmod.plasma_armor_shield.summary",
+                highlights = arrayOf(ASTDHullModTooltipRenderer.highlight("阿斯忒里亚遗构局", "#FF9600")),
+            ),
+            ASTDHullModTooltipRenderer.heading("ui.hullmod.plasma_armor_shield.section.directional_armor"),
+            ASTDHullModTooltipRenderer.paragraph("ui.hullmod.plasma_armor_shield.line.directional_armor"),
             ASTDHullModTooltipRenderer.table(
+                headerAKey = "ui.hullmod.plasma_armor_shield.table.direction.header_a",
+                headerBKey = "ui.hullmod.plasma_armor_shield.table.direction.header_b",
                 rows = arrayOf(
-                    ASTDHullModTooltipRenderer.row("ui.hullmod.plasma_armor_shield.attr.armor_shield", "ui.hullmod.plasma_armor_shield.value.armor_shield"),
-                    ASTDHullModTooltipRenderer.row("ui.hullmod.plasma_armor_shield.attr.damage_type", "ui.hullmod.plasma_armor_shield.value.damage_type"),
-                    ASTDHullModTooltipRenderer.row("ui.hullmod.plasma_armor_shield.attr.grid", "ui.hullmod.plasma_armor_shield.value.grid"),
-                    ASTDHullModTooltipRenderer.row("ui.hullmod.plasma_armor_shield.attr.boost", "ui.hullmod.plasma_armor_shield.value.boost"),
-                    ASTDHullModTooltipRenderer.row("ui.hullmod.plasma_armor_shield.attr.recovery", "ui.hullmod.plasma_armor_shield.value.recovery"),
-                    ASTDHullModTooltipRenderer.row("ui.hullmod.plasma_armor_shield.attr.limits", "ui.hullmod.plasma_armor_shield.value.limits"),
+                    ASTDHullModTooltipRenderer.row("ui.hullmod.plasma_armor_shield.table.direction.row_0.label", "ui.hullmod.plasma_armor_shield.table.direction.row_0.value", role = "warning"),
+                    ASTDHullModTooltipRenderer.row("ui.hullmod.plasma_armor_shield.table.direction.row_1.label", "ui.hullmod.plasma_armor_shield.table.direction.row_1.value", role = "warning"),
+                    ASTDHullModTooltipRenderer.row("ui.hullmod.plasma_armor_shield.table.direction.row_2.label", "ui.hullmod.plasma_armor_shield.table.direction.row_2.value", role = "warning"),
                 ),
             ),
-            ASTDHullModTooltipRenderer.paragraph("ui.hullmod.plasma_armor_shield.note"),
+            ASTDHullModTooltipRenderer.heading("ui.hullmod.plasma_armor_shield.section.effect"),
+            ASTDHullModTooltipRenderer.paragraph("ui.hullmod.plasma_armor_shield.line.shield_damage_type"),
+            ASTDHullModTooltipRenderer.table(
+                headerAKey = "ui.hullmod.plasma_armor_shield.table.shield_damage.header_a",
+                headerBKey = "ui.hullmod.plasma_armor_shield.table.shield_damage.header_b",
+                rows = arrayOf(
+                    ASTDHullModTooltipRenderer.row("ui.hullmod.plasma_armor_shield.table.shield_damage.row_0.label", "ui.hullmod.plasma_armor_shield.table.shield_damage.row_0.value", role = "warning"),
+                    ASTDHullModTooltipRenderer.row("ui.hullmod.plasma_armor_shield.table.shield_damage.row_1.label", "ui.hullmod.plasma_armor_shield.table.shield_damage.row_1.value", role = "warning"),
+                    ASTDHullModTooltipRenderer.row("ui.hullmod.plasma_armor_shield.table.shield_damage.row_2.label", "ui.hullmod.plasma_armor_shield.table.shield_damage.row_2.value", role = "warning"),
+                    ASTDHullModTooltipRenderer.row("ui.hullmod.plasma_armor_shield.table.shield_damage.row_3.label", "ui.hullmod.plasma_armor_shield.table.shield_damage.row_3.value", role = "warning"),
+                ),
+            ),
+            ASTDHullModTooltipRenderer.paragraph("ui.hullmod.plasma_armor_shield.line.armor_damage_type"),
+            ASTDHullModTooltipRenderer.table(
+                headerAKey = "ui.hullmod.plasma_armor_shield.table.armor_damage.header_a",
+                headerBKey = "ui.hullmod.plasma_armor_shield.table.armor_damage.header_b",
+                rows = arrayOf(
+                    ASTDHullModTooltipRenderer.row("ui.hullmod.plasma_armor_shield.table.armor_damage.row_0.label", "ui.hullmod.plasma_armor_shield.table.armor_damage.row_0.value", role = "warning"),
+                    ASTDHullModTooltipRenderer.row("ui.hullmod.plasma_armor_shield.table.armor_damage.row_1.label", "ui.hullmod.plasma_armor_shield.table.armor_damage.row_1.value", role = "warning"),
+                ),
+            ),
+            ASTDHullModTooltipRenderer.heading("ui.hullmod.plasma_armor_shield.section.limits"),
+            ASTDHullModTooltipRenderer.paragraph("ui.hullmod.plasma_armor_shield.line.limits"),
+            ASTDHullModTooltipRenderer.paragraph("ui.hullmod.plasma_armor_shield.line.limit_hardened_shields"),
+            ASTDHullModTooltipRenderer.paragraph("ui.hullmod.plasma_armor_shield.line.limit_shield_shunt"),
+            ASTDHullModTooltipRenderer.paragraph(
+                "ui.hullmod.plasma_armor_shield.line.max_armor_penalty",
+                highlights = arrayOf(ASTDHullModTooltipRenderer.highlight("50%", "#FFE024")),
+            ),
         ),
     )
 
     val ionizedRecoilAccumulator = Contract(
         hullmodId = ASTDArcProductionShipIds.HULLMOD_IONIZED_RECOIL_ACCUMULATOR,
         blocks = listOf(
-            ASTDHullModTooltipRenderer.paragraph("ui.hullmod.ionized_recoil_accumulator.summary"),
-            ASTDHullModTooltipRenderer.heading("ui.hullmod.export.section.effect"),
+            ASTDHullModTooltipRenderer.paragraph(
+                "ui.hullmod.ionized_recoil_accumulator.summary",
+                highlights = arrayOf(ASTDHullModTooltipRenderer.highlight("等离子装甲护盾", "#FFE024")),
+            ),
+            ASTDHullModTooltipRenderer.heading("ui.hullmod.ionized_recoil_accumulator.section.effect"),
+            ASTDHullModTooltipRenderer.paragraph("ui.hullmod.ionized_recoil_accumulator.line.proc_intro"),
             ASTDHullModTooltipRenderer.table(
+                headerAKey = "ui.hullmod.ionized_recoil_accumulator.table.flux.header_a",
+                headerBKey = "ui.hullmod.ionized_recoil_accumulator.table.flux.header_b",
                 rows = arrayOf(
-                    ASTDHullModTooltipRenderer.row("ui.hullmod.ionized_recoil_accumulator.attr.recoil", "ui.hullmod.ionized_recoil_accumulator.value.recoil"),
-                    ASTDHullModTooltipRenderer.row("ui.hullmod.ionized_recoil_accumulator.attr.volley", "ui.hullmod.ionized_recoil_accumulator.value.volley"),
-                    ASTDHullModTooltipRenderer.row("ui.hullmod.ionized_recoil_accumulator.attr.damage", "ui.hullmod.ionized_recoil_accumulator.value.damage"),
-                    ASTDHullModTooltipRenderer.row("ui.hullmod.ionized_recoil_accumulator.attr.pierce", "ui.hullmod.ionized_recoil_accumulator.value.pierce"),
+                    ASTDHullModTooltipRenderer.row("ui.hullmod.ionized_recoil_accumulator.table.flux.row_0.label", "ui.hullmod.ionized_recoil_accumulator.table.flux.row_0.value", role = "warning"),
+                    ASTDHullModTooltipRenderer.row("ui.hullmod.ionized_recoil_accumulator.table.flux.row_1.label", "ui.hullmod.ionized_recoil_accumulator.table.flux.row_1.value", role = "warning"),
+                    ASTDHullModTooltipRenderer.row("ui.hullmod.ionized_recoil_accumulator.table.flux.row_2.label", "ui.hullmod.ionized_recoil_accumulator.table.flux.row_2.value", role = "warning"),
                 ),
             ),
-            ASTDHullModTooltipRenderer.paragraph("ui.hullmod.ionized_recoil_accumulator.note"),
+            ASTDHullModTooltipRenderer.paragraph("ui.hullmod.ionized_recoil_accumulator.line.proc_type"),
+            ASTDHullModTooltipRenderer.table(
+                headerAKey = "ui.hullmod.ionized_recoil_accumulator.table.proc_type.header_a",
+                headerBKey = "ui.hullmod.ionized_recoil_accumulator.table.proc_type.header_b",
+                rows = arrayOf(
+                    ASTDHullModTooltipRenderer.row("ui.hullmod.ionized_recoil_accumulator.table.proc_type.row_0.label", "ui.hullmod.ionized_recoil_accumulator.table.proc_type.row_0.value", role = "warning"),
+                    ASTDHullModTooltipRenderer.row("ui.hullmod.ionized_recoil_accumulator.table.proc_type.row_1.label", "ui.hullmod.ionized_recoil_accumulator.table.proc_type.row_1.value", role = "warning"),
+                    ASTDHullModTooltipRenderer.row("ui.hullmod.ionized_recoil_accumulator.table.proc_type.row_2.label", "ui.hullmod.ionized_recoil_accumulator.table.proc_type.row_2.value", role = "warning"),
+                    ASTDHullModTooltipRenderer.row("ui.hullmod.ionized_recoil_accumulator.table.proc_type.row_3.label", "ui.hullmod.ionized_recoil_accumulator.table.proc_type.row_3.value", role = "warning"),
+                    ASTDHullModTooltipRenderer.row("ui.hullmod.ionized_recoil_accumulator.table.proc_type.row_4.label", "ui.hullmod.ionized_recoil_accumulator.table.proc_type.row_4.value", role = "warning"),
+                    ASTDHullModTooltipRenderer.row("ui.hullmod.ionized_recoil_accumulator.table.proc_type.row_5.label", "ui.hullmod.ionized_recoil_accumulator.table.proc_type.row_5.value", role = "warning"),
+                ),
+            ),
+            ASTDHullModTooltipRenderer.paragraph(
+                "ui.hullmod.ionized_recoil_accumulator.line.beam_proc",
+                highlights = arrayOf(ASTDHullModTooltipRenderer.highlight("90%", "#FFE024")),
+            ),
+            ASTDHullModTooltipRenderer.paragraph(
+                "ui.hullmod.ionized_recoil_accumulator.line.damage_proc",
+                highlights = arrayOf(
+                    ASTDHullModTooltipRenderer.highlight("2%", "#FFE024"),
+                    ASTDHullModTooltipRenderer.highlight("10%", "#FFE024"),
+                    ASTDHullModTooltipRenderer.highlight("300%", "#FFE024"),
+                ),
+            ),
+            ASTDHullModTooltipRenderer.heading("ui.hullmod.ionized_recoil_accumulator.section.flux_damage"),
+            ASTDHullModTooltipRenderer.paragraph(
+                "ui.hullmod.ionized_recoil_accumulator.line.flux_conversion",
+                highlights = arrayOf(
+                    ASTDHullModTooltipRenderer.highlight("800su", "#FFE024"),
+                    ASTDHullModTooltipRenderer.highlight("能量武器射程", "#FFE024"),
+                    ASTDHullModTooltipRenderer.highlight("2%", "#FFE024"),
+                    ASTDHullModTooltipRenderer.highlight("等额", "#FFE024"),
+                    ASTDHullModTooltipRenderer.highlight("能量伤害", "#FFE024"),
+                ),
+            ),
+            ASTDHullModTooltipRenderer.paragraph(
+                "ui.hullmod.ionized_recoil_accumulator.line.damage",
+                highlights = arrayOf(
+                    ASTDHullModTooltipRenderer.highlight("100%", "#FFE024"),
+                    ASTDHullModTooltipRenderer.highlight("200%", "#FFE024"),
+                ),
+            ),
+            ASTDHullModTooltipRenderer.paragraph("ui.hullmod.ionized_recoil_accumulator.line.targeting"),
+            ASTDHullModTooltipRenderer.paragraph(
+                "ui.hullmod.ionized_recoil_accumulator.line.cooldown",
+                highlights = arrayOf(ASTDHullModTooltipRenderer.highlight("1s", "#FFE024")),
+            ),
         ),
     )
 

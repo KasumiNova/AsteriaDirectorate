@@ -11,6 +11,7 @@ import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.impl.combat.BaseShipSystemScript
 import com.fs.starfarer.api.plugins.ShipSystemStatsScript
 import java.awt.Color
+import kotlin.math.roundToInt
 
 class ASTDPlasmaArmorShieldBoostSystemStats : BaseShipSystemScript() {
 
@@ -18,7 +19,7 @@ class ASTDPlasmaArmorShieldBoostSystemStats : BaseShipSystemScript() {
         private const val RAMP_SECONDS = 2f
         private const val SHIELD_DR_MAX = 0.50f
         private const val ARMOR_DR_MAX = 0.25f
-        private const val WEAPON_ROF_MULT = 0.25f
+        private const val WEAPON_ROF_MULT = 0.50f
         private const val HARD_FLUX_PER_SECOND = 0.02f
 
         private const val RAMP_START_KEY = "astd_plasma_boost_ramp_start:"
@@ -71,18 +72,32 @@ class ASTDPlasmaArmorShieldBoostSystemStats : BaseShipSystemScript() {
     }
 
     override fun getStatusData(index: Int, state: ShipSystemStatsScript.State, effectLevel: Float): ShipSystemStatsScript.StatusData? {
-        if (index != 0) return null
         val suffix = when (state) {
             ShipSystemStatsScript.State.IN -> "in"
             ShipSystemStatsScript.State.ACTIVE -> "active"
             ShipSystemStatsScript.State.OUT -> "out"
             else -> return null
         }
+        val line = when (index) {
+            0 -> "line1"
+            1 -> "line2"
+            else -> return null
+        }
+        val level = effectLevel.coerceIn(0f, 1f)
         return ShipSystemStatsScript.StatusData(
-            I18n[I18n.Categories.MOD, "system.plasma_armor_shield_boost.status.default.$suffix"],
+            I18n.t(
+                I18n.Categories.MOD,
+                "system.plasma_armor_shield_boost.status.default.$suffix.$line",
+                "shield" to formatPercent(SHIELD_DR_MAX * level),
+                "armor" to formatPercent(ARMOR_DR_MAX * level),
+                "weaponRate" to formatPercent((1f - WEAPON_ROF_MULT) * level),
+            ),
             false,
         )
     }
+
+    private fun formatPercent(value: Float): String =
+        "${(value.coerceAtLeast(0f) * 100f).roundToInt()}%"
 
     private fun suppressEligibleWeaponRefire(ship: ShipAPI, level: Float) {
         val mult = 1f + (WEAPON_ROF_MULT - 1f) * level.coerceIn(0f, 1f)

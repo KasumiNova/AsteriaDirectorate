@@ -21,6 +21,7 @@ internal object ASTDArcProductionShipIds {
     const val STAT_ARC_SHARED_TACTICAL_NETWORK_AURA = "astd_arc_shared_tactical_network_aura"
     const val STAT_ARC_SHARED_FLUX_NETWORK = "astd_arc_shared_flux_network"
     const val STAT_PLASMA_ARMOR_SHIELD = "astd_plasma_armor_shield"
+    const val STAT_PLASMA_ARMOR_SHIELD_SPIKE = "astd_plasma_armor_shield_spike"
     const val STAT_PLASMA_ARMOR_SHIELD_BOOST = "astd_plasma_armor_shield_boost"
     const val STAT_IONIZED_RECOIL_ACCUMULATOR = "astd_ionized_recoil_accumulator"
     const val STAT_ARC_ADVANCED_TARGETING_SYSTEM = "astd_arc_advanced_targeting_system"

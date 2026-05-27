@@ -523,16 +523,16 @@ Run:
 
 Required mechanics:
 - Shield receives armor-style reduction based on final max armor and sector state.
-- Effective shield armor range is `5%~20%` of max armor normally.
-- System boost doubles range to `10%~40%`.
+- Effective shield armor uses hit direction: front `20%`, front-side `15%~20%`, rear `10%~15%` of max armor normally.
+- System boost doubles range to `20%~40%`.
 - Shield damage type modifiers:
   - energy damage taken `-15%`
   - kinetic damage taken `-33%`
   - HE damage taken `+33%`
   - fragmentation damage taken `+20%`
 - Armor kinetic damage taken `-33%`.
-- Incompatible with shield shunt.
-- Armor-increasing hullmods only grant `66%` of their armor increase.
+- Incompatible with shield shunt and hardened shields.
+- Armor-increasing hullmods only grant `50%` of their armor increase.
 
 Implementation note:
 - Prefer existing Starsector damage hooks if available. If exact shield damage interception is not available in `BaseHullMod`, add a focused combat plugin/helper tied to this hullmod rather than broad global scanning.
@@ -543,12 +543,17 @@ Implementation note:
 Required mechanics:
 - Triggered by shield and armor damage, not hull damage.
 - Trigger chance rises from flux `25%` to `85%`.
+- Trigger chance is modified by damage type and hit medium:
+  - shield hits: kinetic `+75%`, HE `-50%`, fragmentation `-75%`
+  - armor hits: kinetic `-50%`, HE `+150%`, fragmentation `-75%`
+  - beam damage applies an additional `-75%`
+- Trigger chance is further multiplied by original damage over `2%` max flux, clamped to `0.1x~3x`.
 - Cooldown `1s`.
 - Max range `800su`.
 - Targets enemy ship weapons/engines first.
 - Does not hit friendlies.
 - If no target, emits harmless/random-area visual discharge.
-- Converts current `0.5%` hard flux to double soft flux.
+- Converts current `2%` hard flux to `1.5x` soft flux.
 - Damage = converted flux amount `100%`.
 - EMP = converted flux amount `200%`.
 - Shield piercing chance based on hard flux level.

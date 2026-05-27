@@ -185,12 +185,12 @@ object Ship_astd_plasma_arch : ShipDataEntry() {
     override val designation: String = "巡洋舰"
     override val tech: String = "弧光阵列"
     override val systemId: String = "astd_plasma_armor_shield_boost"
-    override val fleetPts: Int = 30
+    override val fleetPts: Int = 32
     override val hitpoints: Int = 13000
-    override val armorRating: Int = 1450
+    override val armorRating: Int = 1600
     override val maxFlux: Int = 14000
     override val fluxDissipation: Int = 750
-    override val ordnancePoints: Int = 160
+    override val ordnancePoints: Int = 185
     override val maxSpeed: Int = 45
     override val acceleration: Int = 15
     override val deceleration: Int = 15
@@ -200,7 +200,7 @@ object Ship_astd_plasma_arch : ShipDataEntry() {
     override val shieldType: String = "FRONT"
     override val shieldArc: Int = 360
     override val shieldUpkeep: Double = 0.6
-    override val shieldEfficiency: Double = 0.60
+    override val shieldEfficiency: Double = 1.00
     override val minCrew: Int = 150
     override val maxCrew: Int = 250
     override val cargo: Int = 150

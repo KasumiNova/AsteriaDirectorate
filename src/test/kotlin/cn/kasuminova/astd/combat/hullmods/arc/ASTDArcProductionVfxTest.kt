@@ -64,6 +64,18 @@ class ASTDArcProductionVfxTest {
             hullmod.contains("maintainShieldVisualsEvenWhenPaused"),
             "plasma shield colors must be maintained before paused-frame early return",
         )
+        assertTrue(
+            hullmod.contains("private fun visualBoostLevel(ship: ShipAPI): Float"),
+            "paused-frame shield colors must derive from current ship system state when custom boost data is cleared",
+        )
+        assertTrue(
+            hullmod.contains("system.isActive || system.isOn || system.isStateActive"),
+            "paused-frame shield colors must stay boosted while the toggle system is active or held on",
+        )
+        assertTrue(
+            hullmod.contains("ASTDArcProductionVfx.applyPlasmaShieldVisuals(ship, visualBoostLevel(ship))"),
+            "paused-frame shield color maintenance should not fall back to stale zero boost data",
+        )
 
         val system = Files.readString(
             Path.of("src/main/kotlin/cn/kasuminova/astd/combat/shipsystems/ASTDPlasmaArmorShieldBoostSystemStats.kt"),
@@ -166,13 +178,38 @@ class ASTDArcProductionVfxTest {
             Path.of("src/main/kotlin/cn/kasuminova/astd/combat/hullmods/arc/ASTDIonizedRecoilAccumulatorHullMod.kt"),
         )
         assertTrue(ionized.contains("HARD_FLUX_CONVERT_FRACTION = 0.02f"), "ionized recoil should convert 2% of current hard flux")
+        assertTrue(ionized.contains("SOFT_FLUX_MULT = 1f"), "ionized recoil should generate soft flux equal to converted hard flux")
         assertTrue(ionized.contains("val conversionMult = 1f + boostLevel"), "boosted plasma shield should double ionized recoil conversion")
         assertTrue(ionized.contains("convertHardFlux(conversionMult)"), "ionized recoil conversion should scale during the system boost")
         assertTrue(ionized.contains("effectiveRecoilRange()"), "ionized recoil range should be affected by energy projectile weapon range")
         assertTrue(ionized.contains("playSound(\"system_emp_emitter_impact\""), "ionized recoil trigger should play the vanilla EMP emitter impact sound")
         assertTrue(ionized.contains("private fun fluxLevel(): Float"), "ionized recoil proc chance should use total flux level")
-        assertTrue(ionized.contains("val chance = procChance(fluxLevel())"), "proc chance must not be based on hard flux")
+        assertTrue(ionized.contains("val chance = procChance(param, damage, armorHit, fluxLevel())"), "proc chance must not be based on hard flux")
+        assertTrue(ionized.contains("private fun procChance(param: Any?, damage: DamageAPI, armorHit: Boolean, fluxLevel: Float): Float"), "proc chance should combine total flux with hit context")
         assertTrue(ionized.contains("val hardFluxLevel = hardFluxLevel()"), "shield pierce chance should still use hard flux level")
+    }
+
+    @Test
+    fun `ionized recoil proc chance scales by damage type hit medium beam and hit strength`() {
+        val ionized = Files.readString(
+            Path.of("src/main/kotlin/cn/kasuminova/astd/combat/hullmods/arc/ASTDIonizedRecoilAccumulatorHullMod.kt"),
+        )
+
+        assertTrue(ionized.contains("KINETIC_SHIELD_PROC_MULT = 1.75f"), "kinetic shield hits should gain 75% proc chance")
+        assertTrue(ionized.contains("HIGH_EXPLOSIVE_SHIELD_PROC_MULT = 0.50f"), "HE shield hits should lose 50% proc chance")
+        assertTrue(ionized.contains("FRAGMENTATION_SHIELD_PROC_MULT = 0.25f"), "fragmentation shield hits should lose 75% proc chance")
+        assertTrue(ionized.contains("KINETIC_ARMOR_PROC_MULT = 0.50f"), "kinetic armor hits should lose 50% proc chance")
+        assertTrue(ionized.contains("HIGH_EXPLOSIVE_ARMOR_PROC_MULT = 2.50f"), "HE armor hits should gain 150% proc chance")
+        assertTrue(ionized.contains("FRAGMENTATION_ARMOR_PROC_MULT = 0.25f"), "fragmentation armor hits should lose 75% proc chance")
+        assertTrue(ionized.contains("BEAM_PROC_MULT = 0.25f"), "beam damage should lose 75% proc chance after other rules")
+        assertTrue(ionized.contains("HIT_STRENGTH_BASE_FLUX_FRACTION = 0.02f"), "hit strength should be based on 2% max flux")
+        assertTrue(ionized.contains("MIN_HIT_STRENGTH_PROC_MULT = 0.10f"), "weak hits should reduce proc chance by at most 90%")
+        assertTrue(ionized.contains("MAX_HIT_STRENGTH_PROC_MULT = 3f"), "strong hits should raise proc chance by at most 200%")
+        assertTrue(ionized.contains("damageTypeProcMult(damage.type, armorHit)"), "damage type scaling should account for armor versus shield hits")
+        assertTrue(ionized.contains("if (param is BeamAPI) BEAM_PROC_MULT else 1f"), "beam scaling should be applied on top of type and hit-medium rules")
+        assertTrue(ionized.contains("damage.baseDamage"), "hit strength scaling should use original base damage")
+        assertFalse(ionized.contains("effectiveDamageAmount(param, damage)"), "hit strength scaling must not use current or DPS-expanded damage")
+        assertTrue(ionized.contains("hitStrengthProcMult("), "proc chance should apply the hit strength multiplier")
     }
 
     @Test
@@ -200,12 +237,44 @@ class ASTDArcProductionVfxTest {
             "arc jet self range penalty should affect energy and beam weapons through the vanilla energy range stat",
         )
         assertFalse(
+            selfRangeBlock.contains("PDWeaponRangeBonus"),
+            "arc jet self range penalty must not rely on additive PD stat compensation because it can leave residual range loss",
+        )
+        assertFalse(
             selfRangeBlock.contains("beamWeaponRangeBonus"),
             "arc jet self range penalty must not apply an extra beam-specific penalty on top of energy range",
         )
         assertFalse(
             selfRangeBlock.contains("modifyMult"),
             "arc jet self range penalty must not multiplicatively shrink the advanced core bonus",
+        )
+        assertTrue(
+            tacticalNetwork.contains("import com.fs.starfarer.api.combat.listeners.WeaponRangeModifier"),
+            "arc jet point defense exemption should use a per-weapon final range modifier",
+        )
+        assertTrue(
+            tacticalNetwork.contains("ensurePointDefenseRangeCompensation(ship)"),
+            "arc jet should attach the point defense compensation listener to ships",
+        )
+        assertTrue(
+            tacticalNetwork.contains("PointDefenseRangeCompensationModifier : WeaponRangeModifier"),
+            "arc jet should compensate only eligible point defense weapons",
+        )
+        assertTrue(
+            tacticalNetwork.contains("SELF_POINT_DEFENSE_RANGE_COMPENSATION_MULT = 1.25f"),
+            "arc jet point defense compensation should exactly cancel the self 0.8 range penalty",
+        )
+        assertTrue(
+            tacticalNetwork.contains("ASTDArcCombatUtil.isPointDefenseWeapon(weapon)"),
+            "arc jet point defense compensation should identify PD weapons through the shared combat utility",
+        )
+        assertTrue(
+            tacticalNetwork.contains("override fun getWeaponRangeMultMod(ship: ShipAPI, weapon: WeaponAPI): Float"),
+            "arc jet point defense compensation should apply to final range instead of changing base range",
+        )
+        assertTrue(
+            tacticalNetwork.contains("isAffectedNonMissileWeapon(weapon)"),
+            "arc jet point defense compensation must not boost missiles that were never penalized by the self range stat",
         )
 
         val targeting = Files.readString(
@@ -390,6 +459,7 @@ class ASTDArcProductionVfxTest {
         assertTrue(plugin.contains("astd_arc_jet_Standard"), "ARC production source variant ids must include arc jet standard variant")
         assertTrue(plugin.contains("astd_plasma_arch_Standard"), "ARC production source variant ids must include plasma arch standard variant")
         assertTrue(plugin.contains("astd_radiation_belt_Standard"), "ARC production source variant ids must include radiation belt standard variant")
+        assertTrue(verifier.contains("\"plasmaArchTooltipKeys\": 76"), "verifier key minimum should match the exported plasma arch renderer contract")
         assertTrue(verifier.contains("\"radiationBeltTooltipKeys\": 26"), "verifier key minimum should match the current radiation belt renderer contract")
     }
 }

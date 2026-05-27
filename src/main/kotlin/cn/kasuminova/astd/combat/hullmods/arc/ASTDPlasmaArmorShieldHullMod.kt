@@ -23,14 +23,16 @@ import kotlin.math.abs
 class ASTDPlasmaArmorShieldHullMod : BaseHullMod() {
 
     companion object {
-        private val FORBIDDEN_HULLMOD_IDS = setOf(HullMods.SHIELD_SHUNT)
-        private const val ARMOR_BONUS_GAIN_FRACTION = 0.66f
+        private val FORBIDDEN_HULLMOD_IDS = setOf(HullMods.SHIELD_SHUNT, HullMods.HARDENED_SHIELDS)
+        private const val MAX_ARMOR_PENALTY_FRACTION = 0.50f
+        private const val SPIKE_THRESHOLD_MAX_FLUX_FRACTION = 0.05f
+        private const val SPIKE_EXCESS_DAMAGE_MULT = 0.50f
 
-        private const val FRONT_ARMOR_FRACTION = 0.15f
-        private const val SIDE_ARMOR_FRACTION_MIN = 0.10f
-        private const val SIDE_ARMOR_FRACTION_MAX = 0.15f
-        private const val REAR_ARMOR_FRACTION_MIN = 0.05f
-        private const val REAR_ARMOR_FRACTION_MAX = 0.10f
+        private const val FRONT_ARMOR_FRACTION = 0.20f
+        private const val SIDE_ARMOR_FRACTION_MIN = 0.15f
+        private const val SIDE_ARMOR_FRACTION_MAX = 0.20f
+        private const val REAR_ARMOR_FRACTION_MIN = 0.10f
+        private const val REAR_ARMOR_FRACTION_MAX = 0.15f
 
         private const val ENERGY_SHIELD_MULT = 0.85f
         private const val KINETIC_SHIELD_MULT = 0.67f
@@ -77,7 +79,7 @@ class ASTDPlasmaArmorShieldHullMod : BaseHullMod() {
         stats.highExplosiveShieldDamageTakenMult.modifyMult(id, HE_SHIELD_MULT)
         stats.fragmentationShieldDamageTakenMult.modifyMult(id, FRAG_SHIELD_MULT)
         val baseArmor = stats.variant?.hullSpec?.armorRating ?: return
-        correctPositiveArmorBonuses(stats, baseArmor, id)
+        applyFixedMaxArmorPenalty(stats, baseArmor, id)
     }
 
     override fun applyEffectsAfterShipCreation(ship: ShipAPI, id: String) {
@@ -93,18 +95,18 @@ class ASTDPlasmaArmorShieldHullMod : BaseHullMod() {
         val shield = ship.shield
         if (shield?.isOn == true) {
             ASTDArcProductionVfx.setCounter(engine, ASTDArcProductionVfx.TELEMETRY_PLASMA_ARCH_SHIELD_OPEN, 1)
-            ASTDArcProductionVfx.applyPlasmaShieldVisuals(ship, boostLevel(ship))
+            ASTDArcProductionVfx.applyPlasmaShieldVisuals(ship, visualBoostLevel(ship))
         }
         if (!ship.hasListenerOfClass(PlasmaArmorShieldListener::class.java)) {
             ship.addListener(PlasmaArmorShieldListener(ship))
         }
 
-        correctPositiveArmorBonuses(
+        applyFixedMaxArmorPenalty(
             ship.mutableStats,
             ship.armorGrid.armorRating,
             ASTDArcProductionShipIds.HULLMOD_PLASMA_ARMOR_SHIELD,
         )
-        renderOpenShieldArcs(ship, engine, amount, boostLevel(ship))
+        renderOpenShieldArcs(ship, engine, amount, visualBoostLevel(ship))
     }
 
     override fun isApplicableToShip(ship: ShipAPI): Boolean {
@@ -154,24 +156,23 @@ class ASTDPlasmaArmorShieldHullMod : BaseHullMod() {
         }
     }
 
-    private fun correctPositiveArmorBonuses(stats: MutableShipStatsAPI, baseArmor: Float, id: String) {
-        val armorBonus = stats.armorBonus
-        val uncorrected = armorBonus.createCopy().also { it.unmodify(id) }.computeEffective(baseArmor)
-        val excess = (uncorrected - baseArmor).coerceAtLeast(0f)
-        val desired = baseArmor + excess * ARMOR_BONUS_GAIN_FRACTION
-        val correction = desired - uncorrected
-        if (correction < -0.01f) {
-            armorBonus.modifyFlat(id, correction)
-        } else {
-            armorBonus.unmodify(id)
-        }
+    private fun applyFixedMaxArmorPenalty(stats: MutableShipStatsAPI, baseArmor: Float, id: String) {
+        stats.armorBonus.modifyMult(id, 1f - MAX_ARMOR_PENALTY_FRACTION)
+    }
+
+    private fun visualBoostLevel(ship: ShipAPI): Float {
+        val stored = boostLevel(ship)
+        val system = ship.system ?: return stored
+        val systemActive = system.isActive || system.isOn || system.isStateActive
+        val effectLevel = if (systemActive) system.effectLevel.coerceIn(0f, 1f) else 0f
+        return maxOf(stored, effectLevel)
     }
 
     private fun maintainShieldVisualsEvenWhenPaused(ship: ShipAPI, engine: CombatEngineAPI) {
         val shield = ship.shield ?: return
         if (!shield.isOn) return
         ASTDArcProductionVfx.setCounter(engine, ASTDArcProductionVfx.TELEMETRY_PLASMA_ARCH_SHIELD_OPEN, 1)
-        ASTDArcProductionVfx.applyPlasmaShieldVisuals(ship, boostLevel(ship))
+        ASTDArcProductionVfx.applyPlasmaShieldVisuals(ship, visualBoostLevel(ship))
     }
 
     private fun renderOpenShieldArcs(ship: ShipAPI, engine: CombatEngineAPI, amount: Float, boostLevel: Float) {
@@ -208,7 +209,8 @@ class ASTDPlasmaArmorShieldHullMod : BaseHullMod() {
             val finalMaxArmor = ship.mutableStats.armorBonus.computeEffective(ship.armorGrid.armorRating).coerceAtLeast(1f)
             val boostMult = 1f + boostLevel(ship)
             val armor = finalMaxArmor * directionalArmorFraction(ship, hitPoint) * boostMult
-            val incoming = effectiveDamageAmount(param, dmg).coerceAtLeast(0f)
+            val incomingBeforeSpikeReduction = effectiveDamageAmount(param, dmg).coerceAtLeast(0f)
+            val incoming = applyBoostedShieldSpikeReduction(dmg, incomingBeforeSpikeReduction, shieldHit)
             val mult = armorStyleDamageMultiplier(incoming, armor)
             if (mult < 0.999f) {
                 dmg.modifier.modifyMult(ASTDArcProductionShipIds.STAT_PLASMA_ARMOR_SHIELD, mult)
@@ -224,6 +226,18 @@ class ASTDPlasmaArmorShieldHullMod : BaseHullMod() {
             }
 
             return null
+        }
+
+        private fun applyBoostedShieldSpikeReduction(dmg: DamageAPI, incoming: Float, shieldHit: Boolean): Float {
+            if (!shieldHit || boostLevel(ship) <= 0.05f || incoming <= 0f) return incoming
+            val threshold = ship.fluxTracker.maxFlux * SPIKE_THRESHOLD_MAX_FLUX_FRACTION
+            if (threshold <= 0f || incoming <= threshold) return incoming
+            val reduced = threshold + (incoming - threshold) * SPIKE_EXCESS_DAMAGE_MULT
+            val mult = (reduced / incoming).coerceIn(0f, 1f)
+            if (mult < 0.999f) {
+                dmg.modifier.modifyMult(ASTDArcProductionShipIds.STAT_PLASMA_ARMOR_SHIELD_SPIKE, mult)
+            }
+            return reduced
         }
 
         private fun armorStyleDamageMultiplier(incomingDamage: Float, armor: Float): Float {
