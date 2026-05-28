@@ -48,6 +48,23 @@ class ArcProductionCopyReviewTest {
         val renderer = Files.readString(Path.of("src/main/kotlin/cn/kasuminova/astd/combat/hullmods/base/ASTDHullModTooltipRenderer.kt"))
         val hullmods = CsvTestUtil.readRowsById(Path.of("contents/data/hullmods/hull_mods.csv"))
 
+        assertEquals(
+            exportBlocks(Path.of("tools/exports/hullmod_tooltip_等离子装甲护盾.json")).paragraph(0),
+            hullmods.getValue("astd_plasma_armor_shield").getValue("desc"),
+            "plasma armor shield native hullmod desc must mirror the exported header paragraph",
+        )
+        assertEquals(
+            exportBlocks(Path.of("tools/exports/hullmod_tooltip_离子化反冲蓄能器.json")).paragraph(0),
+            hullmods.getValue("astd_ionized_recoil_accumulator").getValue("desc"),
+            "ionized recoil native hullmod desc must mirror the exported header paragraph",
+        )
+        listOf(
+            "ui.hullmod.plasma_armor_shield.summary",
+            "ui.hullmod.ionized_recoil_accumulator.summary",
+        ).forEach { key ->
+            assertFalse(contracts.contains("\"$key\""), "native hullmod desc should carry header paragraph instead of custom section text: $key")
+        }
+
         exportedPlasmaArmorShieldValues().forEach { (key, expected) ->
             assertEquals(expected, strings[key], "plasma armor shield tooltip key must mirror tools export exactly: $key")
             assertTrue(contracts.contains("\"$key\""), "plasma armor shield export key must be referenced by tooltip contract: $key")
@@ -60,13 +77,14 @@ class ArcProductionCopyReviewTest {
             assertEquals(expected, strings[key], "ionized recoil tooltip key must mirror tools export exactly: $key")
             assertTrue(contracts.contains("\"$key\""), "ionized recoil export key must be referenced by tooltip contract: $key")
         }
-        listOf(
-            "astd_plasma_armor_shield",
-            "astd_ionized_recoil_accumulator",
-        ).forEach { hullmodId ->
-            val desc = hullmods.getValue(hullmodId).getValue("desc")
-            assertTrue(desc.isBlank(), "custom rendered production tooltip must not keep a native hull_mods.csv desc: $hullmodId")
-        }
+        assertTrue(
+            renderer.contains("showTitle: Boolean = true"),
+            "tooltip renderer should allow post-description sections without repeating the hullmod name",
+        )
+        assertTrue(
+            contracts.contains("headerInNativeDescription = true"),
+            "plasma arch unique hullmods should mark the exported header paragraph as native CSV description",
+        )
         exportedTooltipHighlightMarkers().forEach { marker ->
             assertTrue(contracts.contains(marker), "tooltip contract must preserve exported highlight/color metadata: $marker")
         }
@@ -97,11 +115,26 @@ class ArcProductionCopyReviewTest {
     fun `production arc system descriptions are exported from ss csv source`() {
         val descriptions = Files.readString(Path.of("ss-csv/src/main/kotlin/cn/kasuminova/astd/sscsv/entries/catalog/strings/Catalog_Descriptions.kt"))
         val i18n = Files.readString(Path.of("ss-csv/src/main/resources/i18n/zh-cn.properties"))
+        val generatedDescriptions = CsvTestUtil.readRowsById(Path.of("contents/data/strings/descriptions.csv"))
 
         expectedSystemDescriptionIds.forEach { id ->
             assertTrue(descriptions.contains("LocalizedDescription(\"$id\", \"SHIP_SYSTEM\")"), "missing ss-csv description entry: $id")
             assertTrue(i18n.contains("desc.$id.text1="), "missing ss-csv description text1: $id")
             assertTrue(i18n.contains("desc.$id.text4="), "missing ss-csv description text4: $id")
+        }
+        assertTrue(
+            descriptions.contains("LocalizedDescription(\"astd_arc_flare_overdrive\", \"SHIP_SYSTEM\")"),
+            "legacy arc flare overdrive system id must keep a description row for codex/refit lookups",
+        )
+        listOf(
+            "astd_arc_flare_overdrive",
+            "astd_arc_flare_overdrive_crewed",
+            "astd_arc_flare_overdrive_automated",
+        ).forEach { id ->
+            val row = generatedDescriptions.getValue(id)
+            assertEquals(row.getValue("text1"), row.getValue("text3"), "arc flare codex/refit description should keep text3 aligned with text1: $id")
+            assertEquals("", row.getValue("text4"), "arc flare description text4 should remain empty: $id")
+            assertTrue(row.getValue("text5").isNotBlank(), "arc flare effect text must be present in text5: $id")
         }
         assertFalse(i18n.contains("高能装填系统"), "radiation belt ship description must not mention the old system name")
     }
@@ -142,7 +175,6 @@ class ArcProductionCopyReviewTest {
             "1 -> \"line2\"",
             "\"shield\" to formatPercent(SHIELD_DR_MAX * level)",
             "\"armor\" to formatPercent(ARMOR_DR_MAX * level)",
-            "\"weaponRate\" to formatPercent((1f - WEAPON_ROF_MULT) * level)",
             "I18n.t(",
             "\"system.plasma_armor_shield_boost.status.default.\$suffix.\$line\"",
         ).forEach { requiredSource ->
@@ -154,6 +186,10 @@ class ArcProductionCopyReviewTest {
         assertFalse(
             systemSource.contains("2 -> \"weapon_rate\""),
             "plasma shield boost status should compress three data lines into two HUD entries",
+        )
+        assertFalse(
+            systemSource.contains("WEAPON_ROF_MULT"),
+            "plasma shield boost should no longer keep a weapon RoF penalty constant",
         )
     }
 
@@ -220,7 +256,7 @@ class ArcProductionCopyReviewTest {
             "正前方 **60°**",
             "左右侧前方 **60°~180°**",
             "后方 **180°~360°**",
-            "当前 **2% 硬辐能**",
+            "当前 **3% 硬辐能**",
             "系统启动期间，辐能转换量与软辐能生成同步翻倍",
             "激活期间护盾受到的单次伤害大于舰船最大辐能的 **5%** 时，超出的伤害部分降低 **50%**",
             "软辐能生成 | 与被转换硬辐能等额",
@@ -232,6 +268,7 @@ class ArcProductionCopyReviewTest {
             "虚拟装甲值",
             "区域承压",
             "当前 **0.5% 硬辐能**",
+            "当前 **2% 硬辐能**",
             "被转换硬辐能的 1.5 倍",
             "护盾会根据受损比例受到额外伤害",
         ).forEach { stale ->
@@ -256,7 +293,6 @@ class ArcProductionCopyReviewTest {
     private fun exportedPlasmaArmorShieldValues(): Map<String, String> {
         val blocks = exportBlocks(Path.of("tools/exports/hullmod_tooltip_等离子装甲护盾.json"))
         return linkedMapOf(
-            "ui.hullmod.plasma_armor_shield.summary" to blocks.paragraph(0),
             "ui.hullmod.plasma_armor_shield.section.directional_armor" to blocks.heading(0),
             "ui.hullmod.plasma_armor_shield.line.directional_armor" to blocks.paragraph(1),
             "ui.hullmod.plasma_armor_shield.table.direction.header_a" to blocks.tableHeader(0, 0),
@@ -279,25 +315,17 @@ class ArcProductionCopyReviewTest {
             "ui.hullmod.plasma_armor_shield.table.shield_damage.row_2.value" to blocks.tableCell(1, 2, 1),
             "ui.hullmod.plasma_armor_shield.table.shield_damage.row_3.label" to blocks.tableCell(1, 3, 0),
             "ui.hullmod.plasma_armor_shield.table.shield_damage.row_3.value" to blocks.tableCell(1, 3, 1),
-            "ui.hullmod.plasma_armor_shield.line.armor_damage_type" to blocks.paragraph(3),
-            "ui.hullmod.plasma_armor_shield.table.armor_damage.header_a" to blocks.tableHeader(2, 0),
-            "ui.hullmod.plasma_armor_shield.table.armor_damage.header_b" to blocks.tableHeader(2, 1),
-            "ui.hullmod.plasma_armor_shield.table.armor_damage.row_0.label" to blocks.tableCell(2, 0, 0),
-            "ui.hullmod.plasma_armor_shield.table.armor_damage.row_0.value" to blocks.tableCell(2, 0, 1),
-            "ui.hullmod.plasma_armor_shield.table.armor_damage.row_1.label" to blocks.tableCell(2, 1, 0),
-            "ui.hullmod.plasma_armor_shield.table.armor_damage.row_1.value" to blocks.tableCell(2, 1, 1),
             "ui.hullmod.plasma_armor_shield.section.limits" to blocks.heading(2),
-            "ui.hullmod.plasma_armor_shield.line.limits" to blocks.paragraph(4),
-            "ui.hullmod.plasma_armor_shield.line.limit_hardened_shields" to blocks.paragraph(5),
-            "ui.hullmod.plasma_armor_shield.line.limit_shield_shunt" to blocks.paragraph(6),
-            "ui.hullmod.plasma_armor_shield.line.max_armor_penalty" to blocks.paragraph(7),
+            "ui.hullmod.plasma_armor_shield.line.limits" to blocks.paragraph(3),
+            "ui.hullmod.plasma_armor_shield.line.limit_hardened_shields" to blocks.paragraph(4),
+            "ui.hullmod.plasma_armor_shield.line.limit_shield_shunt" to blocks.paragraph(5),
+            "ui.hullmod.plasma_armor_shield.line.max_armor_penalty" to blocks.paragraph(6),
         )
     }
 
     private fun exportedIonizedRecoilValues(): Map<String, String> {
         val blocks = exportBlocks(Path.of("tools/exports/hullmod_tooltip_离子化反冲蓄能器.json"))
         return linkedMapOf(
-            "ui.hullmod.ionized_recoil_accumulator.summary" to blocks.paragraph(0),
             "ui.hullmod.ionized_recoil_accumulator.section.effect" to blocks.heading(0),
             "ui.hullmod.ionized_recoil_accumulator.line.proc_intro" to blocks.paragraph(1),
             "ui.hullmod.ionized_recoil_accumulator.table.flux.header_a" to blocks.tableHeader(0, 0),
@@ -308,36 +336,20 @@ class ArcProductionCopyReviewTest {
             "ui.hullmod.ionized_recoil_accumulator.table.flux.row_1.value" to blocks.tableCell(0, 1, 1),
             "ui.hullmod.ionized_recoil_accumulator.table.flux.row_2.label" to blocks.tableCell(0, 2, 0),
             "ui.hullmod.ionized_recoil_accumulator.table.flux.row_2.value" to blocks.tableCell(0, 2, 1),
-            "ui.hullmod.ionized_recoil_accumulator.line.proc_type" to blocks.paragraph(2),
-            "ui.hullmod.ionized_recoil_accumulator.table.proc_type.header_a" to blocks.tableHeader(1, 0),
-            "ui.hullmod.ionized_recoil_accumulator.table.proc_type.header_b" to blocks.tableHeader(1, 1),
-            "ui.hullmod.ionized_recoil_accumulator.table.proc_type.row_0.label" to blocks.tableCell(1, 0, 0),
-            "ui.hullmod.ionized_recoil_accumulator.table.proc_type.row_0.value" to blocks.tableCell(1, 0, 1),
-            "ui.hullmod.ionized_recoil_accumulator.table.proc_type.row_1.label" to blocks.tableCell(1, 1, 0),
-            "ui.hullmod.ionized_recoil_accumulator.table.proc_type.row_1.value" to blocks.tableCell(1, 1, 1),
-            "ui.hullmod.ionized_recoil_accumulator.table.proc_type.row_2.label" to blocks.tableCell(1, 2, 0),
-            "ui.hullmod.ionized_recoil_accumulator.table.proc_type.row_2.value" to blocks.tableCell(1, 2, 1),
-            "ui.hullmod.ionized_recoil_accumulator.table.proc_type.row_3.label" to blocks.tableCell(1, 3, 0),
-            "ui.hullmod.ionized_recoil_accumulator.table.proc_type.row_3.value" to blocks.tableCell(1, 3, 1),
-            "ui.hullmod.ionized_recoil_accumulator.table.proc_type.row_4.label" to blocks.tableCell(1, 4, 0),
-            "ui.hullmod.ionized_recoil_accumulator.table.proc_type.row_4.value" to blocks.tableCell(1, 4, 1),
-            "ui.hullmod.ionized_recoil_accumulator.table.proc_type.row_5.label" to blocks.tableCell(1, 5, 0),
-            "ui.hullmod.ionized_recoil_accumulator.table.proc_type.row_5.value" to blocks.tableCell(1, 5, 1),
-            "ui.hullmod.ionized_recoil_accumulator.line.beam_proc" to blocks.paragraph(3),
-            "ui.hullmod.ionized_recoil_accumulator.line.damage_proc" to blocks.paragraph(4),
+            "ui.hullmod.ionized_recoil_accumulator.line.beam_proc" to blocks.paragraph(2),
+            "ui.hullmod.ionized_recoil_accumulator.line.damage_proc" to blocks.paragraph(3),
             "ui.hullmod.ionized_recoil_accumulator.section.flux_damage" to blocks.heading(1),
-            "ui.hullmod.ionized_recoil_accumulator.line.flux_conversion" to blocks.paragraph(5),
-            "ui.hullmod.ionized_recoil_accumulator.line.damage" to blocks.paragraph(6),
-            "ui.hullmod.ionized_recoil_accumulator.line.targeting" to blocks.paragraph(7),
-            "ui.hullmod.ionized_recoil_accumulator.line.cooldown" to blocks.paragraph(8),
+            "ui.hullmod.ionized_recoil_accumulator.line.flux_conversion" to blocks.paragraph(4),
+            "ui.hullmod.ionized_recoil_accumulator.line.damage" to blocks.paragraph(5),
+            "ui.hullmod.ionized_recoil_accumulator.line.targeting" to blocks.paragraph(6),
+            "ui.hullmod.ionized_recoil_accumulator.line.cooldown" to blocks.paragraph(7),
         )
     }
 
     private fun exportedTooltipHighlightMarkers(): List<String> = listOf(
-        "highlight(\"阿斯忒里亚遗构局\", \"#FF9600\")",
-        "highlight(\"等离子装甲护盾\", \"#FFE024\")",
         "highlight(\"90%\", \"#FFE024\")",
         "highlight(\"800su\", \"#FFE024\")",
+        "highlight(\"3%\", \"#FFE024\")",
         "highlight(\"等额\", \"#FFE024\")",
         "highlight(\"100%\", \"#FFE024\")",
         "role = \"warning\"",
@@ -406,7 +418,6 @@ class ArcProductionCopyReviewTest {
             "ui.hullmod.arc_shared_tactical_network.attr.cruiser",
             "ui.hullmod.arc_shared_tactical_network.value.cruiser",
             "ui.hullmod.arc_shared_tactical_network.note",
-            "ui.hullmod.plasma_armor_shield.summary",
             "ui.hullmod.plasma_armor_shield.attr.armor_shield",
             "ui.hullmod.plasma_armor_shield.value.armor_shield",
             "ui.hullmod.plasma_armor_shield.attr.damage_type",
@@ -420,13 +431,8 @@ class ArcProductionCopyReviewTest {
             "ui.hullmod.plasma_armor_shield.attr.limits",
             "ui.hullmod.plasma_armor_shield.value.limits",
             "ui.hullmod.plasma_armor_shield.note",
-            "ui.hullmod.ionized_recoil_accumulator.summary",
             "ui.hullmod.ionized_recoil_accumulator.attr.recoil",
             "ui.hullmod.ionized_recoil_accumulator.value.recoil",
-            "ui.hullmod.ionized_recoil_accumulator.attr.proc_type",
-            "ui.hullmod.ionized_recoil_accumulator.value.proc_type",
-            "ui.hullmod.ionized_recoil_accumulator.attr.proc_strength",
-            "ui.hullmod.ionized_recoil_accumulator.value.proc_strength",
             "ui.hullmod.ionized_recoil_accumulator.attr.volley",
             "ui.hullmod.ionized_recoil_accumulator.value.volley",
             "ui.hullmod.ionized_recoil_accumulator.attr.damage",
@@ -470,11 +476,11 @@ class ArcProductionCopyReviewTest {
 
         val expectedPlasmaShieldBoostStatusValues = linkedMapOf(
             "system.plasma_armor_shield_boost.status.default.in.line1" to "减少 %shield% 护盾受到的伤害",
-            "system.plasma_armor_shield_boost.status.default.in.line2" to "减少 %armor% 装甲受到的伤害\n减少 %weaponRate% 非导弹非点防武器射速",
+            "system.plasma_armor_shield_boost.status.default.in.line2" to "减少 %armor% 装甲受到的伤害\n禁用非导弹非点防武器",
             "system.plasma_armor_shield_boost.status.default.active.line1" to "减少 %shield% 护盾受到的伤害",
-            "system.plasma_armor_shield_boost.status.default.active.line2" to "减少 %armor% 装甲受到的伤害\n减少 %weaponRate% 非导弹非点防武器射速",
+            "system.plasma_armor_shield_boost.status.default.active.line2" to "减少 %armor% 装甲受到的伤害\n禁用非导弹非点防武器",
             "system.plasma_armor_shield_boost.status.default.out.line1" to "减少 %shield% 护盾受到的伤害",
-            "system.plasma_armor_shield_boost.status.default.out.line2" to "减少 %armor% 装甲受到的伤害\n减少 %weaponRate% 非导弹非点防武器射速",
+            "system.plasma_armor_shield_boost.status.default.out.line2" to "减少 %armor% 装甲受到的伤害\n禁用非导弹非点防武器",
         )
 
         val expectedRuntimeValues = linkedMapOf(
@@ -488,17 +494,15 @@ class ArcProductionCopyReviewTest {
             "ui.hullmod.arc_shared_tactical_network.value.destroyer" to "驱逐舰：射程+30%，机动+10%，护盾承伤-15%",
             "ui.hullmod.arc_shared_tactical_network.value.cruiser" to "巡洋舰：射程+20%，护盾承伤-10%",
             "ui.hullmod.arc_shared_tactical_network.note" to "阿斯忒里亚遗构局舰船效果+25%；弧光子型额外+25%。主力舰不获得加成。",
-            "ui.hullmod.plasma_armor_shield.value.armor_shield" to "按受击方位取最终装甲10%~20%参与装甲减伤",
-            "ui.hullmod.plasma_armor_shield.value.damage_type" to "护盾：能量-15%，动能-33%，高爆+33%，破片+20%；装甲：动能-33%",
-            "ui.hullmod.plasma_armor_shield.value.grid" to "正前方60度=20%；侧前方线性15%~20%；后方线性10%~15%",
+            "ui.hullmod.plasma_armor_shield.value.armor_shield" to "按受击方位取最终装甲10%~30%参与装甲减伤",
+            "ui.hullmod.plasma_armor_shield.value.damage_type" to "护盾：能量-15%，动能-33%，高爆+33%，破片+50%",
+            "ui.hullmod.plasma_armor_shield.value.grid" to "正前方60度=30%；侧前方线性20%~30%；后方线性10%~20%",
             "ui.hullmod.plasma_armor_shield.value.boost" to "护盾减伤+50%；装甲减伤+25%；方位装甲计算值翻倍",
             "ui.hullmod.plasma_armor_shield.value.recovery" to "护盾与装甲受击都会弹出被抵消伤害数字",
             "ui.hullmod.plasma_armor_shield.value.limits" to "护盾分流与强化护盾禁用；最大装甲值固定-50%",
             "ui.hullmod.plasma_armor_shield.note" to "微型护盾单元会把冲击摊入装甲骨架。",
             "ui.hullmod.ionized_recoil_accumulator.value.recoil" to "触发率25%~85%；冷却1秒；射程800su",
-            "ui.hullmod.ionized_recoil_accumulator.value.proc_type" to "护盾：动能+75%，高爆-50%，破片-75%；装甲：动能-50%，高爆+150%，破片-75%；光束额外-75%",
-            "ui.hullmod.ionized_recoil_accumulator.value.proc_strength" to "原始伤害以最大辐能2%为基准；触发率倍率0.1x~3x",
-            "ui.hullmod.ionized_recoil_accumulator.value.volley" to "转换当前硬辐能2%为等额软辐能；系统启动期间翻倍",
+            "ui.hullmod.ionized_recoil_accumulator.value.volley" to "转换当前硬辐能3%为等额软辐能；系统启动期间翻倍",
             "ui.hullmod.ionized_recoil_accumulator.value.damage" to "电弧伤害=转换量100%；EMP=转换量200%；射程受能量射弹射程影响",
             "ui.hullmod.ionized_recoil_accumulator.value.pierce" to "按硬辐能水平获得15%~85%概率",
             "ui.hullmod.ionized_recoil_accumulator.note" to "电弧优先打击武器或引擎，不攻击友军。",
@@ -530,19 +534,20 @@ class ArcProductionCopyReviewTest {
             "text2" to "防御",
             "text3" to "舰船将大部分能量导向装甲护盾，显著增加护盾和装甲的承伤能力。",
             "text4" to "",
-            "text5" to "护盾减少 {{50％}}} 受到的伤害，装甲减少 {{25％}}} 受到的伤害。\n并降低 {{50％}}} 非导弹（不包括点防御）武器射速。\n激活期间护盾受到的单次伤害大于舰船最大辐能的 {{5％}}} 时，超出的伤害部分降低 {{50％}}}。\n等离子装甲护盾的装甲计算值翻倍。\n并使离子化反冲蓄能器效果翻倍。",
+            "text5" to "护盾减少 {{50％}}} 受到的伤害，装甲减少 {{25％}}} 受到的伤害。\n并禁用非导弹（不包括点防御）武器。\n激活期间护盾受到的单次伤害大于舰船最大辐能的 {{5％}}} 时，超出的伤害部分降低 {{50％}}}。\n等离子装甲护盾的装甲计算值翻倍。\n并使离子化反冲蓄能器效果翻倍。",
         )
 
         val expectedPlasmaShieldBoostDescriptionI18nLines = listOf(
             "desc.astd_plasma_armor_shield_boost.text1=舰船将大部分能量导向装甲护盾，显著增加护盾和装甲的承伤能力。",
             "desc.astd_plasma_armor_shield_boost.text3=舰船将大部分能量导向装甲护盾，显著增加护盾和装甲的承伤能力。",
             "desc.astd_plasma_armor_shield_boost.text4=",
-            "desc.astd_plasma_armor_shield_boost.text5=护盾减少 {{50％}}} 受到的伤害，装甲减少 {{25％}}} 受到的伤害。\\n并降低 {{50％}}} 非导弹（不包括点防御）武器射速。\\n激活期间护盾受到的单次伤害大于舰船最大辐能的 {{5％}}} 时，超出的伤害部分降低 {{50％}}}。\\n等离子装甲护盾的装甲计算值翻倍。\\n并使离子化反冲蓄能器效果翻倍。",
+            "desc.astd_plasma_armor_shield_boost.text5=护盾减少 {{50％}}} 受到的伤害，装甲减少 {{25％}}} 受到的伤害。\\n并禁用非导弹（不包括点防御）武器。\\n激活期间护盾受到的单次伤害大于舰船最大辐能的 {{5％}}} 时，超出的伤害部分降低 {{50％}}}。\\n等离子装甲护盾的装甲计算值翻倍。\\n并使离子化反冲蓄能器效果翻倍。",
         )
 
         val expectedSystemDescriptionIds = listOf(
             "astd_arc_flare_overdrive_crewed",
             "astd_arc_flare_overdrive_automated",
+            "astd_arc_flare_overdrive",
             "astd_arc_shared_flux_network",
             "astd_plasma_armor_shield_boost",
             "astd_limit_temporal_thruster",
@@ -552,6 +557,7 @@ class ArcProductionCopyReviewTest {
         val expectedSystemTypeLabels = linkedMapOf(
             "astd_arc_flare_overdrive_crewed" to "进攻",
             "astd_arc_flare_overdrive_automated" to "进攻",
+            "astd_arc_flare_overdrive" to "进攻",
             "astd_arc_shared_flux_network" to "支援",
             "astd_plasma_armor_shield_boost" to "防御",
             "astd_limit_temporal_thruster" to "机动",
@@ -578,6 +584,28 @@ class ArcProductionCopyReviewTest {
             "ui.hullmod.plasma_armor_shield.table.armor_ratio.row_1.value",
             "ui.hullmod.plasma_armor_shield.table.armor_ratio.row_2.label",
             "ui.hullmod.plasma_armor_shield.table.armor_ratio.row_2.value",
+            "ui.hullmod.plasma_armor_shield.line.armor_damage_type",
+            "ui.hullmod.plasma_armor_shield.table.armor_damage.header_a",
+            "ui.hullmod.plasma_armor_shield.table.armor_damage.header_b",
+            "ui.hullmod.plasma_armor_shield.table.armor_damage.row_0.label",
+            "ui.hullmod.plasma_armor_shield.table.armor_damage.row_0.value",
+            "ui.hullmod.plasma_armor_shield.table.armor_damage.row_1.label",
+            "ui.hullmod.plasma_armor_shield.table.armor_damage.row_1.value",
+            "ui.hullmod.ionized_recoil_accumulator.line.proc_type",
+            "ui.hullmod.ionized_recoil_accumulator.table.proc_type.header_a",
+            "ui.hullmod.ionized_recoil_accumulator.table.proc_type.header_b",
+            "ui.hullmod.ionized_recoil_accumulator.table.proc_type.row_0.label",
+            "ui.hullmod.ionized_recoil_accumulator.table.proc_type.row_0.value",
+            "ui.hullmod.ionized_recoil_accumulator.table.proc_type.row_1.label",
+            "ui.hullmod.ionized_recoil_accumulator.table.proc_type.row_1.value",
+            "ui.hullmod.ionized_recoil_accumulator.table.proc_type.row_2.label",
+            "ui.hullmod.ionized_recoil_accumulator.table.proc_type.row_2.value",
+            "ui.hullmod.ionized_recoil_accumulator.table.proc_type.row_3.label",
+            "ui.hullmod.ionized_recoil_accumulator.table.proc_type.row_3.value",
+            "ui.hullmod.ionized_recoil_accumulator.table.proc_type.row_4.label",
+            "ui.hullmod.ionized_recoil_accumulator.table.proc_type.row_4.value",
+            "ui.hullmod.ionized_recoil_accumulator.table.proc_type.row_5.label",
+            "ui.hullmod.ionized_recoil_accumulator.table.proc_type.row_5.value",
         )
 
         val stalePlasmaArmorShieldExportKeys = staleRuntimeKeys

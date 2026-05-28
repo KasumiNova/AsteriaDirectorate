@@ -20,8 +20,20 @@ abstract class ShipSystemEntry : SsCsvEntry {
     /** 每秒持续消耗的幅能（原 CSV 字段：flux/second）。 */
     open val fluxPerSecond: Double = 0.0
 
+    /** 基于幅能耗散的每秒持续消耗倍率（原 CSV 字段：f/s (base rate)）。 */
+    open val fluxPerSecondBaseRate: Double = 0.0
+
+    /** 基于幅能容量的每秒持续消耗倍率（原 CSV 字段：f/s (base cap)）。 */
+    open val fluxPerSecondBaseCap: Double = 0.0
+
     /** 每次使用消耗的幅能（原 CSV 字段：flux/use）。 */
     open val fluxUse: Double = 0.0
+
+    /** 基于幅能耗散的每次使用消耗倍率（原 CSV 字段：f/u (base rate)）。 */
+    open val fluxUseBaseRate: Double = 0.0
+
+    /** 基于幅能容量的每次使用消耗倍率（原 CSV 字段：f/u (base cap)）。 */
+    open val fluxUseBaseCap: Double = 0.0
 
     /** 最大使用次数（原 CSV 字段：max uses）。为空表示不限制/使用默认规则。 */
     open val maxUses: Int? = null
@@ -78,7 +90,7 @@ abstract class ShipSystemEntry : SsCsvEntry {
     open val tags: String = ""
 
     /** 系统图标 sprite 路径（原 CSV 字段：icon）。为避免缺图，默认用原版资源。 */
-        open val icon: String = "graphics/icons/hullsys/ammo_feeder.png"
+    open val icon: String = "graphics/icons/hullsys/ammo_feeder.png"
 
     final override val key: String get() = id
 
@@ -86,11 +98,11 @@ abstract class ShipSystemEntry : SsCsvEntry {
         "name" to name,
         "id" to id,
         "flux/second" to fluxPerSecond,
-        "f/s (base rate)" to 0,
-        "f/s (base cap)" to 0,
+        "f/s (base rate)" to fluxPerSecondBaseRate,
+        "f/s (base cap)" to fluxPerSecondBaseCap,
         "flux/use" to fluxUse,
-        "f/u (base rate)" to 0,
-        "f/u (base cap)" to 0,
+        "f/u (base rate)" to fluxUseBaseRate,
+        "f/u (base cap)" to fluxUseBaseCap,
         "cr/u" to 0,
         "max uses" to (maxUses ?: ""),
         "regen" to (regen ?: ""),

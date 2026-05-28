@@ -106,20 +106,45 @@ class ASTDPlasmaArmorShieldHullModTest {
         )
 
         assertTrue(source.contains("directionalArmorFraction(ship, hitPoint)"), "shield and armor mitigation should be based on hit direction")
-        assertTrue(source.contains("FRONT_ARMOR_FRACTION = 0.20f"), "front 60 degree shield should get 20% armor calculation")
-        assertTrue(source.contains("SIDE_ARMOR_FRACTION_MIN = 0.15f"), "side/front arc should start at 15% armor calculation")
-        assertTrue(source.contains("SIDE_ARMOR_FRACTION_MAX = 0.20f"), "side/front arc should reach 20% armor calculation")
+        assertTrue(source.contains("FRONT_ARMOR_FRACTION = 0.30f"), "front 60 degree shield should get 30% armor calculation")
+        assertTrue(source.contains("SIDE_ARMOR_FRACTION_MIN = 0.20f"), "side/front arc should start at 20% armor calculation")
+        assertTrue(source.contains("SIDE_ARMOR_FRACTION_MAX = 0.30f"), "side/front arc should reach 30% armor calculation")
         assertTrue(source.contains("REAR_ARMOR_FRACTION_MIN = 0.10f"), "rear arc should reach 10% armor calculation at the stern")
-        assertTrue(source.contains("REAR_ARMOR_FRACTION_MAX = 0.15f"), "rear arc should start at 15% armor calculation near side/front")
+        assertTrue(source.contains("REAR_ARMOR_FRACTION_MAX = 0.20f"), "rear arc should start at 20% armor calculation near side/front")
         assertTrue(source.contains("val boostMult = 1f + boostLevel(ship)"), "system boost should double directional armor calculation at full level")
         assertTrue(source.contains("MAX_ARMOR_PENALTY_FRACTION = 0.50f"), "maximum armor should be reduced by 50%")
         assertTrue(source.contains("!shieldHit"), "armor hits should also use the extra directional armor calculation")
         assertTrue(source.contains("addFloatingDamageText"), "prevented damage should be shown with vanilla floating damage text")
         assertTrue(source.contains("preventedDamageColor(ship)"), "prevented damage text should use shield-blue or boost-purple colors")
+        assertFalse(source.contains("ARMOR_KINETIC_MULT"), "plasma armor shield should no longer apply armor damage type modifiers")
+        assertFalse(source.contains("kineticArmorDamageTakenMult"), "armor damage should no longer get a kinetic-specific stat modifier")
         assertFalse(source.contains("plasmaGridState"), "virtual sector state should be removed from the hullmod")
         assertFalse(source.contains("ASTDPlasmaShieldGridState"), "virtual sector state should not drive plasma armor shield anymore")
         assertFalse(source.contains("maintainPlayerHud"), "old sector HUD should be removed with the sector mechanic")
         assertFalse(source.contains("applyAbsorbedDamage"), "directional armor calculation should not consume virtual armor")
+    }
+
+    @Test
+    fun `plasma armor shield delegates mitigation to vanilla style armor reduction formula`() {
+        val source = Files.readString(
+            Path.of("src/main/kotlin/cn/kasuminova/astd/combat/hullmods/arc/ASTDPlasmaArmorShieldHullMod.kt"),
+        )
+        val formula = Files.readString(
+            Path.of("src/main/kotlin/cn/kasuminova/astd/combat/hullmods/arc/ASTDArmorDamageReduction.kt"),
+        )
+
+        assertTrue(source.contains("ASTDArmorDamageReduction.compute("), "combat listener should use the shared tested armor formula")
+        assertTrue(source.contains("ASTDArmorDamageReduction.hitStrength(dmg.type, dmg.baseDamage, isBeamDamage(param, dmg))"), "hit strength must use base weapon damage and beam half-strength rule")
+        assertTrue(source.contains("ship.mutableStats.maxArmorDamageReduction.modifiedValue"), "max armor damage reduction cap must come from vanilla ship stats")
+        assertTrue(source.contains("ship.mutableStats.minArmorFraction.modifiedValue"), "minimum armor floor must come from vanilla ship stats")
+        assertTrue(source.contains("ship.mutableStats.effectiveArmorBonus.mult"), "effective armor bonus must affect the armor calculation")
+        assertFalse(source.contains("armorStyleDamageMultiplier"), "old local approximation should not bypass the tested formula")
+        assertFalse(source.contains("coerceIn(0.05f, 1f)"), "mitigation cap must not be hard-coded to 95% reduction")
+        assertTrue(formula.contains("effectiveHitStrength / (effectiveHitStrength + effectiveArmor)"), "formula should remain hit strength over hit strength plus armor")
+        assertTrue(formula.contains("1f - maxArmorDamageReduction.coerceIn(0f, 1f)"), "formula should clamp with the vanilla max armor damage reduction stat")
+        assertTrue(formula.contains("DamageType.HIGH_EXPLOSIVE -> 2f"), "high explosive should use vanilla 200% armor effectiveness")
+        assertTrue(formula.contains("DamageType.KINETIC -> 0.5f"), "kinetic should use vanilla 50% armor effectiveness")
+        assertTrue(formula.contains("DamageType.FRAGMENTATION -> 0.25f"), "fragmentation should use vanilla 25% armor effectiveness")
     }
 
     @Test
@@ -142,6 +167,27 @@ class ASTDPlasmaArmorShieldHullModTest {
         assertTrue(
             source.contains("ship.fluxTracker.maxFlux * SPIKE_THRESHOLD_MAX_FLUX_FRACTION"),
             "shield spike threshold should use ship max flux",
+        )
+    }
+
+    @Test
+    fun `plasma shield arcs remember recent hit directions and maintain colors through pause and shutdown frames`() {
+        val source = Files.readString(
+            Path.of("src/main/kotlin/cn/kasuminova/astd/combat/hullmods/arc/ASTDPlasmaArmorShieldHullMod.kt"),
+        )
+
+        assertTrue(source.contains("recordShieldArcBias(ship, hitPoint)"), "shield hits should feed the later decorative arc direction")
+        assertTrue(source.contains("preferredShieldArcAngle(ship)"), "decorative shield arcs should prefer recent hit directions")
+        assertTrue(
+            source.contains("ASTDArcProductionVfx.emitPlasmaShieldArc(engine, ship, boostLevel > 0.05f, preferredShieldArcAngle(ship))"),
+            "shield arc VFX should receive the biased combat direction instead of being fully random",
+        )
+        assertTrue(source.contains("PLASMA_SHIELD_VISUAL_GRACE_SECONDS"), "shield colors should be maintained briefly while the shield is closing")
+        assertTrue(source.contains("astd_plasma_shield_visual_grace"), "shield color grace state should be stored per ship")
+        assertFalse(
+            source.substringAfter("private fun maintainShieldVisualsEvenWhenPaused").substringBefore("private fun renderOpenShieldArcs")
+                .contains("if (!shield.isOn) return"),
+            "paused-frame shield color maintenance must not return immediately on a closing shield",
         )
     }
 }

@@ -131,6 +131,86 @@ class ASTDInGameAutomationScenarioTest {
     }
 
     @Test
+    fun `arc production automation lets plasma arch tactical system be driven by its vanilla ai`() {
+        val plugin = Files.readString(Path.of("src/main/kotlin/cn/kasuminova/astd/combat/effect/generic/ASTDAutomationCombatPlugin.kt"))
+        val arcAdvanceBody = plugin
+            .substringAfter("private fun advanceArcProductionScenario(")
+            .substringBefore("private fun arcProductionEvidenceReady(")
+
+        assertFalse(
+            arcAdvanceBody.contains("plasmaArch.useSystem()"),
+            "ARC automation must not force plasma_arch system activation when validating FORTRESS_SHIELD AI",
+        )
+        assertTrue(
+            arcAdvanceBody.contains("plasmaArch?.shield?.let { if (!it.isOn) it.toggleOn() }"),
+            "ARC automation should keep plasma_arch shield online so FORTRESS_SHIELD AI has valid shield context",
+        )
+        assertTrue(
+            plugin.contains("preserveAI: Boolean = false"),
+            "staged automation must make AI preservation explicit instead of globally clearing ship AI",
+        )
+        assertTrue(
+            plugin.contains("plasmaArch?.let { stabilizeShip(it, arcProductionAnchors.getValue(\"astd_plasma_arch\"), 0f, allowFire = false, preserveAI = true) }"),
+            "ARC automation must preserve plasma_arch ship AI so its vanilla system AI can run",
+        )
+        assertTrue(
+            plugin.contains("private fun shouldPreserveArcProductionAI(side: FleetSide, hullId: String): Boolean"),
+            "ARC automation must decide AI preservation before the forced reserve spawn clears ship AI",
+        )
+        assertTrue(
+            plugin.contains("hullId == ASTDArcProductionShipIds.HULL_PLASMA_ARCH"),
+            "plasma_arch AI must be preserved during forced reserve deployment, not only during later arrangement",
+        )
+        assertTrue(
+            plugin.contains("pressurePlasmaArchForSystemAI"),
+            "ARC automation must create real enemy pressure instead of waiting in a static no-fire scene",
+        )
+        assertTrue(
+            plugin.contains("ship.setShipTarget(plasmaArch)") && plugin.contains("allowFire = true, preserveAI = true"),
+            "enemy pressure ships should keep AI/fire control and target plasma_arch",
+        )
+        listOf(
+            "plasmaArchSystemId",
+            "plasmaArchSystemState",
+            "plasmaArchSystemCanBeActivated",
+            "plasmaArchSystemEffectLevel",
+            "plasmaArchShipAI",
+            "plasmaArchFluxLevel",
+            "plasmaArchCurrFlux",
+            "plasmaArchMaxFlux",
+            "plasmaArchHardFlux",
+            "plasmaArchHardFluxLevel",
+            "plasmaArchSinceLastDamageTaken",
+            "plasmaArchOverloadedOrVenting",
+            "plasmaArchShieldOn",
+            "plasmaArchShieldActiveArc",
+            "plasmaArchAIFlags",
+            "plasmaArchAIFlagIncomingDamage",
+            "plasmaArchAIFlagCriticalDpsDanger",
+            "plasmaArchAIFlagKeepShieldsOn",
+            "plasmaArchVanillaSystemAI",
+            "plasmaArchVanillaSystemAIError",
+            "plasmaArchAIFlagBiggestThreatTargetHullId",
+            "plasmaArchAIFlagBiggestThreatTargetVariantId",
+            "plasmaArchAIFlagTargetForSystemHullId",
+            "plasmaArchAIFlagTargetForSystemVariantId",
+            "plasmaArchAIFlagManeuverTargetHullId",
+            "plasmaArchAIFlagManeuverTargetVariantId",
+            "plasmaArchEnemyPressureShips",
+            "plasmaArchEnemyTargetingShips",
+            "plasmaArchEnemyFiringWeapons",
+            "plasmaArchEnemyProjectiles",
+            "plasmaArchSystemSpecAiScript",
+            "plasmaArchSystemSpecFpsBaseCap",
+            "plasmaArchSystemSpecToggle",
+            "plasmaArchSystemSpecFiringAllowed",
+            "plasmaArchSystemSpecTags",
+        ).forEach { field ->
+            assertTrue(plugin.contains("\\\"$field\\\""), "ARC diagnostics must expose plasma_arch FORTRESS_SHIELD AI field: $field")
+        }
+    }
+
+    @Test
     fun `mission installs automation combat plugin`() {
         val mission = Files.readString(Path.of("contents/data/missions/arc_flare_aod7_basic/MissionDefinition.java"))
 
@@ -274,6 +354,10 @@ class ASTDInGameAutomationScenarioTest {
         assertTrue(
             gradle.contains("ASTD_AUTOMATION_SCENARIO") && gradle.contains(ASTDInGameAutomationScenario.ARC_PRODUCTION_SCENARIO_ID),
             "smokeTestGame should default to ARC production automation acceptance",
+        )
+        assertTrue(
+            gradle.contains("verify_ingame_vfx_automation.py") && gradle.contains("--log"),
+            "smokeTestGame must run the automation evidence verifier after launch smoke",
         )
     }
 

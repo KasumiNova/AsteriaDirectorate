@@ -174,15 +174,17 @@ object Sys_astd_plasma_armor_shield_boost : ShipSystemWithSystemFileEntry() {
     override val statsScript: String = "cn.kasuminova.astd.combat.shipsystems.ASTDPlasmaArmorShieldBoostSystemStats"
 
     override val systemType: String = "SHIELD_MOD"
-    override val aiType: String = "CUSTOM"
-    override val aiScript: String = "cn.kasuminova.astd.combat.shipsystems.ASTDPlasmaArmorShieldBoostSystemAI"
+    override val aiType: String = "FORTRESS_SHIELD"
 
     override val chargeUp: Double = 0.5
     override val active: Double? = null
     override val down: Double = 0.5
     override val cooldown: Double = 0.0
     override val toggle: Boolean = true
+    override val fluxPerSecondBaseCap: Double = 0.02
     override val hardFlux: Boolean = true
+    override val noFiring: Boolean = true
+    override val tags: String = "defensive"
 
     override val icon: String = "graphics/icons/hullsys/fortress_shield.png"
     override val useSound: String? = null

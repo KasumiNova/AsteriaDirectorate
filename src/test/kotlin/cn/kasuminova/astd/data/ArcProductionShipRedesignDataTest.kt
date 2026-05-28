@@ -91,6 +91,24 @@ class ArcProductionShipRedesignDataTest {
                 hardFlux = "FALSE",
             ),
         )
+        listOf(
+            "astd_arc_flare_overdrive",
+            "astd_arc_flare_overdrive_crewed",
+            "astd_arc_flare_overdrive_automated",
+        ).forEach { id ->
+            assertSystemRow(
+                row = rows.getValue(id),
+                expected = ExpectedSystemRow(
+                    chargeUp = "1",
+                    active = "8",
+                    down = "1",
+                    cooldown = "20",
+                    toggle = "FALSE",
+                    noFiring = "FALSE",
+                    hardFlux = "FALSE",
+                ),
+            )
+        }
         assertSystemRow(
             row = rows.getValue("astd_plasma_armor_shield_boost"),
             expected = ExpectedSystemRow(
@@ -99,8 +117,10 @@ class ArcProductionShipRedesignDataTest {
                 down = "0.5",
                 cooldown = "0",
                 toggle = "TRUE",
-                noFiring = "FALSE",
+                noFiring = "TRUE",
                 hardFlux = "TRUE",
+                fluxPerSecondBaseCap = "0.02",
+                tags = "defensive",
             ),
         )
         assertSystemRow(
@@ -131,8 +151,8 @@ class ArcProductionShipRedesignDataTest {
             id = "astd_plasma_armor_shield_boost",
             type = "SHIELD_MOD",
             statsScript = "cn.kasuminova.astd.combat.shipsystems.ASTDPlasmaArmorShieldBoostSystemStats",
-            aiType = "CUSTOM",
-            aiScript = "cn.kasuminova.astd.combat.shipsystems.ASTDPlasmaArmorShieldBoostSystemAI",
+            aiType = "FORTRESS_SHIELD",
+            aiScript = null,
             useSound = null,
             loopSound = "system_fortress_shield_loop",
             outOfUsesSound = "gun_out_of_ammo",
@@ -159,17 +179,17 @@ class ArcProductionShipRedesignDataTest {
             "系统启动期间，辐能转换量与软辐能生成同步翻倍",
             "激活期间护盾受到的单次伤害大于舰船最大辐能的 **5%** 时，超出的伤害部分降低 **50%**",
             "触发时播放 EMP 发生器打击音效",
-            "护盾受击：动能伤害 **+75%**，高爆伤害 **-50%**，破片伤害 **-75%**",
-            "装甲受击：动能伤害 **-50%**，高爆伤害 **+150%**，破片伤害 **-75%**",
-            "光束伤害会在以上规则基础上额外 **-75%**",
+            "触发概率不再受到受击位置和伤害类型修正",
+            "光束伤害会降低 **90%** 触发概率",
             "以舰船最大辐能的 **2%** 为基准",
             "最终倍率限制在 **0.1x~3x**",
-            "护盾边缘随机出现原版 EMP 电弧",
+            "护盾边缘出现整根原版 EMP 电弧",
+            "护盾电弧更倾向于出现在近期受击方向",
             "端点使用小型 MagicLensFlare 光斑",
             "系统开启期间电弧生成频率翻倍",
-            "正前方 **60°** | 最终装甲值的 20%",
-            "左右侧前方 **60°~180°** | 最终装甲值的 15%~20%",
-            "后方 **180°~360°** | 最终装甲值的 10%~15%",
+            "正前方 **60°** | 最终装甲值的 30%",
+            "左右侧前方 **60°~180°** | 最终装甲值的 20%~30%",
+            "后方 **180°~360°** | 最终装甲值的 10%~20%",
             "护盾分流与强化护盾",
             "固定降低 **50%** 最大装甲值",
             "软辐能生成 | 与被转换硬辐能等额",
@@ -187,6 +207,9 @@ class ArcProductionShipRedesignDataTest {
             "护盾被拆分为 12",
             "0.5% 的硬辐能",
             "最大辐能的 **0.5%**",
+            "护盾受击：动能伤害 **+75%**",
+            "装甲受击：动能伤害 **-50%**",
+            "光束伤害会在以上规则基础上额外 **-75%**",
             "最终装甲值的 5%~10%",
             "最终装甲值的 10%~15%，越靠近正前方越高",
             "只能享受 **50%** 装甲提升效果",
@@ -291,8 +314,8 @@ class ArcProductionShipRedesignDataTest {
             id = "astd_plasma_armor_shield_boost",
             type = "SHIELD_MOD",
             statsScript = "cn.kasuminova.astd.combat.shipsystems.ASTDPlasmaArmorShieldBoostSystemStats",
-            aiType = "CUSTOM",
-            aiScript = "cn.kasuminova.astd.combat.shipsystems.ASTDPlasmaArmorShieldBoostSystemAI",
+            aiType = "FORTRESS_SHIELD",
+            aiScript = null,
             useSound = null,
             loopSound = "system_fortress_shield_loop",
             outOfUsesSound = "gun_out_of_ammo",
@@ -305,6 +328,44 @@ class ArcProductionShipRedesignDataTest {
             aiType = "CUSTOM",
             aiScript = "cn.kasuminova.astd.combat.shipsystems.ASTDLimitTemporalThrusterSystemAI",
             useSound = "system_burn_drive_activate",
+        )
+    }
+
+    @Test
+    fun `plasma armor shield boost exposes native fortress ai cost without duplicate script flux`() {
+        val rows = readCsvRows(Path.of("contents/data/shipsystems/ship_systems.csv"))
+        val row = rows.getValue("astd_plasma_armor_shield_boost")
+        assertEquals("0.02", row.getValue("f/s (base cap)"), "system hard flux upkeep should be the design 2% max-flux cost")
+        assertEquals("TRUE", row.getValue("hardFlux"), "system upkeep must be generated as hard flux by the native ship-system spec")
+        assertEquals("defensive", row.getValue("tags"), "vanilla FORTRESS_SHIELD AI must see a defensive system tag")
+
+        val statsSource = Files.readString(Path.of("src/main/kotlin/cn/kasuminova/astd/combat/shipsystems/ASTDPlasmaArmorShieldBoostSystemStats.kt"))
+        assertFalse(statsSource.contains("increaseFlux("), "stats script must not add a second hard-flux upkeep on top of ship_systems.csv")
+        assertFalse(statsSource.contains("HARD_FLUX_PER_SECOND"), "hard-flux upkeep belongs in ship_systems.csv so vanilla AI and runtime cost see the same value")
+    }
+
+    @Test
+    fun `plasma armor shield boost stats exposes shield reduction to vanilla fortress ai estimator`() {
+        val statsSource = Files.readString(Path.of("src/main/kotlin/cn/kasuminova/astd/combat/shipsystems/ASTDPlasmaArmorShieldBoostSystemStats.kt"))
+        val applyBody = statsSource
+            .substringAfter("override fun apply(stats: MutableShipStatsAPI")
+            .substringBefore("override fun unapply")
+
+        assertTrue(
+            applyBody.contains("applyStatModifiers(stats, id, level)"),
+            "system stats must apply shield and armor modifiers through a pure helper visible to vanilla FORTRESS_SHIELD AI's offline estimator",
+        )
+        assertTrue(
+            statsSource.contains("private fun applyStatModifiers(stats: MutableShipStatsAPI, id: String, level: Float)"),
+            "shield reduction calculation should not depend on combat engine or live ship state",
+        )
+        assertTrue(
+            applyBody.indexOf("applyStatModifiers(stats, id, level)") < applyBody.indexOf("val engine = Global.getCombatEngine() ?: return"),
+            "vanilla FORTRESS_SHIELD AI constructs an estimated stats object without a combat engine; stat modifiers must be applied before combat-only effects return",
+        )
+        assertTrue(
+            applyBody.indexOf("applyStatModifiers(stats, id, level)") < applyBody.indexOf("val ship = stats.entity as? ShipAPI ?: return"),
+            "vanilla FORTRESS_SHIELD AI's estimated stats object has no live ShipAPI entity; shield reduction must not require stats.entity",
         )
     }
 
@@ -355,6 +416,8 @@ class ArcProductionShipRedesignDataTest {
         assertEquals(expected.toggle, row.getValue("toggle"), "toggle mismatch for $id")
         assertEquals(expected.noFiring, row.getValue("noFiring"), "noFiring mismatch for $id")
         assertEquals(expected.hardFlux, row.getValue("hardFlux"), "hardFlux mismatch for $id")
+        assertEquals(expected.fluxPerSecondBaseCap, row.getValue("f/s (base cap)"), "f/s (base cap) mismatch for $id")
+        assertEquals(expected.tags, row.getValue("tags"), "tags mismatch for $id")
     }
 
     private fun readCsvRows(path: Path): Map<String, Map<String, String>> {
@@ -490,5 +553,7 @@ class ArcProductionShipRedesignDataTest {
         val toggle: String,
         val noFiring: String,
         val hardFlux: String,
+        val fluxPerSecondBaseCap: String = "0",
+        val tags: String = "",
     )
 }

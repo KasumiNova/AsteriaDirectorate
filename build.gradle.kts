@@ -184,10 +184,29 @@ tasks.register<Exec>("smokeTestLauncher") {
     commandLine("bash", "tools/smoke_test_game_launch.sh", starsectorGameDir, "30", "launcher")
 }
 
-tasks.register<Exec>("smokeTestGame") {
+tasks.register<Exec>("launchSmokeTestGame") {
     group = "verification"
-    description = "部署模组并通过 SSOptimizer automation 路径进入 ARC production 实机验收场景。"
+    description = "部署模组并通过 SSOptimizer automation 路径启动 ARC production 实机场景。"
     dependsOn("deployMod")
     environment("ASTD_AUTOMATION_SCENARIO", "arc_production_ships_vfx_tooltip")
     commandLine("bash", "tools/smoke_test_game_launch.sh", starsectorGameDir, "120", "automation")
+}
+
+tasks.register<Exec>("verifySmokeTestGameEvidence") {
+    group = "verification"
+    description = "验证 SSOptimizer automation 输出的 ARC production 实机证据。"
+    dependsOn("launchSmokeTestGame")
+    commandLine(
+        "python3",
+        "tools/verify_ingame_vfx_automation.py",
+        "$starsectorGameDir/ssoptimizer-automation-output/astd-ingame-automation-telemetry.json",
+        "--log",
+        "$starsectorGameDir/starsector.log",
+    )
+}
+
+tasks.register("smokeTestGame") {
+    group = "verification"
+    description = "部署模组、启动 ARC production 实机场景，并校验 SSOptimizer automation 证据。"
+    dependsOn("verifySmokeTestGameEvidence")
 }

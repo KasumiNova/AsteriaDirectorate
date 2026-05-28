@@ -38,8 +38,11 @@ class ASTDArcProductionVfxTest {
             vfx.contains("MathUtils.getRandomNumberInRange(0.85f, 1f)"),
             "plasma shield arc endpoints should vary up to 15% inward from the shield edge",
         )
-        assertTrue(vfx.contains("PLASMA_ARC_SEGMENTS = 3"), "shield arcs should be split into edge-following segments instead of one chord")
-        assertTrue(vfx.contains("edgeBiasedShieldPoint"), "shield arc segments should bias intermediate points toward the shield edge")
+        assertTrue(vfx.contains("preferredAngle: Float? = null"), "shield arcs should accept a preferred combat hit direction")
+        assertTrue(vfx.contains("MathUtils.getShortestRotation(shield.facing, it)"), "shield arcs should preserve left/right direction when biasing toward recent hits")
+        assertFalse(vfx.contains("PLASMA_ARC_SEGMENTS"), "shield arcs should be a single original EMP arc instead of stitched segments")
+        assertFalse(vfx.contains("spawnShieldArcSegment"), "shield arcs should not be stitched from multiple visual segments")
+        assertFalse(vfx.contains("for (idx in 0 until PLASMA_ARC_SEGMENTS)"), "shield arcs should not spawn a chain of segment arcs")
         assertTrue(vfx.contains("MagicLensFlare.createSharpFlare"), "shield arc endpoints should get small MagicLib lens flare anchors")
         assertTrue(vfx.contains("movementDurOverride = 0f"), "plasma shield arcs should not drift after spawning")
         assertTrue(vfx.contains("movementDurMin = 0f"), "plasma shield arcs should not use internal movement duration")
@@ -82,19 +85,26 @@ class ASTDArcProductionVfxTest {
         )
         assertTrue(system.contains("ASTDArcProductionVfx.applyPlasmaShieldVisuals"), "system should apply purple shield colors while active")
         assertTrue(system.contains("override fun unapply"), "system should have an explicit cleanup path")
-        assertTrue(system.contains("ASTDArcProductionVfx.applyPlasmaShieldVisuals(ship, 0f)"), "system cleanup should restore blue shield colors before the shield closes")
+        assertTrue(system.contains("ASTDArcProductionVfx.markPlasmaShieldVisualGrace"), "system cleanup should keep blue shield colors through the shield closing frame")
+        assertFalse(system.contains("ASTDArcProductionVfx.applyPlasmaShieldVisuals(ship, 0f)"), "system cleanup must not depend on shield.isOn during the closing frame")
         assertFalse(system.contains("PULSE_TIMER_KEY"), "system should not spawn a separate high-frequency shield arc timer")
         assertFalse(system.contains("emitPlasmaShieldArc"), "shield arc cadence should be owned by the plasma shield hullmod")
     }
 
     @Test
-    fun `plasma arch recoil accumulator arcs use doubled visual widths`() {
+    fun `plasma arch recoil accumulator arcs use wider slower arcs with path lens flares`() {
         val source = Files.readString(
             Path.of("src/main/kotlin/cn/kasuminova/astd/combat/hullmods/arc/ASTDIonizedRecoilAccumulatorHullMod.kt"),
         )
 
-        assertTrue(source.contains("ARC_THICKNESS = 18f"), "targeted recoil arcs should double the prior 9px width")
-        assertTrue(source.contains("ARC_VISUAL_THICKNESS = 12f"), "untargeted recoil arcs should double the prior 6px width")
+        assertTrue(source.contains("ARC_THICKNESS = 27f"), "targeted recoil arcs should be 50% wider than the previous 18px width")
+        assertTrue(source.contains("ARC_VISUAL_THICKNESS = 18f"), "untargeted recoil arcs should be 50% wider than the previous 12px width")
+        assertTrue(source.contains("ARC_CORE_WIDTH = 9f"), "recoil arc core should scale with the wider arc")
+        assertTrue(source.contains("RECOIL_LENS_FLARE_SPACING = 150f"), "recoil arc path flares should be spaced every 150su")
+        assertTrue(source.contains("RECOIL_LENS_FLARE_RANDOM_OFFSET = 50f"), "recoil arc path flares should have 50su side jitter")
+        assertTrue(source.contains("emitRecoilArcPathFlares(engine, from, to, ARC_FRINGE, ARC_CORE)"), "targeted recoil arcs should add random path lens flares")
+        assertTrue(source.contains("MagicLensFlare.createSharpFlare"), "recoil arc path flares should use MagicLib lens flares")
+        assertTrue(source.contains("flickerRateMult = 0.30f"), "recoil arc animation should last about 50% longer")
         assertTrue(source.contains("setCoreWidthOverride(ARC_CORE_WIDTH)"), "targeted recoil arcs should keep a proportional core width")
         assertFalse(source.contains(", null, 9f,"), "targeted recoil arcs must not keep the old narrow width")
         assertFalse(source.contains("ship, 6f,"), "untargeted recoil arcs must not keep the old narrow width")
@@ -148,27 +158,18 @@ class ASTDArcProductionVfxTest {
         )
         assertTrue(
             plasmaBoost.contains("ASTDArcCombatUtil.isNonPdNonMissileWeapon"),
-            "plasma shield boost should exclude PD and missile weapons from the RoF penalty",
+            "plasma shield boost should exclude PD and missile weapons from weapon suppression",
         )
         assertTrue(
-            plasmaBoost.contains("ASTDArcCombatUtil.applyRefireDelayMult"),
-            "plasma shield boost should apply the RoF penalty through eligible weapon refire delay",
+            plasmaBoost.contains("weapon.setForceNoFireOneFrame(true)"),
+            "plasma shield boost should disable eligible weapons like fortress shield instead of reducing RoF",
         )
-        assertTrue(
-            plasmaBoost.contains("ASTDArcCombatUtil.restoreRefireDelays(ship)"),
-            "plasma shield boost should restore cached weapon refire delays when ending",
+        assertFalse(
+            plasmaBoost.contains("ASTDArcProductionVfx.applyPlasmaShieldVisuals(ship, 0f)"),
+            "plasma shield boost cleanup should not restore vanilla colors during the shield closing frame",
         )
-        val combatUtil = Files.readString(
-            Path.of("src/main/kotlin/cn/kasuminova/astd/combat/hullmods/arc/ASTDArcCombatUtil.kt"),
-        )
-        assertTrue(
-            combatUtil.contains("baseRefireDelayByWeapon.getOrPut(weapon)"),
-            "refire delay suppression must compute from an original cached baseline",
-        )
-        assertTrue(
-            combatUtil.contains("fun restoreRefireDelay"),
-            "refire delay suppression must expose restoration",
-        )
+        assertFalse(plasmaBoost.contains("ASTDArcCombatUtil.applyRefireDelayMult"), "plasma shield boost should not reduce refire delay anymore")
+        assertFalse(plasmaBoost.contains("ASTDArcCombatUtil.restoreRefireDelays(ship)"), "plasma shield boost should not need refire delay restoration")
         assertFalse(
             plasmaBoost.substringBefore("override fun unapply").contains("stats.ballisticRoFMult.modifyMult"),
             "plasma shield boost must not use global ballistic RoF because that affects PD weapons",
@@ -177,36 +178,36 @@ class ASTDArcProductionVfxTest {
         val ionized = Files.readString(
             Path.of("src/main/kotlin/cn/kasuminova/astd/combat/hullmods/arc/ASTDIonizedRecoilAccumulatorHullMod.kt"),
         )
-        assertTrue(ionized.contains("HARD_FLUX_CONVERT_FRACTION = 0.02f"), "ionized recoil should convert 2% of current hard flux")
+        assertTrue(ionized.contains("HARD_FLUX_CONVERT_FRACTION = 0.03f"), "ionized recoil should convert 3% of current hard flux")
         assertTrue(ionized.contains("SOFT_FLUX_MULT = 1f"), "ionized recoil should generate soft flux equal to converted hard flux")
         assertTrue(ionized.contains("val conversionMult = 1f + boostLevel"), "boosted plasma shield should double ionized recoil conversion")
         assertTrue(ionized.contains("convertHardFlux(conversionMult)"), "ionized recoil conversion should scale during the system boost")
         assertTrue(ionized.contains("effectiveRecoilRange()"), "ionized recoil range should be affected by energy projectile weapon range")
         assertTrue(ionized.contains("playSound(\"system_emp_emitter_impact\""), "ionized recoil trigger should play the vanilla EMP emitter impact sound")
         assertTrue(ionized.contains("private fun fluxLevel(): Float"), "ionized recoil proc chance should use total flux level")
-        assertTrue(ionized.contains("val chance = procChance(param, damage, armorHit, fluxLevel())"), "proc chance must not be based on hard flux")
-        assertTrue(ionized.contains("private fun procChance(param: Any?, damage: DamageAPI, armorHit: Boolean, fluxLevel: Float): Float"), "proc chance should combine total flux with hit context")
+        assertTrue(ionized.contains("val chance = procChance(param, damage, fluxLevel())"), "proc chance must not be based on hard flux or hit medium")
+        assertTrue(ionized.contains("private fun procChance(param: Any?, damage: DamageAPI, fluxLevel: Float): Float"), "proc chance should combine total flux with beam and hit-strength rules")
         assertTrue(ionized.contains("val hardFluxLevel = hardFluxLevel()"), "shield pierce chance should still use hard flux level")
     }
 
     @Test
-    fun `ionized recoil proc chance scales by damage type hit medium beam and hit strength`() {
+    fun `ionized recoil proc chance ignores damage type and hit medium but keeps beam and hit strength scaling`() {
         val ionized = Files.readString(
             Path.of("src/main/kotlin/cn/kasuminova/astd/combat/hullmods/arc/ASTDIonizedRecoilAccumulatorHullMod.kt"),
         )
 
-        assertTrue(ionized.contains("KINETIC_SHIELD_PROC_MULT = 1.75f"), "kinetic shield hits should gain 75% proc chance")
-        assertTrue(ionized.contains("HIGH_EXPLOSIVE_SHIELD_PROC_MULT = 0.50f"), "HE shield hits should lose 50% proc chance")
-        assertTrue(ionized.contains("FRAGMENTATION_SHIELD_PROC_MULT = 0.25f"), "fragmentation shield hits should lose 75% proc chance")
-        assertTrue(ionized.contains("KINETIC_ARMOR_PROC_MULT = 0.50f"), "kinetic armor hits should lose 50% proc chance")
-        assertTrue(ionized.contains("HIGH_EXPLOSIVE_ARMOR_PROC_MULT = 2.50f"), "HE armor hits should gain 150% proc chance")
-        assertTrue(ionized.contains("FRAGMENTATION_ARMOR_PROC_MULT = 0.25f"), "fragmentation armor hits should lose 75% proc chance")
-        assertTrue(ionized.contains("BEAM_PROC_MULT = 0.25f"), "beam damage should lose 75% proc chance after other rules")
+        assertFalse(ionized.contains("KINETIC_SHIELD_PROC_MULT"), "damage type should no longer change proc chance")
+        assertFalse(ionized.contains("HIGH_EXPLOSIVE_SHIELD_PROC_MULT"), "damage type should no longer change proc chance")
+        assertFalse(ionized.contains("FRAGMENTATION_SHIELD_PROC_MULT"), "damage type should no longer change proc chance")
+        assertFalse(ionized.contains("KINETIC_ARMOR_PROC_MULT"), "hit medium should no longer change proc chance")
+        assertFalse(ionized.contains("HIGH_EXPLOSIVE_ARMOR_PROC_MULT"), "hit medium should no longer change proc chance")
+        assertFalse(ionized.contains("FRAGMENTATION_ARMOR_PROC_MULT"), "hit medium should no longer change proc chance")
+        assertFalse(ionized.contains("damageTypeProcMult"), "proc chance must not call a damage type multiplier")
+        assertTrue(ionized.contains("BEAM_PROC_MULT = 0.10f"), "beam damage should lose 90% proc chance")
         assertTrue(ionized.contains("HIT_STRENGTH_BASE_FLUX_FRACTION = 0.02f"), "hit strength should be based on 2% max flux")
         assertTrue(ionized.contains("MIN_HIT_STRENGTH_PROC_MULT = 0.10f"), "weak hits should reduce proc chance by at most 90%")
         assertTrue(ionized.contains("MAX_HIT_STRENGTH_PROC_MULT = 3f"), "strong hits should raise proc chance by at most 200%")
-        assertTrue(ionized.contains("damageTypeProcMult(damage.type, armorHit)"), "damage type scaling should account for armor versus shield hits")
-        assertTrue(ionized.contains("if (param is BeamAPI) BEAM_PROC_MULT else 1f"), "beam scaling should be applied on top of type and hit-medium rules")
+        assertTrue(ionized.contains("if (param is BeamAPI) BEAM_PROC_MULT else 1f"), "beam scaling should be applied after flux chance")
         assertTrue(ionized.contains("damage.baseDamage"), "hit strength scaling should use original base damage")
         assertFalse(ionized.contains("effectiveDamageAmount(param, damage)"), "hit strength scaling must not use current or DPS-expanded damage")
         assertTrue(ionized.contains("hitStrengthProcMult("), "proc chance should apply the hit strength multiplier")
@@ -459,7 +460,7 @@ class ASTDArcProductionVfxTest {
         assertTrue(plugin.contains("astd_arc_jet_Standard"), "ARC production source variant ids must include arc jet standard variant")
         assertTrue(plugin.contains("astd_plasma_arch_Standard"), "ARC production source variant ids must include plasma arch standard variant")
         assertTrue(plugin.contains("astd_radiation_belt_Standard"), "ARC production source variant ids must include radiation belt standard variant")
-        assertTrue(verifier.contains("\"plasmaArchTooltipKeys\": 76"), "verifier key minimum should match the exported plasma arch renderer contract")
+        assertTrue(verifier.contains("\"plasmaArchTooltipKeys\": 44"), "verifier key minimum should match the exported plasma arch renderer contract")
         assertTrue(verifier.contains("\"radiationBeltTooltipKeys\": 26"), "verifier key minimum should match the current radiation belt renderer contract")
     }
 }

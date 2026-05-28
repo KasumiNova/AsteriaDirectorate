@@ -121,6 +121,7 @@ internal object ASTDHullModTooltipRenderer {
         title: String,
         theme: Theme,
         blocks: List<Block>,
+        showTitle: Boolean = true,
     ) {
         tooltip.buildWith {
             spacer(6f)
@@ -128,7 +129,9 @@ internal object ASTDHullModTooltipRenderer {
                 accentColor = theme.accentColor,
                 width = width,
             ) {
-                heading(title, theme.nameColor, theme.headerBackground, 6f)
+                if (showTitle) {
+                    heading(title, theme.nameColor, theme.headerBackground, 6f)
+                }
                 for (block in blocks) {
                     when (block) {
                         is Paragraph -> renderParagraph(tooltip, block)

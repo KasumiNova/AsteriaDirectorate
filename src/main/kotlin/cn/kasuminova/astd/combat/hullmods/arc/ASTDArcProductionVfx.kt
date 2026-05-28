@@ -27,7 +27,6 @@ internal object ASTDArcProductionVfx {
     private const val BEAM_CORE_SPRITE = "graphics/fx/beamcoreb.png"
     private const val BEAM_FRINGE_SPRITE = "graphics/fx/beamfringeb.png"
     private const val PLASMA_ARC_WIDTH = 18f
-    private const val PLASMA_ARC_SEGMENTS = 3
 
     private val log = Global.getLogger(ASTDArcProductionVfx::class.java)
 
@@ -98,7 +97,7 @@ internal object ASTDArcProductionVfx {
         incrementCounter(engine, TELEMETRY_RADIATION_BELT_PURSUIT_LINKS)
     }
 
-    fun emitPlasmaShieldArc(engine: CombatEngineAPI, ship: ShipAPI, boosted: Boolean) {
+    fun emitPlasmaShieldArc(engine: CombatEngineAPI, ship: ShipAPI, boosted: Boolean, preferredAngle: Float? = null) {
         val shield = ship.shield ?: return
         if (!shield.isOn) return
         val center = shield.location ?: ship.location
@@ -106,19 +105,15 @@ internal object ASTDArcProductionVfx {
         val arcSpan = shield.activeArc * 0.1675f
         val halfArc = shield.activeArc * 0.5f
         val margin = arcSpan * 0.5f
-        val mid = shield.facing + MathUtils.getRandomNumberInRange(-halfArc + margin, halfArc - margin)
+        val preferredOffset = preferredAngle
+            ?.let { MathUtils.getShortestRotation(shield.facing, it) }
+            ?.coerceIn(-halfArc + margin, halfArc - margin)
+        val randomOffset = MathUtils.getRandomNumberInRange(-halfArc + margin, halfArc - margin)
+        val mid = shield.facing + (preferredOffset ?: randomOffset) + MathUtils.getRandomNumberInRange(-arcSpan * 0.14f, arcSpan * 0.14f)
         val angleA = mid - arcSpan * 0.5f
         val angleB = mid + arcSpan * 0.5f
-        val points = (0..PLASMA_ARC_SEGMENTS).map { idx ->
-            val t = idx / PLASMA_ARC_SEGMENTS.toFloat()
-            val angle = angleA + (angleB - angleA) * t
-            val radiusFraction = if (idx == 0 || idx == PLASMA_ARC_SEGMENTS) {
-                MathUtils.getRandomNumberInRange(0.85f, 1f)
-            } else {
-                MathUtils.getRandomNumberInRange(0.93f, 1f)
-            }
-            edgeBiasedShieldPoint(center, radius, angle, radiusFraction)
-        }
+        val from = edgeBiasedShieldPoint(center, radius, angleA, MathUtils.getRandomNumberInRange(0.85f, 1f))
+        val to = edgeBiasedShieldPoint(center, radius, angleB, MathUtils.getRandomNumberInRange(0.85f, 1f))
 
         val params = EmpArcEntityAPI.EmpArcParams().apply {
             segmentLengthMult = if (boosted) 5.4f else 6.4f
@@ -137,11 +132,24 @@ internal object ASTDArcProductionVfx {
             glowColorOverride = if (boosted) PLASMA_SHIELD_PURPLE_RING else PLASMA_SHIELD_BLUE_RING
         }
         try {
-            for (idx in 0 until PLASMA_ARC_SEGMENTS) {
-                spawnShieldArcSegment(engine, ship, points[idx], points[idx + 1], boosted, params)
-            }
-            emitShieldArcEndpointFlare(engine, ship, points.first(), boosted)
-            emitShieldArcEndpointFlare(engine, ship, points.last(), boosted)
+            val arc = engine.spawnEmpArcVisual(
+                from,
+                ship,
+                to,
+                ship,
+                PLASMA_ARC_WIDTH,
+                if (boosted) PLASMA_SHIELD_PURPLE_RING else plasmaBlue,
+                plasmaCore,
+                params,
+            )
+            arc.setSingleFlickerMode(true)
+            arc.setFadedOutAtStart(true)
+            arc.setRenderGlowAtStart(false)
+            arc.setRenderGlowAtEnd(false)
+            arc.setCoreWidthOverride(PLASMA_ARC_WIDTH * if (boosted) 0.46f else 0.36f)
+            arc.setWarping(0f)
+            emitShieldArcEndpointFlare(engine, ship, from, boosted)
+            emitShieldArcEndpointFlare(engine, ship, to, boosted)
         } catch (_: Throwable) {
             handleBoxUtilFailure(engine, "plasma shield arc")
         }
@@ -150,7 +158,6 @@ internal object ASTDArcProductionVfx {
 
     fun applyPlasmaShieldVisuals(ship: ShipAPI, boostLevel: Float) {
         val shield = ship.shield ?: return
-        if (!shield.isOn) return
         val level = boostLevel.coerceIn(0f, 1f)
         val ring = Misc.interpolateColor(PLASMA_SHIELD_BLUE_RING, PLASMA_SHIELD_PURPLE_RING, level)
         val inner = Misc.interpolateColor(PLASMA_SHIELD_BLUE_INNER, PLASMA_SHIELD_PURPLE_INNER, level)
@@ -163,6 +170,10 @@ internal object ASTDArcProductionVfx {
             0.08f + 0.24f * level,
             0.08f + 0.18f * level,
         )
+    }
+
+    fun markPlasmaShieldVisualGrace(engine: CombatEngineAPI, ship: ShipAPI, seconds: Float) {
+        ship.setCustomData("astd_plasma_shield_visual_grace", engine.getTotalElapsedTime(false) + seconds.coerceAtLeast(0f))
     }
 
     fun emitPlasmaShieldHit(engine: CombatEngineAPI, ship: ShipAPI, point: Vector2f, intensity: Float) {
@@ -249,32 +260,6 @@ internal object ASTDArcProductionVfx {
 
     private fun edgeBiasedShieldPoint(center: Vector2f, radius: Float, angle: Float, radiusFraction: Float): Vector2f {
         return MathUtils.getPointOnCircumference(Vector2f(center), radius * radiusFraction.coerceIn(0f, 1f), angle)
-    }
-
-    private fun spawnShieldArcSegment(
-        engine: CombatEngineAPI,
-        ship: ShipAPI,
-        from: Vector2f,
-        to: Vector2f,
-        boosted: Boolean,
-        params: EmpArcEntityAPI.EmpArcParams,
-    ) {
-        val arc = engine.spawnEmpArcVisual(
-            from,
-            ship,
-            to,
-            ship,
-            PLASMA_ARC_WIDTH,
-            if (boosted) PLASMA_SHIELD_PURPLE_RING else plasmaBlue,
-            plasmaCore,
-            params,
-        )
-        arc.setSingleFlickerMode(true)
-        arc.setFadedOutAtStart(true)
-        arc.setRenderGlowAtStart(false)
-        arc.setRenderGlowAtEnd(false)
-        arc.setCoreWidthOverride(PLASMA_ARC_WIDTH * if (boosted) 0.46f else 0.36f)
-        arc.setWarping(0f)
     }
 
     private fun emitShieldArcEndpointFlare(engine: CombatEngineAPI, ship: ShipAPI, location: Vector2f, boosted: Boolean) {

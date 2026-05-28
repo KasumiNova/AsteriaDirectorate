@@ -5,7 +5,6 @@ import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcProductionVfx
 import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcCombatUtil
 import cn.kasuminova.astd.internal.i18n.I18n
 import com.fs.starfarer.api.Global
-import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.MutableShipStatsAPI
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.impl.combat.BaseShipSystemScript
@@ -19,16 +18,17 @@ class ASTDPlasmaArmorShieldBoostSystemStats : BaseShipSystemScript() {
         private const val RAMP_SECONDS = 2f
         private const val SHIELD_DR_MAX = 0.50f
         private const val ARMOR_DR_MAX = 0.25f
-        private const val WEAPON_ROF_MULT = 0.50f
-        private const val HARD_FLUX_PER_SECOND = 0.02f
+        private const val SHIELD_VISUAL_GRACE_SECONDS = 0.18f
 
         private const val RAMP_START_KEY = "astd_plasma_boost_ramp_start:"
-        private const val FLUX_TIME_KEY = "astd_plasma_boost_flux_time:"
 
         private val ARC_FRINGE = Color(85, 205, 255, 220)
     }
 
     override fun apply(stats: MutableShipStatsAPI, id: String, state: ShipSystemStatsScript.State, effectLevel: Float) {
+        val level = effectLevel.coerceIn(0f, 1f)
+        applyStatModifiers(stats, id, level)
+
         val engine = Global.getCombatEngine() ?: return
         val ship = stats.entity as? ShipAPI ?: return
         if (ship.isHulk || !ship.isAlive) return
@@ -38,36 +38,31 @@ class ASTDPlasmaArmorShieldBoostSystemStats : BaseShipSystemScript() {
         val rampStartKey = "$RAMP_START_KEY$shipKey"
         if (engine.customData[rampStartKey] == null) {
             engine.customData[rampStartKey] = now
-            engine.customData["$FLUX_TIME_KEY$shipKey"] = now
         }
 
         val rampStart = engine.customData[rampStartKey] as? Float ?: now
         val ramp = ((now - rampStart) / RAMP_SECONDS).coerceIn(0f, 1f)
-        val level = (effectLevel * ramp).coerceIn(0f, 1f)
+        val rampedLevel = (level * ramp).coerceIn(0f, 1f)
 
-        stats.shieldDamageTakenMult.modifyMult(id, 1f - SHIELD_DR_MAX * level)
-        stats.armorDamageTakenMult.modifyMult(id, 1f - ARMOR_DR_MAX * level)
-        suppressEligibleWeaponRefire(ship, level)
+        applyStatModifiers(stats, id, rampedLevel)
+        suppressEligibleWeapons(ship)
 
-        ship.setCustomData(ASTDArcProductionShipIds.DATA_PLASMA_SHIELD_BOOST_LEVEL, level)
-        if (level > 0.05f) {
+        ship.setCustomData(ASTDArcProductionShipIds.DATA_PLASMA_SHIELD_BOOST_LEVEL, rampedLevel)
+        if (rampedLevel > 0.05f) {
             ASTDArcProductionVfx.setCounter(engine, ASTDArcProductionVfx.TELEMETRY_PLASMA_ARCH_SYSTEM_ACTIVE, 1)
         }
-        generateHardFlux(engine, ship, shipKey)
-        renderBoostShield(ship, level)
+        renderBoostShield(ship, rampedLevel)
     }
 
     override fun unapply(stats: MutableShipStatsAPI, id: String) {
         stats.shieldDamageTakenMult.unmodify(id)
         stats.armorDamageTakenMult.unmodify(id)
         val ship = stats.entity as? ShipAPI ?: return
-        ASTDArcProductionVfx.applyPlasmaShieldVisuals(ship, 0f)
-        ship.removeCustomData(ASTDArcProductionShipIds.DATA_PLASMA_SHIELD_BOOST_LEVEL)
-        ASTDArcCombatUtil.restoreRefireDelays(ship)
         val engine = Global.getCombatEngine() ?: return
+        ASTDArcProductionVfx.markPlasmaShieldVisualGrace(engine, ship, SHIELD_VISUAL_GRACE_SECONDS)
+        ship.removeCustomData(ASTDArcProductionShipIds.DATA_PLASMA_SHIELD_BOOST_LEVEL)
         val shipKey = System.identityHashCode(ship).toString()
         engine.customData.remove("$RAMP_START_KEY$shipKey")
-        engine.customData.remove("$FLUX_TIME_KEY$shipKey")
         ship.setJitterShields(false)
     }
 
@@ -90,7 +85,6 @@ class ASTDPlasmaArmorShieldBoostSystemStats : BaseShipSystemScript() {
                 "system.plasma_armor_shield_boost.status.default.$suffix.$line",
                 "shield" to formatPercent(SHIELD_DR_MAX * level),
                 "armor" to formatPercent(ARMOR_DR_MAX * level),
-                "weaponRate" to formatPercent((1f - WEAPON_ROF_MULT) * level),
             ),
             false,
         )
@@ -99,26 +93,17 @@ class ASTDPlasmaArmorShieldBoostSystemStats : BaseShipSystemScript() {
     private fun formatPercent(value: Float): String =
         "${(value.coerceAtLeast(0f) * 100f).roundToInt()}%"
 
-    private fun suppressEligibleWeaponRefire(ship: ShipAPI, level: Float) {
-        val mult = 1f + (WEAPON_ROF_MULT - 1f) * level.coerceIn(0f, 1f)
-        if (mult >= 0.999f) {
-            ASTDArcCombatUtil.restoreRefireDelays(ship)
-            return
-        }
-        for (weapon in try { ship.allWeapons } catch (_: Throwable) { return }) {
-            if (!ASTDArcCombatUtil.isNonPdNonMissileWeapon(weapon)) continue
-            ASTDArcCombatUtil.applyRefireDelayMult(weapon, mult)
-        }
+    private fun applyStatModifiers(stats: MutableShipStatsAPI, id: String, level: Float) {
+        val clamped = level.coerceIn(0f, 1f)
+        stats.shieldDamageTakenMult.modifyMult(id, 1f - SHIELD_DR_MAX * clamped)
+        stats.armorDamageTakenMult.modifyMult(id, 1f - ARMOR_DR_MAX * clamped)
     }
 
-    private fun generateHardFlux(engine: CombatEngineAPI, ship: ShipAPI, shipKey: String) {
-        val key = "$FLUX_TIME_KEY$shipKey"
-        val now = engine.getTotalElapsedTime(false)
-        val previous = engine.customData[key] as? Float ?: now
-        val amount = (now - previous).coerceIn(0f, 0.25f)
-        engine.customData[key] = now
-        if (amount <= 0f) return
-        ship.fluxTracker.increaseFlux(ship.fluxTracker.maxFlux * HARD_FLUX_PER_SECOND * amount, true)
+    private fun suppressEligibleWeapons(ship: ShipAPI) {
+        for (weapon in try { ship.allWeapons } catch (_: Throwable) { return }) {
+            if (!ASTDArcCombatUtil.isNonPdNonMissileWeapon(weapon)) continue
+            weapon.setForceNoFireOneFrame(true)
+        }
     }
 
     private fun renderBoostShield(ship: ShipAPI, level: Float) {

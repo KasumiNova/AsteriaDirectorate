@@ -47,6 +47,7 @@ object Desc_astd_apex_logic : LocalizedDescription("astd_apex_logic", "SHIP")
 
 object Desc_astd_arc_flare_overdrive_crewed : LocalizedDescription("astd_arc_flare_overdrive_crewed", "SHIP_SYSTEM")
 object Desc_astd_arc_flare_overdrive_automated : LocalizedDescription("astd_arc_flare_overdrive_automated", "SHIP_SYSTEM")
+object Desc_astd_arc_flare_overdrive : LocalizedDescription("astd_arc_flare_overdrive", "SHIP_SYSTEM")
 object Desc_astd_arc_shared_flux_network : LocalizedDescription("astd_arc_shared_flux_network", "SHIP_SYSTEM")
 object Desc_astd_plasma_armor_shield_boost : LocalizedDescription("astd_plasma_armor_shield_boost", "SHIP_SYSTEM")
 object Desc_astd_limit_temporal_thruster : LocalizedDescription("astd_limit_temporal_thruster", "SHIP_SYSTEM")

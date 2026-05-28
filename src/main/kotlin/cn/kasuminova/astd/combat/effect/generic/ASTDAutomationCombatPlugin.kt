@@ -17,6 +17,7 @@ import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.DamagingProjectileAPI
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.combat.ShipCommand
+import com.fs.starfarer.api.combat.ShipwideAIFlags
 import com.fs.starfarer.api.combat.ViewportAPI
 import com.fs.starfarer.api.combat.WeaponAPI
 import com.fs.starfarer.api.input.InputEventAPI
@@ -199,13 +200,15 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             .forEach { stabilizeShip(it, enemyAnchor, 180f, allowFire = false) }
     }
 
-    private fun stabilizeShip(ship: ShipAPI, location: Vector2f, facing: Float, allowFire: Boolean) {
+    private fun stabilizeShip(ship: ShipAPI, location: Vector2f, facing: Float, allowFire: Boolean, preserveAI: Boolean = false) {
         ship.location.set(location)
         ship.velocity.set(0f, 0f)
         ship.facing = facing
         ship.angularVelocity = 0f
-        ship.shipAI = null
-        ship.setShipTarget(null)
+        if (!preserveAI) {
+            ship.shipAI = null
+            ship.setShipTarget(null)
+        }
         ship.setControlsLocked(false)
         ship.setHoldFireOneFrame(!allowFire)
         ship.blockCommandForOneFrame(ShipCommand.ACCELERATE)
@@ -275,17 +278,20 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             }
             val spawned = manager.spawnFleetMember(member, Vector2f(anchor), facing, 0f)
             manager.removeFromReserves(member)
-            stabilizeShip(spawned, anchor, facing, allowFire = false)
+            stabilizeShip(spawned, anchor, facing, allowFire = false, preserveAI = shouldPreserveArcProductionAI(side, hullId))
             if (side == FleetSide.PLAYER && hullId !in ARC_PRODUCTION_CORE_HULLS) allyIndex++
         }
     }
+
+    private fun shouldPreserveArcProductionAI(side: FleetSide, hullId: String): Boolean =
+        side == FleetSide.ENEMY || hullId == ASTDArcProductionShipIds.HULL_PLASMA_ARCH
 
     private fun arrangeArcProductionShips(engine: CombatEngineAPI) {
         val arcJet = findShipByHull(engine, "astd_arc_jet")
         val plasmaArch = findShipByHull(engine, "astd_plasma_arch")
         val radiationBelt = findShipByHull(engine, "astd_radiation_belt")
         arcJet?.let { stabilizeShip(it, arcProductionAnchors.getValue("astd_arc_jet"), 0f, allowFire = false) }
-        plasmaArch?.let { stabilizeShip(it, arcProductionAnchors.getValue("astd_plasma_arch"), 0f, allowFire = false) }
+        plasmaArch?.let { stabilizeShip(it, arcProductionAnchors.getValue("astd_plasma_arch"), 0f, allowFire = false, preserveAI = true) }
         radiationBelt?.let { stabilizeShip(it, arcProductionAnchors.getValue("astd_radiation_belt"), 180f, allowFire = false) }
 
         engine.ships
@@ -298,7 +304,20 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
 
         engine.ships
             .filter { ship -> ship.owner != 0 }
-            .forEach { stabilizeShip(it, arcProductionAnchors.getValue("enemy_target"), 180f, allowFire = false) }
+            .forEachIndexed { index, ship ->
+                val base = arcProductionAnchors.getValue("enemy_target")
+                val anchor = Vector2f(base.x + index * 170f, base.y)
+                stabilizeShip(ship, anchor, 180f, allowFire = true, preserveAI = true)
+                pressurePlasmaArchForSystemAI(ship, plasmaArch)
+            }
+    }
+
+    private fun pressurePlasmaArchForSystemAI(ship: ShipAPI, plasmaArch: ShipAPI?) {
+        if (plasmaArch == null || ship.owner == plasmaArch.owner) return
+        ship.setShipTarget(plasmaArch)
+        for (weapon in try { ship.allWeapons } catch (_: Throwable) { return }) {
+            weapon.setForceFireOneFrame(true)
+        }
     }
 
     private fun advanceArcProductionScenario(engine: CombatEngineAPI) {
@@ -315,7 +334,6 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
 
         arcJet?.system?.let { if (!it.isOn && elapsed > 0.8f) arcJet.useSystem() }
         plasmaArch?.shield?.let { if (!it.isOn) it.toggleOn() }
-        plasmaArch?.system?.let { if (!it.isOn && elapsed > 0.8f) plasmaArch.useSystem() }
         radiationBelt?.system?.let { if (!it.isOn && elapsed > 0.8f) radiationBelt.useSystem() }
 
         val missingShips = arcProductionMissingShips(engine)
@@ -556,6 +574,14 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             appendLine("  \"shipSpriteCenterY\": ${formatFloat(shipSprite?.centerY ?: -1f)},")
             appendLine("  \"failureReason\": ${jsonString(failureReason)},")
             if (ASTDInGameAutomationScenario.isArcProductionEnabled()) {
+                val plasmaArch = findShipByHull(engine, ASTDArcProductionShipIds.HULL_PLASMA_ARCH)
+                val plasmaSystem = plasmaArch?.system
+                val plasmaSpec = plasmaSystem?.specAPI
+                val plasmaShield = plasmaArch?.shield
+                val plasmaSystemAI = plasmaRuntimeSystemAI(plasmaArch)
+                val plasmaBiggestThreat = plasmaAIFlagTarget(plasmaArch, ShipwideAIFlags.AIFlags.BIGGEST_THREAT)
+                val plasmaSystemTarget = plasmaAIFlagTarget(plasmaArch, ShipwideAIFlags.AIFlags.TARGET_FOR_SHIP_SYSTEM)
+                val plasmaManeuverTarget = plasmaAIFlagTarget(plasmaArch, ShipwideAIFlags.AIFlags.MANEUVER_TARGET)
                 appendLine("  \"runtimeElapsedSeconds\": 0,")
                 appendLine("  \"runtimeVisibleLength\": 0,")
                 appendLine("  \"runtimeBeamAlpha\": 0,")
@@ -571,6 +597,41 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 appendLine("  \"arcProductionPlayerReserves\": ${engine.getFleetManager(FleetSide.PLAYER).getReservesCopy().size},")
                 appendLine("  \"arcProductionEnemyReserves\": ${engine.getFleetManager(FleetSide.ENEMY).getReservesCopy().size},")
                 appendLine("  \"radiationBeltSystemState\": ${jsonString(findShipByHull(engine, ASTDArcProductionShipIds.HULL_RADIATION_BELT)?.system?.state?.name)},")
+                appendLine("  \"plasmaArchSystemId\": ${jsonString(plasmaSystem?.id)},")
+                appendLine("  \"plasmaArchSystemState\": ${jsonString(plasmaSystem?.state?.name)},")
+                appendLine("  \"plasmaArchSystemCanBeActivated\": ${safeBool { plasmaSystem?.canBeActivated() == true }},")
+                appendLine("  \"plasmaArchSystemEffectLevel\": ${formatFloat(plasmaSystem?.effectLevel ?: -1f)},")
+                appendLine("  \"plasmaArchShipAI\": ${jsonString(plasmaArch?.shipAI?.javaClass?.name)},")
+                appendLine("  \"plasmaArchFluxLevel\": ${formatFloat(plasmaArch?.fluxLevel ?: -1f)},")
+                appendLine("  \"plasmaArchCurrFlux\": ${formatFloat(plasmaArch?.currFlux ?: -1f)},")
+                appendLine("  \"plasmaArchMaxFlux\": ${formatFloat(plasmaArch?.maxFlux ?: -1f)},")
+                appendLine("  \"plasmaArchHardFlux\": ${formatFloat(plasmaArch?.fluxTracker?.hardFlux ?: -1f)},")
+                appendLine("  \"plasmaArchHardFluxLevel\": ${formatFloat(plasmaArch?.hardFluxLevel ?: -1f)},")
+                appendLine("  \"plasmaArchSinceLastDamageTaken\": ${formatFloat(plasmaArch?.sinceLastDamageTaken ?: -1f)},")
+                appendLine("  \"plasmaArchOverloadedOrVenting\": ${plasmaArch?.fluxTracker?.isOverloadedOrVenting ?: false},")
+                appendLine("  \"plasmaArchShieldOn\": ${plasmaShield?.isOn ?: false},")
+                appendLine("  \"plasmaArchShieldActiveArc\": ${formatFloat(plasmaShield?.activeArc ?: -1f)},")
+                appendLine("  \"plasmaArchAIFlags\": ${jsonStringList(plasmaAIFlags(plasmaArch))},")
+                appendLine("  \"plasmaArchAIFlagIncomingDamage\": ${plasmaAIFlag(plasmaArch, ShipwideAIFlags.AIFlags.HAS_INCOMING_DAMAGE)},")
+                appendLine("  \"plasmaArchAIFlagCriticalDpsDanger\": ${plasmaAIFlag(plasmaArch, ShipwideAIFlags.AIFlags.IN_CRITICAL_DPS_DANGER)},")
+                appendLine("  \"plasmaArchAIFlagKeepShieldsOn\": ${plasmaAIFlag(plasmaArch, ShipwideAIFlags.AIFlags.KEEP_SHIELDS_ON)},")
+                appendLine("  \"plasmaArchVanillaSystemAI\": ${jsonString(plasmaSystemAI.className)},")
+                appendLine("  \"plasmaArchVanillaSystemAIError\": ${jsonString(plasmaSystemAI.error)},")
+                appendLine("  \"plasmaArchAIFlagBiggestThreatTargetHullId\": ${jsonString(plasmaBiggestThreat.ship?.hullSpec?.hullId)},")
+                appendLine("  \"plasmaArchAIFlagBiggestThreatTargetVariantId\": ${jsonString(plasmaBiggestThreat.ship?.variant?.hullVariantId)},")
+                appendLine("  \"plasmaArchAIFlagTargetForSystemHullId\": ${jsonString(plasmaSystemTarget.ship?.hullSpec?.hullId)},")
+                appendLine("  \"plasmaArchAIFlagTargetForSystemVariantId\": ${jsonString(plasmaSystemTarget.ship?.variant?.hullVariantId)},")
+                appendLine("  \"plasmaArchAIFlagManeuverTargetHullId\": ${jsonString(plasmaManeuverTarget.ship?.hullSpec?.hullId)},")
+                appendLine("  \"plasmaArchAIFlagManeuverTargetVariantId\": ${jsonString(plasmaManeuverTarget.ship?.variant?.hullVariantId)},")
+                appendLine("  \"plasmaArchEnemyPressureShips\": ${plasmaEnemyPressureShips(engine, plasmaArch)},")
+                appendLine("  \"plasmaArchEnemyTargetingShips\": ${plasmaEnemyTargetingShips(engine, plasmaArch)},")
+                appendLine("  \"plasmaArchEnemyFiringWeapons\": ${plasmaEnemyFiringWeapons(engine, plasmaArch)},")
+                appendLine("  \"plasmaArchEnemyProjectiles\": ${plasmaEnemyProjectiles(engine, plasmaArch)},")
+                appendLine("  \"plasmaArchSystemSpecAiScript\": ${jsonString(plasmaSpec?.aiScript?.javaClass?.name ?: plasmaSpec?.aiScriptClassName)},")
+                appendLine("  \"plasmaArchSystemSpecFpsBaseCap\": ${formatFloat(plasmaSpec?.fluxPerSecondBaseCap ?: -1f)},")
+                appendLine("  \"plasmaArchSystemSpecToggle\": ${plasmaSpec?.isToggle ?: false},")
+                appendLine("  \"plasmaArchSystemSpecFiringAllowed\": ${plasmaSpec?.isFiringAllowed ?: false},")
+                appendLine("  \"plasmaArchSystemSpecTags\": ${jsonStringList(plasmaSpec?.tags?.toList()?.sorted() ?: emptyList())},")
             } else {
                 appendLine("  \"runtimeElapsedSeconds\": ${formatFloat(runtime.lastElapsed)},")
                 appendLine("  \"runtimeVisibleLength\": ${formatFloat(runtime.lastVisibleLength)},")
@@ -632,6 +693,93 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             .sumOf { contract -> contract.textKeys.count { key -> isResolvedTextKey(key) } }
     }
 
+    private fun plasmaEnemyPressureShips(engine: CombatEngineAPI, plasmaArch: ShipAPI?): Int {
+        if (plasmaArch == null) return 0
+        return engine.ships.count { ship ->
+            ship.owner != plasmaArch.owner &&
+                ship.isAlive &&
+                !ship.isHulk &&
+                distanceSquared(ship.location, plasmaArch.location) <= PLASMA_AI_PRESSURE_RANGE * PLASMA_AI_PRESSURE_RANGE
+        }
+    }
+
+    private fun plasmaEnemyTargetingShips(engine: CombatEngineAPI, plasmaArch: ShipAPI?): Int {
+        if (plasmaArch == null) return 0
+        return engine.ships.count { ship ->
+            ship.owner != plasmaArch.owner && ship.shipTarget === plasmaArch
+        }
+    }
+
+    private fun plasmaEnemyFiringWeapons(engine: CombatEngineAPI, plasmaArch: ShipAPI?): Int {
+        if (plasmaArch == null) return 0
+        return engine.ships
+            .filter { ship -> ship.owner != plasmaArch.owner }
+            .sumOf { ship ->
+                try {
+                    ship.allWeapons.count { weapon -> weapon.isFiring }
+                } catch (_: Throwable) {
+                    0
+                }
+            }
+    }
+
+    private fun plasmaEnemyProjectiles(engine: CombatEngineAPI, plasmaArch: ShipAPI?): Int {
+        if (plasmaArch == null) return 0
+        return engine.projectiles.count { projectile ->
+            val damaging = projectile as? DamagingProjectileAPI ?: return@count false
+            val source = damaging.source ?: return@count false
+            source.owner != plasmaArch.owner &&
+                !damaging.isExpired &&
+                distanceSquared(damaging.location, plasmaArch.location) <= PLASMA_AI_PRESSURE_RANGE * PLASMA_AI_PRESSURE_RANGE
+        }
+    }
+
+    private fun plasmaAIFlags(ship: ShipAPI?): List<String> {
+        val flags = ship?.shipAI?.aiFlags ?: ship?.aiFlags ?: return emptyList()
+        return ShipwideAIFlags.AIFlags.values()
+            .filter { flag -> safeBool { flags.hasFlag(flag) } }
+            .map { it.name }
+            .sorted()
+    }
+
+    private fun plasmaAIFlag(ship: ShipAPI?, flag: ShipwideAIFlags.AIFlags): Boolean {
+        val flags = ship?.shipAI?.aiFlags ?: ship?.aiFlags ?: return false
+        return safeBool { flags.hasFlag(flag) }
+    }
+
+    private fun plasmaAIFlagTarget(ship: ShipAPI?, flag: ShipwideAIFlags.AIFlags): PlasmaTargetDiagnostic {
+        val flags = ship?.shipAI?.aiFlags ?: ship?.aiFlags
+            ?: return PlasmaTargetDiagnostic(null, "missing AI flags for ${flag.name}")
+        val custom = try {
+            flags.getCustom(flag)
+        } catch (e: Throwable) {
+            return PlasmaTargetDiagnostic(null, "getCustom(${flag.name}) failed: ${e.javaClass.name}: ${e.message}")
+        } ?: return PlasmaTargetDiagnostic(null, null)
+
+        val target = extractShipFromAIFlagCustom(custom)
+        return PlasmaTargetDiagnostic(
+            ship = target,
+            error = if (target == null) {
+                "unresolved ${flag.name} custom target: ${custom.javaClass.name}"
+            } else {
+                null
+            },
+        )
+    }
+
+    private fun extractShipFromAIFlagCustom(custom: Any): ShipAPI? {
+        if (custom is ShipAPI) return custom
+        return null
+    }
+
+    private fun plasmaRuntimeSystemAI(ship: ShipAPI?): PlasmaSystemAIDiagnostic {
+        val ai = ship?.shipAI ?: return PlasmaSystemAIDiagnostic(null, "missing ship AI")
+        return PlasmaSystemAIDiagnostic(
+            className = null,
+            error = "systemAI is private runtime state on ${ai.javaClass.name}; script sandbox forbids reflection",
+        )
+    }
+
     private fun hasHullmod(ship: ShipAPI, hullmodId: String): Boolean =
         try { ship.variant?.hasHullMod(hullmodId) == true } catch (_: Throwable) { false }
 
@@ -647,9 +795,28 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
 
     private fun formatFloat(value: Float): String = "%.4f".format(java.util.Locale.ROOT, value)
 
+    private fun distanceSquared(a: Vector2f, b: Vector2f): Float {
+        val dx = a.x - b.x
+        val dy = a.y - b.y
+        return dx * dx + dy * dy
+    }
+
+    private fun safeBool(block: () -> Boolean): Boolean =
+        try { block() } catch (_: Throwable) { false }
+
     private fun escapeJson(value: String): String = value
         .replace("\\", "\\\\")
         .replace("\"", "\\\"")
+
+    private data class PlasmaTargetDiagnostic(
+        val ship: ShipAPI?,
+        val error: String?,
+    )
+
+    private data class PlasmaSystemAIDiagnostic(
+        val className: String?,
+        val error: String?,
+    )
 
     private companion object {
         private val ARC_PRODUCTION_CORE_HULLS = listOf(
@@ -668,5 +835,6 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private const val AUTOMATION_REFERENCE_CAPTURE_HEIGHT = 600f
         private const val SCREENSHOT_FLIGHT_SECONDS = 0.13333334f
         private const val REFERENCE_CAPTURE_ELAPSED_SECONDS = 0.3004f
+        private const val PLASMA_AI_PRESSURE_RANGE = 1800f
     }
 }

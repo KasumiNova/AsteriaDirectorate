@@ -42,7 +42,7 @@ ARC_PRODUCTION_REQUIRED_SHIP_IDS = ("astd_arc_jet", "astd_plasma_arch", "astd_ra
 ARC_PRODUCTION_REQUIRED_VARIANT_IDS = ("astd_arc_jet_Standard", "astd_plasma_arch_Standard", "astd_radiation_belt_Standard")
 ARC_PRODUCTION_TOOLTIP_KEY_MINIMUMS = {
     "arcJetTooltipKeys": 20,
-    "plasmaArchTooltipKeys": 76,
+    "plasmaArchTooltipKeys": 44,
     "radiationBeltTooltipKeys": 26,
 }
 ARC_PRODUCTION_SCREENSHOT_REGIONS = (
