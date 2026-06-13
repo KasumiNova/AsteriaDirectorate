@@ -1,9 +1,4 @@
----
-description: "ASTD 开发规范与约定，包含项目结构、工作流、核心约定、技能优先级等。"
-applyTo: "*"
----
-
-# Copilot 指令（Asteria Directorate）
+# 开发指令（Asteria Directorate）
 
 > 本文件采用“轻量 XML-ish 元信息 + Markdown 正文”的混合格式：
 > - 顶部元信息用于跨模型保持一致的关键约束与入口点
