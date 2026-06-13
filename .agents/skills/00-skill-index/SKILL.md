@@ -61,6 +61,10 @@ description: "Skill 索引：按领域汇总本仓库可用的所有技能与路
   - 路径：`.agents/skills/rendering-vfx-guidelines/SKILL.md`
   - 适用：战斗 VFX 优先 BoxUtil；统一接入弹体 VFX 管线；必要时才降级原版渲染 API。
 
+- **通用游戏特效预览工具规范**
+  - 路径：`.agents/skills/game-vfx-preview-guidelines/SKILL.md`
+  - 适用：`tools/game-vfx-preview/` 的 MD3 组件库、WebGL 渲染、effect preset、样式边界与验收规范。
+
 ## 系统设计
 
 - **系统状态文本规范（台词风格）**
