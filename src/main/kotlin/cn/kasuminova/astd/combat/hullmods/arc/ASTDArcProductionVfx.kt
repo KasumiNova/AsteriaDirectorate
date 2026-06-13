@@ -2,7 +2,7 @@ package cn.kasuminova.astd.combat.hullmods.arc
 
 import cn.kasuminova.astd.internal.debug.ASTDInGameAutomationScenario
 import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
-import cn.kasuminova.astd.renderer.effect.system.ASTDArcJetShockwaveRingRenderer
+import cn.kasuminova.astd.renderer.effect.system.ArcJetShockwaveRingEffect
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEngineLayers
@@ -59,7 +59,7 @@ internal object ASTDArcProductionVfx {
         pressureRatio: Float,
     ) {
         val pressure = pressureRatio.coerceIn(0f, 1f)
-        val frame = ASTDArcJetShockwaveRingRenderer.render(engine, source, level, pressure) ?: return
+        val frame = ArcJetShockwaveRingEffect.render(engine, source, level, pressure) ?: return
         incrementCounter(engine, TELEMETRY_ARC_JET_SHOCKWAVE_FRAMES)
         setCounter(engine, TELEMETRY_ARC_JET_SHOCKWAVE_RADIUS, frame.outerRadiusWorld.roundToInt().coerceAtLeast(1))
         setCounter(engine, TELEMETRY_ARC_JET_SHOCKWAVE_FLUX_PRESSURE, (pressure * 1000f).roundToInt().coerceAtLeast(1))
