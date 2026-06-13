@@ -117,9 +117,6 @@ class ASTDArcProductionVfxTest {
         )
 
         listOf(
-            "arcJetActiveSystemLinks",
-            "arcJetActiveSystemBeamFrames",
-            "arcJetActiveSystemFluxPressure",
             "plasmaArchShieldOpen",
             "plasmaArchSystemActive",
             "plasmaArchShieldArcEmissions",
@@ -134,7 +131,6 @@ class ASTDArcProductionVfxTest {
     @Test
     fun `production runtime call sites route acceptance vfx through helper`() {
         val callSites = mapOf(
-            "ASTDArcSharedFluxNetworkSystemStats.kt" to "renderArcJetSharedFluxBeam",
             "ASTDPlasmaArmorShieldHullMod.kt" to "emitPlasmaShieldArc",
             "ASTDPlasmaArmorShieldBoostSystemStats.kt" to "applyPlasmaShieldVisuals",
             "ASTDLimitTemporalThrusterSystemStats.kt" to "emitTemporalThrusterAfterimage",
@@ -162,54 +158,6 @@ class ASTDArcProductionVfxTest {
         assertFalse(pursuit.contains("renderNetworkPulse"), "distributed pursuit network must not render persistent connection beams")
         assertFalse(pursuit.contains("emitRadiationPursuitPing"), "distributed pursuit network must not call pursuit link VFX")
         assertFalse(pursuit.contains("LINK_PULSE_INTERVAL"), "distributed pursuit network should not keep passive VFX pulse timers")
-    }
-
-    @Test
-    fun `arc jet shared flux system renders continuous pressure driven multilayer beams`() {
-        val vfx = Files.readString(
-            Path.of("src/main/kotlin/cn/kasuminova/astd/combat/hullmods/arc/ASTDArcProductionVfx.kt"),
-        )
-        val system = Files.readString(
-            Path.of("src/main/kotlin/cn/kasuminova/astd/combat/shipsystems/ASTDArcSharedFluxNetworkSystemStats.kt"),
-        )
-
-        assertTrue(vfx.contains("fun renderArcJetSharedFluxBeam"), "active flux network should use a dedicated continuous beam renderer")
-        assertTrue(vfx.contains("ACTIVE_BEAM_BASE_WIDTH = 7f"), "active flux beam baseline width should be reduced by 50%")
-        assertTrue(vfx.contains("ARC_FLUX_BLUE"), "active flux beam should use the arc production blue baseline")
-        assertTrue(vfx.contains("ARC_FLUX_PURPLE"), "active flux beam should shift toward purple under high flux pressure")
-        assertTrue(vfx.contains("pressureRatio"), "beam renderer should receive flux-transfer pressure")
-        assertTrue(vfx.contains("Misc.interpolateColor(ARC_FLUX_BLUE, ARC_FLUX_PURPLE, pressureRatio"), "pressure should drive color shift")
-        assertTrue(vfx.contains("val from = fluxBeamAnchor(source, target.location, fromSource = true)"), "active flux beams should start outside the source hull instead of from the ship center")
-        assertTrue(vfx.contains("val to = fluxBeamAnchor(target, source.location, fromSource = false)"), "active flux beams should end outside the target hull instead of through the ship center")
-        assertTrue(vfx.contains("private fun fluxBeamAnchor"), "active flux beams should use hull-edge anchors so BELOW_SHIPS_LAYER is visually meaningful")
-        assertTrue(vfx.contains("ShipAPI.HullSize.FRIGATE -> 0.50f"), "frigate links should use half-width beams")
-        assertTrue(vfx.contains("ShipAPI.HullSize.DESTROYER -> 0.75f"), "destroyer links should use 75% width beams")
-        assertTrue(vfx.contains("ShipAPI.HullSize.CRUISER -> 1.00f"), "cruiser links should use baseline width beams")
-        assertTrue(vfx.contains("ShipAPI.HullSize.CAPITAL_SHIP -> 1.25f"), "capital links should use wider beams")
-        assertTrue(vfx.contains("tipWidth = width"), "active flux beams should keep head and tail width equal")
-        assertTrue(vfx.contains("renderFluxBeamLayer"), "active flux beam should be composed from multiple beam layers")
-        assertTrue(vfx.contains("emitFluxPathFlares"), "active flux beam should spawn path flare detail")
-        assertTrue(vfx.contains("RenderingUtil.addCombatFlareField"), "small BoxUtil flare particles should be used on active flux links")
-        assertTrue(vfx.contains("MagicLensFlare.createSharpFlare"), "active flux link detail should include MagicLib lens flares")
-        assertTrue(vfx.contains("emitFluxTravelBeam"), "active flux beam should include short traveling sub-beams")
-        assertTrue(vfx.contains("emitArcJetFluxStar"), "active flux system should render the source cross star")
-        assertTrue(vfx.contains("ARC_FLUX_STAR_ROTATION_DEGREES_PER_SECOND = 30f"), "source cross star should rotate at 30 degrees per second")
-        assertTrue(vfx.contains("STAR_ALPHA = 0.24f"), "source cross star should be visible without washing out the hull")
-        assertTrue(vfx.contains("renderFluxStarRing"), "source cross star should include a rotating ring layer")
-        assertTrue(vfx.contains("renderFluxStarRay"), "source cross star rays should avoid stacking full beam cores at the ship center")
-        assertTrue(vfx.contains("addSegmentLine"), "source cross star should use BoxUtil segment lines instead of ordinary beam links")
-        assertTrue(vfx.contains("val length = radius * 2.85f"), "source cross star segment rays should cross under the hull so the ship masks the center")
-        assertTrue(vfx.contains("* 1.10f"), "source cross star ring should sit near the hull outline")
-        assertTrue(vfx.contains("line.initLine(offset, length, color, emissive, width)"), "source cross star rays should be BoxUtil segment lines")
-        assertTrue(vfx.contains("radius * if (fromSource) 1.18f else 1.02f"), "active flux beams should anchor at hull edges rather than crossing ship centers")
-        assertFalse(vfx.contains("width = radius * 0.055f"), "source cross star must not use the previous thick centered beam rays")
-
-        assertFalse(system.contains("ACTIVE_PULSE_INTERVAL"), "active system must not blink VFX through a pulse interval")
-        assertFalse(system.contains("PULSE_KEY"), "active system must not keep pulse timers")
-        assertTrue(system.contains("val transfer = transferFluxDelta"), "system should use real transfer data for VFX pressure")
-        assertTrue(system.contains("updateFluxPressure"), "system should smooth transfer pressure per link")
-        assertTrue(system.contains("MAX_PRESSURE_FLUX_FRACTION_PER_SECOND = 0.015f"), "pressure maximum should be 1.5% of arc jet max flux per second")
-        assertTrue(system.contains("renderArcJetSharedFluxBeam(engine, ship, target"), "system should render the active link every active frame")
     }
 
     @Test

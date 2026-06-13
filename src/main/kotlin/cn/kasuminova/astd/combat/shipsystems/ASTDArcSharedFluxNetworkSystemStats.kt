@@ -63,6 +63,7 @@ class ASTDArcSharedFluxNetworkSystemStats : BaseShipSystemScript() {
         val targets = selectTargets(engine, ship)
         val activeSet = targets.mapTo(LinkedHashSet()) { System.identityHashCode(it) }
         clearStaleTargets(engine, ship, activeSet)
+        var maxPressureRatio = 0f
         for (target in targets) {
             val distance = ASTDArcAuraUtil.distance(ship.location, target.location)
             val falloff = arcJetSystemFalloff(ship, distance)
@@ -70,9 +71,10 @@ class ASTDArcSharedFluxNetworkSystemStats : BaseShipSystemScript() {
             applyTargetStats(ship, target, falloff * level)
             val transfer = transferFluxDelta(engine, ship, target, falloff * level, amount)
             val pressureRatio = updateFluxPressure(engine, ship, target, transfer, amount)
-            ASTDArcProductionVfx.renderArcJetSharedFluxBeam(engine, ship, target, falloff * level, pressureRatio)
+            maxPressureRatio = maxOf(maxPressureRatio, pressureRatio)
             maintainTargetStatus(engine, ship, target, falloff * level)
         }
+        ASTDArcProductionVfx.renderArcJetShockwaveRing(engine, ship, level, maxPressureRatio)
         engine.customData["$TARGETS_KEY${System.identityHashCode(ship)}"] = activeSet
         engine.customData[ASTDArcProductionShipIds.DATA_ARC_SHARED_FLUX_TARGETS] = activeSet
     }

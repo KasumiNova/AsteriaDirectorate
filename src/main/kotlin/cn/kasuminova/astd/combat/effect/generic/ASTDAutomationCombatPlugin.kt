@@ -363,9 +363,9 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     private fun arcProductionEvidenceReady(engine: CombatEngineAPI): Boolean {
         if (elapsed < 1.25f) return false
         return listOf(
-            ASTDArcProductionVfx.TELEMETRY_ARC_JET_ACTIVE_SYSTEM_LINKS,
-            ASTDArcProductionVfx.TELEMETRY_ARC_JET_ACTIVE_SYSTEM_BEAM_FRAMES,
-            ASTDArcProductionVfx.TELEMETRY_ARC_JET_ACTIVE_SYSTEM_FLUX_PRESSURE,
+            ASTDArcProductionVfx.TELEMETRY_ARC_JET_SHOCKWAVE_FRAMES,
+            ASTDArcProductionVfx.TELEMETRY_ARC_JET_SHOCKWAVE_RADIUS,
+            ASTDArcProductionVfx.TELEMETRY_ARC_JET_SHOCKWAVE_FLUX_PRESSURE,
             ASTDArcProductionVfx.TELEMETRY_PLASMA_ARCH_SHIELD_OPEN,
             ASTDArcProductionVfx.TELEMETRY_PLASMA_ARCH_SYSTEM_ACTIVE,
             ASTDArcProductionVfx.TELEMETRY_PLASMA_ARCH_SHIELD_ARC_EMISSIONS,
@@ -645,9 +645,9 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             appendLine("  \"fallbackInPlay\": ${fallbackProjectile?.let { engine.isEntityInPlay(it) } ?: false},")
             appendLine("  \"fallbackExpired\": ${fallbackProjectile?.isExpired ?: false},")
             appendLine("  \"fallbackFading\": ${fallbackProjectile?.isFading ?: false},")
-            appendLine("  \"arcJetActiveSystemLinks\": ${ASTDArcProductionVfx.counter(engine, ASTDArcProductionVfx.TELEMETRY_ARC_JET_ACTIVE_SYSTEM_LINKS)},")
-            appendLine("  \"arcJetActiveSystemBeamFrames\": ${ASTDArcProductionVfx.counter(engine, ASTDArcProductionVfx.TELEMETRY_ARC_JET_ACTIVE_SYSTEM_BEAM_FRAMES)},")
-            appendLine("  \"arcJetActiveSystemFluxPressure\": ${ASTDArcProductionVfx.counter(engine, ASTDArcProductionVfx.TELEMETRY_ARC_JET_ACTIVE_SYSTEM_FLUX_PRESSURE)},")
+            appendLine("  \"arcJetShockwaveFrames\": ${ASTDArcProductionVfx.counter(engine, ASTDArcProductionVfx.TELEMETRY_ARC_JET_SHOCKWAVE_FRAMES)},")
+            appendLine("  \"arcJetShockwaveRadius\": ${ASTDArcProductionVfx.counter(engine, ASTDArcProductionVfx.TELEMETRY_ARC_JET_SHOCKWAVE_RADIUS)},")
+            appendLine("  \"arcJetShockwaveFluxPressure\": ${ASTDArcProductionVfx.counter(engine, ASTDArcProductionVfx.TELEMETRY_ARC_JET_SHOCKWAVE_FLUX_PRESSURE)},")
             appendLine("  \"plasmaArchShieldOpen\": ${ASTDArcProductionVfx.counter(engine, ASTDArcProductionVfx.TELEMETRY_PLASMA_ARCH_SHIELD_OPEN)},")
             appendLine("  \"plasmaArchSystemActive\": ${ASTDArcProductionVfx.counter(engine, ASTDArcProductionVfx.TELEMETRY_PLASMA_ARCH_SYSTEM_ACTIVE)},")
             appendLine("  \"plasmaArchShieldArcEmissions\": ${ASTDArcProductionVfx.counter(engine, ASTDArcProductionVfx.TELEMETRY_PLASMA_ARCH_SHIELD_ARC_EMISSIONS)},")

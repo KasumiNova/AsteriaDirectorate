@@ -34,9 +34,9 @@ class ProjectileStructureMetricsTest(unittest.TestCase):
                 "astd_plasma_arch_Standard",
                 "astd_radiation_belt_Standard",
             ],
-            "arcJetActiveSystemLinks": 1,
-            "arcJetActiveSystemBeamFrames": 1,
-            "arcJetActiveSystemFluxPressure": 1,
+            "arcJetShockwaveFrames": 1,
+            "arcJetShockwaveRadius": 405,
+            "arcJetShockwaveFluxPressure": 1,
             "plasmaArchShieldOpen": 1,
             "plasmaArchSystemActive": 1,
             "plasmaArchShieldArcEmissions": 1,
@@ -120,9 +120,9 @@ class ProjectileStructureMetricsTest(unittest.TestCase):
             data = {
                 "scenario": "arc_production_ships_vfx_tooltip",
                 "state": "Completed",
-            "arcJetActiveSystemLinks": 1,
-            "arcJetActiveSystemBeamFrames": 1,
-            "arcJetActiveSystemFluxPressure": 1,
+            "arcJetShockwaveFrames": 1,
+            "arcJetShockwaveRadius": 405,
+            "arcJetShockwaveFluxPressure": 1,
             "plasmaArchShieldOpen": 1,
             "plasmaArchSystemActive": 1,
             "plasmaArchShieldArcEmissions": 1,
@@ -154,6 +154,27 @@ class ProjectileStructureMetricsTest(unittest.TestCase):
             rc = verifier.verify(telemetry, require_screenshot_file=True)
 
         self.assertEqual(0, rc)
+
+    def test_arc_production_overlay_score_allows_dark_combat_space_without_panel_border(self) -> None:
+        verifier = _load_verifier_module()
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "dark-combat.jpg"
+            width, height = 1900, 1000
+            rgb = np.zeros((height, width, 3), dtype=np.uint8)
+            rgb[:, :] = [0, 0, 0]
+            left, top = int(width * 0.02), int(height * 0.26)
+            center_x, center_y = left + 260, top + 220
+            for radius in (170, 230, 290):
+                for angle in np.linspace(0.0, np.pi * 2.0, 900):
+                    x = int(center_x + np.cos(angle) * radius)
+                    y = int(center_y + np.sin(angle) * radius)
+                    if 0 <= x < width and 0 <= y < height:
+                        rgb[max(0, y - 2):min(height, y + 3), max(0, x - 2):min(width, x + 3)] = [32, 120, 150]
+            Image.fromarray(rgb, "RGB").save(path)
+
+            score = verifier._arc_production_deployment_overlay_score(path)
+
+        self.assertLess(score, 0.90)
 
     def test_arc_production_rejects_deployment_overlay_only_screenshot(self) -> None:
         verifier = _load_verifier_module()

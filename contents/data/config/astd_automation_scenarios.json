@@ -23,9 +23,9 @@
         "astd_radiation_belt_Standard"
       ],
       "requiredEvidence": [
-        "arcJetActiveSystemLinks",
-        "arcJetActiveSystemBeamFrames",
-        "arcJetActiveSystemFluxPressure",
+        "arcJetShockwaveFrames",
+        "arcJetShockwaveRadius",
+        "arcJetShockwaveFluxPressure",
         "plasmaArchShieldOpen",
         "plasmaArchSystemActive",
         "plasmaArchShieldArcEmissions",

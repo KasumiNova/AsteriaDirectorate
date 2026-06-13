@@ -27,9 +27,9 @@ EXPECTED = {
 }
 ARC_PRODUCTION_SCENARIO = "arc_production_ships_vfx_tooltip"
 ARC_PRODUCTION_REQUIRED_EVIDENCE = (
-    "arcJetActiveSystemLinks",
-    "arcJetActiveSystemBeamFrames",
-    "arcJetActiveSystemFluxPressure",
+    "arcJetShockwaveFrames",
+    "arcJetShockwaveRadius",
+    "arcJetShockwaveFluxPressure",
     "plasmaArchShieldOpen",
     "plasmaArchSystemActive",
     "plasmaArchShieldArcEmissions",
@@ -46,7 +46,7 @@ ARC_PRODUCTION_TOOLTIP_KEY_MINIMUMS = {
     "radiationBeltTooltipKeys": 26,
 }
 ARC_PRODUCTION_SCREENSHOT_REGIONS = (
-    ("arc jet active flux network", (0.02, 0.26, 0.42, 0.70), 900),
+    ("arc jet shockwave ring", (0.02, 0.26, 0.42, 0.70), 900),
     ("plasma arch shield arcs", (0.28, 0.24, 0.64, 0.78), 550),
     ("radiation belt temporal afterimages", (0.48, 0.22, 0.88, 0.72), 350),
 )
@@ -712,10 +712,16 @@ def _arc_production_deployment_overlay_score(path: Path) -> float:
         & (crop[:, :, 2] >= crop[:, :, 0] + 8)
         & (luma > 35)
     )
-    border_fraction = float(teal_border.mean())
+    edge = np.zeros(teal_border.shape, dtype=bool)
+    edge_width = max(4, int(min(teal_border.shape[:2]) * 0.025))
+    edge[:edge_width, :] = True
+    edge[-edge_width:, :] = True
+    edge[:, :edge_width] = True
+    edge[:, -edge_width:] = True
+    edge_border_fraction = float((teal_border & edge).sum() / max(int(edge.sum()), 1))
     if dark_fraction < 0.72:
         return dark_fraction
-    return dark_fraction + border_fraction * 8.0
+    return min(1.0, edge_border_fraction / 0.08)
 
 
 def _select_arc_production_screenshot(
