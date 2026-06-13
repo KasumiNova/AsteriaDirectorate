@@ -27,12 +27,12 @@ EXPECTED = {
 }
 ARC_PRODUCTION_SCENARIO = "arc_production_ships_vfx_tooltip"
 ARC_PRODUCTION_REQUIRED_EVIDENCE = (
-    "arcJetLinkedShips",
     "arcJetActiveSystemLinks",
+    "arcJetActiveSystemBeamFrames",
+    "arcJetActiveSystemFluxPressure",
     "plasmaArchShieldOpen",
     "plasmaArchSystemActive",
     "plasmaArchShieldArcEmissions",
-    "radiationBeltPursuitLinks",
     "radiationBeltSystemAfterimages",
     "arcJetTooltip",
     "plasmaArchTooltip",
@@ -46,9 +46,9 @@ ARC_PRODUCTION_TOOLTIP_KEY_MINIMUMS = {
     "radiationBeltTooltipKeys": 26,
 }
 ARC_PRODUCTION_SCREENSHOT_REGIONS = (
-    ("arc jet passive/active network", (0.02, 0.26, 0.42, 0.70), 900),
+    ("arc jet active flux network", (0.02, 0.26, 0.42, 0.70), 900),
     ("plasma arch shield arcs", (0.28, 0.24, 0.64, 0.78), 550),
-    ("radiation belt pursuit link", (0.48, 0.22, 0.88, 0.72), 350),
+    ("radiation belt temporal afterimages", (0.48, 0.22, 0.88, 0.72), 350),
 )
 
 ASTD_TELEMETRY_FILE = "astd-ingame-automation-astd-telemetry.json"
@@ -713,6 +713,8 @@ def _arc_production_deployment_overlay_score(path: Path) -> float:
         & (luma > 35)
     )
     border_fraction = float(teal_border.mean())
+    if dark_fraction < 0.72:
+        return dark_fraction
     return dark_fraction + border_fraction * 8.0
 
 

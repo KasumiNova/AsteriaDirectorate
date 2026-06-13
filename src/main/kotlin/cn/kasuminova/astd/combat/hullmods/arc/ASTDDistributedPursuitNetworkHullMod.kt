@@ -14,7 +14,6 @@ class ASTDDistributedPursuitNetworkHullMod : BaseHullMod() {
         private const val MAX_LINKS = 5
         private const val LINK_BONUS = 0.04f
         private const val SAME_NETWORK_MULT = 1.5f
-        private const val LINK_PULSE_INTERVAL = 0.85f
         private const val TARGETS_KEY = "astd_distributed_pursuit_network_targets:"
 
         private val ELIGIBLE_HULL_SIZES = setOf(ShipAPI.HullSize.FRIGATE, ShipAPI.HullSize.DESTROYER)
@@ -46,7 +45,6 @@ class ASTDDistributedPursuitNetworkHullMod : BaseHullMod() {
         for (target in targets) {
             applyNetworkStats(ship, target, linkStrength(target))
         }
-        renderNetworkPulse(ship, targets, amount)
     }
 
     override fun addPostDescriptionSection(
@@ -147,19 +145,4 @@ class ASTDDistributedPursuitNetworkHullMod : BaseHullMod() {
     private fun targetModId(source: ShipAPI, target: ShipAPI): String =
         "${ASTDArcProductionShipIds.STAT_DISTRIBUTED_PURSUIT_NETWORK}:${System.identityHashCode(source)}:${System.identityHashCode(target)}"
 
-    private fun renderNetworkPulse(ship: ShipAPI, targets: List<ShipAPI>, amount: Float) {
-        val engine = Global.getCombatEngine() ?: return
-        val key = "${ASTDArcProductionShipIds.STAT_DISTRIBUTED_PURSUIT_NETWORK}:pulse:${System.identityHashCode(ship)}"
-        val elapsed = ((engine.customData[key] as? Float) ?: 0f) + amount
-        if (elapsed < LINK_PULSE_INTERVAL) {
-            engine.customData[key] = elapsed
-            return
-        }
-        engine.customData[key] = elapsed - LINK_PULSE_INTERVAL
-
-        for (target in targets) {
-            val sameNetwork = target.variant?.hasHullMod(ASTDArcProductionShipIds.HULLMOD_DISTRIBUTED_PURSUIT_NETWORK) == true
-            ASTDArcProductionVfx.emitRadiationPursuitPing(engine, ship, target, sameNetwork)
-        }
-    }
 }

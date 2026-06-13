@@ -12,6 +12,7 @@ import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.combat.ShipSystemAPI
 import com.fs.starfarer.api.impl.combat.BaseShipSystemScript
 import com.fs.starfarer.api.plugins.ShipSystemStatsScript
+import kotlin.math.roundToInt
 
 class ASTDArcSharedFluxNetworkSystemStats : BaseShipSystemScript() {
 
@@ -28,11 +29,13 @@ class ASTDArcSharedFluxNetworkSystemStats : BaseShipSystemScript() {
         private const val TRANSFER_SOFT_FRACTION = 0.30f
         private const val TRANSFER_HARD_FRACTION = 0.15f
         private const val MAX_TARGETS = 12
-        private const val ACTIVE_PULSE_INTERVAL = 0.32f
+        private const val MAX_PRESSURE_FLUX_FRACTION_PER_SECOND = 0.015f
+        private const val PRESSURE_RESPONSE = 0.24f
+        private const val PRESSURE_DECAY = 0.88f
 
         private const val TARGETS_KEY = "astd_arc_shared_flux_network_targets:"
         private const val TRACK_KEY = "astd_arc_shared_flux_network_track:"
-        private const val PULSE_KEY = "astd_arc_shared_flux_network_active_pulse:"
+        private const val PRESSURE_KEY = "astd_arc_shared_flux_network_pressure:"
 
         private val ELIGIBLE_HULL_SIZES = setOf(
             ShipAPI.HullSize.FRIGATE,
@@ -56,6 +59,7 @@ class ASTDArcSharedFluxNetworkSystemStats : BaseShipSystemScript() {
         applySourceStats(stats, id, level)
         if (level <= 0.001f) return
 
+        val amount = safeElapsed(engine)
         val targets = selectTargets(engine, ship)
         val activeSet = targets.mapTo(LinkedHashSet()) { System.identityHashCode(it) }
         clearStaleTargets(engine, ship, activeSet)
@@ -64,8 +68,10 @@ class ASTDArcSharedFluxNetworkSystemStats : BaseShipSystemScript() {
             val falloff = arcJetSystemFalloff(ship, distance)
             if (falloff <= 0f) continue
             applyTargetStats(ship, target, falloff * level)
-            transferFluxDelta(engine, ship, target, falloff * level)
-            emitActiveLinkVfx(engine, ship, target, falloff * level)
+            val transfer = transferFluxDelta(engine, ship, target, falloff * level, amount)
+            val pressureRatio = updateFluxPressure(engine, ship, target, transfer, amount)
+            ASTDArcProductionVfx.renderArcJetSharedFluxBeam(engine, ship, target, falloff * level, pressureRatio)
+            maintainTargetStatus(engine, ship, target, falloff * level)
         }
         engine.customData["$TARGETS_KEY${System.identityHashCode(ship)}"] = activeSet
         engine.customData[ASTDArcProductionShipIds.DATA_ARC_SHARED_FLUX_TARGETS] = activeSet
@@ -173,9 +179,9 @@ class ASTDArcSharedFluxNetworkSystemStats : BaseShipSystemScript() {
         stats.beamWeaponFluxCostMult.unmodify(id)
     }
 
-    private fun transferFluxDelta(engine: CombatEngineAPI, source: ShipAPI, target: ShipAPI, level: Float) {
-        val targetTracker = target.fluxTracker ?: return
-        val sourceTracker = source.fluxTracker ?: return
+    private fun transferFluxDelta(engine: CombatEngineAPI, source: ShipAPI, target: ShipAPI, level: Float, amount: Float): FluxTransfer {
+        val targetTracker = target.fluxTracker ?: return FluxTransfer.None
+        val sourceTracker = source.fluxTracker ?: return FluxTransfer.None
         val key = trackKey(source, target)
         val current = FluxSnapshot(
             curr = targetTracker.currFlux,
@@ -183,33 +189,62 @@ class ASTDArcSharedFluxNetworkSystemStats : BaseShipSystemScript() {
         )
         val previous = engine.customData[key] as? FluxSnapshot
         engine.customData[key] = current
-        if (previous == null) return
+        if (previous == null) return FluxTransfer.None
 
         val currDelta = (current.curr - previous.curr).coerceAtLeast(0f)
         val hardDelta = (current.hard - previous.hard).coerceAtLeast(0f)
-        if (currDelta <= 0f && hardDelta <= 0f) return
+        if (currDelta <= 0f && hardDelta <= 0f) return FluxTransfer.None
 
         val softDelta = (currDelta - hardDelta).coerceAtLeast(0f)
         val softTransfer = softDelta * TRANSFER_SOFT_FRACTION * level
         val hardTransfer = hardDelta * TRANSFER_HARD_FRACTION * level
         val totalTransfer = softTransfer + hardTransfer
-        if (totalTransfer <= 0f) return
+        if (totalTransfer <= 0f) return FluxTransfer.None
 
         val newHard = (targetTracker.hardFlux - hardTransfer).coerceAtLeast(0f)
         targetTracker.decreaseFlux(totalTransfer)
         targetTracker.setHardFlux(newHard)
         if (softTransfer > 0f) sourceTracker.increaseFlux(softTransfer, false)
         if (hardTransfer > 0f) sourceTracker.increaseFlux(hardTransfer, true)
+        return FluxTransfer(
+            soft = softTransfer,
+            hard = hardTransfer,
+            perSecond = totalTransfer / amount.coerceAtLeast(0.0001f),
+        )
     }
 
-    private fun emitActiveLinkVfx(engine: CombatEngineAPI, source: ShipAPI, target: ShipAPI, level: Float) {
-        val key = "$PULSE_KEY${System.identityHashCode(source)}:${System.identityHashCode(target)}"
-        val now = engine.getTotalElapsedTime(false)
-        val next = engine.customData[key] as? Float ?: 0f
-        if (now < next) return
-        engine.customData[key] = now + ACTIVE_PULSE_INTERVAL
+    private fun updateFluxPressure(engine: CombatEngineAPI, source: ShipAPI, target: ShipAPI, transfer: FluxTransfer, amount: Float): Float {
+        val key = pressureKey(source, target)
+        val previous = engine.customData[key] as? Float ?: 0f
+        val maxPressure = ((source.fluxTracker?.maxFlux ?: 0f) * MAX_PRESSURE_FLUX_FRACTION_PER_SECOND).coerceAtLeast(1f)
+        val targetPressure = (transfer.perSecond / maxPressure).coerceIn(0f, 1f)
+        val response = (PRESSURE_RESPONSE * (amount / 0.0167f).coerceIn(0.35f, 2.5f)).coerceIn(0.04f, 0.72f)
+        val smoothed = if (targetPressure > previous) {
+            previous + (targetPressure - previous) * response
+        } else {
+            previous * PRESSURE_DECAY
+        }.coerceIn(0f, 1f)
+        engine.customData[key] = smoothed
+        return smoothed
+    }
 
-        ASTDArcProductionVfx.emitArcJetActiveFluxLink(engine, source, target, level)
+    private fun maintainTargetStatus(engine: CombatEngineAPI, source: ShipAPI, target: ShipAPI, level: Float) {
+        val player = engine.playerShip ?: return
+        if (target !== player) return
+        val shield = formatPercent(TARGET_WEAPON_FLUX_REDUCTION * level)
+        engine.maintainStatusForPlayerShip(
+            "astd_arc_shared_flux_network_target:${System.identityHashCode(source)}:line1",
+            null,
+            I18n.t(I18n.Categories.MOD, "system.arc_shared_flux_network.target_status.line1"),
+            I18n.t(
+                I18n.Categories.MOD,
+                "system.arc_shared_flux_network.target_status.line2",
+                "dissipation" to formatPercent(TARGET_DISSIPATION_BONUS * level),
+                "rof" to formatPercent(TARGET_ROF_BONUS * level),
+                "weaponFlux" to shield,
+            ),
+            false,
+        )
     }
 
     override fun isUsable(system: ShipSystemAPI, ship: ShipAPI): Boolean {
@@ -218,24 +253,53 @@ class ASTDArcSharedFluxNetworkSystemStats : BaseShipSystemScript() {
     }
 
     override fun getStatusData(index: Int, state: ShipSystemStatsScript.State, effectLevel: Float): ShipSystemStatsScript.StatusData? {
-        if (index != 0) return null
         val suffix = when (state) {
             ShipSystemStatsScript.State.IN -> "in"
             ShipSystemStatsScript.State.ACTIVE -> "active"
             ShipSystemStatsScript.State.OUT -> "out"
             else -> return null
         }
+        val line = when (index) {
+            0 -> "line1"
+            1 -> "line2"
+            else -> return null
+        }
+        val level = effectLevel.coerceIn(0f, 1f)
         return ShipSystemStatsScript.StatusData(
-            I18n[I18n.Categories.MOD, "system.arc_shared_flux_network.status.default.$suffix"],
+            I18n.t(
+                I18n.Categories.MOD,
+                "system.arc_shared_flux_network.status.default.$suffix.$line",
+                "selfRof" to formatPercent((1f - SOURCE_ROF_MULT) * level),
+                "selfManeuver" to formatPercent((1f - SOURCE_MANEUVER_MULT) * level),
+                "selfDissipation" to formatPercent(SOURCE_DISSIPATION_BONUS * level),
+                "hardDissipation" to formatPercent(SOURCE_HARD_DISSIPATION_FRACTION * level),
+                "targetDissipation" to formatPercent(TARGET_DISSIPATION_BONUS * level),
+                "targetRof" to formatPercent(TARGET_ROF_BONUS * level),
+                "targetWeaponFlux" to formatPercent(TARGET_WEAPON_FLUX_REDUCTION * level),
+            ),
             false,
         )
     }
 
     private data class FluxSnapshot(val curr: Float, val hard: Float)
+    private data class FluxTransfer(val soft: Float, val hard: Float, val perSecond: Float) {
+        companion object {
+            val None = FluxTransfer(0f, 0f, 0f)
+        }
+    }
+
+    private fun formatPercent(value: Float): String =
+        "${(value.coerceAtLeast(0f) * 100f).roundToInt()}%"
+
+    private fun safeElapsed(engine: CombatEngineAPI): Float =
+        try { engine.elapsedInLastFrame.coerceIn(0.001f, 0.25f) } catch (_: Throwable) { 0.0167f }
 
     private fun targetModId(source: ShipAPI, target: ShipAPI): String =
         "${ASTDArcProductionShipIds.STAT_ARC_SHARED_FLUX_NETWORK}:${System.identityHashCode(source)}:${System.identityHashCode(target)}"
 
     private fun trackKey(source: ShipAPI, target: ShipAPI): String =
         "$TRACK_KEY${System.identityHashCode(source)}:${System.identityHashCode(target)}"
+
+    private fun pressureKey(source: ShipAPI, target: ShipAPI): String =
+        "$PRESSURE_KEY${System.identityHashCode(source)}:${System.identityHashCode(target)}"
 }

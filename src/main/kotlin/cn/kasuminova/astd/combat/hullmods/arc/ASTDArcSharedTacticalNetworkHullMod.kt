@@ -18,9 +18,7 @@ class ASTDArcSharedTacticalNetworkHullMod : BaseHullMod() {
         private const val SELF_POINT_DEFENSE_RANGE_COMPENSATION_MULT = 1.25f
         private const val SELF_ECM_RATING = 0.04f
         private const val MAX_TARGETS = 12
-        private const val CONNECT_PULSE_MIN_INTERVAL = 1.25f
         private const val TARGETS_KEY = "astd_arc_shared_tactical_network_targets:"
-        private const val CONNECT_PULSE_KEY = "astd_arc_shared_tactical_network_connect:"
 
         private val ELIGIBLE_HULL_SIZES = setOf(
             ShipAPI.HullSize.FRIGATE,
@@ -67,7 +65,6 @@ class ASTDArcSharedTacticalNetworkHullMod : BaseHullMod() {
             val falloff = ASTDArcAuraUtil.arcJetPassiveFalloff(distance)
             if (falloff <= 0f) continue
             applyAuraToTarget(ship, target, falloff)
-            emitPassiveConnectionVfx(engine, ship, target, falloff, amount)
         }
 
         engine.customData["$TARGETS_KEY${System.identityHashCode(ship)}"] = activeSet
@@ -148,17 +145,6 @@ class ASTDArcSharedTacticalNetworkHullMod : BaseHullMod() {
         stats.maxTurnRate.unmodify(modId)
         stats.turnAcceleration.unmodify(modId)
         stats.shieldDamageTakenMult.unmodify(modId)
-    }
-
-    private fun emitPassiveConnectionVfx(engine: CombatEngineAPI, source: ShipAPI, target: ShipAPI, falloff: Float, amount: Float) {
-        val key = "$CONNECT_PULSE_KEY${System.identityHashCode(source)}:${System.identityHashCode(target)}"
-        val timer = ((engine.customData[key] as? Float ?: CONNECT_PULSE_MIN_INTERVAL) + amount)
-        if (timer < CONNECT_PULSE_MIN_INTERVAL) {
-            engine.customData[key] = timer
-            return
-        }
-        engine.customData[key] = 0f
-        ASTDArcProductionVfx.emitArcJetPassiveLink(engine, source, target, falloff)
     }
 
     override fun addPostDescriptionSection(tooltip: TooltipMakerAPI, hullSize: ShipAPI.HullSize, ship: ShipAPI?, width: Float, isForModSpec: Boolean) {

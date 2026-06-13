@@ -49,12 +49,12 @@ class ASTDInGameAutomationScenarioTest {
 
         val requiredEvidence = scenario.getJSONArray("requiredEvidence")
         listOf(
-            "arcJetLinkedShips",
             "arcJetActiveSystemLinks",
+            "arcJetActiveSystemBeamFrames",
+            "arcJetActiveSystemFluxPressure",
             "plasmaArchShieldOpen",
             "plasmaArchSystemActive",
             "plasmaArchShieldArcEmissions",
-            "radiationBeltPursuitLinks",
             "radiationBeltSystemAfterimages",
             "arcJetTooltip",
             "plasmaArchTooltip",
@@ -78,12 +78,12 @@ class ASTDInGameAutomationScenarioTest {
         assertFalse(plugin.contains("writeArcProductionTelemetry"), "SSOptimizer only patches writeTelemetry; ARC must not expose an unpatched empty hook")
         assertTrue(plugin.contains("arcProductionTelemetryShip"), "ARC automation should route screenshot evidence through the patched telemetry hook")
         listOf(
-            "arcJetLinkedShips",
             "arcJetActiveSystemLinks",
+            "arcJetActiveSystemBeamFrames",
+            "arcJetActiveSystemFluxPressure",
             "plasmaArchShieldOpen",
             "plasmaArchSystemActive",
             "plasmaArchShieldArcEmissions",
-            "radiationBeltPursuitLinks",
             "radiationBeltSystemAfterimages",
             "arcJetTooltip",
             "plasmaArchTooltip",

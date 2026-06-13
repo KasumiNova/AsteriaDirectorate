@@ -23,12 +23,12 @@
         "astd_radiation_belt_Standard"
       ],
       "requiredEvidence": [
-        "arcJetLinkedShips",
         "arcJetActiveSystemLinks",
+        "arcJetActiveSystemBeamFrames",
+        "arcJetActiveSystemFluxPressure",
         "plasmaArchShieldOpen",
         "plasmaArchSystemActive",
         "plasmaArchShieldArcEmissions",
-        "radiationBeltPursuitLinks",
         "radiationBeltSystemAfterimages",
         "arcJetTooltip",
         "plasmaArchTooltip",

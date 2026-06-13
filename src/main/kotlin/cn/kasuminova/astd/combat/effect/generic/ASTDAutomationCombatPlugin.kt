@@ -363,12 +363,12 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     private fun arcProductionEvidenceReady(engine: CombatEngineAPI): Boolean {
         if (elapsed < 1.25f) return false
         return listOf(
-            ASTDArcProductionVfx.TELEMETRY_ARC_JET_LINKED_SHIPS,
             ASTDArcProductionVfx.TELEMETRY_ARC_JET_ACTIVE_SYSTEM_LINKS,
+            ASTDArcProductionVfx.TELEMETRY_ARC_JET_ACTIVE_SYSTEM_BEAM_FRAMES,
+            ASTDArcProductionVfx.TELEMETRY_ARC_JET_ACTIVE_SYSTEM_FLUX_PRESSURE,
             ASTDArcProductionVfx.TELEMETRY_PLASMA_ARCH_SHIELD_OPEN,
             ASTDArcProductionVfx.TELEMETRY_PLASMA_ARCH_SYSTEM_ACTIVE,
             ASTDArcProductionVfx.TELEMETRY_PLASMA_ARCH_SHIELD_ARC_EMISSIONS,
-            ASTDArcProductionVfx.TELEMETRY_RADIATION_BELT_PURSUIT_LINKS,
             ASTDArcProductionVfx.TELEMETRY_RADIATION_BELT_SYSTEM_AFTERIMAGES,
         ).all { ASTDArcProductionVfx.counter(engine, it) > 0 }
     }
@@ -645,12 +645,12 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             appendLine("  \"fallbackInPlay\": ${fallbackProjectile?.let { engine.isEntityInPlay(it) } ?: false},")
             appendLine("  \"fallbackExpired\": ${fallbackProjectile?.isExpired ?: false},")
             appendLine("  \"fallbackFading\": ${fallbackProjectile?.isFading ?: false},")
-            appendLine("  \"arcJetLinkedShips\": ${ASTDArcProductionVfx.counter(engine, ASTDArcProductionVfx.TELEMETRY_ARC_JET_LINKED_SHIPS)},")
             appendLine("  \"arcJetActiveSystemLinks\": ${ASTDArcProductionVfx.counter(engine, ASTDArcProductionVfx.TELEMETRY_ARC_JET_ACTIVE_SYSTEM_LINKS)},")
+            appendLine("  \"arcJetActiveSystemBeamFrames\": ${ASTDArcProductionVfx.counter(engine, ASTDArcProductionVfx.TELEMETRY_ARC_JET_ACTIVE_SYSTEM_BEAM_FRAMES)},")
+            appendLine("  \"arcJetActiveSystemFluxPressure\": ${ASTDArcProductionVfx.counter(engine, ASTDArcProductionVfx.TELEMETRY_ARC_JET_ACTIVE_SYSTEM_FLUX_PRESSURE)},")
             appendLine("  \"plasmaArchShieldOpen\": ${ASTDArcProductionVfx.counter(engine, ASTDArcProductionVfx.TELEMETRY_PLASMA_ARCH_SHIELD_OPEN)},")
             appendLine("  \"plasmaArchSystemActive\": ${ASTDArcProductionVfx.counter(engine, ASTDArcProductionVfx.TELEMETRY_PLASMA_ARCH_SYSTEM_ACTIVE)},")
             appendLine("  \"plasmaArchShieldArcEmissions\": ${ASTDArcProductionVfx.counter(engine, ASTDArcProductionVfx.TELEMETRY_PLASMA_ARCH_SHIELD_ARC_EMISSIONS)},")
-            appendLine("  \"radiationBeltPursuitLinks\": ${ASTDArcProductionVfx.counter(engine, ASTDArcProductionVfx.TELEMETRY_RADIATION_BELT_PURSUIT_LINKS)},")
             appendLine("  \"radiationBeltSystemAfterimages\": ${ASTDArcProductionVfx.counter(engine, ASTDArcProductionVfx.TELEMETRY_RADIATION_BELT_SYSTEM_AFTERIMAGES)},")
             val arcJetTooltipKeys = tooltipResolvedKeyCount("astd_arc_jet", ASTDArcProductionTooltipContracts.arcJetContracts)
             val plasmaArchTooltipKeys = tooltipResolvedKeyCount("astd_plasma_arch", ASTDArcProductionTooltipContracts.plasmaArchContracts)
