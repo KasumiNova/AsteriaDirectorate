@@ -32,8 +32,8 @@
                 -156,
                 0
             ],
-            "style": "HIGH_TECH",
-            "width": 20
+            "style": "ASTD_ARC",
+            "width": 10
         }
     ],
     "height": 256,
@@ -51,7 +51,7 @@
     ],
     "shieldRadius": 312,
     "spriteName": "graphics/ships/astd_arc_nova.png",
-    "style": "HIGH_TECH",
+    "style": "ASTD_HIGH_TECH",
     "viewOffset": 0,
     "weaponSlots": [
         {

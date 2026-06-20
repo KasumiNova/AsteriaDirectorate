@@ -3,7 +3,7 @@
   "hullId": "astd_plasma_arch",
   "hullSize": "CRUISER",
   "spriteName": "graphics/ships/astd_plasma_arch.png",
-  "style": "HIGH_TECH",
+  "style": "ASTD_HIGH_TECH",
   "height": 173,
   "width": 284,
   "center": [142.5, 77.5],
@@ -147,7 +147,23 @@
       "width": 10,
       "angle": -145,
       "contrailSize": 30,
-      "style": "HIGH_TECH"
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-34.2, -97.3],
+      "length": 16,
+      "width": 6,
+      "angle": -145,
+      "contrailSize": 16,
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-38.8, -90.7],
+      "length": 16,
+      "width": 6,
+      "angle": -145,
+      "contrailSize": 16,
+      "style": "ASTD_ARC"
     },
     {
       "location": [-36.5, 94],
@@ -155,7 +171,23 @@
       "width": 10,
       "angle": 145,
       "contrailSize": 30,
-      "style": "HIGH_TECH"
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-38.8, 90.7],
+      "length": 16,
+      "width": 6,
+      "angle": 145,
+      "contrailSize": 16,
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-34.2, 97.3],
+      "length": 16,
+      "width": 6,
+      "angle": 145,
+      "contrailSize": 16,
+      "style": "ASTD_ARC"
     },
     {
       "location": [-39, -78],
@@ -163,7 +195,23 @@
       "width": 10,
       "angle": -145,
       "contrailSize": 30,
-      "style": "HIGH_TECH"
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-36.7, -81.3],
+      "length": 16,
+      "width": 6,
+      "angle": -145,
+      "contrailSize": 16,
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-41.3, -74.7],
+      "length": 16,
+      "width": 6,
+      "angle": -145,
+      "contrailSize": 16,
+      "style": "ASTD_ARC"
     },
     {
       "location": [-39, 78],
@@ -171,39 +219,119 @@
       "width": 10,
       "angle": 145,
       "contrailSize": 30,
-      "style": "HIGH_TECH"
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-41.3, 74.7],
+      "length": 16,
+      "width": 6,
+      "angle": 145,
+      "contrailSize": 16,
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-36.7, 81.3],
+      "length": 16,
+      "width": 6,
+      "angle": 145,
+      "contrailSize": 16,
+      "style": "ASTD_ARC"
     },
     {
       "location": [-40.5, -34],
       "length": 40,
-      "width": 15,
+      "width": 10,
       "angle": 180,
       "contrailSize": 45,
-      "style": "HIGH_TECH"
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-40.5, -38],
+      "length": 22,
+      "width": 6,
+      "angle": 180,
+      "contrailSize": 25,
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-40.5, -30],
+      "length": 22,
+      "width": 6,
+      "angle": 180,
+      "contrailSize": 25,
+      "style": "ASTD_ARC"
     },
     {
       "location": [-40.5, 34],
       "length": 40,
-      "width": 15,
+      "width": 10,
       "angle": -180,
       "contrailSize": 45,
-      "style": "HIGH_TECH"
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-40.5, 30],
+      "length": 22,
+      "width": 6,
+      "angle": -180,
+      "contrailSize": 25,
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-40.5, 38],
+      "length": 22,
+      "width": 6,
+      "angle": -180,
+      "contrailSize": 25,
+      "style": "ASTD_ARC"
     },
     {
       "location": [-54.5, -16],
       "length": 40,
-      "width": 15,
+      "width": 10,
       "angle": 180,
       "contrailSize": 45,
-      "style": "HIGH_TECH"
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-54.5, -20],
+      "length": 22,
+      "width": 6,
+      "angle": 180,
+      "contrailSize": 25,
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-54.5, -12],
+      "length": 22,
+      "width": 6,
+      "angle": 180,
+      "contrailSize": 25,
+      "style": "ASTD_ARC"
     },
     {
       "location": [-54.5, 16],
       "length": 40,
-      "width": 15,
+      "width": 10,
       "angle": -180,
       "contrailSize": 45,
-      "style": "HIGH_TECH"
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-54.5, 12],
+      "length": 22,
+      "width": 6,
+      "angle": -180,
+      "contrailSize": 25,
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-54.5, 20],
+      "length": 22,
+      "width": 6,
+      "angle": -180,
+      "contrailSize": 25,
+      "style": "ASTD_ARC"
     },
     {
       "location": [-43.5, -56.5],
@@ -211,7 +339,23 @@
       "width": 10,
       "angle": -145,
       "contrailSize": 30,
-      "style": "HIGH_TECH"
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-41.2, -59.8],
+      "length": 16,
+      "width": 6,
+      "angle": -145,
+      "contrailSize": 16,
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-45.8, -53.2],
+      "length": 16,
+      "width": 6,
+      "angle": -145,
+      "contrailSize": 16,
+      "style": "ASTD_ARC"
     },
     {
       "location": [-43.5, 56.5],
@@ -219,7 +363,23 @@
       "width": 10,
       "angle": 145,
       "contrailSize": 30,
-      "style": "HIGH_TECH"
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-45.8, 53.2],
+      "length": 16,
+      "width": 6,
+      "angle": 145,
+      "contrailSize": 16,
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-41.2, 59.8],
+      "length": 16,
+      "width": 6,
+      "angle": 145,
+      "contrailSize": 16,
+      "style": "ASTD_ARC"
     }
   ],
   "bounds": [

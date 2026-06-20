@@ -3,7 +3,7 @@
   "hullId": "astd_negentropy_edge",
   "hullSize": "DESTROYER",
   "spriteName": "graphics/ships/astd_negentropy_edge.png",
-  "style": "HIGH_TECH",
+  "style": "ASTD_HIGH_TECH",
   "height": 213,
   "width": 148,
   "center": [74, 106],
@@ -62,10 +62,26 @@
     {
       "location": [-64, 0],
       "length": 30,
-      "width": 20,
+      "width": 10,
       "angle": 180,
       "contrailSize": 64,
-      "style": "HIGH_TECH"
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-64, -4],
+      "length": 16,
+      "width": 6,
+      "angle": 180,
+      "contrailSize": 35,
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-64, 4],
+      "length": 16,
+      "width": 6,
+      "angle": 180,
+      "contrailSize": 35,
+      "style": "ASTD_ARC"
     }
   ],
   "bounds": [

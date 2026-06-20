@@ -1,0 +1,43 @@
+{
+	# ASTD 自定义引擎尾焰样式。
+	# Starsector 会把各 mod 的 engine_styles.json 合并进同一张表，
+	# 这里只新增 key，不污染 vanilla（LOW_TECH/MIDLINE/HIGH_TECH 等）。
+	#
+	# 取色依据（见调研）：
+	#   ARC  系：电弧/等离子推进。高光贴图 (77,146,203)，ArcFlare 冷态电青 (122,232,255)。
+	#           -> 电青蓝尾焰，明亮发光，细长拖尾带轻微电弧扰动。
+	#   LENS 系：引力透镜。高光贴图 (161,60,245) 紫罗兰光晕。
+	#           -> 紫罗兰尾焰，尾迹更大更慢地扩散，模拟空间畸变的“被拉长的光”。
+
+	"ASTD_ARC":{
+		# 战斗内火焰核心：偏亮的电青蓝，略带白心
+		"engineColor":[150,225,255,255],
+		# 星图（campaign）下稍冷一点，避免过曝
+		"engineCampaignColor":[110,190,235,255],
+		"contrailParticleSizeMult":3,
+		"contrailParticleDuration":1.5,
+		"contrailParticleFinalSizeMult":2.0,
+		# 电弧推进：拖尾偏快、带一点角向抖动，模拟放电的不稳定
+		"contrailMaxSpeedMult":0.6,
+		"contrailAngularVelocityMult":0.4,
+		"contrailColor":[90,180,235,30],
+		"contrailCampaignColor":[90,170,220,70],
+		"type":"GLOW" # 加色发光
+	},
+
+	"ASTD_LENS":{
+		# 战斗内火焰核心：紫罗兰，呼应引力透镜高光
+		"engineColor":[185,90,255,255],
+		"engineCampaignColor":[150,70,225,255],
+		# 引力透镜：尾迹更大、扩散更明显，像被引力拉长的光
+		"contrailParticleSizeMult":5,
+		"contrailParticleDuration":2.2,
+		"contrailParticleFinalSizeMult":3.0,
+		# 慢速、低抖动 -> 平滑、被“拉伸”的拖尾
+		"contrailMaxSpeedMult":0.35,
+		"contrailAngularVelocityMult":0.1,
+		"contrailColor":[160,60,245,28],
+		"contrailCampaignColor":[150,60,230,70],
+		"type":"GLOW"
+	},
+}

@@ -75,6 +75,10 @@ description: "Skill 索引：按领域汇总本仓库可用的所有技能与路
   - 路径：`.agents/skills/ship-system-description-guidelines/SKILL.md`
   - 适用：`descriptions.csv` 中 `SHIP_SYSTEM` 的 `text1/text2/text3/text4/text5` 字段分工；图鉴/装配界面/效果文本显示位置；原生换行。
 
+- **舰船引擎布局规范（1 主 + 2 辅引擎簇）**
+  - 路径：`.agents/skills/ship-engine-layout-guidelines/SKILL.md`
+  - 适用：`*.ship` 的 `engineSlots` 统一为“1 主喷口 + 2 辅喷口”簇；主辅尺寸比例、法线偏移、样式归属与现有舰船改造流程。
+
 - **船插互斥 / 禁装实现规范**
   - 路径：`.agents/skills/hullmod-incompatibility-guidelines/SKILL.md`
   - 适用：内置船插或特殊舰体需要禁止、清理或提示不兼容船插；区分硬清理、MagicLib warning 与 UI 灰掉方案。
