@@ -2,6 +2,7 @@ package cn.kasuminova.astd.combat.lens.system
 
 import cn.kasuminova.astd.combat.hullmods.affix.AffixUtil
 import cn.kasuminova.astd.combat.lens.marks.LensMarks
+import cn.kasuminova.astd.renderer.effect.lens.EchoFixationAfterimageRenderer
 import cn.kasuminova.astd.renderer.effect.lens.EchoFixationFieldVisualEffect
 import cn.kasuminova.astd.renderer.shader.runtime.CombatShaderRuntime
 import com.fs.starfarer.api.Global
@@ -86,6 +87,25 @@ object EchoFixationField {
     private data class Snapshot(val x: Float, val y: Float)
 
     /**
+     * 单个被记录敌舰的记录条目（Task 7 残影所需）。
+     *
+     * 动机：Task 7 回放残影要绘制「被记录敌舰过去时刻的样子」，需要该敌舰的 hullSprite 与
+     * 「过去 facing」。原快照只存 x/y，无法取 sprite/facing，故扩展为 TargetRecord：
+     * - [ship]：被记录敌舰引用。该敌舰回放时仍在场（record/replay 同一定影周期，≤4s），
+     *   引用有效；回放时用其 hullSpec.spriteName 取舰体贴图作残影。条目随场销毁释放，
+     *   生命周期 ≤4s，不影响 GC 语义（区别于 Map key 上的长期强引用）。
+     * - [pastFacing]：首条快照（「过去坐标」对应时刻）记录的 facing——残影朝向用「过去时刻」
+     *   的朝向而非当前朝向，呼应「拓印下来的最初的过去」语义。
+     * - [snapshots]：位置历史（时间升序），「过去坐标」= firstOrNull()。
+     *
+     * Task 4 上限仍生效：本结构仍以 identityHashCode 为 key 入 snapshots 表，MAX_TARGETS /
+     * MAX_SNAPSHOTS_PER_SHIP 检查不变（见 record）。
+     */
+    private class TargetRecord(val ship: ShipAPI, val pastFacing: Float) {
+        val snapshots: MutableList<Snapshot> = mutableListOf()
+    }
+
+    /**
      * 承伤 debuff 自管计时状态：挂在被撕裂目标 ship.customData 上。
      *
      * 动机：承伤倍率为连续值（按距离算），需自管到期；推进插件每帧对全场 ship 检查，
@@ -130,11 +150,12 @@ object EchoFixationField {
         var replayed: Boolean = false
 
         /**
-         * 记录快照：key = 敌舰 identityHashCode，value = 该舰位置历史（时间升序）。
+         * 记录快照：key = 敌舰 identityHashCode，value = 该舰记录条目（含位置历史 + 残影所需）。
          * 用 identityHashCode 作 key 与项目内 attachment 范式（ASTDVectorThrustEngineManager）一致，
          * 避免持有 ShipAPI 强引用在 Map key 上影响回收语义；回放时再从 engine.ships 解析当前位置。
+         * value（TargetRecord）持有的 ShipAPI 引用生命周期 ≤4s（随场销毁），不影响回收。
          */
-        val snapshots: LinkedHashMap<Int, MutableList<Snapshot>> = LinkedHashMap()
+        val snapshots: LinkedHashMap<Int, TargetRecord> = LinkedHashMap()
 
         /** 是否已对「目标上限超限」打过日志，避免每帧刷屏。 */
         private var targetCapLogged: Boolean = false
@@ -184,8 +205,8 @@ object EchoFixationField {
                 if (dx * dx + dy * dy > r2) continue
 
                 val key = System.identityHashCode(ship)
-                val history = snapshots[key]
-                if (history == null) {
+                val record = snapshots[key]
+                if (record == null) {
                     // 新目标：检查目标数上限。
                     if (snapshots.size >= MAX_TARGETS) {
                         if (!targetCapLogged) {
@@ -197,10 +218,14 @@ object EchoFixationField {
                         }
                         continue
                     }
-                    snapshots[key] = mutableListOf(Snapshot(loc.x, loc.y))
+                    // 首条快照同时定格「过去 facing」（Task 7 残影朝向用此）。
+                    snapshots[key] = TargetRecord(ship, ship.facing).apply {
+                        snapshots.add(Snapshot(loc.x, loc.y))
+                    }
                     continue
                 }
 
+                val history = record.snapshots
                 // 已记录目标：追加快照，检查每船历史上限。
                 if (history.size >= MAX_SNAPSHOTS_PER_SHIP) {
                     // 丢弃最旧快照以维持上限，但「过去坐标」取最早快照——
@@ -235,8 +260,25 @@ object EchoFixationField {
             val standstillR2 = standstillRange * standstillRange
             val tearBonus = EchoFixationMath.cognitiveTearBonus(difficultyFactor)
 
-            for ((_, history) in snapshots) {
+            // Task 7 残影：本场回放为一次性同步循环，起始重置渲染器的防御性预算（按场封顶）。
+            EchoFixationAfterimageRenderer.resetReplayBudget()
+
+            for ((_, record) in snapshots) {
+                val history = record.snapshots
                 val past = history.firstOrNull() ?: continue // 「过去坐标」= 最早快照
+
+                // Task 7 残影：在该敌舰「过去坐标 + 过去 facing」处浮现一帧紫罗兰舰体残影
+                // （「它会替你们再死一次」）。受 Field 的 MAX_TARGETS 自然封顶，渲染器另设防御性上限。
+                if (!record.ship.isHulk) {
+                    EchoFixationAfterimageRenderer.spawn(
+                        engine = engine,
+                        ship = record.ship,
+                        pastX = past.x,
+                        pastY = past.y,
+                        facing = record.pastFacing,
+                    )
+                }
+
                 for (ship in ships) {
                     if (ship == null) continue
                     if (!isFieldTarget(ship)) continue
