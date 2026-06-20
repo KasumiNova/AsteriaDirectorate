@@ -244,6 +244,11 @@
 		"ui.hullmod.lens_parallax_decks.line.2": "· 链路回响：机群命中敌人时叠 <param:#C8A0FF:1 层> 误差标记（每敌每秒上限防刷）。",
 		"ui.hullmod.lens_parallax_decks.line.3": "· 回收重构：返航整备的机群位于本舰 <param:#C8A0FF:1000su> 内时获得 <param:#C8A0FF:50%> 承伤减免。",
 
+		"ui.hullmod.lens_permeating_tide.summary": "<param:#C8A0FF:阿斯忒里亚遗构局> 透镜协议旗舰的电战潮汐场。它不是一堵墙，是一片正在涨起来的水。",
+		"ui.hullmod.lens_permeating_tide.line.1": "· 涨潮：本舰周围 <param:#C8A0FF:~2500su> 电战潮汐场，场内敌舰累积深水标记，每 <param:#C8A0FF:2.5s~5s> 一层，离本舰越近越快。",
+		"ui.hullmod.lens_permeating_tide.line.2": "· 退潮反制：本舰过载时潮汐退去，清空全场敌舰的误差标记与深水标记（敌方破局窗口）。",
+		"ui.hullmod.lens_permeating_tide.line.3": "· 深水标记：每层降低敌方武器射程、精度、最大航速，并削弱其对引力透镜造成的伤害。",
+
 		"ui.hullmod.arc_advanced_fire_control.summary": "<param:#FF9600:阿斯忒里亚遗构局> 弧光喷流的主炮回路接入舰体反应堆。火控阵列在高压交火中保持锋利节律。",
 		"ui.hullmod.arc_advanced_fire_control.attr.weapon_flux": "主武器辐能压力",
 		"ui.hullmod.arc_advanced_fire_control.value.weapon_flux": "常态+20%；满层后相对基础-40%",

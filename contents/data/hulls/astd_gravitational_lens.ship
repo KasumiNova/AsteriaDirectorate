@@ -16,7 +16,8 @@
     "astd_nano_restoration_protocol",
     "astd_lens_array_core",
     "astd_lens_mode_switcher",
-    "astd_lens_parallax_decks"
+    "astd_lens_parallax_decks",
+    "astd_lens_permeating_tide"
   ],
   "builtInWeapons": {
     "WS0002": "astd_gravitational_lens_bloom"
