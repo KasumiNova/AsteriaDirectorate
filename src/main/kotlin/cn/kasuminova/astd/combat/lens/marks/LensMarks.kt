@@ -94,4 +94,18 @@ object LensMarks {
 
     /** 读取目标当前深水标记层数（收割端/状态栏用）。 */
     fun deepWaterStacks(ship: ShipAPI): Int = StackingShipBuffs.getState(ship, LensMarkIds.DEEP_WATER_BUFF_ID)?.stacks ?: 0
+
+    /**
+     * 渗透潮汐「过载退潮」：清空全场所有舰船的误差 + 深水标记（含 stat 效果即时移除）。
+     *
+     * 动机（spec §阶段二）：退潮瞬间需让标记的 stat 效果立刻消失，
+     * 因此走 StackingShipBuffs.clear（先 unapply 再清 customData），而非等插件下一帧自然到期。
+     */
+    fun clearAllLensMarks(engine: CombatEngineAPI) {
+        for (ship in engine.ships) {
+            if (ship == null) continue
+            StackingShipBuffs.clear(engine, ship, LensMarkIds.DRIFT_BUFF_ID)
+            StackingShipBuffs.clear(engine, ship, LensMarkIds.DEEP_WATER_BUFF_ID)
+        }
+    }
 }
