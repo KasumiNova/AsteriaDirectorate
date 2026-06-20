@@ -61,10 +61,13 @@ internal object ASTDVectorThrustEngineManager {
 
     private class EngineState(
         val engine: ShipEngineAPI,
-        // 引擎推力方向单位向量（船体坐标系）：推力沿喷射方向的反方向。
+        // 引擎推力方向单位向量（船体本地坐标系）：推力沿喷射方向的反方向。
         // 喷口朝 slot.angle 喷火 -> 推力指向 angle+180。
         val thrustAxisX: Float,
         val thrustAxisY: Float,
+        // 该引擎对“纯转向”的力矩贡献符号：+ 为逆时针(左转)，- 为顺时针(右转)。
+        // 力矩 z = rx*Fy - ry*Fx，r 为引擎相对船心的本地力臂，F 为推力轴。
+        val turnMoment: Float,
         var level: Float,
     )
 
@@ -133,6 +136,12 @@ internal object ASTDVectorThrustEngineManager {
             } ?: return null
             if (engines.isEmpty()) return null
 
+            // 船心与朝向，用于把引擎世界坐标转回船体本地力臂（仅建簇时算一次）。
+            val shipFacingRad = Math.toRadians(ship.facing.toDouble())
+            val cosF = cos(shipFacingRad).toFloat()
+            val sinF = sin(shipFacingRad).toFloat()
+            val shipLoc = ship.location
+
             val states = ArrayList<EngineState>(engines.size)
             for (engine in engines) {
                 if (engine == null) continue
@@ -149,10 +158,28 @@ internal object ASTDVectorThrustEngineManager {
                 }
                 // 喷口朝 angle 喷火，推力指向相反方向：angle + 180。
                 val thrustAngle = Math.toRadians((angle + 180f).toDouble())
+                val fx = cos(thrustAngle).toFloat()
+                val fy = sin(thrustAngle).toFloat()
+
+                // 引擎相对船心的本地力臂 r：世界向量旋转 -shipFacing 回本地系。
+                var rx = 0f
+                var ry = 0f
+                try {
+                    val eLoc = engine.location
+                    val dx = eLoc.x - shipLoc.x
+                    val dy = eLoc.y - shipLoc.y
+                    rx = dx * cosF + dy * sinF
+                    ry = -dx * sinF + dy * cosF
+                } catch (_: Throwable) {
+                }
+                // 力矩 z 分量：rx*Fy - ry*Fx。正=逆时针(左转)贡献。
+                val turnMoment = rx * fy - ry * fx
+
                 states += EngineState(
                     engine = engine,
-                    thrustAxisX = cos(thrustAngle).toFloat(),
-                    thrustAxisY = sin(thrustAngle).toFloat(),
+                    thrustAxisX = fx,
+                    thrustAxisY = fy,
+                    turnMoment = turnMoment,
                     level = IDLE_FLAME,
                 )
             }
@@ -192,10 +219,20 @@ internal object ASTDVectorThrustEngineManager {
             } catch (_: Throwable) {
             }
 
-            val hasIntent = abs(intentX) > 0.01f || abs(intentY) > 0.01f || abs(turnIntent) > 0.01f
+            val hasTranslation = abs(intentX) > 0.01f || abs(intentY) > 0.01f
+            val hasTurn = abs(turnIntent) > 0.01f
+            val hasIntent = hasTranslation || hasTurn
+            // 平移意图归一化（纯转向时为 0 向量，align 自然为 0，由 turn 分支接管）。
             val intentLen = max(1e-3f, kotlin.math.sqrt(intentX * intentX + intentY * intentY))
-            val nIntentX = intentX / intentLen
-            val nIntentY = intentY / intentLen
+            val nIntentX = if (hasTranslation) intentX / intentLen else 0f
+            val nIntentY = if (hasTranslation) intentY / intentLen else 0f
+
+            // 本船最大转向力矩，用于把各引擎 turnMoment 归一到 [-1,1]。
+            var maxMoment = 1e-3f
+            for (st in att.engines) {
+                val m = abs(st.turnMoment)
+                if (m > maxMoment) maxMoment = m
+            }
 
             val lerp = (LERP_PER_SEC * amount).coerceIn(0f, 1f)
 
@@ -212,13 +249,18 @@ internal object ASTDVectorThrustEngineManager {
                 } else if (!hasIntent) {
                     IDLE_FLAME
                 } else {
-                    // 该引擎推力轴与运动意图的对齐度（点积，-1..1）。
+                    // 平移对齐度：该引擎推力轴与平移意图的点积（-1..1）。
                     val align = st.thrustAxisX * nIntentX + st.thrustAxisY * nIntentY
-                    // 转向贡献：引擎离中轴越偏、且方向匹配转向，则出力。用推力轴 y 分量近似力矩方向。
-                    val turnContribution = turnIntent * st.thrustAxisY
-                    val combined = max(align, turnContribution * 0.8f)
-                    // align>0 出力，align<0 收小。映射到 [LOW_FLAME, FULL_FLAME]。
-                    val norm = ((combined + 1f) * 0.5f).coerceIn(0f, 1f) // 0..1
+                    // 转向对齐度：该引擎力矩方向与转向意图一致则为正（-1..1）。
+                    // turnIntent>0=左转(逆时针)，turnMoment>0 也是逆时针贡献 -> 同号即出力。
+                    val turnAlign = if (hasTurn) {
+                        (st.turnMoment / maxMoment) * turnIntent
+                    } else {
+                        -1f // 无转向意图时，转向分支不贡献（取最低，由 max 让平移接管）
+                    }.coerceIn(-1f, 1f)
+                    // 取平移与转向中更“出力”的一方。
+                    val combined = max(align, turnAlign)
+                    val norm = ((combined + 1f) * 0.5f).coerceIn(0f, 1f)
                     LOW_FLAME + (FULL_FLAME - LOW_FLAME) * norm
                 }
 
