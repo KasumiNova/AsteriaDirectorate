@@ -6,6 +6,7 @@ import cn.kasuminova.astd.combat.lens.marks.LensMarks
 import cn.kasuminova.astd.combat.lens.ui.LensMarkStatusBar
 import cn.kasuminova.astd.renderer.effect.lens.DeepWaterMarkVisualEffect
 import cn.kasuminova.astd.renderer.effect.lens.DriftMarkVisualEffect
+import cn.kasuminova.astd.renderer.effect.lens.GhostSignalWaveEffect
 import cn.kasuminova.astd.renderer.shader.runtime.CombatShaderRuntime
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseHullMod
@@ -41,6 +42,20 @@ import java.awt.Color
  */
 class ASTDLensArrayCoreHullMod : BaseHullMod() {
 
+    /**
+     * 一道活动的幽灵信号波的瞬时状态。
+     *
+     * @property seq 自增唯一序号，与 shipId 拼出 instanceId（同舰相邻波不互相覆盖）。
+     * @property elapsed 自起波以来的累计秒数，除以 [GhostSignalWaveEffect.WAVE_DURATION] 得 progress。
+     */
+    private class GhostWave(val seq: Long, var elapsed: Float)
+
+    /**
+     * 幽灵信号波自增序号源（单调递增，仅保证唯一性，不参与时间计算）。
+     * 同一 hullmod 实例可被多条透镜船共用，但波 instanceId 含 shipId 前缀，故跨舰不冲突。
+     */
+    private var nextGhostWaveSeq: Long = 0L
+
     companion object {
         /** 幽灵信号作用半径（su）：与 tooltip line.4 的 ~2000su 一致。 */
         private const val GHOST_RANGE = 2000f
@@ -65,6 +80,9 @@ class ASTDLensArrayCoreHullMod : BaseHullMod() {
 
         /** 情报中枢 ECM 修改器 id（自身 dynamic stat 上的稳定句柄）。 */
         private const val INTEL_HUB_MOD_ID = "astd_lens_intel_hub"
+
+        /** 幽灵信号波活动列表存储 key（按 shipId 拼接，存 [MutableList] of [GhostWave]）。 */
+        private const val GHOST_WAVE_KEY = "astd_lens_core_ghost_waves"
 
         /** 幽灵信号 IntervalUtil 存储 key（按 shipId 拼接）。 */
         private const val INTERVAL_KEY = "astd_lens_core_interval"
@@ -108,7 +126,9 @@ class ASTDLensArrayCoreHullMod : BaseHullMod() {
                 engine.customData[key] = interval
             }
             interval.advance(amount)
-            if (interval.intervalElapsed()) ghostSignal(ship, engine)
+            if (interval.intervalElapsed()) ghostSignal(ship, engine, shipId)
+            // 幽灵信号波每帧推进（progress 平滑外扩，独立于 0.25s 心跳）。
+            advanceGhostWaves(ship, engine, shipId, amount)
         } else {
             val key = "$ECM_INTERVAL_KEY:$shipId"
             var interval = engine.customData[key] as? IntervalUtil
@@ -162,10 +182,15 @@ class ASTDLensArrayCoreHullMod : BaseHullMod() {
     /**
      * 无人·幽灵信号：范围内每枚敌方导弹进入后做一次失制导判定（剥离制导 AI，导弹直飞）。
      * 每枚导弹只判定一次（DEFUSED_KEY 标记），命中概率 GHOST_DEFUSE_CHANCE。
+     *
+     * 视觉反馈节奏（Task 9）：本 tick 只要实际剥离了**至少一枚**导弹，就起**一道**波（每 tick 至多一道，
+     * 而非每剥离一枚一道）——依据：单 tick 内可能同时命中多枚，逐枚起波会一帧刷屏多道紫波。以「tick
+     * 内有剥离 → 一道波」聚合，既保证「幽灵信号生效」可见，又不刷屏。波心 = 本舰，最大半径 = 作用范围。
      */
-    private fun ghostSignal(ship: ShipAPI, engine: CombatEngineAPI) {
+    private fun ghostSignal(ship: ShipAPI, engine: CombatEngineAPI, shipId: Int) {
         val range = GHOST_RANGE * DIFFICULTY_FACTOR
         val chance = (GHOST_DEFUSE_CHANCE * DIFFICULTY_FACTOR).coerceIn(0f, 1f)
+        var defusedThisTick = false
         for (missile in engine.missiles) {
             if (missile == null) continue
             if (missile.owner == ship.owner) continue
@@ -173,7 +198,59 @@ class ASTDLensArrayCoreHullMod : BaseHullMod() {
             if (Misc.getDistance(ship.location, missile.location) > range) continue
             // 已纳入判定，标记避免下次重复（无论是否命中）。
             missile.setCustomData(DEFUSED_KEY, true)
-            if (Math.random().toFloat() < chance) defuse(missile)
+            if (Math.random().toFloat() < chance) {
+                defuse(missile)
+                defusedThisTick = true
+            }
+        }
+        if (defusedThisTick) spawnGhostWave(engine, shipId)
+    }
+
+    /**
+     * 本 tick 起一道幽灵信号波：在该舰的活动波列表追加一个 [GhostWave]（progress 从 0 起，
+     * 由 [advanceGhostWaves] 每帧推进）。每道波一个自增 seq，避免同舰相邻波 instanceId 相同
+     * 互相覆盖（keyed upsert 以 instanceId 去重）。
+     */
+    private fun spawnGhostWave(engine: CombatEngineAPI, shipId: Int) {
+        val key = "$GHOST_WAVE_KEY:$shipId"
+        @Suppress("UNCHECKED_CAST")
+        val waves = (engine.customData[key] as? MutableList<GhostWave>)
+            ?: ArrayList<GhostWave>().also { engine.customData[key] = it }
+        waves += GhostWave(seq = nextGhostWaveSeq++, elapsed = 0f)
+    }
+
+    /**
+     * 每帧推进该舰所有活动幽灵信号波并重新 upsert，progress 达 1 的波退出列表（实例随后经
+     * staleAfter 自然退休）。波心始终跟随本舰当前位置（电子战脉冲源是本舰）。
+     *
+     * keyed upsert + CPU progress 的依据见 [GhostSignalWaveEffect] 类注释（renderer 的 one-shot
+     * u_time 恒为 0，无法自播放扩张动画，故走 keyed 通道并由 CPU 驱动 progress）。
+     */
+    private fun advanceGhostWaves(ship: ShipAPI, engine: CombatEngineAPI, shipId: Int, amount: Float) {
+        val key = "$GHOST_WAVE_KEY:$shipId"
+        @Suppress("UNCHECKED_CAST")
+        val waves = engine.customData[key] as? MutableList<GhostWave> ?: return
+        if (waves.isEmpty()) return
+
+        val sink = CombatShaderRuntime.ensure(engine).sink
+        val iterator = waves.iterator()
+        while (iterator.hasNext()) {
+            val wave = iterator.next()
+            wave.elapsed += amount
+            val progress = wave.elapsed / GhostSignalWaveEffect.WAVE_DURATION
+            if (progress >= 1f) {
+                iterator.remove()
+                continue
+            }
+            GhostSignalWaveEffect.submitFrame(
+                sink = sink,
+                instanceId = "ghost-wave-$shipId-${wave.seq}",
+                center = ship.location,
+                frame = GhostSignalWaveEffect.frame(
+                    range = GHOST_RANGE * DIFFICULTY_FACTOR,
+                    progress = progress,
+                ),
+            )
         }
     }
 
