@@ -239,6 +239,11 @@
 		"ui.hullmod.lens_core.line.5": "· 载人·情报中枢：按友军吨位等级提供全队 ECM（吨位越小贡献越大）。",
 		"ui.hullmod.lens_core.line.6": "· 载人·战术链路：误差标记的增伤效果对全队生效，被标记目标承受的伤害随标记层数提升。",
 
+		"ui.hullmod.lens_parallax_decks.summary": "<param:#C8A0FF:阿斯忒里亚遗构局> 透镜协议旗舰的四甲板阵列。机群是铺设误差标记的载具，从你看不到的角度出现。",
+		"ui.hullmod.lens_parallax_decks.line.1": "· 错位部署：机群出库获得 <param:#C8A0FF:~2s> 相位隐形与 <param:#C8A0FF:+100%> 时流加成。",
+		"ui.hullmod.lens_parallax_decks.line.2": "· 链路回响：机群命中敌人时叠 <param:#C8A0FF:1 层> 误差标记（每敌每秒上限防刷）。",
+		"ui.hullmod.lens_parallax_decks.line.3": "· 回收重构：返航整备的机群位于本舰 <param:#C8A0FF:1000su> 内时获得 <param:#C8A0FF:50%> 承伤减免。",
+
 		"ui.hullmod.arc_advanced_fire_control.summary": "<param:#FF9600:阿斯忒里亚遗构局> 弧光喷流的主炮回路接入舰体反应堆。火控阵列在高压交火中保持锋利节律。",
 		"ui.hullmod.arc_advanced_fire_control.attr.weapon_flux": "主武器辐能压力",
 		"ui.hullmod.arc_advanced_fire_control.value.weapon_flux": "常态+20%；满层后相对基础-40%",

@@ -23,6 +23,19 @@ object HullMod_astd_lens_array_core : HullModEntry() {
     override val sprite: String = "graphics/hullmods/astd_lens_array_core.png"
 }
 
+object HullMod_astd_lens_parallax_decks : HullModEntry() {
+    override val id: String = "astd_lens_parallax_decks"
+    override val name: String = hullmodName(id)
+    override val tier: Int = 3
+    override val rarity: Int = 1
+    override val tech: String = "LENS"
+    override val tags: String = TAGS_BUILTIN
+    override val script: String = "cn.kasuminova.astd.combat.hullmods.lens.ASTDLensParallaxDecksHullMod"
+    override val desc: String = SsI18n.t("hullmod.$id.desc")
+    override val short: String = SsI18n.t("hullmod.$id.short")
+    override val sprite: String = "graphics/hullmods/astd_lens_array_core.png"
+}
+
 object HullMod_astd_lens_mode_switcher : HullModEntry() {
     override val id: String = "astd_lens_mode_switcher"
     override val name: String = hullmodName(id)
