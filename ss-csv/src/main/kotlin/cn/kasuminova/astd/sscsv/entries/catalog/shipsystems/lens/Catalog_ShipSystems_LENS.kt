@@ -6,36 +6,49 @@ import cn.kasuminova.astd.sscsv.entries.catalog.shipsystems.systemName
 /** LENS 系舰船系统（ship_systems.csv + 对应 .system 文件）。 */
 
 /**
- * 引力透镜级·载人版「回声定影」系统（阶段一基座）。
+ * 引力透镜级·载人版「回声定影」系统（Task 5 真实实现）。
  *
  * 动机：双模式 hullmod（ASTDLensCrewedModeHullMod）在建船时调用
  * setShipSystemId(astd_echo_fixation_crewed)，故该系统 id 必须在 ship_systems.csv +
  * .system 中存在，否则引力透镜级无法在战斗内实例化（"System with id ... not found"）。
- * 阶段一仅提供占位 statsScript，具体「回声定影」行为待阶段二接入。
+ *
+ * statsScript = [EchoFixationCrewedSystemStats]：IN 首帧在落点建定影场（spec §2）；
+ * aiScript = [EchoFixationSystemAI]：敌群密集处自动施放并写落点坐标供 stats 读取。
+ * active 6s 涵盖定影 4s（spec §2.3）+ 收尾余量。
  */
 object Sys_astd_echo_fixation_crewed : ShipSystemWithSystemFileEntry() {
     override val id: String = "astd_echo_fixation_crewed"
     override val name: String = systemName(id)
 
+    override val statsScript: String =
+        "cn.kasuminova.astd.combat.shipsystems.EchoFixationCrewedSystemStats"
+    override val aiScript: String? =
+        "cn.kasuminova.astd.combat.shipsystems.EchoFixationSystemAI"
+
     override val chargeUp: Double = 0.5
     override val active: Double = 6.0
     override val down: Double = 0.5
     override val cooldown: Double = 14.0
 
-    override val icon: String = "graphics/icons/hullsys/phase_cloak.png"
+    override val icon: String = "graphics/icons/hullsys/damper_field.png"
 }
 
-/** 引力透镜级·无人版「回声定影」系统（阶段一基座，动机同 [Sys_astd_echo_fixation_crewed]）。 */
+/** 引力透镜级·无人版「回声定影」系统（Task 5 真实实现，动机同 [Sys_astd_echo_fixation_crewed]）。 */
 object Sys_astd_echo_fixation_automated : ShipSystemWithSystemFileEntry() {
     override val id: String = "astd_echo_fixation_automated"
     override val name: String = systemName(id)
 
+    override val statsScript: String =
+        "cn.kasuminova.astd.combat.shipsystems.EchoFixationAutomatedSystemStats"
+    override val aiScript: String? =
+        "cn.kasuminova.astd.combat.shipsystems.EchoFixationSystemAI"
+
     override val chargeUp: Double = 0.5
     override val active: Double = 6.0
     override val down: Double = 0.5
     override val cooldown: Double = 14.0
 
-    override val icon: String = "graphics/icons/hullsys/phase_cloak.png"
+    override val icon: String = "graphics/icons/hullsys/damper_field.png"
 }
 
 object Sys_astd_jamming_swarm : ShipSystemWithSystemFileEntry() {

@@ -2,6 +2,7 @@
     "id": "astd_echo_fixation_automated",
     "type": "STAT_MOD",
     "aiType": "WEAPON_BOOST",
-    "statsScript": "cn.kasuminova.astd.combat.shipsystems.PlaceholderShipSystemStats",
+    "aiScript": "cn.kasuminova.astd.combat.shipsystems.EchoFixationSystemAI",
+    "statsScript": "cn.kasuminova.astd.combat.shipsystems.EchoFixationAutomatedSystemStats",
     "useSound": "system_ammo_feeder"
 }

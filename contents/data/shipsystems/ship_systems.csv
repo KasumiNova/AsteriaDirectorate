@@ -5,8 +5,8 @@ name,id,flux/second,f/s (base rate),f/s (base cap),flux/use,f/u (base rate),f/u 
 弧光共享辐能网络,astd_arc_shared_flux_network,0,0,0,0,0,0,0,,,0.5,10,0.5,20,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,,graphics/icons/hullsys/ammo_feeder.png
 坍缩折跃,astd_collapse_shift,0,0,0,0,0,0,0,2,6.666666666666667,0.25,0.3,0.1,1,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,,graphics/icons/hullsys/displacer.png
 无人机激化,astd_drone_surge,0,0,0,0,0,0,0,,,0.35,6,0.35,16,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,,graphics/icons/hullsys/drone_pd_high.png
-回声定影,astd_echo_fixation_automated,0,0,0,0,0,0,0,,,0.5,6,0.5,14,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,,graphics/icons/hullsys/phase_cloak.png
-回声定影,astd_echo_fixation_crewed,0,0,0,0,0,0,0,,,0.5,6,0.5,14,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,,graphics/icons/hullsys/phase_cloak.png
+回声定影,astd_echo_fixation_automated,0,0,0,0,0,0,0,,,0.5,6,0.5,14,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,,graphics/icons/hullsys/damper_field.png
+回声定影,astd_echo_fixation_crewed,0,0,0,0,0,0,0,,,0.5,6,0.5,14,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,,graphics/icons/hullsys/damper_field.png
 电磁烟幕,astd_em_smoke,0,0,0,0,0,0,0,,,0.4,3,0.4,14,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,,graphics/icons/hullsys/phase_cloak.png
 紧急召回,astd_emergency_recall,0,0,0,0,0,0,0,,,0.5,0.75,0.5,18,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,,graphics/icons/hullsys/drone_pd_high.png
 电磁爆发,astd_emp_burst,0,0,0,0,0,0,0,2,14,0.1,0.3,0.1,10,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,,graphics/icons/hullsys/ammo_feeder.png
