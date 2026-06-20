@@ -36,7 +36,7 @@ class ASTDLensArrayCoreHullMod : BaseHullMod() {
         /** 单枚敌方导弹进入范围后的失制导判定概率。 */
         private const val GHOST_DEFUSE_CHANCE = 0.5f
 
-        /** 幽灵信号 / 战术链路心跳间隔（s）。 */
+        /** 幽灵信号心跳间隔（s）。 */
         private const val TICK = 0.25f
 
         /** 情报中枢 ECM 重算间隔（s）：友军编成变化不频繁，1s 足够。 */
@@ -54,7 +54,9 @@ class ASTDLensArrayCoreHullMod : BaseHullMod() {
         /** 情报中枢 ECM 修改器 id（自身 dynamic stat 上的稳定句柄）。 */
         private const val INTEL_HUB_MOD_ID = "astd_lens_intel_hub"
 
+        /** 幽灵信号 IntervalUtil 存储 key（按 shipId 拼接）。 */
         private const val INTERVAL_KEY = "astd_lens_core_interval"
+        /** 情报中枢 IntervalUtil 存储 key（按 shipId 拼接）。 */
         private const val ECM_INTERVAL_KEY = "astd_lens_core_ecm_interval"
 
         /** 已判定过的导弹标记 key（每枚只判定一次，避免逐帧反复判定）。 */
@@ -151,6 +153,7 @@ class ASTDLensArrayCoreHullMod : BaseHullMod() {
         for (other in engine.ships) {
             if (other == null || other.isHulk || other.isFighter) continue
             if (other.owner != ship.owner) continue
+            if (other === ship) continue
             when (other.hullSize) {
                 ShipAPI.HullSize.FRIGATE -> fr++
                 ShipAPI.HullSize.DESTROYER -> de++
