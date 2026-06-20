@@ -24,6 +24,13 @@ import java.awt.Color
  * - 无人·幽灵信号：范围内敌方导弹随机失制导（剥离制导 AI，导弹直飞）。
  * - 载人·情报中枢：按友军吨位等级累加全队 ECM。
  *
+ * **载人·战术链路（标记闭环·收割端）——设计决策（用户拍板）：** 战术链路不引入独立的
+ * 友军专属增伤层。误差标记（[cn.kasuminova.astd.combat.lens.marks.LensMarks] 经
+ * `hullDamageTakenMult`/`armorDamageTakenMult`）的增伤本就对**任何来源**生效，因而载人
+ * 模式下全队对被标记目标的伤害已自动获得提升——「战术链路」即对这一既有闭环的载人收割
+ * 语义表述，不再叠第二份数值（避免友军双重增伤过强）。故此处无对应运行时逻辑，亦不创建
+ * 独立的 on-hit DamageListener；仅在 tooltip line.6 表述该收割语义。
+ *
  * 难度系数 m∈[1.0,2.0]（仅敌对单位）属阶段二接入：此处所有面向敌方的效果保持
  * factor=1（见 [DIFFICULTY_FACTOR]），等待阶段二的难度 provider。
  */

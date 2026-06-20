@@ -231,7 +231,7 @@
 		"ui.hullmod.lens_core.line.3": "· 无人·蜂群思维：舰载机射程、导弹机动、最大航速各 <param:#C8A0FF:+20%>。",
 		"ui.hullmod.lens_core.line.4": "· 无人·幽灵信号：~2000su 内敌方导弹 <param:#C8A0FF:50%> 概率失去制导。",
 		"ui.hullmod.lens_core.line.5": "· 载人·情报中枢：按友军吨位等级提供全队 ECM（吨位越小贡献越大）。",
-		"ui.hullmod.lens_core.line.6": "· 载人·战术链路：对带误差标记的目标造成额外伤害。",
+		"ui.hullmod.lens_core.line.6": "· 载人·战术链路：误差标记的增伤效果对全队生效，被标记目标承受的伤害随标记层数提升。",
 
 		"ui.hullmod.arc_advanced_fire_control.summary": "<param:#FF9600:阿斯忒里亚遗构局> 弧光喷流的主炮回路接入舰体反应堆。火控阵列在高压交火中保持锋利节律。",
 		"ui.hullmod.arc_advanced_fire_control.attr.weapon_flux": "主武器辐能压力",
