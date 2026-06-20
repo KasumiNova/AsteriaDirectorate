@@ -367,6 +367,10 @@
 
 		"ui.hullmod.switcher.summary": "移除此船插以切换本舰船的运行模式。",
 		"ui.hullmod.switcher.line.1": "当前模式：<param:#FFE024:载人模式>",
-		"ui.hullmod.switcher.line.2": "卸下后将转换为 <param:#FFE024:自动模式>。"
+		"ui.hullmod.switcher.line.2": "卸下后将转换为 <param:#FFE024:自动模式>。",
+
+		"ui.lens.status.drift": "误差标记",
+		"ui.lens.status.deep_water": "深水标记",
+		"ui.lens.status.stacks": "%stacks% 层"
 	}
 }
