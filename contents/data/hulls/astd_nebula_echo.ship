@@ -52,7 +52,7 @@
     ],
     "shieldRadius": 134,
     "spriteName": "graphics/ships/astd_nebula_echo.png",
-    "style": "HIGH_TECH",
+    "style": "ASTD_HIGH_TECH",
     "viewOffset": 0,
     "weaponSlots": [
         {

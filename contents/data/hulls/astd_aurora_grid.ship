@@ -46,7 +46,7 @@
     ],
     "shieldRadius": 246,
     "spriteName": "graphics/ships/astd_aurora_grid.png",
-    "style": "HIGH_TECH",
+    "style": "ASTD_HIGH_TECH",
     "viewOffset": 0,
     "weaponSlots": [
         {

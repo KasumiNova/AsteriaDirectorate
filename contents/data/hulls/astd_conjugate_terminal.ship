@@ -41,7 +41,7 @@
     ],
     "shieldRadius": 16,
     "spriteName": "graphics/ships/astd_conjugate_terminal.png",
-    "style": "HIGH_TECH",
+    "style": "ASTD_HIGH_TECH",
     "viewOffset": 0,
     "weaponSlots": [
         {

@@ -46,7 +46,7 @@
     ],
     "shieldRadius": 112,
     "spriteName": "graphics/ships/astd_flickering_phantom.png",
-    "style": "HIGH_TECH",
+    "style": "ASTD_HIGH_TECH",
     "viewOffset": 0,
     "weaponSlots": [
         {

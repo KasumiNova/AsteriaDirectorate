@@ -54,7 +54,7 @@
     ],
     "shieldRadius": 312,
     "spriteName": "graphics/ships/astd_event_horizon.png",
-    "style": "HIGH_TECH",
+    "style": "ASTD_HIGH_TECH",
     "viewOffset": 0,
     "weaponSlots": [
         {
