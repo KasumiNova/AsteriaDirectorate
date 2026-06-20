@@ -5,6 +5,7 @@ import cn.kasuminova.astd.combat.lens.ui.LensMarkStatusBar
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseHullMod
 import com.fs.starfarer.api.combat.CombatEngineAPI
+import com.fs.starfarer.api.combat.MissileAIPlugin
 import com.fs.starfarer.api.combat.MissileAPI
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.ui.TooltipMakerAPI
@@ -20,7 +21,7 @@ import java.awt.Color
  * 各自的 [ASTDLensAutomatedModeHullMod] / [ASTDLensCrewedModeHullMod] 承载，此处只做
  * 三件运行时事：
  * - 标记状态栏维护（每帧，玩家船左侧 UI）。
- * - 无人·幽灵信号：范围内敌方导弹随机失制导（熄火坠落）。
+ * - 无人·幽灵信号：范围内敌方导弹随机失制导（剥离制导 AI，导弹直飞）。
  * - 载人·情报中枢：按友军吨位等级累加全队 ECM。
  *
  * 难度系数 m∈[1.0,2.0]（仅敌对单位）属阶段二接入：此处所有面向敌方的效果保持
@@ -105,7 +106,7 @@ class ASTDLensArrayCoreHullMod : BaseHullMod() {
     }
 
     /**
-     * 无人·幽灵信号：范围内每枚敌方导弹进入后做一次失制导判定（熄火坠落）。
+     * 无人·幽灵信号：范围内每枚敌方导弹进入后做一次失制导判定（剥离制导 AI，导弹直飞）。
      * 每枚导弹只判定一次（DEFUSED_KEY 标记），命中概率 GHOST_DEFUSE_CHANCE。
      */
     private fun ghostSignal(ship: ShipAPI, engine: CombatEngineAPI) {
@@ -123,15 +124,18 @@ class ASTDLensArrayCoreHullMod : BaseHullMod() {
     }
 
     /**
-     * 失制导手段：熄火（flameOut）使导弹引擎停摆、惯性坠落，作为“失去制导”的近似。
+     * 失制导手段：用一个 no-op [MissileAIPlugin] 顶替原制导 AI（信息战语义——幽灵信号
+     * 干扰火控电子系统，剥离制导而非熄火坠落）。导弹保留当前速度/推力，但不再被任何
+     * AI 转向，因而保持当前航向直飞，符合 tooltip“失去制导”的世界观。
      * try/catch 仅防御单枚导弹此刻被引擎回收导致的 API 不可达，不吞业务错误。
      */
     private fun defuse(missile: MissileAPI) {
         try {
-            missile.flameOut()
+            // no-op：制导被剥离，导弹保持当前航向直飞（不发出任何转向/加速指令）。
+            missile.setMissileAI(MissileAIPlugin { /* no-op：制导被剥离 */ })
         } catch (t: Throwable) {
             Global.getLogger(ASTDLensArrayCoreHullMod::class.java)
-                .warn("[lens] ghost signal failed to flameOut missile", t)
+                .warn("[lens] ghost signal failed to strip missile AI", t)
         }
     }
 
