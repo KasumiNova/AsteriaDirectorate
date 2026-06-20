@@ -1,39 +1,32 @@
 package cn.kasuminova.astd.renderer.effect.system
 
 import cn.kasuminova.astd.combat.hullmods.arc.isASTDShip
-import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseEveryFrameCombatPlugin
 import com.fs.starfarer.api.combat.CombatEngineAPI
-import com.fs.starfarer.api.combat.CombatEngineLayers
 import com.fs.starfarer.api.combat.ShipAPI
+import com.fs.starfarer.api.combat.ShipEngineControllerAPI
 import com.fs.starfarer.api.combat.ShipEngineControllerAPI.ShipEngineAPI
 import com.fs.starfarer.api.input.InputEventAPI
-import org.boxutil.base.api.InstanceDataAPI
-import org.boxutil.base.api.InstanceRenderAPI
-import org.boxutil.define.BoxEnum
-import org.boxutil.define.InstanceType
-import org.boxutil.units.standard.attribute.Instance2Data
-import org.boxutil.units.standard.entity.FlareEntity
-import org.lwjgl.util.vector.Vector2f
-import java.awt.Color
+import kotlin.math.abs
+import kotlin.math.cos
 import kotlin.math.max
+import kotlin.math.sin
 
 /**
  * ASTD 全系“类矢量推进”引擎表现。
  *
- * 目标：模拟矢量推进器——但**不改变推力朝向**（不转向），只让“当前出力的引擎”更亮更“粗”、
- * “没出力的引擎”收暗，表现出推力的方向性。
+ * 模拟矢量推进器——但**不改变推力朝向**（不转向），只让“当前出力方向的引擎”火焰满、
+ * “反方向/不出力的引擎”火焰收小，表现推力方向性。
  *
- * 实现选择（重要）：
- * - 不用 ShipEngineControllerAPI.setFlameLevel：该值会被原版引擎控制器每帧重算覆盖，
- *   做持续效果会闪烁/无效（实测/社区已知坑）。
- * - 改为在每个引擎位置叠一层 BoxUtil FlareEntity（加色发光，渲染层独立，不与原版引擎
- *   控制器竞态），按 ShipEngineAPI.getContribution() 调 flare 的 size/alpha：
- *   contribution 高（正在出力）→ flare 大而亮，看起来该引擎“更粗”；contribution 低 → 收暗。
- *   这与 mod 内已验证可用的 ArcFlareEngineFlareManager 同一套渲染做法。
+ * 实现：每帧用 ShipEngineControllerAPI.setFlameLevel(slot, level) 逐引擎设置火焰长度。
+ * 这是经其它模组（如 Galactic_Constellate 的 gr_Nunki）验证可用的做法——关键是**每帧重设**
+ * （原版会重算，所以必须每帧覆盖）。
  *
- * getContribution() 0~1，随当前推力方向变化（加速时主喷≈1、横移时侧喷≈1），正是矢量推进所需。
+ * level 计算（不依赖 getContribution，避免其在 AI 船/静止时恒 0 导致“全部停在最小”）：
+ * - 由引擎喷射方向（slot.angle）推出该引擎的推力轴，与当前运动意图（加速/减速/横移/转向）
+ *   做点积，决定该引擎该不该“出力”。
+ * - 设有怠速基线 IDLE_FLAME，保证引擎始终可见、且静止时不全灭。
  *
  * 生效范围：所有 hullId 以 "astd_" 开头的舰船（含变体/D-mod，见 isASTDShip）。
  * 安装入口：经 CombatVfxBootstrap，由全局 ASTDGlobalCombatPlugin 每场战斗安装（不依赖武器）。
@@ -43,9 +36,14 @@ internal object ASTDVectorThrustEngineManager {
     private const val ENGINE_KEY = "astd_vector_thrust_engine_manager"
     private const val SCAN_INTERVAL = 0.5f
 
-    // flare 颜色：电离白蓝，加色发光。亮度由 alpha 控制。
-    private val FLARE_CORE = Color(255, 250, 245, 30)
-    private val FLARE_FRINGE = Color(150, 220, 255, 90)
+    // 怠速基线：无明显推力时引擎保留的火焰，避免全灭。
+    private const val IDLE_FLAME = 0.45f
+    // 出力时的火焰上限。
+    private const val FULL_FLAME = 1.0f
+    // 反方向/不出力时压到的最低火焰。
+    private const val LOW_FLAME = 0.18f
+    // 火焰跟随速度（每秒插值系数），防抖。
+    private const val LERP_PER_SEC = 9f
 
     private val log = Global.getLogger(ASTDVectorThrustEngineManager::class.java)
 
@@ -61,15 +59,18 @@ internal object ASTDVectorThrustEngineManager {
         }
     }
 
-    private class EngineFlare(
+    private class EngineState(
         val engine: ShipEngineAPI,
-        val entity: FlareEntity,
-        val baseSize: Float,
+        // 引擎推力方向单位向量（船体坐标系）：推力沿喷射方向的反方向。
+        // 喷口朝 slot.angle 喷火 -> 推力指向 angle+180。
+        val thrustAxisX: Float,
+        val thrustAxisY: Float,
+        var level: Float,
     )
 
     private class Attachment(
         val ship: ShipAPI,
-        val flares: List<EngineFlare>,
+        val engines: List<EngineState>,
     )
 
     private class Plugin(private val combatEngine: CombatEngineAPI) : BaseEveryFrameCombatPlugin() {
@@ -83,11 +84,6 @@ internal object ASTDVectorThrustEngineManager {
             if (!installLogged) {
                 installLogged = true
                 log.info("[ASTD] ASTDVectorThrustEngineManager active")
-            }
-
-            try {
-                BoxUtilCombatVfx.ensureReady(combatEngine)
-            } catch (_: Throwable) {
             }
 
             scanAcc += amount
@@ -105,11 +101,10 @@ internal object ASTDVectorThrustEngineManager {
                     true
                 }
                 if (gone) {
-                    deleteAttachment(att)
                     it.remove()
                     continue
                 }
-                updateAttachment(att)
+                updateAttachment(att, amount)
             }
         }
 
@@ -123,10 +118,8 @@ internal object ASTDVectorThrustEngineManager {
             for (ship in ships) {
                 if (ship.isFighter || ship.isHulk) continue
                 if (!ship.isASTDShip()) continue
-
                 val key = System.identityHashCode(ship)
                 if (attachments.containsKey(key)) continue
-
                 val att = createAttachment(ship) ?: continue
                 attachments[key] = att
             }
@@ -140,202 +133,104 @@ internal object ASTDVectorThrustEngineManager {
             } ?: return null
             if (engines.isEmpty()) return null
 
-            val flares = ArrayList<EngineFlare>(engines.size)
+            val states = ArrayList<EngineState>(engines.size)
             for (engine in engines) {
                 if (engine == null) continue
                 if (engine.isPermanentlyDisabled) continue
-
                 val slot = try {
                     engine.engineSlot
                 } catch (_: Throwable) {
                     null
                 } ?: continue
-                val width = try {
-                    slot.width
+                val angle = try {
+                    slot.angle
                 } catch (_: Throwable) {
-                    10f
+                    180f
                 }
-                val length = try {
-                    slot.length
-                } catch (_: Throwable) {
-                    40f
-                }
-
-                val entity = createFlareEntity() ?: continue
-                // baseSize 关联引擎尺寸：大引擎 flare 也大。
-                val baseSize = max(width * 1.8f, length * 0.7f) + 6f
-                flares += EngineFlare(engine, entity, baseSize)
+                // 喷口朝 angle 喷火，推力指向相反方向：angle + 180。
+                val thrustAngle = Math.toRadians((angle + 180f).toDouble())
+                states += EngineState(
+                    engine = engine,
+                    thrustAxisX = cos(thrustAngle).toFloat(),
+                    thrustAxisY = sin(thrustAngle).toFloat(),
+                    level = IDLE_FLAME,
+                )
             }
-
-            if (flares.isEmpty()) return null
+            if (states.isEmpty()) return null
             try {
-                log.info("[ASTD] vector-thrust attached ship=${ship.hullSpec?.hullId} engines=${flares.size}")
+                log.info("[ASTD] vector-thrust attached ship=${ship.hullSpec?.hullId} engines=${states.size}")
             } catch (_: Throwable) {
             }
-            return Attachment(ship, flares)
+            return Attachment(ship, states)
         }
 
-        private fun createFlareEntity(): FlareEntity? {
-            val entity = try {
-                FlareEntity()
-            } catch (_: Throwable) {
-                return null
-            }
-
-            try {
-                entity.setLayer(CombatEngineLayers.ABOVE_SHIPS_AND_MISSILES_LAYER)
-                entity.setAdditiveBlend()
-                entity.setSmooth()
-                entity.setFlick(false)
-                entity.setSyncFlick(false)
-                entity.setGlowPower(1.1f)
-                entity.setCoreColor(FLARE_CORE)
-                entity.setFringeColor(FLARE_FRINGE)
-                entity.setGlobalAlpha(0f)
-                entity.setNoisePower(0.10f)
-            } catch (_: Throwable) {
-            }
-
-            if (!initFixedOneInstance(entity)) {
-                try {
-                    entity.delete()
-                } catch (_: Throwable) {
-                }
-                return null
-            }
-
-            val state = try {
-                BoxUtilCombatVfx.addEntity(combatEngine, BoxEnum.ENTITY_FLARE, entity)
-            } catch (_: Throwable) {
-                -1
-            }
-            if (state != 0) {
-                try {
-                    entity.delete()
-                } catch (_: Throwable) {
-                }
-                return null
-            }
-            return entity
-        }
-
-        private fun initFixedOneInstance(entity: InstanceRenderAPI): Boolean {
-            val inst = Instance2Data().apply {
-                setLocation(0f, 0f)
-                setFacing(0f)
-                setTurnRate(0f)
-                setScale(1f, 1f)
-                setTimer(0f, 99999f, 0f)
-                setColor(255, 255, 255, 255)
-                setEmissiveColor(255, 255, 255, 255)
-                try {
-                    setFixedInstanceAlpha(1f, BoxEnum.TIMER_FULL)
-                } catch (_: Throwable) {
-                }
-            }
-
-            val apiList: MutableList<InstanceDataAPI> = mutableListOf(inst)
-            val stSet = try {
-                entity.setInstanceData(apiList, 0f, 99999f, 0f)
-            } catch (_: Throwable) {
-                BoxEnum.STATE_FAILED_OTHER
-            }
-            if (stSet != BoxEnum.STATE_SUCCESS) return false
-
-            try {
-                entity.setRenderingCount(1)
-                entity.setInstanceDataRefreshIndex(0)
-                entity.setInstanceDataRefreshSize(1)
-                entity.setInstanceTimerOverride(1f, BoxEnum.TIMER_FULL)
-            } catch (_: Throwable) {
-            }
-
-            return submitFixedInstanceDataCompat(entity, apiList.size) == BoxEnum.STATE_SUCCESS
-                && entity.haveValidInstanceData()
-                && entity.getValidInstanceDataCount() >= 1
-        }
-
-        private fun submitFixedInstanceDataCompat(entity: InstanceRenderAPI, instanceCount: Int): Byte {
-            if (instanceCount < 1) return BoxEnum.STATE_FAILED_OTHER
-            return try {
-                val memory = entity.instanceDataMemory
-                val needAlloc = memory == null || !memory.is_type_fixed()
-                if (needAlloc) {
-                    entity.mallocInstance(InstanceType.FIXED_2D, instanceCount)
-                    entity.setInstanceDataRefreshIndex(0)
-                    entity.setInstanceDataRefreshOffset(0)
-                    entity.setInstanceDataRefreshAllFromCurrentIndex()
-                }
-                val after = entity.instanceDataMemory
-                if (after == null || !after.is_type_fixed()) return BoxEnum.STATE_FAILED_OTHER
-                entity.submitInstance()
-                BoxEnum.STATE_SUCCESS
-            } catch (_: Throwable) {
-                BoxEnum.STATE_FAILED_OTHER
-            }
-        }
-
-        private fun updateAttachment(att: Attachment) {
+        private fun updateAttachment(att: Attachment, amount: Float) {
             val ship = att.ship
             val controller = try {
                 ship.engineController
             } catch (_: Throwable) {
                 null
-            }
+            } ?: return
 
-            // 是否有主动机动输入；无输入时所有 flare 收到最低，避免静止时全亮。
-            val maneuvering = try {
-                controller?.let {
-                    it.isAccelerating || it.isAcceleratingBackwards || it.isDecelerating ||
-                        it.isStrafingLeft || it.isStrafingRight || it.isTurningLeft || it.isTurningRight
-                } ?: false
+            // 当前推力意图向量（船体本地坐标系：+x=船头方向，+y=左舷）。
+            // 加速=向前(+x)，减速/后退=向后(-x)，横移=左右(±y)。
+            var intentX = 0f
+            var intentY = 0f
+            try {
+                if (controller.isAccelerating) intentX += 1f
+                if (controller.isDecelerating || controller.isAcceleratingBackwards) intentX -= 1f
+                if (controller.isStrafingLeft) intentY += 1f
+                if (controller.isStrafingRight) intentY -= 1f
             } catch (_: Throwable) {
-                false
             }
 
-            for (flare in att.flares) {
-                val engine = flare.engine
+            // 转向：左转(逆时针)需要右侧/尾部不对称推力。用角向意图叠加到 y（近似）。
+            var turnIntent = 0f
+            try {
+                if (controller.isTurningLeft) turnIntent += 1f
+                if (controller.isTurningRight) turnIntent -= 1f
+            } catch (_: Throwable) {
+            }
+
+            val hasIntent = abs(intentX) > 0.01f || abs(intentY) > 0.01f || abs(turnIntent) > 0.01f
+            val intentLen = max(1e-3f, kotlin.math.sqrt(intentX * intentX + intentY * intentY))
+            val nIntentX = intentX / intentLen
+            val nIntentY = intentY / intentLen
+
+            val lerp = (LERP_PER_SEC * amount).coerceIn(0f, 1f)
+
+            for (st in att.engines) {
+                val engine = st.engine
                 val usable = try {
                     !engine.isDisabled && !engine.isPermanentlyDisabled
                 } catch (_: Throwable) {
                     false
                 }
 
-                // 矢量推进核心：thrust = 该引擎对当前运动的贡献度。
-                val thrust = if (!usable || !maneuvering) {
+                val target: Float = if (!usable) {
                     0f
+                } else if (!hasIntent) {
+                    IDLE_FLAME
                 } else {
-                    try {
-                        engine.contribution
-                    } catch (_: Throwable) {
-                        0f
-                    }.coerceIn(0f, 1f)
+                    // 该引擎推力轴与运动意图的对齐度（点积，-1..1）。
+                    val align = st.thrustAxisX * nIntentX + st.thrustAxisY * nIntentY
+                    // 转向贡献：引擎离中轴越偏、且方向匹配转向，则出力。用推力轴 y 分量近似力矩方向。
+                    val turnContribution = turnIntent * st.thrustAxisY
+                    val combined = max(align, turnContribution * 0.8f)
+                    // align>0 出力，align<0 收小。映射到 [LOW_FLAME, FULL_FLAME]。
+                    val norm = ((combined + 1f) * 0.5f).coerceIn(0f, 1f) // 0..1
+                    LOW_FLAME + (FULL_FLAME - LOW_FLAME) * norm
                 }
 
-                val loc = try {
-                    engine.location
+                st.level += (target - st.level) * lerp
+
+                val slot = try {
+                    engine.engineSlot
                 } catch (_: Throwable) {
                     null
-                } ?: ship.location
-
-                // alpha/size 随 thrust：出力越大越亮越大。怠速时 alpha=0（不画）。
-                val alpha = (thrust * 0.55f).coerceIn(0f, 0.55f)
-                val size = flare.baseSize * (0.55f + thrust * 0.85f)
-
+                } ?: continue
                 try {
-                    flare.entity.setStateVanilla(loc, 0f)
-                    flare.entity.setSize(size, size)
-                    flare.entity.setGlobalAlpha(alpha)
-                    flare.entity.setGlowPower((1.0f + thrust * 2.2f).coerceIn(1.0f, 3.5f))
-                } catch (_: Throwable) {
-                }
-            }
-        }
-
-        private fun deleteAttachment(att: Attachment) {
-            att.flares.forEach {
-                try {
-                    it.entity.delete()
+                    controller.setFlameLevel(slot, st.level.coerceIn(0f, 1f))
                 } catch (_: Throwable) {
                 }
             }
