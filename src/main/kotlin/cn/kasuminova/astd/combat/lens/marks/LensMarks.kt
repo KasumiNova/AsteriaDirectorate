@@ -25,6 +25,9 @@ object LensMarks {
     /** dynamic stat key：深水标记令目标"对引力透镜造成的伤害"下降。 */
     const val VS_LENS_DAMAGE_MULT_KEY: String = "astd_lens_deep_water_vs_lens_mult"
 
+    // accuracyMult=0（理论极端，精度完全归零）时的 recoil 倍率上限，避免除零。
+    private const val MAX_RECOIL_MULT_CAP = 99f
+
     private val driftSpec = StackingBuffSpec(
         id = LensMarkIds.DRIFT_BUFF_ID,
         baseDuration = LensMarkIds.MARK_DURATION_SEC,
@@ -32,11 +35,11 @@ object LensMarks {
         baseMagnitudeMult = 1f,
     )
 
+    // 深水各效果量已在 LensMarkMath 直接按层数计算，故不使用 magnitudeMult。
     private val deepWaterSpec = StackingBuffSpec(
         id = LensMarkIds.DEEP_WATER_BUFF_ID,
         baseDuration = LensMarkIds.MARK_DURATION_SEC,
         baseMaxStacks = LensMarkMath.MAX_STACKS,
-        baseMagnitudeMult = 1f,
     )
 
     private val driftApplier = object : ShipBuffApplier {
@@ -54,17 +57,17 @@ object LensMarks {
 
     private val deepWaterApplier = object : ShipBuffApplier {
         override fun applyTo(ship: ShipAPI, buffId: String, state: StackingBuffState) {
-            val s = state.stacks
-            val rangeMult = LensMarkMath.deepWaterRangeMult(s)
+            val stacks = state.stacks
+            val rangeMult = LensMarkMath.deepWaterRangeMult(stacks)
             ship.mutableStats.weaponRangeThreshold.modifyMult(buffId, rangeMult)
 
-            val accuracyMult = LensMarkMath.deepWaterAccuracyMult(s)
-            val recoilMult = if (accuracyMult > 0f) 1f / accuracyMult else 99f
+            val accuracyMult = LensMarkMath.deepWaterAccuracyMult(stacks)
+            val recoilMult = if (accuracyMult > 0f) 1f / accuracyMult else MAX_RECOIL_MULT_CAP
             ship.mutableStats.maxRecoilMult.modifyMult(buffId, recoilMult)
             ship.mutableStats.recoilDecayMult.modifyMult(buffId, recoilMult)
 
-            ship.mutableStats.maxSpeed.modifyMult(buffId, LensMarkMath.deepWaterSpeedMult(s))
-            ship.mutableStats.dynamic.getMod(VS_LENS_DAMAGE_MULT_KEY).modifyMult(buffId, LensMarkMath.deepWaterVsLensDamageMult(s))
+            ship.mutableStats.maxSpeed.modifyMult(buffId, LensMarkMath.deepWaterSpeedMult(stacks))
+            ship.mutableStats.dynamic.getMod(VS_LENS_DAMAGE_MULT_KEY).modifyMult(buffId, LensMarkMath.deepWaterVsLensDamageMult(stacks))
         }
 
         override fun unapplyFrom(ship: ShipAPI, buffId: String) {
