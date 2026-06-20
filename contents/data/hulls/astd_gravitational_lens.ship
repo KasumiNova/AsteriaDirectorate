@@ -10,10 +10,12 @@
   "collisionRadius": 138,
   "shieldCenter": [0, -0],
   "shieldRadius": 150.5,
+  "shieldType": "OMNI",
   "viewOffset": 0,
   "builtInMods": [
     "astd_nano_restoration_protocol",
-    "astd_lens_array_core"
+    "astd_lens_array_core",
+    "astd_lens_mode_switcher"
   ],
   "builtInWeapons": {
     "WS0002": "astd_gravitational_lens_bloom"
@@ -28,7 +30,6 @@
       "angle": 0,
       "locations": [
         57, -33.5,
-        71, -33.5,
         85, -33.5
       ]
     },
