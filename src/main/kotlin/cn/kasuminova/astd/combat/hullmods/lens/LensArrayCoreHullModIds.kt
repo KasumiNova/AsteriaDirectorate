@@ -23,14 +23,30 @@ internal object LensArrayCoreHullModIds {
 
 internal fun ShipVariantAPI?.isGravitationalLensVariant(): Boolean {
     val v = this ?: return false
-    val hullId = try { v.hullSpec?.hullId } catch (_: Throwable) { null }
-    val baseHullId = try { v.hullSpec?.baseHullId } catch (_: Throwable) { null }
+    val hullId = try {
+        v.hullSpec?.hullId
+    } catch (_: Throwable) {
+        null
+    }
+    val baseHullId = try {
+        v.hullSpec?.baseHullId
+    } catch (_: Throwable) {
+        null
+    }
     return hullId == LensArrayCoreHullModIds.HULL_ID || baseHullId == LensArrayCoreHullModIds.HULL_ID
 }
 
 internal fun ShipAPI?.isGravitationalLensShip(): Boolean {
     val s = this ?: return false
-    val hullId = try { s.hullSpec?.hullId } catch (_: Throwable) { null }
-    val baseHullId = try { s.hullSpec?.baseHullId } catch (_: Throwable) { null }
+    val hullId = try {
+        s.hullSpec?.hullId
+    } catch (_: Throwable) {
+        null
+    }
+    val baseHullId = try {
+        s.hullSpec?.baseHullId
+    } catch (_: Throwable) {
+        null
+    }
     return hullId == LensArrayCoreHullModIds.HULL_ID || baseHullId == LensArrayCoreHullModIds.HULL_ID
 }

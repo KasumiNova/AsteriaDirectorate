@@ -8,8 +8,13 @@ import com.fs.starfarer.api.combat.ShipVariantAPI
  * 透镜阵列核心双模式状态机：无人/载人通过 PermaMod + next marker 切换，
  * 镜像 ASTDArcFlareHullModUtil 的稳定范式。
  */
+internal fun ShipVariantAPI.hasLensAutomatedMode(): Boolean =
+    getPermaMods().contains(LensArrayCoreHullModIds.MODE_AUTOMATED) ||
+        hasHullMod(LensArrayCoreHullModIds.MODE_AUTOMATED)
+
 internal fun ShipVariantAPI.ensureLensArrayModeState(stats: MutableShipStatsAPI? = null) {
     if (!isGravitationalLensVariant()) return
+    // 新船无遗留状态，不需要 migrateLegacyModeState（镜像 ARC 但故意省略）。
 
     val hasCrewed = getPermaMods().contains(LensArrayCoreHullModIds.MODE_CREWED)
     val hasAutomated = getPermaMods().contains(LensArrayCoreHullModIds.MODE_AUTOMATED)
@@ -51,10 +56,10 @@ internal fun ShipVariantAPI.activateLensMode(modeId: String, stats: MutableShipS
         removePermaMod("automated")
     }
     // 战役上下文：切换模式时自动卸下不兼容的舰长/AI 核心
-    clearIncompatibleLensCaptain(stats)
+    clearIncompatibleCaptain(stats)
 }
 
-private fun clearIncompatibleLensCaptain(stats: MutableShipStatsAPI?) {
+private fun clearIncompatibleCaptain(stats: MutableShipStatsAPI?) {
     val member = try { stats?.fleetMember } catch (_: Throwable) { null } ?: return
     val captain = try { member.captain } catch (_: Throwable) { null }
     if (captain != null) {
