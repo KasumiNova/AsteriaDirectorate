@@ -2,11 +2,15 @@ package cn.kasuminova.astd.combat.lens.system
 
 import cn.kasuminova.astd.combat.hullmods.affix.AffixUtil
 import cn.kasuminova.astd.combat.lens.marks.LensMarks
+import cn.kasuminova.astd.renderer.effect.lens.EchoFixationFieldVisualEffect
+import cn.kasuminova.astd.renderer.shader.runtime.CombatShaderRuntime
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseEveryFrameCombatPlugin
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.input.InputEventAPI
+import org.lwjgl.util.vector.Vector2f
+import java.util.concurrent.atomic.AtomicLong
 
 /**
  * 回声定影（Echo Fixation）定影场 —— 舰船系统 D 的「定影 → 回放」状态机（spec §2）。
@@ -36,6 +40,13 @@ import com.fs.starfarer.api.input.InputEventAPI
 object EchoFixationField {
 
     private val log = Global.getLogger(EchoFixationField::class.java)
+
+    /**
+     * 全局自增场实例 id 源：用于给 shader 边界效果一个稳定的 per-field instanceId
+     * （"echo-field-{id}"）。场不绑定单船，故无法复用 ShipAPI identityHashCode；自增 id
+     * 保证同一场跨帧 keyed upsert 命中同一实例、不同场互不串扰。
+     */
+    private val FIELD_ID_SOURCE = AtomicLong(0L)
 
     /** 单例推进插件挂 engine.customData 的 key（范式同 StackingShipBuffs.ensurePlugin）。 */
     private const val ENGINE_PLUGIN_KEY = "astd_echo_fixation_field_plugin"
@@ -94,6 +105,7 @@ object EchoFixationField {
      * @property sourceOwner 施放方 owner（用于敌对判定：target.owner != sourceOwner）。
      */
     private class Field(
+        val fieldId: Long,
         val centerX: Float,
         val centerY: Float,
         val radius: Float,
@@ -102,6 +114,12 @@ object EchoFixationField {
         val systemRangeMult: Float,
         val sourceOwner: Int,
     ) {
+        /** shader 边界效果的 per-field instanceId（跨帧稳定，keyed upsert 命中同一实例）。 */
+        private val visualInstanceId: String = "echo-field-$fieldId"
+
+        /** 场心（世界坐标）缓存为 Vector2f，供 shader 提交复用，避免每帧建对象。 */
+        private val centerVec: Vector2f = Vector2f(centerX, centerY)
+
         /** 已逝时间（s），>= fixateDuration 时触发回放。 */
         var elapsed: Float = 0f
 
@@ -127,10 +145,28 @@ object EchoFixationField {
          */
         fun advanceFixate(engine: CombatEngineAPI, amount: Float) {
             elapsed += amount
+            // Task 6 shader 边界：每帧推进场边界可视化（紫罗兰圆环 + 定影进度脉动）。
+            submitBoundaryVisual(engine)
             recordAcc += amount
             if (recordAcc < RECORD_INTERVAL_SEC) return
             recordAcc = 0f
             record(engine)
+        }
+
+        /**
+         * 提交本场边界 shader 效果（keyed upsert，per-field instanceId）。
+         * progress = 定影进度（elapsed / fixateDuration），驱动环宽脉动与渐显。
+         * Fail Fast：直接调用，不包兜底 catch——shader runtime 自身负责其内部健壮性。
+         */
+        private fun submitBoundaryVisual(engine: CombatEngineAPI) {
+            val progress = (elapsed / fixateDuration).coerceIn(0f, 1f)
+            val frame = EchoFixationFieldVisualEffect.frame(fieldRadius = radius, progress = progress)
+            EchoFixationFieldVisualEffect.submitFrame(
+                sink = CombatShaderRuntime.ensure(engine).sink,
+                instanceId = visualInstanceId,
+                center = centerVec,
+                frame = frame,
+            )
         }
 
         /** 遍历 engine.ships，把场内敌舰当前位置追加进快照表（带上限保护）。 */
@@ -283,6 +319,7 @@ object EchoFixationField {
         val rangeMult = systemRangeMult.coerceAtLeast(0.01f)
         val radius = EchoFixationMath.fieldRadius(BASE_FIELD_RADIUS, rangeMult)
         val field = Field(
+            fieldId = FIELD_ID_SOURCE.getAndIncrement(),
             centerX = centerX,
             centerY = centerY,
             radius = radius,
