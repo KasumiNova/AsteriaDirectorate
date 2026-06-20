@@ -23,8 +23,10 @@ object Ship_astd_gravitational_lens : ShipDataEntry() {
     override val maxTurnRate: Int = 30
     override val turnAcceleration: Int = 60
     override val mass: Int = 16000
-    override val shieldType: String = "FRONT"
-    override val shieldArc: Int = 120
+    // 引力透镜级：OMNI 全向护盾（240°）+ 4 甲板（与 contents/.ship 一致，阶段一验收要求）。
+    override val fighterBays: Int = 4
+    override val shieldType: String = "OMNI"
+    override val shieldArc: Int = 240
     override val shieldUpkeep: Double = 0.6
     override val shieldEfficiency: Double = 0.8
     override val minCrew: Int = 10

@@ -4,6 +4,9 @@ import cn.kasuminova.astd.combat.effect.generic.projectile.ProjectileSpecOnFireD
 import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcProductionTooltipContracts
 import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcProductionVfx
 import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcProductionShipIds
+import cn.kasuminova.astd.combat.hullmods.base.ASTDHullModTooltipRenderer
+import cn.kasuminova.astd.combat.hullmods.lens.LensArrayCoreHullModIds
+import cn.kasuminova.astd.combat.lens.marks.LensMarks
 import cn.kasuminova.astd.internal.i18n.I18n
 import cn.kasuminova.astd.internal.debug.ASTDInGameAutomationScenario
 import cn.kasuminova.astd.renderer.projectile.ASTDProjectileVfxPresetCatalog
@@ -54,11 +57,22 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     private var fireMechanism: String? = null
     private var fallbackProjectile: DamagingProjectileAPI? = null
     private var fallbackProjectileSpawnedAt = -1f
+    private var lensMarksInjected = false
+    private val lensAnchor = Vector2f(-260f, 0f)
 
     override fun init(engine: CombatEngineAPI) {
         this.engine = engine
         ASTDProjectileVfxRuntimePlugin.ensureInstalled(engine)
-        if (ASTDInGameAutomationScenario.isArcProductionEnabled()) {
+        if (ASTDInGameAutomationScenario.isLensPhase1Enabled()) {
+            engine.setDoNotEndCombat(true)
+            lockArcProductionCamera(engine)
+            // 与 ARC production 一致：reserves 部署放到 advance()，init 阶段战斗渲染器尚未就绪，
+            // 此时调用 spawnFleetMember -> setPlayerShip 会触发原版 arcRenderer NPE。
+            arrangeLensPhase1Ships(engine)
+            writeDiagnostics(engine, "CombatReady")
+            writeTelemetry(engine, "CombatReady", findShipByHull(engine, LensArrayCoreHullModIds.HULL_ID), null)
+            log.info("[ASTD-Automation] scenario=${ASTDInGameAutomationScenario.LENS_PHASE1_SCENARIO_ID} combat plugin initialized")
+        } else if (ASTDInGameAutomationScenario.isArcProductionEnabled()) {
             engine.setDoNotEndCombat(true)
             lockArcProductionCamera(engine)
             arrangeArcProductionShips(engine)
@@ -76,6 +90,12 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
 
     override fun advance(amount: Float, events: MutableList<InputEventAPI>?) {
         val combatEngine = engine ?: return
+        if (ASTDInGameAutomationScenario.isLensPhase1Enabled()) {
+            if (combatEngine.isPaused) combatEngine.setPaused(false)
+            elapsed += amount.coerceAtLeast(0f)
+            advanceLensPhase1Scenario(combatEngine)
+            return
+        }
         if (ASTDInGameAutomationScenario.isArcProductionEnabled()) {
             if (combatEngine.isPaused) combatEngine.setPaused(false)
             elapsed += amount.coerceAtLeast(0f)
@@ -132,6 +152,17 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
 
     override fun renderInUICoords(viewport: ViewportAPI) {
         val combatEngine = engine ?: return
+        if (ASTDInGameAutomationScenario.isLensPhase1Enabled()) {
+            if (!completed || visualFramesWritten >= 3) return
+            if (visualFramesWritten > 0 && elapsed - lastVisualFrameAt < 0.18f) return
+            lockArcProductionCamera(combatEngine)
+            arrangeLensPhase1Ships(combatEngine)
+            lastVisualFrameAt = elapsed
+            visualFramesWritten++
+            writeDiagnostics(combatEngine, "Completed", findShipByHull(combatEngine, LensArrayCoreHullModIds.HULL_ID))
+            writeTelemetry(combatEngine, "Completed", findShipByHull(combatEngine, LensArrayCoreHullModIds.HULL_ID), null)
+            return
+        }
         if (ASTDInGameAutomationScenario.isArcProductionEnabled()) {
             if (!completed || visualFramesWritten >= 3) return
             if (visualFramesWritten > 0 && elapsed - lastVisualFrameAt < 0.18f) return
@@ -378,6 +409,114 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             ?: findShipByHull(engine, "astd_plasma_arch")
             ?: findShipByHull(engine, "astd_radiation_belt")
 
+    // === Phase-1 gravitational lens scenario ===
+
+    private fun deployLensPhase1ReserveShips(engine: CombatEngineAPI) {
+        engine.setDoNotEndCombat(true)
+        deployLensPhase1Side(engine, FleetSide.PLAYER)
+        deployLensPhase1Side(engine, FleetSide.ENEMY)
+    }
+
+    private fun deployLensPhase1Side(engine: CombatEngineAPI, side: FleetSide) {
+        val manager = engine.getFleetManager(side)
+        manager.setSuppressDeploymentMessages(true)
+        val reserves = manager.getReservesCopy().toList()
+        if (reserves.isEmpty()) return
+
+        var allyIndex = 0
+        var enemyIndex = 0
+        for (member in reserves) {
+            val hullId = member.hullId ?: continue
+            if (findShipByHull(engine, hullId) != null && hullId == LensArrayCoreHullModIds.HULL_ID) {
+                manager.removeFromReserves(member)
+                continue
+            }
+
+            val anchor = when {
+                side == FleetSide.ENEMY -> Vector2f(900f + enemyIndex++ * 170f, 20f)
+                hullId == LensArrayCoreHullModIds.HULL_ID -> lensAnchor
+                else -> Vector2f(-520f, -260f + allyIndex++ * 150f)
+            }
+            val facing = if (side == FleetSide.ENEMY) 180f else 0f
+            val spawned = manager.spawnFleetMember(member, Vector2f(anchor), facing, 0f)
+            manager.removeFromReserves(member)
+            stabilizeShip(spawned, anchor, facing, allowFire = false, preserveAI = side == FleetSide.ENEMY)
+        }
+    }
+
+    private fun arrangeLensPhase1Ships(engine: CombatEngineAPI) {
+        val lens = findShipByHull(engine, LensArrayCoreHullModIds.HULL_ID)
+        lens?.let { stabilizeShip(it, lensAnchor, 0f, allowFire = false) }
+        var allyIndex = 0
+        engine.ships
+            .filter { it !== lens && it.owner == lens?.owner && !it.isFighter }
+            .forEach { stabilizeShip(it, Vector2f(-520f, -260f + allyIndex++ * 150f), 0f, allowFire = false) }
+        engine.ships
+            .filter { ship -> lens != null && ship.owner != lens.owner && !ship.isFighter }
+            .forEachIndexed { index, ship ->
+                stabilizeShip(ship, Vector2f(900f + index * 170f, 20f), 180f, allowFire = false, preserveAI = true)
+            }
+    }
+
+    private fun advanceLensPhase1Scenario(engine: CombatEngineAPI) {
+        engine.setDoNotEndCombat(true)
+        deployLensPhase1ReserveShips(engine)
+        lockArcProductionCamera(engine)
+        arrangeLensPhase1Ships(engine)
+
+        val lens = findShipByHull(engine, LensArrayCoreHullModIds.HULL_ID)
+        lens?.let { engine.setPlayerShipExternal(it) }
+        lens?.shield?.let { if (!it.isOn) it.toggleOn() }
+
+        // 对引力透镜级自身维持 3 层误差/深水标记，验证 applier 真的改了承伤。
+        // 标记每层 5s 会过期，且本场景 setDoNotEndCombat 后会长时间运行（观测点在很晚），
+        // 故每帧把不足的层数补齐到 3（applyOrRefresh 同时刷新时长），保证稳态诊断读到 3 层。
+        if (lens != null && elapsed > 1.0f) {
+            val driftNeeded = LENS_SELF_MARK_STACKS - LensMarks.driftStacks(lens)
+            if (driftNeeded > 0) LensMarks.applyDriftMark(engine, lens, lens, driftNeeded)
+            val deepWaterNeeded = LENS_SELF_MARK_STACKS - LensMarks.deepWaterStacks(lens)
+            if (deepWaterNeeded > 0) LensMarks.applyDeepWaterMark(engine, lens, lens, deepWaterNeeded)
+            if (!lensMarksInjected) {
+                lensMarksInjected = true
+                log.info("[ASTD-Automation] lens self marks injected: drift=$LENS_SELF_MARK_STACKS, deepWater=$LENS_SELF_MARK_STACKS")
+            }
+        }
+
+        val state = when {
+            lens != null && lensMarksInjected && elapsed > 2.0f -> "Completed"
+            lens == null && elapsed > 8f -> {
+                failureReason = "gravitational lens missing: ${LensArrayCoreHullModIds.HULL_ID}"
+                "Failed"
+            }
+            else -> "CombatReady"
+        }
+        if (state == "Completed" && !completed) {
+            completed = true
+            completedAt = elapsed
+            log.info("[ASTD-Automation] Completed: lens_phase1_foundation evidence observed")
+        }
+        if (elapsed - lastWriteAt >= 0.18f || state == "Completed" || state == "Failed") {
+            lastWriteAt = elapsed
+            writeDiagnostics(engine, state, lens)
+            writeTelemetry(engine, state, lens, null)
+        }
+    }
+
+    private fun lensDeployedShipIds(engine: CombatEngineAPI): List<String> =
+        engine.ships
+            .asSequence()
+            .filter { !it.isFighter }
+            .mapNotNull { it.hullSpec?.hullId }
+            .distinct()
+            .sorted()
+            .toList()
+
+    private fun lensCoreTooltipKeyCount(engine: CombatEngineAPI): Int {
+        val ship = findShipByHull(engine, LensArrayCoreHullModIds.HULL_ID) ?: return 0
+        if (!hasHullmod(ship, LensArrayCoreHullModIds.CORE)) return 0
+        return LENS_CORE_TOOLTIP_KEYS.count { key -> isResolvedTextKey(key) }
+    }
+
     private fun spawnAod7Projectile(engine: CombatEngineAPI, ship: ShipAPI, weapon: WeaponAPI) {
         val location = Vector2f(projectilePreviewAnchor)
         val velocity = Vector2f(ship.velocity ?: Vector2f())
@@ -536,7 +675,12 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         state: String,
         ship: ShipAPI? = findArcFlare(engine),
     ) {
-        if (!ASTDInGameAutomationScenario.isEnabled() && !ASTDInGameAutomationScenario.isArcProductionEnabled()) return
+        if (!ASTDInGameAutomationScenario.isEnabled() &&
+            !ASTDInGameAutomationScenario.isArcProductionEnabled() &&
+            !ASTDInGameAutomationScenario.isLensPhase1Enabled()
+        ) {
+            return
+        }
 
         val displayMode = try { Display.getDisplayMode() } catch (_: Throwable) { null }
         val displayWidth = try { Display.getWidth() } catch (_: Throwable) { -1 }
@@ -545,10 +689,10 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         val viewport = engine.viewport
         val shipSprite = try { ship?.spriteAPI } catch (_: Throwable) { null }
         val runtime = ASTDProjectileVfxRuntimeTelemetry.snapshot()
-        val scenarioId = if (ASTDInGameAutomationScenario.isArcProductionEnabled()) {
-            ASTDInGameAutomationScenario.ARC_PRODUCTION_SCENARIO_ID
-        } else {
-            ASTDInGameAutomationScenario.SCENARIO_ID
+        val scenarioId = when {
+            ASTDInGameAutomationScenario.isLensPhase1Enabled() -> ASTDInGameAutomationScenario.LENS_PHASE1_SCENARIO_ID
+            ASTDInGameAutomationScenario.isArcProductionEnabled() -> ASTDInGameAutomationScenario.ARC_PRODUCTION_SCENARIO_ID
+            else -> ASTDInGameAutomationScenario.SCENARIO_ID
         }
         val json = buildString {
             appendLine("{")
@@ -573,7 +717,31 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             appendLine("  \"shipSpriteCenterX\": ${formatFloat(shipSprite?.centerX ?: -1f)},")
             appendLine("  \"shipSpriteCenterY\": ${formatFloat(shipSprite?.centerY ?: -1f)},")
             appendLine("  \"failureReason\": ${jsonString(failureReason)},")
-            if (ASTDInGameAutomationScenario.isArcProductionEnabled()) {
+            if (ASTDInGameAutomationScenario.isLensPhase1Enabled()) {
+                val lens = findShipByHull(engine, LensArrayCoreHullModIds.HULL_ID)
+                val lensVariant = try { lens?.variant } catch (_: Throwable) { null }
+                val lensShield = try { lens?.shield } catch (_: Throwable) { null }
+                appendLine("  \"runtimeElapsedSeconds\": 0,")
+                appendLine("  \"runtimeVisibleLength\": 0,")
+                appendLine("  \"runtimeBeamAlpha\": 0,")
+                appendLine("  \"runtimeWorldUnitsPerPixel\": 0,")
+                appendLine("  \"runtimeTrackedCount\": 0,")
+                appendLine("  \"runtimeLastProjectileSpecId\": null,")
+                appendLine("  \"runtimeLastPresetId\": null,")
+                appendLine("  \"referenceVisibleLength\": 0,")
+                appendLine("  \"lensDeployedShipIds\": ${jsonStringList(lensDeployedShipIds(engine))},")
+                appendLine("  \"lensCoreHullmod\": ${safeBool { lensVariant?.hasHullMod(LensArrayCoreHullModIds.CORE) == true }},")
+                appendLine("  \"lensNanoHullmod\": ${safeBool { lensVariant?.hasHullMod("astd_nano_restoration_protocol") == true }},")
+                appendLine("  \"lensSwitcherHullmod\": ${safeBool { lensVariant?.hasHullMod(LensArrayCoreHullModIds.SWITCHER) == true }},")
+                appendLine("  \"lensCrewedModeHullmod\": ${safeBool { lensVariant?.hasHullMod(LensArrayCoreHullModIds.MODE_CREWED) == true }},")
+                appendLine("  \"lensShieldOn\": ${safeBool { lensShield?.isOn == true }},")
+                appendLine("  \"lensShieldArc\": ${formatFloat(try { lensShield?.arc ?: lens?.hullSpec?.shieldSpec?.arc ?: 0f } catch (_: Throwable) { 0f })},")
+                appendLine("  \"lensFighterBays\": ${try { lens?.hullSpec?.fighterBays ?: 0 } catch (_: Throwable) { 0 }},")
+                appendLine("  \"lensCoreTooltipKeys\": ${lensCoreTooltipKeyCount(engine)},")
+                appendLine("  \"lensSelfDriftStacks\": ${lens?.let { LensMarks.driftStacks(it) } ?: 0},")
+                appendLine("  \"lensSelfDeepWaterStacks\": ${lens?.let { LensMarks.deepWaterStacks(it) } ?: 0},")
+                appendLine("  \"lensSelfHullDamageTakenMult\": ${formatFloat(try { lens?.mutableStats?.hullDamageTakenMult?.modifiedValue ?: 0f } catch (_: Throwable) { 0f })},")
+            } else if (ASTDInGameAutomationScenario.isArcProductionEnabled()) {
                 val plasmaArch = findShipByHull(engine, ASTDArcProductionShipIds.HULL_PLASMA_ARCH)
                 val plasmaSystem = plasmaArch?.system
                 val plasmaSpec = plasmaSystem?.specAPI
@@ -823,6 +991,18 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             ASTDArcProductionShipIds.HULL_ARC_JET,
             ASTDArcProductionShipIds.HULL_PLASMA_ARCH,
             ASTDArcProductionShipIds.HULL_RADIATION_BELT,
+        )
+        // 引力透镜级自标记验收层数（spec：误差/深水各叠 3 层）。
+        private const val LENS_SELF_MARK_STACKS = 3
+        // 透镜阵列核心 hullmod tooltip 文本 key（与 ASTDLensArrayCoreHullMod.addPostDescriptionSection 一致，共 7 个）。
+        private val LENS_CORE_TOOLTIP_KEYS = listOf(
+            "ui.hullmod.lens_core.summary",
+            "ui.hullmod.lens_core.line.1",
+            "ui.hullmod.lens_core.line.2",
+            "ui.hullmod.lens_core.line.3",
+            "ui.hullmod.lens_core.line.4",
+            "ui.hullmod.lens_core.line.5",
+            "ui.hullmod.lens_core.line.6",
         )
         private val ARC_PRODUCTION_STANDARD_VARIANTS = mapOf(
             ASTDArcProductionShipIds.HULL_ARC_JET to "astd_arc_jet_Standard",

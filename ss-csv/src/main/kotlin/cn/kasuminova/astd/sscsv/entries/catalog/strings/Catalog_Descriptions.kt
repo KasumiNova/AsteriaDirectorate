@@ -52,6 +52,8 @@ object Desc_astd_arc_shared_flux_network : LocalizedDescription("astd_arc_shared
 object Desc_astd_plasma_armor_shield_boost : LocalizedDescription("astd_plasma_armor_shield_boost", "SHIP_SYSTEM")
 object Desc_astd_limit_temporal_thruster : LocalizedDescription("astd_limit_temporal_thruster", "SHIP_SYSTEM")
 object Desc_astd_stellar_jet : LocalizedDescription("astd_stellar_jet", "SHIP_SYSTEM")
+object Desc_astd_echo_fixation_crewed : LocalizedDescription("astd_echo_fixation_crewed", "SHIP_SYSTEM")
+object Desc_astd_echo_fixation_automated : LocalizedDescription("astd_echo_fixation_automated", "SHIP_SYSTEM")
 
 object Desc_astd_arc13 : LocalizedDescription("astd_arc13", "WEAPON")
 object Desc_astd_drv11 : LocalizedDescription("astd_drv11", "WEAPON")

@@ -184,11 +184,17 @@ tasks.register<Exec>("smokeTestLauncher") {
     commandLine("bash", "tools/smoke_test_game_launch.sh", starsectorGameDir, "30", "launcher")
 }
 
+// automation 场景可由外部 ASTD_AUTOMATION_SCENARIO 环境变量覆盖（默认 ARC production，
+// 保持既有行为）；阶段一引力透镜场景通过 ASTD_AUTOMATION_SCENARIO=lens_phase1_foundation 启动。
+val smokeTestScenario: String =
+    (System.getenv("ASTD_AUTOMATION_SCENARIO")?.takeIf { it.isNotBlank() })
+        ?: "arc_production_ships_vfx_tooltip"
+
 tasks.register<Exec>("launchSmokeTestGame") {
     group = "verification"
-    description = "部署模组并通过 SSOptimizer automation 路径启动 ARC production 实机场景。"
+    description = "部署模组并通过 SSOptimizer automation 路径启动实机场景（默认 ARC production，可由 ASTD_AUTOMATION_SCENARIO 覆盖）。"
     dependsOn("deployMod")
-    environment("ASTD_AUTOMATION_SCENARIO", "arc_production_ships_vfx_tooltip")
+    environment("ASTD_AUTOMATION_SCENARIO", smokeTestScenario)
     commandLine("bash", "tools/smoke_test_game_launch.sh", starsectorGameDir, "120", "automation")
 }
 

@@ -37,6 +37,30 @@
         "plasmaArchTooltipKeys",
         "radiationBeltTooltipKeys"
       ]
+    },
+    {
+      "id": "lens_phase1_foundation",
+      "missionId": "lens_phase1_foundation",
+      "shipIds": [
+        "astd_gravitational_lens"
+      ],
+      "variantIds": [
+        "astd_gravitational_lens_Standard"
+      ],
+      "requiredEvidence": [
+        "lensDeployedShipIds",
+        "lensCoreHullmod",
+        "lensNanoHullmod",
+        "lensSwitcherHullmod",
+        "lensCrewedModeHullmod",
+        "lensShieldOn",
+        "lensShieldArc",
+        "lensFighterBays",
+        "lensCoreTooltipKeys",
+        "lensSelfDriftStacks",
+        "lensSelfDeepWaterStacks",
+        "lensSelfHullDamageTakenMult"
+      ]
     }
   ]
 }
