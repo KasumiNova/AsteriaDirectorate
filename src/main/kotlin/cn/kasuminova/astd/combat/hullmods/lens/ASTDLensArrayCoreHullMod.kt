@@ -1,7 +1,12 @@
 package cn.kasuminova.astd.combat.hullmods.lens
 
 import cn.kasuminova.astd.combat.hullmods.base.ASTDHullModTooltipRenderer
+import cn.kasuminova.astd.combat.lens.marks.LensMarkMath
+import cn.kasuminova.astd.combat.lens.marks.LensMarks
 import cn.kasuminova.astd.combat.lens.ui.LensMarkStatusBar
+import cn.kasuminova.astd.renderer.effect.lens.DeepWaterMarkVisualEffect
+import cn.kasuminova.astd.renderer.effect.lens.DriftMarkVisualEffect
+import cn.kasuminova.astd.renderer.shader.runtime.CombatShaderRuntime
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseHullMod
 import com.fs.starfarer.api.combat.CombatEngineAPI
@@ -82,9 +87,11 @@ class ASTDLensArrayCoreHullMod : BaseHullMod() {
         val engine = Global.getCombatEngine() ?: return
         if (engine.isPaused || amount <= 0f || ship.isHulk) return
 
-        // 标记状态栏：仅玩家船每帧维护一次。
+        // 标记状态栏 + 标记高光：仅玩家船每帧维护一次（全场遍历语义，不依赖具体哪条透镜船；
+        // 经玩家船单点驱动避免多条透镜船重复提交同一敌舰的高光）。
         if (ship === engine.playerShip) {
             LensMarkStatusBar.maintain(engine)
+            submitMarkHighlights(engine)
         }
 
         if (!ship.isGravitationalLensShip()) return
@@ -111,6 +118,44 @@ class ASTDLensArrayCoreHullMod : BaseHullMod() {
             }
             interval.advance(amount)
             if (interval.intervalElapsed()) intelligenceHub(ship, engine)
+        }
+    }
+
+    /**
+     * 标记高光（每帧，spec §1.1 + Task 8）：遍历全场存活非残骸舰船，对带误差标记者提交紫罗兰
+     * 高光环、带深水标记者提交红色高光环，强度按层数。
+     *
+     * 每帧提交（而非随幽灵信号/ECM 的 IntervalUtil 节流）的依据：高光走 keyed upsert，runtime 以
+     * staleAfter（0.18s）回收久未刷新的实例——若塞进 0.25s/1s 的 interval，刷新周期会超过 staleAfter
+     * 导致实例反复过期/重建而闪烁。故必须每帧 upsert 维持实例存活。
+     *
+     * per-ship instanceId 前缀（"drift-" / "deepwater-"）区分两类，避免同船两标记串扰；标记只会打在
+     * 敌舰上，此处按层数 >0 提交即可，无需额外阵营过滤。
+     */
+    private fun submitMarkHighlights(engine: CombatEngineAPI) {
+        val sink = CombatShaderRuntime.ensure(engine).sink
+        for (target in engine.ships) {
+            if (target == null || target.isHulk || target.isFighter) continue
+
+            val driftStacks = LensMarks.driftStacks(target)
+            if (driftStacks > 0) {
+                DriftMarkVisualEffect.submitFrame(
+                    sink = sink,
+                    instanceId = "drift-${System.identityHashCode(target)}",
+                    center = target.location,
+                    frame = DriftMarkVisualEffect.frame(target.collisionRadius, driftStacks, LensMarkMath.MAX_STACKS),
+                )
+            }
+
+            val deepWaterStacks = LensMarks.deepWaterStacks(target)
+            if (deepWaterStacks > 0) {
+                DeepWaterMarkVisualEffect.submitFrame(
+                    sink = sink,
+                    instanceId = "deepwater-${System.identityHashCode(target)}",
+                    center = target.location,
+                    frame = DeepWaterMarkVisualEffect.frame(target.collisionRadius, deepWaterStacks, LensMarkMath.MAX_STACKS),
+                )
+            }
         }
     }
 
