@@ -1154,7 +1154,7 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 
 ---
 
-## Task 12: 全量测试 + 部署冒烟
+## Task 12: 全量单元测试 + 部署 + 启动烟测
 
 **Files:** 无（验证任务）
 
@@ -1168,27 +1168,325 @@ Expected: BUILD SUCCESSFUL，含 `LensMarkMathTest`(4) + `LensEcmContributionTes
 Run: `./gradlew deployMod`
 Expected: BUILD SUCCESSFUL，`mods/ASTD` 下 jar 更新。
 
-- [ ] **Step 3: Game-launch smoke test (dev mode)**
+- [ ] **Step 3: Launcher smoke test（确认无加载崩溃）**
 
-Run: `./gradlew runSmokeLaunch` （若该 task 存在；否则手动启动游戏到主菜单确认无加载崩溃——重点看 starsector.log 无 `astd_lens_*` 相关 csv/类加载错误）。
-Expected: 进主菜单无崩溃；日志无 `astd_lens_array_core`/`astd_lens_mode_*` 加载报错。
+Run: `./gradlew smokeTestLauncher`
+Expected: PASS；日志无 `astd_lens_array_core`/`astd_lens_mode_*` 相关 csv/类加载错误（脚本会扫描 `astd_*` 数据缺失与 Asteria 类加载错误）。
 
-- [ ] **Step 4: In-game manual verification checklist（记录结果，不通过则回报）**
-
-逐项确认：
-1. refit 引力透镜级：透镜阵列核心、纳米重构、双模式切换器三个内置插件可见。
-2. 双模式切换器在 refit 可轮换无人/载人，系统名随之变化（系统本体阶段二做，此处确认模式 tag 切换不报错）。
-3. 进战斗：4 个机库可部署舰载机（4 甲板）；护盾为 OMNI。
-4. 给透镜旗舰挂上误差/深水标记的临时测试手段（阶段二系统前，可用 devmode 或临时挂 affix）——确认玩家船带标记时左侧状态栏出现“误差标记 N 层 / 深水标记 N 层”。
-5. 载人模式下有友军在场时，透镜旗舰 ECM 等级随友军数量提升（看 tooltip/战斗 UI ECM 指示）。
-
-> 第 4 项依赖阶段二系统才能自然铺标记；阶段一允许用临时手段验证状态栏与 applier。如无临时手段，记录“待阶段二系统联调验证”。
-
-- [ ] **Step 5: Final commit (if any tweaks from smoke test)**
+- [ ] **Step 4: Commit (if any tweaks)**
 
 ```bash
 git add -A
-git commit -m "fix(lens): phase-1 smoke test adjustments
+git commit -m "test(lens): phase-1 unit + launcher smoke pass
+
+Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
+```
+
+---
+
+## Task 13: SSOptimizer 实机集成测试验收
+
+**Files:**
+- Modify: `contents/data/config/astd_automation_scenarios.json`
+- Create: `contents/data/missions/lens_phase1_foundation/MissionDefinition.java`
+- Create: `contents/data/missions/lens_phase1_foundation/descriptor.json`
+- Create: `contents/data/missions/lens_phase1_foundation/mission_text.txt`
+- Modify: `src/main/kotlin/cn/kasuminova/astd/internal/debug/ASTDInGameAutomationScenario.kt`
+- Modify: `src/main/kotlin/cn/kasuminova/astd/combat/effect/generic/ASTDAutomationCombatPlugin.kt`
+- Modify: `tools/verify_ingame_vfx_automation.py`
+
+> 用项目现成的 SSOptimizer automation 框架（先例：`arc_production_ships_vfx_tooltip`）为阶段一新增一个实机场景 `lens_phase1_foundation`。框架能直接读 `ShipAPI` 状态（`hasHullMod`/`shield.isOn`/`shield.activeArc`/部署列表/tooltip key 数），写 telemetry JSON，由 python 校验。
+>
+> **阶段一可断言的实机证据**（不依赖阶段二系统）：
+> 1. 引力透镜级成功部署（`lensDeployedShipIds` 含 `astd_gravitational_lens`）。
+> 2. 三个内置 hullmod 挂载：`astd_lens_array_core` / `astd_nano_restoration_protocol` / `astd_lens_mode_switcher`。
+> 3. 双模式：载人模式 hullmod `astd_lens_mode_crewed` 挂载（默认载人）。
+> 4. 护盾为 OMNI 且可开启：`lensShieldOn`==true、`lensShieldArc`>=200（OMNI 240）。
+> 5. 4 甲板：`lensFighterBays`==4（读 `ship.launchBaysCopy`/`hullSpec` 甲板数）。
+> 6. 核心 hullmod tooltip key 解析：`lensCoreTooltipKeys`>=7（Task 8 加了 7 行 ui.hullmod.lens_core.*）。
+> 7. 标记 applier 生效（用插件内测试钩子主动叠标记验证）：场景插件对引力透镜级**自身**调 `LensMarks.applyDriftMark`+`applyDeepWaterMark` 各叠 3 层，断言 `lensSelfDriftStacks`==3、`lensSelfDeepWaterStacks`==3，且 `lensSelfDamageTakenMult`>1（误差标记 applier 真的改了 damageTakenMult）。
+
+- [ ] **Step 1: Add scenario to automation config**
+
+在 `contents/data/config/astd_automation_scenarios.json` 的 `scenarios` 数组末尾追加：
+
+```json
+    {
+      "id": "lens_phase1_foundation",
+      "missionId": "lens_phase1_foundation",
+      "shipIds": ["astd_gravitational_lens"],
+      "variantIds": ["astd_gravitational_lens_Standard"],
+      "requiredEvidence": [
+        "lensCoreHullmod",
+        "lensNanoHullmod",
+        "lensSwitcherHullmod",
+        "lensCrewedModeHullmod",
+        "lensShieldOn",
+        "lensShieldArc",
+        "lensFighterBays",
+        "lensCoreTooltipKeys",
+        "lensSelfDriftStacks",
+        "lensSelfDeepWaterStacks",
+        "lensSelfDamageTakenMult"
+      ]
+    }
+```
+
+- [ ] **Step 2: Create mission files**
+
+`contents/data/missions/lens_phase1_foundation/MissionDefinition.java`：
+
+```java
+package data.missions.lens_phase1_foundation;
+
+import cn.kasuminova.astd.combat.effect.generic.ASTDAutomationCombatPlugin;
+import com.fs.starfarer.api.fleet.FleetGoal;
+import com.fs.starfarer.api.fleet.FleetMemberType;
+import com.fs.starfarer.api.mission.FleetSide;
+import com.fs.starfarer.api.mission.MissionDefinitionAPI;
+import com.fs.starfarer.api.mission.MissionDefinitionPlugin;
+
+public final class MissionDefinition implements MissionDefinitionPlugin {
+    @Override
+    public void defineMission(final MissionDefinitionAPI api) {
+        api.initFleet(FleetSide.PLAYER, "ASTD", FleetGoal.ATTACK, false, 5);
+        api.initFleet(FleetSide.ENEMY, "DRONE", FleetGoal.ATTACK, true, 5);
+
+        api.setFleetTagline(FleetSide.PLAYER, "ASTD automation: Gravitational Lens phase-1");
+        api.setFleetTagline(FleetSide.ENEMY, "Automation target fleet");
+
+        api.addToFleet(FleetSide.PLAYER, "astd_gravitational_lens_Standard", FleetMemberType.SHIP, true);
+        // 友军用于 ECM 累加（不强断言，仅提供集群上下文）。
+        api.addToFleet(FleetSide.PLAYER, "wolf_Assault", FleetMemberType.SHIP, false);
+        api.addToFleet(FleetSide.ENEMY, "lasher_Standard", FleetMemberType.SHIP, false);
+
+        api.defeatOnShipLoss("ASTD astd_gravitational_lens");
+        api.addBriefingItem("Deploy Gravitational Lens; verify hullmods, shield, bays, marks.");
+
+        api.initMap(-9000f, 9000f, -6000f, 6000f);
+        api.setBackgroundSpriteName("graphics/backgrounds/background2.jpg");
+        api.addPlugin(new ASTDAutomationCombatPlugin());
+    }
+}
+```
+
+`contents/data/missions/lens_phase1_foundation/descriptor.json`：
+
+```json
+{
+  "name": "ASTD Gravitational Lens Phase-1 Verification",
+  "description": "In-game automation: lens core hullmods, OMNI shield, 4 bays, mark applier.",
+  "author": "Kasuminova",
+  "version": "0.1"
+}
+```
+
+`contents/data/missions/lens_phase1_foundation/mission_text.txt`：
+
+```
+"Gravitational Lens Phase-1 Automation Test"
+```
+
+- [ ] **Step 3: Add scenario helper**
+
+在 `src/main/kotlin/cn/kasuminova/astd/internal/debug/ASTDInGameAutomationScenario.kt` 的 object 内（`isArcProductionEnabled` 之后）加入：
+
+```kotlin
+    const val LENS_PHASE1_SCENARIO_ID: String = "lens_phase1_foundation"
+
+    fun isLensPhase1Enabled(): Boolean {
+        val enabled = System.getProperty(ENABLED_PROPERTY)?.equals("true", ignoreCase = true) == true
+        val scenario = System.getProperty(SCENARIO_PROPERTY, SCENARIO_ID)
+        return enabled && scenario == LENS_PHASE1_SCENARIO_ID
+    }
+```
+
+- [ ] **Step 4: Add combat plugin scenario branch**
+
+在 `ASTDAutomationCombatPlugin.kt`：
+
+(a) `import`：
+```kotlin
+import cn.kasuminova.astd.combat.lens.marks.LensMarks
+import cn.kasuminova.astd.combat.hullmods.lens.isGravitationalLensShip
+```
+
+(b) `init(engine)` 中，在 arc production 分支后追加：
+```kotlin
+        if (ASTDInGameAutomationScenario.isLensPhase1Enabled()) {
+            engine.setDoNotEndCombat(true)
+            arrangeLensPhase1Ships(engine)
+            writeTelemetry(engine, "CombatReady", lensPhase1TelemetryShip(engine), null)
+            log.info("[ASTD-Automation] scenario=${ASTDInGameAutomationScenario.LENS_PHASE1_SCENARIO_ID} combat plugin initialized")
+            return
+        }
+```
+
+(c) `advance(amount, events)` 中，在其它场景分支前追加 lens 分支（参照 arc production 的状态机写法）：
+```kotlin
+        if (ASTDInGameAutomationScenario.isLensPhase1Enabled()) {
+            advanceLensPhase1Scenario(engine, amount)
+            return
+        }
+```
+
+(d) 新增方法（放在 arc production 方法群附近）：
+```kotlin
+    private fun findGravitationalLens(engine: CombatEngineAPI): ShipAPI? {
+        for (ship in engine.ships) {
+            if (ship != null && ship.isGravitationalLensShip() && !ship.isFighter) return ship
+        }
+        return null
+    }
+
+    private fun lensPhase1TelemetryShip(engine: CombatEngineAPI): ShipAPI? = findGravitationalLens(engine)
+
+    private fun arrangeLensPhase1Ships(engine: CombatEngineAPI) {
+        // 强制部署储备，确保引力透镜级在场（参照 arc production 的部署逻辑）。
+        try {
+            val player = engine.fleetManager(0)
+            player?.let {
+                it.setSuppressDeploymentMessages(true)
+                for (member in it.reservesCopy) {
+                    it.deployFleetMember(member, 0f, 0f, 0f)
+                }
+            }
+        } catch (_: Throwable) {}
+    }
+
+    private var lensMarksInjected = false
+
+    private fun advanceLensPhase1Scenario(engine: CombatEngineAPI, amount: Float) {
+        elapsed += amount
+        val lens = findGravitationalLens(engine)
+
+        // 1.0s 后对引力透镜级自身注入测试标记（验证 applier，仅一次）。
+        if (!lensMarksInjected && lens != null && elapsed > 1.0f) {
+            LensMarks.applyDriftMark(engine, lens, lens, addStacks = 3)
+            LensMarks.applyDeepWaterMark(engine, lens, lens, addStacks = 3)
+            lensMarksInjected = true
+        }
+
+        val state: String = when {
+            lens == null && elapsed > 8f -> "Failed"
+            lensMarksInjected && elapsed > 2.0f -> "Completed"
+            else -> "CombatReady"
+        }
+        writeTelemetry(engine, state, lens, null)
+    }
+```
+
+(e) 在 `writeDiagnostics`/`writeTelemetry` 收集证据处，为 lens 场景补充字段。找到 arc production 写诊断字段的位置，加入 lens 分支（用 ship 状态查询；tooltip key 数复用 arc production 同款的 hullmod tooltip key 解析工具）：
+```kotlin
+        if (ASTDInGameAutomationScenario.isLensPhase1Enabled()) {
+            val lens = findGravitationalLens(engine)
+            put("lensDeployedShipIds", engine.ships.filter { it != null && !it.isFighter }.mapNotNull { it.hullSpec?.hullId })
+            put("lensCoreHullmod", lens?.variant?.hasHullMod("astd_lens_array_core") == true)
+            put("lensNanoHullmod", lens?.variant?.hasHullMod("astd_nano_restoration_protocol") == true)
+            put("lensSwitcherHullmod", lens?.variant?.hasHullMod("astd_lens_mode_switcher") == true)
+            put("lensCrewedModeHullmod", lens?.variant?.hasHullMod("astd_lens_mode_crewed") == true)
+            put("lensShieldOn", lens?.shield?.isOn == true || (lens?.shield != null))
+            put("lensShieldArc", lens?.shield?.activeArc ?: 0f)
+            put("lensFighterBays", lens?.launchBaysCopy?.size ?: 0)
+            put("lensCoreTooltipKeys", resolveHullmodTooltipKeyCount("astd_lens_array_core"))
+            put("lensSelfDriftStacks", lens?.let { LensMarks.driftStacks(it) } ?: 0)
+            put("lensSelfDeepWaterStacks", lens?.let { LensMarks.deepWaterStacks(it) } ?: 0)
+            put("lensSelfDamageTakenMult", lens?.mutableStats?.damageTakenMult?.modifiedValue ?: 1f)
+        }
+```
+
+> 说明：`put(...)` 指现有 diagnostics/telemetry 的字段写入方式（按 `ASTDAutomationCombatPlugin.kt` 中 arc production 现有写法对齐——若用的是 `JSONObject` 则 `obj.put`，若用的是 map builder 则对应方法）。`resolveHullmodTooltipKeyCount` 指现有解析 hullmod tooltip key 数的工具（arc production 已有 `*TooltipKeys` 证据，复用同一函数；若该函数名不同，按实际名调用）。`lens.shield.activeArc` 在盾未开时可能为 0，故 `lensShieldOn` 用“有 shield 组件即视为具备 OMNI 盾”，`lensShieldArc` 读 hullSpec 的盾弧更稳：若 `activeArc` 不稳定，改读 `lens.hullSpec.shieldSpec` 或 `lens.shield.arc`（按编译可用字段）。
+
+- [ ] **Step 5: Add verify script branch**
+
+在 `tools/verify_ingame_vfx_automation.py` 顶部常量区加入：
+
+```python
+LENS_PHASE1_SCENARIO = "lens_phase1_foundation"
+LENS_PHASE1_REQUIRED_SHIP_IDS = ("astd_gravitational_lens",)
+LENS_PHASE1_BOOLEAN_EVIDENCE = (
+    "lensCoreHullmod",
+    "lensNanoHullmod",
+    "lensSwitcherHullmod",
+    "lensCrewedModeHullmod",
+    "lensShieldOn",
+)
+LENS_PHASE1_MIN_NUMERIC = {
+    "lensShieldArc": 200.0,
+    "lensFighterBays": 4.0,
+    "lensCoreTooltipKeys": 7.0,
+    "lensSelfDriftStacks": 3.0,
+    "lensSelfDeepWaterStacks": 3.0,
+    "lensSelfDamageTakenMult": 1.0001,
+}
+```
+
+加入验证函数：
+
+```python
+def _verify_lens_phase1(data: dict) -> int:
+    errors: list[str] = []
+    if data.get("scenario") != LENS_PHASE1_SCENARIO:
+        errors.append(f"scenario: expected {LENS_PHASE1_SCENARIO!r}, got {data.get('scenario')!r}")
+    if data.get("state") != "Completed":
+        errors.append(f"state: expected 'Completed', got {data.get('state')!r}")
+
+    deployed = data.get("lensDeployedShipIds", [])
+    for ship_id in LENS_PHASE1_REQUIRED_SHIP_IDS:
+        if ship_id not in deployed:
+            errors.append(f"lensDeployedShipIds: missing {ship_id!r} (got {deployed!r})")
+
+    for key in LENS_PHASE1_BOOLEAN_EVIDENCE:
+        if data.get(key) is not True:
+            errors.append(f"{key}: expected true, got {data.get(key)!r}")
+
+    for key, minimum in LENS_PHASE1_MIN_NUMERIC.items():
+        try:
+            value = float(data.get(key))
+        except (TypeError, ValueError):
+            errors.append(f"{key}: expected number >= {minimum}, got {data.get(key)!r}")
+            continue
+        if value < minimum:
+            errors.append(f"{key}: expected >= {minimum}, got {value}")
+
+    if errors:
+        print("FAIL ASTD Gravitational Lens phase-1 automation evidence")
+        for error in errors:
+            print(f"- {error}")
+        return 1
+    print("PASS ASTD Gravitational Lens phase-1 automation evidence")
+    return 0
+```
+
+在 `verify()` 的场景分发处（与 arc production / aod7 分支并列）加入：
+
+```python
+    if data.get("scenario") == LENS_PHASE1_SCENARIO:
+        return _verify_lens_phase1(data)
+```
+
+- [ ] **Step 6: Compile + run the integration test**
+
+Run:
+```bash
+./gradlew compileKotlin
+ASTD_AUTOMATION_SCENARIO=lens_phase1_foundation ./gradlew smokeTestGame
+```
+Expected:
+- `launchSmokeTestGame` 启动真实游戏跑 `lens_phase1_foundation` 场景，输出 `${gameDir}/ssoptimizer-automation-output/astd-ingame-automation-telemetry.json`。
+- `verifySmokeTestGameEvidence` 调 python 校验，打印 `PASS ASTD Gravitational Lens phase-1 automation evidence`，gradle BUILD SUCCESSFUL。
+
+> 若 telemetry 字段缺失/为 0（如 `lensFighterBays`!=4 或 `lensSelfDriftStacks`!=3），按 FAIL 输出的具体字段回溯：甲板数→Task 10 LAUNCH_BAY；标记→Task 3 applier / Task 13 注入；hullmod→Task 9 csv / Task 10 builtInMods。修复后重跑。
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add contents/data/config/astd_automation_scenarios.json \
+        contents/data/missions/lens_phase1_foundation/ \
+        src/main/kotlin/cn/kasuminova/astd/internal/debug/ASTDInGameAutomationScenario.kt \
+        src/main/kotlin/cn/kasuminova/astd/combat/effect/generic/ASTDAutomationCombatPlugin.kt \
+        tools/verify_ingame_vfx_automation.py
+git commit -m "test(lens): SSOptimizer in-game integration scenario for phase-1 foundation
 
 Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ```
