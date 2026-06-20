@@ -225,6 +225,14 @@
 		"ui.hullmod.nano.line.5": "· 过载 / 强制排辐结束后的 <param:#FFE024:5> 秒内，修复速率和上限 <param:#FFE024:翻倍>。",
 		"ui.hullmod.nano.line.6": "修复速率受到难度系数缩放影响。",
 
+		"ui.hullmod.lens_core.summary": "<param:#C8A0FF:阿斯忒里亚遗构局> 透镜协议旗舰的指挥中枢。真相只是一个可调节的变量。",
+		"ui.hullmod.lens_core.line.1": "· 纳米重构协议：紫线特化，装甲修复优先。",
+		"ui.hullmod.lens_core.line.2": "· 双模式：无人（全域拓扑态）/ 载人（宏观锚定态）。",
+		"ui.hullmod.lens_core.line.3": "· 无人·蜂群思维：舰载机射程、导弹机动、最大航速各 <param:#C8A0FF:+20%>。",
+		"ui.hullmod.lens_core.line.4": "· 无人·幽灵信号：~2000su 内敌方导弹 <param:#C8A0FF:50%> 概率失去制导。",
+		"ui.hullmod.lens_core.line.5": "· 载人·情报中枢：按友军吨位等级提供全队 ECM（吨位越小贡献越大）。",
+		"ui.hullmod.lens_core.line.6": "· 载人·战术链路：对带误差标记的目标造成额外伤害。",
+
 		"ui.hullmod.arc_advanced_fire_control.summary": "<param:#FF9600:阿斯忒里亚遗构局> 弧光喷流的主炮回路接入舰体反应堆。火控阵列在高压交火中保持锋利节律。",
 		"ui.hullmod.arc_advanced_fire_control.attr.weapon_flux": "主武器辐能压力",
 		"ui.hullmod.arc_advanced_fire_control.value.weapon_flux": "常态+20%；满层后相对基础-40%",
