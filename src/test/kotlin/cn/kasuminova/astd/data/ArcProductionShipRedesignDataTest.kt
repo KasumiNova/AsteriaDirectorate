@@ -68,6 +68,8 @@ class ArcProductionShipRedesignDataTest {
                 maxFlux = 6500,
                 fluxDissipation = 500,
                 maxSpeed = 95,
+                shieldType = "OMNI",
+                shieldArc = 200,
                 shieldEfficiency = 0.70,
                 peakCrSec = 360,
                 systemId = "astd_limit_temporal_thruster",

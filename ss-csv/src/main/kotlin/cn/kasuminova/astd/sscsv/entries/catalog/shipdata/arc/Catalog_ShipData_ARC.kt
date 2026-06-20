@@ -238,8 +238,8 @@ object Ship_astd_radiation_belt : ShipDataEntry() {
     override val maxTurnRate: Int = 30
     override val turnAcceleration: Int = 60
     override val mass: Int = 8000
-    override val shieldType: String = "FRONT"
-    override val shieldArc: Int = 120
+    override val shieldType: String = "OMNI"
+    override val shieldArc: Int = 200
     override val shieldUpkeep: Double = 0.6
     override val shieldEfficiency: Double = 0.70
     override val minCrew: Int = 50
