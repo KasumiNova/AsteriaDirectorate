@@ -23,10 +23,12 @@ import kotlin.math.sin
  * 这是经其它模组（如 Galactic_Constellate 的 gr_Nunki）验证可用的做法——关键是**每帧重设**
  * （原版会重算，所以必须每帧覆盖）。
  *
- * level 计算（不依赖 getContribution，避免其在 AI 船/静止时恒 0 导致“全部停在最小”）：
- * - 由引擎喷射方向（slot.angle）推出该引擎的推力轴，与当前运动意图（加速/减速/横移/转向）
- *   做点积，决定该引擎该不该“出力”。
- * - 设有怠速基线 IDLE_FLAME，保证引擎始终可见、且静止时不全灭。
+ * level 计算（contribution 为主 + 方向意图兜底）：
+ * - 主信号 getContribution()：原版每帧算好的该引擎真实出力，**天然包含侧推/转向/平移**
+ *   的全部逻辑，与原版视觉一致。这是侧推引擎在转向时能正确点亮的关键。
+ * - 兜底信号：由引擎喷射方向（slot.angle）+ 力臂推出的方向意图对齐度，覆盖 contribution
+ *   在某些情况下恒 0 的退化场景，保证至少 WASD/转向有反应。
+ * - 取两者较大值；设怠速基线 IDLE_FLAME 保证引擎始终可见、静止时不全灭。
  *
  * 生效范围：所有 hullId 以 "astd_" 开头的舰船（含变体/D-mod，见 isASTDShip）。
  * 安装入口：经 CombatVfxBootstrap，由全局 ASTDGlobalCombatPlugin 每场战斗安装（不依赖武器）。
@@ -234,6 +236,21 @@ internal object ASTDVectorThrustEngineManager {
                 if (m > maxMoment) maxMoment = m
             }
 
+            // 判断 contribution 信号本帧是否“有效”：只要有任一引擎 contribution 明显>0，
+            // 就信任原版信号（它含侧推/转向/平移，最准）；否则全船退化，用方向意图兜底。
+            var contribActive = false
+            for (st in att.engines) {
+                val c = try {
+                    st.engine.contribution
+                } catch (_: Throwable) {
+                    0f
+                }
+                if (c > 0.05f) {
+                    contribActive = true
+                    break
+                }
+            }
+
             val lerp = (LERP_PER_SEC * amount).coerceIn(0f, 1f)
 
             for (st in att.engines) {
@@ -246,19 +263,24 @@ internal object ASTDVectorThrustEngineManager {
 
                 val target: Float = if (!usable) {
                     0f
+                } else if (contribActive) {
+                    // 信任原版 contribution（含侧推/转向/平移）。该引擎在出力则亮，否则收暗。
+                    val contribution = try {
+                        engine.contribution
+                    } catch (_: Throwable) {
+                        0f
+                    }.coerceIn(0f, 1f)
+                    LOW_FLAME + (FULL_FLAME - LOW_FLAME) * contribution
                 } else if (!hasIntent) {
                     IDLE_FLAME
                 } else {
-                    // 平移对齐度：该引擎推力轴与平移意图的点积（-1..1）。
+                    // 退化兜底：方向意图模型（平移点积 + 转向力矩）。
                     val align = st.thrustAxisX * nIntentX + st.thrustAxisY * nIntentY
-                    // 转向对齐度：该引擎力矩方向与转向意图一致则为正（-1..1）。
-                    // turnIntent>0=左转(逆时针)，turnMoment>0 也是逆时针贡献 -> 同号即出力。
                     val turnAlign = if (hasTurn) {
                         (st.turnMoment / maxMoment) * turnIntent
                     } else {
-                        -1f // 无转向意图时，转向分支不贡献（取最低，由 max 让平移接管）
+                        -1f
                     }.coerceIn(-1f, 1f)
-                    // 取平移与转向中更“出力”的一方。
                     val combined = max(align, turnAlign)
                     val norm = ((combined + 1f) * 0.5f).coerceIn(0f, 1f)
                     LOW_FLAME + (FULL_FLAME - LOW_FLAME) * norm
