@@ -28,7 +28,7 @@ object Ship_astd_gravitational_lens : ShipDataEntry() {
     override val shieldType: String = "OMNI"
     override val shieldArc: Int = 240
     override val shieldUpkeep: Double = 0.6
-    override val shieldEfficiency: Double = 0.8
+    override val shieldEfficiency: Double = 0.6
     override val minCrew: Int = 10
     override val maxCrew: Int = 250
     override val baseValue: Int = 100000
