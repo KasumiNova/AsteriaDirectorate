@@ -92,18 +92,18 @@
     {
       "id": "WS0007",
       "size": "MEDIUM",
-      "type": "SYNERGY",
+      "type": "ENERGY",
       "mount": "TURRET",
-      "arc": 60,
+      "arc": 120,
       "angle": 0,
       "locations": [-3, 51.5]
     },
     {
       "id": "WS0008",
       "size": "MEDIUM",
-      "type": "ENERGY",
+      "type": "SYNERGY",
       "mount": "TURRET",
-      "arc": 120,
+      "arc": 60,
       "angle": 0,
       "locations": [20, 5.5]
     },
