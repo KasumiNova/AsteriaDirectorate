@@ -2,6 +2,9 @@
   "ruleCommandPackages": [
     "cn.kasuminova.astd.campaign.rules"
   ],
+  "plugins": {
+    "astd_globalCombatPlugin": "cn.kasuminova.astd.combat.effect.generic.ASTDGlobalCombatPlugin"
+  },
   "designTypeColors": {
     "弧光阵列": [142, 200, 255, 255],
     "透镜矩阵": [200, 160, 255, 255],
