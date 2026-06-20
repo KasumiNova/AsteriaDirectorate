@@ -3,6 +3,7 @@ package cn.kasuminova.astd.combat.effect.generic
 import cn.kasuminova.astd.renderer.effect.system.ArcFlareEmissiveOverlayManager
 import cn.kasuminova.astd.renderer.effect.system.ArcFlareEngineFlareManager
 import cn.kasuminova.astd.renderer.effect.system.ArcFlareAfterimageManager
+import cn.kasuminova.astd.renderer.effect.system.ASTDVectorThrustEngineManager
 import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
 import cn.kasuminova.astd.renderer.projectile.ASTDProjectileVfxRuntimePlugin
 
@@ -47,6 +48,12 @@ internal object CombatVfxBootstrap {
 
         try {
             ArcFlareAfterimageManager.ensureInstalled(engine)
+        } catch (_: Throwable) {
+        }
+
+        // ASTD 全系类矢量推进：按引擎贡献逐引擎调火焰强度。
+        try {
+            ASTDVectorThrustEngineManager.ensureInstalled(engine)
         } catch (_: Throwable) {
         }
     }
