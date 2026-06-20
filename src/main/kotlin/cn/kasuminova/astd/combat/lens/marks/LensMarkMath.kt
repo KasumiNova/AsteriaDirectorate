@@ -13,6 +13,7 @@ object LensMarkMath {
 
     private const val DRIFT_BONUS_LOW = 0.025f
     private const val DRIFT_BONUS_HIGH = 0.075f
+    private const val DRIFT_MAGNITUDE_MULT_MAX = 2f   // magnitudeMult 区间上限（spec §1.1）
 
     private const val DEEP_RANGE_PER_STACK = 0.02f
     private const val DEEP_ACCURACY_PER_STACK = 0.04f
@@ -23,7 +24,7 @@ object LensMarkMath {
 
     /** 误差标记每层增伤比例：magnitudeMult 在 [low, high] 间线性插值（夹紧）。 */
     fun driftPerStackBonus(magnitudeMult: Float): Float {
-        val t = (magnitudeMult * 0.5f).coerceIn(0f, 1f)
+        val t = (magnitudeMult / DRIFT_MAGNITUDE_MULT_MAX).coerceIn(0f, 1f)
         return DRIFT_BONUS_LOW + (DRIFT_BONUS_HIGH - DRIFT_BONUS_LOW) * t
     }
 

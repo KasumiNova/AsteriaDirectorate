@@ -2,7 +2,6 @@ package cn.kasuminova.astd.combat.lens.marks
 
 import kotlin.math.abs
 import kotlin.test.Test
-import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class LensMarkMathTest {
@@ -30,6 +29,7 @@ class LensMarkMathTest {
     @Test
     fun `deep water penalties scale linearly per stack`() {
         approx(1.0f, LensMarkMath.deepWaterRangeMult(stacks = 0))
+        approx(0.90f, LensMarkMath.deepWaterRangeMult(stacks = 5))   // -2%/层 * 5 = -10%
         approx(0.80f, LensMarkMath.deepWaterRangeMult(stacks = 10))
         approx(0.60f, LensMarkMath.deepWaterAccuracyMult(stacks = 10))
         approx(0.90f, LensMarkMath.deepWaterSpeedMult(stacks = 10))
