@@ -5,6 +5,10 @@
     "goalVariant": true,
     "hullId": "astd_gravitational_lens",
     "hullMods": [],
+    "permaMods": [
+        "astd_lens_mode_crewed",
+        "astd_lens_mode_next_crewed"
+    ],
     "quality": 1.0,
     "variantId": "astd_gravitational_lens_Standard",
     "weaponGroups": [
