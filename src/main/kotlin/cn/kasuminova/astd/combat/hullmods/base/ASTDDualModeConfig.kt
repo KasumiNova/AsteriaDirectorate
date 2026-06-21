@@ -37,6 +37,21 @@ data class ASTDDualModeConfig(
 )
 
 /**
+ * 通用双模式切换器的固定 id 常量。
+ *
+ * 动机：arc / lens 等所有双模式舰共用同一个切换器 hullmod（[ASTDDualModeSwitcherHullMod]），
+ * 因此切换器 hullmod id 是全局唯一常量，而非各舰各自一份。各舰在构造自己的
+ * [ASTDDualModeConfig] 时将 [SWITCHER_ID] 赋给 [ASTDDualModeConfig.switcherId]，
+ * mode hullmod（Task 4/5）据此检测「切换器是否被玩家在 refit 拆下」。
+ *
+ * 说明：此 id 必须与 hull_mods.csv 中注册通用切换器的行 id 完全一致。
+ */
+object ASTDDualModeSwitcherIds {
+    /** 通用双模式切换器 hullmod id。 */
+    const val SWITCHER_ID: String = "astd_dual_mode_switcher"
+}
+
+/**
  * 双模式配置注册表：hull id → [ASTDDualModeConfig]。
  *
  * 动机：通用切换器 hullmod（后续任务）需根据当前舰船反查其模式配置以渲染动态 tooltip，
@@ -239,5 +254,7 @@ private fun clearIncompatibleDualModeCaptain(stats: MutableShipStatsAPI?) {
     try {
         member.setCaptain(null)
     } catch (_: Throwable) {
+        // 卸载舰长失败为 best-effort：refit 外/无 fleetMember 上下文不可达，
+        // 不应因此崩溃影响整个战役层（核心逻辑防崩例外，有意静默）。
     }
 }
