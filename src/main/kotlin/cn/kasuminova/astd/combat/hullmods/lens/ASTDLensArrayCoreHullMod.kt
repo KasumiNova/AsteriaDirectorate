@@ -52,6 +52,40 @@ class ASTDLensArrayCoreHullMod : BaseHullMod() {
     private class GhostWave(val seq: Long, var elapsed: Float)
 
     /**
+     * 标记高光波的每-目标脉冲相位表（drift / deepwater 两条独立流）。
+     *
+     * 动机（Task 8）：周期扩散波需为每艘被标记敌舰单独累加 elapsed（每帧 += amount），由 elapsed 取模
+     * [MARK_PULSE_PERIOD] 得 progress——故需一处稳定存活的状态。存于 engine.customData（按
+     * [MARK_PULSE_PHASES_KEY]），随战斗实例生命周期，单局结束随 engine 一并释放。
+     *
+     * 键为目标的 [System.identityHashCode]（与高光 instanceId 同源，稳定标识一艘舰），值为该流上该舰
+     * 的累计 elapsed（s）。每帧 [submitMarkHighlights] 推进所有相位并**剪除本帧不再带对应标记的条目**
+     * （[prune] 防 customData 随击毁/失标敌舰无界增长——Fail Fast：不静默泄漏）。
+     *
+     * @property drift 误差标记流：identityHashCode(target) -> elapsed。
+     * @property deepWater 深水标记流：identityHashCode(target) -> elapsed。
+     */
+    private class MarkPulsePhases {
+        val drift: MutableMap<Int, Float> = HashMap()
+        val deepWater: MutableMap<Int, Float> = HashMap()
+
+        /**
+         * 推进一个流上某目标的相位并返回当前 progress（0~1，周期循环）。
+         * 首次出现的目标从 elapsed=0 起（progress=0，新波起手）。
+         */
+        fun advance(stream: MutableMap<Int, Float>, targetId: Int, amount: Float): Float {
+            val elapsed = (stream[targetId] ?: 0f) + amount
+            stream[targetId] = elapsed
+            return (elapsed % MARK_PULSE_PERIOD) / MARK_PULSE_PERIOD
+        }
+
+        /** 剪除本帧未出现（已失标/击毁）目标的相位条目，防 customData 无界增长。 */
+        fun prune(stream: MutableMap<Int, Float>, aliveTargetIds: Set<Int>) {
+            stream.keys.retainAll(aliveTargetIds)
+        }
+    }
+
+    /**
      * 幽灵信号波自增序号源（单调递增，仅保证唯一性，不参与时间计算）。
      * 同一 hullmod 实例可被多条透镜船共用，但波 instanceId 含 shipId 前缀，故跨舰不冲突。
      */
@@ -93,6 +127,23 @@ class ASTDLensArrayCoreHullMod : BaseHullMod() {
         /** 已判定过的导弹标记 key（每枚只判定一次，避免逐帧反复判定）。 */
         private const val DEFUSED_KEY = "astd_lens_ghost_defused"
 
+        /**
+         * 标记高光波的每-目标脉冲相位存储 key（engine.customData，存 [MarkPulsePhases]）。
+         *
+         * 高光由静态环改为「一波接一波」的周期扩散波（Task 8 / 用户反馈）后，每艘被标记敌舰需维护
+         * 一个独立的 elapsed 累加器：每帧加 amount，progress = (elapsed % period) / period，progress
+         * 归零即下一道波起手——形成连绵的周期波。drift/deepwater 两条流相位独立（同船两标记不同步），
+         * 故各用一个 map（见 [MarkPulsePhases]）。drift/deepwater 共用同一 [MarkPulsePhases]、按
+         * target identityHashCode 分别 keyed。
+         */
+        private const val MARK_PULSE_PHASES_KEY = "astd_lens_mark_pulse_phases"
+
+        /**
+         * 标记高光波单周期时长（s）：一道波从波心扩张到敌舰边缘并消散、紧接下一道的循环周期。
+         * ~1.2s 让波「一波接一波」而不拥挤，符合用户「轻量、周期脉冲」反馈。
+         */
+        private const val MARK_PULSE_PERIOD = 1.2f
+
         private val THEME = ASTDHullModTooltipRenderer.Theme(
             nameColor = Color(200, 160, 255),
             borderColor = Color(160, 110, 255),
@@ -110,7 +161,7 @@ class ASTDLensArrayCoreHullMod : BaseHullMod() {
         // 经玩家船单点驱动避免多条透镜船重复提交同一敌舰的高光）。
         if (ship === engine.playerShip) {
             LensMarkStatusBar.maintain(engine)
-            submitMarkHighlights(engine)
+            submitMarkHighlights(engine, amount)
         }
 
         if (!ship.isGravitationalLensShip()) return
@@ -143,28 +194,45 @@ class ASTDLensArrayCoreHullMod : BaseHullMod() {
     }
 
     /**
-     * 标记高光（每帧，spec §1.1 + Task 8）：遍历全场存活非残骸舰船，对带误差标记者提交紫罗兰
-     * 高光环、带深水标记者提交红色高光环，强度按层数。
+     * 标记高光（每帧，spec §1.1 + Task 8 + 用户反馈）：遍历全场存活非残骸舰船，对带误差标记者提交
+     * 紫罗兰扩散波、带深水标记者提交红色扩散波，亮度按层数。高光由旧静态环改为「一波接一波」的
+     * 周期向外扩散波（带轻微扭曲，颜色不变）——每艘被标记敌舰维护一个独立脉冲相位，每帧推进 progress
+     * 并取模 [MARK_PULSE_PERIOD] 循环，progress 归零即下一道波起手。
      *
      * 每帧提交（而非随幽灵信号/ECM 的 IntervalUtil 节流）的依据：高光走 keyed upsert，runtime 以
      * staleAfter（0.18s）回收久未刷新的实例——若塞进 0.25s/1s 的 interval，刷新周期会超过 staleAfter
-     * 导致实例反复过期/重建而闪烁。故必须每帧 upsert 维持实例存活。
+     * 导致实例反复过期/重建而闪烁。故必须每帧 upsert 维持实例存活，且 progress 需每帧平滑推进。
      *
      * per-ship instanceId 前缀（"drift-" / "deepwater-"）区分两类，避免同船两标记串扰；标记只会打在
-     * 敌舰上，此处按层数 >0 提交即可，无需额外阵营过滤。
+     * 敌舰上，此处按层数 >0 提交即可，无需额外阵营过滤。脉冲相位存于 engine.customData，并在本帧末
+     * 剪除已失标/击毁目标的条目，防无界增长（见 [MarkPulsePhases]）。
+     *
+     * @param amount 本帧 delta（s），用于推进每-目标脉冲相位。
      */
-    private fun submitMarkHighlights(engine: CombatEngineAPI) {
+    private fun submitMarkHighlights(engine: CombatEngineAPI, amount: Float) {
         val sink = CombatShaderRuntime.ensure(engine).sink
+        val phases = engine.customData[MARK_PULSE_PHASES_KEY] as? MarkPulsePhases
+            ?: MarkPulsePhases().also { engine.customData[MARK_PULSE_PHASES_KEY] = it }
+
+        // 本帧实际带标记的目标 id 集合，用于帧末剪除失标/击毁目标的相位条目。
+        val activeDrift = HashSet<Int>()
+        val activeDeepWater = HashSet<Int>()
+
         for (target in engine.ships) {
             if (target == null || target.isHulk || target.isFighter) continue
+            val targetId = System.identityHashCode(target)
 
             val driftStacks = LensMarks.driftStacks(target)
             if (driftStacks > 0) {
+                activeDrift += targetId
+                val progress = phases.advance(phases.drift, targetId, amount)
                 val handle = DriftMarkVisualEffect.submitFrame(
                     sink = sink,
-                    instanceId = "drift-${System.identityHashCode(target)}",
+                    instanceId = "drift-$targetId",
                     center = target.location,
-                    frame = DriftMarkVisualEffect.frame(target.collisionRadius, driftStacks, LensMarkMath.MAX_STACKS),
+                    frame = DriftMarkVisualEffect.frame(
+                        target.collisionRadius, driftStacks, LensMarkMath.MAX_STACKS, progress,
+                    ),
                 )
                 // Task 12 实机自动化：误差标记高光真实提交计数（handle 非 null = 已 upsert 一帧）。
                 if (handle != null) {
@@ -174,11 +242,15 @@ class ASTDLensArrayCoreHullMod : BaseHullMod() {
 
             val deepWaterStacks = LensMarks.deepWaterStacks(target)
             if (deepWaterStacks > 0) {
+                activeDeepWater += targetId
+                val progress = phases.advance(phases.deepWater, targetId, amount)
                 val handle = DeepWaterMarkVisualEffect.submitFrame(
                     sink = sink,
-                    instanceId = "deepwater-${System.identityHashCode(target)}",
+                    instanceId = "deepwater-$targetId",
                     center = target.location,
-                    frame = DeepWaterMarkVisualEffect.frame(target.collisionRadius, deepWaterStacks, LensMarkMath.MAX_STACKS),
+                    frame = DeepWaterMarkVisualEffect.frame(
+                        target.collisionRadius, deepWaterStacks, LensMarkMath.MAX_STACKS, progress,
+                    ),
                 )
                 // Task 12 实机自动化：深水标记高光真实提交计数。
                 if (handle != null) {
@@ -186,6 +258,10 @@ class ASTDLensArrayCoreHullMod : BaseHullMod() {
                 }
             }
         }
+
+        // 帧末剪除已失标/击毁目标的相位条目，防 customData 无界增长。
+        phases.prune(phases.drift, activeDrift)
+        phases.prune(phases.deepWater, activeDeepWater)
     }
 
     /**

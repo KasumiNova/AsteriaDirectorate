@@ -19,10 +19,11 @@ import org.lwjgl.util.vector.Vector2f
 /**
  * 深水（deep water）标记高光 shader 效果（LENS 红色辅色）。
  *
- * 动机（Task 8 / spec §1.1 + 颜色指令）：被深水标记的敌舰需在周身显示一道发光高光环，
- * 层数越高环越亮越宽，向玩家提示「这艘敌舰正被深水电战压制（降射程/精度/航速）」。深水用
- * 红色辅色，与误差标记（紫罗兰主色，[DriftMarkVisualEffect]）形成清晰对比——红色承载「电战
- * 危险/压制」语义。**绝不使用青色 hue 0.4~0.6 区间。**
+ * 动机（Task 8 / spec §1.1 + 颜色指令 + 用户反馈）：被深水标记的敌舰需在周身周期性吐出一道
+ * 由内向外扩散的发光高光波（轻量、带轻微扭曲），层数越高波越亮，向玩家提示「这艘敌舰正被深水
+ * 电战压制（降射程/精度/航速）」。深水用红色辅色，与误差标记（紫罗兰主色，[DriftMarkVisualEffect]）
+ * 形成清晰对比——红色承载「电战危险/压制」语义。**绝不使用青色 hue 0.4~0.6 区间。形态由旧静态环
+ * 改为 progress 驱动的周期扩散波（见 [MarkHighlightShaderSource] 类注释），颜色不变。**
  *
  * fragment/vertex GLSL 与 [DriftMarkVisualEffect] 共享（见 [MarkHighlightShaderSource]），唯一
  * 差异是默认 hue/saturation（红 vs 紫）经 uniform 传入；program id 独立（红/紫两类语义不同，
@@ -58,8 +59,10 @@ internal object DeepWaterMarkVisualEffect {
                 required = false,
                 defaultValue = ShaderUniformValue.Vec2(1f, 1f),
             ),
-            // 标记层数归一 0~1（= stacks / maxStacks）：驱动环宽/亮度/内辅环强度。
+            // 标记层数归一 0~1（= stacks / maxStacks）：驱动波亮度（层数越高越醒目）。
             ShaderUniformDefinition("markLevel", ShaderUniformType.Float),
+            // 波扩张进度 0~1：CPU 周期驱动波前归一半径与 alpha 包络（一波接一波循环，见类注释）。
+            ShaderUniformDefinition("progress", ShaderUniformType.Float),
             ShaderUniformDefinition("hue", ShaderUniformType.Float),
             ShaderUniformDefinition("saturation", ShaderUniformType.Float),
             ShaderUniformDefinition("alphaMult", ShaderUniformType.Float),
@@ -86,14 +89,16 @@ internal object DeepWaterMarkVisualEffect {
     )
 
     /**
-     * 单帧高光环渲染参数（纯几何/颜色，便于单测）。字段含义同 [DriftMarkVisualEffect.Frame]，
+     * 单帧高光波渲染参数（纯几何/颜色，便于单测）。字段含义同 [DriftMarkVisualEffect.Frame]，
      * 仅 hue/saturation 默认为红色。
      */
     data class Frame(
         val outerRadiusWorld: Float,
         val quadHalfExtentWorld: Float,
+        val waveRadiusWorld: Float,
         val shaderDomainRadius: Float,
         val markLevel: Float,
+        val progress: Float,
         val hue: Float,
         val saturation: Float,
         val alphaMult: Float,
@@ -104,32 +109,39 @@ internal object DeepWaterMarkVisualEffect {
         collisionRadius.coerceAtLeast(MIN_COLLISION_RADIUS) * FEATHER_MARGIN_MULT
 
     /**
-     * 计算单帧高光环参数。markLevel = stacks / maxStacks（clamp 0~1），alphaMult 随层数线性增强。
+     * 计算单帧高光波参数。markLevel = stacks / maxStacks（clamp 0~1），progress = 波扩张进度 0~1
+     * （clamp）。波前世界半径随 progress 线性外扩，alphaMult 走 progress「快升—缓降」包络 × 层数
+     * 线性增益（与 [DriftMarkVisualEffect.frame] 同构，仅默认色为红）。
      *
      * @param collisionRadius 敌舰碰撞半径（世界单位）。
      * @param markStacks 当前深水标记层数（>0 才会被调用方提交）。
      * @param maxStacks 标记上限（[cn.kasuminova.astd.combat.lens.marks.LensMarkMath.MAX_STACKS]）。
+     * @param progress 波扩张进度 0~1（调用方按 elapsed % period / period 周期循环驱动）。
      */
-    fun frame(collisionRadius: Float, markStacks: Int, maxStacks: Int): Frame {
+    fun frame(collisionRadius: Float, markStacks: Int, maxStacks: Int, progress: Float): Frame {
         require(maxStacks > 0) { "maxStacks must be positive: $maxStacks" }
         val level = (markStacks.toFloat() / maxStacks.toFloat()).coerceIn(0f, 1f)
+        val p = progress.coerceIn(0f, 1f)
         val outer = quadHalfExtentFor(collisionRadius)
-        val alphaMult = 0.30f + 0.70f * level
         return Frame(
             outerRadiusWorld = outer,
             quadHalfExtentWorld = outer,
-            shaderDomainRadius = 1.15f,
+            waveRadiusWorld = MarkHighlightShaderSource.waveRadiusWorld(p, outer),
+            shaderDomainRadius = MarkHighlightShaderSource.SHADER_DOMAIN_RADIUS,
             markLevel = level,
+            progress = p,
             hue = PRIMARY_HUE,
             saturation = PRIMARY_SATURATION,
-            alphaMult = alphaMult,
+            alphaMult = MarkHighlightShaderSource.alphaEnvelope(p, level),
         )
     }
 
     fun shouldRetire(ageSinceLastSubmit: Float): Boolean = ageSinceLastSubmit > STALE_AFTER_SECONDS
 
     /**
-     * 提交/更新一艘被深水标记敌舰的高光环（keyed upsert）。
+     * 提交/更新一艘被深水标记敌舰的高光波（keyed upsert）。
+     *
+     * alphaMult ≈ 0（波的起点/终点）时不提交（返回 null），避免空帧白占一个 upsert 实例。
      *
      * @param instanceId 敌舰稳定标识（调用方拼 "deepwater-{identityHashCode(ship)}"），per-ship。
      * @param center 敌舰心（世界坐标）。
@@ -140,6 +152,7 @@ internal object DeepWaterMarkVisualEffect {
         center: Vector2f,
         frame: Frame,
     ): ShaderHandle? {
+        if (frame.alphaMult <= 0.001f) return null
         return sink.upsert(
             spec = effectSpec.copy(
                 geometry = ShaderGeometrySpec.WorldQuad(frame.quadHalfExtentWorld),
@@ -156,6 +169,7 @@ internal object DeepWaterMarkVisualEffect {
         SHADER_UNIFORMS,
         mapOf(
             "markLevel" to ShaderUniformValue.FloatValue(frame.markLevel),
+            "progress" to ShaderUniformValue.FloatValue(frame.progress),
             "hue" to ShaderUniformValue.FloatValue(frame.hue),
             "saturation" to ShaderUniformValue.FloatValue(frame.saturation),
             "alphaMult" to ShaderUniformValue.FloatValue(frame.alphaMult),
