@@ -249,9 +249,24 @@ internal object ASTDVectorThrustEngineManager {
                     false
                 }
 
-                val target: Float = if (!usable) {
-                    0f
-                } else if (!hasIntent) {
+                // 引擎熄火（被打掉/被系统禁用）时，**完全不调用 setFlameLevel**，把火焰表现
+                // 与熄火修复计时整体交还原版。
+                //
+                // 根因：setFlameLevel 每帧外部强制覆盖引擎当前火焰长度。原版熄火后按
+                // engineRepairTimeMult 逐步恢复，恢复过程由原版引擎控制器每帧重算火焰状态驱动。
+                // 若每帧再用 setFlameLevel(slot, 0f) 把火焰写 0，会干扰原版的熄火/修复状态机，
+                // 表现为修复时间被显著拖长。所以熄火引擎必须 `continue` 跳过本帧设置。
+                //
+                // 该做法与本类注释引用的、经验证可用的参考实现一致
+                // （Galactic_Constellate gr_deco_engine：`if (engine.isDisabled()) return;`）。
+                // 同时把 st.level 重置到 IDLE_FLAME，使引擎修复完成、重新可用时从怠速基线平滑起跳，
+                // 而非从一个陈旧的高火焰值突变。
+                if (!usable) {
+                    st.level = IDLE_FLAME
+                    continue
+                }
+
+                val target: Float = if (!hasIntent) {
                     IDLE_FLAME
                 } else {
                     // 平移对齐度：该引擎推力轴与平移意图的点积（-1..1）。
