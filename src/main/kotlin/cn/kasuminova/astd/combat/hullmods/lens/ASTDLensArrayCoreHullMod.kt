@@ -18,6 +18,7 @@ import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.ui.TooltipMakerAPI
 import com.fs.starfarer.api.util.IntervalUtil
 import com.fs.starfarer.api.util.Misc
+import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
 
 /**
@@ -44,12 +45,18 @@ import java.awt.Color
 class ASTDLensArrayCoreHullMod : BaseHullMod() {
 
     /**
-     * 一道活动的幽灵信号波的瞬时状态。
+     * 一道活动的幽灵信号小脉冲的瞬时状态（Task 9：每枚被剥离导弹一道，锚定于导弹剥离时刻的位置）。
      *
-     * @property seq 自增唯一序号，与 shipId 拼出 instanceId（同舰相邻波不互相覆盖）。
-     * @property elapsed 自起波以来的累计秒数，除以 [GhostSignalWaveEffect.WAVE_DURATION] 得 progress。
+     * 动机：脉冲需随时间扩散动画，但导弹随后可能熄火坠落/被拦截而消失——故脉冲在**剥离时刻捕获**导弹
+     * 位置（[x]/[y]）后独立于导弹自播放（镜像 EchoFixation afterimage 捕获历史位置的做法），不再依赖
+     * 导弹存活。
+     *
+     * @property seq 自增唯一序号，拼出 instanceId（并发脉冲不互相覆盖）。
+     * @property x 脉冲心世界 X（剥离时刻捕获）。
+     * @property y 脉冲心世界 Y（剥离时刻捕获）。
+     * @property elapsed 自起脉冲以来的累计秒数，除以 [GhostSignalWaveEffect.WAVE_DURATION] 得 progress。
      */
-    private class GhostWave(val seq: Long, var elapsed: Float)
+    private class GhostPulse(val seq: Long, val x: Float, val y: Float, var elapsed: Float)
 
     /**
      * 标记高光波的每-目标脉冲相位表（drift / deepwater 两条独立流）。
@@ -86,10 +93,10 @@ class ASTDLensArrayCoreHullMod : BaseHullMod() {
     }
 
     /**
-     * 幽灵信号波自增序号源（单调递增，仅保证唯一性，不参与时间计算）。
-     * 同一 hullmod 实例可被多条透镜船共用，但波 instanceId 含 shipId 前缀，故跨舰不冲突。
+     * 幽灵信号脉冲自增序号源（单调递增，仅保证唯一性，不参与时间计算）。
+     * 用于拼出每道脉冲唯一的 instanceId，避免密集导弹下并发脉冲（keyed upsert 以 instanceId 去重）互相覆盖。
      */
-    private var nextGhostWaveSeq: Long = 0L
+    private var nextGhostPulseSeq: Long = 0L
 
     companion object {
         /** 幽灵信号作用半径（su）：与 tooltip line.4 的 ~2000su 一致。 */
@@ -97,6 +104,12 @@ class ASTDLensArrayCoreHullMod : BaseHullMod() {
 
         /** 单枚敌方导弹进入范围后的失制导判定概率。 */
         private const val GHOST_DEFUSE_CHANCE = 0.5f
+
+        /**
+         * 被幽灵信号剥离制导的导弹额外熄火概率（Task 9）：剥离制导基础上额外 50% 熄火
+         * （引擎死亡、导弹坠落）。与剥离制导叠加——先剥离 AI（保底直飞），再 50% 概率彻底熄火。
+         */
+        private const val FLAMEOUT_CHANCE = 0.5f
 
         /** 幽灵信号心跳间隔（s）。 */
         private const val TICK = 0.25f
@@ -116,8 +129,8 @@ class ASTDLensArrayCoreHullMod : BaseHullMod() {
         /** 情报中枢 ECM 修改器 id（自身 dynamic stat 上的稳定句柄）。 */
         private const val INTEL_HUB_MOD_ID = "astd_lens_intel_hub"
 
-        /** 幽灵信号波活动列表存储 key（按 shipId 拼接，存 [MutableList] of [GhostWave]）。 */
-        private const val GHOST_WAVE_KEY = "astd_lens_core_ghost_waves"
+        /** 幽灵信号小脉冲活动列表存储 key（按 shipId 拼接，存 [MutableList] of [GhostPulse]）。 */
+        private const val GHOST_PULSE_KEY = "astd_lens_core_ghost_pulses"
 
         /** 幽灵信号 IntervalUtil 存储 key（按 shipId 拼接）。 */
         private const val INTERVAL_KEY = "astd_lens_core_interval"
@@ -179,8 +192,8 @@ class ASTDLensArrayCoreHullMod : BaseHullMod() {
             }
             interval.advance(amount)
             if (interval.intervalElapsed()) ghostSignal(ship, engine, shipId)
-            // 幽灵信号波每帧推进（progress 平滑外扩，独立于 0.25s 心跳）。
-            advanceGhostWaves(ship, engine, shipId, amount)
+            // 幽灵信号小脉冲每帧推进（progress 平滑外扩，独立于 0.25s 心跳）。
+            advanceGhostPulses(engine, shipId, amount)
         } else {
             val key = "$ECM_INTERVAL_KEY:$shipId"
             var interval = engine.customData[key] as? IntervalUtil
@@ -268,14 +281,14 @@ class ASTDLensArrayCoreHullMod : BaseHullMod() {
      * 无人·幽灵信号：范围内每枚敌方导弹进入后做一次失制导判定（剥离制导 AI，导弹直飞）。
      * 每枚导弹只判定一次（DEFUSED_KEY 标记），命中概率 GHOST_DEFUSE_CHANCE。
      *
-     * 视觉反馈节奏（Task 9）：本 tick 只要实际剥离了**至少一枚**导弹，就起**一道**波（每 tick 至多一道，
-     * 而非每剥离一枚一道）——依据：单 tick 内可能同时命中多枚，逐枚起波会一帧刷屏多道紫波。以「tick
-     * 内有剥离 → 一道波」聚合，既保证「幽灵信号生效」可见，又不刷屏。波心 = 本舰，最大半径 = 作用范围。
+     * 视觉反馈节奏（Task 9，用户反馈改造）：每枚**被实际剥离**的导弹在其**当前位置**起一道小扰动脉冲
+     * （~[GhostSignalWaveEffect.PULSE_RANGE] 的小扩散波，而非旧的本舰 ~2000su 大波）。密集导弹 → 多道
+     * 散落于各导弹位置的小脉冲，不再视觉支配画面。脉冲在剥离时刻捕获导弹位置（导弹随后可能熄火/被拦，
+     * 脉冲独立自播放），由 [advanceGhostPulses] 每帧推进。
      */
     private fun ghostSignal(ship: ShipAPI, engine: CombatEngineAPI, shipId: Int) {
         val range = GHOST_RANGE * DIFFICULTY_FACTOR
         val chance = (GHOST_DEFUSE_CHANCE * DIFFICULTY_FACTOR).coerceIn(0f, 1f)
-        var defusedThisTick = false
         for (missile in engine.missiles) {
             if (missile == null) continue
             if (missile.owner == ship.owner) continue
@@ -284,59 +297,61 @@ class ASTDLensArrayCoreHullMod : BaseHullMod() {
             // 已纳入判定，标记避免下次重复（无论是否命中）。
             missile.setCustomData(DEFUSED_KEY, true)
             if (Math.random().toFloat() < chance) {
+                // 剥离时刻先捕获导弹位置（熄火可能立刻令其位置语义不稳），再剥离 + 额外熄火。
+                spawnGhostPulse(engine, shipId, missile.location.x, missile.location.y)
                 defuse(missile)
-                defusedThisTick = true
             }
         }
-        if (defusedThisTick) spawnGhostWave(engine, shipId)
     }
 
     /**
-     * 本 tick 起一道幽灵信号波：在该舰的活动波列表追加一个 [GhostWave]（progress 从 0 起，
-     * 由 [advanceGhostWaves] 每帧推进）。每道波一个自增 seq，避免同舰相邻波 instanceId 相同
-     * 互相覆盖（keyed upsert 以 instanceId 去重）。
+     * 起一道幽灵信号小脉冲：在该舰的活动脉冲列表追加一个 [GhostPulse]（progress 从 0 起，由
+     * [advanceGhostPulses] 每帧推进），脉冲心锚定于传入的被剥离导弹位置。每道脉冲一个自增 seq，
+     * 避免密集导弹下并发脉冲 instanceId 相同互相覆盖（keyed upsert 以 instanceId 去重）。
+     * 脉冲列表存于 engine.customData（按 shipId），随战斗实例生命周期，并在推进时剪除已完成脉冲。
      */
-    private fun spawnGhostWave(engine: CombatEngineAPI, shipId: Int) {
-        val key = "$GHOST_WAVE_KEY:$shipId"
+    private fun spawnGhostPulse(engine: CombatEngineAPI, shipId: Int, x: Float, y: Float) {
+        val key = "$GHOST_PULSE_KEY:$shipId"
         @Suppress("UNCHECKED_CAST")
-        val waves = (engine.customData[key] as? MutableList<GhostWave>)
-            ?: ArrayList<GhostWave>().also { engine.customData[key] = it }
-        waves += GhostWave(seq = nextGhostWaveSeq++, elapsed = 0f)
+        val pulses = (engine.customData[key] as? MutableList<GhostPulse>)
+            ?: ArrayList<GhostPulse>().also { engine.customData[key] = it }
+        pulses += GhostPulse(seq = nextGhostPulseSeq++, x = x, y = y, elapsed = 0f)
     }
 
     /**
-     * 每帧推进该舰所有活动幽灵信号波并重新 upsert，progress 达 1 的波退出列表（实例随后经
-     * staleAfter 自然退休）。波心始终跟随本舰当前位置（电子战脉冲源是本舰）。
+     * 每帧推进该舰所有活动幽灵信号小脉冲并重新 upsert，progress 达 1 的脉冲退出列表（实例随后经
+     * staleAfter 自然退休）。脉冲心固定在剥离时刻捕获的导弹位置（[GhostPulse.x]/[GhostPulse.y]），
+     * 不跟随任何单位——导弹此刻可能已熄火坠落/被拦截。
      *
      * keyed upsert + CPU progress 的依据见 [GhostSignalWaveEffect] 类注释（renderer 的 one-shot
      * u_time 恒为 0，无法自播放扩张动画，故走 keyed 通道并由 CPU 驱动 progress）。
      */
-    private fun advanceGhostWaves(ship: ShipAPI, engine: CombatEngineAPI, shipId: Int, amount: Float) {
-        val key = "$GHOST_WAVE_KEY:$shipId"
+    private fun advanceGhostPulses(engine: CombatEngineAPI, shipId: Int, amount: Float) {
+        val key = "$GHOST_PULSE_KEY:$shipId"
         @Suppress("UNCHECKED_CAST")
-        val waves = engine.customData[key] as? MutableList<GhostWave> ?: return
-        if (waves.isEmpty()) return
+        val pulses = engine.customData[key] as? MutableList<GhostPulse> ?: return
+        if (pulses.isEmpty()) return
 
         val sink = CombatShaderRuntime.ensure(engine).sink
-        val iterator = waves.iterator()
+        val iterator = pulses.iterator()
         while (iterator.hasNext()) {
-            val wave = iterator.next()
-            wave.elapsed += amount
-            val progress = wave.elapsed / GhostSignalWaveEffect.WAVE_DURATION
+            val pulse = iterator.next()
+            pulse.elapsed += amount
+            val progress = pulse.elapsed / GhostSignalWaveEffect.WAVE_DURATION
             if (progress >= 1f) {
                 iterator.remove()
                 continue
             }
             val handle = GhostSignalWaveEffect.submitFrame(
                 sink = sink,
-                instanceId = "ghost-wave-$shipId-${wave.seq}",
-                center = ship.location,
+                instanceId = "ghost-pulse-${pulse.seq}",
+                center = Vector2f(pulse.x, pulse.y),
                 frame = GhostSignalWaveEffect.frame(
-                    range = GHOST_RANGE * DIFFICULTY_FACTOR,
+                    range = GhostSignalWaveEffect.PULSE_RANGE,
                     progress = progress,
                 ),
             )
-            // Task 12 实机自动化：幽灵信号波真实提交计数（仅无人模式经此路径）。
+            // Task 12 实机自动化：幽灵信号脉冲真实提交计数（仅无人模式经此路径）。
             if (handle != null) {
                 LensVfxTelemetry.incrementCounter(engine, LensVfxTelemetry.TELEMETRY_GHOST_SIGNAL_WAVE_FRAMES)
             }
@@ -344,18 +359,24 @@ class ASTDLensArrayCoreHullMod : BaseHullMod() {
     }
 
     /**
-     * 失制导手段：用一个 no-op [MissileAIPlugin] 顶替原制导 AI（信息战语义——幽灵信号
-     * 干扰火控电子系统，剥离制导而非熄火坠落）。导弹保留当前速度/推力，但不再被任何
-     * AI 转向，因而保持当前航向直飞，符合 tooltip“失去制导”的世界观。
-     * try/catch 仅防御单枚导弹此刻被引擎回收导致的 API 不可达，不吞业务错误。
+     * 失制导手段（Task 9）：
+     * 1. 用一个 no-op [MissileAIPlugin] 顶替原制导 AI（信息战语义——幽灵信号干扰火控电子系统，
+     *    剥离制导）。导弹保留当前速度/推力，但不再被任何 AI 转向，保持当前航向直飞。
+     * 2. 在剥离制导基础上，额外 [FLAMEOUT_CHANCE]（50%）概率彻底熄火（[MissileAPI.flameOut]——
+     *    引擎死亡、导弹坠落）。两者叠加：未熄火者直飞，熄火者坠落。
+     *
+     * try/catch 仅防御单枚导弹此刻被引擎回收导致的 API 不可达（剥离/熄火均作用于同一枚导弹，
+     * 同一守护范围语义一致），不吞业务错误——失败有 warn 日志（Fail Fast）。
      */
     private fun defuse(missile: MissileAPI) {
         try {
             // no-op：制导被剥离，导弹保持当前航向直飞（不发出任何转向/加速指令）。
             missile.setMissileAI(MissileAIPlugin { /* no-op：制导被剥离 */ })
+            // 剥离制导基础上额外 50% 熄火（引擎死亡、导弹坠落）。
+            if (Math.random().toFloat() < FLAMEOUT_CHANCE) missile.flameOut()
         } catch (t: Throwable) {
             Global.getLogger(ASTDLensArrayCoreHullMod::class.java)
-                .warn("[lens] ghost signal failed to strip missile AI", t)
+                .warn("[lens] ghost signal failed to strip/flameout missile", t)
         }
     }
 

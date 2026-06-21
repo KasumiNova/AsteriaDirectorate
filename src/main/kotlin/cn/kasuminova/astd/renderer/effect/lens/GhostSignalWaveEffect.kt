@@ -20,10 +20,17 @@ import org.lwjgl.util.vector.Vector2f
  * 幽灵信号径向干扰波 shader 效果（LENS 紫罗兰主题，Task 9 / spec §3 无人·幽灵信号）。
  *
  * 动机：无人模式「幽灵信号」每个心跳（0.25s）从范围内敌方导弹身上剥离制导（电子战脉冲）。
- * 当某一 tick 实际剥离了至少一枚导弹时，以本舰为中心放一道由内向外扩张的紫罗兰干扰波，
- * 表现电子战脉冲在战场上的扩散——向玩家提示「幽灵信号刚刚生效了一次」。波形态参照
- * [cn.kasuminova.astd.renderer.effect.system.ArcJetShockwaveRingEffect]（径向扩张环），
- * 颜色走 LENS 主色紫罗兰（hue ≈ 0.76），叠扫描噪声做「干扰」质感。
+ *
+ * **形态——用户反馈改造（Task 9）：每枚导弹一道小脉冲（不再是本舰大波）。** 旧做法是某 tick
+ * 只要剥离了至少一枚导弹，就以本舰为心放一道 ~2000su 的大紫波——在密集导弹环境下这道大波过
+ * 重、过大、视觉喧宾夺主。改为：**每枚被剥离的导弹在其自身位置起一道小扰动脉冲**（~120su 的小
+ * 扩散波，而非 2000su），密集导弹 → 多道散落于各导弹位置的小脉冲 → 不再视觉支配画面。波心由
+ * 调用方传入（被剥离导弹的位置，剥离时刻捕获），range 由调用方传 [PULSE_RANGE]（小半径）。
+ *
+ * 波形态参照 [cn.kasuminova.astd.renderer.effect.system.ArcJetShockwaveRingEffect]（径向扩张环），
+ * 颜色走 LENS 主色紫罗兰（hue ≈ 0.76），叠扫描噪声做「干扰」质感。GLSL 高斯扩散环形态本就是
+ * 「小扰动脉冲」想要的样子，缩小仅靠调用方传入的 range 参数完成（frame 全程按 range 缩放），
+ * GLSL 无需改动。
  *
  * 本对象只持有效果参数与「波进度 → shader 提交」的转换；GL 程序、layer 插件、生命周期、
  * 状态管理全部委托共享 shader runtime。结构镜像 [EchoFixationFieldVisualEffect] /
@@ -38,24 +45,26 @@ import org.lwjgl.util.vector.Vector2f
  * upsert（每帧 upsert 刷新 `submittedAt`、保留 `startedAt`，`ageSeconds` 随之增长，ArcJet 即此机制）。
  *
  * 因此本效果用 keyed upsert，但波扩张进度不依赖 `u_time`，而是 **CPU 侧 `progress` uniform**
- * 显式驱动（0→1 推进波前半径与 alpha 包络）。调用方（[ASTDLensArrayCoreHullMod]）在每个产生剥离
- * 的 ghost tick 起一道波，记录起始时刻，随后每帧按 elapsed/[WAVE_DURATION] 重新 upsert，progress
- * 达到 1 即停止刷新，实例经 staleAfter 自然退休——语义上仍是「一次性脉冲，自生自灭」，只是技术上
- * 落在 keyed 通道以获得可动画的时间轴。`u_time` 仍用于叠加扫描线/噪声的细节抖动，非扩张主驱动。
+ * 显式驱动（0→1 推进波前半径与 alpha 包络）。调用方（[ASTDLensArrayCoreHullMod]）在每枚导弹被剥离
+ * 时于该导弹位置起一道小脉冲，记录起始时刻与捕获位置，随后每帧按 elapsed/[WAVE_DURATION] 重新
+ * upsert，progress 达到 1 即停止刷新，实例经 staleAfter 自然退休——语义上仍是「一次性脉冲，自生
+ * 自灭」，只是技术上落在 keyed 通道以获得可动画的时间轴。`u_time` 仍用于叠加扫描线/噪声的细节
+ * 抖动，非扩张主驱动。
  */
 internal object GhostSignalWaveEffect {
 
     /**
-     * 单道波的播放时长（s）：从波心扩张到外缘的总时间。
-     * 0.6s 让脉冲明显可辨又不拖沓；ghost tick 间隔 0.25s，相邻波会自然叠加成连绵脉冲流。
+     * 单道脉冲的播放时长（s）：从脉冲心扩张到外缘的总时间。
+     * 改为每枚导弹小脉冲后（Task 9）取 0.4s——小扰动脉冲更短促、读起来更利落，且密集导弹下大量
+     * 并发脉冲各自快速生灭，不在画面上长时间堆积。
      */
-    const val WAVE_DURATION = 0.6f
+    const val WAVE_DURATION = 0.4f
 
     /**
      * 提交后超过此秒数无更新即判定过期。须大于一帧（约 1/60s）以容忍帧抖动，又须远小于
-     * [WAVE_DURATION] 以保证 progress 推进到 1 停止刷新后能尽快退休。0.12s ≈ 7 帧。
+     * [WAVE_DURATION] 以保证 progress 推进到 1 停止刷新后能尽快退休。0.1s ≈ 6 帧。
      */
-    const val STALE_AFTER_SECONDS = 0.12f
+    const val STALE_AFTER_SECONDS = 0.1f
 
     /** 紫罗兰主色 hue（约 275°，色彩指令：LENS 主色 hue ≈ 0.76）。 */
     const val PRIMARY_HUE = 0.76f
@@ -70,16 +79,19 @@ internal object GhostSignalWaveEffect {
     const val ACCENT_SATURATION = 0.45f
 
     /**
-     * 幽灵信号作用半径（su），与 tooltip ~2000su 对齐。
+     * 每枚导弹小脉冲的最大扩张半径（su，Task 9）。
      *
-     * 此值仅为静态 [effectSpec] 的 renderRadius 占位下限（spec 构造期需要一个稳定的 culling 边界）；
-     * 运行时 [submitFrame] 以传入 frame 的实际 `quadHalfExtentWorld` 覆盖 geometry/renderRadius，
-     * 故 culling 始终按实际波尺寸走。阶段二 DIFFICULTY_FACTOR 对范围的缩放在
-     * [cn.kasuminova.astd.combat.hullmods.lens.ASTDLensArrayCoreHullMod] 侧处理（调用方传已缩放的
-     * range），此处无需随之缩放——effect 侧与 hullmod 侧的两个 GHOST_RANGE 各司其职，**不必保持同步**
-     * （后来者勿误同步或漏改）。
+     * 旧实现以本舰为心起一道 ~2000su 大波，密集导弹下视觉过重；改为每枚被剥离导弹在其位置起一道
+     * ~120su 的小扰动脉冲（小扩散波），故脉冲最大半径约 120su。此值有两处用途：
+     * - 静态 [effectSpec] 的 renderRadius / geometry 占位（spec 构造期需要一个稳定的 culling 边界，
+     *   现按真实小尺寸给出，不再用 2000 的误导性占位）；
+     * - 调用方（[cn.kasuminova.astd.combat.hullmods.lens.ASTDLensArrayCoreHullMod]）以此为 range 传入
+     *   [frame]，frame 全程按 range 缩放波前半径/quad，故传入小 range 即得小脉冲。
+     *
+     * 运行时 [submitFrame] 仍以传入 frame 的实际 `quadHalfExtentWorld` 覆盖 geometry/renderRadius，
+     * culling 始终按实际脉冲尺寸走。
      */
-    const val GHOST_RANGE = 2000f
+    const val PULSE_RANGE = 120f
 
     /**
      * 边缘羽化余量倍率：渲染 quad 须比波最大半径略大，给波前外侧 smoothstep 羽化留空间，
@@ -126,7 +138,7 @@ internal object GhostSignalWaveEffect {
             vertexSource = VERTEX_SHADER_SOURCE,
             fragmentSource = FRAGMENT_SHADER_SOURCE,
         ),
-        geometry = ShaderGeometrySpec.WorldQuad(quadHalfExtentFor(GHOST_RANGE)),
+        geometry = ShaderGeometrySpec.WorldQuad(quadHalfExtentFor(PULSE_RANGE)),
         material = ShaderMaterialSpec(ShaderBlendMode.Additive),
         uniformSchema = SHADER_UNIFORMS,
         // AboveParticles：电子战脉冲是场景上层的氛围波，置于粒子之上更醒目，又不像 AboveShips
@@ -134,13 +146,13 @@ internal object GhostSignalWaveEffect {
         layer = ShaderEffectLayer.AboveParticles,
         lifetimeSeconds = 1f,
         staleAfterSeconds = STALE_AFTER_SECONDS,
-        renderRadius = quadHalfExtentFor(GHOST_RANGE),
+        renderRadius = quadHalfExtentFor(PULSE_RANGE),
     )
 
     /**
      * 单帧波渲染参数（纯几何/颜色，便于单测）。
      *
-     * @property rangeWorld 波最大扩张半径（世界单位，= 幽灵信号作用半径）。
+     * @property rangeWorld 脉冲最大扩张半径（世界单位，= [PULSE_RANGE]，每枚导弹的小扰动脉冲）。
      * @property waveRadiusWorld 当前波前世界半径（= rangeWorld × progress，供测试/调用方参考）。
      * @property quadHalfExtentWorld 渲染 quad 半边长（覆盖最大波 + 羽化，全程固定）。
      * @property shaderDomainRadius 归一域半径（FRAGMENT centeredAspect 缩放）。
@@ -171,7 +183,7 @@ internal object GhostSignalWaveEffect {
      * progress 单调驱动波前半径（线性外扩）与 alpha 包络。alpha 包络为「快淡入—缓淡出」：
      * 起手 0→peak 在 progress≈0.15 处达峰，随后线性衰减至 progress=1 归零，呈现脉冲扩散后消散。
      *
-     * @param range 波最大扩张半径（世界单位，调用方传幽灵信号作用半径）。
+     * @param range 脉冲最大扩张半径（世界单位，调用方传 [PULSE_RANGE]——每枚导弹小脉冲）。
      * @param progress 波扩张进度 0→1（= elapsed / [WAVE_DURATION]）。
      */
     fun frame(range: Float, progress: Float): Frame {
@@ -198,11 +210,11 @@ internal object GhostSignalWaveEffect {
     fun shouldRetire(ageSinceLastSubmit: Float): Boolean = ageSinceLastSubmit > STALE_AFTER_SECONDS
 
     /**
-     * 提交/更新一道幽灵信号波（keyed upsert）。
+     * 提交/更新一道幽灵信号小脉冲（keyed upsert）。
      *
-     * @param instanceId 波实例稳定标识（调用方拼 "ghost-wave-{shipId}-{seq}"），per-wave。
-     *                   每道波一个唯一 seq，避免同舰相邻波互相覆盖。
-     * @param center 波心（本舰世界坐标）。
+     * @param instanceId 脉冲实例稳定标识（调用方拼 "ghost-pulse-{seq}"），per-pulse。
+     *                   每道脉冲一个唯一 seq，避免并发脉冲（密集导弹）互相覆盖。
+     * @param center 脉冲心（被剥离导弹剥离时刻的世界坐标，捕获后固定）。
      */
     fun submitFrame(
         sink: ShaderSink,
