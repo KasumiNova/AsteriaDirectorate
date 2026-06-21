@@ -109,8 +109,8 @@ object ASTDDualModeRegistry {
  * 判断 variant 所属舰船是否为模组全局舰船（hull id 以 "astd_" 开头）。
  *
  * 动机：双模式状态机仅应作用于本模组舰船，避免误改其它 mod / 原版舰的 permaMods。
- * 说明：arc util 当前各自持有一份同名 internal 扩展（按包区分，互不冲突）；base 自带一份供 base 包内逻辑使用，
- * 后续统一任务再合并去重。
+ * 说明：本扩展为全模组唯一实现——arc/lens 接入通用框架后其各自的同名 internal 扩展已删除，
+ * 统一从 base 包引用。
  */
 internal fun ShipVariantAPI?.isASTDShipVariant(): Boolean {
     val variant = this ?: return false

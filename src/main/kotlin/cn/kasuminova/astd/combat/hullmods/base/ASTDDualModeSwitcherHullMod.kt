@@ -3,6 +3,7 @@ package cn.kasuminova.astd.combat.hullmods.base
 import cn.kasuminova.astd.internal.i18n.I18n
 import cn.kasuminova.astd.ui.dsl.buildWith
 import com.fs.starfarer.api.combat.BaseHullMod
+import com.fs.starfarer.api.combat.MutableShipStatsAPI
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.ui.TooltipMakerAPI
 import com.fs.starfarer.api.util.Misc
@@ -17,10 +18,17 @@ import java.awt.Color
  * 其 tooltip 根据当前舰的 [ASTDDualModeConfig] 与 variant permaMods 动态显示「当前模式 / 拆下后切到的目标模式」。
  *
  * 职责边界（重要）：
- * - 切换器本身**不知道**具体舰的模式 id 集合，因此**不**在 [applyEffectsBeforeShipCreation] 调用
- *   [ensureASTDDualModeState]。模式状态的自洽由各舰的 mode hullmod（Task 4/5）在自己的
- *   applyEffectsBeforeShipCreation 中保证。本类只负责渲染动态说明 + 提供可装/可见判定。
- * - 本类**不**注册到任何 .ship / variant；arc / lens 的接入是 Task 4/5。
+ * - 切换器是双模式状态机的**统一引导点**：在 [applyEffectsBeforeShipCreation] 经
+ *   [ASTDDualModeRegistry.configForVariant] 反查本舰 config 后调用 [ensureASTDDualModeState]，
+ *   保证「装了切换器的 ASTD 双模式舰」在 variant 缺模式 permaMod 时收敛到缺省模式（载人）。
+ *   动机（防回归）：早期依赖各舰 variant 静态声明模式 permaMod，一旦某舰漏声明（如曾经的
+ *   astd_gravitational_lens_Standard），其模式 hullmod 因不在 variant 上而永不触发、整套机制失效。
+ *   由切换器统一引导后，任何注册了 config 的双模式舰即便 variant 漏声明也能自举到载人模式，
+ *   不再要求每舰手写 permaMod 才能工作（静态声明仍保留作为首选，二者互为冗余兜底）。
+ * - 模式**切换**（拆即切：拆下切换器→切到对侧）仍由各舰 mode hullmod 在自己的
+ *   applyEffectsBeforeShipCreation 中处理（它们才知道对侧模式 id）；本类只负责**自举到有模式态**
+ *   + 渲染动态说明 + 可装/可见判定。反查不到 config（非注册双模式舰）则跳过自举，仅作展示。
+ * - 本类的具体接入（.ship builtInMods / variant hullMods）由 arc / lens 各自完成。
  *
  * tooltip 动态文案实现：渲染器 [ASTDHullModTooltipRenderer] 仅支持静态 i18n key（无参数替换），
  * 无法表达「当前模式名」这类运行期才知道的内容。故本类不走 renderBlocks，而是直接用 [buildWith] DSL 的
@@ -41,6 +49,19 @@ class ASTDDualModeSwitcherHullMod : BaseHullMod() {
             sectionBackground = Color(20, 28, 46, 120),
             accentColor = Color(143, 182, 255),
         )
+    }
+
+    /**
+     * 统一引导双模式状态：装了切换器的已注册双模式舰，经 registry 反查 config 后确保 variant 模式
+     * 自洽（缺模式 permaMod → 收敛到缺省载人模式）。这是防「variant 漏声明模式 permaMod」回归的统一兜底。
+     *
+     * 反查不到 config（非注册双模式舰，或 modSpec 预览语境下无具体 variant）→ 跳过，不臆造状态。
+     * 模式**切换**不在此处（由各舰 mode hullmod 的拆即切处理）；本处只保证「至少有一个模式在 variant 上」。
+     */
+    override fun applyEffectsBeforeShipCreation(hullSize: ShipAPI.HullSize, stats: MutableShipStatsAPI, id: String) {
+        val variant = stats.variant ?: return
+        val config = ASTDDualModeRegistry.configForVariant(variant) ?: return
+        variant.ensureASTDDualModeState(config, stats)
     }
 
     /** 可装判定：仅 ASTD 舰可装本通用切换器。 */
