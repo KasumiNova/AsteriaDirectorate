@@ -2,6 +2,7 @@ package cn.kasuminova.astd;
 
 import cn.kasuminova.astd.campaign.AsteriaTestCampaignBootstrap;
 import cn.kasuminova.astd.campaign.bounty.BountyBootstrapper;
+import cn.kasuminova.astd.combat.hullmods.lens.LensArrayCoreModeUtilKt;
 import com.fs.starfarer.api.BaseModPlugin;
 import org.apache.log4j.Logger;
 
@@ -27,6 +28,9 @@ public final class AsteriaDirectoratePlugin extends BaseModPlugin {
     @Override
     public void onApplicationLoad() {
         logger.info("[ASTD] Asteria Directorate loaded on Java " + System.getProperty("java.version"));
+        // 注册 lens 双模式配置到通用注册表（ASTDDualModeRegistry），保证通用切换器 tooltip
+        // 在任何 refit 渲染前就能 configForShip 反查到 lens 的模式 id 集合。幂等，可多实例多次调用。
+        LensArrayCoreModeUtilKt.registerLensDualModeConfig();
     }
 
     @Override

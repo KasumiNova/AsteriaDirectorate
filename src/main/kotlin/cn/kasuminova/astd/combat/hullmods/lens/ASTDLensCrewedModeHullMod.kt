@@ -1,5 +1,6 @@
 package cn.kasuminova.astd.combat.hullmods.lens
 
+import cn.kasuminova.astd.combat.hullmods.base.activateDualMode
 import com.fs.starfarer.api.combat.BaseHullMod
 import com.fs.starfarer.api.combat.MutableShipStatsAPI
 import com.fs.starfarer.api.combat.ShipAPI
@@ -15,6 +16,15 @@ class ASTDLensCrewedModeHullMod : BaseHullMod() {
     override fun applyEffectsBeforeShipCreation(hullSize: ShipAPI.HullSize, stats: MutableShipStatsAPI, id: String) {
         val variant = stats.variant ?: return
         if (!variant.isGravitationalLensVariant()) return
+
+        // 拆即切（核心修复，镜像 arc）：通用切换器被玩家在 refit 拆下 →
+        // 立即切到无人模式并把切换器加回（切换器常驻，玩家通过反复拆它轮换模式）。
+        if (!variant.hasHullMod(LENS_DUAL_MODE_CONFIG.switcherId)) {
+            variant.activateDualMode(LENS_DUAL_MODE_CONFIG, LensArrayCoreHullModIds.MODE_AUTOMATED, stats)
+            variant.addMod(LENS_DUAL_MODE_CONFIG.switcherId)
+            return
+        }
+
         variant.hullSpec?.setShipSystemId(LensArrayCoreHullModIds.SYSTEM_CREWED)
     }
 

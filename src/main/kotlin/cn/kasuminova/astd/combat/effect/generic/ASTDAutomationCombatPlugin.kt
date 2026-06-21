@@ -5,6 +5,7 @@ import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcProductionTooltipContracts
 import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcProductionVfx
 import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcProductionShipIds
 import cn.kasuminova.astd.combat.hullmods.base.ASTDHullModTooltipRenderer
+import cn.kasuminova.astd.combat.hullmods.lens.LENS_DUAL_MODE_CONFIG
 import cn.kasuminova.astd.combat.hullmods.lens.LensArrayCoreHullModIds
 import cn.kasuminova.astd.combat.lens.marks.LensMarks
 import cn.kasuminova.astd.combat.lens.system.EchoFixationField
@@ -1021,7 +1022,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 appendLine("  \"lensDeployedShipIds\": ${jsonStringList(lensDeployedShipIds(engine))},")
                 appendLine("  \"lensCoreHullmod\": ${safeBool { lensVariant?.hasHullMod(LensArrayCoreHullModIds.CORE) == true }},")
                 appendLine("  \"lensNanoHullmod\": ${safeBool { lensVariant?.hasHullMod("astd_nano_restoration_protocol") == true }},")
-                appendLine("  \"lensSwitcherHullmod\": ${safeBool { lensVariant?.hasHullMod(LensArrayCoreHullModIds.SWITCHER) == true }},")
+                appendLine("  \"lensSwitcherHullmod\": ${safeBool { lensVariant?.hasHullMod(LENS_DUAL_MODE_CONFIG.switcherId) == true }},")
                 appendLine("  \"lensCrewedModeHullmod\": ${safeBool { lensVariant?.hasHullMod(LensArrayCoreHullModIds.MODE_CREWED) == true }},")
                 appendLine("  \"lensShieldOn\": ${safeBool { lensShield?.isOn == true }},")
                 appendLine("  \"lensShieldArc\": ${formatFloat(try { lensShield?.arc ?: lens?.hullSpec?.shieldSpec?.arc ?: 0f } catch (_: Throwable) { 0f })},")
