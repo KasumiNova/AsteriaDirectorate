@@ -66,6 +66,18 @@ class PermeatingTideFieldEffectTest {
     }
 
     @Test
+    fun `frame full tide alpha is dimmed to at most 0_275 (at least 50 percent reduction from 0_55)`() {
+        // 用户反馈：常驻潮汐场 Additive 大面积大战场太亮。
+        // 涨满 alphaMult 不得超过 0.275（= 0.55 * 0.5），当前目标约 0.26（降 ~53%）。
+        val full = PermeatingTideFieldEffect.frame(tideLevel = 1f)
+        assertTrue(
+            full.alphaMult <= 0.275f,
+            "full tide alphaMult must be ≤0.275 (≥50% reduction from original 0.55), got ${full.alphaMult}",
+        )
+        assertEquals(0.26f, full.alphaMult, 0.001f)
+    }
+
+    @Test
     fun `frame quad half extent covers the field radius`() {
         val frame = PermeatingTideFieldEffect.frame(tideLevel = 0.8f)
         assertTrue(frame.quadHalfExtentWorld >= 2500f)

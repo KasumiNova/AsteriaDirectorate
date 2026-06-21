@@ -150,8 +150,9 @@ internal object PermeatingTideFieldEffect {
     fun frame(tideLevel: Float, fieldRadius: Float = BASE_FIELD_RADIUS): Frame {
         val level = tideLevel.coerceIn(0f, 1f)
         val outer = quadHalfExtentFor(fieldRadius)
-        // 包络：退潮（level→0）场近消散；涨满（level→1）约 0.55（Additive 大面积，压低避免过曝盖船）。
-        val alphaMult = level * 0.55f
+        // 包络：退潮（level→0）场近消散；涨满（level→1）约 0.26，降亮 ~53% 避免大战场抢眼（用户反馈）。
+        // Additive 下 alphaMult 线性控制亮度贡献；GLSL 内部无额外固定过曝源（body/core 系形状设计），只改此处即可。
+        val alphaMult = level * 0.26f
         return Frame(
             fieldRadiusWorld = fieldRadius,
             outerRadiusWorld = outer,
