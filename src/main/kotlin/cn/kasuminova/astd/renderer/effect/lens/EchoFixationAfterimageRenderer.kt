@@ -3,7 +3,7 @@ package cn.kasuminova.astd.renderer.effect.lens
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEngineLayers
-import com.fs.starfarer.api.combat.ShipAPI
+import org.lazywizard.lazylib.MathUtils
 import org.lwjgl.util.vector.Vector2f
 import org.magiclib.util.MagicRender
 import java.awt.Color
@@ -11,21 +11,23 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 /**
- * 回声定影残影回放渲染器（Echo-Fixation afterimage，LENS 紫罗兰主题 —— Task 7）。
+ * 回声定影残影渲染器（Echo-Fixation afterimage，LENS 紫罗兰主题 —— Task 7 重做）。
  *
- * 动机（spec §2.1 / 设计语义「它会替你们再死一次」）：回声定影场结束「回放」瞬间，
- * 为每个被记录敌舰在其「过去坐标」绘制一帧半透明的舰体影像残影——浮现本舰拓印下来的
- * 「最初的过去」，随时间淡出，体现时间信息战的残影语义。
+ * 动机（用户反馈「残影太水」）：旧实现仅在回放瞬间为每个敌舰画一次性 ~1.25s 淡出残影，
+ * 表现单薄。重做后残影**绑定「认知撕裂」debuff 常驻显示**——推进插件在 debuff 存活期内
+ * 每帧调 [renderPersistent] 在「过去坐标」重绘一帧极短生命周期残影（靠每帧刷新形成常驻），
+ * 直到 debuff 结束自然消失。并按「当前敌舰位置离过去坐标的接近度（closeness）」驱动两项强化：
+ * - jitter：越接近抖动越强（站桩重合者残影剧烈撕裂）。
+ * - 红化：越接近颜色越红（从紫罗兰插值到红），呼应「被拽回过去、即将再死一次」的危险语义。
  *
  * 技术范式（与 [cn.kasuminova.astd.combat.shipsystems.ASTDArcFlareOverdriveSystemStats]
- * 的 applyVisualFeedback 一致）：BoxUtil 的 TrailEntity 只提供光束曳光，没有 sprite/船体
- * 影像 overlay；舰体残影的正确范式是 [MagicRender.battlespace]——取舰体 hullSprite，在目标
- * 世界坐标按 facing 旋转、additive 叠加绘制，并配 fadeIn/fadeOut 生命周期。本渲染器照搬
- * ArcFlare 的 sprite 中心偏移几何（修正 spriteAPI.centerX/centerY 与 facing 旋转），确保
- * 残影与「过去时刻的舰体」严格对齐；颜色改用 LENS 紫罗兰（不用 ArcFlare 的橙色）。
+ * 的 applyVisualFeedback 一致）：舰体残影的正确范式是 [MagicRender.battlespace]——取舰体
+ * hullSprite，在「过去坐标」按「过去 facing」旋转、additive 叠加绘制。本渲染器照搬 ArcFlare 的
+ * sprite 中心偏移几何（修正 spriteAPI.centerX/centerY 与 facing 旋转），确保残影与「过去时刻
+ * 的舰体」严格对齐。
  *
- * Fail Fast：sprite 取不到（spriteAPI / hullSprite 为 null）是异常情况而非正常路径，
- * 故 log.warn 跳过该残影，不静默 return；telemetry 计数器供 Task 12 实机验证残影确实渲染。
+ * Fail Fast：sprite 取不到（hullSprite 为 null）是异常情况而非正常路径，故 log.warn 跳过该
+ * 残影，不静默 return；telemetry 计数器供 Task 12 实机验证残影确实渲染。
  */
 internal object EchoFixationAfterimageRenderer {
 
@@ -34,132 +36,119 @@ internal object EchoFixationAfterimageRenderer {
     /** telemetry 计数器 engine.customData 键（与 ASTDArcProductionVfx 同风格）。外部勿直读此键，见 [afterimageFrames]。 */
     private const val TELEMETRY_KEY = "astd_echo_afterimage:echoFixationAfterimageFrames"
 
+    /** 残影色（closeness=0，远处）：LENS 主题紫罗兰。 */
+    private val AFTERIMAGE_VIOLET = Color(170, 110, 230)
+
+    /** 残影色（closeness=1，重合）：危险红——越接近过去坐标越红。 */
+    private val AFTERIMAGE_RED = Color(235, 55, 55)
+
+    /** 残影 alpha 基准（closeness=0）。 */
+    private const val ALPHA_FAR = 160
+
+    /** 残影 alpha 满值（closeness=1，越近越亮）。 */
+    private const val ALPHA_NEAR = 210
+
     /**
-     * 防御性上限：单次回放内允许渲染的残影帧数上限。
-     *
-     * 动机：调用方（EchoFixationField）已受其 MAX_TARGETS(24) 约束，回放循环自然封顶；
-     * 但本渲染器为 internal object，若被别处调用应自带防刷。与 Field 的 MAX_TARGETS 对齐为 24，
-     * 超限 log 丢弃，不静默截断。计数随回放批次（spawn 调用流）累加，跨批次不重置——
-     * 单场回放为一次性同步循环，批内累加足以封顶；engine 级 telemetry 单调累加另算。
+     * jitter 抖动幅度基准（su）。实际抖动半径 = JITTER_AMP × closeness（越近越剧烈）；
+     * closeness=0 时无抖动（残影稳定），closeness=1 时抖动半径达基准值。
      */
-    private const val MAX_AFTERIMAGES_PER_REPLAY = 24
-
-    /** 残影颜色（紫罗兰主色，色彩指令：LENS 主题紫优先）。alpha 由淡入淡出生命周期控制。 */
-    private val AFTERIMAGE_VIOLET = Color(170, 110, 230, 190)
-
-    /** 残影高光 glow（淡紫辅色，参照 ArcFlare 的 glowColor 二次 battlespace 叠加）。 */
-    private val AFTERIMAGE_GLOW_LILAC = Color(200, 160, 255, 70)
-
-    /** 残影时长基准（s）。主残影总时长约 1.25s（fadeIn=0.25s / full=0.25s / fadeOut=0.75s）。 */
-    private const val AFTERIMAGE_DURATION = 1.0f
-
-    /** 本次回放已渲染残影计数（防御性上限用）；由调用方在每场回放起始调 [resetReplayBudget]。 */
-    private var replayBudget: Int = 0
-
-    /** 是否已对本场回放的上限超限打过日志，避免刷屏。 */
-    private var budgetCapLogged: Boolean = false
+    private const val JITTER_AMP = 14f
 
     /**
-     * 重置单次回放的残影预算（防御性上限）。调用方在每场回放循环开始前调用一次。
-     *
-     * 动机：上限 [MAX_AFTERIMAGES_PER_REPLAY] 以「单场回放」为单位生效；object 单例的计数器
-     * 需要在每场回放起始归零，否则多场累积会过早触顶。
+     * 每帧重绘的单帧残影生命周期（s）。极短（fadeIn 0 / full 0.05 / fadeOut 0.05 ≈ 0.1s），
+     * 靠推进插件每帧调用刷新形成「常驻」观感；单帧本身瞬灭，故不会因每帧叠加而越积越亮。
      */
-    fun resetReplayBudget() {
-        replayBudget = 0
-        budgetCapLogged = false
-    }
+    private const val FRAME_FULL = 0.05f
+    private const val FRAME_FADE_OUT = 0.05f
 
     /**
-     * 为单个被记录敌舰在其「过去坐标」绘制一帧紫罗兰残影。
+     * 为单个被撕裂敌舰在其「过去坐标」绘制一帧紫罗兰/红残影（每帧调用，常驻表现）。
      *
      * @param engine 战斗引擎（telemetry 计数 + 渲染层）。
-     * @param ship 被记录敌舰（仍在场，引用有效）——用其 hullSprite 作残影贴图。
      * @param pastX 过去坐标 X（世界坐标，取该敌舰最早一条快照）。
      * @param pastY 过去坐标 Y（世界坐标）。
-     * @param facing 残影朝向（度）——「过去时刻」该敌舰的 facing（由 Field 在首条快照时记录）。
+     * @param pastFacing 残影朝向（度）——「过去时刻」该敌舰的 facing（由 Field 在首条快照时记录）。
+     * @param spriteName 被撕裂敌舰 hullSpec.spriteName（每帧重绘用，比每帧从 ship 取更稳）。
+     * @param distToPast 当前敌舰位置到「过去坐标」的距离（su，由调用方每帧算出）。
+     * @param standstillRange 站桩有效范围（已缩放，su）——把 distToPast 归一为 closeness∈[0,1]。
      */
-    fun spawn(engine: CombatEngineAPI, ship: ShipAPI, pastX: Float, pastY: Float, facing: Float) {
-        if (replayBudget >= MAX_AFTERIMAGES_PER_REPLAY) {
-            if (!budgetCapLogged) {
-                budgetCapLogged = true
-                log.warn(
-                    "[ASTD] EchoFixationAfterimage replay budget reached " +
-                        "($MAX_AFTERIMAGES_PER_REPLAY), dropping further afterimages this replay"
-                )
-            }
-            return
-        }
+    fun renderPersistent(
+        engine: CombatEngineAPI,
+        pastX: Float,
+        pastY: Float,
+        pastFacing: Float,
+        spriteName: String,
+        distToPast: Float,
+        standstillRange: Float,
+    ) {
+        // closeness：当前位置离过去坐标越近 → 越接近 1（dist=0→1, dist>=range→0）。
+        val closeness = (1f - (distToPast / standstillRange.coerceAtLeast(1f)).coerceIn(0f, 1f))
 
         // Fail Fast：sprite 取不到属异常情况，log.warn 跳过该残影（不静默 return）。
-        val spriteApi = ship.spriteAPI
-        if (spriteApi == null) {
-            log.warn("[ASTD] EchoFixationAfterimage: spriteAPI null for ${ship.hullSpec?.hullId}, skipping afterimage")
-            return
-        }
-        val hullSprite = Global.getSettings().getSprite(ship.hullSpec.spriteName)
+        val hullSprite = Global.getSettings().getSprite(spriteName)
         if (hullSprite == null) {
-            log.warn("[ASTD] EchoFixationAfterimage: hullSprite null for ${ship.hullSpec.spriteName}, skipping afterimage")
+            log.warn("[ASTD] EchoFixationAfterimage: hullSprite null for $spriteName, skipping afterimage")
             return
         }
 
-        val width = spriteApi.width
-        val height = spriteApi.height
+        val width = hullSprite.width
+        val height = hullSprite.height
         // sprite 中心偏移修正（照搬 ArcFlare applyVisualFeedback 的几何）：
         // 修正 spriteAPI.centerX/centerY 与几何中心的差，并按 (facing-90°) 旋转，
         // 确保残影位置与「过去时刻舰体」严格对齐。
-        val rawOx = width / 2f - spriteApi.centerX
-        val rawOy = height / 2f - spriteApi.centerY
-        val rad = Math.toRadians((facing - 90.0))
+        val rawOx = width / 2f - hullSprite.centerX
+        val rawOy = height / 2f - hullSprite.centerY
+        val rad = Math.toRadians((pastFacing - 90.0))
         val cosA = cos(rad).toFloat()
         val sinA = sin(rad).toFloat()
-        val spriteLoc = Vector2f(
-            pastX + cosA * rawOx - sinA * rawOy,
-            pastY + sinA * rawOx + cosA * rawOy,
-        )
-        // 两次 battlespace 调用复用 vel/growth(=0) 与 size 向量，省去重复 new。
+        var spriteX = pastX + cosA * rawOx - sinA * rawOy
+        var spriteY = pastY + sinA * rawOx + cosA * rawOy
+
+        // jitter：抖动半径随 closeness 增长（越近越剧烈）。closeness=0 半径 0 → 无抖动。
+        val jitterRadius = JITTER_AMP * closeness
+        if (jitterRadius > 0.01f) {
+            val jittered = MathUtils.getRandomPointInCircle(Vector2f(spriteX, spriteY), jitterRadius)
+            spriteX = jittered.x
+            spriteY = jittered.y
+        }
+        val spriteLoc = Vector2f(spriteX, spriteY)
+
+        // 红随距离：紫罗兰（远）→ 红（近）线性插值；alpha 也随 closeness 略升（越近越亮）。
+        val color = lerpColor(AFTERIMAGE_VIOLET, AFTERIMAGE_RED, closeness)
+        val alpha = (ALPHA_FAR + (ALPHA_NEAR - ALPHA_FAR) * closeness).toInt().coerceIn(0, 255)
+        val frameColor = Color(color.red, color.green, color.blue, alpha)
+
         val zeroVec = Vector2f(0f, 0f)
         val sizeVec = Vector2f(width, height)
 
-        // 主残影：紫罗兰、additive、总时长约 1.25s（fadeIn 0.25 / full 0.25 / fadeOut 0.75），绘于船下方层。
+        // 每帧一帧极短生命周期残影（fadeIn 0 / full 0.05 / fadeOut 0.05），绘于船下方层。
         MagicRender.battlespace(
             hullSprite,
             spriteLoc,
             zeroVec,
             sizeVec,
             zeroVec,
-            facing - 90f,
+            pastFacing - 90f,
             0f,
-            AFTERIMAGE_VIOLET,
+            frameColor,
             true,
             0f, 0f, 0f, 0f, 0f,
-            AFTERIMAGE_DURATION * 0.25f,
-            AFTERIMAGE_DURATION * 0.25f,
-            AFTERIMAGE_DURATION * 0.75f,
+            0f,
+            FRAME_FULL,
+            FRAME_FADE_OUT,
             CombatEngineLayers.BELOW_SHIPS_LAYER,
         )
 
-        // 淡紫高光 glow：利用舰体贴图 alpha 分布叠一层淡紫发光（参照 ArcFlare glowColor 二次叠加），
-        // 短促一闪，绘于船下方层（残影整体在船下方）。
-        MagicRender.battlespace(
-            hullSprite,
-            spriteLoc,
-            zeroVec,
-            sizeVec,
-            zeroVec,
-            facing - 90f,
-            0f,
-            AFTERIMAGE_GLOW_LILAC,
-            true,
-            0f, 0f, 0f, 0f, 0f,
-            AFTERIMAGE_DURATION * 0.15f,
-            AFTERIMAGE_DURATION * 0.20f,
-            AFTERIMAGE_DURATION * 0.45f,
-            CombatEngineLayers.BELOW_SHIPS_LAYER,
-        )
-
-        replayBudget++
         incrementTelemetry(engine)
+    }
+
+    /** 颜色线性插值（rgb 分量），t∈[0,1]。alpha 单独按 closeness 处理，故此处仅插值 rgb。 */
+    private fun lerpColor(from: Color, to: Color, t: Float): Color {
+        val c = t.coerceIn(0f, 1f)
+        val r = (from.red + (to.red - from.red) * c).toInt().coerceIn(0, 255)
+        val g = (from.green + (to.green - from.green) * c).toInt().coerceIn(0, 255)
+        val b = (from.blue + (to.blue - from.blue) * c).toInt().coerceIn(0, 255)
+        return Color(r, g, b)
     }
 
     /** 残影帧计数 +1（engine.customData 单调累加，供 Task 12 读取验证）。 */

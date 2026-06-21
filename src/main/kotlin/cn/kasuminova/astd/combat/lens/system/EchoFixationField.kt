@@ -111,8 +111,23 @@ object EchoFixationField {
      *
      * 动机：承伤倍率为连续值（按距离算），需自管到期；推进插件每帧对全场 ship 检查，
      * 到期则 unapply stat 并清状态。takenMult 为最终承伤倍率（>1）。
+     *
+     * Task 7 重做：残影从「回放瞬间一次性」改为「debuff 存活期内常驻每帧重绘」，故 debuff 状态
+     * 须随身携带残影每帧重绘所需上下文（过去坐标 + 站桩范围 + 残影贴图/朝向）。这样推进插件在
+     * expireTears 同一遍历里即可对每个仍存活的 EchoTearState 重绘残影，无需第二处真相来源。
      */
-    private data class EchoTearState(val takenMult: Float, val expiresAt: Float)
+    private data class EchoTearState(
+        val takenMult: Float,
+        val expiresAt: Float,
+        /** 「过去坐标」：残影每帧绘制位置 + 距离计算基准（当前位置离它越近→jitter 越强、越红）。 */
+        val pastX: Float,
+        val pastY: Float,
+        /** 站桩有效范围（缩放后）：把「当前→过去」距离归一为 closeness∈[0,1]（dist=0→1, dist>=range→0）。 */
+        val standstillRange: Float,
+        /** 残影绘制用：被撕裂敌舰 hullSpriteName + 过去 facing（每帧重绘需要）。 */
+        val spriteName: String,
+        val pastFacing: Float,
+    )
 
     /**
      * 单个活跃定影场实例（状态机：定影期累积快照 → 结束瞬间回放 → 标记销毁）。
@@ -251,7 +266,9 @@ object EchoFixationField {
          * 回放：场结束瞬间触发一次。对每个记录敌舰的「过去坐标」（最早快照），
          * 找该坐标 STANDSTILL 范围内的当前敌舰施加认知撕裂。
          *
-         * Task 6 shader 边界 / Task 7 残影：每个过去坐标处浮现的残影在此驱动（onReplay 接缝）。
+         * Task 7 重做：回放不再画一次性残影——残影改为绑定认知撕裂 debuff 常驻显示
+         * （推进插件 expireTears 同一遍历里每帧重绘，到期自然消失）。故回放只施加 debuff，
+         * 并把残影每帧重绘所需上下文（过去坐标 + 站桩范围 + 残影贴图/朝向）随 EchoTearState 存入。
          */
         fun replay(engine: CombatEngineAPI) {
             if (replayed) return
@@ -265,24 +282,12 @@ object EchoFixationField {
             val standstillR2 = standstillRange * standstillRange
             val tearBonus = EchoFixationMath.cognitiveTearBonus(difficultyFactor)
 
-            // Task 7 残影：本场回放为一次性同步循环，起始重置渲染器的防御性预算（按场封顶）。
-            EchoFixationAfterimageRenderer.resetReplayBudget()
-
             for ((_, record) in snapshots) {
                 val history = record.snapshots
                 val past = history.firstOrNull() ?: continue // 「过去坐标」= 最早快照
-
-                // Task 7 残影：在该敌舰「过去坐标 + 过去 facing」处浮现一帧紫罗兰舰体残影
-                // （「它会替你们再死一次」）。受 Field 的 MAX_TARGETS 自然封顶，渲染器另设防御性上限。
-                if (!record.ship.isHulk) {
-                    EchoFixationAfterimageRenderer.spawn(
-                        engine = engine,
-                        ship = record.ship,
-                        pastX = past.x,
-                        pastY = past.y,
-                        facing = record.pastFacing,
-                    )
-                }
+                // 残影贴图：被记录敌舰过去时刻的舰体（残影常驻重绘用）。spriteName 在回放瞬间取出
+                // 随 EchoTearState 携带，避免后续每帧重绘时被撕裂敌舰已 hulk/释放导致取不到。
+                val spriteName = record.ship.hullSpec.spriteName
 
                 for (ship in ships) {
                     if (ship == null) continue
@@ -295,7 +300,18 @@ object EchoFixationField {
                     if (dist2 > standstillR2) continue
 
                     val dist = kotlin.math.sqrt(dist2)
-                    applyCognitiveTear(engine, ship, dist, standstillRange, tearBonus, now)
+                    applyCognitiveTear(
+                        engine = engine,
+                        target = ship,
+                        distFromPast = dist,
+                        standstillRange = standstillRange,
+                        tearBonus = tearBonus,
+                        now = now,
+                        pastX = past.x,
+                        pastY = past.y,
+                        spriteName = spriteName,
+                        pastFacing = record.pastFacing,
+                    )
                 }
             }
         }
@@ -317,6 +333,10 @@ object EchoFixationField {
             standstillRange: Float,
             tearBonus: Float,
             now: Float,
+            pastX: Float,
+            pastY: Float,
+            spriteName: String,
+            pastFacing: Float,
         ) {
             // 站桩重合系数：注意 standstillBonus 的 baseRange 须与命中半径一致，
             // 故传 standstillRange 已缩放值、systemRangeMult=1（避免二次缩放）。
@@ -334,7 +354,15 @@ object EchoFixationField {
             target.mutableStats.armorDamageTakenMult.modifyMult(TEAR_MODIFIER_ID, takenMult)
             target.setCustomData(
                 TEAR_STATE_KEY,
-                EchoTearState(takenMult = takenMult, expiresAt = now + TEAR_DURATION_SEC),
+                EchoTearState(
+                    takenMult = takenMult,
+                    expiresAt = now + TEAR_DURATION_SEC,
+                    pastX = pastX,
+                    pastY = pastY,
+                    standstillRange = standstillRange,
+                    spriteName = spriteName,
+                    pastFacing = pastFacing,
+                ),
             )
         }
 
@@ -466,8 +494,12 @@ object EchoFixationField {
         }
 
         /**
-         * 承伤 debuff 自管到期清理：遍历全场 ship，读 EchoTearState，
-         * 到期或 hulk 则 unapply stat 并清状态。
+         * 承伤 debuff 自管到期清理 + Task 7 残影常驻每帧重绘：遍历全场 ship，读 EchoTearState，
+         * - 到期或 hulk → unapply stat 并清状态（残影随之停止重绘，自然消失）。
+         * - 仍存活 → 算「当前敌舰位置到过去坐标」的距离，在过去坐标重绘一帧残影（每帧刷新形成常驻）。
+         *
+         * 残影常驻语义：靠每帧调用 renderPersistent 画极短生命周期残影，越接近过去坐标 jitter 越强、
+         * 颜色越红。残影上限由场内被撕裂敌舰数（≤MAX_TARGETS=24，每船一条 EchoTearState）自然约束。
          */
         private fun expireTears(engine: CombatEngineAPI) {
             val now = engine.getTotalElapsedTime(false)
@@ -479,7 +511,22 @@ object EchoFixationField {
                     ship.mutableStats.hullDamageTakenMult.unmodify(TEAR_MODIFIER_ID)
                     ship.mutableStats.armorDamageTakenMult.unmodify(TEAR_MODIFIER_ID)
                     ship.setCustomData(TEAR_STATE_KEY, null)
+                    continue
                 }
+                // 仍存活：在过去坐标重绘残影。当前敌舰离过去坐标越近 → jitter 越强、越红。
+                val loc = ship.location
+                val dx = loc.x - state.pastX
+                val dy = loc.y - state.pastY
+                val distToPast = kotlin.math.sqrt(dx * dx + dy * dy)
+                EchoFixationAfterimageRenderer.renderPersistent(
+                    engine = engine,
+                    pastX = state.pastX,
+                    pastY = state.pastY,
+                    pastFacing = state.pastFacing,
+                    spriteName = state.spriteName,
+                    distToPast = distToPast,
+                    standstillRange = state.standstillRange,
+                )
             }
         }
     }
