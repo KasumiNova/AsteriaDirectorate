@@ -241,33 +241,35 @@ internal object EchoFixationFieldVisualEffect {
           float r = length(p);
           float ang = atan(p.y, p.x);
 
-          // 场边界环半径：环固定落在场半径处。quad 半边长 = fieldRadius × 羽化倍率，
-          // 故环在归一域中的半径 = 1 / 羽化倍率。此 1.08 必须与 Kotlin 侧 FEATHER_MARGIN_MULT
-          // 同步（GLSL 无法引用 Kotlin const，改一处务必改另一处）。
+          // Boundary ring radius: ring sits at the field radius. quad half-extent = fieldRadius *
+          // feather mult, so the ring in normalized domain = 1 / feather mult. This 1.08 MUST stay
+          // in sync with the Kotlin-side FEATHER_MARGIN_MULT (GLSL cannot reference a Kotlin const).
+          // NOTE: GLSL comments must be ASCII only - Starsector's GL driver fails to lex
+          // multibyte UTF-8 in comments ("unexpected end of file"). Do not use CJK here.
           float ringRadius = 1.0 / 1.08;
 
-          // 定影脉动：随 u_time 正弦驱动环宽与亮度；progress 越高脉动越快、环越锐。
+          // Fixation pulse: u_time sine drives ring width and brightness; higher progress = faster.
           float pulseFreq = 2.0 + u_progress * 4.0;
           float pulse = 0.5 + 0.5 * sin(u_time * pulseFreq);
 
-          // 环宽：基础 + 脉动收束（progress 高时变窄变锐，像「定影收束」）。
+          // Ring width: base + pulse contraction (narrower/sharper at high progress).
           float baseWidth = mix(0.10, 0.035, u_progress);
           float width = baseWidth * (0.65 + 0.35 * pulse);
 
-          // 圆形 SDF 边界 → 环 alpha，smoothstep 双侧羽化。
+          // Circular SDF boundary -> ring alpha, two-sided smoothstep feather.
           float ringSdf = abs(r - ringRadius);
           float ring = 1.0 - smoothstep(0.0, width, ringSdf);
 
-          // 沿角度的细密刻度调制（定影场「扫描」感），随时间旋转。
+          // Fine angular tick modulation (scanning feel), rotating over time.
           float ticks = 0.85 + 0.15 * sin(ang * 48.0 + u_time * 1.5);
           ring *= ticks;
 
-          // 内圈淡紫辅色高光：一道更靠内的细环，低饱和。
+          // Inner light-violet accent highlight: a thinner ring further inward, low saturation.
           float innerRadius = ringRadius * 0.82;
           float innerSdf = abs(r - innerRadius);
           float inner = (1.0 - smoothstep(0.0, 0.04, innerSdf)) * (0.35 + 0.35 * pulse);
 
-          // 场内极淡填充辉光（让圈内区域可辨，向心衰减）。
+          // Very faint interior fill glow (makes the enclosed area readable, center falloff).
           float fill = (1.0 - smoothstep(0.0, ringRadius, r)) * 0.06 * u_progress;
 
           vec3 primary = hsv2rgb(vec3(u_hue, u_saturation, 1.0));

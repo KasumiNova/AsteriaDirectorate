@@ -291,33 +291,36 @@ internal object GhostSignalWaveEffect {
           float r = length(p);
           float ang = atan(p.y, p.x);
 
-          // 波前归一半径：quad 半边长 = range × 羽化倍率，故波在归一域中的最大半径 = 1 / 羽化倍率。
-          // 此 1.06 必须与 Kotlin 侧 FEATHER_MARGIN_MULT 同步（GLSL 无法引用 Kotlin const，
-          // 改一处务必改另一处）。progress 线性推进波前由 0 扩到该最大半径。
+          // Wavefront normalized radius: quad half-extent = range * feather mult, so the wave max
+          // radius in normalized domain = 1 / feather mult. This 1.06 MUST stay in sync with the
+          // Kotlin-side FEATHER_MARGIN_MULT (GLSL cannot reference a Kotlin const). progress
+          // linearly pushes the wavefront from 0 out to this max radius.
+          // NOTE: GLSL comments must be ASCII only - Starsector's GL driver fails to lex
+          // multibyte UTF-8 in comments ("unexpected end of file"). Do not use CJK here.
           float maxRadius = 1.0 / 1.06;
           float waveRadius = u_progress * maxRadius;
 
-          // 主波前环：以 waveRadius 为中心的高斯环，progress 越大环越宽越柔（扩散稀释感）。
+          // Main wavefront ring: a gaussian ring centered at waveRadius, wider/softer at high progress.
           float thickness = mix(0.035, 0.11, u_progress);
           float dr = r - waveRadius;
           float wave = exp(-(dr * dr) / max(thickness * thickness, 1e-5));
 
-          // 仅取波前外缘一侧略亮（电子战脉冲推进的「前沿」更锐），内侧拖尾稍弱。
+          // Slightly brighter leading edge (EW pulse front is sharper); inner trail a bit weaker.
           float frontBias = 0.65 + 0.35 * smoothstep(thickness, -thickness, dr);
           wave *= frontBias;
 
-          // 干扰扫描线：沿角度的细密刻度 + 随时间旋转（u_time 仅作细节抖动，非扩张主驱动）。
+          // Interference scan lines: fine angular ticks rotating over time (u_time = detail jitter only).
           float scan = 0.78 + 0.22 * sin(ang * 64.0 - u_time * 6.0);
-          // 径向噪声调制，给波前加电子战「噪声」颗粒。
+          // Radial noise modulation adds EW "noise" grain to the wavefront.
           float grain = 0.80 + 0.20 * valueNoise(vec2(ang * 6.0, r * 14.0 - u_time * 2.0));
           wave *= scan * grain;
 
-          // 内侧淡紫辅色拖尾：波前内侧一道更柔的辅色环，低饱和。
+          // Inner light-violet accent trail: a softer accent ring just inside the front, low saturation.
           float trailRadius = waveRadius * 0.86;
           float trailDr = r - trailRadius;
           float trail = exp(-(trailDr * trailDr) / 0.010) * 0.40;
 
-          // 波心向外的极淡余辉填充（progress 越大越散，弱）。
+          // Very faint afterglow fill from the wave center outward (more diffuse at high progress).
           float core = exp(-r * r * 6.0) * (1.0 - u_progress) * 0.18;
 
           vec3 primary = hsv2rgb(vec3(u_hue, u_saturation, 1.0));

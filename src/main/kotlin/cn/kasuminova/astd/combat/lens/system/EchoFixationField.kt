@@ -4,6 +4,7 @@ import cn.kasuminova.astd.combat.hullmods.affix.AffixUtil
 import cn.kasuminova.astd.combat.lens.marks.LensMarks
 import cn.kasuminova.astd.renderer.effect.lens.EchoFixationAfterimageRenderer
 import cn.kasuminova.astd.renderer.effect.lens.EchoFixationFieldVisualEffect
+import cn.kasuminova.astd.renderer.effect.lens.LensVfxTelemetry
 import cn.kasuminova.astd.renderer.shader.runtime.CombatShaderRuntime
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseEveryFrameCombatPlugin
@@ -182,12 +183,16 @@ object EchoFixationField {
         private fun submitBoundaryVisual(engine: CombatEngineAPI) {
             val progress = (elapsed / fixateDuration).coerceIn(0f, 1f)
             val frame = EchoFixationFieldVisualEffect.frame(fieldRadius = radius, progress = progress)
-            EchoFixationFieldVisualEffect.submitFrame(
+            val handle = EchoFixationFieldVisualEffect.submitFrame(
                 sink = CombatShaderRuntime.ensure(engine).sink,
                 instanceId = visualInstanceId,
                 center = centerVec,
                 frame = frame,
             )
+            // Task 12 实机自动化：仅真实提交（handle 非 null）才计数，证明定影场视觉管线生效。
+            if (handle != null) {
+                LensVfxTelemetry.incrementCounter(engine, LensVfxTelemetry.TELEMETRY_ECHO_FIXATION_FIELD_FRAMES)
+            }
         }
 
         /** 遍历 engine.ships，把场内敌舰当前位置追加进快照表（带上限保护）。 */
@@ -390,6 +395,21 @@ object EchoFixationField {
         return (1f + AffixUtil.getK(source)).coerceIn(1f, 2f)
     }
 
+    /**
+     * 当前是否存在活跃定影场（Task 12 实机自动化机制证据 `echoFixationFieldActive`）。
+     *
+     * 动机：阶段二要断言「回声定影系统施放后场确实存在」。场是 [Plugin] 内部 [Field] 列表元素，
+     * 列表为私有，外部无法直接观测；故在此暴露只读查询入口。返回 true ⟺ 至少一个场仍处于定影期
+     * （未回放、未销毁）——回放后场即从列表移除（见 [Plugin.advanceFields]），故本判定严格反映
+     * 「此刻有场在运转」。无插件（从未施放）返回 false。
+     *
+     * 不缓存、不引入新状态：直接读单例插件的活跃列表，避免与现有生命周期产生第二处真相来源。
+     */
+    fun hasActiveField(engine: CombatEngineAPI): Boolean {
+        val plugin = engine.customData[ENGINE_PLUGIN_KEY] as? Plugin ?: return false
+        return plugin.hasActiveField()
+    }
+
     /** 取/建单例推进插件（范式同 StackingShipBuffs.ensurePlugin）。 */
     private fun ensurePlugin(engine: CombatEngineAPI): Plugin {
         val existing = engine.customData[ENGINE_PLUGIN_KEY] as? Plugin
@@ -412,6 +432,9 @@ object EchoFixationField {
         fun add(field: Field) {
             fields.add(field)
         }
+
+        /** 是否存在活跃场（列表非空 ⟺ 有场处于定影期，回放后即被移除，见 [advanceFields]）。 */
+        fun hasActiveField(): Boolean = fields.isNotEmpty()
 
         override fun advance(amount: Float, events: MutableList<InputEventAPI>?) {
             val engine = Global.getCombatEngine() ?: return

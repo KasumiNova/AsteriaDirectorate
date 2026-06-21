@@ -61,6 +61,30 @@
         "lensSelfDeepWaterStacks",
         "lensSelfHullDamageTakenMult"
       ]
+    },
+    {
+      "id": "lens_phase2_mechanisms",
+      "missionId": "lens_phase2_mechanisms",
+      "shipIds": [
+        "astd_gravitational_lens"
+      ],
+      "variantIds": [
+        "astd_gravitational_lens_Standard",
+        "astd_gravitational_lens_Automated"
+      ],
+      "requiredEvidence": [
+        "echoFixationFieldActive",
+        "echoFixationCognitiveTearApplied",
+        "echoFixationAfterimageFrames",
+        "tideDeepWaterStacksOnEnemy",
+        "permeatingTideHullmod",
+        "parallaxDecksHullmod",
+        "echoFixationFieldVisualFrames",
+        "driftMarkVisualFrames",
+        "deepWaterMarkVisualFrames",
+        "ghostSignalWaveFrames",
+        "tideFieldVisualFrames"
+      ]
     }
   ]
 }

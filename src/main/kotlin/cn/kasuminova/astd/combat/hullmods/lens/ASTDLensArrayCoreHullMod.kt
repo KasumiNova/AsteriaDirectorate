@@ -7,6 +7,7 @@ import cn.kasuminova.astd.combat.lens.ui.LensMarkStatusBar
 import cn.kasuminova.astd.renderer.effect.lens.DeepWaterMarkVisualEffect
 import cn.kasuminova.astd.renderer.effect.lens.DriftMarkVisualEffect
 import cn.kasuminova.astd.renderer.effect.lens.GhostSignalWaveEffect
+import cn.kasuminova.astd.renderer.effect.lens.LensVfxTelemetry
 import cn.kasuminova.astd.renderer.shader.runtime.CombatShaderRuntime
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseHullMod
@@ -159,22 +160,30 @@ class ASTDLensArrayCoreHullMod : BaseHullMod() {
 
             val driftStacks = LensMarks.driftStacks(target)
             if (driftStacks > 0) {
-                DriftMarkVisualEffect.submitFrame(
+                val handle = DriftMarkVisualEffect.submitFrame(
                     sink = sink,
                     instanceId = "drift-${System.identityHashCode(target)}",
                     center = target.location,
                     frame = DriftMarkVisualEffect.frame(target.collisionRadius, driftStacks, LensMarkMath.MAX_STACKS),
                 )
+                // Task 12 实机自动化：误差标记高光真实提交计数（handle 非 null = 已 upsert 一帧）。
+                if (handle != null) {
+                    LensVfxTelemetry.incrementCounter(engine, LensVfxTelemetry.TELEMETRY_DRIFT_MARK_FRAMES)
+                }
             }
 
             val deepWaterStacks = LensMarks.deepWaterStacks(target)
             if (deepWaterStacks > 0) {
-                DeepWaterMarkVisualEffect.submitFrame(
+                val handle = DeepWaterMarkVisualEffect.submitFrame(
                     sink = sink,
                     instanceId = "deepwater-${System.identityHashCode(target)}",
                     center = target.location,
                     frame = DeepWaterMarkVisualEffect.frame(target.collisionRadius, deepWaterStacks, LensMarkMath.MAX_STACKS),
                 )
+                // Task 12 实机自动化：深水标记高光真实提交计数。
+                if (handle != null) {
+                    LensVfxTelemetry.incrementCounter(engine, LensVfxTelemetry.TELEMETRY_DEEP_WATER_MARK_FRAMES)
+                }
             }
         }
     }
@@ -242,7 +251,7 @@ class ASTDLensArrayCoreHullMod : BaseHullMod() {
                 iterator.remove()
                 continue
             }
-            GhostSignalWaveEffect.submitFrame(
+            val handle = GhostSignalWaveEffect.submitFrame(
                 sink = sink,
                 instanceId = "ghost-wave-$shipId-${wave.seq}",
                 center = ship.location,
@@ -251,6 +260,10 @@ class ASTDLensArrayCoreHullMod : BaseHullMod() {
                     progress = progress,
                 ),
             )
+            // Task 12 实机自动化：幽灵信号波真实提交计数（仅无人模式经此路径）。
+            if (handle != null) {
+                LensVfxTelemetry.incrementCounter(engine, LensVfxTelemetry.TELEMETRY_GHOST_SIGNAL_WAVE_FRAMES)
+            }
         }
     }
 

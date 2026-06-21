@@ -3,6 +3,7 @@ package cn.kasuminova.astd.combat.hullmods.lens
 import cn.kasuminova.astd.combat.hullmods.affix.AffixUtil
 import cn.kasuminova.astd.combat.hullmods.base.ASTDHullModTooltipRenderer
 import cn.kasuminova.astd.combat.lens.marks.LensMarks
+import cn.kasuminova.astd.renderer.effect.lens.LensVfxTelemetry
 import cn.kasuminova.astd.renderer.effect.lens.PermeatingTideFieldEffect
 import cn.kasuminova.astd.renderer.shader.runtime.CombatShaderRuntime
 import com.fs.starfarer.api.Global
@@ -144,12 +145,16 @@ class ASTDLensPermeatingTideHullMod : BaseHullMod() {
     /** 每帧提交潮汐场视觉（keyed upsert，per-ship instanceId "tide-${shipId}"，center=本舰）。 */
     private fun submitTideField(engine: CombatEngineAPI, ship: ShipAPI, shipId: Int, tideLevel: Float) {
         val sink = CombatShaderRuntime.ensure(engine).sink
-        PermeatingTideFieldEffect.submitFrame(
+        val handle = PermeatingTideFieldEffect.submitFrame(
             sink = sink,
             instanceId = "tide-$shipId",
             center = ship.location,
             frame = PermeatingTideFieldEffect.frame(tideLevel = tideLevel),
         )
+        // Task 12 实机自动化：渗透潮汐场视觉真实提交计数（退潮归零时 submitFrame 返回 null 不计数）。
+        if (handle != null) {
+            LensVfxTelemetry.incrementCounter(engine, LensVfxTelemetry.TELEMETRY_TIDE_FIELD_FRAMES)
+        }
     }
 
     /**

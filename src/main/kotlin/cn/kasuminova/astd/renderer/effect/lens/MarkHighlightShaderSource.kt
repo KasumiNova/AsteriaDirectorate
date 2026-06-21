@@ -91,31 +91,34 @@ internal object MarkHighlightShaderSource {
           float r = length(p);
           float ang = atan(p.y, p.x);
 
-          // 高光环半径：固定落在敌舰碰撞半径处。quad 半边长 = collisionRadius × 羽化倍率，
-          // 故环在归一域中的半径 = 1 / 羽化倍率(1.12)。必须与 Kotlin FEATHER_MARGIN_MULT 同步。
+          // Highlight ring radius: sits at the target collision radius. quad half-extent =
+          // collisionRadius * feather mult, so the ring in normalized domain = 1 / feather mult
+          // (1.12). MUST stay in sync with Kotlin FEATHER_MARGIN_MULT.
+          // NOTE: GLSL comments must be ASCII only - Starsector's GL driver fails to lex
+          // multibyte UTF-8 in comments ("unexpected end of file"). Do not use CJK here.
           float ringRadius = 1.0 / 1.12;
 
-          // 层数驱动的环宽：层数越高环越宽（0.045 → 0.105）。
+          // Mark-level driven ring width: more stacks = wider ring (0.045 -> 0.105).
           float width = mix(0.045, 0.105, u_markLevel);
 
-          // 圆形 SDF → 环 alpha，smoothstep 双侧羽化。
+          // Circular SDF -> ring alpha, two-sided smoothstep feather.
           float ringSdf = abs(r - ringRadius);
           float ring = 1.0 - smoothstep(0.0, width, ringSdf);
 
-          // Fresnel 边缘增强：越靠近环中心线（SDF=0）能量越高，且整体随层数提亮。
+          // Fresnel edge boost: closer to the ring center line (SDF=0) = higher energy; brighter with level.
           float fresnel = pow(1.0 - clamp(ringSdf / max(width, 1e-3), 0.0, 1.0), 1.5);
           ring *= fresnel;
 
-          // 角向缓动调制（持续扫描的活感，振幅小以免破坏环的连续性）。
+          // Angular easing modulation (subtle scanning feel, small amplitude to keep the ring continuous).
           float sweep = 0.88 + 0.12 * sin(ang * 6.0 + u_time * 1.2);
           ring *= sweep;
 
-          // 内侧细辅环：层数越高越明显，给高层标记额外一圈强调。
+          // Inner thin accent ring: more visible at high stacks, extra emphasis for high-level marks.
           float innerRadius = ringRadius * 0.86;
           float innerSdf = abs(r - innerRadius);
           float inner = (1.0 - smoothstep(0.0, 0.03, innerSdf)) * (0.20 + 0.45 * u_markLevel);
 
-          // 整体能量随层数线性增益（高层更亮更醒目）。
+          // Overall energy gains linearly with mark level (high stacks brighter / more salient).
           float levelGain = 0.55 + 0.85 * u_markLevel;
           float energy = ring * levelGain + inner;
 

@@ -272,36 +272,39 @@ internal object PermeatingTideFieldEffect {
           float r = length(p);
           float ang = atan(p.y, p.x);
 
-          // 场缘归一半径：quad 半边长 = fieldRadius × 羽化倍率，故场缘在归一域半径 = 1 / 羽化倍率。
-          // 此 1.06 必须与 Kotlin 侧 FEATHER_MARGIN_MULT 同步（GLSL 无法引用 Kotlin const）。
+          // Field edge in normalized domain: quad half-extent = fieldRadius * feather mult,
+          // so the edge sits at radius = 1 / feather mult. This 1.06 MUST stay in sync with the
+          // Kotlin-side FEATHER_MARGIN_MULT (GLSL cannot reference a Kotlin const).
+          // NOTE: GLSL comments must be ASCII only - Starsector's GL driver fails to lex
+          // multibyte UTF-8 in comments ("unexpected end of file"). Do not use CJK here.
           float fieldEdge = 1.0 / 1.06;
 
-          // 场外直接透明（圆形场，超出场缘 + 羽化即无）。
+          // Outside the circular field: fully transparent.
           if (r > fieldEdge) {
             gl_FragColor = vec4(0.0);
             return;
           }
 
-          // 归一化半径 0（心）→1（缘），用于向心衰减与径向涟漪相位。
+          // Normalized radius 0 (center) -> 1 (edge): drives center falloff and ripple phase.
           float rn = r / fieldEdge;
 
-          // ---- 渗透涟漪：向外缓慢推进的同心 FBM 波纹（潮水从心向外渗透）----
-          // 径向相位随时间外推；FBM 扰动 + 角向缓慢搅动，避免完美同心的机械感。
+          // ---- Permeating ripples: concentric FBM wavefronts pushing slowly outward ----
+          // Radial phase advances with time; FBM + angular drift avoid a mechanical look.
           float ripplePhase = rn * 9.0 - u_time * 0.6;
           float ripple = 0.5 + 0.5 * sin(ripplePhase);
           float turbulence = fbm(vec2(rn * 4.0 + u_time * 0.15, ang * 1.5));
-          // 涟漪与湍流混合，潮位越高涟漪越显（涨潮水纹更密更亮）。
+          // Mix ripple + turbulence; higher tide level = denser/brighter water texture.
           float waterTexture = mix(0.35, 1.0, u_tideLevel) * (ripple * 0.55 + turbulence * 0.45);
 
-          // ---- 向心填充辉光：心亮缘暗的水体本身（柔和，非锐环）----
+          // ---- Center fill glow: the water body itself (soft, bright center, dim edge) ----
           float fill = (1.0 - smoothstep(0.0, fieldEdge, r));
           fill = pow(fill, 1.4);
 
-          // ---- 外缘呼吸羽化：场缘随时间柔和涨落（涨潮边界往外渗）----
+          // ---- Edge breathing feather: the field edge swells gently over time ----
           float edgeBreath = 0.04 * sin(u_time * 0.8 + ang * 2.0);
           float edge = 1.0 - smoothstep(fieldEdge - 0.18, fieldEdge + edgeBreath, r);
 
-          // 水体亮度 = 填充辉光 × 涟漪纹理，叠一道更亮的潮心微光。
+          // Water brightness = fill glow * ripple texture, plus a brighter tidal core glow.
           float body = fill * (0.45 + 0.55 * waterTexture) * edge;
           float core = (1.0 - smoothstep(0.0, fieldEdge * 0.35, r)) * 0.35 * u_tideLevel;
 

@@ -9,6 +9,7 @@ object ASTDInGameAutomationScenario {
     const val SCENARIO_ID: String = "arc_flare_aod7_basic"
     const val ARC_PRODUCTION_SCENARIO_ID: String = "arc_production_ships_vfx_tooltip"
     const val LENS_PHASE1_SCENARIO_ID: String = "lens_phase1_foundation"
+    const val LENS_PHASE2_SCENARIO_ID: String = "lens_phase2_mechanisms"
     const val SHIP_ID: String = "astd_arc_flare"
     const val VARIANT_ID: String = "astd_arc_flare_Standard"
     const val WEAPON_ID: String = "astd_aod7"
@@ -44,6 +45,17 @@ object ASTDInGameAutomationScenario {
         val enabled = System.getProperty(ENABLED_PROPERTY)?.equals("true", ignoreCase = true) == true
         val scenario = System.getProperty(SCENARIO_PROPERTY, SCENARIO_ID)
         return enabled && scenario == LENS_PHASE1_SCENARIO_ID
+    }
+
+    /**
+     * 阶段二引力透镜级实机场景开关：镜像 [isLensPhase1Enabled]。
+     * 仅当 automation 启用且场景属性显式为 [LENS_PHASE2_SCENARIO_ID] 时为 true。
+     * 阶段二验证机制证据（定影场 / 认知撕裂 / 残影 / 深水标记 / 插件挂载）+ shader 提交计数。
+     */
+    fun isLensPhase2Enabled(): Boolean {
+        val enabled = System.getProperty(ENABLED_PROPERTY)?.equals("true", ignoreCase = true) == true
+        val scenario = System.getProperty(SCENARIO_PROPERTY, SCENARIO_ID)
+        return enabled && scenario == LENS_PHASE2_SCENARIO_ID
     }
 
     fun outputDir(): Path {

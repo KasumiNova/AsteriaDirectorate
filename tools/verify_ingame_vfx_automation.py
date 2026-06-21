@@ -62,6 +62,26 @@ LENS_PHASE1_NUMERIC_MINIMUMS = {
     "lensSelfDeepWaterStacks": 3.0,
     "lensSelfHullDamageTakenMult": 1.0001,
 }
+LENS_PHASE2_SCENARIO = "lens_phase2_mechanisms"
+# 机制证据：定影场存在 / 认知撕裂施加 / 渗透潮汐插件挂载 / 视差甲板插件挂载（fighter 误差标记降级为挂载断言）。
+LENS_PHASE2_BOOL_EVIDENCE = (
+    "echoFixationFieldActive",
+    "echoFixationCognitiveTearApplied",
+    "permeatingTideHullmod",
+    "parallaxDecksHullmod",
+    "lensCrewedDeployed",
+    "lensAutomatedDeployed",
+)
+# 机制 + 视觉计数：均要求 > 0（>=1）。视觉计数来自每个 lens shader effect 真实 upsert 一帧即 +1（方案 B）。
+LENS_PHASE2_NUMERIC_MINIMUMS = {
+    "echoFixationAfterimageFrames": 1.0,
+    "tideDeepWaterStacksOnEnemy": 1.0,
+    "echoFixationFieldVisualFrames": 1.0,
+    "driftMarkVisualFrames": 1.0,
+    "deepWaterMarkVisualFrames": 1.0,
+    "ghostSignalWaveFrames": 1.0,
+    "tideFieldVisualFrames": 1.0,
+}
 ARC_PRODUCTION_SCREENSHOT_REGIONS = (
     ("arc jet shockwave ring", (0.02, 0.26, 0.42, 0.70), 900),
     ("plasma arch shield arcs", (0.28, 0.24, 0.64, 0.78), 550),
@@ -617,6 +637,54 @@ def _print_lens_result(data: dict, telemetry_path: Path) -> None:
         print(f"- {key}: {data.get(key)}")
 
 
+def _verify_lens_phase2(data: dict, actual_telemetry_path: Path) -> int:
+    errors: list[str] = []
+    if data.get("scenario") != LENS_PHASE2_SCENARIO:
+        errors.append(f"scenario: expected {LENS_PHASE2_SCENARIO!r}, got {data.get('scenario')!r}")
+    if data.get("state") != "Completed":
+        errors.append(f"state: expected 'Completed', got {data.get('state')!r}")
+
+    for key in LENS_PHASE2_BOOL_EVIDENCE:
+        if data.get(key) is not True:
+            errors.append(f"{key}: expected true, got {data.get(key)!r}")
+
+    for key, minimum in LENS_PHASE2_NUMERIC_MINIMUMS.items():
+        value = data.get(key)
+        try:
+            numeric = float(value)
+        except (TypeError, ValueError):
+            errors.append(f"{key}: expected numeric >= {minimum}, got {value!r}")
+            continue
+        if numeric < minimum:
+            errors.append(f"{key}: expected >= {minimum}, got {numeric}")
+
+    if errors:
+        print("FAIL ASTD Gravitational Lens phase-2 automation evidence")
+        for error in errors:
+            print(f"- {error}")
+        _print_lens_phase2_result(data, actual_telemetry_path)
+        return 1
+
+    print("PASS ASTD Gravitational Lens phase-2 automation evidence")
+    _print_lens_phase2_result(data, actual_telemetry_path)
+    return 0
+
+
+def _print_lens_phase2_result(data: dict, telemetry_path: Path) -> None:
+    print(f"- telemetry: {telemetry_path}")
+    print(f"- scenario: {data.get('scenario')}")
+    print(f"- state: {data.get('state')}")
+    if data.get("logPath"):
+        print(f"- log: {data['logPath']}")
+    print(f"- lensDeployedShipIds: {data.get('lensDeployedShipIds')}")
+    for key in LENS_PHASE2_BOOL_EVIDENCE:
+        print(f"- {key}: {data.get(key)}")
+    for key in LENS_PHASE2_NUMERIC_MINIMUMS:
+        print(f"- {key}: {data.get(key)}")
+    # 诊断辅助字段（不参与断言，便于排查降级/触发情况）。
+    print(f"- driftStacksOnEnemy (info): {data.get('driftStacksOnEnemy')}")
+
+
 def _check_equal(data: dict, key: str, expected: str, errors: list[str]) -> None:
     actual = data.get(key)
     if actual != expected:
@@ -1143,16 +1211,22 @@ def verify(
 ) -> int:
     if telemetry_path.exists() or telemetry_path.with_name(ASTD_TELEMETRY_FILE).exists():
         data, actual_telemetry_path = _load_preferred_telemetry(telemetry_path)
-        if data.get("scenario") not in (ARC_PRODUCTION_SCENARIO, LENS_PHASE1_SCENARIO) and log_path is not None:
-            lens_data = _diagnostics_from_log(log_path, LENS_PHASE1_SCENARIO, data)
-            if lens_data is not None:
-                data = lens_data
+        if data.get("scenario") not in (ARC_PRODUCTION_SCENARIO, LENS_PHASE1_SCENARIO, LENS_PHASE2_SCENARIO) and log_path is not None:
+            lens2_data = _diagnostics_from_log(log_path, LENS_PHASE2_SCENARIO, data)
+            if lens2_data is not None:
+                data = lens2_data
             else:
-                arc_production_data = _arc_production_data_from_log(log_path, data)
-                if arc_production_data is not None:
-                    data = arc_production_data
+                lens_data = _diagnostics_from_log(log_path, LENS_PHASE1_SCENARIO, data)
+                if lens_data is not None:
+                    data = lens_data
+                else:
+                    arc_production_data = _arc_production_data_from_log(log_path, data)
+                    if arc_production_data is not None:
+                        data = arc_production_data
     elif log_path is not None:
-        data = _diagnostics_from_log(log_path, LENS_PHASE1_SCENARIO)
+        data = _diagnostics_from_log(log_path, LENS_PHASE2_SCENARIO)
+        if data is None:
+            data = _diagnostics_from_log(log_path, LENS_PHASE1_SCENARIO)
         if data is None:
             data = _arc_production_data_from_log(log_path)
         if data is None:
@@ -1163,6 +1237,8 @@ def verify(
         actual_telemetry_path = telemetry_path
     errors: list[str] = []
     screenshot_details: list[str] = []
+    if data.get("scenario") == LENS_PHASE2_SCENARIO:
+        return _verify_lens_phase2(data, actual_telemetry_path)
     if data.get("scenario") == LENS_PHASE1_SCENARIO:
         return _verify_lens_phase1(data, actual_telemetry_path)
     if data.get("scenario") == ARC_PRODUCTION_SCENARIO:
