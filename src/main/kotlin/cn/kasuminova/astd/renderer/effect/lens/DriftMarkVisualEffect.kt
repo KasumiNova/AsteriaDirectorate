@@ -48,7 +48,7 @@ internal object DriftMarkVisualEffect {
     const val PRIMARY_SATURATION = 0.70f
 
     // 碰撞半径下限 / 羽化倍率由 [MarkHighlightShaderSource] 统一持有，Drift/DeepWater 共享，
-    // 改一处即两 effect 同步（GLSL ringRadius 仍需对齐，见该常量注释）。
+    // 改一处即两 effect 同步（GLSL maxRadius 仍需对齐，见该常量注释）。
     private const val MIN_COLLISION_RADIUS = MarkHighlightShaderSource.MIN_COLLISION_RADIUS
     private const val FEATHER_MARGIN_MULT = MarkHighlightShaderSource.FEATHER_MARGIN_MULT
 
