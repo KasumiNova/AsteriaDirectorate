@@ -56,6 +56,8 @@
 - [ ] **tooltip 动态文案**：切换器说明区显示「当前模式」+「拆下后切到的目标模式」，模式名随当前舰 variant 正确变化（紫蓝高亮）。
 - [ ] **通用复用**：同一切换器在 arc_flare（弧光耀斑）与 gravitational_lens（引力透镜）上均可用，tooltip 各自显示对应舰的模式名（非硬编码单舰）。
 - [ ] **无人模式可验收**：通过拆即切切到无人模式后，幽灵信号 / 蜂群思维等无人专属效果正常生效（修复前因切换器不可用而无法验收）。
+- [ ] **载人模式自举**：全新部署的载人引力透镜（Standard 变体，无 permaMod 声明）应自动处于载人模式并带「透镜阵列核心 - 载人模式」船插。
+  > 机制：切换器（lens .ship builtInMods 常驻）在 applyEffectsBeforeShipCreation 经 registry 反查 config → ensureASTDDualModeState 把无模式 variant 收敛到缺省载人模式。不依赖变体手写 permaMod（遵守 Standard 变体不用 permaMod 的项目约束，arc 例外）。
 
 ### R2. 渗透潮汐场降亮（≥50%）
 - [ ] **大战场不抢眼**：潮汐场常驻涟漪亮度较旧版明显降低（alphaMult 0.55→0.26，约 −53%），多敌同屏时不再过曝抢眼，仍可辨涟漪形态。
