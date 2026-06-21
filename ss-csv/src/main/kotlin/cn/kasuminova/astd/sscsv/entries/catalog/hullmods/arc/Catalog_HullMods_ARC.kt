@@ -88,19 +88,8 @@ object HullMod_astd_nano_restoration_protocol : HullModEntry() {
     override val sprite: String = "graphics/hullmods/astd_nano_restoration_protocol.png"
 }
 
-object HullMod_astd_arc_flare_mode_switcher : HullModEntry() {
-    override val id: String = "astd_arc_flare_mode_switcher"
-    override val name: String = hullmodName(id)
-    override val tier: Int = 3
-    override val rarity: Int = 0
-    override val tech: String = "ARC"
-    override val tags: String = ""
-    override val unlocked: Boolean = true
-    override val script: String = "cn.kasuminova.astd.combat.hullmods.arc.ASTDArcFlareDualModeSwitcherHullMod"
-    override val desc: String = SsI18n.t("hullmod.$id.desc")
-    override val short: String = SsI18n.t("hullmod.$id.short")
-    override val sprite: String = "graphics/hullmods/astd_arc_loop_interface.png"
-}
+// 注：arc 自造切换器 astd_arc_flare_mode_switcher 已废弃，改用通用切换器 astd_dual_mode_switcher
+// （见 entries/catalog/hullmods/base/Catalog_HullMods_Base.kt）。原条目已移除。
 
 object HullMod_astd_arc_flare_mode_crewed : HullModEntry() {
     override val id: String = "astd_arc_flare_mode_crewed"

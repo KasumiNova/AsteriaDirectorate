@@ -12,7 +12,7 @@ import java.awt.Color
  * 通用双模式（载人 / 无人）切换器 hullmod。
  *
  * 动机：arc_flare、gravitational_lens 等所有 ASTD 双模式舰共用同一套「在改装界面拆下切换器即轮换模式」
- * 的交互。早期每艘舰各自有一个专属切换器（如 [cn.kasuminova.astd.combat.hullmods.arc.ASTDArcFlareDualModeSwitcherHullMod]），
+ * 的交互。早期每艘舰各自有一个专属切换器（arc 的 ASTDArcFlareDualModeSwitcherHullMod、lens 的同类，均已废弃删除），
  * 重复且难维护。本类是唯一通用切换器：对任意 ASTD 舰（[isASTDShip]）可装，
  * 其 tooltip 根据当前舰的 [ASTDDualModeConfig] 与 variant permaMods 动态显示「当前模式 / 拆下后切到的目标模式」。
  *

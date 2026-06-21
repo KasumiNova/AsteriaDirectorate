@@ -1,6 +1,7 @@
 package cn.kasuminova.astd.combat.hullmods.arc
 
 import cn.kasuminova.astd.combat.hullmods.base.ASTDHullModTooltipRenderer
+import cn.kasuminova.astd.combat.hullmods.base.isASTDShip
 import cn.kasuminova.astd.combat.shipsystems.ASTDArcFlareOverdriveSystemStats
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseHullMod

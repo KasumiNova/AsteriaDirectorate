@@ -1,6 +1,9 @@
 package cn.kasuminova.astd.combat.hullmods.arc
 
 import cn.kasuminova.astd.combat.hullmods.base.ASTDHullModTooltipRenderer
+import cn.kasuminova.astd.combat.hullmods.base.activateDualMode
+import cn.kasuminova.astd.combat.hullmods.base.isASTDShip
+import cn.kasuminova.astd.combat.hullmods.base.isASTDShipVariant
 import cn.kasuminova.astd.renderer.effect.system.ArcFlareOverdriveVisualState
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseHullMod
@@ -45,14 +48,14 @@ class ASTDArcFlareCrewedModeHullMod : BaseHullMod() {
         if (!variant.isASTDShipVariant()) return
 
         // 切换器被玩家移除 → 立即切换到无人模式并恢复切换器（常驻）
-        if (!variant.hasHullMod(ASTDArcFlareHullModIds.SWITCHER)) {
-            variant.activateMode(ASTDArcFlareHullModIds.MODE_AUTOMATED, stats)
-            variant.addMod(ASTDArcFlareHullModIds.SWITCHER)
+        if (!variant.hasHullMod(ARC_FLARE_DUAL_MODE_CONFIG.switcherId)) {
+            variant.activateDualMode(ARC_FLARE_DUAL_MODE_CONFIG, ARC_FLARE_DUAL_MODE_CONFIG.automatedModeId, stats)
+            variant.addMod(ARC_FLARE_DUAL_MODE_CONFIG.switcherId)
             return
         }
 
         // 载人模式：使用载人版系统
-        variant.hullSpec?.setShipSystemId("astd_arc_flare_overdrive_crewed")
+        variant.hullSpec?.setShipSystemId(ARC_FLARE_DUAL_MODE_CONFIG.crewedSystemId)
 
         stats.peakCRDuration.modifyFlat(id, PEAK_CR_BONUS_FLAT)
         stats.shieldUpkeepMult.modifyMult(id, SHIELD_UPKEEP_MULT)

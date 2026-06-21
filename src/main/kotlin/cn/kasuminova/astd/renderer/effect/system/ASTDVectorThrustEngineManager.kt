@@ -1,6 +1,6 @@
 package cn.kasuminova.astd.renderer.effect.system
 
-import cn.kasuminova.astd.combat.hullmods.arc.isASTDShip
+import cn.kasuminova.astd.combat.hullmods.base.isASTDShip
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseEveryFrameCombatPlugin
 import com.fs.starfarer.api.combat.CombatEngineAPI
