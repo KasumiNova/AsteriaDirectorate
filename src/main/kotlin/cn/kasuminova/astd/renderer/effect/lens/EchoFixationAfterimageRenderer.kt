@@ -56,7 +56,8 @@ internal object EchoFixationAfterimageRenderer {
 
     /**
      * 每帧重绘的单帧残影生命周期（s）。极短（fadeIn 0 / full 0.05 / fadeOut 0.05 ≈ 0.1s），
-     * 靠推进插件每帧调用刷新形成「常驻」观感；单帧本身瞬灭，故不会因每帧叠加而越积越亮。
+     * 靠推进插件每帧新生一帧、旧帧在 ~0.1s 内淡出，稳态约 N（≈0.1s/帧时长）帧叠加形成常驻辉光。
+     * Additive 叠加下稳态亮度高于单帧 alpha，但**不随时间无界增长**（旧帧持续淡出退场）。
      */
     private const val FRAME_FULL = 0.05f
     private const val FRAME_FADE_OUT = 0.05f
