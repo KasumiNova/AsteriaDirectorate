@@ -650,8 +650,9 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         }
 
         // (2) 幽灵信号（仅无人模式）：无人透镜的 advanceInCombat 每 0.25s tick 对范围内敌方导弹做失制导判定，
-        //     有剥离即起一道紫波。为提供真实导弹，向无人透镜附近持续 spawn 敌方导弹（owner=敌舰），
-        //     交由真实 ghostSignal() 路径消费——不伪造波，波必须来自真实剥离触发的 spawnGhostWave。
+        //     每剥离一枚导弹即在该导弹位置起一道小脉冲扰动波（并 50% 概率熄火）。为提供真实导弹，向无人透镜
+        //     附近持续 spawn 敌方导弹（owner=敌舰），交由真实 ghostSignal() 路径消费——不伪造特效，
+        //     脉冲必须来自真实剥离触发的 spawnGhostPulse。
         feedGhostSignalMissiles(engine, amount)
 
         // (3) 潮汐深水标记 / 标记高光：由 ASTDLensPermeatingTideHullMod / ASTDLensArrayCoreHullMod 每帧自驱，
