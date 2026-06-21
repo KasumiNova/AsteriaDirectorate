@@ -1,6 +1,6 @@
 # 引力透镜级 · 阶段二修订轮（切换器通用化 + 特效重做 + 引擎修复 bug）实现计划
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** 修复阶段二验收暴露的 9 项问题：双模式切换器通用化（让玩家真能切模式）、5 类特效重做/调参、ASTD 全系引擎熄火修复时间异常。
 
@@ -51,7 +51,7 @@
 
 **问题：** 所有 ASTD 系列舰船引擎熄火（disabled）后修复时间极长，与原版舰船不一致。
 
-- [ ] **Step 1: 复现 + 定位根因**
+- [x] **Step 1: 复现 + 定位根因**
 
 调研顺序（按嫌疑）：
 1. `ASTDVectorThrustEngineManager.kt`：它每帧对所有 ASTD 船 `controller.setFlameLevel(slot, level)`。读它在引擎 `isDisabled`（熄火）时的分支——当前 `usable = !engine.isDisabled && !engine.isPermanentlyDisabled`，disabled 时 `target=0f`。**关键怀疑**：每帧强制 setFlameLevel 是否干扰原版的引擎修复计时（原版熄火后按 `engineRepairTimeMult` 计时恢复，每帧外部写 flameLevel 可能重置/冻结该计时）。验证方法：临时禁用 ASTDVectorThrustEngineManager（注释掉 ensureInstalled 调用或 setFlameLevel），实机观察 ASTD 船熄火修复是否恢复正常。
@@ -60,17 +60,17 @@
 
 **实现者必须先确认根因再改，在报告写明根因证据（哪个改动导致、如何验证）。**
 
-- [ ] **Step 2: 修复根因**
+- [x] **Step 2: 修复根因**
 
 按定位结果修复。若是 ASTDVectorThrustEngineManager 的 setFlameLevel 干扰：
 - 方案：引擎 disabled 时**跳过 setFlameLevel**（不写 flame level，让原版自己管熄火/修复表现），只在引擎正常（usable）时才接管火焰长度。即把 `if (!usable) target=0f` 改为 `if (!usable) { continue/skip setFlameLevel }`——不调 setFlameLevel，交还原版。验证修复后熄火修复时间正常 + 正常引擎的矢量推进表现不受影响。
 - 若是别处 stat 误改，移除/修正该 stat 修改。
 
-- [ ] **Step 3: 验证**
+- [x] **Step 3: 验证**
 
 Run: `./gradlew compileKotlin`，实机观察（或现有 automation 场景若能体现）。报告修复前后引擎修复时间对比。
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add <定位到的根因文件>
@@ -89,11 +89,11 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 
 把 arc 的双模式状态机（`ensureASTDArcFlareModeState`/`activateMode`/`migrateLegacyModeState`/`clearIncompatibleCaptain`）泛化为接受 ModeConfig 的通用函数。
 
-- [ ] **Step 1: 读 arc 现有状态机**
+- [x] **Step 1: 读 arc 现有状态机**
 
 读 `src/main/kotlin/cn/kasuminova/astd/combat/hullmods/arc/ASTDArcFlareHullModUtil.kt` 全文（已是工作实现）。识别其中硬编码的 arc ids（SWITCHER/MODE_CREWED/MODE_AUTOMATED/NEXT_CREWED/NEXT_AUTOMATED + "automated" 原版船插 + crewed/automated 系统 id "astd_arc_flare_overdrive_crewed/automated"）。
 
-- [ ] **Step 2: 写 ModeConfig 数据类 + 通用状态机函数**
+- [x] **Step 2: 写 ModeConfig 数据类 + 通用状态机函数**
 
 创建 `ASTDDualModeConfig.kt`：
 ```kotlin
@@ -189,7 +189,7 @@ private fun clearIncompatibleDualModeCaptain(stats: MutableShipStatsAPI?) {
 ```
 （`isASTDShipVariant()` 已在 arc util 定义为 internal——确认它可被 base 包访问；若不可，把 `isASTDShipVariant`/`isASTDShip` 也移到 base 包或改 public。实现者确认并处理 import/可见性。`clearIncompatibleDualModeCaptain` 的 try/catch 是战役上下文核心防崩例外，保留。）
 
-- [ ] **Step 3: 写测试**（纯状态机逻辑，用 fake variant 或验证 ids 配置自洽）
+- [x] **Step 3: 写测试**（纯状态机逻辑，用 fake variant 或验证 ids 配置自洽）
 
 由于 ShipVariantAPI 是引擎接口难以纯单测，可测部分是 ModeConfig 的构造自洽（ids 非空、crewed≠automated）。写一个最小测试验证两个预置 config（arc/lens）的 ids 无冲突、字段齐全：
 ```kotlin
@@ -215,7 +215,7 @@ class ASTDDualModeConfigTest {
 ```
 > 若实现者认为此测试过于平凡（仅验证 data class 字段），可跳过并在报告说明——状态机真正逻辑由 Task 4 实机切换验证。**但 ModeConfig + 通用函数本身必须实现。**
 
-- [ ] **Step 4: 编译 + 提交**
+- [x] **Step 4: 编译 + 提交**
 
 Run: `./gradlew compileKotlin` + （若写了测试）`./gradlew test --tests "...ASTDDualModeConfigTest"`
 ```bash
@@ -236,11 +236,11 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 
 单一通用切换器类，`isASTDShip()` 通用，tooltip 根据当前 variant 的模式状态动态显示「当前模式 / 拆下后切换到的目标模式」。
 
-- [ ] **Step 1: 读 arc 切换器 hullmod**
+- [x] **Step 1: 读 arc 切换器 hullmod**
 
 读 `src/main/kotlin/cn/kasuminova/astd/combat/hullmods/arc/ASTDArcFlareDualModeSwitcherHullMod.kt`（结构范式）+ `ASTDHullModTooltipRenderer`（tooltip 渲染器）。
 
-- [ ] **Step 2: 实现通用切换器**
+- [x] **Step 2: 实现通用切换器**
 
 创建 `ASTDDualModeSwitcherHullMod.kt`：
 - `class ASTDDualModeSwitcherHullMod : BaseHullMod()`，`isApplicableToShip = ship.isASTDShip()`，`showInRefitScreenModPickerFor = ship.isASTDShip()`。
@@ -249,11 +249,11 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 - **ModeConfig 注册表**：在 `ASTDDualModeConfig.kt` 或新文件加一个 `ASTDDualModeRegistry`（object，`Map<hullIdOrPredicate, ASTDDualModeConfig>`，arc/lens 启动时注册各自 config）。切换器 tooltip 用 `ASTDDualModeRegistry.configFor(ship)` 拿到当前舰的 config 再读模式状态。**实现者设计这个注册表**（简单 object + register/configFor，arc/lens 的 ids util 类静态初始化时 register）。
 - tooltip i18n key 用占位参数（`%currentMode%` / `%targetMode%`），文案动态填充（参照项目 I18n.t 带参数的用法）。
 
-- [ ] **Step 3: strings.json 通用切换器文案**
+- [x] **Step 3: strings.json 通用切换器文案**
 
 加 `ui.hullmod.dual_mode_switcher.summary` / `.line.1`（说明拆下即切换）/ 动态模式名 `ui.dual_mode.crewed` = "载人" / `ui.dual_mode.automated` = "无人"。手写直改 strings.json。
 
-- [ ] **Step 4: 编译 + 提交**
+- [x] **Step 4: 编译 + 提交**
 
 Run: `./gradlew compileKotlin`
 ```bash
@@ -276,7 +276,7 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 
 **这是修复「切换器无法使用」的核心任务。**
 
-- [ ] **Step 1: 定义 lens ModeConfig + 注册**
+- [x] **Step 1: 定义 lens ModeConfig + 注册**
 
 在 `LensArrayCoreModeUtil.kt`（或 LensArrayCoreHullModIds 旁）定义：
 ```kotlin
@@ -292,7 +292,7 @@ val LENS_DUAL_MODE_CONFIG = ASTDDualModeConfig(
 ```
 启动时 `ASTDDualModeRegistry.register(isGravitationalLens predicate, LENS_DUAL_MODE_CONFIG)`（找一个全局初始化点，参照 arc 怎么注册的；若用 hull id 映射，key = LensArrayCoreHullModIds.HULL_ID）。`ensureLensArrayModeState` 改为转调 `ensureASTDDualModeState(LENS_DUAL_MODE_CONFIG, stats)`。
 
-- [ ] **Step 2: 补 lens mode hullmod 的拆即切段**
+- [x] **Step 2: 补 lens mode hullmod 的拆即切段**
 
 `ASTDLensCrewedModeHullMod.applyEffectsBeforeShipCreation` 改为（镜像 arc crewed）：
 ```kotlin
@@ -310,13 +310,13 @@ override fun applyEffectsBeforeShipCreation(hullSize: ShipAPI.HullSize, stats: M
 ```
 `ASTDLensAutomatedModeHullMod` 对称（拆即切到 MODE_CREWED + 加回切换器；切换器在则 setShipSystemId(SYSTEM_AUTOMATED) + 保留蜂群思维 stat）。**保留 automated 的蜂群思维 stat 修改不变。**
 
-- [ ] **Step 3: ss-csv 切换器注册指向通用类 + .ship builtInMods**
+- [x] **Step 3: ss-csv 切换器注册指向通用类 + .ship builtInMods**
 
 - `Catalog_HullMods_LENS.kt`：lens 不再注册自己的 `astd_lens_mode_switcher`（废弃），改用通用 `astd_dual_mode_switcher`（Task 3 注册）。若通用切换器在 base catalog 注册，lens catalog 移除旧 switcher 条目。
 - `.ship` builtInMods：把 `astd_lens_mode_switcher` 换成通用 `astd_dual_mode_switcher`。手写直改 `contents/data/hulls/astd_gravitational_lens.ship`。
 - 旧 `ASTDLensDualModeSwitcherHullMod.kt` + 旧 switcher id 废弃（删除类 + 移除注册；确认无其它引用）。
 
-- [ ] **Step 4: 写回 contents + 编译 + 实机切换验证**
+- [x] **Step 4: 写回 contents + 编译 + 实机切换验证**
 
 ```bash
 ./gradlew :ss-csv:writeSsCsvToContents -PssCsvForce=true
@@ -325,7 +325,7 @@ override fun applyEffectsBeforeShipCreation(hullSize: ShipAPI.HullSize, stats: M
 ```
 **实机验证切换**：进 refit，拆下切换器 → 确认舰船从载人切到无人（系统变 echo_fixation_automated、蜂群思维 stat 生效、切换器自动加回）；再拆一次 → 切回载人。**这是本任务验收点，实现者必须实机确认切换真的工作**（或用 automation 场景验证模式可切——若 phase2 automation 能扩展验证切换，更好）。报告实机切换结果。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/main/kotlin/cn/kasuminova/astd/combat/hullmods/lens/LensArrayCoreModeUtil.kt \
@@ -350,19 +350,19 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 
 把 arc 从自有状态机迁移到通用框架，**arc 行为必须完全不变**（arc automation 测试 + StandardVariantBuiltInHullmodDataTest 必须仍 PASS）。
 
-- [ ] **Step 1: arc ModeConfig**
+- [x] **Step 1: arc ModeConfig**
 
 在 `ASTDArcFlareHullModUtil.kt` 定义 `ARC_FLARE_DUAL_MODE_CONFIG`（用 arc 现有 ids + 系统 id "astd_arc_flare_overdrive_crewed/automated"），注册到 ASTDDualModeRegistry（key = arc hull id）。`ensureASTDArcFlareModeState` 改为转调 `ensureASTDDualModeState(ARC_FLARE_DUAL_MODE_CONFIG, stats)`（保留旧函数名作薄包装，避免改所有调用点；或直接改调用点）。`activateMode`/`hasASTDArcFlareAutomatedMode` 同样转调通用。
 
-- [ ] **Step 2: arc mode hullmod 拆即切改调通用**
+- [x] **Step 2: arc mode hullmod 拆即切改调通用**
 
 `ASTDArcFlareCrewedModeHullMod` / `AutomatedModeHullMod` 的拆即切段：`variant.activateMode(...)` → `variant.activateDualMode(ARC_FLARE_DUAL_MODE_CONFIG, ...)`，`hasHullMod(SWITCHER)` 的 SWITCHER → 通用切换器 id。**arc 的 stat 修改 + advanceInCombat 视觉全部保留不变。**
 
-- [ ] **Step 3: arc 切换器注册指向通用类**
+- [x] **Step 3: arc 切换器注册指向通用类**
 
 arc 不再用自己的 `ASTDArcFlareDualModeSwitcherHullMod`（废弃或薄包装），改用通用 `astd_dual_mode_switcher`。`.ship`（arc_flare 的 .ship/.variant builtInMods）切换器 id 改通用。**注意 arc_flare 的 variant permaMod 约束**（StandardVariantBuiltInHullmodDataTest 对 arc_flare 有特殊豁免）——确认改切换器 id 后 arc_flare variant 仍通过该测试。
 
-- [ ] **Step 4: 写回 + 编译 + arc 回归测试**
+- [x] **Step 4: 写回 + 编译 + arc 回归测试**
 
 ```bash
 ./gradlew :ss-csv:writeSsCsvToContents -PssCsvForce=true
@@ -373,7 +373,7 @@ ASTD_AUTOMATION_SCENARIO=arc_production_ships_vfx_tooltip ./gradlew smokeTestGam
 ```
 Expected: 全量测试绿（含 StandardVariantBuiltInHullmodDataTest）；arc automation PASS；实机 arc 切换仍工作。**arc 行为零回归是验收硬条件。**
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/main/kotlin/cn/kasuminova/astd/combat/hullmods/arc/ASTDArcFlareHullModUtil.kt \
@@ -396,15 +396,15 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 
 常驻潮汐场太亮（图 2），降至少 50%。当前 `alphaMult = level * 0.55f`（PermeatingTideFieldEffect.kt:154）。
 
-- [ ] **Step 1: 更新测试断言**
+- [x] **Step 1: 更新测试断言**
 
 读现有测试里 alpha 相关断言。把涨满 alpha 上限断言从 0.55 改为 ≤0.275（降 50%）。若测试断言 `frame(tideLevel=1).alphaMult` 约等于某值，改为新值。
 
-- [ ] **Step 2: 降亮实现**
+- [x] **Step 2: 降亮实现**
 
 `PermeatingTideFieldEffect.kt:154`：`val alphaMult = level * 0.55f` → `val alphaMult = level * 0.26f`（降 ~53%，明确 ≥50%）。同步更新该行注释（「涨满约 0.55」→「涨满约 0.26，降亮避免大战场抢眼」）。若 GLSL 内还有额外亮度乘子（如 fill glow 的固定系数），一并评估降低（看 `waterTexture`/fill 部分，整体观感降 ≥50%）。
 
-- [ ] **Step 3: 测试 + 编译 + 提交**
+- [x] **Step 3: 测试 + 编译 + 提交**
 
 ```bash
 ./gradlew test --tests "cn.kasuminova.astd.renderer.effect.lens.PermeatingTideFieldEffectTest"
@@ -426,7 +426,7 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 
 **用户反馈**：当前残影只出现 ~1.25s 一次性淡出，太水。要：残影在认知撕裂期间**常驻**（直到 debuff 结束）；加 jitter；敌舰当前位置离「过去坐标」越近，jitter 越强、颜色越红。
 
-- [ ] **Step 1: EchoTearState 增存过去坐标 + 残影常驻所需上下文**
+- [x] **Step 1: EchoTearState 增存过去坐标 + 残影常驻所需上下文**
 
 读 `EchoFixationField.kt` 的 `EchoTearState`（当前 `data class EchoTearState(val takenMult: Float, val expiresAt: Float)`，:115）和 replay 施加撕裂处（:325-337）。改为：
 ```kotlin
@@ -445,14 +445,14 @@ private data class EchoTearState(
 ```
 replay 施加撕裂时（:325-337 附近）把 past 坐标（该敌舰的 firstOrNull 快照 x/y）、standstillRange、spriteName、pastFacing 一并存入 EchoTearState。
 
-- [ ] **Step 2: 每帧驱动常驻残影（替换一次性 replay 残影）**
+- [x] **Step 2: 每帧驱动常驻残影（替换一次性 replay 残影）**
 
 当前 replay 瞬间调 `EchoFixationAfterimageRenderer.spawn`（一次性）。改为：
 - replay 时**不再**调一次性 spawn。
 - 在推进插件的每帧（`expireTears` 同一遍历，:472-485）：对每个仍存活的 EchoTearState，计算 `dist = 当前敌舰位置到 (pastX,pastY)` 的距离，调 `EchoFixationAfterimageRenderer.renderPersistent(engine, ship, state.pastX, state.pastY, state.pastFacing, state.spriteName, dist, state.standstillRange)` 每帧重绘残影（在过去坐标）。debuff 到期 unapply 时残影自然停止（不再重绘）。
 - 保留 telemetry 计数（每帧重绘 +1，afterimageFrames 仍 >0 供 Task 12 验证）。
 
-- [ ] **Step 3: 残影渲染器改每帧重绘 + jitter + 红随距离**
+- [x] **Step 3: 残影渲染器改每帧重绘 + jitter + 红随距离**
 
 `EchoFixationAfterimageRenderer.kt` 加 `renderPersistent(engine, ship, pastX, pastY, pastFacing, spriteName, distToPast, standstillRange)`：
 - 用 `MagicRender.battlespace` 每帧画一帧**短生命周期**残影（如 fadeIn 0 / full 0.05 / fadeOut 0.05，约 0.1s，靠每帧重绘形成常驻）——不是一次性长淡出。
@@ -461,7 +461,7 @@ replay 施加撕裂时（:325-337 附近）把 past 坐标（该敌舰的 firstO
 - 移除/调整旧的一次性 `spawn`（若 Task 12 telemetry 还引用 spawn，保留但 replay 不再调；或统一为 renderPersistent。实现者确认 spawn 调用点全改）。
 - 上限：常驻残影按场内撕裂敌舰数（≤MAX_TARGETS）自然约束，每帧每敌一帧，无需额外上限（但保留防御性注释）。
 
-- [ ] **Step 4: 编译 + 实机/automation 验证**
+- [x] **Step 4: 编译 + 实机/automation 验证**
 
 ```bash
 ./gradlew compileKotlin
@@ -469,7 +469,7 @@ ASTD_AUTOMATION_SCENARIO=lens_phase2_mechanisms ./gradlew smokeTestGame
 ```
 确认 echoFixationAfterimageFrames 仍 >0（现在是每帧重绘，应远大于之前）。实机观察残影常驻 + 越近越红越抖（人工复核）。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/main/kotlin/cn/kasuminova/astd/combat/lens/system/EchoFixationField.kt \
@@ -491,20 +491,20 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 
 **用户反馈**：标记高光环改成「轻度扩散波，带扭曲，颜色不变（误差紫/深水红）」，周期性脉冲。
 
-- [ ] **Step 1: GLSL 改扩散波 + 扭曲**
+- [x] **Step 1: GLSL 改扩散波 + 扭曲**
 
 `MarkHighlightShaderSource.kt` 的 fragment：当前是环形 SDF + Fresnel 常驻高光。改为：以敌舰为中心、按一个 `progress`（0→1 周期循环）向外扩散的轻度波环（参照 GhostSignalWaveEffect / ArcJet 的扩散环 `ring = exp(-((r-radius)/thickness)^2)`，radius = progress 外扩），叠轻微 FBM/sin 扭曲（domain warp：`p += distortionAmp * fbm(p)` 或 `sin` 偏移）。颜色仍用 `u_hue/u_saturation`（误差紫 / 深水红，不变）。波较轻（alpha 适中，不刷屏）。
 
-- [ ] **Step 2: effect 加 progress uniform + 周期驱动**
+- [x] **Step 2: effect 加 progress uniform + 周期驱动**
 
 两个 effect 的 schema 加 `progress`（若没有）。`frame()` 接受 progress。`ASTDLensArrayCoreHullMod.submitMarkHighlights` 改为：per-target 维护一个脉冲相位（customData 记每敌的波 elapsed，按周期 ~1~1.5s 循环 progress=elapsed/period % 1），每帧 upsert 时传当前 progress。层数越高周期略短/波略强（可选）。
 > 周期循环 progress 让波「一道接一道」周期性扩散（用户选「周期性脉冲扩散波」）。
 
-- [ ] **Step 3: 更新测试**
+- [x] **Step 3: 更新测试**
 
 `MarkVisualEffectTest.kt`：schema 加 progress 断言；frame() 的 progress→半径/alpha 行为断言；保留 id/紫红 hue/无青/AboveShips/keyed upsert 断言。
 
-- [ ] **Step 4: 测试 + 编译 + 提交**
+- [x] **Step 4: 测试 + 编译 + 提交**
 
 ```bash
 ./gradlew test --tests "cn.kasuminova.astd.renderer.effect.lens.MarkVisualEffectTest"
@@ -530,7 +530,7 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 
 **用户反馈**：幽灵信号触发特效太重太大（图 2 大紫圈），密集导弹环境抢眼。改为：触发时在**导弹位置**放一次小干扰特效。**新增**：受影响导弹额外 50% 概率被熄火（`flameOut`）。
 
-- [ ] **Step 1: defuse 改导弹位置小特效 + 50% 熄火**
+- [x] **Step 1: defuse 改导弹位置小特效 + 50% 熄火**
 
 读 `ASTDLensArrayCoreHullMod.kt` 的 `ghostSignal`/`defuse`/`spawnGhostWave`/`advanceGhostWaves`。改为：
 - **移除本舰中心大波**（删 spawnGhostWave/advanceGhostWaves/GhostWave 的本舰大波逻辑，或改为导弹位置小特效）。
@@ -539,16 +539,16 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
   - **新增 50% 熄火**：`if (Math.random() < 0.5f) missile.flameOut()`（先 javap 确认 `MissileAPI.flameOut()` 存在；存在则用，导弹引擎熄火坠落）。注释：剥离制导基础上额外 50% 熄火。
 - 触发节奏：每枚被剥离的导弹各放一个小特效（在其位置），不再是每 tick 一道大波。密集导弹时多个小特效分散在各导弹位置，不抢眼。
 
-- [ ] **Step 2: GhostSignalWaveEffect 改小 + 定位导弹**
+- [x] **Step 2: GhostSignalWaveEffect 改小 + 定位导弹**
 
 改 `GhostSignalWaveEffect`：renderRadius 从 ~2120su 改小（如 200su），geometry quad 缩小，instanceId 改 per-missile（`ghost-${identityHashCode(missile)}`）。effectSpec 范围/参数相应缩小。保留紫色、扩散波形态但小尺寸。
 > 若改动太大不如重写：可新建一个轻量 `GhostSignalPulseEffect`（小扩散波），废弃旧大波 GhostSignalWaveEffect。实现者判断：改小现有 vs 新建轻量。优先改小现有（复用范式）。
 
-- [ ] **Step 3: 更新测试**
+- [x] **Step 3: 更新测试**
 
 `GhostSignalWaveEffectTest.kt`：renderRadius 断言从 >=2000f 改为新的小值（如 <=300f）；保留 id/紫 hue/无青/progress uniform/keyed upsert 断言。
 
-- [ ] **Step 4: javap 确认 flameOut + 测试 + 编译 + 实机**
+- [x] **Step 4: javap 确认 flameOut + 测试 + 编译 + 实机**
 
 ```bash
 javap -classpath /mnt/windows_data/Games/Starsector098-linux/starfarer.api.jar com.fs.starfarer.api.combat.MissileAPI | grep -i "flameOut\|flame"
@@ -558,7 +558,7 @@ ASTD_AUTOMATION_SCENARIO=lens_phase2_mechanisms ./gradlew smokeTestGame
 ```
 确认 ghostSignalWaveFrames 仍 >0（现在 per-missile 小特效）；实机观察小特效 + 部分导弹熄火坠落。**若 flameOut 不存在**，用替代（如 `missile.setArmingTime` 或直接 `engine.removeEntity` 模拟熄火？——不,熄火应是引擎失效坠落，找最贴近 API；不可达则报告并用最接近替代）。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/main/kotlin/cn/kasuminova/astd/combat/hullmods/lens/ASTDLensArrayCoreHullMod.kt \
@@ -575,9 +575,9 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 
 **Files:** 无新代码（验证收尾）
 
-- [ ] **Step 1: 全量测试** `./gradlew test`（应全绿，含 arc 不回归）。
-- [ ] **Step 2: 真相源对齐** `./gradlew :ss-csv:writeSsCsvToContents -PssCsvForce=true` 后 `git status --short` 无漂移。
-- [ ] **Step 3: 部署 + 三场景回归**
+- [x] **Step 1: 全量测试** `./gradlew test`（应全绿，含 arc 不回归）。
+- [x] **Step 2: 真相源对齐** `./gradlew :ss-csv:writeSsCsvToContents -PssCsvForce=true` 后 `git status --short` 无漂移。
+- [x] **Step 3: 部署 + 三场景回归**
 ```bash
 ./gradlew deployMod
 ASTD_AUTOMATION_SCENARIO=lens_phase1_foundation ./gradlew smokeTestGame
@@ -585,8 +585,8 @@ ASTD_AUTOMATION_SCENARIO=lens_phase2_mechanisms ./gradlew smokeTestGame
 ASTD_AUTOMATION_SCENARIO=arc_production_ships_vfx_tooltip ./gradlew smokeTestGame
 ```
 全 PASS。
-- [ ] **Step 4: 人工复核清单更新**：更新 `2026-06-21-gravitational-lens-phase2-manual-visual-checklist.md`，加本轮 9 项的复核项（切换器拆即切、潮汐降亮、残影常驻+jitter+红、标记扩散波、幽灵小特效+熄火、引擎修复正常）。
-- [ ] **Step 5: Final commit**
+- [x] **Step 4: 人工复核清单更新**：更新 `2026-06-21-gravitational-lens-phase2-manual-visual-checklist.md`，加本轮 9 项的复核项（切换器拆即切、潮汐降亮、残影常驻+jitter+红、标记扩散波、幽灵小特效+熄火、引擎修复正常）。
+- [x] **Step 5: Final commit**
 ```bash
 git add docs/superpowers/plans/2026-06-21-gravitational-lens-phase2-manual-visual-checklist.md
 git commit -m "docs(lens): phase-2 revision regression verified + checklist update"
