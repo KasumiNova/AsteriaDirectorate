@@ -4,9 +4,6 @@
 
 ## 1. 旗舰：引力透镜级（Gravitational Lens Class）
 
-> 机制重做于 2026-06-20，完全推倒早期 v0。完整设计稿与落地路径见
-> `docs/superpowers/specs/2026-06-20-gravitational-lens-redesign-design.md`。
-
 - **级别**：巡洋舰（Cruiser）[半航母半巡洋平台]
 - **定位**：镀点控场型指挥舰 / 电子战核心 / 4 甲板母舰 / 机制型 Boss
 - **获取**：唯一（Unique），赏金关键目标
