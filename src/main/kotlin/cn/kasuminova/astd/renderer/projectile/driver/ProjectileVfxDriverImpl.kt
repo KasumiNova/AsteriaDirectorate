@@ -8,8 +8,8 @@ import cn.kasuminova.astd.api.render.RenderHost
 import cn.kasuminova.astd.api.render.RenderPhase
 import cn.kasuminova.astd.impl.render.FrameStateImpl
 import cn.kasuminova.astd.impl.render.RenderContextImpl
-import cn.kasuminova.astd.renderer.projectile.ASTDProjectileHistory
-import cn.kasuminova.astd.renderer.projectile.runtime.ASTDProjectileVfxLayout
+import cn.kasuminova.astd.impl.render.ASTDProjectileHistory
+import cn.kasuminova.astd.impl.render.ASTDProjectileVfxLayout
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import org.lwjgl.opengl.Display
 import org.lwjgl.util.vector.Vector2f
@@ -20,10 +20,9 @@ import kotlin.math.max
 import kotlin.math.sqrt
 
 /**
- * [ProjectileVfxDriver] 实现。编排逻辑照旧 `ASTDProjectileVfxRuntime` 忠实移植（采样/布局仍复用
- * [ASTDProjectileVfxLayout]/[ASTDProjectileHistory]），差别是：产出宿主中立的 [FrameState] 而非旧
- * `ASTDProjectileVfxRenderContext`，并推进一棵 [RenderEntity] 树的生命周期而非 RenderGraph。
- * 另：拖尾溶解不再按 elapsed/duration 老化（见 [buildFlightLayout]），改由弹体消亡后的 fade 接管。
+ * [ProjectileVfxDriver] 实现：采样弹体历史/布局（[ASTDProjectileVfxLayout]/[ASTDProjectileHistory]）产出
+ * 宿主中立的 [FrameState]，并推进一棵 [RenderEntity] 树的生命周期。
+ * 拖尾溶解不按 elapsed/duration 老化（见 [buildFlightLayout]），由弹体消亡后的 fade 接管。
  */
 class ProjectileVfxDriverImpl(
     private val host: RenderHost,

@@ -1,12 +1,11 @@
 package cn.kasuminova.astd.renderer.projectile.driver
 
-import cn.kasuminova.astd.renderer.projectile.ASTDColor
+import cn.kasuminova.astd.impl.render.ASTDColor
 import kotlin.math.roundToInt
 
 /**
- * 已迁移到新 RenderEntity 管线的弹体特效手写 DSL 构建函数库（P3/P4）。
+ * 已迁移到 RenderEntity 管线的弹体特效手写 DSL 构建函数库。
  * 每个 projectileSpecId 对应一个无状态构建函数，每次生成弹体都重新调用（不缓存），以支持调试期字面量热交换。
- * 未迁移的 spec 仍走旧 `ASTDProjectileVfxRuntime`（见 `ProjectileVfxDriverPlugin.isMigrated` 路由）。
  *
  * 绝大多数弹体（[simpleProjectileVfx]）只需 6 个高层旋钮（色/宽/长/辉光倍率/是否飘带/是否弹头），
  * 逐字段复现旧 `preset()` 工厂公式；唯 hero（aod7）下探为逐层显式书写。
@@ -14,11 +13,10 @@ import kotlin.math.roundToInt
 object ProjectileVfxSpecs {
 
     /**
-     * projectileSpecId → 构建函数。加入一个即完成该 spec 的迁移。
+     * projectileSpecId → 构建函数。加入一个即接入本管线。
      *
-     * 全部 24 个弹体 spec 均已迁移。`astd_stellar_jet_bolt` 由 `StellarJetEmitterEveryFrameEffect` 每帧 spawn
-     * （无 onFireEffect、绕过 dispatcher），已改为发射时直接调 `ProjectileVfxDriverPlugin.track` 接新管线。
-     * 旧管线现仅剩「几何数学被本管线 *ForTests 复用」与「派发处 fallback 分支（当前无 spec 命中）」，待 P5 清理。
+     * 全部 24 个弹体 spec 均已接入。`astd_stellar_jet_bolt` 由 `StellarJetEmitterEveryFrameEffect` 每帧 spawn
+     * （无 onFireEffect、绕过 dispatcher），发射时直接调 `ProjectileVfxDriverPlugin.track` 接本管线。
      */
     private val builders: Map<String, () -> ProjectileVfx> = mapOf(
         "astd_aod7_shot" to ::aod7Shot,
@@ -147,7 +145,7 @@ object ProjectileVfxSpecs {
         }
     }
 
-    // 调色板：与旧 ASTDProjectileVfxPresetCatalog 一致。
+    // 调色板：沿用旧管线数值（视觉已目检回归，不宜再动）。
     private fun violet() = ASTDColor(0.66f, 0.42f, 1f, 0.9f)
     private fun amber() = ASTDColor(1f, 0.62f, 0.18f, 0.95f)
     private fun omega() = ASTDColor(0.72f, 0.35f, 1f, 0.96f)

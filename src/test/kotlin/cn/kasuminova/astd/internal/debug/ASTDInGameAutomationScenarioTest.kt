@@ -231,7 +231,6 @@ class ASTDInGameAutomationScenarioTest {
             "runtimeBeamAlpha",
             "runtimeWorldUnitsPerPixel",
             "runtimeLastProjectileSpecId",
-            "runtimeLastPresetId",
             "referenceVisibleLength",
         ).forEach { field ->
             assertTrue(source.contains("\\\"$field\\\""), "missing diagnostics field: $field")

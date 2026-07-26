@@ -1,6 +1,6 @@
 package cn.kasuminova.astd.api.render
 
-import cn.kasuminova.astd.renderer.projectile.ASTDProjectileHistoryNode
+import cn.kasuminova.astd.api.render.ASTDProjectileHistoryNode
 import com.fs.starfarer.api.combat.CombatEntityAPI
 import org.lwjgl.util.vector.Vector2f
 

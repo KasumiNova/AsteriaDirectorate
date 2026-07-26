@@ -12,15 +12,15 @@ import cn.kasuminova.astd.impl.render.ribbonComponent
 import cn.kasuminova.astd.impl.render.sideWispComponent
 import cn.kasuminova.astd.impl.render.trail
 import cn.kasuminova.astd.impl.render.width
-import cn.kasuminova.astd.renderer.projectile.ASTDColor
-import cn.kasuminova.astd.renderer.projectile.ASTDFloatRangeSpec
-import cn.kasuminova.astd.renderer.projectile.ASTDProjectileVfxGlowLayerSpec
-import cn.kasuminova.astd.renderer.projectile.ASTDProjectileVfxHeadLayerSpec
-import cn.kasuminova.astd.renderer.projectile.ASTDProjectileVfxMistLayerSpec
-import cn.kasuminova.astd.renderer.projectile.ASTDProjectileVfxSideWispLayerSpec
-import cn.kasuminova.astd.renderer.projectile.ASTDTrailEntitySpec
-import cn.kasuminova.astd.renderer.projectile.ASTDTrailLayerSpec
-import cn.kasuminova.astd.renderer.projectile.ASTDTrailRibbonDecorationSpec
+import cn.kasuminova.astd.impl.render.ASTDColor
+import cn.kasuminova.astd.impl.render.ASTDFloatRangeSpec
+import cn.kasuminova.astd.impl.render.ASTDProjectileVfxGlowLayerSpec
+import cn.kasuminova.astd.impl.render.ASTDProjectileVfxHeadLayerSpec
+import cn.kasuminova.astd.impl.render.ASTDProjectileVfxMistLayerSpec
+import cn.kasuminova.astd.impl.render.ASTDProjectileVfxSideWispLayerSpec
+import cn.kasuminova.astd.impl.render.ASTDTrailEntitySpec
+import cn.kasuminova.astd.impl.render.ASTDTrailLayerSpec
+import cn.kasuminova.astd.impl.render.ASTDTrailRibbonDecorationSpec
 import java.awt.Color
 
 /**

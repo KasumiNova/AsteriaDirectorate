@@ -1,17 +1,12 @@
 package cn.kasuminova.astd.impl.render
 
+import cn.kasuminova.astd.impl.render.RenderEntityImpl.HeadComponent
+import cn.kasuminova.astd.impl.render.RenderEntityImpl.TrailComponent
 import cn.kasuminova.astd.api.render.FadeReason
 import cn.kasuminova.astd.api.render.RenderContext
 import cn.kasuminova.astd.api.render.RenderEntity
 import cn.kasuminova.astd.api.render.RenderLayer
-import cn.kasuminova.astd.impl.render.RenderEntityImpl.HeadComponent
-import cn.kasuminova.astd.impl.render.RenderEntityImpl.TrailComponent
 import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
-import cn.kasuminova.astd.renderer.projectile.ASTDColor
-import cn.kasuminova.astd.renderer.projectile.ASTDTrailLayerSpec
-import cn.kasuminova.astd.renderer.projectile.runtime.ASTDProjectileVfxLayerFadeState
-import cn.kasuminova.astd.renderer.projectile.runtime.ASTDProjectileVfxLayout
-import cn.kasuminova.astd.renderer.projectile.runtime.ASTDProjectileVfxTrailRenderer
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineLayers
 import org.boxutil.define.BoxEnum

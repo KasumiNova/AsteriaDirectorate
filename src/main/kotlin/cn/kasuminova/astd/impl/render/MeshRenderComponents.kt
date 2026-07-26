@@ -4,23 +4,6 @@ import cn.kasuminova.astd.api.render.FadeReason
 import cn.kasuminova.astd.api.render.FrameState
 import cn.kasuminova.astd.api.render.RenderContext
 import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
-import cn.kasuminova.astd.renderer.projectile.ASTDProjectileVfxGlowLayerSpec
-import cn.kasuminova.astd.renderer.projectile.ASTDProjectileVfxHeadLayerSpec
-import cn.kasuminova.astd.renderer.projectile.ASTDProjectileVfxMistLayerSpec
-import cn.kasuminova.astd.renderer.projectile.ASTDProjectileVfxSideWispLayerSpec
-import cn.kasuminova.astd.renderer.projectile.ASTDTrailEntitySpec
-import cn.kasuminova.astd.renderer.projectile.ASTDTrailRibbonDecorationSpec
-import cn.kasuminova.astd.renderer.projectile.runtime.ASTDProjectileVfxBodyRenderManager
-import cn.kasuminova.astd.renderer.projectile.runtime.ASTDProjectileVfxBodyRenderer
-import cn.kasuminova.astd.renderer.projectile.runtime.ASTDProjectileVfxGlowRenderer
-import cn.kasuminova.astd.renderer.projectile.runtime.ASTDProjectileVfxHeadRenderer
-import cn.kasuminova.astd.renderer.projectile.runtime.ASTDProjectileVfxLayerFadeState
-import cn.kasuminova.astd.renderer.projectile.runtime.ASTDProjectileVfxLayout
-import cn.kasuminova.astd.renderer.projectile.runtime.ASTDProjectileVfxMistRenderer
-import cn.kasuminova.astd.renderer.projectile.runtime.ASTDProjectileVfxRenderContext
-import cn.kasuminova.astd.renderer.projectile.runtime.ASTDProjectileVfxRibbonRenderer
-import cn.kasuminova.astd.renderer.projectile.runtime.ASTDProjectileVfxSideWispRenderer
-import cn.kasuminova.astd.renderer.projectile.runtime.toAwtColor
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEngineLayers
 import org.boxutil.base.api.InstanceDataAPI
@@ -33,9 +16,7 @@ import kotlin.math.max
 /**
  * 网格类组件共用的桥接：把宿主中立的 [FrameState] 还原成旧网格渲染器所需的 [ASTDProjectileVfxRenderContext]，
  * 从而**原样复用**既有网格数学（meshesForTests/centerline/softmesh），不手抄。
- * presetId/projectileSpecId 仅供旧渲染器日志，用节点 id 占位即可。
- *
- * 迁移说明：这是过渡期适配。待旧 RenderGraph/RenderLayer 删除、网格数学内联到本层后，本文件一并清理。
+ * presetId/projectileSpecId 仅供网格数学上下文填位（旧管线日志字段的残留），用节点 id 占位即可。
  */
 internal fun FrameState.toRenderContext(specId: String): ASTDProjectileVfxRenderContext =
     ASTDProjectileVfxRenderContext(
@@ -152,7 +133,7 @@ fun ribbonComponent(id: String, trail: ASTDTrailEntitySpec, ribbons: List<ASTDTr
 /**
  * 薄雾：拖尾外的散射雾团。后端不是网格而是 BoxUtil 实例化 [SpriteEntity]（每个 layer 一枚，blobCount 个粒子实例），
  * 与网格类节点分属两条 GPU 路径。粒子采样复用 [ASTDProjectileVfxMistRenderer.samplesForTests]，本组件负责 BoxUtil
- * 实体的建立/逐帧刷新/释放（对应旧 ASTDProjectileVfxMistRenderLayer 的编排；旧层在全部 spec 迁移后删除）。
+ * 实体的建立/逐帧刷新/释放。
  */
 class MistComponent(
     id: String,

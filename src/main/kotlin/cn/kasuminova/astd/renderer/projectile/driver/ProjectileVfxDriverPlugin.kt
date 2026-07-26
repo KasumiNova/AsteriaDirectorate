@@ -48,9 +48,6 @@ class ProjectileVfxDriverPlugin : BaseEveryFrameCombatPlugin() {
     companion object {
         const val ENGINE_KEY: String = "astd_projectile_vfx_driver_plugin"
 
-        /** 该 projectileSpecId 是否有手写 DSL（可登记到新管线）。 */
-        fun isMigrated(projectileSpecId: String): Boolean = ProjectileVfxSpecs.has(projectileSpecId)
-
         fun ensureInstalled(engine: CombatEngineAPI) {
             if (engine.customData[ENGINE_KEY] == null) {
                 val plugin = ProjectileVfxDriverPlugin()

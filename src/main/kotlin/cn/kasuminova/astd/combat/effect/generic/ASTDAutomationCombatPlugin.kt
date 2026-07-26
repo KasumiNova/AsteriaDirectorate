@@ -15,7 +15,7 @@ import cn.kasuminova.astd.internal.i18n.I18n
 import cn.kasuminova.astd.internal.debug.ASTDInGameAutomationScenario
 import cn.kasuminova.astd.renderer.projectile.driver.ProjectileVfxDriverPlugin
 import cn.kasuminova.astd.renderer.projectile.driver.ProjectileVfxSpecs
-import cn.kasuminova.astd.renderer.projectile.runtime.ASTDProjectileVfxLayout
+import cn.kasuminova.astd.impl.render.ASTDProjectileVfxLayout
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseEveryFrameCombatPlugin
 import com.fs.starfarer.api.combat.CombatEngineAPI

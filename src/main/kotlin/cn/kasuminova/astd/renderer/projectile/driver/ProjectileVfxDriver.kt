@@ -23,8 +23,7 @@ data class ProjectileVfxDriverTelemetry(
 
 /**
  * 单个宿主(弹体)的 VFX 驱动：持有一棵 RenderEntity 树,每帧算 [cn.kasuminova.astd.api.render.FrameState]
- * 并推进树的生命周期;宿主消失→触发淡出;淡出结束→释放。取代旧 `ASTDProjectileVfxRenderGraph` 的驱动角色
- * （逻辑层,接口 + Impl,不用 Manager/Runtime 等禁用词）。
+ * 并推进树的生命周期;宿主消失→触发淡出;淡出结束→释放（逻辑层,接口 + Impl,不用 Manager/Runtime 等禁用词）。
  */
 interface ProjectileVfxDriver {
 

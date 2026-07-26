@@ -3,7 +3,7 @@ package cn.kasuminova.astd.impl.render
 import cn.kasuminova.astd.api.render.FadeReason
 import cn.kasuminova.astd.api.render.FrameState
 import cn.kasuminova.astd.api.render.RenderPhase
-import cn.kasuminova.astd.renderer.projectile.ASTDProjectileHistoryNode
+import cn.kasuminova.astd.api.render.ASTDProjectileHistoryNode
 import com.fs.starfarer.api.combat.CombatEntityAPI
 import org.lwjgl.util.vector.Vector2f
 
