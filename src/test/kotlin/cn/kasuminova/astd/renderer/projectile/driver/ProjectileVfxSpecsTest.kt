@@ -1,8 +1,8 @@
 package cn.kasuminova.astd.renderer.projectile.driver
 
-import cn.kasuminova.astd.impl.render.CurveCoreComponent
+import cn.kasuminova.astd.impl.render.BloomMeshComponent
 import cn.kasuminova.astd.impl.render.MeshComponent
-import cn.kasuminova.astd.impl.render.MistComponent
+import cn.kasuminova.astd.impl.render.TexTrailComponent
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -14,31 +14,39 @@ import kotlin.test.assertTrue
 class ProjectileVfxSpecsTest {
 
     @Test
-    fun `aod7 组件齐活且曲线弹芯取代 glow body 时排除 BoxUtil 直线拖尾`() {
+    fun `aod7 由网格弹头与两条贴图拖尾组成 有 trail 声明但不落 BoxUtil 兜底节点`() {
         val vfx = assertNotNull(ProjectileVfxSpecs.build("astd_aod7_shot"))
         val childIds = vfx.tree.children.map { it.id }
 
-        // 有 curveCore → 无 BoxUtil 直线拖尾节点；P0 起 glow/body 网格合并为单条曲线弹芯。
-        // 5 个组件节点按 renderOrder 升序：mist(50)/core(100)/sideWisp(240)/head(300)/ribbon(360)。
+        // 贴图拖尾即拖尾主体：twin(layer1 垫底) + zappy(layer2)；弹头为代码网格 head{}；trail{} 仅风格声明，
+        // 有 texTrail 时不生成 BoxUtil 直线拖尾兜底节点（无 astd_aod7_shot_trail）。
+        // 3 个组件节点按 renderOrder 升序：head(300)/twin(361)/zappy(362)。
         assertEquals(
             listOf(
-                "astd_aod7_shot_mist",
-                "astd_aod7_shot_core",
-                "astd_aod7_shot_side_wisp",
                 "astd_aod7_shot_head",
-                "astd_aod7_shot_ribbon",
+                "astd_aod7_shot_textrail_twin",
+                "astd_aod7_shot_textrail_zappy",
             ),
             childIds,
         )
         val orders = vfx.tree.children.map { it.renderOrder }
         assertEquals(orders.sorted(), orders, "子节点须按 renderOrder 升序")
-        assertTrue(vfx.tree.children.first { it.id == "astd_aod7_shot_mist" } is MistComponent)
-        assertTrue(vfx.tree.children.first { it.id == "astd_aod7_shot_core" } is CurveCoreComponent)
-        assertTrue(vfx.tree.children.first { it.id == "astd_aod7_shot_head" } is MeshComponent)
+        assertTrue(vfx.tree.children.first { it.id == "astd_aod7_shot_textrail_twin" } is TexTrailComponent)
+        assertTrue(vfx.tree.children.first { it.id == "astd_aod7_shot_textrail_zappy" } is TexTrailComponent)
+        // 有贴图拖尾时弹头并入 bloom 管线（BloomMeshComponent），与拖尾能量同源消除接缝色差
+        assertTrue(vfx.tree.children.first { it.id == "astd_aod7_shot_head" } is BloomMeshComponent)
     }
 
     @Test
-    fun `aod7 策略逐字段对齐旧 preset(尺寸放大不改 length cap 故 startWidth 例外)`() {
+    fun `无贴图拖尾的 spec 弹头保持直绘网格组件`() {
+        // mnl_omega_grid 无 texTrail：弹头不走 bloom 管线，保持 BodyRenderManager 直绘
+        val vfx = assertNotNull(ProjectileVfxSpecs.build("astd_mnl_omega_grid"))
+        val head = vfx.tree.children.first { it.id == "astd_mnl_omega_grid_head" }
+        assertTrue(head is MeshComponent)
+    }
+
+    @Test
+    fun `aod7 策略逐字段对齐旧 preset 锚点取 trail 长宽`() {
         val p = assertNotNull(ProjectileVfxSpecs.build("astd_aod7_shot")).policy
         assertEquals(2f, p.minDistancePerNode)
         assertEquals(96, p.maxHistoryNodes)
@@ -51,7 +59,7 @@ class ProjectileVfxSpecsTest {
         assertEquals(0.15f, p.expireFadeOutSeconds)
         assertEquals(0.15f, p.removedFadeOutSeconds)
         assertEquals(420f, p.primaryTrailLength)
-        assertEquals(96f, p.primaryTrailStartWidth)  // 目检上调（40→96 使 body widthBase≈2×）；viewportTailCap 由 layoutRef 主导，length 不变
+        assertEquals(96f, p.primaryTrailStartWidth)  // trail{} 恢复为锚点来源；viewportTailCap 由 layoutRef 主导
     }
 
     @Test

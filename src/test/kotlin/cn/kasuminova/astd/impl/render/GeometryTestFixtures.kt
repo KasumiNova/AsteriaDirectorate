@@ -118,37 +118,6 @@ internal object Aod7Fixture {
         ASTDProjectileVfxGlowLayerSpec("astd_default_glow_3", widthScale = 0.62f, alphaScale = 0.82f, blur = 4f, yOffset = 0f, colorMixTail = 0.48f, colorMixHead = 1f),
     )
 
-    val mistLayers: List<ASTDProjectileVfxMistLayerSpec> = listOf(
-        ASTDProjectileVfxMistLayerSpec(
-            id = "astd_default_mist_0",
-            enabled = true,
-            blobCount = 52,
-            lengthScale = 1f,
-            widthScale = 1f,
-            rxRange = ASTDFloatRangeSpec(2.4f, 7.2f),
-            ryRange = ASTDFloatRangeSpec(0.45f, 1.8f),
-            alphaRange = ASTDFloatRangeSpec(0.016f, 0.075f),
-            noiseScale = 5.2f,
-            driftSpeed = 0.32f,
-            colorStart = ASTDColor(0.22f, 0.04f, 0.18f, 0.06f),
-            colorEnd = ASTDColor(1f, 0.95f, 0.98f, 1f),
-        ),
-    )
-
-    val sideWispLayers: List<ASTDProjectileVfxSideWispLayerSpec> = listOf(
-        ASTDProjectileVfxSideWispLayerSpec(
-            id = "astd_default_side_wisp_0",
-            enabled = true,
-            offsets = listOf(-2.1f, -1.36f, 1.28f, 2f),
-            widthScale = 0.2f,
-            alphaScale = 0.24f,
-            blur = 10f,
-            lengthStartRatio = 0.64f,
-            lengthEndRatio = 0.28f,
-            color = ASTDColor(0.45f, 0.7f, 1f, 0.72f),
-        ),
-    )
-
     val ribbonDecorations: List<ASTDTrailRibbonDecorationSpec> = listOf(ribbonDecoration)
 
     /** 旧 aod7 preset 的 lifecycle 标量。 */

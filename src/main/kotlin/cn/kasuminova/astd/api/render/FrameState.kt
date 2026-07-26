@@ -51,7 +51,7 @@ interface FrameState {
     val worldUnitsPerPixel: Float
 
     /**
-     * 采样历史节点（世界坐标 + 朝向 + 时间），供网格类节点（body/glow/mist）构建中线曲线追踪真实飞行路径。
+     * 采样历史节点（世界坐标 + 朝向 + 时间），供沿中线构建曲线的节点（body/glow/texTrail）追踪真实飞行路径。
      * 由驱动每帧从飞行历史取一份；无历史的宿主（如光束或首帧）为空列表。
      */
     val historyNodes: List<ASTDProjectileHistoryNode>

@@ -13,8 +13,6 @@ data class ASTDColor(val red: Float, val green: Float, val blue: Float, val alph
 
 data class ASTDColorStopSpec(val offset: Float, val color: ASTDColor)
 
-data class ASTDFloatRangeSpec(val min: Float, val max: Float)
-
 sealed interface ASTDProjectileVfxLengthPolicy {
     data class Fixed(val worldUnits: Float) : ASTDProjectileVfxLengthPolicy
     data class VelocityScaled(val seconds: Float) : ASTDProjectileVfxLengthPolicy
@@ -51,31 +49,4 @@ data class ASTDProjectileVfxGlowLayerSpec(
     val colorMixTail: Float,
     val colorMixHead: Float,
     val gradientStops: List<ASTDColorStopSpec> = emptyList(),
-)
-
-data class ASTDProjectileVfxMistLayerSpec(
-    val id: String,
-    val enabled: Boolean = true,
-    val blobCount: Int,
-    val lengthScale: Float,
-    val widthScale: Float,
-    val rxRange: ASTDFloatRangeSpec,
-    val ryRange: ASTDFloatRangeSpec,
-    val alphaRange: ASTDFloatRangeSpec,
-    val noiseScale: Float,
-    val driftSpeed: Float,
-    val colorStart: ASTDColor,
-    val colorEnd: ASTDColor,
-)
-
-data class ASTDProjectileVfxSideWispLayerSpec(
-    val id: String,
-    val enabled: Boolean = true,
-    val offsets: List<Float>,
-    val widthScale: Float,
-    val alphaScale: Float,
-    val blur: Float,
-    val lengthStartRatio: Float,
-    val lengthEndRatio: Float,
-    val color: ASTDColor,
 )

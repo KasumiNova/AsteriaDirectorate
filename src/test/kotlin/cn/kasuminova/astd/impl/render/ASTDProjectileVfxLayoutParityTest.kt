@@ -12,7 +12,6 @@ class ASTDProjectileVfxLayoutParityTest {
         val flight = ASTDProjectileVfxLayout.flightLayout(trail.length, 1.0f, Aod7Fixture.lifecycle.durationSeconds, Aod7Fixture.lifecycle.dissolveStartRatio)
         val glowNodes = ASTDProjectileVfxLayout.glowLocalNodes(flight.visibleLength, preset.glowLayers[0])
         val head = ASTDProjectileVfxLayout.headVertices(preset.headLayers[0], 0.8f, Aod7Fixture.lifecycle.projectileHeadSizeScale, widthBase)
-        val sideWisps = ASTDProjectileVfxLayout.sideWispLocalPaths(preset.sideWispLayers[0], flight.visibleLength, widthBase)
 
         assertEquals(0.5f, flight.dissolve, 0.0001f)
         assertEquals(0.19f, flight.beamAlpha, 0.0001f)
@@ -23,8 +22,6 @@ class ASTDProjectileVfxLayoutParityTest {
         assertEquals(-0.36f, glowNodes[1].y, 0.0001f)
         assertEquals(-91.77f, head.rearTop.x, 0.0001f)
         assertEquals(0f, head.tip.x, 0.0001f)
-        assertEquals(-145.152f, sideWisps[0][0].x, 0.0001f)
-        assertEquals(-7.35f, sideWisps[0][0].y, 0.0001f)
     }
 
     @Test

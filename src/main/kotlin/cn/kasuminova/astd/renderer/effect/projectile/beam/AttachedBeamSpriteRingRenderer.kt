@@ -1,6 +1,7 @@
 package cn.kasuminova.astd.renderer.effect.projectile.beam
 
 import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
+import cn.kasuminova.astd.impl.render.loadAndGetSprite
 
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
@@ -677,8 +678,6 @@ internal object AttachedBeamSpriteRingRenderer {
  */
 internal object GeneratedRingSprite {
     private const val REL_PATH = "graphics/fx/astd_generated_ring.png"
-    @Volatile
-    private var attemptedLoad = false
 
     @Volatile
     private var cached: SpriteAPI? = null
@@ -686,29 +685,16 @@ internal object GeneratedRingSprite {
     @Synchronized
     fun getOrCreateSprite(): SpriteAPI? {
         cached?.let { return it }
-        // 某些环境下，直接 getSprite(文件路径) 可能拿不到（尤其是纹理在本次运行中新加入/未被 Settings 扫描）。
-        // 先显式 loadTexture 一次，确保进贴图缓存。
-        if (!attemptedLoad) {
-            attemptedLoad = true
-            try {
-                Global.getSettings().loadTexture(REL_PATH)
-            } catch (_: Throwable) {
-                // ignore
-            }
-        }
-
         val s = try {
-            Global.getSettings().getSprite(REL_PATH)
-        } catch (_: Throwable) {
+            Global.getSettings().loadAndGetSprite(REL_PATH)
+        } catch (t: Throwable) {
+            Global.getLogger(GeneratedRingSprite::class.java)
+                .warn("Failed to load ring sprite: '$REL_PATH'. Make sure it exists under this mod's graphics/ and was copied to production.", t)
             null
         }
-        if (s == null) {
-            // 只在首次失败时提示，避免刷屏。
-            try {
-                Global.getLogger(GeneratedRingSprite::class.java)
-                    .warn("Failed to load ring sprite: '$REL_PATH'. Make sure it exists under this mod's graphics/ and was copied to production.")
-            } catch (_: Throwable) {
-            }
+        if (s != null && s.textureId <= 0) {
+            Global.getLogger(GeneratedRingSprite::class.java)
+                .warn("Ring sprite loaded but empty (texId=0): '$REL_PATH'. Make sure it exists under this mod's graphics/ and was copied to production.")
         }
         cached = s
         return s

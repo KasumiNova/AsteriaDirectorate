@@ -1,25 +1,21 @@
 package cn.kasuminova.astd.renderer.projectile.driver
 
 import cn.kasuminova.astd.api.render.RenderEntity
-import cn.kasuminova.astd.impl.render.CurveCoreComponent
-import cn.kasuminova.astd.impl.render.CurveCoreSpec
-import cn.kasuminova.astd.impl.render.MistComponent
+import cn.kasuminova.astd.impl.render.TexTrailComponent
+import cn.kasuminova.astd.impl.render.TexTrailSpec
 import cn.kasuminova.astd.impl.render.bodyComponent
 import cn.kasuminova.astd.impl.render.color
 import cn.kasuminova.astd.impl.render.glowComponent
+import cn.kasuminova.astd.impl.render.headBloomComponent
 import cn.kasuminova.astd.impl.render.headComponent
 import cn.kasuminova.astd.impl.render.length
 import cn.kasuminova.astd.impl.render.renderEntity
 import cn.kasuminova.astd.impl.render.ribbonComponent
-import cn.kasuminova.astd.impl.render.sideWispComponent
 import cn.kasuminova.astd.impl.render.trail
 import cn.kasuminova.astd.impl.render.width
 import cn.kasuminova.astd.impl.render.ASTDColor
-import cn.kasuminova.astd.impl.render.ASTDFloatRangeSpec
 import cn.kasuminova.astd.impl.render.ASTDProjectileVfxGlowLayerSpec
 import cn.kasuminova.astd.impl.render.ASTDProjectileVfxHeadLayerSpec
-import cn.kasuminova.astd.impl.render.ASTDProjectileVfxMistLayerSpec
-import cn.kasuminova.astd.impl.render.ASTDProjectileVfxSideWispLayerSpec
 import cn.kasuminova.astd.impl.render.ASTDTrailEntitySpec
 import cn.kasuminova.astd.impl.render.ASTDTrailLayerSpec
 import cn.kasuminova.astd.impl.render.ASTDTrailRibbonDecorationSpec
@@ -28,7 +24,7 @@ import java.awt.Color
 /**
  * 弹体特效的**唯一作者面**：手写 DSL 直接产出场景树 + 驱动策略，取代"从旧 Preset 反解 + 组件桥接"的过渡写法。
  * 一个 [projectileVfx] 块内：`trail{}` 定主拖尾风格（所有网格层据此取基宽/基色/中线），组件块（`glow`/`body`/
- * `head`/`mist`/`sideWisp`/`ribbon`）各自声明层参数并挂节点，`lifecycle`/`sampling`/`fade` 声明驱动策略。
+ * `head`/`ribbon`/`texTrail`）各自声明层参数并挂节点，`lifecycle`/`sampling`/`fade` 声明驱动策略。
  *
  * 组件节点内部复用旧渲染器的 `*ForTests` 纯网格数学（不手抄），本 DSL 只负责把作者旋钮折成渲染器所需的层 spec。
  * 每次生成弹体都重新调用构建函数（不缓存），以支持调试期字面量热交换（见设计 §7）。
@@ -62,11 +58,9 @@ class ProjectileVfxScope(private val id: String) {
     private var trail: ASTDTrailLayerSpec? = null
     private var glow: List<ASTDProjectileVfxGlowLayerSpec>? = null
     private var hasBody = false
-    private var curveCore: CurveCoreSpec? = null
     private var head: ASTDProjectileVfxHeadLayerSpec? = null
-    private var mist: List<ASTDProjectileVfxMistLayerSpec>? = null
-    private var sideWisp: ASTDProjectileVfxSideWispLayerSpec? = null
     private var ribbon: ASTDTrailRibbonDecorationSpec? = null
+    private val texTrails = ArrayList<Pair<String, TexTrailSpec>>()
 
     private val lifecycle = LifecycleBuilder()
     private val sampling = SamplingBuilder()
@@ -75,44 +69,73 @@ class ProjectileVfxScope(private val id: String) {
     fun trail(block: TrailBuilder.() -> Unit) { trail = TrailBuilder().apply(block).build() }
     fun glow(block: GlowBuilder.() -> Unit) { glow = GlowBuilder().apply(block).build() }
     fun body() { hasBody = true }
-    fun curveCore(block: CurveCoreBuilder.() -> Unit) { curveCore = CurveCoreBuilder().apply(block).build() }
     fun head(block: HeadBuilder.() -> Unit) { head = HeadBuilder().apply(block).build("${id}_head_0") }
-    fun mist(block: MistBuilder.() -> Unit) { mist = listOf(MistBuilder().apply(block).build("${id}_mist_0")) }
-    fun sideWisp(block: SideWispBuilder.() -> Unit) { sideWisp = SideWispBuilder().apply(block).build("${id}_side_wisp_0") }
     fun ribbon(block: RibbonBuilder.() -> Unit) { ribbon = RibbonBuilder().apply(block).build("${id}_ribbon_0") }
+
+    /** 叠加一条贴图拖尾主体层（复刻 MagicTrail：平铺滚动贴图 + CPU 折线带体），可多次调用按 [TexTrailBuilder.layer] 叠层。 */
+    fun texTrail(name: String, texturePath: String, block: TexTrailBuilder.() -> Unit) {
+        texTrails += name to TexTrailBuilder(texturePath).apply(block).build()
+    }
 
     fun lifecycle(block: LifecycleBuilder.() -> Unit) { lifecycle.apply(block) }
     fun sampling(block: SamplingBuilder.() -> Unit) { sampling.apply(block) }
     fun fade(block: FadeBuilder.() -> Unit) { fade.apply(block) }
 
     internal fun build(): ProjectileVfx {
-        val trailLayer = trail ?: throw IllegalStateException("projectileVfx '$id' 必须声明 trail{} 主拖尾风格")
-        val trailEntity = trailEntitySpec(trailLayer)
+        val trailLayer = trail
+        // glow/body/head/ribbon 网格层都以 trail{} 为基宽/基色/中线来源；texTrail 自足，不需要 trail{}。
+        if (trailLayer == null && (glow != null || hasBody || head != null || ribbon != null)) {
+            throw IllegalStateException("projectileVfx '$id' 声明了 glow/body/head/ribbon 网格层，必须声明 trail{} 主拖尾风格")
+        }
+        val trailEntity = trailLayer?.let { trailEntitySpec(it) }
 
         val tree = renderEntity(id) {
-            // 主拖尾：有 body/curveCore 时由网格/曲线带沿中线充当拖尾主体（对齐旧 hasBodyForTrail），不另画
-            // BoxUtil 平头直线拖尾；两者皆无的弹体才落到 BoxUtil 直线拖尾兜底（当前 24 个 spec 均有 body，
-            // 此分支为未来 body-less 预留）。
-            if (!hasBody && curveCore == null) {
-                trail(id = "${id}_trail") {
-                    color(trailLayer.color.toAwt()); width(trailLayer.width); length(trailLayer.length)
+            if (trailLayer != null && trailEntity != null) {
+                // 主拖尾：有 body 时由网格沿中线充当拖尾主体（对齐旧 hasBodyForTrail），不另画
+                // BoxUtil 平头直线拖尾；有 texTrail 时拖尾主体由贴图拖尾承担，同样不落 BoxUtil 兜底。
+                // 仅 trail{} + 无 body + 无 texTrail 的弹体才落到 BoxUtil 直线拖尾（当前 23 个简单 spec 均有 body，
+                // 此分支为未来 body-less 预留）。
+                if (!hasBody && texTrails.isEmpty()) {
+                    trail(id = "${id}_trail") {
+                        color(trailLayer.color.toAwt()); width(trailLayer.width); length(trailLayer.length)
+                    }
                 }
-            }
-            mist?.let { addChild(MistComponent("${id}_mist", trailEntity, it)) }
-            curveCore?.let { addChild(CurveCoreComponent("${id}_core", it)) }
-            if (curveCore == null) {
                 glow?.let { addChild(glowComponent("${id}_glow", trailEntity, it)) }
                 if (hasBody) addChild(bodyComponent("${id}_body", trailEntity))
+                head?.let {
+                    // 有贴图拖尾时弹头并入 bloom 管线（同一离屏提取+模糊+合成）：弹头与拖尾能量同源，
+                    // 接缝处光晕连续——直绘弹头不进 bloom，能量天然低于带体，调色抹不平接缝色差
+                    if (texTrails.isEmpty()) {
+                        addChild(headComponent("${id}_head", trailEntity, listOf(it), lifecycle.headSizeScale))
+                    } else {
+                        addChild(headBloomComponent("${id}_head", trailEntity, listOf(it), lifecycle.headSizeScale))
+                    }
+                }
+                ribbon?.let { addChild(ribbonComponent("${id}_ribbon", trailEntity, listOf(it))) }
             }
-            sideWisp?.let { addChild(sideWispComponent("${id}_side_wisp", trailEntity, listOf(it))) }
-            head?.let { addChild(headComponent("${id}_head", trailEntity, listOf(it), lifecycle.headSizeScale)) }
-            ribbon?.let { addChild(ribbonComponent("${id}_ribbon", trailEntity, listOf(it))) }
+            texTrails.forEach { (name, spec) -> addChild(TexTrailComponent("${id}_textrail_$name", spec)) }
+        }
+
+        // 拖尾驱动锚点（可视长度/历史窗口的基准长宽）：有 trail{} 取其长宽；
+        // 无 trail{}（texTrail 即拖尾主体）时取 sampling.window 与最宽一条 texTrail。
+        val anchorLength: Float
+        val anchorWidth: Float
+        if (trailLayer != null) {
+            anchorLength = trailLayer.length
+            anchorWidth = trailLayer.startWidth
+        } else {
+            if (texTrails.isEmpty()) {
+                throw IllegalStateException("projectileVfx '$id' 未声明 trail{}，且没有任何 texTrail 拖尾主体")
+            }
+            anchorLength = sampling.window
+                ?: throw IllegalStateException("projectileVfx '$id' 未声明 trail{}，sampling.window 必须显式声明作为拖尾距离窗口")
+            anchorWidth = texTrails.maxOf { it.second.width }
         }
 
         val policy = ProjectileVfxDriverPolicy(
             minDistancePerNode = sampling.minStep,
             maxHistoryNodes = sampling.maxNodes,
-            distanceWindow = sampling.window ?: trailLayer.length,
+            distanceWindow = sampling.window ?: anchorLength,
             historyFps = sampling.fps,
             durationSeconds = lifecycle.durationSeconds,
             dissolveStartRatio = lifecycle.dissolveStartRatio,
@@ -120,8 +143,8 @@ class ProjectileVfxScope(private val id: String) {
             hitFadeOutSeconds = fade.hitSeconds ?: fade.outSeconds,
             expireFadeOutSeconds = fade.expireSeconds ?: fade.outSeconds,
             removedFadeOutSeconds = fade.outSeconds,
-            primaryTrailLength = trailLayer.length,
-            primaryTrailStartWidth = trailLayer.startWidth,
+            primaryTrailLength = anchorLength,
+            primaryTrailStartWidth = anchorWidth,
         )
         return ProjectileVfx(tree, policy)
     }
@@ -222,52 +245,6 @@ class GlowBuilder {
     internal fun build(): List<ASTDProjectileVfxGlowLayerSpec> = layers.toList()
 }
 
-/**
- * 曲线弹芯（P0 贴图化路线）：弹芯+辉光+外晕合并为一条 BoxUtil CurveEntity 曲线带。
- * 与 `glow{}`/`body()` 互斥——声明了 `curveCore{}` 的 spec 不应再声明网格弹芯。
- */
-@ProjectileVfxDslMarker
-class CurveCoreBuilder {
-    private var width = 12f
-    private var tailWidthScale = 0.1f
-    private var headColor = rgba(0xFFFFFFFFL)
-    private var tailColor = rgba(0xFFFFFF0AL)
-    private var nodeCount = 12
-    private var texturePixels = 96f
-    private var textureSpeed = 0f
-    private var haloWidthScale = 0f
-    private var haloAlphaScale = 0f
-
-    fun width(v: Float) { width = v }
-
-    /** 尾部宽度相对头部的比例（0..1）。 */
-    fun tailWidth(scale: Float) { tailWidthScale = scale }
-
-    /** 头尾颜色（0xRRGGBBAA）：头部亮端 → 尾部暗端，逐节点插值。 */
-    fun colors(head: Long, tail: Long) { headColor = rgba(head); tailColor = rgba(tail) }
-
-    /** 曲线带节点数（沿长度均匀分布，弯道平滑度）。 */
-    fun nodes(count: Int) { nodeCount = count }
-
-    /** 包络贴图平铺密度（世界单位/次）与滚动速度。 */
-    fun texture(pixels: Float, speed: Float) { texturePixels = pixels; textureSpeed = speed }
-
-    /** 第二条更宽更淡的外晕带（宽度倍率 / alpha 倍率）。 */
-    fun halo(widthScale: Float, alphaScale: Float) { haloWidthScale = widthScale; haloAlphaScale = alphaScale }
-
-    internal fun build(): CurveCoreSpec = CurveCoreSpec(
-        width = width,
-        tailWidthScale = tailWidthScale,
-        headColor = headColor,
-        tailColor = tailColor,
-        nodeCount = nodeCount,
-        texturePixels = texturePixels,
-        textureSpeed = textureSpeed,
-        haloWidthScale = haloWidthScale,
-        haloAlphaScale = haloAlphaScale,
-    )
-}
-
 /** 弹头：收拢亮头的长宽/肩后比/壳三色（内→中→外）/模糊。 */
 @ProjectileVfxDslMarker
 class HeadBuilder {
@@ -303,75 +280,58 @@ class HeadBuilder {
     )
 }
 
-/** 薄雾：blob 数、rx/ry/透明区间、噪声/漂移、起止色。 */
+/**
+ * 贴图拖尾（复刻 MagicTrail）：CPU 折线带体 + 平铺滚动贴图图案的拖尾主体层。
+ * 贴图约定同 gr_trails_*：X=横向、Y=带长向（REPEAT），形在 alpha 通道、RGB 近白。
+ */
 @ProjectileVfxDslMarker
-class MistBuilder {
-    private var blobs = 32
-    private var rxMin = 2f
-    private var rxMax = 6f
-    private var ryMin = 0.5f
-    private var ryMax = 1.6f
-    private var alphaMin = 0.02f
-    private var alphaMax = 0.08f
-    private var noise = 5f
-    private var drift = 0.3f
-    private var lengthScale = 1f
-    private var widthScale = 1f
-    private var colorStart = rgba(0x00000010L)
-    private var colorEnd = rgba(0xFFFFFFFFL)
+class TexTrailBuilder(private val texturePath: String) {
+    private var layer = 1
+    private var width = 12f
+    private var headColor = rgba(0xFFFFFFEBL)
+    private var midColor: ASTDColor? = null
+    private var midT = 0.25f
+    private var tailColor = rgba(0x0A1C380FL)
+    private var nodeCount = 24
+    private var tileLength = 180f
+    private var scrollSpeed = 0f
+    private var recede = 0f
 
-    fun blobs(v: Int) { blobs = v }
-    fun rx(min: Float, max: Float) { rxMin = min; rxMax = max }
-    fun ry(min: Float, max: Float) { ryMin = min; ryMax = max }
-    fun alpha(min: Float, max: Float) { alphaMin = min; alphaMax = max }
-    fun noise(v: Float) { noise = v }
-    fun drift(v: Float) { drift = v }
-    fun lengthScale(v: Float) { lengthScale = v }
-    fun widthScale(v: Float) { widthScale = v }
-    fun colors(start: Long, end: Long) { colorStart = rgba(start); colorEnd = rgba(end) }
+    /** 叠层序号：同弹体多条贴图拖尾的绘制先后（1 垫底、2 其上，以此类推）。 */
+    fun layer(v: Int) { layer = v }
 
-    internal fun build(id: String): ASTDProjectileVfxMistLayerSpec = ASTDProjectileVfxMistLayerSpec(
-        id = id,
-        blobCount = blobs,
-        lengthScale = lengthScale,
-        widthScale = widthScale,
-        rxRange = ASTDFloatRangeSpec(rxMin, rxMax),
-        ryRange = ASTDFloatRangeSpec(ryMin, ryMax),
-        alphaRange = ASTDFloatRangeSpec(alphaMin, alphaMax),
-        noiseScale = noise,
-        driftSpeed = drift,
-        colorStart = colorStart,
-        colorEnd = colorEnd,
-    )
-}
-
-/** 侧翼流苏：多偏移丝线、宽度倍率/透明/模糊、起止长度比、色。 */
-@ProjectileVfxDslMarker
-class SideWispBuilder {
-    private var offsets = listOf(-1.5f, 1.5f)
-    private var width = 0.2f
-    private var alpha = 0.24f
-    private var blur = 10f
-    private var lengthStart = 0.64f
-    private var lengthEnd = 0.28f
-    private var color = rgba(0x73B3FFB8L)
-
-    fun offsets(vararg values: Float) { offsets = values.toList() }
+    /** 拖尾全宽（世界单位）。 */
     fun width(v: Float) { width = v }
-    fun alpha(v: Float) { alpha = v }
-    fun blur(v: Float) { blur = v }
-    fun length(startRatio: Float, endRatio: Float) { lengthStart = startRatio; lengthEnd = endRatio }
-    fun color(hex: Long) { color = rgba(hex) }
 
-    internal fun build(id: String): ASTDProjectileVfxSideWispLayerSpec = ASTDProjectileVfxSideWispLayerSpec(
-        id = id,
-        offsets = offsets,
-        widthScale = width,
-        alphaScale = alpha,
-        blur = blur,
-        lengthStartRatio = lengthStart,
-        lengthEndRatio = lengthEnd,
-        color = color,
+    /** 头尾颜色（0xRRGGBBAA）：头部亮端 → 尾部暗端，逐节点插值。 */
+    fun colors(head: Long, tail: Long) { headColor = rgba(head); midColor = null; tailColor = rgba(tail) }
+
+    /** 三段上色（0xRRGGBBAA）：白热头 → [midAt] 处签名色中段 → 暗尾。 */
+    fun colors(head: Long, mid: Long, tail: Long, midAt: Float) {
+        headColor = rgba(head); midColor = rgba(mid); tailColor = rgba(tail); midT = midAt
+    }
+
+    /** 节点数（沿带长均匀分布，弯道平滑度）。 */
+    fun nodes(count: Int) { nodeCount = count }
+
+    /** 图案平铺周期（世界单位）与滚动速度（世界单位/秒，0 不滚动）。 */
+    fun tile(length: Float, scroll: Float) { tileLength = length; scrollSpeed = scroll }
+
+    /** 带体整体向后退的距离（世界单位）：带体头部亮端退到弹头网格之后，让弹头尖在带体前露出。 */
+    fun recede(v: Float) { recede = v }
+
+    internal fun build(): TexTrailSpec = TexTrailSpec(
+        width = width,
+        texturePath = texturePath,
+        layer = layer,
+        headColor = headColor,
+        midColor = midColor,
+        midT = midT,
+        tailColor = tailColor,
+        nodeCount = nodeCount,
+        tileLength = tileLength,
+        scrollSpeed = scrollSpeed,
+        recede = recede,
     )
 }
 

@@ -299,6 +299,8 @@ if [[ "$MODE" == "game" || "$MODE" == "automation" || "$MODE" == "campaign-accep
         AUTOMATION_OUTPUT_DIR="${ASTD_AUTOMATION_OUTPUT_DIR:-$GAME_DIR/ssoptimizer-automation-output}"
         AUTOMATION_SCENARIO="${ASTD_AUTOMATION_SCENARIO:-arc_flare_aod7_basic}"
         EXTRA_OPTS="$EXTRA_OPTS -Dssoptimizer.automation.enabled=true -Dssoptimizer.automation.scenario=${AUTOMATION_SCENARIO} -Dssoptimizer.automation.outputDir=${AUTOMATION_OUTPUT_DIR} -Dssoptimizer.automation.requireScreenshotFile=true"
+        # 清掉上一轮的遥测，避免早退逻辑吃到陈旧 Completed 状态而秒杀本轮游戏
+        rm -f "$AUTOMATION_OUTPUT_DIR/astd-ingame-automation-telemetry.json"
     fi
     if [[ "$MODE" == "campaign-acceptance" ]]; then
         ACCEPTANCE_SAVE_DIR="$(resolve_acceptance_save_dir)"
@@ -357,6 +359,14 @@ for ((elapsed = 0; elapsed < TIMEOUT_SEC; elapsed++)); do
     if log_contains "$FATAL_LOG_PATTERN"; then
         echo "Fatal marker detected in log, stopping early"
         break
+    fi
+
+    if [[ "$MODE" == "automation" ]]; then
+        if grep -q -E '"state": "(Completed|Failed)"' "${AUTOMATION_OUTPUT_DIR:-}/astd-ingame-automation-telemetry.json" 2>/dev/null; then
+            echo "Automation terminal state detected, stopping early"
+            sleep 2
+            break
+        fi
     fi
 
     if [[ "$MODE" == "campaign-acceptance" ]] && log_contains "Dev storage acceptance passed|Dev storage acceptance failed"; then

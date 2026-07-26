@@ -9,7 +9,6 @@ object ASTDProjectileVfxBodyRenderer {
     const val RENDER_ORDER_GLOW = 100
     const val RENDER_ORDER_BODY_SHADOW = 180
     const val RENDER_ORDER_BODY = 200
-    const val RENDER_ORDER_SIDE_WISP = 240
     const val RENDER_ORDER_HEAD_SHADOW = 280
     const val RENDER_ORDER_HEAD = 300
     const val RENDER_ORDER_RIBBON = 360

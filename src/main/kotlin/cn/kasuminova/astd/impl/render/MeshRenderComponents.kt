@@ -3,15 +3,8 @@ package cn.kasuminova.astd.impl.render
 import cn.kasuminova.astd.api.render.FadeReason
 import cn.kasuminova.astd.api.render.FrameState
 import cn.kasuminova.astd.api.render.RenderContext
-import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEngineLayers
-import org.boxutil.base.api.InstanceDataAPI
-import org.boxutil.define.BoxEnum
-import org.boxutil.units.standard.attribute.Instance2Data
-import org.boxutil.units.standard.entity.SpriteEntity
-import java.awt.Color
-import kotlin.math.max
 
 /**
  * 网格类组件共用的桥接：把宿主中立的 [FrameState] 还原成旧网格渲染器所需的 [ASTDProjectileVfxRenderContext]，
@@ -102,12 +95,6 @@ fun bodyComponent(id: String, trail: ASTDTrailEntitySpec): MeshComponent =
         )
     }
 
-/** 侧翼流苏：拖尾两侧的丝状飘光。复用 [ASTDProjectileVfxSideWispRenderer.meshesForTests]。 */
-fun sideWispComponent(id: String, trail: ASTDTrailEntitySpec, layers: List<ASTDProjectileVfxSideWispLayerSpec>): MeshComponent =
-    MeshComponent(id, ASTDProjectileVfxBodyRenderer.RENDER_ORDER_SIDE_WISP) { ctx, alpha ->
-        ASTDProjectileVfxSideWispRenderer.meshesForTests(trail, layers, ctx, alpha)
-    }
-
 /** 弹头：收拢的亮头 + 阴影。headSizeScale 来自 preset 生命周期。shadow（280）在 head（300）下方。 */
 fun headComponent(
     id: String,
@@ -116,6 +103,66 @@ fun headComponent(
     headSizeScale: Float,
 ): MeshComponent =
     MeshComponent(id, ASTDProjectileVfxBodyRenderer.RENDER_ORDER_HEAD) { ctx, alpha ->
+        ASTDProjectileVfxHeadRenderer.shadowMeshesForTests(trail, layers, ctx, headSizeScale, alpha) +
+            ASTDProjectileVfxHeadRenderer.meshForTests(trail, layers, ctx, headSizeScale, alpha)
+    }
+
+/**
+ * bloom 网格组件：与 [MeshComponent] 同形态，但网格在 CPU 侧烘成世界系顶点流后写入
+ * [TexTrailRenderer] 句柄——弹头借此并入贴图拖尾的 bloom 管线（同一离屏提取 + 模糊 + 合成），
+ * 弹头与拖尾能量同源，接缝处光晕连续（走 BodyRenderManager 直绘的弹头不进 bloom，能量天然低于
+ * 「双带叠加 + bloom」的带体，接缝色差无法靠调色抹平）。
+ */
+class BloomMeshComponent(
+    id: String,
+    renderOrder: Int,
+    private val produce: (ASTDProjectileVfxRenderContext, Float) -> List<ASTDProjectileVfxBodyRenderer.Mesh>,
+) : RenderEntityImpl(id, CombatEngineLayers.ABOVE_PARTICLES, renderOrder) {
+
+    private val fade = ASTDProjectileVfxLayerFadeState()
+    private val handles = ArrayList<TexTrailRenderer.Handle>()
+    private var meshes: List<ASTDProjectileVfxBodyRenderer.Mesh> = emptyList()
+
+    override fun onAttachSelf(ctx: RenderContext): Boolean {
+        val engine = ctx.engine ?: return false
+        sync(engine, ctx.frame.toRenderContext(id))
+        return handles.size == meshes.size
+    }
+
+    override fun advanceSelf(ctx: RenderContext, amount: Float) {
+        fade.advance(amount)
+        val engine = ctx.engine ?: return
+        sync(engine, ctx.frame.toRenderContext(id))
+    }
+
+    override fun beginFadeOutSelf(reason: FadeReason, seconds: Float) {
+        fade.begin(seconds)
+    }
+
+    override fun onDetachSelf() {
+        handles.forEach { it.delete() }
+        handles.clear()
+        meshes = emptyList()
+    }
+
+    private fun sync(engine: CombatEngineAPI, context: ASTDProjectileVfxRenderContext) {
+        meshes = produce(context, fade.alpha())
+        while (handles.size < meshes.size) handles += TexTrailRenderer.createHandle(engine) ?: return
+        while (handles.size > meshes.size) handles.removeAt(handles.lastIndex).delete()
+        handles.zip(meshes).forEach { (handle, mesh) ->
+            handle.update(mesh.renderOrder, null, texTrailMeshTriangles(mesh, context.location, context.renderFacing), triangles = true)
+        }
+    }
+}
+
+/** 弹头（bloom 管线版）：网格数学与 [headComponent] 完全一致，仅绘制后端改为 [TexTrailRenderer]。 */
+fun headBloomComponent(
+    id: String,
+    trail: ASTDTrailEntitySpec,
+    layers: List<ASTDProjectileVfxHeadLayerSpec>,
+    headSizeScale: Float,
+): BloomMeshComponent =
+    BloomMeshComponent(id, ASTDProjectileVfxBodyRenderer.RENDER_ORDER_HEAD) { ctx, alpha ->
         ASTDProjectileVfxHeadRenderer.shadowMeshesForTests(trail, layers, ctx, headSizeScale, alpha) +
             ASTDProjectileVfxHeadRenderer.meshForTests(trail, layers, ctx, headSizeScale, alpha)
     }
@@ -129,112 +176,3 @@ fun ribbonComponent(id: String, trail: ASTDTrailEntitySpec, ribbons: List<ASTDTr
             ASTDProjectileVfxRibbonRenderer.meshForTests(ribbon, ctx.copy(beamAlpha = ctx.beamAlpha * alpha), sampleCount, baseTrailStartWidth)
         }
     }
-
-/**
- * 薄雾：拖尾外的散射雾团。后端不是网格而是 BoxUtil 实例化 [SpriteEntity]（每个 layer 一枚，blobCount 个粒子实例），
- * 与网格类节点分属两条 GPU 路径。粒子采样复用 [ASTDProjectileVfxMistRenderer.samplesForTests]，本组件负责 BoxUtil
- * 实体的建立/逐帧刷新/释放。
- */
-class MistComponent(
-    id: String,
-    private val trail: ASTDTrailEntitySpec,
-    private val layers: List<ASTDProjectileVfxMistLayerSpec>,
-) : RenderEntityImpl(id, CombatEngineLayers.ABOVE_PARTICLES, RENDER_ORDER_MIST) {
-
-    private data class Handle(val layer: ASTDProjectileVfxMistLayerSpec, val entity: SpriteEntity, val instances: MutableList<Instance2Data>)
-
-    private val handles = ArrayList<Handle>()
-    private val fade = ASTDProjectileVfxLayerFadeState()
-
-    override fun onAttachSelf(ctx: RenderContext): Boolean {
-        val engine = ctx.engine ?: return false
-        return create(engine, ctx.frame.toRenderContext(id))
-    }
-
-    override fun advanceSelf(ctx: RenderContext, amount: Float) {
-        fade.advance(amount)
-        val engine = ctx.engine ?: return
-        val context = ctx.frame.toRenderContext(id)
-        if (handles.isEmpty()) create(engine, context)
-        handles.forEach { handle ->
-            if (!handle.entity.hasDelete()) {
-                handle.entity.setStateVanilla(context.location, context.renderFacing)
-                applySamples(handle.layer, context.copy(beamAlpha = context.beamAlpha * fade.alpha()), handle.entity, handle.instances)
-            }
-        }
-    }
-
-    override fun beginFadeOutSelf(reason: FadeReason, seconds: Float) {
-        fade.begin(seconds)
-    }
-
-    override fun onDetachSelf() {
-        handles.forEach { it.entity.delete() }
-        handles.clear()
-    }
-
-    private fun create(engine: CombatEngineAPI, context: ASTDProjectileVfxRenderContext): Boolean {
-        if (handles.isNotEmpty()) return true
-        BoxUtilCombatVfx.ensureReady(engine)
-        val combatLayer = (trail.layers.firstOrNull() ?: trail.layerSpec).combatLayer
-        layers.filter { it.enabled }.forEach { layer ->
-            val entity = SpriteEntity()
-            entity.setLayer(combatLayer)
-            entity.setAdditiveBlend()
-            entity.setBaseSizePerTiles(1f, 1f)
-            entity.materialData.setColor(Color(0, 0, 0, 255))
-            entity.materialData.setEmissiveColor(layer.colorEnd.toAwtColor(1f))
-            entity.materialData.setEmissiveState(0f, 0f, 1f)
-            entity.materialData.setAdditionEmissive(true)
-            entity.materialData.setIgnoreIllumination(true)
-            entity.setStateVanilla(context.location, context.renderFacing)
-            val instances = MutableList(layer.blobCount.coerceAtLeast(0)) { Instance2Data() }
-            applySamples(layer, context, entity, instances)
-            @Suppress("UNCHECKED_CAST")
-            entity.setInstanceData(instances as MutableList<InstanceDataAPI>, 0f, 3600f, 0f)
-            entity.setInstanceDataRefreshIndex(0)
-            entity.setInstanceDataRefreshAllFromCurrentIndex()
-            entity.submitInstance()
-            entity.setRenderingCount(instances.size)
-            entity.setAlwaysRefreshInstanceData(true)
-            val state = BoxUtilCombatVfx.addEntity(engine, BoxEnum.ENTITY_SPRITE, entity)
-            if (state == 0) {
-                handles += Handle(layer, entity, instances)
-            } else {
-                entity.delete()
-                onDetachSelf()
-                throw IllegalStateException(
-                    "ASTD projectile VFX mist BoxUtil SpriteEntity addEntity failed: " +
-                        "state=$state layer=${layer.id} preset=${context.presetId} projectile=${context.projectileSpecId}",
-                )
-            }
-        }
-        return handles.size == layers.count { it.enabled }
-    }
-
-    private fun applySamples(layer: ASTDProjectileVfxMistLayerSpec, context: ASTDProjectileVfxRenderContext, entity: SpriteEntity, instances: MutableList<Instance2Data>) {
-        val baseLayer = trail.layers.firstOrNull() ?: trail.layerSpec
-        val widthBase = ASTDProjectileVfxLayout.widthBase(baseLayer)
-        val samples = ASTDProjectileVfxMistRenderer.samplesForTests(layer, context, context.visibleLength, widthBase)
-        val scale = context.worldUnitsPerPixel.coerceAtLeast(0.0001f)
-        samples.forEachIndexed { index, sample ->
-            val data = instances[index]
-            data.setLocation(ASTDProjectileVfxLayout.scalePoint(sample.position, scale))
-            data.setScale(max(0.1f, sample.rx * scale), max(0.1f, sample.ry * scale))
-            data.setFacing(0f)
-            data.setColor(layer.colorStart.red, layer.colorStart.green, layer.colorStart.blue, 0f)
-            data.setEmissiveColor(layer.colorEnd.red, layer.colorEnd.green, layer.colorEnd.blue, sample.alpha)
-            data.setTimer(0f, 3600f, 0f)
-        }
-        entity.setInstanceDataRefreshIndex(0)
-        entity.setInstanceDataRefreshAllFromCurrentIndex()
-        entity.submitInstance()
-        entity.setRenderingCount(samples.size)
-    }
-
-    private companion object {
-        // 薄雾走 BoxUtil 路径，不参与 BodyRenderManager 的 mesh.renderOrder 排序；此值仅用于树内兄弟节点的推进/绘制次序。
-        // 置于辉光（100）之下，作为最底层背景雾。
-        const val RENDER_ORDER_MIST = 50
-    }
-}

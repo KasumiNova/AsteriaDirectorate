@@ -97,52 +97,38 @@ object ProjectileVfxSpecs {
     }
 
     /**
-     * aod7 hero：七层（mist/glow/body/sideWisp/head/ribbon + body 承接拖尾）。
-     * 数值逐字段对齐旧 preset，唯尺寸按目检反馈调整：
-     * body/glow/mist/sideWisp 的横截宽都吃 widthBase=max(startWidth*0.075,3.5)，startWidth 40→96 使 widthBase 3.5→7.2（约 2×），
-     * 令弹体核心与辉光随之放大；startWidth≤176 时 viewportTailCap 仍由 layoutRef 主导（=849），故可视长度不受影响。
-     * 弹头 headSize = width×visible×headScale×headTrailScale(widthBase)，故 startWidth 翻倍时弹头也被动放大；
-     * 目检反馈弹头偏大，headScale 1.9→1.14（≈上一版 60%）单独缩弹头，不动 body/glow。head 宽保持 34。
+     * aod7 hero：两条贴图拖尾为拖尾主体 + 代码网格弹头。
+     * 拖尾复刻 MagicTrail 语义直接吃 gr_trails 原图（twin 脆丝垫底 layer1、zappy 电弧 layer2，宽比 twin=1.25×zappy），
+     * 对标参考模组 zappy+twin 叠加构图；弹头用旧 `head{}` 网格（贴图弹头壳路线经目检否定已删，连同 headShell 特性）。
+     * `trail{}` 仅作拖尾风格声明（基宽/基色/中线来源 + 驱动锚点），有 texTrail 时不落 BoxUtil 直线拖尾兜底。
      */
     private fun aod7Shot(): ProjectileVfx = projectileVfx("astd_aod7_shot") {
         trail {
             width(96f); widths(96f, 8f); length(420f)
             color(0x478FEBEB); tail(0x0A24380F)
             emissive(0xF0F8FFFF, 0x0A347529)
-            texture(96f, 0.9f)
-            fill(0.84f, 0.03f, 0.02f, 0.12f)
+            texture(96f, 0.9f); fill(0.84f, 0.03f, 0.02f, 0.12f)
             strip(); blend("additive"); flickerSync(17); pausedMotion()
         }
         lifecycle { duration(1.25f); dissolveAt(0.6f); headScale(1.14f); layoutRef(1846f) }
         sampling { fps(60f); maxNodes(96); minStep(2f); window(420f) }
         fade { out(0.15f) }
 
-        mist {
-            blobs(52); rx(2.4f, 7.2f); ry(0.45f, 1.8f)
-            alpha(0.016f, 0.075f); noise(5.2f); drift(0.32f)
-            colors(0x380A2E0F, 0xFFF2F9FF)
-        }
-        // P0 贴图化 PoC：弹芯+辉光+外晕合并为一条 CurveEntity 曲线带（横向衰减由烘焙包络贴图表达，
-        // 纵向明暗由逐节点颜色表达），外加一条 2.2× 宽 0.35× 淡的外晕带，取代原 glow 四层 + body 网格。
-        curveCore {
-            width(96f); tailWidth(0.08f); nodes(16)
-            colors(0xF0F8FFFF, 0x0A24380F)
-            halo(2.2f, 0.35f)
-            texture(96f, 0.9f)
-        }
-        sideWisp {
-            offsets(-2.1f, -1.36f, 1.28f, 2f)
-            width(0.2f); alpha(0.24f); blur(10f)
-            length(0.64f, 0.28f); color(0x73B3FFB8)
-        }
         head {
             length(138f); width(34f); shoulder(0.5f); rear(0.95f)
-            blur(0.35f); shell(0x380A2E14, 0xB8F0FF75, 0xFFFFFFFA)
+            blur(0.35f)
+            alpha(0.7f)  // 并入 bloom 管线后吃提取遍 emissive 增益 + 合成叠加，整体压暗防溢出
+            shell(0x380A2E14, 0xDCEEFFEE, 0xF0F8FFFA)  // 蓝白族对齐带体头部色（zappy 头 0xF0F8FF），小缩放下不露色相接缝
         }
-        ribbon {
-            frequency(1.1f); amplitude(1.35f); wave("noise", scale = 4f)
-            thickness(0.1f); alpha(0.28f); blur(9f)
-            colors(0xE3EBEEEB, 0x0A1C380F, 0xFFFFFFEB)
+        texTrail("twin", "graphics/fx/gr_trails_twin.png") {
+            layer(1); width(30f); recede(40f)
+            colors(0xCFE8FF90, 0x6FB4FF60, 0x0A1C3810, midAt = 0.25f)
+            nodes(24); tile(140f, 50f)
+        }
+        texTrail("zappy", "graphics/fx/gr_trails_zappy.png") {
+            layer(2); width(24f); recede(40f)
+            colors(0xF0F8FFB4, 0x6FB4FF6C, 0x0A1C3812, midAt = 0.25f)
+            nodes(24); tile(200f, 90f)
         }
     }
 

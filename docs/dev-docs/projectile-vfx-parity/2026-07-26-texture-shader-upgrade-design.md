@@ -144,3 +144,26 @@ projectileVfx("astd_aod7_shot") {
    vanilla 渲染器零代码画出滚动圆环光束。这是一条"数据面先行"的低成本增强路径，可纳入 P3（弹丸本体贴图）。
 2. 该案例证明「贴图 + 原生渲染」已足够撑起优秀观感；我们的烘焙管线（任意衰减/噪声/滚动）严格强于其静态贴图。
 3. GraphicsLib `RippleDistortion` 是低成本炮口强化件，与我方 §7 的 `DistortionEntity` 方案同类，可择一。
+
+## 11. 实施偏差记录（2026-07-27，aod7 hero PoC 落地后）
+
+实际落地未走 BoxUtil CurveEntity/FlareEntity，而是自管 GL 管线（`TexTrailRenderer` + `TexTrailComponent`），原因与结论：
+
+- **拖尾主体 = CPU 折线带体 + 平铺滚动贴图**（复刻 MagicTrail 语义，直接吃 gr_trails_twin/zappy 原图），
+  顶点流 8 浮点（x,y,u,v,r,g,b,a）经 STREAM_DRAW VBO 上传，片元着色器只做「采样 × 顶点色」。
+- **真 bloom**：快照画进 1/4 降采样离屏 FBO → 分离高斯乒乓两轮 → 清晰遍 + 模糊遍 additive 合成。
+  两个关键约束：模糊阶段必须 `glDisable(GL_BLEND)`（否则逐帧累加饱和成白斑）；提取遍加 emissiveBoost
+  （只放大 alpha、封顶 1.0，等价 BoxUtil emissive 通道，否则低 alpha 拖尾模糊后能量摊薄不可见）。
+- **弹头并入 bloom 管线**：`head{}` 在有 texTrail 的 spec 上自动路由到 `headBloomComponent`
+  （网格烘成世界系三角顶点流、绑 1×1 白贴图走同一着色器），与带体同一提取/模糊/合成。
+  接缝色差的根因是「直绘弹头不进 bloom，能量天然低于双带叠加+bloom 的带体」，只能同源消除，调色抹不平。
+- **GL 状态契约（bloom 冻结事故教训）**：FBO 段不得依赖入场全局状态——段首显式 `glColorMask(true)` +
+  禁 alpha/模板测试，FBO draw buffer 显式钉 `COLOR_ATTACHMENT0`（回屏恢复入场值），每帧
+  `glCheckFramebufferStatus` 不完整即 warn 重建。脏入场状态会让整段 FBO 写入（含 clear）零 GL 错误静默失效，
+  离屏内容冻结成屏幕空间贴图，相机移动时表现为「bloom 漂移」。
+- **绘制顺序用引擎层定序**：同层注册定序实证无效；texTrail 插件位于 `ABOVE_PARTICLES_LOWER`，
+  网格层（body/head）在 `ABOVE_PARTICLES`，恒「拖尾垫底、弹头盖上」。
+- **弹头露出用 recede 不用 forward 偏移**：VFX 锚点 = projectile.location = 命中点，任何 forward 偏移
+  都会在击中时穿模（实证）；`TexTrailSpec.recede` 把带体亮端整体后移让弹头尖露出，远离目标方向永不穿模。
+- **贴图自管上传**：不进游戏贴图系统——SSOptimizer LazyTextureManager 会把 ≥64KiB 的 `graphics/` 贴图
+  做成「有 texId、无内容」的延迟对象，裸 `glBindTexture` 绕过其补丁采到空纹理。

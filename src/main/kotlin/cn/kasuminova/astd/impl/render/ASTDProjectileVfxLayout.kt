@@ -330,17 +330,6 @@ object ASTDProjectileVfxLayout {
         )
     }
 
-    fun sideWispLocalPaths(layer: ASTDProjectileVfxSideWispLayerSpec, visibleLength: Float, widthBase: Float): List<List<Vector2f>> {
-        return layer.offsets.map { offsetScale ->
-            val offset = widthBase * offsetScale
-            listOf(
-                Vector2f(-visibleLength * layer.lengthStartRatio, offset),
-                Vector2f(-visibleLength * layer.lengthEndRatio, offset * 0.66f),
-                Vector2f(-widthBase * 2.6f, offset * 0.18f),
-            )
-        }
-    }
-
     private fun multiplyRgbAlpha(base: ASTDColor, tint: ASTDColor): ASTDColor = ASTDColor(
         red = base.red * tint.red,
         green = base.green * tint.green,
