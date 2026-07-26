@@ -1,6 +1,7 @@
 package cn.kasuminova.astd.combat.effect.generic.projectile
 
 import cn.kasuminova.astd.renderer.projectile.ASTDProjectileVfxRuntimeManager
+import cn.kasuminova.astd.renderer.projectile.driver.ProjectileVfxDriverPlugin
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseEveryFrameCombatPlugin
 import com.fs.starfarer.api.combat.CombatEngineAPI
@@ -273,7 +274,13 @@ internal class ProjectileSpawnVfxDispatcher : BaseEveryFrameCombatPlugin() {
             return ok to fail
         }
 
-        if (ASTDProjectileVfxRuntimeManager.track(engine, projectile, preset)) {
+        // 切片：与 onFire 派发一致，已迁移 spec 走新 RenderEntity 管线（手写 DSL），其余仍走旧 Runtime。迁移完成后移除此分支。
+        val tracked = if (ProjectileVfxDriverPlugin.isMigrated(projId)) {
+            ProjectileVfxDriverPlugin.track(engine, projectile, projId)
+        } else {
+            ASTDProjectileVfxRuntimeManager.track(engine, projectile, preset)
+        }
+        if (tracked) {
             ok++
         }
         return ok to fail

@@ -139,20 +139,8 @@ internal class StellarJetChargeUpVfx(
         } catch (_: Throwable) {
         }
 
-        // 范围扭曲：优先复用 GSP12 的 BoxUtil DistortionEntity（更像“透镜/折射”），失败再回退到 nebula 近似扭曲
-        val spawnedDistortion = spawnChargeCompleteDistortion(center, engine)
-        if (!spawnedDistortion) {
-            // 近似“范围扭曲”：使用 negative nebula 粒子做一个逐渐扩大的扰动环
-            // 参考本项目 Drv11OnFireEffect 的 addNebulaParticle(..., true)
-            val distort = Color(110, 190, 255, 55)
-            try {
-                engine.addNebulaParticle(center, Vector2f(vel), 220f * sz, 2.6f, 0.06f, 0.22f, 0.60f, distort, true)
-                engine.addNebulaParticle(center, Vector2f(vel), 320f * sz, 3.0f, 0.05f, 0.20f, 0.70f, distort, true)
-                engine.addNebulaParticle(center, Vector2f(vel), 420f * sz, 3.3f, 0.04f, 0.18f, 0.80f, distort, true)
-            } catch (_: Throwable) {
-                // 某些环境下 nebula API 参数差异/不可用时，忽略即可（至少还有闪光/粒子）
-            }
-        }
+        // 范围扭曲：DistortionEntity 是 BoxUtil 的基本渲染实体，直接作为扭曲效果组件用（透镜/折射观感）。
+        spawnChargeCompleteDistortion(center)
 
         // 外扩火花：带一点“冲击”反馈
         val sparks = 14
@@ -171,38 +159,30 @@ internal class StellarJetChargeUpVfx(
         }
     }
 
-    /**
-     * 复用 GSP12 的扭曲实体：这里做“由小到大扩张”的透镜扰动环。
-     * @return true 表示成功创建并加入渲染队列。
-     */
-    private fun spawnChargeCompleteDistortion(center: Vector2f, engine: CombatEngineAPI): Boolean {
-        return try {
-            val sz = scale.coerceIn(0.35f, 2.25f)
-            val e = DistortionEntity()
+    /** 充能完成时的“由小到大扩张”透镜扰动环。DistortionEntity 自带生命周期定时（in/full/out），fire-and-forget。 */
+    private fun spawnChargeCompleteDistortion(center: Vector2f) {
+        val sz = scale.coerceIn(0.35f, 2.25f)
+        val e = DistortionEntity()
 
-            // 扩张波纹：出得快、全盛短、淡出稍长
-            e.setGlobalTimer(0.06f, 0.10f, 0.48f)
+        // 扩张波纹：出得快、全盛短、淡出稍长
+        e.setGlobalTimer(0.06f, 0.10f, 0.48f)
 
-            // 形状：中心较硬、外围较柔
-            e.setInnerFull(0.35f, 0.35f)
-            e.setInnerHardness(0.80f)
-            e.setRingHardness(0.58f)
+        // 形状：中心较硬、外围较柔
+        e.setInnerFull(0.35f, 0.35f)
+        e.setInnerHardness(0.80f)
+        e.setRingHardness(0.58f)
 
-            // 逐渐变大：小 -> 中 -> 大（随后 power 归零）
-            e.setSizeIn(90f * sz, 90f * sz)
-            e.setSizeFull(240f * sz, 240f * sz)
-            e.setSizeOut(520f * sz, 520f * sz)
+        // 逐渐变大：小 -> 中 -> 大（随后 power 归零）
+        e.setSizeIn(90f * sz, 90f * sz)
+        e.setSizeFull(240f * sz, 240f * sz)
+        e.setSizeOut(520f * sz, 520f * sz)
 
-            e.setPowerIn(0.00f)
-            e.setPowerFull(1.10f)
-            e.setPowerOut(0f)
+        e.setPowerIn(0.00f)
+        e.setPowerFull(1.10f)
+        e.setPowerOut(0f)
 
-            e.setLocation(center)
-            CombatRenderingManager.addEntity(e)
-            true
-        } catch (_: Throwable) {
-            false
-        }
+        e.setLocation(center)
+        CombatRenderingManager.addEntity(e)
     }
 
     private fun emitCenterDot(

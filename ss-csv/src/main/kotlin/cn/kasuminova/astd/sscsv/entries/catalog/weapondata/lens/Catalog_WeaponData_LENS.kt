@@ -185,7 +185,8 @@ object Wpn_astd_sgl8 : WeaponDataEntry(), SsProjMissileOutputs {
         missileType = "MISSILE",
         onFireEffect = "cn.kasuminova.astd.combat.effect.generic.ProjectileSpecOnFireDispatcher",
         onHitEffect = "cn.kasuminova.astd.combat.effect.lens.signature.singularity.SingularityOnHitEffect",
-        sprite = "graphics/missiles/missile_annihilator.png",
+        // 弹体外观完全由代码 VFX 承担：原版弹体贴图置空，避免与模组拖尾/弹头同时穿帮。
+        sprite = "graphics/textures/BUtil_NONE.png",
         size = Vec2i(4, 12),
         center = Vec2(2, 6),
         collisionRadius = 8,
@@ -236,8 +237,6 @@ object Wpn_astd_jmb2 : WeaponDataEntry(), SsProjProjectileOutputs {
         id = "astd_jmb2_beam",
         spawnType = ProjectileSpawnType.BALLISTIC,
         onHitEffect = "cn.kasuminova.astd.combat.effect.lens.production.Jmb2CoherenceJammingOnHitEffect",
-        fringeColor = Rgba(120, 200, 255, 235),
-        coreColor = Rgba(220, 245, 255, 200),
     )
 }
 
@@ -285,7 +284,8 @@ object Wpn_astd_fdp4 : WeaponDataEntry(), SsProjMissileOutputs {
         id = "astd_fdp4_charge",
         missileType = "MISSILE",
         onFireEffect = "cn.kasuminova.astd.combat.effect.generic.ProjectileSpecOnFireDispatcher",
-        sprite = "graphics/missiles/missile_annihilator.png",
+        // 弹体外观完全由代码 VFX 承担：原版弹体贴图置空，避免与模组拖尾/弹头同时穿帮。
+        sprite = "graphics/textures/BUtil_NONE.png",
         size = Vec2i(6, 16),
         center = Vec2(3, 8),
         collisionRadius = 10,
@@ -303,30 +303,8 @@ object Wpn_astd_fdp4 : WeaponDataEntry(), SsProjMissileOutputs {
             acc = 400,
             dec = 100,
         ),
-        engineSlots = listOf(
-            MissileEngineSlot(
-                id = "ES1",
-                loc = Vec2i(-8, 0),
-                style = "CUSTOM",
-                styleSpec = MissileEngineSlotStyleSpec(
-                    mode = "QUAD_STRIP",
-                    engineColor = Rgba(255, 170, 230, 255),
-                    glowSizeMult = 1.5,
-                    contrailDuration = 1.0,
-                    contrailWidthMult = 1.0,
-                    contrailWidthAddedFractionAtEnd = 2.0,
-                    contrailMinSeg = 5,
-                    contrailMaxSpeedMult = 0.0,
-                    contrailAngularVelocityMult = 0.5,
-                    contrailSpawnDistMult = 0.5,
-                    contrailColor = Rgba(170, 70, 160, 110),
-                    type = "GLOW",
-                ),
-                width = 6.0,
-                length = 20.0,
-                angle = 180.0,
-            )
-        )
+        // 导弹尾迹完全由代码 VFX 承担：去除原版引擎辉光/尾焰（contrail），避免与模组拖尾同时渲染出两条尾。
+        engineSlots = emptyList(),
     )
 }
 
@@ -359,8 +337,6 @@ object Wpn_astd_jmb9 : WeaponDataEntry(), SsProjProjectileOutputs {
         id = "astd_jmb9_beam",
         spawnType = ProjectileSpawnType.BALLISTIC,
 //        onHitEffect = "cn.kasuminova.astd.combat.effect.lens.production.Jmb9LockJammingOnHitEffect",
-        fringeColor = Rgba(120, 200, 255, 235),
-        coreColor = Rgba(220, 245, 255, 200),
     )
 }
 

@@ -1,5 +1,10 @@
 package cn.kasuminova.astd.combat.effect.psi
 
+import cn.kasuminova.astd.impl.render.BeamHostImpl
+import cn.kasuminova.astd.renderer.beam.driver.BeamFrame
+import cn.kasuminova.astd.renderer.beam.driver.BeamVfxDriver
+import cn.kasuminova.astd.renderer.beam.driver.BeamVfxDriverImpl
+import cn.kasuminova.astd.renderer.beam.driver.BeamVfxSpecs
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BeamAPI
 import com.fs.starfarer.api.combat.BeamEffectPlugin
@@ -8,11 +13,8 @@ import com.fs.starfarer.api.combat.ShipAPI
 import org.lazywizard.lazylib.MathUtils
 import org.lazywizard.lazylib.VectorUtils
 import org.lwjgl.util.vector.Vector2f
-import java.awt.Color
 import java.util.WeakHashMap
-import kotlin.math.abs
 import kotlin.math.max
-import kotlin.math.min
 
 /**
  * PSI-Ω「灵魂虹吸」：
@@ -48,8 +50,8 @@ class PsiSunderBeamEffect : BeamEffectPlugin {
 
         private const val RESTORE_FRACTION = 0.5f
 
-        private const val HELIX_INTERVAL = 0.040f
-        private const val REVERSE_INTERVAL = 0.060f
+        /** 光束 VFX 树的 spec id（登记于 [BeamVfxSpecs]）。 */
+        private const val BEAM_SPEC_ID = "astd_psi_omega"
 
         private const val KEY_PPT_DRAIN = "astd_psi_omega_ppt_drain"
         private const val STAT_PPT_DRAIN = "astd_psi_omega_ppt_drain_stat"
@@ -64,29 +66,12 @@ class PsiSunderBeamEffect : BeamEffectPlugin {
 
         private fun lerp(a: Float, b: Float, t: Float): Float = a + (b - a) * t
 
-        private fun colorLerp(a: Color, b: Color, t: Float): Color {
-            val tt = t.coerceIn(0f, 1f)
-            val r = (a.red + (b.red - a.red) * tt).toInt().coerceIn(0, 255)
-            val g = (a.green + (b.green - a.green) * tt).toInt().coerceIn(0, 255)
-            val bl = (a.blue + (b.blue - a.blue) * tt).toInt().coerceIn(0, 255)
-            val al = (a.alpha + (b.alpha - a.alpha) * tt).toInt().coerceIn(0, 255)
-            return Color(r, g, bl, al)
-        }
-
-        private fun angleDiffDeg(a: Float, b: Float): Float {
-            var d = (b - a) % 360f
-            if (d > 180f) d -= 360f
-            if (d < -180f) d += 360f
-            return d
-        }
-
         private data class BeamState(
             var target: ShipAPI? = null,
             var contact: Float = 0f,
             var rampDuration: Float = DEFAULT_RAMP_DURATION,
             var baseWidth: Float = -1f,
-            var basePixelsPerTexel: Float = -1f,
-            var vfx: PsiOmegaBeamVfx? = null,
+            var driver: BeamVfxDriver? = null,
 
             // 反馈可视化/调试：累积后以“每秒速率”显示，避免 0.x% 变化被 UI 取整吞掉
             var statusT: Float = 0f,
@@ -107,18 +92,16 @@ class PsiSunderBeamEffect : BeamEffectPlugin {
         if (state.baseWidth <= 0f) {
             state.baseWidth = beam.width
         }
-        if (state.basePixelsPerTexel <= 0f) {
-            state.basePixelsPerTexel = beam.pixelsPerTexel
-        }
 
         val brightness = try { beam.brightness } catch (_: Throwable) { 0f }
         val beamActive = brightness > BEAM_ACTIVE_BRIGHTNESS_MIN && beam.length > 10f
 
         if (!beamActive) {
-            // 停火/束体消失：缓慢衰减层数并淡出。
+            // 停火/束体消失：缓慢衰减层数；驱动以 firing=false 推进，束体节点按心跳自淡（复火再拉回，无重建）。
             state.contact = max(0f, state.contact - amount * RAMP_DECAY_PER_SEC)
             state.target = null
-            try { state.vfx?.fadeOut() } catch (_: Throwable) {}
+            val ramp = (state.contact / state.rampDuration.coerceAtLeast(0.01f)).coerceIn(0f, 1f)
+            driveVfx(engine, beam, state, amount, firing = false, strength = ramp)
             return
         }
 
@@ -229,20 +212,32 @@ class PsiSunderBeamEffect : BeamEffectPlugin {
             }
         }
 
-        // 视觉：全 BoxUtil 光束（不依赖原版渲染）
-        val vfx = state.vfx ?: PsiOmegaBeamVfx().also { state.vfx = it }
-        try {
-            vfx.update(
-                engine = engine,
-                amount = amount,
+        // 视觉：全 BoxUtil 光束（不依赖原版渲染），经 RenderEntity 新管线驱动。
+        driveVfx(engine, beam, state, amount, firing = true, strength = ramp)
+    }
+
+    /**
+     * 把本帧束几何/状态折成 [BeamFrame] 喂给该光束的 [BeamVfxDriver]（首帧惰性建树+驱动）。
+     * strength=ramp 决定束体颜色/宽度与命中特效频次；firing 决定束体常驻还是淡出。
+     */
+    private fun driveVfx(engine: CombatEngineAPI, beam: BeamAPI, state: BeamState, amount: Float, firing: Boolean, strength: Float) {
+        val driver = state.driver ?: run {
+            val tree = BeamVfxSpecs.build(BEAM_SPEC_ID) ?: return
+            BeamVfxDriverImpl(BeamHostImpl("beam@" + System.identityHashCode(beam), state.baseWidth), tree)
+                .also { state.driver = it }
+        }
+        driver.advance(
+            engine,
+            BeamFrame(
                 start = beam.from,
                 facing = VectorUtils.getAngle(beam.from, beam.to),
                 length = beam.length,
-                ramp = ramp,
-                baseWidth = state.baseWidth,
-            )
-        } catch (_: Throwable) {
-        }
+                endpoint = Vector2f(beam.to),
+                firing = firing,
+                strength = strength,
+            ),
+            amount,
+        )
     }
 
     private fun isUnmanned(target: ShipAPI): Boolean {

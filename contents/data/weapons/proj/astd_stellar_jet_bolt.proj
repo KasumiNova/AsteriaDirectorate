@@ -9,8 +9,8 @@
     "width": 8.0,
     "fadeTime": 0.2,
 
-    "fringeColor": [120, 200, 255, 235],
-    "coreColor": [255, 250, 235, 200],
+    "fringeColor": [120, 200, 255, 0],
+    "coreColor": [255, 250, 235, 0],
 
     "textureScrollSpeed": 64,
     "pixelsPerTexel": 5,

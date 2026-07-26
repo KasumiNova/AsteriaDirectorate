@@ -104,6 +104,9 @@ class ASTDProjectileVfxRuntime(
 
     internal fun historyNodesForTests(): List<ASTDProjectileHistoryNode> = history.nodes()
 
+    /** golden 对比用：读取旧管线每帧产出的 RenderContext，与新驱动的 FrameState 逐字段比对。 */
+    internal fun lastContextForTests(): ASTDProjectileVfxRenderContext? = lastContext
+
     internal fun renderLayerCountForTests(): Int = renderGraph.layerCountForTests()
 
     private fun advanceInternal(
@@ -182,7 +185,9 @@ class ASTDProjectileVfxRuntime(
         val dy = location.y - previous.y
         val speedSq = dx * dx + dy * dy
         if (speedSq <= 0.0001f) return projectileFacing
-        return Math.toDegrees(atan2(dy.toDouble(), dx.toDouble())).toFloat()
+        // 归一化到 [0,360)：BoxUtil setStateVanilla 对负角渲染异常（向下开火时拖尾镜像/歪斜）。
+        val deg = Math.toDegrees(atan2(dy.toDouble(), dx.toDouble())).toFloat()
+        return ((deg % 360f) + 360f) % 360f
     }
 
     private fun buildContext(

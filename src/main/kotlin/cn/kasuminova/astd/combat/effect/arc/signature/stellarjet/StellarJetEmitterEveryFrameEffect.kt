@@ -1,14 +1,19 @@
 package cn.kasuminova.astd.combat.effect.arc.signature.stellarjet
 
-import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
-import cn.kasuminova.astd.combat.effect.generic.projectile.ProjectileVfxRegistry
-import cn.kasuminova.astd.renderer.projectile.ASTDProjectileVfxRuntimeManager
+import cn.kasuminova.astd.impl.render.BeamHostImpl
+import cn.kasuminova.astd.impl.render.SjBeam
+import cn.kasuminova.astd.renderer.beam.driver.BeamFrame
+import cn.kasuminova.astd.renderer.beam.driver.BeamVfxDriver
+import cn.kasuminova.astd.renderer.beam.driver.BeamVfxDriverImpl
+import cn.kasuminova.astd.renderer.beam.driver.BeamVfxSpecs
+import cn.kasuminova.astd.renderer.projectile.driver.ProjectileVfxDriverPlugin
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BeamAPI
 import com.fs.starfarer.api.combat.CollisionClass
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEntityAPI
 import com.fs.starfarer.api.combat.DamageAPI
+import com.fs.starfarer.api.combat.DamageType
 import com.fs.starfarer.api.combat.EveryFrameWeaponEffectPlugin
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.combat.ShipSystemAPI
@@ -31,15 +36,17 @@ import kotlin.math.sqrt
  */
 class StellarJetEmitterEveryFrameEffect : EveryFrameWeaponEffectPlugin {
 
-    private val vfx = StellarJetBeamVfx(
-        coreColor = CORE_COLOR,
-        glowColor = GLOW_COLOR,
-    )
+    // 束体 VFX 现由 RenderEntity 树 + 光束驱动承担（旧 StellarJetBeamVfx 已删）；懒建、随武器插件常驻，
+    // firing 帧喂 firing=true，停火帧喂 firing=false（束体节点自淡 0.14s + 自删），无需宿主逐帧维护句柄。
+    private var beamDriver: BeamVfxDriver? = null
 
     private val chargeUpVfx = StellarJetChargeUpVfx(
         coreColor = CORE_COLOR,
         glowColor = GLOW_COLOR,
     )
+
+    // 命中端周期性 EMP 伤害弧的节流累积器（gameplay：applyDamage + 选点，随旧 emitImpactEmpArc 迁回宿主）。
+    private var impactEmpAcc = 0f
 
     private val debugInterval = IntervalUtil(0.5f, 0.5f)
 
@@ -111,6 +118,16 @@ class StellarJetEmitterEveryFrameEffect : EveryFrameWeaponEffectPlugin {
         private const val BEAM_MAX_CORE_W = 24f * 1.4f
         private const val BEAM_MIN_GLOW_W = 20f * 1.4f
         private const val BEAM_MAX_GLOW_W = 56f * 1.4f
+
+        // 命中端周期性 EMP 伤害弧（旧 StellarJetBeamVfx.emitImpactEmpArc/pickEmpArcTargetPoint，gameplay 随迁回宿主）。
+        private const val EMP_ARC_INTERVAL = 0.33f
+        private const val EMP_ARC_EMP_FRACTION = 0.67f
+        private const val EMP_ARC_ENERGY_FRACTION = 0.33f
+        private const val EMP_ARC_SHIELD_BASE_CHANCE = 0.50f
+        private const val EMP_ARC_THICKNESS_MIN = 10f
+        private const val EMP_ARC_THICKNESS_MAX = 28f
+        private const val EMP_ARC_TARGET_JITTER = 18f
+        private const val EMP_ARC_WEAPON_PICK_CHANCE = 0.78f
 
         private fun lerp(a: Float, b: Float, t: Float): Float = a + (b - a) * t
 
@@ -201,11 +218,9 @@ class StellarJetEmitterEveryFrameEffect : EveryFrameWeaponEffectPlugin {
             } catch (_: Throwable) {
             }
 
-            // VFX：接入统一 projectile runtime，特殊伤害与射程逻辑继续由本 effect 维护。
-            val preset = ProjectileVfxRegistry.presetFor("astd_stellar_jet_bolt")
-            if (preset != null) {
-                ASTDProjectileVfxRuntimeManager.track(engine, dp, preset)
-            }
+            // VFX：接入新 RenderEntity 管线（手写 DSL，projectileSpecId 直连），特殊伤害与射程逻辑继续由本 effect 维护。
+            // 扫描器随后再调同一 track 会被 driver 的 containsKey 去重，故单份视觉、不与本处双登记。
+            ProjectileVfxDriverPlugin.track(engine, dp, "astd_stellar_jet_bolt")
 
             // 兜底：若引擎侧出现“碰撞移除但不结算伤害”的边界情况，离开 play 时补一次 applyDamage。
             try {
@@ -271,25 +286,61 @@ class StellarJetEmitterEveryFrameEffect : EveryFrameWeaponEffectPlugin {
         }
     }
 
+    /** 懒建光束驱动：束体基宽走核心束最小宽（strength 缩放由束体节点内部按 intensity 完成）。 */
+    private fun ensureDriver(): BeamVfxDriver {
+        beamDriver?.let { return it }
+        return BeamVfxDriverImpl(
+            BeamHostImpl("sjbeam@" + System.identityHashCode(this), baseWidth = BEAM_MIN_CORE_W),
+            BeamVfxSpecs.stellarJet(),
+        ).also { beamDriver = it }
+    }
+
+    /** firing 帧：把几何 + 强度 + 命中接触折成 [BeamFrame] 喂驱动。 */
+    private fun driveBeam(
+        engine: CombatEngineAPI, amount: Float, start: Vector2f, facing: Float, length: Float,
+        strength: Float, endpoint: Vector2f, hitTarget: CombatEntityAPI?, isShieldHit: Boolean,
+    ) {
+        ensureDriver().advance(
+            engine,
+            BeamFrame(
+                start = start, facing = facing, length = length, endpoint = endpoint,
+                firing = true, strength = strength, fadeMul = 1f, hitTarget = hitTarget, isShieldHit = isShieldHit,
+            ),
+            amount,
+        )
+    }
+
+    /** 停火帧：喂 firing=false，束体节点停心跳自淡（0.14s）并自删；几何随手取当前炮口即可（不 firing 时节点不读）。 */
+    private fun fadeBeam(engine: CombatEngineAPI, weapon: WeaponAPI, amount: Float) {
+        val driver = beamDriver ?: return
+        val facing = weapon.currAngle
+        val start = Vector2f(weapon.location)
+        driver.advance(
+            engine,
+            BeamFrame(start = start, facing = facing, length = 16f, endpoint = start, firing = false, strength = 0f, fadeMul = 0f),
+            amount,
+        )
+    }
+
     override fun advance(amount: Float, engine: CombatEngineAPI, weapon: WeaponAPI) {
         if (engine.isPaused) return
         if (amount <= 0f) return
 
         val ship = weapon.ship
         if (ship == null) {
-            vfx.fadeOut()
+            fadeBeam(engine, weapon, amount)
             chargeUpVfx.reset()
             return
         }
         if (ship.isHulk) {
-            vfx.fadeOut()
+            fadeBeam(engine, weapon, amount)
             chargeUpVfx.reset()
             return
         }
 
         val system = ship.system
         if (system == null || system.id != SYSTEM_ID) {
-            vfx.fadeOut()
+            fadeBeam(engine, weapon, amount)
             chargeUpVfx.reset()
             return
         }
@@ -321,7 +372,7 @@ class StellarJetEmitterEveryFrameEffect : EveryFrameWeaponEffectPlugin {
             // 保守：确保系统 IN 时不会残留上一轮 active 的 beam DPS 修改
             restoreBeamDpsIfNeeded(weapon)
 
-            vfx.fadeOut()
+            fadeBeam(engine, weapon, amount)
             boltAcc = 0f
             activationBudgetLeft = 0f
             wasActiveLastFrame = false
@@ -384,7 +435,7 @@ class StellarJetEmitterEveryFrameEffect : EveryFrameWeaponEffectPlugin {
             restoreBeamDpsIfNeeded(weapon)
 
             // 触发淡出/回收
-            vfx.fadeOut()
+            fadeBeam(engine, weapon, amount)
 
             // 关闭时重置能量弹累积
             boltAcc = 0f
@@ -409,7 +460,7 @@ class StellarJetEmitterEveryFrameEffect : EveryFrameWeaponEffectPlugin {
             weapon.setForceFireOneFrame(true)
         } else {
             weapon.setForceNoFireOneFrame(true)
-            vfx.fadeOut()
+            fadeBeam(engine, weapon, amount)
             boltAcc = 0f
             activationBudgetLeft = 0f
             wasActiveLastFrame = false
@@ -494,7 +545,7 @@ class StellarJetEmitterEveryFrameEffect : EveryFrameWeaponEffectPlugin {
 
         val beamLen = if (result?.one != null) sqrt(result.one.z.coerceAtLeast(0f)).coerceAtMost(MAX_RANGE) else MAX_RANGE
         val end = if (result?.one != null) Vector2f(result.one.x, result.one.y) else Vector2f(maxEnd)
-        val contact = StellarJetBeamVfx.BeamContact(end = hitPoint ?: end, hitTarget = hitTarget, isShieldHit = shieldHit)
+        val contactEnd = hitPoint ?: end
 
         // 平滑束长（仅视觉）：增长慢一点，缩短快一点
         val targetLen = beamLen.coerceAtLeast(0f)
@@ -508,24 +559,15 @@ class StellarJetEmitterEveryFrameEffect : EveryFrameWeaponEffectPlugin {
             smoothLen += d.coerceIn(-maxStep, maxStep)
         }
 
-        // 额外渲染：系统开启且有燃料时保持束体存在。
+        // 额外渲染：系统开启且有燃料时保持束体存在（视觉走 RenderEntity 树；命中端 EMP 伤害弧为 gameplay，宿主自算）。
         if (jetting) {
-            vfx.update(
-                engine = engine,
-                amount = amount,
-                source = ship,
-                start = start,
-                facing = facing,
-                length = smoothLen,
-                strength = wT,
-                panelDps = dynamicBeamDps,
-                coreWidth = coreW,
-                glowWidth = glowW,
-                firing = true,
-                contact = contact,
+            driveBeam(
+                engine = engine, amount = amount, start = start, facing = facing, length = smoothLen,
+                strength = wT, endpoint = contactEnd, hitTarget = hitTarget, isShieldHit = shieldHit,
             )
+            emitImpactEmpArc(engine, amount, ship, contactEnd, hitTarget, shieldHit, wT, coreW, dynamicBeamDps)
         } else {
-            vfx.fadeOut()
+            fadeBeam(engine, weapon, amount)
             smoothLenInited = false
         }
 
@@ -562,7 +604,7 @@ class StellarJetEmitterEveryFrameEffect : EveryFrameWeaponEffectPlugin {
                 } catch (_: Throwable) {
                 }
                 weapon.setForceNoFireOneFrame(true)
-                vfx.fadeOut()
+                fadeBeam(engine, weapon, amount)
                 boltAcc = 0f
                 smoothLenInited = false
                 activationBudgetLeft = 0f
@@ -623,7 +665,7 @@ class StellarJetEmitterEveryFrameEffect : EveryFrameWeaponEffectPlugin {
                     try {
                         engine.applyDamage(
                             hitTarget,
-                            hitPoint ?: contact.end,
+                            hitPoint ?: contactEnd,
                             frameDamage,
                             try {
                                 dmg.type
@@ -646,4 +688,73 @@ class StellarJetEmitterEveryFrameEffect : EveryFrameWeaponEffectPlugin {
             }
         }
     }
+
+    /**
+     * 命中船体时周期性向其未瘫痪子系统打 EMP 伤害弧（旧 `StellarJetBeamVfx.emitImpactEmpArc`，gameplay 迁回宿主）。
+     * 视觉弧与 applyDamage 打同一选点（[pickEmpArcTargetPoint]），故整体留宿主而非拆进渲染树。每 [EMP_ARC_INTERVAL] 触发一次。
+     */
+    private fun emitImpactEmpArc(
+        engine: CombatEngineAPI, amount: Float, source: ShipAPI, contactEnd: Vector2f,
+        hitTarget: CombatEntityAPI?, isShieldHit: Boolean, strength: Float, coreWidth: Float, panelDps: Float,
+    ) {
+        val target = hitTarget as? ShipAPI ?: run {
+            // 未命中船体（空中/非船体实体）：清累积器，避免下次刚接触就立刻出弧。
+            impactEmpAcc = 0f
+            return
+        }
+        if (!engine.isEntityInPlay(target)) {
+            impactEmpAcc = 0f
+            return
+        }
+        if (target === source) return
+
+        impactEmpAcc += amount
+        if (impactEmpAcc < EMP_ARC_INTERVAL) return
+        impactEmpAcc -= EMP_ARC_INTERVAL
+
+        // 护盾命中：50% 基础概率触发，随目标硬幅能水平线性降低（最低 0%）。
+        if (isShieldHit) {
+            val hard = target.hardFluxLevel.coerceIn(0f, 1f)
+            val chance = (EMP_ARC_SHIELD_BASE_CHANCE * (1f - hard)).coerceIn(0f, EMP_ARC_SHIELD_BASE_CHANCE)
+            if (rand01() >= chance) return
+        }
+
+        val from = Vector2f(contactEnd)
+        val to = pickEmpArcTargetPoint(target, from)
+
+        val s = strength.coerceIn(0f, 1f)
+        val thickness = (coreWidth * (0.38f + 0.22f * s)).coerceIn(EMP_ARC_THICKNESS_MIN, EMP_ARC_THICKNESS_MAX)
+        engine.spawnEmpArcVisual(from, source, to, target, thickness, GLOW_COLOR, CORE_COLOR)
+
+        // 伤害：以“面板 DPS”在 EMP_ARC_INTERVAL 窗口内折算为单次电弧伤害（护盾触发即穿透，bypassShields=true）。
+        val dps = panelDps.coerceAtLeast(0f)
+        if (dps <= 0f) return
+        val total = (dps * EMP_ARC_INTERVAL).coerceAtLeast(0f)
+        engine.applyDamage(
+            target, to, total * EMP_ARC_ENERGY_FRACTION, DamageType.ENERGY, total * EMP_ARC_EMP_FRACTION,
+            true, false, source, true,
+        )
+    }
+
+    /** EMP 弧选点：优先未瘫痪武器，其次未瘫痪引擎，都无则命中点；带抖动避免“钉死”一点。 */
+    private fun pickEmpArcTargetPoint(target: ShipAPI, fallback: Vector2f): Vector2f {
+        val weapons = target.allWeapons.filter { !it.isDecorative && !it.isDisabled && !it.isPermanentlyDisabled }
+        val engines = target.engineController.shipEngines.filter { !it.isDisabled && !it.isPermanentlyDisabled }
+
+        val base = when {
+            weapons.isNotEmpty() && engines.isNotEmpty() ->
+                if (rand01() < EMP_ARC_WEAPON_PICK_CHANCE) Vector2f(pickRandom(weapons).location) else Vector2f(pickRandom(engines).location)
+
+            weapons.isNotEmpty() -> Vector2f(pickRandom(weapons).location)
+            engines.isNotEmpty() -> Vector2f(pickRandom(engines).location)
+            else -> Vector2f(fallback)
+        }
+
+        val j = EMP_ARC_TARGET_JITTER
+        base.x += (rand01() - 0.5f) * 2f * j
+        base.y += (rand01() - 0.5f) * 2f * j
+        return base
+    }
+
+    private fun <T> pickRandom(list: List<T>): T = list[(rand01() * list.size.toFloat()).toInt().coerceIn(0, list.size - 1)]
 }

@@ -6,6 +6,7 @@ import cn.kasuminova.astd.renderer.effect.system.ArcFlareAfterimageManager
 import cn.kasuminova.astd.renderer.effect.system.ASTDVectorThrustEngineManager
 import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
 import cn.kasuminova.astd.renderer.projectile.ASTDProjectileVfxRuntimePlugin
+import cn.kasuminova.astd.renderer.projectile.driver.ProjectileVfxDriverPlugin
 
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
@@ -28,6 +29,8 @@ internal object CombatVfxBootstrap {
 
     fun ensureInstalled(engine: CombatEngineAPI) {
         ASTDProjectileVfxRuntimePlugin.ensureInstalled(engine)
+        // 新 RenderEntity 管线的每帧插件（仅已迁移 spec 走这条路，见 ProjectileVfxDriverPlugin / ProjectileVfxSpecs）。
+        ProjectileVfxDriverPlugin.ensureInstalled(engine)
 
         // 顺手尝试让 BoxUtil 进入 ready（即便 BoxUtil 不可用，这里也不会炸）
         try {

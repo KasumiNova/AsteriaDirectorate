@@ -54,10 +54,12 @@ object Wpn_astd_aod7 : WeaponDataEntry(), SsProjProjectileOutputs {
         onHitEffect = "cn.kasuminova.astd.combat.effect.generic.HighFluxShieldPressureOnHitEffect",
         collisionClass = "PROJECTILE_FF",
         collisionClassByFighter = "PROJECTILE_FIGHTER",
-        // 原版 projectile visual 必须不可见，避免盖过 ASTD 自定义 VFX。
+        // 原版 projectile visual 必须不可见（length/width=2 + 色 alpha=0 + BUtil_NONE）。
         length = 2.0,
         width = 2.0,
-        fadeTime = 0.0,
+        // fadeTime=0.2：给超射程后的原版弹体一段滑行窗口，令代码 VFX 拖尾能跟随淡出（否则 fadeTime=0 会被引擎即刻移除、
+        // 拖尾在射程环处骤消）。原版弹体已 alpha=0 全隐，此窗口不会造成视觉穿帮。
+        fadeTime = 0.2,
         fringeColor = Rgba(255, 198, 126, 0),
         coreColor = Rgba(248, 242, 232, 0),
         textureScrollSpeed = 0.0,
@@ -308,6 +310,10 @@ object Wpn_astd_spc3 : WeaponDataEntry(), SsProjProjectileOutputs {
     override val projSpec: ProjectileProjSpec = ProjectileProjSpec.standard(
         id = "astd_spc3_shot",
         spawnType = ProjectileSpawnType.BALLISTIC,
+        // 弹体视觉全部交给 ASTD VFX 管线；原版弹丸 core/fringe 置透明，
+        // 否则偏射弹丸会按弹体朝向渲染出亮头，与速度向拖尾错位（表现为“拖尾歪向反方向”）。
+        fringeColor = Rgba(120, 200, 255, 0),
+        coreColor = Rgba(220, 245, 255, 0),
     )
 }
 
@@ -360,7 +366,8 @@ object Wpn_astd_tsm2 : WeaponDataEntry(), SsProjMissileOutputs {
         missileType = "MISSILE",
         onFireEffect = "cn.kasuminova.astd.combat.effect.generic.ProjectileSpecOnFireDispatcher",
         onHitEffect = "cn.kasuminova.astd.combat.effect.lens.signature.singularity.SingularityOnHitEffect",
-        sprite = "graphics/missiles/torpedo_guided2.png",
+        // 弹体外观完全由代码 VFX 承担：原版弹体贴图置空，避免与模组拖尾/弹头同时穿帮。
+        sprite = "graphics/textures/BUtil_NONE.png",
         size = Vec2i(10, 21),
         center = Vec2(5, 10.5),
         collisionRadius = 15,
@@ -595,7 +602,8 @@ object Wpn_astd_rct6 : WeaponDataEntry(), SsProjMissileOutputs {
         missileType = "MISSILE",
         onFireEffect = "cn.kasuminova.astd.combat.effect.generic.ProjectileSpecOnFireDispatcher",
         onHitEffect = null,
-        sprite = "graphics/missiles/torpedo_guided2.png",
+        // 弹体外观完全由代码 VFX 承担：原版弹体贴图置空，避免与模组拖尾/弹头同时穿帮。
+        sprite = "graphics/textures/BUtil_NONE.png",
         size = Vec2i(10, 21),
         center = Vec2(5, 10.5),
         collisionRadius = 15,
@@ -612,30 +620,8 @@ object Wpn_astd_rct6 : WeaponDataEntry(), SsProjMissileOutputs {
             acc = 1200,
             dec = 300,
         ),
-        engineSlots = listOf(
-            MissileEngineSlot(
-                id = "ES1",
-                loc = Vec2i(-10, 0),
-                style = "CUSTOM",
-                styleSpec = MissileEngineSlotStyleSpec(
-                    mode = "QUAD_STRIP",
-                    engineColor = Rgba(120, 200, 255, 255),
-                    glowSizeMult = 2.0,
-                    contrailDuration = 1.5,
-                    contrailWidthMult = 1.0,
-                    contrailWidthAddedFractionAtEnd = 2.0,
-                    contrailMinSeg = 5,
-                    contrailMaxSpeedMult = 0.0,
-                    contrailAngularVelocityMult = 0.5,
-                    contrailSpawnDistMult = 0.5,
-                    contrailColor = Rgba(80, 160, 220, 100),
-                    type = "GLOW",
-                ),
-                width = 10.0,
-                length = 30.0,
-                angle = 180.0,
-            )
-        )
+        // 导弹尾迹完全由代码 VFX 承担：去除原版引擎辉光/尾焰（contrail），避免与模组拖尾同时渲染出两条尾。
+        engineSlots = emptyList(),
     )
 }
 
@@ -687,10 +673,11 @@ object Wpn_astd_drv_omega : WeaponDataEntry(), SsProjProjectileOutputs {
         onHitEffect = "cn.kasuminova.astd.combat.effect.arc.omega.DrvOmegaOnHitEffect",
         collisionClass = "PROJECTILE_FF",
         collisionClassByFighter = "PROJECTILE_FIGHTER",
-        // 彻底隐形：避免 1 帧闪现
+        // 彻底隐形（length/width=2 + 色 alpha=0 + BUtil_NONE）。
         length = 2.0,
         width = 2.0,
-        fadeTime = 0.0,
+        // fadeTime=0.2：给超射程后的原版弹体滑行窗口，令代码 VFX 拖尾跟随淡出（原版弹体已全隐，不会闪现）。
+        fadeTime = 0.2,
         fringeColor = Rgba(120, 200, 255, 0),
         coreColor = Rgba(220, 245, 255, 0),
         textureScrollSpeed = 0.0,
@@ -837,7 +824,8 @@ object Wpn_astd_tsm_omega : WeaponDataEntry(), SsProjMissileOutputs {
         missileType = "MISSILE",
         onFireEffect = "cn.kasuminova.astd.combat.effect.generic.ProjectileSpecOnFireDispatcher",
         onHitEffect = "cn.kasuminova.astd.combat.effect.arc.signature.tsm.TsmOmegaTerminalVerdictOnHitEffect",
-        sprite = "graphics/missiles/torpedo_guided2.png",
+        // 弹体外观完全由代码 VFX 承担：原版弹体贴图置空，避免与模组拖尾/弹头同时穿帮。
+        sprite = "graphics/textures/BUtil_NONE.png",
         size = Vec2i(10, 21),
         center = Vec2(5, 10.5),
         collisionRadius = 15,
@@ -854,29 +842,7 @@ object Wpn_astd_tsm_omega : WeaponDataEntry(), SsProjMissileOutputs {
             acc = 1000,
             dec = 250,
         ),
-        engineSlots = listOf(
-            MissileEngineSlot(
-                id = "ES1",
-                loc = Vec2i(-10, 0),
-                style = "CUSTOM",
-                styleSpec = MissileEngineSlotStyleSpec(
-                    mode = "QUAD_STRIP",
-                    engineColor = Rgba(180, 120, 255, 255),
-                    glowSizeMult = 2.5,
-                    contrailDuration = 1.5,
-                    contrailWidthMult = 1.0,
-                    contrailWidthAddedFractionAtEnd = 2.0,
-                    contrailMinSeg = 5,
-                    contrailMaxSpeedMult = 0.0,
-                    contrailAngularVelocityMult = 0.5,
-                    contrailSpawnDistMult = 0.5,
-                    contrailColor = Rgba(140, 80, 200, 100),
-                    type = "GLOW",
-                ),
-                width = 10.0,
-                length = 35.0,
-                angle = 180.0,
-            )
-        )
+        // 导弹尾迹完全由代码 VFX 承担：去除原版引擎辉光/尾焰（contrail），避免与模组拖尾同时渲染出两条尾。
+        engineSlots = emptyList(),
     )
 }

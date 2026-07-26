@@ -2,6 +2,7 @@ package cn.kasuminova.astd.combat.effect.generic.projectile
 
 import cn.kasuminova.astd.combat.effect.arc.omega.DrvOmegaSlugInstantOnSpawn
 import cn.kasuminova.astd.renderer.projectile.ASTDProjectileVfxRuntimeManager
+import cn.kasuminova.astd.renderer.projectile.driver.ProjectileVfxDriverPlugin
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.DamagingProjectileAPI
@@ -46,7 +47,12 @@ class ProjectileSpecOnFireDispatcher : OnFireEffectPlugin {
 
                 val preset = ProjectileVfxRegistry.presetFor(projId)
                 if (preset != null) {
-                    tracked = ASTDProjectileVfxRuntimeManager.track(engine, projectile, preset)
+                    // 切片：已迁移 spec 走新 RenderEntity 管线（手写 DSL），其余仍走旧 Runtime。迁移完成后移除此分支。
+                    tracked = if (ProjectileVfxDriverPlugin.isMigrated(projId)) {
+                        ProjectileVfxDriverPlugin.track(engine, projectile, projId)
+                    } else {
+                        ASTDProjectileVfxRuntimeManager.track(engine, projectile, preset)
+                    }
                 }
             }
         } finally {

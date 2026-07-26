@@ -6,6 +6,11 @@ import cn.kasuminova.astd.renderer.effect.projectile.beam.AttachedBeamEllipseRin
 import cn.kasuminova.astd.renderer.effect.projectile.beam.AttachedBeamSpriteRingRenderer
 import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
 import cn.kasuminova.astd.combat.effect.generic.projectile.TaperedBeamTrailsVfx
+import cn.kasuminova.astd.impl.render.BeamHostImpl
+import cn.kasuminova.astd.renderer.beam.driver.BeamFrame
+import cn.kasuminova.astd.renderer.beam.driver.BeamVfxDriver
+import cn.kasuminova.astd.renderer.beam.driver.BeamVfxDriverImpl
+import cn.kasuminova.astd.renderer.beam.driver.BeamVfxSpecs
 
 import com.fs.starfarer.api.combat.BeamAPI
 import com.fs.starfarer.api.combat.CombatEngineAPI
@@ -82,10 +87,25 @@ class StasisFieldCollapseEmitterEveryFrameEffect : EveryFrameWeaponEffectPlugin 
 
     private val nozzleSpec = GravityCollapseWeaponSpecs.forWeaponId(StasisFieldCollapseBeam.WEAPON_ID)
 
-    /** 喷口自绘束（隐藏原版 beam 渲染后用于视觉替代）。 */
-    private val nozzleBeamVfx = GravityCollapseBeamVfx(
-        scale = nozzleSpec?.beamScale ?: 1f,
-    )
+    /** 喷口自绘束（隐藏原版 beam 渲染后用于视觉替代）：RenderEntity 新管线驱动，一轮请求一棵树。 */
+    private var beamDriver: BeamVfxDriver? = null
+
+    /** 构建引力坍缩炮光束树的驱动（系统侧：起手 burst/命中特效由本宿主自绘，故 startupBurst=false）。 */
+    private fun buildDriver(): BeamVfxDriver? {
+        val sc = (nozzleSpec?.beamScale ?: 1f).coerceIn(0.35f, 2.25f)
+        val tree = BeamVfxSpecs.gravityCollapse(scale = nozzleSpec?.beamScale ?: 1f, beamWidthMul = 1f, startupBurst = false)
+        return BeamVfxDriverImpl(BeamHostImpl("gcsysbeam@" + System.identityHashCode(this), baseWidth = sc), tree)
+    }
+
+    /** 把束几何折成 [BeamFrame] 喂驱动：strength=intensity（系统捕获能量强度），fadeMul 控淡出收束；系统侧无 reach 渐长。 */
+    private fun driveBeam(engine: CombatEngineAPI, line: BeamLineUtil.BeamLine, amount: Float, strength: Float, fadeMul: Float) {
+        val driver = beamDriver ?: return
+        driver.advance(
+            engine,
+            BeamFrame(start = line.from, facing = line.facing, length = line.length, endpoint = Vector2f(line.to), firing = true, strength = strength, fadeMul = fadeMul),
+            amount,
+        )
+    }
 
     // 命中机制：抽离为可复用模块（AOE tick + 引力撕裂）。
     private val onHit = GravityCollapseOnHitHandler(
@@ -140,7 +160,8 @@ class StasisFieldCollapseEmitterEveryFrameEffect : EveryFrameWeaponEffectPlugin 
             beamStartedAt = null
             muzzleBurstDone = false
             hitBurstDone = false
-            nozzleBeamVfx.reset(engine)
+            beamDriver?.dispose()
+            beamDriver = null
             fadeStartedAt = null
             lastLine = null
             onHit.reset()
@@ -200,7 +221,9 @@ class StasisFieldCollapseEmitterEveryFrameEffect : EveryFrameWeaponEffectPlugin 
         val beam = weapon.beams?.firstOrNull()
         if (beamStartedAt == null && beam != null) {
             beamStartedAt = now
-            nozzleBeamVfx.reset(engine)
+            // 新一轮开火：弃旧树建新树（系统侧起手 burst 由本宿主 spawnMuzzleConeBurst 自绘）。
+            beamDriver?.dispose()
+            beamDriver = buildDriver()
 
             if (!muzzleBurstDone) {
                 muzzleBurstDone = true
@@ -233,7 +256,7 @@ class StasisFieldCollapseEmitterEveryFrameEffect : EveryFrameWeaponEffectPlugin 
                     lastLine = line
                     // 命中点持续坍缩 + 周期性额外伤害（只在确实命中实体时触发）
                     handleOnHitSustainedEffects(engine, amount, weapon, beam, intensity)
-                    nozzleBeamVfx.advance(engine, amount, line.from, line.to, intensity)
+                    driveBeam(engine, line, amount, strength = intensity, fadeMul = 1f)
                 }
             } else {
                 // 到点收束：停止强制开火，并禁用武器（原版 chargedown 会负责慢慢消散）
@@ -253,14 +276,15 @@ class StasisFieldCollapseEmitterEveryFrameEffect : EveryFrameWeaponEffectPlugin 
                 val t = ((now - fs) / END_FADE_TIME).coerceIn(0f, 1f)
                 val fade = (1f - t).coerceIn(0f, 1f)
                 if (line != null && fade > 0f) {
-                    nozzleBeamVfx.advance(engine, amount, line.from, line.to, intensity, fade)
+                    driveBeam(engine, line, amount, strength = intensity, fadeMul = fade)
                 }
 
                 if (fade <= 0f) {
                     // 结束：彻底清理
                     active = null
                     restoreBeamDpsIfNeeded(weapon)
-                    nozzleBeamVfx.reset(engine)
+                    beamDriver?.dispose()
+                    beamDriver = null
                     fadeStartedAt = null
                     lastLine = null
                 }
@@ -333,11 +357,9 @@ class StasisFieldCollapseEmitterEveryFrameEffect : EveryFrameWeaponEffectPlugin 
         // 不再 override 转向；由武器自身/舰船控制决定实际朝向。
         restoreBeamDpsIfNeeded(weapon)
 
-        // 清理自绘束相关的“永久环”渲染
-        try {
-            nozzleBeamVfx.reset(engine)
-        } catch (_: Throwable) {
-        }
+        // 清理自绘束（onDetach 会 remove 沿束环、delete 束体/渐长锥等全部句柄）
+        beamDriver?.dispose()
+        beamDriver = null
         fadeStartedAt = null
         lastLine = null
     }

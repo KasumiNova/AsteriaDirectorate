@@ -1,6 +1,7 @@
 package cn.kasuminova.astd.combat.effect.generic.projectile
 
 import cn.kasuminova.astd.renderer.projectile.ASTDProjectileVfxRuntimeManager
+import cn.kasuminova.astd.renderer.projectile.driver.ProjectileVfxDriverPlugin
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.DamagingProjectileAPI
 import com.fs.starfarer.api.combat.MissileAIPlugin
@@ -36,14 +37,16 @@ class ProjectileSpecOnFireDispatcherRuntimeTest {
     }
 
     @Test
-    fun `configured projectile tracks through runtime manager`() {
+    fun `configured projectile tracks through driver pipeline`() {
         val engine = engineStub()
-        val projectile = projectileStub("astd_aod7_shot")
+        // astd_stellar_jet_bolt 已迁移到新管线：派发器应据 isMigrated 分流到 ProjectileVfxDriverPlugin（非旧 Runtime）。
+        val projectile = projectileStub("astd_stellar_jet_bolt")
         val weapon = weaponStub()
 
         ProjectileSpecOnFireDispatcher().onFire(projectile, weapon, engine.api)
 
-        assertEquals(1, ASTDProjectileVfxRuntimeManager.trackedCountForTests())
+        assertEquals(1, ProjectileVfxDriverPlugin.trackedCountForTests(engine.api))
+        assertEquals(0, ASTDProjectileVfxRuntimeManager.trackedCountForTests(), "已迁移 spec 不得再登记到旧 Runtime")
     }
 
     @Test
@@ -60,14 +63,15 @@ class ProjectileSpecOnFireDispatcherRuntimeTest {
     @Test
     fun `duplicate onFire for same projectile tracks once`() {
         val engine = engineStub()
-        val projectile = projectileStub("astd_aod7_shot")
+        // 同一弹体重复派发：新管线按弹体身份去重（driversByProjectile 以弹体为键），只登记一份。
+        val projectile = projectileStub("astd_stellar_jet_bolt")
         val weapon = weaponStub()
         val dispatcher = ProjectileSpecOnFireDispatcher()
 
         dispatcher.onFire(projectile, weapon, engine.api)
         dispatcher.onFire(projectile, weapon, engine.api)
 
-        assertEquals(1, ASTDProjectileVfxRuntimeManager.trackedCountForTests())
+        assertEquals(1, ProjectileVfxDriverPlugin.trackedCountForTests(engine.api))
     }
 
     @Test

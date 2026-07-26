@@ -1,8 +1,12 @@
 package cn.kasuminova.astd.combat.effect.generic.gravitycollapse
 
 import cn.kasuminova.astd.renderer.effect.projectile.beam.BeamLineUtil
-import cn.kasuminova.astd.combat.effect.arc.signature.stasisfield.GravityCollapseBeamVfx
 import cn.kasuminova.astd.combat.effect.arc.signature.stellarjet.StellarJetChargeUpVfx
+import cn.kasuminova.astd.impl.render.BeamHostImpl
+import cn.kasuminova.astd.renderer.beam.driver.BeamFrame
+import cn.kasuminova.astd.renderer.beam.driver.BeamVfxDriver
+import cn.kasuminova.astd.renderer.beam.driver.BeamVfxDriverImpl
+import cn.kasuminova.astd.renderer.beam.driver.BeamVfxSpecs
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.EveryFrameWeaponEffectPlugin
 import com.fs.starfarer.api.combat.WeaponAPI
@@ -21,15 +25,19 @@ class GravityCollapseBeamEveryFrameEffect : EveryFrameWeaponEffectPlugin {
 
     companion object {
         private const val END_FADE_TIME = 0.65f
+
+        // 渲染端“快速延伸”：前 BEAM_GROW_TIME 秒内把束长按比例拉长（仅视觉，不影响命中）。
+        private const val BEAM_GROW_TIME = 0.08f
     }
 
     private var initedForWeaponId: String? = null
     private var spec: GravityCollapseWeaponSpec? = null
-    private var beamVfx: GravityCollapseBeamVfx? = null
+    private var beamDriver: BeamVfxDriver? = null
     private var onHit: GravityCollapseOnHitHandler? = null
     private var chargeUpVfx: StellarJetChargeUpVfx? = null
 
     private var beamStarted = false
+    private var beamStartedAt: Float? = null
     private var fadeStartedAt: Float? = null
     private var lastLine: BeamLineUtil.BeamLine? = null
 
@@ -48,16 +56,13 @@ class GravityCollapseBeamEveryFrameEffect : EveryFrameWeaponEffectPlugin {
 
         // 若找不到配置：不做任何事（避免误挂到其他武器时产生意外效果）。
         if (s == null) {
-            beamVfx = null
+            beamDriver?.dispose()
+            beamDriver = null
             onHit = null
             chargeUpVfx = null
             return
         }
 
-        beamVfx = GravityCollapseBeamVfx(
-            scale = s.beamScale,
-            beamWidthMul = s.beamWidthMul,
-        )
         onHit = GravityCollapseOnHitHandler(
             config = GravityCollapseOnHitConfig(
                 tickInterval = 0.5f,
@@ -78,9 +83,33 @@ class GravityCollapseBeamEveryFrameEffect : EveryFrameWeaponEffectPlugin {
         )
 
         beamStarted = false
+        beamStartedAt = null
         fadeStartedAt = null
         lastLine = null
         lastChargeLevel = 0f
+        beamDriver?.dispose()
+        beamDriver = null
+    }
+
+    /** 构建引力坍缩炮光束树的驱动（起手 burst 由 muzzle 节点 onAttach 自绘，故 startupBurst=true）。 */
+    private fun buildDriver(): BeamVfxDriver? {
+        val s = spec ?: return null
+        val sc = s.beamScale.coerceIn(0.35f, 2.25f)
+        val wMul = s.beamWidthMul.coerceIn(0.35f, 1.25f)
+        val tree = BeamVfxSpecs.gravityCollapse(scale = s.beamScale, beamWidthMul = s.beamWidthMul, startupBurst = true)
+        return BeamVfxDriverImpl(BeamHostImpl("gcbeam@" + System.identityHashCode(this), baseWidth = sc * wMul), tree)
+    }
+
+    /** 把（可能被 reach 截断的）束几何折成 [BeamFrame] 喂驱动：strength=1（level 恒 1），fadeMul 控淡出收束。 */
+    private fun driveBeam(engine: CombatEngineAPI, line: BeamLineUtil.BeamLine, amount: Float, reach: Float, fadeMul: Float) {
+        val driver = beamDriver ?: return
+        val visLen = line.length * reach.coerceIn(0f, 1f)
+        val visTo = Vector2f(line.from.x + line.dirUnit.x * visLen, line.from.y + line.dirUnit.y * visLen)
+        driver.advance(
+            engine,
+            BeamFrame(start = line.from, facing = line.facing, length = visLen, endpoint = visTo, firing = true, strength = 1f, fadeMul = fadeMul),
+            amount,
+        )
     }
 
     override fun advance(amount: Float, engine: CombatEngineAPI, weapon: WeaponAPI) {
@@ -94,7 +123,6 @@ class GravityCollapseBeamEveryFrameEffect : EveryFrameWeaponEffectPlugin {
         } ?: return
 
         ensureInit(weaponId)
-        val vfx = beamVfx ?: return
         val hit = onHit ?: return
         val cu = chargeUpVfx
 
@@ -141,26 +169,17 @@ class GravityCollapseBeamEveryFrameEffect : EveryFrameWeaponEffectPlugin {
                 if (!beamStarted) {
                     beamStarted = true
                     fadeStartedAt = null
-                    // 启动时清一下旧状态（热重载/重复开火更稳定）
-                    try {
-                        vfx.reset(engine)
-                    } catch (_: Throwable) {
-                    }
-                    try {
-                        cu?.reset()
-                    } catch (_: Throwable) {
-                    }
+                    beamStartedAt = now
+                    cu?.reset()
                     hit.reset()
-
-                    // 起手 VFX：爆发光锥只应在“开火瞬间”出现。
-                    try {
-                        vfx.onStart(engine, line.from, line.to, 1f)
-                    } catch (_: Throwable) {
-                    }
+                    // 新一轮开火：弃旧树建新树；起手 burst 由 muzzle 节点首帧 onAttach 自绘。
+                    beamDriver?.dispose()
+                    beamDriver = buildDriver()
                 }
 
-                // 视觉：统一用 level=1（武器面板差异由 weapon_data 的 DPS/射程体现）。
-                vfx.advance(engine, amount, line.from, line.to, 1f, 1f)
+                // 视觉：统一用 level=1（武器面板差异由 weapon_data 的 DPS/射程体现）；前 BEAM_GROW_TIME 秒束长渐长。
+                val reach = beamStartedAt?.let { ((now - it) / BEAM_GROW_TIME).coerceIn(0f, 1f) } ?: 1f
+                driveBeam(engine, line, amount, reach = reach, fadeMul = 1f)
 
                 // 命中机制：用 weapon.damage.damage 作为“面板 DPS”（已含加成）。
                 val panelDps = try {
@@ -187,17 +206,17 @@ class GravityCollapseBeamEveryFrameEffect : EveryFrameWeaponEffectPlugin {
             val fade = (1f - t).coerceIn(0f, 1f)
 
             if (line != null && fade > 0f) {
-                vfx.advance(engine, amount, line.from, line.to, 1f, fade)
+                // 淡出：束体已渐长完（reach=1），整体由 fadeMul 收束到消失。
+                driveBeam(engine, line, amount, reach = 1f, fadeMul = fade)
             }
 
             if (fade <= 0f) {
                 beamStarted = false
+                beamStartedAt = null
                 fadeStartedAt = null
                 lastLine = null
-                try {
-                    vfx.reset(engine)
-                } catch (_: Throwable) {
-                }
+                beamDriver?.dispose()
+                beamDriver = null
                 hit.reset()
             }
 

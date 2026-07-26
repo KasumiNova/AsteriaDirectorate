@@ -41,7 +41,7 @@ internal class ASTDDevContentSelectorTest {
             )
         )
 
-        val vanillaRows = CsvTestUtil.readRowsById(Path.of("/mnt/windows_data/Games/Starsector098-linux/data/hulls/ship_data.csv"))
+        val vanillaRows = CsvTestUtil.readRowsById(Path.of("/mnt/store/Games/Starsector098-linux/data/hulls/ship_data.csv"))
         assertTrue(ASTDDevContentSelector.isDevStorageShip(vanillaRows.getValue("wolf").toShipRow()))
         assertTrue(ASTDDevContentSelector.isDevStorageShip(vanillaRows.getValue("hammerhead").toShipRow()))
         assertFalse(ASTDDevContentSelector.isDevStorageShip(vanillaRows.getValue("station1").toShipRow()))
@@ -82,7 +82,7 @@ internal class ASTDDevContentSelectorTest {
         assertFalse(ASTDDevContentSelector.isDevStorageWeapon(rows.getValue("astd_stellar_jet_emitter").toWeaponRow()))
         assertFalse(ASTDDevContentSelector.isDevStorageWeapon(rows.getValue("astd_stellar_jet_bolt_emitter").toWeaponRow()))
 
-        val vanillaRows = CsvTestUtil.readRowsById(Path.of("/mnt/windows_data/Games/Starsector098-linux/data/weapons/weapon_data.csv"))
+        val vanillaRows = CsvTestUtil.readRowsById(Path.of("/mnt/store/Games/Starsector098-linux/data/weapons/weapon_data.csv"))
         assertTrue(ASTDDevContentSelector.isDevStorageWeapon(vanillaRows.getValue("lightmg").toWeaponRow()))
         assertTrue(ASTDDevContentSelector.isDevStorageWeapon(vanillaRows.getValue("chaingun").toWeaponRow()))
         assertTrue(ASTDDevContentSelector.isDevStorageWeapon(vanillaRows.getValue("harpoon").toWeaponRow()))
@@ -94,7 +94,7 @@ internal class ASTDDevContentSelectorTest {
         val specialRows = CsvTestUtil.readRowsById(Path.of("contents/data/campaign/special_items.csv"))
         assertTrue(ASTDDevContentSelector.isDevStorageSpecialItem(specialRows.getValue("astd_echo_core").toSpecialItemRow()))
 
-        val baseCommodityRows = CsvTestUtil.readRowsById(Path.of("/mnt/windows_data/Games/Starsector098-linux/data/campaign/commodities.csv"))
+        val baseCommodityRows = CsvTestUtil.readRowsById(Path.of("/mnt/store/Games/Starsector098-linux/data/campaign/commodities.csv"))
         assertTrue(ASTDDevContentSelector.isDevStorageCommodity(baseCommodityRows.getValue("supplies").toCommodityRow()))
         assertTrue(ASTDDevContentSelector.isDevStorageCommodity(baseCommodityRows.getValue("food").toCommodityRow()))
         assertTrue(ASTDDevContentSelector.isDevStorageCommodity(baseCommodityRows.getValue("alpha_core").toCommodityRow()))
@@ -108,7 +108,7 @@ internal class ASTDDevContentSelectorTest {
 
     @Test
     fun `dev special item storage drops parameterized template items without concrete params`() {
-        val rows = CsvTestUtil.readRowsById(Path.of("/mnt/windows_data/Games/Starsector098-linux/data/campaign/special_items.csv"))
+        val rows = CsvTestUtil.readRowsById(Path.of("/mnt/store/Games/Starsector098-linux/data/campaign/special_items.csv"))
 
         assertFalse(ASTDDevContentSelector.isDevStorageSpecialItem(rows.getValue("modspec").toSpecialItemRow()))
         assertFalse(ASTDDevContentSelector.isDevStorageSpecialItem(rows.getValue("ship_bp").toSpecialItemRow()))
@@ -122,7 +122,7 @@ internal class ASTDDevContentSelectorTest {
 
     @Test
     fun `dev special item storage drops stateful items that need concrete instance data`() {
-        val rows = CsvTestUtil.readRowsById(Path.of("/mnt/windows_data/Games/Starsector098-linux/data/campaign/special_items.csv"))
+        val rows = CsvTestUtil.readRowsById(Path.of("/mnt/store/Games/Starsector098-linux/data/campaign/special_items.csv"))
 
         assertFalse(
             ASTDDevContentSelector.isDevStorageSpecialItem(rows.getValue("wormhole_anchor").toSpecialItemRow()),
@@ -133,7 +133,7 @@ internal class ASTDDevContentSelectorTest {
     @Test
     fun `dev special item storage drops hidden codex mod implementation items`() {
         val ratRows = CsvTestUtil.readRowsById(
-            Path.of("/mnt/windows_data/Games/Starsector098-linux/mods/Random-Assortment-of-Things/data/campaign/special_items.csv")
+            Path.of("/mnt/store/Games/Starsector098-linux/mods/Random-Assortment-of-Things/data/campaign/special_items.csv")
         )
 
         assertFalse(ASTDDevContentSelector.isDevStorageSpecialItem(ratRows.getValue("rat_ai_core_special").toSpecialItemRow()))
