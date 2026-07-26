@@ -1,5 +1,6 @@
 package cn.kasuminova.astd.renderer.projectile.driver
 
+import cn.kasuminova.astd.impl.render.CurveCoreComponent
 import cn.kasuminova.astd.impl.render.MeshComponent
 import cn.kasuminova.astd.impl.render.MistComponent
 import kotlin.test.Test
@@ -9,21 +10,20 @@ import kotlin.test.assertTrue
 
 /**
  * 手写 DSL spec 的装配自检：验证 [ProjectileVfxSpecs] 的构建函数产出的场景树拓扑与驱动策略。
- * 节点内部网格数学的观感一致性由 [Aod7GoldenParityTest] 兜底；本测试只盯 DSL → 树/策略的装配结果。
  */
 class ProjectileVfxSpecsTest {
 
     @Test
-    fun `aod7 七层齐活且有 body 时排除 BoxUtil 直线拖尾`() {
+    fun `aod7 组件齐活且曲线弹芯取代 glow body 时排除 BoxUtil 直线拖尾`() {
         val vfx = assertNotNull(ProjectileVfxSpecs.build("astd_aod7_shot"))
         val childIds = vfx.tree.children.map { it.id }
 
-        // 有 body → 无 BoxUtil 直线拖尾节点；6 个组件节点按 renderOrder 升序：mist(50)/glow(100)/body(200)/sideWisp(240)/head(300)/ribbon(360)。
+        // 有 curveCore → 无 BoxUtil 直线拖尾节点；P0 起 glow/body 网格合并为单条曲线弹芯。
+        // 5 个组件节点按 renderOrder 升序：mist(50)/core(100)/sideWisp(240)/head(300)/ribbon(360)。
         assertEquals(
             listOf(
                 "astd_aod7_shot_mist",
-                "astd_aod7_shot_glow",
-                "astd_aod7_shot_body",
+                "astd_aod7_shot_core",
                 "astd_aod7_shot_side_wisp",
                 "astd_aod7_shot_head",
                 "astd_aod7_shot_ribbon",
@@ -33,6 +33,7 @@ class ProjectileVfxSpecsTest {
         val orders = vfx.tree.children.map { it.renderOrder }
         assertEquals(orders.sorted(), orders, "子节点须按 renderOrder 升序")
         assertTrue(vfx.tree.children.first { it.id == "astd_aod7_shot_mist" } is MistComponent)
+        assertTrue(vfx.tree.children.first { it.id == "astd_aod7_shot_core" } is CurveCoreComponent)
         assertTrue(vfx.tree.children.first { it.id == "astd_aod7_shot_head" } is MeshComponent)
     }
 

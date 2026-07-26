@@ -122,13 +122,14 @@ object ProjectileVfxSpecs {
             alpha(0.016f, 0.075f); noise(5.2f); drift(0.32f)
             colors(0x380A2E0F, 0xFFF2F9FF)
         }
-        glow {
-            layer(5.4f, 0.18f, 34f, y = -0.36f, mixTail = 0.52f, mixHead = 0.44f)
-            layer(3.2f, 0.30f, 18f, y = 0.22f, mixTail = 0.52f, mixHead = 0.44f)
-            layer(1.4f, 0.58f, 7f, y = -0.08f, mixTail = 0.22f, mixHead = 1f)
-            layer(0.62f, 0.82f, 4f, y = 0f, mixTail = 0.48f, mixHead = 1f)
+        // P0 贴图化 PoC：弹芯+辉光+外晕合并为一条 CurveEntity 曲线带（横向衰减由烘焙包络贴图表达，
+        // 纵向明暗由逐节点颜色表达），外加一条 2.2× 宽 0.35× 淡的外晕带，取代原 glow 四层 + body 网格。
+        curveCore {
+            width(96f); tailWidth(0.08f); nodes(16)
+            colors(0xF0F8FFFF, 0x0A24380F)
+            halo(2.2f, 0.35f)
+            texture(96f, 0.9f)
         }
-        body()
         sideWisp {
             offsets(-2.1f, -1.36f, 1.28f, 2f)
             width(0.2f); alpha(0.24f); blur(10f)

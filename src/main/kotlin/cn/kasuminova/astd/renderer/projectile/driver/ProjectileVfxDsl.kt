@@ -1,6 +1,8 @@
 package cn.kasuminova.astd.renderer.projectile.driver
 
 import cn.kasuminova.astd.api.render.RenderEntity
+import cn.kasuminova.astd.impl.render.CurveCoreComponent
+import cn.kasuminova.astd.impl.render.CurveCoreSpec
 import cn.kasuminova.astd.impl.render.MistComponent
 import cn.kasuminova.astd.impl.render.bodyComponent
 import cn.kasuminova.astd.impl.render.color
@@ -60,6 +62,7 @@ class ProjectileVfxScope(private val id: String) {
     private var trail: ASTDTrailLayerSpec? = null
     private var glow: List<ASTDProjectileVfxGlowLayerSpec>? = null
     private var hasBody = false
+    private var curveCore: CurveCoreSpec? = null
     private var head: ASTDProjectileVfxHeadLayerSpec? = null
     private var mist: List<ASTDProjectileVfxMistLayerSpec>? = null
     private var sideWisp: ASTDProjectileVfxSideWispLayerSpec? = null
@@ -72,6 +75,7 @@ class ProjectileVfxScope(private val id: String) {
     fun trail(block: TrailBuilder.() -> Unit) { trail = TrailBuilder().apply(block).build() }
     fun glow(block: GlowBuilder.() -> Unit) { glow = GlowBuilder().apply(block).build() }
     fun body() { hasBody = true }
+    fun curveCore(block: CurveCoreBuilder.() -> Unit) { curveCore = CurveCoreBuilder().apply(block).build() }
     fun head(block: HeadBuilder.() -> Unit) { head = HeadBuilder().apply(block).build("${id}_head_0") }
     fun mist(block: MistBuilder.() -> Unit) { mist = listOf(MistBuilder().apply(block).build("${id}_mist_0")) }
     fun sideWisp(block: SideWispBuilder.() -> Unit) { sideWisp = SideWispBuilder().apply(block).build("${id}_side_wisp_0") }
@@ -86,16 +90,20 @@ class ProjectileVfxScope(private val id: String) {
         val trailEntity = trailEntitySpec(trailLayer)
 
         val tree = renderEntity(id) {
-            // 主拖尾：有 body 时由 body 网格沿中线充当拖尾主体（对齐旧 hasBodyForTrail），不另画 BoxUtil 平头直线拖尾；
-            // 无 body 的弹体才落到 BoxUtil 直线拖尾兜底（当前 24 个 spec 均有 body，此分支为未来 body-less 预留）。
-            if (!hasBody) {
+            // 主拖尾：有 body/curveCore 时由网格/曲线带沿中线充当拖尾主体（对齐旧 hasBodyForTrail），不另画
+            // BoxUtil 平头直线拖尾；两者皆无的弹体才落到 BoxUtil 直线拖尾兜底（当前 24 个 spec 均有 body，
+            // 此分支为未来 body-less 预留）。
+            if (!hasBody && curveCore == null) {
                 trail(id = "${id}_trail") {
                     color(trailLayer.color.toAwt()); width(trailLayer.width); length(trailLayer.length)
                 }
             }
             mist?.let { addChild(MistComponent("${id}_mist", trailEntity, it)) }
-            glow?.let { addChild(glowComponent("${id}_glow", trailEntity, it)) }
-            if (hasBody) addChild(bodyComponent("${id}_body", trailEntity))
+            curveCore?.let { addChild(CurveCoreComponent("${id}_core", it)) }
+            if (curveCore == null) {
+                glow?.let { addChild(glowComponent("${id}_glow", trailEntity, it)) }
+                if (hasBody) addChild(bodyComponent("${id}_body", trailEntity))
+            }
             sideWisp?.let { addChild(sideWispComponent("${id}_side_wisp", trailEntity, listOf(it))) }
             head?.let { addChild(headComponent("${id}_head", trailEntity, listOf(it), lifecycle.headSizeScale)) }
             ribbon?.let { addChild(ribbonComponent("${id}_ribbon", trailEntity, listOf(it))) }
@@ -212,6 +220,52 @@ class GlowBuilder {
     }
 
     internal fun build(): List<ASTDProjectileVfxGlowLayerSpec> = layers.toList()
+}
+
+/**
+ * 曲线弹芯（P0 贴图化路线）：弹芯+辉光+外晕合并为一条 BoxUtil CurveEntity 曲线带。
+ * 与 `glow{}`/`body()` 互斥——声明了 `curveCore{}` 的 spec 不应再声明网格弹芯。
+ */
+@ProjectileVfxDslMarker
+class CurveCoreBuilder {
+    private var width = 12f
+    private var tailWidthScale = 0.1f
+    private var headColor = rgba(0xFFFFFFFFL)
+    private var tailColor = rgba(0xFFFFFF0AL)
+    private var nodeCount = 12
+    private var texturePixels = 96f
+    private var textureSpeed = 0f
+    private var haloWidthScale = 0f
+    private var haloAlphaScale = 0f
+
+    fun width(v: Float) { width = v }
+
+    /** 尾部宽度相对头部的比例（0..1）。 */
+    fun tailWidth(scale: Float) { tailWidthScale = scale }
+
+    /** 头尾颜色（0xRRGGBBAA）：头部亮端 → 尾部暗端，逐节点插值。 */
+    fun colors(head: Long, tail: Long) { headColor = rgba(head); tailColor = rgba(tail) }
+
+    /** 曲线带节点数（沿长度均匀分布，弯道平滑度）。 */
+    fun nodes(count: Int) { nodeCount = count }
+
+    /** 包络贴图平铺密度（世界单位/次）与滚动速度。 */
+    fun texture(pixels: Float, speed: Float) { texturePixels = pixels; textureSpeed = speed }
+
+    /** 第二条更宽更淡的外晕带（宽度倍率 / alpha 倍率）。 */
+    fun halo(widthScale: Float, alphaScale: Float) { haloWidthScale = widthScale; haloAlphaScale = alphaScale }
+
+    internal fun build(): CurveCoreSpec = CurveCoreSpec(
+        width = width,
+        tailWidthScale = tailWidthScale,
+        headColor = headColor,
+        tailColor = tailColor,
+        nodeCount = nodeCount,
+        texturePixels = texturePixels,
+        textureSpeed = textureSpeed,
+        haloWidthScale = haloWidthScale,
+        haloAlphaScale = haloAlphaScale,
+    )
 }
 
 /** 弹头：收拢亮头的长宽/肩后比/壳三色（内→中→外）/模糊。 */
