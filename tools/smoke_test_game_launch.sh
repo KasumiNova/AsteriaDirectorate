@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-GAME_DIR="${1:-/mnt/windows_data/Games/Starsector098-linux}"
+GAME_DIR="${1:-/mnt/store/Games/Starsector098-linux}"
 TIMEOUT_SEC="${2:-30}"
 MODE="${3:-launcher}"
 LOG_FILE="$GAME_DIR/starsector.log"

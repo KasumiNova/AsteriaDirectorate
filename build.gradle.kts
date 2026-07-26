@@ -174,7 +174,7 @@ tasks.named<Sync>("copyContents") {
 }
 
 val starsectorGameDir: String = providers.gradleProperty("starsector.gameDir")
-    .orElse("/mnt/windows_data/Games/Starsector098-linux")
+    .orElse("/mnt/store/Games/Starsector098-linux")
     .get()
 
 tasks.register<Exec>("smokeTestLauncher") {
