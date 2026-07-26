@@ -1,6 +1,6 @@
 # P5 旧弹体 VFX 管线移除计划
 
-> 状态：待执行（2026-07-26 盘点，基于提交 5793344）
+> 状态：**已执行完成**（2026-07-26，提交 95af219 P5.2/P5.3 + 0e24dc2 删除搬迁合一，全量 379 测试绿）
 > 前置：24/24 弹体 + 3 光束已全部迁到 `RenderEntity`+DSL 管线并进游戏目检通过；
 > 两个 dispatcher 的 `isMigrated ? 新 : 旧` 分支恒走新路，旧管线已是零运行时流量。
 
@@ -94,4 +94,18 @@ AOD-7 自动化场景（SSOptimizer 截图取证链路）引用：
 
 - **tsm2 奇点三视觉被删**：AccretionDisk/RetargetPulse/ShotDownDetonation 原是旧 Preset 给奇点导弹的在飞视觉，迁移时未进新 DSL spec，本次随死簇删除。目检已确认当前表现可接受；若日后想找回，从 git 历史恢复并改写为新管线节点。
 - **parity 安全网消失**：删旧管线后即无「新旧等价」可测，几何回归靠保留的 15 个数学测试 + golden 拓扑测试。这是迁移收官的既定取舍，不是遗漏。
-- **搬迁 PR 与删除 PR 分开提交**：P5.1 纯移动先落一个 commit，便于 review 时确认零逻辑改动。
+- ~~**搬迁 PR 与删除 PR 分开提交**~~：实际执行时删除与搬迁编译互相依赖（旧文件同包引用共享类型），合为一个提交（0e24dc2）并在提交信息中注明。
+
+## 4. 执行偏差记录（实际 vs 计划）
+
+- **执行顺序调整为** P5.2 入口切换 → P5.3 自动化遥测（95af219）→ P5.4a 删除 + P5.1 搬迁（交错合一）→ P5.4b 剪旧 OGL 入口（均落入 0e24dc2）。
+- **1.2 死代码簇误判两处，执行中纠正**：
+  - `ProjectileVfxEnhancer` / `CompositeProjectileVisual` 实为**活代码**（新管线 DriverImpl→BoxUtilProjectileTrails→ProjectileTracerManager→Enhancer.decorate 叠加通用烟雾层），误删后从 git 恢复，**保留**。
+  - `ProjectileVfxPresets.kt` 内的 `spawnRing` 被 `HighFluxShieldPressureOnHitEffect`/`Fdp4DelayedFission` 使用，抽出为独立文件 `ProjectileVfxUtil.kt` 保留。教训：死簇分析须查文件内部每个 object 的外部引用，不能只查文件名。
+- **scanner 相关（ProjectileVfxKeys 的 SCAN_* / DispatchState 计数）是死类**，随 P5.2 一并删除；DispatchState/CombatVfxBootstrap 的空 catch 全部补 log.warn（CLAUDE.md 规范）。
+- **ASTDProjectileHistoryNode 归属微调**：数据类放 `api/render`（FrameState 在 api 层，避免 api→impl 反向依赖），采样器 `ASTDProjectileHistory` 在 `impl/render`。
+- **自动化遥测**：新链为 `ProjectileVfxDriver.telemetry` → `ProjectileVfxDriverPlugin.telemetrySnapshot(engine)`（trackedCount/lastProjectileSpecId/lastElapsed/lastVisibleLength/lastBeamAlpha/lastWorldUnitsPerPixel）；diagnostics 删 `runtimeLastPresetId` 字段。`VFX_PRESET_ID = "aod7_shot"` 常量保留为 SSOptimizer 跨仓契约描述符（其 helper/verifier 硬编码该字面值，已加注释说明）。
+- **ProjectileVfxOldPathRemovalTest 未改写为守卫测试**：属 CLAUDE.md 禁止的「验证功能是否删除」+ 纯源码 contain 测试，直接删除。
+- **P5.4b 剪旧渲染入口**：7 个 renderer 的 `*RenderLayer` 层类、`ASTDProjectileVfxRenderLayer` 接口、`ASTDProjectileVfxFadeReason`、`TrailRenderer.createEntity` 全删；保留 `*ForTests` 纯数学、`TrailRenderer.applyLayer`（RenderEntityImpl 在用）、`BodyRenderManager.Handle`、`ASTDProjectileVfxLayerFadeState`（RenderEntityImpl/MeshRenderComponents 在用）。引用层类的 7 个测试方法随之删除（BodyRenderManager 覆盖由独立测试承担）。
+- **几何测试夹具化**：13 个几何测试从已删 Catalog 取数改为 `GeometryTestFixtures.Aod7Fixture`（旧 aod7 preset 数值 1:1 硬编码）+ `testContext()`。
+- **待办（进游戏验证）**：抽验 aod7 / tsm2 / spc3 各一发 + AOD-7 自动化场景在新遥测下走到 `Completed`。
