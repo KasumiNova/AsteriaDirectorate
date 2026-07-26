@@ -132,6 +132,47 @@ class ASTDProjectileVfxBodyRenderManagerTest {
     }
 
     @Test
+    fun `fill mesh buffers expands triangles with world transform and clamps colors`() {
+        val red = ASTDProjectileVfxBodyRenderer.Vertex(Vector2f(1f, 0f), ASTDColor(2f, 0.5f, 0.25f, 1f))
+        val green = ASTDProjectileVfxBodyRenderer.Vertex(Vector2f(0f, 1f), ASTDColor(0f, 1f, 0f, -1f))
+        val blue = ASTDProjectileVfxBodyRenderer.Vertex(Vector2f(-1f, 0f), ASTDColor(0f, 0f, 1f, 0.5f))
+        val mesh = ASTDProjectileVfxBodyRenderer.Mesh(
+            polygon = emptyList(),
+            gradientStops = emptyList(),
+            vertices = listOf(red, green, blue),
+            triangles = listOf(
+                ASTDProjectileVfxBodyRenderer.Triangle(red, green, blue),
+                ASTDProjectileVfxBodyRenderer.Triangle(blue, green, red),
+            ),
+            blendMode = "additive",
+            combatLayer = CombatEngineLayers.ABOVE_PARTICLES,
+        )
+        // facing=90°：(x,y) → (-y,x)，再平移 (10,20)
+        val snapshot = ASTDProjectileVfxBodyRenderManager.Snapshot(Vector2f(10f, 20f), 90f, mesh)
+        val positions = org.lwjgl.BufferUtils.createFloatBuffer(32)
+        val colors = org.lwjgl.BufferUtils.createFloatBuffer(64)
+
+        ASTDProjectileVfxBodyRenderManager.fillMeshBuffers(listOf(snapshot), positions, colors)
+
+        assertEquals(2 * 3 * 2, positions.remaining())
+        assertEquals(2 * 3 * 4, colors.remaining())
+        // 第一个顶点 red(1,0) → 世界 (10,21)
+        assertEquals(10f, positions.get(0), 0.0001f)
+        assertEquals(21f, positions.get(1), 0.0001f)
+        // 第二个顶点 green(0,1) → 世界 (9,20)
+        assertEquals(9f, positions.get(2), 0.0001f)
+        assertEquals(20f, positions.get(3), 0.0001f)
+        // red 的 red 分量 2f 被钳到 1f
+        assertEquals(1f, colors.get(0), 0.0001f)
+        // green 的 alpha -1f 被钳到 0f
+        assertEquals(0f, colors.get(7), 0.0001f)
+        // 第二个三角以 blue 开头：颜色 (0,0,1,0.5)，偏移 = 3 顶点 × 4 分量
+        assertEquals(0f, colors.get(12), 0.0001f)
+        assertEquals(1f, colors.get(14), 0.0001f)
+        assertEquals(0.5f, colors.get(15), 0.0001f)
+    }
+
+    @Test
     fun `mesh snapshots use canvas lighter compatible source alpha additive blend`() {
         assertEquals(
             ASTDProjectileVfxBodyRenderManager.BlendState(

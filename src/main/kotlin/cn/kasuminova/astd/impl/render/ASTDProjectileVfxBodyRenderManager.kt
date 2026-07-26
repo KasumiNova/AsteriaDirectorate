@@ -4,8 +4,10 @@ import com.fs.starfarer.api.combat.BaseCombatLayeredRenderingPlugin
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEngineLayers
 import com.fs.starfarer.api.combat.ViewportAPI
+import org.lwjgl.BufferUtils
 import org.lwjgl.opengl.GL11
 import org.lwjgl.util.vector.Vector2f
+import java.nio.FloatBuffer
 import java.util.EnumSet
 import kotlin.math.cos
 import kotlin.math.sin
@@ -70,6 +72,40 @@ internal object ASTDProjectileVfxBodyRenderManager {
         )
     }
 
+    /**
+     * 把一组快照的网格烘焙进顶点数组缓冲（按三角展开：每顶点 位置 x,y + 颜色 r,g,b,a），供一次 glDrawArrays 提交。
+     * 两个缓冲先 clear 再填充，返回时均已 flip 到可读状态。顶点世界变换（旋转+平移）在 CPU 侧内联完成，不产生分配。
+     * 注：Mesh.Triangle 持顶点对象而非索引，展开成非索引数组可避免每帧反查顶点下标。
+     */
+    internal fun fillMeshBuffers(snapshots: List<Snapshot>, positions: FloatBuffer, colors: FloatBuffer) {
+        positions.clear()
+        colors.clear()
+        for (snapshot in snapshots) {
+            val radians = Math.toRadians(snapshot.facing.toDouble())
+            val c = cos(radians).toFloat()
+            val s = sin(radians).toFloat()
+            val lx = snapshot.location.x
+            val ly = snapshot.location.y
+            for (triangle in snapshot.mesh.triangles) {
+                emitVertex(positions, colors, triangle.a, lx, ly, c, s)
+                emitVertex(positions, colors, triangle.b, lx, ly, c, s)
+                emitVertex(positions, colors, triangle.c, lx, ly, c, s)
+            }
+        }
+        positions.flip()
+        colors.flip()
+    }
+
+    private fun emitVertex(positions: FloatBuffer, colors: FloatBuffer, vertex: ASTDProjectileVfxBodyRenderer.Vertex, lx: Float, ly: Float, c: Float, s: Float) {
+        positions.put(lx + vertex.position.x * c - vertex.position.y * s)
+        positions.put(ly + vertex.position.x * s + vertex.position.y * c)
+        val color = vertex.color
+        colors.put(color.red.coerceIn(0f, 1f))
+        colors.put(color.green.coerceIn(0f, 1f))
+        colors.put(color.blue.coerceIn(0f, 1f))
+        colors.put(color.alpha.coerceIn(0f, 1f))
+    }
+
     class Handle internal constructor(
         private val renderer: Renderer,
         private val id: Int,
@@ -87,6 +123,10 @@ internal object ASTDProjectileVfxBodyRenderManager {
         private val snapshots = LinkedHashMap<Int, Snapshot>()
         private var nextId = 1
         private var expired = false
+
+        // 顶点数组缓冲，跨帧复用、按需扩容（容量翻倍），避免每帧分配
+        private var positionBuffer: FloatBuffer = BufferUtils.createFloatBuffer(INITIAL_BUFFER_CAPACITY)
+        private var colorBuffer: FloatBuffer = BufferUtils.createFloatBuffer(INITIAL_BUFFER_CAPACITY * 2)
 
         fun createHandle(): Handle = Handle(this, nextId++)
 
@@ -134,31 +174,40 @@ internal object ASTDProjectileVfxBodyRenderManager {
             val renderSnapshots = snapshotsForLayer(layer)
             if (renderSnapshots.isEmpty()) return
 
-            GL11.glPushAttrib(GL11.GL_ENABLE_BIT or GL11.GL_COLOR_BUFFER_BIT or GL11.GL_CURRENT_BIT)
+            GL11.glPushAttrib(GL11.GL_ENABLE_BIT or GL11.GL_COLOR_BUFFER_BIT)
+            // GL_CLIENT_ALL_ATTRIB_BITS：LWJGL2 未暴露该常量（GL 规范值 0xFFFFFFFF，即 -1）
+            GL11.glPushClientAttrib(GL_CLIENT_ALL_ATTRIB_BITS)
             try {
                 GL11.glDisable(GL11.GL_TEXTURE_2D)
                 GL11.glDisable(GL11.GL_CULL_FACE)
                 GL11.glEnable(GL11.GL_BLEND)
-                for ((blendMode, snapshots) in renderSnapshots.groupBy { it.mesh.blendMode.lowercase() }) {
-                    applyBlend(snapshots.first().mesh)
-                    GL11.glBegin(GL11.GL_TRIANGLES)
-                    try {
-                        for (snapshot in snapshots) {
-                            for (triangle in snapshot.mesh.triangles) {
-                                emitVertex(snapshot, triangle.a)
-                                emitVertex(snapshot, triangle.b)
-                                emitVertex(snapshot, triangle.c)
-                            }
-                        }
-                    } finally {
-                        GL11.glEnd()
-                    }
-                    @Suppress("UNUSED_VARIABLE")
-                    val appliedBlendMode = blendMode
+                GL11.glEnableClientState(GL11.GL_VERTEX_ARRAY)
+                GL11.glEnableClientState(GL11.GL_COLOR_ARRAY)
+                for ((_, blendGroup) in renderSnapshots.groupBy { it.mesh.blendMode.lowercase() }) {
+                    applyBlend(blendGroup.first().mesh)
+                    drawBlendGroup(blendGroup)
                 }
             } finally {
+                GL11.glPopClientAttrib()
                 GL11.glPopAttrib()
             }
+        }
+
+        /** 一个 blend 组一次 draw call：烘焙顶点数组后 glDrawArrays 提交（替代逐顶点立即模式）。 */
+        private fun drawBlendGroup(blendGroup: List<Snapshot>) {
+            val vertexCount = blendGroup.sumOf { it.mesh.triangles.size * 3 }
+            if (vertexCount == 0) return
+            if (positionBuffer.capacity() < vertexCount * 2) {
+                positionBuffer = BufferUtils.createFloatBuffer(maxOf(vertexCount * 2, positionBuffer.capacity() * 2))
+            }
+            if (colorBuffer.capacity() < vertexCount * 4) {
+                colorBuffer = BufferUtils.createFloatBuffer(maxOf(vertexCount * 4, colorBuffer.capacity() * 2))
+            }
+
+            fillMeshBuffers(blendGroup, positionBuffer, colorBuffer)
+            GL11.glVertexPointer(2, 0, positionBuffer)
+            GL11.glColorPointer(4, 0, colorBuffer)
+            GL11.glDrawArrays(GL11.GL_TRIANGLES, 0, vertexCount)
         }
 
         private fun applyBlend(mesh: ASTDProjectileVfxBodyRenderer.Mesh) {
@@ -166,16 +215,9 @@ internal object ASTDProjectileVfxBodyRenderManager {
             GL11.glBlendFunc(state.sourceFactor.glValue, state.destinationFactor.glValue)
         }
 
-        private fun emitVertex(snapshot: Snapshot, vertex: ASTDProjectileVfxBodyRenderer.Vertex) {
-            val color = vertex.color
-            val world = transformLocalPoint(vertex.position, snapshot.location, snapshot.facing)
-            GL11.glColor4f(
-                color.red.coerceIn(0f, 1f),
-                color.green.coerceIn(0f, 1f),
-                color.blue.coerceIn(0f, 1f),
-                color.alpha.coerceIn(0f, 1f),
-            )
-            GL11.glVertex2f(world.x, world.y)
+        private companion object {
+            const val INITIAL_BUFFER_CAPACITY = 4096
+            const val GL_CLIENT_ALL_ATTRIB_BITS = -1
         }
     }
 }
