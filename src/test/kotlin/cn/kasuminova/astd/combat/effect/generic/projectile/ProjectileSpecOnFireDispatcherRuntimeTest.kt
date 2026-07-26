@@ -1,6 +1,5 @@
 package cn.kasuminova.astd.combat.effect.generic.projectile
 
-import cn.kasuminova.astd.renderer.projectile.ASTDProjectileVfxRuntimeManager
 import cn.kasuminova.astd.renderer.projectile.driver.ProjectileVfxDriverPlugin
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.DamagingProjectileAPI
@@ -10,21 +9,11 @@ import com.fs.starfarer.api.combat.WeaponAPI
 import org.lwjgl.util.vector.Vector2f
 import java.lang.reflect.InvocationHandler
 import java.lang.reflect.Proxy
-import java.nio.file.Files
-import java.nio.file.Path
-import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
-import kotlin.test.assertTrue
 
 class ProjectileSpecOnFireDispatcherRuntimeTest {
-    @BeforeTest
-    fun clearRuntimeManager() {
-        ASTDProjectileVfxRuntimeManager.clear()
-    }
-
     @Test
     fun `dispatcher keeps missile AI injection path`() {
         val engine = engineStub()
@@ -39,14 +28,12 @@ class ProjectileSpecOnFireDispatcherRuntimeTest {
     @Test
     fun `configured projectile tracks through driver pipeline`() {
         val engine = engineStub()
-        // astd_stellar_jet_bolt 已迁移到新管线：派发器应据 isMigrated 分流到 ProjectileVfxDriverPlugin（非旧 Runtime）。
         val projectile = projectileStub("astd_stellar_jet_bolt")
         val weapon = weaponStub()
 
         ProjectileSpecOnFireDispatcher().onFire(projectile, weapon, engine.api)
 
         assertEquals(1, ProjectileVfxDriverPlugin.trackedCountForTests(engine.api))
-        assertEquals(0, ASTDProjectileVfxRuntimeManager.trackedCountForTests(), "已迁移 spec 不得再登记到旧 Runtime")
     }
 
     @Test
@@ -57,7 +44,7 @@ class ProjectileSpecOnFireDispatcherRuntimeTest {
 
         ProjectileSpecOnFireDispatcher().onFire(projectile, weapon, engine.api)
 
-        assertEquals(0, ASTDProjectileVfxRuntimeManager.trackedCountForTests())
+        assertEquals(0, ProjectileVfxDriverPlugin.trackedCountForTests(engine.api))
     }
 
     @Test
@@ -72,14 +59,6 @@ class ProjectileSpecOnFireDispatcherRuntimeTest {
         dispatcher.onFire(projectile, weapon, engine.api)
 
         assertEquals(1, ProjectileVfxDriverPlugin.trackedCountForTests(engine.api))
-    }
-
-    @Test
-    fun `dispatcher source does not reference old projectile renderers`() {
-        val text = Files.readString(dispatcherSourcePath())
-
-        assertFalse(text.contains("CodeProjectileRenderer"), "dispatcher still references CodeProjectileRenderer")
-        assertFalse(text.contains("ProjectileVfxPresets"), "dispatcher still references ProjectileVfxPresets")
     }
 
     private class EngineStub {
@@ -165,9 +144,6 @@ class ProjectileSpecOnFireDispatcherRuntimeTest {
             InvocationHandler { _, method, _ -> defaultReturn(method.returnType) },
         ) as WeaponAPI
     }
-
-    private fun dispatcherSourcePath(): Path =
-        Path.of("src/main/kotlin/cn/kasuminova/astd/combat/effect/generic/projectile/ProjectileSpecOnFireDispatcher.kt")
 
     private fun defaultReturn(type: Class<*>): Any? = when (type) {
         java.lang.Boolean.TYPE -> false

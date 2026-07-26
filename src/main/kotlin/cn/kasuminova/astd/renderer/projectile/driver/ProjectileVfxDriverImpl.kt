@@ -51,6 +51,9 @@ class ProjectileVfxDriverImpl(
     override var state: ProjectileVfxDriverState = ProjectileVfxDriverState.Active
         private set
 
+    override var telemetry: ProjectileVfxDriverTelemetry? = null
+        private set
+
     override fun advance(engine: CombatEngineAPI, amount: Float) {
         val active = projectile
         if (active == null) {
@@ -107,6 +110,12 @@ class ProjectileVfxDriverImpl(
             val phase = if (fading) RenderPhase.FadingOut else RenderPhase.Active
             val frame = buildFrame(location, renderFacing, flight, worldUnitsPerPixel, amount, phase, if (fading) currentFadeReason else null)
             driveTree(engine, frame, amount)
+            telemetry = ProjectileVfxDriverTelemetry(
+                elapsed = elapsed,
+                visibleLength = frame.length,
+                beamAlpha = frame.intensity,
+                worldUnitsPerPixel = frame.worldUnitsPerPixel,
+            )
             lastLocation = Vector2f(location)
             lastFrame = frame
         } else if (fading) {

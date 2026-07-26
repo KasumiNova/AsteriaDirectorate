@@ -264,8 +264,8 @@ class ASTDInGameAutomationScenarioTest {
         assertTrue(source.contains("private fun writeDiagnostics("), "diagnostics should not be embedded only in writeTelemetry")
         assertTrue(source.contains("writeDiagnostics(combatEngine, \"Completed\""), "render-time diagnostics should run after completed frame staging")
         assertTrue(source.contains("writeDiagnostics(engine, \"CombatReady\""), "init diagnostics should run even when telemetry is intercepted")
-        assertTrue(source.contains("runtime.lastPresetId == ASTDInGameAutomationScenario.VFX_PRESET_ID"), "VFX observation should key off the runtime preset actually used")
-        assertTrue(source.contains("runtime.trackedCount > 0"), "VFX observation should require a tracked runtime instead of only a projectile id string")
+        assertTrue(source.contains("telemetry.lastProjectileSpecId == ASTDInGameAutomationScenario.PROJECTILE_SPEC_ID"), "VFX observation should key off the projectile spec actually tracked")
+        assertTrue(source.contains("telemetry.trackedCount > 0"), "VFX observation should require a tracked driver instead of only a projectile id string")
         listOf(
             "displayWidth",
             "displayHeight",
@@ -279,7 +279,6 @@ class ASTDInGameAutomationScenarioTest {
             "shipSpriteWidth",
             "shipSpriteHeight",
             "runtimeLastProjectileSpecId",
-            "runtimeLastPresetId",
             "referenceVisibleLength",
         ).forEach { field ->
             assertTrue(diagnosticsBody.contains("\\\"$field\\\""), "missing diagnostics field: $field")

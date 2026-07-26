@@ -14,6 +14,7 @@ object ASTDInGameAutomationScenario {
     const val VARIANT_ID: String = "astd_arc_flare_Standard"
     const val WEAPON_ID: String = "astd_aod7"
     const val PROJECTILE_SPEC_ID: String = "astd_aod7_shot"
+    // SSOptimizer 遥测契约标签（其 helper/verifier 硬编码的字面值）；运行期 preset 已随旧管线删除，此处仅作场景描述符。
     const val VFX_PRESET_ID: String = "aod7_shot"
 
     const val ENABLED_PROPERTY: String = "ssoptimizer.automation.enabled"

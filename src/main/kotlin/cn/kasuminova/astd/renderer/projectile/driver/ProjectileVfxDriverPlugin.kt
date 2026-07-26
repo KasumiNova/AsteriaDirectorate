@@ -9,34 +9,46 @@ import java.util.IdentityHashMap
 
 /**
  * 新 RenderEntity 管线的战斗每帧插件：持有各弹体的 [ProjectileVfxDriver]，逐帧推进、剔除已结束者。
- * 与旧 `ASTDProjectileVfxRuntimePlugin` 并存——仅 [ProjectileVfxSpecs] 中已写手写 DSL 的 spec 走这条新路，其余仍走旧管线。
  */
 class ProjectileVfxDriverPlugin : BaseEveryFrameCombatPlugin() {
 
-    private val driversByProjectile = IdentityHashMap<DamagingProjectileAPI, ProjectileVfxDriver>()
+    /** 一枚已登记弹体：驱动 + 其 projectileSpecId（遥测归因用）。 */
+    private class TrackedVfx(val specId: String, val driver: ProjectileVfxDriver)
+
+    private val trackedByProjectile = IdentityHashMap<DamagingProjectileAPI, TrackedVfx>()
     private var engine: CombatEngineAPI? = null
+
+    /** 最近一帧推进过帧的弹体 specId 与其遥测（自动化取证用）。 */
+    private var lastSpecId: String? = null
+    private var lastTelemetry: ProjectileVfxDriverTelemetry? = null
 
     override fun init(engine: CombatEngineAPI) {
         this.engine = engine
-        driversByProjectile.values.forEach { it.dispose() }
-        driversByProjectile.clear()
+        trackedByProjectile.values.forEach { it.driver.dispose() }
+        trackedByProjectile.clear()
+        lastSpecId = null
+        lastTelemetry = null
     }
 
     override fun advance(amount: Float, events: MutableList<InputEventAPI>?) {
         val combatEngine = engine ?: return
         if (combatEngine.isPaused) return
-        val iterator = driversByProjectile.entries.iterator()
+        val iterator = trackedByProjectile.entries.iterator()
         while (iterator.hasNext()) {
-            val driver = iterator.next().value
-            driver.advance(combatEngine, amount)
-            if (driver.state == ProjectileVfxDriverState.Removed) iterator.remove()
+            val tracked = iterator.next().value
+            tracked.driver.advance(combatEngine, amount)
+            tracked.driver.telemetry?.let { telemetry ->
+                lastSpecId = tracked.specId
+                lastTelemetry = telemetry
+            }
+            if (tracked.driver.state == ProjectileVfxDriverState.Removed) iterator.remove()
         }
     }
 
     companion object {
         const val ENGINE_KEY: String = "astd_projectile_vfx_driver_plugin"
 
-        /** 该 projectileSpecId 是否已迁移到新管线（有手写 DSL）。派发处据此在新/旧管线间分流。 */
+        /** 该 projectileSpecId 是否有手写 DSL（可登记到新管线）。 */
         fun isMigrated(projectileSpecId: String): Boolean = ProjectileVfxSpecs.has(projectileSpecId)
 
         fun ensureInstalled(engine: CombatEngineAPI) {
@@ -55,14 +67,49 @@ class ProjectileVfxDriverPlugin : BaseEveryFrameCombatPlugin() {
         fun track(engine: CombatEngineAPI, projectile: DamagingProjectileAPI, projectileSpecId: String): Boolean {
             ensureInstalled(engine)
             val plugin = engine.customData[ENGINE_KEY] as? ProjectileVfxDriverPlugin ?: return false
-            if (plugin.driversByProjectile.containsKey(projectile)) return false
+            if (plugin.trackedByProjectile.containsKey(projectile)) return false
             val spec = ProjectileVfxSpecs.build(projectileSpecId) ?: return false
-            plugin.driversByProjectile[projectile] = ProjectileVfxDriverImpl(ProjectileHostImpl(projectile), spec.tree, spec.policy)
+            plugin.trackedByProjectile[projectile] =
+                TrackedVfx(projectileSpecId, ProjectileVfxDriverImpl(ProjectileHostImpl(projectile), spec.tree, spec.policy))
             return true
         }
 
-        /** 测试入口：该引擎当前登记到新管线的弹体驱动数（对称旧 `ASTDProjectileVfxRuntimeManager.trackedCountForTests`）。 */
+        /** 插件级遥测快照（自动化取证用）。插件未安装或尚无帧时各字段为空/零。 */
+        fun telemetrySnapshot(engine: CombatEngineAPI): ProjectileVfxTelemetrySnapshot {
+            val plugin = engine.customData[ENGINE_KEY] as? ProjectileVfxDriverPlugin
+                ?: return ProjectileVfxTelemetrySnapshot(0, null, 0f, 0f, 0f, 0f)
+            val telemetry = plugin.lastTelemetry
+            return ProjectileVfxTelemetrySnapshot(
+                trackedCount = plugin.trackedByProjectile.size,
+                lastProjectileSpecId = plugin.lastSpecId,
+                lastElapsed = telemetry?.elapsed ?: 0f,
+                lastVisibleLength = telemetry?.visibleLength ?: 0f,
+                lastBeamAlpha = telemetry?.beamAlpha ?: 0f,
+                lastWorldUnitsPerPixel = telemetry?.worldUnitsPerPixel ?: 0f,
+            )
+        }
+
+        /** 测试入口：该引擎当前登记到新管线的弹体驱动数。 */
         internal fun trackedCountForTests(engine: CombatEngineAPI): Int =
-            (engine.customData[ENGINE_KEY] as? ProjectileVfxDriverPlugin)?.driversByProjectile?.size ?: 0
+            (engine.customData[ENGINE_KEY] as? ProjectileVfxDriverPlugin)?.trackedByProjectile?.size ?: 0
     }
 }
+
+/**
+ * 弹体 VFX 管线的插件级遥测快照（自动化取证用，见 ASTDAutomationCombatPlugin）。
+ *
+ * @param trackedCount 当前在册驱动数。
+ * @param lastProjectileSpecId 最近一帧推进过帧的弹体 specId；无则为 null。
+ * @param lastElapsed 该驱动的累计推进秒数。
+ * @param lastVisibleLength 该帧拖尾可视长度。
+ * @param lastBeamAlpha 该帧整体透明度系数。
+ * @param lastWorldUnitsPerPixel 该帧世界/像素换算比例。
+ */
+data class ProjectileVfxTelemetrySnapshot(
+    val trackedCount: Int,
+    val lastProjectileSpecId: String?,
+    val lastElapsed: Float,
+    val lastVisibleLength: Float,
+    val lastBeamAlpha: Float,
+    val lastWorldUnitsPerPixel: Float,
+)
