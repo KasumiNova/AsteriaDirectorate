@@ -24,4 +24,5 @@
 ## 紫线（间接压制：B）
 
 - `purple/20-production.md`：量产武器（GCP 引力坍缩炮系列）。
+- `purple/30-superlative.md`：超规格与稀有掉落武器（湮灭涡旋等，P2 逐件确认中）。
 - `purple/40-omega.md`：Omega 极稀有（PSB-Ω 灵能裂解束，侧线）。
