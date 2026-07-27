@@ -12,9 +12,9 @@
             "autofire": false,
             "mode": "LINKED",
             "weapons": {
-                "WS 001": "astd_fdp4",
-                "WS 002": "astd_vpd6",
-                "WS 003": "astd_vpd6"
+                "WS 001": "hammer",
+                "WS 002": "pdlaser",
+                "WS 003": "pdlaser"
             }
         }
     ]

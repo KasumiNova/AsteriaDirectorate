@@ -1,4 +1,4 @@
-package cn.kasuminova.astd.combat.effect.arc.signature.stellarjet
+package cn.kasuminova.astd.combat.effect.generic.gravitycollapse
 
 import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
 
@@ -15,12 +15,11 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
- * 恒星喷射：系统 charge-up（IN 阶段）的“聚能/充能”视觉。
+ * 光束武器/系统 charge-up（IN 阶段）的“聚能/充能”视觉（原恒星喷射充能特效，引力坍缩炮充能阶段复用）。
  *
- * 目标观感：武器周围大量光粒/光锥向武器中心收束。
- * - 目前按优化要求：仅保留“粒子”（使用原版粒子 API），避免光锥/短束带来的杂乱。
+ * 目标观感：武器周围大量光粒向武器中心收束。
  */
-internal class StellarJetChargeUpVfx(
+internal class BeamChargeUpVfx(
     private val coreColor: Color,
     private val glowColor: Color,
     /** 仅缩放几何尺寸（半径/粒子大小/爆闪尺寸等），不缩放速度与频率。 */

@@ -3,32 +3,18 @@ package cn.kasuminova.astd.combat.effect.generic.projectile
 import cn.kasuminova.astd.renderer.projectile.driver.ProjectileVfxDriverPlugin
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.DamagingProjectileAPI
-import com.fs.starfarer.api.combat.MissileAIPlugin
-import com.fs.starfarer.api.combat.MissileAPI
 import com.fs.starfarer.api.combat.WeaponAPI
 import org.lwjgl.util.vector.Vector2f
 import java.lang.reflect.InvocationHandler
 import java.lang.reflect.Proxy
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertNotNull
 
 class ProjectileSpecOnFireDispatcherRuntimeTest {
     @Test
-    fun `dispatcher keeps missile AI injection path`() {
-        val engine = engineStub()
-        val missile = missileStub("astd_rct6_torp")
-        val weapon = weaponStub()
-
-        ProjectileSpecOnFireDispatcher().onFire(missile.api, weapon, engine.api)
-
-        assertNotNull(missile.missileAI, "missile AI was not installed")
-    }
-
-    @Test
     fun `configured projectile tracks through driver pipeline`() {
         val engine = engineStub()
-        val projectile = projectileStub("astd_stellar_jet_bolt")
+        val projectile = projectileStub("astd_aod7_shot")
         val weapon = weaponStub()
 
         ProjectileSpecOnFireDispatcher().onFire(projectile, weapon, engine.api)
@@ -51,7 +37,7 @@ class ProjectileSpecOnFireDispatcherRuntimeTest {
     fun `duplicate onFire for same projectile tracks once`() {
         val engine = engineStub()
         // 同一弹体重复派发：新管线按弹体身份去重（driversByProjectile 以弹体为键），只登记一份。
-        val projectile = projectileStub("astd_stellar_jet_bolt")
+        val projectile = projectileStub("astd_aod7_shot")
         val weapon = weaponStub()
         val dispatcher = ProjectileSpecOnFireDispatcher()
 
@@ -64,12 +50,6 @@ class ProjectileSpecOnFireDispatcherRuntimeTest {
     private class EngineStub {
         val customData: MutableMap<String, Any?> = HashMap()
         lateinit var api: CombatEngineAPI
-    }
-
-    private class MissileStub {
-        val customData: MutableMap<String, Any?> = HashMap()
-        var missileAI: MissileAIPlugin? = null
-        lateinit var api: DamagingProjectileAPI
     }
 
     private fun engineStub(): EngineStub {
@@ -108,33 +88,6 @@ class ProjectileSpecOnFireDispatcherRuntimeTest {
                 }
             },
         ) as DamagingProjectileAPI
-    }
-
-    private fun missileStub(projectileSpecId: String): MissileStub {
-        val state = MissileStub()
-        state.api = Proxy.newProxyInstance(
-            MissileAPI::class.java.classLoader,
-            arrayOf(MissileAPI::class.java),
-            InvocationHandler { _, method, args ->
-                when (method.name) {
-                    "getProjectileSpecId" -> projectileSpecId
-                    "getCustomData" -> state.customData
-                    "setCustomData" -> {
-                        state.customData[args?.get(0) as String] = args[1]
-                        null
-                    }
-                    "getLocation" -> Vector2f(10f, 20f)
-                    "getFacing" -> 30f
-                    "setMissileAI" -> {
-                        state.missileAI = args?.get(0) as? MissileAIPlugin
-                        null
-                    }
-                    "getMissileAI" -> state.missileAI
-                    else -> defaultReturn(method.returnType)
-                }
-            },
-        ) as DamagingProjectileAPI
-        return state
     }
 
     private fun weaponStub(): WeaponAPI {

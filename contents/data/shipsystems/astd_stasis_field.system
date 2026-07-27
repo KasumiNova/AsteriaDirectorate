@@ -1,7 +1,0 @@
-{
-    "id": "astd_stasis_field",
-    "type": "STAT_MOD",
-    "aiType": "WEAPON_BOOST",
-    "statsScript": "cn.kasuminova.astd.combat.shipsystems.StasisFieldSystemStats",
-    "useSound": "system_ammo_feeder"
-}

@@ -1,7 +1,6 @@
 package cn.kasuminova.astd.combat.effect.generic.gravitycollapse
 
 import cn.kasuminova.astd.renderer.effect.projectile.beam.BeamLineUtil
-import cn.kasuminova.astd.combat.effect.arc.signature.stellarjet.StellarJetChargeUpVfx
 import cn.kasuminova.astd.impl.render.BeamHostImpl
 import cn.kasuminova.astd.renderer.beam.driver.BeamFrame
 import cn.kasuminova.astd.renderer.beam.driver.BeamVfxDriver
@@ -34,7 +33,7 @@ class GravityCollapseBeamEveryFrameEffect : EveryFrameWeaponEffectPlugin {
     private var spec: GravityCollapseWeaponSpec? = null
     private var beamDriver: BeamVfxDriver? = null
     private var onHit: GravityCollapseOnHitHandler? = null
-    private var chargeUpVfx: StellarJetChargeUpVfx? = null
+    private var chargeUpVfx: BeamChargeUpVfx? = null
 
     private var beamStarted = false
     private var beamStartedAt: Float? = null
@@ -75,8 +74,8 @@ class GravityCollapseBeamEveryFrameEffect : EveryFrameWeaponEffectPlugin {
             )
         )
 
-        // 复用 StellarJet 的 charge-up 粒子“吸入”观感：仅用于充能阶段。
-        chargeUpVfx = StellarJetChargeUpVfx(
+        // charge-up 粒子“吸入”观感：仅用于充能阶段。
+        chargeUpVfx = BeamChargeUpVfx(
             coreColor = Color(255, 70, 70, 255),
             glowColor = Color(255, 25, 25, 255),
             scale = s.beamScale,

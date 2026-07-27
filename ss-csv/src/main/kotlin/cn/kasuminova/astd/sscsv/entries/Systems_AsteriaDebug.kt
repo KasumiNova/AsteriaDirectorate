@@ -37,15 +37,3 @@ object CollapseShift : ShipSystemEntry() {
     override val icon: String = "graphics/icons/hullsys/displacer.png"
 }
 
-@SsCsvComment("LENS 唯一舰 Event Horizon 的系统（占位实现）。")
-object StasisField : ShipSystemEntry() {
-    override val id: String = "astd_stasis_field"
-    override val name: String = "时空停滞场"
-
-    override val chargeUp: Double = 0.5
-    override val active: Double = 6.0
-    override val down: Double = 0.5
-    override val cooldown: Double = 14.0
-
-    override val icon: String = "graphics/icons/hullsys/damper_field.png"
-}

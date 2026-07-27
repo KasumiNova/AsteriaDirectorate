@@ -15,7 +15,6 @@ internal object ProjectileVfxKeys {
     const val PROJECTILE_VFX_ONFIRE_LOCK: String = "astd_projectile_vfx_onfire_lock"
 
     /** 标记：导弹 AI 是否已按 projectileSpecId 注入（避免被重复覆盖/重置状态）。 */
-    const val PROJECTILE_AI_INSTALLED_MARK: String = "astd_projectile_ai_installed_mark"
 
     /** 标记：该弹体已自带完整通用增强层，跳过全局 common fx 叠加。 */
     const val PROJECTILE_VFX_COMMON_FX_SKIP: String = "astd_projectile_vfx_common_fx_skip"

@@ -3,7 +3,6 @@ package cn.kasuminova.astd.combat.effect.generic
 import cn.kasuminova.astd.combat.effect.generic.projectile.ProjectileVfxUtil
 import cn.kasuminova.astd.renderer.effect.system.ArcFlareOverdriveVisualState
 import cn.kasuminova.astd.internal.debug.CombatCaps
-import cn.kasuminova.astd.combat.effect.arc.signature.tsm.TsmTerminalStrikeFx
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEntityAPI
 import com.fs.starfarer.api.combat.DamagingProjectileAPI
@@ -36,22 +35,6 @@ class HighFluxShieldPressureOnHitEffect : OnHitEffectPlugin {
         val wid = weaponId?.trim().orEmpty()
         if (wid.isNotEmpty()) {
             return when (wid) {
-                // DRV-11：阈值更低、封顶更高，强调“护盾压制”
-                "astd_drv11" -> Config(
-                    threshold = 0.70f,
-                    capPerSecond = 320f,
-                    multAtMax = 0.35f,
-                    fxColor = Color(120, 200, 255, 210),
-                )
-
-                // SLT-3：阈值更高、封顶略低，强调“连射窗口的压制墙”
-                "astd_slt3" -> Config(
-                    threshold = 0.80f,
-                    capPerSecond = 240f,
-                    multAtMax = 0.25f,
-                    fxColor = Color(160, 220, 255, 210),
-                )
-
                 // AOD-7：用于“顶盾位制造窗口”的稳定压制；阈值略低，让它更常在高幅阶段发挥。
                 "astd_aod7" -> Config(
                     threshold = 0.62f,
@@ -72,21 +55,6 @@ class HighFluxShieldPressureOnHitEffect : OnHitEffectPlugin {
                 capPerSecond = 280f,
                 multAtMax = 0.30f,
                 fxColor = Color(255, 220, 140, 195),
-            )
-
-            // 这些弹体目前未在 .proj 上挂该脚本，但保留回退以防未来改动。
-            "astd_drv11_slug" -> Config(
-                threshold = 0.70f,
-                capPerSecond = 320f,
-                multAtMax = 0.35f,
-                fxColor = Color(120, 200, 255, 210),
-            )
-
-            "astd_slt3_pulse" -> Config(
-                threshold = 0.80f,
-                capPerSecond = 240f,
-                multAtMax = 0.25f,
-                fxColor = Color(160, 220, 255, 210),
             )
 
             else -> null
@@ -124,7 +92,7 @@ class HighFluxShieldPressureOnHitEffect : OnHitEffectPlugin {
 
         val cfg = configFor(weaponId0, projId) ?: return
 
-        // AOD-7：命中时附加更“TSM 风格”的冲击提示（轻量版，约 25% 粒子量）。
+        // AOD-7：命中时附加冲击条纹提示（轻量版粒子量）。
         // 这个效果不依赖 shieldHit；对护盾/装甲/船体都会给一个可读的“冲击闪”。
         if (weaponId0 == "astd_aod7" || projId == "astd_aod7_shot") {
             spawnAod7ImpactFx(engine, ship, projectile, hitPoint, shieldHit)
@@ -212,9 +180,9 @@ class HighFluxShieldPressureOnHitEffect : OnHitEffectPlugin {
             0f
         }
 
-        // 需求：TSM 类似的“冲击条纹 + 同色烟雾”，但数量约为 TSM 的 33%。
-        // 注意：TSM 工具内部会把 intensityMult 最低夹到 0.75，为了真正控制“数量”，
-        // 这里用更低的 base counts 来实现 33% 的量级，而不是依赖 intensityMult。
+        // 需求：冲击条纹 + 同色烟雾，数量压在轻量档位。
+        // 注意：ImpactStrikeFx 内部会把 intensityMult 最低夹到 0.75，为了真正控制“数量”，
+        // 这里用更低的 base counts 来实现轻量量级，而不是依赖 intensityMult。
         // 命中特效颜色跟随弹体过载状态：无过载=蓝色，满过载=橙色。
         val overdriveLevel = try {
             val ship0 = projectile.weapon?.ship
@@ -228,16 +196,16 @@ class HighFluxShieldPressureOnHitEffect : OnHitEffectPlugin {
         )
         val smoke = Color(fringe.red, fringe.green, fringe.blue, if (shieldHit) 85 else 75)
 
-        TsmTerminalStrikeFx.spawnImpactFx(
+        ImpactStrikeFx.spawnImpactFx(
             engine = engine,
             point = point,
             towardTargetFacing = facing,
-            facingMode = TsmTerminalStrikeFx.ImpactFacingMode.INWARD,
+            facingMode = ImpactStrikeFx.ImpactFacingMode.INWARD,
             smokeColor = smoke,
             coreColor = core,
             fringeColor = fringe,
             intensityMult = 1f,
-            smokeStyle = TsmTerminalStrikeFx.ImpactSmokeStyle(
+            smokeStyle = ImpactStrikeFx.ImpactSmokeStyle(
                 puffCountBase = 2,
                 puffCountExtra = 2,
                 spreadArc = 24f,
@@ -248,7 +216,7 @@ class HighFluxShieldPressureOnHitEffect : OnHitEffectPlugin {
                 durationMin = 0.34f,
                 durationMax = 0.62f,
             ),
-            sprayStyle = TsmTerminalStrikeFx.ImpactSprayStyle(
+            sprayStyle = ImpactStrikeFx.ImpactSprayStyle(
                 baseRaysMin = 7,
                 baseRaysExtra = 3,
                 arc = 58f,

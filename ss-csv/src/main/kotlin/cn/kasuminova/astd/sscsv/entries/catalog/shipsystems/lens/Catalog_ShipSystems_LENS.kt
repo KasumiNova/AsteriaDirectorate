@@ -78,20 +78,6 @@ object Sys_astd_targeting_beacon : ShipSystemWithSystemFileEntry() {
     override val icon: String = "graphics/icons/hullsys/phase_cloak.png"
 }
 
-object Sys_astd_stasis_field : ShipSystemWithSystemFileEntry() {
-    override val id: String = "astd_stasis_field"
-    override val name: String = systemName(id)
-
-    override val statsScript: String = "cn.kasuminova.astd.combat.shipsystems.StasisFieldSystemStats"
-
-    override val chargeUp: Double = 0.5
-    override val active: Double = 6.0
-    override val down: Double = 0.5
-    override val cooldown: Double = 14.0
-
-    override val icon: String = "graphics/icons/hullsys/damper_field.png"
-}
-
 object Sys_astd_emergency_recall : ShipSystemWithSystemFileEntry() {
     override val id: String = "astd_emergency_recall"
     override val name: String = systemName(id)

@@ -1,6 +1,5 @@
 package cn.kasuminova.astd.combat.effect.generic.projectile
 
-import cn.kasuminova.astd.combat.effect.arc.omega.DrvOmegaSlugInstantOnSpawn
 import cn.kasuminova.astd.renderer.projectile.driver.ProjectileVfxDriverPlugin
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
@@ -23,8 +22,6 @@ class ProjectileSpecOnFireDispatcher : OnFireEffectPlugin {
     }
 
     override fun onFire(projectile: DamagingProjectileAPI, weapon: WeaponAPI, engine: CombatEngineAPI) {
-        ProjectileMissileAiInjector.ensureInstalled(engine, projectile)
-
         if (ProjectileVfxDispatchState.isMarked(engine, projectile, ProjectileVfxKeys.PROJECTILE_VFX_ONFIRE_MARK)) return
         if (ProjectileVfxDispatchState.isLocked(engine, projectile, ProjectileVfxKeys.PROJECTILE_VFX_ONFIRE_LOCK)) return
 
@@ -38,10 +35,6 @@ class ProjectileSpecOnFireDispatcher : OnFireEffectPlugin {
 
             val projId = projectile.projectileSpecId
             if (!projId.isNullOrBlank()) {
-                if (projId == "astd_drv_omega_slug") {
-                    DrvOmegaSlugInstantOnSpawn.onSpawn(engine, projectile, weapon)
-                }
-
                 tracked = ProjectileVfxDriverPlugin.track(engine, projectile, projId)
             }
         } finally {

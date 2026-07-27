@@ -12,30 +12,30 @@
             "autofire": false,
             "mode": "LINKED",
             "weapons": {
-                "WS0001": "astd_slt4",
-                "WS0002": "astd_slt4",
-                "WS0003": "astd_drv9",
-                "WS0004": "astd_drv9"
+                "WS0001": "gauss",
+                "WS0002": "gauss",
+                "WS0003": "heavyneedler",
+                "WS0004": "heavyneedler"
             }
         },
         {
             "autofire": true,
             "mode": "LINKED",
             "weapons": {
-                "WS0005": "astd_vpd6",
-                "WS0006": "astd_vpd6",
-                "WS0007": "astd_vpd6",
-                "WS0008": "astd_vpd6",
-                "WS0009": "astd_vpd6",
-                "WS0010": "astd_vpd6"
+                "WS0005": "pdlaser",
+                "WS0006": "pdlaser",
+                "WS0007": "pdlaser",
+                "WS0008": "pdlaser",
+                "WS0009": "pdlaser",
+                "WS0010": "pdlaser"
             }
         },
         {
             "autofire": false,
             "mode": "ALTERNATING",
             "weapons": {
-                "WS0012": "astd_rct6",
-                "WS0013": "astd_rct6"
+                "WS0012": "harpoon",
+                "WS0013": "harpoon"
             }
         }
     ]

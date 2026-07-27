@@ -12,8 +12,8 @@
             "autofire": false,
             "mode": "LINKED",
             "weapons": {
-                "WS 002": "astd_drv9",
-                "WS 003": "astd_drv9"
+                "WS 002": "heavyneedler",
+                "WS 003": "heavyneedler"
             }
         }
     ]

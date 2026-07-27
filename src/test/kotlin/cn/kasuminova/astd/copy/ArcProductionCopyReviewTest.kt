@@ -556,7 +556,6 @@ class ArcProductionCopyReviewTest {
             "astd_arc_shared_flux_network",
             "astd_plasma_armor_shield_boost",
             "astd_limit_temporal_thruster",
-            "astd_stellar_jet",
         )
 
         val expectedSystemTypeLabels = linkedMapOf(
@@ -566,7 +565,6 @@ class ArcProductionCopyReviewTest {
             "astd_arc_shared_flux_network" to "支援",
             "astd_plasma_armor_shield_boost" to "防御",
             "astd_limit_temporal_thruster" to "机动",
-            "astd_stellar_jet" to "机动",
         )
 
         val allowedSystemTypeLabels = setOf("进攻", "防御", "机动", "支援", "特殊")

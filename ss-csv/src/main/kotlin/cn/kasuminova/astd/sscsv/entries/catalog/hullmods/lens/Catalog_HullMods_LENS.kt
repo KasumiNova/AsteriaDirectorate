@@ -145,32 +145,6 @@ object HullMod_astd_phase_resonance_jamming : HullModEntry() {
     override val sprite: String = "graphics/hullmods/astd_phase_resonance_jamming.png"
 }
 
-object HullMod_astd_singularity_displacement_armor : HullModEntry() {
-    override val id: String = "astd_singularity_displacement_armor"
-    override val name: String = hullmodName(id)
-    override val tier: Int = 3
-    override val rarity: Int = 1
-    override val tech: String = "LENS"
-    override val tags: String = TAGS_BUILTIN
-    override val script: String = PLACEHOLDER_SCRIPT
-    override val desc: String = PLACEHOLDER_DESC
-    override val short: String = PLACEHOLDER_SHORT
-    override val sprite: String = "graphics/hullmods/astd_singularity_displacement_armor.png"
-}
-
-object HullMod_astd_lens_horizon_suppression_mesh : HullModEntry() {
-    override val id: String = "astd_lens_horizon_suppression_mesh"
-    override val name: String = hullmodName(id)
-    override val tier: Int = 3
-    override val rarity: Int = 1
-    override val tech: String = "LENS"
-    override val tags: String = TAGS_BUILTIN
-    override val script: String = PLACEHOLDER_SCRIPT
-    override val desc: String = PLACEHOLDER_DESC
-    override val short: String = PLACEHOLDER_SHORT
-    override val sprite: String = "graphics/hullmods/astd_lens_horizon_suppression_mesh.png"
-}
-
 object HullMod_astd_fleet_coordination_relay : HullModEntry() {
     override val id: String = "astd_fleet_coordination_relay"
     override val name: String = hullmodName(id)

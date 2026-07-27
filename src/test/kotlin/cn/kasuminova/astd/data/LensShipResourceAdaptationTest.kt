@@ -104,10 +104,11 @@ class LensShipResourceAdaptationTest {
             .toMap()
 
         assertEquals(
+            // D9 废弃武器拆除后，空出的槽位以原版武器过渡（P 后续阶段重新设计）
             mapOf(
-                "WS0001" to "astd_fdp4",
-                "WS0003" to "astd_vpd6",
-                "WS0009" to "astd_vpd6",
+                "WS0001" to "hammer",
+                "WS0003" to "pdlaser",
+                "WS0009" to "pdlaser",
             ),
             weapons,
         )

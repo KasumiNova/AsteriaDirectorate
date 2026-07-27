@@ -44,8 +44,8 @@ data class BeamCorePieceSpec(
 )
 
 /**
- * 光束核心束体规格：三个光束共用的 4 件套（core+coreU+glow+glowU）着色/宽度/颜色/淡出参数。
- * 全部默认值取自 PSI-Ω——`BeamCoreSpec()` 即 1:1 复现 Psi 束体；GravityCollapse / StellarJet 覆盖颜色/宽度/
+ * 光束核心束体规格：两个光束共用的 4 件套（core+coreU+glow+glowU）着色/宽度/颜色/淡出参数。
+ * 全部默认值取自 PSI-Ω——`BeamCoreSpec()` 即 1:1 复现 Psi 束体；GravityCollapse 覆盖颜色/宽度/
  * taper/淡出方式即可。这是「束体 4 件套参数表格化」的落点（迁移计划 §5-A）。
  *
  * 宽度管线（每帧）：coreW = baseWidth×(coreWidthBase+coreWidthRamp×strength)，glowW = coreW×(glowWidthMul+
@@ -63,12 +63,6 @@ data class BeamCoreSpec(
     val glowWidthMul: Float = 1.55f,
     val glowWidthRamp: Float = 0.30f,
     val glowWidthMin: Float = 16f,
-    /**
-     * 辉光宽取法：true（Psi/GravityCollapse）= glowW = coreW×(glowWidthMul+glowWidthRamp×strength)，随核心宽等比放大
-     * （strength 二次项）；false（StellarJet）= glowW = baseWidth×(glowWidthMul+glowWidthRamp×strength)，与核心宽各自独立
-     * 线性插值（宿主两条 lerp 互不成比例时用）。
-     */
-    val glowWidthRelativeToCore: Boolean = true,
     /** body 宽 = 选中宽 ×(bodyWidthBase + bodyWidthRamp×strength)。 */
     val bodyWidthBase: Float = 0.78f,
     val bodyWidthRamp: Float = 0.22f,
@@ -117,7 +111,7 @@ data class BeamCoreSpec(
 }
 
 /**
- * 公共束体节点：三个光束共用的常驻直束 4 件套（迁移计划 §3.3，本次收益最大的共享资产）。
+ * 公共束体节点：两个光束共用的常驻直束 4 件套（迁移计划 §3.3，本次收益最大的共享资产）。
  *
  * 生命周期：读 [RenderContext.frame] 的 origin/facing/length 作束几何、intensity 作 strength、fadeMul 作淡出包络、
  * active 作 firing；firing 时每帧刷新心跳令束体常驻，停火时不刷新令 BoxUtil 按 fadeOut 淡出并自删（复火再传
@@ -170,7 +164,7 @@ class BeamCoreComponent(
         val host = ctx.host as BeamHost
         val ramp = ctx.frame.intensity.coerceIn(0f, 1f)
         val coreW = coreWidth(host, ramp)
-        val glowW = glowWidth(host, coreW, ramp)
+        val glowW = glowWidth(coreW, ramp)
 
         val built = ArrayList<TrailEntity>(spec.pieces.size)
         for (piece in spec.pieces) {
@@ -204,7 +198,7 @@ class BeamCoreComponent(
         val ramp = frame.intensity.coerceIn(0f, 1f)
         val fade = frame.fadeMul.coerceIn(0f, 1f)
         val coreW = coreWidth(host, ramp)
-        val glowW = glowWidth(host, coreW, ramp)
+        val glowW = glowWidth(coreW, ramp)
         val width = if (piece.useGlowWidth) glowW else coreW
 
         val nodes = entity.nodes
@@ -259,9 +253,8 @@ class BeamCoreComponent(
     private fun coreWidth(host: BeamHost, ramp: Float): Float =
         (host.baseWidth * (spec.coreWidthBase + spec.coreWidthRamp * ramp)).coerceAtLeast(spec.coreWidthMin)
 
-    private fun glowWidth(host: BeamHost, coreW: Float, ramp: Float): Float {
-        val basis = if (spec.glowWidthRelativeToCore) coreW else host.baseWidth
-        return (basis * (spec.glowWidthMul + spec.glowWidthRamp * ramp)).coerceAtLeast(spec.glowWidthMin)
+    private fun glowWidth(coreW: Float, ramp: Float): Float {
+        return (coreW * (spec.glowWidthMul + spec.glowWidthRamp * ramp)).coerceAtLeast(spec.glowWidthMin)
     }
 
     private fun initFlowParams(e: TrailEntity, textureSpeed: Float) {

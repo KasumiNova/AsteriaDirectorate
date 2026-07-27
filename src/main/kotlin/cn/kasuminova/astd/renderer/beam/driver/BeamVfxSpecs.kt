@@ -10,11 +10,6 @@ import cn.kasuminova.astd.impl.render.BeamRingComponent
 import cn.kasuminova.astd.impl.render.GcBeam
 import cn.kasuminova.astd.impl.render.PsiHelixComponent
 import cn.kasuminova.astd.impl.render.PsiSiphonComponent
-import cn.kasuminova.astd.impl.render.BeamHelixTrailComponent
-import cn.kasuminova.astd.impl.render.SjBeam
-import cn.kasuminova.astd.impl.render.StellarJetAmbientComponent
-import cn.kasuminova.astd.impl.render.StellarJetImpactComponent
-import cn.kasuminova.astd.impl.render.StellarJetMuzzleComponent
 import cn.kasuminova.astd.impl.render.renderEntity
 
 /**
@@ -59,19 +54,5 @@ object BeamVfxSpecs {
             addChild(BeamAmbientComponent("astd_gravity_collapse_ambient", scale, beamWidthMul))
             addChild(BeamMicroBeamComponent("astd_gravity_collapse_micro", scale, beamWidthMul))
             addChild(BeamHelixParticleComponent("astd_gravity_collapse_helix"))
-        }
-
-    /**
-     * 恒星喷射：束体 4 件套（白暖芯+蓝辉光，strength 控宽/alpha）+ 双螺旋扰动丝带 + 沿束散射（前向粒子+侧向烟雾）+
-     * 炮口散射（粒子+短束光锥）+ 命中端火花/弧线。宿主 `StellarJetEmitterEveryFrameEffect` 直接构建（非注册表，带
-     * baseWidth）。raycast/EMP 伤害/能量弹/辐能后坐力仍由宿主维护，本树只画视觉。
-     */
-    fun stellarJet(): RenderEntity =
-        renderEntity("astd_stellar_jet") {
-            addChild(BeamCoreComponent("astd_stellar_jet_core", SjBeam.coreSpec()))
-            addChild(BeamHelixTrailComponent("astd_stellar_jet_wisp"))
-            addChild(StellarJetAmbientComponent("astd_stellar_jet_ambient"))
-            addChild(StellarJetMuzzleComponent("astd_stellar_jet_muzzle"))
-            addChild(StellarJetImpactComponent("astd_stellar_jet_impact"))
         }
 }

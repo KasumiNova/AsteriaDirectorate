@@ -240,13 +240,14 @@ class ArcProductionShipRedesignDataTest {
         )
         assertVariantWeapons(
             path = Path.of("contents/data/variants/astd_arc_jet_Standard.variant"),
+            // D9 废弃武器拆除后，空出的槽位以原版武器过渡（P 后续阶段重新设计）
             required = mapOf(
-                "WS0001" to "astd_slt4",
-                "WS0002" to "astd_slt4",
-                "WS0003" to "astd_slt3",
-                "WS0004" to "astd_slt3",
-                "WS0015" to "astd_drv9",
-                "WS0016" to "astd_drv9",
+                "WS0001" to "gauss",
+                "WS0002" to "gauss",
+                "WS0003" to "tachlance",
+                "WS0004" to "tachlance",
+                "WS0015" to "heavyneedler",
+                "WS0016" to "heavyneedler",
             ),
         )
         assertHullBuiltInMods(
@@ -262,12 +263,12 @@ class ArcProductionShipRedesignDataTest {
         assertVariantWeapons(
             path = Path.of("contents/data/variants/astd_plasma_arch_Standard.variant"),
             required = mapOf(
-                "WS0001" to "astd_slt4",
-                "WS0002" to "astd_slt4",
-                "WS0003" to "astd_drv9",
-                "WS0004" to "astd_drv9",
-                "WS0012" to "astd_rct6",
-                "WS0013" to "astd_rct6",
+                "WS0001" to "gauss",
+                "WS0002" to "gauss",
+                "WS0003" to "heavyneedler",
+                "WS0004" to "heavyneedler",
+                "WS0012" to "harpoon",
+                "WS0013" to "harpoon",
             ),
         )
         val radiationBeltBuiltIns = assertHullBuiltInMods(
@@ -284,11 +285,11 @@ class ArcProductionShipRedesignDataTest {
         assertVariantWeapons(
             path = Path.of("contents/data/variants/astd_radiation_belt_Standard.variant"),
             required = mapOf(
-                "WS0001" to "astd_vpd6",
+                "WS0001" to "pdlaser",
                 "WS0002" to "astd_spc3",
                 "WS0003" to "astd_spc3",
-                "WS0007" to "astd_rct6",
-                "WS0008" to "astd_rct6",
+                "WS0007" to "harpoon",
+                "WS0008" to "harpoon",
             ),
         )
     }

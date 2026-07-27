@@ -94,18 +94,8 @@ class StandardVariantBuiltInHullmodDataTest {
                 "astd_arc_advanced_fire_control",
                 "astd_arc_shared_tactical_network",
             ),
-            "astd_arc_nova" to listOf(
-                "astd_nano_restoration_protocol",
-                "astd_thermodynamic_exchange",
-                "astd_damage_clamp_field",
-            ),
             "astd_dark_tide_nebula" to listOf("astd_nano_restoration_protocol", "astd_dark_tide_jammer"),
             "astd_diffraction" to listOf("astd_nano_restoration_protocol", "astd_phase_diffraction_shield"),
-            "astd_event_horizon" to listOf(
-                "astd_nano_restoration_protocol",
-                "astd_singularity_displacement_armor",
-                "astd_lens_horizon_suppression_mesh",
-            ),
             "astd_gravitational_lens" to listOf("astd_nano_restoration_protocol", "astd_lens_array_core"),
             "astd_magnetic_storm_zigzag" to listOf("astd_nano_restoration_protocol", "astd_inertialess_maneuver"),
             "astd_magnetosphere_disturbance" to listOf("astd_nano_restoration_protocol", "astd_fleet_coordination_relay"),

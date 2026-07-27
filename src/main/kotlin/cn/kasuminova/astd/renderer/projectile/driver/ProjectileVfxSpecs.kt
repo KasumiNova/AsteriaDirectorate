@@ -16,34 +16,11 @@ object ProjectileVfxSpecs {
     /**
      * projectileSpecId → 构建函数。加入一个即接入本管线。
      *
-     * 全部 24 个弹体 spec 均已接入。`astd_stellar_jet_bolt` 由 `StellarJetEmitterEveryFrameEffect` 每帧 spawn
-     * （无 onFireEffect、绕过 dispatcher），发射时直接调 `ProjectileVfxDriverPlugin.track` 接本管线。
+     * 当前接入：aod7（hero）/ spc3。其余废弃武器弹体已随 D8 移除，新武器设计落地时在此登记。
      */
     private val builders: Map<String, () -> ProjectileVfx> = mapOf(
         "astd_aod7_shot" to ::aod7Shot,
         "astd_spc3_shot" to { simpleProjectileVfx("astd_spc3_shot", violet(), width = 6f, length = 135f) },
-        "astd_stellar_jet_bolt" to { simpleProjectileVfx("astd_stellar_jet_bolt", stellar(), width = 10f, length = 240f, glowScale = 2.4f) },
-        "astd_drv9_slug" to { simpleProjectileVfx("astd_drv9_slug", amber(), width = 10f, length = 190f) },
-        "astd_drv11_slug" to { simpleProjectileVfx("astd_drv11_slug", amber(), width = 12f, length = 230f, glowScale = 2.6f) },
-        "astd_drv_omega_slug" to { simpleProjectileVfx("astd_drv_omega_slug", omega(), width = 14f, length = 260f, glowScale = 3.0f) },
-        "astd_slt3_pulse" to { simpleProjectileVfx("astd_slt3_pulse", blue(), width = 8f, length = 170f, ribbon = true) },
-        "astd_slt4_burst" to { simpleProjectileVfx("astd_slt4_burst", blue(), width = 9f, length = 190f, ribbon = true) },
-        "astd_slt_omega_stream" to { simpleProjectileVfx("astd_slt_omega_stream", omega(), width = 8f, length = 240f, ribbon = true) },
-        "astd_vpd6_pulse" to { simpleProjectileVfx("astd_vpd6_pulse", teal(), width = 8f, length = 180f) },
-        "astd_vpd_omega_arc" to { simpleProjectileVfx("astd_vpd_omega_arc", omega(), width = 9f, length = 220f, ribbon = true) },
-        "astd_rct6_torp" to { simpleProjectileVfx("astd_rct6_torp", rose(), width = 16f, length = 280f) },
-        "astd_tsm2_missile" to { simpleProjectileVfx("astd_tsm2_missile", singularity(), width = 18f, length = 310f, glowScale = 3.4f) },
-        "astd_tsm_omega_missile" to { simpleProjectileVfx("astd_tsm_omega_missile", omega(), width = 18f, length = 330f, glowScale = 3.3f) },
-        "astd_gsp12_rift" to { simpleProjectileVfx("astd_gsp12_rift", singularity(), width = 18f, length = 280f, glowScale = 3.1f, ribbon = true) },
-        "astd_jmb2_beam" to { simpleProjectileVfx("astd_jmb2_beam", teal(), width = 12f, length = 260f, glowScale = 2.5f) },
-        "astd_jmb9_beam" to { simpleProjectileVfx("astd_jmb9_beam", blue(), width = 13f, length = 280f, glowScale = 2.6f) },
-        "astd_jmb_omega_beam" to { simpleProjectileVfx("astd_jmb_omega_beam", omega(), width = 15f, length = 330f, glowScale = 3.0f) },
-        "astd_sgl8_swarm" to { simpleProjectileVfx("astd_sgl8_swarm", singularity(), width = 20f, length = 340f, glowScale = 3.6f) },
-        "astd_fdp4_charge" to { simpleProjectileVfx("astd_fdp4_charge", amber(), width = 14f, length = 250f, glowScale = 2.6f) },
-        "astd_ftb_omega_beam" to { simpleProjectileVfx("astd_ftb_omega_beam", omega(), width = 16f, length = 350f, glowScale = 3.2f) },
-        "astd_mnl2_mine" to { simpleProjectileVfx("astd_mnl2_mine", teal(), width = 13f, length = 210f, glowScale = 2.4f) },
-        "astd_mnl3_mine" to { simpleProjectileVfx("astd_mnl3_mine", blue(), width = 14f, length = 230f, glowScale = 2.5f) },
-        "astd_mnl_omega_grid" to { simpleProjectileVfx("astd_mnl_omega_grid", omega(), width = 15f, length = 260f, glowScale = 3.0f, ribbon = true) },
     )
 
     fun has(projectileSpecId: String): Boolean = projectileSpecId in builders
@@ -143,13 +120,6 @@ object ProjectileVfxSpecs {
 
     // 调色板：颜色沿用旧管线数值（视觉已目检回归，不宜再动）；贴图按色系语义分配（P2 观感翻译）。
     private fun violet() = VfxPalette(ASTDColor(0.66f, 0.42f, 1f, 0.9f), TEX_SMOOTH, TEX_ZAPPY)
-    private fun amber() = VfxPalette(ASTDColor(1f, 0.62f, 0.18f, 0.95f), TEX_TWIN, TEX_ZAPPY)
-    private fun omega() = VfxPalette(ASTDColor(0.72f, 0.35f, 1f, 0.96f), TEX_LIGHTNING, TEX_LIGHTNING)
-    private fun blue() = VfxPalette(ASTDColor(0.2f, 0.55f, 1f, 0.92f), TEX_ZAPPY, TEX_ZAPPY)
-    private fun teal() = VfxPalette(ASTDColor(0.22f, 1f, 0.78f, 0.9f), TEX_CLEAN, TEX_ZAPPY)
-    private fun rose() = VfxPalette(ASTDColor(1f, 0.34f, 0.42f, 0.94f), TEX_CONTRAIL, TEX_ZAPPY)
-    private fun singularity() = VfxPalette(ASTDColor(0.78f, 0.92f, 1f, 0.96f), TEX_CIRCLE, TEX_ZAPPY)
-    private fun stellar() = VfxPalette(ASTDColor(1f, 0.92f, 0.74f, 0.92f), TEX_CONTRAIL, TEX_ZAPPY)
 
     private fun ASTDColor.a(alpha: Float): ASTDColor = copy(alpha = alpha.coerceIn(0f, 1f))
 
@@ -162,12 +132,7 @@ object ProjectileVfxSpecs {
 /** 简单 spec 的贴图拖尾调色板：主色 + 主带贴图 + 电弧副带贴图（ribbon=true 时启用）。 */
 internal data class VfxPalette(val color: ASTDColor, val texture: String, val arcTexture: String)
 
-internal const val TEX_CIRCLE = "graphics/fx/gr_trails_circle.png"
-internal const val TEX_CLEAN = "graphics/fx/gr_trails_clean.png"
-internal const val TEX_CONTRAIL = "graphics/fx/gr_trails_contrail.png"
-internal const val TEX_LIGHTNING = "graphics/fx/gr_trails_lightning.png"
 internal const val TEX_SMOOTH = "graphics/fx/gr_trails_smooth.png"
-internal const val TEX_TWIN = "graphics/fx/gr_trails_twin.png"
 internal const val TEX_ZAPPY = "graphics/fx/gr_trails_zappy.png"
 
 // —— P2 观感翻译公式（内部纯函数，供 simpleProjectileVfx 与公式守护测试共用）——

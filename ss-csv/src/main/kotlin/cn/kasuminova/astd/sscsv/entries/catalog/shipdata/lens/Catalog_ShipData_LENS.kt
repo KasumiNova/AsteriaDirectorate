@@ -67,36 +67,6 @@ object Ship_astd_nebula_echo : ShipDataEntry() {
     override val number: Int = 9105
 }
 
-object Ship_astd_event_horizon : ShipDataEntry() {
-    override val id: String = "astd_event_horizon"
-    override val name: String = shipName(id)
-    override val designation: String = "主力舰"
-    override val tech: String = "透镜矩阵"
-    override val systemId: String = "astd_stasis_field"
-    override val fleetPts: Int = 70
-    override val hitpoints: Int = 15000
-    override val armorRating: Int = 800
-    override val maxFlux: Int = 18000
-    override val fluxDissipation: Int = 1200
-    override val ordnancePoints: Int = 280
-    override val maxSpeed: Int = 55
-    override val acceleration: Int = 27
-    override val deceleration: Int = 27
-    override val maxTurnRate: Int = 30
-    override val turnAcceleration: Int = 60
-    override val mass: Int = 30000
-    override val shieldType: String = "FRONT"
-    override val shieldArc: Int = 120
-    override val shieldUpkeep: Double = 0.6
-    override val shieldEfficiency: Double = 0.8
-    override val minCrew: Int = 10
-    override val maxCrew: Int = 250
-    override val baseValue: Int = 100000
-    override val tags: String = "astd_unique"
-    override val codexVariantId: String = "astd_event_horizon_Standard"
-    override val number: Int = 9106
-}
-
 object Ship_astd_magnetosphere_disturbance : ShipDataEntry() {
     override val id: String = "astd_magnetosphere_disturbance"
     override val name: String = shipName(id)

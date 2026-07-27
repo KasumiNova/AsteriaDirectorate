@@ -40,7 +40,7 @@ interface FrameState {
 
     /**
      * 本帧命中的目标实体；未命中或弹体宿主为 null。与 [endpoint] 同属"每帧接触数据"，供 impact 类节点选点
-     * （如 StellarJet 命中端粒子/弧线以其为锚）。放此而非宿主接口：命中随光束扫描逐帧变化，非宿主恒定量。
+     * （如命中端粒子/弧线以其为锚）。放此而非宿主接口：命中随光束扫描逐帧变化，非宿主恒定量。
      */
     val hitTarget: CombatEntityAPI?
 

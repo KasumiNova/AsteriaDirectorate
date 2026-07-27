@@ -31,7 +31,7 @@ import org.lwjgl.util.vector.Vector2f
  * - 玩家本舰：取 `ship.mouseTarget`，限制最大距离 [MAX_PICK_RANGE]。
  * - AI：优先读 AI 在 [ShipwideAIFlags.AIFlags.SYSTEM_TARGET_COORDS] 写入的落点（由
  *   [EchoFixationSystemAI] 算出的敌群密集中心），限制到 [MAX_PICK_RANGE]；若 AI 未给坐标，
- *   退化为「前方敌群中心 / 正前方」（与 StasisField 落点逻辑同源，但重写为无空 catch 版本）。
+ *   退化为「前方敌群中心 / 正前方」。
  *
  * 系统射程倍率（spec §2.1：场半径 / 站桩范围受系统射程属性影响）：
  * 从 `ship.mutableStats.systemRangeBonus` 经 [ASTDArcCombatUtil.effectiveSystemRange] 求 base=1f 的

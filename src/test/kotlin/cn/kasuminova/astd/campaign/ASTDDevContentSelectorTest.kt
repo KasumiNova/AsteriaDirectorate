@@ -53,9 +53,9 @@ internal class ASTDDevContentSelectorTest {
         val rows = CsvTestUtil.readRowsById(Path.of("contents/data/weapons/weapon_data.csv"))
 
         assertTrue(ASTDDevContentSelector.isDevStorageWeapon(rows.getValue("astd_aod7").toWeaponRow()))
-        assertTrue(ASTDDevContentSelector.isDevStorageWeapon(rows.getValue("astd_arc13").toWeaponRow()))
-        assertTrue(ASTDDevContentSelector.isDevStorageWeapon(rows.getValue("astd_drv9").toWeaponRow()))
-        assertTrue(ASTDDevContentSelector.isDevStorageWeapon(rows.getValue("astd_vpd6").toWeaponRow()))
+        assertTrue(ASTDDevContentSelector.isDevStorageWeapon(rows.getValue("astd_spc3").toWeaponRow()))
+        assertTrue(ASTDDevContentSelector.isDevStorageWeapon(rows.getValue("astd_gcp12").toWeaponRow()))
+        assertTrue(ASTDDevContentSelector.isDevStorageWeapon(rows.getValue("astd_psi_omega").toWeaponRow()))
 
         val hiddenRealWeapon = ASTDDevContentSelector.WeaponRow(
             id = "sample_hidden_real_weapon",
@@ -78,9 +78,6 @@ internal class ASTDDevContentSelectorTest {
         assertFalse(ASTDDevContentSelector.isDevStorageWeapon(rows.getValue("astd_plasma_arch_bloom").toWeaponRow()))
         assertFalse(ASTDDevContentSelector.isDevStorageWeapon(rows.getValue("astd_radiation_belt_bloom").toWeaponRow()))
         assertFalse(ASTDDevContentSelector.isDevStorageWeapon(rows.getValue("astd_virtual_particle_mote_launcher").toWeaponRow()))
-        assertFalse(ASTDDevContentSelector.isDevStorageWeapon(rows.getValue("astd_stasis_collapse_emitter").toWeaponRow()))
-        assertFalse(ASTDDevContentSelector.isDevStorageWeapon(rows.getValue("astd_stellar_jet_emitter").toWeaponRow()))
-        assertFalse(ASTDDevContentSelector.isDevStorageWeapon(rows.getValue("astd_stellar_jet_bolt_emitter").toWeaponRow()))
 
         val vanillaRows = CsvTestUtil.readRowsById(Path.of("/mnt/store/Games/Starsector098-linux/data/weapons/weapon_data.csv"))
         assertTrue(ASTDDevContentSelector.isDevStorageWeapon(vanillaRows.getValue("lightmg").toWeaponRow()))

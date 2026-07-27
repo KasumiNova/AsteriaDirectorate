@@ -80,49 +80,6 @@ object Sys_astd_collapse_shift : ShipSystemWithSystemFileEntry() {
     override val useSound: String = "system_phase_cloak_activate"
 }
 
-/** 旧 Negentropy Edge 系统 id 的兼容行，供旧船体/存档引用。 */
-object Sys_astd_overload_spike : ShipSystemWithSystemFileEntry() {
-    override val id: String = "astd_overload_spike"
-    override val name: String = systemName("astd_collapse_shift")
-
-    override val statsScript: String = "cn.kasuminova.astd.combat.shipsystems.OverloadSpikeSystemStats"
-
-    override val systemType: String = "STAT_MOD"
-    override val aiType: String = "CUSTOM"
-    override val aiScript: String = "cn.kasuminova.astd.combat.shipsystems.CollapseShiftSystemAI"
-
-    override val maxUses: Int = 2
-    override val regen: Double = 6.666666666666667
-
-    override val chargeUp: Double = 0.25
-    override val active: Double = 0.3
-    override val down: Double = 0.1
-    override val cooldown: Double = 1.0
-
-    override val icon: String = "graphics/icons/hullsys/displacer.png"
-    override val useSound: String = "system_phase_cloak_activate"
-}
-
-object Sys_astd_stellar_jet : ShipSystemWithSystemFileEntry() {
-    override val id: String = "astd_stellar_jet"
-    override val name: String = systemName(id)
-
-    override val statsScript: String = "cn.kasuminova.astd.combat.shipsystems.StellarJetSystemStats"
-
-    // 自定义系统 AI 生效前提：aiType 必须为 CUSTOM
-    override val aiType: String = "CUSTOM"
-    override val aiScript: String = "cn.kasuminova.astd.combat.shipsystems.StellarJetSystemAI"
-
-    override val chargeUp: Double = 2.0
-    override val active: Double = 999.0
-    override val down: Double = 0.5
-    override val cooldown: Double = 12.0
-
-    override val toggle: Boolean = true
-
-    override val icon: String = "graphics/icons/hullsys/burn_drive.png"
-}
-
 object Sys_astd_micro_burn_drive : ShipSystemWithSystemFileEntry() {
     override val id: String = "astd_micro_burn_drive"
     override val name: String = systemName(id)

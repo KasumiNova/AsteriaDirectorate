@@ -8,7 +8,7 @@ package cn.kasuminova.astd.api.render
  * 但少数节点需要一个宿主特有的、每帧近乎恒定的量——束体基宽（原版 `beam.width`）。核心/辉光束体据此按
  * strength 缩放宽度，而它不属于逐帧几何，故走本接口而非 [FrameState]。
  *
- * 命中目标/护盾命中等"每帧接触查询"（StellarJet EMP 弧选点用）随其迁移（P7.3）再加入本接口，避免预先声明无实现成员。
+ * 命中目标/护盾命中等"每帧接触查询"在有实际宿主需要时再加入本接口，避免预先声明无实现成员。
  */
 interface BeamHost : RenderHost {
 

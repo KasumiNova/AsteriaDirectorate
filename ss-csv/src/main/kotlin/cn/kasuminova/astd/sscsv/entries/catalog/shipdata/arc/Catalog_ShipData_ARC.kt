@@ -108,36 +108,6 @@ object Ship_astd_conjugate_terminal : ShipDataEntry() {
     override val number: Int = 9127
 }
 
-object Ship_astd_arc_nova : ShipDataEntry() {
-    override val id: String = "astd_arc_nova"
-    override val name: String = shipName(id)
-    override val designation: String = "主力舰"
-    override val tech: String = "弧光阵列"
-    override val systemId: String = "astd_stellar_jet"
-    override val fleetPts: Int = 72
-    override val hitpoints: Int = 22000
-    override val armorRating: Int = 1000
-    override val maxFlux: Int = 27500
-    override val fluxDissipation: Int = 1100
-    override val ordnancePoints: Int = 320
-    override val maxSpeed: Int = 35
-    override val acceleration: Int = 20
-    override val deceleration: Int = 20
-    override val maxTurnRate: Int = 30
-    override val turnAcceleration: Int = 60
-    override val mass: Int = 30000
-    override val shieldType: String = "FRONT"
-    override val shieldArc: Int = 120
-    override val shieldUpkeep: Double = 0.6
-    override val shieldEfficiency: Double = 0.8
-    override val minCrew: Int = 10
-    override val maxCrew: Int = 250
-    override val baseValue: Int = 100000
-    override val tags: String = "astd_unique"
-    override val codexVariantId: String = "astd_arc_nova_Standard"
-    override val number: Int = 9103
-}
-
 object Ship_astd_arc_jet : ShipDataEntry() {
     override val id: String = "astd_arc_jet"
     override val name: String = shipName(id)

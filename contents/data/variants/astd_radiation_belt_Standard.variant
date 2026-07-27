@@ -20,18 +20,18 @@
             "autofire": true,
             "mode": "LINKED",
             "weapons": {
-                "WS0001": "astd_vpd6",
-                "WS0004": "astd_vpd6",
-                "WS0005": "astd_vpd6",
-                "WS0006": "astd_vpd6"
+                "WS0001": "pdlaser",
+                "WS0004": "pdlaser",
+                "WS0005": "pdlaser",
+                "WS0006": "pdlaser"
             }
         },
         {
             "autofire": false,
             "mode": "ALTERNATING",
             "weapons": {
-                "WS0007": "astd_rct6",
-                "WS0008": "astd_rct6"
+                "WS0007": "harpoon",
+                "WS0008": "harpoon"
             }
         }
     ]

@@ -58,7 +58,7 @@ class ProjectileVfxSpecsTest {
     }
 
     @Test
-    fun `简单 spec 拓扑：bloom 弹头与主带恒在，arc 副带按开关装配`() {
+    fun `简单 spec 拓扑：bloom 弹头与主带恒在`() {
         // spc3：无 ribbon → bloom 弹头 + 主带（renderOrder 升序：300 < 361）；策略锚点取 trail{} 长宽（数值不动，viewportTailCap 零回归）
         val plain = assertNotNull(ProjectileVfxSpecs.build("astd_spc3_shot"))
         assertEquals(listOf("astd_spc3_shot_head", "astd_spc3_shot_textrail_main"), plain.tree.children.map { it.id })
@@ -69,31 +69,14 @@ class ProjectileVfxSpecsTest {
         assertEquals(0.1f, plain.policy.hitFadeOutSeconds)
         assertEquals(0.22f, plain.policy.expireFadeOutSeconds)
         assertEquals(1280f, plain.policy.layoutReferenceWidth)
-
-        // slt3：ribbon → bloom 弹头 + 主带 + arc 副带（300 < 361 < 362）
-        val ribbonOnly = assertNotNull(ProjectileVfxSpecs.build("astd_slt3_pulse"))
-        assertEquals(
-            listOf("astd_slt3_pulse_head", "astd_slt3_pulse_textrail_main", "astd_slt3_pulse_textrail_arc"),
-            ribbonOnly.tree.children.map { it.id },
-        )
     }
 
     @Test
-    fun `stellar_jet_bolt 构建贴图拖尾树；未知 spec 返回 null`() {
-        // stellar jet bolt 由 StellarJetEmitterEveryFrameEffect 每帧 spawn，走新管线（发射器直连 driver.track）。
-        assertTrue(ProjectileVfxSpecs.has("astd_stellar_jet_bolt"))
-        val bolt = assertNotNull(ProjectileVfxSpecs.build("astd_stellar_jet_bolt"))
-        assertEquals(240f, bolt.policy.primaryTrailLength, 1e-3f)
-        assertEquals(
-            listOf("astd_stellar_jet_bolt_head", "astd_stellar_jet_bolt_textrail_main"),
-            bolt.tree.children.map { it.id },
-        )
-
+    fun `未知 spec 返回 null；已接入 spec 均可构建`() {
         assertEquals(null, ProjectileVfxSpecs.build("astd_does_not_exist"))
         // 抽查若干已迁移。
         assertTrue(ProjectileVfxSpecs.has("astd_aod7_shot"))
-        assertTrue(ProjectileVfxSpecs.has("astd_gsp12_rift"))
-        assertTrue(ProjectileVfxSpecs.has("astd_sgl8_swarm"))
+        assertTrue(ProjectileVfxSpecs.has("astd_spc3_shot"))
     }
 
     // —— 公式数值锚点（公式实现被手滑改动时在此暴露）——
@@ -101,9 +84,9 @@ class ProjectileVfxSpecsTest {
     @Test
     fun `宽度公式锚点：0 35 倍旧宽与 3 15 倍体型档取大 按 0 5 取整`() {
         assertEquals(7.0f, bandWidth(6f, 2.2f))     // spc3：3.15×2.2=6.93 主导
-        assertEquals(8.0f, bandWidth(12f, 2.6f))    // drv11：8.19→8.0
-        assertEquals(11.5f, bandWidth(20f, 3.6f))   // sgl8：11.34→11.5
-        assertEquals(7.0f, bandWidth(16f, 2.2f))    // rct6：0.35×16=5.6 不主导
+        assertEquals(8.0f, bandWidth(12f, 2.6f))    // 8.19→8.0
+        assertEquals(11.5f, bandWidth(20f, 3.6f))   // 11.34→11.5
+        assertEquals(7.0f, bandWidth(16f, 2.2f))    // 0.35×16=5.6 不主导
         assertEquals(5.5f, arcWidth(7.0f))          // 副带 0.8×主带
     }
 
@@ -164,43 +147,14 @@ class ProjectileVfxSpecsTest {
     )
 
     private val violet = ASTDColor(0.66f, 0.42f, 1f, 0.9f)
-    private val amber = ASTDColor(1f, 0.62f, 0.18f, 0.95f)
-    private val omega = ASTDColor(0.72f, 0.35f, 1f, 0.96f)
-    private val blue = ASTDColor(0.2f, 0.55f, 1f, 0.92f)
-    private val teal = ASTDColor(0.22f, 1f, 0.78f, 0.9f)
-    private val rose = ASTDColor(1f, 0.34f, 0.42f, 0.94f)
-    private val singularity = ASTDColor(0.78f, 0.92f, 1f, 0.96f)
-    private val stellar = ASTDColor(1f, 0.92f, 0.74f, 0.92f)
 
     private val rows = listOf(
         Row("astd_spc3_shot", violet, TEX_SMOOTH, TEX_ZAPPY, 6f, 135f, 2.2f, false),
-        Row("astd_stellar_jet_bolt", stellar, TEX_CONTRAIL, TEX_ZAPPY, 10f, 240f, 2.4f, false),
-        Row("astd_drv9_slug", amber, TEX_TWIN, TEX_ZAPPY, 10f, 190f, 2.2f, false),
-        Row("astd_drv11_slug", amber, TEX_TWIN, TEX_ZAPPY, 12f, 230f, 2.6f, false),
-        Row("astd_drv_omega_slug", omega, TEX_LIGHTNING, TEX_LIGHTNING, 14f, 260f, 3.0f, false),
-        Row("astd_slt3_pulse", blue, TEX_ZAPPY, TEX_ZAPPY, 8f, 170f, 2.2f, true),
-        Row("astd_slt4_burst", blue, TEX_ZAPPY, TEX_ZAPPY, 9f, 190f, 2.2f, true),
-        Row("astd_slt_omega_stream", omega, TEX_LIGHTNING, TEX_LIGHTNING, 8f, 240f, 2.2f, true),
-        Row("astd_vpd6_pulse", teal, TEX_CLEAN, TEX_ZAPPY, 8f, 180f, 2.2f, false),
-        Row("astd_vpd_omega_arc", omega, TEX_LIGHTNING, TEX_LIGHTNING, 9f, 220f, 2.2f, true),
-        Row("astd_rct6_torp", rose, TEX_CONTRAIL, TEX_ZAPPY, 16f, 280f, 2.2f, false),
-        Row("astd_tsm2_missile", singularity, TEX_CIRCLE, TEX_ZAPPY, 18f, 310f, 3.4f, false),
-        Row("astd_tsm_omega_missile", omega, TEX_LIGHTNING, TEX_LIGHTNING, 18f, 330f, 3.3f, false),
-        Row("astd_gsp12_rift", singularity, TEX_CIRCLE, TEX_ZAPPY, 18f, 280f, 3.1f, true),
-        Row("astd_jmb2_beam", teal, TEX_CLEAN, TEX_ZAPPY, 12f, 260f, 2.5f, false),
-        Row("astd_jmb9_beam", blue, TEX_ZAPPY, TEX_ZAPPY, 13f, 280f, 2.6f, false),
-        Row("astd_jmb_omega_beam", omega, TEX_LIGHTNING, TEX_LIGHTNING, 15f, 330f, 3.0f, false),
-        Row("astd_sgl8_swarm", singularity, TEX_CIRCLE, TEX_ZAPPY, 20f, 340f, 3.6f, false),
-        Row("astd_fdp4_charge", amber, TEX_TWIN, TEX_ZAPPY, 14f, 250f, 2.6f, false),
-        Row("astd_ftb_omega_beam", omega, TEX_LIGHTNING, TEX_LIGHTNING, 16f, 350f, 3.2f, false),
-        Row("astd_mnl2_mine", teal, TEX_CLEAN, TEX_ZAPPY, 13f, 210f, 2.4f, false),
-        Row("astd_mnl3_mine", blue, TEX_ZAPPY, TEX_ZAPPY, 14f, 230f, 2.5f, false),
-        Row("astd_mnl_omega_grid", omega, TEX_LIGHTNING, TEX_LIGHTNING, 15f, 260f, 3.0f, true),
     )
 
     @Test
     fun `全简单 spec 的贴图拖尾参数等于公式计算值`() {
-        assertEquals(23, rows.size, "简单 spec 行数与登记表一致（aod7 为 hero 不在此表）")
+        assertEquals(1, rows.size, "简单 spec 行数与登记表一致（aod7 为 hero 不在此表；废弃武器已随 D8 移除）")
         for (row in rows) {
             val vfx = assertNotNull(ProjectileVfxSpecs.build(row.id), row.id)
             val main = vfx.tree.children.first { it.id == "${row.id}_textrail_main" } as TexTrailComponent

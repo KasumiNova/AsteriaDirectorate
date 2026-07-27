@@ -8,7 +8,7 @@
     "collisionClassByFighter": "PROJECTILE_FIGHTER",
     "length": 2,
     "width": 2,
-    "fadeTime": 0,
+    "fadeTime": 0.2,
     "fringeColor": [255, 198, 126, 0],
     "coreColor": [248, 242, 232, 0],
     "textureScrollSpeed": 0,

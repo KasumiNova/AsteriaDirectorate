@@ -1,12 +1,10 @@
 # 武器设计案（按线路 → 稀有度拆分）
 
-本目录是 `docs/design/weapons-requirements.md` 的拆分版本：按 **线路（蓝/紫）→ 供给层级/稀有度（内置/量产/稀有/Omega）** 组织，便于后续逐条落地到数据文件与脚本。
-
-> 说明：本套设计文档仅使用当前系列代号与命名口径。
+> 状态：D9 决策后，除 GCP 系列与 AOD-7 / SPC-3 / PSI-Ω（游戏内 id `astd_psi_omega`，对应 PSB-Ω 设计案）外，全部旧武器案已废弃删除，后续按 90-roadmap.md 的武器线阶段重新设计。本目录当前仅保留存活条目与通用规则。
 
 ## 通用规则
 
-- `00-common.md`：设计原则、命名规范、A/B/C 投射范式、难度系数 $k$ 缩放规则、双模式联动原则。
+- `00-common.md`：设计原则、命名规范、A/B/C 投射范式、难度系数 $k$ 缩放规则、双模式联动原则。重新设计时沿用。
 
 ## 侧线剧情武器（MIND / PSI）
 
@@ -18,14 +16,9 @@
 
 ## 蓝线（直接火力投射：A/C）
 
-- `blue/10-signature.md`：签名内置武器（AOD-7、TSM-2 等）。
-- `blue/20-production.md`：量产武器。
-- `blue/30-rare.md`：稀有掉落武器。
-- `blue/40-omega.md`：Omega 极稀有。
+- `blue/10-signature.md`：签名内置武器（AOD-7、SPC-3）。
 
 ## 紫线（间接压制：B）
 
-- `purple/10-signature.md`：签名内置武器（GSP-12 等）。
-- `purple/20-production.md`：量产武器。
-- `purple/30-rare.md`：稀有掉落武器。
-- `purple/40-omega.md`：Omega 极稀有。
+- `purple/20-production.md`：量产武器（GCP 引力坍缩炮系列）。
+- `purple/40-omega.md`：Omega 极稀有（PSB-Ω 灵能裂解束，侧线）。

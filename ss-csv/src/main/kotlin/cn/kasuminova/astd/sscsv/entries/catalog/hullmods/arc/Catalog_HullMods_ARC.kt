@@ -49,32 +49,6 @@ object HullMod_astd_transient_potential_manifold : HullModEntry() {
     override val sprite: String = "graphics/hullmods/astd_vectorized_jet_array.png"
 }
 
-object HullMod_astd_thermodynamic_exchange : HullModEntry() {
-    override val id: String = "astd_thermodynamic_exchange"
-    override val name: String = hullmodName(id)
-    override val tier: Int = 3
-    override val rarity: Int = 1
-    override val tech: String = "ARC"
-    override val tags: String = TAGS_BUILTIN
-    override val script: String = PLACEHOLDER_SCRIPT
-    override val desc: String = PLACEHOLDER_DESC
-    override val short: String = PLACEHOLDER_SHORT
-    override val sprite: String = "graphics/hullmods/astd_thermodynamic_exchange.png"
-}
-
-object HullMod_astd_damage_clamp_field : HullModEntry() {
-    override val id: String = "astd_damage_clamp_field"
-    override val name: String = hullmodName(id)
-    override val tier: Int = 3
-    override val rarity: Int = 1
-    override val tech: String = "ARC"
-    override val tags: String = TAGS_BUILTIN
-    override val script: String = PLACEHOLDER_SCRIPT
-    override val desc: String = PLACEHOLDER_DESC
-    override val short: String = PLACEHOLDER_SHORT
-    override val sprite: String = "graphics/hullmods/astd_damage_clamp_field.png"
-}
-
 object HullMod_astd_nano_restoration_protocol : HullModEntry() {
     override val id: String = "astd_nano_restoration_protocol"
     override val name: String = hullmodName(id)
@@ -145,45 +119,6 @@ object HullMod_astd_arc_flare_mode_next_automated : HullModEntry() {
     override val desc: String = SsI18n.t("hullmod.$id.desc")
     override val short: String = SsI18n.t("hullmod.$id.short")
     override val sprite: String = "graphics/hullmods/astd_arc_loop_interface.png"
-}
-
-object HullMod_astd_vectorized_jet_array : HullModEntry() {
-    override val id: String = "astd_vectorized_jet_array"
-    override val name: String = hullmodName(id)
-    override val tier: Int = 1
-    override val rarity: Int = 1
-    override val tech: String = "ARC"
-    override val tags: String = TAGS_BUILTIN
-    override val script: String = PLACEHOLDER_SCRIPT
-    override val desc: String = PLACEHOLDER_DESC
-    override val short: String = PLACEHOLDER_SHORT
-    override val sprite: String = "graphics/hullmods/astd_vectorized_jet_array.png"
-}
-
-object HullMod_astd_arch_stabilizer : HullModEntry() {
-    override val id: String = "astd_arch_stabilizer"
-    override val name: String = hullmodName(id)
-    override val tier: Int = 1
-    override val rarity: Int = 1
-    override val tech: String = "ARC"
-    override val tags: String = TAGS_BUILTIN
-    override val script: String = PLACEHOLDER_SCRIPT
-    override val desc: String = PLACEHOLDER_DESC
-    override val short: String = PLACEHOLDER_SHORT
-    override val sprite: String = "graphics/hullmods/astd_arch_stabilizer.png"
-}
-
-object HullMod_astd_redundant_vents : HullModEntry() {
-    override val id: String = "astd_redundant_vents"
-    override val name: String = hullmodName(id)
-    override val tier: Int = 1
-    override val rarity: Int = 1
-    override val tech: String = "ARC"
-    override val tags: String = TAGS_BUILTIN
-    override val script: String = PLACEHOLDER_SCRIPT
-    override val desc: String = PLACEHOLDER_DESC
-    override val short: String = PLACEHOLDER_SHORT
-    override val sprite: String = "graphics/hullmods/astd_redundant_vents.png"
 }
 
 object HullMod_astd_arc_advanced_fire_control : HullModEntry() {

@@ -26,7 +26,7 @@ class ASTDProjectileNativeVisualSuppressionTest {
         assertEquals("PROJECTILE_FIGHTER", spec.getString("collisionClassByFighter"))
         assertEquals(2.0, spec.getDouble("length"))
         assertEquals(2.0, spec.getDouble("width"))
-        assertEquals(0.0, spec.getDouble("fadeTime"))
+        assertEquals(0.2, spec.getDouble("fadeTime"))
         assertEquals(0.0, spec.getDouble("textureScrollSpeed"))
         assertEquals(1.0, spec.getDouble("pixelsPerTexel"))
         assertEquals(0, spec.getJSONArray("fringeColor").getInt(3))

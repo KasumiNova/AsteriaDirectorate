@@ -53,25 +53,4 @@ class BeamVfxSpecsTest {
         val keys = tree.children.map { it.layer.ordinal to it.renderOrder }
         assertEquals(keys.sortedWith(compareBy({ it.first }, { it.second })), keys, "子节点须按 (层, renderOrder) 升序")
     }
-
-    @Test
-    fun `stellarJet 装配束体+丝带+沿束散射+炮口+命中五节点并按绘制层序返回`() {
-        val tree = BeamVfxSpecs.stellarJet()
-        assertEquals(
-            setOf(
-                "astd_stellar_jet_core",
-                "astd_stellar_jet_wisp",
-                "astd_stellar_jet_ambient",
-                "astd_stellar_jet_muzzle",
-                "astd_stellar_jet_impact",
-            ),
-            tree.children.map { it.id }.toSet(),
-        )
-        assertEquals(5, tree.children.size, "五节点不得因 ID 碰撞被去重")
-
-        assertTrue(tree.children.first { it.id == "astd_stellar_jet_core" } is BeamCoreComponent)
-
-        val keys = tree.children.map { it.layer.ordinal to it.renderOrder }
-        assertEquals(keys.sortedWith(compareBy({ it.first }, { it.second })), keys, "子节点须按 (层, renderOrder) 升序")
-    }
 }

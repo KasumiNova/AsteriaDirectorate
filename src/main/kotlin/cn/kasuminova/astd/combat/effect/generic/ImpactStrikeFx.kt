@@ -1,12 +1,10 @@
-package cn.kasuminova.astd.combat.effect.arc.signature.tsm
+package cn.kasuminova.astd.combat.effect.generic
 
 import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseEveryFrameCombatPlugin
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEngineLayers
-import com.fs.starfarer.api.combat.ShipAPI
-import com.fs.starfarer.api.combat.WeaponAPI
 import com.fs.starfarer.api.input.InputEventAPI
 import org.boxutil.define.BoxEnum
 import org.boxutil.define.InstanceType
@@ -20,11 +18,11 @@ import java.awt.Color
 import kotlin.math.roundToInt
 
 /**
- * TSM 系列（TSM-2/TSM-Ω）通用终端打击 VFX/EMP 工具：
+ * 终端打击命中 VFX 工具（原 TSM 系列通用工具，TSM 武器随 D9 废弃后由 AOD-7 命中特效沿用）：
  * - 冲击条纹喷散（BoxUtil，可自动回退到原版粒子）
- * - 子系统 EMP（优先武器/引擎）+ 电弧视觉
+ * - 同色冲击烟雾
  */
-internal object TsmTerminalStrikeFx {
+internal object ImpactStrikeFx {
 
     /**
      * 冲击特效朝向：
@@ -664,169 +662,6 @@ internal object TsmTerminalStrikeFx {
                 true,
             )
         }
-    }
-
-    fun spawnSubsystemEmpArcs(
-        engine: CombatEngineAPI,
-        target: ShipAPI,
-        center: Vector2f,
-        totalEmp: Float,
-        pierceShields: Boolean,
-        source: ShipAPI?,
-        coreColor: Color,
-        fringeColor: Color,
-        empPerArcDivisor: Float = 600f,
-        arcCountMin: Int = 2,
-        arcCountMax: Int = 7,
-        arcWidthMin: Float = 10f,
-        arcWidthMax: Float = 18f,
-    ) {
-        var emp = sanitizeNonNegativeFinite(totalEmp)
-        if (emp <= 0f) return
-
-        // 收集“可打击点”：武器槽与引擎位置。
-        val weaponPoints = ArrayList<Vector2f>(target.allWeapons.size)
-        for (w in target.allWeapons) {
-            val weapon = w as? WeaponAPI ?: continue
-            if (weapon.isDecorative) continue
-            if (weapon.isPermanentlyDisabled) continue
-            weaponPoints.add(Vector2f(weapon.location))
-        }
-
-        val enginePoints = ArrayList<Vector2f>(8)
-        try {
-            for (e in target.engineController.shipEngines) {
-                if (e == null) continue
-                if (e.isPermanentlyDisabled) continue
-                enginePoints.add(Vector2f(e.location))
-            }
-        } catch (_: Throwable) {
-            // engineController 在极端情况下可能不可用；忽略。
-        }
-
-        val points = ArrayList<Vector2f>(weaponPoints.size + enginePoints.size)
-        points.addAll(enginePoints)
-        points.addAll(weaponPoints)
-
-        if (points.isEmpty()) {
-            // 兜底：没有子系统点时，直接在命中点施加 EMP（可选择穿盾）。
-            engine.applyDamage(
-                target,
-                center,
-                0f,
-                com.fs.starfarer.api.combat.DamageType.ENERGY,
-                emp,
-                pierceShields,
-                false,
-                source,
-            )
-            return
-        }
-
-        // 需求：盾命中/穿盾 EMP 的电弧与数值抑制
-        // - 低幅能：几乎不生成电弧（且 EMP 也显著降低，避免“一击瘫痪大船”）
-        // - 目标穿盾 EMP 抗性：降低电弧与 EMP 强度
-        val shieldContact = pierceShields && isShieldActiveAtPoint(target, center)
-
-        var effectiveArcCountMin = arcCountMin
-        var effectiveArcCountMax = arcCountMax
-        var effectiveArcWidthMin = arcWidthMin
-        var effectiveArcWidthMax = arcWidthMax
-        var allowArcVisual = true
-
-        if (shieldContact) {
-            val flux = try {
-                target.fluxLevel
-            } catch (_: Throwable) {
-                0f
-            }.coerceIn(0f, 1f)
-
-            // 低幅能强抑制：0.2 以下几乎不画弧；0.65 以上接近不抑制
-            val x = ((flux - 0.20f) / 0.45f).coerceIn(0f, 1f)
-            val fluxFactor = x * x
-
-            // EMP 抗性（<1 表示更抗 EMP）：用于进一步降低电弧/EMP
-            val empTakenMult = getEmpDamageTakenMult(target).coerceAtLeast(0f)
-            val resistFactor = empTakenMult.coerceIn(0f, 1f)
-
-            val arcVisualFactor = (fluxFactor * resistFactor).coerceIn(0f, 1f)
-            allowArcVisual = arcVisualFactor >= 0.25f
-
-            // 数值抑制：最低保留一点点（避免完全“吃掉效果”），但低幅能时会非常小。
-            val empFactor = (0.04f + 0.96f * arcVisualFactor).coerceIn(0.01f, 1f)
-            emp *= empFactor
-            if (emp <= 1f) return
-
-            // 盾命中时尽量少打点，避免一发瘫痪一片；同时缩小弧宽提升“克制感”。
-            effectiveArcCountMin = 1
-            effectiveArcCountMax = (arcCountMax * (0.25f + 0.75f * arcVisualFactor)).roundToInt().coerceIn(1, arcCountMax)
-            effectiveArcWidthMin = arcWidthMin * (0.75f + 0.25f * arcVisualFactor)
-            effectiveArcWidthMax = arcWidthMax * (0.75f + 0.25f * arcVisualFactor)
-        }
-
-        // EMP 弧数量：保持克制，避免铺满屏幕。
-        val arcCount = (effectiveArcCountMin + (emp / empPerArcDivisor).toInt()).coerceIn(effectiveArcCountMin, effectiveArcCountMax)
-        val chosen = points.shuffled().take(kotlin.math.min(arcCount, points.size))
-        val empEach = (emp / chosen.size.toFloat()).coerceAtLeast(1f)
-
-        for (p2 in chosen) {
-            // 视觉：从命中点拉向子系统点
-            if (allowArcVisual) {
-                try {
-                    engine.spawnEmpArcVisual(
-                        center,
-                        target,
-                        p2,
-                        target,
-                        MathUtils.getRandomNumberInRange(effectiveArcWidthMin, effectiveArcWidthMax),
-                        fringeColor,
-                        coreColor,
-                    )
-                } catch (_: Throwable) {
-                    // 如果 API 版本差异导致失败，就不画弧，只留数值效果。
-                }
-            }
-
-            // 数值：在子系统点施加 EMP（可选穿盾）
-            engine.applyDamage(
-                target,
-                p2,
-                0f,
-                com.fs.starfarer.api.combat.DamageType.ENERGY,
-                empEach,
-                pierceShields,
-                false,
-                source,
-            )
-        }
-    }
-
-    private fun isShieldActiveAtPoint(target: ShipAPI, point: Vector2f): Boolean {
-        return try {
-            val s = target.shield
-            s != null && s.isOn && s.isWithinArc(point)
-        } catch (_: Throwable) {
-            false
-        }
-    }
-
-    private fun getEmpDamageTakenMult(target: ShipAPI): Float {
-        return try {
-            target.mutableStats.empDamageTakenMult.modifiedValue
-        } catch (_: Throwable) {
-            // Java getter 兼容：MutableShipStatsAPI.getEmpDamageTakenMult()
-            try {
-                target.mutableStats.getEmpDamageTakenMult().modifiedValue
-            } catch (_: Throwable) {
-                1f
-            }
-        }
-    }
-
-    private fun sanitizeNonNegativeFinite(v: Float): Float {
-        if (v.isNaN() || v.isInfinite()) return 0f
-        if (v < 0f) return 0f
-        return v
     }
 
     private fun submitDynamicInstanceData(entity: org.boxutil.base.api.InstanceRenderAPI, instanceCount: Int): Boolean {

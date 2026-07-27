@@ -4,7 +4,7 @@ import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.graphics.SpriteAPI
 
 /**
- * 光束束体共用的 core/fringe 贴图加载。三个光束（Psi/GravityCollapse/StellarJet）的 4 件套束体都用同一对
+ * 光束束体共用的 core/fringe 贴图加载。两个光束（Psi/GravityCollapse）的 4 件套束体都用同一对
  * beam 贴图；集中一处加载并缓存，失败落到原版 `BUtil_ONE` 兜底并 warn（不静默吞异常）。
  */
 internal object BeamSprites {
