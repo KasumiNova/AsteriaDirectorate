@@ -242,7 +242,7 @@ fun texTrailStrip(
  */
 class TexTrailComponent(
     id: String,
-    private val spec: TexTrailSpec,
+    internal val spec: TexTrailSpec,
 ) : RenderEntityImpl(id, CombatEngineLayers.ABOVE_PARTICLES, RENDER_ORDER_BASE + spec.layer) {
 
     private val log = Global.getLogger(TexTrailComponent::class.java)
