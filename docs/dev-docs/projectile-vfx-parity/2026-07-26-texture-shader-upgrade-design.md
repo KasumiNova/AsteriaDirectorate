@@ -167,3 +167,26 @@ projectileVfx("astd_aod7_shot") {
   都会在击中时穿模（实证）；`TexTrailSpec.recede` 把带体亮端整体后移让弹头尖露出，远离目标方向永不穿模。
 - **贴图自管上传**：不进游戏贴图系统——SSOptimizer LazyTextureManager 会把 ≥64KiB 的 `graphics/` 贴图
   做成「有 texId、无内容」的延迟对象，裸 `glBindTexture` 绕过其补丁采到空纹理。
+
+## 12. P2 收口记录（2026-07-27）
+
+23 个简单 spec 全部 texTrail 化 + 退役网格渲染栈删除完成（检查点 `4922f52`）。要点：
+
+- **观感翻译公式**（`ProjectileVfxSpecs.kt` 底部 internal 纯函数，公式守护测试锚定）：
+  `bandW=round05(max(0.35w, 3.15g))`；三段色 midAt=0.25（头 mix 白 **0.45**@a×0.78、中主色@a×**0.55**、
+  尾 rgb×0.16@0.07）；主带 tile=L/2.4、scroll=L/6，副带 0.8×宽、tile=L/2、scroll=L/4.5；
+  nodes=clamp(L/16,16,24)；recede=round5(L×0.08) 恒施；弹头 length=L×0.33、width=round05(bandW×1.77)、
+  alpha=0.7、shell 三色与带体头色同族派生。双带（ribbon）主带 alpha×0.8 垫底。
+  色系→贴图：violet→smooth、amber→twin、omega→lightning、blue→zappy、teal→clean、
+  rose/stellar→contrail、singularity→circle；arc 副带 omega=lightning、其余 zappy。
+- **两轮目检迭代**：① 弹头恒在（无弹头射弹头部观感过平，工厂删 head 旋钮）；
+  ② 拼接色差（琥珀弹头饱和橙 vs 带体近白浅桃）→ bandHeadColor 白混合 0.78→0.45、
+  bandMidColor alpha 0.47→0.55，用户确认定版。
+- **退役删除**（−4711 行）：glow/body/ribbon 网格渲染栈（GlowRenderer/RibbonRenderer/
+  BodyRenderManager/TrailRenderer/Centerline/ASTDProjectileVfxLayer/TrailEntities）连同 11 个测试文件；
+  DSL 删 glow{}/body()/ribbon{} 块与 BoxUtil 直线拖尾兜底，`head{}` 恒走 bloom 管线；
+  `ASTDTrailLayerSpec` 裁为 startWidth/length/startColor/startEmissive/endColor 五字段，
+  `Mesh` 裁为 vertices/triangles/renderOrder，RenderContext 瘦身四字段。
+- **遗留**：`SpriteLoads.loadAndGetSprite` 内联进 GeneratedRingSprite（光束圆环贴图唯一调用点）后删文件；
+  tools/projectile-vfx-preview 的 kotlinExport.ts 旧 Preset 模板只标记不动（独立清理任务）。
+- 全量测试 301 用例零失败（退役测试随功能同 commit 删除，故总数自 386 降）。
