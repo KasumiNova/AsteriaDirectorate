@@ -54,7 +54,7 @@ object ProjectileVfxSpecs {
     /**
      * 通用弹体特效：5 高层旋钮 → trail 风格声明 + texTrail 贴图拖尾主体 + bloom 网格弹头（+ 可选电弧副带）。
      *
-     * P2 观感翻译（aod7 hero 形态推广）：glow/body/ribbon 网格层退役，拖尾主体由 texTrail 承担、
+     * P2 观感翻译（aod7 hero 形态推广）：glow/body/ribbon 网格层已退役，拖尾主体由 texTrail 承担、
      * 光晕由 bloom 管线统一提供；弹头恒在（目检结论：无弹头的射弹头部观感过平）。
      * 派生公式全部为内部纯函数（[bandWidth] 等），登记行只填差异；
      * 目检微调优先改公式常量，个别例外才用具名参数覆盖。
@@ -73,10 +73,9 @@ object ProjectileVfxSpecs {
     ): ProjectileVfx = projectileVfx(id) {
         val color = palette.color
         trail {
-            width(width); widths(width, (width * 0.16f).coerceAtLeast(1f)); length(length)
+            width(width); length(length)
             color(color.hex()); tail(color.a((color.alpha * 0.12f).coerceIn(0.04f, 0.2f)).hex())
-            emissive(color.a(1f).hex(), color.a((color.alpha * 0.25f).coerceIn(0.08f, 0.3f)).hex())
-            texture(96f, 0.9f); fill(0.84f, 0.03f, 0.02f, 0.12f); pausedMotion()
+            emissive(color.a(1f).hex())
         }
         // lifecycle 全默认（duration 1.25 / dissolveAt 0.6 / headScale 1.5 / layoutRef 1280）——与旧 preset 的 ASTDProjectileVfxLifecycleSpec() 默认一致。
         sampling { fps(60f); maxNodes(96); minStep(2f); window(length) }
@@ -112,15 +111,13 @@ object ProjectileVfxSpecs {
      * aod7 hero：两条贴图拖尾为拖尾主体 + 代码网格弹头。
      * 拖尾复刻 MagicTrail 语义直接吃 gr_trails 原图（twin 脆丝垫底 layer1、zappy 电弧 layer2，宽比 twin=1.25×zappy），
      * 对标参考模组 zappy+twin 叠加构图；弹头用旧 `head{}` 网格（贴图弹头壳路线经目检否定已删，连同 headShell 特性）。
-     * `trail{}` 仅作拖尾风格声明（基宽/基色/中线来源 + 驱动锚点），有 texTrail 时不落 BoxUtil 直线拖尾兜底。
+     * `trail{}` 仅作拖尾风格声明（弹头网格的基宽/基色来源 + 驱动锚点）。
      */
     private fun aod7Shot(): ProjectileVfx = projectileVfx("astd_aod7_shot") {
         trail {
-            width(96f); widths(96f, 8f); length(420f)
+            width(96f); length(420f)
             color(0x478FEBEB); tail(0x0A24380F)
-            emissive(0xF0F8FFFF, 0x0A347529)
-            texture(96f, 0.9f); fill(0.84f, 0.03f, 0.02f, 0.12f)
-            strip(); blend("additive"); flickerSync(17); pausedMotion()
+            emissive(0xF0F8FFFF)
         }
         lifecycle { duration(1.25f); dissolveAt(0.6f); headScale(1.14f); layoutRef(1846f) }
         sampling { fps(60f); maxNodes(96); minStep(2f); window(420f) }

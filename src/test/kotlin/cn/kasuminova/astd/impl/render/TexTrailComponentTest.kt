@@ -173,8 +173,6 @@ class TexTrailComponentTest {
     @Test
     fun `mesh triangles bake to world-space vertex stream with zero uv`() {
         val mesh = ASTDProjectileVfxBodyRenderer.Mesh(
-            polygon = emptyList(),
-            gradientStops = emptyList(),
             vertices = emptyList(),
             triangles = listOf(
                 ASTDProjectileVfxBodyRenderer.Triangle(
@@ -183,8 +181,6 @@ class TexTrailComponentTest {
                     ASTDProjectileVfxBodyRenderer.Vertex(Vector2f(0f, 0f), ASTDColor(0f, 0f, 1f, 0.5f)),
                 ),
             ),
-            blendMode = "additive",
-            combatLayer = com.fs.starfarer.api.combat.CombatEngineLayers.ABOVE_PARTICLES,
             renderOrder = 300,
         )
 

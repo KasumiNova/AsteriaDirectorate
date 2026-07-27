@@ -18,12 +18,11 @@ import kotlin.test.assertTrue
 class ProjectileVfxSpecsTest {
 
     @Test
-    fun `aod7 由网格弹头与两条贴图拖尾组成 有 trail 声明但不落 BoxUtil 兜底节点`() {
+    fun `aod7 由网格弹头与两条贴图拖尾组成`() {
         val vfx = assertNotNull(ProjectileVfxSpecs.build("astd_aod7_shot"))
         val childIds = vfx.tree.children.map { it.id }
 
-        // 贴图拖尾即拖尾主体：twin(layer1 垫底) + zappy(layer2)；弹头为代码网格 head{}；trail{} 仅风格声明，
-        // 有 texTrail 时不生成 BoxUtil 直线拖尾兜底节点（无 astd_aod7_shot_trail）。
+        // 贴图拖尾即拖尾主体：twin(layer1 垫底) + zappy(layer2)；弹头为代码网格 head{}；trail{} 仅风格声明。
         // 3 个组件节点按 renderOrder 升序：head(300)/twin(361)/zappy(362)。
         assertEquals(
             listOf(

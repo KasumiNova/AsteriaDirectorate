@@ -5,50 +5,29 @@ import cn.kasuminova.astd.api.render.RenderContext
 import cn.kasuminova.astd.api.render.RenderEntity
 import cn.kasuminova.astd.api.render.RenderLayer
 import com.fs.starfarer.api.combat.CombatEngineLayers
-import java.awt.Color
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 /**
- * P0 自检：直接调 DSL 构建树，验证结构挂载、setter 生效、按层定序、运行时增删的 onDetach 配对。
+ * P0 自检：直接调 DSL 构建树，验证结构挂载、按层定序、运行时增删的 onDetach 配对。
  * 不做源码 contain 测试，不依赖引擎。
  */
 class RenderEntityDslTest {
 
     private fun sample(): RenderEntity = renderEntity("business") {
-        head("head") { color(Color.RED); width(24f); length(138f) }
-        trail("primary") { color(Color.BLUE); width(40f); length(360f) }
-        trail("secondary") { length(500f) }
+        addChild(RenderEntityImpl("head"))
+        addChild(RenderEntityImpl("primary"))
+        addChild(RenderEntityImpl("secondary"))
         child { renderEntity("subeffect") {} }
     }
 
     @Test
-    fun `DSL 挂载全部组件——含此前漏挂父节点的 trail`() {
+    fun `DSL 挂载全部子节点`() {
         val tree = sample()
         assertEquals(
             listOf("head", "primary", "secondary", "subeffect"),
             tree.children.map { it.id },
         )
-    }
-
-    @Test
-    fun `setter 真实写入参数，省略即默认`() {
-        val tree = sample()
-
-        val head = tree.children.first { it.id == "head" } as RenderEntityImpl.HeadComponent
-        assertEquals(Color.RED, head.color)
-        assertEquals(24f, head.width)
-        assertEquals(138f, head.length)
-
-        val primary = tree.children.first { it.id == "primary" } as RenderEntityImpl.TrailComponent
-        assertEquals(Color.BLUE, primary.color)
-        assertEquals(40f, primary.width)
-        assertEquals(360f, primary.length)
-
-        val secondary = tree.children.first { it.id == "secondary" } as RenderEntityImpl.TrailComponent
-        assertEquals(500f, secondary.length)
-        assertEquals(Color.WHITE, secondary.color) // 未设置 → 默认
-        assertEquals(12f, secondary.width)          // 未设置 → 默认
     }
 
     @Test

@@ -33,60 +33,42 @@ object ASTDProjectileVfxHeadRenderer {
     }
 
     fun meshForTests(
-        trail: ASTDTrailEntitySpec,
+        baseLayer: ASTDTrailLayerSpec,
         layers: List<ASTDProjectileVfxHeadLayerSpec>,
         context: ASTDProjectileVfxRenderContext,
         headSizeScale: Float = 1f,
         alphaScale: Float = 1f,
     ): List<ASTDProjectileVfxBodyRenderer.Mesh> {
-        val baseLayer = trail.layers.firstOrNull() ?: trail.layerSpec
         return layers.filter { it.enabled }.map { layer ->
             val layout = fillLayoutForTests(baseLayer, layer, context, headSizeScale)
-            val polygon = layout.vertices.asList().map { Vector2f(it) }
             val vertices = headStripVertices(layout, alphaScale)
             val scaledVertices = vertices.map { vertex ->
                 vertex.copy(position = ASTDProjectileVfxLayout.scalePoint(vertex.position, context.worldUnitsPerPixel))
             }
             ASTDProjectileVfxBodyRenderer.Mesh(
-                polygon = ASTDProjectileVfxLayout.scalePoints(polygon, context.worldUnitsPerPixel),
-                gradientStops = emptyList(),
                 vertices = scaledVertices,
                 triangles = headTriangles(scaledVertices),
-                blendMode = layer.blendMode,
-                combatLayer = baseLayer.combatLayer,
                 renderOrder = ASTDProjectileVfxBodyRenderer.RENDER_ORDER_HEAD,
             )
         }
     }
 
     fun shadowMeshesForTests(
-        trail: ASTDTrailEntitySpec,
+        baseLayer: ASTDTrailLayerSpec,
         layers: List<ASTDProjectileVfxHeadLayerSpec>,
         context: ASTDProjectileVfxRenderContext,
         headSizeScale: Float = 1f,
         alphaScale: Float = 1f,
     ): List<ASTDProjectileVfxBodyRenderer.Mesh> {
-        val baseLayer = trail.layers.firstOrNull() ?: trail.layerSpec
         val widthBase = ASTDProjectileVfxLayout.widthBase(baseLayer)
         return layers.filter { it.enabled }.map { layer ->
             val layout = fillLayoutForTests(baseLayer, layer, context, headSizeScale)
             val shadow = headBloomMesh(layer, layout, widthBase, context, alphaScale)
             ASTDProjectileVfxBodyRenderer.Mesh(
-                polygon = shadow.vertices.map { Vector2f(it.position) },
-                gradientStops = emptyList(),
                 vertices = shadow.vertices,
                 triangles = shadow.triangles,
-                blendMode = layer.blendMode,
-                combatLayer = baseLayer.combatLayer,
                 renderOrder = ASTDProjectileVfxBodyRenderer.RENDER_ORDER_HEAD_SHADOW,
             )
-        }
-    }
-
-    private fun triangulate(vertices: List<ASTDProjectileVfxBodyRenderer.Vertex>): List<ASTDProjectileVfxBodyRenderer.Triangle> {
-        if (vertices.size < 3) return emptyList()
-        return (1 until vertices.lastIndex).map { index ->
-            ASTDProjectileVfxBodyRenderer.Triangle(vertices[0], vertices[index], vertices[index + 1])
         }
     }
 

@@ -1,7 +1,6 @@
 package cn.kasuminova.astd.renderer.effect.projectile.beam
 
 import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
-import cn.kasuminova.astd.impl.render.loadAndGetSprite
 
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
@@ -686,7 +685,9 @@ internal object GeneratedRingSprite {
     fun getOrCreateSprite(): SpriteAPI? {
         cached?.let { return it }
         val s = try {
-            Global.getSettings().loadAndGetSprite(REL_PATH)
+            // 直接 getSprite 对本次运行新加入/未被 Settings 扫描的贴图会静默返回空精灵（texId=0，不报错不写日志），
+            // 须先 loadTexture 进缓存；本对象缓存 Sprite，loadTexture 全局只跑一次
+            Global.getSettings().apply { loadTexture(REL_PATH) }.getSprite(REL_PATH)
         } catch (t: Throwable) {
             Global.getLogger(GeneratedRingSprite::class.java)
                 .warn("Failed to load ring sprite: '$REL_PATH'. Make sure it exists under this mod's graphics/ and was copied to production.", t)

@@ -142,7 +142,7 @@ const val TEX_TRAIL_VERTEX_FLOATS = 8
  * 把网格渲染器产出的局部系三角形网格（弹头/阴影）烘成世界系 8 浮点顶点流（纯函数，可测）。
  *
  * 供弹头并入 bloom 管线使用：u=v=0（渲染侧绑 1×1 白贴图，片元着色器退化为纯顶点色）。
- * 世界变换（旋转+平移）与 ASTDProjectileVfxBodyRenderManager 的烘焙语义一致。
+ * 世界变换（旋转+平移）与 [texTrailStrip] 的烘焙语义一致。
  */
 fun texTrailMeshTriangles(
     mesh: ASTDProjectileVfxBodyRenderer.Mesh,

@@ -1,27 +1,15 @@
 package cn.kasuminova.astd.impl.render
 
-import cn.kasuminova.astd.api.render.ASTDProjectileHistoryNode
 import org.lwjgl.util.vector.Vector2f
 
 /**
- * 几何层的每帧渲染上下文。
- *
- * 弹体拖尾网格数学（各 Renderer 的 `*ForTests`）以此为主要入参。
+ * 网格几何层（bloom 弹头）的每帧渲染上下文：世界锚点 + 绘制朝向 + 强度 + 像素换算。
+ * 由宿主中立的 FrameState 还原而来（MeshRenderComponents.toRenderContext）。
  */
 data class ASTDProjectileVfxRenderContext(
     val location: Vector2f,
-    val velocityFacing: Float,
-    val projectileFacing: Float,
     val renderFacing: Float,
-    val elapsed: Float,
-    val logicElapsed: Float = elapsed,
-    val flightProgress: Float,
-    val dissolve: Float,
-    val visibleLength: Float,
     val beamAlpha: Float,
-    val historyNodes: List<ASTDProjectileHistoryNode>,
-    val presetId: String,
-    val projectileSpecId: String,
     val worldUnitsPerPixel: Float = 1f,
 )
 
