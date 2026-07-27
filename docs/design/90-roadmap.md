@@ -77,10 +77,10 @@
 > 一切后续内容的数值都挂在这上面，必须最先做。设计案：`docs/design/80-数值缩放体系设计.md`。
 
 - [x] 设计案：难度双轨制（D13）、三锚点声明+逐项映射、进程战力评估模型（2026-07-27 成文 v1.1；叙事档位定稿：迟暮/砺刃/远征/破晓）
-- [ ] 地基代码：LunaLib 设置接入 + 轨一 `DifficultyTuning`（$k_s$ 单例 + 三锚点插值工具）；`DifficultyModel` 升级为品质修正战力评估 + sqrt 压缩
-- [ ] 存量接轨：`BountyScalingHullMod` 从动态 k 切到轨一 $k_s$；`AffixUtil.getK` 语义明确为生成表专用；断熵弧刃虚粒子上限（6~18）改三锚点样板
+- [x] 地基代码：LunaLib 设置接入 + 轨一 `DifficultyTuning`（$k_s$ 单例 + 三锚点插值工具）；`DifficultyModel` 升级为品质修正战力评估 + sqrt 压缩（2026-07-27 落地：api/difficulty 4 接口 + impl/difficulty 3 类 + 轨二 FleetStrengthAssessmentImpl/FleetStrengthMath，纯计算与 Global 采集分层）
+- [x] 存量接轨：`BountyScalingHullMod` 从动态 k 切到轨一 $k_s$；`AffixUtil.getK` 语义明确为生成表专用；断熵弧刃虚粒子上限（6~18）改三锚点样板（2026-07-27 完成；20+ 词缀船插的 getK 迁移归入 P5 词条阶段）
 - [ ] 规范落地：全部"概率/上限/浮动"数值改三锚点写法，存量船插逐个改造登记
-- [ ] 验证：同一舰船在 $k_s$=1.0 / 2.0 / 5.0 下机制表现差异可观测、可测试；$k_p$ 分解页与实估一致
+- [ ] 验证：同一舰船在 $k_s$=1.0 / 2.0 / 5.0 下机制表现差异可观测、可测试；$k_p$ 分解页与实估一致（单测 30+ 用例与启动烟测已过，实测目检待做）
 
 ### P2 — ARC 线收尾
 
@@ -155,3 +155,4 @@
 | 2026-07-27 | D12 登记：弧光新星与 overload_spike 直接删除不回收，P0 开工 | — |
 | 2026-07-27 | P1 设计案成文：难度双轨制（D13 登记）+ 三锚点声明/逐项映射 + 进程战力评估模型；叙事档位定稿套 A（迟暮/砺刃/远征/破晓），待裁定移除 | 629bfad |
 | 2026-07-27 | P0 完成：视界线/弧光新星/overload_spike/22 废弃武器全量拆除（96862c9），烟测误伤三处修复（f25801b）。备注：冻结舰（等离子拱等 D6）variant 空槽换原版武器属挂点维护而非设计变更，设计案与实装机制未动；残留文档债清理完毕（激波前锋条目、3 孤儿船插、等离子拱盾型矛盾、镀点笔误、章节跳号、词缀改名）；automation 烟测通过 | 96862c9, f25801b |
+| 2026-07-27 | P1 地基落地：api/difficulty 接口层（ScalingMap/ScalingEntry/DifficultyTuning/FleetStrengthAssessment）+ impl/difficulty（LunaLib 设置注册、档位解析、k_s 单例）+ 轨二战力评估（品质修正 + sqrt 压缩 + EMA 平滑，纯计算分层）；BountyScalingHullMod 接轨一、断熵虚粒子上限三锚点样板；赏金生成逐项分解 INFO 日志；30+ 单测用例 + automation 烟测通过 | 待提交 |
