@@ -14,8 +14,8 @@
             "weapons": {
                 "WS0001": "gauss",
                 "WS0002": "gauss",
-                "WS0003": "tachlance",
-                "WS0004": "tachlance",
+                "WS0003": "tachyonlance",
+                "WS0004": "tachyonlance",
                 "WS0015": "heavyneedler",
                 "WS0016": "heavyneedler"
             }

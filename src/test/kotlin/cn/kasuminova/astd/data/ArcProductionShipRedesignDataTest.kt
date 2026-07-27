@@ -244,8 +244,8 @@ class ArcProductionShipRedesignDataTest {
             required = mapOf(
                 "WS0001" to "gauss",
                 "WS0002" to "gauss",
-                "WS0003" to "tachlance",
-                "WS0004" to "tachlance",
+                "WS0003" to "tachyonlance",
+                "WS0004" to "tachyonlance",
                 "WS0015" to "heavyneedler",
                 "WS0016" to "heavyneedler",
             ),
