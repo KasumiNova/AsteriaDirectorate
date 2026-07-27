@@ -13,6 +13,6 @@
 		"settings.difficulty.tier.desc.expedition": "远征（3.0）：与巡航星海的阿斯忒里亚舰队对抗。那时的它尚不知何为敌手，航迹所至，诸舰退避。站上这片战场，本身就是一种宣示。",
 		"settings.difficulty.tier.desc.dawn": "破晓（5.0）：与启航之时的阿斯忒里亚舰队对抗。历史记载它自信能荡平一切——记载没有夸大。与其对抗，与其争斗，与其一同踏上觉醒之路。",
 		"settings.difficulty.custom.fieldName": "自定义难度系数",
-		"settings.difficulty.custom.tooltip": "仅在选择「自定义」档时生效。范围 1.0 ~ 5.0，敌方机制数值按此系数缩放。"
+		"settings.difficulty.custom.tooltip": "仅在选择“自定义”档时生效。范围 1.0 ~ 5.0，敌方机制数值按此系数缩放。"
 	}
 }
