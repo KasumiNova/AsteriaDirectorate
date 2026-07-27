@@ -18,6 +18,7 @@
 ## 蓝线（直接火力投射：A/C）
 
 - `blue/10-signature.md`：签名内置武器（AOD-7、SPC-3）。
+- `blue/20-production.md`：量产武器（电荷针刺系列等，P2 逐件确认中）。
 
 ## 紫线（间接压制：B）
 
