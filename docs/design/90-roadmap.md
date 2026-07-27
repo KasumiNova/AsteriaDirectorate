@@ -160,3 +160,4 @@
 | 2026-07-27 | P0 完成：视界线/弧光新星/overload_spike/22 废弃武器全量拆除（96862c9），烟测误伤三处修复（f25801b）。备注：冻结舰（等离子拱等 D6）variant 空槽换原版武器属挂点维护而非设计变更，设计案与实装机制未动；残留文档债清理完毕（激波前锋条目、3 孤儿船插、等离子拱盾型矛盾、镀点笔误、章节跳号、词缀改名）；automation 烟测通过 | 96862c9, f25801b |
 | 2026-07-27 | P1 地基落地：api/difficulty 接口层（ScalingMap/ScalingEntry/DifficultyTuning/FleetStrengthAssessment）+ impl/difficulty（LunaLib 设置注册、档位解析、k_s 单例）+ 轨二战力评估（品质修正 + sqrt 压缩 + EMA 平滑，纯计算分层）；BountyScalingHullMod 接轨一、断熵虚粒子上限三锚点样板；赏金生成逐项分解 INFO 日志；30+ 单测用例 + automation 烟测通过 | d7a203e |
 | 2026-07-27 | D14 登记：P2/P3 对调（武备先于舰设），LunaLib 设置页实测确认生效；tooltip 直角引号渲染问题修复 | 16e6ba7 |
+| 2026-07-28 | P2 开工：武器设计总纲 v0 成文（两线哲学/GCP 档位/缩放落点/roster）；命名规范改直接命名三类模式（体系规格/杂项/超规格），供给层级改隐性获取来源；GCP 显示名落地新命名法，烟测通过。总纲待评审定稿 | d7f60d2 |
