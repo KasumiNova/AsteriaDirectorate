@@ -44,32 +44,32 @@
 > 原则：先拆干净再盖新的。删除类任务一次完成、不留半截引用。
 
 **视界线移除（D1）**
-- [ ] 数据：`astd_event_horizon.ship` / `_Standard.variant` / ship_data.csv 行 / `astd_stasis_field.system` / ship_systems.csv 行 / `astd_stasis_collapse_emitter.wpn` / weapon_data.csv 行 / 3 个占位船插（奇点置换装甲、透镜-视界协同压制网、限幅结构场¹）/ descriptions、systems_strings、companions_strings 相关条目
-- [ ] 代码：`combat/effect/arc/signature/stasisfield/` 整包、`StasisFieldSystemStats.kt` 及注册引用
-- [ ] ss-csv：Catalog_HullMods/ShipData/ShipSystems/WeaponData_LENS、Catalog_Descriptions、i18n（zh-cn.properties）相关条目，重新生成数据
-- [ ] 剧情引用：`StoryBounties.kt`、`CompanionChatDialogPlugin.kt` 中的视界线条目（移除或改写为其他目标）
-- [ ] 文档：purple/10-unique.md 第 3 节删除，设计总结同步改写
-- [ ] 烟测验证：游戏可启动、相关任务可进
+- [x] 数据：`astd_event_horizon.ship` / `_Standard.variant` / ship_data.csv 行 / `astd_stasis_field.system` / ship_systems.csv 行 / `astd_stasis_collapse_emitter.wpn` / weapon_data.csv 行 / 3 个占位船插（奇点置换装甲、透镜-视界协同压制网、限幅结构场¹）/ descriptions、systems_strings、companions_strings 相关条目
+- [x] 代码：`combat/effect/arc/signature/stasisfield/` 整包、`StasisFieldSystemStats.kt` 及注册引用
+- [x] ss-csv：Catalog_HullMods/ShipData/ShipSystems/WeaponData_LENS、Catalog_Descriptions、i18n（zh-cn.properties）相关条目，重新生成数据
+- [x] 剧情引用：`StoryBounties.kt`、`CompanionChatDialogPlugin.kt` 中的视界线条目（移除或改写为其他目标）
+- [x] 文档：purple/10-unique.md 第 3 节删除，设计总结同步改写
+- [x] 烟测验证：游戏可启动、相关任务可进
 
 ¹ 限幅结构场同时被弧光新星占用，随弧光新星删除（D12）一并移除。
 
 **弧光新星与过载钉刺移除（D12）**
-- [ ] 数据：`astd_arc_nova.ship` / `_Standard.variant` / ship_data.csv 行 / 占位贴图 / 内置船插热力学交换协议、限幅结构场 / `astd_overload_spike.system` / ship_systems.csv 第 21 行
-- [ ] 代码：`OverloadSpikeSystemStats.kt` 及注册引用；arc_nova 独占的 `astd_stellar_jet` 系统与发射器一并删除（BeamVfx 共享基础设施保留）
-- [ ] ss-csv 相关 catalog 条目清理并重新生成
-- [ ] 烟测验证
+- [x] 数据：`astd_arc_nova.ship` / `_Standard.variant` / ship_data.csv 行 / 占位贴图 / 内置船插热力学交换协议、限幅结构场 / `astd_overload_spike.system` / ship_systems.csv 第 21 行
+- [x] 代码：`OverloadSpikeSystemStats.kt` 及注册引用；arc_nova 独占的 `astd_stellar_jet` 系统与发射器一并删除（BeamVfx 共享基础设施保留）
+- [x] ss-csv 相关 catalog 条目清理并重新生成
+- [x] 烟测验证
 
 **废弃武器拆除（D8 前半）**
-- [ ] 清点废弃武器被哪些 variant / 任务引用（drv/fdp/ftb/gsp/jmb/mnl/rct/sgl/slt/tsm/vpd/arc13 及 omega 系列，PSI-Omega 除外）
-- [ ] variant 改用保留武器（GCP / AOD-7 / 原版）后，删除废弃 .wpn、weapon_data.csv 行、ss-csv 武器 catalog、特效 spec 注册
-- [ ] 删除 docs/design/weapons/ 下废弃案文档（GCP 与 AOD-7/PSI-Omega 相关部分保留）
-- [ ] 烟测验证
+- [x] 清点废弃武器被哪些 variant / 任务引用（drv/fdp/ftb/gsp/jmb/mnl/rct/sgl/slt/tsm/vpd/arc13 及 omega 系列，PSI-Omega 除外）
+- [x] variant 改用保留武器（GCP / AOD-7 / 原版）后，删除废弃 .wpn、weapon_data.csv 行、ss-csv 武器 catalog、特效 spec 注册
+- [x] 删除 docs/design/weapons/ 下废弃案文档（GCP 与 AOD-7/PSI-Omega 相关部分保留）
+- [x] 烟测验证
 
 **残留文档债**
-- [ ] 激波前锋条目从 `bounty-expansion-requirements.md` 4.1 节移除
-- [ ] 孤儿占位船插清理：拱桥稳定器、冗余散热格栅、定向喷流阵列（删除或立项，记录结论）
-- [ ] 修等离子拱文档"前向护盾 360°"矛盾、引力透镜"镀点"笔误、00-common.md 章节跳号
-- [ ] 词缀/船插同名拆分：分布式栅格、协同中继、热力交换（词缀改名，船插名保留）
+- [x] 激波前锋条目从 `bounty-expansion-requirements.md` 4.1 节移除
+- [x] 孤儿占位船插清理：拱桥稳定器、冗余散热格栅、定向喷流阵列（删除或立项，记录结论）
+- [x] 修等离子拱文档"前向护盾 360°"矛盾、引力透镜"镀点"笔误、00-common.md 章节跳号
+- [x] 词缀/船插同名拆分：分布式栅格、协同中继、热力交换（词缀改名，船插名保留）
 
 ### P1 — 数值缩放系统地基（D10）
 
@@ -151,3 +151,4 @@
 | 2026-07-27 | 建立台账（初版 ships/90-roadmap.md），完成全量现状盘点 | — |
 | 2026-07-27 | 决策会结论（D1~D11）登记，台账升级为项目级并重排 P0~P7；原"弧光喷流/等离子拱惩罚软化"计划按 D6 取消 | — |
 | 2026-07-27 | D12 登记：弧光新星与 overload_spike 直接删除不回收，P0 开工 | — |
+| 2026-07-27 | P0 完成：视界线/弧光新星/overload_spike/22 废弃武器全量拆除（96862c9），烟测误伤三处修复（f25801b）。备注：冻结舰（等离子拱等 D6）variant 空槽换原版武器属挂点维护而非设计变更，设计案与实装机制未动；残留文档债清理完毕（激波前锋条目、3 孤儿船插、等离子拱盾型矛盾、镀点笔误、章节跳号、词缀改名）；automation 烟测通过 | 96862c9, f25801b |
