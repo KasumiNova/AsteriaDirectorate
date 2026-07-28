@@ -59,7 +59,7 @@
 | `tech` | `"透镜矩阵"` | 同 LENS 族 |
 | `primaryRoleStr` | `SsI18n.t("weapon.$id.primaryRoleStr")` | 见 §1.3 |
 | `customPrimary` | `SsI18n.t("weapon.$id.tooltip.customPrimary")` | 见 §1.3 |
-| `customPrimaryHL` | `SsI18n.t("weapon.$id.tooltip.customPrimaryHL")` | 见 §1.3（**空值键必须存在**，缺 key 会落键名进 CSV） |
+| `customPrimaryHL` | `SsI18n.t("weapon.$id.tooltip.customPrimaryHL")` | 见 §1.3（高亮数值与"难度系数"；缺 key 会落键名进 CSV） |
 | `noDpsInTooltip` | `false` | DPS 面板正常展示 |
 | `number` | `9220` | 合并协议预分配段位（湮灭涡旋 9220） |
 | `aiHints` / `hints` | 不覆写 | 非 PD 武器，不挂 PD 提示 |
@@ -126,18 +126,18 @@ object Desc_astd_annihilation_vortex : LocalizedDescription("astd_annihilation_v
 
 ### 1.3 i18n 键清单
 
-文件：`ss-csv/src/main/resources/i18n/zh-cn.properties`，**集中插在文件末尾**（合并协议）。键值原文（取自设计案定稿文案，逐字）：
+文件：`ss-csv/src/main/resources/i18n/zh-cn.properties`，**集中插在文件末尾**（合并协议）。键值（tip = 定稿原文 + v2 数值插入，审批通过；name/desc 取自设计案定稿文案逐字）：
 
 ```properties
 weapon.astd_annihilation_vortex.name=湮灭涡旋
-weapon.astd_annihilation_vortex.tooltip.customPrimary=光束终点会展开引力涡旋，将附近的敌方射弹与导弹牵引并吞噬；光束结束时涡旋坍缩爆炸，把吞噬的火力转化为范围能量伤害——吞噬得越多，爆炸越强。效果受到难度系数影响。
-weapon.astd_annihilation_vortex.tooltip.customPrimaryHL=
-weapon.astd_annihilation_vortex.primaryRoleStr=区域拒止,弹药反制
+weapon.astd_annihilation_vortex.tooltip.customPrimary=光束终点会展开引力涡旋，将附近的敌方射弹与导弹牵引并吞噬；光束结束时涡旋坍缩爆炸，把吞噬火力的 100% 转化为范围能量伤害——吞噬得越多，爆炸越强。效果受到难度系数影响。
+weapon.astd_annihilation_vortex.tooltip.customPrimaryHL=100% | 难度系数
+weapon.astd_annihilation_vortex.primaryRoleStr=特殊
 desc.astd_annihilation_vortex.text1=渊暮原种光束武器的逆向工程产物。它将光束终点作为引力锚点展开吞噬涡旋——任何途经的敌方射弹与导弹都会被没收，成为下一次爆炸的燃料。
 desc.astd_annihilation_vortex.notes=研究档案：关于涡旋的成因，学术界至今维持着三种互不兼容的理论：引力透镜效应的亚稳态残留、伪粒子流的自聚集临界，以及"光束只是诱饵，真正开火的是别的东西"。第三种理论的支持者在最近一次实地观测中失去了一整艘探测船和船上全部记录设备——除了最后三秒的弹道摄像：十六枚已发射的反舰导弹调转方向，排着队飞进了那团红光里。
 ```
 
-- `customPrimaryHL` 显式空值（tip 静态无数值，设计案裁定）；**缺 key 会把键名写进 CSV**（`SsI18n.t` 缺 key 返回 key 本身）。
+- `customPrimary` 为设计案定稿原文 + v2 数值插入（100% 转化率；2026-07-29 字段分工铁律，审批通过：显示值统一以 v2 为准，取代设计案"tip 不展示数值"旧口径）；`customPrimaryHL` 高亮数值与"难度系数"。**缺 key 会把键名写进 CSV**（`SsI18n.t` 缺 key 返回 key 本身）。
 - `desc.text2~text5` 不提供（`LocalizedDescription` 读不到键时 fallback 为空串）。
 - 研究档案段落入 `notes` 列（descriptions.csv 的 notes 呈现位，对齐 GCP notes 用法）；深灰斜体样式由 UI 层既有规则处理，本文不在文本内夹带样式标记。
 - 逻辑代码零硬编码文本；HUD 状态栏标题/描述短句（见 §2.3）为运行时战斗 UI 文本，不走 ss-csv，按本地化规范走运行时 I18n（`strings.json` 额外字符串表，键空间 `astd.annihilation_vortex.hud.*`）。
@@ -200,7 +200,7 @@ FIRING ──(beam == null || brightness ≤ 0.05)──▶ COLLAPSE_ONCE ──
   1. `BeamLineUtil.fromBeamOrWeapon(weapon, beam)` 取束几何；前 `BEAM_GROW_TIME = 0.08s` 视觉渐长（仅视觉）。
   2. 驱动束体树（`BeamFrame(..., firing = true, strength = 1f, fadeMul = 1f)`）——涡旋节点读 frame.endpoint 自绘。
   3. 吸收结算：`absorbed = absorb.advance(engine, center = beam.to, radius, absorbRadius = max(30f, radius * 0.25f), sourceOwner = ship.owner, amount)`。
-  4. 逐被吸收弹体：`pool.addAbsorbed(shot.type, shot.baseDamage)`；玩家船携带时节流浮字（见 §2.3）。
+  4. 逐被吸收弹体：`pool.addAbsorbed(shot.type, shot.baseDamage)`；玩家船携带时 `addFloatingDamageText` 入池数值浮字（见 §2.3）。
   5. 玩家船携带时 HUD 刷新（见 §2.3）。
 - **进入 COLLAPSE_ONCE（停火首帧）**：
   1. 坍缩伤害 = `max(pool.convertedTotal, POOL_FLOOR) * aoeMult`。
@@ -222,6 +222,7 @@ for e in candidates:
     reach = dist - e.collisionRadius
     if reach <= absorbRadius:                                      // 吸收
         engine.removeEntity(e)                                     // 弹体移除、不计伤害
+        vortexVfx.onAbsorbed(e.location)                           // 吸收 flare：弹体位置起、快速移向涡旋中心消失（§3）
         results += AbsorbedShot(e.damageType, e.baseDamageAmount)  // 面板伤害用 base（设计：「其面板伤害」）
         continue
     // 牵引：a = PULL_ACCEL_MAX * (1 - dist/radius)，方向指向中心，直接改写 live velocity
@@ -246,8 +247,9 @@ return effective
 | 机制 | 通道 | 落点 |
 |---|---|---|
 | 吞噬池数值 | HUD 左侧状态栏 | 仅 `weapon.ship == engine.playerShip` 时每帧 `engine.maintainStatusForPlayerShip("astd_annihilation_vortex_pool", <武器图标>, <湮灭涡旋>, <吞噬池 X · 坍缩预估 Y>, false)`（样板 `LensMarkStatusBar.kt`）；池移除即停刷新，状态栏自然消失 |
-| 单次吸收 | 自定义浮字（节流） | 玩家船携带时，每 0.4s 合并一次：`addFloatingText(center, "+N", 16f, 深红, null, 0f, 0f)`，N 为本窗口实际入池总量 |
-| 涡旋本体 | 特效 | 端点 `VortexComponent`：深红 DistortionEntity 间隔抛 + 旋转环粒子 + nebula 底尘（玩家与 AI 均可见，AI 侧数值豁免 HUD 的例外不影响视觉） |
+| 单次吸收 | `addFloatingDamageText`（2026-07-29 审批裁定：弃自定义节流浮字，用原生自带合并的浮字通道） | 玩家船携带时，在被吸收弹体位置弹出入池数值浮字（深红），原生合并机制自动聚合同帧多次吸收 |
+| 吸收迁移 | 吸收 flare（2026-07-29 审批裁定新增表现） | 射弹被吸收瞬间在其位置产生一枚深红 flare 粒子，快速移向涡旋中心并消失——"弹体被转换成能量吸走"的迁移表现，由 `VortexComponent` 随吸收事件触发（§3） |
+| 涡旋本体 | 特效（Shader 优先，2026-07-29 审批裁定） | 端点 `VortexComponent`：涡旋面以 **Shader 材质**实现（旋转涡流/极坐标扭曲），DistortionEntity 与粒子只做点缀，不做粒子拼特效（§3）；玩家与 AI 均可见，AI 侧数值豁免 HUD 的例外不影响视觉 |
 | 坍缩爆炸 | 伤害浮字 + 中心浮字 + 特效 | 逐目标 `applyDamage(..., showDamageFloaty = true)` 自动伤害数字；玩家船携带时中心 `addFloatingText(center, <坍缩释放 X>, 28f, 深红, null, ...)`；深红 `spawnExplosion` + 内收 Distortion + nebula 烟云 |
 | 软上限触发 | 浮字（隐性缩放不进文案，但玩家可见池增长放缓由 HUD 数字直接呈现，无需额外通道） | — |
 
@@ -285,7 +287,8 @@ private fun annihilationVortex(): RenderEntity = renderEntity("astd_annihilation
 
 - 参数：单武器固定规格，构建函数无参（scale 恒 1）；`BeamHostImpl` baseWidth 由 `BeamEffect` 传 `BASE_WIDTH = 18f`（对应 `.wpn` width 14 的观感放大，目检可调）。
 - 主色：LENS 深红（核心 `Color(255, 60, 70)`、辉光 `Color(180, 20, 40)`、涡旋环粒子同族），对齐「湮灭涡旋用深红涡旋 + 深红坍缩爆炸」美术口径。
-- `VortexComponent`：读 `RenderContext.frame.endpoint`，`frame.active` 时按 IntervalUtil 间隔抛短寿命 `DistortionEntity`（尺寸随设计半径档位由 BeamEffect 经树参数传入——构建函数闭包捕获不可行时改由 `frame.intensity` 映射，实装时二选一并写明）+ 每帧旋转环粒子（`addSmoothParticle`，6~10 枚环布、角速度恒定）。
+- `VortexComponent`（2026-07-29 审批裁定：**Shader 优先，尽量避免粒子拼特效**）：读 `RenderContext.frame.endpoint`，`frame.active` 时绘制涡旋面——主体为一块面向摄像机的 quad，材质走自定义 Shader（极坐标旋转涡流 + 径向扭曲采样深红星云纹理，角速度/半径随设计半径档位由 BeamEffect 经树参数传入——构建函数闭包捕获不可行时改由 `frame.intensity` 映射，实装时二选一并写明）；`DistortionEntity` 仅作中心引力透镜点缀（低频、小尺寸），粒子只保留少量环布火花，**不以粒子堆叠充当涡旋本体**。
+- **吸收迁移 flare**：`onAbsorbed(location)` 接口（被 §2.2 吸收分支调用）——在被吸收弹体位置生成一枚短寿命深红 flare 粒子，初速指向涡旋中心并加速收束，抵达中心即消亡；实现为 `VortexComponent` 内部维护的迁移粒子列表（位置 + 目标中心 lerp），单发弹一次一枚，粒子在此仅作"能量迁移"语义点缀，符合 Shader 优先原则。
 
 **弹体 VFX 映射键**：本武器为 beam 无 `.proj`，弹体 VFX 管线不涉及；光束树由 `BeamVfxSpecs.build(id)` 直取，无额外 JSON 映射层。
 
@@ -311,7 +314,7 @@ private fun annihilationVortex(): RenderEntity = renderEntity("astd_annihilation
 
 1. dev 仓储取得并装配到大型能量槽与协同槽（两种槽位均验证）。
 2. 开火 2s / 冷却 9s 循环正确；原版光束不可见（Hidden 生效），深红束体 + 端点涡旋可见。
-3. 敌方导弹/射弹进入涡旋：可见被牵引偏航 → 吸入消失、无伤害数字；HUD 吞噬池数值上涨、浮字节流弹出。
+3. 敌方导弹/射弹进入涡旋：可见被牵引偏航 → 吸入消失、无伤害数字；HUD 吞噬池数值上涨、吸收点原生合并浮字弹出、吸收 flare 迁移可见。
 4. 停火坍缩：深红爆炸 + 范围内敌舰伤害数字；玩家船中心「坍缩释放 X」浮字。
 5. 空池停火：保底爆炸仍触发（500 × 1.0 = 500 基础伤害数字）。
 6. 软幅能特性：爆发辐能 3200 符合面板（装配界面目检）。
@@ -353,7 +356,7 @@ private fun annihilationVortex(): RenderEntity = renderEntity("astd_annihilation
 
 - [ ] `Catalog_WeaponData_LENS.kt` 追加 `Wpn_astd_annihilation_vortex`，number=9220，逐列值与本规格 §1.1 一致（重点：burstSize=2.0/burstDelay=9.0/beamSpeed=10000/energyPerSecond=1600/type=ENERGY/tags=no_drop 系）。
 - [ ] `Catalog_Descriptions.kt` WEAPON 分组尾部新增 `Desc_astd_annihilation_vortex`。
-- [ ] `zh-cn.properties` 六个键齐全且文案与设计案逐字一致；`customPrimaryHL` 为显式空值而非缺键。
+- [ ] `zh-cn.properties` 六个键齐全（name/desc 与设计案逐字一致；tip = 定稿原文 + v2 数值插入，审批通过）；`customPrimaryHL` 高亮数值与"难度系数"。
 - [ ] `astd_annihilation_vortex.wpn` 挂载 `HiddenBeamRenderEffect` + `AnnihilationVortexBeamEffect`，size=LARGE，pierceSet 含导弹/射弹五件套。
 - [ ] `./gradlew :ss-csv:generateSsCsv` 产物 weapon_data.csv / descriptions.csv 行正确；`deployMod` 后游戏内装配面板数值与 tip 正确。
 - [ ] `special_items.csv` 无改动。
@@ -367,7 +370,7 @@ private fun annihilationVortex(): RenderEntity = renderEntity("astd_annihilation
 - [ ] 吸收用 `baseDamageAmount`（面板口径）× 类型转换比；软上限分段实现与 §2.2 伪代码一致；保底 500 在坍缩伤害计算处生效。
 - [ ] 坍缩恰好触发一次（停火首帧），半径 = 涡旋半径 × 1.5，`applyDamage` ENERGY 且 `showDamageFloaty = true`；宿主失效路径不坍缩。
 - [ ] 无空 catch、无刻意兜底；异常装配路径均有 WARN/INFO。
-- [ ] 玩家反馈四通道齐：HUD 状态栏（仅玩家船）、吸收节流浮字、坍缩中心浮字、自动伤害数字。
+- [ ] 玩家反馈通道齐：HUD 状态栏（仅玩家船）、吸收 `addFloatingDamageText` 原生合并浮字、吸收迁移 flare、坍缩中心浮字、自动伤害数字。
 
 **特效面**
 

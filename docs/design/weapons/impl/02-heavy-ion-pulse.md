@@ -38,7 +38,7 @@ number 段位按 00-共享基建 §3 预分配：重型离子脉冲 **9212**。`
 | tags | `astd_production` | |
 | groupTag / tech | `astd` / `弧光阵列` | |
 | primaryRoleStr | `SsI18n.t("weapon.$id.primaryRoleStr")` | |
-| customPrimary | `SsI18n.t("weapon.$id.tooltip.customPrimary")` | 无 `{%s}` 占位，不设 customPrimaryHL |
+| customPrimary | `SsI18n.t("weapon.$id.tooltip.customPrimary")` | 无 `{%s}` 占位；HL 高亮数值与"难度系数"（2026-07-29 字段分工铁律） |
 | number | 9212 | |
 | projSpec | 见下 | |
 
@@ -96,17 +96,17 @@ object Desc_astd_heavy_ion_pulse : LocalizedDescription("astd_heavy_ion_pulse", 
 
 ### 1.4 i18n 键清单（`ss-csv/src/main/resources/i18n/zh-cn.properties` 文件末尾集中追加）
 
-设计案定稿原文（tip 静态无数值，机制数值隐性缩放不上 tip）：
+机制文案含 v2 写死数值（2026-07-29 字段分工铁律；01/02 块经用户亲自修正，数值已按用户裁定统一为 v2 显示值）：
 
 ```properties
 # Weapon 名称
 weapon.astd_heavy_ion_pulse.name=重型离子脉冲
 
-# Weapon tooltip 自定义字段
-weapon.astd_heavy_ion_pulse.tooltip.customPrimary=命中船体或装甲时，有 25% 的概率产生打击武器与引擎的电弧，造成该武器命中目标时 100% 的额外伤害。
-weapon.astd_heavy_ion_pulse.tooltip.customPrimaryHL=25% | 100%
+# Weapon tooltip 自定义字段（数值以 v2 为准：泄放概率 31.25%、EMP 125%）
+weapon.astd_heavy_ion_pulse.tooltip.customPrimary=命中船体或装甲时，有 31.25% 的概率产生打击武器与引擎的电弧，造成该武器命中目标时 125% 的额外伤害。效果受到难度系数影响。
+weapon.astd_heavy_ion_pulse.tooltip.customPrimaryHL=31.25% | 125% | 难度系数
 
-# Weapon 定位（原版 ionpulser 为「瘫痪」，本件加「压制」前缀，提案待评审）
+# Weapon 定位（2026-07-29 审批修正：与原版 ionpulser 同用「瘫痪」）
 weapon.astd_heavy_ion_pulse.primaryRoleStr=瘫痪
 
 # descriptions.csv（提案文案，评审时确认）
@@ -119,10 +119,10 @@ desc.astd_heavy_ion_pulse.notes=
 
 ### 1.5 `special_items.csv` 条目（`contents/data/campaign/special_items.csv` 文件末尾追加，order 列留空）
 
-量产件 P2 走单件蓝图（90 计划 §14），plugin params 用原版 `WeaponBlueprintItemPlugin` 的 `weapon:<id>` 口径；带 `single_bp` 标签时 params 必填（`ASTDDevContentSelector.SPECIAL_ITEM_PARAM_REQUIRED_TAGS/IDS` 核实），dev 仓储会自动投放：
+量产件 P2 走单件蓝图（90 计划 §14），plugin params 用**裸武器 id**（2026-07-29 主代理裁决：反编译 `WeaponBlueprintItemPlugin.init` 证实 params 直接传 `getWeaponSpec(data)`，`weapon:` 前缀会导致 spec 为 null）；带 `single_bp` 标签时 params 必填（`ASTDDevContentSelector.SPECIAL_ITEM_PARAM_REQUIRED_TAGS/IDS` 核实），dev 仓储会自动投放：
 
 ```csv
-重型离子脉冲蓝图,astd_heavy_ion_pulse_bp,"weapon_bp, single_bp, no_drop, no_drop_salvage",阿斯忒里亚遗构局,,24000,1,0,,graphics/icons/cargo/blueprint_weapons.png,ui_chip_pickup,ui_weapon_bp_drop,com.fs.starfarer.api.campaign.impl.items.WeaponBlueprintItemPlugin,weapon:astd_heavy_ion_pulse,使重工业设施能够制造「重型离子脉冲」。,
+重型离子脉冲蓝图,astd_heavy_ion_pulse_bp,"weapon_bp, single_bp, no_drop, no_drop_salvage",阿斯忒里亚遗构局,,24000,1,0,,graphics/icons/cargo/blueprint_weapons.png,ui_chip_pickup,ui_weapon_bp_drop,com.fs.starfarer.api.campaign.impl.items.WeaponBlueprintItemPlugin,astd_heavy_ion_pulse,使重工业设施能够制造「重型离子脉冲」。,
 ```
 
 `no_drop, no_drop_salvage` 为 P6 前口径（P6 接入量产蓝图投放时摘除）。
@@ -348,7 +348,7 @@ empPierceExtra(emp, mult): Float =
 - [ ] `.proj`：`onHitEffect` 指向 `HeavyIonPulseOnHitEffect`，`onFireEffect` 指向 dispatcher，原版弹体隐藏四件套齐全（length/width=2、双色 alpha=0、BUtil_NONE、fadeTime=0.2）。
 - [ ] `.wpn`：size LARGE、**双炮管坐标 + ALTERNATING**、projectileSpecId 正确、everyFrameEffect 挂载、sound `ion_pulser_fire`。
 - [ ] zh-cn.properties 键齐全且 tip 为设计案定稿原文；desc.text1/notes 已评审确认。
-- [ ] special_items.csv 一行 params = `weapon:astd_heavy_ion_pulse`，order 留空。
+- [ ] special_items.csv 一行 params = `astd_heavy_ion_pulse`（裸 id，无前缀），order 留空。
 
 **代码面**
 

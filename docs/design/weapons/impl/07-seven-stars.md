@@ -22,7 +22,7 @@ object Wpn_astd_seven_stars : WeaponDataEntry(), SsProjProjectileOutputs {
     override val id: String = "astd_seven_stars"
     override val name: String = weaponName(id)            // weapon.astd_seven_stars.name
     override val tier: Int = 3                            // 超规格对标 aod7
-    override val baseValue: Int = 60000                   // 提案：超规格溢价（aod7 为 50000），可评审调整
+    override val baseValue: Int = 150000                  // 2026-07-29 审批裁定（弃 60000 提案）
     override val range: Int = 800
     override val damagePerSecond: Int = 125               // 250 / 2s，tooltip 展示口径
     override val damagePerShot: Int = 250
@@ -108,8 +108,8 @@ object Wpn_astd_seven_stars : WeaponDataEntry(), SsProjProjectileOutputs {
 
 ```properties
 weapon.astd_seven_stars.name=“七星”折跃发射器
-weapon.astd_seven_stars.tooltip.customPrimary=发射时立即折跃射弹至目标位置并产生一次闪光十字爆炸，造成等额面板伤害，如果成功摧毁目标会在短暂延迟后立即折跃至下一个可打击目标。\n\n折跃后的射弹如果无法找到点防御目标，或者折跃次数已达 {%s} 次，则选择最近的舰船单位引发一次闪光十字爆炸。
-weapon.astd_seven_stars.tooltip.customPrimaryHL=7
+weapon.astd_seven_stars.tooltip.customPrimary=发射时立即折跃射弹至目标位置并产生一次闪光十字爆炸，造成等额面板伤害，如果成功摧毁目标会在短暂延迟后立即折跃至下一个可打击目标。\n\n折跃后的射弹如果无法找到点防御目标，或者折跃次数已达 {%s} 次，则选择最近的舰船单位引发一次闪光十字爆炸。效果受到难度系数影响。
+weapon.astd_seven_stars.tooltip.customPrimaryHL=7 | 难度系数
 weapon.astd_seven_stars.primaryRoleStr=折跃点防
 desc.astd_seven_stars.text1=定向折跃拦截系统。它将整枚射弹作为可投掷的闪光弹头使用——发射瞬间即完成空间跃迁，在目标坐标引爆一团十字形强光。每一次成功摧毁都会为弹头重新充能，让它跃向下一处火光，直至七次跃迁耗尽，或天空再无可燃之物。若半途再无小型目标可供追猎，弹头会把剩余的跃迁次数尽数倾泻到最近的敌舰上——多段十字闪光沿舰体次第绽开，直至最后一道熄灭。
 desc.astd_seven_stars.notes=观测档案摘录：首次遭遇它的舰长坚称记录仪出了故障——弹道摄像里没有任何飞行物，只有七道十字闪光几乎同时亮起，宛如北斗横陈于战场之上。七道闪光之后，整波导弹群在同一秒内熄灭。这个名字由此流传开来。
@@ -118,8 +118,8 @@ desc.astd_seven_stars.notes=观测档案摘录：首次遭遇它的舰长坚称�
 口径说明：
 
 - 名称用弯引号 `“七星”`（90-plan 命名说明：`「」` 会被原版字体识别为无效符号）。
-- tip 为玩家版单段终结口径（2026-07-28 微调：多段终结为破晓敌版限定，玩家 tip 不描述）；难度数值隐性缩放不进 tip（设计案缩放口径注记）。
-- `{%s}` 占位 1 个（7 次），与 `customPrimaryHL=7` 对齐；多行用 `\n\n`（csv-text 规范）。
+- tip 为玩家版单段终结口径（2026-07-28 微调：多段终结为破晓敌版限定，玩家 tip 不描述）；按 2026-07-29 字段分工铁律补"效果受到难度系数影响。"收尾，HL 追加"难度系数"高亮（折跃次数 7 为恒定值不缩放，伤害倍率隐性缩放口径与设计案一致）。
+- `{%s}` 占位 1 个（7 次），取 HL 首段 `7` 填充，后段"难度系数"为纯高亮文本；多行用 `\n\n`（csv-text 规范）。
 - 观测档案摘录落 `notes`（descriptions.csv notes 列在游戏中以深灰小字呈现，对应设计案"深灰斜体"诉求；`text2~text5` 留空不生成键）。
 
 ### 1.4 `Catalog_Descriptions.kt` 条目
@@ -240,7 +240,7 @@ fun decideAfterFlash(kills: Int, jumps: Int, hasPdCandidates: Boolean): ChainDec
 
 **`SevenStarsChainScript.advance(amount)`**：
 
-```
+```kotlin
 if (engine.isPaused) return
 if (!engine.isEntityInPlay(projectile) || projectile.isFading) { isDone=true; return }  // 引用失效自收口
 timer += amount
@@ -306,7 +306,7 @@ fun enterTerminal() {
 | 对舰终结（v5 多段） | 沿舰体 0.12s 间隔次第绽开的递增十字闪光 + 每段 EMP 电弧连向武器/引擎槽 + 每段伤害数字 | 特效 + `spawnEmpArcVisual` + 伤害浮字 |
 | 消散（无处可去/未击杀断链） | 弹着点小星云淡出，无爆炸 | 粒子 |
 
-每跳「折跃电弧 + 十字闪光 + 伤害数字」同帧触发，满足"机制变化同帧至少一个反馈通道"的铁律；无数值文本（伤害倍率隐性缩放口径与设计案一致）。
+每跳「折跃电弧 + 十字闪光 + 伤害数字」同帧触发，满足"机制变化同帧至少一个反馈通道"的铁律；无数值文本（伤害倍率隐性缩放口径与设计案一致）。伤害浮字全部由 `applyDamage(showDamageNumbers = true)` 原生弹出（2026-07-29 审批确认：原生已弹字，不另绘自定义浮字）。
 
 ### 2.4 0 值与边界处理（对照实现注意事项 3）
 

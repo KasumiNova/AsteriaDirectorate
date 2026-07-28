@@ -112,8 +112,8 @@ override val projSpec: ProjectileProjSpec = ProjectileProjSpec(
 | 键 | 值 | 来源 |
 |---|---|---|
 | `weapon.astd_positron_shockwave.name` | `正电子冲击波` | 设计案定名 |
-| `weapon.astd_positron_shockwave.tooltip.customPrimary` | `射弹在接近导弹或战机时自动引爆，沿飞行方向产生锥状冲击，对范围内所有目标造成破片伤害。效果受到难度系数影响。` | 设计案「玩家可见机制文本」裁定原文 |
-| `weapon.astd_positron_shockwave.tooltip.customPrimaryHL` | （空字符串） | 裁定 tip 无 `{%s}` 占位，HL 置空保持键位齐全 |
+| `weapon.astd_positron_shockwave.tooltip.customPrimary` | `射弹在接近导弹或战机时自动引爆，沿飞行方向产生锥状冲击，对范围内所有目标造成 125% 的破片伤害。效果受到难度系数影响。` | 设计案「玩家可见机制文本」裁定原文 + v2 数值插入（2026-07-29 字段分工铁律，审批通过） |
+| `weapon.astd_positron_shockwave.tooltip.customPrimaryHL` | `125% | 难度系数` | 字段分工铁律：高亮数值与"难度系数" |
 | `weapon.astd_positron_shockwave.primaryRoleStr` | `点防御` | 提案（原版 PD 角色词惯例） |
 | `desc.astd_positron_shockwave.text1` | `弧光科研部的点防御近炸弹。射弹附近存在目标时，会引爆内部的正电子装药，将锥形破片雨泼向来袭的导弹与战机。对敌方的蜂群式导弹效果极佳。` | 设计案「文案」用户优化后裁定原文 |
 | `desc.astd_positron_shockwave.text2~text5`、`desc.astd_positron_shockwave.notes` | **不添加** | 设计案只裁定一段描述；`LocalizedDescription` 的 `desc()` 带空串 fallback，缺键输出空列，无需占位 |
@@ -181,7 +181,7 @@ fun resolve(source: ShipAPI?): Resolved {
 
 **状态机**（FuseScript，两状态 `FLYING → DONE`，无定时器族）：
 
-```
+```kotlin
 onFire(projectile, weapon, engine):                      // PositronShockwaveOnFireEffect
     if (engine.isPaused) return
     source = weapon.ship
@@ -220,11 +220,13 @@ detonateAndFinish(engine, loc, dir):                      // 结算顺序：几�
     ConeImpactVfx.spawn(engine, loc, dir, spec.halfAngleDeg, spec.range, POSITRON_BLUE)  // 蓝色调缩小版
     engine.spawnExplosion(loc, ZERO, Color(140, 200, 255, 90), spec.range * 0.25f, 0.15f)
     Global.getSoundPlayer().playSound("explosion_flak", 1f, 0.9f, loc, ZERO)             // 音源已核实存在
-    if (sourceShip?.owner == 0 && targets.isNotEmpty())                                  // 机制可视化铁律：引爆计数浮字
+    if (DEV_MODE && sourceShip?.owner == 0 && targets.isNotEmpty())                     // 引爆计数浮字：仅调试/烟测模式
         engine.addFloatingText(loc, "近炸命中 ×${targets.size}", 16f, Color(180, 220, 255), sourceShip, 0f, 0f)
     engine.removeEntity(projectile)
     done = true
 ```
+
+- `DEV_MODE = Global.getSettings().isDevMode()`（`SettingsAPI.isDevMode()` 存在，03 已核实登记）。2026-07-29 审批裁定：引爆计数浮字**只在开发者/烟测模式显示**，正常玩家只看锥面特效，不看调试计数。
 
 **结算顺序约定**：先 `ConeImpactHandler.resolve` 拿命中清单（`applyDamage` 不触发 onHitEffect，无回环风险，基建 §2.2-4 已核实），再画 VFX/浮字，最后 `removeEntity(projectile)`（先结算后移除，保证引爆帧弹体仍是合法伤害来源上下文）。
 
@@ -237,7 +239,7 @@ detonateAndFinish(engine, loc, dir):                      // 结算顺序：几�
 | 弹体存在 | 弹体 VFX：小型白蓝箭弹短拖尾 | `ProjectileVfxSpecs` 登记（§3） |
 | 锥状引爆（范围/伤害） | 锥面冲击 VFX（蓝色调、约贯星 50% 规模）+ 小型蓝闪 `spawnExplosion` + `explosion_flak` 音效 | FuseScript.detonate |
 | 命中结算 | 原版伤害浮字（`applyDamage` 末参 `showFloaty = true`） | ConeImpactHandler 内部（基建既有） |
-| 引爆成效（玩家侧） | 自定义浮字「近炸命中 ×n」（仅 `source.owner == 0` 且命中数 >0） | FuseScript.detonate，对照基建 §4.2「正电子引爆计数」 |
+| 引爆成效（玩家侧） | 自定义浮字「近炸命中 ×n」（仅 devMode + `source.owner == 0` 且命中数 >0；2026-07-29 审批裁定：正常玩家不显示，只看锥面特效） | FuseScript.detonate，对照基建 §4.2「正电子引爆计数」 |
 | HUD | **不配置** | 无常驻数值状态（层数/倍率均不随时间变化；难度数值对玩家恒定 v2），不触发「有机制无反馈」 |
 
 ### 2.4 0 值与边界处理（对照实现注意事项 3）
@@ -302,7 +304,7 @@ detonateAndFinish(engine, loc, dir):                      // 结算顺序：几�
 3. **近炸引爆**：敌导弹群来袭时弹体在导弹/战机进入锥面即引爆，集群被成片清除；观察伤害数字 = 250（v2）。
 4. **最大射程无条件自爆**：向空域发射，弹体抵达 600su 时自爆（有锥面 VFX 与音效），无静默消散。
 5. **舰船蹭波及**：敌舰恰在锥面边缘时吃到破片伤害，但舰船**不触发**近炸（只对空发射到射程自爆才波及）。
-6. 引爆浮字「近炸命中 ×n」仅玩家侧出现；弹体白蓝短拖尾、引爆蓝色调锥面，目检不抢主炮视觉。
+6. 引爆浮字「近炸命中 ×n」仅 devMode 玩家侧出现（正常模式不可见）；弹体白蓝短拖尾、引爆蓝色调锥面，目检不抢主炮视觉。
 7. PD 行为：AI 装配后优先攻击导弹（hints=PD 生效）。
 8. automation 到达终态即退出，不干等超时（烟测后必关游戏）。
 
@@ -345,7 +347,7 @@ detonateAndFinish(engine, loc, dir):                      // 结算顺序：几�
 - [ ] `projSpec` 为字面量构造，`collisionClass = "NONE"`、`onHitEffect = null`、隐藏四件套齐全；未改 `ProjProjectileSpec.kt`
 - [ ] `./gradlew :ss-csv:generateSsCsv` 产物中 `weapon_data.csv` 行、`.proj` 内容正确；`copyContents` 叠加生效
 - [ ] `.wpn` 三个插件挂载点（dispatcher / bootstrap / projectileSpecId）与 §1.2 一致
-- [ ] i18n 五键齐全且文案与设计案裁定原文逐字一致；`text2~5/notes` 无占位键
+- [ ] i18n 五键齐全（name/desc 与设计案裁定原文逐字一致；tip = 裁定原文 + v2 数值插入，审批通过）；`text2~5/notes` 无占位键
 - [ ] `Desc_astd_positron_shockwave` 在 WEAPON 分组尾部
 - [ ] `special_items.csv` 蓝图行 params = `astd_positron_shockwave`、`order` 留空
 
@@ -355,7 +357,7 @@ detonateAndFinish(engine, loc, dir):                      // 结算顺序：几�
 - [ ] 结算顺序 = 结算 → VFX/浮字 → `removeEntity`；`showFloaty = true`
 - [ ] 近炸 filter 严格只导弹/战机/无人机且剔除同方与 hulk；舰船不触发近炸
 - [ ] 0 值防线三条（速度近零 WARN 跳帧 / moveSpeed=0 ERROR 立即引爆 / 射程边界含等号）均有日志、无空 catch
-- [ ] 玩家侧引爆浮字仅在 `owner==0 && targets.isNotEmpty()` 时触发；无 HUD（无常驻状态，合规）
+- [ ] 玩家侧引爆浮字仅在 `devMode && owner==0 && targets.isNotEmpty()` 时触发（正常模式无浮字）；无 HUD（无常驻状态，合规）
 
 **特效面**
 - [ ] `ProjectileVfxSpecs` 条目在 map 末尾、调色板为分支内内联字面量（未加共享调色板函数）

@@ -44,15 +44,15 @@
 | `type` | `"KINETIC"` | 定案动能 |
 | `energyPerShot` | `900` | 定案（辐伤比 1.5） |
 | `energyPerSecond` | `450` | 900 / 2s |
-| `projSpeed` | `1500`（提案，目检确认） | 高斯炮约 1200，1200 射程轨道炮取更高 |
+| `projSpeed` | `1200`（2026-07-29 审批裁定，弃 1500 提案） | 与高斯炮同速 |
 | `ops` | `27` | 定案 |
 | `ammo` / `ammoPerSec` / `reloadSize` | 默认 `0` 不覆写（无限弹药） | 定案无弹匣 |
 | `aiHints` | 默认空（不覆写） | 非 PD |
 | `tags` | `"astd_production"` | 量产 |
 | `groupTag` | `"astd"`；`tech` | `"弧光阵列"` |
 | `primaryRoleStr` | `SsI18n.t("weapon.$id.primaryRoleStr")` | gcp/spc3 同款 |
-| `customPrimary` | `SsI18n.t("weapon.$id.tooltip.customPrimary")` | gcp 同款；tip 为静态无数值文本，**不含 `{%s}`** |
-| `customPrimaryHL` | **不覆写**（默认 `""`） | customPrimary 无占位符，登记空 HL 键无意义 |
+| `customPrimary` | `SsI18n.t("weapon.$id.tooltip.customPrimary")` | gcp 同款；机制文案含 v2 写死数值，**不含 `{%s}`** |
+| `customPrimaryHL` | `SsI18n.t("weapon.$id.tooltip.customPrimaryHL")` | 高亮数值与"难度系数"（2026-07-29 字段分工铁律） |
 | `number` | **`9214`** | 00-共享基建 §3 预分配段（穷距 9214） |
 
 `projSpec`：**不用** `ProjectileProjSpec.standard()`（其 length=24/width=8 不符合弹体隐藏四件套），显式构造，照 `Wpn_astd_aod7` 样板：
@@ -111,12 +111,13 @@ override val projSpec: ProjectileProjSpec = ProjectileProjSpec(
 | 键 | 值 | 来源 |
 |---|---|---|
 | `weapon.astd_qiongjue_phase_railgun.name` | `“穷距”相位轨道炮` | 定案名（弯引号，对齐七星命名口径；「」为原版字体无效符号，禁用） |
-| `weapon.astd_qiongjue_phase_railgun.tooltip.customPrimary` | `连续命中同一目标会逐步提高本武器的伤害与射速；切换目标会损失大部分加成，长时间未命中也会逐渐衰减。效果受到难度系数影响。` | 设计案 tip 原文（静态无数值） |
-| `weapon.astd_qiongjue_phase_railgun.primaryRoleStr` | `远程压制,持续打击` | 提案（gcp 先例为逗号分隔双角色） |
+| `weapon.astd_qiongjue_phase_railgun.tooltip.customPrimary` | `连续命中同一目标会逐步提高本武器的伤害与射速（每层 +6.25%，至多 10 层）；切换目标会损失大部分加成，长时间未命中也会逐渐衰减。效果受到难度系数影响。` | 设计案 tip 原文 + v2 数值插入（2026-07-29 字段分工铁律，审批通过） |
+| `weapon.astd_qiongjue_phase_railgun.tooltip.customPrimaryHL` | `6.25% | 10 | 难度系数` | 字段分工铁律：高亮数值与"难度系数" |
+| `weapon.astd_qiongjue_phase_railgun.primaryRoleStr` | `压制` | 2026-07-29 审批修正（弃「远程压制,持续打击」提案） |
 | `desc.astd_qiongjue_phase_railgun.text1` | `弧光科研部的长程动能主炮。使用独特的相位弹头来干扰敌方护盾稳定性，持续施加动能压力，并在击中后持续校准武器自身的相位谐波。` | 设计案文案原文（2026-07-29 用户换稿） |
-| `desc.astd_qiongjue_phase_railgun.notes` | `咬住一个目标，它就会替你偿还所有旧账。` | 提案（gcp12 notes 风格），可换稿 |
+| `desc.astd_qiongjue_phase_railgun.notes` | **不添加** | 设计案未提供 notes；可选字段留空，禁止自创（字段分工铁律） |
 
-- `tooltip.customPrimaryHL`、`desc.*.text2~text5`：不登记（见 §1.1）。
+- `desc.*.text2~text5`：不登记（见 §1.1）。
 - HUD 状态条与浮字文案走 `I18n[I18n.Categories.MOD, ...]`（`LensMarkStatusBar.kt` 同款），键 `ui.qiongjue.status.calc`（`持续演算`）、`ui.qiongjue.status.stacks`（`层数 {stacks}/10 · 伤害 +{dmg}% · 射速 +{rof}%`）、`ui.qiongjue.float.transfer`（`演算转移`）、`ui.qiongjue.float.full`（`演算完成`），登记在 MOD 类字符串表（非本 properties 文件，按 localization-guidelines）。
 
 `Catalog_Descriptions.kt` 追加（WEAPON 分组尾部、`Desc_astd_psi_omega` 之后）：
@@ -145,7 +146,7 @@ object Desc_astd_qiongjue_phase_railgun : LocalizedDescription("astd_qiongjue_ph
 
 | 类名 | 接口/实现 | 职责 | 挂载点 | 文件路径 |
 |---|---|---|---|---|
-| `QiongjuePhaseRailgunOnHitEffect` | `OnHitEffectPlugin` 实现（jar 签名已核实：`onHit(projectile, target, point, shieldHit, damageResult, engine)`） | 命中结算：目标类型过滤 → 同/异目标叠层/折算 → 刷新命中时间 → 触发浮字/白闪 | `.proj` 的 `onHitEffect` | `src/main/kotlin/cn/kasuminova/astd/combat/effect/arc/qiongjue/QiongjuePhaseRailgunOnHitEffect.kt` |
+| `QiongjuePhaseRailgunOnHitEffect` | `OnHitEffectPlugin` 实现（jar 签名已核实：`onHit(projectile, target, point, shieldHit, damageResult, engine)`） | 命中结算：目标类型过滤 → 同/异目标叠层/折算 → 刷新命中时间 → 触发浮字/命中锥面特效 | `.proj` 的 `onHitEffect` | `src/main/kotlin/cn/kasuminova/astd/combat/effect/arc/qiongjue/QiongjuePhaseRailgunOnHitEffect.kt` |
 | `QiongjueCalcStacks` | `StackableBuff : Buff` 实现（基建接口，decayMode = `WINDOWED`） | 单武器实例叠层状态（层数/当前目标/最后命中时间/衰减累加器）；`advance` 内做 3s 窗口衰减 + 伤害/射速乘区刷新 + 玩家 HUD；`onRemove` 清理乘区 | 基建 `BuffHost` Weapon 级复合键，由 `BuffTickPlugin` 心跳 | 同包 `QiongjueCalcStacks.kt` |
 | `QiongjueStackMath` | 纯函数 object（不依赖 Starsector API） | 叠层/折算/衰减/倍率/难度取值的纯逻辑核心，供单测完整驱动 | 被上述两类调用 | 同包 `QiongjueStackMath.kt` |
 | `QiongjuePhaseRailgunDifficulty` | object | 三条 `ScalingEntry` 常量（每层加成/切换保留/衰减速率） | 被 `QiongjueStackMath` 调用 | 同包 `QiongjuePhaseRailgunDifficulty.kt` |
@@ -167,7 +168,7 @@ const val DECAY_WINDOW_SECONDS = 3f
 
 **OnHit（`QiongjuePhaseRailgunOnHitEffect.onHit`）**——结算顺序：
 
-```
+```kotlin
 1. target !is ShipAPI 或 target.isFighter → return（战机/导弹不叠层、不触发异目标折算）
 2. ship = projectile.source；weapon = projectile.weapon
    ship == null → return；weapon == null → log WARN（无法定位武器级 buff，属异常路径）+ return
@@ -187,12 +188,12 @@ const val DECAY_WINDOW_SECONDS = 3f
        }
    }
 6. buff.lastHitTime = hitTime
-7. 命中白闪（小型，克制）+ 满层边沿触发浮字「演算完成」（仅 stacks 首次到 10 时，玩家船）
+7. 命中小号锥面特效（§3.2）+ 满层边沿触发浮字「演算完成」（仅 stacks 首次到 10 时，玩家船）
 ```
 
 **状态机（`QiongjueCalcStacks.advance(amount)`，BuffTickPlugin 每帧驱动；暂停由基建跳过）**：
 
-```
+```kotlin
 1. now = engine.getTotalElapsedTime(false)
 2. 难度取值：perStack/retainPct/decayRate = QiongjueStackMath.resolve(entry, ship.owner) 每帧重取
    （玩家 owner==0 恒 v2；AI 走 DifficultyTuningImpl.value(entry)——LunaLib 热变更即时生效，成本可忽略）
@@ -212,7 +213,7 @@ const val DECAY_WINDOW_SECONDS = 3f
    // dmgModId = "astd_qiongjue_dmg:<slotId>"；rofModId = "astd_qiongjue_rof:<slotId>"
    // slotId 后缀保证同舰双穷距互不覆盖（MutableStat modifier 以 id 为键）
 5. 玩家 HUD（仅 ship == engine.playerShip && stacks > 0）：
-   engine.maintainStatusForPlayerShip("astd_qiongjue_status", 图标, "持续演算",
+   engine.maintainStatusForPlayerShip("astd_qiongjue_status", 图标, "穷距",
        "层数 x/10 · 伤害 +a% · 射速 +b%", negative = false)
 ```
 
@@ -223,7 +224,7 @@ const val DECAY_WINDOW_SECONDS = 3f
 
 **难度取值调用点（玩家固定 v2 口径）**——`QiongjueStackMath.resolve(entry, owner)` 纯函数：
 
-```
+```kotlin
 fun resolve(entry: ScalingEntry, owner: Int): Float =
     if (owner == 0) entry.v2 else DifficultyTuningImpl.value(entry)
 ```
@@ -238,7 +239,7 @@ fun resolve(entry: ScalingEntry, owner: Int): Float =
 | 异目标折算 | 自定义浮字 `engine.addFloatingText(point, "演算转移", ...)` | 仅命中来源为玩家船时显示（避免满屏 AI 浮字），白色 |
 | 满层达成 | 自定义浮字「演算完成」 | 边沿触发（9→10 瞬间一次，不重复） |
 | 叠层生效本体 | 伤害数字自然变大 + 射速自然加快（原版伤害浮字自带） | 不额外加浮字，避免噪音 |
-| 命中反馈 | 小型白闪 hitParticle（克制） | `engine.addHitParticle` 白色短闪 |
+| 命中反馈 | 小号锥面冲击特效（纯视觉，无结算） | 基建 `ConeImpactVfx` 小号参数（§3.2） |
 | 弹体 | texTrail 管线 | §3 |
 
 ### 2.4 0 值与边界处理（对照实现注意事项 3）
@@ -255,7 +256,7 @@ fun resolve(entry: ScalingEntry, owner: Int): Float =
 | 伤害/射速为乘区正算（`1 + stacks*x` 直接乘） | 不涉及从终值反推修正量，无除零点 |
 | 衰减累加器 | `pendingDecay` 上限 clamp 到 `stacks + 1f`（长时间挂机恢复后不会一次性狂扣，帧率抖动下扣层速率不失真） |
 
-**射速修正的已知副作用（90-计划风险 #9 落位）**：Starsector 无 per-weapon RoF API，本规格以 `ship.mutableStats.ballisticRoFMult` 实现——**同舰其他实弹武器射速会同步变化**。实装 spike 时先试 `weapon.setRemainingCooldownTo(...)` 方案（jar 已核实存在）30 分钟：若能在冷却结算点精确扣减且不抖动，则改用之；否则回退 RoF 乘区并在武器描述 notes 与验收文档中登记该副作用。**禁止**静默二选一，PR 描述必须写明最终选择与目检结论。
+**射速修正的已知副作用（90-计划风险 #9 落位）**：Starsector 无 per-weapon RoF API，本规格以 `ship.mutableStats.ballisticRoFMult` 实现——**同舰其他实弹武器射速会同步变化**。实装 spike 时先试 `weapon.setRemainingCooldownTo(...)` 方案（jar 已核实存在）30 分钟：若能在冷却结算点精确扣减且不抖动，则改用之；否则回退 RoF 乘区并在武器描述 notes 与验收文档中登记该副作用。**禁止**静默二选一，PR 描述必须写明最终选择与目检结论。**本项风险列入收口清单（2026-07-29 审批裁定）：任务收尾时明确注明，十组全部收尾后单独解决，不在本分支内处置。**
 
 ### 2.5 测试面
 
@@ -307,9 +308,12 @@ fun resolve(entry: ScalingEntry, owner: Int): Float =
 - ribbon=false：单带细长光矛观感，不上电弧副带（克制，不抢贯星大光柱）。
 - 主色：美术主色口径「穷距用白色弹体与明亮拖尾」（90-计划全局约定），ASTDColor(0.92, 0.95, 1.0) 为微冷白。
 
-### 3.2 命中白闪
+### 3.2 命中特效
 
-`OnHitEffect` 内 `engine.addHitParticle(point, ...)` 白色小闪（size≈30、亮度克制、duration≈0.3s），参数目检微调；不引入新 RenderEntity 组件。
+命中反馈（2026-07-29 审批裁定：弃 `addHitParticle` 白闪，改用小号锥状冲击特效）：
+
+- 命中瞬间沿射弹矢量触发**基建锥面 VFX 小号版**（`ConeImpactVfx`，第 0 波 PR#2 产物，与正电子/贯星同族）：纯视觉调用，锥角/锥长按"约贯星 25% 规模"起始（起始提案 halfAngle≈12°、range≈90su、冷白主色），无伤害结算——穷距没有锥状冲击机制，此处仅借用锥面视觉表达相位弹头的命中质构。
+- 参数目检微调；依赖第 0 波基建先合并（本组在第 1 波，时序天然满足，编排册依赖表无需新增条目——视觉复用非代码阻塞项）。
 
 ---
 
@@ -355,7 +359,7 @@ fun resolve(entry: ScalingEntry, owner: Int): Float =
 
 **数据面**
 
-- [ ] `Catalog_WeaponData_ARC.kt`：`Wpn_astd_qiongjue_phase_railgun` 列值与 §1.1 一致（重点：number=9214、ops=27、range=1200、chargedown=2.0、type=KINETIC、customPrimaryHL 未覆写）
+- [ ] `Catalog_WeaponData_ARC.kt`：`Wpn_astd_qiongjue_phase_railgun` 列值与 §1.1 一致（重点：number=9214、ops=27、range=1200、chargedown=2.0、type=KINETIC、customPrimaryHL 已覆写）
 - [ ] `.proj` 生成物：隐藏四件套齐全（length/width=2、双色 alpha=0、BUtil_NONE、fadeTime=0.2）、`onHitEffect`/`onFireEffect` 类名字符串与 §1.1 一致
 - [ ] `.wpn`：插件挂载点齐全（everyFrameEffect=CombatVfxBootstrap、projectileSpecId 正确）；美术贴图到位（empty.png 状态视为未完工）
 - [ ] zh-cn.properties 五键齐全且值与设计案原文一致（name 弯引号、tip/文案原文）
@@ -376,7 +380,7 @@ fun resolve(entry: ScalingEntry, owner: Int): Float =
 **特效面**
 
 - [ ] builders 条目追加在 map 末尾、内联调色板字面量（未新增 white() 函数）
-- [ ] 弹体观感：白色细长 + 长亮拖尾；命中白闪克制
+- [ ] 弹体观感：白色细长 + 长亮拖尾；命中小号锥面特效克制不抢戏
 
 **测试面**
 

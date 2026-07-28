@@ -55,8 +55,8 @@
 | `tags` | `"no_drop, no_drop_salvage"` | P6 前口径（90-计划 §14）；P6 后改稀有赏金掉落，另立任务 |
 | `groupTag` | `"astd"`；`tech` | `"透镜矩阵"` | LENS 族惯例 |
 | `primaryRoleStr` | `SsI18n.t("weapon.$id.primaryRoleStr")` | §1.3 |
-| `customPrimary` | `SsI18n.t("weapon.$id.tooltip.customPrimary")` | §1.3（tip 静态无数值） |
-| `customPrimaryHL` | `SsI18n.t("weapon.$id.tooltip.customPrimaryHL")` | §1.3（**空值键必须存在**，缺 key 会落键名进 CSV——04 已踩点确认） |
+| `customPrimary` | `SsI18n.t("weapon.$id.tooltip.customPrimary")` | §1.3（机制文案 + v2 数值） |
+| `customPrimaryHL` | `SsI18n.t("weapon.$id.tooltip.customPrimaryHL")` | §1.3（高亮数值与"难度系数"；缺 key 会落键名进 CSV——04 已踩点确认） |
 | `number` | **`9217`** | 00-共享基建 §3 预分配段（辉星 9217/9218） |
 
 **`Wpn_astd_stellar_mrm_pod`** 差异列（其余与发射器完全相同）：
@@ -121,7 +121,7 @@ override val projSpec: MissileProjSpec = MissileProjSpec(
     "animationType": "MUZZLE_FLASH",
     "projectileSpecId": "astd_stellar_mrm_launcher_shot",
     "everyFrameEffect": "cn.kasuminova.astd.combat.effect.generic.CombatVfxBootstrapEveryFrameEffect",
-    "fireSoundTwo": "harpoon_fire"
+    "fireSoundTwo": "amsrm_fire"
 }
 ```
 
@@ -129,30 +129,30 @@ override val projSpec: MissileProjSpec = MissileProjSpec(
 
 - 插件挂载点：`everyFrameEffect` = 现成 VFX 安全网（aod7 同款，onFire 未触发时兜底装 dispatcher）；`onFireEffect`/`onHitEffect` 在 `.proj`（ss-csv 生成）。
 - **美术资产待补**：发射架贴图 `graphics/weapons/astd_stellar_mrm_base.png`（命名对齐 aod7 惯例）。机制分支阶段允许先填 `graphics/fx/empty.png` 跑烟测（aod7 现役同款状态），**贴图到位前不算完工**（列入验收目检项）。挂架贴图到位后按实尺寸校正 offsets。
-- `fireSoundTwo = harpoon_fire`：提案（MRM 定位对齐鱼叉听觉），耳检可换。
+- `fireSoundTwo = amsrm_fire`：2026-07-29 审批裁定（弃 harpoon_fire 提案，用反物质 SRM 发射音效；音效 id 已在原版 `amsrm.wpn` 核实）。
 - 不挂 `renderHints: [RENDER_LOADED_MISSILES]`（harpoon 先例）——弹体 sprite 已隐藏，挂载渲染无意义。
 
 ### 1.3 i18n 键清单（`ss-csv/src/main/resources/i18n/zh-cn.properties`，集中追加文件末尾）
 
-键值原文（取自设计案定稿文案，逐字）：
+键值（tip = 定稿原文 + v2 数值插入，审批通过；name/desc 取自设计案定稿文案逐字）：
 
 ```properties
 weapon.astd_stellar_mrm_launcher.name=辉星 MRM 发射器
-weapon.astd_stellar_mrm_launcher.tooltip.customPrimary=优先追猎战机的高速导弹。命中战机机体时对其全部武器释放 EMP；无论撞上什么，撞击处都会绽放十字辉星。效果受到难度系数影响。
-weapon.astd_stellar_mrm_launcher.tooltip.customPrimaryHL=
+weapon.astd_stellar_mrm_launcher.tooltip.customPrimary=优先追猎战机的高速导弹。命中战机机体时对其全部武器释放 400% 的 EMP；无论撞上什么，撞击处都会绽放十字辉星，造成 100% 的范围能量伤害。效果受到难度系数影响。
+weapon.astd_stellar_mrm_launcher.tooltip.customPrimaryHL=400% | 100% | 难度系数
 weapon.astd_stellar_mrm_launcher.primaryRoleStr=反战机,区域防空
 desc.astd_stellar_mrm_launcher.text1=上古遗产「反物质 SRM」的逆向工程产物。原物的装药原理至今无法解析，工程组转而复现它的飞行性能与猎杀逻辑，以常规能量装药补上最后一块拼图——紫色辉星掠过之处，战机联队的武器系统将集体沉默。
 desc.astd_stellar_mrm_launcher.notes=逆向工程记录："拆解报告第 41 版，结论与第 1 版相同：不可分析。我们甚至无法确定装药舱里是不是反物质。"工程组最终放弃了理解原物，转而复现它的飞行——三十二架无人靶机在三秒内接连熄火，像被同一根手指依次捻灭的蜡烛。评审委员会沉默了很久，然后在量产许可上签了字。
 
 weapon.astd_stellar_mrm_pod.name=辉星 MRM 发射舱
-weapon.astd_stellar_mrm_pod.tooltip.customPrimary=优先追猎战机的高速导弹。命中战机机体时对其全部武器释放 EMP；无论撞上什么，撞击处都会绽放十字辉星。效果受到难度系数影响。
-weapon.astd_stellar_mrm_pod.tooltip.customPrimaryHL=
+weapon.astd_stellar_mrm_pod.tooltip.customPrimary=优先追猎战机的高速导弹。命中战机机体时对其全部武器释放 400% 的 EMP；无论撞上什么，撞击处都会绽放十字辉星，造成 100% 的范围能量伤害。效果受到难度系数影响。
+weapon.astd_stellar_mrm_pod.tooltip.customPrimaryHL=400% | 100% | 难度系数
 weapon.astd_stellar_mrm_pod.primaryRoleStr=反战机,区域防空
 desc.astd_stellar_mrm_pod.text1=上古遗产「反物质 SRM」的逆向工程产物。原物的装药原理至今无法解析，工程组转而复现它的飞行性能与猎杀逻辑，以常规能量装药补上最后一块拼图——紫色辉星掠过之处，战机联队的武器系统将集体沉默。
 ```
 
-- `customPrimaryHL` 显式空值（04 口径：缺 key 会把键名写进 CSV）。
-- `primaryRoleStr = 反战机,区域防空`：提案（gcp 先例逗号分隔双角色），可换稿。
+- `customPrimary` 为设计案定稿原文 + v2 数值插入（EMP 400%、辉星爆炸 100%；2026-07-29 字段分工铁律，审批通过：显示值统一以 v2 为准，取代设计案"tip 不展示数值"旧口径）；`customPrimaryHL` 高亮数值与"难度系数"（缺 key 会把键名写进 CSV）。
+- `primaryRoleStr = 反战机,区域防空`：gcp 先例逗号分隔双角色，评审保留。
 - `desc.text2~text5` 不提供（`LocalizedDescription` 读不到键 fallback 空串）。
 - 逆向工程记录段落入 `notes` 列（04 同口径）；「深灰斜体」样式由 UI 层既有规则处理，文本内不夹带样式标记。
 - pod 的 `notes` **不登记**：`Catalog_Descriptions` 用 `notesId` 共享（GCP 族先例，见下）。
@@ -401,10 +401,10 @@ const val RETARGET_INTERVAL = 0.25f                    // AI 重选节流（提�
 
 **数据面**
 
-- [ ] `Catalog_WeaponData_LENS.kt`：两 entry 列值与 §1.1 一致（重点：number=9217/9218、ops=4/10、ammo 三列 8/0.2/1 与 20/0.5/2、projSpeed=750、flightTime=4.0、projHitpoints=200、chargedown=1.0、pod burstSize=2、tags=no_drop 两件套、customPrimaryHL 已覆写为空值键）
+- [ ] `Catalog_WeaponData_LENS.kt`：两 entry 列值与 §1.1 一致（重点：number=9217/9218、ops=4/10、ammo 三列 8/0.2/1 与 20/0.5/2、projSpeed=750、flightTime=4.0、projHitpoints=200、chargedown=1.0、pod burstSize=2、tags=no_drop 两件套、customPrimaryHL 已覆写数值键）
 - [ ] `.proj` 生成物 ×2：导弹隐藏三件套齐全（sprite=BUtil_NONE、noEngineGlowTime=999、engineSlots 空）、collisionRadius=12、onFireEffect/onHitEffect 类名字符串与 §1.1 一致、两 proj id 不撞名
 - [ ] `.wpn` ×2：插件挂载点齐全（everyFrameEffect=CombatVfxBootstrap、projectileSpecId 各自正确）；发射架贴图到位（empty.png 状态视为未完工）
-- [ ] zh-cn.properties 十一键齐全且值与设计案原文逐字一致（name 两件、tip 原文、desc 原文、notes 仅 launcher 有）
+- [ ] zh-cn.properties 十一键齐全（name 两件、desc 原文、notes 仅 launcher 有；tip = 定稿原文 + v2 数值插入，审批通过）
 - [ ] `Catalog_Descriptions.kt` 两行在 WEAPON 分组尾部，pod 的 notesId 指向 launcher
 - [ ] `special_items.csv` **无 diff**
 

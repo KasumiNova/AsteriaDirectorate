@@ -130,15 +130,15 @@ override val projSpec: ProjectileProjSpec = ProjectileProjSpec(
 
 ```properties
 weapon.astd_piercing_lance.name=贯星之矛
-weapon.astd_piercing_lance.tooltip.customPrimary=命中时沿射弹矢量产生锥状冲击，对范围内所有目标额外造成破片伤害与 EMP。效果受到难度系数影响。
-weapon.astd_piercing_lance.tooltip.customPrimaryHL=
-weapon.astd_piercing_lance.primaryRoleStr=爆发攻坚
+weapon.astd_piercing_lance.tooltip.customPrimary=命中时沿射弹矢量产生锥状冲击，对范围内所有目标额外造成 125% 的破片伤害与 EMP。效果受到难度系数影响。
+weapon.astd_piercing_lance.tooltip.customPrimaryHL=125% | 难度系数
+weapon.astd_piercing_lance.primaryRoleStr=爆发
 desc.astd_piercing_lance.text1=阿斯忒里亚弧光科研部为正面决胜打造的重型投射平台。两秒的充能过程将骇人的能量压缩进一枚高密度弹体，出膛后在毫秒之间贯穿战场——命中随后产生的冲击波能够吞没其中的一切。
 ```
 
-- `name` / `tooltip.customPrimary` / `desc.text1` 为设计案定稿原文（2026-07-28 裁定），一字不动。
-- `customPrimary` 无 `{%s}` 占位符（难度数值隐性缩放，tip 不写死数值），故 `customPrimaryHL` 为空串。
-- `primaryRoleStr`「爆发攻坚」为提案，待评审（aod7 用「爆发打击」，需错位）。
+- `name` / `desc.text1` 为设计案定稿原文（2026-07-28 裁定），一字不动。
+- `tooltip.customPrimary` 为定稿原文 + v2 数值插入（锥状冲击 125%，EMP 与破片同锚同值；2026-07-29 字段分工铁律，审批通过：显示值统一以 v2 为准，取代设计案"tip 不写死数值"旧口径）；`customPrimaryHL` 高亮数值与"难度系数"。
+- `primaryRoleStr`「爆发」为 2026-07-29 审批修正（弃「爆发攻坚」提案；与 aod7「爆发打击」错位保持）。
 - `desc.text2~text5` / `desc.notes` 设计案未提供——不建键，`LocalizedDescription` 走 fallback 空串；若评审要求补 notes，在 PR 中单独追加。
 
 `Catalog_Descriptions.kt` 追加（WEAPON 分组尾部、`Desc_astd_psi_omega` 之后）：
@@ -347,7 +347,7 @@ fun resolve(engine, spec) {
 - [ ] `Wpn_astd_piercing_lance` 列值与 §1.1 逐列一致（含 `type="ENERGY"` 是 DamageType 列、`number=9219`、ammo 三列留空）
 - [ ] 生成物 `astd_piercing_lance_shot.proj` 含隐藏四件套 + 两个插件挂载点，无手改生成物
 - [ ] `.wpn` 为 `"type":"ENERGY"` + `"mountTypeOverride":"HYBRID"`（不是 `"type":"HYBRID"`）
-- [ ] i18n 五键齐全，name/tip/描述与定稿原文逐字一致；`customPrimaryHL` 为空串且无 `{%s}` 残留
+- [ ] i18n 五键齐全，name/描述与定稿原文逐字一致（tip = 定稿原文 + v2 数值插入，审批通过）；无 `{%s}` 残留
 - [ ] `special_items.csv` 无改动；`tags` 含 `no_drop, no_drop_salvage`
 - [ ] `./gradlew :ss-csv:generateSsCsv` → `copyContents` → `deployMod` 全链路无报错
 
