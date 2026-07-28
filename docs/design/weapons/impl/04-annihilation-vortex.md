@@ -287,7 +287,7 @@ private fun annihilationVortex(): RenderEntity = renderEntity("astd_annihilation
 - 主色：LENS 深红（核心 `Color(255, 60, 70)`、辉光 `Color(180, 20, 40)`、涡旋环粒子同族），对齐「湮灭涡旋用深红涡旋 + 深红坍缩爆炸」美术口径。
 - `VortexComponent`：读 `RenderContext.frame.endpoint`，`frame.active` 时按 IntervalUtil 间隔抛短寿命 `DistortionEntity`（尺寸随设计半径档位由 BeamEffect 经树参数传入——构建函数闭包捕获不可行时改由 `frame.intensity` 映射，实装时二选一并写明）+ 每帧旋转环粒子（`addSmoothParticle`，6~10 枚环布、角速度恒定）。
 
-**smd_projectile_vfx.json 映射键**：**不触碰**。本武器为 beam 无 `.proj`，弹体 VFX 管线不涉及；光束树由 `BeamVfxSpecs.build(id)` 直取，无 JSON 映射层。
+**弹体 VFX 映射键**：本武器为 beam 无 `.proj`，弹体 VFX 管线不涉及；光束树由 `BeamVfxSpecs.build(id)` 直取，无额外 JSON 映射层。
 
 ---
 
@@ -332,7 +332,6 @@ private fun annihilationVortex(): RenderEntity = renderEntity("astd_annihilation
 | `src/.../renderer/beam/driver/BeamVfxSpecs.kt` | builders map 末尾 `"astd_annihilation_vortex"` 条目 + `annihilationVortex()` 私有函数；协议注明本组独占该文件，冲突风险为零 |
 | `src/test/.../BeamVfxSpecsTest.kt` | 装配测试一个用例，类内末尾追加（不在协议表内，若与他组撞行同样由收口人归位） |
 | `contents/data/campaign/special_items.csv` | **不触碰**（§1.4） |
-| `contents/data/config/smd_projectile_vfx.json` | **不触碰**（§3） |
 | `src/.../renderer/projectile/driver/ProjectileVfxSpecs.kt` | **不触碰** |
 
 **对共享基建的依赖项**：
@@ -357,7 +356,7 @@ private fun annihilationVortex(): RenderEntity = renderEntity("astd_annihilation
 - [ ] `zh-cn.properties` 六个键齐全且文案与设计案逐字一致；`customPrimaryHL` 为显式空值而非缺键。
 - [ ] `astd_annihilation_vortex.wpn` 挂载 `HiddenBeamRenderEffect` + `AnnihilationVortexBeamEffect`，size=LARGE，pierceSet 含导弹/射弹五件套。
 - [ ] `./gradlew :ss-csv:generateSsCsv` 产物 weapon_data.csv / descriptions.csv 行正确；`deployMod` 后游戏内装配面板数值与 tip 正确。
-- [ ] special_items.csv 与 smd_projectile_vfx.json **无改动**。
+- [ ] `special_items.csv` 无改动。
 
 **代码面**
 

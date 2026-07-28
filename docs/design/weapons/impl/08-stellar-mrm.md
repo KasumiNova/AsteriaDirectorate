@@ -311,16 +311,7 @@ const val RETARGET_INTERVAL = 0.25f                    // AI 重选节流（提�
 - width=10：1.5× 弹体体量（对照 spc3 中型 6、穷距大型 12）；length=420：定案「很长的双拖尾」（对齐 aod7 hero 420，2500 射程长航迹），目检微调。
 - 两 spec 值完全一致属刻意（同一弹头两种发射器）；若目检要求中型体量更大，仅调 pod 行 width。
 
-### 3.2 `smd_projectile_vfx.json` 映射（entries 数组末尾追加）
-
-```json
-{ "projectileSpecId": "astd_stellar_mrm_launcher_shot", "preset": "stellar_mrm_launcher_shot" },
-{ "projectileSpecId": "astd_stellar_mrm_pod_shot", "preset": "stellar_mrm_pod_shot" }
-```
-
-> 核查备注：该 JSON 当前在 `src/` 已无代码消费者（P2.3 后 grep 无引用，与 05 同结论）；按合并协议仍登记，清理由收口人统一处置。
-
-### 3.3 十字辉星爆炸（依赖七星组件）
+### 3.2 十字辉星爆炸（依赖七星组件）
 
 - 90-计划 §11 裁定：十字闪光爆炸组件**七星首发，辉星按 60% 缩放复用**；§12 顺序辉星（8）在七星（7）之后。
 - **硬依赖**：七星交付的十字爆炸组件（接口名以 07 规格为准，预期形态：参数化 `scale` + `color` 的一次性 RenderEntity 特效——十字星 + 星云烟雾）。本武器调用：`scale = 0.6f`，主色 LENS 紫（ASTDColor(0.66, 0.42, 1.0)）。
@@ -376,7 +367,6 @@ const val RETARGET_INTERVAL = 0.25f                    // AI 重选节流（提�
 | `ss-csv/.../strings/Catalog_Descriptions.kt` | 追加两行 Desc | WEAPON 分组尾部（`Desc_astd_psi_omega` 之后），收口人按 id 字典序重排 |
 | `ss-csv/.../i18n/zh-cn.properties` | 追加 §1.3 十一个键 | `weapon.astd_stellar_mrm_*.*` / `desc.astd_stellar_mrm_*.*`，集中插文件末尾 |
 | `src/.../renderer/projectile/driver/ProjectileVfxSpecs.kt` | builders map 末尾追加两条（§3.1） | 复用现有 `violet()`，**不新增调色板函数** |
-| `contents/data/config/smd_projectile_vfx.json` | entries 数组末尾追加两条（§3.2） | 收口人按 projectileSpecId 字典序排序 |
 | `contents/data/weapons/astd_stellar_mrm_launcher.wpn` / `astd_stellar_mrm_pod.wpn` | 新文件 | 无冲突 |
 | `src/.../api/combat/StellarMrm.kt` | 新文件 | 无冲突（与 `ConeImpact.kt` 同包不同文件） |
 | `src/.../combat/effect/lens/stellar/*.kt` + 测试同名包 | 新文件 | 无冲突（子包本组独占） |
@@ -432,9 +422,8 @@ const val RETARGET_INTERVAL = 0.25f                    // AI 重选节流（提�
 **特效面**
 
 - [ ] builders 两条追加在 map 末尾、复用 `violet()`（未新增调色板函数）
-- [ ] smd_projectile_vfx.json 两条在数组末尾
 - [ ] 弹体观感：紫色辉星本体 + 很长双拖尾；撞击十字星为七星 60% 缩放紫色版
-- [ ] 十字爆炸：07 组件复用或应急实现已按 §3.3 口径标记收口人去重（无双份静默共存）
+- [ ] 十字爆炸：07 组件复用或应急实现已按 §3.2 口径标记收口人去重（无双份静默共存）
 
 **测试面**
 

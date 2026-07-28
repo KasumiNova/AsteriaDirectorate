@@ -265,15 +265,7 @@ fun resolve(engine, spec) {
   - 「较大圆形射弹被大号发光 flare 覆盖（仅见粗略形状）」的观感由「加大弹头 + bloom 管线提取遍增益」承担；若目检 flare 覆盖不足，再下探为独立 DSL 树加 flare 渲染组件——**先按五旋钮登记跑目检**。
   - 注意 `trail.startWidth` ≤ 46.7 的 widthBase 红线（文件头注释），width=36 在安全区。
 
-### 3.2 `smd_projectile_vfx.json` 映射键
-
-`contents/data/config/smd_projectile_vfx.json` 的 `entries` 数组**末尾追加**（收口人按 specId 字典序归位）：
-
-```json
-{ "projectileSpecId": "astd_piercing_lance_shot", "preset": "piercing_lance_shot" }
-```
-
-### 3.3 命中/飞行 VFX（`PiercingLanceVfx`）
+### 3.2 命中/飞行 VFX（`PiercingLanceVfx`）
 
 - **命中顶点**：大号 `addHitParticle` 核心闪 + `addSmoothParticle` 光晕 + BoxUtil `DistortionEntity`（样板 `Aod7OnFireEffect.spawnDistortion`），冷蓝白。
 - **大光柱**：沿命中矢量的短寿命光柱 RenderEntity，并入 bloom 管线（aod7 hero PoC 已验证 bloom 弹头管线；光柱为新增构图，目检调宽度/时长，提案：长 ≈ 锥长 × 0.6、存续 0.25s）。
@@ -328,7 +320,6 @@ fun resolve(engine, spec) {
 | `ss-csv/.../strings/Catalog_Descriptions.kt` | WEAPON 分组尾部（`Desc_astd_psi_omega` 之后）一行 |
 | `ss-csv/.../weapondata/arc/Catalog_WeaponData_ARC.kt` | object 追加**文件末尾**；`number = 9219`（预分配段位） |
 | `src/.../projectile/driver/ProjectileVfxSpecs.kt` | `builders` map 末尾一个条目；`piercingLanceShot()` 追加在调色板函数之前；冷蓝白**内联字面量**，不新增共享调色板函数 |
-| `contents/data/config/smd_projectile_vfx.json` | `entries` 数组末尾一个对象 |
 | `contents/data/campaign/special_items.csv` | **不触碰**（§1.4） |
 
 非共享、本武器独占：`.wpn`、`.proj`（生成物）、`combat/effect/arc/piercinglance/` 整包、测试目录同名包。
@@ -368,7 +359,7 @@ fun resolve(engine, spec) {
 - [ ] 未修改 `ConeImpactHandler` 签名；浮字 + 特效在同帧触发（机制可视化铁律）
 
 ### 特效
-- [ ] `builders` 含 `astd_piercing_lance_shot`；`smd_projectile_vfx.json` 映射键正确
+- [ ] `builders` 含 `astd_piercing_lance_shot`
 - [ ] 冷蓝白为内联字面量，未新增共享调色板函数
 - [ ] 原版弹体视觉全隐（无弹芯/亮头穿帮）；顶点闪光 + 大光柱 + 锥面三层齐备
 

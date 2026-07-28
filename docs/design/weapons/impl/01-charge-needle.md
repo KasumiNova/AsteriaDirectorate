@@ -1,6 +1,6 @@
 # 电荷针刺 / 重型电荷针刺 逐件实现规格 v1（待评审）
 
-> 依据：`docs/design/weapons/impl/00-共享基建.md` v1（Buff API / 合并协议 / HUD 通道）、`docs/design/weapons/90-首批实装计划.md` v6 §1 与全局约定、设计案定稿 `blue/20-production.md`「电荷针刺 / 重型电荷针刺」v1.0。
+> 依据：`docs/design/weapons/impl/00-共享基建.md` v1（Buff API / 合并协议 / HUD 通道）、`docs/design/weapons/90-首批实装计划.md` v6 §1 与全局约定、设计案定稿 `blue/20-production.md`“电荷针刺 / 重型电荷针刺”v1.0。
 > 状态：规划文档，不改动 `src/` 与 `ss-csv/`。
 > API 核查时间：2026-07-29，对照 `starfarer.api.jar`（0.98）javap 签名与现有 `src/` 代码逐条核实（`MutableShipStatsAPI.getShieldUpkeepMult()/getFluxDissipation()`、`ShipHullSpecAPI.ShieldSpecAPI.getUpkeepCost()`、`CombatEngineAPI.spawnEmpArc(...)/maintainStatusForPlayerShip(...)`、`CombatEntityAPI.getOwner()/getCustomData()`、`MutableStat.modifyMult/unmodifyMult/getModifiedValue` 均存在）。
 > 复用承诺：叠层机制走共享 Buff API（`StackableBuff : Buff`，Ship 级、CONTINUOUS 衰减），不另起状态表；结算随机走共享 `CombatRandom`；HUD 走 §4.2 通道。
@@ -108,18 +108,19 @@ object Desc_astd_heavy_charge_needle : LocalizedDescription("astd_heavy_charge_n
 weapon.astd_charge_needle.name=电荷针刺
 weapon.astd_heavy_charge_needle.name=重型电荷针刺
 
-# Weapon tooltip 自定义字段（设计案定稿原文；无 {%s} 占位，不配 customPrimaryHL）
-weapon.astd_charge_needle.tooltip.customPrimary=以弹匣供弹的电荷箭弹速射武器，短时间内可倾泻密集火力。命中护盾会使电荷在目标护盾矩阵中淤积，持续抬高其维持开销；命中船体则可能将电荷泄放为电弧，打击武器与引擎。效果受到难度系数影响。
-weapon.astd_heavy_charge_needle.tooltip.customPrimary=电荷针刺的中型规格，更沉稳的供弹机构带来加倍的持续火力。命中护盾会使电荷在目标护盾矩阵中淤积，持续抬高其维持开销；命中船体则可能将电荷泄放为电弧，打击武器与引擎。效果受到难度系数影响。
+# Weapon tooltip 自定义字段
+weapon.astd_charge_needle.tooltip.customPrimary=命中护盾时，提高目标 2% 的护盾维持辐能，效果可叠加；命中船体或装甲时，有 25% 的概率产生打击武器与引擎的电弧，造成该武器命中目标时 100% 的额外伤害。效果受到难度系数影响。
+weapon.astd_heavy_charge_needle.tooltip.customPrimary=命中护盾时，提高目标 2% 的护盾维持辐能，效果可叠加；命中船体或装甲时，有 25% 的概率产生打击武器与引擎的电弧，造成该武器命中目标时 100% 的额外伤害。效果受到难度系数影响。
 
 # Weapon 定位
-weapon.astd_charge_needle.primaryRoleStr=弹幕压制,护盾消耗
-weapon.astd_heavy_charge_needle.primaryRoleStr=弹幕压制,护盾消耗
+weapon.astd_charge_needle.primaryRoleStr=压制
+weapon.astd_heavy_charge_needle.primaryRoleStr=压制
 
 # descriptions.csv（提案文案，评审时确认；百分号用全角 ％）
 desc.astd_charge_needle.text1=弹匣供弹的电荷箭弹速射武器，命中护盾会使电荷在目标护盾矩阵中淤积，持续抬高其维持开销；命中船体则可能将电荷泄放为电弧，打击武器与引擎。
-desc.astd_heavy_charge_needle.text1=电荷针刺的中型规格，供弹深度与持续火力加倍；淤积与泄放机制与小型完全同源。
-desc.astd_charge_needle.notes=靶场上的针刺弹道像一场蓝色的雨——雨停之后，目标的护盾仍在为每一滴水付费。
+desc.astd_heavy_charge_needle.text1=电荷针刺的中型规格，供弹深度与持续火力加倍；命中护盾会使电荷在目标护盾矩阵中淤积，持续抬高其维持开销；命中船体则可能将电荷泄放为电弧，打击武器与引擎。
+desc.astd_charge_needle.notes=
+# notes 移除，不考虑此段文案
 ```
 
 HUD 文本不进 properties，走 `contents/data/strings/strings.json`（MOD 类，见 §2.3）。
@@ -129,8 +130,8 @@ HUD 文本不进 properties，走 `contents/data/strings/strings.json`（MOD 类
 量产件 P2 走单件蓝图（90 计划 §14），plugin params 用**裸武器 id**（2026-07-29 主代理裁决：反编译 `WeaponBlueprintItemPlugin.init` 证实 params 直接传 `getWeaponSpec(data)`，`weapon:` 前缀会导致 spec 为 null；原写 `weapon:<id>` 系误引蓝图包格式，已更正）；带 `single_bp` 标签时 params 必填（`ASTDDevContentSelector.SPECIAL_ITEM_PARAM_REQUIRED_TAGS/IDS` 核实），dev 仓储会自动投放：
 
 ```csv
-电荷针刺蓝图,astd_charge_needle_bp,"weapon_bp, single_bp, no_drop, no_drop_salvage",阿斯忒里亚遗构局,,8000,1,0,,graphics/icons/cargo/blueprint_weapons.png,ui_chip_pickup,ui_weapon_bp_drop,com.fs.starfarer.api.campaign.impl.items.WeaponBlueprintItemPlugin,astd_charge_needle,使重工业设施能够制造「电荷针刺」。,
-重型电荷针刺蓝图,astd_heavy_charge_needle_bp,"weapon_bp, single_bp, no_drop, no_drop_salvage",阿斯忒里亚遗构局,,15000,1,0,,graphics/icons/cargo/blueprint_weapons.png,ui_chip_pickup,ui_weapon_bp_drop,com.fs.starfarer.api.campaign.impl.items.WeaponBlueprintItemPlugin,astd_heavy_charge_needle,使重工业设施能够制造「重型电荷针刺」。,
+电荷针刺蓝图,astd_charge_needle_bp,"weapon_bp, single_bp, no_drop, no_drop_salvage",阿斯忒里亚遗构局,,8000,1,0,,graphics/icons/cargo/blueprint_weapons.png,ui_chip_pickup,ui_weapon_bp_drop,com.fs.starfarer.api.campaign.impl.items.WeaponBlueprintItemPlugin,astd_charge_needle,使重工业设施能够制造“电荷针刺”。,
+重型电荷针刺蓝图,astd_heavy_charge_needle_bp,"weapon_bp, single_bp, no_drop, no_drop_salvage",阿斯忒里亚遗构局,,15000,1,0,,graphics/icons/cargo/blueprint_weapons.png,ui_chip_pickup,ui_weapon_bp_drop,com.fs.starfarer.api.campaign.impl.items.WeaponBlueprintItemPlugin,astd_heavy_charge_needle,使重工业设施能够制造“重型电荷针刺”。,
 ```
 
 `no_drop, no_drop_salvage` 为 P6 前口径（P6 接入量产蓝图投放时摘除）。
@@ -225,10 +226,11 @@ advance(amount):
     refreshUpkeep(ship.mutableStats.shieldUpkeepMult, stacks, perStack)
         → stat.modifyMult(MOD_ID, 1 + stacks * perStack)   // 幂等，modifierId 固定
     HUD：
-      if (showOnPlayerHud && engine.playerShip != null)
-          engine.maintainStatusForPlayerShip(HUD_KEY, ICON, 标题, "目标 N 层，护盾维持 +X％", negative = false)
+      # if (showOnPlayerHud && engine.playerShip != null)
+      #    engine.maintainStatusForPlayerShip(HUD_KEY, ICON, 标题, "目标 N 层，护盾维持 +X％", negative = false)
+      # 看地方时通常不显示标题，但可以考虑留作调试使用
       if (ship == engine.playerShip)
-          engine.maintainStatusForPlayerShip(HUD_VICTIM_KEY, ICON, 受害标题, "本舰护盾维持 +X％（N 层）", negative = true)
+          engine.maintainStatusForPlayerShip(HUD_VICTIM_KEY, ICON, "电荷淤积", "本舰护盾维持 +X％（N 层）", negative = true)
 
 isHostValid(): ship.isAlive && !ship.isHulk && engine.isEntityInPlay(ship)   // 轻量无副作用
 onRemove(): ship.mutableStats.shieldUpkeepMult.unmodifyMult(MOD_ID)
@@ -243,6 +245,7 @@ engine.spawnEmpArc(source, from, ship, anchorEntity, DamageType.ENERGY,
                    dam = 0f, emp = emp, maxRange = 1000f, soundId = null,
                    thickness = 20f, fringe = 冷蓝白, core = 白)
 // spawnEmpArc 伤害/视觉一体；锚定实体为 ship 本体保证电弧追踪
+// 需要确认电弧是否自带音效，如果没有则需要添加电弧打击音效
 ```
 
 结算顺序：先淤积分支/泄放分支互斥（`shieldHit` 二分），无交叉结算；`applyDamage` 不经手（EMP 电弧自带结算），无二次 onHit 回环。
@@ -286,16 +289,7 @@ engine.spawnEmpArc(source, from, ship, anchorEntity, DamageType.ENERGY,
 - 拖尾主体走 texTrail（smooth 主带），弹头 bloom 网格恒在，ribbon=false（密集箭弹不挂电弧副带，避免 20 发/s 下副带噪声）。
 - 派生公式（bandWidth/headWidth 等）全部吃共享纯函数，登记行只填 5 旋钮。
 
-### 3.2 `smd_projectile_vfx.json` 映射（entries 数组末尾追加）
-
-```json
-{ "projectileSpecId": "astd_charge_needle_shot", "preset": "charge_needle_shot" },
-{ "projectileSpecId": "astd_heavy_charge_needle_shot", "preset": "heavy_charge_needle_shot" }
-```
-
-preset 命名沿用 `aod7_shot`/`spc3_shot` 去前缀惯例。
-
-### 3.3 命中/泄放特效
+### 3.2 命中/泄放特效
 
 不新增 RenderEntity 组件：护盾命中粒子走 `engine.addHitParticle/addSmoothParticle`；泄放走 `spawnEmpArc`（原版 EMP 电弧视觉，冷蓝白双色参数化）。均不构成共享文件触碰。
 
@@ -332,12 +326,12 @@ preset 命名沿用 `aod7_shot`/`spc3_shot` 去前缀惯例。
 
 `ChargeNeedleVfxRegistrationTest`（真实调用管线入口）：
 
-14. **VfxSpec 登记**：`ProjectileVfxSpecs.has/build("astd_charge_needle_shot"/"astd_heavy_charge_needle_shot")` 非空，build 执行 DSL 不抛异常；smd_projectile_vfx.json 含两条映射（数据文件读取断言，对齐现有 data 测试族，非源码 contain）。
+14. **VfxSpec 登记**：`ProjectileVfxSpecs.has/build("astd_charge_needle_shot"/"astd_heavy_charge_needle_shot")` 非空，build 执行 DSL 不抛异常。
 
 ### 4.2 烟测检查点（`deployMod` + `launchSmokeTestGame`，到达终态即退出游戏）
 
 1. dev 仓储出现两件武器 + 两张蓝图；学习蓝图后 refit 可装配；名称/tip/定位字符串全中文无键名泄漏。
-2. 命中敌舰护盾：HUD 出现「电荷淤积」条目，层数与 +% 随命中上升；停火后约 10 层/s 回落到 0，条目消失。
+2. 命中敌舰护盾：HUD 出现“电荷淤积”条目，层数与 +% 随命中上升；停火后约 10 层/s 回落到 0，条目消失。
 3. 目标辐能面板/实测：淤积期间护盾维持显著抬升（目检目标开盾时幅能上涨加快）。
 4. 命中船体：可见 EMP 电弧连向武器/引擎部位，武器被瘫痪火花；v2 档触发频率符合 40% 体感。
 5. 弹匣节奏：满匣倾泻 1.5s（小）/ 3s（重），之后进入约 12s 满充周期；射速 20 发/s 无卡壳。
@@ -360,7 +354,6 @@ preset 命名沿用 `aod7_shot`/`spc3_shot` 去前缀惯例。
 | `ss-csv/.../weapondata/arc/Catalog_WeaponData_ARC.kt` | 文件末尾两个 object；number 段位 **9210/9211**（预分配，不与他组冲突） |
 | `contents/data/campaign/special_items.csv` | 文件末尾两行；`order` 列留空待收口人统一编号 |
 | `src/.../renderer/projectile/driver/ProjectileVfxSpecs.kt` | builders map 末尾两条；`chargeNeedlePalette()` 内联字面量（不新增共享调色板）；构建函数追加在调色板函数前 |
-| `contents/data/config/smd_projectile_vfx.json` | entries 数组末尾两条 |
 | `contents/data/strings/strings.json` | **00 协议未覆盖，本组补充登记**：HUD 键 `ui.charge_needle.status.*`（title/desc/victim_title/victim_desc 四键），MOD 类对象内末尾追加；收口人按 ui.<武器> 字典序归位。建议在 00 §3 表格补行 |
 
 新增无冲突文件：`contents/data/weapons/astd_charge_needle.wpn`、`astd_heavy_charge_needle.wpn`；`src/.../combat/effect/arc/ChargeNeedle*.kt` ×4；测试目录同包。
@@ -398,7 +391,7 @@ preset 命名沿用 `aod7_shot`/`spc3_shot` 去前缀惯例。
 
 **特效面**
 
-- [ ] builders 两条登记 + 内联调色板（未新增共享 palette）；smd json 两条映射；texTrail 冷蓝白，小 6/135、中 9/165。
+- [ ] builders 两条登记 + 内联调色板（未新增共享 palette）；texTrail 冷蓝白，小 6/135、中 9/165。
 - [ ] 泄放 `spawnEmpArc` 冷蓝白参数；护盾命中粒子克制量级。
 
 **测试面**

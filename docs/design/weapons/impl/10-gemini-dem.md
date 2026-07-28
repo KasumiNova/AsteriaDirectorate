@@ -493,7 +493,7 @@ prev != null 时先惰性过期：now - prev.hitTime > 1s → 视为无记录
 
 ## 3. 特效面
 
-**不登记 `ProjectileVfxSpecs.builders`，不动 `smd_projectile_vfx.json`**（对照共享基建 §4.3 检查表逐项说明）：
+**不登记 `ProjectileVfxSpecs.builders`**（对照共享基建 §4.3 检查表逐项说明）：
 
 | 检查项 | 结论 | 理由 |
 |---|---|---|
@@ -551,7 +551,7 @@ prev != null 时先惰性过期：now - prev.hitTime > 1s → 视为无记录
 | `ss-csv/.../weapondata/arc/Catalog_WeaponData_ARC.kt` | 6 个 Wpn object | number **9221~9226**（9225/9226 为超原协议扩展占用，待收口确认）；文件末尾追加 |
 | `contents/data/campaign/special_items.csv` | 2 行 weapon_bp | 文件末尾追加；`order` 列留空 |
 | `ss-csv/.../outputs/proj/ProjMissileSpec.kt` | **公共扩展**（behaviorSpec 字段） | 非武器组私有文件；按协议在 PR 中单独提出、先于武器组合入；首批其他组不触碰此文件 |
-| `src/.../ProjectileVfxSpecs.kt` / `smd_projectile_vfx.json` / `BeamVfxSpecs.kt` | **不动** | §3 已说明 N/A |
+| `src/.../ProjectileVfxSpecs.kt` / `BeamVfxSpecs.kt` | **不动** | §3 已说明 N/A |
 
 ### 5.2 对共享基建的依赖项
 
@@ -590,7 +590,7 @@ prev != null 时先惰性过期：now - prev.hitTime > 1s → 视为无记录
 - [ ] 无刻意兼容/兜底；§2.4 十条边界各有定义行为
 
 **特效面**
-- [ ] ProjectileVfxSpecs / smd_projectile_vfx.json / BeamVfxSpecs 三处零改动
+- [ ] ProjectileVfxSpecs / BeamVfxSpecs 两处零改动
 - [ ] 双色配色落点（.proj engineSlots + 爆炸色 + .wpn 光束三色）与设计案主色一致
 
 **测试面**

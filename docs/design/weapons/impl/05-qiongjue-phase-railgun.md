@@ -307,18 +307,7 @@ fun resolve(entry: ScalingEntry, owner: Int): Float =
 - ribbon=false：单带细长光矛观感，不上电弧副带（克制，不抢贯星大光柱）。
 - 主色：美术主色口径「穷距用白色弹体与明亮拖尾」（90-计划全局约定），ASTDColor(0.92, 0.95, 1.0) 为微冷白。
 
-### 3.2 `smd_projectile_vfx.json` 映射（entries 数组末尾追加）
-
-```json
-{
-  "projectileSpecId": "astd_qiongjue_phase_railgun_shot",
-  "preset": "qiongjue_phase_railgun_shot"
-}
-```
-
-> 核查备注：该 JSON 当前在 `src/` 已无代码消费者（P2.3 退役网格栈后 grep 无引用）；按 00-共享基建 §3 合并协议与 §4.3 检查表仍登记，是否清理由收口人统一处置，本分支不删。
-
-### 3.3 命中白闪
+### 3.2 命中白闪
 
 `OnHitEffect` 内 `engine.addHitParticle(point, ...)` 白色小闪（size≈30、亮度克制、duration≈0.3s），参数目检微调；不引入新 RenderEntity 组件。
 
@@ -335,7 +324,6 @@ fun resolve(entry: ScalingEntry, owner: Int): Float =
 | `ss-csv/.../i18n/zh-cn.properties` | 追加 §1.3 五个键 | `weapon.astd_qiongjue_phase_railgun.*` / `desc.astd_qiongjue_phase_railgun.*`，集中插文件末尾 |
 | `contents/data/campaign/special_items.csv` | 追加蓝图行（§1.4） | 文件末尾；`order` 留空待收口 |
 | `src/.../renderer/projectile/driver/ProjectileVfxSpecs.kt` | builders map 末尾追加条目（§3.1） | 内联 `VfxPalette` 字面量，**不新增调色板函数**（white() 等只允许收口人加） |
-| `contents/data/config/smd_projectile_vfx.json` | entries 数组末尾追加（§3.2） | 收口人按 projectileSpecId 字典序排序 |
 | `contents/data/weapons/astd_qiongjue_phase_railgun.wpn` | 新文件 | 无冲突 |
 | `src/.../combat/effect/arc/qiongjue/*.kt` + 测试 | 新文件 | 无冲突（子包本组独占） |
 
@@ -388,7 +376,6 @@ fun resolve(entry: ScalingEntry, owner: Int): Float =
 **特效面**
 
 - [ ] builders 条目追加在 map 末尾、内联调色板字面量（未新增 white() 函数）
-- [ ] smd_projectile_vfx.json 条目在数组末尾
 - [ ] 弹体观感：白色细长 + 长亮拖尾；命中白闪克制
 
 **测试面**

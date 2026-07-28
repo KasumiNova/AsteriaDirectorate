@@ -336,11 +336,10 @@ fun enterTerminal() {
 设计案：射弹不做正常飞行、无常规飞行拖尾。texTrail 拖尾管线（`simpleProjectileVfx` 等）语义是"沿速度向采样轨迹"，对瞬移弹体只会画出乱线。故：
 
 - `ProjectileVfxSpecs.builders` **不加条目**；
-- `contents/data/config/smd_projectile_vfx.json` **不加映射**；
 - `.proj` 隐藏四件套仍保留（§1.1），原版弹体全程不可见；
 - 合并协议 §4.3 检查表第 1 项（弹体通道）逐项过检后结论为"不适用"，第 3 项（爆炸/冲击通道）为本武器的实际落点。
 
-此决策消除本组对 `ProjectileVfxSpecs.kt` 与 `smd_projectile_vfx.json` 两个共享文件的冲突面。
+此决策消除本组对 `ProjectileVfxSpecs.kt` 的共享文件冲突面。
 
 ### 3.2 折跃 VFX（`SevenStarsVfx` 内，无登记项）
 
@@ -405,7 +404,6 @@ fun enterTerminal() {
 | `src/test/.../combat/effect/arc/SevenStars*Test.kt` | 新文件 | 无冲突 |
 | `contents/data/campaign/special_items.csv` | **不动** | 超规格 P6 前 `no_drop`（§1.5） |
 | `src/.../renderer/projectile/driver/ProjectileVfxSpecs.kt` | **不动** | 无飞行拖尾（§3.1） |
-| `contents/data/config/smd_projectile_vfx.json` | **不动** | 无弹体 VFX 映射（§3.1） |
 
 ### 5.2 对共享基建的依赖项
 
@@ -441,7 +439,7 @@ fun enterTerminal() {
 
 **特效面**
 
-- [ ] `ProjectileVfxSpecs.kt` / `smd_projectile_vfx.json` 零改动（本组决策）
+- [ ] `ProjectileVfxSpecs.kt` 零改动（本组决策）
 - [ ] `CrossFlashVfx.crossFlashExplosion(engine, at, scale, palette)` 参数化，主色 ARC 冷蓝白（#F0F8FF/#6FB4FF/#478FEB 族）
 - [ ] 折跃起止 EMP 电弧 + 路径星云；连跳闪光逐跳递增；bloom 不过曝（目检）
 

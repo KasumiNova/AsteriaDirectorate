@@ -268,18 +268,7 @@ detonateAndFinish(engine, loc, dir):                      // 结算顺序：几�
   `private fun positronWhiteBlue() = VfxPalette(ASTDColor(0.62f, 0.82f, 1f, 0.85f), TEX_SMOOTH, TEX_ZAPPY)`（提案值，目检微调；小型 PD 弹体克制处理，width 5 / length 90 短拖尾，不抢主炮视觉——设计案特效节要求）。
 - 主色依据：全局约定「电驱/穷距/正电子用白色弹体与明亮拖尾；正电子锥状冲击 VFX 用蓝色调缩小版」→ 弹体白蓝、引爆蓝调。
 
-### 3.2 `contents/data/config/smd_projectile_vfx.json`
-
-`entries` 数组末尾追加：
-
-```json
-{
-  "projectileSpecId": "astd_positron_shockwave_shot",
-  "preset": "positron_shockwave_shot"
-}
-```
-
-### 3.3 引爆 VFX
+### 3.2 引爆 VFX
 
 走基建锥面组件（三案共用，本武器为首次落地调用方）：`ConeImpactVfx.spawn(engine, origin, direction, halfAngleDeg = spec.halfAngleDeg, range = spec.range, color = 蓝色调)`，规模随 spec.range 参数化自然约为贯星（300~600su）的 50%。叠加 §2.2 的小型 `spawnExplosion` 蓝闪与音效。锥面组件实现本身属基建 PR，本武器分支内**不实现**锥面渲染，只传参调用。
 
@@ -330,7 +319,6 @@ detonateAndFinish(engine, loc, dir):                      // 结算顺序：几�
 | `ss-csv/.../weapondata/arc/Catalog_WeaponData_ARC.kt` | 追加 `Wpn_astd_positron_shockwave` object | 文件末尾；`number = 9215`（预分配段，不与他人撞号） |
 | `contents/data/campaign/special_items.csv` | 追加 §1.5 一行 | 文件末尾；`order` 留空 |
 | `src/.../projectile/driver/ProjectileVfxSpecs.kt` | builders map 末尾加一条目 + `positronWhiteBlue()` 私有函数 | 调色板内联字面量（共享 `coldBlueWhite` 调色板只允许收口人沉淀）；函数追加在调色板函数区之前 |
-| `contents/data/config/smd_projectile_vfx.json` | entries 末尾追加一个对象 | 收口人按 projectileSpecId 字典序重排 |
 
 **明确不触碰**：`ProjProjectileSpec.kt`（`standard()` 不加参数，§1.1 已绕开）、`ss-csv` 其他输出模型、Buff API 全部文件、`CombatRandom.kt`。
 
@@ -371,7 +359,6 @@ detonateAndFinish(engine, loc, dir):                      // 结算顺序：几�
 
 **特效面**
 - [ ] `ProjectileVfxSpecs` 条目在 map 末尾、调色板为分支内内联字面量（未加共享调色板函数）
-- [ ] `smd_projectile_vfx.json` 条目追加在数组末尾
 - [ ] 引爆锥面走基建组件调用，本分支未自实现锥面渲染
 
 **测试面**

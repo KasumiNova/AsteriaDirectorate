@@ -102,15 +102,17 @@ object Desc_astd_heavy_ion_pulse : LocalizedDescription("astd_heavy_ion_pulse", 
 # Weapon 名称
 weapon.astd_heavy_ion_pulse.name=重型离子脉冲
 
-# Weapon tooltip 自定义字段（设计案定稿原文；无 {%s} 占位，不配 customPrimaryHL）
-weapon.astd_heavy_ion_pulse.tooltip.customPrimary=离子脉冲炮的大型化改进型，拥有足以在交战时迅速瘫痪敌舰系统与引擎的巨量 EMP 损害，并产生严重损伤着弹点附近模块的电弧。效果受到难度系数影响。
+# Weapon tooltip 自定义字段
+weapon.astd_heavy_ion_pulse.tooltip.customPrimary=命中船体或装甲时，有 25% 的概率产生打击武器与引擎的电弧，造成该武器命中目标时 100% 的额外伤害。
+weapon.astd_heavy_ion_pulse.tooltip.customPrimaryHL=25% | 100%
 
 # Weapon 定位（原版 ionpulser 为「瘫痪」，本件加「压制」前缀，提案待评审）
-weapon.astd_heavy_ion_pulse.primaryRoleStr=压制,瘫痪
+weapon.astd_heavy_ion_pulse.primaryRoleStr=瘫痪
 
 # descriptions.csv（提案文案，评审时确认）
-desc.astd_heavy_ion_pulse.text1=离子脉冲炮的大型化改进型：射程更远、单发更重、连发加一、弹匣更深，瘫痪火力全面加码。
-desc.astd_heavy_ion_pulse.notes=双炮管交替喷吐的蓝白电光连成一片——被它盯上的舰船，先熄灭的是武器，然后是引擎，最后是灯。
+desc.astd_heavy_ion_pulse.text1=离子脉冲炮的大型化改进型，拥有足以在交战时迅速瘫痪敌舰系统与引擎的巨量 EMP 损害，并产生严重损伤着弹点附近模块的电弧。
+desc.astd_heavy_ion_pulse.notes=
+# 不加 notes
 ```
 
 本件无 HUD 状态条目（无叠层/持续状态），反馈浮字为纯数字（`addFloatingDamageText`），**不需要** `strings.json` 键——与 01 的差异点，特此登记。
@@ -264,15 +266,7 @@ empPierceExtra(emp, mult): Float =
 - `ribbon = true`：电弧副带（zappy 贴图）表达「标准弹头附加 EMP 电弧特效」的设计案性格，与电荷针刺（ribbon=false 的干净箭弹）形成观感区分；目检确认副带噪声在 2.67 发/s 下可接受。
 - 拖尾主体走 texTrail（smooth 主带），弹头 bloom 网格恒在；派生公式（bandWidth/headWidth 等）全部吃共享纯函数，登记行只填 5 旋钮。
 
-### 3.2 `smd_projectile_vfx.json` 映射（entries 数组末尾追加）
-
-```json
-{ "projectileSpecId": "astd_heavy_ion_pulse_shot", "preset": "heavy_ion_pulse_shot" }
-```
-
-preset 命名沿用 `aod7_shot`/`spc3_shot` 去前缀惯例。
-
-### 3.3 命中/泄放特效
+### 3.2 命中/泄放特效
 
 不新增 RenderEntity 组件：泄放走 `spawnEmpArc`（原版 EMP 电弧视觉，冷蓝白双色参数化，thickness 24f 略粗于电荷针刺的 20f 以匹配大槽体量）；贯穿补伤走 `addFloatingDamageText` + 克制火花。均不构成共享文件触碰。
 
@@ -302,7 +296,7 @@ preset 命名沿用 `aod7_shot`/`spc3_shot` 去前缀惯例。
 
 `HeavyIonPulseVfxRegistrationTest`（真实调用管线入口）：
 
-10. **VfxSpec 登记**：`ProjectileVfxSpecs.has/build("astd_heavy_ion_pulse_shot")` 非空，build 执行 DSL 不抛异常；smd_projectile_vfx.json 含该条映射（数据文件读取断言，对齐现有 data 测试族，非源码 contain）。
+10. **VfxSpec 登记**：`ProjectileVfxSpecs.has/build("astd_heavy_ion_pulse_shot")` 非空，build 执行 DSL 不抛异常。
 
 ### 4.2 烟测检查点（`deployMod` + `launchSmokeTestGame`，到达终态即退出游戏）
 
@@ -328,7 +322,6 @@ preset 命名沿用 `aod7_shot`/`spc3_shot` 去前缀惯例。
 | `ss-csv/.../weapondata/arc/Catalog_WeaponData_ARC.kt` | 文件末尾一个 object；number 段位 **9212**（预分配，不与他组冲突） |
 | `contents/data/campaign/special_items.csv` | 文件末尾一行；`order` 列留空待收口人统一编号 |
 | `src/.../renderer/projectile/driver/ProjectileVfxSpecs.kt` | builders map 末尾一条；`heavyIonPulsePalette()` 内联字面量（不新增共享调色板）；构建函数追加在调色板函数前 |
-| `contents/data/config/smd_projectile_vfx.json` | entries 数组末尾一条 |
 
 不触碰 `contents/data/strings/strings.json`（§1.4 已登记：无 HUD 条目、浮字为纯数字）。
 
@@ -367,7 +360,7 @@ preset 命名沿用 `aod7_shot`/`spc3_shot` 去前缀惯例。
 
 **特效面**
 
-- [ ] builders 一条登记 + 内联调色板（未新增共享 palette）；smd json 一条映射；texTrail 冷蓝白 width=12/length=220、ribbon 电弧副带。
+- [ ] builders 一条登记 + 内联调色板（未新增共享 palette）；texTrail 冷蓝白 width=12/length=220、ribbon 电弧副带。
 - [ ] 泄放 `spawnEmpArc` 冷蓝白 thickness=24f；贯穿火花克制量级。
 
 **测试面**

@@ -315,18 +315,7 @@ override fun advance(amount, engine, weapon) {
 
 `length = 500f` 会驱动派生公式：`trailNodes` 达上限 24、`mainTile ≈ 205`、`headRecede = 40`——均为公式内自然结果，无需具名覆盖；目检若观感异常先调公式常量（00 §4.3 口径）。
 
-### 3.2 `smd_projectile_vfx.json` 映射（entries 数组末尾追加）
-
-```json
-{
-  "projectileSpecId": "astd_electric_drive_accelerator_shot",
-  "preset": "electric_drive_accelerator_shot"
-}
-```
-
-说明：该 JSON 的消费方在当前 `src/` 未检索到（疑为遗留管线/外部链路），按 aod7/spc3 既有约定补齐映射，实装时顺带确认其去向。
-
-### 3.3 命中特效
+### 3.2 命中特效
 
 不稳定装药命中反馈 = 浮字 + 2 粒白色 `addHitParticle`（§2.3），不引入额外 RenderEntity 组件——设计案「少量白色 hitParticle，不抢视觉」。
 
@@ -371,7 +360,6 @@ override fun advance(amount, engine, weapon) {
 | `ss-csv/.../weapondata/arc/Catalog_WeaponData_ARC.kt` | `Wpn_astd_electric_drive_accelerator`，number **9213**（预分配段位） | 文件末尾 |
 | `contents/data/campaign/special_items.csv` | `astd_electric_drive_accelerator_bp` 一行，order 留空 | 文件末尾 |
 | `src/.../projectile/driver/ProjectileVfxSpecs.kt` | builders map `"astd_electric_drive_accelerator_shot"` 条目 | map 字面量末尾；白色调色板内联（不留共享函数） |
-| `contents/data/config/smd_projectile_vfx.json` | 同 specId 一条 | entries 数组末尾 |
 | `contents/data/strings/strings.json` | `ui.eda.*` 两个键 | **合并协议外补充项**：00 §3 未列此文件，HUD 文本必然多组共碰；同样键名空间隔离 + 对象末尾追加，提请收口人并入协议 |
 
 无冲突提示：与 01（电荷针刺）共用 `BUtil_NONE.png`、`autocannon_fire` 音效、`blueprint_weapons.png` 图标——只读引用，不产生合并冲突。**与 01 的实质冲突在 special_items params 格式**（§0-2），收口人须裁决并回改其中一份。
@@ -416,8 +404,7 @@ override fun advance(amount, engine, weapon) {
 
 **特效面**
 
-- [ ] builders 条目白色内联调色板、width 9f / length 500f；smd json 映射就位
-- [ ] 原版弹体隐藏四件套（length/width=2、双色 alpha=0、BUtil_NONE、fadeTime=0.2）
+- [ ] builders 条目白色内联调色板、width 9f / length 500f；原版弹体隐藏四件套（length/width=2、双色 alpha=0、BUtil_NONE、fadeTime=0.2）
 
 **测试面**
 
