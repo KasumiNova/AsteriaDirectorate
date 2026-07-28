@@ -111,3 +111,58 @@
 **单测**：arc 包 14 条用例全绿（安全闸四分支/难度隔离/衰减/泄放随机确定性/HUD 双向/onRemove 回收）。
 
 **留档大问题**：无。
+
+## 03 电驱加速炮（2026-07-29）
+
+**结论**：验收通过（烟测第二轮 Completed，全证据链闭合，截图目检通过；第一轮 FIRE 相位超时为舞台点火问题，修复后复跑通过）。
+
+**烟测证据（electric_drive_basic，锤头级对锤头级，双方摘除目标定位系统）**：
+
+- 相位机 RANGE_ZERO→RANGE_MID→RANGE_HIGH→FIRE→ENEMY_SCALE→COMPLETED 全通
+  （0.60s / 1.20s / 1.80s / 2.67s / 4.95s）。
+- 净空加速射程三档：0 辐能 1000.0（满额 +200）、30% 辐能 899.90（半额 +100）、50% 辐能 800.0
+  （≥40% 阈值归零）——射程圈随辐能伸缩数值闭合。
+- 每触发弹数：分组计数两轮齐射 [8, 8]（LINKED 双管 × burst 4），edaMaxTriggerProjectiles=8；
+  弹匣最小观测 22 = 30 - 8，与单触发 8 发一致。
+- 不稳定装药：玩家侧追加伤害 20 次、峰值 43.39 ∈ [0, 45]（v2 上限 80×56.25%）；
+  敌版 k_s=5 档 7 次、峰值 59.85 > 45（突破玩家档上限，证明难度系数作用于装药）。
+- 敌版净空加速三档：installScaleForTests 切 k_s=1/2/5 → 射程 900 / 1000 / 1200（v1=+100 / v2=+200 / v5=+400）。
+- 截图目检：左下 devMode HUD 条目「电驱加速炮 射程加成：+200 su」与武器组中文名「电驱加速炮」、
+  弹药 22、白色 500su texTrail 双轨弹迹连贯、敌方盾缘追加伤害浮字「59」可见；FPS 165 / Idle 55%。
+- 特效登记：edaVfxTrackedCount=4，edaVfxLastSpecId=astd_electric_drive_accelerator_shot，
+  唯一登记面 ProjectileVfxSpecs。
+
+**浮字 spike 结论（规格硬性待验证项）**：javap 反编译 starfarer_obf.jar CombatEngine.applyDamage——
+8 参版本末位布尔 iconst_0 恒 false，脚本 applyDamage 原生不产生伤害浮字（10 参版 iload10 驱动的
+A/I.super(G,point,velocity,entity) 经符号表核实为命中音效/粒子，非浮字；原版弹体浮字由弹体命中
+代码另行调用 addFloatingDamageText）。故 OnHitEffect 显式 floatingDamage 必须保留、不会叠字。
+结论已同步写入 ElectricDriveAcceleratorOnHitEffect 类注释与本 commit 信息。
+
+**与规格的偏差处置（均已修，记 smallFixes）**：
+
+1. 规格 §1.5 special_items.csv order 留空与实机冲突：原版 CSV 解析 order 列强制数字，留空启动即
+   JSONException。沿袭 01 回声核心段位补 9202（规格文本错误，留档备主代理修订规格）。
+2. 规格 §2.5 要求 weapon.slot 空槽时退化 weapon.id 拼 seed：BuffHostImpl.slotIdOf 对空槽抛
+   IllegalArgumentException，退化路径在 Buff 侧不可行。OnHitEffect 改 WARN once + 放弃本次结算
+   （装配武器必然有槽，纯防御分支）；WeaponEffect 侧 modId 按规格退化 weapon.id + WARN（modId 无
+   此限制）。
+3. 烟测舞台：锤头级 WS 001 挂电驱加速炮时武器组 AutofireAI 目标采纳恒 null（第一轮 90s 零发射、
+   弹药恒 30 实证），与电荷针刺 WS 004 同款槽位/组级 AI 行为。按针刺重型先例逐帧 currAngle 对准 +
+   setForceFireOneFrame 直控开火（纯舞台手段；开火周期/弹药/散射由武器机制自身决定）。
+4. MissionDefinition 双方摘除 targetingunit（ITU）：其射程加成会抬升射程基线，破坏 800/900/1000
+   期望读数（staging 必要性）。
+5. ASTDAutomationCombatPlugin.writeDiagnostics 守卫补 isEdaEnabled 分支（漏加则 EDA 场景诊断不落盘）。
+6. 规格 §4.1 用例四 float 减法误差（0.3f-0.2f≈0.099999994）：断言容差放宽至 1e-4f（对齐基建
+   ReferenceStackableBuff.STACK_EPS 先例）。
+
+**留档大问题（规格算术矛盾，实现已按规格自身验收口径落地，规格文本待主代理修订）**：
+
+1. 规格 RANGE_BONUS 指定 ScalingMap.LINEAR(100, 200, 400)，但 LINEAR 在 [2,5] 段三等分，
+   k=3 输出 266.67，与规格 §4.1 单测期望 300、设计案远征锚点 +300 矛盾（同一规格文档内部冲突）。
+   实现采用自定义四 knot 分段线性映射（k≤2: v1→v2；k≤3: v2→(v2+v5)/2；否则 mid→v5）使四档
+   100/200/300/400 全部命中规格验收值。建议主代理修订规格文本：将 RANGE_BONUS 的映射声明改为该
+   四 knot 定义（或把 v5 改为 500 使 LINEAR 天然过 300）。
+
+**单测**：ElectricDriveAcceleratorLogicTest 七条用例全绿（chargeMaxPct 五档/rangeBonusBase 四档/
+fluxDecayFactor 分段越界 NaN/rangeBonus 合成/extraDamage+shouldApplyExtra/seed 稳定区分/callIndex
+递增+isHostValid）。

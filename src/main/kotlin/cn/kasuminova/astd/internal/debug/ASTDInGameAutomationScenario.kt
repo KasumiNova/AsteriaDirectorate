@@ -15,6 +15,9 @@ object ASTDInGameAutomationScenario {
     const val CHARGE_NEEDLE_HEAVY_WEAPON_ID: String = "astd_heavy_charge_needle"
     const val CHARGE_NEEDLE_PROJECTILE_SPEC_ID: String = "astd_charge_needle_shot"
     const val CHARGE_NEEDLE_HEAVY_PROJECTILE_SPEC_ID: String = "astd_heavy_charge_needle_shot"
+    const val EDA_SCENARIO_ID: String = "electric_drive_basic"
+    const val EDA_WEAPON_ID: String = "astd_electric_drive_accelerator"
+    const val EDA_PROJECTILE_SPEC_ID: String = "astd_electric_drive_accelerator_shot"
     const val SHIP_ID: String = "astd_arc_flare"
     const val VARIANT_ID: String = "astd_arc_flare_Standard"
     const val WEAPON_ID: String = "astd_aod7"
@@ -72,6 +75,17 @@ object ASTDInGameAutomationScenario {
         val enabled = System.getProperty(ENABLED_PROPERTY)?.equals("true", ignoreCase = true) == true
         val scenario = System.getProperty(SCENARIO_PROPERTY, SCENARIO_ID)
         return enabled && scenario == CHARGE_NEEDLE_SCENARIO_ID
+    }
+
+    /**
+     * 电驱加速炮实机场景开关：镜像 [isChargeNeedleEnabled]。
+     * 验证每触发 8 弹（LINKED 双管 × burst 4）、净空加速射程随辐能伸缩、
+     * devMode HUD 状态条目、不稳定装药追加伤害浮字与敌版三档。
+     */
+    fun isEdaEnabled(): Boolean {
+        val enabled = System.getProperty(ENABLED_PROPERTY)?.equals("true", ignoreCase = true) == true
+        val scenario = System.getProperty(SCENARIO_PROPERTY, SCENARIO_ID)
+        return enabled && scenario == EDA_SCENARIO_ID
     }
 
     fun outputDir(): Path {

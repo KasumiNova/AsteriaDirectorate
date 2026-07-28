@@ -23,6 +23,16 @@ object ProjectileVfxSpecs {
         "astd_spc3_shot" to { simpleProjectileVfx("astd_spc3_shot", violet(), width = 6f, length = 135f) },
         "astd_charge_needle_shot" to { simpleProjectileVfx("astd_charge_needle_shot", chargeNeedlePalette(), width = 6f, length = 135f) },
         "astd_heavy_charge_needle_shot" to { simpleProjectileVfx("astd_heavy_charge_needle_shot", chargeNeedlePalette(), width = 9f, length = 165f) },
+        // 电驱加速炮：白色射弹（美术裁定），粗细 = 电荷针刺箭弹 6f × 1.5，长 trail 拖尾 500su。
+        // 白色调色板内联字面量（合并协议：新调色板只允许收口人沉淀）。
+        "astd_electric_drive_accelerator_shot" to {
+            simpleProjectileVfx(
+                "astd_electric_drive_accelerator_shot",
+                VfxPalette(ASTDColor(1f, 1f, 1f, 0.9f), TEX_SMOOTH, TEX_ZAPPY),
+                width = 9f,
+                length = 500f,
+            )
+        },
     )
 
     fun has(projectileSpecId: String): Boolean = projectileSpecId in builders

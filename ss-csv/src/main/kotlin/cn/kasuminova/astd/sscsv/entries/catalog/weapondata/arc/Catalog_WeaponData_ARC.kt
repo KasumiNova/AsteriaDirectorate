@@ -366,3 +366,72 @@ object Wpn_astd_heavy_charge_needle : WeaponDataEntry(), SsProjProjectileOutputs
         bulletSprite = "graphics/textures/BUtil_NONE.png",
     )
 }
+
+/**
+ * 电驱加速炮：中型实弹散射连发（量产，规格 03 §1.1）。
+ *
+ * 「散射 2」不走 weapon_data.csv（原版无 projectileCount 列）——由 `.wpn` 双炮管 offsets +
+ * barrelMode LINKED 承担，连发 4 走 burst 列，合计每触发 8 弹；
+ * 不稳定装药随机附加伤害走 `.proj` onHitEffect，净空加速射程加成走 `.wpn` everyFrameEffect。
+ */
+object Wpn_astd_electric_drive_accelerator : WeaponDataEntry(), SsProjProjectileOutputs {
+    override val id: String = "astd_electric_drive_accelerator"
+    override val name: String = weaponName(id)
+    override val tier: Int = 1
+    override val rarity: Int = 1
+    override val baseValue: Int = 11000
+    override val range: Int = 800
+    // 持续 2 弹/s × 80（设计案备弹经济口径）
+    override val damagePerSecond: Int = 160
+    override val damagePerShot: Int = 80
+    override val impact: Int = 4
+    override val turnRate: Int = 30
+    override val ops: Int = 15
+
+    // 发射冷却 1s + 连发 4（散射 2 不在此表，走 .wpn LINKED 双管）
+    override val chargedown: Double = 1.0
+    override val burstSize: Int = 4
+    override val burstDelay: Double = 0.15
+
+    // 弹匣三列：30 发弹匣，2 发/s 回复（重装 4s/+8），每次装填 8 发
+    override val ammo: Int = 30
+    override val ammoPerSec: Double = 2.0
+    override val reloadSize: Int = 8
+    override val type: String = "KINETIC"
+    // 每颗子弹 88（裁定口径）；176 = 2 弹/s × 88
+    override val energyPerShot: Int = 88
+    override val energyPerSecond: Int = 176
+    override val projSpeed: Int = 1000
+    // 中等精确度（对照原版重型针刺 1/10）
+    override val minSpread: Double = 1.0
+    override val maxSpread: Double = 8.0
+    override val spreadPerShot: Double = 0.5
+    override val spreadDecayPerSec: Double = 4.0
+    override val tags: String = "astd_production"
+    override val groupTag: String = "astd"
+    override val tech: String = "弧光阵列"
+    override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
+    override val customPrimary: String = SsI18n.t("weapon.$id.tooltip.customPrimary")
+    override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
+    override val number: Int = 9213
+
+    override val projSpec: ProjectileProjSpec = ProjectileProjSpec(
+        id = "astd_electric_drive_accelerator_shot",
+        spawnType = ProjectileSpawnType.BALLISTIC,
+        onFireEffect = "cn.kasuminova.astd.combat.effect.generic.ProjectileSpecOnFireDispatcher",
+        onHitEffect = "cn.kasuminova.astd.combat.effect.arc.ElectricDriveAcceleratorOnHitEffect",
+        collisionClass = "PROJECTILE_FF",
+        collisionClassByFighter = "PROJECTILE_FIGHTER",
+        // 原版 projectile visual 必须不可见（length/width=2 + 色 alpha=0 + BUtil_NONE）。
+        length = 2.0,
+        width = 2.0,
+        // fadeTime=0.2：给超射程后的原版弹体一段滑行窗口，令代码 VFX 拖尾能跟随淡出（否则 fadeTime=0 会被引擎即刻移除、
+        // 拖尾在射程环处骤消）。原版弹体已 alpha=0 全隐，此窗口不会造成视觉穿帮。
+        fadeTime = 0.2,
+        fringeColor = Rgba(235, 242, 250, 0),
+        coreColor = Rgba(255, 255, 255, 0),
+        textureScrollSpeed = 0.0,
+        pixelsPerTexel = 1.0,
+        bulletSprite = "graphics/textures/BUtil_NONE.png",
+    )
+}

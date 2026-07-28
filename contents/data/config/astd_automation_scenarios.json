@@ -115,6 +115,33 @@
         "chargeNeedleVfxTrackedCount",
         "chargeNeedleDecayVerified"
       ]
+    },
+    {
+      "id": "electric_drive_basic",
+      "missionId": "electric_drive_basic",
+      "shipIds": [
+        "hammerhead"
+      ],
+      "variantIds": [
+        "hammerhead_Balanced"
+      ],
+      "weaponIds": [
+        "astd_electric_drive_accelerator"
+      ],
+      "projectileSpecIds": [
+        "astd_electric_drive_accelerator_shot"
+      ],
+      "requiredEvidence": [
+        "edaRangeZeroFlux",
+        "edaRangeMidFlux",
+        "edaRangeHighFlux",
+        "edaMaxTriggerProjectiles",
+        "edaExtraCountPlayer",
+        "edaEnemyRangeScale1",
+        "edaEnemyRangeScale5",
+        "edaExtraCountOther",
+        "edaVfxTrackedCount"
+      ]
     }
   ]
 }

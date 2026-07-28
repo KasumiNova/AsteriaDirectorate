@@ -406,6 +406,9 @@
 		"ui.charge_needle.status.title": "电荷淤积",
 		"ui.charge_needle.status.desc": "目标 %stacks% 层，护盾维持 +%percent%%",
 		"ui.charge_needle.status.victim_title": "电荷淤积",
-		"ui.charge_needle.status.victim_desc": "本舰护盾维持 +%percent%%（%stacks% 层）"
+		"ui.charge_needle.status.victim_desc": "本舰护盾维持 +%percent%%（%stacks% 层）",
+
+		"ui.eda.range_status.title": "电驱加速炮",
+		"ui.eda.range_status.desc": "射程加成：+%bonus% su"
 	}
 }
