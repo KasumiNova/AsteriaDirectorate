@@ -26,6 +26,8 @@ repositories {
 
 dependencies {
     testImplementation(kotlin("test"))
+    // 战斗 API（ShipAPI/WeaponAPI/CombatEngineAPI 均为 jar 接口）单测桩：禁止反射手搓代理，统一走 mockito。
+    testImplementation("org.mockito:mockito-core:5.5.0")
     // starsector 默认包含所有编译器和运行时模组依赖，不需要单独声明其他模组依赖。
     starsector(project)
 }
