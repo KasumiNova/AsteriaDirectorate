@@ -166,3 +166,61 @@ A/I.super(G,point,velocity,entity) 经符号表核实为命中音效/粒子，�
 **单测**：ElectricDriveAcceleratorLogicTest 七条用例全绿（chargeMaxPct 五档/rangeBonusBase 四档/
 fluxDecayFactor 分段越界 NaN/rangeBonus 合成/extraDamage+shouldApplyExtra/seed 稳定区分/callIndex
 递增+isHostValid）。
+
+## 04 湮灭涡旋（2026-07-29）
+
+**结论**：验收通过（烟测第三、四轮连续 Completed，八条检查点全闭合，第四轮截图目检通过；
+第一轮 MOUNT 旗舰自动部署未就绪、第二轮宿主死亡误坍缩 + 守卫误判、第三轮截图被旗舰阵亡
+增援对话框遮挡，均已修复后复跑通过）。
+
+**烟测证据（annihilation_vortex_basic，桑德级 WS 003 + 奥德赛级 WS 001 协同槽 对
+警戒级投喂舰 + 奥德赛级敌版，四舰全 reserves 手动 spawn）**：
+
+- 相位机 MOUNT→ABSORB→COLLAPSE→EMPTY_PREP→EMPTY_FIRE→ENEMY_SCALE→HOST_DEATH→COMPLETED
+  全通（0.60 / 11.61 / 13.62 / 23.62 / 25.63 / 50.63 / 53.65s，两轮一致）。
+- 双槽位装配：avPlayerSlotId=WS 003（大型能量）、avSynergySlotId=WS 001（大型协同，
+  ENERGY 类武器装入 SYNERGY 槽 ✓）。
+- 爆发循环：avBurstOnSeconds≈1.97 / avBurstOffSeconds≈9.00（2s on / 9s off ✓）；
+  Hidden 生效 avHiddenBeamOk=true（原版束宽归零，自绘束接管）。
+- 牵引/吸收：avAbsorbedPlayer=9（门限 ≥3）；单次吸收入池浮字「200」（annihilator 800×0.25）
+  截图可见，avFloatyCount=9；HUD 吞噬池状态条目 avHudFrames=972。
+- 坍缩：COLLAPSE 相位 avLastCollapseHitsPlayer=8（投喂舰在半径内 ✓）；
+  空池保底 avEmptyCollapseDamage=500.0（|500-500|≤1 ✓）。
+- 敌版三档：installScaleForTests 切 k_s=1/2/5 → 半径 150 / 187.5 / 300、k_s=5 阈值 16000、
+  AOE 倍率 2.5 ✓；k_s=5 档 300su 涡旋帧率 avScale5Fps=165.8（≥30 ✓）。
+- 宿主死亡：协同槽宿主中束击杀（50.65s）→ avPoolRecycled=1（SELF_MANAGED 自回收 + INFO）、
+  坍缩增量 0（涡旋哑火 ✓）。
+- 截图目检（第四轮 frame-02/03）：深红束体贯穿约 800su 命中投喂舰（整束红调，
+  与 GCP 白芯暗红边明显可区分）、束端深红涡旋辉光面可见、吸收浮字「200」入帧、
+  停火后残余红晕与爆炸云；frame-01 为捕获首帧偏暗（舞台观察，不阻塞）。
+
+**与规格的偏差处置（均已修，记 smallFixes）**：
+
+1. 承前：zh-cn.properties notes 直引号转弯引号（文案规范）。
+2. AnnihilationVortexAbsorbImpl 读取 collisionRadius 失败原静默 catch 回退 0——违反禁空
+   catch，改每实例 WARN 一次后回退（不静默）。
+3. 涡旋半径树参数注入二选一裁定（规格 §3）：BeamVfxSpecs.builders 为无参注册表，闭包捕获
+   不可行；由 BeamEffect 建树后按节点 id 直写 VortexComponent.vortexRadius（单测覆盖默认值
+   187.5f 与树结构）。
+4. 单测 PoolTest 初版以 getDeclaredField 反射取私有字段做 verify——违反禁反射（含测试）
+   硬规则，重写为 newPool 返回 PoolFixture(pool, host, weapon) 三元组直接持有构造引用。
+5. 该版本 Mockito eq() 对 Kotlin 接口非空参数返回 null 触发 Intrinsics NPE：never() 校验
+   改用真实值 `verify(host, never()).remove(pool, weapon)`（Java 接口上的 eq() 用法不受影响）。
+6. 烟测舞台四舰全走 reserves + 插件手动 spawn（第一轮实证：原版旗舰自动部署相位在 0.6s
+   settle 内未就绪且始终未部署，MOUNT 判 playerSlot=null）。
+7. 宿主死亡帧束灭停火沿仍触发一次坍缩（第二轮实证 avCollapseCount 6→7，违反机制「宿主死亡
+   涡旋哑火」）：BeamEffect 坍缩路径加 hostAlive 防线——不坍缩、不 markConsumed、记 INFO 后
+   buffHost.remove 走 SELF_MANAGED 回收语义（消费/丢弃 INFO 分流）。
+8. 舞台截图三轮迭代：第二轮 ships-missing 守卫在被击杀舰离场后立即误判 Failed，放行被击杀舰
+   缺席；第三轮实证旗舰阵亡会弹出增援/换旗舰对话框（列 sunder 12 / odyssey 45 两舰）遮挡整个
+   画面致截图全黑——HOST_DEATH 击杀对象改协同槽 odyssey_A（机制等价、owner 0 遥测键相同），
+   COMPLETED 舞台改玩家旗舰开火（HUD 路径入帧），Completed 上报门控到爆发中段 0.8s
+   （2s/9s 循环下随机时刻连拍三帧大概率为无束空场）。另：sunder/odyssey 自带 converted_hangar
+   黄蜂联队为残余舞台噪音（敌版吸收计数 1~3 的来源），未影响任何相位门限。
+
+**留档大问题**：无。
+
+**单测**：AnnihilationVortexTest 20 条（Tuning 3 + Pool 9 + Absorb 5 + Collapse 3）
++ BeamVfxSpecsTest 涡旋树装配用例全绿（三锚点 k_s 精确值、类型转换比/软上限分段/保底、
+SELF_MANAGED 回收、牵引纯函数边界、坍缩九参伤害调用、涡旋树 renderOrder 升序）；
+全量 ./gradlew build 绿。

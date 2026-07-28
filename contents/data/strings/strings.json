@@ -409,6 +409,10 @@
 		"ui.charge_needle.status.victim_desc": "本舰护盾维持 +%percent%%（%stacks% 层）",
 
 		"ui.eda.range_status.title": "电驱加速炮",
-		"ui.eda.range_status.desc": "射程加成：+%bonus% su"
+		"ui.eda.range_status.desc": "射程加成：+%bonus% su",
+
+		"astd.annihilation_vortex.hud.status.title": "湮灭涡旋",
+		"astd.annihilation_vortex.hud.status.desc": "吞噬池 %pool% · 坍缩预估 %collapse%",
+		"astd.annihilation_vortex.hud.collapse_release": "坍缩释放 %damage%"
 	}
 }

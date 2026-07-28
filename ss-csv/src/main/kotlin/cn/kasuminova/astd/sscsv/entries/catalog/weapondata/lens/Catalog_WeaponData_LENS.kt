@@ -182,3 +182,45 @@ object Wpn_astd_gcp2 : WeaponDataEntry() {
     override val noDpsInTooltip: Boolean = false
     override val number: Int = 9205
 }
+
+/** 湮灭涡旋（规格 04 §1.1）：爆发光束终点展开引力涡旋，牵引/吞噬敌方射弹导弹，停火坍缩转化为范围能量伤害。 */
+object Wpn_astd_annihilation_vortex : WeaponDataEntry() {
+    override val id: String = "astd_annihilation_vortex"
+    override val name: String = weaponName(id)
+    override val tier: Int = 3
+    override val baseValue: Int = 36000
+    override val range: Int = 900
+
+    // Burst beam：爆发伤害=1600，发射时间=2s => 束内 DPS=800
+    override val damagePerSecond: Int = 800
+    override val damagePerShot: Int = 0
+    override val emp: Int = 0
+    override val impact: Int = 0
+
+    override val turnRate: Int = 20
+    override val ops: Int = 30
+    override val type: String = "ENERGY"
+
+    // 爆发辐能 3200 / 2s（设计案）
+    override val energyPerSecond: Int = 1600
+
+    override val chargeup: Double = 0.0
+    override val chargedown: Double = 0.0
+
+    // Beam 的 burst size/ delay 对应 burstDuration（爆发 2s）/ burstCooldown（冷却 9s）
+    override val burstSize: Double = 2.0
+    override val burstDelay: Double = 9.0
+
+    override val beamSpeed: Int = 10000
+    override val projSpeed: Int = 0
+
+    // P6 前口径（首批计划 §14）；P6 后改赏金掉落，另立任务
+    override val tags: String = "no_drop, no_drop_salvage"
+    override val groupTag: String = "astd"
+    override val tech: String = "透镜矩阵"
+    override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
+    override val customPrimary: String = SsI18n.t("weapon.$id.tooltip.customPrimary")
+    override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
+    override val noDpsInTooltip: Boolean = false
+    override val number: Int = 9220
+}

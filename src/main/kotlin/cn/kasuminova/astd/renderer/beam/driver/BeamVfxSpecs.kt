@@ -1,6 +1,8 @@
 package cn.kasuminova.astd.renderer.beam.driver
 
 import cn.kasuminova.astd.api.render.RenderEntity
+import cn.kasuminova.astd.impl.render.AnnihilationVortexVortexComponent
+import cn.kasuminova.astd.impl.render.AvBeam
 import cn.kasuminova.astd.impl.render.BeamAmbientComponent
 import cn.kasuminova.astd.impl.render.BeamCoreComponent
 import cn.kasuminova.astd.impl.render.BeamHelixParticleComponent
@@ -23,6 +25,7 @@ object BeamVfxSpecs {
 
     private val builders: Map<String, () -> RenderEntity> = mapOf(
         "astd_psi_omega" to { psiOmega() },
+        "astd_annihilation_vortex" to { annihilationVortex() },
     )
 
     /** 该光束 id 是否已迁移到新管线（有构建函数）。 */
@@ -39,6 +42,17 @@ object BeamVfxSpecs {
         addChild(BeamCoreComponent("astd_psi_omega_core"))
         addChild(PsiHelixComponent("astd_psi_omega_helix"))
         addChild(PsiSiphonComponent("astd_psi_omega_siphon"))
+    }
+
+    /**
+     * 湮灭涡旋：深红束体 4 件套（[AvBeam.coreSpec]，fadeMul 收束）+ 命中端涡旋节点
+     * （旋转深红涡旋 shader keyed upsert/stale 退休 + 低频内收扭曲 + 环布火花 + 吸收迁移 flare）。
+     * 牵引/吸收/吞噬池/坍缩结算由 `AnnihilationVortexBeamEffect` 维护，本树只画视觉；
+     * 涡旋半径档位由 BeamEffect 建树后写入 [AnnihilationVortexVortexComponent.vortexRadius]（树参数注入）。
+     */
+    private fun annihilationVortex(): RenderEntity = renderEntity("astd_annihilation_vortex") {
+        addChild(BeamCoreComponent("astd_annihilation_vortex_core", AvBeam.coreSpec()))
+        addChild(AnnihilationVortexVortexComponent("astd_annihilation_vortex_vortex"))
     }
 
     /**

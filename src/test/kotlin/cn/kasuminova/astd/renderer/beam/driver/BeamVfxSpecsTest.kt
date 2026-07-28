@@ -1,5 +1,6 @@
 package cn.kasuminova.astd.renderer.beam.driver
 
+import cn.kasuminova.astd.impl.render.AnnihilationVortexVortexComponent
 import cn.kasuminova.astd.impl.render.BeamCoreComponent
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -52,5 +53,23 @@ class BeamVfxSpecsTest {
         // 子节点跨两层（粒子层/舰船之上层），children 须按 (层序, renderOrder) 复合升序返回，锁定绘制层次。
         val keys = tree.children.map { it.layer.ordinal to it.renderOrder }
         assertEquals(keys.sortedWith(compareBy({ it.first }, { it.second })), keys, "子节点须按 (层, renderOrder) 升序")
+    }
+
+    @Test
+    fun `annihilation_vortex 装配束体+涡旋两节点且按 renderOrder 升序`() {
+        assertTrue(BeamVfxSpecs.has("astd_annihilation_vortex"))
+        val tree = assertNotNull(BeamVfxSpecs.build("astd_annihilation_vortex"))
+        assertEquals(
+            setOf("astd_annihilation_vortex_core", "astd_annihilation_vortex_vortex"),
+            tree.children.map { it.id }.toSet(),
+        )
+        // 两节点按 renderOrder 升序：core(100) < vortex(200)。
+        val orders = tree.children.map { it.renderOrder }
+        assertEquals(orders.sorted(), orders, "子节点须按 renderOrder 升序")
+        assertTrue(tree.children.first { it.id == "astd_annihilation_vortex_core" } is BeamCoreComponent)
+        // 涡旋节点默认半径为玩家 v2 档 187.5（运行时由 BeamEffect 按难度档位覆写）。
+        val vortex = tree.children.first { it.id == "astd_annihilation_vortex_vortex" }
+        assertTrue(vortex is AnnihilationVortexVortexComponent)
+        assertEquals(187.5f, (vortex as AnnihilationVortexVortexComponent).vortexRadius, 1e-4f)
     }
 }

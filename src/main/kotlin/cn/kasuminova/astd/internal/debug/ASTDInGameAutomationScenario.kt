@@ -18,6 +18,8 @@ object ASTDInGameAutomationScenario {
     const val EDA_SCENARIO_ID: String = "electric_drive_basic"
     const val EDA_WEAPON_ID: String = "astd_electric_drive_accelerator"
     const val EDA_PROJECTILE_SPEC_ID: String = "astd_electric_drive_accelerator_shot"
+    const val AV_SCENARIO_ID: String = "annihilation_vortex_basic"
+    const val AV_WEAPON_ID: String = "astd_annihilation_vortex"
     const val SHIP_ID: String = "astd_arc_flare"
     const val VARIANT_ID: String = "astd_arc_flare_Standard"
     const val WEAPON_ID: String = "astd_aod7"
@@ -86,6 +88,18 @@ object ASTDInGameAutomationScenario {
         val enabled = System.getProperty(ENABLED_PROPERTY)?.equals("true", ignoreCase = true) == true
         val scenario = System.getProperty(SCENARIO_PROPERTY, SCENARIO_ID)
         return enabled && scenario == EDA_SCENARIO_ID
+    }
+
+    /**
+     * 湮灭涡旋实机场景开关：镜像 [isEdaEnabled]。
+     * 验证双槽位装配（LARGE ENERGY / LARGE SYNERGY）、涡旋牵引/吸收遥测、停火坍缩（含命中计数与伤害数字通道）、
+     * 空池保底 500、2s/9s 爆发循环、Hidden 束渲染（beam 宽归零）、HUD/浮字反馈、敌版三档（installScaleForTests）
+     * 与宿主死亡不坍缩 + 池自回收 INFO。
+     */
+    fun isAvEnabled(): Boolean {
+        val enabled = System.getProperty(ENABLED_PROPERTY)?.equals("true", ignoreCase = true) == true
+        val scenario = System.getProperty(SCENARIO_PROPERTY, SCENARIO_ID)
+        return enabled && scenario == AV_SCENARIO_ID
     }
 
     fun outputDir(): Path {
