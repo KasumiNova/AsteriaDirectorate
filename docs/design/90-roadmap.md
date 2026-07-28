@@ -91,6 +91,7 @@
 - [x] 武器设计总纲重立：两条线路的武器哲学、与 GCP-* 的档位关系（2026-07-28 定稿 v1.0，`docs/design/weapons/01-武器设计总纲.md`；命名三类模式 + 隐性获取来源框架同案落地）
 - [ ] 量产武器逐件设计确认（案见 `blue/20-production.md`：电荷针刺 / 重型电荷针刺、重型离子脉冲已定案 v1.0；双子星 DEM v1 提案待确认；后续逐件推送）
 - [ ] 超规格武器逐件设计确认（案见 `blue/30-superlative.md`：“七星”折跃发射器已定案 v1.0；`purple/30-superlative.md`：湮灭涡旋、辉星 MRM 发射器/舱已定案 v1.0；磁阳震线路判定倾向 LENS，暂缓）
+- [ ] 首批实装计划评审：`docs/design/weapons/90-首批实装计划.md` v2（六组已定案武器，待评审通过后开工）
 - [ ] PSI-Omega 载体重设计（特效保留；游戏内 id 为 `astd_psi_omega`，注意与 PSB-Omega 命名对齐）
 - [ ] 其余武器按 ARC/LENS 舰船池的需求逐批设计实装
 - [ ] 武器音效案（40-omega-audio-design.md 现存内容随重设计复审）
