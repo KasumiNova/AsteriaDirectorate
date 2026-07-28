@@ -295,5 +295,5 @@
 ### 实装落点（确认后执行）
 
 - 叠层跟踪：`OnHitEffectPlugin` 记录（武器 → 当前目标 + 层数 + 最后命中时间）；命中同目标 +1 层（上限 10），命中异目标按保留比例折算，超时未命中按速率衰减（EveryFrame 检查）。
-- 增益生效：伤害与射速经武器 `MutableWeaponStatsAPI` 乘区（damageMult / rofMult），按层数实时刷新。
+- 增益生效：伤害倍率经 `WeaponAPI.getDamage().getModifier()` 实时调整（已查证可用）；射速无可靠 per-weapon API（2026-07-29 实装计划 v5 风险登记），实装时以舰体实弹 RoF 加成或冷却扣减近似，目检验证手感。
 - 难度倍率经 `DifficultyTuning` 三锚点；特效走 RenderEntity + texTrail 管线。
