@@ -22,6 +22,9 @@ internal object ProjectileVfxKeys {
     /** 标记：无论 devMode 与否，仅记录一次日志（用于排查脚本是否触发）。 */
     const val ENGINE_LOG_ONFIRE_ONCE: String = "astd_vfx_log_onfire_once"
 
+    /** 标记：每个 projectileSpecId 仅记录一次 track 结果日志的前缀（排查 VFX 登记面）。 */
+    const val ENGINE_LOG_TRACK_ONCE_PREFIX: String = "astd_vfx_log_track_once:"
+
     /** 标记：everyFrame bootstrap 是否触发过（用于确认 weapon everyFrameEffect 是否正常运行）。 */
     const val ENGINE_LOG_BOOTSTRAP_ONCE: String = "astd_vfx_log_bootstrap_once"
 }

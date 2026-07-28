@@ -85,6 +85,36 @@
         "ghostSignalWaveFrames",
         "tideFieldVisualFrames"
       ]
+    },
+    {
+      "id": "charge_needle_basic",
+      "missionId": "charge_needle_basic",
+      "shipIds": [
+        "wolf",
+        "shrike"
+      ],
+      "variantIds": [
+        "wolf_Starting",
+        "shrike_Attack"
+      ],
+      "weaponIds": [
+        "astd_charge_needle",
+        "astd_heavy_charge_needle"
+      ],
+      "projectileSpecIds": [
+        "astd_charge_needle_shot",
+        "astd_heavy_charge_needle_shot"
+      ],
+      "requiredEvidence": [
+        "chargeNeedleTargetStacks",
+        "chargeNeedleTargetMaxStacks",
+        "chargeNeedleTargetUpkeepMult",
+        "chargeNeedlePlayerVictimStacks",
+        "chargeNeedleDischargeCount",
+        "chargeNeedleMinSmallAmmoObserved",
+        "chargeNeedleVfxTrackedCount",
+        "chargeNeedleDecayVerified"
+      ]
     }
   ]
 }

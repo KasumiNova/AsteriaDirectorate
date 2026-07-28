@@ -1,6 +1,8 @@
 package cn.kasuminova.astd.combat.effect.generic
 
 import cn.kasuminova.astd.combat.effect.generic.projectile.ProjectileSpecOnFireDispatcher
+import cn.kasuminova.astd.combat.effect.arc.ChargeNeedleVfx
+import cn.kasuminova.astd.combat.effect.arc.chargeNeedleStacks
 import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcProductionTooltipContracts
 import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcProductionVfx
 import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcProductionShipIds
@@ -26,6 +28,7 @@ import com.fs.starfarer.api.combat.ShipwideAIFlags
 import com.fs.starfarer.api.combat.ViewportAPI
 import com.fs.starfarer.api.combat.WeaponAPI
 import com.fs.starfarer.api.input.InputEventAPI
+import com.fs.starfarer.api.util.Misc
 import com.fs.starfarer.api.mission.FleetSide
 import org.lwjgl.opengl.Display
 import org.lwjgl.util.vector.Vector2f
@@ -66,10 +69,26 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     /** phase2 fighter 误差标记降级 log 的 once 守卫（避免每帧刷屏，参照 lensMarksInjected 模式）。 */
     private var lensPhase2DowngradeLogged = false
 
+    // ==== charge needle 场景状态（相位机 SHIELD → HULL → CEASE → COMPLETED） ====
+    private var chargeNeedlePhase = CHARGE_NEEDLE_PHASE_SHIELD
+    private var chargeNeedlePhaseStartedAt = 0f
+    private var chargeNeedlePeakStacks = 0
+    private var chargeNeedleMinSmallAmmo = Int.MAX_VALUE
+    private var chargeNeedleMinHeavyAmmo = Int.MAX_VALUE
+    private var chargeNeedleSmallEmptiedAt = -1f
+    private var chargeNeedleDecayVerified = false
+
     override fun init(engine: CombatEngineAPI) {
         this.engine = engine
         ProjectileVfxDriverPlugin.ensureInstalled(engine)
-        if (ASTDInGameAutomationScenario.isLensPhase2Enabled()) {
+        if (ASTDInGameAutomationScenario.isChargeNeedleEnabled()) {
+            engine.setDoNotEndCombat(true)
+            lockChargeNeedleCamera(engine)
+            // 与其他场景一致：reserves 部署放到 advance()，init 阶段渲染器未就绪。
+            writeDiagnostics(engine, "CombatReady")
+            writeTelemetry(engine, "CombatReady", findChargeNeedlePlayer(engine), null)
+            log.info("[ASTD-Automation] scenario=${ASTDInGameAutomationScenario.CHARGE_NEEDLE_SCENARIO_ID} combat plugin initialized")
+        } else if (ASTDInGameAutomationScenario.isLensPhase2Enabled()) {
             engine.setDoNotEndCombat(true)
             lockArcProductionCamera(engine)
             // 与 phase1/ARC production 一致：reserves 部署放到 advance()，init 阶段渲染器未就绪。
@@ -104,6 +123,12 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
 
     override fun advance(amount: Float, events: MutableList<InputEventAPI>?) {
         val combatEngine = engine ?: return
+        if (ASTDInGameAutomationScenario.isChargeNeedleEnabled()) {
+            if (combatEngine.isPaused) combatEngine.setPaused(false)
+            elapsed += amount.coerceAtLeast(0f)
+            advanceChargeNeedleScenario(combatEngine)
+            return
+        }
         if (ASTDInGameAutomationScenario.isLensPhase2Enabled()) {
             if (combatEngine.isPaused) combatEngine.setPaused(false)
             elapsed += amount.coerceAtLeast(0f)
@@ -172,6 +197,17 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
 
     override fun renderInUICoords(viewport: ViewportAPI) {
         val combatEngine = engine ?: return
+        if (ASTDInGameAutomationScenario.isChargeNeedleEnabled()) {
+            if (!completed || visualFramesWritten >= 3) return
+            // 捕获帧间隔 0.6s：敌方盾开 + 双方开火，叠层 HUD 在三帧内累积到可见层数，新鲜拖尾/电弧入帧。
+            if (visualFramesWritten > 0 && elapsed - lastVisualFrameAt < 0.6f) return
+            stageChargeNeedleCompletedFrame(combatEngine)
+            lastVisualFrameAt = elapsed
+            visualFramesWritten++
+            writeDiagnostics(combatEngine, "Completed", findChargeNeedlePlayer(combatEngine))
+            writeTelemetry(combatEngine, "Completed", findChargeNeedlePlayer(combatEngine), null)
+            return
+        }
         if (ASTDInGameAutomationScenario.isLensPhase2Enabled()) {
             if (!completed || visualFramesWritten >= 3) return
             if (visualFramesWritten > 0 && elapsed - lastVisualFrameAt < 0.18f) return
@@ -439,6 +475,256 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         findShipByHull(engine, "astd_arc_jet")
             ?: findShipByHull(engine, "astd_plasma_arch")
             ?: findShipByHull(engine, "astd_radiation_belt")
+
+    // === Charge needle scenario (stacking / discharge / magazine / HUD evidence) ===
+
+    private fun findChargeNeedlePlayer(engine: CombatEngineAPI): ShipAPI? =
+        engine.ships.firstOrNull { ship -> ship.owner == 0 && ship.hullSpec?.hullId == CHARGE_NEEDLE_PLAYER_HULL }
+
+    private fun findChargeNeedleEnemy(engine: CombatEngineAPI): ShipAPI? =
+        engine.ships.firstOrNull { ship -> ship.owner != 0 && ship.hullSpec?.hullId == CHARGE_NEEDLE_ENEMY_HULL }
+
+    private fun lockChargeNeedleCamera(engine: CombatEngineAPI) {
+        val viewport = engine.viewport
+        val displayWidth = try { Display.getWidth().takeIf { it > 0 } ?: 2560 } catch (_: Throwable) { 2560 }
+        val displayHeight = try { Display.getHeight().takeIf { it > 0 } ?: 1440 } catch (_: Throwable) { 1440 }
+        val displayAspect = displayWidth.toFloat() / displayHeight.toFloat()
+        val visibleHeight = 760f
+        val visibleWidth = visibleHeight * displayAspect
+
+        viewport.setExternalControl(true)
+        viewport.set(
+            CHARGE_NEEDLE_CAMERA_CENTER.x - visibleWidth * 0.5f,
+            CHARGE_NEEDLE_CAMERA_CENTER.y - visibleHeight * 0.5f,
+            visibleWidth,
+            visibleHeight,
+        )
+        viewport.setEverythingNearViewport(true)
+    }
+
+    /** 强制部署 mission reserves（敌方伯劳鸟非旗舰，必须手动出场；范式同 deployLensPhase1Side）。 */
+    private fun deployChargeNeedleReserveShips(engine: CombatEngineAPI) {
+        engine.setDoNotEndCombat(true)
+        for (side in listOf(FleetSide.PLAYER, FleetSide.ENEMY)) {
+            val manager = engine.getFleetManager(side)
+            manager.setSuppressDeploymentMessages(true)
+            for (member in manager.getReservesCopy().toList()) {
+                val anchor = if (side == FleetSide.ENEMY) CHARGE_NEEDLE_ENEMY_ANCHOR else CHARGE_NEEDLE_PLAYER_ANCHOR
+                val facing = if (side == FleetSide.ENEMY) 180f else 0f
+                manager.spawnFleetMember(member, Vector2f(anchor), facing, 0f)
+                manager.removeFromReserves(member)
+            }
+        }
+    }
+
+    /**
+     * 针刺武器组自动开火开关：`setForceFireOneFrame` 对无舰 AI 的舞台舰不生效（实机 90s 零发射验证），
+     * 改用原版武器组 autofire 管线——toggleOn 后组内武器 AutofireAI 自行瞄准 shipTarget 开火。
+     * 注意：不得每帧 `setRemainingCooldownTo(0f)`——实机验证它会把武器开火周期反复重置导致零弹体
+     * （aod7 场景同款写法即因此依赖 spawnProjectile 兜底）。
+     */
+    private fun setChargeNeedleAutofire(ship: ShipAPI?, enabled: Boolean, weaponIds: Set<String>) {
+        ship ?: return
+        for (group in ship.weaponGroupsCopy) {
+            if (group.weaponsCopy.none { it.id in weaponIds }) continue
+            if (enabled && !group.isAutofiring) group.toggleOn()
+            if (!enabled && group.isAutofiring) group.toggleOff()
+        }
+    }
+
+    private fun transitionChargeNeedlePhase(next: String) {
+        log.info("[ASTD-Automation] charge needle phase $chargeNeedlePhase -> $next at ${"%.2f".format(elapsed)}s")
+        chargeNeedlePhase = next
+        chargeNeedlePhaseStartedAt = elapsed
+    }
+
+    /**
+     * 电荷针刺相位机：SHIELD（敌盾开，淤积叠层）→ HULL（敌盾关，泄放电弧 + 弹匣倾泻）
+     * → CEASE（停火，衰减归零验证）→ COMPLETED（恢复开火做截图舞台）。
+     */
+    private fun advanceChargeNeedleScenario(engine: CombatEngineAPI) {
+        engine.setDoNotEndCombat(true)
+        deployChargeNeedleReserveShips(engine)
+        lockChargeNeedleCamera(engine)
+
+        val player = findChargeNeedlePlayer(engine)
+        val enemy = findChargeNeedleEnemy(engine)
+        if (player != null) {
+            engine.setPlayerShipExternal(player)
+            // 双舰逐帧钉死（位置/朝向/速度归零）但保留舰 AI（preserveAI=true）：实机验证 AI 置空后
+            // OMNI 盾失去威胁追踪、停在一个朝向，弹体全部走船体路线导致淤积恒 0（第十四轮 AI 存活时叠层正常）；
+            // 且敌方 AutofireAI 拒射。AI 存活 + 命令封锁 + 钉死即可兼顾稳定与机制行为。
+            // 注：真正阻断开火的是每帧 setRemainingCooldownTo(0f)（已移除），而非 AI 置空与否。
+            stabilizeShip(player, CHARGE_NEEDLE_PLAYER_ANCHOR, 0f, allowFire = chargeNeedlePhase != CHARGE_NEEDLE_PHASE_CEASE, preserveAI = true)
+            player.setShipTarget(enemy)
+            // 玩家盾常开：敌方针刺命中玩家护盾触发受击方淤积（victim HUD 证据）。
+            player.shield?.let { if (!it.isOn) it.toggleOn() }
+            // 舞台保活：场景内双方血量/辐能顶格，避免过载/击沉打断相位机（纯 staging，非机制兜底）。
+            player.setHitpoints(player.maxHitpoints)
+            player.fluxTracker.setCurrFlux(0f)
+            player.fluxTracker.setHardFlux(0f)
+            setChargeNeedleAutofire(player, chargeNeedlePhase != CHARGE_NEEDLE_PHASE_CEASE, CHARGE_NEEDLE_PLAYER_WEAPON_IDS)
+            // 窄射界槽位（野狼 WS 004 仅 5° 弧）AutofireAI 目标采纳存在死锁：currAngle 停在弧缘 → 目标判出弧置空
+            // → 无人修正 currAngle（实机判别：同槽挂小型针刺同样 aiTarget=null 拒射，与重型 spec 无关，
+            // extraArcForAI=25 也不解）。舞台逐帧把针刺武器 currAngle 对准敌舰解除死锁。
+            if (enemy != null) {
+                for (w in player.allWeapons) {
+                    if (w.id in CHARGE_NEEDLE_PLAYER_WEAPON_IDS) {
+                        w.setCurrAngle(Misc.getAngleInDegrees(w.location, enemy.location))
+                    }
+                }
+            }
+            // WS 004 重型的 AutofireAI 在本舞台目标采纳恒 null（同槽挂小型判别一致，currAngle 对准敌舰亦不解，
+            // 与重型 spec 无关——槽位/组级 AI 行为）。重型直接逐帧 setForceFireOneFrame 绕过 AI 判定直控开火
+            // （纯舞台手段；重型与小型机制完全同码路，此处只为取弹匣节奏与拖尾目检证据）。
+            for (w in player.allWeapons) {
+                if (w.id == ASTDInGameAutomationScenario.CHARGE_NEEDLE_HEAVY_WEAPON_ID) {
+                    w.setForceFireOneFrame(chargeNeedlePhase != CHARGE_NEEDLE_PHASE_CEASE)
+                }
+            }
+        }
+        if (enemy != null) {
+            stabilizeShip(enemy, CHARGE_NEEDLE_ENEMY_ANCHOR, 180f, allowFire = true, preserveAI = true)
+            enemy.setShipTarget(player)
+            enemy.setHitpoints(enemy.maxHitpoints)
+            enemy.fluxTracker.setCurrFlux(0f)
+            enemy.fluxTracker.setHardFlux(0f)
+            // 敌方针刺开火（命中玩家护盾 → victim 淤积证据）。
+            setChargeNeedleAutofire(enemy, true, CHARGE_NEEDLE_ENEMY_WEAPON_IDS)
+        }
+
+        val smallNeedle = player?.allWeapons
+            ?.filter { it.id == ASTDInGameAutomationScenario.CHARGE_NEEDLE_WEAPON_ID }
+            ?.minByOrNull { it.ammo }
+        val heavyNeedle = player?.allWeapons
+            ?.filter { it.id == ASTDInGameAutomationScenario.CHARGE_NEEDLE_HEAVY_WEAPON_ID }
+            ?.minByOrNull { it.ammo }
+
+        when (chargeNeedlePhase) {
+            CHARGE_NEEDLE_PHASE_SHIELD -> {
+                enemy?.shield?.let { if (!it.isOn) it.toggleOn() }
+                val stacks = enemy?.chargeNeedleStacks()?.stacks ?: 0
+                if (stacks > chargeNeedlePeakStacks) chargeNeedlePeakStacks = stacks
+                if (stacks >= CHARGE_NEEDLE_STACK_TARGET) transitionChargeNeedlePhase(CHARGE_NEEDLE_PHASE_HULL)
+            }
+            CHARGE_NEEDLE_PHASE_HULL -> {
+                enemy?.shield?.let { if (it.isOn) it.toggleOff() }
+                val stacks = enemy?.chargeNeedleStacks()?.stacks ?: 0
+                if (stacks > chargeNeedlePeakStacks) chargeNeedlePeakStacks = stacks
+                if (ChargeNeedleVfx.dischargeCount(engine) >= CHARGE_NEEDLE_DISCHARGE_TARGET &&
+                    chargeNeedleMinSmallAmmo <= 0
+                ) {
+                    transitionChargeNeedlePhase(CHARGE_NEEDLE_PHASE_CEASE)
+                }
+            }
+            CHARGE_NEEDLE_PHASE_CEASE -> {
+                enemy?.shield?.let { if (!it.isOn) it.toggleOn() }
+                val stacks = enemy?.chargeNeedleStacks()?.stacks ?: 0
+                if (stacks == 0 && chargeNeedlePeakStacks > 0) chargeNeedleDecayVerified = true
+                if (chargeNeedleDecayVerified) transitionChargeNeedlePhase(CHARGE_NEEDLE_PHASE_COMPLETED)
+            }
+            else -> {
+                stageChargeNeedleCompletedFrame(engine)
+            }
+        }
+
+        // 弹匣节奏证据：最小弹药观测值与首次打空时刻。
+        smallNeedle?.let { needle ->
+            if (needle.ammo < chargeNeedleMinSmallAmmo) {
+                chargeNeedleMinSmallAmmo = needle.ammo
+                if (needle.ammo <= 0 && chargeNeedleSmallEmptiedAt < 0f) chargeNeedleSmallEmptiedAt = elapsed
+            }
+        }
+        heavyNeedle?.let { needle -> if (needle.ammo < chargeNeedleMinHeavyAmmo) chargeNeedleMinHeavyAmmo = needle.ammo }
+
+        val state = when {
+            player == null || enemy == null -> {
+                if (elapsed > 10f) {
+                    failureReason = "charge needle ships missing: player=${player != null}, enemy=${enemy != null}"
+                    "Failed"
+                } else {
+                    "CombatReady"
+                }
+            }
+            chargeNeedlePhase != CHARGE_NEEDLE_PHASE_COMPLETED &&
+                elapsed - chargeNeedlePhaseStartedAt > CHARGE_NEEDLE_PHASE_TIMEOUT -> {
+                failureReason = "charge needle phase timeout: $chargeNeedlePhase"
+                "Failed"
+            }
+            chargeNeedlePhase == CHARGE_NEEDLE_PHASE_COMPLETED -> "Completed"
+            else -> "CombatReady"
+        }
+        if (state == "Completed" && !completed) {
+            completed = true
+            completedAt = elapsed
+            log.info("[ASTD-Automation] Completed: charge_needle_basic stacking/discharge/decay evidence observed")
+        }
+        if (elapsed - lastWriteAt >= 0.18f || state == "Completed" || state == "Failed") {
+            lastWriteAt = elapsed
+            writeDiagnostics(engine, state, player)
+            writeTelemetry(engine, state, player, smallNeedle)
+        }
+    }
+
+    /** 排障用武器状态串：实例存在性/弹药/冷却/禁用/所属组/自动开火状态/射界与射程几何判定。 */
+    private fun chargeNeedleWeaponState(ship: ShipAPI?, weapon: WeaponAPI?): String {
+        weapon ?: return "missing"
+        val group = ship?.getWeaponGroupFor(weapon)
+        val autofireAI = group?.getAutofirePlugin(weapon)
+        val target = ship?.shipTarget
+        val targetLoc = target?.location
+        val dist = if (targetLoc != null) Misc.getDistance(weapon.location, targetLoc) else -1f
+        val distFromArc = if (targetLoc != null) weapon.distanceFromArc(targetLoc) else -1f
+        return "id=${weapon.id},slot=${weapon.slot?.id},ammo=${weapon.ammo},cd=${"%.2f".format(weapon.cooldownRemaining)}," +
+            "disabled=${weapon.isDisabled},firing=${weapon.isFiring},group=${group != null},autofiring=${group?.isAutofiring}," +
+            "groupType=${group?.type},shipTarget=${target?.hullSpec?.hullId}," +
+            "shipAI=${ship?.shipAI != null},aiShouldFire=${autofireAI?.shouldFire()}," +
+            "aiTarget=${autofireAI?.targetShip?.hullSpec?.hullId ?: autofireAI?.target}," +
+            "dist=${"%.0f".format(dist)},range=${"%.0f".format(weapon.range)}," +
+            "currAngle=${"%.1f".format(weapon.currAngle)},arcFacing=${"%.1f".format(weapon.arcFacing)}," +
+            "arc=${"%.0f".format(weapon.arc)},distFromArc=${"%.1f".format(distFromArc)}"
+    }
+
+    /** 排障用护盾状态串：相位/开关/弧度/辐能（排查敌方盾为何未升起导致零淤积）。 */
+    private fun chargeNeedleShieldState(ship: ShipAPI?): String {
+        ship ?: return "missing-ship"
+        val shield = ship.shield ?: return "missing-shield,phased=${ship.isPhased}"
+        return "isOn=${shield.isOn},isOff=${shield.isOff},activeArc=${"%.0f".format(shield.activeArc)}," +
+            "arc=${"%.0f".format(shield.arc)},upkeep=${"%.0f".format(shield.upkeep)}," +
+            "phased=${ship.isPhased},flux=${"%.0f".format(ship.currFlux)},overloaded=${ship.fluxTracker.isOverloaded}"
+    }
+
+    /** COMPLETED 截图舞台：敌方盾开 + 双方自动开火（新鲜拖尾、叠层 HUD、泄放电弧进入捕获帧）。 */
+    private fun stageChargeNeedleCompletedFrame(engine: CombatEngineAPI) {
+        val player = findChargeNeedlePlayer(engine)
+        val enemy = findChargeNeedleEnemy(engine)
+        player?.let {
+            stabilizeShip(it, CHARGE_NEEDLE_PLAYER_ANCHOR, 0f, allowFire = true, preserveAI = true)
+            it.setShipTarget(enemy)
+            it.shield?.let { shield -> if (!shield.isOn) shield.toggleOn() }
+            setChargeNeedleAutofire(it, true, CHARGE_NEEDLE_PLAYER_WEAPON_IDS)
+            // 与相位机同款窄射界 currAngle 死锁解除 + 重型直控开火（详见 advanceChargeNeedleScenario 注释）。
+            if (enemy != null) {
+                for (w in it.allWeapons) {
+                    if (w.id in CHARGE_NEEDLE_PLAYER_WEAPON_IDS) {
+                        w.setCurrAngle(Misc.getAngleInDegrees(w.location, enemy.location))
+                    }
+                }
+            }
+            for (w in it.allWeapons) {
+                if (w.id == ASTDInGameAutomationScenario.CHARGE_NEEDLE_HEAVY_WEAPON_ID) {
+                    w.setForceFireOneFrame(true)
+                }
+            }
+        }
+        enemy?.let {
+            stabilizeShip(it, CHARGE_NEEDLE_ENEMY_ANCHOR, 180f, allowFire = true, preserveAI = true)
+            it.shield?.let { shield -> if (!shield.isOn) shield.toggleOn() }
+            it.setShipTarget(player)
+            setChargeNeedleAutofire(it, true, CHARGE_NEEDLE_ENEMY_WEAPON_IDS)
+        }
+        lockChargeNeedleCamera(engine)
+    }
 
     // === Phase-1 gravitational lens scenario ===
 
@@ -938,7 +1224,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         if (!ASTDInGameAutomationScenario.isEnabled() &&
             !ASTDInGameAutomationScenario.isArcProductionEnabled() &&
             !ASTDInGameAutomationScenario.isLensPhase1Enabled() &&
-            !ASTDInGameAutomationScenario.isLensPhase2Enabled()
+            !ASTDInGameAutomationScenario.isLensPhase2Enabled() &&
+            !ASTDInGameAutomationScenario.isChargeNeedleEnabled()
         ) {
             return
         }
@@ -951,6 +1238,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         val shipSprite = try { ship?.spriteAPI } catch (_: Throwable) { null }
         val vfxTelemetry = ProjectileVfxDriverPlugin.telemetrySnapshot(engine)
         val scenarioId = when {
+            ASTDInGameAutomationScenario.isChargeNeedleEnabled() -> ASTDInGameAutomationScenario.CHARGE_NEEDLE_SCENARIO_ID
             ASTDInGameAutomationScenario.isLensPhase2Enabled() -> ASTDInGameAutomationScenario.LENS_PHASE2_SCENARIO_ID
             ASTDInGameAutomationScenario.isLensPhase1Enabled() -> ASTDInGameAutomationScenario.LENS_PHASE1_SCENARIO_ID
             ASTDInGameAutomationScenario.isArcProductionEnabled() -> ASTDInGameAutomationScenario.ARC_PRODUCTION_SCENARIO_ID
@@ -979,7 +1267,46 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             appendLine("  \"shipSpriteCenterX\": ${formatFloat(shipSprite?.centerX ?: -1f)},")
             appendLine("  \"shipSpriteCenterY\": ${formatFloat(shipSprite?.centerY ?: -1f)},")
             appendLine("  \"failureReason\": ${jsonString(failureReason)},")
-            if (ASTDInGameAutomationScenario.isLensPhase2Enabled()) {
+            if (ASTDInGameAutomationScenario.isChargeNeedleEnabled()) {
+                val enemy = findChargeNeedleEnemy(engine)
+                val player = findChargeNeedlePlayer(engine)
+                val enemyStacks = enemy?.chargeNeedleStacks()
+                appendLine("  \"runtimeElapsedSeconds\": 0,")
+                appendLine("  \"runtimeVisibleLength\": 0,")
+                appendLine("  \"runtimeBeamAlpha\": 0,")
+                appendLine("  \"runtimeWorldUnitsPerPixel\": 0,")
+                appendLine("  \"runtimeTrackedCount\": ${vfxTelemetry.trackedCount},")
+                appendLine("  \"runtimeLastProjectileSpecId\": ${jsonString(vfxTelemetry.lastProjectileSpecId)},")
+                appendLine("  \"referenceVisibleLength\": 0,")
+                // ---- 机制证据（规格 §4.2 验收要点）----
+                appendLine("  \"chargeNeedlePhase\": \"$chargeNeedlePhase\",")
+                appendLine("  \"chargeNeedleTargetStacks\": ${enemyStacks?.stacks ?: 0},")
+                appendLine("  \"chargeNeedleTargetMaxStacks\": ${enemyStacks?.maxStacks ?: 0},")
+                appendLine("  \"chargeNeedleTargetUpkeepMult\": ${formatFloat(try { enemy?.mutableStats?.shieldUpkeepMult?.modifiedValue ?: -1f } catch (_: Throwable) { -1f })},")
+                appendLine("  \"chargeNeedleTargetDissipation\": ${formatFloat(try { enemy?.mutableStats?.fluxDissipation?.modifiedValue ?: -1f } catch (_: Throwable) { -1f })},")
+                appendLine("  \"chargeNeedleTargetBaseUpkeep\": ${formatFloat(try { enemy?.hullSpec?.shieldSpec?.upkeepCost ?: -1f } catch (_: Throwable) { -1f })},")
+                appendLine("  \"chargeNeedlePeakStacks\": $chargeNeedlePeakStacks,")
+                appendLine("  \"chargeNeedlePlayerVictimStacks\": ${player?.chargeNeedleStacks()?.stacks ?: 0},")
+                appendLine("  \"chargeNeedleDischargeCount\": ${ChargeNeedleVfx.dischargeCount(engine)},")
+                appendLine("  \"chargeNeedleMinSmallAmmoObserved\": ${if (chargeNeedleMinSmallAmmo == Int.MAX_VALUE) -1 else chargeNeedleMinSmallAmmo},")
+                appendLine("  \"chargeNeedleMinHeavyAmmoObserved\": ${if (chargeNeedleMinHeavyAmmo == Int.MAX_VALUE) -1 else chargeNeedleMinHeavyAmmo},")
+                appendLine("  \"chargeNeedleSmallAmmoEmptyAtSeconds\": ${formatFloat(chargeNeedleSmallEmptiedAt)},")
+                appendLine("  \"chargeNeedleVfxTrackedCount\": ${vfxTelemetry.trackedCount},")
+                appendLine("  \"chargeNeedleVfxLastSpecId\": ${jsonString(vfxTelemetry.lastProjectileSpecId)},")
+                appendLine("  \"chargeNeedleDecayVerified\": $chargeNeedleDecayVerified,")
+                appendLine("  \"chargeNeedleOwnProjectiles\": ${engine.projectiles.count { it.projectileSpecId in CHARGE_NEEDLE_PROJECTILE_SPEC_IDS }},")
+                // ---- 舞台排障：三武器组/自动开火/AI 判定状态 ----
+                // WS 004 判别轮该槽挂的是小型针刺：heavyNeedleW 按槽位取（不拘 id），区分槽位阻断与规格阻断。
+                val smallNeedleW = player?.allWeapons?.firstOrNull { it.id == ASTDInGameAutomationScenario.CHARGE_NEEDLE_WEAPON_ID && it.slot?.id == "WS 001" }
+                    ?: player?.allWeapons?.firstOrNull { it.id == ASTDInGameAutomationScenario.CHARGE_NEEDLE_WEAPON_ID }
+                val heavyNeedleW = player?.allWeapons?.firstOrNull { it.slot?.id == "WS 004" }
+                val enemyNeedleW = enemy?.allWeapons?.firstOrNull { it.id == ASTDInGameAutomationScenario.CHARGE_NEEDLE_WEAPON_ID }
+                appendLine("  \"chargeNeedleSmallState\": ${jsonString(chargeNeedleWeaponState(player, smallNeedleW))},")
+                appendLine("  \"chargeNeedleHeavyState\": ${jsonString(chargeNeedleWeaponState(player, heavyNeedleW))},")
+                appendLine("  \"chargeNeedleEnemyState\": ${jsonString(chargeNeedleWeaponState(enemy, enemyNeedleW))},")
+                appendLine("  \"chargeNeedleEnemyShieldState\": ${jsonString(chargeNeedleShieldState(enemy))},")
+                appendLine("  \"chargeNeedlePlayerShieldState\": ${jsonString(chargeNeedleShieldState(player))},")
+            } else if (ASTDInGameAutomationScenario.isLensPhase2Enabled()) {
                 val crewed = findCrewedLens(engine)
                 val enemies = lensPhase2Enemies(engine)
                 appendLine("  \"runtimeElapsedSeconds\": 0,")
@@ -1315,5 +1642,28 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private const val SCREENSHOT_FLIGHT_SECONDS = 0.13333334f
         private const val REFERENCE_CAPTURE_ELAPSED_SECONDS = 0.3004f
         private const val PLASMA_AI_PRESSURE_RANGE = 1800f
+        // 电荷针刺场景：相位机与锚点。
+        private const val CHARGE_NEEDLE_PHASE_SHIELD = "SHIELD"
+        private const val CHARGE_NEEDLE_PHASE_HULL = "HULL"
+        private const val CHARGE_NEEDLE_PHASE_CEASE = "CEASE"
+        private const val CHARGE_NEEDLE_PHASE_COMPLETED = "COMPLETED"
+        private const val CHARGE_NEEDLE_PLAYER_HULL = "wolf"
+        private const val CHARGE_NEEDLE_ENEMY_HULL = "shrike"
+        private val CHARGE_NEEDLE_PLAYER_ANCHOR = Vector2f(-350f, 0f)
+        private val CHARGE_NEEDLE_ENEMY_ANCHOR = Vector2f(300f, 0f)
+        private val CHARGE_NEEDLE_CAMERA_CENTER = Vector2f(0f, 0f)
+        // 叠层相位达标层数：v2 小型针刺 40 层安全闸内、可在盾相期内稳定堆到。
+        private const val CHARGE_NEEDLE_STACK_TARGET = 8
+        private const val CHARGE_NEEDLE_DISCHARGE_TARGET = 1
+        private const val CHARGE_NEEDLE_PHASE_TIMEOUT = 90f
+        private val CHARGE_NEEDLE_PLAYER_WEAPON_IDS = setOf(
+            ASTDInGameAutomationScenario.CHARGE_NEEDLE_WEAPON_ID,
+            ASTDInGameAutomationScenario.CHARGE_NEEDLE_HEAVY_WEAPON_ID,
+        )
+        private val CHARGE_NEEDLE_ENEMY_WEAPON_IDS = setOf(ASTDInGameAutomationScenario.CHARGE_NEEDLE_WEAPON_ID)
+        private val CHARGE_NEEDLE_PROJECTILE_SPEC_IDS = setOf(
+            ASTDInGameAutomationScenario.CHARGE_NEEDLE_PROJECTILE_SPEC_ID,
+            ASTDInGameAutomationScenario.CHARGE_NEEDLE_HEAVY_PROJECTILE_SPEC_ID,
+        )
     }
 }

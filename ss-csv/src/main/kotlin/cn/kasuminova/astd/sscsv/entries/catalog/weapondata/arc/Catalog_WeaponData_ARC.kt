@@ -252,3 +252,117 @@ object Wpn_astd_spc3 : WeaponDataEntry(), SsProjProjectileOutputs {
  * 因此 weapon_data.csv 中 damage 字段仅用于 UI/AI 基础信息，不做实际伤害来源。
  */
 
+/** 电荷针刺：小型能量弹匣速射（量产）。护盾命中淤积抬维持，船体命中概率泄放 EMP 电弧（机制见 ChargeNeedleOnHitEffect）。 */
+object Wpn_astd_charge_needle : WeaponDataEntry(), SsProjProjectileOutputs {
+    override val id: String = "astd_charge_needle"
+    override val name: String = weaponName(id)
+    override val tier: Int = 1
+    override val rarity: Int = 1
+    override val baseValue: Int = 6000
+    override val range: Int = 700
+    override val damagePerSecond: Int = 1000
+    override val damagePerShot: Int = 50
+    override val emp: Int = 100
+    override val turnRate: Int = 30
+    override val ops: Int = 9
+
+    // 非 Beam：用 chargedown/burst 描述射速（20 发/s），避免 tooltip 统计除 0 溢出
+    override val chargedown: Double = 0.05
+    override val burstSize: Int = 1
+    override val burstDelay: Double = 0.0
+
+    // 弹匣三列：30 发弹匣，2.5 发/s 回复，每次装填 15 发
+    override val ammo: Int = 30
+    override val ammoPerSec: Double = 2.5
+    override val reloadSize: Int = 15
+    override val type: String = "ENERGY"
+    override val energyPerShot: Int = 50
+    override val energyPerSecond: Int = 125
+    override val projSpeed: Int = 1350
+    override val tags: String = "astd_production"
+    override val groupTag: String = "astd"
+    override val tech: String = "弧光阵列"
+    override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
+    override val customPrimary: String = SsI18n.t("weapon.$id.tooltip.customPrimary")
+    override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
+    override val number: Int = 9210
+
+    override val projSpec: ProjectileProjSpec = ProjectileProjSpec(
+        id = "astd_charge_needle_shot",
+        spawnType = ProjectileSpawnType.BALLISTIC,
+        onFireEffect = "cn.kasuminova.astd.combat.effect.generic.ProjectileSpecOnFireDispatcher",
+        onHitEffect = "cn.kasuminova.astd.combat.effect.arc.ChargeNeedleOnHitEffect",
+        collisionClass = "PROJECTILE_FF",
+        collisionClassByFighter = "PROJECTILE_FIGHTER",
+        // 原版 projectile visual 必须不可见（length/width=2 + 色 alpha=0 + BUtil_NONE）。
+        length = 2.0,
+        width = 2.0,
+        // fadeTime=0.2：给超射程后的原版弹体一段滑行窗口，令代码 VFX 拖尾能跟随淡出（否则 fadeTime=0 会被引擎即刻移除、
+        // 拖尾在射程环处骤消）。原版弹体已 alpha=0 全隐，此窗口不会造成视觉穿帮。
+        fadeTime = 0.2,
+        fringeColor = Rgba(140, 200, 255, 0),
+        coreColor = Rgba(225, 242, 255, 0),
+        textureScrollSpeed = 0.0,
+        pixelsPerTexel = 1.0,
+        bulletSprite = "graphics/textures/BUtil_NONE.png",
+    )
+}
+
+/** 重型电荷针刺：中型能量弹匣速射（量产）。机制与小型完全同源（供弹深度与持续火力加倍）。 */
+object Wpn_astd_heavy_charge_needle : WeaponDataEntry(), SsProjProjectileOutputs {
+    override val id: String = "astd_heavy_charge_needle"
+    override val name: String = weaponName(id)
+    override val tier: Int = 1
+    override val rarity: Int = 1
+    override val baseValue: Int = 14000
+    override val range: Int = 700
+    override val damagePerSecond: Int = 1000
+    override val damagePerShot: Int = 50
+    override val emp: Int = 100
+    override val turnRate: Int = 30
+    override val ops: Int = 17
+
+    // 非 Beam：用 chargedown/burst 描述射速（20 发/s），避免 tooltip 统计除 0 溢出
+    override val chargedown: Double = 0.05
+    override val burstSize: Int = 1
+    override val burstDelay: Double = 0.0
+
+    // 弹匣三列：60 发弹匣，5 发/s 回复，每次装填 30 发
+    override val ammo: Int = 60
+    override val ammoPerSec: Double = 5.0
+    override val reloadSize: Int = 30
+    override val type: String = "ENERGY"
+    override val energyPerShot: Int = 50
+    override val energyPerSecond: Int = 250
+    override val projSpeed: Int = 1350
+    // 窄射界挂载（如野狼 WS 004 仅 5° 弧）下原版 AutofireAI 的目标采纳测试按武器弧判定会拒绝目标
+    // （实机诊断：aiTarget=null 永不击发）；对齐 shockrepeater 先例补 25° AI 弧度补偿。
+    override val extraArcForAI: Int = 25
+    override val tags: String = "astd_production"
+    override val groupTag: String = "astd"
+    override val tech: String = "弧光阵列"
+    override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
+    override val customPrimary: String = SsI18n.t("weapon.$id.tooltip.customPrimary")
+    override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
+    override val number: Int = 9211
+
+    override val projSpec: ProjectileProjSpec = ProjectileProjSpec(
+        id = "astd_heavy_charge_needle_shot",
+        spawnType = ProjectileSpawnType.BALLISTIC,
+        onFireEffect = "cn.kasuminova.astd.combat.effect.generic.ProjectileSpecOnFireDispatcher",
+        onHitEffect = "cn.kasuminova.astd.combat.effect.arc.ChargeNeedleOnHitEffect",
+        collisionClass = "PROJECTILE_FF",
+        collisionClassByFighter = "PROJECTILE_FIGHTER",
+        // 原版 projectile visual 必须不可见（length/width=2 + 色 alpha=0 + BUtil_NONE）。
+        length = 2.0,
+        width = 2.0,
+        // fadeTime=0.2：给超射程后的原版弹体一段滑行窗口，令代码 VFX 拖尾能跟随淡出（否则 fadeTime=0 会被引擎即刻移除、
+        // 拖尾在射程环处骤消）。原版弹体已 alpha=0 全隐，此窗口不会造成视觉穿帮。
+        fadeTime = 0.2,
+        fringeColor = Rgba(140, 200, 255, 0),
+        coreColor = Rgba(225, 242, 255, 0),
+        textureScrollSpeed = 0.0,
+        pixelsPerTexel = 1.0,
+        bulletSprite = "graphics/textures/BUtil_NONE.png",
+    )
+}

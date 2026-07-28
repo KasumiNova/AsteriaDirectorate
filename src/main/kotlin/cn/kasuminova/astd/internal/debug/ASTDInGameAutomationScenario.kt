@@ -10,6 +10,11 @@ object ASTDInGameAutomationScenario {
     const val ARC_PRODUCTION_SCENARIO_ID: String = "arc_production_ships_vfx_tooltip"
     const val LENS_PHASE1_SCENARIO_ID: String = "lens_phase1_foundation"
     const val LENS_PHASE2_SCENARIO_ID: String = "lens_phase2_mechanisms"
+    const val CHARGE_NEEDLE_SCENARIO_ID: String = "charge_needle_basic"
+    const val CHARGE_NEEDLE_WEAPON_ID: String = "astd_charge_needle"
+    const val CHARGE_NEEDLE_HEAVY_WEAPON_ID: String = "astd_heavy_charge_needle"
+    const val CHARGE_NEEDLE_PROJECTILE_SPEC_ID: String = "astd_charge_needle_shot"
+    const val CHARGE_NEEDLE_HEAVY_PROJECTILE_SPEC_ID: String = "astd_heavy_charge_needle_shot"
     const val SHIP_ID: String = "astd_arc_flare"
     const val VARIANT_ID: String = "astd_arc_flare_Standard"
     const val WEAPON_ID: String = "astd_aod7"
@@ -57,6 +62,16 @@ object ASTDInGameAutomationScenario {
         val enabled = System.getProperty(ENABLED_PROPERTY)?.equals("true", ignoreCase = true) == true
         val scenario = System.getProperty(SCENARIO_PROPERTY, SCENARIO_ID)
         return enabled && scenario == LENS_PHASE2_SCENARIO_ID
+    }
+
+    /**
+     * 电荷针刺实机场景开关：镜像 [isLensPhase1Enabled]。
+     * 验证淤积叠层（层数/维持乘区/安全闸/衰减）、船体泄放电弧计数、弹匣节奏、双槽弹体 VFX 与 HUD 反馈。
+     */
+    fun isChargeNeedleEnabled(): Boolean {
+        val enabled = System.getProperty(ENABLED_PROPERTY)?.equals("true", ignoreCase = true) == true
+        val scenario = System.getProperty(SCENARIO_PROPERTY, SCENARIO_ID)
+        return enabled && scenario == CHARGE_NEEDLE_SCENARIO_ID
     }
 
     fun outputDir(): Path {

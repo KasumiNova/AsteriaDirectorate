@@ -57,3 +57,5 @@ object Desc_astd_gcp8 : LocalizedDescription("astd_gcp8", "WEAPON", notesId = "a
 object Desc_astd_gcp4 : LocalizedDescription("astd_gcp4", "WEAPON", notesId = "astd_gcp12")
 object Desc_astd_gcp2 : LocalizedDescription("astd_gcp2", "WEAPON", notesId = "astd_gcp12")
 object Desc_astd_psi_omega : LocalizedDescription("astd_psi_omega", "WEAPON")
+object Desc_astd_charge_needle : LocalizedDescription("astd_charge_needle", "WEAPON")
+object Desc_astd_heavy_charge_needle : LocalizedDescription("astd_heavy_charge_needle", "WEAPON", notesId = "astd_charge_needle")

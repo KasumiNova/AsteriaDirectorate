@@ -70,3 +70,44 @@
    spec 持有），另立接口即空接口过度设计；BeamHost 立接口的先例是因为节点需下转型查询 baseWidth。
 
 **留档大问题**：无。
+
+## 01 电荷针刺 / 重型电荷针刺（2026-07-29）
+
+**结论**：验收通过（烟测第二十一轮 Completed，全证据链闭合，截图目检通过）。
+
+**烟测证据（charge_needle_basic，野狼[小+重] 对 伯劳鸟[小]）**：
+
+- 相位机 SHIELD→HULL→CEASE→COMPLETED 全通（0.97s / 2.48s / 2.50s）；淤积峰值 8 层、泄放 34 次、
+  小型弹匣 2.47s 倾泻至空、重型弹匣全匣打空（最小观测 0）、衰减归零验证 true、
+  受击方淤积峰值为 8 层（玩家护盾维持 60→70 遥测同步抬升）。
+- 截图目检：左下 HUD 双向条目齐全——受击方 negative「电荷淤积 本舰护盾维持 +22%（11 层）」、
+  攻击方「目标 N 层，护盾维持 +N%」；ASCII % 正常渲染；冷蓝白 texTrail 弹迹连贯无原版弹体残留；
+  泄放 EMP 电弧与「熄火！」瘫痪可见；武器组中文名（电荷针刺/重型电荷针刺）+ 自动开火标识正常；
+  FPS 164 / Idle 26%。
+- 特效登记：`onFire track` 两个 spec 均 tracked=true specRegistered=true；VfxLastSpecId 两 id 均有出现。
+
+**与规格的偏差处置（均已修，记 smallFixes）**：
+
+1. 规格 §1.5/§4 验收口径「special_items.csv order 留空」与实机冲突：原版 CSV 解析 order 列强制数字，
+   留空启动即 JSONException。按既有回声核心段位补 9200/9201（规格文本错误，留档备主代理修订规格）。
+2. 泄放 soundId 规格为 null（自留确认项）：实机 null 无声，按速射 EMP 武器口径定 `shock_repeater_emp_impact`。
+3. 规格 §2.3 伪码泄放落点选取与 `spawnEmpArc` 调用不一致：API 无落点指定入口（jar 已核实），
+   按最终调用实现，落点由原版在目标舰上自选。
+4. HUD 文案全角 ％ 原版状态栏字体不渲染（截图显 "?"）：改 ASCII %（对齐原版 "-15%" 既有约定）。
+5. 弹匣倾泻观测 2.47s（规格口径 1.5s）：舞台 AutofireAI 扳机纪律非理想压满，机制射速 20 发/s 不变，不影响验收。
+
+**automation 舞台排障结论（后续组烟测样板复用）**：
+
+1. 每帧 `setRemainingCooldownTo(0f)` 会反复重置武器开火周期导致零弹体（isFiring=true/弹药恒定），
+   已移除；开火走武器组 autofire toggle（setForceFireOneFrame 对无舰 AI 舞台舰不生效）。
+2. 舞台舰 AI 置空会导致 OMNI 盾失去威胁追踪停在一个朝向（弹体全走船体路线、淤积恒 0）且敌方
+   AutofireAI 拒射：钉死 staging 必须 preserveAI=true。
+3. 本环境 shrike_Attack 被 VariantAcknowledged 覆盖为 safetyoverrides + converted_hangar：
+   SO 射程公式 450+(700-450)*0.25=513 < 舞台间距 637 致敌方判超程拒射，任务定义移除两 hullmod。
+4. 窄射界槽位（野狼 WS 004 仅 5° 弧）AutofireAI 目标采纳死锁（同槽挂小型判别一致，与重型 spec 无关，
+   extraArcForAI=25 亦不解）：舞台逐帧 `setCurrAngle` 对准 + 重型 `setForceFireOneFrame` 直控取证据。
+5. 重型 catalog 补 `extraArcForAI=25`（对齐 shockrepeater 先例的窄射界 AI 补偿列，实机验证非根因但为合理惯例值）。
+
+**单测**：arc 包 14 条用例全绿（安全闸四分支/难度隔离/衰减/泄放随机确定性/HUD 双向/onRemove 回收）。
+
+**留档大问题**：无。

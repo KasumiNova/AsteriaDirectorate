@@ -401,6 +401,11 @@
 
 		"ui.lens.status.drift": "误差标记",
 		"ui.lens.status.deep_water": "深水标记",
-		"ui.lens.status.stacks": "%stacks% 层"
+		"ui.lens.status.stacks": "%stacks% 层",
+
+		"ui.charge_needle.status.title": "电荷淤积",
+		"ui.charge_needle.status.desc": "目标 %stacks% 层，护盾维持 +%percent%%",
+		"ui.charge_needle.status.victim_title": "电荷淤积",
+		"ui.charge_needle.status.victim_desc": "本舰护盾维持 +%percent%%（%stacks% 层）"
 	}
 }

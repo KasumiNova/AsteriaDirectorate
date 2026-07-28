@@ -36,6 +36,14 @@ class ProjectileSpecOnFireDispatcher : OnFireEffectPlugin {
             val projId = projectile.projectileSpecId
             if (!projId.isNullOrBlank()) {
                 tracked = ProjectileVfxDriverPlugin.track(engine, projectile, projId)
+                val trackLogKey = ProjectileVfxKeys.ENGINE_LOG_TRACK_ONCE_PREFIX + projId
+                if (engine.customData[trackLogKey] != true) {
+                    engine.customData[trackLogKey] = true
+                    log.info(
+                        "[ASTD] onFire track: spec=$projId tracked=$tracked " +
+                            "specRegistered=${cn.kasuminova.astd.renderer.projectile.driver.ProjectileVfxSpecs.has(projId)}",
+                    )
+                }
             }
         } finally {
             ProjectileVfxDispatchState.unlock(projectile, ProjectileVfxKeys.PROJECTILE_VFX_ONFIRE_LOCK)
