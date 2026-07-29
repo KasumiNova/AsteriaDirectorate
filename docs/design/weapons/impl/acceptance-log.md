@@ -465,3 +465,70 @@ payload 光束三色 .wpn 直配，同步冲击 spawnExplosion 白闪）。依�
 
 **留档大问题**：规格 §1.1 payload range 列缺失、§4.2-3 观察手段与实机包装行为不符（均见上，
 机制无推翻项，规格文本待主代理修订）。
+
+## 02 重型离子脉冲（2026-07-29）
+
+**结论**：big_issue_logged——§2.5 待验证项（A9：贯穿追加量被目标 empDamageTakenMult 二次减免）实机证实，
+机制在 mult≈0 目标上的设计下限不成立，按规格预案留档待基建 PR 修正；其余验收项全部通过
+（烟测一轮 Completed at 29.54s，到达终态即退出，未干等超时）。
+
+**数据面**：`Catalog_WeaponData_ARC.kt` object 逐列与 §1.1 一致（number 9212、ammo 40/2.67/8、
+burst 4/0.067、chargedown 0.175、emp 600、energy 150/400、OPs 26、tags astd_production）；
+`generateSsCsv` 生成物 weapon_data.csv 第 37 行逐列核对通过；`.proj` 隐藏四件套齐全 +
+onHitEffect 指向 HeavyIonPulseOnHitEffect；`.wpn` LARGE + 双炮管坐标 ×2 + ALTERNATING +
+ion_pulser_fire；zh-cn.properties 键齐（{%s}×3 与 HL 三段一一对应）；special_items.csv 一行 params 裸 id。
+
+**单测**：§4.1 十条全绿（Tuning 4：三锚点精确命中/玩家恒 v2/k_s=3 线性插值；Pierce 5：贯穿三档
+<0.1/=0.1/>0.1 + mult=0 防线 750→750 + 0.099f 下沿；Discharge 1：边界 < 口径；VfxRegistration 1：
+has/build 真实管线调用）；`./gradlew test` 全量无失败。
+
+**烟测证据（heavy_ion_pulse_basic 相位机 MOUNT→SHIELD→HULL→SCALE5_PLAYER→PIERCE_K2→PIERCE_K5→COMPLETED，
+双方桑德级 WS 003 大能量槽对射舞台）**：
+
+1. 装配（检查点 1/2）：MOUNT 校验 slot=WS 003、range=700.0、spec maxAmmo=40、barrels=2（双管 ALTERNATING）、
+   VfxSpec 登记断言全过。
+2. 命中护盾无电弧（检查点 3 反面）：SHIELD 相位 8 发命中敌盾、零泄放（discharge=0）。
+3. 船体泄放（检查点 3）：HULL 相位 discharge=4 / hits=13 ≈ 30.8%，与 v2 31.25% 体感吻合；
+   mult=1.0 正向对照敌舰 enemyMaxDisabled=2（EMP 瘫痪武器机制生效）；弹匣节奏 minAmmo 追踪
+   （13 发约 1.7s ≈ 爆发节奏，与 burst 4×0.067 + chargedown 0.175 口径一致；相位取证达标即转段，
+   满匣 40 发未倾泻至空，节奏数字已由弹药差分覆盖）。
+4. 难度隔离（检查点 4）：installScaleForTests(5) + 敌舰 mult→0 下玩家 hitsDelta=12、pierceDelta=0
+   （玩家恒 v2 无贯穿，反面断言闭合）；敌版 k_s=2 pierceDelta=0（v2 档无贯穿特效）。
+5. EMP 贯穿（检查点 5）：installScaleForTests(5) 敌版对 mult=0 玩家舰 pierce=3 次，
+   lastExtra=1800.0 =（baseEmp 600 + arcEmp 1200）×（0.1−0）/0.1 公式逐位吻合；
+   玩家舰为受击方，补伤浮字在其屏上可见（截图大数字浮字 + 火花）。
+6. 弹体 VFX（检查点 7）：截图可见冷蓝白 texTrail 弹体连向敌舰、无原版弹体残留、
+   泄放电弧冷蓝白；HUD 武器组「重型离子脉冲」中文渲染正常、弹药计数 40 正常。
+7. FPS（检查点 8）：K5 持续命中相位 166.7、截图 164，无掉帧。
+8. 日志：无 NPE/异常（既有 shaderlib 贴图与 SSOptimizer mixin 报错为环境固有，非本组引入）；
+   规格登记的 WARN 防线（baseEmp≤0 / 游离弹）按其触发条件未出现（未触发即正确）。
+
+**§2.5 待验证项现场核对结论（检查点 6，A9 风险证实）**：PIERCE_K5 相位对 mult=0 玩家舰，
+贯穿浮字 lastExtra=1800 正常发出，但玩家舰被瘫痪武器数 0→max 0——追加 EMP 经 `applyDamage`
+管线被目标 empDamageTakenMult=0 折算为零，未造成任何武器/引擎瘫痪；对照 HULL 相位 mult=1.0
+敌舰 disabled=2，舞台 EMP 瘫痪机制本身生效。证据链：浮字发出 ≠ 实际结算生效，设计案
+「EMP 贯穿保底」意图在 mult≈0 目标上被原版管线二次减免完全吞没。
+
+**与规格的偏差处置（均已修，记 smallFixes）**：
+
+1. special_items.csv `order` 列：规格 §1.5「order 留空」与 01 组实机判例冲突（原版 CSV 解析 order
+   列强制数字，留空启动即 JSONException）——按既有段位补 9207（规格文本错误，同 01 口径留档）。
+2. 规格 §1.5 蓝图描述文案用「重型离子脉冲」直角引号——全局铁律禁「」（原版字体无效符号），
+   落实为弯引号“重型离子脉冲”（同 01 组既有行口径）。
+3. 相位机 ammo 断言取 `spec.maxAmmo`（weapon_data.csv 数据面口径，不吃任务环境 ammo 倍率），
+   同 10 组判例。
+
+**留档大问题**：
+
+1. **A9 证实：EMP 贯穿追加量被目标 empDamageTakenMult 二次减免，设计下限不成立**。
+   现象：规格 §2.2/§2.3 的贯穿补伤走 `engine.applyDamage(empDamage=extra)`，原版管线按目标
+   `empDamageTakenMult.modifiedValue` 折算 EMP 结算量；mult≈0 目标（贯穿机制的唯一服务对象）
+   实际吃到 extra×mult≈0，「追加整发等值 EMP」的设计意图（mult=0 时退化为 emp×1.0）完全不成立——
+   纯函数输出正确（单测钉死 750→750），但落进原版管线后被二次减免归零。
+   证据：heavy_ion_pulse_basic PIERCE_K5 相位日志 lastExtra=1800.0/lastMult=0.0 + 玩家舰
+   disabledWeapons 0→0（HULL 相位 mult=1.0 正向对照 disabled=2）；浮字显示 1800 与实际结算 0 脱节，
+   另造成浮字误导（玩家看到大额 EMP 浮字但目标毫无反应）。
+   建议：按规格 §2.5 预案二选一——(a) 折算 `extra / max(mult, 0.01f)` 使实际结算量回到设计口径；
+   (b) 改走 `spawnEmpArc` 的 emp 通道（需先核实 spawnEmpArc 是否同样过 mult 折算）。
+   规格要求「先改基建 PR 单独提出」，本组按设计案定稿口径实现并钉死纯函数，不在本分支处置；
+   修正落地后建议同步处理浮字口径（显示值应与实际结算量一致，避免误导）。

@@ -66,3 +66,4 @@ object Desc_astd_positron_shockwave : LocalizedDescription("astd_positron_shockw
 object Desc_astd_seven_stars : LocalizedDescription("astd_seven_stars", "WEAPON")
 object Desc_astd_gemini_dem_launcher : LocalizedDescription("astd_gemini_dem_launcher", "WEAPON")
 object Desc_astd_gemini_dem_pod : LocalizedDescription("astd_gemini_dem_pod", "WEAPON", notesId = "astd_gemini_dem_launcher")
+object Desc_astd_heavy_ion_pulse : LocalizedDescription("astd_heavy_ion_pulse", "WEAPON")

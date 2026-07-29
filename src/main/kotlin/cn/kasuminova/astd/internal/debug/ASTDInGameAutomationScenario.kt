@@ -32,6 +32,9 @@ object ASTDInGameAutomationScenario {
     const val GD_LAUNCHER_WEAPON_ID: String = "astd_gemini_dem_launcher"
     const val GD_POD_WEAPON_ID: String = "astd_gemini_dem_pod"
     const val GD_DUMMY_PROJECTILE_SPEC_ID: String = "astd_gemini_dem_dummy"
+    const val HIP_SCENARIO_ID: String = "heavy_ion_pulse_basic"
+    const val HIP_WEAPON_ID: String = "astd_heavy_ion_pulse"
+    const val HIP_PROJECTILE_SPEC_ID: String = "astd_heavy_ion_pulse_shot"
     const val SHIP_ID: String = "astd_arc_flare"
     const val VARIANT_ID: String = "astd_arc_flare_Standard"
     const val WEAPON_ID: String = "astd_aod7"
@@ -161,6 +164,19 @@ object ASTDInGameAutomationScenario {
         val enabled = System.getProperty(ENABLED_PROPERTY)?.equals("true", ignoreCase = true) == true
         val scenario = System.getProperty(SCENARIO_PROPERTY, SCENARIO_ID)
         return enabled && scenario == GD_SCENARIO_ID
+    }
+
+    /**
+     * 重型离子脉冲实机场景开关：镜像 [isGdEnabled]。
+     * 验证装配（大能量槽/700 射程/双炮管 ALTERNATING/ammo 40）、命中护盾无电弧、
+     * 船体泄放电弧（遥测计数 + 频率口径）、弹匣节奏（40 发倾泻/装填）、
+     * 难度隔离（installScaleForTests(5) 玩家恒 v2 无贯穿 + 敌版 k_s=2 无贯穿 / k_s=5 贯穿浮字）、
+     * §2.5 待验证项（贯穿追加量对 mult≈0 目标是否被二次减免：玩家舰武器瘫痪观测面）。
+     */
+    fun isHipEnabled(): Boolean {
+        val enabled = System.getProperty(ENABLED_PROPERTY)?.equals("true", ignoreCase = true) == true
+        val scenario = System.getProperty(SCENARIO_PROPERTY, SCENARIO_ID)
+        return enabled && scenario == HIP_SCENARIO_ID
     }
 
     fun outputDir(): Path {

@@ -49,6 +49,11 @@ object ProjectileVfxSpecs {
         "astd_positron_shockwave_shot" to {
             simpleProjectileVfx("astd_positron_shockwave_shot", positronWhiteBlue(), width = 5f, length = 90f)
         },
+        // 重型离子脉冲：ARC 冷蓝白大槽体量 12/220（90 计划 §2.4），ribbon 电弧副带表达
+        // 「标准弹头附加 EMP 电弧特效」的设计案性格，与电荷针刺（干净箭弹）形成观感区分。
+        "astd_heavy_ion_pulse_shot" to {
+            simpleProjectileVfx("astd_heavy_ion_pulse_shot", heavyIonPulsePalette(), width = 12f, length = 220f, ribbon = true)
+        },
     )
 
     fun has(projectileSpecId: String): Boolean = projectileSpecId in builders
@@ -151,6 +156,9 @@ object ProjectileVfxSpecs {
 
     // 调色板：颜色沿用旧管线数值（视觉已目检回归，不宜再动）；贴图按色系语义分配（P2 观感翻译）。
     private fun violet() = VfxPalette(ASTDColor(0.66f, 0.42f, 1f, 0.9f), TEX_SMOOTH, TEX_ZAPPY)
+
+    // 重型离子脉冲：ARC 冷蓝白（全局美术约定，与电荷针刺同色系）。新共享调色板只允许收口人添加（00 §3），本组内联私有函数。
+    private fun heavyIonPulsePalette() = VfxPalette(ASTDColor(0.55f, 0.78f, 1f, 0.9f), TEX_SMOOTH, TEX_ZAPPY)
 
     // 电荷针刺：ARC 冷蓝白（全局美术约定）。新共享调色板只允许收口人添加（00 §3），本组内联私有函数。
     private fun chargeNeedlePalette() = VfxPalette(ASTDColor(0.55f, 0.78f, 1f, 0.9f), TEX_SMOOTH, TEX_ZAPPY)

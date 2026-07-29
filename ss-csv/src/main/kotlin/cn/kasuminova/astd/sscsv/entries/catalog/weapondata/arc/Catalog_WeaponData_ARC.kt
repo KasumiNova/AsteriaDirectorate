@@ -902,3 +902,73 @@ object Wpn_astd_gemini_dem_he_payload : WeaponDataEntry() {
     override val noDpsInTooltip: Boolean = true
     override val number: Int = 9226
 }
+
+/**
+ * 重型离子脉冲：大型能量弹匣 EMP 主炮（量产，规格 02 §1.1）。
+ *
+ * 离子脉冲炮大型化改进型：船体/装甲命中按概率泄放 EMP 电弧（打击武器/引擎部位），
+ * 破晓敌版追加 EMP 贯穿补伤（机制见 HeavyIonPulseOnHitEffect）；
+ * 双炮管交替射击（1.5× 原版射速）走 `.wpn` 双管坐标 + ALTERNATING。
+ */
+object Wpn_astd_heavy_ion_pulse : WeaponDataEntry(), SsProjProjectileOutputs {
+    override val id: String = "astd_heavy_ion_pulse"
+    override val name: String = weaponName(id)
+    override val tier: Int = 2
+    override val rarity: Int = 1
+    override val baseValue: Int = 24000
+    override val range: Int = 700
+    // 持续 2.67 发/s × 135 折算（照 aod7「持续 DPS」口径）
+    override val damagePerSecond: Int = 360
+    override val damagePerShot: Int = 135
+    override val emp: Int = 600
+    override val impact: Int = 0
+    override val turnRate: Int = 20
+    override val ops: Int = 26
+
+    // 发射冷却 0.175 + 连发 4（射速原版 1.5×，持续约 2.67 发/s）
+    override val chargeup: Double = 0.05
+    override val chargedown: Double = 0.175
+    override val burstSize: Int = 4
+    override val burstDelay: Double = 0.067
+
+    // 弹匣三列：40 发弹匣，2.67 发/s 回复，每次装填 8 发
+    override val ammo: Int = 40
+    override val ammoPerSec: Double = 2.67
+    override val reloadSize: Int = 8
+    override val type: String = "ENERGY"
+    override val energyPerShot: Int = 150
+    override val energyPerSecond: Int = 400
+    override val projSpeed: Int = 1000
+    // 对齐原版 ionpulser 散布
+    override val minSpread: Double = 3.0
+    override val maxSpread: Double = 20.0
+    override val spreadPerShot: Double = 1.0
+    override val spreadDecayPerSec: Double = 4.0
+    override val tags: String = "astd_production"
+    override val groupTag: String = "astd"
+    override val tech: String = "弧光阵列"
+    override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
+    override val customPrimary: String = SsI18n.t("weapon.$id.tooltip.customPrimary")
+    override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
+    override val number: Int = 9212
+
+    override val projSpec: ProjectileProjSpec = ProjectileProjSpec(
+        id = "astd_heavy_ion_pulse_shot",
+        spawnType = ProjectileSpawnType.BALLISTIC,
+        onFireEffect = "cn.kasuminova.astd.combat.effect.generic.ProjectileSpecOnFireDispatcher",
+        onHitEffect = "cn.kasuminova.astd.combat.effect.arc.HeavyIonPulseOnHitEffect",
+        collisionClass = "PROJECTILE_FF",
+        collisionClassByFighter = "PROJECTILE_FIGHTER",
+        // 原版 projectile visual 必须不可见（length/width=2 + 色 alpha=0 + BUtil_NONE）。
+        length = 2.0,
+        width = 2.0,
+        // fadeTime=0.2：给超射程后的原版弹体一段滑行窗口，令代码 VFX 拖尾能跟随淡出（否则 fadeTime=0 会被引擎即刻移除、
+        // 拖尾在射程环处骤消）。原版弹体已 alpha=0 全隐，此窗口不会造成视觉穿帮。
+        fadeTime = 0.2,
+        fringeColor = Rgba(140, 200, 255, 0),
+        coreColor = Rgba(225, 242, 255, 0),
+        textureScrollSpeed = 0.0,
+        pixelsPerTexel = 1.0,
+        bulletSprite = "graphics/textures/BUtil_NONE.png",
+    )
+}
