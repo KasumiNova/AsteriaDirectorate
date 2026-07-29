@@ -435,3 +435,64 @@ object Wpn_astd_electric_drive_accelerator : WeaponDataEntry(), SsProjProjectile
         bulletSprite = "graphics/textures/BUtil_NONE.png",
     )
 }
+
+/**
+ * “穷距”相位轨道炮：大型实弹站桩演算主炮（量产，规格 05 §1.1）。
+ *
+ * 持续演算叠层（同目标命中 +1 层伤害/射速，异目标按保留比例折算，3s 窗口后按速率衰减）
+ * 走 `.proj` onHitEffect + Weapon 级叠层 Buff；完美精度 + 非常慢转向走 spec 面板。
+ */
+object Wpn_astd_qiongjue_phase_railgun : WeaponDataEntry(), SsProjProjectileOutputs {
+    override val id: String = "astd_qiongjue_phase_railgun"
+    override val name: String = weaponName(id)
+    override val tier: Int = 2
+    override val baseValue: Int = 25000
+    override val range: Int = 1200
+    override val damagePerSecond: Int = 300
+    override val damagePerShot: Int = 600
+    override val turnRate: Int = 8
+    override val ops: Int = 27
+
+    // 定案 2s 开火间隔（非 beam 必须走 chargedown/burst，避免 tooltip 统计除 0）
+    override val chargedown: Double = 2.0
+    override val burstSize: Int = 1
+    override val burstDelay: Double = 0.0
+
+    override val type: String = "KINETIC"
+    // 单发 900（辐伤比 1.5）；450 = 900 / 2s
+    override val energyPerShot: Int = 900
+    override val energyPerSecond: Int = 450
+    // 与高斯炮同速（2026-07-29 审批裁定，弃 1500 提案）
+    override val projSpeed: Int = 1200
+    override val turnRateStr: String = "非常慢"
+    override val accuracyStr: String = "完美"
+    // 完美精度（对齐原版高斯炮口径）
+    override val autofireAccBonus: Int = 1
+    override val tags: String = "astd_production"
+    override val groupTag: String = "astd"
+    override val tech: String = "弧光阵列"
+    override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
+    override val customPrimary: String = SsI18n.t("weapon.$id.tooltip.customPrimary")
+    override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
+    override val number: Int = 9214
+
+    override val projSpec: ProjectileProjSpec = ProjectileProjSpec(
+        id = "astd_qiongjue_phase_railgun_shot",
+        spawnType = ProjectileSpawnType.BALLISTIC,
+        onFireEffect = "cn.kasuminova.astd.combat.effect.generic.ProjectileSpecOnFireDispatcher",
+        onHitEffect = "cn.kasuminova.astd.combat.effect.arc.qiongjue.QiongjuePhaseRailgunOnHitEffect",
+        collisionClass = "PROJECTILE_FF",
+        collisionClassByFighter = "PROJECTILE_FIGHTER",
+        // 原版 projectile visual 必须不可见（length/width=2 + 色 alpha=0 + BUtil_NONE）。
+        length = 2.0,
+        width = 2.0,
+        // fadeTime=0.2：给超射程后的原版弹体一段滑行窗口，令代码 VFX 拖尾能跟随淡出（否则 fadeTime=0 会被引擎即刻移除、
+        // 拖尾在射程环处骤消）。原版弹体已 alpha=0 全隐，此窗口不会造成视觉穿帮。
+        fadeTime = 0.2,
+        fringeColor = Rgba(200, 225, 255, 0),
+        coreColor = Rgba(255, 255, 255, 0),
+        textureScrollSpeed = 0.0,
+        pixelsPerTexel = 1.0,
+        bulletSprite = "graphics/textures/BUtil_NONE.png",
+    )
+}

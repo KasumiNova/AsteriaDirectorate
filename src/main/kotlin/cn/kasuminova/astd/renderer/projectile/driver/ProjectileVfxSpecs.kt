@@ -33,6 +33,17 @@ object ProjectileVfxSpecs {
                 length = 500f,
             )
         },
+        // 穷距相位轨道炮：高亮白色细长射弹 + 长距离明亮拖尾（美术主色口径），大型主炮体量 12/300，
+        // 单带细长光矛观感（ribbon=false，克制不抢贯星大光柱）。
+        // 微冷白调色板内联字面量（合并协议：新调色板只允许收口人沉淀）。
+        "astd_qiongjue_phase_railgun_shot" to {
+            simpleProjectileVfx(
+                "astd_qiongjue_phase_railgun_shot",
+                VfxPalette(ASTDColor(0.92f, 0.95f, 1f, 1f), TEX_SMOOTH, TEX_ZAPPY),
+                width = 12f,
+                length = 300f,
+            )
+        },
     )
 
     fun has(projectileSpecId: String): Boolean = projectileSpecId in builders

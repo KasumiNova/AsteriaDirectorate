@@ -224,3 +224,70 @@ fluxDecayFactor 分段越界 NaN/rangeBonus 合成/extraDamage+shouldApplyExtra/
 + BeamVfxSpecsTest 涡旋树装配用例全绿（三锚点 k_s 精确值、类型转换比/软上限分段/保底、
 SELF_MANAGED 回收、牵引纯函数边界、坍缩九参伤害调用、涡旋树 renderOrder 升序）；
 全量 ./gradlew build 绿。
+
+## 05 穷距相位轨道炮（2026-07-29）
+
+**结论**：验收通过（烟测两轮连续 Completed，八相位全通，第二轮截图目检通过；
+第一轮 Completed 上报即拍帧为空场，补截图门控后复跑通过）。
+
+**烟测证据（qiongjue_railgun_basic，统治者级双穷距 WS 012/WS 013 对 敌版统治者级 WS 012 单装
++ 两艘无武装警戒级靶舰，四舰 reserves + 插件手动 spawn）**：
+
+- 相位机 MOUNT→STACK→DUAL→SWITCH→DECAY→KILL→ENEMY_SCALE→COMPLETED 全通
+  （两轮一致：0.60 / 18.32 / 25.32 / 27.14 / 32.4 / 39.63 / 65.5s）。
+- 装配：qjWeaponRange=1200.0、双槽 WS 012/013、武器组中文名「“穷距”相位轨道炮」弯引号渲染正常、
+  伤害类型动能、27 OP（weapon_data.csv 生成行逐列核对）。
+- 叠层：满层伤害乘区 qjDmgMultAtFull=1.6250（10 层 × v2 6.25%）、满层射击间隔
+  qjRefireMinAtFull=1.2376s（2s/1.625≈1.23s）、spike 应用 58/64 次、HUD 维持 14240/15884 帧。
+- 同舰双穷距：qjDualW1Stacks=10 / qjDualW2Stacks=4 独立叠层（Weapon 级复合键 + 逐命中 DamageAPI 双隔离）。
+- 切换目标：10 → floor(10×0.3125)+1=4 层（qjSwitchW1Stacks=4）、「演算转移」浮字 qjTransferPlayer=4、
+  满层边沿「演算完成」浮字 qjFullPlayer=2。
+- 衰减：停火窗口后 qjDecaySeconds=5.28 观测层数流失（DECAY 相位门限通过）。
+- 打死目标转火：qjStacksBeforeKill=3 → qjStacksAfterKillHit=4（旧目标失效不折算 +1，规格裁定项目检确认）。
+- 敌版三档：installScaleForTests 切 k_s=1/2/5 → 4 层乘区 1.20/1.25/1.40（v1 5%/v2 6.25%/v5 10%）；
+  敌版命中 qjHitOther=15、叠至 5 层，AI 正常开火无「追不上不开火」僵持（90 风险 B5 目检通过）。
+- 特效：命中锥面特效 qjConeVfx=58/64 次；texTrail 弹体 runtimeTrackedCount=2、
+  SSOptimizer projectileObserved=true / vfxObserved=true。
+- 截图目检（第二轮门控后 frame-02/screenshot.png）：左下状态条目
+  「持续演算 层数 2/10 · 伤害 +12.5% · 射速 +12.5%」渲染正常（ASCII %、无键名泄漏）、
+  白色细长弹迹双发在飞、敌方武器组自动开火标识与命中伤害浮字可见；FPS 165 / Idle 66%。
+
+**射速 spike 结论（规格 §2.4 硬性二选一，禁止静默）**：
+采用 **`WeaponAPI.setRemainingCooldownTo` 冷却扣减**，弃 `ballisticRoFMult` 舰体乘区——
+每个开火周期起点（`cooldownRemaining` 上跳沿，跳幅 >0.5s 判定）一次性把本周期冷却压缩为
+`cd / mult`，精确作用于本武器，无同舰其他实弹武器射速同步变化的副作用
+（90 计划风险 #9 / 收口清单 C2 消缺）。01 验收判例「每帧 setRemainingCooldownTo(0f) 反复重置
+开火周期」在本方案不成立：只在跳沿写一次。周期中途叠层变化不追溯当前周期，下一周期生效
+（已写入 QiongjueCalcStacks 类注释）。实证：满层间隔 1.2376s ≈ 2/1.625。
+
+**与规格的偏差处置（均已修，记 smallFixes）**：
+
+1. 伤害乘区通道偏离规格 §2.2 伪码（`weapon.damage.modifier.modifyMult`）：烟测实证
+   （qjDmgStatShared=true）**同舰同 spec 武器共享 `weapon.damage.modifier` 底层 MutableStat**，
+   双穷距各自写入互乘（满层实测 1.625²=2.6406），破坏「同舰双穷距独立」。改走
+   `DamageDealtModifier` 逐命中通道——每发弹体 DamageAPI 独立，按 `projectile.weapon` 解析槽位
+   Buff 层数逐命中写入，天然逐武器隔离；Buff 层数为唯一数据源。单测
+   「双穷距逐命中 DamageAPI 天然隔离」回归共享 stat 场景。规格伪码待主代理修订。
+2. customPrimary 的 `{%s}` 占位：规格 §1.1 注「不含 {%s}」与原版机制冲突——原版
+   customPrimaryHL 仅在 customPrimary 含 `{%s}` 时按序替换并高亮（原版 weapon_data.csv 38 处
+   实证），不含则 HL 整列不渲染、「难度系数」高亮落空。本组按 `{%s}`×3 书写，并连带修正
+   01/03/04 三组同构键（同因，HL 此前空转）。规格文本待主代理修订。
+3. special_items.csv order「留空」与原版 CSV 解析强制数字冲突（01 判例）：沿袭段位补 9203。
+4. `.wpn` 占位贴图：turret/hardpoint 四件暂用 graphics/textures/BUtil_NONE.png（规格 §1.2 允许
+   占位跑烟测）；**美术贴图 graphics/weapons/astd_qiongjue_base.png / astd_qiongjue_gun.png
+   未到位，本武器在贴图到位前不算完工（规格登记未完工项）**；HUD 图标暂用
+   graphics/hullmods/astd_arc_loop_interface.png，贴图到位后替换为武器本体图标。
+5. 烟测截图门控：第一轮 Completed 上报时刻连拍三帧全为空场（叠层已衰减、弹体不在飞）；
+   补「COMPLETED 相位叠层回升 ≥3 层才上报 Completed」门控（对齐 04 AV 中段门控先例，
+   保底超时 25s 防舞台卡死），第二轮 HUD/弹迹/伤害浮字全部入帧。
+
+**观察记录（不阻塞）**：同舰双穷距共用一个 HUD 键（规格 §2.2 固定 astd_qiongjue_status），
+状态条目显示后 advance 的一件（截图 2/10 为 W2，同帧 W1 为 3）；规格未定义双件 HUD 合并语义，
+单件场景显示精确。
+
+**单测**：QiongjueStackMathTest 9 条（规格 §2.5 用例 1~9：叠层上限/折算三档/归零边界/窗口边界/
+清零即止/玩家固定 v2/倍率正算/失效不折算/decayRate=0 WARN 恰好一次）+
+QiongjueDamageDealtModifierTest 5 条（玩家 v2/敌版 v1 乘区、零层与无 Buff 放行、非穷距弹体过滤、
+双穷距逐命中隔离）全绿；全量 ./gradlew build 444 项测试全绿。
+
+**留档大问题**：无。

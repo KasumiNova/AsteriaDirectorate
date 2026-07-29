@@ -413,6 +413,11 @@
 
 		"astd.annihilation_vortex.hud.status.title": "湮灭涡旋",
 		"astd.annihilation_vortex.hud.status.desc": "吞噬池 %pool% · 坍缩预估 %collapse%",
-		"astd.annihilation_vortex.hud.collapse_release": "坍缩释放 %damage%"
+		"astd.annihilation_vortex.hud.collapse_release": "坍缩释放 %damage%",
+
+		"ui.qiongjue.status.calc": "持续演算",
+		"ui.qiongjue.status.stacks": "层数 %stacks%/10 · 伤害 +%dmg%% · 射速 +%rof%%",
+		"ui.qiongjue.float.transfer": "演算转移",
+		"ui.qiongjue.float.full": "演算完成"
 	}
 }

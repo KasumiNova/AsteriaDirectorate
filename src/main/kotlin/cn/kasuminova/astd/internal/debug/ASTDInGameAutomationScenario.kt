@@ -20,6 +20,9 @@ object ASTDInGameAutomationScenario {
     const val EDA_PROJECTILE_SPEC_ID: String = "astd_electric_drive_accelerator_shot"
     const val AV_SCENARIO_ID: String = "annihilation_vortex_basic"
     const val AV_WEAPON_ID: String = "astd_annihilation_vortex"
+    const val QJ_SCENARIO_ID: String = "qiongjue_railgun_basic"
+    const val QJ_WEAPON_ID: String = "astd_qiongjue_phase_railgun"
+    const val QJ_PROJECTILE_SPEC_ID: String = "astd_qiongjue_phase_railgun_shot"
     const val SHIP_ID: String = "astd_arc_flare"
     const val VARIANT_ID: String = "astd_arc_flare_Standard"
     const val WEAPON_ID: String = "astd_aod7"
@@ -100,6 +103,18 @@ object ASTDInGameAutomationScenario {
         val enabled = System.getProperty(ENABLED_PROPERTY)?.equals("true", ignoreCase = true) == true
         val scenario = System.getProperty(SCENARIO_PROPERTY, SCENARIO_ID)
         return enabled && scenario == AV_SCENARIO_ID
+    }
+
+    /**
+     * 穷距相位轨道炮实机场景开关：镜像 [isAvEnabled]。
+     * 验证持续演算叠层（同目标 +1/异目标折算/目标失效不折算/3s 窗口衰减）、同舰双穷距复合键隔离、
+     * 伤害乘区（满层 975）、射速 spike（setRemainingCooldownTo 周期起点扣减，满层间隔约 1.23s）、
+     * HUD 状态条目与浮字、命中小号锥面特效计数、敌版三档（installScaleForTests）与叠层期帧率。
+     */
+    fun isQjEnabled(): Boolean {
+        val enabled = System.getProperty(ENABLED_PROPERTY)?.equals("true", ignoreCase = true) == true
+        val scenario = System.getProperty(SCENARIO_PROPERTY, SCENARIO_ID)
+        return enabled && scenario == QJ_SCENARIO_ID
     }
 
     fun outputDir(): Path {
