@@ -1,5 +1,6 @@
 package cn.kasuminova.astd.sscsv.entries.catalog.weapondata.arc
 
+import cn.kasuminova.astd.sscsv.entries.AiHint
 import cn.kasuminova.astd.sscsv.entries.WeaponDataEntry
 import cn.kasuminova.astd.sscsv.entries.catalog.weapondata.weaponName
 import cn.kasuminova.astd.sscsv.i18n.SsI18n
@@ -491,6 +492,73 @@ object Wpn_astd_qiongjue_phase_railgun : WeaponDataEntry(), SsProjProjectileOutp
         fadeTime = 0.2,
         fringeColor = Rgba(200, 225, 255, 0),
         coreColor = Rgba(255, 255, 255, 0),
+        textureScrollSpeed = 0.0,
+        pixelsPerTexel = 1.0,
+        bulletSprite = "graphics/textures/BUtil_NONE.png",
+    )
+}
+
+/**
+ * 正电子冲击波：小型能量点防御近炸弹（量产，规格 06 §1.1）。
+ *
+ * 无触碰体积（`.proj` collisionClass="NONE"，无 onHit 路径）+ 近炸/满射程双引爆
+ * 走 `.proj` onFireEffect 注册引信脚本；锥状冲击结算复用基建 ConeImpactHandler。
+ * 弹体 VFX 追踪由 `.wpn` onFireEffect 的 ProjectileSpecOnFireDispatcher 承担（分工见规格 §0-2）。
+ */
+object Wpn_astd_positron_shockwave : WeaponDataEntry(), SsProjProjectileOutputs {
+    override val id: String = "astd_positron_shockwave"
+    override val name: String = weaponName(id)
+    override val tier: Int = 1
+    override val baseValue: Int = 2500
+    override val range: Int = 600
+    // 200 ÷ 1.5s 折算 tooltip 统计
+    override val damagePerSecond: Int = 133
+    override val damagePerShot: Int = 200
+    override val turnRate: Int = 45
+    override val ops: Int = 6
+
+    // 发射间隔 1.5s（非 Beam 用 chargedown 描述射速，避免 tooltip 统计除 0）
+    override val chargedown: Double = 1.5
+    override val burstSize: Int = 1
+    override val burstDelay: Double = 0.0
+
+    override val type: String = "FRAGMENTATION"
+    override val energyPerShot: Int = 100
+    // 100 ÷ 1.5s 折算
+    override val energyPerSecond: Int = 67
+    override val projSpeed: Int = 900
+    // 弹体原版寿命：原版会将其钳制为 range ÷ projSpeed（≈0.667s），故取值 ≥ 该值即可（0.75 留余量）。
+    // 淡出与满射程同帧发生，引信脚本满射程判定先于淡出兜底执行（第四轮烟测实证钳制机制）。
+    override val flightTime: Double = 0.75
+    override val aiHints: Set<AiHint> = setOf(AiHint.PD)
+    override val tags: String = "astd_production"
+    override val groupTag: String = "astd"
+    override val tech: String = "弧光阵列"
+    override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
+    override val customPrimary: String = SsI18n.t("weapon.$id.tooltip.customPrimary")
+    override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
+    override val number: Int = 9215
+
+    override val projSpec: ProjectileProjSpec = ProjectileProjSpec(
+        id = "astd_positron_shockwave_shot",
+        spawnType = ProjectileSpawnType.BALLISTIC,
+        // 引信脚本注册（规格 §0-2 分工：弹体 VFX 追踪在 .wpn 侧 dispatcher）
+        onFireEffect = "cn.kasuminova.astd.combat.effect.arc.PositronShockwaveOnFireEffect",
+        // 无触碰体积，无 onHit 路径
+        onHitEffect = null,
+        // 无触碰体积的真实实现（规格 §0-1：ProjectileProjSpec 无 collisionRadius 字段）
+        collisionClass = "NONE",
+        // 规格 §1.1「置空不写」与实机冲突：原版 ProjectileSpec 加载强制要求该键（缺键 RuntimeException）；
+        // 与 collisionClass 同写 NONE（01 special_items order 判例同族，规格文本待主代理修订）。
+        collisionClassByFighter = "NONE",
+        // 原版 projectile visual 必须不可见（length/width=2 + 色 alpha=0 + BUtil_NONE）。
+        length = 2.0,
+        width = 2.0,
+        // fadeTime=0.2：给超射程后的原版弹体一段滑行窗口，令代码 VFX 拖尾能跟随淡出（否则 fadeTime=0 会被引擎即刻移除、
+        // 拖尾在射程环处骤消）。原版弹体已 alpha=0 全隐，此窗口不会造成视觉穿帮。
+        fadeTime = 0.2,
+        fringeColor = Rgba(140, 200, 255, 0),
+        coreColor = Rgba(240, 248, 255, 0),
         textureScrollSpeed = 0.0,
         pixelsPerTexel = 1.0,
         bulletSprite = "graphics/textures/BUtil_NONE.png",

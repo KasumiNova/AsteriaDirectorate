@@ -62,3 +62,4 @@ object Desc_astd_heavy_charge_needle : LocalizedDescription("astd_heavy_charge_n
 object Desc_astd_electric_drive_accelerator : LocalizedDescription("astd_electric_drive_accelerator", "WEAPON")
 object Desc_astd_annihilation_vortex : LocalizedDescription("astd_annihilation_vortex", "WEAPON")
 object Desc_astd_qiongjue_phase_railgun : LocalizedDescription("astd_qiongjue_phase_railgun", "WEAPON")
+object Desc_astd_positron_shockwave : LocalizedDescription("astd_positron_shockwave", "WEAPON")

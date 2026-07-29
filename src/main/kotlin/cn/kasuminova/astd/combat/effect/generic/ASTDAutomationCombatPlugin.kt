@@ -3,6 +3,7 @@ package cn.kasuminova.astd.combat.effect.generic
 import cn.kasuminova.astd.combat.effect.generic.projectile.ProjectileSpecOnFireDispatcher
 import cn.kasuminova.astd.combat.effect.arc.ChargeNeedleVfx
 import cn.kasuminova.astd.combat.effect.arc.ElectricDriveAcceleratorOnHitEffect
+import cn.kasuminova.astd.combat.effect.arc.PositronShockwaveFuseScript
 import cn.kasuminova.astd.combat.effect.arc.chargeNeedleStacks
 import cn.kasuminova.astd.combat.effect.arc.qiongjue.QiongjueCalcStacks
 import cn.kasuminova.astd.combat.effect.arc.qiongjue.QiongjueDamageDealtModifier
@@ -168,10 +169,34 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     private var qjEnemyMult2 = -1f
     private var qjEnemyMult5 = -1f
 
+    // ==== positron shockwave 场景状态（相位机 MOUNT → PASS_THROUGH → SPLASH → FUSE → COMPLETED） ====
+    private var psPhase = PS_PHASE_MOUNT
+    private var psPhaseStartedAt = 0f
+    // SPLASH 相位基线：进入相位时的锥面舰船命中计数与近炸引爆计数（增量即本相位证据）。
+    private var psSplashShipHitsBaseline = 0
+    private var psSplashFuseBaseline = 0
+    private var psSplashMaxRangeBaseline = 0
+    // FUSE 相位导弹投喂节流与左右舷交替。
+    private var psMissileFeedAt = -1f
+    private var psMissileFeedSide = 1
+    // COMPLETED 截图门控：最近一次近炸引爆时刻（截图帧需含锥面 VFX/浮字）。
+    private var psLastFuseDetonateAt = -1f
+    private var psLastTrackedFuseCount = 0
+
     override fun init(engine: CombatEngineAPI) {
         this.engine = engine
         ProjectileVfxDriverPlugin.ensureInstalled(engine)
-        if (ASTDInGameAutomationScenario.isQjEnabled()) {
+        if (ASTDInGameAutomationScenario.isPsEnabled()) {
+            engine.setDoNotEndCombat(true)
+            lockPsCamera(engine)
+            // 引爆计数浮字仅 devMode 渲染（2026-07-29 审批裁定）：本场景为 dev-only 舞台，
+            // 开启 devMode 以目检「近炸命中 ×n」浮字（进程被早退杀掉，设置不落盘）。
+            Global.getSettings().setDevMode(true)
+            // 与其他场景一致：reserves 部署放到 advance()，init 阶段渲染器未就绪。
+            writeDiagnostics(engine, "CombatReady")
+            writeTelemetry(engine, "CombatReady", findPsPlayer(engine), null)
+            log.info("[ASTD-Automation] scenario=${ASTDInGameAutomationScenario.PS_SCENARIO_ID} combat plugin initialized")
+        } else if (ASTDInGameAutomationScenario.isQjEnabled()) {
             engine.setDoNotEndCombat(true)
             lockQjCamera(engine)
             // HUD 状态条目仅 devMode 渲染（2026-07-29 审批裁定）：本场景为 dev-only 舞台，
@@ -243,6 +268,12 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
 
     override fun advance(amount: Float, events: MutableList<InputEventAPI>?) {
         val combatEngine = engine ?: return
+        if (ASTDInGameAutomationScenario.isPsEnabled()) {
+            if (combatEngine.isPaused) combatEngine.setPaused(false)
+            elapsed += amount.coerceAtLeast(0f)
+            advancePsScenario(combatEngine)
+            return
+        }
         if (ASTDInGameAutomationScenario.isQjEnabled()) {
             if (combatEngine.isPaused) combatEngine.setPaused(false)
             elapsed += amount.coerceAtLeast(0f)
@@ -1989,6 +2020,280 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         lockQjCamera(engine)
     }
 
+    // ==== positron shockwave scenario ====
+
+    private fun findPsPlayer(engine: CombatEngineAPI): ShipAPI? =
+        engine.ships.firstOrNull { it.owner == 0 && it.hullSpec?.hullId == PS_PLAYER_HULL && !it.isFighter }
+
+    private fun findPsTarget(engine: CombatEngineAPI): ShipAPI? =
+        engine.ships.firstOrNull { it.owner != 0 && it.hullSpec?.hullId == PS_TARGET_HULL && !it.isFighter }
+
+    private fun findPsWeapon(ship: ShipAPI?): WeaponAPI? =
+        ship?.allWeapons?.firstOrNull { it.id == ASTDInGameAutomationScenario.PS_WEAPON_ID }
+
+    private fun lockPsCamera(engine: CombatEngineAPI) {
+        val viewport = engine.viewport
+        val displayWidth = try { Display.getWidth().takeIf { it > 0 } ?: 2560 } catch (_: Throwable) { 2560 }
+        val displayHeight = try { Display.getHeight().takeIf { it > 0 } ?: 1440 } catch (_: Throwable) { 1440 }
+        val displayAspect = displayWidth.toFloat() / displayHeight.toFloat()
+        val visibleWidth = PS_CAMERA_VISIBLE_HEIGHT * displayAspect
+        viewport.setExternalControl(true)
+        viewport.set(
+            PS_CAMERA_CENTER.x - visibleWidth * 0.5f,
+            PS_CAMERA_CENTER.y - PS_CAMERA_VISIBLE_HEIGHT * 0.5f,
+            visibleWidth,
+            PS_CAMERA_VISIBLE_HEIGHT,
+        )
+        viewport.setEverythingNearViewport(true)
+    }
+
+    /** 强制部署 mission reserves（玩家野狼 + 无武装警戒级靶舰均非旗舰，按舰体分配锚点）。 */
+    private fun deployPsReserveShips(engine: CombatEngineAPI) {
+        engine.setDoNotEndCombat(true)
+        for (side in listOf(FleetSide.PLAYER, FleetSide.ENEMY)) {
+            val manager = engine.getFleetManager(side)
+            manager.setSuppressDeploymentMessages(true)
+            for (member in manager.getReservesCopy().toList()) {
+                val hullId = member.hullId ?: continue
+                val anchor = when {
+                    side == FleetSide.PLAYER && hullId == PS_PLAYER_HULL -> PS_PLAYER_ANCHOR
+                    side == FleetSide.ENEMY && hullId == PS_TARGET_HULL -> PS_TARGET_PASS_ANCHOR
+                    else -> continue
+                }
+                val facing = if (side == FleetSide.ENEMY) 180f else 0f
+                manager.spawnFleetMember(member, Vector2f(anchor), facing, 0f)
+                manager.removeFromReserves(member)
+            }
+        }
+    }
+
+    private fun transitionPsPhase(next: String) {
+        log.info("[ASTD-Automation] ps phase $psPhase -> $next at ${"%.2f".format(elapsed)}s")
+        psPhase = next
+        psPhaseStartedAt = elapsed
+    }
+
+    /**
+     * 舞台保活与站位（范式同 stabilizeQjShips）：保留舰 AI + 逐帧 currAngle 对准正东 +
+     * setForceFireOneFrame 绕 AutofireAI 死锁（01/03/05 实证路径）；玩家辐能逐帧清零。
+     * 警戒靶舰盾舞台性常关；PASS_THROUGH 相位不逐帧奶（HP 即「无触碰体积」观测面），
+     * 进入相位时奶满一次。
+     */
+    private fun stabilizePsShips(engine: CombatEngineAPI, fire: Boolean) {
+        val player = findPsPlayer(engine)
+        val target = findPsTarget(engine)
+        if (player != null && !player.isHulk) {
+            engine.setPlayerShipExternal(player)
+            stabilizeShip(player, PS_PLAYER_ANCHOR, 0f, allowFire = fire, preserveAI = true)
+            player.setShipTarget(target)
+            player.setHitpoints(player.maxHitpoints)
+            player.fluxTracker.currFlux = 0f
+            setPsAutofire(player, false)
+            val w = findPsWeapon(player)
+            if (w != null) {
+                w.setCurrAngle(0f)
+                w.setForceFireOneFrame(fire)
+            }
+        }
+        if (target != null && !target.isHulk) {
+            val anchor = when (psPhase) {
+                PS_PHASE_MOUNT, PS_PHASE_PASS_THROUGH -> PS_TARGET_PASS_ANCHOR
+                else -> PS_TARGET_SPLASH_ANCHOR
+            }
+            stabilizeShip(target, anchor, 180f, allowFire = false, preserveAI = true)
+            target.setShipTarget(null)
+            if (psPhase != PS_PHASE_PASS_THROUGH) target.setHitpoints(target.maxHitpoints)
+            target.shield?.toggleOff()
+        }
+    }
+
+    /** 正电子武器组 autofire 总开关（范式同 setQjAutofire）：force fire 独占驱动时关闭。 */
+    private fun setPsAutofire(ship: ShipAPI?, enabled: Boolean) {
+        ship ?: return
+        for (group in ship.weaponGroupsCopy) {
+            if (group.weaponsCopy.none { it.id == ASTDInGameAutomationScenario.PS_WEAPON_ID }) continue
+            if (enabled && !group.isAutofiring) group.toggleOn()
+            if (!enabled && group.isAutofiring) group.toggleOff()
+        }
+    }
+
+    /**
+     * FUSE/COMPLETED 相位导弹投喂：每 [PS_MISSILE_FEED_INTERVAL] 从靶舰右前方 820su 处左右舷交替
+     * 生成一发鱼叉（weapon=null + weaponId 直接生成导弹实体，范式同 lens phase-2 投喂），
+     * 初速 250su/s 指向玩家锚点。spawn 返回 null 视为 weaponId 不可用——记失败原因转 FAILED。
+     */
+    private fun feedPsMissiles(engine: CombatEngineAPI) {
+        if (elapsed < psMissileFeedAt) return
+        psMissileFeedAt = elapsed + PS_MISSILE_FEED_INTERVAL
+        val source = findPsTarget(engine) ?: return
+        psMissileFeedSide = -psMissileFeedSide
+        val spawn = Vector2f(PS_MISSILE_SPAWN_X, PS_MISSILE_SPAWN_Y * psMissileFeedSide)
+        val angle = Misc.getAngleInDegrees(spawn, PS_PLAYER_ANCHOR)
+        val rad = Math.toRadians(angle.toDouble())
+        val vel = Vector2f(
+            (kotlin.math.cos(rad) * PS_MISSILE_INITIAL_SPEED).toFloat(),
+            (kotlin.math.sin(rad) * PS_MISSILE_INITIAL_SPEED).toFloat(),
+        )
+        val spawned = engine.spawnProjectile(source, null, PS_FEED_MISSILE_ID, spawn, angle, vel)
+        if (spawned == null) {
+            failureReason = "ps missile spawn returned null for weaponId=$PS_FEED_MISSILE_ID"
+            transitionPsPhase(PS_PHASE_FAILED)
+        }
+    }
+
+    /**
+     * 正电子冲击波相位机（规格 06 §4.2 烟测检查点映射）：
+     * MOUNT（装配/600 射程/PD hint 校验）→ PASS_THROUGH（穿舰不爆：靶舰 400su 在弹道上，
+     * 弹体穿过不掉血、舰船不触发近炸；满射程自爆引爆距离 ≈600）→ SPLASH（靶舰移至 700su，
+     * 满射程自爆锥面波及舰船命中计数 +1，近炸计数不变——舰船蹭波及但不触发近炸）
+     * → FUSE（投喂鱼叉导弹群：近炸引爆成片清除、devMode 引爆计数浮字、锥面 VFX 计数）
+     * → COMPLETED（持续开火+投喂做截图舞台，近炸引爆近期发生才上报 Completed 令锥面入帧）。
+     */
+    private fun advancePsScenario(engine: CombatEngineAPI) {
+        engine.setDoNotEndCombat(true)
+        deployPsReserveShips(engine)
+        lockPsCamera(engine)
+
+        val player = findPsPlayer(engine)
+        val target = findPsTarget(engine)
+        val weapon = findPsWeapon(player)
+        val fuseCount = PositronShockwaveFuseScript.telemetryCount(engine, PositronShockwaveFuseScript.TELEMETRY_DETONATE_FUSE)
+        val maxRangeCount = PositronShockwaveFuseScript.telemetryCount(engine, PositronShockwaveFuseScript.TELEMETRY_DETONATE_MAX_RANGE)
+        val shipHits = PositronShockwaveFuseScript.telemetryCount(engine, PositronShockwaveFuseScript.TELEMETRY_CONE_SHIP_HITS)
+        val missileHits = PositronShockwaveFuseScript.telemetryCount(engine, PositronShockwaveFuseScript.TELEMETRY_CONE_MISSILE_HITS)
+        val floatyCount = PositronShockwaveFuseScript.telemetryCount(engine, PositronShockwaveFuseScript.TELEMETRY_FLOATY)
+        val coneVfxCount = PositronShockwaveFuseScript.telemetryCount(engine, PositronShockwaveFuseScript.TELEMETRY_CONE_VFX)
+        val lastDetonateDist = PositronShockwaveFuseScript.telemetryFloat(engine, PositronShockwaveFuseScript.TELEMETRY_LAST_DETONATE_DIST)
+
+        when (psPhase) {
+            PS_PHASE_MOUNT -> {
+                stabilizePsShips(engine, fire = false)
+                if (elapsed - psPhaseStartedAt >= PS_MOUNT_SETTLE_SECONDS) {
+                    val slot = weapon?.slot?.id
+                    val range = weapon?.range ?: -1f
+                    val hintsPd = weapon?.spec?.getAIHints()?.contains(WeaponAPI.AIHints.PD) == true
+                    when {
+                        slot != PS_PLAYER_SLOT || kotlin.math.abs(range - PS_EXPECT_RANGE) > PS_RANGE_TOLERANCE -> {
+                            failureReason = "ps mount mismatch: slot=$slot range=$range(expect $PS_EXPECT_RANGE)"
+                            transitionPsPhase(PS_PHASE_FAILED)
+                        }
+                        !hintsPd -> {
+                            failureReason = "ps aiHints missing PD（装配面板 hints 校验）"
+                            transitionPsPhase(PS_PHASE_FAILED)
+                        }
+                        else -> {
+                            // 进入穿舰相位：靶舰奶满一次作「无触碰体积」观测基线（本相位不逐帧奶）
+                            target?.setHitpoints(target.maxHitpoints)
+                            transitionPsPhase(PS_PHASE_PASS_THROUGH)
+                        }
+                    }
+                }
+            }
+            PS_PHASE_PASS_THROUGH -> {
+                stabilizePsShips(engine, fire = true)
+                if (maxRangeCount >= PS_PASS_THROUGH_DETONATIONS) {
+                    val targetIntact = target != null && !target.isHulk &&
+                        target.hitpoints >= target.maxHitpoints - PS_PASS_THROUGH_HP_TOLERANCE
+                    when {
+                        fuseCount != 0 -> {
+                            failureReason = "ps pass-through fuse=$fuseCount, expect 0（舰船不触发近炸/不提前引爆）"
+                            transitionPsPhase(PS_PHASE_FAILED)
+                        }
+                        !targetIntact -> {
+                            failureReason = "ps pass-through target hp=${target?.hitpoints}/${target?.maxHitpoints}（弹体穿舰不掉血为预期；掉血=存在触碰伤害或提前引爆波及）"
+                            transitionPsPhase(PS_PHASE_FAILED)
+                        }
+                        lastDetonateDist < PS_MAX_RANGE_DIST_MIN || lastDetonateDist > PS_MAX_RANGE_DIST_MAX -> {
+                            failureReason = "ps max-range detonate dist=$lastDetonateDist, expect [$PS_MAX_RANGE_DIST_MIN, $PS_MAX_RANGE_DIST_MAX]（600su 空射自爆）"
+                            transitionPsPhase(PS_PHASE_FAILED)
+                        }
+                        else -> {
+                            psSplashShipHitsBaseline = shipHits
+                            psSplashFuseBaseline = fuseCount
+                            psSplashMaxRangeBaseline = maxRangeCount
+                            transitionPsPhase(PS_PHASE_SPLASH)
+                        }
+                    }
+                }
+            }
+            PS_PHASE_SPLASH -> {
+                stabilizePsShips(engine, fire = true)
+                if (maxRangeCount - psSplashMaxRangeBaseline >= PS_SPLASH_DETONATIONS) {
+                    when {
+                        shipHits - psSplashShipHitsBaseline < 1 -> {
+                            failureReason = "ps splash ship hits delta=${shipHits - psSplashShipHitsBaseline}, expect>=1（700su 处舰船应被满射程自爆锥面波及）"
+                            transitionPsPhase(PS_PHASE_FAILED)
+                        }
+                        fuseCount - psSplashFuseBaseline != 0 -> {
+                            failureReason = "ps splash fuse delta=${fuseCount - psSplashFuseBaseline}, expect 0（舰船蹭波及但不触发近炸）"
+                            transitionPsPhase(PS_PHASE_FAILED)
+                        }
+                        else -> transitionPsPhase(PS_PHASE_FUSE)
+                    }
+                }
+            }
+            PS_PHASE_FUSE -> {
+                stabilizePsShips(engine, fire = true)
+                feedPsMissiles(engine)
+                if (fuseCount >= PS_FUSE_DETONATIONS && missileHits >= PS_FUSE_MISSILE_HITS) {
+                    when {
+                        floatyCount < 1 -> {
+                            failureReason = "ps floaty=$floatyCount, expect>=1（devMode 引爆计数浮字「近炸命中 ×n」）"
+                            transitionPsPhase(PS_PHASE_FAILED)
+                        }
+                        coneVfxCount < 1 -> {
+                            failureReason = "ps cone vfx=$coneVfxCount, expect>=1（引爆锥面 VFX）"
+                            transitionPsPhase(PS_PHASE_FAILED)
+                        }
+                        else -> transitionPsPhase(PS_PHASE_COMPLETED)
+                    }
+                }
+            }
+            PS_PHASE_COMPLETED -> {
+                stabilizePsShips(engine, fire = true)
+                feedPsMissiles(engine)
+            }
+        }
+
+        // 最近一次近炸引爆时刻（COMPLETED 截图门控：引爆近期发生才上报，令锥面/浮字入帧）
+        if (fuseCount > psLastTrackedFuseCount) {
+            psLastTrackedFuseCount = fuseCount
+            psLastFuseDetonateAt = elapsed
+        }
+
+        val state = when {
+            player == null || target == null -> {
+                if (elapsed > 12f) {
+                    failureReason = "ps ships missing: player=${player != null}, target=${target != null}"
+                    "Failed"
+                } else {
+                    "CombatReady"
+                }
+            }
+            psPhase == PS_PHASE_FAILED -> "Failed"
+            psPhase != PS_PHASE_COMPLETED &&
+                elapsed - psPhaseStartedAt > PS_PHASE_TIMEOUT -> {
+                failureReason = "ps phase timeout: $psPhase"
+                "Failed"
+            }
+            psPhase == PS_PHASE_COMPLETED -> {
+                val recentDetonate = psLastFuseDetonateAt >= 0f && elapsed - psLastFuseDetonateAt <= PS_COMPLETED_DETONATE_WINDOW
+                if (recentDetonate || elapsed - psPhaseStartedAt >= PS_COMPLETED_STAGE_TIMEOUT) "Completed" else "CombatReady"
+            }
+            else -> "CombatReady"
+        }
+        if (state == "Completed" && !completed) {
+            completed = true
+            completedAt = elapsed
+            log.info("[ASTD-Automation] Completed: positron_shockwave_basic pass-through/max-range/splash/fuse evidence observed")
+        }
+        if (elapsed - lastWriteAt >= 0.18f || state == "Completed" || state == "Failed") {
+            lastWriteAt = elapsed
+            writeDiagnostics(engine, state, player)
+            writeTelemetry(engine, state, player, weapon)
+        }
+    }
+
     // === Phase-1 gravitational lens scenario ===
 
     private fun deployLensPhase1ReserveShips(engine: CombatEngineAPI) {
@@ -2491,7 +2796,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             !ASTDInGameAutomationScenario.isChargeNeedleEnabled() &&
             !ASTDInGameAutomationScenario.isEdaEnabled() &&
             !ASTDInGameAutomationScenario.isAvEnabled() &&
-            !ASTDInGameAutomationScenario.isQjEnabled()
+            !ASTDInGameAutomationScenario.isQjEnabled() &&
+            !ASTDInGameAutomationScenario.isPsEnabled()
         ) {
             return
         }
@@ -2504,6 +2810,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         val shipSprite = try { ship?.spriteAPI } catch (_: Throwable) { null }
         val vfxTelemetry = ProjectileVfxDriverPlugin.telemetrySnapshot(engine)
         val scenarioId = when {
+            ASTDInGameAutomationScenario.isPsEnabled() -> ASTDInGameAutomationScenario.PS_SCENARIO_ID
             ASTDInGameAutomationScenario.isQjEnabled() -> ASTDInGameAutomationScenario.QJ_SCENARIO_ID
             ASTDInGameAutomationScenario.isAvEnabled() -> ASTDInGameAutomationScenario.AV_SCENARIO_ID
             ASTDInGameAutomationScenario.isEdaEnabled() -> ASTDInGameAutomationScenario.EDA_SCENARIO_ID
@@ -2536,7 +2843,36 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             appendLine("  \"shipSpriteCenterX\": ${formatFloat(shipSprite?.centerX ?: -1f)},")
             appendLine("  \"shipSpriteCenterY\": ${formatFloat(shipSprite?.centerY ?: -1f)},")
             appendLine("  \"failureReason\": ${jsonString(failureReason)},")
-            if (ASTDInGameAutomationScenario.isQjEnabled()) {
+            if (ASTDInGameAutomationScenario.isPsEnabled()) {
+                val psPlayer = findPsPlayer(engine)
+                val psTarget = findPsTarget(engine)
+                val psWeapon = findPsWeapon(psPlayer)
+                appendLine("  \"runtimeElapsedSeconds\": 0,")
+                appendLine("  \"runtimeVisibleLength\": 0,")
+                appendLine("  \"runtimeBeamAlpha\": 0,")
+                appendLine("  \"runtimeWorldUnitsPerPixel\": 0,")
+                appendLine("  \"runtimeTrackedCount\": ${vfxTelemetry.trackedCount},")
+                appendLine("  \"runtimeLastProjectileSpecId\": ${jsonString(vfxTelemetry.lastProjectileSpecId)},")
+                appendLine("  \"referenceVisibleLength\": 0,")
+                // ---- 机制证据（规格 06 §4.2 烟测检查点）----
+                appendLine("  \"psPhase\": \"$psPhase\",")
+                appendLine("  \"psSlotId\": ${jsonString(psWeapon?.slot?.id)},")
+                appendLine("  \"psWeaponRange\": ${formatFloat(psWeapon?.range ?: -1f)},")
+                appendLine("  \"psHintsPd\": ${psWeapon?.spec?.getAIHints()?.contains(WeaponAPI.AIHints.PD) == true},")
+                appendLine("  \"psTargetHitpoints\": ${formatFloat(psTarget?.hitpoints ?: -1f)},")
+                appendLine("  \"psTargetMaxHitpoints\": ${formatFloat(psTarget?.maxHitpoints ?: -1f)},")
+                appendLine("  \"psDetonateFuse\": ${PositronShockwaveFuseScript.telemetryCount(engine, PositronShockwaveFuseScript.TELEMETRY_DETONATE_FUSE)},")
+                appendLine("  \"psDetonateMaxRange\": ${PositronShockwaveFuseScript.telemetryCount(engine, PositronShockwaveFuseScript.TELEMETRY_DETONATE_MAX_RANGE)},")
+                appendLine("  \"psLastDetonateDist\": ${formatFloat(PositronShockwaveFuseScript.telemetryFloat(engine, PositronShockwaveFuseScript.TELEMETRY_LAST_DETONATE_DIST))},")
+                appendLine("  \"psConeShipHits\": ${PositronShockwaveFuseScript.telemetryCount(engine, PositronShockwaveFuseScript.TELEMETRY_CONE_SHIP_HITS)},")
+                appendLine("  \"psConeMissileHits\": ${PositronShockwaveFuseScript.telemetryCount(engine, PositronShockwaveFuseScript.TELEMETRY_CONE_MISSILE_HITS)},")
+                appendLine("  \"psConeFighterHits\": ${PositronShockwaveFuseScript.telemetryCount(engine, PositronShockwaveFuseScript.TELEMETRY_CONE_FIGHTER_HITS)},")
+                appendLine("  \"psConeVfx\": ${PositronShockwaveFuseScript.telemetryCount(engine, PositronShockwaveFuseScript.TELEMETRY_CONE_VFX)},")
+                appendLine("  \"psFloaty\": ${PositronShockwaveFuseScript.telemetryCount(engine, PositronShockwaveFuseScript.TELEMETRY_FLOATY)},")
+                appendLine("  \"psDevMode\": ${Global.getSettings().isDevMode},")
+                appendLine("  \"psOwnProjectiles\": ${engine.projectiles.count { it.projectileSpecId == ASTDInGameAutomationScenario.PS_PROJECTILE_SPEC_ID }},")
+                appendLine("  \"psEnemyMissilesInPlay\": ${engine.missiles.count { it.owner != 0 }},")
+            } else if (ASTDInGameAutomationScenario.isQjEnabled()) {
                 val qjPlayer = findQjPlayer(engine)
                 val qjEnemy = findQjEnemy(engine)
                 val qjW1 = findQjWeapon(qjPlayer, QJ_PLAYER_SLOT_W1)
@@ -3180,5 +3516,46 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private const val QJ_ENEMY_MULT_5_MIN = 1.39f
         private const val QJ_ENEMY_MULT_5_MAX = 1.51f
         private const val QJ_PHASE_TIMEOUT = 90f
+        // 正电子冲击波场景：相位机、锚点与期望证据（规格 06 §4.2 烟测检查点）。
+        private const val PS_PHASE_MOUNT = "MOUNT"
+        private const val PS_PHASE_PASS_THROUGH = "PASS_THROUGH"
+        private const val PS_PHASE_SPLASH = "SPLASH"
+        private const val PS_PHASE_FUSE = "FUSE"
+        private const val PS_PHASE_COMPLETED = "COMPLETED"
+        private const val PS_PHASE_FAILED = "FAILED"
+        private const val PS_PLAYER_HULL = "wolf"
+        private const val PS_TARGET_HULL = "vigilance"
+        private const val PS_PLAYER_SLOT = "WS 001"
+        private val PS_PLAYER_ANCHOR = Vector2f(0f, 0f)
+        // 穿舰相位靶舰锚点（400su 在弹道上）；波及相位移至 700su（满射程 600 引爆点前方 100，锥长 250 内）。
+        private val PS_TARGET_PASS_ANCHOR = Vector2f(400f, 0f)
+        private val PS_TARGET_SPLASH_ANCHOR = Vector2f(700f, 0f)
+        private val PS_CAMERA_CENTER = Vector2f(400f, 0f)
+        private const val PS_CAMERA_VISIBLE_HEIGHT = 950f
+        private const val PS_MOUNT_SETTLE_SECONDS = 0.6f
+        // MOUNT 相位校验：射程断言基线 600（无射程向 hullmod 干扰）。
+        private const val PS_EXPECT_RANGE = 600f
+        private const val PS_RANGE_TOLERANCE = 5f
+        // PASS_THROUGH：两次满射程自爆后判定；靶舰 HP 容差（装甲蹭伤为 0 时 hitpoints 应恒满）。
+        private const val PS_PASS_THROUGH_DETONATIONS = 2
+        private const val PS_PASS_THROUGH_HP_TOLERANCE = 1f
+        // 满射程自爆引爆距离期望 ≈600（弹体出生点偏移/边界含等号留容差）。
+        private const val PS_MAX_RANGE_DIST_MIN = 570f
+        private const val PS_MAX_RANGE_DIST_MAX = 640f
+        // SPLASH：相位内两次满射程自爆，锥面舰船命中计数 +1（700su 靶舰在 600 引爆点锥内）。
+        private const val PS_SPLASH_DETONATIONS = 2
+        // FUSE：近炸引爆 ≥2 次、锥面导弹命中 ≥3（成片清除证据）。
+        private const val PS_FUSE_DETONATIONS = 2
+        private const val PS_FUSE_MISSILE_HITS = 3
+        // 导弹投喂：鱼叉（vanilla MRM），0.9s 一发，820su 处左右舷交替，初速 250su/s 指向玩家。
+        private const val PS_FEED_MISSILE_ID = "harpoon"
+        private const val PS_MISSILE_FEED_INTERVAL = 0.9f
+        private const val PS_MISSILE_SPAWN_X = 820f
+        private const val PS_MISSILE_SPAWN_Y = 80f
+        private const val PS_MISSILE_INITIAL_SPEED = 250f
+        // COMPLETED 截图门控：近炸引爆近 1.2s 内发生才上报（锥面 VFX/浮字入帧）；保底舞台超时。
+        private const val PS_COMPLETED_DETONATE_WINDOW = 1.2f
+        private const val PS_COMPLETED_STAGE_TIMEOUT = 25f
+        private const val PS_PHASE_TIMEOUT = 60f
     }
 }

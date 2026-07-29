@@ -44,6 +44,11 @@ object ProjectileVfxSpecs {
                 length = 300f,
             )
         },
+        // 正电子冲击波：小型 PD 弹体克制处理（width 5 / length 90 短拖尾，不抢主炮视觉——设计案特效节）。
+        // 冷蓝白调色板内联字面量（合并协议：新调色板只允许收口人沉淀）。
+        "astd_positron_shockwave_shot" to {
+            simpleProjectileVfx("astd_positron_shockwave_shot", positronWhiteBlue(), width = 5f, length = 90f)
+        },
     )
 
     fun has(projectileSpecId: String): Boolean = projectileSpecId in builders
@@ -140,6 +145,9 @@ object ProjectileVfxSpecs {
             nodes(24); tile(200f, 90f)
         }
     }
+
+    // 正电子冲击波：冷蓝白系（全局美术约定「正电子用白色弹体与明亮拖尾」），分支内内联字面量。
+    private fun positronWhiteBlue() = VfxPalette(ASTDColor(0.62f, 0.82f, 1f, 0.85f), TEX_SMOOTH, TEX_ZAPPY)
 
     // 调色板：颜色沿用旧管线数值（视觉已目检回归，不宜再动）；贴图按色系语义分配（P2 观感翻译）。
     private fun violet() = VfxPalette(ASTDColor(0.66f, 0.42f, 1f, 0.9f), TEX_SMOOTH, TEX_ZAPPY)

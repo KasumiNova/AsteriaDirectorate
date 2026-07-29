@@ -23,6 +23,9 @@ object ASTDInGameAutomationScenario {
     const val QJ_SCENARIO_ID: String = "qiongjue_railgun_basic"
     const val QJ_WEAPON_ID: String = "astd_qiongjue_phase_railgun"
     const val QJ_PROJECTILE_SPEC_ID: String = "astd_qiongjue_phase_railgun_shot"
+    const val PS_SCENARIO_ID: String = "positron_shockwave_basic"
+    const val PS_WEAPON_ID: String = "astd_positron_shockwave"
+    const val PS_PROJECTILE_SPEC_ID: String = "astd_positron_shockwave_shot"
     const val SHIP_ID: String = "astd_arc_flare"
     const val VARIANT_ID: String = "astd_arc_flare_Standard"
     const val WEAPON_ID: String = "astd_aod7"
@@ -115,6 +118,17 @@ object ASTDInGameAutomationScenario {
         val enabled = System.getProperty(ENABLED_PROPERTY)?.equals("true", ignoreCase = true) == true
         val scenario = System.getProperty(SCENARIO_PROPERTY, SCENARIO_ID)
         return enabled && scenario == QJ_SCENARIO_ID
+    }
+
+    /**
+     * 正电子冲击波实机场景开关：镜像 [isQjEnabled]。
+     * 验证无触碰体积（穿舰不爆）、满射程无条件自爆（引爆距离 ≈600）、舰船蹭波及但不触发近炸、
+     * 近炸引爆成片清除导弹群、devMode 引爆计数浮字、锥面 VFX 计数与 PD hint 装配。
+     */
+    fun isPsEnabled(): Boolean {
+        val enabled = System.getProperty(ENABLED_PROPERTY)?.equals("true", ignoreCase = true) == true
+        val scenario = System.getProperty(SCENARIO_PROPERTY, SCENARIO_ID)
+        return enabled && scenario == PS_SCENARIO_ID
     }
 
     fun outputDir(): Path {

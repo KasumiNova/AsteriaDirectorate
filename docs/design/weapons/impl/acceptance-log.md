@@ -291,3 +291,43 @@ QiongjueDamageDealtModifierTest 5 条（玩家 v2/敌版 v1 乘区、零层与�
 双穷距逐命中隔离）全绿；全量 ./gradlew build 444 项测试全绿。
 
 **留档大问题**：无。
+
+## 06 正电子冲击波（2026-07-29）
+
+**烟测场景**：`positron_shockwave_basic`（野狼清空全槽后 WS 001 小能量槽装正电子冲击波，
+无武装警戒级靶舰；近炸相位由插件自 (820,±80) 每 0.9s 投喂鱼叉导弹群，两舰 reserves + 插件手动 spawn）：
+
+- 相位机 MOUNT→PASS_THROUGH→SPLASH→FUSE→COMPLETED 全通（0.60 / 2.79 / 5.80 / 9.62s），
+  state=Completed、failureReason=null、全程 0 条武器侧 WARN/ERROR。
+- 装配：psSlotId=WS 001、psWeaponRange=600.0、psHintsPd=true（weapon_data.csv 生成行逐列核对，
+  hints=PD、tags=astd_production、customPrimary/HL 注入成功）。
+- 无触碰体积：collisionClass/collisionClassByFighter=NONE；PASS_THROUGH 靶舰置 400su 弹道上，
+  两次满射程自爆后靶舰 1750/1750 满血（弹体穿舰不掉血）且 psDetonateFuse=0（舰船不触发近炸）。
+- 满射程自爆：psLastDetonateDist=606.28 ∈ [570,640]（600su 空射自爆，不会静默消散）。
+- 波及：SPLASH 靶舰移 700su，锥面波及舰船 psConeShipHits=2（delta≥1）且近炸计数 delta=0。
+- 近炸：FUSE 相位 psDetonateFuse=4（≥2）、锥面命中导弹 psConeMissileHits=4（≥3）、
+  devMode 浮字 psFloaty=6（“近炸命中 ×n”）、锥面 VFX psConeVfx=8。
+- 难度锚点实证（首帧心跳）：玩家固定 v2 —— halfAngle=28.125°（56.25°/2）、
+  coneRange=250.0、damage=250.0（200×1.25）。
+- 截图目检（frame-01/02/03）：左下武器组「1X 正电子冲击波 · 伤害类型：破片」中文渲染正常、
+  “近炸命中 ×1”浮字多处可见、投喂鱼叉拖尾弧线清晰、引爆闪点入帧；FPS 165 / Idle 71%。
+
+**与规格的偏差处置（均已修，记 smallFixes）**：
+
+1. `.proj` collisionClassByFighter：规格 §1.1「置空不写」与原版 ProjectileSpec 加载强制要求该键冲突
+   （缺键 RuntimeException）；与 collisionClass 同写 NONE（01 special_items order 判例同族）。
+   规格文本待主代理修订。
+2. flightTime 边界：初版取 0.667（= range÷projSpeed），烟测实证**原版弹体寿命被钳制为
+   range÷projSpeed，淡出与满射程同帧发生**，fade 抢先置 isFading 令引信脚本静默回收、
+   自爆永不发生（第三/四轮诊断）。修复：引信脚本判定重排——满射程判定先于淡出兜底；
+   淡出仍抢先属异常时序，记 WARN 并按满射程路径就地引爆（裁定「不会静默消散」的代码化兜底）。
+   flightTime 取 0.75（≥钳制值即可，值本身不再决定时序）。catalog 注释已按实证机制改写。
+3. 静默回收分支拆分：规格「弹体飞行中被移除→静默回收」仅限 !isEntityInPlay；
+   isFading 独立成兜底引爆路径（见上），稳态零 WARN（第六轮实证）。
+
+**单测**：PositronShockwaveDifficultyTest 6 条（玩家固定 v2/敌方迟暮 v1/敌方破晓 v5/
+无主弹体按敌方口径取值并 WARN 恰好一次/满射程边界含等号/弹速为 0 记 ERROR 恰好一条并即爆）+
+PositronShockwaveFuseTest 1 条（isFuseTarget 目标类型六宫格矩阵：敌导弹/敌战机/敌无人机触发，
+友机/敌舰船/敌 hulk 不触发）全绿；全量 ./gradlew build 451 项测试全绿。
+
+**留档大问题**：无。
