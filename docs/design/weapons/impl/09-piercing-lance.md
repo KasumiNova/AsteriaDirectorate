@@ -130,7 +130,7 @@ override val projSpec: ProjectileProjSpec = ProjectileProjSpec(
 
 ```properties
 weapon.astd_piercing_lance.name=贯星之矛
-weapon.astd_piercing_lance.tooltip.customPrimary=命中时沿射弹矢量产生锥状冲击，对范围内所有目标额外造成 125% 的破片伤害与 EMP。效果受到难度系数影响。
+weapon.astd_piercing_lance.tooltip.customPrimary=命中时沿射弹矢量产生锥状冲击，对范围内所有目标额外造成 {%s} 的破片伤害与 EMP。效果受到{%s}影响。
 weapon.astd_piercing_lance.tooltip.customPrimaryHL=125% | 难度系数
 weapon.astd_piercing_lance.primaryRoleStr=爆发
 desc.astd_piercing_lance.text1=阿斯忒里亚弧光科研部为正面决胜打造的重型投射平台。两秒的充能过程将骇人的能量压缩进一枚高密度弹体，出膛后在毫秒之间贯穿战场——命中随后产生的冲击波能够吞没其中的一切。
@@ -347,7 +347,7 @@ fun resolve(engine, spec) {
 - [ ] `Wpn_astd_piercing_lance` 列值与 §1.1 逐列一致（含 `type="ENERGY"` 是 DamageType 列、`number=9219`、ammo 三列留空）
 - [ ] 生成物 `astd_piercing_lance_shot.proj` 含隐藏四件套 + 两个插件挂载点，无手改生成物
 - [ ] `.wpn` 为 `"type":"ENERGY"` + `"mountTypeOverride":"HYBRID"`（不是 `"type":"HYBRID"`）
-- [ ] i18n 五键齐全，name/描述与定稿原文逐字一致（tip = 定稿原文 + v2 数值插入，审批通过）；无 `{%s}` 残留
+- [ ] i18n 五键齐全，name/描述与定稿原文逐字一致（tip = 定稿原文 + v2 数值插入，审批通过）；2 个 `{%s}` 与 HL 两段一一对应
 - [ ] `special_items.csv` 无改动；`tags` 含 `no_drop, no_drop_salvage`
 - [ ] `./gradlew :ss-csv:generateSsCsv` → `copyContents` → `deployMod` 全链路无报错
 

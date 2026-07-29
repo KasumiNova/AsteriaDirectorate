@@ -112,7 +112,7 @@ override val projSpec: ProjectileProjSpec = ProjectileProjSpec(
 | 键 | 值 | 来源 |
 |---|---|---|
 | `weapon.astd_positron_shockwave.name` | `正电子冲击波` | 设计案定名 |
-| `weapon.astd_positron_shockwave.tooltip.customPrimary` | `射弹在接近导弹或战机时自动引爆，沿飞行方向产生锥状冲击，对范围内所有目标造成 125% 的破片伤害。效果受到难度系数影响。` | 设计案「玩家可见机制文本」裁定原文 + v2 数值插入（2026-07-29 字段分工铁律，审批通过） |
+| `weapon.astd_positron_shockwave.tooltip.customPrimary` | `射弹在接近导弹或战机时自动引爆，沿飞行方向产生锥状冲击，对范围内所有目标造成 {%s} 的破片伤害。效果受到{%s}影响。` | 设计案「玩家可见机制文本」裁定原文 + v2 数值插入（2026-07-29 字段分工铁律，审批通过） |
 | `weapon.astd_positron_shockwave.tooltip.customPrimaryHL` | `125% | 难度系数` | 字段分工铁律：高亮数值与"难度系数" |
 | `weapon.astd_positron_shockwave.primaryRoleStr` | `点防御` | 提案（原版 PD 角色词惯例） |
 | `desc.astd_positron_shockwave.text1` | `弧光科研部的点防御近炸弹。射弹附近存在目标时，会引爆内部的正电子装药，将锥形破片雨泼向来袭的导弹与战机。对敌方的蜂群式导弹效果极佳。` | 设计案「文案」用户优化后裁定原文 |

@@ -36,7 +36,7 @@ number 段位按 00-共享基建 §3 预分配：电荷针刺 **9210**、重型�
 | tags | `astd_production` | |
 | groupTag / tech | `astd` / `弧光阵列` | |
 | primaryRoleStr | `SsI18n.t("weapon.$id.primaryRoleStr")` | |
-| customPrimary | `SsI18n.t("weapon.$id.tooltip.customPrimary")` | 无 `{%s}` 占位；HL 高亮数值与"难度系数"（2026-07-29 字段分工铁律） |
+| customPrimary | `SsI18n.t("weapon.$id.tooltip.customPrimary")` | 4 个 `{%s}` 占位与 HL 四段一一对应（2026-07-29 字段分工铁律 + 占位规则） |
 | number | 9210 | |
 | projSpec | 见下 | |
 
@@ -108,10 +108,10 @@ object Desc_astd_heavy_charge_needle : LocalizedDescription("astd_heavy_charge_n
 weapon.astd_charge_needle.name=电荷针刺
 weapon.astd_heavy_charge_needle.name=重型电荷针刺
 
-# Weapon tooltip 自定义字段（数值以 v2 为准：泄放概率 40%、EMP 175%）
-weapon.astd_charge_needle.tooltip.customPrimary=命中护盾时，提高目标 2% 的护盾维持辐能，效果可叠加；命中船体或装甲时，有 40% 的概率产生打击武器与引擎的电弧，造成该武器命中目标时 175% 的额外伤害。效果受到难度系数影响。
+# Weapon tooltip 自定义字段（数值以 v2 为准：泄放概率 40%、EMP 175%；高亮字一律 {%s} 占位，原文只在 HL）
+weapon.astd_charge_needle.tooltip.customPrimary=命中护盾时，提高目标 {%s} 的护盾维持辐能，效果可叠加；命中船体或装甲时，有 {%s} 的概率产生打击武器与引擎的电弧，造成该武器命中目标时 {%s} 的额外伤害。效果受到{%s}影响。
 weapon.astd_charge_needle.tooltip.customPrimaryHL=2% | 40% | 175% | 难度系数
-weapon.astd_heavy_charge_needle.tooltip.customPrimary=命中护盾时，提高目标 2% 的护盾维持辐能，效果可叠加；命中船体或装甲时，有 40% 的概率产生打击武器与引擎的电弧，造成该武器命中目标时 175% 的额外伤害。效果受到难度系数影响。
+weapon.astd_heavy_charge_needle.tooltip.customPrimary=命中护盾时，提高目标 {%s} 的护盾维持辐能，效果可叠加；命中船体或装甲时，有 {%s} 的概率产生打击武器与引擎的电弧，造成该武器命中目标时 {%s} 的额外伤害。效果受到{%s}影响。
 weapon.astd_heavy_charge_needle.tooltip.customPrimaryHL=2% | 40% | 175% | 难度系数
 
 # Weapon 定位

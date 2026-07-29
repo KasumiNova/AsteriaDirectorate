@@ -130,7 +130,7 @@ object Desc_astd_annihilation_vortex : LocalizedDescription("astd_annihilation_v
 
 ```properties
 weapon.astd_annihilation_vortex.name=湮灭涡旋
-weapon.astd_annihilation_vortex.tooltip.customPrimary=光束终点会展开引力涡旋，将附近的敌方射弹与导弹牵引并吞噬；光束结束时涡旋坍缩爆炸，把吞噬火力的 100% 转化为范围能量伤害——吞噬得越多，爆炸越强。效果受到难度系数影响。
+weapon.astd_annihilation_vortex.tooltip.customPrimary=光束终点会展开引力涡旋，将附近的敌方射弹与导弹牵引并吞噬；光束结束时涡旋坍缩爆炸，把吞噬火力的 {%s} 转化为范围能量伤害——吞噬得越多，爆炸越强。效果受到{%s}影响。
 weapon.astd_annihilation_vortex.tooltip.customPrimaryHL=100% | 难度系数
 weapon.astd_annihilation_vortex.primaryRoleStr=特殊
 desc.astd_annihilation_vortex.text1=渊暮原种光束武器的逆向工程产物。它将光束终点作为引力锚点展开吞噬涡旋——任何途经的敌方射弹与导弹都会被没收，成为下一次爆炸的燃料。

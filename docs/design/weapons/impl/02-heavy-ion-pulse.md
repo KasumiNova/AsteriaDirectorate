@@ -38,7 +38,7 @@ number 段位按 00-共享基建 §3 预分配：重型离子脉冲 **9212**。`
 | tags | `astd_production` | |
 | groupTag / tech | `astd` / `弧光阵列` | |
 | primaryRoleStr | `SsI18n.t("weapon.$id.primaryRoleStr")` | |
-| customPrimary | `SsI18n.t("weapon.$id.tooltip.customPrimary")` | 无 `{%s}` 占位；HL 高亮数值与"难度系数"（2026-07-29 字段分工铁律） |
+| customPrimary | `SsI18n.t("weapon.$id.tooltip.customPrimary")` | 3 个 `{%s}` 占位与 HL 三段一一对应（2026-07-29 字段分工铁律 + 占位规则） |
 | number | 9212 | |
 | projSpec | 见下 | |
 
@@ -102,8 +102,8 @@ object Desc_astd_heavy_ion_pulse : LocalizedDescription("astd_heavy_ion_pulse", 
 # Weapon 名称
 weapon.astd_heavy_ion_pulse.name=重型离子脉冲
 
-# Weapon tooltip 自定义字段（数值以 v2 为准：泄放概率 31.25%、EMP 125%）
-weapon.astd_heavy_ion_pulse.tooltip.customPrimary=命中船体或装甲时，有 31.25% 的概率产生打击武器与引擎的电弧，造成该武器命中目标时 125% 的额外伤害。效果受到难度系数影响。
+# Weapon tooltip 自定义字段（数值以 v2 为准：泄放概率 31.25%、EMP 125%；高亮字一律 {%s} 占位，原文只在 HL）
+weapon.astd_heavy_ion_pulse.tooltip.customPrimary=命中船体或装甲时，有 {%s} 的概率产生打击武器与引擎的电弧，造成该武器命中目标时 {%s} 的额外伤害。效果受到{%s}影响。
 weapon.astd_heavy_ion_pulse.tooltip.customPrimaryHL=31.25% | 125% | 难度系数
 
 # Weapon 定位（2026-07-29 审批修正：与原版 ionpulser 同用「瘫痪」）

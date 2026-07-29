@@ -51,7 +51,7 @@
 | `tags` | `"astd_production"` | 量产 |
 | `groupTag` | `"astd"`；`tech` | `"弧光阵列"` |
 | `primaryRoleStr` | `SsI18n.t("weapon.$id.primaryRoleStr")` | gcp/spc3 同款 |
-| `customPrimary` | `SsI18n.t("weapon.$id.tooltip.customPrimary")` | gcp 同款；机制文案含 v2 写死数值，**不含 `{%s}`** |
+| `customPrimary` | `SsI18n.t("weapon.$id.tooltip.customPrimary")` | gcp 同款；机制文案含 v2 数值，**3 个 `{%s}` 占位**与 HL 三段一一对应 |
 | `customPrimaryHL` | `SsI18n.t("weapon.$id.tooltip.customPrimaryHL")` | 高亮数值与"难度系数"（2026-07-29 字段分工铁律） |
 | `number` | **`9214`** | 00-共享基建 §3 预分配段（穷距 9214） |
 
@@ -111,7 +111,7 @@ override val projSpec: ProjectileProjSpec = ProjectileProjSpec(
 | 键 | 值 | 来源 |
 |---|---|---|
 | `weapon.astd_qiongjue_phase_railgun.name` | `“穷距”相位轨道炮` | 定案名（弯引号，对齐七星命名口径；「」为原版字体无效符号，禁用） |
-| `weapon.astd_qiongjue_phase_railgun.tooltip.customPrimary` | `连续命中同一目标会逐步提高本武器的伤害与射速（每层 +6.25%，至多 10 层）；切换目标会损失大部分加成，长时间未命中也会逐渐衰减。效果受到难度系数影响。` | 设计案 tip 原文 + v2 数值插入（2026-07-29 字段分工铁律，审批通过） |
+| `weapon.astd_qiongjue_phase_railgun.tooltip.customPrimary` | `连续命中同一目标会逐步提高本武器的伤害与射速（每层 +{%s}，至多 {%s} 层）；切换目标会损失大部分加成，长时间未命中也会逐渐衰减。效果受到{%s}影响。` | 设计案 tip 原文 + v2 数值插入（2026-07-29 字段分工铁律，审批通过） |
 | `weapon.astd_qiongjue_phase_railgun.tooltip.customPrimaryHL` | `6.25% | 10 | 难度系数` | 字段分工铁律：高亮数值与"难度系数" |
 | `weapon.astd_qiongjue_phase_railgun.primaryRoleStr` | `压制` | 2026-07-29 审批修正（弃「远程压制,持续打击」提案） |
 | `desc.astd_qiongjue_phase_railgun.text1` | `弧光科研部的长程动能主炮。使用独特的相位弹头来干扰敌方护盾稳定性，持续施加动能压力，并在击中后持续校准武器自身的相位谐波。` | 设计案文案原文（2026-07-29 用户换稿） |

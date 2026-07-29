@@ -138,14 +138,14 @@ override val projSpec: MissileProjSpec = MissileProjSpec(
 
 ```properties
 weapon.astd_stellar_mrm_launcher.name=辉星 MRM 发射器
-weapon.astd_stellar_mrm_launcher.tooltip.customPrimary=优先追猎战机的高速导弹。命中战机机体时对其全部武器释放 400% 的 EMP；无论撞上什么，撞击处都会绽放十字辉星，造成 100% 的范围能量伤害。效果受到难度系数影响。
+weapon.astd_stellar_mrm_launcher.tooltip.customPrimary=优先追猎战机的高速导弹。命中战机机体时对其全部武器释放 {%s} 的 EMP；无论撞上什么，撞击处都会绽放十字辉星，造成 {%s} 的范围能量伤害。效果受到{%s}影响。
 weapon.astd_stellar_mrm_launcher.tooltip.customPrimaryHL=400% | 100% | 难度系数
 weapon.astd_stellar_mrm_launcher.primaryRoleStr=反战机,区域防空
 desc.astd_stellar_mrm_launcher.text1=上古遗产「反物质 SRM」的逆向工程产物。原物的装药原理至今无法解析，工程组转而复现它的飞行性能与猎杀逻辑，以常规能量装药补上最后一块拼图——紫色辉星掠过之处，战机联队的武器系统将集体沉默。
 desc.astd_stellar_mrm_launcher.notes=逆向工程记录："拆解报告第 41 版，结论与第 1 版相同：不可分析。我们甚至无法确定装药舱里是不是反物质。"工程组最终放弃了理解原物，转而复现它的飞行——三十二架无人靶机在三秒内接连熄火，像被同一根手指依次捻灭的蜡烛。评审委员会沉默了很久，然后在量产许可上签了字。
 
 weapon.astd_stellar_mrm_pod.name=辉星 MRM 发射舱
-weapon.astd_stellar_mrm_pod.tooltip.customPrimary=优先追猎战机的高速导弹。命中战机机体时对其全部武器释放 400% 的 EMP；无论撞上什么，撞击处都会绽放十字辉星，造成 100% 的范围能量伤害。效果受到难度系数影响。
+weapon.astd_stellar_mrm_pod.tooltip.customPrimary=优先追猎战机的高速导弹。命中战机机体时对其全部武器释放 {%s} 的 EMP；无论撞上什么，撞击处都会绽放十字辉星，造成 {%s} 的范围能量伤害。效果受到{%s}影响。
 weapon.astd_stellar_mrm_pod.tooltip.customPrimaryHL=400% | 100% | 难度系数
 weapon.astd_stellar_mrm_pod.primaryRoleStr=反战机,区域防空
 desc.astd_stellar_mrm_pod.text1=上古遗产「反物质 SRM」的逆向工程产物。原物的装药原理至今无法解析，工程组转而复现它的飞行性能与猎杀逻辑，以常规能量装药补上最后一块拼图——紫色辉星掠过之处，战机联队的武器系统将集体沉默。
