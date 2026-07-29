@@ -69,3 +69,4 @@ object Desc_astd_gemini_dem_pod : LocalizedDescription("astd_gemini_dem_pod", "W
 object Desc_astd_heavy_ion_pulse : LocalizedDescription("astd_heavy_ion_pulse", "WEAPON")
 object Desc_astd_stellar_mrm_launcher : LocalizedDescription("astd_stellar_mrm_launcher", "WEAPON")
 object Desc_astd_stellar_mrm_pod : LocalizedDescription("astd_stellar_mrm_pod", "WEAPON", notesId = "astd_stellar_mrm_launcher")
+object Desc_astd_piercing_lance : LocalizedDescription("astd_piercing_lance", "WEAPON")

@@ -532,3 +532,67 @@ has/build 真实管线调用）；`./gradlew test` 全量无失败。
    (b) 改走 `spawnEmpArc` 的 emp 通道（需先核实 spawnEmpArc 是否同样过 mult 折算）。
    规格要求「先改基建 PR 单独提出」，本组按设计案定稿口径实现并钉死纯函数，不在本分支处置；
    修正落地后建议同步处理浮字口径（显示值应与实际结算量一致，避免误导）。
+
+## 09 贯星之矛（2026-07-29）
+
+**结论**：pass_with_small_fixes——烟测一轮 MOUNT→CYCLE→CLUSTER→ENEMY_SCALE→COMPLETED（36.19s 转段，
+到达终态即退出，未干等超时），八检查点全部闭合；唯一小修为烟测舞台外来实体清扫（第三方 mod 污染
+舞台导致 CYCLE 零连带断言两次实机失败，武器行为本身正确）。
+
+**数据面**：`Catalog_WeaponData_ARC.kt` object 逐列与 §1.1 一致（number 9219、tier 3、baseValue 60000、
+range 1000、damage 357/2500、type="ENERGY"（DamageType 列）、energy 3000/429、chargeup 2.0/chargedown 5.0、
+burst 1/0.0、spread 全 0、proj speed 3000、ammo 三列留空、OPs 30、tags "no_drop, no_drop_salvage"）；
+`generateSsCsv` 生成物 weapon_data.csv 第 39 行逐列核对通过；`.proj` 隐藏四件套齐全 +
+onFireEffect=ProjectileSpecOnFireDispatcher + onHitEffect=PiercingLanceOnHitEffect，无手改生成物；
+`.wpn` 为 `"type":"ENERGY"` + `"mountTypeOverride":"HYBRID"`（不是 `"type":"HYBRID"`）+
+everyFrameEffect=CombatVfxBootstrapEveryFrameEffect + tachyon_lance_fire；
+zh-cn.properties 五键齐（{%s}×2 与 HL「125% | 难度系数」两段一一对应，name/desc 与定稿原文逐字一致）；
+Catalog_Descriptions.kt WEAPON 分组尾部一行；special_items.csv 无改动（§1.4 稀有掉落口径）。
+
+**代码面**：piercinglance 包四类与 §2.1 一致；难度取值只在 `buildConeSpec` 发生一次；
+`PANEL_DAMAGE=2500f` 常量口径（不取 damageAmount）；命中本体豁免 filter（`it !== directTarget`）+
+契约守护 ERROR（零触发）；EMP 与破片同锚同值；§2.5 各 0 值分支 WARN/DEBUG 防线齐备（烟测未触发即正确）；
+未修改 ConeImpactHandler 签名；浮字 + 特效同帧。
+
+**特效面**：`ProjectileVfxSpecs.builders` 末尾登记 `astd_piercing_lance_shot`（五旋钮形态 width 36 /
+length 260 / glowScale 4.0，width 在 widthBase 46.7 红线内，冷蓝白内联字面量，未新增共享调色板函数）；
+命中三层（顶点闪光 + 大光柱 + 共享锥面组件 ConeImpactVfx 复用自 06）遥测计数齐备。
+
+**单测**：§4.1 十条全绿（半角/锥长三档换算、破片与 EMP 同锚三档、玩家恒 v2、敌版插值、本体豁免、
+速度方向矢量、零向量回退、矢量不可得 WARN 恰好一条放弃、source null owner 回退、VfxSpec 真实构建）；
+`./gradlew build` 全量 515 项测试全绿。
+
+**烟测证据（piercing_lance_basic 相位机，onslaught WS 019 大实弹槽 + champion WS 008 大能量槽双射手，
+三 enforcer 靶 + 两 enforcer 僚 + 敌版 champion 射手）**：
+
+1. HYBRID 双槽可装（检查点 1）：A=WS 019/BALLISTIC/LARGE、B=WS 008/ENERGY/LARGE 装配成功，
+   spec type=ENERGY / mountType=HYBRID、range=1000、cooldown=5.0、OP=30、no_drop 两件套、VfxSpec 登记断言全过。
+2. 能量结算（检查点 1）：探针 r0=1600 → energyWeaponRangeBonus+50% 后 r1=2100（能量加成生效）→
+   ballisticWeaponRangeBonus+50% 后 r2=1600（实弹加成不生效），正反双向证明按能量武器结算；
+   HUD 武器组显示「贯星之矛 伤害类型：能量」。
+3. 循环（检查点 2）：首充 1.99s（2s 充能条窗口 chargeLevel 观测可读）、出膛间隔 7.00s
+   （2s 充能 + 5s 冷却）、完美精度走 spec 面板。
+4. 弹体观感（检查点 3）：ProjectileVfxDriver trackedCount>0 且 lastProjectileSpecId=astd_piercing_lance_shot
+   （texTrail + bloom 弹头接管）；截图可见冷蓝白拖尾细线，无原版弹芯穿帮（.proj 隐藏四件套）。
+5. 命中单体（检查点 4）：resolves=2、flash=2、pillar=2、coneVfx=2 三层齐备；锥内零连带
+   （coneHits=0、floaty=0）；玩家恒 v2 读数 25°/375su/3125 逐位吻合。
+6. 命中集群（检查点 5）：E2/E3 并入弹道线后 lastConeHits=2、coneDelta=2、floatyDelta=2
+   （破片浮字逐目标同帧）；本体豁免契约零破坏（exemptViolations=0）。
+7. 敌版三档（检查点 6）：installScaleForTests 逐档——k_s=1：20°/300su/2500；k_s=2：25°/375su/3125；
+   k_s=5：40°/600su/5000，读数逐位吻合；破晓档僚舰被锥面波及（coneHits=2），截图可见 5000 浮字。
+8. FPS（检查点 7）：破晓档 600su/80° 粗筛采样 fps=164.8，无塌陷。
+9. 掉落（检查点 8）：tags 含 no_drop, no_drop_salvage（MOUNT 断言）；日志无 NPE/ASTD 侧异常
+   （既有 RAT/UW 数据缺失与 xstream mixin 报错为环境固有，非本组引入）。
+
+**目检**：截图（COMPLETED 敌版舞台连帧 ×3 + 主截图）可见顶点大闪光 + 冷蓝白大光柱沿命中矢量展开、
+5000 破晓档浮字、锥面遥测同帧；大光柱存续 0.25s 不遮蔽战场；玩家侧 HUD 充能条/武器组中文渲染正常。
+
+**小修记录**：
+
+1. **烟测舞台外来实体清扫（sweepPlForeignEntities）**：CYCLE「锥内零连带」断言两次实机失败
+   （coneHits=9 / 5）。排障日志定位连带实体为第三方 mod 注入的中立/敌方战机与导弹
+   （talon/sarissa 战机，owner=0/1/100，生成位置贴各场景舰船锚点——实机判例显示某启用 mod
+   会向 mission 战斗的所有舰船派发护航战机），导弹归属不明（owner=1）。锥面命中这些真实战场实体
+   属武器正确行为，是舞台「空锥」语义被环境污染。处置：相位机每帧移除三舰体
+   （onslaught/champion/enforcer 本场景全部自有舰）以外的舰船（含战机）与全部导弹，
+   逐条 INFO 留证（41 条）；清扫后一轮全绿。排障用临时日志已删除，未残留在结算层。

@@ -63,6 +63,10 @@ object ProjectileVfxSpecs {
         "astd_stellar_mrm_pod_shot" to {
             simpleProjectileVfx("astd_stellar_mrm_pod_shot", violet(), width = 10f, length = 420f, ribbon = true)
         },
+        // 贯星之矛（规格 09 §3.1）：大圆形射弹被大号发光 flare 覆盖（仅见粗略形状）——加大弹头 +
+        // glowScale 4.0 放大带宽与弹头（公式派生），bloom 管线提取遍增益承担 flare 覆盖观感。
+        // 冷蓝白调色板内联字面量（合并协议：新调色板只允许收口人沉淀）；width=36 在 widthBase 46.7 红线内。
+        "astd_piercing_lance_shot" to ::piercingLanceShot,
     )
 
     fun has(projectileSpecId: String): Boolean = projectileSpecId in builders
@@ -159,6 +163,16 @@ object ProjectileVfxSpecs {
             nodes(24); tile(200f, 90f)
         }
     }
+
+    // 贯星之矛（规格 09 §3.1）：五旋钮形态微调（texTrail 主体 + bloom 网格弹头恒在），
+    // 冷蓝白 ARC 主色内联字面量；width 36 / length 260 / glowScale 4.0 大圆形弹体观感。
+    private fun piercingLanceShot(): ProjectileVfx = simpleProjectileVfx(
+        "astd_piercing_lance_shot",
+        VfxPalette(ASTDColor(0.55f, 0.78f, 1f, 0.95f), TEX_SMOOTH, TEX_ZAPPY),
+        width = 36f,
+        length = 260f,
+        glowScale = 4.0f,
+    )
 
     // 正电子冲击波：冷蓝白系（全局美术约定「正电子用白色弹体与明亮拖尾」），分支内内联字面量。
     private fun positronWhiteBlue() = VfxPalette(ASTDColor(0.62f, 0.82f, 1f, 0.85f), TEX_SMOOTH, TEX_ZAPPY)

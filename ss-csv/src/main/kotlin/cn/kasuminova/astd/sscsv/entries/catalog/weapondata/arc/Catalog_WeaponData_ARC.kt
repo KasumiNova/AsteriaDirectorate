@@ -972,3 +972,69 @@ object Wpn_astd_heavy_ion_pulse : WeaponDataEntry(), SsProjProjectileOutputs {
         bulletSprite = "graphics/textures/BUtil_NONE.png",
     )
 }
+
+/**
+ * 贯星之矛：大型 HYBRID 充能重矛（稀有掉落，规格 09 §1.1）。
+ *
+ * HYBRID 挂载由 `.wpn` 的 `"type":"ENERGY"` + `"mountTypeOverride":"HYBRID"` 承担
+ * （实弹/能量槽皆可装配，属性/技能/船插按能量武器结算，vanilla cryoblaster 同款形态）；
+ * 本表 `type` 列是 DamageType（ENERGY），与「视作能量武器」口径一致。
+ * 命中锥状冲击（破片 + 同锚 EMP）走 `.proj` onHitEffect + 基建 ConeImpactHandler。
+ * P6 前 no_drop 仅 dev 测试；P6 后改 T3~T4 支线赏金掉落（90-plan §14）。
+ */
+object Wpn_astd_piercing_lance : WeaponDataEntry(), SsProjProjectileOutputs {
+    override val id: String = "astd_piercing_lance"
+    override val name: String = weaponName(id)
+    override val tier: Int = 3
+    override val baseValue: Int = 60000
+    override val range: Int = 1000
+    // 2500 ÷ 7s 循环（充能 2s + 冷却 5s）折算 tooltip 统计口径
+    override val damagePerSecond: Int = 357
+    override val damagePerShot: Int = 2500
+    // EMP 是锥状冲击机制产物，不上原生面板列
+    override val emp: Int = 0
+    override val impact: Int = 0
+    override val turnRate: Int = 30
+    override val ops: Int = 30
+
+    // 充能 2s + 冷却 5s（非 beam 必须走 chargedown/burst 描述射速，避免 tooltip 统计除 0）
+    override val chargeup: Double = 2.0
+    override val chargedown: Double = 5.0
+    override val burstSize: Int = 1
+    override val burstDelay: Double = 0.0
+
+    override val type: String = "ENERGY"
+    override val energyPerShot: Int = 3000
+    // 3000 ÷ 7s 循环折算
+    override val energyPerSecond: Int = 429
+    // 「极快」：1000su 射程约 0.33s 飞行（提案值，目检面；aod7 为 2400）
+    override val projSpeed: Int = 3000
+    // P6 前口径；P6 后改赏金掉落（90-plan §14）
+    override val tags: String = "no_drop, no_drop_salvage"
+    override val groupTag: String = "astd"
+    override val tech: String = "弧光阵列"
+    override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
+    override val customPrimary: String = SsI18n.t("weapon.$id.tooltip.customPrimary")
+    override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
+    override val number: Int = 9219
+
+    override val projSpec: ProjectileProjSpec = ProjectileProjSpec(
+        id = "astd_piercing_lance_shot",
+        spawnType = ProjectileSpawnType.BALLISTIC,
+        onFireEffect = "cn.kasuminova.astd.combat.effect.generic.ProjectileSpecOnFireDispatcher",
+        onHitEffect = "cn.kasuminova.astd.combat.effect.arc.piercinglance.PiercingLanceOnHitEffect",
+        collisionClass = "PROJECTILE_FF",
+        collisionClassByFighter = "PROJECTILE_FIGHTER",
+        // 原版 projectile visual 必须不可见（length/width=2 + 色 alpha=0 + BUtil_NONE）。
+        length = 2.0,
+        width = 2.0,
+        // fadeTime=0.2：给超射程后的原版弹体一段滑行窗口，令代码 VFX 拖尾能跟随淡出（否则 fadeTime=0 会被引擎即刻移除、
+        // 拖尾在射程环处骤消）。原版弹体已 alpha=0 全隐，此窗口不会造成视觉穿帮。
+        fadeTime = 0.2,
+        fringeColor = Rgba(120, 200, 255, 0),
+        coreColor = Rgba(220, 245, 255, 0),
+        textureScrollSpeed = 0.0,
+        pixelsPerTexel = 1.0,
+        bulletSprite = "graphics/textures/BUtil_NONE.png",
+    )
+}

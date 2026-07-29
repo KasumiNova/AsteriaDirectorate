@@ -1,0 +1,22 @@
+{
+    "id": "astd_piercing_lance",
+    "specClass": "projectile",
+    "type": "ENERGY",
+    "mountTypeOverride": "HYBRID",
+    "size": "LARGE",
+    "displayArcRadius": 1000,
+    "turretSprite": "graphics/fx/empty.png",
+    "turretGunSprite": "graphics/fx/empty.png",
+    "hardpointSprite": "graphics/fx/empty.png",
+    "hardpointGunSprite": "graphics/fx/empty.png",
+    "visualRecoil": 6.0,
+    "turretOffsets": [0, 0],
+    "turretAngleOffsets": [0],
+    "hardpointOffsets": [0, 0],
+    "hardpointAngleOffsets": [0],
+    "barrelMode": "LINKED",
+    "animationType": "MUZZLE_FLASH",
+    "projectileSpecId": "astd_piercing_lance_shot",
+    "everyFrameEffect": "cn.kasuminova.astd.combat.effect.generic.CombatVfxBootstrapEveryFrameEffect",
+    "fireSoundTwo": "tachyon_lance_fire"
+}

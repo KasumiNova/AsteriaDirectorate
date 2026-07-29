@@ -40,6 +40,9 @@ object ASTDInGameAutomationScenario {
     const val SM_POD_WEAPON_ID: String = "astd_stellar_mrm_pod"
     const val SM_LAUNCHER_PROJECTILE_SPEC_ID: String = "astd_stellar_mrm_launcher_shot"
     const val SM_POD_PROJECTILE_SPEC_ID: String = "astd_stellar_mrm_pod_shot"
+    const val PL_SCENARIO_ID: String = "piercing_lance_basic"
+    const val PL_WEAPON_ID: String = "astd_piercing_lance"
+    const val PL_PROJECTILE_SPEC_ID: String = "astd_piercing_lance_shot"
     const val SHIP_ID: String = "astd_arc_flare"
     const val VARIANT_ID: String = "astd_arc_flare_Standard"
     const val WEAPON_ID: String = "astd_aod7"
@@ -196,6 +199,22 @@ object ASTDInGameAutomationScenario {
         val enabled = System.getProperty(ENABLED_PROPERTY)?.equals("true", ignoreCase = true) == true
         val scenario = System.getProperty(SCENARIO_PROPERTY, SCENARIO_ID)
         return enabled && scenario == SM_SCENARIO_ID
+    }
+
+    /**
+     * 贯星之矛实机场景开关：镜像 [isSmEnabled]。
+     * 验证 HYBRID 双槽装配（大型实弹槽 onslaught WS 019 + 大型能量槽 champion WS 008）
+     * 与能量结算探针（energyWeaponRangeBonus 生效 / ballisticWeaponRangeBonus 不生效）、
+     * 2s 充能 + 5s 冷却 7s 循环（充能条可读 + 出膛间隔）、弹体 VFX 接管（texTrail + bloom 弹头）、
+     * 命中单体三层特效（顶点闪光/大光柱/锥面计数，锥内无连带浮字）、
+     * 命中集群锥面结算（破片浮字 + 本体豁免契约零破坏）、
+     * 敌版三档（installScaleForTests 1/2/5 → 半角 20/25/40、锥长 300/375/600、伤害 2500/3125/5000）
+     * 与破晓档 600su/80° 粗筛帧率。
+     */
+    fun isPlEnabled(): Boolean {
+        val enabled = System.getProperty(ENABLED_PROPERTY)?.equals("true", ignoreCase = true) == true
+        val scenario = System.getProperty(SCENARIO_PROPERTY, SCENARIO_ID)
+        return enabled && scenario == PL_SCENARIO_ID
     }
 
     fun outputDir(): Path {
