@@ -51,6 +51,7 @@ object HeavyIonPulseVfx {
     const val TELEMETRY_PIERCE_PLAYER = "astd_hip_pierce_count_player"
     const val TELEMETRY_PIERCE_OTHER = "astd_hip_pierce_count_other"
     const val TELEMETRY_PIERCE_LAST_EXTRA = "astd_hip_pierce_last_extra"
+    const val TELEMETRY_PIERCE_LAST_APPLIED = "astd_hip_pierce_last_applied"
     const val TELEMETRY_PIERCE_LAST_MULT = "astd_hip_pierce_last_mult"
     const val TELEMETRY_PIERCE_LAST_BASE_EMP = "astd_hip_pierce_last_base_emp"
     const val TELEMETRY_PIERCE_LAST_ARC_EMP = "astd_hip_pierce_last_arc_emp"
@@ -80,17 +81,22 @@ object HeavyIonPulseVfx {
     }
 
     /**
-     * EMP 贯穿补伤：对高 EMP 抗性目标追加 [extra] 等额 EMP（走 `applyDamage`，无二次 onHit 回环），
+     * EMP 贯穿补伤：对高 EMP 抗性目标追加 EMP（走 `applyDamage`，无二次 onHit 回环），
      * 同帧触发伤害浮字 + 克制火花（00 §4.2 反馈铁律落点）。
+     *
+     * A9 裁定方案 a（2026-07-29）：`applyDamage` 的 empDamage 会被目标 `empDamageTakenMult`
+     * 再乘一次，故 [applied] 为折算补偿量（extra/max(mult, 0.01)），引擎二次乘算后实际结算
+     * 回补到 [extra]；浮字显示 [extra]——显示值 = 实际结算量（mult ≥ 0.01 时精确）。
      */
-    fun pierce(engine: CombatEngineAPI, ship: ShipAPI, point: Vector2f, extra: Float, source: ShipAPI?, mult: Float, baseEmp: Float, arcEmp: Float) {
-        engine.applyDamage(ship, point, 0f, DamageType.ENERGY, extra, false, false, source)
+    fun pierce(engine: CombatEngineAPI, ship: ShipAPI, point: Vector2f, extra: Float, applied: Float, source: ShipAPI?, mult: Float, baseEmp: Float, arcEmp: Float) {
+        engine.applyDamage(ship, point, 0f, DamageType.ENERGY, applied, false, false, source)
         feedback.floatingDamage(engine, point, extra, ARC_CORE, ship, source)
         engine.addHitParticle(point, Vector2f(), 30f, 1f, 0.2f, ARC_CORE)
 
         val playerCaused = source?.owner == 0
         increment(engine, if (playerCaused) TELEMETRY_PIERCE_PLAYER else TELEMETRY_PIERCE_OTHER)
         engine.customData[TELEMETRY_PIERCE_LAST_EXTRA] = extra
+        engine.customData[TELEMETRY_PIERCE_LAST_APPLIED] = applied
         engine.customData[TELEMETRY_PIERCE_LAST_MULT] = mult
         engine.customData[TELEMETRY_PIERCE_LAST_BASE_EMP] = baseEmp
         engine.customData[TELEMETRY_PIERCE_LAST_ARC_EMP] = arcEmp

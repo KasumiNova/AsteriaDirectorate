@@ -596,3 +596,32 @@ length 260 / glowScale 4.0，width 在 widthBase 46.7 红线内，冷蓝白内�
    属武器正确行为，是舞台「空锥」语义被环境污染。处置：相位机每帧移除三舰体
    （onslaught/champion/enforcer 本场景全部自有舰）以外的舰船（含战机）与全部导弹，
    逐条 INFO 留证（41 条）；清扫后一轮全绿。排障用临时日志已删除，未残留在结算层。
+
+---
+
+## 收口追加（2026-07-29 主代理）
+
+### A9 修复：02 EMP 贯穿二次减免（裁定方案 a 折算补偿）
+
+- **问题**（workflow 留档）：贯穿走 `applyDamage(empDamage=extra)` 被目标 `empDamageTakenMult` 二次折算，
+  mult≈0 目标实际结算≈0、浮字却显示全额。
+- **裁定与落地**：方案 a——施加量 `empPierceApplied(extra, mult) = extra / max(mult, 0.01f)`，
+  引擎二次乘算后实际结算回补到 extra（mult ≥ 0.01 精确；低于下限少量欠补属防爆炸钳制）；
+  浮字显示 extra（显示值 = 实际结算量）；mult ≤ 0 完全免疫时整体跳过（不弹假浮字）。
+- **舞台修正**：hip 烟测舞台原把目标 mult 钉绝对 0f（A9 证明舞台）——0 乘区下任何补偿无效，
+  修复后贯穿按设计整体跳过、K5 相位永不触发；改钉 0.01f 近零抗性（SCALE5_PLAYER 反面断言相位同理，
+  绝对 0 会令泄漏不可见）。K5 相位新增硬断言：`lastApplied == lastExtra / max(lastMult, 0.01f)`（±0.5）。
+- **证据**：单测 519 全绿（新增用例 9~12 驱动 `empPierceApplied` 全链路：精确回补/下限钳制/0 免疫跳过/
+  extra=0 不施加）；烟测 PIERCE_K5 → COMPLETED（29.89s），实机读数
+  `lastExtra=1710.0 lastApplied=171000.0 lastMult=0.005`（玩家船基础 mult 0.5 × 舞台 0.01 = 0.005，
+  折算下限钳制生效），applied 公式断言通过，fps=169.0 无塌陷。
+- **规格同步**：02 §2.2/§2.3 伪码与纯函数段、待验证项闭环；91 §4.3 C3 消缺。
+
+### OOM 修复：texTrail 渲染直缓冲泄漏
+
+- **现象**（用户实机报告）：`OutOfMemoryError: Cannot reserve 59904 bytes of direct buffer memory
+  (allocated: 17.18GB)`，栈顶 `TexTrailRenderer$Plugin.drawSnapshots`。
+- **根因**：`drawSnapshots` 每渲染遍逐快照 `BufferUtils.createFloatBuffer`（bloom 遍 + 清晰遍，
+  每帧 2×N 次），direct buffer 仅靠 GC 幻影引用回收，堆外内存随帧数线性堆积。
+- **修复**：插件级复用 FloatBuffer（初始 4096 floats，按需翻倍扩容），全仓扫确认 BufferUtils
+  仅 TexTrailRenderer 一处消费点（403c4ff）。A9 烟测（含 texTrail 全渲染路径）复跑无 OOM 复现。

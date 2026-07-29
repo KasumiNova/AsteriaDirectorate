@@ -8,6 +8,7 @@ import cn.kasuminova.astd.combat.effect.arc.GeminiDemPayloadBeamEffect
 import cn.kasuminova.astd.combat.effect.arc.GeminiDemSalvoOnFireEffect
 import cn.kasuminova.astd.combat.effect.arc.GeminiDemSyncHandler
 import cn.kasuminova.astd.combat.effect.arc.GeminiDemTrackAI
+import cn.kasuminova.astd.combat.effect.arc.HeavyIonPulseTuning
 import cn.kasuminova.astd.combat.effect.arc.HeavyIonPulseVfx
 import cn.kasuminova.astd.combat.effect.arc.PositronShockwaveFuseScript
 import cn.kasuminova.astd.combat.effect.arc.SevenStarsChainScript
@@ -3661,10 +3662,11 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                             "minAmmo=$hipMinAmmo emptiedAt=${"%.2f".format(hipEmptiedAt)}s " +
                             "enemyMaxDisabled=$hipHullEnemyMaxDisabled（mult=1.0 正向对照：EMP 瘫痪机制生效）",
                     )
-                    // k_s=5 玩家恒 v2：玩家来源无贯穿（贯穿为破晓敌版逐项解锁）；敌舰 mult→0 令贯穿条件成立，
+                    // k_s=5 玩家恒 v2：玩家来源无贯穿（贯穿为破晓敌版逐项解锁）；敌舰 mult→0.01f 令贯穿条件成立，
                     // 若玩家口径漂移出 v2 则此相位必产出贯穿浮字（反面断言）。
+                    // （2026-07-29 A9 修复后 mult 必须为近零而非绝对 0——0 乘区下贯穿按设计整体跳过，泄漏反而不可见。）
                     DifficultyTuningImpl.installScaleForTests(5f)
-                    enemy?.mutableStats?.empDamageTakenMult?.modifyMult(HIP_RESIST_MOD_ID, 0f)
+                    enemy?.mutableStats?.empDamageTakenMult?.modifyMult(HIP_RESIST_MOD_ID, 0.01f)
                     hipScale5PlayerHitsBaseline = hitsPlayer
                     hipScale5PiercePlayerBaseline = piercePlayer
                     transitionHipPhase(HIP_PHASE_SCALE5_PLAYER)
@@ -3684,10 +3686,14 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                             "[ASTD-Automation] hip scale5 player evidence: hitsDelta=$hitsDelta pierceDelta=0 " +
                                 "（k_s=5 玩家恒 v2；本相位玩家累计泄放 $disDelta 次、泄放仍按 v2 口径）",
                         )
-                        // 敌版 k_s=2 无贯穿（反面）：玩家 mult→0、玩家停火，敌版开火落玩家船体。
+                        // 敌版 k_s=2 无贯穿（反面）：玩家停火，敌版开火落玩家船体。
+                        // 玩家 mult 钉 0.01f（近零抗性）：原 0f 舞台为 A9 证明所用（绝对 0 乘区下
+                        // 任何折算补偿无效，A9 修复后该舞台会令贯穿整体跳过、K5 相位永不触发）；
+                        // 0.01f 恰处折算下限，引擎二次乘算后实际结算精确回补 extra（显示值=实际结算量），
+                        // K5 相位借此验证补偿链路与 applied 遥测断言（2026-07-29 A9 裁定方案 a）。
                         DifficultyTuningImpl.installScaleForTests(2f)
                         enemy?.mutableStats?.empDamageTakenMult?.unmodifyMult(HIP_RESIST_MOD_ID)
-                        player?.mutableStats?.empDamageTakenMult?.modifyMult(HIP_RESIST_MOD_ID, 0f)
+                        player?.mutableStats?.empDamageTakenMult?.modifyMult(HIP_RESIST_MOD_ID, 0.01f)
                         hipK2EnemyHitsBaseline = hitsOther
                         hipK2PierceOtherBaseline = pierceOther
                         transitionHipPhase(HIP_PHASE_PIERCE_K2)
@@ -3725,19 +3731,26 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                         if (wallSeconds > 0f) hipK5Fps = hipK5FpsTicks / wallSeconds
                     }
                     val lastExtra = HeavyIonPulseVfx.telemetryFloat(engine, HeavyIonPulseVfx.TELEMETRY_PIERCE_LAST_EXTRA)
+                    val lastApplied = HeavyIonPulseVfx.telemetryFloat(engine, HeavyIonPulseVfx.TELEMETRY_PIERCE_LAST_APPLIED)
                     val lastMult = HeavyIonPulseVfx.telemetryFloat(engine, HeavyIonPulseVfx.TELEMETRY_PIERCE_LAST_MULT)
                     val lastBase = HeavyIonPulseVfx.telemetryFloat(engine, HeavyIonPulseVfx.TELEMETRY_PIERCE_LAST_BASE_EMP)
                     val lastArc = HeavyIonPulseVfx.telemetryFloat(engine, HeavyIonPulseVfx.TELEMETRY_PIERCE_LAST_ARC_EMP)
-                    // §2.5 待验证项核对：目标 mult≈0 时若追加 EMP 被 vanilla 管线二次减免，
-                    // 则玩家舰武器/引擎不会出现 EMP 瘫痪；反之（追加穿透抗性）应观察到瘫痪。
-                    log.info(
-                        "[ASTD-Automation] hip pierce k5 evidence: pierce=${pierceOther - hipK5PierceOtherBaseline} " +
-                            "lastExtra=$lastExtra lastMult=$lastMult lastBaseEmp=$lastBase lastArcEmp=$lastArc " +
-                            "playerDisabledWeapons ${hipK5DisabledBaseline}→max $hipK5MaxDisabled " +
-                            "（§2.5 待验证项：disabled 增加=追加 EMP 穿透 mult≈0 抗性，不变=二次减免成立）" +
-                            "fps=${"%.1f".format(hipK5Fps)}",
-                    )
-                    transitionHipPhase(HIP_PHASE_COMPLETED)
+                    // A9 裁定方案 a（2026-07-29）硬断言：施加量 = extra / max(mult, 0.01)（折算补偿），
+                    // 引擎二次乘算后实际结算回补到 extra（遥测双证：applied 通道 + 公式复算）。
+                    val expectedApplied = lastExtra / maxOf(lastMult, HeavyIonPulseTuning.PIERCE_COMPENSATION_FLOOR)
+                    if (kotlin.math.abs(lastApplied - expectedApplied) > 0.5f) {
+                        failureReason = "hip pierce applied 折算不符: applied=$lastApplied expect=$expectedApplied（extra=$lastExtra mult=$lastMult）"
+                        transitionHipPhase(HIP_PHASE_FAILED)
+                    } else {
+                        log.info(
+                            "[ASTD-Automation] hip pierce k5 evidence: pierce=${pierceOther - hipK5PierceOtherBaseline} " +
+                                "lastExtra=$lastExtra lastApplied=$lastApplied lastMult=$lastMult lastBaseEmp=$lastBase lastArcEmp=$lastArc " +
+                                "playerDisabledWeapons ${hipK5DisabledBaseline}→max $hipK5MaxDisabled " +
+                                "（A9 已修：applied 遥测断言证明折算链路；disabled 为观测项——mult 低于折算下限时少量欠补，瘫痪非必然）" +
+                                "fps=${"%.1f".format(hipK5Fps)}",
+                        )
+                        transitionHipPhase(HIP_PHASE_COMPLETED)
+                    }
                 }
             }
             HIP_PHASE_COMPLETED -> {

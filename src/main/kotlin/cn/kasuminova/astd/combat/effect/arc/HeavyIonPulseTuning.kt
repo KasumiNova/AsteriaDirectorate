@@ -28,6 +28,9 @@ object HeavyIonPulseTuning {
     /** EMP 贯穿减免下限：目标 EMP 减免超过 90%（mult < 0.1）时触发补伤（固定不缩放）。 */
     const val PIERCE_FLOOR = 0.1f
 
+    /** EMP 贯穿折算补偿的除数下限（2026-07-29 A9 裁定方案 a）：mult 低于该值按该值折算，防补偿量爆炸。 */
+    const val PIERCE_COMPENSATION_FLOOR = 0.01f
+
     /** EMP 贯穿解锁的固有缩放系数下限（破晓档 k_s = 5，逐项映射式解锁）。 */
     const val PIERCE_MIN_SCALE = 5f
 
@@ -71,4 +74,16 @@ object HeavyIonPulseTuning {
      */
     fun empPierceExtra(emp: Float, mult: Float): Float =
         if (mult >= PIERCE_FLOOR) 0f else emp * (PIERCE_FLOOR - mult) / PIERCE_FLOOR
+
+    /**
+     * EMP 贯穿实际施加量（2026-07-29 A9 裁定方案 a，折算补偿）：extra / max(mult, [PIERCE_COMPENSATION_FLOOR])。
+     *
+     * 动机：`applyDamage` 的 empDamage 会被目标 `empDamageTakenMult` 再乘一次——直接施加 extra
+     * 会让高抗性目标实际结算 ≈ extra × mult ≈ 0，与浮字显示脱节（A9 实机证实）。
+     * 折算后引擎二次乘算恰好回补到 extra（mult ≥ 0.01 时精确；0 < mult < 0.01 按 0.01 折算，
+     * 少量欠补属防爆炸钳制）。mult ≤ 0（目标完全 EMP 免疫）返回 0：补偿无法突破 0 乘区，
+     * 由调用侧整体跳过——不施加、不弹与实际结算脱节的浮字。
+     */
+    fun empPierceApplied(extra: Float, mult: Float): Float =
+        if (mult <= 0f) 0f else extra / maxOf(mult, PIERCE_COMPENSATION_FLOOR)
 }

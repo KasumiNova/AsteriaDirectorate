@@ -194,7 +194,8 @@ if (Tuning.shouldDischarge(roll, values.dischargeChance)) {
 if (pierceActive) {
     mult = ship.mutableStats.empDamageTakenMult.modifiedValue
     extra = Tuning.empPierceExtra(baseEmp + arcEmp, mult)
-    if (extra > 0f) Vfx.pierce(engine, ship, point, extra, source = projectile.source)
+    applied = Tuning.empPierceApplied(extra, mult)       // A9 折算补偿（2026-07-29 裁定方案 a）
+    if (applied > 0f) Vfx.pierce(engine, ship, point, extra, applied, source = projectile.source)
 }
 ```
 
@@ -212,12 +213,14 @@ engine.spawnEmpArc(source, from, ship, ship, DamageType.ENERGY,
 //   DamageType, float, float, float, String, float, Color, Color) 已核实
 ```
 
-**贯穿补伤（HeavyIonPulseVfx.pierce）**：
+**贯穿补伤（HeavyIonPulseVfx.pierce，A9 折算补偿后）**：
 
 ```
-engine.applyDamage(ship, point, 0f, DamageType.ENERGY, extra, false, false, source)
+engine.applyDamage(ship, point, 0f, DamageType.ENERGY, applied, false, false, source)
 // 7 参重载 (entity, point, damage, damageType, empDamage, dealsSoftFlux, bypassShield, source) 已核实
-engine.addFloatingDamageText(point, extra, 冷蓝白, ship, source)   // 00 §4.2 表登记用途：EMP 贯穿补伤
+// applied = extra / max(mult, 0.01)：引擎对 empDamage 会再乘一次目标 empDamageTakenMult，
+// 折算后实际结算回补到 extra（A9 裁定方案 a，2026-07-29）
+engine.addFloatingDamageText(point, extra, 冷蓝白, ship, source)   // 显示值 = 实际结算量
 engine.addHitParticle(point, zero, 30f, 1f, 0.2f, 冷蓝白)           // 克制火花 1~2 粒
 ```
 
@@ -229,6 +232,10 @@ shouldDischarge(roll, chance) = roll < chance            // 边界口径：roll 
 empPierceExtra(emp, mult): Float =
     if (mult >= PIERCE_FLOOR /* 0.1f */) 0f              // 减免未超 90%，不补
     else emp * (PIERCE_FLOOR - mult) / PIERCE_FLOOR      // 设计案定稿口径：empDamage × (0.1 - mult) / 0.1
+
+empPierceApplied(extra, mult): Float =                    // A9 裁定方案 a（2026-07-29）
+    if (mult <= 0f) 0f                                   // 完全 EMP 免疫：补偿无法突破 0 乘区，整体跳过不弹假浮字
+    else extra / max(mult, PIERCE_COMPENSATION_FLOOR /* 0.01f */)  // 折算补偿；< 0.01 按下限折算，少量欠补属防爆炸钳制
 ```
 
 ### 2.4 玩家可见反馈（对照全局实现注意事项 2）
@@ -246,7 +253,7 @@ empPierceExtra(emp, mult): Float =
 - `empPierceExtra` 常量除数为 `PIERCE_FLOOR`（0.1f 编译期常量），**无除零路径**；`mult = 0`（目标 EMP 免疫 100%）时公式自然退化为 `emp × 1.0`（追加整发等值 EMP），不静默恒零。
 - `mult` 恰等于 0.1：不补（`<` 口径，与 §2.5 测试用例钉死）。
 - `baseEmp = projectile.empAmount ≤ 0`（配置错误：emp 列被清/被其他 mod 清零）：泄放与贯穿全部跳过并**记 WARN 一次/武器 id**——面板 EMP 是本件存在意义，归零属配置异常，不静默。
-- **贯穿追加量是否被目标 `empDamageTakenMult` 二次减免**：`applyDamage` 管线大概率仍按 mult 折算追加量——若如此，mult 极低时实际下限不成立（追加被再次压没）。列为**待验证项**：烟测对 100% EMP 免疫目标（如相位船壳/高抗性船插目标）开 devMode 观察浮字与 EMP 结算日志；若证实二次减免，修正为 `extra / max(mult, 0.01f)` 折算或改走 `spawnEmpArc` 的 emp 通道，届时先改基建 PR 单独提出（本规格先按设计案定稿口径实现并钉死纯函数）。
+- ~~**贯穿追加量是否被目标 `empDamageTakenMult` 二次减免**~~ **已证实并修复（2026-07-29，A9）**：烟测证实 `applyDamage(empDamage)` 被目标 mult 二次折算（mult≈0 目标实际结算≈0、浮字却显示全额）。审批裁定**方案 a 折算补偿**：施加量 `extra / max(mult, 0.01f)`，引擎二次乘算后实际结算回补到 extra，浮字显示 extra（显示值 = 实际结算量）；mult ≤ 0 完全免疫时整体跳过。纯函数 `empPierceApplied` 已钉死（单测用例 9~12），烟测相位机加 applied 遥测硬断言。
 - `projectile.source == null`（脚本生成的游离弹）：按非玩家口径取值（`source?.owner == 0` 为 false）；泄放/贯穿的 source 形参传 null 由原版兜底（原版 API 允许 null source——若实机异常则以 `projectile.weapon?.ship` 再兜底并记 WARN，不做静默吞异常）。
 - 目标 hulk 化/相位态：命中路由直接 return，无残留状态（本件不挂任何目标侧 stat 修改，天然无回收负担）。
 - 敌版泄放随机序列：`HeavyIonPulseShots` 为 Weapon 级 Buff，宿主换装/死亡由共享 BuffTickPlugin 心跳回收（HOST_BOUND），callIndex 无泄漏。

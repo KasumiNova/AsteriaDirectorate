@@ -79,12 +79,16 @@ class HeavyIonPulseOnHitEffect : OnHitEffectPlugin {
         }
 
         // EMP 贯穿（破晓敌版限定）：面板命中 EMP 与电弧 EMP 一起补。
+        // 折算补偿（A9 裁定方案 a）：applyDamage 的 empDamage 会被目标 empDamageTakenMult 再乘一次，
+        // 施加量为 extra/max(mult, 0.01)，引擎二次乘算后实际结算回补到 extra；mult ≤ 0 完全免疫时
+        // applied = 0 整体跳过（补偿无法突破 0 乘区，不弹假浮字）。
         if (HeavyIonPulseTuning.pierceActive(values.isPlayer, DifficultyTuningImpl.fixedScale)) {
             val mult = ship.mutableStats.empDamageTakenMult.modifiedValue
             val extra = HeavyIonPulseTuning.empPierceExtra(baseEmp + arcEmp, mult)
-            if (extra > 0f) {
+            val applied = HeavyIonPulseTuning.empPierceApplied(extra, mult)
+            if (applied > 0f) {
                 HeavyIonPulseVfx.pierce(
-                    engine, ship, hitPoint, extra,
+                    engine, ship, hitPoint, extra, applied,
                     source = projectile.source, mult = mult, baseEmp = baseEmp, arcEmp = arcEmp,
                 )
             }
