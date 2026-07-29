@@ -16,13 +16,13 @@
 | 2 | `com.fs.starfarer.api.impl.combat.dem.DEMScript` 是 **api jar 公开类**，继承 `BaseEveryFrameCombatPlugin` 并实现 `MissileAIPlugin`；构造签名 `DEMScript(MissileAPI, ShipAPI, WeaponAPI)` | javap |
 | 3 | `DEMEffect.onFire` 的全部逻辑 = `new DEMScript(missile, weapon.getShip(), weapon)` + `engine.addPlugin(...)`，无其他副作用 | DEMEffect 字节码 |
 | 4 | DEMScript 构造器的行为参数**全部**读自 `missile.getSpec().getBehaviorJSON()`（即弹头 .proj 的 behaviorSpec 块）；构造参数 `weapon` 只存字段，advance 全程未读取（字节码无对应 getfield） | DEMScript 字节码 |
-| 5 | DEMScript 的 WAIT 段（追踪→触发判定）通过 `((GuidedMissileAI) missile.getAI()).getTarget()` 取目标——**弹头导弹在触发前必须持有一个 `GuidedMissileAI` 且 target 非空**，否则永不触发（不 NPE，静默不触发） | DEMScript 字节码（`instanceof GuidedMissileAI` 分支） |
+| 5 | DEMScript 的 WAIT 段（追踪→触发判定）通过 `((GuidedMissileAI) missile.getAI()).getTarget()` 取目标——**弹头导弹在触发前必须持有一个 `GuidedMissileAI` 且 target 非空**，否则永不触发（不 NPE，静默不触发）。**观测注意（2026-07-29 实机发现）**：脚本侧 `missile.getAI()`/`getMissileAI()` 读回为引擎包装实例（非 GuidedMissileAI），真实 AI 只在 `getUnwrappedMissileAI()` 读回——验证读数必须走 unwrapped 通道 | DEMScript 字节码（`instanceof GuidedMissileAI` 分支）+ 烟测实机判例 |
 | 6 | DEMScript 触发时自行 `missile.setMissileAI(this)` 接管后续（锁定 → 充能 → 光束打击），并把 `maxFlightTime` 拉到 10000（打击段不受 flightTime 限制）；打击完毕/导弹失效时自行 `removePlugin` | DEMScript 字节码 |
 | 7 | **不存在**让脚本手动驱动导弹发射「真实结算光束」的公开 API（光束只能由武器/beam 行为产生）。因此「追踪 → 锁定 → 充能 → 光束打击」的打击段**必须复用 DEMScript**，自实现全套 AI 不可行 | jar 全表 |
 | 8 | `OnFireEffectPlugin.onFire(DamagingProjectileAPI, WeaponAPI, CombatEngineAPI)`；导弹 .proj 的 onFireEffect 在发射时触发（dragon.proj 挂 DEMEffect 为先例） | javap + 原版 |
 | 9 | `BeamEffectPlugin.advance(float, CombatEngineAPI, BeamAPI)`；`BeamAPI.didDamageThisFrame()/getDamageTarget()/getSource()/getTo()/getWeapon()` 均存在 | javap |
 | 10 | `CombatEngineAPI.spawnProjectile(ShipAPI, WeaponAPI, String weaponId, Vector2f, float angle, Vector2f vel)` 六参版本存在，返回 `CombatEntityAPI`（导弹武器 id 时实为 `MissileAPI`） | javap + `ASTDVirtualParticleLatticeWebHullMod.spawnPursuitMote` 在用 |
-| 11 | `MissileAPI.setMissileAI/getAI/setArmingTime/setSource/giveCommand/isArmed/getSpec` 存在；`GuidedMissileAI` 接口仅 `getTarget()/setTarget(CombatEntityAPI)` | javap |
+| 11 | `MissileAPI.setMissileAI/getAI/getUnwrappedMissileAI/setArmingTime/setSource/giveCommand/isArmed/getSpec` 存在；`GuidedMissileAI` 接口仅 `getTarget()/setTarget(CombatEntityAPI)`；**观测读数走 `getUnwrappedMissileAI()`**（`getAI()` 读回引擎包装实例，2026-07-29 实机判例） | javap + 烟测实机判例 |
 | 12 | `ShipAPI.getShipTarget()/isFighter/isDrone/isHulk/isAlive` 存在；`engine.getTotalElapsedTime(boolean)` 存在 | javap + 共享基建 §0 |
 | 13 | ss-csv 条目由 ClassGraph 扫描自动收集（`SsCsvGenerator.scanEntries`），**无集中注册表**，新增 object 即生效 | 生成器源码 |
 | 14 | ss-csv `MissileProjSpec` **无 `behaviorSpec` / `explosionSpec` 字段**，需扩展（见 §1.2） | `ProjMissileSpec.kt` 源码 |
@@ -119,6 +119,7 @@ GeminiDemPayloadBeamEffect（beamEffect）首伤帧：
 | type（伤害类型列） | KINETIC | HIGH_EXPLOSIVE |
 | burst size / burst delay | 1 / 0（单次 1s 照射） | 1 / 0 |
 | beam speed | 1000000（对齐 dragon_payload） | 1000000 |
+| range | 1000（对齐 dragon_payload 判例；射程列缺失时光束无法够到触发距离外的目标） | 1000 |
 | hints | `SYSTEM, DANGEROUS`（AiHint 枚举两项均已存在） | `SYSTEM, DANGEROUS` |
 | tags | `fires_one_burst, no_drop, no_drop_salvage` | `fires_one_burst, no_drop, no_drop_salvage` |
 | tech/manufacturer | `弧光阵列` | `弧光阵列` |
@@ -329,13 +330,15 @@ object Desc_astd_gemini_dem_pod : LocalizedDescription("astd_gemini_dem_pod", "W
 
 隐藏四件（弹头×2、payload×2）不登记 Desc（对齐原版 dragon_payload 无 desc 先例）。
 
-### 1.6 special_items.csv 条目（文件末尾追加，`order` 列留空待收口编号）
+### 1.6 special_items.csv 条目（文件末尾追加，order 段位 9205/9206）
+
+**order 列口径（2026-07-29 实机发现）**：原版 CSV 解析强制数字，留空启动即 JSONException；各组按合并协议预分配段位直填。
 
 量产两件主武器各一行单件蓝图（params 列即武器 id，已对 dev 投放链路的 param 必填口径核实）：
 
 ```csv
-基础武器蓝图,weapon_bp,single_bp,,,2000,1000,1,,graphics/icons/cargo/blueprint_weapons.png,ui_chip_pickup,ui_weapon_bp_drop,com.fs.starfarer.api.campaign.impl.items.WeaponBlueprintItemPlugin,astd_gemini_dem_launcher,使重工业设施能够制造出该蓝图所描述的武器。,
-基础武器蓝图,weapon_bp,single_bp,,,2000,1000,1,,graphics/icons/cargo/blueprint_weapons.png,ui_chip_pickup,ui_weapon_bp_drop,com.fs.starfarer.api.campaign.impl.items.WeaponBlueprintItemPlugin,astd_gemini_dem_pod,使重工业设施能够制造出该蓝图所描述的武器。,
+双子星 DEM 发射器蓝图,astd_gemini_dem_launcher_bp,"single_bp, astd",弧光阵列,,2000,1000,1,,graphics/icons/cargo/blueprint_weapons.png,ui_chip_pickup,ui_weapon_bp_drop,com.fs.starfarer.api.campaign.impl.items.WeaponBlueprintItemPlugin,astd_gemini_dem_launcher,使重工业设施能够制造出该蓝图所描述的武器。,9205
+双子星 DEM 发射舱蓝图,astd_gemini_dem_pod_bp,"single_bp, astd",弧光阵列,,2000,1000,1,,graphics/icons/cargo/blueprint_weapons.png,ui_chip_pickup,ui_weapon_bp_drop,com.fs.starfarer.api.campaign.impl.items.WeaponBlueprintItemPlugin,astd_gemini_dem_pod,使重工业设施能够制造出该蓝图所描述的武器。,9206
 ```
 
 隐藏四件不出现在任何蓝图/掉落（tags `no_drop, no_drop_salvage` + hints SYSTEM）。
@@ -533,7 +536,7 @@ prev != null 时先惰性过期：now - prev.hitTime > 1s → 视为无记录
 
 1. 装配：两件主武器可在中/大导弹槽装配，蓝图进 dev 仓储（`AsteriaTestCampaignBootstrap` 投放）。
 2. 齐射：一次开火出两枚异色弹头（动能蓝尾焰 / 高爆橙尾焰），dummy 不可见。
-3. **DEM 行为生效（最高优先验证项）**：弹头追踪 → 700~750su 触发锁定激光 → 充能 → 光束打击；日志确认 `setMissileAI(GeminiDemTrackAI)` 后 `missile.getAI()` 读回的 GuidedMissileAI 目标非空（wrapper 风险，见 §5 风险表 R1）。
+3. **DEM 行为生效（最高优先验证项，unwrapped 读回 + payload 命中双证）**：弹头追踪 → 700~750su 触发锁定激光 → 充能 → 光束打击。证据一：`setMissileAI(GeminiDemTrackAI)` 后 **`missile.getUnwrappedMissileAI()`** 读回的 GuidedMissileAI 目标非空（2026-07-29 实机判例：`getAI()`/`getMissileAI()` 读回为引擎包装实例，真实 AI 只在 unwrapped 通道）；证据二：payload 光束实际命中结算（DEMScript 完成接管并走完 FIRE 段的硬证据，见 §5 风险表 R1）。
 4. 伤害读数：动能光束 ≈1000 动能 + 4 道 EMP 电弧（武器/引擎瘫痪）；高爆光束 ≈1500 高爆；**payload 实际结算量与面板口径校准**（原版龙炎存在 8000×0.75 vs tip 4000 的未明差异，本组必须读数核对，不符则调 payload 行 damage/second）。
 5. 同步冲击：双弹同目标命中 Δt≤1s → 追加能量伤害（原生伤害数字）+ 白闪；击落一枚 → 无同步。
 6. 隐藏四件不出现在 codex 与掉落（dev 仓储 + codex 检索确认）。
@@ -551,7 +554,7 @@ prev != null 时先惰性过期：now - prev.hitTime > 1s → 视为无记录
 | `ss-csv/.../i18n/zh-cn.properties` | §1.5 全部键 | `weapon.astd_gemini_dem_*` / `desc.astd_gemini_dem_*` 天然隔离；文件末尾集中追加 |
 | `ss-csv/.../strings/Catalog_Descriptions.kt` | 2 个 Desc object | WEAPON 分组尾部（`Desc_astd_psi_omega` 之后），收口人字典序归位 |
 | `ss-csv/.../weapondata/arc/Catalog_WeaponData_ARC.kt` | 6 个 Wpn object | number **9221~9226**（9225/9226 为超原协议扩展占用，待收口确认）；文件末尾追加 |
-| `contents/data/campaign/special_items.csv` | 2 行 weapon_bp | 文件末尾追加；`order` 列留空 |
+| `contents/data/campaign/special_items.csv` | 2 行 weapon_bp | 文件末尾追加；order = **9205/9206** |
 | `ss-csv/.../outputs/proj/ProjMissileSpec.kt` | **公共扩展**（behaviorSpec 字段） | 非武器组私有文件；按协议在 PR 中单独提出、先于武器组合入；首批其他组不触碰此文件 |
 | `src/.../ProjectileVfxSpecs.kt` / `BeamVfxSpecs.kt` | **不动** | §3 已说明 N/A |
 
@@ -565,7 +568,7 @@ prev != null 时先惰性过期：now - prev.hitTime > 1s → 视为无记录
 
 | # | 风险 | 验证失败时的处置 |
 |---|---|---|
-| R1 | `setMissileAI(自定义)` 后 `missile.getAI()` 可能被引擎包裹，导致 DEMScript WAIT 段 `instanceof GuidedMissileAI` 失败、永不触发（事实 #5 的前提被破坏） | 首选验证项。若包裹确证：改由 TrackAI 在触发距离内自行保持目标并**直接把 DEMScript 作为 MissileAI 设置**（跳过 WAIT 段对前置 AI 的依赖：DEMScript 触发判定在 advance 内，setMissileAI(DEMScript) 后其 advance 每帧执行，WAIT 段读 `missile.getAI()` 此时即 DEMScript 自身——需二次验证该形态；最终手段为自实现充能+手动 `applyDamage` 结算 + RenderEntity 光束视觉，放弃原版光束结算） |
+| R1 | `setMissileAI(自定义)` 后 `missile.getAI()` 可能被引擎包裹，导致 DEMScript WAIT 段 `instanceof GuidedMissileAI` 失败、永不触发（事实 #5 的前提被破坏） | **已烟测闭环（2026-07-29）**：DEMScript 引擎内部读取路径不受包装影响（payload 光束实际命中结算证实接管成立）；包装只影响脚本侧观测——读数一律走 `getUnwrappedMissileAI()`（`getAI()`/`getMissileAI()` 读回恒为包装实例，三路全扫判例已登记自动化插件）。原备用方案（TrackAI 直设 DEMScript / 自实现充能）无需启用 |
 | R2 | payload 光束实际结算量与「damage/second × burstSize」口径不符（原版龙炎 8000×0.75 与 tip 4000 存在未明差异） | 烟测读数校准 payload 行 damage/second；禁止靠猜 |
 | R3 | 脚本生成导弹 + 手动 `addPlugin(DEMScript)` 的打击归因（击杀归功/经验）与 `beam.getSource()` 归属 | 烟测日志核对；归属异常时同步难度取值改从登记表首击 source 判定 |
 | R4 | 隐藏四件进 codex/掉落 | tags/hints 已按先例配齐；烟测确认，若泄漏补 `SHOW_IN_CODEX` 反向核查与掉落表排查 |
@@ -581,7 +584,7 @@ prev != null 时先惰性过期：now - prev.hitTime > 1s → 视为无记录
 - [ ] 3 件 .proj 生成物：dummy 挂对 onFireEffect；弹头 behaviorSpec 键名逐字（含 `destroyMissleWhenDoneFiring` 原版拼写）、payloadWeaponId 正确
 - [ ] 6 件 .wpn：插件挂载点只有两处（dummy onFireEffect、payload beamEffect），弹头 .wpn 无插件；pod 的 projectileSpecId 复用 dummy
 - [ ] i18n 键齐全（name/desc 与设计案一致；tip = 定稿原文 + v2 数值插入，审批通过）；pod notes 走 notesId 复用；launcher/pod HL 键均覆写数值
-- [ ] special_items.csv 两行 params 为武器 id，order 留空
+- [ ] special_items.csv 两行 params 为武器 id，order = 9205/9206
 
 **代码面**
 - [ ] 5 个类路径/形态与 §2.1 表一致；无 XxxManager/Service/Runtime 命名；无反射；无空 catch；错误分支均有日志

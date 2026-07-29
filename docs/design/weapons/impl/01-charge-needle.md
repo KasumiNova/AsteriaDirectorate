@@ -127,13 +127,15 @@ desc.astd_charge_needle.notes=
 
 HUD 文本不进 properties，走 `contents/data/strings/strings.json`（MOD 类，见 §2.3）。
 
-### 1.5 `special_items.csv` 条目（`contents/data/campaign/special_items.csv` 文件末尾追加，order 列留空）
+### 1.5 `special_items.csv` 条目（`contents/data/campaign/special_items.csv` 文件末尾追加，order 段位 9200/9201）
+
+**order 列口径（2026-07-29 实机发现，取代"留空待收口"旧口径）**：原版 CSV 解析强制 order 为数字，留空启动即 `JSONException`；各组按合并协议预分配段位直填，不再留空。
 
 量产件 P2 走单件蓝图（90 计划 §14），plugin params 用**裸武器 id**（2026-07-29 主代理裁决：反编译 `WeaponBlueprintItemPlugin.init` 证实 params 直接传 `getWeaponSpec(data)`，`weapon:` 前缀会导致 spec 为 null；原写 `weapon:<id>` 系误引蓝图包格式，已更正）；带 `single_bp` 标签时 params 必填（`ASTDDevContentSelector.SPECIAL_ITEM_PARAM_REQUIRED_TAGS/IDS` 核实），dev 仓储会自动投放：
 
 ```csv
-电荷针刺蓝图,astd_charge_needle_bp,"weapon_bp, single_bp, no_drop, no_drop_salvage",阿斯忒里亚遗构局,,8000,1,0,,graphics/icons/cargo/blueprint_weapons.png,ui_chip_pickup,ui_weapon_bp_drop,com.fs.starfarer.api.campaign.impl.items.WeaponBlueprintItemPlugin,astd_charge_needle,使重工业设施能够制造“电荷针刺”。,
-重型电荷针刺蓝图,astd_heavy_charge_needle_bp,"weapon_bp, single_bp, no_drop, no_drop_salvage",阿斯忒里亚遗构局,,15000,1,0,,graphics/icons/cargo/blueprint_weapons.png,ui_chip_pickup,ui_weapon_bp_drop,com.fs.starfarer.api.campaign.impl.items.WeaponBlueprintItemPlugin,astd_heavy_charge_needle,使重工业设施能够制造“重型电荷针刺”。,
+电荷针刺蓝图,astd_charge_needle_bp,"weapon_bp, single_bp, no_drop, no_drop_salvage",阿斯忒里亚遗构局,,8000,1,0,,graphics/icons/cargo/blueprint_weapons.png,ui_chip_pickup,ui_weapon_bp_drop,com.fs.starfarer.api.campaign.impl.items.WeaponBlueprintItemPlugin,astd_charge_needle,使重工业设施能够制造“电荷针刺”。,9200
+重型电荷针刺蓝图,astd_heavy_charge_needle_bp,"weapon_bp, single_bp, no_drop, no_drop_salvage",阿斯忒里亚遗构局,,15000,1,0,,graphics/icons/cargo/blueprint_weapons.png,ui_chip_pickup,ui_weapon_bp_drop,com.fs.starfarer.api.campaign.impl.items.WeaponBlueprintItemPlugin,astd_heavy_charge_needle,使重工业设施能够制造“重型电荷针刺”。,9201
 ```
 
 `no_drop, no_drop_salvage` 为 P6 前口径（P6 接入量产蓝图投放时摘除）。
@@ -354,7 +356,7 @@ engine.spawnEmpArc(source, from, ship, anchorEntity, DamageType.ENERGY,
 | `ss-csv/.../i18n/zh-cn.properties` | `weapon.astd_charge_needle.*`、`weapon.astd_heavy_charge_needle.*`、`desc.astd_charge_needle.*`、`desc.astd_heavy_charge_needle.*`；全部集中在文件末尾，不插中间、不动其他武器键 |
 | `ss-csv/.../strings/Catalog_Descriptions.kt` | WEAPON 分组尾部（`Desc_astd_psi_omega` 之后）两行 |
 | `ss-csv/.../weapondata/arc/Catalog_WeaponData_ARC.kt` | 文件末尾两个 object；number 段位 **9210/9211**（预分配，不与他组冲突） |
-| `contents/data/campaign/special_items.csv` | 文件末尾两行；`order` 列留空待收口人统一编号 |
+| `contents/data/campaign/special_items.csv` | 文件末尾两行；`order` 段位 **9200/9201**（原版强制数字，§1.5 口径） |
 | `src/.../renderer/projectile/driver/ProjectileVfxSpecs.kt` | builders map 末尾两条；`chargeNeedlePalette()` 内联字面量（不新增共享调色板）；构建函数追加在调色板函数前 |
 | `contents/data/strings/strings.json` | **00 协议未覆盖，本组补充登记**：HUD 键 `ui.charge_needle.status.*`（title/desc/victim_title/victim_desc 四键），MOD 类对象内末尾追加；收口人按 ui.<武器> 字典序归位。建议在 00 §3 表格补行 |
 
@@ -381,7 +383,7 @@ engine.spawnEmpArc(source, from, ship, anchorEntity, DamageType.ENERGY,
 - [ ] 两个 `.proj`：`onHitEffect` 指向 `ChargeNeedleOnHitEffect`，`onFireEffect` 指向 dispatcher，原版弹体隐藏四件套齐全（length/width=2、双色 alpha=0、BUtil_NONE、fadeTime=0.2）。
 - [ ] 两个 `.wpn`：size SMALL/MEDIUM、projectileSpecId 正确、双 onFire/everyFrame 挂载、sound `needler_fire`。
 - [ ] zh-cn.properties 键齐全且 tip 为设计案定稿原文；desc.text1/notes 已评审确认；重型 notes 复用小型。
-- [ ] special_items.csv 两行 params = 裸武器 id（§1.5 裁决口径），order 留空。
+- [ ] special_items.csv 两行 params = 裸武器 id（§1.5 裁决口径），order = 9200/9201。
 
 **代码面**
 

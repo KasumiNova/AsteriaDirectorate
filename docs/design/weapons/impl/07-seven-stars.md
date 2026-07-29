@@ -8,7 +8,7 @@
 ## 0. 与首批计划 §7 的三处实现层裁定（必须先读）
 
 1. **弹体碰撞类别取 `NONE`**。设计案要求射弹不做正常飞行、发射即折跃；若保留 `PROJECTILE_FF`，瞬移间隙帧可能触发原版触碰结算（未经脚本倍率的裸面板伤害 + 弹体提前消失）。vanilla `.proj` 已证实 `collisionClass: "NONE"` 合法（`realitydisruptor_shot.proj` 等 8 处在用）。代价：原版命中反馈全失，所有伤害/特效由脚本自结算——正合设计意图。
-2. **`flightTime = 6.0` 显式声明**。BALLISTIC 弹体默认寿命 = range/projSpeed ≈ 800/3000 ≈ 0.27s，远小于连跳预算（首发 + 7 跳 × 0.33s + 终结多段 7 × 0.12s + 裕量 ≈ 3.4s）。不显式给 `flightTime`，弹体会在第 2 跳前被引擎 fade 回收（`fadeTime=0.2` 滑行窗口内 `isEntityInPlay` 仍 true 但 `isFading` 已 true）。脚本仍以 `engine.removeEntity` 主动收口，`flightTime` 只是寿命上限保险。
+2. **弹体寿命走等效锚点方案（2026-07-29 实机修订，原 `flightTime = 6.0` 裁定不成立）**。实机证实：BALLISTIC 弹体寿命被引擎钳制为 range÷projSpeed（800/3000 ≈ 0.27s 即 fade），weapon_data.csv 的 flight time 列**仅对 MISSILE 生效**，6.0 写入对 BALLISTIC 无寿命作用；弹体实体无论如何活不到 7 跳链跑完。故落地改为：**首发结算后立即 `engine.removeEntity(projectile)`**（弹体不可见且无碰撞，移除无可观测差异），连跳锚点移交 `SevenStarsChainScript` 的纯位置 `Vector2f anchor`，状态机全程由脚本驱动、生命周期随引擎回收——§2.4 弹体引用防线守护的故障面在锚点设计下不存在。catalog 中 `flightTime = 6.0` 保留为名义登记（对 BALLISTIC 无实际作用，仅维持列口径一致）。
 3. **闪光爆炸直击与 AOE 同额**。设计案原文「直击目标吃面板伤害，区域内其他所有目标造成面板 x% 的范围伤害」，难度缩放栏标注「hit，爆炸面板倍率」——按"hit 爆炸"整体缩放解读：直击目标与区域目标吃**同一次** `面板 × 当前倍率` 结算，不存在"直击固定 100%、仅 AOE 缩放"的双轨。若主代理按字面裁定只缩放 AOE，改动点为 `SevenStarsDamageHandler.flashExplosion` 一处参数，不影响其余结构。
 
 ## 1. 数据面
@@ -36,8 +36,8 @@ object Wpn_astd_seven_stars : WeaponDataEntry(), SsProjProjectileOutputs {
     override val chargedown: Double = 2.0                 // 射速 2s/发
     override val burstSize: Int = 1
     override val burstDelay: Double = 0.0
-    override val projSpeed: Int = 3000                    // 名义值；弹体由脚本瞬移接管，speed 仅影响 AI 预判与默认寿命（已被 flightTime 覆盖）
-    override val flightTime: Double = 6.0                 // 见 §0-2
+    override val projSpeed: Int = 3000                    // 名义值；弹体由脚本瞬移接管，speed 仅影响 AI 预判（BALLISTIC 寿命被钳制为 range÷projSpeed，见 §0-2）
+    override val flightTime: Double = 6.0                 // 名义登记：flight time 列仅 MISSILE 生效，对 BALLISTIC 无寿命作用（§0-2 实机修订）
     override val aiHints: Set<AiHint> = setOf(AiHint.PD)  // 输出 weapon_data.csv hints 列 = PD
     override val tags: String = "no_drop, no_drop_salvage" // P6 前口径；P6 后改特定赏金/主线限定（90-plan §14）
     override val groupTag: String = "astd"
@@ -52,7 +52,7 @@ object Wpn_astd_seven_stars : WeaponDataEntry(), SsProjProjectileOutputs {
         onFireEffect = "cn.kasuminova.astd.combat.effect.arc.SevenStarsOnFireEffect",
         onHitEffect = null,                               // collisionClass=NONE 永无命中回调
         collisionClass = "NONE",                          // 见 §0-1
-        collisionClassByFighter = null,
+        collisionClassByFighter = "NONE",                 // 原版加载强制要求该键，缺键 RuntimeException（2026-07-29 实机发现，vanilla inimical_emanation_shot.proj 先例）
         // 原版弹体视觉隐藏四件套（照 Wpn_astd_aod7.projSpec 样板）
         length = 2.0,
         width = 2.0,
@@ -66,7 +66,7 @@ object Wpn_astd_seven_stars : WeaponDataEntry(), SsProjProjectileOutputs {
 }
 ```
 
-已核实事实：`ProjectileProjSpec` 构造签名与上表一致（`ss-csv/.../outputs/proj/ProjProjectileSpec.kt` 27~42 行）；`onHitEffect`/`collisionClassByFighter` 可空且 null 时 toJson 自动省略；`AiHint.PD` 存在（LENS catalog 175 行在用）；`number` 段位 9216 为合并协议分配给本组。
+已核实事实：`ProjectileProjSpec` 构造签名与上表一致（`ss-csv/.../outputs/proj/ProjProjectileSpec.kt` 27~42 行）；`onHitEffect` 可空且 null 时 toJson 自动省略；**`collisionClassByFighter` 虽可空省略，但原版 ProjectileSpec 加载强制要求该键（2026-07-29 实机发现，缺键 RuntimeException），必须显式写 `"NONE"`**；`AiHint.PD` 存在（LENS catalog 175 行在用）；`number` 段位 9216 为合并协议分配给本组。
 
 ### 1.2 `.wpn` JSON 骨架（`contents/data/weapons/astd_seven_stars.wpn`，手写）
 
@@ -153,7 +153,7 @@ object Desc_astd_seven_stars : LocalizedDescription("astd_seven_stars", "WEAPON"
 已核实签名（javap 对照 0.98 jar）：
 
 - `OnFireEffectPlugin.onFire(DamagingProjectileAPI, WeaponAPI, CombatEngineAPI)`。
-- `DamagingProjectileAPI`：`getDamageAmount()`、`getElapsed()`、`isFading()`、`getSource()`、`getWeapon()`；`CombatEntityAPI`：`getLocation()`（可变 `Vector2f`，瞬移即 `projectile.location.set(x, y)`）、`getVelocity()`（可变，清零用）、`getOwner()`、`getHitpoints()`、`getCollisionRadius()`。
+- `DamagingProjectileAPI`：`getDamageAmount()`、`getSource()`、`getWeapon()`（onFire 首发结算用）；锚点方案下脚本只持纯位置 `Vector2f anchor`（§0-2 实机修订），不持有弹体实体、无瞬移/失效面；`CombatEntityAPI`：`getLocation()`、`getOwner()`、`getHitpoints()`、`getCollisionRadius()`。
 - `CombatEngineAPI`：`isEntityInPlay(entity)`、`removeEntity(entity)`、`addPlugin(EveryFrameCombatPlugin)`、`getMissiles()`、`getShips()`、`getTotalElapsedTime(boolean)`、`isPaused`、`applyDamage(target, point, damage, damageType, emp, bypassShields, dealsSoftFlux, source, showDamageNumbers)`（9 参重载，`GravityCollapseOnHitHandler` 153 行在用同款）、`spawnEmpArcVisual(from, fromEntity, to, toEntity, thickness, color, coreColor)`（另有带 `EmpArcParams` 重载，本仓库 5 处在用）、`spawnExplosion(...)`。
 - `ShipAPI`：`isFighter()`、`isHulk()`、`isAlive()`、`isPointInBounds(Vector2f)`（终结沿舰体取点的判定点包含）。
 - `WeaponAPI.getRange()`（折跃范围 = 其 50%，吃射程修正）、`WeaponAPI.getSlot()`（本组未用，Buff 复合键基建用）。
@@ -242,18 +242,18 @@ fun decideAfterFlash(kills: Int, jumps: Int, hasPdCandidates: Boolean): ChainDec
 
 ```kotlin
 if (engine.isPaused) return
-if (!engine.isEntityInPlay(projectile) || projectile.isFading) { isDone=true; return }  // 引用失效自收口
+// 锚点方案下脚本不持有弹体实体（首发后已 removeEntity，§0-2 实机修订），无引用失效面
 timer += amount
 when (state) {
     CHAIN_COOLDOWN -> if (timer >= 0.33f) { timer=0; doNextJump() }
     TERMINAL_MULTI -> 按 segments 表逐段计时引爆（段间隔 0.12s），末段后 DISSIPATE
-    DISSIPATE -> { SevenStarsVfx.dissipate(...); engine.removeEntity(projectile); isDone=true }
+    DISSIPATE -> { SevenStarsVfx.dissipate(engine, anchor); isDone=true }   // 脚本随引擎回收，无实体可 remove（§0-2）
 }
 
 fun doNextJump() {
     val target = SevenStarsTargetSelector.select(...) ?: return enterTerminal()   // 无 PD 候选 → 终结
-    SevenStarsVfx.teleport(engine, projectile.location, target.location)           // 起点电弧+路径星云
-    projectile.location.set(target.location); projectile.velocity.set(0f, 0f)
+    SevenStarsVfx.teleport(engine, anchor, target.location)                        // 起点电弧+路径星云
+    anchor.set(target.location)                                                    // 纯位置锚点跟进（§0-2 锚点方案）
     jumps++
     val mult = SevenStarsChainMath.flashMult(tuning, jumps)
     val kills = SevenStarsDamageHandler.flashExplosion(..., mult, ...)
@@ -269,7 +269,7 @@ fun enterTerminal() {
     val ship = SevenStarsTargetSelector.nearestHostileShip(...) ?: run { state = DISSIPATE; return }
     if (!tuning.multiSegmentTerminal) {
         // 单段（玩家恒此）：折跃至舰体，50% 面板一段，无 EMP
-        SevenStarsVfx.teleport(...); projectile.location.set(ship.location)
+        SevenStarsVfx.teleport(engine, anchor, ship.location); anchor.set(ship.location)
         SevenStarsDamageHandler.terminalStrike(engine, ship, at=ship.location, panelDamage × 0.5f, emp=0f)
         SevenStarsVfx.crossFlash(engine, ship.location, scale = 1.2f)
         state = DISSIPATE
@@ -317,7 +317,7 @@ fun enterTerminal() {
 | 首发/续跳无 PD 候选 | 进 TERMINAL；TERMINAL 无敌舰 → DISSIPATE（设计案原文：连舰船目标也不存在，射弹直接消散） |
 | 本轮 kills = 0 | DISSIPATE，不触发终结（设计案安全闸：连跳必须击杀才能续段） |
 | 候选 hitpoints ≤ 0 / isHulk / isExpired | select 阶段剔除，不参与可摧毁预估 |
-| 弹体引用失效（`!isEntityInPlay` / `isFading`） | advance 首行自收口 `isDone = true`，不 NPE、不残留插件（90-plan §7.6 风险项） |
+| 弹体引用失效 | 锚点方案下不存在（§0-2 实机修订：脚本只持纯位置 anchor，不持有弹体实体）；脚本生命周期随引擎回收，无残留插件（90-plan §7.6 风险项的等效消解） |
 | `terminalDamageFractions(multi=true, jumps=0)`（首发即终结） | 段数 `max(1, jumps)` 保底 1 段 50%，不出现空段表 |
 | 多段终结目标中途死亡/变 hulk | 逐段引爆前检查 `ship.isHulk || !engine.isEntityInPlay(ship)`：中止剩余段直接 DISSIPATE，剩余段表不结算 |
 | 沿舰体采样 64 次仍不足 n | 以舰心补齐并记 INFO（极端细长舰体的可观测降级，非静默兜底） |
@@ -421,7 +421,7 @@ fun enterTerminal() {
 
 **数据面**
 
-- [ ] `Wpn_astd_seven_stars` 各列与 §1.1 一致：`ops=28`、`chargedown=2.0`、`flightTime=6.0`、`aiHints=PD`、`tags=no_drop, no_drop_salvage`、`number=9216`
+- [ ] `Wpn_astd_seven_stars` 各列与 §1.1 一致：`ops=28`、`chargedown=2.0`、`flightTime=6.0`（名义登记，§0-2 口径）、`aiHints=PD`、`tags=no_drop, no_drop_salvage`、`number=9216`
 - [ ] `.proj` 生成物：`collisionClass=NONE`、无 `onHitEffect`、隐藏四件套齐全（length/width=2、双色 alpha=0、`BUtil_NONE.png`、`fadeTime=0.2`）
 - [ ] `.wpn`：`projectileSpecId=astd_seven_stars_shot`，未挂 `everyFrameEffect`
 - [ ] zh-cn.properties 8 个键齐全，名称为弯引号 `“七星”`，tip 为单段终结口径，`{%s}` 与 HL 数量一致
@@ -435,7 +435,7 @@ fun enterTerminal() {
 - [ ] 多段终结仅 `owner != 0 && fixedScale >= 5f`；玩家版恒单段 50% 无 EMP
 - [ ] 状态机：击杀续跳 / 0 击杀断链消散 / 7 跳硬上限 / 无处可去终结 / 无舰消散，五支路俱全
 - [ ] 无空 catch、无静默兜底；`getRange()<=0`、`damageAmount<=0`、采样不足三处 WARN/INFO 日志在
-- [ ] 弹体引用每帧 `isEntityInPlay || isFading` 检查；收口 `engine.removeEntity` + `isDone`
+- [ ] 首发结算后立即 `removeEntity`、连跳锚点为纯位置 anchor（§0-2 锚点方案）；脚本收口 `isDone` 后随引擎回收
 
 **特效面**
 

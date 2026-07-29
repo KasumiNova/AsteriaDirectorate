@@ -117,12 +117,14 @@ desc.astd_heavy_ion_pulse.notes=
 
 本件无 HUD 状态条目（无叠层/持续状态），反馈浮字为纯数字（`addFloatingDamageText`），**不需要** `strings.json` 键——与 01 的差异点，特此登记。
 
-### 1.5 `special_items.csv` 条目（`contents/data/campaign/special_items.csv` 文件末尾追加，order 列留空）
+### 1.5 `special_items.csv` 条目（`contents/data/campaign/special_items.csv` 文件末尾追加，order 段位 9207）
+
+**order 列口径（2026-07-29 实机发现）**：原版 CSV 解析强制数字，留空启动即 JSONException；各组按合并协议预分配段位直填。蓝图描述内的引号用弯引号（原版字体不渲染「」）。
 
 量产件 P2 走单件蓝图（90 计划 §14），plugin params 用**裸武器 id**（2026-07-29 主代理裁决：反编译 `WeaponBlueprintItemPlugin.init` 证实 params 直接传 `getWeaponSpec(data)`，`weapon:` 前缀会导致 spec 为 null）；带 `single_bp` 标签时 params 必填（`ASTDDevContentSelector.SPECIAL_ITEM_PARAM_REQUIRED_TAGS/IDS` 核实），dev 仓储会自动投放：
 
 ```csv
-重型离子脉冲蓝图,astd_heavy_ion_pulse_bp,"weapon_bp, single_bp, no_drop, no_drop_salvage",阿斯忒里亚遗构局,,24000,1,0,,graphics/icons/cargo/blueprint_weapons.png,ui_chip_pickup,ui_weapon_bp_drop,com.fs.starfarer.api.campaign.impl.items.WeaponBlueprintItemPlugin,astd_heavy_ion_pulse,使重工业设施能够制造「重型离子脉冲」。,
+重型离子脉冲蓝图,astd_heavy_ion_pulse_bp,"weapon_bp, single_bp, no_drop, no_drop_salvage",阿斯忒里亚遗构局,,24000,1,0,,graphics/icons/cargo/blueprint_weapons.png,ui_chip_pickup,ui_weapon_bp_drop,com.fs.starfarer.api.campaign.impl.items.WeaponBlueprintItemPlugin,astd_heavy_ion_pulse,使重工业设施能够制造“重型离子脉冲”。,9207
 ```
 
 `no_drop, no_drop_salvage` 为 P6 前口径（P6 接入量产蓝图投放时摘除）。
@@ -320,7 +322,7 @@ empPierceExtra(emp, mult): Float =
 | `ss-csv/.../i18n/zh-cn.properties` | `weapon.astd_heavy_ion_pulse.*`、`desc.astd_heavy_ion_pulse.*`；全部集中在文件末尾，不插中间、不动其他武器键 |
 | `ss-csv/.../strings/Catalog_Descriptions.kt` | WEAPON 分组尾部一行；与 01 同批合入时保持 id 字典序（`Desc_astd_charge_needle`… 之后、`Desc_astd_psi_omega` 位置由收口人归位） |
 | `ss-csv/.../weapondata/arc/Catalog_WeaponData_ARC.kt` | 文件末尾一个 object；number 段位 **9212**（预分配，不与他组冲突） |
-| `contents/data/campaign/special_items.csv` | 文件末尾一行；`order` 列留空待收口人统一编号 |
+| `contents/data/campaign/special_items.csv` | 文件末尾一行；`order` 段位 **9207**（原版强制数字，§1.5 口径） |
 | `src/.../renderer/projectile/driver/ProjectileVfxSpecs.kt` | builders map 末尾一条；`heavyIonPulsePalette()` 内联字面量（不新增共享调色板）；构建函数追加在调色板函数前 |
 
 不触碰 `contents/data/strings/strings.json`（§1.4 已登记：无 HUD 条目、浮字为纯数字）。
@@ -348,7 +350,7 @@ empPierceExtra(emp, mult): Float =
 - [ ] `.proj`：`onHitEffect` 指向 `HeavyIonPulseOnHitEffect`，`onFireEffect` 指向 dispatcher，原版弹体隐藏四件套齐全（length/width=2、双色 alpha=0、BUtil_NONE、fadeTime=0.2）。
 - [ ] `.wpn`：size LARGE、**双炮管坐标 + ALTERNATING**、projectileSpecId 正确、everyFrameEffect 挂载、sound `ion_pulser_fire`。
 - [ ] zh-cn.properties 键齐全且 tip 为设计案定稿原文；desc.text1/notes 已评审确认。
-- [ ] special_items.csv 一行 params = `astd_heavy_ion_pulse`（裸 id，无前缀），order 留空。
+- [ ] special_items.csv 一行 params = `astd_heavy_ion_pulse`（裸 id，无前缀），order = 9207；描述内引号为弯引号。
 
 **代码面**
 

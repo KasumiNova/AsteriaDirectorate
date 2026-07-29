@@ -8,7 +8,7 @@
 ## 0. 核查后对上游文档的三处修正（实装以本规格为准）
 
 1. **「散射 2」没有 `projectileCount` 字段**。原版 `weapon_data.csv` 列头、`WeaponSpecLoader`（混淆 jar strings）、`WeaponSpecAPI` 全方法均无此字段。90 计划 §3.1 表格中的「`projectileCount`（散射）| 2」落实为：**`.wpn` 双炮管 offsets + `barrelMode: "LINKED"`**——原版无 LINKED 双管实弹先例（LINKED 多管仅见于导弹架），每触发 8 弹（双管 × burst 4）的实际弹数/散射角/动画必须烟测目检确认（90 计划 §3.6 风险已登记）。
-2. **`special_items.csv` 的 plugin params 是裸武器 id，不是 `weapon:<id>`**。反编译 `WeaponBlueprintItemPlugin.init`：直接 `settings.getWeaponSpec(stack.specialData.data)`，带前缀会拿到 null。**与 01-charge-needle.md §1.5 的 `weapon:<id>` 写法冲突**，收口人须统一（本规格按反编译结论写裸 id，01 需回改）。
+2. **`special_items.csv` 的 plugin params 是裸武器 id，不是 `weapon:<id>`**。反编译 `WeaponBlueprintItemPlugin.init`：直接 `settings.getWeaponSpec(stack.specialData.data)`，带前缀会拿到 null。01-charge-needle.md §1.5 已于 2026-07-29 按同一裁决回改为裸 id，两份文档口径一致。
 3. **`.wpn` 只有一个 `everyFrameEffect` 槽位**。电驱需要自定义 everyFrame 做净空加速，无法再挂 `CombatVfxBootstrapEveryFrameEffect`；故 `ElectricDriveAcceleratorWeaponEffect.advance` 内必须自行调用 `CombatVfxBootstrap.ensureInstalled(engine)`（`internal object`，同模块可达），否则弹体 VFX 管线不启动。
 
 ---
@@ -123,12 +123,14 @@ HUD 文本不进 properties，走 `contents/data/strings/strings.json`（MOD 类
 "ui.eda.range_status.desc": "射程加成：+%bonus% su"
 ```
 
-### 1.5 `special_items.csv` 条目（`contents/data/campaign/special_items.csv` 文件末尾追加，order 列留空）
+### 1.5 `special_items.csv` 条目（`contents/data/campaign/special_items.csv` 文件末尾追加，order 段位 9202）
+
+**order 列口径（2026-07-29 实机发现）**：原版 CSV 解析强制数字，留空启动即 JSONException；各组按合并协议预分配段位直填。
 
 量产件 P2 走单件蓝图（90 计划 §14）。plugin params = **裸武器 id**（§0-2）；带 `single_bp` 标签时 params 必填（`ASTDDevContentSelector.SPECIAL_ITEM_PARAM_REQUIRED_TAGS/IDS` 核实），dev 仓储自动投放。ss-csv 无任何 `SPECIAL_ITEMS` 条目（已核实生成器只写有entry的目标），本文件为纯手维护，生成不会覆盖。
 
 ```csv
-电驱加速炮蓝图,astd_electric_drive_accelerator_bp,"weapon_bp, single_bp, no_drop, no_drop_salvage",阿斯忒里亚遗构局,,11000,1,0,,graphics/icons/cargo/blueprint_weapons.png,ui_chip_pickup,ui_weapon_bp_drop,com.fs.starfarer.api.campaign.impl.items.WeaponBlueprintItemPlugin,astd_electric_drive_accelerator,使重工业设施能够制造「电驱加速炮」。,
+电驱加速炮蓝图,astd_electric_drive_accelerator_bp,"weapon_bp, single_bp, no_drop, no_drop_salvage",阿斯忒里亚遗构局,,11000,1,0,,graphics/icons/cargo/blueprint_weapons.png,ui_chip_pickup,ui_weapon_bp_drop,com.fs.starfarer.api.campaign.impl.items.WeaponBlueprintItemPlugin,astd_electric_drive_accelerator,使重工业设施能够制造“电驱加速炮”。,9202
 ```
 
 `no_drop, no_drop_salvage` 为 P6 前口径（P6 接入量产蓝图投放时摘除）。
@@ -160,8 +162,21 @@ object ElectricDriveAcceleratorDifficulty {
     /** 不稳定装药上限（面板百分比）：迟暮 25 / 砺刃 56.25 / 破晓 150（设计案显式锚点）。 */
     val CHARGE_MAX_PCT = ScalingEntry(25f, 56.25f, 150f, ScalingMap.LINEAR)
 
-    /** 净空加速射程加成（su）：迟暮 100 / 砺刃 200 / 破晓 400（设计案显式锚点；远征线性=300，与 LINEAR 自洽）。 */
-    val RANGE_BONUS_SU = ScalingEntry(100f, 200f, 400f, ScalingMap.LINEAR)
+    /**
+     * 净空加速射程加成（su）：迟暮 100 / 砺刃 200 / 远征 300 / 破晓 400（设计案显式锚点）。
+     * 映射为专用四 knot 分段线性（2026-07-29 实机核对修订）：标准 ScalingMap.LINEAR 的
+     * v2→v5 段按 [2,5] 三等分，k=3 产出 266.67，与设计案显式远征锚 +300 矛盾；
+     * 故 v2→v5 拆为 k∈[2,3]（v2→(v2+v5)/2）与 k∈[3,5]（mid→v5）两段，四档 100/200/300/400 全部精确命中。
+     */
+    private val RANGE_BONUS_MAP = ScalingMap { k, v1, v2, v5 ->
+        val mid = (v2 + v5) / 2f
+        when {
+            k <= 2f -> v1 + (v2 - v1) * (k - 1f).coerceIn(0f, 1f)
+            k <= 3f -> v2 + (mid - v2) * (k - 2f)
+            else -> mid + (v5 - mid) * ((k - 3f) / 2f).coerceIn(0f, 1f)
+        }
+    }
+    val RANGE_BONUS_SU = ScalingEntry(100f, 200f, 400f, RANGE_BONUS_MAP)
 
     /** 玩家固定 v2、敌方走轨一：owner==0 → entry.v2，否则 tuning.value(entry)。 */
     fun chargeMaxPct(tuning: DifficultyTuning, owner: Int): Float
@@ -367,11 +382,11 @@ override fun advance(amount, engine, weapon) {
 | `ss-csv/.../i18n/zh-cn.properties` | `weapon.astd_electric_drive_accelerator.*` / `desc.astd_electric_drive_accelerator.*` | 文件末尾集中追加 |
 | `ss-csv/.../strings/Catalog_Descriptions.kt` | `Desc_astd_electric_drive_accelerator` 一行 | WEAPON 分组尾部（`Desc_astd_psi_omega` 之后） |
 | `ss-csv/.../weapondata/arc/Catalog_WeaponData_ARC.kt` | `Wpn_astd_electric_drive_accelerator`，number **9213**（预分配段位） | 文件末尾 |
-| `contents/data/campaign/special_items.csv` | `astd_electric_drive_accelerator_bp` 一行，order 留空 | 文件末尾 |
+| `contents/data/campaign/special_items.csv` | `astd_electric_drive_accelerator_bp` 一行，order 段位 **9202** | 文件末尾 |
 | `src/.../projectile/driver/ProjectileVfxSpecs.kt` | builders map `"astd_electric_drive_accelerator_shot"` 条目 | map 字面量末尾；白色调色板内联（不留共享函数） |
 | `contents/data/strings/strings.json` | `ui.eda.*` 两个键 | **合并协议外补充项**：00 §3 未列此文件，HUD 文本必然多组共碰；同样键名空间隔离 + 对象末尾追加，提请收口人并入协议 |
 
-无冲突提示：与 01（电荷针刺）共用 `BUtil_NONE.png`、`autocannon_fire` 音效、`blueprint_weapons.png` 图标——只读引用，不产生合并冲突。**与 01 的实质冲突在 special_items params 格式**（§0-2），收口人须裁决并回改其中一份。
+无冲突提示：与 01（电荷针刺）共用 `BUtil_NONE.png`、`autocannon_fire` 音效、`blueprint_weapons.png` 图标——只读引用，不产生合并冲突。params 格式冲突已裁决（§0-2，裸 id），01 已同步回改。
 
 ### 5.2 对共享基建的依赖（只依赖、不改签名）
 
@@ -399,7 +414,7 @@ override fun advance(amount, engine, weapon) {
 - [ ] `./gradlew :ss-csv:generateSsCsv` 产物 weapon_data.csv 行列正确（散射 2 **不出现**在 CSV——它走 .wpn LINKED 双管）
 - [ ] `.wpn` 双 offsets + `barrelMode: "LINKED"`、`everyFrameEffect` 类名全限定正确
 - [ ] zh-cn.properties 键齐全（name / text1 与设计案定稿原文逐字一致；customPrimary = 定稿原文 + v2 数值插入，审批通过）
-- [ ] special_items.csv params = **裸武器 id**（若收口裁决采用 01 的 `weapon:` 前缀，则两份文档一起改并补实测）
+- [ ] special_items.csv params = **裸武器 id**、order = 9202（§1.5 口径）
 - [ ] strings.json `ui.eda.*` 两键就位
 
 **代码面**

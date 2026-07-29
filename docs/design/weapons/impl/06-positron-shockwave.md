@@ -13,7 +13,7 @@
 
 ## 0. 与首批计划 §6 的两处实现层修正（必须先读）
 
-1. **「collisionRadius = 0」的真实落地形态**：`specClass = projectile` 的 `.proj` 模型**没有 collisionRadius 字段**（ss-csv `ProjectileProjSpec` 已核实，collisionRadius 仅存在于 `ProjMissileSpec`）。无触碰体积的正确实现是 **`.proj` 的 `collisionClass = "NONE"`**（`CollisionClass.NONE` 已核实存在于 jar；`collisionClassByFighter` 置空不写）。烟测必须验证「射弹穿过舰船/战机不触发碰撞与引爆」。
+1. **「collisionRadius = 0」的真实落地形态**：`specClass = projectile` 的 `.proj` 模型**没有 collisionRadius 字段**（ss-csv `ProjectileProjSpec` 已核实，collisionRadius 仅存在于 `ProjMissileSpec`）。无触碰体积的正确实现是 **`.proj` 的 `collisionClass = "NONE"`**（`CollisionClass.NONE` 已核实存在于 jar）。**`collisionClassByFighter` 不可置空（2026-07-29 实机发现）**：原版 ProjectileSpec 加载强制要求该键，缺键 RuntimeException；同样写 `"NONE"`。烟测必须验证「射弹穿过舰船/战机不触发碰撞与引爆」。
 2. **VFX 挂载分工**：`.proj` 的 `onFireEffect` 挂 `PositronShockwaveOnFireEffect`（引信脚本注册，**不再是** `ProjectileSpecOnFireDispatcher`）；弹体 VFX 追踪改由 `.wpn` 的 `onFireEffect = cn.kasuminova.astd.combat.effect.generic.ProjectileSpecOnFireDispatcher` 承担（`.wpn` 与 `.proj` 的 onFireEffect 均会逐弹触发，dispatcher 自带去重，此分工已对照 `ProjectileSpecOnFireDispatcher` 源码确认可行）。
 
 ---
@@ -65,7 +65,7 @@ override val projSpec: ProjectileProjSpec = ProjectileProjSpec(
     onFireEffect = "cn.kasuminova.astd.combat.effect.arc.PositronShockwaveOnFireEffect",
     onHitEffect = null,                       // 无触碰体积，无 onHit 路径
     collisionClass = "NONE",                  // 无触碰体积的真实实现（§0-1）
-    collisionClassByFighter = null,
+    collisionClassByFighter = "NONE",         // 原版加载强制要求该键，缺键 RuntimeException（2026-07-29 实机发现）
     // 原版弹体视觉隐藏四件套（照 Wpn_astd_aod7.projSpec 样板）
     length = 2.0, width = 2.0, fadeTime = 0.2,
     fringeColor = Rgba(140, 200, 255, 0),
@@ -126,15 +126,17 @@ WEAPON 分组尾部（`Desc_astd_psi_omega` 之后）追加一行：
 object Desc_astd_positron_shockwave : LocalizedDescription("astd_positron_shockwave", "WEAPON")
 ```
 
-### 1.5 `contents/data/campaign/special_items.csv` 条目（文件末尾追加）
+### 1.5 `contents/data/campaign/special_items.csv` 条目（文件末尾追加，order 段位 9204）
+
+**order 列口径（2026-07-29 实机发现）**：原版 CSV 解析强制数字，留空启动即 JSONException；各组按合并协议预分配段位直填。
 
 单件蓝图（量产件 P2 口径；`WeaponBlueprintItemPlugin` + params=武器 id 为模组单件蓝图标准形态，对照原版 `weapon_bp` 行格式）：
 
 ```csv
-正电子冲击波蓝图,astd_positron_shockwave_bp,"single_bp, astd",弧光阵列,,2500,1000,1,,graphics/icons/cargo/blueprint_weapons.png,ui_chip_pickup,ui_weapon_bp_drop,com.fs.starfarer.api.campaign.impl.items.WeaponBlueprintItemPlugin,astd_positron_shockwave,使重工业设施能够制造出该蓝图所描述的武器。,
+正电子冲击波蓝图,astd_positron_shockwave_bp,"single_bp, astd",弧光阵列,,2500,1000,1,,graphics/icons/cargo/blueprint_weapons.png,ui_chip_pickup,ui_weapon_bp_drop,com.fs.starfarer.api.campaign.impl.items.WeaponBlueprintItemPlugin,astd_positron_shockwave,使重工业设施能够制造出该蓝图所描述的武器。,9204
 ```
 
-- `order` 列留空（合并协议：收口人统一编号）；列对齐由收口人统一跑。
+- `order` 段位 9204（口径见本节开头）。
 - dev 仓储链路：`AsteriaTestCampaignBootstrap` 对 `allSpecialItemSpecs` 经 `isDevStorageSpecialItem` 过滤后自动投放，无需改代码；武器本体也经 `isDevStorageWeapon` 自动入仓储（tags 无拒绝项）。
 
 ---
@@ -319,7 +321,7 @@ detonateAndFinish(engine, loc, dir):                      // 结算顺序：几�
 | `ss-csv/src/main/resources/i18n/zh-cn.properties` | 追加 §1.3 全部键 | `weapon.astd_positron_shockwave.*` / `desc.astd_positron_shockwave.*`，集中插文件末尾，不动其他武器键 |
 | `ss-csv/.../strings/Catalog_Descriptions.kt` | 追加 §1.4 一行 | WEAPON 分组尾部（`Desc_astd_psi_omega` 之后） |
 | `ss-csv/.../weapondata/arc/Catalog_WeaponData_ARC.kt` | 追加 `Wpn_astd_positron_shockwave` object | 文件末尾；`number = 9215`（预分配段，不与他人撞号） |
-| `contents/data/campaign/special_items.csv` | 追加 §1.5 一行 | 文件末尾；`order` 留空 |
+| `contents/data/campaign/special_items.csv` | 追加 §1.5 一行 | 文件末尾；order = **9204** |
 | `src/.../projectile/driver/ProjectileVfxSpecs.kt` | builders map 末尾加一条目 + `positronWhiteBlue()` 私有函数 | 调色板内联字面量（共享 `coldBlueWhite` 调色板只允许收口人沉淀）；函数追加在调色板函数区之前 |
 
 **明确不触碰**：`ProjProjectileSpec.kt`（`standard()` 不加参数，§1.1 已绕开）、`ss-csv` 其他输出模型、Buff API 全部文件、`CombatRandom.kt`。
@@ -349,7 +351,7 @@ detonateAndFinish(engine, loc, dir):                      // 结算顺序：几�
 - [ ] `.wpn` 三个插件挂载点（dispatcher / bootstrap / projectileSpecId）与 §1.2 一致
 - [ ] i18n 五键齐全（name/desc 与设计案裁定原文逐字一致；tip = 裁定原文 + v2 数值插入，审批通过）；`text2~5/notes` 无占位键
 - [ ] `Desc_astd_positron_shockwave` 在 WEAPON 分组尾部
-- [ ] `special_items.csv` 蓝图行 params = `astd_positron_shockwave`、`order` 留空
+- [ ] `special_items.csv` 蓝图行 params = `astd_positron_shockwave`、order = 9204
 
 **代码面**
 - [ ] 三个新类均在 `combat/effect/arc/`，无 ConeHandler/Vfx 薄适配层；无 XxxService/Manager 命名；无反射
