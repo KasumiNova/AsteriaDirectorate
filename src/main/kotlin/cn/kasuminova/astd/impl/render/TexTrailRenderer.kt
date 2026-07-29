@@ -109,6 +109,13 @@ object TexTrailRenderer {
         private val mvpBuffer: FloatBuffer = BufferUtils.createFloatBuffer(16)
         private val viewportBuffer: IntBuffer = BufferUtils.createIntBuffer(16)
 
+        /**
+         * 条带顶点上传复用缓冲（按需翻倍扩容）。direct buffer 的回收依赖 GC 幻影引用——
+         * 每帧每快照新建会让堆外内存随帧数线性堆积直至 OOM（2026-07-29 实机判例：
+         * 双渲染遍 × 逐快照 createFloatBuffer，直缓冲分配 17GB 触顶崩溃），必须复用。
+         */
+        private var uploadBuffer: FloatBuffer = BufferUtils.createFloatBuffer(4096)
+
         // bloom 资源：全屏 quad 模糊/合成程序 + 半分辨率离屏目标（ping-pong）
         private var quadProgramId = 0
         private var quadVaoId = 0
@@ -278,7 +285,14 @@ object TexTrailRenderer {
                 val textureId = snapshot.texturePath?.let { loadTrailTexture(it) } ?: whiteTexId
                 if (textureId <= 0) continue
                 GL11.glBindTexture(GL11.GL_TEXTURE_2D, textureId)
-                val buffer = BufferUtils.createFloatBuffer(snapshot.vertices.size)
+                var buffer = uploadBuffer
+                if (buffer.capacity() < snapshot.vertices.size) {
+                    var newCapacity = buffer.capacity() * 2
+                    while (newCapacity < snapshot.vertices.size) newCapacity *= 2
+                    buffer = BufferUtils.createFloatBuffer(newCapacity)
+                    uploadBuffer = buffer
+                }
+                buffer.clear()
                 buffer.put(snapshot.vertices).flip()
                 // STREAM_DRAW 每帧整体孤儿化重传（单条约 1.5KB，开销可忽略）
                 GL15.glBufferData(GL15.GL_ARRAY_BUFFER, buffer, GL15.GL_STREAM_DRAW)
