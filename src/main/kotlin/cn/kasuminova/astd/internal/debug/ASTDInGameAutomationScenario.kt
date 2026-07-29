@@ -35,6 +35,11 @@ object ASTDInGameAutomationScenario {
     const val HIP_SCENARIO_ID: String = "heavy_ion_pulse_basic"
     const val HIP_WEAPON_ID: String = "astd_heavy_ion_pulse"
     const val HIP_PROJECTILE_SPEC_ID: String = "astd_heavy_ion_pulse_shot"
+    const val SM_SCENARIO_ID: String = "stellar_mrm_basic"
+    const val SM_LAUNCHER_WEAPON_ID: String = "astd_stellar_mrm_launcher"
+    const val SM_POD_WEAPON_ID: String = "astd_stellar_mrm_pod"
+    const val SM_LAUNCHER_PROJECTILE_SPEC_ID: String = "astd_stellar_mrm_launcher_shot"
+    const val SM_POD_PROJECTILE_SPEC_ID: String = "astd_stellar_mrm_pod_shot"
     const val SHIP_ID: String = "astd_arc_flare"
     const val VARIANT_ID: String = "astd_arc_flare_Standard"
     const val WEAPON_ID: String = "astd_aod7"
@@ -177,6 +182,20 @@ object ASTDInGameAutomationScenario {
         val enabled = System.getProperty(ENABLED_PROPERTY)?.equals("true", ignoreCase = true) == true
         val scenario = System.getProperty(SCENARIO_PROPERTY, SCENARIO_ID)
         return enabled && scenario == HIP_SCENARIO_ID
+    }
+
+    /**
+     * 辉星 MRM 实机场景开关：镜像 [isHipEnabled]。
+     * 验证装配（小/中导弹槽 2500 射程 4/10 OP no_drop 两件套 tags）、优先追猎（首目标=战机）、
+     * 发射舱单次两发、命中战机机体（增伤/全部武器 EMP/逐武器电弧/武器熄火）、
+     * 撞击舰船与护盾爆炸恒触发（50su AOE）、撞线者死（低结构敌导弹同归于尽 vs
+     * 增压 700HP 导弹仅爆炸不移除）、不主动拦导弹（目标选择遥测无导弹型）、
+     * 敌版三档（installScaleForTests 1/2/5 → 爆炸倍率 0.5/1.0/2.5）与多发齐射 FPS。
+     */
+    fun isSmEnabled(): Boolean {
+        val enabled = System.getProperty(ENABLED_PROPERTY)?.equals("true", ignoreCase = true) == true
+        val scenario = System.getProperty(SCENARIO_PROPERTY, SCENARIO_ID)
+        return enabled && scenario == SM_SCENARIO_ID
     }
 
     fun outputDir(): Path {

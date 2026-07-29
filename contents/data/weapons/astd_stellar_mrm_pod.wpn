@@ -1,0 +1,17 @@
+{
+    "id": "astd_stellar_mrm_pod",
+    "specClass": "projectile",
+    "type": "MISSILE",
+    "size": "MEDIUM",
+    "turretSprite": "graphics/fx/empty.png",
+    "hardpointSprite": "graphics/fx/empty.png",
+    "hardpointOffsets": [10, 0],
+    "turretOffsets": [8, 0],
+    "hardpointAngleOffsets": [0],
+    "turretAngleOffsets": [0],
+    "barrelMode": "LINKED",
+    "animationType": "MUZZLE_FLASH",
+    "projectileSpecId": "astd_stellar_mrm_pod_shot",
+    "everyFrameEffect": "cn.kasuminova.astd.combat.effect.generic.CombatVfxBootstrapEveryFrameEffect",
+    "fireSoundTwo": "amsrm_fire"
+}

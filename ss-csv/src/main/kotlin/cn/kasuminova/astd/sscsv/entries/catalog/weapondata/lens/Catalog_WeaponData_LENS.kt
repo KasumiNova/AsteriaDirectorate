@@ -224,3 +224,150 @@ object Wpn_astd_annihilation_vortex : WeaponDataEntry() {
     override val noDpsInTooltip: Boolean = false
     override val number: Int = 9220
 }
+
+/** 辉星 MRM 发射器（规格 08 §1.1）：猎机追踪 + 战机全武器 EMP + 十字辉星爆炸的小型稀有导弹。 */
+object Wpn_astd_stellar_mrm_launcher : WeaponDataEntry(), SsProjMissileOutputs {
+    override val id: String = "astd_stellar_mrm_launcher"
+    override val name: String = weaponName(id)
+    override val tier: Int = 3
+    override val baseValue: Int = 15000
+    override val range: Int = 2500
+
+    // 导弹武器 DPS 列留空（对照 amsrm csv 行 damage/second 空）；EMP 机制走脚本不进面板
+    override val damagePerShot: Int = 100
+
+    override val turnRate: Int = 30
+    override val ops: Int = 4
+
+    // 弹匣 8 发，5s/+1
+    override val ammo: Int = 8
+    override val ammoPerSec: Double = 0.2
+    override val reloadSize: Int = 1
+
+    // 发射冷却 1s，单次发射量 1
+    override val chargedown: Double = 1.0
+    override val burstSize: Number = 1
+    override val burstDelay: Double = 0.0
+
+    override val type: String = "ENERGY"
+    override val energyPerShot: Int = 60
+    override val energyPerSecond: Int = 60
+
+    // 「反物质 SRM 75% 航速」：amsrm projSpeed=1000 × 0.75；launch speed 对齐 amsrm 200
+    override val projSpeed: Int = 750
+    override val launchSpeed: Int = 200
+
+    // 2500 射程 / 750 航速 ≈ 3.3s 直线 + 追踪冗余（目检微调）
+    override val flightTime: Double = 4.0
+    override val projHitpoints: Int = 200
+
+    // 追踪优秀（amsrm 同文案）；航速 75% 降一档「快」（amsrm 为「极快」）
+    override val trackingStr: String = "优秀"
+    override val speedStr: String = "快"
+
+    // P6 前口径（首批计划 §14）；P6 后改稀有赏金掉落，另立任务
+    override val tags: String = "no_drop, no_drop_salvage"
+    override val groupTag: String = "astd"
+    override val tech: String = "透镜矩阵"
+    override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
+    override val customPrimary: String = SsI18n.t("weapon.$id.tooltip.customPrimary")
+    override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
+    override val noDpsInTooltip: Boolean = false
+    override val number: Int = 9217
+
+    override val projSpec: MissileProjSpec = MissileProjSpec(
+        id = "astd_stellar_mrm_launcher_shot",
+        missileType = "MISSILE",
+        onFireEffect = "cn.kasuminova.astd.combat.effect.lens.stellar.StellarMrmOnFireEffect",
+        onHitEffect = "cn.kasuminova.astd.combat.effect.lens.stellar.StellarMrmOnHitEffect",
+        // 原版弹体隐藏三件套（mote 先例）：BUtil_NONE + noEngineGlowTime=999 + engineSlots 空，视觉由 ProjectileVfxSpecs 接管
+        sprite = "graphics/textures/BUtil_NONE.png",
+        size = Vec2i(20, 26),
+        center = Vec2(10, 14),
+        collisionRadius = 12,
+        collisionClass = "MISSILE_NO_FF",
+        explosionColor = Rgba(170, 110, 255, 160),
+        explosionRadius = 75,
+        armingTime = 0.0,
+        flameoutTime = 0.5,
+        noEngineGlowTime = 999.0,
+        fadeTime = 0.25,
+        engineSpec = MissileEngineSpec(
+            turnAcc = 2000,
+            turnRate = 500,
+            acc = 2000,
+            dec = 2000,
+        ),
+        engineSlots = emptyList(),
+    )
+}
+
+/** 辉星 MRM 发射舱（规格 08 §1.1）：中型位，单次发射量 2，备弹经济 20/0.5/2。 */
+object Wpn_astd_stellar_mrm_pod : WeaponDataEntry(), SsProjMissileOutputs {
+    override val id: String = "astd_stellar_mrm_pod"
+    override val name: String = weaponName(id)
+    override val tier: Int = 3
+    override val baseValue: Int = 30000
+    override val range: Int = 2500
+
+    override val damagePerShot: Int = 100
+
+    override val turnRate: Int = 30
+    override val ops: Int = 10
+
+    // 弹匣 20 发，4s/+2
+    override val ammo: Int = 20
+    override val ammoPerSec: Double = 0.5
+    override val reloadSize: Int = 2
+
+    // 发射冷却 1s，单次发射量 2
+    override val chargedown: Double = 1.0
+    override val burstSize: Number = 2
+    override val burstDelay: Double = 0.0
+
+    override val type: String = "ENERGY"
+    override val energyPerShot: Int = 60
+    override val energyPerSecond: Int = 120
+
+    override val projSpeed: Int = 750
+    override val launchSpeed: Int = 200
+    override val flightTime: Double = 4.0
+    override val projHitpoints: Int = 200
+
+    override val trackingStr: String = "优秀"
+    override val speedStr: String = "快"
+
+    override val tags: String = "no_drop, no_drop_salvage"
+    override val groupTag: String = "astd"
+    override val tech: String = "透镜矩阵"
+    override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
+    override val customPrimary: String = SsI18n.t("weapon.$id.tooltip.customPrimary")
+    override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
+    override val noDpsInTooltip: Boolean = false
+    override val number: Int = 9218
+
+    override val projSpec: MissileProjSpec = MissileProjSpec(
+        id = "astd_stellar_mrm_pod_shot",
+        missileType = "MISSILE",
+        onFireEffect = "cn.kasuminova.astd.combat.effect.lens.stellar.StellarMrmOnFireEffect",
+        onHitEffect = "cn.kasuminova.astd.combat.effect.lens.stellar.StellarMrmOnHitEffect",
+        sprite = "graphics/textures/BUtil_NONE.png",
+        size = Vec2i(20, 26),
+        center = Vec2(10, 14),
+        collisionRadius = 12,
+        collisionClass = "MISSILE_NO_FF",
+        explosionColor = Rgba(170, 110, 255, 160),
+        explosionRadius = 75,
+        armingTime = 0.0,
+        flameoutTime = 0.5,
+        noEngineGlowTime = 999.0,
+        fadeTime = 0.25,
+        engineSpec = MissileEngineSpec(
+            turnAcc = 2000,
+            turnRate = 500,
+            acc = 2000,
+            dec = 2000,
+        ),
+        engineSlots = emptyList(),
+    )
+}

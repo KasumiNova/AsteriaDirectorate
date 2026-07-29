@@ -54,6 +54,15 @@ object ProjectileVfxSpecs {
         "astd_heavy_ion_pulse_shot" to {
             simpleProjectileVfx("astd_heavy_ion_pulse_shot", heavyIonPulsePalette(), width = 12f, length = 220f, ribbon = true)
         },
+        // 辉星 MRM（规格 08 §3.1）：LENS 紫十字辉星本体（弹头恒在承担近球亮核）+ 很长 twin trail
+        // 双拖尾（length=420 对齐 aod7 hero，2500 射程长航迹）；width=10 表达 1.5× 弹体体量
+        // （介于 spc3 中型 6 与穷距大型 12 之间）。两 spec 值完全一致属刻意（同一弹头两种发射器）。
+        "astd_stellar_mrm_launcher_shot" to {
+            simpleProjectileVfx("astd_stellar_mrm_launcher_shot", violet(), width = 10f, length = 420f, ribbon = true)
+        },
+        "astd_stellar_mrm_pod_shot" to {
+            simpleProjectileVfx("astd_stellar_mrm_pod_shot", violet(), width = 10f, length = 420f, ribbon = true)
+        },
     )
 
     fun has(projectileSpecId: String): Boolean = projectileSpecId in builders
