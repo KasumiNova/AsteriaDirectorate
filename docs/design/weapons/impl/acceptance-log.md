@@ -394,3 +394,74 @@ SevenStarsTargetSelectorTest 4 条（用例 7 可摧毁优先排序 / 用例 8 �
 
 **留档大问题**：规格 §0-2「flightTime=6.0 覆盖弹体寿命」裁定与实机不符（见偏差 2，
 已实现锚点方案规避，规格文本待修订）。
+
+## 10 双子星 DEM 发射器 / 双子星 DEM 发射舱（2026-07-29）
+
+**范围**：数据面 6 件（launcher/pod 9221/9222 + 隐藏弹头×2 9223/9224 + 隐藏 payload 光束×2 9225/9226，
+`MissileProjSpec.behaviorSpec` 公共扩展）、6 件手写 .wpn、i18n 13 键 + 2 个 Desc（pod notes 走 notesId 复用）、
+special_items 两行单件蓝图（params=武器 id）；代码面 5 类（GeminiDemSalvoOnFireEffect / GeminiDemTrackAI /
+GeminiDemPayloadBeamEffect / GeminiDemSyncHandler / GeminiDemDifficulty，包 `combat/effect/arc`）；
+特效面按规格 §3 不登记 ProjectileVfxSpecs/BeamVfxSpecs（导弹走原版渲染 + .proj engineSlots 双色尾焰，
+payload 光束三色 .wpn 直配，同步冲击 spawnExplosion 白闪）。依据规格：`impl/10-gemini-dem.md` v1。
+
+**验收结论**：pass_with_small_fixes。
+
+**单测**：§4.1 十三用例全覆盖（SyncHandler 9 + Salvo 2 + TrackAI 3 + PayloadBeam 3，共 17 条）全绿；
+`./gradlew build` 全量 478 项测试全绿。
+
+**烟测**（`gemini_dem_basic` 相位机 MOUNT→SALVO→KILL_ONE→POD→ENEMY_SCALE→COMPLETED，
+第 6 轮 COMPLETED at 25.81s，到达终态即退出，未干等超时）：
+
+1. 装配/数据面：MOUNT 相位校验槽位（WS 019/WS 001）、射程 2500×2、spec maxAmmo 2/4（csv 口径）、
+   隐藏四件 no_drop+no_drop_salvage tags、payload SYSTEM hint 全过；weapon_data.csv 生成物六行与 §1.1 逐列一致；
+   .proj 生成物 behaviorSpec 键名逐字（含 `destroyMissleWhenDoneFiring` 原版拼写）。
+2. 齐射：一次触发恰两枚弹头（warheads=salvo×2 断言），ammo 基线差分一轮一耗（launcher 4→3 / pod 8→7，
+   环境倍率下等价 2→1 / 4→3）；齐射日志批次间隔 12.61/24.61/36.61s 恰 12s（chargedown 证据）。
+3. **R1（最高优先）证伪风险**：供给侧面 TrackAI 装配 10/10 且目标非空 10/10；
+   读回诊断实锤包装形态——`getAI()/getMissileAI()` 读回为引擎 `Missile$GuidedMissileAIWrapper`/`MissileAIWrapper`
+   （非 GuidedMissileAI），`getUnwrappedMissileAI()` 读回为真实例（TrackAI / DEMScript）；
+   DEMScript 接管硬证据 = payload 光束命中本身（规格 §0.1 事实 #7：payload 只能由 DEMScript 打击段结算），
+   gdDemTakeoverSeen=9/10（第 10 枚为 KILL_ONE 相位被击落的高爆弹头，未活到接管，符合预期）。
+4. **R2 读数校准通过**：payload 首伤帧日志 beamDamage=1000.0（动能）/ 1500.0（高爆），
+   与「damage/second × burstSize 1s」口径完全一致，原版龙炎 8000×0.75 的未明差异未在本组复现，
+   payload 行 damage/second 无需调整；动能首伤帧恰 4 道 EMP 电弧（empArcs=16=4 命中×4）。
+5. 同步冲击：SALVO/POD 相位各触发一次（Δt=0.0187s/0.0s），damage=1093.75=2500×0.4375（玩家恒 v2）；
+   KILL_ONE 相位击落高爆弹头后动能独发命中、同步计数恒不变（Δ=0）、高爆命中 Δ=0（反面证据闭合）；
+   原生伤害数字 + 白闪截图可见。
+6. 隐藏四件：tags/hints 校验过；codex/掉落未实机开界面（automation 限制），以 tags 证据为准（同 01~07 口径）。
+7. 归属：ENEMY_SCALE 敌版（installScaleForTests(5)）同步 mult=1.0、damage=2500、玩家舰掉血观测通过；
+   玩家侧恒 v2=0.4375；beam.source 打印 id 为空但 owner 正确（DEM 内部挂架舰，同源判定按 id 可判，设计容许）。
+8. 目检：截图可见 payload 光束照射、伤害浮字、HUD 武器组「双子星 DEM 发射器/发射舱」中文渲染正常、
+   双弹尾焰（frame-02 可见弹头拖尾）；FPS 165 无掉帧。
+
+**小修记录（全部在烟测接线/任务面，机制语义与规格一致）**：
+
+1. `MissionDefinition.java` 靶舰变体 `dominator_Standard` 不存在（addToFleet 静默落空、靶舰全程不在场），
+   改现役 `dominator_Assault`（hullId=dominator，保留 stock 武备由插件逐帧缴械的既有设计不变）。
+2. 相位机 ammo 断言重构：实机本机任务环境 `missileAmmoBonus` pct=+100（来源未定位，非本 mod、
+   非 enabled mods 的 hullmod/skill 静态文本可考），runtime maxAmmo 翻倍（2→4/4→8）；
+   规格检查点 8 的「ammo 2/4」为 weapon_data.csv 口径，改断言 `spec.maxAmmo`（数据面），
+   「一次触发一轮齐射」改用基线差分（before-1），不吃环境倍率。
+3. R1 观测面重构：实机判明 `engine.getMissiles()` **不含脚本 spawn 的弹头**（customData/weaponSpec
+   扫描观测面全部落空，三轮失败均源于此）；GeminiDemSalvoOnFireEffect 增弹头出生登记簿
+   （engine.customData 的 WarheadRef 列表，配置完成态原始引用），相位机与诊断改走登记簿；
+   另增供给侧遥测 TELEMETRY_TRACK_AI_CREATED/TARGET_NONNULL。
+4. KILL_ONE 高爆弹头移除改登记簿驱动 + 相位内持续移除全部在场高爆（相位内多轮齐射时后续高爆同样拆解，
+   防 12s 后再配对污染「击落一枚无同步」证据）。
+5. R1 读回诊断三路全扫（getAI/getMissileAI/unwrappedMissileAI），初版取 firstNotNull 恒命中包装对象
+   导致 TrackAI/DEMScript 计数为 0，修正后 10/10、9/10。
+
+**与规格的偏差处置**：
+
+1. 规格 §1.1 payload 光束行未给 range 列，缺省 0 会令光束长度归零无法命中——按原版 dragon_payload=1000
+   判例补齐 range=1000（前序实装已落，本轮确认合理）。规格表格待补列。
+2. 规格 §1.6 special_items 示例行与「order 列留空」表述，与 05/06 组收口判例（`single_bp, astd` tags +
+   order 9203/9204 编号）不一致——按仓库现行判例落 `single_bp, astd` + order 9205/9206。
+3. 规格 §4.2 检查点 3 的观察手段「日志确认 setMissileAI 后 missile.getAI() 读回的 GuidedMissileAI 目标非空」
+   实机不可行（getAI 读回为引擎包装对象，非 GuidedMissileAI）；但包装只存在于 API 面读回，
+   DEMScript 内部持有引擎内层引用、WAIT 段 instanceof 正常工作（payload 命中硬证据 + 接管后
+   unwrapped=DEMScript 双证），**无需启用规格 §5.3 R1 的任何处置方案，机制裁定成立**。
+   规格检查点表述建议修订为「unwrappedMissileAI 读回 + payload 命中双证」。
+
+**留档大问题**：规格 §1.1 payload range 列缺失、§4.2-3 观察手段与实机包装行为不符（均见上，
+机制无推翻项，规格文本待主代理修订）。

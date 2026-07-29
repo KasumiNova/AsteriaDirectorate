@@ -633,3 +633,272 @@ object Wpn_astd_seven_stars : WeaponDataEntry(), SsProjProjectileOutputs {
         bulletSprite = "graphics/textures/BUtil_NONE.png",
     )
 }
+
+// ============================================================
+// 双子星 DEM（规格 10 §1.1）：主武器×2 + 隐藏弹头×2 + 隐藏 payload 光束×2，number 9221~9226。
+// 机制：dummy 导弹 onFire 拦截移除，脚本 spawn 动能/高爆双弹头（TrackAI 追踪 + 原版 DEMScript 接管
+// 锁定/充能/payload 光束打击）；两弹异种配对 1s 窗口命中同目标追加同步冲击。
+// ============================================================
+
+/** 双子星 DEM 发射器（中型导弹架）：一次齐射双异色 DEM 弹头，ammo 2 / 12s 节奏。 */
+object Wpn_astd_gemini_dem_launcher : WeaponDataEntry(), SsProjMissileOutputs {
+    override val id: String = "astd_gemini_dem_launcher"
+    override val name: String = weaponName(id)
+    override val tier: Int = 2
+    override val rarity: Int = 1
+    override val baseValue: Int = 6000
+    override val range: Int = 2500
+    // 非持续武器：damage/second 留 0（原版约定 beam 行才填 dps）
+    override val damagePerSecond: Int = 0
+    // 双弹面板之和（展示/AI 口径）：1000 动能 + 1500 高爆
+    override val damagePerShot: Int = 2500
+    // 500 EMP × 4 道电弧（展示/AI 口径）
+    override val emp: Int = 2000
+    override val turnRate: Int = 30
+    override val ops: Int = 14
+    override val ammo: Int = 2
+    override val ammoPerSec: Double = 0.05
+    override val reloadSize: Int = 2
+    // 对齐龙炎显示惯例（同步冲击为能量伤害）
+    override val type: String = "ENERGY"
+    override val chargedown: Double = 12.0
+    override val projSpeed: Int = 225
+    // 2500su ÷ 225 ≈ 11.1s 上浮（烟测校正面）
+    override val flightTime: Double = 14.0
+    override val projHitpoints: Int = 600
+    override val tags: String = "astd_production"
+    override val groupTag: String = "astd"
+    override val tech: String = "弧光阵列"
+    override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
+    override val customPrimary: String = SsI18n.t("weapon.$id.tooltip.customPrimary")
+    override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
+    override val number: Int = 9221
+
+    // dummy 导弹：发射同帧被 GeminiDemSalvoOnFireEffect 拦截移除，数值只保证「发射即拦截」不出异常（规格 §1.3）
+    override val projSpec: MissileProjSpec = MissileProjSpec(
+        id = "astd_gemini_dem_dummy",
+        missileType = "MISSILE",
+        onFireEffect = "cn.kasuminova.astd.combat.effect.arc.GeminiDemSalvoOnFireEffect",
+        sprite = "graphics/textures/BUtil_NONE.png",
+        size = Vec2i(4, 4),
+        center = Vec2(2, 2),
+        collisionRadius = 7,
+        collisionClass = "MISSILE_NO_FF",
+        explosionColor = Rgba(0, 0, 0, 0),
+        explosionRadius = 0,
+        flameoutTime = 0.5,
+        noEngineGlowTime = 999.0,
+        fadeTime = 0.25,
+        engineSpec = MissileEngineSpec(turnAcc = 1800, turnRate = 1440, acc = 1800, dec = 1600),
+        engineSlots = emptyList(),
+    )
+}
+
+/** 双子星 DEM 发射舱（大型导弹架）：与发射器共用 dummy 弹头（.wpn 侧 projectileSpecId 复用），ammo 4。 */
+object Wpn_astd_gemini_dem_pod : WeaponDataEntry() {
+    override val id: String = "astd_gemini_dem_pod"
+    override val name: String = weaponName(id)
+    override val tier: Int = 2
+    override val rarity: Int = 1
+    override val baseValue: Int = 14000
+    override val range: Int = 2500
+    override val damagePerSecond: Int = 0
+    override val damagePerShot: Int = 2500
+    override val emp: Int = 2000
+    override val turnRate: Int = 30
+    override val ops: Int = 28
+    override val ammo: Int = 4
+    override val ammoPerSec: Double = 0.1
+    override val reloadSize: Int = 2
+    override val type: String = "ENERGY"
+    override val chargedown: Double = 12.0
+    override val projSpeed: Int = 225
+    override val flightTime: Double = 14.0
+    override val projHitpoints: Int = 600
+    override val tags: String = "astd_production"
+    override val groupTag: String = "astd"
+    override val tech: String = "弧光阵列"
+    override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
+    override val customPrimary: String = SsI18n.t("weapon.$id.tooltip.customPrimary")
+    override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
+    override val number: Int = 9222
+}
+
+/** 双子星 DEM 动能弹头（隐藏内部武器，永不装配/掉落）：冷蓝白，附带 4 道 500 EMP 电弧。 */
+object Wpn_astd_gemini_dem_kinetic : WeaponDataEntry(), SsProjMissileOutputs {
+    override val id: String = "astd_gemini_dem_kinetic"
+    override val name: String = weaponName(id)
+    override val tier: Int = 2
+    override val baseValue: Int = 0
+    override val range: Int = 2500
+    // 展示口径；真实伤害由 payload 行结算（dps × burstSize 1s）
+    override val damagePerShot: Int = 1000
+    override val emp: Int = 2000
+    override val turnRate: Int = 30
+    override val type: String = "KINETIC"
+    override val projSpeed: Int = 225
+    override val flightTime: Double = 14.0
+    override val projHitpoints: Int = 600
+    override val tags: String = "no_drop, no_drop_salvage"
+    override val tech: String = "弧光阵列"
+    override val noDpsInTooltip: Boolean = true
+    override val number: Int = 9223
+
+    override val projSpec: MissileProjSpec = geminiDemWarheadProjSpec(
+        id = "astd_gemini_dem_kinetic_msl",
+        payloadWeaponId = "astd_gemini_dem_kinetic_payload",
+        explosionColor = Rgba(140, 190, 255, 180),
+        engineColor = Rgba(140, 190, 255, 255),
+        contrailColor = Rgba(120, 170, 255, 75),
+    )
+}
+
+/** 双子星 DEM 高爆弹头（隐藏内部武器，永不装配/掉落）：暖橙白，专职拆甲。 */
+object Wpn_astd_gemini_dem_he : WeaponDataEntry(), SsProjMissileOutputs {
+    override val id: String = "astd_gemini_dem_he"
+    override val name: String = weaponName(id)
+    override val tier: Int = 2
+    override val baseValue: Int = 0
+    override val range: Int = 2500
+    override val damagePerShot: Int = 1500
+    override val emp: Int = 0
+    override val turnRate: Int = 30
+    override val type: String = "HIGH_EXPLOSIVE"
+    override val projSpeed: Int = 225
+    override val flightTime: Double = 14.0
+    override val projHitpoints: Int = 600
+    override val tags: String = "no_drop, no_drop_salvage"
+    override val tech: String = "弧光阵列"
+    override val noDpsInTooltip: Boolean = true
+    override val number: Int = 9224
+
+    override val projSpec: MissileProjSpec = geminiDemWarheadProjSpec(
+        id = "astd_gemini_dem_he_msl",
+        payloadWeaponId = "astd_gemini_dem_he_payload",
+        explosionColor = Rgba(255, 180, 110, 180),
+        engineColor = Rgba(255, 190, 130, 255),
+        contrailColor = Rgba(255, 150, 90, 75),
+    )
+}
+
+/**
+ * 双弹头 .proj 公共骨架（规格 10 §1.3）：两 spec 结构相同，差异在 payloadWeaponId 与三色配色。
+ * behaviorSpec 键名含原版拼写（`destroyMissleWhenDoneFiring`），逐字照抄。
+ * 引擎参数 = 龙炎 ×1.5；targetingTime 2s（提案收紧，烟测目检面）。
+ */
+private fun geminiDemWarheadProjSpec(
+    id: String,
+    payloadWeaponId: String,
+    explosionColor: Rgba,
+    engineColor: Rgba,
+    contrailColor: Rgba,
+): MissileProjSpec = MissileProjSpec(
+    id = id,
+    missileType = "MISSILE",
+    // 单一路径：DEMScript 由 GeminiDemSalvoOnFireEffect 手动挂载（规格 §0.1 事实 #3/#4）
+    onFireEffect = null,
+    // v1 资源选型：引用原版贴图；专用异色贴图列后续美术任务
+    sprite = "graphics/missiles/dragonfire.png",
+    size = Vec2i(15, 24),
+    center = Vec2(7.5, 12),
+    collisionRadius = 12,
+    collisionClass = "MISSILE_NO_FF",
+    explosionColor = explosionColor,
+    explosionRadius = 50,
+    armingTime = 0.3,
+    flameoutTime = 0.5,
+    noEngineGlowTime = 0.0,
+    fadeTime = 0.25,
+    engineSpec = MissileEngineSpec(turnAcc = 225, turnRate = 75, acc = 600, dec = 105),
+    engineSlots = listOf(
+        MissileEngineSlot(
+            id = "ES1",
+            loc = Vec2i(-13, 0),
+            style = "CUSTOM",
+            styleSpec = MissileEngineSlotStyleSpec(
+                mode = "QUAD_STRIP",
+                engineColor = engineColor,
+                glowSizeMult = 2.5,
+                contrailDuration = 1.0,
+                contrailWidthMult = 1.0,
+                contrailWidthAddedFractionAtEnd = 2.5,
+                contrailMinSeg = 5,
+                contrailMaxSpeedMult = 0.5,
+                contrailAngularVelocityMult = 0.5,
+                contrailSpawnDistMult = 1.0,
+                contrailColor = contrailColor,
+                type = "GLOW",
+            ),
+            width = 7.0,
+            length = 40.0,
+            angle = 180.0,
+        ),
+    ),
+    behaviorSpec = mapOf(
+        "behavior" to "CUSTOM",
+        "minDelayBeforeTriggering" to 0.5,
+        "triggerDistance" to listOf(700, 750),
+        "preferredMinFireDistance" to listOf(700, 750),
+        "turnRateBoost" to 100,
+        // 提案：龙炎为 3，设计「短暂充能」收紧到 2；烟测目检
+        "targetingTime" to 2,
+        "firingTime" to 1,
+        // v1 复用原版红色锁定激光；异色锁定激光列后续美术任务
+        "targetingLaserId" to "targetinglaser3",
+        "targetingLaserFireOffset" to listOf(8, 0, 8, 0),
+        "targetingLaserSweepAngles" to listOf(0, -7, 0, 7),
+        "payloadWeaponId" to payloadWeaponId,
+        "targetingLaserRange" to 900,
+        "targetingLaserArc" to 10,
+        "bombPumped" to true,
+        "fadeOutEngineWhenFiring" to false,
+        "destroyMissleWhenDoneFiring" to false,
+        "snapFacingToTargetIfCloseEnough" to false,
+    ),
+)
+
+/** 双子星 DEM 动能 payload 光束（隐藏结算武器）：dps 1000 × burstSize 1s = 1000 动能/发。 */
+object Wpn_astd_gemini_dem_kinetic_payload : WeaponDataEntry() {
+    override val id: String = "astd_gemini_dem_kinetic_payload"
+    override val name: String = weaponName(id)
+    override val tier: Int = 2
+    override val baseValue: Int = 0
+    // 光束射程（原版 dragon_payload=1000 判例；规格 §1.1 未给该列，缺省 0 会令光束长度归零无法命中）
+    override val range: Int = 1000
+    // 结算口径：damage/second × burstSize(1s)（烟测 R2 读数校准面）
+    override val damagePerSecond: Int = 1000
+    // beam 行惯例：damage/shot 留空（toRow 已按原版约定留空）
+    override val damagePerShot: Int = 0
+    override val type: String = "KINETIC"
+    // 单次 1s 照射
+    override val burstSize: Int = 1
+    override val burstDelay: Double = 0.0
+    // 对齐 dragon_payload
+    override val beamSpeed: Int = 1000000
+    override val aiHints: Set<AiHint> = setOf(AiHint.SYSTEM, AiHint.DANGEROUS)
+    override val tags: String = "fires_one_burst, no_drop, no_drop_salvage"
+    override val tech: String = "弧光阵列"
+    override val noDpsInTooltip: Boolean = true
+    override val number: Int = 9225
+}
+
+/** 双子星 DEM 高爆 payload 光束（隐藏结算武器）：dps 1500 × burstSize 1s = 1500 高爆/发。 */
+object Wpn_astd_gemini_dem_he_payload : WeaponDataEntry() {
+    override val id: String = "astd_gemini_dem_he_payload"
+    override val name: String = weaponName(id)
+    override val tier: Int = 2
+    override val baseValue: Int = 0
+    // 光束射程（同动能 payload：原版 dragon_payload=1000 判例）
+    override val range: Int = 1000
+    override val damagePerSecond: Int = 1500
+    override val damagePerShot: Int = 0
+    override val type: String = "HIGH_EXPLOSIVE"
+    override val burstSize: Int = 1
+    override val burstDelay: Double = 0.0
+    override val beamSpeed: Int = 1000000
+    override val aiHints: Set<AiHint> = setOf(AiHint.SYSTEM, AiHint.DANGEROUS)
+    override val tags: String = "fires_one_burst, no_drop, no_drop_salvage"
+    override val tech: String = "弧光阵列"
+    override val noDpsInTooltip: Boolean = true
+    override val number: Int = 9226
+}

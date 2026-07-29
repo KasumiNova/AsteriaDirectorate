@@ -3,6 +3,11 @@ package cn.kasuminova.astd.combat.effect.generic
 import cn.kasuminova.astd.combat.effect.generic.projectile.ProjectileSpecOnFireDispatcher
 import cn.kasuminova.astd.combat.effect.arc.ChargeNeedleVfx
 import cn.kasuminova.astd.combat.effect.arc.ElectricDriveAcceleratorOnHitEffect
+import cn.kasuminova.astd.combat.effect.arc.GeminiDemDifficulty
+import cn.kasuminova.astd.combat.effect.arc.GeminiDemPayloadBeamEffect
+import cn.kasuminova.astd.combat.effect.arc.GeminiDemSalvoOnFireEffect
+import cn.kasuminova.astd.combat.effect.arc.GeminiDemSyncHandler
+import cn.kasuminova.astd.combat.effect.arc.GeminiDemTrackAI
 import cn.kasuminova.astd.combat.effect.arc.PositronShockwaveFuseScript
 import cn.kasuminova.astd.combat.effect.arc.SevenStarsChainScript
 import cn.kasuminova.astd.combat.effect.arc.chargeNeedleStacks
@@ -35,11 +40,14 @@ import com.fs.starfarer.api.combat.BaseEveryFrameCombatPlugin
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.DamagingProjectileAPI
 import com.fs.starfarer.api.combat.DamageType
+import com.fs.starfarer.api.combat.GuidedMissileAI
+import com.fs.starfarer.api.combat.MissileAIPlugin
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.combat.ShipCommand
 import com.fs.starfarer.api.combat.ShipwideAIFlags
 import com.fs.starfarer.api.combat.ViewportAPI
 import com.fs.starfarer.api.combat.WeaponAPI
+import com.fs.starfarer.api.impl.combat.dem.DEMScript
 import com.fs.starfarer.api.input.InputEventAPI
 import com.fs.starfarer.api.util.Misc
 import com.fs.starfarer.api.mission.FleetSide
@@ -184,6 +192,44 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     private var psLastFuseDetonateAt = -1f
     private var psLastTrackedFuseCount = 0
 
+    // ==== gemini dem 场景状态（相位机 MOUNT → SALVO → KILL_ONE → POD → ENEMY_SCALE → COMPLETED） ====
+    private var gdPhase = GD_PHASE_MOUNT
+    private var gdPhaseStartedAt = 0f
+    // R1 观测面：弹头 unwrappedMissileAI 身份轮询（TrackAI 供目标 / DEMScript 接管）。
+    private val gdTrackAiSeen = mutableSetOf<Int>()
+    private var gdTrackTargetNonNull = 0
+    private val gdDemTakeoverSeen = mutableSetOf<Int>()
+    // R1 诊断面：弹头三路 AI 读回的类名三元组（首次出现各记一条日志，防刷屏）。
+    private val gdAiClassTriplesSeen = mutableSetOf<String>()
+    // SALVO 相位：齐射后 ammo 采样（一轮一耗证据）与 R2 读数基线。
+    // ammo 绝对值断言走 spec 层（weapon_data.csv 口径）；运行时 maxAmmo 可能受环境 stat 加成
+    // （实机判例：本机任务环境 missileAmmoBonus ×2，launcher 2→4 / pod 4→8），
+    // 故「一次触发一轮齐射」用基线差分断言（before-1），不吃环境倍率。
+    private var gdLauncherAmmoBaseline = -1
+    private var gdLauncherAmmoAfterSalvo = -1
+    private var gdSalvoTargetHpBaseline = -1f
+    private var gdSalvoTargetMinHp = Float.MAX_VALUE
+    // KILL_ONE 相位：同步计数基线与高爆弹头移除守卫。
+    private var gdKillSyncBaseline = 0
+    private var gdKillKineticBaseline = 0
+    private var gdKillHeBaseline = 0
+    private var gdKillWarheadsBaseline = 0
+    private var gdKillHeRemoved = false
+    // POD 相位：发射舱齐射基线（ammo 一轮一耗 / 同步配对证据）。
+    private var gdPodSalvoBaseline = 0
+    private var gdPodKineticBaseline = 0
+    private var gdPodHeBaseline = 0
+    private var gdPodSyncBaseline = 0
+    private var gdPodAmmoBaseline = -1
+    private var gdPodAmmoAfterSalvo = -1
+    // ENEMY_SCALE 相位：敌版破晓同步基线与玩家掉血观测。
+    private var gdEnemySyncBaseline = 0
+    private var gdEnemyMinPlayerHp = Float.MAX_VALUE
+    private var gdEnemyFirstSyncAt = -1f
+    // COMPLETED 截图门控：最近一次 payload 首伤帧时刻（截图帧需含双色尾焰/锁定激光/光束）。
+    private var gdLastStrikeAt = -1f
+    private var gdLastTrackedStrikeCount = 0
+
     // ==== seven stars 场景状态（相位机 MOUNT → BREAK → CHAIN → TERMINAL → ENEMY_MULTI → COMPLETED） ====
     private var ssPhase = SS_PHASE_MOUNT
     private var ssPhaseStartedAt = 0f
@@ -211,7 +257,13 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     override fun init(engine: CombatEngineAPI) {
         this.engine = engine
         ProjectileVfxDriverPlugin.ensureInstalled(engine)
-        if (ASTDInGameAutomationScenario.isSsEnabled()) {
+        if (ASTDInGameAutomationScenario.isGdEnabled()) {
+            engine.setDoNotEndCombat(true)
+            lockGdCamera(engine)
+            writeDiagnostics(engine, "CombatReady")
+            writeTelemetry(engine, "CombatReady", findGdPlayer(engine), null)
+            log.info("[ASTD-Automation] scenario=${ASTDInGameAutomationScenario.GD_SCENARIO_ID} combat plugin initialized")
+        } else if (ASTDInGameAutomationScenario.isSsEnabled()) {
             engine.setDoNotEndCombat(true)
             lockSsCamera(engine)
             // 与其他场景一致：reserves 部署放到 advance()，init 阶段渲染器未就绪。
@@ -300,6 +352,12 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
 
     override fun advance(amount: Float, events: MutableList<InputEventAPI>?) {
         val combatEngine = engine ?: return
+        if (ASTDInGameAutomationScenario.isGdEnabled()) {
+            if (combatEngine.isPaused) combatEngine.setPaused(false)
+            elapsed += amount.coerceAtLeast(0f)
+            advanceGdScenario(combatEngine)
+            return
+        }
         if (ASTDInGameAutomationScenario.isSsEnabled()) {
             if (combatEngine.isPaused) combatEngine.setPaused(false)
             elapsed += amount.coerceAtLeast(0f)
@@ -2785,6 +2843,458 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         }
     }
 
+    // === Gemini DEM scenario (salvo / R1 DEM takeover / payload R2 / sync strike) ===
+
+    private fun findGdPlayer(engine: CombatEngineAPI): ShipAPI? =
+        engine.ships.firstOrNull { it.owner == 0 && it.hullSpec?.hullId == GD_PLAYER_HULL && !it.isFighter }
+
+    private fun findGdTarget(engine: CombatEngineAPI): ShipAPI? =
+        engine.ships.firstOrNull { it.owner != 0 && it.hullSpec?.hullId == GD_TARGET_HULL && !it.isFighter }
+
+    private fun findGdEnemyCarrier(engine: CombatEngineAPI): ShipAPI? =
+        engine.ships.firstOrNull { it.owner != 0 && it.hullSpec?.hullId == GD_PLAYER_HULL && !it.isFighter }
+
+    private fun findGdLauncher(ship: ShipAPI?): WeaponAPI? =
+        ship?.allWeapons?.firstOrNull { it.id == ASTDInGameAutomationScenario.GD_LAUNCHER_WEAPON_ID }
+
+    private fun findGdPod(ship: ShipAPI?): WeaponAPI? =
+        ship?.allWeapons?.firstOrNull { it.id == ASTDInGameAutomationScenario.GD_POD_WEAPON_ID }
+
+    private fun lockGdCamera(engine: CombatEngineAPI) {
+        val viewport = engine.viewport
+        val displayWidth = try { Display.getWidth().takeIf { it > 0 } ?: 2560 } catch (_: Throwable) { 2560 }
+        val displayHeight = try { Display.getHeight().takeIf { it > 0 } ?: 1440 } catch (_: Throwable) { 1440 }
+        val displayAspect = displayWidth.toFloat() / displayHeight.toFloat()
+        val visibleWidth = GD_CAMERA_VISIBLE_HEIGHT * displayAspect
+        viewport.setExternalControl(true)
+        viewport.set(
+            GD_CAMERA_CENTER.x - visibleWidth * 0.5f,
+            GD_CAMERA_CENTER.y - GD_CAMERA_VISIBLE_HEIGHT * 0.5f,
+            visibleWidth,
+            GD_CAMERA_VISIBLE_HEIGHT,
+        )
+        viewport.setEverythingNearViewport(true)
+    }
+
+    /**
+     * 分相位强制部署 mission reserves（范式同 deploySsReserveShips）：
+     * 玩家征服者与统治者靶舰立即部署；敌版征服者待到 ENEMY_SCALE 相位（避免提前携带发射舱开火污染证据）。
+     */
+    private fun deployGdReserveShips(engine: CombatEngineAPI) {
+        engine.setDoNotEndCombat(true)
+        for (side in listOf(FleetSide.PLAYER, FleetSide.ENEMY)) {
+            val manager = engine.getFleetManager(side)
+            manager.setSuppressDeploymentMessages(true)
+            for (member in manager.getReservesCopy().toList()) {
+                val hullId = member.hullId ?: continue
+                when {
+                    side == FleetSide.PLAYER && hullId == GD_PLAYER_HULL -> {
+                        manager.spawnFleetMember(member, Vector2f(GD_PLAYER_ANCHOR), 0f, 0f)
+                        manager.removeFromReserves(member)
+                    }
+                    side == FleetSide.ENEMY && hullId == GD_TARGET_HULL -> {
+                        manager.spawnFleetMember(member, Vector2f(GD_TARGET_ANCHOR), 180f, 0f)
+                        manager.removeFromReserves(member)
+                    }
+                    side == FleetSide.ENEMY && hullId == GD_PLAYER_HULL && gdPhase == GD_PHASE_ENEMY_SCALE -> {
+                        manager.spawnFleetMember(member, Vector2f(GD_ENEMY_ANCHOR), 180f, 0f)
+                        manager.removeFromReserves(member)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun transitionGdPhase(next: String) {
+        log.info("[ASTD-Automation] gd phase $gdPhase -> $next at ${"%.2f".format(elapsed)}s")
+        gdPhase = next
+        gdPhaseStartedAt = elapsed
+    }
+
+    /**
+     * 舞台保活与站位（范式同 stabilizeSsShips）：玩家舰逐帧奶（ENEMY_SCALE 除外）+ 辐能清零 +
+     * force fire 独占驱动；靶舰盾舞台性常关（payload 光束/同步冲击须落船体出 HP 证据），
+     * 相位证据以 HP 基线/最小值观测，相位收尾由调用方补奶防靶舰沉没。
+     */
+    private fun stabilizeGdShips(engine: CombatEngineAPI, fireLauncher: Boolean, firePod: Boolean) {
+        val player = findGdPlayer(engine)
+        val target = findGdTarget(engine)
+        val carrier = findGdEnemyCarrier(engine)
+        if (player != null && !player.isHulk) {
+            engine.setPlayerShipExternal(player)
+            // 舞台舰一律摘除 AI（实机判例：保留 AI 会每帧抢开盾，与 toggleOff 拉锯污染掉血证据）。
+            stabilizeShip(player, GD_PLAYER_ANCHOR, 0f, allowFire = true, preserveAI = false)
+            player.setShipTarget(target ?: carrier)
+            if (gdPhase != GD_PHASE_ENEMY_SCALE) player.setHitpoints(player.maxHitpoints)
+            player.fluxTracker.currFlux = 0f
+            player.shield?.toggleOff()
+            setGdAutofire(player, false)
+            findGdLauncher(player)?.let {
+                it.setCurrAngle(0f)
+                it.setForceFireOneFrame(fireLauncher)
+            }
+            findGdPod(player)?.let {
+                it.setCurrAngle(0f)
+                it.setForceFireOneFrame(firePod)
+            }
+        }
+        if (target != null && !target.isHulk) {
+            stabilizeShip(target, GD_TARGET_ANCHOR, 180f, allowFire = false, preserveAI = false)
+            target.setShipTarget(null)
+            target.shield?.toggleOff()
+            if (gdPhase == GD_PHASE_SALVO || gdPhase == GD_PHASE_KILL_ONE || gdPhase == GD_PHASE_POD) {
+                gdSalvoTargetMinHp = minOf(gdSalvoTargetMinHp, target.hitpoints)
+            }
+        }
+        if (carrier != null && !carrier.isHulk) {
+            stabilizeShip(carrier, GD_ENEMY_ANCHOR, 180f, allowFire = true, preserveAI = false)
+            carrier.setShipTarget(player)
+            carrier.setHitpoints(carrier.maxHitpoints)
+            carrier.fluxTracker.currFlux = 0f
+            setGdAutofire(carrier, false)
+            findGdPod(carrier)?.let {
+                it.setCurrAngle(180f)
+                // 部署免疫闸（实机判例：reserves 手动 spawn 舰船部署后数秒内脚本 applyDamage 可能全额无效）
+                it.setForceFireOneFrame(
+                    gdPhase == GD_PHASE_ENEMY_SCALE && elapsed - gdPhaseStartedAt >= GD_ENEMY_SETTLE_SECONDS,
+                )
+            }
+        }
+    }
+
+    /** 双子星武器组 autofire 总开关（范式同 setSsAutofire）：force fire 独占驱动时关闭。 */
+    private fun setGdAutofire(ship: ShipAPI?, enabled: Boolean) {
+        ship ?: return
+        for (group in ship.weaponGroupsCopy) {
+            if (group.weaponsCopy.none {
+                    it.id == ASTDInGameAutomationScenario.GD_LAUNCHER_WEAPON_ID ||
+                        it.id == ASTDInGameAutomationScenario.GD_POD_WEAPON_ID
+                }
+            ) {
+                continue
+            }
+            if (enabled && !group.isAutofiring) group.toggleOn()
+            if (!enabled && group.isAutofiring) group.toggleOff()
+        }
+    }
+
+    /**
+     * R1 轮询（规格 10 §5 风险表 R1 首选验证项）：遍历出生登记簿中的弹头原始引用，三路读 AI
+     * （`getAI()` = DEMScript WAIT 段的读取路径 / `getMissileAI()` / `getUnwrappedMissileAI()`）。
+     * 实机判例（2026-07-29 烟测）：`engine.getMissiles()` 不含脚本 spawn 的弹头，
+     * customData/weaponSpec 扫描观测面全部落空；登记簿原始引用是唯一可靠观测面。
+     * 本观测面只作诊断（类名三元组首次出现记日志），相位断言用供给侧遥测
+     * （SalvoOnFireEffect.TELEMETRY_TRACK_AI_*）+ payload 命中（DEMScript 接管的硬证据）。
+     */
+    private fun pollGdWarheads(engine: CombatEngineAPI) {
+        for (ref in GeminiDemSalvoOnFireEffect.warheadsOf(engine)) {
+            val missile = ref.missile
+            if (!engine.isEntityInPlay(missile)) continue
+            val key = System.identityHashCode(missile)
+            val reads = listOf(
+                missile.ai as? MissileAIPlugin,
+                missile.missileAI,
+                missile.unwrappedMissileAI,
+            )
+            // 包装弹头 getAI/getMissileAI 读回是引擎 Wrapper（非 GuidedMissileAI），
+            // 真实实例只在 unwrapped 读回——三路全扫，不取 firstNotNull（实机判例：取首路恒为包装）
+            val trackAi = reads.filterIsInstance<GeminiDemTrackAI>().firstOrNull()
+            if (trackAi != null && gdTrackAiSeen.add(key)) {
+                if ((trackAi as GuidedMissileAI).target != null) gdTrackTargetNonNull++
+            }
+            if (reads.any { it is DEMScript }) gdDemTakeoverSeen.add(key)
+            val triple = reads.joinToString("|") { it?.javaClass?.name ?: "null" }
+            if (gdAiClassTriplesSeen.add(triple)) {
+                log.info("[ASTD-Automation] gd R1 ai reads: ai/missileAI/unwrapped = $triple")
+            }
+        }
+    }
+
+    /**
+     * 双子星 DEM 相位机（规格 10 §4.2 烟测检查点映射）：
+     * MOUNT（双槽装配/射程/ammo 2/4/tags/隐藏四件 no_drop+SYSTEM 校验，检查点 1/6）→
+     * SALVO（齐射双弹 + dummy 拦截；R1：TrackAI 供目标 + DEMScript 接管；
+     *   R2：payload 首伤帧读数；动能 4 道 EMP 电弧；同步冲击触发 + 玩家恒 v2，检查点 2/3/4/5/7）→
+     * KILL_ONE（击落高爆弹头：动能独发命中、同步计数恒不变，检查点 5 反面）→
+     * POD（发射舱齐射 + ammo 4→3 + 同步配对，检查点 1/8）→
+     * ENEMY_SCALE（installScaleForTests(5) + 敌版携带：敌版同步 mult=1.0 + 玩家掉血，检查点 7）→
+     * COMPLETED（恢复齐射做截图舞台，近期有打击才上报 Completed 令双色尾焰/锁定激光/光束入帧）。
+     */
+    private fun advanceGdScenario(engine: CombatEngineAPI) {
+        engine.setDoNotEndCombat(true)
+        deployGdReserveShips(engine)
+        lockGdCamera(engine)
+        pollGdWarheads(engine)
+
+        val player = findGdPlayer(engine)
+        val target = findGdTarget(engine)
+        val launcher = findGdLauncher(player)
+        val pod = findGdPod(player)
+        val salvoCount = GeminiDemSalvoOnFireEffect.salvoCount(engine)
+        val warheads = GeminiDemSalvoOnFireEffect.warheadsSpawned(engine)
+        val gdTrackAiCreated = GeminiDemSalvoOnFireEffect.trackAiCreated(engine)
+        val gdTrackAiTargetNonNull = GeminiDemSalvoOnFireEffect.trackAiTargetNonNull(engine)
+        val kineticHits = GeminiDemPayloadBeamEffect.kineticHitCount(engine)
+        val heHits = GeminiDemPayloadBeamEffect.heHitCount(engine)
+        val empArcs = GeminiDemPayloadBeamEffect.empArcCount(engine)
+        val syncTriggers = GeminiDemSyncHandler.syncTriggerCount(engine)
+        val lastMult = engine.customData[GeminiDemSyncHandler.TELEMETRY_SYNC_LAST_MULT] as? Float ?: -1f
+
+        when (gdPhase) {
+            GD_PHASE_MOUNT -> {
+                stabilizeGdShips(engine, fireLauncher = false, firePod = false)
+                if (elapsed - gdPhaseStartedAt >= GD_MOUNT_SETTLE_SECONDS) {
+                    val launcherSlot = launcher?.slot?.id
+                    val podSlot = pod?.slot?.id
+                    val launcherRange = launcher?.spec?.maxRange ?: -1f
+                    val podRange = pod?.spec?.maxRange ?: -1f
+                    val hiddenIds = listOf(
+                        GeminiDemDifficulty.KINETIC_WEAPON_ID,
+                        GeminiDemDifficulty.HE_WEAPON_ID,
+                        GeminiDemDifficulty.KINETIC_PAYLOAD_ID,
+                        GeminiDemDifficulty.HE_PAYLOAD_ID,
+                    )
+                    val hiddenLeak = hiddenIds.firstOrNull { id ->
+                        val spec = Global.getSettings().getWeaponSpec(id)
+                        spec == null || !spec.tags.contains("no_drop") || !spec.tags.contains("no_drop_salvage")
+                    }
+                    val payloadHintLeak = listOf(GeminiDemDifficulty.KINETIC_PAYLOAD_ID, GeminiDemDifficulty.HE_PAYLOAD_ID)
+                        .firstOrNull { id ->
+                            Global.getSettings().getWeaponSpec(id)?.getAIHints()?.contains(WeaponAPI.AIHints.SYSTEM) != true
+                        }
+                    when {
+                        launcherSlot != GD_PLAYER_SLOT_LAUNCHER || podSlot != GD_PLAYER_SLOT_POD -> {
+                            failureReason = "gd mount mismatch: launcherSlot=$launcherSlot podSlot=$podSlot"
+                            transitionGdPhase(GD_PHASE_FAILED)
+                        }
+                        kotlin.math.abs(launcherRange - GD_EXPECT_RANGE) > GD_RANGE_TOLERANCE ||
+                            kotlin.math.abs(podRange - GD_EXPECT_RANGE) > GD_RANGE_TOLERANCE -> {
+                            failureReason = "gd range mismatch: launcher=$launcherRange pod=$podRange(expect $GD_EXPECT_RANGE)"
+                            transitionGdPhase(GD_PHASE_FAILED)
+                        }
+                        launcher == null || launcher.spec?.maxAmmo != GD_LAUNCHER_AMMO -> {
+                            failureReason = "gd launcher spec maxAmmo=${launcher?.spec?.maxAmmo} runtime ammo=${launcher?.ammo}, expect spec $GD_LAUNCHER_AMMO（weapon_data.csv 口径）"
+                            transitionGdPhase(GD_PHASE_FAILED)
+                        }
+                        pod == null || pod.spec?.maxAmmo != GD_POD_AMMO -> {
+                            failureReason = "gd pod spec maxAmmo=${pod?.spec?.maxAmmo} runtime ammo=${pod?.ammo}, expect spec $GD_POD_AMMO（weapon_data.csv 口径）"
+                            transitionGdPhase(GD_PHASE_FAILED)
+                        }
+                        hiddenLeak != null -> {
+                            failureReason = "gd hidden weapon leak: $hiddenLeak 缺 no_drop 系 tags（codex/掉落泄漏防线）"
+                            transitionGdPhase(GD_PHASE_FAILED)
+                        }
+                        payloadHintLeak != null -> {
+                            failureReason = "gd payload hint leak: $payloadHintLeak 缺 SYSTEM hint"
+                            transitionGdPhase(GD_PHASE_FAILED)
+                        }
+                        else -> {
+                            gdLauncherAmmoBaseline = launcher.ammo
+                            val ammoBonus = player?.mutableStats?.missileAmmoBonus
+                            log.info(
+                                "[ASTD-Automation] gd ammo env: launcher spec=${launcher.spec.maxAmmo} runtime=${launcher.ammo} " +
+                                    "pod spec=${pod.spec.maxAmmo} runtime=${pod.ammo} " +
+                                    "missileAmmoBonus(mult=${ammoBonus?.mult} pct=${ammoBonus?.percentMod} flat=${ammoBonus?.flatBonus})" +
+                                    "（runtime≠spec 时一轮一耗断言走基线差分）",
+                            )
+                            gdSalvoTargetHpBaseline = target?.hitpoints ?: -1f
+                            gdSalvoTargetMinHp = target?.hitpoints ?: Float.MAX_VALUE
+                            transitionGdPhase(GD_PHASE_SALVO)
+                        }
+                    }
+                }
+            }
+            GD_PHASE_SALVO -> {
+                stabilizeGdShips(engine, fireLauncher = true, firePod = false)
+                if (warheads >= 2 && gdLauncherAmmoAfterSalvo < 0) {
+                    gdLauncherAmmoAfterSalvo = launcher?.ammo ?: -1
+                }
+                if (kineticHits >= 1 && heHits >= 1) {
+                    when {
+                        salvoCount < 1 || warheads != salvoCount * 2 -> {
+                            failureReason = "gd salvo mismatch: salvo=$salvoCount warheads=$warheads（每轮齐射恰两枚弹头）"
+                            transitionGdPhase(GD_PHASE_FAILED)
+                        }
+                        gdTrackAiCreated < 2 || gdTrackAiTargetNonNull < 2 -> {
+                            failureReason = "gd R1 fail: TrackAI 装配=$gdTrackAiCreated 目标非空=$gdTrackAiTargetNonNull（应各 ≥2，DEMScript WAIT 段触发前提的供给侧证据）"
+                            transitionGdPhase(GD_PHASE_FAILED)
+                        }
+                        empArcs != GD_EMP_ARC_COUNT -> {
+                            failureReason = "gd emp arcs=$empArcs, expect $GD_EMP_ARC_COUNT（动能光束首伤帧 4 道 EMP 电弧）"
+                            transitionGdPhase(GD_PHASE_FAILED)
+                        }
+                        syncTriggers < 1 -> {
+                            failureReason = "gd sync=0（双弹同目标 Δt≤1s 应触发同步冲击）"
+                            transitionGdPhase(GD_PHASE_FAILED)
+                        }
+                        kotlin.math.abs(lastMult - GD_PLAYER_V2_MULT) > GD_MULT_TOLERANCE -> {
+                            failureReason = "gd sync mult=$lastMult, expect ${GD_PLAYER_V2_MULT}（玩家来源恒 v2）"
+                            transitionGdPhase(GD_PHASE_FAILED)
+                        }
+                        gdLauncherAmmoAfterSalvo != gdLauncherAmmoBaseline - 1 -> {
+                            failureReason = "gd launcher ammo after salvo=$gdLauncherAmmoAfterSalvo, expect ${gdLauncherAmmoBaseline - 1}（基线 $gdLauncherAmmoBaseline，一次触发一轮齐射）"
+                            transitionGdPhase(GD_PHASE_FAILED)
+                        }
+                        else -> {
+                            log.info(
+                                "[ASTD-Automation] gd salvo evidence: targetHp ${gdSalvoTargetHpBaseline}→min ${gdSalvoTargetMinHp} " +
+                                    "（R2 读数：payload+sync 落船体；beamDamage 面板见 payload 首伤帧日志）",
+                            )
+                            // DEMScript 接管硬证据 = payload 光束命中本身（payload 只能由 DEMScript 打击段结算，
+                            // 规格 §0.1 事实 #7）；包装弹头读回观测面（gdDemTakeoverSeen）只作诊断。
+                            if (gdDemTakeoverSeen.isEmpty()) {
+                                log.info("[ASTD-Automation] gd R1 note: 包装弹头读回未见 DEMScript（payload 命中已为接管硬证据）")
+                            }
+                            gdKillSyncBaseline = syncTriggers
+                            gdKillKineticBaseline = kineticHits
+                            gdKillHeBaseline = heHits
+                            gdKillWarheadsBaseline = warheads
+                            gdKillHeRemoved = false
+                            target?.setHitpoints(target.maxHitpoints)
+                            transitionGdPhase(GD_PHASE_KILL_ONE)
+                        }
+                    }
+                }
+            }
+            GD_PHASE_KILL_ONE -> {
+                stabilizeGdShips(engine, fireLauncher = true, firePod = false)
+                if (warheads - gdKillWarheadsBaseline >= 2) {
+                    // 出生登记簿是唯一可靠观测面（engine.getMissiles() 不含脚本 spawn 弹头，实机判例）；
+                    // 相位内持续移除全部在场高爆弹头（击落一枚模拟；相位内多轮齐射时后续高爆同样拆解）。
+                    val liveHe = GeminiDemSalvoOnFireEffect.warheadsOf(engine)
+                        .filter { it.weaponId == GeminiDemDifficulty.HE_WEAPON_ID && engine.isEntityInPlay(it.missile) }
+                    if (liveHe.isNotEmpty()) {
+                        liveHe.forEach { engine.removeEntity(it.missile) }
+                        if (!gdKillHeRemoved) {
+                            gdKillHeRemoved = true
+                            log.info("[ASTD-Automation] gd kill_one: 高爆弹头已被移除（击落一枚模拟）")
+                        }
+                    }
+                }
+                if (gdKillHeRemoved && kineticHits - gdKillKineticBaseline >= 1) {
+                    when {
+                        syncTriggers != gdKillSyncBaseline -> {
+                            failureReason = "gd kill_one sync delta=${syncTriggers - gdKillSyncBaseline}, expect 0（击落一枚，同步冲击即告落空）"
+                            transitionGdPhase(GD_PHASE_FAILED)
+                        }
+                        heHits != gdKillHeBaseline -> {
+                            failureReason = "gd kill_one he hits delta=${heHits - gdKillHeBaseline}, expect 0（高爆弹头已移除不得命中）"
+                            transitionGdPhase(GD_PHASE_FAILED)
+                        }
+                        else -> {
+                            gdPodSalvoBaseline = salvoCount
+                            gdPodKineticBaseline = kineticHits
+                            gdPodHeBaseline = heHits
+                            gdPodSyncBaseline = syncTriggers
+                            gdPodAmmoBaseline = pod?.ammo ?: -1
+                            gdPodAmmoAfterSalvo = -1
+                            target?.setHitpoints(target.maxHitpoints)
+                            transitionGdPhase(GD_PHASE_POD)
+                        }
+                    }
+                }
+            }
+            GD_PHASE_POD -> {
+                stabilizeGdShips(engine, fireLauncher = false, firePod = true)
+                if (salvoCount - gdPodSalvoBaseline >= 1 && gdPodAmmoAfterSalvo < 0) {
+                    gdPodAmmoAfterSalvo = pod?.ammo ?: -1
+                }
+                if (kineticHits - gdPodKineticBaseline >= 1 && heHits - gdPodHeBaseline >= 1) {
+                    when {
+                        gdPodAmmoAfterSalvo != gdPodAmmoBaseline - 1 -> {
+                            failureReason = "gd pod ammo after salvo=$gdPodAmmoAfterSalvo, expect ${gdPodAmmoBaseline - 1}（基线 $gdPodAmmoBaseline，发射舱一轮一耗）"
+                            transitionGdPhase(GD_PHASE_FAILED)
+                        }
+                        syncTriggers - gdPodSyncBaseline < 1 -> {
+                            failureReason = "gd pod sync delta=${syncTriggers - gdPodSyncBaseline} < 1（发射舱双弹同目标应触发同步）"
+                            transitionGdPhase(GD_PHASE_FAILED)
+                        }
+                        else -> {
+                            gdEnemySyncBaseline = syncTriggers
+                            gdEnemyMinPlayerHp = player?.maxHitpoints ?: Float.MAX_VALUE
+                            gdEnemyFirstSyncAt = -1f
+                            DifficultyTuningImpl.installScaleForTests(5f)
+                            target?.setHitpoints(target.maxHitpoints)
+                            transitionGdPhase(GD_PHASE_ENEMY_SCALE)
+                        }
+                    }
+                }
+            }
+            GD_PHASE_ENEMY_SCALE -> {
+                stabilizeGdShips(engine, fireLauncher = false, firePod = false)
+                if (player != null && !player.isHulk) {
+                    gdEnemyMinPlayerHp = minOf(gdEnemyMinPlayerHp, player.hitpoints)
+                }
+                if (syncTriggers - gdEnemySyncBaseline >= 1 && gdEnemyFirstSyncAt < 0f) {
+                    gdEnemyFirstSyncAt = elapsed
+                }
+                if (gdEnemyFirstSyncAt >= 0f) {
+                    when {
+                        kotlin.math.abs(lastMult - GD_ENEMY_V5_MULT) > GD_MULT_TOLERANCE -> {
+                            failureReason = "gd enemy sync mult=$lastMult, expect $GD_ENEMY_V5_MULT（破晓敌版走轨一）"
+                            transitionGdPhase(GD_PHASE_FAILED)
+                        }
+                        player != null && gdEnemyMinPlayerHp < player.maxHitpoints - GD_HP_DROP_MIN -> {
+                            DifficultyTuningImpl.installScaleForTests(null)
+                            findGdEnemyCarrier(engine)?.let { engine.removeEntity(it) }
+                            player.setHitpoints(player.maxHitpoints)
+                            target?.setHitpoints(target.maxHitpoints)
+                            transitionGdPhase(GD_PHASE_COMPLETED)
+                        }
+                        // 部署免疫宽限（实机判例同 SS：source 为敌版舰时脚本伤害在部署后数秒内可能全额无效）
+                        elapsed - gdEnemyFirstSyncAt > GD_ENEMY_GRACE_SECONDS -> {
+                            failureReason = "gd enemy sync player minHp=$gdEnemyMinPlayerHp（敌版同步应命中玩家舰掉血）"
+                            transitionGdPhase(GD_PHASE_FAILED)
+                        }
+                    }
+                }
+            }
+            GD_PHASE_COMPLETED -> {
+                stabilizeGdShips(engine, fireLauncher = true, firePod = false)
+            }
+        }
+
+        // 最近一次 payload 首伤帧时刻（COMPLETED 截图门控：打击近期发生才上报，令双色尾焰/光束入帧）
+        val strikeCount = kineticHits + heHits
+        if (strikeCount > gdLastTrackedStrikeCount) {
+            gdLastTrackedStrikeCount = strikeCount
+            gdLastStrikeAt = elapsed
+        }
+
+        val state = when {
+            player == null -> {
+                if (elapsed > 12f) {
+                    failureReason = "gd player ship missing"
+                    "Failed"
+                } else {
+                    "CombatReady"
+                }
+            }
+            gdPhase == GD_PHASE_FAILED -> "Failed"
+            gdPhase != GD_PHASE_COMPLETED &&
+                elapsed - gdPhaseStartedAt > GD_PHASE_TIMEOUT -> {
+                failureReason = "gd phase timeout: $gdPhase"
+                "Failed"
+            }
+            gdPhase == GD_PHASE_COMPLETED -> {
+                val recentStrike = gdLastStrikeAt >= 0f && elapsed - gdLastStrikeAt <= GD_COMPLETED_STRIKE_WINDOW
+                if (recentStrike || elapsed - gdPhaseStartedAt >= GD_COMPLETED_STAGE_TIMEOUT) "Completed" else "CombatReady"
+            }
+            else -> "CombatReady"
+        }
+        if (state == "Completed" && !completed) {
+            completed = true
+            completedAt = elapsed
+            log.info("[ASTD-Automation] Completed: gemini_dem_basic salvo/dem-takeover/payload/sync/kill-one/pod/enemy-scale evidence observed")
+        }
+        if (elapsed - lastWriteAt >= 0.18f || state == "Completed" || state == "Failed") {
+            lastWriteAt = elapsed
+            writeDiagnostics(engine, state, player)
+            writeTelemetry(engine, state, player, launcher)
+        }
+    }
+
+
     // === Phase-1 gravitational lens scenario ===
 
     private fun deployLensPhase1ReserveShips(engine: CombatEngineAPI) {
@@ -3289,7 +3799,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             !ASTDInGameAutomationScenario.isAvEnabled() &&
             !ASTDInGameAutomationScenario.isQjEnabled() &&
             !ASTDInGameAutomationScenario.isPsEnabled() &&
-            !ASTDInGameAutomationScenario.isSsEnabled()
+            !ASTDInGameAutomationScenario.isSsEnabled() &&
+            !ASTDInGameAutomationScenario.isGdEnabled()
         ) {
             return
         }
@@ -3302,6 +3813,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         val shipSprite = try { ship?.spriteAPI } catch (_: Throwable) { null }
         val vfxTelemetry = ProjectileVfxDriverPlugin.telemetrySnapshot(engine)
         val scenarioId = when {
+            ASTDInGameAutomationScenario.isGdEnabled() -> ASTDInGameAutomationScenario.GD_SCENARIO_ID
             ASTDInGameAutomationScenario.isSsEnabled() -> ASTDInGameAutomationScenario.SS_SCENARIO_ID
             ASTDInGameAutomationScenario.isPsEnabled() -> ASTDInGameAutomationScenario.PS_SCENARIO_ID
             ASTDInGameAutomationScenario.isQjEnabled() -> ASTDInGameAutomationScenario.QJ_SCENARIO_ID
@@ -3336,7 +3848,41 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             appendLine("  \"shipSpriteCenterX\": ${formatFloat(shipSprite?.centerX ?: -1f)},")
             appendLine("  \"shipSpriteCenterY\": ${formatFloat(shipSprite?.centerY ?: -1f)},")
             appendLine("  \"failureReason\": ${jsonString(failureReason)},")
-            if (ASTDInGameAutomationScenario.isSsEnabled()) {
+            if (ASTDInGameAutomationScenario.isGdEnabled()) {
+                val gdPlayer = findGdPlayer(engine)
+                val gdTarget = findGdTarget(engine)
+                val gdLauncher = findGdLauncher(gdPlayer)
+                val gdPod = findGdPod(gdPlayer)
+                appendLine("  \"runtimeElapsedSeconds\": 0,")
+                appendLine("  \"runtimeVisibleLength\": 0,")
+                appendLine("  \"runtimeBeamAlpha\": 0,")
+                appendLine("  \"runtimeWorldUnitsPerPixel\": 0,")
+                appendLine("  \"runtimeTrackedCount\": ${vfxTelemetry.trackedCount},")
+                appendLine("  \"runtimeLastProjectileSpecId\": ${jsonString(vfxTelemetry.lastProjectileSpecId)},")
+                appendLine("  \"referenceVisibleLength\": 0,")
+                // ---- 机制证据（规格 10 §4.2 烟测检查点）----
+                appendLine("  \"gdPhase\": \"$gdPhase\",")
+                appendLine("  \"gdLauncherSlotId\": ${jsonString(gdLauncher?.slot?.id)},")
+                appendLine("  \"gdPodSlotId\": ${jsonString(gdPod?.slot?.id)},")
+                appendLine("  \"gdLauncherAmmo\": ${gdLauncher?.ammo ?: -1},")
+                appendLine("  \"gdPodAmmo\": ${gdPod?.ammo ?: -1},")
+                appendLine("  \"gdTargetHitpoints\": ${formatFloat(gdTarget?.hitpoints ?: -1f)},")
+                appendLine("  \"gdTargetMaxHitpoints\": ${formatFloat(gdTarget?.maxHitpoints ?: -1f)},")
+                appendLine("  \"gdSalvoTargetMinHp\": ${formatFloat(gdSalvoTargetMinHp)},")
+                appendLine("  \"gdSalvo\": ${GeminiDemSalvoOnFireEffect.salvoCount(engine)},")
+                appendLine("  \"gdWarheadsSpawned\": ${GeminiDemSalvoOnFireEffect.warheadsSpawned(engine)},")
+                appendLine("  \"gdTrackAiSeen\": ${gdTrackAiSeen.size},")
+                appendLine("  \"gdTrackTargetNonNull\": $gdTrackTargetNonNull,")
+                appendLine("  \"gdDemTakeoverSeen\": ${gdDemTakeoverSeen.size},")
+                appendLine("  \"gdKineticHits\": ${GeminiDemPayloadBeamEffect.kineticHitCount(engine)},")
+                appendLine("  \"gdHeHits\": ${GeminiDemPayloadBeamEffect.heHitCount(engine)},")
+                appendLine("  \"gdEmpArcs\": ${GeminiDemPayloadBeamEffect.empArcCount(engine)},")
+                appendLine("  \"gdSyncTriggers\": ${GeminiDemSyncHandler.syncTriggerCount(engine)},")
+                appendLine("  \"gdSyncLastMult\": ${formatFloat(engine.customData[GeminiDemSyncHandler.TELEMETRY_SYNC_LAST_MULT] as? Float ?: -1f)},")
+                appendLine("  \"gdHitRegistered\": ${GeminiDemSyncHandler.hitRegisteredCount(engine)},")
+                appendLine("  \"gdEnemyMinPlayerHp\": ${formatFloat(gdEnemyMinPlayerHp)},")
+                appendLine("  \"gdWarheadsInPlay\": ${engine.missiles.count { it.customData[GeminiDemDifficulty.SALVO_KEY] != null }},")
+            } else if (ASTDInGameAutomationScenario.isSsEnabled()) {
                 val ssPlayer = findSsPlayer(engine)
                 val ssTarget = findSsTarget(engine)
                 val ssCarrier = findSsEnemyCarrier(engine)
@@ -4146,5 +4692,42 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private const val SS_COMPLETED_FLASH_WINDOW = 0.6f
         private const val SS_COMPLETED_STAGE_TIMEOUT = 25f
         private const val SS_PHASE_TIMEOUT = 90f
+        // 双子星 DEM 场景：相位机、锚点与期望证据（规格 10 §4.2 烟测检查点）。
+        private const val GD_PHASE_MOUNT = "MOUNT"
+        private const val GD_PHASE_SALVO = "SALVO"
+        private const val GD_PHASE_KILL_ONE = "KILL_ONE"
+        private const val GD_PHASE_POD = "POD"
+        private const val GD_PHASE_ENEMY_SCALE = "ENEMY_SCALE"
+        private const val GD_PHASE_COMPLETED = "COMPLETED"
+        private const val GD_PHASE_FAILED = "FAILED"
+        private const val GD_PLAYER_HULL = "conquest"
+        private const val GD_TARGET_HULL = "dominator"
+        private const val GD_PLAYER_SLOT_LAUNCHER = "WS 019"
+        private const val GD_PLAYER_SLOT_POD = "WS 001"
+        private val GD_PLAYER_ANCHOR = Vector2f(0f, 0f)
+        private val GD_TARGET_ANCHOR = Vector2f(1200f, 0f)
+        private val GD_ENEMY_ANCHOR = Vector2f(1200f, 0f)
+        private val GD_CAMERA_CENTER = Vector2f(600f, 0f)
+        private const val GD_CAMERA_VISIBLE_HEIGHT = 1500f
+        private const val GD_MOUNT_SETTLE_SECONDS = 0.6f
+        // MOUNT 相位校验：射程断言基线 2500（无射程向 hullmod 干扰）。
+        private const val GD_EXPECT_RANGE = 2500f
+        private const val GD_RANGE_TOLERANCE = 5f
+        private const val GD_LAUNCHER_AMMO = 2
+        private const val GD_POD_AMMO = 4
+        // SALVO：动能光束首伤帧 EMP 电弧期望道数（规格 §2.1）。
+        private const val GD_EMP_ARC_COUNT = 4
+        // 同步倍率期望：玩家恒 v2=0.4375；破晓敌版 v5=1.0。
+        private const val GD_PLAYER_V2_MULT = 0.4375f
+        private const val GD_ENEMY_V5_MULT = 1.0f
+        private const val GD_MULT_TOLERANCE = 0.001f
+        // ENEMY_SCALE：敌版舰部署免疫窗口（秒，同 SS_ENEMY_MULTI_SETTLE_SECONDS 实机判例）与掉血宽限。
+        private const val GD_ENEMY_SETTLE_SECONDS = 4.0f
+        private const val GD_ENEMY_GRACE_SECONDS = 20f
+        private const val GD_HP_DROP_MIN = 50f
+        // COMPLETED 截图门控：payload 打击近 2.5s 内发生才上报（双色尾焰/锁定激光/光束入帧）；保底舞台超时。
+        private const val GD_COMPLETED_STRIKE_WINDOW = 2.5f
+        private const val GD_COMPLETED_STAGE_TIMEOUT = 30f
+        private const val GD_PHASE_TIMEOUT = 60f
     }
 }

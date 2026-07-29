@@ -1,0 +1,16 @@
+{
+    "id": "astd_gemini_dem_pod",
+    "specClass": "projectile",
+    "type": "MISSILE",
+    "size": "LARGE",
+    "turretSprite": "graphics/weapons/dragonfire_launcher_lrg_turret.png",
+    "hardpointSprite": "graphics/weapons/dragonfire_launcher_lrg_hardpoint.png",
+    "hardpointOffsets": [14, 0],
+    "turretOffsets": [8, 0],
+    "hardpointAngleOffsets": [0],
+    "turretAngleOffsets": [0],
+    "barrelMode": "LINKED",
+    "animationType": "SMOKE",
+    "projectileSpecId": "astd_gemini_dem_dummy",
+    "fireSoundTwo": "dragonfire_fire"
+}

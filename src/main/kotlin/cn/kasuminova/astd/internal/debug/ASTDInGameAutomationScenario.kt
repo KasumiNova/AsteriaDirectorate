@@ -28,6 +28,10 @@ object ASTDInGameAutomationScenario {
     const val PS_PROJECTILE_SPEC_ID: String = "astd_positron_shockwave_shot"
     const val SS_SCENARIO_ID: String = "seven_stars_basic"
     const val SS_WEAPON_ID: String = "astd_seven_stars"
+    const val GD_SCENARIO_ID: String = "gemini_dem_basic"
+    const val GD_LAUNCHER_WEAPON_ID: String = "astd_gemini_dem_launcher"
+    const val GD_POD_WEAPON_ID: String = "astd_gemini_dem_pod"
+    const val GD_DUMMY_PROJECTILE_SPEC_ID: String = "astd_gemini_dem_dummy"
     const val SHIP_ID: String = "astd_arc_flare"
     const val VARIANT_ID: String = "astd_arc_flare_Standard"
     const val WEAPON_ID: String = "astd_aod7"
@@ -144,6 +148,19 @@ object ASTDInGameAutomationScenario {
         val enabled = System.getProperty(ENABLED_PROPERTY)?.equals("true", ignoreCase = true) == true
         val scenario = System.getProperty(SCENARIO_PROPERTY, SCENARIO_ID)
         return enabled && scenario == SS_SCENARIO_ID
+    }
+
+    /**
+     * 双子星 DEM 实机场景开关：镜像 [isSsEnabled]。
+     * 验证双槽装配（中/大导弹槽）、齐射双弹（dummy 拦截 + TrackAI 供目标 R1 + DEMScript 接管打击）、
+     * payload 光束结算读数（R2：动能 ≈1000 + 4 道 EMP 电弧 / 高爆 ≈1500）、
+     * 同步冲击（异种配对 ≤1s 窗口追加能量伤害 + 白闪，玩家恒 v2）、击落一枚无同步、
+     * 敌版破晓档同步（installScaleForTests(5) + 敌版携带发射舱）与 12s 节奏（ammo 2/4）。
+     */
+    fun isGdEnabled(): Boolean {
+        val enabled = System.getProperty(ENABLED_PROPERTY)?.equals("true", ignoreCase = true) == true
+        val scenario = System.getProperty(SCENARIO_PROPERTY, SCENARIO_ID)
+        return enabled && scenario == GD_SCENARIO_ID
     }
 
     fun outputDir(): Path {
