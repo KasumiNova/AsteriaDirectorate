@@ -1,0 +1,1 @@
+Dev automation scenario for validating seven stars teleport launcher: unkilled chain-break dissipation, pass-through (collisionClass NONE), teleport chain jumps (max 7) with cross flash VFX, no-ship dissipation, single-segment ship terminal (player v2, no EMP), and dawn-tier enemy multi-segment terminal telemetry.

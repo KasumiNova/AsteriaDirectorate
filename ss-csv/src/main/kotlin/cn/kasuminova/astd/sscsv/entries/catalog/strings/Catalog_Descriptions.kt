@@ -63,3 +63,4 @@ object Desc_astd_electric_drive_accelerator : LocalizedDescription("astd_electri
 object Desc_astd_annihilation_vortex : LocalizedDescription("astd_annihilation_vortex", "WEAPON")
 object Desc_astd_qiongjue_phase_railgun : LocalizedDescription("astd_qiongjue_phase_railgun", "WEAPON")
 object Desc_astd_positron_shockwave : LocalizedDescription("astd_positron_shockwave", "WEAPON")
+object Desc_astd_seven_stars : LocalizedDescription("astd_seven_stars", "WEAPON")

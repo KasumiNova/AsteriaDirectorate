@@ -564,3 +564,72 @@ object Wpn_astd_positron_shockwave : WeaponDataEntry(), SsProjProjectileOutputs 
         bulletSprite = "graphics/textures/BUtil_NONE.png",
     )
 }
+
+/**
+ * “七星”折跃发射器：大型能量点防御超规格（规格 07 §1.1）。
+ *
+ * 射弹不做正常飞行：发射即折跃至目标位置并闪光十字爆炸，连跳/对舰终结全部脚本结算
+ * （`.proj` onFireEffect 挂 SevenStarsOnFireEffect，collisionClass=NONE 无触碰/无 onHit 路径）。
+ * 弹体视觉全程隐藏（texTrail 管线不登记，规格 §3.1 决策）；P6 前 no_drop 仅 dev 测试。
+ */
+object Wpn_astd_seven_stars : WeaponDataEntry(), SsProjProjectileOutputs {
+    override val id: String = "astd_seven_stars"
+    override val name: String = weaponName(id)
+    override val tier: Int = 3
+    // 超规格对标 aod7（2026-07-29 审批裁定，弃 60000 提案）
+    override val baseValue: Int = 150000
+    override val range: Int = 800
+    // 250 / 2s，tooltip 展示口径
+    override val damagePerSecond: Int = 125
+    override val damagePerShot: Int = 250
+    // 面板 EMP 为 0；v5 终结 EMP 是脚本结算，不进面板
+    override val emp: Int = 0
+    override val impact: Int = 0
+    override val turnRate: Int = 30
+    override val ops: Int = 28
+    override val type: String = "ENERGY"
+    override val energyPerShot: Int = 750
+    // 750 / 2s
+    override val energyPerSecond: Int = 375
+    // 射速 2s/发
+    override val chargedown: Double = 2.0
+    override val burstSize: Int = 1
+    override val burstDelay: Double = 0.0
+    // 名义值；弹体由脚本瞬移接管，speed 仅影响 AI 预判与默认寿命（已被 flightTime 覆盖）
+    override val projSpeed: Int = 3000
+    // 显式寿命上限保险（规格 §0-2）：连跳预算 ≈3.4s，默认 range/projSpeed≈0.27s 会在第 2 跳前被引擎回收
+    override val flightTime: Double = 6.0
+    override val aiHints: Set<AiHint> = setOf(AiHint.PD)
+    // P6 前口径；P6 后改特定赏金/主线限定（90-plan §14）
+    override val tags: String = "no_drop, no_drop_salvage"
+    override val groupTag: String = "astd"
+    override val tech: String = "弧光阵列"
+    override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
+    override val customPrimary: String = SsI18n.t("weapon.$id.tooltip.customPrimary")
+    override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
+    override val number: Int = 9216
+
+    override val projSpec: ProjectileProjSpec = ProjectileProjSpec(
+        id = "astd_seven_stars_shot",
+        spawnType = ProjectileSpawnType.BALLISTIC,
+        onFireEffect = "cn.kasuminova.astd.combat.effect.arc.SevenStarsOnFireEffect",
+        // collisionClass=NONE 永无命中回调
+        onHitEffect = null,
+        // 射弹发射即折跃，碰撞类别 NONE 杜绝瞬移间隙帧的原版触碰结算（规格 §0-1）
+        collisionClass = "NONE",
+        // 规格 §1.1「置空不写」与 06 组实机判例冲突：原版 ProjectileSpec 加载强制要求该键
+        // （缺键 RuntimeException）；与 collisionClass 同写 NONE（vanilla inimical_emanation_shot.proj 先例，
+        // 规格文本待主代理修订）。
+        collisionClassByFighter = "NONE",
+        // 原版 projectile visual 必须不可见（length/width=2 + 色 alpha=0 + BUtil_NONE）。
+        length = 2.0,
+        width = 2.0,
+        // fadeTime=0.2：脚本以 removeEntity 主动收口，此窗口仅为引擎 fade 回收路径留滑行余量（规格 §0-2）。
+        fadeTime = 0.2,
+        fringeColor = Rgba(120, 200, 255, 0),
+        coreColor = Rgba(220, 245, 255, 0),
+        textureScrollSpeed = 0.0,
+        pixelsPerTexel = 1.0,
+        bulletSprite = "graphics/textures/BUtil_NONE.png",
+    )
+}

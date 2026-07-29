@@ -26,6 +26,8 @@ object ASTDInGameAutomationScenario {
     const val PS_SCENARIO_ID: String = "positron_shockwave_basic"
     const val PS_WEAPON_ID: String = "astd_positron_shockwave"
     const val PS_PROJECTILE_SPEC_ID: String = "astd_positron_shockwave_shot"
+    const val SS_SCENARIO_ID: String = "seven_stars_basic"
+    const val SS_WEAPON_ID: String = "astd_seven_stars"
     const val SHIP_ID: String = "astd_arc_flare"
     const val VARIANT_ID: String = "astd_arc_flare_Standard"
     const val WEAPON_ID: String = "astd_aod7"
@@ -129,6 +131,19 @@ object ASTDInGameAutomationScenario {
         val enabled = System.getProperty(ENABLED_PROPERTY)?.equals("true", ignoreCase = true) == true
         val scenario = System.getProperty(SCENARIO_PROPERTY, SCENARIO_ID)
         return enabled && scenario == PS_SCENARIO_ID
+    }
+
+    /**
+     * “七星”折跃发射器实机场景开关：镜像 [isPsEnabled]。
+     * 验证装配（大能量槽/800 射程/PD hint）、未击杀断链消散（增压导弹存活 → 无续跳无终结）、
+     * 折跃链连跳（chainJumpsMax ∈ [3,7]、十字闪光/折跃电弧计数、穿舰无触碰伤害）、
+     * 无处可去终结（无舰消散）、对舰单段终结（玩家恒 50% 无 EMP）、
+     * 破晓敌版多段终结（installScaleForTests(5) + 敌版携带，segments>=2 + 逐段 EMP 电弧）。
+     */
+    fun isSsEnabled(): Boolean {
+        val enabled = System.getProperty(ENABLED_PROPERTY)?.equals("true", ignoreCase = true) == true
+        val scenario = System.getProperty(SCENARIO_PROPERTY, SCENARIO_ID)
+        return enabled && scenario == SS_SCENARIO_ID
     }
 
     fun outputDir(): Path {

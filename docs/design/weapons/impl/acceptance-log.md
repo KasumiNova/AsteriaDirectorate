@@ -331,3 +331,66 @@ PositronShockwaveFuseTest 1 条（isFuseTarget 目标类型六宫格矩阵：敌
 友机/敌舰船/敌 hulk 不触发）全绿；全量 ./gradlew build 451 项测试全绿。
 
 **留档大问题**：无。
+
+## 07 “七星”折跃发射器（2026-07-29）
+
+**烟测场景**：`seven_stars_basic`（玩家奥德赛 WS 001 大能量槽装七星 + 无武装警戒级靶舰 A/B
+分相位部署 + 敌版奥德赛 ENEMY_MULTI 相位投喂；相位机 MOUNT→BREAK→CHAIN→TERMINAL→
+ENEMY_MULTI→COMPLETED 全通 0.60 / 0.62 / 4.62 / 8.64 / 17.15s）：
+
+- state=Completed、failureReason=null、全程 0 条武器侧 WARN/ERROR；连跳峰值 ssChainFps=152.7。
+- 装配：ssSlotId=WS 001、spec.maxRange=800 校验通过、ssHintsPd=true（weapon_data.csv
+  生成行逐列核对：弯引号名、hints=PD、tags=no_drop, no_drop_salvage、flight time=6、
+  customPrimary/HL 注入成功无键名泄漏；descriptions.csv text1+notes 注入成功）。
+- BREAK（检查点 5+7）：增压鱼叉（HP 抬至一击不毁）→ 闪光发生但 kills delta=0、
+  dissipateNoKill +1、terminal 计数恒 0（未击杀断链不触发终结）；靶舰 A 置弹道上 600su
+  HP 恒满（collisionClass=NONE 穿舰无触碰伤害）。
+- CHAIN（检查点 2/3/4b）：无敌舰空域持续投喂 → ssChainJumpsMax=7（7 跳硬上限未突破）、
+  ssKills=61、ssCrossFlash=56 ≥ jumps（每跳一次十字闪光）、ssTeleportArc=41（折跃起止电弧）、
+  7 跳后无处可去 → dissipateNoShip +1（无舰消散）。
+- TERMINAL（检查点 4a）：靶舰 B 盾折叠完毕后放行 → terminalSingle delta≥1 且
+  靶舰掉血（ssTargetHitpoints=1101.7/1750）、EMP 电弧 delta=0（玩家单段终结无 EMP）。
+- ENEMY_MULTI（检查点 6）：installScaleForTests(5) + 敌版携带 → ssTerminalMulti=3、
+  ssTerminalSegmentsMax=7（段表拉满）、ssTerminalEmpArcs=18（逐段 EMP 电弧）、
+  玩家掉血 ssEnemyMinPlayerHp=9993.6/10000（多段终结实际结算）。
+- 截图目检（frame-01/02/03）：十字闪光双正交臂 + 中心亮闪构图成立（蓝白 ARC 色族）、
+  折跃路径电弧清晰、伤害浮字（382/245/663）随跳递增、武器组/武器条「“七星”折跃发射器」
+  弯引号渲染正常、bloom 连跳高频无过曝糊屏、FPS 165 / Idle 59%。
+- 游戏进程已关闭（到达终态即退出，未干等超时）。
+
+**与规格的偏差处置**：
+
+1. `.proj` collisionClassByFighter：规格 §1.1「null 省略」与原版 ProjectileSpec 加载强制要求
+   该键冲突（缺键 RuntimeException，06 组实机判例同族）；与 collisionClass 同写 NONE。
+   规格文本待主代理修订。
+2. **锚点设计（规格 §0-2 裁定实机不成立）**：规格假定 flightTime=6.0 可保住弹体寿命跑完
+   7 跳链；实机证实 BALLISTIC 弹体寿命被钳制为 range÷projSpeed（1280/3000=0.43s 即 fade，
+   weapon_data.csv「flight time」列仅对 MISSILE 类生效）。改为：首发结算后弹体即
+   removeEntity，连跳锚点移交纯位置（SevenStarsChainScript.anchor）——弹体全程不可见且无
+   碰撞，移除无可观测差异；脚本生命周期随引擎回收，弹体引用失效故障面整体消失
+   （规格 §2.4 该防线守护的场景在锚点设计下不存在）。数据面 flightTime=6.0 保留但已无
+   实际作用。规格文本待主代理修订。
+3. **沿舰体取点算法替换**：规格的碰撞圆盘拒绝采样实机命中率仅 ~3%（64 次仅得 2/7 点），
+   且 applyDamage 落精确舰心点全额无效；改为射线二分法（均布方向 + 抖动，取界内最远
+   半径 80% 处），退化射线记 INFO。规格 §2.2 sampleHullPoints 伪代码待修订。
+4. **applyDamage 落点与 bypassShields 实机判例**（烟测第 4/5/7/8 轮对照）：带盾舰船盾关闭时
+   bypassShields=false 全额无伤害 → 改为 bypass = !盾覆盖；脚本 applyDamage 非舰心落点
+   结算不可靠（isPointInBounds=true 的界内边缘点恒 0 伤害）→ 非盾路径落点收敛舰心
+   （落点仅影响装甲格选择与浮字位置，不影响伤害量）。spawn 免疫窗口非固定时长
+   （同相位同 4.0s 时刻两轮结果相反），TERMINAL/ENEMY_MULTI 相位加部署免疫宽限闸。
+
+**观察记录（不阻塞）**：规格 §6 验收要点写「zh-cn.properties 8 个键齐全」，§1.3 实际定义
+6 键（name/customPrimary/customPrimaryHL/primaryRoleStr/desc.text1/desc.notes，text2~5 按规格
+留空不生成）——实装 6 键齐全，§6 数字为笔误。tip 两段显示：自动化无法开装配界面，
+以生成物 customPrimary 双 {%s} 与 HL「7 | 难度系数」对齐 + HUD 武器组名截图为证
+（与 01/03/04/05/06 同口径）。
+
+**单测**：SevenStarsChainMathTest 4 条（用例 1 flashMult 三锚点链逐档逐跳 / 用例 4 段表 /
+用例 5 jumpRange 与 0 值 WARN / 用例 6 决策矩阵）+ SevenStarsDifficultyTest 2 条
+（用例 2 玩家固定 v2 / 用例 3 多段终结解锁口径 1/2/3/4.99/5 边界）+
+SevenStarsTargetSelectorTest 4 条（用例 7 可摧毁优先排序 / 用例 8 过滤矩阵恰等值纳入 /
+用例 9 终结最近敌舰空集 null / 用例 10 护盾不预估已知简化）全绿；
+全量 ./gradlew build 461 项测试全绿。
+
+**留档大问题**：规格 §0-2「flightTime=6.0 覆盖弹体寿命」裁定与实机不符（见偏差 2，
+已实现锚点方案规避，规格文本待修订）。
