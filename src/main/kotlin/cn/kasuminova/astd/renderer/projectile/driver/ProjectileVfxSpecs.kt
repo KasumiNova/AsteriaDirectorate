@@ -161,6 +161,9 @@ object ProjectileVfxSpecs {
             layer(2); width(24f); recede(40f)
             colors(0xF0F8FFB4, 0x6FB4FF6C, 0x0A1C3812, midAt = 0.25f)
             nodes(24); tile(200f, 90f)
+            // dispersion 验证案例：振幅 5（< 带宽 1/4=6）；波长 110 ≈ 带长 420 摆三个多波段；
+            // 慢爬行 30 su/s 与贴图快爬行（90/200≈0.45 整图/秒）错出快慢两层动感；相位 0.8 避免与 twin 层头部同相
+            wobble(5f, 110f, 30f, 0.8f)
         }
     }
 

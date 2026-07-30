@@ -188,6 +188,10 @@ class TexTrailBuilder(private val texturePath: String) {
     private var tileLength = 180f
     private var scrollSpeed = 0f
     private var recede = 0f
+    private var wobbleAmplitude = 0f
+    private var wobbleWavelength = 90f
+    private var wobbleScroll = 0f
+    private var wobblePhase = 0f
 
     /** 叠层序号：同弹体多条贴图拖尾的绘制先后（1 垫底、2 其上，以此类推）。 */
     fun layer(v: Int) { layer = v }
@@ -212,6 +216,16 @@ class TexTrailBuilder(private val texturePath: String) {
     /** 带体整体向后退的距离（世界单位）：带体头部亮端退到弹头网格之后，让弹头尖在带体前露出。 */
     fun recede(v: Float) { recede = v }
 
+    /**
+     * 带体横向扰动（复刻 MagicTrail dispersion）：正弦叠加横向漂移让带体散开摆动。
+     * [amplitude] 峰值振幅（世界单位，建议 ≤ 带宽 1/4），[wavelength] 主波长（带长向），
+     * [scroll] 图案沿带长平移速度（su/s，0 静止），[phase] 初始相位（弧度，叠层错相用）。
+     * 不调用即不扰动，观感与旧行为逐点一致。
+     */
+    fun wobble(amplitude: Float, wavelength: Float, scroll: Float = 0f, phase: Float = 0f) {
+        wobbleAmplitude = amplitude; wobbleWavelength = wavelength; wobbleScroll = scroll; wobblePhase = phase
+    }
+
     internal fun build(): TexTrailSpec = TexTrailSpec(
         width = width,
         texturePath = texturePath,
@@ -224,6 +238,10 @@ class TexTrailBuilder(private val texturePath: String) {
         tileLength = tileLength,
         scrollSpeed = scrollSpeed,
         recede = recede,
+        wobbleAmplitude = wobbleAmplitude,
+        wobbleWavelength = wobbleWavelength,
+        wobbleScroll = wobbleScroll,
+        wobblePhase = wobblePhase,
     )
 }
 

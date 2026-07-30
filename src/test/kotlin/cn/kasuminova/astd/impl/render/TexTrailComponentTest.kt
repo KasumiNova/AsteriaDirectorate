@@ -111,6 +111,74 @@ class TexTrailComponentTest {
     }
 
     @Test
+    fun `wobble is deterministic for identical inputs`() {
+        val wobbleSpec = spec.copy(wobbleAmplitude = 6f, wobbleWavelength = 60f, wobblePhase = 0.8f)
+
+        val first = texTrailNodes(emptyList(), Vector2f(50f, 60f), 30f, 200f, wobbleSpec, 0.7f, wobbleAdvance = 1.3f)
+        val second = texTrailNodes(emptyList(), Vector2f(50f, 60f), 30f, 200f, wobbleSpec, 0.7f, wobbleAdvance = 1.3f)
+
+        assertEquals(first.size, second.size)
+        for (i in first.indices) {
+            assertEquals(first[i].position.x, second[i].position.x, 0f)
+            assertEquals(first[i].position.y, second[i].position.y, 0f)
+            assertEquals(first[i].angle, second[i].angle, 0f)
+            assertEquals(first[i].color.alpha, second[i].color.alpha, 0f)
+        }
+    }
+
+    @Test
+    fun `wobble offset stays within amplitude and head stays anchored`() {
+        val wobbleSpec = spec.copy(
+            nodeCount = 25, wobbleAmplitude = 6f, wobbleWavelength = 60f, wobblePhase = 0.8f,
+        )
+
+        // 直梁（空历史）走向恒 -x：扰动全部落在局部 y 上，x 与走向角不受扰动影响
+        val nodes = texTrailNodes(emptyList(), Vector2f(), 0f, 200f, wobbleSpec, 1f)
+
+        // 头锚定（t=0 处扰动为 0），弹头接缝不被撕开
+        assertEquals(0f, nodes.first().position.y, 0.0001f)
+        var maxAbsY = 0f
+        for (node in nodes) {
+            maxAbsY = maxOf(maxAbsY, kotlin.math.abs(node.position.y))
+            assert(kotlin.math.abs(node.position.y) <= 6f + 0.001f) { "offset beyond amplitude: ${node.position}" }
+            assertEquals(180f, node.angle, 0.0001f)
+        }
+        // 扰动确实发生（不是恒零），尾部摆幅接近满振幅
+        assert(maxAbsY > 3f) { "expected visible wobble, maxAbsY=$maxAbsY" }
+    }
+
+    @Test
+    fun `zero wobble amplitude degenerates to unperturbed nodes regardless of advance`() {
+        // 默认 spec（wobbleAmplitude=0）：旧行为，wobbleAdvance 不得产生任何影响
+        val without = texTrailNodes(emptyList(), Vector2f(50f, 60f), 30f, 200f, spec, 1f)
+        val withAdvance = texTrailNodes(emptyList(), Vector2f(50f, 60f), 30f, 200f, spec, 1f, wobbleAdvance = 2.5f)
+
+        assertEquals(without.size, withAdvance.size)
+        for (i in without.indices) {
+            assertEquals(without[i].position.x, withAdvance[i].position.x, 0f)
+            assertEquals(without[i].position.y, withAdvance[i].position.y, 0f)
+            assertEquals(without[i].angle, withAdvance[i].angle, 0f)
+        }
+    }
+
+    @Test
+    fun `wobble advance translates pattern along the band`() {
+        val wobbleSpec = spec.copy(
+            nodeCount = 25, wobbleAmplitude = 6f, wobbleWavelength = 60f, wobbleScroll = 30f, wobblePhase = 0.8f,
+        )
+
+        val still = texTrailNodes(emptyList(), Vector2f(), 0f, 200f, wobbleSpec, 1f, wobbleAdvance = 0f)
+        val advanced = texTrailNodes(emptyList(), Vector2f(), 0f, 200f, wobbleSpec, 1f, wobbleAdvance = 0.37f)
+
+        // 同一带体仅平移相位不同：图案须移动（存在节点横向位置不同），且每个节点仍在振幅上界内
+        val moved = still.indices.any { kotlin.math.abs(still[it].position.y - advanced[it].position.y) > 0.001f }
+        assert(moved) { "wobble advance should translate the pattern along the band" }
+        for (node in advanced) {
+            assert(kotlin.math.abs(node.position.y) <= 6f + 0.001f) { "offset beyond amplitude: ${node.position}" }
+        }
+    }
+
+    @Test
     fun `strip bakes world-space triangle strip with arclen u and unit v`() {
         // 直梁中线（空历史）：头 (0,0) → 尾 (-200,0)，facing=0 时局部即世界
         val nodes = texTrailNodes(emptyList(), Vector2f(), 0f, 200f, spec, 1f)

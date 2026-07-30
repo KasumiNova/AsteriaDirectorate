@@ -31,6 +31,7 @@ texTrail("层名", "graphics/fx/astd_trails_zappy.png") {
     nodes(24)                   // 节点数（弯道平滑度，24 为惯例）
     tile(140f, 50f)             // 平铺周期 su / 滚动速度 su/s（scroll/length ≈ 每秒整图滚动次数）
     recede(40f)                 // 带体整体后退，让弹头尖在带体前露出
+    wobble(5f, 110f, 30f, 0.8f) // 横向扰动（dispersion）：振幅/主波长/图案平移 su/s/相位；省略即不扰动
 }
 ```
 
@@ -73,10 +74,12 @@ MagicTrail 的"自然扭曲"由四个机制复合而成，对照我们的等价�
 | --- | --- |
 | zigzag 贴图自带折线 | 直接选 zappy / zappysmooth 贴图 |
 | `textScroll` 花纹爬行 | `tile(length, scroll)`，scroll/length ≈ 0.3~0.7/秒 读起来最活 |
-| `dispersion`/`drift` 段落横向散开 | 历史路径自然弯曲 + 贴图扭曲承担；逐节点横向噪声**尚未实现**（见「优化方向」） |
+| `dispersion`/`drift` 段落横向散开 | drift 由历史路径自然弯曲承担（带体追踪真实弹道，天然捕获机动）；dispersion 由 `wobble(振幅, 波长, scroll, phase)` 承担——逐节点横向正弦扰动（两不可约频率叠加，已实现） |
 | 多层拖带叠加错参 | 多条 texTrail：宽比 1.2~1.5×、scroll 比 1.5~2×、alpha 错开（芯亮边暗） |
 
-惯例锚点（aod7 hero，实机目检通过）：主带 twin `width 30 / tile(140, 50)` 垫底，副带 zappy `width 24 / tile(200, 90)`，`recede(40f)`，三段色 `midAt=0.25`。
+惯例锚点（aod7 hero，实机目检通过）：主带 twin `width 30 / tile(140, 50)` 垫底，副带 zappy `width 24 / tile(200, 90) / wobble(5, 110, 30, 0.8)`（振幅 ≤ 带宽 1/4），`recede(40f)`，三段色 `midAt=0.25`。
+
+扰动（wobble）调参要点：振幅建议 ≤ 带宽 1/4（过大会撕开贴图纹样）；波长取带长 1/3~1/5 摆 3~5 个波段最自然；scroll 给 20~40 su/s 慢爬行、与贴图快滚动错出快慢两层动感；多层叠带用 phase 错相。扰动是沿带长位置的确定性函数（相位由逻辑时间推进），帧间无闪烁。
 
 宽度锚点：主带 ≈ 弹体视觉宽 ×2~3；重击弹（贯星 36su）可再放大并配 `glowScale` 大圆弹头。
 
@@ -99,5 +102,5 @@ MagicTrail 的"自然扭曲"由四个机制复合而成，对照我们的等价�
 
 ## 优化方向（登记，待用户指示）
 
-- MagicTrail `dispersion`/`drift` 等价物：逐节点横向噪声 + 弹体横向分速传递，需扩 `TexTrailSpec`（扰动幅度/频率/相移参数），实现时保持 `texTrailNodes` 纯函数可测。
+- ~~MagicTrail `dispersion` 等价物~~ **已实现**（2026-07）：`wobble(振幅, 波长, scroll, phase)` 进 `TexTrailSpec`，`texTrailNodes` 内逐节点横向正弦扰动（两不可约频率叠加、头部锚定、相位由逻辑时间推进保持帧间一致）；drift 不实现——带体追踪真实历史路径，机动天然被捕获。验证案例：aod7 zappy 层。
 - 锥状冲击重做的连续楔块层可复用本贴图族（见 `docs/design/weapons/impl/00-锥面冲击特效重做计划.md`）。
