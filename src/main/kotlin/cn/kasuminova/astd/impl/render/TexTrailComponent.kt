@@ -14,7 +14,7 @@ import kotlin.math.sqrt
  * 贴图拖尾（DSL `texTrail{}`）的规格：拖尾主体层，横向图案来自平铺滚动贴图。
  *
  * 复刻 MagicTrail 语义：带体几何由 CPU 折线生成（历史中线等宽采样 + 逐节点渐变色），横向图案来自
- * 平铺滚动贴图（对标 gr_trails_* 素材：贴图 X=横向、Y=带长向，形在 alpha 通道，RGB 近白由节点色染色）。
+ * 平铺滚动贴图（对标 astd_trails_* 素材：贴图 X=横向、Y=带长向，形在 alpha 通道，RGB 近白由节点色染色）。
  * 片元着色器只做「采样 × 顶点色」，图案质量完全由贴图保证。
  */
 data class TexTrailSpec(

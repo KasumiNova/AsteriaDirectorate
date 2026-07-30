@@ -132,7 +132,7 @@ object ProjectileVfxSpecs {
 
     /**
      * aod7 hero：两条贴图拖尾为拖尾主体 + 代码网格弹头。
-     * 拖尾复刻 MagicTrail 语义直接吃 gr_trails 原图（twin 脆丝垫底 layer1、zappy 电弧 layer2，宽比 twin=1.25×zappy），
+     * 拖尾复刻 MagicTrail 语义吃 astd_trails 贴图（twin 脆丝垫底 layer1、zappy 电弧 layer2，宽比 twin=1.25×zappy），
      * 对标参考模组 zappy+twin 叠加构图；弹头用旧 `head{}` 网格（贴图弹头壳路线经目检否定已删，连同 headShell 特性）。
      * `trail{}` 仅作拖尾风格声明（弹头网格的基宽/基色来源 + 驱动锚点）。
      */
@@ -152,12 +152,12 @@ object ProjectileVfxSpecs {
             alpha(0.7f)  // 并入 bloom 管线后吃提取遍 emissive 增益 + 合成叠加，整体压暗防溢出
             shell(0x380A2E14, 0xDCEEFFEE, 0xF0F8FFFA)  // 蓝白族对齐带体头部色（zappy 头 0xF0F8FF），小缩放下不露色相接缝
         }
-        texTrail("twin", "graphics/fx/gr_trails_twin.png") {
+        texTrail("twin", "graphics/fx/astd_trails_twin.png") {
             layer(1); width(30f); recede(40f)
             colors(0xCFE8FF90, 0x6FB4FF60, 0x0A1C3810, midAt = 0.25f)
             nodes(24); tile(140f, 50f)
         }
-        texTrail("zappy", "graphics/fx/gr_trails_zappy.png") {
+        texTrail("zappy", "graphics/fx/astd_trails_zappy.png") {
             layer(2); width(24f); recede(40f)
             colors(0xF0F8FFB4, 0x6FB4FF6C, 0x0A1C3812, midAt = 0.25f)
             nodes(24); tile(200f, 90f)
@@ -197,8 +197,8 @@ object ProjectileVfxSpecs {
 /** 简单 spec 的贴图拖尾调色板：主色 + 主带贴图 + 电弧副带贴图（ribbon=true 时启用）。 */
 internal data class VfxPalette(val color: ASTDColor, val texture: String, val arcTexture: String)
 
-internal const val TEX_SMOOTH = "graphics/fx/gr_trails_smooth.png"
-internal const val TEX_ZAPPY = "graphics/fx/gr_trails_zappy.png"
+internal const val TEX_SMOOTH = "graphics/fx/astd_trails_smooth.png"
+internal const val TEX_ZAPPY = "graphics/fx/astd_trails_zappy.png"
 
 // —— P2 观感翻译公式（内部纯函数，供 simpleProjectileVfx 与公式守护测试共用）——
 

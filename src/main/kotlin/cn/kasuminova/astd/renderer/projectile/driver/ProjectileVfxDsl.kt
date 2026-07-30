@@ -174,7 +174,7 @@ class HeadBuilder {
 
 /**
  * 贴图拖尾（复刻 MagicTrail）：CPU 折线带体 + 平铺滚动贴图图案的拖尾主体层。
- * 贴图约定同 gr_trails_*：X=横向、Y=带长向（REPEAT），形在 alpha 通道、RGB 近白。
+ * 贴图约定同 astd_trails_*：X=横向、Y=带长向（REPEAT），形在 alpha 通道、RGB 近白。
  */
 @ProjectileVfxDslMarker
 class TexTrailBuilder(private val texturePath: String) {

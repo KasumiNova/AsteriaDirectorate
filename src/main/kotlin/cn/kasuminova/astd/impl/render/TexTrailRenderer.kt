@@ -534,7 +534,7 @@ in vec2 uv;
 in vec4 color;
 out vec4 fragColor;
 void main() {
-    // Texture layout (gr_trails_* / MagicTrail): X = across [0,1], Y = along trail (REPEAT scroll).
+    // Texture layout (astd_trails_* / MagicTrail): X = across [0,1], Y = along trail (REPEAT scroll).
     // Vertex stream uv.x = arclen/tileLength - scroll, uv.y = across +-1 -> sample at (v*0.5+0.5, u).
     // Shape lives in texture alpha, RGB near white; tint by node color, alpha = texture.a * node.a.
     // emissiveBoost > 1 only on the offscreen bloom-extraction pass (sharp pass keeps 1.0).
