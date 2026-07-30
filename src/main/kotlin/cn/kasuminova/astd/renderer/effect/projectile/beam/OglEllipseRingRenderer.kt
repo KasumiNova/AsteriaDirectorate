@@ -58,6 +58,11 @@ internal object OglEllipseRingRenderer {
          * 弧段模式下随机相位不参与（方向性是弧的语义本体，随机相位会把弧甩离朝向）。
          */
         val arcSweepDeg: Float = 360f,
+        /**
+         * 弧段逐顶点 alpha 包络峰值位置（弧参数 t∈[0,1]）：默认 -1 关闭（全环与弧段既有调用零行为变化）；
+         * [0,1] 启用——alpha 自弧首 0 平滑渐升至峰值再渐落至弧尾 0，两端无硬边（仅 [arcSweepDeg]<360 生效）。
+         */
+        val arcAlphaPeakPos: Float = -1f,
     )
 
     private data class RingInstance(
@@ -73,6 +78,7 @@ internal object OglEllipseRingRenderer {
         val tangentialSpeed: Float,
         val arcCenterDeg: Float,
         val arcSweepDeg: Float,
+        val arcAlphaPeakPos: Float,
         var age: Float = 0f,
         var phase: Float = 0f,
     )
@@ -133,6 +139,7 @@ internal object OglEllipseRingRenderer {
                     tangentialSpeed = spec.tangentialSpeed,
                     arcCenterDeg = spec.arcCenterDeg,
                     arcSweepDeg = spec.arcSweepDeg,
+                    arcAlphaPeakPos = spec.arcAlphaPeakPos,
                     age = 0f,
                     // 弧段模式相位归零：随机相位会把弧甩离朝向（见 RingSpec.arcSweepDeg）；
                     // 全环模式保留随机相位，避免同帧多环顶点完全重合的机械感。
@@ -247,6 +254,7 @@ internal object OglEllipseRingRenderer {
                         segments = r.segments,
                         arcCenterDeg = r.arcCenterDeg,
                         arcSweepDeg = r.arcSweepDeg,
+                        arcAlphaPeakPos = r.arcAlphaPeakPos,
                         lineWidthPx = r.lineWidthPx * 2.0f,
                         r = rr,
                         g = gg,
@@ -265,6 +273,7 @@ internal object OglEllipseRingRenderer {
                         segments = r.segments,
                         arcCenterDeg = r.arcCenterDeg,
                         arcSweepDeg = r.arcSweepDeg,
+                        arcAlphaPeakPos = r.arcAlphaPeakPos,
                         lineWidthPx = r.lineWidthPx,
                         r = rr,
                         g = gg,
@@ -289,6 +298,7 @@ internal object OglEllipseRingRenderer {
             segments: Int,
             arcCenterDeg: Float,
             arcSweepDeg: Float,
+            arcAlphaPeakPos: Float,
             lineWidthPx: Float,
             r: Float,
             g: Float,
@@ -314,7 +324,14 @@ internal object OglEllipseRingRenderer {
                 step = (Math.toRadians(arcSweepDeg.toDouble()) / segments.toFloat()).toFloat()
                 vertexCount = segments + 1
             }
+            // 弧段且包络开启时，alpha 逐顶点按 [arcAlphaEnvelope] 调制（glColor 移进顶点循环）；
+            // 全环分支保持单次 glColor4f 不变。
+            val envelopeOn = !fullLoop && arcAlphaPeakPos >= 0f
             for (i in 0 until vertexCount) {
+                if (envelopeOn) {
+                    val t = i.toFloat() / (vertexCount - 1).toFloat()
+                    GL11.glColor4f(r, g, bCol, (aCol * arcAlphaEnvelope(t, arcAlphaPeakPos)).coerceIn(0f, 1f))
+                }
                 val ang = phase + startRad + step * i
                 val ca = cos(ang.toDouble()).toFloat()
                 val sa = sin(ang.toDouble()).toFloat()
@@ -339,6 +356,18 @@ internal object OglEllipseRingRenderer {
 
         override fun isExpired(): Boolean = expired
     }
+}
+
+/**
+ * 弧段逐顶点 alpha 双边包络（纯函数，可测）：[0, peak] 段 smoothstep 自 0 渐升至 1、
+ * [peak, 1] 段 smoothstep 渐落回 0——弧首弧尾两端归零，治「弧形边界太明显」的硬边收尾。
+ */
+internal fun arcAlphaEnvelope(t: Float, peakPos: Float): Float {
+    val peak = peakPos.coerceIn(0.01f, 0.99f)
+    val x = t.coerceIn(0f, 1f)
+    val v = if (x <= peak) x / peak else 1f - (x - peak) / (1f - peak)
+    val s = v.coerceIn(0f, 1f)
+    return s * s * (3f - 2f * s)
 }
 
 /**
