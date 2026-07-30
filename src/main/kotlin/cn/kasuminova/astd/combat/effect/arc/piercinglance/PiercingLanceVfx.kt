@@ -74,6 +74,12 @@ object PiercingLanceVfx {
      */
     fun spawnImpact(engine: CombatEngineAPI, spec: ConeImpactSpec) {
         val facingDeg = Math.toDegrees(atan2(spec.direction.y.toDouble(), spec.direction.x.toDouble())).toFloat()
+        // TODO(2026-07-30 锥面朝向排查探针，定位后移除)：记录命中点/方向矢量/朝向角，与舞台锚点比对。
+        log.info(
+            "[pl-dir-probe] origin=(%.1f, %.1f) dir=(%.3f, %.3f) facingDeg=%.2f".format(
+                spec.origin.x, spec.origin.y, spec.direction.x, spec.direction.y, facingDeg,
+            ),
+        )
         spawnVertexFlash(engine, spec)
         spawnPillar(engine, spec, facingDeg)
         ConeImpactVfx.spawn(

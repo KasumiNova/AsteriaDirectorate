@@ -42,6 +42,7 @@ import cn.kasuminova.astd.renderer.projectile.driver.ProjectileVfxDriverPlugin
 import cn.kasuminova.astd.renderer.projectile.driver.ProjectileVfxSpecs
 import cn.kasuminova.astd.impl.render.ASTDProjectileVfxLayout
 import com.fs.starfarer.api.Global
+import com.fs.starfarer.combat.CombatState
 import com.fs.starfarer.api.combat.BaseEveryFrameCombatPlugin
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEntityAPI
@@ -368,6 +369,16 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
 
     override fun init(engine: CombatEngineAPI) {
         this.engine = engine
+        // 关闭原版开局部署对话框：CombatState.traverse 的弹框闸门在 engine.init()（即本方法）返回后
+        // 才判定，玩家后备 != 1 艘时弹「增援部署」对话框（过期快照不刷新、公开 API 无关闭入口、常驻遮屏；
+        // 2026-07-30 反编译 CombatState 实锤，单舰场景走静默 deployAll 分支故不弹）。
+        // automation 全部场景均在 advance 手动 spawn reserves，不依赖原版开局部署段，此处直接关断闸门。
+        val combatUI = engine.combatUI
+        if (combatUI is CombatState) {
+            combatUI.setShowDeploymentDialogOnStart(false)
+        } else {
+            log.warn("[ASTD-Automation] combatUI 非 CombatState（${combatUI?.javaClass?.name}），开局部署对话框关断失败")
+        }
         ProjectileVfxDriverPlugin.ensureInstalled(engine)
         if (ASTDInGameAutomationScenario.isPlEnabled()) {
             engine.setDoNotEndCombat(true)
@@ -5385,6 +5396,10 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             appendLine("  \"shipSpriteCenterX\": ${formatFloat(shipSprite?.centerX ?: -1f)},")
             appendLine("  \"shipSpriteCenterY\": ${formatFloat(shipSprite?.centerY ?: -1f)},")
             appendLine("  \"failureReason\": ${jsonString(failureReason)},")
+            // 原版开局部署对话框状态探针（2026-07-30 关断修复的回归证据）：插件 init 已调
+            // CombatState.setShowDeploymentDialogOnStart(false)，本字段在 CombatReady 与各相位
+            // 写出时采样，任何时刻为 true 都说明闸门被重新打开（多舰场景会常驻遮屏）。
+            appendLine("  \"deploymentDialogShowing\": ${engine.combatUI?.isShowingDeploymentDialog()},")
             if (ASTDInGameAutomationScenario.isPlEnabled()) {
                 val plShipA = findPlShipA(engine)
                 val plShipB = findPlShipB(engine)
