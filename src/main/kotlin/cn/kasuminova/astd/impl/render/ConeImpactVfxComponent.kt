@@ -1,89 +1,117 @@
 package cn.kasuminova.astd.impl.render
 
-import cn.kasuminova.astd.api.render.FadeReason
 import cn.kasuminova.astd.api.render.RenderContext
-import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
-import com.fs.starfarer.api.Global
+import cn.kasuminova.astd.renderer.effect.projectile.beam.OglEllipseRingRenderer
 import com.fs.starfarer.api.combat.CombatEngineAPI
-import com.fs.starfarer.api.combat.CombatEngineLayers
-import com.fs.starfarer.api.graphics.SpriteAPI
-import org.boxutil.units.standard.entity.TrailEntity
+import org.lazywizard.lazylib.MathUtils
 import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
+import kotlin.math.tan
 
 /**
- * 共用锥面冲击特效组件（规格 00-共享基建 §2.2-5）：顶点闪光 + 沿中轴扩散的冲击锥射线面。
+ * 共用锥面冲击特效组件（计划 00-锥面冲击特效重做计划 §3 分层）：一次性 RenderEntity 树的根节点。
  *
- * 作为一次性 RenderEntity 树的根节点，由 [OneShotVfxPlugin] 逐帧推进：
- * - onAttach：顶点两口闪光粒子（vanilla，一闪即走）+ 按偏角序列建 BoxUtil 渐变拖尾射线；
- * - advance：expand 阶段（smoothstep）逐帧把射线长度从 0 推到全长、宽度从 60% 推到全宽，
- *   并以心跳定时器保活；过 duration - fadeOut 后停止心跳、触发 BoxUtil 全局定时器淡出；
- * - onDetach/beginFadeOut：触发淡出/删除全部射线句柄（幂等）。
+ * 分层（全部由 coreColor/fringeColor/flashColor 派生，色温统一；各层错开几十毫秒起止，破同亮同灭）：
+ * - t=0：顶点闪光（2 颗 vanilla 粒子，一闪即走）+ 顶点烟雾批 1（6 颗 nebula）+ 两枚楔块子节点 attach；
+ * - t=+0.03/0.08/0.13：三道朝前扩张弧（OglEllipseRingRenderer 弧段，轴上 0.35L/0.7L/1.0L，波前接力读感）；
+ * - t=+0.06：顶点烟雾批 2（4 颗 nebula，轴上 0.3L 附近，衔接顶点与扇面）。
  *
- * 几何常量（锥角/锥长/调色）创建期定死，每帧只读 [RenderContext.frame] 的 elapsed 做包络。
+ * 根自身无后端句柄：闪光/烟雾为 vanilla 粒子、弧为渲染器自管理实例，均不依赖树存活；
+ * 楔块子节点（[ConeWedgeComponent] × 2）由基类递归推进。几何常量创建期定死，
+ * 每帧只读 [RenderContext.frame] 的 elapsed 按阈值表恰好触发一次（布尔标记位，幂等）。
  */
 class ConeImpactVfxComponent(
     id: String,
     private val origin: Vector2f,
     private val facingDeg: Float,
+    private val halfAngleDeg: Float,
     private val length: Float,
     private val duration: Float,
     private val expandSeconds: Float,
     private val fadeOutSeconds: Float,
-    private val rayOffsetsDeg: List<Float>,
-    private val rayBaseWidth: Float,
     private val coreColor: Color,
     private val fringeColor: Color,
     private val flashColor: Color,
-    layer: CombatEngineLayers,
-) : RenderEntityImpl(id, layer, RENDER_ORDER) {
+    wedgeTexturePath: String,
+    wedgePatternTexturePath: String,
+    textureScrollSpeed: Float,
+    angularSegs: Int,
+    angularJitter: FloatArray,
+) : RenderEntityImpl(id) {
 
-    private val log = Global.getLogger(ConeImpactVfxComponent::class.java)
+    /** 各层错开触发的标记位（弧 1/2/3、烟雾批 2），保证每道恰好生成一次。 */
+    private val fired = BooleanArray(TRIGGER_COUNT)
 
-    /** 一条射线：BoxUtil 渐变拖尾句柄 + 相对中轴偏角。 */
-    private class Ray(val entity: TrailEntity, val offsetDeg: Float)
-
-    private var rays: List<Ray> = emptyList()
-    private var sprites: Pair<SpriteAPI, SpriteAPI>? = null
-    private var fadeTriggered = false
+    init {
+        // 楔块底层（填充/体积）：contrail 云状噪声，RGB = coreColor。
+        addChild(
+            ConeWedgeComponent(
+                id = "$id/wedge_base",
+                origin = Vector2f(origin),
+                facingDeg = facingDeg,
+                halfAngleDeg = halfAngleDeg,
+                length = length,
+                duration = duration,
+                expandSeconds = expandSeconds,
+                fadeOutSeconds = fadeOutSeconds,
+                texturePath = wedgeTexturePath,
+                color = coreColor,
+                alphaMul = 1f,
+                scrollSpeed = textureScrollSpeed,
+                vLo = CONTRAIL_V_LO,
+                vHi = CONTRAIL_V_HI,
+                angularSegs = angularSegs,
+                angularJitter = angularJitter,
+                renderOrder = ConeWedgeComponent.RENDER_ORDER_BASE,
+            )
+        )
+        // 楔块图案层（能量/动感）：surge 混乱条纹，RGB = fringeColor，alpha 减半、滚动 ×1.7（多层错参）。
+        addChild(
+            ConeWedgeComponent(
+                id = "$id/wedge_pattern",
+                origin = Vector2f(origin),
+                facingDeg = facingDeg,
+                halfAngleDeg = halfAngleDeg,
+                length = length,
+                duration = duration,
+                expandSeconds = expandSeconds,
+                fadeOutSeconds = fadeOutSeconds,
+                texturePath = wedgePatternTexturePath,
+                color = fringeColor,
+                alphaMul = PATTERN_ALPHA_MUL,
+                scrollSpeed = textureScrollSpeed * PATTERN_SCROLL_MUL,
+                vLo = SURGE_V_LO,
+                vHi = SURGE_V_HI,
+                angularSegs = angularSegs,
+                angularJitter = angularJitter,
+                renderOrder = ConeWedgeComponent.RENDER_ORDER_BASE + 1,
+            )
+        )
+    }
 
     override fun onAttachSelf(ctx: RenderContext): Boolean {
         val engine = ctx.engine ?: return false
         spawnVertexFlash(engine)
-        spawnRays(engine)
-        return rays.isNotEmpty()
+        // 烟雾批 1（t=0，6 颗）：顶点 10su 圆内喷出，补顶点体积感。
+        spawnSmokePuff(engine, origin, SMOKE_BATCH1_COUNT)
+        return true
     }
 
     override fun advanceSelf(ctx: RenderContext, amount: Float) {
         val t = ctx.frame.elapsed
-        val expand = smoothstep((t / expandSeconds).coerceIn(0f, 1f))
-        val curLen = (length * expand).coerceAtLeast(1f)
-        val widthRamp = 0.6f + 0.4f * expand
-
-        val holdUntil = duration - fadeOutSeconds
-        val alive = t < holdUntil
-        for (ray in rays) {
-            val entity = ray.entity
-            if (entity.hasDelete()) continue
-            if (alive) {
-                updateRay(entity, ray.offsetDeg, curLen, widthRamp)
-                entity.setGlobalTimer(0f, HEARTBEAT, fadeOutSeconds)
-            } else if (!fadeTriggered) {
-                // 停止心跳，交给 BoxUtil 全局定时器淡出并自删。
-                entity.setGlobalTimer(0f, 0f, fadeOutSeconds)
+        val engine = ctx.engine ?: return
+        for (index in 0 until ARC_COUNT) {
+            if (!fired[index] && t >= ARC_DELAYS[index]) {
+                fired[index] = true
+                spawnArc(engine, index)
             }
         }
-        if (!alive) fadeTriggered = true
-    }
-
-    override fun beginFadeOutSelf(reason: FadeReason, seconds: Float) {
-        fadeTriggered = true
-        rays.forEach { if (!it.entity.hasDelete()) it.entity.setGlobalTimer(0f, 0f, seconds.coerceAtLeast(0.05f)) }
-    }
-
-    override fun onDetachSelf() {
-        rays.forEach { it.entity.delete() }
-        rays = emptyList()
+        if (!fired[TRIGGER_SMOKE_BATCH2] && t >= SMOKE_BATCH2_DELAY) {
+            fired[TRIGGER_SMOKE_BATCH2] = true
+            // 烟雾批 2（t=+0.06，4 颗）：轴上 0.3L 附近，衔接顶点与扇面起点。
+            val axis = MathUtils.getPointOnCircumference(origin, length * SMOKE_BATCH2_AXIS_FRAC, facingDeg)
+            spawnSmokePuff(engine, axis, SMOKE_BATCH2_COUNT)
+        }
     }
 
     /** 顶点闪光：一口内亮核 + 一口外扩后尘（vanilla 粒子，点缀语义）。 */
@@ -93,76 +121,111 @@ class ConeImpactVfxComponent(
         engine.addSmoothParticle(origin, ZERO_VEL, flashSize * 0.55f, 2.2f, 0.12f, coreColor)
     }
 
-    private fun spawnRays(engine: CombatEngineAPI) {
-        BoxUtilCombatVfx.ensureReady(engine)
-        val spritePair = sprites ?: BeamSprites.load()?.also { sprites = it } ?: run {
-            log.warn("锥面冲击特效贴图加载失败（id=$id），本次只保留顶点闪光")
-            return
-        }
-        val tipWidth = (rayBaseWidth * 0.15f).coerceIn(0.5f, 4f)
-        val built = ArrayList<Ray>(rayOffsetsDeg.size)
-        for (offset in rayOffsetsDeg) {
-            val entity = BoxUtilCombatVfx.createAndAddTaperedBeamTrail(
-                engine = engine,
-                location = origin,
-                facing = facingDeg + offset,
-                // 初始长度 1：首帧即由 advance 按 expand 包络推到应有长度，避免满长射线闪一帧。
-                length = 1f,
-                tailWidth = tipWidth,
-                headWidth = rayBaseWidth,
-                coreColor = coreColor,
-                fringeColor = fringeColor,
-                coreSprite = spritePair.first,
-                fringeSprite = spritePair.second,
-                layer = layer,
-                full = HEARTBEAT,
-                tailAlphaMul = 0.15f,
-                headAlphaMul = 0.9f,
-                tailEmissiveAlphaMul = 0.6f,
-                headEmissiveAlphaMul = 1.8f,
-                mixPower = 3.0f,
+    /**
+     * 顶点烟雾一批（aod7 同式 nebula，方向反过来：沿锥向锥内喷出）：
+     * 方向 = facing ± halfAngle×0.8 随机，速度 = length×0.35 ±40%，半径 = clamp(length×0.05, 12, 36)。
+     */
+    private fun spawnSmokePuff(engine: CombatEngineAPI, around: Vector2f, count: Int) {
+        val smoke = Color(fringeColor.red, fringeColor.green, fringeColor.blue, SMOKE_ALPHA)
+        val baseSpeed = length * SMOKE_SPEED_MUL
+        val radius = (length * SMOKE_RADIUS_MUL).coerceIn(SMOKE_RADIUS_MIN, SMOKE_RADIUS_MAX)
+        repeat(count) {
+            val ang = facingDeg + MathUtils.getRandomNumberInRange(-halfAngleDeg * SMOKE_SPREAD_MUL, halfAngleDeg * SMOKE_SPREAD_MUL)
+            val spd = baseSpeed * MathUtils.getRandomNumberInRange(SMOKE_SPEED_JITTER_LO, SMOKE_SPEED_JITTER_HI)
+            val vel = MathUtils.getPointOnCircumference(ZERO_VEL, spd, ang)
+            val pos = MathUtils.getRandomPointInCircle(around, SMOKE_SCATTER_RADIUS)
+            engine.addNebulaParticle(
+                pos, vel, radius, SMOKE_END_SIZE_MULT,
+                SMOKE_RAMP_UP_FRAC, SMOKE_FULL_BRIGHTNESS_FRAC, SMOKE_DURATION,
+                smoke, true,
             )
-            if (entity == null) {
-                log.warn("锥面冲击特效射线建实体失败（id=$id offset=$offset），降级为较少射线")
-                continue
-            }
-            entity.setFillStartAlpha(0f)
-            entity.setFillStartFactor(0.3f)
-            entity.setFillEndAlpha(0f)
-            entity.setFillEndFactor(0.85f)
-            entity.setGlobalTimer(0f, HEARTBEAT, fadeOutSeconds)
-            built += Ray(entity, offset)
         }
-        rays = built
     }
 
-    /** 逐帧刷新一条射线：节点长度按 expand 包络推进，宽度随包络 ramp，锚点/朝向钉死。 */
-    private fun updateRay(entity: TrailEntity, offsetDeg: Float, curLen: Float, widthRamp: Float) {
-        val nodes = entity.nodes
-        if (nodes != null && nodes.size >= 2) {
-            nodes[0].set(0f, 0f)
-            nodes[1].set(curLen, 0f)
-            entity.setNodeRefreshIndex(0)
-            entity.setNodeRefreshAllFromCurrentIndex()
-            entity.submitNodes()
-        }
-        val baseW = (rayBaseWidth * widthRamp).coerceAtLeast(1f)
-        val tipW = (baseW * 0.15f).coerceIn(0.5f, 4f)
-        entity.setStartWidth(baseW)
-        entity.setEndWidth(tipW)
-        entity.setStateVanilla(origin, facingDeg + offsetDeg)
+    /**
+     * 一道朝前扩张弧（波前截面）：轴上 [ARC_AXIS_FRACS] 比例处的椭圆弧，
+     * aSide = 位置 × tan(halfAngle) × 0.9（贴合锥面轮廓），bAlong = aSide × 0.5，sweep 140° 朝前。
+     */
+    private fun spawnArc(engine: CombatEngineAPI, index: Int) {
+        val dist = length * ARC_AXIS_FRACS[index]
+        val center = MathUtils.getPointOnCircumference(origin, dist, facingDeg)
+        val aSide = dist * tan(Math.toRadians(halfAngleDeg.toDouble())).toFloat() * ARC_SIDE_MUL
+        OglEllipseRingRenderer.spawn(
+            engine,
+            OglEllipseRingRenderer.RingSpec(
+                center = center,
+                facing = facingDeg,
+                aSideHalf = aSide,
+                bAlongHalf = aSide * ARC_B_RATIO,
+                duration = ARC_DURATIONS[index],
+                color = Color(fringeColor.red, fringeColor.green, fringeColor.blue, ARC_ALPHAS[index]),
+                lineWidthPx = ARC_LINE_WIDTHS[index],
+                segments = ARC_SEGMENTS,
+                expandSpeed = ARC_EXPAND_SPEEDS[index],
+                arcCenterDeg = ARC_CENTER_DEG,
+                arcSweepDeg = ARC_SWEEP_DEG,
+            )
+        )
     }
-
-    private fun smoothstep(x: Float): Float = x * x * (3f - 2f * x)
 
     companion object {
-        /** 锥面在树内的次级绘制序：与束体同档（detail 之下）。 */
-        const val RENDER_ORDER = 100
-
-        /** 保活心跳（秒）：active 期间每帧刷新令射线常驻；停刷新即按 fadeOut 淡出。 */
-        private const val HEARTBEAT = 0.35f
-
         /** 顶点闪光粒子速度（静止）。 */
         private val ZERO_VEL = Vector2f(0f, 0f)
+
+        // ---- 楔块贴图 v 带（与贴图 alpha 带实测配对，计划 §2.2）----
+
+        private const val CONTRAIL_V_LO = -0.60f
+        private const val CONTRAIL_V_HI = 0.56f
+        private const val SURGE_V_LO = -0.76f
+        private const val SURGE_V_HI = 0.90f
+
+        /** 图案层整体 alpha 倍率 / 滚动倍率（相对底层，MagicTrail 多层错参手法）。 */
+        private const val PATTERN_ALPHA_MUL = 0.5f
+        private const val PATTERN_SCROLL_MUL = 1.7f
+
+        // ---- 扩张弧 ×3（时序错开总表：t=+0.03/0.08/0.13，波前接力）----
+
+        private const val ARC_COUNT = 3
+        private val ARC_DELAYS = floatArrayOf(0.03f, 0.08f, 0.13f)
+        private val ARC_AXIS_FRACS = floatArrayOf(0.35f, 0.7f, 1.0f)
+        private val ARC_ALPHAS = intArrayOf(130, 100, 70)
+        private val ARC_LINE_WIDTHS = floatArrayOf(1.3f, 1.15f, 1.05f)
+        private val ARC_DURATIONS = floatArrayOf(0.20f, 0.18f, 0.16f)
+        private val ARC_EXPAND_SPEEDS = floatArrayOf(240f, 300f, 360f)
+
+        /** 弧心参数角：90° = 椭圆朝 +facing 最前点（OglEllipseRingRenderer 参数域）。 */
+        private const val ARC_CENTER_DEG = 90f
+
+        /** 弧扫掠角（度）：朝前的波前截面。 */
+        private const val ARC_SWEEP_DEG = 140f
+        private const val ARC_SEGMENTS = 48
+
+        /** 弧侧向半轴 = 轴上位置 × tan(halfAngle) × 本值（略收进锥面轮廓内）；沿向 = 侧向 × [ARC_B_RATIO]。 */
+        private const val ARC_SIDE_MUL = 0.9f
+        private const val ARC_B_RATIO = 0.5f
+
+        // ---- 顶点烟雾（aod7 同式 nebula，两批错开：t=0 / t=+0.06）----
+
+        private const val SMOKE_BATCH1_COUNT = 6
+        private const val SMOKE_BATCH2_COUNT = 4
+        private const val SMOKE_BATCH2_DELAY = 0.06f
+        private const val SMOKE_BATCH2_AXIS_FRAC = 0.3f
+        private const val SMOKE_ALPHA = 70
+        private const val SMOKE_SPEED_MUL = 0.35f
+        private const val SMOKE_SPEED_JITTER_LO = 0.6f
+        private const val SMOKE_SPEED_JITTER_HI = 1.4f
+        private const val SMOKE_SPREAD_MUL = 0.8f
+        private const val SMOKE_SCATTER_RADIUS = 10f
+        private const val SMOKE_RADIUS_MUL = 0.05f
+        private const val SMOKE_RADIUS_MIN = 12f
+        private const val SMOKE_RADIUS_MAX = 36f
+        private const val SMOKE_END_SIZE_MULT = 1.4f
+        private const val SMOKE_RAMP_UP_FRAC = 0.08f
+        private const val SMOKE_FULL_BRIGHTNESS_FRAC = 0.22f
+        private const val SMOKE_DURATION = 0.7f
+
+        /** 触发标记位总数：3 道弧 + 烟雾批 2。 */
+        private const val TRIGGER_COUNT = 4
+        private const val TRIGGER_SMOKE_BATCH2 = 3
     }
 }

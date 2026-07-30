@@ -3,18 +3,18 @@ package cn.kasuminova.astd.impl.render
 import cn.kasuminova.astd.api.render.RenderEntity
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
-import com.fs.starfarer.api.combat.CombatEngineLayers
+import org.lazywizard.lazylib.MathUtils
 import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
-import kotlin.math.ceil
-import kotlin.math.sin
 
 /**
- * 共用锥面冲击特效的声明（规格 00-共享基建 §2.2-5：「顶点闪光 + 沿中轴扩散的冲击锥」，
- * 三案共用 RenderEntity 组件、参数化锥角/长度/调色）。
+ * 共用锥面冲击特效的声明（计划 00-锥面冲击特效重做计划：「顶点闪光 + 顶点烟雾 +
+ * 连续扇形楔块 + 三道扩张弧」，三案共用 RenderEntity 组件、参数化锥角/长度/调色）。
  *
  * 动机：正电子（缩小版蓝色锥面闪光）、贯星（大锥状冲击）、摧锋（后续接入）的锥面视觉
- * 收敛为同一套原型——顶点一口闪光 + 一束沿中轴扩散的锥形射线面（BoxUtil 渐变拖尾）。
+ * 收敛为同一套原型。离散射线扇面（等角距、同亮同灭、色温割裂）经实机评审判死后重做为：
+ * 楔块主体 = 连续扇形三角网格（texTrail 管线，渐变贴图 + UV 滚动破均匀），
+ * 扩张弧 = OglEllipseRingRenderer 弧段（波前推进读感），顶点烟雾/闪光 = vanilla 粒子。
  * 各案只调锥角/长度/调色/时长，不各自手写粒子拼法。
  */
 data class ConeImpactVfxSpec(
@@ -27,13 +27,13 @@ data class ConeImpactVfxSpec(
     /** 锥半角（度）；合法域 (0, 90]，越界 clamp 并记 WARN。 */
     val halfAngleDeg: Float,
 
-    /** 锥长（su）：射线全展开后的长度；非正属配置错误，记 WARN 且本次不生成特效。 */
+    /** 锥长（su）：楔块全展开后的半径；非正属配置错误，记 WARN 且本次不生成特效。 */
     val length: Float,
 
-    /** 冲击锥核心色（射线主体与顶点内闪）。 */
+    /** 冲击锥核心色（楔块底层与顶点内闪）。 */
     val coreColor: Color,
 
-    /** 冲击锥辉光色（射线发光端与顶点后尘）。 */
+    /** 冲击锥辉光色（楔块图案层、扩张弧与顶点烟雾）。 */
     val fringeColor: Color,
 
     /** 顶点闪光色（默认同核心色）。 */
@@ -48,32 +48,28 @@ data class ConeImpactVfxSpec(
     /** 收尾淡出时长（秒）；不小于 duration 时 clamp 到 duration/2 并记 WARN。 */
     val fadeOutSeconds: Float = 0.22f,
 
-    /** 射线角间隔（度）：决定锥面射线密度；非正 clamp 到默认并记 WARN。 */
-    val raySpacingDeg: Float = 12f,
+    /** 楔块底层贴图（填充/体积）：云状噪声带，带宽居中对称（计划 §2.2 实测配对 v 带 [−0.60, +0.56]）。 */
+    val wedgeTexturePath: String = "graphics/fx/astd_trails_contrail.png",
 
-    /** 绘制层（默认舰船上层，与冲击条纹惯例一致）。 */
-    val layer: CombatEngineLayers = CombatEngineLayers.ABOVE_SHIPS_AND_MISSILES_LAYER,
+    /** 楔块图案层贴图（能量/动感）：近全宽混乱条纹，滚动更快、alpha 更低（v 带 [−0.76, +0.90]）。 */
+    val wedgePatternTexturePath: String = "graphics/fx/astd_trails_surge.png",
+
+    /** 楔块底层花纹径向外滚速度（su/s）；图案层 ×1.7 为组件常量（MagicTrail 多层错参手法）。 */
+    val textureScrollSpeed: Float = 300f,
 )
 
 /**
  * 共用锥面冲击特效入口（object 无状态）。
  *
  * 用法：各案在结算回调里 `ConeImpactVfx.spawn(engine, spec)` 一发即走——内部建一棵
- * 一次性 RenderEntity 树（[ConeImpactVfxComponent] 为根），交给 [OneShotVfxPlugin] 逐帧推进，
- * 到期自动收尾，调用方无需持有任何句柄。
+ * 一次性 RenderEntity 树（[ConeImpactVfxComponent] 为根 + 两枚 [ConeWedgeComponent] 楔块子节点），
+ * 交给 [OneShotVfxPlugin] 逐帧推进，到期自动收尾，调用方无需持有任何句柄。
  */
 object ConeImpactVfx {
     private val log = Global.getLogger(ConeImpactVfx::class.java)
 
-    /** 射线数下限（锥面至少成形的三条：中轴 + 两缘）。 */
-    internal const val MIN_RAYS = 3
-
-    /** 射线数上限（窄间隔大锥角的防爆闸）。 */
-    internal const val MAX_RAYS = 25
-
-    /** 单条射线基宽下限/上限（su），防止极窄锥看不见、极宽锥糊屏。 */
-    internal const val RAY_WIDTH_MIN = 3f
-    internal const val RAY_WIDTH_MAX = 42f
+    /** 楔块角向每列固定抖动的上界（度）：spawn 时随机一次、生命周期不变（破等角距机械感）。 */
+    internal const val WEDGE_JITTER_DEG = 2f
 
     /**
      * 生成一发锥面冲击特效。返回驱动插件（调用方通常不感知；返回供测试与调试定位）。
@@ -107,59 +103,39 @@ object ConeImpactVfx {
             log.warn("锥面冲击特效 fadeOutSeconds 越界（${spec.fadeOutSeconds}），clamp 到 $clamped")
             fadeOut = clamped
         }
-        var spacing = spec.raySpacingDeg
-        if (spacing.isNaN() || spacing <= 0f) {
-            log.warn("锥面冲击特效 raySpacingDeg 非法（${spec.raySpacingDeg}），clamp 到 12")
-            spacing = 12f
-        }
 
-        val rayOffsets = layoutRayOffsets(halfAngle, spacing)
-        val rayWidth = rayBaseWidth(spec.length, halfAngle, rayOffsets.size)
+        val angularSegs = wedgeAngularSegments(halfAngle)
+        val jitter = FloatArray(angularSegs + 1) {
+            MathUtils.getRandomNumberInRange(-WEDGE_JITTER_DEG, WEDGE_JITTER_DEG)
+        }
 
         val tree: RenderEntity = ConeImpactVfxComponent(
             id = "cone_impact_vfx@" + System.identityHashCode(spec),
             origin = Vector2f(spec.origin),
             facingDeg = spec.facingDeg,
+            halfAngleDeg = halfAngle,
             length = spec.length,
             duration = spec.duration,
             expandSeconds = expand,
             fadeOutSeconds = fadeOut,
-            rayOffsetsDeg = rayOffsets,
-            rayBaseWidth = rayWidth,
             coreColor = spec.coreColor,
             fringeColor = spec.fringeColor,
             flashColor = spec.flashColor,
-            layer = spec.layer,
+            wedgeTexturePath = spec.wedgeTexturePath,
+            wedgePatternTexturePath = spec.wedgePatternTexturePath,
+            textureScrollSpeed = spec.textureScrollSpeed,
+            angularSegs = angularSegs,
+            angularJitter = jitter,
         )
         val host = PointHost(
             hostId = "cone@" + System.identityHashCode(tree),
             origin = Vector2f(spec.origin),
             facingDeg = spec.facingDeg,
         )
-        // 驱动寿命 = 视觉总长 + 收尾余量：BoxUtil 全局定时器在 duration 时刻已删完句柄，
-        // 余量只保证驱动不与渲染器抢同一帧。
+        // 驱动寿命 = 视觉总长 + 收尾余量：楔块淡出包络在 duration 内完成，余量只保证驱动
+        // 不与渲染器抢同一帧；弧/烟雾/闪光全为自管理粒子，存续与树无关。
         val plugin = OneShotVfxPlugin(engine, host, tree, spec.duration + 0.15f)
         engine.addPlugin(plugin)
         return plugin
-    }
-
-    /**
-     * 锥面射线布局（纯函数）：相对中轴的偏角序列，奇数条、含中轴 0 与 ±halfAngle 两缘，
-     * 条数由角间隔推导并 clamp 到 [MIN_RAYS, MAX_RAYS]。
-     */
-    internal fun layoutRayOffsets(halfAngleDeg: Float, spacingDeg: Float): List<Float> {
-        val count = (ceil((halfAngleDeg * 2f) / spacingDeg).toInt() + 1).coerceIn(MIN_RAYS, MAX_RAYS)
-        val odd = if (count % 2 == 0) count + 1 else count
-        val step = (halfAngleDeg * 2f) / (odd - 1)
-        return (0 until odd).map { -halfAngleDeg + step * it }
-    }
-
-    /**
-     * 单条射线基宽（纯函数）：锥端弧长均分到每条射线的弦宽 ×0.8（留缝隙读感），
-     * clamp 到 [RAY_WIDTH_MIN, RAY_WIDTH_MAX]。
-     */
-    internal fun rayBaseWidth(length: Float, halfAngleDeg: Float, rayCount: Int): Float {
-        val chord = 2f * length * sin(Math.toRadians(halfAngleDeg.toDouble())).toFloat()
-        return (chord / rayCount.coerceAtLeast(1) * 0.8f).coerceIn(RAY_WIDTH_MIN, RAY_WIDTH_MAX)
     }
 }
