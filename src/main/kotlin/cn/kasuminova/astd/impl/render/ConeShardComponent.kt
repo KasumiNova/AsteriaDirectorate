@@ -93,7 +93,10 @@ class ConeShardComponent(
         batch.activated = true
         try {
             BoxUtilCombatVfx.ensureReady(engine)
-            val sprite = Global.getSettings().getSprite(SHARD_SPRITE_PATH)
+            // 须先 loadTexture 进缓存，否则裸 getSprite 拿到 textureID=0 的壳（采样默认纹理
+            // alpha=0 → frag discard → 整批零渲染；v4.2 实机"碎片完全消失"+诊断 texID=0 实锤）。
+            // loadTexture 全局幂等只跑一次（对齐 AttachedBeamSpriteRingRenderer 先例）。
+            val sprite = Global.getSettings().apply { loadTexture(SHARD_SPRITE_PATH) }.getSprite(SHARD_SPRITE_PATH)
             val entity = SpriteEntity()
             entity.setAdditiveBlend()
             entity.materialData.setDiffuse(sprite)
