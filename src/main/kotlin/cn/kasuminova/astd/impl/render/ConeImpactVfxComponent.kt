@@ -27,9 +27,10 @@ import kotlin.math.tan
  * - t=+0.05：碎片锥内批（8 颗，轴向 0.2~0.7L、角向 ±halfAngle×0.7 内随机，扇形覆盖读感）；
  * - t=+0.10：碎片锥缘批（4 颗，0.8~1.0L）。
  *
- * 根自身无后端常驻句柄：闪光/扭曲为 vanilla 粒子与 BoxUtil 自管理实体、弧为渲染器自管理实例；
- * 碎片（[ConeShardComponent]）与刺束针（[StrikeSprayComponent]）由子节点持有并逐帧积分（树寿命
- * 因此不得短于两层最长期，见 ConeImpactVfx.spawn 的 TTL 下限）。几何常量创建期定死，
+ * 根自身无后端常驻句柄：闪光/扭曲为 vanilla 粒子与 BoxUtil 自管理实体、弧为渲染器自管理实例、
+ * 碎片（[ConeShardComponent]，v4.2 起 SpriteEntity 实例化）灌批后亦由 BoxUtil 自管理；
+ * 仅刺束针（[StrikeSprayComponent]）由子节点持有并逐帧积分（树寿命因此不得短于刺束最长期，
+ * 见 ConeImpactVfx.spawn 的 TTL 下限）。几何常量创建期定死，
  * 每帧只读 [RenderContext.frame] 的 elapsed 按阈值表恰好触发一次（布尔标记位，幂等）。
  */
 class ConeImpactVfxComponent(
@@ -107,12 +108,12 @@ class ConeImpactVfxComponent(
         if (!fired[TRIGGER_SHARD_BATCH2] && t >= SHARD_BATCH2_DELAY) {
             fired[TRIGGER_SHARD_BATCH2] = true
             // 碎片锥内批（t=+0.05，8 颗）：轴向 0.2~0.7L 随机、角向 ±halfAngle×0.7 内随机，扇形覆盖读感。
-            spawnConeShards(SHARD_BATCH2_COUNT, SHARD_BATCH2_AXIS_LO, SHARD_BATCH2_AXIS_HI)
+            spawnConeShards(BATCH_INDEX_CONE, SHARD_BATCH2_COUNT, SHARD_BATCH2_AXIS_LO, SHARD_BATCH2_AXIS_HI)
         }
         if (!fired[TRIGGER_SHARD_BATCH3] && t >= SHARD_BATCH3_DELAY) {
             fired[TRIGGER_SHARD_BATCH3] = true
             // 碎片锥缘批（t=+0.10，4 颗）：0.8~1.0L，补锥缘体积。
-            spawnConeShards(SHARD_BATCH3_COUNT, SHARD_BATCH3_AXIS_LO, SHARD_BATCH3_AXIS_HI)
+            spawnConeShards(BATCH_INDEX_EDGE, SHARD_BATCH3_COUNT, SHARD_BATCH3_AXIS_LO, SHARD_BATCH3_AXIS_HI)
         }
     }
 
@@ -159,6 +160,7 @@ class ConeImpactVfxComponent(
     private fun spawnVertexShards(count: Int) {
         repeat(count) {
             shardComponent.addShard(
+                BATCH_INDEX_VERTEX,
                 MathUtils.getRandomPointInCircle(origin, SHARD_VERTEX_SCATTER_RADIUS),
                 shardVelocity(),
             )
@@ -166,11 +168,12 @@ class ConeImpactVfxComponent(
     }
 
     /** 碎片锥内/锥缘批：轴向 [axisFracLo, axisFracHi]×length 随机、角向 ±halfAngle×0.7 内随机。 */
-    private fun spawnConeShards(count: Int, axisFracLo: Float, axisFracHi: Float) {
+    private fun spawnConeShards(batchIndex: Int, count: Int, axisFracLo: Float, axisFracHi: Float) {
         repeat(count) {
             val dist = length * MathUtils.getRandomNumberInRange(axisFracLo, axisFracHi)
             val posAng = facingDeg + MathUtils.getRandomNumberInRange(-halfAngleDeg * SHARD_CONE_SPREAD_MUL, halfAngleDeg * SHARD_CONE_SPREAD_MUL)
             shardComponent.addShard(
+                batchIndex,
                 MathUtils.getPointOnCircumference(origin, dist, posAng),
                 shardVelocity(),
             )
@@ -288,7 +291,12 @@ class ConeImpactVfxComponent(
         private const val ARC_SIDE_MUL = 0.85f
         private const val ARC_B_RATIO = 0.5f
 
-        // ---- 三角碎片（v2.2 替换星云；三批错峰与散布模型不变：t=0 / +0.05 / +0.10）----
+        // ---- 三角碎片（三批错峰与散布模型不变：t=0 / +0.05 / +0.10；v4.2 起批索引对应 SpriteEntity 三批）----
+
+        /** 碎片批次索引：顶点批 / 锥内批 / 锥缘批。 */
+        private const val BATCH_INDEX_VERTEX = 0
+        private const val BATCH_INDEX_CONE = 1
+        private const val BATCH_INDEX_EDGE = 2
 
         private const val SHARD_BATCH1_COUNT = 6
         private const val SHARD_BATCH2_COUNT = 8

@@ -28,7 +28,7 @@ import kotlin.test.assertTrue
  * - 扩张弧调度：advance 跨过阈值后每道恰好生成一次、不重复；
  * - t=0 层：闪光 2 颗 vanilla 粒子、刺束子节点 v2.2 档针数域与零延迟段激活
  *   （兜底链退役后 headless 实体缺席不再落 vanilla 粒子）；
- * - 碎片三批：跨阈值累计 6+8+4=18 颗且幂等；
+ * - 碎片三批（v4.2 SpriteEntity 实例化）：跨阈值累计 6+8+4=18 实例且幂等、灌批当帧激活；
  * - OneShotVfxPlugin：暂停不推进、到期 detach + removePlugin 恰好一次。
  */
 class ConeImpactVfxTest {
@@ -182,7 +182,7 @@ class ConeImpactVfxTest {
     }
 
     @Test
-    fun `shard batches accumulate eighteen shards across thresholds exactly once`() {
+    fun `shard batches accumulate eighteen instances across thresholds exactly once`() {
         val engine = mock(CombatEngineAPI::class.java)
         `when`(engine.customData).thenReturn(HashMap())
         val host = PointHost("t", origin, 90f)
@@ -199,41 +199,24 @@ class ConeImpactVfxTest {
 
         // 顶点批（attach）：6 颗。
         root.onAttach(frameCtx(engine, host, 0.02f, 0.02f))
-        assertEquals(6, root.shardComponent.shards.size, "attach 顶点批必须恰好 6 颗")
+        assertEquals(6, root.shardComponent.batches[0].instances.size, "attach 顶点批必须恰好 6 颗")
 
         // 锥内批（t=+0.05）：8 颗，累计 14。
         root.advance(frameCtx(engine, host, 0.06f, 0.04f), 0.04f)
-        assertEquals(14, root.shardComponent.shards.size, "锥内批触发后必须累计 14 颗")
+        assertEquals(8, root.shardComponent.batches[1].instances.size, "锥内批必须恰好 8 颗")
 
         // 锥缘批（t=+0.10）：4 颗，累计 18。
         root.advance(frameCtx(engine, host, 0.11f, 0.05f), 0.05f)
-        assertEquals(18, root.shardComponent.shards.size, "锥缘批触发后必须累计 18 颗")
+        assertEquals(4, root.shardComponent.batches[2].instances.size, "锥缘批必须恰好 4 颗")
+        val total = root.shardComponent.batches.sumOf { it.instances.size }
+        assertEquals(18, total, "三批必须累计 18 颗")
 
-        // 幂等：跨过全部阈值后继续推进不得重复加批（各批年龄 < 寿命下限 0.45s，无摘除干扰）。
+        // 幂等：跨过全部阈值后继续推进不得重复灌批。
         root.advance(frameCtx(engine, host, 0.20f, 0.09f), 0.09f)
-        assertEquals(18, root.shardComponent.shards.size, "批次跨阈值后不得重复触发")
-    }
+        assertEquals(18, root.shardComponent.batches.sumOf { it.instances.size }, "批次跨阈值后不得重复触发")
 
-    @Test
-    fun `shard component integrates motion and evicts expired shards`() {
-        val engine = mock(CombatEngineAPI::class.java)
-        `when`(engine.customData).thenReturn(HashMap())
-        val host = PointHost("t", origin, 90f)
-        val comp = ConeShardComponent("shards", 600f, core, fringe)
-
-        comp.onAttach(frameCtx(engine, host, 0f, 0.02f))
-        comp.addShard(Vector2f(100f, 200f), Vector2f(30f, -40f))
-        val shard = comp.shards.single()
-        val angle0 = shard.angleDeg
-
-        comp.advance(frameCtx(engine, host, 0.1f, 0.1f), 0.1f)
-        assertEquals(103f, shard.x, 1e-3f, "位置 x 必须按 vx 积分")
-        assertEquals(196f, shard.y, 1e-3f, "位置 y 必须按 vy 积分")
-        assertEquals(angle0 + shard.spinDegPerSec * 0.1f, shard.angleDeg, 1e-3f, "自旋角必须按角速度积分")
-
-        // 寿命上限 0.65s：再推进 0.7s（累计 0.8s）后必须摘除。
-        comp.advance(frameCtx(engine, host, 0.8f, 0.7f), 0.7f)
-        assertTrue(comp.shards.isEmpty(), "过寿命碎片必须摘除")
+        // 各批在灌批当帧（子节点同帧 advance）即激活（headless 实体缺席记 WARN，activated 置位）。
+        assertTrue(root.shardComponent.batches.all { it.activated }, "三批必须全部激活")
     }
 
     // ---- OneShotVfxPlugin 生命周期 ----
