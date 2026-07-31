@@ -1,0 +1,51 @@
+{
+    "id": "astd_annihilation_vortex",
+    "specClass": "beam",
+    "beamEffect": "cn.kasuminova.astd.combat.effect.generic.gravitycollapse.HiddenBeamRenderEffect",
+    "everyFrameEffect": "cn.kasuminova.astd.combat.effect.lens.AnnihilationVortexBeamEffect",
+    "type": "ENERGY",
+    "size": "LARGE",
+
+    "collisionClass": RAY,
+    "collisionClassByFighter": RAY_FIGHTER,
+
+    "displayArcRadius": 900,
+
+    "turretSprite": "graphics/weapons/astd_ftb_omega_base.png",
+    "turretGunSprite": "graphics/weapons/astd_ftb_omega_gun.png",
+    "hardpointSprite": "graphics/weapons/astd_ftb_omega_base.png",
+    "hardpointGunSprite": "graphics/weapons/astd_ftb_omega_gun.png",
+
+    "visualRecoil": 0.0,
+
+    "turretOffsets": [
+        0,
+        0
+    ],
+    "turretAngleOffsets": [
+        0
+    ],
+    "hardpointOffsets": [
+        0,
+        0
+    ],
+    "hardpointAngleOffsets": [
+        0
+    ],
+
+    "barrelMode": "LINKED",
+    "animationType": "MUZZLE_FLASH",
+
+    "fringeColor": [180, 20, 40, 255],
+    "coreColor": [255, 60, 70, 255],
+    "glowColor": [220, 30, 50, 220],
+
+    "darkCore": false,
+
+    "width": 14.0,
+    "textureType": ROUGH,
+    "textureScrollSpeed": 320.0,
+    "pixelsPerTexel": 5.0,
+
+    "pierceSet": [PROJECTILE_FF, PROJECTILE_NO_FF, PROJECTILE_FIGHTER, MISSILE_FF, MISSILE_NO_FF]
+}

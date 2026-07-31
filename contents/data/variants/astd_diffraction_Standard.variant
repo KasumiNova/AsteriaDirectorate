@@ -4,12 +4,7 @@
     "fluxVents": 0,
     "goalVariant": true,
     "hullId": "astd_diffraction",
-    "hullMods": [
-        "astd_nano_restoration_protocol"
-    ],
-    "permaMods": [
-        "astd_phase_diffraction_shield"
-    ],
+    "hullMods": [],
     "quality": 0.0,
     "variantId": "astd_diffraction_Standard",
     "weaponGroups": [
@@ -17,9 +12,9 @@
             "autofire": false,
             "mode": "LINKED",
             "weapons": {
-                "WS 001": "astd_jmb2",
-                "WS 002": "astd_vpd6",
-                "WS 003": "astd_vpd6"
+                "WS 001": "ionbeam",
+                "WS 002": "pdlaser",
+                "WS 003": "pdlaser"
             }
         }
     ]

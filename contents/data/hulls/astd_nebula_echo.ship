@@ -40,13 +40,19 @@
     "hullId": "astd_nebula_echo",
     "hullName": "星云回声",
     "hullSize": "DESTROYER",
+    "builtInMods": [
+        "astd_nano_restoration_protocol",
+        "astd_echo_emitter",
+        "astd_echo_reentry_buffer",
+        "astd_phase_resonance_jamming"
+    ],
     "shieldCenter": [
         0,
         0
     ],
     "shieldRadius": 134,
     "spriteName": "graphics/ships/astd_nebula_echo.png",
-    "style": "HIGH_TECH",
+    "style": "ASTD_HIGH_TECH",
     "viewOffset": 0,
     "weaponSlots": [
         {

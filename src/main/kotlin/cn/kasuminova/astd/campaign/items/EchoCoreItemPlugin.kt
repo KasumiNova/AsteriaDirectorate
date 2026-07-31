@@ -25,7 +25,7 @@ class EchoCoreItemPlugin : BaseSpecialItemPlugin() {
 
     override fun getName(): String = spec.name
 
-    override fun getPrice(market: MarketAPI, submarket: SubmarketAPI): Int = 0
+    override fun getPrice(market: MarketAPI?, submarket: SubmarketAPI?): Int = 0
 
     override fun hasRightClickAction(): Boolean = false
 

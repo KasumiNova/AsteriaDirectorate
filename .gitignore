@@ -1,4 +1,6 @@
-.github/superpower
+.github/superpower/*
+!.github/superpower/copy-review/
+!.github/superpower/copy-review/**
 .idea
 
 .kotlin
@@ -8,6 +10,12 @@ dev-resources
 
 node_modules
 dist
+dist-export
+.beam-vfx-preview.log
+tools/exports/
+contents/exports/
+__pycache__/
+*.pyc
 
 .gradle
 

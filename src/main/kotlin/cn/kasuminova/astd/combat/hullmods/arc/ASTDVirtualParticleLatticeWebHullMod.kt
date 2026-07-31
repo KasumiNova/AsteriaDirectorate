@@ -1,5 +1,8 @@
 package cn.kasuminova.astd.combat.hullmods.arc
 
+import cn.kasuminova.astd.api.difficulty.ScalingEntry
+import cn.kasuminova.astd.combat.hullmods.base.ASTDHullModTooltipRenderer
+import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import cn.kasuminova.astd.renderer.effect.hullmods.ASTDNegentropyEdgeVfx
 import cn.kasuminova.astd.combat.shipsystems.ASTDNegentropyEdgeState
 import com.fs.starfarer.api.Global
@@ -37,8 +40,6 @@ class ASTDVirtualParticleLatticeWebHullMod : BaseHullMod() {
         private const val CHARGE_PER_GROUP = 0.085f
         private const val DEFENSIVE_GROUP_SIZE = 1
         private const val FREE_GROUP_SIZE = 2
-        private const val DEFENSIVE_MIN = 6
-        private const val DEFENSIVE_MAX = 18
         private const val FREE_MAX = 24
         private const val MAX_PENDING_GROUPS = 18
         private const val MAX_GROUPS_PER_FRAME = 3
@@ -53,7 +54,13 @@ class ASTDVirtualParticleLatticeWebHullMod : BaseHullMod() {
         const val PURSUIT_MISSILE_PROJECTILE_ID = "astd_virtual_particle_mote"
         const val PURSUIT_MISSILE_DAMAGE = 150f
 
-        private val THEME = ASTDArcFlareHullModTooltip.Theme(
+        /**
+         * 防守虚粒子上限三锚点（轨一样板）：
+         * v1=6（迟暮，克制下限）/ v2=13（砺刃，设计基准=旧版硬编码值）/ v5=18（破晓，放开上限）。
+         */
+        val DEFENSIVE_CAP = ScalingEntry(v1 = 6f, v2 = 13f, v5 = 18f)
+
+        private val THEME = ASTDHullModTooltipRenderer.Theme(
             nameColor = Color(184, 236, 255),
             borderColor = Color(96, 194, 255),
             headerBackground = Color(18, 54, 86, 190),
@@ -75,21 +82,19 @@ class ASTDVirtualParticleLatticeWebHullMod : BaseHullMod() {
     }
 
     override fun addPostDescriptionSection(tooltip: TooltipMakerAPI, hullSize: ShipAPI.HullSize, ship: ShipAPI?, width: Float, isForModSpec: Boolean) {
-        ASTDArcFlareHullModTooltip.render(
+        ASTDHullModTooltipRenderer.renderBlocks(
             tooltip = tooltip,
             width = width,
             title = spec?.displayName ?: "",
             theme = THEME,
-            summaryKey = "ui.hullmod.negentropy.lattice.summary",
-            sections = listOf(
-                ASTDArcFlareHullModTooltip.section(
-                    "ui.hullmod.section.integration",
-                    "ui.hullmod.negentropy.lattice.line.1",
-                    "ui.hullmod.negentropy.lattice.line.2",
-                    "ui.hullmod.negentropy.lattice.line.3",
-                ),
+            blocks = listOf(
+                ASTDHullModTooltipRenderer.paragraph("ui.hullmod.negentropy.lattice.summary"),
+                ASTDHullModTooltipRenderer.heading("ui.hullmod.export.section.effect"),
+                ASTDHullModTooltipRenderer.paragraph("ui.hullmod.negentropy.lattice.line.1"),
+                ASTDHullModTooltipRenderer.paragraph("ui.hullmod.negentropy.lattice.line.2"),
+                ASTDHullModTooltipRenderer.paragraph("ui.hullmod.negentropy.lattice.line.3"),
+                ASTDHullModTooltipRenderer.paragraph("ui.hullmod.negentropy.lattice.line.4"),
             ),
-            starTrails = false,
         )
     }
 
@@ -192,7 +197,7 @@ class ASTDVirtualParticleLatticeWebHullMod : BaseHullMod() {
         }
 
         private fun createGroups(engine: CombatEngineAPI, groups: Int, point: Vector2f) {
-            val defensiveCap = defensiveCap()
+            val defensiveCap = defensiveCap(ship)
             repeat(groups) {
                 ASTDNegentropyEdgeState.addCharge(ship, CHARGE_PER_GROUP)
                 for (i in 0 until DEFENSIVE_GROUP_SIZE) {
@@ -239,9 +244,13 @@ class ASTDVirtualParticleLatticeWebHullMod : BaseHullMod() {
             return MathUtils.getPointOnCircumference(Vector2f(ship.location), radius, angle)
         }
 
-        private fun defensiveCap(): Int {
-            val k = 0.6f
-            return (DEFENSIVE_MIN + ((DEFENSIVE_MAX - DEFENSIVE_MIN) * k.coerceIn(0f, 1f))).toInt().coerceIn(DEFENSIVE_MIN, DEFENSIVE_MAX)
+        /**
+         * 防守虚粒子上限：敌方本舰走轨一（[DifficultyTuningImpl] 按固有缩放系数映射三锚点）；
+         * 玩家本舰固定设计基准 v2（玩家侧数值不吃难度轨）。
+         */
+        private fun defensiveCap(ship: ShipAPI): Int {
+            val cap = if (ship.owner == 0) DEFENSIVE_CAP.v2 else DifficultyTuningImpl.value(DEFENSIVE_CAP)
+            return cap.toInt().coerceIn(DEFENSIVE_CAP.v1.toInt(), DEFENSIVE_CAP.v5.toInt())
         }
 
         private data class DefensiveParticle(

@@ -146,7 +146,7 @@ object Hm_astd_affix_fragmented_orders : HullModEntry() {
 
 object Hm_astd_affix_coherent_link : HullModEntry() {
     override val id: String = "astd_affix_coherent_link"
-    override val name: String = "协同中继（词缀·隐藏）"
+    override val name: String = "协同链路（词缀·隐藏）"
     override val tech: String = "astd_hidden"
     override val uiTags: String = ""
     override val tags: String = ""
@@ -155,7 +155,7 @@ object Hm_astd_affix_coherent_link : HullModEntry() {
     override val unlocked: Boolean = true
     override val script: String = "cn.kasuminova.astd.combat.hullmods.affix.AffixCoherentLinkHullMod"
     override val desc: String = "内部用途：赏金词缀。编队协同增强但孤立时更脆弱。"
-    override val short: String = "协同中继（隐藏）"
+    override val short: String = "协同链路（隐藏）"
     override val sprite: String = "graphics/hullmods/astd_zero_point_compute_core.png"
 }
 
@@ -236,7 +236,7 @@ object Hm_astd_affix_recorded_loop : HullModEntry() {
 
 object Hm_astd_affix_distributed_grid : HullModEntry() {
     override val id: String = "astd_affix_distributed_grid"
-    override val name: String = "分布式栅格（词缀·隐藏）"
+    override val name: String = "栅格轮换（词缀·隐藏）"
     override val tech: String = "astd_hidden"
     override val uiTags: String = ""
     override val tags: String = ""
@@ -245,7 +245,7 @@ object Hm_astd_affix_distributed_grid : HullModEntry() {
     override val unlocked: Boolean = true
     override val script: String = "cn.kasuminova.astd.combat.hullmods.affix.AffixDistributedGridHullMod"
     override val desc: String = "内部用途：赏金词缀。分布式护盾系统。"
-    override val short: String = "分布式栅格（隐藏）"
+    override val short: String = "栅格轮换（隐藏）"
     override val sprite: String = "graphics/hullmods/astd_zero_point_compute_core.png"
 }
 

@@ -1,0 +1,1 @@
+Dev automation scenario for validating ARC production ship VFX and tooltip telemetry.

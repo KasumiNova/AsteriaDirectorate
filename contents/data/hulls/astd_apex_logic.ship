@@ -40,13 +40,17 @@
     "hullId": "astd_apex_logic",
     "hullName": "顶点逻辑",
     "hullSize": "CAPITAL_SHIP",
+    "builtInMods": [
+        "astd_nano_restoration_protocol",
+        "astd_zero_point_compute_core"
+    ],
     "shieldCenter": [
         0,
         0
     ],
     "shieldRadius": 312,
     "spriteName": "graphics/ships/astd_apex_logic.png",
-    "style": "HIGH_TECH",
+    "style": "ASTD_HIGH_TECH",
     "viewOffset": 0,
     "weaponSlots": [
         {

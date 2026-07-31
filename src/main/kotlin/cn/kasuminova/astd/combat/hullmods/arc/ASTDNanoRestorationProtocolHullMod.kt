@@ -1,5 +1,7 @@
 package cn.kasuminova.astd.combat.hullmods.arc
 
+import cn.kasuminova.astd.combat.hullmods.base.ASTDHullModTooltipRenderer
+import cn.kasuminova.astd.combat.hullmods.base.isASTDShip
 import cn.kasuminova.astd.combat.shipsystems.ASTDArcFlareOverdriveSystemStats
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseHullMod
@@ -41,7 +43,7 @@ class ASTDNanoRestorationProtocolHullMod : BaseHullMod() {
         private const val BOOST_KEY = "astd_nano_restoration_boost"
         private const val INTERVAL_KEY = "astd_nano_restoration_interval"
 
-        private val THEME = ASTDArcFlareHullModTooltip.Theme(
+        private val THEME = ASTDHullModTooltipRenderer.Theme(
             nameColor = Color(170, 255, 196),
             borderColor = Color(88, 212, 140),
             headerBackground = Color(18, 68, 44, 180),
@@ -184,25 +186,20 @@ class ASTDNanoRestorationProtocolHullMod : BaseHullMod() {
     }
 
     override fun addPostDescriptionSection(tooltip: TooltipMakerAPI, hullSize: ShipAPI.HullSize, ship: ShipAPI?, width: Float, isForModSpec: Boolean) {
-        ASTDArcFlareHullModTooltip.render(
+        ASTDHullModTooltipRenderer.renderBlocks(
             tooltip = tooltip,
             width = width,
             title = spec?.displayName ?: "",
             theme = THEME,
-            summaryKey = "ui.hullmod.nano.summary",
-            sections = listOf(
-                ASTDArcFlareHullModTooltip.section(
-                    "ui.hullmod.section.repair",
-                    "ui.hullmod.nano.line.1",
-                    "ui.hullmod.nano.line.1b",
-                    "ui.hullmod.nano.line.2",
-                    "ui.hullmod.nano.line.3",
-                ),
-                ASTDArcFlareHullModTooltip.section(
-                    "ui.hullmod.section.boost",
-                    "ui.hullmod.nano.line.4",
-                    "ui.hullmod.nano.line.5",
-                ),
+            blocks = listOf(
+                ASTDHullModTooltipRenderer.paragraph("ui.hullmod.nano.summary"),
+                ASTDHullModTooltipRenderer.heading("ui.hullmod.export.section.note"),
+                ASTDHullModTooltipRenderer.paragraph("ui.hullmod.nano.line.1"),
+                ASTDHullModTooltipRenderer.paragraph("ui.hullmod.nano.line.2"),
+                ASTDHullModTooltipRenderer.paragraph("ui.hullmod.nano.line.3"),
+                ASTDHullModTooltipRenderer.paragraph("ui.hullmod.nano.line.4"),
+                ASTDHullModTooltipRenderer.paragraph("ui.hullmod.nano.line.5"),
+                ASTDHullModTooltipRenderer.paragraph("ui.hullmod.nano.line.6"),
             ),
         )
     }

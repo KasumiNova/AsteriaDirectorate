@@ -1,12 +1,11 @@
-# 武器设计案（按线路 → 稀有度拆分）
+# 武器设计案（按线路拆分）
 
-本目录是 `docs/design/weapons-requirements.md` 的拆分版本：按 **线路（蓝/紫）→ 供给层级/稀有度（内置/量产/稀有/Omega）** 组织，便于后续逐条落地到数据文件与脚本。
-
-> 说明：本套设计文档仅使用当前系列代号与命名口径。
+> 状态：武器线重设计进行中（P2，见 90-roadmap.md）。总纲 `01-武器设计总纲.md` 已定案（v1.0）；本目录保留存活条目案与通用规则。
 
 ## 通用规则
 
-- `00-common.md`：设计原则、命名规范、A/B/C 投射范式、难度系数 $k$ 缩放规则、双模式联动原则。
+- `01-武器设计总纲.md`：P2 总纲——两线武器哲学、GCP 档位关系、难度缩放落点（D13 三锚点）、系列 roster 框架。**重设计时先读。**
+- `00-common.md`：设计原则、命名规范、A/B/C 投射范式、双模式联动原则。重新设计时沿用（§6.3 旧 k 缩放口径已废止，以总纲 §2 为准）。
 
 ## 侧线剧情武器（MIND / PSI）
 
@@ -18,14 +17,12 @@
 
 ## 蓝线（直接火力投射：A/C）
 
-- `blue/10-signature.md`：签名内置武器（AOD-7、TSM-2 等）。
-- `blue/20-production.md`：量产武器。
-- `blue/30-rare.md`：稀有掉落武器。
-- `blue/40-omega.md`：Omega 极稀有。
+- `blue/10-signature.md`：签名内置武器（AOD-7、SPC-3）。
+- `blue/20-production.md`：量产武器（电荷针刺系列、重型离子脉冲、双子星 DEM 发射器/舱、电驱加速炮、"穷距"相位轨道炮、正电子冲击波，已定案 v1.0）。
+- `blue/30-superlative.md`：超规格与稀有掉落武器（“七星”折跃发射器、摧锋鱼雷/发射器、贯星之矛已定案 v1.0）。
 
 ## 紫线（间接压制：B）
 
-- `purple/10-signature.md`：签名内置武器（GSP-12 等）。
-- `purple/20-production.md`：量产武器。
-- `purple/30-rare.md`：稀有掉落武器。
-- `purple/40-omega.md`：Omega 极稀有。
+- `purple/20-production.md`：量产武器（GCP 引力坍缩炮系列）。
+- `purple/30-superlative.md`：超规格与稀有掉落武器（湮灭涡旋等，P2 逐件确认中）。
+- `purple/40-omega.md`：Omega 极稀有（PSB-Ω 灵能裂解束，侧线）。

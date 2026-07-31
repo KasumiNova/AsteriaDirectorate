@@ -40,13 +40,17 @@
     "hullId": "astd_dark_tide_nebula",
     "hullName": "暗潮星云",
     "hullSize": "CRUISER",
+    "builtInMods": [
+        "astd_nano_restoration_protocol",
+        "astd_dark_tide_jammer"
+    ],
     "shieldCenter": [
         0,
         0
     ],
     "shieldRadius": 246,
     "spriteName": "graphics/ships/astd_dark_tide_nebula.png",
-    "style": "HIGH_TECH",
+    "style": "ASTD_HIGH_TECH",
     "viewOffset": 0,
     "weaponSlots": [
         {

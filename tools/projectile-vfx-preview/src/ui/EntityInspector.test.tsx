@@ -50,6 +50,20 @@ describe('EntityInspector', () => {
     expect(onPresetChange).toHaveBeenCalled();
   });
 
+  it('keeps top-level ribbon graph in sync with ribbon panel edits', () => {
+    const onPresetChange = vi.fn();
+    render(<EntityInspector preset={createDefaultPreset()} onPresetChange={onPresetChange} />);
+
+    fireEvent.change(screen.getByLabelText('trail-ribbon-0-alphaScale'), { target: { value: '0.77' } });
+
+    expect(onPresetChange).toHaveBeenLastCalledWith(expect.objectContaining({
+      ribbonDecorations: [expect.objectContaining({ alphaScale: 0.77 })],
+      trailEntities: [expect.objectContaining({
+        ribbonDecorations: [expect.objectContaining({ alphaScale: 0.77 })],
+      })],
+    }));
+  });
+
   it('adds ribbon gradient stops', async () => {
     const user = userEvent.setup();
     const onPresetChange = vi.fn();

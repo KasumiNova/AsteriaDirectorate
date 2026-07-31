@@ -82,8 +82,8 @@ class ModDeploymentTasks(
                     throw IllegalStateException("游戏目录不存在: ${gameDir.absolutePath}")
                 }
 
-                val modId = metadata.modId.get()
-                val targetModDir = File(gameDir, "mods/$modId")
+                val deployDirName = metadata.deployDirName.get()
+                val targetModDir = File(gameDir, "mods/$deployDirName")
 
                 if (targetModDir.exists()) {
                     project.logger.lifecycle("正在清理旧的 Mod 文件: ${targetModDir.absolutePath}")
@@ -136,8 +136,8 @@ class ModDeploymentTasks(
                     throw IllegalStateException("游戏目录不存在: ${gameDir.absolutePath}")
                 }
 
-                val modId = metadata.modId.get()
-                File(gameDir, "mods/$modId")
+                val deployDirName = metadata.deployDirName.get()
+                File(gameDir, "mods/$deployDirName")
             })
 
             doLast {

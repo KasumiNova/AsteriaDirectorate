@@ -1,0 +1,8 @@
+{
+    "id": "astd_limit_temporal_thruster",
+    "type": "ENGINE_MOD",
+    "aiType": "CUSTOM",
+    "aiScript": "cn.kasuminova.astd.combat.shipsystems.ASTDLimitTemporalThrusterSystemAI",
+    "statsScript": "cn.kasuminova.astd.combat.shipsystems.ASTDLimitTemporalThrusterSystemStats",
+    "useSound": "system_burn_drive_activate"
+}

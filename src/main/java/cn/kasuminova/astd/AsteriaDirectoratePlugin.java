@@ -2,6 +2,9 @@ package cn.kasuminova.astd;
 
 import cn.kasuminova.astd.campaign.AsteriaTestCampaignBootstrap;
 import cn.kasuminova.astd.campaign.bounty.BountyBootstrapper;
+import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcFlareHullModUtilKt;
+import cn.kasuminova.astd.combat.hullmods.lens.LensArrayCoreModeUtilKt;
+import cn.kasuminova.astd.impl.difficulty.DifficultySettingsRegistrar;
 import com.fs.starfarer.api.BaseModPlugin;
 import org.apache.log4j.Logger;
 
@@ -27,6 +30,12 @@ public final class AsteriaDirectoratePlugin extends BaseModPlugin {
     @Override
     public void onApplicationLoad() {
         logger.info("[ASTD] Asteria Directorate loaded on Java " + System.getProperty("java.version"));
+        // 注册 lens / arc 双模式配置到通用注册表（ASTDDualModeRegistry），保证通用切换器 tooltip
+        // 在任何 refit 渲染前就能 configForShip 反查到对应舰的模式 id 集合。幂等，可多实例多次调用。
+        LensArrayCoreModeUtilKt.registerLensDualModeConfig();
+        ASTDArcFlareHullModUtilKt.registerArcFlareDualModeConfig();
+        // 注册难度设置（轨一：固有缩放系数）到 LunaLib 设置界面，并应用当前生效档位。
+        DifficultySettingsRegistrar.INSTANCE.register();
     }
 
     @Override
@@ -37,10 +46,21 @@ public final class AsteriaDirectoratePlugin extends BaseModPlugin {
     }
 
     @Override
+    public void onNewGameAfterTimePass() {
+        AsteriaTestCampaignBootstrap.runIfEnabled();
+        AsteriaTestCampaignBootstrap.finalizeNewGameTeleportIfEnabled();
+    }
+
+    @Override
     public void onGameLoad(boolean newGame) {
         // 注册赏金动态生成/词缀/支线管理脚本。
         // 注意：允许多实例；脚本添加由 sector memory key 去重。
         BountyBootstrapper.onGameLoad();
+        if (!newGame) {
+            AsteriaTestCampaignBootstrap.repairExistingTestStorageIfEnabled();
+            AsteriaTestCampaignBootstrap.resumePendingTeleportIfEnabled();
+            AsteriaTestCampaignBootstrap.runStorageAcceptanceIfRequested();
+        }
     }
 
     public Logger logger() {

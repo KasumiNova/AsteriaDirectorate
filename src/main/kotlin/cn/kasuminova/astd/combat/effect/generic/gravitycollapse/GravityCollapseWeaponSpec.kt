@@ -30,18 +30,7 @@ internal data class GravityCollapseWeaponSpec(
 internal object GravityCollapseWeaponSpecs {
 
     private val specs: Map<String, GravityCollapseWeaponSpec> = mapOf(
-        // 现有：系统内置“终结坍缩炮”（保持默认尺度）
-        "astd_stasis_collapse_emitter" to GravityCollapseWeaponSpec(
-            beamScale = 1.0f,
-            beamWidthMul = 1.0f,
-            aoeRadiusBase = 190f,
-            aoeRequireDamageTarget = true,
-            aoeAffectAlliesAndNeutral = false,
-            aoeAffectNonShips = false,
-            aoeAffectHulks = false,
-        ),
-
-        // 新系列：GCP（Gravity Collapse Projector）
+        // GCP（Gravity Collapse Projector）系列
         // Large / Medium / Small / PD：差异主要在伤害潜力（weapon_data）、束体尺寸与射程。
         "astd_gcp12" to GravityCollapseWeaponSpec(
             beamScale = 1.0f,

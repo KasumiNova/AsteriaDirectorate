@@ -26,6 +26,8 @@ repositories {
 
 dependencies {
     testImplementation(kotlin("test"))
+    // 战斗 API（ShipAPI/WeaponAPI/CombatEngineAPI 均为 jar 接口）单测桩：禁止反射手搓代理，统一走 mockito。
+    testImplementation("org.mockito:mockito-core:5.5.0")
     // starsector 默认包含所有编译器和运行时模组依赖，不需要单独声明其他模组依赖。
     starsector(project)
 }
@@ -58,6 +60,37 @@ tasks.withType<KotlinCompile>().configureEach {
 tasks.withType<Jar>().configureEach {
     isPreserveFileTimestamps = false
     isReproducibleFileOrder = true
+    manifest {
+        attributes(
+            "Premain-Class" to "cn.kasuminova.astd.agent.AsteriaDevStorageAcceptanceAgent",
+            "Can-Retransform-Classes" to "true",
+            "Can-Redefine-Classes" to "true",
+        )
+    }
+}
+
+val acceptanceAgentJar = tasks.register<Jar>("acceptanceAgentJar") {
+    archiveClassifier.set("acceptance-agent")
+    isPreserveFileTimestamps = false
+    isReproducibleFileOrder = true
+    from(sourceSets.main.get().output) {
+        include("cn/kasuminova/astd/agent/**")
+    }
+    from({
+        configurations.compileClasspath.get()
+            .filter { file -> file.extension == "jar" }
+            .map { file -> zipTree(file) }
+    }) {
+        include("org/objectweb/asm/**")
+    }
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    manifest {
+        attributes(
+            "Premain-Class" to "cn.kasuminova.astd.agent.AsteriaDevStorageAcceptanceAgent",
+            "Can-Retransform-Classes" to "true",
+            "Can-Redefine-Classes" to "true",
+        )
+    }
 }
 
 tasks.withType<DecompileSourcesTask>().configureEach {
@@ -132,6 +165,7 @@ tasks.named("copyContents") {
 // build 时自动生成 ss-csv 到 build/generated/ss-csv/
 tasks.named("build") {
     dependsOn(":ss-csv:generateSsCsv")
+    dependsOn(acceptanceAgentJar)
 }
 
 // 生产目录使用 build/generated/ss-csv 叠加静态 contents，保持 contents 不被自动覆盖。
@@ -142,7 +176,7 @@ tasks.named<Sync>("copyContents") {
 }
 
 val starsectorGameDir: String = providers.gradleProperty("starsector.gameDir")
-    .orElse("/mnt/windows_data/Games/Starsector098-linux")
+    .orElse("/mnt/store/Games/Starsector098-linux")
     .get()
 
 tasks.register<Exec>("smokeTestLauncher") {
@@ -152,9 +186,35 @@ tasks.register<Exec>("smokeTestLauncher") {
     commandLine("bash", "tools/smoke_test_game_launch.sh", starsectorGameDir, "30", "launcher")
 }
 
-tasks.register<Exec>("smokeTestGame") {
+// automation 场景可由外部 ASTD_AUTOMATION_SCENARIO 环境变量覆盖（默认 ARC production，
+// 保持既有行为）；阶段一引力透镜场景通过 ASTD_AUTOMATION_SCENARIO=lens_phase1_foundation 启动。
+val smokeTestScenario: String =
+    (System.getenv("ASTD_AUTOMATION_SCENARIO")?.takeIf { it.isNotBlank() })
+        ?: "arc_production_ships_vfx_tooltip"
+
+tasks.register<Exec>("launchSmokeTestGame") {
     group = "verification"
-    description = "部署模组并通过 SSOptimizer autostart 参数进入游戏路径做烟测。"
+    description = "部署模组并通过 SSOptimizer automation 路径启动实机场景（默认 ARC production，可由 ASTD_AUTOMATION_SCENARIO 覆盖）。"
     dependsOn("deployMod")
-    commandLine("bash", "tools/smoke_test_game_launch.sh", starsectorGameDir, "90", "game")
+    environment("ASTD_AUTOMATION_SCENARIO", smokeTestScenario)
+    commandLine("bash", "tools/smoke_test_game_launch.sh", starsectorGameDir, "120", "automation")
+}
+
+tasks.register<Exec>("verifySmokeTestGameEvidence") {
+    group = "verification"
+    description = "验证 SSOptimizer automation 输出的 ARC production 实机证据。"
+    dependsOn("launchSmokeTestGame")
+    commandLine(
+        "python3",
+        "tools/verify_ingame_vfx_automation.py",
+        "$starsectorGameDir/ssoptimizer-automation-output/astd-ingame-automation-telemetry.json",
+        "--log",
+        "$starsectorGameDir/starsector.log",
+    )
+}
+
+tasks.register("smokeTestGame") {
+    group = "verification"
+    description = "部署模组、启动 ARC production 实机场景，并校验 SSOptimizer automation 证据。"
+    dependsOn("verifySmokeTestGameEvidence")
 }

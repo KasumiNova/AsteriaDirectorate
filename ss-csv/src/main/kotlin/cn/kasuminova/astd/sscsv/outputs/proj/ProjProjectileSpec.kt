@@ -59,14 +59,19 @@ data class ProjectileProjSpec(
     ).filterValues { it != null }
 
     companion object {
-        /** Matches the project's common "BUtil_NONE + scroll" projectile style. */
+        /**
+         * Matches the project's common "BUtil_NONE + scroll" projectile style.
+         *
+         * 弹体外观完全由代码 VFX（RenderEntity/DSL）承担，故原版弹丸辉光（fringeColor/coreColor）默认 alpha=0 全隐藏——
+         * 否则会与模组拖尾同时渲染出一段原版弹芯。个别弹体如需保留原版可见弹芯，显式传入非零 alpha 的颜色。
+         */
         fun standard(
             id: String,
             spawnType: ProjectileSpawnType = ProjectileSpawnType.PLASMA,
             onFireEffect: String = "cn.kasuminova.astd.combat.effect.generic.ProjectileSpecOnFireDispatcher",
             onHitEffect: String? = null,
-            fringeColor: Rgba = Rgba(120, 200, 255, 235),
-            coreColor: Rgba = Rgba(220, 245, 255, 200),
+            fringeColor: Rgba = Rgba(120, 200, 255, 0),
+            coreColor: Rgba = Rgba(220, 245, 255, 0),
         ): ProjectileProjSpec {
             return ProjectileProjSpec(
                 id = id,
@@ -97,8 +102,8 @@ data class ProjectileProjSpec(
             spawnType: String,
             onFireEffect: String = "cn.kasuminova.astd.combat.effect.generic.ProjectileSpecOnFireDispatcher",
             onHitEffect: String? = null,
-            fringeColor: Rgba = Rgba(120, 200, 255, 235),
-            coreColor: Rgba = Rgba(220, 245, 255, 200),
+            fringeColor: Rgba = Rgba(120, 200, 255, 0),
+            coreColor: Rgba = Rgba(220, 245, 255, 0),
         ): ProjectileProjSpec {
             // 注意：这里不要使用命名参数调用（Kotlin 在同名重载+默认参数场景下可能误选回自身）。
             return standard(

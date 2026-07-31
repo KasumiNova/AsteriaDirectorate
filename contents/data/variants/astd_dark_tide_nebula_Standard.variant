@@ -4,12 +4,7 @@
     "fluxVents": 0,
     "goalVariant": true,
     "hullId": "astd_dark_tide_nebula",
-    "hullMods": [
-        "astd_nano_restoration_protocol"
-    ],
-    "permaMods": [
-        "astd_dark_tide_jammer"
-    ],
+    "hullMods": [],
     "quality": 0.0,
     "variantId": "astd_dark_tide_nebula_Standard",
     "weaponGroups": [
@@ -17,9 +12,9 @@
             "autofire": false,
             "mode": "LINKED",
             "weapons": {
-                "WS 001": "astd_fdp4",
-                "WS 002": "astd_vpd6",
-                "WS 003": "astd_vpd6"
+                "WS 001": "hammer",
+                "WS 002": "pdlaser",
+                "WS 003": "pdlaser"
             }
         }
     ]

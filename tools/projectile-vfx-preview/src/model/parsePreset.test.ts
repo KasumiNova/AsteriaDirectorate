@@ -44,6 +44,45 @@ describe('parsePresetJson', () => {
       expect(result.errors.map((error) => error.path)).toContain('trailEntities[0].startWidth');
     }
   });
+
+  it('merges partial render graph fields from imported JSON', () => {
+    const preset = createDefaultPreset();
+    const result = parsePresetJson(JSON.stringify({
+      ...preset,
+      headLayers: [{ id: 'head-only-length', length: 260 }],
+      glowLayers: [{ id: 'glow-only-width', widthScale: 9 }],
+      mistLayers: [{ id: 'mist-only-range', rxRange: { max: 12 } }],
+      sideWispLayers: [{ id: 'side-only-offsets', offsets: [-4, 4] }],
+      lifecycle: { projectileHeadSizeScale: 2.5 },
+      samplingPolicy: { maxHistoryNodes: 160 },
+      ribbonDecorations: [{ id: 'ribbon-only-alpha', alphaScale: 0.77 }],
+    }));
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.preset.headLayers[0]).toEqual(expect.objectContaining({ id: 'head-only-length', length: 260, width: preset.headLayers[0].width }));
+      expect(result.preset.glowLayers[0]).toEqual(expect.objectContaining({ id: 'glow-only-width', widthScale: 9, alphaScale: preset.glowLayers[0].alphaScale }));
+      expect(result.preset.mistLayers[0].rxRange).toEqual(expect.objectContaining({ min: preset.mistLayers[0].rxRange.min, max: 12 }));
+      expect(result.preset.sideWispLayers[0]).toEqual(expect.objectContaining({ id: 'side-only-offsets', offsets: [-4, 4], widthScale: preset.sideWispLayers[0].widthScale }));
+      expect(result.preset.lifecycle).toEqual(expect.objectContaining({ projectileHeadSizeScale: 2.5, durationSeconds: preset.lifecycle.durationSeconds }));
+      expect(result.preset.samplingPolicy).toEqual(expect.objectContaining({ maxHistoryNodes: 160, historyFps: preset.samplingPolicy.historyFps }));
+      expect(result.preset.ribbonDecorations[0]).toEqual(expect.objectContaining({ id: 'ribbon-only-alpha', alphaScale: 0.77, thickness: preset.ribbonDecorations[0].thickness }));
+    }
+  });
+
+  it('accepts game export ribbon amplitude and frequency aliases', () => {
+    const preset = createDefaultPreset();
+    const result = parsePresetJson(JSON.stringify({
+      ...preset,
+      ribbonDecorations: [{ id: 'game-export-ribbon', amplitude: 2.5, frequency: 3.25 }],
+    }));
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.preset.ribbonDecorations[0].waveAmplitude).toBe(2.5);
+      expect(result.preset.ribbonDecorations[0].waveFrequency).toBe(3.25);
+    }
+  });
 });
 
 describe('formatPresetJson', () => {

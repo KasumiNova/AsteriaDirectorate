@@ -6,12 +6,12 @@
     "onHitEffect": "cn.kasuminova.astd.combat.effect.generic.HighFluxShieldPressureOnHitEffect",
     "collisionClass": "PROJECTILE_FF",
     "collisionClassByFighter": "PROJECTILE_FIGHTER",
-    "length": 30,
-    "width": 10,
+    "length": 2,
+    "width": 2,
     "fadeTime": 0.2,
-    "fringeColor": [255, 198, 126, 228],
-    "coreColor": [248, 242, 232, 205],
-    "textureScrollSpeed": 64,
-    "pixelsPerTexel": 5,
+    "fringeColor": [255, 198, 126, 0],
+    "coreColor": [248, 242, 232, 0],
+    "textureScrollSpeed": 0,
+    "pixelsPerTexel": 1,
     "bulletSprite": "graphics/textures/BUtil_NONE.png"
 }

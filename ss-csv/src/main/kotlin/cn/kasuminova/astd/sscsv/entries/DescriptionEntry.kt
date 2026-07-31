@@ -9,6 +9,7 @@ import cn.kasuminova.astd.sscsv.SsCsvEntry
  * 说明：
  * - `id` 同时作为 CSV 的 key。
  * - `text1..text4` 通常会在武器/系统/舰船的详情面板顶部作为“描述段落”显示。
+ * - `text5` 对舰船系统常用于额外数值说明；为空时会按 CSV 默认留空。
  * - 为避免 UI 内部的格式化（String.format）踩坑，建议在描述文本中优先使用全角百分号 `％`。
  */
 abstract class DescriptionEntry : SsCsvEntry {
@@ -24,6 +25,7 @@ abstract class DescriptionEntry : SsCsvEntry {
     open val text2: String = ""
     open val text3: String = ""
     open val text4: String = ""
+    open val text5: String = ""
     open val notes: String = ""
 
     final override val key: String get() = id
@@ -35,6 +37,7 @@ abstract class DescriptionEntry : SsCsvEntry {
         "text2" to text2,
         "text3" to text3,
         "text4" to text4,
+        "text5" to text5,
         "notes" to notes,
     )
 }

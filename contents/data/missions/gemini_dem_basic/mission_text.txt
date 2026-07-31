@@ -1,0 +1,1 @@
+Dev automation scenario for validating gemini DEM launcher/pod: dual warhead salvo (dummy intercept), TrackAI guided target feed (R1), vanilla DEMScript takeover strike, payload beam damage reading (R2), 4 EMP arcs on kinetic strike, sync strike within 1s window (player v2), kill-one no-sync, pod salvo (ammo 4), and dawn-tier enemy sync telemetry.

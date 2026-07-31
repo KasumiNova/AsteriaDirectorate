@@ -10,7 +10,7 @@ class PackageStructureGuidelinesPsiTest {
 
     @Test
     fun `package structure skill documents psi combat effect package`() {
-        val text = repoRoot.resolve(".github/skills/package-structure-guidelines/SKILL.md").readText()
+        val text = repoRoot.resolve(".agents/skills/package-structure-guidelines/SKILL.md").readText()
         assertTrue(text.contains("combat.effect.psi"), "psi effect package should be documented")
     }
 }

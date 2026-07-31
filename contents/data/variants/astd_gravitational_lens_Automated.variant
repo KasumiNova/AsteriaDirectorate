@@ -1,0 +1,26 @@
+{
+    "displayName": "Automated",
+    "fluxCapacitors": 20,
+    "fluxVents": 20,
+    "goalVariant": true,
+    "hullId": "astd_gravitational_lens",
+    "hullMods": [],
+    "permaMods": [
+        "astd_lens_mode_automated",
+        "astd_lens_mode_next_automated",
+        "automated"
+    ],
+    "quality": 1.0,
+    "variantId": "astd_gravitational_lens_Automated",
+    "weaponGroups": [
+        {
+            "autofire": false,
+            "mode": "LINKED",
+            "weapons": {
+                "WS0001": "hammer",
+                "WS0003": "pdlaser",
+                "WS0009": "pdlaser"
+            }
+        }
+    ]
+}

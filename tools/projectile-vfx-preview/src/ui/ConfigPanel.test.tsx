@@ -34,17 +34,35 @@ describe('ConfigPanel', () => {
     const user = userEvent.setup();
 
     render(<ConfigPanel preset={createDefaultPreset()} onPresetChange={vi.fn()} />);
-    await user.click(screen.getByRole('button', { name: 'Export JSON' }));
+    await user.click(screen.getByRole('button', { name: 'Export Preview JSON' }));
 
-    expect((screen.getByLabelText('Import JSON') as HTMLTextAreaElement).value).toContain('"trailEntities"');
+    const exported = (screen.getByLabelText('Preview JSON') as HTMLTextAreaElement).value;
+    expect(exported).toContain('"name": "ASTD Default TrailEntity Preview"');
+    expect(exported).toContain('"trailEntities"');
+    expect(exported).toContain('"timeline"');
+    expect(exported).toContain('"simulation"');
+    expect(exported).toContain('"previewCamera"');
   });
 
   it('exports Kotlin preset code', async () => {
     const user = userEvent.setup();
 
     render(<ConfigPanel preset={createDefaultPreset()} onPresetChange={vi.fn()} />);
-    await user.click(screen.getByRole('button', { name: 'Export Kotlin' }));
+    await user.click(screen.getByRole('button', { name: 'Export Kotlin Component Preset' }));
 
-    expect((screen.getByLabelText('Export Preview') as HTMLTextAreaElement).value).toContain('ASTDProjectileVfxPreset');
+    expect((screen.getByLabelText('Kotlin Component Preset') as HTMLTextAreaElement).value).toContain('ASTDProjectileVfxPreset');
+    expect((screen.getByLabelText('Kotlin Component Preset') as HTMLTextAreaElement).value).toContain('ASTDProjectileVfxComponentSpec.Trail');
+  });
+
+  it('updates preview-only layer toggles without changing preview json fields', async () => {
+    const user = userEvent.setup();
+    const onLayerVisibilityChange = vi.fn();
+    const preset = createDefaultPreset();
+
+    render(<ConfigPanel preset={preset} onPresetChange={vi.fn()} onLayerVisibilityChange={onLayerVisibilityChange} />);
+    await user.click(screen.getByLabelText('toggle-head'));
+
+    expect(onLayerVisibilityChange).toHaveBeenCalledWith(expect.objectContaining({ head: false }));
+    expect((screen.getByLabelText('Preview JSON') as HTMLTextAreaElement).value).toContain('"headLayers"');
   });
 });

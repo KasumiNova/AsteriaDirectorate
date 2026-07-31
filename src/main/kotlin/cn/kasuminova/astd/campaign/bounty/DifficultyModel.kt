@@ -1,14 +1,17 @@
 package cn.kasuminova.astd.campaign.bounty
 
-import com.fs.starfarer.api.Global
-import kotlin.math.max
+import cn.kasuminova.astd.api.difficulty.StrengthSnapshot
+import cn.kasuminova.astd.logger
 import kotlin.math.min
 
 /**
- * 难度/缩放模型：
- * - 难度系数（舰队规模）最大 300%（x3）
- * - 玩家舰队“超模系数”最大 500%（x5）
+ * 难度/缩放模型（轨二：进程动态系数）：
+ * - 难度系数（赏金 tier 规模）最大 300%（x3），来自赏金定义，不参与进程评估
+ * - 玩家进程系数 p：由 [FleetStrengthAssessment] 评估（sqrt 压缩，封顶 [0.85, 2.2]）
  * - 总上限 1500%（x15）
+ *
+ * 词缀强度输入 k_p 取自评估快照的归一化 k（p 在 [0.85, 2.2] 区间线性归一化），
+ * 与舰队规模倍率同源，保证"规模与词缀强度一致反映进程"。
  */
 object DifficultyModel {
 
@@ -17,7 +20,7 @@ object DifficultyModel {
         val playerMult: Float,
         val totalMult: Float,
         /**
-         * 归一化难度 k：0..1，用于词缀强度与小幅数值增益。
+         * 进程归一化 k_p：0..1，仅用于词缀强度选量（生成表专用，机制数值禁止从此取）。
          */
         val k: Float,
     )
@@ -36,27 +39,25 @@ object DifficultyModel {
     }
 
     /**
-     * 玩家舰队系数（<= 5.0）。
-     *
-     * 先采用可解释、可调的“FP 比值”启发式：
-     * - playerFP / baselineFP
-     * 后续可把“军官等级、S-mod、舰船质量”纳入评估。
+     * 评估玩家进程战力：以 tier 缩放后的基准 FP 为参照，输出 sqrt 压缩后的 p 与归一化 k_p。
      */
-    fun playerMultFromFleetAndBaseline(baselineFP: Int): Float {
-        val sector = Global.getSector() ?: return 1f
-        val playerFleet = sector.playerFleet ?: return 1f
-        val playerFP = max(1, playerFleet.fleetPoints)
-        val base = max(1, baselineFP)
-        val raw = playerFP.toFloat() / base.toFloat()
-        return raw.coerceIn(1f, 5f)
+    fun assessPlayerStrength(baselineFP: Int): StrengthSnapshot {
+        return FleetStrengthAssessmentImpl.assess(baselineFP.toFloat())
     }
 
     fun compute(threatTier: Int, baselineFP: Int): Scale {
         val difficulty = difficultyMultFromTier(threatTier)
-        val player = playerMultFromFleetAndBaseline((baselineFP * difficulty).toInt())
+        val reference = (baselineFP * difficulty).toInt()
+        val snapshot = assessPlayerStrength(reference)
+        val player = snapshot.p
         val total = min(15f, difficulty * player)
-        // k 用 total 的线性归一化：1 -> 0, 15 -> 1
-        val k = ((total - 1f) / 14f).coerceIn(0f, 1f)
-        return Scale(difficulty, player, total, k)
+
+        logger.info(
+            "[ASTD] 赏金进程评估：tier=$threatTier, ref=$reference, " +
+                snapshot.breakdown.joinToString(", ") { "${it.label}=${"%.2f".format(it.value)}" } +
+                " => p=${"%.3f".format(player)}, k_p=${"%.3f".format(snapshot.k)}, totalMult=${"%.2f".format(total)}",
+        )
+
+        return Scale(difficulty, player, total, snapshot.k)
     }
 }

@@ -1,0 +1,45 @@
+{
+	# ASTD 专用船体风格：与 vanilla HIGH_TECH 完全一致，
+	# 仅把空武器槽的盖板（slotCover*）替换为透明图，
+	# 使没有装备武器的槽位在战斗中不再渲染原版高科插座
+	# （舰船贴图自带槽位美术）。
+	# Starsector 会把各 mod 的 hull_styles.json 合并进同一张表，
+	# 这里新增一个 key，不会污染 vanilla HIGH_TECH。
+	"ASTD_HIGH_TECH":{
+		"hyperspaceJitterColor":[100,165,255,200],
+		"baseCampaignExplosionColor":[100,165,255,255],
+		"baseCombatExplosionColor":[100,165,255,255],
+		"combatExplosionNonFlashColorOverride":[100,165,255,255],
+		"fighterRepairFlickerColor":[100,165,255,255],
+		"fighterChipIconColor":[100,165,255,255],
+		"weaponDisabledExplosionColor":[100,165,255,255],
+		"shieldRingColor":[255,255,255,255],
+		"shieldInnerColor":[125,125,255,75],
+		"fluxVentCoreColor":[255,255,255,255],
+		"fluxVentFringeColor":[125,0,155,255],
+		"engineLoopSet":"engine_loop",
+		"engineAccelerateSet":"engine_accelerate",
+		"empLoopSet":"emp_loop",
+		"fluxLoopSet":"flux_loop",
+		"ventFluxSet":"vent_flux",
+		"shieldBurnoutSet":"shield_burnout",
+		"shieldLowerSet":"shield_lower",
+		"shieldRaiseSet":"shield_raise",
+		"explosionShipSet":"explosion_ship",
+		"damageDecalSheet":"graphics/damage/damage_decal_sheet_base.png",
+		"damageDecalGlowSheet":"graphics/damage/damage_decal_sheet_glow.png",
+
+		"coversColorShiftAmount":1,
+		"coversMatchShipBrightness":true,
+		"slotCoverSmallTurret":"graphics/astd/misc/astd_cover_blank.png",
+		"slotCoverSmallHardpoint":"graphics/astd/misc/astd_cover_blank.png",
+		"slotCoverMediumTurret":"graphics/astd/misc/astd_cover_blank.png",
+		"slotCoverMediumHardpoint":"graphics/astd/misc/astd_cover_blank.png",
+		"slotCoverLargeTurret":"graphics/astd/misc/astd_cover_blank.png",
+		"slotCoverLargeHardpoint":"graphics/astd/misc/astd_cover_blank.png",
+
+		"dHullOverlayLight":"graphics/damage/dmod_overlay_hightech_light.png",
+		"dHullOverlayMedium":"graphics/damage/dmod_overlay_hightech_medium.png",
+		"dHullOverlayHeavy":"graphics/damage/dmod_overlay_hightech_heavy.png",
+	},
+}

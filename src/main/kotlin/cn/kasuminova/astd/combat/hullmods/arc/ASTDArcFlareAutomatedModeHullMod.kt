@@ -1,5 +1,9 @@
 package cn.kasuminova.astd.combat.hullmods.arc
 
+import cn.kasuminova.astd.combat.hullmods.base.ASTDHullModTooltipRenderer
+import cn.kasuminova.astd.combat.hullmods.base.activateDualMode
+import cn.kasuminova.astd.combat.hullmods.base.isASTDShip
+import cn.kasuminova.astd.combat.hullmods.base.isASTDShipVariant
 import cn.kasuminova.astd.renderer.effect.system.ArcFlareOverdriveVisualState
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseHullMod
@@ -36,7 +40,7 @@ class ASTDArcFlareAutomatedModeHullMod : BaseHullMod() {
         private const val ARC_RANGE = 430f
         private const val ARC_INTERVAL = 0.28f
 
-        private val THEME = ASTDArcFlareHullModTooltip.Theme(
+        private val THEME = ASTDHullModTooltipRenderer.Theme(
             nameColor = Color(255, 170, 136),
             borderColor = Color(255, 96, 74),
             headerBackground = Color(84, 22, 22, 185),
@@ -50,14 +54,14 @@ class ASTDArcFlareAutomatedModeHullMod : BaseHullMod() {
         if (!variant.isASTDShipVariant()) return
 
         // 切换器被玩家移除 → 立即切换到载人模式并恢复切换器（常驻）
-        if (!variant.hasHullMod(ASTDArcFlareHullModIds.SWITCHER)) {
-            variant.activateMode(ASTDArcFlareHullModIds.MODE_CREWED, stats)
-            variant.addMod(ASTDArcFlareHullModIds.SWITCHER)
+        if (!variant.hasHullMod(ARC_FLARE_DUAL_MODE_CONFIG.switcherId)) {
+            variant.activateDualMode(ARC_FLARE_DUAL_MODE_CONFIG, ARC_FLARE_DUAL_MODE_CONFIG.crewedModeId, stats)
+            variant.addMod(ARC_FLARE_DUAL_MODE_CONFIG.switcherId)
             return
         }
 
         // 无人模式：使用无人版系统
-        variant.hullSpec?.setShipSystemId("astd_arc_flare_overdrive_automated")
+        variant.hullSpec?.setShipSystemId(ARC_FLARE_DUAL_MODE_CONFIG.automatedSystemId)
 
         stats.maxSpeed.modifyFlat(id, MAX_SPEED_BONUS)
         stats.acceleration.modifyMult(id, ACCEL_MULT)
@@ -118,22 +122,22 @@ class ASTDArcFlareAutomatedModeHullMod : BaseHullMod() {
     override fun isApplicableToShip(ship: ShipAPI): Boolean = ship.isASTDShip()
 
     override fun addPostDescriptionSection(tooltip: TooltipMakerAPI, hullSize: ShipAPI.HullSize, ship: ShipAPI?, width: Float, isForModSpec: Boolean) {
-        ASTDArcFlareHullModTooltip.render(
+        ASTDHullModTooltipRenderer.renderBlocks(
             tooltip = tooltip,
             width = width,
             title = spec?.displayName ?: "",
             theme = THEME,
-            summaryKey = "ui.hullmod.automated.summary",
-            sections = listOf(
-                ASTDArcFlareHullModTooltip.section(
-                    "ui.hullmod.section.mode",
-                    "ui.hullmod.automated.line.1",
-                    "ui.hullmod.automated.line.2",
-                ),
-                ASTDArcFlareHullModTooltip.section(
-                    "ui.hullmod.section.system",
-                    "ui.hullmod.automated.line.3",
-                    "ui.hullmod.automated.line.4",
+            blocks = listOf(
+                ASTDHullModTooltipRenderer.paragraph("ui.hullmod.automated.summary"),
+                ASTDHullModTooltipRenderer.heading("ui.hullmod.export.section.mode"),
+                ASTDHullModTooltipRenderer.table(
+                    rows = arrayOf(
+                        ASTDHullModTooltipRenderer.row("ui.hullmod.automated.attr.dp", "ui.hullmod.automated.value.dp"),
+                        ASTDHullModTooltipRenderer.row("ui.hullmod.automated.attr.hull_armor", "ui.hullmod.automated.value.hull_armor"),
+                        ASTDHullModTooltipRenderer.row("ui.hullmod.automated.attr.flux", "ui.hullmod.automated.value.flux"),
+                        ASTDHullModTooltipRenderer.row("ui.hullmod.automated.attr.speed", "ui.hullmod.automated.value.speed"),
+                        ASTDHullModTooltipRenderer.row("ui.hullmod.automated.attr.cooldown", "ui.hullmod.automated.value.cooldown"),
+                    ),
                 ),
             ),
         )

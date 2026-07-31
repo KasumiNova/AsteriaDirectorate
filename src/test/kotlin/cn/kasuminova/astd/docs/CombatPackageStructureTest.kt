@@ -36,7 +36,6 @@ class CombatPackageStructureTest {
             "package cn.kasuminova.astd.combat.effect.base",
             "package cn.kasuminova.astd.combat.effect.generic",
             "package cn.kasuminova.astd.combat.effect.arc",
-            "package cn.kasuminova.astd.combat.effect.lens",
             "package cn.kasuminova.astd.combat.effect.psi",
             "package cn.kasuminova.astd.combat.shipsystems",
             "package cn.kasuminova.astd.combat.skills",

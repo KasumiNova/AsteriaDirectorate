@@ -1,15 +1,37 @@
-import type { BlendMode, Rgba, RibbonWaveType, TrailDecorationRenderMode } from './preset';
+import type {
+  BlendMode,
+  ProjectileVfxAnchorMode,
+  ProjectileVfxGlowLayerConfig,
+  ProjectileVfxHeadLayerConfig,
+  ProjectileVfxMistLayerConfig,
+  ProjectileVfxOrientationMode,
+  ProjectileVfxSideWispLayerConfig,
+  Rgba,
+  RibbonWaveType,
+  TrailDecorationRenderMode,
+} from './preset';
 
 export interface GameProjectileVfxPreset {
+  id: string;
   name: string;
   trailEntities: GameTrailEntityConfig[];
+  headLayers: ProjectileVfxHeadLayerConfig[];
+  glowLayers: ProjectileVfxGlowLayerConfig[];
+  mistLayers: ProjectileVfxMistLayerConfig[];
+  sideWispLayers: ProjectileVfxSideWispLayerConfig[];
+  ribbonDecorations: GameTrailRibbonDecorationConfig[];
   hooks: GameProjectileVfxHookConfig[];
   lifecycle: GameProjectileVfxLifecycleConfig;
-  samplePolicy: GameProjectileSamplePolicy;
+  samplingPolicy: GameProjectileSamplePolicy;
 }
 
 export interface GameTrailEntityConfig {
   id: string;
+  length: number;
+  diffuseSpritePath: string;
+  emissiveSpritePath: string;
+  orientationMode: ProjectileVfxOrientationMode;
+  anchorMode: ProjectileVfxAnchorMode;
   startColor: Rgba;
   endColor: Rgba;
   startEmissive: Rgba;
@@ -45,8 +67,8 @@ export interface GameTrailRibbonDecorationConfig {
   alphaScale: number;
   lengthScale: number;
   nodeCountScale: number;
-  waveAmplitude: number;
-  waveFrequency: number;
+  amplitude: number;
+  frequency: number;
   waveSpeed: number;
   waveType: RibbonWaveType;
   noiseScale: number;
@@ -59,10 +81,10 @@ export interface GameTrailRibbonDecorationConfig {
 
 export interface GameTrailDecorationColorGradient {
   enabled: boolean;
-  stops: GameTrailDecorationGradientStop[];
+  stops: GameTrailDecorationColorStop[];
 }
 
-export interface GameTrailDecorationGradientStop {
+export interface GameTrailDecorationColorStop {
   offset: number;
   color: Rgba;
 }
@@ -73,12 +95,23 @@ export interface GameProjectileVfxHookConfig {
 }
 
 export interface GameProjectileVfxLifecycleConfig {
+  durationSeconds: number;
   fadeInSeconds: number;
   fadeOutSeconds: number;
+  flightEndRatio: number;
+  dissolveStartRatio: number;
+  preDissolveFraction: number;
+  projectileHeadSizeScale: number;
+  historySampleMultiplier: number;
+  historySmoothingPasses: number;
+  ribbonWaveSoftening: number;
+  layoutReferenceWidth: number;
 }
 
 export interface GameProjectileSamplePolicy {
-  mode: 'projectile-history';
-  maxSamples: number;
-  minSampleDistance: number;
+  historyFps: number;
+  maxHistoryNodes: number;
+  minDistancePerNode: number;
+  smoothingPasses: number;
+  distanceWindow: number;
 }

@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState, type PointerEvent, type WheelEvent } from 'react';
 import { BoxUtilPreviewPreset } from '../model/preset';
-import { createPreviewOverlayRenderer, PreviewOverlayRenderer } from '../render/previewOverlayRenderer';
+import {
+  createPreviewOverlayRenderer,
+  PreviewOverlayLayerVisibility,
+  PreviewOverlayRenderer,
+  PreviewTrajectoryMode,
+} from '../render/previewOverlayRenderer';
 import { WebGLTrailRenderer, createWebGLTrailRenderer } from '../render/webglTrailRenderer';
 
 interface PanOffset {
@@ -20,9 +25,11 @@ export interface PreviewCanvasProps {
   preset: BoxUtilPreviewPreset;
   timeSeconds: number;
   onCanvasReady?: (canvas: HTMLCanvasElement | null) => void;
+  layerVisibility?: Partial<PreviewOverlayLayerVisibility>;
+  trajectoryMode?: PreviewTrajectoryMode;
 }
 
-export function PreviewCanvas({ preset, timeSeconds, onCanvasReady }: PreviewCanvasProps) {
+export function PreviewCanvas({ preset, timeSeconds, onCanvasReady, layerVisibility, trajectoryMode = 'straight' }: PreviewCanvasProps) {
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const trailCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const overlayCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -75,8 +82,8 @@ export function PreviewCanvas({ preset, timeSeconds, onCanvasReady }: PreviewCan
     }
     renderer.clear(width, height);
 
-    overlayRenderer?.render(preset, timeSeconds);
-  }, [preset, timeSeconds]);
+    overlayRenderer?.render(preset, timeSeconds, layerVisibility, trajectoryMode);
+  }, [preset, timeSeconds, layerVisibility, trajectoryMode]);
 
   const handleWheel = (event: WheelEvent<HTMLDivElement>) => {
     if (isInteractiveTarget(event.target)) {

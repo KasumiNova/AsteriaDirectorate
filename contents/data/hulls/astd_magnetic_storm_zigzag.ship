@@ -40,13 +40,17 @@
     "hullId": "astd_magnetic_storm_zigzag",
     "hullName": "磁暴折线",
     "hullSize": "DESTROYER",
+    "builtInMods": [
+        "astd_nano_restoration_protocol",
+        "astd_inertialess_maneuver"
+    ],
     "shieldCenter": [
         0,
         0
     ],
     "shieldRadius": 156,
     "spriteName": "graphics/ships/astd_magnetic_storm_zigzag.png",
-    "style": "HIGH_TECH",
+    "style": "ASTD_HIGH_TECH",
     "viewOffset": 0,
     "weaponSlots": [
         {

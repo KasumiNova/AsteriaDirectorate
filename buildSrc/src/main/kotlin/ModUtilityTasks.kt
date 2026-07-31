@@ -52,7 +52,7 @@ class ModUtilityTasks(
             val modsDir = project.providers.gradleProperty("starsector.modsDir").orNull
             if (modsDir != null) {
                 from(modProductionDir)
-                into(project.file(modsDir).resolve(metadata.modId.get()))
+                into(project.file(modsDir).resolve(metadata.deployDirName.get()))
             }
 
             doFirst {

@@ -1,90 +1,532 @@
 {
-    "bounds": [
-        218,
-        0,
-        109,
-        122,
-        0,
-        122,
-        -109,
-        122,
-        -218,
-        0,
-        -109,
-        -122,
-        0,
-        -122,
-        109,
-        -122
-    ],
-    "center": [
-        224,
-        128
-    ],
-    "collisionRadius": 201,
-    "coversColor": "",
-    "engineSlots": [
-        {
-            "angle": 180,
-            "contrailSize": 64,
-            "length": 30,
-            "location": [
-                -156,
-                0
-            ],
-            "style": "HIGH_TECH",
-            "width": 20
-        }
-    ],
-    "height": 256,
-    "hullId": "astd_arc_jet",
-    "hullName": "弧光喷流",
-    "hullSize": "CAPITAL_SHIP",
-    "shieldCenter": [
-        0,
-        0
-    ],
-    "shieldRadius": 312,
-    "spriteName": "graphics/ships/astd_arc_jet.png",
-    "style": "HIGH_TECH",
-    "viewOffset": 0,
-    "weaponSlots": [
-        {
-            "angle": 0,
-            "arc": 10,
-            "id": "WS 001",
-            "locations": [
-                -135,
-                0
-            ],
-            "mount": "HARDPOINT",
-            "size": "LARGE",
-            "type": "UNIVERSAL"
-        },
-        {
-            "angle": 0,
-            "arc": 120,
-            "id": "WS 002",
-            "locations": [
-                -202,
-                -64
-            ],
-            "mount": "TURRET",
-            "size": "SMALL",
-            "type": "UNIVERSAL"
-        },
-        {
-            "angle": 0,
-            "arc": 120,
-            "id": "WS 003",
-            "locations": [
-                -202,
-                64
-            ],
-            "mount": "TURRET",
-            "size": "SMALL",
-            "type": "UNIVERSAL"
-        }
-    ],
-    "width": 448
+  "hullName": "弧光喷流",
+  "hullId": "astd_arc_jet",
+  "hullSize": "CAPITAL_SHIP",
+  "spriteName": "graphics/ships/astd_arc_jet.png",
+  "style": "ASTD_HIGH_TECH",
+  "height": 248,
+  "width": 510,
+  "center": [255, 124.5],
+  "collisionRadius": 270,
+  "shieldCenter": [0, -0],
+  "shieldRadius": 285.5,
+  "viewOffset": 0,
+  "builtInWeapons": {
+    "WS0017": "astd_arc_jet_bloom"
+  },
+  "builtInMods": [
+    "advancedcore",
+    "armoredweapons",
+    "astd_arc_advanced_fire_control",
+    "astd_arc_shared_tactical_network"
+  ],
+  "weaponSlots": [
+    {
+      "id": "WS0001",
+      "size": "LARGE",
+      "type": "HYBRID",
+      "mount": "TURRET",
+      "arc": 120,
+      "angle": 0,
+      "locations": [52.5, 106]
+    },
+    {
+      "id": "WS0002",
+      "size": "LARGE",
+      "type": "HYBRID",
+      "mount": "TURRET",
+      "arc": 120,
+      "angle": 0,
+      "locations": [52.5, -106]
+    },
+    {
+      "id": "WS0003",
+      "size": "LARGE",
+      "type": "ENERGY",
+      "mount": "TURRET",
+      "arc": 180,
+      "angle": 45,
+      "locations": [7, 81]
+    },
+    {
+      "id": "WS0004",
+      "size": "LARGE",
+      "type": "ENERGY",
+      "mount": "TURRET",
+      "arc": 180,
+      "angle": -45,
+      "locations": [7, -81]
+    },
+    {
+      "id": "WS0005",
+      "size": "SMALL",
+      "type": "ENERGY",
+      "mount": "TURRET",
+      "arc": 180,
+      "angle": 45,
+      "locations": [46.5, 56]
+    },
+    {
+      "id": "WS0006",
+      "size": "SMALL",
+      "type": "ENERGY",
+      "mount": "TURRET",
+      "arc": 180,
+      "angle": -45,
+      "locations": [46.5, -56]
+    },
+    {
+      "id": "WS0007",
+      "size": "SMALL",
+      "type": "ENERGY",
+      "mount": "TURRET",
+      "arc": 180,
+      "angle": 45,
+      "locations": [76.5, 83.5]
+    },
+    {
+      "id": "WS0008",
+      "size": "SMALL",
+      "type": "ENERGY",
+      "mount": "TURRET",
+      "arc": 180,
+      "angle": -45,
+      "locations": [76.5, -83.5]
+    },
+    {
+      "id": "WS0009",
+      "size": "MEDIUM",
+      "type": "HYBRID",
+      "mount": "TURRET",
+      "arc": 120,
+      "angle": 0,
+      "locations": [53, 153]
+    },
+    {
+      "id": "WS0010",
+      "size": "MEDIUM",
+      "type": "HYBRID",
+      "mount": "TURRET",
+      "arc": 120,
+      "angle": -0,
+      "locations": [53, -153]
+    },
+    {
+      "id": "WS0011",
+      "size": "SMALL",
+      "type": "ENERGY",
+      "mount": "TURRET",
+      "arc": 180,
+      "angle": 25,
+      "locations": [37, 188]
+    },
+    {
+      "id": "WS0012",
+      "size": "SMALL",
+      "type": "ENERGY",
+      "mount": "TURRET",
+      "arc": 180,
+      "angle": -25,
+      "locations": [37, -188]
+    },
+    {
+      "id": "WS0013",
+      "size": "SMALL",
+      "type": "ENERGY",
+      "mount": "TURRET",
+      "arc": 180,
+      "angle": 40,
+      "locations": [-7.5, 175]
+    },
+    {
+      "id": "WS0014",
+      "size": "SMALL",
+      "type": "ENERGY",
+      "mount": "TURRET",
+      "arc": 180,
+      "angle": -40,
+      "locations": [-7.5, -175]
+    },
+    {
+      "id": "WS0015",
+      "size": "MEDIUM",
+      "type": "HYBRID",
+      "mount": "TURRET",
+      "arc": 120,
+      "angle": 0,
+      "locations": [-7.5, 122]
+    },
+    {
+      "id": "WS0016",
+      "size": "MEDIUM",
+      "type": "HYBRID",
+      "mount": "TURRET",
+      "arc": 120,
+      "angle": -0,
+      "locations": [-7.5, -122]
+    },
+    {
+      "id": "WS0017",
+      "size": "LARGE",
+      "type": "DECORATIVE",
+      "mount": "TURRET",
+      "arc": 0,
+      "angle": 0,
+      "locations": [2.5, -0],
+      "renderOrderMod": 3
+    },
+    {
+      "id": "WS0018",
+      "size": "LARGE",
+      "type": "BUILT_IN",
+      "mount": "HARDPOINT",
+      "arc": 0,
+      "angle": 0,
+      "locations": [68.5, -0]
+    }
+  ],
+  "engineSlots": [
+    {
+      "location": [-87.5, 23.5],
+      "length": 45,
+      "width": 10,
+      "angle": 180,
+      "contrailSize": 30,
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-87.5, 19.5],
+      "length": 25,
+      "width": 6,
+      "angle": 180,
+      "contrailSize": 16,
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-87.5, 27.5],
+      "length": 25,
+      "width": 6,
+      "angle": 180,
+      "contrailSize": 16,
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-87.5, -23.5],
+      "length": 45,
+      "width": 10,
+      "angle": -180,
+      "contrailSize": 30,
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-87.5, -27.5],
+      "length": 25,
+      "width": 6,
+      "angle": -180,
+      "contrailSize": 16,
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-87.5, -19.5],
+      "length": 25,
+      "width": 6,
+      "angle": -180,
+      "contrailSize": 16,
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-75.5, 46],
+      "length": 75,
+      "width": 10,
+      "angle": 180,
+      "contrailSize": 30,
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-75.5, 42],
+      "length": 41,
+      "width": 6,
+      "angle": 180,
+      "contrailSize": 16,
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-75.5, 50],
+      "length": 41,
+      "width": 6,
+      "angle": 180,
+      "contrailSize": 16,
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-75.5, -46],
+      "length": 75,
+      "width": 10,
+      "angle": -180,
+      "contrailSize": 30,
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-75.5, -50],
+      "length": 41,
+      "width": 6,
+      "angle": -180,
+      "contrailSize": 16,
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-75.5, -42],
+      "length": 41,
+      "width": 6,
+      "angle": -180,
+      "contrailSize": 16,
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-69.5, 64],
+      "length": 45,
+      "width": 10,
+      "angle": 140,
+      "contrailSize": 30,
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-72.1, 60.9],
+      "length": 25,
+      "width": 6,
+      "angle": 140,
+      "contrailSize": 16,
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-66.9, 67.1],
+      "length": 25,
+      "width": 6,
+      "angle": 140,
+      "contrailSize": 16,
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-69.5, -64],
+      "length": 45,
+      "width": 10,
+      "angle": -140,
+      "contrailSize": 30,
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-66.9, -67.1],
+      "length": 25,
+      "width": 6,
+      "angle": -140,
+      "contrailSize": 16,
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-72.1, -60.9],
+      "length": 25,
+      "width": 6,
+      "angle": -140,
+      "contrailSize": 16,
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-56.5, 103],
+      "length": 75,
+      "width": 10,
+      "angle": 145,
+      "contrailSize": 60,
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-58.8, 99.7],
+      "length": 41,
+      "width": 6,
+      "angle": 145,
+      "contrailSize": 33,
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-54.2, 106.3],
+      "length": 41,
+      "width": 6,
+      "angle": 145,
+      "contrailSize": 33,
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-56.5, -103],
+      "length": 75,
+      "width": 10,
+      "angle": -145,
+      "contrailSize": 30,
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-54.2, -106.3],
+      "length": 41,
+      "width": 6,
+      "angle": -145,
+      "contrailSize": 16,
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-58.8, -99.7],
+      "length": 41,
+      "width": 6,
+      "angle": -145,
+      "contrailSize": 16,
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-44.5, 178.5],
+      "length": 60,
+      "width": 10,
+      "angle": 130,
+      "contrailSize": 60,
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-47.6, 175.9],
+      "length": 33,
+      "width": 6,
+      "angle": 130,
+      "contrailSize": 33,
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-41.4, 181.1],
+      "length": 33,
+      "width": 6,
+      "angle": 130,
+      "contrailSize": 33,
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-44.5, -178.5],
+      "length": 60,
+      "width": 10,
+      "angle": -130,
+      "contrailSize": 30,
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-41.4, -181.1],
+      "length": 33,
+      "width": 6,
+      "angle": -130,
+      "contrailSize": 16,
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-47.6, -175.9],
+      "length": 33,
+      "width": 6,
+      "angle": -130,
+      "contrailSize": 16,
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-4, 202.5],
+      "length": 45,
+      "width": 10,
+      "angle": 130,
+      "contrailSize": 30,
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-7.1, 199.9],
+      "length": 25,
+      "width": 6,
+      "angle": 130,
+      "contrailSize": 16,
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-0.9, 205.1],
+      "length": 25,
+      "width": 6,
+      "angle": 130,
+      "contrailSize": 16,
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-4, -202.5],
+      "length": 45,
+      "width": 10,
+      "angle": -130,
+      "contrailSize": 30,
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-0.9, -205.1],
+      "length": 25,
+      "width": 6,
+      "angle": -130,
+      "contrailSize": 16,
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-7.1, -199.9],
+      "length": 25,
+      "width": 6,
+      "angle": -130,
+      "contrailSize": 16,
+      "style": "ASTD_ARC"
+    }
+  ],
+  "bounds": [
+    -118.5, -8,
+    -111.5, -13.5,
+    -94, -19,
+    -67.5, -69,
+    -78, -81,
+    -78, -96.5,
+    -62.5, -89.5,
+    -50, -114,
+    -98, -162,
+    -76.5, -165.5,
+    -50.5, -148,
+    -50.5, -175.5,
+    -41, -184,
+    -71.5, -225.5,
+    -71.5, -250.5,
+    -61.5, -255,
+    -14.5, -203.5,
+    3.5, -205.5,
+    26, -192.5,
+    13.5, -226,
+    25, -234.5,
+    49.5, -193.5,
+    67, -201.5,
+    73, -153,
+    120.5, -40,
+    98, -18.5,
+    98, 18.5,
+    120.5, 40,
+    73, 153,
+    67, 201.5,
+    49.5, 193.5,
+    25, 234.5,
+    13.5, 226,
+    26, 192.5,
+    3.5, 205.5,
+    -14.5, 203.5,
+    -61.5, 255,
+    -71.5, 250.5,
+    -71.5, 225.5,
+    -41, 184,
+    -50.5, 175.5,
+    -50.5, 148,
+    -76.5, 165.5,
+    -98, 162,
+    -50, 114,
+    -62.5, 89.5,
+    -78, 96.5,
+    -78, 81,
+    -67.5, 69,
+    -94, 19,
+    -111.5, 13.5,
+    -118.5, 8
+  ]
 }

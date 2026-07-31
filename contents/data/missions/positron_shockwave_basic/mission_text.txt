@@ -1,0 +1,1 @@
+Dev automation scenario for validating positron shockwave pass-through (collisionClass NONE), max-range self-detonation, cone splash on ships, proximity fuse missile clearing and cone impact VFX telemetry.

@@ -1,0 +1,1 @@
+Dev automation scenario for validating phase-1 gravitational lens foundation evidence: dual-mode deployment, built-in hullmods, OMNI shield, fighter bays, core tooltip keys, and the lens self-mark applier closing the loop.

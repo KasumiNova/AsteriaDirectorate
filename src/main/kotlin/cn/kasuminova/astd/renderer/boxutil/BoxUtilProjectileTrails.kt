@@ -9,12 +9,9 @@ import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEngineLayers
 import com.fs.starfarer.api.combat.DamagingProjectileAPI
 import org.boxutil.units.standard.entity.TrailEntity
-import org.lazywizard.lazylib.MathUtils
 import org.lazywizard.lazylib.VectorUtils
 import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
-import kotlin.math.max
-import kotlin.math.min
 import kotlin.math.sqrt
 
 /**
@@ -24,13 +21,10 @@ import kotlin.math.sqrt
  */
 internal object BoxUtilProjectileTrails {
 
-    private const val ENGINE_LOG_BOXUTIL_FALLBACK_ONCE = "astd_vfx_boxutil_fallback_once"
     private val log = Global.getLogger(BoxUtilProjectileTrails::class.java)
 
     /**
-     * “飞行阶段粒子散发”：纯代码渲染（engine.addSmoothParticle）。
-     *
-     * 设计目标：作为 afterTrail 的替代补偿效果，稳定、不依赖 TrailEntity 节点。
+    * 飞行阶段附加喷散参数。当前 BoxUtil 路径保持唯一渲染路径，粒子喷散默认关闭。
      */
     data class ParticleSprayStyle(
         val enabled: Boolean = false,
@@ -383,8 +377,7 @@ internal object BoxUtilProjectileTrails {
                 }
             }
 
-            // 粒子散发：默认仅飞行阶段生成；弹体进入 isFading（超射程淡出）后停止生成，
-            // 除非显式开启 emitWhileFading。
+            // 粒子散发：当前 BoxUtil 路径保持唯一渲染路径。
             if (amount > 0f && style.particles.enabled) {
                 val ps = style.particles
                 if (projectile.isFading && !ps.emitWhileFading) {
@@ -396,86 +389,7 @@ internal object BoxUtilProjectileTrails {
             }
         }
 
-        private fun emitParticles(projectile: DamagingProjectileAPI, facing: Float, amount: Float) {
-            val ps = style.particles
-            if (!ps.enabled) return
-
-            val rate = ps.particlesPerSecond.coerceAtLeast(0f)
-            if (rate <= 0f) return
-
-            particleAcc += rate * amount
-            val toSpawn = particleAcc.toInt()
-            if (toSpawn <= 0) return
-            particleAcc -= toSpawn
-
-            val behind = if (ps.behindDistance > 0f) ps.behindDistance else (style.joinWidth * 0.5f)
-            val behindPoint = MathUtils.getPointOnCircumference(projectile.location, behind, facing + 180f)
-
-            // 给粒子一个“可控的”基础速度继承，避免看起来完全静止。
-            // 这里千万别继承太高：弹体速度远大于我们希望的尾焰粒子速度。
-            val inherit = ps.inheritVelocityMul.coerceAtLeast(0f)
-            val baseVel = if (inherit <= 0f) {
-                Vector2f(0f, 0f)
-            } else {
-                (projectile.velocity?.let { Vector2f(it) } ?: Vector2f(0f, 0f)).apply { scale(inherit) }
-            }
-
-            val baseFacing = facing + 180f
-            for (i in 0 until toSpawn) {
-                val ang = baseFacing + MathUtils.getRandomNumberInRange(-ps.spreadArc, ps.spreadArc)
-                val spd = MathUtils.getRandomNumberInRange(ps.speedMin, ps.speedMax)
-                val vel = MathUtils.getPointOnCircumference(baseVel, spd, ang)
-                val loc = MathUtils.getRandomPointInCircle(behindPoint, ps.spawnJitterRadius)
-
-                val (size, brightness, duration, color) = if (ps.debugForceVisible) {
-                    // 尽量“肉眼不可忽略”的参数：大、亮、不透明、寿命略长。
-                    val s = max(ps.sizeMax, 14f)
-                    val b = max(ps.brightnessMax, 2.4f)
-                    val d = max(ps.durationMax, 0.35f)
-                    Quad(s, b, d, Color(255, 80, 220, 255))
-                } else {
-                    Quad(
-                        MathUtils.getRandomNumberInRange(ps.sizeMin, ps.sizeMax),
-                        MathUtils.getRandomNumberInRange(ps.brightnessMin, ps.brightnessMax),
-                        MathUtils.getRandomNumberInRange(ps.durationMin, ps.durationMax),
-                        randomColorInRange(ps.colorMin, ps.colorMax),
-                    )
-                }
-
-                engine.addSmoothParticle(
-                    loc,
-                    vel,
-                    size,
-                    brightness,
-                    duration,
-                    color,
-                )
-            }
-        }
-
-        private data class Quad(
-            val size: Float,
-            val brightness: Float,
-            val duration: Float,
-            val color: Color,
-        )
-
-        private fun randomColorInRange(minC: Color, maxC: Color): Color {
-            val r0 = min(minC.red, maxC.red)
-            val r1 = max(minC.red, maxC.red)
-            val g0 = min(minC.green, maxC.green)
-            val g1 = max(minC.green, maxC.green)
-            val b0 = min(minC.blue, maxC.blue)
-            val b1 = max(minC.blue, maxC.blue)
-            val a0 = min(minC.alpha, maxC.alpha)
-            val a1 = max(minC.alpha, maxC.alpha)
-            return Color(
-                MathUtils.getRandomNumberInRange(r0, r1),
-                MathUtils.getRandomNumberInRange(g0, g1),
-                MathUtils.getRandomNumberInRange(b0, b1),
-                MathUtils.getRandomNumberInRange(a0, a1),
-            )
-        }
+        private fun emitParticles(projectile: DamagingProjectileAPI, facing: Float, amount: Float) = Unit
 
         override fun beginFadeOut(reason: ProjectileTracerManager.FadeReason, fadeOutSeconds: Float) {
             // tracer/headCone：跟随管理器给的 fadeOutSeconds（以贴合弹体原生淡化/移除节奏）。
@@ -585,41 +499,9 @@ internal object BoxUtilProjectileTrails {
                     }
                 }
 
-                // 关键兜底：如果 BoxUtil 实体无法创建（或渲染管理器不可用），不要让弹体完全不可见。
-                // 降级为“纯粒子尾焰”，至少能看到弹体轨迹，便于继续排查。
                 if (style.tracerEnabled && tracer == null) {
-                    if (engine.customData[ENGINE_LOG_BOXUTIL_FALLBACK_ONCE] != true) {
-                        engine.customData[ENGINE_LOG_BOXUTIL_FALLBACK_ONCE] = true
-                        log.warn("[ASTD] BoxUtil trail creation failed; falling back to vanilla particle-only projectile VFX")
-                    }
-
-                    val ps0 = style.particles
-                    val fallbackParticles = ps0.copy(
-                        enabled = true,
-                        // 仅 devMode 下强制显眼；非 devMode 用较保守参数，避免过度喧宾夺主。
-                        debugForceVisible = ps0.debugForceVisible || isDevModeSafe(),
-                        particlesPerSecond = if (ps0.particlesPerSecond > 0f) max(ps0.particlesPerSecond, 42f) else 42f,
-                        inheritVelocityMul = ps0.inheritVelocityMul.coerceIn(0.02f, 0.18f),
-                        sizeMin = max(ps0.sizeMin, 4f),
-                        sizeMax = max(ps0.sizeMax, 7f),
-                        brightnessMin = max(ps0.brightnessMin, 0.9f),
-                        brightnessMax = max(ps0.brightnessMax, 1.6f),
-                        durationMin = max(ps0.durationMin, 0.12f),
-                        durationMax = max(ps0.durationMax, 0.22f),
-                    )
-
-                    val fallbackStyle = style.copy(
-                        tracerEnabled = false,
-                        coneEnabled = false,
-                        particles = fallbackParticles,
-                    )
-
-                    return BeamAndConeVisual(
-                        engine = engine,
-                        style = fallbackStyle,
-                        tracer = null,
-                        headCone = null,
-                    )
+                    log.warn("[ASTD] BoxUtil trail creation failed; projectile VFX entity was deleted")
+                    return null
                 }
 
                 val headCone = if (!style.coneEnabled) {
@@ -714,13 +596,6 @@ internal object BoxUtilProjectileTrails {
 
             private data class ColorMul(val red: Float, val green: Float, val blue: Float)
 
-            private fun isDevModeSafe(): Boolean {
-                return try {
-                    Global.getSettings().isDevMode
-                } catch (_: Throwable) {
-                    false
-                }
-            }
         }
     }
 }

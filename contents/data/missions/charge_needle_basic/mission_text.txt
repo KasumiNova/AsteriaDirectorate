@@ -1,0 +1,1 @@
+Dev automation scenario for validating charge needle shield stacking, EMP discharge and projectile VFX telemetry.

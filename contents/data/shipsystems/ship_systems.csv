@@ -2,8 +2,11 @@ name,id,flux/second,f/s (base rate),f/s (base cap),flux/use,f/u (base rate),f/u 
 耀斑超频,astd_arc_flare_overdrive,0,0,0,0,0,0,0,,,1,8,1,20,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,,graphics/icons/hullsys/ammo_feeder.png
 耀斑突袭,astd_arc_flare_overdrive_automated,0,0,0,0,0,0,0,,,1,8,1,20,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,,graphics/icons/hullsys/ammo_feeder.png
 耀斑超频,astd_arc_flare_overdrive_crewed,0,0,0,0,0,0,0,,,1,8,1,20,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,,graphics/icons/hullsys/ammo_feeder.png
+弧光共享辐能网络,astd_arc_shared_flux_network,0,0,0,0,0,0,0,,,0.5,10,0.5,20,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,,graphics/icons/hullsys/ammo_feeder.png
 坍缩折跃,astd_collapse_shift,0,0,0,0,0,0,0,2,6.666666666666667,0.25,0.3,0.1,1,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,,graphics/icons/hullsys/displacer.png
 无人机激化,astd_drone_surge,0,0,0,0,0,0,0,,,0.35,6,0.35,16,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,,graphics/icons/hullsys/drone_pd_high.png
+回声定影,astd_echo_fixation_automated,0,0,0,0,0,0,0,,,0.5,6,0.5,14,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,,graphics/icons/hullsys/damper_field.png
+回声定影,astd_echo_fixation_crewed,0,0,0,0,0,0,0,,,0.5,6,0.5,14,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,,graphics/icons/hullsys/damper_field.png
 电磁烟幕,astd_em_smoke,0,0,0,0,0,0,0,,,0.4,3,0.4,14,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,,graphics/icons/hullsys/phase_cloak.png
 紧急召回,astd_emergency_recall,0,0,0,0,0,0,0,,,0.5,0.75,0.5,18,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,,graphics/icons/hullsys/drone_pd_high.png
 电磁爆发,astd_emp_burst,0,0,0,0,0,0,0,2,14,0.1,0.3,0.1,10,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,,graphics/icons/hullsys/ammo_feeder.png
@@ -12,11 +15,10 @@ name,id,flux/second,f/s (base rate),f/s (base cap),flux/use,f/u (base rate),f/u 
 高能装填,astd_high_energy_loader,0,0,0,0,0,0,0,,,0.25,3,0.25,12,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,,graphics/icons/hullsys/ammo_feeder.png
 全息分身,astd_holographic_decoy,0,0,0,0,0,0,0,3,12,0.15,0.5,0.15,8,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,,graphics/icons/hullsys/phase_cloak.png
 干扰蜂群,astd_jamming_swarm,0,0,0,0,0,0,0,,,0.5,10,0.5,16,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,,graphics/icons/hullsys/drone_pd_high.png
+压限时流推进器,astd_limit_temporal_thruster,0,0,0,0,0,0,0,3,0.1,0.2,2,0.2,1.5,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,,graphics/icons/hullsys/maneuvering_jets.png
 逻辑崩塌,astd_logic_collapse,0,0,0,0,0,0,0,2,22,0.5,0.8,0.5,18,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,,graphics/icons/hullsys/phase_cloak.png
 微型燃烧推进,astd_micro_burn_drive,0,0,0,0,0,0,0,3,10,0.25,1.25,0.25,8,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,,graphics/icons/hullsys/burn_drive.png
-坍缩折跃,astd_overload_spike,0,0,0,0,0,0,0,2,6.666666666666667,0.25,0.3,0.1,1,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,,graphics/icons/hullsys/displacer.png
+装甲护盾增压,astd_plasma_armor_shield_boost,0,0,0.02,0,0,0,0,,,0.5,,0.5,0,TRUE,FALSE,FALSE,TRUE,TRUE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,defensive,graphics/icons/hullsys/fortress_shield.png
 信号过载,astd_signal_overload,0,0,0,0,0,0,0,1,30,0.2,0.6,0.2,20,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,,graphics/icons/hullsys/displacer.png
-时空停滞场,astd_stasis_field,0,0,0,0,0,0,0,,,0.5,6,0.5,14,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,,graphics/icons/hullsys/damper_field.png
 静电释放,astd_static_discharge,0,0,0,0,0,0,0,2,14,0.15,0.35,0.15,10,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,,graphics/icons/hullsys/damper_field.png
-恒星喷射,astd_stellar_jet,0,0,0,0,0,0,0,,,2,999,0.5,12,TRUE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,,graphics/icons/hullsys/burn_drive.png
 信标投放,astd_targeting_beacon,0,0,0,0,0,0,0,3,10,0.2,0.5,0.2,6,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,,graphics/icons/hullsys/phase_cloak.png

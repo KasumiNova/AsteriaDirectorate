@@ -80,49 +80,6 @@ object Sys_astd_collapse_shift : ShipSystemWithSystemFileEntry() {
     override val useSound: String = "system_phase_cloak_activate"
 }
 
-/** 旧 Negentropy Edge 系统 id 的兼容行，供旧船体/存档引用。 */
-object Sys_astd_overload_spike : ShipSystemWithSystemFileEntry() {
-    override val id: String = "astd_overload_spike"
-    override val name: String = systemName("astd_collapse_shift")
-
-    override val statsScript: String = "cn.kasuminova.astd.combat.shipsystems.OverloadSpikeSystemStats"
-
-    override val systemType: String = "STAT_MOD"
-    override val aiType: String = "CUSTOM"
-    override val aiScript: String = "cn.kasuminova.astd.combat.shipsystems.CollapseShiftSystemAI"
-
-    override val maxUses: Int = 2
-    override val regen: Double = 6.666666666666667
-
-    override val chargeUp: Double = 0.25
-    override val active: Double = 0.3
-    override val down: Double = 0.1
-    override val cooldown: Double = 1.0
-
-    override val icon: String = "graphics/icons/hullsys/displacer.png"
-    override val useSound: String = "system_phase_cloak_activate"
-}
-
-object Sys_astd_stellar_jet : ShipSystemWithSystemFileEntry() {
-    override val id: String = "astd_stellar_jet"
-    override val name: String = systemName(id)
-
-    override val statsScript: String = "cn.kasuminova.astd.combat.shipsystems.StellarJetSystemStats"
-
-    // 自定义系统 AI 生效前提：aiType 必须为 CUSTOM
-    override val aiType: String = "CUSTOM"
-    override val aiScript: String = "cn.kasuminova.astd.combat.shipsystems.StellarJetSystemAI"
-
-    override val chargeUp: Double = 2.0
-    override val active: Double = 999.0
-    override val down: Double = 0.5
-    override val cooldown: Double = 12.0
-
-    override val toggle: Boolean = true
-
-    override val icon: String = "graphics/icons/hullsys/burn_drive.png"
-}
-
 object Sys_astd_micro_burn_drive : ShipSystemWithSystemFileEntry() {
     override val id: String = "astd_micro_burn_drive"
     override val name: String = systemName(id)
@@ -138,6 +95,23 @@ object Sys_astd_micro_burn_drive : ShipSystemWithSystemFileEntry() {
     override val icon: String = "graphics/icons/hullsys/burn_drive.png"
 }
 
+object Sys_astd_arc_shared_flux_network : ShipSystemWithSystemFileEntry() {
+    override val id: String = "astd_arc_shared_flux_network"
+    override val name: String = systemName(id)
+
+    override val statsScript: String = "cn.kasuminova.astd.combat.shipsystems.ASTDArcSharedFluxNetworkSystemStats"
+
+    override val aiType: String = "CUSTOM"
+    override val aiScript: String = "cn.kasuminova.astd.combat.shipsystems.ASTDArcSharedFluxNetworkSystemAI"
+
+    override val chargeUp: Double = 0.5
+    override val active: Double = 10.0
+    override val down: Double = 0.5
+    override val cooldown: Double = 20.0
+
+    override val icon: String = "graphics/icons/hullsys/ammo_feeder.png"
+}
+
 object Sys_astd_fire_control_array : ShipSystemWithSystemFileEntry() {
     override val id: String = "astd_fire_control_array"
     override val name: String = systemName(id)
@@ -148,6 +122,31 @@ object Sys_astd_fire_control_array : ShipSystemWithSystemFileEntry() {
     override val cooldown: Double = 16.0
 
     override val icon: String = "graphics/icons/hullsys/ammo_feeder.png"
+}
+
+object Sys_astd_plasma_armor_shield_boost : ShipSystemWithSystemFileEntry() {
+    override val id: String = "astd_plasma_armor_shield_boost"
+    override val name: String = systemName(id)
+
+    override val statsScript: String = "cn.kasuminova.astd.combat.shipsystems.ASTDPlasmaArmorShieldBoostSystemStats"
+
+    override val systemType: String = "SHIELD_MOD"
+    override val aiType: String = "FORTRESS_SHIELD"
+
+    override val chargeUp: Double = 0.5
+    override val active: Double? = null
+    override val down: Double = 0.5
+    override val cooldown: Double = 0.0
+    override val toggle: Boolean = true
+    override val fluxPerSecondBaseCap: Double = 0.02
+    override val hardFlux: Boolean = true
+    override val noFiring: Boolean = true
+    override val tags: String = "defensive"
+
+    override val icon: String = "graphics/icons/hullsys/fortress_shield.png"
+    override val useSound: String? = null
+    override val loopSound: String = "system_fortress_shield_loop"
+    override val outOfUsesSound: String = "gun_out_of_ammo"
 }
 
 object Sys_astd_high_energy_loader : ShipSystemWithSystemFileEntry() {
@@ -162,6 +161,28 @@ object Sys_astd_high_energy_loader : ShipSystemWithSystemFileEntry() {
     override val cooldown: Double = 12.0
 
     override val icon: String = "graphics/icons/hullsys/ammo_feeder.png"
+}
+
+object Sys_astd_limit_temporal_thruster : ShipSystemWithSystemFileEntry() {
+    override val id: String = "astd_limit_temporal_thruster"
+    override val name: String = systemName(id)
+
+    override val statsScript: String = "cn.kasuminova.astd.combat.shipsystems.ASTDLimitTemporalThrusterSystemStats"
+
+    override val systemType: String = "ENGINE_MOD"
+    override val aiType: String = "CUSTOM"
+    override val aiScript: String = "cn.kasuminova.astd.combat.shipsystems.ASTDLimitTemporalThrusterSystemAI"
+
+    override val maxUses: Int = 3
+    override val regen: Double = 0.1
+
+    override val chargeUp: Double = 0.2
+    override val active: Double = 2.0
+    override val down: Double = 0.2
+    override val cooldown: Double = 1.5
+
+    override val icon: String = "graphics/icons/hullsys/maneuvering_jets.png"
+    override val useSound: String = "system_burn_drive_activate"
 }
 
 object Sys_astd_static_discharge : ShipSystemWithSystemFileEntry() {

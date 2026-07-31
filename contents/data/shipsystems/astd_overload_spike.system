@@ -1,8 +1,0 @@
-{
-    "id": "astd_overload_spike",
-    "type": "STAT_MOD",
-    "aiType": "CUSTOM",
-    "aiScript": "cn.kasuminova.astd.combat.shipsystems.CollapseShiftSystemAI",
-    "statsScript": "cn.kasuminova.astd.combat.shipsystems.OverloadSpikeSystemStats",
-    "useSound": "system_phase_cloak_activate"
-}

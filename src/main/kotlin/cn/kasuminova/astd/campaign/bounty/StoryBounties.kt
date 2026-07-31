@@ -85,7 +85,7 @@ object StoryBounties {
         add(BountyDef(mkKey(11), i18nMainTitle(11), i18nMainShort(11), 3, 145, "astd_aurora_grid_Standard", mkKey(10)))
         add(BountyDef(mkKey(12), i18nMainTitle(12), i18nMainShort(12), 3, 155, "astd_nebula_echo_Standard", mkKey(11)))
         add(BountyDef(mkKey(13), i18nMainTitle(13), i18nMainShort(13), 4, 180, "astd_gravitational_lens_Standard", mkKey(12)))
-        add(BountyDef(mkKey(14), i18nMainTitle(14), i18nMainShort(14), 4, 200, "astd_event_horizon_Standard", mkKey(13)))
+        add(BountyDef(mkKey(14), i18nMainTitle(14), i18nMainShort(14), 4, 200, "astd_gravitational_lens_Automated", mkKey(13)))
         add(BountyDef(mkKey(15), i18nMainTitle(15), i18nMainShort(15), 4, 215, "astd_arc_flare_Standard", mkKey(14)))
         add(BountyDef(mkKey(16), i18nMainTitle(16), i18nMainShort(16), 4, 235, "astd_magnetosphere_disturbance_Standard", mkKey(15)))
         add(BountyDef(mkKey(17), i18nMainTitle(17), i18nMainShort(17), 4, 255, "astd_radiation_belt_Standard", mkKey(16)))
@@ -94,9 +94,9 @@ object StoryBounties {
         // 第三幕（6）：19..24
         add(BountyDef(mkKey(19), i18nMainTitle(19), i18nMainShort(19), 4, 285, "astd_arc_flare_Standard", mkKey(18)))
         add(BountyDef(mkKey(20), i18nMainTitle(20), i18nMainShort(20), 4, 305, "astd_diffraction_Standard", mkKey(19)))
-        add(BountyDef(mkKey(21), i18nMainTitle(21), i18nMainShort(21), 5, 330, "astd_event_horizon_Standard", mkKey(20)))
+        add(BountyDef(mkKey(21), i18nMainTitle(21), i18nMainShort(21), 5, 330, "astd_apex_logic_Standard", mkKey(20)))
         add(BountyDef(mkKey(22), i18nMainTitle(22), i18nMainShort(22), 5, 360, "astd_apex_logic_Standard", mkKey(21)))
-        add(BountyDef(mkKey(23), i18nMainTitle(23), i18nMainShort(23), 5, 380, "astd_arc_nova_Standard", mkKey(22)))
+        add(BountyDef(mkKey(23), i18nMainTitle(23), i18nMainShort(23), 5, 380, "astd_arc_flare_Standard", mkKey(22)))
         add(BountyDef(mkKey(24), i18nMainTitle(24), i18nMainShort(24), 5, 400, "astd_apex_logic_Standard", mkKey(23)))
     }
 

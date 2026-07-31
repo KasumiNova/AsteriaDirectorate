@@ -79,16 +79,12 @@
 
     "companion.ship.opt.arc_flare": "评价：弧光耀斑级（Arc Flare）",
     "companion.ship.opt.lens": "评价：引力透镜级（Gravitational Lens）",
-    "companion.ship.opt.nebula_echo": "评价：星云回声级（Nebula Echo）",
-    "companion.ship.opt.event_horizon": "评价：事件视界级（Event Horizon）",
-    "companion.ship.opt.apex": "评价：顶点逻辑级（Apex Logic）",
+    "companion.ship.opt.nebula_echo": "评价：星云回声级（Nebula Echo）",    "companion.ship.opt.apex": "评价：顶点逻辑级（Apex Logic）",
     "companion.ship.opt.player_flagship": "评价：我当前旗舰",
 
     "companion.ship.arc_flare": "\n守望者看着弧光耀斑级的轮廓图。\n\"它不是为了优雅而生。它是为了把‘决定’变成光。\"\n\"如果你要驾驶它，记住：别爱上过驱窗口。爱上窗口的人，最后都会被窗口吞掉。\"",
     "companion.ship.lens": "\n回声的波形变得更稳定。\n\"引力透镜级……它的骨架像一段公式。\"\n\"别把它当成‘狙击舰’。把它当成‘解释器’。它解释敌人的错误，然后让错误发生。\"",
-    "companion.ship.nebula_echo": "\n\"星云回声级适合‘消失’，\"回声说，\"也适合‘让别人消失’。\"\n\"它最危险的地方不是武器，而是它能让你相信：你已经赢了。\"",
-    "companion.ship.event_horizon": "\n守望者沉默了一会儿。\n\"事件视界级……它的名字很诚实。\"\n\"你越靠近它，越像在靠近一个‘不可撤销的决定’。别用它去追小目标。用它去结束大问题。\"",
-    "companion.ship.apex": "\n\"顶点逻辑级不是舰船。\"回声说。\"它更像一段会开火的裁决。\"\n\"如果你把它当作战利品，你会输。把它当作问题，你才有可能赢。\"",
+    "companion.ship.nebula_echo": "\n\"星云回声级适合‘消失’，\"回声说，\"也适合‘让别人消失’。\"\n\"它最危险的地方不是武器，而是它能让你相信：你已经赢了。\"",    "companion.ship.apex": "\n\"顶点逻辑级不是舰船。\"回声说。\"它更像一段会开火的裁决。\"\n\"如果你把它当作战利品，你会输。把它当作问题，你才有可能赢。\"",
 
     "companion.ship.player_flagship.none": "\n你现在没有旗舰。或者说，你拒绝给任何船一个‘旗舰’的名分。",
     "companion.ship.player_flagship.send": "\n你把当前旗舰的参数发过去。",

@@ -4,12 +4,7 @@
     "fluxVents": 0,
     "goalVariant": true,
     "hullId": "astd_magnetic_storm_zigzag",
-    "hullMods": [
-        "astd_nano_restoration_protocol"
-    ],
-    "permaMods": [
-        "astd_inertialess_maneuver"
-    ],
+    "hullMods": [],
     "quality": 0.0,
     "variantId": "astd_magnetic_storm_zigzag_Standard",
     "weaponGroups": [
@@ -17,9 +12,9 @@
             "autofire": false,
             "mode": "LINKED",
             "weapons": {
-                "WS 001": "astd_drv9",
-                "WS 002": "astd_vpd6",
-                "WS 003": "astd_vpd6"
+                "WS 001": "heavyneedler",
+                "WS 002": "pdlaser",
+                "WS 003": "pdlaser"
             }
         }
     ]

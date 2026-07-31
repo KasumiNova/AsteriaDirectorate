@@ -1,0 +1,1 @@
+Dev automation scenario for validating electric drive accelerator range bonus, 8-projectile trigger, charge extra damage and enemy scaling telemetry.

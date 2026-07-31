@@ -1,0 +1,147 @@
+{
+  "scenarios": [
+    {
+      "id": "arc_flare_aod7_basic",
+      "missionId": "arc_flare_aod7_basic",
+      "shipId": "astd_arc_flare",
+      "variantId": "astd_arc_flare_Standard",
+      "weaponId": "astd_aod7",
+      "projectileSpecId": "astd_aod7_shot",
+      "vfxPresetId": "aod7_shot"
+    },
+    {
+      "id": "arc_production_ships_vfx_tooltip",
+      "missionId": "arc_production_ships_vfx_tooltip",
+      "shipIds": [
+        "astd_arc_jet",
+        "astd_plasma_arch",
+        "astd_radiation_belt"
+      ],
+      "variantIds": [
+        "astd_arc_jet_Standard",
+        "astd_plasma_arch_Standard",
+        "astd_radiation_belt_Standard"
+      ],
+      "requiredEvidence": [
+        "arcJetShockwaveFrames",
+        "arcJetShockwaveRadius",
+        "arcJetShockwaveFluxPressure",
+        "plasmaArchShieldOpen",
+        "plasmaArchSystemActive",
+        "plasmaArchShieldArcEmissions",
+        "radiationBeltSystemAfterimages",
+        "arcJetTooltip",
+        "plasmaArchTooltip",
+        "radiationBeltTooltip",
+        "arcJetTooltipKeys",
+        "plasmaArchTooltipKeys",
+        "radiationBeltTooltipKeys"
+      ]
+    },
+    {
+      "id": "lens_phase1_foundation",
+      "missionId": "lens_phase1_foundation",
+      "shipIds": [
+        "astd_gravitational_lens"
+      ],
+      "variantIds": [
+        "astd_gravitational_lens_Standard"
+      ],
+      "requiredEvidence": [
+        "lensDeployedShipIds",
+        "lensCoreHullmod",
+        "lensNanoHullmod",
+        "lensSwitcherHullmod",
+        "lensCrewedModeHullmod",
+        "lensShieldOn",
+        "lensShieldArc",
+        "lensFighterBays",
+        "lensCoreTooltipKeys",
+        "lensSelfDriftStacks",
+        "lensSelfDeepWaterStacks",
+        "lensSelfHullDamageTakenMult"
+      ]
+    },
+    {
+      "id": "lens_phase2_mechanisms",
+      "missionId": "lens_phase2_mechanisms",
+      "shipIds": [
+        "astd_gravitational_lens"
+      ],
+      "variantIds": [
+        "astd_gravitational_lens_Standard",
+        "astd_gravitational_lens_Automated"
+      ],
+      "requiredEvidence": [
+        "echoFixationFieldActive",
+        "echoFixationCognitiveTearApplied",
+        "echoFixationAfterimageFrames",
+        "tideDeepWaterStacksOnEnemy",
+        "permeatingTideHullmod",
+        "parallaxDecksHullmod",
+        "echoFixationFieldVisualFrames",
+        "driftMarkVisualFrames",
+        "deepWaterMarkVisualFrames",
+        "ghostSignalWaveFrames",
+        "tideFieldVisualFrames"
+      ]
+    },
+    {
+      "id": "charge_needle_basic",
+      "missionId": "charge_needle_basic",
+      "shipIds": [
+        "wolf",
+        "shrike"
+      ],
+      "variantIds": [
+        "wolf_Starting",
+        "shrike_Attack"
+      ],
+      "weaponIds": [
+        "astd_charge_needle",
+        "astd_heavy_charge_needle"
+      ],
+      "projectileSpecIds": [
+        "astd_charge_needle_shot",
+        "astd_heavy_charge_needle_shot"
+      ],
+      "requiredEvidence": [
+        "chargeNeedleTargetStacks",
+        "chargeNeedleTargetMaxStacks",
+        "chargeNeedleTargetUpkeepMult",
+        "chargeNeedlePlayerVictimStacks",
+        "chargeNeedleDischargeCount",
+        "chargeNeedleMinSmallAmmoObserved",
+        "chargeNeedleVfxTrackedCount",
+        "chargeNeedleDecayVerified"
+      ]
+    },
+    {
+      "id": "electric_drive_basic",
+      "missionId": "electric_drive_basic",
+      "shipIds": [
+        "hammerhead"
+      ],
+      "variantIds": [
+        "hammerhead_Balanced"
+      ],
+      "weaponIds": [
+        "astd_electric_drive_accelerator"
+      ],
+      "projectileSpecIds": [
+        "astd_electric_drive_accelerator_shot"
+      ],
+      "requiredEvidence": [
+        "edaRangeZeroFlux",
+        "edaRangeMidFlux",
+        "edaRangeHighFlux",
+        "edaMaxTriggerProjectiles",
+        "edaExtraCountPlayer",
+        "edaEnemyRangeScale1",
+        "edaEnemyRangeScale5",
+        "edaExtraCountOther",
+        "edaVfxTrackedCount"
+      ]
+    }
+  ]
+}

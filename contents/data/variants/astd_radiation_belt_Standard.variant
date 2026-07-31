@@ -4,7 +4,35 @@
     "fluxVents": 0,
     "goalVariant": true,
     "hullId": "astd_radiation_belt",
+    "hullMods": [],
     "quality": 0.0,
     "variantId": "astd_radiation_belt_Standard",
-    "weaponGroups": []
+    "weaponGroups": [
+        {
+            "autofire": false,
+            "mode": "LINKED",
+            "weapons": {
+                "WS0002": "astd_spc3",
+                "WS0003": "astd_spc3"
+            }
+        },
+        {
+            "autofire": true,
+            "mode": "LINKED",
+            "weapons": {
+                "WS0001": "pdlaser",
+                "WS0004": "pdlaser",
+                "WS0005": "pdlaser",
+                "WS0006": "pdlaser"
+            }
+        },
+        {
+            "autofire": false,
+            "mode": "ALTERNATING",
+            "weapons": {
+                "WS0007": "harpoon",
+                "WS0008": "harpoon"
+            }
+        }
+    ]
 }

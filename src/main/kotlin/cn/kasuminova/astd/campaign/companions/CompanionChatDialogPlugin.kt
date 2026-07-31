@@ -73,7 +73,6 @@ class CompanionChatDialogPlugin(
         SHIP_LENS,
         SHIP_NEBULA_ECHO,
         SHIP_APEX,
-        SHIP_EVENT_HORIZON,
         SHIP_PLAYER_FLAGSHIP,
         CROSS_POLARIS,
         CROSS_CONSTELLATE,
@@ -108,7 +107,6 @@ class CompanionChatDialogPlugin(
         options.addOption(I18n[I18n.Categories.MOD, "companion.ship.opt.arc_flare"], OptionId.SHIP_ARC_FLARE)
         options.addOption(I18n[I18n.Categories.MOD, "companion.ship.opt.lens"], OptionId.SHIP_LENS)
         options.addOption(I18n[I18n.Categories.MOD, "companion.ship.opt.nebula_echo"], OptionId.SHIP_NEBULA_ECHO)
-        options.addOption(I18n[I18n.Categories.MOD, "companion.ship.opt.event_horizon"], OptionId.SHIP_EVENT_HORIZON)
         options.addOption(I18n[I18n.Categories.MOD, "companion.ship.opt.apex"], OptionId.SHIP_APEX)
         options.addOption(I18n[I18n.Categories.MOD, "companion.ship.opt.player_flagship"], OptionId.SHIP_PLAYER_FLAGSHIP)
         options.addOption(I18n[I18n.Categories.MOD, "companion.chat.opt.back"], OptionId.LEAVE)
@@ -187,11 +185,6 @@ class CompanionChatDialogPlugin(
 
             OptionId.SHIP_NEBULA_ECHO -> {
                 text.addPara(I18n[I18n.Categories.MOD, "companion.ship.nebula_echo"])
-                options.addOption(I18n[I18n.Categories.MOD, "companion.chat.opt.back"], OptionId.BACK)
-            }
-
-            OptionId.SHIP_EVENT_HORIZON -> {
-                text.addPara(I18n[I18n.Categories.MOD, "companion.ship.event_horizon"])
                 options.addOption(I18n[I18n.Categories.MOD, "companion.chat.opt.back"], OptionId.BACK)
             }
 

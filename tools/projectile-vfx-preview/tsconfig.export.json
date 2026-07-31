@@ -1,0 +1,18 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "ES2020",
+    "moduleResolution": "Bundler",
+    "rootDir": "src",
+    "outDir": "dist-export",
+    "noEmit": false,
+    "declaration": false,
+    "emitDeclarationOnly": false
+  },
+  "include": [
+    "src/export/gameExportCli.ts",
+    "src/export/gameExport.ts",
+    "src/model/gameExport.ts",
+    "src/model/preset.ts"
+  ]
+}

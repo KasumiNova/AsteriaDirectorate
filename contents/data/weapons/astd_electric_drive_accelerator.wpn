@@ -1,0 +1,37 @@
+{
+    "id": "astd_electric_drive_accelerator",
+    "specClass": "projectile",
+    "type": "BALLISTIC",
+    "size": "MEDIUM",
+    "displayArcRadius": 800,
+    "turretSprite": "graphics/textures/BUtil_NONE.png",
+    "turretGunSprite": "graphics/textures/BUtil_NONE.png",
+    "hardpointSprite": "graphics/textures/BUtil_NONE.png",
+    "hardpointGunSprite": "graphics/textures/BUtil_NONE.png",
+    "visualRecoil": 0.0,
+    "turretOffsets": [
+        12,
+        -4,
+        12,
+        4
+    ],
+    "turretAngleOffsets": [
+        0,
+        0
+    ],
+    "hardpointOffsets": [
+        17,
+        -4,
+        17,
+        4
+    ],
+    "hardpointAngleOffsets": [
+        0,
+        0
+    ],
+    "barrelMode": "LINKED",
+    "animationType": "MUZZLE_FLASH",
+    "projectileSpecId": "astd_electric_drive_accelerator_shot",
+    "everyFrameEffect": "cn.kasuminova.astd.combat.effect.arc.ElectricDriveAcceleratorWeaponEffect",
+    "fireSoundTwo": "autocannon_fire"
+}

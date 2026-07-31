@@ -1,12 +1,19 @@
 import {
   BoxUtilPreviewPreset,
+  ProjectileVfxGlowLayerConfig,
+  ProjectileVfxHeadLayerConfig,
+  ProjectileVfxMistLayerConfig,
+  ProjectileVfxSideWispLayerConfig,
   Rgba,
   RibbonWaveType,
+  ProjectileVfxLifecycleConfig,
+  ProjectileVfxSamplingPolicyConfig,
   TrailDecorationColorGradient,
   TrailDecorationGradientStop,
   TrailDecorationRenderMode,
   TrailEntityConfig,
   TrailNode,
+  TrailRibbonDecorationConfig,
   Vec2,
   createDefaultPreset,
   createDefaultTrailRibbonDecorationConfig,
@@ -60,6 +67,13 @@ export function parsePresetJson(input: string): ParsePresetResult {
       ...root,
       name: typeof root.name === 'string' ? root.name : defaults.name,
       trailEntities,
+      headLayers: mergeLayerArray<ProjectileVfxHeadLayerConfig>(root.headLayers, defaults.headLayers),
+      glowLayers: mergeLayerArray<ProjectileVfxGlowLayerConfig>(root.glowLayers, defaults.glowLayers),
+      mistLayers: mergeLayerArray<ProjectileVfxMistLayerConfig>(root.mistLayers, defaults.mistLayers, mergeMistLayer),
+      sideWispLayers: mergeLayerArray<ProjectileVfxSideWispLayerConfig>(root.sideWispLayers, defaults.sideWispLayers),
+      ribbonDecorations: mergeRibbonDecorations(root.ribbonDecorations, defaults.ribbonDecorations, errors),
+      lifecycle: mergeObject<ProjectileVfxLifecycleConfig>(root.lifecycle, defaults.lifecycle),
+      samplingPolicy: mergeObject<ProjectileVfxSamplingPolicyConfig>(root.samplingPolicy, defaults.samplingPolicy),
       timeline: isRecord(root.timeline) ? { ...defaults.timeline, ...root.timeline } : defaults.timeline,
       previewCamera: isRecord(root.previewCamera) ? { ...defaults.previewCamera, ...root.previewCamera } : defaults.previewCamera,
       simulation: isRecord(root.simulation) ? { ...defaults.simulation, ...root.simulation } : defaults.simulation,
@@ -133,6 +147,50 @@ function parseTrailEntity(value: unknown, index: number, errors: ParsePresetErro
   };
 }
 
+function mergeLayerArray<T extends { id: string }>(value: unknown, defaults: T[], mergeItem: (value: Record<string, unknown>, fallback: T) => T = mergeLayerItem): T[] {
+  if (!Array.isArray(value)) {
+    return defaults;
+  }
+
+  return value.map((item, index) => {
+    const fallback = defaults[index % defaults.length];
+    return isRecord(item) ? mergeItem(item, fallback) : fallback;
+  });
+}
+
+function mergeLayerItem<T extends { id: string }>(value: Record<string, unknown>, fallback: T): T {
+  return {
+    ...fallback,
+    ...value,
+    id: typeof value.id === 'string' ? value.id : fallback.id,
+  } as T;
+}
+
+function mergeMistLayer(value: Record<string, unknown>, fallback: ProjectileVfxMistLayerConfig): ProjectileVfxMistLayerConfig {
+  return {
+    ...fallback,
+    ...value,
+    id: typeof value.id === 'string' ? value.id : fallback.id,
+    rxRange: mergeObject(value.rxRange, fallback.rxRange),
+    ryRange: mergeObject(value.ryRange, fallback.ryRange),
+    alphaRange: mergeObject(value.alphaRange, fallback.alphaRange),
+  };
+}
+
+function mergeRibbonDecorations(value: unknown, defaults: TrailRibbonDecorationConfig[], errors: ParsePresetError[]): TrailRibbonDecorationConfig[] {
+  if (!Array.isArray(value)) {
+    return defaults;
+  }
+
+  return value
+    .map((item, index) => parseTrailRibbonDecoration(item, `ribbonDecorations[${index}]`, errors))
+    .filter((item): item is TrailRibbonDecorationConfig => item !== null);
+}
+
+function mergeObject<T extends object>(value: unknown, fallback: T): T {
+  return isRecord(value) ? { ...fallback, ...value } : fallback;
+}
+
 function parseTrailRibbonDecoration(value: unknown, path: string, errors: ParsePresetError[]) {
   if (!isRecord(value)) {
     errors.push({ path, message: 'Ribbon decoration must be an object' });
@@ -157,6 +215,8 @@ function parseTrailRibbonDecoration(value: unknown, path: string, errors: ParseP
     id: typeof value.id === 'string' ? value.id : fallback.id,
     enabled: typeof value.enabled === 'boolean' ? value.enabled : fallback.enabled,
     renderMode: value.renderMode === 'byNodeCount' || value.renderMode === 'byLength' ? value.renderMode as TrailDecorationRenderMode : fallback.renderMode,
+    waveAmplitude: readFiniteNumber(value.waveAmplitude, value.amplitude, fallback.waveAmplitude),
+    waveFrequency: readFiniteNumber(value.waveFrequency, value.frequency, fallback.waveFrequency),
     waveType: value.waveType === 'sine' || value.waveType === 'noise' || value.waveType === 'zigzag' ? value.waveType as RibbonWaveType : fallback.waveType,
     noiseScale: isFiniteNumber(value.noiseScale) ? value.noiseScale : fallback.noiseScale,
     startColor: startColor as Rgba,
@@ -247,4 +307,14 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);
+}
+
+function readFiniteNumber(primary: unknown, secondary: unknown, fallback: number): number {
+  if (isFiniteNumber(primary)) {
+    return primary;
+  }
+  if (isFiniteNumber(secondary)) {
+    return secondary;
+  }
+  return fallback;
 }

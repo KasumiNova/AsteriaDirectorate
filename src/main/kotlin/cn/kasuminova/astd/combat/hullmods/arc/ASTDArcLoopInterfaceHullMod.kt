@@ -1,5 +1,6 @@
 package cn.kasuminova.astd.combat.hullmods.arc
 
+import cn.kasuminova.astd.combat.hullmods.base.ASTDHullModTooltipRenderer
 import cn.kasuminova.astd.combat.shipsystems.ASTDArcFlareOverdriveSystemStats
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseHullMod
@@ -26,7 +27,7 @@ class ASTDArcLoopInterfaceHullMod : BaseHullMod() {
 
         private const val BOOST_ID = "astd_arc_loop_system_boost"
 
-        private val THEME = ASTDArcFlareHullModTooltip.Theme(
+        private val THEME = ASTDHullModTooltipRenderer.Theme(
             nameColor = Color(150, 232, 255),
             borderColor = Color(90, 180, 255),
             headerBackground = Color(20, 52, 82, 180),
@@ -89,25 +90,24 @@ class ASTDArcLoopInterfaceHullMod : BaseHullMod() {
     }
 
     override fun addPostDescriptionSection(tooltip: TooltipMakerAPI, hullSize: ShipAPI.HullSize, ship: ShipAPI?, width: Float, isForModSpec: Boolean) {
-        ASTDArcFlareHullModTooltip.render(
+        ASTDHullModTooltipRenderer.renderBlocks(
             tooltip = tooltip,
             width = width,
             title = spec?.displayName ?: "",
             theme = THEME,
-            summaryKey = "ui.hullmod.arc_loop.summary",
-            sections = listOf(
-                ASTDArcFlareHullModTooltip.section(
-                    "ui.hullmod.section.integration",
-                    "ui.hullmod.arc_loop.line.1",
-                    "ui.hullmod.arc_loop.line.2",
-                    "ui.hullmod.arc_loop.line.3",
+            blocks = listOf(
+                ASTDHullModTooltipRenderer.paragraph("ui.hullmod.arc_loop.summary"),
+                ASTDHullModTooltipRenderer.heading("ui.hullmod.export.section.effect"),
+                ASTDHullModTooltipRenderer.table(
+                    rows = arrayOf(
+                        ASTDHullModTooltipRenderer.row("ui.hullmod.arc_loop.attr.op", "ui.hullmod.arc_loop.value.op"),
+                        ASTDHullModTooltipRenderer.row("ui.hullmod.arc_loop.attr.flux", "ui.hullmod.arc_loop.value.flux"),
+                        ASTDHullModTooltipRenderer.row("ui.hullmod.arc_loop.attr.projectile_speed", "ui.hullmod.arc_loop.value.projectile_speed"),
+                        ASTDHullModTooltipRenderer.row("ui.hullmod.arc_loop.attr.turn_rate", "ui.hullmod.arc_loop.value.turn_rate"),
+                    ),
                 ),
-                ASTDArcFlareHullModTooltip.section(
-                    "ui.hullmod.section.system",
-                    "ui.hullmod.arc_loop.line.4",
-                ),
+                ASTDHullModTooltipRenderer.paragraph("ui.hullmod.arc_loop.overdrive"),
             ),
-            starTrails = false,
         )
     }
 

@@ -4,16 +4,7 @@
     "system.high_energy_loader.status.1": "幅耗上升",
 
     "system.collapse_shift.status.0": "坍缩折跃：相位切流",
-    "system.collapse_shift.status.1": "激变窗口：火力与虚粒子加速",
-
-    "system.stellar_jet.status.0": "恒星喷射：护盾旁路整形",
-    "system.stellar_jet.status.1": "盾弧收束 + 幅能压力上升",
-    "system.stellar_jet.status.2": "喷射口：光束 DPS=最大辐能×%dpsPct%%，耗辐能=最大辐能×%fluxPct%%/秒（单次预算×%budgetPct%%）",
-
-    "system.stasis_field.status.0": "停滞场：减速投射物（含能量弹）",
-    "system.stasis_field.status.1": "结束时释放：引力坍缩炮（试作）",
-
-    "system.tactical_overdrive.status.0": "战术超频：火力过驱",
+    "system.collapse_shift.status.1": "激变窗口：火力与虚粒子加速",    "system.tactical_overdrive.status.0": "战术超频：火力过驱",
     "system.tactical_overdrive.status.1": "结束后进入恢复段（输出/机动下降）"
   }
 }

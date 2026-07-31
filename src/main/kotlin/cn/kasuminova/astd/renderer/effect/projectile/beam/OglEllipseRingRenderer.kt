@@ -86,6 +86,8 @@ internal object OglEllipseRingRenderer {
     private class Renderer : CombatLayeredRenderingPlugin {
 
         private var engine: CombatEngineAPI? = null
+
+        /** 环实例表。 */
         private val rings = ArrayList<RingInstance>(256)
         private var expired = false
 
@@ -112,6 +114,7 @@ internal object OglEllipseRingRenderer {
                     expandSpeed = spec.expandSpeed,
                     tangentialSpeed = spec.tangentialSpeed,
                     age = 0f,
+                    // 全环保留随机相位，避免同帧多环顶点完全重合的机械感。
                     phase = MathUtils.getRandomNumberInRange(0f, (2f * PI).toFloat()),
                 )
             )
@@ -269,6 +272,7 @@ internal object OglEllipseRingRenderer {
             GL11.glColor4f(r, g, bCol, aCol.coerceIn(0f, 1f))
 
             GL11.glBegin(GL11.GL_LINE_LOOP)
+            // 绕一整圈均布 segments 个顶点（闭合由 LINE_LOOP 保证）。
             val step = (2f * PI).toFloat() / segments.toFloat()
             for (i in 0 until segments) {
                 val ang = phase + step * i

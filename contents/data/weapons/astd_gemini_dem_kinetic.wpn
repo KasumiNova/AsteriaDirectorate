@@ -1,0 +1,17 @@
+{
+    "id": "astd_gemini_dem_kinetic",
+    "specClass": "projectile",
+    "type": "MISSILE",
+    "size": "MEDIUM",
+    "turretSprite": "graphics/textures/BUtil_NONE.png",
+    "hardpointSprite": "graphics/textures/BUtil_NONE.png",
+    "turretGunSprite": "graphics/textures/BUtil_NONE.png",
+    "hardpointGunSprite": "graphics/textures/BUtil_NONE.png",
+    "hardpointOffsets": [0, 0],
+    "turretOffsets": [0, 0],
+    "hardpointAngleOffsets": [0],
+    "turretAngleOffsets": [0],
+    "barrelMode": "LINKED",
+    "animationType": "NONE",
+    "projectileSpecId": "astd_gemini_dem_kinetic_msl"
+}

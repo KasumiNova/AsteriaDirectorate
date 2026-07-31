@@ -58,6 +58,24 @@ object StackingShipBuffs {
         ship.setCustomData(stateKey(buffId), null)
     }
 
+    /**
+     * 立即清除某船的指定 buff：先 unapply 其 stat 修改（若该 buff 已注册 applier），再清 customData 状态。
+     *
+     * 动机：渗透潮汐「过载退潮」需即时移除标记效果，不能等下一帧插件自然到期清理，
+     * 否则 stat modifier 会残留至少一帧（甚至更久），与「退潮瞬间归零」的语义不符。
+     *
+     * 若该 buffId 尚未注册过 applier（从未施加过），则不存在可 unapply 的 stat 修改，
+     * 此时仅清 customData 即可——属正常情况，无需日志。
+     */
+    fun clear(engine: CombatEngineAPI, ship: ShipAPI, buffId: String) {
+        // 无状态则无需清理：避免对从未被标记的船写入 null entry 污染 customData，
+        // 与 advance 里 getState(...) ?: continue 的惰性跳过风格一致。
+        if (getState(ship, buffId) == null) return
+        val plugin = engine.customData[ENGINE_PLUGIN_KEY] as? Plugin
+        plugin?.applierFor(buffId)?.unapplyFrom(ship, buffId)
+        clearState(ship, buffId)
+    }
+
     private fun ensurePlugin(engine: CombatEngineAPI): Plugin {
         val existing = engine.customData[ENGINE_PLUGIN_KEY] as? Plugin
         if (existing != null) return existing
@@ -74,6 +92,9 @@ object StackingShipBuffs {
         fun register(buffId: String, applier: ShipBuffApplier) {
             appliers[buffId] = applier
         }
+
+        /** 供 [StackingShipBuffs.clear] 取出已注册的 applier 以执行即时 unapply，保持 appliers 封装。 */
+        fun applierFor(buffId: String): ShipBuffApplier? = appliers[buffId]
 
         override fun advance(amount: Float, events: MutableList<InputEventAPI>?) {
             val engine = Global.getCombatEngine() ?: return

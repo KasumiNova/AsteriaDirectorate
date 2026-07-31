@@ -5,10 +5,6 @@
     "goalVariant": true,
     "hullId": "astd_negentropy_edge",
     "hullMods": [],
-    "permaMods": [
-        "astd_virtual_particle_lattice_web",
-        "astd_transient_potential_manifold"
-    ],
     "quality": 0.0,
     "variantId": "astd_negentropy_edge_Standard",
     "weaponGroups": [
@@ -16,8 +12,8 @@
             "autofire": false,
             "mode": "LINKED",
             "weapons": {
-                "WS 002": "astd_drv9",
-                "WS 003": "astd_drv9"
+                "WS 002": "heavyneedler",
+                "WS 003": "heavyneedler"
             }
         }
     ]

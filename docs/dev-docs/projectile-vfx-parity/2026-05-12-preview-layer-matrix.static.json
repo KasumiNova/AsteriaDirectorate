@@ -1,0 +1,110 @@
+{
+  "generatedAt": "2026-05-12",
+  "preset": "ASTD Default TrailEntity Preview / aod7_shot parity baseline",
+  "artifactType": "preview-layer-matrix-static-artifact",
+  "captureRoot": "docs/dev-docs/projectile-vfx-parity/captures/",
+  "note": "This file records the exact preview layer matrix and expected save paths. It is a static artifact for environments without browser/canvas screenshot automation.",
+  "matrix": [
+    {
+      "id": "01-trail-only",
+      "label": "Trail only",
+      "timeSeconds": 0.72,
+      "visibility": { "trail": true, "head": false, "glow": false, "mist": false, "sideWisps": false, "ribbon": false },
+      "expectedPreviewPath": "docs/dev-docs/projectile-vfx-parity/captures/preview/01-trail-only.png",
+      "expectedGamePath": "docs/dev-docs/projectile-vfx-parity/captures/game/01-trail-only.png"
+    },
+    {
+      "id": "02-trail-head",
+      "label": "Trail + Head",
+      "timeSeconds": 0.72,
+      "visibility": { "trail": true, "head": true, "glow": false, "mist": false, "sideWisps": false, "ribbon": false },
+      "expectedPreviewPath": "docs/dev-docs/projectile-vfx-parity/captures/preview/02-trail-head.png",
+      "expectedGamePath": "docs/dev-docs/projectile-vfx-parity/captures/game/02-trail-head.png"
+    },
+    {
+      "id": "03-trail-glow",
+      "label": "Trail + Glow",
+      "timeSeconds": 0.72,
+      "visibility": { "trail": true, "head": false, "glow": true, "mist": false, "sideWisps": false, "ribbon": false },
+      "expectedPreviewPath": "docs/dev-docs/projectile-vfx-parity/captures/preview/03-trail-glow.png",
+      "expectedGamePath": "docs/dev-docs/projectile-vfx-parity/captures/game/03-trail-glow.png"
+    },
+    {
+      "id": "04-trail-mist",
+      "label": "Trail + Mist",
+      "timeSeconds": 0.72,
+      "visibility": { "trail": true, "head": false, "glow": false, "mist": true, "sideWisps": false, "ribbon": false },
+      "expectedPreviewPath": "docs/dev-docs/projectile-vfx-parity/captures/preview/04-trail-mist.png",
+      "expectedGamePath": "docs/dev-docs/projectile-vfx-parity/captures/game/04-trail-mist.png"
+    },
+    {
+      "id": "05-trail-ribbon",
+      "label": "Trail + Ribbon",
+      "timeSeconds": 0.72,
+      "visibility": { "trail": true, "head": false, "glow": false, "mist": false, "sideWisps": false, "ribbon": true },
+      "expectedPreviewPath": "docs/dev-docs/projectile-vfx-parity/captures/preview/05-trail-ribbon.png",
+      "expectedGamePath": "docs/dev-docs/projectile-vfx-parity/captures/game/05-trail-ribbon.png"
+    },
+    {
+      "id": "06-trail-side-wisps",
+      "label": "Trail + SideWisps",
+      "timeSeconds": 0.72,
+      "visibility": { "trail": true, "head": false, "glow": false, "mist": false, "sideWisps": true, "ribbon": false },
+      "expectedPreviewPath": "docs/dev-docs/projectile-vfx-parity/captures/preview/06-trail-side-wisps.png",
+      "expectedGamePath": "docs/dev-docs/projectile-vfx-parity/captures/game/06-trail-side-wisps.png"
+    },
+    {
+      "id": "07-all-layers",
+      "label": "All layers",
+      "timeSeconds": 0.72,
+      "visibility": { "trail": true, "head": true, "glow": true, "mist": true, "sideWisps": true, "ribbon": true },
+      "expectedPreviewPath": "docs/dev-docs/projectile-vfx-parity/captures/preview/07-all-layers.png",
+      "expectedGamePath": "docs/dev-docs/projectile-vfx-parity/captures/game/07-all-layers.png"
+    },
+    {
+      "id": "08-paused",
+      "label": "Paused",
+      "timeSeconds": 0.72,
+      "visibility": { "trail": true, "head": true, "glow": true, "mist": true, "sideWisps": true, "ribbon": true },
+      "timelineState": "paused",
+      "expectedPreviewPath": "docs/dev-docs/projectile-vfx-parity/captures/preview/08-paused.png",
+      "expectedGamePath": "docs/dev-docs/projectile-vfx-parity/captures/game/08-paused.png"
+    },
+    {
+      "id": "09-hit-fade",
+      "label": "Hit fade",
+      "timeSeconds": 1.08,
+      "visibility": { "trail": true, "head": true, "glow": true, "mist": true, "sideWisps": true, "ribbon": true },
+      "fadeReason": "hit",
+      "expectedPreviewPath": "docs/dev-docs/projectile-vfx-parity/captures/preview/09-hit-fade.png",
+      "expectedGamePath": "docs/dev-docs/projectile-vfx-parity/captures/game/09-hit-fade.png"
+    },
+    {
+      "id": "10-expire-fade",
+      "label": "Expire fade",
+      "timeSeconds": 1.18,
+      "visibility": { "trail": true, "head": true, "glow": true, "mist": true, "sideWisps": true, "ribbon": true },
+      "fadeReason": "expire",
+      "expectedPreviewPath": "docs/dev-docs/projectile-vfx-parity/captures/preview/10-expire-fade.png",
+      "expectedGamePath": "docs/dev-docs/projectile-vfx-parity/captures/game/10-expire-fade.png"
+    },
+    {
+      "id": "11-high-speed-movement",
+      "label": "High-speed movement",
+      "timeSeconds": 0.52,
+      "simulationOverride": { "projectileVelocity": [900, 0], "curveAmount": 0 },
+      "visibility": { "trail": true, "head": true, "glow": true, "mist": true, "sideWisps": true, "ribbon": true },
+      "expectedPreviewPath": "docs/dev-docs/projectile-vfx-parity/captures/preview/11-high-speed-movement.png",
+      "expectedGamePath": "docs/dev-docs/projectile-vfx-parity/captures/game/11-high-speed-movement.png"
+    },
+    {
+      "id": "12-curved-movement-preview-parity-sample",
+      "label": "Curved movement preview parity sample",
+      "timeSeconds": 0.72,
+      "simulationOverride": { "projectileVelocity": [560, 0], "curveAmount": 72, "curveFrequency": 0.8 },
+      "visibility": { "trail": true, "head": true, "glow": true, "mist": true, "sideWisps": true, "ribbon": true },
+      "expectedPreviewPath": "docs/dev-docs/projectile-vfx-parity/captures/preview/12-curved-movement-preview-parity-sample.png",
+      "expectedGamePath": "docs/dev-docs/projectile-vfx-parity/captures/game/12-curved-movement-preview-parity-sample.png"
+    }
+  ]
+}

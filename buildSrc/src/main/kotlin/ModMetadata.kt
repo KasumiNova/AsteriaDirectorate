@@ -11,6 +11,16 @@ class ModMetadata(project: Project) {
     val modId: Provider<String> = project.providers.gradleProperty("mod.id")
         .orElse("asteria_directorate")
 
+    /**
+     * 部署目录名（游戏 mods/ 下的文件夹名），与 mod.id 解耦。
+     *
+     * mod.id 是游戏内的模组标识，会写入 mod_info.json 并影响存档/依赖兼容，因此保持不变。
+     * 部署目录名仅用于落盘路径，固定为 ASTD，避免与源码工程目录 Asteria_Directorate
+     * 在大小写不敏感的文件系统（如 NTFS）上发生路径冲突。
+     */
+    val deployDirName: Provider<String> = project.providers.gradleProperty("mod.deployDirName")
+        .orElse("ASTD")
+
     val modName: Provider<String> = project.providers.gradleProperty("mod.name")
         .orElse("Starsector Mod Demo")
 

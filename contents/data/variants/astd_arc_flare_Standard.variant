@@ -4,7 +4,7 @@
     "fluxVents": 0,
     "goalVariant": true,
     "hullMods": [
-        "astd_arc_flare_mode_switcher"
+        "astd_dual_mode_switcher"
     ],
     "hullId": "astd_arc_flare",
     "permaMods": [

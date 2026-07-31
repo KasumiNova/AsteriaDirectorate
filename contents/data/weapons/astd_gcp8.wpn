@@ -1,7 +1,7 @@
 {
     "id": "astd_gcp8",
     "specClass": "beam",
-    "beamEffect": "cn.kasuminova.astd.combat.effect.arc.signature.stasisfield.HiddenBeamRenderEffect",
+    "beamEffect": "cn.kasuminova.astd.combat.effect.generic.gravitycollapse.HiddenBeamRenderEffect",
     "everyFrameEffect": "cn.kasuminova.astd.combat.effect.generic.gravitycollapse.GravityCollapseBeamEveryFrameEffect",
     "type": "ENERGY",
     "size": "MEDIUM",

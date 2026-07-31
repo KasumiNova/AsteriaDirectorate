@@ -4,14 +4,7 @@
     "fluxVents": 0,
     "goalVariant": true,
     "hullId": "astd_nebula_echo",
-    "hullMods": [
-        "astd_nano_restoration_protocol"
-    ],
-    "permaMods": [
-        "astd_echo_emitter",
-        "astd_echo_reentry_buffer",
-        "astd_phase_resonance_jamming"
-    ],
+    "hullMods": [],
     "quality": 0.0,
     "variantId": "astd_nebula_echo_Standard",
     "weaponGroups": [
@@ -19,9 +12,9 @@
             "autofire": false,
             "mode": "LINKED",
             "weapons": {
-                "WS 001": "astd_jmb2",
-                "WS 002": "astd_vpd6",
-                "WS 003": "astd_vpd6"
+                "WS 001": "ionbeam",
+                "WS 002": "pdlaser",
+                "WS 003": "pdlaser"
             }
         }
     ]

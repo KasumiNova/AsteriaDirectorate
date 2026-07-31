@@ -1,6 +1,6 @@
 package cn.kasuminova.astd.combat.effect.generic.projectile
 
-import cn.kasuminova.astd.renderer.projectile.ASTDProjectileVfxRuntimeManager
+import cn.kasuminova.astd.renderer.projectile.driver.ProjectileVfxDriverPlugin
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.DamagingProjectileAPI
@@ -12,7 +12,8 @@ import com.fs.starfarer.api.combat.WeaponAPI
  *
  * - 推荐：把 `.proj` 的 onFireEffect 指向这个类（以 projectileSpecId 为中心驱动效果）。
  * - 兼容：如果 `.wpn` 也配置了同样的 onFireEffect，本类会用 projectile.customData 去重，避免重复触发。
- * - 真实要执行的 VFX 由 [ProjectileVfxRegistry] 按 projectileSpecId（也就是 .proj 的 id）分发。
+ * - 真实要执行的 VFX 由 [ProjectileVfxDriverPlugin] 按 projectileSpecId（也就是 .proj 的 id）分发到新
+ *   RenderEntity 管线；未配置手写 DSL 的 spec 即无弹体 VFX。
  */
 class ProjectileSpecOnFireDispatcher : OnFireEffectPlugin {
 
@@ -21,11 +22,8 @@ class ProjectileSpecOnFireDispatcher : OnFireEffectPlugin {
     }
 
     override fun onFire(projectile: DamagingProjectileAPI, weapon: WeaponAPI, engine: CombatEngineAPI) {
-        ProjectileMissileAiInjector.ensureInstalled(engine, projectile)
-
         if (ProjectileVfxDispatchState.isMarked(engine, projectile, ProjectileVfxKeys.PROJECTILE_VFX_ONFIRE_MARK)) return
         if (ProjectileVfxDispatchState.isLocked(engine, projectile, ProjectileVfxKeys.PROJECTILE_VFX_ONFIRE_LOCK)) return
-        if (ProjectileVfxDispatchState.isLocked(engine, projectile, ProjectileVfxKeys.PROJECTILE_VFX_SCAN_LOCK)) return
 
         ProjectileVfxDispatchState.lock(engine, projectile, ProjectileVfxKeys.PROJECTILE_VFX_ONFIRE_LOCK)
         var tracked = false
@@ -35,13 +33,16 @@ class ProjectileSpecOnFireDispatcher : OnFireEffectPlugin {
                 log.info("[ASTD] ProjectileSpecOnFireDispatcher.onFire invoked")
             }
 
-            ProjectileVfxRegistry.ensureLoaded()
-
             val projId = projectile.projectileSpecId
             if (!projId.isNullOrBlank()) {
-                val preset = ProjectileVfxRegistry.presetFor(projId)
-                if (preset != null) {
-                    tracked = ASTDProjectileVfxRuntimeManager.track(engine, projectile, preset)
+                tracked = ProjectileVfxDriverPlugin.track(engine, projectile, projId)
+                val trackLogKey = ProjectileVfxKeys.ENGINE_LOG_TRACK_ONCE_PREFIX + projId
+                if (engine.customData[trackLogKey] != true) {
+                    engine.customData[trackLogKey] = true
+                    log.info(
+                        "[ASTD] onFire track: spec=$projId tracked=$tracked " +
+                            "specRegistered=${cn.kasuminova.astd.renderer.projectile.driver.ProjectileVfxSpecs.has(projId)}",
+                    )
                 }
             }
         } finally {

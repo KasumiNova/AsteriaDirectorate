@@ -104,11 +104,14 @@ data class MissileProjSpec(
     val fadeTime: Double,
     val engineSpec: MissileEngineSpec,
     val engineSlots: List<MissileEngineSlot> = emptyList(),
+    /** 导弹行为声明块（原版 behaviorSpec 原样透传；DEM/MIRV 等行为必需，规格 10 §1.2）。 */
+    val behaviorSpec: Map<String, Any?>? = null,
 ) {
     fun toJson(): Map<String, Any?> = linkedMapOf(
         "id" to id,
         "specClass" to "missile",
         "missileType" to missileType,
+        "behaviorSpec" to behaviorSpec,
         "onFireEffect" to onFireEffect,
         "onHitEffect" to onHitEffect,
         "sprite" to sprite,

@@ -1,38 +1,70 @@
 package cn.kasuminova.astd.combat.hullmods.arc
 
-import com.fs.starfarer.api.Global
-import com.fs.starfarer.api.combat.MutableShipStatsAPI
+import cn.kasuminova.astd.combat.hullmods.base.ASTDDualModeConfig
+import cn.kasuminova.astd.combat.hullmods.base.ASTDDualModeRegistry
+import cn.kasuminova.astd.combat.hullmods.base.ASTDDualModeSwitcherIds
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.combat.ShipVariantAPI
 
+/**
+ * arc_flare 双模式（载人/无人）id 集合与通用框架接入。
+ *
+ * 本文件已由「arc 自有状态机」收敛为「转调 Task 2/3 的通用双模式框架」
+ * （[cn.kasuminova.astd.combat.hullmods.base.ASTDDualModeConfig] 及其扩展函数）。
+ * arc 仅在此声明自己的 [ARC_FLARE_DUAL_MODE_CONFIG]（一份 id 集合）并注册到
+ * [ASTDDualModeRegistry]，状态机逻辑（ensureASTDDualModeState / activateDualMode /
+ * hasASTDDualModeAutomated）全部复用通用实现，避免与 lens 漂移。
+ *
+ * 说明：arc 原本各自持有一份 isASTDShip / isASTDShipVariant，现已删除，统一改用
+ * base 包同名扩展（见 [cn.kasuminova.astd.combat.hullmods.base.isASTDShip]）。
+ * arc 专属的 [isASTDArcFlareVariant] / [isASTDArcFlareShip]（仅判定 arc_flare 这一具体 hull）保留。
+ */
 internal object ASTDArcFlareHullModIds {
     const val HULL_ID: String = "astd_arc_flare"
 
-    const val SWITCHER: String = "astd_arc_flare_mode_switcher"
     const val MODE_CREWED: String = "astd_arc_flare_mode_crewed"
     const val MODE_AUTOMATED: String = "astd_arc_flare_mode_automated"
     const val NEXT_CREWED: String = "astd_arc_flare_mode_next_crewed"
     const val NEXT_AUTOMATED: String = "astd_arc_flare_mode_next_automated"
+
+    /** 载人版「电弧过载」系统 id（载人 mode hullmod 激活时 setShipSystemId）。 */
+    const val SYSTEM_CREWED: String = "astd_arc_flare_overdrive_crewed"
+
+    /** 无人版「电弧过载」系统 id（无人 mode hullmod 激活时 setShipSystemId）。 */
+    const val SYSTEM_AUTOMATED: String = "astd_arc_flare_overdrive_automated"
 }
 
 /**
- * 判断 variant 所属舰船是否为模组全局舰船（hull id 以 "astd_" 开头）。
+ * arc_flare 的双模式配置。
+ *
+ * 动机：arc 与 lens 共用「拆切换器即轮换模式」交互。此前 arc 自造了独立状态机 +
+ * 独立切换器（astd_arc_flare_mode_switcher / ASTDArcFlareDualModeSwitcherHullMod），与通用框架重复。
+ * 现改为复用通用切换器 [ASTDDualModeSwitcherIds.SWITCHER_ID] + arc 自己的 mode/next/system id，
+ * 行为与原 arc 状态机逐字段对应（见各字段），实现零回归迁移。
+ *
+ * 字段对应关系见 [ASTDDualModeConfig] 各成员注释。
  */
-internal fun ShipVariantAPI?.isASTDShipVariant(): Boolean {
-    val variant = this ?: return false
-    val hullId = try { variant.hullSpec?.hullId } catch (_: Throwable) { null }
-    val baseHullId = try { variant.hullSpec?.baseHullId } catch (_: Throwable) { null }
-    return (hullId ?: "").startsWith("astd_") || (baseHullId ?: "").startsWith("astd_")
-}
+val ARC_FLARE_DUAL_MODE_CONFIG = ASTDDualModeConfig(
+    switcherId = ASTDDualModeSwitcherIds.SWITCHER_ID,
+    crewedModeId = ASTDArcFlareHullModIds.MODE_CREWED,
+    automatedModeId = ASTDArcFlareHullModIds.MODE_AUTOMATED,
+    nextCrewedMarker = ASTDArcFlareHullModIds.NEXT_CREWED,
+    nextAutomatedMarker = ASTDArcFlareHullModIds.NEXT_AUTOMATED,
+    crewedSystemId = ASTDArcFlareHullModIds.SYSTEM_CREWED,
+    automatedSystemId = ASTDArcFlareHullModIds.SYSTEM_AUTOMATED,
+)
 
 /**
- * 判断 ship 是否为模组全局舰船（hull id 以 "astd_" 开头）。
+ * arc 双模式配置注册入口。
+ *
+ * 注册时机决策：通用切换器 [cn.kasuminova.astd.combat.hullmods.base.ASTDDualModeSwitcherHullMod]
+ * 的 tooltip 在 refit 选择器里可独立于任何 mode hullmod 被渲染（它需 [ASTDDualModeRegistry.configForShip]
+ * 反查 arc config 才能显示「当前/目标模式」）。故由 [AsteriaDirectoratePlugin.onApplicationLoad] 在应用加载
+ * 阶段显式调用本函数注册（与 lens 并列），保证任何 refit / 战役逻辑用到 config 时它已就绪。
+ * 本函数幂等（register 覆盖同 key），允许多次调用。
  */
-internal fun ShipAPI?.isASTDShip(): Boolean {
-    val ship = this ?: return false
-    val hullId = try { ship.hullSpec?.hullId } catch (_: Throwable) { null }
-    val baseHullId = try { ship.hullSpec?.baseHullId } catch (_: Throwable) { null }
-    return (hullId ?: "").startsWith("astd_") || (baseHullId ?: "").startsWith("astd_")
+fun registerArcFlareDualModeConfig() {
+    ASTDDualModeRegistry.register(ASTDArcFlareHullModIds.HULL_ID, ARC_FLARE_DUAL_MODE_CONFIG)
 }
 
 internal fun ShipVariantAPI?.isASTDArcFlareVariant(): Boolean {
@@ -63,89 +95,4 @@ internal fun ShipAPI?.isASTDArcFlareShip(): Boolean {
         null
     }
     return hullId == ASTDArcFlareHullModIds.HULL_ID || baseHullId == ASTDArcFlareHullModIds.HULL_ID
-}
-
-internal fun ShipVariantAPI.ensureASTDArcFlareModeState(stats: MutableShipStatsAPI? = null) {
-    if (!isASTDShipVariant()) return
-
-    migrateLegacyModeState()
-
-    val hasCrewed = getPermaMods().contains(ASTDArcFlareHullModIds.MODE_CREWED)
-    val hasAutomated = getPermaMods().contains(ASTDArcFlareHullModIds.MODE_AUTOMATED)
-
-    if (hasCrewed && hasAutomated) {
-        removePermaMod(ASTDArcFlareHullModIds.MODE_AUTOMATED)
-        removePermaMod("automated")
-        setNextMarker(ASTDArcFlareHullModIds.NEXT_CREWED)
-        return
-    }
-
-    when {
-        // 稳定态：当前模式 + 同向 next marker → 无需切换
-        hasCrewed -> setNextMarker(ASTDArcFlareHullModIds.NEXT_CREWED)
-        hasAutomated -> setNextMarker(ASTDArcFlareHullModIds.NEXT_AUTOMATED)
-        // 无模式时：按 next marker 激活
-        getPermaMods().contains(ASTDArcFlareHullModIds.NEXT_AUTOMATED) -> activateMode(ASTDArcFlareHullModIds.MODE_AUTOMATED, stats)
-        getPermaMods().contains(ASTDArcFlareHullModIds.NEXT_CREWED) -> activateMode(ASTDArcFlareHullModIds.MODE_CREWED, stats)
-        else -> activateMode(ASTDArcFlareHullModIds.MODE_CREWED, stats)
-    }
-}
-
-internal fun ShipVariantAPI.hasASTDArcFlareAutomatedMode(): Boolean =
-    getPermaMods().contains(ASTDArcFlareHullModIds.MODE_AUTOMATED) || hasHullMod(ASTDArcFlareHullModIds.MODE_AUTOMATED)
-
-private fun ShipVariantAPI.migrateLegacyModeState() {
-    val stateIds = listOf(
-        ASTDArcFlareHullModIds.MODE_CREWED,
-        ASTDArcFlareHullModIds.MODE_AUTOMATED,
-        ASTDArcFlareHullModIds.NEXT_CREWED,
-        ASTDArcFlareHullModIds.NEXT_AUTOMATED,
-    )
-    for (id in stateIds) {
-        if (hasHullMod(id) && !getPermaMods().contains(id)) {
-            removeMod(id)
-            addPermaMod(id)
-        }
-    }
-}
-
-internal fun ShipVariantAPI.activateMode(modeId: String, stats: MutableShipStatsAPI? = null) {
-    removePermaMod(ASTDArcFlareHullModIds.MODE_CREWED)
-    removePermaMod(ASTDArcFlareHullModIds.MODE_AUTOMATED)
-    addPermaMod(modeId)
-    // 稳定态：next marker = 与当前模式同向
-    val nextMarker = if (modeId == ASTDArcFlareHullModIds.MODE_AUTOMATED)
-        ASTDArcFlareHullModIds.NEXT_AUTOMATED
-    else
-        ASTDArcFlareHullModIds.NEXT_CREWED
-    setNextMarker(nextMarker)
-    // 同步原版 'automated' 船插（全自动舰船）
-    if (modeId == ASTDArcFlareHullModIds.MODE_AUTOMATED) {
-        if (!getPermaMods().contains("automated")) addPermaMod("automated")
-    } else {
-        removePermaMod("automated")
-    }
-    // 战役上下文：切换模式时自动卸下不兼容的舰长/AI 核心
-    clearIncompatibleCaptain(stats)
-}
-
-private fun clearIncompatibleCaptain(stats: MutableShipStatsAPI?) {
-    val member = try { stats?.fleetMember } catch (_: Throwable) { null } ?: return
-    val captain = try { member.captain } catch (_: Throwable) { null }
-    if (captain != null) {
-        // AI 核心：先归还到玩家货舱，再移除舰长，避免核心丢失
-        val aiCoreId = try { captain.aiCoreId } catch (_: Throwable) { null }
-        if (aiCoreId != null) {
-            try {
-                Global.getSector()?.playerFleet?.cargo?.addCommodity(aiCoreId, 1f)
-            } catch (_: Throwable) {}
-        }
-    }
-    try { member.setCaptain(null) } catch (_: Throwable) {}
-}
-
-private fun ShipVariantAPI.setNextMarker(markerId: String) {
-    removePermaMod(ASTDArcFlareHullModIds.NEXT_CREWED)
-    removePermaMod(ASTDArcFlareHullModIds.NEXT_AUTOMATED)
-    addPermaMod(markerId)
 }

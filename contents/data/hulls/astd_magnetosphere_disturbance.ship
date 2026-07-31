@@ -40,13 +40,17 @@
     "hullId": "astd_magnetosphere_disturbance",
     "hullName": "磁层扰动",
     "hullSize": "CAPITAL_SHIP",
+    "builtInMods": [
+        "astd_nano_restoration_protocol",
+        "astd_fleet_coordination_relay"
+    ],
     "shieldCenter": [
         0,
         0
     ],
     "shieldRadius": 312,
     "spriteName": "graphics/ships/astd_magnetosphere_disturbance.png",
-    "style": "HIGH_TECH",
+    "style": "ASTD_HIGH_TECH",
     "viewOffset": 0,
     "weaponSlots": [
         {
