@@ -193,11 +193,15 @@ class ConeShardComponent(
         /** 批次数（顶点 6 @t=0 / 锥内 8 @+0.05 / 锥缘 4 @+0.10，由根组件错峰灌批）。 */
         const val BATCH_COUNT = 3
 
-        /** 实例定时器（秒）：fadeIn / fadeOut 定值，full 随机域——总寿命 0.50~0.67s ≈ v2.2 的 0.45~0.65s。 */
+        /**
+         * 实例定时器（秒）：fadeIn / fadeOut 定值，full 随机域——总寿命 0.52~0.67s ≈ v2.2 的 0.45~0.65s。
+         * v4.2.2 淡出修正（用户目检：淡出太短像瞬间消失）：fadeOut 0.10→0.32（后段约一半寿命线性
+         * 渐隐，对齐 v2.2 的全程线性淡出观感），full 域等幅下移保总寿命不变。
+         */
         const val TIMER_FADE_IN = 0.02f
-        const val TIMER_FADE_OUT = 0.10f
-        const val TIMER_FULL_LO = 0.38f
-        const val TIMER_FULL_HI = 0.55f
+        const val TIMER_FADE_OUT = 0.32f
+        const val TIMER_FULL_LO = 0.18f
+        const val TIMER_FULL_HI = 0.32f
 
         /** 边长 = clamp(length×本值, MIN, MAX) × 随机(0.7~1.3)（实例 scale 为半尺寸）。 */
         private const val SHARD_SIZE_MUL = 0.03f

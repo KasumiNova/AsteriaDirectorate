@@ -17,7 +17,7 @@ import kotlin.test.assertTrue
  * 锥面三角碎片组件测试（§10.9 v4.2，SpriteEntity 实例化接原生泛光）：
  * - 批次错峰：批内有实例才激活、每批恰好激活一次；
  * - 实例参数域（逐值平移 v2.2）：自旋 ±180~540°/s、非均匀 scale 两边比 0.7~1.3（半尺寸校准）、
- *   定时器 full 0.38~0.55（总寿命 ≈ v2.2 的 0.45~0.65s）、alpha 140~200、1/4 概率 coreColor 提亮；
+ *   定时器 full 0.18~0.32 + fadeOut 0.32 定值（v4.2.2 淡出修正，总寿命 0.52~0.67s 不变）、alpha 140~200、1/4 概率 coreColor 提亮；
  * - emissive 降权：emissiveAlpha == color.alpha × 0.4 精确派生（域 56~80，降权非删除）；
  * - 单测环境贴图不可用：激活记 WARN 缺席视觉（无兜底）。
  */
@@ -108,8 +108,14 @@ class ConeShardComponentTest {
             // 半尺寸 scale：边长 clamp(200×0.03,6,16)=6 ×0.7~1.3 → 半尺寸 2.1~3.9；两边比 0.7~1.3。
             assertTrue(inst.scaleX in 2.1f - 1e-3f..3.9f + 1e-3f, "半尺寸域: ${inst.scaleX}")
             assertTrue(inst.scaleY / inst.scaleX in 0.7f - 1e-3f..1.3f + 1e-3f, "两边比域: ${inst.scaleY / inst.scaleX}")
-            // 定时器 full 0.38~0.55（总寿命 0.02+full+0.10 ≈ v2.2 的 0.45~0.65s）。
-            assertTrue(inst.timerFull in 0.38f - 1e-4f..0.55f + 1e-4f, "满亮相域: ${inst.timerFull}")
+            // 定时器 full 0.18~0.32（v4.2.2：fadeOut 0.32 定值，总寿命 0.02+full+0.32 = 0.52~0.67s 不变）。
+            assertTrue(inst.timerFull in 0.18f - 1e-4f..0.32f + 1e-4f, "满亮相域: ${inst.timerFull}")
+            // v4.2.2 淡出修正：fadeOut 拉长到 0.32s（用户目检"淡出太短像瞬消"），占总寿命约一半。
+            assertEquals(0.32f, ConeShardComponent.TIMER_FADE_OUT, 1e-4f, "淡出相锚定值")
+            assertTrue(
+                ConeShardComponent.TIMER_FADE_OUT >= ConeShardComponent.TIMER_FULL_HI - 1e-4f,
+                "淡出相不得短于满亮相上限（渐隐观感保证）",
+            )
             // alpha 140~200。
             assertTrue(inst.color.alpha in 140..200, "alpha 域: ${inst.color.alpha}")
             // emissive 降权：emissiveAlpha == color.alpha × 0.4（域 56~80；降权非删除，必须 > 0）。
