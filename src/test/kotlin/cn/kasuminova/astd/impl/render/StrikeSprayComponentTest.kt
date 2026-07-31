@@ -249,6 +249,21 @@ class StrikeSprayComponentTest {
     }
 
     @Test
+    fun `exact rays overrides fixed domain when present`() {
+        // v4.4 数量动态化通路：exactRays=15 精确生效（固定域 9+4 只给 9~13，绝不产出 15）。
+        val comp15 = StrikeSprayComponent("t15", explicitSpec(style = aod7Style().copy(exactRays = 15)))
+        assertEquals(15, comp15.needles.size, "exactRays 必须精确驱动针数")
+
+        // exactRays 下限直通（clamp [1,80] 内）：3 根精确生效（固定域永远 ≥7）。
+        val comp3 = StrikeSprayComponent("t3", explicitSpec(style = aod7Style().copy(exactRays = 3)))
+        assertEquals(3, comp3.needles.size, "exactRays 小值必须精确驱动")
+
+        // null 走原固定域随机（aod7 显式档零影响）。
+        val compNull = StrikeSprayComponent("tn", explicitSpec())
+        assertTrue(compNull.needles.size in 7..10, "exactRays=null 必须走固定域 7~10: ${compNull.needles.size}")
+    }
+
+    @Test
     fun `aod7 light tier ports explicit params without ramp`() {
         val comp = StrikeSprayComponent("t", explicitSpec())
 

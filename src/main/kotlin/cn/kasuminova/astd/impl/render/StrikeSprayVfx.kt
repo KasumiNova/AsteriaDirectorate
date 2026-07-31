@@ -73,6 +73,12 @@ object StrikeSprayVfx {
         val speedMax: Float = 560f,
         val impactScale: Float = 1f,
         val introRampSeconds: Float = 0.07f,
+        /**
+         * 精确针数（§10.9 v4.4 光锥数量动态化）：非空时优先于 [baseRaysMin]/[baseRaysExtra]
+         * 固定域——由调用方按张角推导好总数传入（锥面冲击：每 10° 张角 2~3 根）；null 走原
+         * 固定域随机（aod7 显式档零影响）。仅数量动态化，渲染细节零改动。
+         */
+        val exactRays: Int? = null,
     )
 
     /** 刺束喷散规格：针参数全部取自 [style] 随机区间。 */

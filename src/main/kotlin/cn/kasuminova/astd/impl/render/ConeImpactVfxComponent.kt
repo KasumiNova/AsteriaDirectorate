@@ -9,6 +9,7 @@ import org.boxutil.units.standard.entity.DistortionEntity
 import org.lazywizard.lazylib.MathUtils
 import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
+import kotlin.math.roundToInt
 
 /**
  * 共用锥面冲击特效组件（计划 00-锥面冲击特效重做计划 §10 v2 修订 → §10.7 v2.2）：一次性 RenderEntity 树的根节点。
@@ -21,6 +22,8 @@ import java.awt.Color
  * （参数逐值平移 v2.2），针位置改组件内显式积分治「概率侧飞」。
  * v4.3（§10.9，用户：「弧环需要真正的柔边」）：四道弧自 OglEllipseRingRenderer 的 GL_LINE_STRIP
  * 硬边线迁为子节点 [ConeArcComponent] 的 TrailEntity 曲梁（参数逐值平移 v2.2），进原生 bloom 管线。
+ * v4.4（§10.9，用户：「光锥改成根据弧度和特效大小的动态数量机制，不允许动任何渲染细节」）：
+ * 刺束针数自固定域 9+4 改由张角推导（每 10° 2~3 根，clamp [3,40]），仅数量，其余一行不动。
  * 分层（全部由 coreColor/fringeColor/flashColor 派生，色温统一；各层错峰起止，破同亮同灭）：
  * - t=0：顶点闪光（收敛版 2 颗 vanilla 粒子）+ DistortionEntity 扭曲 + 锥化刺束簇 + 碎片顶点批（6 颗）；
  * - t=+0.03/0.07/0.11/0.15：四道朝前弧段环（轴上 0.3/0.5/0.7/0.9L，0.04s 接力，多层锥状壳体读感；
@@ -48,20 +51,20 @@ class ConeImpactVfxComponent(
 
     private val log = Global.getLogger(ConeImpactVfxComponent::class.java)
 
+    /** 刺束张角（贴合锥角扇形：halfAngle×2×0.8，封顶 65°；贯星 25° 半角 → 40°，敌版 80° 半角 → 顶到 65°）。 */
+    private val sprayArcDeg = (halfAngleDeg * 2f * SPRAY_ARC_MUL).coerceAtMost(SPRAY_ARC_MAX)
+
     /** 刺束针簇子节点（v4.1 吞并：v2.2 参数逐值平移 + 侧飞修复显式积分；internal 供单测断言针参数域）。 */
     internal val sprayComponent = StrikeSprayComponent(
         "$id/spray",
         StrikeSprayVfx.StrikeSpraySpec(
             origin = Vector2f(origin),
             facingDeg = facingDeg,
-            // 张角贴合锥角扇形（halfAngle×2×0.8，封顶 65°：贯星 25° 半角 → 40°，敌版 80° 半角 → 顶到 65°）。
-            arcDeg = (halfAngleDeg * 2f * SPRAY_ARC_MUL).coerceAtMost(SPRAY_ARC_MAX),
+            arcDeg = sprayArcDeg,
             coreColor = coreColor,
             fringeColor = fringeColor,
             style = StrikeSprayVfx.SprayStyle(
-                baseRaysMin = SPRAY_RAYS_MIN,
-                baseRaysExtra = SPRAY_RAYS_EXTRA,
-                arc = (halfAngleDeg * 2f * SPRAY_ARC_MUL).coerceAtMost(SPRAY_ARC_MAX),
+                arc = sprayArcDeg,
                 lengthMin = length * SPRAY_LENGTH_MIN_MUL,
                 lengthMax = length * SPRAY_LENGTH_MAX_MUL,
                 widthMin = SPRAY_WIDTH_MIN,
@@ -74,6 +77,8 @@ class ConeImpactVfxComponent(
                 speedMax = SPRAY_SPEED_MAX,
                 impactScale = SPRAY_IMPACT_SCALE,
                 introRampSeconds = SPRAY_INTRO_RAMP_SECONDS,
+                // v4.4 数量动态化（仅数量，渲染细节零改动）：针数由张角推导。
+                exactRays = dynamicSprayRays(sprayArcDeg),
             ),
         ),
     )
@@ -215,9 +220,16 @@ class ConeImpactVfxComponent(
 
         // ---- 锥化刺束簇（v2.1 参数档，v4.1 起由子节点 StrikeSprayComponent 消费；逐值平移 v2.2 不改一个数字）----
 
-        /** 针数 9~13（比 aod7 的 7+3 略密，锥面更大；internal 供单测断言针数域）。 */
-        internal const val SPRAY_RAYS_MIN = 9
-        internal const val SPRAY_RAYS_EXTRA = 4
+        /**
+         * 针数动态化（§10.9 v4.4，用户：「光锥改成根据弧度和特效大小的动态数量机制，不允许动任何
+         * 渲染细节」；用户 v3 点③机制：每 10° 张角 2~3 根，60° → 随机 12~18 根）：
+         * rays = round(arcDeg/10 × rand([SPRAY_RAYS_PER_10DEG_MIN], [SPRAY_RAYS_PER_10DEG_MAX]))，
+         * clamp [SPRAY_RAYS_CLAMP_MIN, SPRAY_RAYS_CLAMP_MAX]。仅数量，其余渲染参数一行不动。
+         */
+        private const val SPRAY_RAYS_PER_10DEG_MIN = 2f
+        private const val SPRAY_RAYS_PER_10DEG_MAX = 3f
+        private const val SPRAY_RAYS_CLAMP_MIN = 3
+        private const val SPRAY_RAYS_CLAMP_MAX = 40
 
         /** 刺束张角 = halfAngle×2×本值，封顶 [SPRAY_ARC_MAX]（贴合锥角扇形）。 */
         private const val SPRAY_ARC_MUL = 0.8f
@@ -263,5 +275,15 @@ class ConeImpactVfxComponent(
         private const val SHARD_SPEED_MUL = 0.35f
         private const val SHARD_SPEED_JITTER_LO = 0.6f
         private const val SHARD_SPEED_JITTER_HI = 1.4f
+
+        /**
+         * 张角推导针数（纯函数，internal 供单测锚定公式与 clamp 域）：
+         * rays = round(arcDeg/10 × rand(2, 3))，clamp [3, 40]——
+         * 40° → 8~12 根、60° → 12~18 根、65°（锥面封顶）→ 13~20 根。
+         */
+        internal fun dynamicSprayRays(arcDeg: Float): Int =
+            (arcDeg / 10f * MathUtils.getRandomNumberInRange(SPRAY_RAYS_PER_10DEG_MIN, SPRAY_RAYS_PER_10DEG_MAX))
+                .roundToInt()
+                .coerceIn(SPRAY_RAYS_CLAMP_MIN, SPRAY_RAYS_CLAMP_MAX)
     }
 }

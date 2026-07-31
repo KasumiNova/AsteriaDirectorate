@@ -106,8 +106,10 @@ class StrikeSprayComponent(
      */
     private fun buildNeedles() {
         val style = spec.style
-        // v2.2：rays = (baseRaysMin + rand(0, extra)) × vis(=1)，clamp [1, 80]。
-        val rays = (style.baseRaysMin + MathUtils.getRandomNumberInRange(0, style.baseRaysExtra)).coerceIn(1, RAY_COUNT_MAX)
+        // 针数来源：exactRays 非空优先（v4.4 数量动态化，调用方按张角推导好总数）；
+        // 否则 v2.2 固定域：rays = (baseRaysMin + rand(0, extra)) × vis(=1)，clamp [1, 80]。
+        val rays = (style.exactRays
+            ?: (style.baseRaysMin + MathUtils.getRandomNumberInRange(0, style.baseRaysExtra))).coerceIn(1, RAY_COUNT_MAX)
         val baseScale = style.impactScale.coerceIn(IMPACT_SCALE_OUTER_MIN, IMPACT_SCALE_OUTER_MAX)
 
         // 错峰三段（v2.2 逐字）：段配额按二次曲线权重、段间隔、段尺寸系数。

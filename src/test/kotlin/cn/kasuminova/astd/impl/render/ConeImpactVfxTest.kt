@@ -184,17 +184,59 @@ class ConeImpactVfxTest {
 
         root.onAttach(frameCtx(engine, host, 0f, 0.02f))
 
-        // 刺束子节点（v4.1 吞并）：v2.2 档针数 9~13；零延迟段 attach 即激活
+        // 刺束子节点（v4.1 吞并）：v4.4 起针数由张角推导——halfAngle=40° → arc=64° →
+        // round(6.4 × rand(2,3)) = 13~19；零延迟段 attach 即激活
         // （headless 实体缺席记 WARN，activated 置位、参数照常；兜底链退役后不再落 vanilla 粒子）。
         assertTrue(
-            root.sprayComponent.needles.size in
-                ConeImpactVfxComponent.SPRAY_RAYS_MIN..ConeImpactVfxComponent.SPRAY_RAYS_MIN + ConeImpactVfxComponent.SPRAY_RAYS_EXTRA,
-            "v2.2 针数域 9~13: ${root.sprayComponent.needles.size}",
+            root.sprayComponent.needles.size in 13..19,
+            "v4.4 动态针数域（arc=64° → 13~19）: ${root.sprayComponent.needles.size}",
         )
         assertTrue(root.sprayComponent.needles.count { it.activated } >= 1, "attach 必须激活零延迟针")
 
         // 闪光恰好 2 颗 vanilla 粒子（刺束实体缺席不再有加法：无兜底链、针尖补光随实体缺席）。
         verify(engine, times(2)).addSmoothParticle(any(), any(), anyFloat(), anyFloat(), anyFloat(), any())
+    }
+
+    // ---- v4.4 光锥数量动态化（仅数量）----
+
+    @Test
+    fun `spray ray count derives from arc degrees with user formula`() {
+        val engine = mock(CombatEngineAPI::class.java)
+        `when`(engine.customData).thenReturn(HashMap())
+        val host = PointHost("t", origin, 90f)
+
+        // arc=40°（halfAngle=25°）→ round(4 × rand(2,3)) = 8~12 根。
+        val root25 = ConeImpactVfxComponent("t25", origin, 90f, 25f, 600f, core, fringe, core)
+        root25.onAttach(frameCtx(engine, host, 0f, 0.02f))
+        assertTrue(
+            root25.sprayComponent.needles.size in 8..12,
+            "arc=40° 针数域 8~12: ${root25.sprayComponent.needles.size}",
+        )
+
+        // arc=60°（halfAngle=37.5°）→ round(6 × rand(2,3)) = 12~18 根（用户 v3 点③原话样本）。
+        val root37 = ConeImpactVfxComponent("t37", origin, 90f, 37.5f, 600f, core, fringe, core)
+        root37.onAttach(frameCtx(engine, host, 0f, 0.02f))
+        assertTrue(
+            root37.sprayComponent.needles.size in 12..18,
+            "arc=60° 针数域 12~18: ${root37.sprayComponent.needles.size}",
+        )
+    }
+
+    @Test
+    fun `dynamic spray rays formula clamps to 3 and 40`() {
+        // 小arc钳制：arc=10° → round(1 × rand(2,3)) = 2~3 → clamp 后恒 3。
+        repeat(50) {
+            assertEquals(3, ConeImpactVfxComponent.dynamicSprayRays(10f), "arc=10° 必须 clamp 到 3")
+        }
+        // 大arc钳制：arc=400° → round(40 × rand(2,3)) = 80~120 → clamp 后恒 40。
+        repeat(50) {
+            assertEquals(40, ConeImpactVfxComponent.dynamicSprayRays(400f), "arc=400° 必须 clamp 到 40")
+        }
+        // 公式域：arc=40° → 8~12、arc=60° → 12~18（多次采样不越域）。
+        repeat(50) {
+            assertTrue(ConeImpactVfxComponent.dynamicSprayRays(40f) in 8..12, "arc=40° 域 8~12")
+            assertTrue(ConeImpactVfxComponent.dynamicSprayRays(60f) in 12..18, "arc=60° 域 12~18")
+        }
     }
 
     @Test
