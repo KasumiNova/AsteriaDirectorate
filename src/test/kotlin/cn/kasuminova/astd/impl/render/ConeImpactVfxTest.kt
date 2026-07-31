@@ -9,7 +9,6 @@ import com.fs.starfarer.api.combat.CombatEngineAPI
 import org.lwjgl.util.vector.Vector2f
 import org.mockito.ArgumentMatchers.any
 import org.mockito.ArgumentMatchers.anyFloat
-import org.mockito.Mockito.atLeast
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.never
 import org.mockito.Mockito.times
@@ -24,9 +23,12 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
- * 共用锥面 VFX 的入参防线、错峰调度与驱动生命周期测试：
+ * 共用锥面 VFX 的入参防线、错峰调度与驱动生命周期测试（§10.9 v4.1：刺束吞并为子节点）：
  * - spawn 入参防线：非法 length/duration 记 WARN 且不注册插件；合法注册一次性驱动；
  * - 扩张弧调度：advance 跨过阈值后每道恰好生成一次、不重复；
+ * - t=0 层：闪光 2 颗 vanilla 粒子、刺束子节点 v2.2 档针数域与零延迟段激活
+ *   （兜底链退役后 headless 实体缺席不再落 vanilla 粒子）；
+ * - 碎片三批：跨阈值累计 6+8+4=18 颗且幂等；
  * - OneShotVfxPlugin：暂停不推进、到期 detach + removePlugin 恰好一次。
  */
 class ConeImpactVfxTest {
@@ -149,18 +151,34 @@ class ConeImpactVfxTest {
     )
 
     @Test
-    fun `attach fires strike spray and flash with observable engine effects`() {
+    fun `attach builds spray needles by v2 2 tier and fires flash only in vanilla particles`() {
         val engine = mock(CombatEngineAPI::class.java)
         `when`(engine.customData).thenReturn(HashMap())
-        val plugin = ConeImpactVfx.spawn(engine, vfxSpec())
-        assertNotNull(plugin)
+        val host = PointHost("t", origin, 90f)
+        val root = ConeImpactVfxComponent(
+            id = "t",
+            origin = origin,
+            facingDeg = 90f,
+            halfAngleDeg = 40f,
+            length = 600f,
+            coreColor = core,
+            fringeColor = fringe,
+            flashColor = core,
+        )
 
-        // 首帧触发 attach：闪光 2 颗 + 刺束簇（9~13 条；单测环境 BoxUtil/贴图不可用，
-        // ImpactStrikeFx 内部按既有兜底链落 vanilla 粒子，每条一次 addSmoothParticle）。
-        plugin.advance(0.02f, null)
+        root.onAttach(frameCtx(engine, host, 0f, 0.02f))
 
-        // 刺束触发路径已执行：addSmoothParticle 至少 2（闪光）+ 9（刺束条数下限）次。
-        verify(engine, atLeast(11)).addSmoothParticle(any(), any(), anyFloat(), anyFloat(), anyFloat(), any())
+        // 刺束子节点（v4.1 吞并）：v2.2 档针数 9~13；零延迟段 attach 即激活
+        // （headless 实体缺席记 WARN，activated 置位、参数照常；兜底链退役后不再落 vanilla 粒子）。
+        assertTrue(
+            root.sprayComponent.needles.size in
+                ConeImpactVfxComponent.SPRAY_RAYS_MIN..ConeImpactVfxComponent.SPRAY_RAYS_MIN + ConeImpactVfxComponent.SPRAY_RAYS_EXTRA,
+            "v2.2 针数域 9~13: ${root.sprayComponent.needles.size}",
+        )
+        assertTrue(root.sprayComponent.needles.count { it.activated } >= 1, "attach 必须激活零延迟针")
+
+        // 闪光恰好 2 颗 vanilla 粒子（刺束实体缺席不再有加法：无兜底链、针尖补光随实体缺席）。
+        verify(engine, times(2)).addSmoothParticle(any(), any(), anyFloat(), anyFloat(), anyFloat(), any())
     }
 
     @Test

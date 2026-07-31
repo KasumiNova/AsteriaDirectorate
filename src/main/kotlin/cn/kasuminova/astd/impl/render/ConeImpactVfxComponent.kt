@@ -1,7 +1,6 @@
 package cn.kasuminova.astd.impl.render
 
 import cn.kasuminova.astd.api.render.RenderContext
-import cn.kasuminova.astd.combat.effect.generic.ImpactStrikeFx
 import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
 import cn.kasuminova.astd.renderer.effect.projectile.beam.OglEllipseRingRenderer
 import com.fs.starfarer.api.Global
@@ -17,18 +16,20 @@ import kotlin.math.tan
  * 共用锥面冲击特效组件（计划 00-锥面冲击特效重做计划 §10 v2 修订 → §10.7 v2.2）：一次性 RenderEntity 树的根节点。
  *
  * v2 定案（2026-07-31 实机评审）：锥面主体为 AOD7 开火特效配方（多道椭圆弧 + 扭曲 + 烟雾 + 闪光）
- * 的锥化变体。v2.1（同日二次反馈）补上 AOD7 **命中**配方的招牌层——spray 刺束簇（复用 [ImpactStrikeFx]）。
+ * 的锥化变体。v2.1（同日二次反馈）补上 AOD7 **命中**配方的招牌层——spray 刺束簇。
  * v2.2（同日三次反馈）：弧环加粗到 10px+ 并上逐顶点 alpha 包络（两端渐隐，治硬边收尾）；
  * 星云烟雾整体换成随机旋转的三角碎片（[ConeShardComponent] 子节点）。
+ * v4.1（§10.9 架构层，零观感改动）：刺束簇自 `ImpactStrikeFx` 吞并为子节点 [StrikeSprayComponent]
+ * （参数逐值平移 v2.2），针位置改组件内显式积分治「概率侧飞」。
  * 分层（全部由 coreColor/fringeColor/flashColor 派生，色温统一；各层错峰起止，破同亮同灭）：
  * - t=0：顶点闪光（收敛版 2 颗 vanilla 粒子）+ DistortionEntity 扭曲 + 锥化刺束簇 + 碎片顶点批（6 颗）；
  * - t=+0.03/0.07/0.11/0.15：四道朝前弧段环（轴上 0.3/0.5/0.7/0.9L，0.04s 接力，多层锥状壳体读感）；
  * - t=+0.05：碎片锥内批（8 颗，轴向 0.2~0.7L、角向 ±halfAngle×0.7 内随机，扇形覆盖读感）；
  * - t=+0.10：碎片锥缘批（4 颗，0.8~1.0L）。
  *
- * 根自身无后端常驻句柄：闪光/刺束为 vanilla 粒子与 BoxUtil 实体、弧为渲染器自管理实例、扭曲为
- * BoxUtil 自管理实体，均不依赖树存活；碎片由子节点 [ConeShardComponent] 持有并逐帧积分（树寿命
- * 因此不得短于碎片最长期，见 ConeImpactVfx.spawn 的 TTL 下限）。几何常量创建期定死，
+ * 根自身无后端常驻句柄：闪光/扭曲为 vanilla 粒子与 BoxUtil 自管理实体、弧为渲染器自管理实例；
+ * 碎片（[ConeShardComponent]）与刺束针（[StrikeSprayComponent]）由子节点持有并逐帧积分（树寿命
+ * 因此不得短于两层最长期，见 ConeImpactVfx.spawn 的 TTL 下限）。几何常量创建期定死，
  * 每帧只读 [RenderContext.frame] 的 elapsed 按阈值表恰好触发一次（布尔标记位，幂等）。
  */
 class ConeImpactVfxComponent(
@@ -44,6 +45,36 @@ class ConeImpactVfxComponent(
 
     private val log = Global.getLogger(ConeImpactVfxComponent::class.java)
 
+    /** 刺束针簇子节点（v4.1 吞并：v2.2 参数逐值平移 + 侧飞修复显式积分；internal 供单测断言针参数域）。 */
+    internal val sprayComponent = StrikeSprayComponent(
+        "$id/spray",
+        StrikeSprayVfx.StrikeSpraySpec(
+            origin = Vector2f(origin),
+            facingDeg = facingDeg,
+            // 张角贴合锥角扇形（halfAngle×2×0.8，封顶 65°：贯星 25° 半角 → 40°，敌版 80° 半角 → 顶到 65°）。
+            arcDeg = (halfAngleDeg * 2f * SPRAY_ARC_MUL).coerceAtMost(SPRAY_ARC_MAX),
+            coreColor = coreColor,
+            fringeColor = fringeColor,
+            style = StrikeSprayVfx.SprayStyle(
+                baseRaysMin = SPRAY_RAYS_MIN,
+                baseRaysExtra = SPRAY_RAYS_EXTRA,
+                arc = (halfAngleDeg * 2f * SPRAY_ARC_MUL).coerceAtMost(SPRAY_ARC_MAX),
+                lengthMin = length * SPRAY_LENGTH_MIN_MUL,
+                lengthMax = length * SPRAY_LENGTH_MAX_MUL,
+                widthMin = SPRAY_WIDTH_MIN,
+                widthMax = SPRAY_WIDTH_MAX,
+                fullMin = SPRAY_FULL_MIN,
+                fullMax = SPRAY_FULL_MAX,
+                fadeOutMin = SPRAY_FADE_OUT_MIN,
+                fadeOutMax = SPRAY_FADE_OUT_MAX,
+                speedMin = SPRAY_SPEED_MIN,
+                speedMax = SPRAY_SPEED_MAX,
+                impactScale = SPRAY_IMPACT_SCALE,
+                introRampSeconds = SPRAY_INTRO_RAMP_SECONDS,
+            ),
+        ),
+    )
+
     /** 三角碎片子节点（attach 时随树挂上；internal 供单测断言三批累计颗数）。 */
     internal val shardComponent = ConeShardComponent("$id/shards", length, coreColor, fringeColor)
 
@@ -51,6 +82,7 @@ class ConeImpactVfxComponent(
     private val fired = BooleanArray(TRIGGER_COUNT)
 
     init {
+        addChild(sprayComponent)
         addChild(shardComponent)
     }
 
@@ -58,7 +90,6 @@ class ConeImpactVfxComponent(
         val engine = ctx.engine ?: return false
         spawnVertexFlash(engine)
         spawnDistortion(engine)
-        spawnStrikeSpray(engine)
         // 碎片顶点批（t=0，6 颗）：顶点 10su 圆内喷出，补顶点体积感。
         spawnVertexShards(SHARD_BATCH1_COUNT)
         return true
@@ -122,37 +153,6 @@ class ConeImpactVfxComponent(
         } catch (t: Throwable) {
             log.warn("锥面冲击特效 DistortionEntity 生成异常（id=$id），扭曲层缺席（闪光/碎片/弧照常）", t)
         }
-    }
-
-    /**
-     * 锥化刺束簇（v2.1 补层，AOD7 命中特效招牌层，复用 [ImpactStrikeFx] 不新写渲染）：
-     * 一簇沿锥轴朝外放射的细长刺条——「多条锥状体」主力读感。张角贴合锥角扇形
-     * （halfAngle×2×0.8，封顶 65°：贯星 25° 半角 → 40°，敌版 80° 半角 → 顶到 65°）；
-     * 刺长按锥长比例（0.30~0.70L，锥内放射）；其余锚 aod7 轻量档（比 aod7 的 7+3 略密，锥面更大）。
-     */
-    private fun spawnStrikeSpray(engine: CombatEngineAPI) {
-        ImpactStrikeFx.spawnImpactSpray(
-            engine = engine,
-            point = origin,
-            facing = facingDeg,
-            coreColor = coreColor,
-            fringeColor = fringeColor,
-            baseRaysMin = SPRAY_RAYS_MIN,
-            baseRaysExtra = SPRAY_RAYS_EXTRA,
-            arc = (halfAngleDeg * 2f * SPRAY_ARC_MUL).coerceAtMost(SPRAY_ARC_MAX),
-            lengthMin = length * SPRAY_LENGTH_MIN_MUL,
-            lengthMax = length * SPRAY_LENGTH_MAX_MUL,
-            widthMin = SPRAY_WIDTH_MIN,
-            widthMax = SPRAY_WIDTH_MAX,
-            fullMin = SPRAY_FULL_MIN,
-            fullMax = SPRAY_FULL_MAX,
-            fadeOutMin = SPRAY_FADE_OUT_MIN,
-            fadeOutMax = SPRAY_FADE_OUT_MAX,
-            speedMin = SPRAY_SPEED_MIN,
-            speedMax = SPRAY_SPEED_MAX,
-            impactScale = SPRAY_IMPACT_SCALE,
-            introRampSeconds = SPRAY_INTRO_RAMP_SECONDS,
-        )
     }
 
     /** 碎片顶点批：位置取顶点 10su 圆内随机点。 */
@@ -238,10 +238,11 @@ class ConeImpactVfxComponent(
         private const val DISTORTION_SIZE_OUT = 96f
         private const val DISTORTION_POWER_FULL = 0.34f
 
-        // ---- 锥化刺束簇（v2.1，aod7 命中特效轻量档加密的锥化变体）----
+        // ---- 锥化刺束簇（v2.1 参数档，v4.1 起由子节点 StrikeSprayComponent 消费；逐值平移 v2.2 不改一个数字）----
 
-        private const val SPRAY_RAYS_MIN = 9
-        private const val SPRAY_RAYS_EXTRA = 4
+        /** 针数 9~13（比 aod7 的 7+3 略密，锥面更大；internal 供单测断言针数域）。 */
+        internal const val SPRAY_RAYS_MIN = 9
+        internal const val SPRAY_RAYS_EXTRA = 4
 
         /** 刺束张角 = halfAngle×2×本值，封顶 [SPRAY_ARC_MAX]（贴合锥角扇形）。 */
         private const val SPRAY_ARC_MUL = 0.8f

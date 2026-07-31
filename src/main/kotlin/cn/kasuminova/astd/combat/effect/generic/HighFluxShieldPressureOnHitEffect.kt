@@ -1,6 +1,7 @@
 package cn.kasuminova.astd.combat.effect.generic
 
 import cn.kasuminova.astd.combat.effect.generic.projectile.ProjectileVfxUtil
+import cn.kasuminova.astd.impl.render.StrikeSprayVfx
 import cn.kasuminova.astd.renderer.effect.system.ArcFlareOverdriveVisualState
 import cn.kasuminova.astd.internal.debug.CombatCaps
 import com.fs.starfarer.api.combat.CombatEngineAPI
@@ -180,9 +181,7 @@ class HighFluxShieldPressureOnHitEffect : OnHitEffectPlugin {
             0f
         }
 
-        // 需求：冲击条纹 + 同色烟雾，数量压在轻量档位。
-        // 注意：ImpactStrikeFx 内部会把 intensityMult 最低夹到 0.75，为了真正控制“数量”，
-        // 这里用更低的 base counts 来实现轻量量级，而不是依赖 intensityMult。
+        // 需求：冲击条纹 + 同色烟雾，数量压在轻量档位（低 base counts 控制量级）。
         // 命中特效颜色跟随弹体过载状态：无过载=蓝色，满过载=橙色。
         val overdriveLevel = try {
             val ship0 = projectile.weapon?.ship
@@ -196,16 +195,15 @@ class HighFluxShieldPressureOnHitEffect : OnHitEffectPlugin {
         )
         val smoke = Color(fringe.red, fringe.green, fringe.blue, if (shieldHit) 85 else 75)
 
-        ImpactStrikeFx.spawnImpactFx(
+        StrikeSprayVfx.spawnImpactFx(
             engine = engine,
             point = point,
             towardTargetFacing = facing,
-            facingMode = ImpactStrikeFx.ImpactFacingMode.INWARD,
+            facingMode = StrikeSprayVfx.FacingMode.INWARD,
             smokeColor = smoke,
             coreColor = core,
             fringeColor = fringe,
-            intensityMult = 1f,
-            smokeStyle = ImpactStrikeFx.ImpactSmokeStyle(
+            smokeStyle = StrikeSprayVfx.SmokeStyle(
                 puffCountBase = 2,
                 puffCountExtra = 2,
                 spreadArc = 24f,
@@ -216,7 +214,7 @@ class HighFluxShieldPressureOnHitEffect : OnHitEffectPlugin {
                 durationMin = 0.34f,
                 durationMax = 0.62f,
             ),
-            sprayStyle = ImpactStrikeFx.ImpactSprayStyle(
+            sprayStyle = StrikeSprayVfx.SprayStyle(
                 baseRaysMin = 7,
                 baseRaysExtra = 3,
                 arc = 58f,

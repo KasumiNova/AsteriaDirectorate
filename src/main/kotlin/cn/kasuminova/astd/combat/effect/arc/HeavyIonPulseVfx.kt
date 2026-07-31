@@ -10,7 +10,7 @@ import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
 
 /**
- * 重型离子脉冲的泄放/贯穿视觉与结算静态入口（规格 02 §2.3 / §3.2，对齐 `ImpactStrikeFx` 惯例）。
+ * 重型离子脉冲的泄放/贯穿视觉与结算静态入口（规格 02 §2.3 / §3.2，对齐 `StrikeSprayVfx` 惯例）。
  *
  * - 泄放：`spawnEmpArc` 真实电弧（伤害/视觉/结算一体），冷蓝白双色参数化，
  *   thickness 24f（略粗于电荷针刺的 20f，匹配大槽体量）；

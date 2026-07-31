@@ -7,7 +7,7 @@ import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
 
 /**
- * 电荷针刺的命中/泄放视觉静态入口（规格 01 §3.2，对齐 `ImpactStrikeFx` 惯例）。
+ * 电荷针刺的命中/泄放视觉静态入口（规格 01 §3.2，对齐 `StrikeSprayVfx` 惯例）。
  *
  * - 护盾命中：少量冷蓝白 hitParticle（克制量级，每发最多 2 粒，20 发/s 不糊屏）；
  * - 电荷泄放：`spawnEmpArc` 真实电弧（伤害/视觉/结算一体），冷蓝白双色参数化。

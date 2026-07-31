@@ -51,13 +51,14 @@ data class ConeImpactVfxSpec(
  * 共用锥面冲击特效入口（object 无状态）。
  *
  * 用法：各案在结算回调里 `ConeImpactVfx.spawn(engine, spec)` 一发即走——内部建一棵
- * 一次性 RenderEntity 树（[ConeImpactVfxComponent] 为根做错峰调度 + [ConeShardComponent] 碎片子节点），
- * 交给 [OneShotVfxPlugin] 逐帧推进，到期自动收尾，调用方无需持有任何句柄。
+ * 一次性 RenderEntity 树（[ConeImpactVfxComponent] 为根做错峰调度 + [StrikeSprayComponent] 刺束
+ * + [ConeShardComponent] 碎片两子节点），交给 [OneShotVfxPlugin] 逐帧推进，到期自动收尾，
+ * 调用方无需持有任何句柄。
  */
 object ConeImpactVfx {
     private val log = Global.getLogger(ConeImpactVfx::class.java)
 
-    /** 驱动 TTL 下限（秒）：三角碎片最长期 0.65s + 收尾余量（碎片由树内组件逐帧积分，树不能先死）。 */
+    /** 驱动 TTL 下限（秒）：树内自驱动层最长期（碎片 0.65s / 刺束针错峰 0.033+寿命 0.62s）+ 收尾余量。 */
     private const val MIN_DRIVER_TTL = 0.70f
 
     /**
@@ -104,9 +105,9 @@ object ConeImpactVfx {
             origin = Vector2f(spec.origin),
             facingDeg = spec.facingDeg,
         )
-        // 驱动寿命 = 视觉总长 + 收尾余量，且不得短于碎片最长期（0.65s）+ 余量：
-        // 弧/闪光/刺束/扭曲为自管理粒子与实体（存续与树无关），但三角碎片由树内 ConeShardComponent
-        // 逐帧积分、detach 即摘除，树提前收尾会把还在飞散的碎片整批掐掉。
+        // 驱动寿命 = 视觉总长 + 收尾余量，且不得短于树内自驱动层最长期 + 余量：
+        // 弧/闪光/扭曲为自管理粒子与实体（存续与树无关），但三角碎片与刺束针由树内组件
+        // 逐帧积分、detach 即摘除/删除，树提前收尾会把还在飞散的碎片与针整批掐掉。
         val plugin = OneShotVfxPlugin(engine, host, tree, maxOf(spec.duration + 0.15f, MIN_DRIVER_TTL))
         engine.addPlugin(plugin)
         return plugin
