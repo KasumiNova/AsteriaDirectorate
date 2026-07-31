@@ -4,7 +4,6 @@ import cn.kasuminova.astd.api.render.RenderContext
 import cn.kasuminova.astd.api.render.RenderEntity
 import cn.kasuminova.astd.api.render.RenderPhase
 import cn.kasuminova.astd.impl.buff.WarnCapture
-import cn.kasuminova.astd.renderer.effect.projectile.beam.OglEllipseRingRenderer
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import org.lwjgl.util.vector.Vector2f
 import org.mockito.ArgumentMatchers.any
@@ -108,22 +107,39 @@ class ConeImpactVfxTest {
         assertTrue(capture.messages().any { it.contains("fadeOutSeconds 越界") }, "必须记 WARN: ${capture.messages()}")
     }
 
-    // ---- 扩张弧调度 ----
+    // ---- 扩张弧调度（v4.3 起由子节点 ConeArcComponent 承载）----
 
     @Test
     fun `advance fires each arc exactly once across thresholds`() {
         val engine = mock(CombatEngineAPI::class.java)
         `when`(engine.customData).thenReturn(HashMap())
-        val plugin = ConeImpactVfx.spawn(engine, vfxSpec())
-        assertNotNull(plugin)
+        val host = PointHost("t", origin, 90f)
+        val root = ConeImpactVfxComponent(
+            id = "t",
+            origin = origin,
+            facingDeg = 90f,
+            halfAngleDeg = 40f,
+            length = 600f,
+            coreColor = core,
+            fringeColor = fringe,
+            flashColor = core,
+        )
 
-        // 逐帧推进跨过全部弧阈值（t=+0.03/0.07/0.11/0.15），四道弧各恰好生成一次。
-        repeat(10) { plugin.advance(0.02f, null) }
-        assertEquals(4, OglEllipseRingRenderer.ringCountForTests(engine), "累计 0.2s 后四道弧应各生成一次")
+        root.onAttach(frameCtx(engine, host, 0f, 0.02f))
+        assertEquals(4, root.arcComponent.arcs.size, "弧子节点必须持有四道弧")
 
-        // 继续推进不得重复生成（布尔标记位幂等）；树寿命 0.6s 内持续验证。
-        repeat(5) { plugin.advance(0.02f, null) }
-        assertEquals(4, OglEllipseRingRenderer.ringCountForTests(engine), "跨阈值后弧不得重复生成")
+        // 逐帧推进跨过全部弧阈值（子节点内部错峰 t=+0.03/0.07/0.11/0.15），四道弧各恰好激活一次
+        // （headless 实体缺席记 WARN，activated 置位）。
+        root.advance(frameCtx(engine, host, 0.06f, 0.06f), 0.06f)
+        assertEquals(1, root.arcComponent.arcs.count { it.activated }, "跨 0.03 恰好激活第 1 道")
+        root.advance(frameCtx(engine, host, 0.12f, 0.06f), 0.06f)
+        assertEquals(3, root.arcComponent.arcs.count { it.activated }, "跨 0.11 恰好激活前 3 道")
+        root.advance(frameCtx(engine, host, 0.20f, 0.08f), 0.08f)
+        assertEquals(4, root.arcComponent.arcs.count { it.activated }, "跨 0.15 四道全部激活")
+
+        // 继续推进不得重复激活（布尔标记位幂等）；树寿命内持续验证。
+        root.advance(frameCtx(engine, host, 0.30f, 0.10f), 0.10f)
+        assertEquals(4, root.arcComponent.arcs.count { it.activated }, "跨阈值后弧不得重复触发")
     }
 
     // ---- t=0 层（闪光 / 刺束簇）与三角碎片 ----
