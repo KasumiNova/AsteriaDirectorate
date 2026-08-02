@@ -269,12 +269,12 @@ internal class AsteriaTestCampaignBootstrapStateTest {
             "the transformer should implement the Java 9+ transformer entrypoint explicitly so Java 25 reliably invokes the hook",
         )
         assertTrue(
-            hook.contains("CampaignGameManager.o00000") &&
+            hook.contains("CampaignGameManager.loadGame") &&
                 hook.contains("goToState(CAMPAIGN_STATE_ID)"),
             "title-screen autoload must use the vanilla campaign load path and then transition into the normal campaign state",
         )
         assertFalse(
-            autoload.contains("CampaignGameManager.o00000") ||
+            autoload.contains("CampaignGameManager.loadGame") ||
                 autoload.contains("AppDriver.getInstance()"),
             "mod script classes must not directly load the campaign save from the resource-loading callback",
         )

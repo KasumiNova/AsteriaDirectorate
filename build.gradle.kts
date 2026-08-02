@@ -1,21 +1,39 @@
-import cn.kasuminova.starsector.gradle.starsector
-import cn.kasuminova.starsector.gradle.DecompileSourcesTask
+import io.github.nanoforged.sdg.GameDependencyMode
+import io.github.nanoforged.sdg.LaunchMode
 import org.gradle.api.file.DuplicatesStrategy
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.awt.image.BufferedImage
-import java.io.File
 import javax.imageio.ImageIO
 import kotlin.math.exp
 import kotlin.math.min
 import kotlin.math.sqrt
 
 plugins {
-    kotlin("jvm")
-    id("starsector-mod-plugin")
+    kotlin("jvm") version "2.2.0"
+    id("io.github.nanoforged.sdg.mod") version "0.1.0-SNAPSHOT"
 }
 
 group = "cn.kasuminova"
 version = "1.0-SNAPSHOT"
+
+sdg {
+    modId.set("asteria_directorate")
+    deployDirName.set("ASTD")
+    modName.set("Asteria Directorate")
+    author.set("Hikari_Nova")
+    description.set("Description")
+    gameVersion.set("0.98a")
+    modPlugin.set("cn.kasuminova.astd.AsteriaDirectoratePlugin")
+    dependency("lw_lazylib", "LazyLib")
+    dependency("MagicLib", "MagicLib")
+    dependency("shaderLib", "GraphicsLib")
+    dependency("BoxUtil", "zz BoxUtil")
+    dependency("lunalib", "LunaLib")
+    gameDependencyMode.set(GameDependencyMode.GAME_DIR)
+    gameDir.fileValue(file(providers.gradleProperty("starsector.gameDir").get()))
+    launchMode.set(LaunchMode.VANILLA)
+    decompilerVersion.set(providers.gradleProperty("decompiler.version").orElse("1.9.3"))
+}
 
 repositories {
     maven {
@@ -28,8 +46,10 @@ dependencies {
     testImplementation(kotlin("test"))
     // 战斗 API（ShipAPI/WeaponAPI/CombatEngineAPI 均为 jar 接口）单测桩：禁止反射手搓代理，统一走 mockito。
     testImplementation("org.mockito:mockito-core:5.5.0")
-    // starsector 默认包含所有编译器和运行时模组依赖，不需要单独声明其他模组依赖。
-    starsector(project)
+    // SDG GAME_DIR 模式自动把游戏 jar 与已装模组 jar 挂到 compileOnly，无需单独声明模组依赖。
+    // agent 字节码改写用 ASM：游戏与已装模组的 mod_info.json 均不导出 ASM，显式声明（版本与 NanoForge 运行时对齐）。
+    compileOnly("org.ow2.asm:asm:9.8")
+    compileOnly("org.ow2.asm:asm-commons:9.8")
 }
 
 configurations {
@@ -91,11 +111,6 @@ val acceptanceAgentJar = tasks.register<Jar>("acceptanceAgentJar") {
             "Can-Redefine-Classes" to "true",
         )
     }
-}
-
-tasks.withType<DecompileSourcesTask>().configureEach {
-    decompilerVersion.set(project.findProperty("decompiler.version")?.toString() ?: "1.9.3")
-    maxParallelDecompile.set(project.findProperty("decompiler.maxParallelThreads")?.toString()?.toIntOrNull() ?: 2)
 }
 
 /**
