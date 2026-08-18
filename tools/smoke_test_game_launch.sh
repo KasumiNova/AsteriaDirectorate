@@ -232,7 +232,6 @@ launch_campaign_acceptance_direct() {
         -Dfile.encoding=UTF-8 \
         -noverify \
         -XX:+UnlockDiagnosticVMOptions \
-        -XX:+ShowCodeDetailsInExceptionMessages \
         -XX:+PrintCommandLineFlags \
         -XX:+TieredCompilation \
         -XX:+DisableExplicitGC \
