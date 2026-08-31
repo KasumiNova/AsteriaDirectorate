@@ -1,0 +1,16 @@
+{
+    "id": "astd_seven_stars_shot",
+    "specClass": "projectile",
+    "spawnType": "BALLISTIC",
+    "onFireEffect": "cn.kasuminova.astd.combat.effect.arc.SevenStarsOnFireEffect",
+    "collisionClass": "NONE",
+    "collisionClassByFighter": "NONE",
+    "length": 2,
+    "width": 2,
+    "fadeTime": 0.2,
+    "fringeColor": [120, 200, 255, 0],
+    "coreColor": [220, 245, 255, 0],
+    "textureScrollSpeed": 0,
+    "pixelsPerTexel": 1,
+    "bulletSprite": "graphics/textures/BUtil_NONE.png"
+}

@@ -91,9 +91,11 @@ data class TexTrailNode(
  *
  * 世界系历史点折进弹头局部系后，沿带长均匀重采样 [nodeCount] 个点（默认 [TexTrailSpec.nodeCount]，
  * 调用方按实际带长动态细分——见 [dynamicTexTrailNodeCount]），
- * 宽度恒为 [TexTrailSpec.width]、颜色头→尾渐变；逐节点按年龄（[now] + [timeOffset] − 出生时刻，
+ * 颜色头→尾渐变；逐节点按年龄（[now] + [timeOffset] − 出生时刻，
  * 出生时刻沿历史段时间戳插值；[timeOffset] 为消亡后的加速偏移）算消散包络：寿命（[lifetimeSeconds]，
- * ≤0 时不衰减）内 [TexTrailSpec.dissolveStart] 之前满亮、之后线性降到 0，整体再乘 [intensity]。
+ * ≤0 时不衰减）内 [TexTrailSpec.dissolveStart] 之前满亮满宽、之后 alpha 线性降到 0、宽度按
+ * [ageWidthEnvelope] 同步收细（越接近寿命末期越细，死亡时不再是一根等宽带子凭空淡出），
+ * 整体再乘 [intensity]。
  * 历史不足 2 点时退化为直梁（年龄 0）。
  *
  * [wobbleAdvance] 为横向扰动图案沿带长的平移相位（单位：主波长周期数，由调用方按逻辑时间推进，
@@ -126,12 +128,13 @@ fun texTrailNodes(
         val lifeProgress = if (lifetimeSeconds > 0f) age / lifetimeSeconds else 0f
         val envelope = ageAlphaEnvelope(lifeProgress, spec.dissolveStart)
         val color = gradientColor(spec, t).scaledAlpha(intensity * envelope)
+        val width = (spec.width * ageWidthEnvelope(lifeProgress, spec.dissolveStart)).coerceAtLeast(0.1f)
         // 扭转角 = 弧长平滑噪声（带体系跨帧稳定，前后段自动衔接）+ 年龄累积
         val twistDeg = segmentTwistBase(distanceFromHead, twistWavelength, spec.twistMaxAngleDeg) +
             age * spec.twistTurnDegPerSec
         TexTrailNode(
             wobbleOffset(sample.position, sample.angle, distanceFromHead, t, spec, wobbleAdvance),
-            sample.angle, spec.width.coerceAtLeast(0.1f), color, age, lifeProgress, twistDeg,
+            sample.angle, width, color, age, lifeProgress, twistDeg,
         )
     }
 }
@@ -145,6 +148,19 @@ fun ageAlphaEnvelope(lifeProgress: Float, dissolveStart: Float): Float {
     val start = dissolveStart.coerceIn(0f, 0.999f)
     if (lifeProgress <= start) return 1f
     return (1f - (lifeProgress - start) / (1f - start)).coerceIn(0f, 1f)
+}
+
+/** 收细下限：寿命末期宽度比例不低于本值（完全归零在 alpha 已透明后无意义，且避免零宽退化三角）。 */
+private const val WIDTH_ENVELOPE_FLOOR = 0.15f
+
+/**
+ * 年龄收细包络（纯函数，可测）：[lifeProgress] ≤ [dissolveStart] 满宽（1），之后随 [ageAlphaEnvelope]
+ * 同步线性收细到寿命末期的 [WIDTH_ENVELOPE_FLOOR]——段越接近寿命末期越细，消散期带体呈逐渐收窄的观感，
+ * 而非等宽带子整体淡出。
+ */
+fun ageWidthEnvelope(lifeProgress: Float, dissolveStart: Float): Float {
+    val alpha = ageAlphaEnvelope(lifeProgress, dissolveStart)
+    return WIDTH_ENVELOPE_FLOOR + (1f - WIDTH_ENVELOPE_FLOOR) * alpha
 }
 
 /** 扰动第二分量频率比（黄金比）：与主分量不可约，叠加图案沿带长不自重复。 */

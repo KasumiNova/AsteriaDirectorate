@@ -1,0 +1,23 @@
+{
+    "id": "astd_gemini_dem_dummy",
+    "specClass": "missile",
+    "missileType": "MISSILE",
+    "onFireEffect": "cn.kasuminova.astd.combat.effect.arc.GeminiDemSalvoOnFireEffect",
+    "sprite": "graphics/textures/BUtil_NONE.png",
+    "size": [4, 4],
+    "center": [2, 2],
+    "collisionRadius": 7,
+    "collisionClass": "MISSILE_NO_FF",
+    "explosionColor": [0, 0, 0, 0],
+    "explosionRadius": 0,
+    "flameoutTime": 0.5,
+    "noEngineGlowTime": 999,
+    "fadeTime": 0.25,
+    "engineSpec": {
+        "turnAcc": 1800,
+        "turnRate": 1440,
+        "acc": 1800,
+        "dec": 1600
+    },
+    "engineSlots": []
+}

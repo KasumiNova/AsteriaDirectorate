@@ -30,11 +30,18 @@ object SevenStarsDifficulty {
 
     // ---- 常量（不缩放，设计案定案） ----
 
-    /** 最大折跃次数（含首发），无难度系数影响。 */
+    /** 最大折跃次数（含首发），无难度系数影响。固定 7 跳定案：无击杀门槛。 */
     const val MAX_JUMPS = 7
 
-    /** 连跳冷却（秒）。 */
-    const val CHAIN_COOLDOWN = 0.33f
+    /** 连跳冷却（秒）：每跳落点确定后 0.3s 立即计算下一跳位置（不等上一跳爆炸结算）。 */
+    const val CHAIN_COOLDOWN = 0.3f
+
+    /**
+     * 裂隙延迟爆炸的起爆征兆时长（秒，对齐原版裂隙洪流地雷 proximity delay 0.5s）：
+     * 折跃落点先产生裂隙征兆（ping 光圈 + windup 音），0.5s 后裂隙爆炸结算伤害
+     * （伤害量与爆炸范围不变，仅结算时点延后）。
+     */
+    const val EXPLOSION_DELAY = 0.5f
 
     /** 折跃范围 = 最终武器射程 × 本系数（吃射程修正）。 */
     const val JUMP_RANGE_MULT = 0.5f

@@ -1,7 +1,6 @@
 package cn.kasuminova.astd.combat.effect.arc
 
-import cn.kasuminova.astd.renderer.effect.explosion.CrossFlashPalette
-import cn.kasuminova.astd.renderer.effect.explosion.CrossFlashVfx
+import cn.kasuminova.astd.renderer.effect.explosion.RiftExplosionVfx
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.EmpArcEntityAPI
@@ -14,11 +13,12 @@ import kotlin.math.ceil
 
 /**
  * “七星”折跃发射器的特效薄层（规格 07 §2.3 / §3.2）：
- * 折跃起止 EMP 电弧 + 路径星云、十字闪光爆炸（薄调用 [CrossFlashVfx] 原语换算 scale/位置）、
+ * 折跃起止 EMP 电弧 + 路径星云、裂隙爆炸（薄调用 [RiftExplosionVfx] 原语换算半径/位置，
+ * 需求定案：爆炸特效换裂隙洪流发射极同款裂隙爆炸、主色蓝、总尺寸 -30%）、
  * 消散小星云、v5 多段终结逐段 EMP 电弧。
  *
- * 动机：机制可视化的唯一编排点——每跳「折跃电弧 + 十字闪光 + 伤害数字」同帧触发
- * （伤害数字由 applyDamage(showDamageNumbers=true) 原生弹出），满足机制反馈铁律；
+ * 动机：机制可视化的唯一编排点——每跳「折跃电弧 + 裂隙征兆 → 延迟裂隙爆炸 + 伤害数字」
+ * 同链触发（伤害数字由 applyDamage(showDamageNumbers=true) 原生弹出），满足机制反馈铁律；
  * 纯视觉散布用 [Misc.random]（非结算随机，符合 00-共享基建 §4.1-2）。
  */
 object SevenStarsVfx {
@@ -82,15 +82,25 @@ object SevenStarsVfx {
     }
 
     /**
-     * 十字闪光爆炸（薄调用层，规格 §3.3）：换算 scale/位置后调 [CrossFlashVfx] 原语，
-     * 主色族恒 ARC 冷蓝白；辉星组实装时直接调原语传 scale = 0.6 与紫色族调色板。
+     * 裂隙起爆征兆（薄调用层）：换算半径后调 [RiftExplosionVfx.spawnWindup] 并同点播放
+     * 原版 windup 音。[scale] 为相对基准半径的倍率（连跳第 N 跳递增 +10%/跳，终结 1.2）。
      */
-    fun crossFlash(engine: CombatEngineAPI, at: Vector2f, scale: Float) {
-        CrossFlashVfx.crossFlashExplosion(engine, at, scale, CrossFlashPalette.ARC)
-        Global.getSoundPlayer().playSound("explosion_flak", 1f, 0.8f, at, ZERO_VEL)
+    fun riftWindup(engine: CombatEngineAPI, at: Vector2f, scale: Float) {
+        RiftExplosionVfx.spawnWindup(engine, at, RiftExplosionVfx.DEFAULT_RADIUS * scale)
+        Global.getSoundPlayer().playSound(RiftExplosionVfx.SOUND_WINDUP, 1f, 0.9f, at, ZERO_VEL)
     }
 
-    /** 消散（无处可去/未击杀断链）：弹着点小星云淡出，无爆炸（规格 §2.3 表）。 */
+    /**
+     * 裂隙爆炸（薄调用层，需求定案：裂隙洪流发射极同款、主色蓝、总尺寸 -30%）：
+     * 换算半径后调 [RiftExplosionVfx.riftExplosion] 并同点播放原版起爆音；
+     * 主色族恒 [RiftExplosionVfx] 默认 BLUE。
+     */
+    fun riftBlast(engine: CombatEngineAPI, at: Vector2f, scale: Float) {
+        RiftExplosionVfx.riftExplosion(engine, at, radius = RiftExplosionVfx.DEFAULT_RADIUS * scale)
+        Global.getSoundPlayer().playSound(RiftExplosionVfx.SOUND_EXPLOSION, 1f, 1f, at, ZERO_VEL)
+    }
+
+    /** 消散（无处可去）：弹着点小星云淡出，无爆炸（规格 §2.3 表）。 */
     fun dissipate(engine: CombatEngineAPI, at: Vector2f) {
         for (i in 0 until DISSIPATE_NEBULA_COUNT) {
             val angle = Misc.random.nextFloat() * 360f

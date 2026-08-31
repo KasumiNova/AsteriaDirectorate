@@ -91,6 +91,12 @@ data class ProjectileProjSpec(
             fringeColor: Rgba,
             coreColor: Rgba,
             hitGlowRadius: Double = 25.0,
+            /**
+             * 弹体尺寸（su）：默认对齐原版「离子脉冲」长条螺栓（75×20）；
+             * 圆球状弹体（如贯星之矛）传等长等宽。ASTD VFX 管线的拖尾锚点前移量自动取 length/2。
+             */
+            length: Double = 75.0,
+            width: Double = 20.0,
         ): ProjectileProjSpec {
             return ProjectileProjSpec(
                 id = id,
@@ -99,8 +105,8 @@ data class ProjectileProjSpec(
                 onHitEffect = onHitEffect,
                 collisionClass = collisionClass,
                 collisionClassByFighter = collisionClassByFighter,
-                length = 75.0,
-                width = 20.0,
+                length = length,
+                width = width,
                 fadeTime = 0.25,
                 fringeColor = fringeColor,
                 coreColor = coreColor,

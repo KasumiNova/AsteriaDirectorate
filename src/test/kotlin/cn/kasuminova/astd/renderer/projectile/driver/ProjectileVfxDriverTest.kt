@@ -61,6 +61,39 @@ class ProjectileVfxDriverTest {
     }
 
     @Test
+    fun `拖尾锚点沿位移朝向前移 headLead`() {
+        val rec = RecordingNode()
+        val host = object : RenderHost { override val hostId = "test-lead" }
+        val d = ProjectileVfxDriverImpl(host, rec, policy.copy(headLeadWorld = 30f))
+
+        // 沿 +x 移动：origin 应领先弹体中心 30（对齐原版螺栓视觉头部）
+        d.advanceForTests(0f, 0f, 0f, 0.1f, alive = true)
+        d.advanceForTests(100f, 0f, 0f, 0.1f, alive = true)
+        val fx = assertNotNull(rec.lastFrame)
+        assertEquals(130f, fx.origin.x, 0.01f, "origin 应为弹体中心 +headLead（沿 +x）")
+        assertEquals(0f, fx.origin.y, 0.01f)
+        assertEquals(130f, fx.historyNodes.last().location.x, 0.01f, "历史路径应记录头部轨迹")
+
+        // 改为沿 +y 移动：前移方向跟随位移朝向
+        d.advanceForTests(100f, 100f, 90f, 0.1f, alive = true)
+        val fy = assertNotNull(rec.lastFrame)
+        assertEquals(100f, fy.origin.x, 0.5f)
+        assertEquals(130f, fy.origin.y, 0.5f, "朝向 90° 时 origin 应沿 +y 前移")
+    }
+
+    @Test
+    fun `headLead 为零时锚点退回弹体中心`() {
+        val rec = RecordingNode()
+        val d = driver(rec) // 测试 policy 未设 headLeadWorld 且非弹体宿主 → 0
+
+        d.advanceForTests(0f, 0f, 0f, 0.1f, alive = true)
+        d.advanceForTests(100f, 0f, 0f, 0.1f, alive = true)
+
+        val frame = assertNotNull(rec.lastFrame)
+        assertEquals(100f, frame.origin.x, 0.01f, "headLead=0 时 origin 应即弹体中心")
+    }
+
+    @Test
     fun `向下位移时 facing 归一化到 0-360 而非负角`() {
         val rec = RecordingNode()
         val d = driver(rec)
@@ -132,10 +165,10 @@ class ProjectileVfxDriverTest {
             "加速偏移应随淡出时间增长（尾先消头后消的时间压缩）",
         )
 
-        // dispose 截止 = max(removedFadeOutSeconds 0.1, 拖尾死亡消散窗口 0.4)：fadeElapsed 累计 0.05+0.02+0.11=0.18 未到。
+        // dispose 截止 = max(removedFadeOutSeconds 0.1, 拖尾死亡消散窗口 0.6)：fadeElapsed 累计 0.05+0.02+0.11=0.18 未到。
         assertEquals(ProjectileVfxDriverState.Fading, d.state, "死亡消散窗口未尽，应仍在 Fading")
-        d.advanceRemovedForTests(0.23f)
-        assertEquals(ProjectileVfxDriverState.Removed, d.state, "fadeElapsed 0.41 ≥ 0.4（死亡消散窗口）后应释放")
+        d.advanceRemovedForTests(0.43f)
+        assertEquals(ProjectileVfxDriverState.Removed, d.state, "fadeElapsed 0.61 ≥ 0.6（死亡消散窗口）后应释放")
         assertTrue(rec.detached, "释放应递归 onDetach 到树")
     }
 

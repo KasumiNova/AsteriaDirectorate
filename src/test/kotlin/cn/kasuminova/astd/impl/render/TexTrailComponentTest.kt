@@ -285,6 +285,34 @@ class TexTrailComponentTest {
     }
 
     @Test
+    fun `age width envelope keeps full width then shrinks to floor at life end`() {
+        assertEquals(1f, ageWidthEnvelope(0f, 0.6f))
+        assertEquals(1f, ageWidthEnvelope(0.3f, 0.6f))
+        assertEquals(1f, ageWidthEnvelope(0.6f, 0.6f), "消散起点边界仍满宽")
+        // lifeProgress=0.8 → alpha=0.5 → width=0.15+0.85×0.5=0.575
+        assertEquals(0.575f, ageWidthEnvelope(0.8f, 0.6f), 1e-4f)
+        assertEquals(0.15f, ageWidthEnvelope(1f, 0.6f), 1e-4f, "寿命末期收细到下限 0.15")
+        assertEquals(0.15f, ageWidthEnvelope(1.5f, 0.6f), 1e-4f, "超过寿命保持下限（alpha 已透明）")
+    }
+
+    @Test
+    fun `per-node lifetime narrows older tail nodes alongside dissolve`() {
+        // 同 per-node lifetime 场景：尾节点 age=0.4 → progress≈0.6667 → 宽=8×(0.15+0.85×0.8333)
+        val history = (0..4).map { ASTDProjectileHistoryNode(Vector2f(it * 25f, 0f), 0f, it * 0.1f) }
+
+        val nodes = texTrailNodes(history, Vector2f(100f, 0f), 0f, 100f, spec, 1f, now = 0.4f, lifetimeSeconds = 0.6f)
+
+        assertEquals(8f, nodes.first().width, 1e-4f, "头节点 age=0 满宽")
+        assertEquals(8f, nodes[2].width, 1e-4f, "未到消散起点不收细")
+        assertEquals(
+            8f * (0.15f + 0.85f * 0.8333f),
+            nodes.last().width,
+            1e-2f,
+            "尾段最老应先开始收细（逐渐变细消散）",
+        )
+    }
+
+    @Test
     fun `per-node lifetime dissolves older tail nodes first`() {
         // 直线飞行 100su：历史点 0.0s（尾）→ 0.4s（头），now=0.4、lifetime=0.6、dissolveStart=0.6
         val history = (0..4).map { ASTDProjectileHistoryNode(Vector2f(it * 25f, 0f), 0f, it * 0.1f) }

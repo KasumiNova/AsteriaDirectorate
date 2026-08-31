@@ -293,9 +293,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     private var smShipHitAoeBaseline = 0
     private var smShipHitShieldBaseline = 0
     private var smCarrierCleared = false
-    // LINE_CROSS：阶段（0=投喂低结构 atropos / 1=投喂增压 2000HP harpoon）、投喂集合与判据。
+    // LINE_CROSS：阶段（0=投喂低结构 atropos / 1=投喂增压 harpoon）、投喂集合与判据。
     private var smLineCrossStage = 0
-    private val smFedLowMissiles = mutableSetOf<Int>()
     private val smFedHighMissiles = mutableSetOf<Int>()
     private var smLineCrossBaseline = 0
     private var smHighHpHitConfirmed = false
@@ -339,19 +338,20 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     private var plLastResolveAt = -1f
     private var plLastTrackedResolveCount = 0
 
-    // COMPLETED 截图门控：最近一次辉星爆炸时刻（截图帧需含十字爆炸/双拖尾）。
+    // COMPLETED 截图门控：最近一次辉星裂隙爆炸时刻（截图帧需含裂隙爆炸/双拖尾）。
     private var smLastExplosionAt = -1f
     private var smLastTrackedExplosionCount = 0
 
-    // ==== seven stars 场景状态（相位机 MOUNT → BREAK → CHAIN → TERMINAL → ENEMY_MULTI → COMPLETED） ====
+    // ==== seven stars 场景状态（相位机 MOUNT → NOKILL → CHAIN → TERMINAL → ENEMY_MULTI → COMPLETED） ====
     private var ssPhase = SS_PHASE_MOUNT
     private var ssPhaseStartedAt = 0f
-    // BREAK 相位：增压投喂完成的守卫与相位基线（断链/终结计数观测面）。
-    private var ssBreakFed = false
-    private var ssBreakKillsBaseline = 0
-    private var ssBreakNoKillBaseline = 0
+    // NOKILL 相位：相位基线（固定 7 跳 / 零击杀观测面；投喂走 feedSsNokillMissiles 环形增压）。
+    private var ssNokillKillsBaseline = 0
+    private var ssNokillFlashBaseline = 0
+    private var ssNokillRiftBaseline = 0
     // CHAIN 相位基线与帧率采样（连跳峰值性能门槛）。
     private var ssChainNoShipBaseline = 0
+    private var ssChainFlashBaseline = 0
     private var ssChainFpsTicks = 0
     private var ssChainFpsWallStartNanos = 0L
     private var ssChainFps = -1f
@@ -363,7 +363,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     private var ssEnemyMinPlayerHp = Float.MAX_VALUE
     // 导弹投喂节流（CHAIN/COMPLETED 喂敌方鱼叉；ENEMY_MULTI 喂玩家侧鱼叉；环位角度见 feedSsMissiles）。
     private var ssMissileFeedAt = -1f
-    // COMPLETED 截图门控：最近一次十字闪光时刻（截图帧需含十字闪光/折跃电弧）。
+    // COMPLETED 截图门控：最近一次裂隙爆炸时刻（截图帧需含裂隙爆炸/折跃电弧）。
     private var ssLastFlashAt = -1f
     private var ssLastTrackedFlashCount = 0
 
@@ -2716,7 +2716,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
      */
     private var ssMissileFeedAngle = 0f
 
-    private fun feedSsMissiles(engine: CombatEngineAPI, atPlayerSide: Boolean) {
+    private fun feedSsMissiles(engine: CombatEngineAPI, atPlayerSide: Boolean, unkillable: Boolean = false) {
         if (elapsed < ssMissileFeedAt) return
         ssMissileFeedAt = elapsed + if (atPlayerSide) SS_MISSILE_FEED_INTERVAL else SS_ENEMY_FEED_INTERVAL
         ssMissileFeedAngle = (ssMissileFeedAngle + 137.5f) % 360f
@@ -2749,43 +2749,32 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             return
         }
         spawned.owner = if (atPlayerSide) 1 else 0
+        if (unkillable) spawned.hitpoints = SS_NOKILL_MISSILE_HP
     }
 
     /**
-     * BREAK 相位一次性增压投喂：一发鱼叉 HP 增压至 [SS_BREAK_MISSILE_HP]（闪光爆炸不可摧毁），
-     * 实证「未击杀断链」安全闸——无续跳、无终结，直接消散（规格 07 §4.2 检查点 5）。
+     * NOKILL 相位投喂：环形稠密投喂（同 feedSsMissiles 路径）且每发 HP 增压至
+     * [SS_NOKILL_MISSILE_HP]（裂隙爆炸不可摧毁）——实机判例（裂隙改版首跑）：单发直飞
+     * 增压鱼叉 ~4s 飞出折跃范围，链在 1~2 跳即无候选进终结，拿不到「固定 7 跳」证据；
+     * 环形投喂令候选持续在场，实证零击杀链跑满 7 跳再进终结（2026-08 裂隙改版移除
+     * 击杀续跳门槛）。
      */
-    private fun feedSsBreakMissile(engine: CombatEngineAPI) {
-        if (ssBreakFed) return
-        ssBreakFed = true
-        val source = findSsTarget(engine) ?: findSsPlayer(engine) ?: return
-        val spawn = Vector2f(SS_PLAYER_ANCHOR.x + SS_BREAK_MISSILE_SPAWN_DIST, 0f)
-        val angle = Misc.getAngleInDegrees(spawn, SS_PLAYER_ANCHOR)
-        val rad = Math.toRadians(angle.toDouble())
-        val vel = Vector2f(
-            (kotlin.math.cos(rad) * SS_MISSILE_INITIAL_SPEED).toFloat(),
-            (kotlin.math.sin(rad) * SS_MISSILE_INITIAL_SPEED).toFloat(),
-        )
-        val spawned = engine.spawnProjectile(source, null, SS_FEED_MISSILE_ID, spawn, angle, vel)
-        if (spawned == null) {
-            failureReason = "ss break missile spawn returned null for weaponId=$SS_FEED_MISSILE_ID"
-            transitionSsPhase(SS_PHASE_FAILED)
-            return
-        }
-        spawned.hitpoints = SS_BREAK_MISSILE_HP
+    private fun feedSsNokillMissiles(engine: CombatEngineAPI) {
+        feedSsMissiles(engine, atPlayerSide = true, unkillable = true)
     }
 
     /**
      * “七星”折跃发射器相位机（规格 07 §4.2 烟测检查点映射）：
      * MOUNT（装配/800 射程/PD hint 校验）→
-     * BREAK（增压鱼叉一击不毁：未击杀断链——闪光发生、kills=0、消散计数 +1、终结计数恒 0；
-     *   靶舰 A 在弹道上 600su HP 恒满 = 穿舰无触碰伤害证据，检查点 5+7）→
-     * CHAIN（无敌舰空域持续投喂：连跳 chainJumpsMax ∈ [3,7]、十字闪光/折跃电弧/击杀计数、
+     * NOKILL（增压鱼叉不可摧毁：固定 7 跳定案——零击杀链跑满 7 跳、7 次裂隙延迟爆炸全结算、
+     *   kills delta 恒 0；2026-08 裂隙改版移除击杀续跳门槛，原「未击杀断链」检查点作废）→
+     * CHAIN（无敌舰空域持续投喂：连跳 chainJumpsMax ∈ [3,7]、裂隙爆炸/折跃电弧/击杀计数、
      *   7 跳后无处可去终结 → 无舰消散计数 +1，检查点 2/3/4b；连跳峰值帧率门槛，检查点 8）→
-     * TERMINAL（靶舰 B 600su：单段 50% 终结命中掉血、EMP 电弧恒 0，检查点 4a）→
+     * TERMINAL（靶舰 B 600su：单段 50% 终结命中掉血（碰撞箱贴边取点 + 0.5s 延迟结算）、
+     *   EMP 电弧恒 0，检查点 4a）→
      * ENEMY_MULTI（installScaleForTests(5) + 敌版携带：投喂玩家侧鱼叉供敌版连跳，
      *   多段终结 segments>=2 + 逐段 EMP 电弧 + 玩家掉血，检查点 6）→
-     * COMPLETED（恢复投喂做截图舞台，十字闪光近期发生才上报 Completed 令特效入帧）。
+     * COMPLETED（恢复投喂做截图舞台，裂隙爆炸近期发生才上报 Completed 令特效入帧）。
      */
     private fun advanceSsScenario(engine: CombatEngineAPI) {
         engine.setDoNotEndCombat(true)
@@ -2796,11 +2785,10 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         val target = findSsTarget(engine)
         val weapon = findSsWeapon(player)
         val flash = SevenStarsChainScript.telemetryCount(engine, SevenStarsChainScript.TELEMETRY_FLASH)
-        val crossFlash = SevenStarsChainScript.telemetryCount(engine, SevenStarsChainScript.TELEMETRY_CROSS_FLASH)
+        val rift = SevenStarsChainScript.telemetryCount(engine, SevenStarsChainScript.TELEMETRY_RIFT)
         val teleportArc = SevenStarsChainScript.telemetryCount(engine, SevenStarsChainScript.TELEMETRY_TELEPORT_ARC)
         val kills = SevenStarsChainScript.telemetryCount(engine, SevenStarsChainScript.TELEMETRY_KILLS)
         val chainJumpsMax = SevenStarsChainScript.telemetryCount(engine, SevenStarsChainScript.TELEMETRY_CHAIN_JUMPS_MAX)
-        val dissipateNoKill = SevenStarsChainScript.telemetryCount(engine, SevenStarsChainScript.TELEMETRY_DISSIPATE_NO_KILL)
         val dissipateNoShip = SevenStarsChainScript.telemetryCount(engine, SevenStarsChainScript.TELEMETRY_DISSIPATE_NO_SHIP)
         val terminalSingle = SevenStarsChainScript.telemetryCount(engine, SevenStarsChainScript.TELEMETRY_TERMINAL_SINGLE)
         val terminalMulti = SevenStarsChainScript.telemetryCount(engine, SevenStarsChainScript.TELEMETRY_TERMINAL_MULTI)
@@ -2826,37 +2814,37 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                             transitionSsPhase(SS_PHASE_FAILED)
                         }
                         else -> {
-                            ssBreakKillsBaseline = kills
-                            ssBreakNoKillBaseline = dissipateNoKill
+                            ssNokillKillsBaseline = kills
+                            ssNokillFlashBaseline = flash
+                            ssNokillRiftBaseline = rift
                             target?.setHitpoints(target.maxHitpoints)
-                            transitionSsPhase(SS_PHASE_BREAK)
+                            transitionSsPhase(SS_PHASE_NOKILL)
                         }
                     }
                 }
             }
-            SS_PHASE_BREAK -> {
+            SS_PHASE_NOKILL -> {
                 stabilizeSsShips(engine, fire = true)
-                feedSsBreakMissile(engine)
-                if (dissipateNoKill - ssBreakNoKillBaseline >= 1) {
-                    val targetIntact = target != null && !target.isHulk &&
-                        target.hitpoints >= target.maxHitpoints - SS_BREAK_HP_TOLERANCE
+                feedSsNokillMissiles(engine)
+                // 固定 7 跳定案证据面：对不可摧毁增压鱼叉零击杀链仍跑满 7 跳且 7 次延迟爆炸
+                // 全部结算（flash delta >= 7 保证 pending 队列排空，规避 0.5s 延迟爆炸的
+                // 计数竞态）；随后终结判定的延迟段（0.5s 后结算）对靶舰 A 的命中在本相位
+                // 不断言——A 在转段即移除，存续终端段命中落空属预期（resolveTerminal 守护）。
+                if (chainJumpsMax >= SS_CHAIN_MAX_JUMPS && flash - ssNokillFlashBaseline >= SS_CHAIN_MAX_JUMPS) {
                     when {
-                        kills - ssBreakKillsBaseline != 0 -> {
-                            failureReason = "ss break kills delta=${kills - ssBreakKillsBaseline}, expect 0（增压鱼叉不可摧毁，断链前不得有击杀）"
+                        kills - ssNokillKillsBaseline != 0 -> {
+                            failureReason = "ss nokill kills delta=${kills - ssNokillKillsBaseline}, expect 0（增压鱼叉不可摧毁）"
                             transitionSsPhase(SS_PHASE_FAILED)
                         }
-                        terminalSingle != 0 || terminalMulti != 0 -> {
-                            failureReason = "ss break terminal single=$terminalSingle multi=$terminalMulti, expect 0（未击杀断链不触发终结）"
-                            transitionSsPhase(SS_PHASE_FAILED)
-                        }
-                        !targetIntact -> {
-                            failureReason = "ss break target hp=${target?.hitpoints}/${target?.maxHitpoints}（弹体穿舰不掉血为预期；掉血=存在触碰伤害）"
+                        rift - ssNokillRiftBaseline < SS_CHAIN_MAX_JUMPS -> {
+                            failureReason = "ss nokill rift delta=${rift - ssNokillRiftBaseline} < $SS_CHAIN_MAX_JUMPS（每跳一次裂隙爆炸）"
                             transitionSsPhase(SS_PHASE_FAILED)
                         }
                         else -> {
                             // 进入连跳相位：移除靶舰 A（空域无敌舰，无处可去终结走「无舰消散」路径）
                             target?.let { engine.removeEntity(it) }
                             ssChainNoShipBaseline = dissipateNoShip
+                            ssChainFlashBaseline = flash
                             ssChainFpsTicks = 0
                             ssChainFpsWallStartNanos = System.nanoTime()
                             transitionSsPhase(SS_PHASE_CHAIN)
@@ -2868,7 +2856,12 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 stabilizeSsShips(engine, fire = true)
                 feedSsMissiles(engine, atPlayerSide = true)
                 ssChainFpsTicks++
-                if (chainJumpsMax >= SS_CHAIN_MIN_JUMPS && dissipateNoShip - ssChainNoShipBaseline >= 1) {
+                // 延迟爆炸排空闸（裂隙改版：爆炸结算滞后折跃 0.5s，「无舰消散」判定点早于末跳
+                // 爆炸结算点）——flash delta >= 7 保证至少一条完整 7 跳链的爆炸全部结算完毕，
+                // kills/rift 断言不读半结算状态。
+                if (chainJumpsMax >= SS_CHAIN_MIN_JUMPS && dissipateNoShip - ssChainNoShipBaseline >= 1 &&
+                    flash - ssChainFlashBaseline >= SS_CHAIN_MAX_JUMPS
+                ) {
                     val wallSeconds = (System.nanoTime() - ssChainFpsWallStartNanos) / 1_000_000_000.0
                     ssChainFps = if (wallSeconds > 0.0) (ssChainFpsTicks / wallSeconds).toFloat() else -1f
                     when {
@@ -2880,8 +2873,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                             failureReason = "ss chain kills=$kills < $SS_CHAIN_MIN_KILLS（连跳成片清除证据不足）"
                             transitionSsPhase(SS_PHASE_FAILED)
                         }
-                        crossFlash < chainJumpsMax -> {
-                            failureReason = "ss cross flash=$crossFlash < chainJumpsMax=$chainJumpsMax（每跳一次十字闪光）"
+                        rift < chainJumpsMax -> {
+                            failureReason = "ss rift=$rift < chainJumpsMax=$chainJumpsMax（每跳一次裂隙爆炸）"
                             transitionSsPhase(SS_PHASE_FAILED)
                         }
                         teleportArc < 1 -> {
@@ -2978,9 +2971,9 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             }
         }
 
-        // 最近一次十字闪光时刻（COMPLETED 截图门控：闪光近期发生才上报，令十字特效入帧）
-        if (crossFlash > ssLastTrackedFlashCount) {
-            ssLastTrackedFlashCount = crossFlash
+        // 最近一次裂隙爆炸时刻（COMPLETED 截图门控：裂隙近期发生才上报，令裂隙特效入帧）
+        if (rift > ssLastTrackedFlashCount) {
+            ssLastTrackedFlashCount = rift
             ssLastFlashAt = elapsed
         }
 
@@ -3984,12 +3977,9 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             return
         }
         spawned.owner = 1
-        val id = System.identityHashCode(spawned)
-        if (lowStage) {
-            smFedLowMissiles += id
-        } else {
+        if (!lowStage) {
             spawned.hitpoints = SM_HIGH_HP_BOOST
-            smFedHighMissiles += id
+            smFedHighMissiles += System.identityHashCode(spawned)
         }
     }
 
@@ -4003,10 +3993,10 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
      *   检查点 4）→
      * SHIP_HIT（清航母与残机令导弹只剩舰船可咬：撞击舰船 AOE + 敌盾开撞击护盾爆炸恒触发，
      *   检查点 5）→
-     * LINE_CROSS（投喂 atropos hp=300 撞线同归于尽 → 投喂增压 2000HP harpoon 仅爆炸不移除；
+     * LINE_CROSS（投喂 atropos hp=300 撞线同归于尽 → 投喂增压 harpoon 仅爆炸不移除；
      *   相位内目标选择遥测仍仅 战机/舰船 两型 = 不主动拦导弹，检查点 6/8）→
      * ENEMY_SCALE（installScaleForTests 1/2/5：敌版爆炸倍率逐档 0.5/1.0/2.5，检查点 9）→
-     * COMPLETED（双方恢复开火做截图舞台，近期有爆炸事件才上报令十字爆炸/双拖尾入帧）。
+     * COMPLETED（双方恢复开火做截图舞台，近期有爆炸事件才上报令裂隙爆炸/双拖尾入帧）。
      */
     private fun advanceSmScenario(engine: CombatEngineAPI) {
         engine.setDoNotEndCombat(true)
@@ -4198,9 +4188,10 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     smLineCrossBaseline = lineCross
                     smLineCrossStage = 1
                     smFeedAt = -1f
-                    // 清残余低结构投喂弹，令 stage 1 撞线计数差分只可能来自增压弹或漏网弹。
+                    // 清全部在场敌导弹（不止已跟踪的低结构投喂弹），令 stage 1 撞线计数
+                    // 差分只可能来自当帧后新投喂的增压弹。
                     for (missile in engine.missiles.toList()) {
-                        if (System.identityHashCode(missile) in smFedLowMissiles && missile.owner != 0) {
+                        if (missile.owner != 0) {
                             engine.removeEntity(missile)
                         }
                     }
@@ -4215,7 +4206,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                         if (missile.hitpoints < SM_HIGH_HP_BOOST && engine.isEntityInPlay(missile)) {
                             smHighHpHitConfirmed = true
                             log.info(
-                                "[ASTD-Automation] sm high-hp evidence: harpoon 2000HP 被命中存活 hp=${"%.0f".format(missile.hitpoints)}" +
+                                "[ASTD-Automation] sm high-hp evidence: harpoon ${SM_HIGH_HP_BOOST.toInt()}HP 被命中存活 hp=${"%.0f".format(missile.hitpoints)}" +
                                     " lineCrossDelta=${lineCross - smLineCrossBaseline}（> 阈值仅爆炸不移除）",
                             )
                         }
@@ -4223,7 +4214,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 }
                 if (smLineCrossStage == 1 && smHighHpHitConfirmed) {
                     if (lineCross - smLineCrossBaseline > 0) {
-                        failureReason = "sm high-hp stage lineCrossDelta=${lineCross - smLineCrossBaseline}, expect 0（2000HP 不应触发撞线）"
+                        failureReason = "sm high-hp stage lineCrossDelta=${lineCross - smLineCrossBaseline}, expect 0（增压弹远高于阈值不应触发撞线）"
                         transitionSmPhase(SM_PHASE_FAILED)
                     } else {
                         smScaleStep = 0
@@ -4259,14 +4250,14 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             }
             SM_PHASE_COMPLETED -> {
                 stabilizeSmShips(engine, playerFire = true, enemyFire = true)
-                // 截图舞台弹药续航：令双方导弹流与十字爆炸持续入帧。
+                // 截图舞台弹药续航：令双方导弹流与裂隙爆炸持续入帧。
                 launcher?.let { if (it.ammo <= 0) it.resetAmmo() }
                 pod?.let { if (it.ammo <= 0) it.resetAmmo() }
                 findSmLauncher(enemy)?.let { if (it.ammo <= 0) it.resetAmmo() }
             }
         }
 
-        // 最近一次辉星爆炸时刻（COMPLETED 截图门控：事件近期发生才上报，令十字爆炸/双拖尾入帧）
+        // 最近一次辉星爆炸时刻（COMPLETED 截图门控：事件近期发生才上报，令裂隙爆炸/双拖尾入帧）
         if (explosions > smLastTrackedExplosionCount) {
             smLastTrackedExplosionCount = explosions
             smLastExplosionAt = elapsed
@@ -5564,11 +5555,10 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 appendLine("  \"ssEnemyCarrierPresent\": ${ssCarrier != null},")
                 appendLine("  \"ssOnfire\": ${SevenStarsChainScript.telemetryCount(engine, SevenStarsChainScript.TELEMETRY_ONFIRE)},")
                 appendLine("  \"ssFlash\": ${SevenStarsChainScript.telemetryCount(engine, SevenStarsChainScript.TELEMETRY_FLASH)},")
-                appendLine("  \"ssCrossFlash\": ${SevenStarsChainScript.telemetryCount(engine, SevenStarsChainScript.TELEMETRY_CROSS_FLASH)},")
+                appendLine("  \"ssRift\": ${SevenStarsChainScript.telemetryCount(engine, SevenStarsChainScript.TELEMETRY_RIFT)},")
                 appendLine("  \"ssTeleportArc\": ${SevenStarsChainScript.telemetryCount(engine, SevenStarsChainScript.TELEMETRY_TELEPORT_ARC)},")
                 appendLine("  \"ssKills\": ${SevenStarsChainScript.telemetryCount(engine, SevenStarsChainScript.TELEMETRY_KILLS)},")
                 appendLine("  \"ssChainJumpsMax\": ${SevenStarsChainScript.telemetryCount(engine, SevenStarsChainScript.TELEMETRY_CHAIN_JUMPS_MAX)},")
-                appendLine("  \"ssDissipateNoKill\": ${SevenStarsChainScript.telemetryCount(engine, SevenStarsChainScript.TELEMETRY_DISSIPATE_NO_KILL)},")
                 appendLine("  \"ssDissipateNoShip\": ${SevenStarsChainScript.telemetryCount(engine, SevenStarsChainScript.TELEMETRY_DISSIPATE_NO_SHIP)},")
                 appendLine("  \"ssTerminalSingle\": ${SevenStarsChainScript.telemetryCount(engine, SevenStarsChainScript.TELEMETRY_TERMINAL_SINGLE)},")
                 appendLine("  \"ssTerminalMulti\": ${SevenStarsChainScript.telemetryCount(engine, SevenStarsChainScript.TELEMETRY_TERMINAL_MULTI)},")
@@ -6292,7 +6282,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private const val PS_PHASE_TIMEOUT = 60f
         // “七星”折跃发射器场景：相位机、锚点与期望证据（规格 07 §4.2 烟测检查点）。
         private const val SS_PHASE_MOUNT = "MOUNT"
-        private const val SS_PHASE_BREAK = "BREAK"
+        private const val SS_PHASE_NOKILL = "NOKILL"
         private const val SS_PHASE_CHAIN = "CHAIN"
         private const val SS_PHASE_TERMINAL = "TERMINAL"
         private const val SS_PHASE_ENEMY_MULTI = "ENEMY_MULTI"
@@ -6302,7 +6292,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private const val SS_TARGET_HULL = "vigilance"
         private const val SS_PLAYER_SLOT = "WS 001"
         private val SS_PLAYER_ANCHOR = Vector2f(0f, 0f)
-        // 靶舰锚点（BREAK 相位穿舰观测 600su 弹道上；TERMINAL 相位对舰终结观测同位）。
+        // 靶舰锚点（600su 弹道上；TERMINAL 相位对舰终结观测位）。
         private val SS_TARGET_ANCHOR = Vector2f(600f, 0f)
         private val SS_ENEMY_ANCHOR = Vector2f(1000f, 0f)
         private val SS_CAMERA_CENTER = Vector2f(500f, 0f)
@@ -6311,10 +6301,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         // MOUNT 相位校验：射程断言基线 800（无射程向 hullmod 干扰）。
         private const val SS_EXPECT_RANGE = 800f
         private const val SS_RANGE_TOLERANCE = 5f
-        // BREAK：增压鱼叉 HP（闪光爆炸 v2 312.5 不可摧毁）；靶舰 HP 容差（穿舰无触碰伤害观测）。
-        private const val SS_BREAK_MISSILE_HP = 1_000_000f
-        private const val SS_BREAK_MISSILE_SPAWN_DIST = 350f
-        private const val SS_BREAK_HP_TOLERANCE = 1f
+        // NOKILL：增压鱼叉 HP（裂隙爆炸不可摧毁，固定 7 跳零击杀证据面；环形投喂复用通用环位常量）。
+        private const val SS_NOKILL_MISSILE_HP = 1_000_000f
         // CHAIN：连跳证据下限/上限（7 跳硬上限断言）；成片清除与帧率门槛。
         private const val SS_CHAIN_MIN_JUMPS = 3
         private const val SS_CHAIN_MAX_JUMPS = 7
@@ -6345,7 +6333,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private const val SS_MISSILE_RING_RADIUS = 100f
         private const val SS_MISSILE_RING_SPEED = 40f
         private const val SS_MISSILE_INITIAL_SPEED = 250f
-        // COMPLETED 截图门控：十字闪光近 0.6s 内发生才上报（特效入帧）；保底舞台超时。
+        // COMPLETED 截图门控：裂隙爆炸近 0.6s 内发生才上报（特效入帧）；保底舞台超时。
         private const val SS_COMPLETED_FLASH_WINDOW = 0.6f
         private const val SS_COMPLETED_STAGE_TIMEOUT = 25f
         private const val SS_PHASE_TIMEOUT = 90f
@@ -6465,10 +6453,12 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         // LINE_CROSS 投喂：中场 lane 布点直线喂向玩家（与玩家导弹流对头相撞）。
         private const val SM_FEED_MISSILE_LOW_ID = "atropos"
         private const val SM_FEED_MISSILE_HIGH_ID = "harpoon"
-        // 高结构增压值：阈值 600 之上的安全余量——700 口径下双发齐射同帧两连击
-        // （700→500<600）会把投喂弹打进撞线区间造成伪失败；2000 需 7+ 连击才跨阈值，
-        // 而确认采样在首次命中后下一帧即完成（第六轮烟测实证 700 口径 stage 1 零命中确认超时）。
-        private const val SM_HIGH_HP_BOOST = 2000f
+        // 高结构增压值：阈值 600 之上必须不可达——stage 1 投喂点在敌舰处堆叠生成，弹流在
+        // 敌舰附近命中的爆炸 AOE（半径 50、面板 100）会持续削低扎堆投喂弹血量；2000 口径
+        // 被 AOE 削进 <600 撞线区间后遭流弹移除（被移除弹体不计入命中确认，同帧其它被波及
+        // 弹体却满足确认），造成确定性伪失败（第八轮烟测实证）。20000 在阶段时长内需 ~97 次
+        // AOE 削血才触及阈值，事实上不可达；确认采样仍在首次命中后下一帧完成。
+        private const val SM_HIGH_HP_BOOST = 20000f
         private const val SM_FEED_INTERVAL = 0.6f
         private const val SM_FEED_LANES = 5
         private const val SM_FEED_LANE_GAP = 150f
@@ -6481,7 +6471,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private const val SM_SCALE_STEP_TIMEOUT = 30f
         // 敌方开火部署免疫闸（GD/SS/HIP 实机判例同款）。
         private const val SM_ENEMY_SETTLE_SECONDS = 4.0f
-        // COMPLETED 截图门控：爆炸事件近 2.5s 内发生才上报（十字爆炸/双拖尾入帧）；保底舞台超时。
+        // COMPLETED 截图门控：爆炸事件近 2.5s 内发生才上报（裂隙爆炸/双拖尾入帧）；保底舞台超时。
         private const val SM_COMPLETED_EVENT_WINDOW = 2.5f
         private const val SM_COMPLETED_STAGE_TIMEOUT = 30f
         private const val SM_PHASE_TIMEOUT = 90f

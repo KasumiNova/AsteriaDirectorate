@@ -51,15 +51,14 @@ class StellarMrmStrikeImplTest {
 
     private data class ArcRecord(val from: Vector2f, val to: Vector2f)
 
-    /** 记录型桩引擎：customData 真实 map、inPlay 动态集合、applyDamage/电弧/底闪/插件全记录。 */
+    /** 记录型桩引擎：customData 真实 map、inPlay 动态集合、applyDamage/电弧/裂隙视觉全记录。 */
     private class StubEngineWorld {
         val customData = HashMap<String, Any?>()
         val inPlay = mutableSetOf<CombatEntityAPI>()
         val removed = mutableListOf<CombatEntityAPI>()
         val damages = mutableListOf<DamageRecord>()
         val arcs = mutableListOf<ArcRecord>()
-        var explosionCount = 0
-        var pluginCount = 0
+        var riftCount = 0
 
         val engine: CombatEngineAPI = mock(CombatEngineAPI::class.java).also { engine ->
             `when`(engine.customData).thenReturn(customData)
@@ -93,11 +92,15 @@ class StellarMrmStrikeImplTest {
                 nullable(Vector2f::class.java), nullable(CombatEntityAPI::class.java),
                 anyFloat(), nullable(Color::class.java), nullable(Color::class.java),
             )
-            doAnswer { explosionCount++; null }.`when`(engine).spawnExplosion(
-                nullable(Vector2f::class.java), nullable(Vector2f::class.java),
-                nullable(Color::class.java), anyFloat(), anyFloat(),
-            )
-            doAnswer { pluginCount++; null }.`when`(engine).addPlugin(any())
+            // 裂隙爆炸视觉（RiftExplosionVfx）：每次注册计数一枚，实体桩带真实 location/velocity
+            // （生成循环会 set 二者并读回算回漂速度）。
+            doAnswer {
+                riftCount++
+                mock(com.fs.starfarer.api.combat.CombatEntityAPI::class.java).also { entity ->
+                    `when`(entity.location).thenReturn(Vector2f(0f, 0f))
+                    `when`(entity.velocity).thenReturn(Vector2f(0f, 0f))
+                }
+            }.`when`(engine).addLayeredRenderingPlugin(any())
         }
     }
 
@@ -223,8 +226,7 @@ class StellarMrmStrikeImplTest {
         assertEquals(2, world.arcs.size, "逐武器电弧 = 存活武器数（w3 瘫痪跳过）")
         assertTrue(world.arcs.any { it.to.x == 510f } && world.arcs.any { it.to.x == 490f }, "电弧锚到各存活武器槽位")
 
-        assertEquals(1, world.explosionCount, "spawnExplosion 紫闪底一次")
-        assertEquals(1, world.pluginCount, "十字辉星爆炸 VFX 插件一次")
+        assertEquals(2, world.riftCount, "裂隙爆炸恒执行（每次 2 枚裂隙，RiftExplosionVfx.NUM_RIFTS）")
         assertTrue(world.removed.isEmpty(), "命中战机不触发撞线移除")
     }
 
@@ -242,8 +244,7 @@ class StellarMrmStrikeImplTest {
         assertEquals(otherMissile, world.damages[0].target)
         assertEquals(100f, world.damages[0].amount)
         assertEquals(DamageType.ENERGY, world.damages[0].type)
-        assertEquals(1, world.explosionCount, "辉星爆炸恒执行")
-        assertEquals(1, world.pluginCount, "十字 VFX 照常（同帧十字爆炸即撞线视觉）")
+        assertEquals(2, world.riftCount, "裂隙爆炸恒执行（同帧裂隙爆炸即撞线视觉）")
         assertTrue(world.arcs.isEmpty(), "导弹命中无逐武器电弧")
     }
 
@@ -260,8 +261,7 @@ class StellarMrmStrikeImplTest {
         assertEquals(100f, world.damages[0].amount)
         assertEquals(0f, world.damages[0].emp)
         assertTrue(world.arcs.isEmpty(), "护盾命中无逐武器电弧")
-        assertEquals(1, world.explosionCount, "爆炸恒触发")
-        assertEquals(1, world.pluginCount)
+        assertEquals(2, world.riftCount, "裂隙爆炸恒触发")
     }
 
     @Test
@@ -276,7 +276,7 @@ class StellarMrmStrikeImplTest {
 
         assertTrue(world.damages.isEmpty(), "panel≤0/NaN 时附加机制全部跳过")
         assertTrue(world.removed.isEmpty())
-        assertEquals(0, world.explosionCount)
+        assertEquals(0, world.riftCount, "面板异常时裂隙爆炸不触发")
         val warns = capture.events.filter { it.level == Level.WARN && it.renderedMessage.contains("面板值异常") }
         assertEquals(2, warns.size, "两次异常各 WARN 一次（不静默）")
     }

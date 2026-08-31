@@ -14,6 +14,9 @@ import org.boxutil.units.standard.entity.DistortionEntity
 import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
 import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.sin
+import kotlin.random.Random
 
 /**
  * 贯星之矛命中特效触发层（规格 09 §3.2）：顶点大闪光 + 大光柱 + 锥状冲击锥面。
@@ -81,6 +84,7 @@ object PiercingLanceVfx {
             ),
         )
         spawnVertexFlash(engine, spec)
+        spawnNebulaBurst(engine, Vector2f(spec.origin), Random.Default)
         spawnPillar(engine, spec, facingDeg)
         ConeImpactVfx.spawn(
             engine,
@@ -94,6 +98,40 @@ object PiercingLanceVfx {
             ),
         )
         bumpTelemetry(engine, TELEMETRY_CONE_VFX)
+    }
+
+    /** 命中星云爆发（规格 09 §3.2 追加）：10~15 个大小/速度各异的蓝色星云向四周消散，平均存续约 2s。 */
+    fun spawnNebulaBurst(engine: CombatEngineAPI, origin: Vector2f, random: Random) {
+        for (seed in nebulaBurstSeeds(random)) {
+            val vel = Vector2f(
+                (cos(seed.angleRad.toDouble()) * seed.speed).toFloat(),
+                (sin(seed.angleRad.toDouble()) * seed.speed).toFloat(),
+            )
+            engine.addNebulaParticle(
+                Vector2f(origin), vel, seed.size, 1.9f, 0.25f, 0.55f, seed.durationSeconds, NEBULA_COLOR,
+            )
+        }
+        bumpTelemetry(engine, TELEMETRY_NEBULA_BURST)
+    }
+
+    /** 发射点扭曲（规格 09 §3.1 追加）：从内向外扩张的中等规模扭曲环，持续 1s，冷蓝白调（无跳变感）。 */
+    fun spawnMuzzleDistortion(engine: CombatEngineAPI, muzzle: Vector2f) {
+        BoxUtilCombatVfx.ensureReady(engine)
+        val d = DistortionEntity()
+        // 内 → 外：fadIn/full/fadeOut 三段尺寸递增（0.15s 长到 40% → 0.35s 到 70% → 0.5s 到全径后消散）
+        d.setGlobalTimer(0.15f, 0.35f, 0.5f)
+        d.setInnerFull(0.30f, 0.30f)
+        d.setInnerHardness(0.70f)
+        d.setRingHardness(0.55f)
+        d.setSizeIn(MUZZLE_DISTORTION_RADIUS * 0.40f, MUZZLE_DISTORTION_RADIUS * 0.40f)
+        d.setSizeFull(MUZZLE_DISTORTION_RADIUS * 0.70f, MUZZLE_DISTORTION_RADIUS * 0.70f)
+        d.setSizeOut(MUZZLE_DISTORTION_RADIUS, MUZZLE_DISTORTION_RADIUS)
+        d.setPowerIn(0.20f)
+        d.setPowerFull(0.34f)
+        d.setPowerOut(0f)
+        d.setLocation(Vector2f(muzzle))
+        CombatRenderingManager.addEntity(d)
+        bumpTelemetry(engine, TELEMETRY_MUZZLE_DISTORTION)
     }
 
     /** 顶点大闪光：核心闪 + 光晕 + BoxUtil 扭曲环（冷蓝白，尺寸随锥长缩放）。 */
@@ -168,7 +206,44 @@ object PiercingLanceVfx {
     const val TELEMETRY_IMPACT_FLASH = "astd_piercing_lance_impact_flash"
     const val TELEMETRY_PILLAR = "astd_piercing_lance_pillar"
     const val TELEMETRY_CONE_VFX = "astd_piercing_lance_cone_vfx"
+    const val TELEMETRY_NEBULA_BURST = "astd_piercing_lance_nebula_burst"
+    const val TELEMETRY_MUZZLE_DISTORTION = "astd_piercing_lance_muzzle_distortion"
 
     /** 读整数遥测计数（无记录为 0）。 */
     fun telemetryCount(engine: CombatEngineAPI, key: String): Int = engine.customData[key] as? Int ?: 0
 }
+
+/** 命中星云单颗参数（纯数据，可测）：方向角（弧度）/ 初速（su/s）/ 尺寸（su）/ 存续（秒）。 */
+data class NebulaSeed(val angleRad: Float, val speed: Float, val size: Float, val durationSeconds: Float)
+
+/**
+ * 命中星云爆发计划（纯函数，可测）：[NEBULA_BURST_COUNT_MIN]~[NEBULA_BURST_COUNT_MAX] 颗，
+ * 方向均匀铺满圆周 + 抖动，速度 [NEBULA_SPEED_MIN]~[NEBULA_SPEED_MAX]、尺寸 [NEBULA_SIZE_MIN]~[NEBULA_SIZE_MAX]
+ * 各自随机，存续以 [NEBULA_DURATION_AVG] 为中心 ±0.5s。
+ */
+fun nebulaBurstSeeds(random: Random): List<NebulaSeed> {
+    val count = NEBULA_BURST_COUNT_MIN + random.nextInt(NEBULA_BURST_COUNT_MAX - NEBULA_BURST_COUNT_MIN + 1)
+    return (0 until count).map { i ->
+        val base = (i.toFloat() / count) * (2f * Math.PI.toFloat())
+        NebulaSeed(
+            angleRad = base + (random.nextFloat() - 0.5f) * 0.6f,
+            speed = NEBULA_SPEED_MIN + random.nextFloat() * (NEBULA_SPEED_MAX - NEBULA_SPEED_MIN),
+            size = NEBULA_SIZE_MIN + random.nextFloat() * (NEBULA_SIZE_MAX - NEBULA_SIZE_MIN),
+            durationSeconds = NEBULA_DURATION_AVG + (random.nextFloat() - 0.5f) * 1.0f,
+        )
+    }
+}
+
+private const val NEBULA_BURST_COUNT_MIN = 10
+private const val NEBULA_BURST_COUNT_MAX = 15
+private const val NEBULA_SPEED_MIN = 25f
+private const val NEBULA_SPEED_MAX = 85f
+private const val NEBULA_SIZE_MIN = 18f
+private const val NEBULA_SIZE_MAX = 52f
+private const val NEBULA_DURATION_AVG = 2.0f
+
+/** 命中星云色（亮蓝，alpha 由 addNebulaParticle 亮度参数调制）。 */
+private val NEBULA_COLOR = Color(110, 180, 255, 130)
+
+/** 发射点扭曲全径（su）：约 0.7 × 等离子拱船宽（284）。 */
+private const val MUZZLE_DISTORTION_RADIUS = 199f

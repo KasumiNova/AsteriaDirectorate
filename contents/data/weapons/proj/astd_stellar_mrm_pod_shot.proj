@@ -1,0 +1,25 @@
+{
+    "id": "astd_stellar_mrm_pod_shot",
+    "specClass": "missile",
+    "missileType": "MISSILE",
+    "onFireEffect": "cn.kasuminova.astd.combat.effect.lens.stellar.StellarMrmOnFireEffect",
+    "onHitEffect": "cn.kasuminova.astd.combat.effect.lens.stellar.StellarMrmOnHitEffect",
+    "sprite": "graphics/missiles/am_srm.png",
+    "size": [13, 17],
+    "center": [7, 9],
+    "collisionRadius": 12,
+    "collisionClass": "MISSILE_NO_FF",
+    "explosionColor": [170, 110, 255, 160],
+    "explosionRadius": 75,
+    "armingTime": 0,
+    "flameoutTime": 0.5,
+    "noEngineGlowTime": 999,
+    "fadeTime": 0.25,
+    "engineSpec": {
+        "turnAcc": 2000,
+        "turnRate": 500,
+        "acc": 2000,
+        "dec": 2000
+    },
+    "engineSlots": []
+}

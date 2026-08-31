@@ -4,10 +4,21 @@ import cn.kasuminova.astd.api.render.RenderEntity
 import cn.kasuminova.astd.impl.render.ASTDColor
 import cn.kasuminova.astd.impl.render.ASTDProjectileVfxHeadLayerSpec
 import cn.kasuminova.astd.impl.render.ASTDTrailLayerSpec
+import cn.kasuminova.astd.impl.render.ArcTrailComponent
+import cn.kasuminova.astd.impl.render.ArcTrailSpec
+import cn.kasuminova.astd.impl.render.BoxFlareComponent
+import cn.kasuminova.astd.impl.render.BoxFlareSpec
 import cn.kasuminova.astd.impl.render.TexTrailComponent
 import cn.kasuminova.astd.impl.render.TexTrailSpec
 import cn.kasuminova.astd.impl.render.headBloomComponent
 import cn.kasuminova.astd.impl.render.renderEntity
+import com.fs.starfarer.api.combat.CombatEngineAPI
+import com.fs.starfarer.api.combat.DamagingProjectileAPI
+
+/** 弹体发射瞬间的附加动作钩子（如发射点扭曲特效）；由分发器在登记弹体成功后调用一次。 */
+fun interface ProjectileVfxOnFireHook {
+    fun onFire(engine: CombatEngineAPI, projectile: DamagingProjectileAPI)
+}
 
 /**
  * 弹体特效的**唯一作者面**：手写 DSL 直接产出场景树 + 驱动策略。
@@ -18,7 +29,12 @@ import cn.kasuminova.astd.impl.render.renderEntity
  * 组件节点内部复用几何层的 `*ForTests` 纯网格数学（不手抄），本 DSL 只负责把作者旋钮折成渲染器所需的层 spec。
  * 每次生成弹体都重新调用构建函数（不缓存），以支持调试期字面量热交换（见设计 §7）。
  */
-class ProjectileVfx(val tree: RenderEntity, val policy: ProjectileVfxDriverPolicy)
+class ProjectileVfx(
+    val tree: RenderEntity,
+    val policy: ProjectileVfxDriverPolicy,
+    /** 发射瞬间附加动作（如发射点扭曲特效）；null 则无。 */
+    val onFire: ProjectileVfxOnFireHook? = null,
+)
 
 /** 颜色字面量：0xRRGGBBAA。 */
 internal fun rgba(hex: Long): ASTDColor = ASTDColor(
@@ -45,6 +61,9 @@ class ProjectileVfxScope(private val id: String) {
     private var trail: ASTDTrailLayerSpec? = null
     private var head: ASTDProjectileVfxHeadLayerSpec? = null
     private val texTrails = ArrayList<Pair<String, TexTrailSpec>>()
+    private val boxFlares = ArrayList<Pair<String, BoxFlareSpec>>()
+    private val arcTrails = ArrayList<Pair<String, ArcTrailSpec>>()
+    private var onFireHook: ProjectileVfxOnFireHook? = null
 
     private val lifecycle = LifecycleBuilder()
     private val sampling = SamplingBuilder()
@@ -57,6 +76,19 @@ class ProjectileVfxScope(private val id: String) {
     fun texTrail(name: String, texturePath: String, block: TexTrailBuilder.() -> Unit) {
         texTrails += name to TexTrailBuilder(texturePath).apply(block).build()
     }
+
+    /** 挂一枚 BoxUtil 光斑（跟随弹体视觉头部；offsetX 负值可锚回弹体中心）。 */
+    fun boxFlare(name: String, block: BoxFlareBuilder.() -> Unit) {
+        boxFlares += name to BoxFlareBuilder().apply(block).build()
+    }
+
+    /** 拉一条锚点电弧：发射点（attach 时捕获的固定位置）→ 弹体头部（每帧跟随），随弹体生命周期存续。 */
+    fun arcTrail(name: String, texturePath: String, block: ArcTrailBuilder.() -> Unit) {
+        arcTrails += name to ArcTrailBuilder(texturePath).apply(block).build()
+    }
+
+    /** 发射瞬间附加动作（如发射点扭曲特效）：登记弹体成功后由分发器调用一次。 */
+    fun onFire(hook: ProjectileVfxOnFireHook) { onFireHook = hook }
 
     fun lifecycle(block: LifecycleBuilder.() -> Unit) { lifecycle.apply(block) }
     fun sampling(block: SamplingBuilder.() -> Unit) { sampling.apply(block) }
@@ -78,6 +110,8 @@ class ProjectileVfxScope(private val id: String) {
                 }
             }
             texTrails.forEach { (name, spec) -> addChild(TexTrailComponent("${id}_textrail_$name", spec)) }
+            boxFlares.forEach { (name, spec) -> addChild(BoxFlareComponent("${id}_boxflare_$name", spec)) }
+            arcTrails.forEach { (name, spec) -> addChild(ArcTrailComponent("${id}_arctrail_$name", spec)) }
         }
 
         // 拖尾驱动锚点（可视长度/历史窗口的基准长宽）：有 trail{} 取其长宽；
@@ -109,8 +143,9 @@ class ProjectileVfxScope(private val id: String) {
             removedFadeOutSeconds = fade.outSeconds,
             primaryTrailLength = anchorLength,
             primaryTrailStartWidth = anchorWidth,
+            headLeadWorld = lifecycle.headLeadWorld,
         )
-        return ProjectileVfx(tree, policy)
+        return ProjectileVfx(tree, policy, onFireHook)
     }
 }
 
@@ -276,18 +311,22 @@ class TexTrailBuilder(private val texturePath: String) {
     )
 }
 
-/** 生命周期策略：飞行时长/溶解起点比/弹头尺寸倍率/布局参考宽度。 */
+/** 生命周期策略：飞行时长/溶解起点比/弹头尺寸倍率/布局参考宽度/拖尾锚点前移。 */
 @ProjectileVfxDslMarker
 class LifecycleBuilder {
     var durationSeconds = 1.25f; private set
     var dissolveStartRatio = 0.6f; private set
     var headSizeScale = 1.5f; private set
     var layoutReferenceWidth = 1280f; private set
+    var headLeadWorld: Float? = null; private set
 
     fun duration(v: Float) { durationSeconds = v }
     fun dissolveAt(v: Float) { dissolveStartRatio = v }
     fun headScale(v: Float) { headSizeScale = v }
     fun layoutRef(v: Float) { layoutReferenceWidth = v }
+
+    /** 拖尾锚点前移量（世界单位）：不调用 = 自动取弹体 spec.length/2（对齐原版螺栓视觉头部）；0 = 锚回弹体中心。 */
+    fun headLead(v: Float) { headLeadWorld = v }
 }
 
 /** 采样策略：历史帧率/最大节点数/最小步距/距离窗口（省略窗口则用 trail.length）。 */
@@ -314,4 +353,110 @@ class FadeBuilder {
     fun out(v: Float) { outSeconds = v }
     fun hit(v: Float) { hitSeconds = v }
     fun expire(v: Float) { expireSeconds = v }
+}
+
+/** BoxUtil 光斑（横向盘状 lens-flare）：尺寸/双色/闪烁速度/锚点偏移。 */
+@ProjectileVfxDslMarker
+class BoxFlareBuilder {
+    private var width = 120f
+    private var height = 14f
+    private var coreColor = rgba(0xFFFFFFFFL)
+    private var fringeColor = rgba(0x99D9FFFFL)
+    private var glowPower = 1f
+    private var discRatio = 4f
+    private var flickerRate = 1.2f
+    private var noisePower = 0.1f
+    private var offsetX = 0f
+
+    /** 光斑全尺寸（世界单位）：w 沿朝向、h 横向；w >> h 即水平光条。 */
+    fun size(w: Float, h: Float) { width = w; height = h }
+
+    /** 核心/边缘色（0xRRGGBBAA）。 */
+    fun colors(core: Long, fringe: Long) { coreColor = rgba(core); fringeColor = rgba(fringe) }
+
+    /** bloom 强度（0..1+）与盘厚（越大越薄）。 */
+    fun glow(power: Float, discRatio: Float = 4f) { glowPower = power; this.discRatio = discRatio }
+
+    /** 闪烁速度倍率（1 = BoxUtil 默认；0/负值不合法，取 >0）。 */
+    fun flicker(rate: Float) { flickerRate = rate.coerceAtLeast(0.05f) }
+
+    /** 边缘噪点强度（0 = 关闭）。 */
+    fun noise(power: Float) { noisePower = power.coerceAtLeast(0f) }
+
+    /** 局部 x 偏移（负 = 向尾）：headLead 前移锚点后用 -headLead 锚回弹体中心。 */
+    fun offset(v: Float) { offsetX = v }
+
+    internal fun build(): BoxFlareSpec = BoxFlareSpec(
+        width = width,
+        height = height,
+        coreColor = coreColor,
+        fringeColor = fringeColor,
+        glowPower = glowPower,
+        discRatio = discRatio,
+        flickerRate = flickerRate,
+        noisePower = noisePower,
+        offsetX = offsetX,
+    )
+}
+
+/** 锚点电弧（发射点 → 弹体头部）：宽度/双色/折点抖动/透明度闪烁。 */
+@ProjectileVfxDslMarker
+class ArcTrailBuilder(private val texturePath: String) {
+    private var layer = 4
+    private var width = 6f
+    private var headColor = rgba(0xFFFFFFF0L)
+    private var tailColor = rgba(0x6FB4FF40L)
+    private var nodeCount = 24
+    private var tileLength = 200f
+    private var scrollSpeed = 0f
+    private var jagAmplitude = 12f
+    private var jagWavelength = 220f
+    private var jagFlickerHz = 9f
+    private var alphaFlicker = 0.15f
+    private var fadeOutCapSeconds = 0.12f
+
+    /** 叠层序号：绘制序 = 基线 + 本值（texTrail 同族，建议 4+ 压在三层混合之上）。 */
+    fun layer(v: Int) { layer = v }
+
+    /** 电弧全宽（世界单位）。 */
+    fun width(v: Float) { width = v }
+
+    /** 跟随端（头）/ 固定锚点端（尾）颜色（0xRRGGBBAA）。 */
+    fun colors(head: Long, tail: Long) { headColor = rgba(head); tailColor = rgba(tail) }
+
+    /** 折线节点数。 */
+    fun nodes(count: Int) { nodeCount = count }
+
+    /** 图案平铺周期（世界单位）与滚动速度（su/s，0 不滚动）。 */
+    fun tile(length: Float, scroll: Float) { tileLength = length; scrollSpeed = scroll }
+
+    /**
+     * 折点抖动：振幅峰值（世界单位，两端钉死中段放开）/ 空间波长（越小折点越密）/
+     * 图案重掷频率 Hz（跨桶换种子形成抖动闪烁）。
+     */
+    fun jag(amplitude: Float, wavelength: Float, flickerHz: Float = 9f) {
+        jagAmplitude = amplitude; jagWavelength = wavelength; jagFlickerHz = flickerHz
+    }
+
+    /** 整体透明度闪烁幅度（0..1，0 = 不闪）。 */
+    fun flicker(amount: Float) { alphaFlicker = amount.coerceIn(0f, 1f) }
+
+    /** 消亡淡出时长上限（秒）：电弧在弹体消亡后快速收掉，不跟随冻结帧前飞拉长。 */
+    fun fadeOutCap(seconds: Float) { fadeOutCapSeconds = seconds.coerceAtLeast(0.03f) }
+
+    internal fun build(): ArcTrailSpec = ArcTrailSpec(
+        width = width,
+        texturePath = texturePath,
+        layer = layer,
+        headColor = headColor,
+        tailColor = tailColor,
+        nodeCount = nodeCount,
+        tileLength = tileLength,
+        scrollSpeed = scrollSpeed,
+        jagAmplitude = jagAmplitude,
+        jagWavelength = jagWavelength,
+        jagFlickerHz = jagFlickerHz,
+        alphaFlicker = alphaFlicker,
+        fadeOutCapSeconds = fadeOutCapSeconds,
+    )
 }

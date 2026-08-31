@@ -55,7 +55,7 @@ interface StellarMrmStrike {
      * 1. 撞线者死：目标为敌方导弹且结构值 < 弹体 maxHitpoints × h 时 `removeEntity`；
      * 2. 猎机本能：目标为战机机体命中（非护盾）时追加能量伤害 + 一次全部武器 EMP
      *    （EMP 伤害走 `applyDamage` emp 参数，视觉走逐武器 `spawnEmpArcVisual`）；
-     * 3. 辉星爆炸：任意撞击恒触发——50su 范围能量 AOE + 十字辉星 VFX + 底闪。
+     * 3. 辉星爆炸：任意撞击恒触发——50su 范围能量 AOE + 裂隙爆炸 VFX（RiftExplosionVfx，半径 ×0.6）。
      *
      * @param engine 战斗引擎（结算与 VFX 的唯一出口）
      * @param projectile 命中弹体（面板伤害 / maxHitpoints / source / owner 来源）

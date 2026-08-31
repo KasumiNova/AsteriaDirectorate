@@ -10,8 +10,6 @@ import com.fs.starfarer.api.util.Misc
 import org.lazywizard.lazylib.combat.CombatUtils
 import org.lazywizard.lazylib.MathUtils
 import org.lwjgl.util.vector.Vector2f
-import kotlin.math.cos
-import kotlin.math.sin
 /**
  * “七星”折跃发射器的伤害结算薄层（规格 07 §2.2）：
  * 一次闪光爆炸的圆形区域结算（粗筛 → 逐目标 applyDamage → 摧毁统计）；
@@ -22,7 +20,22 @@ import kotlin.math.sin
  * 直击目标与区域内目标同额（规格 §0-3「hit 爆炸」整体缩放裁定）。
  */
 object SevenStarsDamageHandler {
-    private val log = Global.getLogger(SevenStarsDamageHandler::class.java)
+
+    /** 终结落点周向间距（su）：原版裂隙洪流 SPAWN_SPACING 175 × 裂隙组件尺寸倍率 0.7。 */
+    private const val TERMINAL_SPACING = 175f * 0.7f
+
+    /** 盾开启时的间距折减（原版口径：hitShield 时 perSpawn ×0.67）。 */
+    private const val SHIELD_SPACING_MULT = 0.67f
+
+    /** 贴碰撞箱后的外扩抖动下限/幅度（su，原版口径 30 + 50×rand）。 */
+    private const val TARGETING_RADIUS_PAD_MIN = 30f
+    private const val TARGETING_RADIUS_PAD_SPAN = 50f
+
+    /** 吸附顶点后回拉基准（su，原版 mine explosionSpec coreRadius 50）。 */
+    private const val TERMINAL_CORE_RADIUS = 50f
+
+    /** 顶点回拉比例（原版口径 ×0.9）。 */
+    private const val BOUNDS_PULLBACK_RATIO = 0.9f
 
     /**
      * 一次闪光十字爆炸的区域结算（规格 §2.2）：
@@ -115,48 +128,67 @@ object SevenStarsDamageHandler {
     }
 
     /**
-     * 沿舰体取点（规格 §2.2 sampleHullPoints，替代"参考裂隙洪流发射极"的可落地算法）：
-     * 从舰心向 [count] 个均布方向（叠加 [Misc.random] 抖动，纯视觉散布，非结算随机，
-     * 符合 00-共享基建 §4.1-2）做射线二分，找该方向仍在 [ShipAPI.isPointInBounds] 内的
-     * 最远半径并取 80% 处为落点——落点恒在舰体上且永不退化为精确舰心（实机判例：
-     * 碰撞圆盘拒绝采样对宽碰撞半径舰体命中率仅 ~3%，64 次仅得 2/7 点；且 applyDamage
-     * 落在精确舰心点时全额无效）；射线极端退化（有效半径 < 5% 碰撞半径）记 INFO（可观测降级，
-     * 非静默兜底，规格 §2.4）；最后按舰首方向投影排序，使爆炸点「沿舰体次第绽开」。
+     * 对舰终结落点取点（需求定案：直接抄原版裂隙洪流发射极 RiftCascadeEffect.getNextArcLoc
+     * 的碰撞箱贴边走位，替代原射线二分取点）：
+     * 1. 首点：舰心→[anchor]（来向）方向的碰撞圆周点；
+     * 2. 走位方向 spawnDir = 来向视角下「首点方位角 → 舰心方位角」的最近转向（原版口径，
+     *    恒 0 时取 +1）；
+     * 3. 逐点：绕舰心角步进 360°×[TERMINAL_SPACING]/(2π×碰撞半径)（cap 90°，盾开启时
+     *    间距 ×0.67），落点先取 `getTargetingRadius`（吃精确碰撞箱/盾面半径）再外扩
+     *    30~80su 抖动；盾未开启且精确碰撞箱可用时吸附最近顶点并沿顶点→落点方向回拉
+     *    [TERMINAL_CORE_RADIUS]×0.9（让爆炸心悬在舰缘外侧、爆风盖住舰缘——原版地雷
+     *    同款处理）。
+     *
+     * 与原版差异：原版从 beam 读来向与目标，本实现显式传 [ship]/[anchor]；尺寸倍率
+     * 恒 1（原版随已生成数递减的 sizeMult 与七星段表语义无关，不引入）。
+     * 返回点沿舰体周向依走位方向次第排布，天然满足「多段沿舰体次第绽开」。
      */
-    fun sampleHullPoints(ship: ShipAPI, count: Int): List<Vector2f> {
+    fun sampleRiftCascadePoints(ship: ShipAPI, count: Int, anchor: Vector2f): List<Vector2f> {
         if (count <= 0) return emptyList()
-        val center = ship.location
-        val radius = ship.collisionRadius.coerceAtLeast(1f)
+        val center = Vector2f(ship.location)
+        val targetRadius = ship.collisionRadius.coerceAtLeast(1f)
+        val shieldOn = ship.shield?.isOn == true
+        val spacing = if (shieldOn) TERMINAL_SPACING * SHIELD_SPACING_MULT else TERMINAL_SPACING
+        val anglePerSegment = (360f * spacing / (2f * Math.PI.toFloat() * targetRadius)).coerceAtMost(90f)
+
+        // 走位方向（原版 spawnDir 口径）：来向锚点视角下首点方位 → 舰心方位的最近转向。
+        val startAngle = Misc.getAngleInDegrees(center, anchor)
+        val firstCircle = MathUtils.getPointOnCircumference(center, targetRadius, startAngle)
+        val spawnDir = Misc.getClosestTurnDirection(
+            Misc.getAngleInDegrees(anchor, firstCircle),
+            Misc.getAngleInDegrees(anchor, center),
+        ).let { if (it == 0f) 1f else it }
+
         val points = ArrayList<Vector2f>(count)
-        for (i in 0 until count) {
-            val baseAngle = (Math.PI * 2.0 * i / count) + Misc.random.nextFloat() * 0.5
-            val dirX = cos(baseAngle).toFloat()
-            val dirY = sin(baseAngle).toFloat()
-            // 二分该方向仍在舰体内的最远半径（舰心恒在界内，前缀性质对星形界成立）。
-            var lo = 0f
-            var hi = radius
-            repeat(10) {
-                val mid = (lo + hi) * 0.5f
-                if (ship.isPointInBounds(Vector2f(center.x + mid * dirX, center.y + mid * dirY))) {
-                    lo = mid
-                } else {
-                    hi = mid
+        var angle = startAngle
+        repeat(count) {
+            val circlePoint = MathUtils.getPointOnCircumference(center, targetRadius, angle)
+            val actualRadius = Global.getSettings().getTargetingRadius(circlePoint, ship, shieldOn) +
+                TARGETING_RADIUS_PAD_MIN + Misc.random.nextFloat() * TARGETING_RADIUS_PAD_SPAN
+            var point = MathUtils.getPointOnCircumference(center, actualRadius, angle)
+            if (!shieldOn) {
+                val bounds = ship.exactBounds
+                if (bounds != null) {
+                    var best: Vector2f? = null
+                    var bestDist = Float.MAX_VALUE
+                    for (segment in bounds.segments) {
+                        val dist = MathUtils.getDistance(segment.p1, point)
+                        if (dist < bestDist) {
+                            bestDist = dist
+                            best = segment.p1
+                        }
+                    }
+                    best?.let { vertex ->
+                        val pullDir = Misc.getUnitVectorAtDegreeAngle(Misc.getAngleInDegrees(vertex, point))
+                        pullDir.scale(TERMINAL_CORE_RADIUS * BOUNDS_PULLBACK_RATIO)
+                        point = Vector2f.add(vertex, pullDir, null)
+                    }
                 }
             }
-            if (lo < radius * 0.05f) {
-                log.info(
-                    "“七星”多段终结沿舰体取点射线退化（hull=${ship.hullSpec?.hullId}，方向=$baseAngle，" +
-                        "有效半径=$lo），按 10% 碰撞半径偏移落点",
-                )
-                lo = radius * 0.1f
-            }
-            val r = lo * 0.8f
-            points += Vector2f(center.x + r * dirX, center.y + r * dirY)
+            points += point
+            angle += anglePerSegment * spawnDir
         }
-        val facingRad = Math.toRadians(ship.facing.toDouble())
-        val dirX = cos(facingRad).toFloat()
-        val dirY = sin(facingRad).toFloat()
-        return points.sortedBy { (it.x - center.x) * dirX + (it.y - center.y) * dirY }
+        return points
     }
 
     /**

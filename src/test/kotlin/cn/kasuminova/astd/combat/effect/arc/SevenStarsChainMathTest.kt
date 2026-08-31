@@ -11,7 +11,8 @@ import kotlin.test.assertEquals
 
 /**
  * 规格 07 §4.1 用例 1/4/5/6：flashMult 三锚点链、terminalDamageFractions 段表、
- * jumpRange 折跃范围（含 0 值 WARN 防线）、decideAfterFlash 决策矩阵——全部驱动
+ * jumpRange 折跃范围（含 0 值 WARN 防线）、nextChainStep 推进判定（固定 7 跳定案：
+ * 无击杀门槛，仅达上限/无候选进终结）——全部驱动
  * [SevenStarsChainMath] / [SevenStarsDifficulty.snapshot] 真实逻辑断言输出。
  */
 class SevenStarsChainMathTest {
@@ -95,36 +96,31 @@ class SevenStarsChainMathTest {
     }
 
     @Test
-    fun `用例6 decideAfterFlash 决策矩阵`() {
+    fun `用例6 nextChainStep 推进判定矩阵（固定 7 跳，无击杀门槛）`() {
         assertEquals(
-            SevenStarsChainMath.ChainDecision.CONTINUE,
-            SevenStarsChainMath.decideAfterFlash(kills = 1, jumps = 3, hasPdCandidates = true),
-            "kills>=1 且 jumps<7 → CONTINUE",
+            SevenStarsChainMath.ChainStep.JUMP,
+            SevenStarsChainMath.nextChainStep(jumps = 1, hasPdCandidates = true),
+            "jumps=1 且有候选 → JUMP",
         )
         assertEquals(
-            SevenStarsChainMath.ChainDecision.TERMINAL,
-            SevenStarsChainMath.decideAfterFlash(kills = 2, jumps = 7, hasPdCandidates = true),
-            "kills>=1 且 jumps=7 → TERMINAL",
+            SevenStarsChainMath.ChainStep.JUMP,
+            SevenStarsChainMath.nextChainStep(jumps = 6, hasPdCandidates = true),
+            "jumps=6 且有候选 → JUMP（未达上限）",
         )
         assertEquals(
-            SevenStarsChainMath.ChainDecision.TERMINAL,
-            SevenStarsChainMath.decideAfterFlash(kills = 1, jumps = 3, hasPdCandidates = false),
-            "kills>=1 但无 PD 候选 → TERMINAL",
+            SevenStarsChainMath.ChainStep.TERMINAL,
+            SevenStarsChainMath.nextChainStep(jumps = 7, hasPdCandidates = true),
+            "jumps=7 → TERMINAL（7 跳硬上限优先于候选存在）",
         )
         assertEquals(
-            SevenStarsChainMath.ChainDecision.DISSIPATE,
-            SevenStarsChainMath.decideAfterFlash(kills = 0, jumps = 3, hasPdCandidates = true),
-            "kills=0 → DISSIPATE（未击杀断链不触发终结）",
+            SevenStarsChainMath.ChainStep.TERMINAL,
+            SevenStarsChainMath.nextChainStep(jumps = 3, hasPdCandidates = false),
+            "无 PD 候选 → TERMINAL",
         )
         assertEquals(
-            SevenStarsChainMath.ChainDecision.DISSIPATE,
-            SevenStarsChainMath.decideAfterFlash(kills = 0, jumps = 7, hasPdCandidates = true),
-            "kills=0 优先于 7 跳上限（jumps 任意）",
-        )
-        assertEquals(
-            SevenStarsChainMath.ChainDecision.DISSIPATE,
-            SevenStarsChainMath.decideAfterFlash(kills = 0, jumps = 0, hasPdCandidates = false),
-            "jumps=0/kills=0（首发空爆）→ DISSIPATE",
+            SevenStarsChainMath.ChainStep.TERMINAL,
+            SevenStarsChainMath.nextChainStep(jumps = 0, hasPdCandidates = false),
+            "jumps=0 且无候选（首发空域）→ TERMINAL",
         )
     }
 }

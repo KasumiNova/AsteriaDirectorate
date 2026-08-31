@@ -1,5 +1,6 @@
 package cn.kasuminova.astd.renderer.projectile.driver
 
+import cn.kasuminova.astd.combat.effect.arc.piercinglance.PiercingLanceVfx
 import cn.kasuminova.astd.impl.render.ASTDColor
 import kotlin.math.max
 import kotlin.math.roundToInt
@@ -40,7 +41,7 @@ object ProjectileVfxSpecs {
         "astd_heavy_ion_pulse_shot" to {
             simpleProjectileVfx("astd_heavy_ion_pulse_shot", heavyIonPulseColor(), width = 12f, length = 220f)
         },
-        // 辉星 MRM（规格 08 §3.1）：LENS 紫十字辉星，很长拖尾（length=420 对齐 aod7 hero，2500 射程长航迹）；
+        // 辉星 MRM（规格 08 §3.1）：LENS 紫辉星弹体/拖尾（爆炸为裂隙组件蓝色族），很长拖尾（length=420 对齐 aod7 hero，2500 射程长航迹）；
         // width=10 表达 1.5× 弹体体量（介于 spc3 中型 6 与穷距大型 12 之间）。两 spec 值完全一致属刻意（同一弹头两种发射器）。
         "astd_stellar_mrm_launcher_shot" to {
             simpleProjectileVfx("astd_stellar_mrm_launcher_shot", violet(), width = 10f, length = 420f)
@@ -74,6 +75,7 @@ object ProjectileVfxSpecs {
         width: Float,
         length: Float,
         glowScale: Float = 2.2f,
+        extra: ProjectileVfxScope.() -> Unit = {},
     ): ProjectileVfx = projectileVfx(id) {
         trail {
             width(width); length(length)
@@ -108,6 +110,7 @@ object ProjectileVfxSpecs {
             recede(recedeBy)
             twist(TWIST_INNER_DEG)
         }
+        extra()
     }
 
     /**
@@ -117,6 +120,7 @@ object ProjectileVfxSpecs {
      * `trail{}` 仅作拖尾风格声明（弹头网格的基宽/基色来源 + 驱动锚点）。
      *
      * 豁免三层混合改版（无 twist、宽度不翻倍、保留 head{} 代码弹头与隐藏原版弹体）。
+     * headLead(0f)：原版弹体已隐藏、代码弹头网格锚在弹体中心，禁用自动前移避免整体视觉前移半颗弹。
      */
     private fun aod7Shot(): ProjectileVfx = projectileVfx("astd_aod7_shot") {
         trail {
@@ -124,7 +128,7 @@ object ProjectileVfxSpecs {
             color(0x478FEBEB); tail(0x0A24380F)
             emissive(0xF0F8FFFF)
         }
-        lifecycle { duration(1.25f); dissolveAt(0.6f); headScale(1.14f); layoutRef(1846f) }
+        lifecycle { duration(1.25f); dissolveAt(0.6f); headScale(1.14f); layoutRef(1846f); headLead(0f) }
         sampling { fps(60f); maxNodes(96); minStep(2f); window(420f) }
         fade { out(0.15f) }
 
@@ -150,13 +154,33 @@ object ProjectileVfxSpecs {
     }
 
     // 贯星之矛（规格 09 §3.1）：冷蓝白 ARC 主色内联字面量；width 36 / length 260 / glowScale 4.0 大圆形弹体观感。
+    // 追加：BoxUtil 水平光斑（锚回弹体中心：offset = -headLead = -36/2）+ 发射点锚定电弧（首次泛用组件接入）
+    // + 发射瞬间发射点扭曲（PiercingLanceVfx.spawnMuzzleDistortion）。
     private fun piercingLanceShot(): ProjectileVfx = simpleProjectileVfx(
         "astd_piercing_lance_shot",
         ASTDColor(0.55f, 0.78f, 1f, 0.95f),
         width = 36f,
         length = 260f,
         glowScale = 4.0f,
-    )
+    ) {
+        boxFlare("core") {
+            size(150f, 14f)
+            colors(0xF4FBFFFF, 0x8CD2FFBE)
+            glow(1f, 4f)
+            flicker(1.3f)
+            offset(-18f)
+        }
+        arcTrail("arc", TEX_ZAPPY) {
+            layer(4); width(7f)
+            colors(0xE8F6FFCCL, 0x78BEFF30L)
+            nodes(26); tile(180f, 260f)
+            jag(14f, 200f, 9f)
+            flicker(0.2f)
+        }
+        onFire(ProjectileVfxOnFireHook { engine, projectile ->
+            PiercingLanceVfx.spawnMuzzleDistortion(engine, org.lwjgl.util.vector.Vector2f(projectile.location))
+        })
+    }
 
     // 正电子冲击波：冷蓝白系（全局美术约定「正电子用白色弹体与明亮拖尾」），分支内内联字面量。
     private fun positronWhiteBlue() = ASTDColor(0.62f, 0.82f, 1f, 0.85f)

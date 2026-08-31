@@ -1,8 +1,7 @@
 package cn.kasuminova.astd.combat.effect.lens.stellar
 
 import cn.kasuminova.astd.api.combat.StellarMrmStrike
-import cn.kasuminova.astd.renderer.effect.explosion.CrossFlashPalette
-import cn.kasuminova.astd.renderer.effect.explosion.CrossFlashVfx
+import cn.kasuminova.astd.renderer.effect.explosion.RiftExplosionVfx
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEntityAPI
@@ -22,8 +21,9 @@ import java.awt.Color
  *
  * 玩家可见反馈（规格 08 §2.3 机制可视化铁律）：增伤/EMP/AOE 均 `showDamageFloaty=true` 浮字；
  * 战机全部武器 EMP 逐武器一道紫色电弧（`spawnEmpArcVisual`，Vector2f 端点重载——WeaponAPI
- * 非 CombatEntityAPI 不能作电弧锚点实体，规格 §0 已核实）；辉星爆炸为七星
- * [CrossFlashVfx] 60% 缩放紫色版（90 计划 §11 裁定复用）+ `spawnExplosion` 紫闪底。
+ * 非 CombatEntityAPI 不能作电弧锚点实体，规格 §0 已核实）；辉星爆炸为模组通用裂隙爆炸
+ * [RiftExplosionVfx]（需求定案：与七星同款裂隙洪流发射极式裂隙爆炸，60% 相对缩放
+ * 保持辉星较小观感）。
  *
  * 脚本 `applyDamage` 落点与 bypassShields 走七星实机判例同款口径
  * （[cn.kasuminova.astd.combat.effect.arc.SevenStarsDamageHandler] 注记：盾覆盖 → 盾面落点 +
@@ -42,29 +42,14 @@ object StellarMrmStrikeImpl : StellarMrmStrike {
     /** 逐武器 EMP 电弧粗细（su）。 */
     private const val EMP_ARC_THICKNESS = 6f
 
-    /** 十字辉星爆炸缩放（七星组件 60%，90 计划 §11 裁定）。 */
-    private const val CROSS_SCALE = 0.6f
+    /** 辉星裂隙爆炸相对缩放（裂隙组件默认半径 × 0.6，保持原「辉星 60% 缩放」观感口径）。 */
+    private const val RIFT_RADIUS_SCALE = 0.6f
 
     /** EMP 电弧缘色（LENS 紫）。 */
     private val EMP_ARC_FRINGE = Color(170, 110, 255)
 
     /** EMP 电弧芯色（白）。 */
     private val EMP_ARC_CORE = Color(255, 255, 255)
-
-    /** 底闪紫（`spawnExplosion` 底闪，与 explosionColor 同族）。 */
-    private val EXPLOSION_FLASH = Color(170, 110, 255, 160)
-
-    /**
-     * 十字辉星爆炸调色板（LENS 紫族，主色 ASTDColor(0.66, 0.42, 1.0) ≈ 0xA86BFF）：
-     * 结构对齐 [CrossFlashPalette.ARC]（臂芯近白、臂缘主色、亮闪浅紫、星云主色低 alpha
-     * 防 bloom 提取遍溢出）。07 组件参数化复用，本族非共享沉淀——分支内就地声明。
-     */
-    private val STELLAR_PALETTE = CrossFlashPalette(
-        armCore = Color(0xF0, 0xE6, 0xFF),
-        armFringe = Color(0xAA, 0x6E, 0xFF),
-        flare = Color(0xE4, 0xD4, 0xFF),
-        nebula = Color(0xA8, 0x6B, 0xFF, 70),
-    )
 
     /**
      * 默认 AOE 粗筛：LazyLib 空间网格查询（GCP/七星已验证路径）。抽成可注入函数值供
@@ -185,9 +170,8 @@ object StellarMrmStrikeImpl : StellarMrmStrike {
             if (victim is ShipAPI && !victim.isFighter) bump(engine, TELE_AOE_SHIP_HITS)
         }
 
-        // VFX 恒执行：十字辉星爆炸（七星组件 60% 缩放紫色版）+ 紫闪底。
-        CrossFlashVfx.crossFlashExplosion(engine, point, CROSS_SCALE, STELLAR_PALETTE)
-        engine.spawnExplosion(point, ZERO_VEL, EXPLOSION_FLASH, 40f, 0.4f)
+        // VFX 恒执行：裂隙爆炸（模组通用组件，蓝色族，60% 相对缩放）。
+        RiftExplosionVfx.riftExplosion(engine, point, radius = RiftExplosionVfx.DEFAULT_RADIUS * RIFT_RADIUS_SCALE)
         bump(engine, TELE_EXPLOSIONS)
     }
 
@@ -217,9 +201,6 @@ object StellarMrmStrikeImpl : StellarMrmStrike {
         }
         return Vector2f(ship.location)
     }
-
-    /** 静止粒子速度（避免逐次分配）。 */
-    private val ZERO_VEL = Vector2f(0f, 0f)
 
     // ---- dev 自动化烟测遥测键（engine.customData 证据计数，HeavyIonPulseVfx 同型惯例） ----
 

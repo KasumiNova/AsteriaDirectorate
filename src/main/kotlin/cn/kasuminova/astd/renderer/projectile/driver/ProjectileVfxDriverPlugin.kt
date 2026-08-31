@@ -68,6 +68,7 @@ class ProjectileVfxDriverPlugin : BaseEveryFrameCombatPlugin() {
             val spec = ProjectileVfxSpecs.build(projectileSpecId) ?: return false
             plugin.trackedByProjectile[projectile] =
                 TrackedVfx(projectileSpecId, ProjectileVfxDriverImpl(ProjectileHostImpl(projectile), spec.tree, spec.policy))
+            spec.onFire?.onFire(engine, projectile)
             return true
         }
 

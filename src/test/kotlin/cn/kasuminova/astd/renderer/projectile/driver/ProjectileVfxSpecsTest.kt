@@ -1,7 +1,9 @@
 package cn.kasuminova.astd.renderer.projectile.driver
 
 import cn.kasuminova.astd.impl.render.ASTDColor
+import cn.kasuminova.astd.impl.render.ArcTrailComponent
 import cn.kasuminova.astd.impl.render.BloomMeshComponent
+import cn.kasuminova.astd.impl.render.BoxFlareComponent
 import cn.kasuminova.astd.impl.render.TexTrailComponent
 import kotlin.math.roundToInt
 import kotlin.test.Test
@@ -176,8 +178,18 @@ class ProjectileVfxSpecsTest {
         for (row in rows) {
             val vfx = assertNotNull(ProjectileVfxSpecs.build(row.id), row.id)
             val children = vfx.tree.children.associateBy { it.id }
+            // 贯星之矛在三层混合之上追加 BoxUtil 光斑 + 锚点电弧（规格 09 §3.1 修订）；
+            // 子节点按 renderOrder 升序：texTrail(361/362/363) → arc(364) → flare(368)
+            val expectedChildren = if (row.id == "astd_piercing_lance_shot") {
+                listOf(
+                    "${row.id}_textrail_twin", "${row.id}_textrail_core", "${row.id}_textrail_zappy",
+                    "${row.id}_arctrail_arc", "${row.id}_boxflare_core",
+                )
+            } else {
+                listOf("${row.id}_textrail_twin", "${row.id}_textrail_core", "${row.id}_textrail_zappy")
+            }
             assertEquals(
-                listOf("${row.id}_textrail_twin", "${row.id}_textrail_core", "${row.id}_textrail_zappy"),
+                expectedChildren,
                 vfx.tree.children.map { it.id },
                 row.id,
             )
@@ -228,6 +240,29 @@ class ProjectileVfxSpecsTest {
             assertColorEquals(bandMidColor(row.color, ALPHA_DECOR), zappy.spec.midColor, row.id)
             assertColorEquals(bandTailColor(row.color, ALPHA_DECOR), zappy.spec.tailColor, row.id)
         }
+    }
+
+    @Test
+    fun `贯星之矛追加 BoxUtil 光斑与锚点电弧并带发射钩子`() {
+        val vfx = assertNotNull(ProjectileVfxSpecs.build("astd_piercing_lance_shot"))
+        val children = vfx.tree.children.associateBy { it.id }
+
+        // BoxUtil 光斑：水平盘状（宽 >> 高）、亮蓝白、闪烁、锚回弹体中心（offset = -headLead = -36/2）
+        val flare = children.getValue("astd_piercing_lance_shot_boxflare_core") as BoxFlareComponent
+        assertEquals(150f, flare.spec.width, 1e-3f)
+        assertEquals(14f, flare.spec.height, 1e-3f)
+        assertEquals(-18f, flare.spec.offsetX, 1e-3f, "光斑应锚回弹体中心（抵消 headLead 前移）")
+        assertTrue(flare.spec.flickerRate > 1f, "闪烁速度应快于 BoxUtil 默认")
+
+        // 锚点电弧：zappy 贴图、layer 4（压在三层混合之上）、带折点抖动与透明度闪烁
+        val arc = children.getValue("astd_piercing_lance_shot_arctrail_arc") as ArcTrailComponent
+        assertEquals(TEX_ZAPPY, arc.spec.texturePath)
+        assertEquals(4, arc.spec.layer)
+        assertTrue(arc.spec.jagAmplitude > 0f, "电弧应有折点抖动")
+        assertTrue(arc.spec.alphaFlicker > 0f, "电弧应有透明度闪烁")
+
+        // 发射钩子：发射点扭曲特效
+        assertNotNull(vfx.onFire, "贯星之矛应声明 onFire 钩子（发射点扭曲）")
     }
 
     private fun assertColorEquals(expected: ASTDColor, actual: ASTDColor?, context: String) {

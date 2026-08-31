@@ -15,8 +15,10 @@ import org.lwjgl.opengl.Display
 import org.lwjgl.util.vector.Vector2f
 import kotlin.math.atan2
 import kotlin.math.ceil
+import kotlin.math.cos
 import kotlin.math.floor
 import kotlin.math.max
+import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
@@ -56,6 +58,13 @@ class ProjectileVfxDriverImpl(
     private val frozenVelocity = Vector2f(0f, 0f)
     /** 冻结期带头已前飞的累计距离（世界单位），上限见 [FORWARD_FLIGHT_CAP_RATIO]。 */
     private var forwardFlown = 0f
+    /**
+     * 拖尾锚点前移量（世界单位）：策略显式值优先，否则取弹体 spec.length/2——把带体亮头对齐到
+     * 原版螺栓贴图的视觉头部（贴图中心在弹体位置），命中瞬灭后带体亮头恰在命中点，无截断观感。
+     * 非弹体宿主（测试）或无 spec 时为 0，锚回弹体中心。
+     */
+    private val headLead: Float = policy.headLeadWorld
+        ?: ((projectile?.projectileSpec?.length ?: 0f) * 0.5f)
 
     override var state: ProjectileVfxDriverState = ProjectileVfxDriverState.Active
         private set
@@ -108,10 +117,13 @@ class ProjectileVfxDriverImpl(
             val renderFacing = computeRenderFacing(location, facing)
             trackVelocity(location, amount)
             accumulateTravelDistance(location)
+            // 拖尾/弹头树锚在弹体视觉头部（中心沿朝向提前 headLead），历史路径同样记录头部轨迹，
+            // 带体与原版螺栓头对齐；速度/行程估算仍用弹体中心（位移增量相同，无需改）。
+            val anchor = headAnchor(location, renderFacing)
             val worldUnitsPerPixel = referenceWorldUnitsPerPixel(engine)
             val flight = buildFlightLayout()
             history.advance(
-                location,
+                anchor,
                 renderFacing,
                 elapsed,
                 retainDistance = historyRetainDistance(flight.visibleLength),
@@ -123,7 +135,7 @@ class ProjectileVfxDriverImpl(
                 currentTrailLifetime = estimateTrailLifetime(maxTrailLengthWorld())
             }
             val phase = if (fading) RenderPhase.FadingOut else RenderPhase.Active
-            val frame = buildFrame(location, renderFacing, flight, worldUnitsPerPixel, amount, phase, if (fading) currentFadeReason else null)
+            val frame = buildFrame(anchor, renderFacing, flight, worldUnitsPerPixel, amount, phase, if (fading) currentFadeReason else null)
             driveTree(engine, frame, amount)
             telemetry = ProjectileVfxDriverTelemetry(
                 elapsed = elapsed,
@@ -218,7 +230,7 @@ class ProjectileVfxDriverImpl(
     }
 
     private fun buildFrame(
-        location: Vector2f,
+        anchor: Vector2f,
         renderFacing: Float,
         flight: ASTDProjectileVfxLayout.FlightLayout,
         worldUnitsPerPixel: Float,
@@ -233,7 +245,7 @@ class ProjectileVfxDriverImpl(
             elapsed = elapsed,
             logicElapsed = quantizedLogicElapsed(),
             amountThisFrame = amount,
-            origin = Vector2f(location),
+            origin = Vector2f(anchor),
             facing = renderFacing,
             length = flight.visibleLength,
             endpoint = null,
@@ -292,6 +304,16 @@ class ProjectileVfxDriverImpl(
             return (traveledDistance / elapsed).coerceAtLeast(MIN_SPEED_SU_PER_SEC)
         }
         return MIN_SPEED_SU_PER_SEC
+    }
+
+    /** 拖尾锚点：弹体中心沿渲染朝向提前 [headLead]；headLead ≤ 0 时原样返回中心。 */
+    private fun headAnchor(location: Vector2f, facingDeg: Float): Vector2f {
+        if (headLead <= 0f) return Vector2f(location)
+        val rad = Math.toRadians(facingDeg.toDouble())
+        return Vector2f(
+            location.x + (cos(rad) * headLead).toFloat(),
+            location.y + (sin(rad) * headLead).toFloat(),
+        )
     }
 
     private fun computeRenderFacing(location: Vector2f, projectileFacing: Float): Float {
@@ -407,10 +429,14 @@ class ProjectileVfxDriverImpl(
          */
         private const val TRAIL_MAX_LENGTH_MULT = 4f
 
-        /** 拖尾死亡消散窗口（秒）：命中 0.3 / 超射程 0.5 / 其他移除 0.4（目检裁定：命中后整带须立即开始消散且不瞬灭）。 */
-        private const val TRAIL_DEATH_FADE_HIT = 0.3f
-        private const val TRAIL_DEATH_FADE_EXPIRE = 0.5f
-        private const val TRAIL_DEATH_FADE_REMOVED = 0.4f
+        /**
+         * 拖尾死亡消散窗口（秒）：命中 0.45 / 其他移除 0.6 / 超射程 0.75。
+         * 目检裁定：在初版 0.3/0.4/0.5（命中后整带立即开始消散不瞬灭）基础上 +50%——
+         * 命中/消亡后带体消散观感偏急促，放慢至重构前等效时长的 75%。
+         */
+        private const val TRAIL_DEATH_FADE_HIT = 0.45f
+        private const val TRAIL_DEATH_FADE_EXPIRE = 0.75f
+        private const val TRAIL_DEATH_FADE_REMOVED = 0.6f
 
         /** 冻结期带头前飞距离上限 = primaryTrailLength × 本值（略大于带体退距 recede≈0.08×L，恰好弥合断头缝不 overshoot）。 */
         private const val FORWARD_FLIGHT_CAP_RATIO = 0.15f

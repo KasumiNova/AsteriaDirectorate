@@ -954,5 +954,8 @@ object Wpn_astd_piercing_lance : WeaponDataEntry(), SsProjProjectileOutputs {
         onHitEffect = "cn.kasuminova.astd.combat.effect.arc.piercinglance.PiercingLanceOnHitEffect",
         fringeColor = Rgba(120, 200, 255, 255),
         coreColor = Rgba(220, 245, 255, 200),
+        // 圆球状弹体（规格 09 §3.1 修订）：等长等宽取代离子脉冲式长条螺栓
+        length = 36.0,
+        width = 36.0,
     )
 }

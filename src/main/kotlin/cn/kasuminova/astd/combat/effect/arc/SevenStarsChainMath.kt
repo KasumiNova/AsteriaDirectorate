@@ -4,7 +4,7 @@ import com.fs.starfarer.api.Global
 
 /**
  * “七星”折跃发射器连跳状态机的纯计算核（规格 07 §2.2）：
- * 倍率链、终结段数表、折跃范围、闪光爆炸后决策——全部纯函数，单测直接调用，不触引擎。
+ * 倍率链、终结段数表、折跃范围、连跳推进判定——全部纯函数，单测直接调用，不触引擎。
  *
  * 动机：机制数值的唯一真相源。OnFire/ChainScript 只负责引擎交互与状态推进，
  * 任何「第 N 跳倍率多少 / 终结分几段 / 本跳后走哪条支路」的判定都收敛到本对象，
@@ -13,16 +13,13 @@ import com.fs.starfarer.api.Global
 object SevenStarsChainMath {
     private val log = Global.getLogger(SevenStarsChainMath::class.java)
 
-    /** 闪光爆炸后状态机支路（规格 §2.2 状态机）。 */
-    enum class ChainDecision {
-        /** 本轮摧毁 ≥1 且未达上限且仍有候选：0.33s 冷却后续跳。 */
-        CONTINUE,
+    /** 连跳推进支路（固定 7 跳定案：无击杀门槛，仅「达上限 / 无候选」进终结判定）。 */
+    enum class ChainStep {
+        /** 选定下一 PD 目标续跳。 */
+        JUMP,
 
         /** 折跃次数达上限或无 PD 候选：进入对舰终结判定。 */
         TERMINAL,
-
-        /** 本轮摧毁 = 0（安全闸：连跳必须击杀才能续段）：射弹消散，不触发终结。 */
-        DISSIPATE,
     }
 
     /**
@@ -72,16 +69,15 @@ object SevenStarsChainMath {
     }
 
     /**
-     * 闪光爆炸后决策（规格 §2.2 状态机支路 + §2.4 边界矩阵）：
-     * 1. [kills] = 0 → DISSIPATE（安全闸最优先，jumps 任意：未击杀断链不触发终结，首发空爆同路径）；
-     * 2. [jumps] >= 最大折跃次数 → TERMINAL；
-     * 3. 无 PD 候选（[hasPdCandidates] = false）→ TERMINAL；
-     * 4. 其余 → CONTINUE。
+     * 连跳推进判定（固定 7 跳定案，取代原「击杀续跳」决策）：
+     * 1. [jumps] >= 最大折跃次数 → TERMINAL；
+     * 2. 无 PD 候选（[hasPdCandidates] = false）→ TERMINAL；
+     * 3. 其余 → JUMP。
+     * 击杀数不再参与支路判定（仅遥测证据面）。
      */
-    fun decideAfterFlash(kills: Int, jumps: Int, hasPdCandidates: Boolean): ChainDecision = when {
-        kills <= 0 -> ChainDecision.DISSIPATE
-        jumps >= SevenStarsDifficulty.MAX_JUMPS -> ChainDecision.TERMINAL
-        !hasPdCandidates -> ChainDecision.TERMINAL
-        else -> ChainDecision.CONTINUE
+    fun nextChainStep(jumps: Int, hasPdCandidates: Boolean): ChainStep = when {
+        jumps >= SevenStarsDifficulty.MAX_JUMPS -> ChainStep.TERMINAL
+        !hasPdCandidates -> ChainStep.TERMINAL
+        else -> ChainStep.JUMP
     }
 }

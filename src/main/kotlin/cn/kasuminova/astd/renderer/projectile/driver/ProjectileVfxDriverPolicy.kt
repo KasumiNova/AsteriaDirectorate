@@ -23,4 +23,11 @@ data class ProjectileVfxDriverPolicy(
     // 主拖尾几何输入(可视长度上限 = viewportTailCap(startWidth, layoutReferenceWidth))
     val primaryTrailLength: Float,
     val primaryTrailStartWidth: Float,
+    /**
+     * 拖尾锚点前移量（世界单位）：拖尾/弹头树的原点从弹体中心沿朝向提前本值，使带体亮头对齐
+     * 原版螺栓贴图的视觉头部（贴图中心在弹体位置，头在 +length/2 处）——原版弹体命中瞬灭后
+     * 带体亮头恰好在命中点，无截断观感。null = 自动取弹体 spec.length/2；显式 0 = 禁用
+     * （如 aod7 隐藏原版弹体、代码弹头网格锚在弹体中心）。
+     */
+    val headLeadWorld: Float? = null,
 )
