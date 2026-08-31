@@ -2,11 +2,13 @@ package cn.kasuminova.astd.impl.render
 
 import cn.kasuminova.astd.api.render.ASTDProjectileHistoryNode
 import cn.kasuminova.astd.api.render.FadeReason
+import cn.kasuminova.astd.api.render.FrameState
 import cn.kasuminova.astd.api.render.RenderContext
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineLayers
 import org.lwjgl.util.vector.Vector2f
 import kotlin.math.cos
+import kotlin.math.floor
 import kotlin.math.sin
 import kotlin.math.sqrt
 
@@ -32,7 +34,7 @@ data class TexTrailSpec(
     val midT: Float = 0.25f,
     /** 尾部颜色。 */
     val tailColor: ASTDColor,
-    /** 节点数（沿带长均匀分布，弯道平滑度）。 */
+    /** 节点数下限（沿带长均匀分布，弯道平滑度）；实际渲染节点数按可见带长动态细分（见 [dynamicTexTrailNodeCount]）。 */
     val nodeCount: Int = 24,
     /** 图案沿带长的平铺周期（世界单位，即 MagicTrail 的 textureLoopLength）。 */
     val tileLength: Float = 180f,
@@ -48,16 +50,51 @@ data class TexTrailSpec(
     val wobbleScroll: Float = 0f,
     /** 扰动初始相位（弧度）：错开同弹体多条叠层的扰动图案，避免两层同相摆动。 */
     val wobblePhase: Float = 0f,
-)
+    /**
+     * 逐节点寿命覆写（秒，0 = 自动取驱动的 [FrameState.trailLifetimeSeconds] 估算值）。
+     * 节点年龄 = 当前时间 − 出生时刻（历史点时间戳沿带长插值），年龄/寿命驱动时变效果（含消散）。
+     */
+    val lifetimeSeconds: Float = 0f,
+    /** 年龄进度从多少开始消散（0..1，默认 0.6）：之前 alpha 不衰减，之后线性降到 0。 */
+    val dissolveStart: Float = 0.6f,
+    /**
+     * 逐段随机扭转幅度（度，0 = 关闭）：带体在距头弧长上取平滑值噪声 ∈ [-twistMaxAngleDeg, +twistMaxAngleDeg]
+     * （种子挂弧长桶而非历史点时间戳——弧长在带体系跨帧稳定，带体伸缩/物质向尾流动时扭转图案不闪不爬），
+     * 相邻桶间 smoothstep 过渡——前后段自动衔接。
+     */
+    val twistMaxAngleDeg: Float = 0f,
+    /** 扭转噪声的空间波长（世界单位，沿带长）：0 = 取 [tileLength]（扭转图案与贴图平铺周期同频）。 */
+    val twistWavelength: Float = 0f,
+    /** 扭转随年龄的累积角速度（度/秒，可负）：段角 = 弧长噪声 + 年龄 × 本值，0 = 不随时间扭转。 */
+    val twistTurnDegPerSec: Float = 0f,
+) {
+    /** 扭转噪声实际波长：[twistWavelength] ≤ 0 时回落 [tileLength]。 */
+    fun effectiveTwistWavelength(): Float = if (twistWavelength > 0f) twistWavelength else tileLength
+}
 
 /** 贴图拖尾逐节点数据（弹头局部系：x 头=0、尾=-length，y 侧向；angle 为该点带走向，纯数据，可测）。 */
-data class TexTrailNode(val position: Vector2f, val angle: Float, val width: Float, val color: ASTDColor)
+data class TexTrailNode(
+    val position: Vector2f,
+    val angle: Float,
+    val width: Float,
+    val color: ASTDColor,
+    /** 节点年龄（秒）：生成该处路径的历史点时间戳距当前时间。 */
+    val age: Float = 0f,
+    /** 年龄/寿命（0..1+，可超 1）；寿命 ≤0（宿主不提供）时恒 0，不做年龄衰减。 */
+    val lifeProgress: Float = 0f,
+    /** 平面内扭转角（度）：段随机初相沿路径插值 + 年龄累积；[texTrailStrip] 据此旋转横截偏移。 */
+    val twistDeg: Float = 0f,
+)
 
 /**
  * 由历史中线生成贴图拖尾节点（纯函数，供 [TexTrailComponent] 每帧调用）。
  *
- * 世界系历史点折进弹头局部系后，沿带长均匀重采样 [TexTrailSpec.nodeCount] 个点，
- * 宽度恒为 [TexTrailSpec.width]、颜色头→尾渐变，整体再乘 [intensity]。历史不足 2 点时退化为直梁。
+ * 世界系历史点折进弹头局部系后，沿带长均匀重采样 [nodeCount] 个点（默认 [TexTrailSpec.nodeCount]，
+ * 调用方按实际带长动态细分——见 [dynamicTexTrailNodeCount]），
+ * 宽度恒为 [TexTrailSpec.width]、颜色头→尾渐变；逐节点按年龄（[now] + [timeOffset] − 出生时刻，
+ * 出生时刻沿历史段时间戳插值；[timeOffset] 为消亡后的加速偏移）算消散包络：寿命（[lifetimeSeconds]，
+ * ≤0 时不衰减）内 [TexTrailSpec.dissolveStart] 之前满亮、之后线性降到 0，整体再乘 [intensity]。
+ * 历史不足 2 点时退化为直梁（年龄 0）。
  *
  * [wobbleAdvance] 为横向扰动图案沿带长的平移相位（单位：主波长周期数，由调用方按逻辑时间推进，
  * 语义对齐 [texTrailStrip] 的 scroll）；扰动是「沿带长位置」的确定性函数，同参多次调用逐点一致（帧间不闪）。
@@ -70,19 +107,44 @@ fun texTrailNodes(
     spec: TexTrailSpec,
     intensity: Float,
     wobbleAdvance: Float = 0f,
+    now: Float = 0f,
+    lifetimeSeconds: Float = 0f,
+    nodeCount: Int = spec.nodeCount,
+    timeOffset: Float = 0f,
 ): List<TexTrailNode> {
     val safeLength = length.coerceAtLeast(1f)
-    val localPath = toLocalPath(historyNodes, origin, facing, safeLength)
+    val localPath = toLocalPath(historyNodes, origin, facing, safeLength, now)
+    val count = nodeCount.coerceAtLeast(2)
+    val twistWavelength = spec.effectiveTwistWavelength()
+    val clock = now + timeOffset
 
-    return (0 until spec.nodeCount).map { index ->
-        val t = if (spec.nodeCount > 1) index.toFloat() / (spec.nodeCount - 1) else 0f
-        val (position, angle) = sampleLocalPath(localPath, t * safeLength)
-        val color = gradientColor(spec, t).scaledAlpha(intensity)
+    return (0 until count).map { index ->
+        val t = if (count > 1) index.toFloat() / (count - 1) else 0f
+        val distanceFromHead = t * safeLength
+        val sample = sampleLocalPath(localPath, distanceFromHead)
+        val age = (clock - sample.birthElapsed).coerceAtLeast(0f)
+        val lifeProgress = if (lifetimeSeconds > 0f) age / lifetimeSeconds else 0f
+        val envelope = ageAlphaEnvelope(lifeProgress, spec.dissolveStart)
+        val color = gradientColor(spec, t).scaledAlpha(intensity * envelope)
+        // 扭转角 = 弧长平滑噪声（带体系跨帧稳定，前后段自动衔接）+ 年龄累积
+        val twistDeg = segmentTwistBase(distanceFromHead, twistWavelength, spec.twistMaxAngleDeg) +
+            age * spec.twistTurnDegPerSec
         TexTrailNode(
-            wobbleOffset(position, angle, t * safeLength, t, spec, wobbleAdvance),
-            angle, spec.width.coerceAtLeast(0.1f), color,
+            wobbleOffset(sample.position, sample.angle, distanceFromHead, t, spec, wobbleAdvance),
+            sample.angle, spec.width.coerceAtLeast(0.1f), color, age, lifeProgress, twistDeg,
         )
     }
+}
+
+/**
+ * 年龄消散包络（纯函数，可测）：[lifeProgress] ≤ [dissolveStart] 满亮（1），之后线性降到 1.0 处的 0。
+ * 弹体消亡后不再产新段，各节点按自身年龄老去——尾部（最老）先消散、头部最后消失，取代旧的全局 fade alpha。
+ */
+fun ageAlphaEnvelope(lifeProgress: Float, dissolveStart: Float): Float {
+    if (lifeProgress <= 0f) return 1f
+    val start = dissolveStart.coerceIn(0f, 0.999f)
+    if (lifeProgress <= start) return 1f
+    return (1f - (lifeProgress - start) / (1f - start)).coerceIn(0f, 1f)
 }
 
 /** 扰动第二分量频率比（黄金比）：与主分量不可约，叠加图案沿带长不自重复。 */
@@ -128,14 +190,47 @@ private fun gradientColor(spec: TexTrailSpec, t: Float): ASTDColor {
     else lerpColor(mid, spec.tailColor, (t - midT) / (1f - midT))
 }
 
-/** 世界系历史点 → 弹头局部系路径（头在原点、尾在 -x），按从头开始的累计弧长排列。 */
+/** 局部系路径点：位置 + 出生时刻（历史点时间戳），供逐节点年龄计算。 */
+private data class LocalPathNode(val position: Vector2f, val birthElapsed: Float)
+
+/** [sampleLocalPath] 的采样结果：局部系位置 + 带走向角（度）+ 出生时刻。 */
+private data class PathSample(val position: Vector2f, val angle: Float, val birthElapsed: Float)
+
+/**
+ * 段随机扭转（纯函数，可测）：以距头弧长为坐标的一维平滑值噪声 → [-maxAngleDeg, +maxAngleDeg]。
+ * 种子挂弧长桶（带体系坐标）而非历史点时间戳：带体系跨帧稳定，带体伸缩/物质向尾流动时图案不闪不爬；
+ * 相邻桶值间 smoothstep 过渡，前后段自动衔接无折点。[wavelength] 为噪声空间波长（世界单位）。
+ */
+fun segmentTwistBase(arcDistance: Float, wavelength: Float, maxAngleDeg: Float): Float {
+    if (maxAngleDeg <= 0f) return 0f
+    val scaled = arcDistance / wavelength.coerceAtLeast(1f)
+    val bucket = floor(scaled)
+    val frac = (scaled - bucket).let { it * it * (3f - 2f * it) }   // smoothstep：桶界处导数为 0，衔接无折点
+    val a = twistBucketNoise(bucket)
+    val b = twistBucketNoise(bucket + 1f)
+    return (a + (b - a) * frac) * maxAngleDeg
+}
+
+/** 弧长桶 → [-1, +1] 稳定伪随机值（整数散列）。 */
+private fun twistBucketNoise(bucket: Float): Float {
+    var bits = bucket.toRawBits()
+    bits *= -0x61c88647
+    bits = bits xor (bits ushr 16)
+    return (bits and 0xFFFF) / 65535f * 2f - 1f
+}
+
+/** 世界系历史点 → 弹头局部系路径（头在原点、尾在 -x），按从头开始的累计弧长排列，保留出生时刻。 */
 private fun toLocalPath(
     historyNodes: List<ASTDProjectileHistoryNode>,
     origin: Vector2f,
     facing: Float,
     length: Float,
-): List<Vector2f> {
-    if (historyNodes.size < 2) return listOf(Vector2f(0f, 0f), Vector2f(-length, 0f))
+    now: Float,
+): List<LocalPathNode> {
+    if (historyNodes.size < 2) return listOf(
+        LocalPathNode(Vector2f(0f, 0f), now),
+        LocalPathNode(Vector2f(-length, 0f), now),
+    )
     val radians = Math.toRadians(facing.toDouble())
     val c = cos(radians).toFloat()
     val s = sin(radians).toFloat()
@@ -143,20 +238,29 @@ private fun toLocalPath(
     return historyNodes.asReversed().map { node ->
         val dx = node.location.x - origin.x
         val dy = node.location.y - origin.y
-        Vector2f(dx * c + dy * s, -dx * s + dy * c)
+        LocalPathNode(
+            Vector2f(dx * c + dy * s, -dx * s + dy * c),
+            node.elapsed,
+        )
     }
 }
 
-/** 沿局部系路径按「距头弧长」取点（含该点带走向角度，度，归一化到 [0,360)）；超出尾端沿末段方向延长。 */
-private fun sampleLocalPath(path: List<Vector2f>, distanceFromHead: Float): Pair<Vector2f, Float> {
-    if (path.size < 2) return Vector2f(-distanceFromHead, 0f) to 180f
+/**
+ * 沿局部系路径按「距头弧长」取点：位置 + 带走向角（度，归一化到 [0,360)）+ 出生时刻（沿段插值）。
+ * 超出尾端沿末段方向延长，出生时刻按末段的「时间/距离」速率外推（越延长越老）。
+ */
+private fun sampleLocalPath(path: List<LocalPathNode>, distanceFromHead: Float): PathSample {
+    if (path.size < 2) {
+        val only = path.firstOrNull()
+        return PathSample(Vector2f(-distanceFromHead, 0f), 180f, only?.birthElapsed ?: 0f)
+    }
     var remaining = distanceFromHead
     var lastAngle = 180f
     for (i in 0 until path.size - 1) {
         val a = path[i]
         val b = path[i + 1]
-        val segX = b.x - a.x
-        val segY = b.y - a.y
+        val segX = b.position.x - a.position.x
+        val segY = b.position.y - a.position.y
         val segLength = sqrt(segX * segX + segY * segY)
         if (segLength <= 0.0001f) continue
         // atan2 对 -0.0 会返回 -180：归一化，同一走向不挑符号
@@ -164,18 +268,29 @@ private fun sampleLocalPath(path: List<Vector2f>, distanceFromHead: Float): Pair
         lastAngle = if (raw < 0f) raw + 360f else raw
         if (remaining <= segLength) {
             val ratio = remaining / segLength
-            return Vector2f(a.x + segX * ratio, a.y + segY * ratio) to lastAngle
+            return PathSample(
+                Vector2f(a.position.x + segX * ratio, a.position.y + segY * ratio),
+                lastAngle,
+                a.birthElapsed + (b.birthElapsed - a.birthElapsed) * ratio,
+            )
         }
         remaining -= segLength
     }
     // 超出尾端：沿末段方向继续延长
     val last = path[path.size - 1]
     val prev = path[path.size - 2]
-    val dirX = last.x - prev.x
-    val dirY = last.y - prev.y
+    val dirX = last.position.x - prev.position.x
+    val dirY = last.position.y - prev.position.y
     val dirLength = sqrt(dirX * dirX + dirY * dirY)
-    if (dirLength <= 0.0001f) return Vector2f(last) to lastAngle
-    return Vector2f(last.x + dirX / dirLength * remaining, last.y + dirY / dirLength * remaining) to lastAngle
+    if (dirLength <= 0.0001f) return PathSample(Vector2f(last.position), lastAngle, last.birthElapsed)
+    // 末段「时间/距离」速率（头→尾方向 elapsed 递减）；零速率时沿用尾端时刻
+    val elapsedRate = (prev.birthElapsed - last.birthElapsed) / dirLength
+    val birthElapsed = last.birthElapsed - remaining * elapsedRate
+    return PathSample(
+        Vector2f(last.position.x + dirX / dirLength * remaining, last.position.y + dirY / dirLength * remaining),
+        lastAngle,
+        birthElapsed,
+    )
 }
 
 private fun lerpColor(a: ASTDColor, b: ASTDColor, t: Float): ASTDColor = ASTDColor(
@@ -254,8 +369,16 @@ fun texTrailStrip(
         val wx = origin.x + (local.x - recede) * rc - local.y * rs
         val wy = origin.y + (local.x - recede) * rs + local.y * rc
         val theta = Math.toRadians((node.angle + facing).toDouble())
+        // 带走向法向 n 与切向 t；平面内扭转 φ：横截偏移 = n·cosφ + t·sinφ（φ=0 退化为纯法向，逐点等同旧行为）
         val nx = -sin(theta).toFloat()
         val ny = cos(theta).toFloat()
+        val tx = cos(theta).toFloat()
+        val ty = sin(theta).toFloat()
+        val twist = Math.toRadians(node.twistDeg.toDouble())
+        val twCos = cos(twist).toFloat()
+        val twSin = sin(twist).toFloat()
+        val offX = nx * twCos + tx * twSin
+        val offY = ny * twCos + ty * twSin
         val half = (node.width / 2f).coerceAtLeast(0.05f)
         val u = arc / safeTile - scroll
         val r = node.color.red.coerceIn(0f, 1f)
@@ -263,8 +386,8 @@ fun texTrailStrip(
         val b = node.color.blue.coerceIn(0f, 1f)
         val a = node.color.alpha.coerceIn(0f, 1f)
         // 上沿顶点（v=+1）
-        out[cursor++] = wx + nx * half
-        out[cursor++] = wy + ny * half
+        out[cursor++] = wx + offX * half
+        out[cursor++] = wy + offY * half
         out[cursor++] = u
         out[cursor++] = 1f
         out[cursor++] = r
@@ -272,8 +395,8 @@ fun texTrailStrip(
         out[cursor++] = b
         out[cursor++] = a
         // 下沿顶点（v=-1）
-        out[cursor++] = wx - nx * half
-        out[cursor++] = wy - ny * half
+        out[cursor++] = wx - offX * half
+        out[cursor++] = wy - offY * half
         out[cursor++] = u
         out[cursor++] = -1f
         out[cursor++] = r
@@ -283,6 +406,23 @@ fun texTrailStrip(
     }
     return out
 }
+
+/**
+ * 渲染节点数按实际带长动态细分（纯函数，可测）：目标段长约 [SEGMENT_LENGTH_TARGET] 世界单位，
+ * 下限 [baseCount]（spec 声明值）、上限 [MAX_DYNAMIC_NODE_COUNT]（顶点数护栏）。
+ * 动机：带长上限 ×4 后 24 节点的定值采样在导弹急转时折角明显（段长可达 80+ su），按带长细分后
+ * 段长稳定在二十余 su，弯道平滑；短带（速射炮走廊）仍取下限不增负。
+ */
+fun dynamicTexTrailNodeCount(visibleLength: Float, baseCount: Int): Int {
+    val byLength = kotlin.math.ceil(visibleLength.coerceAtLeast(0f) / SEGMENT_LENGTH_TARGET).toInt()
+    return byLength.coerceIn(baseCount.coerceAtLeast(2), MAX_DYNAMIC_NODE_COUNT)
+}
+
+/** 动态细分目标段长（世界单位）：与导弹典型转弯半径（50~100 su）匹配，折角不可辨。 */
+private const val SEGMENT_LENGTH_TARGET = 22f
+
+/** 动态细分节点数上限：3 层 × 2 顶点 × 节点数的顶点流护栏。 */
+private const val MAX_DYNAMIC_NODE_COUNT = 72
 
 /**
  * 贴图拖尾组件：CPU 折线带体 + 平铺滚动贴图图案的拖尾主体层（复刻 MagicTrail）。
@@ -296,7 +436,6 @@ class TexTrailComponent(
 ) : RenderEntityImpl(id, CombatEngineLayers.ABOVE_PARTICLES, RENDER_ORDER_BASE + spec.layer) {
 
     private val log = Global.getLogger(TexTrailComponent::class.java)
-    private val fade = ASTDProjectileVfxLayerFadeState()
     private var handle: TexTrailRenderer.Handle? = null
 
     override fun onAttachSelf(ctx: RenderContext): Boolean {
@@ -319,7 +458,6 @@ class TexTrailComponent(
     }
 
     override fun advanceSelf(ctx: RenderContext, amount: Float) {
-        fade.advance(amount)
         if (handle?.deleted == true) {
             handle = null
             return
@@ -333,17 +471,25 @@ class TexTrailComponent(
         // 扰动图案平移相位（主波长周期数）：与贴图 scroll 同一推进语义，逻辑时间驱动、暂停即静止
         val wobbleAdvance = if (spec.wobbleAmplitude <= 0f || spec.wobbleScroll == 0f) 0f
         else frame.logicElapsed * spec.wobbleScroll / spec.wobbleWavelength
+        // 逐节点寿命：spec 显式覆写优先，否则取驱动按「预期带长/实测速度」的估算值
+        val lifetime = if (spec.lifetimeSeconds > 0f) spec.lifetimeSeconds else frame.trailLifetimeSeconds
         val nodes = texTrailNodes(
             frame.historyNodes, frame.origin, frame.facing, frame.length,
-            spec, frame.intensity * fade.alpha(), wobbleAdvance,
+            spec, frame.intensity, wobbleAdvance, frame.elapsed, lifetime,
+            nodeCount = dynamicTexTrailNodeCount(frame.length, spec.nodeCount),
+            timeOffset = frame.trailTimeOffsetSeconds,
         )
         val scroll = if (spec.scrollSpeed == 0f) 0f else frame.logicElapsed * spec.scrollSpeed / spec.tileLength
         val vertices = texTrailStrip(nodes, frame.origin, frame.facing, spec.tileLength, scroll, spec.recede)
         current.update(renderOrder, spec.texturePath, vertices)
     }
 
+    /**
+     * 拖尾不响应全局淡出：弹体消亡/命中后不再整带降 alpha，各节点按自身年龄老去
+     * （尾先消、头后消；消亡后驱动经 [FrameState.trailTimeOffsetSeconds] 加速老化，
+     * 整带在死亡消散窗口内收完，见 [texTrailNodes] 的年龄包络）；树传播保留给弹头等其他层。
+     */
     override fun beginFadeOutSelf(reason: FadeReason, seconds: Float) {
-        fade.begin(seconds)
     }
 
     override fun onDetachSelf() {

@@ -8,64 +8,47 @@ import kotlin.math.roundToInt
  * 已迁移到 RenderEntity 管线的弹体特效手写 DSL 构建函数库。
  * 每个 projectileSpecId 对应一个无状态构建函数，每次生成弹体都重新调用（不缓存），以支持调试期字面量热交换。
  *
- * 绝大多数弹体（[simpleProjectileVfx]）只需 5 个高层旋钮（调色板/宽/长/体型档/是否电弧副带），
- * 拖尾主体由 texTrail 贴图拖尾承担（P2 观感翻译公式见文件底部纯函数）；唯 hero（aod7）下探为逐层显式书写。
+ * 绝大多数弹体（[simpleProjectileVfx]）只需 4 个高层旋钮（主色/宽/长/体型档），拖尾主体为固定三层贴图混合
+ * （twin 外带 + smooth 核心 + zappy 装饰，参数见文件底部常量与纯函数）；弹头由原版弹体渲染（.proj 不再隐藏
+ * bulletSprite，走 projbody/projtrail 螺栓），代码弹头（head{} DSL）保留给 hero（aod7）逐层显式书写。
  */
 object ProjectileVfxSpecs {
 
     /**
      * projectileSpecId → 构建函数。加入一个即接入本管线。
      *
-     * 当前接入：aod7（hero）/ spc3。其余废弃武器弹体已随 D8 移除，新武器设计落地时在此登记。
+     * 当前接入：aod7（hero）+ 10 个简单 spec。aod7 豁免三层混合改版（保持既有 hero 观感）。
      */
     private val builders: Map<String, () -> ProjectileVfx> = mapOf(
         "astd_aod7_shot" to ::aod7Shot,
         "astd_spc3_shot" to { simpleProjectileVfx("astd_spc3_shot", violet(), width = 6f, length = 135f) },
-        "astd_charge_needle_shot" to { simpleProjectileVfx("astd_charge_needle_shot", chargeNeedlePalette(), width = 6f, length = 135f) },
-        "astd_heavy_charge_needle_shot" to { simpleProjectileVfx("astd_heavy_charge_needle_shot", chargeNeedlePalette(), width = 9f, length = 165f) },
+        "astd_charge_needle_shot" to { simpleProjectileVfx("astd_charge_needle_shot", chargeNeedleColor(), width = 6f, length = 135f) },
+        "astd_heavy_charge_needle_shot" to { simpleProjectileVfx("astd_heavy_charge_needle_shot", chargeNeedleColor(), width = 9f, length = 165f) },
         // 电驱加速炮：白色射弹（美术裁定），粗细 = 电荷针刺箭弹 6f × 1.5，长 trail 拖尾 500su。
-        // 白色调色板内联字面量（合并协议：新调色板只允许收口人沉淀）。
         "astd_electric_drive_accelerator_shot" to {
-            simpleProjectileVfx(
-                "astd_electric_drive_accelerator_shot",
-                VfxPalette(ASTDColor(1f, 1f, 1f, 0.9f), TEX_SMOOTH, TEX_ZAPPY),
-                width = 9f,
-                length = 500f,
-            )
+            simpleProjectileVfx("astd_electric_drive_accelerator_shot", ASTDColor(1f, 1f, 1f, 0.9f), width = 9f, length = 500f)
         },
-        // 穷距相位轨道炮：高亮白色细长射弹 + 长距离明亮拖尾（美术主色口径），大型主炮体量 12/300，
-        // 单带细长光矛观感（ribbon=false，克制不抢贯星大光柱）。
-        // 微冷白调色板内联字面量（合并协议：新调色板只允许收口人沉淀）。
+        // 穷距相位轨道炮：高亮白色细长射弹 + 长距离明亮拖尾（美术主色口径），大型主炮体量 12/300。
         "astd_qiongjue_phase_railgun_shot" to {
-            simpleProjectileVfx(
-                "astd_qiongjue_phase_railgun_shot",
-                VfxPalette(ASTDColor(0.92f, 0.95f, 1f, 1f), TEX_SMOOTH, TEX_ZAPPY),
-                width = 12f,
-                length = 300f,
-            )
+            simpleProjectileVfx("astd_qiongjue_phase_railgun_shot", ASTDColor(0.92f, 0.95f, 1f, 1f), width = 12f, length = 300f)
         },
         // 正电子冲击波：小型 PD 弹体克制处理（width 5 / length 90 短拖尾，不抢主炮视觉——设计案特效节）。
-        // 冷蓝白调色板内联字面量（合并协议：新调色板只允许收口人沉淀）。
         "astd_positron_shockwave_shot" to {
             simpleProjectileVfx("astd_positron_shockwave_shot", positronWhiteBlue(), width = 5f, length = 90f)
         },
-        // 重型离子脉冲：ARC 冷蓝白大槽体量 12/220（90 计划 §2.4），ribbon 电弧副带表达
-        // 「标准弹头附加 EMP 电弧特效」的设计案性格，与电荷针刺（干净箭弹）形成观感区分。
+        // 重型离子脉冲：ARC 冷蓝白大槽体量 12/220（90 计划 §2.4）。
         "astd_heavy_ion_pulse_shot" to {
-            simpleProjectileVfx("astd_heavy_ion_pulse_shot", heavyIonPulsePalette(), width = 12f, length = 220f, ribbon = true)
+            simpleProjectileVfx("astd_heavy_ion_pulse_shot", heavyIonPulseColor(), width = 12f, length = 220f)
         },
-        // 辉星 MRM（规格 08 §3.1）：LENS 紫十字辉星本体（弹头恒在承担近球亮核）+ 很长 twin trail
-        // 双拖尾（length=420 对齐 aod7 hero，2500 射程长航迹）；width=10 表达 1.5× 弹体体量
-        // （介于 spc3 中型 6 与穷距大型 12 之间）。两 spec 值完全一致属刻意（同一弹头两种发射器）。
+        // 辉星 MRM（规格 08 §3.1）：LENS 紫十字辉星，很长拖尾（length=420 对齐 aod7 hero，2500 射程长航迹）；
+        // width=10 表达 1.5× 弹体体量（介于 spc3 中型 6 与穷距大型 12 之间）。两 spec 值完全一致属刻意（同一弹头两种发射器）。
         "astd_stellar_mrm_launcher_shot" to {
-            simpleProjectileVfx("astd_stellar_mrm_launcher_shot", violet(), width = 10f, length = 420f, ribbon = true)
+            simpleProjectileVfx("astd_stellar_mrm_launcher_shot", violet(), width = 10f, length = 420f)
         },
         "astd_stellar_mrm_pod_shot" to {
-            simpleProjectileVfx("astd_stellar_mrm_pod_shot", violet(), width = 10f, length = 420f, ribbon = true)
+            simpleProjectileVfx("astd_stellar_mrm_pod_shot", violet(), width = 10f, length = 420f)
         },
-        // 贯星之矛（规格 09 §3.1）：大圆形射弹被大号发光 flare 覆盖（仅见粗略形状）——加大弹头 +
-        // glowScale 4.0 放大带宽与弹头（公式派生），bloom 管线提取遍增益承担 flare 覆盖观感。
-        // 冷蓝白调色板内联字面量（合并协议：新调色板只允许收口人沉淀）；width=36 在 widthBase 46.7 红线内。
+        // 贯星之矛（规格 09 §3.1）：width=36 大圆形弹体 + glowScale 4.0 放大带宽（公式派生）。
         "astd_piercing_lance_shot" to ::piercingLanceShot,
     )
 
@@ -75,26 +58,23 @@ object ProjectileVfxSpecs {
     fun build(projectileSpecId: String): ProjectileVfx? = builders[projectileSpecId]?.invoke()
 
     /**
-     * 通用弹体特效：5 高层旋钮 → trail 风格声明 + texTrail 贴图拖尾主体 + bloom 网格弹头（+ 可选电弧副带）。
+     * 通用弹体特效：4 高层旋钮 → trail 风格声明（驱动锚点）+ 三层贴图拖尾混合。
      *
-     * P2 观感翻译（aod7 hero 形态推广）：glow/body/ribbon 网格层已退役，拖尾主体由 texTrail 承担、
-     * 光晕由 bloom 管线统一提供；弹头恒在（目检结论：无弹头的射弹头部观感过平）。
-     * 派生公式全部为内部纯函数（[bandWidth] 等），登记行只填差异；
-     * 目检微调优先改公式常量，个别例外才用具名参数覆盖。
+     * 三层构图（美术裁定，全弹体统一；aod7 hero 豁免）：
+     * - twin 外带（layer1 垫底）：全宽 [bandWidth]×[BAND_WIDTH_MULT]，alpha [ALPHA_OUTER]，每段 ±[TWIST_OUTER_DEG] 随机扭转；
+     * - smooth 核心（layer2）：宽度 −50%，alpha [ALPHA_CORE]，每段 ±[TWIST_INNER_DEG] 随机扭转；
+     * - zappy 装饰（layer3）：[arcWidth]（0.8×外带），alpha [ALPHA_DECOR]，每段 ±[TWIST_INNER_DEG] 随机扭转。
      *
-     * 注意：trail.startWidth 喂 widthBase=max(w*0.075, 3.5) 与驱动锚点，超过 46.7 会使 widthBase
-     * 脱离 3.5 下限并放大弹头（head{} 尺寸乘 headSizeScale × headTrailScale(widthBase)，简单 spec
-     * 系数 0.875 vs aod7 1.368，故 head 字面量必须经公式换算，禁照抄 aod7）。
+     * 弹头不再由代码网格承担（head{} 保留给 aod7）：原版弹体渲染（projbody/projtrail 螺栓）经 .proj 启用。
+     * 派生公式全部为内部纯函数（[bandWidth] 等），登记行只填差异；目检微调优先改公式常量。
      */
     private fun simpleProjectileVfx(
         id: String,
-        palette: VfxPalette,
+        color: ASTDColor,
         width: Float,
         length: Float,
         glowScale: Float = 2.2f,
-        ribbon: Boolean = false,
     ): ProjectileVfx = projectileVfx(id) {
-        val color = palette.color
         trail {
             width(width); length(length)
             color(color.hex()); tail(color.a((color.alpha * 0.12f).coerceIn(0.04f, 0.2f)).hex())
@@ -104,29 +84,29 @@ object ProjectileVfxSpecs {
         sampling { fps(60f); maxNodes(96); minStep(2f); window(length) }
         fade { out(0.18f); hit(0.1f); expire(0.22f) }
 
-        val bandW = bandWidth(width, glowScale)
-        // 双带（ribbon）时主带垫底、整体 alpha 压到 0.8（对标 aod7 twin 垫底 0x90/0x60），副带全 alpha
-        val mainAlpha = if (ribbon) 0.8f else 1f
+        val bandW = bandWidth(width, glowScale) * BAND_WIDTH_MULT
         val recedeBy = headRecede(length)
-        texTrail("main", palette.texture) {
+        val nodeCount = trailNodes(length)
+        texTrail("twin", TEX_TWIN) {
             layer(1); width(bandW)
-            colors(bandHeadColor(color, mainAlpha).hex(), bandMidColor(color, mainAlpha).hex(), bandTailColor(color, mainAlpha).hex(), midAt = 0.25f)
-            nodes(trailNodes(length)); tile(mainTile(length), mainScroll(length))
+            colors(bandHeadColor(color, ALPHA_OUTER).hex(), bandMidColor(color, ALPHA_OUTER).hex(), bandTailColor(color, ALPHA_OUTER).hex(), midAt = 0.25f)
+            nodes(nodeCount); tile(mainTile(length), mainScroll(length))
             recede(recedeBy)
+            twist(TWIST_OUTER_DEG)
         }
-        if (ribbon) {
-            // 电弧副带顶替旧 ribbon 网格的「缠绕飘带」观感：更窄、平铺/滚动更快
-            texTrail("arc", palette.arcTexture) {
-                layer(2); width(arcWidth(bandW))
-                colors(bandHeadColor(color).hex(), bandMidColor(color).hex(), bandTailColor(color).hex(), midAt = 0.25f)
-                nodes(trailNodes(length)); tile(arcTile(length), arcScroll(length))
-                recede(recedeBy)
-            }
+        texTrail("core", TEX_SMOOTH) {
+            layer(2); width(round05(bandW * CORE_WIDTH_RATIO))
+            colors(bandHeadColor(color, ALPHA_CORE).hex(), bandMidColor(color, ALPHA_CORE).hex(), bandTailColor(color, ALPHA_CORE).hex(), midAt = 0.25f)
+            nodes(nodeCount); tile(mainTile(length), mainScroll(length))
+            recede(recedeBy)
+            twist(TWIST_INNER_DEG)
         }
-        head {
-            length(headLength(length)); width(headWidth(bandW)); shoulder(0.5f); rear(0.95f); blur(0.35f)
-            alpha(0.7f)  // 并入 bloom 管线后吃提取遍 emissive 增益 + 合成叠加，整体压暗防溢出
-            shell(shellStartColor(color).hex(), shellMidColor(color).hex(), shellEndColor(color).hex())
+        texTrail("zappy", TEX_ZAPPY) {
+            layer(3); width(arcWidth(bandW))
+            colors(bandHeadColor(color, ALPHA_DECOR).hex(), bandMidColor(color, ALPHA_DECOR).hex(), bandTailColor(color, ALPHA_DECOR).hex(), midAt = 0.25f)
+            nodes(nodeCount); tile(arcTile(length), arcScroll(length))
+            recede(recedeBy)
+            twist(TWIST_INNER_DEG)
         }
     }
 
@@ -135,6 +115,8 @@ object ProjectileVfxSpecs {
      * 拖尾复刻 MagicTrail 语义吃 astd_trails 贴图（twin 脆丝垫底 layer1、zappy 电弧 layer2，宽比 twin=1.25×zappy），
      * 对标参考模组 zappy+twin 叠加构图；弹头用旧 `head{}` 网格（贴图弹头壳路线经目检否定已删，连同 headShell 特性）。
      * `trail{}` 仅作拖尾风格声明（弹头网格的基宽/基色来源 + 驱动锚点）。
+     *
+     * 豁免三层混合改版（无 twist、宽度不翻倍、保留 head{} 代码弹头与隐藏原版弹体）。
      */
     private fun aod7Shot(): ProjectileVfx = projectileVfx("astd_aod7_shot") {
         trail {
@@ -167,27 +149,26 @@ object ProjectileVfxSpecs {
         }
     }
 
-    // 贯星之矛（规格 09 §3.1）：五旋钮形态微调（texTrail 主体 + bloom 网格弹头恒在），
-    // 冷蓝白 ARC 主色内联字面量；width 36 / length 260 / glowScale 4.0 大圆形弹体观感。
+    // 贯星之矛（规格 09 §3.1）：冷蓝白 ARC 主色内联字面量；width 36 / length 260 / glowScale 4.0 大圆形弹体观感。
     private fun piercingLanceShot(): ProjectileVfx = simpleProjectileVfx(
         "astd_piercing_lance_shot",
-        VfxPalette(ASTDColor(0.55f, 0.78f, 1f, 0.95f), TEX_SMOOTH, TEX_ZAPPY),
+        ASTDColor(0.55f, 0.78f, 1f, 0.95f),
         width = 36f,
         length = 260f,
         glowScale = 4.0f,
     )
 
     // 正电子冲击波：冷蓝白系（全局美术约定「正电子用白色弹体与明亮拖尾」），分支内内联字面量。
-    private fun positronWhiteBlue() = VfxPalette(ASTDColor(0.62f, 0.82f, 1f, 0.85f), TEX_SMOOTH, TEX_ZAPPY)
+    private fun positronWhiteBlue() = ASTDColor(0.62f, 0.82f, 1f, 0.85f)
 
-    // 调色板：颜色沿用旧管线数值（视觉已目检回归，不宜再动）；贴图按色系语义分配（P2 观感翻译）。
-    private fun violet() = VfxPalette(ASTDColor(0.66f, 0.42f, 1f, 0.9f), TEX_SMOOTH, TEX_ZAPPY)
+    // 调色板：颜色沿用旧管线数值（视觉已目检回归，不宜再动）。
+    private fun violet() = ASTDColor(0.66f, 0.42f, 1f, 0.9f)
 
     // 重型离子脉冲：ARC 冷蓝白（全局美术约定，与电荷针刺同色系）。新共享调色板只允许收口人添加（00 §3），本组内联私有函数。
-    private fun heavyIonPulsePalette() = VfxPalette(ASTDColor(0.55f, 0.78f, 1f, 0.9f), TEX_SMOOTH, TEX_ZAPPY)
+    private fun heavyIonPulseColor() = ASTDColor(0.55f, 0.78f, 1f, 0.9f)
 
     // 电荷针刺：ARC 冷蓝白（全局美术约定）。新共享调色板只允许收口人添加（00 §3），本组内联私有函数。
-    private fun chargeNeedlePalette() = VfxPalette(ASTDColor(0.55f, 0.78f, 1f, 0.9f), TEX_SMOOTH, TEX_ZAPPY)
+    private fun chargeNeedleColor() = ASTDColor(0.55f, 0.78f, 1f, 0.9f)
 
     private fun ASTDColor.a(alpha: Float): ASTDColor = copy(alpha = alpha.coerceIn(0f, 1f))
 
@@ -197,11 +178,27 @@ object ProjectileVfxSpecs {
     }
 }
 
-/** 简单 spec 的贴图拖尾调色板：主色 + 主带贴图 + 电弧副带贴图（ribbon=true 时启用）。 */
-internal data class VfxPalette(val color: ASTDColor, val texture: String, val arcTexture: String)
-
+internal const val TEX_TWIN = "graphics/fx/astd_trails_twin.png"
 internal const val TEX_SMOOTH = "graphics/fx/astd_trails_smooth.png"
 internal const val TEX_ZAPPY = "graphics/fx/astd_trails_zappy.png"
+
+// —— 三层混合常量（美术裁定，公式守护测试锚点）——
+
+/** 带宽总倍率（宽度翻倍裁定）：外带全宽 = [bandWidth] × 本值。 */
+internal const val BAND_WIDTH_MULT = 2f
+
+/** 核心层（smooth）宽度比：外带 ×0.5。 */
+internal const val CORE_WIDTH_RATIO = 0.5f
+
+/** 三层 alpha：twin 外带 0.45 / smooth 核心 0.6 / zappy 装饰 0.45（乘进三段渐变各节点 alpha）。
+ * 初版 0.6/0.8/0.6 经烟测目检过曝（多层加色叠加 + 同走廊多发弹体拖尾重叠），×0.75 压暗，保持 3:4:3 比例。 */
+internal const val ALPHA_OUTER = 0.45f
+internal const val ALPHA_CORE = 0.6f
+internal const val ALPHA_DECOR = 0.45f
+
+/** 逐段随机扭转幅度（度）：twin 外带 ±90°，smooth 核心 / zappy 装饰 ±30°（前后段沿路径插值自动衔接）。 */
+internal const val TWIST_OUTER_DEG = 90f
+internal const val TWIST_INNER_DEG = 30f
 
 // —— P2 观感翻译公式（内部纯函数，供 simpleProjectileVfx 与公式守护测试共用）——
 
@@ -211,10 +208,10 @@ internal fun round05(v: Float): Float = (v * 2f).roundToInt() / 2f
 /** 5 粒度取整。 */
 internal fun round5(v: Float): Float = (v / 5f).roundToInt() * 5f
 
-/** 贴图拖尾主带全宽：0.35×旧宽 锚 aod7 的 96→30；3.15×glowScale 锚旧 glow 视觉全宽（widthBase 3.5 × g）。 */
+/** 贴图拖尾外带基准全宽：0.35×旧宽 锚 aod7 的 96→30；3.15×glowScale 锚旧 glow 视觉全宽（widthBase 3.5 × g）。 */
 internal fun bandWidth(width: Float, glowScale: Float): Float = round05(max(0.35f * width, 3.15f * glowScale))
 
-/** 电弧副带宽度：0.8×主带（对标 aod7 zappy/twin=0.8）。 */
+/** zappy 装饰带宽度：0.8×外带（对标 aod7 zappy/twin=0.8）。 */
 internal fun arcWidth(bandW: Float): Float = round05(bandW * 0.8f)
 
 /** 三段上色的头部色：mix(主色, 白, 0.45)，alpha = 主色 alpha×0.78×[alphaScale]（保持主色饱和——0.78 白混合会把琥珀等暖色洗成近白，与弹头光晕产生色差接缝）。 */
@@ -230,39 +227,23 @@ internal fun bandTailColor(color: ASTDColor, alphaScale: Float = 1f): ASTDColor 
     color.red * 0.16f, color.green * 0.16f, color.blue * 0.16f, (0.07f * alphaScale).coerceIn(0f, 1f),
 )
 
-/** 主带平铺周期：L/2.4（aod7 的 420→140~200 区间居中）。 */
+/** 外带/核心平铺周期：L/2.4（aod7 的 420→140~200 区间居中）。 */
 internal fun mainTile(length: Float): Float = round5(length / 2.4f)
 
-/** 主带滚动速度：L/6。 */
+/** 外带/核心滚动速度：L/6。 */
 internal fun mainScroll(length: Float): Float = round5(length / 6f)
 
-/** 副带平铺周期：L/2（更快更密的电弧）。 */
+/** 装饰带平铺周期：L/2（更快更密的电弧）。 */
 internal fun arcTile(length: Float): Float = round5(length / 2f)
 
-/** 副带滚动速度：L/4.5。 */
+/** 装饰带滚动速度：L/4.5。 */
 internal fun arcScroll(length: Float): Float = round5(length / 4.5f)
 
 /** 节点数：L/16，下限 16（速射短弹的弯道平滑保底）上限 24（aod7）。 */
 internal fun trailNodes(length: Float): Int = (length / 16f).roundToInt().coerceIn(16, 24)
 
-/** 弹头露出退距：L×0.08（aod7 40/420≈0.095），带体亮端后移让弹头尖在带体前露出（禁 forward 偏移）。 */
+/** 带体头部退距：L×0.08（aod7 40/420≈0.095），带体亮端后移让原版螺栓弹头在带体前露出（禁 forward 偏移）。 */
 internal fun headRecede(length: Float): Float = round5(length * 0.08f)
-
-/** 弹头长：L×0.33（沿用旧工厂）。 */
-internal fun headLength(length: Float): Float = length * 0.33f
-
-/** 弹头宽：bandW×1.77——aod7 视觉比（弹头视觉宽/带宽 = 34×1.368/30 ≈ 1.55）除以简单 spec 的 0.875 缩放系数。 */
-internal fun headWidth(bandW: Float): Float = round05(bandW * 1.77f)
-
-/** 弹头壳内圈色：主色 rgb×0.25 @ alpha 0.08。 */
-internal fun shellStartColor(color: ASTDColor): ASTDColor =
-    ASTDColor(color.red * 0.25f, color.green * 0.25f, color.blue * 0.25f, 0.08f)
-
-/** 弹头壳中圈色：mix(主色, 白, 0.55) @ alpha 0.93。 */
-internal fun shellMidColor(color: ASTDColor): ASTDColor = mixWhite(color, 0.55f).copy(alpha = 0.93f)
-
-/** 弹头壳外圈色：mix(主色, 白, 0.85) @ alpha 0.98（与带体头色同族，小缩放接缝双保险）。 */
-internal fun shellEndColor(color: ASTDColor): ASTDColor = mixWhite(color, 0.85f).copy(alpha = 0.98f)
 
 private fun mixWhite(color: ASTDColor, t: Float): ASTDColor = ASTDColor(
     color.red + (1f - color.red) * t,

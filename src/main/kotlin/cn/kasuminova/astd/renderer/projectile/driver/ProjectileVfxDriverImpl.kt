@@ -46,6 +46,16 @@ class ProjectileVfxDriverImpl(
     private var lastFrame: FrameState? = null
     private var currentFadeReason: FadeReason = FadeReason.Removed
     private var currentFadeSeconds: Float = policy.removedFadeOutSeconds
+    /** 测试用尺度注入（无引擎时 referenceWorldUnitsPerPixel 的返回值）。 */
+    private var testWorldUnitsPerPixel = 1f
+    /** 最近一帧估算的逐节点拖尾寿命（秒）；消亡后冻结帧沿用，并作为时间加速比的分子（见 [currentTrailTimeOffset]）。 */
+    private var currentTrailLifetime = 0f
+    /** 存活期逐帧追踪的弹体速度（su/s）；消亡定格时快照给 [frozenVelocity] 供带头前飞。 */
+    private val lastVelocity = Vector2f(0f, 0f)
+    /** 消亡定格瞬间的速度快照（su/s）；几何冻结期带头沿此方向继续前飞一小段，弥合原版弹体瞬灭留下的断头缝。 */
+    private val frozenVelocity = Vector2f(0f, 0f)
+    /** 冻结期带头已前飞的累计距离（世界单位），上限见 [FORWARD_FLIGHT_CAP_RATIO]。 */
+    private var forwardFlown = 0f
 
     override var state: ProjectileVfxDriverState = ProjectileVfxDriverState.Active
         private set
@@ -96,16 +106,22 @@ class ProjectileVfxDriverImpl(
             // 存活，或淡出期弹体仍在场滑行：跟随实时位置推进几何——与原版弹体在 fadeTime 窗口内继续移动一致，
             // 淡出（由树各层的 fade alpha 施加）叠加在跟随之上，而非把特效钉死在死亡前一帧。
             val renderFacing = computeRenderFacing(location, facing)
+            trackVelocity(location, amount)
             accumulateTravelDistance(location)
             val worldUnitsPerPixel = referenceWorldUnitsPerPixel(engine)
-            val flight = buildFlightLayout(worldUnitsPerPixel)
+            val flight = buildFlightLayout()
             history.advance(
                 location,
                 renderFacing,
                 elapsed,
-                retainDistance = historyRetainDistance(flight.visibleLength, worldUnitsPerPixel),
-                retainNodeCount = historyRetainNodeCount(flight.visibleLength, worldUnitsPerPixel),
+                retainDistance = historyRetainDistance(flight.visibleLength),
+                retainNodeCount = historyRetainNodeCount(flight.visibleLength),
             )
+            // 逐节点寿命 = 预期带长（世界单位，取 cap 而非仍在生长的 visibleLength）/ 实测速度；
+            // 在 history.advance 之后估算，吃到最新节点
+            if (policy.primaryTrailStartWidth > 0f) {
+                currentTrailLifetime = estimateTrailLifetime(maxTrailLengthWorld())
+            }
             val phase = if (fading) RenderPhase.FadingOut else RenderPhase.Active
             val frame = buildFrame(location, renderFacing, flight, worldUnitsPerPixel, amount, phase, if (fading) currentFadeReason else null)
             driveTree(engine, frame, amount)
@@ -118,13 +134,16 @@ class ProjectileVfxDriverImpl(
             lastLocation = Vector2f(location)
             lastFrame = frame
         } else if (fading) {
-            // 弹体已彻底移除（无实时位置）：冻结在最后一帧继续淡出直至结束。
+            // 弹体已彻底移除（无实时位置）：几何冻结在最后一帧，但带头沿消亡前速度继续前飞一小段
+            // （上限 primaryTrailLength × [FORWARD_FLIGHT_CAP_RATIO]），让带体亮端流进命中点，
+            // 弥合原版弹体命中瞬灭留下的断头缝；同时按加速时间偏移继续淡出直至结束。
             lastFrame?.let { frozen ->
+                val origin = forwardFlightOrigin(frozen.origin, amount)
                 val faded = FrameStateImpl(
                     elapsed = elapsed,
                     logicElapsed = quantizedLogicElapsed(),
                     amountThisFrame = amount,
-                    origin = frozen.origin,
+                    origin = origin,
                     facing = frozen.facing,
                     length = frozen.length,
                     endpoint = frozen.endpoint,
@@ -136,14 +155,49 @@ class ProjectileVfxDriverImpl(
                     dissolve = frozen.dissolve,
                     fadeReason = currentFadeReason,
                     historyNodes = frozen.historyNodes,
+                    trailLifetimeSeconds = frozen.trailLifetimeSeconds,
+                    trailTimeOffsetSeconds = currentTrailTimeOffset(),
                 )
                 driveTree(engine, faded, amount)
             }
         }
 
-        if (fading && fadeElapsed >= currentFadeSeconds.coerceAtLeast(0f)) {
+        // 拖尾消亡后按加速时间偏移在死亡消散窗口内老完（尾先消、头后消），不再等满整条逐节点寿命；
+        // 弹头 bloom 层仍按 fadeSeconds 淡完。dispose 截止取两者较大者。
+        if (fading && fadeElapsed >= max(currentFadeSeconds, trailDeathFadeSeconds(currentFadeReason))) {
             dispose()
         }
+    }
+
+    /**
+     * 拖尾死亡消散窗口（秒）：消亡/命中后整带在本窗口内按尾先头后序加速老完。
+     * 取值小于自然寿命（带长 ×4 后数秒级），避免命中后带体满亮驻留的「停滞感」与过长尾迹。
+     */
+    private fun trailDeathFadeSeconds(reason: FadeReason): Float = when (reason) {
+        FadeReason.Hit -> TRAIL_DEATH_FADE_HIT
+        FadeReason.Expire -> TRAIL_DEATH_FADE_EXPIRE
+        else -> TRAIL_DEATH_FADE_REMOVED
+    }
+
+    /**
+     * 拖尾时间加速偏移（秒）：fadeElapsed × 寿命/死亡消散窗口。texTrail 节点年龄加上本值后，
+     * 最年轻节点恰好于窗口结束时老完，年长节点同比提前——保持尾先头后序且死亡瞬间无跳变（偏移从 0 累加）。
+     */
+    private fun currentTrailTimeOffset(): Float {
+        if (state != ProjectileVfxDriverState.Fading || currentTrailLifetime <= 0f) return 0f
+        return fadeElapsed * (currentTrailLifetime / trailDeathFadeSeconds(currentFadeReason))
+    }
+
+    /** 冻结期带头前飞：沿消亡前速度平移 origin，累计距离钳到上限；零速快照（如首帧即消亡）不前飞。 */
+    private fun forwardFlightOrigin(base: Vector2f, amount: Float): Vector2f {
+        val speed = sqrt(frozenVelocity.x * frozenVelocity.x + frozenVelocity.y * frozenVelocity.y)
+        if (speed <= 0.0001f) return Vector2f(base)
+        val cap = policy.primaryTrailLength.coerceAtLeast(0f) * FORWARD_FLIGHT_CAP_RATIO
+        forwardFlown = (forwardFlown + speed * amount.coerceAtLeast(0f)).coerceAtMost(cap)
+        return Vector2f(
+            base.x + frozenVelocity.x / speed * forwardFlown,
+            base.y + frozenVelocity.y / speed * forwardFlown,
+        )
     }
 
     private fun markGone(reason: FadeReason) {
@@ -152,6 +206,8 @@ class ProjectileVfxDriverImpl(
         fadeElapsed = 0f
         currentFadeReason = reason
         currentFadeSeconds = fadeSeconds(reason)
+        frozenVelocity.set(lastVelocity.x, lastVelocity.y)
+        forwardFlown = 0f
         tree.beginFadeOut(reason, currentFadeSeconds)
     }
 
@@ -189,7 +245,53 @@ class ProjectileVfxDriverImpl(
             dissolve = flight.dissolve,
             fadeReason = fadeReason,
             historyNodes = history.nodes(),
+            trailLifetimeSeconds = currentTrailLifetime,
+            trailTimeOffsetSeconds = currentTrailTimeOffset(),
         )
+    }
+
+    /** 逐帧追踪弹体速度（su/s）：供消亡定格时快照。首帧/零步长帧不更新。 */
+    private fun trackVelocity(location: Vector2f, amount: Float) {
+        val previous = lastLocation ?: return
+        if (amount <= 0.0001f) return
+        lastVelocity.set(
+            (location.x - previous.x) / amount,
+            (location.y - previous.y) / amount,
+        )
+    }
+
+    /**
+     * 逐节点拖尾寿命估算：预期带长（世界单位）/ 实测速度。
+     * 速度取历史首尾节点的弧长/时间跨度（弯道按折线累计）；历史不足 2 点回退全程平均速度，
+     * 再不足按下限速度。结果 clamp 到 [MIN_TRAIL_LIFETIME, MAX_TRAIL_LIFETIME]，防极端速度下
+     * 带体瞬灭或永驻。
+     */
+    private fun estimateTrailLifetime(expectedLengthWorld: Float): Float {
+        val speed = estimateSpeedSuPerSec()
+        return (expectedLengthWorld.coerceAtLeast(0f) / speed)
+            .coerceIn(MIN_TRAIL_LIFETIME, MAX_TRAIL_LIFETIME)
+    }
+
+    private fun estimateSpeedSuPerSec(): Float {
+        val nodes = history.nodes()
+        if (nodes.size >= 2) {
+            val first = nodes.first()
+            val last = nodes.last()
+            val span = last.elapsed - first.elapsed
+            if (span > 0.0001f) {
+                var arc = 0f
+                for (i in 1 until nodes.size) {
+                    val dx = nodes[i].location.x - nodes[i - 1].location.x
+                    val dy = nodes[i].location.y - nodes[i - 1].location.y
+                    arc += sqrt(dx * dx + dy * dy)
+                }
+                if (arc > 0.0001f) return (arc / span).coerceAtLeast(MIN_SPEED_SU_PER_SEC)
+            }
+        }
+        if (elapsed > 0.0001f && traveledDistance > 0.0001f) {
+            return (traveledDistance / elapsed).coerceAtLeast(MIN_SPEED_SU_PER_SEC)
+        }
+        return MIN_SPEED_SU_PER_SEC
     }
 
     private fun computeRenderFacing(location: Vector2f, projectileFacing: Float): Float {
@@ -203,21 +305,25 @@ class ProjectileVfxDriverImpl(
         return ((deg % 360f) + 360f) % 360f
     }
 
-    private fun buildFlightLayout(worldUnitsPerPixel: Float): ASTDProjectileVfxLayout.FlightLayout {
-        val scale = worldUnitsPerPixel.coerceAtLeast(0.0001f)
+    private fun buildFlightLayout(): ASTDProjectileVfxLayout.FlightLayout {
         val hasTrail = policy.primaryTrailStartWidth > 0f
-        // 弹体存活期间不做时间驱动的“老化溶解”：拖尾随弹体存续，长度随实际行程增长（受 viewportTailCap 约束）。
-        // 旧公式用 elapsed/duration 算 dissolve，会让长寿命弹体（制导导弹飞行时间远超 durationSeconds）的拖尾在途中提前淡尽；
-        // 溶解/淡出统一改由弹体消亡后的 Fading 分支（树 fade over fadeSeconds）接管。
+        // 弹体存活期间不做时间驱动的“老化溶解”：拖尾随弹体存续，长度随实际行程增长（受 maxTrailLengthWorld 约束）。
+        // 溶解/淡出由逐节点寿命机制接管（见 TexTrailComponent），弹体消亡事件不再对带体施加全局 alpha。
+        // visibleLength 恒为世界单位：cap 由参考像素域直接 ×TRAIL_MAX_LENGTH_MULT 折为世界单位（分辨率无关），
+        // 历史路径本来就是世界坐标，带长与世界坐标路径直接可比，带尾不会越出历史弧长。
         val visibleLength = if (hasTrail) {
-            (traveledDistance / scale).coerceIn(
-                0f,
-                ASTDProjectileVfxLayout.viewportTailCap(policy.primaryTrailStartWidth, policy.layoutReferenceWidth),
-            )
+            traveledDistance.coerceIn(0f, maxTrailLengthWorld())
         } else {
             policy.primaryTrailLength
         }
         return ASTDProjectileVfxLayout.FlightLayout(dissolve = 0f, beamAlpha = 1f, visibleLength = visibleLength)
+    }
+
+    /** 最大带长（世界单位）：viewportTailCap 参考像素域结果 ×[TRAIL_MAX_LENGTH_MULT]，分辨率/缩放无关。 */
+    private fun maxTrailLengthWorld(): Float {
+        return ASTDProjectileVfxLayout.viewportTailCap(
+            policy.primaryTrailStartWidth, policy.layoutReferenceWidth,
+        ) * TRAIL_MAX_LENGTH_MULT
     }
 
     private fun goneReason(): FadeReason {
@@ -247,15 +353,14 @@ class ProjectileVfxDriverImpl(
         if (distance > 0.0001f) traveledDistance += distance
     }
 
-    private fun historyRetainDistance(visibleLength: Float, worldUnitsPerPixel: Float): Float {
-        val scale = worldUnitsPerPixel.coerceAtLeast(0.0001f)
-        val visibleWorldDistance = visibleLength.coerceAtLeast(0f) * scale
+    private fun historyRetainDistance(visibleLength: Float): Float {
+        // visibleLength 已是世界单位（见 buildFlightLayout），直接与历史路径弧长（世界坐标）同域。
         val samplingMargin = policy.minDistancePerNode.coerceAtLeast(0.5f) * 4f
-        return max(policy.distanceWindow, visibleWorldDistance + samplingMargin)
+        return max(policy.distanceWindow, visibleLength.coerceAtLeast(0f) + samplingMargin)
     }
 
-    private fun historyRetainNodeCount(visibleLength: Float, worldUnitsPerPixel: Float): Int {
-        val retainDistance = historyRetainDistance(visibleLength, worldUnitsPerPixel)
+    private fun historyRetainNodeCount(visibleLength: Float): Int {
+        val retainDistance = historyRetainDistance(visibleLength)
         val minDistance = policy.minDistancePerNode.coerceAtLeast(0.5f)
         val byDistance = ceil(retainDistance / minDistance).toInt() + 4
         return max(policy.maxHistoryNodes, byDistance).coerceAtMost(MAX_RUNTIME_HISTORY_NODES)
@@ -263,12 +368,20 @@ class ProjectileVfxDriverImpl(
 
     private fun referenceWorldUnitsPerPixel(engine: CombatEngineAPI?): Float {
         // engine != null 即战斗内，LWJGL Display 必然可用；Layout 内部对高度做 coerceAtLeast(1f)。
-        if (engine == null) return 1f
+        if (engine == null) return testWorldUnitsPerPixel
         return ASTDProjectileVfxLayout.referenceWorldUnitsPerPixel(Display.getHeight().toFloat())
     }
 
-    /** 测试入口：给定位置/存活推进一帧，绕过引擎（worldUnitsPerPixel=1）。 */
-    internal fun advanceForTests(locationX: Float, locationY: Float, facing: Float, amount: Float, alive: Boolean) {
+    /** 测试入口：给定位置/存活推进一帧，绕过引擎（worldUnitsPerPixel 由参数指定，默认 1）。 */
+    internal fun advanceForTests(
+        locationX: Float,
+        locationY: Float,
+        facing: Float,
+        amount: Float,
+        alive: Boolean,
+        worldUnitsPerPixel: Float = 1f,
+    ) {
+        testWorldUnitsPerPixel = worldUnitsPerPixel
         advanceInternal(null, Vector2f(locationX, locationY), facing, amount, alive)
     }
 
@@ -281,5 +394,25 @@ class ProjectileVfxDriverImpl(
 
     private companion object {
         private const val MAX_RUNTIME_HISTORY_NODES = 512
+        /** 速度估算下限（su/s）：防止零速/极低速弹体算出无穷寿命。 */
+        private const val MIN_SPEED_SU_PER_SEC = 1f
+        /** 逐节点拖尾寿命区间（秒）：下限防瞬灭，上限防永驻。 */
+        private const val MIN_TRAIL_LIFETIME = 0.1f
+        private const val MAX_TRAIL_LIFETIME = 10f
+
+        /**
+         * 最大带长倍率：viewportTailCap 的参考像素域结果直接折为世界单位（不乘 worldUnitsPerPixel、
+         * 分辨率无关）后再 ×4。历史包袱：单位修复前 cap 被误当世界单位使用（1440p 下视觉带长 ≈
+         * 修复后 2.4 倍），修复后带长骤短被目检否定——美术裁定按「修复前的 4 倍」定最大带长。
+         */
+        private const val TRAIL_MAX_LENGTH_MULT = 4f
+
+        /** 拖尾死亡消散窗口（秒）：命中 0.3 / 超射程 0.5 / 其他移除 0.4（目检裁定：命中后整带须立即开始消散且不瞬灭）。 */
+        private const val TRAIL_DEATH_FADE_HIT = 0.3f
+        private const val TRAIL_DEATH_FADE_EXPIRE = 0.5f
+        private const val TRAIL_DEATH_FADE_REMOVED = 0.4f
+
+        /** 冻结期带头前飞距离上限 = primaryTrailLength × 本值（略大于带体退距 recede≈0.08×L，恰好弥合断头缝不 overshoot）。 */
+        private const val FORWARD_FLIGHT_CAP_RATIO = 0.15f
     }
 }

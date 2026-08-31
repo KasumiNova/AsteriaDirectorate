@@ -273,4 +273,129 @@ class TexTrailComponentTest {
         assertEquals(200f, out[17], 0.001f)
         assertEquals(0.5f, out[23], 0.001f)
     }
+
+    @Test
+    fun `age envelope keeps young nodes and dissolves linearly past dissolve start`() {
+        assertEquals(1f, ageAlphaEnvelope(0f, 0.6f))
+        assertEquals(1f, ageAlphaEnvelope(0.3f, 0.6f))
+        assertEquals(1f, ageAlphaEnvelope(0.6f, 0.6f), "消散起点边界仍满亮")
+        assertEquals(0.5f, ageAlphaEnvelope(0.8f, 0.6f), 1e-4f)
+        assertEquals(0f, ageAlphaEnvelope(1f, 0.6f), 1e-4f)
+        assertEquals(0f, ageAlphaEnvelope(1.5f, 0.6f), "超过寿命彻底消散")
+    }
+
+    @Test
+    fun `per-node lifetime dissolves older tail nodes first`() {
+        // 直线飞行 100su：历史点 0.0s（尾）→ 0.4s（头），now=0.4、lifetime=0.6、dissolveStart=0.6
+        val history = (0..4).map { ASTDProjectileHistoryNode(Vector2f(it * 25f, 0f), 0f, it * 0.1f) }
+
+        val nodes = texTrailNodes(history, Vector2f(100f, 0f), 0f, 100f, spec, 1f, now = 0.4f, lifetimeSeconds = 0.6f)
+
+        // 头节点 age=0：满亮不衰减
+        assertEquals(0f, nodes.first().age, 1e-4f)
+        assertEquals(1f, nodes.first().color.alpha, 1e-4f)
+        // 中间节点 age=0.2 → progress=0.333 < 0.6：不衰减，保持静态渐变（t=0.5 → lerp(1, 0.2)=0.6）
+        assertEquals(0.2f, nodes[2].age, 1e-4f)
+        assertEquals(0.6f, nodes[2].color.alpha, 1e-3f)
+        // 尾节点 age=0.4 → progress=0.6667 → envelope=1-(0.6667-0.6)/0.4≈0.8333：alpha=0.2×0.8333
+        assertEquals(0.4f, nodes.last().age, 1e-4f)
+        assertEquals(0.6667f, nodes.last().lifeProgress, 1e-3f)
+        assertEquals(0.2f * 0.8333f, nodes.last().color.alpha, 1e-3f, "尾段最老应先开始消散")
+    }
+
+    @Test
+    fun `zero lifetime disables age-based dissolve`() {
+        // 宿主不提供寿命（光束/一次性特效）：节点不随年龄衰减，尾色保持静态渐变值
+        val history = (0..4).map { ASTDProjectileHistoryNode(Vector2f(it * 25f, 0f), 0f, it * 0.1f) }
+
+        val nodes = texTrailNodes(history, Vector2f(100f, 0f), 0f, 100f, spec, 1f, now = 99f, lifetimeSeconds = 0f)
+
+        for (node in nodes) {
+            assertEquals(0f, node.lifeProgress, 0f)
+        }
+        assertEquals(0.2f, nodes.last().color.alpha, 1e-4f)
+    }
+
+    @Test
+    fun `segment twist base is deterministic smooth and within range`() {
+        val angle = segmentTwistBase(37f, 50f, 45f)
+        assertEquals(angle, segmentTwistBase(37f, 50f, 45f), 0f, "同一弧长跨帧稳定")
+        assert(kotlin.math.abs(angle) <= 45f) { "twist base beyond range: $angle" }
+        assertEquals(0f, segmentTwistBase(37f, 50f, 0f), "maxAngle=0 即关闭")
+        // 平滑衔接：沿弧长逐点推进时取值连续（smoothstep 过渡，无折点跳变），变化率有界
+        var prev = segmentTwistBase(0f, 50f, 90f)
+        var d = 1f
+        while (d <= 200f) {
+            val cur = segmentTwistBase(d, 50f, 90f)
+            assert(kotlin.math.abs(cur - prev) <= 90f * 4f / 50f) { "弧长 $d 处扭转不连续: $prev → $cur" }
+            prev = cur; d += 1f
+        }
+        // 不同弧长桶给出不同值（噪声非恒定）
+        assert(segmentTwistBase(10f, 50f, 90f) != segmentTwistBase(120f, 50f, 90f)) { "不同弧长桶应给出不同扭转角" }
+    }
+
+    @Test
+    fun `twist angle comes from arc noise and accumulates with age`() {
+        // 9 节点直梁：扭转初相 = 距头弧长的平滑噪声（带体系坐标，跨帧稳定），与历史点时间戳无关
+        val history = (0..4).map { ASTDProjectileHistoryNode(Vector2f(it * 25f, 0f), 0f, it * 0.1f) }
+        val twistSpec = spec.copy(nodeCount = 9, twistMaxAngleDeg = 30f, twistWavelength = 40f, twistTurnDegPerSec = 90f)
+
+        val young = texTrailNodes(history, Vector2f(100f, 0f), 0f, 100f, twistSpec, 1f, now = 0.4f)
+        // 节点 1（距头 12.5）：扭转 = 弧长噪声(12.5, λ=40) + 年龄 0.05 × 90°/s
+        assertEquals(0.05f, young[1].age, 1e-4f)
+        assertEquals(
+            segmentTwistBase(12.5f, 40f, 30f) + 0.05f * 90f, young[1].twistDeg, 1e-3f,
+            "扭转 = 弧长平滑噪声 + 年龄累积",
+        )
+
+        // 年龄 +1s：所有节点扭转角 +90°（累积项与弧长无关，不产生段间跳变）
+        val aged = texTrailNodes(history, Vector2f(100f, 0f), 0f, 100f, twistSpec, 1f, now = 1.4f)
+        for (i in young.indices) {
+            assertEquals(90f, aged[i].twistDeg - young[i].twistDeg, 1e-3f, "节点 $i 扭转角应随年龄线性累积")
+        }
+
+        // twistWavelength=0 → 回落 tileLength（扭转图案与贴图平铺周期同频）
+        assertEquals(spec.tileLength, spec.copy(twistWavelength = 0f).effectiveTwistWavelength(), 0f)
+        assertEquals(45f, spec.copy(twistWavelength = 45f).effectiveTwistWavelength(), 0f)
+
+        // twistMaxAngleDeg=0：扭转完全关闭（含累积项为 0 时恒 0）
+        val closed = texTrailNodes(history, Vector2f(100f, 0f), 0f, 100f, spec, 1f, now = 1.4f)
+        for (node in closed) {
+            assertEquals(0f, node.twistDeg, 0f)
+        }
+    }
+
+    @Test
+    fun `time offset accelerates node aging`() {
+        // 消亡后驱动按「寿命/死亡消散窗口」累加偏移：节点年龄 = now + offset − 出生时刻
+        val history = (0..4).map { ASTDProjectileHistoryNode(Vector2f(it * 25f, 0f), 0f, it * 0.1f) }
+        val base = texTrailNodes(history, Vector2f(100f, 0f), 0f, 100f, spec, 1f, now = 0.4f, lifetimeSeconds = 10f)
+        val boosted = texTrailNodes(history, Vector2f(100f, 0f), 0f, 100f, spec, 1f, now = 0.4f, lifetimeSeconds = 10f, timeOffset = 2f)
+        for (i in base.indices) {
+            assertEquals(base[i].age + 2f, boosted[i].age, 1e-4f, "节点 $i 年龄应加上时间偏移")
+        }
+    }
+
+    @Test
+    fun `dynamic node count subdivides long trails within guardrails`() {
+        assertEquals(16, dynamicTexTrailNodeCount(100f, 16))   // 短带取下限（spec 声明值）
+        assertEquals(30, dynamicTexTrailNodeCount(650f, 16))   // 650/22≈29.5→30：按带长细分
+        assertEquals(72, dynamicTexTrailNodeCount(2400f, 16))  // 上限护栏
+        assertEquals(24, dynamicTexTrailNodeCount(0f, 24))     // 零长取下限
+    }
+
+    @Test
+    fun `strip twist rotates cross offset toward path tangent`() {
+        // 直梁 facing=0：走向 180° → 法向 n=(0,-1)、切向 t=(-1,0)；twist=90° 时偏移全落到切向
+        val base = texTrailNodes(emptyList(), Vector2f(), 0f, 200f, spec, 1f)
+        val twisted = base.map { it.copy(twistDeg = 90f) }
+
+        val strip = texTrailStrip(twisted, Vector2f(), 0f, 100f, 0f)
+
+        // 头节点中心 (0,0)：上沿 = (0,0) + t*4 = (-4,0)，下沿 = (4,0)
+        assertEquals(-4f, strip[0], 1e-3f)
+        assertEquals(0f, strip[1], 1e-3f)
+        assertEquals(4f, strip[8], 1e-3f)
+        assertEquals(0f, strip[9], 1e-3f)
+    }
 }

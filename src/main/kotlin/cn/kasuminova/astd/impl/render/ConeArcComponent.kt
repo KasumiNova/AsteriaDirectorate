@@ -46,13 +46,19 @@ import kotlin.math.tan
 class ConeArcComponent(
     id: String,
     private val origin: Vector2f,
-    private val facingDeg: Float,
+    facingDeg: Float,
     halfAngleDeg: Float,
     length: Float,
     private val fringeColor: Color,
 ) : RenderEntityImpl(id) {
 
     private val log = Global.getLogger(ConeArcComponent::class.java)
+
+    /**
+     * 锥中轴朝向（归一化到 [0,360)，internal 供单测断言负角入参归一化）：
+     * 构造期几何（弧心/碎片散布）用任意角度都正确，但 BoxUtil 实体变换对负角会镜像反转。
+     */
+    internal val facingDeg: Float = BoxUtilCombatVfx.normalizeFacingDeg(facingDeg)
 
     /** 四道弧（构造期几何参数定死；internal 供单测断言错峰激活/几何域/宽度锚定值/包络映射）。 */
     internal val arcs = ArrayList<Arc>(ARC_COUNT)

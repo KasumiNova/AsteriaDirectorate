@@ -38,7 +38,16 @@ data class ProjectileProjSpec(
     val coreColor: Rgba,
     val textureScrollSpeed: Double,
     val pixelsPerTexel: Double,
-    val bulletSprite: String,
+    /**
+     * 命中光晕基准半径；null 时不写 `hitGlowRadius` 键，原版默认取 `length × 2`
+     * （length 75 即 150 基准，再按伤害放大，高射速武器会堆成吞没舰船的巨球，必须显式给值）。
+     */
+    val hitGlowRadius: Double? = null,
+    /**
+     * 自定义弹体贴图；null 时不写 `bulletSprite` 键，走原版默认弹体渲染
+     * （projtrail.png + projbody.png 按 fringeColor/coreColor 染色的能量螺栓，尺寸取 length/width）。
+     */
+    val bulletSprite: String? = null,
 ) {
     fun toJson(): Map<String, Any?> = linkedMapOf(
         "id" to id,
@@ -55,64 +64,49 @@ data class ProjectileProjSpec(
         "coreColor" to coreColor.toJson(),
         "textureScrollSpeed" to textureScrollSpeed,
         "pixelsPerTexel" to pixelsPerTexel,
+        "hitGlowRadius" to hitGlowRadius,
         "bulletSprite" to bulletSprite,
     ).filterValues { it != null }
 
     companion object {
         /**
-         * Matches the project's common "BUtil_NONE + scroll" projectile style.
+         * 原版螺栓渲染弹体（无 bulletSprite）：弹头/弹芯由原版 projbody/projtrail 渲染器按
+         * fringeColor/coreColor 染色绘制，尺寸/消散节奏对齐原版「离子脉冲」（ionpulser_shot.proj：
+         * length 75 / width 20 / fadeTime 0.25 / textureScrollSpeed -256 / pixelsPerTexel 1）。
+         * 拖尾仍由 ASTD VFX 管线（ProjectileVfxSpecs 三层贴图混合）承担。
          *
-         * 弹体外观完全由代码 VFX（RenderEntity/DSL）承担，故原版弹丸辉光（fringeColor/coreColor）默认 alpha=0 全隐藏——
-         * 否则会与模组拖尾同时渲染出一段原版弹芯。个别弹体如需保留原版可见弹芯，显式传入非零 alpha 的颜色。
+         * 需要全隐弹体（如 aod7 hero、七星折跃弹）不用本工厂，显式构造并传
+         * `bulletSprite = "graphics/textures/BUtil_NONE.png"` + 色 alpha=0。
+         *
+         * @param hitGlowRadius 命中光晕基准半径，默认 25（原版高射速武器口径：火神 15 / 重机枪 20 /
+         * 重型针刺 25）。不显式给值时原版取 `length × 2` = 150 并再按伤害放大，高射速叠加下会糊满全屏。
          */
-        fun standard(
+        fun vanillaBolt(
             id: String,
-            spawnType: ProjectileSpawnType = ProjectileSpawnType.PLASMA,
+            spawnType: ProjectileSpawnType = ProjectileSpawnType.BALLISTIC,
             onFireEffect: String = "cn.kasuminova.astd.combat.effect.generic.ProjectileSpecOnFireDispatcher",
             onHitEffect: String? = null,
-            fringeColor: Rgba = Rgba(120, 200, 255, 0),
-            coreColor: Rgba = Rgba(220, 245, 255, 0),
+            collisionClass: String = "PROJECTILE_FF",
+            collisionClassByFighter: String = "PROJECTILE_FIGHTER",
+            fringeColor: Rgba,
+            coreColor: Rgba,
+            hitGlowRadius: Double = 25.0,
         ): ProjectileProjSpec {
             return ProjectileProjSpec(
                 id = id,
                 spawnType = spawnType,
                 onFireEffect = onFireEffect,
                 onHitEffect = onHitEffect,
-                collisionClass = "PROJECTILE_FF",
-                collisionClassByFighter = "PROJECTILE_FIGHTER",
-                length = 24.0,
-                width = 8.0,
-                fadeTime = 0.2,
+                collisionClass = collisionClass,
+                collisionClassByFighter = collisionClassByFighter,
+                length = 75.0,
+                width = 20.0,
+                fadeTime = 0.25,
                 fringeColor = fringeColor,
                 coreColor = coreColor,
-                textureScrollSpeed = 64.0,
-                pixelsPerTexel = 5.0,
-                bulletSprite = "graphics/textures/BUtil_NONE.png",
-            )
-        }
-
-        /**
-         * 兼容：历史代码使用字符串传入 spawnType（例如 "BALLISTIC"）。
-         *
-         * 该重载会强制解析为 [ProjectileSpawnType]，避免写出非法值。
-         */
-        @Deprecated("Use standard(id, spawnType: ProjectileSpawnType, ...) instead")
-        fun standard(
-            id: String,
-            spawnType: String,
-            onFireEffect: String = "cn.kasuminova.astd.combat.effect.generic.ProjectileSpecOnFireDispatcher",
-            onHitEffect: String? = null,
-            fringeColor: Rgba = Rgba(120, 200, 255, 0),
-            coreColor: Rgba = Rgba(220, 245, 255, 0),
-        ): ProjectileProjSpec {
-            // 注意：这里不要使用命名参数调用（Kotlin 在同名重载+默认参数场景下可能误选回自身）。
-            return standard(
-                id,
-                ProjectileSpawnType.valueOf(spawnType),
-                onFireEffect,
-                onHitEffect,
-                fringeColor,
-                coreColor,
+                textureScrollSpeed = -256.0,
+                pixelsPerTexel = 1.0,
+                hitGlowRadius = hitGlowRadius,
             )
         }
     }

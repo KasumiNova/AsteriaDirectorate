@@ -160,6 +160,15 @@ description: "BoxUtil 使用指南（API 速览、调试建议、避坑点），
 1) **未初始化导致 addEntity 失败**
    - 先 `BoxUtilCombatVfx.ensureReady(engine)`，再创建/添加实体。
 
+1.5) **传入负角度朝向会镜像反转（实锤 BUG）**
+   - BoxUtil `TrigUtil.sinFormCosF` 从 cos(半角) 反推 sin(半角) 时只做 `angle > 180` 的符号修正，
+     负角度（如 `atan2` 直出的 -90°）会拿到错误符号的 sin——等价于绕 x 轴镜像，
+     实体朝向与侧向偏移整体反转（朝下开火时锥形/弧凸向翻转）。
+   - 规范：所有进入 BoxUtil 实体变换（`setStateVanilla` / `createModelMatrixVanilla` /
+     `createBeamVisual`）的朝向必须先过 `BoxUtilCombatVfx.normalizeFacingDeg`（归一化到 [0,360)）。
+   - 注意随机散布也会把合法朝向推出负域（如 5° − 32°），不能只归一化基准值。
+   - 本项目拖尾路径已有同款修复（`ProjectileVfxDriverImpl.computeRenderFacing`）。
+
 2) **TrailEntity 的节点方向导致 UV/流向错觉**
    - `RenderingUtil.createBeamVisual()` 默认 node[0] 在 +length 方向；
    - 若出现“某方向看起来反向旋转/反向流动”，使用 `createTaperedBeamTrailFromCenterReversedU(...)` 叠加镜像。

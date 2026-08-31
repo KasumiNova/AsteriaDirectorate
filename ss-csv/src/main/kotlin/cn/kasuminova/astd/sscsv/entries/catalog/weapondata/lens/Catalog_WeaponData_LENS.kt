@@ -280,10 +280,11 @@ object Wpn_astd_stellar_mrm_launcher : WeaponDataEntry(), SsProjMissileOutputs {
         missileType = "MISSILE",
         onFireEffect = "cn.kasuminova.astd.combat.effect.lens.stellar.StellarMrmOnFireEffect",
         onHitEffect = "cn.kasuminova.astd.combat.effect.lens.stellar.StellarMrmOnHitEffect",
-        // 原版弹体隐藏三件套（mote 先例）：BUtil_NONE + noEngineGlowTime=999 + engineSlots 空，视觉由 ProjectileVfxSpecs 接管
-        sprite = "graphics/textures/BUtil_NONE.png",
-        size = Vec2i(20, 26),
-        center = Vec2(10, 14),
+        // 弹头交回原版渲染：导弹无 projbody 路径，用原版导弹贴图 am_srm（紫反物质弹，尺寸/中心照抄 amsrm_srm.proj）；
+        // 拖尾仍由 ProjectileVfxSpecs 三层贴图混合承担，引擎辉光/尾焰保持隐藏（不与我们拖尾叠穿帮）。
+        sprite = "graphics/missiles/am_srm.png",
+        size = Vec2i(13, 17),
+        center = Vec2(7, 9),
         collisionRadius = 12,
         collisionClass = "MISSILE_NO_FF",
         explosionColor = Rgba(170, 110, 255, 160),
@@ -351,9 +352,10 @@ object Wpn_astd_stellar_mrm_pod : WeaponDataEntry(), SsProjMissileOutputs {
         missileType = "MISSILE",
         onFireEffect = "cn.kasuminova.astd.combat.effect.lens.stellar.StellarMrmOnFireEffect",
         onHitEffect = "cn.kasuminova.astd.combat.effect.lens.stellar.StellarMrmOnHitEffect",
-        sprite = "graphics/textures/BUtil_NONE.png",
-        size = Vec2i(20, 26),
-        center = Vec2(10, 14),
+        // 与发射器同弹头（刻意一致）：原版 am_srm 贴图承担弹头，拖尾走 ProjectileVfxSpecs 三层混合
+        sprite = "graphics/missiles/am_srm.png",
+        size = Vec2i(13, 17),
+        center = Vec2(7, 9),
         collisionRadius = 12,
         collisionClass = "MISSILE_NO_FF",
         explosionColor = Rgba(170, 110, 255, 160),

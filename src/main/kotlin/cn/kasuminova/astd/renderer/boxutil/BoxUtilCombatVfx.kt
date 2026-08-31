@@ -23,6 +23,14 @@ internal object BoxUtilCombatVfx {
 
     private val log = Global.getLogger(BoxUtilCombatVfx::class.java)
 
+    /**
+     * 归一化朝向到 [0, 360)：BoxUtil `TrigUtil.sinFormCosF` 从 cos(半角) 反推 sin(半角) 时只做
+     * `angle > 180` 的符号修正，负角度（如 atan2 直出的 -90°）会拿到错误符号的 sin——
+     * 等价于绕 x 轴镜像，实体朝向/侧向偏移整体反转（朝下开火时锥形/弧凸向翻转的实锤根因）。
+     * 所有进入 BoxUtil 实体变换（setStateVanilla / createModelMatrixVanilla）的朝向必须先过本函数。
+     */
+    fun normalizeFacingDeg(deg: Float): Float = ((deg % 360f) + 360f) % 360f
+
     fun ensureReady(engine: CombatEngineAPI) {
         if (engine.customData[KEY_LATER_INIT] != true) {
             if (!BoxUtilModPlugin.isGlobalInitialized()) {
@@ -78,7 +86,7 @@ internal object BoxUtilCombatVfx {
     ): TrailEntity {
         val entity = RenderingUtil.createBeamVisual(
             location,
-            facing,
+            normalizeFacingDeg(facing),
             length,
             headWidth,
             coreColor,
@@ -173,7 +181,7 @@ internal object BoxUtilCombatVfx {
         mat.setDiffuse(coreSprite)
         mat.setEmissive(fringeSprite)
 
-        entity.setStateVanilla(location, facing)
+        entity.setStateVanilla(location, normalizeFacingDeg(facing))
         return entity
     }
 
@@ -232,7 +240,7 @@ internal object BoxUtilCombatVfx {
         mat.setDiffuse(coreSprite)
         mat.setEmissive(fringeSprite)
 
-        entity.setStateVanilla(location, facing)
+        entity.setStateVanilla(location, normalizeFacingDeg(facing))
         return entity
     }
 

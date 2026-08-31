@@ -366,7 +366,7 @@ class BeamMuzzleComponent(
             e.setEndColorAlpha(aTip)
             e.setStartEmissiveAlpha(eBase)
             e.setEndEmissiveAlpha(eTip)
-            e.setStateVanilla(muzzle, c.facing)
+            e.setStateVanilla(muzzle, BoxUtilCombatVfx.normalizeFacingDeg(c.facing))
         }
     }
 

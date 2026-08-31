@@ -5306,13 +5306,17 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
 
     private fun evidenceReady(engine: CombatEngineAPI): Boolean {
         val telemetry = ProjectileVfxDriverPlugin.telemetrySnapshot(engine)
-        return telemetry.lastVisibleLength >= referenceCaptureVisibleLength() &&
+        return telemetry.lastVisibleLength >= referenceCaptureVisibleLengthWorld() &&
             telemetry.lastElapsed >= SCREENSHOT_FLIGHT_SECONDS
     }
 
-    private fun referenceCaptureVisibleLength(): Float {
+    /**
+     * 截图参考带长（世界单位）：预览函数产出于参考像素域（captureWidth=layoutReferenceWidth），
+     * 乘 worldUnitsPerPixel 折回世界，与 driver 遥测（世界单位，见 ProjectileVfxDriverImpl.buildFlightLayout）同域可比。
+     */
+    private fun referenceCaptureVisibleLengthWorld(): Float {
         val policy = aod7Policy
-        return ASTDProjectileVfxLayout.previewFlightLayout(
+        val pixelLength = ASTDProjectileVfxLayout.previewFlightLayout(
             trailStartWidth = policy.primaryTrailStartWidth,
             elapsed = REFERENCE_CAPTURE_ELAPSED_SECONDS,
             durationSeconds = policy.durationSeconds,
@@ -5322,6 +5326,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             preDissolveFraction = AUTOMATION_PRE_DISSOLVE_FRACTION,
             captureWidth = policy.layoutReferenceWidth,
         ).visibleLength
+        return pixelLength * automationReferenceWorldUnitsPerPixel()
     }
 
     private fun writeTelemetry(
@@ -5873,7 +5878,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 appendLine("  \"runtimeWorldUnitsPerPixel\": ${formatFloat(vfxTelemetry.lastWorldUnitsPerPixel)},")
                 appendLine("  \"runtimeTrackedCount\": ${vfxTelemetry.trackedCount},")
                 appendLine("  \"runtimeLastProjectileSpecId\": ${jsonString(vfxTelemetry.lastProjectileSpecId)},")
-                appendLine("  \"referenceVisibleLength\": ${formatFloat(referenceCaptureVisibleLength())},")
+                appendLine("  \"referenceVisibleLength\": ${formatFloat(referenceCaptureVisibleLengthWorld())},")
             }
             appendLine("  \"fallbackInPlay\": ${fallbackProjectile?.let { engine.isEntityInPlay(it) } ?: false},")
             appendLine("  \"fallbackExpired\": ${fallbackProjectile?.isExpired ?: false},")

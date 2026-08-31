@@ -280,6 +280,33 @@ class StrikeSprayComponentTest {
         }
     }
 
+    // ---- BoxUtil 负角防线 ----
+
+    @Test
+    fun `needle facing normalized to 0 to 360 for boxutil transforms`() {
+        // atan2 直出的 -90°（朝下引爆）经 ±arc/2 随机散布后，修复前可产出负 facing，
+        // BoxUtil sinFormCosF 对负角取错 sin 符号 → 针簇整体镜像反转。
+        val comp = StrikeSprayComponent("tneg", coneSpec().copy(facingDeg = -90f))
+        assertTrue(comp.needles.isNotEmpty())
+        for ((index, needle) in comp.needles.withIndex()) {
+            assertTrue(needle.facing >= 0f && needle.facing < 360f, "针 $index facing 必须在 [0,360): ${needle.facing}")
+            // 方向保持：速度方向必须与归一化 facing 一致（归一化是纯周期映射，不得改变世界方向）。
+            val speed = hypot(needle.vel.x.toDouble(), needle.vel.y.toDouble()).toFloat()
+            val rad = Math.toRadians(needle.facing.toDouble())
+            assertEquals(cos(rad).toFloat() * speed, needle.vel.x, 1e-2f, "针 $index 速度 x 必须沿归一化 facing")
+            assertEquals(sin(rad).toFloat() * speed, needle.vel.y, 1e-2f, "针 $index 速度 y 必须沿归一化 facing")
+        }
+        // 喷散轴心朝下（-90° ≡ 270°）：针朝向合成矢量必须指向 -y。
+        var sumX = 0f
+        var sumY = 0f
+        for (needle in comp.needles) {
+            val rad = Math.toRadians(needle.facing.toDouble())
+            sumX += cos(rad).toFloat()
+            sumY += sin(rad).toFloat()
+        }
+        assertTrue(sumY < 0f && abs(sumX) < abs(sumY), "针簇合成方向必须朝下（-90° 语义不变）: ($sumX, $sumY)")
+    }
+
     // ---- 入口防线与烟雾 ----
 
     @Test

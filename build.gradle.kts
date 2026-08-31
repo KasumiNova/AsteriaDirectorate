@@ -10,13 +10,13 @@ import kotlin.math.sqrt
 
 plugins {
     kotlin("jvm") version "2.2.0"
-    id("io.github.nanoforged.sdg.mod") version "0.1.0-SNAPSHOT"
+    id("io.github.nanoforged.sectordevgradle.mod") version "0.1.0-SNAPSHOT"
 }
 
 group = "cn.kasuminova"
 version = "1.0-SNAPSHOT"
 
-sdg {
+starsector {
     modId.set("asteria_directorate")
     deployDirName.set("ASTD")
     modName.set("Asteria Directorate")

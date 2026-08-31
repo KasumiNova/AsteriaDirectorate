@@ -192,6 +192,11 @@ class TexTrailBuilder(private val texturePath: String) {
     private var wobbleWavelength = 90f
     private var wobbleScroll = 0f
     private var wobblePhase = 0f
+    private var lifetimeSeconds = 0f
+    private var dissolveStart = 0.6f
+    private var twistMaxAngleDeg = 0f
+    private var twistTurnDegPerSec = 0f
+    private var twistWavelength = 0f
 
     /** 叠层序号：同弹体多条贴图拖尾的绘制先后（1 垫底、2 其上，以此类推）。 */
     fun layer(v: Int) { layer = v }
@@ -207,7 +212,7 @@ class TexTrailBuilder(private val texturePath: String) {
         headColor = rgba(head); midColor = rgba(mid); tailColor = rgba(tail); midT = midAt
     }
 
-    /** 节点数（沿带长均匀分布，弯道平滑度）。 */
+    /** 节点数下限（沿带长均匀分布，弯道平滑度）：实际渲染节点数按可见带长动态细分，本值为短带保底。 */
     fun nodes(count: Int) { nodeCount = count }
 
     /** 图案平铺周期（世界单位）与滚动速度（世界单位/秒，0 不滚动）。 */
@@ -226,6 +231,27 @@ class TexTrailBuilder(private val texturePath: String) {
         wobbleAmplitude = amplitude; wobbleWavelength = wavelength; wobbleScroll = scroll; wobblePhase = phase
     }
 
+    /**
+     * 逐节点寿命覆写（秒，0 = 自动按「预期带长/实测速度」估算）与消散起点（年龄进度 0..1）。
+     * 节点按年龄老去：dissolveStart 前满亮，之后线性消散到寿命尽头；弹体消亡后尾先消、头后消。
+     */
+    fun lifetime(seconds: Float, dissolveStart: Float = 0.6f) {
+        lifetimeSeconds = seconds; this.dissolveStart = dissolveStart
+    }
+
+    /** 消散起点（年龄进度 0..1）：单独调消散起点时用；等价 [lifetime] 的第二参数。 */
+    fun dissolveStart(ratio: Float) { dissolveStart = ratio }
+
+    /**
+     * 平面内随机扭转（复刻 MagicTrail 段落自旋观感）：带体沿距头弧长取平滑值噪声角 ∈ ±[maxAngleDeg]
+     * （弧长桶种子 + smoothstep 桶间过渡：带体系跨帧稳定不闪，前后段自动衔接无折点），随节点年龄按
+     * [turnDegPerSec] 累积扭转。[wavelength] 为噪声空间波长（世界单位，0 = 与贴图平铺周期同频）。
+     * θ=±90° 时该处完全折向带长向。与 wobble（横向平移扰动）正交可叠加；不调用即关闭。
+     */
+    fun twist(maxAngleDeg: Float, turnDegPerSec: Float = 0f, wavelength: Float = 0f) {
+        twistMaxAngleDeg = maxAngleDeg; twistTurnDegPerSec = turnDegPerSec; twistWavelength = wavelength
+    }
+
     internal fun build(): TexTrailSpec = TexTrailSpec(
         width = width,
         texturePath = texturePath,
@@ -242,6 +268,11 @@ class TexTrailBuilder(private val texturePath: String) {
         wobbleWavelength = wobbleWavelength,
         wobbleScroll = wobbleScroll,
         wobblePhase = wobblePhase,
+        lifetimeSeconds = lifetimeSeconds,
+        dissolveStart = dissolveStart,
+        twistMaxAngleDeg = twistMaxAngleDeg,
+        twistWavelength = twistWavelength,
+        twistTurnDegPerSec = twistTurnDegPerSec,
     )
 }
 

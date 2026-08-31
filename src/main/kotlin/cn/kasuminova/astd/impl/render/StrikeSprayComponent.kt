@@ -122,7 +122,10 @@ class StrikeSprayComponent(
             val delay = if (ramp) interval * cohort.toFloat() else 0f
             val scale = (baseScale * rampStepScale(cohort, ramp)).coerceIn(IMPACT_SCALE_MIN, IMPACT_SCALE_MAX)
 
-            val ang = spec.facingDeg + MathUtils.getRandomNumberInRange(-spec.arcDeg * 0.5f, spec.arcDeg * 0.5f)
+            // 归一化到 [0,360)：facing 经随机散布可能为负（如 5°−32°），BoxUtil 变换对负角会镜像反转。
+            val ang = BoxUtilCombatVfx.normalizeFacingDeg(
+                spec.facingDeg + MathUtils.getRandomNumberInRange(-spec.arcDeg * 0.5f, spec.arcDeg * 0.5f),
+            )
             // v2.2 塑形逐字：长度 +20%、单条宽度 -30%（vis=1 后 sizeScale=1 折叠）。
             val visualLength = MathUtils.getRandomNumberInRange(style.lengthMin, style.lengthMax) * scale * EXPLICIT_LEN_MUL
             val width = MathUtils.getRandomNumberInRange(style.widthMin, style.widthMax) * scale * EXPLICIT_WIDTH_MUL

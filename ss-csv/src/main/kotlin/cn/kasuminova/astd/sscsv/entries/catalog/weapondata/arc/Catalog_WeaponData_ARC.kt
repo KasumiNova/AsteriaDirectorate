@@ -236,13 +236,12 @@ object Wpn_astd_spc3 : WeaponDataEntry(), SsProjProjectileOutputs {
     override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
     override val number: Int = 9002
 
-    override val projSpec: ProjectileProjSpec = ProjectileProjSpec.standard(
+    override val projSpec: ProjectileProjSpec = ProjectileProjSpec.vanillaBolt(
         id = "astd_spc3_shot",
         spawnType = ProjectileSpawnType.BALLISTIC,
-        // 弹体视觉全部交给 ASTD VFX 管线；原版弹丸 core/fringe 置透明，
-        // 否则偏射弹丸会按弹体朝向渲染出亮头，与速度向拖尾错位（表现为“拖尾歪向反方向”）。
-        fringeColor = Rgba(120, 200, 255, 0),
-        coreColor = Rgba(220, 245, 255, 0),
+        // 弹头/弹芯交回原版螺栓渲染（projbody/projtrail，离子脉冲尺寸），拖尾仍由 ASTD VFX 三层贴图混合承担。
+        fringeColor = Rgba(120, 200, 255, 255),
+        coreColor = Rgba(220, 245, 255, 200),
     )
 }
 
@@ -288,24 +287,12 @@ object Wpn_astd_charge_needle : WeaponDataEntry(), SsProjProjectileOutputs {
     override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
     override val number: Int = 9210
 
-    override val projSpec: ProjectileProjSpec = ProjectileProjSpec(
+    override val projSpec: ProjectileProjSpec = ProjectileProjSpec.vanillaBolt(
         id = "astd_charge_needle_shot",
         spawnType = ProjectileSpawnType.BALLISTIC,
-        onFireEffect = "cn.kasuminova.astd.combat.effect.generic.ProjectileSpecOnFireDispatcher",
         onHitEffect = "cn.kasuminova.astd.combat.effect.arc.ChargeNeedleOnHitEffect",
-        collisionClass = "PROJECTILE_FF",
-        collisionClassByFighter = "PROJECTILE_FIGHTER",
-        // 原版 projectile visual 必须不可见（length/width=2 + 色 alpha=0 + BUtil_NONE）。
-        length = 2.0,
-        width = 2.0,
-        // fadeTime=0.2：给超射程后的原版弹体一段滑行窗口，令代码 VFX 拖尾能跟随淡出（否则 fadeTime=0 会被引擎即刻移除、
-        // 拖尾在射程环处骤消）。原版弹体已 alpha=0 全隐，此窗口不会造成视觉穿帮。
-        fadeTime = 0.2,
-        fringeColor = Rgba(140, 200, 255, 0),
-        coreColor = Rgba(225, 242, 255, 0),
-        textureScrollSpeed = 0.0,
-        pixelsPerTexel = 1.0,
-        bulletSprite = "graphics/textures/BUtil_NONE.png",
+        fringeColor = Rgba(140, 200, 255, 255),
+        coreColor = Rgba(225, 242, 255, 200),
     )
 }
 
@@ -347,24 +334,12 @@ object Wpn_astd_heavy_charge_needle : WeaponDataEntry(), SsProjProjectileOutputs
     override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
     override val number: Int = 9211
 
-    override val projSpec: ProjectileProjSpec = ProjectileProjSpec(
+    override val projSpec: ProjectileProjSpec = ProjectileProjSpec.vanillaBolt(
         id = "astd_heavy_charge_needle_shot",
         spawnType = ProjectileSpawnType.BALLISTIC,
-        onFireEffect = "cn.kasuminova.astd.combat.effect.generic.ProjectileSpecOnFireDispatcher",
         onHitEffect = "cn.kasuminova.astd.combat.effect.arc.ChargeNeedleOnHitEffect",
-        collisionClass = "PROJECTILE_FF",
-        collisionClassByFighter = "PROJECTILE_FIGHTER",
-        // 原版 projectile visual 必须不可见（length/width=2 + 色 alpha=0 + BUtil_NONE）。
-        length = 2.0,
-        width = 2.0,
-        // fadeTime=0.2：给超射程后的原版弹体一段滑行窗口，令代码 VFX 拖尾能跟随淡出（否则 fadeTime=0 会被引擎即刻移除、
-        // 拖尾在射程环处骤消）。原版弹体已 alpha=0 全隐，此窗口不会造成视觉穿帮。
-        fadeTime = 0.2,
-        fringeColor = Rgba(140, 200, 255, 0),
-        coreColor = Rgba(225, 242, 255, 0),
-        textureScrollSpeed = 0.0,
-        pixelsPerTexel = 1.0,
-        bulletSprite = "graphics/textures/BUtil_NONE.png",
+        fringeColor = Rgba(140, 200, 255, 255),
+        coreColor = Rgba(225, 242, 255, 200),
     )
 }
 
@@ -416,24 +391,12 @@ object Wpn_astd_electric_drive_accelerator : WeaponDataEntry(), SsProjProjectile
     override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
     override val number: Int = 9213
 
-    override val projSpec: ProjectileProjSpec = ProjectileProjSpec(
+    override val projSpec: ProjectileProjSpec = ProjectileProjSpec.vanillaBolt(
         id = "astd_electric_drive_accelerator_shot",
         spawnType = ProjectileSpawnType.BALLISTIC,
-        onFireEffect = "cn.kasuminova.astd.combat.effect.generic.ProjectileSpecOnFireDispatcher",
         onHitEffect = "cn.kasuminova.astd.combat.effect.arc.ElectricDriveAcceleratorOnHitEffect",
-        collisionClass = "PROJECTILE_FF",
-        collisionClassByFighter = "PROJECTILE_FIGHTER",
-        // 原版 projectile visual 必须不可见（length/width=2 + 色 alpha=0 + BUtil_NONE）。
-        length = 2.0,
-        width = 2.0,
-        // fadeTime=0.2：给超射程后的原版弹体一段滑行窗口，令代码 VFX 拖尾能跟随淡出（否则 fadeTime=0 会被引擎即刻移除、
-        // 拖尾在射程环处骤消）。原版弹体已 alpha=0 全隐，此窗口不会造成视觉穿帮。
-        fadeTime = 0.2,
-        fringeColor = Rgba(235, 242, 250, 0),
-        coreColor = Rgba(255, 255, 255, 0),
-        textureScrollSpeed = 0.0,
-        pixelsPerTexel = 1.0,
-        bulletSprite = "graphics/textures/BUtil_NONE.png",
+        fringeColor = Rgba(235, 242, 250, 255),
+        coreColor = Rgba(255, 255, 255, 200),
     )
 }
 
@@ -477,24 +440,12 @@ object Wpn_astd_qiongjue_phase_railgun : WeaponDataEntry(), SsProjProjectileOutp
     override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
     override val number: Int = 9214
 
-    override val projSpec: ProjectileProjSpec = ProjectileProjSpec(
+    override val projSpec: ProjectileProjSpec = ProjectileProjSpec.vanillaBolt(
         id = "astd_qiongjue_phase_railgun_shot",
         spawnType = ProjectileSpawnType.BALLISTIC,
-        onFireEffect = "cn.kasuminova.astd.combat.effect.generic.ProjectileSpecOnFireDispatcher",
         onHitEffect = "cn.kasuminova.astd.combat.effect.arc.qiongjue.QiongjuePhaseRailgunOnHitEffect",
-        collisionClass = "PROJECTILE_FF",
-        collisionClassByFighter = "PROJECTILE_FIGHTER",
-        // 原版 projectile visual 必须不可见（length/width=2 + 色 alpha=0 + BUtil_NONE）。
-        length = 2.0,
-        width = 2.0,
-        // fadeTime=0.2：给超射程后的原版弹体一段滑行窗口，令代码 VFX 拖尾能跟随淡出（否则 fadeTime=0 会被引擎即刻移除、
-        // 拖尾在射程环处骤消）。原版弹体已 alpha=0 全隐，此窗口不会造成视觉穿帮。
-        fadeTime = 0.2,
-        fringeColor = Rgba(200, 225, 255, 0),
-        coreColor = Rgba(255, 255, 255, 0),
-        textureScrollSpeed = 0.0,
-        pixelsPerTexel = 1.0,
-        bulletSprite = "graphics/textures/BUtil_NONE.png",
+        fringeColor = Rgba(200, 225, 255, 255),
+        coreColor = Rgba(255, 255, 255, 200),
     )
 }
 
@@ -539,7 +490,7 @@ object Wpn_astd_positron_shockwave : WeaponDataEntry(), SsProjProjectileOutputs 
     override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
     override val number: Int = 9215
 
-    override val projSpec: ProjectileProjSpec = ProjectileProjSpec(
+    override val projSpec: ProjectileProjSpec = ProjectileProjSpec.vanillaBolt(
         id = "astd_positron_shockwave_shot",
         spawnType = ProjectileSpawnType.BALLISTIC,
         // 引信脚本注册（规格 §0-2 分工：弹体 VFX 追踪在 .wpn 侧 dispatcher）
@@ -551,17 +502,8 @@ object Wpn_astd_positron_shockwave : WeaponDataEntry(), SsProjProjectileOutputs 
         // 规格 §1.1「置空不写」与实机冲突：原版 ProjectileSpec 加载强制要求该键（缺键 RuntimeException）；
         // 与 collisionClass 同写 NONE（01 special_items order 判例同族，规格文本待主代理修订）。
         collisionClassByFighter = "NONE",
-        // 原版 projectile visual 必须不可见（length/width=2 + 色 alpha=0 + BUtil_NONE）。
-        length = 2.0,
-        width = 2.0,
-        // fadeTime=0.2：给超射程后的原版弹体一段滑行窗口，令代码 VFX 拖尾能跟随淡出（否则 fadeTime=0 会被引擎即刻移除、
-        // 拖尾在射程环处骤消）。原版弹体已 alpha=0 全隐，此窗口不会造成视觉穿帮。
-        fadeTime = 0.2,
-        fringeColor = Rgba(140, 200, 255, 0),
-        coreColor = Rgba(240, 248, 255, 0),
-        textureScrollSpeed = 0.0,
-        pixelsPerTexel = 1.0,
-        bulletSprite = "graphics/textures/BUtil_NONE.png",
+        fringeColor = Rgba(140, 200, 255, 255),
+        coreColor = Rgba(240, 248, 255, 200),
     )
 }
 
@@ -952,24 +894,12 @@ object Wpn_astd_heavy_ion_pulse : WeaponDataEntry(), SsProjProjectileOutputs {
     override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
     override val number: Int = 9212
 
-    override val projSpec: ProjectileProjSpec = ProjectileProjSpec(
+    override val projSpec: ProjectileProjSpec = ProjectileProjSpec.vanillaBolt(
         id = "astd_heavy_ion_pulse_shot",
         spawnType = ProjectileSpawnType.BALLISTIC,
-        onFireEffect = "cn.kasuminova.astd.combat.effect.generic.ProjectileSpecOnFireDispatcher",
         onHitEffect = "cn.kasuminova.astd.combat.effect.arc.HeavyIonPulseOnHitEffect",
-        collisionClass = "PROJECTILE_FF",
-        collisionClassByFighter = "PROJECTILE_FIGHTER",
-        // 原版 projectile visual 必须不可见（length/width=2 + 色 alpha=0 + BUtil_NONE）。
-        length = 2.0,
-        width = 2.0,
-        // fadeTime=0.2：给超射程后的原版弹体一段滑行窗口，令代码 VFX 拖尾能跟随淡出（否则 fadeTime=0 会被引擎即刻移除、
-        // 拖尾在射程环处骤消）。原版弹体已 alpha=0 全隐，此窗口不会造成视觉穿帮。
-        fadeTime = 0.2,
-        fringeColor = Rgba(140, 200, 255, 0),
-        coreColor = Rgba(225, 242, 255, 0),
-        textureScrollSpeed = 0.0,
-        pixelsPerTexel = 1.0,
-        bulletSprite = "graphics/textures/BUtil_NONE.png",
+        fringeColor = Rgba(140, 200, 255, 255),
+        coreColor = Rgba(225, 242, 255, 200),
     )
 }
 
@@ -1018,23 +948,11 @@ object Wpn_astd_piercing_lance : WeaponDataEntry(), SsProjProjectileOutputs {
     override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
     override val number: Int = 9219
 
-    override val projSpec: ProjectileProjSpec = ProjectileProjSpec(
+    override val projSpec: ProjectileProjSpec = ProjectileProjSpec.vanillaBolt(
         id = "astd_piercing_lance_shot",
         spawnType = ProjectileSpawnType.BALLISTIC,
-        onFireEffect = "cn.kasuminova.astd.combat.effect.generic.ProjectileSpecOnFireDispatcher",
         onHitEffect = "cn.kasuminova.astd.combat.effect.arc.piercinglance.PiercingLanceOnHitEffect",
-        collisionClass = "PROJECTILE_FF",
-        collisionClassByFighter = "PROJECTILE_FIGHTER",
-        // 原版 projectile visual 必须不可见（length/width=2 + 色 alpha=0 + BUtil_NONE）。
-        length = 2.0,
-        width = 2.0,
-        // fadeTime=0.2：给超射程后的原版弹体一段滑行窗口，令代码 VFX 拖尾能跟随淡出（否则 fadeTime=0 会被引擎即刻移除、
-        // 拖尾在射程环处骤消）。原版弹体已 alpha=0 全隐，此窗口不会造成视觉穿帮。
-        fadeTime = 0.2,
-        fringeColor = Rgba(120, 200, 255, 0),
-        coreColor = Rgba(220, 245, 255, 0),
-        textureScrollSpeed = 0.0,
-        pixelsPerTexel = 1.0,
-        bulletSprite = "graphics/textures/BUtil_NONE.png",
+        fringeColor = Rgba(120, 200, 255, 255),
+        coreColor = Rgba(220, 245, 255, 200),
     )
 }

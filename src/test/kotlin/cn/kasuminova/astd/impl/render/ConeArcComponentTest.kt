@@ -230,6 +230,24 @@ class ConeArcComponentTest {
         }
     }
 
+    // ---- BoxUtil 负角防线 ----
+
+    @Test
+    fun `negative facing is normalized and geometry matches its positive equivalent`() {
+        // atan2 直出的 -90°（朝下引爆）：修复前原样传入 setStateVanilla，BoxUtil sinFormCosF
+        // 对负角取错 sin 符号 → 弧凸向整体镜像。归一化后必须与 270° 逐值一致。
+        val neg = ConeArcComponent("arc_neg", origin, -90f, 40f, 600f, fringe)
+        val pos = ConeArcComponent("arc_pos", origin, 270f, 40f, 600f, fringe)
+
+        assertEquals(270f, neg.facingDeg, 1e-4f, "-90° 必须归一化为 270°")
+        assertEquals(270f, pos.facingDeg, 1e-4f, "270° 必须保持不动")
+        for (i in 0 until ConeArcComponent.ARC_COUNT) {
+            assertEquals(pos.arcs[i].center.x, neg.arcs[i].center.x, 1e-3f, "弧 $i 弧心 x 必须与 270° 等价")
+            assertEquals(pos.arcs[i].center.y, neg.arcs[i].center.y, 1e-3f, "弧 $i 弧心 y 必须与 270° 等价")
+            assertEquals(pos.arcs[i].aSide0, neg.arcs[i].aSide0, 1e-4f, "弧 $i 侧向半轴等价")
+        }
+    }
+
     // ---- headless 失败语义 ----
 
     @Test
