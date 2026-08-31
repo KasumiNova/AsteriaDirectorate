@@ -414,13 +414,12 @@ class BoxFlareBuilder {
     )
 }
 
-/** 锚点电弧（原版 EMP 电弧：发射点 → 弹体头部，固定两端拉伸）：粗细/边缘色/核心色/重铺间隔。 */
+/** 锚点电弧（原版 EMP 一次性电弧：发射点固定锚 → 弹体中心实时拉伸，只生成一次）：粗细/边缘色/核心色。 */
 @ProjectileVfxDslMarker
 class AnchorArcBuilder {
     private var thickness = 10f
     private var fringeColor = rgba(0x78BEFFC0L)
     private var coreColor = rgba(0xF0F8FFF0L)
-    private var respawnSeconds = 0.1f
 
     /** 电弧粗细（世界单位，spawnEmpArcVisual thickness）。 */
     fun thickness(v: Float) { thickness = v.coerceAtLeast(0.1f) }
@@ -428,13 +427,9 @@ class AnchorArcBuilder {
     /** 边缘色 / 核心色（0xRRGGBBAA）。 */
     fun colors(fringe: Long, core: Long) { fringeColor = rgba(fringe); coreColor = rgba(core) }
 
-    /** 重铺间隔（秒）：原版电弧自带折线噪声与明灭闪烁，按本间隔重铺保持连续观感。 */
-    fun respawn(seconds: Float) { respawnSeconds = seconds.coerceAtLeast(0.01f) }
-
     internal fun build(): AnchorArcSpec = AnchorArcSpec(
         thickness = thickness,
         fringeColor = fringeColor,
         coreColor = coreColor,
-        respawnSeconds = respawnSeconds,
     )
 }
