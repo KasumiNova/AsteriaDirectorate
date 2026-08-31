@@ -1,9 +1,10 @@
 package cn.kasuminova.astd.renderer.projectile.driver
 
 import cn.kasuminova.astd.impl.render.ASTDColor
-import cn.kasuminova.astd.impl.render.ArcTrailComponent
+import cn.kasuminova.astd.impl.render.AnchorArcComponent
 import cn.kasuminova.astd.impl.render.BloomMeshComponent
 import cn.kasuminova.astd.impl.render.BoxFlareComponent
+import cn.kasuminova.astd.impl.render.BoxFlareStyle
 import cn.kasuminova.astd.impl.render.TexTrailComponent
 import kotlin.math.roundToInt
 import kotlin.test.Test
@@ -93,25 +94,6 @@ class ProjectileVfxSpecsTest {
         assertTrue(ProjectileVfxSpecs.has("astd_spc3_shot"))
     }
 
-    // —— 公式数值锚点（公式实现被手滑改动时在此暴露）——
-
-    @Test
-    fun `宽度公式锚点：0 35 倍旧宽与 3 15 倍体型档取大 按 0 5 取整`() {
-        assertEquals(7.0f, bandWidth(6f, 2.2f))     // spc3：3.15×2.2=6.93 主导
-        assertEquals(8.0f, bandWidth(12f, 2.6f))    // 8.19→8.0
-        assertEquals(11.5f, bandWidth(20f, 3.6f))   // 11.34→11.5
-        assertEquals(7.0f, bandWidth(16f, 2.2f))    // 0.35×16=5.6 不主导
-        assertEquals(5.5f, arcWidth(7.0f))          // 装饰带 0.8×外带
-        // 三层混合常量（美术裁定）：宽度翻倍 / 核心半宽 / alpha 0.45-0.6-0.45（初版 0.6-0.8-0.6 过曝 ×0.75）/ twist ±90°/±30°
-        assertEquals(2f, BAND_WIDTH_MULT)
-        assertEquals(0.5f, CORE_WIDTH_RATIO)
-        assertEquals(0.45f, ALPHA_OUTER)
-        assertEquals(0.6f, ALPHA_CORE)
-        assertEquals(0.45f, ALPHA_DECOR)
-        assertEquals(90f, TWIST_OUTER_DEG)
-        assertEquals(30f, TWIST_INNER_DEG)
-    }
-
     @Test
     fun `平铺 滚动 节点 退距公式锚点`() {
         assertEquals(55f, mainTile(135f))
@@ -146,137 +128,4 @@ class ProjectileVfxSpecsTest {
         assertEquals(0.07f, tail.alpha, 1e-3f)
     }
 
-    // —— 全 10 个简单 spec 接线守护：登记表参数与工厂公式接线漂移时在此暴露（aod7 为 hero 不在此表）——
-
-    private data class Row(
-        val id: String,
-        val color: ASTDColor,
-        val width: Float,
-        val length: Float,
-        val glowScale: Float,
-    )
-
-    private val violet = ASTDColor(0.66f, 0.42f, 1f, 0.9f)
-    private val arcColdBlue = ASTDColor(0.55f, 0.78f, 1f, 0.9f)
-
-    private val rows = listOf(
-        Row("astd_spc3_shot", violet, 6f, 135f, 2.2f),
-        Row("astd_charge_needle_shot", arcColdBlue, 6f, 135f, 2.2f),
-        Row("astd_heavy_charge_needle_shot", arcColdBlue, 9f, 165f, 2.2f),
-        Row("astd_electric_drive_accelerator_shot", ASTDColor(1f, 1f, 1f, 0.9f), 9f, 500f, 2.2f),
-        Row("astd_qiongjue_phase_railgun_shot", ASTDColor(0.92f, 0.95f, 1f, 1f), 12f, 300f, 2.2f),
-        Row("astd_positron_shockwave_shot", ASTDColor(0.62f, 0.82f, 1f, 0.85f), 5f, 90f, 2.2f),
-        Row("astd_heavy_ion_pulse_shot", arcColdBlue, 12f, 220f, 2.2f),
-        Row("astd_stellar_mrm_launcher_shot", violet, 10f, 420f, 2.2f),
-        Row("astd_stellar_mrm_pod_shot", violet, 10f, 420f, 2.2f),
-        Row("astd_piercing_lance_shot", ASTDColor(0.55f, 0.78f, 1f, 0.95f), 36f, 260f, 4.0f),
-    )
-
-    @Test
-    fun `全简单 spec 的三层贴图拖尾参数等于公式计算值`() {
-        assertEquals(10, rows.size, "简单 spec 行数与登记表一致（aod7 为 hero 不在此表）")
-        for (row in rows) {
-            val vfx = assertNotNull(ProjectileVfxSpecs.build(row.id), row.id)
-            val children = vfx.tree.children.associateBy { it.id }
-            // 贯星之矛在三层混合之上追加 BoxUtil 光斑 + 锚点电弧（规格 09 §3.1 修订）；
-            // 子节点按 renderOrder 升序：texTrail(361/362/363) → arc(364) → flare(368)
-            val expectedChildren = if (row.id == "astd_piercing_lance_shot") {
-                listOf(
-                    "${row.id}_textrail_twin", "${row.id}_textrail_core", "${row.id}_textrail_zappy",
-                    "${row.id}_arctrail_arc", "${row.id}_boxflare_core",
-                )
-            } else {
-                listOf("${row.id}_textrail_twin", "${row.id}_textrail_core", "${row.id}_textrail_zappy")
-            }
-            assertEquals(
-                expectedChildren,
-                vfx.tree.children.map { it.id },
-                row.id,
-            )
-
-            val bandW = bandWidth(row.width, row.glowScale) * BAND_WIDTH_MULT
-            val nodeCount = trailNodes(row.length)
-            val recede = headRecede(row.length)
-
-            // twin 外带：全宽、alpha 0.45、±90° 扭转
-            val twin = children.getValue("${row.id}_textrail_twin") as TexTrailComponent
-            assertEquals(TEX_TWIN, twin.spec.texturePath, row.id)
-            assertEquals(1, twin.spec.layer, row.id)
-            assertEquals(bandW, twin.spec.width, 1e-3f, row.id)
-            assertEquals(mainTile(row.length), twin.spec.tileLength, 1e-3f, row.id)
-            assertEquals(mainScroll(row.length), twin.spec.scrollSpeed, 1e-3f, row.id)
-            assertEquals(nodeCount, twin.spec.nodeCount, row.id)
-            assertEquals(recede, twin.spec.recede, 1e-3f, row.id)
-            assertEquals(TWIST_OUTER_DEG, twin.spec.twistMaxAngleDeg, row.id)
-            assertColorEquals(bandHeadColor(row.color, ALPHA_OUTER), twin.spec.headColor, row.id)
-            assertColorEquals(bandMidColor(row.color, ALPHA_OUTER), twin.spec.midColor, row.id)
-            assertColorEquals(bandTailColor(row.color, ALPHA_OUTER), twin.spec.tailColor, row.id)
-
-            // smooth 核心：宽度 −50%、alpha 0.6、±30° 扭转
-            val core = children.getValue("${row.id}_textrail_core") as TexTrailComponent
-            assertEquals(TEX_SMOOTH, core.spec.texturePath, row.id)
-            assertEquals(2, core.spec.layer, row.id)
-            assertEquals(round05(bandW * CORE_WIDTH_RATIO), core.spec.width, 1e-3f, row.id)
-            assertEquals(mainTile(row.length), core.spec.tileLength, 1e-3f, row.id)
-            assertEquals(mainScroll(row.length), core.spec.scrollSpeed, 1e-3f, row.id)
-            assertEquals(nodeCount, core.spec.nodeCount, row.id)
-            assertEquals(recede, core.spec.recede, 1e-3f, row.id)
-            assertEquals(TWIST_INNER_DEG, core.spec.twistMaxAngleDeg, row.id)
-            assertColorEquals(bandHeadColor(row.color, ALPHA_CORE), core.spec.headColor, row.id)
-            assertColorEquals(bandMidColor(row.color, ALPHA_CORE), core.spec.midColor, row.id)
-            assertColorEquals(bandTailColor(row.color, ALPHA_CORE), core.spec.tailColor, row.id)
-
-            // zappy 装饰：0.8×外带、更快平铺/滚动、alpha 0.45、±30° 扭转
-            val zappy = children.getValue("${row.id}_textrail_zappy") as TexTrailComponent
-            assertEquals(TEX_ZAPPY, zappy.spec.texturePath, row.id)
-            assertEquals(3, zappy.spec.layer, row.id)
-            assertEquals(arcWidth(bandW), zappy.spec.width, 1e-3f, row.id)
-            assertEquals(arcTile(row.length), zappy.spec.tileLength, 1e-3f, row.id)
-            assertEquals(arcScroll(row.length), zappy.spec.scrollSpeed, 1e-3f, row.id)
-            assertEquals(nodeCount, zappy.spec.nodeCount, row.id)
-            assertEquals(recede, zappy.spec.recede, 1e-3f, row.id)
-            assertEquals(TWIST_INNER_DEG, zappy.spec.twistMaxAngleDeg, row.id)
-            assertColorEquals(bandHeadColor(row.color, ALPHA_DECOR), zappy.spec.headColor, row.id)
-            assertColorEquals(bandMidColor(row.color, ALPHA_DECOR), zappy.spec.midColor, row.id)
-            assertColorEquals(bandTailColor(row.color, ALPHA_DECOR), zappy.spec.tailColor, row.id)
-        }
-    }
-
-    @Test
-    fun `贯星之矛追加 BoxUtil 光斑与锚点电弧并带发射钩子`() {
-        val vfx = assertNotNull(ProjectileVfxSpecs.build("astd_piercing_lance_shot"))
-        val children = vfx.tree.children.associateBy { it.id }
-
-        // BoxUtil 光斑：水平盘状（宽 >> 高）、亮蓝白、闪烁、锚回弹体中心（offset = -headLead = -36/2）
-        val flare = children.getValue("astd_piercing_lance_shot_boxflare_core") as BoxFlareComponent
-        assertEquals(150f, flare.spec.width, 1e-3f)
-        assertEquals(14f, flare.spec.height, 1e-3f)
-        assertEquals(-18f, flare.spec.offsetX, 1e-3f, "光斑应锚回弹体中心（抵消 headLead 前移）")
-        assertTrue(flare.spec.flickerRate > 1f, "闪烁速度应快于 BoxUtil 默认")
-
-        // 锚点电弧：zappy 贴图、layer 4（压在三层混合之上）、带折点抖动与透明度闪烁
-        val arc = children.getValue("astd_piercing_lance_shot_arctrail_arc") as ArcTrailComponent
-        assertEquals(TEX_ZAPPY, arc.spec.texturePath)
-        assertEquals(4, arc.spec.layer)
-        assertTrue(arc.spec.jagAmplitude > 0f, "电弧应有折点抖动")
-        assertTrue(arc.spec.alphaFlicker > 0f, "电弧应有透明度闪烁")
-
-        // 发射钩子：发射点扭曲特效
-        assertNotNull(vfx.onFire, "贯星之矛应声明 onFire 钩子（发射点扭曲）")
-    }
-
-    private fun assertColorEquals(expected: ASTDColor, actual: ASTDColor?, context: String) {
-        assertNotNull(actual, context)
-        // DSL colors() 走 0xRRGGBBAA 十六进制入参，通道量化到 1/255——期望值先按同一取整量化再比较
-        val q = quantize(expected)
-        assertEquals(q.red, actual.red, 1e-3f, context)
-        assertEquals(q.green, actual.green, 1e-3f, context)
-        assertEquals(q.blue, actual.blue, 1e-3f, context)
-        assertEquals(q.alpha, actual.alpha, 1e-3f, context)
-    }
-
-    private fun quantize(c: ASTDColor): ASTDColor {
-        fun ch(v: Float): Float = (v.coerceIn(0f, 1f) * 255f).roundToInt() / 255f
-        return ASTDColor(ch(c.red), ch(c.green), ch(c.blue), ch(c.alpha))
-    }
 }

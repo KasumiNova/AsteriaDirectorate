@@ -2,6 +2,7 @@ package cn.kasuminova.astd.renderer.projectile.driver
 
 import cn.kasuminova.astd.combat.effect.arc.piercinglance.PiercingLanceVfx
 import cn.kasuminova.astd.impl.render.ASTDColor
+import cn.kasuminova.astd.impl.render.BoxFlareStyle
 import kotlin.math.max
 import kotlin.math.roundToInt
 
@@ -94,21 +95,21 @@ object ProjectileVfxSpecs {
             colors(bandHeadColor(color, ALPHA_OUTER).hex(), bandMidColor(color, ALPHA_OUTER).hex(), bandTailColor(color, ALPHA_OUTER).hex(), midAt = 0.25f)
             nodes(nodeCount); tile(mainTile(length), mainScroll(length))
             recede(recedeBy)
-            twist(TWIST_OUTER_DEG)
+//            twist(TWIST_OUTER_DEG)
         }
         texTrail("core", TEX_SMOOTH) {
             layer(2); width(round05(bandW * CORE_WIDTH_RATIO))
             colors(bandHeadColor(color, ALPHA_CORE).hex(), bandMidColor(color, ALPHA_CORE).hex(), bandTailColor(color, ALPHA_CORE).hex(), midAt = 0.25f)
             nodes(nodeCount); tile(mainTile(length), mainScroll(length))
             recede(recedeBy)
-            twist(TWIST_INNER_DEG)
+//            twist(TWIST_INNER_DEG)
         }
         texTrail("zappy", TEX_ZAPPY) {
             layer(3); width(arcWidth(bandW))
             colors(bandHeadColor(color, ALPHA_DECOR).hex(), bandMidColor(color, ALPHA_DECOR).hex(), bandTailColor(color, ALPHA_DECOR).hex(), midAt = 0.25f)
             nodes(nodeCount); tile(arcTile(length), arcScroll(length))
             recede(recedeBy)
-            twist(TWIST_INNER_DEG)
+//            twist(TWIST_INNER_DEG)
         }
         extra()
     }
@@ -154,8 +155,8 @@ object ProjectileVfxSpecs {
     }
 
     // 贯星之矛（规格 09 §3.1）：冷蓝白 ARC 主色内联字面量；width 36 / length 260 / glowScale 4.0 大圆形弹体观感。
-    // 追加：BoxUtil 水平光斑（锚回弹体中心：offset = -headLead = -36/2）+ 发射点锚定电弧（首次泛用组件接入）
-    // + 发射瞬间发射点扭曲（PiercingLanceVfx.spawnMuzzleDistortion）。
+    // 追加：BoxUtil 水平光斑（锚回弹体中心：offset = -headLead = -36/2）+ 原版 EMP 锚点电弧
+    // （发射点固定 → 弹体头部拉伸，首次泛用组件接入）+ 发射瞬间发射点扭曲（PiercingLanceVfx.spawnMuzzleDistortion）。
     private fun piercingLanceShot(): ProjectileVfx = simpleProjectileVfx(
         "astd_piercing_lance_shot",
         ASTDColor(0.55f, 0.78f, 1f, 0.95f),
@@ -164,18 +165,18 @@ object ProjectileVfxSpecs {
         glowScale = 4.0f,
     ) {
         boxFlare("core") {
-            size(150f, 14f)
-            colors(0xF4FBFFFF, 0x8CD2FFBE)
-            glow(1f, 4f)
+            size(200f, 5f)
+            colors(0xD0E8FFFF, 0x64B4FFBE)
+            glow(1.6f, 4f)
+            style(BoxFlareStyle.SMOOTH_DISC)
+            fixedFacing(0f)
             flicker(1.3f)
+            noise(0.4f)
             offset(-18f)
         }
-        arcTrail("arc", TEX_ZAPPY) {
-            layer(4); width(7f)
-            colors(0xE8F6FFCCL, 0x78BEFF30L)
-            nodes(26); tile(180f, 260f)
-            jag(14f, 200f, 9f)
-            flicker(0.2f)
+        anchorArc("arc") {
+            thickness(10f)
+            colors(fringe = 0x78BEFFC0L, core = 0xF0F8FFF0L)
         }
         onFire(ProjectileVfxOnFireHook { engine, projectile ->
             PiercingLanceVfx.spawnMuzzleDistortion(engine, org.lwjgl.util.vector.Vector2f(projectile.location))
@@ -235,8 +236,8 @@ internal fun round5(v: Float): Float = (v / 5f).roundToInt() * 5f
 /** 贴图拖尾外带基准全宽：0.35×旧宽 锚 aod7 的 96→30；3.15×glowScale 锚旧 glow 视觉全宽（widthBase 3.5 × g）。 */
 internal fun bandWidth(width: Float, glowScale: Float): Float = round05(max(0.35f * width, 3.15f * glowScale))
 
-/** zappy 装饰带宽度：0.8×外带（对标 aod7 zappy/twin=0.8）。 */
-internal fun arcWidth(bandW: Float): Float = round05(bandW * 0.8f)
+/** zappy 装饰带宽度：0.6×外带。 */
+internal fun arcWidth(bandW: Float): Float = round05(bandW * 0.6f)
 
 /** 三段上色的头部色：mix(主色, 白, 0.45)，alpha = 主色 alpha×0.78×[alphaScale]（保持主色饱和——0.78 白混合会把琥珀等暖色洗成近白，与弹头光晕产生色差接缝）。 */
 internal fun bandHeadColor(color: ASTDColor, alphaScale: Float = 1f): ASTDColor =

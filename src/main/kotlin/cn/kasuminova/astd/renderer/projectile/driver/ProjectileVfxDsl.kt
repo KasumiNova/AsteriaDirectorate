@@ -4,10 +4,11 @@ import cn.kasuminova.astd.api.render.RenderEntity
 import cn.kasuminova.astd.impl.render.ASTDColor
 import cn.kasuminova.astd.impl.render.ASTDProjectileVfxHeadLayerSpec
 import cn.kasuminova.astd.impl.render.ASTDTrailLayerSpec
-import cn.kasuminova.astd.impl.render.ArcTrailComponent
-import cn.kasuminova.astd.impl.render.ArcTrailSpec
+import cn.kasuminova.astd.impl.render.AnchorArcComponent
+import cn.kasuminova.astd.impl.render.AnchorArcSpec
 import cn.kasuminova.astd.impl.render.BoxFlareComponent
 import cn.kasuminova.astd.impl.render.BoxFlareSpec
+import cn.kasuminova.astd.impl.render.BoxFlareStyle
 import cn.kasuminova.astd.impl.render.TexTrailComponent
 import cn.kasuminova.astd.impl.render.TexTrailSpec
 import cn.kasuminova.astd.impl.render.headBloomComponent
@@ -62,7 +63,7 @@ class ProjectileVfxScope(private val id: String) {
     private var head: ASTDProjectileVfxHeadLayerSpec? = null
     private val texTrails = ArrayList<Pair<String, TexTrailSpec>>()
     private val boxFlares = ArrayList<Pair<String, BoxFlareSpec>>()
-    private val arcTrails = ArrayList<Pair<String, ArcTrailSpec>>()
+    private val anchorArcs = ArrayList<Pair<String, AnchorArcSpec>>()
     private var onFireHook: ProjectileVfxOnFireHook? = null
 
     private val lifecycle = LifecycleBuilder()
@@ -82,9 +83,9 @@ class ProjectileVfxScope(private val id: String) {
         boxFlares += name to BoxFlareBuilder().apply(block).build()
     }
 
-    /** 拉一条锚点电弧：发射点（attach 时捕获的固定位置）→ 弹体头部（每帧跟随），随弹体生命周期存续。 */
-    fun arcTrail(name: String, texturePath: String, block: ArcTrailBuilder.() -> Unit) {
-        arcTrails += name to ArcTrailBuilder(texturePath).apply(block).build()
+    /** 拉一条原版 EMP 锚点电弧：发射点（attach 时捕获的固定位置）→ 弹体头部（每帧跟随），随弹体生命周期存续。 */
+    fun anchorArc(name: String, block: AnchorArcBuilder.() -> Unit) {
+        anchorArcs += name to AnchorArcBuilder().apply(block).build()
     }
 
     /** 发射瞬间附加动作（如发射点扭曲特效）：登记弹体成功后由分发器调用一次。 */
@@ -111,7 +112,7 @@ class ProjectileVfxScope(private val id: String) {
             }
             texTrails.forEach { (name, spec) -> addChild(TexTrailComponent("${id}_textrail_$name", spec)) }
             boxFlares.forEach { (name, spec) -> addChild(BoxFlareComponent("${id}_boxflare_$name", spec)) }
-            arcTrails.forEach { (name, spec) -> addChild(ArcTrailComponent("${id}_arctrail_$name", spec)) }
+            anchorArcs.forEach { (name, spec) -> addChild(AnchorArcComponent("${id}_anchorarc_$name", spec)) }
         }
 
         // 拖尾驱动锚点（可视长度/历史窗口的基准长宽）：有 trail{} 取其长宽；
@@ -355,7 +356,7 @@ class FadeBuilder {
     fun expire(v: Float) { expireSeconds = v }
 }
 
-/** BoxUtil 光斑（横向盘状 lens-flare）：尺寸/双色/闪烁速度/锚点偏移。 */
+/** BoxUtil 光斑（lens-flare）：尺寸/双色/形态/朝向偏移/闪烁速度/锚点偏移。 */
 @ProjectileVfxDslMarker
 class BoxFlareBuilder {
     private var width = 120f
@@ -366,6 +367,9 @@ class BoxFlareBuilder {
     private var discRatio = 4f
     private var flickerRate = 1.2f
     private var noisePower = 0.1f
+    private var style = BoxFlareStyle.SMOOTH_DISC
+    private var facingOffsetDeg = 0f
+    private var fixedFacingDeg: Float? = null
     private var offsetX = 0f
 
     /** 光斑全尺寸（世界单位）：w 沿朝向、h 横向；w >> h 即水平光条。 */
@@ -383,6 +387,14 @@ class BoxFlareBuilder {
     /** 边缘噪点强度（0 = 关闭）。 */
     fun noise(power: Float) { noisePower = power.coerceAtLeast(0f) }
 
+    /** 光斑形态（如 [BoxFlareStyle.SHARP] 锐边 streak）与朝向偏移（度；90 = 垂直于飞行方向的横向亮条）。 */
+    fun style(s: BoxFlareStyle, facingOffsetDeg: Float = 0f) {
+        style = s; this.facingOffsetDeg = facingOffsetDeg
+    }
+
+    /** 固定世界朝向（度；设置后忽略宿主 facing 与朝向偏移，0 = 恒水平）。 */
+    fun fixedFacing(deg: Float) { fixedFacingDeg = deg }
+
     /** 局部 x 偏移（负 = 向尾）：headLead 前移锚点后用 -headLead 锚回弹体中心。 */
     fun offset(v: Float) { offsetX = v }
 
@@ -395,68 +407,34 @@ class BoxFlareBuilder {
         discRatio = discRatio,
         flickerRate = flickerRate,
         noisePower = noisePower,
+        style = style,
+        facingOffsetDeg = facingOffsetDeg,
+        fixedFacingDeg = fixedFacingDeg,
         offsetX = offsetX,
     )
 }
 
-/** 锚点电弧（发射点 → 弹体头部）：宽度/双色/折点抖动/透明度闪烁。 */
+/** 锚点电弧（原版 EMP 电弧：发射点 → 弹体头部，固定两端拉伸）：粗细/边缘色/核心色/重铺间隔。 */
 @ProjectileVfxDslMarker
-class ArcTrailBuilder(private val texturePath: String) {
-    private var layer = 4
-    private var width = 6f
-    private var headColor = rgba(0xFFFFFFF0L)
-    private var tailColor = rgba(0x6FB4FF40L)
-    private var nodeCount = 24
-    private var tileLength = 200f
-    private var scrollSpeed = 0f
-    private var jagAmplitude = 12f
-    private var jagWavelength = 220f
-    private var jagFlickerHz = 9f
-    private var alphaFlicker = 0.15f
-    private var fadeOutCapSeconds = 0.12f
+class AnchorArcBuilder {
+    private var thickness = 10f
+    private var fringeColor = rgba(0x78BEFFC0L)
+    private var coreColor = rgba(0xF0F8FFF0L)
+    private var respawnSeconds = 0.1f
 
-    /** 叠层序号：绘制序 = 基线 + 本值（texTrail 同族，建议 4+ 压在三层混合之上）。 */
-    fun layer(v: Int) { layer = v }
+    /** 电弧粗细（世界单位，spawnEmpArcVisual thickness）。 */
+    fun thickness(v: Float) { thickness = v.coerceAtLeast(0.1f) }
 
-    /** 电弧全宽（世界单位）。 */
-    fun width(v: Float) { width = v }
+    /** 边缘色 / 核心色（0xRRGGBBAA）。 */
+    fun colors(fringe: Long, core: Long) { fringeColor = rgba(fringe); coreColor = rgba(core) }
 
-    /** 跟随端（头）/ 固定锚点端（尾）颜色（0xRRGGBBAA）。 */
-    fun colors(head: Long, tail: Long) { headColor = rgba(head); tailColor = rgba(tail) }
+    /** 重铺间隔（秒）：原版电弧自带折线噪声与明灭闪烁，按本间隔重铺保持连续观感。 */
+    fun respawn(seconds: Float) { respawnSeconds = seconds.coerceAtLeast(0.01f) }
 
-    /** 折线节点数。 */
-    fun nodes(count: Int) { nodeCount = count }
-
-    /** 图案平铺周期（世界单位）与滚动速度（su/s，0 不滚动）。 */
-    fun tile(length: Float, scroll: Float) { tileLength = length; scrollSpeed = scroll }
-
-    /**
-     * 折点抖动：振幅峰值（世界单位，两端钉死中段放开）/ 空间波长（越小折点越密）/
-     * 图案重掷频率 Hz（跨桶换种子形成抖动闪烁）。
-     */
-    fun jag(amplitude: Float, wavelength: Float, flickerHz: Float = 9f) {
-        jagAmplitude = amplitude; jagWavelength = wavelength; jagFlickerHz = flickerHz
-    }
-
-    /** 整体透明度闪烁幅度（0..1，0 = 不闪）。 */
-    fun flicker(amount: Float) { alphaFlicker = amount.coerceIn(0f, 1f) }
-
-    /** 消亡淡出时长上限（秒）：电弧在弹体消亡后快速收掉，不跟随冻结帧前飞拉长。 */
-    fun fadeOutCap(seconds: Float) { fadeOutCapSeconds = seconds.coerceAtLeast(0.03f) }
-
-    internal fun build(): ArcTrailSpec = ArcTrailSpec(
-        width = width,
-        texturePath = texturePath,
-        layer = layer,
-        headColor = headColor,
-        tailColor = tailColor,
-        nodeCount = nodeCount,
-        tileLength = tileLength,
-        scrollSpeed = scrollSpeed,
-        jagAmplitude = jagAmplitude,
-        jagWavelength = jagWavelength,
-        jagFlickerHz = jagFlickerHz,
-        alphaFlicker = alphaFlicker,
-        fadeOutCapSeconds = fadeOutCapSeconds,
+    internal fun build(): AnchorArcSpec = AnchorArcSpec(
+        thickness = thickness,
+        fringeColor = fringeColor,
+        coreColor = coreColor,
+        respawnSeconds = respawnSeconds,
     )
 }

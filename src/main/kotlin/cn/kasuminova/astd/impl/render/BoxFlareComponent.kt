@@ -13,6 +13,31 @@ import java.awt.Color
 import kotlin.math.cos
 import kotlin.math.sin
 
+/** BoxUtil FlareEntity 四种光斑形态（对应其 _SMOOTH/_SHARP/_SMOOTH_DISC/_SHARP_DISC 样式位）。 */
+enum class BoxFlareStyle {
+    /** 柔边 streak 光斑。 */
+    SMOOTH,
+
+    /** 锐边 streak 光斑（anamorphic 细长亮条，镜头光斑观感）。 */
+    SHARP,
+
+    /** 柔边盘（沿朝向铺开、横向薄）。 */
+    SMOOTH_DISC,
+
+    /** 锐边盘。 */
+    SHARP_DISC,
+}
+
+/** 把样式位应用到 BoxUtil 实体（纯派发，无对应 setter 的枚举值不存在）。 */
+internal fun FlareEntity.applyFlareStyle(style: BoxFlareStyle) {
+    when (style) {
+        BoxFlareStyle.SMOOTH -> setSmooth()
+        BoxFlareStyle.SHARP -> setSharp()
+        BoxFlareStyle.SMOOTH_DISC -> setSmoothDisc()
+        BoxFlareStyle.SHARP_DISC -> setSharpDisc()
+    }
+}
+
 /**
  * BoxUtil 光斑（泛用组件，首发：贯星之矛）：在弹体视觉头部挂一枚 FlareEntity，
  * 每帧跟随 [RenderContext] 的 frame.origin / facing。
@@ -39,6 +64,18 @@ data class BoxFlareSpec(
     val flickerRate: Float = 1.2f,
     /** 边缘 fbm 噪点强度（0 = 关闭）。 */
     val noisePower: Float = 0.1f,
+    /** 光斑形态（柔/锐 × streak/盘）；锐边 streak（[BoxFlareStyle.SHARP]）即镜头光斑式细长亮条。 */
+    val style: BoxFlareStyle = BoxFlareStyle.SMOOTH_DISC,
+    /**
+     * 朝向偏移（度，加在宿主 facing 上）：弹体光斑常取 90（垂直于飞行方向的横向亮条，
+     * 不随飞行方向旋转成顺向）。
+     */
+    val facingOffsetDeg: Float = 0f,
+    /**
+     * 固定世界朝向（度，非空时忽略宿主 facing 与 [facingOffsetDeg]）：
+     * 用于「无论弹体飞向哪个角度都保持同一朝向」的镜头光斑，0 = 恒水平。
+     */
+    val fixedFacingDeg: Float? = null,
     /**
      * 局部 x 偏移（世界单位，负 = 向尾）：拖尾锚点前移到弹体头部（headLead）后，
      * 传 -headLead 把光斑锚回弹体中心。
@@ -69,7 +106,7 @@ class BoxFlareComponent(
         val entity = FlareEntity()
         entity.setLayer(spec.boxLayer)
         entity.setAdditiveBlend()
-        entity.setSmoothDisc()
+        entity.applyFlareStyle(spec.style)
         entity.setDiscRatio(spec.discRatio)
         entity.setSize(spec.width, spec.height)
         entity.autoAspect()
@@ -118,7 +155,8 @@ class BoxFlareComponent(
             frame.origin.x + (cos(rad) * spec.offsetX).toFloat(),
             frame.origin.y + (sin(rad) * spec.offsetX).toFloat(),
         )
-        entity.setStateVanilla(pos, frame.facing)
+        val facing = spec.fixedFacingDeg ?: BoxUtilCombatVfx.normalizeFacingDeg(frame.facing + spec.facingOffsetDeg)
+        entity.setStateVanilla(pos, facing)
         entity.setGlobalAlpha(frame.intensity * fadeMul)
     }
 
