@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>菀星设计总局 · 英仙座第七分局 — 模组总 UI 预览原型</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- 1920×1080 定尺寸舞台 -->
+<div id="stage">
+
+  <!-- 顶部 tab 栏 -->
+  <header id="topbar" class="panel">
+    <div id="topbar-title">
+      <span id="emblem-mini">菀</span>
+      <span id="topbar-name">菀星设计总局 · 英仙座第七分局</span>
+    </div>
+    <nav id="tabs">
+      <button class="tab" data-tab="orders">工单终端</button>
+      <button class="tab" data-tab="archive">档案室</button>
+      <button class="tab" data-tab="account">承包商账户</button>
+    </nav>
+    <div id="topbar-clock">c+206 · 第 3 审计周期</div>
+  </header>
+
+  <!-- 主体双栏 -->
+  <main id="main">
+    <section id="list-pane" class="panel">
+      <div id="list-header" class="pane-header">—</div>
+      <div id="list-body"></div>
+    </section>
+    <section id="detail-pane" class="panel">
+      <div id="detail-header" class="pane-header">
+        <span id="detail-title">—</span>
+        <button id="glitch-demo-btn" title="演示剧情闪现效果">演示闪现</button>
+      </div>
+      <div id="detail-body"></div>
+    </section>
+  </main>
+
+  <!-- 底部操作条 -->
+  <footer id="bottombar" class="panel">
+    <div id="action-area"></div>
+    <div id="bottom-right">
+      <span id="custody-note">本账户由分局行政系统托管。</span>
+      <button id="btn-close" class="btn">关闭终端</button>
+    </div>
+  </footer>
+
+  <!-- 待机呼吸：扫描线层 -->
+  <div id="scanlines"></div>
+  <div id="breathe-glow"></div>
+
+  <!-- 回执打印层 -->
+  <div id="receipt-layer" class="hidden">
+    <div id="receipt" class="panel">
+      <div id="receipt-title">核销结算回执</div>
+      <div id="receipt-body"></div>
+      <div id="receipt-foot">
+        <span>——本回执由分局行政系统自动生成，无需回复。</span>
+        <button id="receipt-close" class="btn btn-primary">收讫</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 闪现 glitch 全屏噪点层 -->
+  <div id="glitch-noise" class="hidden"></div>
+
+  <!-- 终端开机场 -->
+  <div id="boot-layer">
+    <div id="boot-sweep"></div>
+    <div id="boot-emblem">
+      <div id="boot-emblem-glyph">菀</div>
+      <div id="boot-emblem-text">ASTERIA DESIGN DIRECTORATE · PERSEAN SECTOR BRANCH Ⅶ</div>
+    </div>
+    <div id="boot-skip-hint">[ 点击任意处跳过 ]</div>
+  </div>
+
+  <!-- 关闭终端遮罩 -->
+  <div id="closed-layer" class="hidden">
+    <div id="closed-text">终端已关闭。</div>
+    <button id="btn-reboot" class="btn">重新接入分局终端</button>
+  </div>
+
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
