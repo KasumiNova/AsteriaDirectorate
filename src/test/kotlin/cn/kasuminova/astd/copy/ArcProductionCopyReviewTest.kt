@@ -5,6 +5,7 @@ import org.json.JSONArray
 import java.nio.file.Files
 import java.nio.file.Path
 import cn.kasuminova.astd.testutil.CsvTestUtil
+import cn.kasuminova.astd.testutil.RepoLayout
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -44,8 +45,8 @@ class ArcProductionCopyReviewTest {
     @Test
     fun `plasma arch unique hullmod tooltips mirror exported tooltip text exactly`() {
         val strings = readRuntimeStrings(Path.of("contents/data/strings/strings.json"))
-        val contracts = Files.readString(Path.of("src/main/kotlin/cn/kasuminova/astd/combat/hullmods/arc/ASTDArcProductionTooltipContracts.kt"))
-        val renderer = Files.readString(Path.of("src/main/kotlin/cn/kasuminova/astd/combat/hullmods/base/ASTDHullModTooltipRenderer.kt"))
+        val contracts = Files.readString(RepoLayout.mainSourceFile("combat/hullmods/arc/ASTDArcProductionTooltipContracts.kt")!!)
+        val renderer = Files.readString(RepoLayout.mainSourceFile("combat/hullmods/base/ASTDHullModTooltipRenderer.kt")!!)
         val hullmods = CsvTestUtil.readRowsById(Path.of("contents/data/hullmods/hull_mods.csv"))
 
         assertEquals(
@@ -104,7 +105,7 @@ class ArcProductionCopyReviewTest {
 
     @Test
     fun `production arc ss csv names match design names`() {
-        val i18n = Files.readString(Path.of("ss-csv/src/main/resources/i18n/zh-cn.properties"))
+        val i18n = Files.readString(RepoLayout.astdCsvRoot.resolve("src/main/resources/i18n/zh-cn.properties"))
 
         expectedSsCsvLines.forEach { expected ->
             assertTrue(i18n.contains(expected), "missing exact ss-csv i18n line: $expected")
@@ -113,8 +114,8 @@ class ArcProductionCopyReviewTest {
 
     @Test
     fun `production arc system descriptions are exported from ss csv source`() {
-        val descriptions = Files.readString(Path.of("ss-csv/src/main/kotlin/cn/kasuminova/astd/sscsv/entries/catalog/strings/Catalog_Descriptions.kt"))
-        val i18n = Files.readString(Path.of("ss-csv/src/main/resources/i18n/zh-cn.properties"))
+        val descriptions = Files.readString(RepoLayout.astdCsvRoot.resolve("src/main/kotlin/cn/kasuminova/astd/sscsv/entries/catalog/strings/Catalog_Descriptions.kt"))
+        val i18n = Files.readString(RepoLayout.astdCsvRoot.resolve("src/main/resources/i18n/zh-cn.properties"))
         val generatedDescriptions = CsvTestUtil.readRowsById(Path.of("contents/data/strings/descriptions.csv"))
 
         expectedSystemDescriptionIds.forEach { id ->
@@ -142,10 +143,10 @@ class ArcProductionCopyReviewTest {
     @Test
     fun `plasma armor shield boost system copy matches required player facing text`() {
         val runtimeStrings = readRuntimeStrings(Path.of("contents/data/strings/strings.json"))
-        val i18n = Files.readString(Path.of("ss-csv/src/main/resources/i18n/zh-cn.properties"))
+        val i18n = Files.readString(RepoLayout.astdCsvRoot.resolve("src/main/resources/i18n/zh-cn.properties"))
         val descriptions = CsvTestUtil.readRowsById(Path.of("contents/data/strings/descriptions.csv"))
         val systemSource = Files.readString(
-            Path.of("src/main/kotlin/cn/kasuminova/astd/combat/shipsystems/ASTDPlasmaArmorShieldBoostSystemStats.kt"),
+            RepoLayout.mainSourceFile("combat/shipsystems/ASTDPlasmaArmorShieldBoostSystemStats.kt")!!,
         )
 
         assertTrue(

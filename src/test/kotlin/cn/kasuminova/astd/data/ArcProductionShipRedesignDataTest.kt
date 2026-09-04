@@ -1,6 +1,7 @@
 package cn.kasuminova.astd.data
 
 import cn.kasuminova.astd.testutil.CsvTestUtil
+import cn.kasuminova.astd.testutil.RepoLayout
 import org.json.JSONObject
 import java.nio.file.Files
 import java.nio.file.Path
@@ -342,14 +343,14 @@ class ArcProductionShipRedesignDataTest {
         assertEquals("TRUE", row.getValue("hardFlux"), "system upkeep must be generated as hard flux by the native ship-system spec")
         assertEquals("defensive", row.getValue("tags"), "vanilla FORTRESS_SHIELD AI must see a defensive system tag")
 
-        val statsSource = Files.readString(Path.of("src/main/kotlin/cn/kasuminova/astd/combat/shipsystems/ASTDPlasmaArmorShieldBoostSystemStats.kt"))
+        val statsSource = Files.readString(RepoLayout.mainSourceFile("combat/shipsystems/ASTDPlasmaArmorShieldBoostSystemStats.kt")!!)
         assertFalse(statsSource.contains("increaseFlux("), "stats script must not add a second hard-flux upkeep on top of ship_systems.csv")
         assertFalse(statsSource.contains("HARD_FLUX_PER_SECOND"), "hard-flux upkeep belongs in ship_systems.csv so vanilla AI and runtime cost see the same value")
     }
 
     @Test
     fun `plasma armor shield boost stats exposes shield reduction to vanilla fortress ai estimator`() {
-        val statsSource = Files.readString(Path.of("src/main/kotlin/cn/kasuminova/astd/combat/shipsystems/ASTDPlasmaArmorShieldBoostSystemStats.kt"))
+        val statsSource = Files.readString(RepoLayout.mainSourceFile("combat/shipsystems/ASTDPlasmaArmorShieldBoostSystemStats.kt")!!)
         val applyBody = statsSource
             .substringAfter("override fun apply(stats: MutableShipStatsAPI")
             .substringBefore("override fun unapply")

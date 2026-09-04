@@ -4,6 +4,7 @@ import java.nio.file.Files
 import kotlin.io.path.Path
 import kotlin.io.path.isRegularFile
 import kotlin.io.path.readText
+import cn.kasuminova.astd.testutil.RepoLayout
 import kotlin.test.Test
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -17,7 +18,7 @@ class RuntimeScriptReferenceMigrationTest {
         val roots = listOf(
             repoRoot.resolve("gradle.properties"),
             repoRoot.resolve("contents/data"),
-            repoRoot.resolve("ss-csv/src/main/kotlin"),
+            RepoLayout.astdCsvRoot.resolve("src/main/kotlin"),
         )
         val files = roots.flatMap { root ->
             if (Files.isDirectory(root)) Files.walk(root).use { stream -> stream.filter { it.isRegularFile() }.toList() } else listOf(root)

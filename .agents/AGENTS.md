@@ -19,13 +19,19 @@
 ## 这是什么工程
 
 - Starsector 0.98a 模组（Asteria Directorate），Java + Kotlin，toolchain=17。
-- 构建逻辑主要在 `buildSrc/`：生产目录组装、打包、部署、启动、反编译依赖源码。
+- 构建基于 SectorDevGradle（SDG）mod 插件（根 `build.gradle.kts` 的 `starsector {}` 块）：生产目录组装、打包、部署、启动；反编译依赖源码由 SDG 提供。
+
+## 多模块布局
+
+- `modules/api/`：`astd-api`（对外 API）、`astd-api-render`（渲染 API 与 DSL 蓝图）。
+- `modules/internal/`：`astd-impl`（通用实现）、`astd-ui`（UI 特化）、`astd-render`（渲染实现）、`astd-combat`（武器/船插/系统/技能 + 武器特效）、`astd-campaign`（生涯）、`astd-automation`（自动化测试，release 不打包）、`astd-csv`（原 `ss-csv` 生成器）。
+- 根工程为装配工程：SDG 插件、`contents/`、mod 入口与 agent；各模块向根 jar 贡献产物。
+- 模块是物理边界，包名不变（FQN 稳定）；详见 `.agents/skills/package-structure-guidelines/SKILL.md`。
 
 ## 关键目录与数据流
 
 - `contents/`：真实的模组静态资源源目录（`data/**`, `graphics/**` 等）。
 - `build/mod_production/`：Gradle 产物：可直接加载的模组目录（不要手改 `build/**`）。
-- `buildSrc/`：自定义 Gradle 插件。
 - `dev-resources/sources/`：依赖源码镜像（由 `decompileSources` 生成，用于检索）。
 
 ## 常用工作流（Gradle）
@@ -38,7 +44,7 @@
 
 ## 代理工作约束（本仓库特有）
 
-- **默认仅生成到 build**：处理 ss-csv 时优先运行 `./gradlew :ss-csv:generateSsCsv`，只写入 `build/generated/ss-csv/`；除非用户明确要求，否则不要执行 `writeSsCsvToContents` 覆盖 `contents/`。
+- **默认仅生成到 build**：处理 ss-csv 时优先运行 `./gradlew :astd-csv:generateSsCsv`，只写入 `build/generated/ss-csv/`；除非用户明确要求，否则不要执行 `writeSsCsvToContents` 覆盖 `contents/`。
 - **BoxUtil 只读**：`/mods/BoxUtil` 为依赖模组源码参考目录，默认不要修改其代码/资源（除非用户明确要求在 BoxUtil 内修复）。
 - **禁止反射**：不要为“兼容性探测”引入反射/动态 class lookup。
 - **Java 版本**：Java 17；除非用户明确要求，否则不做降级兼容处理。
@@ -66,14 +72,15 @@
 
 ## ss-csv（核心约定）
 
-- 安全生成到 `build/generated/ss-csv/`：`./gradlew :ss-csv:generateSsCsv`
-- 覆盖写回 `contents/`（危险，仅在用户明确要求时）：`./gradlew :ss-csv:writeSsCsvToContents -PssCsvForce=true`
+- 模块已迁移：`modules/internal/astd-csv`（Gradle 子项目 `:astd-csv`）。
+- 安全生成到 `build/generated/ss-csv/`：`./gradlew :astd-csv:generateSsCsv`
+- 覆盖写回 `contents/`（危险，仅在用户明确要求时）：`./gradlew :astd-csv:writeSsCsvToContents -PssCsvForce=true`
 - schema header 真相来源：`tools/_schema_headers/*.header.csv`（生成器只读首行）。
-- Catalog 扫描包：`cn.kasuminova.asteriadirectorate.sscsv.entries.catalog`
+- Catalog 扫描包：`cn.kasuminova.astd.sscsv.entries.catalog`
 
 ## 入口点与调试
 
-- Mod 入口：`src/main/java/cn/kasuminova/asteriadirectorate/AsteriaDirectoratePlugin.java`
+- Mod 入口：`src/main/java/cn/kasuminova/astd/AsteriaDirectoratePlugin.java`
 - devMode 新开档注入：`AsteriaTestCampaignBootstrap.runIfEnabled()`
 
 ## 武器弹体 VFX 管线
@@ -84,4 +91,4 @@
 
 ## 迁移/改名最易漏点
 
-- 改 `mod.id` / 包名后：同步更新 `gradle.properties`（`mod.*`），并检查 `contents/data/**` 中脚本类名引用。
+- 改 `mod.id` / 包名后：同步更新根 `build.gradle.kts` 的 `starsector {}` DSL（`modId`/`modPlugin` 等），并检查 `contents/data/**` 中脚本类名引用。
