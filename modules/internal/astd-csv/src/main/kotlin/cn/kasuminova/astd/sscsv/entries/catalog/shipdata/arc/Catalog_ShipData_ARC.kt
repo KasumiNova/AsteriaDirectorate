@@ -9,7 +9,7 @@ object Ship_astd_arc_flare : ShipDataEntry() {
     override val id: String = "astd_arc_flare"
     override val name: String = shipName(id)
     override val designation: String = "主力舰"
-    override val tech: String = "弧光阵列"
+    override val tech: String = "菀星设计局-星坠"
     override val systemId: String = "astd_arc_flare_overdrive_crewed"
     override val fleetPts: Int = 55
     override val hitpoints: Int = 20000
@@ -50,7 +50,7 @@ object Ship_astd_negentropy_edge : ShipDataEntry() {
     override val id: String = "astd_negentropy_edge"
     override val name: String = shipName(id)
     override val designation: String = "驱逐舰"
-    override val tech: String = "弧光阵列"
+    override val tech: String = "菀星设计局-星坠"
     override val systemId: String = "astd_collapse_shift"
     override val fleetPts: Int = 20
     override val hitpoints: Int = 6500
@@ -112,7 +112,7 @@ object Ship_astd_arc_jet : ShipDataEntry() {
     override val id: String = "astd_arc_jet"
     override val name: String = shipName(id)
     override val designation: String = "主力舰"
-    override val tech: String = "弧光阵列"
+    override val tech: String = "菀星设计局-星坠"
     override val systemId: String = "astd_arc_shared_flux_network"
     override val fleetPts: Int = 55
     override val hitpoints: Int = 27500
@@ -153,7 +153,7 @@ object Ship_astd_plasma_arch : ShipDataEntry() {
     override val id: String = "astd_plasma_arch"
     override val name: String = shipName(id)
     override val designation: String = "巡洋舰"
-    override val tech: String = "弧光阵列"
+    override val tech: String = "菀星设计局-星坠"
     override val systemId: String = "astd_plasma_armor_shield_boost"
     override val fleetPts: Int = 32
     override val hitpoints: Int = 13000
@@ -194,7 +194,7 @@ object Ship_astd_radiation_belt : ShipDataEntry() {
     override val id: String = "astd_radiation_belt"
     override val name: String = shipName(id)
     override val designation: String = "驱逐舰"
-    override val tech: String = "弧光阵列"
+    override val tech: String = "菀星设计局-星坠"
     override val systemId: String = "astd_limit_temporal_thruster"
     override val fleetPts: Int = 14
     override val hitpoints: Int = 5500
@@ -235,7 +235,7 @@ object Ship_astd_arc_flash : ShipDataEntry() {
     override val id: String = "astd_arc_flash"
     override val name: String = shipName(id)
     override val designation: String = "护卫舰"
-    override val tech: String = "弧光阵列"
+    override val tech: String = "菀星设计局-星坠"
     override val systemId: String = "astd_static_discharge"
     override val fleetPts: Int = 5
     override val hitpoints: Int = 1200

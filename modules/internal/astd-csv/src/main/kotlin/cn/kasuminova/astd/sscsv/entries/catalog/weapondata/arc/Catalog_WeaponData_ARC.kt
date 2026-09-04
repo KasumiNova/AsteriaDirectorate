@@ -44,7 +44,7 @@ object Wpn_astd_aod7 : WeaponDataEntry(), SsProjProjectileOutputs {
 
     override val tags: String = "astd_signature"
     override val groupTag: String = "astd"
-    override val tech: String = "弧光阵列"
+    override val tech: String = "菀星设计局-星坠"
     override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
     override val number: Int = 9001
 
@@ -79,7 +79,7 @@ object Wpn_astd_arc_flare_lights : WeaponDataEntry() {
     override val turnRate: Int = 0
     override val type: String = "OTHER"
     override val tags: String = "no_drop, no_drop_salvage"
-    override val tech: String = "弧光阵列"
+    override val tech: String = "菀星设计局-星坠"
     override val noDpsInTooltip: Boolean = true
     override val number: Int = 9106
 }
@@ -94,7 +94,7 @@ object Wpn_astd_arc_flare_lights_bloom : WeaponDataEntry() {
     override val turnRate: Int = 0
     override val type: String = "OTHER"
     override val tags: String = "no_drop, no_drop_salvage"
-    override val tech: String = "弧光阵列"
+    override val tech: String = "菀星设计局-星坠"
     override val noDpsInTooltip: Boolean = true
     override val number: Int = 9125
 }
@@ -109,7 +109,7 @@ object Wpn_astd_negentropy_edge_bloom : WeaponDataEntry() {
     override val turnRate: Int = 0
     override val type: String = "OTHER"
     override val tags: String = "no_drop, no_drop_salvage"
-    override val tech: String = "弧光阵列"
+    override val tech: String = "菀星设计局-星坠"
     override val noDpsInTooltip: Boolean = true
     override val number: Int = 9126
 }
@@ -124,7 +124,7 @@ object Wpn_astd_radiation_belt_bloom : WeaponDataEntry() {
     override val turnRate: Int = 0
     override val type: String = "OTHER"
     override val tags: String = "no_drop, no_drop_salvage"
-    override val tech: String = "弧光阵列"
+    override val tech: String = "菀星设计局-星坠"
     override val noDpsInTooltip: Boolean = true
     override val number: Int = 9128
 }
@@ -139,7 +139,7 @@ object Wpn_astd_arc_jet_bloom : WeaponDataEntry() {
     override val turnRate: Int = 0
     override val type: String = "OTHER"
     override val tags: String = "no_drop, no_drop_salvage"
-    override val tech: String = "弧光阵列"
+    override val tech: String = "菀星设计局-星坠"
     override val noDpsInTooltip: Boolean = true
     override val number: Int = 9130
 }
@@ -154,7 +154,7 @@ object Wpn_astd_plasma_arch_bloom : WeaponDataEntry() {
     override val turnRate: Int = 0
     override val type: String = "OTHER"
     override val tags: String = "no_drop, no_drop_salvage"
-    override val tech: String = "弧光阵列"
+    override val tech: String = "菀星设计局-星坠"
     override val noDpsInTooltip: Boolean = true
     override val number: Int = 9129
 }
@@ -175,7 +175,7 @@ object Wpn_astd_virtual_particle_mote_launcher : WeaponDataEntry(), SsProjMissil
     override val projHitpoints: Int = 10000
     override val tags: String = "astd_signature"
     override val groupTag: String = ""
-    override val tech: String = "弧光阵列"
+    override val tech: String = "菀星设计局-星坠"
     override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
     override val noDpsInTooltip: Boolean = true
     override val number: Int = 9127
@@ -232,7 +232,7 @@ object Wpn_astd_spc3 : WeaponDataEntry(), SsProjProjectileOutputs {
     override val projSpeed: Int = 1350
     override val tags: String = "astd_signature"
     override val groupTag: String = "astd"
-    override val tech: String = "弧光阵列"
+    override val tech: String = "菀星设计局-星坠"
     override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
     override val number: Int = 9002
 
@@ -281,7 +281,7 @@ object Wpn_astd_charge_needle : WeaponDataEntry(), SsProjProjectileOutputs {
     override val projSpeed: Int = 1350
     override val tags: String = "astd_production"
     override val groupTag: String = "astd"
-    override val tech: String = "弧光阵列"
+    override val tech: String = "菀星设计局-星坠"
     override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
     override val customPrimary: String = SsI18n.t("weapon.$id.tooltip.customPrimary")
     override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
@@ -328,7 +328,7 @@ object Wpn_astd_heavy_charge_needle : WeaponDataEntry(), SsProjProjectileOutputs
     override val extraArcForAI: Int = 25
     override val tags: String = "astd_production"
     override val groupTag: String = "astd"
-    override val tech: String = "弧光阵列"
+    override val tech: String = "菀星设计局-星坠"
     override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
     override val customPrimary: String = SsI18n.t("weapon.$id.tooltip.customPrimary")
     override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
@@ -385,7 +385,7 @@ object Wpn_astd_electric_drive_accelerator : WeaponDataEntry(), SsProjProjectile
     override val spreadDecayPerSec: Double = 4.0
     override val tags: String = "astd_production"
     override val groupTag: String = "astd"
-    override val tech: String = "弧光阵列"
+    override val tech: String = "菀星设计局-星坠"
     override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
     override val customPrimary: String = SsI18n.t("weapon.$id.tooltip.customPrimary")
     override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
@@ -434,7 +434,7 @@ object Wpn_astd_qiongjue_phase_railgun : WeaponDataEntry(), SsProjProjectileOutp
     override val autofireAccBonus: Int = 1
     override val tags: String = "astd_production"
     override val groupTag: String = "astd"
-    override val tech: String = "弧光阵列"
+    override val tech: String = "菀星设计局-星坠"
     override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
     override val customPrimary: String = SsI18n.t("weapon.$id.tooltip.customPrimary")
     override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
@@ -484,7 +484,7 @@ object Wpn_astd_positron_shockwave : WeaponDataEntry(), SsProjProjectileOutputs 
     override val aiHints: Set<AiHint> = setOf(AiHint.PD)
     override val tags: String = "astd_production"
     override val groupTag: String = "astd"
-    override val tech: String = "弧光阵列"
+    override val tech: String = "菀星设计局-星坠"
     override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
     override val customPrimary: String = SsI18n.t("weapon.$id.tooltip.customPrimary")
     override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
@@ -545,7 +545,7 @@ object Wpn_astd_seven_stars : WeaponDataEntry(), SsProjProjectileOutputs {
     // P6 前口径；P6 后改特定赏金/主线限定（90-plan §14）
     override val tags: String = "no_drop, no_drop_salvage"
     override val groupTag: String = "astd"
-    override val tech: String = "弧光阵列"
+    override val tech: String = "菀星设计局-星坠"
     override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
     override val customPrimary: String = SsI18n.t("weapon.$id.tooltip.customPrimary")
     override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
@@ -610,7 +610,7 @@ object Wpn_astd_gemini_dem_launcher : WeaponDataEntry(), SsProjMissileOutputs {
     override val projHitpoints: Int = 600
     override val tags: String = "astd_production"
     override val groupTag: String = "astd"
-    override val tech: String = "弧光阵列"
+    override val tech: String = "菀星设计局-星坠"
     override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
     override val customPrimary: String = SsI18n.t("weapon.$id.tooltip.customPrimary")
     override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
@@ -659,7 +659,7 @@ object Wpn_astd_gemini_dem_pod : WeaponDataEntry() {
     override val projHitpoints: Int = 600
     override val tags: String = "astd_production"
     override val groupTag: String = "astd"
-    override val tech: String = "弧光阵列"
+    override val tech: String = "菀星设计局-星坠"
     override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
     override val customPrimary: String = SsI18n.t("weapon.$id.tooltip.customPrimary")
     override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
@@ -682,7 +682,7 @@ object Wpn_astd_gemini_dem_kinetic : WeaponDataEntry(), SsProjMissileOutputs {
     override val flightTime: Double = 14.0
     override val projHitpoints: Int = 600
     override val tags: String = "no_drop, no_drop_salvage"
-    override val tech: String = "弧光阵列"
+    override val tech: String = "菀星设计局-星坠"
     override val noDpsInTooltip: Boolean = true
     override val number: Int = 9223
 
@@ -710,7 +710,7 @@ object Wpn_astd_gemini_dem_he : WeaponDataEntry(), SsProjMissileOutputs {
     override val flightTime: Double = 14.0
     override val projHitpoints: Int = 600
     override val tags: String = "no_drop, no_drop_salvage"
-    override val tech: String = "弧光阵列"
+    override val tech: String = "菀星设计局-星坠"
     override val noDpsInTooltip: Boolean = true
     override val number: Int = 9224
 
@@ -819,7 +819,7 @@ object Wpn_astd_gemini_dem_kinetic_payload : WeaponDataEntry() {
     override val beamSpeed: Int = 1000000
     override val aiHints: Set<AiHint> = setOf(AiHint.SYSTEM, AiHint.DANGEROUS)
     override val tags: String = "fires_one_burst, no_drop, no_drop_salvage"
-    override val tech: String = "弧光阵列"
+    override val tech: String = "菀星设计局-星坠"
     override val noDpsInTooltip: Boolean = true
     override val number: Int = 9225
 }
@@ -840,7 +840,7 @@ object Wpn_astd_gemini_dem_he_payload : WeaponDataEntry() {
     override val beamSpeed: Int = 1000000
     override val aiHints: Set<AiHint> = setOf(AiHint.SYSTEM, AiHint.DANGEROUS)
     override val tags: String = "fires_one_burst, no_drop, no_drop_salvage"
-    override val tech: String = "弧光阵列"
+    override val tech: String = "菀星设计局-星坠"
     override val noDpsInTooltip: Boolean = true
     override val number: Int = 9226
 }
@@ -888,7 +888,7 @@ object Wpn_astd_heavy_ion_pulse : WeaponDataEntry(), SsProjProjectileOutputs {
     override val spreadDecayPerSec: Double = 4.0
     override val tags: String = "astd_production"
     override val groupTag: String = "astd"
-    override val tech: String = "弧光阵列"
+    override val tech: String = "菀星设计局-星坠"
     override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
     override val customPrimary: String = SsI18n.t("weapon.$id.tooltip.customPrimary")
     override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
@@ -942,7 +942,7 @@ object Wpn_astd_piercing_lance : WeaponDataEntry(), SsProjProjectileOutputs {
     // P6 前口径；P6 后改赏金掉落（90-plan §14）
     override val tags: String = "no_drop, no_drop_salvage"
     override val groupTag: String = "astd"
-    override val tech: String = "弧光阵列"
+    override val tech: String = "菀星设计局-星坠"
     override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
     override val customPrimary: String = SsI18n.t("weapon.$id.tooltip.customPrimary")
     override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")

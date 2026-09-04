@@ -9,7 +9,7 @@ object Ship_astd_gravitational_lens : ShipDataEntry() {
     override val id: String = "astd_gravitational_lens"
     override val name: String = shipName(id)
     override val designation: String = "巡洋舰"
-    override val tech: String = "透镜矩阵"
+    override val tech: String = "菀星设计局-紫菀"
     override val systemId: String = "astd_jamming_swarm"
     override val fleetPts: Int = 30
     override val hitpoints: Int = 8500
@@ -41,7 +41,7 @@ object Ship_astd_nebula_echo : ShipDataEntry() {
     override val id: String = "astd_nebula_echo"
     override val name: String = shipName(id)
     override val designation: String = "驱逐舰"
-    override val tech: String = "透镜矩阵"
+    override val tech: String = "菀星设计局-紫菀"
     override val systemId: String = "astd_targeting_beacon"
     override val fleetPts: Int = 12
     override val hitpoints: Int = 2000
@@ -71,7 +71,7 @@ object Ship_astd_magnetosphere_disturbance : ShipDataEntry() {
     override val id: String = "astd_magnetosphere_disturbance"
     override val name: String = shipName(id)
     override val designation: String = "主力舰"
-    override val tech: String = "透镜矩阵"
+    override val tech: String = "菀星设计局-紫菀"
     override val systemId: String = "astd_emergency_recall"
     override val fleetPts: Int = 40
     override val hitpoints: Int = 13000
@@ -101,7 +101,7 @@ object Ship_astd_dark_tide_nebula : ShipDataEntry() {
     override val id: String = "astd_dark_tide_nebula"
     override val name: String = shipName(id)
     override val designation: String = "巡洋舰"
-    override val tech: String = "透镜矩阵"
+    override val tech: String = "菀星设计局-紫菀"
     override val systemId: String = "astd_em_smoke"
     override val fleetPts: Int = 22
     override val hitpoints: Int = 7000
@@ -131,7 +131,7 @@ object Ship_astd_diffraction : ShipDataEntry() {
     override val id: String = "astd_diffraction"
     override val name: String = shipName(id)
     override val designation: String = "驱逐舰"
-    override val tech: String = "透镜矩阵"
+    override val tech: String = "菀星设计局-紫菀"
     override val systemId: String = "astd_drone_surge"
     override val fleetPts: Int = 12
     override val hitpoints: Int = 3000
@@ -161,7 +161,7 @@ object Ship_astd_flickering_phantom : ShipDataEntry() {
     override val id: String = "astd_flickering_phantom"
     override val name: String = shipName(id)
     override val designation: String = "护卫舰"
-    override val tech: String = "透镜矩阵"
+    override val tech: String = "菀星设计局-紫菀"
     override val systemId: String = "astd_holographic_decoy"
     override val fleetPts: Int = 4
     override val hitpoints: Int = 900

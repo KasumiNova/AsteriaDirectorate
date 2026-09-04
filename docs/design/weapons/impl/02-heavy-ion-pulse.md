@@ -124,7 +124,7 @@ desc.astd_heavy_ion_pulse.notes=
 量产件 P2 走单件蓝图（90 计划 §14），plugin params 用**裸武器 id**（2026-07-29 主代理裁决：反编译 `WeaponBlueprintItemPlugin.init` 证实 params 直接传 `getWeaponSpec(data)`，`weapon:` 前缀会导致 spec 为 null）；带 `single_bp` 标签时 params 必填（`ASTDDevContentSelector.SPECIAL_ITEM_PARAM_REQUIRED_TAGS/IDS` 核实），dev 仓储会自动投放：
 
 ```csv
-重型离子脉冲蓝图,astd_heavy_ion_pulse_bp,"weapon_bp, single_bp, no_drop, no_drop_salvage",阿斯忒里亚遗构局,,24000,1,0,,graphics/icons/cargo/blueprint_weapons.png,ui_chip_pickup,ui_weapon_bp_drop,com.fs.starfarer.api.campaign.impl.items.WeaponBlueprintItemPlugin,astd_heavy_ion_pulse,使重工业设施能够制造“重型离子脉冲”。,9207
+重型离子脉冲蓝图,astd_heavy_ion_pulse_bp,"weapon_bp, single_bp, no_drop, no_drop_salvage",菀星设计局-星坠,,24000,1,0,,graphics/icons/cargo/blueprint_weapons.png,ui_chip_pickup,ui_weapon_bp_drop,com.fs.starfarer.api.campaign.impl.items.WeaponBlueprintItemPlugin,astd_heavy_ion_pulse,使重工业设施能够制造“重型离子脉冲”。,9207
 ```
 
 `no_drop, no_drop_salvage` 为 P6 前口径（P6 接入量产蓝图投放时摘除）。

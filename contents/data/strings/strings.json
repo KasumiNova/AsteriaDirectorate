@@ -42,7 +42,7 @@
 		"ui.hullmod.export.section.note": "说明",
 		"ui.hullmod.export.section.mode": "模式特征",
 
-		"ui.hullmod.arc_loop.summary": "<param:#FF9600:阿斯忒里亚遗构局> 独特的舰船结构设计。弧光耀斑完美整合了舰船的反应堆、武器线路和辐能管理系统，全面提升火控性能。",
+		"ui.hullmod.arc_loop.summary": "<param:#FF9600:菀星设计局-星坠> 独特的舰船结构设计。弧光耀斑完美整合了舰船的反应堆、武器线路和辐能管理系统，全面提升火控性能。",
 		"ui.hullmod.arc_loop.attr.op": "非导弹武器装配点消耗",
 		"ui.hullmod.arc_loop.value.op": "-2 / -4 / -8",
 		"ui.hullmod.arc_loop.attr.flux": "武器辐能产生",
@@ -53,14 +53,14 @@
 		"ui.hullmod.arc_loop.value.turn_rate": "+30%",
 		"ui.hullmod.arc_loop.overdrive": "当 <param:#FFE024:耀斑超频 / 耀斑突袭> 激活时，以上效果（装配点消耗除外）影响 <param:#FFE024:翻倍>。",
 
-		"ui.hullmod.negentropy.manifold.summary": "<param:#FF9600:阿斯忒里亚遗构局> 独特的舰船结构设计。断熵弧刃高度整合了舰船的反应堆、武器线路，全面提升火控性能。",
+		"ui.hullmod.negentropy.manifold.summary": "<param:#FF9600:菀星设计局-星坠> 独特的舰船结构设计。断熵弧刃高度整合了舰船的反应堆、武器线路，全面提升火控性能。",
 		"ui.hullmod.negentropy.manifold.attr.op": "非导弹武器装配点消耗",
 		"ui.hullmod.negentropy.manifold.value.op": "-3",
 		"ui.hullmod.negentropy.manifold.attr.range": "非导弹武器基础射程",
 		"ui.hullmod.negentropy.manifold.value.range": "+200（上限 800）",
 		"ui.hullmod.negentropy.manifold.attr.projectile_speed": "射弹飞行速度",
 		"ui.hullmod.negentropy.manifold.value.projectile_speed": "+30%",
-		"ui.hullmod.negentropy.manifold.pulse.1": "<param:#FF9600:阿斯忒里亚遗构局> 独特的舰船结构设计。断熵弧刃使用武器攻击目标时能够回收部分产生的辐能并将其转换为<param:#6AA9FF:断熵脉冲>，断熵脉冲最大充能为 <param:#FFE024:100%>。",
+		"ui.hullmod.negentropy.manifold.pulse.1": "<param:#FF9600:菀星设计局-星坠> 独特的舰船结构设计。断熵弧刃使用武器攻击目标时能够回收部分产生的辐能并将其转换为<param:#6AA9FF:断熵脉冲>，断熵脉冲最大充能为 <param:#FFE024:100%>。",
 		"ui.hullmod.negentropy.manifold.pulse.2": "<param:#6AA9FF:断熵脉冲> 常态每秒衰减 <param:#FFE024:3%>。",
 		"ui.hullmod.negentropy.manifold.pulse.3": "当断熵弧刃使用坍缩折跃后，会以每秒 <param:#FFE024:25%> 的速率快速消耗断熵脉冲值，期间断熵弧刃可获得高额进攻属性加成。",
 		"ui.hullmod.negentropy.manifold.attr.rof": "非导弹武器射速",
@@ -72,13 +72,13 @@
 		"ui.hullmod.negentropy.manifold.attr.ammo_regen": "实弹与能量武器备弹恢复速率",
 		"ui.hullmod.negentropy.manifold.value.ammo_regen": "+75%",
 
-		"ui.hullmod.negentropy.lattice.summary": "<param:#FF9600:阿斯忒里亚遗构局> 独特的舰船结构设计。断熵弧刃能够消耗溢出的<param:#6AA9FF:断熵脉冲>，自动编织<param:#64FFFF:防御虚粒子>和<param:#FF6400:游离虚粒子>。",
+		"ui.hullmod.negentropy.lattice.summary": "<param:#FF9600:菀星设计局-星坠> 独特的舰船结构设计。断熵弧刃能够消耗溢出的<param:#6AA9FF:断熵脉冲>，自动编织<param:#64FFFF:防御虚粒子>和<param:#FF6400:游离虚粒子>。",
 		"ui.hullmod.negentropy.lattice.line.1": "断熵弧刃每溢出 <param:#FFE024:20%> <param:#6AA9FF:断熵脉冲值>，就会生成 <param:#FFE024:1> 个防御虚粒子和 <param:#FFE024:2> 个游离虚粒子。",
 		"ui.hullmod.negentropy.lattice.line.2": "<param:#64FFFF:防御虚粒子>会围绕舰船旋转，并自动打击周围的战机和导弹，每个粒子在消失前至多造成 <param:#FFE024:400> 点能量伤害，伤害会最大化分配在各个目标上。",
 		"ui.hullmod.negentropy.lattice.line.3": "防御虚粒子同一时间最多只能存在 <param:#FFE024:8> 个，超出的会自动转化为游离虚粒子。",
 		"ui.hullmod.negentropy.lattice.line.4": "<param:#FF6400:游离虚粒子>会主动跟踪并撞击敌对目标（优先锁定目标），对目标造成 <param:#FFE024:200> 点能量伤害，并对随机武器或引擎造成 <param:#FFE024:400> 点 EMP 伤害，如果命中护盾，则根据其硬辐能水平概率穿透造成 EMP 伤害。",
 
-		"ui.hullmod.nano.summary": "<param:#FF9600:阿斯忒里亚遗构局> 独特的舰船结构设计。内建的纳米修复系统能够在战斗中持续修复装甲与结构。",
+		"ui.hullmod.nano.summary": "<param:#FF9600:菀星设计局-星坠> 独特的舰船结构设计。内建的纳米修复系统能够在战斗中持续修复装甲与结构。",
 		"ui.hullmod.nano.line.1": "· 每秒以最大装甲值 <param:#FFE024:0.2%> 的速率修复所有受损装甲格。",
 		"ui.hullmod.nano.line.2": "· 每秒以最大结构值 <param:#FFE024:0.4%> 的速率修复结构。",
 		"ui.hullmod.nano.line.3": "· 当装甲与结构同时受损时，装甲与结构的修复速率将降低至 <param:#FFE024:20%> / <param:#FFE024:80%>。",
@@ -86,7 +86,7 @@
 		"ui.hullmod.nano.line.5": "· 过载 / 强制排辐结束后的 <param:#FFE024:5> 秒内，修复速率和上限 <param:#FFE024:翻倍>。",
 		"ui.hullmod.nano.line.6": "修复速率受到难度系数缩放影响。",
 
-		"ui.hullmod.lens_core.summary": "<param:#C8A0FF:阿斯忒里亚遗构局> 透镜协议旗舰的指挥中枢。真相只是一个可调节的变量。",
+		"ui.hullmod.lens_core.summary": "<param:#C8A0FF:菀星设计局-紫菀> 透镜协议旗舰的指挥中枢。真相只是一个可调节的变量。",
 		"ui.hullmod.lens_core.line.1": "· 纳米重构协议：紫线特化，装甲修复优先。",
 		"ui.hullmod.lens_core.line.2": "· 双模式：无人（全域拓扑态）/ 载人（宏观锚定态）。",
 		"ui.hullmod.lens_core.line.3": "· 无人·蜂群思维：舰载机射程、导弹机动、最大航速各 <param:#C8A0FF:+20%>。",
@@ -94,17 +94,17 @@
 		"ui.hullmod.lens_core.line.5": "· 载人·情报中枢：按友军吨位等级提供全队 ECM（吨位越小贡献越大）。",
 		"ui.hullmod.lens_core.line.6": "· 载人·战术链路：误差标记的增伤效果对全队生效，被标记目标承受的伤害随标记层数提升。",
 
-		"ui.hullmod.lens_parallax_decks.summary": "<param:#C8A0FF:阿斯忒里亚遗构局> 透镜协议旗舰的四甲板阵列。机群是铺设误差标记的载具，从你看不到的角度出现。",
+		"ui.hullmod.lens_parallax_decks.summary": "<param:#C8A0FF:菀星设计局-紫菀> 透镜协议旗舰的四甲板阵列。机群是铺设误差标记的载具，从你看不到的角度出现。",
 		"ui.hullmod.lens_parallax_decks.line.1": "· 错位部署：机群出库获得 <param:#C8A0FF:~2s> 相位隐形与 <param:#C8A0FF:+100%> 时流加成。",
 		"ui.hullmod.lens_parallax_decks.line.2": "· 链路回响：机群命中敌人时叠 <param:#C8A0FF:1 层> 误差标记（每敌每秒上限防刷）。",
 		"ui.hullmod.lens_parallax_decks.line.3": "· 回收重构：返航整备的机群位于本舰 <param:#C8A0FF:1000su> 内时获得 <param:#C8A0FF:50%> 承伤减免。",
 
-		"ui.hullmod.lens_permeating_tide.summary": "<param:#C8A0FF:阿斯忒里亚遗构局> 透镜协议旗舰的电战潮汐场。它不是一堵墙，是一片正在涨起来的水。",
+		"ui.hullmod.lens_permeating_tide.summary": "<param:#C8A0FF:菀星设计局-紫菀> 透镜协议旗舰的电战潮汐场。它不是一堵墙，是一片正在涨起来的水。",
 		"ui.hullmod.lens_permeating_tide.line.1": "· 涨潮：本舰周围 <param:#C8A0FF:~2500su> 电战潮汐场，场内敌舰累积深水标记，每 <param:#C8A0FF:2.5s~5s> 一层，离本舰越近越快。",
 		"ui.hullmod.lens_permeating_tide.line.2": "· 退潮反制：本舰过载时潮汐退去，清空全场敌舰的误差标记与深水标记（敌方破局窗口）。",
 		"ui.hullmod.lens_permeating_tide.line.3": "· 深水标记：每层降低敌方武器射程、精度、最大航速，并削弱其对引力透镜造成的伤害。",
 
-		"ui.hullmod.arc_advanced_fire_control.summary": "<param:#FF9600:阿斯忒里亚遗构局> 弧光喷流的主炮回路接入舰体反应堆。火控阵列在高压交火中保持锋利节律。",
+		"ui.hullmod.arc_advanced_fire_control.summary": "<param:#FF9600:菀星设计局-星坠> 弧光喷流的主炮回路接入舰体反应堆。火控阵列在高压交火中保持锋利节律。",
 		"ui.hullmod.arc_advanced_fire_control.attr.weapon_flux": "主武器辐能压力",
 		"ui.hullmod.arc_advanced_fire_control.value.weapon_flux": "常态+20%；满层后相对基础-40%",
 		"ui.hullmod.arc_advanced_fire_control.attr.weapon_rate": "齐射节律",
@@ -113,7 +113,7 @@
 		"ui.hullmod.arc_advanced_fire_control.value.ramp": "大型非点防非导弹武器持续开火；停火后按同速率回落",
 		"ui.hullmod.arc_advanced_fire_control.note": "火控阵列只响应主炮级负载。",
 
-		"ui.hullmod.arc_shared_tactical_network.summary": "<param:#FF9600:阿斯忒里亚遗构局> 弧光喷流把友舰遥测压入共享链路。舰队辐能窗口随旗舰节律回响。",
+		"ui.hullmod.arc_shared_tactical_network.summary": "<param:#FF9600:菀星设计局-星坠> 弧光喷流把友舰遥测压入共享链路。舰队辐能窗口随旗舰节律回响。",
 		"ui.hullmod.arc_shared_tactical_network.attr.network": "共享链路",
 		"ui.hullmod.arc_shared_tactical_network.value.network": "自身非导弹非点防武器射程-20%；电子战网络+4%",
 		"ui.hullmod.arc_shared_tactical_network.attr.command": "战术回传",
@@ -124,7 +124,7 @@
 		"ui.hullmod.arc_shared_tactical_network.value.destroyer": "驱逐舰：射程+30%，机动+10%，护盾承伤-15%",
 		"ui.hullmod.arc_shared_tactical_network.attr.cruiser": "巡洋舰链路",
 		"ui.hullmod.arc_shared_tactical_network.value.cruiser": "巡洋舰：射程+20%，护盾承伤-10%",
-		"ui.hullmod.arc_shared_tactical_network.note": "阿斯忒里亚遗构局舰船效果+25%；弧光子型额外+25%。主力舰不获得加成。",
+		"ui.hullmod.arc_shared_tactical_network.note": "菀星设计总局舰船效果+25%；星坠子型额外+25%。主力舰不获得加成。",
 
 		"ui.hullmod.plasma_armor_shield.attr.armor_shield": "装甲-护盾耦合",
 		"ui.hullmod.plasma_armor_shield.value.armor_shield": "按受击方位取最终装甲10%~30%参与装甲减伤",
@@ -197,7 +197,7 @@
 		"ui.hullmod.ionized_recoil_accumulator.line.targeting": "打击优先随机选择未下线的武器或引擎。如果击中护盾，则根据舰船自身的辐能水平概率穿透。",
 		"ui.hullmod.ionized_recoil_accumulator.line.cooldown": "打击效果具有 1s 的固定冷却时间。",
 
-		"ui.hullmod.arc_advanced_targeting_system.summary": "<param:#FF9600:阿斯忒里亚遗构局> 前缘瞄准阵列持续修正高速目标轨迹。辐射带在追击窗口中先一步点燃射线。",
+		"ui.hullmod.arc_advanced_targeting_system.summary": "<param:#FF9600:菀星设计局-星坠> 前缘瞄准阵列持续修正高速目标轨迹。辐射带在追击窗口中先一步点燃射线。",
 		"ui.hullmod.arc_advanced_targeting_system.attr.range": "非导弹武器射程",
 		"ui.hullmod.arc_advanced_targeting_system.value.range": "非导弹武器射程+20%",
 		"ui.hullmod.arc_advanced_targeting_system.attr.short_range": "短射程武器基础射程",
@@ -205,7 +205,7 @@
 		"ui.hullmod.arc_advanced_targeting_system.note": "该阵列独占主火控通道，无法与其他目标定位系统并联。",
 		"ui.hullmod.arc_advanced_targeting_system.unapplicable.targeting": "不兼容于其他目标定位系统",
 
-		"ui.hullmod.distributed_pursuit_network.summary": "<param:#FF9600:阿斯忒里亚遗构局> 分布式追猎节点同步引擎与火控。猎物会不断暴露转向余量。",
+		"ui.hullmod.distributed_pursuit_network.summary": "<param:#FF9600:菀星设计局-星坠> 分布式追猎节点同步引擎与火控。猎物会不断暴露转向余量。",
 		"ui.hullmod.distributed_pursuit_network.section.members": "网络成员",
 		"ui.hullmod.distributed_pursuit_network.section.bonus": "单连接加成",
 		"ui.hullmod.distributed_pursuit_network.attr.members": "接入目标",

@@ -134,8 +134,8 @@ HUD 文本不进 properties，走 `contents/data/strings/strings.json`（MOD 类
 量产件 P2 走单件蓝图（90 计划 §14），plugin params 用**裸武器 id**（2026-07-29 主代理裁决：反编译 `WeaponBlueprintItemPlugin.init` 证实 params 直接传 `getWeaponSpec(data)`，`weapon:` 前缀会导致 spec 为 null；原写 `weapon:<id>` 系误引蓝图包格式，已更正）；带 `single_bp` 标签时 params 必填（`ASTDDevContentSelector.SPECIAL_ITEM_PARAM_REQUIRED_TAGS/IDS` 核实），dev 仓储会自动投放：
 
 ```csv
-电荷针刺蓝图,astd_charge_needle_bp,"weapon_bp, single_bp, no_drop, no_drop_salvage",阿斯忒里亚遗构局,,8000,1,0,,graphics/icons/cargo/blueprint_weapons.png,ui_chip_pickup,ui_weapon_bp_drop,com.fs.starfarer.api.campaign.impl.items.WeaponBlueprintItemPlugin,astd_charge_needle,使重工业设施能够制造“电荷针刺”。,9200
-重型电荷针刺蓝图,astd_heavy_charge_needle_bp,"weapon_bp, single_bp, no_drop, no_drop_salvage",阿斯忒里亚遗构局,,15000,1,0,,graphics/icons/cargo/blueprint_weapons.png,ui_chip_pickup,ui_weapon_bp_drop,com.fs.starfarer.api.campaign.impl.items.WeaponBlueprintItemPlugin,astd_heavy_charge_needle,使重工业设施能够制造“重型电荷针刺”。,9201
+电荷针刺蓝图,astd_charge_needle_bp,"weapon_bp, single_bp, no_drop, no_drop_salvage",菀星设计局-星坠,,8000,1,0,,graphics/icons/cargo/blueprint_weapons.png,ui_chip_pickup,ui_weapon_bp_drop,com.fs.starfarer.api.campaign.impl.items.WeaponBlueprintItemPlugin,astd_charge_needle,使重工业设施能够制造“电荷针刺”。,9200
+重型电荷针刺蓝图,astd_heavy_charge_needle_bp,"weapon_bp, single_bp, no_drop, no_drop_salvage",菀星设计局-星坠,,15000,1,0,,graphics/icons/cargo/blueprint_weapons.png,ui_chip_pickup,ui_weapon_bp_drop,com.fs.starfarer.api.campaign.impl.items.WeaponBlueprintItemPlugin,astd_heavy_charge_needle,使重工业设施能够制造“重型电荷针刺”。,9201
 ```
 
 `no_drop, no_drop_salvage` 为 P6 前口径（P6 接入量产蓝图投放时摘除）。

@@ -499,7 +499,7 @@ class ArcProductionCopyReviewTest {
             "ui.hullmod.arc_shared_tactical_network.value.frigate" to "护卫舰：射程+40%，机动+20%，护盾承伤-20%",
             "ui.hullmod.arc_shared_tactical_network.value.destroyer" to "驱逐舰：射程+30%，机动+10%，护盾承伤-15%",
             "ui.hullmod.arc_shared_tactical_network.value.cruiser" to "巡洋舰：射程+20%，护盾承伤-10%",
-            "ui.hullmod.arc_shared_tactical_network.note" to "阿斯忒里亚遗构局舰船效果+25%；弧光子型额外+25%。主力舰不获得加成。",
+            "ui.hullmod.arc_shared_tactical_network.note" to "菀星设计总局舰船效果+25%；星坠子型额外+25%。主力舰不获得加成。",
             "ui.hullmod.plasma_armor_shield.value.armor_shield" to "按受击方位取最终装甲10%~30%参与装甲减伤",
             "ui.hullmod.plasma_armor_shield.value.damage_type" to "护盾：能量-15%，动能-33%，高爆+33%，破片+50%",
             "ui.hullmod.plasma_armor_shield.value.grid" to "正前方60度=30%；侧前方线性20%~30%；后方线性10%~20%",

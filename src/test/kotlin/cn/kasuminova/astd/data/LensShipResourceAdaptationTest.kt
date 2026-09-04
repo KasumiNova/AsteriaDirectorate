@@ -76,7 +76,7 @@ class LensShipResourceAdaptationTest {
         assertEquals("0", weaponRow.getValue("turn rate"))
         assertEquals("OTHER", weaponRow.getValue("type"))
         assertEquals("no_drop, no_drop_salvage", weaponRow.getValue("tags"))
-        assertEquals("透镜矩阵", weaponRow.getValue("tech/manufacturer"))
+        assertEquals("菀星设计局-紫菀", weaponRow.getValue("tech/manufacturer"))
         assertEquals("TRUE", weaponRow.getValue("noDPSInTooltip"))
     }
 

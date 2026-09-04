@@ -130,7 +130,7 @@ HUD 文本不进 properties，走 `contents/data/strings/strings.json`（MOD 类
 量产件 P2 走单件蓝图（90 计划 §14）。plugin params = **裸武器 id**（§0-2）；带 `single_bp` 标签时 params 必填（`ASTDDevContentSelector.SPECIAL_ITEM_PARAM_REQUIRED_TAGS/IDS` 核实），dev 仓储自动投放。ss-csv 无任何 `SPECIAL_ITEMS` 条目（已核实生成器只写有entry的目标），本文件为纯手维护，生成不会覆盖。
 
 ```csv
-电驱加速炮蓝图,astd_electric_drive_accelerator_bp,"weapon_bp, single_bp, no_drop, no_drop_salvage",阿斯忒里亚遗构局,,11000,1,0,,graphics/icons/cargo/blueprint_weapons.png,ui_chip_pickup,ui_weapon_bp_drop,com.fs.starfarer.api.campaign.impl.items.WeaponBlueprintItemPlugin,astd_electric_drive_accelerator,使重工业设施能够制造“电驱加速炮”。,9202
+电驱加速炮蓝图,astd_electric_drive_accelerator_bp,"weapon_bp, single_bp, no_drop, no_drop_salvage",菀星设计局-星坠,,11000,1,0,,graphics/icons/cargo/blueprint_weapons.png,ui_chip_pickup,ui_weapon_bp_drop,com.fs.starfarer.api.campaign.impl.items.WeaponBlueprintItemPlugin,astd_electric_drive_accelerator,使重工业设施能够制造“电驱加速炮”。,9202
 ```
 
 `no_drop, no_drop_salvage` 为 P6 前口径（P6 接入量产蓝图投放时摘除）。

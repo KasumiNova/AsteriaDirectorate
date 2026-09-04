@@ -28,7 +28,7 @@ object Wpn_astd_gravitational_lens_bloom : WeaponDataEntry() {
     override val turnRate: Int = 0
     override val type: String = "OTHER"
     override val tags: String = "no_drop, no_drop_salvage"
-    override val tech: String = "透镜矩阵"
+    override val tech: String = "菀星设计局-紫菀"
     override val noDpsInTooltip: Boolean = true
     override val number: Int = 9206
 }
@@ -66,7 +66,7 @@ object Wpn_astd_gcp12 : WeaponDataEntry() {
 
     override val tags: String = "astd_production"
     override val groupTag: String = "astd"
-    override val tech: String = "透镜矩阵"
+    override val tech: String = "菀星设计局-紫菀"
     override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
     override val customPrimary: String = SsI18n.t("weapon.$id.tooltip.customPrimary")
     override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
@@ -102,7 +102,7 @@ object Wpn_astd_gcp8 : WeaponDataEntry() {
 
     override val tags: String = "astd_production"
     override val groupTag: String = "astd"
-    override val tech: String = "透镜矩阵"
+    override val tech: String = "菀星设计局-紫菀"
     override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
     override val customPrimary: String = SsI18n.t("weapon.$id.tooltip.customPrimary")
     override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
@@ -138,7 +138,7 @@ object Wpn_astd_gcp4 : WeaponDataEntry() {
 
     override val tags: String = "astd_production"
     override val groupTag: String = "astd"
-    override val tech: String = "透镜矩阵"
+    override val tech: String = "菀星设计局-紫菀"
     override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
     override val customPrimary: String = SsI18n.t("weapon.$id.tooltip.customPrimary")
     override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
@@ -175,7 +175,7 @@ object Wpn_astd_gcp2 : WeaponDataEntry() {
     override val aiHints: Set<AiHint> = setOf(AiHint.PD)
     override val tags: String = "astd_production"
     override val groupTag: String = "astd"
-    override val tech: String = "透镜矩阵"
+    override val tech: String = "菀星设计局-紫菀"
     override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
     override val customPrimary: String = SsI18n.t("weapon.$id.tooltip.customPrimary")
     override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
@@ -217,7 +217,7 @@ object Wpn_astd_annihilation_vortex : WeaponDataEntry() {
     // P6 前口径（首批计划 §14）；P6 后改赏金掉落，另立任务
     override val tags: String = "no_drop, no_drop_salvage"
     override val groupTag: String = "astd"
-    override val tech: String = "透镜矩阵"
+    override val tech: String = "菀星设计局-紫菀"
     override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
     override val customPrimary: String = SsI18n.t("weapon.$id.tooltip.customPrimary")
     override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
@@ -268,7 +268,7 @@ object Wpn_astd_stellar_mrm_launcher : WeaponDataEntry(), SsProjMissileOutputs {
     // P6 前口径（首批计划 §14）；P6 后改稀有赏金掉落，另立任务
     override val tags: String = "no_drop, no_drop_salvage"
     override val groupTag: String = "astd"
-    override val tech: String = "透镜矩阵"
+    override val tech: String = "菀星设计局-紫菀"
     override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
     override val customPrimary: String = SsI18n.t("weapon.$id.tooltip.customPrimary")
     override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
@@ -340,7 +340,7 @@ object Wpn_astd_stellar_mrm_pod : WeaponDataEntry(), SsProjMissileOutputs {
 
     override val tags: String = "no_drop, no_drop_salvage"
     override val groupTag: String = "astd"
-    override val tech: String = "透镜矩阵"
+    override val tech: String = "菀星设计局-紫菀"
     override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
     override val customPrimary: String = SsI18n.t("weapon.$id.tooltip.customPrimary")
     override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
