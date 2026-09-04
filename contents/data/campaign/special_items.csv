@@ -1,11 +1,4 @@
 name,id,tags,tech/manufacturer,rarity,base price,stack size,cargo space,baseRaidDanger,icon,sound id,sound id drop,plugin,plugin params,desc,order
-回声·校验核心,astd_echo_core,"ai_core, astd, no_sell",阿斯忒里亚遗构局,,0,1,0,,graphics/icons/cargo/ai_omega_core.png,ui_cargo_special_ultratech_pickup,ui_cargo_special_ultratech_drop,cn.kasuminova.astd.campaign.items.EchoCoreItemPlugin,,"一枚被重新封装的运算核心。它不是‘钥匙’，也不是‘开关’——更像一枚可携带的校验印记，用于与某个古老协议进行双向握手。
-
-它在你的货舱里保持安静，但你能感觉到：它并未沉睡。它在监听。
-
-【不可出售】
-【等级 8】
-【回声：透镜协议的自我复制体】",9100
 电荷针刺蓝图,astd_charge_needle_bp,"weapon_bp, single_bp, no_drop, no_drop_salvage",阿斯忒里亚遗构局,,8000,1,0,,graphics/icons/cargo/blueprint_weapons.png,ui_chip_pickup,ui_weapon_bp_drop,com.fs.starfarer.api.campaign.impl.items.WeaponBlueprintItemPlugin,astd_charge_needle,使重工业设施能够制造“电荷针刺”。,9200
 重型电荷针刺蓝图,astd_heavy_charge_needle_bp,"weapon_bp, single_bp, no_drop, no_drop_salvage",阿斯忒里亚遗构局,,15000,1,0,,graphics/icons/cargo/blueprint_weapons.png,ui_chip_pickup,ui_weapon_bp_drop,com.fs.starfarer.api.campaign.impl.items.WeaponBlueprintItemPlugin,astd_heavy_charge_needle,使重工业设施能够制造“重型电荷针刺”。,9201
 电驱加速炮蓝图,astd_electric_drive_accelerator_bp,"weapon_bp, single_bp, no_drop, no_drop_salvage",阿斯忒里亚遗构局,,11000,1,0,,graphics/icons/cargo/blueprint_weapons.png,ui_chip_pickup,ui_weapon_bp_drop,com.fs.starfarer.api.campaign.impl.items.WeaponBlueprintItemPlugin,astd_electric_drive_accelerator,使重工业设施能够制造“电驱加速炮”。,9202

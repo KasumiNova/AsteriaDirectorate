@@ -89,7 +89,8 @@ internal class ASTDDevContentSelectorTest {
     @Test
     fun `dev storage item filtering keeps cargo items but drops meta commodity buckets`() {
         val specialRows = CsvTestUtil.readRowsById(Path.of("contents/data/campaign/special_items.csv"))
-        assertTrue(ASTDDevContentSelector.isDevStorageSpecialItem(specialRows.getValue("astd_echo_core").toSpecialItemRow()))
+        assertTrue(ASTDDevContentSelector.isDevStorageSpecialItem(specialRows.getValue("astd_charge_needle_bp").toSpecialItemRow()))
+        assertTrue(ASTDDevContentSelector.isDevStorageSpecialItem(specialRows.getValue("astd_gemini_dem_launcher_bp").toSpecialItemRow()))
 
         val baseCommodityRows = CsvTestUtil.readRowsById(Path.of("/mnt/store/Games/Starsector098-linux/data/campaign/commodities.csv"))
         assertTrue(ASTDDevContentSelector.isDevStorageCommodity(baseCommodityRows.getValue("supplies").toCommodityRow()))

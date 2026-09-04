@@ -8,10 +8,10 @@
 		"settings.difficulty.tier.name.expedition": "远征",
 		"settings.difficulty.tier.name.dawn": "破晓",
 		"settings.difficulty.tier.name.custom": "自定义",
-		"settings.difficulty.tier.desc.dusk": "迟暮（1.0）：与今日的阿斯忒里亚舰队对抗。漫长的遗落磨去了它的锋刃，而这支舰队的残躯，依然超出星区任何一支武装的想象。模组的标准体验起点。",
-		"settings.difficulty.tier.desc.blade": "砺刃（2.0）：与昔日的阿斯忒里亚舰队对抗。遗落未能锈蚀它的战争机器，星区面对的仍是一支成建制的深空舰队。与其调谐，磨砺自我，展示积累的一切。",
-		"settings.difficulty.tier.desc.expedition": "远征（3.0）：与巡航星海的阿斯忒里亚舰队对抗。那时的它尚不知何为敌手，航迹所至，诸舰退避。站上这片战场，本身就是一种宣示。",
-		"settings.difficulty.tier.desc.dawn": "破晓（5.0）：与启航之时的阿斯忒里亚舰队对抗。历史记载它自信能荡平一切——记载没有夸大。与其对抗，与其争斗，与其一同踏上觉醒之路。",
+		"settings.difficulty.tier.desc.dusk": "迟暮（1.0）：敌方单位的机制数值按 1.0 系数缩放。适用于刚开始接触模组内容的档位，机制以可观察、可拆解为主。",
+		"settings.difficulty.tier.desc.blade": "砺刃（2.0）：敌方单位的机制数值按 2.0 系数缩放。舰船系统与武器表现进入完整强度区间，需要针对性配装应对。",
+		"settings.difficulty.tier.desc.expedition": "远征（3.0）：敌方单位的机制数值按 3.0 系数缩放。词缀与系统联动更加频繁，对舰队构成与战术执行有更高要求。",
+		"settings.difficulty.tier.desc.dawn": "破晓（5.0）：敌方单位的机制数值按 5.0 系数缩放。全部强度模型运行在最高档，需要完整成型的舰队与精确的操作窗口。",
 		"settings.difficulty.custom.fieldName": "自定义难度系数",
 		"settings.difficulty.custom.tooltip": "仅在选择“自定义”档时生效。范围 1.0 ~ 5.0，敌方机制数值按此系数缩放。"
 	}

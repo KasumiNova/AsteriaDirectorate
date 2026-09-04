@@ -1,6 +1,6 @@
 # ASTD 美术需求文档索引
 
-本目录用于把 Asteria Directorate 项目的背景设定、舰船/武器设计案、剧情章节与实际数据整理为面向美术团队的可执行文档。
+本目录用于把 Asteria Directorate 项目的背景设定、舰船/武器设计案与实际数据整理为面向美术团队的可执行文档。
 
 ## 文档结构
 
@@ -53,7 +53,6 @@
 
 - `docs/design/ships/**`
 - `docs/design/weapons/**`
-- `docs/story/**`
 - `contents/data/hulls/**`
 - `contents/data/weapons/**`
 - `contents/data/strings/**`

@@ -113,7 +113,6 @@ object AsteriaTestCampaignBootstrap {
         try {
             val sector = Global.getSector() ?: return
             val testTarget = findTestTarget(sector) ?: return
-            purgeUnsafeDevStorageStacks(testTarget.market)
             val storageHasPayload = hasDevStoragePayload(testTarget.market)
             if (!storageHasPayload && fillStorageWithModContent(testTarget.market)) {
                 AsteriaTestCampaignBootstrapState.markContentDone(sector.persistentData)
@@ -201,7 +200,6 @@ object AsteriaTestCampaignBootstrap {
         unlockStorage(market)
         migrateDuplicateTestStorageCargo(sector, market)
         removeDevLocalResourcesListeners(sector)
-        purgeUnsafeDevStorageStacks(market)
 
         planet.market = market
         sector.playerFaction.production.setGatheringPoint(market)
@@ -467,21 +465,6 @@ object AsteriaTestCampaignBootstrap {
             cargo.fighters.isNotEmpty()
     }
 
-    private fun purgeUnsafeDevStorageStacks(market: MarketAPI?) {
-        val cargo = market?.getSubmarket(Submarkets.SUBMARKET_STORAGE)?.cargoNullOk ?: return
-        var removed = 0
-        for (stack in cargo.stacksCopy) {
-            val special = stack.specialDataIfSpecial ?: continue
-            if (!ASTDDevContentSelector.isUnsafeDevStorageSpecialItemId(special.id)) continue
-            cargo.removeStack(stack)
-            removed++
-        }
-        if (removed > 0) {
-            cargo.removeEmptyStacks()
-            log.info("[AsteriaTestCampaignBootstrap] Removed $removed unsafe special item stacks from test storage.")
-        }
-    }
-
     private fun fillStorageWithModContent(market: MarketAPI): Boolean {
         val storage = market.getSubmarket(Submarkets.SUBMARKET_STORAGE)
         if (storage == null) {
@@ -490,7 +473,6 @@ object AsteriaTestCampaignBootstrap {
         }
 
         val cargo = storage.cargo
-        purgeUnsafeDevStorageStacks(market)
         cargo.credits.add(2_000_000f)
         cargo.addSupplies(5_000f)
         cargo.addFuel(5_000f)

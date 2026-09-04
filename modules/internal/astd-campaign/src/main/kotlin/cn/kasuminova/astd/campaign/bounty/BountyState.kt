@@ -12,7 +12,7 @@ import java.util.LinkedHashSet
 class BountyState() {
 
     /**
-     * 已完成的主线数量（不包含支线）。
+     * 已完成的主线数量（框架保留，内容重做后接入驱动源）。
      */
     @JvmField
     var mainCompleted: Int = 0
@@ -30,22 +30,10 @@ class BountyState() {
     var patchedBountyKeys: MutableSet<String> = LinkedHashSet()
 
     /**
-     * 已处理过“结算/刷新支线/解锁”的 bounty key。
+     * 已处理过“结算”的 bounty key。
      */
     @JvmField
     var concludedBountyKeys: MutableSet<String> = LinkedHashSet()
-
-    /**
-     * 支线生成序列号（确保每次生成 id 唯一）。
-     */
-    @JvmField
-    var sideSerial: Int = 0
-
-    /**
-     * 主线结束后同伴彩蛋（守望者/回声）是否已触发过。
-     */
-    @JvmField
-    var companionsOffered: Boolean = false
 
     companion object {
         @JvmStatic

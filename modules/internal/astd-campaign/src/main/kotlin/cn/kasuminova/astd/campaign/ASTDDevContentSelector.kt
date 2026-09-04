@@ -192,7 +192,6 @@ object ASTDDevContentSelector {
         if (row.id.isBlank()) return false
         if (row.tags.containsAny(SPECIAL_ITEM_REJECT_TAGS)) return false
         if (row.tags.containsAny(SPECIAL_ITEM_HIDDEN_TAGS)) return false
-        if (isUnsafeDevStorageSpecialItemId(row.id)) return false
         if (row.plugin.isOneOf(SPECIAL_ITEM_STATEFUL_PLUGINS) && row.params.isBlank()) return false
         if (row.tags.containsAny(SPECIAL_ITEM_PARAM_REQUIRED_TAGS) && row.params.isBlank()) return false
         if (row.id.isOneOf(SPECIAL_ITEM_PARAM_REQUIRED_IDS) && row.params.isBlank()) return false
@@ -205,15 +204,10 @@ object ASTDDevContentSelector {
         val tags = spec.tags?.mapTo(mutableSetOf()) { it } ?: emptySet()
         if (tags.containsAny(SPECIAL_ITEM_REJECT_TAGS)) return false
         if (tags.containsAny(SPECIAL_ITEM_HIDDEN_TAGS)) return false
-        if (isUnsafeDevStorageSpecialItemId(id)) return false
         val params = spec.params.orEmpty()
         if (tags.containsAny(SPECIAL_ITEM_PARAM_REQUIRED_TAGS) && params.isBlank()) return false
         if (id.isOneOf(SPECIAL_ITEM_PARAM_REQUIRED_IDS) && params.isBlank()) return false
         return true
-    }
-
-    fun isUnsafeDevStorageSpecialItemId(id: String): Boolean {
-        return id.isOneOf(SPECIAL_ITEM_UNSAFE_IDS)
     }
 
     fun isDevStorageCommodity(row: CommodityRow): Boolean {
@@ -331,11 +325,6 @@ object ASTDDevContentSelector {
         "weapon_bp",
         "fighter_bp",
         "industry_bp",
-    )
-
-    private val SPECIAL_ITEM_UNSAFE_IDS = setOf(
-        // WormholeAnchorPlugin parses SpecialItemData.data as JSON in getName(); null data crashes cargo sorting/tooltips.
-        "wormhole_anchor",
     )
 
     private val SPECIAL_ITEM_STATEFUL_PLUGINS = setOf(

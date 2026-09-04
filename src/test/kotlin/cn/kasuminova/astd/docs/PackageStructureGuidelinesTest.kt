@@ -31,7 +31,6 @@ class PackageStructureGuidelinesTest {
             "combat.effect.arc",
             "combat.effect.lens",
             "combat.shipsystems.base",
-            "combat.skills.base",
             "combat.hullmods.base",
             "combat.affix.base",
         )

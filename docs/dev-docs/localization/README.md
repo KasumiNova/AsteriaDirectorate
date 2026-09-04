@@ -13,7 +13,6 @@
   - 支持变量替换：`%var%`
   - 支持额外字符串表：当前已加载：
     - `contents/data/strings/bounty_strings.json`
-    - `contents/data/strings/companions_strings.json`
 
 ---
 
@@ -52,9 +51,6 @@
 
 ## 已迁移示例
 
-- 同伴系统（守望者/回声）：UI、招募对话、闲聊、舰船点评、联动彩蛋
-  - `contents/data/strings/companions_strings.json`
-  - `campaign/companions/*.kt`
 - 赏金 HUD 文案：重组舰队提示、主线推进提示、支线打捞提示
   - `contents/data/strings/bounty_strings.json`
   - `campaign/bounty/*`

@@ -1,5 +1,1 @@
 id,name,order,tier,reqPoints,reqPointsPerExtraSkill,description,author,combat officer,admiral,admin,tags,icon
-astd_echo_dual_validation,双重校验,9103,5,0,999,协议不相信誓言。协议只相信可验证的行为。,Asteria Directorate,true,false,false,"npc_only, astd_unique",graphics/icons/skills/target_analysis2.png
-astd_echo_lens_parallax,透镜视差,9102,5,0,999,你看到的不是目标。你看到的是它允许你看到的那一部分。,Asteria Directorate,true,false,false,"npc_only, astd_unique",graphics/icons/skills/EW.png
-astd_watcher_arc_judgement,弧光裁决,9100,5,0,999,弧光不是火力学。它是一种关于代价的纪律。,Asteria Directorate,true,false,false,"npc_only, astd_unique",graphics/icons/skills/systems_expertise.png
-astd_watcher_watch_protocol,守望协议,9101,5,0,999,守望不是等待。守望是拒绝把未来卖掉。,Asteria Directorate,true,false,false,"npc_only, astd_unique",graphics/icons/skills/field_modulation.png

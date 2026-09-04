@@ -56,7 +56,7 @@ public final class AsteriaDirectoratePlugin extends BaseModPlugin {
 
     @Override
     public void onGameLoad(boolean newGame) {
-        // 注册赏金动态生成/词缀/支线管理脚本。
+        // 注册赏金动态生成/词缀管理脚本（主线内容重做中，框架先行）。
         // 注意：允许多实例；脚本添加由 sector memory key 去重。
         BountyBootstrapper.onGameLoad();
         if (!newGame) {

@@ -1,9 +1,7 @@
 package cn.kasuminova.astd.campaign.bounty
 
-import cn.kasuminova.astd.internal.i18n.I18n
 import com.fs.starfarer.api.campaign.CargoAPI
 import com.fs.starfarer.api.campaign.InteractionDialogAPI
-import com.fs.starfarer.api.combat.BattleCreationContext
 import com.fs.starfarer.api.impl.campaign.FleetEncounterContext
 import com.fs.starfarer.api.impl.campaign.FleetInteractionDialogPluginImpl
 import com.fs.starfarer.api.util.Misc
@@ -12,6 +10,9 @@ import com.fs.starfarer.api.util.Misc
  * 赏金目标舰队交互配置：
  * - 允许定制 FleetInteractionDialogPlugin 的行为
  * - 在玩家战斗结束后（生成打捞前后）向对话框输出“任务完成文案”（而不是在赏金板里显示）
+ *
+ * 文案来源为接受赏金时写入 fleet memory 的 [BountyKeys.MEM_SUCCESS_TEXT]；
+ * 主线剧情长文案随旧内容链移除，新设定接入时按需恢复按 key 读表的分支。
  */
 class BountyFidConfigGen(
     private val bountyKey: String,
@@ -44,14 +45,9 @@ class BountyFidConfigGen(
     }
 
     private class BountyFidDelegate(
+        @Suppress("unused")
         private val bountyKey: String,
     ) : FleetInteractionDialogPluginImpl.BaseFIDDelegate() {
-
-        override fun battleContextCreated(dialog: InteractionDialogAPI, bcc: BattleCreationContext) {
-            // 这里先不做强行“禁止撤退”的硬规则；具体案子需要时再按 key 细化。
-            // bcc.aiRetreatAllowed = false
-            // bcc.fightToTheLast = true
-        }
 
         override fun postPlayerSalvageGeneration(dialog: InteractionDialogAPI, context: FleetEncounterContext, salvage: CargoAPI) {
             // 仅在玩家明确赢下遭遇战时输出。
@@ -62,17 +58,8 @@ class BountyFidConfigGen(
             if (mem.getBoolean(BountyKeys.MEM_SUCCESS_SHOWN)) return
             mem.set(BountyKeys.MEM_SUCCESS_SHOWN, true)
 
-            // 读取完成文案：
-            // - 主线：从 bounty_strings.json 表拿
-            // - 支线/动态：优先读 fleet memory 写入的文本
-            val successText = (mem.getString(BountyKeys.MEM_SUCCESS_TEXT) ?: "").ifBlank {
-                if (bountyKey in StoryBounties.mainsByKey) {
-                    I18n.t("asteria_directorate_bounty", "bounty.${bountyKey}.success")
-                } else {
-                    ""
-                }
-            }
-
+            // 读取完成文案：接受赏金时写入 fleet memory 的文本。
+            val successText = mem.getString(BountyKeys.MEM_SUCCESS_TEXT) ?: return
             if (successText.isBlank()) return
 
             dialog.textPanel.addPara(" ")

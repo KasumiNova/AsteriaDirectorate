@@ -14,7 +14,6 @@ object I18n {
      */
     private val EXTRA_STRING_TABLE_PATHS: List<String> = listOf(
         "data/strings/bounty_strings.json",
-        "data/strings/companions_strings.json",
         "data/strings/systems_strings.json",
         "data/strings/settings_strings.json",
     )

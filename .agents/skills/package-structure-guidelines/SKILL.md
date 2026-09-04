@@ -64,11 +64,6 @@ description: "ASTD 包结构规范：多模块布局、根包、internal、rende
 - `cn.kasuminova.astd.combat.shipsystems`
 - `cn.kasuminova.astd.combat.shipsystems.base`
 
-军官技能：
-
-- `cn.kasuminova.astd.combat.skills`
-- `cn.kasuminova.astd.combat.skills.base`
-
 舰船插件：
 
 - `cn.kasuminova.astd.combat.hullmods`

@@ -485,11 +485,16 @@ internal class AsteriaTestCampaignBootstrapStateTest {
     }
 
     @Test
-    fun `bootstrap purges unsafe special items from existing dev storage`() {
+    fun `bootstrap excludes unsafe special items from dev storage injection`() {
         val source = Files.readString(RepoLayout.mainSourceFile("campaign/AsteriaTestCampaignBootstrap.kt")!!)
 
-        assertTrue(source.contains("purgeUnsafeDevStorageStacks(market)"))
-        assertTrue(source.contains("ASTDDevContentSelector.isUnsafeDevStorageSpecialItemId"))
-        assertTrue(source.contains("cargo.removeStack(stack)"))
+        assertTrue(
+            source.contains("ASTDDevContentSelector.isDevStorageSpecialItem(spec)"),
+            "storage filling must route special items through the dev content selector",
+        )
+        assertTrue(
+            source.contains("cargo.addSpecial(SpecialItemData(id, params), 10f)"),
+            "storage filling must still add accepted special items",
+        )
     }
 }

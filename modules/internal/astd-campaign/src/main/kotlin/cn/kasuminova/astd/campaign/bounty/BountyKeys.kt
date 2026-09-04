@@ -1,7 +1,7 @@
 package cn.kasuminova.astd.campaign.bounty
 
 /**
- * 赏金系统（Asteria 线）统一常量。
+ * 赏金系统统一常量。
  */
 object BountyKeys {
 
@@ -49,9 +49,6 @@ object BountyKeys {
 
     /**
      * Fleet memory：战斗结束后在接触对话框里显示的“任务完成文案”。
-     *
-    * - 主线通常可不写（由 [BountyFidConfigGen] 从 i18n 表读取）
-     * - 支线/动态 bounty 可在接受时写入，避免额外建表
      */
     const val MEM_SUCCESS_TEXT: String = "\$astd_bounty_success_text"
 
