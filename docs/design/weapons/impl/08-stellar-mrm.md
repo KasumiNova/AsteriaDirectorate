@@ -14,7 +14,7 @@
 |---|---|---|
 | `StellarMrmMissileAI` 挂载「弹头 `.proj` 的 `onFireEffect` 通过 `missile.setMissileAI(...)`」 | 确认可行，但 `.proj` 的 onFireEffect 同时要做 VFX 登记：新增 `StellarMrmOnFireEffect`，内部先委托现成 `ProjectileSpecOnFireDispatcher`（实例化持有并调用），再 `setMissileAI` | 单一 onFireEffect 挂载点，VFX 与 AI 两件事一次办完；组合而非复制 dispatcher 逻辑 |
 | `StellarMrmDamageHandler`「对战机全部武器 EMP：`engine.spawnEmpArc` 或 `applyDamage`」 | `spawnEmpArc` 的 `targetTo` 参数类型是 `CombatEntityAPI`，而 `WeaponAPI` **不是** `CombatEntityAPI`（jar 已核实）——电弧无法锚到单个武器实体。落位：**EMP 伤害**走一次 `engine.applyDamage(fighter, point, 0, ENERGY, empTotal, ...)`；**逐武器视觉**走 `spawnEmpArcVisual(point, fighter, weapon.location, fighter, ...)`（该重载端点为 `Vector2f`，可锚到每个武器槽位，jar 已核实）。`ShipAPI.getAllWeapons()` 与 `WeaponAPI.getLocation()` jar 已核实存在，90-计划风险 #3 的 fallback 路径不需要 | 消除 90-计划待验证项「对战机全部武器 EMP 的 API 路径」 |
-| `StellarMrmVfx` | 弹体走 `ProjectileVfxSpecs` builders（复用现有 `violet()` 调色板 + `ribbon=true` 双带）；十字爆炸依赖七星组件（§3.3，含 07 未合并时的分支内应急方案） | 对齐 P2 观感翻译后的 texTrail 管线 |
+| `StellarMrmVfx` | 弹体走 `ProjectileVfxSpecs` builders（复用现有 `violet()` 调色板 + `ribbon=true` 双带）；裂隙爆炸依赖七星组件（§3.3，含 07 未合并时的分支内应急方案） | 对齐 P2 观感翻译后的 texTrail 管线 |
 | 类全挂 `combat.effect.lens` 直下 | 子包 `combat.effect.lens.stellar`（对齐 05 穷距 `arc.qiongjue` 子包先例）；接口落 `api/combat/StellarMrm.kt`（对齐 04 湮灭涡旋接口落 `api/combat/` 先例） | 避免 lens 包被十组武器塞爆 |
 
 ---
@@ -181,7 +181,7 @@ object Desc_astd_stellar_mrm_pod : LocalizedDescription("astd_stellar_mrm_pod", 
 | 类名 | 接口/实现 | 职责 | 挂载点 | 文件路径 |
 |---|---|---|---|---|
 | `StellarMrmTargeting` | 接口（fun interface） | 导弹目标选择策略：输入候选目标清单与弹体位置，输出选中目标（战机优先、排除导弹）。注释含：类简介「辉星导弹的猎杀目标筛选策略」、动机「把目标权重规则从 AI 转向循环中剥离供单测」、成员作用 | 被 `StellarMrmMissileAI` 持有 | `src/main/kotlin/cn/kasuminova/astd/api/combat/StellarMrm.kt` |
-| `StellarMrmStrike` | 接口 | 命中结算总入口：撞线者死判定、战机增伤 + 全部武器 EMP、十字辉星爆炸 AOE。注释含：类简介「辉星命中三大机制的一次性结算」、动机「OnHitEffect 保持薄入口，结算可注入测试桩引擎驱动」、每个方法作用与单位 | 被 `StellarMrmOnHitEffect` 持有 | 同文件 `StellarMrm.kt` |
+| `StellarMrmStrike` | 接口 | 命中结算总入口：撞线者死判定、战机增伤 + 全部武器 EMP、裂隙爆炸 AOE。注释含：类简介「辉星命中三大机制的一次性结算」、动机「OnHitEffect 保持薄入口，结算可注入测试桩引擎驱动」、每个方法作用与单位 | 被 `StellarMrmOnHitEffect` 持有 | 同文件 `StellarMrm.kt` |
 | `StellarMrmTargetingImpl` | 实现（object，无状态） | 战机优先/最近舰兜底/排除友军-hulk-导弹的筛选 | — | `src/main/kotlin/cn/kasuminova/astd/combat/effect/lens/stellar/StellarMrmTargetingImpl.kt` |
 | `StellarMrmStrikeImpl` | 实现（object，无状态） | §2.2 结算顺序的执行体；数值全部经 `StellarMrmStrikeMath` 与 `StellarMrmDifficulty` | — | 同包 `StellarMrmStrikeImpl.kt` |
 | `StellarMrmOnFireEffect` | 实现（`OnFireEffectPlugin`） | 持有 `ProjectileSpecOnFireDispatcher` 实例先委托 VFX 登记，再对 `projectile as? MissileAPI` 调 `setMissileAI(StellarMrmMissileAI(missile))` | `.proj` 的 `onFireEffect` | 同包 `StellarMrmOnFireEffect.kt` |
@@ -259,7 +259,7 @@ const val RETARGET_INTERVAL = 0.25f                    // AI 重选节流（提�
        .filter { it.owner != owner && !isHulkOrPhased(it) && it !== projectile && it !== target 已死体 }
    for (v in victims) engine.applyDamage(v, point, panel × expMult, DamageType.ENERGY, 0f,
        false, false, source, true)
-   VFX：十字爆炸组件（§3.3，scale=0.6、LENS 紫）+ engine.spawnExplosion(point, ZERO, 紫色, 40f, 0.4f) 底闪
+   VFX：裂隙爆炸组件（§3.3，radius = DEFAULT_RADIUS × 0.6f、蓝色族默认 palette）
 ```
 
 **难度取值调用点**：仅 `StellarMrmDifficulty.resolve(entry, owner)` 一个入口，命中时取值（LunaLib 热变更对后续命中即时生效，与 04「开火起点缓存」口径差异属刻意：本武器无开火态状态机，命中回调是唯一结算点）。
@@ -270,8 +270,8 @@ const val RETARGET_INTERVAL = 0.25f                    // AI 重选节流（提�
 |---|---|---|
 | 对战机额外伤害 | 原版伤害浮字（`showDamageFloaty=true`） | 数字自然变大，不额外加浮字防噪音 |
 | 战机全部武器 EMP | `spawnEmpArcVisual` 逐武器一道紫色电弧（视觉锚点=武器槽位）+ 原版武器熄火表现 | 电弧为玩家可见核心反馈；EMP 伤害数字同帧浮出 |
-| 辉星爆炸 AOE | 十字星爆炸 VFX（§3.3）+ `spawnExplosion` 紫闪底 + AOE 浮字 | 任意撞击恒触发，50su 范围可读 |
-| 撞线者死 | 敌方导弹消失 + 同帧十字爆炸（隐性机制不进文案，视觉即爆炸本身；设计案裁定） | 无额外浮字 |
+| 辉星爆炸 AOE | 裂隙爆炸 VFX（§3.3，蓝色族、半径 ×0.6）+ AOE 浮字 | 任意撞击恒触发，50su 范围可读 |
+| 撞线者死 | 敌方导弹消失 + 同帧裂隙爆炸（隐性机制不进文案，视觉即爆炸本身；设计案裁定） | 无额外浮字 |
 | 弹体飞行 | 紫色十字辉星本体 + 长 twin trail 双拖尾（texTrail 双带，§3.1） | LENS 紫主色 |
 | 常驻 HUD / 自定义浮字 | **不需要**（无叠层/无状态数值机制，机制全部在一次命中内自解释） | 对齐 04 湮灭涡旋「无常驻机制不挂状态栏」口径 |
 
@@ -311,11 +311,11 @@ const val RETARGET_INTERVAL = 0.25f                    // AI 重选节流（提�
 - width=10：1.5× 弹体体量（对照 spc3 中型 6、穷距大型 12）；length=420：定案「很长的双拖尾」（对齐 aod7 hero 420，2500 射程长航迹），目检微调。
 - 两 spec 值完全一致属刻意（同一弹头两种发射器）；若目检要求中型体量更大，仅调 pod 行 width。
 
-### 3.2 十字辉星爆炸（依赖七星组件）
+### 3.2 裂隙爆炸（依赖七星组件）
 
-- 90-计划 §11 裁定：十字闪光爆炸组件**七星首发，辉星按 60% 缩放复用**；§12 顺序辉星（8）在七星（7）之后。
-- **硬依赖**：七星交付的十字爆炸组件（接口名以 07 规格为准，预期形态：参数化 `scale` + `color` 的一次性 RenderEntity 特效——十字星 + 星云烟雾）。本武器调用：`scale = 0.6f`，主色 LENS 紫（ASTDColor(0.66, 0.42, 1.0)）。
-- **应急方案**（07 未合 main 时本分支开工）：分支内实现 `StellarMrmCrossExplosion`（object，同族十字星 + 星云烟雾，`spawn(scale, color)` 单入口）落地于 `combat/effect/lens/stellar/`，PR 描述显式标记「收口人去重：与 07 十字爆炸组件合并」；禁止静默双份共存进 main。
+- 2026-08 裂隙改版：原 90-计划 §11「十字闪光爆炸组件**七星首发，辉星按 60% 缩放复用**」裁定已由 `RiftExplosionVfx` 裂隙爆炸组件替代——七星首发，辉星复用同一组件（蓝色族默认 palette），半径 = `DEFAULT_RADIUS × 0.6f`（`StellarMrmStrikeImpl.RIFT_RADIUS_SCALE = 0.6f`，保持原「辉星 60% 缩放」相对观感）；§12 顺序辉星（8）在七星（7）之后不变。
+- **硬依赖**：七星交付的裂隙爆炸组件（`RiftExplosionVfx`，见 07 规格 §3.3）。本武器调用：`riftExplosion(engine, at, radius = DEFAULT_RADIUS * 0.6f, fadeOut = 1.0f, palette = BLUE)`。
+- **应急方案**（07 未合 main 时本分支开工）：分支内实现 `StellarMrmRiftExplosion`（object，同族裂隙爆炸，`spawn(radius, palette)` 单入口）落地于 `combat/effect/lens/stellar/`，PR 描述显式标记「收口人去重：与 07 裂隙爆炸组件合并」；禁止静默双份共存进 main。
 
 ---
 
@@ -383,7 +383,7 @@ const val RETARGET_INTERVAL = 0.25f                    // AI 重选节流（提�
 | 自定义导弹 AI 先例（`ASTDPursuitVirtualParticleAI`） | 已落地 main（形态参照，非代码依赖） | 就绪 |
 | Buff API | 基建 PR #1 | **不依赖**（无叠层机制） |
 | `ConeImpactHandler` | 正电子组落地 | **不依赖**（球形爆炸非锥面） |
-| **七星十字爆炸组件** | 07 组交付（90-计划 §12 第 7 位） | **软阻塞**：七星先合 main 则直接复用；否则走 §3.3 应急方案并在 PR 标记收口人去重 |
+| **七星裂隙爆炸组件（RiftExplosionVfx）** | 07 组交付（90-计划 §12 第 7 位；2026-08 裂隙改版替代原十字爆炸裁定） | **软阻塞**：七星先合 main 则直接复用；否则走 §3.3 应急方案并在 PR 标记收口人去重 |
 
 ### 5.3 实现顺序内位置
 
@@ -393,7 +393,7 @@ const val RETARGET_INTERVAL = 0.25f                    // AI 重选节流（提�
 2. `StellarMrmDifficulty` + `StellarMrmStrikeImpl` + 桩引擎结算单测（用例 13~15）。
 3. `StellarMrmMissileAI` + `StellarMrmOnFireEffect` + `StellarMrmOnHitEffect` 胶水层。
 4. 数据面（catalog ×2 / .wpn ×2 / i18n / Desc）→ `generateSsCsv` → 烟测最小 AI 原型（只追战机 + 直线结算，验证 `setMissileAI` 生效与目标选择）。
-5. VFX 登记（texTrail 双带）+ 十字爆炸（07 组件或应急实现）+ 目检收口。
+5. VFX 登记（texTrail 双带）+ 裂隙爆炸（07 组件或应急实现）+ 目检收口。
 
 ---
 
@@ -422,8 +422,8 @@ const val RETARGET_INTERVAL = 0.25f                    // AI 重选节流（提�
 **特效面**
 
 - [ ] builders 两条追加在 map 末尾、复用 `violet()`（未新增调色板函数）
-- [ ] 弹体观感：紫色辉星本体 + 很长双拖尾；撞击十字星为七星 60% 缩放紫色版
-- [ ] 十字爆炸：07 组件复用或应急实现已按 §3.2 口径标记收口人去重（无双份静默共存）
+- [ ] 弹体观感：紫色辉星本体 + 很长双拖尾；撞击裂隙为七星 `RiftExplosionVfx` 蓝色族、半径 ×0.6 版
+- [ ] 裂隙爆炸：07 组件复用或应急实现已按 §3.2 口径标记收口人去重（无双份静默共存）
 
 **测试面**
 

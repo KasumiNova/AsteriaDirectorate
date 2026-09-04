@@ -1,7 +1,7 @@
 package cn.kasuminova.astd.data
 
 import cn.kasuminova.astd.testutil.CsvTestUtil
-import java.nio.file.Files
+import cn.kasuminova.astd.testutil.RepoLayout
 import java.nio.file.Path
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -65,10 +65,8 @@ class ArcProductionHullmodRegistrationTest {
     }
 
     private fun assertRuntimeClassExists(className: String, label: String, id: String) {
-        val relativePath = className.removePrefix("cn.kasuminova.astd.")
-            .replace('.', '/')
-            .let { Path.of("src/main/kotlin/cn/kasuminova/astd/$it.kt") }
-        assertTrue(Files.exists(relativePath), "$label does not exist for $id: $className")
+        // 模块化拆分后源码分布于 modules/**，经 RepoLayout 跨模块定位（文件名与主类同名约定）。
+        assertTrue(RepoLayout.mainSourceFileOf(className) != null, "$label does not exist for $id: $className")
     }
 
     private companion object {

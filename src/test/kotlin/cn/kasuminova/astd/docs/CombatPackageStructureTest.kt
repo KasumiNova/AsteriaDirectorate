@@ -1,20 +1,19 @@
 package cn.kasuminova.astd.docs
 
-import java.nio.file.Files
-import kotlin.io.path.Path
-import kotlin.io.path.isRegularFile
-import kotlin.io.path.readText
+import cn.kasuminova.astd.testutil.RepoLayout
 import kotlin.test.Test
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
+/**
+ * 包结构纪律：跨全部 main 源码根（根装配工程 + modules 下各模块，见 [RepoLayout]）断言包声明。
+ * 模块是物理边界，包名是逻辑边界——拆分不改 FQN，故包断言与拆分前一致。
+ */
 class CombatPackageStructureTest {
-    private val repoRoot = Path(System.getProperty("user.dir"))
-    private val srcMain = listOf(repoRoot.resolve("src/main/java"), repoRoot.resolve("src/main/kotlin"))
 
     @Test
     fun `old top level business packages are migrated`() {
-        val text = readMainSourceText()
+        val text = RepoLayout.readAllMainSourceText()
         val forbidden = listOf(
             "package cn.kasuminova.astd.weapons",
             "package cn.kasuminova.astd.shipsystems",
@@ -29,7 +28,7 @@ class CombatPackageStructureTest {
 
     @Test
     fun `new domain packages exist`() {
-        val text = readMainSourceText()
+        val text = RepoLayout.readAllMainSourceText()
         val required = listOf(
             "package cn.kasuminova.astd.internal",
             "package cn.kasuminova.astd.renderer",
@@ -46,8 +45,4 @@ class CombatPackageStructureTest {
             assertTrue(text.contains(needle), "missing target package: $needle")
         }
     }
-
-    private fun readMainSourceText(): String = srcMain.flatMap { root ->
-        if (Files.exists(root)) Files.walk(root).use { stream -> stream.filter { it.isRegularFile() }.toList() } else emptyList()
-    }.joinToString("\n") { it.readText() }
 }

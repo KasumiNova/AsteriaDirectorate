@@ -1,0 +1,17 @@
+{
+    "id": "astd_piercing_lance_shot",
+    "specClass": "projectile",
+    "spawnType": "BALLISTIC",
+    "onFireEffect": "cn.kasuminova.astd.combat.effect.generic.ProjectileSpecOnFireDispatcher",
+    "onHitEffect": "cn.kasuminova.astd.combat.effect.arc.piercinglance.PiercingLanceOnHitEffect",
+    "collisionClass": "PROJECTILE_FF",
+    "collisionClassByFighter": "PROJECTILE_FIGHTER",
+    "length": 36,
+    "width": 36,
+    "fadeTime": 0.25,
+    "fringeColor": [120, 200, 255, 255],
+    "coreColor": [220, 245, 255, 200],
+    "textureScrollSpeed": -256,
+    "pixelsPerTexel": 1,
+    "hitGlowRadius": 25
+}

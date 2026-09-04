@@ -1,0 +1,16 @@
+{
+    "id": "astd_positron_shockwave_shot",
+    "specClass": "projectile",
+    "spawnType": "BALLISTIC",
+    "onFireEffect": "cn.kasuminova.astd.combat.effect.arc.PositronShockwaveOnFireEffect",
+    "collisionClass": "NONE",
+    "collisionClassByFighter": "NONE",
+    "length": 75,
+    "width": 20,
+    "fadeTime": 0.25,
+    "fringeColor": [140, 200, 255, 255],
+    "coreColor": [240, 248, 255, 200],
+    "textureScrollSpeed": -256,
+    "pixelsPerTexel": 1,
+    "hitGlowRadius": 25
+}

@@ -1,0 +1,17 @@
+{
+    "id": "astd_heavy_charge_needle_shot",
+    "specClass": "projectile",
+    "spawnType": "BALLISTIC",
+    "onFireEffect": "cn.kasuminova.astd.combat.effect.generic.ProjectileSpecOnFireDispatcher",
+    "onHitEffect": "cn.kasuminova.astd.combat.effect.arc.ChargeNeedleOnHitEffect",
+    "collisionClass": "PROJECTILE_FF",
+    "collisionClassByFighter": "PROJECTILE_FIGHTER",
+    "length": 75,
+    "width": 20,
+    "fadeTime": 0.25,
+    "fringeColor": [140, 200, 255, 255],
+    "coreColor": [225, 242, 255, 200],
+    "textureScrollSpeed": -256,
+    "pixelsPerTexel": 1,
+    "hitGlowRadius": 25
+}

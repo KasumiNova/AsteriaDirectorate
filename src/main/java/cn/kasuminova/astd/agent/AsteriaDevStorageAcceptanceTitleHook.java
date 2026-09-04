@@ -33,7 +33,7 @@ public final class AsteriaDevStorageAcceptanceTitleHook {
         final CampaignState campaignState = resolveCampaignState(driver);
 
         System.out.println("[ASTD-Agent] Loading campaign save for dev storage acceptance: " + targetSaveDir);
-        final Object error = CampaignGameManager.o00000(targetSaveDir, campaignState, campaignState);
+        final Object error = CampaignGameManager.loadGame(targetSaveDir, campaignState, campaignState);
         if (error != null) {
             throw new IllegalStateException(
                     "[ASTD-Agent] Dev storage acceptance failed: campaign save load returned error: " + error

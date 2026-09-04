@@ -1,0 +1,65 @@
+{
+    "id": "astd_gemini_dem_he_msl",
+    "specClass": "missile",
+    "missileType": "MISSILE",
+    "behaviorSpec": {
+        "behavior": "CUSTOM",
+        "minDelayBeforeTriggering": 0.5,
+        "triggerDistance": [700, 750],
+        "preferredMinFireDistance": [700, 750],
+        "turnRateBoost": 100,
+        "targetingTime": 2,
+        "firingTime": 1,
+        "targetingLaserId": "targetinglaser3",
+        "targetingLaserFireOffset": [8, 0, 8, 0],
+        "targetingLaserSweepAngles": [0, -7, 0, 7],
+        "payloadWeaponId": "astd_gemini_dem_he_payload",
+        "targetingLaserRange": 900,
+        "targetingLaserArc": 10,
+        "bombPumped": true,
+        "fadeOutEngineWhenFiring": false,
+        "destroyMissleWhenDoneFiring": false,
+        "snapFacingToTargetIfCloseEnough": false
+    },
+    "sprite": "graphics/missiles/dragonfire.png",
+    "size": [15, 24],
+    "center": [7.5, 12],
+    "collisionRadius": 12,
+    "collisionClass": "MISSILE_NO_FF",
+    "explosionColor": [255, 180, 110, 180],
+    "explosionRadius": 50,
+    "armingTime": 0.3,
+    "flameoutTime": 0.5,
+    "noEngineGlowTime": 0,
+    "fadeTime": 0.25,
+    "engineSpec": {
+        "turnAcc": 225,
+        "turnRate": 75,
+        "acc": 600,
+        "dec": 105
+    },
+    "engineSlots": [
+        {
+            "id": "ES1",
+            "loc": [-13, 0],
+            "style": "CUSTOM",
+            "styleSpec": {
+                "mode": "QUAD_STRIP",
+                "engineColor": [255, 190, 130, 255],
+                "glowSizeMult": 2.5,
+                "contrailDuration": 1,
+                "contrailWidthMult": 1,
+                "contrailWidthAddedFractionAtEnd": 2.5,
+                "contrailMinSeg": 5,
+                "contrailMaxSpeedMult": 0.5,
+                "contrailAngularVelocityMult": 0.5,
+                "contrailSpawnDistMult": 1,
+                "contrailColor": [255, 150, 90, 75],
+                "type": "GLOW"
+            },
+            "width": 7,
+            "length": 40,
+            "angle": 180
+        }
+    ]
+}

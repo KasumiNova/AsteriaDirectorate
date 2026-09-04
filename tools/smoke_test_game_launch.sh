@@ -25,11 +25,14 @@ fi
 if [[ -x "$GAME_DIR/launch_injected_ss.sh" ]]; then
     LAUNCH_CMD=("./launch_injected_ss.sh")
     echo "Launcher: launch_injected_ss.sh (SSOptimizer agent path)"
+elif [[ -x "$GAME_DIR/launch_nanoforge_ss.sh" ]]; then
+    LAUNCH_CMD=("./launch_nanoforge_ss.sh")
+    echo "Launcher: launch_nanoforge_ss.sh (NanoForge deobf path)"
 elif [[ -x "$GAME_DIR/starsector.sh" ]]; then
     LAUNCH_CMD=("./starsector.sh")
     echo "Launcher: starsector.sh"
 else
-    echo "FAIL: no launch_injected_ss.sh or starsector.sh found in $GAME_DIR"
+    echo "FAIL: no launch_injected_ss.sh, launch_nanoforge_ss.sh or starsector.sh found in $GAME_DIR"
     exit 1
 fi
 
@@ -232,7 +235,6 @@ launch_campaign_acceptance_direct() {
         -Dfile.encoding=UTF-8 \
         -noverify \
         -XX:+UnlockDiagnosticVMOptions \
-        -XX:+ShowCodeDetailsInExceptionMessages \
         -XX:+PrintCommandLineFlags \
         -XX:+TieredCompilation \
         -XX:+DisableExplicitGC \

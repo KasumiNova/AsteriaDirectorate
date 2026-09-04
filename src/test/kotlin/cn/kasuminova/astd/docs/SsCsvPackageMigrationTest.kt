@@ -4,6 +4,7 @@ import java.nio.file.Files
 import kotlin.io.path.Path
 import kotlin.io.path.isRegularFile
 import kotlin.io.path.readText
+import cn.kasuminova.astd.testutil.RepoLayout
 import kotlin.test.Test
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -14,7 +15,7 @@ class SsCsvPackageMigrationTest {
 
     @Test
     fun `ss csv source and gradle use new package`() {
-        val files = listOf(repoRoot.resolve("ss-csv/src/main/kotlin"), repoRoot.resolve("ss-csv/build.gradle.kts")).flatMap { root ->
+        val files = listOf(RepoLayout.astdCsvRoot.resolve("src/main/kotlin"), RepoLayout.astdCsvRoot.resolve("build.gradle.kts")).flatMap { root ->
             if (Files.isDirectory(root)) Files.walk(root).use { stream -> stream.filter { it.isRegularFile() }.toList() } else listOf(root)
         }
         val text = files.joinToString("\n") { it.readText() }

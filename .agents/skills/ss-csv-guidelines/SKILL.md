@@ -5,6 +5,8 @@ description: "ss-csv 使用规范与编辑规范：生成流程、目录约定�
 
 # Skill：ss-csv 使用规范与 CSV 编辑规范
 
+> 模块迁移说明：`ss-csv` 已迁移至 `modules/internal/astd-csv`（Gradle 子项目名 `:astd-csv`），职责与产物路径不变。
+
 ## 适用范围
 
 本规范适用于所有通过 ss-csv 生成的 Starsector 数据文件，尤其是：
@@ -23,17 +25,17 @@ description: "ss-csv 使用规范与编辑规范：生成流程、目录约定�
 
 ## 核心原则
 
-- **默认只生成到 build**：优先运行 `:ss-csv:generateSsCsv`，产物在 `build/generated/ss-csv/`。
+- **默认只生成到 build**：优先运行 `:astd-csv:generateSsCsv`，产物在 `build/generated/ss-csv/`。
 - **避免手改生成物**：不要手改 `build/**` 与 `contents/**` 下由 ss-csv 管理的 CSV；应修改 `ss-csv` 的 entries。
 - **schema header 是真相来源**：`tools/_schema_headers/*.header.csv` 的首行是列定义真相；生成器只读取首行。
 - **按 key 排序 + 去重**：生成器按 `SsCsvEntry.key` 排序，重复 key 会直接失败。
-- **遵守仓库全局约束**：ss-csv 的生成/写回流程以 `.agents/copilot-instructions.md` 为准（默认只生成到 build）。
+- **遵守仓库全局约束**：ss-csv 的生成/写回流程以 `.agents/AGENTS.md` 为准（默认只生成到 build）。
 
 ## 生成入口与目录约定
 
-- 入口任务（见 `ss-csv/build.gradle.kts`）：
-  - `:ss-csv:generateSsCsv` → 输出到 `build/generated/ss-csv/`（安全）
-  - `:ss-csv:writeSsCsvToContents -PssCsvForce=true` → 覆盖写入 `contents/`（危险）
+- 入口任务（见 `modules/internal/astd-csv/build.gradle.kts`）：
+  - `:astd-csv:generateSsCsv` → 输出到 `build/generated/ss-csv/`（安全）
+  - `:astd-csv:writeSsCsvToContents -PssCsvForce=true` → 覆盖写入 `contents/`（危险）
 - i18n 语言：`-Psscsv.locale=zh-cn|en-us`（默认 `zh-cn`）
 - 扫描包固定为：`cn.kasuminova.astd.sscsv.entries.catalog`（不在该包/子包的 entry 不会被扫描）
 
@@ -94,7 +96,7 @@ description: "ss-csv 使用规范与编辑规范：生成流程、目录约定�
 
 ### 3) i18n 与文本来源
 
-- 文本建议从 `ss-csv/src/main/resources/i18n/<locale>.properties` 获取（`SsI18n.t()`/`SsI18n.f()`）。
+- 文本建议从 `modules/internal/astd-csv/src/main/resources/i18n/<locale>.properties` 获取（`SsI18n.t()`/`SsI18n.f()`）。
 - 约定：
   - `weapon.<id>.name`
   - `system.<id>.name`
@@ -150,8 +152,8 @@ description: "ss-csv 使用规范与编辑规范：生成流程、目录约定�
 本仓库已内置 `.proj` 的 JSON 模型与输出接口：
 
 - 模型：
-  - `ss-csv/.../outputs/proj/ProjProjectileSpec.kt`
-  - `ss-csv/.../outputs/proj/ProjMissileSpec.kt`
+  - `modules/internal/astd-csv/.../outputs/proj/ProjProjectileSpec.kt`
+  - `modules/internal/astd-csv/.../outputs/proj/ProjMissileSpec.kt`
 - 输出接口（由 entry mix-in 实现）：
   - `SsProjProjectileOutputs`
   - `SsProjMissileOutputs`
@@ -176,10 +178,10 @@ description: "ss-csv 使用规范与编辑规范：生成流程、目录约定�
 
 ## 推荐流程
 
-1. 在 `ss-csv/src/main/kotlin/.../entries/catalog/**` 新增 `object` 条目。
-2. 补充 i18n 文本到 `ss-csv/src/main/resources/i18n/<locale>.properties`。
-3. 运行 `:ss-csv:generateSsCsv`，检查 `build/generated/ss-csv/**` 输出。
-4. **仅在明确需要**写回 `contents/` 时，执行 `:ss-csv:writeSsCsvToContents -PssCsvForce=true`。
+1. 在 `modules/internal/astd-csv/src/main/kotlin/.../entries/catalog/**` 新增 `object` 条目。
+2. 补充 i18n 文本到 `modules/internal/astd-csv/src/main/resources/i18n/<locale>.properties`。
+3. 运行 `:astd-csv:generateSsCsv`，检查 `build/generated/ss-csv/**` 输出。
+4. **仅在明确需要**写回 `contents/` 时，执行 `:astd-csv:writeSsCsvToContents -PssCsvForce=true`。
 
 ## 常见坑
 
@@ -192,16 +194,16 @@ description: "ss-csv 使用规范与编辑规范：生成流程、目录约定�
 
 ## 参考文件
 
-- `ss-csv/build.gradle.kts`
-- `ss-csv/src/main/kotlin/.../gen/SsCsvGenerator.kt`
-- `ss-csv/src/main/kotlin/.../CsvTarget.kt`
-- `ss-csv/src/main/kotlin/.../entries/*Entry.kt`
+- `modules/internal/astd-csv/build.gradle.kts`
+- `modules/internal/astd-csv/src/main/kotlin/.../gen/SsCsvGenerator.kt`
+- `modules/internal/astd-csv/src/main/kotlin/.../CsvTarget.kt`
+- `modules/internal/astd-csv/src/main/kotlin/.../entries/*Entry.kt`
 - `tools/_schema_headers/*.header.csv`
-- `ss-csv/src/main/resources/i18n/*.properties`
+- `modules/internal/astd-csv/src/main/resources/i18n/*.properties`
 
 ## 相关引用（建议一起阅读）
 
-- `.agents/copilot-instructions.md`：ss-csv 默认只生成到 build、写回需要明确要求。
+- `.agents/AGENTS.md`：ss-csv 默认只生成到 build、写回需要明确要求。
 - `.agents/skills/weapon-tooltip-descriptions/SKILL.md`：tooltip 多行/高亮/百分号等 CSV 文本安全规则。
 - `docs/engineering/05-testing.md`：构建/部署/ss-csv 生成的完整测试流程。
 - `docs/engineering/03-debug-placeholders.md`：调试占位数据与生成链路的说明。
