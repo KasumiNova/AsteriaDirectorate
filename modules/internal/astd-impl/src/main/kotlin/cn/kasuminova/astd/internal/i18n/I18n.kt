@@ -13,9 +13,13 @@ object I18n {
      * 这里提供一个“兜底读取”：当 [settings.getString] 找不到时，从这些额外 JSON 里取。
      */
     private val EXTRA_STRING_TABLE_PATHS: List<String> = listOf(
+        "data/strings/ui_strings.json",
         "data/strings/bounty_strings.json",
+        "data/strings/infinite_bounty_strings.json",
         "data/strings/systems_strings.json",
         "data/strings/settings_strings.json",
+        "data/strings/ending_strings.json",
+        "data/strings/storysite_strings.json",
     )
 
     private val log by lazy { Global.getLogger(I18n::class.java) }

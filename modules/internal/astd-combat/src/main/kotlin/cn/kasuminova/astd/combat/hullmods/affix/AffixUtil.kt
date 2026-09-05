@@ -39,4 +39,8 @@ internal object AffixUtil {
 
     @JvmStatic
     fun clamp01(v: Float): Float = v.coerceIn(0f, 1f)
+
+    /** 相位舰船判定：相位限定词缀（调谐/降频/深潜器）的落舰约束。 */
+    @JvmStatic
+    fun isPhaseShip(ship: ShipAPI?): Boolean = ship?.hullSpec?.isPhase == true
 }

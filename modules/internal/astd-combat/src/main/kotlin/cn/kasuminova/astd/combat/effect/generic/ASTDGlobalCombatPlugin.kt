@@ -18,6 +18,7 @@ class ASTDGlobalCombatPlugin : BaseEveryFrameCombatPlugin() {
 
     override fun init(engine: CombatEngineAPI) {
         try {
+            cn.kasuminova.astd.combat.effect.aster.AsterGravityNodeBattle.installPending(engine)
             CombatVfxBootstrap.ensureInstalled(engine)
         } catch (t: Throwable) {
             Global.getLogger(ASTDGlobalCombatPlugin::class.java)

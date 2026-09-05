@@ -1,6 +1,5 @@
 package cn.kasuminova.astd.campaign.bounty
 
-import cn.kasuminova.astd.combat.affix.AffixRegistry
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.fleet.FleetMemberAPI
 import com.fs.starfarer.api.fleet.FleetMemberType
@@ -8,7 +7,12 @@ import org.apache.log4j.Logger
 import java.util.Random
 
 /**
- * 将“缩放模型 + 舰船池 + 词缀”落到具体 fleet 成员列表。
+ * 将“缩放模型 + 舰船池 + 词缀规则”落到具体 fleet 成员列表。
+ *
+ * - 舰队规模：预设 FP × [DifficultyModel] 总缩放，以实际生成舰船的 FP 核算预算。
+ *   大编队作为战斗增援进入，不在配置的舰队大小处静默丢弃剩余预算。
+ * - 词缀：由 [BountyDef.affixRule] 驱动（affixes.md v3 搭配表：S 2~4 + M 1~2 + R 按章解禁），
+ *   候选池见 [AffixPools]；相位约束词缀只搭载到相位舰。
  */
 object FleetComposer {
 
@@ -17,94 +21,109 @@ object FleetComposer {
     data class Composition(
         val pickedVariantIds: List<String>,
         val affixHullMods: List<String>,
+        /** 词缀中仅相位舰船可搭载的子集（[AffixPools] 口径）。 */
+        val phaseOnlyHullMods: List<String>,
         val k: Float,
         val totalMult: Float,
     )
 
     fun buildComposition(
         def: BountyDef,
-        state: BountyState,
         seed: Long,
     ): Composition {
-        val scale = DifficultyModel.compute(def.threatTier, def.baselineFP)
+        val scale = DifficultyModel.compute(def.baselineFP)
         val desiredFP = (def.baselineFP.toFloat() * scale.totalMult).toInt().coerceAtLeast(def.baselineFP)
 
         val rnd = Random(seed)
-        val modPool = VariantPools.modStandardVariants()
-        val randomPool = VariantPools.randomPresetVariants()
-        val omegaPool = VariantPools.omegaLikeVariants()
+        val modPool = VariantPools.modStandardVariants().filter { id ->
+            val variant = Global.getSettings().getVariant(id)
+            if (def.chapter == 0) variant.hullSize < com.fs.starfarer.api.combat.ShipAPI.HullSize.CRUISER
+            else true
+        }
+        val randomPool = VariantPools.randomPresetVariants().filter { id ->
+            val variant = Global.getSettings().getVariant(id)
+            if (def.chapter == 0) variant.hullSize <= com.fs.starfarer.api.combat.ShipAPI.HullSize.CRUISER
+            else true
+        }
 
         val picked = ArrayList<String>(64)
-        // 1) 先塞一个旗舰（强制）
         picked.add(def.flagshipVariantId)
-        // 2) 再塞固定“核心编成”（用于还原案子基础阵容）
-        if (def.coreVariantIds.isNotEmpty()) {
-            picked.addAll(def.coreVariantIds)
-        }
+        picked.addAll(def.coreVariantIds)
 
-        // 核心编成可能已经消耗了不少预算：后续按“剩余预算”去填池。
-        val pickedFp = picked.sumOf { VariantPools.variantFpCostOrNull(it) ?: 0 }
+        val pickedFp = picked.sumOf { id ->
+            requireNotNull(VariantPools.variantFpCostOrNull(id)) { "Invalid bounty flagship/core variant: $id" }
+        }
         val remainingFP = (desiredFP - pickedFp).coerceAtLeast(0)
 
-        val modBudget = (remainingFP * 0.50f).toInt()
-        val randomBudget = (remainingFP * 0.40f).toInt()
-        val omegaBudget = remainingFP - modBudget - randomBudget
-
-        fun fill(pool: List<String>, budget: Int) {
-            var remaining = budget
-            var guard = 600
-            while (remaining > 0 && guard-- > 0 && pool.isNotEmpty()) {
-                val vid = pool[rnd.nextInt(pool.size)]
-                val fp = VariantPools.variantFpCostOrNull(vid) ?: continue
-                if (fp <= 0) continue
-                if (fp > remaining && remaining > 10) continue
-                picked.add(vid)
-                remaining -= fp
-            }
-        }
-
-        // 3) 分池填充（注意：旗舰/核心编成已提前写入；这里仅填“剩余部分”）
-        fill(modPool, modBudget)
-        fill(randomPool, randomBudget)
-        if (omegaPool.isNotEmpty()) {
-            fill(omegaPool, omegaBudget)
+        val budgets: List<Pair<List<String>, Int>> = if (def.modOnlyComposition) {
+            listOf(modPool to remainingFP)
         } else {
-            // Omega 池缺失：把预算回流给 random。
-            fill(randomPool, omegaBudget)
+            val modBudget = (remainingFP * if (def.chapter == 0) 0.15f else 0.50f).toInt()
+            listOf(modPool to modBudget, randomPool to remainingFP - modBudget)
         }
 
-        // 3) 词缀选择（只依赖 state，不依赖 config 文件）
-        val unlocked = state.unlockedAffixIds
-        val affixes = AffixRegistry.pickAffixes(
-            unlockedIds = unlocked,
-            mainCompleted = state.mainCompleted,
-            threatTier = def.threatTier,
-            k = scale.k,
-            seed = seed xor 0x5EED5EED,
-        )
+        for ((pool, budget) in budgets) {
+            val costs = pool.associateWith { id ->
+                requireNotNull(VariantPools.variantFpCostOrNull(id)) { "Invalid bounty variant: $id" }
+            }.filterValues { it > 0 }
+            picked += fillBudget(costs, budget, rnd)
+        }
 
-        val affixHullMods = affixes.mapNotNull { it.hullModId }
+        // 3) 词缀选择：固有难度取档，玩家超模评估不改变搭配数量。
+        val affixPick = AffixPools.pick(def.affixRule, scale.k, seed xor 0x5EED5EED)
+
         return Composition(
             pickedVariantIds = picked,
-            affixHullMods = affixHullMods,
+            affixHullMods = affixPick.affixHullMods,
+            phaseOnlyHullMods = affixPick.phaseOnlyHullMods,
             k = scale.k,
             totalMult = scale.totalMult,
         )
     }
 
+    /**
+     * 按实际 FP 填充编成，不以船数或随机重试次数截断预算。
+     * 优先选能装入剩余预算的预设；不足最小舰船成本时以最小舰船补齐，误差小于一艘舰。
+     * 排序池与二分上界避免大规模赏金逐次扫描全部预设。
+     */
+    internal fun fillBudget(costs: Map<String, Int>, budget: Int, random: Random): List<String> {
+        require(budget >= 0)
+        if (budget == 0) return emptyList()
+        require(costs.isNotEmpty() && costs.values.all { it > 0 }) { "Bounty fleet pool has no valid positive-FP variants" }
+        val pool = costs.entries.sortedWith(compareBy({ it.value }, { it.key }))
+        val result = ArrayList<String>()
+        var remaining = budget
+        while (remaining > 0) {
+            var low = 0
+            var high = pool.size
+            while (low < high) {
+                val middle = (low + high) ushr 1
+                if (pool[middle].value <= remaining) low = middle + 1 else high = middle
+            }
+            val pick = pool[if (low == 0) 0 else random.nextInt(low)]
+            result += pick.key
+            remaining -= pick.value
+        }
+        return result
+    }
+
     fun rebuildFleetMembers(
         bountyKey: String,
         fleetMembers: List<String>,
-        k: Float,
-        totalMult: Float,
         affixHullMods: List<String>,
+        phaseOnlyHullMods: List<String>,
         flagship: FleetMemberAPI,
+        flagshipDMods: Int,
+        seed: Long,
     ): List<FleetMemberAPI> {
         val factory = Global.getFactory()
         val created = ArrayList<FleetMemberAPI>(fleetMembers.size)
 
-        // 旗舰保持原对象，但补上缩放/词缀。
-        applyBountyHullModsAndMemory(flagship, k, totalMult, affixHullMods)
+        // 旗舰保持原对象，但补上缩放/词缀/D-mod。
+        applyBountyHullMods(flagship, affixHullMods, phaseOnlyHullMods)
+        if (flagshipDMods > 0) {
+            applyRandomDMods(flagship, flagshipDMods, seed xor 0xD40D)
+        }
         created.add(flagship)
 
         for (vid in fleetMembers.drop(1)) {
@@ -116,68 +135,55 @@ object FleetComposer {
                 null
             } ?: continue
 
-            applyBountyHullModsAndMemory(member, k, totalMult, affixHullMods)
+            applyBountyHullMods(member, affixHullMods, phaseOnlyHullMods)
             created.add(member)
         }
         return created
     }
 
-    private fun applyBountyHullModsAndMemory(member: FleetMemberAPI, k: Float, totalMult: Float, affixHullMods: List<String>) {
-        try {
-            // 基础小幅数值缩放（难度系数）
-            member.variant?.addPermaMod("astd_bounty_scaling")
-            // 词缀 hullmods
-            for (hm in affixHullMods) {
-                member.variant?.addPermaMod(hm)
-            }
-        } catch (_: Throwable) {
-            // 某些 VariantAPI 实现可能不允许改；忽略，至少记 memory。
+    private fun applyBountyHullMods(
+        member: FleetMemberAPI,
+        affixHullMods: List<String>,
+        phaseOnlyHullMods: List<String>,
+    ) {
+        // 不能在共享 stock variant 上加词缀，否则后续生成的普通舰船也会被永久污染。
+        val variant = requireNotNull(member.variant).clone()
+        variant.setSource(com.fs.starfarer.api.loading.VariantSource.REFIT)
+        variant.originalVariant = null
+        val isPhase = member.isPhaseShip
+        variant.addPermaMod("astd_bounty_scaling")
+        for (hm in affixHullMods) {
+            if (hm in phaseOnlyHullMods && !isPhase) continue
+            variant.addPermaMod(hm)
         }
+        member.setVariant(variant, false, false)
+        member.repairTracker.cr = 0.7f
+    }
+
+    /** 给目标旗舰添加可适用的随机 D-mod，由原版筛选互斥与舰体约束。 */
+    private fun applyRandomDMods(member: FleetMemberAPI, count: Int, seed: Long) {
+        com.fs.starfarer.api.impl.campaign.DModManager.addDMods(member, true, count, Random(seed))
     }
 
     private object VariantPools {
-        private var cachedAllVariantIds: List<String>? = null
-        private var cachedFpCost: MutableMap<String, Int> = HashMap()
+        private val cachedFpCost: MutableMap<String, Int> = HashMap()
 
-        private fun allVariantIds(): List<String> {
-            val cached = cachedAllVariantIds
-            if (cached != null) return cached
-            val ids = Global.getSettings().allVariantIds ?: emptyList()
-            cachedAllVariantIds = ids
-            return ids
+        private fun combatVariants(): List<String> = Global.getSettings().allVariantIds.filter { id ->
+            val variant = Global.getSettings().getVariant(id)
+            variant.isCombat && !variant.isEmptyHullVariant && !variant.isFighter && !variant.isStation &&
+                !variant.isCivilian && variant.hullSpec.fleetPoints > 0 &&
+                !variant.hints.contains(com.fs.starfarer.api.combat.ShipHullSpecAPI.ShipTypeHints.MODULE)
         }
 
         fun modStandardVariants(): List<String> =
-            allVariantIds().filter { it.startsWith("astd_") && it.endsWith("_Standard") }
+            combatVariants().filter { it.startsWith("astd_") && it.endsWith("_Standard") }
 
         fun randomPresetVariants(): List<String> =
-            allVariantIds().filter { id ->
-                // 排除本模组、排除一些明显不是“预设战斗舰”的东西
-                if (id.startsWith("astd_")) return@filter false
-                if (id.contains("_Hull")) return@filter false
-                true
-            }
+            combatVariants().filter { !it.startsWith("astd_") }
 
-        fun omegaLikeVariants(): List<String> {
-            // 尽力从现有 Variant ID 推断“Omega 风格单位”。若不存在则返回空。
-            val candidates = allVariantIds().filter { id ->
-                val s = id.lowercase()
-                s.contains("tesseract") || s.contains("omega") || s.contains("dorito")
-            }
-            return candidates
-        }
-
-        fun variantFpCostOrNull(variantId: String): Int? {
-            val cached = cachedFpCost[variantId]
-            if (cached != null) return cached
-            return try {
-                val v = Global.getSettings().getVariant(variantId) ?: return null
-                val fp = v.hullSpec.fleetPoints
-                cachedFpCost[variantId] = fp
-                fp
-            } catch (_: Throwable) {
-                null
-            }
+        fun variantFpCostOrNull(variantId: String): Int? = cachedFpCost[variantId] ?: run {
+            val variant = Global.getSettings().getVariant(variantId) ?: return null
+            variant.hullSpec.fleetPoints.also { cachedFpCost[variantId] = it }
         }
     }
 }

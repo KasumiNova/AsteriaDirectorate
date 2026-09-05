@@ -1,0 +1,19 @@
+{
+	"asteria_directorate_ending": {
+		"boost.label": "归档技术索引扩散",
+		"archive.boost.public": "[菀星总局] 《档案公开抄送函》已执行：技术索引碎片无差别扩散，全星区主要势力舰队与经济体量即时提升。",
+		"archive.boost.traded": "[菀星总局] 《档案定向移交协议》已执行：%faction% 获得完整技术索引碎片，舰队与经济体量即时大幅提升。",
+		"archive.boost.scheduled": "[菀星总局] 碎片渗漏依章缓慢进行：相关势力将于 %days% 天后完成技术索引消化。",
+		"archive.boost.delayed": "[菀星总局] 技术索引碎片已完成渗漏消化：相关势力舰队与经济体量提升现已生效。",
+
+		"core.awaiting_choice": "[菀星总局] 终端提示：本局最后一枚核心「执行官」待签发。请于分局终端选定特化方向——一经签发，不予退换。",
+		"core.option.combat.name": "战斗特化",
+		"core.option.combat.desc": "远程接管一艘指定舰船的指挥链路（默认旗舰）：极速 +15%、机动性 +50%、实弹与能量武器射程 +15%、峰值时间 +60 秒、CR 上限 +15%。",
+		"core.option.admin.name": "行政特化",
+		"core.option.admin.desc": "入驻你的殖民地行政网络：全部自有殖民地稳定度 +1、可达性 +10%、地面防御 +25%。",
+		"core.issued.combat": "[菀星总局] 「执行官」已签发：战斗特化。核心由分局终端托管登记，指挥链路已接入你的舰队。",
+		"core.issued.admin": "[菀星总局] 「执行官」已签发：行政特化。核心由分局终端托管登记，行政链路已接入你的殖民地网络。",
+		"core.command.label": "「执行官」指挥链路",
+		"core.admin.label": "「执行官」行政链路"
+	}
+}

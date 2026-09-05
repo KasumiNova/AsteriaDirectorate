@@ -3,3 +3,4 @@ astd_bountyFleetEncounter,BeginFleetEncounter,"$astd_bounty_key score:1100","Fle
 $shownFleetDescAlready = true 0
 AstdShowAffixPanel
 $fidpi_addContinue = true 0",,,
+astd_branchStationServices,OpenInteractionDialog,"$astd_story_role == branch_office score:1500",AstdOpenBranchServices,,,

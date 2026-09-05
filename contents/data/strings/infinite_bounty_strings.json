@@ -1,0 +1,12 @@
+{
+	"asteria_directorate_infinite_bounty": {
+		"infinite.batch.chapter": "无限期承包合同",
+		"infinite.batch.title": "续展工单",
+		"infinite.name": "%code%：注销失控遗存编队",
+		"infinite.desc": "【菀星设计总局 · 英仙座第七分局 · 续展签发】\n编号：%code%\n委托事项：注销失控遗存编队一支（编制以接取时侦察附件为准）。\n危险等级：%danger%\n酬金：%reward% 星币（报价即实发。依《无限期承包合同》第 3 款，不做二次核定。）\n备注：本单为续展类目。结清后新单自动挂出，账房只留最近十笔流水——再早的，按章烧了。",
+		"infinite.fleet_name": "失控遗存编队（%code%）",
+		"infinite.receipt": "「目标已击破。编号 %code% 战果登记在案。请返回分局核销台办理交割——酬金交割时一并划转。」",
+		"infinite.hud.payout": "[菀星总局] 续展工单核销报酬到账：%credits% 星币。",
+		"infinite.bill.note": "续展核销报酬"
+	}
+}

@@ -1,0 +1,5 @@
+name,id,tags,planetary,decivRemove,script,desc,icon,order
+菀星行政部遗址,astd_cond_admin_ruins,,TRUE,FALSE,cn.kasuminova.astd.campaign.world.StoryConditionAdminRuins,菀星设计总局行政部驻地遗址。档案、印章与规章体系至今仍以某种方式维系着此地的运转——账目清晰，道路畅通，仿佛两百年的停摆只是隔了一个周末。,graphics/icons/markets/capital.png,700
+星坠工程部遗址,astd_cond_starfall_eng_ruins,,TRUE,FALSE,cn.kasuminova.astd.campaign.world.StoryConditionStarfallEngRuins,星坠工程部的地面试验场遗址。锻压设备与装配流水线大多仍可运转，防御设施还在执行两百年前的值班表。,graphics/icons/markets/shipbreaking.png,701
+视界动力,astd_cond_event_horizon_power,,,FALSE,cn.kasuminova.astd.campaign.world.StoryConditionEventHorizonPower,紫菀设计局打造的实验性空间站动力系统，能直接从黑洞周围汲取近乎无限的能量。逸散的动力场庇护着附近的舰队，使它们免受事件视界的侵蚀。,graphics/icons/markets/gravity_high.png,702
+紫菀科研部遗址,astd_cond_aster_research_ruins,,,FALSE,cn.kasuminova.astd.campaign.world.StoryConditionAsterResearchRuins,紫菀设计局科研部遗址。写到一半的观测记录与仍在运转的自动阵列，为途经此地的人提供着残存的便利。,graphics/icons/markets/ruins_vast.png,703

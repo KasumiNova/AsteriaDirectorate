@@ -1,0 +1,19 @@
+{
+	"asteria_directorate": {
+		"ui.terminal.threat.unrated": "从缺",
+		"ui.terminal.doc.threat_unrated": "危险等级：<param:#FFC35A:——>（等级表无此栏目。依条例签发，等级从缺。）",
+		"ui.terminal.order.status.ready_to_settle": "待交付",
+		"ui.terminal.order.row_multiline": "%code% 【%status%】\n危险等级 %tier% · %title%",
+		"ui.terminal.action.track": "追踪目标",
+		"ui.terminal.action.deliver": "交付核销",
+		"ui.terminal.hud.tracked": "[菀星总局] 目标追踪已登记：%code%。",
+		"ui.terminal.hud.action_failed": "[菀星总局] 受理失败：工单状态已变更，请刷新终端。",
+		"ui.terminal.liquidation.progress": "清算序列进度：<param:#FFC35A:progress>",
+		"ui.terminal.archive.locked_row": "%title%（依保密条令不予展示）",
+		"ui.terminal.ending.pick_hint": "（点击文书题名以审阅拟制文书全文）",
+		"ui.terminal.ending.review_header": "拟制文书 · 待签署",
+		"ui.terminal.ending.review_notice": "本文件为拟制文书，尚未生效。签署后不可反悔；现在退出终端即可搁置，文书保持待签状态。",
+		"ui.terminal.ending.confirm": "确认签署",
+		"ui.terminal.ending.back": "返回，暂不签署"
+	}
+}

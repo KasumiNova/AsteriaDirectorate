@@ -5,6 +5,8 @@ import com.fs.starfarer.api.campaign.InteractionDialogAPI
 import com.fs.starfarer.api.impl.campaign.FleetEncounterContext
 import com.fs.starfarer.api.impl.campaign.FleetInteractionDialogPluginImpl
 import com.fs.starfarer.api.util.Misc
+import cn.kasuminova.astd.combat.effect.aster.AsterGravityNodeBattle
+import org.lwjgl.util.vector.Vector2f
 
 /**
  * 赏金目标舰队交互配置：
@@ -12,7 +14,7 @@ import com.fs.starfarer.api.util.Misc
  * - 在玩家战斗结束后（生成打捞前后）向对话框输出“任务完成文案”（而不是在赏金板里显示）
  *
  * 文案来源为接受赏金时写入 fleet memory 的 [BountyKeys.MEM_SUCCESS_TEXT]；
- * 主线剧情长文案随旧内容链移除，新设定接入时按需恢复按 key 读表的分支。
+ * 主线由 [BountyCampaignManager] 按 def 从 i18n 表读取核销回执批注（含清算序列进度行）写入。
  */
 class BountyFidConfigGen(
     private val bountyKey: String,
@@ -45,9 +47,31 @@ class BountyFidConfigGen(
     }
 
     private class BountyFidDelegate(
-        @Suppress("unused")
-        private val bountyKey: String,
+        private val key: String,
     ) : FleetInteractionDialogPluginImpl.BaseFIDDelegate() {
+
+        override fun battleContextCreated(
+            dialog: InteractionDialogAPI,
+            context: com.fs.starfarer.api.combat.BattleCreationContext,
+        ) {
+            if (!key.startsWith("astd_main_c2_zw_s")) return
+            val stage = key.substringAfterLast("_s").toIntOrNull() ?: return
+            if (stage !in 1..3) return
+            val nodePositions = listOf(
+                Vector2f(2800f, 0f),
+                Vector2f(-1400f, 2424.87f),
+                Vector2f(-1400f, -2424.87f),
+            )
+            AsterGravityNodeBattle.requestInstall(
+                nodePositions.mapIndexed { index, position ->
+                    AsterGravityNodeBattle.NodeSpec(
+                        id = "astd_aster_gravity_node_${stage}_${index + 1}",
+                        location = position,
+                    )
+                },
+                defenderOwner = 1,
+            )
+        }
 
         override fun postPlayerSalvageGeneration(dialog: InteractionDialogAPI, context: FleetEncounterContext, salvage: CargoAPI) {
             // 仅在玩家明确赢下遭遇战时输出。

@@ -2,6 +2,8 @@ package cn.kasuminova.astd;
 
 import cn.kasuminova.astd.campaign.AsteriaTestCampaignBootstrap;
 import cn.kasuminova.astd.campaign.bounty.BountyBootstrapper;
+import cn.kasuminova.astd.campaign.story.StoryBootstrap;
+import cn.kasuminova.astd.campaign.world.StoryWorldBootstrap;
 import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcFlareHullModUtilKt;
 import cn.kasuminova.astd.combat.hullmods.lens.LensArrayCoreModeUtilKt;
 import cn.kasuminova.astd.impl.buff.BuffInstall;
@@ -43,6 +45,8 @@ public final class AsteriaDirectoratePlugin extends BaseModPlugin {
 
     @Override
     public void onNewGameAfterEconomyLoad() {
+        // 剧情主星系：新档经济加载后幂等生成（含 IndEvo 联动扩展）。
+        StoryWorldBootstrap.onNewGameAfterEconomyLoad();
         // 测试用：在 devMode 新开档后生成一个测试市场，并把本模组的船/武器塞进仓储。
         // 方便快速在战役里验证数据与脚本效果。
         AsteriaTestCampaignBootstrap.runIfEnabled();
@@ -59,7 +63,13 @@ public final class AsteriaDirectoratePlugin extends BaseModPlugin {
         // 注册赏金动态生成/词缀管理脚本（主线内容重做中，框架先行）。
         // 注意：允许多实例；脚本添加由 sector memory key 去重。
         BountyBootstrapper.onGameLoad();
+        // 剧情运行时：分局终端真实数据源、序章酒馆事件注册、空间站服务对话挂接的配套脚本。
+        StoryBootstrap.onGameLoad();
         if (!newGame) {
+            // 剧情世界读档恢复：补齐已解锁的星系内容（幂等，不重复创建）。
+            // 仅限读档路径：新档的 onGameLoad 早于 procgen/economy load，
+            // 新档生成统一走 onNewGameAfterEconomyLoad。
+            StoryWorldBootstrap.onGameLoad();
             AsteriaTestCampaignBootstrap.repairExistingTestStorageIfEnabled();
             AsteriaTestCampaignBootstrap.resumePendingTeleportIfEnabled();
             AsteriaTestCampaignBootstrap.runStorageAcceptanceIfRequested();

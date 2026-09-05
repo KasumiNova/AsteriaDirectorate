@@ -1,63 +1,60 @@
 package cn.kasuminova.astd.campaign.bounty
 
-import cn.kasuminova.astd.api.difficulty.StrengthSnapshot
 import cn.kasuminova.astd.api.AstdLog
-import kotlin.math.min
+import cn.kasuminova.astd.api.difficulty.StrengthSnapshot
+import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
+import com.fs.starfarer.api.Global
 
 /**
- * 难度/缩放模型（轨二：进程动态系数）：
- * - 难度系数（赏金 tier 规模）最大 300%（x3），来自赏金定义，不参与进程评估
- * - 玩家进程系数 p：由 [FleetStrengthAssessment] 评估（sqrt 压缩，封顶 [0.85, 2.2]）
- * - 总上限 1500%（x15）
+ * 赏金 FP = 预设 FP × 固有难度 × 玩家超模系数 × 舰队大小系数。
  *
- * 词缀强度输入 k_p 取自评估快照的归一化 k（p 在 [0.85, 2.2] 区间线性归一化），
- * 与舰队规模倍率同源，保证"规模与词缀强度一致反映进程"。
+ * 舰队大小系数取 maxShipsInFleet/maxShipsInAIFleet 中较大的配置值相对于原版 30 艘的比值，
+ * 不重复相乘，也不因配置低于原版而削弱赏金。FP 预算由 [FleetComposer] 实际填满，
+ * 不能在 30 艘处截断后把未生成的预算当成战力。
+ * 词缀数量按固有难度归一化（v3 定案），玩家评估只改变 FP，不改变词缀档位。
  */
 object DifficultyModel {
 
+    /** 玩家超模系数上限（02 文档：最高 2×）。 */
+    const val MAX_PLAYER_MULT: Float = 2.0f
+    private const val VANILLA_FLEET_SIZE: Float = 30f
+
     data class Scale(
+        /** 全局难度系数 k_s（1..5）。 */
         val difficultyMult: Float,
+        /** 玩家超模系数 p（封顶 [MAX_PLAYER_MULT]）。 */
         val playerMult: Float,
         val totalMult: Float,
-        /**
-         * 进程归一化 k_p：0..1，仅用于词缀强度选量（生成表专用，机制数值禁止从此取）。
-         */
+        /** 固有难度归一化值：0..1，用于 S/M/R 数量取档。 */
         val k: Float,
+        /** 原版舰队大小配置的比例，不受 10×（难度×超模）上限截断。 */
+        val fleetSizeMult: Float,
     )
 
-    /**
-     * 将 Threat Tier 映射为“舰队规模难度系数”（<= 3.0）。
-     *
-     * 说明：这里刻意给 T5 一个硬封顶 3.0，避免叠加词缀后变成纯数值怪。
-     */
-    fun difficultyMultFromTier(threatTier: Int): Float = when (threatTier.coerceIn(1, 5)) {
-        1 -> 1.00f
-        2 -> 1.25f
-        3 -> 1.65f
-        4 -> 2.25f
-        else -> 3.00f
+    /** 以难度缩放后的预设 FP 为参照评估玩家战力。 */
+    fun assessPlayerStrength(referenceFP: Int): StrengthSnapshot =
+        FleetStrengthAssessmentImpl.assess(referenceFP.toFloat())
+
+    /** 纯缩放计算；配置非法时直接暴露错误，不静默吞掉舰队大小配置。 */
+    fun calculate(difficulty: Float, playerStrength: Float, maxPlayerShips: Int, maxAiShips: Int): Scale {
+        require(difficulty in 1f..5f && playerStrength.isFinite() && playerStrength > 0f)
+        require(maxPlayerShips > 0 && maxAiShips > 0)
+        val player = playerStrength.coerceAtMost(MAX_PLAYER_MULT)
+        val fleetSize = (maxOf(maxPlayerShips, maxAiShips) / VANILLA_FLEET_SIZE).coerceAtLeast(1f)
+        return Scale(difficulty, player, difficulty * player * fleetSize, (difficulty - 1f) / 4f, fleetSize)
     }
 
-    /**
-     * 评估玩家进程战力：以 tier 缩放后的基准 FP 为参照，输出 sqrt 压缩后的 p 与归一化 k_p。
-     */
-    fun assessPlayerStrength(baselineFP: Int): StrengthSnapshot {
-        return FleetStrengthAssessmentImpl.assess(baselineFP.toFloat())
-    }
-
-    fun compute(threatTier: Int, baselineFP: Int): Scale {
-        val difficulty = difficultyMultFromTier(threatTier)
+    fun compute(baselineFP: Int): Scale {
+        val difficulty = DifficultyTuningImpl.fixedScale
         val reference = (baselineFP * difficulty).toInt()
         val snapshot = assessPlayerStrength(reference)
-        val player = snapshot.p
-        val total = min(15f, difficulty * player)
-
+        val settings = Global.getSettings()
+        val scale = calculate(difficulty, snapshot.p, settings.getInt("maxShipsInFleet"), settings.getInt("maxShipsInAIFleet"))
         AstdLog.logger.info(
-            "[ASTD] 赏金进程评估：tier=$threatTier, ref=$reference, " +
+            "[ASTD] 赏金进程评估：k_s=$difficulty, ref=$reference, " +
                 snapshot.breakdown.joinToString(", ") { "${it.label}=${"%.2f".format(it.value)}" } +
-                " => p=${"%.3f".format(player)}, k_p=${"%.3f".format(snapshot.k)}, totalMult=${"%.2f".format(total)}",
+                " => p=${scale.playerMult}, fleetSize=${scale.fleetSizeMult}, affixK=${scale.k}, totalMult=${scale.totalMult}",
         )
-
-        return Scale(difficulty, player, total, snapshot.k)
+        return scale
     }
 }
