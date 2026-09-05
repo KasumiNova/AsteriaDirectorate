@@ -70,17 +70,17 @@ object DirectorateTerminal {
 class DirectorateTerminalDelegate(
     initialTab: TerminalTab,
     private val source: DirectorateTerminalDataSource,
-) : CustomDialogDelegate {
+) : CustomDialogDelegate, DirectorateTerminalUi {
 
     private companion object {
         const val CAT: String = "asteria_directorate"
         const val KEY: String = "ui.terminal."
 
-        const val ACTION_ACCEPT: String = "astd_terminal_accept"
-        const val ACTION_TRACK: String = "astd_terminal_track"
-        const val ACTION_DELIVER: String = "astd_terminal_deliver"
-        const val ACTION_SIGN_ENDING: String = "astd_terminal_sign_ending"
-        const val ACTION_ENDING_BACK: String = "astd_terminal_ending_back"
+        val ACTION_ACCEPT = TerminalControl.Action.ACCEPT
+        val ACTION_TRACK = TerminalControl.Action.TRACK
+        val ACTION_DELIVER = TerminalControl.Action.DELIVER
+        val ACTION_SIGN_ENDING = TerminalControl.Action.SIGN_ENDING
+        val ACTION_ENDING_BACK = TerminalControl.Action.ENDING_BACK
 
         val TEXT: Color = Misc.getTextColor()
         val BASE: Color = Misc.getBasePlayerColor()
@@ -105,8 +105,13 @@ class DirectorateTerminalDelegate(
         val btnH: Float,
     )
 
-    /** 工单列表行/档案条目/结局选项的按钮数据载体。 */
-    private data class RowRef(val id: String)
+    private val buttons = linkedMapOf<TerminalControl, com.fs.starfarer.api.ui.ButtonAPI>()
+    private var callback: CustomDialogDelegate.CustomDialogCallback? = null
+    private var closed = false
+    private var closeRequested = false
+    private var layoutRevision = 0L
+    private var renderedFrames = 0L
+    private var lastPress = TerminalPress.NOT_OPEN
 
     private var tab: TerminalTab = initialTab
     private var snapshot: TerminalSnapshot = source.snapshot()
@@ -127,25 +132,67 @@ class DirectorateTerminalDelegate(
 
     override fun createCustomDialog(panel: CustomPanelAPI, callback: CustomDialogDelegate.CustomDialogCallback) {
         this.root = panel
+        this.callback = callback
+        closed = false
+        closeRequested = false
         rebuild()
     }
 
     override fun hasCancelButton(): Boolean = true
 
-    /** 无确认按钮：终端操作全部在面板内完成，底部仅「关闭终端」。 */
+    /** 原版可能为 null 使用默认确认文案；确认与取消均只关闭，不签署文书。 */
     override fun getConfirmText(): String? = null
 
     override fun getCancelText(): String = I18n[CAT, KEY + "close"]
 
-    override fun customDialogConfirm() {}
+    override fun customDialogConfirm() = customDialogCancel()
 
-    /** 关闭终端不签署任何文书：待签状态由 campaign 侧保持。 */
-    override fun customDialogCancel() {}
+    /** 仅原生关闭回调更新关闭状态；待签文书留在 campaign 侧，不在关闭时签署。 */
+    override fun customDialogCancel() {
+        closed = true
+        callback = null
+        reviewingEndingId = null
+        buttons.clear()
+    }
 
     override fun getCustomPanelPlugin(): CustomUIPanelPlugin = plugin
 
+    override fun view(): TerminalView = TerminalView(
+        panel = if (::root.isInitialized) root else null,
+        open = callback != null && !closed && layoutRevision > 0,
+        closed = closed,
+        layoutRevision = layoutRevision,
+        renderedFrames = renderedFrames,
+        componentCount = components.size,
+        tab = tab,
+        selectedOrderId = selectedOrderId,
+        selectedOrderStatus = selectedOrderId?.let { snapshot.findOrder(it)?.status },
+        selectedArchiveId = selectedArchiveId,
+        reviewingEndingId = reviewingEndingId,
+        buttons = buttons.mapValues { (_, button) ->
+            TerminalButtonView(button.isEnabled, button.isChecked, button.position.width, button.position.height)
+        },
+    )
+
+    override fun press(control: TerminalControl): TerminalPress {
+        plugin.buttonPressed(control)
+        return lastPress
+    }
+
+    override fun close(): Boolean {
+        val currentCallback = callback ?: return false
+        if (closed || closeRequested) return false
+        closeRequested = true
+        currentCallback.dismissCustomDialog(1)
+        return true
+    }
+
     /** 触发一次短促闪现 glitch（剧情系统事件驱动，<0.5s 自愈，系统不解释）。 */
     fun triggerGlitch() = plugin.effects.triggerGlitch()
+
+    private fun register(control: TerminalControl, button: com.fs.starfarer.api.ui.ButtonAPI) {
+        buttons[control] = button
+    }
 
     private inner class TerminalPlugin : BaseCustomUIPanelPlugin() {
         val effects = TerminalScreenEffects()
@@ -154,7 +201,10 @@ class DirectorateTerminalDelegate(
 
         override fun advance(amount: Float) = effects.advance(amount)
 
-        override fun render(alphaMult: Float) = effects.render(alphaMult)
+        override fun render(alphaMult: Float) {
+            renderedFrames++
+            effects.render(alphaMult)
+        }
 
         override fun processInput(events: List<InputEventAPI>) {
             for (event in events) {
@@ -166,22 +216,26 @@ class DirectorateTerminalDelegate(
         }
 
         override fun buttonPressed(buttonId: Any?) {
+            val button = (buttonId as? TerminalControl)?.let { buttons[it] }
+            lastPress = when {
+                callback == null || closed || closeRequested -> TerminalPress.NOT_OPEN
+                button == null -> TerminalPress.NOT_PRESENT
+                !button.isEnabled -> TerminalPress.DISABLED
+                else -> TerminalPress.DISPATCHED
+            }
+            if (lastPress != TerminalPress.DISPATCHED) {
+                Global.getLogger(DirectorateTerminalDelegate::class.java)
+                    .info("ASTD terminal rejected control=$buttonId result=$lastPress revision=$layoutRevision")
+                return
+            }
             when (buttonId) {
-                is TerminalTab -> {
-                    tab = buttonId
+                is TerminalControl.Tab -> {
+                    tab = buttonId.tab
                     reviewingEndingId = null
                 }
-                is RowRef -> when (tab) {
-                    TerminalTab.WORK_ORDERS -> selectedOrderId = buttonId.id
-                    TerminalTab.ARCHIVES -> selectedArchiveId = buttonId.id
-                    TerminalTab.ACCOUNT -> {
-                        // 终局不立即签署：先出示拟制文书，明确确认后才受理。
-                        val ending = snapshot.endings.firstOrNull { it.id == buttonId.id }
-                        if (ending != null && ending.available) {
-                            reviewingEndingId = ending.id
-                        }
-                    }
-                }
+                is TerminalControl.Order -> selectedOrderId = buttonId.id
+                is TerminalControl.Archive -> selectedArchiveId = buttonId.id
+                is TerminalControl.Ending -> reviewingEndingId = buttonId.id
                 ACTION_ACCEPT -> {
                     val order = selectedOrder()
                     if (order != null) {
@@ -273,6 +327,7 @@ class DirectorateTerminalDelegate(
     private fun rebuild() {
         for (c in components) root.removeComponent(c)
         components.clear()
+        buttons.clear()
 
         val w = root.position.width
         val h = root.position.height
@@ -287,6 +342,7 @@ class DirectorateTerminalDelegate(
             TerminalTab.ARCHIVES -> buildArchives(w, bodyTop, bodyH, m)
             TerminalTab.ACCOUNT -> buildAccount(w, bodyTop, bodyH, m)
         }
+        layoutRevision++
     }
 
     private fun add(component: UIComponentAPI, x: Float, y: Float) {
@@ -318,13 +374,14 @@ class DirectorateTerminalDelegate(
             val el = header.createUIElement(m.tabW, m.tabH, false)
             val label = I18n[CAT, KEY + "tab." + t.name.lowercase()]
             val selected = t == tab
-            el.addButton(
-                label, t,
+            val button = el.addButton(
+                label, TerminalControl.Tab(t),
                 if (selected) BRIGHT else TEXT,
                 if (selected) BASE else BG,
                 Alignment.MID, CutStyle.ALL,
                 m.tabW, m.tabH, 0f,
             )
+            register(TerminalControl.Tab(t), button)
             header.addUIElement(el).inTL(x, tabY)
             x += m.tabW + 8f
         }
@@ -361,6 +418,7 @@ class DirectorateTerminalDelegate(
                 if (batch.isCleared) BRIGHT else TEXT, BG, Alignment.MID, 6f,
             )
             for (order in batch.orders) {
+                val control = TerminalControl.Order(order.id)
                 val row = list.addAreaCheckbox(
                     I18n.t(
                         CAT, KEY + "order.row_multiline",
@@ -369,10 +427,10 @@ class DirectorateTerminalDelegate(
                         "tier" to orderTierText(order),
                         "title" to order.title,
                     ),
-                    RowRef(order.id), BASE, BG, BRIGHT,
-                    leftW - 16f, m.orderRowH, 4f,
+                    control, BASE, BG, BRIGHT, leftW - 16f, m.orderRowH, 4f,
                 )
                 row.isChecked = order.id == selectedOrder()?.id
+                register(control, row)
             }
         }
         left.addUIElement(list).inTL(4f, 4f)
@@ -418,15 +476,18 @@ class DirectorateTerminalDelegate(
         val bar = right.createCustomPanel(rightW, m.actionBarH, forwarder)
         val barEl = bar.createUIElement(rightW, m.actionBarH - 6f, false)
         when (order?.status) {
-            WorkOrderStatus.AVAILABLE ->
-                barEl.addButton(I18n[CAT, KEY + "action.accept"], ACTION_ACCEPT, TEXT, BG, Alignment.MID,
-                    CutStyle.ALL, m.btnW, m.btnH, 4f)
-            WorkOrderStatus.ACTIVE ->
-                barEl.addButton(I18n[CAT, KEY + "action.track"], ACTION_TRACK, TEXT, BG, Alignment.MID,
-                    CutStyle.ALL, m.btnW, m.btnH, 4f)
-            WorkOrderStatus.READY_TO_SETTLE ->
-                barEl.addButton(I18n[CAT, KEY + "action.deliver"], ACTION_DELIVER, TEXT, BG, Alignment.MID,
-                    CutStyle.ALL, m.btnW, m.btnH, 4f)
+            WorkOrderStatus.AVAILABLE -> register(TerminalControl.Action.ACCEPT, barEl.addButton(
+                I18n[CAT, KEY + "action.accept"], TerminalControl.Action.ACCEPT, TEXT, BG, Alignment.MID,
+                CutStyle.ALL, m.btnW, m.btnH, 4f,
+            ))
+            WorkOrderStatus.ACTIVE -> register(TerminalControl.Action.TRACK, barEl.addButton(
+                I18n[CAT, KEY + "action.track"], TerminalControl.Action.TRACK, TEXT, BG, Alignment.MID,
+                CutStyle.ALL, m.btnW, m.btnH, 4f,
+            ))
+            WorkOrderStatus.READY_TO_SETTLE -> register(TerminalControl.Action.DELIVER, barEl.addButton(
+                I18n[CAT, KEY + "action.deliver"], TerminalControl.Action.DELIVER, TEXT, BG, Alignment.MID,
+                CutStyle.ALL, m.btnW, m.btnH, 4f,
+            ))
             WorkOrderStatus.SETTLED ->
                 barEl.addPara(I18n[CAT, KEY + "doc.stamp_settled"], HIGHLIGHT, 8f)
             null -> {}
@@ -454,11 +515,13 @@ class DirectorateTerminalDelegate(
             )
             for (entry in entries) {
                 if (entry.unlocked) {
+                    val control = TerminalControl.Archive(entry.id)
                     val row = list.addAreaCheckbox(
-                        entry.title, RowRef(entry.id), BASE, BG, BRIGHT,
+                        entry.title, control, BASE, BG, BRIGHT,
                         leftW - 16f, m.archiveRowH, 4f,
                     )
                     row.isChecked = entry.id == selectedArchive()?.id
+                    register(control, row)
                 } else {
                     // 未解锁：灰色存目条目（标题留存目，正文依保密条令不予展示），不可点。
                     list.addPara(
@@ -520,11 +583,13 @@ class DirectorateTerminalDelegate(
             el.addSectionHeading(I18n[CAT, KEY + "ending.section"], TEXT, BG, Alignment.MID, 10f)
             el.addPara(I18n[CAT, KEY + "ending.pick_hint"], GRAY, 2f)
             for (ending in snapshot.endings) {
+                val control = TerminalControl.Ending(ending.id)
                 val btn = el.addButton(
-                    ending.title, RowRef(ending.id), TEXT, BG, Alignment.MID,
+                    ending.title, control, TEXT, BG, Alignment.MID,
                     CutStyle.ALL, if (m.compact) 180f else 200f, if (m.compact) 24f else 28f, 4f,
                 )
                 btn.isEnabled = ending.available
+                register(control, btn)
                 if (!ending.available) {
                     el.addPara(I18n[CAT, KEY + "ending.unavailable"], GRAY, 2f)
                 }
@@ -563,10 +628,12 @@ class DirectorateTerminalDelegate(
             CutStyle.ALL, m.btnW, m.btnH, 4f,
         )
         sign.isEnabled = ending.available
-        barEl.addButton(
+        register(ACTION_SIGN_ENDING, sign)
+        val back = barEl.addButton(
             I18n[CAT, KEY + "ending.back"], ACTION_ENDING_BACK, TEXT, BG, Alignment.MID,
             CutStyle.ALL, m.btnW + 40f, m.btnH, 4f,
         )
+        register(ACTION_ENDING_BACK, back)
         bar.addUIElement(barEl).inTL(0f, 4f)
         panel.addComponent(bar).inBL(0f, 0f)
 

@@ -4,38 +4,46 @@ import java.lang.instrument.Instrumentation;
 
 public final class AsteriaDevStorageAcceptanceAgent {
 
-    private static final String ENABLED_PROPERTY = "astd.devStorageAcceptance";
-    private static final String TARGET_CLASS_NAME = "com.fs.starfarer.title.TitleScreenState";
+    private static final String DEV_STORAGE_ENABLED_PROPERTY = "astd.devStorageAcceptance";
+    private static final String CAMPAIGN_AUTOMATION_ENABLED_PROPERTY = "astd.campaignAutomation.enabled";
+    private static final String TITLE_CLASS_NAME = "com.fs.starfarer.title.TitleScreenState";
+    private static final String CAMPAIGN_CLASS_NAME = "com.fs.starfarer.campaign.CampaignState";
 
     private AsteriaDevStorageAcceptanceAgent() {
     }
 
     public static void premain(final String agentArgs, final Instrumentation instrumentation) {
-        if (!Boolean.getBoolean(ENABLED_PROPERTY)) {
+        final boolean devStorageEnabled = Boolean.getBoolean(DEV_STORAGE_ENABLED_PROPERTY);
+        final boolean campaignAutomationEnabled = Boolean.getBoolean(CAMPAIGN_AUTOMATION_ENABLED_PROPERTY);
+        if (!devStorageEnabled && !campaignAutomationEnabled) {
             return;
         }
         final AsteriaTitleScreenAdvanceTransformer transformer = new AsteriaTitleScreenAdvanceTransformer();
         instrumentation.addTransformer(transformer, true);
-        retransformTitleScreenIfAlreadyLoaded(instrumentation);
-        System.out.println("[ASTD-Agent] Dev storage acceptance title-screen hook installed.");
+        retransformLoadedClasses(instrumentation, devStorageEnabled, campaignAutomationEnabled);
+        System.out.println("[ASTD-Agent] Campaign hooks installed: devStorage="
+                + devStorageEnabled + ", campaignAutomation=" + campaignAutomationEnabled + ".");
     }
 
-    private static void retransformTitleScreenIfAlreadyLoaded(final Instrumentation instrumentation) {
+    private static void retransformLoadedClasses(final Instrumentation instrumentation,
+                                                  final boolean devStorageEnabled,
+                                                  final boolean campaignAutomationEnabled) {
         for (final Class<?> loadedClass : instrumentation.getAllLoadedClasses()) {
-            if (!TARGET_CLASS_NAME.equals(loadedClass.getName())) {
+            final boolean titleTarget = TITLE_CLASS_NAME.equals(loadedClass.getName());
+            final boolean campaignTarget = CAMPAIGN_CLASS_NAME.equals(loadedClass.getName());
+            if ((!titleTarget && !campaignTarget) || (campaignTarget && !campaignAutomationEnabled)) {
                 continue;
             }
             if (!instrumentation.isModifiableClass(loadedClass)) {
-                System.err.println("[ASTD-Agent] TitleScreenState was already loaded but is not modifiable.");
-                return;
+                System.err.println("[ASTD-Agent] Already loaded target is not modifiable: " + loadedClass.getName());
+                continue;
             }
             try {
                 instrumentation.retransformClasses(loadedClass);
-                System.out.println("[ASTD-Agent] Requested TitleScreenState retransform for already loaded class.");
+                System.out.println("[ASTD-Agent] Requested retransform: " + loadedClass.getName());
             } catch (final Exception ex) {
-                throw new IllegalStateException("[ASTD-Agent] Failed to retransform already loaded TitleScreenState.", ex);
+                throw new IllegalStateException("[ASTD-Agent] Failed to retransform " + loadedClass.getName() + ".", ex);
             }
-            return;
         }
     }
 }

@@ -47,6 +47,8 @@ dependencies {
     implementation(project(":astd-campaign"))
     implementation(project(":astd-combat"))
     implementation(project(":astd-impl"))
+    // 仅在 automation 属性开启时由根 jar 装配；入口调用也受同一 JVM 属性门控。
+    compileOnly(project(":astd-automation"))
 
     testImplementation(kotlin("test"))
     // 仓库纪律/数据校验测试共用的 CSV 读取工具（astd-csv testFixtures）。

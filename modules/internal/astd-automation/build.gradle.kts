@@ -11,6 +11,8 @@ dependencies {
     implementation(project(":astd-impl"))
     implementation(project(":astd-render"))
     implementation(project(":astd-combat"))
+    implementation(project(":astd-campaign"))
+    implementation(project(":astd-ui"))
 }
 
 // 装配：向根工程 mod 主 jar 贡献本模块产物。

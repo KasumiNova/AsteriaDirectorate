@@ -92,4 +92,44 @@ class StoryTerminalMappingTest {
         val group = MainBounties.groupsById.getValue("c4")
         assertTrue(StoryTerminalMapping.batchVisible(group) { WorkOrderStatus.SETTLED })
     }
+
+    @Test
+    fun `紫菀合并批次：阶段推进全程批次可见且恰一单处于可执行位`() {
+        val group = MainBounties.groupsById.getValue("c2_zw")
+        val keys = MainBounties.groupMembers.getValue("c2_zw")
+        assertEquals(4, keys.size, "紫菀合并单应拆 4 个内部阶段")
+
+        var succeeded = emptySet<String>()
+        var delivered = emptySet<String>()
+        fun statusOf(key: String) = StoryTerminalMapping.visibleStatus(
+            MainBounties.defsByKey.getValue(key), succeeded, emptySet(),
+        ) { it in delivered }
+
+        // 第一章加急件未交付：四阶段全不挂出，批次不可见
+        assertEquals(listOf(null, null, null, null), keys.map(::statusOf))
+        assertFalse(StoryTerminalMapping.batchVisible(group, ::statusOf))
+
+        // 加急件交付：仅阶段一挂出
+        delivered = delivered + "\$astd_main_c1_b3"
+        assertEquals(
+            listOf(WorkOrderStatus.AVAILABLE, null, null, null),
+            keys.map(::statusOf),
+        )
+        assertTrue(StoryTerminalMapping.batchVisible(group, ::statusOf))
+
+        // 逐阶段结清：已结清段显示 SETTLED，紧邻下一段转为可接取，其余不挂出
+        for (i in keys.indices) {
+            succeeded = succeeded + keys[i]
+            delivered = delivered + "\$${keys[i]}"
+            val expected = keys.indices.map { j ->
+                when {
+                    j <= i -> WorkOrderStatus.SETTLED
+                    j == i + 1 -> WorkOrderStatus.AVAILABLE
+                    else -> null
+                }
+            }
+            assertEquals(expected, keys.map(::statusOf), "阶段 ${keys[i]} 结清后可见性不符")
+            assertTrue(StoryTerminalMapping.batchVisible(group, ::statusOf), "合并批次全程应可见")
+        }
+    }
 }

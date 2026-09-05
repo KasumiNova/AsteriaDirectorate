@@ -5,6 +5,7 @@ import cn.kasuminova.astd.campaign.bounty.BountyBootstrapper;
 import cn.kasuminova.astd.campaign.story.StoryBootstrap;
 import cn.kasuminova.astd.campaign.world.StoryWorldBootstrap;
 import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcFlareHullModUtilKt;
+import cn.kasuminova.astd.campaign.automation.CampaignAutomationBootstrap;
 import cn.kasuminova.astd.combat.hullmods.lens.LensArrayCoreModeUtilKt;
 import cn.kasuminova.astd.impl.buff.BuffInstall;
 import cn.kasuminova.astd.impl.difficulty.DifficultySettingsRegistrar;
@@ -73,6 +74,10 @@ public final class AsteriaDirectoratePlugin extends BaseModPlugin {
             AsteriaTestCampaignBootstrap.repairExistingTestStorageIfEnabled();
             AsteriaTestCampaignBootstrap.resumePendingTeleportIfEnabled();
             AsteriaTestCampaignBootstrap.runStorageAcceptanceIfRequested();
+            // 常量在编译时内联；release 未启用时不会解析被排除的 automation 类。
+            if (Boolean.getBoolean(CampaignAutomationBootstrap.ENABLED_PROPERTY)) {
+                CampaignAutomationBootstrap.onGameLoad();
+            }
         }
     }
 
