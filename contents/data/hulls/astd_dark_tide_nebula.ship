@@ -96,10 +96,10 @@
       "size": "LARGE",
       "type": "DECORATIVE",
       "mount": "TURRET",
-      "renderOrderMod": 3,
       "arc": 0,
       "angle": 0,
-      "locations": [0, -0]
+      "locations": [0, -0],
+      "renderOrderMod": 3
     }
   ],
   "engineSlots": [
@@ -192,14 +192,6 @@
       "style": "ASTD_LENS"
     },
     {
-      "location": [2.5, -52],
-      "length": 22,
-      "width": 6,
-      "angle": -120,
-      "contrailSize": 17,
-      "style": "ASTD_LENS"
-    },
-    {
       "location": [-32.5, -66.5],
       "length": 50,
       "width": 10,
@@ -214,15 +206,8 @@
       "angle": -125,
       "contrailSize": 17,
       "style": "ASTD_LENS"
-    },
-    {
-      "location": [-36, -64],
-      "length": 28,
-      "width": 6,
-      "angle": -125,
-      "contrailSize": 17,
-      "style": "ASTD_LENS"
-    }  ],
+    }
+  ],
   "bounds": [
     49.5, 106,
     75, 34,

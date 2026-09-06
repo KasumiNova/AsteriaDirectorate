@@ -11,14 +11,14 @@
   "shieldCenter": [0, 0],
   "shieldRadius": 268,
   "viewOffset": 0,
-  "builtInWeapons": {
-    "WS BLOOM": "astd_arc_flare_lights_bloom",
-    "WS MAIN": "astd_aod7"
-  },
   "builtInMods": [
     "astd_arc_loop_interface",
     "astd_nano_restoration_protocol"
   ],
+  "builtInWeapons": {
+    "WS BLOOM": "astd_arc_flare_lights_bloom",
+    "WS MAIN": "astd_aod7"
+  },
   "weaponSlots": [
     {
       "id": "WS MAIN",
@@ -80,7 +80,6 @@
       "size": "MEDIUM",
       "type": "MISSILE",
       "mount": "HARDPOINT",
-      "hidden": true,
       "arc": 6,
       "angle": 45,
       "locations": [-29.5, 63.5]
@@ -90,7 +89,6 @@
       "size": "MEDIUM",
       "type": "MISSILE",
       "mount": "HARDPOINT",
-      "hidden": true,
       "arc": 6,
       "angle": -45,
       "locations": [-29.5, -65]
@@ -180,15 +178,15 @@
   "engineSlots": [
     {
       "location": [-154.5, 64],
-      "length": 40,
-      "width": 10,
+      "length": 80,
+      "width": 15,
       "angle": 150,
       "contrailSize": 52,
       "style": "ASTD_ARC"
     },
     {
       "location": [-156.5, 60.5],
-      "length": 22,
+      "length": 30,
       "width": 6,
       "angle": 150,
       "contrailSize": 29,
@@ -196,7 +194,7 @@
     },
     {
       "location": [-152.5, 67.5],
-      "length": 22,
+      "length": 30,
       "width": 6,
       "angle": 150,
       "contrailSize": 29,
@@ -204,15 +202,15 @@
     },
     {
       "location": [-154.5, -64],
-      "length": 40,
-      "width": 10,
+      "length": 70,
+      "width": 15,
       "angle": -150,
       "contrailSize": 52,
       "style": "ASTD_ARC"
     },
     {
       "location": [-152.5, -67.5],
-      "length": 22,
+      "length": 30,
       "width": 6,
       "angle": -150,
       "contrailSize": 29,
@@ -220,7 +218,7 @@
     },
     {
       "location": [-156.5, -60.5],
-      "length": 22,
+      "length": 30,
       "width": 6,
       "angle": -150,
       "contrailSize": 29,
@@ -228,23 +226,23 @@
     },
     {
       "location": [-131.5, 107.5],
-      "length": 40,
-      "width": 10,
+      "length": 80,
+      "width": 15,
       "angle": 170,
       "contrailSize": 48,
       "style": "ASTD_ARC"
     },
     {
-      "location": [-132.2, 103.6],
-      "length": 22,
+      "location": [-132.199997, 103.599998],
+      "length": 30,
       "width": 6,
       "angle": 170,
       "contrailSize": 26,
       "style": "ASTD_ARC"
     },
     {
-      "location": [-130.8, 111.4],
-      "length": 22,
+      "location": [-130.800003, 111.400002],
+      "length": 30,
       "width": 6,
       "angle": 170,
       "contrailSize": 26,
@@ -252,23 +250,23 @@
     },
     {
       "location": [-131.5, -107.5],
-      "length": 40,
+      "length": 80,
       "width": 10,
       "angle": -170,
       "contrailSize": 48,
       "style": "ASTD_ARC"
     },
     {
-      "location": [-130.8, -111.4],
-      "length": 22,
+      "location": [-130.800003, -111.400002],
+      "length": 30,
       "width": 6,
       "angle": -170,
       "contrailSize": 26,
       "style": "ASTD_ARC"
     },
     {
-      "location": [-132.2, -103.6],
-      "length": 22,
+      "location": [-132.199997, -103.599998],
+      "length": 30,
       "width": 6,
       "angle": -170,
       "contrailSize": 26,
@@ -276,15 +274,15 @@
     },
     {
       "location": [-157.5, 25],
-      "length": 50,
-      "width": 10,
+      "length": 100,
+      "width": 15,
       "angle": 150,
       "contrailSize": 18,
       "style": "ASTD_ARC"
     },
     {
       "location": [-159.5, 21.5],
-      "length": 28,
+      "length": 45,
       "width": 6,
       "angle": 150,
       "contrailSize": 10,
@@ -292,7 +290,7 @@
     },
     {
       "location": [-155.5, 28.5],
-      "length": 28,
+      "length": 45,
       "width": 6,
       "angle": 150,
       "contrailSize": 10,
@@ -300,15 +298,15 @@
     },
     {
       "location": [-157.5, -25],
-      "length": 50,
-      "width": 10,
+      "length": 100,
+      "width": 15,
       "angle": -150,
       "contrailSize": 18,
       "style": "ASTD_ARC"
     },
     {
       "location": [-155.5, -28.5],
-      "length": 28,
+      "length": 45,
       "width": 6,
       "angle": -150,
       "contrailSize": 10,
@@ -316,7 +314,7 @@
     },
     {
       "location": [-159.5, -21.5],
-      "length": 28,
+      "length": 45,
       "width": 6,
       "angle": -150,
       "contrailSize": 10,

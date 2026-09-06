@@ -107,7 +107,7 @@
   "engineSlots": [
     {
       "location": [-58, 62.5],
-      "length": 30,
+      "length": 60,
       "width": 10,
       "angle": 150,
       "contrailSize": 30,
@@ -115,7 +115,7 @@
     },
     {
       "location": [-60, 59],
-      "length": 16,
+      "length": 25,
       "width": 6,
       "angle": 150,
       "contrailSize": 16,
@@ -123,7 +123,7 @@
     },
     {
       "location": [-56, 66],
-      "length": 16,
+      "length": 25,
       "width": 6,
       "angle": 150,
       "contrailSize": 16,
@@ -131,7 +131,7 @@
     },
     {
       "location": [-58, -62.5],
-      "length": 30,
+      "length": 60,
       "width": 10,
       "angle": -150,
       "contrailSize": 30,
@@ -139,7 +139,7 @@
     },
     {
       "location": [-56, -66],
-      "length": 16,
+      "length": 25,
       "width": 6,
       "angle": -150,
       "contrailSize": 16,
@@ -147,7 +147,7 @@
     },
     {
       "location": [-60, -59],
-      "length": 16,
+      "length": 25,
       "width": 6,
       "angle": -150,
       "contrailSize": 16,
@@ -155,7 +155,7 @@
     },
     {
       "location": [-60.5, 30.5],
-      "length": 30,
+      "length": 60,
       "width": 10,
       "angle": 180,
       "contrailSize": 30,
@@ -163,15 +163,7 @@
     },
     {
       "location": [-60.5, 26.5],
-      "length": 16,
-      "width": 6,
-      "angle": 180,
-      "contrailSize": 16,
-      "style": "ASTD_ARC"
-    },
-    {
-      "location": [-60.5, 34.5],
-      "length": 16,
+      "length": 25,
       "width": 6,
       "angle": 180,
       "contrailSize": 16,
@@ -179,23 +171,15 @@
     },
     {
       "location": [-60.5, -30.5],
-      "length": 30,
+      "length": 60,
       "width": 10,
       "angle": -180,
       "contrailSize": 30,
       "style": "ASTD_ARC"
     },
     {
-      "location": [-60.5, -34.5],
-      "length": 16,
-      "width": 6,
-      "angle": -180,
-      "contrailSize": 16,
-      "style": "ASTD_ARC"
-    },
-    {
       "location": [-60.5, -26.5],
-      "length": 16,
+      "length": 25,
       "width": 6,
       "angle": -180,
       "contrailSize": 16,
@@ -203,7 +187,7 @@
     },
     {
       "location": [-63.5, 16.5],
-      "length": 40,
+      "length": 70,
       "width": 10,
       "angle": 180,
       "contrailSize": 30,
@@ -211,15 +195,7 @@
     },
     {
       "location": [-63.5, 12.5],
-      "length": 22,
-      "width": 6,
-      "angle": 180,
-      "contrailSize": 16,
-      "style": "ASTD_ARC"
-    },
-    {
-      "location": [-63.5, 20.5],
-      "length": 22,
+      "length": 30,
       "width": 6,
       "angle": 180,
       "contrailSize": 16,
@@ -227,23 +203,15 @@
     },
     {
       "location": [-63.5, -16.5],
-      "length": 40,
+      "length": 70,
       "width": 10,
       "angle": -180,
       "contrailSize": 30,
       "style": "ASTD_ARC"
     },
     {
-      "location": [-63.5, -20.5],
-      "length": 22,
-      "width": 6,
-      "angle": -180,
-      "contrailSize": 16,
-      "style": "ASTD_ARC"
-    },
-    {
       "location": [-63.5, -12.5],
-      "length": 22,
+      "length": 30,
       "width": 6,
       "angle": -180,
       "contrailSize": 16,
