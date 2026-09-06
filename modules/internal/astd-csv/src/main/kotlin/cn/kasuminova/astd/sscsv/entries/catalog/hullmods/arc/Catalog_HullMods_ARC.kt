@@ -157,7 +157,7 @@ object HullMod_astd_plasma_armor_shield : HullModEntry() {
     override val script: String = "cn.kasuminova.astd.combat.hullmods.arc.ASTDPlasmaArmorShieldHullMod"
     override val desc: String = SsI18n.t("hullmod.$id.desc")
     override val short: String = SsI18n.t("hullmod.$id.short")
-    override val sprite: String = "graphics/hullmods/astd_arch_stabilizer.png"
+    override val sprite: String = "graphics/hullmods/astd_plasma_armor_shield.png"
 }
 
 object HullMod_astd_ionized_recoil_accumulator : HullModEntry() {
@@ -170,7 +170,7 @@ object HullMod_astd_ionized_recoil_accumulator : HullModEntry() {
     override val script: String = "cn.kasuminova.astd.combat.hullmods.arc.ASTDIonizedRecoilAccumulatorHullMod"
     override val desc: String = SsI18n.t("hullmod.$id.desc")
     override val short: String = SsI18n.t("hullmod.$id.short")
-    override val sprite: String = "graphics/hullmods/astd_thermodynamic_exchange.png"
+    override val sprite: String = "graphics/hullmods/astd_ionized_recoil_accumulator.png"
 }
 
 object HullMod_astd_arc_advanced_targeting_system : HullModEntry() {

@@ -49,7 +49,7 @@ class ASTDIonizedRecoilAccumulatorHullMod : BaseHullMod() {
 
         private val THEME = ASTDHullModTooltipRenderer.Theme(
             nameColor = Color(160, 236, 255),
-            borderColor = Color(92, 200, 255),
+            borderColor = Color(160, 110, 255),
             headerBackground = Color(20, 52, 82, 190),
             sectionBackground = Color(14, 36, 58, 135),
             accentColor = Color(88, 190, 255),
