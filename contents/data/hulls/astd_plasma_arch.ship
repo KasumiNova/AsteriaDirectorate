@@ -12,7 +12,6 @@
   "shieldRadius": 158.5,
   "viewOffset": 0,
   "builtInMods": [
-    "stabilizedshieldemitter",
     "missleracks",
     "astd_plasma_armor_shield",
     "astd_ionized_recoil_accumulator"
