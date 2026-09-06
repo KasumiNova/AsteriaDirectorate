@@ -96,4 +96,66 @@ class GraphDialogPluginTest {
             "B 播完后面板应切回正常选项，实际=${rig.shownIds()}",
         )
     }
+
+    /**
+     * 回归：节点 onAdvance 播完自动 close 时，onClose 宿主钩子会同步重建宿主选项
+     * （BarEventDialogPlugin.endEvent → BarCMD.showOptions 加「继续/离开酒吧」）。
+     * 本插件在关闭后的同一帧及后续帧不得再 clearOptions——否则宿主选项被抹空、玩家卡死。
+     */
+    @Test
+    fun `host rebuilt options survive graph close during advance`() {
+        val graph = dialogGraph(start = "end") {
+            node("end", DialogDsl.timedNode(
+                onEnter = { ctx ->
+                    ctx.sessionState["fired"] = false
+                    ctx.enqueue("bye", 0.2f)
+                },
+                onAdvance = { ctx, _ ->
+                    if (!ctx.textQueue.hasPending && ctx.sessionState["fired"] != true) {
+                        ctx.sessionState["fired"] = true
+                        ctx.close()
+                    }
+                },
+            ))
+        }
+        val rig = DialogTestRig()
+        // 宿主钩子：模拟 BarCMD.showOptions 同步重建选项面板
+        val plugin = GraphDialogPlugin(graph, closeOnEscapeOptionId = null, onClose = {
+            rig.options.clearOptions()
+            rig.options.addOption("继续", "barContinue", null)
+        })
+        plugin.init(rig.dialog)
+
+        val closed = rig.runUntil(plugin) { rig.shownIds() == listOf("barContinue") }
+        assertTrue(closed, "播完自动关闭后宿主重建的选项应保留，实际=${rig.shownIds()}")
+        assertTrue(rig.paras.contains("bye"), "告别文本应已输出")
+
+        repeat(10) { plugin.advance(0.05f) }
+        assertEquals(listOf("barContinue"), rig.shownIds(), "关闭后本插件不得再触碰选项面板")
+    }
+
+    /** 回归：选项动作触发 close（DialogAction.Close）同样不得抹掉宿主重建的选项。 */
+    @Test
+    fun `host rebuilt options survive close triggered by option selection`() {
+        val graph = dialogGraph(start = "menu") {
+            node("menu", DialogDsl.node(
+                options = { listOf(DialogDsl.option("opt_leave", "离开", DialogDsl.close())) },
+            ))
+        }
+        val rig = DialogTestRig()
+        val plugin = GraphDialogPlugin(graph, closeOnEscapeOptionId = null, onClose = {
+            rig.options.clearOptions()
+            rig.options.addOption("继续", "barContinue", null)
+        })
+        plugin.init(rig.dialog)
+
+        assertEquals(listOf("opt_leave"), rig.shownIds())
+        rig.select(plugin, "opt_leave")
+        assertEquals(listOf("barContinue"), rig.shownIds(), "选项关闭后宿主面板不得被抹空，实际=${rig.shownIds()}")
+
+        // 关闭后再有点选/推进也不得生效
+        rig.select(plugin, "barContinue")
+        repeat(5) { plugin.advance(0.05f) }
+        assertEquals(listOf("barContinue"), rig.shownIds())
+    }
 }

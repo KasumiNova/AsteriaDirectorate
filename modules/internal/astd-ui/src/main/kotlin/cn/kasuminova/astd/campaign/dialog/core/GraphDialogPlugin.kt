@@ -38,6 +38,16 @@ class GraphDialogPlugin(
     private var optionsDirty: Boolean = true
 
     /**
+     * 对话已关闭（closeInternal 已执行）。
+     *
+     * 关键动机：onClose 宿主钩子（如 BarEventDialogPlugin.endEvent → BarCMD.showOptions）
+     * 会**同步**重建宿主的选项面板；若本插件在 close 后继续执行当帧剩余的选项刷新，
+     * 会 clearOptions 把宿主刚加好的「继续/离开酒吧」抹掉，玩家卡死在空选项面板。
+     * 关闭后本插件一切面板写操作必须全部停止。
+     */
+    private var closed: Boolean = false
+
+    /**
      * 当前面板上展示的是否为「锁定中的跳过选项」（null=尚未刷新过）。
      * advance 里只在「未锁定」或「面板还没换成跳过项」时刷新，避免逐帧重建选项。
      */
@@ -78,6 +88,8 @@ class GraphDialogPlugin(
     }
 
     override fun optionSelected(optionText: String?, optionData: Any?) {
+        if (closed) return
+
         // 通常对话里会把选项文本回显到文本面板
         ctx.addOptionSelectedEcho(optionText)
 
@@ -109,17 +121,27 @@ class GraphDialogPlugin(
     }
 
     override fun advance(amount: Float) {
+        if (closed) return
+
+        // 整体节奏缩放（0.5 = 全部动画与行间间隔放慢一倍，实机验收反馈原节奏过快）：
+        // 同时作用于 TextPanel 内部动画（段落推入/打字机）与延迟文本队列（行间间隔、淡入淡出）。
+        val scaled = amount * DIALOG_TIME_SCALE
+
         // 先推进 TextPanel 内部动画（打字机效果等）
-        dialog.textPanel.advance(amount)
+        dialog.textPanel.advance(scaled)
 
         // 再推进“延迟逐条输出”
-        val emitted = ctx.textQueue.advance(amount)
+        val emitted = ctx.textQueue.advance(scaled)
         if (emitted > 0) {
             optionsDirty = true
         }
 
-        // 节点每帧逻辑
+        // 节点每帧逻辑（用未缩放的 amount：节点计时逻辑不应受文本节奏影响）
         currNode.onAdvance(ctx, amount)
+
+        // onAdvance 可能已关闭对话（宿主钩子同步重建了选项面板）——立即停手，
+        // 任何后续的选项刷新都会把宿主面板清成空白。
+        if (closed) return
 
         // 队列播完（解锁）或自动跳转到新播报节点（面板仍是旧选项）时，必须在此处刷新——
         // 否则锁定态选项会一直滞留，玩家无入口继续对话。
@@ -164,6 +186,8 @@ class GraphDialogPlugin(
     }
 
     private fun closeInternal(asCancel: Boolean) {
+        if (closed) return
+        closed = true
         val handler = onClose
         if (handler != null) {
             handler(asCancel)
@@ -188,7 +212,7 @@ class GraphDialogPlugin(
     }
 
     private fun refreshOptionsIfNeeded() {
-        if (!optionsDirty) return
+        if (closed || !optionsDirty) return
         optionsDirty = false
 
         val locked = isOptionsLocked()
@@ -230,5 +254,11 @@ class GraphDialogPlugin(
 
     companion object {
         private const val OPTION_SKIP = "__graph_dialog_skip__"
+
+        /**
+         * 对话文本整体时间缩放：0.5f = TextPanel 推入动画与行间延迟统一放慢一倍
+         * （实机验收反馈：原速度推入过快、句间停顿过短）。
+         */
+        private const val DIALOG_TIME_SCALE: Float = 0.5f
     }
 }

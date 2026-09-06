@@ -80,10 +80,20 @@ description: "Dialog DSL 使用指南：对话图、节点、选项、动作、�
 - 使用 `GraphDialogPlugin(graph, closeOnEscapeOptionId, closeOnEscapeText)`
 - 首次进入：执行 `onEnter` + 刷新选项
 - 每帧：
-  - 推进 `textPanel.advance()`
-  - 推进 `TimedTextQueue.advance()`
-  - 调用 `onAdvance()`
+  - 推进 `textPanel.advance()`（缩放后）
+  - 推进 `TimedTextQueue.advance()`（缩放后）
+  - 调用 `onAdvance()`（原始 amount）
   - 按需刷新选项
+- **整体节奏缩放**：`DIALOG_TIME_SCALE = 0.5f` 统一作用于 TextPanel 推入动画与
+  文本队列（行间间隔/淡入淡出均放慢一倍）；节点 `onAdvance` 拿原始 `amount`，计时逻辑不受影响
+
+**关闭语义（closed 防误清）**：
+
+- `closeInternal` 执行后插件进入 `closed` 终态：`advance`/`optionSelected`/选项刷新全部停摆
+- 关键动机：`onClose` 宿主钩子（如 `BarEventDialogPlugin.endEvent` → `BarCMD.showOptions`）
+  会**同步**重建宿主选项面板；若本插件在关闭后继续当帧的选项刷新，会把宿主刚加好的
+  「继续/离开酒吧」清成空白，玩家卡死
+- 因此：节点/选项动作里触发 `ctx.close()` 后，不要再期待本插件对面板做任何写操作
 
 **Escape 关闭**：
 

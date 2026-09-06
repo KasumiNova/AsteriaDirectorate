@@ -9,8 +9,8 @@ import com.fs.starfarer.api.campaign.rules.MemoryAPI
 import com.fs.starfarer.api.impl.campaign.ids.Conditions
 import com.fs.starfarer.api.impl.campaign.intel.bar.BarEventDialogPlugin
 import com.fs.starfarer.api.impl.campaign.intel.bar.events.BarEventManager
-import com.fs.starfarer.api.impl.campaign.intel.bar.events.BaseBarEvent
 import com.fs.starfarer.api.impl.campaign.intel.bar.events.BaseBarEventCreator
+import com.fs.starfarer.api.impl.campaign.intel.bar.events.BaseBarEventWithPerson
 
 /**
  * 序章酒馆遭遇「代办」（docs/story/03 节拍 1~2、doc 04 对话定稿）。
@@ -28,12 +28,17 @@ import com.fs.starfarer.api.impl.campaign.intel.bar.events.BaseBarEventCreator
  * （BarCMD 把已展示事件 id 写入市场 memory `$BarCMD_shownEvents`，BarEventManager
  * 内部按 20~40 天 IntervalUtil 滚动刷新），非本模组控制，本模组不实现冷却逻辑。
  *
- * XStream 存档兼容：本类只持有可序列化字段（基类 shownAt 等），
+ * XStream 存档兼容：本类只持有可序列化字段（基类 shownAt / person / seed 等），
  * 图/插件对象均为 transient，在 [init] 时重建。
+ *
+ * 右侧视觉面板：沿用原版酒馆人物事件模式（[BaseBarEventWithPerson] + init 时
+ * `showPersonInfo`）——点进事件后右侧切换为代办人物卡；头像暂用原版 corporate
+ * 占位素材（用户裁定：素材缺口先用原版资源），TODO(素材) 后续接入实际素材。
  */
-class PrologueAgentBarEvent : BaseBarEvent() {
+class PrologueAgentBarEvent : BaseBarEventWithPerson() {
 
     /** 对话期间由本事件安装的图驱动插件（transient：存档后不恢复，读档时事件已结束或重进）。 */
+    @Transient
     private var graphPlugin: GraphDialogPlugin? = null
 
     override fun getBarEventId(): String = PrologueAgentBarEventCreator.EVENT_ID
@@ -48,12 +53,20 @@ class PrologueAgentBarEvent : BaseBarEvent() {
     }
 
     override fun addPromptAndOption(dialog: InteractionDialogAPI, memoryMap: Map<String, MemoryAPI>) {
+        // 原版模式：在展示选项前（按市场缓存）重建人物，保证 init 时 person 可用
+        regen(dialog.interactionTarget.market)
         dialog.textPanel.addPara(I18n[CAT, "story.prologue.agent.bar.prompt"])
         dialog.optionPanel.addOption(I18n[CAT, "story.prologue.agent.bar.option"], this)
     }
 
+    override fun getPersonPortrait(): String = "graphics/portraits/portrait_corporate03.png"
+
     override fun init(dialog: InteractionDialogAPI, memoryMap: Map<String, MemoryAPI>) {
         super.init(dialog, memoryMap)
+
+        // 右侧视觉面板切换为代办人物卡（原版 BaseBarEventWithPerson 模式；
+        // 交还酒馆时 BarCMD.showOptions 会 restoreSavedVisual 复原酒吧场景）
+        dialog.visualPanel.showPersonInfo(person, true)
 
         // 中断恢复标记：谈话一开始即写入；强退后下次进酒馆重新触发并走差异开场白（doc 04）
         StoryDialogBackends.get().markPrologueAgentMet()

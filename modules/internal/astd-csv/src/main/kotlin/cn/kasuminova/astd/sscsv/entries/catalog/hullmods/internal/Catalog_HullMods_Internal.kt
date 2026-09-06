@@ -279,7 +279,7 @@ object Hm_astd_affix_singularity_drive : HullModEntry() {
     override val hiddenEverywhere: Boolean = true
     override val unlocked: Boolean = true
     override val script: String = "cn.kasuminova.astd.combat.hullmods.affix.AffixSingularityDriveHullMod"
-    override val desc: String = "内部用途：赏金词缀 R-17。峰值巨幅延长，武器辐耗降低，子系统「奇点爆发」。"
+    override val desc: String = "内部用途：赏金词缀 R-17。峰值巨幅延长，武器辐耗降低，子系统“奇点爆发”。"
     override val short: String = "奇点驱动（隐藏）"
     override val sprite: String = "graphics/hullmods/astd_zero_point_compute_core.png"
 }

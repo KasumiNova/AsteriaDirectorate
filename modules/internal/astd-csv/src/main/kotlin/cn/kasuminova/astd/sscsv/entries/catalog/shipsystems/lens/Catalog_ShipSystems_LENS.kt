@@ -6,7 +6,7 @@ import cn.kasuminova.astd.sscsv.entries.catalog.shipsystems.systemName
 /** LENS 系舰船系统（ship_systems.csv + 对应 .system 文件）。 */
 
 /**
- * 引力透镜级·载人版「回声定影」系统（Task 5 真实实现）。
+ * 引力透镜级·载人版“回声定影”系统（Task 5 真实实现）。
  *
  * 动机：双模式 hullmod（ASTDLensCrewedModeHullMod）在建船时调用
  * setShipSystemId(astd_echo_fixation_crewed)，故该系统 id 必须在 ship_systems.csv +
@@ -33,7 +33,7 @@ object Sys_astd_echo_fixation_crewed : ShipSystemWithSystemFileEntry() {
     override val icon: String = "graphics/icons/hullsys/damper_field.png"
 }
 
-/** 引力透镜级·无人版「回声定影」系统（Task 5 真实实现，动机同 [Sys_astd_echo_fixation_crewed]）。 */
+/** 引力透镜级·无人版“回声定影”系统（Task 5 真实实现，动机同 [Sys_astd_echo_fixation_crewed]）。 */
 object Sys_astd_echo_fixation_automated : ShipSystemWithSystemFileEntry() {
     override val id: String = "astd_echo_fixation_automated"
     override val name: String = systemName(id)

@@ -6,9 +6,9 @@
            （序章签署 → 挂出 → 击毁 → 终端核销 → 批次 gating / 失败重挂 / 引力节点拔除 /
            清算进度节拍 / 章末钩子）→ 终端 UI → 四章末归档挂起 → 封存签署 → 执行官签发 →
            无限赏金 3 槽位挂出与换代 → 两次存档副本（签前/签后）。
-- reload ：读「签后」存档 → 状态补齐校验（normalize / 世界生成幂等 / 延迟条目恢复与激活 /
+- reload ：读“签后”存档 → 状态补齐校验（normalize / 世界生成幂等 / 延迟条目恢复与激活 /
            无限赏金槽位恢复）→ 终端重开冒烟。
-- trade  ：读「签前」存档 → 交易选签署（报酬/关系/势力强度）→ 执行官行政特化任命。
+- trade  ：读“签前”存档 → 交易选签署（报酬/关系/势力强度）→ 执行官行政特化任命。
 
 替代点（需要真实玩家输入/等待的环节用桥接层等价入口替代）：
 - 序章酒馆 BarEvent 对话逐点选项 → MainBountyBridge.acceptPrologueWorkOrder 直接接取；
@@ -291,7 +291,7 @@ def phase_main(checker: Checker, game_dir: Path, saves_root: Path, timeout: int)
         markets = world.get("markets") or {}
         lantai = markets.get("astd_story_market_lantai") or {}
         checker.check(
-            phase, "兰台市场挂「菀星行政部遗址」状况",
+            phase, "兰台市场挂“菀星行政部遗址”状况",
             "astd_wanxing_admin_ruins" in (lantai.get("conditions") or []),
             f"conditions={lantai.get('conditions')}",
         )
@@ -424,7 +424,7 @@ def phase_main(checker: Checker, game_dir: Path, saves_root: Path, timeout: int)
         checker.check(phase, "星坠星系实体齐全（含休眠星门）", not sf_missing, f"缺失={sf_missing}")
         duanyuan = (starfall.get("markets") or {}).get("astd_story_market_duanyuan") or {}
         checker.check(
-            phase, "锻原市场挂「星坠工程部遗址」状况",
+            phase, "锻原市场挂“星坠工程部遗址”状况",
             "astd_starfall_engineering_ruins" in (duanyuan.get("conditions") or []),
             f"conditions={duanyuan.get('conditions')}",
         )
@@ -657,7 +657,7 @@ def phase_reload(checker: Checker, game_dir: Path, save_dir: str, timeout: int) 
             f"worldState={world_state}",
         )
         # 实机环境战役时钟被极大加速（实测签署后数秒内 30 标准日即流逝），延迟条目可能在
-        # 签后存档前已到期激活；读档恢复口径改为「待生效 + 已生效合计 10 条、幅度全 0.12」，
+        # 签后存档前已到期激活；读档恢复口径改为“待生效 + 已生效合计 10 条、幅度全 0.12”，
         # 到期时刻是否落在存档前不作强约束（30 日延迟语义由 EndingProgressionTest 单测覆盖）。
         pending_map = state.get("pendingStrengthEffects") or {}
         applied_map = state.get("appliedStrengthPct") or {}

@@ -253,7 +253,7 @@ object Wpn_astd_stellar_mrm_launcher : WeaponDataEntry(), SsProjMissileOutputs {
     override val energyPerShot: Int = 60
     override val energyPerSecond: Int = 60
 
-    // 「反物质 SRM 75% 航速」：amsrm projSpeed=1000 × 0.75；launch speed 对齐 amsrm 200
+    // “反物质 SRM 75% 航速”：amsrm projSpeed=1000 × 0.75；launch speed 对齐 amsrm 200
     override val projSpeed: Int = 750
     override val launchSpeed: Int = 200
 
@@ -261,7 +261,7 @@ object Wpn_astd_stellar_mrm_launcher : WeaponDataEntry(), SsProjMissileOutputs {
     override val flightTime: Double = 4.0
     override val projHitpoints: Int = 200
 
-    // 追踪优秀（amsrm 同文案）；航速 75% 降一档「快」（amsrm 为「极快」）
+    // 追踪优秀（amsrm 同文案）；航速 75% 降一档“快”（amsrm 为“极快”）
     override val trackingStr: String = "优秀"
     override val speedStr: String = "快"
 

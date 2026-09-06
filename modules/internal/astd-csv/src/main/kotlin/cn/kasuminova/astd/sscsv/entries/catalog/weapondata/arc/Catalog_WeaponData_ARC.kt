@@ -246,7 +246,7 @@ object Wpn_astd_spc3 : WeaponDataEntry(), SsProjProjectileOutputs {
 }
 
 /**
- * ARC-13「三位一体」：大型能量武器（蓝稀有）。
+ * ARC-13“三位一体”：大型能量武器（蓝稀有）。
  *
  * 机制：burst 3 发；每发脚本生成一次弧光（命中点即时结算一次性伤害）。
  * 因此 weapon_data.csv 中 damage 字段仅用于 UI/AI 基础信息，不做实际伤害来源。
@@ -346,7 +346,7 @@ object Wpn_astd_heavy_charge_needle : WeaponDataEntry(), SsProjProjectileOutputs
 /**
  * 电驱加速炮：中型实弹散射连发（量产，规格 03 §1.1）。
  *
- * 「散射 2」不走 weapon_data.csv（原版无 projectileCount 列）——由 `.wpn` 双炮管 offsets +
+ * “散射 2”不走 weapon_data.csv（原版无 projectileCount 列）——由 `.wpn` 双炮管 offsets +
  * barrelMode LINKED 承担，连发 4 走 burst 列，合计每触发 8 弹；
  * 不稳定装药随机附加伤害走 `.proj` onHitEffect，净空加速射程加成走 `.wpn` everyFrameEffect。
  */
@@ -499,7 +499,7 @@ object Wpn_astd_positron_shockwave : WeaponDataEntry(), SsProjProjectileOutputs 
         onHitEffect = null,
         // 无触碰体积的真实实现（规格 §0-1：ProjectileProjSpec 无 collisionRadius 字段）
         collisionClass = "NONE",
-        // 规格 §1.1「置空不写」与实机冲突：原版 ProjectileSpec 加载强制要求该键（缺键 RuntimeException）；
+        // 规格 §1.1“置空不写”与实机冲突：原版 ProjectileSpec 加载强制要求该键（缺键 RuntimeException）；
         // 与 collisionClass 同写 NONE（01 special_items order 判例同族，规格文本待主代理修订）。
         collisionClassByFighter = "NONE",
         fringeColor = Rgba(140, 200, 255, 255),
@@ -559,7 +559,7 @@ object Wpn_astd_seven_stars : WeaponDataEntry(), SsProjProjectileOutputs {
         onHitEffect = null,
         // 射弹发射即折跃，碰撞类别 NONE 杜绝瞬移间隙帧的原版触碰结算（规格 §0-1）
         collisionClass = "NONE",
-        // 规格 §1.1「置空不写」与 06 组实机判例冲突：原版 ProjectileSpec 加载强制要求该键
+        // 规格 §1.1“置空不写”与 06 组实机判例冲突：原版 ProjectileSpec 加载强制要求该键
         // （缺键 RuntimeException）；与 collisionClass 同写 NONE（vanilla inimical_emanation_shot.proj 先例，
         // 规格文本待主代理修订）。
         collisionClassByFighter = "NONE",
@@ -616,7 +616,7 @@ object Wpn_astd_gemini_dem_launcher : WeaponDataEntry(), SsProjMissileOutputs {
     override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
     override val number: Int = 9221
 
-    // dummy 导弹：发射同帧被 GeminiDemSalvoOnFireEffect 拦截移除，数值只保证「发射即拦截」不出异常（规格 §1.3）
+    // dummy 导弹：发射同帧被 GeminiDemSalvoOnFireEffect 拦截移除，数值只保证“发射即拦截”不出异常（规格 §1.3）
     override val projSpec: MissileProjSpec = MissileProjSpec(
         id = "astd_gemini_dem_dummy",
         missileType = "MISSILE",
@@ -782,7 +782,7 @@ private fun geminiDemWarheadProjSpec(
         "triggerDistance" to listOf(700, 750),
         "preferredMinFireDistance" to listOf(700, 750),
         "turnRateBoost" to 100,
-        // 提案：龙炎为 3，设计「短暂充能」收紧到 2；烟测目检
+        // 提案：龙炎为 3，设计“短暂充能”收紧到 2；烟测目检
         "targetingTime" to 2,
         "firingTime" to 1,
         // v1 复用原版红色锁定激光；异色锁定激光列后续美术任务
@@ -859,7 +859,7 @@ object Wpn_astd_heavy_ion_pulse : WeaponDataEntry(), SsProjProjectileOutputs {
     override val rarity: Int = 1
     override val baseValue: Int = 24000
     override val range: Int = 700
-    // 持续 2.67 发/s × 135 折算（照 aod7「持续 DPS」口径）
+    // 持续 2.67 发/s × 135 折算（照 aod7“持续 DPS”口径）
     override val damagePerSecond: Int = 360
     override val damagePerShot: Int = 135
     override val emp: Int = 600
@@ -908,7 +908,7 @@ object Wpn_astd_heavy_ion_pulse : WeaponDataEntry(), SsProjProjectileOutputs {
  *
  * HYBRID 挂载由 `.wpn` 的 `"type":"ENERGY"` + `"mountTypeOverride":"HYBRID"` 承担
  * （实弹/能量槽皆可装配，属性/技能/船插按能量武器结算，vanilla cryoblaster 同款形态）；
- * 本表 `type` 列是 DamageType（ENERGY），与「视作能量武器」口径一致。
+ * 本表 `type` 列是 DamageType（ENERGY），与“视作能量武器”口径一致。
  * 命中锥状冲击（破片 + 同锚 EMP）走 `.proj` onHitEffect + 基建 ConeImpactHandler。
  * P6 前 no_drop 仅 dev 测试；P6 后改 T3~T4 支线赏金掉落（90-plan §14）。
  */
@@ -937,7 +937,7 @@ object Wpn_astd_piercing_lance : WeaponDataEntry(), SsProjProjectileOutputs {
     override val energyPerShot: Int = 3000
     // 3000 ÷ 7s 循环折算
     override val energyPerSecond: Int = 429
-    // 「极快」：1000su 射程约 0.33s 飞行（提案值，目检面；aod7 为 2400）
+    // “极快”：1000su 射程约 0.33s 飞行（提案值，目检面；aod7 为 2400）
     override val projSpeed: Int = 3000
     // P6 前口径；P6 后改赏金掉落（90-plan §14）
     override val tags: String = "no_drop, no_drop_salvage"

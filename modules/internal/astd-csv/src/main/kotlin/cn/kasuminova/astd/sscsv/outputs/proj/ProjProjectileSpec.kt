@@ -71,7 +71,7 @@ data class ProjectileProjSpec(
     companion object {
         /**
          * 原版螺栓渲染弹体（无 bulletSprite）：弹头/弹芯由原版 projbody/projtrail 渲染器按
-         * fringeColor/coreColor 染色绘制，尺寸/消散节奏对齐原版「离子脉冲」（ionpulser_shot.proj：
+         * fringeColor/coreColor 染色绘制，尺寸/消散节奏对齐原版“离子脉冲”（ionpulser_shot.proj：
          * length 75 / width 20 / fadeTime 0.25 / textureScrollSpeed -256 / pixelsPerTexel 1）。
          * 拖尾仍由 ASTD VFX 管线（ProjectileVfxSpecs 三层贴图混合）承担。
          *
@@ -92,7 +92,7 @@ data class ProjectileProjSpec(
             coreColor: Rgba,
             hitGlowRadius: Double = 25.0,
             /**
-             * 弹体尺寸（su）：默认对齐原版「离子脉冲」长条螺栓（75×20）；
+             * 弹体尺寸（su）：默认对齐原版“离子脉冲”长条螺栓（75×20）；
              * 圆球状弹体（如贯星之矛）传等长等宽。ASTD VFX 管线的拖尾锚点前移量自动取 length/2。
              */
             length: Double = 75.0,
