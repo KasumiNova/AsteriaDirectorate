@@ -16,6 +16,8 @@ object I18n {
         "data/strings/bounty_strings.json",
         "data/strings/systems_strings.json",
         "data/strings/settings_strings.json",
+        "data/strings/ending_strings.json",
+        "data/strings/infinite_bounty_strings.json",
     )
 
     private val log by lazy { Global.getLogger(I18n::class.java) }

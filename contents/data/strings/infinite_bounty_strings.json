@@ -1,0 +1,30 @@
+{
+	"asteria_directorate_bounty": {
+		"main.infinite.name": "常驻工单 %serial%",
+		"main.infinite.summary": "清除 %faction% 活动集群（预估规模 %fp% 标准战力）",
+		"main.infinite.desc": "菀星总局·第 209 号分局　辖区安全维护指令\n文书编号：%serial%　签发日期：%date%\n委托事项：清除 %faction% 活动集群（预估规模 %fp% 标准战力）。\n依据《无限期承包合同》常设条款，本委托长期有效，核销后自动换代。\n——本分单不设时限。报价已于签发时锁定。",
+		"main.infinite.receipt": "「%serial% 目标已确认清除。辖区安全状态：恢复。」",
+		"main.infinite.fleet_name": "%serial% 目标集群",
+
+		"hud.infinite.pending_settle": "[菀星总局] 常驻工单 %serial% 目标已击毁，请前往分局空间站终端交付核销。",
+		"hud.infinite.settled": "[菀星总局] 常驻工单 %serial% 已核销：%amount% 已入账。新一代工单已签发。",
+
+		"affix.astd_affix_ironclad_plating.clause": "追加条款 S-01：目标编队已按「铁甲重装」改装标准加固。",
+		"affix.astd_affix_cryo_flux_network.clause": "追加条款 S-02：目标编队已接入「六相冰辐能网络」。",
+		"affix.astd_affix_flux_coil_expansion.clause": "追加条款 S-03：目标编队已完成「极限辐能线圈扩容」。",
+		"affix.astd_affix_polarized_shield.clause": "追加条款 S-04：目标编队已换装「极化护盾发生器」。",
+		"affix.astd_affix_engine_overclock.clause": "追加条款 S-05：目标编队引擎已按「引擎超频」标准解除限幅。",
+		"affix.astd_affix_dimensional_specialty.clause": "追加条款 S-06：目标编队已按「维度专长」标准完成特种适航改装。",
+		"affix.astd_affix_phase_coil_tuning.clause": "追加条款 S-07：目标编队相位系统已完成「相位线圈调谐」。",
+		"affix.astd_affix_phase_coil_detuning.clause": "追加条款 S-08：目标编队相位系统已完成「相位线圈降频」。",
+		"affix.astd_affix_recursive_targeting.clause": "追加条款 M-09：目标编队已列装「递归式目标定位系统」。",
+		"affix.astd_affix_reactive_flux_armor.clause": "追加条款 M-10：目标编队已敷设「反应式辐能装甲」。",
+		"affix.astd_affix_pspace_diver.clause": "追加条款 M-11：目标编队已列装「P空间深潜器」。",
+		"affix.astd_affix_engine_flux_isolation.clause": "追加条款 M-12：目标编队已完成「引擎辐能网隔离」。",
+		"affix.astd_affix_swarm_coordination.clause": "追加条款 M-13：目标编队已接入「蜂群协同网络」。",
+		"affix.astd_affix_plasma_armor_shield.clause": "追加条款 M-14：目标编队已列装「等离子装甲护盾」。",
+		"affix.astd_affix_grid_deepening.clause": "追加条款 R-15：目标编队电网已完成「电网深化升级」。",
+		"affix.astd_affix_aggressive_swarm_network.clause": "追加条款 R-16：目标编队已接入「激进式集群作战网络」。",
+		"affix.astd_affix_singularity_drive.clause": "追加条款 R-17：目标编队旗舰已换装「奇点驱动」。"
+	}
+}

@@ -1,0 +1,5 @@
+name,id,tags,planetary,decivRemove,script,desc,icon,order
+菀星行政部遗址,astd_wanxing_admin_ruins,,TRUE,,cn.kasuminova.astd.campaign.world.WanxingAdminRuinsCondition,菀星设计总局英仙座第七分局的行政中枢遗址。签发、审计与归档系统在两百年后仍以最低功率运转着，持续为途经的承包商提供着无人申请的行政便利。,graphics/icons/markets/ruins_widespread.png,700
+星坠工程部遗址,astd_starfall_engineering_ruins,,TRUE,,cn.kasuminova.astd.campaign.world.StarfallEngineeringRuinsCondition,星坠理事会的武器试验场遗址。自动化的锻压线仍按两百年前的工单运转，产出的军备无人问津，也无人停机。,graphics/icons/markets/ruins_vast.png,701
+视界动力,astd_event_horizon_power,,,,cn.kasuminova.astd.campaign.world.EventHorizonPowerCondition,紫菀设计局打造的实验性空间站动力系统，能直接从黑洞周围汲取近乎无限的能量。其力场锚定在事件视界边缘，为附近的舰队屏蔽黑洞环境的影响。,graphics/icons/markets/solar_array.png,702
+紫菀科研部遗址,astd_aster_research_ruins,,,,cn.kasuminova.astd.campaign.world.AsterResearchRuinsCondition,紫菀理事会的研究设施遗址。实验室日志的最后一页都写完了，没人写"停笔"。,graphics/icons/markets/rogue_ai.png,703

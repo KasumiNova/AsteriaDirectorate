@@ -3,9 +3,10 @@ package cn.kasuminova.astd.sscsv.entries.catalog.hullmods.internal
 import cn.kasuminova.astd.sscsv.entries.HullModEntry
 
 /**
- * 内部/测试用途 HullMods。
+ * 内部/隐藏 HullMods：赏金难度缩放与赏金词缀（v3 定稿，17 条）。
  *
- * 注意：这些 HullMod 可能不会在 UI 中显示，但会被脚本/测试逻辑自动添加。
+ * 注意：这些 HullMod 不会在 UI 中显示（hiddenEverywhere），由赏金舰队生成器装上敌舰。
+ * 词缀编目与抽取规则见 `cn.kasuminova.astd.combat.affix.AffixRegistry`（docs/design/bounty/affixes.md）。
  */
 object Hm_astd_bounty_scaling : HullModEntry() {
     override val id: String = "astd_bounty_scaling"
@@ -17,464 +18,269 @@ object Hm_astd_bounty_scaling : HullModEntry() {
     override val hiddenEverywhere: Boolean = true
     override val unlocked: Boolean = true
     override val script: String = "cn.kasuminova.astd.combat.hullmods.affix.BountyScalingHullMod"
-    override val desc: String = "内部用途：赏金敌方小幅数值缩放（由 k 控制）。"
+    override val desc: String = "内部用途：赏金敌方小幅数值缩放（由难度系数控制）。"
     override val short: String = "赏金缩放（隐藏）"
     override val sprite: String = "graphics/hullmods/astd_zero_point_compute_core.png"
 }
 
-object Hm_astd_affix_overclocked_coils : HullModEntry() {
-    override val id: String = "astd_affix_overclocked_coils"
-    override val name: String = "超频线圈（词缀·隐藏）"
+// ─── S 型词缀（S-01 ~ S-08） ───
+
+object Hm_astd_affix_ironclad_plating : HullModEntry() {
+    override val id: String = "astd_affix_ironclad_plating"
+    override val name: String = "铁甲重装（词缀·隐藏）"
     override val tech: String = "astd_hidden"
     override val uiTags: String = ""
     override val tags: String = ""
     override val hidden: Boolean = true
     override val hiddenEverywhere: Boolean = true
     override val unlocked: Boolean = true
-    override val script: String = "cn.kasuminova.astd.combat.hullmods.affix.AffixOverclockedCoilsHullMod"
-    override val desc: String = "内部用途：赏金词缀。提高能量武器节奏并增加热债。"
-    override val short: String = "超频线圈（隐藏）"
+    override val script: String = "cn.kasuminova.astd.combat.hullmods.affix.AffixIroncladPlatingHullMod"
+    override val desc: String = "内部用途：赏金词缀 S-01。装甲与最小装甲强化，航速机动下降。"
+    override val short: String = "铁甲重装（隐藏）"
     override val sprite: String = "graphics/hullmods/astd_zero_point_compute_core.png"
 }
 
-object Hm_astd_affix_jamming_nodes : HullModEntry() {
-    override val id: String = "astd_affix_jamming_nodes"
-    override val name: String = "干扰节点（词缀·隐藏）"
+object Hm_astd_affix_cryo_flux_network : HullModEntry() {
+    override val id: String = "astd_affix_cryo_flux_network"
+    override val name: String = "六相冰辐能网络（词缀·隐藏）"
     override val tech: String = "astd_hidden"
     override val uiTags: String = ""
     override val tags: String = ""
     override val hidden: Boolean = true
     override val hiddenEverywhere: Boolean = true
     override val unlocked: Boolean = true
-    override val script: String = "cn.kasuminova.astd.combat.hullmods.affix.AffixJammingNodesHullMod"
-    override val desc: String = "内部用途：赏金词缀。强化机动与自动火控。"
-    override val short: String = "干扰节点（隐藏）"
+    override val script: String = "cn.kasuminova.astd.combat.hullmods.affix.AffixCryoFluxNetworkHullMod"
+    override val desc: String = "内部用途：赏金词缀 S-02。辐能耗散/排辐强化，EMP 减伤。"
+    override val short: String = "六相冰辐能网络（隐藏）"
     override val sprite: String = "graphics/hullmods/astd_zero_point_compute_core.png"
 }
 
-object Hm_astd_affix_entropy_shields : HullModEntry() {
-    override val id: String = "astd_affix_entropy_shields"
-    override val name: String = "熵化护盾（词缀·隐藏）"
+object Hm_astd_affix_flux_coil_expansion : HullModEntry() {
+    override val id: String = "astd_affix_flux_coil_expansion"
+    override val name: String = "极限辐能线圈扩容（词缀·隐藏）"
     override val tech: String = "astd_hidden"
     override val uiTags: String = ""
     override val tags: String = ""
     override val hidden: Boolean = true
     override val hiddenEverywhere: Boolean = true
     override val unlocked: Boolean = true
-    override val script: String = "cn.kasuminova.astd.combat.hullmods.affix.AffixEntropyShieldsHullMod"
-    override val desc: String = "内部用途：赏金词缀。护盾更硬但维持更贵。"
-    override val short: String = "熵护盾（隐藏）"
+    override val script: String = "cn.kasuminova.astd.combat.hullmods.affix.AffixFluxCoilExpansionHullMod"
+    override val desc: String = "内部用途：赏金词缀 S-03。辐能容量扩容，耗散降低。"
+    override val short: String = "辐能线圈扩容（隐藏）"
     override val sprite: String = "graphics/hullmods/astd_zero_point_compute_core.png"
 }
 
-object Hm_astd_affix_reckless_drive : HullModEntry() {
-    override val id: String = "astd_affix_reckless_drive"
-    override val name: String = "超压推进（词缀·隐藏）"
+object Hm_astd_affix_polarized_shield : HullModEntry() {
+    override val id: String = "astd_affix_polarized_shield"
+    override val name: String = "极化护盾发生器（词缀·隐藏）"
     override val tech: String = "astd_hidden"
     override val uiTags: String = ""
     override val tags: String = ""
     override val hidden: Boolean = true
     override val hiddenEverywhere: Boolean = true
     override val unlocked: Boolean = true
-    override val script: String = "cn.kasuminova.astd.combat.hullmods.affix.AffixRecklessDriveHullMod"
-    override val desc: String = "内部用途：赏金词缀。机动更强但装甲更脆。"
-    override val short: String = "超压推进（隐藏）"
+    override val script: String = "cn.kasuminova.astd.combat.hullmods.affix.AffixPolarizedShieldHullMod"
+    override val desc: String = "内部用途：赏金词缀 S-04。护盾减伤，过载时间延长。"
+    override val short: String = "极化护盾（隐藏）"
     override val sprite: String = "graphics/hullmods/astd_zero_point_compute_core.png"
 }
 
-object Hm_astd_affix_phase_instability : HullModEntry() {
-    override val id: String = "astd_affix_phase_instability"
-    override val name: String = "相位不稳定（词缀·隐藏）"
+object Hm_astd_affix_engine_overclock : HullModEntry() {
+    override val id: String = "astd_affix_engine_overclock"
+    override val name: String = "引擎超频（词缀·隐藏）"
     override val tech: String = "astd_hidden"
     override val uiTags: String = ""
     override val tags: String = ""
     override val hidden: Boolean = true
     override val hiddenEverywhere: Boolean = true
     override val unlocked: Boolean = true
-    override val script: String = "cn.kasuminova.astd.combat.hullmods.affix.AffixPhaseInstabilityHullMod"
-    override val desc: String = "内部用途：赏金词缀。相位成本惩罚 + 少量火力提升。"
-    override val short: String = "相位不稳（隐藏）"
+    override val script: String = "cn.kasuminova.astd.combat.hullmods.affix.AffixEngineOverclockHullMod"
+    override val desc: String = "内部用途：赏金词缀 S-05。极速提升，机动性下降。"
+    override val short: String = "引擎超频（隐藏）"
     override val sprite: String = "graphics/hullmods/astd_zero_point_compute_core.png"
 }
 
-object Hm_astd_affix_zero_margin : HullModEntry() {
-    override val id: String = "astd_affix_zero_margin"
-    override val name: String = "零余量纪律（词缀·隐藏）"
+object Hm_astd_affix_dimensional_specialty : HullModEntry() {
+    override val id: String = "astd_affix_dimensional_specialty"
+    override val name: String = "维度专长（词缀·隐藏）"
     override val tech: String = "astd_hidden"
     override val uiTags: String = ""
     override val tags: String = ""
     override val hidden: Boolean = true
     override val hiddenEverywhere: Boolean = true
     override val unlocked: Boolean = true
-    override val script: String = "cn.kasuminova.astd.combat.hullmods.affix.AffixZeroMarginHullMod"
-    override val desc: String = "内部用途：赏金词缀。更省幅能更强压制，但峰值更短。"
-    override val short: String = "零余量（隐藏）"
+    override val script: String = "cn.kasuminova.astd.combat.hullmods.affix.AffixDimensionalSpecialtyHullMod"
+    override val desc: String = "内部用途：赏金词缀 S-06。峰值与 CR 维持强化，系统充能/冷却加快。"
+    override val short: String = "维度专长（隐藏）"
     override val sprite: String = "graphics/hullmods/astd_zero_point_compute_core.png"
 }
 
-// ─── M 型词缀 ───
-
-object Hm_astd_affix_decoy_swarm : HullModEntry() {
-    override val id: String = "astd_affix_decoy_swarm"
-    override val name: String = "诱饵蜂群（词缀·隐藏）"
+object Hm_astd_affix_phase_coil_tuning : HullModEntry() {
+    override val id: String = "astd_affix_phase_coil_tuning"
+    override val name: String = "相位线圈调谐（词缀·隐藏）"
     override val tech: String = "astd_hidden"
     override val uiTags: String = ""
     override val tags: String = ""
     override val hidden: Boolean = true
     override val hiddenEverywhere: Boolean = true
     override val unlocked: Boolean = true
-    override val script: String = "cn.kasuminova.astd.combat.hullmods.affix.AffixDecoySwarmHullMod"
-    override val desc: String = "内部用途：赏金词缀。增强点防覆盖与战机生存，降低导弹速度。"
-    override val short: String = "诱饵蜂群（隐藏）"
+    override val script: String = "cn.kasuminova.astd.combat.hullmods.affix.AffixPhaseCoilTuningHullMod"
+    override val desc: String = "内部用途：赏金词缀 S-07。相位时间流速提升，峰值/CR 强化。仅相位舰。"
+    override val short: String = "相位调谐（隐藏）"
     override val sprite: String = "graphics/hullmods/astd_zero_point_compute_core.png"
 }
 
-object Hm_astd_affix_fragmented_orders : HullModEntry() {
-    override val id: String = "astd_affix_fragmented_orders"
-    override val name: String = "断章（词缀·隐藏）"
+object Hm_astd_affix_phase_coil_detuning : HullModEntry() {
+    override val id: String = "astd_affix_phase_coil_detuning"
+    override val name: String = "相位线圈降频（词缀·隐藏）"
     override val tech: String = "astd_hidden"
     override val uiTags: String = ""
     override val tags: String = ""
     override val hidden: Boolean = true
     override val hiddenEverywhere: Boolean = true
     override val unlocked: Boolean = true
-    override val script: String = "cn.kasuminova.astd.combat.hullmods.affix.AffixFragmentedOrdersHullMod"
-    override val desc: String = "内部用途：赏金词缀。突发火力增强但精准度降低。"
-    override val short: String = "断章（隐藏）"
+    override val script: String = "cn.kasuminova.astd.combat.hullmods.affix.AffixPhaseCoilDetuningHullMod"
+    override val desc: String = "内部用途：赏金词缀 S-08。相位时间流速/辐能产出降低，线圈冷却缩短。仅相位舰。"
+    override val short: String = "相位降频（隐藏）"
     override val sprite: String = "graphics/hullmods/astd_zero_point_compute_core.png"
 }
 
-object Hm_astd_affix_coherent_link : HullModEntry() {
-    override val id: String = "astd_affix_coherent_link"
-    override val name: String = "协同链路（词缀·隐藏）"
+// ─── M 型词缀（M-09 ~ M-14） ───
+
+object Hm_astd_affix_recursive_targeting : HullModEntry() {
+    override val id: String = "astd_affix_recursive_targeting"
+    override val name: String = "递归式目标定位系统（词缀·隐藏）"
     override val tech: String = "astd_hidden"
     override val uiTags: String = ""
     override val tags: String = ""
     override val hidden: Boolean = true
     override val hiddenEverywhere: Boolean = true
     override val unlocked: Boolean = true
-    override val script: String = "cn.kasuminova.astd.combat.hullmods.affix.AffixCoherentLinkHullMod"
-    override val desc: String = "内部用途：赏金词缀。编队协同增强但孤立时更脆弱。"
-    override val short: String = "协同链路（隐藏）"
+    override val script: String = "cn.kasuminova.astd.combat.hullmods.affix.AffixRecursiveTargetingHullMod"
+    override val desc: String = "内部用途：赏金词缀 M-09。按友舰数量提升射程与弹速（编队光环）。"
+    override val short: String = "递归目标定位（隐藏）"
     override val sprite: String = "graphics/hullmods/astd_zero_point_compute_core.png"
 }
 
-object Hm_astd_affix_overdrive_window : HullModEntry() {
-    override val id: String = "astd_affix_overdrive_window"
-    override val name: String = "过驱窗口（词缀·隐藏）"
+object Hm_astd_affix_reactive_flux_armor : HullModEntry() {
+    override val id: String = "astd_affix_reactive_flux_armor"
+    override val name: String = "反应式辐能装甲（词缀·隐藏）"
     override val tech: String = "astd_hidden"
     override val uiTags: String = ""
     override val tags: String = ""
     override val hidden: Boolean = true
     override val hiddenEverywhere: Boolean = true
     override val unlocked: Boolean = true
-    override val script: String = "cn.kasuminova.astd.combat.hullmods.affix.AffixOverdriveWindowHullMod"
-    override val desc: String = "内部用途：赏金词缀。能量武器爆发增强但通量容量降低。"
-    override val short: String = "过驱窗口（隐藏）"
+    override val script: String = "cn.kasuminova.astd.combat.hullmods.affix.AffixReactiveFluxArmorHullMod"
+    override val desc: String = "内部用途：赏金词缀 M-10。排辐期间减伤，排辐速率下降。"
+    override val short: String = "反应辐能装甲（隐藏）"
     override val sprite: String = "graphics/hullmods/astd_zero_point_compute_core.png"
 }
 
-object Hm_astd_affix_lens_refraction : HullModEntry() {
-    override val id: String = "astd_affix_lens_refraction"
-    override val name: String = "透镜折射（词缀·隐藏）"
+object Hm_astd_affix_pspace_diver : HullModEntry() {
+    override val id: String = "astd_affix_pspace_diver"
+    override val name: String = "P空间深潜器（词缀·隐藏）"
     override val tech: String = "astd_hidden"
     override val uiTags: String = ""
     override val tags: String = ""
     override val hidden: Boolean = true
     override val hiddenEverywhere: Boolean = true
     override val unlocked: Boolean = true
-    override val script: String = "cn.kasuminova.astd.combat.hullmods.affix.AffixLensRefractionHullMod"
-    override val desc: String = "内部用途：赏金词缀。点防拦截能力增强。"
-    override val short: String = "透镜折射（隐藏）"
+    override val script: String = "cn.kasuminova.astd.combat.hullmods.affix.AffixPSpaceDiverHullMod"
+    override val desc: String = "内部用途：赏金词缀 M-11。抑制相位硬辐能降速。仅相位舰。"
+    override val short: String = "P空间深潜器（隐藏）"
     override val sprite: String = "graphics/hullmods/astd_zero_point_compute_core.png"
 }
 
-object Hm_astd_affix_reactor_backfeed : HullModEntry() {
-    override val id: String = "astd_affix_reactor_backfeed"
-    override val name: String = "反应堆回灌（词缀·隐藏）"
+object Hm_astd_affix_engine_flux_isolation : HullModEntry() {
+    override val id: String = "astd_affix_engine_flux_isolation"
+    override val name: String = "引擎辐能网隔离（词缀·隐藏）"
     override val tech: String = "astd_hidden"
     override val uiTags: String = ""
     override val tags: String = ""
     override val hidden: Boolean = true
     override val hiddenEverywhere: Boolean = true
     override val unlocked: Boolean = true
-    override val script: String = "cn.kasuminova.astd.combat.hullmods.affix.AffixReactorBackfeedHullMod"
-    override val desc: String = "内部用途：赏金词缀。过载恢复增强但结构脆弱。"
-    override val short: String = "反应堆回灌（隐藏）"
+    override val script: String = "cn.kasuminova.astd.combat.hullmods.affix.AffixEngineFluxIsolationHullMod"
+    override val desc: String = "内部用途：赏金词缀 M-12。零辐能加速阈值与增益提升。"
+    override val short: String = "引擎辐能隔离（隐藏）"
     override val sprite: String = "graphics/hullmods/astd_zero_point_compute_core.png"
 }
 
-object Hm_astd_affix_payload_denial : HullModEntry() {
-    override val id: String = "astd_affix_payload_denial"
-    override val name: String = "载荷拒止（词缀·隐藏）"
+object Hm_astd_affix_swarm_coordination : HullModEntry() {
+    override val id: String = "astd_affix_swarm_coordination"
+    override val name: String = "蜂群协同网络（词缀·隐藏）"
     override val tech: String = "astd_hidden"
     override val uiTags: String = ""
     override val tags: String = ""
     override val hidden: Boolean = true
     override val hiddenEverywhere: Boolean = true
     override val unlocked: Boolean = true
-    override val script: String = "cn.kasuminova.astd.combat.hullmods.affix.AffixPayloadDenialHullMod"
-    override val desc: String = "内部用途：赏金词缀。导弹拦截特化。"
-    override val short: String = "载荷拒止（隐藏）"
+    override val script: String = "cn.kasuminova.astd.combat.hullmods.affix.AffixSwarmCoordinationHullMod"
+    override val desc: String = "内部用途：赏金词缀 M-13。按全自动友舰数量提供减伤与射速（编队光环）。"
+    override val short: String = "蜂群协同（隐藏）"
     override val sprite: String = "graphics/hullmods/astd_zero_point_compute_core.png"
 }
 
-object Hm_astd_affix_recorded_loop : HullModEntry() {
-    override val id: String = "astd_affix_recorded_loop"
-    override val name: String = "重放回路（词缀·隐藏）"
+object Hm_astd_affix_plasma_armor_shield : HullModEntry() {
+    override val id: String = "astd_affix_plasma_armor_shield"
+    override val name: String = "等离子装甲护盾（词缀·隐藏）"
     override val tech: String = "astd_hidden"
     override val uiTags: String = ""
     override val tags: String = ""
     override val hidden: Boolean = true
     override val hiddenEverywhere: Boolean = true
     override val unlocked: Boolean = true
-    override val script: String = "cn.kasuminova.astd.combat.hullmods.affix.AffixRecordedLoopHullMod"
-    override val desc: String = "内部用途：赏金词缀。可预测但精确的机动模式。"
-    override val short: String = "重放回路（隐藏）"
+    override val script: String = "cn.kasuminova.astd.combat.hullmods.affix.AffixPlasmaArmorShieldHullMod"
+    override val desc: String = "内部用途：赏金词缀 M-14。护盾命中按装甲公式折算减免。"
+    override val short: String = "等离子装甲护盾（隐藏）"
     override val sprite: String = "graphics/hullmods/astd_zero_point_compute_core.png"
 }
 
-object Hm_astd_affix_distributed_grid : HullModEntry() {
-    override val id: String = "astd_affix_distributed_grid"
-    override val name: String = "栅格轮换（词缀·隐藏）"
+// ─── R 型词缀（R-15 ~ R-17） ───
+
+object Hm_astd_affix_grid_deepening : HullModEntry() {
+    override val id: String = "astd_affix_grid_deepening"
+    override val name: String = "电网深化升级（词缀·隐藏）"
     override val tech: String = "astd_hidden"
     override val uiTags: String = ""
     override val tags: String = ""
     override val hidden: Boolean = true
     override val hiddenEverywhere: Boolean = true
     override val unlocked: Boolean = true
-    override val script: String = "cn.kasuminova.astd.combat.hullmods.affix.AffixDistributedGridHullMod"
-    override val desc: String = "内部用途：赏金词缀。分布式护盾系统。"
-    override val short: String = "栅格轮换（隐藏）"
+    override val script: String = "cn.kasuminova.astd.combat.hullmods.affix.AffixGridDeepeningHullMod"
+    override val desc: String = "内部用途：赏金词缀 R-15。捆绑辐能网络/反应装甲增益，排辐决策优化。"
+    override val short: String = "电网深化（隐藏）"
     override val sprite: String = "graphics/hullmods/astd_zero_point_compute_core.png"
 }
 
-object Hm_astd_affix_thermodynamic_exchange : HullModEntry() {
-    override val id: String = "astd_affix_thermodynamic_exchange"
-    override val name: String = "热力交换（词缀·隐藏）"
+object Hm_astd_affix_aggressive_swarm_network : HullModEntry() {
+    override val id: String = "astd_affix_aggressive_swarm_network"
+    override val name: String = "激进式集群作战网络（词缀·隐藏）"
     override val tech: String = "astd_hidden"
     override val uiTags: String = ""
     override val tags: String = ""
     override val hidden: Boolean = true
     override val hiddenEverywhere: Boolean = true
     override val unlocked: Boolean = true
-    override val script: String = "cn.kasuminova.astd.combat.hullmods.affix.AffixThermodynamicExchangeHullMod"
-    override val desc: String = "内部用途：赏金词缀。散热增强但峰值缩短。"
-    override val short: String = "热力交换（隐藏）"
+    override val script: String = "cn.kasuminova.astd.combat.hullmods.affix.AffixAggressiveSwarmNetworkHullMod"
+    override val desc: String = "内部用途：赏金词缀 R-16。指挥点恢复提升，周期性歼灭指令。"
+    override val short: String = "集群作战网络（隐藏）"
     override val sprite: String = "graphics/hullmods/astd_zero_point_compute_core.png"
 }
 
-object Hm_astd_affix_gravity_pulse : HullModEntry() {
-    override val id: String = "astd_affix_gravity_pulse"
-    override val name: String = "引力脉冲（词缀·隐藏）"
+object Hm_astd_affix_singularity_drive : HullModEntry() {
+    override val id: String = "astd_affix_singularity_drive"
+    override val name: String = "奇点驱动（词缀·隐藏）"
     override val tech: String = "astd_hidden"
     override val uiTags: String = ""
     override val tags: String = ""
     override val hidden: Boolean = true
     override val hiddenEverywhere: Boolean = true
     override val unlocked: Boolean = true
-    override val script: String = "cn.kasuminova.astd.combat.hullmods.affix.AffixGravityPulseHullMod"
-    override val desc: String = "内部用途：赏金词缀。弹道干扰：弹速增加但射程降低。"
-    override val short: String = "引力脉冲（隐藏）"
-    override val sprite: String = "graphics/hullmods/astd_zero_point_compute_core.png"
-}
-
-object Hm_astd_affix_phase_debt : HullModEntry() {
-    override val id: String = "astd_affix_phase_debt"
-    override val name: String = "相债（词缀·隐藏）"
-    override val tech: String = "astd_hidden"
-    override val uiTags: String = ""
-    override val tags: String = ""
-    override val hidden: Boolean = true
-    override val hiddenEverywhere: Boolean = true
-    override val unlocked: Boolean = true
-    override val script: String = "cn.kasuminova.astd.combat.hullmods.affix.AffixPhaseDebtHullMod"
-    override val desc: String = "内部用途：赏金词缀。相位成本大增但火力增强。"
-    override val short: String = "相债（隐藏）"
-    override val sprite: String = "graphics/hullmods/astd_zero_point_compute_core.png"
-}
-
-object Hm_astd_affix_reinforcement_ping : HullModEntry() {
-    override val id: String = "astd_affix_reinforcement_ping"
-    override val name: String = "增援信标（词缀·隐藏）"
-    override val tech: String = "astd_hidden"
-    override val uiTags: String = ""
-    override val tags: String = ""
-    override val hidden: Boolean = true
-    override val hiddenEverywhere: Boolean = true
-    override val unlocked: Boolean = true
-    override val script: String = "cn.kasuminova.astd.combat.hullmods.affix.AffixReinforcementPingHullMod"
-    override val desc: String = "内部用途：赏金词缀。战机编队强化。"
-    override val short: String = "增援信标（隐藏）"
-    override val sprite: String = "graphics/hullmods/astd_zero_point_compute_core.png"
-}
-
-// ─── R 型词缀 ───
-
-object Hm_astd_affix_no_retreat : HullModEntry() {
-    override val id: String = "astd_affix_no_retreat"
-    override val name: String = "退场否决（词缀·隐藏）"
-    override val tech: String = "astd_hidden"
-    override val uiTags: String = ""
-    override val tags: String = ""
-    override val hidden: Boolean = true
-    override val hiddenEverywhere: Boolean = true
-    override val unlocked: Boolean = true
-    override val script: String = "cn.kasuminova.astd.combat.hullmods.affix.AffixNoRetreatHullMod"
-    override val desc: String = "内部用途：赏金词缀。不撤退，追击强化。"
-    override val short: String = "退场否决（隐藏）"
-    override val sprite: String = "graphics/hullmods/astd_zero_point_compute_core.png"
-}
-
-object Hm_astd_affix_target_smear : HullModEntry() {
-    override val id: String = "astd_affix_target_smear"
-    override val name: String = "目标涂抹（词缀·隐藏）"
-    override val tech: String = "astd_hidden"
-    override val uiTags: String = ""
-    override val tags: String = ""
-    override val hidden: Boolean = true
-    override val hiddenEverywhere: Boolean = true
-    override val unlocked: Boolean = true
-    override val script: String = "cn.kasuminova.astd.combat.hullmods.affix.AffixTargetSmearHullMod"
-    override val desc: String = "内部用途：赏金词缀。远程精准度降低但近距压制增强。"
-    override val short: String = "目标涂抹（隐藏）"
-    override val sprite: String = "graphics/hullmods/astd_zero_point_compute_core.png"
-}
-
-object Hm_astd_affix_logic_gate : HullModEntry() {
-    override val id: String = "astd_affix_logic_gate"
-    override val name: String = "逻辑门槛（词缀·隐藏）"
-    override val tech: String = "astd_hidden"
-    override val uiTags: String = ""
-    override val tags: String = ""
-    override val hidden: Boolean = true
-    override val hiddenEverywhere: Boolean = true
-    override val unlocked: Boolean = true
-    override val script: String = "cn.kasuminova.astd.combat.hullmods.affix.AffixLogicGateHullMod"
-    override val desc: String = "内部用途：赏金词缀。ECM 增强与导弹干扰。"
-    override val short: String = "逻辑门槛（隐藏）"
-    override val sprite: String = "graphics/hullmods/astd_zero_point_compute_core.png"
-}
-
-object Hm_astd_affix_causality_lag : HullModEntry() {
-    override val id: String = "astd_affix_causality_lag"
-    override val name: String = "因果延迟（词缀·隐藏）"
-    override val tech: String = "astd_hidden"
-    override val uiTags: String = ""
-    override val tags: String = ""
-    override val hidden: Boolean = true
-    override val hiddenEverywhere: Boolean = true
-    override val unlocked: Boolean = true
-    override val script: String = "cn.kasuminova.astd.combat.hullmods.affix.AffixCausalityLagHullMod"
-    override val desc: String = "内部用途：赏金词缀。系统冷却更快但护盾响应更慢。"
-    override val short: String = "因果延迟（隐藏）"
-    override val sprite: String = "graphics/hullmods/astd_zero_point_compute_core.png"
-}
-
-object Hm_astd_affix_reconstruction_verdict : HullModEntry() {
-    override val id: String = "astd_affix_reconstruction_verdict"
-    override val name: String = "重构裁决（词缀·隐藏）"
-    override val tech: String = "astd_hidden"
-    override val uiTags: String = ""
-    override val tags: String = ""
-    override val hidden: Boolean = true
-    override val hiddenEverywhere: Boolean = true
-    override val unlocked: Boolean = true
-    override val script: String = "cn.kasuminova.astd.combat.hullmods.affix.AffixReconstructionVerdictHullMod"
-    override val desc: String = "内部用途：赏金词缀。击毁触发装甲/护盾回滚。"
-    override val short: String = "重构裁决（隐藏）"
-    override val sprite: String = "graphics/hullmods/astd_zero_point_compute_core.png"
-}
-
-object Hm_astd_affix_lockdown_zone : HullModEntry() {
-    override val id: String = "astd_affix_lockdown_zone"
-    override val name: String = "战区封闭（词缀·隐藏）"
-    override val tech: String = "astd_hidden"
-    override val uiTags: String = ""
-    override val tags: String = ""
-    override val hidden: Boolean = true
-    override val hiddenEverywhere: Boolean = true
-    override val unlocked: Boolean = true
-    override val script: String = "cn.kasuminova.astd.combat.hullmods.affix.AffixLockdownZoneHullMod"
-    override val desc: String = "内部用途：赏金词缀。战场边界封闭效应。"
-    override val short: String = "战区封闭（隐藏）"
-    override val sprite: String = "graphics/hullmods/astd_zero_point_compute_core.png"
-}
-
-object Hm_astd_affix_vector_silence : HullModEntry() {
-    override val id: String = "astd_affix_vector_silence"
-    override val name: String = "向量静默（词缀·隐藏）"
-    override val tech: String = "astd_hidden"
-    override val uiTags: String = ""
-    override val tags: String = ""
-    override val hidden: Boolean = true
-    override val hiddenEverywhere: Boolean = true
-    override val unlocked: Boolean = true
-    override val script: String = "cn.kasuminova.astd.combat.hullmods.affix.AffixVectorSilenceHullMod"
-    override val desc: String = "内部用途：赏金词缀。信息抑制与传感器优势。"
-    override val short: String = "向量静默（隐藏）"
-    override val sprite: String = "graphics/hullmods/astd_zero_point_compute_core.png"
-}
-
-// ─── 特殊/Omega 词缀 ───
-
-object Hm_astd_affix_fractal_shards : HullModEntry() {
-    override val id: String = "astd_affix_fractal_shards"
-    override val name: String = "分形碎片（词缀·隐藏）"
-    override val tech: String = "astd_hidden"
-    override val uiTags: String = ""
-    override val tags: String = ""
-    override val hidden: Boolean = true
-    override val hiddenEverywhere: Boolean = true
-    override val unlocked: Boolean = true
-    override val script: String = "cn.kasuminova.astd.combat.hullmods.affix.AffixFractalShardsHullMod"
-    override val desc: String = "内部用途：赏金词缀。击毁释放碎片无人机。"
-    override val short: String = "分形碎片（隐藏）"
-    override val sprite: String = "graphics/hullmods/astd_zero_point_compute_core.png"
-}
-
-object Hm_astd_affix_reality_sieve : HullModEntry() {
-    override val id: String = "astd_affix_reality_sieve"
-    override val name: String = "现实筛网（词缀·隐藏）"
-    override val tech: String = "astd_hidden"
-    override val uiTags: String = ""
-    override val tags: String = ""
-    override val hidden: Boolean = true
-    override val hiddenEverywhere: Boolean = true
-    override val unlocked: Boolean = true
-    override val script: String = "cn.kasuminova.astd.combat.hullmods.affix.AffixRealitySieveHullMod"
-    override val desc: String = "内部用途：赏金词缀。时间流偏差效应。"
-    override val short: String = "现实筛网（隐藏）"
-    override val sprite: String = "graphics/hullmods/astd_zero_point_compute_core.png"
-}
-
-object Hm_astd_affix_dual_validation : HullModEntry() {
-    override val id: String = "astd_affix_dual_validation"
-    override val name: String = "双重校验（词缀·隐藏）"
-    override val tech: String = "astd_hidden"
-    override val uiTags: String = ""
-    override val tags: String = ""
-    override val hidden: Boolean = true
-    override val hiddenEverywhere: Boolean = true
-    override val unlocked: Boolean = true
-    override val script: String = "cn.kasuminova.astd.combat.hullmods.affix.AffixDualValidationHullMod"
-    override val desc: String = "内部用途：赏金词缀。两段式验证：火力压制与干扰封锁。"
-    override val short: String = "双重校验（隐藏）"
-    override val sprite: String = "graphics/hullmods/astd_zero_point_compute_core.png"
-}
-
-object Hm_astd_affix_verdict_warmup : HullModEntry() {
-    override val id: String = "astd_affix_verdict_warmup"
-    override val name: String = "审判预热（词缀·隐藏）"
-    override val tech: String = "astd_hidden"
-    override val uiTags: String = ""
-    override val tags: String = ""
-    override val hidden: Boolean = true
-    override val hiddenEverywhere: Boolean = true
-    override val unlocked: Boolean = true
-    override val script: String = "cn.kasuminova.astd.combat.hullmods.affix.AffixVerdictWarmupHullMod"
-    override val desc: String = "内部用途：赏金词缀。锚点保护阶段防御增强。"
-    override val short: String = "审判预热（隐藏）"
+    override val script: String = "cn.kasuminova.astd.combat.hullmods.affix.AffixSingularityDriveHullMod"
+    override val desc: String = "内部用途：赏金词缀 R-17。峰值巨幅延长，武器辐耗降低，子系统「奇点爆发」。"
+    override val short: String = "奇点驱动（隐藏）"
     override val sprite: String = "graphics/hullmods/astd_zero_point_compute_core.png"
 }
 

@@ -1,0 +1,26 @@
+{
+	# ASTD 剧情占位站：预留单位（后续内容扩展），仅提供描述文本，不可停靠、无市场。
+	"astd_reserved_station":{
+		"defaultName":"未启用的轨道设施",
+		"defaultRadius":45,
+		"aOrAn":"一座",
+		"nameInText":"未启用的轨道设施",
+		"customDescriptionId":"astd_reserved_station",
+		"interactionImage":"graphics/illustrations/orbital_construction.jpg",
+		"icon":"graphics/icons/station0.png",
+		"iconWidth":20,
+		"iconHeight":20,
+		"sprite":"graphics/stations/station_side00.png",
+		"spriteWidth":40,
+		"spriteHeight":40,
+		"renderShadow":true,
+		"useLightColor":true,
+		"showInCampaign":true,
+		"showIconOnMap":true,
+		"showNameOnMap":true,
+		"scaleNameWithZoom":false,
+		"scaleIconWithZoom":true,
+		"tags":["has_interaction_dialog", "neutrino"],
+		"layers":[STATIONS],
+	},
+}

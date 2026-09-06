@@ -32,7 +32,7 @@ class PackageStructureGuidelinesTest {
             "combat.effect.lens",
             "combat.shipsystems.base",
             "combat.hullmods.base",
-            "combat.affix.base",
+            "combat.affix",
         )
 
         for (needle in required) {

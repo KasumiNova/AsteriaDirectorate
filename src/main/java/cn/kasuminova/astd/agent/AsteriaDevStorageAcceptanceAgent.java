@@ -5,13 +5,14 @@ import java.lang.instrument.Instrumentation;
 public final class AsteriaDevStorageAcceptanceAgent {
 
     private static final String ENABLED_PROPERTY = "astd.devStorageAcceptance";
+    private static final String CAREER_AUTOMATION_PROPERTY = "astd.careerAutomation";
     private static final String TARGET_CLASS_NAME = "com.fs.starfarer.title.TitleScreenState";
 
     private AsteriaDevStorageAcceptanceAgent() {
     }
 
     public static void premain(final String agentArgs, final Instrumentation instrumentation) {
-        if (!Boolean.getBoolean(ENABLED_PROPERTY)) {
+        if (!Boolean.getBoolean(ENABLED_PROPERTY) && !Boolean.getBoolean(CAREER_AUTOMATION_PROPERTY)) {
             return;
         }
         final AsteriaTitleScreenAdvanceTransformer transformer = new AsteriaTitleScreenAdvanceTransformer();

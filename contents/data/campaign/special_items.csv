@@ -7,3 +7,16 @@ name,id,tags,tech/manufacturer,rarity,base price,stack size,cargo space,baseRaid
 双子星 DEM 发射器蓝图,astd_gemini_dem_launcher_bp,"single_bp, astd",菀星设计局-星坠,,2000,1000,1,,graphics/icons/cargo/blueprint_weapons.png,ui_chip_pickup,ui_weapon_bp_drop,com.fs.starfarer.api.campaign.impl.items.WeaponBlueprintItemPlugin,astd_gemini_dem_launcher,使重工业设施能够制造出该蓝图所描述的武器。,9205
 双子星 DEM 发射舱蓝图,astd_gemini_dem_pod_bp,"single_bp, astd",菀星设计局-星坠,,2000,1000,1,,graphics/icons/cargo/blueprint_weapons.png,ui_chip_pickup,ui_weapon_bp_drop,com.fs.starfarer.api.campaign.impl.items.WeaponBlueprintItemPlugin,astd_gemini_dem_pod,使重工业设施能够制造出该蓝图所描述的武器。,9206
 重型离子脉冲蓝图,astd_heavy_ion_pulse_bp,"weapon_bp, single_bp, no_drop, no_drop_salvage",菀星设计局-星坠,,24000,1,0,,graphics/icons/cargo/blueprint_weapons.png,ui_chip_pickup,ui_weapon_bp_drop,com.fs.starfarer.api.campaign.impl.items.WeaponBlueprintItemPlugin,astd_heavy_ion_pulse,使重工业设施能够制造“重型离子脉冲”。,9207
+委托文书「XW-c206-0447／核销-03」,astd_doc_xw_c206_0447,"mission_item, no_drop, no_drop_salvage",菀星设计总局-第七分局,,0,1,1,,graphics/icons/cargo/package_midline.png,ui_chip_pickup,ui_weapon_bp_drop,com.fs.starfarer.api.campaign.impl.items.BaseSpecialItemPlugin,,"【菀星设计总局 · 英仙座第七分局 · 签发】
+编号：XW-c206-0447／核销-03
+委托事项：注销违约资产「总局旧制式巡洋舰 Ⅶ-未编号」一艘，回收其航行数据柜（铅封），送至本分局核销台办理交割。
+签发日期：c+206 年第 3 审计周期
+履约期限：签发后 90 标准日（已逾期约两个世纪）
+违约金：按章程第 11 条复利计——（金额栏显示为一行溢出的数字，随后系统自动批注：「依第 11 条之七，委托方灭失情形下的逾期违约金予以豁免。特此说明。」）
+危险等级：一级（最低）
+备注：本单自签发以来无任何承包商应标。你是第一位。欢迎。",9300
+铅封数据柜,astd_asset_sealed_data_vault,"mission_item, no_drop, no_drop_salvage",菀星设计总局-第七分局,,0,1,1,,graphics/icons/cargo/chip1.png,ui_chip_pickup,ui_weapon_bp_drop,com.fs.starfarer.api.campaign.impl.items.BaseSpecialItemPlugin,,总局旧制式巡洋舰的航行数据柜。铅封完好——封内为总局资产，承包商无权知悉内容。送至分局核销台办理交割。,9301
+未交付设计原型,astd_asset_design_prototype,"mission_item, no_drop, no_drop_salvage",菀星设计局-星坠,,0,1,1,,graphics/icons/cargo/blueprint_midline.png,ui_chip_pickup,ui_weapon_bp_drop,com.fs.starfarer.api.campaign.impl.items.BaseSpecialItemPlugin,,星坠设计局武器试验场的未交付设计原型。武器架上的一切都保养良好，领取窗口积灰两米。依工单注销-01 条款，送分局核销台交割。,9302
+科研数据核心,astd_asset_data_core,"mission_item, no_drop, no_drop_salvage",菀星设计局-紫菀,,0,1,1,,graphics/icons/cargo/synchrotron_core.png,ui_chip_pickup,ui_weapon_bp_drop,com.fs.starfarer.api.campaign.impl.items.BaseSpecialItemPlugin,,紫菀设计局科研遗址的数据核心。实验室日志的最后一页都写完了，没人写「停笔」。依工单回收-02 条款，送分局核销台交割。,9303
+「执行官」核心（战斗特化）,astd_executor_core_combat,"mission_item, no_drop, no_drop_salvage",菀星设计总局-第七分局,,0,1,1,,graphics/icons/cargo/astd_ai_core_o.png,ui_chip_pickup,ui_weapon_bp_drop,com.fs.starfarer.api.campaign.impl.items.BaseSpecialItemPlugin,,"菀星设计总局签发的特批自动智能核心，战斗特化。签发栏只有一行：「依承包商履约记录，特批。」一经签发，不予退换。",9304
+「执行官」核心（行政特化）,astd_executor_core_admin,"mission_item, no_drop, no_drop_salvage",菀星设计总局-第七分局,,0,1,1,,graphics/icons/cargo/astd_ai_core_a.png,ui_chip_pickup,ui_weapon_bp_drop,com.fs.starfarer.api.campaign.impl.items.BaseSpecialItemPlugin,,"菀星设计总局签发的特批自动智能核心，行政特化。签发栏只有一行：「依承包商履约记录，特批。」一经签发，不予退换。",9305

@@ -324,3 +324,10 @@ tasks.register("smokeTestGame") {
     description = "部署模组、启动 ARC production 实机场景，并校验 SSOptimizer automation 证据。"
     dependsOn("verifySmokeTestGameEvidence")
 }
+
+tasks.register<Exec>("careerAutomationTest") {
+    group = "verification"
+    description = "部署模组并实机跑通生涯集成测试（世界生成/赏金全链路/终端 UI/结局双路径/存读档）。"
+    dependsOn("deployMod")
+    commandLine("python3", "tools/verify_career_automation.py", "--game-dir", starsectorGameDir)
+}

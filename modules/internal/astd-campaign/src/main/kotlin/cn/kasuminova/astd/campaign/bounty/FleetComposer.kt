@@ -1,6 +1,7 @@
 package cn.kasuminova.astd.campaign.bounty
 
 import cn.kasuminova.astd.combat.affix.AffixRegistry
+import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.fleet.FleetMemberAPI
 import com.fs.starfarer.api.fleet.FleetMemberType
@@ -17,13 +18,16 @@ object FleetComposer {
     data class Composition(
         val pickedVariantIds: List<String>,
         val affixHullMods: List<String>,
+        /**
+         * 旗舰专属词缀 HullMod（编队词缀之外仅施加于旗舰，如 R-17 奇点驱动）。
+         */
+        val flagshipAffixHullMods: List<String> = emptyList(),
         val k: Float,
         val totalMult: Float,
     )
 
     fun buildComposition(
         def: BountyDef,
-        state: BountyState,
         seed: Long,
     ): Composition {
         val scale = DifficultyModel.compute(def.threatTier, def.baselineFP)
@@ -73,23 +77,99 @@ object FleetComposer {
             fill(randomPool, omegaBudget)
         }
 
-        // 3) 词缀选择（只依赖 state，不依赖 config 文件）
-        val unlocked = state.unlockedAffixIds
-        val affixes = AffixRegistry.pickAffixes(
-            unlockedIds = unlocked,
-            mainCompleted = state.mainCompleted,
-            threatTier = def.threatTier,
-            k = scale.k,
-            seed = seed xor 0x5EED5EED,
-        )
+        // 3) 词缀选择：固定词缀表（文书追加条款具名编目号）优先；无固定表才随机抽取
+        //    （v3 随机口径：数量由难度系数搭配表决定；R 型由 def 显式开关；相位限定词缀按舰队相位能力过滤）
+        val affixes = when {
+            // 序章与第一章批一不挂词缀（05/03 文档口径）
+            !def.allowAffixes -> emptyList()
+            def.fixedAffixIds != null -> resolveFixedAffixes(def, def.fixedAffixIds)
+            else -> {
+                val allowPhase = picked.any { VariantPools.isPhaseVariant(it) }
+                val drawn = AffixRegistry.pickAffixes(
+                    kS = DifficultyTuningImpl.fixedScale,
+                    allowR = def.allowRAffixes,
+                    allowPhase = allowPhase,
+                    seed = seed xor 0x5EED5EED,
+                )
+                enforceMinRAffixes(drawn, def.minRAffixes, seed)
+            }
+        }
 
-        val affixHullMods = affixes.mapNotNull { it.hullModId }
+        // 旗舰专属词缀（如四章中军旗舰的 R-17 奇点驱动；未知 id 记日志并跳过）
+        val flagshipAffixHullMods = def.flagshipAffixIds.mapNotNull { id ->
+            val affix = AffixRegistry.getById(id)
+            if (affix == null) {
+                log.warn("[FleetComposer] 未知旗舰词缀 id=$id (bounty=${def.key})，已跳过")
+            }
+            affix?.hullModId
+        }
+
+        val affixHullMods = affixes.map { it.hullModId }
         return Composition(
             pickedVariantIds = picked,
             affixHullMods = affixHullMods,
+            flagshipAffixHullMods = flagshipAffixHullMods,
             k = scale.k,
             totalMult = scale.totalMult,
         )
+    }
+
+    /**
+     * 固定词缀表解析：按文书追加条款具名编目号挂载，合法性（互斥/相位/编目有效性）
+     * 与随机抽取同一套规则——违规属注册表编写错误，逐条记错误日志并剔除违规项后应用其余条目
+     * （注册表口径由 MainBountiesTest 全量断言，运行期违规意味着存档/注册表被外部改动）。
+     */
+    private fun resolveFixedAffixes(def: BountyDef, fixedIds: List<String>): List<AffixRegistry.AffixDef> {
+        val violations = AffixRegistry.validateFixedTable(fixedIds)
+        for (v in violations) {
+            log.error("[FleetComposer] 固定词缀表违规（bounty=${def.key}）：$v")
+        }
+        if (violations.isEmpty()) {
+            return fixedIds.mapNotNull { AffixRegistry.getById(it) }
+        }
+        // 剔除：未知 id、重复项、相位限定词缀，以及互斥对中后出现的一方
+        val result = ArrayList<AffixRegistry.AffixDef>(fixedIds.size)
+        for (id in fixedIds) {
+            val affix = AffixRegistry.getById(id) ?: continue
+            if (affix.phaseOnly) continue
+            if (result.any { it.id == id }) continue
+            val conflicts = AffixRegistry.EXCLUSIVE_PAIRS.any { pair ->
+                id in pair && result.any { it.id in pair }
+            }
+            if (conflicts) continue
+            result.add(affix)
+        }
+        return result
+    }
+
+    /**
+     * 固定 R 型补足（三章单 3「固定至少 1 条 R」口径）：
+     * 抽取结果中 R 不足时，按种子从 R 池中确定性补足；与已抽结果冲突的条目跳过。
+     */
+    private fun enforceMinRAffixes(
+        drawn: List<AffixRegistry.AffixDef>,
+        minRAffixes: Int,
+        seed: Long,
+    ): List<AffixRegistry.AffixDef> {
+        val rCount = drawn.count { it.type == AffixRegistry.AffixType.R }
+        if (rCount >= minRAffixes) return drawn
+
+        val result = drawn.toMutableList()
+        val rnd = Random(seed xor 0xAFF1E5L)
+        val pool = AffixRegistry.all.filter { it.type == AffixRegistry.AffixType.R }.shuffled(rnd)
+        for (candidate in pool) {
+            if (result.count { it.type == AffixRegistry.AffixType.R } >= minRAffixes) break
+            if (result.any { it.id == candidate.id }) continue
+            val conflicts = AffixRegistry.EXCLUSIVE_PAIRS.any { pair ->
+                candidate.id in pair && result.any { it.id in pair }
+            }
+            if (conflicts) continue
+            result.add(candidate)
+        }
+        if (result.count { it.type == AffixRegistry.AffixType.R } < minRAffixes) {
+            log.warn("[FleetComposer] R 型补足不足：目标 $minRAffixes 条，实际 ${result.count { it.type == AffixRegistry.AffixType.R }} 条")
+        }
+        return result
     }
 
     fun rebuildFleetMembers(
@@ -99,12 +179,13 @@ object FleetComposer {
         totalMult: Float,
         affixHullMods: List<String>,
         flagship: FleetMemberAPI,
+        flagshipAffixHullMods: List<String> = emptyList(),
     ): List<FleetMemberAPI> {
         val factory = Global.getFactory()
         val created = ArrayList<FleetMemberAPI>(fleetMembers.size)
 
-        // 旗舰保持原对象，但补上缩放/词缀。
-        applyBountyHullModsAndMemory(flagship, k, totalMult, affixHullMods)
+        // 旗舰保持原对象，但补上缩放/词缀（含旗舰专属词缀）。
+        applyBountyHullModsAndMemory(flagship, k, totalMult, affixHullMods + flagshipAffixHullMods)
         created.add(flagship)
 
         for (vid in fleetMembers.drop(1)) {
@@ -130,8 +211,9 @@ object FleetComposer {
             for (hm in affixHullMods) {
                 member.variant?.addPermaMod(hm)
             }
-        } catch (_: Throwable) {
-            // 某些 VariantAPI 实现可能不允许改；忽略，至少记 memory。
+        } catch (t: Throwable) {
+            // 某些 VariantAPI 实现可能不允许改；记日志后至少保留 memory 标记。
+            log.warn("[FleetComposer] 应用词缀/缩放失败（member=${member.id}）：${t.message}")
         }
     }
 
@@ -179,5 +261,9 @@ object FleetComposer {
                 null
             }
         }
+
+        /** 变体是否为相位舰船（词缀相位约束的舰队级判定；未知变体按非相位处理）。 */
+        fun isPhaseVariant(variantId: String): Boolean =
+            Global.getSettings().getVariant(variantId)?.hullSpec?.isPhase == true
     }
 }

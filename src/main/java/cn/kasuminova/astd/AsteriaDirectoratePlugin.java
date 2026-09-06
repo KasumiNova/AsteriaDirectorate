@@ -1,7 +1,10 @@
 package cn.kasuminova.astd;
 
 import cn.kasuminova.astd.campaign.AsteriaTestCampaignBootstrap;
+import cn.kasuminova.astd.campaign.automation.CareerAutomationInstall;
 import cn.kasuminova.astd.campaign.bounty.BountyBootstrapper;
+import cn.kasuminova.astd.campaign.story.StoryDialogInstall;
+import cn.kasuminova.astd.campaign.world.StoryWorldBootstrap;
 import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcFlareHullModUtilKt;
 import cn.kasuminova.astd.combat.hullmods.lens.LensArrayCoreModeUtilKt;
 import cn.kasuminova.astd.impl.buff.BuffInstall;
@@ -37,12 +40,16 @@ public final class AsteriaDirectoratePlugin extends BaseModPlugin {
         ASTDArcFlareHullModUtilKt.registerArcFlareDualModeConfig();
         // 注册 Buff 系统后端到 api 侧 BuffBackends（api 不反向依赖 impl，桥接口在此注入）。
         BuffInstall.INSTANCE.install();
+        // 注入剧情对话后端到 ui 侧 StoryDialogBackends（ui 不反向依赖 campaign，桥接口在此注入）。
+        StoryDialogInstall.INSTANCE.install();
         // 注册难度设置（轨一：固有缩放系数）到 LunaLib 设置界面，并应用当前生效档位。
         DifficultySettingsRegistrar.INSTANCE.register();
     }
 
     @Override
     public void onNewGameAfterEconomyLoad() {
+        // 剧情主星系（生涯开局生成，幂等）
+        StoryWorldBootstrap.INSTANCE.onNewGameAfterEconomyLoad();
         // 测试用：在 devMode 新开档后生成一个测试市场，并把本模组的船/武器塞进仓储。
         // 方便快速在战役里验证数据与脚本效果。
         AsteriaTestCampaignBootstrap.runIfEnabled();
@@ -59,6 +66,10 @@ public final class AsteriaDirectoratePlugin extends BaseModPlugin {
         // 注册赏金动态生成/词缀管理脚本（主线内容重做中，框架先行）。
         // 注意：允许多实例；脚本添加由 sector memory key 去重。
         BountyBootstrapper.onGameLoad();
+        // 剧情世界：生涯层脚本/战役插件注册 + 读档补齐（含第二章钩子补齐路径）
+        StoryWorldBootstrap.INSTANCE.onGameLoad(newGame);
+        // 生涯集成自动化（astd.careerAutomation.enabled 属性门控 + automation 模块在包内才生效）
+        CareerAutomationInstall.onGameLoad();
         if (!newGame) {
             AsteriaTestCampaignBootstrap.repairExistingTestStorageIfEnabled();
             AsteriaTestCampaignBootstrap.resumePendingTeleportIfEnabled();

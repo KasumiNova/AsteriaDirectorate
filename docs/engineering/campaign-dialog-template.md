@@ -4,18 +4,21 @@
 
 ## 你得到的东西
 
-核心代码位于：
-- `src/main/kotlin/cn/kasuminova/asteriadirectorate/campaign/dialog/core/GraphDialogPlugin.kt`
-- `src/main/kotlin/cn/kasuminova/asteriadirectorate/campaign/dialog/core/DialogGraph.kt`
-- `src/main/kotlin/cn/kasuminova/asteriadirectorate/campaign/dialog/core/DialogContext.kt`
-- `src/main/kotlin/cn/kasuminova/asteriadirectorate/campaign/dialog/core/TimedTextQueue.kt`
-- 轻量 DSL：`src/main/kotlin/.../DialogDsl.kt`
+核心代码位于 `modules/internal/astd-ui`（包 `cn.kasuminova.astd.campaign.dialog.core`）：
+- `modules/internal/astd-ui/src/main/kotlin/cn/kasuminova/astd/campaign/dialog/core/GraphDialogPlugin.kt`
+- `modules/internal/astd-ui/src/main/kotlin/cn/kasuminova/astd/campaign/dialog/core/DialogGraph.kt`
+- `modules/internal/astd-ui/src/main/kotlin/cn/kasuminova/astd/campaign/dialog/core/DialogNode.kt`
+- `modules/internal/astd-ui/src/main/kotlin/cn/kasuminova/astd/campaign/dialog/core/DialogContext.kt`
+- `modules/internal/astd-ui/src/main/kotlin/cn/kasuminova/astd/campaign/dialog/core/TimedTextQueue.kt`
+- 轻量 DSL：同目录 `DialogDsl.kt`
 
-示例对话：
-- `src/main/kotlin/cn/kasuminova/asteriadirectorate/campaign/dialog/demo/DemoDialog.kt`
+示例对话（剧情实装，同模块 `campaign/dialog/story/` 下；原 `dialog/demo/DemoDialog.kt` 已删除）：
+- `PrologueAgentDialog.kt`：序章代办对话，九节点（start/opening/attitude/verify/question/offer/detail/sign/end），含 timedNode 逐条输出与分支收束；
+- `StorySiteDialog.kt`：遗址站/剧情站点三态对话（描写 → 菜单回收托管资产）；
+- `BranchStationDialog.kt`：分局站入口对话（接入分局终端）。
 
 示例文案：
-- `contents/data/strings/strings.json`（`asteria_directorate` 分类下的 `dialog.demo.*`）
+- `contents/data/strings/strings.json`（`asteria_directorate` 分类下的 `story.prologue.agent.*`、`story.site.*` 等键族；`dialog.core.*` 为通用按钮文案）
 
 ## 基本用法
 
@@ -24,9 +27,10 @@
 - 选项点击后返回 `DialogAction`：`Goto(nodeId)` / `Close()` / `Run{...}`。
 
 2) 用 `GraphDialogPlugin(graph)` 弹出对话：
-- 你需要一个交互目标 `SectorEntityToken`。
+- 你需要一个交互目标 `SectorEntityToken`；
+- 若对话宿主是酒馆事件等既有交互窗口，用 `onClose` 钩子把控制权交还宿主插件（见 `PrologueAgentBarEvent.kt`：收束关闭时经 `BarEventDialogPlugin.endEvent` 交还酒馆）。
 
-示例（见 `DemoDialog.open(target)`）：
+示例：
 - `Global.getSector().campaignUI.showInteractionDialog(GraphDialogPlugin(graph), target)`
 
 ## 延迟逐条输出（TimedTextQueue）
@@ -72,8 +76,8 @@
 ## I18n 与高亮
 
 - `DialogContext.sayI18n(...)` / `enqueueI18n(...)` 直接走工程内 `I18n`。
-- 支持 `<param:#RRGGBB:key>` 这种“可高亮变量标记”。
-  - 示例：`dialog.demo.intro.0`。
+- 支持 `<param:#RRGGBB:key>` 这种“可高亮变量标记”（机制在 `cn.kasuminova.astd.internal.i18n.I18n`，
+  不支持高亮的输出通道会退化为普通变量替换）。
 
 ## 设计注意事项（踩坑指南）
 
@@ -88,6 +92,6 @@
 如果你想把信息投递到战役右侧消息栏（原版自带淡入淡出）：
 
 - `ctx.hudMessage("...", color = ...)`
-- 或直接使用 `HudMessages.campaign(...)`（见 `src/main/kotlin/.../campaign/ui/HudMessages.kt`）
+- 或直接使用 `HudMessages.campaign(...)`（见 `modules/internal/astd-ui/src/main/kotlin/cn/kasuminova/astd/campaign/ui/HudMessages.kt`）
 
 注：原版不暴露自定义消息栏 fade 时长的 API；一般不建议用“反复 remove + add 变 alpha”的方式模拟。

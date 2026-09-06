@@ -219,7 +219,9 @@ class TimedTextQueue(private val textPanel: TextPanelAPI) {
                     val u = (t - fadeIn - hold) / fadeOut
                     (1f - u.coerceIn(0f, 1f)) * max
                 }
-                else -> 0f
+                // 有淡出：播完归为 0；无淡出（纯淡入/停留）：播完停留在 max，段落不消失。
+                fadeOut > 0f -> 0f
+                else -> max
             }
 
             a.label.setOpacity(opacity)

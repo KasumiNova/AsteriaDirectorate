@@ -18,6 +18,13 @@ class GraphDialogPlugin(
     private val graph: DialogGraph,
     private val closeOnEscapeOptionId: String? = null,
     private val closeOnEscapeText: String = I18n[I18n.Categories.MOD, "dialog.core.leave"],
+    /**
+     * 关闭拦截钩子：非 null 时由调用方接管「关闭对话」动作（替代 dismiss/dismissAsCancel）。
+     *
+     * 动机：酒馆事件（PortsideBarEvent）等宿主场景里，对话结束不等于关闭整个交互窗口——
+     * 需要把控制权交还给宿主插件（如 BarEventDialogPlugin.endEvent），而不是 dismiss。
+     */
+    private val onClose: ((asCancel: Boolean) -> Unit)? = null,
 ) : InteractionDialogPlugin {
 
     private lateinit var dialog: InteractionDialogAPI
@@ -29,6 +36,12 @@ class GraphDialogPlugin(
     private val optionIndex = LinkedHashMap<String, DialogOptionSpec>()
 
     private var optionsDirty: Boolean = true
+
+    /**
+     * 当前面板上展示的是否为「锁定中的跳过选项」（null=尚未刷新过）。
+     * advance 里只在「未锁定」或「面板还没换成跳过项」时刷新，避免逐帧重建选项。
+     */
+    private var optionsShownLocked: Boolean? = null
 
     override fun init(dialog: InteractionDialogAPI) {
         this.dialog = dialog
@@ -107,6 +120,13 @@ class GraphDialogPlugin(
 
         // 节点每帧逻辑
         currNode.onAdvance(ctx, amount)
+
+        // 队列播完（解锁）或自动跳转到新播报节点（面板仍是旧选项）时，必须在此处刷新——
+        // 否则锁定态选项会一直滞留，玩家无入口继续对话。
+        val locked = isOptionsLocked()
+        if (optionsDirty && (!locked || optionsShownLocked != true)) {
+            refreshOptionsIfNeeded()
+        }
     }
 
     override fun backFromEngagement(battleResult: EngagementResultAPI?) {
@@ -144,6 +164,11 @@ class GraphDialogPlugin(
     }
 
     private fun closeInternal(asCancel: Boolean) {
+        val handler = onClose
+        if (handler != null) {
+            handler(asCancel)
+            return
+        }
         if (asCancel) {
             dialog.dismissAsCancel()
         } else {
@@ -167,6 +192,7 @@ class GraphDialogPlugin(
         optionsDirty = false
 
         val locked = isOptionsLocked()
+        optionsShownLocked = locked
         val specs = if (locked) {
             buildLockedOptions()
         } else {

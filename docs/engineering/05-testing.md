@@ -50,20 +50,27 @@
 
 ### 只生成到 build 目录（安全）
 
-- `./gradlew :ss-csv:generateSsCsv`
+- `./gradlew :astd-csv:generateSsCsv`
 
 输出位置：
 - `build/generated/ss-csv/`
 
 ### 直接覆盖写入 contents（危险但方便）
 
-- `./gradlew :ss-csv:writeSsCsvToContents -PssCsvForce=true`
+- `./gradlew :astd-csv:writeSsCsvToContents -PssCsvForce=true`
 
-这会覆盖：
+这会覆盖 ss-csv 管理的全部 CSV（目标清单见 `CsvTarget.kt`）：
 - `contents/data/weapons/weapon_data.csv`
+- `contents/data/hulls/ship_data.csv`
+- `contents/data/shipsystems/ship_systems.csv`
+- `contents/data/hullmods/hull_mods.csv`
+- `contents/data/strings/descriptions.csv`
+
+同时还会覆盖各类目的伴生文件（`${id}.wpn` / `${id}.system` / `${id}.ship` 与 variant 等，
+见 `SsExtraOutputs.kt`）。
 
 建议：
-- 修改 `ss-csv/src/main/kotlin/.../Catalog_WeaponData_*.kt` 后再运行该任务
+- 修改 `modules/internal/astd-csv/src/main/kotlin/cn/kasuminova/astd/sscsv/entries/catalog/Catalog_*` 后再运行该任务
 - 覆盖前先提交/备份，方便回滚
 
 ## 4) 弹体 VFX 验证清单

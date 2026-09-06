@@ -72,8 +72,7 @@ description: "ASTD 包结构规范：多模块布局、根包、internal、rende
 
 ASTD Affix 体系：
 
-- `cn.kasuminova.astd.combat.affix`
-- `cn.kasuminova.astd.combat.affix.base`
+- `cn.kasuminova.astd.combat.affix`（AffixRegistry 注册表与抽取/校验逻辑；HullMod 实现在 `combat.hullmods.affix`）
 
 ## 文件组织
 
