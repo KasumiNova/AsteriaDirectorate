@@ -18,7 +18,7 @@ import kotlin.test.assertTrue
 class ProjectileVfxSpecsTest {
 
     @Test
-    fun `aod7 蓝图：twin 与 zappy 两条 Static Trail 拖尾 zappy 带 wobble`() {
+    fun `aod7 蓝图：twin 与 zappy 两条 Static Trail 拖尾`() {
         val vfx = assertNotNull(ProjectileVfxSpecs.build("astd_aod7_shot"))
 
         assertEquals(listOf("twin", "zappy"), vfx.tree.staticTrails.map { it.first })
@@ -30,16 +30,11 @@ class ProjectileVfxSpecsTest {
         assertEquals(30f, twin.width)
         assertEquals(420f, twin.bandLength)
         assertEquals(40f, twin.recede)
-        assertEquals(0f, twin.wobbleAmplitude, "twin 层不扰动")
 
         assertEquals(TEX_ZAPPY, zappy.texturePath)
         assertEquals(2, zappy.layer)
         assertEquals(24f, zappy.width)
         assertEquals(420f, zappy.bandLength)
-        assertEquals(5f, zappy.wobbleAmplitude)
-        assertEquals(110f, zappy.wobbleWavelength)
-        assertEquals(30f, zappy.wobbleScroll)
-        assertEquals(0.8f, zappy.wobblePhase)
     }
 
     @Test

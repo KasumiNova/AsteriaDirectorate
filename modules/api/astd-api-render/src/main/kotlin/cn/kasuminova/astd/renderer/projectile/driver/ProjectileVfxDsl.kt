@@ -136,11 +136,7 @@ class StaticTrailBuilder(private val texturePath: String) {
     private var tileLength = 180f
     private var scrollSpeed = 0f
     private var recede = 0f
-    private var wobbleAmplitude = 0f
-    private var wobbleWavelength = 90f
-    private var wobbleScroll = 0f
-    private var wobblePhase = 0f
-    private var glowPower = 1f
+    private var glowPower = 0f
 
     /** 叠层序号：同弹体多条拖尾的组织序（1 垫底、2 其上；additive 混合下不参与绘制排序）。 */
     fun layer(v: Int) { layer = v }
@@ -163,16 +159,7 @@ class StaticTrailBuilder(private val texturePath: String) {
     /** 带体整体向后退的距离（世界单位）：带体头部亮端退到原版螺栓弹头之后，让弹头尖在带体前露出。 */
     fun recede(v: Float) { recede = v }
 
-    /**
-     * 带体横向扰动（对齐旧 wobble 观感）：tracker 记录节点时按逻辑时间横向正弦偏移，带体呈蛇行。
-     * [amplitude] 峰值振幅（世界单位，建议 ≤ 带宽 1/4），[wavelength] 主波长（决定爬行频率 = scroll/波长），
-     * [scroll] 爬行速度（su/s，0 静止），[phase] 初始相位（弧度，叠层错相用）。不调用即不扰动。
-     */
-    fun wobble(amplitude: Float, wavelength: Float, scroll: Float = 0f, phase: Float = 0f) {
-        wobbleAmplitude = amplitude; wobbleWavelength = wavelength; wobbleScroll = scroll; wobblePhase = phase
-    }
-
-    /** bloom 发光强度（0..1；进 BoxUtil emissive → bloom G-buffer）。 */
+    /** bloom 发光强度（0..1；进 BoxUtil emissive → bloom G-buffer）。不调用即不发光（原版螺栓无辉光）。 */
     fun glow(power: Float) { glowPower = power.coerceIn(0f, 1f) }
 
     internal fun build(): StaticTrailSpec = StaticTrailSpec(
@@ -186,10 +173,6 @@ class StaticTrailBuilder(private val texturePath: String) {
         tileLength = tileLength,
         scrollSpeed = scrollSpeed,
         recede = recede,
-        wobbleAmplitude = wobbleAmplitude,
-        wobbleScroll = wobbleScroll,
-        wobblePhase = wobblePhase,
-        wobbleWavelength = wobbleWavelength,
         glowPower = glowPower,
     )
 }

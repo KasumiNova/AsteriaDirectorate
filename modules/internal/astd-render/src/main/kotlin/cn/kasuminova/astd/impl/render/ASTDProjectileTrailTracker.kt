@@ -3,21 +3,20 @@ package cn.kasuminova.astd.impl.render
 import com.fs.starfarer.api.combat.DamagingProjectileAPI
 import org.boxutil.base.api.resource.StaticTrailTracker
 import org.lwjgl.util.vector.Vector2f
-import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 
 /**
  * 弹体 Static Trail 跟踪器：BoxUtil Static Trail 系统每帧回调，向系统上报弹体锚点位置/朝向。
  *
- * 职责（旧自研驱动的残骸语义全部收在这里）：
- * - 锚点 = 弹体中心沿朝向提前（headLead − recede），再叠加 wobble 横向偏移（蛇行观感）；
+ * 职责：
+ * - 锚点 = 弹体中心沿朝向提前（headLead − recede）；
  * - headLead 缺省取弹体 spec.length/2，对齐原版螺栓贴图视觉头部；
  * - 弹体消亡（wasRemoved/isExpired）→ [StaticTrailTracker.Result.destroy]，带体按三段时长
  *   自然播完（尾先头后）。**不含 isFading**：超射程/命中后的淡出期弹体仍在飞行，带体继续跟随，
  *   直到弹体真正移出引擎才开始消散（2026-09 实机裁定）。
  *
- * 几何数学全部为文件内纯函数（[trailAnchor]/[wobbleOffset]），供单测直接调用。
+ * 几何数学为文件内纯函数（[trailAnchor]），供单测直接调用。
  */
 class ASTDProjectileTrailTracker(
     private val projectile: DamagingProjectileAPI,
@@ -39,7 +38,6 @@ class ASTDProjectileTrailTracker(
             center = projectile.location,
             facingRad = facingRad,
             forwardOffset = headLead - spec.recede,
-            lateralOffset = wobbleOffset(spec, elapsedTime),
         )
         if (callback.isNotRecommendedRecordsCurrent(anchor)) {
             callback.pauseOnce()
@@ -50,22 +48,12 @@ class ASTDProjectileTrailTracker(
     }
 }
 
-/** 拖尾锚点：弹体中心沿朝向提前 [forwardOffset]，再沿法向偏移 [lateralOffset]（wobble）。 */
-internal fun trailAnchor(center: Vector2f, facingRad: Double, forwardOffset: Float, lateralOffset: Float): Vector2f {
+/** 拖尾锚点：弹体中心沿朝向提前 [forwardOffset]。 */
+internal fun trailAnchor(center: Vector2f, facingRad: Double, forwardOffset: Float): Vector2f {
     val cosF = cos(facingRad).toFloat()
     val sinF = sin(facingRad).toFloat()
     return Vector2f(
-        center.x + cosF * forwardOffset - sinF * lateralOffset,
-        center.y + sinF * forwardOffset + cosF * lateralOffset,
+        center.x + cosF * forwardOffset,
+        center.y + sinF * forwardOffset,
     )
-}
-
-/**
- * wobble 横向偏移（世界单位）：振幅 × sin(2π × 逻辑秒 × 爬行频率 + 相位)，爬行频率 = scroll/波长。
- * 振幅 ≤ 0 或爬行静止且相位为 0 时恒 0（不扰动）。记录时刻生效——已落节点不回溯，带体呈蛇行而非整体摆动。
- */
-internal fun wobbleOffset(spec: StaticTrailSpec, elapsedSeconds: Float): Float {
-    if (spec.wobbleAmplitude <= 0f) return 0f
-    val frequency = if (spec.wobbleWavelength > 0f) spec.wobbleScroll / spec.wobbleWavelength else 0f
-    return spec.wobbleAmplitude * sin(2f * PI.toFloat() * elapsedSeconds * frequency + spec.wobblePhase)
 }

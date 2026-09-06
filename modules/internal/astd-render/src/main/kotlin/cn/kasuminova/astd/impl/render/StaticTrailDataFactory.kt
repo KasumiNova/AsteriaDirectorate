@@ -60,10 +60,12 @@ object StaticTrailDataFactory {
             log.warn("[ASTD] static trail texture not uploaded: id=$treeId/$layerName tex=${spec.texturePath}，拖尾将不可见，请检查 settings.json graphics 注册")
         }
         data.material.setDiffuse(sprite)
-        // emissive 复用同一贴图（形在 alpha）：发光颜色由头部色染色，强度走 glowPower → bloom G-buffer
-        data.material.setEmissive(sprite)
-        data.material.setEmissiveColor(spec.headColor.toVector4f())
-        data.material.setGlowPower(spec.glowPower)
+        if (spec.glowPower > 0f) {
+            // emissive 复用同一贴图（形在 alpha）：发光颜色由头部色染色，强度走 glowPower → bloom G-buffer
+            data.material.setEmissive(sprite)
+            data.material.setEmissiveColor(spec.headColor.toVector4f())
+            data.material.setGlowPower(spec.glowPower)
+        }
         log.info("[ASTD] static trail registered: id=$treeId/$layerName total=${total}s speed=$projectileSpeedSuPerSec tex=${spec.texturePath}")
         return data
     }

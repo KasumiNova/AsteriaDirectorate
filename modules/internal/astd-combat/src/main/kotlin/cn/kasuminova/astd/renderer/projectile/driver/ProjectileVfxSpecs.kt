@@ -20,7 +20,7 @@ object ProjectileVfxSpecs {
     /**
      * projectileSpecId → 构建函数。加入一个即接入本管线。
      *
-     * 当前接入：aod7（hero，双层 + wobble）+ 10 个简单 spec（三层惯例）。
+     * 当前接入：aod7（hero，双层）+ 10 个简单 spec（三层惯例）。
      */
     private val builders: Map<String, () -> ProjectileVfx> = mapOf(
         "astd_aod7_shot" to ::aod7Shot,
@@ -141,9 +141,6 @@ object ProjectileVfxSpecs {
             layer(2); width(24f); length(420f); recede(40f)
             colors(0xF0F8FFB4, 0x0A1C3812)
             tile(200f, 90f)
-            // wobble 验证案例：振幅 5（< 带宽 1/4=6）；波长 110 ≈ 带长 420 摆三个多波段；
-            // 慢爬行 30 su/s 与贴图快爬行（90/200≈0.45 整图/秒）错出快慢两层动感；相位 0.8 避免与 twin 层头部同相
-            wobble(5f, 110f, 30f, 0.8f)
         }
     }
 

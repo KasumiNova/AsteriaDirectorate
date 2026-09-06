@@ -21,8 +21,8 @@ description: "弹体拖尾规范：统一走 staticTrail DSL（BoxUtil 1.6.0 Sta
 - **贴图规范**（2026-09 转置）：**N×64 PNG，X=带长向、Y=横向**（X 向 REPEAT 平铺，必须可无缝循环）；形在 alpha 通道，RGB 近白（染色来自节点色）。旧 64×N 素材已程序转置（`tools/rotate_trail_textures.py`）。
 - **消亡语义**：tracker 自查弹体消亡（wasRemoved/isExpired）→ `destroy()`，带体按三段时长自然播完（尾先头后）。**不含 isFading**——超射程/命中淡出期弹体仍在飞，带体继续跟随至弹体移出引擎才开始消散（2026-09 实机裁定）。**没有加速消散窗口、没有带头前飞补偿**（迁移裁定，勿加回）。
 - **拖尾锚点 = 弹体视觉头部**：tracker 锚点 = 弹体中心沿朝向提前（headLead − recede），headLead 默认 = 弹体 `spec.length/2`（原版螺栓贴图中心在弹体位置、视觉头部在 +length/2）；`lifecycle{ headLead(0f) }` 可锚回中心。`recede` 让带体亮端退到弹头之后。
-- **wobble**：tracker 记录节点时按逻辑时间横向正弦偏移（已落节点不回溯，带体呈蛇行）。
-- **bloom**：`glow(power)` 进 BoxUtil emissive → bloom G-buffer；emissive 复用 diffuse 贴图并以头部色染色。
+- **bloom**：`glow(power)` 进 BoxUtil emissive → bloom G-buffer；emissive 复用 diffuse 贴图并以头部色染色。**默认 0 不发光**（原版螺栓无辉光；三层 additive 叠在弹头上再叠加 bloom 会过曝成白团，2026-09 实机实踩）。
+- **BoxUtil 未用的上游语义**：`velocityInRange`/`velocityOutRange`/`angularInRange`/`angularOutRange` 是「已落节点随时间漂移/绕锚点随机自旋」（逐节点随机 × 存活时间），用于碎屑/烟雾类消散漂移；直线弹体拖尾用不上，DSL 不暴露。
 
 ## DSL 参数面
 
@@ -37,8 +37,7 @@ staticTrail("层名", "graphics/fx/astd_trails_zappy.png") {
     length(420f)                // 预期带长（世界单位）：节点总寿命 = 带长 / 弹体速度
     tile(140f, 50f)             // 平铺周期 su / 滚动速度 su/s
     recede(40f)                 // 带体整体后退，让弹头尖在带体前露出
-    wobble(5f, 110f, 30f, 0.8f) // 横向扰动：振幅/主波长/爬行 su/s/相位；省略即不扰动
-    glow(1f)                    // bloom 发光强度（0..1）
+    glow(1f)                    // bloom 发光强度（0..1）；省略即不发光（原版螺栓无辉光，默认 0）
 }
 ```
 
@@ -92,12 +91,10 @@ alpha 0.45/0.6/0.45 是过曝压暗后的裁定（三层加色 + 高射速多发
 | --- | --- |
 | zigzag 贴图自带折线 | 直接选 zappy / zappysmooth 贴图 |
 | 花纹爬行 | `tile(length, scroll)`，scroll/tile ≈ 0.3~0.7/秒 读起来最活 |
-| 横向散开 | drift 由带体追踪真实弹道承担（tracker 锚点跟弹体，机动天然捕获）；扰动由 `wobble(振幅, 波长, scroll, phase)` 承担——记录时刻横向正弦偏移，带体蛇行 |
+| 横向散开 | drift 由带体追踪真实弹道承担（tracker 锚点跟弹体，机动天然捕获）；Box Static Trail 无横向扰动语义，不硬造 |
 | 多层拖带叠加错参 | 多条 staticTrail：宽比 1.2~1.5×、scroll 比 1.5~2×、alpha 错开（芯亮边暗） |
 
-惯例锚点（aod7 hero）：主带 twin `width 30 / tile(140, 50)` 垫底，副带 zappy `width 24 / tile(200, 90) / wobble(5, 110, 30, 0.8)`（振幅 ≤ 带宽 1/4），`recede(40f)`。
-
-扰动（wobble）调参要点：振幅建议 ≤ 带宽 1/4（过大会撕开贴图纹样）；波长取带长 1/3~1/5 摆 3~5 个波段最自然；scroll 给 20~40 su/s 慢爬行、与贴图快滚动错出快慢两层动感；多层叠带用 phase 错相。
+惯例锚点（aod7 hero）：主带 twin `width 30 / tile(140, 50)` 垫底，副带 zappy `width 24 / tile(200, 90)`，`recede(40f)`。
 
 宽度锚点：主带 ≈ 弹体视觉宽 ×2~3；重击弹（贯星 36su）可再放大并配 boxFlare 附加层。
 
@@ -111,9 +108,13 @@ alpha 0.45/0.6/0.45 是过曝压暗后的裁定（三层加色 + 高射速多发
 
 ## 验证
 
-- 纯函数单测：`trailAnchor` / `wobbleOffset`（ASTDProjectileTrailTrackerTest）、`totalDurationSeconds` 与三段比例（StaticTrailDataFactoryTest）、公式锚点（ProjectileVfxSpecsTest）直接调用做完整逻辑验证（禁源码 contain 测试）。
+- 纯函数单测：`trailAnchor`（ASTDProjectileTrailTrackerTest）、`totalDurationSeconds` 与三段比例（StaticTrailDataFactoryTest）、公式锚点（ProjectileVfxSpecsTest）直接调用做完整逻辑验证（禁源码 contain 测试）。
 - 烟测：`ASTD_AUTOMATION_SCENARIO=<id> ./gradlew launchSmokeTestGame`（弹体类用 piercing_lance_basic / heavy_ion_pulse_basic），遥测键计数 + 目检；**到终态即退出，别干等超时**。
 - 目检流程见 game-vfx-preview-guidelines。
+
+## 已知上游问题（BoxUtil 1.6.0）
+
+- **生涯战斗中战斗层 Static Trail 不计算**：`BUtil_StaticTrailMemoryPool.computeTrailNode` 在 `isInCampaignSector()=true` 时旁路全部战斗层拖尾，而该标志在整个生涯期间（含生涯实战）恒为 true、仅回标题复位——表现为生涯实战里拖尾注册成功但完全不渲染，任务/模拟场景正常（2026-09 实机定位，已反馈 BoxUtil 作者；建议上游修法：战役判定追加 `Global.getCombatEngine() == null`）。修复落地前生涯里看不到拖尾属预期。
 
 ## 禁做
 

@@ -29,16 +29,8 @@ data class StaticTrailSpec(
     val scrollSpeed: Float = 0f,
     /** 带体整体向后退的距离（世界单位）：带体头部亮端退到原版螺栓弹头之后，让弹头尖在带体前露出。 */
     val recede: Float = 0f,
-    /** 横向扰动峰值振幅（世界单位，0 = 不扰动）：tracker 记录节点时按逻辑时间横向偏移，带体呈蛇行。 */
-    val wobbleAmplitude: Float = 0f,
-    /** 扰动爬行速度（世界单位/秒，0 静止）。 */
-    val wobbleScroll: Float = 0f,
-    /** 扰动初始相位（弧度）：错开同弹体多条叠层的扰动图案。 */
-    val wobblePhase: Float = 0f,
-    /** 扰动主波长（世界单位）：爬行频率 = [wobbleScroll] / 本值（周期/秒）。 */
-    val wobbleWavelength: Float = 90f,
-    /** bloom 发光强度（0..1，进 BoxUtil emissive → bloom G-buffer）。 */
-    val glowPower: Float = 1f,
+    /** bloom 发光强度（0..1，进 BoxUtil emissive → bloom G-buffer；默认 0 不发光——原版螺栓无辉光，按需开启）。 */
+    val glowPower: Float = 0f,
     /**
      * 拖尾锚点前移覆写（世界单位）：null = 自动取弹体 spec.length/2（对齐原版螺栓视觉头部）。
      * 由 DSL scope 在 build 时从 lifecycle.headLead 统一盖印，层作者不直接填。

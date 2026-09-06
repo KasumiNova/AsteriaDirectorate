@@ -122,7 +122,7 @@ description: "BoxUtil 使用指南（API 速览、调试建议、避坑点），
 
 - 负责：
   - DSL 声明（`ProjectileVfxSpecs.kt` 的 `staticTrail{}`）→ `StaticTrailDataFactory` 翻译/缓存 `StaticTrailData`
-  - `ASTDProjectileTrailTracker` 上报弹体锚点（headLead 前移 + recede 退距 + wobble 蛇行），消亡 destroy 自然播完
+  - `ASTDProjectileTrailTracker` 上报弹体锚点（headLead 前移 + recede 退距），消亡 destroy 自然播完
   - `StaticTrailComponent` 挂在 RenderEntity 树上，attach 时校验贴图并注册
 - 详细参数面与调参见 projectile-trail-guidelines。
 
