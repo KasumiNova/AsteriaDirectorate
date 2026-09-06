@@ -29,12 +29,16 @@ class ProjectileVfxSpecsTest {
         assertEquals(1, twin.layer)
         assertEquals(30f, twin.width)
         assertEquals(420f, twin.bandLength)
-        assertEquals(40f, twin.recede)
+        assertEquals(138f, twin.recede)
 
         assertEquals(TEX_ZAPPY, zappy.texturePath)
         assertEquals(2, zappy.layer)
         assertEquals(24f, zappy.width)
         assertEquals(420f, zappy.bandLength)
+        assertEquals(-45f..45f, zappy.angularOutRange, "zappy 装饰层默认尾端自旋")
+        assertNull(zappy.angularInRange)
+        assertNull(zappy.velocityOutRange)
+        assertNull(twin.angularOutRange, "twin 外带不加自旋")
     }
 
     @Test
@@ -59,6 +63,7 @@ class ProjectileVfxSpecsTest {
         assertEquals(14f, twin.width)
         assertEquals(7f, core.width)
         assertEquals(8.5f, zappy.width)
+        assertEquals(-45f..45f, zappy.angularOutRange, "简单 spec 的 zappy 装饰层同样带默认尾端自旋")
         assertEquals(listOf(1, 2, 3), plain.tree.staticTrails.map { it.second.layer })
         plain.tree.staticTrails.forEach { (_, spec) ->
             assertEquals(135f, spec.bandLength)

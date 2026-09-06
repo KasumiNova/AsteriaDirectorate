@@ -43,7 +43,7 @@ class StaticTrailDataFactoryTest {
             StaticTrailDataFactory.FADE_IN_RATIO + StaticTrailDataFactory.FULL_RATIO + StaticTrailDataFactory.FADE_OUT_RATIO,
             1e-6f,
         )
-        // 对齐旧 dissolveStart=0.6：淡入 5% + 满亮 55% = 60% 处开始线性消散
+        // 消散起点保持 60%：淡入 12%（弹头后方渐起防叠加过曝）+ 满亮 48% = 60% 处开始线性消散
         assertEquals(0.6f, StaticTrailDataFactory.FADE_IN_RATIO + StaticTrailDataFactory.FULL_RATIO, 1e-6f)
     }
 }

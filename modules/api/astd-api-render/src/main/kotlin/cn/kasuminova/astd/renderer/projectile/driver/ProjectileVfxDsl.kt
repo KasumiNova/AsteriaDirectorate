@@ -5,6 +5,7 @@ import cn.kasuminova.astd.impl.render.AnchorArcSpec
 import cn.kasuminova.astd.impl.render.BoxFlareSpec
 import cn.kasuminova.astd.impl.render.BoxFlareStyle
 import cn.kasuminova.astd.impl.render.StaticTrailSpec
+import cn.kasuminova.astd.impl.render.TrailDriftRange
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.DamagingProjectileAPI
 
@@ -137,6 +138,10 @@ class StaticTrailBuilder(private val texturePath: String) {
     private var scrollSpeed = 0f
     private var recede = 0f
     private var glowPower = 0f
+    private var angularInRange: ClosedFloatingPointRange<Float>? = null
+    private var angularOutRange: ClosedFloatingPointRange<Float>? = null
+    private var velocityInRange: TrailDriftRange? = null
+    private var velocityOutRange: TrailDriftRange? = null
 
     /** 叠层序号：同弹体多条拖尾的组织序（1 垫底、2 其上；additive 混合下不参与绘制排序）。 */
     fun layer(v: Int) { layer = v }
@@ -162,6 +167,22 @@ class StaticTrailBuilder(private val texturePath: String) {
     /** bloom 发光强度（0..1；进 BoxUtil emissive → bloom G-buffer）。不调用即不发光（原版螺栓无辉光）。 */
     fun glow(power: Float) { glowPower = power.coerceIn(0f, 1f) }
 
+    /** 头部（最新节点）每节点随机自旋角速度范围（度/秒，绕节点锚点）。默认 ±15 的轻扭转。 */
+    fun angularIn(min: Float = -15f, max: Float = 15f) { angularInRange = min..max }
+
+    /** 尾部（最老节点）每节点随机自旋角速度范围（度/秒）：带尾随存活时间扭转出弧度，默认 ±45 可见卷曲。 */
+    fun angularOut(min: Float = -45f, max: Float = 45f) { angularOutRange = min..max }
+
+    /** 头部（最新节点）每节点随机漂移速度范围（世界单位/秒，基于带体朝向）。 */
+    fun velocityIn(minX: Float, minY: Float, maxX: Float, maxY: Float) {
+        velocityInRange = TrailDriftRange(minX, minY, maxX, maxY)
+    }
+
+    /** 尾部（最老节点）每节点随机漂移速度范围（世界单位/秒）：带尾随存活时间漂离原航迹。 */
+    fun velocityOut(minX: Float, minY: Float, maxX: Float, maxY: Float) {
+        velocityOutRange = TrailDriftRange(minX, minY, maxX, maxY)
+    }
+
     internal fun build(): StaticTrailSpec = StaticTrailSpec(
         texturePath = texturePath,
         layer = layer,
@@ -174,6 +195,10 @@ class StaticTrailBuilder(private val texturePath: String) {
         scrollSpeed = scrollSpeed,
         recede = recede,
         glowPower = glowPower,
+        angularInRange = angularInRange,
+        angularOutRange = angularOutRange,
+        velocityInRange = velocityInRange,
+        velocityOutRange = velocityOutRange,
     )
 }
 

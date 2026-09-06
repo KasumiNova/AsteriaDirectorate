@@ -119,6 +119,8 @@ object ProjectileVfxSpecs {
             colors(bandHeadColor(color, ALPHA_DECOR).hex(), bandTailColor(color, ALPHA_DECOR).hex())
             tile(arcTile(length), arcScroll(length))
             recede(recedeBy)
+            // 尾端自旋漂移（默认 ±45°/s）：电弧装饰带随存活卷曲，避免整条带僵硬直线
+            angularOut()
         }
         extra()
     }
@@ -133,14 +135,15 @@ object ProjectileVfxSpecs {
         fade { out(0.15f) }
 
         staticTrail("twin", TEX_TWIN) {
-            layer(1); width(30f); length(420f); recede(40f)
+            layer(1); width(30f); length(420f); recede(138f)
             colors(0xCFE8FF90, 0x0A1C3810)
             tile(140f, 50f)
         }
         staticTrail("zappy", TEX_ZAPPY) {
-            layer(2); width(24f); length(420f); recede(40f)
+            layer(2); width(24f); length(420f); recede(138f)
             colors(0xF0F8FFB4, 0x0A1C3812)
             tile(200f, 90f)
+            angularOut()
         }
     }
 

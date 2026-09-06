@@ -2,6 +2,7 @@ package cn.kasuminova.astd.impl.render
 
 import com.fs.starfarer.api.Global
 import org.boxutil.define.struct.statictrail.StaticTrailData
+import org.lwjgl.util.vector.Vector2f
 import org.lwjgl.util.vector.Vector4f
 import java.util.concurrent.ConcurrentHashMap
 
@@ -20,9 +21,10 @@ object StaticTrailDataFactory {
     private val log = Global.getLogger(StaticTrailDataFactory::class.java)
     private val cache = ConcurrentHashMap<String, StaticTrailData>()
 
-    /** 三段时间占节点总寿命的比例（对齐旧 dissolveStart=0.6 观感：满亮至 60% 后线性消散）。 */
-    internal const val FADE_IN_RATIO = 0.05f
-    internal const val FULL_RATIO = 0.55f
+    /** 三段时间占节点总寿命的比例（对齐旧 dissolveStart=0.6 观感：满亮后线性消散）。
+     * 淡入 12%（原 5%）：带体亮度在弹头后方渐起，避免带体亮头与原版螺栓弹头（additive 高亮）同位叠加出彗星状过曝团。 */
+    internal const val FADE_IN_RATIO = 0.12f
+    internal const val FULL_RATIO = 0.48f
     internal const val FADE_OUT_RATIO = 0.4f
 
     /** 节点总寿命下限（秒）：BoxUtil 要求三段总和 ≥ 0.1，留余量防边界拒绝。 */
@@ -54,6 +56,10 @@ object StaticTrailDataFactory {
             .setColorIn(spec.headColor.toVector4f())
             .setColorOut(spec.tailColor.toVector4f())
             .setAdditiveBlend(true)
+        spec.angularInRange?.let { data.setAngularInRange(Vector2f(it.start, it.endInclusive)) }
+        spec.angularOutRange?.let { data.setAngularOutRange(Vector2f(it.start, it.endInclusive)) }
+        spec.velocityInRange?.let { data.setVelocityInRange(Vector4f(it.minX, it.minY, it.maxX, it.maxY)) }
+        spec.velocityOutRange?.let { data.setVelocityOutRange(Vector4f(it.minX, it.minY, it.maxX, it.maxY)) }
         val sprite = Global.getSettings().getSprite(spec.texturePath)
         if (sprite.textureId <= 0) {
             // 贴图未上传（多因未在 settings.json graphics 段注册）：BoxUtil 直接按 id 绑定，不触发原版懒加载

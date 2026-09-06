@@ -15,14 +15,14 @@ description: "弹体拖尾规范：统一走 staticTrail DSL（BoxUtil 1.6.0 Sta
 ## 渲染模型（先理解再调参）
 
 - **宿主**：BoxUtil Static Trail 系统。每条拖尾层 = 一份 `StaticTrailData`（风格配置 + 专属环形 vRAM 池，按 `树id/层名` 缓存）+ 一个 tracker 回调。GPU 实例化带体，CPU 侧零折线网格。
-- **节点寿命**：系统按三段时长推进每个节点生命——`durFadeIn`（淡入 5%）→ `durFull`（满亮至 60%）→ `durFadeOut`（线性消散到尾）。总寿命 = DSL 声明带长 / 弹体速度（`DamagingProjectileAPI.getMoveSpeed`），钳 [0.15, 10] 秒（`StaticTrailDataFactory`）。
+- **节点寿命**：系统按三段时长推进每个节点生命——`durFadeIn`（淡入 12%）→ `durFull`（满亮至 60%）→ `durFadeOut`（线性消散到尾）。总寿命 = DSL 声明带长 / 弹体速度（`DamagingProjectileAPI.getMoveSpeed`），钳 [0.15, 10] 秒（`StaticTrailDataFactory`）。淡入 12%（原 5%）是过曝裁定：带体亮度在弹头后方渐起，避免带体亮头与原版螺栓弹头（additive 高亮）同位叠加出彗星状白团。
 - **几何**：头宽 `width` → 尾宽 `width × tailWidthRatio`（默认 0.35）随生命线性收细；颜色 `headColor → tailColor` 两段渐变；additive 混合。
 - **图案**：平铺滚动贴图。`tileLength` = 一周期世界单位（REPEAT 平铺），`scrollSpeed` su/s；scroll/tile ≈ 每秒整图滚动次数。
 - **贴图规范**（2026-09 转置）：**N×64 PNG，X=带长向、Y=横向**（X 向 REPEAT 平铺，必须可无缝循环）；形在 alpha 通道，RGB 近白（染色来自节点色）。旧 64×N 素材已程序转置（`tools/rotate_trail_textures.py`）。
 - **消亡语义**：tracker 自查弹体消亡（wasRemoved/isExpired）→ `destroy()`，带体按三段时长自然播完（尾先头后）。**不含 isFading**——超射程/命中淡出期弹体仍在飞，带体继续跟随至弹体移出引擎才开始消散（2026-09 实机裁定）。**没有加速消散窗口、没有带头前飞补偿**（迁移裁定，勿加回）。
 - **拖尾锚点 = 弹体视觉头部**：tracker 锚点 = 弹体中心沿朝向提前（headLead − recede），headLead 默认 = 弹体 `spec.length/2`（原版螺栓贴图中心在弹体位置、视觉头部在 +length/2）；`lifecycle{ headLead(0f) }` 可锚回中心。`recede` 让带体亮端退到弹头之后。
 - **bloom**：`glow(power)` 进 BoxUtil emissive → bloom G-buffer；emissive 复用 diffuse 贴图并以头部色染色。**默认 0 不发光**（原版螺栓无辉光；三层 additive 叠在弹头上再叠加 bloom 会过曝成白团，2026-09 实机实踩）。
-- **BoxUtil 未用的上游语义**：`velocityInRange`/`velocityOutRange`/`angularInRange`/`angularOutRange` 是「已落节点随时间漂移/绕锚点随机自旋」（逐节点随机 × 存活时间），用于碎屑/烟雾类消散漂移；直线弹体拖尾用不上，DSL 不暴露。
+- **节点漂移/自旋（DSL 已暴露）**：`angularOut(min,max)`/`angularIn(...)` = 每节点随机自旋角速度（度/秒，绕节点锚点、基于带体朝向，In=最新节点→Out=最老节点按生命插值），带尾随存活时间扭转出弧度；`velocityOut(minX,minY,maxX,maxY)`/`velocityIn(...)` = 每节点随机漂移速度（su/s），带尾漂离原航迹（碎屑/烟雾类消散漂移用）。直线弹体主带不用；**zappy 电弧装饰层默认 `angularOut()`（±45°/s）**，让电弧带尾端卷曲（2026-09 裁定，嫌飘可显式传小值）。
 
 ## DSL 参数面
 
@@ -38,6 +38,8 @@ staticTrail("层名", "graphics/fx/astd_trails_zappy.png") {
     tile(140f, 50f)             // 平铺周期 su / 滚动速度 su/s
     recede(40f)                 // 带体整体后退，让弹头尖在带体前露出
     glow(1f)                    // bloom 发光强度（0..1）；省略即不发光（原版螺栓无辉光，默认 0）
+    angularOut()                // 尾端每节点随机自旋（度/秒，默认 ±45）；angularIn 同理
+    velocityOut(-10f,-10f,10f,10f) // 尾端每节点随机漂移速度（su/s，minX,minY,maxX,maxY）；velocityIn 同理
 }
 ```
 
@@ -94,7 +96,7 @@ alpha 0.45/0.6/0.45 是过曝压暗后的裁定（三层加色 + 高射速多发
 | 横向散开 | drift 由带体追踪真实弹道承担（tracker 锚点跟弹体，机动天然捕获）；Box Static Trail 无横向扰动语义，不硬造 |
 | 多层拖带叠加错参 | 多条 staticTrail：宽比 1.2~1.5×、scroll 比 1.5~2×、alpha 错开（芯亮边暗） |
 
-惯例锚点（aod7 hero）：主带 twin `width 30 / tile(140, 50)` 垫底，副带 zappy `width 24 / tile(200, 90)`，`recede(40f)`。
+惯例锚点（aod7 hero）：主带 twin `width 30 / tile(140, 50)` 垫底，副带 zappy `width 24 / tile(200, 90)` + 默认 `angularOut()`，`recede(138f)`（aod7 螺栓长 138：带体锚点退到螺栓尾端，带体亮头不与 additive 螺栓同位叠加；普通弹体螺栓短，仍按 `headRecede(L)=L×0.08`）。
 
 宽度锚点：主带 ≈ 弹体视觉宽 ×2~3；重击弹（贯星 36su）可再放大并配 boxFlare 附加层。
 
@@ -115,6 +117,7 @@ alpha 0.45/0.6/0.45 是过曝压暗后的裁定（三层加色 + 高射速多发
 ## 已知上游问题（BoxUtil 1.6.0）
 
 - **生涯战斗中战斗层 Static Trail 不计算**：`BUtil_StaticTrailMemoryPool.computeTrailNode` 在 `isInCampaignSector()=true` 时旁路全部战斗层拖尾，而该标志在整个生涯期间（含生涯实战）恒为 true、仅回标题复位——表现为生涯实战里拖尾注册成功但完全不渲染，任务/模拟场景正常（2026-09 实机定位，已反馈 BoxUtil 作者；建议上游修法：战役判定追加 `Global.getCombatEngine() == null`）。修复落地前生涯里看不到拖尾属预期。
+- **暂停一致性（已排查，非问题）**：节点时间戳（`computeTrailNode`）与着色器 `u_time` 同源——均为 `BUtil_GLImpl.timer[2]`（`getElapsedTimeWithoutPaused()`，暂停时冻结）；暂停期间 `doStaticTrailCompute` 不置位、不记节点。Static Trail 自身暂停语义自洽。ASTD 侧 tracker 已无任何时间依赖（wobble 已删），若实机仍见「暂停后不同步」，优先怀疑其他渲染层（原版螺栓 / GraphicsLib 后处理 / SSOptimizer）或上游遗留，需具体现象再定位。
 
 ## 禁做
 

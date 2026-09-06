@@ -36,4 +36,21 @@ data class StaticTrailSpec(
      * 由 DSL scope 在 build 时从 lifecycle.headLead 统一盖印，层作者不直接填。
      */
     val headLeadWorld: Float? = null,
+    /**
+     * 每节点随机自旋角速度范围（度/秒，绕节点锚点，基于带体朝向）：带尾随存活时间扭转出弧度。
+     * In=最新节点（life 0）、Out=最老节点（life 1），按节点生命插值；null 不启用。
+     */
+    val angularInRange: ClosedFloatingPointRange<Float>? = null,
+    /** 见 [angularInRange]；尾端自旋（如电弧装饰带的卷曲感）只设本项即可。 */
+    val angularOutRange: ClosedFloatingPointRange<Float>? = null,
+    /** 每节点随机漂移速度范围（世界单位/秒，基于带体朝向）：带尾随存活时间漂离原航迹；null 不启用。 */
+    val velocityInRange: TrailDriftRange? = null,
+    /** 见 [velocityInRange]。 */
+    val velocityOutRange: TrailDriftRange? = null,
 )
+
+/**
+ * Static Trail 节点漂移速度范围（世界单位/秒，基于带体朝向）：
+ * 每节点在 {minX..maxX, minY..maxY} 内取随机二维漂移速度，随节点存活时间累积位移。
+ */
+data class TrailDriftRange(val minX: Float, val minY: Float, val maxX: Float, val maxY: Float)
