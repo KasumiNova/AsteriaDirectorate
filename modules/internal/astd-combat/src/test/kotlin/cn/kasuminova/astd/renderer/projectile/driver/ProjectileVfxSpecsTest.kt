@@ -1,6 +1,7 @@
 package cn.kasuminova.astd.renderer.projectile.driver
 
 import cn.kasuminova.astd.impl.render.ASTDColor
+import cn.kasuminova.astd.impl.render.TrailDriftRange
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -29,15 +30,17 @@ class ProjectileVfxSpecsTest {
         assertEquals(1, twin.layer)
         assertEquals(30f, twin.width)
         assertEquals(420f, twin.bandLength)
-        assertEquals(138f, twin.recede)
+        assertEquals(90f, twin.recede)
 
         assertEquals(TEX_ZAPPY, zappy.texturePath)
         assertEquals(2, zappy.layer)
         assertEquals(24f, zappy.width)
         assertEquals(420f, zappy.bandLength)
         assertEquals(-45f..45f, zappy.angularOutRange, "zappy 装饰层默认尾端自旋")
+        assertEquals(TrailDriftRange(-16f, -16f, 16f, 16f), zappy.velocityOutRange, "angular 需配合非零 velocity 才生效")
+        assertEquals(0.5f, zappy.glowPower)
         assertNull(zappy.angularInRange)
-        assertNull(zappy.velocityOutRange)
+        assertNull(zappy.velocityInRange)
         assertNull(twin.angularOutRange, "twin 外带不加自旋")
     }
 
@@ -64,6 +67,9 @@ class ProjectileVfxSpecsTest {
         assertEquals(7f, core.width)
         assertEquals(8.5f, zappy.width)
         assertEquals(-45f..45f, zappy.angularOutRange, "简单 spec 的 zappy 装饰层同样带默认尾端自旋")
+        assertEquals(TrailDriftRange(-16f, -16f, 16f, 16f), zappy.velocityOutRange)
+        assertEquals(0.45f, core.glowPower, "仅核心层给适度 bloom")
+        assertEquals(0f, twin.glowPower)
         assertEquals(listOf(1, 2, 3), plain.tree.staticTrails.map { it.second.layer })
         plain.tree.staticTrails.forEach { (_, spec) ->
             assertEquals(135f, spec.bandLength)

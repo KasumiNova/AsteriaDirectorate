@@ -113,14 +113,17 @@ object ProjectileVfxSpecs {
             colors(bandHeadColor(color, ALPHA_CORE).hex(), bandTailColor(color, ALPHA_CORE).hex())
             tile(mainTile(length), mainScroll(length))
             recede(recedeBy)
+            // 仅核心层给适度 bloom（三层全开曾过曝成白团）；带体亮头已与螺栓分离，0.45 安全
+            glow(0.45f)
         }
         staticTrail("zappy", TEX_ZAPPY) {
             layer(3); width(arcWidth(bandW)); length(length)
             colors(bandHeadColor(color, ALPHA_DECOR).hex(), bandTailColor(color, ALPHA_DECOR).hex())
             tile(arcTile(length), arcScroll(length))
             recede(recedeBy)
-            // 尾端自旋漂移（默认 ±45°/s）：电弧装饰带随存活卷曲，避免整条带僵硬直线
+            // 尾端漂移卷曲：angular 必须配合非零 velocity 才生效（自旋旋转的是漂移偏移矢量）
             angularOut()
+            velocityOut(-16f, -16f, 16f, 16f)
         }
         extra()
     }
@@ -135,15 +138,17 @@ object ProjectileVfxSpecs {
         fade { out(0.15f) }
 
         staticTrail("twin", TEX_TWIN) {
-            layer(1); width(30f); length(420f); recede(138f)
+            layer(1); width(30f); length(420f); recede(90f)
             colors(0xCFE8FF90, 0x0A1C3810)
             tile(140f, 50f)
         }
         staticTrail("zappy", TEX_ZAPPY) {
-            layer(2); width(24f); length(420f); recede(138f)
+            layer(2); width(24f); length(420f); recede(90f)
             colors(0xF0F8FFB4, 0x0A1C3812)
             tile(200f, 90f)
+            glow(0.5f)
             angularOut()
+            velocityOut(-16f, -16f, 16f, 16f)
         }
     }
 
