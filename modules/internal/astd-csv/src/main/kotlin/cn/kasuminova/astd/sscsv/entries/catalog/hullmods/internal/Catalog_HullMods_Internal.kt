@@ -23,7 +23,7 @@ object Hm_astd_bounty_scaling : HullModEntry() {
     override val sprite: String = "graphics/hullmods/astd_zero_point_compute_core.png"
 }
 
-// ─── S 型词缀（S-01 ~ S-08） ───
+// —— S 型词缀（S-01 ~ S-08） ——
 
 object Hm_astd_affix_ironclad_plating : HullModEntry() {
     override val id: String = "astd_affix_ironclad_plating"
@@ -145,7 +145,7 @@ object Hm_astd_affix_phase_coil_detuning : HullModEntry() {
     override val sprite: String = "graphics/hullmods/astd_zero_point_compute_core.png"
 }
 
-// ─── M 型词缀（M-09 ~ M-14） ───
+// —— M 型词缀（M-09 ~ M-14） ——
 
 object Hm_astd_affix_recursive_targeting : HullModEntry() {
     override val id: String = "astd_affix_recursive_targeting"
@@ -237,7 +237,7 @@ object Hm_astd_affix_plasma_armor_shield : HullModEntry() {
     override val sprite: String = "graphics/hullmods/astd_zero_point_compute_core.png"
 }
 
-// ─── R 型词缀（R-15 ~ R-17） ───
+// —— R 型词缀（R-15 ~ R-17） ——
 
 object Hm_astd_affix_grid_deepening : HullModEntry() {
     override val id: String = "astd_affix_grid_deepening"
@@ -284,7 +284,7 @@ object Hm_astd_affix_singularity_drive : HullModEntry() {
     override val sprite: String = "graphics/hullmods/astd_zero_point_compute_core.png"
 }
 
-// ─── 测试用途 ───
+// —— 测试用途 ——
 
 object Hm_astd_test_shield_coverage : HullModEntry() {
     override val id: String = "astd_test_shield_coverage"

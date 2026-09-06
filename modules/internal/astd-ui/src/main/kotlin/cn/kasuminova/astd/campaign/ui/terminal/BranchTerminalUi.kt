@@ -3,7 +3,7 @@ package cn.kasuminova.astd.campaign.ui.terminal
 import cn.kasuminova.astd.internal.i18n.I18n
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.campaign.BaseCustomUIPanelPlugin
-import com.fs.starfarer.api.campaign.CustomDialogDelegate
+import com.fs.starfarer.api.campaign.CustomVisualDialogDelegate
 import com.fs.starfarer.api.campaign.InteractionDialogAPI
 import com.fs.starfarer.api.ui.Alignment
 import com.fs.starfarer.api.ui.CustomPanelAPI
@@ -25,16 +25,16 @@ import org.lazywizard.lazylib.ui.LazyFont
  * - 底部操作条：主操作按钮（按选中单状态切换）+ 托管小字 + 关闭终端。
  *
  * 特效由根面板插件 [BranchTerminalPlugin] 每帧驱动（本类持有全部时间线时钟并调度
- * [TerminalEffect]）；文书卡纸底/铅封/印章见 [PaperCardPlugin]。
+ * [TerminalEffect]）；文书卡全息面板底/电子签章/印戳见 [HoloDocPlugin]。
  */
 object BranchTerminalUi {
 
-    /** 打开分局终端（近全屏自定义对话框）。 */
+    /** 打开分局终端（近全屏自定义可视对话框，无确认/取消键与 Enter 快捷键，关闭只走终端自身的 Esc/关闭按钮）。 */
     fun open(dialog: InteractionDialogAPI, backend: BranchTerminalBackend, tab: TerminalTab) {
         val settings = Global.getSettings()
         val w = (settings.screenWidth * 0.94f).coerceAtMost(1800f)
         val h = (settings.screenHeight * 0.92f).coerceAtMost(1000f)
-        dialog.showCustomDialog(w, h, BranchTerminalDelegate(backend, tab, w, h))
+        dialog.showCustomVisualDialog(w, h, BranchTerminalDelegate(backend, tab, w, h))
     }
 }
 
@@ -44,7 +44,7 @@ class BranchTerminalDelegate(
     initialTab: TerminalTab,
     private val panelW: Float,
     private val panelH: Float,
-) : CustomDialogDelegate {
+) : CustomVisualDialogDelegate {
 
     // ─── 按钮 id ───
 
@@ -71,7 +71,14 @@ class BranchTerminalDelegate(
     /** 根面板特效插件（扫描线/glitch/开机场/震屏/输入）。 */
     val rootPlugin = BranchTerminalPlugin(this)
 
-    private lateinit var callback: CustomDialogDelegate.CustomDialogCallback
+    /**
+     * 按钮事件转发插件（无状态，全部承载按钮的面板共用同一实例）：
+     * 原版按钮事件不冒泡，topPanel/detailPanel/bottomPanel/行面板/回执面板各挂一个，
+     * 把 buttonPressed 转发到 [onButton]。
+     */
+    private val buttonRelay = ButtonRelayPlugin(::onButton)
+
+    private lateinit var callbacks: CustomVisualDialogDelegate.DialogCallbacks
     private lateinit var panel: CustomPanelAPI
 
     private lateinit var topPanel: CustomPanelAPI
@@ -177,26 +184,26 @@ class BranchTerminalDelegate(
     private val detailW: Float
         get() = panelW - TerminalStyle.PAD * 2 - TerminalStyle.LIST_W - TerminalStyle.GAP
 
-    // ─── CustomDialogDelegate ───
+    // ─── CustomVisualDialogDelegate ───
 
-    override fun createCustomDialog(panel: CustomPanelAPI, callback: CustomDialogDelegate.CustomDialogCallback) {
+    override fun init(panel: CustomPanelAPI, callbacks: CustomVisualDialogDelegate.DialogCallbacks) {
         this.panel = panel
-        this.callback = callback
+        this.callbacks = callbacks
 
         val contentW = panelW - TerminalStyle.PAD * 2
-        topPanel = panel.createCustomPanel(contentW, TerminalStyle.TOP_BAR_H, BaseCustomUIPanelPlugin())
+        topPanel = panel.createCustomPanel(contentW, TerminalStyle.TOP_BAR_H, buttonRelay)
         panel.addComponent(topPanel).inTL(TerminalStyle.PAD, TerminalStyle.PAD)
 
         listPanel = panel.createCustomPanel(TerminalStyle.LIST_W, mainH, BaseCustomUIPanelPlugin())
         panel.addComponent(listPanel).inTL(TerminalStyle.PAD, TerminalStyle.PAD + TerminalStyle.TOP_BAR_H + TerminalStyle.GAP)
 
-        detailPanel = panel.createCustomPanel(detailW, mainH, BaseCustomUIPanelPlugin())
+        detailPanel = panel.createCustomPanel(detailW, mainH, buttonRelay)
         panel.addComponent(detailPanel).inTL(
             TerminalStyle.PAD + TerminalStyle.LIST_W + TerminalStyle.GAP,
             TerminalStyle.PAD + TerminalStyle.TOP_BAR_H + TerminalStyle.GAP,
         )
 
-        bottomPanel = panel.createCustomPanel(contentW, TerminalStyle.BOTTOM_BAR_H, BaseCustomUIPanelPlugin())
+        bottomPanel = panel.createCustomPanel(contentW, TerminalStyle.BOTTOM_BAR_H, buttonRelay)
         panel.addComponent(bottomPanel).inBL(TerminalStyle.PAD, TerminalStyle.PAD)
 
         buildTopbar()
@@ -205,15 +212,13 @@ class BranchTerminalDelegate(
         buildBottomBar()
     }
 
-    override fun hasCancelButton(): Boolean = false
+    /** 终端底色已自带暗纹理，不叠加原版噪点。 */
+    override fun getNoiseAlpha(): Float = 0f
 
-    override fun getConfirmText(): String? = null
+    /** 帧推进由根面板插件 [BranchTerminalPlugin.advance] 驱动（面板在 UI 树内照常收 advance）。 */
+    override fun advance(amount: Float) {}
 
-    override fun getCancelText(): String? = null
-
-    override fun customDialogConfirm() {}
-
-    override fun customDialogCancel() {}
+    override fun reportDismissed(option: Int) {}
 
     override fun getCustomPanelPlugin() = rootPlugin
 
@@ -289,13 +294,13 @@ class BranchTerminalDelegate(
             closeReceipt()
         } else if (pending.none { it.effect.blocksClose }) {
             TerminalStyle.play(TerminalSound.CLOSE)
-            callback.dismissCustomDialog(0)
+            callbacks.dismissDialog()
         }
         // else：结算成功 → 回执弹出的窗口内暂吞关闭（Esc/关闭按钮同路），
         // 保证「盖章 → 回执打印」叙事链在终端内完整（HUD 回执兜底不受影响）
     }
 
-    /** 根插件 buttonPressed 路由。 */
+    /** 按钮路由（各承载按钮面板的 [ButtonRelayPlugin] 转发至此）。 */
     fun onButton(id: Any?) {
         when (id) {
             is TabButtonId -> applyEffects(controller.selectTab(id.tab))
@@ -356,7 +361,7 @@ class BranchTerminalDelegate(
         val target = glitchTargetKey?.let(orderStatusLabels::get) ?: return
         glitchSwapped = target
         target.label.setText(I18n[TerminalStyle.CAT, "ui.terminal.glitch.target_status"])
-        target.label.setColor(TerminalStyle.stampRed)
+        target.label.setColor(TerminalStyle.glitchRed)
     }
 
     private fun endGlitch() {
@@ -524,7 +529,7 @@ class BranchTerminalDelegate(
 
     private fun addOrderRow(tt: TooltipMakerAPI, order: TerminalOrderView, selected: Boolean) {
         val rowW = TerminalStyle.LIST_W - 24f
-        val rowPanel = listPanel.createCustomPanel(rowW, TerminalStyle.ROW_H, BaseCustomUIPanelPlugin())
+        val rowPanel = listPanel.createCustomPanel(rowW, TerminalStyle.ROW_H, buttonRelay)
 
         val checkTT = rowPanel.createUIElement(rowW, TerminalStyle.ROW_H, false)
         val button = checkTT.addAreaCheckbox(
@@ -586,7 +591,7 @@ class BranchTerminalDelegate(
 
     private fun addArchiveRow(tt: TooltipMakerAPI, entry: ArchiveEntryView, selected: Boolean) {
         val rowW = TerminalStyle.LIST_W - 24f
-        val rowPanel = listPanel.createCustomPanel(rowW, TerminalStyle.ROW_H, BaseCustomUIPanelPlugin())
+        val rowPanel = listPanel.createCustomPanel(rowW, TerminalStyle.ROW_H, buttonRelay)
         val index = I18n.t(
             TerminalStyle.CAT, "ui.terminal.archive.index",
             "index" to "%02d".format(entry.indexInLayer),
@@ -678,7 +683,7 @@ class BranchTerminalDelegate(
 
         val cardW = TerminalStyle.CARD_MAX_W.coerceAtMost(detailW - 48f)
         val cardH = mainH - 16f
-        val cardPlugin = PaperCardPlugin(
+        val cardPlugin = HoloDocPlugin(
             cardW, cardH,
             animatedStamp = {
                 val t = stampT
@@ -703,8 +708,8 @@ class BranchTerminalDelegate(
         )
         cardPanel.addUIElement(cardTT).inTL(TerminalStyle.CARD_PAD_X, TerminalStyle.CARD_PAD_Y)
 
-        // 签发抬头 + 编号骑缝（bounty 表定稿 desc 的首两行即抬头/编号，正文自第 3 行起）
-        val head = cardTT.addPara(I18n[TerminalStyle.CAT, "ui.terminal.doc.head"], TerminalStyle.paperInk, 4f)
+        // 签发抬头 + 编号校验行（bounty 表定稿 desc 的首两行即抬头/编号，正文自第 3 行起）
+        val head = cardTT.addPara(I18n[TerminalStyle.CAT, "ui.terminal.doc.head"], TerminalStyle.text, 4f)
         head.setAlignment(Alignment.MID)
         val dangerText = if (order.dangerOmitted) {
             I18n[TerminalStyle.CAT_BOUNTY, "danger.omitted"]
@@ -717,7 +722,7 @@ class BranchTerminalDelegate(
                 "serial" to order.serial,
                 "danger" to dangerText,
             ),
-            TerminalStyle.paperDim, 8f,
+            TerminalStyle.gray, 8f,
         )
         seam.setAlignment(Alignment.MID)
         cardTT.addSpacer(8f)
@@ -737,16 +742,16 @@ class BranchTerminalDelegate(
         }
 
         for (line in descLines.drop(2)) {
-            printedLine(line, if (line.startsWith("——")) TerminalStyle.paperDim else TerminalStyle.paperInk)
+            printedLine(line, if (line.startsWith("——")) TerminalStyle.gray else TerminalStyle.text)
         }
         if (order.affixIds.isNotEmpty()) {
             // 无限赏金：追加条款按生成时锁定的固定词缀表具名（编目号写死在 affix.<id>.clause 文案里）
             for (affixId in order.affixIds) {
-                printedLine(I18n[TerminalStyle.CAT_BOUNTY, "affix.$affixId.clause"], TerminalStyle.paperAnno)
+                printedLine(I18n[TerminalStyle.CAT_BOUNTY, "affix.$affixId.clause"], TerminalStyle.orange)
             }
         } else {
             for (i in 1..order.clauseCount) {
-                printedLine(I18n[TerminalStyle.CAT_BOUNTY, "main.${order.i18nId}.clause.$i"], TerminalStyle.paperAnno)
+                printedLine(I18n[TerminalStyle.CAT_BOUNTY, "main.${order.i18nId}.clause.$i"], TerminalStyle.orange)
             }
         }
         if (order.multiStage) {
@@ -761,7 +766,7 @@ class BranchTerminalDelegate(
                     "stage" to (order.stageIndex + 1),
                     "stageCount" to order.stageCount,
                 ),
-                TerminalStyle.paperAnno,
+                TerminalStyle.orange,
             )
         }
         if (order.status == OrderStatus.AWAITING_SETTLEMENT && !order.hasRequiredItem && order.requiredItemId != null) {
@@ -770,18 +775,18 @@ class BranchTerminalDelegate(
                     TerminalStyle.CAT, "ui.terminal.doc.deliverable_missing",
                     "item" to I18n[TerminalStyle.CAT, "story.item.name.${order.requiredItemId}"],
                 ),
-                TerminalStyle.paperAnno,
+                TerminalStyle.orange,
             )
         }
         if (order.reward != null) {
             printedLine(
                 I18n.t(TerminalStyle.CAT, "ui.terminal.doc.reward", "reward" to Misc.getDGSCredits(order.reward.toFloat())),
-                TerminalStyle.paperAnno,
+                TerminalStyle.orange,
             )
         } else {
-            printedLine(I18n[TerminalStyle.CAT, "ui.terminal.doc.reward_unquoted"], TerminalStyle.paperAnno)
+            printedLine(I18n[TerminalStyle.CAT, "ui.terminal.doc.reward_unquoted"], TerminalStyle.orange)
         }
-        printedLine(I18n[TerminalStyle.CAT, "ui.terminal.doc.footer"], TerminalStyle.paperDim, 10f)
+        printedLine(I18n[TerminalStyle.CAT, "ui.terminal.doc.footer"], TerminalStyle.gray, 10f)
 
         printer = LinePrinter(targets.map { it.fullText })
         printTargets = targets
@@ -863,7 +868,7 @@ class BranchTerminalDelegate(
         tt.addPara(I18n[TerminalStyle.CAT, "ui.terminal.account.note"], TerminalStyle.gray, 8f)
         tt.addSpacer(8f)
 
-        // 履约流水账（编号 / 金额 / 批注，仿老账本借贷观感：金额列橙黄）
+        // 履约流水账（编号 / 金额 / 批注，借贷分列观感：金额列橙黄）
         val tableW = detailW - 48f
         tt.beginTable(
             TerminalStyle.teal, TerminalStyle.tealDark, TerminalStyle.tealBright, 20f,
@@ -1120,7 +1125,10 @@ class BranchTerminalDelegate(
         panel.bringComponentToTop(overlay)
         receiptOverlay = overlay
 
-        val recPanel = overlay.createCustomPanel(TerminalStyle.RECEIPT_W, recH, ReceiptPanelPlugin(TerminalStyle.RECEIPT_W, recH))
+        val recPanel = overlay.createCustomPanel(
+            TerminalStyle.RECEIPT_W, recH,
+            ReceiptPanelPlugin(TerminalStyle.RECEIPT_W, recH, ::onButton),
+        )
         overlay.addComponent(recPanel).inBMid(TerminalStyle.BOTTOM_BAR_H + 90f)
 
         val tt = recPanel.createUIElement(TerminalStyle.RECEIPT_W - 48f, recH - 60f, true)
@@ -1258,7 +1266,10 @@ class BranchTerminalDelegate(
         panel.bringComponentToTop(overlay)
         narrativeOverlay = overlay
 
-        val recPanel = overlay.createCustomPanel(TerminalStyle.RECEIPT_W, recH, ReceiptPanelPlugin(TerminalStyle.RECEIPT_W, recH))
+        val recPanel = overlay.createCustomPanel(
+            TerminalStyle.RECEIPT_W, recH,
+            ReceiptPanelPlugin(TerminalStyle.RECEIPT_W, recH, ::onButton),
+        )
         overlay.addComponent(recPanel).inBMid(TerminalStyle.BOTTOM_BAR_H + 90f)
 
         val tt = recPanel.createUIElement(TerminalStyle.RECEIPT_W - 48f, recH - 60f, true)

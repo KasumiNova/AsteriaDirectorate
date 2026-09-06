@@ -17,7 +17,7 @@
 		"ui.terminal.ending.sign.hint": "档案处置申请已受理。请选择处置文书，通读全文后签署。签署后不可反悔。",
 		"ui.terminal.ending.sign.button": "确认签署",
 		"ui.terminal.ending.trade.candidates_head": "候选移交对象（附两百年前的询价记录，报价已锁定）：",
-		"ui.terminal.ending.trade.candidate": "%faction%　报价 %quote%",
+		"ui.terminal.ending.trade.candidate": "%faction%  报价 %quote%",
 		"ui.terminal.ending.executor.intro": "依承包商履约记录，特批签发“执行官”核心一枚。特化方向一经选定，不予退换。",
 		"ui.terminal.ending.executor.combat": "签发：战斗特化",
 		"ui.terminal.ending.executor.admin": "签发：行政特化",

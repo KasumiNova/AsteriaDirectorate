@@ -7,8 +7,8 @@ name,id,tags,tech/manufacturer,rarity,base price,stack size,cargo space,baseRaid
 双子星 DEM 发射器蓝图,astd_gemini_dem_launcher_bp,"single_bp, astd",菀星设计局-星坠,,2000,1000,1,,graphics/icons/cargo/blueprint_weapons.png,ui_chip_pickup,ui_weapon_bp_drop,com.fs.starfarer.api.campaign.impl.items.WeaponBlueprintItemPlugin,astd_gemini_dem_launcher,使重工业设施能够制造出该蓝图所描述的武器。,9205
 双子星 DEM 发射舱蓝图,astd_gemini_dem_pod_bp,"single_bp, astd",菀星设计局-星坠,,2000,1000,1,,graphics/icons/cargo/blueprint_weapons.png,ui_chip_pickup,ui_weapon_bp_drop,com.fs.starfarer.api.campaign.impl.items.WeaponBlueprintItemPlugin,astd_gemini_dem_pod,使重工业设施能够制造出该蓝图所描述的武器。,9206
 重型离子脉冲蓝图,astd_heavy_ion_pulse_bp,"weapon_bp, single_bp, no_drop, no_drop_salvage",菀星设计局-星坠,,24000,1,0,,graphics/icons/cargo/blueprint_weapons.png,ui_chip_pickup,ui_weapon_bp_drop,com.fs.starfarer.api.campaign.impl.items.WeaponBlueprintItemPlugin,astd_heavy_ion_pulse,使重工业设施能够制造“重型离子脉冲”。,9207
-委托文书“XW-c206-0447／核销-03”,astd_doc_xw_c206_0447,"mission_item, no_drop, no_drop_salvage",菀星设计总局-第七分局,,0,1,1,,graphics/icons/cargo/package_midline.png,ui_chip_pickup,ui_weapon_bp_drop,com.fs.starfarer.api.campaign.impl.items.BaseSpecialItemPlugin,,"【菀星设计总局 · 英仙座第七分局 · 签发】
-编号：XW-c206-0447／核销-03
+委托文书“XW-c206-0447/核销-03”,astd_doc_xw_c206_0447,"mission_item, no_drop, no_drop_salvage",菀星设计总局-第七分局,,0,1,1,,graphics/icons/cargo/package_midline.png,ui_chip_pickup,ui_weapon_bp_drop,com.fs.starfarer.api.campaign.impl.items.BaseSpecialItemPlugin,,"【菀星设计总局 · 英仙座第七分局 · 签发】
+编号：XW-c206-0447/核销-03
 委托事项：注销违约资产“总局旧制式巡洋舰 Ⅶ-未编号”一艘，回收其航行数据柜（铅封），送至本分局核销台办理交割。
 签发日期：c+206 年第 3 审计周期
 履约期限：签发后 90 标准日（已逾期约两个世纪）

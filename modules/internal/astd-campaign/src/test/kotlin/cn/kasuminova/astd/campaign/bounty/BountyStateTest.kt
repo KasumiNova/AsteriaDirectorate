@@ -23,6 +23,7 @@ class BountyStateTest {
         assertNotNull(legacy.settledWorkOrders)
         assertNotNull(legacy.workOrderStageIndex)
         assertNotNull(legacy.quotedRewards)
+        assertNotNull(legacy.lockedFleetPlans)
         assertNotNull(legacy.grantedGroupBonuses)
         assertNotNull(legacy.chapterHooks)
         assertNotNull(legacy.chapterClearingOrders)

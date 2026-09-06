@@ -50,6 +50,11 @@ class TimedTextQueue(private val textPanel: TextPanelAPI) {
     fun clear() {
         queue.clear()
         acc = 0f
+        // 在播动画段落必须终态化而非遗弃：fadeIn 起步的标签停在 opacity=0，
+        // 若不推至终态，段落将永远全透明（实机表现：跳转节点清空队列后文本面板整段空白）。
+        for (a in actives) {
+            a.label.setOpacity(if (a.fadeOut > 0f) 0f else a.maxOpacity)
+        }
         actives.clear()
     }
 

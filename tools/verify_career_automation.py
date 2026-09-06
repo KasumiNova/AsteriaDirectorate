@@ -34,7 +34,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 LAUNCHER = REPO_ROOT / "tools" / "career_automation_launch.sh"
 
-# ─── 主线工单 key ───
+# —— 主线工单 key ——
 XW = "astd_main_xw_c206_0447"
 YJ_1102 = "astd_main_yj_c206_1102"
 YJ_1103 = "astd_main_yj_c206_1103"
@@ -217,7 +217,7 @@ class CareerDriver:
         return result.get("data") or {}
 
 
-# ─── 存档发现 ───
+# —— 存档发现 ——
 
 def wait_save_landed(driver: CareerDriver, saves_root: Path, save_dir_name: str, timeout: int = 90) -> str:
     """等待 save_copy 返回的具名存档目录落盘并写稳（压缩与否取决于本机 compressSaveGameData 设置）。"""
@@ -238,7 +238,7 @@ def wait_save_landed(driver: CareerDriver, saves_root: Path, save_dir_name: str,
     raise PhaseAbort(f"存档 {save_dir_name} 未在 {timeout}s 内落盘于 {saves_root}")
 
 
-# ─── 日志收集 ───
+# —— 日志收集 ——
 
 MOD_ERROR_PATTERN = re.compile(r"ERROR", re.IGNORECASE)
 MOD_MARK_PATTERN = re.compile(r"astd|asteria|kasuminova", re.IGNORECASE)
@@ -265,7 +265,7 @@ def collect_career_trace(log_path: Path) -> list[str]:
     ]
 
 
-# ─── 阶段一：新开档全链路 ───
+# —— 阶段一：新开档全链路 ——
 
 def phase_main(checker: Checker, game_dir: Path, saves_root: Path, timeout: int) -> tuple[str, str]:
     phase = "main"
@@ -275,7 +275,7 @@ def phase_main(checker: Checker, game_dir: Path, saves_root: Path, timeout: int)
     with CareerDriver(game_dir, phase, timeout, new_game=True, save_dir=None) as driver:
         driver.send_ok(checker, "心跳/ping", "ping")
 
-        # ── 1a. 世界生成：主星系 ──
+        # —— 1a. 世界生成：主星系 ——
         world = driver.send_ok(checker, "世界生成：主星系事实采集", "check_world_main")
         checker.check(phase, "主星系存在", world.get("systemExists") is True, f"systemId={world.get('systemId')}")
         entities = world.get("entities") or {}
@@ -322,7 +322,7 @@ def phase_main(checker: Checker, game_dir: Path, saves_root: Path, timeout: int)
         else:
             checker.check(phase, "IndEvo：未安装，跳过联动项", True, "isModEnabled(IndEvo)=false")
 
-        # ── 初始状态基线 ──
+        # —— 初始状态基线 ——
         state = driver.send_ok(checker, "初始状态基线", "dump_state")
         checker.check(
             phase, "基线：章节 0 / 等级 0 / 清算 97.3%",
@@ -340,7 +340,7 @@ def phase_main(checker: Checker, game_dir: Path, saves_root: Path, timeout: int)
             f"phase={snap.get('phase')} orders={snap.get('orderCount')} glitch={snap.get('glitchCh1')}/{snap.get('glitchCh3')}",
         )
 
-        # ── 1b. 赏金链路：序章 ──
+        # —— 1b. 赏金链路：序章 ——
         accepted = driver.send_ok(checker, "序章签署（桥接接取）", "accept_prologue")
         checker.check(phase, "序章工单挂出", accepted.get("accepted") is True, f"posted={accepted.get('posted')}")
         driver.send_ok(checker, "序章工单激活", f"wait_posted {XW}")
@@ -357,7 +357,7 @@ def phase_main(checker: Checker, game_dir: Path, saves_root: Path, timeout: int)
             f"payout={settled.get('payout')} creditsDelta={settled.get('creditsDelta')} level={settled.get('contractorLevel')}",
         )
 
-        # ── 第一章批次 gating ──
+        # —— 第一章批次 gating ——
         driver.send_ok(checker, "批一 YJ-1102 挂出", f"wait_posted {YJ_1102}")
         driver.send_ok(checker, "批一 YJ-1103 挂出", f"wait_posted {YJ_1103}")
         gating = driver.send_ok(checker, "批次 gating 快照", "dump_state")
@@ -367,11 +367,11 @@ def phase_main(checker: Checker, game_dir: Path, saves_root: Path, timeout: int)
             f"posted={gating.get('posted')} postable={gating.get('postable')}",
         )
 
-        # ── 失败重挂 ──
+        # —— 失败重挂 ——
         reposted = driver.send_ok(checker, "失败终态重挂（YJ-1102）", f"fail {YJ_1102}", timeout=120)
         checker.check(phase, "失败重挂完成", reposted.get("reposted") is True)
 
-        # ── 批一结清 ──
+        # —— 批一结清 ——
         driver.send_ok(checker, "击毁 YJ-1102", f"kill {YJ_1102}")
         driver.send_ok(checker, "击毁 YJ-1103", f"kill {YJ_1103}")
         s1 = driver.send_ok(checker, "核销 YJ-1102", f"settle {YJ_1102}")
@@ -383,7 +383,7 @@ def phase_main(checker: Checker, game_dir: Path, saves_root: Path, timeout: int)
             f"bonus={s2.get('groupBonusAmount')}",
         )
 
-        # ── 批二 / 批三 ──
+        # —— 批二 / 批三 ——
         for key in (YJ_1198, YJ_1201, YJ_1204):
             driver.send_ok(checker, f"批二挂出 {key}", f"wait_posted {key}")
         mid = driver.send_ok(checker, "批二 gating 快照", "dump_state")
@@ -410,7 +410,7 @@ def phase_main(checker: Checker, game_dir: Path, saves_root: Path, timeout: int)
             f"chapter={s3.get('chapter')} hooks={s3.get('chapterHooks')}",
         )
 
-        # ── 1a 续：第二章双遗址星系（第一章结清钩子即时生成） ──
+        # —— 1a 续：第二章双遗址星系（第一章结清钩子即时生成） ——
         ch2 = driver.send_ok(checker, "世界生成：第二章双遗址星系事实采集", "check_world_ch2")
         starfall = ch2.get("starfall") or {}
         aster = ch2.get("aster") or {}
@@ -457,7 +457,7 @@ def phase_main(checker: Checker, game_dir: Path, saves_root: Path, timeout: int)
         else:
             checker.check(phase, "IndEvo：未安装，跳过星坠联动项", True, "")
 
-        # ── 1c. 终端 UI（一章结清后） ──
+        # —— 1c. 终端 UI（一章结清后） ——
         snap1 = driver.send_ok(checker, "终端快照（一章结清后）", "terminal_snapshot")
         layers1 = {l["layer"]: l for l in (snap1.get("archiveLayers") or [])}
         checker.check(
@@ -473,7 +473,7 @@ def phase_main(checker: Checker, game_dir: Path, saves_root: Path, timeout: int)
             f"dialogPlugin={opened.get('dialogPlugin')}",
         )
 
-        # ── 第二章：星坠线 + 紫菀线（引力节点） ──
+        # —— 第二章：星坠线 + 紫菀线（引力节点） ——
         driver.send_ok(checker, "XC-0216 挂出", f"wait_posted {XC_0216}")
         # ZW 节点驱动阶段不产生 MagicBounty 条目，用 dump_state 验证 posted 登记
         zw_posted = driver.send_ok_data("dump_state")
@@ -512,7 +512,7 @@ def phase_main(checker: Checker, game_dir: Path, saves_root: Path, timeout: int)
             f"chapter={s_xc.get('chapter')} hooks={s_xc.get('chapterHooks')}",
         )
 
-        # ── 第三章：清算进度节拍 97.9 / 97.4 / 98.8 ──
+        # —— 第三章：清算进度节拍 97.9 / 97.4 / 98.8 ——
         zx_expect = ((ZX_1001, 97.9), (ZX_0344, 97.4), (ZX_0002, 98.8))
         s_zx = None
         for key, expected in zx_expect:
@@ -538,7 +538,7 @@ def phase_main(checker: Checker, game_dir: Path, saves_root: Path, timeout: int)
             f"chapter={snap3.get('chapter')}",
         )
 
-        # ── 第四章：ZQ 三阶段 99.1 / 99.6 / 100.0 → 归档挂起 ──
+        # —— 第四章：ZQ 三阶段 99.1 / 99.6 / 100.0 → 归档挂起 ——
         driver.send_ok(checker, "ZQ-0001 挂出", f"wait_posted {ZQ_0001}", timeout=120)
         zq_expect = (99.1, 99.6, 100.0)
         for stage, expected in enumerate(zq_expect):
@@ -571,12 +571,12 @@ def phase_main(checker: Checker, game_dir: Path, saves_root: Path, timeout: int)
             f"stage={snap4.get('endingStage')} settled={snap4.get('settledCount')}",
         )
 
-        # ── 1e. 存档（签前副本，供 trade 阶段复用） ──
+        # —— 1e. 存档（签前副本，供 trade 阶段复用） ——
         saved_pre = driver.send_ok(checker, "存档副本（签前）", "save_copy", timeout=120)
         pre_sign_save = wait_save_landed(driver, saves_root, saved_pre["saveDirName"])
         checker.check(phase, "签前存档落盘", True, pre_sign_save)
 
-        # ── 1d. 结局：封存签署 → 执行官签发（战斗） ──
+        # —— 1d. 结局：封存签署 → 执行官签发（战斗） ——
         signed = driver.send_ok(checker, "归档签署（封存）", "sign SEAL")
         checker.check(
             phase, "封存签署：延迟条目落账 / 保留档案访问 / 无限期承包商",
@@ -602,7 +602,7 @@ def phase_main(checker: Checker, game_dir: Path, saves_root: Path, timeout: int)
         snap5 = driver.send_ok(checker, "终端快照（结局完成）", "terminal_snapshot")
         checker.check(phase, "终端：结局事务完成（COMPLETE）", snap5.get("endingStage") == "COMPLETE", f"stage={snap5.get('endingStage')}")
 
-        # ── 无限赏金：3 槽位挂出与换代 ──
+        # —— 无限赏金：3 槽位挂出与换代 ——
         inf = driver.poll_until(
             "infinite_status",
             lambda d: d.get("slotCount") == 3
@@ -626,7 +626,7 @@ def phase_main(checker: Checker, game_dir: Path, saves_root: Path, timeout: int)
             f"gen={inf_settle.get('generationBefore')}→{inf_settle.get('generationAfter')} lifecycle={inf_settle.get('lifecycleAfter')}",
         )
 
-        # ── 1e. 存档（签后副本，供 reload 阶段） ──
+        # —— 1e. 存档（签后副本，供 reload 阶段） ——
         saved_post = driver.send_ok(checker, "存档副本（签后）", "save_copy", timeout=120)
         post_save = wait_save_landed(driver, saves_root, saved_post["saveDirName"])
         checker.check(phase, "签后存档落盘", True, post_save)
@@ -634,7 +634,7 @@ def phase_main(checker: Checker, game_dir: Path, saves_root: Path, timeout: int)
     return pre_sign_save, post_save
 
 
-# ─── 阶段二：读档补齐 ───
+# —— 阶段二：读档补齐 ——
 
 def phase_reload(checker: Checker, game_dir: Path, save_dir: str, timeout: int) -> None:
     phase = "reload"
@@ -727,7 +727,7 @@ def phase_reload(checker: Checker, game_dir: Path, save_dir: str, timeout: int) 
         )
 
 
-# ─── 阶段三：交易选结局 ───
+# —— 阶段三：交易选结局 ——
 
 def phase_trade(checker: Checker, game_dir: Path, save_dir: str, timeout: int) -> None:
     phase = "trade"
@@ -774,7 +774,7 @@ def phase_trade(checker: Checker, game_dir: Path, save_dir: str, timeout: int) -
         )
 
 
-# ─── 报告 ───
+# —— 报告 ——
 
 MANUAL_ACCEPTANCE = [
     "分局终端纸质卡/铅封/印章观感与扫描线方向（BranchTerminalPlugin/PaperCardPlugin 渲染层）",

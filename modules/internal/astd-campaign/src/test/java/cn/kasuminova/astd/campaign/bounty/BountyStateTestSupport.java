@@ -20,6 +20,7 @@ public final class BountyStateTestSupport {
         state.settledWorkOrders = null;
         state.workOrderStageIndex = null;
         state.quotedRewards = null;
+        state.lockedFleetPlans = null;
         state.grantedGroupBonuses = null;
         state.chapterHooks = null;
         state.chapterClearingOrders = null;

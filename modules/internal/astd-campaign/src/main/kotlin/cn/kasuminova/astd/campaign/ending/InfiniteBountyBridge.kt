@@ -1,8 +1,11 @@
 package cn.kasuminova.astd.campaign.ending
 
 import cn.kasuminova.astd.campaign.bounty.BountyState
+import cn.kasuminova.astd.campaign.bounty.FleetComposer
 import cn.kasuminova.astd.campaign.bounty.InfiniteSettleRecord
 import cn.kasuminova.astd.campaign.bounty.InfiniteSlotState
+import cn.kasuminova.astd.campaign.bounty.LockedFleetPlan
+import cn.kasuminova.astd.campaign.bounty.StandardCores
 import cn.kasuminova.astd.campaign.ui.HudMessages
 import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import cn.kasuminova.astd.internal.i18n.I18n
@@ -92,12 +95,24 @@ object InfiniteBountyBridge {
         }
 
         val key = InfiniteBountyGenerator.keyOf(slot.index, slot.generation)
+
+        // 挂出（接取）时锁定舰队组建：舰载核心配置与核心打捞表由同一份组建结果滚动定型
+        // （本代种子已锁定在槽位，lockKey 即本代工单 key；换代重滚自然换新锁定），
+        // 失败重挂沿用本代首次锁定，保证「掉落的正是舰队里装的」
+        val plan = StandardCores.lockFleetPlan(state.lockedFleetPlans, key) {
+            val comp = FleetComposer.buildComposition(
+                InfiniteBountyGenerator.toBountyDef(slot),
+                slot.seed xor 0xC0E57A11L,
+            )
+            LockedFleetPlan(comp, StandardCores.rollCoreLoot(comp.officerCoreIds, slot.seed xor 0x1007L))
+        }
+
         if (coord.completedBounties.remove(key)) {
             log.info("[ASTD] 清理无限赏金 completed 残留标记：$key")
         }
 
         val active = try {
-            coord.createActiveBounty(key, buildSpec(slot))
+            coord.createActiveBounty(key, buildSpec(slot, plan.coreLoot))
         } catch (t: Throwable) {
             log.error("[ASTD] 创建无限赏金异常：$key", t)
             return false
@@ -240,9 +255,10 @@ object InfiniteBountyBridge {
      * 构造无限赏金当前代的 MagicBounty 规格（代码注册，不经过 magicBounty_data.json）。
      *
      * 口径与主线一致：赏金自身信用点/声望奖励置 0（报酬由 [settle] 发放）；无时限；
-     * 舰队缩放由本模组管线负责（fleet_scaling_multiplier=0）。
+     * 舰队缩放由本模组管线负责（fleet_scaling_multiplier=0）；[itemReward] 为挂出时
+     * 锁定的核心打捞表（lockKey = 本代工单 key，见 [postSlot]）。
      */
-    private fun buildSpec(slot: InfiniteSlotState): MagicBountySpec {
+    private fun buildSpec(slot: InfiniteSlotState, itemReward: Map<String, Int>): MagicBountySpec {
         val serial = InfiniteBountyGenerator.serialOf(slot.index, slot.generation)
         val factionName = Global.getSector()?.getFaction(slot.targetFactionId)?.displayName ?: slot.targetFactionId
 
@@ -293,8 +309,9 @@ object InfiniteBountyBridge {
             0, // job_credit_reward：报酬由 settle 发放
             0f, // job_credit_scaling
             0f, // job_reputation_reward
-            // 物品奖励为空表而非 null：MagicBountyFleetEncounterContext.generatePlayerLoot 不做判空直接迭代 entrySet
-            emptyMap(), // job_item_reward
+            // 核心打捞表（挂出时锁定，掉落的正是舰队实际装舰核心；O 档不可获取不参与打捞，
+            // 口径见 StandardCores.rollCoreLoot）。不可为 null：generatePlayerLoot 不判空直接迭代 entrySet
+            itemReward, // job_item_reward
             "destruction", // job_type
             false, // job_show_type
             false, // job_show_captain

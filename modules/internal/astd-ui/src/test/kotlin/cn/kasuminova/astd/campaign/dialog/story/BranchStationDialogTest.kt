@@ -119,6 +119,20 @@ class BranchStationDialogTest {
     }
 
     @Test
+    fun `entry intro text stays fully visible after auto-goto to menu`() {
+        val backend = StubBackend()
+        val rig = DialogTestRig()
+        val plugin = BranchStationDialog.createPlugin(backend, RecordingOpener())
+        plugin.init(rig.dialog)
+
+        toMenu(rig, plugin)
+        // 回归：entry 文本发出同帧即 goto(menu)，goto 清空文本队列时不得把
+        // 仍在淡入的标签遗弃在 opacity=0（实机曾表现为文本面板整段空白）
+        val intro = rig.opacityHistory.values.single()
+        assertEquals(1f, intro.last(), 1e-4f)
+    }
+
+    @Test
     fun `escape leaves the dialog from entry node`() {
         val backend = StubBackend()
         val rig = DialogTestRig()

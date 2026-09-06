@@ -22,6 +22,11 @@ object FleetComposer {
          * 旗舰专属词缀 HullMod（编队词缀之外仅施加于旗舰，如 R-17 奇点驱动）。
          */
         val flagshipAffixHullMods: List<String> = emptyList(),
+        /**
+         * 舰载 AI 核心 commodity id 表（与 [pickedVariantIds] 同下标对齐，索引 0 = 旗舰）；
+         * 赏金目标舰队全舰船一律配备制式核心军官（85 文档量产核心口径，分档映射见 [StandardCores]）。
+         */
+        val officerCoreIds: List<String> = emptyList(),
         val k: Float,
         val totalMult: Float,
     )
@@ -105,10 +110,13 @@ object FleetComposer {
         }
 
         val affixHullMods = affixes.map { it.hullModId }
+        // 舰载核心配置：全舰船一律制式核心军官，档位随威胁等级（分档映射见 StandardCores 类 KDoc）
+        val officerCoreIds = StandardCores.planFleetCores(picked.size, def.threatTier, seed xor 0xC0E5L)
         return Composition(
             pickedVariantIds = picked,
             affixHullMods = affixHullMods,
             flagshipAffixHullMods = flagshipAffixHullMods,
+            officerCoreIds = officerCoreIds,
             k = scale.k,
             totalMult = scale.totalMult,
         )
@@ -180,15 +188,26 @@ object FleetComposer {
         affixHullMods: List<String>,
         flagship: FleetMemberAPI,
         flagshipAffixHullMods: List<String> = emptyList(),
+        officerCoreIds: List<String> = emptyList(),
+        factionId: String? = null,
     ): List<FleetMemberAPI> {
         val factory = Global.getFactory()
         val created = ArrayList<FleetMemberAPI>(fleetMembers.size)
 
-        // 旗舰保持原对象，但补上缩放/词缀（含旗舰专属词缀）。
+        if (officerCoreIds.size != fleetMembers.size) {
+            log.warn(
+                "[FleetComposer] 核心配置与舰队成员数不齐（bounty=$bountyKey）：" +
+                    "cores=${officerCoreIds.size} members=${fleetMembers.size}，按下标对齐截断",
+            )
+        }
+
+        // 旗舰保持原对象，但补上缩放/词缀（含旗舰专属词缀）与制式核心舰长。
         applyBountyHullModsAndMemory(flagship, k, totalMult, affixHullMods + flagshipAffixHullMods)
+        assignCoreCaptain(flagship, officerCoreIds.getOrNull(0), factionId, bountyKey)
         created.add(flagship)
 
-        for (vid in fleetMembers.drop(1)) {
+        for ((index, vid) in fleetMembers.withIndex()) {
+            if (index == 0) continue
 
             val member = try {
                 factory.createFleetMember(FleetMemberType.SHIP, vid)
@@ -198,9 +217,21 @@ object FleetComposer {
             } ?: continue
 
             applyBountyHullModsAndMemory(member, k, totalMult, affixHullMods)
+            assignCoreCaptain(member, officerCoreIds.getOrNull(index), factionId, bountyKey)
             created.add(member)
         }
         return created
+    }
+
+    /** 舰载制式核心舰长上任（85 文档量产核心口径；无配置时保留 MagicBounty 原舰长）。 */
+    private fun assignCoreCaptain(member: FleetMemberAPI, coreId: String?, factionId: String?, bountyKey: String) {
+        if (coreId == null) return
+        val tier = StandardCores.byCommodity(coreId)
+        if (tier == null) {
+            log.error("[FleetComposer] 未知制式核心 id=$coreId（bounty=$bountyKey，member=${member.id}），跳过舰长配置")
+            return
+        }
+        member.captain = StandardCores.createOfficerPerson(tier, factionId)
     }
 
     private fun applyBountyHullModsAndMemory(member: FleetMemberAPI, k: Float, totalMult: Float, affixHullMods: List<String>) {

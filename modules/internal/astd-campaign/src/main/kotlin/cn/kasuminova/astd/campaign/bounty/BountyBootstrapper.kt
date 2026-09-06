@@ -19,6 +19,9 @@ object BountyBootstrapper {
     /** Sector memory key：执行官战役插件注册去重（AI 核心军官/行政官分发链接入）。 */
     private const val MEMORY_CAMPAIGN_PLUGIN_ADDED: String = "\$astd_executor_plugin_added"
 
+    /** Sector memory key：制式核心战役插件注册去重（量产核心军官/行政官分发链接入）。 */
+    private const val MEMORY_STANDARD_CORE_PLUGIN_ADDED: String = "\$astd_standard_core_plugin_added"
+
     @JvmStatic
     fun onGameLoad() {
         val sector = Global.getSector() ?: return
@@ -41,6 +44,11 @@ object BountyBootstrapper {
         if (!mem.getBoolean(MEMORY_CAMPAIGN_PLUGIN_ADDED)) {
             sector.registerPlugin(ExecutorCampaignPlugin())
             mem.set(MEMORY_CAMPAIGN_PLUGIN_ADDED, true)
+        }
+        // 制式（量产）核心战役插件（astd_ai_core_g/b/a/o 军官分发 + A 档行政官分发）
+        if (!mem.getBoolean(MEMORY_STANDARD_CORE_PLUGIN_ADDED)) {
+            sector.registerPlugin(StandardCoreCampaignPlugin())
+            mem.set(MEMORY_STANDARD_CORE_PLUGIN_ADDED, true)
         }
     }
 }

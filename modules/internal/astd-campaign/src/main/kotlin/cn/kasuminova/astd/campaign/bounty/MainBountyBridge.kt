@@ -161,8 +161,17 @@ object MainBountyBridge {
             log.info("[ASTD] 清理主线工单 completed 残留标记：${def.serial}（${def.key}）")
         }
 
+        // 挂出（接取）时锁定舰队组建：舰载核心配置与核心打捞表由同一份组建结果滚动定型，
+        // 失败重挂/重复构建沿用首次锁定（与 quotedRewards 同模式），保证「掉落的正是舰队里装的」
+        val seed = (sector.clock?.timestamp ?: 0L) xor def.key.hashCode().toLong()
+        val stageSeed = seed xor (stageIndex.toLong() * 0x2545F4914F6CDD1DL)
+        val plan = StandardCores.lockFleetPlan(state.lockedFleetPlans, "${def.key}#$stageIndex") {
+            val comp = FleetComposer.buildComposition(def.toBountyDef(stageIndex), stageSeed)
+            LockedFleetPlan(comp, StandardCores.rollCoreLoot(comp.officerCoreIds, stageSeed xor 0x1007L))
+        }
+
         val active = try {
-            coord.createActiveBounty(def.key, buildSpec(def, stageIndex))
+            coord.createActiveBounty(def.key, buildSpec(def, stageIndex, plan.coreLoot))
         } catch (t: Throwable) {
             log.error("[ASTD] 创建主线工单异常：${def.serial}（${def.key}）", t)
             return false
@@ -176,7 +185,6 @@ object MainBountyBridge {
         active.acceptBounty(source, null, null, null)
 
         // 接取时锁定整单报价（失败重挂沿用首次报价；多阶段工单不按阶段数放大）
-        val seed = (sector.clock?.timestamp ?: 0L) xor def.key.hashCode().toLong()
         val quote = MainlineProgression.quoteOrderReward(def, DifficultyTuningImpl.fixedScale, seed)
         state.quotedRewards.putIfAbsent(MainlineProgression.quoteKey(def.key), quote)
 
@@ -405,9 +413,10 @@ object MainBountyBridge {
      *
      * 口径：赏金自身信用点/声望奖励置 0（报酬由 [settleWorkOrder] 在交付核销时发放）；
      * 无时限（job_deadline=0，05 文档「批次之间无时间限制」）；舰队缩放由本模组管线负责
-     * （fleet_scaling_multiplier=0）。
+     * （fleet_scaling_multiplier=0）；[itemReward] 为挂出时锁定的核心打捞表
+     * （lockKey = `key#stageIndex`，见 [postWorkOrder]）。
      */
-    private fun buildSpec(def: MainBounties.WorkOrder, stageIndex: Int): MagicBountySpec {
+    private fun buildSpec(def: MainBounties.WorkOrder, stageIndex: Int, itemReward: Map<String, Int>): MagicBountySpec {
         val stage = def.stages[stageIndex]
         val iid = def.i18nId
 
@@ -461,8 +470,9 @@ object MainBountyBridge {
             0, // job_credit_reward：报酬由 settleWorkOrder 发放
             0f, // job_credit_scaling
             0f, // job_reputation_reward
-            // 物品奖励为空表而非 null：MagicBountyFleetEncounterContext.generatePlayerLoot 不做判空直接迭代 entrySet
-            emptyMap(), // job_item_reward
+            // 核心打捞表（挂出时锁定，掉落的正是舰队实际装舰核心；O 档不可获取不参与打捞，
+            // 口径见 StandardCores.rollCoreLoot）。不可为 null：generatePlayerLoot 不判空直接迭代 entrySet
+            itemReward, // job_item_reward
             "destruction", // job_type
             false, // job_show_type
             false, // job_show_captain

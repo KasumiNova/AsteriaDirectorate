@@ -88,6 +88,14 @@ class BountyState() {
     @JvmField
     var quotedRewards: MutableMap<String, Int> = HashMap()
 
+    /**
+     * 接取（挂出）时锁定的舰队组建（lockKey → [LockedFleetPlan]；主线 lockKey = `key#stageIndex`，
+     * 无限赏金 lockKey = 工单 key 本身即含换代序号）。锁定内含舰载核心表与核心打捞表，
+     * 保证「掉落的正是舰队里装的」；失败重挂/重复构建沿用首次锁定（与 [quotedRewards] 同模式）。
+     */
+    @JvmField
+    var lockedFleetPlans: MutableMap<String, LockedFleetPlan> = HashMap()
+
     /** 各结清组奖金发放记录（组 id → 实发金额），用于回执明细与防重复发放。 */
     @JvmField
     var grantedGroupBonuses: MutableMap<String, Int> = HashMap()
@@ -174,6 +182,7 @@ class BountyState() {
         if (settledWorkOrders == null) settledWorkOrders = LinkedHashSet()
         if (workOrderStageIndex == null) workOrderStageIndex = HashMap()
         if (quotedRewards == null) quotedRewards = HashMap()
+        if (lockedFleetPlans == null) lockedFleetPlans = HashMap()
         if (grantedGroupBonuses == null) grantedGroupBonuses = HashMap()
         if (chapterHooks == null) chapterHooks = LinkedHashSet()
         if (chapterClearingOrders == null) chapterClearingOrders = HashMap()
@@ -292,8 +301,66 @@ class InfiniteSlotState() {
     }
 }
 
-/** 无限赏金核销流水行（账户页展示）。XStream 存档口径同上。 */
-class InfiniteSettleRecord() {
+/**
+ * 挂出时锁定的舰队组建快照（[BountyState.lockedFleetPlans] 的值）。
+ *
+ * 用途：buildSpec（挂出构造 MagicBountySpec，填 job_item_reward 核心打捞表）与
+ * BountyCampaignManager 的舰队重建（接取后 patch）共享同一份组建结果，
+ * 保证「掉落的正是舰队里装的」；同一工单同一阶段失败重挂沿用首次锁定。
+ *
+ * XStream 存档口径：可序列化普通字段 + 无参构造。
+ */
+class LockedFleetPlan() {
+    /** 选中的 variant id 表（索引 0 = 旗舰）。 */
+    @JvmField
+    var pickedVariantIds: MutableList<String> = ArrayList()
+
+    /** 编队词缀 hullmod id 表。 */
+    @JvmField
+    var affixHullMods: MutableList<String> = ArrayList()
+
+    /** 旗舰专属词缀 hullmod id 表。 */
+    @JvmField
+    var flagshipAffixHullMods: MutableList<String> = ArrayList()
+
+    /** 舰载核心 commodity id 表（与 [pickedVariantIds] 同下标对齐）。 */
+    @JvmField
+    var officerCoreIds: MutableList<String> = ArrayList()
+
+    /** 难度系数 k（0..1）。 */
+    @JvmField
+    var k: Float = 0f
+
+    /** 总缩放倍率。 */
+    @JvmField
+    var totalMult: Float = 1f
+
+    /** 核心打捞表（物品 id → 数量；MagicBounty job_item_reward 语义，锁定时滚动定型）。 */
+    @JvmField
+    var coreLoot: MutableMap<String, Int> = LinkedHashMap()
+
+    constructor(comp: FleetComposer.Composition, coreLoot: Map<String, Int>) : this() {
+        this.pickedVariantIds = ArrayList(comp.pickedVariantIds)
+        this.affixHullMods = ArrayList(comp.affixHullMods)
+        this.flagshipAffixHullMods = ArrayList(comp.flagshipAffixHullMods)
+        this.officerCoreIds = ArrayList(comp.officerCoreIds)
+        this.k = comp.k
+        this.totalMult = comp.totalMult
+        this.coreLoot = LinkedHashMap(coreLoot)
+    }
+
+    /** 还原为 FleetComposer 组建结果（舰队重建 patch 用）。 */
+    fun toComposition(): FleetComposer.Composition = FleetComposer.Composition(
+        pickedVariantIds = pickedVariantIds,
+        affixHullMods = affixHullMods,
+        flagshipAffixHullMods = flagshipAffixHullMods,
+        officerCoreIds = officerCoreIds,
+        k = k,
+        totalMult = totalMult,
+    )
+}
+
+/** 无限赏金核销流水行（账户页展示）。XStream 存档口径同上。 */class InfiniteSettleRecord() {
     /** 文书编号（含换代序号）。 */
     @JvmField
     var serial: String = ""

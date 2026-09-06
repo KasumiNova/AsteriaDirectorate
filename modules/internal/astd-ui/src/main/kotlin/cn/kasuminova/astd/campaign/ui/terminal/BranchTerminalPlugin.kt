@@ -17,6 +17,10 @@ import java.util.EnumMap
  * - [processInput]：开机场任意键/点击跳过（吞掉全部输入）；Esc → [onEscape]
  *   （回执开启时先收回执，否则关闭终端——终端是玩家的地盘，允许退出）；
  * - 盖章震屏：[tick] 内经根面板 [PositionAPI] 偏移施加。
+ *
+ * 按钮事件不冒泡：原版 `CustomPanelImpl` 只把按钮按下派发给**直接持有该按钮
+ * UIElement 的面板**自己的插件，本根插件收不到子面板按钮。承载按钮的面板一律挂
+ * [ButtonRelayPlugin] 转发到 [BranchTerminalDelegate.onButton]。
  */
 class BranchTerminalPlugin(
     private val host: BranchTerminalDelegate,
@@ -46,11 +50,6 @@ class BranchTerminalPlugin(
 
     override fun advance(amount: Float) {
         host.tick(amount)
-    }
-
-    /** 对话框控件树内全部按钮的按下事件统一经根插件路由到 [BranchTerminalDelegate.onButton]。 */
-    override fun buttonPressed(buttonId: Any?) {
-        host.onButton(buttonId)
     }
 
     override fun processInput(events: List<InputEventAPI>) {
@@ -132,14 +131,14 @@ class BranchTerminalPlugin(
             if (dx == 0f) continue
             val by = y + band * bandH
             TerminalGl.rect(x + dx, by, w, 3f, TerminalStyle.teal, 0.10f * alphaMult)
-            TerminalGl.rect(x - dx, by + bandH * 0.5f, w, 2f, TerminalStyle.stampRed, 0.10f * alphaMult)
+            TerminalGl.rect(x - dx, by + bandH * 0.5f, w, 2f, TerminalStyle.glitchRed, 0.10f * alphaMult)
         }
     }
 
     private fun noiseColor(tone: GlitchTimeline.NoiseTone): Color = when (tone) {
         GlitchTimeline.NoiseTone.WHITE -> Color.WHITE
         GlitchTimeline.NoiseTone.TEAL -> TerminalStyle.teal
-        GlitchTimeline.NoiseTone.RED -> TerminalStyle.stampRed
+        GlitchTimeline.NoiseTone.RED -> TerminalStyle.glitchRed
     }
 
     /**
@@ -241,11 +240,28 @@ class ReceiptOverlayPlugin : BaseCustomUIPanelPlugin() {
 }
 
 /**
+ * 按钮事件转发插件：原版 `CustomPanelImpl` 不冒泡按钮事件（只派发给直接持有按钮
+ * UIElement 的面板插件），承载按钮的子面板统一挂本插件把 `buttonPressed` 转发给
+ * 终端代理的按钮路由。
+ */
+class ButtonRelayPlugin(
+    private val onButton: (Any?) -> Unit,
+) : BaseCustomUIPanelPlugin() {
+
+    override fun buttonPressed(buttonId: Any?) {
+        onButton(buttonId)
+    }
+}
+
+/**
  * 回执明细单面板插件：终端底色 + teal 描边（面板本身无框，手动绘制）。
+ *
+ * 关闭按钮直接挂在本面板的 UIElement 上，按钮事件经 [onButton] 转发终端代理。
  */
 class ReceiptPanelPlugin(
     private val panelWidth: Float,
     private val panelHeight: Float,
+    private val onButton: (Any?) -> Unit,
 ) : BaseCustomUIPanelPlugin() {
 
     private var pos: PositionAPI? = null
@@ -254,13 +270,13 @@ class ReceiptPanelPlugin(
         pos = position
     }
 
-    override fun renderBelow(alphaMult: Float) {
-        val p = pos ?: return
-        TerminalGl.rect(p.x, p.y, panelWidth, panelHeight, PANEL_BG, 0.97f * alphaMult)
-        TerminalGl.rectOutline(p.x, p.y, panelWidth, panelHeight, TerminalStyle.tealDark, 0.9f * alphaMult, 1f)
+    override fun buttonPressed(buttonId: Any?) {
+        onButton(buttonId)
     }
 
-    companion object {
-        private val PANEL_BG: Color = Color(0x10, 0x18, 0x20)
+    override fun renderBelow(alphaMult: Float) {
+        val p = pos ?: return
+        TerminalGl.rect(p.x, p.y, panelWidth, panelHeight, TerminalStyle.panelBg, 0.97f * alphaMult)
+        TerminalGl.rectOutline(p.x, p.y, panelWidth, panelHeight, TerminalStyle.tealDark, 0.9f * alphaMult, 1f)
     }
 }

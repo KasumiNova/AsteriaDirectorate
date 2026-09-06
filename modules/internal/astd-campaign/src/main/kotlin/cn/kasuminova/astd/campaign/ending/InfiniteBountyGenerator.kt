@@ -1,5 +1,6 @@
 package cn.kasuminova.astd.campaign.ending
 
+import cn.kasuminova.astd.campaign.bounty.BountyDef
 import cn.kasuminova.astd.campaign.bounty.BountyState
 import cn.kasuminova.astd.campaign.bounty.InfiniteSlotState
 import cn.kasuminova.astd.combat.affix.AffixRegistry
@@ -78,6 +79,24 @@ object InfiniteBountyGenerator {
 
     /** 工单 key（槽位序号 + 换代序号；换代后旧 key 从 active/completed 摘除，新 key 重新挂出）。 */
     fun keyOf(slotIndex: Int, generation: Int): String = "$KEY_PREFIX${slotIndex}_$generation"
+
+    /**
+     * 槽位当前代的舰队组建定义（FleetComposer 输入；桥接挂出时的组建/打捞锁定与
+     * 管理脚本的舰队重建 patch 共用本定义，保证两条路径同参数）。
+     */
+    fun toBountyDef(slot: InfiniteSlotState): BountyDef = BountyDef(
+        key = keyOf(slot.index, slot.generation),
+        title = serialOf(slot.index, slot.generation),
+        shortDesc = "",
+        threatTier = slot.danger,
+        baselineFP = slot.fp,
+        flagshipVariantId = slot.flagshipVariantId,
+        requiredPreviousMainKey = null,
+        isMain = false,
+        allowRAffixes = true,
+        allowAffixes = true,
+        fixedAffixIds = slot.affixIds,
+    )
 
     /** 文书编号（与主线 WG-c209 编号族同口径；%02d=槽位+1，%04d=换代序号）。 */
     fun serialOf(slotIndex: Int, generation: Int): String =

@@ -75,4 +75,9 @@ object Desc_astd_executor_core : LocalizedDescription("astd_executor_core", "RES
 object Desc_astd_executor_core_combat : LocalizedDescription("astd_executor_core_combat", "RESOURCE")
 object Desc_astd_executor_core_admin : LocalizedDescription("astd_executor_core_admin", "RESOURCE")
 
+object Desc_astd_ai_core_g : LocalizedDescription("astd_ai_core_g", "RESOURCE")
+object Desc_astd_ai_core_b : LocalizedDescription("astd_ai_core_b", "RESOURCE")
+object Desc_astd_ai_core_a : LocalizedDescription("astd_ai_core_a", "RESOURCE")
+object Desc_astd_ai_core_o : LocalizedDescription("astd_ai_core_o", "RESOURCE")
+
 object Desc_astd_reserved_station : LocalizedDescription("astd_reserved_station", "CUSTOM")

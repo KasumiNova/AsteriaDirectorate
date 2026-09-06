@@ -2,7 +2,7 @@
 	"asteria_directorate_bounty": {
 		"main.infinite.name": "常驻工单 %serial%",
 		"main.infinite.summary": "清除 %faction% 活动集群（预估规模 %fp% 标准战力）",
-		"main.infinite.desc": "菀星总局·第 209 号分局　辖区安全维护指令\n文书编号：%serial%　签发日期：%date%\n委托事项：清除 %faction% 活动集群（预估规模 %fp% 标准战力）。\n依据《无限期承包合同》常设条款，本委托长期有效，核销后自动换代。\n——本分单不设时限。报价已于签发时锁定。",
+		"main.infinite.desc": "菀星总局·第 209 号分局  辖区安全维护指令\n文书编号：%serial%  签发日期：%date%\n委托事项：清除 %faction% 活动集群（预估规模 %fp% 标准战力）。\n依据《无限期承包合同》常设条款，本委托长期有效，核销后自动换代。\n——本分单不设时限。报价已于签发时锁定。",
 		"main.infinite.receipt": "“%serial% 目标已确认清除。辖区安全状态：恢复。”",
 		"main.infinite.fleet_name": "%serial% 目标集群",
 

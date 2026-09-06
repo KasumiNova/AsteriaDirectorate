@@ -155,19 +155,7 @@ class BountyCampaignManager : EveryFrameScript {
             successText = I18n["asteria_directorate_bounty", "main.${main.i18nId}.receipt"]
         } else if (infiniteSlot != null) {
             // 无限赏金：参数取槽位锁定值；词缀走固定表（生成时抽取锁定，文书「追加条款」栏具名）
-            def = BountyDef(
-                key = key,
-                title = bounty.spec.job_name ?: key,
-                shortDesc = bounty.spec.job_description ?: "",
-                threatTier = infiniteSlot.danger,
-                baselineFP = infiniteSlot.fp,
-                flagshipVariantId = infiniteSlot.flagshipVariantId,
-                requiredPreviousMainKey = null,
-                isMain = false,
-                allowRAffixes = true,
-                allowAffixes = true,
-                fixedAffixIds = infiniteSlot.affixIds,
-            )
+            def = InfiniteBountyGenerator.toBountyDef(infiniteSlot)
             successText = I18n.t(
                 "asteria_directorate_bounty", "main.infinite.receipt",
                 "serial" to InfiniteBountyGenerator.serialOf(infiniteSlot.index, infiniteSlot.generation),
@@ -192,9 +180,25 @@ class BountyCampaignManager : EveryFrameScript {
             successText = I18n["asteria_directorate_bounty", "generic.success_text"]
         }
 
-        val seed = (Global.getSector()?.clock?.timestamp ?: System.currentTimeMillis()) xor key.hashCode().toLong()
-        val stageSeed = seed xor ((state.workOrderStageIndex[key] ?: 0) * 0x2545F4914F6CDD1DL)
-        val comp = FleetComposer.buildComposition(def, stageSeed)
+        // 主线/无限赏金：组建结果以挂出时锁定为准（含舰载核心与打捞表同源，
+        // 保证「掉落的正是舰队里装的」）；动态赏金无锁定，按既有种子路径现场组建
+        val lockKey = when {
+            main != null -> "$key#${(state.workOrderStageIndex[key] ?: 0).coerceIn(0, main.stages.lastIndex)}"
+            infiniteSlot != null -> key
+            else -> null
+        }
+        val locked = lockKey?.let { state.lockedFleetPlans[it] }
+        val comp: FleetComposer.Composition
+        if (locked != null) {
+            comp = locked.toComposition()
+        } else {
+            if (lockKey != null) {
+                log.warn("[ASTD] 锁定组建缺失（旧档或时序漂移），按既有种子路径现场组建：$lockKey")
+            }
+            val seed = (Global.getSector()?.clock?.timestamp ?: System.currentTimeMillis()) xor key.hashCode().toLong()
+            val stageSeed = seed xor ((state.workOrderStageIndex[key] ?: 0) * 0x2545F4914F6CDD1DL)
+            comp = FleetComposer.buildComposition(def, stageSeed)
+        }
         patchFleetMembers(key, fleet, flagship, comp, successText = successText)
         state.patchedBountyKeys.add(key)
     }
@@ -245,6 +249,8 @@ class BountyCampaignManager : EveryFrameScript {
             affixHullMods = comp.affixHullMods,
             flagship = flagship,
             flagshipAffixHullMods = comp.flagshipAffixHullMods,
+            officerCoreIds = comp.officerCoreIds,
+            factionId = fleet.faction?.id,
         )
 
         // 把创建出来的成员添加到 fleet

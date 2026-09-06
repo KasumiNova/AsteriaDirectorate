@@ -9,7 +9,7 @@ import java.awt.Color
  * 分局终端视觉常量与音效投递（doc 00「视觉基调」）。
  *
  * 控件配色一律走原版 `Misc.get*Color()`（teal 主高亮 = 玩家主色、橙黄数值 =
- * highlight 色）；总局差异化仅两处自定义色：纸质文书卡米白底与印红章。
+ * highlight 色）；总局差异化仅两处自定义色：全息面板深色底与 glitch 噪点红。
  */
 object TerminalStyle {
 
@@ -33,22 +33,13 @@ object TerminalStyle {
     /** 灰色存目/禁用态。 */
     val gray: Color get() = Misc.getGrayColor()
 
-    // ─── 总局差异化自定义色（文书卡 / 印章，doc 00 钦定） ───
+    // ─── 总局差异化自定义色（全息文书卡 / glitch，doc 00 钦定） ───
 
-    /** 纸质文书卡米白底。 */
-    val paper: Color = Color(0xEF, 0xE7, 0xD3)
+    /** 全息面板深色底（文书卡 / 回执明细单共用）。 */
+    val panelBg: Color = Color(0x10, 0x18, 0x20)
 
-    /** 纸卡墨本色。 */
-    val paperInk: Color = Color(0x2B, 0x26, 0x20)
-
-    /** 纸卡弱化行（签发小字/铅封语）。 */
-    val paperDim: Color = Color(0x7A, 0x71, 0x60)
-
-    /** 纸卡批注色（追加条款/系统批注，深橙褐）。 */
-    val paperAnno: Color = Color(0x8A, 0x5A, 0x17)
-
-    /** 印红章。 */
-    val stampRed: Color = Color(0xB3, 0x33, 0x2B)
+    /** glitch 噪点/撕裂红（三章末数据异常专用警示色）。 */
+    val glitchRed: Color = Color(0xB3, 0x33, 0x2B)
 
     // ─── 布局尺寸（px，对齐原型 1920×1080 定尺寸舞台比例） ───
 

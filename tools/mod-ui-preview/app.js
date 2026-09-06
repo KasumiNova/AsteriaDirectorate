@@ -1,6 +1,6 @@
 /* ============================================================
    菀星设计总局 · 模组总 UI 预览原型 — 交互与动效逻辑
-   动效清单：终端开机 / 逐行打印 / 盖章 / 回执打印 / 闪现 glitch / 待机呼吸
+   动效清单：终端开机 / 逐行打印 / 落戳 / 回执打印 / 闪现 glitch / 待机呼吸
    ============================================================ */
 "use strict";
 
@@ -18,7 +18,7 @@ const ORDERS = [
     batch: "批次一 · 例行核销",
     items: [
       {
-        id: "XW-c206-0447／核销-03",
+        id: "XW-c206-0447/核销-03",
         level: "Ⅰ",
         summary: "注销违约资产“总局旧制式巡洋舰 Ⅶ-未编号”",
         status: "done",
@@ -35,7 +35,7 @@ const ORDERS = [
         ],
       },
       {
-        id: "XW-c206-0512／核销-11",
+        id: "XW-c206-0512/核销-11",
         level: "Ⅱ",
         summary: "注销海盗头目“断链者”及其护卫船团",
         status: "active",
@@ -55,7 +55,7 @@ const ORDERS = [
     batch: "批次二 · 条款追加",
     items: [
       {
-        id: "XW-c206-0588／核销-14",
+        id: "XW-c206-0588/核销-14",
         level: "Ⅱ",
         summary: "注销违约船团“灰市联合体”走私分队",
         status: "pending",
@@ -72,7 +72,7 @@ const ORDERS = [
         ],
       },
       {
-        id: "XW-c206-0591／核销-15",
+        id: "XW-c206-0591/核销-15",
         level: "Ⅲ",
         summary: "注销违约资产“改装战列舰·残账”",
         status: "pending",
@@ -89,7 +89,7 @@ const ORDERS = [
         ],
       },
       {
-        id: "XW-c206-0596／核销-16",
+        id: "XW-c206-0596/核销-16",
         level: "Ⅲ",
         summary: "注销违约船团“空白旗”游击编队",
         status: "pending",
@@ -111,7 +111,7 @@ const ORDERS = [
     batch: "批次三 · 加急件",
     items: [
       {
-        id: "XW-c206-0601／核销-19【加急】",
+        id: "XW-c206-0601/核销-19【加急】",
         level: "Ⅳ",
         summary: "注销“余晖”巡察战斗群（加急）",
         status: "pending",
@@ -188,7 +188,7 @@ const ARCHIVES = [
 ];
 
 const LEDGER = [
-  { id: "XW-c206-0447／核销-03", date: "c+206.3 · 第 41 日", debit: "", credit: "462,000", note: "首单核销报酬，按期交割。" },
+  { id: "XW-c206-0447/核销-03", date: "c+206.3 · 第 41 日", debit: "", credit: "462,000", note: "首单核销报酬，按期交割。" },
   { id: "批次一 · 结清奖金", date: "c+206.3 · 第 58 日", debit: "", credit: "300,000", note: "批次一全部核销，予以结清。" },
   { id: "弹药与补给调拨", date: "c+206.3 · 第 60 日", debit: "18,500", credit: "", note: "分局货栈调拨，挂账扣除。" },
   { id: "泊位占用费", date: "c+206.3 · 第 61 日", debit: "3,200", credit: "", note: "按标准泊位列费率计。" },
@@ -199,7 +199,7 @@ const CONTRACTOR = {
   id: "CT-c206-0001",
   rank: "一级",
   registered: "c+206 年第 3 审计周期",
-  note: "登记簿上两百年来的第一行新墨迹。",
+  note: "登记档案里两百年来的第一行新签名。",
 };
 
 /* ---------------- 工具 ---------------- */
@@ -339,16 +339,16 @@ function renderOrderDetail() {
   const body = $("#detail-body");
   body.innerHTML = "";
 
-  const card = el("div", "paper-card");
-  card.id = "paper-card";
+  const card = el("div", "holo-card");
+  card.id = "holo-card";
   card.appendChild(el("div", "doc-head", "菀星设计总局 · 英仙座第七分局 · 签发"));
-  card.appendChild(el("div", "doc-seam", "编号：" + o.id + "　‖　编号骑缝　‖　危险等级：" + o.level));
+  card.appendChild(el("div", "doc-seam", "编号：" + o.id + "  |  电子校验  |  危险等级：" + o.level));
 
-  const seal = el("div", "lead-seal");
-  seal.innerHTML = "铅封<br>英七分局";
+  const seal = el("div", "e-seal");
+  seal.innerHTML = "电子签章<br>英七分局";
   card.appendChild(seal);
 
-  // 状态对应的常驻印章（盖章动效结束后由它保持观感）
+  // 状态对应的常驻印戳（落戳动效结束后由它保持观感）
   if (o.status !== "pending") {
     const staticStamp = el("div", "stamp ink", o.status === "done" ? "已核销" : "已受理");
     staticStamp.style.right = "36px";
@@ -360,10 +360,10 @@ function renderOrderDetail() {
   const linesBox = el("div");
   card.appendChild(linesBox);
 
-  // 报酬行（橙黄数值观感在纸卡上用深橙）
+  // 报酬行（橙黄数值色）
   const docLines = o.doc.concat([
     { t: "报酬：星币 " + fmtNum(o.reward) + "（核销交割后一次性支付，附明细单）" },
-    { t: o.urgent ? "——本件为加急文书。【加急】戳记见右上角铅封旁。" : "——本文书由分局行政系统自动生成，无需回复。", cls: "dim" },
+    { t: o.urgent ? "——本件为加急文书。【加急】戳记见右上角签章旁。" : "——本文书由分局行政系统自动生成，无需回复。", cls: "dim" },
   ]);
 
   body.appendChild(card);
@@ -392,13 +392,13 @@ function renderOrderActions() {
   }
 }
 
-/* 盖章动效：红色印章砸在文书角上 + 屏幕震动 + 墨渍扩散 */
+/* 落戳动效：电子印戳砸在文书角上 + 屏幕震动 + 光晕扩散 */
 function slamStamp(text, after) {
-  const card = $("#paper-card");
+  const card = $("#holo-card");
   if (!card) return;
   beep(120, 0.08, 0.06);
 
-  // 先移除旧状态章，避免与新章叠影
+  // 先移除旧状态戳，避免与新戳叠影
   card.querySelectorAll(".stamp").forEach((s) => s.remove());
 
   const stamp = el("div", "stamp ink", text);
@@ -423,7 +423,7 @@ function slamStamp(text, after) {
     stamp.style.opacity = "0.92";
   });
 
-  // 震动 + 墨渍扩散
+  // 震动 + 光晕扩散
   setTimeout(() => {
     const stage = $("#stage");
     stage.classList.remove("shake");
@@ -470,7 +470,7 @@ function showReceipt(o) {
     { t: "工单编号：" + o.id },
     { t: "委托事项：" + o.summary },
     { t: "交割日期：c+206 年第 3 审计周期 · 当日" },
-    { t: "条款核验：通过　　铅封数据柜：已接收　　逾期违约金：依第 11 条之七豁免" },
+    { t: "条款核验：通过    铅封数据柜：已接收    逾期违约金：依第 11 条之七豁免" },
     { t: "报酬合计：星币 ", amount: o.reward },
   ];
 
@@ -562,13 +562,13 @@ function renderArchiveDetail() {
   doc.appendChild(el("div", "ad-title", a.title));
   const meta = el("div", "ad-meta");
   meta.innerHTML = "调阅编号：AR-Ⅶ-1-" + String(ARCHIVES.indexOf(a) + 1).padStart(3, "0") +
-    "　·　调阅时间：<span class='ad-num'>c+206 · 第 3 审计周期</span>　·　载体：旧打印件";
+    "  ·  调阅时间：<span class='ad-num'>c+206 · 第 3 审计周期</span>  ·  载体：终端打印件";
   doc.appendChild(meta);
   const content = el("div");
   doc.appendChild(content);
   body.appendChild(doc);
 
-  printLines(content, a.body.split("\n").map((t) => ({ t: t || "　" })));
+  printLines(content, a.body.split("\n").map((t) => ({ t: t || "  " })));
 }
 
 /* ---------------- Tab 3：承包商账户 ---------------- */
@@ -655,7 +655,7 @@ function demoGlitch() {
     row.classList.add("glitching");
   }
   // 文书备注行同步撕裂
-  const card = $("#paper-card");
+  const card = $("#holo-card");
   if (card) card.classList.add("glitching");
 
   setTimeout(() => {

@@ -110,4 +110,26 @@ class TimedTextQueueTest {
         assertEquals(0, queue.advance(20f))
         assertEquals(listOf(), rig.paras)
     }
+
+    @Test
+    fun `clear finalizes in-flight fade animations to terminal opacity`() {
+        val rig = DialogTestRig()
+        val queue = TimedTextQueue(rig.text)
+        // fadeIn 起步的标签发出即 opacity=0；同帧 clear（如节点跳转）不得把它遗弃在全透明
+        queue.enqueueFading("a", delay = 0f, fadeIn = 1f, maxOpacity = 0.8f)
+        queue.enqueueFading("b", delay = 0f, fadeIn = 0.5f, hold = 0.5f, fadeOut = 0.5f)
+        queue.advance(0.1f)
+        assertEquals(2, rig.opacityHistory.size)
+
+        queue.clear()
+
+        val histories = rig.opacityHistory.values.toList()
+        // 无 fadeOut 的段落终态为 maxOpacity；有 fadeOut 的段落终态为 0
+        assertEquals(0.8f, histories[0].last(), 1e-4f)
+        assertEquals(0f, histories[1].last(), 1e-4f)
+        // 终态化后不再有任何动画推进
+        val sizes = histories.map { it.size }
+        queue.advance(1f)
+        assertEquals(sizes, rig.opacityHistory.values.map { it.size })
+    }
 }
