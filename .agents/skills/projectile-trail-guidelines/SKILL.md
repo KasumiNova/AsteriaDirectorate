@@ -118,7 +118,8 @@ alpha 0.45/0.6/0.45 是过曝压暗后的裁定（三层加色 + 高射速多发
 
 - **生涯战斗中战斗层 Static Trail 不计算**：`BUtil_StaticTrailMemoryPool.computeTrailNode` 在 `isInCampaignSector()=true` 时旁路全部战斗层拖尾，而该标志在整个生涯期间（含生涯实战）恒为 true、仅回标题复位——表现为生涯实战里拖尾注册成功但完全不渲染，任务/模拟场景正常（2026-09 实机定位，已反馈 BoxUtil 作者；建议上游修法：战役判定追加 `Global.getCombatEngine() == null`）。修复落地前生涯里看不到拖尾属预期。
 - **暂停一致性（已排查，Static Trail 自身自洽）**：节点时间戳（`computeTrailNode`）与着色器 `u_time` 同源——均为 `BUtil_GLImpl.timer[2]`（`getElapsedTimeWithoutPaused()`，暂停时冻结）；暂停期间逻辑线程 `!isPaused() && doStaticTrailCompute()` 双重门控、不记节点。ASTD 侧 tracker 已无任何时间依赖。
-- **带体头离散落后（「暂停后不同步」的真相，上游设计）**：节点记录按 `BUtil_StaticTrailSystemRecordsCycle` 批量进行（LunaLib 可调 `BUtil_TrailSystemQuality`：NORMAL 30Hz / HIGH 60Hz / ULTRA 144Hz），记录周期间带体头停在上一节点、弹体继续飞——800su/s 弹体在 30Hz 下带头恒落后 0~27su 并抖动；暂停/恢复会把该落后定格/跳变，肉眼可见「贴图不同步」。原版逐帧渲染与 MagicTrail 逐帧采样无此现象，故只有走 Static Trail 的 ASTD 弹体出现。缓解：LunaLib 设置里调高 TrailSystemQuality；根治需上游逐帧记录模式。
+- **带体头离散落后（「暂停后不同步」的真相之一，上游设计）**：节点记录按 `BUtil_StaticTrailSystemRecordsCycle` 批量进行（LunaLib 可调 `BUtil_TrailSystemQuality`：NORMAL 30Hz / HIGH 60Hz / ULTRA 144Hz），记录周期间带体头停在上一节点、弹体继续飞——**aod7 2880su/s 在 30Hz 下每节点跨 96su**，带头阶梯式跳动；暂停/恢复会把该落后定格/跳变。原版逐帧渲染与 MagicTrail 逐帧采样无此现象，故只有走 Static Trail 的 ASTD 弹体出现。缓解：LunaLib 设置里调高 TrailSystemQuality；根治需上游逐帧记录模式。
+- **「迁移前也有暂停跳变」的共同嫌疑：SSOptimizer 渲染线程分离 + LazyTextureManager**（2026-09 排查结论）：旧 texTrail 栈驱动层有暂停守卫、新栈 Static Trail 时间源自洽，两代后端代码层面都暂停冻结——但两代都走**非原版渲染路径**（旧：自有 GL 插件直画；新：BoxUtil 裸 texId 绑定 + 持久映射 vRAM 由逻辑线程直写）。SSOptimizer 默认开渲染线程分离（`-Dssoptimizer.renderthread.enable`，默认 true）：原版弹体位置逐命令烘焙在渲染队列内、自洽；我们的拖尾节点缓冲/纹理上传在队列外直写，暂停切换瞬间两个时间域脱节即跳变。LazyTextureManager 另有热压缩重传（`ssoptimizer.texcompress.hotreload` 默认开，≥64KiB 贴图在下次绑定时原地换压缩形态）——astd_trails 256×64 正好压线，观感突变也疑似此源。A/B 验证：`-Dssoptimizer.renderthread.enable=false` / `-Dssoptimizer.disable.lazytextureupload=true` / 定点诊断 `-Dssoptimizer.texture.tracepath=astd_trails`（烟测环境无 SSOptimizer agent，复现必须实机）。
 
 ## 禁做
 
