@@ -1,14 +1,10 @@
 package cn.kasuminova.astd.renderer.effect.projectile.beam
 
-import cn.kasuminova.astd.combat.effect.generic.projectile.ProjectileVisual
-import cn.kasuminova.astd.combat.effect.generic.projectile.ProjectileTracerManager
-
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEngineLayers
 import com.fs.starfarer.api.combat.CombatEntityAPI
 import com.fs.starfarer.api.combat.CombatLayeredRenderingPlugin
-import com.fs.starfarer.api.combat.DamagingProjectileAPI
 import com.fs.starfarer.api.combat.ViewportAPI
 import org.lazywizard.lazylib.MathUtils
 import org.lwjgl.opengl.GL11
@@ -19,7 +15,6 @@ import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.sin
-import kotlin.math.sqrt
 
 /**
  * OpenGL（固定管线）绘制的“椭圆环”渲染器。
@@ -301,121 +296,3 @@ object OglEllipseRingRenderer {
     }
 }
 
-/**
- * “霓虹椭圆环（OpenGL 线圈版）”：沿弹体路径按【距离】均匀采样生成椭圆环，并用 OGL 连续线绘制。
- */
-internal class PathEllipseOglShockRingEmitterProjectileVisual(
-    private val engine: CombatEngineAPI,
-    spacingDistance: Float,
-    private val offsetsBehind: FloatArray = floatArrayOf(0f),
-    private val startDistance: Float = 0f,
-    private val aSideHalf: Float,
-    private val bAlongHalf: Float,
-    private val duration: Float = 0.42f,
-    private val color: Color = Color(255, 180, 100, 115),
-    private val lineWidthPx: Float = 1.25f,
-    private val segments: Int = 72,
-    private val expandSpeed: Float = 45f,
-    private val tangentialSpeed: Float = 0f,
-) : ProjectileVisual {
-
-    private val step: Float = spacingDistance.coerceAtLeast(1f)
-
-    private var fadeStarted = false
-    private var fadeOutSeconds = 0.12f
-    private var fadeTimer = 0f
-
-    private var traveled = 0f
-    private var distAcc = 0f
-
-    private fun computeFacing(projectile: DamagingProjectileAPI): Float {
-        val v = projectile.velocity
-        return if (v != null && (v.x * v.x + v.y * v.y) > 0.01f) {
-            org.lazywizard.lazylib.VectorUtils.getFacing(v)
-        } else {
-            projectile.facing
-        }
-    }
-
-    private fun speed(projectile: DamagingProjectileAPI): Float {
-        val v = projectile.velocity ?: return 0f
-        val s2 = v.x * v.x + v.y * v.y
-        if (s2 <= 0.0001f) return 0f
-        return sqrt(s2)
-    }
-
-    private fun spawnRing(center: Vector2f, facing: Float) {
-        OglEllipseRingRenderer.spawn(
-            engine,
-            OglEllipseRingRenderer.RingSpec(
-                center = center,
-                facing = facing,
-                aSideHalf = aSideHalf,
-                bAlongHalf = bAlongHalf,
-                duration = duration,
-                color = color,
-                lineWidthPx = lineWidthPx,
-                segments = segments,
-                expandSpeed = expandSpeed,
-                tangentialSpeed = tangentialSpeed,
-            )
-        )
-    }
-
-    override fun advance(projectile: DamagingProjectileAPI, amount: Float) {
-        if (amount <= 0f) return
-
-        if (fadeStarted) {
-            fadeTimer += amount
-            return
-        }
-
-        val s = speed(projectile)
-        if (s <= 0.01f) return
-
-        val prevTraveled = traveled
-        traveled += s * amount
-        if (traveled < startDistance) return
-
-        // 首次跨越 startDistance：只累计实际越过 startDistance 的那部分距离，
-        // 避免 distAcc 虚高导致第一帧生成过多的环。
-        val effectiveDelta = if (prevTraveled < startDistance) {
-            traveled - startDistance
-        } else {
-            s * amount
-        }
-        distAcc += effectiveDelta
-        if (distAcc < step) return
-
-        val facing = computeFacing(projectile)
-        while (distAcc >= step) {
-            distAcc -= step
-            // 用剩余 distAcc（= backDist）反算各环的实际位置，保证多环同帧时仍均匀间隔。
-            val backDist = distAcc
-            for (d in offsetsBehind) {
-                val totalBack = backDist + (if (d > 0.01f) d else 0f)
-                val center = if (totalBack <= 0.1f) {
-                    Vector2f(projectile.location)
-                } else {
-                    MathUtils.getPointOnCircumference(projectile.location, totalBack, facing + 180f)
-                }
-                spawnRing(center, facing)
-            }
-        }
-    }
-
-    override fun beginFadeOut(reason: ProjectileTracerManager.FadeReason, fadeOutSeconds: Float) {
-        if (fadeStarted) return
-        fadeStarted = true
-        this.fadeOutSeconds = fadeOutSeconds.coerceAtLeast(0.01f)
-        fadeTimer = 0f
-    }
-
-    override fun isFadeOutOver(): Boolean {
-        return fadeStarted && fadeTimer >= fadeOutSeconds
-    }
-
-    override fun delete() {
-        // ring 实例由 renderer 托管并自行过期
-    }
-}

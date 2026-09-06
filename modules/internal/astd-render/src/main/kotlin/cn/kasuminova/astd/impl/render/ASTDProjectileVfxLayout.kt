@@ -6,16 +6,16 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
 
+/**
+ * 弹体 VFX 布局/预览数学。
+ *
+ * Static Trail 迁移（2026-09）后运行期不再消费本对象（拖尾几何由 BoxUtil 托管）；
+ * 保留的 preview 函数族仅供自动化取证（ASTDAutomationCombatPlugin 的 AOD-7 曲线截图场景）
+ * 与 astd-impl 场景测试共用。head 网格几何已随代码弹头渲染栈删除。
+ */
 object ASTDProjectileVfxLayout {
-    private const val HEAD_AUTHORED_WIDTH_BASE = 6f
     private const val EDITOR_CAPTURE_WIDTH = 1280f
     const val REFERENCE_MAX_ZOOM_VISIBLE_HEIGHT = 600f
-
-    data class FlightLayout(
-        val dissolve: Float,
-        val beamAlpha: Float,
-        val visibleLength: Float,
-    )
 
     data class PreviewFlightTrack(
         val headOffset: Vector2f,
@@ -29,82 +29,8 @@ object ASTDProjectileVfxLayout {
         val beamAlpha: Float,
     )
 
-    data class HeadVertices(
-        val rearTop: Vector2f,
-        val shoulderTop: Vector2f,
-        val curveTop: Vector2f,
-        val tip: Vector2f,
-        val curveBottom: Vector2f,
-        val shoulderBottom: Vector2f,
-        val rearBottom: Vector2f,
-    ) {
-        fun asList(): List<Vector2f> = listOf(rearTop, shoulderTop, curveTop, tip, curveBottom, shoulderBottom, rearBottom)
-    }
-
-    data class HeadColors(
-        val start: ASTDColor,
-        val mid: ASTDColor,
-        val end: ASTDColor,
-        val emissive: ASTDColor,
-    )
-
-    data class HeadFillLayout(
-        val headVisible: Float,
-        val vertices: HeadVertices,
-        val width: Float,
-        val rearX: Float,
-        val alpha: Float,
-        val colors: HeadColors,
-    )
-
-    fun widthBase(layer: ASTDTrailLayerSpec): Float = max(layer.startWidth * 0.075f, 3.5f)
-
     fun viewportTailCap(trailStartWidth: Float, viewportVisibleWidth: Float): Float {
         return max(viewportVisibleWidth.coerceAtLeast(0f) * 0.46f, trailStartWidth.coerceAtLeast(0f) * 4.8f)
-    }
-
-    fun previewFlightLayout(
-        trailStartWidth: Float,
-        elapsed: Float,
-        durationSeconds: Float,
-        flightEndRatio: Float,
-        dissolveStartRatio: Float,
-        preDissolveFraction: Float,
-        captureWidth: Float = EDITOR_CAPTURE_WIDTH,
-    ): FlightLayout {
-        val duration = max(durationSeconds, 1.2f)
-        val clampedElapsed = elapsed.coerceIn(0f, duration)
-        val flightEndSeconds = duration * flightEndRatio
-        val dissolveStartSeconds = duration * dissolveStartRatio
-        val flightRange = preDissolveFraction.coerceIn(0f, 1f)
-        val dissolveRange = 1f - flightRange
-        val dissolveDuration = max(duration - dissolveStartSeconds, 0.0001f)
-        val flightSpeed = flightRange / max(flightEndSeconds, 0.0001f)
-        val dissolveStartSlope = (flightSpeed * dissolveDuration) / max(dissolveRange, 0.0001f)
-        val dissolveEndSlope = (flightSpeed * 0.25f * dissolveDuration) / max(dissolveRange, 0.0001f)
-        val flightProgress = if (clampedElapsed <= dissolveStartSeconds) {
-            flightRange * (clampedElapsed / max(flightEndSeconds, 0.0001f)).coerceIn(0f, 1f)
-        } else {
-            flightRange + dissolveRange * ASTDProjectileVfxMath.hermite01(
-                ((clampedElapsed - dissolveStartSeconds) / dissolveDuration).coerceIn(0f, 1f),
-                dissolveStartSlope,
-                dissolveEndSlope,
-            )
-        }
-        val dissolveStart = min(dissolveStartSeconds, duration - 0.2f)
-        val dissolve = ASTDProjectileVfxMath.smoothstep(dissolveStart, duration, clampedElapsed)
-        val startX = captureWidth * 0.14f
-        val endX = captureWidth * 0.88f
-        val traveledLength = max(0f, ASTDProjectileVfxMath.lerp(startX, endX, flightProgress) - startX)
-        val maxTailLength = viewportTailCap(trailStartWidth, captureWidth)
-        val minTailLength = max(trailStartWidth * 0.22f, 6f)
-        val grownLength = min(maxTailLength, max(minTailLength * ASTDProjectileVfxMath.smoothstep(0f, 0.08f, flightProgress), traveledLength))
-        val visibleLength = grownLength * ASTDProjectileVfxMath.lerp(1f, 0.08f, dissolve)
-        return FlightLayout(
-            dissolve = dissolve,
-            beamAlpha = ASTDProjectileVfxMath.beamAlpha(dissolve),
-            visibleLength = visibleLength,
-        )
     }
 
     fun previewFlightTrack(
@@ -179,84 +105,7 @@ object ASTDProjectileVfxLayout {
         )
     }
 
-    fun scalePoint(point: Vector2f, worldUnitsPerPixel: Float): Vector2f {
-        val scale = worldUnitsPerPixel.coerceAtLeast(0.0001f)
-        return Vector2f(point.x * scale, point.y * scale)
-    }
-
     fun referenceWorldUnitsPerPixel(displayPixelHeight: Float): Float {
         return REFERENCE_MAX_ZOOM_VISIBLE_HEIGHT / displayPixelHeight.coerceAtLeast(1f)
-    }
-
-    fun headTrailScale(widthBase: Float): Float = max(0.01f, widthBase / HEAD_AUTHORED_WIDTH_BASE)
-
-    fun headVertices(layer: ASTDProjectileVfxHeadLayerSpec, visible: Float, headSizeScale: Float = 1f, widthBase: Float = HEAD_AUTHORED_WIDTH_BASE): HeadVertices {
-        val scale = headSizeScale * headTrailScale(widthBase)
-        val length = max(1f, layer.length) * visible * scale
-        val width = max(1f, layer.width) * visible * scale
-        val shoulderX = -length * layer.shoulderRatio
-        val rearX = -length * layer.rearRatio
-        return HeadVertices(
-            rearTop = Vector2f(rearX, -width * 0.2f),
-            shoulderTop = Vector2f(shoulderX, -width * 0.52f),
-            curveTop = Vector2f(-length * 0.12f, -width * 0.3f),
-            tip = Vector2f(0f, 0f),
-            curveBottom = Vector2f(-length * 0.12f, width * 0.3f),
-            shoulderBottom = Vector2f(shoulderX, width * 0.52f),
-            rearBottom = Vector2f(rearX, width * 0.2f),
-        )
-    }
-
-    fun headColors(baseLayer: ASTDTrailLayerSpec, layer: ASTDProjectileVfxHeadLayerSpec): HeadColors {
-        val edge = mix(baseLayer.startColor, baseLayer.startEmissive, 0.48f)
-        val hot = mix(baseLayer.startEmissive, ASTDColor(1f, 1f, 1f, 1f), 0.72f)
-        return HeadColors(
-            start = multiplyRgbAlpha(baseLayer.endColor, layer.shellColorStart),
-            mid = multiplyRgbAlpha(edge, layer.shellColorMid),
-            end = multiplyRgbAlpha(hot, layer.shellColorEnd),
-            emissive = multiplyRgbAlpha(hot, layer.shellColorEnd),
-        )
-    }
-
-    fun headFillLayout(
-        baseLayer: ASTDTrailLayerSpec,
-        layer: ASTDProjectileVfxHeadLayerSpec,
-        headSizeScale: Float,
-        widthBase: Float,
-        pulse: Float,
-    ): HeadFillLayout {
-        val headVisible = smoothstep(0.2f, 0.72f, pulse)
-        val vertices = headVertices(layer, headVisible, headSizeScale, widthBase)
-        val width = max(1f, layer.width) * headVisible * headSizeScale * headTrailScale(widthBase)
-        return HeadFillLayout(
-            headVisible = headVisible,
-            vertices = vertices,
-            width = width,
-            rearX = vertices.rearTop.x,
-            alpha = pulse * headVisible * layer.alphaScale,
-            colors = headColors(baseLayer, layer),
-        )
-    }
-
-    private fun multiplyRgbAlpha(base: ASTDColor, tint: ASTDColor): ASTDColor = ASTDColor(
-        red = base.red * tint.red,
-        green = base.green * tint.green,
-        blue = base.blue * tint.blue,
-        alpha = base.alpha * tint.alpha,
-    )
-
-    private fun mix(a: ASTDColor, b: ASTDColor, t: Float): ASTDColor {
-        val ratio = t.coerceIn(0f, 1f)
-        return ASTDColor(
-            red = a.red + (b.red - a.red) * ratio,
-            green = a.green + (b.green - a.green) * ratio,
-            blue = a.blue + (b.blue - a.blue) * ratio,
-            alpha = a.alpha + (b.alpha - a.alpha) * ratio,
-        )
-    }
-
-    private fun smoothstep(edge0: Float, edge1: Float, x: Float): Float {
-        val t = ((x - edge0) / max(edge1 - edge0, 0.0001f)).coerceIn(0f, 1f)
-        return t * t * (3f - 2f * t)
     }
 }

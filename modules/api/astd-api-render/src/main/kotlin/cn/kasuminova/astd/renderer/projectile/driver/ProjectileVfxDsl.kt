@@ -1,12 +1,10 @@
 package cn.kasuminova.astd.renderer.projectile.driver
 
 import cn.kasuminova.astd.impl.render.ASTDColor
-import cn.kasuminova.astd.impl.render.ASTDProjectileVfxHeadLayerSpec
-import cn.kasuminova.astd.impl.render.ASTDTrailLayerSpec
 import cn.kasuminova.astd.impl.render.AnchorArcSpec
 import cn.kasuminova.astd.impl.render.BoxFlareSpec
 import cn.kasuminova.astd.impl.render.BoxFlareStyle
-import cn.kasuminova.astd.impl.render.TexTrailSpec
+import cn.kasuminova.astd.impl.render.StaticTrailSpec
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.DamagingProjectileAPI
 
@@ -21,14 +19,8 @@ fun interface ProjectileVfxOnFireHook {
  */
 class ProjectileVfxTreeSpec(
     val id: String,
-    /** 拖尾风格声明（弹头网格基宽/基色来源、驱动锚点长宽）；null = 无 trail{}（texTrail 自足）。 */
-    val trailLayer: ASTDTrailLayerSpec?,
-    /** 弹头层 spec；非空时要求 [trailLayer] 非空（DSL 已校验）。 */
-    val head: ASTDProjectileVfxHeadLayerSpec?,
-    /** 弹头尺寸倍率（lifecycle.headScale）。 */
-    val headSizeScale: Float,
-    /** 贴图拖尾主体层（名称 → spec），按声明顺序叠层。 */
-    val texTrails: List<Pair<String, TexTrailSpec>>,
+    /** Static Trail 拖尾主体层（名称 → spec），按声明顺序叠层；由 BoxUtil Static Trail 系统托管渲染。 */
+    val staticTrails: List<Pair<String, StaticTrailSpec>>,
     /** BoxUtil 光斑层（名称 → spec）。 */
     val boxFlares: List<Pair<String, BoxFlareSpec>>,
     /** 锚点电弧层（名称 → spec）。 */
@@ -37,9 +29,8 @@ class ProjectileVfxTreeSpec(
 
 /**
  * 弹体特效的**唯一作者面**：手写 DSL 直接产出场景树蓝图 + 驱动策略。
- * 一个 [projectileVfx] 块内：`trail{}` 定拖尾风格声明（弹头网格据此取基宽/基色，驱动取锚点长宽），
- * `head{}` 声明 bloom 弹头层参数，`texTrail` 声明贴图拖尾主体层（可多条叠层），
- * `lifecycle`/`sampling`/`fade` 声明驱动策略。
+ * 一个 [projectileVfx] 块内：`staticTrail` 声明 Static Trail 拖尾主体层（可多条叠层，BoxUtil 托管），
+ * `boxFlare`/`anchorArc`/`onFire` 声明附加层，`lifecycle`/`fade` 声明驱动策略。
  *
  * 本 DSL 只负责把作者旋钮折成渲染器所需的层 spec（[ProjectileVfxTreeSpec] 纯数据蓝图）；
  * 场景树组装在渲染实现侧（astd-render 的 `ProjectileVfxTreeAssembler`）。
@@ -68,29 +59,26 @@ fun projectileVfx(id: String, block: ProjectileVfxScope.() -> Unit): ProjectileV
     ProjectileVfxScope(id).apply(block).build()
 
 /**
- * DSL 作用域：收集拖尾风格声明、弹头层 spec、贴图拖尾与策略，[build] 时组装成 [ProjectileVfx]。
- * 节点组装推迟到 [build]，故组件块与 `trail{}` 的书写先后无关。
+ * DSL 作用域：收集 Static Trail 拖尾层、附加层与策略，[build] 时组装成 [ProjectileVfx]。
+ * 节点组装推迟到 [build]，故组件块的书写先后无关。
  */
 @ProjectileVfxDslMarker
 class ProjectileVfxScope(private val id: String) {
 
-    private var trail: ASTDTrailLayerSpec? = null
-    private var head: ASTDProjectileVfxHeadLayerSpec? = null
-    private val texTrails = ArrayList<Pair<String, TexTrailSpec>>()
+    private val staticTrails = ArrayList<Pair<String, StaticTrailSpec>>()
     private val boxFlares = ArrayList<Pair<String, BoxFlareSpec>>()
     private val anchorArcs = ArrayList<Pair<String, AnchorArcSpec>>()
     private var onFireHook: ProjectileVfxOnFireHook? = null
 
     private val lifecycle = LifecycleBuilder()
-    private val sampling = SamplingBuilder()
     private val fade = FadeBuilder()
 
-    fun trail(block: TrailBuilder.() -> Unit) { trail = TrailBuilder().apply(block).build() }
-    fun head(block: HeadBuilder.() -> Unit) { head = HeadBuilder().apply(block).build() }
-
-    /** 叠加一条贴图拖尾主体层（复刻 MagicTrail：平铺滚动贴图 + CPU 折线带体），可多次调用按 [TexTrailBuilder.layer] 叠层。 */
-    fun texTrail(name: String, texturePath: String, block: TexTrailBuilder.() -> Unit) {
-        texTrails += name to TexTrailBuilder(texturePath).apply(block).build()
+    /**
+     * 叠加一条 Static Trail 拖尾主体层（BoxUtil 1.6.0 托管：GPU 实例化带体 + 环形 vRAM 池 +
+     * 三段时长生命），可多次调用按 [StaticTrailBuilder.layer] 叠层。
+     */
+    fun staticTrail(name: String, texturePath: String, block: StaticTrailBuilder.() -> Unit) {
+        staticTrails += name to StaticTrailBuilder(texturePath).apply(block).build()
     }
 
     /** 挂一枚 BoxUtil 光斑（跟随弹体视觉头部；offsetX 负值可锚回弹体中心）。 */
@@ -107,132 +95,44 @@ class ProjectileVfxScope(private val id: String) {
     fun onFire(hook: ProjectileVfxOnFireHook) { onFireHook = hook }
 
     fun lifecycle(block: LifecycleBuilder.() -> Unit) { lifecycle.apply(block) }
-    fun sampling(block: SamplingBuilder.() -> Unit) { sampling.apply(block) }
     fun fade(block: FadeBuilder.() -> Unit) { fade.apply(block) }
 
     internal fun build(): ProjectileVfx {
-        val trailLayer = trail
-        // head{} 弹头以 trail{} 为基宽/基色来源；texTrail 自足，不需要 trail{}。
-        if (trailLayer == null && head != null) {
-            throw IllegalStateException("projectileVfx '$id' 声明了 head{} 弹头（以 trail{} 为基宽/基色来源），必须声明 trail{} 拖尾风格")
+        if (staticTrails.isEmpty() && boxFlares.isEmpty() && anchorArcs.isEmpty()) {
+            throw IllegalStateException("projectileVfx '$id' 未声明任何特效层（staticTrail/boxFlare/anchorArc 至少一个）")
         }
 
+        val headLead = lifecycle.headLeadWorld
         val treeSpec = ProjectileVfxTreeSpec(
             id = id,
-            trailLayer = trailLayer,
-            head = head,
-            headSizeScale = lifecycle.headSizeScale,
-            texTrails = texTrails.toList(),
+            // headLead 统一盖印到每条拖尾层：tracker 锚点与树原点（光斑锚）保持一致
+            staticTrails = staticTrails.map { (name, spec) -> name to spec.copy(headLeadWorld = headLead) },
             boxFlares = boxFlares.toList(),
             anchorArcs = anchorArcs.toList(),
         )
 
-        // 拖尾驱动锚点（可视长度/历史窗口的基准长宽）：有 trail{} 取其长宽；
-        // 无 trail{}（texTrail 即拖尾主体）时取 sampling.window 与最宽一条 texTrail。
-        val anchorLength: Float
-        val anchorWidth: Float
-        if (trailLayer != null) {
-            anchorLength = trailLayer.length
-            anchorWidth = trailLayer.startWidth
-        } else {
-            if (texTrails.isEmpty()) {
-                throw IllegalStateException("projectileVfx '$id' 未声明 trail{}，且没有任何 texTrail 拖尾主体")
-            }
-            anchorLength = sampling.window
-                ?: throw IllegalStateException("projectileVfx '$id' 未声明 trail{}，sampling.window 必须显式声明作为拖尾距离窗口")
-            anchorWidth = texTrails.maxOf { it.second.width }
-        }
-
         val policy = ProjectileVfxDriverPolicy(
-            minDistancePerNode = sampling.minStep,
-            maxHistoryNodes = sampling.maxNodes,
-            distanceWindow = sampling.window ?: anchorLength,
-            historyFps = sampling.fps,
-            durationSeconds = lifecycle.durationSeconds,
-            dissolveStartRatio = lifecycle.dissolveStartRatio,
-            layoutReferenceWidth = lifecycle.layoutReferenceWidth,
             hitFadeOutSeconds = fade.hitSeconds ?: fade.outSeconds,
             expireFadeOutSeconds = fade.expireSeconds ?: fade.outSeconds,
             removedFadeOutSeconds = fade.outSeconds,
-            primaryTrailLength = anchorLength,
-            primaryTrailStartWidth = anchorWidth,
-            headLeadWorld = lifecycle.headLeadWorld,
+            headLeadWorld = headLead,
         )
         return ProjectileVfx(treeSpec, policy, onFireHook)
     }
 }
 
-/** 拖尾风格声明：弹头网格据此取基宽/基色，驱动取锚点长宽（可视长度/历史窗口基准）。 */
-@ProjectileVfxDslMarker
-class TrailBuilder {
-    private var startWidth = 12f
-    private var length = 420f
-    private var startColor = rgba(0xFFFFFFFFL)
-    private var startEmissive = rgba(0xFFFFFFFFL)
-    private var endColor = rgba(0xFFFFFFFFL)
-
-    fun width(v: Float) { startWidth = v }
-    fun length(v: Float) { length = v }
-    fun color(hex: Long) { startColor = rgba(hex) }
-    fun tail(hex: Long) { endColor = rgba(hex) }
-    fun emissive(hex: Long) { startEmissive = rgba(hex) }
-
-    internal fun build(): ASTDTrailLayerSpec = ASTDTrailLayerSpec(
-        startWidth = startWidth,
-        length = length,
-        startColor = startColor,
-        startEmissive = startEmissive,
-        endColor = endColor,
-    )
-}
-
-/** 弹头：收拢亮头的长宽/肩后比/壳三色（内→中→外）/模糊。 */
-@ProjectileVfxDslMarker
-class HeadBuilder {
-    private var length = 120f
-    private var width = 24f
-    private var shoulder = 0.5f
-    private var rear = 0.95f
-    private var blur = 0.35f
-    private var alpha = 1f
-    private var shellStart = rgba(0x00000014L)
-    private var shellMid = rgba(0xB8F0FF75L)
-    private var shellEnd = rgba(0xFFFFFFFAL)
-
-    fun length(v: Float) { length = v }
-    fun width(v: Float) { width = v }
-    fun shoulder(v: Float) { shoulder = v }
-    fun rear(v: Float) { rear = v }
-    fun blur(v: Float) { blur = v }
-    fun alpha(v: Float) { alpha = v }
-    fun shell(start: Long, mid: Long, end: Long) { shellStart = rgba(start); shellMid = rgba(mid); shellEnd = rgba(end) }
-
-    internal fun build(): ASTDProjectileVfxHeadLayerSpec = ASTDProjectileVfxHeadLayerSpec(
-        length = length,
-        width = width,
-        shoulderRatio = shoulder,
-        rearRatio = rear,
-        shellColorStart = shellStart,
-        shellColorMid = shellMid,
-        shellColorEnd = shellEnd,
-        blur = blur,
-        alphaScale = alpha,
-    )
-}
-
 /**
- * 贴图拖尾（复刻 MagicTrail）：CPU 折线带体 + 平铺滚动贴图图案的拖尾主体层。
- * 贴图约定同 astd_trails_*：X=横向、Y=带长向（REPEAT），形在 alpha 通道、RGB 近白。
+ * Static Trail 拖尾层（BoxUtil 托管）：GPU 实例化带体 + 平铺滚动贴图图案。
+ * 贴图约定同 astd_trails_*：X=带长向（REPEAT 平铺）、Y=横向，形在 alpha 通道、RGB 近白。
  */
 @ProjectileVfxDslMarker
-class TexTrailBuilder(private val texturePath: String) {
+class StaticTrailBuilder(private val texturePath: String) {
     private var layer = 1
     private var width = 12f
+    private var tailWidthRatio = 0.35f
     private var headColor = rgba(0xFFFFFFEBL)
-    private var midColor: ASTDColor? = null
-    private var midT = 0.25f
     private var tailColor = rgba(0x0A1C380FL)
-    private var nodeCount = 24
+    private var bandLength = 180f
     private var tileLength = 180f
     private var scrollSpeed = 0f
     private var recede = 0f
@@ -240,123 +140,70 @@ class TexTrailBuilder(private val texturePath: String) {
     private var wobbleWavelength = 90f
     private var wobbleScroll = 0f
     private var wobblePhase = 0f
-    private var lifetimeSeconds = 0f
-    private var dissolveStart = 0.6f
-    private var twistMaxAngleDeg = 0f
-    private var twistTurnDegPerSec = 0f
-    private var twistWavelength = 0f
+    private var glowPower = 1f
 
-    /** 叠层序号：同弹体多条贴图拖尾的绘制先后（1 垫底、2 其上，以此类推）。 */
+    /** 叠层序号：同弹体多条拖尾的组织序（1 垫底、2 其上；additive 混合下不参与绘制排序）。 */
     fun layer(v: Int) { layer = v }
 
-    /** 拖尾全宽（世界单位）。 */
+    /** 拖尾头部全宽（世界单位）；尾部宽度 = 本值 × [tailWidthRatio]，随生命线性收细。 */
     fun width(v: Float) { width = v }
 
-    /** 头尾颜色（0xRRGGBBAA）：头部亮端 → 尾部暗端，逐节点插值。 */
-    fun colors(head: Long, tail: Long) { headColor = rgba(head); midColor = null; tailColor = rgba(tail) }
+    /** 尾宽比（0..1）。 */
+    fun tailWidth(v: Float) { tailWidthRatio = v.coerceIn(0f, 1f) }
 
-    /** 三段上色（0xRRGGBBAA）：白热头 → [midAt] 处签名色中段 → 暗尾。 */
-    fun colors(head: Long, mid: Long, tail: Long, midAt: Float) {
-        headColor = rgba(head); midColor = rgba(mid); tailColor = rgba(tail); midT = midAt
-    }
+    /** 头尾颜色（0xRRGGBBAA）：头部亮端 → 尾部暗端，随节点生命两段渐变。 */
+    fun colors(head: Long, tail: Long) { headColor = rgba(head); tailColor = rgba(tail) }
 
-    /** 节点数下限（沿带长均匀分布，弯道平滑度）：实际渲染节点数按可见带长动态细分，本值为短带保底。 */
-    fun nodes(count: Int) { nodeCount = count }
+    /** 预期带长（世界单位）：节点总寿命 = 带长 / 弹体速度，三段时长（淡入/全亮/消散）按比例切分。 */
+    fun length(v: Float) { bandLength = v }
 
     /** 图案平铺周期（世界单位）与滚动速度（世界单位/秒，0 不滚动）。 */
     fun tile(length: Float, scroll: Float) { tileLength = length; scrollSpeed = scroll }
 
-    /** 带体整体向后退的距离（世界单位）：带体头部亮端退到弹头网格之后，让弹头尖在带体前露出。 */
+    /** 带体整体向后退的距离（世界单位）：带体头部亮端退到原版螺栓弹头之后，让弹头尖在带体前露出。 */
     fun recede(v: Float) { recede = v }
 
     /**
-     * 带体横向扰动（复刻 MagicTrail dispersion）：正弦叠加横向漂移让带体散开摆动。
-     * [amplitude] 峰值振幅（世界单位，建议 ≤ 带宽 1/4），[wavelength] 主波长（带长向），
-     * [scroll] 图案沿带长平移速度（su/s，0 静止），[phase] 初始相位（弧度，叠层错相用）。
-     * 不调用即不扰动，观感与旧行为逐点一致。
+     * 带体横向扰动（对齐旧 wobble 观感）：tracker 记录节点时按逻辑时间横向正弦偏移，带体呈蛇行。
+     * [amplitude] 峰值振幅（世界单位，建议 ≤ 带宽 1/4），[wavelength] 主波长（决定爬行频率 = scroll/波长），
+     * [scroll] 爬行速度（su/s，0 静止），[phase] 初始相位（弧度，叠层错相用）。不调用即不扰动。
      */
     fun wobble(amplitude: Float, wavelength: Float, scroll: Float = 0f, phase: Float = 0f) {
         wobbleAmplitude = amplitude; wobbleWavelength = wavelength; wobbleScroll = scroll; wobblePhase = phase
     }
 
-    /**
-     * 逐节点寿命覆写（秒，0 = 自动按「预期带长/实测速度」估算）与消散起点（年龄进度 0..1）。
-     * 节点按年龄老去：dissolveStart 前满亮，之后线性消散到寿命尽头；弹体消亡后尾先消、头后消。
-     */
-    fun lifetime(seconds: Float, dissolveStart: Float = 0.6f) {
-        lifetimeSeconds = seconds; this.dissolveStart = dissolveStart
-    }
+    /** bloom 发光强度（0..1；进 BoxUtil emissive → bloom G-buffer）。 */
+    fun glow(power: Float) { glowPower = power.coerceIn(0f, 1f) }
 
-    /** 消散起点（年龄进度 0..1）：单独调消散起点时用；等价 [lifetime] 的第二参数。 */
-    fun dissolveStart(ratio: Float) { dissolveStart = ratio }
-
-    /**
-     * 平面内随机扭转（复刻 MagicTrail 段落自旋观感）：带体沿距头弧长取平滑值噪声角 ∈ ±[maxAngleDeg]
-     * （弧长桶种子 + smoothstep 桶间过渡：带体系跨帧稳定不闪，前后段自动衔接无折点），随节点年龄按
-     * [turnDegPerSec] 累积扭转。[wavelength] 为噪声空间波长（世界单位，0 = 与贴图平铺周期同频）。
-     * θ=±90° 时该处完全折向带长向。与 wobble（横向平移扰动）正交可叠加；不调用即关闭。
-     */
-    fun twist(maxAngleDeg: Float, turnDegPerSec: Float = 0f, wavelength: Float = 0f) {
-        twistMaxAngleDeg = maxAngleDeg; twistTurnDegPerSec = turnDegPerSec; twistWavelength = wavelength
-    }
-
-    internal fun build(): TexTrailSpec = TexTrailSpec(
-        width = width,
+    internal fun build(): StaticTrailSpec = StaticTrailSpec(
         texturePath = texturePath,
         layer = layer,
+        width = width,
+        tailWidthRatio = tailWidthRatio,
         headColor = headColor,
-        midColor = midColor,
-        midT = midT,
         tailColor = tailColor,
-        nodeCount = nodeCount,
+        bandLength = bandLength,
         tileLength = tileLength,
         scrollSpeed = scrollSpeed,
         recede = recede,
         wobbleAmplitude = wobbleAmplitude,
-        wobbleWavelength = wobbleWavelength,
         wobbleScroll = wobbleScroll,
         wobblePhase = wobblePhase,
-        lifetimeSeconds = lifetimeSeconds,
-        dissolveStart = dissolveStart,
-        twistMaxAngleDeg = twistMaxAngleDeg,
-        twistWavelength = twistWavelength,
-        twistTurnDegPerSec = twistTurnDegPerSec,
+        wobbleWavelength = wobbleWavelength,
+        glowPower = glowPower,
     )
 }
 
-/** 生命周期策略：飞行时长/溶解起点比/弹头尺寸倍率/布局参考宽度/拖尾锚点前移。 */
+/** 生命周期策略：拖尾锚点前移（其余运行期生命周期已由 Static Trail 系统接管）。 */
 @ProjectileVfxDslMarker
 class LifecycleBuilder {
-    var durationSeconds = 1.25f; private set
-    var dissolveStartRatio = 0.6f; private set
-    var headSizeScale = 1.5f; private set
-    var layoutReferenceWidth = 1280f; private set
     var headLeadWorld: Float? = null; private set
-
-    fun duration(v: Float) { durationSeconds = v }
-    fun dissolveAt(v: Float) { dissolveStartRatio = v }
-    fun headScale(v: Float) { headSizeScale = v }
-    fun layoutRef(v: Float) { layoutReferenceWidth = v }
 
     /** 拖尾锚点前移量（世界单位）：不调用 = 自动取弹体 spec.length/2（对齐原版螺栓视觉头部）；0 = 锚回弹体中心。 */
     fun headLead(v: Float) { headLeadWorld = v }
 }
 
-/** 采样策略：历史帧率/最大节点数/最小步距/距离窗口（省略窗口则用 trail.length）。 */
-@ProjectileVfxDslMarker
-class SamplingBuilder {
-    var fps = 60f; private set
-    var maxNodes = 96; private set
-    var minStep = 2f; private set
-    var window: Float? = null; private set
-
-    fun fps(v: Float) { fps = v }
-    fun maxNodes(v: Int) { maxNodes = v }
-    fun minStep(v: Float) { minStep = v }
-    fun window(v: Float) { window = v }
-}
-
-/** 淡出策略：默认淡出秒数 + 命中/过期各自秒数（省略则同默认）。 */
+/** 淡出策略：默认淡出秒数 + 命中/过期各自秒数（省略则同默认）；作用于树内附加层（光斑等）。 */
 @ProjectileVfxDslMarker
 class FadeBuilder {
     var outSeconds = 0.15f; private set

@@ -66,7 +66,6 @@ class BeamVfxDriverImpl(
         dissolve = 0f,
         // 淡出由束体节点按 active 自管（心跳），非驱动单向 fade，故不带 fadeReason。
         fadeReason = null,
-        historyNodes = emptyList(),
         hitTarget = frame.hitTarget,
         isShieldHit = frame.isShieldHit,
     )

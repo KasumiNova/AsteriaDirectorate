@@ -47,7 +47,6 @@ class ProjectileVfxDriverPlugin : BaseEveryFrameCombatPlugin() {
 
     companion object {
         const val ENGINE_KEY: String = "astd_projectile_vfx_driver_plugin"
-
         fun ensureInstalled(engine: CombatEngineAPI) {
             if (engine.customData[ENGINE_KEY] == null) {
                 val plugin = ProjectileVfxDriverPlugin()
@@ -82,15 +81,12 @@ class ProjectileVfxDriverPlugin : BaseEveryFrameCombatPlugin() {
         /** 插件级遥测快照（自动化取证用）。插件未安装或尚无帧时各字段为空/零。 */
         fun telemetrySnapshot(engine: CombatEngineAPI): ProjectileVfxTelemetrySnapshot {
             val plugin = engine.customData[ENGINE_KEY] as? ProjectileVfxDriverPlugin
-                ?: return ProjectileVfxTelemetrySnapshot(0, null, 0f, 0f, 0f, 0f)
+                ?: return ProjectileVfxTelemetrySnapshot(0, null, 0f)
             val telemetry = plugin.lastTelemetry
             return ProjectileVfxTelemetrySnapshot(
                 trackedCount = plugin.trackedByProjectile.size,
                 lastProjectileSpecId = plugin.lastSpecId,
                 lastElapsed = telemetry?.elapsed ?: 0f,
-                lastVisibleLength = telemetry?.visibleLength ?: 0f,
-                lastBeamAlpha = telemetry?.beamAlpha ?: 0f,
-                lastWorldUnitsPerPixel = telemetry?.worldUnitsPerPixel ?: 0f,
             )
         }
 
@@ -106,15 +102,9 @@ class ProjectileVfxDriverPlugin : BaseEveryFrameCombatPlugin() {
  * @param trackedCount 当前在册驱动数。
  * @param lastProjectileSpecId 最近一帧推进过帧的弹体 specId；无则为 null。
  * @param lastElapsed 该驱动的累计推进秒数。
- * @param lastVisibleLength 该帧拖尾可视长度。
- * @param lastBeamAlpha 该帧整体透明度系数。
- * @param lastWorldUnitsPerPixel 该帧世界/像素换算比例。
  */
 data class ProjectileVfxTelemetrySnapshot(
     val trackedCount: Int,
     val lastProjectileSpecId: String?,
     val lastElapsed: Float,
-    val lastVisibleLength: Float,
-    val lastBeamAlpha: Float,
-    val lastWorldUnitsPerPixel: Float,
 )

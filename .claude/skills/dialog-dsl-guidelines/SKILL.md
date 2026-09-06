@@ -9,8 +9,8 @@ description: "Dialog DSL 使用指南：对话图、节点、选项、动作、�
 
 适用于本项目内 **Dialog DSL** 的对话定义与交互实现：
 
-- `cn.kasuminova.astd.campaign.dialog.core.*`
-- 示例：`campaign/dialog/demo/DemoDialog.kt`
+- `cn.kasuminova.astd.campaign.dialog.core.*`（`modules/internal/astd-ui`）
+- 示例：`campaign/dialog/story/PrologueAgentDialog.kt`（序章代办九节点）、`campaign/dialog/story/StorySiteDialog.kt`（遗址站三态）；原 `dialog/demo/DemoDialog.kt` 已删除
 
 ## 核心概念
 
@@ -80,10 +80,20 @@ description: "Dialog DSL 使用指南：对话图、节点、选项、动作、�
 - 使用 `GraphDialogPlugin(graph, closeOnEscapeOptionId, closeOnEscapeText)`
 - 首次进入：执行 `onEnter` + 刷新选项
 - 每帧：
-  - 推进 `textPanel.advance()`
-  - 推进 `TimedTextQueue.advance()`
-  - 调用 `onAdvance()`
+  - 推进 `textPanel.advance()`（缩放后）
+  - 推进 `TimedTextQueue.advance()`（缩放后）
+  - 调用 `onAdvance()`（原始 amount）
   - 按需刷新选项
+- **整体节奏缩放**：`DIALOG_TIME_SCALE = 0.5f` 统一作用于 TextPanel 推入动画与
+  文本队列（行间间隔/淡入淡出均放慢一倍）；节点 `onAdvance` 拿原始 `amount`，计时逻辑不受影响
+
+**关闭语义（closed 防误清）**：
+
+- `closeInternal` 执行后插件进入 `closed` 终态：`advance`/`optionSelected`/选项刷新全部停摆
+- 关键动机：`onClose` 宿主钩子（如 `BarEventDialogPlugin.endEvent` → `BarCMD.showOptions`）
+  会**同步**重建宿主选项面板；若本插件在关闭后继续当帧的选项刷新，会把宿主刚加好的
+  「继续/离开酒吧」清成空白，玩家卡死
+- 因此：节点/选项动作里触发 `ctx.close()` 后，不要再期待本插件对面板做任何写操作
 
 **Escape 关闭**：
 
@@ -98,10 +108,12 @@ description: "Dialog DSL 使用指南：对话图、节点、选项、动作、�
 
 ## 示例入口
 
-- `campaign/dialog/demo/DemoDialog.kt`：
-  - 普通节点 + Timed 节点
-  - `enqueueI18nFading` 示例
+- `campaign/dialog/story/PrologueAgentDialog.kt`（modules/internal/astd-ui）：
+  - 九节点对话图（start → … → sign/end）与分支收束
+  - `timedNode` 逐条延迟输出 + 自动跳转节点
   - `DialogDsl.option + goto/close` 示例
+- `campaign/dialog/story/StorySiteDialog.kt`：timed 描写节点 → 菜单节点的最小结构
+- `campaign/dialog/story/PrologueAgentBarEvent.kt`：酒馆事件宿主接入（`onClose` 交还宿主插件）
 
 ## 常见坑位
 
@@ -112,10 +124,13 @@ description: "Dialog DSL 使用指南：对话图、节点、选项、动作、�
 
 ## 参考文件
 
+以下均位于 `modules/internal/astd-ui/src/main/kotlin/cn/kasuminova/astd/`：
+
 - `campaign/dialog/core/DialogDsl.kt`
 - `campaign/dialog/core/DialogGraph.kt`
 - `campaign/dialog/core/DialogNode.kt`
 - `campaign/dialog/core/GraphDialogPlugin.kt`
 - `campaign/dialog/core/DialogContext.kt`
 - `campaign/dialog/core/TimedTextQueue.kt`
-- `campaign/dialog/demo/DemoDialog.kt`
+- `campaign/dialog/story/PrologueAgentDialog.kt`（九节点剧情对话示例）
+- `campaign/dialog/story/StorySiteDialog.kt`（站点三态对话示例）

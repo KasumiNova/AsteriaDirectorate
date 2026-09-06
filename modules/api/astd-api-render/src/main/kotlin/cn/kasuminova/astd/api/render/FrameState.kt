@@ -1,6 +1,5 @@
 package cn.kasuminova.astd.api.render
 
-import cn.kasuminova.astd.api.render.ASTDProjectileHistoryNode
 import com.fs.starfarer.api.combat.CombatEntityAPI
 import org.lwjgl.util.vector.Vector2f
 
@@ -50,12 +49,6 @@ interface FrameState {
     /** 世界单位/像素，供节点做与缩放无关的采样。 */
     val worldUnitsPerPixel: Float
 
-    /**
-     * 采样历史节点（世界坐标 + 朝向 + 时间），供沿中线构建曲线的节点（body/glow/texTrail）追踪真实飞行路径。
-     * 由驱动每帧从飞行历史取一份；无历史的宿主（如光束或首帧）为空列表。
-     */
-    val historyNodes: List<ASTDProjectileHistoryNode>
-
     // ---- 连续信号（覆盖光束停火淡出 / 复火拉回）----
 
     /** 宿主处于活动态：弹体飞行中 / 光束 firing。 */
@@ -70,21 +63,6 @@ interface FrameState {
      * 沿束粒子据此按密度收敛。GravityCollapse 的 0.65s 平滑淡出即靠此实现（[intensity]=level 控宽/密度，本值控淡出）。
      */
     val fadeMul: Float
-
-    /**
-     * 弹体拖尾逐节点寿命（秒）：预期带长（世界单位）/ 实测速度，由驱动每帧估算。
-     * texTrail 节点按「当前时间 − 出生时刻」得年龄，年龄/寿命驱动随时间变化的效果（含消散）——
-     * 弹体消亡/命中不再对带体施加全局 alpha，尾部（最老）先消散、头部最后消失。
-     * 0 = 宿主不提供（光束/一次性特效），节点不做年龄衰减。
-     */
-    val trailLifetimeSeconds: Float
-
-    /**
-     * 弹体拖尾的额外时间偏移（秒）：加进 texTrail 节点年龄（年龄 = 当前时间 + 本值 − 出生时刻）。
-     * 弹体消亡/命中后由驱动按「寿命 / 死亡消散窗口」加速累加，让整带在短窗口内按尾先头后序老完——
-     * 不散布加速逻辑的调用方才用本字段；存活期恒 0。
-     */
-    val trailTimeOffsetSeconds: Float
 
     // ---- 终止（一次性）----
 

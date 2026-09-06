@@ -75,7 +75,7 @@ data class ProjectileProjSpec(
          * length 75 / width 20 / fadeTime 0.25 / textureScrollSpeed -256 / pixelsPerTexel 1）。
          * 拖尾仍由 ASTD VFX 管线（ProjectileVfxSpecs 三层贴图混合）承担。
          *
-         * 需要全隐弹体（如 aod7 hero、七星折跃弹）不用本工厂，显式构造并传
+         * 需要全隐弹体（如七星折跃弹）不用本工厂，显式构造并传
          * `bulletSprite = "graphics/textures/BUtil_NONE.png"` + 色 alpha=0。
          *
          * @param hitGlowRadius 命中光晕基准半径，默认 25（原版高射速武器口径：火神 15 / 重机枪 20 /

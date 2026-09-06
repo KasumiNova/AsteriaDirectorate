@@ -19,7 +19,7 @@ import java.awt.Color
  *   （01 已核实 API 无落点指定入口，电弧终点仍由原版在目标舰上自行选取）。
  * - 贯穿补伤：`applyDamage`（不触发 onHitEffect，无二次 onHit 回环）+ 伤害浮字 + 克制火花 1 粒。
  *
- * 不新增 RenderEntity 组件；弹体拖尾走 `ProjectileVfxSpecs` texTrail 管线（与本类无关）。
+ * 不新增 RenderEntity 组件；弹体拖尾走 `ProjectileVfxSpecs` Static Trail 管线（与本类无关）。
  *
  * 设计取舍登记（规格 02 §2.4）：泄放**不加浮字**——v2 31.25% × 2.67 发/s ≈ 0.8 次/s，
  * 电弧本身即最强反馈（沿用 01 取舍口径）；贯穿补伤频率天然极低（破晓敌版限定、仅对高 EMP

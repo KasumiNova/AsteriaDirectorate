@@ -3,7 +3,6 @@ package cn.kasuminova.astd.impl.render
 import cn.kasuminova.astd.api.render.FadeReason
 import cn.kasuminova.astd.api.render.FrameState
 import cn.kasuminova.astd.api.render.RenderPhase
-import cn.kasuminova.astd.api.render.ASTDProjectileHistoryNode
 import com.fs.starfarer.api.combat.CombatEntityAPI
 import org.lwjgl.util.vector.Vector2f
 
@@ -25,13 +24,8 @@ data class FrameStateImpl(
     override val flightProgress: Float,
     override val dissolve: Float,
     override val fadeReason: FadeReason?,
-    override val historyNodes: List<ASTDProjectileHistoryNode> = emptyList(),
     // 弹体恒 1（不参与）；光束停火淡出时由 BeamVfxDriver 传入。默认 1 使弹体侧无需改动。
     override val fadeMul: Float = 1f,
-    // 弹体拖尾逐节点寿命（秒）；光束/一次性特效宿主不提供（0 = 不做年龄衰减）。
-    override val trailLifetimeSeconds: Float = 0f,
-    // 弹体消亡后的拖尾时间加速偏移（秒）；存活期与其他宿主恒 0。
-    override val trailTimeOffsetSeconds: Float = 0f,
     // 每帧接触数据；弹体侧与无命中时为默认（null / false）。
     override val hitTarget: CombatEntityAPI? = null,
     override val isShieldHit: Boolean = false,

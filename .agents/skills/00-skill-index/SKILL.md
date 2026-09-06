@@ -61,9 +61,9 @@ description: "Skill 索引：按领域汇总本仓库可用的所有技能与路
   - 路径：`.agents/skills/rendering-vfx-guidelines/SKILL.md`
   - 适用：战斗 VFX 优先 BoxUtil；统一接入弹体 VFX 管线；必要时才降级原版渲染 API。
 
-- **弹体拖尾规范（texTrail DSL）**
+- **弹体拖尾规范（staticTrail DSL / BoxUtil Static Trail）**
   - 路径：`.agents/skills/projectile-trail-guidelines/SKILL.md`
-  - 适用：弹体拖尾统一 texTrail DSL；素材清单（astd_trails_ 族）、调参指南（MagicTrail 四件套对照）、验证流程。
+  - 适用：弹体拖尾统一 staticTrail DSL（BoxUtil 1.6.0 Static Trail 托管）；素材清单（astd_trails_ 族，N×64 约定）、调参指南、验证流程。
 
 - **通用游戏特效预览工具规范**
   - 路径：`.agents/skills/game-vfx-preview-guidelines/SKILL.md`

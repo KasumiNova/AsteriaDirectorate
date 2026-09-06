@@ -205,7 +205,7 @@ object ASTDInGameAutomationScenario {
      * 贯星之矛实机场景开关：镜像 [isSmEnabled]。
      * 验证 HYBRID 双槽装配（大型实弹槽 onslaught WS 019 + 大型能量槽 champion WS 008）
      * 与能量结算探针（energyWeaponRangeBonus 生效 / ballisticWeaponRangeBonus 不生效）、
-     * 2s 充能 + 5s 冷却 7s 循环（充能条可读 + 出膛间隔）、弹体 VFX 接管（texTrail + bloom 弹头）、
+     * 2s 充能 + 5s 冷却 7s 循环（充能条可读 + 出膛间隔）、弹体 VFX 接管（Static Trail 拖尾）、
      * 命中单体三层特效（顶点闪光/大光柱/锥面计数，锥内无连带浮字）、
      * 命中集群锥面结算（破片浮字 + 本体豁免契约零破坏）、
      * 敌版三档（installScaleForTests 1/2/5 → 半角 20/25/40、锥长 300/375/600、伤害 2500/3125/5000）

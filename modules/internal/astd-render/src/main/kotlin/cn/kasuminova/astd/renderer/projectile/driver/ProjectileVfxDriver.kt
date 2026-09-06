@@ -10,15 +10,9 @@ enum class ProjectileVfxDriverState { Active, Fading, Removed }
  * 最近一次成功推进帧的核心观测量。
  *
  * @param elapsed 驱动累计推进秒数（含淡出期）。
- * @param visibleLength 该帧拖尾可视长度（世界单位）。
- * @param beamAlpha 该帧整体透明度系数。
- * @param worldUnitsPerPixel 该帧世界/像素换算比例。
  */
 data class ProjectileVfxDriverTelemetry(
     val elapsed: Float,
-    val visibleLength: Float,
-    val beamAlpha: Float,
-    val worldUnitsPerPixel: Float,
 )
 
 /**

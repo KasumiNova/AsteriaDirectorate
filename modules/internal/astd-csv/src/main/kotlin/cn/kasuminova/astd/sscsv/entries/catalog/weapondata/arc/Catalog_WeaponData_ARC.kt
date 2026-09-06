@@ -48,24 +48,15 @@ object Wpn_astd_aod7 : WeaponDataEntry(), SsProjProjectileOutputs {
     override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
     override val number: Int = 9001
 
-    override val projSpec: ProjectileProjSpec = ProjectileProjSpec(
+    // 原版螺栓渲染（2026-09 起）：代码弹头网格已随自研渲染栈删除，弹头回归原版 projbody/projtrail；
+    // 尺寸对齐旧代码弹头几何 138×34（hero 体量），配色沿用暖白并复原 alpha。拖尾由 VFX 管线（Static Trail）承担。
+    override val projSpec: ProjectileProjSpec = ProjectileProjSpec.vanillaBolt(
         id = "astd_aod7_shot",
-        spawnType = ProjectileSpawnType.BALLISTIC,
-        onFireEffect = "cn.kasuminova.astd.combat.effect.generic.ProjectileSpecOnFireDispatcher",
         onHitEffect = "cn.kasuminova.astd.combat.effect.generic.HighFluxShieldPressureOnHitEffect",
-        collisionClass = "PROJECTILE_FF",
-        collisionClassByFighter = "PROJECTILE_FIGHTER",
-        // 原版 projectile visual 必须不可见（length/width=2 + 色 alpha=0 + BUtil_NONE）。
-        length = 2.0,
-        width = 2.0,
-        // fadeTime=0.2：给超射程后的原版弹体一段滑行窗口，令代码 VFX 拖尾能跟随淡出（否则 fadeTime=0 会被引擎即刻移除、
-        // 拖尾在射程环处骤消）。原版弹体已 alpha=0 全隐，此窗口不会造成视觉穿帮。
-        fadeTime = 0.2,
-        fringeColor = Rgba(255, 198, 126, 0),
-        coreColor = Rgba(248, 242, 232, 0),
-        textureScrollSpeed = 0.0,
-        pixelsPerTexel = 1.0,
-        bulletSprite = "graphics/textures/BUtil_NONE.png",
+        fringeColor = Rgba(255, 198, 126, 255),
+        coreColor = Rgba(248, 242, 232, 200),
+        length = 138.0,
+        width = 34.0,
     )
 }
 
@@ -527,7 +518,7 @@ object Wpn_astd_positron_shockwave : WeaponDataEntry(), SsProjProjectileOutputs 
  *
  * 射弹不做正常飞行：发射即折跃至目标位置并闪光十字爆炸，连跳/对舰终结全部脚本结算
  * （`.proj` onFireEffect 挂 SevenStarsOnFireEffect，collisionClass=NONE 无触碰/无 onHit 路径）。
- * 弹体视觉全程隐藏（texTrail 管线不登记，规格 §3.1 决策）；P6 前 no_drop 仅 dev 测试。
+ * 弹体视觉全程隐藏（Static Trail 管线不登记，规格 §3.1 决策）；P6 前 no_drop 仅 dev 测试。
  */
 object Wpn_astd_seven_stars : WeaponDataEntry(), SsProjProjectileOutputs {
     override val id: String = "astd_seven_stars"

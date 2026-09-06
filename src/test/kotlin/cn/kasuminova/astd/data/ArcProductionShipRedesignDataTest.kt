@@ -255,7 +255,6 @@ class ArcProductionShipRedesignDataTest {
             hullPath = Path.of("contents/data/hulls/astd_plasma_arch.ship"),
             variantPath = Path.of("contents/data/variants/astd_plasma_arch_Standard.variant"),
             required = listOf(
-                "stabilizedshieldemitter",
                 "missleracks",
                 "astd_plasma_armor_shield",
                 "astd_ionized_recoil_accumulator",

@@ -12,7 +12,7 @@ import java.awt.Color
  * - 护盾命中：少量冷蓝白 hitParticle（克制量级，每发最多 2 粒，20 发/s 不糊屏）；
  * - 电荷泄放：`spawnEmpArc` 真实电弧（伤害/视觉/结算一体），冷蓝白双色参数化。
  *
- * 不新增 RenderEntity 组件；弹体拖尾走 `ProjectileVfxSpecs` texTrail 管线（与本类无关）。
+ * 不新增 RenderEntity 组件；弹体拖尾走 `ProjectileVfxSpecs` Static Trail 管线（与本类无关）。
  *
  * 设计取舍登记（规格 01 §2.4）：泄放**不加浮字**——v2 40% × 20 发/s ≈ 8 次/s，浮字必然糊屏，
  * 电弧本身即最强反馈。泄放落点由原版 `spawnEmpArc` 在目标舰上自行选取

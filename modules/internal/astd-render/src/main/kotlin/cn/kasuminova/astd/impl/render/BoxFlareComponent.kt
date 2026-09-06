@@ -108,8 +108,8 @@ class BoxFlareComponent(
     }
 
     companion object {
-        /** 贴图拖尾绘制序基线之上、弹头之下的层位（与 texTrail 叠层同族）。 */
-        const val RENDER_ORDER_FLARE = TexTrailComponent.RENDER_ORDER_BASE + 8
+        /** 光斑绘制序：贴图拖尾绘制序基线之上的层位（与拖尾叠层同族）。 */
+        const val RENDER_ORDER_FLARE = StaticTrailComponent.RENDER_ORDER_BASE + 8
 
         /** 光斑常驻时长（秒）：生命周期由树 fade/detach 接管，这里给一个永不自然到期的值。 */
         private const val FLARE_FULL_SECONDS = 1e7f

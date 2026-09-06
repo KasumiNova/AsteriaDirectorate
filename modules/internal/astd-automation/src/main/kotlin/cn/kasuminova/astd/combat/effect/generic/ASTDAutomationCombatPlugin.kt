@@ -320,7 +320,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     private var plChargeStartAt = -1f
     private var plFirstChargeToShotSeconds = -1f
     private var plCycleIntervalSeconds = -1f
-    // CYCLE：弹体 VFX 驱动接管闩（texTrail + bloom 弹头在线证据，弹体在飞窗口外 trackedCount 归零故闩存）。
+    // CYCLE：弹体 VFX 驱动接管闩（Static Trail 拖尾在线证据，弹体在飞窗口外 trackedCount 归零故闩存）。
     private var plVfxDriverSeen = false
     // CLUSTER：相位基线（锥面命中/浮字增量即本相位证据）。
     private var plClusterConeHitsBaseline = 0
@@ -4680,7 +4680,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                             transitionPlPhase(PL_PHASE_FAILED)
                         }
                         !plVfxDriverSeen -> {
-                            failureReason = "pl 弹体 VFX 驱动未观测（texTrail + bloom 弹头未接管弹体观感）"
+                            failureReason = "pl 弹体 VFX 驱动未观测（Static Trail 拖尾未接管弹体观感）"
                             transitionPlPhase(PL_PHASE_FAILED)
                         }
                         impactFlashes < 1 || pillars < 1 || coneVfx < 1 -> {
@@ -5239,23 +5239,19 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         return Vector2f((next.x - previous.x) / (step * 2f), (next.y - previous.y) / (step * 2f))
     }
 
-    /** AOD-7 新管线 spec 的驱动策略（参考轨迹/取证阈值的参数来源）。 */
-    private val aod7Policy by lazy {
-        ProjectileVfxSpecs.build(ASTDInGameAutomationScenario.PROJECTILE_SPEC_ID)?.policy
-            ?: throw IllegalStateException("AOD-7 automation reference spec missing: ${ASTDInGameAutomationScenario.PROJECTILE_SPEC_ID}")
-    }
-
+    /**
+     * AOD-7 合成截图场景的参考参数（旧管线 spec 的数值，2026-09 Static Trail 迁移后 policy 不再建模这些字段，
+     * 按场景常量固化——本曲线只服务截图取景，与运行期拖尾无关）。
+     */
     private fun automationPreviewTrack(age: Float): ASTDProjectileVfxLayout.PreviewFlightTrack {
-        val policy = aod7Policy
         return ASTDProjectileVfxLayout.previewFlightTrack(
-            trailStartWidth = policy.primaryTrailStartWidth,
+            trailStartWidth = AUTOMATION_REF_TRAIL_START_WIDTH,
             elapsed = age,
-            durationSeconds = policy.durationSeconds,
-            // 合成截图场景参数（旧 aod7 preset 的默认，与新管线 spec 一致；新管线无此两字段，按场景常量固化）。
+            durationSeconds = AUTOMATION_REF_DURATION_SECONDS,
             flightEndRatio = AUTOMATION_FLIGHT_END_RATIO,
-            dissolveStartRatio = policy.dissolveStartRatio,
+            dissolveStartRatio = AUTOMATION_REF_DISSOLVE_START_RATIO,
             preDissolveFraction = AUTOMATION_PRE_DISSOLVE_FRACTION,
-            captureWidth = policy.layoutReferenceWidth,
+            captureWidth = AUTOMATION_REF_CAPTURE_WIDTH,
             captureHeight = AUTOMATION_REFERENCE_CAPTURE_HEIGHT,
             curveAmount = AUTOMATION_CURVE_AMOUNT,
             curveFrequency = AUTOMATION_CURVE_FREQUENCY,
@@ -5297,27 +5293,9 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
 
     private fun evidenceReady(engine: CombatEngineAPI): Boolean {
         val telemetry = ProjectileVfxDriverPlugin.telemetrySnapshot(engine)
-        return telemetry.lastVisibleLength >= referenceCaptureVisibleLengthWorld() &&
-            telemetry.lastElapsed >= SCREENSHOT_FLIGHT_SECONDS
-    }
-
-    /**
-     * 截图参考带长（世界单位）：预览函数产出于参考像素域（captureWidth=layoutReferenceWidth），
-     * 乘 worldUnitsPerPixel 折回世界，与 driver 遥测（世界单位，见 ProjectileVfxDriverImpl.buildFlightLayout）同域可比。
-     */
-    private fun referenceCaptureVisibleLengthWorld(): Float {
-        val policy = aod7Policy
-        val pixelLength = ASTDProjectileVfxLayout.previewFlightLayout(
-            trailStartWidth = policy.primaryTrailStartWidth,
-            elapsed = REFERENCE_CAPTURE_ELAPSED_SECONDS,
-            durationSeconds = policy.durationSeconds,
-            // 合成截图场景参数（与 automationPreviewTrack 一致）。
-            flightEndRatio = AUTOMATION_FLIGHT_END_RATIO,
-            dissolveStartRatio = policy.dissolveStartRatio,
-            preDissolveFraction = AUTOMATION_PRE_DISSOLVE_FRACTION,
-            captureWidth = policy.layoutReferenceWidth,
-        ).visibleLength
-        return pixelLength * automationReferenceWorldUnitsPerPixel()
+        // Static Trail 迁移（2026-09）后拖尾长度由 BoxUtil 托管、不再有可视长度遥测；
+        // 截图成熟度按飞行时长判定（拖尾三段时长远短于本窗口）。
+        return telemetry.lastElapsed >= SCREENSHOT_FLIGHT_SECONDS
     }
 
     private fun writeTelemetry(
@@ -5409,12 +5387,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 val plLanceA = findPlLance(plShipA)
                 val plLanceB = findPlLance(plShipB)
                 appendLine("  \"runtimeElapsedSeconds\": 0,")
-                appendLine("  \"runtimeVisibleLength\": 0,")
-                appendLine("  \"runtimeBeamAlpha\": 0,")
-                appendLine("  \"runtimeWorldUnitsPerPixel\": 0,")
                 appendLine("  \"runtimeTrackedCount\": ${vfxTelemetry.trackedCount},")
                 appendLine("  \"runtimeLastProjectileSpecId\": ${jsonString(vfxTelemetry.lastProjectileSpecId)},")
-                appendLine("  \"referenceVisibleLength\": 0,")
                 // ---- 机制证据（规格 09 §4.2 烟测检查点）----
                 appendLine("  \"plPhase\": \"$plPhase\",")
                 appendLine("  \"plLanceASlotId\": ${jsonString(plLanceA?.slot?.id)},")
@@ -5453,12 +5427,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 val smLauncher = findSmLauncher(smPlayer)
                 val smPod = findSmPod(smPlayer)
                 appendLine("  \"runtimeElapsedSeconds\": 0,")
-                appendLine("  \"runtimeVisibleLength\": 0,")
-                appendLine("  \"runtimeBeamAlpha\": 0,")
-                appendLine("  \"runtimeWorldUnitsPerPixel\": 0,")
                 appendLine("  \"runtimeTrackedCount\": ${vfxTelemetry.trackedCount},")
                 appendLine("  \"runtimeLastProjectileSpecId\": ${jsonString(vfxTelemetry.lastProjectileSpecId)},")
-                appendLine("  \"referenceVisibleLength\": 0,")
                 // ---- 机制证据（规格 08 §4.2 烟测检查点）----
                 appendLine("  \"smPhase\": \"$smPhase\",")
                 appendLine("  \"smLauncherSlotId\": ${jsonString(smLauncher?.slot?.id)},")
@@ -5502,12 +5472,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 val gdLauncher = findGdLauncher(gdPlayer)
                 val gdPod = findGdPod(gdPlayer)
                 appendLine("  \"runtimeElapsedSeconds\": 0,")
-                appendLine("  \"runtimeVisibleLength\": 0,")
-                appendLine("  \"runtimeBeamAlpha\": 0,")
-                appendLine("  \"runtimeWorldUnitsPerPixel\": 0,")
                 appendLine("  \"runtimeTrackedCount\": ${vfxTelemetry.trackedCount},")
                 appendLine("  \"runtimeLastProjectileSpecId\": ${jsonString(vfxTelemetry.lastProjectileSpecId)},")
-                appendLine("  \"referenceVisibleLength\": 0,")
                 // ---- 机制证据（规格 10 §4.2 烟测检查点）----
                 appendLine("  \"gdPhase\": \"$gdPhase\",")
                 appendLine("  \"gdLauncherSlotId\": ${jsonString(gdLauncher?.slot?.id)},")
@@ -5536,12 +5502,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 val ssCarrier = findSsEnemyCarrier(engine)
                 val ssWeapon = findSsWeapon(ssPlayer)
                 appendLine("  \"runtimeElapsedSeconds\": 0,")
-                appendLine("  \"runtimeVisibleLength\": 0,")
-                appendLine("  \"runtimeBeamAlpha\": 0,")
-                appendLine("  \"runtimeWorldUnitsPerPixel\": 0,")
                 appendLine("  \"runtimeTrackedCount\": ${vfxTelemetry.trackedCount},")
                 appendLine("  \"runtimeLastProjectileSpecId\": ${jsonString(vfxTelemetry.lastProjectileSpecId)},")
-                appendLine("  \"referenceVisibleLength\": 0,")
                 // ---- 机制证据（规格 07 §4.2 烟测检查点）----
                 appendLine("  \"ssPhase\": \"$ssPhase\",")
                 appendLine("  \"ssSlotId\": ${jsonString(ssWeapon?.slot?.id)},")
@@ -5571,12 +5533,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 val psTarget = findPsTarget(engine)
                 val psWeapon = findPsWeapon(psPlayer)
                 appendLine("  \"runtimeElapsedSeconds\": 0,")
-                appendLine("  \"runtimeVisibleLength\": 0,")
-                appendLine("  \"runtimeBeamAlpha\": 0,")
-                appendLine("  \"runtimeWorldUnitsPerPixel\": 0,")
                 appendLine("  \"runtimeTrackedCount\": ${vfxTelemetry.trackedCount},")
                 appendLine("  \"runtimeLastProjectileSpecId\": ${jsonString(vfxTelemetry.lastProjectileSpecId)},")
-                appendLine("  \"referenceVisibleLength\": 0,")
                 // ---- 机制证据（规格 06 §4.2 烟测检查点）----
                 appendLine("  \"psPhase\": \"$psPhase\",")
                 appendLine("  \"psSlotId\": ${jsonString(psWeapon?.slot?.id)},")
@@ -5602,12 +5560,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 val qjW2 = findQjWeapon(qjPlayer, QJ_PLAYER_SLOT_W2)
                 val qjEnemyW = qjEnemy?.allWeapons?.firstOrNull { it.id == ASTDInGameAutomationScenario.QJ_WEAPON_ID }
                 appendLine("  \"runtimeElapsedSeconds\": 0,")
-                appendLine("  \"runtimeVisibleLength\": 0,")
-                appendLine("  \"runtimeBeamAlpha\": 0,")
-                appendLine("  \"runtimeWorldUnitsPerPixel\": 0,")
                 appendLine("  \"runtimeTrackedCount\": ${vfxTelemetry.trackedCount},")
                 appendLine("  \"runtimeLastProjectileSpecId\": ${jsonString(vfxTelemetry.lastProjectileSpecId)},")
-                appendLine("  \"referenceVisibleLength\": 0,")
                 // ---- 机制证据（规格 05 §2.5 烟测检查点）----
                 appendLine("  \"qjPhase\": \"$qjPhase\",")
                 appendLine("  \"qjW1SlotId\": ${jsonString(qjW1?.slot?.id)},")
@@ -5647,12 +5601,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 val avPlayerW = findAvWeapon(findAvPlayer(engine))
                 val avSynergyW = findAvWeapon(findAvSynergy(engine))
                 appendLine("  \"runtimeElapsedSeconds\": 0,")
-                appendLine("  \"runtimeVisibleLength\": 0,")
-                appendLine("  \"runtimeBeamAlpha\": 0,")
-                appendLine("  \"runtimeWorldUnitsPerPixel\": 0,")
                 appendLine("  \"runtimeTrackedCount\": ${vfxTelemetry.trackedCount},")
                 appendLine("  \"runtimeLastProjectileSpecId\": ${jsonString(vfxTelemetry.lastProjectileSpecId)},")
-                appendLine("  \"referenceVisibleLength\": 0,")
                 // ---- 机制证据（规格 04 §4.2 烟测检查点）----
                 appendLine("  \"avPhase\": \"$avPhase\",")
                 appendLine("  \"avPlayerSlotId\": ${jsonString(avPlayerW?.slot?.id)},")
@@ -5685,12 +5635,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 val playerEda = player?.allWeapons?.firstOrNull { it.id == ASTDInGameAutomationScenario.EDA_WEAPON_ID }
                 val enemyEda = enemy?.allWeapons?.firstOrNull { it.id == ASTDInGameAutomationScenario.EDA_WEAPON_ID }
                 appendLine("  \"runtimeElapsedSeconds\": 0,")
-                appendLine("  \"runtimeVisibleLength\": 0,")
-                appendLine("  \"runtimeBeamAlpha\": 0,")
-                appendLine("  \"runtimeWorldUnitsPerPixel\": 0,")
                 appendLine("  \"runtimeTrackedCount\": ${vfxTelemetry.trackedCount},")
                 appendLine("  \"runtimeLastProjectileSpecId\": ${jsonString(vfxTelemetry.lastProjectileSpecId)},")
-                appendLine("  \"referenceVisibleLength\": 0,")
                 // ---- 机制证据（规格 03 §4.2 烟测检查点）----
                 appendLine("  \"edaPhase\": \"$edaPhase\",")
                 appendLine("  \"edaRangeZeroFlux\": ${formatFloat(edaRangeZeroFlux)},")
@@ -5718,12 +5664,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 val player = findChargeNeedlePlayer(engine)
                 val enemyStacks = enemy?.chargeNeedleStacks()
                 appendLine("  \"runtimeElapsedSeconds\": 0,")
-                appendLine("  \"runtimeVisibleLength\": 0,")
-                appendLine("  \"runtimeBeamAlpha\": 0,")
-                appendLine("  \"runtimeWorldUnitsPerPixel\": 0,")
                 appendLine("  \"runtimeTrackedCount\": ${vfxTelemetry.trackedCount},")
                 appendLine("  \"runtimeLastProjectileSpecId\": ${jsonString(vfxTelemetry.lastProjectileSpecId)},")
-                appendLine("  \"referenceVisibleLength\": 0,")
                 // ---- 机制证据（规格 §4.2 验收要点）----
                 appendLine("  \"chargeNeedlePhase\": \"$chargeNeedlePhase\",")
                 appendLine("  \"chargeNeedleTargetStacks\": ${enemyStacks?.stacks ?: 0},")
@@ -5756,12 +5698,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 val crewed = findCrewedLens(engine)
                 val enemies = lensPhase2Enemies(engine)
                 appendLine("  \"runtimeElapsedSeconds\": 0,")
-                appendLine("  \"runtimeVisibleLength\": 0,")
-                appendLine("  \"runtimeBeamAlpha\": 0,")
-                appendLine("  \"runtimeWorldUnitsPerPixel\": 0,")
                 appendLine("  \"runtimeTrackedCount\": 0,")
                 appendLine("  \"runtimeLastProjectileSpecId\": null,")
-                appendLine("  \"referenceVisibleLength\": 0,")
                 appendLine("  \"lensDeployedShipIds\": ${jsonStringList(lensDeployedShipIds(engine))},")
                 // ---- 机制证据 ----
                 appendLine("  \"echoFixationFieldActive\": ${safeBool { EchoFixationField.hasActiveField(engine) }},")
@@ -5785,12 +5723,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 val lensVariant = try { lens?.variant } catch (_: Throwable) { null }
                 val lensShield = try { lens?.shield } catch (_: Throwable) { null }
                 appendLine("  \"runtimeElapsedSeconds\": 0,")
-                appendLine("  \"runtimeVisibleLength\": 0,")
-                appendLine("  \"runtimeBeamAlpha\": 0,")
-                appendLine("  \"runtimeWorldUnitsPerPixel\": 0,")
                 appendLine("  \"runtimeTrackedCount\": 0,")
                 appendLine("  \"runtimeLastProjectileSpecId\": null,")
-                appendLine("  \"referenceVisibleLength\": 0,")
                 appendLine("  \"lensDeployedShipIds\": ${jsonStringList(lensDeployedShipIds(engine))},")
                 appendLine("  \"lensCoreHullmod\": ${safeBool { lensVariant?.hasHullMod(LensArrayCoreHullModIds.CORE) == true }},")
                 appendLine("  \"lensNanoHullmod\": ${safeBool { lensVariant?.hasHullMod("astd_nano_restoration_protocol") == true }},")
@@ -5813,12 +5747,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 val plasmaSystemTarget = plasmaAIFlagTarget(plasmaArch, ShipwideAIFlags.AIFlags.TARGET_FOR_SHIP_SYSTEM)
                 val plasmaManeuverTarget = plasmaAIFlagTarget(plasmaArch, ShipwideAIFlags.AIFlags.MANEUVER_TARGET)
                 appendLine("  \"runtimeElapsedSeconds\": 0,")
-                appendLine("  \"runtimeVisibleLength\": 0,")
-                appendLine("  \"runtimeBeamAlpha\": 0,")
-                appendLine("  \"runtimeWorldUnitsPerPixel\": 0,")
                 appendLine("  \"runtimeTrackedCount\": 0,")
                 appendLine("  \"runtimeLastProjectileSpecId\": null,")
-                appendLine("  \"referenceVisibleLength\": 0,")
                 appendLine("  \"arcProductionMissingShips\": ${jsonStringList(arcProductionMissingShips(engine))},")
                 appendLine("  \"arcProductionDeployedShipIds\": ${jsonStringList(arcProductionDeployedShipIds(engine))},")
                 appendLine("  \"arcProductionDeployedVariantIds\": ${jsonStringList(arcProductionDeployedVariantIds(engine))},")
@@ -5863,12 +5793,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 appendLine("  \"plasmaArchSystemSpecTags\": ${jsonStringList(plasmaSpec?.tags?.toList()?.sorted() ?: emptyList())},")
             } else {
                 appendLine("  \"runtimeElapsedSeconds\": ${formatFloat(vfxTelemetry.lastElapsed)},")
-                appendLine("  \"runtimeVisibleLength\": ${formatFloat(vfxTelemetry.lastVisibleLength)},")
-                appendLine("  \"runtimeBeamAlpha\": ${formatFloat(vfxTelemetry.lastBeamAlpha)},")
-                appendLine("  \"runtimeWorldUnitsPerPixel\": ${formatFloat(vfxTelemetry.lastWorldUnitsPerPixel)},")
                 appendLine("  \"runtimeTrackedCount\": ${vfxTelemetry.trackedCount},")
                 appendLine("  \"runtimeLastProjectileSpecId\": ${jsonString(vfxTelemetry.lastProjectileSpecId)},")
-                appendLine("  \"referenceVisibleLength\": ${formatFloat(referenceCaptureVisibleLengthWorld())},")
             }
             appendLine("  \"fallbackInPlay\": ${fallbackProjectile?.let { engine.isEntityInPlay(it) } ?: false},")
             appendLine("  \"fallbackExpired\": ${fallbackProjectile?.isExpired ?: false},")
@@ -6086,7 +6012,11 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private const val AUTOMATION_FLIGHT_END_RATIO = 0.6f
         private const val AUTOMATION_PRE_DISSOLVE_FRACTION = 0.82f
         private const val SCREENSHOT_FLIGHT_SECONDS = 0.13333334f
-        private const val REFERENCE_CAPTURE_ELAPSED_SECONDS = 0.3004f
+        // 旧 aod7 spec 的拖尾锚宽/飞行时长/溶解起点/参考取景宽（Static Trail 迁移后 policy 不再携带，取景曲线按常量固化）。
+        private const val AUTOMATION_REF_TRAIL_START_WIDTH = 96f
+        private const val AUTOMATION_REF_DURATION_SECONDS = 1.25f
+        private const val AUTOMATION_REF_DISSOLVE_START_RATIO = 0.6f
+        private const val AUTOMATION_REF_CAPTURE_WIDTH = 1846f
         private const val PLASMA_AI_PRESSURE_RANGE = 1800f
         // 电荷针刺场景：相位机与锚点。
         private const val CHARGE_NEEDLE_PHASE_SHIELD = "SHIELD"

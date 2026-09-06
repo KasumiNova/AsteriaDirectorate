@@ -2,6 +2,17 @@
   "ruleCommandPackages": [
     "cn.kasuminova.astd.campaign.rules"
   ],
+  "graphics": {
+    "fx": {
+      "astd_trails_twin": "graphics/fx/astd_trails_twin.png",
+      "astd_trails_smooth": "graphics/fx/astd_trails_smooth.png",
+      "astd_trails_zappy": "graphics/fx/astd_trails_zappy.png",
+      "astd_trails_zappysmooth": "graphics/fx/astd_trails_zappysmooth.png",
+      "astd_trails_contrail": "graphics/fx/astd_trails_contrail.png",
+      "astd_trails_flow": "graphics/fx/astd_trails_flow.png",
+      "astd_trails_surge": "graphics/fx/astd_trails_surge.png"
+    }
+  },
   "plugins": {
     "astd_globalCombatPlugin": "cn.kasuminova.astd.combat.effect.generic.ASTDGlobalCombatPlugin"
   },

@@ -9,7 +9,7 @@ description: "BoxUtil 使用指南（API 速览、调试建议、避坑点），
 
 本指南适用于本项目中所有基于 BoxUtil 的渲染/VFX 逻辑，包括：
 
-- 光束/拖尾（TrailEntity）
+- 光束/拖尾（TrailEntity / Static Trail 系统）
 - 扭曲/透镜（DistortionEntity）
 - Sprite/文本渲染（SpriteEntity / TextField）
 - 曲线/段渲染（CurveEntity / SegmentEntity）
@@ -25,8 +25,8 @@ description: "BoxUtil 使用指南（API 速览、调试建议、避坑点），
 - 完整 API 源码工程：`/home/hikari_nova/IdeaProjects/BoxUtil/api/src/`（只读参考）
 - 示例战役代码：`/home/hikari_nova/IdeaProjects/BoxUtil/backends/src/data/missions/BUtilTestMission/MissionDefinition.java`
 - 本仓库已集成 BoxUtil 的封装工具：
-  - `src/main/kotlin/.../weapons/common/boxutil/BoxUtilCombatVfx.kt`
-  - `src/main/kotlin/.../weapons/common/boxutil/BoxUtilProjectileTrails.kt`
+  - `modules/internal/astd-render/.../renderer/boxutil/BoxUtilCombatVfx.kt`（初始化/光束拖尾工厂）
+  - `modules/internal/astd-render/.../impl/render/StaticTrailComponent.kt` + `StaticTrailDataFactory.kt` + `ASTDProjectileTrailTracker.kt`（弹体拖尾，Static Trail 管线）
 
 ## API 速览（常用）
 
@@ -73,6 +73,19 @@ description: "BoxUtil 使用指南（API 速览、调试建议、避坑点），
 - `CurveEntity` / `SegmentEntity`：曲线/段渲染
 - `TextFieldEntity` / `TextFieldObject`：高性能文本渲染
 
+### 5.5) Static Trail 系统（1.6.0，弹体拖尾首选）
+
+- `StaticTrailData(id, initCapacity: Short)`：一条拖尾风格 + 一块专属环形 vRAM 池的**常量**配置（池以 id 为键，配置须 const，建好缓存复用）。
+  - 链式 setter：`setDurFadeIn/Full/FadeOut`（秒，三段总和 ≥ 0.1）、`setSizeIn/setSizeOut`（头/尾宽，随生命线性 mix）、`setTexturePixels`（平铺周期，世界单位）、`setTextureSpeed`（su/s）、`setColorIn/setColorOut(Vector4f)`、`setAdditiveBlend(true)`
+  - `material.setDiffuse/setEmissive(SpriteAPI)` + `setEmissiveColor` + `setGlowPower`（bloom）
+- 注册：`CombatRenderingManager.addStaticTrail(data, projectile, CombatEngineLayers.*, tracker)` → boolean；**不需先 put 进 StaticTrailManager**。
+- `StaticTrailTracker.advance(amount, elapsedTime, result)`：系统每帧回调，上报锚点；result 语义：
+  - `setCurrentLocation(...)` / `setCurrentFacing(x, y)`（归一化向量）
+  - `isNotRecommendedRecordsCurrent(pos)` → `pauseOnce()`（跨地图跳变时暂停记录）
+  - 弹体消亡自查（wasRemoved/isExpired/isFading）→ `destroy()`：带体按三段时长自然播完（尾先头后）
+  - `isExpired`（回调侧）
+- 本项目弹体拖尾已全面接入本系统（staticTrail DSL → `StaticTrailComponent`），贴图约定 N×64（X=带长向）；详见 projectile-trail-guidelines。
+
 ### 6) 渲染管理器
 
 - `CombatRenderingManager.addEntity(...)` / `CampaignRenderingManager.addEntity(...)`
@@ -105,21 +118,21 @@ description: "BoxUtil 使用指南（API 速览、调试建议、避坑点），
   - `createAndAddTaperedBeamTrailFromCenter(...)`
   - `createAndAddTaperedBeamTrailFromCenterReversedU(...)`
 
-### B) `BoxUtilProjectileTrails`
+### B) 弹体拖尾（Static Trail 管线，1.6.0 起）
 
 - 负责：
-  - Projectile 的拖尾/锥形前束管理
-  - 淡出/超射程“继续飞行”视觉补偿
-  - （历史实现）在 BoxUtil 创建失败时可能会回退为纯粒子尾焰
+  - DSL 声明（`ProjectileVfxSpecs.kt` 的 `staticTrail{}`）→ `StaticTrailDataFactory` 翻译/缓存 `StaticTrailData`
+  - `ASTDProjectileTrailTracker` 上报弹体锚点（headLead 前移 + recede 退距 + wobble 蛇行），消亡 destroy 自然播完
+  - `StaticTrailComponent` 挂在 RenderEntity 树上，attach 时校验贴图并注册
+- 详细参数面与调参见 projectile-trail-guidelines。
 
 > 规范提示：新写的渲染/VFX 逻辑不建议再引入“BoxUtil + 原版渲染”的双实现降级分支；BoxUtil 出问题应尽快报告并修复。
 
 ### C) 典型引用点
 
-- `weapons/common/projectile/TaperedBeamTrailsVfx.kt`
-- `weapons/shared/gravitycollapse/GravityCollapseVfx.kt`
-- `weapons/arc/signature/stellarjet/*`（束体 + DistortionEntity）
-- `weapons/common/projectile/ProjectileVfxPresets.kt`
+- `modules/internal/astd-combat/.../renderer/projectile/driver/ProjectileVfxSpecs.kt`（staticTrail DSL 登记面）
+- `modules/internal/astd-render/.../renderer/boxutil/BoxUtilCombatVfx.kt`（tapered beam trail）
+- `modules/internal/astd-combat/.../combat/effect/generic/gravitycollapse/GravityCollapseVfx.kt`
 
 ## 调试建议
 
@@ -140,8 +153,7 @@ description: "BoxUtil 使用指南（API 速览、调试建议、避坑点），
   - 可用 `RenderingUtil.getHighestCombatLayer()` / `getLowestCombatLayer()` 参考
 
 - **调试可见性**：
-  - `BoxUtilProjectileTrails` 提供 `debugForceVisible` 粒子模式
-  - 若你观察到 fallback 粒子，通常意味着 BoxUtil 路径失败：应优先定位失败原因
+  - Static Trail 层注册失败时 `StaticTrailComponent` 会 WARN（贴图路径/BoxUtil 未 ready），日志先行定位
   - `RenderingUtil.debugText(...)` 仅限开发期，发布版避免调用
 
 ## 性能与规模化渲染建议
@@ -177,7 +189,7 @@ description: "BoxUtil 使用指南（API 速览、调试建议、避坑点），
    - 本项目固定使用长 `full` + 由调用方控制淡出；避免 setGlobalTimerOnce 误删。
 
 4) **淡出时反复重置 timer 会引发末帧闪烁**
-   - `BoxUtilProjectileTrails` 已避免在 FADING → REMOVED 时重置 globalTimer。
+   - TrailEntity 路径固定使用长 `full` + 由调用方控制淡出；Static Trail 路径的消亡播完由系统三段时长托管（tracker 只调一次 `destroy()`）。
 
 5) **弹体 facing 与速度方向不一致**
    - 对高速弹体，推荐使用速度向量计算朝向（项目中已有实现）。
@@ -194,8 +206,8 @@ description: "BoxUtil 使用指南（API 速览、调试建议、避坑点），
 ## 参考资料
 
 - 本仓库内部封装：
-  - `weapons/common/boxutil/BoxUtilCombatVfx.kt`
-  - `weapons/common/boxutil/BoxUtilProjectileTrails.kt`
+  - `modules/internal/astd-render/.../renderer/boxutil/BoxUtilCombatVfx.kt`
+  - `modules/internal/astd-render/.../impl/render/StaticTrailComponent.kt`（Static Trail 弹体拖尾）
 - BoxUtil 本体：`/mods/BoxUtil/jars/BoxUtilMod.jar`
 - BoxUtil API 源码：`/home/hikari_nova/IdeaProjects/BoxUtil/api/src/`
 - 示例战役源码：`/home/hikari_nova/IdeaProjects/BoxUtil/backends/src/data/missions/BUtilTestMission/MissionDefinition.java`

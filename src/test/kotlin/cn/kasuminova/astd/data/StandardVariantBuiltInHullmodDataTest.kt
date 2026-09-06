@@ -107,7 +107,6 @@ class StandardVariantBuiltInHullmodDataTest {
             ),
             "astd_negentropy_edge" to listOf("astd_virtual_particle_lattice_web", "astd_transient_potential_manifold"),
             "astd_plasma_arch" to listOf(
-                "stabilizedshieldemitter",
                 "missleracks",
                 "astd_plasma_armor_shield",
                 "astd_ionized_recoil_accumulator",

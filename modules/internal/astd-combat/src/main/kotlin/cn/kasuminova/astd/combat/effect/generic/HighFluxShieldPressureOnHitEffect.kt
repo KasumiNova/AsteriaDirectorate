@@ -1,6 +1,5 @@
 package cn.kasuminova.astd.combat.effect.generic
 
-import cn.kasuminova.astd.combat.effect.generic.projectile.ProjectileVfxUtil
 import cn.kasuminova.astd.impl.render.StrikeSprayVfx
 import cn.kasuminova.astd.renderer.effect.system.ArcFlareOverdriveVisualState
 import cn.kasuminova.astd.internal.debug.CombatCaps

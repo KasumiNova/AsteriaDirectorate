@@ -228,13 +228,18 @@ class ASTDInGameAutomationScenarioTest {
             "viewportVisibleWidth",
             "viewportVisibleHeight",
             "runtimeElapsedSeconds",
+            "runtimeLastProjectileSpecId",
+        ).forEach { field ->
+            assertTrue(source.contains("\\\"$field\\\""), "missing diagnostics field: $field")
+        }
+        // 旧拖尾管线的遥测字段已随 Static Trail 迁移删除，不得复活
+        listOf(
             "runtimeVisibleLength",
             "runtimeBeamAlpha",
             "runtimeWorldUnitsPerPixel",
-            "runtimeLastProjectileSpecId",
             "referenceVisibleLength",
         ).forEach { field ->
-            assertTrue(source.contains("\\\"$field\\\""), "missing diagnostics field: $field")
+            assertFalse(source.contains("\\\"$field\\\""), "legacy trail diagnostics field must stay removed: $field")
         }
         assertTrue(source.contains("private fun writeTelemetry("), "automation must keep the SSOptimizer telemetry hook")
         assertTrue(source.contains("writeTelemetry("), "automation should call the patched telemetry hook")
@@ -279,7 +284,6 @@ class ASTDInGameAutomationScenarioTest {
             "shipSpriteWidth",
             "shipSpriteHeight",
             "runtimeLastProjectileSpecId",
-            "referenceVisibleLength",
         ).forEach { field ->
             assertTrue(diagnosticsBody.contains("\\\"$field\\\""), "missing diagnostics field: $field")
         }
@@ -316,10 +320,6 @@ class ASTDInGameAutomationScenarioTest {
         assertTrue(source.contains("SCREENSHOT_FLIGHT_SECONDS"), "capture delay should be an explicit automation constant")
         assertTrue(source.contains("visualFramesWritten > 0 && elapsed - lastVisualFrameAt < 0.18f"), "first evidence frame should be captured on the completion frame")
         assertTrue(source.contains("FALLBACK_PROJECTILE_SPEED = ${projSpeed.toInt()}f"), "fallback projectile should use weapon_data proj speed instead of weapon range")
-        assertTrue(source.contains("referenceCaptureVisibleLength"), "capture length should be derived from the preview reference contract")
-        assertTrue(source.contains("previewFlightLayout"), "capture length should share the TS preview flight layout function")
-        assertTrue(source.contains("REFERENCE_CAPTURE_ELAPSED_SECONDS = 0.3004f"), "automation should capture at the same time as the AOD-7 curved preview parity reference")
-        assertFalse(source.contains("CAPTURE_TRAIL_MIN_LENGTH = 840f"), "capture should not wait for a hardcoded full tail cap when the reference frame is shorter")
         assertTrue(source.contains("driveFallbackProjectileCurve"), "automation should drive a real curved projectile path for curve parity screenshots")
         assertTrue(source.contains("AUTOMATION_CURVE_AMOUNT = 96f"), "automation curve should match the preview curve reference amplitude")
         assertTrue(source.contains("previewFlightTrack"), "automation curve should use the shared preview flight track instead of a private curve formula")

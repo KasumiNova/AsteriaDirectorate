@@ -10,85 +10,103 @@ import kotlin.test.assertTrue
 /**
  * 手写 DSL spec 的蓝图自检：验证 [ProjectileVfxSpecs] 的构建函数产出的 [ProjectileVfxTreeSpec] 蓝图拓扑与驱动策略。
  *
- * 三层混合改版后：简单 spec = trail 风格声明（驱动锚点）+ twin 外带 / smooth 核心 / zappy 装饰三条贴图拖尾
- * （弹头改由原版弹体渲染承担，代码弹头仅 aod7 hero 保留），全部参数由文件底部常量与公式纯函数派生——
- * 本测试含公式数值锚点与全 10 个简单 spec 的接线守护。
+ * Static Trail 迁移（2026-09）后：简单 spec = 三条 Static Trail 贴图拖尾（twin 外带 / smooth 核心 / zappy 装饰），
+ * 弹头全部由原版弹体渲染承担（aod7 亦不例外），全部参数由文件底部常量与公式纯函数派生——
+ * 本测试含公式数值锚点与全 spec 的接线守护。
  * 蓝图 → RenderEntity 场景树的组装（组件类型/节点 id/renderOrder）由 astd-render 的 ProjectileVfxTreeAssemblerTest 守护。
  */
 class ProjectileVfxSpecsTest {
 
     @Test
-    fun `aod7 蓝图含弹头层与两条贴图拖尾`() {
+    fun `aod7 蓝图：twin 与 zappy 两条 Static Trail 拖尾 zappy 带 wobble`() {
         val vfx = assertNotNull(ProjectileVfxSpecs.build("astd_aod7_shot"))
 
-        // 贴图拖尾即拖尾主体：twin(layer1 垫底) + zappy(layer2)；弹头为代码网格 head 层；trail{} 仅风格声明。
-        // aod7 豁免三层混合改版：无 twist、宽度不翻倍、head 层保留。
-        assertEquals(listOf("twin", "zappy"), vfx.tree.texTrails.map { it.first })
-        assertNotNull(vfx.tree.head, "aod7 保留代码弹头层")
-        assertNotNull(vfx.tree.trailLayer, "head 层以 trail{} 为基宽/基色来源")
-        val twin = vfx.tree.texTrails.first { it.first == "twin" }.second
-        val zappy = vfx.tree.texTrails.first { it.first == "zappy" }.second
-        assertEquals(0f, twin.twistMaxAngleDeg, "aod7 豁免随机扭转")
-        assertEquals(0f, zappy.twistMaxAngleDeg, "aod7 豁免随机扭转")
+        assertEquals(listOf("twin", "zappy"), vfx.tree.staticTrails.map { it.first })
+        val twin = vfx.tree.staticTrails.first { it.first == "twin" }.second
+        val zappy = vfx.tree.staticTrails.first { it.first == "zappy" }.second
+
+        assertEquals(TEX_TWIN, twin.texturePath)
+        assertEquals(1, twin.layer)
+        assertEquals(30f, twin.width)
+        assertEquals(420f, twin.bandLength)
+        assertEquals(40f, twin.recede)
+        assertEquals(0f, twin.wobbleAmplitude, "twin 层不扰动")
+
+        assertEquals(TEX_ZAPPY, zappy.texturePath)
+        assertEquals(2, zappy.layer)
+        assertEquals(24f, zappy.width)
+        assertEquals(420f, zappy.bandLength)
+        assertEquals(5f, zappy.wobbleAmplitude)
+        assertEquals(110f, zappy.wobbleWavelength)
+        assertEquals(30f, zappy.wobbleScroll)
+        assertEquals(0.8f, zappy.wobblePhase)
     }
 
     @Test
-    fun `aod7 策略逐字段对齐旧 preset 锚点取 trail 长宽`() {
+    fun `aod7 策略：仅淡出与 headLead 自动`() {
         val p = assertNotNull(ProjectileVfxSpecs.build("astd_aod7_shot")).policy
-        assertEquals(2f, p.minDistancePerNode)
-        assertEquals(96, p.maxHistoryNodes)
-        assertEquals(420f, p.distanceWindow)
-        assertEquals(60f, p.historyFps)
-        assertEquals(1.25f, p.durationSeconds)
-        assertEquals(0.6f, p.dissolveStartRatio)
-        assertEquals(1846f, p.layoutReferenceWidth)
         assertEquals(0.15f, p.hitFadeOutSeconds)
         assertEquals(0.15f, p.expireFadeOutSeconds)
         assertEquals(0.15f, p.removedFadeOutSeconds)
-        assertEquals(420f, p.primaryTrailLength)
-        assertEquals(96f, p.primaryTrailStartWidth)  // trail{} 恢复为锚点来源；viewportTailCap 由 layoutRef 主导
+        assertNull(p.headLeadWorld, "headLead 不声明 = 自动取弹体 spec.length/2")
     }
 
     @Test
-    fun `简单 spec 蓝图拓扑：三层贴图拖尾 无代码弹头`() {
-        // spc3：twin 外带 + smooth 核心 + zappy 装饰按声明序叠层；弹头由原版弹体渲染承担（无 head 层）；
-        // 策略锚点取 trail{} 长宽（数值不动，viewportTailCap 零回归）
+    fun `简单 spec 蓝图拓扑：三层 Static Trail 拖尾`() {
+        // spc3：twin 外带 + smooth 核心 + zappy 装饰按声明序叠层；弹头由原版弹体渲染承担。
         val plain = assertNotNull(ProjectileVfxSpecs.build("astd_spc3_shot"))
-        assertEquals(listOf("twin", "core", "zappy"), plain.tree.texTrails.map { it.first })
-        assertNull(plain.tree.head, "简单 spec 不再有代码弹头")
-        assertEquals(135f, plain.policy.primaryTrailLength)
-        assertEquals(6f, plain.policy.primaryTrailStartWidth)
+        assertEquals(listOf("twin", "core", "zappy"), plain.tree.staticTrails.map { it.first })
+
+        // bandWidth(6, 2.2)=round05(max(2.1, 6.93))=7 ×2 = 14；核心 ×0.5=7；装饰 ×0.6=8.5
+        val twin = plain.tree.staticTrails.first { it.first == "twin" }.second
+        val core = plain.tree.staticTrails.first { it.first == "core" }.second
+        val zappy = plain.tree.staticTrails.first { it.first == "zappy" }.second
+        assertEquals(14f, twin.width)
+        assertEquals(7f, core.width)
+        assertEquals(8.5f, zappy.width)
+        assertEquals(listOf(1, 2, 3), plain.tree.staticTrails.map { it.second.layer })
+        plain.tree.staticTrails.forEach { (_, spec) ->
+            assertEquals(135f, spec.bandLength)
+            assertEquals(10f, spec.recede, "headRecede(135)=round5(10.8)=10")
+        }
+
         assertEquals(0.18f, plain.policy.removedFadeOutSeconds)
         assertEquals(0.1f, plain.policy.hitFadeOutSeconds)
         assertEquals(0.22f, plain.policy.expireFadeOutSeconds)
-        assertEquals(1280f, plain.policy.layoutReferenceWidth)
+        assertNull(plain.policy.headLeadWorld)
     }
 
     @Test
     fun `未知 spec 返回 null；已接入 spec 均可构建`() {
         assertEquals(null, ProjectileVfxSpecs.build("astd_does_not_exist"))
-        // 抽查若干已迁移。
+        // 抽查若干已接入。
         assertTrue(ProjectileVfxSpecs.has("astd_aod7_shot"))
         assertTrue(ProjectileVfxSpecs.has("astd_spc3_shot"))
     }
 
     @Test
-    fun `平铺 滚动 节点 退距公式锚点`() {
+    fun `贯星之矛：三层拖尾之外追加光斑与锚点电弧`() {
+        val vfx = assertNotNull(ProjectileVfxSpecs.build("astd_piercing_lance_shot"))
+        assertEquals(listOf("twin", "core", "zappy"), vfx.tree.staticTrails.map { it.first })
+        assertEquals(listOf("core"), vfx.tree.boxFlares.map { it.first })
+        assertEquals(listOf("arc"), vfx.tree.anchorArcs.map { it.first })
+        assertNotNull(vfx.onFire, "贯星之矛带发射点扭曲钩子")
+    }
+
+    @Test
+    fun `平铺 滚动 退距公式锚点`() {
         assertEquals(55f, mainTile(135f))
         assertEquals(100f, mainTile(240f))
         assertEquals(25f, mainScroll(135f))
         assertEquals(40f, mainScroll(240f))
         assertEquals(70f, arcTile(135f))
         assertEquals(30f, arcScroll(135f))
-        assertEquals(16, trailNodes(135f))          // 下限 16
-        assertEquals(24, trailNodes(420f))          // 上限 24
-        assertEquals(21, trailNodes(340f))
         assertEquals(20f, headRecede(250f))
         assertEquals(25f, headRecede(310f))
     }
 
     @Test
-    fun `颜色公式锚点：头部近白高亮 中段主色 尾部压暗`() {
+    fun `颜色公式锚点：头部近白高亮 尾部压暗`() {
         val blue = ASTDColor(0.2f, 0.55f, 1f, 0.92f)
 
         val head = bandHeadColor(blue)
@@ -96,10 +114,6 @@ class ProjectileVfxSpecsTest {
         assertEquals(0.92f * 0.78f, head.alpha, 1e-3f)
         val headDim = bandHeadColor(blue, 0.45f)             // 外带/装饰层 alpha×0.45
         assertEquals(0.92f * 0.78f * 0.45f, headDim.alpha, 1e-3f)
-
-        val mid = bandMidColor(blue)
-        assertEquals(0.2f, mid.red, 1e-3f)
-        assertEquals(0.92f * 0.55f, mid.alpha, 1e-3f)
 
         val tail = bandTailColor(blue)
         assertEquals(0.2f * 0.16f, tail.red, 1e-3f)

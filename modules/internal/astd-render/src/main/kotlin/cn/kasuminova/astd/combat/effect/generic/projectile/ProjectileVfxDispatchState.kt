@@ -98,7 +98,6 @@ object ProjectileVfxDispatchState {
         // 目的：处理“同一场战斗内对象复用”与“pending 超时需要允许兜底重试”。
         unlock(projectile, ProjectileVfxKeys.PROJECTILE_VFX_ONFIRE_LOCK)
         unmark(projectile, ProjectileVfxKeys.PROJECTILE_VFX_ONFIRE_MARK)
-        unmark(projectile, ProjectileVfxKeys.PROJECTILE_VFX_COMMON_FX_SKIP)
     }
 
     private fun logLegacyBoolOnce(engine: CombatEngineAPI, which: String) {
