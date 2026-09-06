@@ -13,8 +13,9 @@ import kotlin.math.sin
  * 职责（旧自研驱动的残骸语义全部收在这里）：
  * - 锚点 = 弹体中心沿朝向提前（headLead − recede），再叠加 wobble 横向偏移（蛇行观感）；
  * - headLead 缺省取弹体 spec.length/2，对齐原版螺栓贴图视觉头部；
- * - 弹体消亡（wasRemoved/isExpired/isFading）→ [StaticTrailTracker.Result.destroy]，带体按三段时长
- *   自然播完（尾先头后），不再有加速消散窗口与前飞补偿（2026-09 迁移裁定）。
+ * - 弹体消亡（wasRemoved/isExpired）→ [StaticTrailTracker.Result.destroy]，带体按三段时长
+ *   自然播完（尾先头后）。**不含 isFading**：超射程/命中后的淡出期弹体仍在飞行，带体继续跟随，
+ *   直到弹体真正移出引擎才开始消散（2026-09 实机裁定）。
  *
  * 几何数学全部为文件内纯函数（[trailAnchor]/[wobbleOffset]），供单测直接调用。
  */
@@ -29,7 +30,7 @@ class ASTDProjectileTrailTracker(
 
     override fun advance(amount: Float, elapsedTime: Float, callback: StaticTrailTracker.Result) {
         if (callback.isExpired) return
-        if (projectile.wasRemoved() || projectile.isExpired || projectile.isFading) {
+        if (projectile.wasRemoved() || projectile.isExpired) {
             callback.destroy()
             return
         }

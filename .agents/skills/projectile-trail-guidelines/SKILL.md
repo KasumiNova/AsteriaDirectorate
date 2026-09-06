@@ -19,7 +19,7 @@ description: "弹体拖尾规范：统一走 staticTrail DSL（BoxUtil 1.6.0 Sta
 - **几何**：头宽 `width` → 尾宽 `width × tailWidthRatio`（默认 0.35）随生命线性收细；颜色 `headColor → tailColor` 两段渐变；additive 混合。
 - **图案**：平铺滚动贴图。`tileLength` = 一周期世界单位（REPEAT 平铺），`scrollSpeed` su/s；scroll/tile ≈ 每秒整图滚动次数。
 - **贴图规范**（2026-09 转置）：**N×64 PNG，X=带长向、Y=横向**（X 向 REPEAT 平铺，必须可无缝循环）；形在 alpha 通道，RGB 近白（染色来自节点色）。旧 64×N 素材已程序转置（`tools/rotate_trail_textures.py`）。
-- **消亡语义**：tracker 自查弹体消亡（wasRemoved/isExpired/isFading）→ `destroy()`，带体按三段时长自然播完（尾先头后）。**没有加速消散窗口、没有带头前飞补偿**（迁移裁定，勿加回）。
+- **消亡语义**：tracker 自查弹体消亡（wasRemoved/isExpired）→ `destroy()`，带体按三段时长自然播完（尾先头后）。**不含 isFading**——超射程/命中淡出期弹体仍在飞，带体继续跟随至弹体移出引擎才开始消散（2026-09 实机裁定）。**没有加速消散窗口、没有带头前飞补偿**（迁移裁定，勿加回）。
 - **拖尾锚点 = 弹体视觉头部**：tracker 锚点 = 弹体中心沿朝向提前（headLead − recede），headLead 默认 = 弹体 `spec.length/2`（原版螺栓贴图中心在弹体位置、视觉头部在 +length/2）；`lifecycle{ headLead(0f) }` 可锚回中心。`recede` 让带体亮端退到弹头之后。
 - **wobble**：tracker 记录节点时按逻辑时间横向正弦偏移（已落节点不回溯，带体呈蛇行）。
 - **bloom**：`glow(power)` 进 BoxUtil emissive → bloom G-buffer；emissive 复用 diffuse 贴图并以头部色染色。
