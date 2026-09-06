@@ -166,6 +166,19 @@
         63, -45.5,
         51, -45.5
       ]
+    },
+    {
+      "id": "LB 4",
+      "size": "LARGE",
+      "type": "LAUNCH_BAY",
+      "mount": "HIDDEN",
+      "arc": 360,
+      "angle": 0,
+      "locations": [
+        -61, 63,
+        -71, 77,
+        -80, 88.5
+      ]
     }
   ],
   "engineSlots": [
