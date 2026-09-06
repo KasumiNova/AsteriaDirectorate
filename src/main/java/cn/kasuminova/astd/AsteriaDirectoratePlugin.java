@@ -3,6 +3,7 @@ package cn.kasuminova.astd;
 import cn.kasuminova.astd.campaign.AsteriaTestCampaignBootstrap;
 import cn.kasuminova.astd.campaign.automation.CareerAutomationInstall;
 import cn.kasuminova.astd.campaign.bounty.BountyBootstrapper;
+import cn.kasuminova.astd.campaign.bounty.StandardCores;
 import cn.kasuminova.astd.campaign.story.StoryDialogInstall;
 import cn.kasuminova.astd.campaign.world.StoryWorldBootstrap;
 import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcFlareHullModUtilKt;
@@ -44,6 +45,8 @@ public final class AsteriaDirectoratePlugin extends BaseModPlugin {
         StoryDialogInstall.INSTANCE.install();
         // 注册难度设置（轨一：固有缩放系数）到 LunaLib 设置界面，并应用当前生效档位。
         DifficultySettingsRegistrar.INSTANCE.register();
+        // 预加载制式核心军官头像（SSOptimizer 延迟加载下裸 getSprite 是 textureID=0 黑壳）。
+        StandardCores.INSTANCE.preloadPortraits();
     }
 
     @Override
