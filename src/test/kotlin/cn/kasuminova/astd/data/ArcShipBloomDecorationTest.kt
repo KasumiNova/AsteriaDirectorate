@@ -12,6 +12,10 @@ class ArcShipBloomDecorationTest {
         val hulls = mapOf(
             "astd_radiation_belt" to "WS0009",
             "astd_plasma_arch" to "WS0011",
+            "astd_arc_flash" to "WS0005",
+            "astd_dark_tide_nebula" to "WS0009",
+            "astd_magnetosphere_disturbance" to "WS0012",
+            "astd_nebula_echo" to "WS0004",
         )
 
         val weaponData = read("contents/data/weapons/weapon_data.csv")

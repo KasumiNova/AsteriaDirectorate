@@ -1,111 +1,182 @@
 {
-    "bounds": [
-        70, 0,
-        50, 15,
-        20, 30,
-        -10, 38,
-        -50, 30,
-        -70, 10,
-        -70, -10,
-        -50, -30,
-        -10, -38,
-        20, -30,
-        50, -15
-    ],
-    "builtInMods": [],
-    "center": [
-        48, 80
-    ],
-    "collisionRadius": 80,
-    "coversColor": "",
-    "engineSlots": [
-        {
-            "angle": 180,
-            "contrailSize": 10,
-            "length": 30,
-            "location": [
-                -68, 12
-            ],
-            "style": "ASTD_ARC",
-            "width": 8
-        },
-        {
-            "angle": 180,
-            "contrailSize": 10,
-            "length": 30,
-            "location": [
-                -68, -12
-            ],
-            "style": "ASTD_ARC",
-            "width": 8
-        },
-        {
-            "angle": 180,
-            "contrailSize": 6,
-            "length": 20,
-            "location": [
-                -65, 0
-            ],
-            "style": "ASTD_ARC",
-            "width": 6
-        }
-    ],
-    "height": 150,
-    "hullId": "astd_arc_flash",
-    "hullName": "电弧闪",
-    "hullSize": "FRIGATE",
-    "shieldCenter": [
-        0, 0
-    ],
-    "shieldRadius": 85,
-    "spriteName": "graphics/ships/astd_arc_flash.png",
-    "style": "ASTD_HIGH_TECH",
-    "viewOffset": 0,
-    "weaponSlots": [
-        {
-            "angle": 0,
-            "arc": 150,
-            "id": "WS0001",
-            "locations": [
-                30, 18
-            ],
-            "mount": "TURRET",
-            "size": "SMALL",
-            "type": "ENERGY"
-        },
-        {
-            "angle": -0,
-            "arc": 150,
-            "id": "WS0002",
-            "locations": [
-                30, -18
-            ],
-            "mount": "TURRET",
-            "size": "SMALL",
-            "type": "ENERGY"
-        },
-        {
-            "angle": 90,
-            "arc": 5,
-            "id": "WS0003",
-            "locations": [
-                -15, 32
-            ],
-            "mount": "HARDPOINT",
-            "size": "SMALL",
-            "type": "MISSILE"
-        },
-        {
-            "angle": -90,
-            "arc": 5,
-            "id": "WS0004",
-            "locations": [
-                -15, -32
-            ],
-            "mount": "HARDPOINT",
-            "size": "SMALL",
-            "type": "MISSILE"
-        }
-    ],
-    "width": 96
+  "hullName": "电弧闪",
+  "hullId": "astd_arc_flash",
+  "hullSize": "FRIGATE",
+  "spriteName": "graphics/ships/astd_arc_flash.png",
+  "style": "ASTD_HIGH_TECH",
+  "height": 86,
+  "width": 78,
+  "center": [39, 43.5],
+  "collisionRadius": 47,
+  "shieldCenter": [0, -0],
+  "shieldRadius": 52,
+  "viewOffset": 0,
+  "builtInWeapons": {
+    "WS0005": "astd_arc_flash_bloom"
+  },
+  "weaponSlots": [
+    {
+      "id": "WS0001",
+      "size": "SMALL",
+      "type": "ENERGY",
+      "mount": "TURRET",
+      "arc": 90,
+      "angle": 0,
+      "locations": [-8, 16]
+    },
+    {
+      "id": "WS0002",
+      "size": "SMALL",
+      "type": "ENERGY",
+      "mount": "TURRET",
+      "arc": 90,
+      "angle": 0,
+      "locations": [-8, -16]
+    },
+    {
+      "id": "WS0003",
+      "size": "SMALL",
+      "type": "MISSILE",
+      "mount": "HARDPOINT",
+      "arc": 5,
+      "angle": 0,
+      "locations": [29.5, 13]
+    },
+    {
+      "id": "WS0004",
+      "size": "SMALL",
+      "type": "MISSILE",
+      "mount": "HARDPOINT",
+      "arc": 5,
+      "angle": 0,
+      "locations": [29.5, -13.5]
+    },
+    {
+      "id": "WS0005",
+      "size": "LARGE",
+      "type": "DECORATIVE",
+      "mount": "TURRET",
+      "renderOrderMod": 3,
+      "arc": 0,
+      "angle": 0,
+      "locations": [-0.5, 0.5]
+    }
+  ],
+  "engineSlots": [
+    {
+      "location": [-28.5, 30],
+      "length": 30,
+      "width": 10,
+      "angle": 150,
+      "contrailSize": 10,
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-30.5, 26.5],
+      "length": 17,
+      "width": 6,
+      "angle": 150,
+      "contrailSize": 6,
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-26.5, 33.5],
+      "length": 17,
+      "width": 6,
+      "angle": 150,
+      "contrailSize": 6,
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-28.5, -29],
+      "length": 30,
+      "width": 10,
+      "angle": -150,
+      "contrailSize": 10,
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-26.5, -32.5],
+      "length": 17,
+      "width": 6,
+      "angle": -150,
+      "contrailSize": 6,
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-30.5, -25.5],
+      "length": 17,
+      "width": 6,
+      "angle": -150,
+      "contrailSize": 6,
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-27.5, 11.5],
+      "length": 40,
+      "width": 10,
+      "angle": 150,
+      "contrailSize": 10,
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-29.5, 8],
+      "length": 22,
+      "width": 6,
+      "angle": 150,
+      "contrailSize": 6,
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-25.5, 15],
+      "length": 22,
+      "width": 6,
+      "angle": 150,
+      "contrailSize": 6,
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-27.5, -11.5],
+      "length": 40,
+      "width": 10,
+      "angle": -150,
+      "contrailSize": 10,
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-25.5, -15],
+      "length": 22,
+      "width": 6,
+      "angle": -150,
+      "contrailSize": 6,
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-29.5, -8],
+      "length": 22,
+      "width": 6,
+      "angle": -150,
+      "contrailSize": 6,
+      "style": "ASTD_ARC"
+    }  ],
+  "bounds": [
+    -37, -4,
+    -28.5, -7.5,
+    -31.5, -26.5,
+    -26, -37.5,
+    -8.5, -37,
+    8.5, -17.5,
+    18, -29.5,
+    40.5, -17.5,
+    31, -4.5,
+    31, 4.5,
+    40.5, 17.5,
+    18, 29.5,
+    8.5, 17.5,
+    -8.5, 37,
+    -26, 37.5,
+    -31.5, 26.5,
+    -28.5, 7.5,
+    -37, 4
+  ]
 }

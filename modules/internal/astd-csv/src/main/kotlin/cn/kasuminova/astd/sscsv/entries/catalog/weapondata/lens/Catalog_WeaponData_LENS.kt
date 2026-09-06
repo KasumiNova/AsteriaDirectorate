@@ -33,6 +33,51 @@ object Wpn_astd_gravitational_lens_bloom : WeaponDataEntry() {
     override val number: Int = 9206
 }
 
+/** Dark Tide Nebula：整船 bloom 描边层（装配界面/战斗 decorative outline）。 */
+object Wpn_astd_dark_tide_nebula_bloom : WeaponDataEntry() {
+    override val id: String = "astd_dark_tide_nebula_bloom"
+    override val name: String = weaponName(id)
+    override val tier: Int = 5
+    override val baseValue: Int = 0
+    override val range: Int = 0
+    override val turnRate: Int = 0
+    override val type: String = "OTHER"
+    override val tags: String = "no_drop, no_drop_salvage"
+    override val tech: String = "菀星设计局-紫菀"
+    override val noDpsInTooltip: Boolean = true
+    override val number: Int = 9230
+}
+
+/** Magnetosphere Disturbance：整船 bloom 描边层（装配界面/战斗 decorative outline）。 */
+object Wpn_astd_magnetosphere_disturbance_bloom : WeaponDataEntry() {
+    override val id: String = "astd_magnetosphere_disturbance_bloom"
+    override val name: String = weaponName(id)
+    override val tier: Int = 5
+    override val baseValue: Int = 0
+    override val range: Int = 0
+    override val turnRate: Int = 0
+    override val type: String = "OTHER"
+    override val tags: String = "no_drop, no_drop_salvage"
+    override val tech: String = "菀星设计局-紫菀"
+    override val noDpsInTooltip: Boolean = true
+    override val number: Int = 9231
+}
+
+/** Nebula Echo：整船 bloom 描边层（装配界面/战斗 decorative outline）。 */
+object Wpn_astd_nebula_echo_bloom : WeaponDataEntry() {
+    override val id: String = "astd_nebula_echo_bloom"
+    override val name: String = weaponName(id)
+    override val tier: Int = 5
+    override val baseValue: Int = 0
+    override val range: Int = 0
+    override val turnRate: Int = 0
+    override val type: String = "OTHER"
+    override val tags: String = "no_drop, no_drop_salvage"
+    override val tech: String = "菀星设计局-紫菀"
+    override val noDpsInTooltip: Boolean = true
+    override val number: Int = 9232
+}
+
 /** GCP 系列：引力坍缩炮（可装配版本；以持续命中坍缩 tick + AOE + 引力撕裂为核心机制）。 */
 object Wpn_astd_gcp12 : WeaponDataEntry() {
     override val id: String = "astd_gcp12"
