@@ -133,17 +133,21 @@ object ProjectileVfxSpecs {
      * 弹头 = 原版弹体渲染（2026-09 起，代码弹头网格已删）。
      * 拖尾吃 astd_trails 贴图（twin 脆丝垫底 layer1、zappy 电弧 layer2，宽比 twin=1.25×zappy）。
      * headLead 自动（spec.length/2）：原版螺栓已恢复，锚点对齐其视觉头部。
+     * recede 用标准公式（headRecede(420)=35）而非早期的 90：BoxUtil 30Hz 记录 cadence 下
+     * 2880su/s 最坏滞后 96su，recede 90 会把拖尾头推出螺栓覆盖区（中心−21−96 < 螺栓尾 −69），
+     * 暂停时定格成可见的带头脱节/跳变；recede ≤ headLead+spec.length/2−speed/30（=42）可保证
+     * 最坏相位下拖尾头仍藏在螺栓底下（2026-09 trail_pause_probe 三帧对照实测定论）。
      */
     private fun aod7Shot(): ProjectileVfx = projectileVfx("astd_aod7_shot") {
         fade { out(0.15f) }
 
         staticTrail("twin", TEX_TWIN) {
-            layer(1); width(30f); length(420f); recede(90f)
+            layer(1); width(30f); length(420f); recede(headRecede(420f))
             colors(0xCFE8FF90, 0x0A1C3810)
             tile(140f, 50f)
         }
         staticTrail("zappy", TEX_ZAPPY) {
-            layer(2); width(24f); length(420f); recede(90f)
+            layer(2); width(24f); length(420f); recede(headRecede(420f))
             colors(0xF0F8FFB4, 0x0A1C3812)
             tile(200f, 90f)
             glow(0.5f)
@@ -254,7 +258,9 @@ internal fun arcTile(length: Float): Float = round5(length / 2f)
 /** 装饰带滚动速度：L/4.5。 */
 internal fun arcScroll(length: Float): Float = round5(length / 4.5f)
 
-/** 带体头部退距：L×0.08（aod7 40/420≈0.095），带体亮端后移让原版螺栓弹头在带体前露出（禁 forward 偏移）。 */
+/** 带体头部退距：L×0.08（aod7 420→35），带体亮端后移让原版螺栓弹头在带体前露出（禁 forward 偏移）。
+ * 上限规则：recede ≤ headLead + 弹体 spec.length/2 − speed/30（BoxUtil NORMAL 30Hz 记录 cadence 的最坏滞后），
+ * 超过则暂停/恢复时拖尾头会露出螺栓覆盖区，定格成可见脱节（2026-09 trail_pause_probe 实证）。 */
 internal fun headRecede(length: Float): Float = round5(length * 0.08f)
 
 private fun mixWhite(color: ASTDColor, t: Float): ASTDColor = ASTDColor(

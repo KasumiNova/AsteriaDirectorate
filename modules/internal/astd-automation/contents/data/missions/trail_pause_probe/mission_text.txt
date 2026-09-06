@@ -1,0 +1,1 @@
+Dev automation scenario for capturing projectile trail pause/resume comparison frames.

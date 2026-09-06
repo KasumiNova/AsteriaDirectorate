@@ -30,7 +30,7 @@ class ProjectileVfxSpecsTest {
         assertEquals(1, twin.layer)
         assertEquals(30f, twin.width)
         assertEquals(420f, twin.bandLength)
-        assertEquals(90f, twin.recede)
+        assertEquals(35f, twin.recede, "headRecede(420)=round5(33.6)=35：recede ≤ headLead+length/2−speed/30=42，保证 30Hz cadence 最坏滞留下拖尾头仍藏在螺栓底下")
 
         assertEquals(TEX_ZAPPY, zappy.texturePath)
         assertEquals(2, zappy.layer)

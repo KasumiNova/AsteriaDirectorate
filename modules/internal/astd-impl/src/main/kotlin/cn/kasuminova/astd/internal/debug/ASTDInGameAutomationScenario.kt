@@ -43,6 +43,7 @@ object ASTDInGameAutomationScenario {
     const val PL_SCENARIO_ID: String = "piercing_lance_basic"
     const val PL_WEAPON_ID: String = "astd_piercing_lance"
     const val PL_PROJECTILE_SPEC_ID: String = "astd_piercing_lance_shot"
+    const val TPP_SCENARIO_ID: String = "trail_pause_probe"
     const val SHIP_ID: String = "astd_arc_flare"
     const val VARIANT_ID: String = "astd_arc_flare_Standard"
     const val WEAPON_ID: String = "astd_aod7"
@@ -215,6 +216,17 @@ object ASTDInGameAutomationScenario {
         val enabled = System.getProperty(ENABLED_PROPERTY)?.equals("true", ignoreCase = true) == true
         val scenario = System.getProperty(SCENARIO_PROPERTY, SCENARIO_ID)
         return enabled && scenario == PL_SCENARIO_ID
+    }
+
+    /**
+     * 拖尾暂停对照探针场景开关：镜像 [isPlEnabled]。
+     * 复用 aod7 舞台，按 BeforePause / DuringPause / AfterResume 三帧截图对照，
+     * 定位「暂停后射弹贴图/拖尾跳变」；相位机刻意不 unpause（其余场景分支均强制 unpause）。
+     */
+    fun isTrailPauseProbeEnabled(): Boolean {
+        val enabled = System.getProperty(ENABLED_PROPERTY)?.equals("true", ignoreCase = true) == true
+        val scenario = System.getProperty(SCENARIO_PROPERTY, SCENARIO_ID)
+        return enabled && scenario == TPP_SCENARIO_ID
     }
 
     fun outputDir(): Path {
