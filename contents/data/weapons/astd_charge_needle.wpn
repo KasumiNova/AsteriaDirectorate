@@ -26,7 +26,6 @@
     "barrelMode": "LINKED",
     "animationType": "MUZZLE_FLASH",
     "projectileSpecId": "astd_charge_needle_shot",
-    "onFireEffect": "cn.kasuminova.astd.combat.effect.generic.ProjectileSpecOnFireDispatcher",
     "everyFrameEffect": "cn.kasuminova.astd.combat.effect.generic.CombatVfxBootstrapEveryFrameEffect",
     "fireSoundTwo": "needler_fire"
 }

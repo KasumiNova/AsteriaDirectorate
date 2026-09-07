@@ -158,7 +158,7 @@ class StaticTrailBuilder(private val texturePath: String) {
     private var bandLength = 180f
     private var tileLength = 180f
     private var scrollSpeed = 0f
-    private var recede = 0f
+    private var recede: Float? = null
     private var glowPower = 0f
     private var angularInRange: ClosedFloatingPointRange<Float>? = null
     private var angularOutRange: ClosedFloatingPointRange<Float>? = null
@@ -183,7 +183,7 @@ class StaticTrailBuilder(private val texturePath: String) {
     /** 图案平铺周期（世界单位）与滚动速度（世界单位/秒，0 不滚动）。 */
     fun tile(length: Float, scroll: Float) { tileLength = length; scrollSpeed = scroll }
 
-    /** 带体整体向后退的距离（世界单位）：带体头部亮端退到原版螺栓弹头之后，让弹头尖在带体前露出。 */
+    /** 带体整体向后退的距离（世界单位）：带体头部亮端退到螺栓弹头之后，让弹头尖在带体前露出。不调用 = 自动取弹体长度 ×0.75（运行期解析）。 */
     fun recede(v: Float) { recede = v }
 
     /** bloom 发光强度（0..1；进 BoxUtil emissive → bloom G-buffer）。不调用即不发光（原版螺栓无辉光）。 */

@@ -27,8 +27,8 @@ data class StaticTrailSpec(
     val tileLength: Float = 180f,
     /** 图案沿带长滚动速度（世界单位/秒，0 不滚动；/tileLength 即每秒滚动整贴图次数）。 */
     val scrollSpeed: Float = 0f,
-    /** 带体整体向后退的距离（世界单位）：带体头部亮端退到原版螺栓弹头之后，让弹头尖在带体前露出。 */
-    val recede: Float = 0f,
+    /** 带体整体向后退的距离（世界单位）：带体头部亮端退到原版螺栓弹头之后，让弹头尖在带体前露出。null = 自动取弹体长度 ×0.75（tracker 运行期解析）。 */
+    val recede: Float? = null,
     /** bloom 发光强度（0..1，进 BoxUtil emissive → bloom G-buffer；默认 0 不发光——原版螺栓无辉光，按需开启）。 */
     val glowPower: Float = 0f,
     /**

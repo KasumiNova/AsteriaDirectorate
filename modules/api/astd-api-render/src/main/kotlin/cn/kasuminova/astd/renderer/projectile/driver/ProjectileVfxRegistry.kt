@@ -11,15 +11,23 @@ import java.util.concurrent.ConcurrentHashMap
  */
 object ProjectileVfxRegistry {
 
-    private val builders = ConcurrentHashMap<String, () -> ProjectileVfx>()
+    private val builders = ConcurrentHashMap<String, (Float?) -> ProjectileVfx>()
 
-    /** 注册一个 projectileSpecId 的特效构建函数；同 id 后注册覆盖先注册。 */
-    fun register(projectileSpecId: String, builder: () -> ProjectileVfx) {
+    /**
+     * 注册一个 projectileSpecId 的特效构建函数；同 id 后注册覆盖先注册。
+     * 构建函数参数为武器面板射程（世界单位；弹体无武器来源时为 null）——带长按射程比例
+     * 派生的 spec 在构建期取该值，未提供时使用 spec 声明的固定带长。
+     */
+    fun register(projectileSpecId: String, builder: (Float?) -> ProjectileVfx) {
         builders[projectileSpecId] = builder
     }
 
     fun has(projectileSpecId: String): Boolean = builders.containsKey(projectileSpecId)
 
-    /** 现构建一份新蓝图 + 策略；未注册的 spec 返回 null（调用方回落旧管线）。 */
-    fun build(projectileSpecId: String): ProjectileVfx? = builders[projectileSpecId]?.invoke()
+    /**
+     * 现构建一份新蓝图 + 策略；未注册的 spec 返回 null（调用方回落旧管线）。
+     * @param weaponRangeSu 武器面板射程（世界单位），供射程比例带长的 spec 派生；null 时用固定带长。
+     */
+    fun build(projectileSpecId: String, weaponRangeSu: Float? = null): ProjectileVfx? =
+        builders[projectileSpecId]?.invoke(weaponRangeSu)
 }

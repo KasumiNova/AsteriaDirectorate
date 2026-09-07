@@ -26,7 +26,6 @@
     "barrelMode": "LINKED",
     "animationType": "MUZZLE_FLASH",
     "projectileSpecId": "astd_spc3_shot",
-    "onFireEffect": "cn.kasuminova.astd.combat.effect.generic.ProjectileSpecOnFireDispatcher",
     "everyFrameEffect": "cn.kasuminova.astd.combat.effect.generic.CombatVfxBootstrapEveryFrameEffect",
     "fireSoundTwo": "autocannon_fire"
 }

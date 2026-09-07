@@ -5,6 +5,7 @@ import org.boxutil.define.struct.statictrail.StaticTrailData
 import org.lwjgl.util.vector.Vector2f
 import org.lwjgl.util.vector.Vector4f
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.math.roundToInt
 
 /**
  * [StaticTrailSpec] → BoxUtil [StaticTrailData] 的翻译与缓存。
@@ -36,12 +37,19 @@ object StaticTrailDataFactory {
     /** vRAM 池初始容量（同风格并发拖尾条数；高射速武器同走廊多发取足量，池不足会自扩容）。 */
     private const val INIT_CAPACITY: Short = 256
 
+    /** 缓存键带长分桶粒度（su）：平衡射程连续变化下的池数量与寿命精度。 */
+    private const val LENGTH_BUCKET_SU = 25f
+
     /**
      * 取（或建）一条拖尾层的 StaticTrailData。
+     * 缓存键带带长分桶（25su 粒度）：射程比例带长的 spec 在构建期按武器面板射程折算，不同射程需要各自的
+     * 三段时长（寿命烘进 StaticTrailData），共用同一会导致拖尾长度不随射程变化；分桶限制池数量。
      * @param projectileSpeedSuPerSec 弹体速度（su/s，取 `DamagingProjectileAPI.getMoveSpeed`），用于带长→寿命折算。
      */
     fun trailData(treeId: String, layerName: String, spec: StaticTrailSpec, projectileSpeedSuPerSec: Float): StaticTrailData =
-        cache.getOrPut("$treeId/$layerName") { build(treeId, layerName, spec, projectileSpeedSuPerSec) }
+        cache.getOrPut("$treeId/$layerName@${(spec.bandLength / LENGTH_BUCKET_SU).roundToInt() * LENGTH_BUCKET_SU}") {
+            build(treeId, layerName, spec, projectileSpeedSuPerSec)
+        }
 
     private fun build(treeId: String, layerName: String, spec: StaticTrailSpec, projectileSpeedSuPerSec: Float): StaticTrailData {
         val total = totalDurationSeconds(spec.bandLength, projectileSpeedSuPerSec)

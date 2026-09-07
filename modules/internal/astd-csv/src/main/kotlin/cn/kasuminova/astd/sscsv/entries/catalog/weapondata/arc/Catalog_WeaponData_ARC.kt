@@ -299,6 +299,8 @@ object Wpn_astd_charge_needle : WeaponDataEntry(), SsProjProjectileOutputs {
         onHitEffect = "cn.kasuminova.astd.combat.effect.arc.ChargeNeedleOnHitEffect",
         fringeColor = Rgba(140, 200, 255, 255),
         coreColor = Rgba(225, 242, 255, 200),
+        // 细针观感：弹体宽度 −75%
+        width = 5.0,
     )
 }
 
@@ -346,6 +348,8 @@ object Wpn_astd_heavy_charge_needle : WeaponDataEntry(), SsProjProjectileOutputs
         onHitEffect = "cn.kasuminova.astd.combat.effect.arc.ChargeNeedleOnHitEffect",
         fringeColor = Rgba(140, 200, 255, 255),
         coreColor = Rgba(225, 242, 255, 200),
+        // 细针观感：弹体宽度 −75%
+        width = 5.0,
     )
 }
 
@@ -384,10 +388,10 @@ object Wpn_astd_electric_drive_accelerator : WeaponDataEntry(), SsProjProjectile
     override val energyPerShot: Int = 88
     override val energyPerSecond: Int = 176
     override val projSpeed: Int = 1000
-    // 中等精确度（对照原版重型针刺 1/10）
-    override val minSpread: Double = 1.0
+    // 霰弹式同期散射：min=max 固定散布锥，burst 首发起即带散布（不随连发累积）
+    override val minSpread: Double = 8.0
     override val maxSpread: Double = 8.0
-    override val spreadPerShot: Double = 0.5
+    override val spreadPerShot: Double = 0.0
     override val spreadDecayPerSec: Double = 4.0
     override val tags: String = "astd_production"
     override val groupTag: String = "astd"
@@ -401,8 +405,11 @@ object Wpn_astd_electric_drive_accelerator : WeaponDataEntry(), SsProjProjectile
         id = "astd_electric_drive_accelerator_shot",
         spawnType = ProjectileSpawnType.BALLISTIC,
         onHitEffect = "cn.kasuminova.astd.combat.effect.arc.ElectricDriveAcceleratorOnHitEffect",
-        fringeColor = Rgba(235, 242, 250, 255),
-        coreColor = Rgba(255, 255, 255, 200),
+        fringeColor = Rgba(255, 220, 120, 255),
+        coreColor = Rgba(255, 240, 200, 200),
+        // 弹体宽度 −50%、长度 −25%（散射弹小型化观感）
+        length = 56.25,
+        width = 10.0,
     )
 }
 
@@ -432,8 +439,7 @@ object Wpn_astd_qiongjue_phase_railgun : WeaponDataEntry(), SsProjProjectileOutp
     // 单发 900（辐伤比 1.5）；450 = 900 / 2s
     override val energyPerShot: Int = 900
     override val energyPerSecond: Int = 450
-    // 与高斯炮同速（2026-07-29 审批裁定，弃 1500 提案）
-    override val projSpeed: Int = 1200
+    override val projSpeed: Int = 1800
     override val turnRateStr: String = "非常慢"
     override val accuracyStr: String = "完美"
     // 完美精度（对齐原版高斯炮口径）
@@ -452,6 +458,9 @@ object Wpn_astd_qiongjue_phase_railgun : WeaponDataEntry(), SsProjProjectileOutp
         onHitEffect = "cn.kasuminova.astd.combat.effect.arc.qiongjue.QiongjuePhaseRailgunOnHitEffect",
         fringeColor = Rgba(200, 225, 255, 255),
         coreColor = Rgba(255, 255, 255, 200),
+        // 弹体宽度 −50%、长度 +25%（细长轨道弹观感）
+        length = 93.75,
+        width = 10.0,
     )
 }
 
@@ -460,7 +469,8 @@ object Wpn_astd_qiongjue_phase_railgun : WeaponDataEntry(), SsProjProjectileOutp
  *
  * 无触碰体积（`.proj` collisionClass="NONE"，无 onHit 路径）+ 近炸/满射程双引爆
  * 走 `.proj` onFireEffect 注册引信脚本；锥状冲击结算复用基建 ConeImpactHandler。
- * 弹体 VFX 追踪由 `.wpn` onFireEffect 的 ProjectileSpecOnFireDispatcher 承担（分工见规格 §0-2）。
+ * 弹体 VFX 追踪与引信注册组合在同一个 `.proj` onFireEffect（PositronShockwaveOnFireEffect 内委托
+ * ProjectileSpecOnFireDispatcher）——原版 WeaponSpecLoader 不读 `.wpn` 的 onFireEffect 键。
  */
 object Wpn_astd_positron_shockwave : WeaponDataEntry(), SsProjProjectileOutputs {
     override val id: String = "astd_positron_shockwave"
@@ -499,7 +509,7 @@ object Wpn_astd_positron_shockwave : WeaponDataEntry(), SsProjProjectileOutputs 
     override val projSpec: ProjectileProjSpec = ProjectileProjSpec.boxBolt(
         id = "astd_positron_shockwave_shot",
         spawnType = ProjectileSpawnType.BALLISTIC,
-        // 引信脚本注册（规格 §0-2 分工：弹体 VFX 追踪在 .wpn 侧 dispatcher）
+        // 引信脚本注册 + VFX 追踪（PositronShockwaveOnFireEffect 内组合 ProjectileSpecOnFireDispatcher）
         onFireEffect = "cn.kasuminova.astd.combat.effect.arc.PositronShockwaveOnFireEffect",
         // 无触碰体积，无 onHit 路径
         onHitEffect = null,
@@ -906,6 +916,8 @@ object Wpn_astd_heavy_ion_pulse : WeaponDataEntry(), SsProjProjectileOutputs {
         onHitEffect = "cn.kasuminova.astd.combat.effect.arc.HeavyIonPulseOnHitEffect",
         fringeColor = Rgba(140, 200, 255, 255),
         coreColor = Rgba(225, 242, 255, 200),
+        // 弹体宽度 −50%
+        width = 10.0,
     )
 }
 

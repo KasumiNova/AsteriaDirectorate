@@ -32,7 +32,6 @@
     "barrelMode": "ALTERNATING",
     "animationType": "MUZZLE_FLASH",
     "projectileSpecId": "astd_heavy_ion_pulse_shot",
-    "onFireEffect": "cn.kasuminova.astd.combat.effect.generic.ProjectileSpecOnFireDispatcher",
     "everyFrameEffect": "cn.kasuminova.astd.combat.effect.generic.CombatVfxBootstrapEveryFrameEffect",
     "fireSoundTwo": "ion_pulser_fire"
 }
