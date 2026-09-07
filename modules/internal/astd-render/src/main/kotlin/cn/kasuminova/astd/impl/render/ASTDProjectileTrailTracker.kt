@@ -10,8 +10,8 @@ import kotlin.math.sin
  * 弹体 Static Trail 跟踪器：BoxUtil Static Trail 系统每帧回调，向系统上报弹体锚点位置/朝向。
  *
  * 职责：
- * - 锚点 = 弹体中心沿朝向提前（headLead − recede）；
- * - headLead 缺省取弹体 spec.length/2，对齐原版螺栓贴图视觉头部；
+ * - 锚点 = 弹体前端（projectile.location = 原版螺栓贴图视觉头部）沿朝向提前（headLead − recede）；
+ * - headLead 缺省 0，即锚点默认压在螺栓头部；
  * - 弹体消亡（wasRemoved/isExpired）→ [StaticTrailTracker.Result.destroy]，带体按三段时长
  *   自然播完（尾先头后）。**不含 isFading**：超射程/命中后的淡出期弹体仍在飞行，带体继续跟随，
  *   直到弹体真正移出引擎才开始消散（2026-09 实机裁定）。
@@ -23,9 +23,8 @@ class ASTDProjectileTrailTracker(
     private val spec: StaticTrailSpec,
 ) : StaticTrailTracker {
 
-    /** 锚点前移量（世界单位）：DSL 显式值优先，否则取弹体 spec.length/2（对齐原版螺栓视觉头部）。 */
-    private val headLead: Float = spec.headLeadWorld
-        ?: ((projectile.projectileSpec?.length ?: 0f) * 0.5f)
+    /** 锚点前移量（世界单位）：DSL 显式值优先，否则为 0（弹体前端即螺栓头部，无需再前移）。 */
+    private val headLead: Float = spec.headLeadWorld ?: 0f
 
     override fun advance(amount: Float, elapsedTime: Float, callback: StaticTrailTracker.Result) {
         if (callback.isExpired) return
@@ -48,7 +47,7 @@ class ASTDProjectileTrailTracker(
     }
 }
 
-/** 拖尾锚点：弹体中心沿朝向提前 [forwardOffset]。 */
+/** 拖尾锚点：弹体前端（location）沿朝向提前 [forwardOffset]。 */
 internal fun trailAnchor(center: Vector2f, facingRad: Double, forwardOffset: Float): Vector2f {
     val cosF = cos(facingRad).toFloat()
     val sinF = sin(facingRad).toFloat()

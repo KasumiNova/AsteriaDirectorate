@@ -42,11 +42,10 @@ class ProjectileVfxDriverImpl(
     /** 测试用尺度注入（无引擎时 referenceWorldUnitsPerPixel 的返回值）。 */
     private var testWorldUnitsPerPixel = 1f
     /**
-     * 树锚点前移量（世界单位）：策略显式值优先，否则取弹体 spec.length/2——把附加层（光斑）锚点对齐到
-     * 原版螺栓贴图的视觉头部（贴图中心在弹体位置）。非弹体宿主（测试）或无 spec 时为 0，锚回弹体中心。
+     * 树锚点前移量（世界单位）：策略显式值优先，否则 0——弹体 location 即螺栓视觉头部，
+     * 附加层（光斑）锚点默认压在螺栓头部。
      */
-    private val headLead: Float = policy.headLeadWorld
-        ?: ((projectile?.projectileSpec?.length ?: 0f) * 0.5f)
+    private val headLead: Float = policy.headLeadWorld ?: 0f
 
     override var state: ProjectileVfxDriverState = ProjectileVfxDriverState.Active
         private set
@@ -99,7 +98,7 @@ class ProjectileVfxDriverImpl(
             // 存活，或淡出期弹体仍在场滑行：跟随实时位置——与原版弹体在 fadeTime 窗口内继续移动一致，
             // 淡出叠加在跟随之上，而非把特效钉死在死亡前一帧。
             val renderFacing = computeRenderFacing(location, facing)
-            // 附加层树锚在弹体视觉头部（中心沿朝向提前 headLead）。
+            // 附加层树锚在弹体前端（location = 螺栓视觉头部）沿朝向提前 headLead。
             val anchor = headAnchor(location, renderFacing)
             val phase = if (fading) RenderPhase.FadingOut else RenderPhase.Active
             val frame = buildFrame(anchor, renderFacing, engine, amount, phase, if (fading) currentFadeReason else null)
@@ -166,7 +165,7 @@ class ProjectileVfxDriverImpl(
         fadeReason = fadeReason,
     )
 
-    /** 树锚点：弹体中心沿渲染朝向提前 [headLead]；headLead ≤ 0 时原样返回中心。 */
+    /** 树锚点：弹体前端（location）沿渲染朝向提前 [headLead]；headLead ≤ 0 时原样返回 location。 */
     private fun headAnchor(location: Vector2f, facingDeg: Float): Vector2f {
         if (headLead <= 0f) return Vector2f(location)
         val rad = Math.toRadians(facingDeg.toDouble())

@@ -6,7 +6,8 @@
 与几何收窄（头全宽 -> 尾半宽）烘焙进 alpha 通道，供 BoltRenderComponent
 以单颗 SpriteEntity 均匀染色渲染出原版螺栓观感。
 
-输出：contents/graphics/fx/astd_bolt_body.png（128×32，X=带长向，头在左/u=0）
+输出：contents/graphics/fx/astd_bolt_body.png（128×32，X=带长向，头在右/u=1——
+SpriteEntity 的 u=0 映射局部 -X 即飞行后方，与原版 texCoord 方向相反，故成品水平翻转）
 """
 
 from PIL import Image
@@ -41,6 +42,7 @@ def main() -> None:
             r, g, b, a = src.getpixel((x, y))
             na = int(a * ramp * vertical_window(u, v) + 0.5)
             out.putpixel((x, y), (r, g, b, na))
+    out = out.transpose(Image.FLIP_LEFT_RIGHT)  # SpriteEntity u=0 朝飞行后方：头翻转到文件右/u=1
     out.save(DST)
     print(f"written {DST} ({OUT_W}x{OUT_H})")
 

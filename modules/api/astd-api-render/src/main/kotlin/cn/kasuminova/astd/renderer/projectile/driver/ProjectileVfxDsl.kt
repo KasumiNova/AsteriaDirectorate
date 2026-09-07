@@ -251,7 +251,7 @@ class BoltBuilder {
 class LifecycleBuilder {
     var headLeadWorld: Float? = null; private set
 
-    /** 拖尾锚点前移量（世界单位）：不调用 = 自动取弹体 spec.length/2（对齐原版螺栓视觉头部）；0 = 锚回弹体中心。 */
+    /** 拖尾锚点前移量（世界单位）：不调用 = 0（弹体前端 location 即螺栓视觉头部，无需再前移）；正值继续向前探。 */
     fun headLead(v: Float) { headLeadWorld = v }
 }
 
@@ -306,7 +306,7 @@ class BoxFlareBuilder {
     /** 固定世界朝向（度；设置后忽略宿主 facing 与朝向偏移，0 = 恒水平）。 */
     fun fixedFacing(deg: Float) { fixedFacingDeg = deg }
 
-    /** 局部 x 偏移（负 = 向尾）：headLead 前移锚点后用 -headLead 锚回弹体中心。 */
+    /** 局部 x 偏移（负 = 向尾）：光斑相对树锚点（弹体前端提前 headLead 处）的偏移。 */
     fun offset(v: Float) { offsetX = v }
 
     internal fun build(): BoxFlareSpec = BoxFlareSpec(

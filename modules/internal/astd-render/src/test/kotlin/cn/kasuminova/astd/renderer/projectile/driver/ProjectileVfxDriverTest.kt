@@ -41,7 +41,7 @@ class ProjectileVfxDriverTest {
         d.advanceForTests(100f, 0f, 0f, 0.1f, alive = true)
 
         val frame = assertNotNull(rec.lastFrame)
-        assertEquals(100f, frame.origin.x, 0.01f)     // origin 跟随宿主位置（headLead=0，非弹体宿主）
+        assertEquals(100f, frame.origin.x, 0.01f)     // origin 跟随宿主位置（headLead 缺省 0）
         assertEquals(0f, frame.origin.y, 0.01f)
         assertEquals(0f, frame.facing, 0.5f)          // 沿 +x 移动 → 朝向约 0°
         assertEquals(1f, frame.intensity, 1e-4f)
@@ -56,11 +56,11 @@ class ProjectileVfxDriverTest {
         val host = object : RenderHost { override val hostId = "test-lead" }
         val d = ProjectileVfxDriverImpl(host, rec, policy.copy(headLeadWorld = 30f))
 
-        // 沿 +x 移动：origin 应领先弹体中心 30（对齐原版螺栓视觉头部）
+        // 沿 +x 移动：origin 应领先弹体前端 30（显式 headLead）
         d.advanceForTests(0f, 0f, 0f, 0.1f, alive = true)
         d.advanceForTests(100f, 0f, 0f, 0.1f, alive = true)
         val fx = assertNotNull(rec.lastFrame)
-        assertEquals(130f, fx.origin.x, 0.01f, "origin 应为弹体中心 +headLead（沿 +x）")
+        assertEquals(130f, fx.origin.x, 0.01f, "origin 应为弹体前端 +headLead（沿 +x）")
         assertEquals(0f, fx.origin.y, 0.01f)
 
         // 改为沿 +y 移动：前移方向跟随位移朝向
@@ -71,15 +71,15 @@ class ProjectileVfxDriverTest {
     }
 
     @Test
-    fun `headLead 为零时锚点退回弹体中心`() {
+    fun `headLead 缺省时锚点即弹体前端`() {
         val rec = RecordingNode()
-        val d = driver(rec) // 测试 policy 未设 headLeadWorld 且非弹体宿主 → 0
+        val d = driver(rec) // 测试 policy 未设 headLeadWorld → 缺省 0
 
         d.advanceForTests(0f, 0f, 0f, 0.1f, alive = true)
         d.advanceForTests(100f, 0f, 0f, 0.1f, alive = true)
 
         val frame = assertNotNull(rec.lastFrame)
-        assertEquals(100f, frame.origin.x, 0.01f, "headLead=0 时 origin 应即弹体中心")
+        assertEquals(100f, frame.origin.x, 0.01f, "headLead=0 时 origin 应即弹体前端")
     }
 
     @Test

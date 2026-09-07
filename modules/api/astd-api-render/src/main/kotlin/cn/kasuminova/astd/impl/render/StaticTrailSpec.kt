@@ -32,7 +32,7 @@ data class StaticTrailSpec(
     /** bloom 发光强度（0..1，进 BoxUtil emissive → bloom G-buffer；默认 0 不发光——原版螺栓无辉光，按需开启）。 */
     val glowPower: Float = 0f,
     /**
-     * 拖尾锚点前移覆写（世界单位）：null = 自动取弹体 spec.length/2（对齐原版螺栓视觉头部）。
+     * 拖尾锚点前移覆写（世界单位）：null = 0（弹体前端 location 即螺栓视觉头部，无需再前移）。
      * 由 DSL scope 在 build 时从 lifecycle.headLead 统一盖印，层作者不直接填。
      */
     val headLeadWorld: Float? = null,

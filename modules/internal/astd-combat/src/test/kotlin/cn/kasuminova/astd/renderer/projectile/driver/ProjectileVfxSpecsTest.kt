@@ -35,7 +35,7 @@ class ProjectileVfxSpecsTest {
         assertEquals(1, twin.layer)
         assertEquals(30f, twin.width)
         assertEquals(420f, twin.bandLength)
-        assertEquals(35f, twin.recede, "headRecede(420)=round5(33.6)=35：recede ≤ headLead+length/2−speed/30=42，保证 30Hz cadence 最坏滞留下拖尾头仍藏在螺栓底下")
+        assertEquals(35f, twin.recede, "headRecede(420)=round5(33.6)=35：recede ≤ spec.length−speed/30=42，保证 30Hz cadence 最坏滞留下拖尾头仍藏在螺栓覆盖区内")
 
         assertEquals(TEX_ZAPPY, zappy.texturePath)
         assertEquals(2, zappy.layer)
@@ -50,12 +50,12 @@ class ProjectileVfxSpecsTest {
     }
 
     @Test
-    fun `aod7 策略：仅淡出与 headLead 自动`() {
+    fun `aod7 策略：仅淡出与 headLead 缺省`() {
         val p = assertNotNull(ProjectileVfxSpecs.build("astd_aod7_shot")).policy
         assertEquals(0.15f, p.hitFadeOutSeconds)
         assertEquals(0.15f, p.expireFadeOutSeconds)
         assertEquals(0.15f, p.removedFadeOutSeconds)
-        assertNull(p.headLeadWorld, "headLead 不声明 = 自动取弹体 spec.length/2")
+        assertNull(p.headLeadWorld, "headLead 不声明 = 缺省 0，锚点压在弹体前端（螺栓头部）")
     }
 
     @Test

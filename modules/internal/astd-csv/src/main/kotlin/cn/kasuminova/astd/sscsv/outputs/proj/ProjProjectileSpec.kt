@@ -121,7 +121,7 @@ data class ProjectileProjSpec(
          * scroll=0），弹头由 ASTD VFX 管线的 Box 螺栓组件（SpriteEntity 双趟烘焙彗形贴图）逐帧接管。
          *
          * length/width/fadeTime 保持真实值：原版弹体逻辑（TrailExtender 出生伸入/超射程淡出、
-         * getBrightness、tailEnd）仍是 Box 螺栓与拖尾锚点（headLead=length/2）的数据源；
+         * getBrightness、tailEnd）仍是 Box 螺栓与拖尾锚点（headLead 缺省 0 = 弹体前端）的数据源；
          * 颜色 RGB 仅作存档可读性保留，alpha 强制为 0。
          *
          * 注意：屏蔽后原版命中光晕（fringeColor 染色粒子）不可见，由 Box 螺栓组件在命中时补发。

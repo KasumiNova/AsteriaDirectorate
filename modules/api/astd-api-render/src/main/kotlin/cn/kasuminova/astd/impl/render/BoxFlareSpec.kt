@@ -56,8 +56,7 @@ data class BoxFlareSpec(
      */
     val fixedFacingDeg: Float? = null,
     /**
-     * 局部 x 偏移（世界单位，负 = 向尾）：拖尾锚点前移到弹体头部（headLead）后，
-     * 传 -headLead 把光斑锚回弹体中心。
+     * 局部 x 偏移（世界单位，负 = 向尾）：光斑相对树锚点（弹体前端提前 headLead 处）的偏移。
      */
     val offsetX: Float = 0f,
     /** BoxUtil 实体渲染层。 */

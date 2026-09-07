@@ -135,10 +135,10 @@ object ProjectileVfxSpecs {
      * aod7 hero：两条贴图拖尾为拖尾主体（复刻参考模组 zappy+twin 叠加构图）；
      * 弹头 = Box 螺栓（染 aod7 冷蓝白近白色）。
      * 拖尾吃 astd_trails 贴图（twin 脆丝垫底 layer1、zappy 电弧 layer2，宽比 twin=1.25×zappy）。
-     * headLead 自动（spec.length/2），锚点对齐螺栓视觉头部。
+     * headLead 缺省 0，锚点压在弹体前端（location = 螺栓视觉头部）。
      * recede 用标准公式（headRecede(420)=35）：BoxUtil 30Hz 记录 cadence 下
-     * 2880su/s 最坏滞后 96su，recede 上限规则（recede ≤ headLead+spec.length/2−speed/30，=42）保证
-     * 最坏相位下拖尾头仍藏在螺栓底下。
+     * 2880su/s 最坏滞后 96su，recede 上限规则（recede ≤ spec.length−speed/30，=42）保证
+     * 最坏相位下拖尾头仍藏在螺栓覆盖区（[location−spec.length, location]）内。
      */
     private fun aod7Shot(): ProjectileVfx = projectileVfx("astd_aod7_shot") {
         fade { out(0.15f) }
@@ -161,7 +161,7 @@ object ProjectileVfxSpecs {
     }
 
     // 贯星之矛（规格 09 §3.1）：冷蓝白 ARC 主色内联字面量；width 36 / length 260 / glowScale 4.0 大圆形弹体观感。
-    // 追加：BoxUtil 水平光斑（锚回弹体中心：offset = -headLead = -36/2）+ 原版 EMP 锚点电弧
+    // 追加：BoxUtil 水平光斑（锚在弹体前端 = 螺栓头部，offset 缺省 0）+ 原版 EMP 锚点电弧
     // （发射点固定 → 弹体头部拉伸，首次泛用组件接入）+ 发射瞬间发射点扭曲（PiercingLanceVfx.spawnMuzzleDistortion）。
     private fun piercingLanceShot(): ProjectileVfx = simpleProjectileVfx(
         "astd_piercing_lance_shot",
@@ -178,7 +178,6 @@ object ProjectileVfxSpecs {
             fixedFacing(0f)
             flicker(1.3f)
             noise(0.4f)
-            offset(-18f)
         }
         anchorArc("arc") {
             thickness(10f)
@@ -263,8 +262,8 @@ internal fun arcTile(length: Float): Float = round5(length / 2f)
 internal fun arcScroll(length: Float): Float = round5(length / 4.5f)
 
 /** 带体头部退距：L×0.08（aod7 420→35），带体亮端后移让螺栓弹头在带体前露出（禁 forward 偏移）。
- * 上限规则：recede ≤ headLead + 弹体 spec.length/2 − speed/30（BoxUtil NORMAL 30Hz 记录 cadence 的最坏滞后），
- * 超过则暂停/恢复时拖尾头会露出螺栓覆盖区，定格成可见脱节。 */
+ * 上限规则：recede ≤ 弹体 spec.length − speed/30（BoxUtil NORMAL 30Hz 记录 cadence 的最坏滞后），
+ * 超过则暂停/恢复时拖尾头会露出螺栓覆盖区（[location−spec.length, location]），定格成可见脱节。 */
 internal fun headRecede(length: Float): Float = round5(length * 0.08f)
 
 /** Box 螺栓弹头染色：mix(主色, 白, 0.7)，alpha 0.78（原版 coreColor 近白口径；弹头只染单色系，
