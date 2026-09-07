@@ -2,6 +2,7 @@ package cn.kasuminova.astd.renderer.projectile.driver
 
 import cn.kasuminova.astd.impl.render.ASTDColor
 import cn.kasuminova.astd.impl.render.AnchorArcSpec
+import cn.kasuminova.astd.impl.render.BoltSpec
 import cn.kasuminova.astd.impl.render.BoxFlareSpec
 import cn.kasuminova.astd.impl.render.BoxFlareStyle
 import cn.kasuminova.astd.impl.render.StaticTrailSpec
@@ -22,6 +23,11 @@ class ProjectileVfxTreeSpec(
     val id: String,
     /** Static Trail 拖尾主体层（名称 → spec），按声明顺序叠层；由 BoxUtil Static Trail 系统托管渲染。 */
     val staticTrails: List<Pair<String, StaticTrailSpec>>,
+    /**
+     * Box 螺栓弹头层（取代原版 ProjectileRenderer 螺栓渲染）；null = 不渲染（`bolt { off() }`，
+     * 如导弹等由原版弹体贴图承担的弹体）。
+     */
+    val bolt: BoltSpec?,
     /** BoxUtil 光斑层（名称 → spec）。 */
     val boxFlares: List<Pair<String, BoxFlareSpec>>,
     /** 锚点电弧层（名称 → spec）。 */
@@ -30,7 +36,8 @@ class ProjectileVfxTreeSpec(
 
 /**
  * 弹体特效的**唯一作者面**：手写 DSL 直接产出场景树蓝图 + 驱动策略。
- * 一个 [projectileVfx] 块内：`staticTrail` 声明 Static Trail 拖尾主体层（可多条叠层，BoxUtil 托管），
+ * 一个 [projectileVfx] 块内：`bolt` 定制 Box 螺栓弹头（默认开启，取代原版螺栓渲染），
+ * `staticTrail` 声明 Static Trail 拖尾主体层（可多条叠层，BoxUtil 托管），
  * `boxFlare`/`anchorArc`/`onFire` 声明附加层，`lifecycle`/`fade` 声明驱动策略。
  *
  * 本 DSL 只负责把作者旋钮折成渲染器所需的层 spec（[ProjectileVfxTreeSpec] 纯数据蓝图）；
@@ -71,6 +78,9 @@ class ProjectileVfxScope(private val id: String) {
     private val anchorArcs = ArrayList<Pair<String, AnchorArcSpec>>()
     private var onFireHook: ProjectileVfxOnFireHook? = null
 
+    /** Box 螺栓弹头：默认开启（取代原版螺栓渲染）；`bolt { off() }` 关闭（如导弹弹体）。 */
+    private var bolt: BoltBuilder? = BoltBuilder()
+
     private val lifecycle = LifecycleBuilder()
     private val fade = FadeBuilder()
 
@@ -80,6 +90,16 @@ class ProjectileVfxScope(private val id: String) {
      */
     fun staticTrail(name: String, texturePath: String, block: StaticTrailBuilder.() -> Unit) {
         staticTrails += name to StaticTrailBuilder(texturePath).apply(block).build()
+    }
+
+    /**
+     * 定制 Box 螺栓弹头层（SpriteEntity 双层 additive，取代原版螺栓渲染；默认即开启）。
+     * 不调用本方法 = 默认白芯白缘螺栓；`bolt { off() }` 关闭（导弹等原版贴图弹体）。
+     */
+    fun bolt(block: BoltBuilder.() -> Unit) {
+        val builder = bolt ?: BoltBuilder()
+        builder.apply(block)
+        bolt = if (builder.isOff) null else builder
     }
 
     /** 挂一枚 BoxUtil 光斑（跟随弹体视觉头部；offsetX 负值可锚回弹体中心）。 */
@@ -99,8 +119,9 @@ class ProjectileVfxScope(private val id: String) {
     fun fade(block: FadeBuilder.() -> Unit) { fade.apply(block) }
 
     internal fun build(): ProjectileVfx {
-        if (staticTrails.isEmpty() && boxFlares.isEmpty() && anchorArcs.isEmpty()) {
-            throw IllegalStateException("projectileVfx '$id' 未声明任何特效层（staticTrail/boxFlare/anchorArc 至少一个）")
+        val boltSpec = bolt?.build()
+        if (boltSpec == null && staticTrails.isEmpty() && boxFlares.isEmpty() && anchorArcs.isEmpty()) {
+            throw IllegalStateException("projectileVfx '$id' 未声明任何特效层（bolt/staticTrail/boxFlare/anchorArc 至少一个）")
         }
 
         val headLead = lifecycle.headLeadWorld
@@ -108,6 +129,7 @@ class ProjectileVfxScope(private val id: String) {
             id = id,
             // headLead 统一盖印到每条拖尾层：tracker 锚点与树原点（光斑锚）保持一致
             staticTrails = staticTrails.map { (name, spec) -> name to spec.copy(headLeadWorld = headLead) },
+            bolt = boltSpec,
             boxFlares = boxFlares.toList(),
             anchorArcs = anchorArcs.toList(),
         )
@@ -199,6 +221,33 @@ class StaticTrailBuilder(private val texturePath: String) {
         angularOutRange = angularOutRange,
         velocityInRange = velocityInRange,
         velocityOutRange = velocityOutRange,
+    )
+}
+
+/** Box 螺栓弹头层（SpriteEntity 双层 additive，projbody 彗星贴图）：贴图/芯色/缘色/关闭。 */
+@ProjectileVfxDslMarker
+class BoltBuilder {
+    internal var isOff = false; private set
+    private var texturePath = BoltSpec.DEFAULT_TEXTURE
+    private var coreColor = rgba(0xFFFFFFFFL)
+    private var fringeColor = rgba(0xFFFFFFFFL)
+
+    /** 关闭 Box 螺栓弹头（弹体视觉由其它路径承担，如原版导弹贴图）。 */
+    fun off() { isOff = true }
+
+    /** 弹头贴图路径（彗星形白图，头亮尾散；X=飞行向），默认原版 projbody。 */
+    fun texture(path: String) { texturePath = path }
+
+    /** 核心/外缘染色（0xRRGGBBAA）：核心层近白高亮，外缘层取弹体主色。 */
+    fun colors(core: Long, fringe: Long) { coreColor = rgba(core); fringeColor = rgba(fringe) }
+
+    /** 仅外缘染色（核心保持近白）。 */
+    fun fringe(fringe: Long) { fringeColor = rgba(fringe) }
+
+    internal fun build(): BoltSpec = BoltSpec(
+        texturePath = texturePath,
+        coreColor = coreColor,
+        fringeColor = fringeColor,
     )
 }
 

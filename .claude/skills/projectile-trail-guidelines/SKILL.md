@@ -1,6 +1,6 @@
 ---
 name: "projectile-trail-guidelines"
-description: "弹体拖尾规范：统一走 staticTrail DSL（BoxUtil Static Trail 托管，RenderEntity 树挂载）；含素材清单、调参指南与验证流程。"
+description: "弹体拖尾/弹头规范：拖尾统一走 staticTrail DSL（BoxUtil Static Trail 托管，RenderEntity 树挂载），弹头统一走 bolt DSL（Box 螺栓，SpriteEntity projbody）；含素材清单、调参指南与验证流程。"
 ---
 
 # Skill：弹体拖尾规范（staticTrail DSL / BoxUtil Static Trail）
@@ -8,6 +8,7 @@ description: "弹体拖尾规范：统一走 staticTrail DSL（BoxUtil Static Tr
 ## 目标
 
 - 弹体拖尾**统一走 `staticTrail{}` DSL**（RenderEntity 树上的 `StaticTrailComponent`，渲染由 BoxUtil Static Trail 系统托管）。
+- 弹体弹头**统一走 `bolt{}` DSL**（RenderEntity 树上的 `BoltRenderComponent`，Box SpriteEntity 双层 projbody 螺栓渲染，逐帧消费弹体真值，暂停零跳变）；原版螺栓渲染路径已由 ss-csv `boxBolt` 工厂屏蔽。
 - 新弹体配拖尾、旧拖尾调观感，都按本规范的参数面与调参指南执行，不另起渲染路径。
 - 贴图素材统一放 `contents/graphics/fx/`，自制素材 `astd_trails_` 前缀。
 - **贴图必须注册进 `contents/data/config/settings.json` 的 `graphics` 段**（二级结构 `类别 → {id: 路径}`，现有 `fx` 类别）。Static Trail 直接按 `getSprite().getTextureId()` 绑定裸 GL 纹理，不经过原版渲染路径，未注册的贴图永远不会被上传（textureId=0 → 整层静默不可见）。注册后由原版启动期预加载上传；`StaticTrailDataFactory` 在 textureId≤0 时会 WARN 提示。
@@ -15,13 +16,13 @@ description: "弹体拖尾规范：统一走 staticTrail DSL（BoxUtil Static Tr
 ## 渲染模型（先理解再调参）
 
 - **宿主**：BoxUtil Static Trail 系统。每条拖尾层 = 一份 `StaticTrailData`（风格配置 + 专属环形 vRAM 池，按 `树id/层名` 缓存）+ 一个 tracker 回调。GPU 实例化带体，CPU 侧零折线网格。
-- **节点寿命**：系统按三段时长推进每个节点生命——`durFadeIn`（淡入 12%）→ `durFull`（满亮至 60%）→ `durFadeOut`（线性消散到尾）。总寿命 = DSL 声明带长 / 弹体速度（`DamagingProjectileAPI.getMoveSpeed`），钳 [0.15, 10] 秒（`StaticTrailDataFactory`）。淡入 12% 是过曝裁定：带体亮度在弹头后方渐起，避免带体亮头与原版螺栓弹头（additive 高亮）同位叠加出彗星状白团。
+- **节点寿命**：系统按三段时长推进每个节点生命——`durFadeIn`（淡入 12%）→ `durFull`（满亮至 60%）→ `durFadeOut`（线性消散到尾）。总寿命 = DSL 声明带长 / 弹体速度（`DamagingProjectileAPI.getMoveSpeed`），钳 [0.15, 10] 秒（`StaticTrailDataFactory`）。淡入 12% 是过曝裁定：带体亮度在弹头后方渐起，避免带体亮头与 Box 螺栓弹头（additive 高亮）同位叠加出彗星状白团。
 - **几何**：头宽 `width` → 尾宽 `width × tailWidthRatio`（默认 0.35）随生命线性收细；颜色 `headColor → tailColor` 两段渐变；additive 混合。
 - **图案**：平铺滚动贴图。`tileLength` = 一周期世界单位（REPEAT 平铺），`scrollSpeed` su/s；scroll/tile ≈ 每秒整图滚动次数。
 - **贴图规范**：**N×64 PNG，X=带长向、Y=横向**（X 向 REPEAT 平铺，必须可无缝循环）；形在 alpha 通道，RGB 近白（染色来自节点色）。
 - **消亡语义**：tracker 自查弹体消亡（wasRemoved/isExpired）→ `destroy()`，带体按三段时长自然播完（尾先头后）。**不含 isFading**——超射程/命中淡出期弹体仍在飞，带体继续跟随至弹体移出引擎才开始消散。**没有加速消散窗口、没有带头前飞补偿**（勿加回）。
-- **拖尾锚点 = 弹体视觉头部**：tracker 锚点 = 弹体中心沿朝向提前（headLead − recede），headLead 默认 = 弹体 `spec.length/2`（原版螺栓贴图中心在弹体位置、视觉头部在 +length/2）；`lifecycle{ headLead(0f) }` 可锚回中心。`recede` 让带体亮端退到弹头之后。
-- **bloom**：`glow(power)` 进 BoxUtil emissive → bloom G-buffer；emissive 复用 diffuse 贴图并以头部色染色。**默认 0 不发光**（原版螺栓无辉光；三层 additive 叠在弹头上再叠加 bloom 会过曝成白团）。
+- **拖尾锚点 = 弹体视觉头部**：tracker 锚点 = 弹体中心沿朝向提前（headLead − recede），headLead 默认 = 弹体 `spec.length/2`（螺栓贴图中心在弹体位置、视觉头部在 +length/2）；`lifecycle{ headLead(0f) }` 可锚回中心。`recede` 让带体亮端退到弹头之后。
+- **bloom**：`glow(power)` 进 BoxUtil emissive → bloom G-buffer；emissive 复用 diffuse 贴图并以头部色染色。**默认 0 不发光**（Box 螺栓无辉光；三层 additive 叠在弹头上再叠加 bloom 会过曝成白团）。
 - **节点漂移/自旋（DSL 已暴露）**：`angularOut(min,max)`/`angularIn(...)` = 每节点随机自旋角速度（度/秒，绕节点锚点、基于带体朝向，In=最新节点→Out=最老节点按生命插值）；`velocityOut(minX,minY,maxX,maxY)`/`velocityIn(...)` = 每节点随机漂移速度（su/s），带尾漂离原航迹（碎屑/烟雾类消散漂移用）。**着色器语义（实读 BUtil_StaticTrail.vert）：自旋旋转的是漂移偏移矢量——velocity 全 0 时 angular 完全无效**，两者必须成对设置。直线弹体主带不用；**zappy 电弧装饰层默认 `angularOut()`（±45°/s）+ `velocityOut(-16,-16,16,16)`**，带尾卷曲（嫌飘可显式传小值）。
 
 ## DSL 参数面
@@ -37,16 +38,21 @@ staticTrail("层名", "graphics/fx/astd_trails_zappy.png") {
     length(420f)                // 预期带长（世界单位）：节点总寿命 = 带长 / 弹体速度
     tile(140f, 50f)             // 平铺周期 su / 滚动速度 su/s
     recede(40f)                 // 带体整体后退，让弹头尖在带体前露出
-    glow(1f)                    // bloom 发光强度（0..1）；省略即不发光（原版螺栓无辉光，默认 0）
+    glow(1f)                    // bloom 发光强度（0..1）；省略即不发光（Box 螺栓无辉光，默认 0）
     angularOut()                // 尾端每节点随机自旋（度/秒，默认 ±45）；angularIn 同理
     velocityOut(-10f,-10f,10f,10f) // 尾端每节点随机漂移速度（su/s，minX,minY,maxX,maxY）；velocityIn 同理
+}
+
+bolt {                          // Box 螺栓弹头（默认开启；导弹类弹体 `bolt { off() }` 关闭）
+    texture("graphics/fx/projbody.png")  // 弹头贴图（默认原版彗星图）
+    colors(0xFFFFFFFF, 0xCFE8FFFF)       // core/fringe 双层染色（0xRRGGBBAA）；fringe(...) 只染外层
 }
 ```
 
 - 可声明多条 `staticTrail` 叠层。
-- 弹头**全部由原版弹体渲染承担**（`.proj` 走 `vanillaBolt` projbody/projtrail 螺栓，见「原版弹体渲染参考」）；不提供代码弹头，aod7 亦不例外。
+- 弹头**统一走 `bolt{}`**（`BoltRenderComponent`：Box SpriteEntity 双层 `projbody.png` 螺栓，fringe 全宽 + core 宽 × `coreWidthMult`，additive；逐帧消费 `getBrightness()`/`getTailEnd()` 真值做几何同步与出生伸入 alpha，见「Box 螺栓渲染参考」）。ss-csv 侧须配 `boxBolt(...)` 屏蔽原版螺栓视觉。
 - 驱动策略只剩 `fade{}`（淡出秒数，作用于 boxFlare 等附加层）与 `lifecycle{ headLead }`；拖尾自身的采样/寿命/几何全部由 Static Trail 系统接管。
-- **StaticTrailData 按 `树id/层名` 缓存**（vRAM 池配置须 const）：调试期 DSL 字面量热交换对拖尾层不生效（需重启），附加层（boxFlare/anchorArc）不受影响。
+- **StaticTrailData 按 `树id/层名` 缓存**（vRAM 池配置须 const）：调试期 DSL 字面量热交换对拖尾层不生效（需重启），组件层（bolt/boxFlare/anchorArc）不受影响。
 
 ## 三层贴图混合惯例（简单 spec 统一）
 
@@ -100,13 +106,13 @@ alpha 0.45/0.6/0.45 是过曝压暗后的裁定（三层加色 + 高射速多发
 
 宽度锚点：主带 ≈ 弹体视觉宽 ×2~3；重击弹（贯星 36su）可再放大并配 boxFlare 附加层。
 
-## 原版弹体渲染参考（基准形）
+## Box 螺栓渲染参考（弹头基准形）
 
-原版无 `bulletSprite` 的弹体（如脉冲激光、离子脉冲）用内置渲染：`graphics/fx/projbody.png`（32×16，彗星形白图，头亮尾散，core/fringe 双色染色）+ `graphics/fx/projtrail.png`（64×16，波包带）。`.proj` 里 `coreColor/fringeColor/glowColor` 染色、`textureType` 选内置变体。
+弹头由 `BoltRenderComponent` 承担：Box SpriteEntity 双层渲染 `graphics/fx/projbody.png`（32×16，彗星形白图，头亮尾散）——fringe 全宽层 + core 层（宽 × `spec.coreWidthMult`），ABOVE_SHIPS_LAYER additive。逐帧以 `getBrightness()`（原版 TrailExtender 同款真值 `(1-progress) × distanceRatio`）做 alpha（fringe 一次方 / core 平方），以 `getTailEnd()` + 朝向做几何锚定（头端前伸 `boltStretch = max(width/2, length×0.2)`）；暂停时 driver 门控冻结，与弹体同步，无 30Hz cadence 跳变。
 
-**简单 spec 的弹头即走该路径**：ss-csv 侧 `ProjectileProjSpec.vanillaBolt(...)`（省略 bulletSprite 键，尺寸对齐原版离子脉冲 length 75 / width 20 / fadeTime 0.25 / scroll -256 / ppt 1，fringe alpha 255 / core alpha 200）。导弹无 projbody 路径，弹头用原版导弹贴图（辉星 MRM = `graphics/missiles/am_srm.png`）。需要全隐弹体的（七星折跃弹）仍显式 `bulletSprite = BUtil_NONE.png` + 色 alpha=0。
+ss-csv 侧：接入管线的弹体统一用 `ProjectileProjSpec.boxBolt(...)`——发射 `bulletSprite=graphics/textures/BUtil_NONE.png` + core/fringe 色 alpha=0（屏蔽原版螺栓视觉与原版命中光晕）+ scroll=0，但 **length/width/fadeTime(0.25)/hitGlowRadius 保真实值**：length 仍是拖尾 headLead、brightness 伸入距离与 boltFrame 几何的数据源。导弹不走此路径（组件 attach 时 `projectile is MissileAPI` 即禁用自身；辉星 MRM 弹头 = 原版导弹贴图 `graphics/missiles/am_srm.png`）。`vanillaBolt(...)` 工厂保留，仅供不对接管线的弹体。
 
-**`hitGlowRadius` 必须显式给值**（vanillaBolt 默认 25，原版高射速武器口径：火神 15 / 重机枪 20 / 重型针刺 25）。缺省时原版取 `length × 2` 作命中光晕基准半径（`DamagingProjectile.setDidDamage` → `Misc.getHitGlowSize` 再按伤害放大、fringeColor 染色，逐次命中叠加 `ImpactVisualEffects.spawnHitParticlesLarge`）：length 75 即 150 基准，高射速武器连续命中会叠成吞没整舰的数百 su 加色巨球。原版离子脉冲不给值是因为射速低、光晕有窗口衰减。
+**命中光晕由组件补发**：原版光晕走 fringeColor（已被屏蔽为 alpha=0），`BoltRenderComponent.didDamage` 按 `hitGlowRadius × 3 × 伤害缩放`（fringe 色 0.4s）+ 白色芯（×0.5，0.8s）发 hitParticle。因此 **`hitGlowRadius` 必须显式给值**（boxBolt 默认 25，原版高射速武器口径：火神 15 / 重机枪 20 / 重型针刺 25）；缺省时原版取 `length × 2` 作基准半径（`Misc.getHitGlowSize` 再按伤害放大），length 75 即 150 基准，高射速武器连续命中会叠成吞没整舰的数百 su 加色巨球。
 
 ## 验证
 
@@ -117,13 +123,14 @@ alpha 0.45/0.6/0.45 是过曝压暗后的裁定（三层加色 + 高射速多发
 ## 上游机制备忘（BoxUtil Static Trail）
 
 - **暂停一致性**：节点时间戳（`computeTrailNode`）与着色器 `u_time` 同源——均为 `BUtil_GLImpl.timer[2]`（`getElapsedTimeWithoutPaused()`，暂停时冻结）；暂停期间逻辑线程 `!isPaused() && doStaticTrailCompute()` 双重门控、不记节点。ASTD 侧 tracker 无任何时间依赖。
-- **节点记录 cadence（「暂停后不同步/跳变」的来源）**：节点记录按 `BUtil_GLImpl.advanceTimer` 的 `getTrailSystemNodesRecordsCycle()` 门控（LunaLib `BUtil_TrailSystemQuality`：NORMAL 30Hz / HIGH 60Hz / ULTRA 144Hz），每个 cycle 只在 `computeData` 写**一个**节点、渲染头=最后记录节点——cycle 间拖尾头停在上一节点、弹体继续飞，**aod7 2880su/s 在 30Hz 下每节点跨 96su**，带头阶梯跳动；暂停把滞后相位定格、恢复时下一 tick 把头前甩一个节点间距，高速弹肉眼可见「跳变」。原版螺栓逐帧渲染与 MagicTrail 逐帧采样无此现象。ASTD 侧缓解：recede 上限规则 `recede ≤ headLead + 弹体spec.length/2 − speed/30`，保证最坏 cadence 相位下拖尾头仍藏在原版螺栓覆盖区（aod7 recede=35）。根治需上游：fill 头节点用 tracker 实时位置外插，或提供逐帧记录模式。
-- **原版 TrailExtender 出生伸入（探针读图注意）**：原版螺栓亮度 = `(1-progress) × distanceRatio`，distanceRatio 要飞满 `proj.length`（aod7=138su）才到 1；弹速低时伸入期拉长到肉眼可见，恰好跨暂停窗口时易误读为「暂停导致突变」。实弹速下约 0.05s 内完成，无感知。
+- **节点记录 cadence（拖尾「暂停后不同步/跳变」的来源）**：节点记录按 `BUtil_GLImpl.advanceTimer` 的 `getTrailSystemNodesRecordsCycle()` 门控（LunaLib `BUtil_TrailSystemQuality`：NORMAL 30Hz / HIGH 60Hz / ULTRA 144Hz），每个 cycle 只在 `computeData` 写**一个**节点、渲染头=最后记录节点——cycle 间拖尾头停在上一节点、弹体继续飞，**aod7 2880su/s 在 30Hz 下每节点跨 96su**，带头阶梯跳动；暂停把滞后相位定格、恢复时下一 tick 把头前甩一个节点间距，高速弹肉眼可见「跳变」。弹头（Box 螺栓）逐帧渲染、无此现象。ASTD 侧缓解：recede 上限规则 `recede ≤ headLead + 弹体spec.length/2 − speed/30`，保证最坏 cadence 相位下拖尾头仍藏在 Box 螺栓覆盖区（aod7 recede=35）。根治需上游：fill 头节点用 tracker 实时位置外插，或提供逐帧记录模式。
+- **弹体出生伸入亮度（探针读图注意）**：Box 螺栓与原版 TrailExtender 消费同一真值——`DamagingProjectileAPI.getBrightness()` = `(1-progress) × distanceRatio`，distanceRatio 要飞满 `proj.length`（aod7=138su）才到 1；几何锚定同理消费 `getTailEnd()`。弹速低时伸入期拉长到肉眼可见，恰好跨暂停窗口时易误读为「暂停导致突变」。实弹速下约 0.05s 内完成，无感知。
 
 ## 禁做
 
 - 不启用 `contents/data/trails/trail_data.csv`（MagicTrail 数据面，不再使用）。
 - 不写「BoxUtil + 原版渲染」双实现降级分支（rendering-vfx-guidelines 总原则）。
+- 不给已接入管线的弹体恢复原版螺栓渲染（vanillaBolt / projtrail 外带），不写「Box 螺栓 + 原版螺栓」双渲染分支。
 - 贴图加载失败必须 WARN 并跳过该层（`StaticTrailComponent.onAttachSelf` 先例），禁空 catch。
 - 不给 Static Trail 加回全局 fade alpha / 加速消散窗口 / 消亡前飞补偿（destroy() 自然播完）；带长相关计算一律世界单位，禁与像素域混算。
 - 不自研 CPU 折线带体/历史采样（Static Trail 系统全权托管）。

@@ -7,13 +7,14 @@ import kotlin.math.max
 import kotlin.math.roundToInt
 
 /**
- * 弹体特效手写 DSL 构建函数库（Static Trail 管线，2026-09 起）。
+ * 弹体特效手写 DSL 构建函数库（Static Trail + Box 螺栓管线）。
  * 每个 projectileSpecId 对应一个无状态构建函数，每次生成弹体都重新调用（不缓存），以支持调试期字面量热交换。
  * 注意：Static Trail 拖尾层的 StaticTrailData（vRAM 池配置）按 BoxUtil 约束为常量并缓存，热交换对拖尾层不生效。
  *
  * 绝大多数弹体（[simpleProjectileVfx]）只需 4 个高层旋钮（主色/宽/长/体型档），拖尾主体为固定三层贴图混合
- * （twin 外带 + smooth 核心 + zappy 装饰，参数见文件底部常量与纯函数）；弹头全部由原版弹体渲染承担
- * （.proj 走 projbody/projtrail 螺栓）——旧代码弹头（head{} DSL）已随自研渲染栈删除，aod7 亦不例外。
+ * （twin 外带 + smooth 核心 + zappy 装饰，参数见文件底部常量与纯函数）；弹头由 Box 螺栓组件承担
+ * （SpriteEntity 双层 projbody 彗星图，默认开启、外缘染主色），原版螺栓视觉由 .proj 屏蔽
+ * （ss-csv 侧 `ProjectileProjSpec.boxBolt`）。
  */
 object ProjectileVfxSpecs {
 
@@ -87,7 +88,7 @@ object ProjectileVfxSpecs {
      * - smooth 核心（layer2）：宽度 −50%，alpha [ALPHA_CORE]；
      * - zappy 装饰（layer3）：[arcWidth]（0.8×外带），alpha [ALPHA_DECOR]。
      *
-     * 弹头由原版弹体渲染承担（projbody/projtrail 螺栓，见 .proj）；带体两段上色（亮头 → 暗尾）。
+     * 弹头为 Box 螺栓（外缘染主色、核心近白，见 `bolt{}`）；带体两段上色（亮头 → 暗尾）。
      * 派生公式全部为内部纯函数（[bandWidth] 等），登记行只填差异；目检微调优先改公式常量。
      */
     private fun simpleProjectileVfx(
@@ -99,6 +100,8 @@ object ProjectileVfxSpecs {
         extra: ProjectileVfxScope.() -> Unit = {},
     ): ProjectileVfx = projectileVfx(id) {
         fade { out(0.18f); hit(0.1f); expire(0.22f) }
+
+        bolt { fringe(color.copy(alpha = 1f).hex()) }
 
         val bandW = bandWidth(width, glowScale) * BAND_WIDTH_MULT
         val recedeBy = headRecede(length)
@@ -113,7 +116,7 @@ object ProjectileVfxSpecs {
             colors(bandHeadColor(color, ALPHA_CORE).hex(), bandTailColor(color, ALPHA_CORE).hex())
             tile(mainTile(length), mainScroll(length))
             recede(recedeBy)
-            // 仅核心层给适度 bloom（三层全开曾过曝成白团）；带体亮头已与螺栓分离，0.45 安全
+            // 仅核心层给适度 bloom（三层全开会过曝成白团）；带体亮头已与螺栓分离，0.45 安全
             glow(0.45f)
         }
         staticTrail("zappy", TEX_ZAPPY) {
@@ -130,16 +133,17 @@ object ProjectileVfxSpecs {
 
     /**
      * aod7 hero：两条贴图拖尾为拖尾主体（复刻参考模组 zappy+twin 叠加构图）；
-     * 弹头 = 原版弹体渲染（2026-09 起，代码弹头网格已删）。
+     * 弹头 = Box 螺栓（外缘染 aod7 冷蓝白）。
      * 拖尾吃 astd_trails 贴图（twin 脆丝垫底 layer1、zappy 电弧 layer2，宽比 twin=1.25×zappy）。
-     * headLead 自动（spec.length/2）：原版螺栓已恢复，锚点对齐其视觉头部。
-     * recede 用标准公式（headRecede(420)=35）而非早期的 90：BoxUtil 30Hz 记录 cadence 下
-     * 2880su/s 最坏滞后 96su，recede 90 会把拖尾头推出螺栓覆盖区（中心−21−96 < 螺栓尾 −69），
-     * 暂停时定格成可见的带头脱节/跳变；recede ≤ headLead+spec.length/2−speed/30（=42）可保证
-     * 最坏相位下拖尾头仍藏在螺栓底下（2026-09 trail_pause_probe 三帧对照实测定论）。
+     * headLead 自动（spec.length/2），锚点对齐螺栓视觉头部。
+     * recede 用标准公式（headRecede(420)=35）：BoxUtil 30Hz 记录 cadence 下
+     * 2880su/s 最坏滞后 96su，recede 上限规则（recede ≤ headLead+spec.length/2−speed/30，=42）保证
+     * 最坏相位下拖尾头仍藏在螺栓底下。
      */
     private fun aod7Shot(): ProjectileVfx = projectileVfx("astd_aod7_shot") {
         fade { out(0.15f) }
+
+        bolt { fringe(0xCFE8FFFF) }
 
         staticTrail("twin", TEX_TWIN) {
             layer(1); width(30f); length(420f); recede(headRecede(420f))
@@ -218,7 +222,7 @@ internal const val BAND_WIDTH_MULT = 2f
 internal const val CORE_WIDTH_RATIO = 0.5f
 
 /** 三层 alpha：twin 外带 0.45 / smooth 核心 0.6 / zappy 装饰 0.45（乘进两段渐变头尾 alpha）。
- * 初版 0.6/0.8/0.6 经烟测目检过曝（多层加色叠加 + 同走廊多发弹体拖尾重叠），×0.75 压暗，保持 3:4:3 比例。 */
+ * 上限 0.6/0.8/0.6：再高会在多层加色叠加 + 同走廊多发弹体拖尾重叠下过曝成白团，保持 3:4:3 比例。 */
 internal const val ALPHA_OUTER = 0.45f
 internal const val ALPHA_CORE = 0.6f
 internal const val ALPHA_DECOR = 0.45f
@@ -258,9 +262,9 @@ internal fun arcTile(length: Float): Float = round5(length / 2f)
 /** 装饰带滚动速度：L/4.5。 */
 internal fun arcScroll(length: Float): Float = round5(length / 4.5f)
 
-/** 带体头部退距：L×0.08（aod7 420→35），带体亮端后移让原版螺栓弹头在带体前露出（禁 forward 偏移）。
+/** 带体头部退距：L×0.08（aod7 420→35），带体亮端后移让螺栓弹头在带体前露出（禁 forward 偏移）。
  * 上限规则：recede ≤ headLead + 弹体 spec.length/2 − speed/30（BoxUtil NORMAL 30Hz 记录 cadence 的最坏滞后），
- * 超过则暂停/恢复时拖尾头会露出螺栓覆盖区，定格成可见脱节（2026-09 trail_pause_probe 实证）。 */
+ * 超过则暂停/恢复时拖尾头会露出螺栓覆盖区，定格成可见脱节。 */
 internal fun headRecede(length: Float): Float = round5(length * 0.08f)
 
 private fun mixWhite(color: ASTDColor, t: Float): ASTDColor = ASTDColor(

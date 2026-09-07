@@ -27,6 +27,7 @@ description: "BoxUtil 使用指南（API 速览、调试建议、避坑点），
 - 本仓库已集成 BoxUtil 的封装工具：
   - `modules/internal/astd-render/.../renderer/boxutil/BoxUtilCombatVfx.kt`（初始化/光束拖尾工厂）
   - `modules/internal/astd-render/.../impl/render/StaticTrailComponent.kt` + `StaticTrailDataFactory.kt` + `ASTDProjectileTrailTracker.kt`（弹体拖尾，Static Trail 管线）
+  - `modules/internal/astd-render/.../impl/render/BoltRenderComponent.kt`（弹体弹头，SpriteEntity 双层 projbody 螺栓渲染）
 
 ## API 速览（常用）
 
@@ -118,12 +119,13 @@ description: "BoxUtil 使用指南（API 速览、调试建议、避坑点），
   - `createAndAddTaperedBeamTrailFromCenter(...)`
   - `createAndAddTaperedBeamTrailFromCenterReversedU(...)`
 
-### B) 弹体拖尾（Static Trail 管线）
+### B) 弹体拖尾/弹头（Static Trail 管线 + Box 螺栓）
 
 - 负责：
   - DSL 声明（`ProjectileVfxSpecs.kt` 的 `staticTrail{}`）→ `StaticTrailDataFactory` 翻译/缓存 `StaticTrailData`
   - `ASTDProjectileTrailTracker` 上报弹体锚点（headLead 前移 + recede 退距），消亡 destroy 自然播完
   - `StaticTrailComponent` 挂在 RenderEntity 树上，attach 时校验贴图并注册
+  - DSL 声明（`bolt{}`）→ `BoltRenderComponent` 挂树渲染 Box 螺栓弹头（SpriteEntity 双层 projbody，逐帧消费 `getBrightness()`/`getTailEnd()` 真值）
 - 详细参数面与调参见 projectile-trail-guidelines。
 
 > 规范提示：新写的渲染/VFX 逻辑不建议再引入“BoxUtil + 原版渲染”的双实现降级分支；BoxUtil 出问题应尽快报告并修复。
@@ -208,6 +210,7 @@ description: "BoxUtil 使用指南（API 速览、调试建议、避坑点），
 - 本仓库内部封装：
   - `modules/internal/astd-render/.../renderer/boxutil/BoxUtilCombatVfx.kt`
   - `modules/internal/astd-render/.../impl/render/StaticTrailComponent.kt`（Static Trail 弹体拖尾）
+  - `modules/internal/astd-render/.../impl/render/BoltRenderComponent.kt`（Box 螺栓弹头）
 - BoxUtil 本体：`/mods/BoxUtil/jars/BoxUtilMod.jar`
 - BoxUtil API 源码：`/home/hikari_nova/IdeaProjects/BoxUtil/api/src/`
 - 示例战役源码：`/home/hikari_nova/IdeaProjects/BoxUtil/backends/src/data/missions/BUtilTestMission/MissionDefinition.java`

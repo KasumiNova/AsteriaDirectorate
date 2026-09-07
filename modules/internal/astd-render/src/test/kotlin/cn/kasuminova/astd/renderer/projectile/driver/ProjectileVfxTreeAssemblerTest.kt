@@ -1,6 +1,8 @@
 package cn.kasuminova.astd.renderer.projectile.driver
 
 import cn.kasuminova.astd.impl.render.ASTDColor
+import cn.kasuminova.astd.impl.render.BoltRenderComponent
+import cn.kasuminova.astd.impl.render.BoltSpec
 import cn.kasuminova.astd.impl.render.BoxFlareComponent
 import cn.kasuminova.astd.impl.render.BoxFlareSpec
 import cn.kasuminova.astd.impl.render.StaticTrailComponent
@@ -11,7 +13,7 @@ import kotlin.test.assertIs
 
 /**
  * [ProjectileVfxTreeAssembler] 组装自检：蓝图（[ProjectileVfxTreeSpec]）→ RenderEntity 场景树的
- * 组件类型 / 节点 id / renderOrder 排序（Static Trail 360+layer、光斑 368 其上）。
+ * 组件类型 / 节点 id / renderOrder 排序（螺栓 200 < 拖尾 360+layer < 光斑 368）。
  */
 class ProjectileVfxTreeAssemblerTest {
 
@@ -21,6 +23,7 @@ class ProjectileVfxTreeAssemblerTest {
             "twin" to trailSpec(layer = 1),
             "zappy" to trailSpec(layer = 2),
         ),
+        bolt = BoltSpec(fringeColor = ASTDColor(0.6f, 0.85f, 1f, 1f)),
         boxFlares = listOf("flare" to BoxFlareSpec(
             width = 120f,
             height = 14f,
@@ -52,13 +55,26 @@ class ProjectileVfxTreeAssemblerTest {
         val tree = ProjectileVfxTreeAssembler.assemble(treeSpec())
 
         assertEquals(
-            listOf("asm_test_trail_twin", "asm_test_trail_zappy", "asm_test_boxflare_flare"),
+            listOf("asm_test_bolt", "asm_test_trail_twin", "asm_test_trail_zappy", "asm_test_boxflare_flare"),
             tree.children.map { it.id },
         )
+        assertIs<BoltRenderComponent>(tree.children.first { it.id == "asm_test_bolt" })
         assertIs<StaticTrailComponent>(tree.children.first { it.id == "asm_test_trail_twin" })
         assertIs<BoxFlareComponent>(tree.children.first { it.id == "asm_test_boxflare_flare" })
         val orders = tree.children.map { it.renderOrder }
-        assertEquals(orders.sorted(), orders, "子节点须按 renderOrder 升序（拖尾 360+layer < 光斑 368）")
+        assertEquals(orders.sorted(), orders, "子节点须按 renderOrder 升序（螺栓 200 < 拖尾 360+layer < 光斑 368）")
+    }
+
+    @Test
+    fun `bolt 为 null 时不组装螺栓组件`() {
+        val spec = treeSpec().let {
+            ProjectileVfxTreeSpec(it.id, it.staticTrails, null, it.boxFlares, it.anchorArcs)
+        }
+        val tree = ProjectileVfxTreeAssembler.assemble(spec)
+        assertEquals(
+            listOf("asm_test_trail_twin", "asm_test_trail_zappy", "asm_test_boxflare_flare"),
+            tree.children.map { it.id },
+        )
     }
 
     @Test

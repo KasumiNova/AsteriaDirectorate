@@ -50,7 +50,7 @@ object Wpn_astd_aod7 : WeaponDataEntry(), SsProjProjectileOutputs {
 
     // 原版螺栓渲染（2026-09 起）：代码弹头网格已随自研渲染栈删除，弹头回归原版 projbody/projtrail；
     // 尺寸对齐旧代码弹头几何 138×34（hero 体量），配色沿用暖白并复原 alpha。拖尾由 VFX 管线（Static Trail）承担。
-    override val projSpec: ProjectileProjSpec = ProjectileProjSpec.vanillaBolt(
+    override val projSpec: ProjectileProjSpec = ProjectileProjSpec.boxBolt(
         id = "astd_aod7_shot",
         onHitEffect = "cn.kasuminova.astd.combat.effect.generic.HighFluxShieldPressureOnHitEffect",
         fringeColor = Rgba(255, 198, 126, 255),
@@ -242,7 +242,7 @@ object Wpn_astd_spc3 : WeaponDataEntry(), SsProjProjectileOutputs {
     override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
     override val number: Int = 9002
 
-    override val projSpec: ProjectileProjSpec = ProjectileProjSpec.vanillaBolt(
+    override val projSpec: ProjectileProjSpec = ProjectileProjSpec.boxBolt(
         id = "astd_spc3_shot",
         spawnType = ProjectileSpawnType.BALLISTIC,
         // 弹头/弹芯交回原版螺栓渲染（projbody/projtrail，离子脉冲尺寸），拖尾仍由 ASTD VFX 三层贴图混合承担。
@@ -293,7 +293,7 @@ object Wpn_astd_charge_needle : WeaponDataEntry(), SsProjProjectileOutputs {
     override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
     override val number: Int = 9210
 
-    override val projSpec: ProjectileProjSpec = ProjectileProjSpec.vanillaBolt(
+    override val projSpec: ProjectileProjSpec = ProjectileProjSpec.boxBolt(
         id = "astd_charge_needle_shot",
         spawnType = ProjectileSpawnType.BALLISTIC,
         onHitEffect = "cn.kasuminova.astd.combat.effect.arc.ChargeNeedleOnHitEffect",
@@ -340,7 +340,7 @@ object Wpn_astd_heavy_charge_needle : WeaponDataEntry(), SsProjProjectileOutputs
     override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
     override val number: Int = 9211
 
-    override val projSpec: ProjectileProjSpec = ProjectileProjSpec.vanillaBolt(
+    override val projSpec: ProjectileProjSpec = ProjectileProjSpec.boxBolt(
         id = "astd_heavy_charge_needle_shot",
         spawnType = ProjectileSpawnType.BALLISTIC,
         onHitEffect = "cn.kasuminova.astd.combat.effect.arc.ChargeNeedleOnHitEffect",
@@ -397,7 +397,7 @@ object Wpn_astd_electric_drive_accelerator : WeaponDataEntry(), SsProjProjectile
     override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
     override val number: Int = 9213
 
-    override val projSpec: ProjectileProjSpec = ProjectileProjSpec.vanillaBolt(
+    override val projSpec: ProjectileProjSpec = ProjectileProjSpec.boxBolt(
         id = "astd_electric_drive_accelerator_shot",
         spawnType = ProjectileSpawnType.BALLISTIC,
         onHitEffect = "cn.kasuminova.astd.combat.effect.arc.ElectricDriveAcceleratorOnHitEffect",
@@ -446,7 +446,7 @@ object Wpn_astd_qiongjue_phase_railgun : WeaponDataEntry(), SsProjProjectileOutp
     override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
     override val number: Int = 9214
 
-    override val projSpec: ProjectileProjSpec = ProjectileProjSpec.vanillaBolt(
+    override val projSpec: ProjectileProjSpec = ProjectileProjSpec.boxBolt(
         id = "astd_qiongjue_phase_railgun_shot",
         spawnType = ProjectileSpawnType.BALLISTIC,
         onHitEffect = "cn.kasuminova.astd.combat.effect.arc.qiongjue.QiongjuePhaseRailgunOnHitEffect",
@@ -496,7 +496,7 @@ object Wpn_astd_positron_shockwave : WeaponDataEntry(), SsProjProjectileOutputs 
     override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
     override val number: Int = 9215
 
-    override val projSpec: ProjectileProjSpec = ProjectileProjSpec.vanillaBolt(
+    override val projSpec: ProjectileProjSpec = ProjectileProjSpec.boxBolt(
         id = "astd_positron_shockwave_shot",
         spawnType = ProjectileSpawnType.BALLISTIC,
         // 引信脚本注册（规格 §0-2 分工：弹体 VFX 追踪在 .wpn 侧 dispatcher）
@@ -900,7 +900,7 @@ object Wpn_astd_heavy_ion_pulse : WeaponDataEntry(), SsProjProjectileOutputs {
     override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
     override val number: Int = 9212
 
-    override val projSpec: ProjectileProjSpec = ProjectileProjSpec.vanillaBolt(
+    override val projSpec: ProjectileProjSpec = ProjectileProjSpec.boxBolt(
         id = "astd_heavy_ion_pulse_shot",
         spawnType = ProjectileSpawnType.BALLISTIC,
         onHitEffect = "cn.kasuminova.astd.combat.effect.arc.HeavyIonPulseOnHitEffect",
@@ -954,7 +954,7 @@ object Wpn_astd_piercing_lance : WeaponDataEntry(), SsProjProjectileOutputs {
     override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
     override val number: Int = 9219
 
-    override val projSpec: ProjectileProjSpec = ProjectileProjSpec.vanillaBolt(
+    override val projSpec: ProjectileProjSpec = ProjectileProjSpec.boxBolt(
         id = "astd_piercing_lance_shot",
         spawnType = ProjectileSpawnType.BALLISTIC,
         onHitEffect = "cn.kasuminova.astd.combat.effect.arc.piercinglance.PiercingLanceOnHitEffect",

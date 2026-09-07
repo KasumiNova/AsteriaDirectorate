@@ -2,6 +2,7 @@ package cn.kasuminova.astd.renderer.projectile.driver
 
 import cn.kasuminova.astd.api.render.RenderEntity
 import cn.kasuminova.astd.impl.render.AnchorArcComponent
+import cn.kasuminova.astd.impl.render.BoltRenderComponent
 import cn.kasuminova.astd.impl.render.BoxFlareComponent
 import cn.kasuminova.astd.impl.render.StaticTrailComponent
 import cn.kasuminova.astd.impl.render.renderEntity
@@ -12,6 +13,7 @@ import cn.kasuminova.astd.impl.render.renderEntity
 object ProjectileVfxTreeAssembler {
 
     fun assemble(tree: ProjectileVfxTreeSpec): RenderEntity = renderEntity(tree.id) {
+        tree.bolt?.let { spec -> addChild(BoltRenderComponent("${tree.id}_bolt", spec)) }
         tree.staticTrails.forEach { (name, spec) ->
             addChild(StaticTrailComponent("${tree.id}_trail_$name", tree.id, name, spec))
         }

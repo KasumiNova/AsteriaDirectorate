@@ -115,6 +115,50 @@ data class ProjectileProjSpec(
                 hitGlowRadius = hitGlowRadius,
             )
         }
+
+        /**
+         * Box 螺栓渲染弹体：原版螺栓视觉整体屏蔽（`bulletSprite = BUtil_NONE.png` + 双色 alpha=0 +
+         * scroll=0），弹头由 ASTD VFX 管线的 Box 螺栓组件（SpriteEntity 双层 projbody）逐帧接管。
+         *
+         * length/width/fadeTime 保持真实值：原版弹体逻辑（TrailExtender 出生伸入/超射程淡出、
+         * getBrightness、tailEnd）仍是 Box 螺栓与拖尾锚点（headLead=length/2）的数据源；
+         * 颜色 RGB 仅作存档可读性保留，alpha 强制为 0。
+         *
+         * 注意：屏蔽后原版命中光晕（fringeColor 染色粒子）不可见，由 Box 螺栓组件在命中时补发。
+         *
+         * @param hitGlowRadius 命中光晕基准半径，默认 25；同时被 Box 螺栓组件的补发光晕复用。
+         */
+        fun boxBolt(
+            id: String,
+            spawnType: ProjectileSpawnType = ProjectileSpawnType.BALLISTIC,
+            onFireEffect: String = "cn.kasuminova.astd.combat.effect.generic.ProjectileSpecOnFireDispatcher",
+            onHitEffect: String? = null,
+            collisionClass: String = "PROJECTILE_FF",
+            collisionClassByFighter: String = "PROJECTILE_FIGHTER",
+            fringeColor: Rgba,
+            coreColor: Rgba,
+            hitGlowRadius: Double = 25.0,
+            length: Double = 75.0,
+            width: Double = 20.0,
+        ): ProjectileProjSpec {
+            return ProjectileProjSpec(
+                id = id,
+                spawnType = spawnType,
+                onFireEffect = onFireEffect,
+                onHitEffect = onHitEffect,
+                collisionClass = collisionClass,
+                collisionClassByFighter = collisionClassByFighter,
+                length = length,
+                width = width,
+                fadeTime = 0.25,
+                fringeColor = fringeColor.copy(a = 0),
+                coreColor = coreColor.copy(a = 0),
+                textureScrollSpeed = 0.0,
+                pixelsPerTexel = 1.0,
+                hitGlowRadius = hitGlowRadius,
+                bulletSprite = "graphics/textures/BUtil_NONE.png",
+            )
+        }
     }
 }
 

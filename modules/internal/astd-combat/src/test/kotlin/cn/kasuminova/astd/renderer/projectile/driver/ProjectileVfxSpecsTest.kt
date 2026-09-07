@@ -11,16 +11,21 @@ import kotlin.test.assertTrue
 /**
  * 手写 DSL spec 的蓝图自检：验证 [ProjectileVfxSpecs] 的构建函数产出的 [ProjectileVfxTreeSpec] 蓝图拓扑与驱动策略。
  *
- * Static Trail 迁移（2026-09）后：简单 spec = 三条 Static Trail 贴图拖尾（twin 外带 / smooth 核心 / zappy 装饰），
- * 弹头全部由原版弹体渲染承担（aod7 亦不例外），全部参数由文件底部常量与公式纯函数派生——
- * 本测试含公式数值锚点与全 spec 的接线守护。
+ * 简单 spec = Box 螺栓弹头（默认开启，外缘染主色）+ 三条 Static Trail 贴图拖尾（twin 外带 / smooth 核心 / zappy 装饰），
+ * 全部参数由文件底部常量与公式纯函数派生——本测试含公式数值锚点与全 spec 的接线守护。
  * 蓝图 → RenderEntity 场景树的组装（组件类型/节点 id/renderOrder）由 astd-render 的 ProjectileVfxTreeAssemblerTest 守护。
  */
 class ProjectileVfxSpecsTest {
 
     @Test
-    fun `aod7 蓝图：twin 与 zappy 两条 Static Trail 拖尾`() {
+    fun `aod7 蓝图：Box 螺栓 + twin 与 zappy 两条 Static Trail 拖尾`() {
         val vfx = assertNotNull(ProjectileVfxSpecs.build("astd_aod7_shot"))
+
+        val bolt = assertNotNull(vfx.tree.bolt, "aod7 弹头为 Box 螺栓（默认开启）")
+        assertEquals(0xCF / 255f, bolt.fringeColor.red, 1e-3f)
+        assertEquals(0xE8 / 255f, bolt.fringeColor.green, 1e-3f)
+        assertEquals(1f, bolt.fringeColor.blue, 1e-3f)
+        assertEquals(1f, bolt.fringeColor.alpha, 1e-3f)
 
         assertEquals(listOf("twin", "zappy"), vfx.tree.staticTrails.map { it.first })
         val twin = vfx.tree.staticTrails.first { it.first == "twin" }.second
@@ -54,9 +59,15 @@ class ProjectileVfxSpecsTest {
     }
 
     @Test
-    fun `简单 spec 蓝图拓扑：三层 Static Trail 拖尾`() {
-        // spc3：twin 外带 + smooth 核心 + zappy 装饰按声明序叠层；弹头由原版弹体渲染承担。
+    fun `简单 spec 蓝图拓扑：Box 螺栓 + 三层 Static Trail 拖尾`() {
+        // spc3：Box 螺栓外缘染主色（alpha 拉满）+ twin 外带 + smooth 核心 + zappy 装饰按声明序叠层。
         val plain = assertNotNull(ProjectileVfxSpecs.build("astd_spc3_shot"))
+        val bolt = assertNotNull(plain.tree.bolt)
+        assertEquals(168 / 255f, bolt.fringeColor.red, 1e-3f, "violet 主色（hex 0.66×255→168）")
+        assertEquals(107 / 255f, bolt.fringeColor.green, 1e-3f, "0.42×255→107")
+        assertEquals(1f, bolt.fringeColor.alpha, 1e-3f, "螺栓外缘 alpha 拉满（亮度衰减由组件逐帧乘算）")
+        assertEquals(1f, bolt.coreColor.red, 1e-3f, "核心层默认近白")
+
         assertEquals(listOf("twin", "core", "zappy"), plain.tree.staticTrails.map { it.first })
 
         // bandWidth(6, 2.2)=round05(max(2.1, 6.93))=7 ×2 = 14；核心 ×0.5=7；装饰 ×0.6=8.5
@@ -88,6 +99,18 @@ class ProjectileVfxSpecsTest {
         // 抽查若干已接入。
         assertTrue(ProjectileVfxSpecs.has("astd_aod7_shot"))
         assertTrue(ProjectileVfxSpecs.has("astd_spc3_shot"))
+    }
+
+    @Test
+    fun `bolt DSL：off 关闭螺栓层；仅螺栓也可成树`() {
+        val off = projectileVfx("bolt_off_test") {
+            bolt { off() }
+            staticTrail("twin", TEX_TWIN) { }
+        }
+        assertNull(off.tree.bolt)
+
+        val boltOnly = projectileVfx("bolt_only_test") { }
+        assertNotNull(boltOnly.tree.bolt, "bolt 默认开启，空块即仅螺栓弹头")
     }
 
     @Test
