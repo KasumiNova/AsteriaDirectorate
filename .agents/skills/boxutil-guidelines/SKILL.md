@@ -73,7 +73,7 @@ description: "BoxUtil 使用指南（API 速览、调试建议、避坑点），
 - `CurveEntity` / `SegmentEntity`：曲线/段渲染
 - `TextFieldEntity` / `TextFieldObject`：高性能文本渲染
 
-### 5.5) Static Trail 系统（1.6.0，弹体拖尾首选）
+### 5.5) Static Trail 系统（弹体拖尾首选）
 
 - `StaticTrailData(id, initCapacity: Short)`：一条拖尾风格 + 一块专属环形 vRAM 池的**常量**配置（池以 id 为键，配置须 const，建好缓存复用）。
   - 链式 setter：`setDurFadeIn/Full/FadeOut`（秒，三段总和 ≥ 0.1）、`setSizeIn/setSizeOut`（头/尾宽，随生命线性 mix）、`setTexturePixels`（平铺周期，世界单位）、`setTextureSpeed`（su/s）、`setColorIn/setColorOut(Vector4f)`、`setAdditiveBlend(true)`
@@ -118,7 +118,7 @@ description: "BoxUtil 使用指南（API 速览、调试建议、避坑点），
   - `createAndAddTaperedBeamTrailFromCenter(...)`
   - `createAndAddTaperedBeamTrailFromCenterReversedU(...)`
 
-### B) 弹体拖尾（Static Trail 管线，1.6.0 起）
+### B) 弹体拖尾（Static Trail 管线）
 
 - 负责：
   - DSL 声明（`ProjectileVfxSpecs.kt` 的 `staticTrail{}`）→ `StaticTrailDataFactory` 翻译/缓存 `StaticTrailData`
