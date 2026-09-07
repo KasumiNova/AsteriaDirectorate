@@ -12,7 +12,7 @@ import kotlin.math.sin
  * 职责：
  * - 锚点 = 弹体前端（projectile.location = 原版螺栓贴图视觉头部）沿朝向提前（headLead − recede）；
  * - headLead 缺省 0，即锚点默认压在螺栓头部；
- * - recede 缺省取弹体 spec.length × [RECEDE_OF_LENGTH]（带体亮端退到螺栓覆盖区中段，让弹头尖露出）；
+ * - recede 缺省取弹体 spec.length × [RECEDE_OF_LENGTH]（带体亮端略退入螺栓覆盖区，弹头尖露出）；
  * - 弹体消亡（wasRemoved/isExpired）→ [StaticTrailTracker.Result.destroy]，带体按三段时长
  *   自然播完（尾先头后）。**不含 isFading**：超射程/命中后的淡出期弹体仍在飞行，带体继续跟随，
  *   直到弹体真正移出引擎才开始消散（2026-09 实机裁定）。
@@ -52,8 +52,8 @@ class ASTDProjectileTrailTracker(
     }
 
     companion object {
-        /** recede 缺省比例：弹体长度 ×0.75——带体亮端退到螺栓覆盖区内，又不至于与弹尾重叠过多。 */
-        const val RECEDE_OF_LENGTH = 0.75f
+        /** recede 缺省比例：弹体长度 ×0.2——退距过大时新段与旧亮端拼接处易出现视觉跳变。 */
+        const val RECEDE_OF_LENGTH = 0.20f
     }
 }
 

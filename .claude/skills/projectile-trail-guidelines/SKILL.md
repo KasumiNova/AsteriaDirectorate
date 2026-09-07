@@ -21,7 +21,7 @@ description: "弹体拖尾/弹头规范：拖尾统一走 staticTrail DSL（BoxU
 - **图案**：平铺滚动贴图。`tileLength` = 一周期世界单位（REPEAT 平铺），`scrollSpeed` su/s；scroll/tile ≈ 每秒整图滚动次数。
 - **贴图规范**：**N×64 PNG，X=带长向、Y=横向**（X 向 REPEAT 平铺，必须可无缝循环）；形在 alpha 通道，RGB 近白（染色来自节点色）。
 - **消亡语义**：tracker 自查弹体消亡（wasRemoved/isExpired）→ `destroy()`，带体按三段时长自然播完（尾先头后）。**不含 isFading**——超射程/命中淡出期弹体仍在飞，带体继续跟随至弹体移出引擎才开始消散。**没有加速消散窗口、没有带头前飞补偿**（勿加回）。
-- **拖尾锚点 = 弹体前端**：`projectile.location` 即原版螺栓的视觉头部（原版 TrailExtender 以此为准），tracker 锚点 = location 沿朝向提前（headLead − recede），headLead 缺省 0（无需再前移）；`lifecycle{ headLead(v) }` 仅在确需继续前探时声明。**recede 缺省 = 弹体 `spec.length × 0.75`**（tracker 运行期解析，带体亮端退进螺栓覆盖区中段）；`recede(v)` 显式覆写（如贯星之矛/辉星 MRM 的 0 = 亮头直抵弹头）。
+- **拖尾锚点 = 弹体前端**：`projectile.location` 即原版螺栓的视觉头部（原版 TrailExtender 以此为准），tracker 锚点 = location 沿朝向提前（headLead − recede），headLead 缺省 0（无需再前移）；`lifecycle{ headLead(v) }` 仅在确需继续前探时声明。**recede 缺省 = 弹体 `spec.length × 0.2`**（tracker 运行期解析，带体亮端略退入螺栓覆盖区）；`recede(v)` 显式覆写（如贯星之矛/辉星 MRM 的 0 = 亮头直抵弹头）。
 - **带长动态化**：构建函数每次发射现调并收到武器面板射程（`ProjectileVfxRegistry.build(id, weaponRange)`）；`simpleProjectileVfx(rangeRatio=…)`/手写 spec 可按射程比例折算带长（射程缺失用固定基线）。StaticTrailData 缓存键带 25su 带长分桶——不同射程各自的三段时长烘进池配置，不共用。
 - **bloom**：`glow(power)` 进 BoxUtil emissive → bloom G-buffer；emissive 复用 diffuse 贴图并以头部色染色。**默认 0 不发光**（Box 螺栓无辉光；三层 additive 叠在弹头上再叠加 bloom 会过曝成白团）。
 - **节点漂移/自旋（DSL 已暴露）**：`angularOut(min,max)`/`angularIn(...)` = 每节点随机自旋角速度（度/秒，绕节点锚点、基于带体朝向，In=最新节点→Out=最老节点按生命插值）；`velocityOut(minX,minY,maxX,maxY)`/`velocityIn(...)` = 每节点随机漂移速度（su/s），带尾漂离原航迹（碎屑/烟雾类消散漂移用）。**着色器语义（实读 BUtil_StaticTrail.vert）：自旋旋转的是漂移偏移矢量——velocity 全 0 时 angular 完全无效**，两者必须成对设置。直线弹体主带不用；**zappy 电弧装饰层默认 `angularOut()`（±45°/s）+ `velocityOut(-16,-16,16,16)`**，带尾卷曲（嫌飘可显式传小值）。
@@ -38,7 +38,7 @@ staticTrail("层名", "graphics/fx/astd_trails_zappy.png") {
     colors(头, 尾)              // 两段渐变（0xRRGGBBAA）：头部亮端 → 尾部暗端
     length(420f)                // 预期带长（世界单位）：节点总寿命 = 带长 / 弹体速度
     tile(140f, 50f)             // 平铺周期 su / 滚动速度 su/s
-    recede(40f)                 // 带体整体后退；省略 = 自动取弹体长度 ×0.75
+    recede(40f)                 // 带体整体后退；省略 = 自动取弹体长度 ×0.2
     glow(1f)                    // bloom 发光强度（0..1）；省略即不发光（Box 螺栓无辉光，默认 0）
     angularOut()                // 尾端每节点随机自旋（度/秒，默认 ±45）；angularIn 同理
     velocityOut(-10f,-10f,10f,10f) // 尾端每节点随机漂移速度（su/s，minX,minY,maxX,maxY）；velocityIn 同理
@@ -110,7 +110,7 @@ alpha 0.45/0.6/0.45 是过曝压暗后的裁定（三层加色 + 高射速多发
 | 横向散开 | drift 由带体追踪真实弹道承担（tracker 锚点跟弹体，机动天然捕获）；Box Static Trail 无横向扰动语义，不硬造 |
 | 多层拖带叠加错参 | 多条 staticTrail：宽比 1.2~1.5×、scroll 比 1.5~2×、alpha 错开（芯亮边暗） |
 
-惯例锚点（aod7 hero）：主带 twin `width 30` 垫底，副带 zappy `width 24` + `glow(0.5f)` 不做自旋；带长 = 射程 ×0.75（基线 420，tile/scroll 随带长等比：twin L/3·L×0.12、zappy L×0.476·L×0.215），recede 缺省（弹体长 ×0.75，aod7 螺栓长 138 → 退 103，带体满亮区起在螺栓中段之后、不与螺栓头同位叠加）。bloom 只开单层（简单 spec 核心层 0.45 / aod7 zappy 0.5）：三层全开会过曝成白团。
+惯例锚点（aod7 hero）：主带 twin `width 30` 垫底，副带 zappy `width 24` + `glow(0.5f)` 不做自旋；带长 = 射程 ×0.75（基线 420，tile/scroll 随带长等比：twin L/3·L×0.12、zappy L×0.476·L×0.215），recede 缺省（弹体长 ×0.2，aod7 螺栓长 138 → 退 27.6，带体亮端贴近弹头、缓解新旧段拼接跳变）。bloom 只开单层（简单 spec 核心层 0.45 / aod7 zappy 0.5）：三层全开会过曝成白团。
 
 宽度锚点：主带 ≈ 弹体视觉宽 ×2~3；重击弹（贯星 36su）可再放大并配 boxFlare 附加层。
 
