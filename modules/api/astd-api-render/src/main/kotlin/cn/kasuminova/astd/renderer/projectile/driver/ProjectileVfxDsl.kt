@@ -93,8 +93,8 @@ class ProjectileVfxScope(private val id: String) {
     }
 
     /**
-     * 定制 Box 螺栓弹头层（SpriteEntity 双层 additive，取代原版螺栓渲染；默认即开启）。
-     * 不调用本方法 = 默认白芯白缘螺栓；`bolt { off() }` 关闭（导弹等原版贴图弹体）。
+     * 定制 Box 螺栓弹头层（SpriteEntity 双趟 additive，取代原版螺栓渲染；默认即开启）。
+     * 不调用本方法 = 默认近白螺栓；`bolt { off() }` 关闭（导弹等原版贴图弹体）。
      */
     fun bolt(block: BoltBuilder.() -> Unit) {
         val builder = bolt ?: BoltBuilder()
@@ -224,30 +224,25 @@ class StaticTrailBuilder(private val texturePath: String) {
     )
 }
 
-/** Box 螺栓弹头层（SpriteEntity 双层 additive，projbody 彗星贴图）：贴图/芯色/缘色/关闭。 */
+/** Box 螺栓弹头层（SpriteEntity 双趟 additive，烘焙版彗形贴图）：贴图/染色/关闭。 */
 @ProjectileVfxDslMarker
 class BoltBuilder {
     internal var isOff = false; private set
     private var texturePath = BoltSpec.DEFAULT_TEXTURE
-    private var coreColor = rgba(0xFFFFFFFFL)
-    private var fringeColor = rgba(0xFFFFFFFFL)
+    private var color = rgba(0xFFFFFFC8L)
 
     /** 关闭 Box 螺栓弹头（弹体视觉由其它路径承担，如原版导弹贴图）。 */
     fun off() { isOff = true }
 
-    /** 弹头贴图路径（彗星形白图，头亮尾散；X=飞行向），默认原版 projbody。 */
+    /** 弹头贴图路径（彗形白图，渐隐/收窄已烘焙进 alpha；X=飞行向，头在贴图左侧）。 */
     fun texture(path: String) { texturePath = path }
 
-    /** 核心/外缘染色（0xRRGGBBAA）：核心层近白高亮，外缘层取弹体主色。 */
-    fun colors(core: Long, fringe: Long) { coreColor = rgba(core); fringeColor = rgba(fringe) }
-
-    /** 仅外缘染色（核心保持近白）。 */
-    fun fringe(fringe: Long) { fringeColor = rgba(fringe) }
+    /** 弹头染色（0xRRGGBBAA，原版 coreColor 语义，通常近白；alpha 参与亮度乘算）。 */
+    fun color(color: Long) { this.color = rgba(color) }
 
     internal fun build(): BoltSpec = BoltSpec(
         texturePath = texturePath,
-        coreColor = coreColor,
-        fringeColor = fringeColor,
+        color = color,
     )
 }
 

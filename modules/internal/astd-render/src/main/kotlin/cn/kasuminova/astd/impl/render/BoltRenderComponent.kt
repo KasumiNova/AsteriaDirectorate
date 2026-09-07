@@ -13,9 +13,6 @@ import org.boxutil.define.BoxEnum
 import org.boxutil.units.standard.entity.SpriteEntity
 import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
-import kotlin.math.cos
-import kotlin.math.max
-import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
@@ -23,13 +20,17 @@ import kotlin.math.sqrt
  * （原版视觉由 .proj 的 `bulletSprite=BUtil_NONE.png` + 双色 alpha=0 屏蔽，见 ss-csv 侧
  * `ProjectileProjSpec.boxBolt`）。
  *
- * 每帧从弹体 API 实时同步两颗 SpriteEntity（projbody 彗星贴图，additive，ABOVE_SHIPS 层）：
- * - 几何：`boltFrame`（头=弹体位置、尾=tailEnd、前伸段=原版同款 max(width/2, length×0.2)）；
- * - 亮度：外缘层 alpha = brightness（一次方）、核心层 alpha = brightness²（对齐原版两趟叠加）；
- * - 出生伸入：X 向缩放随 |头−尾|/length 从 0 拉满（原版 TrailExtender distanceRatio 同语义）。
+ * 观感对齐原版 built-in 螺栓（ProjectileRenderer.render 的 var47==null 路径）：
+ * - 贴图 [BoltSpec.texturePath]：彗形 + 纵向渐隐（头全亮→尾透明）+ 收窄（头全宽→尾半宽）
+ *   已烘焙进 alpha（原版靠逐顶点色与梯形几何实现，SpriteEntity 单 quad 无此能力，故烘焙）；
+ * - 两颗相同 SpriteEntity 双趟叠加（= 原版 body 双 pass），统一染 [BoltSpec.color]
+ *   （原版弹头只用 coreColor；fringeColor 的 projtrail 外带语义由 Static Trail 接替）；
+ * - 每帧从弹体 API 实时同步：`boltFrame`（贴图跨 [tailEnd → 弹体位置]），
+ *   alpha = brightness² × 染色 alpha（原版 body 两趟均吃平方亮度）；
+ * - 出生伸入：X 向缩放随 |头−尾|/spec.length 从 0 拉满（原版 TrailExtender distanceRatio 同语义）。
  *
  * 弹体移出引擎即删除实体；命中时补发一次命中光晕（原版用 .proj 的 fringeColor 画 hit glow，
- * 屏蔽后 alpha=0 不可见，这里用 DSL 缘色补回）。
+ * 屏蔽后 alpha=0 不可见，这里用 DSL 染色补回）。
  *
  * 导弹（MissileAPI）不接管：原版导弹贴图渲染保留，组件 attach 时直接禁用自身。
  * BoxUtil 未就绪/建实体失败时 WARN 一次并禁用自身（不重试风暴），弹体其余特效层不受影响。
@@ -40,14 +41,12 @@ class BoltRenderComponent(
 ) : RenderEntityImpl(id, CombatEngineLayers.ABOVE_SHIPS_LAYER, RENDER_ORDER_BOLT) {
 
     private val log = Global.getLogger(BoltRenderComponent::class.java)
-    private var fringe: SpriteEntity? = null
-    private var core: SpriteEntity? = null
+    private val passes = ArrayList<SpriteEntity>(BOLT_PASSES)
     private var disabled = false
     private var hitGlowSpawned = false
 
     private var specLength = 0f
     private var specWidth = 0f
-    private var coreWidthMult = 1f
     private var hitGlowRadius = 0f
 
     override fun onAttachSelf(ctx: RenderContext): Boolean {
@@ -65,7 +64,6 @@ class BoltRenderComponent(
         }
         specLength = projSpec.length
         specWidth = projSpec.width
-        coreWidthMult = projSpec.coreWidthMult
         hitGlowRadius = projSpec.hitGlowRadius
         if (specLength <= 0f || specWidth <= 0f) {
             log.warn("ASTD box bolt 弹体尺寸非法（length=$specLength width=$specWidth）：id=$id，本弹体螺栓层缺失，其余特效层照常")
@@ -80,17 +78,13 @@ class BoltRenderComponent(
             return true
         }
 
-        val stretch = boltStretch(specLength, specWidth)
-        val halfLen = (specLength + stretch) / 2f
-        fringe = createBoltSprite(engine, halfLen, specWidth / 2f, spec.fringeColor) ?: run {
-            disabled = true
-            return true
-        }
-        core = createBoltSprite(engine, halfLen, specWidth * coreWidthMult / 2f, spec.coreColor) ?: run {
-            fringe?.delete()
-            fringe = null
-            disabled = true
-            return true
+        repeat(BOLT_PASSES) {
+            val sprite = createBoltSprite(engine) ?: run {
+                deleteAll()
+                disabled = true
+                return true
+            }
+            passes += sprite
         }
         syncBolt(ctx, projectile)
         return true
@@ -101,7 +95,8 @@ class BoltRenderComponent(
         val engine = ctx.engine ?: return
         val projectile = (ctx.host as? ProjectileHost)?.projectile ?: return
         if (!engine.isEntityInPlay(projectile)) {
-            deleteBoth()
+            deleteAll()
+            disabled = true
             return
         }
         syncBolt(ctx, projectile)
@@ -111,17 +106,12 @@ class BoltRenderComponent(
         }
     }
 
-    private fun createBoltSprite(
-        engine: CombatEngineAPI,
-        halfLen: Float,
-        halfWidth: Float,
-        color: ASTDColor,
-    ): SpriteEntity? {
+    private fun createBoltSprite(engine: CombatEngineAPI): SpriteEntity? {
         val entity = SpriteEntity(spec.texturePath)
         entity.setLayer(CombatEngineLayers.ABOVE_SHIPS_LAYER)
         entity.setAdditiveBlend()
-        entity.setBaseSizePerTiles(halfLen, halfWidth)
-        entity.materialData.setColor(color.red, color.green, color.blue, color.alpha)
+        entity.setBaseSizePerTiles(specLength / 2f, specWidth / 2f)
+        entity.materialData.setColor(spec.color.red, spec.color.green, spec.color.blue, spec.color.alpha)
         // 常驻：消亡由组件按弹体状态显式 delete，不走全局计时器
         entity.setGlobalTimer(0f, BOLT_FULL_SECONDS, 0f)
         BoxUtilCombatVfx.ensureReady(engine)
@@ -142,15 +132,12 @@ class BoltRenderComponent(
             tail = projectile.tailEnd,
             facingDeg = BoxUtilCombatVfx.normalizeFacingDeg(ctx.frame.facing),
             specLength = specLength,
-            specWidth = specWidth,
         )
-        fringe?.let {
-            it.setStateVanilla(frame.center, frame.facingDeg, Vector2f(frame.scaleX, 1f))
-            it.materialData.setColorAlpha(brightness * spec.fringeColor.alpha)
-        }
-        core?.let {
-            it.setStateVanilla(frame.center, frame.facingDeg, Vector2f(frame.scaleX, 1f))
-            it.materialData.setColorAlpha(brightness * brightness * spec.coreColor.alpha)
+        val alpha = brightness * brightness * spec.color.alpha
+        val scale = Vector2f(frame.scaleX, 1f)
+        passes.forEach {
+            it.setStateVanilla(frame.center, frame.facingDeg, scale)
+            it.materialData.setColorAlpha(alpha)
         }
     }
 
@@ -160,35 +147,32 @@ class BoltRenderComponent(
      */
     private fun spawnHitGlow(engine: CombatEngineAPI, projectile: DamagingProjectileAPI) {
         val scale = hitGlowScale(projectile.damageAmount)
-        val fringeColor = Color(
-            (spec.fringeColor.red.coerceIn(0f, 1f) * 255f).toInt(),
-            (spec.fringeColor.green.coerceIn(0f, 1f) * 255f).toInt(),
-            (spec.fringeColor.blue.coerceIn(0f, 1f) * 255f).toInt(),
+        val tint = Color(
+            (spec.color.red.coerceIn(0f, 1f) * 255f).toInt(),
+            (spec.color.green.coerceIn(0f, 1f) * 255f).toInt(),
+            (spec.color.blue.coerceIn(0f, 1f) * 255f).toInt(),
         )
         val at = Vector2f(projectile.location)
         val zero = Vector2f(0f, 0f)
-        engine.addHitParticle(at, zero, hitGlowRadius * 3f * scale, 1f, 0.4f, fringeColor)
+        engine.addHitParticle(at, zero, hitGlowRadius * 3f * scale, 1f, 0.4f, tint)
         engine.addHitParticle(at, zero, hitGlowRadius * 0.5f * scale, 1f, 0.8f, Color.WHITE)
     }
 
-    private fun deleteBoth() {
-        fringe?.delete()
-        core?.delete()
-        fringe = null
-        core = null
-        disabled = true
+    private fun deleteAll() {
+        passes.forEach { it.delete() }
+        passes.clear()
     }
 
     override fun onDetachSelf() {
-        fringe?.delete()
-        core?.delete()
-        fringe = null
-        core = null
+        deleteAll()
     }
 
     companion object {
         /** 螺栓绘制序：原版弹体同层（ABOVE_SHIPS），拖尾/光斑在其上的 ABOVE_PARTICLES 层。 */
         const val RENDER_ORDER_BOLT = 200
+
+        /** 双趟叠加（= 原版 ProjectileRenderer body 双 pass，加色下提升头部饱和）。 */
+        const val BOLT_PASSES = 2
 
         /** 螺栓常驻时长（秒）：生命周期由弹体状态显式驱动，这里给一个永不自然到期的值。 */
         private const val BOLT_FULL_SECONDS = 1e7f
@@ -198,32 +182,26 @@ class BoltRenderComponent(
 /** 螺栓帧几何输出：世界中心、归一化朝向（度）、X 向伸入缩放（0..1，出生拉长）。 */
 internal data class BoltFrame(val center: Vector2f, val facingDeg: Float, val scaleX: Float)
 
-/** 弹头前伸段长度（世界单位）：对齐原版 ProjectileRenderer 的 max(width/2, length×0.2)。 */
-internal fun boltStretch(specLength: Float, specWidth: Float): Float = max(specWidth / 2f, specLength * 0.2f)
-
 /**
- * 螺栓帧几何：弹体覆盖区间 = [tail, head + dir×stretch]，sprite 基准全长 = specLength + stretch，
- * X 向缩放 = 当前覆盖长 / 基准全长（出生时 tail≈head，螺栓从炮口一点拉成全长——原版 distanceRatio 同语义）。
+ * 螺栓帧几何：贴图跨 [tail → head]（原版 body 带体区间），sprite 基准全长 = specLength，
+ * X 向缩放 = 当前覆盖长 / specLength（出生时 tail≈head，螺栓从炮口一点拉成全长——
+ * 原版 TrailExtender distanceRatio 同语义）。
  */
 internal fun boltFrame(
     head: Vector2f,
     tail: Vector2f?,
     facingDeg: Float,
     specLength: Float,
-    specWidth: Float,
 ): BoltFrame {
     val rad = Math.toRadians(facingDeg.toDouble())
-    val dirX = cos(rad).toFloat()
-    val dirY = sin(rad).toFloat()
-    val stretch = boltStretch(specLength, specWidth)
-    val front = Vector2f(head.x + dirX * stretch, head.y + dirY * stretch)
+    val dirX = kotlin.math.cos(rad).toFloat()
+    val dirY = kotlin.math.sin(rad).toFloat()
     val realTail = tail ?: head
-    val span = (front.x - realTail.x) * dirX + (front.y - realTail.y) * dirY
-    val baseFull = specLength + stretch
-    val scaleX = (span / baseFull).coerceIn(0.02f, 1.2f)
+    val span = (head.x - realTail.x) * dirX + (head.y - realTail.y) * dirY
+    val scaleX = (span / specLength).coerceIn(0.02f, 1.2f)
     val center = Vector2f(
-        (front.x + realTail.x) / 2f,
-        (front.y + realTail.y) / 2f,
+        (head.x + realTail.x) / 2f,
+        (head.y + realTail.y) / 2f,
     )
     return BoltFrame(center, facingDeg, scaleX)
 }

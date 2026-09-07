@@ -13,7 +13,7 @@ import kotlin.math.roundToInt
  *
  * 绝大多数弹体（[simpleProjectileVfx]）只需 4 个高层旋钮（主色/宽/长/体型档），拖尾主体为固定三层贴图混合
  * （twin 外带 + smooth 核心 + zappy 装饰，参数见文件底部常量与纯函数）；弹头由 Box 螺栓组件承担
- * （SpriteEntity 双层 projbody 彗星图，默认开启、外缘染主色），原版螺栓视觉由 .proj 屏蔽
+ * （SpriteEntity 双趟烘焙彗形贴图，默认开启、染近白单色系），原版螺栓视觉由 .proj 屏蔽
  * （ss-csv 侧 `ProjectileProjSpec.boxBolt`）。
  */
 object ProjectileVfxSpecs {
@@ -88,7 +88,7 @@ object ProjectileVfxSpecs {
      * - smooth 核心（layer2）：宽度 −50%，alpha [ALPHA_CORE]；
      * - zappy 装饰（layer3）：[arcWidth]（0.8×外带），alpha [ALPHA_DECOR]。
      *
-     * 弹头为 Box 螺栓（外缘染主色、核心近白，见 `bolt{}`）；带体两段上色（亮头 → 暗尾）。
+     * 弹头为 Box 螺栓（近白单色系染色，见 `bolt{}` 与 [boltColor]）；带体两段上色（亮头 → 暗尾）。
      * 派生公式全部为内部纯函数（[bandWidth] 等），登记行只填差异；目检微调优先改公式常量。
      */
     private fun simpleProjectileVfx(
@@ -101,7 +101,7 @@ object ProjectileVfxSpecs {
     ): ProjectileVfx = projectileVfx(id) {
         fade { out(0.18f); hit(0.1f); expire(0.22f) }
 
-        bolt { fringe(color.copy(alpha = 1f).hex()) }
+        bolt { color(boltColor(color).hex()) }
 
         val bandW = bandWidth(width, glowScale) * BAND_WIDTH_MULT
         val recedeBy = headRecede(length)
@@ -133,7 +133,7 @@ object ProjectileVfxSpecs {
 
     /**
      * aod7 hero：两条贴图拖尾为拖尾主体（复刻参考模组 zappy+twin 叠加构图）；
-     * 弹头 = Box 螺栓（外缘染 aod7 冷蓝白）。
+     * 弹头 = Box 螺栓（染 aod7 冷蓝白近白色）。
      * 拖尾吃 astd_trails 贴图（twin 脆丝垫底 layer1、zappy 电弧 layer2，宽比 twin=1.25×zappy）。
      * headLead 自动（spec.length/2），锚点对齐螺栓视觉头部。
      * recede 用标准公式（headRecede(420)=35）：BoxUtil 30Hz 记录 cadence 下
@@ -143,7 +143,7 @@ object ProjectileVfxSpecs {
     private fun aod7Shot(): ProjectileVfx = projectileVfx("astd_aod7_shot") {
         fade { out(0.15f) }
 
-        bolt { fringe(0xCFE8FFFF) }
+        bolt { color(0xE4F2FFC8) }
 
         staticTrail("twin", TEX_TWIN) {
             layer(1); width(30f); length(420f); recede(headRecede(420f))
@@ -266,6 +266,10 @@ internal fun arcScroll(length: Float): Float = round5(length / 4.5f)
  * 上限规则：recede ≤ headLead + 弹体 spec.length/2 − speed/30（BoxUtil NORMAL 30Hz 记录 cadence 的最坏滞后），
  * 超过则暂停/恢复时拖尾头会露出螺栓覆盖区，定格成可见脱节。 */
 internal fun headRecede(length: Float): Float = round5(length * 0.08f)
+
+/** Box 螺栓弹头染色：mix(主色, 白, 0.7)，alpha 0.78（原版 coreColor 近白口径；弹头只染单色系，
+ * 武器主色由拖尾带体承担——原版 fringeColor 属 projtrail 外带语义）。 */
+internal fun boltColor(color: ASTDColor): ASTDColor = mixWhite(color, 0.7f).copy(alpha = 0.78f)
 
 private fun mixWhite(color: ASTDColor, t: Float): ASTDColor = ASTDColor(
     color.red + (1f - color.red) * t,

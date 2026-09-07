@@ -118,7 +118,7 @@ data class ProjectileProjSpec(
 
         /**
          * Box 螺栓渲染弹体：原版螺栓视觉整体屏蔽（`bulletSprite = BUtil_NONE.png` + 双色 alpha=0 +
-         * scroll=0），弹头由 ASTD VFX 管线的 Box 螺栓组件（SpriteEntity 双层 projbody）逐帧接管。
+         * scroll=0），弹头由 ASTD VFX 管线的 Box 螺栓组件（SpriteEntity 双趟烘焙彗形贴图）逐帧接管。
          *
          * length/width/fadeTime 保持真实值：原版弹体逻辑（TrailExtender 出生伸入/超射程淡出、
          * getBrightness、tailEnd）仍是 Box 螺栓与拖尾锚点（headLead=length/2）的数据源；

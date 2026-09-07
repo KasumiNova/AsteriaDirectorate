@@ -23,7 +23,7 @@ class ProjectileVfxTreeAssemblerTest {
             "twin" to trailSpec(layer = 1),
             "zappy" to trailSpec(layer = 2),
         ),
-        bolt = BoltSpec(fringeColor = ASTDColor(0.6f, 0.85f, 1f, 1f)),
+        bolt = BoltSpec(color = ASTDColor(0.6f, 0.85f, 1f, 1f)),
         boxFlares = listOf("flare" to BoxFlareSpec(
             width = 120f,
             height = 14f,

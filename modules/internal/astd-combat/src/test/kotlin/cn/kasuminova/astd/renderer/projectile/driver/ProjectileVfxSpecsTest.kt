@@ -11,7 +11,7 @@ import kotlin.test.assertTrue
 /**
  * 手写 DSL spec 的蓝图自检：验证 [ProjectileVfxSpecs] 的构建函数产出的 [ProjectileVfxTreeSpec] 蓝图拓扑与驱动策略。
  *
- * 简单 spec = Box 螺栓弹头（默认开启，外缘染主色）+ 三条 Static Trail 贴图拖尾（twin 外带 / smooth 核心 / zappy 装饰），
+ * 简单 spec = Box 螺栓弹头（默认开启，染 boltColor 近白单色系）+ 三条 Static Trail 贴图拖尾（twin 外带 / smooth 核心 / zappy 装饰），
  * 全部参数由文件底部常量与公式纯函数派生——本测试含公式数值锚点与全 spec 的接线守护。
  * 蓝图 → RenderEntity 场景树的组装（组件类型/节点 id/renderOrder）由 astd-render 的 ProjectileVfxTreeAssemblerTest 守护。
  */
@@ -22,10 +22,10 @@ class ProjectileVfxSpecsTest {
         val vfx = assertNotNull(ProjectileVfxSpecs.build("astd_aod7_shot"))
 
         val bolt = assertNotNull(vfx.tree.bolt, "aod7 弹头为 Box 螺栓（默认开启）")
-        assertEquals(0xCF / 255f, bolt.fringeColor.red, 1e-3f)
-        assertEquals(0xE8 / 255f, bolt.fringeColor.green, 1e-3f)
-        assertEquals(1f, bolt.fringeColor.blue, 1e-3f)
-        assertEquals(1f, bolt.fringeColor.alpha, 1e-3f)
+        assertEquals(0xE4 / 255f, bolt.color.red, 1e-3f)
+        assertEquals(0xF2 / 255f, bolt.color.green, 1e-3f)
+        assertEquals(1f, bolt.color.blue, 1e-3f)
+        assertEquals(0xC8 / 255f, bolt.color.alpha, 1e-3f)
 
         assertEquals(listOf("twin", "zappy"), vfx.tree.staticTrails.map { it.first })
         val twin = vfx.tree.staticTrails.first { it.first == "twin" }.second
@@ -60,13 +60,13 @@ class ProjectileVfxSpecsTest {
 
     @Test
     fun `简单 spec 蓝图拓扑：Box 螺栓 + 三层 Static Trail 拖尾`() {
-        // spc3：Box 螺栓外缘染主色（alpha 拉满）+ twin 外带 + smooth 核心 + zappy 装饰按声明序叠层。
+        // spc3：Box 螺栓染 boltColor 近白单色系 + twin 外带 + smooth 核心 + zappy 装饰按声明序叠层。
         val plain = assertNotNull(ProjectileVfxSpecs.build("astd_spc3_shot"))
         val bolt = assertNotNull(plain.tree.bolt)
-        assertEquals(168 / 255f, bolt.fringeColor.red, 1e-3f, "violet 主色（hex 0.66×255→168）")
-        assertEquals(107 / 255f, bolt.fringeColor.green, 1e-3f, "0.42×255→107")
-        assertEquals(1f, bolt.fringeColor.alpha, 1e-3f, "螺栓外缘 alpha 拉满（亮度衰减由组件逐帧乘算）")
-        assertEquals(1f, bolt.coreColor.red, 1e-3f, "核心层默认近白")
+        assertEquals(229 / 255f, bolt.color.red, 1e-3f, "boltColor(violet)=mix(主色, 白, 0.7)=0.898，hex 舍入 229")
+        assertEquals(211 / 255f, bolt.color.green, 1e-3f, "0.826，hex 舍入 211")
+        assertEquals(1f, bolt.color.blue, 1e-3f)
+        assertEquals(199 / 255f, bolt.color.alpha, 1e-3f, "原版 coreColor 近白口径 alpha 0.78，hex 舍入 199")
 
         assertEquals(listOf("twin", "core", "zappy"), plain.tree.staticTrails.map { it.first })
 

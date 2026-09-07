@@ -11,7 +11,7 @@ description: "弹体拖尾/弹头规范：拖尾统一走 staticTrail DSL（BoxU
 - 弹体弹头**统一走 `bolt{}` DSL**（RenderEntity 树上的 `BoltRenderComponent`，Box SpriteEntity 双层 projbody 螺栓渲染，逐帧消费弹体真值，暂停零跳变）；原版螺栓渲染路径已由 ss-csv `boxBolt` 工厂屏蔽。
 - 新弹体配拖尾、旧拖尾调观感，都按本规范的参数面与调参指南执行，不另起渲染路径。
 - 贴图素材统一放 `contents/graphics/fx/`，自制素材 `astd_trails_` 前缀。
-- **贴图必须注册进 `contents/data/config/settings.json` 的 `graphics` 段**（二级结构 `类别 → {id: 路径}`，现有 `fx` 类别）。Static Trail 直接按 `getSprite().getTextureId()` 绑定裸 GL 纹理，不经过原版渲染路径，未注册的贴图永远不会被上传（textureId=0 → 整层静默不可见）。注册后由原版启动期预加载上传；`StaticTrailDataFactory` 在 textureId≤0 时会 WARN 提示。
+- **贴图必须注册进 `contents/data/config/settings.json` 的 `graphics` 段**（二级结构 `类别 → {id: 路径}`，现有 `fx` 类别）。Static Trail 直接按 `getSprite().getTextureId()` 绑定裸 GL 纹理，不经过原版渲染路径，未注册的贴图永远不会被上传（textureId=0 → 整层静默不可见）；Box 螺栓的 SpriteEntity 同样走预载纹理。注册后由原版启动期预加载上传；`StaticTrailDataFactory` 在 textureId≤0 时会 WARN 提示。
 
 ## 渲染模型（先理解再调参）
 
@@ -44,13 +44,13 @@ staticTrail("层名", "graphics/fx/astd_trails_zappy.png") {
 }
 
 bolt {                          // Box 螺栓弹头（默认开启；导弹类弹体 `bolt { off() }` 关闭）
-    texture("graphics/fx/projbody.png")  // 弹头贴图（默认原版彗星图）
-    colors(0xFFFFFFFF, 0xCFE8FFFF)       // core/fringe 双层染色（0xRRGGBBAA）；fringe(...) 只染外层
+    texture("graphics/fx/astd_bolt_body.png")  // 弹头贴图（默认烘焙版彗形图，见下节）
+    color(0xE4F2FFC8)           // 弹头染色（0xRRGGBBAA，原版 coreColor 语义，通常近白）
 }
 ```
 
 - 可声明多条 `staticTrail` 叠层。
-- 弹头**统一走 `bolt{}`**（`BoltRenderComponent`：Box SpriteEntity 双层 `projbody.png` 螺栓，fringe 全宽 + core 宽 × `coreWidthMult`，additive；逐帧消费 `getBrightness()`/`getTailEnd()` 真值做几何同步与出生伸入 alpha，见「Box 螺栓渲染参考」）。ss-csv 侧须配 `boxBolt(...)` 屏蔽原版螺栓视觉。
+- 弹头**统一走 `bolt{}`**（`BoltRenderComponent`：Box SpriteEntity 双趟叠加烘焙彗形贴图，additive；逐帧消费 `getBrightness()`/`getTailEnd()` 真值做几何同步与出生伸入 alpha，见「Box 螺栓渲染参考」）。ss-csv 侧须配 `boxBolt(...)` 屏蔽原版螺栓视觉。
 - 驱动策略只剩 `fade{}`（淡出秒数，作用于 boxFlare 等附加层）与 `lifecycle{ headLead }`；拖尾自身的采样/寿命/几何全部由 Static Trail 系统接管。
 - **StaticTrailData 按 `树id/层名` 缓存**（vRAM 池配置须 const）：调试期 DSL 字面量热交换对拖尾层不生效（需重启），组件层（bolt/boxFlare/anchorArc）不受影响。
 
@@ -87,9 +87,15 @@ alpha 0.45/0.6/0.45 是过曝压暗后的裁定（三层加色 + 高射速多发
 
 `TEX_TWIN`/`TEX_SMOOTH`/`TEX_ZAPPY` 常量在 ProjectileVfxSpecs 底部。
 
+### 弹头贴图（非拖尾，规则不同）
+
+| 贴图 | 观感 | 备注 |
+| --- | --- | --- |
+| `astd_bolt_body.png` (128×32) | 彗形螺栓弹头（头亮尾隐） | Box 螺栓默认贴图；projbody + 原版顶点梯度/收窄烘焙，生成脚本 `tools/build_bolt_body_texture.py`，X=飞行向、头在左、不要求平铺 |
+
 ### 新素材规则
 
-- 命名 `astd_trails_<形貌词>.png`，**N×64（X=带长向、N 为 2 的幂）**，形在 alpha、RGB 近白、X 向无缝平铺。
+- 拖尾贴图命名 `astd_trails_<形貌词>.png`，**N×64（X=带长向、N 为 2 的幂）**，形在 alpha、RGB 近白、X 向无缝平铺。
 - 旧向素材（64×N）可用 `tools/rotate_trail_textures.py` 转置。
 - 做完先在黑底上目检平铺接缝，再进游戏验证。
 
@@ -108,11 +114,15 @@ alpha 0.45/0.6/0.45 是过曝压暗后的裁定（三层加色 + 高射速多发
 
 ## Box 螺栓渲染参考（弹头基准形）
 
-弹头由 `BoltRenderComponent` 承担：Box SpriteEntity 双层渲染 `graphics/fx/projbody.png`（32×16，彗星形白图，头亮尾散）——fringe 全宽层 + core 层（宽 × `spec.coreWidthMult`），ABOVE_SHIPS_LAYER additive。逐帧以 `getBrightness()`（原版 TrailExtender 同款真值 `(1-progress) × distanceRatio`）做 alpha（fringe 一次方 / core 平方），以 `getTailEnd()` + 朝向做几何锚定（头端前伸 `boltStretch = max(width/2, length×0.2)`）；暂停时 driver 门控冻结，与弹体同步，无 30Hz cadence 跳变。
+弹头由 `BoltRenderComponent` 承担，观感对齐原版 ProjectileRenderer 的 built-in 螺栓（其形塑机制：projbody 贴图 alpha 沿全长几乎不透明，彗形全靠**逐顶点 alpha 梯度**（头全亮 → 中段减半 → 尾透明）与**梯形几何收窄**（头全宽 → 尾半宽）——SpriteEntity 单 quad 无逐顶点色，故两者已烘焙进贴图）：
+
+- **贴图 `graphics/fx/astd_bolt_body.png`**（128×32，X=飞行向、头在左）：projbody 彗形 × 纵向渐隐 ramp（1→0）× 尾部收窄窗，生成脚本 `tools/build_bolt_body_texture.py`（可复跑调形）。
+- **双趟叠加**：两颗相同 SpriteEntity（= 原版 body 双 pass），统一染 DSL `color`（原版 coreColor 语义，近白；fringeColor 的 projtrail 外带语义由 Static Trail 接替）。ABOVE_SHIPS_LAYER additive。
+- **逐帧同步**：几何 `boltFrame`（贴图跨 [tailEnd → 弹体位置]，X 缩放 = 覆盖长/spec.length，出生伸入同 TrailExtender distanceRatio 语义）；alpha = `getBrightness()`² × 染色 alpha（原版 body 两趟均吃平方亮度）。暂停时 driver 门控冻结，与弹体同步，无 30Hz cadence 跳变。
 
 ss-csv 侧：接入管线的弹体统一用 `ProjectileProjSpec.boxBolt(...)`——发射 `bulletSprite=graphics/textures/BUtil_NONE.png` + core/fringe 色 alpha=0（屏蔽原版螺栓视觉与原版命中光晕）+ scroll=0，但 **length/width/fadeTime(0.25)/hitGlowRadius 保真实值**：length 仍是拖尾 headLead、brightness 伸入距离与 boltFrame 几何的数据源。导弹不走此路径（组件 attach 时 `projectile is MissileAPI` 即禁用自身；辉星 MRM 弹头 = 原版导弹贴图 `graphics/missiles/am_srm.png`）。`vanillaBolt(...)` 工厂保留，仅供不对接管线的弹体。
 
-**命中光晕由组件补发**：原版光晕走 fringeColor（已被屏蔽为 alpha=0），`BoltRenderComponent.didDamage` 按 `hitGlowRadius × 3 × 伤害缩放`（fringe 色 0.4s）+ 白色芯（×0.5，0.8s）发 hitParticle。因此 **`hitGlowRadius` 必须显式给值**（boxBolt 默认 25，原版高射速武器口径：火神 15 / 重机枪 20 / 重型针刺 25）；缺省时原版取 `length × 2` 作基准半径（`Misc.getHitGlowSize` 再按伤害放大），length 75 即 150 基准，高射速武器连续命中会叠成吞没整舰的数百 su 加色巨球。
+**命中光晕由组件补发**：原版光晕走 fringeColor（已被屏蔽为 alpha=0），`BoltRenderComponent.didDamage` 按 `hitGlowRadius × 3 × 伤害缩放`（DSL 染色 0.4s）+ 白色芯（×0.5，0.8s）发 hitParticle。因此 **`hitGlowRadius` 必须显式给值**（boxBolt 默认 25，原版高射速武器口径：火神 15 / 重机枪 20 / 重型针刺 25）；缺省时原版取 `length × 2` 作基准半径（`Misc.getHitGlowSize` 再按伤害放大），length 75 即 150 基准，高射速武器连续命中会叠成吞没整舰的数百 su 加色巨球。
 
 ## 验证
 
