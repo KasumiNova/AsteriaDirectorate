@@ -276,6 +276,7 @@ class BoxFlareBuilder {
     private var fringeColor = rgba(0x99D9FFFFL)
     private var glowPower = 1f
     private var discRatio = 4f
+    private var flick = false
     private var flickerRate = 1.2f
     private var noisePower = 0.1f
     private var style = BoxFlareStyle.SMOOTH_DISC
@@ -292,8 +293,11 @@ class BoxFlareBuilder {
     /** bloom 强度（0..1+）与盘厚（越大越薄）。 */
     fun glow(power: Float, discRatio: Float = 4f) { glowPower = power; this.discRatio = discRatio }
 
-    /** 闪烁速度倍率（1 = BoxUtil 默认；0/负值不合法，取 >0）。 */
-    fun flicker(rate: Float) { flickerRate = rate.coerceAtLeast(0.05f) }
+    /** 开启闪烁（宽度脉动 + 明灭同步，默认速度倍率 1.2）；不调用即不闪烁。 */
+    fun flicker() { flick = true }
+
+    /** 开启闪烁并设速度倍率（1 = BoxUtil 默认；0/负值不合法，取 >0）。 */
+    fun flicker(rate: Float) { flick = true; flickerRate = rate.coerceAtLeast(0.05f) }
 
     /** 边缘噪点强度（0 = 关闭）。 */
     fun noise(power: Float) { noisePower = power.coerceAtLeast(0f) }
@@ -316,6 +320,7 @@ class BoxFlareBuilder {
         fringeColor = fringeColor,
         glowPower = glowPower,
         discRatio = discRatio,
+        flick = flick,
         flickerRate = flickerRate,
         noisePower = noisePower,
         style = style,

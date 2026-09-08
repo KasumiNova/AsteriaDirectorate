@@ -48,7 +48,7 @@ class BoxFlareComponent(
         entity.setDiscRatio(spec.discRatio)
         entity.setSize(spec.width, spec.height)
         entity.autoAspect()
-        entity.setFlick(true)
+        entity.setFlick(spec.flick)
         entity.setFlickerAnimationRateMulti(spec.flickerRate)
         entity.setGlowPower(spec.glowPower)
         entity.setNoisePower(spec.noisePower)

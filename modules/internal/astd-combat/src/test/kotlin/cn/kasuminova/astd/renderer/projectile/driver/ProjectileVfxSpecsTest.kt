@@ -4,6 +4,7 @@ import cn.kasuminova.astd.impl.render.ASTDColor
 import cn.kasuminova.astd.impl.render.TrailDriftRange
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -123,6 +124,19 @@ class ProjectileVfxSpecsTest {
 
         val boltOnly = projectileVfx("bolt_only_test") { }
         assertNotNull(boltOnly.tree.bolt, "bolt 默认开启，空块即仅螺栓弹头")
+    }
+
+    @Test
+    fun `boxFlare 闪烁默认关闭 调用任意 flicker 方法即启用`() {
+        val vfx = projectileVfx("flare_flick_test") {
+            boxFlare("still") { size(10f, 10f) }
+            boxFlare("blink") { size(10f, 10f); flicker(0.8f) }
+        }
+        val still = vfx.tree.boxFlares.first { it.first == "still" }.second
+        val blink = vfx.tree.boxFlares.first { it.first == "blink" }.second
+        assertFalse(still.flick, "不调用 flicker 即不闪烁")
+        assertTrue(blink.flick, "调用 flicker 即启用闪烁")
+        assertEquals(0.8f, blink.flickerRate, 1e-6f)
     }
 
     @Test

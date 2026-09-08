@@ -39,7 +39,9 @@ data class BoxFlareSpec(
     val glowPower: Float = 1f,
     /** 盘厚参数（BoxUtil discRatio，越大越薄）。 */
     val discRatio: Float = 4f,
-    /** 闪烁速度倍率（1 = BoxUtil 默认）。 */
+    /** 是否闪烁（宽度脉动 + 明灭同步）；默认关闭，DSL 调用任意 flicker 方法即启用。 */
+    val flick: Boolean = false,
+    /** 闪烁速度倍率（1 = BoxUtil 默认），仅 [flick] 开启时生效。 */
     val flickerRate: Float = 1.2f,
     /** 边缘 fbm 噪点强度（0 = 关闭）。 */
     val noisePower: Float = 0.1f,
