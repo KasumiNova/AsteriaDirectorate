@@ -9,7 +9,8 @@
 
 ## Java 运行时选择
 
-runGame 用 `Exec` 启动，JVM 与项目 toolchain 无关，按以下候选顺序探测第一个可用的 `java`：
+runGame 是 `JavaExec` 任务，JVM 与项目 toolchain 无关：探测到的运行时会以自定义 `JavaLauncher`
+注入任务，按以下候选顺序取第一个可用的 `java`：
 
 1. `starsector.javaExec` / `STARSECTOR_JAVA_EXEC`：直接指定 java 可执行文件
 2. `starsector.javaHome` / `STARSECTOR_JAVA_HOME` / `JBR17_HOME`：指定 JDK 根目录
@@ -28,9 +29,22 @@ runGame 用 `Exec` 启动，JVM 与项目 toolchain 无关，按以下候选顺�
 
 ## IDEA 调试
 
-- `./gradlew runGame -Pstarsector.debug=true`：注入 JDWP（默认挂起等待 attach，端口 5005，
-  可用 `starsector.debugPort` 与 `-Pstarsector.debugSuspend=false` 调整）。
+runGame 是 `JavaExec` 任务，**直接对 `Starsector runGame` 运行配置点调试按钮即可**：
+IDEA 会把调试器注入游戏 fork JVM，断点即刻生效（打勾），改代码后热替换直接作用于游戏进程。
+
 - `genIdeaRuns`（runGame 执行后自动生成）会在 `.run/` 写出 `Starsector-runGame` 与 `Starsector-Attach` 配置。
+- CLI / 远程场景备选：`./gradlew runGame -Pstarsector.debug=true` 注入 JDWP
+  （默认挂起等待 attach，端口 5005，可用 `starsector.debugPort` 与 `-Pstarsector.debugSuspend=false` 调整），
+  再用 `Starsector-Attach` 配置连上。
+
+### 热重定义（改方法体之外的变更）
+
+普通 JVM 热替换只支持改方法体；改类结构（增删方法/字段、改签名）需要 JBR（JetBrains Runtime）：
+
+1. 在 `~/.jdks/` 放入新版 JBR（如 `jbr-25`，IDEA 下载的 JBR 也在此目录）。
+2. 启动时加 `-Pstarsector.javaVendor=jetbrains` 选中它。
+3. 选中 JBR 后 runGame 会**自动附加** `-XX:+AllowEnhancedClassRedefinition`（已在参数中则不重复），
+   IDEA 的 Reload Changed Classes 即可应用结构性变更。
 
 ## launch-config.json（仅 VANILLA 模式）
 
