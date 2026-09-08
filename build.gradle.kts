@@ -31,7 +31,7 @@ starsector {
     dependency("lunalib", "LunaLib")
     gameDependencyMode.set(GameDependencyMode.GAME_DIR)
     gameDir.fileValue(file(providers.gradleProperty("starsector.gameDir").get()))
-    launchMode.set(LaunchMode.VANILLA)
+    launchMode.set(LaunchMode.NANOFORGE)
     decompilerVersion.set(providers.gradleProperty("decompiler.version").orElse("1.9.3"))
 }
 

@@ -27,9 +27,9 @@
 如果你已配置了 `starsector.gameDir`：
 
 - `./gradlew deployMod`：将 `build/mod_production/` 部署到游戏的 `mods/` 下
-- `./gradlew launchGame`：使用 `launch-config.json` 的配置启动游戏
+- `./gradlew runGame`：启动游戏（默认 NanoForge 链，运行时选择见 `docs/engineering/04-launch-config.md`）
 
-> 提示：如果你使用 IDEA 调试，`launch-config.json` 里会影响类路径与 JVM 参数。
+> 提示：如果你使用 IDEA 调试，加 `-Pstarsector.debug=true` 注入 JDWP，再用 `.run/Starsector-Attach` 附加。
 
 ## 常见问题
 

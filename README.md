@@ -61,7 +61,7 @@ Starsector 模组开发项目模板（已预置 Asteria Directorate 示例内容
 - `./gradlew zipModProduction` - 打包 Mod 为 ZIP 文件
 - `./gradlew printModInfo` - 打印当前 Mod 配置信息
 - `./gradlew deployMod` - 部署 Mod 到游戏目录（需配置 `starsector.gameDir`）
-- `./gradlew launchGame` - 启动游戏（需配置 `starsector.gameDir`, 支持 IDEA 调试）
+- `./gradlew runGame` - 启动游戏（需配置 `starsector.gameDir`, 支持 IDEA 调试）
 
 ### 清理任务
 

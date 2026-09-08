@@ -39,7 +39,7 @@
 - `./gradlew build`：构建（并 zip `mod_production` 到 `build/`）。
 - `./gradlew modProduction`：只组装生产目录。
 - `./gradlew deployMod`：部署到 `${starsector.gameDir}/mods/${mod.id}`。
-- `./gradlew launchGame`：读取 `launch-config.json` 启动游戏（内存参数可能较激进）。
+- `./gradlew runGame`：NanoForge 链启动游戏（JVM 选择规则与调试参数见 `docs/engineering/04-launch-config.md`）。
 - `./gradlew decompileSources`：输出 `dev-resources/sources/` 并附加到 IDEA 索引。
 
 ## 代理工作约束（本仓库特有）

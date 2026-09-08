@@ -7,13 +7,13 @@
 
 ## 1) 一键启动（推荐）
 
-本项目提供 `launchGame` 任务：会先构建并部署到游戏目录，再启动 Starsector。
+本项目提供 `runGame` 任务：会先构建并部署到游戏目录，再启动 Starsector。
 
 前置：
 - `gradle.properties` 中 `starsector.gameDir` 指向游戏根目录（例如 `/.../Starsector098-linux`）。
 
 执行：
-- `./gradlew launchGame`
+- `./gradlew runGame`
 
 ## 1.1) 自动烟测（推荐）
 
