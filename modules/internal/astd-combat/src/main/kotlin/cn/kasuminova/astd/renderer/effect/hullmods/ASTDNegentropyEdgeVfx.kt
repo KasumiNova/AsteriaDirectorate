@@ -12,7 +12,7 @@ import org.lazywizard.lazylib.VectorUtils
 import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
 
-/** 断熵弧刃专属战斗视觉。优先使用 BoxUtil Trail/Distortion。 */
+/** 淬刃专属战斗视觉。优先使用 BoxUtil Trail/Distortion。 */
 object ASTDNegentropyEdgeVfx {
     private const val CORE_SPRITE = "graphics/fx/beamcoreb.png"
     private const val FRINGE_SPRITE = "graphics/fx/beamfringeb.png"

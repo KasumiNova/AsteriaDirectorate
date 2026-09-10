@@ -1,0 +1,26 @@
+{
+    "displayName": "Standard",
+    "fluxCapacitors": 20,
+    "fluxVents": 20,
+    "goalVariant": true,
+    "hullId": "astd_zw_002",
+    "hullMods": [],
+    "quality": 1.0,
+    "variantId": "astd_zw_002_Standard",
+    "weaponGroups": [
+        {
+            "autofire": false,
+            "mode": "LINKED",
+            "weapons": {
+                "WS0001": "astd_gcp12",
+                "WS0002": "astd_gcp8",
+                "WS0003": "astd_gcp8",
+                "WS0004": "astd_gcp2",
+                "WS0005": "astd_gcp4",
+                "WS0006": "astd_gcp4",
+                "WS0007": "astd_gcp4",
+                "WS0008": "astd_gcp4"
+            }
+        }
+    ]
+}

@@ -10,18 +10,18 @@ class ArcShipResourceAdaptationTest {
 
     @Test
     fun `arc jet has complete bloom overlay resource chain`() {
-        val hullPath = Path.of("contents/data/hulls/astd_arc_jet.ship")
+        val hullPath = Path.of("contents/data/hulls/astd_xc_102.ship")
         val hull = Files.readString(hullPath)
         val weaponData = Files.readString(Path.of("contents/data/weapons/weapon_data.csv"))
-        val weaponSpecPath = Path.of("contents/data/weapons/astd_arc_jet_bloom.wpn")
+        val weaponSpecPath = Path.of("contents/data/weapons/astd_xc_102_bloom.wpn")
         val weaponSpec = if (Files.exists(weaponSpecPath)) Files.readString(weaponSpecPath) else ""
 
         assertTrue(
-            Files.exists(Path.of("contents/graphics/ships/astd_arc_jet_bloom.png")),
+            Files.exists(Path.of("contents/graphics/ships/astd_xc_102_bloom.png")),
             "Arc Jet bloom texture must exist beside the ship sprite.",
         )
         assertTrue(
-            hull.contains("\"builtInWeapons\"") && hull.contains("\"astd_arc_jet_bloom\""),
+            hull.contains("\"builtInWeapons\"") && hull.contains("\"astd_xc_102_bloom\""),
             "Arc Jet hull must mount the bloom overlay as a built-in decorative weapon.",
         )
         assertTrue(
@@ -29,13 +29,13 @@ class ArcShipResourceAdaptationTest {
             "Arc Jet bloom slot must use the same decorative render slot pattern as other ARC bloom ships.",
         )
         assertTrue(
-            weaponData.contains(",astd_arc_jet_bloom,") && weaponData.contains("Bloom 描边层 (隐藏)"),
+            weaponData.contains(",astd_xc_102_bloom,") && weaponData.contains("Bloom 描边层 (隐藏)"),
             "weapon_data.csv must contain the hidden Arc Jet bloom weapon.",
         )
         assertTrue(
-            weaponSpec.contains("\"id\": \"astd_arc_jet_bloom\"") &&
+            weaponSpec.contains("\"id\": \"astd_xc_102_bloom\"") &&
                 weaponSpec.contains("\"RENDER_ADDITIVE\"") &&
-                weaponSpec.contains("\"graphics/ships/astd_arc_jet_bloom.png\""),
+                weaponSpec.contains("\"graphics/ships/astd_xc_102_bloom.png\""),
             "Arc Jet bloom .wpn must render the additive bloom texture.",
         )
     }
@@ -43,9 +43,9 @@ class ArcShipResourceAdaptationTest {
     @Test
     fun `production arc ships have vanilla-like logistics data`() {
         val rows = readCsvRows(Path.of("contents/data/hulls/ship_data.csv"))
-        assertLogistics(rows.getValue("astd_arc_jet"), ShipLogistics(400, 500, 300, 300, 10, 30, 8, 300000, 3.0, 15.0, 720, 0.25, 40, 40))
-        assertLogistics(rows.getValue("astd_plasma_arch"), ShipLogistics(150, 250, 150, 100, 3, 33, 8, 100000, 3.0, 12.0, 600, 0.25, 20, 20))
-        assertLogistics(rows.getValue("astd_radiation_belt"), ShipLogistics(50, 70, 80, 50, 2, 25, 9, 45000, 5.0, 15.0, 360, 0.25, 11, 11))
+        assertLogistics(rows.getValue("astd_xc_102"), ShipLogistics(400, 500, 300, 300, 10, 30, 8, 300000, 3.0, 15.0, 720, 0.25, 40, 40))
+        assertLogistics(rows.getValue("astd_xc_101"), ShipLogistics(150, 250, 150, 100, 3, 33, 8, 100000, 3.0, 12.0, 600, 0.25, 20, 20))
+        assertLogistics(rows.getValue("astd_xc_103"), ShipLogistics(50, 70, 80, 50, 2, 25, 9, 45000, 5.0, 15.0, 360, 0.25, 11, 11))
     }
 
     private fun assertLogistics(row: Map<String, String>, expected: ShipLogistics) {

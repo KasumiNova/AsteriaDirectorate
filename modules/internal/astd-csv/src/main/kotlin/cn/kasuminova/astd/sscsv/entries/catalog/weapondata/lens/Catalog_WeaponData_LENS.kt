@@ -18,9 +18,9 @@ import cn.kasuminova.astd.sscsv.outputs.proj.Vec2i
 
 /** LENS 系武器（weapon_data.csv）。 */
 
-/** Gravitational Lens：整船 bloom 描边层（装配界面/战斗 decorative outline）。 */
-object Wpn_astd_gravitational_lens_bloom : WeaponDataEntry() {
-    override val id: String = "astd_gravitational_lens_bloom"
+/** 决明：整船 bloom 描边层（装配界面/战斗 decorative outline）。 */
+object Wpn_astd_zw_001_bloom : WeaponDataEntry() {
+    override val id: String = "astd_zw_001_bloom"
     override val name: String = weaponName(id)
     override val tier: Int = 5
     override val baseValue: Int = 0
@@ -33,9 +33,9 @@ object Wpn_astd_gravitational_lens_bloom : WeaponDataEntry() {
     override val number: Int = 9206
 }
 
-/** Dark Tide Nebula：整船 bloom 描边层（装配界面/战斗 decorative outline）。 */
-object Wpn_astd_dark_tide_nebula_bloom : WeaponDataEntry() {
-    override val id: String = "astd_dark_tide_nebula_bloom"
+/** 密蒙：整船 bloom 描边层（装配界面/战斗 decorative outline）。 */
+object Wpn_astd_zw_002_bloom : WeaponDataEntry() {
+    override val id: String = "astd_zw_002_bloom"
     override val name: String = weaponName(id)
     override val tier: Int = 5
     override val baseValue: Int = 0
@@ -48,9 +48,9 @@ object Wpn_astd_dark_tide_nebula_bloom : WeaponDataEntry() {
     override val number: Int = 9230
 }
 
-/** Magnetosphere Disturbance：整船 bloom 描边层（装配界面/战斗 decorative outline）。 */
-object Wpn_astd_magnetosphere_disturbance_bloom : WeaponDataEntry() {
-    override val id: String = "astd_magnetosphere_disturbance_bloom"
+/** 飞蓬：整船 bloom 描边层（装配界面/战斗 decorative outline）。 */
+object Wpn_astd_zw_102_bloom : WeaponDataEntry() {
+    override val id: String = "astd_zw_102_bloom"
     override val name: String = weaponName(id)
     override val tier: Int = 5
     override val baseValue: Int = 0
@@ -63,9 +63,9 @@ object Wpn_astd_magnetosphere_disturbance_bloom : WeaponDataEntry() {
     override val number: Int = 9231
 }
 
-/** Nebula Echo：整船 bloom 描边层（装配界面/战斗 decorative outline）。 */
-object Wpn_astd_nebula_echo_bloom : WeaponDataEntry() {
-    override val id: String = "astd_nebula_echo_bloom"
+/** 舜华：整船 bloom 描边层（装配界面/战斗 decorative outline）。 */
+object Wpn_astd_zw_101_bloom : WeaponDataEntry() {
+    override val id: String = "astd_zw_101_bloom"
     override val name: String = weaponName(id)
     override val tier: Int = 5
     override val baseValue: Int = 0

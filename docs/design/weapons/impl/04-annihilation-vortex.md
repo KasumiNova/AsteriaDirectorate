@@ -134,7 +134,7 @@ weapon.astd_annihilation_vortex.tooltip.customPrimary=光束终点会展开引�
 weapon.astd_annihilation_vortex.tooltip.customPrimaryHL=100% | 难度系数
 weapon.astd_annihilation_vortex.primaryRoleStr=特殊
 desc.astd_annihilation_vortex.text1=渊暮原种光束武器的逆向工程产物。它将光束终点作为引力锚点展开吞噬涡旋——任何途经的敌方射弹与导弹都会被没收，成为下一次爆炸的燃料。
-desc.astd_annihilation_vortex.notes=研究档案：关于涡旋的成因，学术界至今维持着三种互不兼容的理论：引力透镜效应的亚稳态残留、伪粒子流的自聚集临界，以及"光束只是诱饵，真正开火的是别的东西"。第三种理论的支持者在最近一次实地观测中失去了一整艘探测船和船上全部记录设备——除了最后三秒的弹道摄像：十六枚已发射的反舰导弹调转方向，排着队飞进了那团红光里。
+desc.astd_annihilation_vortex.notes=研究档案：关于涡旋的成因，学术界至今维持着三种互不兼容的理论：折光效应的亚稳态残留、伪粒子流的自聚集临界，以及"光束只是诱饵，真正开火的是别的东西"。第三种理论的支持者在最近一次实地观测中失去了一整艘探测船和船上全部记录设备——除了最后三秒的弹道摄像：十六枚已发射的反舰导弹调转方向，排着队飞进了那团红光里。
 ```
 
 - `customPrimary` 为设计案定稿原文 + v2 数值插入（100% 转化率；2026-07-29 字段分工铁律，审批通过：显示值统一以 v2 为准，取代设计案"tip 不展示数值"旧口径）；`customPrimaryHL` 高亮数值与"难度系数"。**缺 key 会把键名写进 CSV**（`SsI18n.t` 缺 key 返回 key 本身）。
@@ -287,7 +287,7 @@ private fun annihilationVortex(): RenderEntity = renderEntity("astd_annihilation
 
 - 参数：单武器固定规格，构建函数无参（scale 恒 1）；`BeamHostImpl` baseWidth 由 `BeamEffect` 传 `BASE_WIDTH = 18f`（对应 `.wpn` width 14 的观感放大，目检可调）。
 - 主色：LENS 深红（核心 `Color(255, 60, 70)`、辉光 `Color(180, 20, 40)`、涡旋环粒子同族），对齐「湮灭涡旋用深红涡旋 + 深红坍缩爆炸」美术口径。
-- `VortexComponent`（2026-07-29 审批裁定：**Shader 优先，尽量避免粒子拼特效**）：读 `RenderContext.frame.endpoint`，`frame.active` 时绘制涡旋面——主体为一块面向摄像机的 quad，材质走自定义 Shader（极坐标旋转涡流 + 径向扭曲采样深红星云纹理，角速度/半径随设计半径档位由 BeamEffect 经树参数传入——构建函数闭包捕获不可行时改由 `frame.intensity` 映射，实装时二选一并写明）；`DistortionEntity` 仅作中心引力透镜点缀（低频、小尺寸），粒子只保留少量环布火花，**不以粒子堆叠充当涡旋本体**。
+- `VortexComponent`（2026-07-29 审批裁定：**Shader 优先，尽量避免粒子拼特效**）：读 `RenderContext.frame.endpoint`，`frame.active` 时绘制涡旋面——主体为一块面向摄像机的 quad，材质走自定义 Shader（极坐标旋转涡流 + 径向扭曲采样深红星云纹理，角速度/半径随设计半径档位由 BeamEffect 经树参数传入——构建函数闭包捕获不可行时改由 `frame.intensity` 映射，实装时二选一并写明）；`DistortionEntity` 仅作中心折光点缀（低频、小尺寸），粒子只保留少量环布火花，**不以粒子堆叠充当涡旋本体**。
 - **吸收迁移 flare**：`onAbsorbed(location)` 接口（被 §2.2 吸收分支调用）——在被吸收弹体位置生成一枚短寿命深红 flare 粒子，初速指向涡旋中心并加速收束，抵达中心即消亡；实现为 `VortexComponent` 内部维护的迁移粒子列表（位置 + 目标中心 lerp），单发弹一次一枚，粒子在此仅作"能量迁移"语义点缀，符合 Shader 优先原则。
 
 **弹体 VFX 映射键**：本武器为 beam 无 `.proj`，弹体 VFX 管线不涉及；光束树由 `BeamVfxSpecs.build(id)` 直取，无额外 JSON 映射层。

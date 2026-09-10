@@ -378,7 +378,7 @@ object EchoFixationField {
      * 施放入口（供 Task 5 的舰船系统调用）：在落点建场，挂单例推进插件。
      *
      * @param engine 战斗引擎。
-     * @param source 施放舰（引力透镜级）；用于敌对判定与难度系数。
+     * @param source 施放舰（决明级）；用于敌对判定与难度系数。
      * @param centerX 落点 X（世界坐标，由系统按鼠标落点给出）。
      * @param centerY 落点 Y（世界坐标）。
      * @param systemRangeMult 系统射程倍率（场半径 / 站桩范围缩放）；由系统从自身射程属性算出后传入。

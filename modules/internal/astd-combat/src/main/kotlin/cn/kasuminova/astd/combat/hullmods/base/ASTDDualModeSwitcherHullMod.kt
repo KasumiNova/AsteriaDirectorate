@@ -22,7 +22,7 @@ import java.awt.Color
  *   [ASTDDualModeRegistry.configForVariant] 反查本舰 config 后调用 [ensureASTDDualModeState]，
  *   保证「装了切换器的 ASTD 双模式舰」在 variant 缺模式 permaMod 时收敛到缺省模式（载人）。
  *   动机（防回归）：早期依赖各舰 variant 静态声明模式 permaMod，一旦某舰漏声明（如曾经的
- *   astd_gravitational_lens_Standard），其模式 hullmod 因不在 variant 上而永不触发、整套机制失效。
+ *   astd_zw_001_Standard），其模式 hullmod 因不在 variant 上而永不触发、整套机制失效。
  *   由切换器统一引导后，任何注册了 config 的双模式舰即便 variant 漏声明也能自举到载人模式，
  *   不再要求每舰手写 permaMod 才能工作（静态声明仍保留作为首选，二者互为冗余兜底）。
  * - 模式**切换**（拆即切：拆下切换器→切到对侧）仍由各舰 mode hullmod 在自己的

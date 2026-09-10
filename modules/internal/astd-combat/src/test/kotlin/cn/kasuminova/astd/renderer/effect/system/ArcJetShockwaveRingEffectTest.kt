@@ -70,7 +70,7 @@ class ArcJetShockwaveRingEffectTest {
     fun `effect spec uses shader runtime world quad contract`() {
         val spec = ArcJetShockwaveRingEffect.effectSpec
 
-        assertEquals("astd_arc_jet_shockwave_ring", spec.id.value)
+        assertEquals("astd_xc_102_shockwave_ring", spec.id.value)
         assertEquals(ShaderEffectLayer.BelowParticles, spec.layer)
         assertEquals(ShaderBlendMode.Additive, spec.material.blendMode)
         assertTrue(spec.geometry is ShaderGeometrySpec.WorldQuad)

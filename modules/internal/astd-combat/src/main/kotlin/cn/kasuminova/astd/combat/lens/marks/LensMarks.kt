@@ -9,11 +9,11 @@ import com.fs.starfarer.api.combat.CombatEntityAPI
 import com.fs.starfarer.api.combat.ShipAPI
 
 /**
- * 引力透镜级标记闭环的落地：在通用 StackingShipBuffs 框架上定义误差/深水两类标记。
+ * 决明级标记闭环的落地：在通用 StackingShipBuffs 框架上定义误差/深水两类标记。
  *
  * 动机（spec §1.1）：
  * - 误差标记：提升目标受到的伤害（收割端在核心·载人模式读取并增伤）。
- * - 深水标记：电战压制——降低目标武器射程/精度/航速、以及对引力透镜造成的伤害。
+ * - 深水标记：电战压制——降低目标武器射程/精度/航速、以及对决明造成的伤害。
  * 两类均 10 层、每层 5s、叠加刷新。
  *
  * 注意：MutableShipStatsAPI 无通用 damageTakenMult，
@@ -22,7 +22,7 @@ import com.fs.starfarer.api.combat.ShipAPI
  */
 object LensMarks {
 
-    /** dynamic stat key：深水标记令目标"对引力透镜造成的伤害"下降。 */
+    /** dynamic stat key：深水标记令目标"对决明造成的伤害"下降。 */
     const val VS_LENS_DAMAGE_MULT_KEY: String = "astd_lens_deep_water_vs_lens_mult"
 
     // accuracyMult=0（理论极端，精度完全归零）时的 recoil 倍率上限，避免除零。

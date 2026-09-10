@@ -3,16 +3,16 @@ package cn.kasuminova.astd.combat.shipsystems
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.ShipAPI
 
-/** 断熵弧刃战斗状态：脉冲充能、激变窗口与虚粒子窗口。 */
+/** 淬刃战斗状态：脉冲充能、激变窗口与虚粒子窗口。 */
 object ASTDNegentropyEdgeState {
-    const val HULL_ID = "astd_negentropy_edge"
+    const val HULL_ID = "astd_xc_002"
     const val SPC3_WEAPON_ID = "astd_spc3"
 
-    private const val CHARGE_KEY = "astd_negentropy_edge_charge"
-    private const val DISPLAY_CHARGE_KEY = "astd_negentropy_edge_display_charge"
-    private const val WINDOW_KEY = "astd_negentropy_edge_collapse_window"
-    private const val THRESHOLD_HALF_KEY = "astd_negentropy_edge_threshold_half"
-    private const val LAST_SHIFT_FROM_KEY = "astd_negentropy_edge_last_shift_from"
+    private const val CHARGE_KEY = "astd_xc_002_charge"
+    private const val DISPLAY_CHARGE_KEY = "astd_xc_002_display_charge"
+    private const val WINDOW_KEY = "astd_xc_002_collapse_window"
+    private const val THRESHOLD_HALF_KEY = "astd_xc_002_threshold_half"
+    private const val LAST_SHIFT_FROM_KEY = "astd_xc_002_last_shift_from"
 
     fun isNegentropyEdge(ship: ShipAPI?): Boolean = ship?.hullSpec?.hullId == HULL_ID
 

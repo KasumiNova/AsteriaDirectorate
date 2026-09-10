@@ -10,12 +10,12 @@ class ArcShipBloomDecorationTest {
     @Test
     fun `new arc hulls have built in bloom decoration resources`() {
         val hulls = mapOf(
-            "astd_radiation_belt" to "WS0009",
-            "astd_plasma_arch" to "WS0011",
-            "astd_arc_flash" to "WS0005",
-            "astd_dark_tide_nebula" to "WS0009",
-            "astd_magnetosphere_disturbance" to "WS0012",
-            "astd_nebula_echo" to "WS0004",
+            "astd_xc_103" to "WS0009",
+            "astd_xc_101" to "WS0011",
+            "astd_xc_104" to "WS0005",
+            "astd_zw_002" to "WS0009",
+            "astd_zw_102" to "WS0012",
+            "astd_zw_101" to "WS0004",
         )
 
         val weaponData = read("contents/data/weapons/weapon_data.csv")

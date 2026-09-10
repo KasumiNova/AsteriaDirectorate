@@ -36,7 +36,7 @@ class StandardVariantBuiltInHullmodDataTest {
         Files.list(Path.of("contents/data/variants")).use { paths ->
             paths
                 .filter { it.fileName.toString().endsWith("_Standard.variant") }
-                .filter { it.fileName.toString() != "astd_arc_flare_Standard.variant" }
+                .filter { it.fileName.toString() != "astd_xc_001_Standard.variant" }
                 .forEach { path ->
                     val variantHullMods = readStringArray(path, "hullMods")
                     val variantPermaMods = readStringArray(path, "permaMods")
@@ -87,31 +87,31 @@ class StandardVariantBuiltInHullmodDataTest {
 
     private companion object {
         val expectedBuiltInsByHull = linkedMapOf(
-            "astd_apex_logic" to listOf("astd_nano_restoration_protocol", "astd_zero_point_compute_core"),
-            "astd_arc_jet" to listOf(
+            "astd_zl_001" to listOf("astd_nano_restoration_protocol", "astd_zero_point_compute_core"),
+            "astd_xc_102" to listOf(
                 "advancedcore",
                 "armoredweapons",
                 "astd_arc_advanced_fire_control",
                 "astd_arc_shared_tactical_network",
             ),
-            "astd_dark_tide_nebula" to listOf("astd_nano_restoration_protocol", "astd_dark_tide_jammer"),
-            "astd_diffraction" to listOf("astd_nano_restoration_protocol", "astd_phase_diffraction_shield"),
-            "astd_gravitational_lens" to listOf("astd_nano_restoration_protocol", "astd_lens_array_core"),
-            "astd_magnetic_storm_zigzag" to listOf("astd_nano_restoration_protocol", "astd_inertialess_maneuver"),
-            "astd_magnetosphere_disturbance" to listOf("astd_nano_restoration_protocol", "astd_fleet_coordination_relay"),
-            "astd_nebula_echo" to listOf(
+            "astd_zw_002" to listOf("astd_nano_restoration_protocol", "astd_dark_tide_jammer"),
+            "astd_zw_103" to listOf("astd_nano_restoration_protocol", "astd_phase_diffraction_shield"),
+            "astd_zw_001" to listOf("astd_nano_restoration_protocol", "astd_lens_array_core"),
+            "astd_zl_102" to listOf("astd_nano_restoration_protocol", "astd_inertialess_maneuver"),
+            "astd_zw_102" to listOf("astd_nano_restoration_protocol", "astd_fleet_coordination_relay"),
+            "astd_zw_101" to listOf(
                 "astd_nano_restoration_protocol",
                 "astd_echo_emitter",
                 "astd_echo_reentry_buffer",
                 "astd_phase_resonance_jamming",
             ),
-            "astd_negentropy_edge" to listOf("astd_virtual_particle_lattice_web", "astd_transient_potential_manifold"),
-            "astd_plasma_arch" to listOf(
+            "astd_xc_002" to listOf("astd_virtual_particle_lattice_web", "astd_transient_potential_manifold"),
+            "astd_xc_101" to listOf(
                 "missleracks",
                 "astd_plasma_armor_shield",
                 "astd_ionized_recoil_accumulator",
             ),
-            "astd_radiation_belt" to listOf(
+            "astd_xc_103" to listOf(
                 "magazines",
                 "auxiliarythrusters",
                 "astd_arc_advanced_targeting_system",

@@ -14,7 +14,7 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.ceil
 
-/** 断熵弧刃舰体下方充能条渲染器；世界坐标固定朝向，不随舰船朝向旋转。 */
+/** 淬刃舰体下方充能条渲染器；世界坐标固定朝向，不随舰船朝向旋转。 */
 object ASTDNegentropyChargeBarRenderer {
     private const val KEY = "astd_negentropy_charge_bar_renderer"
 

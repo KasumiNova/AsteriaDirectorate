@@ -7,11 +7,12 @@
     "collisionClass": "PROJECTILE_FF",
     "collisionClassByFighter": "PROJECTILE_FIGHTER",
     "length": 75,
-    "width": 20,
+    "width": 10,
     "fadeTime": 0.25,
-    "fringeColor": [140, 200, 255, 255],
-    "coreColor": [225, 242, 255, 200],
-    "textureScrollSpeed": -256,
+    "fringeColor": [140, 200, 255, 0],
+    "coreColor": [225, 242, 255, 0],
+    "textureScrollSpeed": 0,
     "pixelsPerTexel": 1,
-    "hitGlowRadius": 25
+    "hitGlowRadius": 25,
+    "bulletSprite": "graphics/textures/BUtil_NONE.png"
 }

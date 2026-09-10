@@ -15,10 +15,10 @@ import com.fs.starfarer.api.util.Misc
 import java.awt.Color
 
 /**
- * 渗透潮汐（Permeating Tide，spec §5 / `purple/10-unique.md` §1 插件③）——引力透镜级内置插件③，
+ * 渗透潮汐（Permeating Tide，spec §5 / `purple/10-unique.md` §1 插件③）——决明级内置插件③，
  * 钉死「高级电战」支柱：以本舰为心、随交战时长涨落的渗透式电战压制场。
  *
- * 仅对引力透镜级生效（[isApplicableToShip] / advanceInCombat 入口 [isGravitationalLensShip] guard）。
+ * 仅对决明级生效（[isApplicableToShip] / advanceInCombat 入口 [isGravitationalLensShip] guard）。
  * advanceInCombat 每帧驱动三件事（数值/插值判定走纯函数 [PermeatingTideMath]）：
  *
  * 1. **涨潮叠深水标记**：遍历 [CombatEngineAPI.getShips] 中位于场内（dist ≤ 2500su）的敌舰，按
@@ -38,7 +38,7 @@ import java.awt.Color
  * **难度系数 m**：[AffixUtil.getK]∈[0,1] → m=1+k∈[1,2]（仅敌对赏金舰队有 k；玩家放场 k=0→m=1）。
  * 与 [cn.kasuminova.astd.combat.lens.system.EchoFixationField] 的 difficultyFactorFor 同模式。
  *
- * 状态按 shipId 隔离存于本实例的 Map（引力透镜级为唯一舰，单实例通常只服务一条；仍按 shipId 键控以防
+ * 状态按 shipId 隔离存于本实例的 Map（决明级为唯一舰，单实例通常只服务一条；仍按 shipId 键控以防
  * 同一 hullmod 实例被多条透镜船共用时串扰）。
  */
 class ASTDLensPermeatingTideHullMod : BaseHullMod() {

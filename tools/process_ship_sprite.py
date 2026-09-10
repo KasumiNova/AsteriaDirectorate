@@ -55,7 +55,7 @@ def process_sprite(input_path, output_path, target_max_dim=100, bg_color_toleran
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Process ship sprite for Starsector.")
     parser.add_argument("input", help="Path to input image (e.g., raw_image.jpg)")
-    parser.add_argument("--output", default="contents/graphics/ships/astd_arc_flash.png", help="Path to output PNG")
+    parser.add_argument("--output", default="contents/graphics/ships/astd_xc_104.png", help="Path to output PNG")
     parser.add_argument("--size", type=int, default=100, help="Target max dimension (width or height)")
     
     args = parser.parse_args()

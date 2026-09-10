@@ -7,15 +7,15 @@ import com.fs.starfarer.api.combat.ShipVariantAPI
  * 透镜阵列核心相关 hullmod / 双模式 marker 的稳定 ID（镜像 ARC 范式）。
  */
 object LensArrayCoreHullModIds {
-    const val HULL_ID: String = "astd_gravitational_lens"
+    const val HULL_ID: String = "astd_zw_001"
 
     const val CORE: String = "astd_lens_array_core"
-    // 注：lens 自造切换器 SWITCHER（astd_lens_mode_switcher）已废弃，统一改用通用切换器
+    // 注：lens 自造切换器 SWITCHER（旧 id astd_zw_001_mode_switcher）已废弃，统一改用通用切换器
     // ASTDDualModeSwitcherIds.SWITCHER_ID（见 LENS_DUAL_MODE_CONFIG），此常量已移除。
-    const val MODE_CREWED: String = "astd_lens_mode_crewed"
-    const val MODE_AUTOMATED: String = "astd_lens_mode_automated"
-    const val NEXT_CREWED: String = "astd_lens_mode_next_crewed"
-    const val NEXT_AUTOMATED: String = "astd_lens_mode_next_automated"
+    const val MODE_CREWED: String = "astd_zw_001_mode_crewed"
+    const val MODE_AUTOMATED: String = "astd_zw_001_mode_automated"
+    const val NEXT_CREWED: String = "astd_zw_001_mode_next_crewed"
+    const val NEXT_AUTOMATED: String = "astd_zw_001_mode_next_automated"
 
     // 阶段二「回声定影」系统 ID（无人/载人分版，与 .system 文件一致）。
     const val SYSTEM_CREWED: String = "astd_echo_fixation_crewed"

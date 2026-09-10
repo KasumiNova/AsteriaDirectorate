@@ -13,10 +13,10 @@ internal class ASTDDevContentSelectorTest {
     fun `dev ship storage includes hidden codex hulls but excludes modules and unavailable drones`() {
         val rows = CsvTestUtil.readRowsById(Path.of("contents/data/hulls/ship_data.csv"))
 
-        assertTrue(ASTDDevContentSelector.isDevStorageShip(rows.getValue("astd_arc_flare").toShipRow()))
-        assertTrue(ASTDDevContentSelector.isDevStorageShip(rows.getValue("astd_arc_jet").toShipRow()))
-        assertTrue(ASTDDevContentSelector.isDevStorageShip(rows.getValue("astd_plasma_arch").toShipRow()))
-        assertTrue(ASTDDevContentSelector.isDevStorageShip(rows.getValue("astd_radiation_belt").toShipRow()))
+        assertTrue(ASTDDevContentSelector.isDevStorageShip(rows.getValue("astd_xc_001").toShipRow()))
+        assertTrue(ASTDDevContentSelector.isDevStorageShip(rows.getValue("astd_xc_102").toShipRow()))
+        assertTrue(ASTDDevContentSelector.isDevStorageShip(rows.getValue("astd_xc_101").toShipRow()))
+        assertTrue(ASTDDevContentSelector.isDevStorageShip(rows.getValue("astd_xc_103").toShipRow()))
 
         val hideInCodexShip = ASTDDevContentSelector.ShipRow(
             id = "sample_hidden_real_ship",
@@ -71,12 +71,12 @@ internal class ASTDDevContentSelectorTest {
             "hidden/noDPSInTooltip is not enough to exclude a real weapon from dev storage.",
         )
 
-        assertFalse(ASTDDevContentSelector.isDevStorageWeapon(rows.getValue("astd_arc_flare_lights").toWeaponRow()))
-        assertFalse(ASTDDevContentSelector.isDevStorageWeapon(rows.getValue("astd_arc_flare_lights_bloom").toWeaponRow()))
-        assertFalse(ASTDDevContentSelector.isDevStorageWeapon(rows.getValue("astd_arc_jet_bloom").toWeaponRow()))
-        assertFalse(ASTDDevContentSelector.isDevStorageWeapon(rows.getValue("astd_negentropy_edge_bloom").toWeaponRow()))
-        assertFalse(ASTDDevContentSelector.isDevStorageWeapon(rows.getValue("astd_plasma_arch_bloom").toWeaponRow()))
-        assertFalse(ASTDDevContentSelector.isDevStorageWeapon(rows.getValue("astd_radiation_belt_bloom").toWeaponRow()))
+        assertFalse(ASTDDevContentSelector.isDevStorageWeapon(rows.getValue("astd_xc_001_lights").toWeaponRow()))
+        assertFalse(ASTDDevContentSelector.isDevStorageWeapon(rows.getValue("astd_xc_001_lights_bloom").toWeaponRow()))
+        assertFalse(ASTDDevContentSelector.isDevStorageWeapon(rows.getValue("astd_xc_102_bloom").toWeaponRow()))
+        assertFalse(ASTDDevContentSelector.isDevStorageWeapon(rows.getValue("astd_xc_002_bloom").toWeaponRow()))
+        assertFalse(ASTDDevContentSelector.isDevStorageWeapon(rows.getValue("astd_xc_101_bloom").toWeaponRow()))
+        assertFalse(ASTDDevContentSelector.isDevStorageWeapon(rows.getValue("astd_xc_103_bloom").toWeaponRow()))
         assertFalse(ASTDDevContentSelector.isDevStorageWeapon(rows.getValue("astd_virtual_particle_mote_launcher").toWeaponRow()))
 
         val vanillaRows = CsvTestUtil.readRowsById(Path.of("/mnt/store/Games/Starsector098-linux/data/weapons/weapon_data.csv"))

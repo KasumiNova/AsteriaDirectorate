@@ -468,9 +468,9 @@ class ASTDArcProductionVfxTest {
         assertTrue(plugin.contains("arcProductionSourceVariantIds"), "ARC automation should report the source Standard variant ids, not only mission clone ids")
         assertTrue(plugin.contains("member?.variant?.hullVariantId"), "source variant id reporting should come from deployed fleet members")
         assertTrue(plugin.contains("ARC_PRODUCTION_STANDARD_VARIANTS"), "mission clone ids should be normalized through explicit source variant ids")
-        assertTrue(plugin.contains("astd_arc_jet_Standard"), "ARC production source variant ids must include arc jet standard variant")
-        assertTrue(plugin.contains("astd_plasma_arch_Standard"), "ARC production source variant ids must include plasma arch standard variant")
-        assertTrue(plugin.contains("astd_radiation_belt_Standard"), "ARC production source variant ids must include radiation belt standard variant")
+        assertTrue(plugin.contains("astd_xc_102_Standard"), "ARC production source variant ids must include arc jet standard variant")
+        assertTrue(plugin.contains("astd_xc_101_Standard"), "ARC production source variant ids must include plasma arch standard variant")
+        assertTrue(plugin.contains("astd_xc_103_Standard"), "ARC production source variant ids must include radiation belt standard variant")
         assertTrue(verifier.contains("\"plasmaArchTooltipKeys\": 44"), "verifier key minimum should match the exported plasma arch renderer contract")
         assertTrue(verifier.contains("\"radiationBeltTooltipKeys\": 26"), "verifier key minimum should match the current radiation belt renderer contract")
     }

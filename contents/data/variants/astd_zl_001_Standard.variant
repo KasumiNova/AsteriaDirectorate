@@ -1,0 +1,21 @@
+{
+    "displayName": "Standard",
+    "fluxCapacitors": 0,
+    "fluxVents": 0,
+    "goalVariant": true,
+    "hullId": "astd_zl_001",
+    "hullMods": [],
+    "quality": 0.0,
+    "variantId": "astd_zl_001_Standard",
+    "weaponGroups": [
+        {
+            "autofire": false,
+            "mode": "LINKED",
+            "weapons": {
+                "WS 001": "gauss",
+                "WS 002": "pdlaser",
+                "WS 003": "pdlaser"
+            }
+        }
+    ]
+}

@@ -17,14 +17,14 @@ public final class MissionDefinition implements MissionDefinitionPlugin {
         api.setFleetTagline(FleetSide.PLAYER, "ASTD automation: ARC production ships");
         api.setFleetTagline(FleetSide.ENEMY, "Automation target fleet");
 
-        api.addToFleet(FleetSide.PLAYER, "astd_arc_jet_Standard", FleetMemberType.SHIP, true);
-        api.addToFleet(FleetSide.PLAYER, "astd_plasma_arch_Standard", FleetMemberType.SHIP, false);
-        api.addToFleet(FleetSide.PLAYER, "astd_radiation_belt_Standard", FleetMemberType.SHIP, false);
+        api.addToFleet(FleetSide.PLAYER, "astd_xc_102_Standard", FleetMemberType.SHIP, true);
+        api.addToFleet(FleetSide.PLAYER, "astd_xc_101_Standard", FleetMemberType.SHIP, false);
+        api.addToFleet(FleetSide.PLAYER, "astd_xc_103_Standard", FleetMemberType.SHIP, false);
         api.addToFleet(FleetSide.PLAYER, "wolf_Assault", FleetMemberType.SHIP, false);
         api.addToFleet(FleetSide.PLAYER, "enforcer_Assault", FleetMemberType.SHIP, false);
         api.addToFleet(FleetSide.ENEMY, "onslaught_Standard", FleetMemberType.SHIP, false);
 
-        api.defeatOnShipLoss("ASTD astd_arc_jet");
+        api.defeatOnShipLoss("ASTD astd_xc_102");
         api.addBriefingItem("Deploy ARC production ships and observe VFX/tooltip telemetry.");
 
         api.initMap(-9000f, 9000f, -6000f, 6000f);

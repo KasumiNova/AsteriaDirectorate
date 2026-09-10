@@ -35,8 +35,8 @@ class ASTDArcFlareAutomatedModeHullMod : BaseHullMod() {
         private const val SHIELD_UPKEEP_MULT = 1.10f
         private const val SHIELD_DAMAGE_TAKEN_MULT = 1.08f
 
-        private const val ARC_TIMER_KEY = "astd_arc_flare_automated_mode_arc_timer"
-        private const val ARC_BUDGET_KEY = "astd_arc_flare_automated_mode_arc_budget"
+        private const val ARC_TIMER_KEY = "astd_xc_001_automated_mode_arc_timer"
+        private const val ARC_BUDGET_KEY = "astd_xc_001_automated_mode_arc_budget"
         private const val ARC_RANGE = 430f
         private const val ARC_INTERVAL = 0.28f
 

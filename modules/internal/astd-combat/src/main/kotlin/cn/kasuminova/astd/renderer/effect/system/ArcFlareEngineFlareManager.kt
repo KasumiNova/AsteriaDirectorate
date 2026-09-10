@@ -1,5 +1,6 @@
 package cn.kasuminova.astd.renderer.effect.system
 
+import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcFlareHullModIds
 import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseEveryFrameCombatPlugin
@@ -21,7 +22,7 @@ import kotlin.math.max
 import kotlin.math.sin
 
 /**
- * Arc Flare（弧光耀斑）引擎动态 flare。
+ * Arc Flare（星坠）引擎动态 flare。
  *
  * 目标：
  * - 保留原版 HIGH_TECH 尾焰主体
@@ -29,8 +30,7 @@ import kotlin.math.sin
  */
 internal object ArcFlareEngineFlareManager {
 
-    private const val ENGINE_KEY = "astd_arc_flare_engine_flare_manager"
-    private const val HULL_ID = "astd_arc_flare"
+    private const val ENGINE_KEY = ASTDArcFlareHullModIds.KEY_ENGINE_FLARE_MANAGER
     private const val SCAN_INTERVAL = 0.33f
 
     private val log = Global.getLogger(ArcFlareEngineFlareManager::class.java)
@@ -120,7 +120,7 @@ internal object ArcFlareEngineFlareManager {
                 } catch (_: Throwable) {
                     null
                 }
-                if (hullId != HULL_ID) continue
+                if (hullId != ASTDArcFlareHullModIds.HULL_ID) continue
 
                 val key = System.identityHashCode(ship)
                 if (attachments.containsKey(key)) continue

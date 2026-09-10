@@ -5,12 +5,12 @@ import cn.kasuminova.astd.sscsv.entries.catalog.shipdata.shipName
 
 /** ARC 设计系舰体数据（ship_data.csv）。 */
 
-object Ship_astd_arc_flare : ShipDataEntry() {
-    override val id: String = "astd_arc_flare"
+object Ship_astd_xc_001 : ShipDataEntry() {
+    override val id: String = "astd_xc_001"
     override val name: String = shipName(id)
     override val designation: String = "主力舰"
     override val tech: String = "菀星设计局-星坠"
-    override val systemId: String = "astd_arc_flare_overdrive_crewed"
+    override val systemId: String = "astd_xc_001_overdrive_crewed"
     override val fleetPts: Int = 55
     override val hitpoints: Int = 20000
     override val armorRating: Int = 1500
@@ -42,12 +42,12 @@ object Ship_astd_arc_flare : ShipDataEntry() {
     override val suppliesRec: Int = 60
     override val suppliesPerMonth: Int = 60
     override val tags: String = "astd_unique"
-    override val codexVariantId: String = "astd_arc_flare_Standard"
+    override val codexVariantId: String = "astd_xc_001_Standard"
     override val number: Int = 9101
 }
 
-object Ship_astd_negentropy_edge : ShipDataEntry() {
-    override val id: String = "astd_negentropy_edge"
+object Ship_astd_xc_002 : ShipDataEntry() {
+    override val id: String = "astd_xc_002"
     override val name: String = shipName(id)
     override val designation: String = "驱逐舰"
     override val tech: String = "菀星设计局-星坠"
@@ -84,7 +84,7 @@ object Ship_astd_negentropy_edge : ShipDataEntry() {
     override val suppliesRec: Int = 12
     override val suppliesPerMonth: Int = 12
     override val tags: String = "astd_unique"
-    override val codexVariantId: String = "astd_negentropy_edge_Standard"
+    override val codexVariantId: String = "astd_xc_002_Standard"
     override val number: Int = 9102
 }
 
@@ -108,8 +108,8 @@ object Ship_astd_conjugate_terminal : ShipDataEntry() {
     override val number: Int = 9127
 }
 
-object Ship_astd_arc_jet : ShipDataEntry() {
-    override val id: String = "astd_arc_jet"
+object Ship_astd_xc_102 : ShipDataEntry() {
+    override val id: String = "astd_xc_102"
     override val name: String = shipName(id)
     override val designation: String = "主力舰"
     override val tech: String = "菀星设计局-星坠"
@@ -145,12 +145,12 @@ object Ship_astd_arc_jet : ShipDataEntry() {
     override val suppliesRec: Int = 40
     override val suppliesPerMonth: Int = 40
     override val tags: String = "astd_production"
-    override val codexVariantId: String = "astd_arc_jet_Standard"
+    override val codexVariantId: String = "astd_xc_102_Standard"
     override val number: Int = 9107
 }
 
-object Ship_astd_plasma_arch : ShipDataEntry() {
-    override val id: String = "astd_plasma_arch"
+object Ship_astd_xc_101 : ShipDataEntry() {
+    override val id: String = "astd_xc_101"
     override val name: String = shipName(id)
     override val designation: String = "巡洋舰"
     override val tech: String = "菀星设计局-星坠"
@@ -186,12 +186,12 @@ object Ship_astd_plasma_arch : ShipDataEntry() {
     override val suppliesRec: Int = 20
     override val suppliesPerMonth: Int = 20
     override val tags: String = "astd_production"
-    override val codexVariantId: String = "astd_plasma_arch_Standard"
+    override val codexVariantId: String = "astd_xc_101_Standard"
     override val number: Int = 9108
 }
 
-object Ship_astd_radiation_belt : ShipDataEntry() {
-    override val id: String = "astd_radiation_belt"
+object Ship_astd_xc_103 : ShipDataEntry() {
+    override val id: String = "astd_xc_103"
     override val name: String = shipName(id)
     override val designation: String = "驱逐舰"
     override val tech: String = "菀星设计局-星坠"
@@ -227,12 +227,12 @@ object Ship_astd_radiation_belt : ShipDataEntry() {
     override val suppliesRec: Int = 11
     override val suppliesPerMonth: Int = 11
     override val tags: String = "astd_production"
-    override val codexVariantId: String = "astd_radiation_belt_Standard"
+    override val codexVariantId: String = "astd_xc_103_Standard"
     override val number: Int = 9109
 }
 
-object Ship_astd_arc_flash : ShipDataEntry() {
-    override val id: String = "astd_arc_flash"
+object Ship_astd_xc_104 : ShipDataEntry() {
+    override val id: String = "astd_xc_104"
     override val name: String = shipName(id)
     override val designation: String = "护卫舰"
     override val tech: String = "菀星设计局-星坠"
@@ -267,6 +267,6 @@ object Ship_astd_arc_flash : ShipDataEntry() {
     override val suppliesRec: Int = 3
     override val suppliesPerMonth: Int = 3
     override val tags: String = "astd_production"
-    override val codexVariantId: String = "astd_arc_flash_Standard"
+    override val codexVariantId: String = "astd_xc_104_Standard"
     override val number: Int = 9110
 }

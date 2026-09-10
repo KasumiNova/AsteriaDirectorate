@@ -68,7 +68,7 @@ object ASTDDualModeRegistry {
 
     /**
      * 注册一艘双模式舰的配置。
-     * @param hullId 该舰的基底 hull id（.ship 文件 id，例如 "astd_arc_flare"）。
+     * @param hullId 该舰的基底 hull id（.ship 文件 id，例如 "astd_xc_001"）。
      * @param config 该舰的双模式配置。
      */
     fun register(hullId: String, config: ASTDDualModeConfig) {

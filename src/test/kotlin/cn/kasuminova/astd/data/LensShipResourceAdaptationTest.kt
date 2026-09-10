@@ -14,8 +14,8 @@ class LensShipResourceAdaptationTest {
 
     @Test
     fun `gravitational lens has complete bloom overlay resource chain`() {
-        val hullId = "astd_gravitational_lens"
-        val weaponId = "astd_gravitational_lens_bloom"
+        val hullId = "astd_zw_001"
+        val weaponId = "astd_zw_001_bloom"
         val slotId = "WS0002"
 
         assertTrue(
@@ -69,7 +69,7 @@ class LensShipResourceAdaptationTest {
 
         val weaponRow = CsvTestUtil.readRowsById(Path.of("contents/data/weapons/weapon_data.csv"))[weaponId]
         assertNotNull(weaponRow, "weapon_data.csv must contain $weaponId.")
-        assertEquals("引力透镜辉光", weaponRow.getValue("name"))
+        assertEquals("决明辉光", weaponRow.getValue("name"))
         assertEquals("5", weaponRow.getValue("tier"))
         assertEquals("0", weaponRow.getValue("base value"))
         assertEquals("0", weaponRow.getValue("range"))
@@ -82,7 +82,7 @@ class LensShipResourceAdaptationTest {
 
     @Test
     fun `gravitational lens standard variant uses current weapon slot ids`() {
-        val hullId = "astd_gravitational_lens"
+        val hullId = "astd_zw_001"
         val hull = JSONObject(Files.readString(Path.of("contents/data/hulls/$hullId.ship")))
         val activeSlots = hull.getJSONArray("weaponSlots")
             .asObjects()

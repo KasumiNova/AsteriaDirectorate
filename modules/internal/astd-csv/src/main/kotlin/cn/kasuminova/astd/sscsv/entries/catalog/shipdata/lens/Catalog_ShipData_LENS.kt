@@ -5,8 +5,8 @@ import cn.kasuminova.astd.sscsv.entries.catalog.shipdata.shipName
 
 /** LENS 设计系舰体数据（ship_data.csv）。 */
 
-object Ship_astd_gravitational_lens : ShipDataEntry() {
-    override val id: String = "astd_gravitational_lens"
+object Ship_astd_zw_001 : ShipDataEntry() {
+    override val id: String = "astd_zw_001"
     override val name: String = shipName(id)
     override val designation: String = "巡洋舰"
     override val tech: String = "菀星设计局-紫菀"
@@ -23,7 +23,7 @@ object Ship_astd_gravitational_lens : ShipDataEntry() {
     override val maxTurnRate: Int = 30
     override val turnAcceleration: Int = 60
     override val mass: Int = 16000
-    // 引力透镜级：OMNI 全向护盾（240°）+ 4 甲板（与 contents/.ship 一致，阶段一验收要求）。
+    // 决明级：OMNI 全向护盾（240°）+ 4 甲板（与 contents/.ship 一致，阶段一验收要求）。
     override val fighterBays: Int = 4
     override val shieldType: String = "OMNI"
     override val shieldArc: Int = 240
@@ -44,12 +44,12 @@ object Ship_astd_gravitational_lens : ShipDataEntry() {
     override val suppliesRec: Int = 20
     override val suppliesPerMonth: Int = 20
     override val tags: String = "astd_unique"
-    override val codexVariantId: String = "astd_gravitational_lens_Standard"
+    override val codexVariantId: String = "astd_zw_001_Standard"
     override val number: Int = 9104
 }
 
-object Ship_astd_nebula_echo : ShipDataEntry() {
-    override val id: String = "astd_nebula_echo"
+object Ship_astd_zw_101 : ShipDataEntry() {
+    override val id: String = "astd_zw_101"
     override val name: String = shipName(id)
     override val designation: String = "驱逐舰"
     override val tech: String = "菀星设计局-紫菀"
@@ -85,12 +85,12 @@ object Ship_astd_nebula_echo : ShipDataEntry() {
     override val suppliesRec: Int = 12
     override val suppliesPerMonth: Int = 12
     override val tags: String = "astd_unique"
-    override val codexVariantId: String = "astd_nebula_echo_Standard"
+    override val codexVariantId: String = "astd_zw_101_Standard"
     override val number: Int = 9105
 }
 
-object Ship_astd_magnetosphere_disturbance : ShipDataEntry() {
-    override val id: String = "astd_magnetosphere_disturbance"
+object Ship_astd_zw_102 : ShipDataEntry() {
+    override val id: String = "astd_zw_102"
     override val name: String = shipName(id)
     override val designation: String = "主力舰"
     override val tech: String = "菀星设计局-紫菀"
@@ -127,12 +127,12 @@ object Ship_astd_magnetosphere_disturbance : ShipDataEntry() {
     override val suppliesRec: Int = 60
     override val suppliesPerMonth: Int = 60
     override val tags: String = "astd_production"
-    override val codexVariantId: String = "astd_magnetosphere_disturbance_Standard"
+    override val codexVariantId: String = "astd_zw_102_Standard"
     override val number: Int = 9111
 }
 
-object Ship_astd_dark_tide_nebula : ShipDataEntry() {
-    override val id: String = "astd_dark_tide_nebula"
+object Ship_astd_zw_002 : ShipDataEntry() {
+    override val id: String = "astd_zw_002"
     override val name: String = shipName(id)
     override val designation: String = "巡洋舰"
     override val tech: String = "菀星设计局-紫菀"
@@ -168,12 +168,12 @@ object Ship_astd_dark_tide_nebula : ShipDataEntry() {
     override val suppliesRec: Int = 20
     override val suppliesPerMonth: Int = 20
     override val tags: String = "astd_production"
-    override val codexVariantId: String = "astd_dark_tide_nebula_Standard"
+    override val codexVariantId: String = "astd_zw_002_Standard"
     override val number: Int = 9112
 }
 
-object Ship_astd_diffraction : ShipDataEntry() {
-    override val id: String = "astd_diffraction"
+object Ship_astd_zw_103 : ShipDataEntry() {
+    override val id: String = "astd_zw_103"
     override val name: String = shipName(id)
     override val designation: String = "驱逐舰"
     override val tech: String = "菀星设计局-紫菀"
@@ -209,46 +209,6 @@ object Ship_astd_diffraction : ShipDataEntry() {
     override val suppliesRec: Int = 12
     override val suppliesPerMonth: Int = 12
     override val tags: String = "astd_production"
-    override val codexVariantId: String = "astd_diffraction_Standard"
+    override val codexVariantId: String = "astd_zw_103_Standard"
     override val number: Int = 9113
-}
-
-object Ship_astd_flickering_phantom : ShipDataEntry() {
-    override val id: String = "astd_flickering_phantom"
-    override val name: String = shipName(id)
-    override val designation: String = "护卫舰"
-    override val tech: String = "菀星设计局-紫菀"
-    override val systemId: String = "astd_holographic_decoy"
-    override val fleetPts: Int = 4
-    override val hitpoints: Int = 900
-    override val armorRating: Int = 150
-    override val maxFlux: Int = 1800
-    override val fluxDissipation: Int = 150
-    override val ordnancePoints: Int = 45
-    override val maxSpeed: Int = 150
-    override val acceleration: Int = 75
-    override val deceleration: Int = 75
-    override val maxTurnRate: Int = 30
-    override val turnAcceleration: Int = 60
-    override val mass: Int = 4000
-    override val shieldType: String = "FRONT"
-    override val shieldArc: Int = 120
-    override val shieldUpkeep: Double = 0.6
-    override val shieldEfficiency: Double = 0.8
-    override val minCrew: Int = 10
-    override val maxCrew: Int = 250
-    override val cargo: Int = 15
-    override val fuel: Int = 15
-    override val fuelPerLy: Int = 1
-    override val maxBurn: Int = 10
-    override val baseValue: Int = 100000
-    override val crPercentPerDay: Double = 10.0
-    override val crToDeploy: Double = 20.0
-    override val peakCrSec: Int = 120
-    override val crLossPerSec: Double = 0.5
-    override val suppliesRec: Int = 3
-    override val suppliesPerMonth: Int = 3
-    override val tags: String = "astd_production"
-    override val codexVariantId: String = "astd_flickering_phantom_Standard"
-    override val number: Int = 9114
 }

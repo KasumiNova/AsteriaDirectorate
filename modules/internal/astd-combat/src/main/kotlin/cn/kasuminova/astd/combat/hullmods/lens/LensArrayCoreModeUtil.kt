@@ -19,7 +19,7 @@ import com.fs.starfarer.api.combat.ShipVariantAPI
  * 透镜阵列核心（gravitational_lens）的双模式配置。
  *
  * 动机：lens 与 arc 共用「拆切换器即轮换模式」交互。此前 lens 自造了独立状态机 +
- * 独立切换器（astd_lens_mode_switcher / ASTDLensDualModeSwitcherHullMod），与通用框架重复；
+ * 独立切换器（astd_zw_001_mode_switcher / ASTDLensDualModeSwitcherHullMod，均已废弃移除），与通用框架重复；
  * 且 lens 的 mode hullmod 缺「拆即切」逻辑导致玩家拆下切换器后无法切到对面模式。
  * 现改为复用通用切换器 [ASTDDualModeSwitcherIds.SWITCHER_ID] + lens 自己的 mode/next/system id。
  *

@@ -7,7 +7,7 @@ import cn.kasuminova.astd.sscsv.i18n.SsI18n
 /**
  * ASTD 通用（跨设计系）HullMod 注册（原始数据来自 `contents/data/hullmods/hull_mods.csv`）。
  *
- * 目前仅含通用双模式切换器 [HullMod_astd_dual_mode_switcher]：arc_flare / gravitational_lens 等
+ * 目前仅含通用双模式切换器 [HullMod_astd_dual_mode_switcher]：astd_xc_001 / astd_zw_001 等
  * 所有双模式舰共用同一个切换器 hullmod（脚本 ASTDDualModeSwitcherHullMod）。
  *
  * 真相源纪律：此处是通用切换器在 hull_mods.csv 的**唯一**注册点。lens（Task 4）在此注册，

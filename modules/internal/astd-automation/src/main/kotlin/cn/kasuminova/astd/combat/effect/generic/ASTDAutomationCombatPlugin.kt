@@ -72,9 +72,9 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     private val projectilePreviewAnchor = Vector2f(40f, 0f)
     private val enemyAnchor = Vector2f(900f, 0f)
     private val arcProductionAnchors = mapOf(
-        "astd_arc_jet" to Vector2f(-720f, 120f),
-        "astd_plasma_arch" to Vector2f(-80f, -40f),
-        "astd_radiation_belt" to Vector2f(520f, 135f),
+        ASTDArcProductionShipIds.HULL_ARC_JET to Vector2f(-720f, 120f),
+        ASTDArcProductionShipIds.HULL_PLASMA_ARCH to Vector2f(-80f, -40f),
+        ASTDArcProductionShipIds.HULL_RADIATION_BELT to Vector2f(520f, 135f),
         "ally_frigate" to Vector2f(-500f, -280f),
         "ally_destroyer" to Vector2f(360f, -255f),
         "enemy_target" to Vector2f(980f, 20f),
@@ -863,9 +863,9 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     val base = arcProductionAnchors.getValue("enemy_target")
                     Vector2f(base.x + enemyIndex++ * 170f, base.y)
                 }
-                hullId == ASTDArcProductionShipIds.HULL_ARC_JET -> arcProductionAnchors.getValue("astd_arc_jet")
-                hullId == ASTDArcProductionShipIds.HULL_PLASMA_ARCH -> arcProductionAnchors.getValue("astd_plasma_arch")
-                hullId == ASTDArcProductionShipIds.HULL_RADIATION_BELT -> arcProductionAnchors.getValue("astd_radiation_belt")
+                hullId == ASTDArcProductionShipIds.HULL_ARC_JET -> arcProductionAnchors.getValue(ASTDArcProductionShipIds.HULL_ARC_JET)
+                hullId == ASTDArcProductionShipIds.HULL_PLASMA_ARCH -> arcProductionAnchors.getValue(ASTDArcProductionShipIds.HULL_PLASMA_ARCH)
+                hullId == ASTDArcProductionShipIds.HULL_RADIATION_BELT -> arcProductionAnchors.getValue(ASTDArcProductionShipIds.HULL_RADIATION_BELT)
                 else -> {
                     val base = if (allyIndex % 2 == 0) {
                         arcProductionAnchors.getValue("ally_frigate")
@@ -891,15 +891,15 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         side == FleetSide.ENEMY || hullId == ASTDArcProductionShipIds.HULL_PLASMA_ARCH
 
     private fun arrangeArcProductionShips(engine: CombatEngineAPI) {
-        val arcJet = findShipByHull(engine, "astd_arc_jet")
-        val plasmaArch = findShipByHull(engine, "astd_plasma_arch")
-        val radiationBelt = findShipByHull(engine, "astd_radiation_belt")
-        arcJet?.let { stabilizeShip(it, arcProductionAnchors.getValue("astd_arc_jet"), 0f, allowFire = false) }
-        plasmaArch?.let { stabilizeShip(it, arcProductionAnchors.getValue("astd_plasma_arch"), 0f, allowFire = false, preserveAI = true) }
-        radiationBelt?.let { stabilizeShip(it, arcProductionAnchors.getValue("astd_radiation_belt"), 180f, allowFire = false) }
+        val arcJet = findShipByHull(engine, ASTDArcProductionShipIds.HULL_ARC_JET)
+        val plasmaArch = findShipByHull(engine, ASTDArcProductionShipIds.HULL_PLASMA_ARCH)
+        val radiationBelt = findShipByHull(engine, ASTDArcProductionShipIds.HULL_RADIATION_BELT)
+        arcJet?.let { stabilizeShip(it, arcProductionAnchors.getValue(ASTDArcProductionShipIds.HULL_ARC_JET), 0f, allowFire = false) }
+        plasmaArch?.let { stabilizeShip(it, arcProductionAnchors.getValue(ASTDArcProductionShipIds.HULL_PLASMA_ARCH), 0f, allowFire = false, preserveAI = true) }
+        radiationBelt?.let { stabilizeShip(it, arcProductionAnchors.getValue(ASTDArcProductionShipIds.HULL_RADIATION_BELT), 180f, allowFire = false) }
 
         engine.ships
-            .filter { it.hullSpec?.hullId !in setOf("astd_arc_jet", "astd_plasma_arch", "astd_radiation_belt") }
+            .filter { it.hullSpec?.hullId !in setOf(ASTDArcProductionShipIds.HULL_ARC_JET, ASTDArcProductionShipIds.HULL_PLASMA_ARCH, ASTDArcProductionShipIds.HULL_RADIATION_BELT) }
             .filter { it.owner == arcJet?.owner || it.owner == plasmaArch?.owner || it.owner == radiationBelt?.owner }
             .forEachIndexed { index, ship ->
                 val anchor = if (index % 2 == 0) arcProductionAnchors.getValue("ally_frigate") else arcProductionAnchors.getValue("ally_destroyer")
@@ -930,9 +930,9 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         lockArcProductionCamera(engine)
         arrangeArcProductionShips(engine)
 
-        val arcJet = findShipByHull(engine, "astd_arc_jet")
-        val plasmaArch = findShipByHull(engine, "astd_plasma_arch")
-        val radiationBelt = findShipByHull(engine, "astd_radiation_belt")
+        val arcJet = findShipByHull(engine, ASTDArcProductionShipIds.HULL_ARC_JET)
+        val plasmaArch = findShipByHull(engine, ASTDArcProductionShipIds.HULL_PLASMA_ARCH)
+        val radiationBelt = findShipByHull(engine, ASTDArcProductionShipIds.HULL_RADIATION_BELT)
         val telemetryShip = arcJet ?: plasmaArch ?: radiationBelt
         telemetryShip?.let { engine.setPlayerShipExternal(it) }
 
@@ -978,9 +978,9 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     }
 
     private fun arcProductionTelemetryShip(engine: CombatEngineAPI): ShipAPI? =
-        findShipByHull(engine, "astd_arc_jet")
-            ?: findShipByHull(engine, "astd_plasma_arch")
-            ?: findShipByHull(engine, "astd_radiation_belt")
+        findShipByHull(engine, ASTDArcProductionShipIds.HULL_ARC_JET)
+            ?: findShipByHull(engine, ASTDArcProductionShipIds.HULL_PLASMA_ARCH)
+            ?: findShipByHull(engine, ASTDArcProductionShipIds.HULL_RADIATION_BELT)
 
     // === Charge needle scenario (stacking / discharge / magazine / HUD evidence) ===
 
@@ -4927,7 +4927,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         lens?.let { engine.setPlayerShipExternal(it) }
         lens?.shield?.let { if (!it.isOn) it.toggleOn() }
 
-        // 对引力透镜级自身维持 3 层误差/深水标记，验证 applier 真的改了承伤。
+        // 对决明级自身维持 3 层误差/深水标记，验证 applier 真的改了承伤。
         // 标记每层 5s 会过期，且本场景 setDoNotEndCombat 后会长时间运行（观测点在很晚），
         // 故每帧把不足的层数补齐到 3（applyOrRefresh 同时刷新时长），保证稳态诊断读到 3 层。
         if (lens != null && elapsed > 1.0f) {
@@ -4979,7 +4979,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     // === Phase-2 gravitational lens scenario (mechanisms + shader vfx counts) ===
 
     /**
-     * 载人引力透镜级（无 MODE_AUTOMATED perma-mod 即载人）。phase2 旗舰，驱动定影场施放、潮汐、标记高光。
+     * 载人决明级（无 MODE_AUTOMATED perma-mod 即载人）。phase2 旗舰，驱动定影场施放、潮汐、标记高光。
      * 标记高光提交（[cn.kasuminova.astd.combat.hullmods.lens.ASTDLensArrayCoreHullMod.submitMarkHighlights]）
      * 仅对 engine.playerShip 每帧执行，故必须把载人透镜设为玩家船。
      */
@@ -4990,7 +4990,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 ship.variant?.hasLensAutomatedModeSafe() != true
         }
 
-    /** 无人引力透镜级（MODE_AUTOMATED perma-mod）。唯一跑幽灵信号的模式。 */
+    /** 无人决明级（MODE_AUTOMATED perma-mod）。唯一跑幽灵信号的模式。 */
     private fun findAutomatedLens(engine: CombatEngineAPI): ShipAPI? =
         engine.ships.firstOrNull { ship ->
             ship.hullSpec?.hullId == LensArrayCoreHullModIds.HULL_ID &&
@@ -5942,12 +5942,12 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             appendLine("  \"plasmaArchSystemActive\": ${ASTDArcProductionVfx.counter(engine, ASTDArcProductionVfx.TELEMETRY_PLASMA_ARCH_SYSTEM_ACTIVE)},")
             appendLine("  \"plasmaArchShieldArcEmissions\": ${ASTDArcProductionVfx.counter(engine, ASTDArcProductionVfx.TELEMETRY_PLASMA_ARCH_SHIELD_ARC_EMISSIONS)},")
             appendLine("  \"radiationBeltSystemAfterimages\": ${ASTDArcProductionVfx.counter(engine, ASTDArcProductionVfx.TELEMETRY_RADIATION_BELT_SYSTEM_AFTERIMAGES)},")
-            val arcJetTooltipKeys = tooltipResolvedKeyCount("astd_arc_jet", ASTDArcProductionTooltipContracts.arcJetContracts)
-            val plasmaArchTooltipKeys = tooltipResolvedKeyCount("astd_plasma_arch", ASTDArcProductionTooltipContracts.plasmaArchContracts)
-            val radiationBeltTooltipKeys = tooltipResolvedKeyCount("astd_radiation_belt", ASTDArcProductionTooltipContracts.radiationBeltContracts)
-            appendLine("  \"arcJetTooltip\": ${tooltipBlocksResolved("astd_arc_jet", ASTDArcProductionTooltipContracts.arcJetContracts)},")
-            appendLine("  \"plasmaArchTooltip\": ${tooltipBlocksResolved("astd_plasma_arch", ASTDArcProductionTooltipContracts.plasmaArchContracts)},")
-            appendLine("  \"radiationBeltTooltip\": ${tooltipBlocksResolved("astd_radiation_belt", ASTDArcProductionTooltipContracts.radiationBeltContracts)},")
+            val arcJetTooltipKeys = tooltipResolvedKeyCount(ASTDArcProductionShipIds.HULL_ARC_JET, ASTDArcProductionTooltipContracts.arcJetContracts)
+            val plasmaArchTooltipKeys = tooltipResolvedKeyCount(ASTDArcProductionShipIds.HULL_PLASMA_ARCH, ASTDArcProductionTooltipContracts.plasmaArchContracts)
+            val radiationBeltTooltipKeys = tooltipResolvedKeyCount(ASTDArcProductionShipIds.HULL_RADIATION_BELT, ASTDArcProductionTooltipContracts.radiationBeltContracts)
+            appendLine("  \"arcJetTooltip\": ${tooltipBlocksResolved(ASTDArcProductionShipIds.HULL_ARC_JET, ASTDArcProductionTooltipContracts.arcJetContracts)},")
+            appendLine("  \"plasmaArchTooltip\": ${tooltipBlocksResolved(ASTDArcProductionShipIds.HULL_PLASMA_ARCH, ASTDArcProductionTooltipContracts.plasmaArchContracts)},")
+            appendLine("  \"radiationBeltTooltip\": ${tooltipBlocksResolved(ASTDArcProductionShipIds.HULL_RADIATION_BELT, ASTDArcProductionTooltipContracts.radiationBeltContracts)},")
             appendLine("  \"arcJetTooltipKeys\": $arcJetTooltipKeys,")
             appendLine("  \"plasmaArchTooltipKeys\": $plasmaArchTooltipKeys,")
             appendLine("  \"radiationBeltTooltipKeys\": $radiationBeltTooltipKeys,")
@@ -6114,7 +6114,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             ASTDArcProductionShipIds.HULL_PLASMA_ARCH,
             ASTDArcProductionShipIds.HULL_RADIATION_BELT,
         )
-        // 引力透镜级自标记验收层数（spec：误差/深水各叠 3 层）。
+        // 决明级自标记验收层数（spec：误差/深水各叠 3 层）。
         private const val LENS_SELF_MARK_STACKS = 3
         // phase2 部署锚点：载人透镜上方、无人透镜下方，敌群居中（落入两者作用范围）。
         private val LENS_PHASE2_CREWED_ANCHOR = Vector2f(-260f, 260f)
@@ -6136,9 +6136,9 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             "ui.hullmod.lens_core.line.6",
         )
         private val ARC_PRODUCTION_STANDARD_VARIANTS = mapOf(
-            ASTDArcProductionShipIds.HULL_ARC_JET to "astd_arc_jet_Standard",
-            ASTDArcProductionShipIds.HULL_PLASMA_ARCH to "astd_plasma_arch_Standard",
-            ASTDArcProductionShipIds.HULL_RADIATION_BELT to "astd_radiation_belt_Standard",
+            ASTDArcProductionShipIds.HULL_ARC_JET to "astd_xc_102_Standard",
+            ASTDArcProductionShipIds.HULL_PLASMA_ARCH to "astd_xc_101_Standard",
+            ASTDArcProductionShipIds.HULL_RADIATION_BELT to "astd_xc_103_Standard",
         )
         private const val FALLBACK_PROJECTILE_SPEED = 2400f
         private const val AUTOMATION_CURVE_AMOUNT = 96f

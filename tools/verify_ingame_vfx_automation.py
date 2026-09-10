@@ -20,7 +20,7 @@ from PIL import Image
 
 EXPECTED = {
     "scenario": "arc_flare_aod7_basic",
-    "shipId": "astd_arc_flare",
+    "shipId": "astd_xc_001",
     "weaponId": "astd_aod7",
     "projectileSpecId": "astd_aod7_shot",
     "vfxPresetId": "aod7_shot",
@@ -38,15 +38,15 @@ ARC_PRODUCTION_REQUIRED_EVIDENCE = (
     "plasmaArchTooltip",
     "radiationBeltTooltip",
 )
-ARC_PRODUCTION_REQUIRED_SHIP_IDS = ("astd_arc_jet", "astd_plasma_arch", "astd_radiation_belt")
-ARC_PRODUCTION_REQUIRED_VARIANT_IDS = ("astd_arc_jet_Standard", "astd_plasma_arch_Standard", "astd_radiation_belt_Standard")
+ARC_PRODUCTION_REQUIRED_SHIP_IDS = ("astd_xc_102", "astd_xc_101", "astd_xc_103")
+ARC_PRODUCTION_REQUIRED_VARIANT_IDS = ("astd_xc_102_Standard", "astd_xc_101_Standard", "astd_xc_103_Standard")
 ARC_PRODUCTION_TOOLTIP_KEY_MINIMUMS = {
     "arcJetTooltipKeys": 20,
     "plasmaArchTooltipKeys": 44,
     "radiationBeltTooltipKeys": 26,
 }
 LENS_PHASE1_SCENARIO = "lens_phase1_foundation"
-LENS_PHASE1_REQUIRED_SHIP_ID = "astd_gravitational_lens"
+LENS_PHASE1_REQUIRED_SHIP_ID = "astd_zw_001"
 LENS_PHASE1_BOOL_EVIDENCE = (
     "lensCoreHullmod",
     "lensNanoHullmod",
@@ -99,7 +99,7 @@ MAX_SCREENSHOT_HEIGHT = 1450
 EXPECTED_ROTATED_SHIP_ASPECT = 476 / 374
 MAX_SHIP_ASPECT_ERROR = 0.18
 MAX_SHIP_TEMPLATE_SCALE_RATIO_ERROR = 0.10
-SHIP_SPRITE_PATH = Path(__file__).resolve().parents[1] / "contents/graphics/ships/astd_arc_flare.png"
+SHIP_SPRITE_PATH = Path(__file__).resolve().parents[1] / "contents/graphics/ships/astd_xc_001.png"
 
 PixelPredicate = Callable[[int, int, int], bool]
 

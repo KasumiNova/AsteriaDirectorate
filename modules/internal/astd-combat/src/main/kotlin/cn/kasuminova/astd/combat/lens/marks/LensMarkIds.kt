@@ -1,7 +1,9 @@
 package cn.kasuminova.astd.combat.lens.marks
 
+import cn.kasuminova.astd.combat.hullmods.lens.LensArrayCoreHullModIds
+
 /**
- * 引力透镜级标记闭环的稳定 ID 与基础数值常量。
+ * 决明级标记闭环的稳定 ID 与基础数值常量。
  *
  * 动机：buffId 同时用作 StackingShipBuffs 的 modifierId 与 customData key，
  * 必须全局唯一且稳定；数值集中此处便于平衡。
@@ -17,6 +19,6 @@ object LensMarkIds {
     /** 两类标记每层持续时间（秒，spec §1.1：每层 5s，叠加刷新）。 */
     const val MARK_DURATION_SEC: Float = 5f
 
-    /** 引力透镜旗舰 hullId：深水标记"对引力透镜伤害下降"按此判定来源。 */
-    const val GRAVITATIONAL_LENS_HULL_ID: String = "astd_gravitational_lens"
+    /** 决明旗舰 hullId：深水标记"对决明伤害下降"按此判定来源（复用模式框架的同一常量，避免重复定义）。 */
+    const val GRAVITATIONAL_LENS_HULL_ID: String = LensArrayCoreHullModIds.HULL_ID
 }

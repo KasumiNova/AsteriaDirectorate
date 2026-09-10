@@ -18,7 +18,7 @@ import org.lwjgl.util.vector.Vector2f
 /**
  * 回声定影（Echo Fixation）舰船系统 —— stats 脚本基类（spec §2 / purple/10-unique.md §1）。
  *
- * 动机：引力透镜级双模式（载人 / 无人）共用同一套「定影 → 回放」机制（spec §2），机制本身
+ * 动机：决明级双模式（载人 / 无人）共用同一套「定影 → 回放」机制（spec §2），机制本身
  * 在两模式间**无功能差异**——模式差异（情报中枢 / 蜂群链路）属于核心插件（spec §3.1），不属于
  * 本系统。本基类承载完整施放逻辑；[isAutomatedSystem] 仅用于状态栏台词分版（crewed / automated），
  * 与 ArcFlare 范式一致。

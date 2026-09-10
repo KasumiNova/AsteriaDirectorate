@@ -1,0 +1,8 @@
+{
+    "id": "astd_xc_001_overdrive_automated",
+    "type": "STAT_MOD",
+    "aiType": "CUSTOM",
+    "aiScript": "cn.kasuminova.astd.combat.shipsystems.ASTDArcFlareOverdriveAutomatedSystemAI",
+    "statsScript": "cn.kasuminova.astd.combat.shipsystems.ASTDArcFlareOverdriveAutomatedSystemStats",
+    "useSound": "system_ammo_feeder"
+}

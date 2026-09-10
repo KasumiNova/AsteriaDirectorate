@@ -78,11 +78,11 @@ class HullModTooltipBackgroundTest {
         val i18n = Files.readString(RepoLayout.astdCsvRoot.resolve("src/main/resources/i18n/zh-cn.properties"))
 
         assertTrue(
-            i18n.contains("hullmod.astd_arc_flare_mode_crewed.name=弧光耀斑 - 载人模式"),
+            i18n.contains("hullmod.astd_xc_001_mode_crewed.name=星坠 - 载人模式"),
             "Crewed mode hullmod name must match the tooltip editor export.",
         )
         assertTrue(
-            i18n.contains("hullmod.astd_arc_flare_mode_automated.name=弧光耀斑 - 自动模式"),
+            i18n.contains("hullmod.astd_xc_001_mode_automated.name=星坠 - 自动模式"),
             "Automated mode hullmod name must match the tooltip editor export.",
         )
     }

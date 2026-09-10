@@ -22,11 +22,11 @@ public final class MissionDefinition implements MissionDefinitionPlugin {
         api.setFleetTagline(FleetSide.PLAYER, "ASTD automation: gravitational lens phase-1");
         api.setFleetTagline(FleetSide.ENEMY, "Automation target fleet");
 
-        api.addToFleet(FleetSide.PLAYER, "astd_gravitational_lens_Standard", FleetMemberType.SHIP, true);
+        api.addToFleet(FleetSide.PLAYER, "astd_zw_001_Standard", FleetMemberType.SHIP, true);
         api.addToFleet(FleetSide.PLAYER, "enforcer_Assault", FleetMemberType.SHIP, false);
         api.addToFleet(FleetSide.ENEMY, "onslaught_Standard", FleetMemberType.SHIP, false);
 
-        api.defeatOnShipLoss("ASTD astd_gravitational_lens");
+        api.defeatOnShipLoss("ASTD astd_zw_001");
         api.addBriefingItem("Deploy the gravitational lens and observe phase-1 foundation telemetry.");
 
         api.initMap(-9000f, 9000f, -6000f, 6000f);

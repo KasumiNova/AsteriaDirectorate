@@ -6,7 +6,7 @@ import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.ShipAPI
 
 /**
- * 引力透镜级标记的玩家船左侧状态栏显示。
+ * 决明级标记的玩家船左侧状态栏显示。
  *
  * 动机（spec §1.1）：两类标记需常驻状态显示。用原版官方
  * maintainStatusForPlayerShip 在战斗 UI 左侧维护条目（每帧调用刷新）。

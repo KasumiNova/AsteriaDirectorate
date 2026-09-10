@@ -1,0 +1,183 @@
+{
+  "hullName": "茑萝",
+  "hullId": "astd_zw_103",
+  "hullSize": "DESTROYER",
+  "spriteName": "graphics/ships/astd_zw_103.png",
+  "style": "ASTD_HIGH_TECH",
+  "height": 168,
+  "width": 168,
+  "center": [86.5, 74.5],
+  "collisionRadius": 96.5,
+  "shieldCenter": [0, -0],
+  "shieldRadius": 108.5,
+  "viewOffset": 0,
+  "builtInMods": [
+    "astd_nano_restoration_protocol",
+    "astd_phase_diffraction_shield"
+  ],
+  "weaponSlots": [
+    {
+      "id": "WS0001",
+      "size": "MEDIUM",
+      "type": "ENERGY",
+      "mount": "TURRET",
+      "arc": 120,
+      "angle": 0,
+      "locations": [1.5, -36.5]
+    },
+    {
+      "id": "WS0002",
+      "size": "MEDIUM",
+      "type": "ENERGY",
+      "mount": "TURRET",
+      "arc": 120,
+      "angle": 20,
+      "locations": [-1.5, 55.5]
+    },
+    {
+      "id": "WS0003",
+      "size": "SMALL",
+      "type": "ENERGY",
+      "mount": "TURRET",
+      "arc": 120,
+      "angle": 0,
+      "locations": [21.5, 33.5]
+    },
+    {
+      "id": "WS0004",
+      "size": "SMALL",
+      "type": "ENERGY",
+      "mount": "TURRET",
+      "arc": 90,
+      "angle": 20,
+      "locations": [54.5, 29.5]
+    },
+    {
+      "id": "WS0005",
+      "size": "SMALL",
+      "type": "SYNERGY",
+      "mount": "HARDPOINT",
+      "arc": 10,
+      "angle": 0,
+      "locations": [24.5, -17.5]
+    },
+    {
+      "id": "WS0006",
+      "size": "SMALL",
+      "type": "SYNERGY",
+      "mount": "HARDPOINT",
+      "arc": 10,
+      "angle": 0,
+      "locations": [47.5, -40.5]
+    },
+    {
+      "id": "WS0007",
+      "size": "LARGE",
+      "type": "DECORATIVE",
+      "mount": "TURRET",
+      "arc": 0,
+      "angle": 0,
+      "locations": [0, -0]
+    },
+    {
+      "id": "LB 1",
+      "size": "LARGE",
+      "type": "LAUNCH_BAY",
+      "mount": "HIDDEN",
+      "arc": 360,
+      "angle": 0,
+      "locations": [
+        38.5, 53.5,
+        61, 47
+      ]
+    },
+    {
+      "id": "LB 2",
+      "size": "LARGE",
+      "type": "LAUNCH_BAY",
+      "mount": "HIDDEN",
+      "arc": 360,
+      "angle": 0,
+      "locations": [
+        -35.5, -20.5,
+        -43, -29.5
+      ]
+    }
+  ],
+  "engineSlots": [
+    {
+      "location": [-47.5, 27],
+      "length": 60,
+      "width": 15,
+      "angle": 180,
+      "contrailSize": 30,
+      "style": "CUSTOM",
+      "styleId": "ASTD_LENS"
+    },
+    {
+      "location": [-42.5, -4],
+      "length": 45,
+      "width": 10,
+      "angle": 180,
+      "contrailSize": 30,
+      "style": "CUSTOM",
+      "styleId": "ASTD_LENS"
+    },
+    {
+      "location": [-41.5, -55],
+      "length": 50,
+      "width": 10,
+      "angle": -150,
+      "contrailSize": 30,
+      "style": "CUSTOM",
+      "styleId": "ASTD_LENS"
+    },
+    {
+      "location": [-58, 42.5],
+      "length": 45,
+      "width": 10,
+      "angle": 180,
+      "contrailSize": 30,
+      "style": "CUSTOM",
+      "styleId": "ASTD_LENS"
+    }
+  ],
+  "bounds": [
+    24, -8,
+    56, 5,
+    58.5, 15,
+    82.5, 17,
+    82.5, 32.5,
+    70, 41.5,
+    75.5, 58,
+    17.5, 62.5,
+    -29.5, 84,
+    -43.5, 83,
+    -49, 72,
+    -40.5, 64.5,
+    -66, 58.5,
+    -64, 44.5,
+    -47, 35,
+    -47, 24,
+    -41.5, 15.5,
+    -56, 5,
+    -56.5, -2,
+    -21.5, -12.5,
+    -43, -14.5,
+    -48, -21,
+    -51, -37.5,
+    -68, -38,
+    -70, -44.5,
+    -44.5, -53,
+    -42.5, -60,
+    -57.5, -69,
+    -56, -77,
+    -33, -80.5,
+    -0.5, -62,
+    51.5, -47,
+    52, -35.5,
+    40.5, -24.5,
+    32.5, -23,
+    31.5, -11
+  ]
+}

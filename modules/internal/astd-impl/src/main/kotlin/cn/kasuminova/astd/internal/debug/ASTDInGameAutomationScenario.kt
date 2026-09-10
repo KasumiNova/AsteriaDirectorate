@@ -44,8 +44,8 @@ object ASTDInGameAutomationScenario {
     const val PL_WEAPON_ID: String = "astd_piercing_lance"
     const val PL_PROJECTILE_SPEC_ID: String = "astd_piercing_lance_shot"
     const val TPP_SCENARIO_ID: String = "trail_pause_probe"
-    const val SHIP_ID: String = "astd_arc_flare"
-    const val VARIANT_ID: String = "astd_arc_flare_Standard"
+    const val SHIP_ID: String = "astd_xc_001"
+    const val VARIANT_ID: String = "astd_xc_001_Standard"
     const val WEAPON_ID: String = "astd_aod7"
     const val PROJECTILE_SPEC_ID: String = "astd_aod7_shot"
     // SSOptimizer 遥测契约标签（其 helper/verifier 硬编码的字面值）；运行期 preset 已随旧管线删除，此处仅作场景描述符。
@@ -73,7 +73,7 @@ object ASTDInGameAutomationScenario {
     }
 
     /**
-     * 阶段一引力透镜级实机场景开关：镜像 [isArcProductionEnabled]。
+     * 阶段一决明级实机场景开关：镜像 [isArcProductionEnabled]。
      * 仅当 automation 启用且场景属性显式为 [LENS_PHASE1_SCENARIO_ID] 时为 true。
      */
     fun isLensPhase1Enabled(): Boolean {
@@ -83,7 +83,7 @@ object ASTDInGameAutomationScenario {
     }
 
     /**
-     * 阶段二引力透镜级实机场景开关：镜像 [isLensPhase1Enabled]。
+     * 阶段二决明级实机场景开关：镜像 [isLensPhase1Enabled]。
      * 仅当 automation 启用且场景属性显式为 [LENS_PHASE2_SCENARIO_ID] 时为 true。
      * 阶段二验证机制证据（定影场 / 认知撕裂 / 残影 / 深水标记 / 插件挂载）+ shader 提交计数。
      */

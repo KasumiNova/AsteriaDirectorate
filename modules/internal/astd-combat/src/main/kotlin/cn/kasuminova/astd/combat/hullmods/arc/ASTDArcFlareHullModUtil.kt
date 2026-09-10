@@ -20,25 +20,33 @@ import com.fs.starfarer.api.combat.ShipVariantAPI
  * arc 专属的 [isASTDArcFlareVariant] / [isASTDArcFlareShip]（仅判定 arc_flare 这一具体 hull）保留。
  */
 internal object ASTDArcFlareHullModIds {
-    const val HULL_ID: String = "astd_arc_flare"
+    const val HULL_ID: String = "astd_xc_001"
 
-    const val MODE_CREWED: String = "astd_arc_flare_mode_crewed"
-    const val MODE_AUTOMATED: String = "astd_arc_flare_mode_automated"
-    const val NEXT_CREWED: String = "astd_arc_flare_mode_next_crewed"
-    const val NEXT_AUTOMATED: String = "astd_arc_flare_mode_next_automated"
+    const val MODE_CREWED: String = "astd_xc_001_mode_crewed"
+    const val MODE_AUTOMATED: String = "astd_xc_001_mode_automated"
+    const val NEXT_CREWED: String = "astd_xc_001_mode_next_crewed"
+    const val NEXT_AUTOMATED: String = "astd_xc_001_mode_next_automated"
 
     /** 载人版「电弧过载」系统 id（载人 mode hullmod 激活时 setShipSystemId）。 */
-    const val SYSTEM_CREWED: String = "astd_arc_flare_overdrive_crewed"
+    const val SYSTEM_CREWED: String = "astd_xc_001_overdrive_crewed"
 
     /** 无人版「电弧过载」系统 id（无人 mode hullmod 激活时 setShipSystemId）。 */
-    const val SYSTEM_AUTOMATED: String = "astd_arc_flare_overdrive_automated"
+    const val SYSTEM_AUTOMATED: String = "astd_xc_001_overdrive_automated"
+
+    /** 舰体渲染插件的 combat engine key，由各 effect/manager 共用，避免各自持有字面量。 */
+    const val KEY_AFTERIMAGE_RENDERER: String = "astd_xc_001_afterimage_renderer"
+    const val KEY_EMISSIVE_OVERLAY_MANAGER: String = "astd_xc_001_emissive_overlay_manager"
+    const val KEY_ENGINE_FLARE_MANAGER: String = "astd_xc_001_engine_flare_manager"
+
+    /** 静态装饰灯 bloom 描边武器 id（[cn.kasuminova.astd.renderer.effect.system.ArcFlareDecorativeLightsEffect] 识别 bloom 层用）。 */
+    const val WEAPON_LIGHTS_BLOOM: String = "astd_xc_001_lights_bloom"
 }
 
 /**
  * arc_flare 的双模式配置。
  *
  * 动机：arc 与 lens 共用「拆切换器即轮换模式」交互。此前 arc 自造了独立状态机 +
- * 独立切换器（astd_arc_flare_mode_switcher / ASTDArcFlareDualModeSwitcherHullMod），与通用框架重复。
+ * 独立切换器（astd_xc_001_mode_switcher / ASTDArcFlareDualModeSwitcherHullMod，均已废弃移除），与通用框架重复。
  * 现改为复用通用切换器 [ASTDDualModeSwitcherIds.SWITCHER_ID] + arc 自己的 mode/next/system id，
  * 行为与原 arc 状态机逐字段对应（见各字段），实现零回归迁移。
  *

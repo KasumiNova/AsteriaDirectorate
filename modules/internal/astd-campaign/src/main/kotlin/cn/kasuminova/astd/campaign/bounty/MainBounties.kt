@@ -200,7 +200,7 @@ object MainBounties {
             threatTier = 1,
             stages = listOf(
                 // TODO：选型随 P3/P4/P7 舰船池联调（总局旧制式巡洋舰，剧情要求带随机 D-mod）
-                Stage(baselineFP = 80, flagshipVariantId = "astd_aurora_grid_Standard"),
+                Stage(baselineFP = 80, flagshipVariantId = "astd_zl_101_Standard"),
             ),
             rewardMin = 200_000,
             rewardMax = 1_000_000,
@@ -311,7 +311,7 @@ object MainBounties {
             stages = listOf(
                 Stage(
                     baselineFP = 400,
-                    flagshipVariantId = "astd_gravitational_lens_Standard",
+                    flagshipVariantId = "astd_zw_001_Standard",
                     fixedAffixIds = listOf(AffixRegistry.ID_IRONCLAD_PLATING, AffixRegistry.ID_RECURSIVE_TARGETING),
                 ),
             ),
@@ -333,7 +333,7 @@ object MainBounties {
             stages = listOf(
                 Stage(
                     baselineFP = 600,
-                    flagshipVariantId = "astd_magnetosphere_disturbance_Standard",
+                    flagshipVariantId = "astd_zw_102_Standard",
                     fixedAffixIds = listOf(
                         AffixRegistry.ID_CRYO_FLUX_NETWORK,
                         AffixRegistry.ID_ENGINE_OVERCLOCK,
@@ -361,7 +361,7 @@ object MainBounties {
             stages = listOf(
                 Stage(
                     baselineFP = 800,
-                    flagshipVariantId = "astd_arc_jet_Standard",
+                    flagshipVariantId = "astd_xc_102_Standard",
                     fixedAffixIds = listOf(
                         AffixRegistry.ID_POLARIZED_SHIELD,
                         AffixRegistry.ID_DIMENSIONAL_SPECIALTY,
@@ -394,22 +394,22 @@ object MainBounties {
             stages = listOf(
                 Stage(
                     baselineFP = 300,
-                    flagshipVariantId = "astd_plasma_arch_Standard",
+                    flagshipVariantId = "astd_xc_101_Standard",
                     fixedAffixIds = listOf(AffixRegistry.ID_FLUX_COIL_EXPANSION, AffixRegistry.ID_REACTIVE_FLUX_ARMOR),
                 ),
                 Stage(
                     baselineFP = 300,
-                    flagshipVariantId = "astd_plasma_arch_Standard",
+                    flagshipVariantId = "astd_xc_101_Standard",
                     fixedAffixIds = listOf(AffixRegistry.ID_FLUX_COIL_EXPANSION, AffixRegistry.ID_REACTIVE_FLUX_ARMOR),
                 ),
                 Stage(
                     baselineFP = 300,
-                    flagshipVariantId = "astd_plasma_arch_Standard",
+                    flagshipVariantId = "astd_xc_101_Standard",
                     fixedAffixIds = listOf(AffixRegistry.ID_FLUX_COIL_EXPANSION, AffixRegistry.ID_REACTIVE_FLUX_ARMOR),
                 ),
                 Stage(
                     baselineFP = 800,
-                    flagshipVariantId = "astd_apex_logic_Standard",
+                    flagshipVariantId = "astd_zl_001_Standard",
                     fixedAffixIds = listOf(AffixRegistry.ID_FLUX_COIL_EXPANSION, AffixRegistry.ID_REACTIVE_FLUX_ARMOR),
                 ),
             ),
@@ -431,7 +431,7 @@ object MainBounties {
             threatTier = 5,
             // TODO：选型随 P3/P4/P7 舰船池联调（重挂目标：与序章同识别码的自动巡航舰）
             stages = listOf(
-                Stage(baselineFP = 1000, flagshipVariantId = "astd_aurora_grid_Standard", liquidationDelta = 0f),
+                Stage(baselineFP = 1000, flagshipVariantId = "astd_zl_101_Standard", liquidationDelta = 0f),
             ),
             rewardMin = 500_000,
             rewardMax = 2_500_000,
@@ -446,7 +446,7 @@ object MainBounties {
             groupId = GROUP_CH3,
             threatTier = 5,
             // TODO：选型随 P3/P4/P7 舰船池联调（第七型自动巡逻编队）
-            stages = listOf(Stage(baselineFP = 1200, flagshipVariantId = "astd_negentropy_edge_Standard")),
+            stages = listOf(Stage(baselineFP = 1200, flagshipVariantId = "astd_xc_002_Standard")),
             rewardMin = 500_000,
             rewardMax = 2_500_000,
             requiresGroups = listOf(GROUP_CH2_XC, GROUP_CH2_ZW),
@@ -467,7 +467,7 @@ object MainBounties {
             stages = listOf(
                 Stage(
                     baselineFP = 1500,
-                    flagshipVariantId = "astd_arc_flare_Standard",
+                    flagshipVariantId = "astd_xc_001_Standard",
                     fixedAffixIds = listOf(
                         AffixRegistry.ID_POLARIZED_SHIELD,
                         AffixRegistry.ID_DIMENSIONAL_SPECIALTY,
@@ -501,7 +501,7 @@ object MainBounties {
                 // 条款③R-16 激进式集群作战网络为中军（阶段三）编队级改装，中军旗舰 R-17 走 flagshipAffixIds
                 Stage(
                     baselineFP = 1800,
-                    flagshipVariantId = "astd_arc_jet_Standard",
+                    flagshipVariantId = "astd_xc_102_Standard",
                     fixedAffixIds = listOf(
                         AffixRegistry.ID_IRONCLAD_PLATING,
                         AffixRegistry.ID_CRYO_FLUX_NETWORK,
@@ -513,7 +513,7 @@ object MainBounties {
                 ),
                 Stage(
                     baselineFP = 2200,
-                    flagshipVariantId = "astd_arc_flare_Standard",
+                    flagshipVariantId = "astd_xc_001_Standard",
                     fixedAffixIds = listOf(
                         AffixRegistry.ID_IRONCLAD_PLATING,
                         AffixRegistry.ID_CRYO_FLUX_NETWORK,
@@ -525,7 +525,7 @@ object MainBounties {
                 ),
                 Stage(
                     baselineFP = 2800,
-                    flagshipVariantId = "astd_apex_logic_Standard",
+                    flagshipVariantId = "astd_zl_001_Standard",
                     flagshipAffixIds = listOf(AffixRegistry.ID_SINGULARITY_DRIVE),
                     fixedAffixIds = listOf(
                         AffixRegistry.ID_IRONCLAD_PLATING,

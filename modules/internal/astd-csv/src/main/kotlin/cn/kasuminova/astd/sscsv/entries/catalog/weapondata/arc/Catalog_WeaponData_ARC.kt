@@ -60,9 +60,9 @@ object Wpn_astd_aod7 : WeaponDataEntry(), SsProjProjectileOutputs {
     )
 }
 
-/** Arc Flare：整船静态发光层（装配界面/战斗常驻 decorative lights）。 */
-object Wpn_astd_arc_flare_lights : WeaponDataEntry() {
-    override val id: String = "astd_arc_flare_lights"
+/** 星坠：整船静态发光层（装配界面/战斗常驻 decorative lights）。 */
+object Wpn_astd_xc_001_lights : WeaponDataEntry() {
+    override val id: String = "astd_xc_001_lights"
     override val name: String = weaponName(id)
     override val tier: Int = 5
     override val baseValue: Int = 0
@@ -75,9 +75,9 @@ object Wpn_astd_arc_flare_lights : WeaponDataEntry() {
     override val number: Int = 9106
 }
 
-/** Arc Flare：整船 bloom 描边层（装配界面/战斗 decorative outline）。 */
-object Wpn_astd_arc_flare_lights_bloom : WeaponDataEntry() {
-    override val id: String = "astd_arc_flare_lights_bloom"
+/** 星坠：整船 bloom 描边层（装配界面/战斗 decorative outline）。 */
+object Wpn_astd_xc_001_lights_bloom : WeaponDataEntry() {
+    override val id: String = "astd_xc_001_lights_bloom"
     override val name: String = weaponName(id)
     override val tier: Int = 5
     override val baseValue: Int = 0
@@ -90,9 +90,9 @@ object Wpn_astd_arc_flare_lights_bloom : WeaponDataEntry() {
     override val number: Int = 9125
 }
 
-/** Negentropy Edge：整船 bloom 描边层（装配界面/战斗 decorative outline）。 */
-object Wpn_astd_negentropy_edge_bloom : WeaponDataEntry() {
-    override val id: String = "astd_negentropy_edge_bloom"
+/** 淬刃：整船 bloom 描边层（装配界面/战斗 decorative outline）。 */
+object Wpn_astd_xc_002_bloom : WeaponDataEntry() {
+    override val id: String = "astd_xc_002_bloom"
     override val name: String = weaponName(id)
     override val tier: Int = 5
     override val baseValue: Int = 0
@@ -105,9 +105,9 @@ object Wpn_astd_negentropy_edge_bloom : WeaponDataEntry() {
     override val number: Int = 9126
 }
 
-/** Radiation Belt：整船 bloom 描边层（装配界面/战斗 decorative outline）。 */
-object Wpn_astd_radiation_belt_bloom : WeaponDataEntry() {
-    override val id: String = "astd_radiation_belt_bloom"
+/** 列星：整船 bloom 描边层（装配界面/战斗 decorative outline）。 */
+object Wpn_astd_xc_103_bloom : WeaponDataEntry() {
+    override val id: String = "astd_xc_103_bloom"
     override val name: String = weaponName(id)
     override val tier: Int = 5
     override val baseValue: Int = 0
@@ -120,9 +120,9 @@ object Wpn_astd_radiation_belt_bloom : WeaponDataEntry() {
     override val number: Int = 9128
 }
 
-/** Arc Jet：整船 bloom 描边层（装配界面/战斗 decorative outline）。 */
-object Wpn_astd_arc_jet_bloom : WeaponDataEntry() {
-    override val id: String = "astd_arc_jet_bloom"
+/** 烽燧：整船 bloom 描边层（装配界面/战斗 decorative outline）。 */
+object Wpn_astd_xc_102_bloom : WeaponDataEntry() {
+    override val id: String = "astd_xc_102_bloom"
     override val name: String = weaponName(id)
     override val tier: Int = 5
     override val baseValue: Int = 0
@@ -135,9 +135,9 @@ object Wpn_astd_arc_jet_bloom : WeaponDataEntry() {
     override val number: Int = 9130
 }
 
-/** Arc Flash：整船 bloom 描边层（装配界面/战斗 decorative outline）。 */
-object Wpn_astd_arc_flash_bloom : WeaponDataEntry() {
-    override val id: String = "astd_arc_flash_bloom"
+/** 逐电：整船 bloom 描边层（装配界面/战斗 decorative outline）。 */
+object Wpn_astd_xc_104_bloom : WeaponDataEntry() {
+    override val id: String = "astd_xc_104_bloom"
     override val name: String = weaponName(id)
     override val tier: Int = 5
     override val baseValue: Int = 0
@@ -150,9 +150,9 @@ object Wpn_astd_arc_flash_bloom : WeaponDataEntry() {
     override val number: Int = 9131
 }
 
-/** Plasma Arch：整船 bloom 描边层（装配界面/战斗 decorative outline）。 */
-object Wpn_astd_plasma_arch_bloom : WeaponDataEntry() {
-    override val id: String = "astd_plasma_arch_bloom"
+/** 熔壁：整船 bloom 描边层（装配界面/战斗 decorative outline）。 */
+object Wpn_astd_xc_101_bloom : WeaponDataEntry() {
+    override val id: String = "astd_xc_101_bloom"
     override val name: String = weaponName(id)
     override val tier: Int = 5
     override val baseValue: Int = 0
@@ -165,7 +165,7 @@ object Wpn_astd_plasma_arch_bloom : WeaponDataEntry() {
     override val number: Int = 9129
 }
 
-/** Negentropy Edge：追击虚粒子真实导弹体（脚本生成，实体碰撞结算）。 */
+/** 淬刃：追击虚粒子真实导弹体（脚本生成，实体碰撞结算）。 */
 object Wpn_astd_virtual_particle_mote_launcher : WeaponDataEntry(), SsProjMissileOutputs {
     override val id: String = "astd_virtual_particle_mote_launcher"
     override val name: String = weaponName(id)
@@ -184,7 +184,7 @@ object Wpn_astd_virtual_particle_mote_launcher : WeaponDataEntry(), SsProjMissil
     override val tech: String = "菀星设计局-星坠"
     override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
     override val noDpsInTooltip: Boolean = true
-    override val number: Int = 9127
+    override val number: Int = 9132
 
     override val projSpec: MissileProjSpec = MissileProjSpec(
         id = "astd_virtual_particle_mote",

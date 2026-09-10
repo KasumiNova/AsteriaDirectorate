@@ -1,5 +1,6 @@
 package cn.kasuminova.astd.renderer.effect.system
 
+import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcFlareHullModIds
 import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseEveryFrameCombatPlugin
@@ -19,7 +20,7 @@ import java.awt.Color
 import kotlin.math.sin
 
 /**
- * Arc Flare（弧光耀斑）舰体 emissive 覆盖层。
+ * Arc Flare（星坠）舰体 emissive 覆盖层。
  *
  * 设计：
  * - 整船 base emissive 交给 decorative weapon 在战斗内动态控光，确保与舰体严格对齐
@@ -27,8 +28,7 @@ import kotlin.math.sin
  */
 internal object ArcFlareEmissiveOverlayManager {
 
-    private const val ENGINE_KEY = "astd_arc_flare_emissive_overlay_manager"
-    private const val HULL_ID = "astd_arc_flare"
+    private const val ENGINE_KEY = ASTDArcFlareHullModIds.KEY_EMISSIVE_OVERLAY_MANAGER
     private const val SCAN_INTERVAL = 0.33f
 
     private val log = Global.getLogger(ArcFlareEmissiveOverlayManager::class.java)
@@ -112,7 +112,7 @@ internal object ArcFlareEmissiveOverlayManager {
                 } catch (_: Throwable) {
                     null
                 }
-                if (hullId != HULL_ID) continue
+                if (hullId != ASTDArcFlareHullModIds.HULL_ID) continue
 
                 val key = System.identityHashCode(ship)
                 if (attachments.containsKey(key)) continue

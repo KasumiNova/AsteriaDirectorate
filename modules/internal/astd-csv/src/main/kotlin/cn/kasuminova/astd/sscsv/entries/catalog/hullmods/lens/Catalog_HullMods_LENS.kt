@@ -49,11 +49,11 @@ object HullMod_astd_lens_permeating_tide : HullModEntry() {
     override val sprite: String = "graphics/hullmods/astd_lens_array_core.png"
 }
 
-// 注：lens 自造切换器 astd_lens_mode_switcher 已废弃，改用通用切换器 astd_dual_mode_switcher
+// 注：lens 自造切换器 astd_zw_001_mode_switcher 已废弃，改用通用切换器 astd_dual_mode_switcher
 // （见 entries/catalog/hullmods/base/Catalog_HullMods_Base.kt）。原条目已移除。
 
-object HullMod_astd_lens_mode_crewed : HullModEntry() {
-    override val id: String = "astd_lens_mode_crewed"
+object HullMod_astd_zw_001_mode_crewed : HullModEntry() {
+    override val id: String = "astd_zw_001_mode_crewed"
     override val name: String = hullmodName(id)
     override val tier: Int = 3
     override val rarity: Int = 1
@@ -65,8 +65,8 @@ object HullMod_astd_lens_mode_crewed : HullModEntry() {
     override val sprite: String = "graphics/hullmods/astd_lens_array_core.png"
 }
 
-object HullMod_astd_lens_mode_automated : HullModEntry() {
-    override val id: String = "astd_lens_mode_automated"
+object HullMod_astd_zw_001_mode_automated : HullModEntry() {
+    override val id: String = "astd_zw_001_mode_automated"
     override val name: String = hullmodName(id)
     override val tier: Int = 3
     override val rarity: Int = 1
@@ -78,8 +78,8 @@ object HullMod_astd_lens_mode_automated : HullModEntry() {
     override val sprite: String = "graphics/hullmods/astd_lens_array_core.png"
 }
 
-object HullMod_astd_lens_mode_next_crewed : HullModEntry() {
-    override val id: String = "astd_lens_mode_next_crewed"
+object HullMod_astd_zw_001_mode_next_crewed : HullModEntry() {
+    override val id: String = "astd_zw_001_mode_next_crewed"
     override val name: String = hullmodName(id)
     override val tier: Int = 0
     override val rarity: Int = 0
@@ -92,8 +92,8 @@ object HullMod_astd_lens_mode_next_crewed : HullModEntry() {
     override val sprite: String = "graphics/hullmods/astd_lens_array_core.png"
 }
 
-object HullMod_astd_lens_mode_next_automated : HullModEntry() {
-    override val id: String = "astd_lens_mode_next_automated"
+object HullMod_astd_zw_001_mode_next_automated : HullModEntry() {
+    override val id: String = "astd_zw_001_mode_next_automated"
     override val name: String = hullmodName(id)
     override val tier: Int = 0
     override val rarity: Int = 0

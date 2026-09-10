@@ -27,7 +27,7 @@ import kotlin.math.sin
 /**
  * astd_collapse_shift（坍缩折跃）
  *
- * 读取断熵弧刃共享充能池，激活时完成一次短程折跃，并提供 4s 激变窗口。
+ * 读取淬刃共享充能池，激活时完成一次短程折跃，并提供 4s 激变窗口。
  */
 open class CollapseShiftSystemStats : BaseShipSystemScript() {
 

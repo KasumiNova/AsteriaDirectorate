@@ -1,5 +1,6 @@
 package cn.kasuminova.astd.renderer.effect.system
 
+import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcFlareHullModIds
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.EveryFrameWeaponEffectPlugin
 import com.fs.starfarer.api.combat.WeaponAPI
@@ -15,7 +16,7 @@ import java.awt.Color
 class ArcFlareDecorativeLightsEffect : EveryFrameWeaponEffectPlugin {
 
     companion object {
-        private const val BLOOM_WEAPON_ID = "astd_arc_flare_lights_bloom"
+        private const val BLOOM_WEAPON_ID = ASTDArcFlareHullModIds.WEAPON_LIGHTS_BLOOM
     }
 
     private var baseColor: Color? = null

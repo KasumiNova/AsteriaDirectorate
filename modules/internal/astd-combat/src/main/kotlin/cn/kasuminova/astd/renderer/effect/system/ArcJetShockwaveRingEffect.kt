@@ -1,5 +1,6 @@
 package cn.kasuminova.astd.renderer.effect.system
 
+import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcProductionShipIds
 import cn.kasuminova.astd.renderer.shader.base.ShaderBlendMode
 import cn.kasuminova.astd.renderer.shader.base.ShaderEffectKey
 import cn.kasuminova.astd.renderer.shader.base.ShaderEffectLayer
@@ -31,8 +32,8 @@ internal object ArcJetShockwaveRingEffect : ShipSystemShaderEffect {
     const val STALE_AFTER_SECONDS = 0.18f
     private const val MIN_COLLISION_RADIUS = 80f
     private const val OUTER_RADIUS_MULT = 1.5f
-    private const val EFFECT_ID = "astd_arc_jet_shockwave_ring"
-    private const val PROGRAM_ID = "astd_arc_jet_shockwave_ring_program"
+    private const val EFFECT_ID = ASTDArcProductionShipIds.EFFECT_ARC_JET_SHOCKWAVE_RING
+    private const val PROGRAM_ID = ASTDArcProductionShipIds.PROGRAM_ARC_JET_SHOCKWAVE_RING
 
     val REFERENCE_PARAMETERS = Parameters(
         speed = 0.30f,

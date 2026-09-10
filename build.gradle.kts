@@ -293,7 +293,7 @@ tasks.register<Exec>("smokeTestLauncher") {
 }
 
 // automation 场景可由外部 ASTD_AUTOMATION_SCENARIO 环境变量覆盖（默认 ARC production，
-// 保持既有行为）；阶段一引力透镜场景通过 ASTD_AUTOMATION_SCENARIO=lens_phase1_foundation 启动。
+// 保持既有行为）；阶段一决明场景通过 ASTD_AUTOMATION_SCENARIO=lens_phase1_foundation 启动。
 val smokeTestScenario: String =
     (System.getenv("ASTD_AUTOMATION_SCENARIO")?.takeIf { it.isNotBlank() })
         ?: "arc_production_ships_vfx_tooltip"

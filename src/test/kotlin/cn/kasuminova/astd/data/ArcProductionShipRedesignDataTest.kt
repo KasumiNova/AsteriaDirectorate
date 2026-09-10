@@ -17,7 +17,7 @@ class ArcProductionShipRedesignDataTest {
         val rows = readCsvRows(Path.of("contents/data/hulls/ship_data.csv"))
 
         assertShipStats(
-            rows.getValue("astd_arc_jet"),
+            rows.getValue("astd_xc_102"),
             ExpectedShipStats(
                 fleetPts = 55,
                 hitpoints = 27500,
@@ -39,7 +39,7 @@ class ArcProductionShipRedesignDataTest {
             ),
         )
         assertShipStats(
-            rows.getValue("astd_plasma_arch"),
+            rows.getValue("astd_xc_101"),
             ExpectedShipStats(
                 fleetPts = 32,
                 hitpoints = 13000,
@@ -61,7 +61,7 @@ class ArcProductionShipRedesignDataTest {
             ),
         )
         assertShipStats(
-            rows.getValue("astd_radiation_belt"),
+            rows.getValue("astd_xc_103"),
             ExpectedShipStats(
                 fleetPts = 14,
                 hitpoints = 5500,
@@ -95,9 +95,9 @@ class ArcProductionShipRedesignDataTest {
             ),
         )
         listOf(
-            "astd_arc_flare_overdrive",
-            "astd_arc_flare_overdrive_crewed",
-            "astd_arc_flare_overdrive_automated",
+            "astd_xc_001_overdrive",
+            "astd_xc_001_overdrive_crewed",
+            "astd_xc_001_overdrive_automated",
         ).forEach { id ->
             assertSystemRow(
                 row = rows.getValue(id),
@@ -199,7 +199,7 @@ class ArcProductionShipRedesignDataTest {
             "装配点 | 185",
             "部署点 | 32",
             "额外时间流速 | +200%",
-            "残影刷新频率为电弧闪级战术系统的 2 倍",
+            "残影刷新频率为逐电级战术系统的 2 倍",
             "舰船自身非导弹非点防武器射程降低 **20%**",
         ).forEach { required ->
             assertTrue(design.contains(required), "design document missing current requirement: $required")
@@ -230,8 +230,8 @@ class ArcProductionShipRedesignDataTest {
     @Test
     fun `production arc standard variants carry vanilla and unique built-ins`() {
         assertHullBuiltInMods(
-            hullPath = Path.of("contents/data/hulls/astd_arc_jet.ship"),
-            variantPath = Path.of("contents/data/variants/astd_arc_jet_Standard.variant"),
+            hullPath = Path.of("contents/data/hulls/astd_xc_102.ship"),
+            variantPath = Path.of("contents/data/variants/astd_xc_102_Standard.variant"),
             required = listOf(
                 "advancedcore",
                 "armoredweapons",
@@ -240,7 +240,7 @@ class ArcProductionShipRedesignDataTest {
             ),
         )
         assertVariantWeapons(
-            path = Path.of("contents/data/variants/astd_arc_jet_Standard.variant"),
+            path = Path.of("contents/data/variants/astd_xc_102_Standard.variant"),
             // D9 废弃武器拆除后，空出的槽位以原版武器过渡（P 后续阶段重新设计）
             required = mapOf(
                 "WS0001" to "gauss",
@@ -252,8 +252,8 @@ class ArcProductionShipRedesignDataTest {
             ),
         )
         assertHullBuiltInMods(
-            hullPath = Path.of("contents/data/hulls/astd_plasma_arch.ship"),
-            variantPath = Path.of("contents/data/variants/astd_plasma_arch_Standard.variant"),
+            hullPath = Path.of("contents/data/hulls/astd_xc_101.ship"),
+            variantPath = Path.of("contents/data/variants/astd_xc_101_Standard.variant"),
             required = listOf(
                 "missleracks",
                 "astd_plasma_armor_shield",
@@ -261,7 +261,7 @@ class ArcProductionShipRedesignDataTest {
             ),
         )
         assertVariantWeapons(
-            path = Path.of("contents/data/variants/astd_plasma_arch_Standard.variant"),
+            path = Path.of("contents/data/variants/astd_xc_101_Standard.variant"),
             required = mapOf(
                 "WS0001" to "gauss",
                 "WS0002" to "gauss",
@@ -272,8 +272,8 @@ class ArcProductionShipRedesignDataTest {
             ),
         )
         val radiationBeltBuiltIns = assertHullBuiltInMods(
-            hullPath = Path.of("contents/data/hulls/astd_radiation_belt.ship"),
-            variantPath = Path.of("contents/data/variants/astd_radiation_belt_Standard.variant"),
+            hullPath = Path.of("contents/data/hulls/astd_xc_103.ship"),
+            variantPath = Path.of("contents/data/variants/astd_xc_103_Standard.variant"),
             required = listOf(
                 "magazines",
                 "auxiliarythrusters",
@@ -283,7 +283,7 @@ class ArcProductionShipRedesignDataTest {
         )
         assertFalse("expanded_magazines" in radiationBeltBuiltIns, "Starsector canonical expanded magazines id is magazines")
         assertVariantWeapons(
-            path = Path.of("contents/data/variants/astd_radiation_belt_Standard.variant"),
+            path = Path.of("contents/data/variants/astd_xc_103_Standard.variant"),
             required = mapOf(
                 "WS0001" to "pdlaser",
                 "WS0002" to "astd_spc3",

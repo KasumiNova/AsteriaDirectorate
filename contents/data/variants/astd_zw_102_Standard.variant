@@ -1,0 +1,34 @@
+{
+    "displayName": "Standard",
+    "fluxCapacitors": 30,
+    "fluxVents": 30,
+    "goalVariant": true,
+    "hullId": "astd_zw_102",
+    "hullMods": [],
+    "quality": 1.0,
+    "variantId": "astd_zw_102_Standard",
+    "weaponGroups": [
+        {
+            "autofire": false,
+            "mode": "LINKED",
+            "weapons": {
+                "WS0001": "astd_gcp12",
+                "WS0002": "astd_gcp12",
+                "WS0003": "astd_gemini_dem_pod",
+                "WS0004": "astd_gcp2",
+                "WS0005": "astd_gcp2",
+                "WS0006": "astd_gcp2",
+                "WS0007": "astd_gcp2",
+                "WS0008": "astd_charge_needle",
+                "WS0009": "astd_charge_needle",
+                "WS0010": "astd_charge_needle",
+                "WS0011": "astd_charge_needle"
+            }
+        }
+    ],
+    "wings": [
+        "astd_conjugate_terminal_wing",
+        "astd_conjugate_terminal_wing",
+        "astd_conjugate_terminal_wing"
+    ]
+}

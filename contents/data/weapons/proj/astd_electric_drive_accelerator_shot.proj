@@ -6,12 +6,13 @@
     "onHitEffect": "cn.kasuminova.astd.combat.effect.arc.ElectricDriveAcceleratorOnHitEffect",
     "collisionClass": "PROJECTILE_FF",
     "collisionClassByFighter": "PROJECTILE_FIGHTER",
-    "length": 75,
-    "width": 20,
+    "length": 56.25,
+    "width": 10,
     "fadeTime": 0.25,
-    "fringeColor": [235, 242, 250, 255],
-    "coreColor": [255, 255, 255, 200],
-    "textureScrollSpeed": -256,
+    "fringeColor": [255, 220, 120, 0],
+    "coreColor": [255, 240, 200, 0],
+    "textureScrollSpeed": 0,
     "pixelsPerTexel": 1,
-    "hitGlowRadius": 25
+    "hitGlowRadius": 25,
+    "bulletSprite": "graphics/textures/BUtil_NONE.png"
 }

@@ -3,7 +3,7 @@ package cn.kasuminova.astd.renderer.effect.lens
 import com.fs.starfarer.api.combat.CombatEngineAPI
 
 /**
- * 引力透镜级 shader 视觉效果的「提交计数」遥测（Task 12 实机自动化用）。
+ * 决明级 shader 视觉效果的「提交计数」遥测（Task 12 实机自动化用）。
  *
  * 动机：阶段二实机集成测试要验证「shader effect 被真实提交即证明视觉管线生效」——自动化只能验证
  * 提交计数，像素外观留人工。lens 的五个 shader effect（回声定影场 / 误差标记高光 / 深水标记高光 /

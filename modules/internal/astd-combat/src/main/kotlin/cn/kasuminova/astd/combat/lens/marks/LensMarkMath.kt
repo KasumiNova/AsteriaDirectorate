@@ -1,7 +1,7 @@
 package cn.kasuminova.astd.combat.lens.marks
 
 /**
- * 引力透镜级两类标记的纯数学换算。
+ * 决明级两类标记的纯数学换算。
  *
  * 动机：spec §1.1 定义误差/深水标记的逐层效果，提取为无副作用纯函数，
  * 便于单元测试与平衡调参，且 applier 与 tooltip 共用同一真相源。
@@ -44,7 +44,7 @@ object LensMarkMath {
     fun deepWaterSpeedMult(stacks: Int): Float =
         (1f - clampStacks(stacks) * DEEP_SPEED_PER_STACK).coerceAtLeast(0f)
 
-    /** 对"引力透镜"造成的伤害倍率（≤1）。 */
+    /** 对"决明"造成的伤害倍率（≤1）。 */
     fun deepWaterVsLensDamageMult(stacks: Int): Float =
         (1f - clampStacks(stacks) * DEEP_VS_LENS_PER_STACK).coerceAtLeast(0f)
 }

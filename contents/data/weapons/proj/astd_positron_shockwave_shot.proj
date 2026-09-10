@@ -8,9 +8,10 @@
     "length": 75,
     "width": 20,
     "fadeTime": 0.25,
-    "fringeColor": [140, 200, 255, 255],
-    "coreColor": [240, 248, 255, 200],
-    "textureScrollSpeed": -256,
+    "fringeColor": [140, 200, 255, 0],
+    "coreColor": [240, 248, 255, 0],
+    "textureScrollSpeed": 0,
     "pixelsPerTexel": 1,
-    "hitGlowRadius": 25
+    "hitGlowRadius": 25,
+    "bulletSprite": "graphics/textures/BUtil_NONE.png"
 }

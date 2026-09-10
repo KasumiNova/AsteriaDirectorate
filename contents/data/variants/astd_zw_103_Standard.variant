@@ -1,0 +1,21 @@
+{
+    "displayName": "Standard",
+    "fluxCapacitors": 0,
+    "fluxVents": 0,
+    "goalVariant": true,
+    "hullId": "astd_zw_103",
+    "hullMods": [],
+    "quality": 0.0,
+    "variantId": "astd_zw_103_Standard",
+    "weaponGroups": [
+        {
+            "autofire": false,
+            "mode": "LINKED",
+            "weapons": {
+                "WS 001": "ionbeam",
+                "WS 002": "pdlaser",
+                "WS 003": "pdlaser"
+            }
+        }
+    ]
+}

@@ -6,8 +6,8 @@ import cn.kasuminova.astd.sscsv.entries.catalog.shipsystems.systemName
 
 /** ARC 系舰船系统（ship_systems.csv + 对应 .system 文件）。 */
 
-object Sys_astd_arc_flare_overdrive_crewed : ShipSystemWithSystemFileEntry() {
-    override val id: String = "astd_arc_flare_overdrive_crewed"
+object Sys_astd_xc_001_overdrive_crewed : ShipSystemWithSystemFileEntry() {
+    override val id: String = "astd_xc_001_overdrive_crewed"
     override val name: String = systemName(id)
 
     override val statsScript: String = "cn.kasuminova.astd.combat.shipsystems.ASTDArcFlareOverdriveCrewedSystemStats"
@@ -23,8 +23,8 @@ object Sys_astd_arc_flare_overdrive_crewed : ShipSystemWithSystemFileEntry() {
     override val icon: String = "graphics/icons/hullsys/ammo_feeder.png"
 }
 
-object Sys_astd_arc_flare_overdrive_automated : ShipSystemWithSystemFileEntry() {
-    override val id: String = "astd_arc_flare_overdrive_automated"
+object Sys_astd_xc_001_overdrive_automated : ShipSystemWithSystemFileEntry() {
+    override val id: String = "astd_xc_001_overdrive_automated"
     override val name: String = systemName(id)
 
     override val statsScript: String = "cn.kasuminova.astd.combat.shipsystems.ASTDArcFlareOverdriveAutomatedSystemStats"
@@ -41,9 +41,9 @@ object Sys_astd_arc_flare_overdrive_automated : ShipSystemWithSystemFileEntry() 
 }
 
 /** 旧 Arc Flare 系统 id 的兼容行，供已保存 hullSpec / 旧部署数据引用。 */
-object Sys_astd_arc_flare_overdrive : ShipSystemWithSystemFileEntry() {
-    override val id: String = "astd_arc_flare_overdrive"
-    override val name: String = systemName("astd_arc_flare_overdrive_crewed")
+object Sys_astd_xc_001_overdrive : ShipSystemWithSystemFileEntry() {
+    override val id: String = "astd_xc_001_overdrive"
+    override val name: String = systemName("astd_xc_001_overdrive_crewed")
 
     override val statsScript: String = "cn.kasuminova.astd.combat.shipsystems.ASTDArcFlareOverdriveCrewedSystemStats"
 

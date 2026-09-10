@@ -3,8 +3,8 @@
     {
       "id": "arc_flare_aod7_basic",
       "missionId": "arc_flare_aod7_basic",
-      "shipId": "astd_arc_flare",
-      "variantId": "astd_arc_flare_Standard",
+      "shipId": "astd_xc_001",
+      "variantId": "astd_xc_001_Standard",
       "weaponId": "astd_aod7",
       "projectileSpecId": "astd_aod7_shot",
       "vfxPresetId": "aod7_shot"
@@ -13,14 +13,14 @@
       "id": "arc_production_ships_vfx_tooltip",
       "missionId": "arc_production_ships_vfx_tooltip",
       "shipIds": [
-        "astd_arc_jet",
-        "astd_plasma_arch",
-        "astd_radiation_belt"
+        "astd_xc_102",
+        "astd_xc_101",
+        "astd_xc_103"
       ],
       "variantIds": [
-        "astd_arc_jet_Standard",
-        "astd_plasma_arch_Standard",
-        "astd_radiation_belt_Standard"
+        "astd_xc_102_Standard",
+        "astd_xc_101_Standard",
+        "astd_xc_103_Standard"
       ],
       "requiredEvidence": [
         "arcJetShockwaveFrames",
@@ -42,10 +42,10 @@
       "id": "lens_phase1_foundation",
       "missionId": "lens_phase1_foundation",
       "shipIds": [
-        "astd_gravitational_lens"
+        "astd_zw_001"
       ],
       "variantIds": [
-        "astd_gravitational_lens_Standard"
+        "astd_zw_001_Standard"
       ],
       "requiredEvidence": [
         "lensDeployedShipIds",
@@ -66,11 +66,11 @@
       "id": "lens_phase2_mechanisms",
       "missionId": "lens_phase2_mechanisms",
       "shipIds": [
-        "astd_gravitational_lens"
+        "astd_zw_001"
       ],
       "variantIds": [
-        "astd_gravitational_lens_Standard",
-        "astd_gravitational_lens_Automated"
+        "astd_zw_001_Standard",
+        "astd_zw_001_Automated"
       ],
       "requiredEvidence": [
         "echoFixationFieldActive",

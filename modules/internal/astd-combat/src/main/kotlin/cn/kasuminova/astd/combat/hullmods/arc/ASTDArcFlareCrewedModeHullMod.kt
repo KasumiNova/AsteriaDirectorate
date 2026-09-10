@@ -30,8 +30,8 @@ class ASTDArcFlareCrewedModeHullMod : BaseHullMod() {
         private const val SHIELD_TURN_MULT = 1.15f
         private const val ENERGY_FLUX_MULT = 0.96f
 
-        private const val ARC_TIMER_KEY = "astd_arc_flare_crewed_mode_arc_timer"
-        private const val ARC_BUDGET_KEY = "astd_arc_flare_crewed_mode_arc_budget"
+        private const val ARC_TIMER_KEY = "astd_xc_001_crewed_mode_arc_timer"
+        private const val ARC_BUDGET_KEY = "astd_xc_001_crewed_mode_arc_budget"
         private const val ARC_INTERVAL = 0.28f
 
         private val THEME = ASTDHullModTooltipRenderer.Theme(

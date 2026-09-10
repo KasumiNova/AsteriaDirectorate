@@ -5,8 +5,8 @@ import cn.kasuminova.astd.sscsv.entries.catalog.shipdata.shipName
 
 /** AUTOMATED 设计系舰体数据（ship_data.csv）。 */
 
-object Ship_astd_aurora_grid : ShipDataEntry() {
-    override val id: String = "astd_aurora_grid"
+object Ship_astd_zl_101 : ShipDataEntry() {
+    override val id: String = "astd_zl_101"
     override val name: String = shipName(id)
     override val designation: String = "巡洋舰"
     override val tech: String = "自律核心"
@@ -42,12 +42,12 @@ object Ship_astd_aurora_grid : ShipDataEntry() {
     override val suppliesRec: Int = 20
     override val suppliesPerMonth: Int = 20
     override val tags: String = "astd_automated"
-    override val codexVariantId: String = "astd_aurora_grid_Standard"
+    override val codexVariantId: String = "astd_zl_101_Standard"
     override val number: Int = 9115
 }
 
-object Ship_astd_magnetic_storm_zigzag : ShipDataEntry() {
-    override val id: String = "astd_magnetic_storm_zigzag"
+object Ship_astd_zl_102 : ShipDataEntry() {
+    override val id: String = "astd_zl_102"
     override val name: String = shipName(id)
     override val designation: String = "驱逐舰"
     override val tech: String = "自律核心"
@@ -83,12 +83,12 @@ object Ship_astd_magnetic_storm_zigzag : ShipDataEntry() {
     override val suppliesRec: Int = 12
     override val suppliesPerMonth: Int = 12
     override val tags: String = "astd_automated"
-    override val codexVariantId: String = "astd_magnetic_storm_zigzag_Standard"
+    override val codexVariantId: String = "astd_zl_102_Standard"
     override val number: Int = 9116
 }
 
-object Ship_astd_echo_shimmer : ShipDataEntry() {
-    override val id: String = "astd_echo_shimmer"
+object Ship_astd_zl_103 : ShipDataEntry() {
+    override val id: String = "astd_zl_103"
     override val name: String = shipName(id)
     override val designation: String = "护卫舰"
     override val tech: String = "自律核心"
@@ -123,12 +123,12 @@ object Ship_astd_echo_shimmer : ShipDataEntry() {
     override val suppliesRec: Int = 3
     override val suppliesPerMonth: Int = 3
     override val tags: String = "astd_automated"
-    override val codexVariantId: String = "astd_echo_shimmer_Standard"
+    override val codexVariantId: String = "astd_zl_103_Standard"
     override val number: Int = 9117
 }
 
-object Ship_astd_apex_logic : ShipDataEntry() {
-    override val id: String = "astd_apex_logic"
+object Ship_astd_zl_001 : ShipDataEntry() {
+    override val id: String = "astd_zl_001"
     override val name: String = shipName(id)
     override val designation: String = "主力舰"
     override val tech: String = "自律核心"
@@ -164,6 +164,6 @@ object Ship_astd_apex_logic : ShipDataEntry() {
     override val suppliesRec: Int = 60
     override val suppliesPerMonth: Int = 60
     override val tags: String = "astd_unique"
-    override val codexVariantId: String = "astd_apex_logic_Standard"
+    override val codexVariantId: String = "astd_zl_001_Standard"
     override val number: Int = 9118
 }

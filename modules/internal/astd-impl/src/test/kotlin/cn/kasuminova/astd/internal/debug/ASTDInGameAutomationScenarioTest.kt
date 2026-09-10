@@ -12,8 +12,8 @@ import cn.kasuminova.astd.testutil.RepoLayout
 class ASTDInGameAutomationScenarioTest {
     @Test
     fun `automation scenario ids match ship weapon projectile and vfx config`() {
-        assertTrue(Files.readString(Path.of("contents/data/hulls/astd_arc_flare.ship")).contains("\"hullId\": \"${ASTDInGameAutomationScenario.SHIP_ID}\""))
-        assertTrue(Files.readString(Path.of("contents/data/hulls/astd_arc_flare.ship")).contains("\"WS MAIN\": \"${ASTDInGameAutomationScenario.WEAPON_ID}\""))
+        assertTrue(Files.readString(Path.of("contents/data/hulls/astd_xc_001.ship")).contains("\"hullId\": \"${ASTDInGameAutomationScenario.SHIP_ID}\""))
+        assertTrue(Files.readString(Path.of("contents/data/hulls/astd_xc_001.ship")).contains("\"WS MAIN\": \"${ASTDInGameAutomationScenario.WEAPON_ID}\""))
         assertTrue(Files.readString(Path.of("contents/data/weapons/astd_aod7.wpn")).contains("\"projectileSpecId\": \"${ASTDInGameAutomationScenario.PROJECTILE_SPEC_ID}\""))
         assertTrue(Files.readString(Path.of("contents/data/weapons/proj/astd_aod7_shot.proj")).contains("ProjectileSpecOnFireDispatcher"))
 
@@ -44,7 +44,7 @@ class ASTDInGameAutomationScenarioTest {
         assertEquals("arc_production_ships_vfx_tooltip", scenario.getString("missionId"))
 
         val shipIds = scenario.getJSONArray("shipIds")
-        listOf("astd_arc_jet", "astd_plasma_arch", "astd_radiation_belt").forEach { id ->
+        listOf("astd_xc_102", "astd_xc_101", "astd_xc_103").forEach { id ->
             assertTrue((0 until shipIds.length()).any { shipIds.getString(it) == id }, "scenario missing ship id: $id")
         }
 
@@ -151,7 +151,7 @@ class ASTDInGameAutomationScenarioTest {
             "staged automation must make AI preservation explicit instead of globally clearing ship AI",
         )
         assertTrue(
-            plugin.contains("plasmaArch?.let { stabilizeShip(it, arcProductionAnchors.getValue(\"astd_plasma_arch\"), 0f, allowFire = false, preserveAI = true) }"),
+            plugin.contains("plasmaArch?.let { stabilizeShip(it, arcProductionAnchors.getValue(ASTDArcProductionShipIds.HULL_PLASMA_ARCH), 0f, allowFire = false, preserveAI = true) }"),
             "ARC automation must preserve plasma_arch ship AI so its vanilla system AI can run",
         )
         assertTrue(

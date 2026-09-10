@@ -124,13 +124,13 @@ class ArcProductionCopyReviewTest {
             assertTrue(i18n.contains("desc.$id.text4="), "missing ss-csv description text4: $id")
         }
         assertTrue(
-            descriptions.contains("LocalizedDescription(\"astd_arc_flare_overdrive\", \"SHIP_SYSTEM\")"),
+            descriptions.contains("LocalizedDescription(\"astd_xc_001_overdrive\", \"SHIP_SYSTEM\")"),
             "legacy arc flare overdrive system id must keep a description row for codex/refit lookups",
         )
         listOf(
-            "astd_arc_flare_overdrive",
-            "astd_arc_flare_overdrive_crewed",
-            "astd_arc_flare_overdrive_automated",
+            "astd_xc_001_overdrive",
+            "astd_xc_001_overdrive_crewed",
+            "astd_xc_001_overdrive_automated",
         ).forEach { id ->
             val row = generatedDescriptions.getValue(id)
             assertEquals(row.getValue("text1"), row.getValue("text3"), "arc flare codex/refit description should keep text3 aligned with text1: $id")
@@ -551,18 +551,18 @@ class ArcProductionCopyReviewTest {
         )
 
         val expectedSystemDescriptionIds = listOf(
-            "astd_arc_flare_overdrive_crewed",
-            "astd_arc_flare_overdrive_automated",
-            "astd_arc_flare_overdrive",
+            "astd_xc_001_overdrive_crewed",
+            "astd_xc_001_overdrive_automated",
+            "astd_xc_001_overdrive",
             "astd_arc_shared_flux_network",
             "astd_plasma_armor_shield_boost",
             "astd_limit_temporal_thruster",
         )
 
         val expectedSystemTypeLabels = linkedMapOf(
-            "astd_arc_flare_overdrive_crewed" to "进攻",
-            "astd_arc_flare_overdrive_automated" to "进攻",
-            "astd_arc_flare_overdrive" to "进攻",
+            "astd_xc_001_overdrive_crewed" to "进攻",
+            "astd_xc_001_overdrive_automated" to "进攻",
+            "astd_xc_001_overdrive" to "进攻",
             "astd_arc_shared_flux_network" to "支援",
             "astd_plasma_armor_shield_boost" to "防御",
             "astd_limit_temporal_thruster" to "机动",
