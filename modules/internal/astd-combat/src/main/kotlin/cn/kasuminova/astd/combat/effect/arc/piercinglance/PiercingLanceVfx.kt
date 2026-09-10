@@ -117,19 +117,20 @@ object PiercingLanceVfx {
     /** 发射点扭曲（规格 09 §3.1 追加）：从内向外扩张的中等规模扭曲环，持续 1s，冷蓝白调（无跳变感）。 */
     fun spawnMuzzleDistortion(engine: CombatEngineAPI, muzzle: Vector2f) {
         BoxUtilCombatVfx.ensureReady(engine)
-        val d = DistortionEntity()
-        // 内 → 外：fadIn/full/fadeOut 三段尺寸递增（0.15s 长到 40% → 0.35s 到 70% → 0.5s 到全径后消散）
-        d.setGlobalTimer(0.15f, 0.35f, 0.5f)
-        d.setInnerFull(0.30f, 0.30f)
-        d.setInnerHardness(0.70f)
-        d.setRingHardness(0.55f)
-        d.setSizeIn(MUZZLE_DISTORTION_RADIUS * 0.40f, MUZZLE_DISTORTION_RADIUS * 0.40f)
-        d.setSizeFull(MUZZLE_DISTORTION_RADIUS * 0.70f, MUZZLE_DISTORTION_RADIUS * 0.70f)
-        d.setSizeOut(MUZZLE_DISTORTION_RADIUS, MUZZLE_DISTORTION_RADIUS)
-        d.setPowerIn(0.20f)
-        d.setPowerFull(0.34f)
-        d.setPowerOut(0f)
-        d.setLocation(Vector2f(muzzle))
+        val d = DistortionEntity().apply {
+            // 内 → 外：fadIn/full/fadeOut 三段尺寸递增（0.15s 长到 40% → 0.35s 到 70% → 0.5s 到全径后消散）
+            setGlobalTimer(0.15f, 0.35f, 0.5f)
+            setInnerFull(0.30f, 0.30f)
+            innerHardness = 0.70f
+            ringHardness = 0.55f
+            setSizeIn(MUZZLE_DISTORTION_RADIUS * 0.40f, MUZZLE_DISTORTION_RADIUS * 0.40f)
+            setSizeFull(MUZZLE_DISTORTION_RADIUS * 0.70f, MUZZLE_DISTORTION_RADIUS * 0.70f)
+            setSizeOut(MUZZLE_DISTORTION_RADIUS, MUZZLE_DISTORTION_RADIUS)
+            powerIn = 0.20f
+            powerFull = 0.34f
+            powerOut = 0f
+            setLocation(Vector2f(muzzle))
+        }
         CombatRenderingManager.addEntity(d)
         bumpTelemetry(engine, TELEMETRY_MUZZLE_DISTORTION)
     }
@@ -141,18 +142,19 @@ object PiercingLanceVfx {
         engine.addSmoothParticle(spec.origin, ZERO_VEL, flashSize * 1.6f, 0.9f, 0.22f, FLASH_FRINGE_COLOR)
 
         BoxUtilCombatVfx.ensureReady(engine)
-        val distortion = DistortionEntity()
-        distortion.setGlobalTimer(0.03f, 0.05f, 0.18f)
-        distortion.setInnerFull(0.30f, 0.30f)
-        distortion.setInnerHardness(0.75f)
-        distortion.setRingHardness(0.50f)
-        distortion.setSizeIn(16f, 16f)
-        distortion.setSizeFull(52f, 52f)
-        distortion.setSizeOut(96f, 96f)
-        distortion.setPowerIn(0f)
-        distortion.setPowerFull(0.34f)
-        distortion.setPowerOut(0f)
-        distortion.setLocation(Vector2f(spec.origin))
+        val distortion = DistortionEntity().apply {
+            setGlobalTimer(0.03f, 0.05f, 0.18f)
+            setInnerFull(0.30f, 0.30f)
+            innerHardness = 0.75f
+            ringHardness = 0.50f
+            setSizeIn(16f, 16f)
+            setSizeFull(52f, 52f)
+            setSizeOut(96f, 96f)
+            powerIn = 0f
+            powerFull = 0.34f
+            powerOut = 0f
+            setLocation(Vector2f(spec.origin))
+        }
         CombatRenderingManager.addEntity(distortion)
         bumpTelemetry(engine, TELEMETRY_IMPACT_FLASH)
     }
@@ -189,10 +191,10 @@ object PiercingLanceVfx {
             log.warn("贯星之矛大光柱建实体失败（BoxUtil addEntity 未就绪），本次跳过光柱")
             return
         }
-        entity.setFillStartAlpha(0f)
-        entity.setFillStartFactor(0.25f)
-        entity.setFillEndAlpha(0f)
-        entity.setFillEndFactor(0.9f)
+        entity.fillStartAlpha = 0f
+        entity.fillStartFactor = 0.25f
+        entity.fillEndAlpha = 0f
+        entity.fillEndFactor = 0.9f
         entity.setGlobalTimer(0f, PILLAR_FULL_SECONDS, PILLAR_FADE_OUT_SECONDS)
         bumpTelemetry(engine, TELEMETRY_PILLAR)
     }

@@ -190,10 +190,10 @@ object ProjectileVfxSpecs {
     ) {
         boxFlare("light") {
             style(BoxFlareStyle.SMOOTH)
-            size(30f, 30f)
-            glow(2.0f, 4f)
-            flicker(0.2f)
-            noise(0.1f)
+            colors(0xA046F4c1, 0x9f6ed3c1)
+            size(20f, 20f)
+            glow(0.25f, 0f)
+            noise(0f)
         }
     }
 
@@ -213,22 +213,22 @@ object ProjectileVfxSpecs {
         recede = 0f,
     ) {
         boxFlare("core") {
-            size(200f, 5f)
+            size(200f, 6f)
             colors(0xD0E8FFFF, 0x64B4FFBE)
             glow(1.6f, 4f)
             style(BoxFlareStyle.SMOOTH_DISC)
             fixedFacing(0f)
-            flicker(1.3f)
-            noise(0.4f)
+//            flicker(1.3f)
+//            noise(0.4f)
         }
         boxFlare("light") {
-            size(50f, 50f)
+            size(40f, 40f)
             colors(0xD0E8FFFF, 0x64B4FFBE)
-            glow(1.6f, 4f)
+            glow(0.2f, 4f)
             style(BoxFlareStyle.SMOOTH)
             fixedFacing(0f)
-            flicker(1.3f)
-            noise(0.4f)
+//            flicker(1.3f)
+//            noise(0.4f)
         }
         anchorArc("arc") {
             thickness(10f)

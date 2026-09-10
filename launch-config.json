@@ -2,7 +2,6 @@
   "jvmArgs": {
     "common": [
       "-Dfile.encoding=UTF-8",
-      "-noverify",
       "-XX:+UnlockDiagnosticVMOptions",
       "-XX:+UnlockExperimentalVMOptions",
       "-XX:+ExtensiveErrorReports",
