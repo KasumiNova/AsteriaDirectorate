@@ -21,3 +21,6 @@ __pycache__/
 
 *.code-workspace
 build
+
+.kimi-code/
+starsector.log
