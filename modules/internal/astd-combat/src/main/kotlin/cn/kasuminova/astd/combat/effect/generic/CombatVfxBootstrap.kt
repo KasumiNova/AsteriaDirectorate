@@ -4,6 +4,7 @@ import cn.kasuminova.astd.renderer.effect.system.ArcFlareEmissiveOverlayManager
 import cn.kasuminova.astd.renderer.effect.system.ArcFlareEngineFlareManager
 import cn.kasuminova.astd.renderer.effect.system.ArcFlareAfterimageManager
 import cn.kasuminova.astd.renderer.effect.system.ASTDVectorThrustEngineManager
+import cn.kasuminova.astd.renderer.effect.system.WeaponAmbientGlowManager
 import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
 import cn.kasuminova.astd.renderer.projectile.driver.ProjectileVfxDriverPlugin
 import cn.kasuminova.astd.renderer.projectile.driver.ProjectileVfxSpecs
@@ -56,6 +57,13 @@ internal object CombatVfxBootstrap {
             ASTDVectorThrustEngineManager.ensureInstalled(engine)
         } catch (ex: Throwable) {
             log.warn("[ASTD] ASTDVectorThrustEngineManager.ensureInstalled failed", ex)
+        }
+
+        // 武器常驻发光层：补足原版 .wpn 只支持开火发光的空缺。
+        try {
+            WeaponAmbientGlowManager.ensureInstalled(engine)
+        } catch (ex: Throwable) {
+            log.warn("[ASTD] WeaponAmbientGlowManager.ensureInstalled failed", ex)
         }
     }
 }

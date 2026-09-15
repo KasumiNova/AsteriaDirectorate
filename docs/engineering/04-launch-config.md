@@ -39,12 +39,20 @@ IDEA 会把调试器注入游戏 fork JVM，断点即刻生效（打勾），改
 
 ### 热重定义（改方法体之外的变更）
 
-普通 JVM 热替换只支持改方法体；改类结构（增删方法/字段、改签名）需要 JBR（JetBrains Runtime）：
+普通 JVM 热替换只支持改方法体；改类结构（增删方法/字段、改签名）需要 JBR（JetBrains Runtime）。
+本项目已落地 JBR 方案（2026-09）：
 
-1. 在 `~/.jdks/` 放入新版 JBR（如 `jbr-25`，IDEA 下载的 JBR 也在此目录）。
-2. 启动时加 `-Pstarsector.javaVendor=jetbrains` 选中它。
+1. `~/.jdks/jbr-25.0.4.1` 已安装（目录名必须含 `jbr-` 才会被扫描）。
+2. `gradle.properties` 已固定 `starsector.javaVendor=jetbrains`（配 `javaVersion=25` 过滤掉旧的 jbr-17）。
 3. 选中 JBR 后 runGame 会**自动附加** `-XX:+AllowEnhancedClassRedefinition`（已在参数中则不重复），
    IDEA 的 Reload Changed Classes 即可应用结构性变更。
+
+改回游戏自带运行时：`-Pstarsector.javaVendor=zulu`。
+注意：NANOFORGE 模板固定 `-XX:+UseZGC`，与 JBR 增强重定义冲突（JBR 仅允许 Serial/G1，直接拒绝启动）；
+SDG（0.1.0-SNAPSHOT，2026-09-16 起）在附加增强重定义时会自动把 ZGC 等不支持的 GC 选择器替换为
+`-XX:+UseG1GC` 并打印日志（`SDG: JBR 增强重定义不支持 ... 已替换为 -XX:+UseG1GC`）。
+另外 SDG 自 2026-09-16 的 mavenLocal 发布起，JBR 层优先级已在游戏自带运行时之前（源码 HEAD 行为生效），
+`javaVendor=jetbrains` 属性保留作为显式约束即可。
 
 ## launch-config.json（仅 VANILLA 模式）
 

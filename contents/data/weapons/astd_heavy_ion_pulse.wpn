@@ -4,34 +4,56 @@
     "type": "ENERGY",
     "size": "LARGE",
     "displayArcRadius": 700,
-    "turretSprite": "graphics/textures/BUtil_NONE.png",
+    "turretSprite": "graphics/weapons/astd_heavy_ion_pulse_base.png",
     "turretGunSprite": "graphics/textures/BUtil_NONE.png",
-    "hardpointSprite": "graphics/textures/BUtil_NONE.png",
+    "hardpointSprite": "graphics/weapons/astd_heavy_ion_pulse_hp.png",
     "hardpointGunSprite": "graphics/textures/BUtil_NONE.png",
     "visualRecoil": 0.0,
     "turretOffsets": [
-        18,
-        -7,
-        18,
-        7
+        28.5,
+        -9,
+        28.5,
+        8
     ],
     "turretAngleOffsets": [
         0,
         0
     ],
     "hardpointOffsets": [
-        18,
-        -7,
-        18,
-        7
+        28.5,
+        -9,
+        28.5,
+        8
     ],
     "hardpointAngleOffsets": [
         0,
         0
     ],
     "barrelMode": "ALTERNATING",
-    "animationType": "MUZZLE_FLASH",
+    "animationType": "GLOW_AND_FLASH",
+    "muzzleFlashSpec": {
+        "length": 40.0,
+        "spread": 12.0,
+        "particleSizeMin": 12.0,
+        "particleSizeRange": 14.0,
+        "particleDuration": 0.2,
+        "particleCount": 18,
+        "particleColor": [
+            150,
+            205,
+            255,
+            200
+        ]
+    },
     "projectileSpecId": "astd_heavy_ion_pulse_shot",
     "everyFrameEffect": "cn.kasuminova.astd.combat.effect.generic.CombatVfxBootstrapEveryFrameEffect",
-    "fireSoundTwo": "ion_pulser_fire"
+    "fireSoundTwo": "ion_pulser_fire",
+    "turretGlowSprite": "graphics/weapons/astd_heavy_ion_pulse_glow.png",
+    "hardpointGlowSprite": "graphics/weapons/astd_heavy_ion_pulse_hp_glow.png",
+    "glowColor": [
+        255,
+        255,
+        255,
+        255
+    ]
 }

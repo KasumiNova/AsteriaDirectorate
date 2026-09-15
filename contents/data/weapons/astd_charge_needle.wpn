@@ -4,28 +4,50 @@
     "type": "ENERGY",
     "size": "SMALL",
     "displayArcRadius": 700,
-    "turretSprite": "graphics/textures/BUtil_NONE.png",
+    "turretSprite": "graphics/weapons/astd_charge_needle_base.png",
     "turretGunSprite": "graphics/textures/BUtil_NONE.png",
-    "hardpointSprite": "graphics/textures/BUtil_NONE.png",
+    "hardpointSprite": "graphics/weapons/astd_charge_needle_hp.png",
     "hardpointGunSprite": "graphics/textures/BUtil_NONE.png",
     "visualRecoil": 0.0,
     "turretOffsets": [
-        0,
-        0
+        16.5,
+        -1
     ],
     "turretAngleOffsets": [
         0
     ],
     "hardpointOffsets": [
-        0,
-        0
+        16.5,
+        -1
     ],
     "hardpointAngleOffsets": [
         0
     ],
     "barrelMode": "LINKED",
-    "animationType": "MUZZLE_FLASH",
+    "animationType": "GLOW_AND_FLASH",
+    "muzzleFlashSpec": {
+        "length": 18.0,
+        "spread": 8.0,
+        "particleSizeMin": 6.0,
+        "particleSizeRange": 8.0,
+        "particleDuration": 0.15,
+        "particleCount": 7,
+        "particleColor": [
+            150,
+            205,
+            255,
+            190
+        ]
+    },
     "projectileSpecId": "astd_charge_needle_shot",
     "everyFrameEffect": "cn.kasuminova.astd.combat.effect.generic.CombatVfxBootstrapEveryFrameEffect",
-    "fireSoundTwo": "needler_fire"
+    "fireSoundTwo": "needler_fire",
+    "turretGlowSprite": "graphics/weapons/astd_charge_needle_glow.png",
+    "hardpointGlowSprite": "graphics/weapons/astd_charge_needle_hp_glow.png",
+    "glowColor": [
+        255,
+        255,
+        255,
+        255
+    ]
 }

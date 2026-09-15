@@ -31,6 +31,20 @@
     ],
     "barrelMode": "LINKED",
     "animationType": "MUZZLE_FLASH",
+    "muzzleFlashSpec": {
+        "length": 26.0,
+        "spread": 14.0,
+        "particleSizeMin": 9.0,
+        "particleSizeRange": 11.0,
+        "particleDuration": 0.16,
+        "particleCount": 12,
+        "particleColor": [
+            255,
+            215,
+            120,
+            200
+        ]
+    },
     "projectileSpecId": "astd_electric_drive_accelerator_shot",
     "everyFrameEffect": "cn.kasuminova.astd.combat.effect.arc.ElectricDriveAcceleratorWeaponEffect",
     "fireSoundTwo": "autocannon_fire"

@@ -271,7 +271,7 @@ class StrikeSprayComponent(
         const val TIP_WIDTH_MUL = 0.045f
         const val TIP_WIDTH_MIN = 0.40f
         const val TIP_WIDTH_MAX = 1.9f
-        const val BASE_WIDTH_MUL = 0.70f
+        const val BASE_WIDTH_MUL = 0.20f
         const val BASE_WIDTH_MIN = 2.2f
         const val BASE_WIDTH_MAX = 12f
 

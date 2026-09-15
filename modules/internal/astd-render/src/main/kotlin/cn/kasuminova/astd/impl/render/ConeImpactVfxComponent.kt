@@ -24,12 +24,16 @@ import kotlin.math.roundToInt
  * 硬边线迁为子节点 [ConeArcComponent] 的 TrailEntity 曲梁（参数逐值平移 v2.2），进原生 bloom 管线。
  * v4.4（§10.9，用户：「光锥改成根据弧度和特效大小的动态数量机制，不允许动任何渲染细节」）：
  * 刺束针数自固定域 9+4 改由张角推导（每 10° 2~3 根，clamp [3,40]），仅数量，其余一行不动。
+ * v4.5（2026-09，用户：扭曲时序/大小与碎片数量参数化）：DistortionEntity 三段时序/尺寸/强度
+ * 与三批碎片颗数自 companion 常量迁入 [DistortionSpec]/[ShardCountSpec]（默认值 = 原常量），
+ * 各案可按体量覆写，渲染细节不变。
  * 分层（全部由 coreColor/fringeColor/flashColor 派生，色温统一；各层错峰起止，破同亮同灭）：
- * - t=0：顶点闪光（收敛版 2 颗 vanilla 粒子）+ DistortionEntity 扭曲 + 锥化刺束簇 + 碎片顶点批（6 颗）；
+ * - t=0：顶点闪光（收敛版 2 颗 vanilla 粒子）+ DistortionEntity 扭曲（可配，见 [DistortionSpec]）
+ *   + 锥化刺束簇 + 碎片顶点批（[ShardCountSpec.vertex]）；
  * - t=+0.03/0.07/0.11/0.15：四道朝前弧段环（轴上 0.3/0.5/0.7/0.9L，0.04s 接力，多层锥状壳体读感；
  *   错峰与几何由子节点 [ConeArcComponent] 承载）；
- * - t=+0.05：碎片锥内批（8 颗，轴向 0.2~0.7L、角向 ±halfAngle×0.7 内随机，扇形覆盖读感）；
- * - t=+0.10：碎片锥缘批（4 颗，0.8~1.0L）。
+ * - t=+0.05：碎片锥内批（[ShardCountSpec.cone]，轴向 0.2~0.7L、角向 ±halfAngle×0.7 内随机，扇形覆盖读感）；
+ * - t=+0.10：碎片锥缘批（[ShardCountSpec.edge]，0.8~1.0L）。
  *
  * 根自身无后端常驻句柄：闪光/扭曲为 vanilla 粒子与 BoxUtil 自管理实体、
  * 碎片（[ConeShardComponent]，v4.2 起 SpriteEntity 实例化）灌批后亦由 BoxUtil 自管理；
@@ -47,6 +51,8 @@ class ConeImpactVfxComponent(
     private val coreColor: Color,
     private val fringeColor: Color,
     private val flashColor: Color,
+    private val distortion: DistortionSpec? = DistortionSpec(),
+    private val shardCounts: ShardCountSpec = ShardCountSpec(),
 ) : RenderEntityImpl(id) {
 
     private val log = Global.getLogger(ConeImpactVfxComponent::class.java)
@@ -102,9 +108,9 @@ class ConeImpactVfxComponent(
     override fun onAttachSelf(ctx: RenderContext): Boolean {
         val engine = ctx.engine ?: return false
         spawnVertexFlash(engine)
-        spawnDistortion(engine)
-        // 碎片顶点批（t=0，6 颗）：顶点 10su 圆内喷出，补顶点体积感。
-        spawnVertexShards(SHARD_BATCH1_COUNT)
+        distortion?.let { spawnDistortion(engine, it) }
+        // 碎片顶点批（t=0）：顶点 10su 圆内喷出，补顶点体积感。
+        spawnVertexShards(shardCounts.vertex)
         return true
     }
 
@@ -112,13 +118,13 @@ class ConeImpactVfxComponent(
         val t = ctx.frame.elapsed
         if (!shardBatch2Fired && t >= SHARD_BATCH2_DELAY) {
             shardBatch2Fired = true
-            // 碎片锥内批（t=+0.05，8 颗）：轴向 0.2~0.7L 随机、角向 ±halfAngle×0.7 内随机，扇形覆盖读感。
-            spawnConeShards(BATCH_INDEX_CONE, SHARD_BATCH2_COUNT, SHARD_BATCH2_AXIS_LO, SHARD_BATCH2_AXIS_HI)
+            // 碎片锥内批（t=+0.05）：轴向 0.2~0.7L 随机、角向 ±halfAngle×0.7 内随机，扇形覆盖读感。
+            spawnConeShards(BATCH_INDEX_CONE, shardCounts.cone, SHARD_BATCH2_AXIS_LO, SHARD_BATCH2_AXIS_HI)
         }
         if (!shardBatch3Fired && t >= SHARD_BATCH3_DELAY) {
             shardBatch3Fired = true
-            // 碎片锥缘批（t=+0.10，4 颗）：0.8~1.0L，补锥缘体积。
-            spawnConeShards(BATCH_INDEX_EDGE, SHARD_BATCH3_COUNT, SHARD_BATCH3_AXIS_LO, SHARD_BATCH3_AXIS_HI)
+            // 碎片锥缘批（t=+0.10）：0.8~1.0L，补锥缘体积。
+            spawnConeShards(BATCH_INDEX_EDGE, shardCounts.edge, SHARD_BATCH3_AXIS_LO, SHARD_BATCH3_AXIS_HI)
         }
     }
 
@@ -134,22 +140,23 @@ class ConeImpactVfxComponent(
     }
 
     /**
-     * 顶点扭曲环（aod7 参数族：0.03/0.05/0.18 定时器、size 16/52/96、powerFull 0.34）。
+     * 顶点扭曲环（时序/尺寸/强度由 [spec] 提供，默认值 = aod7 参数族：0.03/0.05/0.18 定时器、
+     * size 16/52/96、powerFull 0.34）。
      * 失败只缺席本层（闪光/碎片/弧照常），WARN 带异常/返回码——非静默兜底。
      */
-    private fun spawnDistortion(engine: CombatEngineAPI) {
+    private fun spawnDistortion(engine: CombatEngineAPI, spec: DistortionSpec) {
         try {
             BoxUtilCombatVfx.ensureReady(engine)
             val e = DistortionEntity()
-            e.setGlobalTimer(DISTORTION_FADE_IN, DISTORTION_FULL, DISTORTION_FADE_OUT)
+            e.setGlobalTimer(spec.fadeIn, spec.full, spec.fadeOut)
             e.setInnerFull(0.30f, 0.30f)
             e.setInnerHardness(0.75f)
             e.setRingHardness(0.50f)
-            e.setSizeIn(DISTORTION_SIZE_IN, DISTORTION_SIZE_IN)
-            e.setSizeFull(DISTORTION_SIZE_FULL, DISTORTION_SIZE_FULL)
-            e.setSizeOut(DISTORTION_SIZE_OUT, DISTORTION_SIZE_OUT)
+            e.setSizeIn(spec.sizeIn, spec.sizeIn)
+            e.setSizeFull(spec.sizeFull, spec.sizeFull)
+            e.setSizeOut(spec.sizeOut, spec.sizeOut)
             e.setPowerIn(0f)
-            e.setPowerFull(DISTORTION_POWER_FULL)
+            e.setPowerFull(spec.powerFull)
             e.setPowerOut(0f)
             e.setLocation(Vector2f(origin))
             val result = BoxUtilCombatVfx.addEntity(engine, BoxEnum.ENTITY_DISTORTION, e)
@@ -208,16 +215,6 @@ class ConeImpactVfxComponent(
         private const val FLASH_CORE_ALPHA_MUL = 0.8f
         private const val FLASH_CORE_DURATION = 0.11f
 
-        // ---- 顶点扭曲环（aod7 参数族）----
-
-        private const val DISTORTION_FADE_IN = 0.03f
-        private const val DISTORTION_FULL = 0.05f
-        private const val DISTORTION_FADE_OUT = 0.18f
-        private const val DISTORTION_SIZE_IN = 16f
-        private const val DISTORTION_SIZE_FULL = 52f
-        private const val DISTORTION_SIZE_OUT = 96f
-        private const val DISTORTION_POWER_FULL = 0.34f
-
         // ---- 锥化刺束簇（v2.1 参数档，v4.1 起由子节点 StrikeSprayComponent 消费；逐值平移 v2.2 不改一个数字）----
 
         /**
@@ -244,8 +241,8 @@ class ConeImpactVfxComponent(
         private const val SPRAY_FULL_MAX = 0.10f
         private const val SPRAY_FADE_OUT_MIN = 0.30f
         private const val SPRAY_FADE_OUT_MAX = 0.52f
-        private const val SPRAY_SPEED_MIN = 220f
-        private const val SPRAY_SPEED_MAX = 520f
+        private const val SPRAY_SPEED_MIN = 110f
+        private const val SPRAY_SPEED_MAX = 260f
         private const val SPRAY_IMPACT_SCALE = 0.85f
         private const val SPRAY_INTRO_RAMP_SECONDS = 0.05f
 
@@ -258,9 +255,6 @@ class ConeImpactVfxComponent(
         private const val BATCH_INDEX_CONE = 1
         private const val BATCH_INDEX_EDGE = 2
 
-        private const val SHARD_BATCH1_COUNT = 6
-        private const val SHARD_BATCH2_COUNT = 8
-        private const val SHARD_BATCH3_COUNT = 4
         private const val SHARD_BATCH2_DELAY = 0.05f
         private const val SHARD_BATCH3_DELAY = 0.10f
         private const val SHARD_BATCH2_AXIS_LO = 0.2f

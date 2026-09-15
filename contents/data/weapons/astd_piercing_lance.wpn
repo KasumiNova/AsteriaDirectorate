@@ -16,6 +16,20 @@
     "hardpointAngleOffsets": [0],
     "barrelMode": "LINKED",
     "animationType": "MUZZLE_FLASH",
+    "muzzleFlashSpec": {
+        "length": 70.0,
+        "spread": 10.0,
+        "particleSizeMin": 16.0,
+        "particleSizeRange": 18.0,
+        "particleDuration": 0.25,
+        "particleCount": 22,
+        "particleColor": [
+            150,
+            205,
+            255,
+            210
+        ]
+    },
     "projectileSpecId": "astd_piercing_lance_shot",
     "everyFrameEffect": "cn.kasuminova.astd.combat.effect.generic.CombatVfxBootstrapEveryFrameEffect",
     "fireSoundTwo": "tachyon_lance_fire"

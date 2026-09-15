@@ -68,6 +68,19 @@ bolt {                          // Box 螺栓弹头（默认开启；导弹类�
 
 alpha 0.45/0.6/0.45 是过曝压暗后的裁定（三层加色 + 高射速多发拖尾同走廊重叠），保持 3:4:3 比例；若单发观感偏暗可小幅回调，但不要超过 0.6/0.8/0.6。三层颜色均为「亮头 → 暗尾」两段渐变 × 层 alpha。登记新弹体只填 4 旋钮（主色/宽/长/glowScale），不改层结构。
 
+`simpleProjectileVfx` 的可选增强旋钮（均有默认值，守护测试锚定默认行为）：
+
+| 旋钮 | 作用 | 热交换 |
+| --- | --- | --- |
+| `trailGlow`（默认 0.45） | 核心层 bloom 强度（仅核心层给，三层全开过曝） | 否（StaticTrailData 缓存，需重启） |
+| `tailColor`（默认 null） | 尾色渐变目标色（自选 RGB）：缺省同色压暗；非空 = 头色 → 目标色两段渐变（如蓝→淡绿、金→红），rgb 直取、alpha 0.12；便捷预设 `paleGreenTail()` / `emberRedTail()` | 否（同上） |
+| `boltFlare`（默认 null） | 弹头 SMOOTH 光斑尺寸 su（弹体发光增强；核心近白、外缘主色、glow 0.3） | 是（boxFlare 组件层） |
+| `muzzleBurst`（默认 false） | 开火瞬间炮口一发小型 ConeImpactVfx（半角 18° / 长 110 / 0.35s：三角碎片 + 刺束 + 顶点闪光） | 是（onFire 钩子） |
+
+另：开火炮口火光（muzzle flash）走原版数据面——`.wpn` 的 `muzzleFlashSpec`（length/spread/particleSizeMin/particleSizeRange/particleDuration/particleCount/particleColor），
+需 `animationType ∈ {MUZZLE_FLASH, GLOW_AND_FLASH}` 且 `specClass=projectile` 才触发（引擎自动撒软粒子，beam/pulse 类无效）。
+参数按口径分档（小 18/中 26/大 55~70），颜色随弹体主色。
+
 ## 素材清单
 
 ### 自制（首选，astd_ 前缀，观感从柔到烈）

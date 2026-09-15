@@ -25,6 +25,20 @@
     ],
     "barrelMode": "LINKED",
     "animationType": "MUZZLE_FLASH",
+    "muzzleFlashSpec": {
+        "length": 70.0,
+        "spread": 8.0,
+        "particleSizeMin": 16.0,
+        "particleSizeRange": 16.0,
+        "particleDuration": 0.25,
+        "particleCount": 22,
+        "particleColor": [
+            180,
+            220,
+            255,
+            220
+        ]
+    },
     "projectileSpecId": "astd_aod7_shot",
     "everyFrameEffect": "cn.kasuminova.astd.combat.effect.generic.CombatVfxBootstrapEveryFrameEffect",
     "fireSoundTwo": "autocannon_fire"

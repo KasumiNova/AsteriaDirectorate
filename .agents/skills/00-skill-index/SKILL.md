@@ -69,6 +69,10 @@ description: "Skill 索引：按领域汇总本仓库可用的所有技能与路
   - 路径：`.agents/skills/game-vfx-preview-guidelines/SKILL.md`
   - 适用：`tools/game-vfx-preview/` 的 MD3 组件库、WebGL 渲染、effect preset、样式边界与验收规范。
 
+- **贴图加载规范（loadTexture 预加载 / SpriteAPI 共享实例）**
+  - 路径：`.agents/skills/texture-loading-guidelines/SKILL.md`
+  - 适用：代码侧渲染的自定义贴图必须 `loadTexture` 预加载（SSOptimizer 下裸 getSprite 为 textureID=0 空壳）；SpriteAPI 共享缓存实例须逐帧重置状态；贴图"完全不渲染"排查清单。
+
 ## 系统设计
 
 - **系统状态文本规范（台词风格）**

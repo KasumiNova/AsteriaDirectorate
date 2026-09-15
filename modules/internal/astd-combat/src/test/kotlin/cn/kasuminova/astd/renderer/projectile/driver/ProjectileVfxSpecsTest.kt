@@ -164,16 +164,16 @@ class ProjectileVfxSpecsTest {
     }
 
     @Test
-    fun `电荷针刺族：固定短拖尾 150 无 zappy 层 宽度 25`() {
+    fun `电荷针刺族：固定短拖尾 180 无 zappy 层 宽度 25`() {
         for (id in listOf("astd_charge_needle_shot", "astd_heavy_charge_needle_shot")) {
             val vfx = assertNotNull(ProjectileVfxSpecs.build(id), "$id 应已接入")
             assertEquals(listOf("twin", "core"), vfx.tree.staticTrails.map { it.first }, "$id 移除 zappy 装饰层")
             vfx.tree.staticTrails.forEach { (_, spec) ->
-                assertEquals(150f, spec.bandLength, "$id 固定短拖尾 150")
+                assertEquals(180f, spec.bandLength, "$id 固定短拖尾 180")
                 assertNull(spec.angularOutRange)
                 assertNull(spec.velocityOutRange)
             }
-            // 宽度 −75%：bandWidth(6, 2.2)=7 ×2 ×0.25 = 3.5
+            // 宽度 −75%：bandWidth(7, 2.2)=round05(max(2.45, 6.93))=7 ×2 ×0.25 = 3.5
             val twin = vfx.tree.staticTrails.first { it.first == "twin" }.second
             assertEquals(3.5f, twin.width, "$id 拖尾宽度 ×0.25")
         }

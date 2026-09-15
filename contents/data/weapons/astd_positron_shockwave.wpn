@@ -15,6 +15,20 @@
     "hardpointAngleOffsets": [0],
     "barrelMode": "LINKED",
     "animationType": "MUZZLE_FLASH",
+    "muzzleFlashSpec": {
+        "length": 16.0,
+        "spread": 10.0,
+        "particleSizeMin": 6.0,
+        "particleSizeRange": 8.0,
+        "particleDuration": 0.15,
+        "particleCount": 6,
+        "particleColor": [
+            190,
+            220,
+            255,
+            180
+        ]
+    },
     "projectileSpecId": "astd_positron_shockwave_shot",
     "everyFrameEffect": "cn.kasuminova.astd.combat.effect.generic.CombatVfxBootstrapEveryFrameEffect",
     "fireSoundTwo": "flak_fire"

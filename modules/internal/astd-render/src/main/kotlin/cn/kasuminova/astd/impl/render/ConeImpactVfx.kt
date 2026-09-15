@@ -45,6 +45,54 @@ data class ConeImpactVfxSpec(
 
     /** 收尾淡出时长（秒）；不小于 duration 时 clamp 到 duration/2 并记 WARN。 */
     val fadeOutSeconds: Float = 0.22f,
+
+    /** 顶点扭曲环参数（时序/尺寸/强度）；null = 不生成扭曲层。 */
+    val distortion: DistortionSpec? = DistortionSpec(),
+
+    /** 三角碎片三批数量（顶点批 / 锥内批 / 锥缘批）。 */
+    val shardCounts: ShardCountSpec = ShardCountSpec(),
+)
+
+/**
+ * 顶点扭曲环参数（BoxUtil DistortionEntity）：三段时序（淡入/满功率/淡出，秒）+
+ * 三段尺寸（入/满/出，su）+ 峰值扭曲强度。默认值 = v2.2 定案的 aod7 参数族。
+ */
+data class DistortionSpec(
+    /** 淡入时长（秒）。 */
+    val fadeIn: Float = 0.03f,
+
+    /** 满功率时长（秒）。 */
+    val full: Float = 0.05f,
+
+    /** 淡出时长（秒）。 */
+    val fadeOut: Float = 0.18f,
+
+    /** 起始尺寸（su）。 */
+    val sizeIn: Float = 16f,
+
+    /** 满功率尺寸（su）。 */
+    val sizeFull: Float = 52f,
+
+    /** 消散尺寸（su）。 */
+    val sizeOut: Float = 96f,
+
+    /** 峰值扭曲强度。 */
+    val powerFull: Float = 0.34f,
+)
+
+/**
+ * 三角碎片三批数量：顶点批（t=0，顶点 10su 圆内）/ 锥内批（t=+0.05，轴向 0.2~0.7L）/
+ * 锥缘批（t=+0.10，轴向 0.8~1.0L）。默认值 = v2.2 定案（6/8/4）；负值 clamp 到 0 并记 WARN。
+ */
+data class ShardCountSpec(
+    /** 顶点批数量。 */
+    val vertex: Int = 6,
+
+    /** 锥内批数量。 */
+    val cone: Int = 8,
+
+    /** 锥缘批数量。 */
+    val edge: Int = 4,
 )
 
 /**
@@ -90,6 +138,29 @@ object ConeImpactVfx {
             log.warn("锥面冲击特效 fadeOutSeconds 越界（${spec.fadeOutSeconds}），v2 视觉层未消费该字段，请检查配置")
         }
 
+        val distortion = spec.distortion?.let { d ->
+            val clean = d.copy(
+                fadeIn = d.fadeIn.coerceAtLeast(0f),
+                full = d.full.coerceAtLeast(0f),
+                fadeOut = d.fadeOut.coerceAtLeast(0f),
+                sizeIn = d.sizeIn.coerceAtLeast(0f),
+                sizeFull = d.sizeFull.coerceAtLeast(0f),
+                sizeOut = d.sizeOut.coerceAtLeast(0f),
+                powerFull = d.powerFull.coerceAtLeast(0f),
+            )
+            if (clean != d) log.warn("锥面冲击特效 distortion 含负值（$d），已逐项 clamp 到 0")
+            clean
+        }
+        val shardCounts = spec.shardCounts.let { s ->
+            val clean = s.copy(
+                vertex = s.vertex.coerceAtLeast(0),
+                cone = s.cone.coerceAtLeast(0),
+                edge = s.edge.coerceAtLeast(0),
+            )
+            if (clean != s) log.warn("锥面冲击特效 shardCounts 含负值（$s），已逐项 clamp 到 0")
+            clean
+        }
+
         val tree: RenderEntity = ConeImpactVfxComponent(
             id = "cone_impact_vfx@" + System.identityHashCode(spec),
             origin = Vector2f(spec.origin),
@@ -99,6 +170,8 @@ object ConeImpactVfx {
             coreColor = spec.coreColor,
             fringeColor = spec.fringeColor,
             flashColor = spec.flashColor,
+            distortion = distortion,
+            shardCounts = shardCounts,
         )
         val host = PointHost(
             hostId = "cone@" + System.identityHashCode(tree),

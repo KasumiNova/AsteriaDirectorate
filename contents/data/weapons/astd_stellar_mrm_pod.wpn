@@ -11,6 +11,20 @@
     "turretAngleOffsets": [0],
     "barrelMode": "LINKED",
     "animationType": "MUZZLE_FLASH",
+    "muzzleFlashSpec": {
+        "length": 20.0,
+        "spread": 14.0,
+        "particleSizeMin": 9.0,
+        "particleSizeRange": 12.0,
+        "particleDuration": 0.22,
+        "particleCount": 10,
+        "particleColor": [
+            190,
+            120,
+            255,
+            170
+        ]
+    },
     "projectileSpecId": "astd_stellar_mrm_pod_shot",
     "everyFrameEffect": "cn.kasuminova.astd.combat.effect.generic.CombatVfxBootstrapEveryFrameEffect",
     "fireSoundTwo": "amsrm_fire"

@@ -5,18 +5,16 @@ import cn.kasuminova.astd.impl.combat.CombatFeedbackImpl
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.DamageType
 import com.fs.starfarer.api.combat.ShipAPI
-import com.fs.starfarer.api.util.Misc
 import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
 
 /**
- * 重型离子脉冲的泄放/贯穿视觉与结算静态入口（规格 02 §2.3 / §3.2，对齐 `StrikeSprayVfx` 惯例）。
+ * 彗星冲击波（原重型离子脉冲）的泄放/贯穿视觉与结算静态入口（规格 02 §2.3 / §3.2，对齐 `StrikeSprayVfx` 惯例）。
  *
  * - 泄放：`spawnEmpArc` 真实电弧（伤害/视觉/结算一体），冷蓝白双色参数化，
  *   thickness 24f（略粗于电荷针刺的 20f，匹配大槽体量）；
- *   电弧起点选取目标舰随机一件非装饰武器的位置（Misc.random——纯视觉选取，00 §4.1 允许），
- *   无武器时退引擎挂载点，再无退命中点/舰体中心——呈现「电弧打击武器/引擎部位」的设计案性格
- *   （01 已核实 API 无落点指定入口，电弧终点仍由原版在目标舰上自行选取）。
+ *   电弧起点 = 弹体命中点（2026-09 用户裁定：与电针/原版离子脉冲口径一致；
+ *   原「随机武器/引擎部位作起点」方案因电弧与弹着点脱节被废止）。
  * - 贯穿补伤：`applyDamage`（不触发 onHitEffect，无二次 onHit 回环）+ 伤害浮字 + 克制火花 1 粒。
  *
  * 不新增 RenderEntity 组件；弹体拖尾走 `ProjectileVfxSpecs` Static Trail 管线（与本类无关）。
@@ -58,14 +56,13 @@ object HeavyIonPulseVfx {
     const val TELEMETRY_PIERCE_SUM_EXTRA = "astd_hip_pierce_sum_extra"
 
     /**
-     * 泄放：从目标舰随机武器/引擎部位向目标舰释放真实 EMP 电弧（伤害 0、EMP 按难度倍率折算）。
-     * [from] 为弹体命中点（落点选取的最终兜底）；[source] 允许 null（游离弹由原版兜底归功）。
+     * 泄放：以弹体命中点为电弧起点向目标舰释放真实 EMP 电弧（伤害 0、EMP 按难度倍率折算）。
+     * [source] 允许 null（游离弹由原版兜底归功）。
      */
     fun discharge(engine: CombatEngineAPI, source: ShipAPI?, from: Vector2f, target: ShipAPI, emp: Float) {
-        val arcOrigin = selectArcOrigin(target, from)
         engine.spawnEmpArc(
             source,
-            arcOrigin,
+            from,
             target,
             target,
             DamageType.ENERGY,
@@ -113,18 +110,6 @@ object HeavyIonPulseVfx {
 
     /** 读取遥测浮点（缺省 0）。 */
     fun telemetryFloat(engine: CombatEngineAPI, key: String): Float = engine.customData[key] as? Float ?: 0f
-
-    /** 泄放电弧起点选取：随机一件非装饰武器的位置（纯视觉选取，Misc.random 一次性随机）；
-     * 无武器退引擎挂载点，再无退命中点，最终退舰体中心。 */
-    private fun selectArcOrigin(target: ShipAPI, hitPoint: Vector2f): Vector2f {
-        val weapons = target.allWeapons?.filter { !it.isDecorative } ?: emptyList()
-        if (weapons.isNotEmpty()) return Vector2f(weapons[Misc.random.nextInt(weapons.size)].location)
-
-        val engines = target.engineController?.shipEngines?.filter { !it.isPermanentlyDisabled } ?: emptyList()
-        if (engines.isNotEmpty()) return Vector2f(engines[Misc.random.nextInt(engines.size)].location)
-
-        return Vector2f(target.location ?: hitPoint)
-    }
 
     private fun increment(engine: CombatEngineAPI, key: String) {
         engine.customData[key] = (engine.customData[key] as? Int ?: 0) + 1

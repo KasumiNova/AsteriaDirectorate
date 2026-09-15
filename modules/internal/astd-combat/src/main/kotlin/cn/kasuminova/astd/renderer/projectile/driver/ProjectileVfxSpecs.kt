@@ -3,6 +3,13 @@ package cn.kasuminova.astd.renderer.projectile.driver
 import cn.kasuminova.astd.combat.effect.arc.piercinglance.PiercingLanceVfx
 import cn.kasuminova.astd.impl.render.ASTDColor
 import cn.kasuminova.astd.impl.render.BoxFlareStyle
+import cn.kasuminova.astd.impl.render.ConeImpactVfx
+import cn.kasuminova.astd.impl.render.ConeImpactVfxSpec
+import cn.kasuminova.astd.renderer.projectile.driver.ProjectileVfxSpecs.build
+import cn.kasuminova.astd.renderer.projectile.driver.ProjectileVfxSpecs.has
+import cn.kasuminova.astd.renderer.projectile.driver.ProjectileVfxSpecs.simpleProjectileVfx
+import org.lwjgl.util.vector.Vector2f
+import java.awt.Color
 import kotlin.math.max
 import kotlin.math.roundToInt
 
@@ -26,28 +33,75 @@ object ProjectileVfxSpecs {
     private val builders: Map<String, (Float?) -> ProjectileVfx> = mapOf(
         "astd_aod7_shot" to ::aod7Shot,
         "astd_spc3_shot" to { simpleProjectileVfx("astd_spc3_shot", violet(), width = 6f, length = 135f) },
-        // 电荷针刺族：固定短拖尾 150、无 zappy 装饰层（去随机扭转抖动）、宽度 −75%。
+        // 电荷针刺族：固定短拖尾 180、无 zappy 装饰层（去随机扭转抖动）、宽度 −75%。
         "astd_charge_needle_shot" to {
-            simpleProjectileVfx("astd_charge_needle_shot", chargeNeedleColor(), width = 6f, length = 150f, trailWidthScale = 0.25f, decorTrail = false)
+            simpleProjectileVfx(
+                "astd_charge_needle_shot",
+                chargeNeedleColor(),
+                width = 7f,
+                length = 180f,
+                trailWidthScale = 0.25f,
+                decorTrail = false
+            )
         },
         "astd_heavy_charge_needle_shot" to {
-            simpleProjectileVfx("astd_heavy_charge_needle_shot", chargeNeedleColor(), width = 9f, length = 150f, trailWidthScale = 0.25f, decorTrail = false)
+            simpleProjectileVfx(
+                "astd_heavy_charge_needle_shot",
+                chargeNeedleColor(),
+                width = 7f,
+                length = 180f,
+                trailWidthScale = 0.25f,
+                decorTrail = false
+            )
         },
-        // 电驱加速炮：黄色射弹（美术裁定），trail 长 = 射程×25%、宽 −50%。
+        // 电驱加速炮：黄色射弹（美术裁定），trail 长 = 射程×25%、宽 −50%，尾色金→红渐变。
         "astd_electric_drive_accelerator_shot" to { range ->
-            simpleProjectileVfx("astd_electric_drive_accelerator_shot", electricYellow(), width = 9f, length = 500f, range = range, rangeRatio = 0.25f, trailWidthScale = 0.5f)
+            simpleProjectileVfx(
+                "astd_electric_drive_accelerator_shot",
+                electricYellow(),
+                width = 9f,
+                length = 500f,
+                range = range,
+                rangeRatio = 0.25f,
+                trailWidthScale = 0.5f,
+                tailColor = emberRedTail()
+            )
         },
-        // 穷距相位轨道炮：高亮白色细长射弹 + 长距离明亮拖尾，trail 长 = 射程×75%、宽 −35%。
+        // 穷距相位轨道炮：ARC 冷蓝白弹体 + 长距离明亮拖尾（蓝→淡绿渐变尾），trail 长 = 射程×75%、宽 −35%；
+        // 弹头补 SMOOTH 光斑强化弹体发光，开火附带炮口锥面碎片。
         "astd_qiongjue_phase_railgun_shot" to { range ->
-            simpleProjectileVfx("astd_qiongjue_phase_railgun_shot", ASTDColor(0.92f, 0.95f, 1f, 1f), width = 12f, length = 300f, range = range, rangeRatio = 0.75f, trailWidthScale = 0.65f)
+            simpleProjectileVfx(
+                "astd_qiongjue_phase_railgun_shot",
+                qiongjueBlue(),
+                width = 12f,
+                length = 300f,
+                range = range,
+                rangeRatio = 0.75f,
+                trailWidthScale = 0.65f,
+                trailGlow = 0.6f,
+                tailColor = paleGreenTail(),
+                boltFlare = 48f,
+                muzzleBurst = true
+            )
         },
         // 正电子冲击波：小型 PD 弹体克制处理（width 5 / length 90 短拖尾，不抢主炮视觉——设计案特效节）。
         "astd_positron_shockwave_shot" to {
             simpleProjectileVfx("astd_positron_shockwave_shot", positronWhiteBlue(), width = 5f, length = 90f)
         },
-        // 重型离子脉冲：trail 长 = 射程×25%、宽 −25%。
+        // 重型离子脉冲：trail 长 = 射程×25%、宽 −25%；弹头光斑强化弹体发光，开火附带炮口锥面碎片。
         "astd_heavy_ion_pulse_shot" to { range ->
-            simpleProjectileVfx("astd_heavy_ion_pulse_shot", heavyIonPulseColor(), width = 12f, length = 220f, range = range, rangeRatio = 0.25f, trailWidthScale = 0.75f)
+            simpleProjectileVfx(
+                "astd_heavy_ion_pulse_shot",
+                heavyIonPulseColor(),
+                width = 12f,
+                length = 220f,
+                range = range,
+                rangeRatio = 0.25f,
+                trailWidthScale = 0.75f,
+                trailGlow = 0.55f,
+                boltFlare = 36f,
+                muzzleBurst = true
+            )
         },
         // 辉星 MRM（规格 08 §3.1）：LENS 紫辉星弹体/拖尾（爆炸为裂隙组件蓝色族），trail 长 = 射程×50%、recede 0；
         // width=10 表达 1.5× 弹体体量（介于 spc3 中型 6 与穷距大型 12 之间）。两 spec 值完全一致属刻意（同一弹头两种发射器）。
@@ -97,6 +151,11 @@ object ProjectileVfxSpecs {
      * @param rangeRatio 拖尾带长 = 射程 × 本比例（非空启用；长度折算后按 5su 取整）。
      * @param trailWidthScale 拖尾宽度倍率（三条带体统一乘算）。
      * @param brightness 带体亮度倍率（三段两层 alpha 统一乘算，钳 0..1）。
+     * @param trailGlow 核心层 bloom 发光强度（0..1，热交换对拖尾层不生效需重启；三层全开会过曝，仅核心层给）。
+     * @param tailColor 拖尾尾色（自选 RGB，null = 同色压暗淡化；非空 = 头色 → 尾色两段渐变，rgb 直取、
+     *   alpha 乘层透明度，如蓝→淡绿、金→红）。
+     * @param boltFlare 弹头 SMOOTH 光斑尺寸（su，null = 不加；组件层，支持字面量热交换）。
+     * @param muzzleBurst 开火瞬间在炮口附加一发小型锥面冲击（三角碎片 + 刺束 + 顶点闪光，ConeImpactVfx 一发即走）。
      * @param decorTrail 是否带 zappy 电弧装饰层（关闭同时去掉其随机扭转/漂移抖动）。
      * @param recede 带体退距显式值（null = 自动取弹体长度 ×0.75，tracker 运行期解析）。
      */
@@ -110,6 +169,10 @@ object ProjectileVfxSpecs {
         rangeRatio: Float? = null,
         trailWidthScale: Float = 1f,
         brightness: Float = 1f,
+        trailGlow: Float = 0.45f,
+        tailColor: ASTDColor? = null,
+        boltFlare: Float? = null,
+        muzzleBurst: Boolean = false,
         decorTrail: Boolean = true,
         recede: Float? = null,
         extra: ProjectileVfxScope.() -> Unit = {},
@@ -122,27 +185,53 @@ object ProjectileVfxSpecs {
         val bandW = bandWidth(width, glowScale) * BAND_WIDTH_MULT * trailWidthScale
         staticTrail("twin", TEX_TWIN) {
             layer(1); width(bandW); length(bandLen)
-            colors(bandHeadColor(color, ALPHA_OUTER * brightness).hex(), bandTailColor(color, ALPHA_OUTER * brightness).hex())
+            colors(bandHeadColor(color, ALPHA_OUTER * brightness).hex(), bandTailColor(color, ALPHA_OUTER * brightness, tailColor).hex())
             tile(mainTile(bandLen), mainScroll(bandLen))
             recede?.let { recede(it) }
         }
         staticTrail("core", TEX_SMOOTH) {
             layer(2); width(round05(bandW * CORE_WIDTH_RATIO)); length(bandLen)
-            colors(bandHeadColor(color, ALPHA_CORE * brightness).hex(), bandTailColor(color, ALPHA_CORE * brightness).hex())
+            colors(bandHeadColor(color, ALPHA_CORE * brightness).hex(), bandTailColor(color, ALPHA_CORE * brightness, tailColor).hex())
             tile(mainTile(bandLen), mainScroll(bandLen))
             recede?.let { recede(it) }
-            // 仅核心层给适度 bloom（三层全开会过曝成白团）；带体亮头已与螺栓分离，0.45 安全
-            glow(0.45f)
+            // 仅核心层给适度 bloom（三层全开会过曝成白团）；带体亮头已与螺栓分离，0.45~0.6 安全
+            glow(trailGlow)
         }
         if (decorTrail) {
             staticTrail("zappy", TEX_ZAPPY) {
                 layer(3); width(arcWidth(bandW)); length(bandLen)
-                colors(bandHeadColor(color, ALPHA_DECOR * brightness).hex(), bandTailColor(color, ALPHA_DECOR * brightness).hex())
+                colors(bandHeadColor(color, ALPHA_DECOR * brightness).hex(), bandTailColor(color, ALPHA_DECOR * brightness, tailColor).hex())
                 tile(arcTile(bandLen), arcScroll(bandLen))
                 recede?.let { recede(it) }
                 // 尾端漂移卷曲：angular 必须配合非零 velocity 才生效（自旋旋转的是漂移偏移矢量）
                 angularOut()
                 velocityOut(-16f, -16f, 16f, 16f)
+            }
+        }
+        if (boltFlare != null) {
+            boxFlare("boltGlow") {
+                style(BoxFlareStyle.SMOOTH)
+                size(boltFlare, boltFlare)
+                colors(mixWhite(color, 0.85f).a(0.5f).hex(), color.a(0.15f).hex())
+                glow(0.2f, 4f)
+                noise(0f)
+                offset(-boltFlare / 2)
+            }
+        }
+        if (muzzleBurst) {
+            onFire { engine, projectile ->
+                ConeImpactVfx.spawn(
+                    engine,
+                    ConeImpactVfxSpec(
+                        origin = Vector2f(projectile.location),
+                        facingDeg = projectile.facing,
+                        halfAngleDeg = 20f,
+                        length = 120f,
+                        coreColor = awt(mixWhite(color, 0.7f)),
+                        fringeColor = awt(color),
+                        duration = 0.35f,
+                    ),
+                )
             }
         }
         extra()
@@ -191,9 +280,10 @@ object ProjectileVfxSpecs {
         boxFlare("light") {
             style(BoxFlareStyle.SMOOTH)
             colors(0xA046F4c1, 0x9f6ed3c1)
-            size(20f, 20f)
-            glow(0.25f, 0f)
-            noise(0f)
+            size(30f, 30f)
+            glow(2.0f, 4f)
+            flicker(0.2f)
+            noise(0.1f)
         }
     }
 
@@ -235,7 +325,7 @@ object ProjectileVfxSpecs {
             colors(fringe = 0x78BEFFC0L, core = 0xF0F8FFF0L)
         }
         onFire(ProjectileVfxOnFireHook { engine, projectile ->
-            PiercingLanceVfx.spawnMuzzleDistortion(engine, org.lwjgl.util.vector.Vector2f(projectile.location))
+            PiercingLanceVfx.spawnMuzzleDistortion(engine, Vector2f(projectile.location))
         })
     }
 
@@ -244,6 +334,15 @@ object ProjectileVfxSpecs {
 
     // 电驱加速炮：黄色弹体（美术裁定），分支内内联字面量。
     private fun electricYellow() = ASTDColor(1f, 0.82f, 0.25f, 0.9f)
+
+    // 电驱加速炮拖尾尾色（自选 RGB）：金→红渐变的余烬红端（alpha 乘层透明度）。
+    private fun emberRedTail() = ASTDColor(0.35f, 0.1f, 0.04f, 0.12f)
+
+    // 穷距相位轨道炮：ARC 冷蓝白（与重离子脉冲同族；弹体弹头仍近白，拖尾读蓝色相）。
+    private fun qiongjueBlue() = ASTDColor(0.55f, 0.78f, 1f, 0.95f)
+
+    // 穷距拖尾尾色（自选 RGB）：蓝→淡绿渐变的淡绿端（alpha 乘层透明度）。
+    private fun paleGreenTail() = ASTDColor(0.19f, 0.35f, 0.25f, 0.12f)
 
     // 调色板：颜色沿用旧管线数值（视觉已目检回归，不宜再动）。
     private fun violet() = ASTDColor(0.66f, 0.42f, 1f, 0.9f)
@@ -298,10 +397,16 @@ internal fun arcWidth(bandW: Float): Float = round05(bandW * 0.6f)
 internal fun bandHeadColor(color: ASTDColor, alphaScale: Float = 1f): ASTDColor =
     mixWhite(color, 0.45f).copy(alpha = (color.alpha * 0.78f * alphaScale).coerceIn(0f, 1f))
 
-/** 两段上色的尾部色：主色 rgb×0.16，alpha 0.07×[alphaScale]（对标 0x0A1C3810）。 */
-internal fun bandTailColor(color: ASTDColor, alphaScale: Float = 1f): ASTDColor = ASTDColor(
-    color.red * 0.16f, color.green * 0.16f, color.blue * 0.16f, (0.07f * alphaScale).coerceIn(0f, 1f),
-)
+/** 两段上色的尾部色：[tail] 缺省 = 主色 rgb×0.16、alpha 0.07×[alphaScale]（对标 0x0A1C3810）；
+ * [tail] 非空 = 自选尾色直取（rgb 原样，alpha = 尾色 alpha × [alphaScale]），头色 → 尾色两段渐变。 */
+internal fun bandTailColor(color: ASTDColor, alphaScale: Float = 1f, tail: ASTDColor? = null): ASTDColor {
+    if (tail != null) {
+        return ASTDColor(tail.red, tail.green, tail.blue, (tail.alpha * alphaScale).coerceIn(0f, 1f))
+    }
+    return ASTDColor(
+        color.red * 0.16f, color.green * 0.16f, color.blue * 0.16f, (0.07f * alphaScale).coerceIn(0f, 1f),
+    )
+}
 
 /** 外带/核心平铺周期：L/2.4（aod7 的 420→140~200 区间居中）。 */
 internal fun mainTile(length: Float): Float = round5(length / 2.4f)
@@ -324,4 +429,12 @@ private fun mixWhite(color: ASTDColor, t: Float): ASTDColor = ASTDColor(
     color.green + (1f - color.green) * t,
     color.blue + (1f - color.blue) * t,
     color.alpha,
+)
+
+/** ASTDColor → java.awt.Color（ConeImpactVfxSpec 等 awt 调色入口）。 */
+private fun awt(color: ASTDColor): Color = Color(
+    color.red.coerceIn(0f, 1f),
+    color.green.coerceIn(0f, 1f),
+    color.blue.coerceIn(0f, 1f),
+    color.alpha.coerceIn(0f, 1f),
 )

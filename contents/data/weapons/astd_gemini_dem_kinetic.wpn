@@ -12,6 +12,20 @@
     "hardpointAngleOffsets": [0],
     "turretAngleOffsets": [0],
     "barrelMode": "LINKED",
-    "animationType": "NONE",
+    "animationType": "MUZZLE_FLASH",
+    "muzzleFlashSpec": {
+        "length": 24.0,
+        "spread": 20.0,
+        "particleSizeMin": 9.0,
+        "particleSizeRange": 14.0,
+        "particleDuration": 0.14,
+        "particleCount": 18,
+        "particleColor": [
+            255,
+            225,
+            180,
+            180
+        ]
+    },
     "projectileSpecId": "astd_gemini_dem_kinetic_msl"
 }
