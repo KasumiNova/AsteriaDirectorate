@@ -1,5 +1,6 @@
 package cn.kasuminova.astd.combat.effect.arc
 
+import cn.kasuminova.astd.api.buff.buffHost
 import cn.kasuminova.astd.api.buff.getOrCreateBuffByWeapon
 import cn.kasuminova.astd.impl.combat.CombatRandom
 import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
@@ -17,7 +18,10 @@ import org.lwjgl.util.vector.Vector2f
  * 重型离子脉冲的命中路由（规格 02 §2.3，结构对照 01 电荷针刺）：挂 `.proj` 的 `onHitEffect`。
  *
  * - 护盾命中 → 直接返回（EMP 对盾无效，面板 EMP 亦不产生贯穿话题）；
- * - 船体/装甲命中 → 按难度概率泄放 EMP 电弧（[HeavyIonPulseVfx.discharge]，真实 `spawnEmpArc` 结算）
+ * - 船体/装甲命中 → 必叠 1 层 EMP 抗性削减（[HeavyIonPulseEmpResistStacks]，最多 40 层、1 层/s 消散，
+ *   超出目标抗性的削减量转化为 EMP 易伤——隐藏机制不入描述）
+ *   + 按难度五档查表概率泄放 EMP 电弧（[HeavyIonPulseVfx.discharge]，真实 `spawnEmpArc` 结算，
+ *   基准 EMP = 弹体面板值）
  *   +（破晓敌版限定）EMP 贯穿补伤（[HeavyIonPulseVfx.pierce]，面板命中 EMP 与本次电弧 EMP 一起补）。
  *
  * 结算顺序：泄放判定与电弧结算在前，贯穿补伤在后一次性覆盖「面板 EMP + 本次电弧 EMP」两笔；
@@ -70,11 +74,20 @@ class HeavyIonPulseOnHitEffect : OnHitEffectPlugin {
 
         HeavyIonPulseVfx.recordHullHit(engine, projectile.source)
 
+        // EMP 抗性削减：船体/装甲命中必叠 1 层（与泄放判定独立）。
+        val host = ship.buffHost()
+        val resistBuff = host.find(HeavyIonPulseEmpResistStacks.BUFF_ID) as? HeavyIonPulseEmpResistStacks
+            ?: HeavyIonPulseEmpResistStacks(ship, engine, host).also { host.register(it) }
+        resistBuff.perStack = values.empResistPerStack
+        resistBuff.addStacks(1)
+        if (projectile.source != null && projectile.source == engine.playerShip) resistBuff.showOnPlayerHud = true
+
         // 瘫痪电弧：结算随机走共享 CombatRandom（同帧同事件不二次取值）。
+        // 基准 EMP 直取弹体面板值（baseEmp），难度倍率五档查表。
         val roll = dischargeRoll(projectile, ship)
         var arcEmp = 0f
         if (HeavyIonPulseTuning.shouldDischarge(roll, values.dischargeChance)) {
-            arcEmp = HeavyIonPulseTuning.BASE_DISCHARGE_EMP * values.dischargeEmpMult
+            arcEmp = baseEmp * values.dischargeEmpMult
             HeavyIonPulseVfx.discharge(engine, source = projectile.source, from = hitPoint, target = ship, emp = arcEmp)
         }
 

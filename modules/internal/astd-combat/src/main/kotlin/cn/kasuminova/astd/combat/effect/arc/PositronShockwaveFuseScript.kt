@@ -83,11 +83,13 @@ class PositronShockwaveFuseScript(
             )
         }
 
-        // 条件 1（优先）：近炸——锥内存在敌方导弹/战机/无人机（几何与结算同源，走基建锥筛纯函数）
-        var detonate = CombatUtils.getEntitiesWithinRange(loc, spec.range).any { e ->
+        // 条件 1（优先）：近炸——锥内 40% 射程内存在敌方导弹/战机/无人机才引爆
+        // （2026-09 用户裁定：进入锥缘不再立刻引爆，几何与结算同源，走基建锥筛纯函数）。
+        val fuseRange = spec.range * PositronShockwaveDifficulty.FUSE_RANGE_RATIO
+        var detonate = CombatUtils.getEntitiesWithinRange(loc, fuseRange).any { e ->
             e !== projectile &&
                 PositronShockwaveDifficulty.isFuseTarget(e, fuseOwner) &&
-                ConeImpactHandler.isInsideCone(loc, dir.x, dir.y, spec.halfAngleDeg, spec.range, e.location, e.collisionRadius)
+                ConeImpactHandler.isInsideCone(loc, dir.x, dir.y, spec.halfAngleDeg, fuseRange, e.location, e.collisionRadius)
         }
 
         // 条件 2：抵达最大射程——无条件自爆（裁定：不会静默消散）。
@@ -124,68 +126,99 @@ class PositronShockwaveFuseScript(
         fuseOwner: Int,
         fuse: Boolean,
     ) {
-        val targets = ConeImpactHandler.resolve(
-            engine,
-            ConeImpactSpec(
-                origin = loc,
-                direction = dir,
-                halfAngleDeg = spec.halfAngleDeg,
-                range = spec.range,
-                damage = spec.damage,
-                damageType = DamageType.FRAGMENTATION,
-                empDamage = 0f,
-                source = source,
-                owner = fuseOwner,
-                // 结算波及全部敌对目标（含舰船，裁定「自爆波及」）
-                filter = ConeTargetFilter { e -> e.owner != fuseOwner },
-                hitShips = true,
-                hitFighters = true,
-                hitMissiles = true,
-            ),
+        detonate(
+            engine, projectile, loc, dir, source, spec, fuseOwner,
+            detonateTelemetryKey = if (fuse) TELEMETRY_DETONATE_FUSE else TELEMETRY_DETONATE_MAX_RANGE,
+            spawnLoc = spawnLoc,
         )
-        bumpTelemetry(engine, if (fuse) TELEMETRY_DETONATE_FUSE else TELEMETRY_DETONATE_MAX_RANGE)
-        engine.customData[TELEMETRY_LAST_DETONATE_DIST] = Misc.getDistance(spawnLoc, loc)
-        for (target in targets) {
-            when {
-                target is MissileAPI -> bumpTelemetry(engine, TELEMETRY_CONE_MISSILE_HITS)
-                target is ShipAPI && target.isFighter -> bumpTelemetry(engine, TELEMETRY_CONE_FIGHTER_HITS)
-                target is ShipAPI -> bumpTelemetry(engine, TELEMETRY_CONE_SHIP_HITS)
-            }
-        }
-
-        // 锥面冲击 VFX（基建共用组件，蓝色调缩小版，规模随 spec.range 参数化）+ 小型蓝闪 + 音效
-        ConeImpactVfx.spawn(
-            engine,
-            ConeImpactVfxSpec(
-                origin = Vector2f(loc),
-                facingDeg = Math.toDegrees(atan2(dir.y.toDouble(), dir.x.toDouble())).toFloat(),
-                halfAngleDeg = spec.halfAngleDeg,
-                length = spec.range,
-                coreColor = CONE_CORE_COLOR,
-                fringeColor = CONE_FRINGE_COLOR,
-            ),
-        )
-        bumpTelemetry(engine, TELEMETRY_CONE_VFX)
-        engine.spawnExplosion(loc, ZERO, FLASH_COLOR, spec.range * 0.25f, 0.15f)
-        Global.getSoundPlayer().playSound("explosion_flak", 1f, 0.9f, loc, ZERO)
-
-        // 引爆计数浮字：仅 devMode + 玩家侧且有命中（2026-07-29 审批裁定：正常玩家只看锥面特效）
-        if (Global.getSettings().isDevMode && source?.owner == 0 && targets.isNotEmpty()) {
-            engine.addFloatingText(loc, "近炸命中 ×${targets.size}", 16f, FLOATY_COLOR, source, 0f, 0f)
-            bumpTelemetry(engine, TELEMETRY_FLOATY)
-        }
-
-        engine.removeEntity(projectile)
         done = true
-    }
-
-    /** dev 自动化烟测证据计数（对齐 QJ/EDA 遥测先例）：engine.customData 整数自增。 */
-    private fun bumpTelemetry(engine: CombatEngineAPI, key: String) {
-        engine.customData[key] = (engine.customData[key] as? Int ?: 0) + 1
     }
 
     companion object {
         private val log = Global.getLogger(PositronShockwaveFuseScript::class.java)
+
+        /**
+         * 引爆共享实现（引信脚本与撞舰 OnHit 同源）：锥面几何结算 → 锥面 VFX/蓝闪/音效 → 移除弹体。
+         * [spawnLoc] 仅引信脚本路径持有（满射程遥测）；OnHit 路径传 null 跳过距离遥测。
+         */
+        fun detonate(
+            engine: CombatEngineAPI,
+            projectile: DamagingProjectileAPI,
+            loc: Vector2f,
+            dir: Vector2f,
+            source: ShipAPI?,
+            spec: PositronShockwaveDifficulty.Resolved,
+            fuseOwner: Int,
+            detonateTelemetryKey: String,
+            spawnLoc: Vector2f? = null,
+        ) {
+            // 一次性声明：引信脚本与撞舰 OnHit 两条路径同帧竞态时只爆一次（先 claim 者胜出）。
+            val claimKey = TELEMETRY_DETONATE_CLAIM_PREFIX + System.identityHashCode(projectile)
+            if (engine.customData[claimKey] == true) return
+            engine.customData[claimKey] = true
+            val targets = ConeImpactHandler.resolve(
+                engine,
+                ConeImpactSpec(
+                    origin = loc,
+                    direction = dir,
+                    halfAngleDeg = spec.halfAngleDeg,
+                    range = spec.range,
+                    damage = spec.damage,
+                    damageType = DamageType.FRAGMENTATION,
+                    empDamage = 0f,
+                    source = source,
+                    owner = fuseOwner,
+                    // 结算波及全部敌对目标（含舰船，裁定「自爆波及」）
+                    filter = ConeTargetFilter { e -> e.owner != fuseOwner },
+                    hitShips = true,
+                    hitFighters = true,
+                    hitMissiles = true,
+                ),
+            )
+            bumpTelemetry(engine, detonateTelemetryKey)
+            if (spawnLoc != null) {
+                engine.customData[TELEMETRY_LAST_DETONATE_DIST] = Misc.getDistance(spawnLoc, loc)
+            }
+            for (target in targets) {
+                when {
+                    target is MissileAPI -> bumpTelemetry(engine, TELEMETRY_CONE_MISSILE_HITS)
+                    target is ShipAPI && target.isFighter -> bumpTelemetry(engine, TELEMETRY_CONE_FIGHTER_HITS)
+                    target is ShipAPI -> bumpTelemetry(engine, TELEMETRY_CONE_SHIP_HITS)
+                }
+            }
+
+            // 锥面冲击 VFX（基建共用组件，蓝色调缩小版，规模随 spec.range 参数化）+ 小型蓝闪 + 音效
+            ConeImpactVfx.spawn(
+                engine,
+                ConeImpactVfxSpec(
+                    origin = Vector2f(loc),
+                    facingDeg = Math.toDegrees(atan2(dir.y.toDouble(), dir.x.toDouble())).toFloat(),
+                    halfAngleDeg = spec.halfAngleDeg,
+                    length = spec.range,
+                    coreColor = CONE_CORE_COLOR,
+                    fringeColor = CONE_FRINGE_COLOR,
+                ),
+            )
+            bumpTelemetry(engine, TELEMETRY_CONE_VFX)
+            engine.spawnExplosion(loc, ZERO, FLASH_COLOR, spec.range * 0.25f, 0.15f)
+            Global.getSoundPlayer().playSound("explosion_flak", 1f, 0.9f, loc, ZERO)
+
+            // 引爆计数浮字：仅 devMode + 玩家侧且有命中（2026-07-29 审批裁定：正常玩家只看锥面特效）
+            if (Global.getSettings().isDevMode && source?.owner == 0 && targets.isNotEmpty()) {
+                engine.addFloatingText(loc, "近炸命中 ×${targets.size}", 16f, FLOATY_COLOR, source, 0f, 0f)
+                bumpTelemetry(engine, TELEMETRY_FLOATY)
+            }
+
+            engine.removeEntity(projectile)
+        }
+
+        /** 引爆一次性声明键前缀（engine.customData，全键 = 前缀 + 弹体 identityHashCode）。 */
+        private const val TELEMETRY_DETONATE_CLAIM_PREFIX = "astd_positron_detonate_claim:"
+
+        /** 遥测自增（伴生内共享，供 [detonate] 使用）。 */
+        private fun bumpTelemetry(engine: CombatEngineAPI, key: String) {
+            engine.customData[key] = (engine.customData[key] as? Int ?: 0) + 1
+        }
 
         /** 速度近零判定阈值（lengthSquared）：低于此值方向矢量无意义。 */
         private const val ZERO_VELOCITY_THRESHOLD = 1e-3f
@@ -208,6 +241,7 @@ class PositronShockwaveFuseScript(
         // ---- dev 自动化烟测遥测键（engine.customData）----
         const val TELEMETRY_DETONATE_FUSE = "astd_positron_detonate_fuse"
         const val TELEMETRY_DETONATE_MAX_RANGE = "astd_positron_detonate_max_range"
+        const val TELEMETRY_DETONATE_IMPACT = "astd_positron_detonate_impact"
         const val TELEMETRY_CONE_VFX = "astd_positron_cone_vfx"
         const val TELEMETRY_CONE_SHIP_HITS = "astd_positron_cone_ship_hits"
         const val TELEMETRY_CONE_MISSILE_HITS = "astd_positron_cone_missile_hits"

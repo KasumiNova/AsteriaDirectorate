@@ -1,29 +1,36 @@
 package cn.kasuminova.astd.combat.effect.arc
 
 import cn.kasuminova.astd.api.difficulty.DifficultyTuning
-import cn.kasuminova.astd.api.difficulty.ScalingEntry
+import cn.kasuminova.astd.api.difficulty.ScalingTable
 
 /**
- * 重型离子脉冲的机制数值声明与纯函数（规格 02 §2.2 / §2.5）。
+ * 彗星冲击波（原重型离子脉冲）的机制数值声明与纯函数（规格 02 §2.2 / §2.5，2026-09 机制修订）。
  *
- * 动机：泄放 EMP 电弧（船体/装甲命中概率触发）与 EMP 贯穿补伤（破晓敌版逐项解锁）
- * 的三锚点与固定常量集中在一处声明；泄放判定与贯穿补伤量均为纯函数，
+ * 动机：泄放 EMP 电弧（船体/装甲命中概率触发）、EMP 抗性削减叠层（船体/装甲命中必叠）
+ * 与 EMP 贯穿补伤（破晓敌版逐项解锁）的数值集中在一处声明；泄放判定与贯穿补伤量均为纯函数，
  * 供 OnHit 调用并由单元测试直接驱动。
  *
- * 数值缩放口径（90 计划全局约定）：敌方按轨一 k_s 三锚点 LINEAR 映射；玩家来源（owner == 0）固定 v2。
- * EMP 贯穿不入 ScalingEntry——激活条件为 `fixedScale >= 5f && !isPlayer`（破晓敌版限定，
+ * 数值缩放口径（2026-09 修订）：泄放概率 / EMP 倍率 / 抗性削减改为五档精确查表
+ * （[ScalingTable]，逐档语义不做线性插值）；玩家来源（owner == 0）固定取 v2（砺刃档）。
+ * EMP 贯穿不入查表——激活条件为 `fixedScale >= 5f && !isPlayer`（破晓敌版限定，
  * 玩家版本 owner == 0 固定 v2 口径天然排除：玩家永远不会获得此特效）。
  */
 object HeavyIonPulseTuning {
 
-    /** 泄放电弧触发概率（v1 25% / v2 31.25% / v5 50%）。 */
-    val DISCHARGE_CHANCE = ScalingEntry(0.25f, 0.3125f, 0.50f)
+    /** 泄放电弧触发概率（五档查表：k1 20% / k2 30% / k3 40% / k4 50% / k5 60%）。 */
+    val DISCHARGE_CHANCE = ScalingTable(0.20f, 0.30f, 0.40f, 0.50f, 0.60f)
 
-    /** 泄放 EMP 倍率（v1 100% / v2 125% / v5 200%）。 */
-    val DISCHARGE_EMP_MULT = ScalingEntry(1.00f, 1.25f, 2.00f)
+    /** 泄放 EMP 倍率（五档查表：k1 75% / k2 100% / k3 125% / k4 150% / k5 200%）。 */
+    val DISCHARGE_EMP_MULT = ScalingTable(0.75f, 1.00f, 1.25f, 1.50f, 2.00f)
 
-    /** 泄放基准 EMP（单发等值面板 EMP，固定不缩放）。 */
-    const val BASE_DISCHARGE_EMP = 600f
+    /** 每层 EMP 抗性削减（五档查表：k1 1% / k2 2% / k3 3% / k4 4% / k5 5%）。 */
+    val EMP_RESIST_PER_STACK = ScalingTable(0.01f, 0.02f, 0.03f, 0.04f, 0.05f)
+
+    /** EMP 抗性削减层数上限（固定不缩放）。 */
+    const val RESIST_MAX_STACKS = 40
+
+    /** EMP 抗性削减消散速率（层/s，固定不缩放）。 */
+    const val RESIST_DECAY_PER_SECOND = 1f
 
     /** EMP 贯穿减免下限：目标 EMP 减免超过 90%（mult < 0.1）时触发补伤（固定不缩放）。 */
     const val PIERCE_FLOOR = 0.1f
@@ -38,19 +45,22 @@ object HeavyIonPulseTuning {
     data class Values(
         /** 泄放电弧触发概率。 */
         val dischargeChance: Float,
-        /** 泄放 EMP 倍率。 */
+        /** 泄放 EMP 倍率（基准 = 弹体面板 EMP，运行时直取 [com.fs.starfarer.api.combat.DamagingProjectileAPI.getEmpAmount]）。 */
         val dischargeEmpMult: Float,
+        /** 每层 EMP 抗性削减（绝对百分点，作用于目标 empDamageTakenMult 的绝对位移）。 */
+        val empResistPerStack: Float,
         /** 来源是否为玩家（owner == 0）：贯穿激活判定与玩家固定 v2 口径的身份依据。 */
         val isPlayer: Boolean,
     )
 
     /**
-     * 难度取值唯一入口：玩家来源固定 v2，否则按轨一 k_s 三锚点映射。
+     * 难度取值唯一入口：玩家来源固定 v2，否则按轨一 k_s 五档查表。
      * 每次命中调用一次（不缓存），保证 LunaLib 设置变更即时生效。
      */
     fun resolve(tuning: DifficultyTuning, isPlayer: Boolean): Values = Values(
         dischargeChance = if (isPlayer) DISCHARGE_CHANCE.v2 else tuning.value(DISCHARGE_CHANCE),
         dischargeEmpMult = if (isPlayer) DISCHARGE_EMP_MULT.v2 else tuning.value(DISCHARGE_EMP_MULT),
+        empResistPerStack = if (isPlayer) EMP_RESIST_PER_STACK.v2 else tuning.value(EMP_RESIST_PER_STACK),
         isPlayer = isPlayer,
     )
 

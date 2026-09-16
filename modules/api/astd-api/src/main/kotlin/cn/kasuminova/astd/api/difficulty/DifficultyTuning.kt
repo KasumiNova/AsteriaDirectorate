@@ -26,4 +26,11 @@ interface DifficultyTuning {
      * @return 以当前 [fixedScale] 经 entry.map 映射后的最终数值
      */
     fun value(entry: ScalingEntry): Float
+
+    /**
+     * 按五档查表声明取应用后的最终值（逐档精确表的取值入口）。
+     *
+     * 默认实现直接以 [fixedScale] 查表（就近取档），实现类无需覆写。
+     */
+    fun value(table: ScalingTable): Float = table.at(fixedScale)
 }

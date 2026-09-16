@@ -13,7 +13,7 @@
 
 ## 0. 与首批计划 §6 的两处实现层修正（必须先读）
 
-1. **「collisionRadius = 0」的真实落地形态**：`specClass = projectile` 的 `.proj` 模型**没有 collisionRadius 字段**（ss-csv `ProjectileProjSpec` 已核实，collisionRadius 仅存在于 `ProjMissileSpec`）。无触碰体积的正确实现是 **`.proj` 的 `collisionClass = "NONE"`**（`CollisionClass.NONE` 已核实存在于 jar）。**`collisionClassByFighter` 不可置空（2026-07-29 实机发现）**：原版 ProjectileSpec 加载强制要求该键，缺键 RuntimeException；同样写 `"NONE"`。烟测必须验证「射弹穿过舰船/战机不触发碰撞与引爆」。
+1. **弹体碰撞形态（2026-09 修订：不再穿舰）**：`specClass = projectile` 的 `.proj` 模型**没有 collisionRadius 字段**（ss-csv `ProjectileProjSpec` 已核实，collisionRadius 仅存在于 `ProjMissileSpec`）；初版「无触碰体积」的实现形态是 `collisionClass = "NONE"`（`CollisionClass.NONE` 已核实存在于 jar），**`collisionClassByFighter` 不可置空（2026-07-29 实机发现）**：原版 ProjectileSpec 加载强制要求该键，缺键 RuntimeException，故同写 `"NONE"`。**2026-09 用户裁定改为「弹体识别舰船对象，不再穿过」**：`collisionClass = collisionClassByFighter = "PROJECTILE_NO_FF"`（原版高爆同口径，免伤友军），并新增 `.proj` 的 `onHitEffect = cn.kasuminova.astd.combat.effect.arc.PositronShockwaveOnHitEffect`——撞舰/撞盾即时引爆，与引信脚本共享 `PositronShockwaveFuseScript.detonate()`，入口按弹体做一次性 claim（`engine.customData` 键 + `System.identityHashCode`）防同帧双爆；导弹仍由近炸引信承担。烟测对应验证「撞舰引爆 + 目标掉血」（原「穿舰不爆」观测项作废）。
 2. **VFX 挂载分工**：`.proj` 的 `onFireEffect` 挂 `PositronShockwaveOnFireEffect`（引信脚本注册，**不再是** `ProjectileSpecOnFireDispatcher`）；弹体 VFX 追踪改由 `.wpn` 的 `onFireEffect = cn.kasuminova.astd.combat.effect.generic.ProjectileSpecOnFireDispatcher` 承担（`.wpn` 与 `.proj` 的 onFireEffect 均会逐弹触发，dispatcher 自带去重，此分工已对照 `ProjectileSpecOnFireDispatcher` 源码确认可行）。
 
 ---
@@ -46,13 +46,13 @@
 | `burstSize` / `burstDelay` | `1` / `0.0` | 单发 |
 | `projSpeed` | `900` | 提案（设计案未给弹速；600su ÷ 900 ≈ 0.667s 飞行，目检调整） |
 | `flightTime` | `0.667` | = range ÷ projSpeed，弹体原版寿命恰覆盖射程；引信自爆先于此触发 |
-| `projHitpoints` | `0`（默认） | 弹道弹体本就不可被拦截，设计「不吃拦截」由 spawnType=BALLISTIC + collisionClass=NONE 共同保证 |
+| `projHitpoints` | `0`（默认） | 弹道弹体本就不可被拦截，设计「不吃拦截」由 spawnType=BALLISTIC + 碰撞类别共同保证（2026-09 修订：碰撞类别由 `NONE` 改为 `PROJECTILE_NO_FF`，见 §0-1） |
 | `aiHints` | `setOf(AiHint.PD)` | 设计案：点防御、优先攻击导弹（`PD` 枚举已在 ss-csv `AiHint` 存在） |
 | `tags` | `astd_production` | 量产线 |
 | `groupTag` | `astd` | 同线惯例 |
 | `tech` | `弧光阵列` | ARC 线 |
 | `primaryRoleStr` | `SsI18n.t("weapon.$id.primaryRoleStr")` | 点防御 |
-| `customPrimary` / `customPrimaryHL` | `SsI18n.t("weapon.$id.tooltip.customPrimary")` / 同 HL | 对照 gcp12 接线方式 |
+| `customPrimary` / `customPrimaryHL` | `SsI18n.t("weapon.$id.tooltip.customPrimary")` / 同 HL | 对照 gcp12 接线方式；2026-09 修订：tip 增至 3 个 `{%s}`（近炸距离占比 40% / 破片伤害 125% / 难度系数） |
 | `noDpsInTooltip` | `false`（默认） | 正常显示 DPS |
 | `number` | **`9215`** | 合并协议预分配段（正电子 9215） |
 
@@ -63,9 +63,9 @@ override val projSpec: ProjectileProjSpec = ProjectileProjSpec(
     id = "astd_positron_shockwave_shot",
     spawnType = ProjectileSpawnType.BALLISTIC,
     onFireEffect = "cn.kasuminova.astd.combat.effect.arc.PositronShockwaveOnFireEffect",
-    onHitEffect = null,                       // 无触碰体积，无 onHit 路径
-    collisionClass = "NONE",                  // 无触碰体积的真实实现（§0-1）
-    collisionClassByFighter = "NONE",         // 原版加载强制要求该键，缺键 RuntimeException（2026-07-29 实机发现）
+    onHitEffect = "cn.kasuminova.astd.combat.effect.arc.PositronShockwaveOnHitEffect",  // 2026-09 修订：撞舰/撞盾即时引爆（原 null）
+    collisionClass = "PROJECTILE_NO_FF",              // 2026-09 修订：原 "NONE"（无触碰体积）
+    collisionClassByFighter = "PROJECTILE_NO_FF",     // 2026-09 修订：原 "NONE"；原版加载强制要求该键，缺键 RuntimeException（2026-07-29 实机发现）
     // 原版弹体视觉隐藏四件套（照 Wpn_astd_aod7.projSpec 样板）
     length = 2.0, width = 2.0, fadeTime = 0.2,
     fringeColor = Rgba(140, 200, 255, 0),
@@ -112,8 +112,8 @@ override val projSpec: ProjectileProjSpec = ProjectileProjSpec(
 | 键 | 值 | 来源 |
 |---|---|---|
 | `weapon.astd_positron_shockwave.name` | `正电子冲击波` | 设计案定名 |
-| `weapon.astd_positron_shockwave.tooltip.customPrimary` | `射弹在接近导弹或战机时自动引爆，沿飞行方向产生锥状冲击，对范围内所有目标造成 {%s} 的破片伤害。效果受到{%s}影响。` | 设计案「玩家可见机制文本」裁定原文 + v2 数值插入（2026-07-29 字段分工铁律，审批通过） |
-| `weapon.astd_positron_shockwave.tooltip.customPrimaryHL` | `125% | 难度系数` | 字段分工铁律：高亮数值与"难度系数" |
+| `weapon.astd_positron_shockwave.tooltip.customPrimary` | `射弹接近导弹或战机至锥状射程的 {%s} 处，或直接撞上舰船时自动引爆，沿飞行方向产生锥状冲击，对范围内所有目标造成 {%s} 的破片伤害。效果受到{%s}影响。` | 设计案「玩家可见机制文本」裁定原文 + v2 数值插入（2026-07-29 字段分工铁律，审批通过）；2026-09 修订：新增近炸触发圈占比（40%）与撞舰引爆，占位由 2 段增至 3 段 |
+| `weapon.astd_positron_shockwave.tooltip.customPrimaryHL` | `40% | 125% | 难度系数` | 字段分工铁律：高亮数值与"难度系数"；2026-09 修订：新增 40% 段 |
 | `weapon.astd_positron_shockwave.primaryRoleStr` | `点防御` | 提案（原版 PD 角色词惯例） |
 | `desc.astd_positron_shockwave.text1` | `弧光科研部的点防御近炸弹。射弹附近存在目标时，会引爆内部的正电子装药，将锥形破片雨泼向来袭的导弹与战机。对敌方的蜂群式导弹效果极佳。` | 设计案「文案」用户优化后裁定原文 |
 | `desc.astd_positron_shockwave.text2~text5`、`desc.astd_positron_shockwave.notes` | **不添加** | 设计案只裁定一段描述；`LocalizedDescription` 的 `desc()` 带空串 fallback，缺键输出空列，无需占位 |
@@ -150,8 +150,9 @@ object Desc_astd_positron_shockwave : LocalizedDescription("astd_positron_shockw
 | 类名 | 接口/实现 | 职责 | 挂载点 | 文件路径 |
 |---|---|---|---|---|
 | `PositronShockwaveOnFireEffect` | `OnFireEffectPlugin` 实现 | 发射时一次性结算难度三锚点（玩家固定 v2），为每发弹体注册引信脚本 | `.proj` 的 `onFireEffect` | `combat/effect/arc/PositronShockwaveOnFireEffect.kt` |
-| `PositronShockwaveFuseScript` | `BaseEveryFrameCombatPlugin` 子类 | 弹体生命周期状态机：每帧近炸检测（锥内敌方导弹/战机）→ 引爆；抵达最大射程 → 无条件引爆；引爆编排（结算 + VFX + 反馈 + 移除弹体） | 由 OnFireEffect `engine.addPlugin` 注册 | `combat/effect/arc/PositronShockwaveFuseScript.kt` |
-| `PositronShockwaveDifficulty` | `object` 数值登记 | 三锚点 `ScalingEntry` 声明 + `resolve(source)`（玩家固定 v2）；内部纯函数 `reachedMaxRange` / `isFuseTarget` 供引信与单测共用 | 被 OnFireEffect / FuseScript 调用 | `combat/effect/arc/PositronShockwaveDifficulty.kt` |
+| `PositronShockwaveFuseScript` | `BaseEveryFrameCombatPlugin` 子类 | 弹体生命周期状态机 FLYING → DONE：每帧近炸检测（**锥程 40% 触发圈**内的敌方导弹/战机）→ 引爆；抵达最大射程 → 无条件引爆；引爆编排（结算 + VFX + 反馈 + 移除弹体）；伴生 `detonate(...)` 为引信/撞舰两路共享实现 | 由 OnFireEffect `engine.addPlugin` 注册 | `combat/effect/arc/PositronShockwaveFuseScript.kt` |
+| `PositronShockwaveOnHitEffect` | `OnHitEffectPlugin` 实现（**2026-09 新增**） | 撞舰/撞盾即时引爆：舰船命中（非战机/无人机/hulk）后在命中点就地引爆锥面冲击，锥轴取弹体速度方向（近零速退朝向），转调 `PositronShockwaveFuseScript.detonate(...)` 并打 `TELEMETRY_DETONATE_IMPACT` | `.proj` 的 `onHitEffect` | `combat/effect/arc/PositronShockwaveOnHitEffect.kt` |
+| `PositronShockwaveDifficulty` | `object` 数值登记 | 三锚点 `ScalingEntry` 声明 + `resolve(source)`（玩家固定 v2）+ 常量 `FUSE_RANGE_RATIO = 0.4f`（近炸触发圈占锥长比例）；内部纯函数 `reachedMaxRange` / `isFuseTarget` 供引信与单测共用 | 被 OnFireEffect / FuseScript / OnHitEffect 调用 | `combat/effect/arc/PositronShockwaveDifficulty.kt` |
 
 **不新建的类**（反薄适配层，逐项说明）：
 - ~~`PositronShockwaveConeHandler`~~：结算直接调基建件 `ConeImpactHandler.resolve(engine, spec)`（object 无状态结算器），无本武器增量逻辑，不包一层。
@@ -188,44 +189,61 @@ onFire(projectile, weapon, engine):                      // PositronShockwaveOnF
     if (engine.isPaused) return
     source = weapon.ship
     spec = PositronShockwaveDifficulty.resolve(source)   // 难度取值调用点：发射时一次性锁定
-    engine.addPlugin(PositronShockwaveFuseScript(projectile, source, spec))
+    engine.addPlugin(PositronShockwaveFuseScript(projectile, source, spec, maxRange, spawnLoc))
 
 advance(amount):                                          // FuseScript，engine.isPaused 时引擎不回调仍显式防线
     if (done) return
-    if (!engine.isEntityInPlay(projectile) || projectile.isFading) { done = true; return }
+    if (!engine.isEntityInPlay(projectile)) { done = true; return }   // 已被撞舰路径移除：静默回收，不产 VFX
     loc = projectile.location
     vel = projectile.velocity
     if (vel.lengthSquared() < 1e-3f) { logOnceWarn("弹体速度近零，本帧跳过引信判定"); return }  // 0 值防线 §2.5
 
-    // 条件 1（优先）：近炸——锥状攻击范围内存在敌方导弹/战机
+    // 条件 1（优先）：近炸——锥程 40% 触发圈内存在敌方导弹/战机/无人机
+    // （2026-09 修订：触发圈由「进入锥缘即引爆」收窄为 spec.range × FUSE_RANGE_RATIO）
     dir = vel.normalise()
-    detonate = CombatUtils.getEntitiesWithinRange(loc, spec.range).any { e ->
-        PositronShockwaveDifficulty.isFuseTarget(e, owner = projectile.owner)   // 严格只导弹/战机/无人机，剔除同方与 hulk
-            && coneAngleDeg(loc, dir, e.location, e.collisionRadius) <= spec.halfAngleDeg
+    fuseRange = spec.range * PositronShockwaveDifficulty.FUSE_RANGE_RATIO
+    detonate = CombatUtils.getEntitiesWithinRange(loc, fuseRange).any { e ->
+        e !== projectile
+            && PositronShockwaveDifficulty.isFuseTarget(e, owner = fuseOwner)  // 严格只导弹/战机/无人机，剔除同方与 hulk
+            && ConeImpactHandler.isInsideCone(loc, dir, halfAngle, fuseRange, e.location, e.collisionRadius)
     }
 
     // 条件 2：抵达最大射程——无条件自爆（裁定：不会静默消散）
     if (!detonate) detonate = PositronShockwaveDifficulty.reachedMaxRange(
-        projectile.elapsed, projectile.moveSpeed, range = 600f /* weapon spec 面板读取 */)
+        projectile.elapsed, projectile.moveSpeed, range = maxRange /* weapon spec 面板读取 */)
 
-    if (detonate) detonateAndFinish(engine, loc, dir)
+    if (detonate) detonateAndFinish(engine, loc, dir, fuseOwner, fuse = !maxRangeDetonate)
 
-detonateAndFinish(engine, loc, dir):                      // 结算顺序：几何结算 → VFX → 反馈 → 移除
+detonateAndFinish(...):                                   // 转调伴生共享实现
+    detonate(engine, projectile, loc, dir, source, spec, fuseOwner, detonateTelemetryKey, spawnLoc)
+
+onHit(projectile, target, point, shieldHit, damageResult, engine):   // PositronShockwaveOnHitEffect（2026-09 新增）
+    if (engine.isPaused) return
+    if (target !is ShipAPI || target.isFighter || target.isDrone || target.isHulk) return  // 战机/无人机/导弹交给近炸
+    loc = point ?: projectile.location ?: return
+    dir = 弹体速度方向（近零速退 projectile.facing）
+    detonate(engine, projectile, loc, dir, projectile.source, resolve(source), fuseOwner, TELEMETRY_DETONATE_IMPACT)
+
+detonate(engine, projectile, loc, dir, source, spec, fuseOwner, detonateTelemetryKey, spawnLoc):   // 伴生共享实现
+    // 一次性 claim：引信脚本与撞舰 OnHit 两条路径同帧竞态时只爆一次（先 claim 者胜出）
+    claimKey = "astd_positron_detonate_claim:" + System.identityHashCode(projectile)
+    if (engine.customData[claimKey] == true) return
+    engine.customData[claimKey] = true
     targets = ConeImpactHandler.resolve(engine, ConeImpactSpec(
         origin = loc, direction = dir,
         halfAngleDeg = spec.halfAngleDeg, range = spec.range,
         damage = spec.damage, damageType = DamageType.FRAGMENTATION, empDamage = 0f,
-        source = sourceShip, owner = sourceShip.owner,
-        filter = { e -> e.owner != sourceShip.owner },   // 结算波及全部敌对目标（含舰船，裁定「自爆波及」）
+        source = source, owner = fuseOwner,
+        filter = { e -> e.owner != fuseOwner },   // 结算波及全部敌对目标（含舰船，裁定「自爆波及」）
         hitShips = true, hitFighters = true, hitMissiles = true,
     ))
-    ConeImpactVfx.spawn(engine, loc, dir, spec.halfAngleDeg, spec.range, POSITRON_BLUE)  // 蓝色调缩小版
+    遥测自增（detonateTelemetryKey / 锥面 VFX / 分类命中数；spawnLoc 非空时记录引爆距离）
+    ConeImpactVfx.spawn(...)                       // 蓝色调缩小版，规模随 spec.range 参数化
     engine.spawnExplosion(loc, ZERO, Color(140, 200, 255, 90), spec.range * 0.25f, 0.15f)
     Global.getSoundPlayer().playSound("explosion_flak", 1f, 0.9f, loc, ZERO)             // 音源已核实存在
-    if (DEV_MODE && sourceShip?.owner == 0 && targets.isNotEmpty())                     // 引爆计数浮字：仅调试/烟测模式
-        engine.addFloatingText(loc, "近炸命中 ×${targets.size}", 16f, Color(180, 220, 255), sourceShip, 0f, 0f)
+    if (DEV_MODE && source?.owner == 0 && targets.isNotEmpty())                          // 引爆计数浮字：仅调试/烟测模式
+        engine.addFloatingText(loc, "近炸命中 ×${targets.size}", 16f, Color(180, 220, 255), source, 0f, 0f)
     engine.removeEntity(projectile)
-    done = true
 ```
 
 - `DEV_MODE = Global.getSettings().isDevMode()`（`SettingsAPI.isDevMode()` 存在，03 已核实登记）。2026-07-29 审批裁定：引爆计数浮字**只在开发者/烟测模式显示**，正常玩家只看锥面特效，不看调试计数。
@@ -251,14 +269,17 @@ detonateAndFinish(engine, loc, dir):                      // 结算顺序：几�
 | 弹体速度近零（生成首帧/外部减速） | 本帧跳过引信判定并 WARN（每弹体一次）；**不自爆、不静默**——方向矢量无意义时禁止产出错误锥形（与基建 §2.4-5「direction 非单位矢量 WARN + 归一化」同族防线） |
 | `moveSpeed <= 0`（配置错误） | `reachedMaxRange` 返回 true（立即按当前位置引爆）并记 ERROR：宁可原地自爆也不允许「静默消散」违背裁定 |
 | `elapsed * speed` 恰等于 range | 判定为已达（`>=`），边界含等号 |
-| 近炸粗筛为空 / 锥内无有效目标 | 不引爆，弹体继续飞行（正常路径，无日志噪音） |
+| 近炸粗筛为空 / 触发圈内无有效目标 | 不引爆，弹体继续飞行（正常路径，无日志噪音） |
 | 难度锚点 | 三项锚点 v1/v2/v5 全为正数，resolve 无 0 值路径；`source == null`（罕见无主弹体）按敌方口径取值并 WARN 一次 |
 | 顶点重叠（目标与引爆点 dist≈0） | 由基建 ConeImpactHandler 直接纳入（基建 §2.2-3 已定），本武器不重复处理 |
+| 撞舰路径与引信路径同帧竞态 | `detonate()` 入口按弹体 `identityHashCode` 做一次性 claim：后到者直接 return，同帧只爆一次（2026-09 新增） |
+| 撞舰弹体速度近零（罕见路径） | 近零速时锥轴退化为 `projectile.facing`，保证引爆产出合法锥形（不做静默跳过） |
+| 撞舰命中战机/无人机/hulk | 不引爆，交回近炸引信/满射程路径处理（撞舰路径只认舰船） |
 | 弹体在飞行中被移除（战斗结束/异常） | `!isEntityInPlay → done = true` 静默回收（非引爆路径，不产 VFX） |
 
 ### 2.5 每帧成本说明
 
-近炸检测每发弹体每帧一次 `CombatUtils.getEntitiesWithinRange(loc, spec.range)`（LazyLib 空间网格粗筛，v2 半径 250su）；1.5s 发射间隔下单舰在场弹体 ≤2，对照基建 §2.3 表格结论「可控」。角度精筛只发生在粗筛候选上（通常 <5 个导弹/战机实体）。
+近炸检测每发弹体每帧一次 `CombatUtils.getEntitiesWithinRange(loc, fuseRange)`（LazyLib 空间网格粗筛，**2026-09 修订：粗筛半径收窄为锥长 × 40%，v2 = 100su**，低于旧口径的 250su）；1.5s 发射间隔下单舰在场弹体 ≤2，对照基建 §2.3 表格结论「可控」。角度精筛只发生在粗筛候选上（通常 <5 个导弹/战机实体）。撞舰路径为事件驱动（OnHit 回调），无逐帧成本。
 
 ---
 
@@ -302,10 +323,10 @@ detonateAndFinish(engine, loc, dir):                      // 结算顺序：几�
 ### 4.2 烟测检查点（`deployMod` + `launchSmokeTestGame`）
 
 1. dev 仓储出现「正电子冲击波蓝图」与武器本体；可学习蓝图、可装配小型能量槽。
-2. **无触碰体积**：向敌舰齐射，射弹穿过舰船/战机不触发碰撞、不提前引爆（§0-1 验证点）。
-3. **近炸引爆**：敌导弹群来袭时弹体在导弹/战机进入锥面即引爆，集群被成片清除；观察伤害数字 = 250（v2）。
+2. **撞舰引爆**：向敌舰齐射，弹体在 400su 处撞上舰船即在命中点引爆锥面冲击、目标掉血（≥50），期间近炸/满射程计数恒 0（2026-09 修订：原「无触碰体积 / 穿舰不爆」观测项作废）。
+3. **近炸引爆（锥程 40% 触发圈）**：敌导弹群来袭时弹体在导弹/战机进入锥长 40% 圈内即引爆，集群被成片清除；观察伤害数字 = 250（v2）。
 4. **最大射程无条件自爆**：向空域发射，弹体抵达 600su 时自爆（有锥面 VFX 与音效），无静默消散。
-5. **舰船蹭波及**：敌舰恰在锥面边缘时吃到破片伤害，但舰船**不触发**近炸（只对空发射到射程自爆才波及）。
+5. **舰船波及**：满射程自爆的锥面可波及 700su 处的敌舰（`shipHits` 计数 +1），但舰船自身不触发近炸。
 6. 引爆浮字「近炸命中 ×n」仅 devMode 玩家侧出现（正常模式不可见）；弹体白蓝短拖尾、引爆蓝色调锥面，目检不抢主炮视觉。
 7. PD 行为：AI 装配后优先攻击导弹（hints=PD 生效）。
 8. automation 到达终态即退出，不干等超时（烟测后必关游戏）。
@@ -346,10 +367,10 @@ detonateAndFinish(engine, loc, dir):                      // 结算顺序：几�
 
 **数据面**
 - [ ] `Wpn_astd_positron_shockwave` 各列与 §1.1 一致；`number = 9215`；`aiHints` 仅 `PD`
-- [ ] `projSpec` 为字面量构造，`collisionClass = "NONE"`、`onHitEffect = null`、隐藏四件套齐全；未改 `ProjProjectileSpec.kt`
+- [ ] `projSpec` 为字面量构造，`collisionClass = collisionClassByFighter = "PROJECTILE_NO_FF"`、`onHitEffect = PositronShockwaveOnHitEffect`、隐藏四件套齐全；未改 `ProjProjectileSpec.kt`（2026-09 修订：原 `"NONE"` + `onHitEffect = null` 口径作废）
 - [ ] `./gradlew :ss-csv:generateSsCsv` 产物中 `weapon_data.csv` 行、`.proj` 内容正确；`copyContents` 叠加生效
 - [ ] `.wpn` 三个插件挂载点（dispatcher / bootstrap / projectileSpecId）与 §1.2 一致
-- [ ] i18n 五键齐全（name/desc 与设计案裁定原文逐字一致；tip = 裁定原文 + v2 数值插入，审批通过）；`text2~5/notes` 无占位键
+- [ ] i18n 五键齐全（name/desc 与设计案裁定原文逐字一致；tip = 裁定原文 + v2 数值插入，含 40% 近炸圈与撞舰引爆表述）；`text2~5/notes` 无占位键
 - [ ] `Desc_astd_positron_shockwave` 在 WEAPON 分组尾部
 - [ ] `special_items.csv` 蓝图行 params = `astd_positron_shockwave`、order = 9204
 
@@ -360,14 +381,15 @@ detonateAndFinish(engine, loc, dir):                      // 结算顺序：几�
 - [ ] 近炸 filter 严格只导弹/战机/无人机且剔除同方与 hulk；舰船不触发近炸
 - [ ] 0 值防线三条（速度近零 WARN 跳帧 / moveSpeed=0 ERROR 立即引爆 / 射程边界含等号）均有日志、无空 catch
 - [ ] 玩家侧引爆浮字仅在 `devMode && owner==0 && targets.isNotEmpty()` 时触发（正常模式无浮字）；无 HUD（无常驻状态，合规）
+- [ ] 撞舰路径：只对舰船引爆（战机/无人机/hulk 交回引信），锥轴取速度方向、近零速退朝向；与引信共享 `detonate()` 且由一次性 claim 保证同帧只爆一次
 
 **特效面**
 - [ ] `ProjectileVfxSpecs` 条目在 map 末尾、调色板为分支内内联字面量（未加共享调色板函数）
 - [ ] 引爆锥面走基建组件调用，本分支未自实现锥面渲染
 
 **测试面**
-- [ ] 7 条单测全部真实调用逻辑（无源码 contain）；难度注入用例结束后 `installScaleForTests(null)` 清理
-- [ ] 烟测 8 个检查点全过；尤其「穿舰不爆」「600su 空射自爆」「成片清除导弹群」三条裁定行为
+- [ ] 单测全部真实调用逻辑（无源码 contain）；难度注入用例结束后 `installScaleForTests(null)` 清理
+- [ ] 烟测 8 个检查点全过；尤其「撞舰引爆（目标掉血）/ 600su 空射自爆 / 成片清除导弹群」三条裁定行为（2026-09 修订：原「穿舰不爆」作废）
 
 **目检**
 - [ ] 白蓝短拖尾克制不抢主炮；锥面蓝色调规模约为贯星 50%；引爆音效与闪光同步

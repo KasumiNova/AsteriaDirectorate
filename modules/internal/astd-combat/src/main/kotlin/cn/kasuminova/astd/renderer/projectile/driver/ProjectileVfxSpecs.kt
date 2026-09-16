@@ -38,9 +38,9 @@ object ProjectileVfxSpecs {
             simpleProjectileVfx(
                 "astd_charge_needle_shot",
                 chargeNeedleColor(),
-                width = 7f,
+                width = 6f,
                 length = 180f,
-                trailWidthScale = 0.25f,
+                trailWidthScale = 0.5f,
                 decorTrail = false
             )
         },
@@ -48,9 +48,9 @@ object ProjectileVfxSpecs {
             simpleProjectileVfx(
                 "astd_heavy_charge_needle_shot",
                 chargeNeedleColor(),
-                width = 7f,
+                width = 6f,
                 length = 180f,
-                trailWidthScale = 0.25f,
+                trailWidthScale = 0.5f,
                 decorTrail = false
             )
         },

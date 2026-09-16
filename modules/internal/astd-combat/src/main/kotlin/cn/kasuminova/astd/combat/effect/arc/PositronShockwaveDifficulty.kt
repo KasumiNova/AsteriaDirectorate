@@ -33,6 +33,12 @@ object PositronShockwaveDifficulty {
     /** 面板 200 破片的伤害倍率：迟暮 100% / 砺刃 125% / 破晓 200%。 */
     val DAMAGE_MULT = ScalingEntry(1f, 1.25f, 2f)
 
+    /**
+     * 近炸引信触发距离占锥长比例（2026-09 用户裁定：敌对战机/导弹进入锥状射程约 40% 处才引爆，
+     * 不再进入锥缘立刻引爆）；几何与结算锥同源，仅引信触发圈收窄。
+     */
+    const val FUSE_RANGE_RATIO = 0.4f
+
     /** 无主弹体 WARN 的 once 守卫（罕见路径，不刷屏）。 */
     @Volatile
     private var nullSourceWarned = false
@@ -75,8 +81,8 @@ object PositronShockwaveDifficulty {
 
     /**
      * 近炸引信目标判定（纯函数，规格裁定矩阵）：
-     * 严格只导弹/战机/无人机触发近炸——舰船不触发（只可能在满射程自爆时被锥面波及）；
-     * 剔除同方（owner 相同）与 hulk。
+     * 严格只导弹/战机/无人机触发近炸——舰船由碰撞 + OnHit 即时引爆承接（不再穿模通过，
+     * 2026-09 用户裁定）；剔除同方（owner 相同）与 hulk。
      */
     fun isFuseTarget(entity: CombatEntityAPI, owner: Int): Boolean = when (entity) {
         is MissileAPI -> entity.owner != owner

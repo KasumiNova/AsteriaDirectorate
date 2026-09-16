@@ -1,6 +1,6 @@
 package cn.kasuminova.astd.combat.effect.arc.qiongjue
 
-import cn.kasuminova.astd.api.buff.getOrCreateBuffByWeapon
+import cn.kasuminova.astd.api.buff.buffHost
 import cn.kasuminova.astd.api.combat.CombatFeedback
 import cn.kasuminova.astd.impl.combat.CombatFeedbackImpl
 import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
@@ -19,13 +19,12 @@ import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
 
 /**
- * “穷距”相位轨道炮的命中路由（规格 05 §2.2）：挂 `.proj` 的 `onHitEffect`。
+ * “穷距”相位轨道炮的命中路由（规格 05 §2.2，2026-09 修订）：挂 `.proj` 的 `onHitEffect`。
  *
  * 结算顺序：目标类型过滤（仅舰船；战机/导弹不叠层、不触发异目标折算）
- * → 取/建 Weapon 级叠层 Buff（复合键，同舰双穷距按槽位天然隔离）
+ * → 取/建 Ship 级共享叠层 Buff（全舰同型武器共同积累、共同受益）
  * → 同目标 +1 / 异目标先折算后 +1 / 旧目标失效不折算直接 +1（规格裁定）
- * → 刷新最后命中时间 → 触发玩家可见反馈（异目标浮字「演算转移」、满层边沿浮字「演算完成」、
- * 命中小号锥面冲击特效）。
+ * → 刷新最后命中时间 → 触发玩家可见反馈（异目标浮字「演算转移」、命中小号锥面冲击特效）。
  *
  * 命中锥面为纯视觉（2026-07-29 审批裁定：弃白闪，改基建 [ConeImpactVfx] 小号版，
  * 约贯星 25% 规模起始：半角 12°、锥长 90su、冷白主色）——穷距没有锥状冲击机制，
@@ -34,9 +33,6 @@ import java.awt.Color
  * 难度取值每次命中调用 [QiongjueStackMath.resolve] 一次（不缓存，玩家固定 v2）。
  */
 class QiongjuePhaseRailgunOnHitEffect : OnHitEffectPlugin {
-
-    /** 武器无槽位引用异常分支的「一次/实例」日志闸（BuffHostImpl 对空槽抛 IAE，03 验收判例）。 */
-    private var warnedMissingSlot = false
 
     override fun onHit(
         projectile: DamagingProjectileAPI,
@@ -52,22 +48,10 @@ class QiongjuePhaseRailgunOnHitEffect : OnHitEffectPlugin {
         val targetShip = target as? ShipAPI ?: return
         if (targetShip.isFighter || targetShip.isHulk || targetShip.isPhased) return
 
-        // 2. 来源与武器解析：无来源无法定位宿主舰（INFO 放弃）；无武器引用无法定位武器级 Buff（WARN 异常路径）。
-        val weapon = projectile.weapon
-        val ship = projectile.source ?: weapon?.ship
+        // 2. 来源解析：无来源无法定位宿主舰（INFO 放弃）。
+        val ship = projectile.source ?: projectile.weapon?.ship
         if (ship == null) {
             log.info("[ASTD] 穷距命中放弃结算：弹体无来源（spec=${projectile.projectileSpecId}）")
-            return
-        }
-        if (weapon == null) {
-            log.warn("[ASTD] 穷距命中放弃结算：弹体无武器引用，无法定位武器级 buff（spec=${projectile.projectileSpecId}, ship=${ship.id}）")
-            return
-        }
-        if (weapon.slot == null) {
-            if (!warnedMissingSlot) {
-                warnedMissingSlot = true
-                log.warn("[ASTD] 穷距武器无槽位引用，无法登记 Weapon 级叠层状态，放弃结算: weapon=${weapon.id}")
-            }
             return
         }
 
@@ -75,21 +59,21 @@ class QiongjuePhaseRailgunOnHitEffect : OnHitEffectPlugin {
         val hitPoint = point ?: projectile.location ?: return
 
         // 3. 叠层结算（规格 05 §2.2 第 5 步三分支，统一走 QiongjueStackMath.stacksAfterHit 语义）。
-        // 伤害乘区监听器幂等登记（同 spec 武器共享 damage.modifier 底层 stat，逐武器乘区必须走逐命中通道）。
+        // 伤害乘区监听器幂等登记（逐武器乘区必须走逐命中通道，weaponId 过滤保证只加成同型武器）。
         QiongjueDamageDealtModifier.ensure(ship)
-        val buff = ship.getOrCreateBuffByWeapon(QiongjueCalcStacks.BUFF_ID, weapon) {
-            QiongjueCalcStacks(ship, weapon, engine)
-        } as QiongjueCalcStacks
+        val host = ship.buffHost()
+        val buff = host.find(QiongjueCalcStacks.BUFF_ID) as? QiongjueCalcStacks
+            ?: QiongjueCalcStacks(ship, engine, host).also { host.register(it) }
         val retainPct = QiongjueStackMath.resolve(DifficultyTuningImpl, QiongjuePhaseRailgunDifficulty.SWITCH_RETAIN, ship.owner)
         val oldTargetValid = buff.isTargetAlive()
         val sameTarget = oldTargetValid && buff.target === targetShip
-        val stacksBefore = buff.stacks
-        val stacksAfter = QiongjueStackMath.stacksAfterHit(stacksBefore, oldTargetValid, sameTarget, retainPct)
+        val stacksAfter = QiongjueStackMath.stacksAfterHit(buff.stacks, oldTargetValid, sameTarget, retainPct)
         buff.target = targetShip
-        buff.addStacks(stacksAfter - stacksBefore)
+        buff.addStacks(stacksAfter - buff.stacks)
         buff.lastHitTime = engine.getTotalElapsedTime(false)
 
         // 4. 玩家可见反馈（机制可视化铁律，同帧触发；浮字仅命中来源为玩家船，避免满屏 AI 浮字）。
+        // 满层不再弹「演算完成」浮字（2026-09 用户裁定：满层由 HUD 层数读数承担，不打断视觉焦点）。
         val isPlayerSource = ship === engine.playerShip
         if (oldTargetValid && !sameTarget) {
             if (isPlayerSource) {
@@ -100,16 +84,6 @@ class QiongjuePhaseRailgunOnHitEffect : OnHitEffectPlugin {
                 )
             }
             bumpTelemetry(engine, if (isPlayerSource) TELEMETRY_TRANSFER_PLAYER else TELEMETRY_TRANSFER_OTHER)
-        }
-        if (stacksBefore < QiongjuePhaseRailgunDifficulty.MAX_STACKS && buff.stacks == QiongjuePhaseRailgunDifficulty.MAX_STACKS) {
-            if (isPlayerSource) {
-                feedback.floatingText(
-                    engine, hitPoint,
-                    I18n[I18n.Categories.MOD, "ui.qiongjue.float.full"],
-                    FLOAT_SIZE, FLOAT_COLOR, targetShip, 0f, FLOAT_FLASH_DURATION,
-                )
-            }
-            bumpTelemetry(engine, if (isPlayerSource) TELEMETRY_FULL_PLAYER else TELEMETRY_FULL_OTHER)
         }
 
         // 5. 命中小号锥面冲击特效（纯视觉，无结算；朝向取弹体飞行矢量）。
@@ -145,12 +119,6 @@ class QiongjuePhaseRailgunOnHitEffect : OnHitEffectPlugin {
 
         /** 非玩家侧异目标折算次数遥测键。 */
         const val TELEMETRY_TRANSFER_OTHER = "astd_qiongjue_transfer_other"
-
-        /** 玩家侧满层边沿次数遥测键（「演算完成」浮字证据）。 */
-        const val TELEMETRY_FULL_PLAYER = "astd_qiongjue_full_player"
-
-        /** 非玩家侧满层边沿次数遥测键。 */
-        const val TELEMETRY_FULL_OTHER = "astd_qiongjue_full_other"
 
         /** 命中锥面特效生成次数遥测键。 */
         const val TELEMETRY_CONE_VFX = "astd_qiongjue_cone_vfx"

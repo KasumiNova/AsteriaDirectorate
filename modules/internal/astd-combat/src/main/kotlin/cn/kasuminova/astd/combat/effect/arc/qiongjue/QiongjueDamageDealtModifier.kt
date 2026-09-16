@@ -15,9 +15,9 @@ import org.lwjgl.util.vector.Vector2f
  *
  * 动机：初版直接写 `weapon.damage.modifier`，烟测实证（05 验收第三轮，qjDmgStatShared=true）
  * **同舰同 spec 武器的 `WeaponAPI.damage.modifier` 是同一个底层 MutableStat**——
- * 双穷距各自写入会互相乘算（满层实测 1.625²=2.6406），破坏「同舰双穷距独立」机制。
- * 因此伤害乘区改走 [DamageDealtModifier]：每次命中回调拿到的是**该发弹体独立的 DamageAPI**，
- * 按 `projectile.weapon` 解析槽位对应的演算 Buff 层数，逐命中写入本发伤害乘区，天然逐武器隔离。
+ * 逐武器写入会互相乘算污染。因此伤害乘区走 [DamageDealtModifier]：每次命中回调拿到的是
+ * **该发弹体独立的 DamageAPI**，读取 Ship 级共享演算 Buff 层数（2026-09 修订：全舰同型共享），
+ * 按 weaponId 过滤逐命中写入本发伤害乘区——只加成穷距弹体，天然不波及其他武器。
  *
  * 每舰至多登记一个实例（[ensure] 幂等）；无 Buff / 层数为 0 / 非穷距弹体时返回 null 零开销放行。
  * 难度取值每次命中调用 [QiongjueStackMath.resolve] 一次（不缓存，玩家固定 v2）。
@@ -35,7 +35,7 @@ class QiongjueDamageDealtModifier : DamageDealtModifier {
         val weapon = projectile.weapon ?: return null
         if (weapon.spec?.weaponId != QiongjuePhaseRailgunDifficulty.WEAPON_ID) return null
         val ship = projectile.source ?: return null
-        val buff = ship.qiongjueCalcStacks(weapon) ?: return null
+        val buff = ship.qiongjueCalcStacks() ?: return null
         if (buff.stacks <= 0) return null
 
         val perStack = QiongjueStackMath.resolve(DifficultyTuningRef, QiongjuePhaseRailgunDifficulty.PER_STACK_BONUS, ship.owner)

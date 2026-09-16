@@ -13,7 +13,6 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
-import kotlin.test.assertTrue
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.`when`
 
@@ -22,6 +21,7 @@ import org.mockito.Mockito.`when`
  *
  * 背景：同舰同 spec 武器共享 `weapon.damage.modifier` 底层 stat（05 烟测实证），
  * 伤害乘区必须走逐命中 DamageAPI——本类验证该通道的过滤矩阵与乘区数值。
+ * 2026-09 修订：叠层 Buff 升级 Ship 级全舰同型共享（每层 v2 4%），同舰多门穷距共同受益。
  */
 class QiongjueDamageDealtModifierTest {
 
@@ -37,9 +37,10 @@ class QiongjueDamageDealtModifierTest {
         val ship = stubShip(weapons = listOf(weapon))
         `when`(ship.owner).thenReturn(owner)
         val engine = mock(CombatEngineAPI::class.java)
-        val buff = QiongjueCalcStacks(ship, weapon, engine)
+        val host = ship.buffHost()
+        val buff = QiongjueCalcStacks(ship, engine, host)
         if (stacks > 0) buff.addStacks(stacks)
-        ship.buffHost().register(buff, weapon)
+        host.register(buff)
         return Triple(ship, weapon, buff)
     }
 
@@ -65,7 +66,7 @@ class QiongjueDamageDealtModifierTest {
             projectileOf(ship, weapon), null, damage, null, false,
         )
         assertEquals(QiongjueDamageDealtModifier.MOD_ID, result, "有层数穷距命中必须登记 stat 来源 id")
-        assertEquals(600f * 1.25f, stat.modifiedValue, 0.5f, "4 层 × v2 6.25% → ×1.25")
+        assertEquals(600f * 1.16f, stat.modifiedValue, 0.5f, "4 层 × v2 4% → ×1.16")
     }
 
     @Test
@@ -78,7 +79,7 @@ class QiongjueDamageDealtModifierTest {
                 projectileOf(ship, weapon), null, damage, null, false,
             )
             assertEquals(QiongjueDamageDealtModifier.MOD_ID, result)
-            assertEquals(600f * 1.2f, stat.modifiedValue, 0.5f, "4 层 × v1 5% → ×1.2")
+            assertEquals(600f * 1.08f, stat.modifiedValue, 0.5f, "4 层 × v1 2% → ×1.08")
         } finally {
             DifficultyTuningImpl.installScaleForTests(null)
         }
@@ -101,7 +102,7 @@ class QiongjueDamageDealtModifierTest {
         `when`(lonely.owner).thenReturn(0)
         assertNull(
             QiongjueDamageDealtModifier().modifyDamageDealt(projectileOf(lonely, lonelyWeapon), null, damage, null, false),
-            "无 Buff 不得写伤害乘区",
+            "无 Buff 不得写乘区",
         )
     }
 
@@ -111,7 +112,6 @@ class QiongjueDamageDealtModifierTest {
         val (damage, stat) = damageOf(600f)
         // 其他武器 id。
         val otherWeapon = stubWeapon("WS 001", "astd_aod7")
-        `when`(ship.allWeapons).thenReturn(listOf(otherWeapon))
         assertNull(
             QiongjueDamageDealtModifier().modifyDamageDealt(projectileOf(ship, otherWeapon), null, damage, null, false),
             "非穷距武器弹体不得写乘区",
@@ -125,26 +125,25 @@ class QiongjueDamageDealtModifierTest {
     }
 
     @Test
-    fun `双穷距逐命中 DamageAPI 天然隔离`() {
-        // 机制级回归：同舰双穷距共享 weapon.damage.modifier stat（烟测实证），逐命中通道下
-        // 各发弹体 DamageAPI 独立——w1 满层写入不影响 w2 零层放行。
+    fun `双穷距共享同一份 Ship 级叠层`() {
+        // 2026-09 机制修订回归：层数/目标全舰同型武器共享一份——w1 积累的层数 w2 同样受益；
+        // 逐命中 DamageAPI 通道下两发各自独立写入相同乘区。
         val w1 = stubWeapon("WS 012", QiongjuePhaseRailgunDifficulty.WEAPON_ID)
         val w2 = stubWeapon("WS 013", QiongjuePhaseRailgunDifficulty.WEAPON_ID)
         val ship = stubShip(weapons = listOf(w1, w2))
         `when`(ship.owner).thenReturn(0)
         val engine = mock(CombatEngineAPI::class.java)
-        val buff1 = QiongjueCalcStacks(ship, w1, engine)
-        buff1.addStacks(10)
-        ship.buffHost().register(buff1, w1)
-        ship.buffHost().register(QiongjueCalcStacks(ship, w2, engine), w2)
+        val host = ship.buffHost()
+        val buff = QiongjueCalcStacks(ship, engine, host)
+        buff.addStacks(10)
+        host.register(buff)
 
         val (damage1, stat1) = damageOf(600f)
         val (damage2, stat2) = damageOf(600f)
         val listener = QiongjueDamageDealtModifier()
         listener.modifyDamageDealt(projectileOf(ship, w1), null, damage1, null, false)
         listener.modifyDamageDealt(projectileOf(ship, w2), null, damage2, null, false)
-        assertEquals(600f * 1.625f, stat1.modifiedValue, 0.5f, "w1 满层 → ×1.625")
-        assertEquals(600f, stat2.modifiedValue, 0.001f, "w2 零层不受 w1 污染（共享 stat 场景下会被 ×1.625）")
-        assertTrue(stat1 !== stat2, "逐命中 DamageAPI 实例独立（测试结构前提）")
+        assertEquals(600f * 1.4f, stat1.modifiedValue, 0.5f, "w1 满层 → ×1.4")
+        assertEquals(600f * 1.4f, stat2.modifiedValue, 0.5f, "w2 共享同一 Buff 满层 → ×1.4")
     }
 }

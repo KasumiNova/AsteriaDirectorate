@@ -270,7 +270,7 @@ object Wpn_astd_charge_needle : WeaponDataEntry(), SsProjProjectileOutputs {
     override val damagePerShot: Int = 50
     override val emp: Int = 100
     override val turnRate: Int = 30
-    override val ops: Int = 9
+    override val ops: Int = 8
 
     // 非 Beam：用 chargedown/burst 描述射速（20 发/s），避免 tooltip 统计除 0 溢出
     override val chargedown: Double = 0.05
@@ -282,8 +282,9 @@ object Wpn_astd_charge_needle : WeaponDataEntry(), SsProjProjectileOutputs {
     override val ammoPerSec: Double = 2.5
     override val reloadSize: Int = 15
     override val type: String = "ENERGY"
-    override val energyPerShot: Int = 50
-    override val energyPerSecond: Int = 125
+    override val energyPerShot: Int = 40
+    // 持续 2.5 发/s × 40 折算
+    override val energyPerSecond: Int = 100
     override val projSpeed: Int = 1350
     // 精度对齐原版轻型针刺（“中等”）：min 0 / max 10 / 每发 +0.66 / 衰减 5
     override val minSpread: Double = 0.0
@@ -321,7 +322,7 @@ object Wpn_astd_heavy_charge_needle : WeaponDataEntry(), SsProjProjectileOutputs
     override val damagePerShot: Int = 50
     override val emp: Int = 100
     override val turnRate: Int = 30
-    override val ops: Int = 17
+    override val ops: Int = 16
 
     // 非 Beam：用 chargedown/burst 描述射速（20 发/s），避免 tooltip 统计除 0 溢出
     override val chargedown: Double = 0.05
@@ -333,8 +334,9 @@ object Wpn_astd_heavy_charge_needle : WeaponDataEntry(), SsProjProjectileOutputs
     override val ammoPerSec: Double = 5.0
     override val reloadSize: Int = 30
     override val type: String = "ENERGY"
-    override val energyPerShot: Int = 50
-    override val energyPerSecond: Int = 250
+    override val energyPerShot: Int = 40
+    // 持续 5 发/s × 40 折算
+    override val energyPerSecond: Int = 200
     override val projSpeed: Int = 1350
     // 精度对齐原版重型针刺（“中等”）：min 1 / max 10 / 每发 +0.5 / 衰减 5
     override val minSpread: Double = 1.0
@@ -434,15 +436,15 @@ object Wpn_astd_qiongjue_phase_railgun : WeaponDataEntry(), SsProjProjectileOutp
     override val name: String = weaponName(id)
     override val tier: Int = 2
     override val baseValue: Int = 25000
-    override val range: Int = 1200
+    override val range: Int = 1100
     override val damagePerSecond: Int = 300
     override val damagePerShot: Int = 600
     override val turnRate: Int = 8
-    override val ops: Int = 27
+    override val ops: Int = 28
 
-    // 定案 2s 开火间隔 = 1s 开火充能 + 1s 冷却（非 beam 必须走 chargedown/burst，避免 tooltip 统计除 0）
+    // 定案 2.5s 开火间隔 = 1s 开火充能 + 1.5s 冷却（非 beam 必须走 chargedown/burst，避免 tooltip 统计除 0）
     override val chargeup: Double = 1.0
-    override val chargedown: Double = 1.0
+    override val chargedown: Double = 1.5
     override val burstSize: Int = 1
     override val burstDelay: Double = 0.0
 
@@ -480,8 +482,9 @@ object Wpn_astd_qiongjue_phase_railgun : WeaponDataEntry(), SsProjProjectileOutp
 /**
  * 正电子冲击波：小型能量点防御近炸弹（量产，规格 06 §1.1）。
  *
- * 无触碰体积（`.proj` collisionClass="NONE"，无 onHit 路径）+ 近炸/满射程双引爆
- * 走 `.proj` onFireEffect 注册引信脚本；锥状冲击结算复用基建 ConeImpactHandler。
+ * 近炸引信（锥程 40% 触发圈，仅导弹/战机/无人机）+ 满射程引爆走 `.proj` onFireEffect 注册引信脚本；
+ * 撞舰即时引爆走 `.proj` onHitEffect（2026-09 修订：弹体识别舰船对象，不再穿过，collisionClass
+ * 升级为 PROJECTILE_NO_FF 原版高爆同口径）；锥状冲击结算复用基建 ConeImpactHandler。
  * 弹体 VFX 追踪与引信注册组合在同一个 `.proj` onFireEffect（PositronShockwaveOnFireEffect 内委托
  * ProjectileSpecOnFireDispatcher）——原版 WeaponSpecLoader 不读 `.wpn` 的 onFireEffect 键。
  */
@@ -524,13 +527,11 @@ object Wpn_astd_positron_shockwave : WeaponDataEntry(), SsProjProjectileOutputs 
         spawnType = ProjectileSpawnType.BALLISTIC,
         // 引信脚本注册 + VFX 追踪（PositronShockwaveOnFireEffect 内组合 ProjectileSpecOnFireDispatcher）
         onFireEffect = "cn.kasuminova.astd.combat.effect.arc.PositronShockwaveOnFireEffect",
-        // 无触碰体积，无 onHit 路径
-        onHitEffect = null,
-        // 无触碰体积的真实实现（规格 §0-1：ProjectileProjSpec 无 collisionRadius 字段）
-        collisionClass = "NONE",
-        // 规格 §1.1“置空不写”与实机冲突：原版 ProjectileSpec 加载强制要求该键（缺键 RuntimeException）；
-        // 与 collisionClass 同写 NONE（01 special_items order 判例同族，规格文本待主代理修订）。
-        collisionClassByFighter = "NONE",
+        // 撞舰引爆路径（2026-09 修订：弹体识别舰船对象，不再穿过）
+        onHitEffect = "cn.kasuminova.astd.combat.effect.arc.PositronShockwaveOnHitEffect",
+        // 识别舰船/战机碰撞（原版高爆同口径 NO_FF 不误伤友军）；导弹仍由近炸引信承担
+        collisionClass = "PROJECTILE_NO_FF",
+        collisionClassByFighter = "PROJECTILE_NO_FF",
         fringeColor = Rgba(140, 200, 255, 255),
         coreColor = Rgba(240, 248, 255, 200),
     )
@@ -877,9 +878,10 @@ object Wpn_astd_gemini_dem_he_payload : WeaponDataEntry() {
 /**
  * 彗星冲击波（原“重型离子脉冲”，2026-09 更名）：大型能量弹匣 EMP 主炮（量产，规格 02 §1.1）。
  *
- * 离子脉冲炮大型化改进型：船体/装甲命中按概率泄放 EMP 电弧（命中点落点，对齐电针口径），
+ * 离子脉冲炮大型化改进型：船体/装甲命中必叠 EMP 抗性削减层（易伤转化为隐藏机制），
+ * 并按概率泄放 EMP 电弧（命中点落点，对齐电针口径），
  * 破晓敌版追加 EMP 贯穿补伤（机制见 HeavyIonPulseOnHitEffect）；
- * 双炮管交替射击（0.15s/发 4 连发、开火间隔 0.15s）走 `.wpn` 双管坐标 + ALTERNATING。
+ * 双炮管交替射击（0.1s/发 4 连发、射击冷却 0.4s）走 `.wpn` 双管坐标 + ALTERNATING。
  */
 object Wpn_astd_heavy_ion_pulse : WeaponDataEntry(), SsProjProjectileOutputs {
     override val id: String = "astd_heavy_ion_pulse"
@@ -887,20 +889,20 @@ object Wpn_astd_heavy_ion_pulse : WeaponDataEntry(), SsProjProjectileOutputs {
     override val tier: Int = 2
     override val rarity: Int = 1
     override val baseValue: Int = 24000
-    override val range: Int = 700
+    override val range: Int = 800
     // 持续 1.6 发/s × 250 折算（照 aod7“持续 DPS”口径，弹匣回复速率封顶）
     override val damagePerSecond: Int = 400
     override val damagePerShot: Int = 250
-    override val emp: Int = 750
+    override val emp: Int = 500
     override val impact: Int = 0
     override val turnRate: Int = 20
-    override val ops: Int = 26
+    override val ops: Int = 28
 
-    // 4 连发 0.15s/发、开火间隔 0.15s
+    // 4 连发 0.1s/发、射击冷却 0.4s
     override val chargeup: Double = 0.05
-    override val chargedown: Double = 0.15
+    override val chargedown: Double = 0.4
     override val burstSize: Int = 4
-    override val burstDelay: Double = 0.15
+    override val burstDelay: Double = 0.1
 
     // 弹匣三列：24 发弹匣，1.6 发/s 回复（8 发/5s），每次装填 8 发
     override val ammo: Int = 24

@@ -259,9 +259,9 @@
 		"ui.lens.status.stacks": "%stacks% 层",
 
 		"ui.charge_needle.status.title": "电荷淤积",
-		"ui.charge_needle.status.desc": "目标 %stacks% 层，护盾维持 +%percent%%",
+		"ui.charge_needle.status.desc": "目标 %stacks% 层，护盾维持 +%percent%%，软辐能 +%flat%/s",
 		"ui.charge_needle.status.victim_title": "电荷淤积",
-		"ui.charge_needle.status.victim_desc": "本舰护盾维持 +%percent%%（%stacks% 层）",
+		"ui.charge_needle.status.victim_desc": "本舰护盾维持 +%percent%%，软辐能 +%flat%/s（%stacks% 层）",
 
 		"ui.eda.range_status.title": "电驱加速炮",
 		"ui.eda.range_status.desc": "射程加成：+%bonus% su",
@@ -273,7 +273,11 @@
 		"ui.qiongjue.status.calc": "持续演算",
 		"ui.qiongjue.status.stacks": "层数 %stacks%/10 · 伤害 +%dmg%% · 射速 +%rof%%",
 		"ui.qiongjue.float.transfer": "演算转移",
-		"ui.qiongjue.float.full": "演算完成",
+
+		"ui.heavy_ion_pulse.status.title": "EMP 抗性削减",
+		"ui.heavy_ion_pulse.status.desc": "目标 EMP 抗性 -%percent%%（%stacks% 层）",
+		"ui.heavy_ion_pulse.status.victim_title": "EMP 抗性削减",
+		"ui.heavy_ion_pulse.status.victim_desc": "本舰 EMP 抗性 -%percent%%（%stacks% 层）",
 
 		"world.system.main.name": "菀星第七分局",
 		"world.system.starfall.name": "星坠",

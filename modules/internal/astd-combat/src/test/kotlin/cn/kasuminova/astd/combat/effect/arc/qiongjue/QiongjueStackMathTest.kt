@@ -128,8 +128,9 @@ class QiongjueStackMathTest {
         `when`(engine.customData).thenReturn(HashMap())
         `when`(engine.playerShip).thenReturn(null)
 
+        val host = mock(cn.kasuminova.astd.api.buff.BuffHost::class.java)
         val buff = QiongjueCalcStacks(
-            ship, weapon, engine,
+            ship, engine, host,
             decayRateEntry = ScalingEntry(0f, 0f, 0f),
         )
         buff.addStacks(5)

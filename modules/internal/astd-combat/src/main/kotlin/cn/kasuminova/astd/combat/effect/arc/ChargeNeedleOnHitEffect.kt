@@ -17,8 +17,9 @@ import org.lwjgl.util.vector.Vector2f
 /**
  * 电荷针刺 / 重型电荷针刺的命中路由（规格 01 §2.3）：挂两个 `.proj` 的 `onHitEffect`。
  *
- * - 护盾命中 → 目标舰电荷淤积叠层（[ChargeNeedleStacks]，耗散安全闸 clamp）+ 冷蓝白轻粒子；
- * - 船体/装甲命中 → 按难度概率泄放 EMP 电弧（[ChargeNeedleVfx.discharge]，真实 `spawnEmpArc` 结算）。
+ * - 护盾命中 → 目标舰电荷淤积叠层（[ChargeNeedleStacks]：维持最终乘区 + 体型固定软辐能，
+ *   两项之和 capped 目标最终耗散 200%）+ 冷蓝白轻粒子；
+ * - 船体/装甲命中 → 按难度五档查表概率泄放 EMP 电弧（[ChargeNeedleVfx.discharge]，真实 `spawnEmpArc` 结算）。
  *
  * 两分支互斥（`shieldHit` 二分），无交叉结算；`applyDamage` 不经手（EMP 电弧自带结算），无二次 onHit 回环。
  * 难度取值每次命中调用 [ChargeNeedleTuning.resolve] 一次（不缓存）；泄放随机走共享 [CombatRandom]，
@@ -50,7 +51,8 @@ class ChargeNeedleOnHitEffect : OnHitEffectPlugin {
         val hitPoint = point ?: projectile.location ?: return
 
         // 玩家固定 v2 取值在每次命中处调用（非缓存）；projectile.source 为 null（游离弹）按非玩家口径。
-        val values = ChargeNeedleTuning.resolve(DifficultyTuningImpl, isPlayer = projectile.source?.owner == 0)
+        // 固定软辐能分档依据目标舰体型（hullSize 实时读取）。
+        val values = ChargeNeedleTuning.resolve(DifficultyTuningImpl, isPlayer = projectile.source?.owner == 0, ship.hullSize)
 
         if (shieldHit) {
             applyShieldHit(projectile, ship, hitPoint, values, engine)
@@ -81,6 +83,7 @@ class ChargeNeedleOnHitEffect : OnHitEffectPlugin {
         val buff = host.find(ChargeNeedleStacks.BUFF_ID) as? ChargeNeedleStacks
             ?: ChargeNeedleStacks(ship, engine, host).also { host.register(it) }
         buff.perStack = values.perStack
+        buff.flatPerStack = values.flatFluxPerStack
         buff.addStacks(1)
         if (projectile.source != null && projectile.source == engine.playerShip) buff.showOnPlayerHud = true
 

@@ -173,9 +173,9 @@ class ProjectileVfxSpecsTest {
                 assertNull(spec.angularOutRange)
                 assertNull(spec.velocityOutRange)
             }
-            // 宽度 −75%：bandWidth(7, 2.2)=round05(max(2.45, 6.93))=7 ×2 ×0.25 = 3.5
+            // 宽度 −50%：bandWidth(6, 2.2)=round05(max(2.2, 6.6))=6.5 ×2 ×0.5 ≈ 7（实读 7.0）
             val twin = vfx.tree.staticTrails.first { it.first == "twin" }.second
-            assertEquals(3.5f, twin.width, "$id 拖尾宽度 ×0.25")
+            assertEquals(7.0f, twin.width, "$id 拖尾宽度 ×0.5")
         }
     }
 

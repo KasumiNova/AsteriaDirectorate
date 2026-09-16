@@ -8,6 +8,7 @@ import cn.kasuminova.astd.combat.effect.arc.GeminiDemPayloadBeamEffect
 import cn.kasuminova.astd.combat.effect.arc.GeminiDemSalvoOnFireEffect
 import cn.kasuminova.astd.combat.effect.arc.GeminiDemSyncHandler
 import cn.kasuminova.astd.combat.effect.arc.GeminiDemTrackAI
+import cn.kasuminova.astd.combat.effect.arc.HeavyIonPulseEmpResistStacks
 import cn.kasuminova.astd.combat.effect.arc.HeavyIonPulseTuning
 import cn.kasuminova.astd.combat.effect.arc.HeavyIonPulseVfx
 import cn.kasuminova.astd.combat.effect.arc.PositronShockwaveFuseScript
@@ -24,7 +25,7 @@ import cn.kasuminova.astd.combat.effect.lens.AnnihilationVortexBeamEffect
 import cn.kasuminova.astd.combat.effect.lens.stellar.StellarMrmMissileAI
 import cn.kasuminova.astd.combat.effect.lens.stellar.StellarMrmStrikeImpl
 import cn.kasuminova.astd.api.buff.buffHost
-import cn.kasuminova.astd.api.buff.getBuffByWeapon
+import cn.kasuminova.astd.api.buff.getBuff
 import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcProductionTooltipContracts
 import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcProductionVfx
@@ -173,9 +174,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     private var qjStackFpsTicks = 0
     private var qjStackFpsWallStartNanos = 0L
     private var qjStackFps = -1f
-    // DUAL：同舰双穷距独立证据（w1 续打满层 / w2 停火衰减）。
-    private var qjDualW1Stacks = -1
-    private var qjDualW2Stacks = -1
+    // DUAL（2026-09 修订：共享证据）：w1 独建满层后 w2 补射，首发同享满层乘区（读 qjW2DealtMult 遥测）。
     // SWITCH：异目标折算证据（floor(10×0.3125)+1=4）。
     private var qjSwitchW1Stacks = -1
     // DECAY：停火窗口衰减证据（3s 窗口 + 1.75 层/s 归零耗时）。
@@ -184,7 +183,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     private var qjStacksBeforeKill = -1
     private var qjStacksAfterKillHit = -1
     private var qjKillRetargeted = false
-    // ENEMY_SCALE：敌版三档逐命中伤害乘区证据（v1/v2/v5 × 4 层 → 1.20/1.25/1.40）；采样前停火 settle 防层数续爬。
+    // ENEMY_SCALE：敌版三档逐命中伤害乘区证据（v1 2%/v2 4%/v5 10% × 4~5 层）；采样前停火 settle 防层数续爬。
     private var qjScaleStep = 0
     private var qjScaleSampling = false
     private var qjScaleSampleAt = -1f
@@ -2028,7 +2027,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         }
     }
 
-    /** 满层射速间隔追踪：w1 新弹 spawn 间隔（w1 满层窗口内取最小值，期望 2s/1.625≈1.23s 的 spike 证据）。 */
+    /** 满层射速间隔追踪：w1 新弹 spawn 间隔（w1 满层窗口内取最小值，期望 2.5s 全周期/1.4≈1.79s 的 spike 证据）。 */
     private fun trackQjRefire(engine: CombatEngineAPI, w1: WeaponAPI?, w1Stacks: Int) {
         w1 ?: return
         for (p in engine.projectiles) {
@@ -2046,20 +2045,20 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         }
     }
 
-    /** 敌版三档换步：移除敌方武器级演算 Buff，下一命中从 0 重建（保证采样时层数恰为目标值）。 */
-    private fun clearQjEnemyBuff(enemy: ShipAPI?, enemyW: WeaponAPI?) {
-        if (enemy == null || enemyW == null) return
-        val buff = enemy.getBuffByWeapon(QiongjueCalcStacks.BUFF_ID, enemyW) ?: return
-        enemy.buffHost().remove(buff, enemyW)
+    /** 敌版三档换步：移除敌方 Ship 级共享演算 Buff，下一命中从 0 重建（保证采样时层数恰为目标值）。 */
+    private fun clearQjEnemyBuff(enemy: ShipAPI?) {
+        if (enemy == null) return
+        val buff = enemy.getBuff(QiongjueCalcStacks.BUFF_ID) ?: return
+        enemy.buffHost().remove(buff)
     }
 
     /**
-     * 穷距相位轨道炮相位机（规格 05 §2.5 烟测检查点映射）：
-     * MOUNT（装配/1200 射程校验）→ STACK（同目标满层 10：伤害乘区 1.625 / 射速间隔≈1.23s spike /
-     * HUD / 满层浮字 / 命中锥面 / 叠层期帧率）→ DUAL（w2 停火 7s 独立衰减，复合键隔离层差≥5）
+     * 穷距相位轨道炮相位机（规格 05 §2.5 烟测检查点映射，2026-09 修订：Ship 级全舰同型共享叠层）：
+     * MOUNT（装配/1100 射程校验）→ STACK（同目标满层 10：伤害乘区 1.4 / 射速间隔≈1.79s spike /
+     * HUD / 命中锥面 / 叠层期帧率）→ DUAL（w1 独建满层后 w2 补射，首发同享 ×1.4：共享证据）
      * → SWITCH（转火警戒 B：10 层折算为 4 +「演算转移」浮字）→ DECAY（停火 3s 窗口后 1.75 层/s 归零）
      * → KILL（击沉 B 转火 C：旧目标失效不折算，首中=旧值+1）→ ENEMY_SCALE（installScaleForTests
-     * 敌版三档逐命中乘区 1.20/1.25/1.40）→ COMPLETED（回打敌版做截图舞台，拖尾/锥面/HUD 入帧）。
+     * 敌版三档逐命中乘区 1.08~1.10/1.16~1.20/1.40~1.50）→ COMPLETED（回打敌版做截图舞台，拖尾/锥面/HUD 入帧）。
      */
     private fun advanceQjScenario(engine: CombatEngineAPI) {
         engine.setDoNotEndCombat(true)
@@ -2073,9 +2072,9 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         val w1 = findQjWeapon(player, QJ_PLAYER_SLOT_W1)
         val w2 = findQjWeapon(player, QJ_PLAYER_SLOT_W2)
         val enemyW = enemy?.allWeapons?.firstOrNull { it.id == ASTDInGameAutomationScenario.QJ_WEAPON_ID }
-        val w1Buff = if (player != null && w1 != null) player.qiongjueCalcStacks(w1) else null
-        val w2Buff = if (player != null && w2 != null) player.qiongjueCalcStacks(w2) else null
-        val enemyBuff = if (enemy != null && enemyW != null) enemy.qiongjueCalcStacks(enemyW) else null
+        // 2026-09 修订：叠层 Buff 为 Ship 级全舰同型共享——w1/w2/敌舰各至多一份，按舰直取。
+        val shipBuff = player?.qiongjueCalcStacks()
+        val enemyBuff = enemy?.qiongjueCalcStacks()
 
         when (qjPhase) {
             QJ_PHASE_MOUNT -> {
@@ -2096,9 +2095,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             }
             QJ_PHASE_STACK -> {
                 stabilizeQjShips(engine, playerTarget = enemy, fireW1 = true, fireW2 = true)
-                trackQjRefire(engine, w1, w1Buff?.stacks ?: 0)
-                val full = (w1Buff?.stacks ?: 0) >= QiongjuePhaseRailgunDifficulty.MAX_STACKS &&
-                    (w2Buff?.stacks ?: 0) >= QiongjuePhaseRailgunDifficulty.MAX_STACKS
+                trackQjRefire(engine, w1, shipBuff?.stacks ?: 0)
+                val full = (shipBuff?.stacks ?: 0) >= QiongjuePhaseRailgunDifficulty.MAX_STACKS
                 if (full && qjFullHoldSince < 0f) {
                     qjFullHoldSince = elapsed
                     qjStackFpsTicks = 0
@@ -2116,15 +2114,14 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     }
                     val spike = QiongjuePhaseRailgunOnHitEffect.telemetryCount(engine, QiongjueCalcStacks.TELEMETRY_SPIKE_APPLIED)
                     val hud = QiongjuePhaseRailgunOnHitEffect.telemetryCount(engine, QiongjueCalcStacks.TELEMETRY_HUD_FRAMES)
-                    val fullFloat = QiongjuePhaseRailgunOnHitEffect.telemetryCount(engine, QiongjuePhaseRailgunOnHitEffect.TELEMETRY_FULL_PLAYER)
                     val cone = QiongjuePhaseRailgunOnHitEffect.telemetryCount(engine, QiongjuePhaseRailgunOnHitEffect.TELEMETRY_CONE_VFX)
                     when {
                         kotlin.math.abs(qjDmgMultAtFull - QJ_EXPECT_FULL_DMG_MULT) > QJ_DMG_MULT_TOLERANCE -> {
-                            failureReason = "qj full dmg mult=$qjDmgMultAtFull, expect≈$QJ_EXPECT_FULL_DMG_MULT（10 层 × v2 6.25%）"
+                            failureReason = "qj full dmg mult=$qjDmgMultAtFull, expect≈$QJ_EXPECT_FULL_DMG_MULT（10 层 × v2 4%）"
                             transitionQjPhase(QJ_PHASE_FAILED)
                         }
                         qjRefireMinAtFull < QJ_REFIRE_MIN || qjRefireMinAtFull > QJ_REFIRE_MAX -> {
-                            failureReason = "qj full refire min=$qjRefireMinAtFull, expect [$QJ_REFIRE_MIN, $QJ_REFIRE_MAX]（2s/1.625≈1.23s spike）"
+                            failureReason = "qj full refire min=$qjRefireMinAtFull, expect [$QJ_REFIRE_MIN, $QJ_REFIRE_MAX]（2.5s 全周期/1.4≈1.79s spike，cooldownRemaining 含充能段）"
                             transitionQjPhase(QJ_PHASE_FAILED)
                         }
                         spike < 1 -> {
@@ -2135,10 +2132,6 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                             failureReason = "qj hud frames=$hud, expect>=1（「持续演算」状态条目）"
                             transitionQjPhase(QJ_PHASE_FAILED)
                         }
-                        fullFloat < 1 -> {
-                            failureReason = "qj full float=$fullFloat, expect>=1（「演算完成」浮字）"
-                            transitionQjPhase(QJ_PHASE_FAILED)
-                        }
                         cone < 1 -> {
                             failureReason = "qj cone vfx=$cone, expect>=1（命中小号锥面特效）"
                             transitionQjPhase(QJ_PHASE_FAILED)
@@ -2147,42 +2140,61 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                             failureReason = "qj stack fps=$qjStackFps < $QJ_STACK_MIN_FPS（叠层期帧率门槛）"
                             transitionQjPhase(QJ_PHASE_FAILED)
                         }
-                        else -> transitionQjPhase(QJ_PHASE_DUAL)
+                        else -> {
+                            // dealtMult 为常驻遥测（相位间不清零）：进 DUAL 前抹掉 w2 历史读数，
+                            // 保证本相位的 w2Mult>0 只能来自「w1 独建满层后 w2 补射首发」的新命中。
+                            if (player != null && w2 != null) {
+                                engine.customData.remove(QiongjueDamageDealtModifier.telemetryKey(player, w2))
+                            }
+                            transitionQjPhase(QJ_PHASE_DUAL)
+                        }
                     }
                 }
             }
             QJ_PHASE_DUAL -> {
-                // w1 续打敌 A 保持满层；w2 停火：3s 窗口 + 1.75 层/s 独立衰减（复合键隔离证据）。
-                stabilizeQjShips(engine, playerTarget = enemy, fireW1 = true, fireW2 = false)
-                if (elapsed - qjPhaseStartedAt >= QJ_DUAL_SECONDS) {
-                    qjDualW1Stacks = w1Buff?.stacks ?: -1
-                    qjDualW2Stacks = w2Buff?.stacks ?: -1
-                    if (qjDualW1Stacks >= QiongjuePhaseRailgunDifficulty.MAX_STACKS &&
-                        qjDualW1Stacks - qjDualW2Stacks >= QJ_DUAL_MIN_DIVERGENCE
+                // 共享验证（2026-09 修订）：w1 独打保持满层，w2 停火 4s 后补射——
+                // w2 首发命中同样享受全舰共享满层乘区（Ship 级 Buff 证据）。
+                stabilizeQjShips(
+                    engine,
+                    playerTarget = enemy,
+                    fireW1 = true,
+                    fireW2 = elapsed - qjPhaseStartedAt >= QJ_DUAL_W2_FIRE_AFTER,
+                )
+                val w2Mult = if (player != null && w2 != null) {
+                    QiongjueDamageDealtModifier.dealtMult(engine, player, w2)
+                } else {
+                    -1f
+                }
+                if (w2Mult > 0f) {
+                    if ((shipBuff?.stacks ?: 0) >= QiongjuePhaseRailgunDifficulty.MAX_STACKS &&
+                        kotlin.math.abs(w2Mult - QJ_EXPECT_FULL_DMG_MULT) <= QJ_DMG_MULT_TOLERANCE
                     ) {
                         transitionQjPhase(QJ_PHASE_SWITCH)
                     } else {
-                        failureReason = "qj dual divergence w1=$qjDualW1Stacks w2=$qjDualW2Stacks, expect w1=10 且层差>=$QJ_DUAL_MIN_DIVERGENCE（双穷距独立）"
+                        failureReason = "qj shared w2 mult=$w2Mult stacks=${shipBuff?.stacks}, expect≈$QJ_EXPECT_FULL_DMG_MULT（w1 独建满层，w2 首发同享）"
                         transitionQjPhase(QJ_PHASE_FAILED)
                     }
+                } else if (elapsed - qjPhaseStartedAt >= QJ_DUAL_SECONDS) {
+                    failureReason = "qj dual w2 首发命中未记录（dealtMult=-1），超时 $QJ_DUAL_SECONDS s"
+                    transitionQjPhase(QJ_PHASE_FAILED)
                 }
             }
             QJ_PHASE_SWITCH -> {
                 stabilizeQjShips(engine, playerTarget = switch, fireW1 = true, fireW2 = true)
-                if (switch != null && w1Buff?.target === switch) {
-                    qjSwitchW1Stacks = w1Buff.stacks
+                if (switch != null && shipBuff?.target === switch) {
+                    qjSwitchW1Stacks = shipBuff.stacks
                     val transfer = QiongjuePhaseRailgunOnHitEffect.telemetryCount(engine, QiongjuePhaseRailgunOnHitEffect.TELEMETRY_TRANSFER_PLAYER)
                     if (qjSwitchW1Stacks in QJ_SWITCH_MIN_STACKS..QJ_SWITCH_MAX_STACKS && transfer >= 1) {
                         transitionQjPhase(QJ_PHASE_DECAY)
                     } else {
-                        failureReason = "qj switch w1 stacks=$qjSwitchW1Stacks(expect $QJ_SWITCH_MIN_STACKS~$QJ_SWITCH_MAX_STACKS: floor(10×0.3125)+1=4) transfer=$transfer(expect>=1)"
+                        failureReason = "qj switch stacks=$qjSwitchW1Stacks(expect $QJ_SWITCH_MIN_STACKS~$QJ_SWITCH_MAX_STACKS: floor(10×0.3125)+1=4) transfer=$transfer(expect>=1)"
                         transitionQjPhase(QJ_PHASE_FAILED)
                     }
                 }
             }
             QJ_PHASE_DECAY -> {
                 stabilizeQjShips(engine, playerTarget = null, fireW1 = false, fireW2 = false)
-                if ((w1Buff?.stacks ?: 0) == 0) {
+                if ((shipBuff?.stacks ?: 0) == 0) {
                     qjDecaySeconds = elapsed - qjPhaseStartedAt
                     if (qjDecaySeconds in QJ_DECAY_MIN_SECONDS..QJ_DECAY_MAX_SECONDS) {
                         transitionQjPhase(QJ_PHASE_KILL)
@@ -2193,7 +2205,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 }
             }
             QJ_PHASE_KILL -> {
-                val armed = (w1Buff?.stacks ?: 0) >= QJ_KILL_ARM_STACKS
+                val armed = (shipBuff?.stacks ?: 0) >= QJ_KILL_ARM_STACKS
                 // 叠到 ≥3 层后停奶 B（盾已舞台性常关）让其被击沉；击沉瞬间转火 C 并清一次冷却，抢在 3s 窗口内命中。
                 stabilizeQjShips(
                     engine,
@@ -2204,17 +2216,17 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 )
                 if (!qjKillRetargeted && switch != null && switch.isHulk) {
                     qjKillRetargeted = true
-                    qjStacksBeforeKill = w1Buff?.stacks ?: -1
+                    qjStacksBeforeKill = shipBuff?.stacks ?: -1
                     w1?.setRemainingCooldownTo(0f)
                     w2?.setRemainingCooldownTo(0f)
                     log.info("[ASTD-Automation] qj switch target killed at ${"%.2f".format(elapsed)}s, stacks=$qjStacksBeforeKill, retarget kill ship")
                 }
-                if (qjKillRetargeted && kill != null && w1Buff?.target === kill) {
-                    qjStacksAfterKillHit = w1Buff.stacks
+                if (qjKillRetargeted && kill != null && shipBuff?.target === kill) {
+                    qjStacksAfterKillHit = shipBuff.stacks
                     val expected = (qjStacksBeforeKill + 1).coerceAtMost(QiongjuePhaseRailgunDifficulty.MAX_STACKS)
                     if (qjStacksAfterKillHit == expected) {
                         DifficultyTuningImpl.installScaleForTests(1f)
-                        clearQjEnemyBuff(enemy, enemyW)
+                        clearQjEnemyBuff(enemy)
                         qjScaleStep = 0
                         qjScaleSampling = false
                         transitionQjPhase(QJ_PHASE_ENEMY_SCALE)
@@ -2257,7 +2269,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                         }
                     }
                     if (qjScaleStep < 2) {
-                        clearQjEnemyBuff(enemy, enemyW)
+                        clearQjEnemyBuff(enemy)
                         qjScaleStep++
                         qjScaleSampling = false
                     } else {
@@ -2267,7 +2279,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                         if (ok) {
                             transitionQjPhase(QJ_PHASE_COMPLETED)
                         } else {
-                            failureReason = "qj enemy dealt mult 三档=$qjEnemyMult1/$qjEnemyMult2/$qjEnemyMult5, expect [1.19,1.26]/[1.24,1.32]/[1.39,1.51]（v1/v2/v5 × 4~5 层逐命中乘区）"
+                            failureReason = "qj enemy dealt mult 三档=$qjEnemyMult1/$qjEnemyMult2/$qjEnemyMult5, expect [1.07,1.11]/[1.15,1.21]/[1.39,1.51]（v1 2%/v2 4%/v5 10% × 4~5 层逐命中乘区）"
                             transitionQjPhase(QJ_PHASE_FAILED)
                         }
                     }
@@ -2298,7 +2310,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             qjPhase == QJ_PHASE_COMPLETED -> {
                 // 截图门控：叠层回升到可见水位才上报 Completed——SSOptimizer 在上报时刻连拍三帧，
                 // 令「持续演算」HUD 条目与白色拖尾/命中锥面入帧（对齐 AV 中段门控先例）；保底超时防舞台卡死。
-                val stackedForShot = (w1Buff?.stacks ?: 0) >= QJ_COMPLETED_STACKS_FOR_SHOT
+                val stackedForShot = (shipBuff?.stacks ?: 0) >= QJ_COMPLETED_STACKS_FOR_SHOT
                 if (stackedForShot || elapsed - qjPhaseStartedAt >= QJ_COMPLETED_STAGE_TIMEOUT) "Completed" else "CombatReady"
             }
             else -> "CombatReady"
@@ -2361,7 +2373,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 val hullId = member.hullId ?: continue
                 val anchor = when {
                     side == FleetSide.PLAYER && hullId == PS_PLAYER_HULL -> PS_PLAYER_ANCHOR
-                    side == FleetSide.ENEMY && hullId == PS_TARGET_HULL -> PS_TARGET_PASS_ANCHOR
+                    side == FleetSide.ENEMY && hullId == PS_TARGET_HULL -> PS_TARGET_IMPACT_ANCHOR
                     else -> continue
                 }
                 val facing = if (side == FleetSide.ENEMY) 180f else 0f
@@ -2401,12 +2413,12 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         }
         if (target != null && !target.isHulk) {
             val anchor = when (psPhase) {
-                PS_PHASE_MOUNT, PS_PHASE_PASS_THROUGH -> PS_TARGET_PASS_ANCHOR
+                PS_PHASE_MOUNT, PS_PHASE_IMPACT -> PS_TARGET_IMPACT_ANCHOR
                 else -> PS_TARGET_SPLASH_ANCHOR
             }
             stabilizeShip(target, anchor, 180f, allowFire = false, preserveAI = true)
             target.setShipTarget(null)
-            if (psPhase != PS_PHASE_PASS_THROUGH) target.setHitpoints(target.maxHitpoints)
+            if (psPhase != PS_PHASE_IMPACT) target.setHitpoints(target.maxHitpoints)
             target.shield?.toggleOff()
         }
     }
@@ -2446,11 +2458,11 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     }
 
     /**
-     * 正电子冲击波相位机（规格 06 §4.2 烟测检查点映射）：
-     * MOUNT（装配/600 射程/PD hint 校验）→ PASS_THROUGH（穿舰不爆：靶舰 400su 在弹道上，
-     * 弹体穿过不掉血、舰船不触发近炸；满射程自爆引爆距离 ≈600）→ SPLASH（靶舰移至 700su，
+     * 正电子冲击波相位机（规格 06 §4.2 烟测检查点映射，2026-09 修订：弹体识别舰船碰撞）：
+     * MOUNT（装配/600 射程/PD hint 校验）→ IMPACT（撞舰引爆：靶舰 400su 锚在弹道上，
+     * 撞舰即时引爆 ≥3 次、目标掉血、近炸/满射程计数恒 0）→ SPLASH（靶舰移至 700su，
      * 满射程自爆锥面波及舰船命中计数 +1，近炸计数不变——舰船蹭波及但不触发近炸）
-     * → FUSE（投喂鱼叉导弹群：近炸引爆成片清除、devMode 引爆计数浮字、锥面 VFX 计数）
+     * → FUSE（投喂鱼叉导弹群：40% 锥程触发圈近炸引爆成片清除、devMode 引爆计数浮字、锥面 VFX 计数）
      * → COMPLETED（持续开火+投喂做截图舞台，近炸引爆近期发生才上报 Completed 令锥面入帧）。
      */
     private fun advancePsScenario(engine: CombatEngineAPI) {
@@ -2467,7 +2479,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         val missileHits = PositronShockwaveFuseScript.telemetryCount(engine, PositronShockwaveFuseScript.TELEMETRY_CONE_MISSILE_HITS)
         val floatyCount = PositronShockwaveFuseScript.telemetryCount(engine, PositronShockwaveFuseScript.TELEMETRY_FLOATY)
         val coneVfxCount = PositronShockwaveFuseScript.telemetryCount(engine, PositronShockwaveFuseScript.TELEMETRY_CONE_VFX)
-        val lastDetonateDist = PositronShockwaveFuseScript.telemetryFloat(engine, PositronShockwaveFuseScript.TELEMETRY_LAST_DETONATE_DIST)
+        val impactCount = PositronShockwaveFuseScript.telemetryCount(engine, PositronShockwaveFuseScript.TELEMETRY_DETONATE_IMPACT)
 
         when (psPhase) {
             PS_PHASE_MOUNT -> {
@@ -2486,29 +2498,29 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                             transitionPsPhase(PS_PHASE_FAILED)
                         }
                         else -> {
-                            // 进入穿舰相位：靶舰奶满一次作「无触碰体积」观测基线（本相位不逐帧奶）
+                            // 进入撞舰相位：靶舰奶满一次作伤害观测基线（本相位不逐帧奶）
                             target?.setHitpoints(target.maxHitpoints)
-                            transitionPsPhase(PS_PHASE_PASS_THROUGH)
+                            transitionPsPhase(PS_PHASE_IMPACT)
                         }
                     }
                 }
             }
-            PS_PHASE_PASS_THROUGH -> {
+            PS_PHASE_IMPACT -> {
                 stabilizePsShips(engine, fire = true)
-                if (maxRangeCount >= PS_PASS_THROUGH_DETONATIONS) {
-                    val targetIntact = target != null && !target.isHulk &&
-                        target.hitpoints >= target.maxHitpoints - PS_PASS_THROUGH_HP_TOLERANCE
+                if (impactCount >= PS_IMPACT_DETONATIONS) {
+                    val targetDamaged = target != null && !target.isHulk &&
+                        target.hitpoints < target.maxHitpoints - PS_IMPACT_MIN_DAMAGE
                     when {
                         fuseCount != 0 -> {
-                            failureReason = "ps pass-through fuse=$fuseCount, expect 0（舰船不触发近炸/不提前引爆）"
+                            failureReason = "ps impact fuse=$fuseCount, expect 0（无导弹环境不应有近炸引爆）"
                             transitionPsPhase(PS_PHASE_FAILED)
                         }
-                        !targetIntact -> {
-                            failureReason = "ps pass-through target hp=${target?.hitpoints}/${target?.maxHitpoints}（弹体穿舰不掉血为预期；掉血=存在触碰伤害或提前引爆波及）"
+                        maxRangeCount != 0 -> {
+                            failureReason = "ps impact max-range=$maxRangeCount, expect 0（靶舰锚在 400su 弹道上，弹体应撞舰引爆而非飞到 600su 自爆）"
                             transitionPsPhase(PS_PHASE_FAILED)
                         }
-                        lastDetonateDist < PS_MAX_RANGE_DIST_MIN || lastDetonateDist > PS_MAX_RANGE_DIST_MAX -> {
-                            failureReason = "ps max-range detonate dist=$lastDetonateDist, expect [$PS_MAX_RANGE_DIST_MIN, $PS_MAX_RANGE_DIST_MAX]（600su 空射自爆）"
+                        !targetDamaged -> {
+                            failureReason = "ps impact target hp=${target?.hitpoints}/${target?.maxHitpoints}（撞舰引爆 + 锥面结算应对舰船造成可观伤害）"
                             transitionPsPhase(PS_PHASE_FAILED)
                         }
                         else -> {
@@ -3545,6 +3557,16 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     }
 
     /**
+     * 贯穿相位舞台守卫：逐帧摘除目标舰的 EMP 抗性削减叠层 Buff（2026-09 新增机制），
+     * 保持舞台钉死的近零抗性（0.01）不被命中叠层抬升——贯穿条件是 mult < 0.1，
+     * 叠层两次即越过阈值会令贯穿舞台永久停摆。抗性削减机制本身的正确性由单测承担。
+     */
+    private fun stripHipResistStacks(ship: ShipAPI?) {
+        ship ?: return
+        ship.getBuff(HeavyIonPulseEmpResistStacks.BUFF_ID)?.let { ship.buffHost().remove(it) }
+    }
+
+    /**
      * 舞台保活与站位（范式同 stabilizeGdShips）：双舰逐帧奶 + 辐能清零 + 钉死锚点 +
      * force fire 独占驱动（autofire 关闭）；护盾按相位策略逐帧拨杆（保留 AI 让原版威胁追踪工作，
      * 拨杆在每帧 AI 之后执行覆盖其决定，范式同电荷针刺相位机）。
@@ -3603,7 +3625,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
 
     /**
      * 重型离子脉冲相位机（规格 02 §4.2 烟测检查点映射）：
-     * MOUNT（装配校验：WS 003 大能量槽/射程 700/spec maxAmmo 40/双炮管 offsets/VfxSpec 登记，检查点 1/2/7）→
+     * MOUNT（装配校验：WS 003 大能量槽/射程 800/spec maxAmmo 24/双炮管 offsets/VfxSpec 登记，检查点 1/2/7）→
      * SHIELD（敌盾开：命中护盾无泄放电弧，检查点 3 反面）→
      * HULL（敌盾关：泄放电弧计数 + 弹匣节奏（满匣倾泻/打空时刻），检查点 2/3）→
      * SCALE5_PLAYER（installScaleForTests(5) + 敌舰 mult→0：玩家恒 v2 无贯穿 + 泄放频率口径，检查点 4）→
@@ -3690,7 +3712,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                         hipMinAmmo = it.ammo
                         if (it.ammo <= 0 && hipEmptiedAt < 0f) {
                             hipEmptiedAt = elapsed
-                            log.info("[ASTD-Automation] hip magazine emptied at ${"%.2f".format(elapsed)}s（满匣 40 发倾泻证据）")
+                            log.info("[ASTD-Automation] hip magazine emptied at ${"%.2f".format(elapsed)}s（满匣 24 发倾泻证据）")
                         }
                     }
                 }
@@ -3746,6 +3768,9 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             }
             HIP_PHASE_PIERCE_K2 -> {
                 stabilizeHipShips(engine, playerFire = false, enemyFire = true)
+                // 贯穿舞台守卫（2026-09 修订）：逐帧摘除 EMP 抗性削减叠层 Buff，保持玩家侧钉死的
+                // 近零抗性（0.01）不被新机制抬升——抗性削减机制另有专项验证，不在贯穿舞台内叠加。
+                stripHipResistStacks(player)
                 val hitsDelta = hitsOther - hipK2EnemyHitsBaseline
                 if (hitsDelta >= HIP_K2_MIN_ENEMY_HITS) {
                     val pierceDelta = pierceOther - hipK2PierceOtherBaseline
@@ -3767,6 +3792,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             }
             HIP_PHASE_PIERCE_K5 -> {
                 stabilizeHipShips(engine, playerFire = false, enemyFire = true)
+                stripHipResistStacks(player)
                 hipK5FpsTicks++
                 hipK5MaxDisabled = maxOf(hipK5MaxDisabled, hipDisabledWeaponCount(player))
                 if (pierceOther - hipK5PierceOtherBaseline >= HIP_K5_MIN_PIERCE) {
@@ -5703,9 +5729,10 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 appendLine("  \"qjW1SlotId\": ${jsonString(qjW1?.slot?.id)},")
                 appendLine("  \"qjW2SlotId\": ${jsonString(qjW2?.slot?.id)},")
                 appendLine("  \"qjWeaponRange\": ${formatFloat(qjW1?.range ?: -1f)},")
-                appendLine("  \"qjW1Stacks\": ${if (qjPlayer != null && qjW1 != null) qjPlayer.qiongjueCalcStacks(qjW1)?.stacks ?: 0 else -1},")
-                appendLine("  \"qjW2Stacks\": ${if (qjPlayer != null && qjW2 != null) qjPlayer.qiongjueCalcStacks(qjW2)?.stacks ?: 0 else -1},")
-                appendLine("  \"qjEnemyStacks\": ${if (qjEnemy != null && qjEnemyW != null) qjEnemy.qiongjueCalcStacks(qjEnemyW)?.stacks ?: 0 else -1},")
+                // 2026-09 修订：Ship 级共享 Buff，w1/w2 层数同一份读数（保留双键便于报告对照）。
+                appendLine("  \"qjW1Stacks\": ${qjPlayer?.qiongjueCalcStacks()?.stacks ?: -1},")
+                appendLine("  \"qjW2Stacks\": ${qjPlayer?.qiongjueCalcStacks()?.stacks ?: -1},")
+                appendLine("  \"qjEnemyStacks\": ${qjEnemy?.qiongjueCalcStacks()?.stacks ?: -1},")
                 // 逐命中伤害乘区遥测（同 spec 武器共享 damage.modifier stat 后的唯一逐武器证据通道）。
                 appendLine("  \"qjW1DealtMult\": ${formatFloat(if (qjPlayer != null && qjW1 != null) QiongjueDamageDealtModifier.dealtMult(engine, qjPlayer, qjW1) else -1f)},")
                 appendLine("  \"qjW2DealtMult\": ${formatFloat(if (qjPlayer != null && qjW2 != null) QiongjueDamageDealtModifier.dealtMult(engine, qjPlayer, qjW2) else -1f)},")
@@ -5719,11 +5746,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 appendLine("  \"qjHitPlayer\": ${QiongjuePhaseRailgunOnHitEffect.telemetryCount(engine, QiongjuePhaseRailgunOnHitEffect.TELEMETRY_HIT_PLAYER)},")
                 appendLine("  \"qjHitOther\": ${QiongjuePhaseRailgunOnHitEffect.telemetryCount(engine, QiongjuePhaseRailgunOnHitEffect.TELEMETRY_HIT_OTHER)},")
                 appendLine("  \"qjTransferPlayer\": ${QiongjuePhaseRailgunOnHitEffect.telemetryCount(engine, QiongjuePhaseRailgunOnHitEffect.TELEMETRY_TRANSFER_PLAYER)},")
-                appendLine("  \"qjFullPlayer\": ${QiongjuePhaseRailgunOnHitEffect.telemetryCount(engine, QiongjuePhaseRailgunOnHitEffect.TELEMETRY_FULL_PLAYER)},")
                 appendLine("  \"qjConeVfx\": ${QiongjuePhaseRailgunOnHitEffect.telemetryCount(engine, QiongjuePhaseRailgunOnHitEffect.TELEMETRY_CONE_VFX)},")
                 appendLine("  \"qjStackFps\": ${formatFloat(qjStackFps)},")
-                appendLine("  \"qjDualW1Stacks\": $qjDualW1Stacks,")
-                appendLine("  \"qjDualW2Stacks\": $qjDualW2Stacks,")
                 appendLine("  \"qjSwitchW1Stacks\": $qjSwitchW1Stacks,")
                 appendLine("  \"qjDecaySeconds\": ${formatFloat(qjDecaySeconds)},")
                 appendLine("  \"qjStacksBeforeKill\": $qjStacksBeforeKill,")
@@ -6284,19 +6308,20 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private val QJ_CAMERA_CENTER = Vector2f(0f, 0f)
         private const val QJ_CAMERA_VISIBLE_HEIGHT = 1250f
         private const val QJ_MOUNT_SETTLE_SECONDS = 0.6f
-        // MOUNT 相位校验：dedicated_targeting_core 已在 MissionDefinition 摘除，射程断言基线 1200。
-        private const val QJ_EXPECT_RANGE = 1200f
+        // MOUNT 相位校验：dedicated_targeting_core 已在 MissionDefinition 摘除，射程断言基线 1100（2026-09 修订）。
+        private const val QJ_EXPECT_RANGE = 1100f
         private const val QJ_RANGE_TOLERANCE = 5f
-        // 满层证据期望：v2 每层 6.25% × 10 → 伤害乘区 1.625（600→975）；射速 2s/1.625≈1.23s。
-        private const val QJ_EXPECT_FULL_DMG_MULT = 1.625f
+        // 满层证据期望：v2 每层 4% × 10 → 伤害乘区 1.4（600→840）；
+        // 射速 spike 压缩全周期（烟测实证 cooldownRemaining 含充能段）：2.5s/1.4≈1.79s。
+        private const val QJ_EXPECT_FULL_DMG_MULT = 1.4f
         private const val QJ_DMG_MULT_TOLERANCE = 0.02f
-        private const val QJ_REFIRE_MIN = 1.05f
-        private const val QJ_REFIRE_MAX = 1.45f
+        private const val QJ_REFIRE_MIN = 1.6f
+        private const val QJ_REFIRE_MAX = 2.0f
         private const val QJ_FULL_HOLD_SECONDS = 2.5f
         private const val QJ_STACK_MIN_FPS = 30f
-        // DUAL：w2 停火 7s（3s 窗口 + 4s×1.75 衰减 → 10→3），层差 ≥5 证复合键隔离。
+        // DUAL（共享验证）：w1 独打续层，w2 停火 4s 后补射，7s 内必须拿到 w2 首发命中乘区记录。
+        private const val QJ_DUAL_W2_FIRE_AFTER = 4f
         private const val QJ_DUAL_SECONDS = 7f
-        private const val QJ_DUAL_MIN_DIVERGENCE = 5
         // SWITCH：w1 10 层折算 floor(10×0.3125)+1=4（采样帧可能已再叠 1 层，容差到 5）。
         private const val QJ_SWITCH_MIN_STACKS = 4
         private const val QJ_SWITCH_MAX_STACKS = 5
@@ -6308,18 +6333,18 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         // ENEMY_SCALE：换档采样前停火 settle；目标 5 层（第 5 发命中的监听器按 4 层结算 → 逐命中乘区恰为 4 层值）。
         private const val QJ_SCALE_SETTLE_SECONDS = 0.3f
         private const val QJ_ENEMY_SCALE_TARGET_STACKS = 5
-        // 敌版三档逐命中乘区期望：1 + 4 × v1 5% / v2 6.25% / v5 10% = 1.20 / 1.25 / 1.40；
+        // 敌版三档逐命中乘区期望：1 + 4~5 × v1 2% / v2 4% / v5 10% = 1.08~1.10 / 1.16~1.20 / 1.40~1.50；
         // 监听器按命中前层数结算（天然滞后一层），采样窗口内容忍 4~5 层两值，三档区间互不重叠。
-        private const val QJ_ENEMY_MULT_1_MIN = 1.19f
-        private const val QJ_ENEMY_MULT_1_MAX = 1.26f
-        private const val QJ_ENEMY_MULT_2_MIN = 1.24f
-        private const val QJ_ENEMY_MULT_2_MAX = 1.32f
+        private const val QJ_ENEMY_MULT_1_MIN = 1.07f
+        private const val QJ_ENEMY_MULT_1_MAX = 1.11f
+        private const val QJ_ENEMY_MULT_2_MIN = 1.15f
+        private const val QJ_ENEMY_MULT_2_MAX = 1.21f
         private const val QJ_ENEMY_MULT_5_MIN = 1.39f
         private const val QJ_ENEMY_MULT_5_MAX = 1.51f
         private const val QJ_PHASE_TIMEOUT = 90f
         // 正电子冲击波场景：相位机、锚点与期望证据（规格 06 §4.2 烟测检查点）。
         private const val PS_PHASE_MOUNT = "MOUNT"
-        private const val PS_PHASE_PASS_THROUGH = "PASS_THROUGH"
+        private const val PS_PHASE_IMPACT = "IMPACT"
         private const val PS_PHASE_SPLASH = "SPLASH"
         private const val PS_PHASE_FUSE = "FUSE"
         private const val PS_PHASE_COMPLETED = "COMPLETED"
@@ -6328,8 +6353,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private const val PS_TARGET_HULL = "vigilance"
         private const val PS_PLAYER_SLOT = "WS 001"
         private val PS_PLAYER_ANCHOR = Vector2f(0f, 0f)
-        // 穿舰相位靶舰锚点（400su 在弹道上）；波及相位移至 700su（满射程 600 引爆点前方 100，锥长 250 内）。
-        private val PS_TARGET_PASS_ANCHOR = Vector2f(400f, 0f)
+        // 撞舰相位靶舰锚点（400su 在弹道上）；波及相位移至 700su（满射程 600 引爆点前方 100，锥长 250 内）。
+        private val PS_TARGET_IMPACT_ANCHOR = Vector2f(400f, 0f)
         private val PS_TARGET_SPLASH_ANCHOR = Vector2f(700f, 0f)
         private val PS_CAMERA_CENTER = Vector2f(400f, 0f)
         private const val PS_CAMERA_VISIBLE_HEIGHT = 950f
@@ -6337,12 +6362,10 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         // MOUNT 相位校验：射程断言基线 600（无射程向 hullmod 干扰）。
         private const val PS_EXPECT_RANGE = 600f
         private const val PS_RANGE_TOLERANCE = 5f
-        // PASS_THROUGH：两次满射程自爆后判定；靶舰 HP 容差（装甲蹭伤为 0 时 hitpoints 应恒满）。
-        private const val PS_PASS_THROUGH_DETONATIONS = 2
-        private const val PS_PASS_THROUGH_HP_TOLERANCE = 1f
-        // 满射程自爆引爆距离期望 ≈600（弹体出生点偏移/边界含等号留容差）。
-        private const val PS_MAX_RANGE_DIST_MIN = 570f
-        private const val PS_MAX_RANGE_DIST_MAX = 640f
+        // IMPACT（2026-09 修订：弹体识别舰船碰撞，撞舰即时引爆）：靶舰锚在弹道上，
+        // 撞舰引爆 ≥3 次且目标掉血 ≥50；期间近炸/满射程计数必须恒 0（弹体不应飞过 400su 靶舰）。
+        private const val PS_IMPACT_DETONATIONS = 3
+        private const val PS_IMPACT_MIN_DAMAGE = 50f
         // SPLASH：相位内两次满射程自爆，锥面舰船命中计数 +1（700su 靶舰在 600 引爆点锥内）。
         private const val PS_SPLASH_DETONATIONS = 2
         // FUSE：近炸引爆 ≥2 次、锥面导弹命中 ≥3（成片清除证据）。
@@ -6469,10 +6492,10 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private val HIP_CAMERA_CENTER = Vector2f(0f, 0f)
         private const val HIP_CAMERA_VISIBLE_HEIGHT = 760f
         private const val HIP_MOUNT_SETTLE_SECONDS = 0.6f
-        // MOUNT 相位校验：射程 700 / spec maxAmmo 40（weapon_data.csv 口径）/ 双炮管 offsets（ALTERNATING 交替射击证据）。
-        private const val HIP_EXPECT_RANGE = 700f
+        // MOUNT 相位校验：射程 800 / spec maxAmmo 24（weapon_data.csv 口径，2026-09 修订）/ 双炮管 offsets（ALTERNATING 交替射击证据）。
+        private const val HIP_EXPECT_RANGE = 800f
         private const val HIP_RANGE_TOLERANCE = 5f
-        private const val HIP_AMMO = 40
+        private const val HIP_AMMO = 24
         private const val HIP_BARRELS = 2
         // SHIELD：消耗 ≥8 发证明确实在命中护盾后断言零泄放。
         private const val HIP_SHIELD_MIN_SPENT = 8

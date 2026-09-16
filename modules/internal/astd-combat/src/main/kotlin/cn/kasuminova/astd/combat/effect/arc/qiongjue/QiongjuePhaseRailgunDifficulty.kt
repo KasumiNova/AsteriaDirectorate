@@ -11,8 +11,8 @@ import cn.kasuminova.astd.api.difficulty.ScalingEntry
  */
 object QiongjuePhaseRailgunDifficulty {
 
-    /** 每层伤害/射速加成（v1 5% / v2 6.25% / v5 10%；叠乘收益恒等于层数线性，无超线性，LINEAR 即可）。 */
-    val PER_STACK_BONUS = ScalingEntry(0.05f, 0.0625f, 0.10f)
+    /** 每层伤害/射速加成（2026-09 五档查表 2%/4%/6%/8%/10%：恰与 LINEAR 三锚点 2/4/10 逐档重合，沿用 ScalingEntry）。 */
+    val PER_STACK_BONUS = ScalingEntry(0.02f, 0.04f, 0.10f)
 
     /** 切换目标保留比例（v1 25% / v2 31.25% / v5 50%）。 */
     val SWITCH_RETAIN = ScalingEntry(0.25f, 0.3125f, 0.50f)

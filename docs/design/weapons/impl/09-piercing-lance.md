@@ -270,7 +270,7 @@ fun resolve(engine, spec) {
 - **命中顶点**：大号 `addHitParticle` 核心闪 + `addSmoothParticle` 光晕 + BoxUtil `DistortionEntity`（样板 `Aod7OnFireEffect.spawnDistortion`），冷蓝白。
 - **大光柱**：沿命中矢量的短寿命光柱 RenderEntity，并入 bloom 管线（aod7 hero PoC 已验证 bloom 弹头管线；光柱为新增构图，目检调宽度/时长，提案：长 ≈ 锥长 × 0.6、存续 0.25s）。
 - **锥状冲击锥面**：调用共享锥面 VFX 组件（基建 §2.2-5：顶点闪光 + 沿中轴扩散的冲击锥 sprite/粒子，参数化锥角/长度/调色），传本武器 halfAngle/range/冷蓝白；该组件由正电子首发落地，贯星直接复用，规模为其 ~1.5 倍（正电子为缩小蓝色调版）。
-- 原版命中反馈缺失项：弹体有碰撞体积（collisionRadius 走 `.proj` 默认），无需像正电子那样手动补命中粒子。
+- 原版命中反馈缺失项：弹体有碰撞体积（collisionRadius 走 `.proj` 默认），无需手动补命中粒子（正电子 2026-09 起也改为有碰撞体积 + OnHit 即时引爆，其命中/引爆反馈由脚本在引爆点自产）。
 
 ---
 

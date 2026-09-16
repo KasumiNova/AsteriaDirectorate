@@ -3,9 +3,9 @@ package cn.kasuminova.astd.api.buff
 /**
  * 带整数层数的 Buff。
  *
- * 动机：电荷针刺淤积（按秒连续衰减 + 安全闸 clamp）、穷距持续演算（命中窗口衰减）
+ * 动机：电荷针刺淤积（连续衰减）、穷距持续演算（命中窗口衰减）
  * 及后续叠层机制的统一读写面；层数增减统一走 [addStacks] 的 clamp 路径，
- * 调用侧不直接改 [stacks]，保证「叠层上限/安全闸」只有一处判定。
+ * 调用侧不直接改 [stacks]，保证「叠层上限」只有一处判定。
  *
  * 衰减语义由实现按 [decayMode] 在 [Buff.advance] 内落实：
  * 0 值防线——`stacksPerSecond <= 0` 或 `maxStacks <= 0` 属配置错误，实现必须 clamp 到下限并记 WARN，
@@ -18,7 +18,7 @@ interface StackableBuff : Buff {
     val stacks: Int
 
     /**
-     * 层数上限（可被难度缩放/安全闸动态调整，如电荷针刺耗散 50% 闸 clamp 后的实际允许上限）。
+     * 层数上限（实现侧固定或按规则动态裁定；产出压力折算由实现自行承担，不在本接口面）。
      */
     val maxStacks: Int
 
@@ -39,7 +39,7 @@ interface StackableBuff : Buff {
  */
 enum class StackDecayMode {
     /**
-     * 连续流失：stacksPerSecond 速率按秒连续扣减（电荷针刺 -10/s）。
+     * 连续流失：按秒连续扣减（速率由实现裁定，如电荷针刺「当前层数 3%/s、下限 2 层/s」）。
      */
     CONTINUOUS,
 

@@ -12,24 +12,27 @@ import cn.kasuminova.astd.impl.combat.CombatRandom
 import cn.kasuminova.astd.internal.i18n.I18n
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
-import com.fs.starfarer.api.combat.MutableStat
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.combat.WeaponAPI
 import kotlin.math.floor
 
 /**
- * 单艘目标舰的电荷淤积层数（电荷针刺护盾命中机制的状态承载，规格 01 §2.3）。
+ * 单艘目标舰的电荷淤积层数（电荷针刺护盾命中机制的状态承载，规格 01 §2.3，2026-09 机制修订）。
  *
- * 动机：命中护盾后在目标舰累积淤积层，每层抬高其护盾维持辐能（`shieldUpkeepMult` 乘区），
- * 停火后按 10 层/s 连续流失；层数上限由耗散安全闸（[ChargeNeedleTuning.dissipationCapStacks]）
- * 动态 clamp——追加维持量不得超过目标当前耗散的 50%，耗散被压制时闸门收紧、超出部分直接裁层。
+ * 动机：命中护盾后在目标舰累积淤积层，每层产出两份护盾维持压力——
+ * 1. 乘区：`shieldUpkeepMult` 最终乘区 +stacks × perStack（难度查表 1%~5%）；
+ * 2. 固定软辐能：按目标舰体型与难度查表（1/2/3/4 ~ 5/10/15/20 su/s 每层），逐帧 `increaseFlux(soft)` 直写；
+ * 两项之和按 [ChargeNeedleTuning.dissipationCapFactor] 折算，最高不超过目标最终耗散的 200%（不受难度影响）。
+ *
+ * 消散：连续流失，速率 = 当前层数 × 3%/s、下限 2 层/s（固定不缩放，不受难度影响）。
  *
  * 生命周期：Ship 级 [BuffLifetime.HOST_BOUND]，经 `ShipAPI.buffHost()` 注册（id [BUFF_ID]）；
- * 宿主 hulk/死亡由 BuffTickPlugin 心跳回收，[onRemove] 恰一次 unmodify，无 stat 残留。
+ * 宿主 hulk/死亡由 BuffTickPlugin 心跳回收，[onRemove] 恰一次 unmodify，无 stat 残留
+ * （固定软辐能为逐帧直写，无持久状态）。
  *
  * 玩家可见反馈（机制可视化铁律）：
- * - 攻击方为玩家船时，左侧状态栏显示目标层数与维持 +％（negative=false）；
- * - 受击方为玩家船时，独立键显示本舰被抬升的维持 +％（negative=true）。
+ * - 攻击方为玩家船时，左侧状态栏显示目标层数、维持 +％ 与固定软辐能读数（negative=false）；
+ * - 受击方为玩家船时，独立键显示本舰被抬升的维持与固定软辐能（negative=true）。
  */
 class ChargeNeedleStacks(
     /** 淤积宿主舰（创建时捕获）。 */
@@ -43,11 +46,17 @@ class ChargeNeedleStacks(
     /** 每层护盾维持加成：由 OnHit 每次命中按难度覆写（多攻击者时后命中者口径覆盖，已文档化）。 */
     var perStack: Float = ChargeNeedleTuning.PER_STACK.v2
 
+    /** 每层固定软辐能（su/s）：由 OnHit 按目标体型 + 难度覆写（同 perStack 覆盖口径）。 */
+    var flatPerStack: Float = ChargeNeedleTuning.FLAT_FLUX_FRIGATE.v2
+
     /** 攻击方为玩家船时置 true：在玩家 HUD 显示目标淤积状态。 */
     var showOnPlayerHud: Boolean = false
 
-    /** 浮点累加器：层数视图取 floor，亚层余量参与连续衰减。 */
+    /** 浮点累加器：层数视图取 floor，亚层余量参与连续消散。 */
     private var stacksFloat: Float = 0f
+
+    /** 本帧 200% 耗散折算系数（HUD 读数与实际产出同口径，advance 内刷新）。 */
+    private var lastFactor: Float = 1f
 
     // —— 异常分支「一次/船」日志闸（纯函数只定返回值语义，日志由本类按实例去重承担）——
     private var warnedZeroDissipation = false
@@ -59,13 +68,8 @@ class ChargeNeedleStacks(
 
     override val stacks: Int get() = floor(stacksFloat).toInt()
 
-    /** 动态闸：每次读取按目标当前耗散终值与基础维持重算（耗散被压制/船插移除时闸门收紧）。 */
-    override val maxStacks: Int
-        get() = ChargeNeedleTuning.dissipationCapStacks(
-            dissipation = ship.mutableStats.fluxDissipation.modifiedValue,
-            baseUpkeep = ship.hullSpec.shieldSpec?.upkeepCost ?: 0f,
-            perStack = perStack,
-        )
+    /** 层数上限为绝对上限；产出压力由 200% 耗散折算承担（不再按层数裁闸）。 */
+    override val maxStacks: Int get() = ChargeNeedleTuning.ABSOLUTE_MAX_STACKS
 
     override fun addStacks(n: Int): Int {
         val before = stacksFloat
@@ -74,7 +78,7 @@ class ChargeNeedleStacks(
     }
 
     override fun advance(amount: Float) {
-        stacksFloat = (stacksFloat - ChargeNeedleTuning.DECAY_PER_SECOND * amount).coerceAtLeast(0f)
+        stacksFloat = (stacksFloat - ChargeNeedleTuning.decayPerSecond(stacksFloat) * amount).coerceAtLeast(0f)
         if (stacksFloat <= 0f) {
             host.remove(this)
             return
@@ -82,46 +86,56 @@ class ChargeNeedleStacks(
 
         warnOnAbnormalBranches()
 
-        // 闸动态收紧（目标耗散被压制/船插移除）时超上限部分直接裁层，不做缓降。
-        val cap = maxStacks
-        if (stacksFloat > cap) stacksFloat = cap.toFloat()
-        if (stacksFloat <= 0f) {
-            host.remove(this)
-            return
+        // 200% 耗散上限折算：维持乘区额外量与固定软辐能之和超限按比例同步压缩。
+        val dissipation = ship.mutableStats.fluxDissipation.modifiedValue
+        val baseUpkeep = ship.hullSpec.shieldSpec?.upkeepCost ?: 0f
+        val upkeepExtra = baseUpkeep * stacks * perStack
+        val flatPerSec = stacks * flatPerStack
+        val factor = ChargeNeedleTuning.dissipationCapFactor(dissipation, upkeepExtra, flatPerSec)
+        lastFactor = factor
+
+        ship.mutableStats.shieldUpkeepMult.modifyMult(BUFF_ID, 1f + stacks * perStack * factor)
+        if (flatPerSec * factor > 0f) {
+            ship.fluxTracker.increaseFlux(flatPerSec * factor * amount, false)
         }
 
-        refreshUpkeep(ship.mutableStats.shieldUpkeepMult, stacks, perStack)
         maintainHud()
     }
 
     override fun isHostValid(): Boolean = ship.isAlive && !ship.isHulk && engine.isEntityInPlay(ship)
 
     override fun onRemove() {
-        clearUpkeep(ship.mutableStats.shieldUpkeepMult)
+        ship.mutableStats.shieldUpkeepMult.unmodifyMult(BUFF_ID)
     }
 
-    /** 安全闸异常分支日志（一次/实例 ≈ 一次/船）：配置/状态异常不静默。 */
+    /** 异常分支日志（一次/实例 ≈ 一次/船）：配置/状态异常不静默。 */
     private fun warnOnAbnormalBranches() {
         if (perStack <= 0f && !erroredZeroPerStack) {
             erroredZeroPerStack = true
-            log.error("电荷淤积 perStack ≤ 0（$perStack），难度配置错误，安全闸失效但机制不退化: ship=${ship.id}, hull=${ship.hullSpec?.hullId}")
+            log.error("电荷淤积 perStack ≤ 0（$perStack），难度配置错误: ship=${ship.id}, hull=${ship.hullSpec?.hullId}")
         }
         val dissipation = ship.mutableStats.fluxDissipation.modifiedValue
         if (dissipation <= 0f && !warnedZeroDissipation) {
             warnedZeroDissipation = true
-            log.warn("电荷淤积目标耗散 ≤ 0（$dissipation），异常态层数立即裁到 0: ship=${ship.id}, hull=${ship.hullSpec?.hullId}")
+            log.warn("电荷淤积目标耗散 ≤ 0（$dissipation），异常态产出压没: ship=${ship.id}, hull=${ship.hullSpec?.hullId}")
         }
     }
 
-    /** HUD 双向维护：攻击方=玩家显示目标层数；受击方=玩家显示本舰被抬升的维持。 */
+    /** HUD 双向维护：攻击方=玩家显示目标层数；受击方=玩家显示本舰被抬升的维持与固定软辐能。 */
     private fun maintainHud() {
         val player = engine.playerShip
-        val pctText = formatPercent(stacks * perStack * 100f)
+        // HUD 读数与实际产出同口径：两项均乘本帧折算系数（不超闸时 factor=1 无差异）。
+        val pctText = formatPercent(stacks * perStack * lastFactor * 100f)
+        val flatText = formatPercent(stacks * flatPerStack * lastFactor)
         if (showOnPlayerHud && player != null) {
             feedback.maintainPlayerStatus(
                 engine, HUD_KEY, HUD_ICON,
                 I18n[I18n.Categories.MOD, "ui.charge_needle.status.title"],
-                I18n.t(I18n.Categories.MOD, "ui.charge_needle.status.desc", "stacks" to stacks, "percent" to pctText),
+                I18n.t(
+                    I18n.Categories.MOD,
+                    "ui.charge_needle.status.desc",
+                    "stacks" to stacks, "percent" to pctText, "flat" to flatText,
+                ),
                 negative = false,
             )
         }
@@ -129,7 +143,11 @@ class ChargeNeedleStacks(
             feedback.maintainPlayerStatus(
                 engine, HUD_VICTIM_KEY, HUD_ICON,
                 I18n[I18n.Categories.MOD, "ui.charge_needle.status.victim_title"],
-                I18n.t(I18n.Categories.MOD, "ui.charge_needle.status.victim_desc", "stacks" to stacks, "percent" to pctText),
+                I18n.t(
+                    I18n.Categories.MOD,
+                    "ui.charge_needle.status.victim_desc",
+                    "stacks" to stacks, "percent" to pctText, "flat" to flatText,
+                ),
                 negative = true,
             )
         }
@@ -153,20 +171,7 @@ class ChargeNeedleStacks(
 
         private val log = Global.getLogger(ChargeNeedleStacks::class.java)
 
-        /**
-         * 护盾维持乘区幂等刷新：`stat.modifyMult(modifierId, 1 + stacks × perStack)`，
-         * modifierId 固定，重复刷新不叠乘。
-         */
-        internal fun refreshUpkeep(stat: MutableStat, stacks: Int, perStack: Float) {
-            stat.modifyMult(BUFF_ID, 1f + stacks * perStack)
-        }
-
-        /** 回收时恰一次 unmodify（与 [refreshUpkeep] 同 modifierId），无 stat 残留。 */
-        internal fun clearUpkeep(stat: MutableStat) {
-            stat.unmodifyMult(BUFF_ID)
-        }
-
-        /** 百分比显示格式：整数去小数点，否则保留 1 位（如 100 / 2.5）。 */
+        /** 百分比/数值显示格式：整数去小数点，否则保留 1 位（如 100 / 2.5）。 */
         internal fun formatPercent(value: Float): String {
             val rounded = kotlin.math.round(value * 10f) / 10f
             return if (rounded == floor(rounded)) rounded.toInt().toString() else rounded.toString()
