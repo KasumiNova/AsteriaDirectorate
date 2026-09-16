@@ -50,19 +50,19 @@ class ASTDInGameAutomationScenarioTest {
 
         val requiredEvidence = scenario.getJSONArray("requiredEvidence")
         listOf(
-            "arcJetShockwaveFrames",
-            "arcJetShockwaveRadius",
-            "arcJetShockwaveFluxPressure",
-            "plasmaArchShieldOpen",
-            "plasmaArchSystemActive",
-            "plasmaArchShieldArcEmissions",
-            "radiationBeltSystemAfterimages",
-            "arcJetTooltip",
-            "plasmaArchTooltip",
-            "radiationBeltTooltip",
-            "arcJetTooltipKeys",
-            "plasmaArchTooltipKeys",
-            "radiationBeltTooltipKeys",
+            "xc102ShockwaveFrames",
+            "xc102ShockwaveRadius",
+            "xc102ShockwaveFluxPressure",
+            "xc101ShieldOpen",
+            "xc101SystemActive",
+            "xc101ShieldArcEmissions",
+            "xc103SystemAfterimages",
+            "xc102Tooltip",
+            "xc101Tooltip",
+            "xc103Tooltip",
+            "xc102TooltipKeys",
+            "xc101TooltipKeys",
+            "xc103TooltipKeys",
         ).forEach { key ->
             assertTrue((0 until requiredEvidence.length()).any { requiredEvidence.getString(it) == key }, "scenario missing evidence key: $key")
         }
@@ -79,19 +79,19 @@ class ASTDInGameAutomationScenarioTest {
         assertFalse(plugin.contains("writeArcProductionTelemetry"), "SSOptimizer only patches writeTelemetry; ARC must not expose an unpatched empty hook")
         assertTrue(plugin.contains("arcProductionTelemetryShip"), "ARC automation should route screenshot evidence through the patched telemetry hook")
         listOf(
-            "arcJetShockwaveFrames",
-            "arcJetShockwaveRadius",
-            "arcJetShockwaveFluxPressure",
-            "plasmaArchShieldOpen",
-            "plasmaArchSystemActive",
-            "plasmaArchShieldArcEmissions",
-            "radiationBeltSystemAfterimages",
-            "arcJetTooltip",
-            "plasmaArchTooltip",
-            "radiationBeltTooltip",
-            "arcJetTooltipKeys",
-            "plasmaArchTooltipKeys",
-            "radiationBeltTooltipKeys",
+            "xc102ShockwaveFrames",
+            "xc102ShockwaveRadius",
+            "xc102ShockwaveFluxPressure",
+            "xc101ShieldOpen",
+            "xc101SystemActive",
+            "xc101ShieldArcEmissions",
+            "xc103SystemAfterimages",
+            "xc102Tooltip",
+            "xc101Tooltip",
+            "xc103Tooltip",
+            "xc102TooltipKeys",
+            "xc101TooltipKeys",
+            "xc103TooltipKeys",
         ).forEach { key ->
             assertTrue(plugin.contains(key), "automation plugin missing evidence key: $key")
             assertTrue(verifier.contains(key), "verification script missing evidence key: $key")
@@ -118,7 +118,7 @@ class ASTDInGameAutomationScenarioTest {
         assertTrue(plugin.contains("arcProductionDeployedShipIds"), "ARC automation diagnostics should list deployed production hull ids")
         assertTrue(plugin.contains("arcProductionDeployedVariantIds"), "ARC automation diagnostics should list deployed production variant ids")
         assertFalse(
-            arcAdvanceBody.contains("arcJet ?: plasmaArch ?: radiationBelt ?: return"),
+            arcAdvanceBody.contains("xc102 ?: xc101 ?: xc103 ?: return"),
             "ARC automation must not silently return before diagnostics when ships are not deployed",
         )
         assertFalse(
@@ -139,81 +139,81 @@ class ASTDInGameAutomationScenarioTest {
             .substringBefore("private fun arcProductionEvidenceReady(")
 
         assertFalse(
-            arcAdvanceBody.contains("plasmaArch.useSystem()"),
-            "ARC automation must not force plasma_arch system activation when validating FORTRESS_SHIELD AI",
+            arcAdvanceBody.contains("xc101.useSystem()"),
+            "ARC automation must not force xc_101 system activation when validating FORTRESS_SHIELD AI",
         )
         assertTrue(
-            arcAdvanceBody.contains("plasmaArch?.shield?.let { if (!it.isOn) it.toggleOn() }"),
-            "ARC automation should keep plasma_arch shield online so FORTRESS_SHIELD AI has valid shield context",
+            arcAdvanceBody.contains("xc101?.shield?.let { if (!it.isOn) it.toggleOn() }"),
+            "ARC automation should keep xc_101 shield online so FORTRESS_SHIELD AI has valid shield context",
         )
         assertTrue(
             plugin.contains("preserveAI: Boolean = false"),
             "staged automation must make AI preservation explicit instead of globally clearing ship AI",
         )
         assertTrue(
-            plugin.contains("plasmaArch?.let { stabilizeShip(it, arcProductionAnchors.getValue(ASTDArcProductionShipIds.HULL_PLASMA_ARCH), 0f, allowFire = false, preserveAI = true) }"),
-            "ARC automation must preserve plasma_arch ship AI so its vanilla system AI can run",
+            plugin.contains("xc101?.let { stabilizeShip(it, arcProductionAnchors.getValue(ASTDArcProductionShipIds.HULL_XC_101), 0f, allowFire = false, preserveAI = true) }"),
+            "ARC automation must preserve xc_101 ship AI so its vanilla system AI can run",
         )
         assertTrue(
             plugin.contains("private fun shouldPreserveArcProductionAI(side: FleetSide, hullId: String): Boolean"),
             "ARC automation must decide AI preservation before the forced reserve spawn clears ship AI",
         )
         assertTrue(
-            plugin.contains("hullId == ASTDArcProductionShipIds.HULL_PLASMA_ARCH"),
-            "plasma_arch AI must be preserved during forced reserve deployment, not only during later arrangement",
+            plugin.contains("hullId == ASTDArcProductionShipIds.HULL_XC_101"),
+            "xc_101 AI must be preserved during forced reserve deployment, not only during later arrangement",
         )
         assertTrue(
-            plugin.contains("pressurePlasmaArchForSystemAI"),
+            plugin.contains("pressureXc101ForSystemAI"),
             "ARC automation must create real enemy pressure instead of waiting in a static no-fire scene",
         )
         assertTrue(
-            plugin.contains("ship.setShipTarget(plasmaArch)") && plugin.contains("allowFire = true, preserveAI = true"),
-            "enemy pressure ships should keep AI/fire control and target plasma_arch",
+            plugin.contains("ship.setShipTarget(xc101)") && plugin.contains("allowFire = true, preserveAI = true"),
+            "enemy pressure ships should keep AI/fire control and target xc_101",
         )
         listOf(
-            "plasmaArchSystemId",
-            "plasmaArchSystemState",
-            "plasmaArchSystemCanBeActivated",
-            "plasmaArchSystemEffectLevel",
-            "plasmaArchShipAI",
-            "plasmaArchFluxLevel",
-            "plasmaArchCurrFlux",
-            "plasmaArchMaxFlux",
-            "plasmaArchHardFlux",
-            "plasmaArchHardFluxLevel",
-            "plasmaArchSinceLastDamageTaken",
-            "plasmaArchOverloadedOrVenting",
-            "plasmaArchShieldOn",
-            "plasmaArchShieldActiveArc",
-            "plasmaArchAIFlags",
-            "plasmaArchAIFlagIncomingDamage",
-            "plasmaArchAIFlagCriticalDpsDanger",
-            "plasmaArchAIFlagKeepShieldsOn",
-            "plasmaArchVanillaSystemAI",
-            "plasmaArchVanillaSystemAIError",
-            "plasmaArchAIFlagBiggestThreatTargetHullId",
-            "plasmaArchAIFlagBiggestThreatTargetVariantId",
-            "plasmaArchAIFlagTargetForSystemHullId",
-            "plasmaArchAIFlagTargetForSystemVariantId",
-            "plasmaArchAIFlagManeuverTargetHullId",
-            "plasmaArchAIFlagManeuverTargetVariantId",
-            "plasmaArchEnemyPressureShips",
-            "plasmaArchEnemyTargetingShips",
-            "plasmaArchEnemyFiringWeapons",
-            "plasmaArchEnemyProjectiles",
-            "plasmaArchSystemSpecAiScript",
-            "plasmaArchSystemSpecFpsBaseCap",
-            "plasmaArchSystemSpecToggle",
-            "plasmaArchSystemSpecFiringAllowed",
-            "plasmaArchSystemSpecTags",
+            "xc101SystemId",
+            "xc101SystemState",
+            "xc101SystemCanBeActivated",
+            "xc101SystemEffectLevel",
+            "xc101ShipAI",
+            "xc101FluxLevel",
+            "xc101CurrFlux",
+            "xc101MaxFlux",
+            "xc101HardFlux",
+            "xc101HardFluxLevel",
+            "xc101SinceLastDamageTaken",
+            "xc101OverloadedOrVenting",
+            "xc101ShieldOn",
+            "xc101ShieldActiveArc",
+            "xc101AIFlags",
+            "xc101AIFlagIncomingDamage",
+            "xc101AIFlagCriticalDpsDanger",
+            "xc101AIFlagKeepShieldsOn",
+            "xc101VanillaSystemAI",
+            "xc101VanillaSystemAIError",
+            "xc101AIFlagBiggestThreatTargetHullId",
+            "xc101AIFlagBiggestThreatTargetVariantId",
+            "xc101AIFlagTargetForSystemHullId",
+            "xc101AIFlagTargetForSystemVariantId",
+            "xc101AIFlagManeuverTargetHullId",
+            "xc101AIFlagManeuverTargetVariantId",
+            "xc101EnemyPressureShips",
+            "xc101EnemyTargetingShips",
+            "xc101EnemyFiringWeapons",
+            "xc101EnemyProjectiles",
+            "xc101SystemSpecAiScript",
+            "xc101SystemSpecFpsBaseCap",
+            "xc101SystemSpecToggle",
+            "xc101SystemSpecFiringAllowed",
+            "xc101SystemSpecTags",
         ).forEach { field ->
-            assertTrue(plugin.contains("\\\"$field\\\""), "ARC diagnostics must expose plasma_arch FORTRESS_SHIELD AI field: $field")
+            assertTrue(plugin.contains("\\\"$field\\\""), "ARC diagnostics must expose xc_101 FORTRESS_SHIELD AI field: $field")
         }
     }
 
     @Test
     fun `mission installs automation combat plugin`() {
-        val mission = Files.readString(RepoLayout.automationContentsRoot.resolve("data/missions/arc_flare_aod7_basic/MissionDefinition.java"))
+        val mission = Files.readString(RepoLayout.automationContentsRoot.resolve("data/missions/xc_001_aod7_basic/MissionDefinition.java"))
 
         assertTrue(mission.contains("ASTDAutomationCombatPlugin"))
         assertTrue(mission.contains("ASTDInGameAutomationScenario.VARIANT_ID"))
@@ -345,7 +345,7 @@ class ASTDInGameAutomationScenarioTest {
         )
         assertTrue(script.contains("ASTD_SMOKE_START_RES:-2560x1440"), "automation mode should default to 2560x1440")
         assertTrue(script.contains("-Dssoptimizer.automation.enabled=true"), "automation mode should enable SSOptimizer automation")
-        assertTrue(script.contains("ASTD_AUTOMATION_SCENARIO:-arc_flare_aod7_basic"), "automation mode should allow selecting the ARC production scenario")
+        assertTrue(script.contains("ASTD_AUTOMATION_SCENARIO:-xc_001_aod7_basic"), "automation mode should allow selecting the ARC production scenario")
         assertTrue(script.contains("-Dssoptimizer.automation.requireScreenshotFile=true"), "automation mode should require a concrete screenshot")
         assertTrue(script.contains("-Dssoptimizer.automation.outputDir="), "automation mode should write evidence to a known output dir")
         assertTrue(gradle.contains("smokeTestGame"), "Gradle should expose the full in-game smoke task")

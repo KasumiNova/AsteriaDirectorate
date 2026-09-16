@@ -1,8 +1,8 @@
 {
   "scenarios": [
     {
-      "id": "arc_flare_aod7_basic",
-      "missionId": "arc_flare_aod7_basic",
+      "id": "xc_001_aod7_basic",
+      "missionId": "xc_001_aod7_basic",
       "shipId": "astd_xc_001",
       "variantId": "astd_xc_001_Standard",
       "weaponId": "astd_aod7",
@@ -23,19 +23,19 @@
         "astd_xc_103_Standard"
       ],
       "requiredEvidence": [
-        "arcJetShockwaveFrames",
-        "arcJetShockwaveRadius",
-        "arcJetShockwaveFluxPressure",
-        "plasmaArchShieldOpen",
-        "plasmaArchSystemActive",
-        "plasmaArchShieldArcEmissions",
-        "radiationBeltSystemAfterimages",
-        "arcJetTooltip",
-        "plasmaArchTooltip",
-        "radiationBeltTooltip",
-        "arcJetTooltipKeys",
-        "plasmaArchTooltipKeys",
-        "radiationBeltTooltipKeys"
+        "xc102ShockwaveFrames",
+        "xc102ShockwaveRadius",
+        "xc102ShockwaveFluxPressure",
+        "xc101ShieldOpen",
+        "xc101SystemActive",
+        "xc101ShieldArcEmissions",
+        "xc103SystemAfterimages",
+        "xc102Tooltip",
+        "xc101Tooltip",
+        "xc103Tooltip",
+        "xc102TooltipKeys",
+        "xc101TooltipKeys",
+        "xc103TooltipKeys"
       ]
     },
     {

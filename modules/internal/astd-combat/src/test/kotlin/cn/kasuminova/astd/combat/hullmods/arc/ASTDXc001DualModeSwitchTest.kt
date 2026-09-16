@@ -11,10 +11,10 @@ import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 /**
- * arc_flare 双模式「拆即切」核心验证（Task 5：arc 从自有状态机迁移到通用框架后行为零回归）。
+ * xc_001 双模式「拆即切」核心验证（Task 5：arc 从自有状态机迁移到通用框架后行为零回归）。
  *
  * 验证目标（跑真实生产状态机逻辑，非 source-contains）：
- * 1. arc config 经 [registerArcFlareDualModeConfig]（onApplicationLoad 调用）注册后，
+ * 1. arc config 经 [registerXc001DualModeConfig]（onApplicationLoad 调用）注册后，
  *    通用注册表能反查到——通用切换器 tooltip 依赖此反查才能显示「当前/目标模式」。
  * 2. 「切换器被拆下 → mode hullmod 切到对面模式 + 把切换器加回」这一拆即切语义：
  *    在真实 [activateDualMode]（arc mode hullmod 在 applyEffectsBeforeShipCreation 实际调用的函数）上
@@ -23,14 +23,14 @@ import kotlin.test.assertTrue
  * 测试驱动：用最小 [FakeArcVariant] 承载状态机真正触达的 permaMods / hullMods 集合。
  * 未触达的方法抛出，确保状态机若依赖预期外接口立即失败（Fail Fast）。不使用反射、不使用 mock 框架。
  */
-class ASTDArcFlareDualModeSwitchTest {
+class ASTDXc001DualModeSwitchTest {
 
     @Test
     fun `registration makes arc config queryable for switcher tooltip`() {
-        registerArcFlareDualModeConfig()
+        registerXc001DualModeConfig()
         assertSame(
-            ARC_FLARE_DUAL_MODE_CONFIG,
-            ASTDDualModeRegistry.configFor(ASTDArcFlareHullModIds.HULL_ID),
+            XC_001_DUAL_MODE_CONFIG,
+            ASTDDualModeRegistry.configFor(ASTDXc001HullModIds.HULL_ID),
             "通用切换器 tooltip 需 configFor(arc hullId) 反查到 arc config",
         )
     }
@@ -39,69 +39,69 @@ class ASTDArcFlareDualModeSwitchTest {
     fun `removing switcher in crewed mode flips to automated and restores switcher`() {
         val variant = FakeArcVariant()
         // 初始稳定态：载人模式 + 切换器在位
-        variant.addPermaMod(ASTDArcFlareHullModIds.MODE_CREWED)
-        variant.addPermaMod(ASTDArcFlareHullModIds.NEXT_CREWED)
-        variant.addMod(ARC_FLARE_DUAL_MODE_CONFIG.switcherId)
-        assertFalse(variant.hasASTDDualModeAutomated(ARC_FLARE_DUAL_MODE_CONFIG), "前置：应处于载人模式")
+        variant.addPermaMod(ASTDXc001HullModIds.MODE_CREWED)
+        variant.addPermaMod(ASTDXc001HullModIds.NEXT_CREWED)
+        variant.addMod(XC_001_DUAL_MODE_CONFIG.switcherId)
+        assertFalse(variant.hasASTDDualModeAutomated(XC_001_DUAL_MODE_CONFIG), "前置：应处于载人模式")
 
         // 复现载人 mode hullmod 的拆即切：玩家拆下切换器 → 切到无人 + 加回切换器
-        variant.removeMod(ARC_FLARE_DUAL_MODE_CONFIG.switcherId)
-        assertFalse(variant.hasHullMod(ARC_FLARE_DUAL_MODE_CONFIG.switcherId), "前置：切换器已被拆下")
-        variant.activateDualMode(ARC_FLARE_DUAL_MODE_CONFIG, ARC_FLARE_DUAL_MODE_CONFIG.automatedModeId, null)
-        variant.addMod(ARC_FLARE_DUAL_MODE_CONFIG.switcherId)
+        variant.removeMod(XC_001_DUAL_MODE_CONFIG.switcherId)
+        assertFalse(variant.hasHullMod(XC_001_DUAL_MODE_CONFIG.switcherId), "前置：切换器已被拆下")
+        variant.activateDualMode(XC_001_DUAL_MODE_CONFIG, XC_001_DUAL_MODE_CONFIG.automatedModeId, null)
+        variant.addMod(XC_001_DUAL_MODE_CONFIG.switcherId)
 
-        assertTrue(variant.hasASTDDualModeAutomated(ARC_FLARE_DUAL_MODE_CONFIG), "拆即切后应翻转到无人模式")
+        assertTrue(variant.hasASTDDualModeAutomated(XC_001_DUAL_MODE_CONFIG), "拆即切后应翻转到无人模式")
         assertFalse(
-            variant.permaMods.contains(ASTDArcFlareHullModIds.MODE_CREWED),
+            variant.permaMods.contains(ASTDXc001HullModIds.MODE_CREWED),
             "无人模式下不应再保留载人 mode permaMod",
         )
         assertTrue(variant.permaMods.contains("automated"), "无人模式应同步原版 automated 船插")
         assertTrue(
-            variant.permaMods.contains(ASTDArcFlareHullModIds.NEXT_AUTOMATED),
+            variant.permaMods.contains(ASTDXc001HullModIds.NEXT_AUTOMATED),
             "无人模式应设同向 next marker",
         )
-        assertTrue(variant.hasHullMod(ARC_FLARE_DUAL_MODE_CONFIG.switcherId), "拆即切后切换器应被加回（常驻）")
+        assertTrue(variant.hasHullMod(XC_001_DUAL_MODE_CONFIG.switcherId), "拆即切后切换器应被加回（常驻）")
     }
 
     @Test
     fun `removing switcher in automated mode flips to crewed and restores switcher`() {
         val variant = FakeArcVariant()
         // 初始稳定态：无人模式 + 切换器在位
-        variant.addPermaMod(ASTDArcFlareHullModIds.MODE_AUTOMATED)
+        variant.addPermaMod(ASTDXc001HullModIds.MODE_AUTOMATED)
         variant.addPermaMod("automated")
-        variant.addPermaMod(ASTDArcFlareHullModIds.NEXT_AUTOMATED)
-        variant.addMod(ARC_FLARE_DUAL_MODE_CONFIG.switcherId)
-        assertTrue(variant.hasASTDDualModeAutomated(ARC_FLARE_DUAL_MODE_CONFIG), "前置：应处于无人模式")
+        variant.addPermaMod(ASTDXc001HullModIds.NEXT_AUTOMATED)
+        variant.addMod(XC_001_DUAL_MODE_CONFIG.switcherId)
+        assertTrue(variant.hasASTDDualModeAutomated(XC_001_DUAL_MODE_CONFIG), "前置：应处于无人模式")
 
         // 复现无人 mode hullmod 的拆即切：玩家拆下切换器 → 切到载人 + 加回切换器
-        variant.removeMod(ARC_FLARE_DUAL_MODE_CONFIG.switcherId)
-        variant.activateDualMode(ARC_FLARE_DUAL_MODE_CONFIG, ARC_FLARE_DUAL_MODE_CONFIG.crewedModeId, null)
-        variant.addMod(ARC_FLARE_DUAL_MODE_CONFIG.switcherId)
+        variant.removeMod(XC_001_DUAL_MODE_CONFIG.switcherId)
+        variant.activateDualMode(XC_001_DUAL_MODE_CONFIG, XC_001_DUAL_MODE_CONFIG.crewedModeId, null)
+        variant.addMod(XC_001_DUAL_MODE_CONFIG.switcherId)
 
-        assertFalse(variant.hasASTDDualModeAutomated(ARC_FLARE_DUAL_MODE_CONFIG), "拆即切后应翻转到载人模式")
+        assertFalse(variant.hasASTDDualModeAutomated(XC_001_DUAL_MODE_CONFIG), "拆即切后应翻转到载人模式")
         assertFalse(variant.permaMods.contains("automated"), "载人模式应移除原版 automated 船插")
         assertTrue(
-            variant.permaMods.contains(ASTDArcFlareHullModIds.NEXT_CREWED),
+            variant.permaMods.contains(ASTDXc001HullModIds.NEXT_CREWED),
             "载人模式应设同向 next marker",
         )
-        assertTrue(variant.hasHullMod(ARC_FLARE_DUAL_MODE_CONFIG.switcherId), "拆即切后切换器应被加回（常驻）")
+        assertTrue(variant.hasHullMod(XC_001_DUAL_MODE_CONFIG.switcherId), "拆即切后切换器应被加回（常驻）")
     }
 
     @Test
     fun `repeated switcher removal toggles back and forth`() {
         val variant = FakeArcVariant()
-        variant.addPermaMod(ASTDArcFlareHullModIds.MODE_CREWED)
-        variant.addMod(ARC_FLARE_DUAL_MODE_CONFIG.switcherId)
+        variant.addPermaMod(ASTDXc001HullModIds.MODE_CREWED)
+        variant.addMod(XC_001_DUAL_MODE_CONFIG.switcherId)
 
         // 第一次拆：载人 → 无人
-        variant.activateDualMode(ARC_FLARE_DUAL_MODE_CONFIG, ARC_FLARE_DUAL_MODE_CONFIG.automatedModeId, null)
-        assertTrue(variant.hasASTDDualModeAutomated(ARC_FLARE_DUAL_MODE_CONFIG))
+        variant.activateDualMode(XC_001_DUAL_MODE_CONFIG, XC_001_DUAL_MODE_CONFIG.automatedModeId, null)
+        assertTrue(variant.hasASTDDualModeAutomated(XC_001_DUAL_MODE_CONFIG))
         // 第二次拆：无人 → 载人
-        variant.activateDualMode(ARC_FLARE_DUAL_MODE_CONFIG, ARC_FLARE_DUAL_MODE_CONFIG.crewedModeId, null)
-        assertFalse(variant.hasASTDDualModeAutomated(ARC_FLARE_DUAL_MODE_CONFIG))
+        variant.activateDualMode(XC_001_DUAL_MODE_CONFIG, XC_001_DUAL_MODE_CONFIG.crewedModeId, null)
+        assertFalse(variant.hasASTDDualModeAutomated(XC_001_DUAL_MODE_CONFIG))
         // 第三次拆：载人 → 无人（确认可反复轮换，不卡死）
-        variant.activateDualMode(ARC_FLARE_DUAL_MODE_CONFIG, ARC_FLARE_DUAL_MODE_CONFIG.automatedModeId, null)
-        assertTrue(variant.hasASTDDualModeAutomated(ARC_FLARE_DUAL_MODE_CONFIG))
+        variant.activateDualMode(XC_001_DUAL_MODE_CONFIG, XC_001_DUAL_MODE_CONFIG.automatedModeId, null)
+        assertTrue(variant.hasASTDDualModeAutomated(XC_001_DUAL_MODE_CONFIG))
     }
 }
 

@@ -48,7 +48,7 @@ verificationCommands:
   建议运行的测试、构建、preview、浏览器验证、截图采集、telemetry 读取或 smoke test 命令。
 
 riskKeywords:
-  重点搜索词，例如 VFX preset、layout parity、hardcoded text、generated output、arc_flare、aod7、ProjectileVfxRegistry、ProjectileSpecOnFireDispatcher。
+  重点搜索词，例如 VFX preset、layout parity、hardcoded text、generated output、xc_001、aod7、ProjectileVfxRegistry、ProjectileSpecOnFireDispatcher。
 
 doNotDo:
   - 禁止改代码。
@@ -107,7 +107,7 @@ recommendedNextStep:
 
 视觉、VFX、preview/runtime parity、自动化战斗类任务的验证 subAgent 需要覆盖以下首版游戏内自动化标准：
 
-- 能看到 `arc_flare` 舰船位于模拟战或等价自动化战斗场景中。
+- 能看到 `xc_001` 舰船位于模拟战或等价自动化战斗场景中。
 - 能操控 `aod7` 开火。
 - 能看到 `aod7` 弹体特效。
 - 验收结果包含日志、截图或 telemetry 证据，证据路径必须写入 `evidence`。

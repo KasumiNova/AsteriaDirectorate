@@ -177,7 +177,7 @@ class ASTDLensArrayCoreHullMod : BaseHullMod() {
             submitMarkHighlights(engine, amount)
         }
 
-        if (!ship.isGravitationalLensShip()) return
+        if (!ship.isZw001Ship()) return
 
         val automated = ship.variant?.hasLensAutomatedMode() == true
         val shipId = System.identityHashCode(ship)
@@ -429,7 +429,7 @@ class ASTDLensArrayCoreHullMod : BaseHullMod() {
         )
     }
 
-    override fun isApplicableToShip(ship: ShipAPI): Boolean = ship.isGravitationalLensShip()
+    override fun isApplicableToShip(ship: ShipAPI): Boolean = ship.isZw001Ship()
 
     override fun showInRefitScreenModPickerFor(ship: ShipAPI): Boolean = false
 

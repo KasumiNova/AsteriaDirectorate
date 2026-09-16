@@ -81,7 +81,7 @@ class ASTDDistributedPursuitNetworkHullMod : BaseHullMod() {
         val selectedIds = ASTDArcAuraUtil.selectTargets(
             sourceOwner = ship.owner,
             sourceLocation = ship.location,
-            maxRange = ASTDArcAuraUtil.RADIATION_BELT_NETWORK_RANGE,
+            maxRange = ASTDArcAuraUtil.XC_103_NETWORK_RANGE,
             maxCount = MAX_LINKS,
             eligibleHullSizes = ELIGIBLE_HULL_SIZES,
             candidates = candidates.map { it.first },

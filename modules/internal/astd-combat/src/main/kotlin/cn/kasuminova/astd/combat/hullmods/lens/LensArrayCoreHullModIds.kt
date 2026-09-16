@@ -22,7 +22,7 @@ object LensArrayCoreHullModIds {
     const val SYSTEM_AUTOMATED: String = "astd_echo_fixation_automated"
 }
 
-internal fun ShipVariantAPI?.isGravitationalLensVariant(): Boolean {
+internal fun ShipVariantAPI?.isZw001Variant(): Boolean {
     val v = this ?: return false
     val hullId = try {
         v.hullSpec?.hullId
@@ -37,7 +37,7 @@ internal fun ShipVariantAPI?.isGravitationalLensVariant(): Boolean {
     return hullId == LensArrayCoreHullModIds.HULL_ID || baseHullId == LensArrayCoreHullModIds.HULL_ID
 }
 
-internal fun ShipAPI?.isGravitationalLensShip(): Boolean {
+internal fun ShipAPI?.isZw001Ship(): Boolean {
     val s = this ?: return false
     val hullId = try {
         s.hullSpec?.hullId

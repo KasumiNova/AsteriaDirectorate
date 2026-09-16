@@ -20,9 +20,9 @@ import kotlin.math.sin
  * - jitter：越接近抖动越强（站桩重合者残影剧烈撕裂）。
  * - 红化：越接近颜色越红（从紫罗兰插值到红），呼应「被拽回过去、即将再死一次」的危险语义。
  *
- * 技术范式（与 [cn.kasuminova.astd.combat.shipsystems.ASTDArcFlareOverdriveSystemStats]
+ * 技术范式（与 [cn.kasuminova.astd.combat.shipsystems.ASTDXc001OverdriveSystemStats]
  * 的 applyVisualFeedback 一致）：舰体残影的正确范式是 [MagicRender.battlespace]——取舰体
- * hullSprite，在「过去坐标」按「过去 facing」旋转、additive 叠加绘制。本渲染器照搬 ArcFlare 的
+ * hullSprite，在「过去坐标」按「过去 facing」旋转、additive 叠加绘制。本渲染器照搬 Xc001 的
  * sprite 中心偏移几何（修正 spriteAPI.centerX/centerY 与 facing 旋转），确保残影与「过去时刻
  * 的舰体」严格对齐。
  *
@@ -94,7 +94,7 @@ object EchoFixationAfterimageRenderer {
 
         val width = hullSprite.width
         val height = hullSprite.height
-        // sprite 中心偏移修正（照搬 ArcFlare applyVisualFeedback 的几何）：
+        // sprite 中心偏移修正（照搬 Xc001 applyVisualFeedback 的几何）：
         // 修正 spriteAPI.centerX/centerY 与几何中心的差，并按 (facing-90°) 旋转，
         // 确保残影位置与「过去时刻舰体」严格对齐。
         val rawOx = width / 2f - hullSprite.centerX

@@ -1,6 +1,6 @@
 package cn.kasuminova.astd.combat.shipsystems
 
-import cn.kasuminova.astd.renderer.effect.hullmods.ASTDNegentropyEdgeVfx
+import cn.kasuminova.astd.renderer.effect.hullmods.ASTDXc002Vfx
 import cn.kasuminova.astd.internal.i18n.I18n
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseEveryFrameCombatPlugin
@@ -67,7 +67,7 @@ open class CollapseShiftSystemStats : BaseShipSystemScript() {
 
     private fun onActivate(ship: ShipAPI, engine: CombatEngineAPI) {
         val shipKey = System.identityHashCode(ship)
-        val chargeRatio = ASTDNegentropyEdgeState.consumeCharge(ship)
+        val chargeRatio = ASTDXc002State.consumeCharge(ship)
         val shiftDistance = BASE_SHIFT_DISTANCE + BONUS_SHIFT_DISTANCE * chargeRatio
         val from = Vector2f(ship.location)
         val desired = desiredDestination(ship, shiftDistance)
@@ -80,8 +80,8 @@ open class CollapseShiftSystemStats : BaseShipSystemScript() {
         engine.customData[PENDING_KEY + ":$shipKey"] = PendingShift(ship, from, safe, chargeRatio, SHIFT_DELAY_SEC)
         ensurePendingPlugin(engine)
 
-        ASTDNegentropyEdgeState.setCollapseWindow(ship, WINDOW_SEC)
-        ASTDNegentropyEdgeState.markShiftOrigin(ship)
+        ASTDXc002State.setCollapseWindow(ship, WINDOW_SEC)
+        ASTDXc002State.markShiftOrigin(ship)
 
         val invulnEndKey = "astd_collapse_shift_invuln_end:$shipKey"
         val windowEndKey = "astd_collapse_shift_window_end:$shipKey"
@@ -330,7 +330,7 @@ open class CollapseShiftSystemStats : BaseShipSystemScript() {
     }
 
     private fun spawnPreShiftVfx(engine: CombatEngineAPI, ship: ShipAPI, loc: Vector2f, level: Float) {
-        ASTDNegentropyEdgeVfx.spawnLargeShiftDistortion(engine, loc, 0.75f + 0.25f * level)
+        ASTDXc002Vfx.spawnLargeShiftDistortion(engine, loc, 0.75f + 0.25f * level)
         spawnOutwardArcBurst(engine, ship, 0.75f + 0.25f * level)
     }
 
@@ -349,7 +349,7 @@ open class CollapseShiftSystemStats : BaseShipSystemScript() {
                 spawnLensFlare(engine, ship, off, 0.65f + 0.35f * level)
             }
         }
-        ASTDNegentropyEdgeVfx.spawnLargeShiftDistortion(engine, to, 1f)
+        ASTDXc002Vfx.spawnLargeShiftDistortion(engine, to, 1f)
         spawnLensFlare(engine, ship, to, 1f)
         ship.setJitter("astd_collapse_shift", Color(120, 220, 255, 120), 0.35f, 8, 2f, 12f)
     }
@@ -453,7 +453,7 @@ open class CollapseShiftSystemStats : BaseShipSystemScript() {
         try {
             val subsystems = MagicSubsystemsManager.getSubsystemsForShipCopy(ship) ?: return
             for (subsystem in subsystems) {
-                (subsystem as? ASTDNegentropyEdgeDroneSubsystem)?.prepareForCollapseShift()
+                (subsystem as? ASTDXc002DroneSubsystem)?.prepareForCollapseShift()
             }
         } catch (_: Throwable) {
         }
@@ -471,7 +471,7 @@ open class CollapseShiftSystemStats : BaseShipSystemScript() {
                     try {
                         val subsystems = MagicSubsystemsManager.getSubsystemsForShipCopy(ship) ?: return
                         for (subsystem in subsystems) {
-                            (subsystem as? ASTDNegentropyEdgeDroneSubsystem)?.syncDronesAfterCollapseShift()
+                            (subsystem as? ASTDXc002DroneSubsystem)?.syncDronesAfterCollapseShift()
                         }
                     } catch (_: Throwable) {
                     }
@@ -496,8 +496,8 @@ open class CollapseShiftSystemStats : BaseShipSystemScript() {
             craft.facing = normalizeAngle(entry.facing + deltaFacing)
             craft.velocity.set(VectorUtils.rotate(entry.velocity, deltaFacing, Vector2f()))
             craft.angularVelocity = entry.angularVelocity
-            ASTDNegentropyEdgeVfx.spawnLargeShiftDistortion(engine, oldCraftLoc, 0.35f)
-            ASTDNegentropyEdgeVfx.spawnLargeShiftDistortion(engine, newCraftLoc, 0.45f)
+            ASTDXc002Vfx.spawnLargeShiftDistortion(engine, oldCraftLoc, 0.35f)
+            ASTDXc002Vfx.spawnLargeShiftDistortion(engine, newCraftLoc, 0.45f)
         }
     }
 

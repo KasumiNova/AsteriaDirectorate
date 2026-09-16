@@ -1,4 +1,4 @@
-package data.missions.arc_flare_aod7_basic;
+package data.missions.xc_001_aod7_basic;
 
 import cn.kasuminova.astd.combat.effect.generic.ASTDAutomationCombatPlugin;
 import cn.kasuminova.astd.internal.debug.ASTDInGameAutomationScenario;

@@ -48,7 +48,7 @@ class LensShipResourceAdaptationTest {
         assertEquals("DECORATIVE", weaponSpec.getString("type"), "$weaponId.wpn must be decorative.")
         assertEquals("LARGE", weaponSpec.getString("size"), "$weaponId.wpn must fit the $slotId slot.")
         assertEquals(
-            "cn.kasuminova.astd.renderer.effect.system.ArcFlareDecorativeLightsEffect",
+            "cn.kasuminova.astd.renderer.effect.system.ASTDDecorativeLightsEffect",
             weaponSpec.getString("everyFrameEffect"),
             "$weaponId.wpn must use the established decorative lights effect.",
         )

@@ -55,8 +55,8 @@ class HullModDescriptionFormatTest {
 
         val text = Files.readString(jsonPath)
         assertTrue(text.contains("\"asteria_directorate\""), "缺少 asteria_directorate 分类")
-        assertTrue(text.contains("\"system.arc_flare_overdrive.status.crewed.active\""), "缺少 system.arc_flare_overdrive.status.crewed.active")
-        assertTrue(text.contains("\"system.arc_flare_overdrive.status.automated.active\""), "缺少 system.arc_flare_overdrive.status.automated.active")
+        assertTrue(text.contains("\"system.xc_001_overdrive.status.crewed.active\""), "缺少 system.xc_001_overdrive.status.crewed.active")
+        assertTrue(text.contains("\"system.xc_001_overdrive.status.automated.active\""), "缺少 system.xc_001_overdrive.status.automated.active")
     }
 
     @Test

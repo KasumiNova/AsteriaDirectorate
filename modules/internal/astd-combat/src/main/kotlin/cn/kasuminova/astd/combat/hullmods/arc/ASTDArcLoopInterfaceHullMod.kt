@@ -1,7 +1,7 @@
 package cn.kasuminova.astd.combat.hullmods.arc
 
 import cn.kasuminova.astd.combat.hullmods.base.ASTDHullModTooltipRenderer
-import cn.kasuminova.astd.combat.shipsystems.ASTDArcFlareOverdriveSystemStats
+import cn.kasuminova.astd.combat.shipsystems.ASTDXc001OverdriveSystemStats
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseHullMod
 import com.fs.starfarer.api.combat.MutableShipStatsAPI
@@ -38,7 +38,7 @@ class ASTDArcLoopInterfaceHullMod : BaseHullMod() {
 
     override fun applyEffectsBeforeShipCreation(hullSize: ShipAPI.HullSize, stats: MutableShipStatsAPI, id: String) {
         val variant = stats.variant ?: return
-        if (!variant.isASTDArcFlareVariant()) return
+        if (!variant.isASTDXc001Variant()) return
 
         stats.energyProjectileSpeedMult.modifyMult(id, ENERGY_PROJ_SPEED_MULT)
         stats.energyWeaponFluxCostMod.modifyMult(id, ENERGY_FLUX_MULT)
@@ -58,7 +58,7 @@ class ASTDArcLoopInterfaceHullMod : BaseHullMod() {
         if (engine.isPaused || amount <= 0f || ship.isHulk) return
 
         val shipKey = System.identityHashCode(ship).toString()
-        val boostKey = "${ASTDArcFlareOverdriveSystemStats.HULLMOD_BOOST_KEY}$shipKey"
+        val boostKey = "${ASTDXc001OverdriveSystemStats.HULLMOD_BOOST_KEY}$shipKey"
         val boostLevel = (engine.customData[boostKey] as? Float ?: 0f).coerceIn(0f, 1f)
 
         val stats = ship.mutableStats
@@ -115,7 +115,7 @@ class ASTDArcLoopInterfaceHullMod : BaseHullMod() {
 
     override fun affectsOPCosts(): Boolean = true
 
-    override fun isApplicableToShip(ship: ShipAPI): Boolean = ship.isASTDArcFlareShip()
+    override fun isApplicableToShip(ship: ShipAPI): Boolean = ship.isASTDXc001Ship()
 
     override fun getBorderColor(): Color = THEME.borderColor
 

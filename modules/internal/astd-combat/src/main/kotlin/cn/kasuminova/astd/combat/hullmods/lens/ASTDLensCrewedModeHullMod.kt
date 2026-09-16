@@ -15,7 +15,7 @@ class ASTDLensCrewedModeHullMod : BaseHullMod() {
 
     override fun applyEffectsBeforeShipCreation(hullSize: ShipAPI.HullSize, stats: MutableShipStatsAPI, id: String) {
         val variant = stats.variant ?: return
-        if (!variant.isGravitationalLensVariant()) return
+        if (!variant.isZw001Variant()) return
 
         // 拆即切（核心修复，镜像 arc）：通用切换器被玩家在 refit 拆下 →
         // 立即切到无人模式并把切换器加回（切换器常驻，玩家通过反复拆它轮换模式）。
@@ -28,6 +28,6 @@ class ASTDLensCrewedModeHullMod : BaseHullMod() {
         variant.hullSpec?.setShipSystemId(LensArrayCoreHullModIds.SYSTEM_CREWED)
     }
 
-    override fun isApplicableToShip(ship: ShipAPI): Boolean = ship.isGravitationalLensShip()
+    override fun isApplicableToShip(ship: ShipAPI): Boolean = ship.isZw001Ship()
     override fun showInRefitScreenModPickerFor(ship: ShipAPI): Boolean = false
 }

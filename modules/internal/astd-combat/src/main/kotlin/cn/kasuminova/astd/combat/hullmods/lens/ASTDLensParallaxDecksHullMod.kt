@@ -16,7 +16,7 @@ import java.awt.Color
  * 视差甲板（Parallax Decks，spec §4 / `purple/10-unique.md` §1 插件②）——决明级内置插件②，
  * 强化「4 甲板」支柱：机群是「铺误差标记的载具」而非主体输出。
  *
- * 仅对决明级生效（[isApplicableToShip] / advanceInCombat 入口 [isGravitationalLensShip] guard）。
+ * 仅对决明级生效（[isApplicableToShip] / advanceInCombat 入口 [isZw001Ship] guard）。
  * advanceInCombat 每帧驱动三效果（数值/边界判定走纯函数 [ParallaxDecksMath]）：
  *
  * 1. **错位部署**：枚举本舰机群，对「刚出库（< [ParallaxDecksMath.LAUNCH_PHASE_WINDOW]）」的 fighter
@@ -109,7 +109,7 @@ class ASTDLensParallaxDecksHullMod : BaseHullMod() {
     override fun advanceInCombat(ship: ShipAPI, amount: Float) {
         val engine = Global.getCombatEngine() ?: return
         if (engine.isPaused || amount <= 0f || ship.isHulk) return
-        if (!ship.isGravitationalLensShip()) return
+        if (!ship.isZw001Ship()) return
 
         elapsed += amount
         seenThisFrame.clear()
@@ -196,7 +196,7 @@ class ASTDLensParallaxDecksHullMod : BaseHullMod() {
         )
     }
 
-    override fun isApplicableToShip(ship: ShipAPI): Boolean = ship.isGravitationalLensShip()
+    override fun isApplicableToShip(ship: ShipAPI): Boolean = ship.isZw001Ship()
 
     override fun showInRefitScreenModPickerFor(ship: ShipAPI): Boolean = false
 

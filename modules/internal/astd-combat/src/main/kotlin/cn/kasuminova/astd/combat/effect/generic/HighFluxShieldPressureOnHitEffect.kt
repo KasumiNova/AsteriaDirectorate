@@ -1,7 +1,7 @@
 package cn.kasuminova.astd.combat.effect.generic
 
 import cn.kasuminova.astd.impl.render.StrikeSprayVfx
-import cn.kasuminova.astd.renderer.effect.system.ArcFlareOverdriveVisualState
+import cn.kasuminova.astd.renderer.effect.system.Xc001OverdriveVisualState
 import cn.kasuminova.astd.internal.debug.CombatCaps
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEntityAPI
@@ -132,10 +132,10 @@ class HighFluxShieldPressureOnHitEffect : OnHitEffectPlugin {
         if (weaponId0 == "astd_aod7" || projId == "astd_aod7_shot") {
             val overdriveLevel = try {
                 val ship0 = projectile.weapon?.ship
-                if (ship0 != null) ArcFlareOverdriveVisualState.getLevel(ship0, engine) else 0f
+                if (ship0 != null) Xc001OverdriveVisualState.getLevel(ship0, engine) else 0f
             } catch (_: Throwable) { 0f }
-            val puffColor = ArcFlareOverdriveVisualState.lerpColor(
-                Color(140, 200, 255), ArcFlareOverdriveVisualState.hotFringe, overdriveLevel, 110
+            val puffColor = Xc001OverdriveVisualState.lerpColor(
+                Color(140, 200, 255), Xc001OverdriveVisualState.hotFringe, overdriveLevel, 110
             )
             val pressureVel = try { s.velocity?.let { Vector2f(it) } ?: Vector2f() } catch (_: Throwable) { Vector2f() }
             repeat(6) {
@@ -184,12 +184,12 @@ class HighFluxShieldPressureOnHitEffect : OnHitEffectPlugin {
         // 命中特效颜色跟随弹体过载状态：无过载=蓝色，满过载=橙色。
         val overdriveLevel = try {
             val ship0 = projectile.weapon?.ship
-            if (ship0 != null) ArcFlareOverdriveVisualState.getLevel(ship0, engine) else 0f
+            if (ship0 != null) Xc001OverdriveVisualState.getLevel(ship0, engine) else 0f
         } catch (_: Throwable) { 0f }
-        val core = ArcFlareOverdriveVisualState.lerpColor(
+        val core = Xc001OverdriveVisualState.lerpColor(
             Color(225, 242, 255), Color(255, 245, 225), overdriveLevel, if (shieldHit) 210 else 190
         )
-        val fringe = ArcFlareOverdriveVisualState.lerpColor(
+        val fringe = Xc001OverdriveVisualState.lerpColor(
             Color(130, 195, 255), Color(255, 185, 95), overdriveLevel, if (shieldHit) 190 else 165
         )
         val smoke = Color(fringe.red, fringe.green, fringe.blue, if (shieldHit) 85 else 75)

@@ -13,7 +13,7 @@ import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
 
 /** 淬刃专属战斗视觉。优先使用 BoxUtil Trail/Distortion。 */
-object ASTDNegentropyEdgeVfx {
+object ASTDXc002Vfx {
     private const val CORE_SPRITE = "graphics/fx/beamcoreb.png"
     private const val FRINGE_SPRITE = "graphics/fx/beamfringeb.png"
     private const val DUST_SPRITE = "graphics/fx/glow64.png"

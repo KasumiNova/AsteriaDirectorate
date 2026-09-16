@@ -100,7 +100,7 @@ object StandardCores {
     /**
      * 预加载全部档位军官头像贴图。
      *
-     * SSOptimizer 延迟加载下裸 getSprite 会拿到 textureID=0 的黑壳（同 ConeShardComponent 的
+     * SSOptimizer 延迟加载下裸 getSprite 会拿到 textureID=0 的黑壳（同 TriShardComponent 的
      * 已知坑），AI 核心指派界面的头像渲染正是裸 getSprite 路径，必须在 onApplicationLoad
      * 先 loadTexture 进缓存。
      */

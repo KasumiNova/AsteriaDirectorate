@@ -19,7 +19,7 @@ import numpy as np
 from PIL import Image
 
 EXPECTED = {
-    "scenario": "arc_flare_aod7_basic",
+    "scenario": "xc_001_aod7_basic",
     "shipId": "astd_xc_001",
     "weaponId": "astd_aod7",
     "projectileSpecId": "astd_aod7_shot",
@@ -27,23 +27,23 @@ EXPECTED = {
 }
 ARC_PRODUCTION_SCENARIO = "arc_production_ships_vfx_tooltip"
 ARC_PRODUCTION_REQUIRED_EVIDENCE = (
-    "arcJetShockwaveFrames",
-    "arcJetShockwaveRadius",
-    "arcJetShockwaveFluxPressure",
-    "plasmaArchShieldOpen",
-    "plasmaArchSystemActive",
-    "plasmaArchShieldArcEmissions",
-    "radiationBeltSystemAfterimages",
-    "arcJetTooltip",
-    "plasmaArchTooltip",
-    "radiationBeltTooltip",
+    "xc102ShockwaveFrames",
+    "xc102ShockwaveRadius",
+    "xc102ShockwaveFluxPressure",
+    "xc101ShieldOpen",
+    "xc101SystemActive",
+    "xc101ShieldArcEmissions",
+    "xc103SystemAfterimages",
+    "xc102Tooltip",
+    "xc101Tooltip",
+    "xc103Tooltip",
 )
 ARC_PRODUCTION_REQUIRED_SHIP_IDS = ("astd_xc_102", "astd_xc_101", "astd_xc_103")
 ARC_PRODUCTION_REQUIRED_VARIANT_IDS = ("astd_xc_102_Standard", "astd_xc_101_Standard", "astd_xc_103_Standard")
 ARC_PRODUCTION_TOOLTIP_KEY_MINIMUMS = {
-    "arcJetTooltipKeys": 20,
-    "plasmaArchTooltipKeys": 44,
-    "radiationBeltTooltipKeys": 26,
+    "xc102TooltipKeys": 20,
+    "xc101TooltipKeys": 44,
+    "xc103TooltipKeys": 26,
 }
 LENS_PHASE1_SCENARIO = "lens_phase1_foundation"
 LENS_PHASE1_REQUIRED_SHIP_ID = "astd_zw_001"
@@ -89,7 +89,7 @@ ARC_PRODUCTION_SCREENSHOT_REGIONS = (
 )
 
 ASTD_TELEMETRY_FILE = "astd-ingame-automation-astd-telemetry.json"
-LOG_COMPLETED_PATTERN = re.compile(r"\[ASTD-Automation]\s+Completed: arc_flare/aod7/astd_aod7_shot/VFX observed")
+LOG_COMPLETED_PATTERN = re.compile(r"\[ASTD-Automation]\s+Completed: xc_001/aod7/astd_aod7_shot/VFX observed")
 ASTD_DIAGNOSTICS_PATTERN = re.compile(r"\[ASTD-Automation]\s+diagnostics state=(?P<state>\S+)\s+json=(?P<json>\{.*\})")
 
 MIN_SCREENSHOT_WIDTH = 2550

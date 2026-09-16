@@ -6,7 +6,7 @@ import cn.kasuminova.astd.campaign.bounty.BountyBootstrapper;
 import cn.kasuminova.astd.campaign.bounty.StandardCores;
 import cn.kasuminova.astd.campaign.story.StoryDialogInstall;
 import cn.kasuminova.astd.campaign.world.StoryWorldBootstrap;
-import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcFlareHullModUtilKt;
+import cn.kasuminova.astd.combat.hullmods.arc.ASTDXc001HullModUtilKt;
 import cn.kasuminova.astd.combat.hullmods.lens.LensArrayCoreModeUtilKt;
 import cn.kasuminova.astd.impl.buff.BuffInstall;
 import cn.kasuminova.astd.impl.difficulty.DifficultySettingsRegistrar;
@@ -39,7 +39,7 @@ public final class AsteriaDirectoratePlugin extends BaseModPlugin {
         // 注册 lens / arc 双模式配置到通用注册表（ASTDDualModeRegistry），保证通用切换器 tooltip
         // 在任何 refit 渲染前就能 configForShip 反查到对应舰的模式 id 集合。幂等，可多实例多次调用。
         LensArrayCoreModeUtilKt.registerLensDualModeConfig();
-        ASTDArcFlareHullModUtilKt.registerArcFlareDualModeConfig();
+        ASTDXc001HullModUtilKt.registerXc001DualModeConfig();
         // 注册 Buff 系统后端到 api 侧 BuffBackends（api 不反向依赖 impl，桥接口在此注入）。
         BuffInstall.INSTANCE.install();
         // 注入剧情对话后端到 ui 侧 StoryDialogBackends（ui 不反向依赖 campaign，桥接口在此注入）。

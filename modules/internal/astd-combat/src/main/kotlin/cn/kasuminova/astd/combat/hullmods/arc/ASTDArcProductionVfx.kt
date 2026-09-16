@@ -2,7 +2,7 @@ package cn.kasuminova.astd.combat.hullmods.arc
 
 import cn.kasuminova.astd.internal.debug.ASTDInGameAutomationScenario
 import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
-import cn.kasuminova.astd.renderer.effect.system.ArcJetShockwaveRingEffect
+import cn.kasuminova.astd.renderer.effect.system.Xc102ShockwaveRingEffect
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEngineLayers
@@ -16,13 +16,13 @@ import java.awt.Color
 import kotlin.math.roundToInt
 
 object ASTDArcProductionVfx {
-    const val TELEMETRY_ARC_JET_SHOCKWAVE_FRAMES = "arcJetShockwaveFrames"
-    const val TELEMETRY_ARC_JET_SHOCKWAVE_RADIUS = "arcJetShockwaveRadius"
-    const val TELEMETRY_ARC_JET_SHOCKWAVE_FLUX_PRESSURE = "arcJetShockwaveFluxPressure"
-    const val TELEMETRY_PLASMA_ARCH_SHIELD_OPEN = "plasmaArchShieldOpen"
-    const val TELEMETRY_PLASMA_ARCH_SYSTEM_ACTIVE = "plasmaArchSystemActive"
-    const val TELEMETRY_PLASMA_ARCH_SHIELD_ARC_EMISSIONS = "plasmaArchShieldArcEmissions"
-    const val TELEMETRY_RADIATION_BELT_SYSTEM_AFTERIMAGES = "radiationBeltSystemAfterimages"
+    const val TELEMETRY_XC_102_SHOCKWAVE_FRAMES = "xc102ShockwaveFrames"
+    const val TELEMETRY_XC_102_SHOCKWAVE_RADIUS = "xc102ShockwaveRadius"
+    const val TELEMETRY_XC_102_SHOCKWAVE_FLUX_PRESSURE = "xc102ShockwaveFluxPressure"
+    const val TELEMETRY_XC_101_SHIELD_OPEN = "xc101ShieldOpen"
+    const val TELEMETRY_XC_101_SYSTEM_ACTIVE = "xc101SystemActive"
+    const val TELEMETRY_XC_101_SHIELD_ARC_EMISSIONS = "xc101ShieldArcEmissions"
+    const val TELEMETRY_XC_103_SYSTEM_AFTERIMAGES = "xc103SystemAfterimages"
 
     private const val TELEMETRY_PREFIX = "astd_arc_production_vfx:"
     private const val VFX_FAILURE_WARN_KEY = "astd_arc_production_vfx_failure_warned"
@@ -52,17 +52,17 @@ object ASTDArcProductionVfx {
     fun counter(engine: CombatEngineAPI, key: String): Int =
         engine.customData["$TELEMETRY_PREFIX$key"] as? Int ?: 0
 
-    fun renderArcJetShockwaveRing(
+    fun renderXc102ShockwaveRing(
         engine: CombatEngineAPI,
         source: ShipAPI,
         level: Float,
         pressureRatio: Float,
     ) {
         val pressure = pressureRatio.coerceIn(0f, 1f)
-        val frame = ArcJetShockwaveRingEffect.render(engine, source, level, pressure) ?: return
-        incrementCounter(engine, TELEMETRY_ARC_JET_SHOCKWAVE_FRAMES)
-        setCounter(engine, TELEMETRY_ARC_JET_SHOCKWAVE_RADIUS, frame.outerRadiusWorld.roundToInt().coerceAtLeast(1))
-        setCounter(engine, TELEMETRY_ARC_JET_SHOCKWAVE_FLUX_PRESSURE, (pressure * 1000f).roundToInt().coerceAtLeast(1))
+        val frame = Xc102ShockwaveRingEffect.render(engine, source, level, pressure) ?: return
+        incrementCounter(engine, TELEMETRY_XC_102_SHOCKWAVE_FRAMES)
+        setCounter(engine, TELEMETRY_XC_102_SHOCKWAVE_RADIUS, frame.outerRadiusWorld.roundToInt().coerceAtLeast(1))
+        setCounter(engine, TELEMETRY_XC_102_SHOCKWAVE_FLUX_PRESSURE, (pressure * 1000f).roundToInt().coerceAtLeast(1))
     }
 
     fun emitPlasmaShieldArc(engine: CombatEngineAPI, ship: ShipAPI, boosted: Boolean, preferredAngle: Float? = null) {
@@ -121,7 +121,7 @@ object ASTDArcProductionVfx {
         } catch (_: Throwable) {
             handleBoxUtilFailure(engine, "plasma shield arc")
         }
-        incrementCounter(engine, TELEMETRY_PLASMA_ARCH_SHIELD_ARC_EMISSIONS)
+        incrementCounter(engine, TELEMETRY_XC_101_SHIELD_ARC_EMISSIONS)
     }
 
     fun applyPlasmaShieldVisuals(ship: ShipAPI, boostLevel: Float) {
@@ -153,7 +153,7 @@ object ASTDArcProductionVfx {
     fun emitTemporalThrusterAfterimage(engine: CombatEngineAPI, ship: ShipAPI, intensity: Float) {
         val tail = MathUtils.getPointOnCircumference(Vector2f(ship.location), -ship.collisionRadius * 0.55f, ship.facing)
         emitNodePulse(engine, tail, 34f + 34f * intensity.coerceIn(0f, 1f), Color(120, 200, 255, 120))
-        incrementCounter(engine, TELEMETRY_RADIATION_BELT_SYSTEM_AFTERIMAGES)
+        incrementCounter(engine, TELEMETRY_XC_103_SYSTEM_AFTERIMAGES)
     }
 
     private fun emitNodePulse(engine: CombatEngineAPI, location: Vector2f, radius: Float, color: Color) {

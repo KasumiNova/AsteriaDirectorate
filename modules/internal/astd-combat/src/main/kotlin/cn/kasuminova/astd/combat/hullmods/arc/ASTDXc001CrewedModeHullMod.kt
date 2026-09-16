@@ -4,7 +4,7 @@ import cn.kasuminova.astd.combat.hullmods.base.ASTDHullModTooltipRenderer
 import cn.kasuminova.astd.combat.hullmods.base.activateDualMode
 import cn.kasuminova.astd.combat.hullmods.base.isASTDShip
 import cn.kasuminova.astd.combat.hullmods.base.isASTDShipVariant
-import cn.kasuminova.astd.renderer.effect.system.ArcFlareOverdriveVisualState
+import cn.kasuminova.astd.renderer.effect.system.Xc001OverdriveVisualState
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseHullMod
 import com.fs.starfarer.api.combat.CombatEngineAPI
@@ -20,7 +20,7 @@ import java.awt.Color
 import kotlin.math.cos
 import kotlin.math.sin
 
-class ASTDArcFlareCrewedModeHullMod : BaseHullMod() {
+class ASTDXc001CrewedModeHullMod : BaseHullMod() {
 
     companion object {
         private const val PEAK_CR_BONUS_FLAT = 160f
@@ -48,14 +48,14 @@ class ASTDArcFlareCrewedModeHullMod : BaseHullMod() {
         if (!variant.isASTDShipVariant()) return
 
         // 切换器被玩家移除 → 立即切换到无人模式并恢复切换器（常驻）
-        if (!variant.hasHullMod(ARC_FLARE_DUAL_MODE_CONFIG.switcherId)) {
-            variant.activateDualMode(ARC_FLARE_DUAL_MODE_CONFIG, ARC_FLARE_DUAL_MODE_CONFIG.automatedModeId, stats)
-            variant.addMod(ARC_FLARE_DUAL_MODE_CONFIG.switcherId)
+        if (!variant.hasHullMod(XC_001_DUAL_MODE_CONFIG.switcherId)) {
+            variant.activateDualMode(XC_001_DUAL_MODE_CONFIG, XC_001_DUAL_MODE_CONFIG.automatedModeId, stats)
+            variant.addMod(XC_001_DUAL_MODE_CONFIG.switcherId)
             return
         }
 
-        // 载人模式：使用载人版系统
-        variant.hullSpec?.setShipSystemId(ARC_FLARE_DUAL_MODE_CONFIG.crewedSystemId)
+        // 载人模式：使用载人版系统（xc_001 已显式声明，非空）
+        XC_001_DUAL_MODE_CONFIG.crewedSystemId?.let { variant.hullSpec?.setShipSystemId(it) }
 
         stats.peakCRDuration.modifyFlat(id, PEAK_CR_BONUS_FLAT)
         stats.shieldUpkeepMult.modifyMult(id, SHIELD_UPKEEP_MULT)
@@ -69,13 +69,13 @@ class ASTDArcFlareCrewedModeHullMod : BaseHullMod() {
 
     override fun advanceInCombat(ship: ShipAPI, amount: Float) {
         val engine = Global.getCombatEngine() ?: return
-        if (engine.isPaused || amount <= 0f || ship.isHulk || ship.hitpoints <= 0f || !ship.isASTDArcFlareShip()) return
+        if (engine.isPaused || amount <= 0f || ship.isHulk || ship.hitpoints <= 0f || !ship.isASTDXc001Ship()) return
 
         val systemLevel = try {
             ship.system?.effectLevel ?: 0f
         } catch (_: Throwable) { 0f }.coerceIn(0f, 1f)
         val state = try { ship.system?.state } catch (_: Throwable) { null }
-        val visualLevel = ArcFlareOverdriveVisualState.getLevel(ship, engine).coerceAtLeast(systemLevel)
+        val visualLevel = Xc001OverdriveVisualState.getLevel(ship, engine).coerceAtLeast(systemLevel)
 
         val timerKey = "$ARC_TIMER_KEY:${System.identityHashCode(ship)}"
         val budgetKey = "$ARC_BUDGET_KEY:${System.identityHashCode(ship)}"
@@ -107,11 +107,11 @@ class ASTDArcFlareCrewedModeHullMod : BaseHullMod() {
     }
 
     private fun spawnCrewedArcAccent(ship: ShipAPI, engine: CombatEngineAPI, systemLevel: Float) {
-        val arcFringe = ArcFlareOverdriveVisualState.lerpColor(
-            ArcFlareOverdriveVisualState.coldFringe, ArcFlareOverdriveVisualState.hotFringe, systemLevel, 155,
+        val arcFringe = Xc001OverdriveVisualState.lerpColor(
+            Xc001OverdriveVisualState.coldFringe, Xc001OverdriveVisualState.hotFringe, systemLevel, 155,
         )
-        val arcCore = ArcFlareOverdriveVisualState.lerpColor(
-            ArcFlareOverdriveVisualState.coldCore, ArcFlareOverdriveVisualState.hotCore, systemLevel, 132,
+        val arcCore = Xc001OverdriveVisualState.lerpColor(
+            Xc001OverdriveVisualState.coldCore, Xc001OverdriveVisualState.hotCore, systemLevel, 132,
         )
         val from = hullBoundaryPoint(ship)
         val outAngle = Misc.getAngleInDegrees(ship.location, from) + MathUtils.getRandomNumberInRange(-30f, 30f)

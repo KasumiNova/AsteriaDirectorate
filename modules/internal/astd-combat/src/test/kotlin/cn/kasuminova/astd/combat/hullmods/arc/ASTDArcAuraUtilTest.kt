@@ -80,14 +80,14 @@ class ASTDArcAuraUtilTest {
 
     @Test
     fun `named profiles match arc production design ranges`() {
-        assertEquals(1f, ASTDArcAuraUtil.arcJetPassiveFalloff(1000f))
-        assertEquals(0.25f, ASTDArcAuraUtil.arcJetPassiveFalloff(2000f))
+        assertEquals(1f, ASTDArcAuraUtil.xc102PassiveFalloff(1000f))
+        assertEquals(0.25f, ASTDArcAuraUtil.xc102PassiveFalloff(2000f))
 
-        assertEquals(1f, ASTDArcAuraUtil.arcJetSystemFalloff(750f))
-        assertEquals(0.25f, ASTDArcAuraUtil.arcJetSystemFalloff(1500f))
+        assertEquals(1f, ASTDArcAuraUtil.xc102SystemFalloff(750f))
+        assertEquals(0.25f, ASTDArcAuraUtil.xc102SystemFalloff(1500f))
 
-        assertEquals(1f, ASTDArcAuraUtil.radiationBeltNetworkFalloff(1199f))
-        assertEquals(0f, ASTDArcAuraUtil.radiationBeltNetworkFalloff(1201f))
+        assertEquals(1f, ASTDArcAuraUtil.xc103NetworkFalloff(1199f))
+        assertEquals(0f, ASTDArcAuraUtil.xc103NetworkFalloff(1201f))
     }
 
     @Test
@@ -95,7 +95,7 @@ class ASTDArcAuraUtilTest {
         val targets = ASTDArcAuraUtil.selectTargets(
             sourceOwner = 0,
             sourceLocation = Vector2f(0f, 0f),
-            maxRange = ASTDArcAuraUtil.RADIATION_BELT_NETWORK_RANGE,
+            maxRange = ASTDArcAuraUtil.XC_103_NETWORK_RANGE,
             maxCount = 5,
             eligibleHullSizes = setOf(ShipAPI.HullSize.FRIGATE, ShipAPI.HullSize.DESTROYER),
             candidates = listOf(

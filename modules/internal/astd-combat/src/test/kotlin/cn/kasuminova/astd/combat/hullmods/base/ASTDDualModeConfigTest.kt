@@ -32,8 +32,8 @@ class ASTDDualModeConfigTest {
         assertNotEquals(cfg.crewedModeId, cfg.automatedModeId)
         assertNotEquals(cfg.nextCrewedMarker, cfg.nextAutomatedMarker)
         assertNotEquals(cfg.crewedSystemId, cfg.automatedSystemId)
-        // 全字段非空
-        val all = listOf(
+        // 全字段非空（系统 id 允许为 null——无模式分版系统的舰不互换系统，见 GENERIC_DUAL_MODE_CONFIG）
+        val all = listOfNotNull(
             cfg.switcherId,
             cfg.crewedModeId, cfg.automatedModeId,
             cfg.nextCrewedMarker, cfg.nextAutomatedMarker,

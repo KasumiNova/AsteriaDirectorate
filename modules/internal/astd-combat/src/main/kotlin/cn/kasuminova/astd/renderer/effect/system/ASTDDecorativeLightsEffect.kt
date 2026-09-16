@@ -1,6 +1,6 @@
 package cn.kasuminova.astd.renderer.effect.system
 
-import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcFlareHullModIds
+import cn.kasuminova.astd.combat.hullmods.arc.ASTDXc001HullModIds
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.EveryFrameWeaponEffectPlugin
 import com.fs.starfarer.api.combat.WeaponAPI
@@ -13,10 +13,10 @@ import java.awt.Color
  * - 装配界面保留 decorative emissive 的静态展示
  * - 战斗中直接驱动 decorative emissive 的亮度，保证整船发光与舰体严格对齐
  */
-class ArcFlareDecorativeLightsEffect : EveryFrameWeaponEffectPlugin {
+class ASTDDecorativeLightsEffect : EveryFrameWeaponEffectPlugin {
 
     companion object {
-        private const val BLOOM_WEAPON_ID = ASTDArcFlareHullModIds.WEAPON_LIGHTS_BLOOM
+        private const val BLOOM_WEAPON_ID = ASTDXc001HullModIds.WEAPON_LIGHTS_BLOOM
     }
 
     private var baseColor: Color? = null
@@ -61,8 +61,8 @@ class ArcFlareDecorativeLightsEffect : EveryFrameWeaponEffectPlugin {
             val c = baseColor ?: Color.WHITE
             val color = if (weaponId == BLOOM_WEAPON_ID) {
                 // 始终使用冷态蓝色，不随战术系统过载状态变色。
-                val from = ArcFlareOverdriveVisualState.lerpColor(
-                    ArcFlareOverdriveVisualState.coldFringe,
+                val from = Xc001OverdriveVisualState.lerpColor(
+                    Xc001OverdriveVisualState.coldFringe,
                     Color(255, 236, 228, 255),
                     0.22f,
                     255,

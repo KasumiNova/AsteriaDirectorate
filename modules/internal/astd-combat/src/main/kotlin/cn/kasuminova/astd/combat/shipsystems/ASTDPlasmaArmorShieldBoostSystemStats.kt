@@ -49,7 +49,7 @@ class ASTDPlasmaArmorShieldBoostSystemStats : BaseShipSystemScript() {
 
         ship.setCustomData(ASTDArcProductionShipIds.DATA_PLASMA_SHIELD_BOOST_LEVEL, rampedLevel)
         if (rampedLevel > 0.05f) {
-            ASTDArcProductionVfx.setCounter(engine, ASTDArcProductionVfx.TELEMETRY_PLASMA_ARCH_SYSTEM_ACTIVE, 1)
+            ASTDArcProductionVfx.setCounter(engine, ASTDArcProductionVfx.TELEMETRY_XC_101_SYSTEM_ACTIVE, 1)
         }
         renderBoostShield(ship, rampedLevel)
     }

@@ -10,10 +10,10 @@ object Sys_astd_xc_001_overdrive_crewed : ShipSystemWithSystemFileEntry() {
     override val id: String = "astd_xc_001_overdrive_crewed"
     override val name: String = systemName(id)
 
-    override val statsScript: String = "cn.kasuminova.astd.combat.shipsystems.ASTDArcFlareOverdriveCrewedSystemStats"
+    override val statsScript: String = "cn.kasuminova.astd.combat.shipsystems.ASTDXc001OverdriveCrewedSystemStats"
 
     override val aiType: String = "CUSTOM"
-    override val aiScript: String = "cn.kasuminova.astd.combat.shipsystems.ASTDArcFlareOverdriveCrewedSystemAI"
+    override val aiScript: String = "cn.kasuminova.astd.combat.shipsystems.ASTDXc001OverdriveCrewedSystemAI"
 
     override val chargeUp: Double = 1.0
     override val active: Double = 8.0
@@ -27,10 +27,10 @@ object Sys_astd_xc_001_overdrive_automated : ShipSystemWithSystemFileEntry() {
     override val id: String = "astd_xc_001_overdrive_automated"
     override val name: String = systemName(id)
 
-    override val statsScript: String = "cn.kasuminova.astd.combat.shipsystems.ASTDArcFlareOverdriveAutomatedSystemStats"
+    override val statsScript: String = "cn.kasuminova.astd.combat.shipsystems.ASTDXc001OverdriveAutomatedSystemStats"
 
     override val aiType: String = "CUSTOM"
-    override val aiScript: String = "cn.kasuminova.astd.combat.shipsystems.ASTDArcFlareOverdriveAutomatedSystemAI"
+    override val aiScript: String = "cn.kasuminova.astd.combat.shipsystems.ASTDXc001OverdriveAutomatedSystemAI"
 
     override val chargeUp: Double = 1.0
     override val active: Double = 8.0
@@ -45,10 +45,10 @@ object Sys_astd_xc_001_overdrive : ShipSystemWithSystemFileEntry() {
     override val id: String = "astd_xc_001_overdrive"
     override val name: String = systemName("astd_xc_001_overdrive_crewed")
 
-    override val statsScript: String = "cn.kasuminova.astd.combat.shipsystems.ASTDArcFlareOverdriveCrewedSystemStats"
+    override val statsScript: String = "cn.kasuminova.astd.combat.shipsystems.ASTDXc001OverdriveCrewedSystemStats"
 
     override val aiType: String = "CUSTOM"
-    override val aiScript: String = "cn.kasuminova.astd.combat.shipsystems.ASTDArcFlareOverdriveCrewedSystemAI"
+    override val aiScript: String = "cn.kasuminova.astd.combat.shipsystems.ASTDXc001OverdriveCrewedSystemAI"
 
     override val chargeUp: Double = 1.0
     override val active: Double = 8.0

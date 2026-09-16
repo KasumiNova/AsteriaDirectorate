@@ -5,11 +5,11 @@ import org.lazywizard.lazylib.MathUtils
 import org.lwjgl.util.vector.Vector2f
 
 internal object ASTDArcAuraUtil {
-    const val ARC_JET_PASSIVE_FULL_RANGE = 1000f
-    const val ARC_JET_PASSIVE_MAX_RANGE = 2000f
-    const val ARC_JET_SYSTEM_FULL_RANGE = 750f
-    const val ARC_JET_SYSTEM_MAX_RANGE = 1500f
-    const val RADIATION_BELT_NETWORK_RANGE = 1200f
+    const val XC_102_PASSIVE_FULL_RANGE = 1000f
+    const val XC_102_PASSIVE_MAX_RANGE = 2000f
+    const val XC_102_SYSTEM_FULL_RANGE = 750f
+    const val XC_102_SYSTEM_MAX_RANGE = 1500f
+    const val XC_103_NETWORK_RANGE = 1200f
     const val EDGE_SCALE = 0.25f
 
     data class CandidateSummary(
@@ -59,14 +59,14 @@ internal object ASTDArcAuraUtil {
         return 1f + (edgeScale.coerceIn(0f, 1f) - 1f) * t
     }
 
-    fun arcJetPassiveFalloff(distance: Float): Float =
-        distanceFalloff(distance, ARC_JET_PASSIVE_FULL_RANGE, ARC_JET_PASSIVE_MAX_RANGE, EDGE_SCALE)
+    fun xc102PassiveFalloff(distance: Float): Float =
+        distanceFalloff(distance, XC_102_PASSIVE_FULL_RANGE, XC_102_PASSIVE_MAX_RANGE, EDGE_SCALE)
 
-    fun arcJetSystemFalloff(distance: Float): Float =
-        distanceFalloff(distance, ARC_JET_SYSTEM_FULL_RANGE, ARC_JET_SYSTEM_MAX_RANGE, EDGE_SCALE)
+    fun xc102SystemFalloff(distance: Float): Float =
+        distanceFalloff(distance, XC_102_SYSTEM_FULL_RANGE, XC_102_SYSTEM_MAX_RANGE, EDGE_SCALE)
 
-    fun radiationBeltNetworkFalloff(distance: Float): Float =
-        if (distance in 0f..RADIATION_BELT_NETWORK_RANGE) 1f else 0f
+    fun xc103NetworkFalloff(distance: Float): Float =
+        if (distance in 0f..XC_103_NETWORK_RANGE) 1f else 0f
 
     fun summaryFor(ship: ShipAPI): CandidateSummary = CandidateSummary(
         id = stableShipId(ship),
@@ -93,9 +93,9 @@ internal object ASTDArcAuraUtil {
     }
 
     fun isArcProductionHull(ship: ShipAPI?): Boolean =
-        isArcProductionHull(ship, ASTDArcProductionShipIds.HULL_ARC_JET) ||
-            isArcProductionHull(ship, ASTDArcProductionShipIds.HULL_PLASMA_ARCH) ||
-            isArcProductionHull(ship, ASTDArcProductionShipIds.HULL_RADIATION_BELT)
+        isArcProductionHull(ship, ASTDArcProductionShipIds.HULL_XC_102) ||
+            isArcProductionHull(ship, ASTDArcProductionShipIds.HULL_XC_101) ||
+            isArcProductionHull(ship, ASTDArcProductionShipIds.HULL_XC_103)
 
     private fun stableShipId(ship: ShipAPI): String {
         val variantId = try { ship.variant?.hullVariantId } catch (_: Throwable) { null }

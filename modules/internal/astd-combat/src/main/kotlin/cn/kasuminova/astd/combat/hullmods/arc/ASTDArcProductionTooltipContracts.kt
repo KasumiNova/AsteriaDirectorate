@@ -181,7 +181,7 @@ object ASTDArcProductionTooltipContracts {
         ),
     )
 
-    val arcJetContracts = listOf(arcAdvancedFireControl, arcSharedTacticalNetwork)
-    val plasmaArchContracts = listOf(plasmaArmorShield, ionizedRecoilAccumulator)
-    val radiationBeltContracts = listOf(arcAdvancedTargetingSystem, distributedPursuitNetwork)
+    val xc102Contracts = listOf(arcAdvancedFireControl, arcSharedTacticalNetwork)
+    val xc101Contracts = listOf(plasmaArmorShield, ionizedRecoilAccumulator)
+    val xc103Contracts = listOf(arcAdvancedTargetingSystem, distributedPursuitNetwork)
 }

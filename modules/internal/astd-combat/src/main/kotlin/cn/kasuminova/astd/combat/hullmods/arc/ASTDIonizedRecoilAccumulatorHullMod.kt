@@ -58,14 +58,14 @@ class ASTDIonizedRecoilAccumulatorHullMod : BaseHullMod() {
 
     override fun advanceInCombat(ship: ShipAPI, amount: Float) {
         if (ship.isHulk || !ship.isAlive) return
-        if (!ASTDArcAuraUtil.isArcProductionHull(ship, ASTDArcProductionShipIds.HULL_PLASMA_ARCH)) return
+        if (!ASTDArcAuraUtil.isArcProductionHull(ship, ASTDArcProductionShipIds.HULL_XC_101)) return
         if (!ship.hasListenerOfClass(IonizedRecoilListener::class.java)) {
             ship.addListener(IonizedRecoilListener(ship))
         }
     }
 
     override fun isApplicableToShip(ship: ShipAPI): Boolean =
-        ASTDArcAuraUtil.isArcProductionHull(ship, ASTDArcProductionShipIds.HULL_PLASMA_ARCH)
+        ASTDArcAuraUtil.isArcProductionHull(ship, ASTDArcProductionShipIds.HULL_XC_101)
 
     override fun showInRefitScreenModPickerFor(ship: ShipAPI): Boolean = false
 

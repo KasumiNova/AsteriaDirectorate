@@ -12,6 +12,7 @@
   "shieldRadius": 120,
   "viewOffset": 0,
   "builtInMods": [
+    "astd_nano_restoration_protocol",
     "astd_virtual_particle_lattice_web",
     "astd_transient_potential_manifold"
   ],

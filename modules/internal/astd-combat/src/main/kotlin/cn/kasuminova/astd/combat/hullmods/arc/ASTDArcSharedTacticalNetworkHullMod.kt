@@ -62,7 +62,7 @@ class ASTDArcSharedTacticalNetworkHullMod : BaseHullMod() {
 
         for (target in targets) {
             val distance = ASTDArcAuraUtil.distance(ship.location, target.location)
-            val falloff = ASTDArcAuraUtil.arcJetPassiveFalloff(distance)
+            val falloff = ASTDArcAuraUtil.xc102PassiveFalloff(distance)
             if (falloff <= 0f) continue
             applyAuraToTarget(ship, target, falloff)
         }
@@ -80,7 +80,7 @@ class ASTDArcSharedTacticalNetworkHullMod : BaseHullMod() {
         val selected = ASTDArcAuraUtil.selectTargets(
             sourceOwner = source.owner,
             sourceLocation = source.location,
-            maxRange = ASTDArcAuraUtil.ARC_JET_PASSIVE_MAX_RANGE,
+            maxRange = ASTDArcAuraUtil.XC_102_PASSIVE_MAX_RANGE,
             maxCount = MAX_TARGETS,
             eligibleHullSizes = ELIGIBLE_HULL_SIZES,
             candidates = byId.values.map { ASTDArcAuraUtil.summaryFor(it) },

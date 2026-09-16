@@ -8,6 +8,7 @@ import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.combat.ShipEngineControllerAPI
 import com.fs.starfarer.api.combat.ShipEngineControllerAPI.ShipEngineAPI
 import com.fs.starfarer.api.input.InputEventAPI
+import java.util.IdentityHashMap
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.max
@@ -25,9 +26,16 @@ import kotlin.math.sin
  *
  * level 计算（纯方向意图模型，不用 getContribution——实测其在玩家船上恒≈0 不可用）：
  * - 由引擎喷射方向（slot.angle）+ 本地力臂推出推力轴与转向力矩，与当前运动意图
- *   （加速/减速/横移/转向）对齐，决定该引擎该不该“出力”。
+ *   （加速/横移/转向）对齐，决定该引擎该不该“出力”。
+ * - 倒车/刹车（isDecelerating/isAcceleratingBackwards）**不进入**方向对齐模型——原版没有
+ *   反推喷口槽位，刹车时全部引擎火焰收敛到基线（约 0.4）、由原版 decel glow 叠加表现；
+ *   纯刹车态照搬该语义，混合意图（如倒车+转向）时仍由转向/横移分支驱动。
  * - 直推引擎转向按力臂归一；侧推引擎转向按力矩符号（中部侧推力臂≈0，符号驱动以保观感）。
  * - 设有怠速基线 IDLE_FLAME，保证引擎始终可见、且静止时不全灭。
+ * - 火焰跟随用不对称线性速率（attack 快、release 慢），而非指数插值：
+ *   指数插值在目标频繁切换（松油门→刹停→静止）时会产生可见的锯齿跳变。
+ * - 逐引擎当前 level 每帧发布到 ship.customData[ENGINE_LEVELS_KEY]，供引擎碎片喷散
+ *   （ASTDEngineShardSprayEffect）等下游特效按实际出力驱动。
  *
  * 生效范围：所有 hullId 以 "astd_" 开头的舰船（含变体/D-mod，见 isASTDShip）。
  * 安装入口：经 CombatVfxBootstrap，由全局 ASTDGlobalCombatPlugin 每场战斗安装（不依赖武器）。
@@ -35,6 +43,9 @@ import kotlin.math.sin
 internal object ASTDVectorThrustEngineManager {
 
     private const val ENGINE_KEY = "astd_vector_thrust_engine_manager"
+
+    /** ship.customData 键：逐引擎当前火焰 level 发布表（IdentityHashMap<ShipEngineAPI, Float>），供引擎碎片喷散等下游特效消费。 */
+    const val ENGINE_LEVELS_KEY = "astd_vector_thrust_engine_levels"
     private const val SCAN_INTERVAL = 0.5f
 
     // 怠速基线：无明显推力时引擎保留的火焰，避免全灭。
@@ -43,10 +54,22 @@ internal object ASTDVectorThrustEngineManager {
     private const val FULL_FLAME = 1.0f
     // 反方向/不出力时压到的最低火焰。
     private const val LOW_FLAME = 0.18f
-    // 火焰跟随速度（每秒插值系数），防抖。
-    private const val LERP_PER_SEC = 9f
+    // 刹车/倒车基线：对齐原版 showDecelerating 的全引擎火焰收敛值。
+    private const val BRAKE_FLAME = 0.4f
+    // 火焰跟随线性速率（每秒）：attack（目标>当前）快、release（目标<当前）慢，消除跳变。
+    private const val ATTACK_PER_SEC = 2.5f
+    private const val RELEASE_PER_SEC = 1.2f
 
     private val log = Global.getLogger(ASTDVectorThrustEngineManager::class.java)
+
+    /**
+     * 以固定线性速率把 current 向 target 移动，单帧步长 ratePerSec*amount，不超调。
+     */
+    private fun moveToward(current: Float, target: Float, ratePerSec: Float, amount: Float): Float {
+        val diff = target - current
+        val step = ratePerSec * amount
+        return if (abs(diff) <= step) target else current + step * Math.signum(diff)
+    }
 
     fun ensureInstalled(engine: CombatEngineAPI) {
         if (engine.customData[ENGINE_KEY] != null) return
@@ -205,12 +228,15 @@ internal object ASTDVectorThrustEngineManager {
             } ?: return
 
             // 当前推力意图向量（船体本地坐标系：+x=船头方向，+y=左舷）。
-            // 加速=向前(+x)，减速/后退=向后(-x)，横移=左右(±y)。
+            // 加速=向前(+x)，横移=左右(±y)。
+            // 倒车/刹车不进入意图向量：原版没有反推喷口槽位，刹车语义是全部引擎
+            // 火焰收敛到基线 + decel glow 叠加（见 BRAKE_FLAME 分支）。
             var intentX = 0f
             var intentY = 0f
+            var braking = false
             try {
                 if (controller.isAccelerating) intentX += 1f
-                if (controller.isDecelerating || controller.isAcceleratingBackwards) intentX -= 1f
+                if (controller.isDecelerating || controller.isAcceleratingBackwards) braking = true
                 if (controller.isStrafingLeft) intentY += 1f
                 if (controller.isStrafingRight) intentY -= 1f
             } catch (_: Throwable) {
@@ -239,7 +265,17 @@ internal object ASTDVectorThrustEngineManager {
                 if (m > maxMoment) maxMoment = m
             }
 
-            val lerp = (LERP_PER_SEC * amount).coerceIn(0f, 1f)
+            // 纯刹车态：无平移/转向意图、仅刹车。全部引擎收敛到刹车基线，
+            // 由原版 decel glow 叠加表现减速（与原版 showDecelerating 语义一致）。
+            val pureBraking = braking && !hasTranslation && !hasTurn
+
+            // 逐引擎火焰 level 发布表（供引擎碎片喷散等下游特效消费；随船复用，避免逐帧分配）。
+            @Suppress("UNCHECKED_CAST")
+            var levels = ship.customData[ENGINE_LEVELS_KEY] as? IdentityHashMap<ShipEngineAPI, Float>
+            if (levels == null) {
+                levels = IdentityHashMap()
+                ship.customData[ENGINE_LEVELS_KEY] = levels
+            }
 
             for (st in att.engines) {
                 val engine = st.engine
@@ -263,10 +299,14 @@ internal object ASTDVectorThrustEngineManager {
                 // 而非从一个陈旧的高火焰值突变。
                 if (!usable) {
                     st.level = IDLE_FLAME
+                    // 熄火引擎发布 0：喷散等下游消费者按实际火焰（无火）停喷。
+                    levels[st.engine] = 0f
                     continue
                 }
 
-                val target: Float = if (!hasIntent) {
+                val target: Float = if (pureBraking) {
+                    BRAKE_FLAME
+                } else if (!hasIntent) {
                     IDLE_FLAME
                 } else {
                     // 平移对齐度：该引擎推力轴与平移意图的点积（-1..1）。
@@ -290,7 +330,9 @@ internal object ASTDVectorThrustEngineManager {
                     LOW_FLAME + (FULL_FLAME - LOW_FLAME) * norm
                 }
 
-                st.level += (target - st.level) * lerp
+                // 不对称线性跟随：attack 快、release 慢。指数插值在目标频繁切换时
+                // （松油门→刹停→静止）会产生可见锯齿跳变，线性速率保证收敛过程平滑可预期。
+                st.level = moveToward(st.level, target, if (target > st.level) ATTACK_PER_SEC else RELEASE_PER_SEC, amount)
 
                 val slot = try {
                     engine.engineSlot
@@ -301,6 +343,7 @@ internal object ASTDVectorThrustEngineManager {
                     controller.setFlameLevel(slot, st.level.coerceIn(0f, 1f))
                 } catch (_: Throwable) {
                 }
+                levels[st.engine] = st.level
             }
         }
     }

@@ -1,6 +1,6 @@
 package cn.kasuminova.astd.combat.shipsystems
 
-import cn.kasuminova.astd.renderer.effect.hullmods.ASTDNegentropyEdgeVfx
+import cn.kasuminova.astd.renderer.effect.hullmods.ASTDXc002Vfx
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.graphics.SpriteAPI
@@ -10,7 +10,7 @@ import org.lwjgl.util.vector.Vector2f
 import org.magiclib.subsystems.CombatUI.SpriteDimWrapper
 import org.magiclib.subsystems.drones.MagicDroneSubsystem
 
-class ASTDNegentropyEdgeDroneSubsystem(ship: ShipAPI) : MagicDroneSubsystem(ship) {
+class ASTDXc002DroneSubsystem(ship: ShipAPI) : MagicDroneSubsystem(ship) {
     private var lastShiftFrom: Vector2f? = null
     private var lastShiftFacing: Float = 0f
     private var lastShiftDrones: List<ShipAPI> = emptyList()
@@ -53,8 +53,8 @@ class ASTDNegentropyEdgeDroneSubsystem(ship: ShipAPI) : MagicDroneSubsystem(ship
             drone.location.set(newLoc)
             drone.facing = normalizeAngle(drone.facing + deltaFacing)
             drone.velocity.set(VectorUtils.rotate(drone.velocity, deltaFacing, Vector2f()))
-            ASTDNegentropyEdgeVfx.spawnLargeShiftDistortion(Global.getCombatEngine(), oldLoc, 0.35f)
-            ASTDNegentropyEdgeVfx.spawnLargeShiftDistortion(Global.getCombatEngine(), newLoc, 0.45f)
+            ASTDXc002Vfx.spawnLargeShiftDistortion(Global.getCombatEngine(), oldLoc, 0.35f)
+            ASTDXc002Vfx.spawnLargeShiftDistortion(Global.getCombatEngine(), newLoc, 0.45f)
         }
     }
 

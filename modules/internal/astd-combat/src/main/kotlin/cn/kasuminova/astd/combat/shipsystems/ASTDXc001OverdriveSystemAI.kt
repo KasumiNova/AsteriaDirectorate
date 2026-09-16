@@ -23,7 +23,7 @@ import org.lwjgl.util.vector.Vector2f
  * - 无射程内敌人 → 不开
  * - 有射程内敌人 → 开启（射速/弹匣增益）
  */
-open class ASTDArcFlareOverdriveSystemAI : ShipSystemAIScript {
+open class ASTDXc001OverdriveSystemAI : ShipSystemAIScript {
 
     /** 子类覆盖以指定系统所属模式。 */
     protected open val isAutomatedSystem: Boolean = false

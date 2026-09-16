@@ -27,14 +27,14 @@ import org.lwjgl.util.vector.Vector2f
  * 扩散波，而非 2000su），密集导弹 → 多道散落于各导弹位置的小脉冲 → 不再视觉支配画面。波心由
  * 调用方传入（被剥离导弹的位置，剥离时刻捕获），range 由调用方传 [PULSE_RANGE]（小半径）。
  *
- * 波形态参照 [cn.kasuminova.astd.renderer.effect.system.ArcJetShockwaveRingEffect]（径向扩张环），
+ * 波形态参照 [cn.kasuminova.astd.renderer.effect.system.Xc102ShockwaveRingEffect]（径向扩张环），
  * 颜色走 LENS 主色紫罗兰（hue ≈ 0.76），叠扫描噪声做「干扰」质感。GLSL 高斯扩散环形态本就是
  * 「小扰动脉冲」想要的样子，缩小仅靠调用方传入的 range 参数完成（frame 全程按 range 缩放），
  * GLSL 无需改动。
  *
  * 本对象只持有效果参数与「波进度 → shader 提交」的转换；GL 程序、layer 插件、生命周期、
  * 状态管理全部委托共享 shader runtime。结构镜像 [EchoFixationFieldVisualEffect] /
- * [ArcJetShockwaveRingEffect]。
+ * [Xc102ShockwaveRingEffect]。
  *
  * **提交模型——设计决策（依据已核实的 renderer 行为）：keyed upsert + CPU 驱动 progress。**
  * 任务建议「一次性脉冲优先 one-shot emit」，但实测 renderer 契约不支持 one-shot 自播放动画：
@@ -42,7 +42,7 @@ import org.lwjgl.util.vector.Vector2f
  * `submission.ageSeconds = submittedAt - startedAt`；而 [ShaderRenderQueue.emit] 在入队时令
  * `submittedAt == startedAt`，且 `advance()` 永不更新 one-shot 的 `submittedAt`——故 one-shot 的
  * `u_time` 全生命周期恒为 0，无法在着色器内用 `u_time` 推进波扩张。能让时间前进的只有 keyed
- * upsert（每帧 upsert 刷新 `submittedAt`、保留 `startedAt`，`ageSeconds` 随之增长，ArcJet 即此机制）。
+ * upsert（每帧 upsert 刷新 `submittedAt`、保留 `startedAt`，`ageSeconds` 随之增长，Xc102 即此机制）。
  *
  * 因此本效果用 keyed upsert，但波扩张进度不依赖 `u_time`，而是 **CPU 侧 `progress` uniform**
  * 显式驱动（0→1 推进波前半径与 alpha 包络）。调用方（[ASTDLensArrayCoreHullMod]）在每枚导弹被剥离
@@ -102,7 +102,7 @@ internal object GhostSignalWaveEffect {
     /**
      * 归一域半径（FRAGMENT centeredAspect 缩放）：v_uv∈[0,1] 映射到 [-domainRadius, domainRadius]。
      *
-     * 取 1.12（略小于范式 [EchoFixationFieldVisualEffect]/[ArcJetShockwaveRingEffect] 的 1.15）：
+     * 取 1.12（略小于范式 [EchoFixationFieldVisualEffect]/[Xc102ShockwaveRingEffect] 的 1.15）：
      * 波须铺满 quad 全域（波前会扩到 quad 边缘），1.12 让波前在到达归一域边缘时外侧仍留一圈余量供
      * 高斯环外缘羽化衰减，避免最大 progress 时波前被域边界硬切出锐边。
      */

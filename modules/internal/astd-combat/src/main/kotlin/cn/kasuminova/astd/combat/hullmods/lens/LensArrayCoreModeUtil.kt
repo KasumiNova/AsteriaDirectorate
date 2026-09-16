@@ -16,7 +16,7 @@ import com.fs.starfarer.api.combat.ShipVariantAPI
  */
 
 /**
- * 透镜阵列核心（gravitational_lens）的双模式配置。
+ * 透镜阵列核心（zw_001）的双模式配置。
  *
  * 动机：lens 与 arc 共用「拆切换器即轮换模式」交互。此前 lens 自造了独立状态机 +
  * 独立切换器（astd_zw_001_mode_switcher / ASTDLensDualModeSwitcherHullMod，均已废弃移除），与通用框架重复；

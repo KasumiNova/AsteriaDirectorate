@@ -28,12 +28,12 @@ import org.lwjgl.util.vector.Vector2f
  * GL program, layer plugin, lifecycle, and state management is delegated to the
  * shared shader runtime.
  */
-internal object ArcJetShockwaveRingEffect : ShipSystemShaderEffect {
+internal object Xc102ShockwaveRingEffect : ShipSystemShaderEffect {
     const val STALE_AFTER_SECONDS = 0.18f
     private const val MIN_COLLISION_RADIUS = 80f
     private const val OUTER_RADIUS_MULT = 1.5f
-    private const val EFFECT_ID = ASTDArcProductionShipIds.EFFECT_ARC_JET_SHOCKWAVE_RING
-    private const val PROGRAM_ID = ASTDArcProductionShipIds.PROGRAM_ARC_JET_SHOCKWAVE_RING
+    private const val EFFECT_ID = ASTDArcProductionShipIds.EFFECT_XC_102_SHOCKWAVE_RING
+    private const val PROGRAM_ID = ASTDArcProductionShipIds.PROGRAM_XC_102_SHOCKWAVE_RING
 
     val REFERENCE_PARAMETERS = Parameters(
         speed = 0.30f,

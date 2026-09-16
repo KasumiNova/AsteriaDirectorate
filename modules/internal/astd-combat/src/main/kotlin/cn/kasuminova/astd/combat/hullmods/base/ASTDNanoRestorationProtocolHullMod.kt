@@ -1,8 +1,6 @@
-package cn.kasuminova.astd.combat.hullmods.arc
+package cn.kasuminova.astd.combat.hullmods.base
 
-import cn.kasuminova.astd.combat.hullmods.base.ASTDHullModTooltipRenderer
-import cn.kasuminova.astd.combat.hullmods.base.isASTDShip
-import cn.kasuminova.astd.combat.shipsystems.ASTDArcFlareOverdriveSystemStats
+import cn.kasuminova.astd.combat.shipsystems.ASTDXc001OverdriveSystemStats
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseHullMod
 import com.fs.starfarer.api.combat.ShipAPI
@@ -11,6 +9,16 @@ import com.fs.starfarer.api.util.IntervalUtil
 import java.awt.Color
 import kotlin.math.min
 
+/**
+ * 纳米重构协议（舰船无关的通用内置船插）：战斗内持续修复装甲与结构，修复产生辐能压力。
+ *
+ * 动机：原实现位于 arc 包且文案写死星坠，实为全 ASTD 通用机制——所有独特舰默认内置
+ * （.ship builtInMods），applicable 判定为全 ASTD 舰（[isASTDShip]）。
+ *
+ * 系统增幅通道：xc_001 的「星坠过载」系统在激活期间经
+ * [ASTDXc001OverdriveSystemStats.HULLMOD_BOOST_KEY] 发布增幅值，本船插读取后提升修复速率；
+ * 其它舰船无发布方，增幅静默为 0（正常基础修复），不构成对该系统的硬依赖。
+ */
 class ASTDNanoRestorationProtocolHullMod : BaseHullMod() {
 
     companion object {
@@ -87,7 +95,7 @@ class ASTDNanoRestorationProtocolHullMod : BaseHullMod() {
 
         // 系统增幅
         val shipKey = shipId.toString()
-        val systemBoostKey = "${ASTDArcFlareOverdriveSystemStats.HULLMOD_BOOST_KEY}$shipKey"
+        val systemBoostKey = "${ASTDXc001OverdriveSystemStats.HULLMOD_BOOST_KEY}$shipKey"
         val systemBoost = (engine.customData[systemBoostKey] as? Float ?: 0f).coerceIn(0f, 1f)
 
         val armorGrid = ship.armorGrid
@@ -199,7 +207,6 @@ class ASTDNanoRestorationProtocolHullMod : BaseHullMod() {
                 ASTDHullModTooltipRenderer.paragraph("ui.hullmod.nano.line.3"),
                 ASTDHullModTooltipRenderer.paragraph("ui.hullmod.nano.line.4"),
                 ASTDHullModTooltipRenderer.paragraph("ui.hullmod.nano.line.5"),
-                ASTDHullModTooltipRenderer.paragraph("ui.hullmod.nano.line.6"),
             ),
         )
     }

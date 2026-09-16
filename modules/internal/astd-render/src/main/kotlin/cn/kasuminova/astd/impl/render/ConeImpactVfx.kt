@@ -100,7 +100,7 @@ data class ShardCountSpec(
  *
  * 用法：各案在结算回调里 `ConeImpactVfx.spawn(engine, spec)` 一发即走——内部建一棵
  * 一次性 RenderEntity 树（[ConeImpactVfxComponent] 为根做错峰调度 + [StrikeSprayComponent] 刺束
- * + [ConeShardComponent] 碎片 + [ConeArcComponent] 弧三子节点），交给 [OneShotVfxPlugin] 逐帧推进，
+ * + [TriShardComponent] 碎片 + [ConeArcComponent] 弧三子节点），交给 [OneShotVfxPlugin] 逐帧推进，
  * 到期自动收尾，调用方无需持有任何句柄。
  */
 object ConeImpactVfx {

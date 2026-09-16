@@ -1,6 +1,6 @@
 package cn.kasuminova.astd.renderer.effect.system
 
-import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcFlareHullModIds
+import cn.kasuminova.astd.combat.hullmods.arc.ASTDXc001HullModIds
 import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseEveryFrameCombatPlugin
@@ -26,12 +26,12 @@ import kotlin.math.sin
  * - 整船 base emissive 交给 decorative weapon 在战斗内动态控光，确保与舰体严格对齐
  * - BoxUtil 这里只负责一层 halo / bloom 外扩，避免整船 SpriteEntity 覆盖带来的错位与观感炸裂
  */
-internal object ArcFlareEmissiveOverlayManager {
+internal object Xc001EmissiveOverlayEffect {
 
-    private const val ENGINE_KEY = ASTDArcFlareHullModIds.KEY_EMISSIVE_OVERLAY_MANAGER
+    private const val ENGINE_KEY = ASTDXc001HullModIds.KEY_EMISSIVE_OVERLAY_MANAGER
     private const val SCAN_INTERVAL = 0.33f
 
-    private val log = Global.getLogger(ArcFlareEmissiveOverlayManager::class.java)
+    private val log = Global.getLogger(Xc001EmissiveOverlayEffect::class.java)
 
     fun ensureInstalled(engine: CombatEngineAPI) {
         val existing = engine.customData[ENGINE_KEY]
@@ -43,7 +43,7 @@ internal object ArcFlareEmissiveOverlayManager {
             engine.customData[ENGINE_KEY] = plugin
         } catch (t: Throwable) {
             engine.customData[ENGINE_KEY] = false
-            log.warn("[ASTD] ArcFlareEmissiveOverlayManager install failed", t)
+            log.warn("[ASTD] Xc001EmissiveOverlayEffect install failed", t)
         }
     }
 
@@ -69,7 +69,7 @@ internal object ArcFlareEmissiveOverlayManager {
 
             if (!installLogged) {
                 installLogged = true
-                log.info("[ASTD] ArcFlareEmissiveOverlayManager active")
+                log.info("[ASTD] Xc001EmissiveOverlayEffect active")
             }
 
             try {
@@ -112,7 +112,7 @@ internal object ArcFlareEmissiveOverlayManager {
                 } catch (_: Throwable) {
                     null
                 }
-                if (hullId != ASTDArcFlareHullModIds.HULL_ID) continue
+                if (hullId != ASTDXc001HullModIds.HULL_ID) continue
 
                 val key = System.identityHashCode(ship)
                 if (attachments.containsKey(key)) continue
@@ -153,7 +153,7 @@ internal object ArcFlareEmissiveOverlayManager {
                 0f
             }.coerceIn(0f, 1f)
             try {
-                log.info("[ASTD] ArcFlareEmissiveOverlayManager attached ship=${ship.hullSpec?.hullId} haloOnly=true")
+                log.info("[ASTD] Xc001EmissiveOverlayEffect attached ship=${ship.hullSpec?.hullId} haloOnly=true")
             } catch (_: Throwable) {
             }
             return Attachment(
@@ -371,7 +371,7 @@ internal object ArcFlareEmissiveOverlayManager {
             } catch (_: Throwable) {
                 0f
             }.coerceIn(0f, 1f)
-            val visualLevel = ArcFlareOverdriveVisualState.getLevel(ship, engine).coerceAtLeast(systemLevel)
+            val visualLevel = Xc001OverdriveVisualState.getLevel(ship, engine).coerceAtLeast(systemLevel)
             val fluxLevel = try {
                 ship.fluxTracker?.fluxLevel ?: 0f
             } catch (_: Throwable) {
@@ -460,8 +460,8 @@ internal object ArcFlareEmissiveOverlayManager {
                 entity.setGlobalAlpha(alphaMul.coerceIn(0f, 1f))
                 entity.setGlowPower(glowPower.coerceIn(0.8f, 4.8f))
                 entity.setNoisePower((0.10f + alphaMul * 0.18f).coerceIn(0.10f, 0.28f))
-                entity.setCoreColor(ArcFlareOverdriveVisualState.lerpColor(ArcFlareOverdriveVisualState.coldFringe, ArcFlareOverdriveVisualState.coldCore, 0.35f, 10))
-                entity.setFringeColor(ArcFlareOverdriveVisualState.lerpColor(ArcFlareOverdriveVisualState.coldCore, ArcFlareOverdriveVisualState.coldFringe, 0.45f, 18))
+                entity.setCoreColor(Xc001OverdriveVisualState.lerpColor(Xc001OverdriveVisualState.coldFringe, Xc001OverdriveVisualState.coldCore, 0.35f, 10))
+                entity.setFringeColor(Xc001OverdriveVisualState.lerpColor(Xc001OverdriveVisualState.coldCore, Xc001OverdriveVisualState.coldFringe, 0.45f, 18))
             } catch (_: Throwable) {
             }
         }
@@ -474,8 +474,8 @@ internal object ArcFlareEmissiveOverlayManager {
                 entity.setGlobalAlpha(alphaMul.coerceIn(0f, 1f))
                 entity.setGlowPower(glowPower.coerceIn(1.0f, 5.2f))
                 entity.setNoisePower((0.08f + alphaMul * 0.12f).coerceIn(0.08f, 0.22f))
-                entity.setCoreColor(ArcFlareOverdriveVisualState.lerpColor(ArcFlareOverdriveVisualState.coldFringe, ArcFlareOverdriveVisualState.coldCore, 0.40f, 12))
-                entity.setFringeColor(ArcFlareOverdriveVisualState.lerpColor(ArcFlareOverdriveVisualState.coldCore, ArcFlareOverdriveVisualState.coldFringe, 0.55f, 20))
+                entity.setCoreColor(Xc001OverdriveVisualState.lerpColor(Xc001OverdriveVisualState.coldFringe, Xc001OverdriveVisualState.coldCore, 0.40f, 12))
+                entity.setFringeColor(Xc001OverdriveVisualState.lerpColor(Xc001OverdriveVisualState.coldCore, Xc001OverdriveVisualState.coldFringe, 0.55f, 20))
             } catch (_: Throwable) {
             }
         }
@@ -496,13 +496,13 @@ internal object ArcFlareEmissiveOverlayManager {
                 entity.setNoisePower((0.09f + alphaMul * 0.10f).coerceIn(0.09f, 0.20f))
                 if (mode == 2) {
                     entity.setCoreColor(Color(255, 248, 240, 180))
-                    entity.setFringeColor(ArcFlareOverdriveVisualState.lerpColor(ArcFlareOverdriveVisualState.hotCore, Color(255, 112, 38, 220), visualLevel, 220))
+                    entity.setFringeColor(Xc001OverdriveVisualState.lerpColor(Xc001OverdriveVisualState.hotCore, Color(255, 112, 38, 220), visualLevel, 220))
                 } else if (mode > 0) {
-                    entity.setCoreColor(ArcFlareOverdriveVisualState.lerpColor(ArcFlareOverdriveVisualState.coldFringe, ArcFlareOverdriveVisualState.hotCore, visualLevel, 32))
-                    entity.setFringeColor(ArcFlareOverdriveVisualState.lerpColor(ArcFlareOverdriveVisualState.coldCore, ArcFlareOverdriveVisualState.hotFringe, visualLevel, 126))
+                    entity.setCoreColor(Xc001OverdriveVisualState.lerpColor(Xc001OverdriveVisualState.coldFringe, Xc001OverdriveVisualState.hotCore, visualLevel, 32))
+                    entity.setFringeColor(Xc001OverdriveVisualState.lerpColor(Xc001OverdriveVisualState.coldCore, Xc001OverdriveVisualState.hotFringe, visualLevel, 126))
                 } else {
-                    entity.setCoreColor(ArcFlareOverdriveVisualState.lerpColor(ArcFlareOverdriveVisualState.coldFringe, ArcFlareOverdriveVisualState.hotCore, visualLevel, 20))
-                    entity.setFringeColor(ArcFlareOverdriveVisualState.lerpColor(ArcFlareOverdriveVisualState.coldCore, ArcFlareOverdriveVisualState.hotFringe, visualLevel, 76))
+                    entity.setCoreColor(Xc001OverdriveVisualState.lerpColor(Xc001OverdriveVisualState.coldFringe, Xc001OverdriveVisualState.hotCore, visualLevel, 20))
+                    entity.setFringeColor(Xc001OverdriveVisualState.lerpColor(Xc001OverdriveVisualState.coldCore, Xc001OverdriveVisualState.hotFringe, visualLevel, 76))
                 }
             } catch (_: Throwable) {
             }
@@ -510,7 +510,7 @@ internal object ArcFlareEmissiveOverlayManager {
 
         private fun spawnCenterLensFlare(ship: ShipAPI, intensity: Float) {
             val t = intensity.coerceIn(0f, 1f)
-            val fringe = ArcFlareOverdriveVisualState.lerpColor(ArcFlareOverdriveVisualState.hotFringe, Color(255, 108, 35), t, (120f + 60f * t).toInt())
+            val fringe = Xc001OverdriveVisualState.lerpColor(Xc001OverdriveVisualState.hotFringe, Color(255, 108, 35), t, (120f + 60f * t).toInt())
             val core = Color(255, 245, 235, (180f + 60f * t).toInt().coerceIn(0, 255))
             val length = 100f + 120f * t
             val thickness = 4f + 5f * t

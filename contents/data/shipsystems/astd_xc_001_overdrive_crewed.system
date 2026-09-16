@@ -2,7 +2,7 @@
     "id": "astd_xc_001_overdrive_crewed",
     "type": "STAT_MOD",
     "aiType": "CUSTOM",
-    "aiScript": "cn.kasuminova.astd.combat.shipsystems.ASTDArcFlareOverdriveCrewedSystemAI",
-    "statsScript": "cn.kasuminova.astd.combat.shipsystems.ASTDArcFlareOverdriveCrewedSystemStats",
+    "aiScript": "cn.kasuminova.astd.combat.shipsystems.ASTDXc001OverdriveCrewedSystemAI",
+    "statsScript": "cn.kasuminova.astd.combat.shipsystems.ASTDXc001OverdriveCrewedSystemStats",
     "useSound": "system_ammo_feeder"
 }

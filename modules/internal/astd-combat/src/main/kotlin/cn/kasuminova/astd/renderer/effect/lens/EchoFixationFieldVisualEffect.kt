@@ -25,9 +25,9 @@ import org.lwjgl.util.vector.Vector2f
  *
  * 本对象只持有效果参数与「domain 状态 → shader 提交」的转换；GL 程序、layer 插件、生命周期、
  * 状态管理全部委托给共享 shader runtime。结构镜像
- * [cn.kasuminova.astd.renderer.effect.system.ArcJetShockwaveRingEffect]。
+ * [cn.kasuminova.astd.renderer.effect.system.Xc102ShockwaveRingEffect]。
  *
- * 与 ArcJet 的关键差异：ArcJet 绑定单船（per-ship instanceId），本效果绑定一个定影场实例
+ * 与 Xc102 的关键差异：Xc102 绑定单船（per-ship instanceId），本效果绑定一个定影场实例
  * （per-field instanceId）——场不是绑定到某条 ShipAPI，而是绑定到落点。调用方（EchoFixationField）
  * 用场的稳定自增 id 拼出 instanceId，见 [submitFrame]。
  */

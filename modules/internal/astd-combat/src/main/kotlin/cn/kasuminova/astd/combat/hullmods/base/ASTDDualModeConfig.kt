@@ -8,8 +8,8 @@ import com.fs.starfarer.api.combat.ShipVariantAPI
 /**
  * ASTD 通用双模式（载人/无人）配置：一艘双模式舰船的全部 hullmod / 系统 id 集合。
  *
- * 动机：arc_flare 与 gravitational_lens 共用同一套「拆切换器即轮换模式」交互，
- * 早期实现让每艘舰各自硬编码一套状态机（[cn.kasuminova.astd.combat.hullmods.arc.ASTDArcFlareHullModUtil]），
+ * 动机：xc_001 与 zw_001 共用同一套「拆切换器即轮换模式」交互，
+ * 早期实现让每艘舰各自硬编码一套状态机（[cn.kasuminova.astd.combat.hullmods.arc.ASTDXc001HullModUtil]），
  * 重复且易漂移。此配置把「双模式舰需要的全部 id」收敛为单一数据对象，配合本文件的通用状态机
  * 扩展函数（[ensureASTDDualModeState] / [activateDualMode]）让一套逻辑驱动任意双模式舰。
  *
@@ -30,10 +30,10 @@ data class ASTDDualModeConfig(
     val nextCrewedMarker: String,
     /** 「下次激活无人」标记 hullmod id；无模式 permaMod 时按此标记激活无人模式。 */
     val nextAutomatedMarker: String,
-    /** 载人版舰船系统 id（载人 mode hullmod 激活时 setShipSystemId）。 */
-    val crewedSystemId: String,
-    /** 无人版舰船系统 id（无人 mode hullmod 激活时 setShipSystemId）。 */
-    val automatedSystemId: String,
+    /** 载人版舰船系统 id（载人 mode hullmod 激活时 setShipSystemId）；null 表示该舰无模式分版系统、切换时不互换。 */
+    val crewedSystemId: String?,
+    /** 无人版舰船系统 id（无人 mode hullmod 激活时 setShipSystemId）；null 表示该舰无模式分版系统、切换时不互换。 */
+    val automatedSystemId: String?,
 )
 
 /**
@@ -50,6 +50,32 @@ object ASTDDualModeSwitcherIds {
     /** 通用双模式切换器 hullmod id。 */
     const val SWITCHER_ID: String = "astd_dual_mode_switcher"
 }
+
+/**
+ * 通用双模式（舰船无关）的 mode / marker hullmod id 集合。
+ *
+ * 动机：未显式注册专属双模式配置的 ASTD 舰（即除 xc_001 / zw_001 外的全部 astd_ 舰船）
+ * 共用这一组通用 id 完成「拆切换器即轮换模式」；通用模式不互换舰船系统
+ * （[ASTDDualModeConfig.crewedSystemId] / [ASTDDualModeConfig.automatedSystemId] 为 null）。
+ * 这些 id 必须在 hull_mods.csv 注册（见 astd-csv 的 Catalog_HullMods_Base）。
+ */
+object ASTDDualModeGenericIds {
+    const val MODE_CREWED: String = "astd_mode_crewed"
+    const val MODE_AUTOMATED: String = "astd_mode_automated"
+    const val NEXT_CREWED: String = "astd_mode_next_crewed"
+    const val NEXT_AUTOMATED: String = "astd_mode_next_automated"
+}
+
+/** 通用双模式配置：任意 ASTD 舰的兜底配置（无系统互换，纯 载人 ⇄ 无人 轮换）。 */
+val GENERIC_DUAL_MODE_CONFIG = ASTDDualModeConfig(
+    switcherId = ASTDDualModeSwitcherIds.SWITCHER_ID,
+    crewedModeId = ASTDDualModeGenericIds.MODE_CREWED,
+    automatedModeId = ASTDDualModeGenericIds.MODE_AUTOMATED,
+    nextCrewedMarker = ASTDDualModeGenericIds.NEXT_CREWED,
+    nextAutomatedMarker = ASTDDualModeGenericIds.NEXT_AUTOMATED,
+    crewedSystemId = null,
+    automatedSystemId = null,
+)
 
 /**
  * 双模式配置注册表：hull id → [ASTDDualModeConfig]。
@@ -83,7 +109,15 @@ object ASTDDualModeRegistry {
     fun configFor(hullId: String?): ASTDDualModeConfig? = hullId?.let { byHullId[it] }
 
     /**
-     * 从 variant 反查配置：先试 hullId，再试 baseHullId（变体的基底）。
+     * 通用兜底：任意 ASTD 舰（hull id 以 "astd_" 开头）即使未显式注册专属配置，
+     * 也返回 [GENERIC_DUAL_MODE_CONFIG]，使通用切换器对全 ASTD 舰船可装、可切换。
+     * 纯函数（只读 hullId 前缀），供 [configForVariant] / [configForShip] 兜底与单元测试直接验证。
+     */
+    fun genericConfigFor(hullId: String?): ASTDDualModeConfig? =
+        if (hullId != null && hullId.startsWith("astd_")) GENERIC_DUAL_MODE_CONFIG else null
+
+    /**
+     * 从 variant 反查配置：先试 hullId，再试 baseHullId（变体的基底），最后走 [genericConfigFor] 兜底。
      * 动机：注册以基底 id 进行，而切换器拿到的是具体 variant，其 hullId 可能等于或派生自基底。
      */
     fun configForVariant(variant: ShipVariantAPI?): ASTDDualModeConfig? {
@@ -91,10 +125,11 @@ object ASTDDualModeRegistry {
         val hullId = try { v.hullSpec?.hullId } catch (_: Throwable) { null }
         val baseHullId = try { v.hullSpec?.baseHullId } catch (_: Throwable) { null }
         return configFor(hullId) ?: configFor(baseHullId)
+            ?: genericConfigFor(hullId) ?: genericConfigFor(baseHullId)
     }
 
     /**
-     * 从 ship 反查配置：先试 hullId，再试 baseHullId。
+     * 从 ship 反查配置：先试 hullId，再试 baseHullId，最后走 [genericConfigFor] 兜底。
      * 与 [configForVariant] 同理，供切换器 tooltip 直接拿到 ShipAPI 时使用。
      */
     fun configForShip(ship: ShipAPI?): ASTDDualModeConfig? {
@@ -102,6 +137,7 @@ object ASTDDualModeRegistry {
         val hullId = try { s.hullSpec?.hullId } catch (_: Throwable) { null }
         val baseHullId = try { s.hullSpec?.baseHullId } catch (_: Throwable) { null }
         return configFor(hullId) ?: configFor(baseHullId)
+            ?: genericConfigFor(hullId) ?: genericConfigFor(baseHullId)
     }
 }
 
@@ -131,7 +167,7 @@ internal fun ShipAPI?.isASTDShip(): Boolean {
 }
 
 /**
- * 通用：确保 variant 的双模式状态自洽（泛化自 arc 的 ensureASTDArcFlareModeState，参数化全部 id）。
+ * 通用：确保 variant 的双模式状态自洽（泛化自 arc 的 ensureASTDXc001ModeState，参数化全部 id）。
  *
  * 状态机不变量（与 arc 原实现一致）：
  * - 至多存在一个模式 permaMod（crewed 或 automated），且存在与当前模式同向的 next marker。
@@ -195,7 +231,7 @@ fun ShipVariantAPI.activateDualMode(config: ASTDDualModeConfig, modeId: String, 
 }
 
 /**
- * 通用：判断 variant 当前是否处于无人模式（泛化自 arc hasASTDArcFlareAutomatedMode）。
+ * 通用：判断 variant 当前是否处于无人模式（泛化自 arc hasASTDXc001AutomatedMode）。
  * 同时检查 permaMods 与已挂 hullMods，覆盖 refit 临时态与稳定态。
  */
 fun ShipVariantAPI.hasASTDDualModeAutomated(config: ASTDDualModeConfig): Boolean =

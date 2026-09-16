@@ -1,6 +1,6 @@
 package cn.kasuminova.astd.combat.effect.arc.signature.aod7
 
-import cn.kasuminova.astd.renderer.effect.system.ArcFlareOverdriveVisualState
+import cn.kasuminova.astd.renderer.effect.system.Xc001OverdriveVisualState
 import cn.kasuminova.astd.renderer.effect.projectile.beam.OglEllipseRingRenderer
 import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
 import com.fs.starfarer.api.combat.CombatEngineAPI
@@ -22,7 +22,7 @@ import java.awt.Color
  * - 锥形爆发椭圆环（参考 GCP）
  * - 光环闪光
  *
- * 所有颜色跟随 ArcFlareOverdriveVisualState。
+ * 所有颜色跟随 Xc001OverdriveVisualState。
  */
 class Aod7OnFireEffect : OnFireEffectPlugin {
 
@@ -34,14 +34,14 @@ class Aod7OnFireEffect : OnFireEffectPlugin {
         val vel = projectile.velocity ?: Vector2f()
 
         val overdriveLevel = try {
-            ArcFlareOverdriveVisualState.getLevel(ship, engine)
+            Xc001OverdriveVisualState.getLevel(ship, engine)
         } catch (_: Throwable) { 0f }
 
-        val core = ArcFlareOverdriveVisualState.lerpColor(
-            COLD_CORE, ArcFlareOverdriveVisualState.hotCore, overdriveLevel, 235,
+        val core = Xc001OverdriveVisualState.lerpColor(
+            COLD_CORE, Xc001OverdriveVisualState.hotCore, overdriveLevel, 235,
         )
-        val fringe = ArcFlareOverdriveVisualState.lerpColor(
-            COLD_FRINGE, ArcFlareOverdriveVisualState.hotFringe, overdriveLevel, 210,
+        val fringe = Xc001OverdriveVisualState.lerpColor(
+            COLD_FRINGE, Xc001OverdriveVisualState.hotFringe, overdriveLevel, 210,
         )
         val smoke = Color(fringe.red, fringe.green, fringe.blue, 75)
 

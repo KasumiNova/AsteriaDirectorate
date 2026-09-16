@@ -1,6 +1,6 @@
 package cn.kasuminova.astd.renderer.effect.system
 
-import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcFlareHullModIds
+import cn.kasuminova.astd.combat.hullmods.arc.ASTDXc001HullModIds
 import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseEveryFrameCombatPlugin
@@ -28,12 +28,12 @@ import kotlin.math.sin
  * - 保留原版 HIGH_TECH 尾焰主体
  * - 额外叠一层轻量 BoxUtil flare，让主喷口在机动/提速/系统激活时更有“白蓝电离”质感
  */
-internal object ArcFlareEngineFlareManager {
+internal object Xc001EngineFlareEffect {
 
-    private const val ENGINE_KEY = ASTDArcFlareHullModIds.KEY_ENGINE_FLARE_MANAGER
+    private const val ENGINE_KEY = ASTDXc001HullModIds.KEY_ENGINE_FLARE_MANAGER
     private const val SCAN_INTERVAL = 0.33f
 
-    private val log = Global.getLogger(ArcFlareEngineFlareManager::class.java)
+    private val log = Global.getLogger(Xc001EngineFlareEffect::class.java)
 
     fun ensureInstalled(engine: CombatEngineAPI) {
         val existing = engine.customData[ENGINE_KEY]
@@ -45,7 +45,7 @@ internal object ArcFlareEngineFlareManager {
             engine.customData[ENGINE_KEY] = plugin
         } catch (t: Throwable) {
             engine.customData[ENGINE_KEY] = false
-            log.warn("[ASTD] ArcFlareEngineFlareManager install failed", t)
+            log.warn("[ASTD] Xc001EngineFlareEffect install failed", t)
         }
     }
 
@@ -71,7 +71,7 @@ internal object ArcFlareEngineFlareManager {
 
             if (!installLogged) {
                 installLogged = true
-                log.info("[ASTD] ArcFlareEngineFlareManager active")
+                log.info("[ASTD] Xc001EngineFlareEffect active")
             }
 
             try {
@@ -120,7 +120,7 @@ internal object ArcFlareEngineFlareManager {
                 } catch (_: Throwable) {
                     null
                 }
-                if (hullId != ASTDArcFlareHullModIds.HULL_ID) continue
+                if (hullId != ASTDXc001HullModIds.HULL_ID) continue
 
                 val key = System.identityHashCode(ship)
                 if (attachments.containsKey(key)) continue
@@ -173,7 +173,7 @@ internal object ArcFlareEngineFlareManager {
 
             if (flares.isEmpty()) return null
             try {
-                log.info("[ASTD] ArcFlareEngineFlareManager attached ship=${ship.hullSpec?.hullId} engines=${flares.size}")
+                log.info("[ASTD] Xc001EngineFlareEffect attached ship=${ship.hullSpec?.hullId} engines=${flares.size}")
             } catch (_: Throwable) {
             }
             return Attachment(ship = ship, flares = flares)
@@ -290,7 +290,7 @@ internal object ArcFlareEngineFlareManager {
             } catch (_: Throwable) {
                 0f
             }.coerceIn(0f, 1f)
-            val visualLevel = ArcFlareOverdriveVisualState.getLevel(ship, combatEngine).coerceAtLeast(systemLevel)
+            val visualLevel = Xc001OverdriveVisualState.getLevel(ship, combatEngine).coerceAtLeast(systemLevel)
             val fluxLevel = try {
                 ship.fluxTracker?.fluxLevel ?: 0f
             } catch (_: Throwable) {
@@ -329,8 +329,8 @@ internal object ArcFlareEngineFlareManager {
                 1f
             }
             val controllerBoost = (movementLevel * 0.34f + visualLevel * 0.60f + fluxLevel * 0.08f).coerceIn(0f, 1.0f) * overloadPenalty
-            val primaryTint = ArcFlareOverdriveVisualState.lerpColor(ArcFlareOverdriveVisualState.coldFringe, ArcFlareOverdriveVisualState.hotFringe, visualLevel, 168)
-            val secondaryTint = ArcFlareOverdriveVisualState.lerpColor(ArcFlareOverdriveVisualState.coldCore, ArcFlareOverdriveVisualState.hotCore, visualLevel, 62)
+            val primaryTint = Xc001OverdriveVisualState.lerpColor(Xc001OverdriveVisualState.coldFringe, Xc001OverdriveVisualState.hotFringe, visualLevel, 168)
+            val secondaryTint = Xc001OverdriveVisualState.lerpColor(Xc001OverdriveVisualState.coldCore, Xc001OverdriveVisualState.hotCore, visualLevel, 62)
 
             try {
                 engineController?.fadeToOtherColor(
@@ -401,8 +401,8 @@ internal object ArcFlareEngineFlareManager {
                 entity.setGlobalAlpha(alpha.coerceIn(0f, 1f))
                 entity.setGlowPower((0.95f + alpha * 2.0f + visualLevel * 0.75f).coerceIn(0.95f, 4.0f))
                 entity.setNoisePower(noisePower)
-                entity.setCoreColor(ArcFlareOverdriveVisualState.lerpColor(ArcFlareOverdriveVisualState.coldFringe, ArcFlareOverdriveVisualState.hotFringe, visualLevel, 20))
-                entity.setFringeColor(ArcFlareOverdriveVisualState.lerpColor(ArcFlareOverdriveVisualState.coldCore, ArcFlareOverdriveVisualState.hotCore, visualLevel, 78))
+                entity.setCoreColor(Xc001OverdriveVisualState.lerpColor(Xc001OverdriveVisualState.coldFringe, Xc001OverdriveVisualState.hotFringe, visualLevel, 20))
+                entity.setFringeColor(Xc001OverdriveVisualState.lerpColor(Xc001OverdriveVisualState.coldCore, Xc001OverdriveVisualState.hotCore, visualLevel, 78))
             } catch (_: Throwable) {
             }
         }

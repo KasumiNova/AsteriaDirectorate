@@ -1,8 +1,9 @@
 package cn.kasuminova.astd.combat.effect.generic
 
-import cn.kasuminova.astd.renderer.effect.system.ArcFlareEmissiveOverlayManager
-import cn.kasuminova.astd.renderer.effect.system.ArcFlareEngineFlareManager
-import cn.kasuminova.astd.renderer.effect.system.ArcFlareAfterimageManager
+import cn.kasuminova.astd.renderer.effect.system.Xc001EmissiveOverlayEffect
+import cn.kasuminova.astd.renderer.effect.system.Xc001EngineFlareEffect
+import cn.kasuminova.astd.renderer.effect.system.ASTDAfterimageEffect
+import cn.kasuminova.astd.renderer.effect.system.ASTDEngineShardSprayEffect
 import cn.kasuminova.astd.renderer.effect.system.ASTDVectorThrustEngineManager
 import cn.kasuminova.astd.renderer.effect.system.WeaponAmbientGlowManager
 import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
@@ -35,21 +36,21 @@ internal object CombatVfxBootstrap {
 
         // 舰体 emissive 覆盖层：目前用于 Arc Flare 整船发光贴图。
         try {
-            ArcFlareEmissiveOverlayManager.ensureInstalled(engine)
+            Xc001EmissiveOverlayEffect.ensureInstalled(engine)
         } catch (ex: Throwable) {
-            log.warn("[ASTD] ArcFlareEmissiveOverlayManager.ensureInstalled failed", ex)
+            log.warn("[ASTD] Xc001EmissiveOverlayEffect.ensureInstalled failed", ex)
         }
 
         try {
-            ArcFlareEngineFlareManager.ensureInstalled(engine)
+            Xc001EngineFlareEffect.ensureInstalled(engine)
         } catch (ex: Throwable) {
-            log.warn("[ASTD] ArcFlareEngineFlareManager.ensureInstalled failed", ex)
+            log.warn("[ASTD] Xc001EngineFlareEffect.ensureInstalled failed", ex)
         }
 
         try {
-            ArcFlareAfterimageManager.ensureInstalled(engine)
+            ASTDAfterimageEffect.ensureInstalled(engine)
         } catch (ex: Throwable) {
-            log.warn("[ASTD] ArcFlareAfterimageManager.ensureInstalled failed", ex)
+            log.warn("[ASTD] ASTDAfterimageEffect.ensureInstalled failed", ex)
         }
 
         // ASTD 全系类矢量推进：按引擎贡献逐引擎调火焰强度。
@@ -57,6 +58,13 @@ internal object CombatVfxBootstrap {
             ASTDVectorThrustEngineManager.ensureInstalled(engine)
         } catch (ex: Throwable) {
             log.warn("[ASTD] ASTDVectorThrustEngineManager.ensureInstalled failed", ex)
+        }
+
+        // ASTD 全系引擎常驻三角碎片喷散：按矢量管理器发布的火焰 level 驱动。
+        try {
+            ASTDEngineShardSprayEffect.ensureInstalled(engine)
+        } catch (ex: Throwable) {
+            log.warn("[ASTD] ASTDEngineShardSprayEffect.ensureInstalled failed", ex)
         }
 
         // 武器常驻发光层：补足原版 .wpn 只支持开火发光的空缺。

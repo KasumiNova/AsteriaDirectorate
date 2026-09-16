@@ -1,6 +1,6 @@
 package cn.kasuminova.astd.renderer.effect.system
 
-import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcFlareHullModIds
+import cn.kasuminova.astd.combat.hullmods.arc.ASTDXc001HullModIds
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseCombatLayeredRenderingPlugin
 import com.fs.starfarer.api.combat.CombatEngineAPI
@@ -11,9 +11,9 @@ import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
 import java.util.EnumSet
 
-internal object ArcFlareAfterimageManager {
+internal object ASTDAfterimageEffect {
 
-    private const val ENGINE_KEY = ASTDArcFlareHullModIds.KEY_AFTERIMAGE_RENDERER
+    private const val ENGINE_KEY = ASTDXc001HullModIds.KEY_AFTERIMAGE_RENDERER
 
     data class Snapshot(
         val spritePath: String,

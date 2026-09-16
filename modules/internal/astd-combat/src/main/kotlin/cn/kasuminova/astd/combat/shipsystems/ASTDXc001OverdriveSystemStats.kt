@@ -1,6 +1,6 @@
 package cn.kasuminova.astd.combat.shipsystems
 
-import cn.kasuminova.astd.renderer.effect.system.ArcFlareOverdriveVisualState
+import cn.kasuminova.astd.renderer.effect.system.Xc001OverdriveVisualState
 import cn.kasuminova.astd.internal.i18n.I18n
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
@@ -33,7 +33,7 @@ import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
  * - 激活期间无条件零辐能加速
  * - 开启瞬间释放中心 flare 闪爆
  */
-open class ASTDArcFlareOverdriveSystemStats : BaseShipSystemScript() {
+open class ASTDXc001OverdriveSystemStats : BaseShipSystemScript() {
 
     /** 子类覆盖以指定系统所属模式。 */
     protected open val isAutomatedSystem: Boolean = false
@@ -120,7 +120,7 @@ open class ASTDArcFlareOverdriveSystemStats : BaseShipSystemScript() {
         }
 
         val visualLevel = computeVisualLevel(state, level)
-        ArcFlareOverdriveVisualState.setLevel(engine, ship, visualLevel)
+        Xc001OverdriveVisualState.setLevel(engine, ship, visualLevel)
         applyVisualFeedback(ship, engine, id, visualLevel, rampLevel, isAutomated)
 
         val burstKey = "$BURST_DONE_KEY$shipKey"
@@ -170,7 +170,7 @@ open class ASTDArcFlareOverdriveSystemStats : BaseShipSystemScript() {
         engine.customData.remove("$FLARE_KEY$shipKey")
 
         restoreShieldVisual(ship, engine, shipKey)
-        ArcFlareOverdriveVisualState.clear(engine, ship)
+        Xc001OverdriveVisualState.clear(engine, ship)
     }
 
     private fun computeVisualLevel(state: ShipSystemStatsScript.State, effectLevel: Float): Float = when (state) {
@@ -198,7 +198,7 @@ open class ASTDArcFlareOverdriveSystemStats : BaseShipSystemScript() {
         if (now < nextTime) return
 
         val afterimageColor = blendColor(
-            ArcFlareOverdriveVisualState.hotFringe,
+            Xc001OverdriveVisualState.hotFringe,
             Color(255, 155, 72, 200),
             (0.30f + visualLevel * 0.70f).coerceIn(0f, 1f),
         )
@@ -243,9 +243,9 @@ open class ASTDArcFlareOverdriveSystemStats : BaseShipSystemScript() {
             val glowAlpha = (visualLevel * rampLevel * 0.18f).coerceIn(0f, 0.25f)
             if (glowAlpha > 0.02f) {
                 val glowColor = Color(
-                    ArcFlareOverdriveVisualState.hotFringe.red,
-                    ArcFlareOverdriveVisualState.hotFringe.green,
-                    ArcFlareOverdriveVisualState.hotFringe.blue,
+                    Xc001OverdriveVisualState.hotFringe.red,
+                    Xc001OverdriveVisualState.hotFringe.green,
+                    Xc001OverdriveVisualState.hotFringe.blue,
                     (glowAlpha * 255f).toInt().coerceIn(0, 255),
                 )
                 MagicRender.battlespace(
@@ -306,8 +306,8 @@ open class ASTDArcFlareOverdriveSystemStats : BaseShipSystemScript() {
 
         if (isAutomated) {
             // 自动模式：橙色发光描边（与护盾颜色保持一致）
-            val fringeBase = ArcFlareOverdriveVisualState.hotFringe
-            val coreBase = ArcFlareOverdriveVisualState.hotCore
+            val fringeBase = Xc001OverdriveVisualState.hotFringe
+            val coreBase = Xc001OverdriveVisualState.hotCore
             val hotJitter = Color(fringeBase.red, fringeBase.green, fringeBase.blue, 200)
             val hotUnder = Color(coreBase.red, coreBase.green, coreBase.blue, 140)
             val jitterIntensity = (0.3f + 0.7f * shieldLevel).coerceIn(0f, 1f)
@@ -315,7 +315,7 @@ open class ASTDArcFlareOverdriveSystemStats : BaseShipSystemScript() {
             ship.setJitter(id, hotJitter, 0.05f + 0.06f * shieldLevel, 3, 0f, 3f + 5f * shieldLevel)
             ship.setJitterUnder(id, hotUnder, jitterIntensity, 22, 0f, 7f + 8f * shieldLevel)
         } else {
-            val hotBase = ArcFlareOverdriveVisualState.hotFringe
+            val hotBase = Xc001OverdriveVisualState.hotFringe
             val jitterColor = Color(hotBase.red, hotBase.green, hotBase.blue, 255)
             ship.setJitterShields(true)
             ship.setJitter(id, jitterColor, 0.04f + 0.05f * shieldLevel, 2, 0f, 3f + 4f * shieldLevel)
@@ -378,7 +378,7 @@ open class ASTDArcFlareOverdriveSystemStats : BaseShipSystemScript() {
      * 自动模式激活爆发：大量闪电从船体边缘向外发散（RiftLightning 风格）。
      */
     private fun spawnActivationArcBurst(ship: ShipAPI, engine: CombatEngineAPI) {
-        val arcFringe = ArcFlareOverdriveVisualState.coldFringe
+        val arcFringe = Xc001OverdriveVisualState.coldFringe
         val arcCore = Color(220, 248, 255, 220)
         val count = MathUtils.getRandomNumberInRange(10f, 14f).toInt()
         repeat(count) {
@@ -415,7 +415,7 @@ open class ASTDArcFlareOverdriveSystemStats : BaseShipSystemScript() {
             try {
                 MagicLensFlare.createSharpFlare(
                     engine, ship, pos, 6f, length, 0f,
-                    ArcFlareOverdriveVisualState.coldFringe, ArcFlareOverdriveVisualState.coldCore,
+                    Xc001OverdriveVisualState.coldFringe, Xc001OverdriveVisualState.coldCore,
                 )
             } catch (_: Throwable) {}
         }
@@ -488,7 +488,7 @@ open class ASTDArcFlareOverdriveSystemStats : BaseShipSystemScript() {
             else -> return null
         }
         return ShipSystemStatsScript.StatusData(
-            I18n[I18n.Categories.MOD, "system.arc_flare_overdrive.status.$prefix.$suffix"],
+            I18n[I18n.Categories.MOD, "system.xc_001_overdrive.status.$prefix.$suffix"],
             false,
         )
     }

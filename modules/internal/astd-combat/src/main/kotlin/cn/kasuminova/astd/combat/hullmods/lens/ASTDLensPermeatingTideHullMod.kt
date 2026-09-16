@@ -18,7 +18,7 @@ import java.awt.Color
  * 渗透潮汐（Permeating Tide，spec §5 / `purple/10-unique.md` §1 插件③）——决明级内置插件③，
  * 钉死「高级电战」支柱：以本舰为心、随交战时长涨落的渗透式电战压制场。
  *
- * 仅对决明级生效（[isApplicableToShip] / advanceInCombat 入口 [isGravitationalLensShip] guard）。
+ * 仅对决明级生效（[isApplicableToShip] / advanceInCombat 入口 [isZw001Ship] guard）。
  * advanceInCombat 每帧驱动三件事（数值/插值判定走纯函数 [PermeatingTideMath]）：
  *
  * 1. **涨潮叠深水标记**：遍历 [CombatEngineAPI.getShips] 中位于场内（dist ≤ 2500su）的敌舰，按
@@ -68,7 +68,7 @@ class ASTDLensPermeatingTideHullMod : BaseHullMod() {
     override fun advanceInCombat(ship: ShipAPI, amount: Float) {
         val engine = Global.getCombatEngine() ?: return
         if (engine.isPaused || amount <= 0f || ship.isHulk) return
-        if (!ship.isGravitationalLensShip()) return
+        if (!ship.isZw001Ship()) return
 
         val shipId = System.identityHashCode(ship)
         val state = stateByShip.getOrPut(shipId) { TideState() }
@@ -188,7 +188,7 @@ class ASTDLensPermeatingTideHullMod : BaseHullMod() {
         )
     }
 
-    override fun isApplicableToShip(ship: ShipAPI): Boolean = ship.isGravitationalLensShip()
+    override fun isApplicableToShip(ship: ShipAPI): Boolean = ship.isZw001Ship()
 
     override fun showInRefitScreenModPickerFor(ship: ShipAPI): Boolean = false
 

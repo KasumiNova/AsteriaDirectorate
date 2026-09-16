@@ -3,7 +3,7 @@ package cn.kasuminova.astd.combat.shipsystems
 import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcProductionShipIds
 import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcProductionVfx
 import cn.kasuminova.astd.internal.i18n.I18n
-import cn.kasuminova.astd.renderer.effect.system.ArcFlareAfterimageManager
+import cn.kasuminova.astd.renderer.effect.system.ASTDAfterimageEffect
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.MutableShipStatsAPI
 import com.fs.starfarer.api.combat.ShipAPI
@@ -124,9 +124,9 @@ class ASTDLimitTemporalThrusterSystemStats : BaseShipSystemScript() {
             return
         }
         engine.customData["$baseKey:afterimage"] = elapsed - AFTERIMAGE_INTERVAL
-        ArcFlareAfterimageManager.spawn(
+        ASTDAfterimageEffect.spawn(
             engine,
-            ArcFlareAfterimageManager.Snapshot(
+            ASTDAfterimageEffect.Snapshot(
                 spritePath = ship.hullSpec.spriteName,
                 location = Vector2f(ship.location),
                 facing = ship.facing,

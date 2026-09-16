@@ -25,7 +25,7 @@ import org.lwjgl.util.vector.Vector2f
  *
  * 与 [EchoFixationFieldVisualEffect]（细环边界 SDF）的关键差异：定影场强调**边界环**；潮汐场强调
  * **整片填充的渗透水面**——内核柔和填充辉光 + FBM 涟漪 + 一道柔和外缘羽化，无锐利刻度环。
- * FBM/valueNoise/hash21 GLSL 取自 [cn.kasuminova.astd.renderer.effect.system.ArcJetShockwaveRingEffect]。
+ * FBM/valueNoise/hash21 GLSL 取自 [cn.kasuminova.astd.renderer.effect.system.Xc102ShockwaveRingEffect]。
  *
  * 本对象只持有效果参数与「潮位 → shader 提交」的转换；GL 程序、layer 插件、生命周期、状态管理
  * 全部委托给共享 shader runtime。结构镜像 [EchoFixationFieldVisualEffect]。

@@ -66,7 +66,7 @@ class ASTDArcSharedFluxNetworkSystemStats : BaseShipSystemScript() {
         var maxPressureRatio = 0f
         for (target in targets) {
             val distance = ASTDArcAuraUtil.distance(ship.location, target.location)
-            val falloff = arcJetSystemFalloff(ship, distance)
+            val falloff = xc102SystemFalloff(ship, distance)
             if (falloff <= 0f) continue
             applyTargetStats(ship, target, falloff * level)
             val transfer = transferFluxDelta(engine, ship, target, falloff * level, amount)
@@ -74,7 +74,7 @@ class ASTDArcSharedFluxNetworkSystemStats : BaseShipSystemScript() {
             maxPressureRatio = maxOf(maxPressureRatio, pressureRatio)
             maintainTargetStatus(engine, ship, target, falloff * level)
         }
-        ASTDArcProductionVfx.renderArcJetShockwaveRing(engine, ship, level, maxPressureRatio)
+        ASTDArcProductionVfx.renderXc102ShockwaveRing(engine, ship, level, maxPressureRatio)
         engine.customData["$TARGETS_KEY${System.identityHashCode(ship)}"] = activeSet
         engine.customData[ASTDArcProductionShipIds.DATA_ARC_SHARED_FLUX_TARGETS] = activeSet
     }
@@ -120,7 +120,7 @@ class ASTDArcSharedFluxNetworkSystemStats : BaseShipSystemScript() {
         val selected = ASTDArcAuraUtil.selectTargets(
             sourceOwner = source.owner,
             sourceLocation = source.location,
-            maxRange = ASTDArcCombatUtil.effectiveSystemRange(source, ASTDArcAuraUtil.ARC_JET_SYSTEM_MAX_RANGE),
+            maxRange = ASTDArcCombatUtil.effectiveSystemRange(source, ASTDArcAuraUtil.XC_102_SYSTEM_MAX_RANGE),
             maxCount = MAX_TARGETS,
             eligibleHullSizes = ELIGIBLE_HULL_SIZES,
             candidates = bySummaryId.values.map { ASTDArcAuraUtil.summaryFor(it).withPressureBias(it) },
@@ -139,9 +139,9 @@ class ASTDArcSharedFluxNetworkSystemStats : BaseShipSystemScript() {
         return copy(scoreBias = (sizeBias + flux * 0.24f).coerceIn(0f, 0.48f))
     }
 
-    private fun arcJetSystemFalloff(ship: ShipAPI, distance: Float): Float {
-        val fullRange = ASTDArcCombatUtil.effectiveSystemRange(ship, ASTDArcAuraUtil.ARC_JET_SYSTEM_FULL_RANGE)
-        val maxRange = ASTDArcCombatUtil.effectiveSystemRange(ship, ASTDArcAuraUtil.ARC_JET_SYSTEM_MAX_RANGE)
+    private fun xc102SystemFalloff(ship: ShipAPI, distance: Float): Float {
+        val fullRange = ASTDArcCombatUtil.effectiveSystemRange(ship, ASTDArcAuraUtil.XC_102_SYSTEM_FULL_RANGE)
+        val maxRange = ASTDArcCombatUtil.effectiveSystemRange(ship, ASTDArcAuraUtil.XC_102_SYSTEM_MAX_RANGE)
         return ASTDArcAuraUtil.distanceFalloff(distance, fullRange, maxRange, ASTDArcAuraUtil.EDGE_SCALE)
     }
 

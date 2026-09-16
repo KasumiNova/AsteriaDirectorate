@@ -240,7 +240,8 @@ class ConeImpactVfxTest {
     }
 
     @Test
-    fun `shard batches accumulate eighteen instances across thresholds exactly once`() {
+    fun `shard batches fire across thresholds exactly once and activate on consumption`() {
+        val capture = WarnCapture(TriShardComponent::class.java).also { captures += it }
         val engine = mock(CombatEngineAPI::class.java)
         `when`(engine.customData).thenReturn(HashMap())
         val host = PointHost("t", origin, 90f)
@@ -255,26 +256,26 @@ class ConeImpactVfxTest {
             flashColor = core,
         )
 
-        // 顶点批（attach）：6 颗。
+        // 顶点批（attach 灌入 6 颗，未推进不激活）。
         root.onAttach(frameCtx(engine, host, 0.02f, 0.02f))
         assertEquals(6, root.shardComponent.batches[0].instances.size, "attach 顶点批必须恰好 6 颗")
+        assertTrue(capture.messages().isEmpty(), "attach 当帧不得激活: ${capture.messages()}")
 
-        // 锥内批（t=+0.05）：8 颗，累计 14。
+        // 锥内批（t=+0.05）：顶点批与锥内批同帧激活消费（headless 实体缺席记 WARN，一批一条）。
         root.advance(frameCtx(engine, host, 0.06f, 0.04f), 0.04f)
-        assertEquals(8, root.shardComponent.batches[1].instances.size, "锥内批必须恰好 8 颗")
+        assertEquals(2, capture.messages().size, "顶点批+锥内批必须各激活一次: ${capture.messages()}")
+        assertTrue(
+            root.shardComponent.batches.all { it.instances.isEmpty() },
+            "激活即消费：已激活批次实例必须清空",
+        )
 
-        // 锥缘批（t=+0.10）：4 颗，累计 18。
+        // 锥缘批（t=+0.10）：再激活一次。
         root.advance(frameCtx(engine, host, 0.11f, 0.05f), 0.05f)
-        assertEquals(4, root.shardComponent.batches[2].instances.size, "锥缘批必须恰好 4 颗")
-        val total = root.shardComponent.batches.sumOf { it.instances.size }
-        assertEquals(18, total, "三批必须累计 18 颗")
+        assertEquals(3, capture.messages().size, "锥缘批必须激活: ${capture.messages()}")
 
-        // 幂等：跨过全部阈值后继续推进不得重复灌批。
+        // 幂等：跨过全部阈值后继续推进不得重复灌批/激活。
         root.advance(frameCtx(engine, host, 0.20f, 0.09f), 0.09f)
-        assertEquals(18, root.shardComponent.batches.sumOf { it.instances.size }, "批次跨阈值后不得重复触发")
-
-        // 各批在灌批当帧（子节点同帧 advance）即激活（headless 实体缺席记 WARN，activated 置位）。
-        assertTrue(root.shardComponent.batches.all { it.activated }, "三批必须全部激活")
+        assertEquals(3, capture.messages().size, "批次跨阈值后不得重复触发: ${capture.messages()}")
     }
 
     // ---- OneShotVfxPlugin 生命周期 ----

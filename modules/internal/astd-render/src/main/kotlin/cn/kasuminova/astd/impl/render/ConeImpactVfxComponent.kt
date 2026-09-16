@@ -17,7 +17,7 @@ import kotlin.math.roundToInt
  * v2 定案（2026-07-31 实机评审）：锥面主体为 AOD7 开火特效配方（多道椭圆弧 + 扭曲 + 烟雾 + 闪光）
  * 的锥化变体。v2.1（同日二次反馈）补上 AOD7 **命中**配方的招牌层——spray 刺束簇。
  * v2.2（同日三次反馈）：弧环加粗到 10px+ 并上逐顶点 alpha 包络（两端渐隐，治硬边收尾）；
- * 星云烟雾整体换成随机旋转的三角碎片（[ConeShardComponent] 子节点）。
+ * 星云烟雾整体换成随机旋转的三角碎片（[TriShardComponent] 子节点）。
  * v4.1（§10.9 架构层，零观感改动）：刺束簇自 `ImpactStrikeFx` 吞并为子节点 [StrikeSprayComponent]
  * （参数逐值平移 v2.2），针位置改组件内显式积分治「概率侧飞」。
  * v4.3（§10.9，用户：「弧环需要真正的柔边」）：四道弧自 OglEllipseRingRenderer 的 GL_LINE_STRIP
@@ -36,7 +36,7 @@ import kotlin.math.roundToInt
  * - t=+0.10：碎片锥缘批（[ShardCountSpec.edge]，0.8~1.0L）。
  *
  * 根自身无后端常驻句柄：闪光/扭曲为 vanilla 粒子与 BoxUtil 自管理实体、
- * 碎片（[ConeShardComponent]，v4.2 起 SpriteEntity 实例化）灌批后亦由 BoxUtil 自管理；
+ * 碎片（[TriShardComponent]，v4.2 起 SpriteEntity 实例化）灌批后亦由 BoxUtil 自管理；
  * 仅刺束针（[StrikeSprayComponent]）与弧（[ConeArcComponent]，v4.3 起树内驱动）由子节点持有并
  * 逐帧推进（树寿命因此不得短于这两层的最长期，见 ConeImpactVfx.spawn 的 TTL 下限）。
  * 根的几何常量创建期定死，每帧只读 [RenderContext.frame] 的 elapsed 按阈值表恰好触发一次
@@ -90,7 +90,7 @@ class ConeImpactVfxComponent(
     )
 
     /** 三角碎片子节点（attach 时随树挂上；internal 供单测断言三批累计颗数）。 */
-    internal val shardComponent = ConeShardComponent("$id/shards", length, coreColor, fringeColor)
+    internal val shardComponent = TriShardComponent("$id/shards", length, coreColor, fringeColor)
 
     /** 扩张弧子节点（v4.3 吞并：v2.2 弧几何/错峰/宽度/包络逐值平移；internal 供单测断言四道弧激活）。 */
     internal val arcComponent = ConeArcComponent("$id/arcs", origin, facingDeg, halfAngleDeg, length, fringeColor)

@@ -49,21 +49,10 @@ object HullMod_astd_transient_potential_manifold : HullModEntry() {
     override val sprite: String = "graphics/hullmods/astd_vectorized_jet_array.png"
 }
 
-object HullMod_astd_nano_restoration_protocol : HullModEntry() {
-    override val id: String = "astd_nano_restoration_protocol"
-    override val name: String = hullmodName(id)
-    override val tier: Int = 2
-    override val rarity: Int = 1
-    override val tech: String = "ARC"
-    override val tags: String = TAGS_BUILTIN
-    override val script: String = "cn.kasuminova.astd.combat.hullmods.arc.ASTDNanoRestorationProtocolHullMod"
-    override val desc: String = SsI18n.t("hullmod.$id.desc")
-    override val short: String = SsI18n.t("hullmod.$id.short")
-    override val sprite: String = "graphics/hullmods/astd_nano_restoration_protocol.png"
-}
-
-// 注：arc 自造切换器 astd_xc_001_mode_switcher 已废弃，改用通用切换器 astd_dual_mode_switcher
+// 注 1：arc 自造切换器 astd_xc_001_mode_switcher 已废弃，改用通用切换器 astd_dual_mode_switcher
 // （见 entries/catalog/hullmods/base/Catalog_HullMods_Base.kt）。原条目已移除。
+// 注 2：纳米重构协议 astd_nano_restoration_protocol 已通用化（舰船无关，所有独特舰默认内置），
+// 注册点迁至 entries/catalog/hullmods/base/Catalog_HullMods_Base.kt，脚本同步迁至 hullmods/base 包。
 
 object HullMod_astd_xc_001_mode_crewed : HullModEntry() {
     override val id: String = "astd_xc_001_mode_crewed"
@@ -72,7 +61,7 @@ object HullMod_astd_xc_001_mode_crewed : HullModEntry() {
     override val rarity: Int = 0
     override val tech: String = "ARC"
     override val tags: String = ""
-    override val script: String = "cn.kasuminova.astd.combat.hullmods.arc.ASTDArcFlareCrewedModeHullMod"
+    override val script: String = "cn.kasuminova.astd.combat.hullmods.arc.ASTDXc001CrewedModeHullMod"
     override val desc: String = SsI18n.t("hullmod.$id.desc")
     override val short: String = SsI18n.t("hullmod.$id.short")
     override val sprite: String = "graphics/hullmods/astd_nano_restoration_protocol.png"
@@ -85,7 +74,7 @@ object HullMod_astd_xc_001_mode_automated : HullModEntry() {
     override val rarity: Int = 0
     override val tech: String = "ARC"
     override val tags: String = ""
-    override val script: String = "cn.kasuminova.astd.combat.hullmods.arc.ASTDArcFlareAutomatedModeHullMod"
+    override val script: String = "cn.kasuminova.astd.combat.hullmods.arc.ASTDXc001AutomatedModeHullMod"
     override val desc: String = SsI18n.t("hullmod.$id.desc")
     override val short: String = SsI18n.t("hullmod.$id.short")
     override val sprite: String = "graphics/hullmods/astd_vectorized_jet_array.png"

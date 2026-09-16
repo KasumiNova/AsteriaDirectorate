@@ -2,8 +2,8 @@ package cn.kasuminova.astd.combat.hullmods.arc
 
 import cn.kasuminova.astd.combat.hullmods.base.ASTDHullModTooltipRenderer
 import cn.kasuminova.astd.renderer.effect.hullmods.ASTDNegentropyChargeBarRenderer
-import cn.kasuminova.astd.combat.shipsystems.ASTDNegentropyEdgeState
-import cn.kasuminova.astd.combat.shipsystems.ASTDNegentropyEdgeDroneSubsystem
+import cn.kasuminova.astd.combat.shipsystems.ASTDXc002State
+import cn.kasuminova.astd.combat.shipsystems.ASTDXc002DroneSubsystem
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseHullMod
 import com.fs.starfarer.api.combat.MutableShipStatsAPI
@@ -34,7 +34,7 @@ class ASTDTransientPotentialManifoldHullMod : BaseHullMod() {
 
     override fun applyEffectsBeforeShipCreation(hullSize: ShipAPI.HullSize, stats: MutableShipStatsAPI, id: String) {
         val variant = stats.variant ?: return
-        if (variant.hullSpec?.hullId != ASTDNegentropyEdgeState.HULL_ID) return
+        if (variant.hullSpec?.hullId != ASTDXc002State.HULL_ID) return
         stats.dynamic.getMod("medium_ballistic_mod").modifyFlat(id, MEDIUM_HYBRID_OP_DISCOUNT)
         stats.dynamic.getMod("medium_energy_mod").modifyFlat(id, MEDIUM_HYBRID_OP_DISCOUNT)
         stats.dynamic.getMod("medium_missile_mod").modifyFlat(id, MEDIUM_HYBRID_OP_DISCOUNT)
@@ -43,22 +43,22 @@ class ASTDTransientPotentialManifoldHullMod : BaseHullMod() {
     }
 
     override fun applyEffectsAfterShipCreation(ship: ShipAPI, id: String) {
-        if (!ASTDNegentropyEdgeState.isNegentropyEdge(ship)) return
+        if (!ASTDXc002State.isXc002(ship)) return
         try {
-            MagicSubsystemsManager.addSubsystemToShip(ship, ASTDNegentropyEdgeDroneSubsystem(ship))
+            MagicSubsystemsManager.addSubsystemToShip(ship, ASTDXc002DroneSubsystem(ship))
         } catch (_: Throwable) {
         }
     }
 
     override fun advanceInCombat(ship: ShipAPI, amount: Float) {
         val engine = Global.getCombatEngine() ?: return
-        if (engine.isPaused || amount <= 0f || ship.isHulk || !ASTDNegentropyEdgeState.isNegentropyEdge(ship)) return
+        if (engine.isPaused || amount <= 0f || ship.isHulk || !ASTDXc002State.isXc002(ship)) return
         ASTDNegentropyChargeBarRenderer.ensure(engine)
-        ASTDNegentropyEdgeState.decayCharge(ship, CHARGE_DECAY_PER_SEC * amount)
-        ASTDNegentropyEdgeState.advanceWindows(ship, amount)
+        ASTDXc002State.decayCharge(ship, CHARGE_DECAY_PER_SEC * amount)
+        ASTDXc002State.advanceWindows(ship, amount)
 
         val reloading = ship.allWeapons.any { w ->
-            try { w.spec?.weaponId == ASTDNegentropyEdgeState.SPC3_WEAPON_ID && w.ammo <= 0 && w.maxAmmo > 0 } catch (_: Throwable) { false }
+            try { w.spec?.weaponId == ASTDXc002State.SPC3_WEAPON_ID && w.ammo <= 0 && w.maxAmmo > 0 } catch (_: Throwable) { false }
         }
         if (reloading) {
             ship.mutableStats.fluxDissipation.modifyFlat(RELOAD_MOD_ID, RELOAD_HEAT_DISSIPATION_BONUS)
@@ -104,7 +104,7 @@ class ASTDTransientPotentialManifoldHullMod : BaseHullMod() {
 
     override fun showInRefitScreenModPickerFor(ship: ShipAPI): Boolean = false
 
-    override fun isApplicableToShip(ship: ShipAPI): Boolean = ASTDNegentropyEdgeState.isNegentropyEdge(ship)
+    override fun isApplicableToShip(ship: ShipAPI): Boolean = ASTDXc002State.isXc002(ship)
 
     override fun getBorderColor(): Color = THEME.borderColor
 

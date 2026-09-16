@@ -73,9 +73,9 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     private val projectilePreviewAnchor = Vector2f(40f, 0f)
     private val enemyAnchor = Vector2f(900f, 0f)
     private val arcProductionAnchors = mapOf(
-        ASTDArcProductionShipIds.HULL_ARC_JET to Vector2f(-720f, 120f),
-        ASTDArcProductionShipIds.HULL_PLASMA_ARCH to Vector2f(-80f, -40f),
-        ASTDArcProductionShipIds.HULL_RADIATION_BELT to Vector2f(520f, 135f),
+        ASTDArcProductionShipIds.HULL_XC_102 to Vector2f(-720f, 120f),
+        ASTDArcProductionShipIds.HULL_XC_101 to Vector2f(-80f, -40f),
+        ASTDArcProductionShipIds.HULL_XC_103 to Vector2f(520f, 135f),
         "ally_frigate" to Vector2f(-500f, -280f),
         "ally_destroyer" to Vector2f(360f, -255f),
         "enemy_target" to Vector2f(980f, 20f),
@@ -378,7 +378,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         // 公开 API 无关闭入口、常驻遮屏；2026-07-30 反编译 CombatState 实锤）。
         // 关键约束（2026-07-31 aod7 场景回归实锤）：静默 deployAll 与弹框在同一闸门块内——
         // 玩家后备 == 1 艘时 vanilla 走静默 deployAll（不弹框但会部署），此处关断会把静默部署
-        // 一并跳过，单舰场景（如 arc_flare_aod7_basic）将无船可部署。故仅在后备 != 1 艘
+        // 一并跳过，单舰场景（如 xc_001_aod7_basic）将无船可部署。故仅在后备 != 1 艘
         // （必弹框路径）时关断；单舰路径本就不弹框，保留 flag 让 vanilla 静默部署。
         val combatUI = engine.combatUI
         if (combatUI is CombatState) {
@@ -392,7 +392,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         ProjectileVfxDriverPlugin.ensureInstalled(engine)
         if (ASTDInGameAutomationScenario.isTrailPauseProbeEnabled()) {
             lockCamera(engine)
-            arrangeShips(engine, findArcFlare(engine))
+            arrangeShips(engine, findXc001(engine))
             writeDiagnostics(engine, "CombatReady")
             writeTelemetry(engine, "CombatReady")
             log.info("[ASTD-Automation] scenario=${ASTDInGameAutomationScenario.TPP_SCENARIO_ID} combat plugin initialized")
@@ -509,7 +509,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             log.info("[ASTD-Automation] scenario=${ASTDInGameAutomationScenario.ARC_PRODUCTION_SCENARIO_ID} combat plugin initialized")
         } else {
             lockCamera(engine)
-            arrangeShips(engine, findArcFlare(engine))
+            arrangeShips(engine, findXc001(engine))
             writeDiagnostics(engine, "CombatReady")
             writeTelemetry(engine, "CombatReady")
             log.info("[ASTD-Automation] scenario=${ASTDInGameAutomationScenario.SCENARIO_ID} combat plugin initialized")
@@ -607,7 +607,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
 
         elapsed += amount.coerceAtLeast(0f)
 
-        val ship = findArcFlare(combatEngine)
+        val ship = findXc001(combatEngine)
         val weapon = ship?.allWeapons?.firstOrNull { it.id == ASTDInGameAutomationScenario.WEAPON_ID }
         lockCamera(combatEngine)
         arrangeShips(combatEngine, ship)
@@ -639,7 +639,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             if (!completed) {
                 completed = true
                 completedAt = elapsed
-                log.info("[ASTD-Automation] Completed: arc_flare/aod7/${ASTDInGameAutomationScenario.PROJECTILE_SPEC_ID}/VFX observed")
+                log.info("[ASTD-Automation] Completed: xc_001/aod7/${ASTDInGameAutomationScenario.PROJECTILE_SPEC_ID}/VFX observed")
             }
             return
         }
@@ -658,7 +658,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             // 相位机把捕获点写成 pending 标签，这里消费并各抓一帧 BeforePause/DuringPause/AfterResume。
             val label = tppCapturePending ?: return
             tppCapturePending = null
-            val ship = findArcFlare(combatEngine)
+            val ship = findXc001(combatEngine)
             writeDiagnostics(combatEngine, label, ship)
             writeTelemetry(
                 combatEngine,
@@ -751,7 +751,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         if (visualFramesWritten > 0 && elapsed - lastVisualFrameAt < 0.18f) return
 
         lockCamera(combatEngine)
-        val ship = findArcFlare(combatEngine)
+        val ship = findXc001(combatEngine)
         arrangeShips(combatEngine, ship)
         alignAod7ProjectilesForEvidence(combatEngine)
         lastVisualFrameAt = elapsed
@@ -768,7 +768,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         }
     }
 
-    private fun findArcFlare(engine: CombatEngineAPI): ShipAPI? {
+    private fun findXc001(engine: CombatEngineAPI): ShipAPI? {
         return engine.ships.firstOrNull { ship ->
             ship.hullSpec?.hullId == ASTDInGameAutomationScenario.SHIP_ID ||
                 ship.variant?.hullVariantId == ASTDInGameAutomationScenario.VARIANT_ID
@@ -862,9 +862,9 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     val base = arcProductionAnchors.getValue("enemy_target")
                     Vector2f(base.x + enemyIndex++ * 170f, base.y)
                 }
-                hullId == ASTDArcProductionShipIds.HULL_ARC_JET -> arcProductionAnchors.getValue(ASTDArcProductionShipIds.HULL_ARC_JET)
-                hullId == ASTDArcProductionShipIds.HULL_PLASMA_ARCH -> arcProductionAnchors.getValue(ASTDArcProductionShipIds.HULL_PLASMA_ARCH)
-                hullId == ASTDArcProductionShipIds.HULL_RADIATION_BELT -> arcProductionAnchors.getValue(ASTDArcProductionShipIds.HULL_RADIATION_BELT)
+                hullId == ASTDArcProductionShipIds.HULL_XC_102 -> arcProductionAnchors.getValue(ASTDArcProductionShipIds.HULL_XC_102)
+                hullId == ASTDArcProductionShipIds.HULL_XC_101 -> arcProductionAnchors.getValue(ASTDArcProductionShipIds.HULL_XC_101)
+                hullId == ASTDArcProductionShipIds.HULL_XC_103 -> arcProductionAnchors.getValue(ASTDArcProductionShipIds.HULL_XC_103)
                 else -> {
                     val base = if (allyIndex % 2 == 0) {
                         arcProductionAnchors.getValue("ally_frigate")
@@ -876,7 +876,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             }
             val facing = when {
                 side == FleetSide.ENEMY -> 180f
-                hullId == ASTDArcProductionShipIds.HULL_RADIATION_BELT -> 180f
+                hullId == ASTDArcProductionShipIds.HULL_XC_103 -> 180f
                 else -> 0f
             }
             val spawned = manager.spawnFleetMember(member, Vector2f(anchor), facing, 0f)
@@ -887,19 +887,19 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     }
 
     private fun shouldPreserveArcProductionAI(side: FleetSide, hullId: String): Boolean =
-        side == FleetSide.ENEMY || hullId == ASTDArcProductionShipIds.HULL_PLASMA_ARCH
+        side == FleetSide.ENEMY || hullId == ASTDArcProductionShipIds.HULL_XC_101
 
     private fun arrangeArcProductionShips(engine: CombatEngineAPI) {
-        val arcJet = findShipByHull(engine, ASTDArcProductionShipIds.HULL_ARC_JET)
-        val plasmaArch = findShipByHull(engine, ASTDArcProductionShipIds.HULL_PLASMA_ARCH)
-        val radiationBelt = findShipByHull(engine, ASTDArcProductionShipIds.HULL_RADIATION_BELT)
-        arcJet?.let { stabilizeShip(it, arcProductionAnchors.getValue(ASTDArcProductionShipIds.HULL_ARC_JET), 0f, allowFire = false) }
-        plasmaArch?.let { stabilizeShip(it, arcProductionAnchors.getValue(ASTDArcProductionShipIds.HULL_PLASMA_ARCH), 0f, allowFire = false, preserveAI = true) }
-        radiationBelt?.let { stabilizeShip(it, arcProductionAnchors.getValue(ASTDArcProductionShipIds.HULL_RADIATION_BELT), 180f, allowFire = false) }
+        val xc102 = findShipByHull(engine, ASTDArcProductionShipIds.HULL_XC_102)
+        val xc101 = findShipByHull(engine, ASTDArcProductionShipIds.HULL_XC_101)
+        val xc103 = findShipByHull(engine, ASTDArcProductionShipIds.HULL_XC_103)
+        xc102?.let { stabilizeShip(it, arcProductionAnchors.getValue(ASTDArcProductionShipIds.HULL_XC_102), 0f, allowFire = false) }
+        xc101?.let { stabilizeShip(it, arcProductionAnchors.getValue(ASTDArcProductionShipIds.HULL_XC_101), 0f, allowFire = false, preserveAI = true) }
+        xc103?.let { stabilizeShip(it, arcProductionAnchors.getValue(ASTDArcProductionShipIds.HULL_XC_103), 180f, allowFire = false) }
 
         engine.ships
-            .filter { it.hullSpec?.hullId !in setOf(ASTDArcProductionShipIds.HULL_ARC_JET, ASTDArcProductionShipIds.HULL_PLASMA_ARCH, ASTDArcProductionShipIds.HULL_RADIATION_BELT) }
-            .filter { it.owner == arcJet?.owner || it.owner == plasmaArch?.owner || it.owner == radiationBelt?.owner }
+            .filter { it.hullSpec?.hullId !in setOf(ASTDArcProductionShipIds.HULL_XC_102, ASTDArcProductionShipIds.HULL_XC_101, ASTDArcProductionShipIds.HULL_XC_103) }
+            .filter { it.owner == xc102?.owner || it.owner == xc101?.owner || it.owner == xc103?.owner }
             .forEachIndexed { index, ship ->
                 val anchor = if (index % 2 == 0) arcProductionAnchors.getValue("ally_frigate") else arcProductionAnchors.getValue("ally_destroyer")
                 stabilizeShip(ship, anchor, 0f, allowFire = false)
@@ -911,13 +911,13 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 val base = arcProductionAnchors.getValue("enemy_target")
                 val anchor = Vector2f(base.x + index * 170f, base.y)
                 stabilizeShip(ship, anchor, 180f, allowFire = true, preserveAI = true)
-                pressurePlasmaArchForSystemAI(ship, plasmaArch)
+                pressureXc101ForSystemAI(ship, xc101)
             }
     }
 
-    private fun pressurePlasmaArchForSystemAI(ship: ShipAPI, plasmaArch: ShipAPI?) {
-        if (plasmaArch == null || ship.owner == plasmaArch.owner) return
-        ship.setShipTarget(plasmaArch)
+    private fun pressureXc101ForSystemAI(ship: ShipAPI, xc101: ShipAPI?) {
+        if (xc101 == null || ship.owner == xc101.owner) return
+        ship.setShipTarget(xc101)
         for (weapon in try { ship.allWeapons } catch (_: Throwable) { return }) {
             weapon.setForceFireOneFrame(true)
         }
@@ -929,15 +929,15 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         lockArcProductionCamera(engine)
         arrangeArcProductionShips(engine)
 
-        val arcJet = findShipByHull(engine, ASTDArcProductionShipIds.HULL_ARC_JET)
-        val plasmaArch = findShipByHull(engine, ASTDArcProductionShipIds.HULL_PLASMA_ARCH)
-        val radiationBelt = findShipByHull(engine, ASTDArcProductionShipIds.HULL_RADIATION_BELT)
-        val telemetryShip = arcJet ?: plasmaArch ?: radiationBelt
+        val xc102 = findShipByHull(engine, ASTDArcProductionShipIds.HULL_XC_102)
+        val xc101 = findShipByHull(engine, ASTDArcProductionShipIds.HULL_XC_101)
+        val xc103 = findShipByHull(engine, ASTDArcProductionShipIds.HULL_XC_103)
+        val telemetryShip = xc102 ?: xc101 ?: xc103
         telemetryShip?.let { engine.setPlayerShipExternal(it) }
 
-        arcJet?.system?.let { if (!it.isOn && elapsed > 0.8f) arcJet.useSystem() }
-        plasmaArch?.shield?.let { if (!it.isOn) it.toggleOn() }
-        radiationBelt?.system?.let { if (!it.isOn && elapsed > 0.8f) radiationBelt.useSystem() }
+        xc102?.system?.let { if (!it.isOn && elapsed > 0.8f) xc102.useSystem() }
+        xc101?.shield?.let { if (!it.isOn) it.toggleOn() }
+        xc103?.system?.let { if (!it.isOn && elapsed > 0.8f) xc103.useSystem() }
 
         val missingShips = arcProductionMissingShips(engine)
         val state = when {
@@ -966,20 +966,20 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     private fun arcProductionEvidenceReady(engine: CombatEngineAPI): Boolean {
         if (elapsed < 1.25f) return false
         return listOf(
-            ASTDArcProductionVfx.TELEMETRY_ARC_JET_SHOCKWAVE_FRAMES,
-            ASTDArcProductionVfx.TELEMETRY_ARC_JET_SHOCKWAVE_RADIUS,
-            ASTDArcProductionVfx.TELEMETRY_ARC_JET_SHOCKWAVE_FLUX_PRESSURE,
-            ASTDArcProductionVfx.TELEMETRY_PLASMA_ARCH_SHIELD_OPEN,
-            ASTDArcProductionVfx.TELEMETRY_PLASMA_ARCH_SYSTEM_ACTIVE,
-            ASTDArcProductionVfx.TELEMETRY_PLASMA_ARCH_SHIELD_ARC_EMISSIONS,
-            ASTDArcProductionVfx.TELEMETRY_RADIATION_BELT_SYSTEM_AFTERIMAGES,
+            ASTDArcProductionVfx.TELEMETRY_XC_102_SHOCKWAVE_FRAMES,
+            ASTDArcProductionVfx.TELEMETRY_XC_102_SHOCKWAVE_RADIUS,
+            ASTDArcProductionVfx.TELEMETRY_XC_102_SHOCKWAVE_FLUX_PRESSURE,
+            ASTDArcProductionVfx.TELEMETRY_XC_101_SHIELD_OPEN,
+            ASTDArcProductionVfx.TELEMETRY_XC_101_SYSTEM_ACTIVE,
+            ASTDArcProductionVfx.TELEMETRY_XC_101_SHIELD_ARC_EMISSIONS,
+            ASTDArcProductionVfx.TELEMETRY_XC_103_SYSTEM_AFTERIMAGES,
         ).all { ASTDArcProductionVfx.counter(engine, it) > 0 }
     }
 
     private fun arcProductionTelemetryShip(engine: CombatEngineAPI): ShipAPI? =
-        findShipByHull(engine, ASTDArcProductionShipIds.HULL_ARC_JET)
-            ?: findShipByHull(engine, ASTDArcProductionShipIds.HULL_PLASMA_ARCH)
-            ?: findShipByHull(engine, ASTDArcProductionShipIds.HULL_RADIATION_BELT)
+        findShipByHull(engine, ASTDArcProductionShipIds.HULL_XC_102)
+            ?: findShipByHull(engine, ASTDArcProductionShipIds.HULL_XC_101)
+            ?: findShipByHull(engine, ASTDArcProductionShipIds.HULL_XC_103)
 
     // === Charge needle scenario (stacking / discharge / magazine / HUD evidence) ===
 
@@ -5327,11 +5327,11 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     private fun currentState(engine: CombatEngineAPI, ship: ShipAPI?, weapon: WeaponAPI?): String {
         failureReason = null
         if (ship == null) {
-            failureReason = "arc_flare ship not found in combat"
+            failureReason = "xc_001 ship not found in combat"
             return if (elapsed > 10f) "Failed" else "CombatReady"
         }
         if (weapon == null) {
-            failureReason = "aod7 weapon not found on arc_flare"
+            failureReason = "aod7 weapon not found on xc_001"
             return if (elapsed > 10f) "Failed" else "CombatReady"
         }
         if (projectileObserved(engine) && vfxObserved(engine) && evidenceReady(engine)) return "Completed"
@@ -5369,7 +5369,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
      * 恰好把要观测的「螺栓头 vs 拖尾头 cadence 滞后」藏没（2026-09 首轮探针教训）。
      */
     private fun advanceTrailPauseProbeScenario(engine: CombatEngineAPI) {
-        val ship = findArcFlare(engine)
+        val ship = findXc001(engine)
         val weapon = ship?.allWeapons?.firstOrNull { it.id == ASTDInGameAutomationScenario.WEAPON_ID }
         lockCamera(engine)
         arrangeShips(engine, ship)
@@ -5461,7 +5461,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     private fun writeTelemetry(
         engine: CombatEngineAPI,
         state: String,
-        ship: ShipAPI? = findArcFlare(engine),
+        ship: ShipAPI? = findXc001(engine),
         weapon: WeaponAPI? = ship?.allWeapons?.firstOrNull { it.id == ASTDInGameAutomationScenario.WEAPON_ID },
     ) {
         // SSOptimizer patches this method and writes telemetry/screenshots outside the Starsector script sandbox.
@@ -5470,7 +5470,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     private fun writeDiagnostics(
         engine: CombatEngineAPI,
         state: String,
-        ship: ShipAPI? = findArcFlare(engine),
+        ship: ShipAPI? = findXc001(engine),
     ) {
         if (!ASTDInGameAutomationScenario.isEnabled() &&
             !ASTDInGameAutomationScenario.isArcProductionEnabled() &&
@@ -5898,14 +5898,14 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 appendLine("  \"lensSelfDeepWaterStacks\": ${lens?.let { LensMarks.deepWaterStacks(it) } ?: 0},")
                 appendLine("  \"lensSelfHullDamageTakenMult\": ${formatFloat(try { lens?.mutableStats?.hullDamageTakenMult?.modifiedValue ?: 0f } catch (_: Throwable) { 0f })},")
             } else if (ASTDInGameAutomationScenario.isArcProductionEnabled()) {
-                val plasmaArch = findShipByHull(engine, ASTDArcProductionShipIds.HULL_PLASMA_ARCH)
-                val plasmaSystem = plasmaArch?.system
+                val xc101 = findShipByHull(engine, ASTDArcProductionShipIds.HULL_XC_101)
+                val plasmaSystem = xc101?.system
                 val plasmaSpec = plasmaSystem?.specAPI
-                val plasmaShield = plasmaArch?.shield
-                val plasmaSystemAI = plasmaRuntimeSystemAI(plasmaArch)
-                val plasmaBiggestThreat = plasmaAIFlagTarget(plasmaArch, ShipwideAIFlags.AIFlags.BIGGEST_THREAT)
-                val plasmaSystemTarget = plasmaAIFlagTarget(plasmaArch, ShipwideAIFlags.AIFlags.TARGET_FOR_SHIP_SYSTEM)
-                val plasmaManeuverTarget = plasmaAIFlagTarget(plasmaArch, ShipwideAIFlags.AIFlags.MANEUVER_TARGET)
+                val plasmaShield = xc101?.shield
+                val plasmaSystemAI = plasmaRuntimeSystemAI(xc101)
+                val plasmaBiggestThreat = plasmaAIFlagTarget(xc101, ShipwideAIFlags.AIFlags.BIGGEST_THREAT)
+                val plasmaSystemTarget = plasmaAIFlagTarget(xc101, ShipwideAIFlags.AIFlags.TARGET_FOR_SHIP_SYSTEM)
+                val plasmaManeuverTarget = plasmaAIFlagTarget(xc101, ShipwideAIFlags.AIFlags.MANEUVER_TARGET)
                 appendLine("  \"runtimeElapsedSeconds\": 0,")
                 appendLine("  \"runtimeTrackedCount\": 0,")
                 appendLine("  \"runtimeLastProjectileSpecId\": null,")
@@ -5915,42 +5915,42 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 appendLine("  \"arcProductionSourceVariantIds\": ${jsonStringList(arcProductionSourceVariantIds(engine))},")
                 appendLine("  \"arcProductionPlayerReserves\": ${engine.getFleetManager(FleetSide.PLAYER).getReservesCopy().size},")
                 appendLine("  \"arcProductionEnemyReserves\": ${engine.getFleetManager(FleetSide.ENEMY).getReservesCopy().size},")
-                appendLine("  \"radiationBeltSystemState\": ${jsonString(findShipByHull(engine, ASTDArcProductionShipIds.HULL_RADIATION_BELT)?.system?.state?.name)},")
-                appendLine("  \"plasmaArchSystemId\": ${jsonString(plasmaSystem?.id)},")
-                appendLine("  \"plasmaArchSystemState\": ${jsonString(plasmaSystem?.state?.name)},")
-                appendLine("  \"plasmaArchSystemCanBeActivated\": ${safeBool { plasmaSystem?.canBeActivated() == true }},")
-                appendLine("  \"plasmaArchSystemEffectLevel\": ${formatFloat(plasmaSystem?.effectLevel ?: -1f)},")
-                appendLine("  \"plasmaArchShipAI\": ${jsonString(plasmaArch?.shipAI?.javaClass?.name)},")
-                appendLine("  \"plasmaArchFluxLevel\": ${formatFloat(plasmaArch?.fluxLevel ?: -1f)},")
-                appendLine("  \"plasmaArchCurrFlux\": ${formatFloat(plasmaArch?.currFlux ?: -1f)},")
-                appendLine("  \"plasmaArchMaxFlux\": ${formatFloat(plasmaArch?.maxFlux ?: -1f)},")
-                appendLine("  \"plasmaArchHardFlux\": ${formatFloat(plasmaArch?.fluxTracker?.hardFlux ?: -1f)},")
-                appendLine("  \"plasmaArchHardFluxLevel\": ${formatFloat(plasmaArch?.hardFluxLevel ?: -1f)},")
-                appendLine("  \"plasmaArchSinceLastDamageTaken\": ${formatFloat(plasmaArch?.sinceLastDamageTaken ?: -1f)},")
-                appendLine("  \"plasmaArchOverloadedOrVenting\": ${plasmaArch?.fluxTracker?.isOverloadedOrVenting ?: false},")
-                appendLine("  \"plasmaArchShieldOn\": ${plasmaShield?.isOn ?: false},")
-                appendLine("  \"plasmaArchShieldActiveArc\": ${formatFloat(plasmaShield?.activeArc ?: -1f)},")
-                appendLine("  \"plasmaArchAIFlags\": ${jsonStringList(plasmaAIFlags(plasmaArch))},")
-                appendLine("  \"plasmaArchAIFlagIncomingDamage\": ${plasmaAIFlag(plasmaArch, ShipwideAIFlags.AIFlags.HAS_INCOMING_DAMAGE)},")
-                appendLine("  \"plasmaArchAIFlagCriticalDpsDanger\": ${plasmaAIFlag(plasmaArch, ShipwideAIFlags.AIFlags.IN_CRITICAL_DPS_DANGER)},")
-                appendLine("  \"plasmaArchAIFlagKeepShieldsOn\": ${plasmaAIFlag(plasmaArch, ShipwideAIFlags.AIFlags.KEEP_SHIELDS_ON)},")
-                appendLine("  \"plasmaArchVanillaSystemAI\": ${jsonString(plasmaSystemAI.className)},")
-                appendLine("  \"plasmaArchVanillaSystemAIError\": ${jsonString(plasmaSystemAI.error)},")
-                appendLine("  \"plasmaArchAIFlagBiggestThreatTargetHullId\": ${jsonString(plasmaBiggestThreat.ship?.hullSpec?.hullId)},")
-                appendLine("  \"plasmaArchAIFlagBiggestThreatTargetVariantId\": ${jsonString(plasmaBiggestThreat.ship?.variant?.hullVariantId)},")
-                appendLine("  \"plasmaArchAIFlagTargetForSystemHullId\": ${jsonString(plasmaSystemTarget.ship?.hullSpec?.hullId)},")
-                appendLine("  \"plasmaArchAIFlagTargetForSystemVariantId\": ${jsonString(plasmaSystemTarget.ship?.variant?.hullVariantId)},")
-                appendLine("  \"plasmaArchAIFlagManeuverTargetHullId\": ${jsonString(plasmaManeuverTarget.ship?.hullSpec?.hullId)},")
-                appendLine("  \"plasmaArchAIFlagManeuverTargetVariantId\": ${jsonString(plasmaManeuverTarget.ship?.variant?.hullVariantId)},")
-                appendLine("  \"plasmaArchEnemyPressureShips\": ${plasmaEnemyPressureShips(engine, plasmaArch)},")
-                appendLine("  \"plasmaArchEnemyTargetingShips\": ${plasmaEnemyTargetingShips(engine, plasmaArch)},")
-                appendLine("  \"plasmaArchEnemyFiringWeapons\": ${plasmaEnemyFiringWeapons(engine, plasmaArch)},")
-                appendLine("  \"plasmaArchEnemyProjectiles\": ${plasmaEnemyProjectiles(engine, plasmaArch)},")
-                appendLine("  \"plasmaArchSystemSpecAiScript\": ${jsonString(plasmaSpec?.aiScript?.javaClass?.name ?: plasmaSpec?.aiScriptClassName)},")
-                appendLine("  \"plasmaArchSystemSpecFpsBaseCap\": ${formatFloat(plasmaSpec?.fluxPerSecondBaseCap ?: -1f)},")
-                appendLine("  \"plasmaArchSystemSpecToggle\": ${plasmaSpec?.isToggle ?: false},")
-                appendLine("  \"plasmaArchSystemSpecFiringAllowed\": ${plasmaSpec?.isFiringAllowed ?: false},")
-                appendLine("  \"plasmaArchSystemSpecTags\": ${jsonStringList(plasmaSpec?.tags?.toList()?.sorted() ?: emptyList())},")
+                appendLine("  \"xc103SystemState\": ${jsonString(findShipByHull(engine, ASTDArcProductionShipIds.HULL_XC_103)?.system?.state?.name)},")
+                appendLine("  \"xc101SystemId\": ${jsonString(plasmaSystem?.id)},")
+                appendLine("  \"xc101SystemState\": ${jsonString(plasmaSystem?.state?.name)},")
+                appendLine("  \"xc101SystemCanBeActivated\": ${safeBool { plasmaSystem?.canBeActivated() == true }},")
+                appendLine("  \"xc101SystemEffectLevel\": ${formatFloat(plasmaSystem?.effectLevel ?: -1f)},")
+                appendLine("  \"xc101ShipAI\": ${jsonString(xc101?.shipAI?.javaClass?.name)},")
+                appendLine("  \"xc101FluxLevel\": ${formatFloat(xc101?.fluxLevel ?: -1f)},")
+                appendLine("  \"xc101CurrFlux\": ${formatFloat(xc101?.currFlux ?: -1f)},")
+                appendLine("  \"xc101MaxFlux\": ${formatFloat(xc101?.maxFlux ?: -1f)},")
+                appendLine("  \"xc101HardFlux\": ${formatFloat(xc101?.fluxTracker?.hardFlux ?: -1f)},")
+                appendLine("  \"xc101HardFluxLevel\": ${formatFloat(xc101?.hardFluxLevel ?: -1f)},")
+                appendLine("  \"xc101SinceLastDamageTaken\": ${formatFloat(xc101?.sinceLastDamageTaken ?: -1f)},")
+                appendLine("  \"xc101OverloadedOrVenting\": ${xc101?.fluxTracker?.isOverloadedOrVenting ?: false},")
+                appendLine("  \"xc101ShieldOn\": ${plasmaShield?.isOn ?: false},")
+                appendLine("  \"xc101ShieldActiveArc\": ${formatFloat(plasmaShield?.activeArc ?: -1f)},")
+                appendLine("  \"xc101AIFlags\": ${jsonStringList(plasmaAIFlags(xc101))},")
+                appendLine("  \"xc101AIFlagIncomingDamage\": ${plasmaAIFlag(xc101, ShipwideAIFlags.AIFlags.HAS_INCOMING_DAMAGE)},")
+                appendLine("  \"xc101AIFlagCriticalDpsDanger\": ${plasmaAIFlag(xc101, ShipwideAIFlags.AIFlags.IN_CRITICAL_DPS_DANGER)},")
+                appendLine("  \"xc101AIFlagKeepShieldsOn\": ${plasmaAIFlag(xc101, ShipwideAIFlags.AIFlags.KEEP_SHIELDS_ON)},")
+                appendLine("  \"xc101VanillaSystemAI\": ${jsonString(plasmaSystemAI.className)},")
+                appendLine("  \"xc101VanillaSystemAIError\": ${jsonString(plasmaSystemAI.error)},")
+                appendLine("  \"xc101AIFlagBiggestThreatTargetHullId\": ${jsonString(plasmaBiggestThreat.ship?.hullSpec?.hullId)},")
+                appendLine("  \"xc101AIFlagBiggestThreatTargetVariantId\": ${jsonString(plasmaBiggestThreat.ship?.variant?.hullVariantId)},")
+                appendLine("  \"xc101AIFlagTargetForSystemHullId\": ${jsonString(plasmaSystemTarget.ship?.hullSpec?.hullId)},")
+                appendLine("  \"xc101AIFlagTargetForSystemVariantId\": ${jsonString(plasmaSystemTarget.ship?.variant?.hullVariantId)},")
+                appendLine("  \"xc101AIFlagManeuverTargetHullId\": ${jsonString(plasmaManeuverTarget.ship?.hullSpec?.hullId)},")
+                appendLine("  \"xc101AIFlagManeuverTargetVariantId\": ${jsonString(plasmaManeuverTarget.ship?.variant?.hullVariantId)},")
+                appendLine("  \"xc101EnemyPressureShips\": ${plasmaEnemyPressureShips(engine, xc101)},")
+                appendLine("  \"xc101EnemyTargetingShips\": ${plasmaEnemyTargetingShips(engine, xc101)},")
+                appendLine("  \"xc101EnemyFiringWeapons\": ${plasmaEnemyFiringWeapons(engine, xc101)},")
+                appendLine("  \"xc101EnemyProjectiles\": ${plasmaEnemyProjectiles(engine, xc101)},")
+                appendLine("  \"xc101SystemSpecAiScript\": ${jsonString(plasmaSpec?.aiScript?.javaClass?.name ?: plasmaSpec?.aiScriptClassName)},")
+                appendLine("  \"xc101SystemSpecFpsBaseCap\": ${formatFloat(plasmaSpec?.fluxPerSecondBaseCap ?: -1f)},")
+                appendLine("  \"xc101SystemSpecToggle\": ${plasmaSpec?.isToggle ?: false},")
+                appendLine("  \"xc101SystemSpecFiringAllowed\": ${plasmaSpec?.isFiringAllowed ?: false},")
+                appendLine("  \"xc101SystemSpecTags\": ${jsonStringList(plasmaSpec?.tags?.toList()?.sorted() ?: emptyList())},")
             } else {
                 appendLine("  \"runtimeElapsedSeconds\": ${formatFloat(vfxTelemetry.lastElapsed)},")
                 appendLine("  \"runtimeTrackedCount\": ${vfxTelemetry.trackedCount},")
@@ -5959,22 +5959,22 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             appendLine("  \"fallbackInPlay\": ${fallbackProjectile?.let { engine.isEntityInPlay(it) } ?: false},")
             appendLine("  \"fallbackExpired\": ${fallbackProjectile?.isExpired ?: false},")
             appendLine("  \"fallbackFading\": ${fallbackProjectile?.isFading ?: false},")
-            appendLine("  \"arcJetShockwaveFrames\": ${ASTDArcProductionVfx.counter(engine, ASTDArcProductionVfx.TELEMETRY_ARC_JET_SHOCKWAVE_FRAMES)},")
-            appendLine("  \"arcJetShockwaveRadius\": ${ASTDArcProductionVfx.counter(engine, ASTDArcProductionVfx.TELEMETRY_ARC_JET_SHOCKWAVE_RADIUS)},")
-            appendLine("  \"arcJetShockwaveFluxPressure\": ${ASTDArcProductionVfx.counter(engine, ASTDArcProductionVfx.TELEMETRY_ARC_JET_SHOCKWAVE_FLUX_PRESSURE)},")
-            appendLine("  \"plasmaArchShieldOpen\": ${ASTDArcProductionVfx.counter(engine, ASTDArcProductionVfx.TELEMETRY_PLASMA_ARCH_SHIELD_OPEN)},")
-            appendLine("  \"plasmaArchSystemActive\": ${ASTDArcProductionVfx.counter(engine, ASTDArcProductionVfx.TELEMETRY_PLASMA_ARCH_SYSTEM_ACTIVE)},")
-            appendLine("  \"plasmaArchShieldArcEmissions\": ${ASTDArcProductionVfx.counter(engine, ASTDArcProductionVfx.TELEMETRY_PLASMA_ARCH_SHIELD_ARC_EMISSIONS)},")
-            appendLine("  \"radiationBeltSystemAfterimages\": ${ASTDArcProductionVfx.counter(engine, ASTDArcProductionVfx.TELEMETRY_RADIATION_BELT_SYSTEM_AFTERIMAGES)},")
-            val arcJetTooltipKeys = tooltipResolvedKeyCount(ASTDArcProductionShipIds.HULL_ARC_JET, ASTDArcProductionTooltipContracts.arcJetContracts)
-            val plasmaArchTooltipKeys = tooltipResolvedKeyCount(ASTDArcProductionShipIds.HULL_PLASMA_ARCH, ASTDArcProductionTooltipContracts.plasmaArchContracts)
-            val radiationBeltTooltipKeys = tooltipResolvedKeyCount(ASTDArcProductionShipIds.HULL_RADIATION_BELT, ASTDArcProductionTooltipContracts.radiationBeltContracts)
-            appendLine("  \"arcJetTooltip\": ${tooltipBlocksResolved(ASTDArcProductionShipIds.HULL_ARC_JET, ASTDArcProductionTooltipContracts.arcJetContracts)},")
-            appendLine("  \"plasmaArchTooltip\": ${tooltipBlocksResolved(ASTDArcProductionShipIds.HULL_PLASMA_ARCH, ASTDArcProductionTooltipContracts.plasmaArchContracts)},")
-            appendLine("  \"radiationBeltTooltip\": ${tooltipBlocksResolved(ASTDArcProductionShipIds.HULL_RADIATION_BELT, ASTDArcProductionTooltipContracts.radiationBeltContracts)},")
-            appendLine("  \"arcJetTooltipKeys\": $arcJetTooltipKeys,")
-            appendLine("  \"plasmaArchTooltipKeys\": $plasmaArchTooltipKeys,")
-            appendLine("  \"radiationBeltTooltipKeys\": $radiationBeltTooltipKeys,")
+            appendLine("  \"xc102ShockwaveFrames\": ${ASTDArcProductionVfx.counter(engine, ASTDArcProductionVfx.TELEMETRY_XC_102_SHOCKWAVE_FRAMES)},")
+            appendLine("  \"xc102ShockwaveRadius\": ${ASTDArcProductionVfx.counter(engine, ASTDArcProductionVfx.TELEMETRY_XC_102_SHOCKWAVE_RADIUS)},")
+            appendLine("  \"xc102ShockwaveFluxPressure\": ${ASTDArcProductionVfx.counter(engine, ASTDArcProductionVfx.TELEMETRY_XC_102_SHOCKWAVE_FLUX_PRESSURE)},")
+            appendLine("  \"xc101ShieldOpen\": ${ASTDArcProductionVfx.counter(engine, ASTDArcProductionVfx.TELEMETRY_XC_101_SHIELD_OPEN)},")
+            appendLine("  \"xc101SystemActive\": ${ASTDArcProductionVfx.counter(engine, ASTDArcProductionVfx.TELEMETRY_XC_101_SYSTEM_ACTIVE)},")
+            appendLine("  \"xc101ShieldArcEmissions\": ${ASTDArcProductionVfx.counter(engine, ASTDArcProductionVfx.TELEMETRY_XC_101_SHIELD_ARC_EMISSIONS)},")
+            appendLine("  \"xc103SystemAfterimages\": ${ASTDArcProductionVfx.counter(engine, ASTDArcProductionVfx.TELEMETRY_XC_103_SYSTEM_AFTERIMAGES)},")
+            val xc102TooltipKeys = tooltipResolvedKeyCount(ASTDArcProductionShipIds.HULL_XC_102, ASTDArcProductionTooltipContracts.xc102Contracts)
+            val xc101TooltipKeys = tooltipResolvedKeyCount(ASTDArcProductionShipIds.HULL_XC_101, ASTDArcProductionTooltipContracts.xc101Contracts)
+            val xc103TooltipKeys = tooltipResolvedKeyCount(ASTDArcProductionShipIds.HULL_XC_103, ASTDArcProductionTooltipContracts.xc103Contracts)
+            appendLine("  \"xc102Tooltip\": ${tooltipBlocksResolved(ASTDArcProductionShipIds.HULL_XC_102, ASTDArcProductionTooltipContracts.xc102Contracts)},")
+            appendLine("  \"xc101Tooltip\": ${tooltipBlocksResolved(ASTDArcProductionShipIds.HULL_XC_101, ASTDArcProductionTooltipContracts.xc101Contracts)},")
+            appendLine("  \"xc103Tooltip\": ${tooltipBlocksResolved(ASTDArcProductionShipIds.HULL_XC_103, ASTDArcProductionTooltipContracts.xc103Contracts)},")
+            appendLine("  \"xc102TooltipKeys\": $xc102TooltipKeys,")
+            appendLine("  \"xc101TooltipKeys\": $xc101TooltipKeys,")
+            appendLine("  \"xc103TooltipKeys\": $xc103TooltipKeys,")
             appendLine("  \"elapsedSeconds\": ${"%.3f".format(java.util.Locale.ROOT, elapsed)}")
             appendLine("}")
         }
@@ -6007,27 +6007,27 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             .sumOf { contract -> contract.textKeys.count { key -> isResolvedTextKey(key) } }
     }
 
-    private fun plasmaEnemyPressureShips(engine: CombatEngineAPI, plasmaArch: ShipAPI?): Int {
-        if (plasmaArch == null) return 0
+    private fun plasmaEnemyPressureShips(engine: CombatEngineAPI, xc101: ShipAPI?): Int {
+        if (xc101 == null) return 0
         return engine.ships.count { ship ->
-            ship.owner != plasmaArch.owner &&
+            ship.owner != xc101.owner &&
                 ship.isAlive &&
                 !ship.isHulk &&
-                distanceSquared(ship.location, plasmaArch.location) <= PLASMA_AI_PRESSURE_RANGE * PLASMA_AI_PRESSURE_RANGE
+                distanceSquared(ship.location, xc101.location) <= PLASMA_AI_PRESSURE_RANGE * PLASMA_AI_PRESSURE_RANGE
         }
     }
 
-    private fun plasmaEnemyTargetingShips(engine: CombatEngineAPI, plasmaArch: ShipAPI?): Int {
-        if (plasmaArch == null) return 0
+    private fun plasmaEnemyTargetingShips(engine: CombatEngineAPI, xc101: ShipAPI?): Int {
+        if (xc101 == null) return 0
         return engine.ships.count { ship ->
-            ship.owner != plasmaArch.owner && ship.shipTarget === plasmaArch
+            ship.owner != xc101.owner && ship.shipTarget === xc101
         }
     }
 
-    private fun plasmaEnemyFiringWeapons(engine: CombatEngineAPI, plasmaArch: ShipAPI?): Int {
-        if (plasmaArch == null) return 0
+    private fun plasmaEnemyFiringWeapons(engine: CombatEngineAPI, xc101: ShipAPI?): Int {
+        if (xc101 == null) return 0
         return engine.ships
-            .filter { ship -> ship.owner != plasmaArch.owner }
+            .filter { ship -> ship.owner != xc101.owner }
             .sumOf { ship ->
                 try {
                     ship.allWeapons.count { weapon -> weapon.isFiring }
@@ -6037,14 +6037,14 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             }
     }
 
-    private fun plasmaEnemyProjectiles(engine: CombatEngineAPI, plasmaArch: ShipAPI?): Int {
-        if (plasmaArch == null) return 0
+    private fun plasmaEnemyProjectiles(engine: CombatEngineAPI, xc101: ShipAPI?): Int {
+        if (xc101 == null) return 0
         return engine.projectiles.count { projectile ->
             val damaging = projectile as? DamagingProjectileAPI ?: return@count false
             val source = damaging.source ?: return@count false
-            source.owner != plasmaArch.owner &&
+            source.owner != xc101.owner &&
                 !damaging.isExpired &&
-                distanceSquared(damaging.location, plasmaArch.location) <= PLASMA_AI_PRESSURE_RANGE * PLASMA_AI_PRESSURE_RANGE
+                distanceSquared(damaging.location, xc101.location) <= PLASMA_AI_PRESSURE_RANGE * PLASMA_AI_PRESSURE_RANGE
         }
     }
 
@@ -6134,9 +6134,9 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
 
     private companion object {
         private val ARC_PRODUCTION_CORE_HULLS = listOf(
-            ASTDArcProductionShipIds.HULL_ARC_JET,
-            ASTDArcProductionShipIds.HULL_PLASMA_ARCH,
-            ASTDArcProductionShipIds.HULL_RADIATION_BELT,
+            ASTDArcProductionShipIds.HULL_XC_102,
+            ASTDArcProductionShipIds.HULL_XC_101,
+            ASTDArcProductionShipIds.HULL_XC_103,
         )
         // 决明级自标记验收层数（spec：误差/深水各叠 3 层）。
         private const val LENS_SELF_MARK_STACKS = 3
@@ -6160,9 +6160,9 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             "ui.hullmod.lens_core.line.6",
         )
         private val ARC_PRODUCTION_STANDARD_VARIANTS = mapOf(
-            ASTDArcProductionShipIds.HULL_ARC_JET to "astd_xc_102_Standard",
-            ASTDArcProductionShipIds.HULL_PLASMA_ARCH to "astd_xc_101_Standard",
-            ASTDArcProductionShipIds.HULL_RADIATION_BELT to "astd_xc_103_Standard",
+            ASTDArcProductionShipIds.HULL_XC_102 to "astd_xc_102_Standard",
+            ASTDArcProductionShipIds.HULL_XC_101 to "astd_xc_101_Standard",
+            ASTDArcProductionShipIds.HULL_XC_103 to "astd_xc_103_Standard",
         )
         private const val FALLBACK_PROJECTILE_SPEED = 2400f
         private const val AUTOMATION_CURVE_AMOUNT = 96f

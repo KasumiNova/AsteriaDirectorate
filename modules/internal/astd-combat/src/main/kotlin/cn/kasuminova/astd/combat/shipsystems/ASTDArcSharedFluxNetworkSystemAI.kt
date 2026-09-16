@@ -83,7 +83,7 @@ class ASTDArcSharedFluxNetworkSystemAI : ShipSystemAIScript {
             val distance = MathUtils.getDistance(source.location, candidate.location)
             if (candidate.owner == source.owner) {
                 if (candidate.isFighter || candidate.isDrone) continue
-                if (distance > ASTDArcAuraUtil.ARC_JET_SYSTEM_MAX_RANGE) continue
+                if (distance > ASTDArcAuraUtil.XC_102_SYSTEM_MAX_RANGE) continue
                 eligible++
                 val flux = try { candidate.fluxTracker?.fluxLevel ?: 0f } catch (_: Throwable) { 0f }
                 val sizeValue = when (candidate.hullSize) {

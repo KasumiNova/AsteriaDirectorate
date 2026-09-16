@@ -6,7 +6,7 @@ import java.nio.file.Path
  * Dev-only descriptor for the first in-game projectile VFX automation scenario.
  */
 object ASTDInGameAutomationScenario {
-    const val SCENARIO_ID: String = "arc_flare_aod7_basic"
+    const val SCENARIO_ID: String = "xc_001_aod7_basic"
     const val ARC_PRODUCTION_SCENARIO_ID: String = "arc_production_ships_vfx_tooltip"
     const val LENS_PHASE1_SCENARIO_ID: String = "lens_phase1_foundation"
     const val LENS_PHASE2_SCENARIO_ID: String = "lens_phase2_mechanisms"

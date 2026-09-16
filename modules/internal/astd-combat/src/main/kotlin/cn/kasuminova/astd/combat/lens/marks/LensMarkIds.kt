@@ -20,5 +20,5 @@ object LensMarkIds {
     const val MARK_DURATION_SEC: Float = 5f
 
     /** 决明旗舰 hullId：深水标记"对决明伤害下降"按此判定来源（复用模式框架的同一常量，避免重复定义）。 */
-    const val GRAVITATIONAL_LENS_HULL_ID: String = LensArrayCoreHullModIds.HULL_ID
+    const val ZW_001_HULL_ID: String = LensArrayCoreHullModIds.HULL_ID
 }

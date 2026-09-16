@@ -13,11 +13,11 @@ import kotlin.test.assertFalse
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
-class ArcJetShockwaveRingEffectTest {
+class Xc102ShockwaveRingEffectTest {
 
     @Test
     fun `outer radius follows arc jet reference image scale`() {
-        val frame = ArcJetShockwaveRingEffect.frame(
+        val frame = Xc102ShockwaveRingEffect.frame(
             collisionRadius = 270f,
             effectLevel = 1f,
             pressureRatio = 0f,
@@ -30,7 +30,7 @@ class ArcJetShockwaveRingEffectTest {
 
     @Test
     fun `reference parameters match selected shockwave ring preset`() {
-        val params = ArcJetShockwaveRingEffect.REFERENCE_PARAMETERS
+        val params = Xc102ShockwaveRingEffect.REFERENCE_PARAMETERS
 
         assertEquals(0.30f, params.speed, 0.0001f)
         assertEquals(0.01f, params.thickness, 0.0001f)
@@ -44,17 +44,17 @@ class ArcJetShockwaveRingEffectTest {
 
     @Test
     fun `frame clamps level and pressure while pressure raises visibility`() {
-        val inactive = ArcJetShockwaveRingEffect.frame(
+        val inactive = Xc102ShockwaveRingEffect.frame(
             collisionRadius = 270f,
             effectLevel = 0f,
             pressureRatio = 1f,
         )
-        val calm = ArcJetShockwaveRingEffect.frame(
+        val calm = Xc102ShockwaveRingEffect.frame(
             collisionRadius = 270f,
             effectLevel = 1f,
             pressureRatio = 0f,
         )
-        val pressured = ArcJetShockwaveRingEffect.frame(
+        val pressured = Xc102ShockwaveRingEffect.frame(
             collisionRadius = 270f,
             effectLevel = 1f,
             pressureRatio = 1f,
@@ -68,25 +68,25 @@ class ArcJetShockwaveRingEffectTest {
 
     @Test
     fun `effect spec uses shader runtime world quad contract`() {
-        val spec = ArcJetShockwaveRingEffect.effectSpec
+        val spec = Xc102ShockwaveRingEffect.effectSpec
 
         assertEquals("astd_xc_102_shockwave_ring", spec.id.value)
         assertEquals(ShaderEffectLayer.BelowParticles, spec.layer)
         assertEquals(ShaderBlendMode.Additive, spec.material.blendMode)
         assertTrue(spec.geometry is ShaderGeometrySpec.WorldQuad)
-        assertEquals(ArcJetShockwaveRingEffect.STALE_AFTER_SECONDS, spec.staleAfterSeconds)
+        assertEquals(Xc102ShockwaveRingEffect.STALE_AFTER_SECONDS, spec.staleAfterSeconds)
     }
 
     @Test
     fun `submit frame queues keyed world quad shader effect`() {
         val runtime = CombatShaderRuntime.ensure(FakeHost())
-        val frame = ArcJetShockwaveRingEffect.frame(
+        val frame = Xc102ShockwaveRingEffect.frame(
             collisionRadius = 270f,
             effectLevel = 1f,
             pressureRatio = 0.5f,
         )
 
-        val handle = ArcJetShockwaveRingEffect.submitFrame(
+        val handle = Xc102ShockwaveRingEffect.submitFrame(
             sink = runtime.sink,
             instanceId = "ship-1",
             center = Vector2f(12f, 34f),
@@ -96,7 +96,7 @@ class ArcJetShockwaveRingEffectTest {
         val snapshot = runtime.snapshotsForTests(ShaderEffectLayer.BelowParticles).single()
         assertEquals(handle, snapshot.handle)
         assertEquals("ship-1", snapshot.handle?.instanceId)
-        assertSame(ArcJetShockwaveRingEffect.effectSpec.program, snapshot.spec.program)
+        assertSame(Xc102ShockwaveRingEffect.effectSpec.program, snapshot.spec.program)
         val geometry = snapshot.spec.geometry as ShaderGeometrySpec.WorldQuad
         assertEquals(frame.quadHalfExtentWorld, geometry.halfExtentWorld, 0.001f)
         assertEquals(12f, snapshot.center.x, 0.001f)
@@ -105,8 +105,8 @@ class ArcJetShockwaveRingEffectTest {
 
     @Test
     fun `stale frame timeout retires stopped system submissions`() {
-        assertFalse(ArcJetShockwaveRingEffect.shouldRetire(0.05f))
-        assertTrue(ArcJetShockwaveRingEffect.shouldRetire(ArcJetShockwaveRingEffect.STALE_AFTER_SECONDS + 0.001f))
+        assertFalse(Xc102ShockwaveRingEffect.shouldRetire(0.05f))
+        assertTrue(Xc102ShockwaveRingEffect.shouldRetire(Xc102ShockwaveRingEffect.STALE_AFTER_SECONDS + 0.001f))
     }
 
     private class FakeHost : ShaderRuntimeHost {

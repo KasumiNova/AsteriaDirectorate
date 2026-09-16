@@ -14,14 +14,17 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * 锥面三角碎片组件测试（§10.9 v4.2，SpriteEntity 实例化接原生泛光）：
- * - 批次错峰：批内有实例才激活、每批恰好激活一次；
- * - 实例参数域（逐值平移 v2.2）：自旋 ±180~540°/s、非均匀 scale 两边比 0.7~1.3（半尺寸校准）、
- *   定时器 full 0.18~0.32 + fadeOut 0.32 定值（v4.2.2 淡出修正，总寿命 0.52~0.67s 不变）、alpha 140~200、1/4 概率 coreColor 提亮；
+ * 三角碎片组件测试（原 ConeShardComponentTest；§10.9 v4.2 SpriteEntity 实例化接原生泛光，
+ * 通用化改名 TriShardComponent 后：激活即消费、批可反复灌、参数域由 [TriShardSpec] 承载）：
+ * - 批次语义：批内有实例才激活、激活即消费清空（可反复灌批）；
+ * - 实例参数域（spec 默认值逐值平移 v2.2）：自旋 ±180~540°/s、非均匀 scale 两边比 0.7~1.3（半尺寸校准）、
+ *   定时器 full 0.18~0.32 + fadeOut 0.32 定值（总寿命 0.52~0.67s）、alpha 140~200、1/4 概率 coreColor 提亮；
+ * - sizeScale：在 spec 尺寸域基础上乘算（持续发射器按出力动态调尺寸）；
+ * - 自定义 spec：批次数/尺寸域/alpha 域生效；
  * - emissive 降权：emissiveAlpha == color.alpha × 0.4 精确派生（域 56~80，降权非删除）；
  * - 单测环境贴图不可用：激活记 WARN 缺席视觉（无兜底）。
  */
-class ConeShardComponentTest {
+class TriShardComponentTest {
     private val captures = mutableListOf<WarnCapture>()
 
     @AfterTest
@@ -32,6 +35,7 @@ class ConeShardComponentTest {
 
     private val core = Color(120, 180, 255)
     private val fringe = Color(60, 120, 255)
+    private val spec = TriShardSpec()
 
     private fun stubEngine(): CombatEngineAPI {
         val engine = mock(CombatEngineAPI::class.java)
@@ -61,34 +65,33 @@ class ConeShardComponentTest {
     )
 
     @Test
-    fun `batches activate only after instances arrive and exactly once`() {
+    fun `batches activate only after instances arrive and activation consumes them`() {
+        val capture = WarnCapture(TriShardComponent::class.java).also { captures += it }
         val engine = stubEngine()
         val host = PointHost("h", Vector2f(0f, 0f), 90f)
-        val comp = ConeShardComponent("t", 600f, core, fringe)
+        val comp = TriShardComponent("t", 600f, core, fringe)
 
         comp.onAttach(frameCtx(engine, host, 0f, 0.02f))
-        // 空批不激活。
+        // 空批不激活（无 WARN 即未走激活流程）。
         comp.advance(frameCtx(engine, host, 0.02f, 0.02f), 0.02f)
-        assertTrue(comp.batches.none { it.activated }, "空批不得激活")
+        assertTrue(capture.messages().isEmpty(), "空批不得激活: ${capture.messages()}")
 
-        // 灌批 0 → 同帧 advance 激活；批 1/2 未灌不激活。
+        // 灌批 0 → 同帧 advance 激活并消费；批 1/2 未灌不动。
         repeat(6) { comp.addShard(0, Vector2f(0f, 0f), Vector2f(10f, 0f)) }
         comp.advance(frameCtx(engine, host, 0.04f, 0.02f), 0.02f)
-        assertTrue(comp.batches[0].activated, "批 0 灌实例后必须激活")
-        assertTrue(!comp.batches[1].activated && !comp.batches[2].activated, "未灌批次不得激活")
+        assertTrue(comp.batches[0].instances.isEmpty(), "批 0 激活后实例必须被消费清空")
+        assertEquals(1, capture.messages().size, "仅批 0 走激活流程: ${capture.messages()}")
 
-        // 灌批 2 → 激活；重复 advance 不重复激活（activated 幂等）。
-        repeat(4) { comp.addShard(2, Vector2f(0f, 0f), Vector2f(10f, 0f)) }
+        // 批可反复灌：再次灌批 0 → 再次激活消费。
+        repeat(3) { comp.addShard(0, Vector2f(0f, 0f), Vector2f(10f, 0f)) }
         comp.advance(frameCtx(engine, host, 0.06f, 0.02f), 0.02f)
-        comp.advance(frameCtx(engine, host, 0.08f, 0.02f), 0.02f)
-        assertTrue(comp.batches[2].activated, "批 2 灌实例后必须激活")
-        assertEquals(6, comp.batches[0].instances.size)
-        assertEquals(4, comp.batches[2].instances.size)
+        assertTrue(comp.batches[0].instances.isEmpty(), "批 0 二次灌批后必须再次消费清空")
+        assertEquals(2, capture.messages().size, "批 0 必须可再次激活: ${capture.messages()}")
     }
 
     @Test
-    fun `instance params stay in v2 2 domains`() {
-        val comp = ConeShardComponent("t", 200f, core, fringe)
+    fun `instance params stay in spec default domains`() {
+        val comp = TriShardComponent("t", 200f, core, fringe)
         val pos = Vector2f(100f, 200f)
         val vel = Vector2f(30f, -40f)
         repeat(8) { comp.addShard(1, pos, vel) }
@@ -108,19 +111,16 @@ class ConeShardComponentTest {
             // 半尺寸 scale：边长 clamp(200×0.03,6,16)=6 ×0.7~1.3 → 半尺寸 2.1~3.9；两边比 0.7~1.3。
             assertTrue(inst.scaleX in 2.1f - 1e-3f..3.9f + 1e-3f, "半尺寸域: ${inst.scaleX}")
             assertTrue(inst.scaleY / inst.scaleX in 0.7f - 1e-3f..1.3f + 1e-3f, "两边比域: ${inst.scaleY / inst.scaleX}")
-            // 定时器 full 0.18~0.32（v4.2.2：fadeOut 0.32 定值，总寿命 0.02+full+0.32 = 0.52~0.67s 不变）。
+            // 定时器 full 0.18~0.32（fadeOut 0.32 定值，总寿命 0.02+full+0.32 = 0.52~0.67s）。
             assertTrue(inst.timerFull in 0.18f - 1e-4f..0.32f + 1e-4f, "满亮相域: ${inst.timerFull}")
-            // v4.2.2 淡出修正：fadeOut 拉长到 0.32s（用户目检"淡出太短像瞬消"），占总寿命约一半。
-            assertEquals(0.32f, ConeShardComponent.TIMER_FADE_OUT, 1e-4f, "淡出相锚定值")
-            assertTrue(
-                ConeShardComponent.TIMER_FADE_OUT >= ConeShardComponent.TIMER_FULL_HI - 1e-4f,
-                "淡出相不得短于满亮相上限（渐隐观感保证）",
-            )
+            // 淡出相不得短于满亮相上限（渐隐观感保证）。
+            assertEquals(0.32f, spec.timerFadeOut, 1e-4f, "淡出相锚定值")
+            assertTrue(spec.timerFadeOut >= spec.timerFullHi - 1e-4f, "淡出相不得短于满亮相上限")
             // alpha 140~200。
             assertTrue(inst.color.alpha in 140..200, "alpha 域: ${inst.color.alpha}")
             // emissive 降权：emissiveAlpha == color.alpha × 0.4（域 56~80；降权非删除，必须 > 0）。
             assertEquals(
-                (inst.color.alpha * ConeShardComponent.EMISSIVE_ALPHA_MUL).toInt(),
+                (inst.color.alpha * spec.emissiveAlphaMul).toInt(),
                 inst.emissiveAlpha,
                 "emissive alpha 必须按 color.alpha × 0.4 派生",
             )
@@ -131,21 +131,58 @@ class ConeShardComponentTest {
     }
 
     @Test
+    fun `sizeScale multiplies shard size on top of spec domain`() {
+        val comp = TriShardComponent("t", 200f, core, fringe)
+        // length 200 → 基准边长 clamp(200×0.03,6,16)=6，sizeScale=2 → 边长 12×0.7~1.3 → 半尺寸 4.2~7.8。
+        repeat(8) { comp.addShard(0, Vector2f(0f, 0f), Vector2f(0f, 0f), sizeScale = 2f) }
+        for (inst in comp.batches[0].instances) {
+            assertTrue(inst.scaleX in 4.2f - 1e-3f..7.8f + 1e-3f, "sizeScale 后的半尺寸域: ${inst.scaleX}")
+        }
+    }
+
+    @Test
+    fun `custom spec overrides batch count and param domains`() {
+        val custom = TriShardSpec(
+            batchCount = 1,
+            sizeMul = 0.5f,
+            sizeMin = 10f,
+            sizeMax = 20f,
+            sizeJitterLo = 1f,
+            sizeJitterHi = 1f,
+            skewLo = 1f,
+            skewHi = 1f,
+            alphaLo = 100,
+            alphaHi = 100,
+            timerFullLo = 0.5f,
+            timerFullHi = 0.5f,
+        )
+        val comp = TriShardComponent("t", 30f, core, fringe, custom)
+        assertEquals(1, comp.batches.size, "批次数必须随 spec")
+
+        comp.addShard(0, Vector2f(0f, 0f), Vector2f(0f, 0f))
+        val inst = comp.batches[0].instances.single()
+        // 边长 clamp(30×0.5,10,20)=15，jitter 固定 1 → 半尺寸 7.5，两边比 1。
+        assertEquals(7.5f, inst.scaleX, 1e-4f)
+        assertEquals(7.5f, inst.scaleY, 1e-4f)
+        assertEquals(100, inst.color.alpha)
+        assertEquals(0.5f, inst.timerFull, 1e-4f)
+    }
+
+    @Test
     fun `headless boxutil absence logs warn and skips batch visuals`() {
-        val capture = WarnCapture(ConeShardComponent::class.java).also { captures += it }
+        val capture = WarnCapture(TriShardComponent::class.java).also { captures += it }
         val engine = stubEngine()
         val host = PointHost("h", Vector2f(0f, 0f), 90f)
-        val comp = ConeShardComponent("t", 600f, core, fringe)
+        val comp = TriShardComponent("t", 600f, core, fringe)
 
         comp.onAttach(frameCtx(engine, host, 0f, 0.02f))
         repeat(6) { comp.addShard(0, Vector2f(0f, 0f), Vector2f(10f, 0f)) }
         comp.advance(frameCtx(engine, host, 0.02f, 0.02f), 0.02f)
 
         assertTrue(
-            capture.messages().any { it.contains("锥面碎片批") },
+            capture.messages().any { it.contains("三角碎片批") },
             "单测环境贴图不可用必须记 WARN: ${capture.messages()}",
         )
-        assertTrue(comp.batches[0].entity == null, "实体缺席但批参数必须在册")
-        assertTrue(comp.batches[0].activated, "激活流程照常推进")
+        assertTrue(comp.batches[0].instances.isEmpty(), "激活失败后批实例同样被消费（激活即消费）")
     }
 }

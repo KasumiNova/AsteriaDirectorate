@@ -1,6 +1,6 @@
 package cn.kasuminova.astd.renderer.effect.hullmods
 
-import cn.kasuminova.astd.combat.shipsystems.ASTDNegentropyEdgeState
+import cn.kasuminova.astd.combat.shipsystems.ASTDXc002State
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseCombatLayeredRenderingPlugin
 import com.fs.starfarer.api.combat.CombatEngineAPI
@@ -49,7 +49,7 @@ object ASTDNegentropyChargeBarRenderer {
                 GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE)
                 GL11.glLineWidth(2.2f)
                 for (ship in ships) {
-                    if (!ASTDNegentropyEdgeState.isNegentropyEdge(ship) || ship.isHulk || !ship.isAlive) continue
+                    if (!ASTDXc002State.isXc002(ship) || ship.isHulk || !ship.isAlive) continue
                     renderFor(ship)
                 }
             } finally {
@@ -58,9 +58,9 @@ object ASTDNegentropyChargeBarRenderer {
         }
 
         private fun renderFor(ship: ShipAPI) {
-            val charge = ASTDNegentropyEdgeState.getDisplayCharge(ship)
-            if (charge <= 0.005f && ASTDNegentropyEdgeState.getCharge(ship) <= 0.005f) return
-            val burst = ASTDNegentropyEdgeState.getCollapseWindowLevel(ship) > 0f
+            val charge = ASTDXc002State.getDisplayCharge(ship)
+            if (charge <= 0.005f && ASTDXc002State.getCharge(ship) <= 0.005f) return
+            val burst = ASTDXc002State.getCollapseWindowLevel(ship) > 0f
             val base = if (burst) Color(255, 142, 54, 220) else Color(92, 210, 255, 210)
             val core = if (burst) Color(255, 235, 180, 235) else Color(235, 252, 255, 230)
             val cx = ship.location.x

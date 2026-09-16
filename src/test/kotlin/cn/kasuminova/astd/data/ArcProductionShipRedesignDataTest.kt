@@ -271,7 +271,7 @@ class ArcProductionShipRedesignDataTest {
                 "WS0013" to "harpoon",
             ),
         )
-        val radiationBeltBuiltIns = assertHullBuiltInMods(
+        val xc103BuiltIns = assertHullBuiltInMods(
             hullPath = Path.of("contents/data/hulls/astd_xc_103.ship"),
             variantPath = Path.of("contents/data/variants/astd_xc_103_Standard.variant"),
             required = listOf(
@@ -281,7 +281,7 @@ class ArcProductionShipRedesignDataTest {
                 "astd_distributed_pursuit_network",
             ),
         )
-        assertFalse("expanded_magazines" in radiationBeltBuiltIns, "Starsector canonical expanded magazines id is magazines")
+        assertFalse("expanded_magazines" in xc103BuiltIns, "Starsector canonical expanded magazines id is magazines")
         assertVariantWeapons(
             path = Path.of("contents/data/variants/astd_xc_103_Standard.variant"),
             required = mapOf(

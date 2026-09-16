@@ -1,6 +1,6 @@
 package cn.kasuminova.astd.combat.hullmods.arc
 
-import cn.kasuminova.astd.renderer.effect.hullmods.ASTDNegentropyEdgeVfx
+import cn.kasuminova.astd.renderer.effect.hullmods.ASTDXc002Vfx
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEntityAPI
 import com.fs.starfarer.api.combat.DamagingProjectileAPI
@@ -19,6 +19,6 @@ class ASTDPursuitVirtualParticleOnHitEffect : OnHitEffectPlugin {
         damageResult: ApplyDamageResultAPI,
         engine: CombatEngineAPI,
     ) {
-        ASTDNegentropyEdgeVfx.spawnCollapseStrike(engine, projectile.location, point, 0.45f)
+        ASTDXc002Vfx.spawnCollapseStrike(engine, projectile.location, point, 0.45f)
     }
 }

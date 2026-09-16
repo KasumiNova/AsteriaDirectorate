@@ -117,13 +117,13 @@ class ASTDPlasmaArmorShieldHullMod : BaseHullMod() {
 
     override fun advanceInCombat(ship: ShipAPI, amount: Float) {
         val engine = Global.getCombatEngine() ?: return
-        if (!ASTDArcAuraUtil.isArcProductionHull(ship, ASTDArcProductionShipIds.HULL_PLASMA_ARCH)) return
+        if (!ASTDArcAuraUtil.isArcProductionHull(ship, ASTDArcProductionShipIds.HULL_XC_101)) return
         maintainShieldVisualsEvenWhenPaused(ship, engine)
         if (engine.isPaused || ship.isHulk || !ship.isAlive) return
 
         val shield = ship.shield
         if (shield?.isOn == true) {
-            ASTDArcProductionVfx.setCounter(engine, ASTDArcProductionVfx.TELEMETRY_PLASMA_ARCH_SHIELD_OPEN, 1)
+            ASTDArcProductionVfx.setCounter(engine, ASTDArcProductionVfx.TELEMETRY_XC_101_SHIELD_OPEN, 1)
             ASTDArcProductionVfx.applyPlasmaShieldVisuals(ship, visualBoostLevel(ship))
         }
         if (!ship.hasListenerOfClass(PlasmaArmorShieldListener::class.java)) {
@@ -140,7 +140,7 @@ class ASTDPlasmaArmorShieldHullMod : BaseHullMod() {
 
     override fun isApplicableToShip(ship: ShipAPI): Boolean {
         if (ship.variant?.let(::hasForbiddenHullMod) == true) return false
-        return ASTDArcAuraUtil.isArcProductionHull(ship, ASTDArcProductionShipIds.HULL_PLASMA_ARCH)
+        return ASTDArcAuraUtil.isArcProductionHull(ship, ASTDArcProductionShipIds.HULL_XC_101)
     }
 
     override fun getUnapplicableReason(ship: ShipAPI): String? {
@@ -204,7 +204,7 @@ class ASTDPlasmaArmorShieldHullMod : BaseHullMod() {
         val graceUntil = ship.customData["astd_plasma_shield_visual_grace"] as? Float ?: 0f
         val shouldMaintain = shield.isOn || now <= graceUntil
         if (!shouldMaintain) return
-        ASTDArcProductionVfx.setCounter(engine, ASTDArcProductionVfx.TELEMETRY_PLASMA_ARCH_SHIELD_OPEN, 1)
+        ASTDArcProductionVfx.setCounter(engine, ASTDArcProductionVfx.TELEMETRY_XC_101_SHIELD_OPEN, 1)
         ASTDArcProductionVfx.applyPlasmaShieldVisuals(ship, visualBoostLevel(ship))
     }
 

@@ -6,7 +6,7 @@ import com.fs.starfarer.api.combat.ShipAPI
 import java.awt.Color
 import kotlin.math.roundToInt
 
-internal object ArcFlareOverdriveVisualState {
+internal object Xc001OverdriveVisualState {
 
     private const val VISUAL_LEVEL_KEY_PREFIX = "astd_tactical_overdrive_visual_level:"
 

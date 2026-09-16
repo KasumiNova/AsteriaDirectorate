@@ -3,8 +3,8 @@ package cn.kasuminova.astd.combat.hullmods.arc
 import cn.kasuminova.astd.api.difficulty.ScalingEntry
 import cn.kasuminova.astd.combat.hullmods.base.ASTDHullModTooltipRenderer
 import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
-import cn.kasuminova.astd.renderer.effect.hullmods.ASTDNegentropyEdgeVfx
-import cn.kasuminova.astd.combat.shipsystems.ASTDNegentropyEdgeState
+import cn.kasuminova.astd.renderer.effect.hullmods.ASTDXc002Vfx
+import cn.kasuminova.astd.combat.shipsystems.ASTDXc002State
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BeamAPI
 import com.fs.starfarer.api.combat.BaseHullMod
@@ -71,11 +71,11 @@ class ASTDVirtualParticleLatticeWebHullMod : BaseHullMod() {
 
     override fun applyEffectsBeforeShipCreation(hullSize: ShipAPI.HullSize, stats: MutableShipStatsAPI, id: String) {
         val variant = stats.variant ?: return
-        if (variant.hullSpec?.hullId != ASTDNegentropyEdgeState.HULL_ID) return
+        if (variant.hullSpec?.hullId != ASTDXc002State.HULL_ID) return
     }
 
     override fun advanceInCombat(ship: ShipAPI, amount: Float) {
-        if (!ASTDNegentropyEdgeState.isNegentropyEdge(ship) || ship.isHulk) return
+        if (!ASTDXc002State.isXc002(ship) || ship.isHulk) return
         if (!ship.hasListenerOfClass(ASTDVirtualParticleListener::class.java)) {
             ship.addListener(ASTDVirtualParticleListener(ship))
         }
@@ -100,7 +100,7 @@ class ASTDVirtualParticleLatticeWebHullMod : BaseHullMod() {
 
     override fun showInRefitScreenModPickerFor(ship: ShipAPI): Boolean = false
 
-    override fun isApplicableToShip(ship: ShipAPI): Boolean = ASTDNegentropyEdgeState.isNegentropyEdge(ship)
+    override fun isApplicableToShip(ship: ShipAPI): Boolean = ASTDXc002State.isXc002(ship)
 
     override fun getBorderColor(): Color = THEME.borderColor
 
@@ -121,7 +121,7 @@ class ASTDVirtualParticleLatticeWebHullMod : BaseHullMod() {
             val appliedDamage = appliedDamageForCounter(param, damage)
             if (appliedDamage <= 0f) return null
             accumulatedDamage += appliedDamage * damageCounterMult(param)
-            val threshold = if (ASTDNegentropyEdgeState.isThresholdHalved(ship)) BASE_THRESHOLD * 0.5f else BASE_THRESHOLD
+            val threshold = if (ASTDXc002State.isThresholdHalved(ship)) BASE_THRESHOLD * 0.5f else BASE_THRESHOLD
             var groups = 0
             while (accumulatedDamage >= threshold && groups < 12) {
                 accumulatedDamage -= threshold
@@ -164,7 +164,7 @@ class ASTDVirtualParticleLatticeWebHullMod : BaseHullMod() {
                 is BeamAPI -> param.weapon?.spec?.weaponId
                 else -> null
             }
-            return if (weaponId == ASTDNegentropyEdgeState.SPC3_WEAPON_ID) 2f else 1f
+            return if (weaponId == ASTDXc002State.SPC3_WEAPON_ID) 2f else 1f
         }
 
         override fun advance(amount: Float) {
@@ -199,14 +199,14 @@ class ASTDVirtualParticleLatticeWebHullMod : BaseHullMod() {
         private fun createGroups(engine: CombatEngineAPI, groups: Int, point: Vector2f) {
             val defensiveCap = defensiveCap(ship)
             repeat(groups) {
-                ASTDNegentropyEdgeState.addCharge(ship, CHARGE_PER_GROUP)
+                ASTDXc002State.addCharge(ship, CHARGE_PER_GROUP)
                 for (i in 0 until DEFENSIVE_GROUP_SIZE) {
                     if (defensive.size < defensiveCap) defensive.add(DefensiveParticle())
                 }
                 for (i in 0 until FREE_GROUP_SIZE) {
                     if (free.size < FREE_MAX) spawnPursuitMote(engine, point)
                 }
-                ASTDNegentropyEdgeVfx.spawnParticleBirth(engine, launchLocation(ship), ASTDNegentropyEdgeState.getCharge(ship))
+                ASTDXc002Vfx.spawnParticleBirth(engine, launchLocation(ship), ASTDXc002State.getCharge(ship))
             }
         }
 
@@ -233,8 +233,8 @@ class ASTDVirtualParticleLatticeWebHullMod : BaseHullMod() {
             spawned.interruptContrail()
             spawned.spriteAlphaOverride = 0f
             spawned.glowRadius = 0f
-            ASTDNegentropyEdgeVfx.spawnPursuitDustMote(engine, spawned.location, 1f)
-            ASTDNegentropyEdgeVfx.spawnPursuitDustTrail(engine, ship.location, spawned.location, 0.85f)
+            ASTDXc002Vfx.spawnPursuitDustMote(engine, spawned.location, 1f)
+            ASTDXc002Vfx.spawnPursuitDustTrail(engine, ship.location, spawned.location, 0.85f)
             free.add(FreeParticle(spawned))
         }
 
@@ -326,21 +326,21 @@ class ASTDVirtualParticleLatticeWebHullMod : BaseHullMod() {
                     arc.setFadedOutAtStart(true)
                 } catch (_: Throwable) {
                 }
-                ASTDNegentropyEdgeVfx.spawnDefensiveArcImpact(engine, target.location, level)
+                ASTDXc002Vfx.spawnDefensiveArcImpact(engine, target.location, level)
             }
 
             private fun renderDust(engine: CombatEngineAPI, loc: Vector2f, amount: Float) {
                 val prev = lastLoc
                 val level = visualLevel()
                 if (prev != null) {
-                    ASTDNegentropyEdgeVfx.spawnDustTrail(engine, prev, loc, level)
-                    ASTDNegentropyEdgeVfx.spawnTrackingDustMote(engine, loc, VectorUtils.getAngle(prev, loc), level)
+                    ASTDXc002Vfx.spawnDustTrail(engine, prev, loc, level)
+                    ASTDXc002Vfx.spawnTrackingDustMote(engine, loc, VectorUtils.getAngle(prev, loc), level)
                 }
                 lastLoc = Vector2f(loc)
                 moteCooldown -= amount
                 if (moteCooldown <= 0f) {
                     moteCooldown = MathUtils.getRandomNumberInRange(0.11f, 0.17f)
-                    ASTDNegentropyEdgeVfx.spawnDustMote(engine, loc, level)
+                    ASTDXc002Vfx.spawnDustMote(engine, loc, level)
                 }
             }
 
@@ -394,13 +394,13 @@ class ASTDVirtualParticleLatticeWebHullMod : BaseHullMod() {
                     val scale = (amount * 1.2f).coerceIn(0.01f, 0.045f)
                     trailFrom.x = loc.x - missile.velocity.x * scale
                     trailFrom.y = loc.y - missile.velocity.y * scale
-                    ASTDNegentropyEdgeVfx.spawnPursuitDustTrail(engine, trailFrom, loc, level)
-                    ASTDNegentropyEdgeVfx.spawnPursuitTrackingDustMote(engine, loc, missile.facing, level)
+                    ASTDXc002Vfx.spawnPursuitDustTrail(engine, trailFrom, loc, level)
+                    ASTDXc002Vfx.spawnPursuitTrackingDustMote(engine, loc, missile.facing, level)
                 }
                 moteCooldown -= amount
                 if (moteCooldown <= 0f) {
                     moteCooldown = MathUtils.getRandomNumberInRange(0.11f, 0.17f)
-                    ASTDNegentropyEdgeVfx.spawnPursuitDustMote(engine, loc, level)
+                    ASTDXc002Vfx.spawnPursuitDustMote(engine, loc, level)
                 }
             }
 

@@ -105,7 +105,11 @@ class StandardVariantBuiltInHullmodDataTest {
                 "astd_echo_reentry_buffer",
                 "astd_phase_resonance_jamming",
             ),
-            "astd_xc_002" to listOf("astd_virtual_particle_lattice_web", "astd_transient_potential_manifold"),
+            "astd_xc_002" to listOf(
+                "astd_nano_restoration_protocol",
+                "astd_virtual_particle_lattice_web",
+                "astd_transient_potential_manifold",
+            ),
             "astd_xc_101" to listOf(
                 "missleracks",
                 "astd_plasma_armor_shield",

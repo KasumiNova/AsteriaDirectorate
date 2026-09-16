@@ -299,7 +299,7 @@ if [[ "$MODE" == "game" || "$MODE" == "automation" || "$MODE" == "campaign-accep
     EXTRA_OPTS="-Dssoptimizer.launcher.autostart=true -Dssoptimizer.launcher.autostart.res=${START_RES} -Dssoptimizer.launcher.autostart.fullscreen=${START_FS} -Dssoptimizer.launcher.autostart.sound=${START_SOUND} -DstartRes=${START_RES} -DstartFS=${START_FS} -DstartSound=${START_SOUND}"
     if [[ "$MODE" == "automation" ]]; then
         AUTOMATION_OUTPUT_DIR="${ASTD_AUTOMATION_OUTPUT_DIR:-$GAME_DIR/ssoptimizer-automation-output}"
-        AUTOMATION_SCENARIO="${ASTD_AUTOMATION_SCENARIO:-arc_flare_aod7_basic}"
+        AUTOMATION_SCENARIO="${ASTD_AUTOMATION_SCENARIO:-xc_001_aod7_basic}"
         EXTRA_OPTS="$EXTRA_OPTS -Dssoptimizer.automation.enabled=true -Dssoptimizer.automation.scenario=${AUTOMATION_SCENARIO} -Dssoptimizer.automation.outputDir=${AUTOMATION_OUTPUT_DIR} -Dssoptimizer.automation.requireScreenshotFile=true"
         # 清掉上一轮的遥测，避免早退逻辑吃到陈旧 Completed 状态而秒杀本轮游戏
         rm -f "$AUTOMATION_OUTPUT_DIR/astd-ingame-automation-telemetry.json"

@@ -29,7 +29,7 @@ description: "贴图加载规范：代码侧渲染的自定义贴图必须 loadT
    - 渲染循环中必须**逐帧重取** `getSprite(path)` 并重置全部状态后再画：
      `setAdditiveBlend()` → `color` → `alphaMult` → `setSize()` → `angle` → `renderAtCenter()`。
    - attach 阶段只缓存路径与原始宽高，不要缓存"已设置好状态"的 SpriteAPI。
-   - 参考实现：`WeaponAmbientGlowManager`（renderer/effect/system）、`ArcFlareAfterimageManager`。
+   - 参考实现：`WeaponAmbientGlowManager`（renderer/effect/system）、`ASTDAfterimageEffect`。
 
 3) **预加载失败必须有日志**
    - `loadTexture` 包 try/catch 并 `log.warn` 打出路径，禁止空 catch（全局规范）。
