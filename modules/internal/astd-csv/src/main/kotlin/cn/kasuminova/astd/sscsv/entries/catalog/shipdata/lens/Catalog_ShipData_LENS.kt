@@ -154,6 +154,10 @@ object Ship_astd_zw_002 : ShipDataEntry() {
     override val mass: Int = 16000
     // 密蒙：相位化改造——防御方式由 FRONT 护盾改为自定义相位系统「引力相位」
     // （defense id=astd_gravity_phase，stats 脚本 GravityPhaseCloakStats 为后续特效接入点）。
+    // hints 必须带 PHASE：原版 ShipHullSpec.isPhase() 仅在 hints 含 PHASE 或
+    // defense id 恰为原版 "phasecloak" 时返回 true，自定义相位系统 id 不走第二个分支，
+    // 缺此 hint 会导致装配面板按护盾舰显示、相位船插不可安装、图鉴不收录。
+    override val hints: String = "PHASE"
     override val shieldType: String = "PHASE"
     override val defenseId: String = "astd_gravity_phase"
     // 相位激活/维持辐能均为 400：ship_data 的 phase cost/upkeep 是辐能容量比例（400/12000）。

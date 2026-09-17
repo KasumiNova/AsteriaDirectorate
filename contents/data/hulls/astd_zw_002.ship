@@ -13,7 +13,8 @@
   "viewOffset": 0,
   "builtInMods": [
     "astd_nano_restoration_protocol",
-    "astd_dark_tide_jammer"
+    "astd_dark_tide_jammer",
+    "phasefield"
   ],
   "builtInWeapons": {
     "WS0009": "astd_zw_002_bloom"
