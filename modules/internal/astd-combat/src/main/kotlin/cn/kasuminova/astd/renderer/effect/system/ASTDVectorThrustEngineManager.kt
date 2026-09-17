@@ -32,7 +32,7 @@ import kotlin.math.sin
  *   纯刹车态照搬该语义，混合意图（如倒车+转向）时仍由转向/横移分支驱动。
  * - 直推引擎转向按力臂归一；侧推引擎转向按力矩符号（中部侧推力臂≈0，符号驱动以保观感）。
  * - 设有怠速基线 IDLE_FLAME，保证引擎始终可见、且静止时不全灭。
- * - 火焰跟随用不对称线性速率（attack 快、release 慢），而非指数插值：
+ * - 火焰跟随用不对称线性速率（attack 慢速渐入、release 稍快回落），而非指数插值：
  *   指数插值在目标频繁切换（松油门→刹停→静止）时会产生可见的锯齿跳变。
  * - 逐引擎当前 level 每帧发布到 ship.customData[ENGINE_LEVELS_KEY]，供引擎碎片喷散
  *   （ASTDEngineShardSprayEffect）等下游特效按实际出力驱动。
@@ -56,9 +56,9 @@ internal object ASTDVectorThrustEngineManager {
     private const val LOW_FLAME = 0.18f
     // 刹车/倒车基线：对齐原版 showDecelerating 的全引擎火焰收敛值。
     private const val BRAKE_FLAME = 0.4f
-    // 火焰跟随线性速率（每秒）：attack（目标>当前）快、release（目标<当前）慢，消除跳变。
-    private const val ATTACK_PER_SEC = 2.5f
-    private const val RELEASE_PER_SEC = 1.2f
+    // 火焰跟随线性速率（每秒）：attack（目标>当前）慢速渐入、release（目标<当前）稍快回落，消除跳变。
+    private const val ATTACK_PER_SEC = 0.75f
+    private const val RELEASE_PER_SEC = 1f
 
     private val log = Global.getLogger(ASTDVectorThrustEngineManager::class.java)
 
@@ -330,7 +330,7 @@ internal object ASTDVectorThrustEngineManager {
                     LOW_FLAME + (FULL_FLAME - LOW_FLAME) * norm
                 }
 
-                // 不对称线性跟随：attack 快、release 慢。指数插值在目标频繁切换时
+                // 不对称线性跟随：attack 慢速渐入、release 稍快回落。指数插值在目标频繁切换时
                 // （松油门→刹停→静止）会产生可见锯齿跳变，线性速率保证收敛过程平滑可预期。
                 st.level = moveToward(st.level, target, if (target > st.level) ATTACK_PER_SEC else RELEASE_PER_SEC, amount)
 

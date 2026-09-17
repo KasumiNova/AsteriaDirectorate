@@ -21,10 +21,11 @@ import kotlin.math.floor
  *
  * 动机：命中护盾后在目标舰累积淤积层，每层产出两份护盾维持压力——
  * 1. 乘区：`shieldUpkeepMult` 最终乘区 +stacks × perStack（难度查表 1%~5%）；
- * 2. 固定软辐能：按目标舰体型与难度查表（1/2/3/4 ~ 5/10/15/20 su/s 每层），逐帧 `increaseFlux(soft)` 直写；
+ * 2. 固定软辐能：按目标舰体型与难度查表（0.5/1/1.5/2 ~ 2.5/5/7.5/10 su/s 每层），
+ *    **仅在目标护盾开启期间**逐帧 `increaseFlux(soft)` 直写（关盾不产出）；
  * 两项之和按 [ChargeNeedleTuning.dissipationCapFactor] 折算，最高不超过目标最终耗散的 200%（不受难度影响）。
  *
- * 消散：连续流失，速率 = 当前层数 × 3%/s、下限 2 层/s（固定不缩放，不受难度影响）。
+ * 消散：连续流失，速率 = 当前层数 × 4%/s（护盾关闭时翻倍 8%/s）、下限 2 层/s（固定不缩放，不受难度影响）。
  *
  * 生命周期：Ship 级 [BuffLifetime.HOST_BOUND]，经 `ShipAPI.buffHost()` 注册（id [BUFF_ID]）；
  * 宿主 hulk/死亡由 BuffTickPlugin 心跳回收，[onRemove] 恰一次 unmodify，无 stat 残留
@@ -58,6 +59,9 @@ class ChargeNeedleStacks(
     /** 本帧 200% 耗散折算系数（HUD 读数与实际产出同口径，advance 内刷新）。 */
     private var lastFactor: Float = 1f
 
+    /** 本帧固定软辐能实际产出（护盾关闭时为 0；HUD 读数与实际产出同口径，advance 内刷新）。 */
+    private var lastFlatPerSec: Float = 0f
+
     // —— 异常分支「一次/船」日志闸（纯函数只定返回值语义，日志由本类按实例去重承担）——
     private var warnedZeroDissipation = false
     private var erroredZeroPerStack = false
@@ -78,7 +82,10 @@ class ChargeNeedleStacks(
     }
 
     override fun advance(amount: Float) {
-        stacksFloat = (stacksFloat - ChargeNeedleTuning.decayPerSecond(stacksFloat) * amount).coerceAtLeast(0f)
+        // 护盾状态门控：固定软辐能仅护盾开启期间产出；关盾时消散速率翻倍。
+        val shieldOn = ship.shield?.isOn == true
+
+        stacksFloat = (stacksFloat - ChargeNeedleTuning.decayPerSecond(stacksFloat, shieldOn) * amount).coerceAtLeast(0f)
         if (stacksFloat <= 0f) {
             host.remove(this)
             return
@@ -90,9 +97,10 @@ class ChargeNeedleStacks(
         val dissipation = ship.mutableStats.fluxDissipation.modifiedValue
         val baseUpkeep = ship.hullSpec.shieldSpec?.upkeepCost ?: 0f
         val upkeepExtra = baseUpkeep * stacks * perStack
-        val flatPerSec = stacks * flatPerStack
+        val flatPerSec = if (shieldOn) stacks * flatPerStack else 0f
         val factor = ChargeNeedleTuning.dissipationCapFactor(dissipation, upkeepExtra, flatPerSec)
         lastFactor = factor
+        lastFlatPerSec = flatPerSec
 
         ship.mutableStats.shieldUpkeepMult.modifyMult(BUFF_ID, 1f + stacks * perStack * factor)
         if (flatPerSec * factor > 0f) {
@@ -124,9 +132,9 @@ class ChargeNeedleStacks(
     /** HUD 双向维护：攻击方=玩家显示目标层数；受击方=玩家显示本舰被抬升的维持与固定软辐能。 */
     private fun maintainHud() {
         val player = engine.playerShip
-        // HUD 读数与实际产出同口径：两项均乘本帧折算系数（不超闸时 factor=1 无差异）。
+        // HUD 读数与实际产出同口径：维持乘区按本帧折算系数；固定软辐能按本帧实际产出（关盾为 0）。
         val pctText = formatPercent(stacks * perStack * lastFactor * 100f)
-        val flatText = formatPercent(stacks * flatPerStack * lastFactor)
+        val flatText = formatPercent(lastFlatPerSec * lastFactor)
         if (showOnPlayerHud && player != null) {
             feedback.maintainPlayerStatus(
                 engine, HUD_KEY, HUD_ICON,

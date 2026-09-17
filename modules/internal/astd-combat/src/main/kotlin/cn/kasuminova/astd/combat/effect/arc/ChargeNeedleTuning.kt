@@ -13,9 +13,10 @@ import kotlin.math.min
  * 集中在一处声明；泄放判定、体型固定软辐能查表与 200% 耗散上限折算均为纯函数，
  * 供 OnHit / Stacks 调用并由单元测试直接驱动。
  *
- * 数值缩放口径（2026-09 修订）：泄放概率 / EMP 倍率改五档精确查表（[ScalingTable]）；
- * 每层维持加成 1%~5% 与体型固定软辐能（1/2/3/4 ~ 5/10/15/20）保持三锚点 LINEAR（逐档恰重合）；
- * 消散速率（当前层数 3%/s、下限 2 层/s）与 200% 耗散上限**不受难度系数影响**（用户裁定）。
+ * 数值缩放口径（2026-09 修订二）：泄放概率 / EMP 倍率为五档精确查表（[ScalingTable]）；
+ * 每层维持加成 1%~5% 与体型固定软辐能（0.5/1/1.5/2 ~ 2.5/5/7.5/10）保持三锚点 LINEAR（逐档恰重合）；
+ * 固定软辐能仅在目标**护盾开启期间**产出（Stacks 逐帧按 shield.isOn 门控）；
+ * 消散速率（当前层数 4%/s、护盾关闭时翻倍 8%/s、下限 2 层/s）与 200% 耗散上限**不受难度系数影响**（用户裁定）。
  * 玩家来源（owner == 0）固定 v2（砺刃档）。
  */
 object ChargeNeedleTuning {
@@ -38,25 +39,28 @@ object ChargeNeedleTuning {
     /** 泄放基准 EMP（面板单发 EMP，固定不缩放）。 */
     const val BASE_DISCHARGE_EMP = 100f
 
-    /** 每层额外固定软辐能产出（su/s，按目标舰体型）：护卫舰 v1 1 / v2 3 / v5 5。 */
-    val FLAT_FLUX_FRIGATE = ScalingEntry(1f, 3f, 5f)
+    /** 每层额外固定软辐能产出（su/s，按目标舰体型）：护卫舰 v1 0.5 / v2 1.5 / v5 2.5。 */
+    val FLAT_FLUX_FRIGATE = ScalingEntry(0.5f, 1.5f, 2.5f)
 
-    /** 驱逐舰 v1 2 / v2 6 / v5 10。 */
-    val FLAT_FLUX_DESTROYER = ScalingEntry(2f, 6f, 10f)
+    /** 驱逐舰 v1 1 / v2 3 / v5 5。 */
+    val FLAT_FLUX_DESTROYER = ScalingEntry(1f, 3f, 5f)
 
-    /** 巡洋舰 v1 3 / v2 9 / v5 15。 */
-    val FLAT_FLUX_CRUISER = ScalingEntry(3f, 9f, 15f)
+    /** 巡洋舰 v1 1.5 / v2 4.5 / v5 7.5。 */
+    val FLAT_FLUX_CRUISER = ScalingEntry(1.5f, 4.5f, 7.5f)
 
-    /** 主力舰 v1 4 / v2 12 / v5 20。 */
-    val FLAT_FLUX_CAPITAL = ScalingEntry(4f, 12f, 20f)
+    /** 主力舰 v1 2 / v2 6 / v5 10。 */
+    val FLAT_FLUX_CAPITAL = ScalingEntry(2f, 6f, 10f)
 
     /** 层数绝对上限（固定不缩放；产出上限由 [DISSIPATION_CAP_MULT] 输出折算承担）。 */
     const val ABSOLUTE_MAX_STACKS = 200
 
     /** 连续消散比例（当前层数 × 该比例 层/s，固定不缩放，不受难度系数影响）。 */
-    const val DECAY_RATIO_PER_SECOND = 0.03f
+    const val DECAY_RATIO_PER_SECOND = 0.04f
 
-    /** 连续消散速率下限（层/s，固定不缩放，不受难度系数影响）。 */
+    /** 护盾关闭时的消散速率倍率（关盾翻倍 = 8%/s，固定不缩放）。 */
+    const val DECAY_SHIELD_OFF_MULT = 2f
+
+    /** 连续消散速率下限（层/s，固定不缩放，不受难度系数影响；开盾/关盾同一下限）。 */
     const val DECAY_FLOOR_PER_SECOND = 2f
 
     /** 产出上限：维持乘区额外量 + 固定软辐能之和 ≤ 目标最终耗散 × 该倍率（固定不缩放）。 */
@@ -107,11 +111,16 @@ object ChargeNeedleTuning {
     }
 
     /**
-     * 连续消散速率（纯函数）：当前层数 × [DECAY_RATIO_PER_SECOND]，下限 [DECAY_FLOOR_PER_SECOND] 层/s。
-     * 不受难度系数影响；[stacks] ≤ 0 时恒 0（无层可散）。
+     * 连续消散速率（纯函数）：当前层数 × [DECAY_RATIO_PER_SECOND]（护盾关闭时 ×[DECAY_SHIELD_OFF_MULT]），
+     * 下限 [DECAY_FLOOR_PER_SECOND] 层/s。不受难度系数影响；[stacks] ≤ 0 时恒 0（无层可散）。
      */
-    fun decayPerSecond(stacks: Float): Float =
-        if (stacks <= 0f) 0f else maxOf(stacks * DECAY_RATIO_PER_SECOND, DECAY_FLOOR_PER_SECOND)
+    fun decayPerSecond(stacks: Float, shieldOn: Boolean): Float =
+        if (stacks <= 0f) {
+            0f
+        } else {
+            val ratio = DECAY_RATIO_PER_SECOND * (if (shieldOn) 1f else DECAY_SHIELD_OFF_MULT)
+            maxOf(stacks * ratio, DECAY_FLOOR_PER_SECOND)
+        }
 
     /**
      * 200% 耗散上限折算（纯函数，唯一入口）：维持乘区额外量 + 固定软辐能之和超过

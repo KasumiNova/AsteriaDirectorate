@@ -5,6 +5,7 @@ import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.FluxTrackerAPI
 import com.fs.starfarer.api.combat.MutableShipStatsAPI
 import com.fs.starfarer.api.combat.MutableStat
+import com.fs.starfarer.api.combat.ShieldAPI
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.combat.ShipHullSpecAPI
 import org.mockito.ArgumentMatchers.anyBoolean
@@ -17,8 +18,9 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 /**
- * 规格 01 §4.1 用例 10~13（2026-09 机制修订）：浮点累加器 clamp（绝对上限 200 层）、
- * 连续消散（当前层数 3%/s、下限 2 层/s）、护盾维持乘区 + 固定软辐能逐帧直写与 200% 耗散折算、回收。
+ * 规格 01 §4.1 用例 10~13（2026-09 机制修订 v2）：浮点累加器 clamp（绝对上限 200 层）、
+ * 连续消散（当前层数 4%/s、关盾翻倍 8%/s、下限 2 层/s）、护盾维持乘区逐帧刷新 +
+ * 固定软辐能仅护盾开启期间逐帧直写与 200% 耗散折算、回收。
  * `MutableStat` 为具体类直接 `MutableStat(1f)` 真对象驱动，
  * ShipAPI/引擎等 jar 接口走 mockito（项目统一口径，禁止反射手搓代理）。
  */
@@ -31,12 +33,13 @@ class ChargeNeedleStacksMathTest {
         val host: BuffHost,
     )
 
-    /** 默认目标：耗散 800 / 基础维持 400 / perStack 0.02 / 固定软辐能 3 su/s 每层（200% 上限 1600 不触发）。 */
+    /** 默认目标：耗散 800 / 基础维持 400 / perStack 0.02 / 固定软辐能 3 su/s 每层（200% 上限 1600 不触发），护盾开启。 */
     private fun newFixture(
         dissipation: Float = 800f,
         upkeep: Float = 400f,
         perStack: Float = 0.02f,
         flatPerStack: Float = 3f,
+        shieldOn: Boolean = true,
     ): Fixture {
         val upkeepStat = MutableStat(1f)
         val stats = mock(MutableShipStatsAPI::class.java)
@@ -49,10 +52,13 @@ class ChargeNeedleStacksMathTest {
         `when`(hullSpec.shieldSpec).thenReturn(shieldSpec)
 
         val fluxTracker = mock(FluxTrackerAPI::class.java)
+        val shield = mock(ShieldAPI::class.java)
+        `when`(shield.isOn).thenReturn(shieldOn)
         val ship = mock(ShipAPI::class.java)
         `when`(ship.mutableStats).thenReturn(stats)
         `when`(ship.hullSpec).thenReturn(hullSpec)
         `when`(ship.fluxTracker).thenReturn(fluxTracker)
+        `when`(ship.shield).thenReturn(shield)
         `when`(ship.isAlive).thenReturn(true)
         `when`(ship.isHulk).thenReturn(false)
 
@@ -79,8 +85,8 @@ class ChargeNeedleStacksMathTest {
     }
 
     @Test
-    fun `用例11 连续消散 比例百分之三 与 下限两层每秒 亚层累计 不穿 0`() {
-        // 9 层 → max(9×3%, 2) = 2 层/s：advance(0.1) 恰 -0.2 层。
+    fun `用例11 连续消散 比例百分之四 与 下限两层每秒 亚层累计 不穿 0`() {
+        // 9 层 → max(9×4%, 2) = 2 层/s：advance(0.1) 恰 -0.2 层。
         val f = newFixture()
         f.stacks.addStacks(9)
         f.stacks.advance(0.1f)
@@ -95,7 +101,7 @@ class ChargeNeedleStacksMathTest {
         }
         assertEquals(listOf(8, 8, 8), views)
 
-        // 比例路径：100 层 → max(100×3%, 2) = 3 层/s，advance(0.5) 恰 -1.5 层。
+        // 比例路径：100 层 → max(100×4%, 2) = 4 层/s，advance(0.5) 恰 -2 层。
         val h = newFixture()
         h.stacks.addStacks(100)
         h.stacks.advance(0.5f)
@@ -105,6 +111,18 @@ class ChargeNeedleStacksMathTest {
         g.stacks.advance(10f)
         assertEquals(0, g.stacks.stacks)
         verify(g.host).remove(g.stacks, null)
+    }
+
+    @Test
+    fun `用例14 关盾 固定软辐能停产 消散速率翻倍`() {
+        // 关盾：100 层 → max(100×8%, 2) = 8 层/s，advance(0.5) 恰 -4 层。
+        val f = newFixture(shieldOn = false)
+        f.stacks.addStacks(100)
+        f.stacks.advance(0.5f)
+        assertEquals(96, f.stacks.stacks)
+        // 关盾期间固定软辐能不产出，维持乘区不受门控仍生效。
+        verify(f.fluxTracker, never()).increaseFlux(anyFloat(), anyBoolean())
+        assertEquals(1f + 96 * 0.02f, f.upkeepStat.modifiedValue, 1e-6f, "96 层 × 2% → 乘区 2.92")
     }
 
     @Test

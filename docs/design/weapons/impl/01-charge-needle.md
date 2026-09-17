@@ -109,9 +109,9 @@ weapon.astd_charge_needle.name=电荷针刺
 weapon.astd_heavy_charge_needle.name=重型电荷针刺
 
 # Weapon tooltip 自定义字段（数值以 v2 为准：淤积 2%/层 + 按体型固定软辐能、总和至多目标耗散 200%；泄放概率 30%、EMP 150%；高亮字一律 {%s} 占位，原文只在 HL）
-weapon.astd_charge_needle.tooltip.customPrimary=命中护盾时，提高目标 {%s} 的护盾维持辐能，并按目标舰船规模额外产生固定软辐能，效果可叠加（两项总和至多不超过其辐能耗散的 {%s}）；命中船体或装甲时，有 {%s} 的概率产生打击武器与引擎的电弧，造成该武器命中目标时 {%s} 的额外伤害。效果受到{%s}影响。
+weapon.astd_charge_needle.tooltip.customPrimary=命中护盾时，提高目标 {%s} 的护盾维持辐能，并在目标护盾开启期间按目标舰船规模额外产生固定软辐能，效果可叠加（两项总和至多不超过其辐能耗散的 {%s}）；命中船体或装甲时，有 {%s} 的概率产生打击武器与引擎的电弧，造成该武器命中目标时 {%s} 的额外伤害。效果受到{%s}影响。
 weapon.astd_charge_needle.tooltip.customPrimaryHL=2% | 200% | 30% | 150% | 难度系数
-weapon.astd_heavy_charge_needle.tooltip.customPrimary=命中护盾时，提高目标 {%s} 的护盾维持辐能，并按目标舰船规模额外产生固定软辐能，效果可叠加（两项总和至多不超过其辐能耗散的 {%s}）；命中船体或装甲时，有 {%s} 的概率产生打击武器与引擎的电弧，造成该武器命中目标时 {%s} 的额外伤害。效果受到{%s}影响。
+weapon.astd_heavy_charge_needle.tooltip.customPrimary=命中护盾时，提高目标 {%s} 的护盾维持辐能，并在目标护盾开启期间按目标舰船规模额外产生固定软辐能，效果可叠加（两项总和至多不超过其辐能耗散的 {%s}）；命中船体或装甲时，有 {%s} 的概率产生打击武器与引擎的电弧，造成该武器命中目标时 {%s} 的额外伤害。效果受到{%s}影响。
 weapon.astd_heavy_charge_needle.tooltip.customPrimaryHL=2% | 200% | 30% | 150% | 难度系数
 
 # Weapon 定位
@@ -151,7 +151,7 @@ HUD 文本不进 properties，走 `contents/data/strings/strings.json`（MOD 类
 | 类名 | 接口/实现 | 职责 | 挂载点 | 文件路径 |
 |---|---|---|---|---|
 | `ChargeNeedleOnHitEffect` | 实现 `OnHitEffectPlugin` | 命中路由：护盾命中 → 淤积叠层 + 轻粒子；船体/装甲命中 → 概率泄放 EMP 电弧 | 两个 `.proj` 的 `onHitEffect` | `src/main/kotlin/cn/kasuminova/astd/combat/effect/arc/ChargeNeedleOnHitEffect.kt` |
-| `ChargeNeedleStacks` | 实现共享 `StackableBuff`（api/buff） | 目标舰淤积层数（浮点累加器）、`shieldUpkeepMult` 幂等刷新（乘区额外量 × 本帧折算系数）、按体型固定软辐能逐帧直写、200% 耗散上限折算、HUD 维护、CONTINUOUS 衰减（当前层数 × 3%/s、下限 2 层/s） | 经 `ShipAPI.buffHost()` 注册（Ship 级，id `astd_charge_needle_stacks`） | 同包 `ChargeNeedleStacks.kt` |
+| `ChargeNeedleStacks` | 实现共享 `StackableBuff`（api/buff） | 目标舰淤积层数（浮点累加器）、`shieldUpkeepMult` 幂等刷新（乘区额外量 × 本帧折算系数）、按体型固定软辐能逐帧直写（**仅护盾开启期间产出**）、200% 耗散上限折算、HUD 维护、CONTINUOUS 衰减（当前层数 × 4%/s、关盾翻倍 8%/s、下限 2 层/s） | 经 `ShipAPI.buffHost()` 注册（Ship 级，id `astd_charge_needle_stacks`） | 同包 `ChargeNeedleStacks.kt` |
 | `ChargeNeedleShots` | 实现共享 `Buff`（非叠层，纯标记） | 记录泄放概率结算随机的 `callIndex`（00 §4.1 口径：Weapon 级复合键，seed 派生 `source.id*31 + slot.id`） | Weapon 级 Buff，id `astd_charge_needle_shots` | 同包 `ChargeNeedleStacks.kt` 内附属类 |
 | `ChargeNeedleTuning` | object（数值声明，对齐 `DifficultyTuningImpl` object 先例） | 五档查表 `ScalingTable` + 三锚点 `ScalingEntry` 常量 + `resolve(tuning, isPlayer, hullSize)` 取值 + 纯函数 `dissipationCapFactor(...)` / `decayPerSecond(...)` / `flatFluxForSize(...)` | 被 OnHit / Stacks 调用 | 同包 `ChargeNeedleTuning.kt` |
 | `ChargeNeedleVfx` | object（视觉静态入口，对齐 `ImpactStrikeFx` 惯例） | 护盾命中粒子、泄放电弧落点选取与 `spawnEmpArc` 调用 | 被 OnHit 调用 | 同包 `ChargeNeedleVfx.kt` |
@@ -171,14 +171,14 @@ fun ShipAPI.chargeNeedleStacks(): ChargeNeedleStacks? = getBuff(ChargeNeedleStac
 | `PER_STACK`（每层护盾维持加成，LINEAR 三锚点） | 0.01 | 0.02 | 0.03 | 0.04 | 0.05 |
 | `DISCHARGE_CHANCE`（船体泄放概率） | 20% | 30% | 40% | 50% | 60% |
 | `DISCHARGE_EMP_MULT`（泄放 EMP 倍率） | 100% | 150% | 200% | 250% | 300% |
-| `FLAT_FLUX_FRIGATE`（护卫每层固定软辐能 su/s） | 1 | 3 | — | — | 5 |
-| `FLAT_FLUX_DESTROYER`（驱逐） | 2 | 6 | — | — | 10 |
-| `FLAT_FLUX_CRUISER`（巡洋） | 3 | 9 | — | — | 15 |
-| `FLAT_FLUX_CAPITAL`（主力） | 4 | 12 | — | — | 20 |
+| `FLAT_FLUX_FRIGATE`（护卫每层固定软辐能 su/s，仅护盾开启期间产出） | 0.5 | 1.5 | — | — | 2.5 |
+| `FLAT_FLUX_DESTROYER`（驱逐） | 1 | 3 | — | — | 5 |
+| `FLAT_FLUX_CRUISER`（巡洋） | 1.5 | 4.5 | — | — | 7.5 |
+| `FLAT_FLUX_CAPITAL`（主力） | 2 | 6 | — | — | 10 |
 
 （体型软辐能行为三锚点 LINEAR，k3/k4 由插值给出，故表中不列；`PER_STACK` 三锚点 1/2/5% 与五档 1~5% 逐档重合。）
 
-固定不缩放：层数绝对上限 200、消散速率（当前层数 × 3%/s、下限 2 层/s）、产出上限倍率 200%、泄放基准 EMP 100。
+固定不缩放：层数绝对上限 200、消散速率（当前层数 × 4%/s、关盾翻倍 8%/s、下限 2 层/s）、产出上限倍率 200%、泄放基准 EMP 100。
 初始化锚点历史：旧三锚点 `DISCHARGE_CHANCE = (0.25, 0.40, 1.00)` / `DISCHARGE_EMP_MULT = (1.00, 1.75, 4.00)` 与旧「安全闸 50% / 衰减 10 层/s」口径作废。
 
 调用点：`ChargeNeedleOnHitEffect.onHit` 内每次命中调用一次
@@ -233,11 +233,12 @@ stacks = floor(stacksFloat)；maxStacks = 200   // 绝对上限（2026-09：取�
 addStacks(n): 新值 = (stacksFloat + n).coerceIn(0, maxStacks)；返回实际增量
 
 advance(amount):
-    stacksFloat = max(0, stacksFloat - decayPerSecond(stacksFloat) * amount)   // max(层数×3%, 2) 层/s
+    shieldOn = ship.shield?.isOn == true                          // 护盾状态门控
+    stacksFloat = max(0, stacksFloat - decayPerSecond(stacksFloat, shieldOn) * amount)   // max(层数×4%（关盾 8%）, 2) 层/s
     if (stacksFloat <= 0f) { host.remove(this); return }
     异常分支日志（perStack ≤ 0 → ERROR 一次/船；耗散 ≤ 0 → WARN 一次/船）
-    upkeepExtra = baseUpkeep * stacks * perStack            // 维持乘区额外量（flux/s）
-    flatPerSec  = stacks * flatPerStack                     // 固定软辐能（su/s）
+    upkeepExtra = baseUpkeep * stacks * perStack            // 维持乘区额外量（flux/s，不受护盾门控）
+    flatPerSec  = if (shieldOn) stacks * flatPerStack else 0   // 固定软辐能（su/s，仅护盾开启期间产出）
     factor = dissipationCapFactor(耗散终值, upkeepExtra, flatPerSec)   // min(1, 2 × 耗散 / 两者之和)
     stat.modifyMult(MOD_ID, 1 + stacks * perStack * factor)  // 幂等，modifierId 固定
     if (flatPerSec * factor > 0f) ship.fluxTracker.increaseFlux(flatPerSec * factor * amount, false)  // 软辐能
@@ -284,7 +285,7 @@ engine.spawnEmpArc(source, from, ship, anchorEntity, DamageType.ENERGY,
 - 恰等上限边界（`2 × 800 = 1200 + 400`）按 `min(1, 1) = 1` 含端。
 - 层数上限为绝对上限 `ABSOLUTE_MAX_STACKS = 200`：超上限部分在 `addStacks` 处 clamp，不再按层数裁闸（2026-09 修订取代旧「耗散 50% 安全闸 clamp」）。
 - `perStack ≤ 0`：**记 ERROR 一次/船**——难度配置错误，机制不退化（乘区退化为 1+0）。
-- `decayPerSecond(stacks)`：当前层数 × 3%/s、下限 2 层/s；`stacks ≤ 0` 恒 0（无层可散），无除零路径。
+- `decayPerSecond(stacks, shieldOn)`：当前层数 × 4%/s（护盾关闭时翻倍 8%/s）、下限 2 层/s；`stacks ≤ 0` 恒 0（无层可散），无除零路径。
 - `flatFluxForSize(hullSize)`：护卫/驱逐/巡洋/主力四档；战机/DEFAULT 按护卫舰档（辐能池体量相当，设计裁定）；`null` 体型属配置异常的上游遗漏——按护卫舰档兜底并 **WARN 一次**（不静默）。
 - `projectile.source == null`（脚本生成的游离弹）：按非玩家口径取值（`source?.owner == 0` 为 false），泄放 `spawnEmpArc` 的 source 形参传 null 由原版兜底（原版 API 允许 null source——若实机异常则以 `projectile.weapon?.ship` 再兜底并记 WARN，不做静默吞异常）。
 - Buff 宿主换装/死亡：HOST_BOUND + `isHostValid` 心跳回收（共享 BuffTickPlugin），`onRemove` 恰一次 unmodify，无 stat 残留（固定软辐能为逐帧直写，无持久状态）。
@@ -318,9 +319,9 @@ engine.spawnEmpArc(source, from, ship, anchorEntity, DamageType.ENERGY,
 
 `ChargeNeedleTuningTest`（经 `DifficultyTuningImpl.installScaleForTests` 走完整映射链路，对齐 `BountyScalingHullModTest` 先例， `@AfterTest` 清注入）：
 
-1. **五档精确取档**：k_s=1/2/5 下 resolve（非玩家）→ perStack = 0.01/0.02/0.05、flatFluxPerStack（护卫舰）= 1/3/5、chance = 0.20/0.30/0.60、empMult = 1.00/1.50/3.00（±1e-6）。
+1. **五档精确取档**：k_s=1/2/5 下 resolve（非玩家）→ perStack = 0.01/0.02/0.05、flatFluxPerStack（护卫舰）= 0.5/1.5/2.5、chance = 0.20/0.30/0.60、empMult = 1.00/1.50/3.00（±1e-6）。
 2. **玩家固定 v2**：k_s=1 与 k_s=5 下 resolve(isPlayer=true) → 四项恒为 v2。
-3. **非整数 k_s 就近取档 + 体型分档**：k_s=3.4 → 查表项取 v3（不插值），k_s=3.5 → half-up 取 v4；perStack 仍走 `ScalingMap.LINEAR` 插值；驱逐/巡洋/主力档 v2 = 6/9/12，`null` 体型按护卫舰档兜底并 WARN 一次。
+3. **非整数 k_s 就近取档 + 体型分档**：k_s=3.4 → 查表项取 v3（不插值），k_s=3.5 → half-up 取 v4；perStack 仍走 `ScalingMap.LINEAR` 插值；驱逐/巡洋/主力档 v2 = 3/4.5/6，`null` 体型按护卫舰档兜底并 WARN 一次。
 
 `ChargeNeedleCapTest`（纯函数 `dissipationCapFactor`）：
 
@@ -334,7 +335,7 @@ engine.spawnEmpArc(source, from, ship, anchorEntity, DamageType.ENERGY,
 `ChargeNeedleStacksMathTest`（浮点累加器 + `MutableStat` 真对象——`MutableStat` 为具体类，直接 `MutableStat(1f)` 构造，无反射无 fake）：
 
 10. **叠层 clamp**：连续 addStacks 超上限 200 后返回值 = 实际增量（00 Buff API 契约语义在本件的具体化）。
-11. **CONTINUOUS 衰减**：`decayPerSecond` = max(层数×3%, 2) 层/s——9 层时 `advance(0.1f)` 恰 -0.2 层、`advance(0.05f)×3` 累计 -0.3 → 层数视图 floor 序列 [8, 8, 8]；100 层时 `advance(0.5f)` 恰 -1.5 层；衰减不穿 0 并经 host 移除。
+11. **CONTINUOUS 衰减**：`decayPerSecond` = max(层数×4%（关盾 8%）, 2) 层/s——9 层时 `advance(0.1f)` 恰 -0.2 层、`advance(0.05f)×3` 累计 -0.3 → 层数视图 floor 序列 [8, 8, 8]；100 层开盾时 `advance(0.5f)` 恰 -2 层、关盾时恰 -4 层；衰减不穿 0 并经 host 移除。
 12. **维持乘区 + 固定软辐能逐帧直写与回收**：`advance` 后 `shieldUpkeepMult.modifiedValue = 1 + 层数 × perStack`（不超闸 factor=1）；`fluxTracker.increaseFlux(stacks × flatPerStack × factor × amount, false)` 按帧直写软辐能；`onRemove` unmodify 后回 1.0 无残留。
 13. **超上限压缩与耗散为零**：dissipation=10 时两项同因子（20/99）压缩（乘区与软辐能同步）；dissipation=0 时乘区回 1、`increaseFlux` 完全不被调用。
 
@@ -349,12 +350,12 @@ engine.spawnEmpArc(source, from, ship, anchorEntity, DamageType.ENERGY,
 ### 4.2 烟测检查点（`deployMod` + `launchSmokeTestGame`，到达终态即退出游戏）
 
 1. dev 仓储出现两件武器 + 两张蓝图；学习蓝图后 refit 可装配（OP 8/16）；名称/tip/定位字符串全中文无键名泄漏。
-2. 命中敌舰护盾：HUD 出现“电荷淤积”条目，层数、维持 +% 与软辐能 +F/s 随命中上升；停火后按当前层数 × 3%/s（下限 2 层/s）回落到 0，条目消失。
+2. 命中敌舰护盾：HUD 出现“电荷淤积”条目，层数、维持 +% 与软辐能 +F/s 随命中上升（软辐能仅目标护盾开启期间产出）；停火后按当前层数 × 4%/s（关盾翻倍 8%/s，下限 2 层/s）回落到 0，条目消失。
 3. 目标辐能面板/实测：淤积期间护盾维持显著抬升（目检目标开盾时幅能上涨加快）。
 4. 命中船体：可见 EMP 电弧连向武器/引擎部位，武器被瘫痪火花；v2 档触发频率符合 30% 体感。
 5. 弹匣节奏：满匣倾泻 1.5s（小）/ 3s（重），之后进入约 12s 满充周期；射速 20 发/s 无卡壳。
 6. 产出上限：对高耗散主力舰叠层可上高位但「维持追加量 + 软辐能」不超其耗散 200%；对低耗散护卫快速触顶（devMode 日志核对 factor 值）。
-7. 难度隔离：LunaLib k_s=5 下玩家持有仍 +2%/层、3 su/s 每层（护卫档）、30%/150%；敌版 +5%/层、5 su/s、60%/300%。
+7. 难度隔离：LunaLib k_s=5 下玩家持有仍 +2%/层、1.5 su/s 每层（护卫档）、30%/150%；敌版 +5%/层、2.5 su/s、60%/300%。
 8. 弹体 VFX：冷蓝白 texTrail 箭弹，小型细/中型粗；无原版弹体残留、无拖尾错位；泄放电弧冷蓝白。
 9. 玩家被敌版命中：出现 negative 状态条目；hulk 化后条目与 stat 修改同时消失（无残留）。
 10. devMode FPS：20 发/s 持续命中下无明显掉帧（BuffTickPlugin 遍历成本登记观察）。
@@ -405,7 +406,7 @@ engine.spawnEmpArc(source, from, ship, anchorEntity, DamageType.ENERGY,
 - [ ] 叠层走 `StackableBuff` 接口与 `ShipAPI.buffHost()`，未自建 customData 状态表；Weapon 级 callIndex 走复合键 Buff。
 - [ ] 玩家固定 v2 取值在 OnHit 每次命中处调用（非缓存，含目标 `hullSize` 分档）；泄放随机走 `CombatRandom`，同帧不二次取值。
 - [ ] `dissipationCapFactor` 分支（不超上限放行/超限同步压缩/两项为零/`dissipation ≤ 0`/恰等上限）与 WARN·ERROR 日志落地；层数上限为绝对上限 200。
-- [ ] 固定软辐能按体型分档（护卫/驱逐/巡洋/主力）且逐帧 `increaseFlux(soft)` 直写；HUD 读数与实际产出同口径（乘本帧折算系数）。
+- [ ] 固定软辐能按体型分档（护卫/驱逐/巡洋/主力）、仅护盾开启期间逐帧 `increaseFlux(soft)` 直写（关盾停产且消散翻倍）；HUD 读数与实际产出同口径（乘本帧折算系数）。
 - [ ] `onRemove` unmodify 与心跳回收链路完整；HUD 双向（攻击方/受击方）维护。
 
 **特效面**

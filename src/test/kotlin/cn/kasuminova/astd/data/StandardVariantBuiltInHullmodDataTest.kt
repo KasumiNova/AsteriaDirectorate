@@ -90,7 +90,6 @@ class StandardVariantBuiltInHullmodDataTest {
             "astd_zl_001" to listOf("astd_nano_restoration_protocol", "astd_zero_point_compute_core"),
             "astd_xc_102" to listOf(
                 "advancedcore",
-                "armoredweapons",
                 "astd_arc_advanced_fire_control",
                 "astd_arc_shared_tactical_network",
             ),

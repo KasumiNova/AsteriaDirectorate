@@ -50,6 +50,7 @@ object Desc_astd_plasma_armor_shield_boost : LocalizedDescription("astd_plasma_a
 object Desc_astd_limit_temporal_thruster : LocalizedDescription("astd_limit_temporal_thruster", "SHIP_SYSTEM")
 object Desc_astd_echo_fixation_crewed : LocalizedDescription("astd_echo_fixation_crewed", "SHIP_SYSTEM")
 object Desc_astd_echo_fixation_automated : LocalizedDescription("astd_echo_fixation_automated", "SHIP_SYSTEM")
+object Desc_astd_gravity_phase : LocalizedDescription("astd_gravity_phase", "SHIP_SYSTEM")
 
 object Desc_astd_gcp12 : LocalizedDescription("astd_gcp12", "WEAPON")
 object Desc_astd_gcp8 : LocalizedDescription("astd_gcp8", "WEAPON", notesId = "astd_gcp12")

@@ -37,6 +37,12 @@ abstract class ShipSystemWithSystemFileEntry : ShipSystemEntry(), SsExtraOutputs
     /** `.system` 的 outOfUsesSound 字段：不可用音效 id；为 null 时不写入。 */
     open val outOfUsesSound: String? = null
 
+    /**
+     * 额外 `.system` 字段（值按 JSON 原文写入，不转义）：相位披风类系统所需的
+     * `runScriptWhilePaused` / `effectColor1` / `engineGlowLengthMult` 等超出基础字段面的键。
+     */
+    open val extraSystemRawFields: Map<String, String> = emptyMap()
+
     override fun extraFiles(): List<GeneratedFile> {
         val fields = linkedMapOf<String, String>(
             "id" to id,
@@ -54,8 +60,16 @@ abstract class ShipSystemWithSystemFileEntry : ShipSystemEntry(), SsExtraOutputs
         deactivateSound?.let { fields["deactivateSound"] = it }
         outOfUsesSound?.let { fields["outOfUsesSound"] = it }
 
-        val body = fields.entries.joinToString(",\n") { (k, v) ->
-            "    \"$k\": \"$v\""
+        val body = buildString {
+            fields.entries.joinTo(this, ",\n") { (k, v) ->
+                "    \"$k\": \"$v\""
+            }
+            if (extraSystemRawFields.isNotEmpty()) {
+                append(",\n")
+                extraSystemRawFields.entries.joinTo(this, ",\n") { (k, v) ->
+                    "    \"$k\": $v"
+                }
+            }
         }
         val json = "{\n$body\n}\n"
 

@@ -43,8 +43,8 @@ class ArcShipResourceAdaptationTest {
     @Test
     fun `production arc ships have vanilla-like logistics data`() {
         val rows = readCsvRows(Path.of("contents/data/hulls/ship_data.csv"))
-        assertLogistics(rows.getValue("astd_xc_102"), ShipLogistics(400, 500, 300, 300, 10, 30, 8, 300000, 3.0, 15.0, 720, 0.25, 40, 40))
-        assertLogistics(rows.getValue("astd_xc_101"), ShipLogistics(150, 250, 150, 100, 3, 33, 8, 100000, 3.0, 12.0, 600, 0.25, 20, 20))
+        assertLogistics(rows.getValue("astd_xc_102"), ShipLogistics(400, 800, 800, 600, 10, 30, 8, 300000, 3.0, 15.0, 720, 0.25, 60, 60))
+        assertLogistics(rows.getValue("astd_xc_101"), ShipLogistics(150, 300, 400, 300, 3, 33, 8, 100000, 3.0, 12.0, 600, 0.25, 26, 26))
         assertLogistics(rows.getValue("astd_xc_103"), ShipLogistics(50, 70, 80, 50, 2, 25, 9, 45000, 5.0, 15.0, 360, 0.25, 11, 11))
     }
 

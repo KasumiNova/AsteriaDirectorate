@@ -90,6 +90,70 @@ object Sys_astd_emergency_recall : ShipSystemWithSystemFileEntry() {
     override val icon: String = "graphics/icons/hullsys/drone_pd_high.png"
 }
 
+/**
+ * 密蒙级防御系统「引力相位」（相位舰船化改造，2026-09）。
+ *
+ * 行为与原版相位线圈（phasecloak / PhaseCloakStats）一致；独立系统 id 的意义：
+ * - 防御名从原版「相位线圈」独立为「引力相位」（ship_data.csv defense id 指向本系统）；
+ * - statsScript 指向 [GravityPhaseCloakStats]（PhaseCloakStats 子类）——后续引力相位专属特效
+ *   的接入点，舰船侧无需再改。
+ *
+ * 数值对齐原版 phasecloak 行（toggle/noHardDissipation/hardFlux/noFiring/noShield/isPhaseCloak）；
+ * 相位激活/维持辐能消耗在 ship_data.csv 的 phase cost/upkeep（按辐能容量比例）配置。
+ */
+object Sys_astd_gravity_phase : ShipSystemWithSystemFileEntry() {
+    override val id: String = "astd_gravity_phase"
+    override val name: String = systemName(id)
+
+    override val statsScript: String =
+        "cn.kasuminova.astd.combat.shipsystems.GravityPhaseCloakStats"
+
+    override val systemType: String = "PHASE_CLOAK"
+    override val aiType: String = "PHASE_CLOAK"
+
+    override val toggle: Boolean = true
+    override val noHardDissipation: Boolean = true
+    override val hardFlux: Boolean = true
+    override val noFiring: Boolean = true
+    override val noShield: Boolean = true
+    override val isPhaseCloak: Boolean = true
+
+    override val chargeUp: Double = 0.5
+    override val active: Double? = null
+    override val down: Double = 0.5
+    override val cooldown: Double = 2.0
+
+    override val tags: String = "defensive"
+    override val icon: String = "graphics/icons/hullsys/phase_cloak.png"
+
+    override val useSound: String = "system_phase_cloak_activate"
+    override val deactivateSound: String = "system_phase_cloak_deactivate"
+    override val outOfUsesSound: String = "system_phase_cloak_collision"
+
+    // 相位披风 .system 必备字段（对齐原版 phasecloak.system；特效色取紫菀引力系紫色调）。
+    override val extraSystemRawFields: Map<String, String> = linkedMapOf(
+        "runScriptWhilePaused" to "true",
+        "runScriptWhileIdle" to "true",
+        "blockActionsWhileChargingDown" to "false",
+        "canNotCauseOverload" to "true",
+        "phaseHighlight" to "\"_glow1\"",
+        "phaseDiffuse" to "\"_glow2\"",
+        "effectColor1" to "[190,140,255,255]",
+        "effectColor2" to "[130,80,255,150]",
+        "clampTurnRateAfter" to "true",
+        "clampMaxSpeedAfter" to "true",
+        "engineGlowColor" to "[0,0,0,0]",
+        "engineGlowContrailColor" to "[0,0,0,0]",
+        "engineGlowLengthMult" to "0",
+        "engineGlowWidthMult" to "0",
+        "engineGlowGlowMult" to "0",
+        "soundFilterType" to "\"LOWPASS\"",
+        "soundFilterGain" to "0.8",
+        "soundFilterGainHF" to "0.25",
+        "shipAlpha" to "1",
+    )
+}
+
 object Sys_astd_em_smoke : ShipSystemWithSystemFileEntry() {
     override val id: String = "astd_em_smoke"
     override val name: String = systemName(id)

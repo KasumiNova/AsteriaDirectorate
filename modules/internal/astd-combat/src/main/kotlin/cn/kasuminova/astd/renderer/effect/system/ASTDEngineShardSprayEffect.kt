@@ -36,24 +36,24 @@ internal object ASTDEngineShardSprayEffect {
     private const val SCAN_INTERVAL = 0.5f
 
     /** 碎片灌批节拍（秒）：每节拍把各引擎累积的碎片灌成一个实例化批。 */
-    private const val FLUSH_INTERVAL = 0.15f
+    private const val FLUSH_INTERVAL = 0.1f
 
     /** 每引擎每秒喷散数量域（按火焰 level 线性插值）。 */
-    private const val RATE_MIN = 1.5f
-    private const val RATE_MAX = 16f
+    private const val RATE_MIN = 1f
+    private const val RATE_MAX = 12f
 
     /** 碎片喷射初速域（su/s，按 level 插值；方向沿喷口喷射方向）。 */
-    private const val SPEED_MIN = 45f
-    private const val SPEED_MAX = 190f
+    private const val SPEED_MIN = 15f
+    private const val SPEED_MAX = 180f
 
     /** 低于该 level 不喷散（熄火/近零出力）。 */
     private const val LEVEL_EPSILON = 0.05f
 
     /** 喷散锥半角（度）：绕喷射方向的随机散布。 */
-    private const val SPREAD_DEG = 14f
+    private const val SPREAD_DEG = 10f
 
-    /** 继承船体速度比例，避免碎片相对舰体完全悬停。 */
-    private const val SHIP_VEL_INHERIT = 0.5f
+    /** 继承船体速度比例（1.0=碎片与舰体同速基准，喷散仅体现引擎相对喷射速度）。 */
+    private const val SHIP_VEL_INHERIT = 1f
 
     /** 核心色提亮倍率（引擎色的提亮副本，碎片按 coreRatio 概率取用）。 */
     private const val CORE_BRIGHTEN = 1.4f
@@ -161,13 +161,13 @@ internal object ASTDEngineShardSprayEffect {
                 }
                 val core = brighten(engineColor)
 
-                // 尺寸基准取喷口宽度：碎片边长 ≈ 宽度×0.16（clamp 2.5~9）×抖动，随 level 再乘 sizeScale。
+                // 尺寸基准取喷口宽度：碎片边长 ≈ 宽度×0.16（clamp 4~8）×抖动，随 level 再乘 sizeScale。
                 val spec = TriShardSpec(
                     batchCount = 1,
                     layer = CombatEngineLayers.BELOW_SHIPS_LAYER,
                     sizeMul = 0.16f,
-                    sizeMin = 2.5f,
-                    sizeMax = 9f,
+                    sizeMin = 4f,
+                    sizeMax = 8f,
                     spinMin = 90f,
                     spinMax = 360f,
                     alphaLo = 110,
