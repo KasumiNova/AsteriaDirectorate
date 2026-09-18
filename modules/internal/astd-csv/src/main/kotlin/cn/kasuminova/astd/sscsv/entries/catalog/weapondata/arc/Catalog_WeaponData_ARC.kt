@@ -42,7 +42,9 @@ object Wpn_astd_aod7 : WeaponDataEntry(), SsProjProjectileOutputs {
     override val ammoPerSec: Double = 0.8333
     override val reloadSize: Int = 5
 
-    override val tags: String = "astd_signature"
+    // autofit 类别标签（CoreAutofitPlugin 按 类别+等级 匹配，缺失会导致装配方案无法装回本武器）
+    // 等级对齐原版 LARGE ENERGY 带（18~22）
+    override val tags: String = "energy20, astd_signature"
     override val groupTag: String = "astd"
     override val tech: String = "菀星设计局-星坠"
     override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
@@ -236,7 +238,9 @@ object Wpn_astd_spc3 : WeaponDataEntry(), SsProjProjectileOutputs {
     override val energyPerShot: Int = 150
     override val energyPerSecond: Int = 2239
     override val projSpeed: Int = 1350
-    override val tags: String = "astd_signature"
+    // autofit 类别标签（CoreAutofitPlugin 按 类别+等级 匹配，缺失会导致装配方案无法装回本武器）
+    // 等级对齐原版 MEDIUM ENERGY 带（12~15）
+    override val tags: String = "energy13, astd_signature"
     override val groupTag: String = "astd"
     override val tech: String = "菀星设计局-星坠"
     override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
@@ -291,7 +295,8 @@ object Wpn_astd_charge_needle : WeaponDataEntry(), SsProjProjectileOutputs {
     override val maxSpread: Double = 10.0
     override val spreadPerShot: Double = 0.66
     override val spreadDecayPerSec: Double = 5.0
-    override val tags: String = "astd_production"
+    // autofit 类别标签（CoreAutofitPlugin 按 类别+等级 匹配，缺失会导致装配方案无法装回本武器）
+    override val tags: String = "energy8, astd_production"
     override val groupTag: String = "astd"
     override val tech: String = "菀星设计局-星坠"
     override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
@@ -346,7 +351,8 @@ object Wpn_astd_heavy_charge_needle : WeaponDataEntry(), SsProjProjectileOutputs
     // 窄射界挂载（如野狼 WS 004 仅 5° 弧）下原版 AutofireAI 的目标采纳测试按武器弧判定会拒绝目标
     // （实机诊断：aiTarget=null 永不击发）；对齐 shockrepeater 先例补 25° AI 弧度补偿。
     override val extraArcForAI: Int = 25
-    override val tags: String = "astd_production"
+    // autofit 类别标签（CoreAutofitPlugin 按 类别+等级 匹配，缺失会导致装配方案无法装回本武器）
+    override val tags: String = "energy14, astd_production"
     override val groupTag: String = "astd"
     override val tech: String = "菀星设计局-星坠"
     override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
@@ -405,7 +411,8 @@ object Wpn_astd_electric_drive_accelerator : WeaponDataEntry(), SsProjProjectile
     override val maxSpread: Double = 8.0
     override val spreadPerShot: Double = 0.0
     override val spreadDecayPerSec: Double = 4.0
-    override val tags: String = "astd_production"
+    // autofit 类别标签（CoreAutofitPlugin 按 类别+等级 匹配，缺失会导致装配方案无法装回本武器）
+    override val tags: String = "kinetic12, astd_production"
     override val groupTag: String = "astd"
     override val tech: String = "菀星设计局-星坠"
     override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
@@ -459,7 +466,8 @@ object Wpn_astd_qiongjue_phase_railgun : WeaponDataEntry(), SsProjProjectileOutp
     override val accuracyStr: String = "完美"
     // 完美精度（对齐原版高斯炮口径）
     override val autofireAccBonus: Int = 1
-    override val tags: String = "astd_production"
+    // autofit 类别标签（CoreAutofitPlugin 按 类别+等级 匹配，缺失会导致装配方案无法装回本武器）
+    override val tags: String = "kinetic18, LR, astd_production"
     override val groupTag: String = "astd"
     override val tech: String = "菀星设计局-星坠"
     override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
@@ -514,7 +522,8 @@ object Wpn_astd_positron_shockwave : WeaponDataEntry(), SsProjProjectileOutputs 
     // 淡出与满射程同帧发生，引信脚本满射程判定先于淡出兜底执行（第四轮烟测实证钳制机制）。
     override val flightTime: Double = 0.75
     override val aiHints: Set<AiHint> = setOf(AiHint.PD)
-    override val tags: String = "astd_production"
+    // autofit 类别标签（CoreAutofitPlugin 按 类别+等级 匹配，缺失会导致装配方案无法装回本武器）
+    override val tags: String = "pd7, SR, astd_production"
     override val groupTag: String = "astd"
     override val tech: String = "菀星设计局-星坠"
     override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
@@ -638,7 +647,8 @@ object Wpn_astd_gemini_dem_launcher : WeaponDataEntry(), SsProjMissileOutputs {
     // 2500su ÷ 225 ≈ 11.1s 上浮（烟测校正面）
     override val flightTime: Double = 14.0
     override val projHitpoints: Int = 600
-    override val tags: String = "astd_production"
+    // autofit 类别标签（CoreAutofitPlugin 按 类别+等级 匹配，缺失会导致装配方案无法装回本武器）
+    override val tags: String = "missile12, strike8, astd_production"
     override val groupTag: String = "astd"
     override val tech: String = "菀星设计局-星坠"
     override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
@@ -687,7 +697,8 @@ object Wpn_astd_gemini_dem_pod : WeaponDataEntry() {
     override val projSpeed: Int = 225
     override val flightTime: Double = 14.0
     override val projHitpoints: Int = 600
-    override val tags: String = "astd_production"
+    // autofit 类别标签（CoreAutofitPlugin 按 类别+等级 匹配，缺失会导致装配方案无法装回本武器）
+    override val tags: String = "missile17, strike13, astd_production"
     override val groupTag: String = "astd"
     override val tech: String = "菀星设计局-星坠"
     override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
@@ -919,7 +930,9 @@ object Wpn_astd_heavy_ion_pulse : WeaponDataEntry(), SsProjProjectileOutputs {
     override val maxSpread: Double = 20.0
     override val spreadPerShot: Double = 1.0
     override val spreadDecayPerSec: Double = 4.0
-    override val tags: String = "astd_production"
+    // autofit 类别标签（CoreAutofitPlugin 按 类别+等级 匹配，缺失会导致装配方案无法装回本武器）
+    // 等级对齐原版 LARGE ENERGY 带（18~22）
+    override val tags: String = "energy18, astd_production"
     override val groupTag: String = "astd"
     override val tech: String = "菀星设计局-星坠"
     override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")

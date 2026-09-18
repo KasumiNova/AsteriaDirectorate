@@ -8,11 +8,13 @@ import cn.kasuminova.astd.campaign.story.StoryDialogInstall;
 import cn.kasuminova.astd.campaign.world.StoryWorldBootstrap;
 import cn.kasuminova.astd.combat.effect.joint.stardust.StardustMoteAiPicker;
 import cn.kasuminova.astd.combat.hullmods.arc.ASTDXc001HullModUtilKt;
+import cn.kasuminova.astd.combat.hullmods.base.ASTDCampaignPlugin;
 import cn.kasuminova.astd.combat.hullmods.lens.LensArrayCoreModeUtilKt;
 import cn.kasuminova.astd.impl.buff.BuffInstall;
 import cn.kasuminova.astd.impl.difficulty.DifficultySettingsRegistrar;
 import cn.kasuminova.astd.renderer.effect.system.WeaponAmbientGlowManager;
 import com.fs.starfarer.api.BaseModPlugin;
+import com.fs.starfarer.api.Global;
 import com.fs.starfarer.api.PluginPick;
 import com.fs.starfarer.api.combat.MissileAIPlugin;
 import com.fs.starfarer.api.combat.MissileAPI;
@@ -81,6 +83,9 @@ public final class AsteriaDirectoratePlugin extends BaseModPlugin {
         StoryWorldBootstrap.INSTANCE.onGameLoad(newGame);
         // 生涯集成自动化（astd.careerAutomation.enabled 属性门控 + automation 模块在包内才生效）
         CareerAutomationInstall.onGameLoad();
+        // 战役插件：向原版插件挑选体系暴露 ASTDAutofitPlugin（双模式舰自动装配保护）。
+        // 固定 id 去重，重复读档注册互相替换；0.98 ModPlugin 不继承 CampaignPlugin，必须走 registerPlugin。
+        Global.getSector().registerPlugin(new ASTDCampaignPlugin());
         if (!newGame) {
             AsteriaTestCampaignBootstrap.repairExistingTestStorageIfEnabled();
             AsteriaTestCampaignBootstrap.resumePendingTeleportIfEnabled();

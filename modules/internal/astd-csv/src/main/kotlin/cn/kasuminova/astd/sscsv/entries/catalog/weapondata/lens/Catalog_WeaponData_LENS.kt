@@ -109,7 +109,8 @@ object Wpn_astd_gcp12 : WeaponDataEntry() {
     override val beamSpeed: Int = 10000
     override val projSpeed: Int = 0
 
-    override val tags: String = "astd_production"
+    // autofit 类别标签（CoreAutofitPlugin 按 类别+等级 匹配，缺失会导致装配方案无法装回本武器）
+    override val tags: String = "beam16, he16, LR, astd_production"
     override val groupTag: String = "astd"
     override val tech: String = "菀星设计局-紫菀"
     override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
@@ -145,7 +146,8 @@ object Wpn_astd_gcp8 : WeaponDataEntry() {
     override val beamSpeed: Int = 10000
     override val projSpeed: Int = 0
 
-    override val tags: String = "astd_production"
+    // autofit 类别标签（CoreAutofitPlugin 按 类别+等级 匹配，缺失会导致装配方案无法装回本武器）
+    override val tags: String = "beam12, he12, astd_production"
     override val groupTag: String = "astd"
     override val tech: String = "菀星设计局-紫菀"
     override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
@@ -181,7 +183,8 @@ object Wpn_astd_gcp4 : WeaponDataEntry() {
     override val beamSpeed: Int = 10000
     override val projSpeed: Int = 0
 
-    override val tags: String = "astd_production"
+    // autofit 类别标签（CoreAutofitPlugin 按 类别+等级 匹配，缺失会导致装配方案无法装回本武器）
+    override val tags: String = "beam8, he8, astd_production"
     override val groupTag: String = "astd"
     override val tech: String = "菀星设计局-紫菀"
     override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
@@ -218,7 +221,8 @@ object Wpn_astd_gcp2 : WeaponDataEntry() {
     override val projSpeed: Int = 0
 
     override val aiHints: Set<AiHint> = setOf(AiHint.PD)
-    override val tags: String = "astd_production"
+    // autofit 类别标签（CoreAutofitPlugin 按 类别+等级 匹配，缺失会导致装配方案无法装回本武器）
+    override val tags: String = "pd6, beam6, SR, astd_production"
     override val groupTag: String = "astd"
     override val tech: String = "菀星设计局-紫菀"
     override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
