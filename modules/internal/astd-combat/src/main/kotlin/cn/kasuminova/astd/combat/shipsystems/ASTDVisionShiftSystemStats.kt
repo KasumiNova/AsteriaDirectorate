@@ -12,6 +12,7 @@ import com.fs.starfarer.api.combat.DamageAPI
 import com.fs.starfarer.api.combat.DamagingProjectileAPI
 import com.fs.starfarer.api.combat.MutableShipStatsAPI
 import com.fs.starfarer.api.combat.ShipAPI
+import com.fs.starfarer.api.combat.ShipSystemAPI
 import com.fs.starfarer.api.impl.combat.BaseShipSystemScript
 import com.fs.starfarer.api.combat.listeners.AdvanceableListener
 import com.fs.starfarer.api.combat.listeners.DamageTakenModifier
@@ -34,9 +35,12 @@ import java.awt.Color
  * per-source stat id（[targetStatId]）各自写入、各自清理，互不覆盖；
  * listener 每标记一份实例（创建 mark 时挂接，标记消失/目标死亡/源舰死亡时自移除）。
  *
- * 目标失效清理路径：系统结束（unapply）、目标死亡/hulk/退场（每帧校验 + listener 心跳）、
+ * 目标失效清理路径：系统结束（unapply）、目标死亡/hulk/退场（每帧校验 + listener 心跳，
+ * 激活窗口内目标失效即 deactivate 提前结束系统）、
  * 本舰死亡（listener 心跳校验 mark.source 存活，系统脚本随舰终止不再刷写后标记即收）、
  * 激活期目标切换不追随（锁定口径：施放瞬间定格，不重选）。
+ * 激活门禁：[isUsable] 仅在存在有效目标候选（锁定目标/鼠标附近/最近敌舰）时放行，
+ * 无有效目标时系统不可激活（HUD 灰置，AI 侧由 ASTDVisionShiftSystemAI 自行门禁）。
  * 数值三锚点见 [VisionShiftTuning]；与奇点稳定器交互：目标舰的时间流速下限钳制
  * 在 hullmod advanceInCombat 中每帧执行，天然免疫本压制（设计预期）。
  */
@@ -92,6 +96,10 @@ class ASTDVisionShiftSystemStats : BaseShipSystemScript() {
 
         // 窗口内首次 apply：锁定目标并解析数值（施放瞬间定格）
         val mark = obtainMark(ship, engine)
+        if (mark == null && !engine.isPaused) {
+            // 锁定目标失效（被摧毁/停机/退场）或施放瞬间已无有效目标：系统提前结束进入冷却
+            ship.system?.deactivate()
+        }
         val isPlayer = ship.owner == 0
         val values = mark?.values ?: VisionShiftTuning.resolve(DifficultyTuningImpl, isPlayer, null)
 
@@ -117,6 +125,12 @@ class ASTDVisionShiftSystemStats : BaseShipSystemScript() {
         ship ?: return
         ship.setJitterShields(false)
         engine?.customData?.remove(SELF_AFTERIMAGE_KEY_PREFIX + System.identityHashCode(ship))
+    }
+
+    /** 激活门禁：仅当存在有效目标候选时放行（判定口径与施放时 [pickTarget] 一致，无副作用）。 */
+    override fun isUsable(system: ShipSystemAPI, ship: ShipAPI): Boolean {
+        val engine = Global.getCombatEngine() ?: return false
+        return pickTarget(ship, engine) != null
     }
 
     override fun getStatusData(

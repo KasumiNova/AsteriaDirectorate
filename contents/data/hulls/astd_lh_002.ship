@@ -51,7 +51,7 @@
     {
       "id": "WS0003",
       "size": "SMALL",
-      "type": "MISSILE",
+      "type": "BUILT_IN",
       "mount": "HARDPOINT",
       "arc": 0,
       "angle": 135,
@@ -60,7 +60,7 @@
     {
       "id": "WS0004",
       "size": "SMALL",
-      "type": "MISSILE",
+      "type": "BUILT_IN",
       "mount": "HARDPOINT",
       "arc": 0,
       "angle": -140,
@@ -71,17 +71,49 @@
     {
       "location": [-27.5, 22],
       "length": 60,
-      "width": 12,
+      "width": 10,
       "angle": 180,
       "contrailSize": 10,
       "style": "ASTD_LENS"
     },
     {
+      "location": [-27.5, 18],
+      "length": 33,
+      "width": 5,
+      "angle": 180,
+      "contrailSize": 6,
+      "style": "ASTD_LENS"
+    },
+    {
+      "location": [-27.5, 26],
+      "length": 33,
+      "width": 5,
+      "angle": 180,
+      "contrailSize": 6,
+      "style": "ASTD_LENS"
+    },
+    {
       "location": [-28, -15.5],
       "length": 60,
-      "width": 12,
+      "width": 10,
       "angle": 180,
       "contrailSize": 10,
+      "style": "ASTD_LENS"
+    },
+    {
+      "location": [-28, -19.5],
+      "length": 33,
+      "width": 5,
+      "angle": 180,
+      "contrailSize": 6,
+      "style": "ASTD_LENS"
+    },
+    {
+      "location": [-28, -11.5],
+      "length": 33,
+      "width": 5,
+      "angle": 180,
+      "contrailSize": 6,
       "style": "ASTD_LENS"
     },
     {
@@ -93,6 +125,14 @@
       "style": "ASTD_LENS"
     },
     {
+      "location": [-25.8, 42.7],
+      "length": 16,
+      "width": 5,
+      "angle": 145,
+      "contrailSize": 6,
+      "style": "ASTD_LENS"
+    },
+    {
       "location": [-23.5, -40],
       "length": 30,
       "width": 10,
@@ -101,11 +141,35 @@
       "style": "ASTD_LENS"
     },
     {
+      "location": [-25.8, -36.7],
+      "length": 16,
+      "width": 5,
+      "angle": -145,
+      "contrailSize": 6,
+      "style": "ASTD_LENS"
+    },
+    {
       "location": [-35.5, 3.5],
       "length": 60,
-      "width": 12,
+      "width": 10,
       "angle": 180,
       "contrailSize": 10,
+      "style": "ASTD_LENS"
+    },
+    {
+      "location": [-35.5, -0.5],
+      "length": 33,
+      "width": 5,
+      "angle": 180,
+      "contrailSize": 6,
+      "style": "ASTD_LENS"
+    },
+    {
+      "location": [-35.5, 7.5],
+      "length": 33,
+      "width": 5,
+      "angle": 180,
+      "contrailSize": 6,
       "style": "ASTD_LENS"
     }
   ],

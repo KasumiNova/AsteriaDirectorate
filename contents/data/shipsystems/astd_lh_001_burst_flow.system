@@ -4,5 +4,5 @@
     "aiType": "CUSTOM",
     "aiScript": "cn.kasuminova.astd.combat.shipsystems.ASTDBurstFlowSystemAI",
     "statsScript": "cn.kasuminova.astd.combat.shipsystems.ASTDBurstFlowSystemStats",
-    "useSound": "system_temporal_shell"
+    "useSound": "system_temporalshell"
 }

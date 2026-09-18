@@ -27,7 +27,8 @@ object Sys_astd_lh_001_burst_flow : ShipSystemWithSystemFileEntry() {
     override val cooldown: Double = 1.0
 
     override val icon: String = "graphics/icons/hullsys/temporal_shell.png"
-    override val useSound: String = "system_temporal_shell"
+    // 音效 id 以 data/config/sounds.json 为准（无第二个下划线）
+    override val useSound: String = "system_temporalshell"
 }
 
 /** 飞星 (LENS)（LH-002）：「视界变速」——自身时流提升 + 单目标时流压制与伤害转嫁，10s 持续、15s 冷却。 */
@@ -45,5 +46,5 @@ object Sys_astd_lh_002_vision_shift : ShipSystemWithSystemFileEntry() {
     override val cooldown: Double = 15.0
 
     override val icon: String = "graphics/icons/hullsys/quantum_disruptor.png"
-    override val useSound: String = "system_quantum_disruptor"
+    override val useSound: String = "system_quantumdisruptor"
 }

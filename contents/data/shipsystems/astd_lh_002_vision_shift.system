@@ -4,5 +4,5 @@
     "aiType": "CUSTOM",
     "aiScript": "cn.kasuminova.astd.combat.shipsystems.ASTDVisionShiftSystemAI",
     "statsScript": "cn.kasuminova.astd.combat.shipsystems.ASTDVisionShiftSystemStats",
-    "useSound": "system_quantum_disruptor"
+    "useSound": "system_quantumdisruptor"
 }
