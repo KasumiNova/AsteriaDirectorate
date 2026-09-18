@@ -34,8 +34,8 @@ description: "ss-csv 使用规范与编辑规范：生成流程、目录约定�
 ## 生成入口与目录约定
 
 - 入口任务（见 `modules/internal/astd-csv/build.gradle.kts`）：
-  - `:astd-csv:generateSsCsv` → 输出到 `build/generated/ss-csv/`（安全）
-  - `:astd-csv:writeSsCsvToContents -PssCsvForce=true` → 覆盖写入 `contents/`（危险）
+  - `:astd-csv:generateSsCsv` → 输出到 `build/generated/ss-csv/`（安全；每次生成前清空输出目录，条目删除/改名不会残留旧产物）
+  - `:astd-csv:writeSsCsvToContents -PssCsvForce=true` → 覆盖写入 `contents/`（危险；生成前按 `contents/.ss-csv-manifest` 清单删除上一次直写的陈旧产物，清单不入 mod 产物与 git）
 - i18n 语言：`-Psscsv.locale=zh-cn|en-us`（默认 `zh-cn`）
 - 扫描包固定为：`cn.kasuminova.astd.sscsv.entries.catalog`（不在该包/子包的 entry 不会被扫描）
 

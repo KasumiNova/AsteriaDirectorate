@@ -19,6 +19,10 @@ private data class GenArgs(
     val schemaDir: Path,
     val scanPkg: String,
     val commentMode: CommentMode,
+    // 产物清单输出路径（可选）：写入本次生成的全部文件（相对 outDir，一行一个）。
+    // 供直写受管目录（如 contents/）的调用方在下一次生成前按清单清理陈旧产物——
+    // 生成器只写不删，条目删除/改名后旧文件会残留并扩散成加载错误。
+    val manifestPath: Path?,
 )
 
 private enum class CommentMode {
@@ -47,6 +51,7 @@ private fun parseArgs(raw: Array<String>): GenArgs {
     var schema: String? = null
     var scan: String? = null
     var comment: String? = null
+    var manifest: String? = null
 
     var i = 0
     while (i < raw.size) {
@@ -67,6 +72,10 @@ private fun parseArgs(raw: Array<String>): GenArgs {
                 comment = requireValue(i)
                 i += 2
             }
+            "--manifest" -> {
+                manifest = requireValue(i)
+                i += 2
+            }
             else -> error("Unknown arg: ${raw[i]}")
         }
     }
@@ -83,7 +92,13 @@ private fun parseArgs(raw: Array<String>): GenArgs {
         else -> error("Unknown --comment value: $comment (expected inline|sidecar|both|none)")
     }
 
-    return GenArgs(outDir = outDir, schemaDir = schemaDir, scanPkg = scanPkg, commentMode = commentMode)
+    return GenArgs(
+        outDir = outDir,
+        schemaDir = schemaDir,
+        scanPkg = scanPkg,
+        commentMode = commentMode,
+        manifestPath = manifest?.let { Path.of(it) },
+    )
 }
 
 private data class GenResult(val entriesFound: Int, val filesWritten: Int)
@@ -93,6 +108,12 @@ private fun generate(args: GenArgs): GenResult {
     val grouped = entries.groupBy { it.target }
 
     var files = 0
+    // 本次生成的全部产物（相对 outDir），供 --manifest 清单输出。
+    val written = mutableListOf<String>()
+
+    fun record(path: Path) {
+        written += args.outDir.normalize().relativize(path.normalize()).toString().replace('\\', '/')
+    }
 
     for ((target, list) in grouped) {
         val header = readHeader(args.schemaDir.resolve(target.headerSchemaFile))
@@ -106,6 +127,7 @@ private fun generate(args: GenArgs): GenResult {
 
         val outFile = args.outDir.resolve(target.outputPath)
         writeCsv(outFile, header, sorted, args.commentMode)
+        record(outFile)
         files++
 
         // Sidecar comments (legacy/safe)
@@ -124,6 +146,7 @@ private fun generate(args: GenArgs): GenResult {
                         commentLines.forEach { appendLine(it) }
                     }
                 )
+                record(commentFile)
                 files++
             }
         }
@@ -134,6 +157,11 @@ private fun generate(args: GenArgs): GenResult {
         .flatMap { it.extraFiles() }
 
     files += writeExtraFiles(args.outDir, extraFiles)
+    extraFiles.forEach { record(args.outDir.resolve(it.relativePath.replace('\\', '/'))) }
+
+    args.manifestPath?.let { manifest ->
+        writeText(manifest, written.distinct().sorted().joinToString("\n", postfix = "\n"))
+    }
 
     return GenResult(entriesFound = entries.size, filesWritten = files)
 }

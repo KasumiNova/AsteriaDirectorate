@@ -47,6 +47,13 @@ tasks.register<JavaExec>("generateSsCsv") {
     val outDir = rootProject.layout.buildDirectory.dir("generated/ss-csv").get().asFile
     val schemaDir = rootProject.projectDir.resolve("tools/_schema_headers")
 
+    doFirst {
+        // 生成器只写不删：条目删除/改名后旧产物会残留在输出目录，并沿 mod_production →
+        // 部署目录扩散成致命加载错误（如 ship_systems.csv is missing systems）。
+        // 每次生成前清空输出目录（build 目录，全量再生，无增量损失）。
+        delete(outDir)
+    }
+
     args(
         "--out", outDir.absolutePath,
         "--schema", schemaDir.absolutePath,
@@ -66,6 +73,14 @@ tasks.register<JavaExec>("writeSsCsvToContents") {
 
     systemProperties["sscsv.locale"] = (project.findProperty("sscsv.locale") as? String)?.trim()?.ifBlank { "zh-cn" } ?: "zh-cn"
 
+    val outDir = rootProject.projectDir.resolve("contents")
+    val schemaDir = rootProject.projectDir.resolve("tools/_schema_headers")
+    // 产物清单：记录上一次直写 contents 的全部生成物（相对 contents 根，一行一个）。
+    // 生成器只写不删，条目删除/改名后旧产物会残留并沿 mod_production → 部署目录扩散成
+    // 致命加载错误（如 ship_systems.csv is missing systems）；每次直写前先按清单清理。
+    // 清单不进 mod 产物（根工程 copyContents 已 exclude），也不入 git（本地状态文件）。
+    val manifestFile = outDir.resolve(".ss-csv-manifest")
+
     doFirst {
         val force = (project.findProperty("ssCsvForce") as? String)?.trim()?.lowercase()
         if (force != "true") {
@@ -73,16 +88,26 @@ tasks.register<JavaExec>("writeSsCsvToContents") {
                 "Refusing to overwrite contents/. Re-run with -PssCsvForce=true if you're sure."
             )
         }
+        if (manifestFile.isFile) {
+            manifestFile.readLines()
+                .map { it.trim() }
+                .filter { it.isNotEmpty() }
+                .forEach { rel ->
+                    val stale = outDir.resolve(rel).normalize()
+                    // 防越界：清单条目必须落在 contents 内才允许删除。
+                    if (stale.startsWith(outDir.normalize()) && stale.isFile) {
+                        stale.delete()
+                    }
+                }
+        }
     }
-
-    val outDir = rootProject.projectDir.resolve("contents")
-    val schemaDir = rootProject.projectDir.resolve("tools/_schema_headers")
 
     args(
         "--out", outDir.absolutePath,
         "--schema", schemaDir.absolutePath,
         "--scan", "cn.kasuminova.astd.sscsv.entries.catalog",
-        "--comment", "inline"
+        "--comment", "inline",
+        "--manifest", manifestFile.absolutePath,
     )
 }
 

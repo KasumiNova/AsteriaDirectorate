@@ -4,6 +4,7 @@ import cn.kasuminova.astd.combat.lens.system.FighterGravLinkTuning
 import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import cn.kasuminova.astd.internal.i18n.I18n
 import com.fs.starfarer.api.Global
+import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.MutableShipStatsAPI
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.impl.combat.BaseShipSystemScript
@@ -21,9 +22,14 @@ import java.awt.Color
  *    战机附加持续 jitter 特效（透镜紫）。buff 打在战机自身 mutableStats 上（原版无航母侧
  *    「战机承伤」键），随系统结束在本脚本 unapply / OUT 帧严格配对 unmodify。
  * 2. **代价（IN/ACTIVE）**：每秒产出舰船**基础**最大辐能 7% 的软辐能（按 effectLevel 折算）；
- *    进入 OUT 瞬间将未耗散的全部软辐能等量转化为硬辐能（可能直接过载，设计本意）。
+ *    进入 OUT 瞬间将全部当前辐能直接置为硬辐能（`setHardFlux(currFlux)`：软辐能等量硬化）。
+ *    不用 `increaseFlux(x, true)`——其在散辐/过载状态下被原版闸门静默吞掉（返回 false 且
+ *    不记日志），会导致软辐能扣了却没转化；`setHardFlux` 无闸门。注意 `setHardFlux` 只做赋值，
+ *    转化本身不会触发过载判定；真实代价是辐能全量定格为硬辐能后，下一次任意硬辐能来源
+ *    （如护盾吸伤）即可能把舰船推进过载。
  * 3. **召回（ACTIVE → OUT 瞬间，一次性）**：全部部署在外的战机即刻回收进机库并快速重新出击
- *    ——复用原版召回语义：`bay.land()`（瞬时移除）+ 每机 +1 快速整备额度 +
+ *    ——复用原版召回语义：`bay.land()`（瞬时移除；land 内部对整备倒计时 > 10000 的战机自动
+ *    发放快速整备额度，本系统机群倒计时恒为 1e7 量级，无需显式叠加）+
  *    `makeCurrentIntervalFast()`，补机由 wing/bay 既有自动链路完成（0.3~0.8s/架）；
  *    召回音效复用原版召回装置的 `system_phase_skimmer`。
  *
@@ -105,7 +111,7 @@ class FighterGravLinkSystemStats : BaseShipSystemScript() {
     }
 
     /** 持续软辐能产出（IN/ACTIVE 每帧）：基础最大辐能 × 7%/s × effectLevel。 */
-    private fun generateSoftFlux(engine: com.fs.starfarer.api.combat.CombatEngineAPI, ship: ShipAPI, effectLevel: Float) {
+    private fun generateSoftFlux(engine: CombatEngineAPI, ship: ShipAPI, effectLevel: Float) {
         val amount = engine.elapsedInLastFrame
         if (amount <= 0f) return
         val baseMaxFlux = ship.hullSpec.fluxCapacity
@@ -116,31 +122,32 @@ class FighterGravLinkSystemStats : BaseShipSystemScript() {
     /**
      * OUT 首帧一次性触发（customData 闩）：召回全部部署在外的战机 + 软→硬辐能转化。
      */
-    private fun triggerRecallOnce(engine: com.fs.starfarer.api.combat.CombatEngineAPI, ship: ShipAPI) {
+    private fun triggerRecallOnce(engine: CombatEngineAPI, ship: ShipAPI) {
         val latchKey = "$RECALL_DONE_KEY${System.identityHashCode(ship)}"
         if (engine.customData[latchKey] == true) return
         engine.customData[latchKey] = true
 
         // 召回：复用原版召回装置语义（land = 瞬时移除 + 自动整备补员链路）。
+        // land 内部对 fighterTimeBeforeRefit > 10000 的战机自动发放快速整备额度
+        // （本系统机群倒计时恒为 1e7 量级，必中），无需显式叠加 fastReplacements。
         for (wing in ship.allWings) {
             val bay = wing.source ?: continue
-            for (fighter in ArrayList(wing.wingMembers)) {
+            for (fighter in wing.wingMembers) {
                 if (fighter.isHulk) continue
                 Global.getSoundPlayer().playSound(
                     RECALL_SOUND, 1f, 0.5f, fighter.location, fighter.velocity,
                 )
-                bay.fastReplacements = bay.fastReplacements + 1
                 bay.makeCurrentIntervalFast()
                 bay.land(fighter)
             }
         }
 
-        // 代价结算：未耗散的全部软辐能等量转化为硬辐能。
+        // 代价结算：全部当前辐能直接置为硬辐能（软辐能等量硬化）。
+        // 不用 increaseFlux(x, true)——其在散辐/过载状态下被原版闸门静默吞掉；
+        // setHardFlux 无闸门，转化在所有状态下都确定生效。
         val tracker = ship.fluxTracker
-        val soft = FighterGravLinkTuning.softFluxNow(tracker.currFlux, tracker.hardFlux)
-        if (soft > 0f) {
-            tracker.decreaseFlux(soft)
-            tracker.increaseFlux(soft, true)
+        if (FighterGravLinkTuning.softFluxNow(tracker.currFlux, tracker.hardFlux) > 0f) {
+            tracker.setHardFlux(tracker.currFlux)
         }
     }
 

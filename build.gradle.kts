@@ -275,6 +275,8 @@ tasks.named("build") {
 tasks.named<Sync>("copyContents") {
     dependsOn(":astd-csv:generateSsCsv")
     duplicatesStrategy = DuplicatesStrategy.INCLUDE
+    // ss-csv 直写 contents 的本地产物清单（.ss-csv-manifest），不属于 mod 内容。
+    exclude(".ss-csv-manifest")
     from(layout.buildDirectory.dir("generated/ss-csv"))
     if (astdIncludeAutomation) {
         from("modules/internal/astd-automation/contents")

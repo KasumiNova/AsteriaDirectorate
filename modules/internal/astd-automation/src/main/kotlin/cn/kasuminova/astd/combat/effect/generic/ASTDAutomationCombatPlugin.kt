@@ -383,11 +383,23 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     private var fglActivatedAt = -1f
     private var fglActivationCurrFlux = -1f
     private var fglActivationHardFlux = -1f
+    // 断言点 E 强化底账：各已装联队甲板 numLost 合计（原版语义：numLost 只在战机真正被击毁
+    // 路径自增，land 召回不计），召回前后不变才能区分「被召回」与「被击毁」。
+    // fglNumLostAtActivation 仅作诊断证据；判定基线是 fglNumLostBeforeRecall——与
+    // fglHardFluxBeforeRecall 同样按 ACTIVE 最后一帧滚动采样，把归因窗收窄到召回前后 ~1s，
+    // 避免激活→召回整段交战期（约 16s）内正常战损被误判为「召回与击毁混淆」。
+    private var fglNumLostAtActivation = -1
+    private var fglNumLostBeforeRecall = -1
+    private var fglNumLostAfterRecall = -1
     private val fglRecordedFighterIds = mutableSetOf<Int>()
     private var fglRecordedFighterCount = 0
     // OBSERVE_ACTIVE（断言点 B/C/D）：时流/承伤/辐能涨幅采样峰值。
     private var fglTimeMultMax = 0f
     private var fglHullDamageTakenMultMin = Float.MAX_VALUE
+    // 断言点 D 基线：OBSERVE_ACTIVE 进入（forceShield 已生效）后 settle 0.5s 才采样，
+    // 避开开盾瞬间的辐能扰动；护盾维持 640/s 恒定贯穿整个观测窗后，currFlux 净涨只能
+    // 来自系统 1120/s 软辐能产出（无系统时净 -760/s，判别力成立）。
+    private var fglObserveFluxBaseline = -1f
     private var fglCurrFluxDeltaMax = 0f
     // WAIT_RECALL（断言点 E/F）：召回前后硬辐能读数与 identity 清点结果。
     private var fglHardFluxBeforeRecall = -1f
@@ -4517,6 +4529,13 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         val system = player?.system
         val fighters = if (player != null && !player.isHulk) fglPlayerFighters(player) else emptyList()
         fglFightersInPlayMax = maxOf(fglFightersInPlayMax, fighters.size)
+        // 单联队在场数峰值全程采样（不限 WAIT_WINGS）：联队在 WAIT_WINGS 阶段仍可能处于
+        // 爬编途中，峰值可能到 ACTIVE/RELAUNCH 才出现（仅作诊断证据，口径见常量区注释）。
+        if (player != null) {
+            for (wing in player.allWings) {
+                fglWingSizeMax = maxOf(fglWingSizeMax, wing.wingMembers.count { !it.isHulk })
+            }
+        }
 
         when (fglPhase) {
             FGL_PHASE_SPAWN -> {
@@ -4532,9 +4551,6 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                         if (bay.wing != null) {
                             fglExtraDeploymentLimitMax = maxOf(fglExtraDeploymentLimitMax, bay.extraDeploymentLimit)
                         }
-                    }
-                    for (wing in player.allWings) {
-                        fglWingSizeMax = maxOf(fglWingSizeMax, wing.wingMembers.count { !it.isHulk })
                     }
                 }
                 if (fglExtraDeploymentLimitMax == FGL_EXPECT_EXTRA_DEPLOYMENT_LIMIT &&
@@ -4557,6 +4573,12 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                         fglActivatedAt = elapsed
                         fglActivationCurrFlux = player.fluxTracker.currFlux
                         fglActivationHardFlux = player.fluxTracker.hardFlux
+                        // 断言点 E 底账扩展：各已装联队甲板 numLost 合计（击毁计数基线）。
+                        // AtActivation 仅作诊断证据；判定基线 BeforeRecall 在 ACTIVE 期滚动刷新。
+                        fglNumLostAtActivation = player.launchBaysCopy
+                            .filter { it.wing != null }
+                            .sumOf { it.numLost }
+                        fglNumLostBeforeRecall = fglNumLostAtActivation
                         fglRecordedFighterIds.clear()
                         for (fighter in fighters) {
                             fglRecordedFighterIds += System.identityHashCode(fighter)
@@ -4578,10 +4600,21 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                         fglTimeMultMax = maxOf(fglTimeMultMax, fighter.mutableStats.timeMult.modifiedValue)
                         fglHullDamageTakenMultMin = minOf(fglHullDamageTakenMultMin, fighter.mutableStats.hullDamageTakenMult.modifiedValue)
                     }
-                    fglCurrFluxDeltaMax = maxOf(fglCurrFluxDeltaMax, player.fluxTracker.currFlux - fglActivationCurrFlux)
-                    // ACTIVE 期间持续刷新召回前硬辐能采样（断言点 F 的前值）。
+                    // 断言点 D 基线延迟采样：相位进入即开盾，settle 0.5s 待护盾维持耗散
+                    // 稳定后才采基线（口径见 fglObserveFluxBaseline 注释）。
+                    if (fglObserveFluxBaseline < 0f && elapsed - fglActivatedAt >= FGL_OBSERVE_BASELINE_SETTLE_SECONDS) {
+                        fglObserveFluxBaseline = player.fluxTracker.currFlux
+                    }
+                    if (fglObserveFluxBaseline >= 0f) {
+                        fglCurrFluxDeltaMax = maxOf(fglCurrFluxDeltaMax, player.fluxTracker.currFlux - fglObserveFluxBaseline)
+                    }
+                    // ACTIVE 期间持续刷新召回前硬辐能采样（断言点 F 的前值）与 numLost 合计
+                    // （断言点 E 的判定基线，归因窗收窄到召回前后）。
                     if (system != null && system.state == ShipSystemAPI.SystemState.ACTIVE) {
                         fglHardFluxBeforeRecall = player.fluxTracker.hardFlux
+                        fglNumLostBeforeRecall = player.launchBaysCopy
+                            .filter { it.wing != null }
+                            .sumOf { it.numLost }
                     }
                 }
                 val observedLongEnough = elapsed - fglActivatedAt >= FGL_OBSERVE_MIN_SECONDS
@@ -4607,6 +4640,9 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 stabilizeFglShips(engine, forceShield = true)
                 if (player != null && system != null && system.state == ShipSystemAPI.SystemState.ACTIVE) {
                     fglHardFluxBeforeRecall = player.fluxTracker.hardFlux
+                    fglNumLostBeforeRecall = player.launchBaysCopy
+                        .filter { it.wing != null }
+                        .sumOf { it.numLost }
                 }
                 val recallDetected = system != null &&
                     (system.state == ShipSystemAPI.SystemState.OUT ||
@@ -4616,11 +4652,17 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     log.info("[ASTD-Automation] fgl recall detected at ${"%.2f".format(elapsed)}s（ACTIVE→OUT）")
                 }
                 if (fglRecallDetectedAt >= 0f && player != null) {
-                    // settle 1s 内取硬辐能峰值（软→硬转化在 OUT 首帧结算，峰值即转化后读数）。
+                    // settle 1s 内取硬辐能峰值（软→硬转化为 OUT 首帧 setHardFlux(currFlux) 结算，
+                    // 峰值即转化后读数）；同步采样 numLost 合计（断言点 E 的击毁计数后值）。
                     fglHardFluxAfterRecall = maxOf(fglHardFluxAfterRecall, player.fluxTracker.hardFlux)
+                    fglNumLostAfterRecall = player.launchBaysCopy
+                        .filter { it.wing != null }
+                        .sumOf { it.numLost }
                 }
                 if (fglRecallDetectedAt >= 0f && elapsed - fglRecallDetectedAt >= FGL_RECALL_SETTLE_SECONDS) {
-                    // 断言点 E：激活前底账中的战机 identity 全部消失（land 召回或战损，均不在场）。
+                    // 断言点 E：底账 identity 全部消失 且 numLost 合计不变——identity 全清单独
+                    // 无法区分「被击毁」与「被 land 召回」（原版语义：numLost 只在击毁路径自增，
+                    // land 召回不计），两者同时成立才证明召回路径生效。
                     fglRecordedFightersCleared = engine.ships.none {
                         System.identityHashCode(it) in fglRecordedFighterIds && !it.isHulk
                     }
@@ -4629,14 +4671,23 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                             failureReason = "fgl recall incomplete: 底账 $fglRecordedFighterCount 架仍有 identity 在场（断言点 E）"
                             transitionFglPhase(FGL_PHASE_FAILED)
                         }
-                        fglHardFluxAfterRecall <= fglHardFluxBeforeRecall -> {
-                            failureReason = "fgl hard flux not risen: before=${"%.0f".format(fglHardFluxBeforeRecall)}" +
-                                " after=${"%.0f".format(fglHardFluxAfterRecall)}（断言点 F：软→硬转化）"
+                        fglNumLostAfterRecall != fglNumLostBeforeRecall -> {
+                            failureReason = "fgl recall confused with kill: numLost $fglNumLostBeforeRecall -> $fglNumLostAfterRecall" +
+                                "（断言点 E：召回窗内有击毁，无法归因 land 召回）"
+                            transitionFglPhase(FGL_PHASE_FAILED)
+                        }
+                        // 断言点 F：软→硬转化阈显式 ≥1000。外部来源不可能满足——敌方仅秃鹰
+                        // 双阔剑联队，1s settle 窗内战机火力对护盾产生的硬辐能贡献在数十量级。
+                        fglHardFluxAfterRecall - fglHardFluxBeforeRecall < FGL_EXPECT_HARD_FLUX_RISE -> {
+                            failureReason = "fgl hard flux rise=${"%.0f".format(fglHardFluxAfterRecall - fglHardFluxBeforeRecall)}" +
+                                " < $FGL_EXPECT_HARD_FLUX_RISE（before=${"%.0f".format(fglHardFluxBeforeRecall)}" +
+                                " after=${"%.0f".format(fglHardFluxAfterRecall)}，断言点 F：软→硬转化）"
                             transitionFglPhase(FGL_PHASE_FAILED)
                         }
                         else -> {
                             log.info(
                                 "[ASTD-Automation] fgl recall evidence: recorded=$fglRecordedFighterCount 全清 " +
+                                    "numLost=$fglNumLostBeforeRecall 不变（激活时 $fglNumLostAtActivation） " +
                                     "hardFlux ${"%.0f".format(fglHardFluxBeforeRecall)} -> ${"%.0f".format(fglHardFluxAfterRecall)}（断言点 E/F）",
                             )
                             transitionFglPhase(FGL_PHASE_RELAUNCH)
@@ -4651,7 +4702,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     fglRelaunchObserved = true
                     log.info(
                         "[ASTD-Automation] fgl relaunch evidence: 召回后 ${"%.2f".format(elapsed - fglRecallDetectedAt)}s " +
-                            "出现新 identity 战机（fighters=${fighters.size}，断言点 G）",
+                            "出现新 identity 战机（fighters=${fighters.size}，断言点 G；" +
+                            "在场峰值 $fglFightersInPlayMax / 单联队峰值 $fglWingSizeMax，诊断证据）",
                     )
                     transitionFglPhase(FGL_PHASE_COMPLETED)
                 } else if (!fglRelaunchObserved && elapsed - fglRecallDetectedAt > FGL_RELAUNCH_TIMEOUT) {
@@ -5904,8 +5956,12 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 appendLine("  \"fglTimeMultMax\": ${formatFloat(fglTimeMultMax)},")
                 appendLine("  \"fglHullDamageTakenMultMin\": ${formatFloat(if (fglHullDamageTakenMultMin == Float.MAX_VALUE) -1f else fglHullDamageTakenMultMin)},")
                 appendLine("  \"fglActivationCurrFlux\": ${formatFloat(fglActivationCurrFlux)},")
+                appendLine("  \"fglObserveFluxBaseline\": ${formatFloat(fglObserveFluxBaseline)},")
                 appendLine("  \"fglCurrFluxDeltaMax\": ${formatFloat(fglCurrFluxDeltaMax)},")
                 appendLine("  \"fglActivationHardFlux\": ${formatFloat(fglActivationHardFlux)},")
+                appendLine("  \"fglNumLostAtActivation\": $fglNumLostAtActivation,")
+                appendLine("  \"fglNumLostBeforeRecall\": $fglNumLostBeforeRecall,")
+                appendLine("  \"fglNumLostAfterRecall\": $fglNumLostAfterRecall,")
                 appendLine("  \"fglHardFluxBeforeRecall\": ${formatFloat(fglHardFluxBeforeRecall)},")
                 appendLine("  \"fglHardFluxAfterRecall\": ${formatFloat(fglHardFluxAfterRecall)},")
                 appendLine("  \"fglRecallDetected\": ${fglRecallDetectedAt >= 0f},")
@@ -6969,17 +7025,27 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         // （总在场数口径无效：3 甲板基础编制合计已达 6）。
         private const val FGL_EXPECT_EXTRA_DEPLOYMENT_LIMIT = 5
         private const val FGL_EXPANDED_WING_MIN = 3
+        // 在场峰值/单联队峰值全程采样，仅作诊断证据，不作硬断言：满编口径（总在场 15 /
+        // 单联队 5）受交战 RNG 影响——敌方阔剑可在爬编期击落战机（实机曾 numLost 0→1 致
+        // 峰值 14），且 wingMembers 计数不覆盖额外编制（实机曾在场 15 而单联队峰值仅 3）。
+        // 扩容的机制级硬证据由 WAIT_WINGS 的 extraDeploymentLimit==5 + 单联队超基础编制承担。
         private const val FGL_MIN_FIGHTERS_FOR_ACTIVATION = 2
         // OBSERVE_ACTIVE（断言点 B/C/D）：玩家恒 v2 → 时流 ×2.5（界 2.4）、四承伤 ×0.5（界 0.51）；
         // 软辐能 1120/s（基础最大辐能 16000×7%）对冲盾开净耗散 760/s（耗散 1400 − 护盾维持 640）
-        // 后净涨 ≈360/s，激活后约 3s 达成 +800，观测窗 2~5s 收口。
+        // 后净涨 ≈360/s。断言点 D 基线在相位进入（开盾生效）后 settle 0.5s 采样：护盾维持 640/s
+        // 恒定贯穿整个观测窗，净涨只能来自系统产出（无系统时净 -760/s，判别力成立），
+        // 基线后约 2.5s 达成 +800，观测窗 2~5s 收口。
         private const val FGL_OBSERVE_MIN_SECONDS = 2f
         private const val FGL_OBSERVE_TIMEOUT = 5f
+        private const val FGL_OBSERVE_BASELINE_SETTLE_SECONDS = 0.5f
         private const val FGL_EXPECT_TIME_MULT_MIN = 2.4f
         private const val FGL_EXPECT_DAMAGE_TAKEN_MAX = 0.51f
         private const val FGL_EXPECT_FLUX_RISE = 800f
-        // WAIT_RECALL（断言点 E/F）：召回检测后 settle 1s 采样硬辐能峰值与 identity 清点。
+        // WAIT_RECALL（断言点 E/F）：召回检测后 settle 1s 采样硬辐能峰值与 identity 清点；
+        // F 阈值显式 ≥1000——敌方仅秃鹰双阔剑联队，1s 窗内战机火力对护盾的硬辐能贡献在
+        // 数十量级，外部来源不可能满足，上升只能归因 OUT 首帧 setHardFlux(currFlux) 转化。
         private const val FGL_RECALL_SETTLE_SECONDS = 1.0f
+        private const val FGL_EXPECT_HARD_FLUX_RISE = 1000f
         // RELAUNCH（断言点 G）：召回后 15s 内必须出现新 identity 战机（快速整备 0.3~0.8s/架）。
         private const val FGL_RELAUNCH_TIMEOUT = 15f
         private const val FGL_PHASE_TIMEOUT = 90f

@@ -6,6 +6,7 @@ import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseHullMod
 import com.fs.starfarer.api.combat.MutableShipStatsAPI
 import com.fs.starfarer.api.combat.ShipAPI
+import com.fs.starfarer.api.impl.campaign.ids.Stats
 import com.fs.starfarer.api.ui.TooltipMakerAPI
 import java.awt.Color
 
@@ -20,9 +21,11 @@ import java.awt.Color
  *    `FighterWingSpec.getOpCost` 中取值结果被丢弃（原版 bug），故逐机种键写入。
  * 2. **联队扩容（难度系数）**：每甲板联队战机数量 +50%/+150%/+250%（轨一三锚点，玩家固定 v2）。
  *    经 `FighterLaunchBayAPI` extraDeployments 体系实现（引擎唯一按甲板生效的扩容通道，
- *    见 [FoldingDeckTuning] 头注）：每帧把每个甲板的 extraDeploymentLimit 锚定到折算上限、
- *    extraDeployments 补足差额、extraDuration 置 1e7（与原生战机一致，不触发强制返航）。
- *    额外编制战机阵亡后由甲板空闲分支自动补员，与原生战机行为一致。
+ *    见 [FoldingDeckTuning] 头注）：每帧把每个甲板的 extraDeploymentLimit 锚定到折算上限
+ *    （上限变更时同步把 extraDuration 置 1e7，与原生战机一致，不触发强制返航）、
+ *    extraDeployments 按帧补足差额。
+ *    额外编制战机阵亡后由甲板空闲分支自动补员，与原生战机行为一致；过载/散辐/CR 归零
+ *    期间暂停补足（与原版 canRequestReplacement 口径对齐），上限锚定不受此影响。
  *
  * 仅对飞蓬级生效（[isApplicableToShip] / advanceInCombat 入口 [isZw102Ship] guard）。
  */
@@ -33,10 +36,10 @@ class ASTDDimensionalFoldingDeckHullMod : BaseHullMod() {
         stats: MutableShipStatsAPI,
         id: String,
     ) {
-        stats.dynamic.getMod(FIGHTER_COST_MOD).modifyMult(id, FoldingDeckTuning.OP_COST_MULT)
-        stats.dynamic.getMod(BOMBER_COST_MOD).modifyMult(id, FoldingDeckTuning.OP_COST_MULT)
-        stats.dynamic.getMod(INTERCEPTOR_COST_MOD).modifyMult(id, FoldingDeckTuning.OP_COST_MULT)
-        stats.dynamic.getMod(SUPPORT_COST_MOD).modifyMult(id, FoldingDeckTuning.OP_COST_MULT)
+        stats.dynamic.getMod(Stats.FIGHTER_COST_MOD).modifyMult(id, FoldingDeckTuning.OP_COST_MULT)
+        stats.dynamic.getMod(Stats.BOMBER_COST_MOD).modifyMult(id, FoldingDeckTuning.OP_COST_MULT)
+        stats.dynamic.getMod(Stats.INTERCEPTOR_COST_MOD).modifyMult(id, FoldingDeckTuning.OP_COST_MULT)
+        stats.dynamic.getMod(Stats.SUPPORT_COST_MOD).modifyMult(id, FoldingDeckTuning.OP_COST_MULT)
     }
 
     override fun advanceInCombat(ship: ShipAPI, amount: Float) {
@@ -45,18 +48,36 @@ class ASTDDimensionalFoldingDeckHullMod : BaseHullMod() {
         if (!ship.isZw102Ship()) return
 
         val bonusMult = FoldingDeckTuning.resolveWingSizeMult(DifficultyTuningImpl, ship.owner == 0)
-        for (bay in ship.launchBaysCopy) {
-            val wing = bay.wing ?: continue
-            val baseNum = wing.spec?.numFighters ?: continue
-            val limit = FoldingDeckTuning.wingSizeLimit(baseNum, bonusMult)
-            if (limit <= baseNum) continue
+        // 补员闸门：与原版常规补员口径对齐（canRequestReplacement 仅判过载/散辐/CR>0，
+        // 不判 isPullBackFighters——回收战机是玩家指令语义，且原版 FighterLaunchBay 的
+        // 空闲分支也不判此项，故此处同样放行）。闸门只拦截「额外编制补足」，
+        // 不拦截上限锚定：锚定是扩容存在的根本，若受闸门影响，过载/散辐/CR 归零的
+        // 任意一帧都会导致联队规模上限丢失、联机编制永久回落到基础值。
+        val canRefill = !ship.fluxTracker.isOverloadedOrVenting && ship.currentCR > 0f
 
-            bay.extraDeploymentLimit = limit
+        for (bay in ship.launchBaysCopy) {
+            // 空甲板（未装配联队）属正常配置，直接跳过。
+            val wing = bay.wing ?: continue
+            // 已装联队的 spec 原版语义下恒非空；若为 null 说明引擎行为偏离预期，记日志后跳过。
+            val spec = wing.spec
+            if (spec == null) {
+                log.warn("dimensional_folding_deck: bay wing spec is null on ${ship.hullSpec?.hullId}, skipped")
+                continue
+            }
+            val baseNum = spec.numFighters
+            val limit = FoldingDeckTuning.wingSizeLimit(baseNum, bonusMult)
+
+            if (bay.extraDeploymentLimit != limit) {
+                bay.extraDeploymentLimit = limit
+                // 额外编制战机的整备倒计时（与原生战机一致，不触发强制返航），仅随上限变更写一次。
+                bay.extraDuration = FoldingDeckTuning.EXTRA_FIGHTER_DURATION
+            }
             // 补员差额：额外编制阵亡后甲板空闲分支每次消耗 1 点额度，这里按帧补足，
-            // 使联队规模长期锚定在折算上限。
-            val extraNeeded = limit - baseNum
-            if (bay.extraDeployments < extraNeeded) bay.extraDeployments = extraNeeded
-            bay.extraDuration = FoldingDeckTuning.EXTRA_FIGHTER_DURATION
+            // 使联队规模长期锚定在折算上限；过载/散辐/CR 归零期间暂停补足。
+            if (canRefill) {
+                val extraNeeded = limit - baseNum
+                if (bay.extraDeployments < extraNeeded) bay.extraDeployments = extraNeeded
+            }
         }
     }
 
@@ -92,11 +113,7 @@ class ASTDDimensionalFoldingDeckHullMod : BaseHullMod() {
         /** 飞蓬级舰体 id（guard 与适用性判定共用）。 */
         const val HULL_ID: String = "astd_zw_102"
 
-        /** 原版 dynamic mod 键：战斗机/轰炸机/截击机/支援机 LPC 装配点乘区。 */
-        private const val FIGHTER_COST_MOD = "fighter_cost_mod"
-        private const val BOMBER_COST_MOD = "bomber_cost_mod"
-        private const val INTERCEPTOR_COST_MOD = "interceptor_cost_mod"
-        private const val SUPPORT_COST_MOD = "support_cost_mod"
+        private val log = Global.getLogger(ASTDDimensionalFoldingDeckHullMod::class.java)
 
         /** 紫主题（与透镜阵列核心一致，透镜协议视觉统一）。 */
         private val THEME = ASTDHullModTooltipRenderer.Theme(
