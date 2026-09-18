@@ -1,4 +1,4 @@
-# Asteria Directorate（阿斯忒里亚遗构局）
+# Asteria Directorate（菀星设计总局）
 
 Starsector 模组开发项目模板（已预置 Asteria Directorate 示例内容；你可以按文档快速改名、迁移包名并生成调试用数据/贴图占位。）
 
