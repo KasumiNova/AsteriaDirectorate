@@ -97,7 +97,7 @@ class StandardVariantBuiltInHullmodDataTest {
             "astd_zw_103" to listOf("astd_nano_restoration_protocol", "astd_phase_diffraction_shield"),
             "astd_zw_001" to listOf("astd_nano_restoration_protocol", "astd_lens_array_core"),
             "astd_zl_102" to listOf("astd_nano_restoration_protocol", "astd_inertialess_maneuver"),
-            "astd_zw_102" to listOf("astd_nano_restoration_protocol", "astd_fleet_coordination_relay"),
+            "astd_zw_102" to listOf("astd_nano_restoration_protocol", "astd_dimensional_folding_deck"),
             "astd_zw_101" to listOf(
                 "astd_nano_restoration_protocol",
                 "astd_echo_emitter",

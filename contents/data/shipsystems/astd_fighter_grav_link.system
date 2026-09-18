@@ -1,0 +1,7 @@
+{
+    "id": "astd_fighter_grav_link",
+    "type": "STAT_MOD",
+    "aiType": "RECALL_DEVICE",
+    "statsScript": "cn.kasuminova.astd.combat.shipsystems.FighterGravLinkSystemStats",
+    "useSound": "system_recall_device"
+}

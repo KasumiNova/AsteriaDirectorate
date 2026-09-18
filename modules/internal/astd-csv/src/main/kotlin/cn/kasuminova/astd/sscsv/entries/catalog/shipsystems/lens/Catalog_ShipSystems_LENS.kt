@@ -78,16 +78,28 @@ object Sys_astd_targeting_beacon : ShipSystemWithSystemFileEntry() {
     override val icon: String = "graphics/icons/hullsys/phase_cloak.png"
 }
 
-object Sys_astd_emergency_recall : ShipSystemWithSystemFileEntry() {
-    override val id: String = "astd_emergency_recall"
+/**
+ * 飞蓬级舰船系统「战机引力联结器」（purple/20-production.md §1，2026-09 重构）。
+ *
+ * 以原版召回装置为基线的增强：持续 15s 强化机群（时流/减伤），结束时召回全部战机并
+ * 立即重新出击；代价为持续软辐能产出与结束时的软→硬转化。aiType 沿用原版
+ * RECALL_DEVICE（按「需整备战机占比」决策激活，与召回语义匹配）。
+ */
+object Sys_astd_fighter_grav_link : ShipSystemWithSystemFileEntry() {
+    override val id: String = "astd_fighter_grav_link"
     override val name: String = systemName(id)
 
-    override val chargeUp: Double = 0.5
-    override val active: Double = 0.75
-    override val down: Double = 0.5
-    override val cooldown: Double = 18.0
+    override val statsScript: String =
+        "cn.kasuminova.astd.combat.shipsystems.FighterGravLinkSystemStats"
+    override val aiType: String = "RECALL_DEVICE"
+    override val useSound: String? = "system_recall_device"
 
-    override val icon: String = "graphics/icons/hullsys/drone_pd_high.png"
+    override val chargeUp: Double = 0.5
+    override val active: Double = 15.0
+    override val down: Double = 0.5
+    override val cooldown: Double = 25.0
+
+    override val icon: String = "graphics/icons/hullsys/recall_device.png"
 }
 
 /**

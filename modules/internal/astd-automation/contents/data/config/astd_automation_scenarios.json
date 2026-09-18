@@ -142,6 +142,35 @@
         "edaExtraCountOther",
         "edaVfxTrackedCount"
       ]
+    },
+    {
+      "id": "lens_fighter_grav_link",
+      "missionId": "lens_fighter_grav_link",
+      "shipIds": [
+        "astd_zw_102",
+        "condor"
+      ],
+      "variantIds": [
+        "astd_zw_102_Standard",
+        "condor_Attack"
+      ],
+      "systemId": "astd_fighter_grav_link",
+      "requiredEvidence": [
+        "fglPhase",
+        "fglSystemId",
+        "fglExtraDeploymentLimitMax",
+        "fglWingSizeMax",
+        "fglFightersInPlayMax",
+        "fglRecordedFighterCount",
+        "fglTimeMultMax",
+        "fglHullDamageTakenMultMin",
+        "fglCurrFluxDeltaMax",
+        "fglHardFluxBeforeRecall",
+        "fglHardFluxAfterRecall",
+        "fglRecallDetected",
+        "fglRecordedFightersCleared",
+        "fglRelaunchObserved"
+      ]
     }
   ]
 }

@@ -53,6 +53,7 @@ import com.fs.starfarer.api.combat.GuidedMissileAI
 import com.fs.starfarer.api.combat.MissileAIPlugin
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.combat.ShipCommand
+import com.fs.starfarer.api.combat.ShipSystemAPI
 import com.fs.starfarer.api.combat.ShipwideAIFlags
 import com.fs.starfarer.api.combat.ViewportAPI
 import com.fs.starfarer.api.combat.WeaponAPI
@@ -371,6 +372,31 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     private var ssLastFlashAt = -1f
     private var ssLastTrackedFlashCount = 0
 
+    // ==== 飞蓬战机引力联结器场景状态（相位机 SPAWN → WAIT_WINGS → ACTIVATE → OBSERVE_ACTIVE → WAIT_RECALL → RELAUNCH → COMPLETED） ====
+    private var fglPhase = FGL_PHASE_SPAWN
+    private var fglPhaseStartedAt = 0f
+    // WAIT_WINGS（断言点 A）：任一已装联队甲板 extraDeploymentLimit 峰值 / 单联队在场数峰值 / 全场该机战机数峰值。
+    private var fglExtraDeploymentLimitMax = 0
+    private var fglWingSizeMax = 0
+    private var fglFightersInPlayMax = 0
+    // ACTIVATE：激活时刻基线（母舰辐能读数与在外战机 identity 集合，断言点 E 的清点底账）。
+    private var fglActivatedAt = -1f
+    private var fglActivationCurrFlux = -1f
+    private var fglActivationHardFlux = -1f
+    private val fglRecordedFighterIds = mutableSetOf<Int>()
+    private var fglRecordedFighterCount = 0
+    // OBSERVE_ACTIVE（断言点 B/C/D）：时流/承伤/辐能涨幅采样峰值。
+    private var fglTimeMultMax = 0f
+    private var fglHullDamageTakenMultMin = Float.MAX_VALUE
+    private var fglCurrFluxDeltaMax = 0f
+    // WAIT_RECALL（断言点 E/F）：召回前后硬辐能读数与 identity 清点结果。
+    private var fglHardFluxBeforeRecall = -1f
+    private var fglHardFluxAfterRecall = -1f
+    private var fglRecallDetectedAt = -1f
+    private var fglRecordedFightersCleared = false
+    // RELAUNCH（断言点 G）：召回后新 identity 战机重新出击证据。
+    private var fglRelaunchObserved = false
+
     override fun init(engine: CombatEngineAPI) {
         this.engine = engine
         // 关闭原版开局部署对话框（仅多舰场景）：CombatState.traverse 的弹框闸门在 engine.init()
@@ -390,7 +416,14 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             log.warn("[ASTD-Automation] combatUI 非 CombatState（${combatUI?.javaClass?.name}），开局部署对话框关断失败")
         }
         ProjectileVfxDriverPlugin.ensureInstalled(engine)
-        if (ASTDInGameAutomationScenario.isTrailPauseProbeEnabled()) {
+        if (ASTDInGameAutomationScenario.isFighterGravLinkScenarioEnabled()) {
+            engine.setDoNotEndCombat(true)
+            lockFglCamera(engine)
+            // 与其他场景一致：reserves 部署放到 advance()，init 阶段渲染器未就绪。
+            writeDiagnostics(engine, "CombatReady")
+            writeTelemetry(engine, "CombatReady", findFglPlayer(engine), null)
+            log.info("[ASTD-Automation] scenario=${ASTDInGameAutomationScenario.FGL_SCENARIO_ID} combat plugin initialized")
+        } else if (ASTDInGameAutomationScenario.isTrailPauseProbeEnabled()) {
             lockCamera(engine)
             arrangeShips(engine, findXc001(engine))
             writeDiagnostics(engine, "CombatReady")
@@ -518,6 +551,12 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
 
     override fun advance(amount: Float, events: MutableList<InputEventAPI>?) {
         val combatEngine = engine ?: return
+        if (ASTDInGameAutomationScenario.isFighterGravLinkScenarioEnabled()) {
+            if (combatEngine.isPaused) combatEngine.setPaused(false)
+            elapsed += amount.coerceAtLeast(0f)
+            advanceFglScenario(combatEngine)
+            return
+        }
         if (ASTDInGameAutomationScenario.isTrailPauseProbeEnabled()) {
             // 暂停对照探针：刻意不 unpause、不以 isPaused 早退（obf 实证：暂停期插件 advance 仍按真实 amount 推进），
             // elapsed 即含暂停的墙钟推进，相位机靠它在暂停内计时。
@@ -653,6 +692,17 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
 
     override fun renderInUICoords(viewport: ViewportAPI) {
         val combatEngine = engine ?: return
+        if (ASTDInGameAutomationScenario.isFighterGravLinkScenarioEnabled()) {
+            if (!completed || visualFramesWritten >= 3) return
+            // 捕获帧间隔 0.6s：召回后重新出击的机群（系统收尾 jitter 已退）与母舰在三帧内进入捕获帧。
+            if (visualFramesWritten > 0 && elapsed - lastVisualFrameAt < 0.6f) return
+            lockFglCamera(combatEngine)
+            lastVisualFrameAt = elapsed
+            visualFramesWritten++
+            writeDiagnostics(combatEngine, "Completed", findFglPlayer(combatEngine))
+            writeTelemetry(combatEngine, "Completed", findFglPlayer(combatEngine), null)
+            return
+        }
         if (ASTDInGameAutomationScenario.isTrailPauseProbeEnabled()) {
             // 截图只能在渲染帧内取 framebuffer（helper 仅对 "Completed" 状态抓帧，最多 3 帧）：
             // 相位机把捕获点写成 pending 标签，这里消费并各抓一帧 BeforePause/DuringPause/AfterResume。
@@ -4358,6 +4408,296 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     }
 
 
+    // === 飞蓬战机引力联结器场景（维度折叠甲板扩容 / 机群时流减伤 / 软辐能代价 / 召回重出击证据） ===
+
+    private fun findFglPlayer(engine: CombatEngineAPI): ShipAPI? =
+        engine.ships.firstOrNull { ship -> ship.owner == 0 && ship.hullSpec?.hullId == FGL_PLAYER_HULL && !ship.isFighter }
+
+    private fun findFglEnemy(engine: CombatEngineAPI): ShipAPI? =
+        engine.ships.firstOrNull { ship -> ship.owner != 0 && ship.hullSpec?.hullId == FGL_ENEMY_HULL && !ship.isFighter }
+
+    /** 该舰全部联队的在外战机（wing 枚举口径，与系统脚本 applyFighterBuffs 同一观测面）。 */
+    private fun fglPlayerFighters(player: ShipAPI): List<ShipAPI> =
+        player.allWings.flatMap { wing -> wing.wingMembers }.filter { !it.isHulk }
+
+    /**
+     * 强制部署 mission reserves（范式同 deploySmReserveShips）。
+     * 玩家侧仅飞蓬一艘（后备 == 1 → vanilla 静默 deployAll 会自动部署），已出场成员
+     * 按 findShipByHull 判重跳过并移出后备（范式同 deployArcProductionSide），避免重复 spawn。
+     */
+    private fun deployFglReserveShips(engine: CombatEngineAPI) {
+        engine.setDoNotEndCombat(true)
+        for (side in listOf(FleetSide.PLAYER, FleetSide.ENEMY)) {
+            val manager = engine.getFleetManager(side)
+            manager.setSuppressDeploymentMessages(true)
+            for (member in manager.getReservesCopy().toList()) {
+                val anchor = when {
+                    side == FleetSide.PLAYER && member.hullId == FGL_PLAYER_HULL -> FGL_PLAYER_ANCHOR
+                    side == FleetSide.ENEMY && member.hullId == FGL_ENEMY_HULL -> FGL_ENEMY_ANCHOR
+                    else -> continue
+                }
+                if (findShipByHull(engine, member.hullId) != null) {
+                    manager.removeFromReserves(member)
+                    continue
+                }
+                val facing = if (side == FleetSide.ENEMY) 180f else 0f
+                manager.spawnFleetMember(member, Vector2f(anchor), facing, 0f)
+                manager.removeFromReserves(member)
+            }
+        }
+    }
+
+    private fun transitionFglPhase(next: String) {
+        log.info("[ASTD-Automation] fgl phase $fglPhase -> $next at ${"%.2f".format(elapsed)}s")
+        fglPhase = next
+        fglPhaseStartedAt = elapsed
+    }
+
+    /**
+     * 舞台保活与站位（范式同 stabilizeSmShips）：双方逐帧奶血 + 钉死锚点 + 保留舰 AI
+     * （航母联队出库/补员链路依赖 AI 存活，SM 秃鹰航母判例同款）。
+     * 母舰辐能绝不重置——断言点 D（软辐能累积）与 F（软→硬转化）依赖真实辐能读数；
+     * [forceShield] 于系统激活期强制开盾：护盾维持耗散（640/s）压低净耗散，
+     * 令 1120/s 软辐能产出转为母舰 currFlux 净上涨（口径见 FGL_EXPECT_FLUX_RISE）。
+     */
+    private fun stabilizeFglShips(engine: CombatEngineAPI, forceShield: Boolean) {
+        val player = findFglPlayer(engine)
+        val enemy = findFglEnemy(engine)
+        if (player != null && !player.isHulk) {
+            engine.setPlayerShipExternal(player)
+            stabilizeShip(player, FGL_PLAYER_ANCHOR, 0f, allowFire = false, preserveAI = true)
+            player.setHitpoints(player.maxHitpoints)
+            if (forceShield) {
+                player.shield?.let { if (!it.isOn) it.toggleOn() }
+            }
+        }
+        if (enemy != null && !enemy.isHulk) {
+            stabilizeShip(enemy, FGL_ENEMY_ANCHOR, 180f, allowFire = false, preserveAI = true)
+            enemy.setHitpoints(enemy.maxHitpoints)
+            enemy.fluxTracker.setCurrFlux(0f)
+            enemy.fluxTracker.setHardFlux(0f)
+        }
+    }
+
+    private fun lockFglCamera(engine: CombatEngineAPI) {
+        val viewport = engine.viewport
+        val displayWidth = try { Display.getWidth().takeIf { it > 0 } ?: 2560 } catch (_: Throwable) { 2560 }
+        val displayHeight = try { Display.getHeight().takeIf { it > 0 } ?: 1440 } catch (_: Throwable) { 1440 }
+        val displayAspect = displayWidth.toFloat() / displayHeight.toFloat()
+        val visibleWidth = FGL_CAMERA_VISIBLE_HEIGHT * displayAspect
+        viewport.setExternalControl(true)
+        viewport.set(
+            FGL_CAMERA_CENTER.x - visibleWidth * 0.5f,
+            FGL_CAMERA_CENTER.y - FGL_CAMERA_VISIBLE_HEIGHT * 0.5f,
+            visibleWidth,
+            FGL_CAMERA_VISIBLE_HEIGHT,
+        )
+        viewport.setEverythingNearViewport(true)
+    }
+
+    /**
+     * 飞蓬战机引力联结器相位机：
+     * SPAWN（双方出场/钉位/锁相机）→
+     * WAIT_WINGS（等机群出库；断言点 A：任一已装联队甲板 extraDeploymentLimit == 5
+     *   且单联队在场曾 ≥3——基础编制 num=2，超出即维度折叠甲板扩容生效）→
+     * ACTIVATE（系统就绪且在外战机 ≥2 时 useSystem()，范式同 arc production 的 xc102.useSystem()；
+     *   记录激活时刻母舰辐能与战机 identity 底账）→
+     * OBSERVE_ACTIVE（激活后 2~5s 采样；断言点 B 时流 ×2.5 / C 四承伤 ×0.5 / D 母舰软辐能净涨 ≥800）→
+     * WAIT_RECALL（等 ACTIVE 结束进 OUT/冷却；断言点 E 底账 identity 全清 / F 硬辐能上升）→
+     * RELAUNCH（断言点 G：召回后 15s 内出现新 identity 战机，快速整备 0.3~0.8s/架）→
+     * COMPLETED（renderInUICoords 三帧捕获：重新出击的机群入帧）。
+     */
+    private fun advanceFglScenario(engine: CombatEngineAPI) {
+        engine.setDoNotEndCombat(true)
+        deployFglReserveShips(engine)
+        lockFglCamera(engine)
+
+        val player = findFglPlayer(engine)
+        val enemy = findFglEnemy(engine)
+        val system = player?.system
+        val fighters = if (player != null && !player.isHulk) fglPlayerFighters(player) else emptyList()
+        fglFightersInPlayMax = maxOf(fglFightersInPlayMax, fighters.size)
+
+        when (fglPhase) {
+            FGL_PHASE_SPAWN -> {
+                stabilizeFglShips(engine, forceShield = false)
+                if (player != null && enemy != null && elapsed - fglPhaseStartedAt >= FGL_SPAWN_SETTLE_SECONDS) {
+                    transitionFglPhase(FGL_PHASE_WAIT_WINGS)
+                }
+            }
+            FGL_PHASE_WAIT_WINGS -> {
+                stabilizeFglShips(engine, forceShield = false)
+                if (player != null) {
+                    for (bay in player.launchBaysCopy) {
+                        if (bay.wing != null) {
+                            fglExtraDeploymentLimitMax = maxOf(fglExtraDeploymentLimitMax, bay.extraDeploymentLimit)
+                        }
+                    }
+                    for (wing in player.allWings) {
+                        fglWingSizeMax = maxOf(fglWingSizeMax, wing.wingMembers.count { !it.isHulk })
+                    }
+                }
+                if (fglExtraDeploymentLimitMax == FGL_EXPECT_EXTRA_DEPLOYMENT_LIMIT &&
+                    fglWingSizeMax >= FGL_EXPANDED_WING_MIN
+                ) {
+                    log.info(
+                        "[ASTD-Automation] fgl deck evidence: extraDeploymentLimitMax=$fglExtraDeploymentLimitMax " +
+                            "wingSizeMax=$fglWingSizeMax fightersInPlayMax=$fglFightersInPlayMax（断言点 A：每甲板锚定 5 / 单联队在场 ≥3）",
+                    )
+                    transitionFglPhase(FGL_PHASE_ACTIVATE)
+                }
+            }
+            FGL_PHASE_ACTIVATE -> {
+                stabilizeFglShips(engine, forceShield = false)
+                if (player != null && system != null) {
+                    if (system.id != FGL_SYSTEM_ID) {
+                        failureReason = "fgl system id=${system.id}, expect $FGL_SYSTEM_ID（ship_data.csv 生成物未刷新）"
+                        transitionFglPhase(FGL_PHASE_FAILED)
+                    } else if (!system.isOn && system.cooldownRemaining <= 0f && fighters.size >= FGL_MIN_FIGHTERS_FOR_ACTIVATION) {
+                        fglActivatedAt = elapsed
+                        fglActivationCurrFlux = player.fluxTracker.currFlux
+                        fglActivationHardFlux = player.fluxTracker.hardFlux
+                        fglRecordedFighterIds.clear()
+                        for (fighter in fighters) {
+                            fglRecordedFighterIds += System.identityHashCode(fighter)
+                        }
+                        fglRecordedFighterCount = fglRecordedFighterIds.size
+                        player.useSystem()
+                        log.info(
+                            "[ASTD-Automation] fgl activated: fighters=$fglRecordedFighterCount " +
+                                "currFlux=${"%.0f".format(fglActivationCurrFlux)} hardFlux=${"%.0f".format(fglActivationHardFlux)}",
+                        )
+                        transitionFglPhase(FGL_PHASE_OBSERVE_ACTIVE)
+                    }
+                }
+            }
+            FGL_PHASE_OBSERVE_ACTIVE -> {
+                stabilizeFglShips(engine, forceShield = true)
+                if (player != null) {
+                    for (fighter in fighters) {
+                        fglTimeMultMax = maxOf(fglTimeMultMax, fighter.mutableStats.timeMult.modifiedValue)
+                        fglHullDamageTakenMultMin = minOf(fglHullDamageTakenMultMin, fighter.mutableStats.hullDamageTakenMult.modifiedValue)
+                    }
+                    fglCurrFluxDeltaMax = maxOf(fglCurrFluxDeltaMax, player.fluxTracker.currFlux - fglActivationCurrFlux)
+                    // ACTIVE 期间持续刷新召回前硬辐能采样（断言点 F 的前值）。
+                    if (system != null && system.state == ShipSystemAPI.SystemState.ACTIVE) {
+                        fglHardFluxBeforeRecall = player.fluxTracker.hardFlux
+                    }
+                }
+                val observedLongEnough = elapsed - fglActivatedAt >= FGL_OBSERVE_MIN_SECONDS
+                if (observedLongEnough &&
+                    fglTimeMultMax >= FGL_EXPECT_TIME_MULT_MIN &&
+                    fglHullDamageTakenMultMin <= FGL_EXPECT_DAMAGE_TAKEN_MAX &&
+                    fglCurrFluxDeltaMax >= FGL_EXPECT_FLUX_RISE
+                ) {
+                    log.info(
+                        "[ASTD-Automation] fgl active evidence: timeMultMax=${"%.2f".format(fglTimeMultMax)} " +
+                            "hullDamageTakenMultMin=${"%.2f".format(fglHullDamageTakenMultMin)} " +
+                            "currFluxDeltaMax=${"%.0f".format(fglCurrFluxDeltaMax)}（断言点 B/C/D）",
+                    )
+                    transitionFglPhase(FGL_PHASE_WAIT_RECALL)
+                } else if (elapsed - fglActivatedAt >= FGL_OBSERVE_TIMEOUT) {
+                    failureReason = "fgl observe timeout: timeMultMax=${"%.2f".format(fglTimeMultMax)}（≥$FGL_EXPECT_TIME_MULT_MIN）" +
+                        " hullDamageTakenMultMin=${"%.2f".format(if (fglHullDamageTakenMultMin == Float.MAX_VALUE) -1f else fglHullDamageTakenMultMin)}（≤$FGL_EXPECT_DAMAGE_TAKEN_MAX）" +
+                        " currFluxDeltaMax=${"%.0f".format(fglCurrFluxDeltaMax)}（≥$FGL_EXPECT_FLUX_RISE）"
+                    transitionFglPhase(FGL_PHASE_FAILED)
+                }
+            }
+            FGL_PHASE_WAIT_RECALL -> {
+                stabilizeFglShips(engine, forceShield = true)
+                if (player != null && system != null && system.state == ShipSystemAPI.SystemState.ACTIVE) {
+                    fglHardFluxBeforeRecall = player.fluxTracker.hardFlux
+                }
+                val recallDetected = system != null &&
+                    (system.state == ShipSystemAPI.SystemState.OUT ||
+                        (!system.isOn && system.cooldownRemaining > 0f))
+                if (recallDetected && fglRecallDetectedAt < 0f) {
+                    fglRecallDetectedAt = elapsed
+                    log.info("[ASTD-Automation] fgl recall detected at ${"%.2f".format(elapsed)}s（ACTIVE→OUT）")
+                }
+                if (fglRecallDetectedAt >= 0f && player != null) {
+                    // settle 1s 内取硬辐能峰值（软→硬转化在 OUT 首帧结算，峰值即转化后读数）。
+                    fglHardFluxAfterRecall = maxOf(fglHardFluxAfterRecall, player.fluxTracker.hardFlux)
+                }
+                if (fglRecallDetectedAt >= 0f && elapsed - fglRecallDetectedAt >= FGL_RECALL_SETTLE_SECONDS) {
+                    // 断言点 E：激活前底账中的战机 identity 全部消失（land 召回或战损，均不在场）。
+                    fglRecordedFightersCleared = engine.ships.none {
+                        System.identityHashCode(it) in fglRecordedFighterIds && !it.isHulk
+                    }
+                    when {
+                        !fglRecordedFightersCleared -> {
+                            failureReason = "fgl recall incomplete: 底账 $fglRecordedFighterCount 架仍有 identity 在场（断言点 E）"
+                            transitionFglPhase(FGL_PHASE_FAILED)
+                        }
+                        fglHardFluxAfterRecall <= fglHardFluxBeforeRecall -> {
+                            failureReason = "fgl hard flux not risen: before=${"%.0f".format(fglHardFluxBeforeRecall)}" +
+                                " after=${"%.0f".format(fglHardFluxAfterRecall)}（断言点 F：软→硬转化）"
+                            transitionFglPhase(FGL_PHASE_FAILED)
+                        }
+                        else -> {
+                            log.info(
+                                "[ASTD-Automation] fgl recall evidence: recorded=$fglRecordedFighterCount 全清 " +
+                                    "hardFlux ${"%.0f".format(fglHardFluxBeforeRecall)} -> ${"%.0f".format(fglHardFluxAfterRecall)}（断言点 E/F）",
+                            )
+                            transitionFglPhase(FGL_PHASE_RELAUNCH)
+                        }
+                    }
+                }
+            }
+            FGL_PHASE_RELAUNCH -> {
+                stabilizeFglShips(engine, forceShield = false)
+                // 断言点 G：底账之外的新 identity 战机出现即重新出击证据（旧机已全部召回/战损）。
+                if (!fglRelaunchObserved && fighters.any { System.identityHashCode(it) !in fglRecordedFighterIds }) {
+                    fglRelaunchObserved = true
+                    log.info(
+                        "[ASTD-Automation] fgl relaunch evidence: 召回后 ${"%.2f".format(elapsed - fglRecallDetectedAt)}s " +
+                            "出现新 identity 战机（fighters=${fighters.size}，断言点 G）",
+                    )
+                    transitionFglPhase(FGL_PHASE_COMPLETED)
+                } else if (!fglRelaunchObserved && elapsed - fglRecallDetectedAt > FGL_RELAUNCH_TIMEOUT) {
+                    failureReason = "fgl relaunch timeout: 召回后 ${FGL_RELAUNCH_TIMEOUT.toInt()}s 内无新 identity 战机（断言点 G）"
+                    transitionFglPhase(FGL_PHASE_FAILED)
+                }
+            }
+            FGL_PHASE_COMPLETED -> {
+                stabilizeFglShips(engine, forceShield = false)
+            }
+        }
+
+        val state = when {
+            player == null || enemy == null -> {
+                if (elapsed > 12f) {
+                    failureReason = "fgl ships missing: player=${player != null}, enemy=${enemy != null}"
+                    "Failed"
+                } else {
+                    "CombatReady"
+                }
+            }
+            fglPhase == FGL_PHASE_FAILED -> "Failed"
+            fglPhase != FGL_PHASE_COMPLETED &&
+                elapsed - fglPhaseStartedAt > FGL_PHASE_TIMEOUT -> {
+                failureReason = "fgl phase timeout: $fglPhase（limitMax=$fglExtraDeploymentLimitMax wingMax=$fglWingSizeMax " +
+                    "fighters=${fighters.size}/$fglFightersInPlayMax timeMult=${"%.2f".format(fglTimeMultMax)} " +
+                    "dmgTaken=${"%.2f".format(if (fglHullDamageTakenMultMin == Float.MAX_VALUE) -1f else fglHullDamageTakenMultMin)} " +
+                    "fluxDelta=${"%.0f".format(fglCurrFluxDeltaMax)} recallAt=${"%.2f".format(fglRecallDetectedAt)} relaunch=$fglRelaunchObserved）"
+                "Failed"
+            }
+            fglPhase == FGL_PHASE_COMPLETED -> "Completed"
+            else -> "CombatReady"
+        }
+        if (state == "Completed" && !completed) {
+            completed = true
+            completedAt = elapsed
+            log.info("[ASTD-Automation] Completed: lens_fighter_grav_link deck/active/recall/relaunch evidence observed")
+        }
+        if (elapsed - lastWriteAt >= 0.18f || state == "Completed" || state == "Failed") {
+            lastWriteAt = elapsed
+            writeDiagnostics(engine, state, player)
+            writeTelemetry(engine, state, player, null)
+        }
+    }
+
+
     // === Piercing lance scenario ===
 
     private fun findPlShipA(engine: CombatEngineAPI): ShipAPI? =
@@ -5486,7 +5826,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             !ASTDInGameAutomationScenario.isHipEnabled() &&
             !ASTDInGameAutomationScenario.isSmEnabled() &&
             !ASTDInGameAutomationScenario.isPlEnabled() &&
-            !ASTDInGameAutomationScenario.isTrailPauseProbeEnabled()
+            !ASTDInGameAutomationScenario.isTrailPauseProbeEnabled() &&
+            !ASTDInGameAutomationScenario.isFighterGravLinkScenarioEnabled()
         ) {
             return
         }
@@ -5499,6 +5840,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         val shipSprite = try { ship?.spriteAPI } catch (_: Throwable) { null }
         val vfxTelemetry = ProjectileVfxDriverPlugin.telemetrySnapshot(engine)
         val scenarioId = when {
+            ASTDInGameAutomationScenario.isFighterGravLinkScenarioEnabled() -> ASTDInGameAutomationScenario.FGL_SCENARIO_ID
             ASTDInGameAutomationScenario.isTrailPauseProbeEnabled() -> ASTDInGameAutomationScenario.TPP_SCENARIO_ID
             ASTDInGameAutomationScenario.isPlEnabled() -> ASTDInGameAutomationScenario.PL_SCENARIO_ID
             ASTDInGameAutomationScenario.isSmEnabled() -> ASTDInGameAutomationScenario.SM_SCENARIO_ID
@@ -5543,7 +5885,35 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             // 保留闸门让 vanilla 静默 deployAll（2026-07-31 修正）；本字段在 CombatReady 与各相位
             // 写出时采样，任何时刻为 true 都说明闸门被重新打开（多舰场景会常驻遮屏）。
             appendLine("  \"deploymentDialogShowing\": ${engine.combatUI?.isShowingDeploymentDialog()},")
-            if (ASTDInGameAutomationScenario.isPlEnabled()) {
+            if (ASTDInGameAutomationScenario.isFighterGravLinkScenarioEnabled()) {
+                val fglPlayer = findFglPlayer(engine)
+                val fglSystem = fglPlayer?.system
+                appendLine("  \"runtimeElapsedSeconds\": 0,")
+                appendLine("  \"runtimeTrackedCount\": ${vfxTelemetry.trackedCount},")
+                appendLine("  \"runtimeLastProjectileSpecId\": ${jsonString(vfxTelemetry.lastProjectileSpecId)},")
+                // ---- 机制证据（断言点 A~G）----
+                appendLine("  \"fglPhase\": \"$fglPhase\",")
+                appendLine("  \"fglSystemId\": ${jsonString(fglSystem?.id)},")
+                appendLine("  \"fglSystemState\": ${jsonString(fglSystem?.state?.name)},")
+                appendLine("  \"fglSystemCooldownRemaining\": ${formatFloat(fglSystem?.cooldownRemaining ?: -1f)},")
+                appendLine("  \"fglExtraDeploymentLimitMax\": $fglExtraDeploymentLimitMax,")
+                appendLine("  \"fglWingSizeMax\": $fglWingSizeMax,")
+                appendLine("  \"fglFightersInPlayMax\": $fglFightersInPlayMax,")
+                appendLine("  \"fglFightersInPlay\": ${if (fglPlayer != null) fglPlayerFighters(fglPlayer).size else -1},")
+                appendLine("  \"fglRecordedFighterCount\": $fglRecordedFighterCount,")
+                appendLine("  \"fglTimeMultMax\": ${formatFloat(fglTimeMultMax)},")
+                appendLine("  \"fglHullDamageTakenMultMin\": ${formatFloat(if (fglHullDamageTakenMultMin == Float.MAX_VALUE) -1f else fglHullDamageTakenMultMin)},")
+                appendLine("  \"fglActivationCurrFlux\": ${formatFloat(fglActivationCurrFlux)},")
+                appendLine("  \"fglCurrFluxDeltaMax\": ${formatFloat(fglCurrFluxDeltaMax)},")
+                appendLine("  \"fglActivationHardFlux\": ${formatFloat(fglActivationHardFlux)},")
+                appendLine("  \"fglHardFluxBeforeRecall\": ${formatFloat(fglHardFluxBeforeRecall)},")
+                appendLine("  \"fglHardFluxAfterRecall\": ${formatFloat(fglHardFluxAfterRecall)},")
+                appendLine("  \"fglRecallDetected\": ${fglRecallDetectedAt >= 0f},")
+                appendLine("  \"fglRecordedFightersCleared\": $fglRecordedFightersCleared,")
+                appendLine("  \"fglRelaunchObserved\": $fglRelaunchObserved,")
+                appendLine("  \"fglPlayerCurrFlux\": ${formatFloat(fglPlayer?.fluxTracker?.currFlux ?: -1f)},")
+                appendLine("  \"fglPlayerHardFlux\": ${formatFloat(fglPlayer?.fluxTracker?.hardFlux ?: -1f)},")
+            } else if (ASTDInGameAutomationScenario.isPlEnabled()) {
                 val plShipA = findPlShipA(engine)
                 val plShipB = findPlShipB(engine)
                 val plLanceA = findPlLance(plShipA)
@@ -6576,6 +6946,43 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private const val SM_COMPLETED_EVENT_WINDOW = 2.5f
         private const val SM_COMPLETED_STAGE_TIMEOUT = 30f
         private const val SM_PHASE_TIMEOUT = 90f
+
+        // 飞蓬战机引力联结器场景：相位机、锚点与期望证据（断言点 A~G）。
+        private const val FGL_PHASE_SPAWN = "SPAWN"
+        private const val FGL_PHASE_WAIT_WINGS = "WAIT_WINGS"
+        private const val FGL_PHASE_ACTIVATE = "ACTIVATE"
+        private const val FGL_PHASE_OBSERVE_ACTIVE = "OBSERVE_ACTIVE"
+        private const val FGL_PHASE_WAIT_RECALL = "WAIT_RECALL"
+        private const val FGL_PHASE_RELAUNCH = "RELAUNCH"
+        private const val FGL_PHASE_COMPLETED = "COMPLETED"
+        private const val FGL_PHASE_FAILED = "FAILED"
+        private const val FGL_PLAYER_HULL = "astd_zw_102"
+        private const val FGL_ENEMY_HULL = "condor"
+        private const val FGL_SYSTEM_ID = "astd_fighter_grav_link"
+        private val FGL_PLAYER_ANCHOR = Vector2f(-700f, 0f)
+        private val FGL_ENEMY_ANCHOR = Vector2f(1300f, 0f)
+        private val FGL_CAMERA_CENTER = Vector2f(300f, 0f)
+        private const val FGL_CAMERA_VISIBLE_HEIGHT = 1500f
+        private const val FGL_SPAWN_SETTLE_SECONDS = 0.6f
+        // WAIT_WINGS（断言点 A）：玩家侧固定 v2 档 → 每甲板 extraDeploymentLimit 锚定 round(2×(1+1.5))=5；
+        // 单联队在场 ≥3 超出基础编制 num=2（wing_data.csv 口径），为扩容生效的直接证据
+        // （总在场数口径无效：3 甲板基础编制合计已达 6）。
+        private const val FGL_EXPECT_EXTRA_DEPLOYMENT_LIMIT = 5
+        private const val FGL_EXPANDED_WING_MIN = 3
+        private const val FGL_MIN_FIGHTERS_FOR_ACTIVATION = 2
+        // OBSERVE_ACTIVE（断言点 B/C/D）：玩家恒 v2 → 时流 ×2.5（界 2.4）、四承伤 ×0.5（界 0.51）；
+        // 软辐能 1120/s（基础最大辐能 16000×7%）对冲盾开净耗散 760/s（耗散 1400 − 护盾维持 640）
+        // 后净涨 ≈360/s，激活后约 3s 达成 +800，观测窗 2~5s 收口。
+        private const val FGL_OBSERVE_MIN_SECONDS = 2f
+        private const val FGL_OBSERVE_TIMEOUT = 5f
+        private const val FGL_EXPECT_TIME_MULT_MIN = 2.4f
+        private const val FGL_EXPECT_DAMAGE_TAKEN_MAX = 0.51f
+        private const val FGL_EXPECT_FLUX_RISE = 800f
+        // WAIT_RECALL（断言点 E/F）：召回检测后 settle 1s 采样硬辐能峰值与 identity 清点。
+        private const val FGL_RECALL_SETTLE_SECONDS = 1.0f
+        // RELAUNCH（断言点 G）：召回后 15s 内必须出现新 identity 战机（快速整备 0.3~0.8s/架）。
+        private const val FGL_RELAUNCH_TIMEOUT = 15f
+        private const val FGL_PHASE_TIMEOUT = 90f
 
         // 贯星之矛场景：相位机、锚点与期望证据（规格 09 §4.2 烟测检查点）。
         private const val PL_PHASE_MOUNT = "MOUNT"

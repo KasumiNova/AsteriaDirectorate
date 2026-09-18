@@ -15,6 +15,9 @@
 		"system.echo_fixation.status.automated.in": "切片采样中",
 		"system.echo_fixation.status.automated.active": "战场切面已锚定",
 		"system.echo_fixation.status.automated.out": "回音衰减中",
+		"system.fighter_grav_link.status.in": "引力联结锚定中",
+		"system.fighter_grav_link.status.active": "机群时流增幅中",
+		"system.fighter_grav_link.status.out": "机群折叠回库",
 		"system.arc_shared_flux_network.status.default.in.line1": "自身射速/机动 -%selfRof%",
 		"system.arc_shared_flux_network.status.default.in.line2": "自身耗散 +%selfDissipation%，硬辐能耗散 +%hardDissipation%",
 		"system.arc_shared_flux_network.status.default.active.line1": "友舰耗散 +%targetDissipation%，射速 +%targetRof%",
@@ -102,6 +105,10 @@
 		"ui.hullmod.lens_parallax_decks.line.1": "· 错位部署：机群出库获得 <param:#C8A0FF:~2s> 相位隐形与 <param:#C8A0FF:+100%> 时流加成。",
 		"ui.hullmod.lens_parallax_decks.line.2": "· 链路回响：机群命中敌人时叠 <param:#C8A0FF:1 层> 误差标记（每敌每秒上限防刷）。",
 		"ui.hullmod.lens_parallax_decks.line.3": "· 回收重构：返航整备的机群位于本舰 <param:#C8A0FF:1000su> 内时获得 <param:#C8A0FF:50%> 承伤减免。",
+
+		"ui.hullmod.dimensional_folding_deck.summary": "<param:#C8A0FF:菀星设计局-紫菀> 以局域维度折叠扩充机库容量，让每一块甲板都容纳超出物理极限的机群编制。",
+		"ui.hullmod.dimensional_folding_deck.line.1": "· 战机 LPC 所需的装配点提升 <param:#C8A0FF:50%>。",
+		"ui.hullmod.dimensional_folding_deck.line.2": "· 每个战机甲板的联队战机数量提升 <param:#C8A0FF:50%~250%>（随威胁等级，砺刃档 <param:#C8A0FF:+150%>）。",
 
 		"ui.hullmod.lens_permeating_tide.summary": "<param:#C8A0FF:菀星设计局-紫菀> 透镜协议旗舰的电战潮汐场。它不是一堵墙，是一片正在涨起来的水。",
 		"ui.hullmod.lens_permeating_tide.line.1": "· 涨潮：本舰周围 <param:#C8A0FF:~2500su> 电战潮汐场，场内敌舰累积深水标记，每 <param:#C8A0FF:2.5s~5s> 一层，离本舰越近越快。",

@@ -44,6 +44,10 @@ object ASTDInGameAutomationScenario {
     const val PL_WEAPON_ID: String = "astd_piercing_lance"
     const val PL_PROJECTILE_SPEC_ID: String = "astd_piercing_lance_shot"
     const val TPP_SCENARIO_ID: String = "trail_pause_probe"
+    const val FGL_SCENARIO_ID: String = "lens_fighter_grav_link"
+    const val FGL_SYSTEM_ID: String = "astd_fighter_grav_link"
+    const val FGL_HULL_ID: String = "astd_zw_102"
+    const val FGL_VARIANT_ID: String = "astd_zw_102_Standard"
     const val SHIP_ID: String = "astd_xc_001"
     const val VARIANT_ID: String = "astd_xc_001_Standard"
     const val WEAPON_ID: String = "astd_aod7"
@@ -227,6 +231,18 @@ object ASTDInGameAutomationScenario {
         val enabled = System.getProperty(ENABLED_PROPERTY)?.equals("true", ignoreCase = true) == true
         val scenario = System.getProperty(SCENARIO_PROPERTY, SCENARIO_ID)
         return enabled && scenario == TPP_SCENARIO_ID
+    }
+
+    /**
+     * 飞蓬级战机引力联结器实机场景开关：镜像 [isTrailPauseProbeEnabled]。
+     * 验证维度折叠甲板扩容（每甲板 extraDeploymentLimit 锚定 5 / 单联队在场 ≥3）、
+     * 系统激活期战机时流 ×2.5 与四承伤 ×0.5、母舰软辐能持续产出（≥800）、
+     * ACTIVE→OUT 召回（旧机 identity 全清 / 软→硬转化 hardFlux 上升 / 15s 内新机重新出击）。
+     */
+    fun isFighterGravLinkScenarioEnabled(): Boolean {
+        val enabled = System.getProperty(ENABLED_PROPERTY)?.equals("true", ignoreCase = true) == true
+        val scenario = System.getProperty(SCENARIO_PROPERTY, SCENARIO_ID)
+        return enabled && scenario == FGL_SCENARIO_ID
     }
 
     fun outputDir(): Path {
