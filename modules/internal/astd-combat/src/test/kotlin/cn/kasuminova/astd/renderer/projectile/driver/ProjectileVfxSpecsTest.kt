@@ -12,7 +12,7 @@ import kotlin.test.assertTrue
 /**
  * 手写 DSL spec 的蓝图自检：验证 [ProjectileVfxSpecs] 的构建函数产出的 [ProjectileVfxTreeSpec] 蓝图拓扑与驱动策略。
  *
- * 简单 spec = Box 螺栓弹头（默认开启，染 boltColor 近白单色系）+ 三条 Static Trail 贴图拖尾（twin 外带 / smooth 核心 / zappy 装饰），
+ * 简单 spec = Box 螺栓弹头（默认开启，染 boltColor 近白单色系）+ 四条 Static Trail 贴图拖尾（twin 外带 / smooth 核心 / zappy 装饰 ×2），
  * 全部参数由文件底部常量与公式纯函数派生——本测试含公式数值锚点与全 spec 的接线守护。
  * 蓝图 → RenderEntity 场景树的组装（组件类型/节点 id/renderOrder）由 astd-render 的 ProjectileVfxTreeAssemblerTest 守护。
  */
@@ -72,8 +72,8 @@ class ProjectileVfxSpecsTest {
     }
 
     @Test
-    fun `简单 spec 蓝图拓扑：Box 螺栓 + 三层 Static Trail 拖尾`() {
-        // spc3：Box 螺栓染 boltColor 近白单色系 + twin 外带 + smooth 核心 + zappy 装饰按声明序叠层。
+    fun `简单 spec 蓝图拓扑：Box 螺栓 + 四层 Static Trail 拖尾`() {
+        // spc3：Box 螺栓染 boltColor 近白单色系 + twin 外带 + smooth 核心 + zappy 装饰×2 按声明序叠层。
         val plain = assertNotNull(ProjectileVfxSpecs.build("astd_spc3_shot"))
         val bolt = assertNotNull(plain.tree.bolt)
         assertEquals(229 / 255f, bolt.color.red, 1e-3f, "boltColor(violet)=mix(主色, 白, 0.7)=0.898，hex 舍入 229")
@@ -81,23 +81,23 @@ class ProjectileVfxSpecsTest {
         assertEquals(1f, bolt.color.blue, 1e-3f)
         assertEquals(199 / 255f, bolt.color.alpha, 1e-3f, "原版 coreColor 近白口径 alpha 0.78，hex 舍入 199")
 
-        assertEquals(listOf("twin", "core", "zappy"), plain.tree.staticTrails.map { it.first })
+        assertEquals(listOf("twin", "core", "zappy_0", "zappy_1"), plain.tree.staticTrails.map { it.first })
 
         // bandWidth(6, 2.2)=round05(max(2.1, 6.93))=7 ×2 = 14；核心 ×0.5=7；装饰 ×0.6=8.5
         val twin = plain.tree.staticTrails.first { it.first == "twin" }.second
         val core = plain.tree.staticTrails.first { it.first == "core" }.second
-        val zappy = plain.tree.staticTrails.first { it.first == "zappy" }.second
+        val zappy = plain.tree.staticTrails.first { it.first == "zappy_0" }.second
         assertEquals(14f, twin.width)
         assertEquals(7f, core.width)
         assertEquals(8.5f, zappy.width)
         assertEquals(-45f..45f, zappy.angularOutRange, "简单 spec 的 zappy 装饰层同样带默认尾端自旋")
-        assertEquals(TrailDriftRange(-16f, -16f, 16f, 16f), zappy.velocityOutRange)
-        assertEquals(0.45f, core.glowPower, "仅核心层给适度 bloom")
-        assertEquals(0f, twin.glowPower)
-        assertEquals(listOf(1, 2, 3), plain.tree.staticTrails.map { it.second.layer })
+        assertEquals(TrailDriftRange(-12f, -12f, 12f, 12f), zappy.velocityOutRange)
+        assertEquals(0.8f, core.glowPower, "全层统一 trailGlow 默认 0.8")
+        assertEquals(0.8f, twin.glowPower, "外带同样吃 trailGlow")
+        assertEquals(listOf(1, 2, 3, 3), plain.tree.staticTrails.map { it.second.layer })
         plain.tree.staticTrails.forEach { (_, spec) ->
             assertEquals(135f, spec.bandLength)
-            assertNull(spec.recede, "recede 不声明 = 自动取弹体长度 ×0.75")
+            assertNull(spec.recede, "recede 不声明 = 自动取弹体长度 ×0.2")
         }
 
         assertEquals(0.18f, plain.policy.removedFadeOutSeconds)
@@ -140,16 +140,16 @@ class ProjectileVfxSpecsTest {
     }
 
     @Test
-    fun `贯星之矛：三层拖尾之外追加水平光斑 弹头光斑与锚点电弧`() {
+    fun `贯星之矛：四层拖尾之外追加水平光斑 弹头光斑与锚点电弧`() {
         val vfx = assertNotNull(ProjectileVfxSpecs.build("astd_piercing_lance_shot"))
-        assertEquals(listOf("twin", "core", "zappy"), vfx.tree.staticTrails.map { it.first })
+        assertEquals(listOf("twin", "core", "zappy_0", "zappy_1"), vfx.tree.staticTrails.map { it.first })
         assertEquals(listOf("core", "light"), vfx.tree.boxFlares.map { it.first })
         assertEquals(listOf("arc"), vfx.tree.anchorArcs.map { it.first })
         assertNotNull(vfx.onFire, "贯星之矛带发射点扭曲钩子")
 
-        // 亮度 +25%：主色 alpha 0.95 × 0.78 × 0.45 × 1.25 ≈ 0.4168，hex 量化（×255 取整 106）后 0.4157
+        // 亮度 +25%：主色 alpha 0.95 × 0.78 × 1.25 ≈ 0.9263，hex 量化（×255 取整 236）后 0.9255
         val twin = vfx.tree.staticTrails.first { it.first == "twin" }.second
-        assertEquals(106 / 255f, twin.headColor.alpha, 1e-3f)
+        assertEquals(236 / 255f, twin.headColor.alpha, 1e-3f)
         vfx.tree.staticTrails.forEach { (_, spec) ->
             assertEquals(0f, spec.recede, "贯星之矛 recede 显式 0：带体亮头直抵弹头")
         }
