@@ -107,6 +107,14 @@ object ProjectileVfxSpecs {
         // width=10 表达 1.5× 弹体体量（介于 spc3 中型 6 与穷距大型 12 之间）。两 spec 值完全一致属刻意（同一弹头两种发射器）。
         "astd_stellar_mrm_launcher_shot" to { range -> stellarMrmShot("astd_stellar_mrm_launcher_shot", range) },
         "astd_stellar_mrm_pod_shot" to { range -> stellarMrmShot("astd_stellar_mrm_pod_shot", range) },
+        // 星尘光尘（联制线内置导弹）：小型环绕弹体克制档（width 4 / length 90 短拖尾），
+        // ARC 蓝 / LENS 紫双线配色（设计案 20-joint.md §武器特效）。
+        "astd_lh_stardust_mote_arc" to {
+            simpleProjectileVfx("astd_lh_stardust_mote_arc", qiongjueBlue(), width = 4f, length = 90f)
+        },
+        "astd_lh_stardust_mote_lens" to {
+            simpleProjectileVfx("astd_lh_stardust_mote_lens", violet(), width = 4f, length = 90f)
+        },
         // 贯星之矛（规格 09 §3.1）：width=36 大圆形弹体 + glowScale 4.0 放大带宽（公式派生）。
         "astd_piercing_lance_shot" to ::piercingLanceShot,
     )

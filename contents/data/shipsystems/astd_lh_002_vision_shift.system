@@ -1,7 +1,8 @@
 {
     "id": "astd_lh_002_vision_shift",
     "type": "STAT_MOD",
-    "aiType": "WEAPON_BOOST",
-    "statsScript": "cn.kasuminova.astd.combat.shipsystems.PlaceholderShipSystemStats",
-    "useSound": "system_ammo_feeder"
+    "aiType": "CUSTOM",
+    "aiScript": "cn.kasuminova.astd.combat.shipsystems.ASTDVisionShiftSystemAI",
+    "statsScript": "cn.kasuminova.astd.combat.shipsystems.ASTDVisionShiftSystemStats",
+    "useSound": "system_quantum_disruptor"
 }

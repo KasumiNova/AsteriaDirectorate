@@ -1,0 +1,48 @@
+{
+    "id": "astd_lh_stardust_mote_lens",
+    "specClass": "missile",
+    "missileType": "MOTE",
+    "onFireEffect": "cn.kasuminova.astd.combat.effect.generic.ProjectileSpecOnFireDispatcher",
+    "onHitEffect": "cn.kasuminova.astd.combat.effect.joint.stardust.StardustMoteOnHitEffect",
+    "sprite": "graphics/missiles/bomblet0.png",
+    "size": [4, 4],
+    "center": [2, 2],
+    "collisionRadius": 11,
+    "collisionClass": "MISSILE_NO_FF",
+    "explosionColor": [186, 120, 255, 180],
+    "explosionRadius": 36,
+    "armingTime": 0.05,
+    "flameoutTime": 1,
+    "noEngineGlowTime": 0.5,
+    "fadeTime": 0.5,
+    "engineSpec": {
+        "turnAcc": 600,
+        "turnRate": 400,
+        "acc": 650,
+        "dec": 650
+    },
+    "engineSlots": [
+        {
+            "id": "ES1",
+            "loc": [0, 0],
+            "style": "CUSTOM",
+            "styleSpec": {
+                "mode": "QUAD_STRIP",
+                "engineColor": [186, 120, 255, 255],
+                "glowSizeMult": 1,
+                "contrailDuration": 2,
+                "contrailWidthMult": 1,
+                "contrailWidthAddedFractionAtEnd": 0,
+                "contrailMinSeg": 5,
+                "contrailMaxSpeedMult": -0.1,
+                "contrailAngularVelocityMult": 0,
+                "contrailSpawnDistMult": 1,
+                "contrailColor": [186, 120, 255, 25],
+                "type": "GLOW"
+            },
+            "width": 12,
+            "length": 35,
+            "angle": 180
+        }
+    ]
+}

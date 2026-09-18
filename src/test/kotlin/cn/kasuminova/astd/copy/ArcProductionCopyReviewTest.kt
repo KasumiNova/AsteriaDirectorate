@@ -566,9 +566,11 @@ class ArcProductionCopyReviewTest {
             "astd_arc_shared_flux_network" to "支援",
             "astd_plasma_armor_shield_boost" to "防御",
             "astd_limit_temporal_thruster" to "机动",
+            "astd_lh_001_burst_flow" to "机动",
+            "astd_lh_002_vision_shift" to "干扰",
         )
 
-        val allowedSystemTypeLabels = setOf("进攻", "防御", "机动", "支援", "特殊")
+        val allowedSystemTypeLabels = setOf("进攻", "防御", "机动", "支援", "干扰", "特殊")
 
         val staleRuntimeKeys = listOf(
             "ui.hullmod.arc_advanced_targeting_system.attr.targeting",

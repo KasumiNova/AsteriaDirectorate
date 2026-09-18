@@ -1,0 +1,143 @@
+package cn.kasuminova.astd.combat.shipsystems
+
+import cn.kasuminova.astd.combat.effect.joint.BurstFlowTuning
+import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
+import cn.kasuminova.astd.internal.i18n.I18n
+import cn.kasuminova.astd.renderer.effect.system.ASTDAfterimageEffect
+import com.fs.starfarer.api.Global
+import com.fs.starfarer.api.combat.MutableShipStatsAPI
+import com.fs.starfarer.api.combat.ShipAPI
+import com.fs.starfarer.api.impl.combat.BaseShipSystemScript
+import com.fs.starfarer.api.plugins.ShipSystemStatsScript
+import org.lwjgl.util.vector.Vector2f
+import java.awt.Color
+
+/**
+ * 落叶飞花（飞星 (ARC) / astd_lh_001_burst_flow）：1s 瞬时爆发时流 + 机动 + 非导弹备弹恢复。
+ *
+ * 设计案 20-joint.md §战术系统-坠星：爆发不随时间线性增长/减弱——恒定口径
+ * （仅 ACTIVE 态满额生效，IN/OUT 不渐变）。数值三锚点见 [BurstFlowTuning]。
+ *
+ * 玩家船反补偿：激活期间对 `engine.timeMult` 乘 `1/timeMult`（口径与
+ * [ASTDLimitTemporalThrusterSystemStats] 一致），避免玩家视角整体加速。
+ */
+class ASTDBurstFlowSystemStats : BaseShipSystemScript() {
+
+    companion object {
+        private const val AFTERIMAGE_INTERVAL = 0.1f
+        private const val PLAYER_TIME_MULT_OWNER_KEY = "astd_burst_flow_player_time_mult_owner"
+        private const val AFTERIMAGE_TIMER_KEY_PREFIX = "astd_burst_flow_afterimage:"
+        private val AFTERIMAGE_COLOR = Color(105, 210, 255, 96)
+        private val JITTER_UNDER = Color(90, 165, 255, 155)
+        private val JITTER = Color(90, 165, 255, 55)
+    }
+
+    override fun apply(stats: MutableShipStatsAPI, id: String, state: ShipSystemStatsScript.State, effectLevel: Float) {
+        val ship = stats.entity as? ShipAPI
+        val level = if (state == ShipSystemStatsScript.State.ACTIVE) 1f else 0f
+        val engine = Global.getCombatEngine()
+        if (ship != null && engine != null && !engine.isPaused) {
+            renderBurstStreak(ship, id, state)
+        }
+        if (level <= 0f) {
+            unapply(stats, id)
+            return
+        }
+
+        val values = BurstFlowTuning.resolve(DifficultyTuningImpl, isPlayer = ship?.owner == 0)
+        stats.timeMult.modifyMult(id, values.timeMult)
+        stats.maxSpeed.modifyMult(id, values.speedManeuverMult)
+        stats.acceleration.modifyMult(id, values.speedManeuverMult)
+        stats.deceleration.modifyMult(id, values.speedManeuverMult)
+        stats.maxTurnRate.modifyMult(id, values.speedManeuverMult)
+        stats.turnAcceleration.modifyMult(id, values.speedManeuverMult)
+        // 弹道/能耗两条备弹恢复通道天然排除导弹武器
+        stats.ballisticAmmoRegenMult.modifyMult(id, values.ammoRegenMult)
+        stats.energyAmmoRegenMult.modifyMult(id, values.ammoRegenMult)
+
+        if (ship != null && engine != null && !engine.isPaused && ship === engine.playerShip) {
+            engine.timeMult.modifyMult("${id}_player", 1f / values.timeMult)
+            engine.customData[PLAYER_TIME_MULT_OWNER_KEY] = System.identityHashCode(ship)
+        }
+    }
+
+    override fun unapply(stats: MutableShipStatsAPI, id: String) {
+        stats.timeMult.unmodifyMult(id)
+        stats.maxSpeed.unmodifyMult(id)
+        stats.acceleration.unmodifyMult(id)
+        stats.deceleration.unmodifyMult(id)
+        stats.maxTurnRate.unmodifyMult(id)
+        stats.turnAcceleration.unmodifyMult(id)
+        stats.ballisticAmmoRegenMult.unmodifyMult(id)
+        stats.energyAmmoRegenMult.unmodifyMult(id)
+        val ship = stats.entity as? ShipAPI
+        val engine = Global.getCombatEngine()
+        if (ship != null && engine?.customData?.get(PLAYER_TIME_MULT_OWNER_KEY) == System.identityHashCode(ship)) {
+            engine.timeMult.unmodifyMult("${id}_player")
+            engine.customData.remove(PLAYER_TIME_MULT_OWNER_KEY)
+        }
+        ship ?: return
+        ship.setJitterShields(false)
+        engine?.customData?.remove(AFTERIMAGE_TIMER_KEY_PREFIX + System.identityHashCode(ship))
+    }
+
+    override fun getStatusData(
+        index: Int,
+        state: ShipSystemStatsScript.State,
+        effectLevel: Float
+    ): ShipSystemStatsScript.StatusData? {
+        if (index != 0) return null
+        val suffix = when (state) {
+            ShipSystemStatsScript.State.IN -> "in"
+            ShipSystemStatsScript.State.ACTIVE -> "active"
+            ShipSystemStatsScript.State.OUT -> "out"
+            else -> return null
+        }
+        return ShipSystemStatsScript.StatusData(
+            I18n[I18n.Categories.MOD, "system.burst_flow.status.default.$suffix"],
+            false,
+        )
+    }
+
+    /** 蓝色 jitter + 每 0.1s 残影（设计案特效口径；IN/OUT 以半强度过渡，ACTIVE 满额）。 */
+    private fun renderBurstStreak(ship: ShipAPI, id: String, state: ShipSystemStatsScript.State) {
+        val engine = Global.getCombatEngine() ?: return
+        val timerKey = AFTERIMAGE_TIMER_KEY_PREFIX + System.identityHashCode(ship)
+        val level = when (state) {
+            ShipSystemStatsScript.State.IN -> 0.5f
+            ShipSystemStatsScript.State.ACTIVE -> 1f
+            ShipSystemStatsScript.State.OUT -> 0.45f
+            else -> 0f
+        }
+        if (level > 0f) {
+            ship.setJitterShields(false)
+            ship.setJitterUnder(id, JITTER_UNDER, level, 25, 0f, 7f)
+            ship.setJitter(id, JITTER, 0.30f * level, 3, 0f, 0f)
+        }
+        if (state == ShipSystemStatsScript.State.IDLE) {
+            engine.customData.remove(timerKey)
+            return
+        }
+
+        val elapsed = (engine.customData[timerKey] as? Float ?: 0f) + engine.elapsedInLastFrame
+        if (elapsed < AFTERIMAGE_INTERVAL) {
+            engine.customData[timerKey] = elapsed
+            return
+        }
+        engine.customData[timerKey] = elapsed - AFTERIMAGE_INTERVAL
+        ASTDAfterimageEffect.spawn(
+            engine,
+            ASTDAfterimageEffect.Snapshot(
+                spritePath = ship.hullSpec.spriteName,
+                location = Vector2f(ship.location),
+                facing = ship.facing,
+                width = ship.spriteAPI.width,
+                height = ship.spriteAPI.height,
+                color = AFTERIMAGE_COLOR,
+                startAlpha = 0.42f,
+                duration = 0.42f,
+                growth = 0.035f,
+            ),
+        )
+    }
+}

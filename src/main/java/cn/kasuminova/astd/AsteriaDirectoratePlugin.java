@@ -6,12 +6,17 @@ import cn.kasuminova.astd.campaign.bounty.BountyBootstrapper;
 import cn.kasuminova.astd.campaign.bounty.StandardCores;
 import cn.kasuminova.astd.campaign.story.StoryDialogInstall;
 import cn.kasuminova.astd.campaign.world.StoryWorldBootstrap;
+import cn.kasuminova.astd.combat.effect.joint.stardust.StardustMoteAiPicker;
 import cn.kasuminova.astd.combat.hullmods.arc.ASTDXc001HullModUtilKt;
 import cn.kasuminova.astd.combat.hullmods.lens.LensArrayCoreModeUtilKt;
 import cn.kasuminova.astd.impl.buff.BuffInstall;
 import cn.kasuminova.astd.impl.difficulty.DifficultySettingsRegistrar;
 import cn.kasuminova.astd.renderer.effect.system.WeaponAmbientGlowManager;
 import com.fs.starfarer.api.BaseModPlugin;
+import com.fs.starfarer.api.PluginPick;
+import com.fs.starfarer.api.combat.MissileAIPlugin;
+import com.fs.starfarer.api.combat.MissileAPI;
+import com.fs.starfarer.api.combat.ShipAPI;
 import org.apache.log4j.Logger;
 
 public final class AsteriaDirectoratePlugin extends BaseModPlugin {
@@ -81,6 +86,12 @@ public final class AsteriaDirectoratePlugin extends BaseModPlugin {
             AsteriaTestCampaignBootstrap.resumePendingTeleportIfEnabled();
             AsteriaTestCampaignBootstrap.runStorageAcceptanceIfRequested();
         }
+    }
+
+    @Override
+    public PluginPick<MissileAIPlugin> pickMissileAI(MissileAPI missile, ShipAPI launchingShip) {
+        // 星尘光尘（联制线内置导弹）：原版引擎不为 MOTE 型弹体自动指派 AI，经本钩子接管。
+        return StardustMoteAiPicker.INSTANCE.pick(missile);
     }
 
     public Logger logger() {

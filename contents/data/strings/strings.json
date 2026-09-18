@@ -32,6 +32,11 @@
 		"system.limit_temporal_thruster.status.default.in": "时序推进预热中",
 		"system.limit_temporal_thruster.status.default.active": "瞬时航迹贯穿",
 		"system.limit_temporal_thruster.status.default.out": "时间尾流收束中",
+		"system.burst_flow.status.default.in": "飞花蓄势中",
+		"system.burst_flow.status.default.active": "落叶飞花已激活",
+		"system.burst_flow.status.default.out": "花影收束中",
+		"system.vision_shift.status.self": "自身时间流速 +%percent%",
+		"system.vision_shift.status.target": "%name% 时间流速 -%percent%",
 
 		"ui.hullmod.table.attribute": "属性",
 		"ui.hullmod.table.effect": "影响",

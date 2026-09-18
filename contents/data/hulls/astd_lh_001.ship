@@ -1,5 +1,5 @@
 {
-  "hullName": "锻萼",
+  "hullName": "飞星 (ARC)",
   "hullId": "astd_lh_001",
   "hullSize": "FRIGATE",
   "spriteName": "graphics/ships/astd_ast_101.png",
@@ -9,12 +9,14 @@
   "center": [63.5, 46],
   "collisionRadius": 64,
   "shieldCenter": [0, -0],
-  "shieldRadius": 66,
+  "shieldRadius": 69,
   "viewOffset": 0,
   "builtInMods": [
     "astd_singularity_stabilizer"
   ],
   "builtInWeapons": {
+    "WS0003": "astd_lh_stardust_launcher_arc",
+    "WS0004": "astd_lh_stardust_launcher_arc",
     "WS0099": "astd_lh_001_bloom"
   },
   "weaponSlots": [
@@ -27,24 +29,118 @@
       "angle": 0,
       "locations": [0, 0],
       "renderOrderMod": 3
+    },
+    {
+      "id": "WS0001",
+      "size": "MEDIUM",
+      "type": "UNIVERSAL",
+      "mount": "HARDPOINT",
+      "arc": 10,
+      "angle": 0,
+      "locations": [19, 35.5]
+    },
+    {
+      "id": "WS0002",
+      "size": "MEDIUM",
+      "type": "UNIVERSAL",
+      "mount": "HARDPOINT",
+      "arc": 10,
+      "angle": 0,
+      "locations": [20, -28.5]
+    },
+    {
+      "id": "WS0003",
+      "size": "SMALL",
+      "type": "MISSILE",
+      "mount": "HARDPOINT",
+      "arc": 0,
+      "angle": 135,
+      "locations": [-11.5, 54]
+    },
+    {
+      "id": "WS0004",
+      "size": "SMALL",
+      "type": "MISSILE",
+      "mount": "HARDPOINT",
+      "arc": 0,
+      "angle": -140,
+      "locations": [-15.5, -46]
     }
   ],
   "engineSlots": [
     {
-      "location": [-57, 0],
+      "location": [-27.5, 22],
+      "length": 60,
+      "width": 12,
+      "angle": 180,
+      "contrailSize": 10,
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-28, -15.5],
+      "length": 60,
+      "width": 12,
+      "angle": 180,
+      "contrailSize": 10,
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-23.5, 46],
       "length": 30,
       "width": 10,
+      "angle": 145,
+      "contrailSize": 10,
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-23.5, -40],
+      "length": 30,
+      "width": 10,
+      "angle": -145,
+      "contrailSize": 10,
+      "style": "ASTD_ARC"
+    },
+    {
+      "location": [-35.5, 3.5],
+      "length": 60,
+      "width": 12,
       "angle": 180,
       "contrailSize": 10,
       "style": "ASTD_ARC"
     }
   ],
   "bounds": [
-    -42, -40,
-    42, -40,
-    58, 0,
-    42, 40,
-    -42, 40,
-    -58, 0
+    40, -12,
+    35, -2.5,
+    20.5, -2.5,
+    16, 3,
+    20, 10,
+    38.5, 10.5,
+    40, 21.5,
+    29.5, 27,
+    30, 45.5,
+    11.5, 52.5,
+    -8, 63.5,
+    -9.5, 55,
+    -15, 52,
+    -24, 52.5,
+    -23, 40,
+    -41.5, 43.5,
+    -36.5, 28.5,
+    -29.5, 26,
+    -29, 13.5,
+    -37, 4.5,
+    -28, -7.5,
+    -28, -17.5,
+    -39.5, -32.5,
+    -34.5, -39.5,
+    -27, -38,
+    -18, -41,
+    -14.5, -48,
+    -20, -52.5,
+    -17, -59.5,
+    7, -50.5,
+    30.5, -40.5,
+    30, -19.5
   ]
 }

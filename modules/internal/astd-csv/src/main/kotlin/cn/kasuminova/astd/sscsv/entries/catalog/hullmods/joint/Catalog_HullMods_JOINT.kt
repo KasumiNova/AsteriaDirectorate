@@ -1,7 +1,6 @@
 package cn.kasuminova.astd.sscsv.entries.catalog.hullmods.joint
 
 import cn.kasuminova.astd.sscsv.entries.HullModEntry
-import cn.kasuminova.astd.sscsv.entries.catalog.hullmods.PLACEHOLDER_SCRIPT
 import cn.kasuminova.astd.sscsv.entries.catalog.hullmods.TAGS_BUILTIN
 import cn.kasuminova.astd.sscsv.entries.catalog.hullmods.hullmodName
 import cn.kasuminova.astd.sscsv.i18n.SsI18n
@@ -19,8 +18,7 @@ object HullMod_astd_singularity_stabilizer : HullModEntry() {
     override val rarity: Int = 1
     override val tech: String = "联制"
     override val tags: String = TAGS_BUILTIN
-    // TODO(奇点稳定器实装): 替换为正式 HullMod 脚本（时流锚定 + safetyoverrides 禁装判定）。
-    override val script: String = PLACEHOLDER_SCRIPT
+    override val script: String = "cn.kasuminova.astd.combat.hullmods.base.ASTDSingularityStabilizerHullMod"
     override val desc: String = SsI18n.t("hullmod.$id.desc")
     override val short: String = SsI18n.t("hullmod.$id.short")
     // 素材占位：复用现有稳定器图标，正式美术后续替换。

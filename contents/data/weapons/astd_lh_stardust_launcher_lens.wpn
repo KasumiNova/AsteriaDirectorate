@@ -1,0 +1,28 @@
+{
+    "id": "astd_lh_stardust_launcher_lens",
+    "specClass": "projectile",
+    "type": "MISSILE",
+    "size": "SMALL",
+    "turretSprite": "",
+    "hardpointSprite": "",
+    "hardpointOffsets": [0, 0],
+    "turretOffsets": [0, 0],
+    "hardpointAngleOffsets": [0],
+    "turretAngleOffsets": [0],
+    "barrelMode": "ALTERNATING",
+    "noShieldImpactSounds": true,
+    "noNonShieldImpactSounds": true,
+    "interruptibleBurst": false,
+    "animationType": "MUZZLE_FLASH",
+    "muzzleFlashSpec": {
+        "length": 30.0,
+        "spread": 5.0,
+        "particleSizeMin": 18.0,
+        "particleSizeRange": 24.0,
+        "particleDuration": 0.4,
+        "particleCount": 16,
+        "particleColor": [186, 120, 255, 25]
+    },
+    "projectileSpecId": "astd_lh_stardust_mote_lens",
+    "fireSoundTwo": "mote_attractor_launch_mote"
+}
