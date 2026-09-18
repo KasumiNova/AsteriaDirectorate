@@ -1,0 +1,50 @@
+{
+  "hullName": "锻萼",
+  "hullId": "astd_lh_001",
+  "hullSize": "FRIGATE",
+  "spriteName": "graphics/ships/astd_ast_101.png",
+  "style": "ASTD_HIGH_TECH",
+  "height": 92,
+  "width": 127,
+  "center": [63.5, 46],
+  "collisionRadius": 64,
+  "shieldCenter": [0, -0],
+  "shieldRadius": 66,
+  "viewOffset": 0,
+  "builtInMods": [
+    "astd_singularity_stabilizer"
+  ],
+  "builtInWeapons": {
+    "WS0099": "astd_lh_001_bloom"
+  },
+  "weaponSlots": [
+    {
+      "id": "WS0099",
+      "size": "LARGE",
+      "type": "DECORATIVE",
+      "mount": "TURRET",
+      "arc": 0,
+      "angle": 0,
+      "locations": [0, 0],
+      "renderOrderMod": 3
+    }
+  ],
+  "engineSlots": [
+    {
+      "location": [-57, 0],
+      "length": 30,
+      "width": 10,
+      "angle": 180,
+      "contrailSize": 10,
+      "style": "ASTD_ARC"
+    }
+  ],
+  "bounds": [
+    -42, -40,
+    42, -40,
+    58, 0,
+    42, 40,
+    -42, 40,
+    -58, 0
+  ]
+}

@@ -52,6 +52,11 @@ object Desc_astd_echo_fixation_crewed : LocalizedDescription("astd_echo_fixation
 object Desc_astd_echo_fixation_automated : LocalizedDescription("astd_echo_fixation_automated", "SHIP_SYSTEM")
 object Desc_astd_gravity_phase : LocalizedDescription("astd_gravity_phase", "SHIP_SYSTEM")
 
+object Desc_astd_lh_001 : LocalizedDescription("astd_lh_001", "SHIP")
+object Desc_astd_lh_002 : LocalizedDescription("astd_lh_002", "SHIP")
+object Desc_astd_lh_001_burst_flow : LocalizedDescription("astd_lh_001_burst_flow", "SHIP_SYSTEM")
+object Desc_astd_lh_002_vision_shift : LocalizedDescription("astd_lh_002_vision_shift", "SHIP_SYSTEM")
+
 object Desc_astd_gcp12 : LocalizedDescription("astd_gcp12", "WEAPON")
 object Desc_astd_gcp8 : LocalizedDescription("astd_gcp8", "WEAPON", notesId = "astd_gcp12")
 object Desc_astd_gcp4 : LocalizedDescription("astd_gcp4", "WEAPON", notesId = "astd_gcp12")

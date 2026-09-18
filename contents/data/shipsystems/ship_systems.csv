@@ -13,6 +13,8 @@ name,id,flux/second,f/s (base rate),f/s (base cap),flux/use,f/u (base rate),f/u 
 高能装填,astd_high_energy_loader,0,0,0,0,0,0,0,,,0.25,3,0.25,12,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,,graphics/icons/hullsys/ammo_feeder.png
 全息分身,astd_holographic_decoy,0,0,0,0,0,0,0,3,12,0.15,0.5,0.15,8,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,,graphics/icons/hullsys/phase_cloak.png
 干扰蜂群,astd_jamming_swarm,0,0,0,0,0,0,0,,,0.5,10,0.5,16,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,,graphics/icons/hullsys/drone_pd_high.png
+落叶飞花,astd_lh_001_burst_flow,0,0,0,0,0,0,0,3,0.2,0.1,1,0.1,1,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,,graphics/icons/hullsys/temporal_shell.png
+视界变速,astd_lh_002_vision_shift,0,0,0,0,0,0,0,,,0.5,10,0.5,15,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,,graphics/icons/hullsys/quantum_disruptor.png
 压限时流推进器,astd_limit_temporal_thruster,0,0,0,0,0,0,0,3,0.1,0.2,2,0.2,1.5,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,,graphics/icons/hullsys/maneuvering_jets.png
 逻辑崩塌,astd_logic_collapse,0,0,0,0,0,0,0,2,22,0.5,0.8,0.5,18,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,,graphics/icons/hullsys/phase_cloak.png
 微型燃烧推进,astd_micro_burn_drive,0,0,0,0,0,0,0,3,10,0.25,1.25,0.25,8,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,,graphics/icons/hullsys/burn_drive.png

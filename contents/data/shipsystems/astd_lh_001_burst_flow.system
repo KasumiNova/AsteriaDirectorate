@@ -1,0 +1,7 @@
+{
+    "id": "astd_lh_001_burst_flow",
+    "type": "STAT_MOD",
+    "aiType": "WEAPON_BOOST",
+    "statsScript": "cn.kasuminova.astd.combat.shipsystems.PlaceholderShipSystemStats",
+    "useSound": "system_ammo_feeder"
+}
