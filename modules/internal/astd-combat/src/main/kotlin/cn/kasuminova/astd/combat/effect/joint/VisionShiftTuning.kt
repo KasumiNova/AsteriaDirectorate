@@ -36,9 +36,6 @@ object VisionShiftTuning {
     /** 目标受到来自本舰的伤害加成（v1 +25% / v2 +62.5% / v5 +100%；最终乘区 = 1 + 本值）。 */
     val DAMAGE_FROM_SELF_BONUS = ScalingEntry(0.25f, 0.625f, 1.0f)
 
-    /** 目标受到来自他单位的伤害减免（反向缩放：v1 -80% / v2 -60% / v5 -40%；最终乘区 = 1 - 本值）。 */
-    val DAMAGE_FROM_OTHERS_REDUCTION = ScalingEntry(0.80f, 0.60f, 0.40f)
-
     /** 激活时解析的全部机制数值（最终乘区口径，直接可用）。 */
     data class Values(
         /** 自身时间流速乘区（含基准 1）。 */
@@ -47,8 +44,6 @@ object VisionShiftTuning {
         val targetTimeMult: Float,
         /** 目标受到来自本舰伤害的乘区。 */
         val damageFromSelfMult: Float,
-        /** 目标受到来自他单位伤害的乘区。 */
-        val damageFromOthersMult: Float,
     )
 
     /** 难度取值唯一入口：玩家固定 v2，否则按轨一 k_s 映射；[targetHullSize] 为目标体型分档依据。 */
@@ -56,7 +51,6 @@ object VisionShiftTuning {
         selfTimeMult = 1f + pick(tuning, isPlayer, SELF_TIME_BONUS),
         targetTimeMult = 1f - pick(tuning, isPlayer, reductionForSize(targetHullSize)),
         damageFromSelfMult = 1f + pick(tuning, isPlayer, DAMAGE_FROM_SELF_BONUS),
-        damageFromOthersMult = 1f - pick(tuning, isPlayer, DAMAGE_FROM_OTHERS_REDUCTION),
     )
 
     /** 体型分档（纯函数）：护卫/驱逐/巡洋/主力四档；战机/DEFAULT/null 按护卫舰档（与 AffixShared.bySize 同口径）。 */

@@ -58,7 +58,7 @@ class ASTDVisionShiftSystemStats : BaseShipSystemScript() {
         private const val PLAYER_TIME_MULT_OWNER_KEY = "astd_vision_shift_player_time_mult_owner"
         private const val SELF_AFTERIMAGE_KEY_PREFIX = "astd_vision_shift_self_afterimage:"
         private const val TARGET_AFTERIMAGE_KEY_PREFIX = "astd_vision_shift_target_afterimage:"
-        private val AFTERIMAGE_COLOR = Color(186, 120, 255, 96)
+        private val AFTERIMAGE_COLOR = Color(186, 120, 255, 230)
         private val JITTER_UNDER = Color(168, 96, 255, 150)
         private val JITTER = Color(168, 96, 255, 55)
 
@@ -201,8 +201,8 @@ class ASTDVisionShiftSystemStats : BaseShipSystemScript() {
         stat.modifyMult(statId, mark.values.targetTimeMult)
 
         target.setJitterShields(false)
-        target.setJitterUnder(statId, JITTER_UNDER, 0.7f, 18, 0f, 6f)
-        target.setJitter(statId, JITTER, 0.25f, 3, 0f, 0f)
+        target.setJitterUnder(statId, JITTER_UNDER, 0.7f, 18, 0f, 15f)
+        target.setJitter(statId, JITTER, 0.6f, 6, 0f, 0f)
 
         val timerKey = TARGET_AFTERIMAGE_KEY_PREFIX + System.identityHashCode(target)
         val elapsed = (engine.customData[timerKey] as? Float ?: TARGET_AFTERIMAGE_INTERVAL) + engine.elapsedInLastFrame
@@ -251,8 +251,8 @@ class ASTDVisionShiftSystemStats : BaseShipSystemScript() {
         }
         if (level > 0f) {
             ship.setJitterShields(false)
-            ship.setJitterUnder(id, JITTER_UNDER, level, 25, 0f, 7f)
-            ship.setJitter(id, JITTER, 0.30f * level, 3, 0f, 0f)
+            ship.setJitterUnder(id, JITTER_UNDER, level, 25, 0f, 15f)
+            ship.setJitter(id, JITTER, 0.6f * level, 6, 0f, 0f)
         }
         if (state != ShipSystemStatsScript.State.ACTIVE) return
 
@@ -276,9 +276,9 @@ class ASTDVisionShiftSystemStats : BaseShipSystemScript() {
                 width = ship.spriteAPI.width,
                 height = ship.spriteAPI.height,
                 color = AFTERIMAGE_COLOR,
-                startAlpha = 0.42f,
-                duration = 0.42f,
-                growth = 0.035f,
+                startAlpha = 0.9f,
+                duration = 1f,
+                growth = 0.05f,
             ),
         )
     }
@@ -322,7 +322,8 @@ class ASTDVisionShiftSystemStats : BaseShipSystemScript() {
                 is BeamAPI -> param.source
                 else -> null
             }
-            val mult = if (attacker === mark.source) mark.values.damageFromSelfMult else mark.values.damageFromOthersMult
+            if (attacker !== mark.source) return null
+            val mult = mark.values.damageFromSelfMult
             if (mult != 1f) {
                 damage.modifier.modifyMult(statId, mult)
             }

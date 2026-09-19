@@ -77,7 +77,6 @@ class JointTuningTest {
         assertEquals(1.75f, v.selfTimeMult, 1e-6f)
         assertEquals(0.55f, v.targetTimeMult, 1e-6f)
         assertEquals(1.625f, v.damageFromSelfMult, 1e-6f)
-        assertEquals(0.4f, v.damageFromOthersMult, 1e-6f)
     }
 
     @Test
@@ -86,7 +85,6 @@ class JointTuningTest {
         assertEquals(1.5f, v.selfTimeMult, 1e-6f)
         assertEquals(0.6f, v.targetTimeMult, 1e-6f)
         assertEquals(1.25f, v.damageFromSelfMult, 1e-6f)
-        assertEquals(0.2f, v.damageFromOthersMult, 1e-6f)
     }
 
     // —— 星尘光尘（导弹 +50%~250% / 战机 +100%~500% / EMP 100%~500%）——

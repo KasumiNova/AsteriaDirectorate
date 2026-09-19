@@ -155,7 +155,7 @@ class ASTDBurstFlowSystemStats : BaseShipSystemScript() {
         if (level > 0f) {
             ship.setJitterShields(false)
             ship.setJitterUnder(id, JITTER_UNDER, level, 25, 0f, 7f)
-            ship.setJitter(id, JITTER, 0.30f * level, 3, 0f, 0f)
+            ship.setJitter(id, JITTER, 0.6f * level, 3, 0f, 0f)
         }
         if (state == ShipSystemStatsScript.State.IDLE) {
             engine.customData.remove(timerKey)
@@ -177,9 +177,9 @@ class ASTDBurstFlowSystemStats : BaseShipSystemScript() {
                 width = ship.spriteAPI.width,
                 height = ship.spriteAPI.height,
                 color = AFTERIMAGE_COLOR,
-                startAlpha = 0.42f,
-                duration = 0.42f,
-                growth = 0.035f,
+                startAlpha = 0.95f,
+                duration = 0.5f,
+                growth = 0.05f,
             ),
         )
     }
