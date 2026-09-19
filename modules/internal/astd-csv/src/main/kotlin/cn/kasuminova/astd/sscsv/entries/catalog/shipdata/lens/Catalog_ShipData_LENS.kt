@@ -101,7 +101,7 @@ object Ship_astd_zw_102 : ShipDataEntry() {
     override val armorRating: Int = 1200
     override val maxFlux: Int = 16000
     override val fluxDissipation: Int = 1100
-    override val ordnancePoints: Int = 320
+    override val ordnancePoints: Int = 340
     override val fighterBays: Int = 3
     override val maxSpeed: Int = 50
     override val acceleration: Int = 25

@@ -44,7 +44,7 @@
       "mount": "HARDPOINT",
       "arc": 10,
       "angle": 0,
-      "locations": [70.5, 78]
+      "locations": [67.5, 78]
     },
     {
       "id": "WS0004",
@@ -179,6 +179,15 @@
         -75.5, 73.5,
         -84.5, 85
       ]
+    },
+    {
+      "id": "WS0013",
+      "size": "LARGE",
+      "type": "MISSILE",
+      "mount": "HARDPOINT",
+      "arc": 10,
+      "angle": 0,
+      "locations": [24.5, -110]
     }
   ],
   "engineSlots": [
