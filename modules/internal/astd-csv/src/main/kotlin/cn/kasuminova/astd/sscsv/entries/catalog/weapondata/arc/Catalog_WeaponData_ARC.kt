@@ -397,8 +397,8 @@ object Wpn_astd_electric_drive_accelerator : WeaponDataEntry(), SsProjProjectile
     override val burstSize: Int = 4
     override val burstDelay: Double = 0.1
 
-    // 弹匣三列：32 发弹匣，2 发/s 回复（重装 4s/+8），每次装填 8 发
-    override val ammo: Int = 32
+    // 弹匣三列：24 发弹匣，2 发/s 回复（重装 4s/+8），每次装填 8 发
+    override val ammo: Int = 24
     override val ammoPerSec: Double = 2.0
     override val reloadSize: Int = 8
     override val type: String = "KINETIC"
