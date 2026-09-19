@@ -175,6 +175,39 @@
         "fglRecordedFightersCleared",
         "fglRelaunchObserved"
       ]
+    },
+    {
+      "id": "lens_grav_rift_zw103",
+      "missionId": "lens_grav_rift_zw103",
+      "shipIds": [
+        "astd_zw_103",
+        "dominator"
+      ],
+      "variantIds": [
+        "astd_zw_103_Standard",
+        "dominator_Assault"
+      ],
+      "systemId": "astd_grav_rift_generator",
+      "requiredEvidence": [
+        "grgPhase",
+        "grgSystemId",
+        "grgWingIonSizeMax",
+        "grgWingLanceSizeMax",
+        "grgFightersInPlayMax",
+        "grgPhaseLinkFighterCount",
+        "grgPhaseLinkedAll",
+        "grgPhaseRestoredAll",
+        "grgFluxInjected",
+        "grgPlayerFluxBaseline",
+        "grgPlayerFluxDeltaMax",
+        "grgRiftDist",
+        "grgRiftExpectedPlanned",
+        "grgRiftTelemetryPlanned",
+        "grgRiftTelemetrySpawned",
+        "grgEnemyHpBeforeFire",
+        "grgEnemyMinHpAfterFire",
+        "grgEnemyHpDropMax"
+      ]
     }
   ]
 }

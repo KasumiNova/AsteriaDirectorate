@@ -44,6 +44,10 @@ object ASTDInGameAutomationScenario {
     const val PL_WEAPON_ID: String = "astd_piercing_lance"
     const val PL_PROJECTILE_SPEC_ID: String = "astd_piercing_lance_shot"
     const val TPP_SCENARIO_ID: String = "trail_pause_probe"
+    const val GRG_SCENARIO_ID: String = "lens_grav_rift_zw103"
+    const val GRG_SYSTEM_ID: String = "astd_grav_rift_generator"
+    const val GRG_HULL_ID: String = "astd_zw_103"
+    const val GRG_VARIANT_ID: String = "astd_zw_103_Standard"
     const val FGL_SCENARIO_ID: String = "lens_fighter_grav_link"
     const val FGL_SYSTEM_ID: String = "astd_fighter_grav_link"
     const val FGL_HULL_ID: String = "astd_zw_102"
@@ -234,7 +238,21 @@ object ASTDInGameAutomationScenario {
     }
 
     /**
-     * 飞蓬级战机引力联结器实机场景开关：镜像 [isTrailPauseProbeEnabled]。
+     * 茑萝级引力裂隙发生器实机场景开关：镜像 [isTrailPauseProbeEnabled]。
+     * 验证双甲板联队齐备（ion/lance 各 2 架在场）、引力相位甲板联动
+     * （母舰 setPhased 驱动在外战机同步相位与退出后严格配对恢复）、
+     * 战机辐能返还（注入量 ×0.6 软辐能回母舰，界 [×0.4, ×0.85]）、
+     * 裂隙布雷（telemetry planned == riftCount(dist) 且 spawned == planned、
+     * 敌舰 hitpoints 近炸结算下降 ≥2000）。
+     */
+    fun isGravRiftScenarioEnabled(): Boolean {
+        val enabled = System.getProperty(ENABLED_PROPERTY)?.equals("true", ignoreCase = true) == true
+        val scenario = System.getProperty(SCENARIO_PROPERTY, SCENARIO_ID)
+        return enabled && scenario == GRG_SCENARIO_ID
+    }
+
+    /**
+     * 飞蓬级战机引力联结器实机场景开关：镜像 [isGravRiftScenarioEnabled]。
      * 验证维度折叠甲板扩容（每甲板 extraDeploymentLimit 锚定 5 / 单联队在场 ≥3）、
      * 系统激活期战机时流 ×2.5 与四承伤 ×0.5、母舰软辐能持续产出（≥800）、
      * ACTIVE→OUT 召回（旧机 identity 全清 / 软→硬转化 hardFlux 上升 / 15s 内新机重新出击）。

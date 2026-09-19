@@ -212,6 +212,58 @@ class ASTDInGameAutomationScenarioTest {
     }
 
     @Test
+    fun `grav rift automation scenario registers mission and evidence keys`() {
+        assertEquals("lens_grav_rift_zw103", ASTDInGameAutomationScenario.GRG_SCENARIO_ID)
+        assertTrue(
+            Files.exists(RepoLayout.automationContentsRoot.resolve("data/missions/lens_grav_rift_zw103/MissionDefinition.java")),
+            "grav rift scenario must have a concrete mission for SSOptimizer launch",
+        )
+
+        val missionList = Files.readAllLines(RepoLayout.automationContentsRoot.resolve("data/missions/mission_list.csv"))
+        assertTrue(
+            missionList.any { it.trim() == ASTDInGameAutomationScenario.GRG_SCENARIO_ID },
+            "mission_list.csv missing grav rift scenario",
+        )
+
+        val scenarios = JSONObject(Files.readString(RepoLayout.automationContentsRoot.resolve("data/config/astd_automation_scenarios.json"))).getJSONArray("scenarios")
+        val scenario = (0 until scenarios.length())
+            .map { scenarios.getJSONObject(it) }
+            .firstOrNull { it.getString("id") == ASTDInGameAutomationScenario.GRG_SCENARIO_ID }
+        assertTrue(scenario != null, "missing grav rift automation scenario")
+        assertEquals(ASTDInGameAutomationScenario.GRG_SCENARIO_ID, scenario.getString("missionId"))
+        assertEquals(ASTDInGameAutomationScenario.GRG_SYSTEM_ID, scenario.getString("systemId"))
+
+        val shipIds = scenario.getJSONArray("shipIds")
+        assertTrue((0 until shipIds.length()).any { shipIds.getString(it) == ASTDInGameAutomationScenario.GRG_HULL_ID }, "scenario missing ship id: ${ASTDInGameAutomationScenario.GRG_HULL_ID}")
+        val variantIds = scenario.getJSONArray("variantIds")
+        assertTrue((0 until variantIds.length()).any { variantIds.getString(it) == ASTDInGameAutomationScenario.GRG_VARIANT_ID }, "scenario missing variant id: ${ASTDInGameAutomationScenario.GRG_VARIANT_ID}")
+
+        val requiredEvidence = scenario.getJSONArray("requiredEvidence")
+        listOf(
+            "grgPhase",
+            "grgSystemId",
+            "grgWingIonSizeMax",
+            "grgWingLanceSizeMax",
+            "grgFightersInPlayMax",
+            "grgPhaseLinkFighterCount",
+            "grgPhaseLinkedAll",
+            "grgPhaseRestoredAll",
+            "grgFluxInjected",
+            "grgPlayerFluxBaseline",
+            "grgPlayerFluxDeltaMax",
+            "grgRiftDist",
+            "grgRiftExpectedPlanned",
+            "grgRiftTelemetryPlanned",
+            "grgRiftTelemetrySpawned",
+            "grgEnemyHpBeforeFire",
+            "grgEnemyMinHpAfterFire",
+            "grgEnemyHpDropMax",
+        ).forEach { key ->
+            assertTrue((0 until requiredEvidence.length()).any { requiredEvidence.getString(it) == key }, "scenario missing evidence key: $key")
+        }
+    }
+
+    @Test
     fun `fighter grav link automation scenario registers mission and evidence keys`() {
         assertEquals("lens_fighter_grav_link", ASTDInGameAutomationScenario.FGL_SCENARIO_ID)
         assertTrue(

@@ -1,0 +1,52 @@
+{
+    "id": "astd_grav_rift_mine",
+    "specClass": "missile",
+    "missileType": "PHASE_MINE",
+    "behaviorSpec": {
+        "behavior": "PROXIMITY_FUSE",
+        "onExplosionEffect": "cn.kasuminova.astd.combat.effect.lens.GravityRiftMineExplosion",
+        "range": 0,
+        "slowToMaxSpeed": true,
+        "delay": 0.5,
+        "pingColor": [255, 70, 70, 255],
+        "mineHasNoSprite": true,
+        "flashRateMult": 0.25,
+        "pingRadius": 100,
+        "pingDuration": 0.25,
+        "windupSound": "riftcascade_windup",
+        "windupDelay": 0.3,
+        "explosionSpec": {
+            "duration": 0.1,
+            "radius": 100,
+            "coreRadius": 50,
+            "collisionClass": "PROJECTILE_FF",
+            "collisionClassByFighter": "PROJECTILE_FF",
+            "particleDuration": 1,
+            "particleCount": 0,
+            "particleColor": [0, 0, 0, 0],
+            "explosionColor": [0, 0, 0, 0],
+            "sound": "riftcascade_rift"
+        }
+    },
+    "sprite": "",
+    "glowSprite": "",
+    "glowColor": [255, 70, 70, 255],
+    "size": [96, 96],
+    "center": [48, 48],
+    "collisionRadius": 20,
+    "collisionClass": "NONE",
+    "collisionClassAfterFlameout": "NONE",
+    "renderTargetIndicator": false,
+    "explosionColor": [255, 70, 70, 255],
+    "explosionRadius": 0,
+    "flameoutTime": 0.1,
+    "noEngineGlowTime": 0.05,
+    "fadeTime": 0.1,
+    "engineSpec": {
+        "turnAcc": 500,
+        "turnRate": 150,
+        "acc": 500,
+        "dec": 500
+    },
+    "engineSlots": []
+}

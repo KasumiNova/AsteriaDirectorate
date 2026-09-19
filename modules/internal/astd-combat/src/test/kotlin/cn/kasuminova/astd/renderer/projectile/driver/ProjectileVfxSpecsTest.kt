@@ -91,9 +91,9 @@ class ProjectileVfxSpecsTest {
         assertEquals(7f, core.width)
         assertEquals(8.5f, zappy.width)
         assertEquals(-45f..45f, zappy.angularOutRange, "简单 spec 的 zappy 装饰层同样带默认尾端自旋")
-        assertEquals(TrailDriftRange(-12f, -12f, 12f, 12f), zappy.velocityOutRange)
-        assertEquals(0.8f, core.glowPower, "全层统一 trailGlow 默认 0.8")
-        assertEquals(0.8f, twin.glowPower, "外带同样吃 trailGlow")
+        assertEquals(TrailDriftRange(-12f, -6f, 12f, 6f), zappy.velocityOutRange)
+        assertEquals(0.7f, core.glowPower, "全层统一 trailGlow 默认 0.7")
+        assertEquals(0.7f, twin.glowPower, "外带同样吃 trailGlow")
         assertEquals(listOf(1, 2, 3, 3), plain.tree.staticTrails.map { it.second.layer })
         plain.tree.staticTrails.forEach { (_, spec) ->
             assertEquals(135f, spec.bandLength)

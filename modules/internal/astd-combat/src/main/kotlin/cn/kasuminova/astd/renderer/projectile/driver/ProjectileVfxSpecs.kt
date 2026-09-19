@@ -179,8 +179,8 @@ object ProjectileVfxSpecs {
         range: Float? = null,
         rangeRatio: Float? = null,
         trailWidthScale: Float = 1f,
-        brightness: Float = 1f,
-        trailGlow: Float = 0.8f,
+        brightness: Float = 0.9f,
+        trailGlow: Float = 0.7f,
         tailColor: ASTDColor? = null,
         boltFlare: Float? = null,
         muzzleBurst: Boolean = false,
@@ -219,7 +219,7 @@ object ProjectileVfxSpecs {
                     recede?.let { recede(it) }
                     // 尾端漂移卷曲：angular 必须配合非零 velocity 才生效（自旋旋转的是漂移偏移矢量）
                     angularOut()
-                    velocityOut(-12f, -12f, 12f, 12f)
+                    velocityOut(-12f, -6f, 12f, 6f)
                     glow(trailGlow)
                 }
             }

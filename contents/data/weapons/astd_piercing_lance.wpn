@@ -5,17 +5,17 @@
     "mountTypeOverride": "HYBRID",
     "size": "LARGE",
     "displayArcRadius": 1000,
-    "turretSprite": "graphics/fx/empty.png",
-    "turretGunSprite": "graphics/fx/empty.png",
-    "hardpointSprite": "graphics/fx/empty.png",
-    "hardpointGunSprite": "graphics/fx/empty.png",
+    "turretSprite": "graphics/weapons/astd_piercing_lance_base.png",
+    "turretGunSprite": "graphics/textures/BUtil_NONE.png",
+    "hardpointSprite": "graphics/weapons/astd_piercing_lance_hp_base.png",
+    "hardpointGunSprite": "graphics/textures/BUtil_NONE.png",
     "visualRecoil": 6.0,
     "turretOffsets": [0, 0],
     "turretAngleOffsets": [0],
     "hardpointOffsets": [0, 0],
     "hardpointAngleOffsets": [0],
     "barrelMode": "LINKED",
-    "animationType": "MUZZLE_FLASH",
+    "animationType": "GLOW_AND_FLASH",
     "muzzleFlashSpec": {
         "length": 70.0,
         "spread": 10.0,
@@ -32,5 +32,13 @@
     },
     "projectileSpecId": "astd_piercing_lance_shot",
     "everyFrameEffect": "cn.kasuminova.astd.combat.effect.generic.CombatVfxBootstrapEveryFrameEffect",
-    "fireSoundTwo": "tachyon_lance_fire"
+    "fireSoundTwo": "tachyon_lance_fire",
+    "turretGlowSprite": "graphics/weapons/astd_piercing_lance_glow.png",
+    "hardpointGlowSprite": "graphics/weapons/astd_piercing_lance_hp_glow.png",
+    "glowColor": [
+        255,
+        255,
+        255,
+        255
+    ]
 }

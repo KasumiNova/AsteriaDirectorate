@@ -13,7 +13,7 @@
   "viewOffset": 0,
   "builtInMods": [
     "astd_nano_restoration_protocol",
-    "astd_phase_diffraction_shield"
+    "astd_grav_phase_deck"
   ],
   "weaponSlots": [
     {
@@ -21,7 +21,7 @@
       "size": "MEDIUM",
       "type": "ENERGY",
       "mount": "TURRET",
-      "arc": 120,
+      "arc": 360,
       "angle": 0,
       "locations": [1.5, -36.5]
     },
@@ -30,45 +30,9 @@
       "size": "MEDIUM",
       "type": "ENERGY",
       "mount": "TURRET",
-      "arc": 120,
-      "angle": 20,
+      "arc": 360,
+      "angle": 0,
       "locations": [-1.5, 55.5]
-    },
-    {
-      "id": "WS0003",
-      "size": "SMALL",
-      "type": "ENERGY",
-      "mount": "TURRET",
-      "arc": 120,
-      "angle": 0,
-      "locations": [21.5, 33.5]
-    },
-    {
-      "id": "WS0004",
-      "size": "SMALL",
-      "type": "ENERGY",
-      "mount": "TURRET",
-      "arc": 90,
-      "angle": 20,
-      "locations": [54.5, 29.5]
-    },
-    {
-      "id": "WS0005",
-      "size": "SMALL",
-      "type": "SYNERGY",
-      "mount": "HARDPOINT",
-      "arc": 10,
-      "angle": 0,
-      "locations": [24.5, -17.5]
-    },
-    {
-      "id": "WS0006",
-      "size": "SMALL",
-      "type": "SYNERGY",
-      "mount": "HARDPOINT",
-      "arc": 10,
-      "angle": 0,
-      "locations": [47.5, -40.5]
     },
     {
       "id": "WS0007",

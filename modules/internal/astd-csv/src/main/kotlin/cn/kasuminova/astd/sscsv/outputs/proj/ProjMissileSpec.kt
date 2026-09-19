@@ -106,6 +106,14 @@ data class MissileProjSpec(
     val engineSlots: List<MissileEngineSlot> = emptyList(),
     /** 导弹行为声明块（原版 behaviorSpec 原样透传；DEM/MIRV 等行为必需，规格 10 §1.2）。 */
     val behaviorSpec: Map<String, Any?>? = null,
+    /** 弹体辉光贴图；null 时不写 `glowSprite` 键（如隐形地雷需要显式空串时给 ""）。 */
+    val glowSprite: String? = null,
+    /** 弹体辉光色；同时被原版 RiftCascadeMineExplosion 用作裂隙视觉取色。null 时不写键。 */
+    val glowColor: Rgba? = null,
+    /** 熄火后碰撞类；null 时不写 `collisionClassAfterFlameout` 键。 */
+    val collisionClassAfterFlameout: String? = null,
+    /** 是否在战斗视图渲染目标指示菱形；null 时不写 `renderTargetIndicator` 键。 */
+    val renderTargetIndicator: Boolean? = null,
 ) {
     fun toJson(): Map<String, Any?> = linkedMapOf(
         "id" to id,
@@ -115,10 +123,14 @@ data class MissileProjSpec(
         "onFireEffect" to onFireEffect,
         "onHitEffect" to onHitEffect,
         "sprite" to sprite,
+        "glowSprite" to glowSprite,
+        "glowColor" to glowColor?.toJson(),
         "size" to size.toJson(),
         "center" to center.toJson(),
         "collisionRadius" to collisionRadius,
         "collisionClass" to collisionClass,
+        "collisionClassAfterFlameout" to collisionClassAfterFlameout,
+        "renderTargetIndicator" to renderTargetIndicator,
         "explosionColor" to explosionColor.toJson(),
         "explosionRadius" to explosionRadius,
         "armingTime" to armingTime,

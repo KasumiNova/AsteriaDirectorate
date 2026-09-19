@@ -171,15 +171,15 @@ object HullMod_astd_dark_tide_jammer : HullModEntry() {
     override val sprite: String = "graphics/hullmods/astd_dark_tide_jammer.png"
 }
 
-object HullMod_astd_phase_diffraction_shield : HullModEntry() {
-    override val id: String = "astd_phase_diffraction_shield"
+object HullMod_astd_grav_phase_deck : HullModEntry() {
+    override val id: String = "astd_grav_phase_deck"
     override val name: String = hullmodName(id)
     override val tier: Int = 1
     override val rarity: Int = 1
     override val tech: String = "LENS"
     override val tags: String = TAGS_BUILTIN
-    override val script: String = PLACEHOLDER_SCRIPT
-    override val desc: String = PLACEHOLDER_DESC
-    override val short: String = PLACEHOLDER_SHORT
-    override val sprite: String = "graphics/hullmods/astd_phase_diffraction_shield.png"
+    override val script: String = "cn.kasuminova.astd.combat.hullmods.lens.ASTDGravPhaseDeckHullMod"
+    override val desc: String = SsI18n.t("hullmod.$id.desc")
+    override val short: String = SsI18n.t("hullmod.$id.short")
+    override val sprite: String = "graphics/hullmods/astd_grav_phase_deck.png"
 }

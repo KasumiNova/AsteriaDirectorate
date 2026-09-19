@@ -35,6 +35,8 @@ import cn.kasuminova.astd.combat.hullmods.lens.LENS_DUAL_MODE_CONFIG
 import cn.kasuminova.astd.combat.hullmods.lens.LensArrayCoreHullModIds
 import cn.kasuminova.astd.combat.lens.marks.LensMarks
 import cn.kasuminova.astd.combat.lens.system.EchoFixationField
+import cn.kasuminova.astd.combat.lens.system.GravityRiftTuning
+import cn.kasuminova.astd.combat.shipsystems.GravityRiftSystemStats
 import cn.kasuminova.astd.renderer.effect.lens.EchoFixationAfterimageRenderer
 import cn.kasuminova.astd.renderer.effect.lens.LensVfxTelemetry
 import cn.kasuminova.astd.internal.i18n.I18n
@@ -51,6 +53,7 @@ import com.fs.starfarer.api.combat.DamagingProjectileAPI
 import com.fs.starfarer.api.combat.DamageType
 import com.fs.starfarer.api.combat.GuidedMissileAI
 import com.fs.starfarer.api.combat.MissileAIPlugin
+import com.fs.starfarer.api.combat.ShipAIConfig
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.combat.ShipCommand
 import com.fs.starfarer.api.combat.ShipSystemAPI
@@ -372,6 +375,47 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     private var ssLastFlashAt = -1f
     private var ssLastTrackedFlashCount = 0
 
+    // ==== 茑萝引力裂隙发生器场景状态（相位机 SPAWN → WAIT_WINGS → PHASE_LINK → FLUX_RETURN → RIFT_FIRE → COMPLETED） ====
+    private var grgPhase = GRG_PHASE_SPAWN
+    private var grgPhaseStartedAt = 0f
+    // WAIT_WINGS：ion/lance 两联队各自在场存活数峰值与全场战机数峰值（auto_fighter 爬编需要时间）。
+    private var grgWingIonSizeMax = 0
+    private var grgWingLanceSizeMax = 0
+    private var grgFightersInPlayMax = 0
+    // PHASE_LINK：step 0=母舰已置相位等战机联动 / 1=母舰已退相位等战机恢复；两阶段各自计时。
+    private var grgPhaseLinkStep = 0
+    private var grgPhaseLinkStartedAt = -1f
+    private var grgPhaseLinkRestoreStartedAt = -1f
+    private var grgPhaseLinkFighterCount = 0
+    private var grgPhaseLinkedAll = false
+    private var grgPhaseRestoredAll = false
+    private var grgScreenshotActiveAt = -1f
+    private var grgScreenshotStagedFired = false
+    private var grgScreenshotStagedLit = false
+    // FLUX_RETURN：step 0=清零战机辐能待 hullmod 基线稳定 / 1=已注入等母舰软辐能返还。
+    private var grgFluxStep = 0
+    private var grgFluxFighter: ShipAPI? = null
+    private var grgFluxSettleStartedAt = -1f
+    private var grgFluxInjected = -1f
+    private var grgFluxInjectedAt = -1f
+    private var grgPlayerFluxBaseline = -1f
+    private var grgPlayerFluxDeltaMax = 0f
+    // RIFT_FIRE：useSystem 重试计数、施放闩（点亮沿计波/熄灭解闩）、首波 telemetry 收口闩、
+    // 落点距离/期望裂隙数/敌舰血量基线与在场地雷数峰值（诊断）。
+    private var grgRiftAttempts = 0
+    private var grgRiftFired = false
+    private var grgRiftVolleys = 0
+    private var grgVolleyActive = false
+    private var grgRiftFirstVolleyConfirmed = false
+    private var grgMinesInPlayMax = 0
+    private var grgRiftDist = -1f
+    private var grgRiftExpectedPlanned = -1
+    private var grgRiftTelemetryPlanned = -1
+    private var grgRiftTelemetrySpawned = 0
+    private var grgEnemyHpBeforeFire = -1f
+    private var grgEnemyMinHpAfterFire = Float.MAX_VALUE
+    private var grgEnemyHpDropMax = 0f
+
     // ==== 飞蓬战机引力联结器场景状态（相位机 SPAWN → WAIT_WINGS → ACTIVATE → OBSERVE_ACTIVE → WAIT_RECALL → RELAUNCH → COMPLETED） ====
     private var fglPhase = FGL_PHASE_SPAWN
     private var fglPhaseStartedAt = 0f
@@ -434,7 +478,14 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             log.warn("[ASTD-Automation] combatUI 非 CombatState（${combatUI?.javaClass?.name}），开局部署对话框关断失败")
         }
         ProjectileVfxDriverPlugin.ensureInstalled(engine)
-        if (ASTDInGameAutomationScenario.isFighterGravLinkScenarioEnabled()) {
+        if (ASTDInGameAutomationScenario.isGravRiftScenarioEnabled()) {
+            engine.setDoNotEndCombat(true)
+            lockGrgCamera(engine)
+            // 与其他场景一致：reserves 部署放到 advance()，init 阶段渲染器未就绪。
+            writeDiagnostics(engine, "CombatReady")
+            writeTelemetry(engine, "CombatReady", findGrgPlayer(engine), null)
+            log.info("[ASTD-Automation] scenario=${ASTDInGameAutomationScenario.GRG_SCENARIO_ID} combat plugin initialized")
+        } else if (ASTDInGameAutomationScenario.isFighterGravLinkScenarioEnabled()) {
             engine.setDoNotEndCombat(true)
             lockFglCamera(engine)
             // 与其他场景一致：reserves 部署放到 advance()，init 阶段渲染器未就绪。
@@ -569,6 +620,14 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
 
     override fun advance(amount: Float, events: MutableList<InputEventAPI>?) {
         val combatEngine = engine ?: return
+        if (ASTDInGameAutomationScenario.isGravRiftScenarioEnabled()) {
+            // 刻意不 unpause（同暂停对照探针）：SCREENSHOT_VOLLEY 取景定格靠 setPaused(true)
+            // 冻结舞台——截图捕获与 Completed 上报间有秒级异步延迟，不冻结拍不到 0.9s 的光束。
+            // 暂停期插件 advance 仍按真实 amount 推进（obf 实证），相位机计时不受影响。
+            elapsed += amount.coerceAtLeast(0f)
+            advanceGrgScenario(combatEngine)
+            return
+        }
         if (ASTDInGameAutomationScenario.isFighterGravLinkScenarioEnabled()) {
             if (combatEngine.isPaused) combatEngine.setPaused(false)
             elapsed += amount.coerceAtLeast(0f)
@@ -710,6 +769,17 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
 
     override fun renderInUICoords(viewport: ViewportAPI) {
         val combatEngine = engine ?: return
+        if (ASTDInGameAutomationScenario.isGravRiftScenarioEnabled()) {
+            if (!completed || visualFramesWritten >= 3) return
+            // 捕获帧间隔 0.6s：裂隙地雷近炸结算后的舞台（战机群与母舰/靶舰）在三帧内进入捕获帧。
+            if (visualFramesWritten > 0 && elapsed - lastVisualFrameAt < 0.6f) return
+            lockGrgCamera(combatEngine)
+            lastVisualFrameAt = elapsed
+            visualFramesWritten++
+            writeDiagnostics(combatEngine, "Completed", findGrgPlayer(combatEngine))
+            writeTelemetry(combatEngine, "Completed", findGrgPlayer(combatEngine), null)
+            return
+        }
         if (ASTDInGameAutomationScenario.isFighterGravLinkScenarioEnabled()) {
             if (!completed || visualFramesWritten >= 3) return
             // 捕获帧间隔 0.6s：召回后重新出击的机群（系统收尾 jitter 已退）与母舰在三帧内进入捕获帧。
@@ -2501,6 +2571,16 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         }
     }
 
+    /** 撞舰相位观测准备：整格剥除靶舰装甲（破片伤害全被装甲吸收时舰体读数恒满，无法观测结算）。 */
+    private fun stripPsTargetArmor(ship: ShipAPI) {
+        val grid = ship.armorGrid.grid
+        for (x in grid.indices) {
+            for (y in grid[x].indices) {
+                ship.armorGrid.setArmorValue(x, y, 0f)
+            }
+        }
+    }
+
     /**
      * FUSE/COMPLETED 相位导弹投喂：每 [PS_MISSILE_FEED_INTERVAL] 从靶舰右前方 820su 处左右舷交替
      * 生成一发鱼叉（weapon=null + weaponId 直接生成导弹实体，范式同 lens phase-2 投喂），
@@ -2566,8 +2646,12 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                             transitionPsPhase(PS_PHASE_FAILED)
                         }
                         else -> {
-                            // 进入撞舰相位：靶舰奶满一次作伤害观测基线（本相位不逐帧奶）
+                            // 进入撞舰相位：靶舰奶满一次作伤害观测基线（本相位不逐帧奶）；
+                            // 装甲整格剥除——警戒级装甲全额吸收破片伤害会令舰体读数恒满
+                            // （2026-09 撞舰裁定后首次实机暴露），与逐帧 toggleOff 护盾同口径剥除防御层，
+                            // 直读撞舰引爆 + 锥面结算的舰体伤害
                             target?.setHitpoints(target.maxHitpoints)
+                            target?.let { stripPsTargetArmor(it) }
                             transitionPsPhase(PS_PHASE_IMPACT)
                         }
                     }
@@ -4426,6 +4510,439 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     }
 
 
+    // === 茑萝引力裂隙发生器场景（双甲板联队齐备 / 相位联动恢复 / 战机辐能返还 / 裂隙布雷近炸证据） ===
+
+    private fun findGrgPlayer(engine: CombatEngineAPI): ShipAPI? =
+        engine.ships.firstOrNull { ship -> ship.owner == 0 && ship.hullSpec?.hullId == GRG_PLAYER_HULL && !ship.isFighter }
+
+    private fun findGrgEnemy(engine: CombatEngineAPI): ShipAPI? =
+        engine.ships.firstOrNull { ship -> ship.owner != 0 && ship.hullSpec?.hullId == GRG_ENEMY_HULL && !ship.isFighter }
+
+    /** 该舰全部联队的在外战机（wing 枚举口径，与引力相位甲板 advanceInCombat 同一观测面）。 */
+    private fun grgPlayerFighters(player: ShipAPI): List<ShipAPI> =
+        player.allWings.flatMap { wing -> wing.wingMembers }.filter { !it.isHulk }
+
+    /**
+     * 强制部署 mission reserves（范式同 deployFglReserveShips）。
+     * 玩家侧仅茑萝一艘（后备 == 1 → vanilla 静默 deployAll 会自动部署），已出场成员
+     * 按 findShipByHull 判重跳过并移出后备，避免重复 spawn。
+     */
+    private fun deployGrgReserveShips(engine: CombatEngineAPI) {
+        engine.setDoNotEndCombat(true)
+        for (side in listOf(FleetSide.PLAYER, FleetSide.ENEMY)) {
+            val manager = engine.getFleetManager(side)
+            manager.setSuppressDeploymentMessages(true)
+            for (member in manager.getReservesCopy().toList()) {
+                val anchor = when {
+                    side == FleetSide.PLAYER && member.hullId == GRG_PLAYER_HULL -> GRG_PLAYER_ANCHOR
+                    side == FleetSide.ENEMY && member.hullId == GRG_ENEMY_HULL -> GRG_ENEMY_ANCHOR
+                    else -> continue
+                }
+                if (findShipByHull(engine, member.hullId) != null) {
+                    manager.removeFromReserves(member)
+                    continue
+                }
+                val facing = if (side == FleetSide.ENEMY) 180f else 0f
+                manager.spawnFleetMember(member, Vector2f(anchor), facing, 0f)
+                manager.removeFromReserves(member)
+            }
+        }
+    }
+
+    private fun transitionGrgPhase(next: String) {
+        log.info("[ASTD-Automation] grg phase $grgPhase -> $next at ${"%.2f".format(elapsed)}s")
+        grgPhase = next
+        grgPhaseStartedAt = elapsed
+    }
+
+    /**
+     * 舞台保活与站位（范式同 stabilizeFglShips）：双方逐帧钉死锚点 + 保留舰 AI
+     * （航母联队出库/补员链路与系统 AI 落点缝口 SYSTEM_TARGET_COORDS 均依赖 AI 存活）。
+     * [zeroPlayerFlux] 仅用于 FLUX_RETURN 之前的相位：母舰保持 0 辐能锚定（fluxLevel 远低于
+     * 0.8 停返闸），令断言点 D 的返还峰值归因干净；观测相位本身与之后不再清零，否则证据被抹掉。
+     * [healEnemy] 在 RIFT_FIRE 起关闭：近炸结算需要真实 hitpoints 读数（此前逐帧奶血抵消战机
+     * 陪练火力；装甲不随奶血恢复，多波裂隙近炸逐波剥甲后伤害进入船体）。
+     * [blockSystem] 在 RIFT_FIRE 之前逐帧封锁 USE_SYSTEM：系统自带 GravityRiftSystemAI 在敌舰
+     * 进入交战距离时会自行施放（telemetry spawned 为战斗级累计口径，提前施放会污染断言点 E
+     * 的 spawned == planned，且 12s 冷却会打乱 RIFT_FIRE 节奏）。
+     */
+    private fun stabilizeGrgShips(engine: CombatEngineAPI, healEnemy: Boolean, zeroPlayerFlux: Boolean, blockSystem: Boolean) {
+        val player = findGrgPlayer(engine)
+        val enemy = findGrgEnemy(engine)
+        if (player != null && !player.isHulk) {
+            engine.setPlayerShipExternal(player)
+            if (player.shipAI == null) {
+                // 系统落点缝口（GravityRiftSystemStats.resolveRawTarget 的 AI 分支）要求 shipAI
+                // 非空：无 AI 时退化为 mouseTarget（2026-09-19 第 3 轮实机：落点落到相机中心，
+                // dist 算成 200、planned=4 与锚点几何 400/3 不符）。补一个默认舰 AI。
+                // config 必须给空实例：传 null 会让 BasicShipAI.config 为空，pickManeuver
+                // 读 backingOffWhileNotVentingAllowed 直接 NPE 崩战斗（2026-09-19 第 5 轮实机）。
+                player.shipAI = Global.getSettings().createDefaultShipAI(player, ShipAIConfig())
+            }
+            stabilizeShip(player, GRG_PLAYER_ANCHOR, 0f, allowFire = false, preserveAI = true)
+            player.setHitpoints(player.maxHitpoints)
+            if (zeroPlayerFlux) {
+                player.fluxTracker.setCurrFlux(0f)
+                player.fluxTracker.setHardFlux(0f)
+            }
+            if (blockSystem) player.blockCommandForOneFrame(ShipCommand.USE_SYSTEM)
+        }
+        if (enemy != null && !enemy.isHulk) {
+            stabilizeShip(enemy, GRG_ENEMY_ANCHOR, 180f, allowFire = false, preserveAI = true)
+            if (healEnemy) enemy.setHitpoints(enemy.maxHitpoints)
+            enemy.fluxTracker.setCurrFlux(0f)
+            enemy.fluxTracker.setHardFlux(0f)
+            // 靶舰护盾压下：裂隙地雷近炸需结算到船体而非护盾（范式同 stabilizePlShips 的靶舰处理）。
+            enemy.blockCommandForOneFrame(ShipCommand.TOGGLE_SHIELD_OR_PHASE_CLOAK)
+            enemy.shield?.let { if (it.isOn) it.toggleOff() }
+        }
+    }
+
+    private fun lockGrgCamera(engine: CombatEngineAPI) {
+        val viewport = engine.viewport
+        val displayWidth = try { Display.getWidth().takeIf { it > 0 } ?: 2560 } catch (_: Throwable) { 2560 }
+        val displayHeight = try { Display.getHeight().takeIf { it > 0 } ?: 1440 } catch (_: Throwable) { 1440 }
+        val displayAspect = displayWidth.toFloat() / displayHeight.toFloat()
+        val visibleWidth = GRG_CAMERA_VISIBLE_HEIGHT * displayAspect
+        viewport.setExternalControl(true)
+        viewport.set(
+            GRG_CAMERA_CENTER.x - visibleWidth * 0.5f,
+            GRG_CAMERA_CENTER.y - GRG_CAMERA_VISIBLE_HEIGHT * 0.5f,
+            visibleWidth,
+            GRG_CAMERA_VISIBLE_HEIGHT,
+        )
+        viewport.setEverythingNearViewport(true)
+    }
+
+    /**
+     * 茑萝引力裂隙发生器相位机：
+     * SPAWN（双方出场/钉位/锁相机）→
+     * WAIT_WINGS（断言点 A：ion/lance 两联队齐备且各自在场存活峰值达到编制 2，
+     *   wing_data.csv num=2 口径；auto_fighter 自动出击需要时间，峰值追踪 + 超时失败）→
+     * PHASE_LINK（断言点 B/C：直接对母舰 setPhased(true)——引力相位甲板的联动缝口就是
+     *   ShipAPI.isPhased，最确定性驱动；≤3s 全部在外战机 isPhased，随后 setPhased(false)
+     *   ≤3s 全部恢复非相位，验证 phasedByThis 所有权配对）→
+     * FLUX_RETURN（断言点 D：锁定一架在外战机，清零辐能待基线稳定后注入 maxFlux×0.4，
+     *   ≤2s 内母舰 currFlux 峰值增量 ∈ [注入量×0.4, 注入量×0.85]（玩家恒 v2 预期 ≈×0.6，
+     *   容忍散辐/帧量化）；母舰此前保持 0 辐能锚定，远低于 0.8 停返闸）→
+     * RIFT_FIRE（断言点 E/F：SYSTEM_TARGET_COORDS 写敌舰位置 + useSystem()（按帧重试，
+     *   同 FGL）；首波 telemetry planned == GravityRiftTuning.riftCount(dist) 且 spawned == planned；
+     *   靶舰停奶后按冷却循环多波施放——巡洋舰满装甲对单波能量近炸近似全吸收，逐波剥甲
+     *   直至 hitpoints 较近炸前下降 ≥2000，被击沉则以观测最低值为准）→
+     * SCREENSHOT_VOLLEY（纯取景：落点向靶舰侧舷偏置后再放一波，ACTIVE 沿——光束点亮、
+     *   旋涡残影未散——才收口，无新断言，超时兜底）→
+     * COMPLETED（renderInUICoords 三帧捕获：光束/旋涡/地雷散布的舞台入帧）。
+     */
+    private fun advanceGrgScenario(engine: CombatEngineAPI) {
+        engine.setDoNotEndCombat(true)
+        deployGrgReserveShips(engine)
+        lockGrgCamera(engine)
+
+        val player = findGrgPlayer(engine)
+        val enemy = findGrgEnemy(engine)
+        val system = player?.system
+        val fighters = if (player != null && !player.isHulk) grgPlayerFighters(player) else emptyList()
+        grgFightersInPlayMax = maxOf(grgFightersInPlayMax, fighters.size)
+        // 两联队各自在场存活数峰值全程采样（auto_fighter 爬编峰值可能晚于 WAIT_WINGS 才出现）。
+        if (player != null) {
+            for (wing in player.allWings) {
+                val alive = wing.wingMembers.count { !it.isHulk }
+                when (wing.spec?.id) {
+                    GRG_ION_WING_ID -> grgWingIonSizeMax = maxOf(grgWingIonSizeMax, alive)
+                    GRG_LANCE_WING_ID -> grgWingLanceSizeMax = maxOf(grgWingLanceSizeMax, alive)
+                }
+            }
+        }
+
+        when (grgPhase) {
+            GRG_PHASE_SPAWN -> {
+                stabilizeGrgShips(engine, healEnemy = true, zeroPlayerFlux = true, blockSystem = true)
+                if (player != null && enemy != null && elapsed - grgPhaseStartedAt >= GRG_SPAWN_SETTLE_SECONDS) {
+                    transitionGrgPhase(GRG_PHASE_WAIT_WINGS)
+                }
+            }
+            GRG_PHASE_WAIT_WINGS -> {
+                stabilizeGrgShips(engine, healEnemy = true, zeroPlayerFlux = true, blockSystem = true)
+                // 断言点 A：双甲板联队齐备且各联队在场存活数达到基础编制（wing_data.csv num=2）。
+                if (grgWingIonSizeMax >= GRG_EXPECT_WING_SIZE && grgWingLanceSizeMax >= GRG_EXPECT_WING_SIZE) {
+                    log.info(
+                        "[ASTD-Automation] grg wing evidence: ionWingSizeMax=$grgWingIonSizeMax " +
+                            "lanceWingSizeMax=$grgWingLanceSizeMax fightersInPlayMax=$grgFightersInPlayMax（断言点 A：双联队齐备且各 2 架在场）",
+                    )
+                    transitionGrgPhase(GRG_PHASE_PHASE_LINK)
+                } else if (elapsed - grgPhaseStartedAt >= GRG_WAIT_WINGS_TIMEOUT) {
+                    failureReason = "grg wait wings timeout: ionWingSizeMax=$grgWingIonSizeMax lanceWingSizeMax=$grgWingLanceSizeMax" +
+                        "（各 ≥$GRG_EXPECT_WING_SIZE）fighters=${fighters.size}/$grgFightersInPlayMax（断言点 A）"
+                    transitionGrgPhase(GRG_PHASE_FAILED)
+                }
+            }
+            GRG_PHASE_PHASE_LINK -> {
+                stabilizeGrgShips(engine, healEnemy = true, zeroPlayerFlux = true, blockSystem = true)
+                if (player != null) {
+                    when (grgPhaseLinkStep) {
+                        0 -> {
+                            if (grgPhaseLinkStartedAt < 0f) {
+                                if (fighters.isEmpty()) {
+                                    failureReason = "grg phase link: 进入相位联动时无在外战机（断言点 B 无法观测）"
+                                    transitionGrgPhase(GRG_PHASE_FAILED)
+                                } else {
+                                    player.setPhased(true)
+                                    grgPhaseLinkStartedAt = elapsed
+                                    grgPhaseLinkFighterCount = fighters.size
+                                    log.info("[ASTD-Automation] grg mothership phased at ${"%.2f".format(elapsed)}s fighters=${fighters.size}")
+                                }
+                            } else if (fighters.isNotEmpty() && fighters.all { it.isPhased }) {
+                                grgPhaseLinkedAll = true
+                                log.info("[ASTD-Automation] grg phase link evidence: ${fighters.size} 架在外战机全部 isPhased（断言点 B）")
+                                player.setPhased(false)
+                                grgPhaseLinkRestoreStartedAt = elapsed
+                                grgPhaseLinkStep = 1
+                            } else if (elapsed - grgPhaseLinkStartedAt >= GRG_PHASE_LINK_TIMEOUT) {
+                                failureReason = "grg phase link timeout: ${GRG_PHASE_LINK_TIMEOUT}s 内仍有战机未联动相位" +
+                                    "（linked=${fighters.count { it.isPhased }}/${fighters.size}，断言点 B）"
+                                transitionGrgPhase(GRG_PHASE_FAILED)
+                            }
+                        }
+                        else -> {
+                            if (fighters.all { !it.isPhased }) {
+                                grgPhaseRestoredAll = true
+                                log.info("[ASTD-Automation] grg phase restore evidence: 母舰退出相位后 ${fighters.size} 架战机全部恢复非相位（断言点 C）")
+                                transitionGrgPhase(GRG_PHASE_FLUX_RETURN)
+                            } else if (elapsed - grgPhaseLinkRestoreStartedAt >= GRG_PHASE_RESTORE_TIMEOUT) {
+                                failureReason = "grg phase restore timeout: ${GRG_PHASE_RESTORE_TIMEOUT}s 内仍有战机滞留相位" +
+                                    "（phased=${fighters.count { it.isPhased }}/${fighters.size}，断言点 C：phasedByThis 配对恢复）"
+                                transitionGrgPhase(GRG_PHASE_FAILED)
+                            }
+                        }
+                    }
+                }
+            }
+            GRG_PHASE_FLUX_RETURN -> {
+                stabilizeGrgShips(engine, healEnemy = true, zeroPlayerFlux = false, blockSystem = true)
+                if (player != null) {
+                    val fighter = grgFluxFighter?.takeIf { it.isAlive && !it.isHulk } ?: run {
+                        // 首次进入选定注入目标：取第一架在外存活战机并锁定引用。
+                        val picked = fighters.firstOrNull()
+                        if (picked == null) {
+                            failureReason = "grg flux return: 无在外存活战机可注入辐能（断言点 D 无法观测）"
+                            transitionGrgPhase(GRG_PHASE_FAILED)
+                        }
+                        grgFluxFighter = picked
+                        picked
+                    }
+                    if (fighter != null) {
+                        when (grgFluxStep) {
+                            0 -> {
+                                if (grgFluxSettleStartedAt < 0f) grgFluxSettleStartedAt = elapsed
+                                // 注入前持续清零战机辐能：注入增量顶不到 maxFlux 过载线，
+                                // 且 hullmod 基线表（lastFluxByFighter）稳定在低读数。
+                                fighter.fluxTracker.setCurrFlux(0f)
+                                if (elapsed - grgFluxSettleStartedAt >= GRG_FLUX_SETTLE_SECONDS) {
+                                    grgPlayerFluxBaseline = player.fluxTracker.currFlux
+                                    grgFluxInjected = fighter.fluxTracker.maxFlux * GRG_FLUX_INJECT_FRAC
+                                    fighter.fluxTracker.setCurrFlux(fighter.fluxTracker.currFlux + grgFluxInjected)
+                                    grgFluxInjectedAt = elapsed
+                                    grgFluxStep = 1
+                                    log.info(
+                                        "[ASTD-Automation] grg flux injected: +${"%.0f".format(grgFluxInjected)} " +
+                                            "baseline=${"%.0f".format(grgPlayerFluxBaseline)}（断言点 D：预期返还 ≈ 注入量 ×0.6）",
+                                    )
+                                }
+                            }
+                            else -> {
+                                grgPlayerFluxDeltaMax = maxOf(grgPlayerFluxDeltaMax, player.fluxTracker.currFlux - grgPlayerFluxBaseline)
+                                when {
+                                    grgPlayerFluxDeltaMax > grgFluxInjected * GRG_FLUX_RETURN_MAX_FRAC -> {
+                                        failureReason = "grg flux return overshoot: 母舰辐能峰值增量 ${"%.0f".format(grgPlayerFluxDeltaMax)}" +
+                                            " > 注入量 ×$GRG_FLUX_RETURN_MAX_FRAC（${"%.0f".format(grgFluxInjected * GRG_FLUX_RETURN_MAX_FRAC)}，断言点 D 上界）"
+                                        transitionGrgPhase(GRG_PHASE_FAILED)
+                                    }
+                                    grgPlayerFluxDeltaMax >= grgFluxInjected * GRG_FLUX_RETURN_MIN_FRAC -> {
+                                        log.info(
+                                            "[ASTD-Automation] grg flux return evidence: deltaMax=${"%.0f".format(grgPlayerFluxDeltaMax)}" +
+                                                " ∈ [${"%.0f".format(grgFluxInjected * GRG_FLUX_RETURN_MIN_FRAC)}, ${"%.0f".format(grgFluxInjected * GRG_FLUX_RETURN_MAX_FRAC)}]" +
+                                                "（注入 ${"%.0f".format(grgFluxInjected)}，断言点 D：战机辐能净增量 ×0.6 返还母舰软辐能）",
+                                        )
+                                        transitionGrgPhase(GRG_PHASE_RIFT_FIRE)
+                                    }
+                                    elapsed - grgFluxInjectedAt >= GRG_FLUX_OBSERVE_TIMEOUT -> {
+                                        failureReason = "grg flux return timeout: ${GRG_FLUX_OBSERVE_TIMEOUT}s 内母舰辐能峰值增量" +
+                                            " ${"%.0f".format(grgPlayerFluxDeltaMax)} < 注入量 ×$GRG_FLUX_RETURN_MIN_FRAC" +
+                                            "（${"%.0f".format(grgFluxInjected * GRG_FLUX_RETURN_MIN_FRAC)}，断言点 D 下界）"
+                                        transitionGrgPhase(GRG_PHASE_FAILED)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            GRG_PHASE_RIFT_FIRE -> {
+                // 靶舰停奶：近炸结算需要真实 hitpoints 读数；玩家侧继续奶血保活。
+                stabilizeGrgShips(engine, healEnemy = false, zeroPlayerFlux = false, blockSystem = false)
+                if (player != null && enemy != null && system != null) {
+                    if (system.id != GRG_SYSTEM_ID) {
+                        failureReason = "grg system id=${system.id}, expect $GRG_SYSTEM_ID（ship_data.csv 生成物未刷新）"
+                        transitionGrgPhase(GRG_PHASE_FAILED)
+                    } else {
+                        grgRiftTelemetryPlanned = engine.customData[GravityRiftSystemStats.TELEMETRY_PLANNED_KEY + player.id] as? Int ?: -1
+                        grgRiftTelemetrySpawned = engine.customData[GravityRiftSystemStats.TELEMETRY_SPAWNED_KEY + player.id] as? Int ?: 0
+                        grgMinesInPlayMax = maxOf(grgMinesInPlayMax, engine.missiles.count { it.projectileSpecId == GRG_MINE_SPEC_ID })
+                        if (grgRiftFired) {
+                            // 靶舰被击沉时 hitpoints 不再下降，以观测到的最低值为准（isHulk 后 stabilize 不再奶血）。
+                            grgEnemyMinHpAfterFire = minOf(grgEnemyMinHpAfterFire, enemy.hitpoints)
+                            grgEnemyHpDropMax = grgEnemyHpBeforeFire - grgEnemyMinHpAfterFire
+                        }
+
+                        // 施放闩：系统点亮沿（isOn 上跳）记一波并采样首波基线；
+                        // 系统熄灭（冷却开始）后解除闩，允许下一波。
+                        if (system.isOn && !grgVolleyActive) {
+                            grgVolleyActive = true
+                            grgRiftVolleys++
+                            if (!grgRiftFired) {
+                                grgRiftFired = true
+                                grgRiftDist = MathUtils.getDistance(player.location, enemy.location)
+                                grgRiftExpectedPlanned = GravityRiftTuning.riftCount(grgRiftDist)
+                                grgEnemyHpBeforeFire = enemy.hitpoints
+                                grgEnemyMinHpAfterFire = enemy.hitpoints
+                            }
+                            log.info(
+                                "[ASTD-Automation] grg rift volley $grgRiftVolleys: dist=${"%.0f".format(grgRiftDist)} " +
+                                    "expectedPlanned=$grgRiftExpectedPlanned attempts=$grgRiftAttempts " +
+                                    "enemyHp=${"%.0f".format(enemy.hitpoints)}",
+                            )
+                        } else if (!system.isOn && system.cooldownRemaining > 0f) {
+                            grgVolleyActive = false
+                        }
+
+                        // 断言点 E：首波 telemetry planned 必须等于按开火距离推算的期望裂隙数，
+                        // 且 spawned 累计收口等于 planned（续波前 spawned 只含首波）。
+                        if (grgRiftFired && !grgRiftFirstVolleyConfirmed && grgRiftTelemetryPlanned >= 0) {
+                            if (grgRiftTelemetryPlanned != grgRiftExpectedPlanned) {
+                                failureReason = "grg rift planned mismatch: telemetry=$grgRiftTelemetryPlanned," +
+                                    " expect riftCount(${"%.0f".format(grgRiftDist)})=$grgRiftExpectedPlanned（断言点 E）"
+                                transitionGrgPhase(GRG_PHASE_FAILED)
+                            } else if (grgRiftTelemetrySpawned == grgRiftTelemetryPlanned) {
+                                grgRiftFirstVolleyConfirmed = true
+                                log.info(
+                                    "[ASTD-Automation] grg rift telemetry evidence: planned=$grgRiftTelemetryPlanned " +
+                                        "spawned=$grgRiftTelemetrySpawned（断言点 E）",
+                                )
+                            }
+                        }
+
+                        // 断言点 F：近炸结算敌舰 hitpoints 下降达标。巡洋舰满装甲对单波能量近炸
+                        // 近似全吸收（2026-09-19 首轮实机：3 裂隙 3300 能量全被装甲网格吃掉，
+                        // hpDrop=0），故按冷却循环多波施放，装甲被逐波剥离后伤害进入船体。
+                        when {
+                            grgRiftFirstVolleyConfirmed && grgEnemyHpDropMax >= GRG_EXPECT_ENEMY_HP_DROP -> {
+                                log.info(
+                                    "[ASTD-Automation] grg rift evidence: volleys=$grgRiftVolleys spawned=$grgRiftTelemetrySpawned " +
+                                        "enemyHp ${"%.0f".format(grgEnemyHpBeforeFire)} -> min ${"%.0f".format(grgEnemyMinHpAfterFire)}" +
+                                        "（drop=${"%.0f".format(grgEnemyHpDropMax)} ≥ $GRG_EXPECT_ENEMY_HP_DROP，断言点 E/F）",
+                                )
+                                transitionGrgPhase(GRG_PHASE_SCREENSHOT)
+                            }
+                            elapsed - grgPhaseStartedAt >= GRG_RIFT_PHASE_TIMEOUT -> {
+                                failureReason = "grg rift phase timeout: ${GRG_RIFT_PHASE_TIMEOUT}s 内伤害未达标" +
+                                    "（volleys=$grgRiftVolleys attempts=$grgRiftAttempts planned=$grgRiftTelemetryPlanned（expect $grgRiftExpectedPlanned）" +
+                                    " spawned=$grgRiftTelemetrySpawned minesInPlayMax=$grgMinesInPlayMax" +
+                                    " hpDrop=${"%.0f".format(grgEnemyHpDropMax)}（≥$GRG_EXPECT_ENEMY_HP_DROP） enemyHulk=${enemy.isHulk}，断言点 E/F）"
+                                transitionGrgPhase(GRG_PHASE_FAILED)
+                            }
+                            // 续波施放：目标未沉且伤害未达标时，系统空闲即再点火
+                            // （按帧重试 useSystem()，单次可能被原版起飞动画窗闸门吞掉，同 FGL）。
+                            !enemy.isHulk && !system.isOn && system.cooldownRemaining <= 0f -> {
+                                // AI 落点缝口：SYSTEM_TARGET_COORDS 写入敌舰实时位置（双方钉锚点，dist 恒定），
+                                // 旗标时长覆盖 chargeUp 1s 蓄能窗（与 GravityRiftSystemAI 同一约定）。
+                                player.aiFlags.setFlag(ShipwideAIFlags.AIFlags.SYSTEM_TARGET_COORDS, GRG_TARGET_FLAG_SECONDS, Vector2f(enemy.location))
+                                grgRiftAttempts++
+                                player.useSystem()
+                            }
+                        }
+                    }
+                }
+            }
+            GRG_PHASE_SCREENSHOT -> {
+                // 取景波：证据已齐，专为截图再放一波。落点偏置到靶舰侧舷 GRG_SCREENSHOT_AIM_OFFSET，
+                // 让光束（旋涡→目标舰）以可辨识的长度入镜；ACTIVE 沿（光束点亮、旋涡残影未散、
+                // 地雷散布中）上报 Completed——SSOptimizer 在上报时刻连拍三帧。
+                // 纯取景相位不引入新断言：超时兜底直接收口 COMPLETED。
+                // 闩锁 stagedFired/stagedLit：只认本相位亲手放出并真正点亮的那一波——进入相位时
+                // 上一波可能仍在 ACTIVE 尾段，直接门控会把别人的尾焰定格进来（实机 2026-09-20）；
+                // useSystem 可能被原版起飞动画窗吞掉，故点亮前按帧重试点火（同 RIFT_FIRE 续波）。
+                stabilizeGrgShips(engine, healEnemy = true, zeroPlayerFlux = false, blockSystem = false)
+                if (player != null && enemy != null && system != null) {
+                    when {
+                        // ACTIVE 沿先记录时刻，推迟 GRG_SCREENSHOT_HOLD_DELAY 再收口：
+                        // 首帧近炸闪光最乱，保持段中帧光束满亮度、爆炸烟尘略沉降，取景最清晰。
+                        grgScreenshotStagedLit && system.state == ShipSystemAPI.SystemState.ACTIVE -> {
+                            if (grgScreenshotActiveAt < 0f) grgScreenshotActiveAt = elapsed
+                            if (elapsed - grgScreenshotActiveAt >= GRG_SCREENSHOT_HOLD_DELAY) {
+                                // 定格舞台：截图捕获与 Completed 上报间存在秒级异步延迟
+                                // （实机 2026-09-19：捕获时系统已转冷却，0.9s 光束早消散），
+                                // 暂停后三帧拍到的就是定格的光束+旋涡残影瞬间。
+                                engine.setPaused(true)
+                                transitionGrgPhase(GRG_PHASE_COMPLETED)
+                            }
+                        }
+                        elapsed - grgPhaseStartedAt >= GRG_SCREENSHOT_TIMEOUT -> {
+                            log.info("[ASTD-Automation] grg screenshot volley timeout, completing without staged frame")
+                            transitionGrgPhase(GRG_PHASE_COMPLETED)
+                        }
+                        grgScreenshotStagedFired && system.isOn && !grgScreenshotStagedLit ->
+                            grgScreenshotStagedLit = true
+                        !grgScreenshotStagedLit && !system.isOn && system.cooldownRemaining <= 0f -> {
+                            val aim = Vector2f(enemy.location)
+                            aim.y += GRG_SCREENSHOT_AIM_OFFSET
+                            player.aiFlags.setFlag(ShipwideAIFlags.AIFlags.SYSTEM_TARGET_COORDS, GRG_TARGET_FLAG_SECONDS, aim)
+                            grgScreenshotStagedFired = true
+                            grgScreenshotActiveAt = -1f
+                            player.useSystem()
+                        }
+                    }
+                }
+            }
+            GRG_PHASE_COMPLETED -> {
+                stabilizeGrgShips(engine, healEnemy = true, zeroPlayerFlux = false, blockSystem = false)
+            }
+        }
+
+        val state = when {
+            player == null || enemy == null -> {
+                if (elapsed > 12f) {
+                    failureReason = "grg ships missing: player=${player != null}, enemy=${enemy != null}"
+                    "Failed"
+                } else {
+                    "CombatReady"
+                }
+            }
+            grgPhase == GRG_PHASE_FAILED -> "Failed"
+            grgPhase != GRG_PHASE_COMPLETED &&
+                elapsed - grgPhaseStartedAt > GRG_PHASE_TIMEOUT -> {
+                failureReason = "grg phase timeout: $grgPhase（ionWingMax=$grgWingIonSizeMax lanceWingMax=$grgWingLanceSizeMax " +
+                    "fighters=${fighters.size}/$grgFightersInPlayMax linked=$grgPhaseLinkedAll restored=$grgPhaseRestoredAll " +
+                    "fluxDelta=${"%.0f".format(grgPlayerFluxDeltaMax)} riftFired=$grgRiftFired " +
+                    "planned=$grgRiftTelemetryPlanned/$grgRiftExpectedPlanned spawned=$grgRiftTelemetrySpawned " +
+                    "hpDrop=${"%.0f".format(grgEnemyHpDropMax)}）"
+                "Failed"
+            }
+            grgPhase == GRG_PHASE_COMPLETED -> "Completed"
+            else -> "CombatReady"
+        }
+        if (state == "Completed" && !completed) {
+            completed = true
+            completedAt = elapsed
+            log.info("[ASTD-Automation] Completed: lens_grav_rift_zw103 wings/phase-link/flux-return/rift evidence observed")
+        }
+        if (elapsed - lastWriteAt >= 0.18f || state == "Completed" || state == "Failed") {
+            lastWriteAt = elapsed
+            writeDiagnostics(engine, state, player)
+            writeTelemetry(engine, state, player, null)
+        }
+    }
+
+
     // === 飞蓬战机引力联结器场景（维度折叠甲板扩容 / 机群时流减伤 / 软辐能代价 / 召回重出击证据） ===
 
     private fun findFglPlayer(engine: CombatEngineAPI): ShipAPI? =
@@ -5923,6 +6440,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             !ASTDInGameAutomationScenario.isSmEnabled() &&
             !ASTDInGameAutomationScenario.isPlEnabled() &&
             !ASTDInGameAutomationScenario.isTrailPauseProbeEnabled() &&
+            !ASTDInGameAutomationScenario.isGravRiftScenarioEnabled() &&
             !ASTDInGameAutomationScenario.isFighterGravLinkScenarioEnabled()
         ) {
             return
@@ -5936,6 +6454,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         val shipSprite = try { ship?.spriteAPI } catch (_: Throwable) { null }
         val vfxTelemetry = ProjectileVfxDriverPlugin.telemetrySnapshot(engine)
         val scenarioId = when {
+            ASTDInGameAutomationScenario.isGravRiftScenarioEnabled() -> ASTDInGameAutomationScenario.GRG_SCENARIO_ID
             ASTDInGameAutomationScenario.isFighterGravLinkScenarioEnabled() -> ASTDInGameAutomationScenario.FGL_SCENARIO_ID
             ASTDInGameAutomationScenario.isTrailPauseProbeEnabled() -> ASTDInGameAutomationScenario.TPP_SCENARIO_ID
             ASTDInGameAutomationScenario.isPlEnabled() -> ASTDInGameAutomationScenario.PL_SCENARIO_ID
@@ -5981,7 +6500,41 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             // 保留闸门让 vanilla 静默 deployAll（2026-07-31 修正）；本字段在 CombatReady 与各相位
             // 写出时采样，任何时刻为 true 都说明闸门被重新打开（多舰场景会常驻遮屏）。
             appendLine("  \"deploymentDialogShowing\": ${engine.combatUI?.isShowingDeploymentDialog()},")
-            if (ASTDInGameAutomationScenario.isFighterGravLinkScenarioEnabled()) {
+            if (ASTDInGameAutomationScenario.isGravRiftScenarioEnabled()) {
+                val grgPlayer = findGrgPlayer(engine)
+                val grgSystem = grgPlayer?.system
+                appendLine("  \"runtimeElapsedSeconds\": 0,")
+                appendLine("  \"runtimeTrackedCount\": ${vfxTelemetry.trackedCount},")
+                appendLine("  \"runtimeLastProjectileSpecId\": ${jsonString(vfxTelemetry.lastProjectileSpecId)},")
+                // ---- 机制证据（联队齐备 / 相位联动 / 辐能返还 / 裂隙布雷）----
+                appendLine("  \"grgPhase\": \"$grgPhase\",")
+                appendLine("  \"grgSystemId\": ${jsonString(grgSystem?.id)},")
+                appendLine("  \"grgSystemState\": ${jsonString(grgSystem?.state?.name)},")
+                appendLine("  \"grgSystemCooldownRemaining\": ${formatFloat(grgSystem?.cooldownRemaining ?: -1f)},")
+                appendLine("  \"grgWingIonSizeMax\": $grgWingIonSizeMax,")
+                appendLine("  \"grgWingLanceSizeMax\": $grgWingLanceSizeMax,")
+                appendLine("  \"grgFightersInPlayMax\": $grgFightersInPlayMax,")
+                appendLine("  \"grgFightersInPlay\": ${if (grgPlayer != null) grgPlayerFighters(grgPlayer).size else -1},")
+                appendLine("  \"grgPhaseLinkFighterCount\": $grgPhaseLinkFighterCount,")
+                appendLine("  \"grgPhaseLinkedAll\": $grgPhaseLinkedAll,")
+                appendLine("  \"grgPhaseRestoredAll\": $grgPhaseRestoredAll,")
+                appendLine("  \"grgPlayerPhased\": ${grgPlayer?.isPhased == true},")
+                appendLine("  \"grgPlayerHasAI\": ${grgPlayer?.shipAI != null},")
+                appendLine("  \"grgFluxInjected\": ${formatFloat(grgFluxInjected)},")
+                appendLine("  \"grgPlayerFluxBaseline\": ${formatFloat(grgPlayerFluxBaseline)},")
+                appendLine("  \"grgPlayerFluxDeltaMax\": ${formatFloat(grgPlayerFluxDeltaMax)},")
+                appendLine("  \"grgRiftAttempts\": $grgRiftAttempts,")
+                appendLine("  \"grgRiftVolleys\": $grgRiftVolleys,")
+                appendLine("  \"grgMinesInPlayMax\": $grgMinesInPlayMax,")
+                appendLine("  \"grgRiftDist\": ${formatFloat(grgRiftDist)},")
+                appendLine("  \"grgRiftExpectedPlanned\": $grgRiftExpectedPlanned,")
+                appendLine("  \"grgRiftTelemetryPlanned\": $grgRiftTelemetryPlanned,")
+                appendLine("  \"grgRiftTelemetrySpawned\": $grgRiftTelemetrySpawned,")
+                appendLine("  \"grgEnemyHpBeforeFire\": ${formatFloat(grgEnemyHpBeforeFire)},")
+                appendLine("  \"grgEnemyMinHpAfterFire\": ${formatFloat(if (grgEnemyMinHpAfterFire == Float.MAX_VALUE) -1f else grgEnemyMinHpAfterFire)},")
+                appendLine("  \"grgEnemyHpDropMax\": ${formatFloat(grgEnemyHpDropMax)},")
+                appendLine("  \"grgPlayerCurrFlux\": ${formatFloat(grgPlayer?.fluxTracker?.currFlux ?: -1f)},")
+            } else if (ASTDInGameAutomationScenario.isFighterGravLinkScenarioEnabled()) {
                 val fglPlayer = findFglPlayer(engine)
                 val fglSystem = fglPlayer?.system
                 appendLine("  \"runtimeElapsedSeconds\": 0,")
@@ -7046,6 +7599,59 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private const val SM_COMPLETED_EVENT_WINDOW = 2.5f
         private const val SM_COMPLETED_STAGE_TIMEOUT = 30f
         private const val SM_PHASE_TIMEOUT = 90f
+
+        // 茑萝引力裂隙发生器场景：相位机、锚点与期望证据（断言点 A~F）。
+        private const val GRG_PHASE_SPAWN = "SPAWN"
+        private const val GRG_PHASE_WAIT_WINGS = "WAIT_WINGS"
+        private const val GRG_PHASE_PHASE_LINK = "PHASE_LINK"
+        private const val GRG_PHASE_FLUX_RETURN = "FLUX_RETURN"
+        private const val GRG_PHASE_RIFT_FIRE = "RIFT_FIRE"
+        private const val GRG_PHASE_SCREENSHOT = "SCREENSHOT_VOLLEY"
+        private const val GRG_PHASE_COMPLETED = "COMPLETED"
+        private const val GRG_PHASE_FAILED = "FAILED"
+        private const val GRG_PLAYER_HULL = "astd_zw_103"
+        private const val GRG_ENEMY_HULL = "dominator"
+        private const val GRG_SYSTEM_ID = "astd_grav_rift_generator"
+        private const val GRG_ION_WING_ID = "astd_zw_103_ion_wing"
+        private const val GRG_LANCE_WING_ID = "astd_zw_103_lance_wing"
+        // 靶舰锚点在母舰正前方 400su：riftCount(400)=3，既避开远距单裂隙的弱证据区，
+        // 又给战机陪练留出活动空间。
+        private val GRG_PLAYER_ANCHOR = Vector2f(-700f, 0f)
+        private val GRG_ENEMY_ANCHOR = Vector2f(-300f, 0f)
+        private val GRG_CAMERA_CENTER = Vector2f(-500f, 0f)
+        private const val GRG_CAMERA_VISIBLE_HEIGHT = 1500f
+        private const val GRG_SPAWN_SETTLE_SECONDS = 0.6f
+        // WAIT_WINGS（断言点 A）：两联队基础编制各 2（wing_data.csv num=2，无折叠甲板扩容）；
+        // auto_fighter 自动出击的爬编时间给 25s 冗余。
+        private const val GRG_EXPECT_WING_SIZE = 2
+        private const val GRG_WAIT_WINGS_TIMEOUT = 25f
+        // PHASE_LINK（断言点 B/C）：hullmod 逐帧驱动，联动与恢复都应在下一帧内完成，3s 超时纯兜底。
+        private const val GRG_PHASE_LINK_TIMEOUT = 3f
+        private const val GRG_PHASE_RESTORE_TIMEOUT = 3f
+        // FLUX_RETURN（断言点 D）：注入 maxFlux×0.4（清零 settle 后注入，顶不到过载线）；
+        // 玩家恒 v2 返还比例 0.6，界 [×0.4, ×0.85] 容忍逐帧耗散与基线量化。
+        private const val GRG_FLUX_SETTLE_SECONDS = 0.5f
+        private const val GRG_FLUX_INJECT_FRAC = 0.4f
+        private const val GRG_FLUX_OBSERVE_TIMEOUT = 2f
+        private const val GRG_FLUX_RETURN_MIN_FRAC = 0.4f
+        private const val GRG_FLUX_RETURN_MAX_FRAC = 0.85f
+        // RIFT_FIRE（断言点 E/F）：SYSTEM_TARGET_COORDS 旗标时长须覆盖 chargeUp 1s 蓄能窗；
+        // useSystem 可能被原版起飞动画窗吞掉，按帧重试（同 FGL）。巡洋舰满装甲对单波能量近炸
+        // 近似全吸收（2026-09-19 首轮实机 3 裂隙 3300 能量 hpDrop=0），按冷却循环多波施放
+        // 逐波剥甲直到 hitpoints 下降达标；相位预算覆盖 ~5 波（12s 冷却 + 2.7s 系统周期）。
+        private const val GRG_TARGET_FLAG_SECONDS = 2f
+        private const val GRG_RIFT_PHASE_TIMEOUT = 85f
+        private const val GRG_MINE_SPEC_ID = "astd_grav_rift_mine"
+        // 近炸结算阈：多波剥甲后 hitpoints 累计下降 2000 为保守下界；
+        // 战机陪练火力只会把读数推高，不会让达标变难。
+        private const val GRG_EXPECT_ENEMY_HP_DROP = 2000f
+        // SCREENSHOT_VOLLEY（纯取景，无断言）：落点向 +y 偏置 320su，光束从旋涡侧舷入镜；
+        // 冷却 12s + 系统周期 2.7s 内必到 ACTIVE 沿，20s 超时兜底直接收口。
+        private const val GRG_SCREENSHOT_AIM_OFFSET = 320f
+        private const val GRG_SCREENSHOT_TIMEOUT = 20f
+        // 取景收口推迟到光束保持段中帧（fadeIn 0.05 + hold 0.35 内），避开 ACTIVE 首帧的近炸闪光。
+        private const val GRG_SCREENSHOT_HOLD_DELAY = 0.25f
+        private const val GRG_PHASE_TIMEOUT = 90f
 
         // 飞蓬战机引力联结器场景：相位机、锚点与期望证据（断言点 A~G）。
         private const val FGL_PHASE_SPAWN = "SPAWN"

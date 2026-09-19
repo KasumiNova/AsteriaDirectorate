@@ -184,43 +184,86 @@ object Ship_astd_zw_002 : ShipDataEntry() {
     override val number: Int = 9112
 }
 
+/**
+ * 茑萝级（ZW-103）：相位护航航母（purple/20-production.md §2，2026-09 D27 全重做）。
+ *
+ * 防御方式由 FRONT 护盾改为相位（复用紫菀防御系统「引力相位」astd_gravity_phase），
+ * hints 必须带 PHASE（原版 ShipHullSpec.isPhase() 判定口径，见 [Ship_astd_zw_002] 注释）。
+ * 2 个内置机库（variant 固定内置战机联队），槽位仅 2x 中型能量（全向）。
+ * 相位激活/维持 200 辐能 = 辐能容量比例 200/8000 = 0.025。
+ */
 object Ship_astd_zw_103 : ShipDataEntry() {
     override val id: String = "astd_zw_103"
     override val name: String = shipName(id)
-    override val designation: String = "驱逐舰"
+    override val designation: String = "相位护航航母"
     override val tech: String = "菀星设计局-紫菀"
-    override val systemId: String = "astd_drone_surge"
-    override val fleetPts: Int = 12
-    override val hitpoints: Int = 3000
-    override val armorRating: Int = 350
-    override val maxFlux: Int = 5000
-    override val fluxDissipation: Int = 400
-    override val ordnancePoints: Int = 95
+    override val systemId: String = "astd_grav_rift_generator"
+    override val fleetPts: Int = 16
+    override val hitpoints: Int = 5000
+    override val armorRating: Int = 800
+    override val maxFlux: Int = 8000
+    override val fluxDissipation: Int = 600
+    override val ordnancePoints: Int = 115
+    override val fighterBays: Int = 2
     override val maxSpeed: Int = 100
     override val acceleration: Int = 50
     override val deceleration: Int = 50
-    override val maxTurnRate: Int = 30
-    override val turnAcceleration: Int = 60
+    override val maxTurnRate: Int = 40
+    override val turnAcceleration: Int = 80
     override val mass: Int = 8000
-    override val shieldType: String = "FRONT"
-    override val shieldArc: Int = 120
-    override val shieldUpkeep: Double = 0.6
-    override val shieldEfficiency: Double = 0.8
-    override val minCrew: Int = 10
-    override val maxCrew: Int = 250
-    override val cargo: Int = 60
-    override val fuel: Int = 80
+    override val hints: String = "PHASE"
+    override val shieldType: String = "PHASE"
+    override val defenseId: String = "astd_gravity_phase"
+    // 相位激活/维持辐能均为 200：ship_data 的 phase cost/upkeep 是辐能容量比例（200/8000）。
+    override val phaseCost: Double = 0.025
+    override val phaseUpkeep: Double = 0.025
+    override val minCrew: Int = 20
+    override val maxCrew: Int = 120
+    override val cargo: Int = 100
+    override val fuel: Int = 60
     override val fuelPerLy: Int = 2
     override val range: Int = 40
     override val maxBurn: Int = 9
     override val baseValue: Int = 100000
     override val crPercentPerDay: Double = 5.0
-    override val crToDeploy: Double = 20.0
+    override val crToDeploy: Double = 15.0
     override val peakCrSec: Int = 480
     override val crLossPerSec: Double = 0.25
-    override val suppliesRec: Int = 12
-    override val suppliesPerMonth: Int = 12
+    override val suppliesRec: Int = 16
+    override val suppliesPerMonth: Int = 16
     override val tags: String = "astd_production"
     override val codexVariantId: String = "astd_zw_103_Standard"
     override val number: Int = 9113
+}
+
+/**
+ * 茑萝级内置相位无人战机「游丝」（purple/20-production.md §2 内置战机）。
+ *
+ * 无人重型战斗机：双联队共两个甲板各 2 架，0 OP 内置（wing op cost 0），
+ * 战术系统为落叶飞花（战机）astd_burst_flow_fighter（回充 10s、2 充能）。
+ * 护盾前向 240° 效率 0.5；物流列全部置空（战机无 CR/补给概念，对齐原版 broadsword 行）。
+ */
+object Ship_astd_zw_103_fighter : ShipDataEntry() {
+    override val id: String = "astd_zw_103_fighter"
+    override val name: String = shipName(id)
+    override val designation: String = "重型战斗机"
+    override val tech: String = "菀星设计局-紫菀"
+    override val systemId: String = "astd_burst_flow_fighter"
+    override val hitpoints: Int = 800
+    override val armorRating: Int = 400
+    override val maxFlux: Int = 900
+    override val fluxDissipation: Int = 150
+    override val maxSpeed: Int = 175
+    override val acceleration: Int = 400
+    override val deceleration: Int = 350
+    override val maxTurnRate: Int = 90
+    override val turnAcceleration: Int = 180
+    override val mass: Int = 30
+    override val shieldType: String = "FRONT"
+    override val shieldArc: Int = 240
+    override val shieldUpkeep: Double = 0.3
+    override val shieldEfficiency: Double = 0.5
+    override val minCrew: Int = 0
+    override val maxCrew: Int = 0
+    override val number: Int = 9121
 }

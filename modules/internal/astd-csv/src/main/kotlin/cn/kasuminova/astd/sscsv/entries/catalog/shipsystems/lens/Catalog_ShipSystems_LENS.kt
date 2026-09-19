@@ -191,16 +191,56 @@ object Sys_astd_em_smoke : ShipSystemWithSystemFileEntry() {
     override val icon: String = "graphics/icons/hullsys/phase_cloak.png"
 }
 
-object Sys_astd_drone_surge : ShipSystemWithSystemFileEntry() {
-    override val id: String = "astd_drone_surge"
+/**
+ * 茑萝级舰船系统「引力裂隙发生器」（purple/20-production.md §2，2026-09 D27 重做）。
+ *
+ * 在指定位置召唤红色引力旋涡，1s 延迟（chargeUp）后发射红色光束，命中处展开引力裂隙：
+ * 开火距离越近裂隙越多（最多 5 个），每个裂隙对附近目标造成能量伤害（随裂隙数量递增、
+ * 按难度系数三锚点缩放）。机制复刻原版裂隙洪流发射极（riftcascade）的布雷式裂隙，
+ * 配色统一红色正色。stats/AI 见 [GravityRiftSystemStats] / [GravityRiftSystemAI]。
+ */
+object Sys_astd_grav_rift_generator : ShipSystemWithSystemFileEntry() {
+    override val id: String = "astd_grav_rift_generator"
     override val name: String = systemName(id)
 
-    override val chargeUp: Double = 0.35
-    override val active: Double = 6.0
-    override val down: Double = 0.35
-    override val cooldown: Double = 16.0
+    override val statsScript: String =
+        "cn.kasuminova.astd.combat.shipsystems.GravityRiftSystemStats"
+    override val aiType: String = "CUSTOM"
+    override val aiScript: String? =
+        "cn.kasuminova.astd.combat.shipsystems.GravityRiftSystemAI"
 
-    override val icon: String = "graphics/icons/hullsys/drone_pd_high.png"
+    override val chargeUp: Double = 1.0
+    override val active: Double = 1.2
+    override val down: Double = 0.5
+    override val cooldown: Double = 12.0
+
+    override val icon: String = "graphics/icons/hullsys/mine_strike.png"
+    override val useSound: String = "riftcascade_windup"
+}
+
+/**
+ * 落叶飞花（战机）：茑萝级内置战机「游丝」的战术系统（purple/20-production.md §2）。
+ *
+ * 机制与飞星 (ARC) 的落叶飞花一致（复用 [ASTDBurstFlowSystemStats] / [ASTDBurstFlowSystemAI]），
+ * 仅节奏调整：回充时间 10s（regen 0.1）、最大充能 2。
+ */
+object Sys_astd_burst_flow_fighter : ShipSystemWithSystemFileEntry() {
+    override val id: String = "astd_burst_flow_fighter"
+    override val name: String = systemName(id)
+
+    override val statsScript: String = "cn.kasuminova.astd.combat.shipsystems.ASTDBurstFlowSystemStats"
+    override val aiType: String = "CUSTOM"
+    override val aiScript: String = "cn.kasuminova.astd.combat.shipsystems.ASTDBurstFlowSystemAI"
+
+    override val maxUses: Int = 2
+    override val regen: Double = 0.1
+    override val chargeUp: Double = 0.1
+    override val active: Double = 1.0
+    override val down: Double = 0.1
+    override val cooldown: Double = 1.0
+
+    override val icon: String = "graphics/icons/hullsys/temporal_shell.png"
+    override val useSound: String = "system_temporalshell"
 }
 
 object Sys_astd_holographic_decoy : ShipSystemWithSystemFileEntry() {

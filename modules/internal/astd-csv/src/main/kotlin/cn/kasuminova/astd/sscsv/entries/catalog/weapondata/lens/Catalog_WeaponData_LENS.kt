@@ -422,3 +422,155 @@ object Wpn_astd_stellar_mrm_pod : WeaponDataEntry(), SsProjMissileOutputs {
         engineSlots = emptyList(),
     )
 }
+
+/**
+ * 离子脉冲（战机）：茑萝级内置战机「游丝」武备（purple/20-production.md §2）。
+ *
+ * 原版离子脉冲（ionpulser）的战机化调参：burst 2 发、单发 90 能量 + 200 EMP，
+ * 单发辐能 50（战机 900/150 辐能池可持续）；hints SYSTEM 不进常规配装列表。
+ */
+object Wpn_astd_ion_pulse_fighter : WeaponDataEntry(), SsProjProjectileOutputs {
+    override val id: String = "astd_ion_pulse_fighter"
+    override val name: String = weaponName(id)
+    override val tier: Int = 3
+    override val baseValue: Int = 0
+    override val range: Int = 500
+    override val damagePerShot: Int = 90
+    override val emp: Int = 200
+    override val turnRate: Int = 40
+    override val ops: Int = 0
+    override val type: String = "ENERGY"
+    override val energyPerShot: Int = 50
+    override val chargeup: Double = 0.05
+    override val chargedown: Double = 0.4
+    override val burstSize: Number = 2
+    override val burstDelay: Double = 0.12
+    override val minSpread: Double = 3.0
+    override val maxSpread: Double = 12.0
+    override val spreadPerShot: Double = 1.0
+    override val spreadDecayPerSec: Double = 4.0
+    override val projSpeed: Int = 1000
+    override val hints: String = "SYSTEM"
+    override val tags: String = "energy8, show_in_codex"
+    override val tech: String = "菀星设计局-紫菀"
+    override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
+    override val number: Int = 9242
+
+    // 对齐原版 ionpulser_shot 的能量螺栓观感（RAY 碰撞 + 原版离子电弧 onHit）
+    override val projSpec: ProjectileProjSpec = ProjectileProjSpec(
+        id = "astd_ion_pulse_fighter_shot",
+        spawnType = ProjectileSpawnType.BALLISTIC_AS_BEAM,
+        onHitEffect = "com.fs.starfarer.api.impl.combat.IonCannonOnHitEffect",
+        collisionClass = "RAY",
+        collisionClassByFighter = "RAY_FIGHTER",
+        length = 60.0,
+        width = 16.0,
+        fadeTime = 0.25,
+        fringeColor = Rgba(25, 100, 175, 255),
+        coreColor = Rgba(225, 225, 255, 200),
+        textureScrollSpeed = -256.0,
+        pixelsPerTexel = 1.0,
+    )
+}
+
+/**
+ * 相位长矛（战机）：茑萝级内置战机「游丝」武备（purple/20-production.md §2）。
+ *
+ * 原版相位长矛（phasebeam）的战机化调参：1s 脉冲光束 / 3s 间隔，150 DPS、120 辐能/秒
+ * （战机 900/150 辐能池可持续）；hints SYSTEM 不进常规配装列表。.wpn 为手写光束资源。
+ */
+object Wpn_astd_phase_lance_fighter : WeaponDataEntry() {
+    override val id: String = "astd_phase_lance_fighter"
+    override val name: String = weaponName(id)
+    override val tier: Int = 3
+    override val baseValue: Int = 0
+    override val range: Int = 550
+    override val damagePerSecond: Int = 150
+    override val turnRate: Int = 40
+    override val ops: Int = 0
+    override val type: String = "ENERGY"
+    override val energyPerSecond: Int = 120
+    override val chargeup: Double = 0.2
+    override val chargedown: Double = 0.4
+    override val burstSize: Number = 1
+    override val burstDelay: Double = 3.0
+    override val beamSpeed: Int = 3200
+    override val hints: String = "SYSTEM"
+    override val tags: String = "beam10, show_in_codex"
+    override val tech: String = "菀星设计局-紫菀"
+    override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
+    override val number: Int = 9243
+}
+
+/**
+ * 引力裂隙布雷器（隐藏 SYSTEM 武器）：舰船系统「引力裂隙发生器」的裂隙载体。
+ *
+ * 对齐原版 riftcascade_minelayer 的口径——除 specClass/projectileSpecId 与伤害列外均不重要；
+ * damage/shot 1000 是裂隙基础伤害来源（实际伤害由系统脚本按难度锚点与裂隙序位插值成乘区）。
+ * 弹体为 PHASE_MINE（近炸引信 0.5s），爆炸特效由 GravityRiftMineExplosion 生成红色裂隙。
+ */
+object Wpn_astd_grav_rift_minelayer : WeaponDataEntry(), SsProjMissileOutputs {
+    override val id: String = "astd_grav_rift_minelayer"
+    override val name: String = weaponName(id)
+    override val tier: Int = 3
+    override val baseValue: Int = 0
+    override val range: Int = 0
+    override val damagePerShot: Int = 1000
+    override val turnRate: Int = 0
+    override val ops: Int = 0
+    override val type: String = "ENERGY"
+    override val flightTime: Double = 20.0
+    override val projHitpoints: Int = 1000
+    override val hints: String = "SYSTEM"
+    override val tech: String = "菀星设计局-紫菀"
+    override val noDpsInTooltip: Boolean = true
+    override val number: Int = 9244
+
+    override val projSpec: MissileProjSpec = MissileProjSpec(
+        id = "astd_grav_rift_mine",
+        missileType = "PHASE_MINE",
+        sprite = "",
+        glowSprite = "",
+        // 红色主题：NegativeExplosionVisual 裂隙取色来源（原版注释口径）
+        glowColor = Rgba(255, 70, 70, 255),
+        size = Vec2i(96, 96),
+        center = Vec2(48, 48),
+        collisionRadius = 20,
+        collisionClass = "NONE",
+        collisionClassAfterFlameout = "NONE",
+        renderTargetIndicator = false,
+        explosionColor = Rgba(255, 70, 70, 255),
+        explosionRadius = 0,
+        flameoutTime = 0.1,
+        noEngineGlowTime = 0.05,
+        fadeTime = 0.1,
+        engineSpec = MissileEngineSpec(turnAcc = 500, turnRate = 150, acc = 500, dec = 500),
+        engineSlots = emptyList(),
+        behaviorSpec = linkedMapOf(
+            "behavior" to "PROXIMITY_FUSE",
+            "onExplosionEffect" to "cn.kasuminova.astd.combat.effect.lens.GravityRiftMineExplosion",
+            "range" to 0,
+            "slowToMaxSpeed" to true,
+            "delay" to 0.5,
+            "pingColor" to listOf(255, 70, 70, 255),
+            "mineHasNoSprite" to true,
+            "flashRateMult" to 0.25,
+            "pingRadius" to 100,
+            "pingDuration" to 0.25,
+            "windupSound" to "riftcascade_windup",
+            "windupDelay" to 0.3,
+            "explosionSpec" to linkedMapOf(
+                "duration" to 0.1,
+                "radius" to 100,
+                "coreRadius" to 50,
+                "collisionClass" to "PROJECTILE_FF",
+                "collisionClassByFighter" to "PROJECTILE_FF",
+                "particleDuration" to 1,
+                "particleCount" to 0,
+                "particleColor" to listOf(0, 0, 0, 0),
+                "explosionColor" to listOf(0, 0, 0, 0),
+                "sound" to "riftcascade_rift",
+            ),
+        ),
+    )
+}

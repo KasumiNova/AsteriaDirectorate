@@ -13,7 +13,7 @@ import cn.kasuminova.astd.combat.hullmods.base.ASTDCampaignPlugin;
 import cn.kasuminova.astd.combat.hullmods.lens.LensArrayCoreModeUtilKt;
 import cn.kasuminova.astd.impl.buff.BuffInstall;
 import cn.kasuminova.astd.impl.difficulty.DifficultySettingsRegistrar;
-import cn.kasuminova.astd.renderer.effect.system.WeaponAmbientGlowManager;
+import cn.kasuminova.astd.renderer.effect.system.WeaponGlowLayer;
 import com.fs.starfarer.api.BaseModPlugin;
 import com.fs.starfarer.api.Global;
 import com.fs.starfarer.api.PluginPick;
@@ -58,8 +58,8 @@ public final class AsteriaDirectoratePlugin extends BaseModPlugin {
         DifficultySettingsRegistrar.INSTANCE.register();
         // 预加载制式核心军官头像（SSOptimizer 延迟加载下裸 getSprite 是 textureID=0 黑壳）。
         StandardCores.INSTANCE.preloadPortraits();
-        // 预加载武器常驻发光贴图（同上原因，未被 .wpn 引用的贴图不会上传 GL）。
-        WeaponAmbientGlowManager.INSTANCE.preloadTextures();
+        // 预加载武器补档发光贴图（常驻 + 蓄能；同上原因，未被 .wpn 引用的贴图不会上传 GL）。
+        WeaponGlowLayer.INSTANCE.preloadTextures();
     }
 
     @Override

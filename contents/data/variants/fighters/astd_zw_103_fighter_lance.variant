@@ -1,0 +1,20 @@
+{
+    "displayName": "游丝",
+    "fluxCapacitors": 0,
+    "fluxVents": 0,
+    "hullId": "astd_zw_103_fighter",
+    "hullMods": [
+        "autorepair"
+    ],
+    "quality": 1.0,
+    "variantId": "astd_zw_103_fighter_lance",
+    "weaponGroups": [
+        {
+            "mode": "LINKED",
+            "weapons": {
+                "WS 001": "astd_phase_lance_fighter",
+                "WS 002": "astd_positron_shockwave"
+            }
+        }
+    ]
+}

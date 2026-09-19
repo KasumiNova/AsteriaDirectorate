@@ -1,0 +1,78 @@
+{
+    "bounds": [
+        28,
+        -3,
+        -1,
+        10,
+        -9,
+        -7
+    ],
+    "center": [
+        13,
+        13
+    ],
+    "collisionRadius": 35,
+    "engineSlots": [
+        {
+            "angle": 180,
+            "contrailSize": 64,
+            "length": 48,
+            "location": [
+                -12,
+                7
+            ],
+            "style": "HIGH_TECH",
+            "width": 12
+        },
+        {
+            "angle": 180,
+            "contrailSize": 64,
+            "length": 48,
+            "location": [
+                -12,
+                -6
+            ],
+            "style": "HIGH_TECH",
+            "width": 12
+        }
+    ],
+    "height": 43,
+    "hullId": "astd_zw_103_fighter",
+    "hullName": "游丝",
+    "hullSize": "FIGHTER",
+    "shieldCenter": [
+        8,
+        0
+    ],
+    "shieldRadius": 28,
+    "spriteName": "graphics/ships/thunder2.png",
+    "style": "ASTD_HIGH_TECH",
+    "viewOffset": 0,
+    "weaponSlots": [
+        {
+            "angle": 0,
+            "arc": 90,
+            "id": "WS 001",
+            "locations": [
+                20,
+                6
+            ],
+            "mount": "HIDDEN",
+            "size": "SMALL",
+            "type": "ENERGY"
+        },
+        {
+            "angle": 0,
+            "arc": 90,
+            "id": "WS 002",
+            "locations": [
+                20,
+                -5
+            ],
+            "mount": "HIDDEN",
+            "size": "SMALL",
+            "type": "ENERGY"
+        }
+    ],
+    "width": 26
+}

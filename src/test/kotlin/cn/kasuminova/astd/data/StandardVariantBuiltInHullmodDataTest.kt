@@ -94,7 +94,7 @@ class StandardVariantBuiltInHullmodDataTest {
                 "astd_arc_shared_tactical_network",
             ),
             "astd_zw_002" to listOf("astd_nano_restoration_protocol", "astd_dark_tide_jammer", "phasefield"),
-            "astd_zw_103" to listOf("astd_nano_restoration_protocol", "astd_phase_diffraction_shield"),
+            "astd_zw_103" to listOf("astd_nano_restoration_protocol", "astd_grav_phase_deck"),
             "astd_zw_001" to listOf("astd_nano_restoration_protocol", "astd_lens_array_core"),
             "astd_zl_102" to listOf("astd_nano_restoration_protocol", "astd_inertialess_maneuver"),
             "astd_zw_102" to listOf("astd_nano_restoration_protocol", "astd_dimensional_folding_deck"),

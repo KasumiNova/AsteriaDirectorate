@@ -21,7 +21,7 @@ description: "贴图加载规范：代码侧渲染的自定义贴图必须 loadT
 1) **代码侧渲染的自定义贴图，必须在 `AsteriaDirectoratePlugin.onApplicationLoad()` 预加载**
    - 调 `Global.getSettings().loadTexture(path)` 强制上传 GL。
    - 集中放在对应管理器的 `preloadTextures()` / `preloadPortraits()` 方法里，由 ModPlugin 调用。
-   - 现有先例：`StandardCores.preloadPortraits()`、`WeaponAmbientGlowManager.preloadTextures()`。
+   - 现有先例：`StandardCores.preloadPortraits()`、`WeaponGlowLayer.preloadTextures()`。
    - 判断标准：只要贴图路径**没有出现在任何数据文件中**（纯代码按约定路径派生的都算），就必须预加载。
 
 2) **`getSprite()` 返回全局共享缓存实例，禁止跨帧持有其可变状态**
@@ -29,7 +29,7 @@ description: "贴图加载规范：代码侧渲染的自定义贴图必须 loadT
    - 渲染循环中必须**逐帧重取** `getSprite(path)` 并重置全部状态后再画：
      `setAdditiveBlend()` → `color` → `alphaMult` → `setSize()` → `angle` → `renderAtCenter()`。
    - attach 阶段只缓存路径与原始宽高，不要缓存"已设置好状态"的 SpriteAPI。
-   - 参考实现：`WeaponAmbientGlowManager`（renderer/effect/system）、`ASTDAfterimageEffect`。
+   - 参考实现：`WeaponGlowLayer`（renderer/effect/system）、`ASTDAfterimageEffect`。
 
 3) **预加载失败必须有日志**
    - `loadTexture` 包 try/catch 并 `log.warn` 打出路径，禁止空 catch（全局规范）。

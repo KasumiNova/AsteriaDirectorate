@@ -4,9 +4,9 @@
     "type": "ENERGY",
     "size": "SMALL",
     "displayArcRadius": 600,
-    "turretSprite": "graphics/textures/BUtil_NONE.png",
+    "turretSprite": "graphics/weapons/astd_positron_shockwave_base.png",
     "turretGunSprite": "graphics/textures/BUtil_NONE.png",
-    "hardpointSprite": "graphics/textures/BUtil_NONE.png",
+    "hardpointSprite": "graphics/weapons/astd_positron_shockwave_hp_base.png",
     "hardpointGunSprite": "graphics/textures/BUtil_NONE.png",
     "visualRecoil": 0.0,
     "turretOffsets": [0, 0],
@@ -14,7 +14,7 @@
     "hardpointOffsets": [0, 0],
     "hardpointAngleOffsets": [0],
     "barrelMode": "LINKED",
-    "animationType": "MUZZLE_FLASH",
+    "animationType": "GLOW_AND_FLASH",
     "muzzleFlashSpec": {
         "length": 16.0,
         "spread": 10.0,
@@ -31,5 +31,13 @@
     },
     "projectileSpecId": "astd_positron_shockwave_shot",
     "everyFrameEffect": "cn.kasuminova.astd.combat.effect.generic.CombatVfxBootstrapEveryFrameEffect",
-    "fireSoundTwo": "flak_fire"
+    "fireSoundTwo": "flak_fire",
+    "turretGlowSprite": "graphics/weapons/astd_positron_shockwave_glow.png",
+    "hardpointGlowSprite": "graphics/weapons/astd_positron_shockwave_hp_glow.png",
+    "glowColor": [
+        255,
+        255,
+        255,
+        255
+    ]
 }

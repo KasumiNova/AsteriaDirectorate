@@ -1,2 +1,4 @@
 id,variant,tags,tier,rarity,fleet pts,op cost,formation,range,attackRunRange,attackPositionOffset,num,role,role desc,refit,base value,,,,,,,,,,,,,number
 astd_conjugate_terminal_wing,astd_conjugate_terminal,"no_drop, no_sell, auto_fighter, restricted, hide_in_codex",3,,6,0,BOX,0,500,,2,SUPPORT,共轭终端,8,6000,,,,,,,,,,,,,9127
+astd_zw_103_ion_wing,astd_zw_103_fighter_ion,"no_drop, no_sell, auto_fighter, restricted, hide_in_codex",3,,6,0,V,1000,500,,2,FIGHTER,重型战斗机,15,6000,,,,,,,,,,,,,9128
+astd_zw_103_lance_wing,astd_zw_103_fighter_lance,"no_drop, no_sell, auto_fighter, restricted, hide_in_codex",3,,6,0,V,1000,500,,2,FIGHTER,重型战斗机,15,6000,,,,,,,,,,,,,9129

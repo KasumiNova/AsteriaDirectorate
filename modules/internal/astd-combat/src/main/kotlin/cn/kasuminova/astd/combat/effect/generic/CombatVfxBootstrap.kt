@@ -5,7 +5,7 @@ import cn.kasuminova.astd.renderer.effect.system.Xc001EngineFlareEffect
 import cn.kasuminova.astd.renderer.effect.system.ASTDAfterimageEffect
 import cn.kasuminova.astd.renderer.effect.system.ASTDEngineShardSprayEffect
 import cn.kasuminova.astd.renderer.effect.system.ASTDVectorThrustEngineManager
-import cn.kasuminova.astd.renderer.effect.system.WeaponAmbientGlowManager
+import cn.kasuminova.astd.renderer.effect.system.WeaponGlowLayer
 import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
 import cn.kasuminova.astd.renderer.projectile.driver.ProjectileVfxDriverPlugin
 import cn.kasuminova.astd.renderer.projectile.driver.ProjectileVfxSpecs
@@ -67,11 +67,11 @@ internal object CombatVfxBootstrap {
             log.warn("[ASTD] ASTDEngineShardSprayEffect.ensureInstalled failed", ex)
         }
 
-        // 武器常驻发光层：补足原版 .wpn 只支持开火发光的空缺。
+        // 武器补档发光层（常驻 + 蓄能）：补足原版 .wpn 只有开火发光、没有常亮/充能进度槽位的空缺。
         try {
-            WeaponAmbientGlowManager.ensureInstalled(engine)
+            WeaponGlowLayer.ensureInstalled(engine)
         } catch (ex: Throwable) {
-            log.warn("[ASTD] WeaponAmbientGlowManager.ensureInstalled failed", ex)
+            log.warn("[ASTD] WeaponGlowLayer.ensureInstalled failed", ex)
         }
     }
 }

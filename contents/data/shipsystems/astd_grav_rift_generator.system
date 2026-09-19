@@ -1,0 +1,8 @@
+{
+    "id": "astd_grav_rift_generator",
+    "type": "STAT_MOD",
+    "aiType": "CUSTOM",
+    "aiScript": "cn.kasuminova.astd.combat.shipsystems.GravityRiftSystemAI",
+    "statsScript": "cn.kasuminova.astd.combat.shipsystems.GravityRiftSystemStats",
+    "useSound": "riftcascade_windup"
+}

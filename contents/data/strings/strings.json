@@ -106,6 +106,10 @@
 		"ui.hullmod.lens_parallax_decks.line.2": "· 链路回响：机群命中敌人时叠 <param:#C8A0FF:1 层> 误差标记（每敌每秒上限防刷）。",
 		"ui.hullmod.lens_parallax_decks.line.3": "· 回收重构：返航整备的机群位于本舰 <param:#C8A0FF:1000su> 内时获得 <param:#C8A0FF:50%> 承伤减免。",
 
+		"ui.hullmod.grav_phase_deck.summary": "<param:#C8A0FF:菀星设计局-紫菀> 引力相位甲板搭载的相位无人战机与母舰构成引力联结，共享同一段相位坐标。",
+		"ui.hullmod.grav_phase_deck.line.1": "· 引力联结：母舰进入相位状态时，战机一同进入相位状态，且不产生相位维持辐能。",
+		"ui.hullmod.grav_phase_deck.line.2": "· 辐能返还：战机产生的 <param:#C8A0FF:50%~90%>（砺刃档 60%）软/硬辐能以软辐能形式返还给母舰；母舰辐能水平高于 <param:#C8A0FF:80%> 时失效。",
+
 		"ui.hullmod.dimensional_folding_deck.summary": "<param:#C8A0FF:菀星设计局-紫菀> 以局域维度折叠扩充机库容量，让每一块甲板都容纳超出物理极限的机群编制。",
 		"ui.hullmod.dimensional_folding_deck.line.1": "· 战机 LPC 所需的装配点提升 <param:#C8A0FF:50%>。",
 		"ui.hullmod.dimensional_folding_deck.line.2": "· 每个战机甲板的联队战机数量提升 <param:#C8A0FF:50%~250%>（随威胁等级，砺刃档 <param:#C8A0FF:+150%>）。",
