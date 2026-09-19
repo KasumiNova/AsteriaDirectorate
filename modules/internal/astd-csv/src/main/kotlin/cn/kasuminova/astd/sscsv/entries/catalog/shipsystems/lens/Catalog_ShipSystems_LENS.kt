@@ -79,11 +79,20 @@ object Sys_astd_targeting_beacon : ShipSystemWithSystemFileEntry() {
 }
 
 /**
- * 飞蓬级舰船系统「战机引力联结器」（purple/20-production.md §1，2026-09 重构）。
+ * 飞蓬级舰船系统「战机引力联结器」（purple/20-production.md §1，2026-09 重构；
+ * 2026-09 二轮：toggle 化 + CUSTOM AI）。
  *
- * 以原版召回装置为基线的增强：持续 15s 强化机群（时流/减伤），结束时召回全部战机并
- * 立即重新出击；代价为持续软辐能产出与结束时的软→硬转化。aiType 沿用原版
- * RECALL_DEVICE（按「需整备战机占比」决策激活，与召回语义匹配）。
+ * 以原版召回装置为基线的增强：持续至多 15s 强化机群（时流/减伤），结束时进入 1s 召回
+ * 窗口（快照机群相位渐隐、窗口末 land 回收并快速重新出击）；代价为持续软辐能产出与
+ * 结束时的软→硬转化。
+ *
+ * - toggle=true + active 为空：原版 ChargeTracker 仅 infinite 模式支持 ACTIVE 期再次按键
+ *   关闭（可提前手动取消）；ACTIVE 上限 15s 由 stats 脚本计时补发 useSystem() 收口
+ *   （`ShipSystemAPI.deactivate()` 等价 forceDeactivate——直接跳 COOLDOWN、跳过 OUT
+ *   充能消退窗，召回结算不会触发，故全链路统一走 fire 路径）。
+ * - down=1.0s：召回特效窗（快照机群相位态 + 渐隐，窗口结束 land 回收，对齐原版召回装置视觉）。
+ * - aiType=CUSTOM + aiScript=[FighterGravLinkSystemAI]：原 RECALL_DEVICE 按「需整备战机占比」
+ *   决策，与召回语义匹配但几乎不为强化效果主动激活；CUSTOM AI 按「在外战机规模 + 威胁距离」决策。
  */
 object Sys_astd_fighter_grav_link : ShipSystemWithSystemFileEntry() {
     override val id: String = "astd_fighter_grav_link"
@@ -91,12 +100,15 @@ object Sys_astd_fighter_grav_link : ShipSystemWithSystemFileEntry() {
 
     override val statsScript: String =
         "cn.kasuminova.astd.combat.shipsystems.FighterGravLinkSystemStats"
-    override val aiType: String = "RECALL_DEVICE"
+    override val aiType: String = "CUSTOM"
+    override val aiScript: String? =
+        "cn.kasuminova.astd.combat.shipsystems.FighterGravLinkSystemAI"
     override val useSound: String? = "system_recall_device"
 
     override val chargeUp: Double = 0.5
-    override val active: Double = 15.0
-    override val down: Double = 0.5
+    override val active: Double? = null
+    override val toggle: Boolean = true
+    override val down: Double = 1.0
     override val cooldown: Double = 25.0
 
     override val icon: String = "graphics/icons/hullsys/recall_device.png"

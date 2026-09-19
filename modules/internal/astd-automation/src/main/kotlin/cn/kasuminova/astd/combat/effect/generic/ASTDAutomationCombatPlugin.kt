@@ -383,6 +383,12 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     private var fglActivatedAt = -1f
     private var fglActivationCurrFlux = -1f
     private var fglActivationHardFlux = -1f
+    // WAIT_RECALL：toggle 主动关闭（useSystem fire 路径）的发出节流时间戳；<0 表示尚未发出。
+    // 与 ACTIVATE 同款考虑：单次 useSystem() 可能被原版闸门吞掉，未检测到召回前按
+    // FGL_MANUAL_CANCEL_RETRY_SECONDS 节流补发，日志只记首次。
+    private var fglManualCancelAt = -1f
+    // ACTIVATE 重试计数（useSystem 被原版起飞动画窗吞掉时按帧重试，激活确认日志附带）。
+    private var fglActivateAttempts = 0
     // 断言点 E 强化底账：各已装联队甲板 numLost 合计（原版语义：numLost 只在战机真正被击毁
     // 路径自增，land 召回不计），召回前后不变才能区分「被召回」与「被击毁」。
     // fglNumLostAtActivation 仅作诊断证据；判定基线是 fglNumLostBeforeRecall——与
@@ -4515,7 +4521,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
      * ACTIVATE（系统就绪且在外战机 ≥2 时 useSystem()，范式同 arc production 的 xc102.useSystem()；
      *   记录激活时刻母舰辐能与战机 identity 底账）→
      * OBSERVE_ACTIVE（激活后 2~5s 采样；断言点 B 时流 ×2.5 / C 四承伤 ×0.5 / D 母舰软辐能净涨 ≥800）→
-     * WAIT_RECALL（等 ACTIVE 结束进 OUT/冷却；断言点 E 底账 identity 全清 / F 硬辐能上升）→
+     * WAIT_RECALL（currFlux 达标后补发 useSystem() 验证 toggle 可取消；断言点 E 底账 identity 全清 /
+     *   F 硬辐能上升）→
      * RELAUNCH（断言点 G：召回后 15s 内出现新 identity 战机，快速整备 0.3~0.8s/架）→
      * COMPLETED（renderInUICoords 三帧捕获：重新出击的机群入帧）。
      */
@@ -4569,7 +4576,10 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     if (system.id != FGL_SYSTEM_ID) {
                         failureReason = "fgl system id=${system.id}, expect $FGL_SYSTEM_ID（ship_data.csv 生成物未刷新）"
                         transitionFglPhase(FGL_PHASE_FAILED)
-                    } else if (!system.isOn && system.cooldownRemaining <= 0f && fighters.size >= FGL_MIN_FIGHTERS_FOR_ACTIVATION) {
+                    } else if (system.isOn) {
+                        // 激活确认（state IN/ACTIVE）：基线与断言点 E 底账在此刻采样。
+                        // useSystem() 的单次调用可能被原版起飞动画窗（giveCommand 的
+                        // isLiftingOffOrLanding 闸门）静默吞掉，故下方按帧重试直到真正点亮。
                         fglActivatedAt = elapsed
                         fglActivationCurrFlux = player.fluxTracker.currFlux
                         fglActivationHardFlux = player.fluxTracker.hardFlux
@@ -4584,12 +4594,25 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                             fglRecordedFighterIds += System.identityHashCode(fighter)
                         }
                         fglRecordedFighterCount = fglRecordedFighterIds.size
-                        player.useSystem()
                         log.info(
-                            "[ASTD-Automation] fgl activated: fighters=$fglRecordedFighterCount " +
-                                "currFlux=${"%.0f".format(fglActivationCurrFlux)} hardFlux=${"%.0f".format(fglActivationHardFlux)}",
+                            "[ASTD-Automation] fgl activated: state=${system.state} fighters=$fglRecordedFighterCount " +
+                                "currFlux=${"%.0f".format(fglActivationCurrFlux)} hardFlux=${"%.0f".format(fglActivationHardFlux)} " +
+                                "retries=$fglActivateAttempts",
                         )
                         transitionFglPhase(FGL_PHASE_OBSERVE_ACTIVE)
+                    } else {
+                        // 按帧重试 useSystem()：起飞动画窗内 giveCommand 会被原版静默丢弃
+                        // （Ship.giveCommand 的 isLiftingOffOrLanding 闸门），点亮前不停尝试。
+                        if (system.cooldownRemaining <= 0f && fighters.size >= FGL_MIN_FIGHTERS_FOR_ACTIVATION) {
+                            fglActivateAttempts++
+                            player.useSystem()
+                        }
+                        // 超时兜底独立于冷却分支：即便系统处于长冷却，相位也必须收口判失败。
+                        if (elapsed - fglPhaseStartedAt >= FGL_ACTIVATE_TIMEOUT) {
+                            failureReason = "fgl activate timeout: ${FGL_ACTIVATE_TIMEOUT}s 内系统未点亮" +
+                                "（attempts=$fglActivateAttempts state=${system.state} cd=${system.cooldownRemaining}）"
+                            transitionFglPhase(FGL_PHASE_FAILED)
+                        }
                     }
                 }
             }
@@ -4638,6 +4661,27 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             }
             FGL_PHASE_WAIT_RECALL -> {
                 stabilizeFglShips(engine, forceShield = true)
+                // toggle 主动关闭路径验证：玩家再次按键同路径补发 useSystem()（ACTIVE → OUT →
+                // 召回结算）。不用 system.deactivate()——其等价 forceDeactivate，直接跳
+                // COOLDOWN、跳过 OUT 窗口，召回结算不会触发。
+                // 关闭时机等 currFlux ≥ FGL_MANUAL_CANCEL_MIN_FLUX：断言点 F（软硬转化 ≥1000）
+                // 需要转化前有足够软辐能存量（净涨 ~360/s，约 ACTIVE 4s 后达成，远早于 15s 上限）。
+                // 未检测到召回前按节流补发（单次 useSystem() 可能被原版闸门吞掉，同 ACTIVATE）。
+                if (player != null && system != null &&
+                    system.state == ShipSystemAPI.SystemState.ACTIVE &&
+                    player.fluxTracker.currFlux >= FGL_MANUAL_CANCEL_MIN_FLUX &&
+                    (fglManualCancelAt < 0f || elapsed - fglManualCancelAt >= FGL_MANUAL_CANCEL_RETRY_SECONDS)
+                ) {
+                    val firstIssue = fglManualCancelAt < 0f
+                    fglManualCancelAt = elapsed
+                    player.useSystem()
+                    if (firstIssue) {
+                        log.info(
+                            "[ASTD-Automation] fgl manual cancel issued at ${"%.2f".format(elapsed)}s " +
+                                "currFlux=${"%.0f".format(player.fluxTracker.currFlux)}（toggle 主动关闭路径）",
+                        )
+                    }
+                }
                 if (player != null && system != null && system.state == ShipSystemAPI.SystemState.ACTIVE) {
                     fglHardFluxBeforeRecall = player.fluxTracker.hardFlux
                     fglNumLostBeforeRecall = player.launchBaysCopy
@@ -7030,6 +7074,9 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         // 峰值 14），且 wingMembers 计数不覆盖额外编制（实机曾在场 15 而单联队峰值仅 3）。
         // 扩容的机制级硬证据由 WAIT_WINGS 的 extraDeploymentLimit==5 + 单联队超基础编制承担。
         private const val FGL_MIN_FIGHTERS_FOR_ACTIVATION = 2
+        // ACTIVATE：useSystem() 可能被原版起飞动画窗（giveCommand 的 isLiftingOffOrLanding
+        // 闸门）静默吞掉，按帧重试直到 system.isOn；超时兜底判失败（点亮本身即机制断言）。
+        private const val FGL_ACTIVATE_TIMEOUT = 10f
         // OBSERVE_ACTIVE（断言点 B/C/D）：玩家恒 v2 → 时流 ×2.5（界 2.4）、四承伤 ×0.5（界 0.51）；
         // 软辐能 1120/s（基础最大辐能 16000×7%）对冲盾开净耗散 760/s（耗散 1400 − 护盾维持 640）
         // 后净涨 ≈360/s。断言点 D 基线在相位进入（开盾生效）后 settle 0.5s 采样：护盾维持 640/s
@@ -7041,10 +7088,18 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private const val FGL_EXPECT_TIME_MULT_MIN = 2.4f
         private const val FGL_EXPECT_DAMAGE_TAKEN_MAX = 0.51f
         private const val FGL_EXPECT_FLUX_RISE = 800f
-        // WAIT_RECALL（断言点 E/F）：召回检测后 settle 1s 采样硬辐能峰值与 identity 清点；
-        // F 阈值显式 ≥1000——敌方仅秃鹰双阔剑联队，1s 窗内战机火力对护盾的硬辐能贡献在
-        // 数十量级，外部来源不可能满足，上升只能归因 OUT 首帧 setHardFlux(currFlux) 转化。
-        private const val FGL_RECALL_SETTLE_SECONDS = 1.0f
+        // WAIT_RECALL（断言点 E/F）：currFlux ≥ FGL_MANUAL_CANCEL_MIN_FLUX 时补发 useSystem()
+        // 验证 toggle 主动关闭路径（玩家再次按键同路径；不用 deactivate()——其直接跳 COOLDOWN、
+        // 跳过 OUT 窗口）；召回检测后 settle 1.5s 采样硬辐能峰值与 identity 清点——OUT 召回
+        // 特效窗为 1.0s（CSV down），land 在窗口末（effectLevel ≤0.05，约 0.95s）执行，settle 需覆盖。
+        // 关闭前的最低辐能门槛：断言点 F 阈值显式 ≥1000——敌方仅秃鹰双阔剑联队，settle 窗内
+        // 战机火力对护盾的硬辐能贡献在数十量级，外部来源不可能满足，上升只能归因 OUT 首帧
+        // setHardFlux(currFlux) 转化；ACTIVE 期净涨 ~360/s，1500 约 4s 达成（远早于 15s 上限）。
+        private const val FGL_MANUAL_CANCEL_MIN_FLUX = 1500f
+        // toggle 主动关闭的补发节流（秒）：单次 useSystem() 可能被原版闸门吞掉（同 ACTIVATE），
+        // 未检测到召回前按该间隔重发，确保「主动取消」路径被真实验证而非静默落到 15s 上限收口。
+        private const val FGL_MANUAL_CANCEL_RETRY_SECONDS = 0.5f
+        private const val FGL_RECALL_SETTLE_SECONDS = 1.5f
         private const val FGL_EXPECT_HARD_FLUX_RISE = 1000f
         // RELAUNCH（断言点 G）：召回后 15s 内必须出现新 identity 战机（快速整备 0.3~0.8s/架）。
         private const val FGL_RELAUNCH_TIMEOUT = 15f

@@ -8,9 +8,9 @@ import cn.kasuminova.astd.api.difficulty.ScalingEntry
  * （purple/20-production.md §1，2026-09 重构）。
  *
  * 动机：飞蓬级（ZW-102）舰船系统——以原版召回装置为基线的增强：持续期间强化机群
- * （时流 + 减伤），结束时召回全部部署在外的战机并立即重新出击；代价为持续软辐能产出
- * 与结束时的软→硬辐能转化。三锚点查值与辐能折算集中在此声明，供系统脚本调用并由
- * 单元测试直接驱动。
+ * （时流 + 减伤），结束时进入 1s 召回窗口（快照机群相位渐隐、窗口末 land 回收并快速
+ * 重新出击）；代价为持续软辐能产出与结束时的软→硬辐能转化。三锚点查值与辐能折算
+ * 集中在此声明，供系统脚本调用并由单元测试直接驱动。
  *
  * 玩家来源（owner == 0）固定 v2（砺刃档）。
  */
@@ -24,6 +24,16 @@ object FighterGravLinkTuning {
 
     /** 激活期间软辐能产出速率：每秒产出舰船**基础**最大辐能的该比例（固定 7%，不随难度变化）。 */
     const val SOFT_FLUX_RATIO_OF_BASE_CAP = 0.07f
+
+    /**
+     * ACTIVE 持续时间上限（秒）。系统为 toggle 型（CSV active 为空 + toggle=true，可提前
+     * 手动关闭），引擎不再自动结束 ACTIVE，故由系统脚本按该上限补发 useSystem() 收口
+     * （fire 路径进 OUT；不能用 deactivate()——其直接跳 COOLDOWN、跳过 OUT 召回窗口）。
+     */
+    const val MAX_ACTIVE_SECONDS = 15f
+
+    /** 机群全灭提前终止的宽限期（秒）：ACTIVE 开始该时长后才允许「无在外战机」提前结束。 */
+    const val NO_FIGHTER_CANCEL_GRACE_SECONDS = 1f
 
     /** 一次激活所需的全部机制数值（难度解析结果）。 */
     data class Values(
