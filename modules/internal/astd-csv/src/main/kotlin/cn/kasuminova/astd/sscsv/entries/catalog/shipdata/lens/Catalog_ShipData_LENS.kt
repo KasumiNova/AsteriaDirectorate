@@ -139,7 +139,7 @@ object Ship_astd_zw_102 : ShipDataEntry() {
 object Ship_astd_zw_002 : ShipDataEntry() {
     override val id: String = "astd_zw_002"
     override val name: String = shipName(id)
-    override val designation: String = "巡洋舰"
+    override val designation: String = "相位巡洋舰"
     override val tech: String = "菀星设计局-紫菀"
     override val systemId: String = "astd_em_smoke"
     override val fleetPts: Int = 22

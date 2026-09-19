@@ -372,10 +372,10 @@ object Wpn_astd_heavy_charge_needle : WeaponDataEntry(), SsProjProjectileOutputs
 }
 
 /**
- * 电驱加速炮：中型实弹散射连发（量产，规格 03 §1.1）。
+ * 电驱加速炮：中型实弹连发（量产，规格 03 §1.1）。
  *
- * “散射 2”不走 weapon_data.csv（原版无 projectileCount 列）——由 `.wpn` 双炮管 offsets +
- * barrelMode LINKED 承担，连发 4 走 burst 列，合计每触发 8 弹；
+ * 双管交替射击 × 连发 2（2026-09-19 二轮由 LINKED 齐射 2×4 改为 ALTERNATING 2×2，
+ * 每触发 2 弹，由 `.wpn` 双炮管 offsets + barrelMode ALTERNATING 承担）；
  * 不稳定装药随机附加伤害走 `.proj` onHitEffect，净空加速射程加成走 `.wpn` everyFrameEffect。
  */
 object Wpn_astd_electric_drive_accelerator : WeaponDataEntry(), SsProjProjectileOutputs {
@@ -385,14 +385,14 @@ object Wpn_astd_electric_drive_accelerator : WeaponDataEntry(), SsProjProjectile
     override val rarity: Int = 1
     override val baseValue: Int = 11000
     override val range: Int = 750
-    // 800 = 4 弹 × 120 / 0.6s 连发周期（对齐原版连发武器的面板推导口径）
-    override val damagePerSecond: Int = 800
+    // 600 = 2 弹 × 120 / 0.4s 连发周期（对齐原版连发武器的面板推导口径）
+    override val damagePerSecond: Int = 600
     override val damagePerShot: Int = 120
     override val impact: Int = 4
     override val turnRate: Int = 30
     override val ops: Int = 15
 
-    // 发射冷却 0.3s + 连发 4（连射间隔 0.1s；散射 2 不在此表，走 .wpn LINKED 双管）
+    // 发射冷却 0.3s + 连发 2（连射间隔 0.1s；双管交替走 .wpn ALTERNATING）
     override val chargedown: Double = 0.3
     override val burstSize: Int = 4
     override val burstDelay: Double = 0.1
@@ -402,11 +402,11 @@ object Wpn_astd_electric_drive_accelerator : WeaponDataEntry(), SsProjProjectile
     override val ammoPerSec: Double = 2.0
     override val reloadSize: Int = 8
     override val type: String = "KINETIC"
-    // 每颗子弹 140（裁定口径）；933 ≈ 4 弹 × 140 / 0.6s 连发周期
+    // 每颗子弹 140（裁定口径）；700 = 2 弹 × 140 / 0.4s 连发周期
     override val energyPerShot: Int = 140
-    override val energyPerSecond: Int = 933
+    override val energyPerSecond: Int = 700
     override val projSpeed: Int = 1000
-    // 霰弹式同期散射：min=max 固定散布锥，burst 首发起即带散布（不随连发累积）
+    // 霰弹式散布：min=max 固定散布锥，burst 首发起即带散布（不随连发累积）
     override val minSpread: Double = 8.0
     override val maxSpread: Double = 8.0
     override val spreadPerShot: Double = 0.0

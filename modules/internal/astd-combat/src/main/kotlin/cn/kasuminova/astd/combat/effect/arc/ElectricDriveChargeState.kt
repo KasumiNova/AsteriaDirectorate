@@ -14,7 +14,7 @@ import com.fs.starfarer.api.combat.WeaponAPI
  * 每武器实例一个确定性序列（[seed] 由 [ElectricDriveAcceleratorDifficulty.seedOf] 派生）。
  *
  * 本类为纯载体：无衰减语义，[advance]/[onRemove] 保持默认空实现；
- * [nextCallIndex] 单调递增不复位——同帧 LINKED 双管两发是两个独立事件，各自取值。
+ * [nextCallIndex] 单调递增不复位——连发每发是各自独立的取值事件。
  *
  * 生命周期：[BuffLifetime.HOST_BOUND]；[isHostValid] 语义 = 宿主舰存活且在场
  * 且登记武器的 `spec.weaponId` 仍为本武器（换装后旧 Buff 失效，由 BuffTickPlugin
@@ -29,7 +29,7 @@ class ElectricDriveChargeState(
     val seed: Long,
 ) : Buff {
 
-    /** 结算随机调用序：单调递增不复位（双管同帧两发取值不同的前置保证）。 */
+    /** 结算随机调用序：单调递增不复位（连发每发取值不同的前置保证）。 */
     var callIndex: Int = 0
         private set
 

@@ -3,7 +3,7 @@
     "specClass": "projectile",
     "type": "BALLISTIC",
     "size": "MEDIUM",
-    "displayArcRadius": 800,
+    "displayArcRadius": 750,
     "turretSprite": "graphics/textures/BUtil_NONE.png",
     "turretGunSprite": "graphics/textures/BUtil_NONE.png",
     "hardpointSprite": "graphics/textures/BUtil_NONE.png",
@@ -29,7 +29,7 @@
         0,
         0
     ],
-    "barrelMode": "LINKED",
+    "barrelMode": "ALTERNATING",
     "animationType": "MUZZLE_FLASH",
     "muzzleFlashSpec": {
         "length": 26.0,

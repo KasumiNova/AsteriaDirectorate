@@ -19,7 +19,7 @@ import cn.kasuminova.astd.sscsv.entries.catalog.shipdata.shipName
 object Ship_astd_lh_001 : ShipDataEntry() {
     override val id: String = "astd_lh_001"
     override val name: String = shipName(id)
-    override val designation: String = "护卫舰"
+    override val designation: String = "先进炮艇"
     override val tech: String = "菀星设计局-星坠"
     override val systemId: String = "astd_lh_001_burst_flow"
     override val fleetPts: Int = 18
@@ -62,7 +62,7 @@ object Ship_astd_lh_001 : ShipDataEntry() {
 object Ship_astd_lh_002 : ShipDataEntry() {
     override val id: String = "astd_lh_002"
     override val name: String = shipName(id)
-    override val designation: String = "护卫舰"
+    override val designation: String = "先进炮艇"
     override val tech: String = "菀星设计局-紫菀"
     override val systemId: String = "astd_lh_002_vision_shift"
     override val fleetPts: Int = 18

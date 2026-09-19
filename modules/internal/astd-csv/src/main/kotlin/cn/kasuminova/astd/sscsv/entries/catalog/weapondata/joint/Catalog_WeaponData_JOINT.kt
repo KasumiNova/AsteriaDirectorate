@@ -1,5 +1,6 @@
 package cn.kasuminova.astd.sscsv.entries.catalog.weapondata.joint
 
+import cn.kasuminova.astd.sscsv.entries.AiHint
 import cn.kasuminova.astd.sscsv.entries.WeaponDataEntry
 import cn.kasuminova.astd.sscsv.entries.catalog.weapondata.weaponName
 import cn.kasuminova.astd.sscsv.i18n.SsI18n
@@ -85,6 +86,10 @@ object Wpn_astd_lh_stardust_launcher_arc : WeaponDataEntry(), SsProjMissileOutpu
     override val projHitpoints: Int = 400
     override val tags: String = "no_drop, no_drop_salvage"
     override val tech: String = "联制"
+    // NO_MANUAL_FIRE：原版 AutofireManagerV2 对「导弹 + 弹药 ≤20 + 无本 hint」的武器组判不可用并
+    // 关闭自动开火（舰尾 arc 0 永不可瞄 → 永不开火）；本 hint 让武器组保持自动开火，开火决策
+    // 由 StardustLauncherAutofireAI 无条件接管（手动开火对本武器无意义，光尘全向自寻的）。
+    override val aiHints: Set<AiHint> = setOf(AiHint.NO_MANUAL_FIRE)
     override val primaryRoleStr: String = SsI18n.t("weapon.astd_lh_stardust_launcher.primaryRoleStr")
     override val number: Int = 9240
 
@@ -122,6 +127,8 @@ object Wpn_astd_lh_stardust_launcher_lens : WeaponDataEntry(), SsProjMissileOutp
     override val projHitpoints: Int = 400
     override val tags: String = "no_drop, no_drop_salvage"
     override val tech: String = "联制"
+    // NO_MANUAL_FIRE：同 ARC 线（AutofireManagerV2 弹药 ≤20 判不可用问题，AI 开火无条件接管）
+    override val aiHints: Set<AiHint> = setOf(AiHint.NO_MANUAL_FIRE)
     override val primaryRoleStr: String = SsI18n.t("weapon.astd_lh_stardust_launcher.primaryRoleStr")
     override val number: Int = 9241
 

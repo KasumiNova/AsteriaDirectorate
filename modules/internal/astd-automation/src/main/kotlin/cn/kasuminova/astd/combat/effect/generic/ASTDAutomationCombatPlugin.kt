@@ -128,7 +128,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     private var edaScaleStepAt = -1f
     private var edaEnemyExtraBaseline = -1
     private var edaMinPlayerAmmo = Int.MAX_VALUE
-    // 每触发弹数分组：spawn 间隔 > EDA_BURST_GROUP_GAP 视为新一轮触发（burst delay 0.1s，组内 8 弹）。
+    // 每触发弹数分组：spawn 间隔 > EDA_BURST_GROUP_GAP 视为新一轮触发（burst delay 0.1s，组内 2 弹）。
     private var edaCurrentBurstCount = 0
     private var edaLastSpawnAt = -1f
     private var edaMaxTriggerProjectiles = 0
@@ -1422,7 +1422,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
 
     /**
      * 电驱加速炮相位机：RANGE_ZERO（0 辐能满额射程）→ RANGE_MID（30% 辐能半程）→ RANGE_HIGH（50% 归零）
-     * → FIRE（每触发 8 弹 + 装药追加伤害遥测）→ ENEMY_SCALE（installScaleForTests 切 k_s 敌版三档 + 敌方开火取追加伤害证据）
+     * → FIRE（每触发 2 弹 + 装药追加伤害遥测）→ ENEMY_SCALE（installScaleForTests 切 k_s 敌版三档 + 敌方开火取追加伤害证据）
      * → COMPLETED（恢复开火做截图舞台）。
      */
     private fun advanceEdaScenario(engine: CombatEngineAPI) {
@@ -6703,8 +6703,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private const val EDA_MID_FLUX_LEVEL = 0.3f
         private const val EDA_HIGH_FLUX_LEVEL = 0.5f
         private const val EDA_RANGE_SETTLE_SECONDS = 0.6f
-        // 每触发 8 弹（LINKED 双管 × burst 4）；轮间隔 = chargedown 0.3s，间隔 >0.2s 判定新一轮触发。
-        private const val EDA_EXPECT_TRIGGER_PROJECTILES = 8
+        // 每触发 2 弹（双管交替 × burst 2）；轮间隔 = chargedown 0.3s，间隔 >0.2s 判定新一轮触发。
+        private const val EDA_EXPECT_TRIGGER_PROJECTILES = 2
         private const val EDA_BURST_GROUP_GAP = 0.2f
         // 敌版开火观察窗：k_s=5 档下等待敌版追加伤害遥测增量。
         private const val EDA_ENEMY_FIRE_SECONDS = 20f

@@ -109,8 +109,8 @@ object ASTDInGameAutomationScenario {
 
     /**
      * 电驱加速炮实机场景开关：镜像 [isChargeNeedleEnabled]。
-     * 验证每触发 8 弹（LINKED 双管 × burst 4）、净空加速射程随辐能伸缩、
-     * devMode HUD 状态条目、不稳定装药追加伤害浮字与敌版三档。
+     * 验证每触发 2 弹（双管交替 × burst 2）、净空加速射程随辐能伸缩、
+     * devMode HUD 状态条目、不稳定装药追加伤害与敌版三档。
      */
     fun isEdaEnabled(): Boolean {
         val enabled = System.getProperty(ENABLED_PROPERTY)?.equals("true", ignoreCase = true) == true

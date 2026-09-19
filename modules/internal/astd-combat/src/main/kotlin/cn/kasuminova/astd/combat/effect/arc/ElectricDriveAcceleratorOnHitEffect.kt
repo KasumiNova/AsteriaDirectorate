@@ -26,8 +26,7 @@ import java.awt.Color
  * 额外补字只会叠字（2026-09 实机观测裁定）。
  *
  * 结算随机走共享 [CombatRandom] 确定性序列：每武器实例一条（Weapon 级状态
- * [ElectricDriveChargeState] 记 callIndex），同帧 LINKED 双管两发是两个独立事件、各自取值，
- * 同事件不重掷。
+ * [ElectricDriveChargeState] 记 callIndex），连发每发是各自独立的取值事件，同事件不重掷。
  *
  * `applyDamage` 不触发二次 onHit 回环（00 §2 已核实），无连锁爆字。
  */
@@ -83,7 +82,7 @@ class ElectricDriveAcceleratorOnHitEffect : OnHitEffectPlugin {
             return
         }
 
-        // 4. 确定性随机：BuffHost Weapon 级状态取 callIndex；同帧双管两发是两个独立事件，各自取值（00 §4.1）。
+        // 4. 确定性随机：BuffHost Weapon 级状态取 callIndex；连发每发是各自独立的取值事件（00 §4.1）。
         val state = source.getOrCreateBuffByWeapon(ElectricDriveChargeState.BUFF_ID, weapon) {
             ElectricDriveChargeState(
                 source,

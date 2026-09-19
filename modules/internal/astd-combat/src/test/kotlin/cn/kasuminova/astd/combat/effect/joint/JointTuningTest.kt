@@ -29,7 +29,7 @@ class JointTuningTest {
         return DifficultyTuningImpl
     }
 
-    // —— 落叶飞花（v1 +200%/+100%/+100%，v2 +250%/+150%/+200%，v5 +400%/+250%/+500%）——
+    // —— 落叶飞花（v1 +200%/+100%/+100%/+50%/150%，v2 +250%/+150%/+200%/+100%/200%，v5 +400%/+250%/+500%/+250%/300%）——
 
     @Test
     fun `落叶飞花 玩家固定 v2 砺刃档`() {
@@ -37,6 +37,8 @@ class JointTuningTest {
         assertEquals(3.5f, v.timeMult, 1e-6f)
         assertEquals(2.5f, v.speedManeuverMult, 1e-6f)
         assertEquals(3.0f, v.ammoRegenMult, 1e-6f)
+        assertEquals(2.0f, v.fluxDissipationMult, 1e-6f)
+        assertEquals(2.0f, v.momentumMult, 1e-6f)
     }
 
     @Test
@@ -45,11 +47,15 @@ class JointTuningTest {
         assertEquals(3.0f, v1.timeMult, 1e-6f)
         assertEquals(2.0f, v1.speedManeuverMult, 1e-6f)
         assertEquals(2.0f, v1.ammoRegenMult, 1e-6f)
+        assertEquals(1.5f, v1.fluxDissipationMult, 1e-6f)
+        assertEquals(1.5f, v1.momentumMult, 1e-6f)
 
         val v5 = BurstFlowTuning.resolve(tuning(5f), isPlayer = false)
         assertEquals(5.0f, v5.timeMult, 1e-6f)
         assertEquals(3.5f, v5.speedManeuverMult, 1e-6f)
         assertEquals(6.0f, v5.ammoRegenMult, 1e-6f)
+        assertEquals(3.5f, v5.fluxDissipationMult, 1e-6f)
+        assertEquals(3.0f, v5.momentumMult, 1e-6f)
     }
 
     // —— 视界变速（自身 +50%~100%；目标压制按体型四档；承伤修正双向）——

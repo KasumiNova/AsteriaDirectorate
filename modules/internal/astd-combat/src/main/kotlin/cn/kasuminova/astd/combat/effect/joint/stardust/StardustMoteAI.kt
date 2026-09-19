@@ -12,7 +12,8 @@ import org.lazywizard.lazylib.MathUtils
 /**
  * 星尘光尘 AI：继承原版 [MoteAIScript] 白拿 600su 环绕 flocking（源舰引力/斥力/切向漂移），
  * 覆写 [acquireNewTargetIfNeeded] 实现设计案索敌——优先级 导弹 > 战机 > 舰船，
- * 接敌范围 = 武器面板射程（光尘环绕半径，缺省 [StardustMoteTuning.DEFAULT_ENGAGE_RANGE]）。
+ * 接敌范围 = 以光尘自身位置为圆心、半径取武器面板射程（武器实例缺失时缺省
+ * [StardustMoteTuning.DEFAULT_ENGAGE_RANGE]）。
  *
  * 与原版差异（原版仅 PD 向导弹/战机，由系统脚本生成）：本弹体由真实导弹武器发射
  * （弹药/恢复走 weapon_data.csv），AI 经 `ModPlugin.pickMissileAI` 覆盖钩子指派
@@ -73,9 +74,10 @@ class StardustMoteAI(missile: MissileAPI) : MoteAIScript(missile) {
             .filter { getNumMotesTargeting(it) < StardustMoteTuning.MAX_MOTES_PER_TARGET }
             .minByOrNull { MathUtils.getDistance(missile.location, it.location) }
 
-    /** 接敌判定：目标距源舰 ≤ 武器面板射程（武器实例缺失时按缺省 600su 并一次性 WARN——配置异常不静默）。 */
+    /** 接敌判定：目标距光尘自身 ≤ 武器面板射程（武器实例缺失时按缺省 600su 并一次性 WARN——配置异常不静默）。 */
     private fun isInEngageRange(entity: CombatEntityAPI): Boolean {
-        val source = missile.source ?: return false
+        // 源舰消亡后光尘不再接敌（孤儿弹体只环绕游荡至自然熄灭）
+        if (missile.source == null) return false
         val weapon = missile.weapon
         if (weapon == null) {
             StardustMoteTuning.warnOnce("missingWeapon") {
@@ -83,6 +85,6 @@ class StardustMoteAI(missile: MissileAPI) : MoteAIScript(missile) {
             }
         }
         val range = weapon?.range ?: StardustMoteTuning.DEFAULT_ENGAGE_RANGE
-        return MathUtils.getDistance(source.location, entity.location) <= range
+        return MathUtils.getDistance(missile.location, entity.location) <= range
     }
 }

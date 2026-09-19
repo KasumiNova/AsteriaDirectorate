@@ -35,7 +35,8 @@ import java.awt.Color
  * per-source stat id（[targetStatId]）各自写入、各自清理，互不覆盖；
  * listener 每标记一份实例（创建 mark 时挂接，标记消失/目标死亡/源舰死亡时自移除）。
  *
- * 目标失效清理路径：系统结束（unapply）、目标死亡/hulk/退场（每帧校验 + listener 心跳，
+ * 目标失效清理路径：系统离开 ACTIVE 态（OUT/COOLDOWN/IDLE）首帧即解除目标时流压制、
+ * 目标死亡/hulk/退场（每帧校验 + listener 心跳，
  * 激活窗口内目标失效即 deactivate 提前结束系统）、
  * 本舰死亡（listener 心跳校验 mark.source 存活，系统脚本随舰终止不再刷写后标记即收）、
  * 激活期目标切换不追随（锁定口径：施放瞬间定格，不重选）。
@@ -89,7 +90,8 @@ class ASTDVisionShiftSystemStats : BaseShipSystemScript() {
             renderSelfStreak(ship, id, state, engine)
         }
         if (state != ShipSystemStatsScript.State.ACTIVE) {
-            if (state == ShipSystemStatsScript.State.IDLE) clearMark(ship, engine)
+            // 离开 ACTIVE 即解除目标时流压制（OUT/COOLDOWN/IDLE 均清理；IN 态无标记时为 no-op）
+            clearMark(ship, engine)
             unapply(stats, id)
             return
         }

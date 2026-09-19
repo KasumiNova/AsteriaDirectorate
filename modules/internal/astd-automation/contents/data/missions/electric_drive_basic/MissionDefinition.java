@@ -14,7 +14,7 @@ import com.fs.starfarer.api.mission.MissionDefinitionPlugin;
  *
  * 玩家旗舰锤头级（清空全部槽位后中型实弹槽 WS 001 装电驱加速炮）对敌方锤头级（同款单装）：
  * 射程相位验证净空加速随辐能伸缩（0/30%/50% 三档读 weapon.range），
- * 开火相位验证每触发 8 弹（LINKED 双管 × burst 4）与装药追加伤害遥测，
+ * 开火相位验证每触发 2 弹（双管交替 × burst 2）与装药追加伤害遥测，
  * 难度相位经 installScaleForTests 切 k_s 验证敌版三档射程与追加伤害幅度。
  */
 public final class MissionDefinition implements MissionDefinitionPlugin {

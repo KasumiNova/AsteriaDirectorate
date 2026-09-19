@@ -90,7 +90,7 @@ class ElectricDriveAcceleratorLogicTest {
         val weapon = stubWeapon("WS 001", ElectricDriveChargeState.WEAPON_ID)
         val state = ElectricDriveChargeState(ship, weapon, ElectricDriveAcceleratorDifficulty.seedOf("ship_1", "WS 001"))
 
-        // nextCallIndex 连续调用返回 0,1,2… 不复位（双管同帧两发取值不同的前置保证）。
+        // nextCallIndex 连续调用返回 0,1,2… 不复位（连发每发取值不同的前置保证）。
         assertEquals(0, state.nextCallIndex())
         assertEquals(1, state.nextCallIndex())
         assertEquals(2, state.nextCallIndex())

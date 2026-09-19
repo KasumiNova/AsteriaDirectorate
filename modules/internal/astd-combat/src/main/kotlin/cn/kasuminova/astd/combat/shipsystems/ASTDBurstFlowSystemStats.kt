@@ -15,15 +15,17 @@ import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
 
 /**
- * 落叶飞花（飞星 (ARC) / astd_lh_001_burst_flow）：1s 瞬时爆发时流 + 机动 + 非导弹备弹恢复 +
- * 冲刺动量。
+ * 落叶飞花（飞星 (ARC) / astd_lh_001_burst_flow）：1s 瞬时爆发时流 + 加减速 + 非导弹备弹恢复 +
+ * 辐能耗散加成 + 冲刺动量。
  *
  * 设计案 20-joint.md §战术系统-坠星：爆发不随时间线性增长/减弱——恒定口径
  * （仅 ACTIVE 态满额生效，IN/OUT 不渐变）。数值三锚点见 [BurstFlowTuning]。
  *
- * 冲刺动量（2026-09 调整）：ACTIVE 首帧按舰船当前速度方向附加 100% 最大航速的动量
- * （速度近零时以舰船朝向为方向），表现为向当前向量极速位移的观感；系统不再提升
- * 最大航速，只保留机动性乘区（加减速/转向），附加速度由舰船既有阻力自然消退。
+ * 冲刺动量（2026-09 调整）：ACTIVE 首帧按舰船当前速度方向附加难度倍率（150%/200%/300%）
+ * 最大航速的动量（速度近零时以舰船朝向为方向），表现为向当前向量极速位移的观感；
+ * 激活期间锁定舰船朝向控制（转向乘 0，burn drive 式禁用姿态控制），并按难度系数提升
+ * 辐能耗散速率（50%/100%/250%）；系统不再提升最大航速，只保留加减速乘区，
+ * 附加速度由舰船既有阻力自然消退。
  *
  * 玩家船反补偿：激活期间对 `engine.timeMult` 乘 `1/timeMult`（口径与
  * [ASTDLimitTemporalThrusterSystemStats] 一致），避免玩家视角整体加速。
@@ -59,14 +61,16 @@ class ASTDBurstFlowSystemStats : BaseShipSystemScript() {
         stats.timeMult.modifyMult(id, values.timeMult)
         stats.acceleration.modifyMult(id, values.speedManeuverMult)
         stats.deceleration.modifyMult(id, values.speedManeuverMult)
-        stats.maxTurnRate.modifyMult(id, values.speedManeuverMult)
-        stats.turnAcceleration.modifyMult(id, values.speedManeuverMult)
+        // 激活期间锁定舰船朝向控制（转向乘 0，burn drive 式禁用姿态控制）
+        stats.maxTurnRate.modifyMult(id, 0f)
+        stats.turnAcceleration.modifyMult(id, 0f)
+        stats.fluxDissipation.modifyMult(id, values.fluxDissipationMult)
         // 弹道/能耗两条备弹恢复通道天然排除导弹武器
         stats.ballisticAmmoRegenMult.modifyMult(id, values.ammoRegenMult)
         stats.energyAmmoRegenMult.modifyMult(id, values.ammoRegenMult)
 
         if (ship != null && engine != null && !engine.isPaused) {
-            applyMomentumOnce(engine, ship, stats)
+            applyMomentumOnce(engine, ship, stats, values)
         }
 
         if (ship != null && engine != null && !engine.isPaused && ship === engine.playerShip) {
@@ -81,6 +85,7 @@ class ASTDBurstFlowSystemStats : BaseShipSystemScript() {
         stats.deceleration.unmodifyMult(id)
         stats.maxTurnRate.unmodifyMult(id)
         stats.turnAcceleration.unmodifyMult(id)
+        stats.fluxDissipation.unmodifyMult(id)
         stats.ballisticAmmoRegenMult.unmodifyMult(id)
         stats.energyAmmoRegenMult.unmodifyMult(id)
         val ship = stats.entity as? ShipAPI
@@ -96,10 +101,16 @@ class ASTDBurstFlowSystemStats : BaseShipSystemScript() {
     }
 
     /**
-     * 冲刺动量（ACTIVE 首帧一次性，customData 闩）：按舰船当前速度方向附加 100% 最大航速的
-     * 动量（速度近零时以舰船朝向为方向）。闩在 unapply 清除，保证下次激活可用。
+     * 冲刺动量（ACTIVE 首帧一次性，customData 闩）：按舰船当前速度方向附加
+     * [BurstFlowTuning.Values.momentumMult] 倍最大航速的动量（速度近零时以舰船朝向为方向）。
+     * 闩在 unapply 清除，保证下次激活可用。
      */
-    private fun applyMomentumOnce(engine: CombatEngineAPI, ship: ShipAPI, stats: MutableShipStatsAPI) {
+    private fun applyMomentumOnce(
+        engine: CombatEngineAPI,
+        ship: ShipAPI,
+        stats: MutableShipStatsAPI,
+        values: BurstFlowTuning.Values,
+    ) {
         val key = MOMENTUM_LATCH_KEY_PREFIX + ship.id
         if (engine.customData[key] == true) return
         engine.customData[key] = true
@@ -109,7 +120,7 @@ class ASTDBurstFlowSystemStats : BaseShipSystemScript() {
         } else {
             direction.normalise()
         }
-        direction.scale(stats.maxSpeed.modifiedValue)
+        direction.scale(stats.maxSpeed.modifiedValue * values.momentumMult)
         Vector2f.add(ship.velocity, direction, ship.velocity)
     }
 
