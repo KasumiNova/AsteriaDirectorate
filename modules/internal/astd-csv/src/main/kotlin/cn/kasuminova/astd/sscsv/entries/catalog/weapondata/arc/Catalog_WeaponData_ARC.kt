@@ -394,7 +394,7 @@ object Wpn_astd_electric_drive_accelerator : WeaponDataEntry(), SsProjProjectile
 
     // 发射冷却 0.3s + 连发 2（连射间隔 0.1s；双管交替走 .wpn ALTERNATING）
     override val chargedown: Double = 0.3
-    override val burstSize: Int = 2
+    override val burstSize: Int = 4
     override val burstDelay: Double = 0.1
 
     // 弹匣三列：24 发弹匣，2 发/s 回复（重装 4s/+8），每次装填 8 发
