@@ -128,7 +128,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     private var edaScaleStepAt = -1f
     private var edaEnemyExtraBaseline = -1
     private var edaMinPlayerAmmo = Int.MAX_VALUE
-    // 每触发弹数分组：spawn 间隔 > EDA_BURST_GROUP_GAP 视为新一轮触发（burst delay 0.15s，组内 8 弹）。
+    // 每触发弹数分组：spawn 间隔 > EDA_BURST_GROUP_GAP 视为新一轮触发（burst delay 0.1s，组内 8 弹）。
     private var edaCurrentBurstCount = 0
     private var edaLastSpawnAt = -1f
     private var edaMaxTriggerProjectiles = 0
@@ -761,7 +761,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         }
         if (ASTDInGameAutomationScenario.isEdaEnabled()) {
             if (!completed || visualFramesWritten >= 3) return
-            // 捕获帧间隔 0.6s：齐射拖尾/追加伤害浮字/HUD 条目在三帧内进入捕获帧。
+            // 捕获帧间隔 0.6s：齐射拖尾/HUD 条目在三帧内进入捕获帧。
             if (visualFramesWritten > 0 && elapsed - lastVisualFrameAt < 0.6f) return
             stageEdaCompletedFrame(combatEngine)
             lastVisualFrameAt = elapsed
@@ -1393,7 +1393,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         ship.fluxTracker.setHardFlux(0f)
     }
 
-    /** 每触发弹数分组：新弹 spawn 间隔 > [EDA_BURST_GROUP_GAP] 视为新一轮触发（burst delay 0.15s）。 */
+    /** 每触发弹数分组：新弹 spawn 间隔 > [EDA_BURST_GROUP_GAP] 视为新一轮触发（burst delay 0.1s）。 */
     private fun trackEdaTriggerGroups(engine: CombatEngineAPI, player: ShipAPI?) {
         player ?: return
         for (projectile in engine.projectiles) {
@@ -1517,7 +1517,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                         edaEnemyExtraBaseline = ElectricDriveAcceleratorOnHitEffect.extraDamageCountOther(engine)
                         edaScaleStep = 3; edaScaleStepAt = elapsed
                     }
-                    // k_s=5 下敌方开火：取敌版追加伤害证据（次数 + 峰值可超玩家档 45 上限）。
+                    // k_s=5 下敌方开火：取敌版追加伤害证据（次数 + 峰值可超玩家档 67.5 上限）。
                     3 -> {
                         val gained = ElectricDriveAcceleratorOnHitEffect.extraDamageCountOther(engine) - edaEnemyExtraBaseline
                         if (gained >= 1 || elapsed - edaScaleStepAt >= EDA_ENEMY_FIRE_SECONDS) {
@@ -6695,17 +6695,17 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private val EDA_PLAYER_ANCHOR = Vector2f(-350f, 0f)
         private val EDA_ENEMY_ANCHOR = Vector2f(350f, 0f)
         private val EDA_CAMERA_CENTER = Vector2f(0f, 0f)
-        // 射程相位期望：基线 800 + 净空加成（v2 满额 200；30% 辐能衰减 0.5 → +100；50% ≥40% 阈值归零）。
-        private const val EDA_EXPECT_RANGE_ZERO = 1000f
-        private const val EDA_EXPECT_RANGE_MID = 900f
-        private const val EDA_EXPECT_RANGE_HIGH = 800f
+        // 射程相位期望：基线 750 + 净空加成（v2 满额 200；30% 辐能衰减 0.5 → +100；50% ≥40% 阈值归零）。
+        private const val EDA_EXPECT_RANGE_ZERO = 950f
+        private const val EDA_EXPECT_RANGE_MID = 850f
+        private const val EDA_EXPECT_RANGE_HIGH = 750f
         private const val EDA_RANGE_TOLERANCE = 30f
         private const val EDA_MID_FLUX_LEVEL = 0.3f
         private const val EDA_HIGH_FLUX_LEVEL = 0.5f
         private const val EDA_RANGE_SETTLE_SECONDS = 0.6f
-        // 每触发 8 弹（LINKED 双管 × burst 4）；burst delay 0.15s，间隔 >0.4s 判定新一轮触发。
+        // 每触发 8 弹（LINKED 双管 × burst 4）；轮间隔 = chargedown 0.3s，间隔 >0.2s 判定新一轮触发。
         private const val EDA_EXPECT_TRIGGER_PROJECTILES = 8
-        private const val EDA_BURST_GROUP_GAP = 0.4f
+        private const val EDA_BURST_GROUP_GAP = 0.2f
         // 敌版开火观察窗：k_s=5 档下等待敌版追加伤害遥测增量。
         private const val EDA_ENEMY_FIRE_SECONDS = 20f
         private const val EDA_PHASE_TIMEOUT = 90f

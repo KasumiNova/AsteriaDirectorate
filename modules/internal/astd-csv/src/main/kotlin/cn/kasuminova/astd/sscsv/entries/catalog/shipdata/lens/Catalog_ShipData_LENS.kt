@@ -93,7 +93,7 @@ object Ship_astd_zw_101 : ShipDataEntry() {
 object Ship_astd_zw_102 : ShipDataEntry() {
     override val id: String = "astd_zw_102"
     override val name: String = shipName(id)
-    override val designation: String = "主力舰"
+    override val designation: String = "航空战列舰"
     override val tech: String = "菀星设计局-紫菀"
     override val systemId: String = "astd_fighter_grav_link"
     override val fleetPts: Int = 40
@@ -115,6 +115,8 @@ object Ship_astd_zw_102 : ShipDataEntry() {
     // 护盾维持 640 = 耗散 1100 × 0.5818。
     override val shieldUpkeep: Double = 0.5818
     override val shieldEfficiency: Double = 0.6
+    // CARRIER：图鉴「航母」分类的判定 hint（原版 ShipBlueprintRow 按 hints 分类，对齐原版军团级判例）。
+    override val hints: String = "CARRIER"
     override val minCrew: Int = 500
     override val maxCrew: Int = 1000
     override val cargo: Int = 1000

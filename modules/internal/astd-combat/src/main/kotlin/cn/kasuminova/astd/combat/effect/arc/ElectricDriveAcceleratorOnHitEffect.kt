@@ -1,8 +1,6 @@
 package cn.kasuminova.astd.combat.effect.arc
 
 import cn.kasuminova.astd.api.buff.getOrCreateBuffByWeapon
-import cn.kasuminova.astd.api.combat.CombatFeedback
-import cn.kasuminova.astd.impl.combat.CombatFeedbackImpl
 import cn.kasuminova.astd.impl.combat.CombatRandom
 import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import com.fs.starfarer.api.Global
@@ -23,16 +21,13 @@ import java.awt.Color
  *
  * 命中时按三锚点上限 [0, maxPct] 均匀随机追加一次 [DamageType.KINETIC] 伤害
  * （以命中当发实际伤害为基准，随修正自然缩放），同帧触发玩家可见反馈：
- * 白色追加伤害浮字 + 弹着点小型能量闪（中心亮粒 + 径向散射粒，克制不抢 500su 拖尾主视觉）。
+ * 弹着点小型能量闪（中心亮粒 + 径向散射粒，克制不抢 500su 拖尾主视觉）。
+ * 追加伤害不再单独飘浮字——同帧 applyDamage 的数值会随主伤害数字一并叠加显示，
+ * 额外补字只会叠字（2026-09 实机观测裁定）。
  *
  * 结算随机走共享 [CombatRandom] 确定性序列：每武器实例一条（Weapon 级状态
  * [ElectricDriveChargeState] 记 callIndex），同帧 LINKED 双管两发是两个独立事件、各自取值，
  * 同事件不重掷。
- *
- * 浮字 spike 验证结论（2026-07-29，字节码证据）：脚本侧 8 参 `CombatEngineAPI.applyDamage`
- * 末位布尔恒传 false，原生不产生伤害浮字（该布尔驱动的是命中音效/粒子路径；
- * 原版弹体浮字由弹体命中代码另行调用 `addFloatingDamageText` 产生，脚本路径不经过）。
- * 故显式 [CombatFeedback.floatingDamage] 必须保留，不会与原生浮字叠字；烟测截图复核。
  *
  * `applyDamage` 不触发二次 onHit 回环（00 §2 已核实），无连锁爆字。
  */
@@ -103,8 +98,8 @@ class ElectricDriveAcceleratorOnHitEffect : OnHitEffectPlugin {
         if (!ElectricDriveAcceleratorDifficulty.shouldApplyExtra(extra)) return
         engine.applyDamage(target, hitPoint, extra, DamageType.KINETIC, 0f, false, true, source)
 
-        // 6. 玩家可见反馈（机制可视化铁律，同帧至少一个通道）：伤害浮字 + 小型能量闪。
-        feedback.floatingDamage(engine, hitPoint, extra, FLOATY_COLOR, target, source)
+        // 6. 玩家可见反馈（机制可视化铁律，同帧至少一个通道）：弹着点小型能量闪。
+        //    追加伤害不单独飘浮字（随主伤害数字叠加显示，额外补字只会叠字）。
         spawnChargeFlash(engine, hitPoint)
         recordTelemetry(engine, source, extra)
     }
@@ -145,13 +140,13 @@ class ElectricDriveAcceleratorOnHitEffect : OnHitEffectPlugin {
         /** 玩家侧追加伤害结算次数遥测键（engine.customData）。 */
         const val TELEMETRY_EXTRA_COUNT_PLAYER = "astd_eda_extra_damage_count_player"
 
-        /** 玩家侧追加伤害峰值遥测键（玩家档应 ≤ 80 × 56.25% = 45）。 */
+        /** 玩家侧追加伤害峰值遥测键（玩家档应 ≤ 120 × 56.25% = 67.5）。 */
         const val TELEMETRY_EXTRA_MAX_PLAYER = "astd_eda_extra_damage_max_player"
 
         /** 非玩家侧追加伤害结算次数遥测键（敌版三档证据）。 */
         const val TELEMETRY_EXTRA_COUNT_OTHER = "astd_eda_extra_damage_count_other"
 
-        /** 非玩家侧追加伤害峰值遥测键（k_s=5 时上限 80 × 150% = 120）。 */
+        /** 非玩家侧追加伤害峰值遥测键（k_s=5 时上限 120 × 150% = 180）。 */
         const val TELEMETRY_EXTRA_MAX_OTHER = "astd_eda_extra_damage_max_other"
 
         /** 本场战斗玩家侧累计追加伤害结算次数（dev 自动化烟测读取）。 */
@@ -159,9 +154,6 @@ class ElectricDriveAcceleratorOnHitEffect : OnHitEffectPlugin {
 
         /** 本场战斗非玩家侧累计追加伤害结算次数（dev 自动化烟测读取）。 */
         fun extraDamageCountOther(engine: CombatEngineAPI): Int = engine.customData[TELEMETRY_EXTRA_COUNT_OTHER] as? Int ?: 0
-
-        /** 浮字色（白，与弹体调色板同族）。 */
-        private val FLOATY_COLOR = Color(235, 242, 250)
 
         /** 命中闪光色（白色微冷调）。 */
         private val FLASH_COLOR = Color(240, 245, 252)
@@ -176,9 +168,6 @@ class ElectricDriveAcceleratorOnHitEffect : OnHitEffectPlugin {
         private const val SCATTER_SIZE_MAX = 22f
         private const val SCATTER_DURATION_MIN = 0.25f
         private const val SCATTER_DURATION_MAX = 0.4f
-
-        /** HUD/浮字反馈通道（机制可视化铁律的统一落点）。 */
-        private val feedback: CombatFeedback = CombatFeedbackImpl
 
         private val log = Global.getLogger(ElectricDriveAcceleratorOnHitEffect::class.java)
     }

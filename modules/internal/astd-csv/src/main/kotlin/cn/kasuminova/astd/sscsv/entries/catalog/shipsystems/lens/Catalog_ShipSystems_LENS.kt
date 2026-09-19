@@ -86,10 +86,11 @@ object Sys_astd_targeting_beacon : ShipSystemWithSystemFileEntry() {
  * 窗口（快照机群相位渐隐、窗口末 land 回收并快速重新出击）；代价为持续软辐能产出与
  * 结束时的软→硬转化。
  *
- * - toggle=true + active 为空：原版 ChargeTracker 仅 infinite 模式支持 ACTIVE 期再次按键
- *   关闭（可提前手动取消）；ACTIVE 上限 15s 由 stats 脚本计时补发 useSystem() 收口
- *   （`ShipSystemAPI.deactivate()` 等价 forceDeactivate——直接跳 COOLDOWN、跳过 OUT
- *   充能消退窗，召回结算不会触发，故全链路统一走 fire 路径）。
+ * - toggle=true + active=15s：原版 ChargeTracker 对「toggle 且 active>0」的系统在 ACTIVE 期间
+ *   按 15s 上限推进系统条（玩家可见剩余时间）并在到期时自动转 OUT；ACTIVE 期间再次按键
+ *   仍可提前关闭（canBeDeactivated 默认 true）；机群全灭提前结束由 stats 脚本计时补发
+ *   useSystem() 收口（`ShipSystemAPI.deactivate()` 等价 forceDeactivate——直接跳 COOLDOWN、
+ *   跳过 OUT 充能消退窗，召回结算不会触发，故全链路统一走 fire 路径）。
  * - down=1.0s：召回特效窗（快照机群相位态 + 渐隐，窗口结束 land 回收，对齐原版召回装置视觉）。
  * - aiType=CUSTOM + aiScript=[FighterGravLinkSystemAI]：原 RECALL_DEVICE 按「需整备战机占比」
  *   决策，与召回语义匹配但几乎不为强化效果主动激活；CUSTOM AI 按「在外战机规模 + 威胁距离」决策。
@@ -106,7 +107,7 @@ object Sys_astd_fighter_grav_link : ShipSystemWithSystemFileEntry() {
     override val useSound: String? = "system_recall_device"
 
     override val chargeUp: Double = 0.5
-    override val active: Double? = null
+    override val active: Double = 15.0
     override val toggle: Boolean = true
     override val down: Double = 1.0
     override val cooldown: Double = 25.0

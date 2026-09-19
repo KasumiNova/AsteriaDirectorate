@@ -21,7 +21,7 @@
         "particleSizeRange": 24.0,
         "particleDuration": 0.4,
         "particleCount": 16,
-        "particleColor": [100, 165, 255, 25]
+        "particleColor": [100, 165, 255, 190]
     },
     "projectileSpecId": "astd_lh_stardust_mote_arc",
     "fireSoundTwo": "mote_attractor_launch_mote"

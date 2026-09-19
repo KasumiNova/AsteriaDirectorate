@@ -22,8 +22,8 @@ import org.lwjgl.util.vector.Vector2f
  * 2. 在外存活战机 ≥ [MIN_DEPLOYED_FIGHTERS]（强化对象足够多才值得开）；
  * 3. [ENGAGE_SCAN_RANGE] 内存在敌对舰船（机群有交战对象，避免和平巡航期空开）。
  *
- * 不主动取消：15s 上限与机群全灭提前结束由 [FighterGravLinkSystemStats] 统一收口，
- * AI 无需重复决策。
+ * 不主动取消：15s 上限由 CSV active=15s 引擎自动收口（系统条同步显示剩余时间），
+ * 机群全灭提前结束由 [FighterGravLinkSystemStats] 收口，AI 无需重复决策。
  */
 class FighterGravLinkSystemAI : ShipSystemAIScript {
 

@@ -6,7 +6,8 @@ import cn.kasuminova.astd.sscsv.entries.catalog.shipdata.shipName
 /**
  * 联制线（LH，星坠 × 紫菀联合设计品）舰船数据，规格来源 `docs/design/ships/20-joint.md`。
  *
- * 双线共用同一份数值表（飞星级骨架）；两舰仅在 design type、战术系统与视觉风格上分化：
+ * 双线共用飞星级骨架；两舰在 design type、战术系统、视觉风格上分化，2026-09 起辐能/航速
+ * 亦按定位分化（ARC 低容高耗高航速、LENS 高容低耗低航速）：
  * - 锻萼（LH-001）：星坠侧表达，系统「落叶飞花」；
  * - 飞星（LH-002）：紫菀侧表达，系统「视界变速」。
  *
@@ -24,10 +25,10 @@ object Ship_astd_lh_001 : ShipDataEntry() {
     override val fleetPts: Int = 18
     override val hitpoints: Int = 3000
     override val armorRating: Int = 400
-    override val maxFlux: Int = 8500
-    override val fluxDissipation: Int = 500
+    override val maxFlux: Int = 7000
+    override val fluxDissipation: Int = 600
     override val ordnancePoints: Int = 60
-    override val maxSpeed: Int = 110
+    override val maxSpeed: Int = 120
     override val acceleration: Int = 100
     override val deceleration: Int = 80
     override val maxTurnRate: Int = 30
@@ -35,7 +36,7 @@ object Ship_astd_lh_001 : ShipDataEntry() {
     override val mass: Int = 400
     override val shieldType: String = "OMNI"
     override val shieldArc: Int = 240
-    // 护盾维持 200（绝对值）= 0.4 × 耗散 500。
+    // 护盾维持 240（绝对值）= 0.4 × 耗散 600。
     override val shieldUpkeep: Double = 0.4
     override val shieldEfficiency: Double = 0.65
     override val minCrew: Int = 4
@@ -57,7 +58,7 @@ object Ship_astd_lh_001 : ShipDataEntry() {
     override val number: Int = 9119
 }
 
-/** 飞星（LH-002）：紫菀侧表达，数值与锻萼完全一致（共用飞星级骨架表）。 */
+/** 飞星（LH-002）：紫菀侧表达；骨架与锻萼共用，辐能/航速按定位分化（高容低耗低航速）。 */
 object Ship_astd_lh_002 : ShipDataEntry() {
     override val id: String = "astd_lh_002"
     override val name: String = shipName(id)
@@ -67,10 +68,10 @@ object Ship_astd_lh_002 : ShipDataEntry() {
     override val fleetPts: Int = 18
     override val hitpoints: Int = 3000
     override val armorRating: Int = 400
-    override val maxFlux: Int = 8500
-    override val fluxDissipation: Int = 500
+    override val maxFlux: Int = 9000
+    override val fluxDissipation: Int = 450
     override val ordnancePoints: Int = 60
-    override val maxSpeed: Int = 110
+    override val maxSpeed: Int = 100
     override val acceleration: Int = 100
     override val deceleration: Int = 80
     override val maxTurnRate: Int = 30
@@ -78,7 +79,7 @@ object Ship_astd_lh_002 : ShipDataEntry() {
     override val mass: Int = 400
     override val shieldType: String = "OMNI"
     override val shieldArc: Int = 240
-    // 护盾维持 200（绝对值）= 0.4 × 耗散 500。
+    // 护盾维持 180（绝对值）= 0.4 × 耗散 450。
     override val shieldUpkeep: Double = 0.4
     override val shieldEfficiency: Double = 0.65
     override val minCrew: Int = 4

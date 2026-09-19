@@ -384,27 +384,27 @@ object Wpn_astd_electric_drive_accelerator : WeaponDataEntry(), SsProjProjectile
     override val tier: Int = 1
     override val rarity: Int = 1
     override val baseValue: Int = 11000
-    override val range: Int = 800
-    // 持续 2 弹/s × 80（设计案备弹经济口径）
-    override val damagePerSecond: Int = 160
-    override val damagePerShot: Int = 80
+    override val range: Int = 750
+    // 800 = 4 弹 × 120 / 0.6s 连发周期（对齐原版连发武器的面板推导口径）
+    override val damagePerSecond: Int = 800
+    override val damagePerShot: Int = 120
     override val impact: Int = 4
     override val turnRate: Int = 30
     override val ops: Int = 15
 
-    // 发射冷却 1s + 连发 4（散射 2 不在此表，走 .wpn LINKED 双管）
-    override val chargedown: Double = 1.0
+    // 发射冷却 0.3s + 连发 4（连射间隔 0.1s；散射 2 不在此表，走 .wpn LINKED 双管）
+    override val chargedown: Double = 0.3
     override val burstSize: Int = 4
-    override val burstDelay: Double = 0.15
+    override val burstDelay: Double = 0.1
 
-    // 弹匣三列：30 发弹匣，2 发/s 回复（重装 4s/+8），每次装填 8 发
-    override val ammo: Int = 30
+    // 弹匣三列：32 发弹匣，2 发/s 回复（重装 4s/+8），每次装填 8 发
+    override val ammo: Int = 32
     override val ammoPerSec: Double = 2.0
     override val reloadSize: Int = 8
     override val type: String = "KINETIC"
-    // 每颗子弹 88（裁定口径）；176 = 2 弹/s × 88
-    override val energyPerShot: Int = 88
-    override val energyPerSecond: Int = 176
+    // 每颗子弹 140（裁定口径）；933 ≈ 4 弹 × 140 / 0.6s 连发周期
+    override val energyPerShot: Int = 140
+    override val energyPerSecond: Int = 933
     override val projSpeed: Int = 1000
     // 霰弹式同期散射：min=max 固定散布锥，burst 首发起即带散布（不随连发累积）
     override val minSpread: Double = 8.0

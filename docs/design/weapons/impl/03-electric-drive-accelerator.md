@@ -1,5 +1,12 @@
 # 电驱加速炮 逐件实现规格 v1（待评审）
 
+> **修订注记（2026-09-19 二轮）**：面板数值已调整为——射程 750、单发伤害 120、单发辐能 140、
+> 备弹 32、burst delay 0.1s、chargedown 0.3s、damage/second 800、energy/second 933
+> （连发周期 0.6s 推导口径）；追加伤害浮字已移除（同帧 applyDamage 数值随主伤害数字
+> 叠加显示，额外补字只会叠字——实机观测裁定），命中反馈仅保留弹着点小型能量闪。
+> 正文散落的旧数值（800/80/88/30/0.15/1.0、浮字要求、[0, 45] 区间、射程期望 1000/900/800）
+> 均以本注记为准；自动化场景期望射程已同步为 950/850/750。
+
 > 依据：`docs/design/weapons/impl/00-共享基建.md` v1（Buff API / CombatRandom / HUD 通道 / 合并协议）、`docs/design/weapons/90-首批实装计划.md` v6 §3 与全局约定、设计案定稿 `blue/20-production.md`「电驱加速炮」v1.0（2026-07-28）。
 > 状态：规划文档，不改动 `src/` 与 `ss-csv/`。
 > API 核查时间：2026-07-29，对照 `starfarer.api.jar`（0.98）javap 签名、原版数据文件与现有 `src/` 代码逐条核实（`EveryFrameWeaponEffectPlugin.advance(float, CombatEngineAPI, WeaponAPI)`、`OnHitEffectPlugin.onHit(...)`、`ShipAPI.getFluxLevel()/getHardFluxLevel()`、`MutableShipStatsAPI.getBallisticWeaponRangeBonus()`（`StatBonus.modifyFlat/unmodify` 存在）、`WeaponAPI` 无 `setRange`、`CombatEngineAPI.applyDamage(8 参)/addFloatingDamageText/addHitParticle/maintainStatusForPlayerShip`、`DamagingProjectileAPI.getDamageAmount()/getSource()/getWeapon()/getProjectileSpecId()`、`Misc.getRandom(long, int)`、`WeaponBlueprintItemPlugin.init` 反编译确认 params = 裸武器 id，均存在/属实；`SettingsAPI.isDevMode()` 存在——调试/烟测专属 HUD 门控用）。

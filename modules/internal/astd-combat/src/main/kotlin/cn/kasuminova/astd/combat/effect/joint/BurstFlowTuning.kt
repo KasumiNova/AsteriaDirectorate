@@ -18,7 +18,7 @@ object BurstFlowTuning {
     /** 额外时流速度加成（v1 +200% / v2 +250% / v5 +400%；最终 timeMult = 1 + 本值）。 */
     val TIME_MULT_BONUS = ScalingEntry(2.0f, 2.5f, 4.0f)
 
-    /** 最大航速与侧向机动加成（v1 +100% / v2 +150% / v5 +250%；最终乘区 = 1 + 本值）。 */
+    /** 侧向机动（加减速/转向）加成（v1 +100% / v2 +150% / v5 +250%；最终乘区 = 1 + 本值）。 */
     val SPEED_MANEUVER_BONUS = ScalingEntry(1.0f, 1.5f, 2.5f)
 
     /** 非导弹武器备弹恢复加成（v1 +100% / v2 +200% / v5 +500%；最终乘区 = 1 + 本值）。 */

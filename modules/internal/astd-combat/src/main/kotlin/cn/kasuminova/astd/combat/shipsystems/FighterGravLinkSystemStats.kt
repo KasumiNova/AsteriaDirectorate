@@ -21,11 +21,11 @@ import java.awt.Color
  *    承伤 -25%~75%（轨一三锚点，玩家固定 v2，数值见 [FighterGravLinkTuning]），按 effectLevel
  *    平滑渐入；战机附加持续 jitter 特效（透镜紫）。buff 打在战机自身 mutableStats 上（原版无
  *    航母侧「战机承伤」键），随系统结束在 OUT 帧 / unapply 严格配对 unmodify。
- *    系统为 **toggle 型**（CSV active 为空 + toggle=true）：原版 ChargeTracker 仅 infinite
- *    模式在 ACTIVE 期响应再次按键（canBeDeactivated 默认 true），故 ACTIVE 上限 15s 由本脚本
- *    计时补发 useSystem() 收口；机群全灭（宽限 1s 后无在外战机）同样提前结束。收口必须走
- *    fire 路径——`ShipSystemAPI.deactivate()` 等价 forceDeactivate，直接跳 COOLDOWN、
- *    跳过 OUT 窗口，召回结算不会触发。
+ *    系统为 **toggle 型**（CSV active=15s + toggle=true）：ACTIVE 期间系统条按 15s 上限
+ *    推进（玩家可见剩余时间），到期由引擎自动转 OUT；ACTIVE 期再次按键可提前关闭
+ *    （canBeDeactivated 默认 true）；机群全灭（宽限 1s 后无在外战机）由本脚本计时补发
+ *    useSystem() 提前结束。收口必须走 fire 路径——`ShipSystemAPI.deactivate()` 等价
+ *    forceDeactivate，直接跳 COOLDOWN、跳过 OUT 窗口，召回结算不会触发。
  * 2. **代价（IN/ACTIVE）**：每秒产出舰船**基础**最大辐能 7% 的软辐能（按 effectLevel 折算）；
  *    进入 OUT 瞬间将全部当前辐能直接置为硬辐能（`setHardFlux(currFlux)`：软辐能等量硬化）。
  *    不用 `increaseFlux(x, true)`——其在散辐/过载状态下被原版闸门静默吞掉（返回 false 且
@@ -64,7 +64,7 @@ class FighterGravLinkSystemStats : BaseShipSystemScript() {
                 applyFighterBuffs(ship, effectLevel)
                 generateSoftFlux(engine, ship, effectLevel)
                 if (state == ShipSystemStatsScript.State.ACTIVE) {
-                    enforceActiveLimits(engine, ship)
+                    cancelWhenNoFighters(engine, ship)
                 }
             }
             ShipSystemStatsScript.State.OUT -> {
@@ -138,15 +138,15 @@ class FighterGravLinkSystemStats : BaseShipSystemScript() {
     }
 
     /**
-     * ACTIVE 持续约束（每帧）：记录 ACTIVE 起始时间戳，达到
-     * [FighterGravLinkTuning.MAX_ACTIVE_SECONDS] 补发 useSystem() 主动关闭（toggle 系统引擎
-     * 不自动结束）；宽限期后机群全灭同样提前结束（无可强化对象，提前进冷却结算）。
+     * 机群全灭提前结束（ACTIVE 每帧）：记录 ACTIVE 起始时间戳，宽限期后若无在外战机
+     * 则补发 useSystem() 主动关闭（无可强化对象，提前进冷却结算）。15s 持续上限由
+     * CSV active=15s 引擎自动收口，无需脚本计时。
      *
      * 关闭必须走 fire 路径（useSystem → ACTIVE 期再次按键 → OUT 充能消退），不能用
      * `ShipSystemAPI.deactivate()`——其等价 ChargeTracker.forceDeactivate，直接跳 COOLDOWN、
      * 跳过 OUT 窗口，召回结算（快照/软硬转化/land 回收）不会触发。
      */
-    private fun enforceActiveLimits(engine: CombatEngineAPI, ship: ShipAPI) {
+    private fun cancelWhenNoFighters(engine: CombatEngineAPI, ship: ShipAPI) {
         val now = engine.getTotalElapsedTime(false)
         val key = activeStartKey(ship)
         val start = engine.customData[key] as? Float
@@ -155,10 +155,6 @@ class FighterGravLinkSystemStats : BaseShipSystemScript() {
             return
         }
         val elapsed = now - start
-        if (elapsed >= FighterGravLinkTuning.MAX_ACTIVE_SECONDS) {
-            ship.useSystem()
-            return
-        }
         if (elapsed >= FighterGravLinkTuning.NO_FIGHTER_CANCEL_GRACE_SECONDS && !hasDeployedFighters(ship)) {
             ship.useSystem()
         }

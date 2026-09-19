@@ -10,7 +10,7 @@ import cn.kasuminova.astd.sscsv.entries.catalog.shipsystems.systemName
  * CSV 侧时长/冷却/充能参数按设计案落定。
  */
 
-/** 飞星 (ARC)（LH-001）：「落叶飞花」——1s 瞬时爆发时流/机动/备弹恢复，3 充能、5s 充能间隔。 */
+/** 飞星 (ARC)（LH-001）：「落叶飞花」——1s 瞬时爆发时流/机动/备弹恢复 + 冲刺动量，3 充能、6s 充能间隔。 */
 object Sys_astd_lh_001_burst_flow : ShipSystemWithSystemFileEntry() {
     override val id: String = "astd_lh_001_burst_flow"
     override val name: String = systemName(id)
@@ -20,7 +20,7 @@ object Sys_astd_lh_001_burst_flow : ShipSystemWithSystemFileEntry() {
     override val aiScript: String = "cn.kasuminova.astd.combat.shipsystems.ASTDBurstFlowSystemAI"
 
     override val maxUses: Int = 3
-    override val regen: Double = 0.2
+    override val regen: Double = 0.1667
     override val chargeUp: Double = 0.1
     override val active: Double = 1.0
     override val down: Double = 0.1
@@ -46,5 +46,8 @@ object Sys_astd_lh_002_vision_shift : ShipSystemWithSystemFileEntry() {
     override val cooldown: Double = 15.0
 
     override val icon: String = "graphics/icons/hullsys/quantum_disruptor.png"
-    override val useSound: String = "system_quantumdisruptor"
+    // 音效对齐原版熵放大器（entropyamplifier.system 三件套）。
+    override val useSound: String = "system_entropy"
+    override val loopSound: String = "system_entropy_loop"
+    override val deactivateSound: String = "system_entropy_off"
 }

@@ -196,9 +196,9 @@ class ProjectileVfxSpecsTest {
 
     @Test
     fun `电驱加速炮：黄色弹体 带长射程 25 拖尾宽度 50`() {
-        val vfx = assertNotNull(ProjectileVfxSpecs.build("astd_electric_drive_accelerator_shot", weaponRangeSu = 800f))
+        val vfx = assertNotNull(ProjectileVfxSpecs.build("astd_electric_drive_accelerator_shot", weaponRangeSu = 750f))
         vfx.tree.staticTrails.forEach { (_, spec) ->
-            assertEquals(200f, spec.bandLength, "round5(800×0.25)=200")
+            assertEquals(190f, spec.bandLength, "round5(750×0.25)=190")
         }
         val twin = vfx.tree.staticTrails.first { it.first == "twin" }.second
         assertEquals(7f, twin.width, "bandWidth(9, 2.2)=7 ×2 ×0.5=7")

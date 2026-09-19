@@ -6,6 +6,7 @@ import cn.kasuminova.astd.campaign.bounty.BountyBootstrapper;
 import cn.kasuminova.astd.campaign.bounty.StandardCores;
 import cn.kasuminova.astd.campaign.story.StoryDialogInstall;
 import cn.kasuminova.astd.campaign.world.StoryWorldBootstrap;
+import cn.kasuminova.astd.combat.effect.joint.stardust.StardustLauncherAutofireAiPicker;
 import cn.kasuminova.astd.combat.effect.joint.stardust.StardustMoteAiPicker;
 import cn.kasuminova.astd.combat.hullmods.arc.ASTDXc001HullModUtilKt;
 import cn.kasuminova.astd.combat.hullmods.base.ASTDCampaignPlugin;
@@ -16,9 +17,11 @@ import cn.kasuminova.astd.renderer.effect.system.WeaponAmbientGlowManager;
 import com.fs.starfarer.api.BaseModPlugin;
 import com.fs.starfarer.api.Global;
 import com.fs.starfarer.api.PluginPick;
+import com.fs.starfarer.api.combat.AutofireAIPlugin;
 import com.fs.starfarer.api.combat.MissileAIPlugin;
 import com.fs.starfarer.api.combat.MissileAPI;
 import com.fs.starfarer.api.combat.ShipAPI;
+import com.fs.starfarer.api.combat.WeaponAPI;
 import org.apache.log4j.Logger;
 
 public final class AsteriaDirectoratePlugin extends BaseModPlugin {
@@ -97,6 +100,13 @@ public final class AsteriaDirectoratePlugin extends BaseModPlugin {
     public PluginPick<MissileAIPlugin> pickMissileAI(MissileAPI missile, ShipAPI launchingShip) {
         // 星尘光尘（联制线内置导弹）：原版引擎不为 MOTE 型弹体自动指派 AI，经本钩子接管。
         return StardustMoteAiPicker.INSTANCE.pick(missile);
+    }
+
+    @Override
+    public PluginPick<AutofireAIPlugin> pickWeaponAutofireAI(WeaponAPI weapon) {
+        // 星尘发射器（舰尾 arc 0 内置）：原版自动开火要求目标入射界，舰尾武器永不开火，
+        // 经本钩子接管为「弹药充足且存活光尘未达上限即无条件开火」。
+        return StardustLauncherAutofireAiPicker.INSTANCE.pick(weapon);
     }
 
     public Logger logger() {

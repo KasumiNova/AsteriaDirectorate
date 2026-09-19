@@ -100,7 +100,7 @@ class ElectricDriveAcceleratorWeaponEffect : EveryFrameWeaponEffectPlugin {
         /** HUD 图标（ARC 回路接口船插图，复用现成美术；美术确认后替换）。 */
         private const val HUD_ICON = "graphics/hullmods/astd_arc_loop_interface.png"
 
-        /** HUD/浮字反馈通道（机制可视化铁律的统一落点）。 */
+        /** HUD 反馈通道（机制可视化铁律的统一落点）。 */
         private val feedback: CombatFeedback = CombatFeedbackImpl
 
         private val log = Global.getLogger(ElectricDriveAcceleratorWeaponEffect::class.java)

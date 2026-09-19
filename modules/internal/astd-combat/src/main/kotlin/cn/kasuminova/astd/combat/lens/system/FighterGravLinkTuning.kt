@@ -25,13 +25,6 @@ object FighterGravLinkTuning {
     /** 激活期间软辐能产出速率：每秒产出舰船**基础**最大辐能的该比例（固定 7%，不随难度变化）。 */
     const val SOFT_FLUX_RATIO_OF_BASE_CAP = 0.07f
 
-    /**
-     * ACTIVE 持续时间上限（秒）。系统为 toggle 型（CSV active 为空 + toggle=true，可提前
-     * 手动关闭），引擎不再自动结束 ACTIVE，故由系统脚本按该上限补发 useSystem() 收口
-     * （fire 路径进 OUT；不能用 deactivate()——其直接跳 COOLDOWN、跳过 OUT 召回窗口）。
-     */
-    const val MAX_ACTIVE_SECONDS = 15f
-
     /** 机群全灭提前终止的宽限期（秒）：ACTIVE 开始该时长后才允许「无在外战机」提前结束。 */
     const val NO_FIGHTER_CANCEL_GRACE_SECONDS = 1f
 

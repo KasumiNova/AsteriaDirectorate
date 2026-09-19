@@ -5,18 +5,25 @@ import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import cn.kasuminova.astd.internal.i18n.I18n
 import cn.kasuminova.astd.renderer.effect.system.ASTDAfterimageEffect
 import com.fs.starfarer.api.Global
+import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.MutableShipStatsAPI
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.impl.combat.BaseShipSystemScript
 import com.fs.starfarer.api.plugins.ShipSystemStatsScript
+import org.lazywizard.lazylib.MathUtils
 import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
 
 /**
- * 落叶飞花（飞星 (ARC) / astd_lh_001_burst_flow）：1s 瞬时爆发时流 + 机动 + 非导弹备弹恢复。
+ * 落叶飞花（飞星 (ARC) / astd_lh_001_burst_flow）：1s 瞬时爆发时流 + 机动 + 非导弹备弹恢复 +
+ * 冲刺动量。
  *
  * 设计案 20-joint.md §战术系统-坠星：爆发不随时间线性增长/减弱——恒定口径
  * （仅 ACTIVE 态满额生效，IN/OUT 不渐变）。数值三锚点见 [BurstFlowTuning]。
+ *
+ * 冲刺动量（2026-09 调整）：ACTIVE 首帧按舰船当前速度方向附加 100% 最大航速的动量
+ * （速度近零时以舰船朝向为方向），表现为向当前向量极速位移的观感；系统不再提升
+ * 最大航速，只保留机动性乘区（加减速/转向），附加速度由舰船既有阻力自然消退。
  *
  * 玩家船反补偿：激活期间对 `engine.timeMult` 乘 `1/timeMult`（口径与
  * [ASTDLimitTemporalThrusterSystemStats] 一致），避免玩家视角整体加速。
@@ -27,6 +34,10 @@ class ASTDBurstFlowSystemStats : BaseShipSystemScript() {
         private const val AFTERIMAGE_INTERVAL = 0.1f
         private const val PLAYER_TIME_MULT_OWNER_KEY = "astd_burst_flow_player_time_mult_owner"
         private const val AFTERIMAGE_TIMER_KEY_PREFIX = "astd_burst_flow_afterimage:"
+        private const val MOMENTUM_LATCH_KEY_PREFIX = "astd_burst_flow_momentum:"
+
+        /** 冲刺动量取当前速度方向的速度下限（su/s；低于此值以舰船朝向为方向）。 */
+        private const val MIN_SPEED_FOR_DIRECTION = 5f
         private val AFTERIMAGE_COLOR = Color(105, 210, 255, 96)
         private val JITTER_UNDER = Color(90, 165, 255, 155)
         private val JITTER = Color(90, 165, 255, 55)
@@ -46,7 +57,6 @@ class ASTDBurstFlowSystemStats : BaseShipSystemScript() {
 
         val values = BurstFlowTuning.resolve(DifficultyTuningImpl, isPlayer = ship?.owner == 0)
         stats.timeMult.modifyMult(id, values.timeMult)
-        stats.maxSpeed.modifyMult(id, values.speedManeuverMult)
         stats.acceleration.modifyMult(id, values.speedManeuverMult)
         stats.deceleration.modifyMult(id, values.speedManeuverMult)
         stats.maxTurnRate.modifyMult(id, values.speedManeuverMult)
@@ -54,6 +64,10 @@ class ASTDBurstFlowSystemStats : BaseShipSystemScript() {
         // 弹道/能耗两条备弹恢复通道天然排除导弹武器
         stats.ballisticAmmoRegenMult.modifyMult(id, values.ammoRegenMult)
         stats.energyAmmoRegenMult.modifyMult(id, values.ammoRegenMult)
+
+        if (ship != null && engine != null && !engine.isPaused) {
+            applyMomentumOnce(engine, ship, stats)
+        }
 
         if (ship != null && engine != null && !engine.isPaused && ship === engine.playerShip) {
             engine.timeMult.modifyMult("${id}_player", 1f / values.timeMult)
@@ -63,7 +77,6 @@ class ASTDBurstFlowSystemStats : BaseShipSystemScript() {
 
     override fun unapply(stats: MutableShipStatsAPI, id: String) {
         stats.timeMult.unmodifyMult(id)
-        stats.maxSpeed.unmodifyMult(id)
         stats.acceleration.unmodifyMult(id)
         stats.deceleration.unmodifyMult(id)
         stats.maxTurnRate.unmodifyMult(id)
@@ -79,6 +92,25 @@ class ASTDBurstFlowSystemStats : BaseShipSystemScript() {
         ship ?: return
         ship.setJitterShields(false)
         engine?.customData?.remove(AFTERIMAGE_TIMER_KEY_PREFIX + System.identityHashCode(ship))
+        engine?.customData?.remove(MOMENTUM_LATCH_KEY_PREFIX + ship.id)
+    }
+
+    /**
+     * 冲刺动量（ACTIVE 首帧一次性，customData 闩）：按舰船当前速度方向附加 100% 最大航速的
+     * 动量（速度近零时以舰船朝向为方向）。闩在 unapply 清除，保证下次激活可用。
+     */
+    private fun applyMomentumOnce(engine: CombatEngineAPI, ship: ShipAPI, stats: MutableShipStatsAPI) {
+        val key = MOMENTUM_LATCH_KEY_PREFIX + ship.id
+        if (engine.customData[key] == true) return
+        engine.customData[key] = true
+        val direction = Vector2f(ship.velocity)
+        if (direction.lengthSquared() < MIN_SPEED_FOR_DIRECTION * MIN_SPEED_FOR_DIRECTION) {
+            direction.set(MathUtils.getPointOnCircumference(null, 1f, ship.facing))
+        } else {
+            direction.normalise()
+        }
+        direction.scale(stats.maxSpeed.modifiedValue)
+        Vector2f.add(ship.velocity, direction, ship.velocity)
     }
 
     override fun getStatusData(
