@@ -503,6 +503,39 @@ object Wpn_astd_phase_lance_fighter : WeaponDataEntry() {
 }
 
 /**
+ * 引力裂隙光束（隐藏 SYSTEM 光束武器）：舰船系统「引力裂隙发生器」的光束载体。
+ *
+ * 对齐原版裂隙洪流发射极（riftcascade）的口径——specClass=beam，颜色改红色正色，
+ * beamEffect 换为 [GravityRiftBeamEffect]（红色布雷、不使用反色星云粒子）。
+ * 面板射程 1000 是光束基础射程（实际挂载在 FX drone 上，射程/伤害加成由系统脚本
+ * 从源舰 energyWeaponRangeBonus/beamWeaponRangeBonus 等折算到 drone）。
+ * damage/second 1000 取原版 riftcascade 平价（裁定价，待实机校准）。
+ * burst size 30 = 光束持续秒数：远超系统 2s 光束窗口，收口由系统脚本停止强火 +
+ * chargedown 0.3s 淡出后移除 drone 承担。
+ */
+object Wpn_astd_grav_rift_beam : WeaponDataEntry() {
+    override val id: String = "astd_grav_rift_beam"
+    override val name: String = weaponName(id)
+    override val tier: Int = 3
+    override val baseValue: Int = 0
+    override val range: Int = 1000
+    override val damagePerSecond: Int = 1000
+    override val turnRate: Int = 0
+    override val ops: Int = 0
+    override val type: String = "ENERGY"
+    override val chargeup: Double = 0.0
+    override val chargedown: Double = 0.3
+    override val burstSize: Number = 30
+    override val burstDelay: Double = 0.0
+    override val beamSpeed: Int = 10000
+    override val aiHints: Set<AiHint> = setOf(AiHint.SYSTEM)
+    override val tags: String = "no_drop, no_drop_salvage"
+    override val tech: String = "菀星设计局-紫菀"
+    override val noDpsInTooltip: Boolean = true
+    override val number: Int = 9245
+}
+
+/**
  * 引力裂隙布雷器（隐藏 SYSTEM 武器）：舰船系统「引力裂隙发生器」的裂隙载体。
  *
  * 对齐原版 riftcascade_minelayer 的口径——除 specClass/projectileSpecId 与伤害列外均不重要；

@@ -303,7 +303,7 @@ class PsiSunderBeamEffect : BeamEffectPlugin {
         val drained = (drained0 + dppt).coerceAtMost(maxNoDrain - 1f)
 
         try {
-            target.customData[KEY_PPT_DRAIN] = drained
+            target.setCustomData(KEY_PPT_DRAIN, drained)
         } catch (_: Throwable) {
         }
 

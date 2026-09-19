@@ -274,7 +274,7 @@ internal object ASTDVectorThrustEngineManager {
             var levels = ship.customData[ENGINE_LEVELS_KEY] as? IdentityHashMap<ShipEngineAPI, Float>
             if (levels == null) {
                 levels = IdentityHashMap()
-                ship.customData[ENGINE_LEVELS_KEY] = levels
+                ship.setCustomData(ENGINE_LEVELS_KEY, levels)
             }
 
             for (st in att.engines) {

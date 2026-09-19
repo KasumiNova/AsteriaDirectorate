@@ -82,7 +82,7 @@ class GeminiDemSalvoOnFireEffect(
             if (target != null) {
                 engine.customData[TELEMETRY_TRACK_AI_TARGET_NONNULL] = trackAiTargetNonNull(engine) + 1
             }
-            missile.customData[GeminiDemDifficulty.SALVO_KEY] = salvoId
+            missile.setCustomData(GeminiDemDifficulty.SALVO_KEY, salvoId)
             engine.addPlugin(demPluginFactory(missile, ship, weapon))
             // 出生登记（实机判例：engine.getMissiles() 不含脚本 spawn 的弹头，场景观测只能走出生登记簿）
             warheadsOf(engine) += WarheadRef(salvoId, weaponId, missile, engine.getTotalElapsedTime(false))

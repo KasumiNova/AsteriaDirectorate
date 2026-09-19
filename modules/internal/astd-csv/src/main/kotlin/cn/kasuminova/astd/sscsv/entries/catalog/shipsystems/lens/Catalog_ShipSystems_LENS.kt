@@ -192,12 +192,17 @@ object Sys_astd_em_smoke : ShipSystemWithSystemFileEntry() {
 }
 
 /**
- * 茑萝级舰船系统「引力裂隙发生器」（purple/20-production.md §2，2026-09 D27 重做）。
+ * 茑萝级舰船系统「引力裂隙发生器」（purple/20-production.md §2，2026-09 D27 重做；
+ * 2026-09-20 二轮重做：目标锁定 + 贴图旋涡 + 真实光束）。
  *
- * 在指定位置召唤红色引力旋涡，1s 延迟（chargeUp）后发射红色光束，命中处展开引力裂隙：
- * 开火距离越近裂隙越多（最多 5 个），每个裂隙对附近目标造成能量伤害（随裂隙数量递增、
- * 按难度系数三锚点缩放）。机制复刻原版裂隙洪流发射极（riftcascade）的布雷式裂隙，
- * 配色统一红色正色。stats/AI 见 [GravityRiftSystemStats] / [GravityRiftSystemAI]。
+ * 需锁定目标舰激活（玩家取 shipTarget，无目标时系统不可用并提示「无目标」）：
+ * 激活时在目标舰随机位置（优先无护盾覆盖区域）产生贴图旋涡（60°/s 自旋，1s 淡入 /
+ * 1s 淡出，共 3s），1s 后旋涡中心向目标发射**真实光束**（隐藏光束武器挂 FX drone，
+ * 机制与布雷间隔直接复用原版裂隙洪流发射极 riftcascade，仅改红色正色、不用反色星云）。
+ * 光束命中目标期间每 0.1s 沿目标周边弧线布一枚裂隙（上限 5 枚），裂隙对附近目标造成
+ * 能量伤害（随裂隙序位递增、按难度系数三锚点缩放）。
+ * 时序：chargeUp 1s（旋涡淡入）→ active 1s（光束发射）→ down 1s（旋涡淡出），
+ * 光束全程 2s，冷却 12s。stats/AI 见 [GravityRiftSystemStats] / [GravityRiftSystemAI]。
  */
 object Sys_astd_grav_rift_generator : ShipSystemWithSystemFileEntry() {
     override val id: String = "astd_grav_rift_generator"
@@ -210,8 +215,8 @@ object Sys_astd_grav_rift_generator : ShipSystemWithSystemFileEntry() {
         "cn.kasuminova.astd.combat.shipsystems.GravityRiftSystemAI"
 
     override val chargeUp: Double = 1.0
-    override val active: Double = 1.2
-    override val down: Double = 0.5
+    override val active: Double = 1.0
+    override val down: Double = 1.0
     override val cooldown: Double = 12.0
 
     override val icon: String = "graphics/icons/hullsys/mine_strike.png"

@@ -28,6 +28,10 @@ import java.awt.Color
  * 状态隔离：HullModEffect 实例按 hullmod 规格全局共享（同场多艘茑萝共用一个实例），
  * 全部逐舰状态挂 [ShipAPI.getCustomData]（战斗内随实体生命周期），按舰天然隔离、
  * 战斗结束随实体回收，不泄漏（2026-09 审查裁定，对照透潮/共享战术网络同款口径）。
+ * 注意原版实体级 customData 的写入契约：字段惰性为 null，此时 getCustomData() 返回
+ * 一次性空表，直接 put 会写入虚空（逐帧丢失）；首写必须走 [ShipAPI.setCustomData]
+ * （2026-09-20 断言C排查实证：茑萝在自动化场景内无任何 setCustomData 调用方，
+ * getOrPut 写入的 LinkState 每帧重建，配对恢复永远不执行）。
  *
  * 母舰被击毁：茑萝变残骸瞬间即对 [LinkState.phasedByThis] 中仍在场的战机执行配对释放
  * （setPhased(false) + 透明度复原），不留「母舰已毁、战机永久相位」的悬挂态。
@@ -52,11 +56,13 @@ class ASTDGravPhaseDeckHullMod : BaseHullMod() {
                 if (fighter.isPhased) fighter.setPhased(false)
                 fighter.setExtraAlphaMult(1f)
             }
-            ship.customData.remove(STATE_KEY)
+            ship.removeCustomData(STATE_KEY)
             return
         }
 
-        val state = ship.customData.getOrPut(STATE_KEY) { LinkState() } as LinkState
+        // 首写走 setCustomData（见类注释 customData 写入契约）
+        val state = (ship.customData[STATE_KEY] as? LinkState)
+            ?: LinkState().also { ship.setCustomData(STATE_KEY, it) }
         val returnRatio = GravPhaseDeckTuning.resolveReturnRatio(DifficultyTuningImpl, ship.owner == 0)
         val mothershipBlocked = ship.fluxTracker.fluxLevel >= GravPhaseDeckTuning.MOTHERSHIP_FLUX_LEVEL_DISABLE
         val mothershipPhased = ship.isPhased

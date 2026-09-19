@@ -64,6 +64,15 @@ class GeminiDemSalvoOnFireEffectTest {
     private fun stubWarheadMissile(): MissileAPI {
         val missile = mock(MissileAPI::class.java)
         `when`(missile.customData).thenReturn(mutableMapOf())
+        // 实体级 customData 真实契约：字段惰性为 null，setCustomData 才初始化并写入
+        // （CollisionEntityImpl 实证）；mock 侧让 setCustomData 落进同一张表。
+        org.mockito.Mockito.doAnswer { inv ->
+            missile.customData[inv.getArgument(0)] = inv.getArgument(1)
+            null
+        }.`when`(missile).setCustomData(
+            org.mockito.ArgumentMatchers.any(),
+            org.mockito.ArgumentMatchers.any(),
+        )
         return missile
     }
 
