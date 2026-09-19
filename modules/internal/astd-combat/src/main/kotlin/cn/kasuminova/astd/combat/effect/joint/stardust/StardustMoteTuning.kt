@@ -30,7 +30,7 @@ object StardustMoteTuning {
     const val DEFAULT_ENGAGE_RANGE = 600f
 
     /** 同一目标的最大追踪光尘数（防全群堆叠单目标，对齐原版 mote 口径）。 */
-    const val MAX_MOTES_PER_TARGET = 2
+    const val MAX_MOTES_PER_TARGET = 4
 
     /** 单武器同时存活的光尘上限（自动开火 AI 达上限即停火，见 StardustLauncherAutofireAI）。 */
     const val MAX_ALIVE_MOTES_PER_WEAPON = 8
