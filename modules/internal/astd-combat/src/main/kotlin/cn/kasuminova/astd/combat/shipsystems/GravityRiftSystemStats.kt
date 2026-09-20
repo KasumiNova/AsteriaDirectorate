@@ -114,8 +114,7 @@ class GravityRiftSystemStats : BaseShipSystemScript() {
         }
 
         val anchorOffset = sampleVortexAnchor(target)
-        val vortexRadius = (target.collisionRadius * GravityRiftTuning.VORTEX_RADIUS_FRAC)
-            .coerceIn(GravityRiftTuning.VORTEX_RADIUS_MIN, GravityRiftTuning.VORTEX_RADIUS_MAX)
+        val vortexRadius = 65f
         val vortex = GravityRiftVortexVisual.spawn(engine, target, anchorOffset, vortexRadius)
 
         engine.customData[activationKey(ship)] = RiftActivation(target, anchorOffset, vortex)
@@ -281,8 +280,8 @@ class GravityRiftSystemStats : BaseShipSystemScript() {
 
         /** 旋涡锚点采样：次数与半径比例区间（相对目标碰撞半径）。 */
         private const val ANCHOR_SAMPLES = 8
-        private const val ANCHOR_RADIUS_MIN_FRAC = 0.25f
-        private const val ANCHOR_RADIUS_MAX_FRAC = 0.75f
+        private const val ANCHOR_RADIUS_MIN_FRAC = 2f
+        private const val ANCHOR_RADIUS_MAX_FRAC = 2.5f
 
         /** 触发性 customData 键前缀（每船一条，unapply 清除）；键用 ship.id（战斗内唯一）。 */
         private const val ACTIVATION_KEY = "astd_grav_rift_activation:"

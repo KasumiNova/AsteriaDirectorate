@@ -28,14 +28,6 @@ import java.awt.Color
  * 布一枚裂隙雷（弧线行走 [getNextArcLoc]：命中护盾时间距 ×0.67、bounds 吸附、
  * 布点间距 [GravityRiftTuning.SPAWN_SPACING]），数量 = (光束射程 − 上帧命中长度)/200 + 1、
  * 上限 [GravityRiftTuning.MAX_RIFTS]。
- *
- * 与原版的三处刻意差异：
- * 1. **不使用反色星云粒子**（原版 spawnNegativeParticles 整段不移植），弧线取光束红色；
- * 2. 裂隙伤害不走原版 getSizeMult 序位收束，而是按难度三锚点在
- *    [GravityRiftTuning.riftDamage] 上序位插值，换算伤害乘区后与视觉尺寸共用同一
- *    sizeMult 写入 [RiftCascadeMineExplosion.SIZE_MULT_KEY]（原版同一约定）；
- * 3. 光束挂在 FX drone 上，难度/伤害归属取真实母舰
- *    （[ShipwideAIFlags.AIFlags.DRONE_MOTHERSHIP] 旗标，生成 drone 时写入）。
  */
 class GravityRiftBeamEffect : BeamEffectPlugin {
 
@@ -93,7 +85,7 @@ class GravityRiftBeamEffect : BeamEffectPlugin {
                     val arc = engine.spawnEmpArcVisual(
                         from, null, arcTo, null, beam.width, beam.fringeColor, Color.white,
                     )
-                    arc.setCoreWidthOverride(maxOf(20f, beam.width * 0.67f))
+                    arc.coreWidthOverride = maxOf(20f, beam.width * 0.67f)
                 }
             }
             spawnMine(engine, ship, arcTo)
@@ -225,7 +217,7 @@ class GravityRiftBeamEffect : BeamEffectPlugin {
         mine.fadeOutThenIn(MINE_FADE_IN)
         mine.flightTime = mine.maxFlightTime
         mine.addDamagedAlready(source)
-        mine.setNoMineFFConcerns(true)
+        mine.isNoMineFFConcerns = true
         prevMineLoc = mineLoc
     }
 

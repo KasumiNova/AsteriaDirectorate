@@ -6,33 +6,39 @@
   "style": "ASTD_HIGH_TECH",
   "height": 168,
   "width": 168,
-  "center": [86.5, 74.5],
-  "collisionRadius": 96.5,
-  "shieldCenter": [0, -0],
-  "shieldRadius": 108.5,
+  "center": [76, 73.5],
+  "collisionRadius": 103,
+  "shieldCenter": [0, 0],
+  "shieldRadius": 112,
   "viewOffset": 0,
   "builtInMods": [
-    "astd_nano_restoration_protocol",
     "astd_grav_phase_deck"
   ],
+  "builtInWings": [
+    "astd_zw_103_ion_wing",
+    "astd_zw_103_lance_wing"
+  ],
+  "builtInWeapons": {
+    "WS0007": "astd_zw_103_bloom"
+  },
   "weaponSlots": [
     {
       "id": "WS0001",
       "size": "MEDIUM",
       "type": "ENERGY",
       "mount": "TURRET",
-      "arc": 360,
-      "angle": 0,
-      "locations": [1.5, -36.5]
+      "arc": 180,
+      "angle": -55,
+      "locations": [2.5, -47]
     },
     {
       "id": "WS0002",
       "size": "MEDIUM",
       "type": "ENERGY",
       "mount": "TURRET",
-      "arc": 360,
-      "angle": 0,
-      "locations": [-1.5, 55.5]
+      "arc": 180,
+      "angle": 55,
+      "locations": [-0.5, 45]
     },
     {
       "id": "WS0007",
@@ -41,7 +47,7 @@
       "mount": "TURRET",
       "arc": 0,
       "angle": 0,
-      "locations": [0, -0]
+      "locations": [11.5, -7]
     },
     {
       "id": "LB 1",
@@ -51,8 +57,8 @@
       "arc": 360,
       "angle": 0,
       "locations": [
-        38.5, 53.5,
-        61, 47
+        39.5, 43,
+        62, 36.5
       ]
     },
     {
@@ -63,14 +69,50 @@
       "arc": 360,
       "angle": 0,
       "locations": [
-        -35.5, -20.5,
-        -43, -29.5
+        -34.5, -31,
+        -42, -40
       ]
+    },
+    {
+      "id": "WS0003",
+      "size": "SMALL",
+      "type": "ENERGY",
+      "mount": "TURRET",
+      "arc": 90,
+      "angle": 0,
+      "locations": [22.5, 23]
+    },
+    {
+      "id": "WS0004",
+      "size": "SMALL",
+      "type": "ENERGY",
+      "mount": "TURRET",
+      "arc": 90,
+      "angle": 0,
+      "locations": [55.5, 19]
+    },
+    {
+      "id": "WS0005",
+      "size": "SMALL",
+      "type": "SYNERGY",
+      "mount": "HARDPOINT",
+      "arc": 15,
+      "angle": 0,
+      "locations": [48.5, -51]
+    },
+    {
+      "id": "WS0006",
+      "size": "SMALL",
+      "type": "SYNERGY",
+      "mount": "HARDPOINT",
+      "arc": 15,
+      "angle": 0,
+      "locations": [26.5, -28]
     }
   ],
   "engineSlots": [
     {
-      "location": [-47.5, 27],
+      "location": [-46.5, 16.5],
       "length": 60,
       "width": 15,
       "angle": 180,
@@ -79,7 +121,7 @@
       "styleId": "ASTD_LENS"
     },
     {
-      "location": [-42.5, -4],
+      "location": [-41.5, -14.5],
       "length": 45,
       "width": 10,
       "angle": 180,
@@ -88,7 +130,7 @@
       "styleId": "ASTD_LENS"
     },
     {
-      "location": [-41.5, -55],
+      "location": [-40.5, -65.5],
       "length": 50,
       "width": 10,
       "angle": -150,
@@ -97,7 +139,7 @@
       "styleId": "ASTD_LENS"
     },
     {
-      "location": [-58, 42.5],
+      "location": [-57, 32],
       "length": 45,
       "width": 10,
       "angle": 180,
@@ -107,41 +149,41 @@
     }
   ],
   "bounds": [
-    24, -8,
-    56, 5,
-    58.5, 15,
-    82.5, 17,
-    82.5, 32.5,
-    70, 41.5,
-    75.5, 58,
-    17.5, 62.5,
-    -29.5, 84,
-    -43.5, 83,
-    -49, 72,
-    -40.5, 64.5,
-    -66, 58.5,
-    -64, 44.5,
-    -47, 35,
-    -47, 24,
-    -41.5, 15.5,
-    -56, 5,
-    -56.5, -2,
-    -21.5, -12.5,
-    -43, -14.5,
-    -48, -21,
-    -51, -37.5,
-    -68, -38,
-    -70, -44.5,
-    -44.5, -53,
-    -42.5, -60,
-    -57.5, -69,
-    -56, -77,
-    -33, -80.5,
-    -0.5, -62,
-    51.5, -47,
-    52, -35.5,
-    40.5, -24.5,
-    32.5, -23,
-    31.5, -11
+    25, -18.5,
+    57, -5.5,
+    59.5, 4.5,
+    83.5, 6.5,
+    83.5, 22,
+    71, 31,
+    76.5, 47.5,
+    18.5, 52,
+    -28.5, 73.5,
+    -42.5, 72.5,
+    -48, 61.5,
+    -39.5, 54,
+    -65, 48,
+    -63, 34,
+    -46, 24.5,
+    -46, 13.5,
+    -40.5, 5,
+    -55, -5.5,
+    -55.5, -12.5,
+    -20.5, -23,
+    -42, -25,
+    -47, -31.5,
+    -50, -48,
+    -67, -48.5,
+    -69, -55,
+    -43.5, -63.5,
+    -41.5, -70.5,
+    -56.5, -79.5,
+    -55, -87.5,
+    -32, -91,
+    0.5, -72.5,
+    52.5, -57.5,
+    53, -46,
+    41.5, -35,
+    33.5, -33.5,
+    32.5, -21.5
   ]
 }

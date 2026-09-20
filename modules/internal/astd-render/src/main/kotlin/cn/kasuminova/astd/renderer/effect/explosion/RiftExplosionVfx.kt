@@ -20,6 +20,7 @@ data class RiftExplosionPalette(
     val border: Color,
     val underglow: Color,
     val windup: Color,
+    val black: Color = Color.black,
 ) {
     companion object {
         /**
@@ -31,6 +32,13 @@ data class RiftExplosionPalette(
             border = Color(70, 130, 255, 255),
             underglow = Color(10, 40, 140, 100),
             windup = Color(90, 150, 255, 60),
+        )
+
+        @JvmField
+        val RED: RiftExplosionPalette = RiftExplosionPalette(
+            border = Color(200, 20, 0, 255),
+            underglow = Color(200, 20, 0, 100),
+            windup = Color(200, 20, 0, 60),
         )
     }
 }
@@ -118,6 +126,7 @@ object RiftExplosionVfx {
         p.radius = radius
         p.thickness = radius * THICKNESS_RATIO
         p.color = palette.border
+        p.blackColor = palette.black
         return p
     }
 

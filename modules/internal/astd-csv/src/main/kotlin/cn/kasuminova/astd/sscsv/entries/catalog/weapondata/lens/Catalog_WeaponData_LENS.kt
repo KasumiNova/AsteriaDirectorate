@@ -48,6 +48,21 @@ object Wpn_astd_zw_002_bloom : WeaponDataEntry() {
     override val number: Int = 9230
 }
 
+/** 舜华：整船 bloom 描边层（装配界面/战斗 decorative outline）。 */
+object Wpn_astd_zw_101_bloom : WeaponDataEntry() {
+    override val id: String = "astd_zw_101_bloom"
+    override val name: String = weaponName(id)
+    override val tier: Int = 5
+    override val baseValue: Int = 0
+    override val range: Int = 0
+    override val turnRate: Int = 0
+    override val type: String = "OTHER"
+    override val tags: String = "no_drop, no_drop_salvage"
+    override val tech: String = "菀星设计局-紫菀"
+    override val noDpsInTooltip: Boolean = true
+    override val number: Int = 9232
+}
+
 /** 飞蓬：整船 bloom 描边层（装配界面/战斗 decorative outline）。 */
 object Wpn_astd_zw_102_bloom : WeaponDataEntry() {
     override val id: String = "astd_zw_102_bloom"
@@ -63,9 +78,8 @@ object Wpn_astd_zw_102_bloom : WeaponDataEntry() {
     override val number: Int = 9231
 }
 
-/** 舜华：整船 bloom 描边层（装配界面/战斗 decorative outline）。 */
-object Wpn_astd_zw_101_bloom : WeaponDataEntry() {
-    override val id: String = "astd_zw_101_bloom"
+object Wpn_astd_zw_103_bloom : WeaponDataEntry() {
+    override val id: String = "astd_zw_103_bloom"
     override val name: String = weaponName(id)
     override val tier: Int = 5
     override val baseValue: Int = 0
@@ -440,17 +454,20 @@ object Wpn_astd_ion_pulse_fighter : WeaponDataEntry(), SsProjProjectileOutputs {
     override val turnRate: Int = 40
     override val ops: Int = 0
     override val type: String = "ENERGY"
-    override val energyPerShot: Int = 50
+    override val energyPerShot: Int = 100
     override val chargeup: Double = 0.05
-    override val chargedown: Double = 0.4
-    override val burstSize: Number = 2
-    override val burstDelay: Double = 0.12
+    override val chargedown: Double = 0.05
+    override val burstSize: Number = 3
+    override val burstDelay: Double = 0.1
     override val minSpread: Double = 3.0
     override val maxSpread: Double = 12.0
     override val spreadPerShot: Double = 1.0
     override val spreadDecayPerSec: Double = 4.0
     override val projSpeed: Int = 1000
     override val hints: String = "SYSTEM"
+    override val ammo: Int = 15
+    override val ammoPerSec: Double = 1.5
+    override val reloadSize: Int = 3
     override val tags: String = "energy8, show_in_codex"
     override val tech: String = "菀星设计局-紫菀"
     override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
@@ -485,13 +502,13 @@ object Wpn_astd_phase_lance_fighter : WeaponDataEntry() {
     override val tier: Int = 3
     override val baseValue: Int = 0
     override val range: Int = 550
-    override val damagePerSecond: Int = 150
+    override val damagePerSecond: Int = 800
     override val turnRate: Int = 40
     override val ops: Int = 0
     override val type: String = "ENERGY"
-    override val energyPerSecond: Int = 120
-    override val chargeup: Double = 0.2
-    override val chargedown: Double = 0.4
+    override val energyPerSecond: Int = 733
+    override val chargeup: Double = 0.25
+    override val chargedown: Double = 0.5
     override val burstSize: Number = 1
     override val burstDelay: Double = 3.0
     override val beamSpeed: Int = 3200
