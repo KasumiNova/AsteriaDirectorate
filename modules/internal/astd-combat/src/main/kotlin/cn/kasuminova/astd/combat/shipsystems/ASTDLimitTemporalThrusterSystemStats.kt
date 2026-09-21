@@ -109,7 +109,6 @@ class ASTDLimitTemporalThrusterSystemStats : BaseShipSystemScript() {
             val pulseKey = "$baseKey:pulse"
             if (engine.customData[pulseKey] != true) {
                 engine.customData[pulseKey] = true
-                ASTDArcProductionVfx.emitTemporalThrusterAfterimage(engine, ship, 1f)
             }
         }
         if (state == ShipSystemStatsScript.State.IDLE) {

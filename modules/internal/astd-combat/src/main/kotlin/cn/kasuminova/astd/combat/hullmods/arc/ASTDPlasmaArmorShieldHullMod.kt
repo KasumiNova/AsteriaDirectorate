@@ -260,10 +260,6 @@ class ASTDPlasmaArmorShieldHullMod : BaseHullMod() {
 
             if (shieldHit) {
                 recordShieldArcBias(ship, hitPoint)
-                Global.getCombatEngine()?.let { engine ->
-                    val boosted = boostLevel(ship)
-                    ASTDArcProductionVfx.emitPlasmaShieldHit(engine, ship, hitPoint, boosted)
-                }
             }
 
             return null

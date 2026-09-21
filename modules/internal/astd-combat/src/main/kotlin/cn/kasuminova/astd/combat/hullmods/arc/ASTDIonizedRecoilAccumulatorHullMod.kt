@@ -131,9 +131,12 @@ class ASTDIonizedRecoilAccumulatorHullMod : BaseHullMod() {
 
         private fun convertHardFlux(conversionMult: Float): Float {
             val tracker = ship.fluxTracker
-            val converted = (tracker.hardFlux * HARD_FLUX_CONVERT_FRACTION * conversionMult.coerceAtLeast(0f)).coerceAtLeast(0f)
+            val currHardFlux = tracker.hardFlux
+            val converted = (currHardFlux * HARD_FLUX_CONVERT_FRACTION * conversionMult.coerceAtLeast(0f)).coerceAtLeast(0f)
             if (converted <= 0f) return 0f
-            tracker.setHardFlux((tracker.hardFlux - converted).coerceAtLeast(0f))
+            val newHardFlux = (currHardFlux - converted).coerceAtLeast(0f)
+            tracker.hardFlux = newHardFlux
+            tracker.decreaseFlux(currHardFlux - newHardFlux)
             tracker.increaseFlux(converted * SOFT_FLUX_MULT, false)
             return converted
         }

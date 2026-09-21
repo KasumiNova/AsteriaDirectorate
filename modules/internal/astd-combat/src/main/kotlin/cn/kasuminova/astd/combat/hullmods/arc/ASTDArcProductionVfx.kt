@@ -144,50 +144,6 @@ object ASTDArcProductionVfx {
         ship.setCustomData("astd_plasma_shield_visual_grace", engine.getTotalElapsedTime(false) + seconds.coerceAtLeast(0f))
     }
 
-    fun emitPlasmaShieldHit(engine: CombatEngineAPI, ship: ShipAPI, point: Vector2f, intensity: Float) {
-        val boosted = intensity.coerceIn(0f, 1f)
-        emitNodePulse(engine, point, 52f + 52f * boosted, Color(120, 220, 255, 138))
-        emitNodePulse(engine, ship.location, 30f + 24f * boosted, Color(86, 180, 255, 82))
-    }
-
-    fun emitTemporalThrusterAfterimage(engine: CombatEngineAPI, ship: ShipAPI, intensity: Float) {
-        val tail = MathUtils.getPointOnCircumference(Vector2f(ship.location), -ship.collisionRadius * 0.55f, ship.facing)
-        emitNodePulse(engine, tail, 34f + 34f * intensity.coerceIn(0f, 1f), Color(120, 200, 255, 120))
-        incrementCounter(engine, TELEMETRY_XC_103_SYSTEM_AFTERIMAGES)
-    }
-
-    private fun emitNodePulse(engine: CombatEngineAPI, location: Vector2f, radius: Float, color: Color) {
-        val settings = Global.getSettings()
-        val alpha = (color.alpha / 255f).coerceIn(0f, 1f)
-        val length = radius.coerceAtLeast(8f)
-        val baseWidth = (radius * 0.14f).coerceAtLeast(3f)
-        val tipWidth = (baseWidth * 0.18f).coerceAtLeast(0.8f)
-        val rays = 6
-        for (index in 0 until rays) {
-            val facing = index * (360f / rays) + MathUtils.getRandomNumberInRange(-8f, 8f)
-            BoxUtilCombatVfx.createAndAddTaperedBeamTrailFromCenter(
-                engine = engine,
-                location = Vector2f(location),
-                facing = facing,
-                length = length * MathUtils.getRandomNumberInRange(0.62f, 1.0f),
-                baseWidth = baseWidth,
-                tipWidth = tipWidth,
-                coreColor = color,
-                fringeColor = arcCore,
-                coreSprite = settings.getSprite(BEAM_CORE_SPRITE),
-                fringeSprite = settings.getSprite(BEAM_FRINGE_SPRITE),
-                layer = CombatEngineLayers.BELOW_SHIPS_LAYER,
-                full = 0.18f + radius * 0.0012f,
-                baseAlphaMul = (alpha * 0.32f).coerceIn(0f, 1f),
-                tipAlphaMul = (alpha * 0.02f).coerceIn(0f, 1f),
-                baseEmissiveAlphaMul = (alpha * 0.82f).coerceIn(0f, 1f),
-                tipEmissiveAlphaMul = (alpha * 0.12f).coerceIn(0f, 1f),
-                mixPower = 1f,
-            )?.setGlobalTimer(0.02f, 0.06f + radius * 0.0008f, 0.22f)
-                ?: handleBoxUtilFailure(engine, "node pulse")
-        }
-    }
-
     private fun edgeBiasedShieldPoint(center: Vector2f, radius: Float, angle: Float, radiusFraction: Float): Vector2f {
         return MathUtils.getPointOnCircumference(Vector2f(center), radius * radiusFraction.coerceIn(0f, 1f), angle)
     }
