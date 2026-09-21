@@ -130,8 +130,16 @@ class ASTDDualModeSwitcherHullMod : BaseHullMod() {
      * 退化到默认模式名比崩溃合理（核心防崩例外，有意静默）。
      */
     private fun isAutomatedMode(ship: ShipAPI?, config: ASTDDualModeConfig): Boolean {
-        val variant = try { ship?.variant } catch (_: Throwable) { null } ?: return false
-        val permaMods = try { variant.permaMods } catch (_: Throwable) { null } ?: return false
+        val variant = try {
+            ship?.variant
+        } catch (_: Throwable) {
+            null
+        } ?: return false
+        val permaMods = try {
+            variant.permaMods
+        } catch (_: Throwable) {
+            null
+        } ?: return false
         if (permaMods.contains(config.automatedModeId)) return true
         if (permaMods.contains(config.crewedModeId)) return false
         // 既无无人也无载人模式 permaMod：尚未结算的临时态，按载人默认展示（与状态机缺省一致）。

@@ -190,14 +190,14 @@ internal object Xc001EngineFlareEffect {
                 entity.setLayer(CombatEngineLayers.ABOVE_SHIPS_AND_MISSILES_LAYER)
                 entity.setAdditiveBlend()
                 entity.setSmooth()
-                entity.setFlick(false)
-                entity.setSyncFlick(false)
-                entity.setGlowPower(1.06f)
+                entity.isFlick = false
+                entity.isSyncFlick = false
+                entity.glowPower = 1.06f
                 entity.setCoreColor(Color(255, 248, 240, 18))
                 entity.setFringeColor(Color(145, 236, 255, 70))
-                entity.setGlobalAlpha(0.14f)
-                entity.setNoisePower(0.10f)
-                entity.setFlickMixValue(0.68f)
+                entity.globalAlpha = 0.14f
+                entity.noisePower = 0.10f
+                entity.flickMixValue = 0.68f
             } catch (_: Throwable) {
             }
 
@@ -249,32 +249,32 @@ internal object Xc001EngineFlareEffect {
             if (stSet != BoxEnum.STATE_SUCCESS) return false
 
             try {
-                entity.setRenderingCount(1)
-                entity.setInstanceDataRefreshIndex(0)
-                entity.setInstanceDataRefreshSize(1)
+                entity.renderingCount = 1
+                entity.instanceDataRefreshIndex = 0
+                entity.instanceDataRefreshSize = 1
                 entity.setInstanceTimerOverride(1f, BoxEnum.TIMER_FULL)
             } catch (_: Throwable) {
             }
 
             return submitFixedInstanceDataCompat(entity, apiList.size) == BoxEnum.STATE_SUCCESS
-                && entity.haveValidInstanceData()
-                && entity.getValidInstanceDataCount() >= 1
+                    && entity.haveValidInstanceData()
+                    && entity.validInstanceDataCount >= 1
         }
 
         private fun submitFixedInstanceDataCompat(entity: InstanceRenderAPI, instanceCount: Int): Byte {
             if (instanceCount < 1) return BoxEnum.STATE_FAILED_OTHER
             return try {
                 val memory = entity.instanceDataMemory
-                val needAlloc = memory == null || !memory.is_type_fixed()
+                val needAlloc = memory == null || !memory.is_type_fixed
                 if (needAlloc) {
                     entity.mallocInstance(InstanceType.FIXED_2D, instanceCount)
-                    entity.setInstanceDataRefreshIndex(0)
-                    entity.setInstanceDataRefreshOffset(0)
+                    entity.instanceDataRefreshIndex = 0
+                    entity.instanceDataRefreshOffset = 0
                     entity.setInstanceDataRefreshAllFromCurrentIndex()
                 }
 
                 val after = entity.instanceDataMemory
-                if (after == null || !after.is_type_fixed()) return BoxEnum.STATE_FAILED_OTHER
+                if (after == null || !after.is_type_fixed) return BoxEnum.STATE_FAILED_OTHER
 
                 entity.submitInstance()
                 BoxEnum.STATE_SUCCESS
@@ -329,8 +329,10 @@ internal object Xc001EngineFlareEffect {
                 1f
             }
             val controllerBoost = (movementLevel * 0.34f + visualLevel * 0.60f + fluxLevel * 0.08f).coerceIn(0f, 1.0f) * overloadPenalty
-            val primaryTint = Xc001OverdriveVisualState.lerpColor(Xc001OverdriveVisualState.coldFringe, Xc001OverdriveVisualState.hotFringe, visualLevel, 168)
-            val secondaryTint = Xc001OverdriveVisualState.lerpColor(Xc001OverdriveVisualState.coldCore, Xc001OverdriveVisualState.hotCore, visualLevel, 62)
+            val primaryTint =
+                Xc001OverdriveVisualState.lerpColor(Xc001OverdriveVisualState.coldFringe, Xc001OverdriveVisualState.hotFringe, visualLevel, 168)
+            val secondaryTint =
+                Xc001OverdriveVisualState.lerpColor(Xc001OverdriveVisualState.coldCore, Xc001OverdriveVisualState.hotCore, visualLevel, 62)
 
             try {
                 engineController?.fadeToOtherColor(
@@ -398,11 +400,25 @@ internal object Xc001EngineFlareEffect {
             try {
                 entity.setStateVanilla(location, 0f)
                 entity.setSize(size, size)
-                entity.setGlobalAlpha(alpha.coerceIn(0f, 1f))
-                entity.setGlowPower((0.95f + alpha * 2.0f + visualLevel * 0.75f).coerceIn(0.95f, 4.0f))
-                entity.setNoisePower(noisePower)
-                entity.setCoreColor(Xc001OverdriveVisualState.lerpColor(Xc001OverdriveVisualState.coldFringe, Xc001OverdriveVisualState.hotFringe, visualLevel, 20))
-                entity.setFringeColor(Xc001OverdriveVisualState.lerpColor(Xc001OverdriveVisualState.coldCore, Xc001OverdriveVisualState.hotCore, visualLevel, 78))
+                entity.globalAlpha = alpha.coerceIn(0f, 1f)
+                entity.glowPower = (0.95f + alpha * 2.0f + visualLevel * 0.75f).coerceIn(0.95f, 4.0f)
+                entity.noisePower = noisePower
+                entity.setCoreColor(
+                    Xc001OverdriveVisualState.lerpColor(
+                        Xc001OverdriveVisualState.coldFringe,
+                        Xc001OverdriveVisualState.hotFringe,
+                        visualLevel,
+                        20
+                    )
+                )
+                entity.setFringeColor(
+                    Xc001OverdriveVisualState.lerpColor(
+                        Xc001OverdriveVisualState.coldCore,
+                        Xc001OverdriveVisualState.hotCore,
+                        visualLevel,
+                        78
+                    )
+                )
             } catch (_: Throwable) {
             }
         }

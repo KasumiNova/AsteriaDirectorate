@@ -11,7 +11,7 @@ import com.fs.starfarer.api.mission.MissionDefinitionPlugin;
 
 /**
  * Dev-only mission surface for fighter grav link in-game automation.
- *
+ * <p>
  * 玩家飞蓬级（清空全部非内置武器槽，保留 3 甲板联队与内置装饰炮 WS0012 bloom，
  * 内置船插维度折叠甲板/纳米修复协议不动）；敌方秃鹰级攻击型（清空武器槽保留机库，
  * 双阔剑联队作战机陪练目标源）。全走 reserves 由插件手动 spawn（玩家单舰走
@@ -20,6 +20,16 @@ import com.fs.starfarer.api.mission.MissionDefinitionPlugin;
  * → OBSERVE_ACTIVE（时流/减伤/软辐能）→ WAIT_RECALL（召回/软硬转化）→ RELAUNCH（重出击）。
  */
 public final class MissionDefinition implements MissionDefinitionPlugin {
+    private static void clearNonBuiltInWeaponSlots(final FleetMemberAPI member) {
+        for (final String slotId : member.getVariant().getFittedWeaponSlots()) {
+            // 内置武器槽（如飞蓬 WS0012 装饰炮）不可清空，仅清装配槽。
+            if (member.getHullSpec().getBuiltInWeapons().containsKey(slotId)) {
+                continue;
+            }
+            member.getVariant().clearSlot(slotId);
+        }
+    }
+
     @Override
     public void defineMission(final MissionDefinitionAPI api) {
         api.initFleet(FleetSide.PLAYER, "ASTD", FleetGoal.ATTACK, false, 5);
@@ -40,13 +50,5 @@ public final class MissionDefinition implements MissionDefinitionPlugin {
         api.initMap(-9000f, 9000f, -6000f, 6000f);
         api.setBackgroundSpriteName("graphics/backgrounds/background2.jpg");
         api.addPlugin(new ASTDAutomationCombatPlugin());
-    }
-
-    private static void clearNonBuiltInWeaponSlots(final FleetMemberAPI member) {
-        for (final String slotId : member.getVariant().getFittedWeaponSlots()) {
-            // 内置武器槽（如飞蓬 WS0012 装饰炮）不可清空，仅清装配槽。
-            if (member.getHullSpec().getBuiltInWeapons().containsKey(slotId)) continue;
-            member.getVariant().clearSlot(slotId);
-        }
     }
 }

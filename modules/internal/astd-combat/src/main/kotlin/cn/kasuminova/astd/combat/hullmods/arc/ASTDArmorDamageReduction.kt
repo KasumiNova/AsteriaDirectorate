@@ -49,6 +49,6 @@ internal object ASTDArmorDamageReduction {
         DamageType.FRAGMENTATION -> 0.25f
         DamageType.ENERGY,
         DamageType.OTHER,
-        -> 1f
+            -> 1f
     }
 }

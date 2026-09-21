@@ -36,6 +36,7 @@ object Ship_astd_lh_001 : ShipDataEntry() {
     override val mass: Int = 400
     override val shieldType: String = "OMNI"
     override val shieldArc: Int = 240
+
     // 护盾维持 240（绝对值）= 0.4 × 耗散 600。
     override val shieldUpkeep: Double = 0.4
     override val shieldEfficiency: Double = 0.65
@@ -79,6 +80,7 @@ object Ship_astd_lh_002 : ShipDataEntry() {
     override val mass: Int = 400
     override val shieldType: String = "OMNI"
     override val shieldArc: Int = 240
+
     // 护盾维持 180（绝对值）= 0.4 × 耗散 450。
     override val shieldUpkeep: Double = 0.4
     override val shieldEfficiency: Double = 0.65

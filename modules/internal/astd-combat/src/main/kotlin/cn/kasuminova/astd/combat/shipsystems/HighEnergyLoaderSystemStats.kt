@@ -1,9 +1,9 @@
 package cn.kasuminova.astd.combat.shipsystems
 
+import cn.kasuminova.astd.internal.i18n.I18n
 import com.fs.starfarer.api.combat.MutableShipStatsAPI
 import com.fs.starfarer.api.impl.combat.BaseShipSystemScript
 import com.fs.starfarer.api.plugins.ShipSystemStatsScript
-import cn.kasuminova.astd.internal.i18n.I18n
 
 /**
  * astd_high_energy_loader（高能装填）

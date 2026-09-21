@@ -104,9 +104,9 @@ object BoxUtilCombatVfx {
         // TrailEntity：node[0] 是 trail 的“末端”(end point)。
         // RenderingUtil.createBeamVisual() 默认先 addNode(length,0) 再 addNode(0,0)，所以 node[0] 位于 +length 方向。
         // shader 的 START_* / startWidth 作用于 factor=0（node[0]），END_* / endWidth 作用于 factor=1（最后一个节点）。
-        entity.setStartWidth(tailWidth)
-        entity.setEndWidth(headWidth)
-        entity.setMixFactor(mixPower)
+        entity.startWidth = tailWidth
+        entity.endWidth = headWidth
+        entity.mixFactor = mixPower
 
         // 颜色不变：这里只用 alpha multiplier 做“更亮 + 更高对比度”的渐变。
         entity.setStartColor(1f, 1f, 1f, tailAlphaMul)
@@ -116,9 +116,9 @@ object BoxUtilCombatVfx {
 
         val mat = entity.materialData
         // 提升发光：避免 emissive alpha 被 diffuse alpha 再乘一次。
-        mat.setAlphaToEmissive(0f)
-        mat.setColorToEmissive(0f)
-        mat.setGlowPower(1f)
+        mat.alphaToEmissive = 0f
+        mat.isColorToEmissive = 0f
+        mat.glowPower = 1f
         mat.setColor(coreColor)
         mat.setEmissiveColor(fringeColor)
 
@@ -163,9 +163,9 @@ object BoxUtilCombatVfx {
         // 这里用一个很长的 full 来实现常驻；淡出由调用方自行控制（或最终 delete）。
         entity.setGlobalTimer(0f, full.coerceAtLeast(0.01f), 0f)
 
-        entity.setStartWidth(baseWidth)
-        entity.setEndWidth(tipWidth)
-        entity.setMixFactor(mixPower)
+        entity.startWidth = baseWidth
+        entity.endWidth = tipWidth
+        entity.mixFactor = mixPower
 
         entity.setStartColor(1f, 1f, 1f, baseAlphaMul)
         entity.setEndColor(1f, 1f, 1f, tipAlphaMul)
@@ -173,9 +173,9 @@ object BoxUtilCombatVfx {
         entity.setEndEmissive(1f, 1f, 1f, tipEmissiveAlphaMul)
 
         val mat = entity.materialData
-        mat.setAlphaToEmissive(0f)
-        mat.setColorToEmissive(0f)
-        mat.setGlowPower(1f)
+        mat.alphaToEmissive = 0f
+        mat.isColorToEmissive = 0f
+        mat.glowPower = 1f
         mat.setColor(coreColor)
         mat.setEmissiveColor(fringeColor)
         mat.setDiffuse(coreSprite)
@@ -222,9 +222,9 @@ object BoxUtilCombatVfx {
         entity.setGlobalTimer(0f, full.coerceAtLeast(0.01f), 0f)
 
         // start=node0=tip, end=node1=center
-        entity.setStartWidth(tipWidth)
-        entity.setEndWidth(baseWidth)
-        entity.setMixFactor(mixPower)
+        entity.startWidth = tipWidth
+        entity.endWidth = baseWidth
+        entity.mixFactor = mixPower
 
         entity.setStartColor(1f, 1f, 1f, tipAlphaMul)
         entity.setEndColor(1f, 1f, 1f, baseAlphaMul)
@@ -232,9 +232,9 @@ object BoxUtilCombatVfx {
         entity.setEndEmissive(1f, 1f, 1f, baseEmissiveAlphaMul)
 
         val mat = entity.materialData
-        mat.setAlphaToEmissive(0f)
-        mat.setColorToEmissive(0f)
-        mat.setGlowPower(1f)
+        mat.alphaToEmissive = 0f
+        mat.isColorToEmissive = 0f
+        mat.glowPower = 1f
         mat.setColor(coreColor)
         mat.setEmissiveColor(fringeColor)
         mat.setDiffuse(coreSprite)

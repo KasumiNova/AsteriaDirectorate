@@ -1,5 +1,6 @@
 package cn.kasuminova.astd.campaign.bounty
 
+import cn.kasuminova.astd.campaign.bounty.MainlineProgression.REWARD_SCALE_CAP
 import java.util.Random
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -57,17 +58,17 @@ object MainlineProgression {
      */
     fun postableOrders(state: BountyState): List<MainBounties.WorkOrder> = MainBounties.all.filter { def ->
         def.boardPosted &&
-            def.key !in state.postedWorkOrders &&
-            def.key !in state.destroyedWorkOrders &&
-            def.key !in state.settledWorkOrders &&
-            state.clearedGroups.containsAll(def.requiresGroups) &&
-            state.settledWorkOrders.containsAll(def.requiresOrders)
+                def.key !in state.postedWorkOrders &&
+                def.key !in state.destroyedWorkOrders &&
+                def.key !in state.settledWorkOrders &&
+                state.clearedGroups.containsAll(def.requiresGroups) &&
+                state.settledWorkOrders.containsAll(def.requiresOrders)
     }
 
     /** 组是否已结清（组内工单全部核销）。 */
     fun isGroupCleared(state: BountyState, groupId: String): Boolean =
         groupId in state.clearedGroups ||
-            MainBounties.ordersOfGroup(groupId).all { it.key in state.settledWorkOrders }
+                MainBounties.ordersOfGroup(groupId).all { it.key in state.settledWorkOrders }
 
     /** 章节是否已结清（章内结清组全部结清）。 */
     fun isChapterCleared(state: BountyState, chapter: Int): Boolean =

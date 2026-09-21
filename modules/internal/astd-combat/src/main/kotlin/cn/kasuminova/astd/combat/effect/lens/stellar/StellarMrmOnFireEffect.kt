@@ -34,6 +34,6 @@ class StellarMrmOnFireEffect : OnFireEffectPlugin {
             log.warn("辉星 onFire 拿到非导弹实体（spec=${projectile.projectileSpecId}），属配置错误，AI 未安装")
             return
         }
-        missile.setMissileAI(StellarMrmMissileAI(missile, StellarMrmTargetingImpl))
+        missile.missileAI = StellarMrmMissileAI(missile, StellarMrmTargetingImpl)
     }
 }

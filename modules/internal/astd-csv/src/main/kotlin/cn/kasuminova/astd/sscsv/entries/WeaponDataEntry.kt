@@ -238,10 +238,11 @@ abstract class WeaponDataEntry : SsCsvEntry {
         "noDPSInTooltip" to if (noDpsInTooltip) "TRUE" else "FALSE",
         "number" to number,
     )
+
     private fun encodeAiHintsForCsv(): String? {
         // 兼容：若 aiHints 未指定，则回退到旧的 hints 字符串。
         if (aiHints.isEmpty()) {
-    @Suppress("DEPRECATION")
+            @Suppress("DEPRECATION")
             val legacy = hints?.trim().orEmpty()
             // 防御：出现过列错位导致 hints=0 的情况；输出时直接视为未填写。
             return legacy.takeIf { it.isNotBlank() && it != "0" }
@@ -296,7 +297,6 @@ enum class AiHint {
     RANGE_FROM_SHIP_RADIUS,
     IMPORTANT,
     NO_MANUAL_FIRE;
-    ;
 
     val csvToken: String get() = name
 }

@@ -61,7 +61,7 @@ class InfiniteBountyGeneratorTest {
         // 词缀已锁定且 R 条数符合开放表
         val rCount = slot.affixIds.count {
             cn.kasuminova.astd.combat.affix.AffixRegistry.getById(it)?.type ==
-                cn.kasuminova.astd.combat.affix.AffixRegistry.AffixType.R
+                    cn.kasuminova.astd.combat.affix.AffixRegistry.AffixType.R
         }
         assertEquals(InfiniteBountyGenerator.rCountForDanger(slot.danger), rCount)
     }
@@ -121,7 +121,8 @@ class InfiniteBountyGeneratorTest {
         assertTrue(state.infiniteSlots[0] === gen2, "槽位表原位替换")
     }
 
-    /** 逐字段快照比对（InfiniteSlotState 为 XStream 普通类，无 equals）。 */    private data class InfiniteSlotStateCopy(
+    /** 逐字段快照比对（InfiniteSlotState 为 XStream 普通类，无 equals）。 */
+    private data class InfiniteSlotStateCopy(
         val index: Int,
         val generation: Int,
         val danger: Int,

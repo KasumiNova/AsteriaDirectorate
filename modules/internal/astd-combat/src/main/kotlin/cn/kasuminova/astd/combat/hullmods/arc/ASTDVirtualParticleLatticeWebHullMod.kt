@@ -2,20 +2,20 @@ package cn.kasuminova.astd.combat.hullmods.arc
 
 import cn.kasuminova.astd.api.difficulty.ScalingEntry
 import cn.kasuminova.astd.combat.hullmods.base.ASTDHullModTooltipRenderer
+import cn.kasuminova.astd.combat.shipsystems.ASTDXc002State
 import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import cn.kasuminova.astd.renderer.effect.hullmods.ASTDXc002Vfx
-import cn.kasuminova.astd.combat.shipsystems.ASTDXc002State
 import com.fs.starfarer.api.Global
-import com.fs.starfarer.api.combat.BeamAPI
 import com.fs.starfarer.api.combat.BaseHullMod
-import com.fs.starfarer.api.combat.CombatEntityAPI
+import com.fs.starfarer.api.combat.BeamAPI
 import com.fs.starfarer.api.combat.CombatEngineAPI
+import com.fs.starfarer.api.combat.CombatEntityAPI
 import com.fs.starfarer.api.combat.DamageAPI
 import com.fs.starfarer.api.combat.DamageType
 import com.fs.starfarer.api.combat.DamagingProjectileAPI
 import com.fs.starfarer.api.combat.EmpArcEntityAPI
-import com.fs.starfarer.api.combat.MissileAPI
 import com.fs.starfarer.api.combat.MissileAIPlugin
+import com.fs.starfarer.api.combat.MissileAPI
 import com.fs.starfarer.api.combat.MutableShipStatsAPI
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.combat.ShipCommand
@@ -81,7 +81,13 @@ class ASTDVirtualParticleLatticeWebHullMod : BaseHullMod() {
         }
     }
 
-    override fun addPostDescriptionSection(tooltip: TooltipMakerAPI, hullSize: ShipAPI.HullSize, ship: ShipAPI?, width: Float, isForModSpec: Boolean) {
+    override fun addPostDescriptionSection(
+        tooltip: TooltipMakerAPI,
+        hullSize: ShipAPI.HullSize,
+        ship: ShipAPI?,
+        width: Float,
+        isForModSpec: Boolean
+    ) {
         ASTDHullModTooltipRenderer.renderBlocks(
             tooltip = tooltip,
             width = width,
@@ -224,12 +230,12 @@ class ASTDVirtualParticleLatticeWebHullMod : BaseHullMod() {
             } as? MissileAPI ?: return
             spawned.source = ship
             spawned.missileAI = ASTDPursuitVirtualParticleAI(spawned, target)
-            spawned.setEmpResistance(10000)
-            spawned.setArmingTime(0f)
-            spawned.setDamageAmount(PURSUIT_MISSILE_DAMAGE)
+            spawned.empResistance = 10000
+            spawned.armingTime = 0f
+            spawned.damageAmount = PURSUIT_MISSILE_DAMAGE
             spawned.maxFlightTime = 2.0f
             spawned.setNoGlowTime(999f)
-            spawned.setNoFlameoutOnFizzling(true)
+            spawned.isNoFlameoutOnFizzling = true
             spawned.interruptContrail()
             spawned.spriteAlphaOverride = 0f
             spawned.glowRadius = 0f
@@ -320,7 +326,7 @@ class ASTDVirtualParticleLatticeWebHullMod : BaseHullMod() {
                         Color(235, 252, 255, 235),
                         params,
                     )
-                    arc.setCoreWidthOverride(2.2f + 2.4f * level.coerceIn(0f, 1f))
+                    arc.coreWidthOverride = 2.2f + 2.4f * level.coerceIn(0f, 1f)
                     arc.setSingleFlickerMode(true)
                     arc.setRenderGlowAtStart(false)
                     arc.setFadedOutAtStart(true)
@@ -359,12 +365,16 @@ class ASTDVirtualParticleLatticeWebHullMod : BaseHullMod() {
                 for (m in engine.missiles) {
                     if (m.owner == ship.owner || m.isFading || m.isFizzling) continue
                     val d = MathUtils.getDistance(loc, m.location)
-                    if (d < bestDist) { bestDist = d; best = m }
+                    if (d < bestDist) {
+                        bestDist = d; best = m
+                    }
                 }
                 for (s in engine.ships) {
                     if (s.owner == ship.owner || !s.isAlive || !s.isFighter) continue
                     val d = MathUtils.getDistance(loc, s.location)
-                    if (d < bestDist) { bestDist = d; best = s }
+                    if (d < bestDist) {
+                        bestDist = d; best = s
+                    }
                 }
                 return best
             }
@@ -377,10 +387,14 @@ class ASTDVirtualParticleLatticeWebHullMod : BaseHullMod() {
             private var fadeAge = 0f
             private var moteCooldown = MathUtils.getRandomNumberInRange(0f, 0.04f)
             fun advance(engine: CombatEngineAPI, ship: ShipAPI, amount: Float) {
-                if (!engine.isMissileAlive(missile) || missile.isExpired) { alive = false; return }
+                if (!engine.isMissileAlive(missile) || missile.isExpired) {
+                    alive = false; return
+                }
                 if (missile.isFading || missile.isFizzling) {
                     fadeAge += amount
-                    if (fadeAge >= 0.18f) { alive = false; return }
+                    if (fadeAge >= 0.18f) {
+                        alive = false; return
+                    }
                 } else {
                     fadeAge = 0f
                 }
@@ -424,7 +438,9 @@ class ASTDVirtualParticleLatticeWebHullMod : BaseHullMod() {
                     for (s in engine.ships) {
                         if (s.owner == ship.owner || !s.isAlive || s.isFighter || s.isDrone) continue
                         val d = MathUtils.getDistance(loc, s.location)
-                        if (d < bestDist) { bestDist = d; best = s }
+                        if (d < bestDist) {
+                            bestDist = d; best = s
+                        }
                     }
                     return best
                 }

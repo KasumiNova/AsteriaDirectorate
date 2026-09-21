@@ -7,6 +7,7 @@ import cn.kasuminova.astd.api.buff.StackDecayMode
 import cn.kasuminova.astd.api.buff.StackableBuff
 import cn.kasuminova.astd.api.buff.getBuff
 import cn.kasuminova.astd.api.combat.CombatFeedback
+import cn.kasuminova.astd.combat.effect.arc.ChargeNeedleStacks.Companion.BUFF_ID
 import cn.kasuminova.astd.impl.combat.CombatFeedbackImpl
 import cn.kasuminova.astd.impl.combat.CombatRandom
 import cn.kasuminova.astd.internal.i18n.I18n
@@ -220,4 +221,4 @@ class ChargeNeedleShots(
 }
 
 /** 便捷扩展：取该船的电荷淤积 Buff（不存在返回 null）。一行入口不沉淀进公共 API（00 §1.3 约定）。 */
-fun ShipAPI.chargeNeedleStacks(): ChargeNeedleStacks? = getBuff(ChargeNeedleStacks.BUFF_ID) as? ChargeNeedleStacks
+fun ShipAPI.chargeNeedleStacks(): ChargeNeedleStacks? = getBuff(BUFF_ID) as? ChargeNeedleStacks

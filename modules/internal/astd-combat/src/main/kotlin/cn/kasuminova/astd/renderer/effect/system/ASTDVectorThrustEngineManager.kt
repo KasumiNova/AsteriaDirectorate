@@ -1,11 +1,11 @@
 package cn.kasuminova.astd.renderer.effect.system
 
 import cn.kasuminova.astd.combat.hullmods.base.isASTDShip
+import cn.kasuminova.astd.renderer.effect.system.ASTDVectorThrustEngineManager.ENGINE_LEVELS_KEY
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseEveryFrameCombatPlugin
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.ShipAPI
-import com.fs.starfarer.api.combat.ShipEngineControllerAPI
 import com.fs.starfarer.api.combat.ShipEngineControllerAPI.ShipEngineAPI
 import com.fs.starfarer.api.input.InputEventAPI
 import java.util.IdentityHashMap
@@ -50,12 +50,16 @@ internal object ASTDVectorThrustEngineManager {
 
     // 怠速基线：无明显推力时引擎保留的火焰，避免全灭。
     private const val IDLE_FLAME = 0.45f
+
     // 出力时的火焰上限。
     private const val FULL_FLAME = 1.0f
+
     // 反方向/不出力时压到的最低火焰。
     private const val LOW_FLAME = 0.18f
+
     // 刹车/倒车基线：对齐原版 showDecelerating 的全引擎火焰收敛值。
     private const val BRAKE_FLAME = 0.4f
+
     // 火焰跟随线性速率（每秒）：attack（目标>当前）慢速渐入、release（目标<当前）稍快回落，消除跳变。
     private const val ATTACK_PER_SEC = 0.75f
     private const val RELEASE_PER_SEC = 1f

@@ -80,26 +80,50 @@ internal object ASTDArcAuraUtil {
 
     fun isArcProductionHull(ship: ShipAPI?, hullId: String): Boolean {
         val spec = ship?.hullSpec ?: return false
-        val exact = try { spec.hullId } catch (_: Throwable) { null }
-        val base = try { spec.baseHullId } catch (_: Throwable) { null }
+        val exact = try {
+            spec.hullId
+        } catch (_: Throwable) {
+            null
+        }
+        val base = try {
+            spec.baseHullId
+        } catch (_: Throwable) {
+            null
+        }
         return exact == hullId || base == hullId
     }
 
     fun isASTDHull(ship: ShipAPI?): Boolean {
         val spec = ship?.hullSpec ?: return false
-        val exact = try { spec.hullId } catch (_: Throwable) { null }
-        val base = try { spec.baseHullId } catch (_: Throwable) { null }
+        val exact = try {
+            spec.hullId
+        } catch (_: Throwable) {
+            null
+        }
+        val base = try {
+            spec.baseHullId
+        } catch (_: Throwable) {
+            null
+        }
         return exact?.startsWith("astd_") == true || base?.startsWith("astd_") == true
     }
 
     fun isArcProductionHull(ship: ShipAPI?): Boolean =
         isArcProductionHull(ship, ASTDArcProductionShipIds.HULL_XC_102) ||
-            isArcProductionHull(ship, ASTDArcProductionShipIds.HULL_XC_101) ||
-            isArcProductionHull(ship, ASTDArcProductionShipIds.HULL_XC_103)
+                isArcProductionHull(ship, ASTDArcProductionShipIds.HULL_XC_101) ||
+                isArcProductionHull(ship, ASTDArcProductionShipIds.HULL_XC_103)
 
     private fun stableShipId(ship: ShipAPI): String {
-        val variantId = try { ship.variant?.hullVariantId } catch (_: Throwable) { null }
-        val hullId = try { ship.hullSpec?.hullId } catch (_: Throwable) { null }
+        val variantId = try {
+            ship.variant?.hullVariantId
+        } catch (_: Throwable) {
+            null
+        }
+        val hullId = try {
+            ship.hullSpec?.hullId
+        } catch (_: Throwable) {
+            null
+        }
         return "$variantId:$hullId:${System.identityHashCode(ship)}"
     }
 

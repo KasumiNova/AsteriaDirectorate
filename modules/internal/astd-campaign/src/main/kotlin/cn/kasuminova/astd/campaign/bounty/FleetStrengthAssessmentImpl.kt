@@ -102,8 +102,8 @@ object FleetStrengthMath {
         /** 未经平滑的原始战力分。 */
         val rawScore: Float
             get() = ships.sumOf { (it.deploymentPoints * qualityCoefficient(it)).toDouble() }.toFloat() +
-                officerLevels.sum() * OFFICER_WEIGHT +
-                combatSkillCount * SKILL_WEIGHT
+                    officerLevels.sum() * OFFICER_WEIGHT +
+                    combatSkillCount * SKILL_WEIGHT
     }
 
     /**
@@ -112,7 +112,7 @@ object FleetStrengthMath {
      */
     fun qualityCoefficient(ship: ShipInput): Float {
         var q = 1f + ship.sModCount * 0.08f - ship.dModCount * 0.06f +
-            (if (ship.phaseOrAutomated) 0.10f else 0f)
+                (if (ship.phaseOrAutomated) 0.10f else 0f)
         if (ship.civilian) q *= 0.5f
         return q.coerceIn(0.5f, 1.5f)
     }

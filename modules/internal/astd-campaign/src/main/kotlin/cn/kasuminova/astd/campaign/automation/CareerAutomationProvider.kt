@@ -2,8 +2,8 @@ package cn.kasuminova.astd.campaign.automation
 
 import com.fs.starfarer.api.EveryFrameScript
 import com.fs.starfarer.api.Global
-import java.util.ServiceLoader
 import org.apache.log4j.Logger
+import java.util.ServiceLoader
 
 /**
  * 生涯集成自动化脚本的提供方接口（astd-automation 模块实现，release 打包时整模块剔除）。

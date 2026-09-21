@@ -1,5 +1,7 @@
 package cn.kasuminova.astd.combat.hullmods.base
 
+import cn.kasuminova.astd.combat.hullmods.base.ASTDSingularityStabilizerHullMod.Companion.UNITY_EPSILON
+import cn.kasuminova.astd.combat.hullmods.base.ASTDSingularityStabilizerHullMod.Companion.resolveTimeAnchor
 import com.fs.starfarer.api.combat.BaseHullMod
 import com.fs.starfarer.api.combat.MutableShipStatsAPI
 import com.fs.starfarer.api.combat.ShipAPI

@@ -153,13 +153,13 @@ class ASTDLensParallaxDecksHullMod : BaseHullMod() {
         val sinceDeployed = elapsed - deployTime
         if (ParallaxDecksMath.isInLaunchPhaseWindow(sinceDeployed, ParallaxDecksMath.LAUNCH_PHASE_WINDOW)) {
             if (!fighter.isPhased) {
-                fighter.setPhased(true)
+                fighter.isPhased = true
                 phasedByThis += key
             }
             fighter.mutableStats.timeMult.modifyMult(LAUNCH_TIME_MOD_ID, ParallaxDecksMath.TIME_MULT_BONUS)
         } else {
             // 窗口外严格配对 unapply：仅回切由本插件相位过的 fighter（相位所有权标记 phasedByThis）。
-            if (phasedByThis.remove(key) && fighter.isPhased) fighter.setPhased(false)
+            if (phasedByThis.remove(key) && fighter.isPhased) fighter.isPhased = false
             fighter.mutableStats.timeMult.unmodifyMult(LAUNCH_TIME_MOD_ID)
         }
 

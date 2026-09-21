@@ -24,20 +24,22 @@ class ProjectileVfxTreeAssemblerTest {
             "zappy" to trailSpec(layer = 2),
         ),
         bolt = BoltSpec(color = ASTDColor(0.6f, 0.85f, 1f, 1f)),
-        boxFlares = listOf("flare" to BoxFlareSpec(
-            width = 120f,
-            height = 14f,
-            coreColor = ASTDColor(1f, 1f, 1f, 1f),
-            fringeColor = ASTDColor(0.6f, 0.85f, 1f, 1f),
-            glowPower = 1f,
-            discRatio = 4f,
-            flickerRate = 1.2f,
-            noisePower = 0.1f,
-            style = cn.kasuminova.astd.impl.render.BoxFlareStyle.SMOOTH_DISC,
-            facingOffsetDeg = 0f,
-            fixedFacingDeg = null,
-            offsetX = 0f,
-        )),
+        boxFlares = listOf(
+            "flare" to BoxFlareSpec(
+                width = 120f,
+                height = 14f,
+                coreColor = ASTDColor(1f, 1f, 1f, 1f),
+                fringeColor = ASTDColor(0.6f, 0.85f, 1f, 1f),
+                glowPower = 1f,
+                discRatio = 4f,
+                flickerRate = 1.2f,
+                noisePower = 0.1f,
+                style = cn.kasuminova.astd.impl.render.BoxFlareStyle.SMOOTH_DISC,
+                facingOffsetDeg = 0f,
+                fixedFacingDeg = null,
+                offsetX = 0f,
+            )
+        ),
         anchorArcs = emptyList(),
     )
 

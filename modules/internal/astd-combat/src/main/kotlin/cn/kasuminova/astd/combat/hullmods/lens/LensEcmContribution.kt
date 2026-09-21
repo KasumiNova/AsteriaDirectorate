@@ -15,7 +15,7 @@ object LensEcmContribution {
 
     fun totalEcmFraction(frigates: Int, destroyers: Int, cruisers: Int, capitals: Int): Float =
         frigates.coerceAtLeast(0) * FRIGATE_ECM +
-            destroyers.coerceAtLeast(0) * DESTROYER_ECM +
-            cruisers.coerceAtLeast(0) * CRUISER_ECM +
-            capitals.coerceAtLeast(0) * CAPITAL_ECM
+                destroyers.coerceAtLeast(0) * DESTROYER_ECM +
+                cruisers.coerceAtLeast(0) * CRUISER_ECM +
+                capitals.coerceAtLeast(0) * CAPITAL_ECM
 }

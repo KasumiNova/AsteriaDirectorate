@@ -58,7 +58,7 @@ object SevenStarsVfx {
         fromEntity: ShipAPI?,
         toEntity: ShipAPI?,
     ) {
-        val params = EmpArcEntityAPI.EmpArcParams().apply {
+        EmpArcEntityAPI.EmpArcParams().apply {
             segmentLengthMult = 5f
             zigZagReductionFactor = 0.12f
             fadeOutDist = 72f

@@ -2,6 +2,9 @@ package cn.kasuminova.astd.campaign.world
 
 import cn.kasuminova.astd.campaign.bounty.BountyState
 import cn.kasuminova.astd.campaign.bounty.MainlineProgression
+import cn.kasuminova.astd.campaign.world.StoryWorldGenerator.ensureAll
+import cn.kasuminova.astd.campaign.world.StoryWorldGenerator.ensureChapter2Systems
+import cn.kasuminova.astd.campaign.world.StoryWorldGenerator.onChapterCleared
 import cn.kasuminova.astd.internal.i18n.I18n
 import cn.kasuminova.astd.internal.i18n.I18n.Categories
 import com.fs.starfarer.api.Global
@@ -208,7 +211,7 @@ object StoryWorldGenerator {
         if (state.chapter2SystemsGenerated && !(starfallComplete && asterComplete)) {
             log.error(
                 "[ASTD] 第二章遗址星系状态位与实体不一致（已置位但星系残缺），复位生成状态：" +
-                    "starfallComplete=$starfallComplete asterComplete=$asterComplete",
+                        "starfallComplete=$starfallComplete asterComplete=$asterComplete",
             )
             state.chapter2SystemsGenerated = false
         }
@@ -217,7 +220,7 @@ object StoryWorldGenerator {
         // 否则补全过程半途中断会丢失落位信息、下次现算得不同坐标。
         val (starfallLoc, asterLoc) = if (state.chapter2SystemsGenerated) {
             StoryPlacement.Vec(state.starfallLocX, state.starfallLocY) to
-                StoryPlacement.Vec(state.asterLocX, state.asterLocY)
+                    StoryPlacement.Vec(state.asterLocX, state.asterLocY)
         } else {
             val pair = StoryPlacement.placeChapter2Systems(mainLoc, sectorSeed(sector, SEED_SALT_CH2))
             state.starfallLocX = pair.first.x
@@ -264,7 +267,7 @@ object StoryWorldGenerator {
         val systemName = name(spec.nameKey)
         val system = sector.createStarSystem(systemName)
         system.location.set(loc.x, loc.y)
-        system.setBackgroundTextureFilename("graphics/backgrounds/background4.jpg")
+        system.backgroundTextureFilename = "graphics/backgrounds/background4.jpg"
 
         val star = system.initStar(spec.starId, spec.starType, spec.starRadius, spec.coronaSize)
         if (spec.blackHole) {
@@ -348,11 +351,11 @@ object StoryWorldGenerator {
 
     private fun applyMarket(sector: SectorAPI, entity: SectorEntityToken, spec: StorySystemSpecs.MarketSpec, marketName: String) {
         val market = Global.getFactory().createMarket(spec.marketId, marketName, spec.size)
-        market.setPlanetConditionMarketOnly(spec.conditionOnly)
+        market.isPlanetConditionMarketOnly = spec.conditionOnly
         market.primaryEntity = entity
         market.factionId = spec.factionId
-        market.setSurveyLevel(MarketAPI.SurveyLevel.FULL)
-        entity.setMarket(market)
+        market.surveyLevel = MarketAPI.SurveyLevel.FULL
+        entity.market = market
         entity.setFaction(spec.factionId)
         for (conditionId in spec.conditionIds) {
             market.addCondition(conditionId)

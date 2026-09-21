@@ -5,8 +5,8 @@ import cn.kasuminova.astd.api.difficulty.ScalingEntry
 import cn.kasuminova.astd.combat.affix.AffixRegistry
 import cn.kasuminova.astd.combat.hullmods.arc.ASTDArmorDamageReduction
 import com.fs.starfarer.api.Global
-import com.fs.starfarer.api.combat.BeamAPI
 import com.fs.starfarer.api.combat.BaseHullMod
+import com.fs.starfarer.api.combat.BeamAPI
 import com.fs.starfarer.api.combat.CombatEntityAPI
 import com.fs.starfarer.api.combat.DamageAPI
 import com.fs.starfarer.api.combat.ShipAPI

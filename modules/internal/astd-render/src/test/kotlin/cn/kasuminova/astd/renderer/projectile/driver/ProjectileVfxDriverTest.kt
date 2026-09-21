@@ -27,7 +27,9 @@ class ProjectileVfxDriverTest {
     )
 
     private fun driver(tree: RenderEntity): ProjectileVfxDriverImpl {
-        val host = object : RenderHost { override val hostId = "test" }
+        val host = object : RenderHost {
+            override val hostId = "test"
+        }
         return ProjectileVfxDriverImpl(host, tree, policy)
     }
 
@@ -53,7 +55,9 @@ class ProjectileVfxDriverTest {
     @Test
     fun `树锚点沿位移朝向前移 headLead`() {
         val rec = RecordingNode()
-        val host = object : RenderHost { override val hostId = "test-lead" }
+        val host = object : RenderHost {
+            override val hostId = "test-lead"
+        }
         val d = ProjectileVfxDriverImpl(host, rec, policy.copy(headLeadWorld = 30f))
 
         // 沿 +x 移动：origin 应领先弹体前端 30（显式 headLead）
@@ -159,9 +163,15 @@ class ProjectileVfxDriverTest {
             attachEngineWasNull = ctx.engine == null
             return ctx.engine != null
         }
-        override fun advance(ctx: RenderContext, amount: Float) { lastFrame = ctx.frame }
+
+        override fun advance(ctx: RenderContext, amount: Float) {
+            lastFrame = ctx.frame
+        }
+
         override fun render(ctx: RenderContext) {}
         override fun beginFadeOut(reason: FadeReason, seconds: Float) {}
-        override fun onDetach() { detached = true }
+        override fun onDetach() {
+            detached = true
+        }
     }
 }

@@ -91,13 +91,22 @@ class CollapseShiftSystemAI : ShipSystemAIScript {
         val flags = ship.aiFlags
         val enemies = visibleEnemies(ship, engine, VIEW_RANGE)
         if (missileThreat(ship, engine) && shieldNotCoveringDanger(ship, missileDangerDir)) {
-            try { ship.useSystem() } catch (_: Throwable) {}
+            try {
+                ship.useSystem()
+            } catch (_: Throwable) {
+            }
             return
         }
 
         if (enemies.isEmpty()) {
-            if (flags.hasFlag(ShipwideAIFlags.AIFlags.PURSUING) || flags.hasFlag(ShipwideAIFlags.AIFlags.MOVEMENT_DEST) || flags.hasFlag(ShipwideAIFlags.AIFlags.MANEUVER_TARGET)) {
-                try { ship.useSystem() } catch (_: Throwable) {}
+            if (flags.hasFlag(ShipwideAIFlags.AIFlags.PURSUING) || flags.hasFlag(ShipwideAIFlags.AIFlags.MOVEMENT_DEST) || flags.hasFlag(
+                    ShipwideAIFlags.AIFlags.MANEUVER_TARGET
+                )
+            ) {
+                try {
+                    ship.useSystem()
+                } catch (_: Throwable) {
+                }
             }
             return
         }
@@ -105,23 +114,30 @@ class CollapseShiftSystemAI : ShipSystemAIScript {
         val actualTarget = cachedTarget ?: enemies.minByOrNull { MathUtils.getDistance(ship.location, it.location) } ?: return
         val distance = MathUtils.getDistance(ship.location, actualTarget.location)
         val weaponRange = longestWeaponRange(ship).coerceAtLeast(WEAPON_RANGE_FALLBACK)
-        val enemyStrength = enemies.filter { MathUtils.getDistance(actualTarget.location, it.location) <= 650f }.sumOf { strength(it).toDouble() }.toFloat()
+        val enemyStrength =
+            enemies.filter { MathUtils.getDistance(actualTarget.location, it.location) <= 650f }.sumOf { strength(it).toDouble() }.toFloat()
         val ownStrength = strength(ship).coerceAtLeast(1f)
-        val lockedTarget = try { ship.shipTarget } catch (_: Throwable) { null }
+        val lockedTarget = try {
+            ship.shipTarget
+        } catch (_: Throwable) {
+            null
+        }
         val hasReserveCharge = system.ammo > 1 || system.maxAmmo <= 1
         val now = engine.getTotalElapsedTime(false)
         val retreatAllowed = retreatAllowed(now, hardFluxLevel, hullLevel, flags)
         val offenseAllowed = offenseAllowed(now, fluxLevel, hardFluxLevel)
         val alreadyAdvantaged = lockedTarget === actualTarget && hasTargetAdvantage(ship, actualTarget, distance, weaponRange)
         val phaseRun = offenseAllowed && !alreadyAdvantaged && wantsPhaseDisplacerRun(ship, actualTarget, flags, distance)
-        val wantsBackstab = offenseAllowed && !alreadyAdvantaged && lockedTarget === actualTarget && hasReserveCharge && fluxLevel <= 0.65f && distance <= weaponRange * 1.35f && enemyStrength <= ownStrength * ENEMY_STRENGTH_ABORT_MULT
+        val wantsBackstab =
+            offenseAllowed && !alreadyAdvantaged && lockedTarget === actualTarget && hasReserveCharge && fluxLevel <= 0.65f && distance <= weaponRange * 1.35f && enemyStrength <= ownStrength * ENEMY_STRENGTH_ABORT_MULT
         val fallbackRetreat = if (retreatAllowed && hardFluxLevel >= HARD_FLUX_FALLBACK_THRESHOLD) {
             farthestSafeRetreatDestination(engine, ship, enemies)
         } else {
             null
         }
 
-        val shouldEngage = offenseAllowed && distance > weaponRange * 1.05f && distance <= VIEW_RANGE && fluxLevel <= 0.55f && enemyStrength <= ownStrength * ENEMY_STRENGTH_ABORT_MULT
+        val shouldEngage =
+            offenseAllowed && distance > weaponRange * 1.05f && distance <= VIEW_RANGE && fluxLevel <= 0.55f && enemyStrength <= ownStrength * ENEMY_STRENGTH_ABORT_MULT
         val shouldEscape = retreatAllowed && distance <= DISENGAGE_RANGE && (fluxLevel >= HIGH_FLUX_THRESHOLD || hullLevel <= LOW_HULL_THRESHOLD)
 
         var intent: ShiftIntent? = null
@@ -130,18 +146,22 @@ class CollapseShiftSystemAI : ShipSystemAIScript {
                 intent = ShiftIntent.RETREAT
                 fallbackRetreat
             }
+
             shouldEscape -> {
                 intent = ShiftIntent.RETREAT
                 retreatDestination(ship, actualTarget)
             }
+
             phaseRun || wantsBackstab -> {
                 intent = ShiftIntent.OFFENSE
                 backstabDestination(actualTarget, ship.collisionRadius)
             }
+
             shouldEngage -> {
                 intent = ShiftIntent.OFFENSE
                 flankDestination(ship, actualTarget)
             }
+
             else -> null
         }
 
@@ -187,7 +207,11 @@ class CollapseShiftSystemAI : ShipSystemAIScript {
     private fun hardFluxLevel(ship: ShipAPI): Float {
         val tracker = ship.fluxTracker ?: return 0f
         val maxFlux = ship.maxFlux.coerceAtLeast(1f)
-        return try { tracker.hardFlux / maxFlux } catch (_: Throwable) { 0f }
+        return try {
+            tracker.hardFlux / maxFlux
+        } catch (_: Throwable) {
+            0f
+        }
     }
 
     private fun farthestSafeRetreatDestination(engine: CombatEngineAPI, ship: ShipAPI, enemies: List<ShipAPI>): Vector2f {
@@ -206,13 +230,22 @@ class CollapseShiftSystemAI : ShipSystemAIScript {
         }
         for (range in listOf(3000f, GLOBAL_RETREAT_RANGE)) {
             candidates += Vector2f(ship.location.x + away.x * range, ship.location.y + away.y * range)
-            candidates += Vector2f(ship.location.x + away.x * range + side.x * range * 0.35f, ship.location.y + away.y * range + side.y * range * 0.35f)
-            candidates += Vector2f(ship.location.x + away.x * range - side.x * range * 0.35f, ship.location.y + away.y * range - side.y * range * 0.35f)
+            candidates += Vector2f(
+                ship.location.x + away.x * range + side.x * range * 0.35f,
+                ship.location.y + away.y * range + side.y * range * 0.35f
+            )
+            candidates += Vector2f(
+                ship.location.x + away.x * range - side.x * range * 0.35f,
+                ship.location.y + away.y * range - side.y * range * 0.35f
+            )
         }
         for (friend in friends) {
             val fromPressure = Vector2f.sub(friend.location, pressureCenter, null)
             if (fromPressure.lengthSquared() > 1f) fromPressure.normalise() else fromPressure.set(away)
-            candidates += Vector2f(friend.location.x + fromPressure.x * (friend.collisionRadius + ship.collisionRadius + 260f), friend.location.y + fromPressure.y * (friend.collisionRadius + ship.collisionRadius + 260f))
+            candidates += Vector2f(
+                friend.location.x + fromPressure.x * (friend.collisionRadius + ship.collisionRadius + 260f),
+                friend.location.y + fromPressure.y * (friend.collisionRadius + ship.collisionRadius + 260f)
+            )
         }
         val clamped = candidates.map { clampToMap(engine, it) }.distinctBy { Pair((it.x / 100f).toInt(), (it.y / 100f).toInt()) }
         return clamped.maxByOrNull { retreatScore(ship, it, enemies, friends) }
@@ -394,7 +427,11 @@ class CollapseShiftSystemAI : ShipSystemAIScript {
             if (m.owner == ship.owner || m.isFading || m.isFizzling) continue
             if (MathUtils.getDistance(ship.location, m.location) > dangerRange) continue
             count++
-            val damage = try { m.damageAmount } catch (_: Throwable) { 0f }
+            val damage = try {
+                m.damageAmount
+            } catch (_: Throwable) {
+                0f
+            }
             if (damage >= hullDanger) return true
         }
         return count >= 5

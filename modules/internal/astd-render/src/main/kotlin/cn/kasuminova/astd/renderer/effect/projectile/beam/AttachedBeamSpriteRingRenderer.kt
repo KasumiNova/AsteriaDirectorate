@@ -220,7 +220,7 @@ internal object AttachedBeamSpriteRingRenderer {
         } catch (_: Throwable) {
         }
         spriteEntity.setRenderingCount(0)
-        spriteEntity.setAlwaysRefreshInstanceData(true)
+        spriteEntity.isAlwaysRefreshInstanceData = true
 
         // 我们用 instanceTimerOverride 来统一控制 alpha（避免依赖 instance timer 细节/版本差异）。
         try {
@@ -286,8 +286,8 @@ internal object AttachedBeamSpriteRingRenderer {
         // 之前 alphaMix=1 且 entityColor alpha=0，会导致 emissive alpha 被乘成 0 然后直接 discard。
         // 这里用 alphaMix=0，确保 emissive alpha 不依赖 diffuse/entityColor alpha。
         sprite.materialData.setEmissiveState(0f, 0f, max(0f, spec.glowPower))
-        sprite.materialData.setAdditionEmissive(true)
-        sprite.materialData.setIgnoreIllumination(true)
+        sprite.materialData.isAdditionEmissive = true
+        sprite.materialData.isIgnoreIllumination = true
 
         sprite.setBaseSizePerTiles(1f, 1f)
     }
@@ -429,7 +429,7 @@ internal object AttachedBeamSpriteRingRenderer {
         }
 
         fun updateAttachment(att: Attachment, amount: Float, now: Float) {
-            val eng = engine ?: return
+            engine ?: return
             // 确保 modelMatrix 正确（防止“从未 setStateVanilla 导致矩阵为默认值/不可见”）。
             try {
                 att.sprite.setStateVanilla(att.line.from, att.line.facing)
@@ -652,15 +652,15 @@ internal object AttachedBeamSpriteRingRenderer {
         if (instanceCount < 1) return false
         return try {
             val memory = entity.instanceDataMemory
-            if (memory == null || memory.is_type_fixed()) {
+            if (memory == null || memory.is_type_fixed) {
                 entity.mallocInstance(InstanceType.DYNAMIC_2D, instanceCount)
-                entity.setInstanceDataRefreshIndex(0)
-                entity.setInstanceDataRefreshOffset(0)
+                entity.instanceDataRefreshIndex = 0
+                entity.instanceDataRefreshOffset = 0
                 entity.setInstanceDataRefreshAllFromCurrentIndex()
             }
 
             val after = entity.instanceDataMemory
-            if (after == null || after.is_type_fixed()) return false
+            if (after == null || after.is_type_fixed) return false
 
             entity.submitInstance()
             true

@@ -166,7 +166,7 @@ class TerminalTimelinesTest {
         assertEquals(GlitchTimeline.noiseAlpha(GlitchTimeline.noiseTone(0)), GlitchTimeline.noiseAlpha(GlitchTimeline.noiseTone(6)))
         assertTrue(
             GlitchTimeline.noiseAlpha(GlitchTimeline.NoiseTone.WHITE) >
-                GlitchTimeline.noiseAlpha(GlitchTimeline.NoiseTone.TEAL),
+                    GlitchTimeline.noiseAlpha(GlitchTimeline.NoiseTone.TEAL),
         )
         assertEquals(
             GlitchTimeline.noiseAlpha(GlitchTimeline.NoiseTone.TEAL),

@@ -1,8 +1,8 @@
 package cn.kasuminova.astd.combat.shipsystems
 
+import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcCombatUtil
 import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcProductionShipIds
 import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcProductionVfx
-import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcCombatUtil
 import cn.kasuminova.astd.internal.i18n.I18n
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.MutableShipStatsAPI
@@ -63,7 +63,7 @@ class ASTDPlasmaArmorShieldBoostSystemStats : BaseShipSystemScript() {
         ship.removeCustomData(ASTDArcProductionShipIds.DATA_PLASMA_SHIELD_BOOST_LEVEL)
         val shipKey = System.identityHashCode(ship).toString()
         engine.customData.remove("$RAMP_START_KEY$shipKey")
-        ship.setJitterShields(false)
+        ship.isJitterShields = false
     }
 
     override fun getStatusData(index: Int, state: ShipSystemStatsScript.State, effectLevel: Float): ShipSystemStatsScript.StatusData? {
@@ -100,9 +100,13 @@ class ASTDPlasmaArmorShieldBoostSystemStats : BaseShipSystemScript() {
     }
 
     private fun suppressEligibleWeapons(ship: ShipAPI) {
-        for (weapon in try { ship.allWeapons } catch (_: Throwable) { return }) {
+        for (weapon in try {
+            ship.allWeapons
+        } catch (_: Throwable) {
+            return
+        }) {
             if (!ASTDArcCombatUtil.isNonPdNonMissileWeapon(weapon)) continue
-            weapon.setForceNoFireOneFrame(true)
+            weapon.isForceNoFireOneFrame = true
         }
     }
 
@@ -110,7 +114,7 @@ class ASTDPlasmaArmorShieldBoostSystemStats : BaseShipSystemScript() {
         val shield = ship.shield ?: return
         if (!shield.isOn || level <= 0.02f) return
 
-        ship.setJitterShields(true)
+        ship.isJitterShields = true
         ASTDArcProductionVfx.applyPlasmaShieldVisuals(ship, level)
         ship.setJitter(ASTDArcProductionShipIds.STAT_PLASMA_ARMOR_SHIELD_BOOST, ARC_FRINGE, 0.04f + 0.05f * level, 3, 0f, 5f + 8f * level)
         ship.setJitterUnder(ASTDArcProductionShipIds.STAT_PLASMA_ARMOR_SHIELD_BOOST, Color(60, 160, 255, 125), 0.15f * level, 8, 0f, 12f)

@@ -1,5 +1,6 @@
 package cn.kasuminova.astd.impl.render
 
+import cn.kasuminova.astd.impl.render.ASTDProjectileTrailTracker.Companion.RECEDE_OF_LENGTH
 import com.fs.starfarer.api.combat.DamagingProjectileAPI
 import org.boxutil.base.api.resource.StaticTrailTracker
 import org.lwjgl.util.vector.Vector2f
@@ -47,7 +48,7 @@ class ASTDProjectileTrailTracker(
             callback.pauseOnce()
             return
         }
-        callback.setCurrentLocation(anchor)
+        callback.currentLocation = anchor
         callback.setCurrentFacing(cos(facingRad).toFloat(), sin(facingRad).toFloat())
     }
 

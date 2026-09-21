@@ -96,7 +96,7 @@ class StellarMrmStrikeImplTest {
             // （生成循环会 set 二者并读回算回漂速度）。
             doAnswer {
                 riftCount++
-                mock(com.fs.starfarer.api.combat.CombatEntityAPI::class.java).also { entity ->
+                mock(CombatEntityAPI::class.java).also { entity ->
                     `when`(entity.location).thenReturn(Vector2f(0f, 0f))
                     `when`(entity.velocity).thenReturn(Vector2f(0f, 0f))
                 }
@@ -123,7 +123,7 @@ class StellarMrmStrikeImplTest {
         `when`(w.location).thenReturn(Vector2f(x, 0f))
         `when`(w.maxHealth).thenReturn(maxHealth)
         `when`(w.currHealth).thenAnswer { health }
-        doAnswer { inv -> health = inv.getArgument(0); null }.`when`(w).setCurrHealth(anyFloat())
+        doAnswer { inv -> health = inv.getArgument(0); null }.`when`(w).currHealth = anyFloat()
         return w
     }
 

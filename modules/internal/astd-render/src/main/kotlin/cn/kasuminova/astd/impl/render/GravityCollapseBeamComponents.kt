@@ -58,7 +58,17 @@ object GcBeam {
             lerpColorPerFrame = false, applyEndFade = false,
             pieces = listOf(
                 BeamCorePieceSpec(false, false, BeamPalette.CORE, baseAlphaCore, baseEmCore, 3.25f, 0f, BEAM_CORE_WHITE, BEAM_FRINGE_PINK),
-                BeamCorePieceSpec(true, false, BeamPalette.CORE, baseAlphaCore * 0.62f, baseEmCore * 0.62f, 3.25f, 0f, BEAM_CORE_WHITE, BEAM_FRINGE_PINK),
+                BeamCorePieceSpec(
+                    true,
+                    false,
+                    BeamPalette.CORE,
+                    baseAlphaCore * 0.62f,
+                    baseEmCore * 0.62f,
+                    3.25f,
+                    0f,
+                    BEAM_CORE_WHITE,
+                    BEAM_FRINGE_PINK
+                ),
                 BeamCorePieceSpec(false, true, BeamPalette.GLOW, baseAlphaGlow, baseEmGlow, 3.60f, 0f, GLOW_COLOR, HOT_COLOR),
                 BeamCorePieceSpec(true, true, BeamPalette.GLOW, baseAlphaGlow * 0.62f, baseEmGlow * 0.62f, 3.60f, 0f, GLOW_COLOR, HOT_COLOR),
             ),
@@ -334,7 +344,9 @@ class BeamMuzzleComponent(
         while (it.hasNext()) {
             val c = it.next()
             val e = c.entity
-            if (e.hasDelete()) { it.remove(); continue }
+            if (e.hasDelete()) {
+                it.remove(); continue
+            }
 
             val t0 = ((now - c.createdAt) / c.growDuration).coerceIn(0f, 1f)
             val t = (t0 * t0 * (3f - 2f * t0)).coerceIn(0f, 1f)
@@ -359,19 +371,21 @@ class BeamMuzzleComponent(
                 e.setNodeRefreshAllFromCurrentIndex()
                 e.submitNodes()
             }
-            e.setStartWidth(curBaseW)
-            e.setEndWidth(curTipW)
-            e.setStartColorAlpha(aBase)
-            e.setEndColorAlpha(aTip)
-            e.setStartEmissiveAlpha(eBase)
-            e.setEndEmissiveAlpha(eTip)
+            e.startWidth = curBaseW
+            e.endWidth = curTipW
+            e.startColorAlpha = aBase
+            e.endColorAlpha = aTip
+            e.startEmissiveAlpha = eBase
+            e.endEmissiveAlpha = eTip
             e.setStateVanilla(muzzle, BoxUtilCombatVfx.normalizeFacingDeg(c.facing))
         }
     }
 
     private fun twoSidedSigns(count: Int): List<Float> {
         val signs = ArrayList<Float>(count)
-        if (count >= 2) { signs.add(1f); signs.add(-1f) }
+        if (count >= 2) {
+            signs.add(1f); signs.add(-1f)
+        }
         while (signs.size < count) signs.add(if (Math.random() < 0.5) 1f else -1f)
         signs.shuffle()
         return signs

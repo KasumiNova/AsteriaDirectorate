@@ -222,16 +222,14 @@ object ASTDDevContentSelector {
         if (id.isBlank()) return false
         if (spec.isMeta) return false
         val tags = spec.tags?.mapTo(mutableSetOf()) { it } ?: emptySet()
-        if (tags.containsAny(COMMODITY_REJECT_TAGS)) return false
-        return true
+        return !tags.containsAny(COMMODITY_REJECT_TAGS)
     }
 
     fun isDevStorageFighterWing(spec: FighterWingSpecAPI): Boolean {
         val id = spec.id ?: return false
         if (id.isBlank()) return false
         val tags = spec.tags?.mapTo(mutableSetOf()) { it } ?: emptySet()
-        if (tags.containsAny(FIGHTER_REJECT_TAGS)) return false
-        return true
+        return !tags.containsAny(FIGHTER_REJECT_TAGS)
     }
 
     fun isDevStorageHullMod(spec: HullModSpecAPI): Boolean {
@@ -239,8 +237,7 @@ object ASTDDevContentSelector {
         if (id.isBlank()) return false
         if (spec.isHidden || spec.isHiddenEverywhere) return false
         val tags = spec.tags?.mapTo(mutableSetOf()) { it } ?: emptySet()
-        if (tags.containsAny(HULLMOD_REJECT_TAGS)) return false
-        return true
+        return !tags.containsAny(HULLMOD_REJECT_TAGS)
     }
 
     private fun Set<String>.containsAny(rejected: Set<String>): Boolean {

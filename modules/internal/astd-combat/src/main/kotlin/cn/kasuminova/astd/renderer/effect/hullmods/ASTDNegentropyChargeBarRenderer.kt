@@ -1,7 +1,6 @@
 package cn.kasuminova.astd.renderer.effect.hullmods
 
 import cn.kasuminova.astd.combat.shipsystems.ASTDXc002State
-import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseCombatLayeredRenderingPlugin
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEngineLayers
@@ -10,9 +9,9 @@ import com.fs.starfarer.api.combat.ViewportAPI
 import org.lwjgl.opengl.GL11
 import java.awt.Color
 import java.util.EnumSet
+import kotlin.math.ceil
 import kotlin.math.cos
 import kotlin.math.sin
-import kotlin.math.ceil
 
 /** 淬刃舰体下方充能条渲染器；世界坐标固定朝向，不随舰船朝向旋转。 */
 object ASTDNegentropyChargeBarRenderer {
@@ -40,7 +39,11 @@ object ASTDNegentropyChargeBarRenderer {
 
         override fun render(layer: CombatEngineLayers, viewport: ViewportAPI) {
             if (expired || layer != CombatEngineLayers.ABOVE_SHIPS_LAYER) return
-            val ships = try { engine.ships } catch (_: Throwable) { null } ?: return
+            val ships = try {
+                engine.ships
+            } catch (_: Throwable) {
+                null
+            } ?: return
             GL11.glPushAttrib(GL11.GL_ENABLE_BIT or GL11.GL_COLOR_BUFFER_BIT or GL11.GL_LINE_BIT)
             try {
                 GL11.glDisable(GL11.GL_TEXTURE_2D)

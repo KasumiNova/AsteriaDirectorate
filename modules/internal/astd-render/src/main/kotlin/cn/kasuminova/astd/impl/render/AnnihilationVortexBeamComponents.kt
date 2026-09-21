@@ -1,6 +1,7 @@
 package cn.kasuminova.astd.impl.render
 
 import cn.kasuminova.astd.api.render.RenderContext
+import cn.kasuminova.astd.impl.render.AvVortexShader.STALE_AFTER_SECONDS
 import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
 import cn.kasuminova.astd.renderer.shader.base.ShaderBlendMode
 import cn.kasuminova.astd.renderer.shader.base.ShaderEffectKey
@@ -59,7 +60,17 @@ object AvBeam {
             lerpColorPerFrame = false, applyEndFade = false,
             pieces = listOf(
                 BeamCorePieceSpec(false, false, BeamPalette.CORE, baseAlphaCore, baseEmCore, 3.25f, -480f, CORE_DEEP, CORE_FRINGE),
-                BeamCorePieceSpec(true, false, BeamPalette.CORE, baseAlphaCore * 0.62f, baseEmCore * 0.62f, 3.25f, 480f * 0.92f, CORE_DEEP, CORE_FRINGE),
+                BeamCorePieceSpec(
+                    true,
+                    false,
+                    BeamPalette.CORE,
+                    baseAlphaCore * 0.62f,
+                    baseEmCore * 0.62f,
+                    3.25f,
+                    480f * 0.92f,
+                    CORE_DEEP,
+                    CORE_FRINGE
+                ),
                 BeamCorePieceSpec(false, true, BeamPalette.GLOW, baseAlphaGlow, baseEmGlow, 3.60f, -300f, GLOW_DEEP, HOT),
                 BeamCorePieceSpec(true, true, BeamPalette.GLOW, baseAlphaGlow * 0.62f, baseEmGlow * 0.62f, 3.60f, 300f * 0.92f, GLOW_DEEP, HOT),
             ),
@@ -148,14 +159,14 @@ class AnnihilationVortexVortexComponent(
         e.setInnerIn(0.35f, 0.35f)
         e.setInnerFull(0.35f, 0.35f)
         e.setInnerOut(0.35f, 0.35f)
-        e.setInnerHardness(0.90f)
-        e.setRingHardness(0.70f)
+        e.innerHardness = 0.90f
+        e.ringHardness = 0.70f
         e.setSizeIn(radius * 0.55f, radius * 0.55f)
         e.setSizeFull(radius * 0.32f, radius * 0.32f)
         e.setSizeOut(radius * 0.12f, radius * 0.12f)
-        e.setPowerIn(0.10f)
-        e.setPowerFull(0.22f)
-        e.setPowerOut(0.30f)
+        e.powerIn = 0.10f
+        e.powerFull = 0.22f
+        e.powerOut = 0.30f
         e.setLocation(center)
         val result = BoxUtilCombatVfx.addEntity(engine, e)
         if (result != 0 && !warnedDistortion) {

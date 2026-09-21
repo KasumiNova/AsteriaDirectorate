@@ -179,14 +179,14 @@ internal object Xc001EmissiveOverlayEffect {
                 entity.setLayer(layer)
                 entity.setAdditiveBlend()
                 entity.setSmooth()
-                entity.setFlick(false)
-                entity.setSyncFlick(false)
-                entity.setGlowPower(1.75f)
+                entity.isFlick = false
+                entity.isSyncFlick = false
+                entity.glowPower = 1.75f
                 entity.setCoreColor(Color(255, 246, 236, 16))
                 entity.setFringeColor(Color(122, 222, 255, 46))
-                entity.setGlobalAlpha(0f)
-                entity.setNoisePower(0.10f)
-                entity.setFlickMixValue(0.68f)
+                entity.globalAlpha = 0f
+                entity.noisePower = 0.10f
+                entity.flickMixValue = 0.68f
             } catch (_: Throwable) {
             }
 
@@ -225,14 +225,14 @@ internal object Xc001EmissiveOverlayEffect {
                 entity.setLayer(layer)
                 entity.setAdditiveBlend()
                 entity.setSmooth()
-                entity.setFlick(false)
-                entity.setSyncFlick(false)
-                entity.setGlowPower(1.15f)
+                entity.isFlick = false
+                entity.isSyncFlick = false
+                entity.glowPower = 1.15f
                 entity.setCoreColor(Color(255, 245, 238, 20))
                 entity.setFringeColor(Color(148, 232, 255, 60))
-                entity.setGlobalAlpha(0.18f)
-                entity.setNoisePower(0.12f)
-                entity.setFlickMixValue(0.72f)
+                entity.globalAlpha = 0.18f
+                entity.noisePower = 0.12f
+                entity.flickMixValue = 0.72f
             } catch (_: Throwable) {
             }
 
@@ -271,14 +271,14 @@ internal object Xc001EmissiveOverlayEffect {
                 entity.setLayer(layer)
                 entity.setAdditiveBlend()
                 entity.setSmooth()
-                entity.setFlick(false)
-                entity.setSyncFlick(false)
-                entity.setGlowPower(2.1f)
+                entity.isFlick = false
+                entity.isSyncFlick = false
+                entity.glowPower = 2.1f
                 entity.setCoreColor(Color(255, 248, 242, 12))
                 entity.setFringeColor(Color(132, 228, 255, 30))
-                entity.setGlobalAlpha(0f)
-                entity.setNoisePower(0.10f)
-                entity.setFlickMixValue(0.70f)
+                entity.globalAlpha = 0f
+                entity.noisePower = 0.10f
+                entity.flickMixValue = 0.70f
             } catch (_: Throwable) {
             }
 
@@ -330,31 +330,31 @@ internal object Xc001EmissiveOverlayEffect {
             if (stSet != BoxEnum.STATE_SUCCESS) return false
 
             try {
-                entity.setRenderingCount(1)
-                entity.setInstanceDataRefreshIndex(0)
-                entity.setInstanceDataRefreshSize(1)
+                entity.renderingCount = 1
+                entity.instanceDataRefreshIndex = 0
+                entity.instanceDataRefreshSize = 1
                 entity.setInstanceTimerOverride(1f, BoxEnum.TIMER_FULL)
             } catch (_: Throwable) {
             }
 
             val stSubmit = submitFixedInstanceDataCompat(entity, apiList.size)
-            return stSubmit == BoxEnum.STATE_SUCCESS && entity.haveValidInstanceData() && entity.getValidInstanceDataCount() >= 1
+            return stSubmit == BoxEnum.STATE_SUCCESS && entity.haveValidInstanceData() && entity.validInstanceDataCount >= 1
         }
 
         private fun submitFixedInstanceDataCompat(entity: InstanceRenderAPI, instanceCount: Int): Byte {
             if (instanceCount < 1) return BoxEnum.STATE_FAILED_OTHER
             return try {
                 val memory = entity.instanceDataMemory
-                val needAlloc = memory == null || !memory.is_type_fixed()
+                val needAlloc = memory == null || !memory.is_type_fixed
                 if (needAlloc) {
                     entity.mallocInstance(InstanceType.FIXED_2D, instanceCount)
-                    entity.setInstanceDataRefreshIndex(0)
-                    entity.setInstanceDataRefreshOffset(0)
+                    entity.instanceDataRefreshIndex = 0
+                    entity.instanceDataRefreshOffset = 0
                     entity.setInstanceDataRefreshAllFromCurrentIndex()
                 }
 
                 val after = entity.instanceDataMemory
-                if (after == null || !after.is_type_fixed()) return BoxEnum.STATE_FAILED_OTHER
+                if (after == null || !after.is_type_fixed) return BoxEnum.STATE_FAILED_OTHER
 
                 entity.submitInstance()
                 BoxEnum.STATE_SUCCESS
@@ -371,7 +371,7 @@ internal object Xc001EmissiveOverlayEffect {
                 0f
             }.coerceIn(0f, 1f)
             val visualLevel = Xc001OverdriveVisualState.getLevel(ship, engine).coerceAtLeast(systemLevel)
-            val fluxLevel = try {
+            try {
                 ship.fluxTracker?.fluxLevel ?: 0f
             } catch (_: Throwable) {
                 0f
@@ -456,11 +456,25 @@ internal object Xc001EmissiveOverlayEffect {
             try {
                 entity.setStateVanilla(ship.location, 0f)
                 entity.setSize(size, size)
-                entity.setGlobalAlpha(alphaMul.coerceIn(0f, 1f))
-                entity.setGlowPower(glowPower.coerceIn(0.8f, 4.8f))
-                entity.setNoisePower((0.10f + alphaMul * 0.18f).coerceIn(0.10f, 0.28f))
-                entity.setCoreColor(Xc001OverdriveVisualState.lerpColor(Xc001OverdriveVisualState.coldFringe, Xc001OverdriveVisualState.coldCore, 0.35f, 10))
-                entity.setFringeColor(Xc001OverdriveVisualState.lerpColor(Xc001OverdriveVisualState.coldCore, Xc001OverdriveVisualState.coldFringe, 0.45f, 18))
+                entity.globalAlpha = alphaMul.coerceIn(0f, 1f)
+                entity.glowPower = glowPower.coerceIn(0.8f, 4.8f)
+                entity.noisePower = (0.10f + alphaMul * 0.18f).coerceIn(0.10f, 0.28f)
+                entity.setCoreColor(
+                    Xc001OverdriveVisualState.lerpColor(
+                        Xc001OverdriveVisualState.coldFringe,
+                        Xc001OverdriveVisualState.coldCore,
+                        0.35f,
+                        10
+                    )
+                )
+                entity.setFringeColor(
+                    Xc001OverdriveVisualState.lerpColor(
+                        Xc001OverdriveVisualState.coldCore,
+                        Xc001OverdriveVisualState.coldFringe,
+                        0.45f,
+                        18
+                    )
+                )
             } catch (_: Throwable) {
             }
         }
@@ -470,16 +484,38 @@ internal object Xc001EmissiveOverlayEffect {
             try {
                 entity.setStateVanilla(ship.location, 0f)
                 entity.setSize(size, size)
-                entity.setGlobalAlpha(alphaMul.coerceIn(0f, 1f))
-                entity.setGlowPower(glowPower.coerceIn(1.0f, 5.2f))
-                entity.setNoisePower((0.08f + alphaMul * 0.12f).coerceIn(0.08f, 0.22f))
-                entity.setCoreColor(Xc001OverdriveVisualState.lerpColor(Xc001OverdriveVisualState.coldFringe, Xc001OverdriveVisualState.coldCore, 0.40f, 12))
-                entity.setFringeColor(Xc001OverdriveVisualState.lerpColor(Xc001OverdriveVisualState.coldCore, Xc001OverdriveVisualState.coldFringe, 0.55f, 20))
+                entity.globalAlpha = alphaMul.coerceIn(0f, 1f)
+                entity.glowPower = glowPower.coerceIn(1.0f, 5.2f)
+                entity.noisePower = (0.08f + alphaMul * 0.12f).coerceIn(0.08f, 0.22f)
+                entity.setCoreColor(
+                    Xc001OverdriveVisualState.lerpColor(
+                        Xc001OverdriveVisualState.coldFringe,
+                        Xc001OverdriveVisualState.coldCore,
+                        0.40f,
+                        12
+                    )
+                )
+                entity.setFringeColor(
+                    Xc001OverdriveVisualState.lerpColor(
+                        Xc001OverdriveVisualState.coldCore,
+                        Xc001OverdriveVisualState.coldFringe,
+                        0.55f,
+                        20
+                    )
+                )
             } catch (_: Throwable) {
             }
         }
 
-        private fun updatePulseHalo(entity: FlareEntity, ship: ShipAPI, alphaMul: Float, glowPower: Float, mode: Int, expand: Float = 0f, visualLevel: Float) {
+        private fun updatePulseHalo(
+            entity: FlareEntity,
+            ship: ShipAPI,
+            alphaMul: Float,
+            glowPower: Float,
+            mode: Int,
+            expand: Float = 0f,
+            visualLevel: Float
+        ) {
             val size = if (mode == 2) {
                 ship.collisionRadius * (0.40f + expand * 0.38f)
             } else if (mode > 0) {
@@ -490,18 +526,53 @@ internal object Xc001EmissiveOverlayEffect {
             try {
                 entity.setStateVanilla(ship.location, 0f)
                 entity.setSize(size, size)
-                entity.setGlobalAlpha(alphaMul.coerceIn(0f, 1f))
-                entity.setGlowPower(glowPower.coerceIn(0.8f, 4.8f))
-                entity.setNoisePower((0.09f + alphaMul * 0.10f).coerceIn(0.09f, 0.20f))
+                entity.globalAlpha = alphaMul.coerceIn(0f, 1f)
+                entity.glowPower = glowPower.coerceIn(0.8f, 4.8f)
+                entity.noisePower = (0.09f + alphaMul * 0.10f).coerceIn(0.09f, 0.20f)
                 if (mode == 2) {
                     entity.setCoreColor(Color(255, 248, 240, 180))
-                    entity.setFringeColor(Xc001OverdriveVisualState.lerpColor(Xc001OverdriveVisualState.hotCore, Color(255, 112, 38, 220), visualLevel, 220))
+                    entity.setFringeColor(
+                        Xc001OverdriveVisualState.lerpColor(
+                            Xc001OverdriveVisualState.hotCore,
+                            Color(255, 112, 38, 220),
+                            visualLevel,
+                            220
+                        )
+                    )
                 } else if (mode > 0) {
-                    entity.setCoreColor(Xc001OverdriveVisualState.lerpColor(Xc001OverdriveVisualState.coldFringe, Xc001OverdriveVisualState.hotCore, visualLevel, 32))
-                    entity.setFringeColor(Xc001OverdriveVisualState.lerpColor(Xc001OverdriveVisualState.coldCore, Xc001OverdriveVisualState.hotFringe, visualLevel, 126))
+                    entity.setCoreColor(
+                        Xc001OverdriveVisualState.lerpColor(
+                            Xc001OverdriveVisualState.coldFringe,
+                            Xc001OverdriveVisualState.hotCore,
+                            visualLevel,
+                            32
+                        )
+                    )
+                    entity.setFringeColor(
+                        Xc001OverdriveVisualState.lerpColor(
+                            Xc001OverdriveVisualState.coldCore,
+                            Xc001OverdriveVisualState.hotFringe,
+                            visualLevel,
+                            126
+                        )
+                    )
                 } else {
-                    entity.setCoreColor(Xc001OverdriveVisualState.lerpColor(Xc001OverdriveVisualState.coldFringe, Xc001OverdriveVisualState.hotCore, visualLevel, 20))
-                    entity.setFringeColor(Xc001OverdriveVisualState.lerpColor(Xc001OverdriveVisualState.coldCore, Xc001OverdriveVisualState.hotFringe, visualLevel, 76))
+                    entity.setCoreColor(
+                        Xc001OverdriveVisualState.lerpColor(
+                            Xc001OverdriveVisualState.coldFringe,
+                            Xc001OverdriveVisualState.hotCore,
+                            visualLevel,
+                            20
+                        )
+                    )
+                    entity.setFringeColor(
+                        Xc001OverdriveVisualState.lerpColor(
+                            Xc001OverdriveVisualState.coldCore,
+                            Xc001OverdriveVisualState.hotFringe,
+                            visualLevel,
+                            76
+                        )
+                    )
                 }
             } catch (_: Throwable) {
             }

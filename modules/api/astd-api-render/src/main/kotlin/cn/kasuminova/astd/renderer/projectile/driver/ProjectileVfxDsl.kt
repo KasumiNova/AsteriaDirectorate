@@ -113,10 +113,17 @@ class ProjectileVfxScope(private val id: String) {
     }
 
     /** 发射瞬间附加动作（如发射点扭曲特效）：登记弹体成功后由分发器调用一次。 */
-    fun onFire(hook: ProjectileVfxOnFireHook) { onFireHook = hook }
+    fun onFire(hook: ProjectileVfxOnFireHook) {
+        onFireHook = hook
+    }
 
-    fun lifecycle(block: LifecycleBuilder.() -> Unit) { lifecycle.apply(block) }
-    fun fade(block: FadeBuilder.() -> Unit) { fade.apply(block) }
+    fun lifecycle(block: LifecycleBuilder.() -> Unit) {
+        lifecycle.apply(block)
+    }
+
+    fun fade(block: FadeBuilder.() -> Unit) {
+        fade.apply(block)
+    }
 
     internal fun build(): ProjectileVfx {
         val boltSpec = bolt?.build()
@@ -166,34 +173,54 @@ class StaticTrailBuilder(private val texturePath: String) {
     private var velocityOutRange: TrailDriftRange? = null
 
     /** 叠层序号：同弹体多条拖尾的组织序（1 垫底、2 其上；additive 混合下不参与绘制排序）。 */
-    fun layer(v: Int) { layer = v }
+    fun layer(v: Int) {
+        layer = v
+    }
 
     /** 拖尾头部全宽（世界单位）；尾部宽度 = 本值 × [tailWidthRatio]，随生命线性收细。 */
-    fun width(v: Float) { width = v }
+    fun width(v: Float) {
+        width = v
+    }
 
     /** 尾宽比（0..1）。 */
-    fun tailWidth(v: Float) { tailWidthRatio = v.coerceIn(0f, 1f) }
+    fun tailWidth(v: Float) {
+        tailWidthRatio = v.coerceIn(0f, 1f)
+    }
 
     /** 头尾颜色（0xRRGGBBAA）：头部亮端 → 尾部暗端，随节点生命两段渐变。 */
-    fun colors(head: Long, tail: Long) { headColor = rgba(head); tailColor = rgba(tail) }
+    fun colors(head: Long, tail: Long) {
+        headColor = rgba(head); tailColor = rgba(tail)
+    }
 
     /** 预期带长（世界单位）：节点总寿命 = 带长 / 弹体速度，三段时长（淡入/全亮/消散）按比例切分。 */
-    fun length(v: Float) { bandLength = v }
+    fun length(v: Float) {
+        bandLength = v
+    }
 
     /** 图案平铺周期（世界单位）与滚动速度（世界单位/秒，0 不滚动）。 */
-    fun tile(length: Float, scroll: Float) { tileLength = length; scrollSpeed = scroll }
+    fun tile(length: Float, scroll: Float) {
+        tileLength = length; scrollSpeed = scroll
+    }
 
     /** 带体整体向后退的距离（世界单位）：带体头部亮端退到螺栓弹头之后，让弹头尖在带体前露出。不调用 = 自动取弹体长度 ×0.75（运行期解析）。 */
-    fun recede(v: Float) { recede = v }
+    fun recede(v: Float) {
+        recede = v
+    }
 
     /** bloom 发光强度（0..1；进 BoxUtil emissive → bloom G-buffer）。不调用即不发光（原版螺栓无辉光）。 */
-    fun glow(power: Float) { glowPower = power.coerceIn(0f, 1f) }
+    fun glow(power: Float) {
+        glowPower = power.coerceIn(0f, 1f)
+    }
 
     /** 头部（最新节点）每节点随机自旋角速度范围（度/秒，绕节点锚点）。默认 ±15 的轻扭转。 */
-    fun angularIn(min: Float = -15f, max: Float = 15f) { angularInRange = min..max }
+    fun angularIn(min: Float = -15f, max: Float = 15f) {
+        angularInRange = min..max
+    }
 
     /** 尾部（最老节点）每节点随机自旋角速度范围（度/秒）：带尾随存活时间扭转出弧度，默认 ±45 可见卷曲。 */
-    fun angularOut(min: Float = -45f, max: Float = 45f) { angularOutRange = min..max }
+    fun angularOut(min: Float = -45f, max: Float = 45f) {
+        angularOutRange = min..max
+    }
 
     /** 头部（最新节点）每节点随机漂移速度范围（世界单位/秒，基于带体朝向）。 */
     fun velocityIn(minX: Float, minY: Float, maxX: Float, maxY: Float) {
@@ -232,13 +259,19 @@ class BoltBuilder {
     private var color = rgba(0xFFFFFFC8L)
 
     /** 关闭 Box 螺栓弹头（弹体视觉由其它路径承担，如原版导弹贴图）。 */
-    fun off() { isOff = true }
+    fun off() {
+        isOff = true
+    }
 
     /** 弹头贴图路径（彗形白图，渐隐/收窄已烘焙进 alpha；X=飞行向，头在贴图左侧）。 */
-    fun texture(path: String) { texturePath = path }
+    fun texture(path: String) {
+        texturePath = path
+    }
 
     /** 弹头染色（0xRRGGBBAA，原版 coreColor 语义，通常近白；alpha 参与亮度乘算）。 */
-    fun color(color: Long) { this.color = rgba(color) }
+    fun color(color: Long) {
+        this.color = rgba(color)
+    }
 
     internal fun build(): BoltSpec = BoltSpec(
         texturePath = texturePath,
@@ -252,7 +285,9 @@ class LifecycleBuilder {
     var headLeadWorld: Float? = null; private set
 
     /** 拖尾锚点前移量（世界单位）：不调用 = 0（弹体前端 location 即螺栓视觉头部，无需再前移）；正值继续向前探。 */
-    fun headLead(v: Float) { headLeadWorld = v }
+    fun headLead(v: Float) {
+        headLeadWorld = v
+    }
 }
 
 /** 淡出策略：默认淡出秒数 + 命中/过期各自秒数（省略则同默认）；作用于树内附加层（光斑等）。 */
@@ -262,9 +297,17 @@ class FadeBuilder {
     var hitSeconds: Float? = null; private set
     var expireSeconds: Float? = null; private set
 
-    fun out(v: Float) { outSeconds = v }
-    fun hit(v: Float) { hitSeconds = v }
-    fun expire(v: Float) { expireSeconds = v }
+    fun out(v: Float) {
+        outSeconds = v
+    }
+
+    fun hit(v: Float) {
+        hitSeconds = v
+    }
+
+    fun expire(v: Float) {
+        expireSeconds = v
+    }
 }
 
 /** BoxUtil 光斑（lens-flare）：尺寸/双色/形态/朝向偏移/闪烁速度/锚点偏移。 */
@@ -285,22 +328,34 @@ class BoxFlareBuilder {
     private var offsetX = 0f
 
     /** 光斑全尺寸（世界单位）：w 沿朝向、h 横向；w >> h 即水平光条。 */
-    fun size(w: Float, h: Float) { width = w; height = h }
+    fun size(w: Float, h: Float) {
+        width = w; height = h
+    }
 
     /** 核心/边缘色（0xRRGGBBAA）。 */
-    fun colors(core: Long, fringe: Long) { coreColor = rgba(core); fringeColor = rgba(fringe) }
+    fun colors(core: Long, fringe: Long) {
+        coreColor = rgba(core); fringeColor = rgba(fringe)
+    }
 
     /** bloom 强度（0..1+）与盘厚（越大越薄）。 */
-    fun glow(power: Float, discRatio: Float = 4f) { glowPower = power; this.discRatio = discRatio }
+    fun glow(power: Float, discRatio: Float = 4f) {
+        glowPower = power; this.discRatio = discRatio
+    }
 
     /** 开启闪烁（宽度脉动 + 明灭同步，默认速度倍率 1.2）；不调用即不闪烁。 */
-    fun flicker() { flick = true }
+    fun flicker() {
+        flick = true
+    }
 
     /** 开启闪烁并设速度倍率（1 = BoxUtil 默认；0/负值不合法，取 >0）。 */
-    fun flicker(rate: Float) { flick = true; flickerRate = rate.coerceAtLeast(0.05f) }
+    fun flicker(rate: Float) {
+        flick = true; flickerRate = rate.coerceAtLeast(0.05f)
+    }
 
     /** 边缘噪点强度（0 = 关闭）。 */
-    fun noise(power: Float) { noisePower = power.coerceAtLeast(0f) }
+    fun noise(power: Float) {
+        noisePower = power.coerceAtLeast(0f)
+    }
 
     /** 光斑形态（如 [BoxFlareStyle.SHARP] 锐边 streak）与朝向偏移（度；90 = 垂直于飞行方向的横向亮条）。 */
     fun style(s: BoxFlareStyle, facingOffsetDeg: Float = 0f) {
@@ -308,10 +363,14 @@ class BoxFlareBuilder {
     }
 
     /** 固定世界朝向（度；设置后忽略宿主 facing 与朝向偏移，0 = 恒水平）。 */
-    fun fixedFacing(deg: Float) { fixedFacingDeg = deg }
+    fun fixedFacing(deg: Float) {
+        fixedFacingDeg = deg
+    }
 
     /** 局部 x 偏移（负 = 向尾）：光斑相对树锚点（弹体前端提前 headLead 处）的偏移。 */
-    fun offset(v: Float) { offsetX = v }
+    fun offset(v: Float) {
+        offsetX = v
+    }
 
     internal fun build(): BoxFlareSpec = BoxFlareSpec(
         width = width,
@@ -338,10 +397,14 @@ class AnchorArcBuilder {
     private var coreColor = rgba(0xF0F8FFF0L)
 
     /** 电弧粗细（世界单位，spawnEmpArcVisual thickness）。 */
-    fun thickness(v: Float) { thickness = v.coerceAtLeast(0.1f) }
+    fun thickness(v: Float) {
+        thickness = v.coerceAtLeast(0.1f)
+    }
 
     /** 边缘色 / 核心色（0xRRGGBBAA）。 */
-    fun colors(fringe: Long, core: Long) { fringeColor = rgba(fringe); coreColor = rgba(core) }
+    fun colors(fringe: Long, core: Long) {
+        fringeColor = rgba(fringe); coreColor = rgba(core)
+    }
 
     internal fun build(): AnchorArcSpec = AnchorArcSpec(
         thickness = thickness,

@@ -87,7 +87,20 @@ class PsiSiphonComponent(
             val nd = BeamMath.normalize(vx, vy)
             val v = Vector2f(nd.first * HIT_RETURN_SPEED, nd.second * HIT_RETURN_SPEED)
 
-            returnParticles.add(ReturnParticle(pos = p, vel = v, prev = Vector2f(p.x, p.y), life = 0f, lifeMax = lifeMax, steerT = 0f, steerInterval = interval, steerRad = steerRad, swirlSign = sign, trailT = 0f))
+            returnParticles.add(
+                ReturnParticle(
+                    pos = p,
+                    vel = v,
+                    prev = Vector2f(p.x, p.y),
+                    life = 0f,
+                    lifeMax = lifeMax,
+                    steerT = 0f,
+                    steerInterval = interval,
+                    steerRad = steerRad,
+                    swirlSign = sign,
+                    trailT = 0f
+                )
+            )
         }
 
         val headColor = Color(210, 130, 255, 255)
@@ -159,7 +172,14 @@ class PsiSiphonComponent(
 
             val fade = (1f - (p.life / p.lifeMax)).coerceIn(0f, 1f)
             val headSize = 6f + 3f * fade
-            engine.addSmoothParticle(p.pos, v0, headSize, 1.35f, 0.18f, Color(headColor.red, headColor.green, headColor.blue, (headColor.alpha * fade).toInt().coerceIn(0, 255)))
+            engine.addSmoothParticle(
+                p.pos,
+                v0,
+                headSize,
+                1.35f,
+                0.18f,
+                Color(headColor.red, headColor.green, headColor.blue, (headColor.alpha * fade).toInt().coerceIn(0, 255))
+            )
             engine.addNebulaParticle(p.pos, v0, 9f, 1.35f, 0.05f, 0.08f, 0.20f, Color(170, 80, 240, (90f * fade).toInt().coerceIn(0, 255)))
 
             p.trailT += amount
@@ -167,8 +187,22 @@ class PsiSiphonComponent(
                 p.trailT -= 0.030f
                 val tx = p.prev.x
                 val ty = p.prev.y
-                engine.addSmoothParticle(Vector2f(tx, ty), v0, 6f, 0.65f, 0.42f, Color(trailColor.red, trailColor.green, trailColor.blue, (trailColor.alpha * fade).toInt().coerceIn(0, 255)))
-                engine.addSmoothParticle(Vector2f(tx, ty), v0, 10f, 0.42f, 0.55f, Color(trailColor2.red, trailColor2.green, trailColor2.blue, (trailColor2.alpha * fade).toInt().coerceIn(0, 255)))
+                engine.addSmoothParticle(
+                    Vector2f(tx, ty),
+                    v0,
+                    6f,
+                    0.65f,
+                    0.42f,
+                    Color(trailColor.red, trailColor.green, trailColor.blue, (trailColor.alpha * fade).toInt().coerceIn(0, 255))
+                )
+                engine.addSmoothParticle(
+                    Vector2f(tx, ty),
+                    v0,
+                    10f,
+                    0.42f,
+                    0.55f,
+                    Color(trailColor2.red, trailColor2.green, trailColor2.blue, (trailColor2.alpha * fade).toInt().coerceIn(0, 255))
+                )
             }
             i++
         }

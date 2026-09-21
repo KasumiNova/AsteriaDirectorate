@@ -41,7 +41,7 @@ class ProjectileSpecOnFireDispatcher : OnFireEffectPlugin {
                     engine.customData[trackLogKey] = true
                     log.info(
                         "[ASTD] onFire track: spec=$projId tracked=$tracked " +
-                            "specRegistered=${cn.kasuminova.astd.renderer.projectile.driver.ProjectileVfxRegistry.has(projId)}",
+                                "specRegistered=${cn.kasuminova.astd.renderer.projectile.driver.ProjectileVfxRegistry.has(projId)}",
                     )
                 }
             }

@@ -33,7 +33,7 @@ class PositronShockwaveOnFireEffect : OnFireEffectPlugin {
             engine.customData[PositronShockwaveFuseScript.TELEMETRY_ONFIRE_LOGGED] = true
             log.info(
                 "正电子冲击波 onFire 注册引信：projSpec=${projectile.projectileSpecId}, " +
-                    "weaponRange=${weapon.range}, coneRange=${spec.range}, damage=${spec.damage}",
+                        "weaponRange=${weapon.range}, coneRange=${spec.range}, damage=${spec.damage}",
             )
         }
         engine.addPlugin(

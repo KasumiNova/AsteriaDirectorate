@@ -1,5 +1,13 @@
 package cn.kasuminova.astd.combat.hullmods.lens
 
+import cn.kasuminova.astd.combat.hullmods.lens.PermeatingTideMath.BASE_INTERVAL_FAR
+import cn.kasuminova.astd.combat.hullmods.lens.PermeatingTideMath.BASE_INTERVAL_NEAR
+import cn.kasuminova.astd.combat.hullmods.lens.PermeatingTideMath.FAR_RAMP_DISTANCE
+import cn.kasuminova.astd.combat.hullmods.lens.PermeatingTideMath.FIELD_RADIUS
+import cn.kasuminova.astd.combat.hullmods.lens.PermeatingTideMath.NEAR_DISTANCE
+import cn.kasuminova.astd.combat.hullmods.lens.PermeatingTideMath.shouldEbb
+
+
 /**
  * 渗透潮汐（Permeating Tide，spec §5 / `purple/10-unique.md` §1 插件③）的纯数学换算与判定。
  *

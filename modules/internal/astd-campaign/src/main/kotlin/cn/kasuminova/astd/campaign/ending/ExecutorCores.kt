@@ -1,5 +1,11 @@
 package cn.kasuminova.astd.campaign.ending
 
+import cn.kasuminova.astd.campaign.ending.ExecutorCores.ADMIN_ACCESSIBILITY_BONUS
+import cn.kasuminova.astd.campaign.ending.ExecutorCores.ADMIN_STABILITY_BONUS
+import cn.kasuminova.astd.campaign.ending.ExecutorCores.COMMODITY_ID
+import cn.kasuminova.astd.campaign.ending.ExecutorCores.ITEM_ADMIN
+import cn.kasuminova.astd.campaign.ending.ExecutorCores.ITEM_COMBAT
+import cn.kasuminova.astd.campaign.ending.ExecutorCores.reclaimDuplicateCores
 import cn.kasuminova.astd.campaign.story.StoryQuestItems
 import cn.kasuminova.astd.campaign.ui.HudMessages
 import cn.kasuminova.astd.internal.i18n.I18n
@@ -17,8 +23,8 @@ import com.fs.starfarer.api.characters.PersonAPI
 import com.fs.starfarer.api.impl.campaign.BaseAICoreOfficerPluginImpl
 import com.fs.starfarer.api.impl.campaign.ids.Ranks
 import com.fs.starfarer.api.impl.campaign.ids.Submarkets
-import java.awt.Color
 import org.apache.log4j.Logger
+import java.awt.Color
 
 /**
  * 「执行官」核心保管纯规则（不触碰 Global，可单测）。
@@ -173,7 +179,7 @@ object ExecutorCores {
         )
         log.info(
             "[ASTD] 执行官核心复制体已回收：$reclaimed 枚（仓储 $fromStorage / 货舱 $fromCargo；" +
-                "person 形态在编=${officerAssigned || adminAssigned}）",
+                    "person 形态在编=${officerAssigned || adminAssigned}）",
         )
         return reclaimed
     }
@@ -185,12 +191,12 @@ object ExecutorCores {
     fun createOfficerPerson(): PersonAPI {
         val person = Global.getFactory().createPerson()
         person.setFaction("player")
-        person.setAICoreId(COMMODITY_ID)
+        person.aiCoreId = COMMODITY_ID
         val spec = Global.getSettings().getCommoditySpec(COMMODITY_ID)
-        person.stats.setSkipRefresh(true)
+        person.stats.isSkipRefresh = true
         person.name = FullName(spec.name, "", FullName.Gender.ANY)
-        person.setPortraitSprite("graphics/portraits/astd_portrait_core_o.png")
-        person.stats.setLevel(8)
+        person.portraitSprite = "graphics/portraits/astd_portrait_core_o.png"
+        person.stats.level = 8
         person.stats.setSkillLevel("helmsmanship", 2f)
         person.stats.setSkillLevel("target_analysis", 2f)
         person.stats.setSkillLevel("impact_mitigation", 2f)
@@ -200,9 +206,9 @@ object ExecutorCores {
         person.stats.setSkillLevel("damage_control", 2f)
         person.memoryWithoutUpdate.set("\$autoPointsMult", 4.5f)
         person.setPersonality("reckless")
-        person.setRankId(Ranks.SPACE_CAPTAIN)
-        person.setPostId(null)
-        person.stats.setSkipRefresh(false)
+        person.rankId = Ranks.SPACE_CAPTAIN
+        person.postId = null
+        person.stats.isSkipRefresh = false
         return person
     }
 
@@ -213,12 +219,12 @@ object ExecutorCores {
     fun createAdminPerson(): PersonAPI {
         val person = Global.getFactory().createPerson()
         person.setFaction("player")
-        person.setAICoreId(COMMODITY_ID)
+        person.aiCoreId = COMMODITY_ID
         val spec = Global.getSettings().getCommoditySpec(COMMODITY_ID)
         person.name = FullName(spec.name, "", FullName.Gender.ANY)
-        person.setPortraitSprite("graphics/portraits/astd_portrait_core_a.png")
-        person.setRankId(null)
-        person.setPostId(Ranks.POST_ADMINISTRATOR)
+        person.portraitSprite = "graphics/portraits/astd_portrait_core_a.png"
+        person.rankId = null
+        person.postId = Ranks.POST_ADMINISTRATOR
         person.stats.setSkillLevel("industrial_planning", 1f)
         person.stats.setSkillLevel("hypercognition", 1f)
         return person
@@ -306,14 +312,14 @@ object ExecutorCores {
         for (m in economy.marketsCopy) {
             if (m.id == marketId) continue
             if (m.admin?.aiCoreId != COMMODITY_ID) continue
-            m.setAdmin(null)
+            m.admin = null
             if (m.hasCondition("ai_core_admin")) m.removeCondition("ai_core_admin")
             m.stability.unmodify(ADMIN_MOD_ID)
             m.accessibilityMod.unmodify(ADMIN_MOD_ID)
             log.info("[ASTD] 旧任命市场执行官已卸任：${m.name}（${m.id}）")
         }
 
-        market.setAdmin(createAdminPerson())
+        market.admin = createAdminPerson()
         if (!market.hasCondition("ai_core_admin")) market.addCondition("ai_core_admin")
         val desc = I18n[CAT, "ending.executor_admin_mod_desc"]
         market.stability.modifyFlat(ADMIN_MOD_ID, ADMIN_STABILITY_BONUS, desc)
@@ -357,14 +363,14 @@ class ExecutorCampaignPlugin : com.fs.starfarer.api.campaign.BaseCampaignPlugin(
     override fun isTransient(): Boolean = false
 
     override fun pickAICoreOfficerPlugin(commodityId: String?): PluginPick<AICoreOfficerPlugin>? =
-        if (commodityId == ExecutorCores.COMMODITY_ID) {
+        if (commodityId == COMMODITY_ID) {
             PluginPick(ExecutorOfficerPlugin(), CampaignPlugin.PickPriority.MOD_SET)
         } else {
             null
         }
 
     override fun pickAICoreAdminPlugin(commodityId: String?): PluginPick<AICoreAdminPlugin>? =
-        if (commodityId == ExecutorCores.COMMODITY_ID) {
+        if (commodityId == COMMODITY_ID) {
             PluginPick(ExecutorAdminPlugin(), CampaignPlugin.PickPriority.MOD_SET)
         } else {
             null
@@ -394,14 +400,14 @@ class ExecutorCoreCustodyListener : CampaignEventListener {
 
     override fun reportPlayerMarketTransaction(transaction: PlayerMarketTransaction?) {
         if (transaction == null) return
-        val sold = transaction.getQuantitySold(ExecutorCores.COMMODITY_ID)
+        val sold = transaction.getQuantitySold(COMMODITY_ID)
         if (sold <= 0f) return
         val cargo = Global.getSector()?.playerFleet?.cargo
         if (cargo == null) {
             log.error("[ASTD] 执行官核心出售撤销失败：playerFleet 不可用（数量 $sold）")
             return
         }
-        cargo.addCommodity(ExecutorCores.COMMODITY_ID, sold)
+        cargo.addCommodity(COMMODITY_ID, sold)
         HudMessages.campaign(
             I18n[I18n.Categories.MOD, "hud.ending.executor_custody"],
             RECEIPT_COLOR,
@@ -410,17 +416,17 @@ class ExecutorCoreCustodyListener : CampaignEventListener {
     }
 
     /** 手动倾倒撤销（不可丢弃兜底：从倾倒货堆摘除并返还货舱）。 */
-    override fun reportPlayerDumpedCargo(cargo: com.fs.starfarer.api.campaign.CargoAPI?) {
+    override fun reportPlayerDumpedCargo(cargo: CargoAPI?) {
         if (cargo == null) return
-        val dumped = cargo.getQuantity(CargoAPI.CargoItemType.RESOURCES, ExecutorCores.COMMODITY_ID)
+        val dumped = cargo.getQuantity(CargoAPI.CargoItemType.RESOURCES, COMMODITY_ID)
         if (dumped <= 0f) return
         val playerCargo = Global.getSector()?.playerFleet?.cargo
         if (playerCargo == null) {
             log.error("[ASTD] 执行官核心倾倒撤销失败：playerFleet 不可用（数量 $dumped）")
             return
         }
-        cargo.removeItems(CargoAPI.CargoItemType.RESOURCES, ExecutorCores.COMMODITY_ID, dumped)
-        playerCargo.addCommodity(ExecutorCores.COMMODITY_ID, dumped)
+        cargo.removeItems(CargoAPI.CargoItemType.RESOURCES, COMMODITY_ID, dumped)
+        playerCargo.addCommodity(COMMODITY_ID, dumped)
         HudMessages.campaign(
             I18n[I18n.Categories.MOD, "hud.ending.executor_custody"],
             RECEIPT_COLOR,
@@ -430,45 +436,51 @@ class ExecutorCoreCustodyListener : CampaignEventListener {
 
     /** 仓储侧检测（市场/仓储界面货变动时触发）：回收复制体，防多枚。 */
     override fun reportPlayerOpenedMarketAndCargoUpdated(market: MarketAPI?) {
-        ExecutorCores.reclaimDuplicateCores()
+        reclaimDuplicateCores()
     }
 
     override fun reportPlayerOpenedMarket(market: MarketAPI?) = Unit
     override fun reportPlayerClosedMarket(market: MarketAPI?) = Unit
     override fun reportEncounterLootGenerated(
         context: com.fs.starfarer.api.campaign.FleetEncounterContextPlugin?,
-        loot: com.fs.starfarer.api.campaign.CargoAPI?,
+        loot: CargoAPI?,
     ) = Unit
+
     override fun reportBattleOccurred(
         fleet: com.fs.starfarer.api.campaign.CampaignFleetAPI?,
         battle: com.fs.starfarer.api.campaign.BattleAPI?,
     ) = Unit
+
     override fun reportBattleFinished(
         fleet: com.fs.starfarer.api.campaign.CampaignFleetAPI?,
         battle: com.fs.starfarer.api.campaign.BattleAPI?,
     ) = Unit
+
     override fun reportPlayerEngagement(result: com.fs.starfarer.api.combat.EngagementResultAPI?) = Unit
     override fun reportFleetDespawned(
         fleet: com.fs.starfarer.api.campaign.CampaignFleetAPI?,
         reason: CampaignEventListener.FleetDespawnReason?,
         param: Any?,
     ) = Unit
+
     override fun reportFleetSpawned(fleet: com.fs.starfarer.api.campaign.CampaignFleetAPI?) = Unit
     override fun reportFleetReachedEntity(
         fleet: com.fs.starfarer.api.campaign.CampaignFleetAPI?,
         entity: com.fs.starfarer.api.campaign.SectorEntityToken?,
     ) = Unit
+
     override fun reportFleetJumped(
         fleet: com.fs.starfarer.api.campaign.CampaignFleetAPI?,
         from: com.fs.starfarer.api.campaign.SectorEntityToken?,
         to: com.fs.starfarer.api.campaign.JumpPointAPI.JumpDestination?,
     ) = Unit
+
     override fun reportShownInteractionDialog(dialog: com.fs.starfarer.api.campaign.InteractionDialogAPI?) = Unit
     override fun reportPlayerReputationChange(factionId: String?, delta: Float) = Unit
     override fun reportPlayerReputationChange(person: PersonAPI?, delta: Float) = Unit
     override fun reportPlayerActivatedAbility(ability: com.fs.starfarer.api.characters.AbilityPlugin?, param: Any?) = Unit
     override fun reportPlayerDeactivatedAbility(ability: com.fs.starfarer.api.characters.AbilityPlugin?, param: Any?) = Unit
-    override fun reportPlayerDidNotTakeCargo(cargo: com.fs.starfarer.api.campaign.CargoAPI?) = Unit
+    override fun reportPlayerDidNotTakeCargo(cargo: CargoAPI?) = Unit
     override fun reportEconomyTick(iter: Int) = Unit
     override fun reportEconomyMonthEnd() = Unit
 }

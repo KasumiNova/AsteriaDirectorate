@@ -1,10 +1,10 @@
 package cn.kasuminova.astd.combat.effect.generic
 
-import cn.kasuminova.astd.combat.effect.generic.projectile.ProjectileSpecOnFireDispatcher as Impl
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.DamagingProjectileAPI
 import com.fs.starfarer.api.combat.OnFireEffectPlugin
 import com.fs.starfarer.api.combat.WeaponAPI
+import cn.kasuminova.astd.combat.effect.generic.projectile.ProjectileSpecOnFireDispatcher as Impl
 
 /**
  * 兼容旧类路径：将 onFireEffect 代理到新实现。

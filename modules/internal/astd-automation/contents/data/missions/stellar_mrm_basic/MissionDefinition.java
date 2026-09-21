@@ -11,7 +11,7 @@ import com.fs.starfarer.api.mission.MissionDefinitionPlugin;
 
 /**
  * Dev-only mission surface for stellar MRM in-game automation.
- *
+ * <p>
  * 玩家狮鹫级（清空全部槽位后中型导弹槽 WS 008 装辉星发射舱、小型导弹槽 WS 010 装辉星发射器）；
  * 敌方秃鹰级攻击型（双阔剑联队，清空武器槽保留机库，猎机目标源）+ 敌方狮鹫级
  * （清空全部槽位后小型导弹槽 WS 010 装辉星发射器，敌版三档与撞击舰船目标）。
@@ -20,6 +20,12 @@ import com.fs.starfarer.api.mission.MissionDefinitionPlugin;
  * → 撞击舰船与护盾爆炸 → 撞线者死（低结构同归于尽 / 增压高结构仅爆炸）→ 敌版三档。
  */
 public final class MissionDefinition implements MissionDefinitionPlugin {
+    private static void clearAllWeaponSlots(final FleetMemberAPI member) {
+        for (final String slotId : member.getVariant().getFittedWeaponSlots()) {
+            member.getVariant().clearSlot(slotId);
+        }
+    }
+
     @Override
     public void defineMission(final MissionDefinitionAPI api) {
         api.initFleet(FleetSide.PLAYER, "ASTD", FleetGoal.ATTACK, false, 5);
@@ -47,11 +53,5 @@ public final class MissionDefinition implements MissionDefinitionPlugin {
         api.initMap(-9000f, 9000f, -6000f, 6000f);
         api.setBackgroundSpriteName("graphics/backgrounds/background2.jpg");
         api.addPlugin(new ASTDAutomationCombatPlugin());
-    }
-
-    private static void clearAllWeaponSlots(final FleetMemberAPI member) {
-        for (final String slotId : member.getVariant().getFittedWeaponSlots()) {
-            member.getVariant().clearSlot(slotId);
-        }
     }
 }

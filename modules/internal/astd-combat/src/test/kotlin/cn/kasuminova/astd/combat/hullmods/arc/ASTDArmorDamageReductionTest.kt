@@ -1,7 +1,6 @@
 package cn.kasuminova.astd.combat.hullmods.arc
 
 import com.fs.starfarer.api.combat.DamageType
-import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
 

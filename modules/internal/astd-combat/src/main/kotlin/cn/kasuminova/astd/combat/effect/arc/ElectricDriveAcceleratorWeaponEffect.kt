@@ -64,7 +64,7 @@ class ElectricDriveAcceleratorWeaponEffect : EveryFrameWeaponEffectPlugin {
 
         // HUD：仅调试/烟测模式 + 玩家船可见（2026-07-29 审批裁定：正常玩家不显示该条目；
         // maintainStatusForPlayerShip 本就只渲染玩家船，此处显式守门省无效调用）。
-        if (bonus > 0f && ship === engine.playerShip && Global.getSettings().isDevMode()) {
+        if (bonus > 0f && ship === engine.playerShip && Global.getSettings().isDevMode) {
             feedback.maintainPlayerStatus(
                 engine,
                 HUD_KEY,

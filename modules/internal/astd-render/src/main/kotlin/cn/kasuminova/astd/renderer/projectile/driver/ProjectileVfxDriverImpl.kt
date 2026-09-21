@@ -39,8 +39,10 @@ class ProjectileVfxDriverImpl(
     private var lastFrame: FrameState? = null
     private var currentFadeReason: FadeReason = FadeReason.Removed
     private var currentFadeSeconds: Float = policy.removedFadeOutSeconds
+
     /** 测试用尺度注入（无引擎时 referenceWorldUnitsPerPixel 的返回值）。 */
     private var testWorldUnitsPerPixel = 1f
+
     /**
      * 树锚点前移量（世界单位）：策略显式值优先，否则 0——弹体 location 即螺栓视觉头部，
      * 附加层（光斑）锚点默认压在螺栓头部。

@@ -128,6 +128,7 @@ object Ship_astd_xc_102 : ShipDataEntry() {
     override val mass: Int = 4200
     override val shieldType: String = "OMNI"
     override val shieldArc: Int = 240
+
     // 护盾维持 750 = 耗散 1400 × 0.5357。
     override val shieldUpkeep: Double = 0.5357
     override val shieldEfficiency: Double = 0.70
@@ -170,6 +171,7 @@ object Ship_astd_xc_101 : ShipDataEntry() {
     override val mass: Int = 2250
     override val shieldType: String = "FRONT"
     override val shieldArc: Int = 360
+
     // 护盾维持 420 = 耗散 750 × 0.56。
     override val shieldUpkeep: Double = 0.56
     override val shieldEfficiency: Double = 1.00

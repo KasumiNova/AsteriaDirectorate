@@ -125,12 +125,14 @@ class SevenStarsChainScript(
                     doNextJump(engine)
                 }
             }
+
             State.TERMINAL_PENDING -> enterTerminal(engine)
             State.TERMINAL_MULTI -> advanceTerminalMulti(engine, dt)
             State.DISSIPATE -> {
                 SevenStarsVfx.dissipate(engine, anchor)
                 state = State.DONE
             }
+
             State.DONE -> Unit
         }
 

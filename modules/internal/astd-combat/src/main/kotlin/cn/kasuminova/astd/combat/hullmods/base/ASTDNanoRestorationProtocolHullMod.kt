@@ -26,6 +26,7 @@ class ASTDNanoRestorationProtocolHullMod : BaseHullMod() {
         // - 结构：按最大结构百分比
         // - 装甲：按最受损装甲格最大装甲百分比
         private const val BASE_REPAIR_RATIO = 0.005f            // 0.5%/s
+
         // 低结构阈值以下的修复速率
         private const val LOW_HULL_THRESHOLD = 0.50f
         private const val LOW_HULL_REPAIR_RATIO = 0.01f          // 1.0%/s（总计）
@@ -193,7 +194,13 @@ class ASTDNanoRestorationProtocolHullMod : BaseHullMod() {
         return totalRepaired
     }
 
-    override fun addPostDescriptionSection(tooltip: TooltipMakerAPI, hullSize: ShipAPI.HullSize, ship: ShipAPI?, width: Float, isForModSpec: Boolean) {
+    override fun addPostDescriptionSection(
+        tooltip: TooltipMakerAPI,
+        hullSize: ShipAPI.HullSize,
+        ship: ShipAPI?,
+        width: Float,
+        isForModSpec: Boolean
+    ) {
         ASTDHullModTooltipRenderer.renderBlocks(
             tooltip = tooltip,
             width = width,

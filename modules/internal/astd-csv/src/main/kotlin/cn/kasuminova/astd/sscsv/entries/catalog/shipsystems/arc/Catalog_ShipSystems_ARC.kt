@@ -1,6 +1,5 @@
 package cn.kasuminova.astd.sscsv.entries.catalog.shipsystems.arc
 
-import cn.kasuminova.astd.sscsv.annotations.SsCsvComment
 import cn.kasuminova.astd.sscsv.entries.ShipSystemWithSystemFileEntry
 import cn.kasuminova.astd.sscsv.entries.catalog.shipsystems.systemName
 

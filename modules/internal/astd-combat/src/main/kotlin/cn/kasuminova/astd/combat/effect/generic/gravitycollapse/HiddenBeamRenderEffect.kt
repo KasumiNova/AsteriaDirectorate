@@ -15,19 +15,19 @@ open class HiddenBeamRenderEffect : BeamEffectPlugin {
     override fun advance(amount: Float, engine: CombatEngineAPI, beam: BeamAPI) {
         // 注意：不要改 beam.from/to（那会影响碰撞/伤害）；只改“怎么画”。
         try {
-            beam.setCoreColor(Color(0, 0, 0, 0))
+            beam.coreColor = Color(0, 0, 0, 0)
         } catch (_: Throwable) {
         }
         try {
-            beam.setFringeColor(Color(0, 0, 0, 0))
+            beam.fringeColor = Color(0, 0, 0, 0)
         } catch (_: Throwable) {
         }
         try {
-            beam.setWidth(0.01f)
+            beam.width = 0.01f
         } catch (_: Throwable) {
         }
         try {
-            beam.setHitGlow(null)
+            beam.hitGlow = null
         } catch (_: Throwable) {
         }
     }

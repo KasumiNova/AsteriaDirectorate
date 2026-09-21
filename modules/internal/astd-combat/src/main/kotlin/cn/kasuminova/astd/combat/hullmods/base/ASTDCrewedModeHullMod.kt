@@ -45,14 +45,20 @@ class ASTDCrewedModeHullMod : BaseHullMod() {
         }
 
         // 系统互换：仅显式声明了载人版系统 id 的舰（通用配置为 null → 不互换）
-        config.crewedSystemId?.let { variant.hullSpec?.setShipSystemId(it) }
+        config.crewedSystemId?.let { variant.hullSpec?.shipSystemId = it }
     }
 
     override fun isApplicableToShip(ship: ShipAPI): Boolean = ship.isASTDShip()
 
     override fun showInRefitScreenModPickerFor(ship: ShipAPI): Boolean = false
 
-    override fun addPostDescriptionSection(tooltip: TooltipMakerAPI, hullSize: ShipAPI.HullSize, ship: ShipAPI?, width: Float, isForModSpec: Boolean) {
+    override fun addPostDescriptionSection(
+        tooltip: TooltipMakerAPI,
+        hullSize: ShipAPI.HullSize,
+        ship: ShipAPI?,
+        width: Float,
+        isForModSpec: Boolean
+    ) {
         ASTDHullModTooltipRenderer.renderBlocks(
             tooltip = tooltip,
             width = width,

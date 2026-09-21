@@ -11,7 +11,7 @@ import com.fs.starfarer.api.mission.MissionDefinitionPlugin;
 
 /**
  * Dev-only mission surface for gemini DEM launcher/pod in-game automation.
- *
+ * <p>
  * 玩家征服者（清空全部槽位后 WS 019 中型导弹槽装双子星 DEM 发射器、WS 001 大型导弹槽装发射舱）；
  * 敌方一艘统治者级靶舰（齐射/DEM 打击/同步冲击/击落一枚观测，保留 stock 武备由插件逐帧缴械——
  * 实机判例：清空全部武器槽的舰船会被标记 nonCombat，applyDamage 全额无效）；
@@ -22,6 +22,12 @@ import com.fs.starfarer.api.mission.MissionDefinitionPlugin;
  * KILL_ONE（击落高爆弹头 → 无同步）→ POD（发射舱齐射/ammo 4）→ ENEMY_SCALE（破晓敌版同步）→ COMPLETED。
  */
 public final class MissionDefinition implements MissionDefinitionPlugin {
+    private static void clearAllWeaponSlots(final FleetMemberAPI member) {
+        for (final String slotId : member.getVariant().getFittedWeaponSlots()) {
+            member.getVariant().clearSlot(slotId);
+        }
+    }
+
     @Override
     public void defineMission(final MissionDefinitionAPI api) {
         api.initFleet(FleetSide.PLAYER, "ASTD", FleetGoal.ATTACK, false, 5);
@@ -48,11 +54,5 @@ public final class MissionDefinition implements MissionDefinitionPlugin {
         api.initMap(-9000f, 9000f, -6000f, 6000f);
         api.setBackgroundSpriteName("graphics/backgrounds/background2.jpg");
         api.addPlugin(new ASTDAutomationCombatPlugin());
-    }
-
-    private static void clearAllWeaponSlots(final FleetMemberAPI member) {
-        for (final String slotId : member.getVariant().getFittedWeaponSlots()) {
-            member.getVariant().clearSlot(slotId);
-        }
     }
 }

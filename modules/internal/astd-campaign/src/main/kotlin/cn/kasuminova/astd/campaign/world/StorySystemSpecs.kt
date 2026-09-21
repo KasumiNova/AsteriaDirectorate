@@ -401,7 +401,16 @@ object StorySystemSpecs {
                         factionId = Factions.NEUTRAL,
                     )
                 )
-                addAll(objectives(star, 15000f, 45f, StoryWorldIds.STARFALL_COMM_RELAY, StoryWorldIds.STARFALL_SENSOR_ARRAY, StoryWorldIds.STARFALL_NAV_BUOY))
+                addAll(
+                    objectives(
+                        star,
+                        15000f,
+                        45f,
+                        StoryWorldIds.STARFALL_COMM_RELAY,
+                        StoryWorldIds.STARFALL_SENSOR_ARRAY,
+                        StoryWorldIds.STARFALL_NAV_BUOY
+                    )
+                )
                 add(
                     EntitySpec(
                         id = StoryWorldIds.STARFALL_GATE,
@@ -573,7 +582,13 @@ object StorySystemSpecs {
         buoyId: String,
     ): List<EntitySpec> = listOf(
         EntitySpec(relayId, null, Entities.COMM_RELAY, OrbitSpec(starId, angleStart, orbitRadius, periodForOrbit(orbitRadius)), Factions.NEUTRAL),
-        EntitySpec(arrayId, null, Entities.SENSOR_ARRAY, OrbitSpec(starId, angleStart + 120f, orbitRadius, periodForOrbit(orbitRadius)), Factions.NEUTRAL),
+        EntitySpec(
+            arrayId,
+            null,
+            Entities.SENSOR_ARRAY,
+            OrbitSpec(starId, angleStart + 120f, orbitRadius, periodForOrbit(orbitRadius)),
+            Factions.NEUTRAL
+        ),
         EntitySpec(buoyId, null, Entities.NAV_BUOY, OrbitSpec(starId, angleStart + 240f, orbitRadius, periodForOrbit(orbitRadius)), Factions.NEUTRAL),
     )
 }

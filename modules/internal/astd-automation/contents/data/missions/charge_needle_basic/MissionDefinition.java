@@ -11,12 +11,18 @@ import com.fs.starfarer.api.mission.MissionDefinitionPlugin;
 
 /**
  * Dev-only mission surface for charge needle in-game automation.
- *
+ * <p>
  * 玩家旗舰野狼（清空全部槽位后装小型 + 重型电荷针刺）对敌方伯劳鸟（小型电荷针刺）：
  * 护盾相位验证淤积叠层/维持乘区/安全闸，船体相位验证 EMP 泄放电弧与弹匣节奏，
  * 敌方针刺反向命中玩家验证受击方 negative HUD。
  */
 public final class MissionDefinition implements MissionDefinitionPlugin {
+    private static void clearAllWeaponSlots(final FleetMemberAPI member) {
+        for (final String slotId : member.getVariant().getFittedWeaponSlots()) {
+            member.getVariant().clearSlot(slotId);
+        }
+    }
+
     @Override
     public void defineMission(final MissionDefinitionAPI api) {
         api.initFleet(FleetSide.PLAYER, "ASTD", FleetGoal.ATTACK, false, 5);
@@ -45,11 +51,5 @@ public final class MissionDefinition implements MissionDefinitionPlugin {
         api.initMap(-9000f, 9000f, -6000f, 6000f);
         api.setBackgroundSpriteName("graphics/backgrounds/background2.jpg");
         api.addPlugin(new ASTDAutomationCombatPlugin());
-    }
-
-    private static void clearAllWeaponSlots(final FleetMemberAPI member) {
-        for (final String slotId : member.getVariant().getFittedWeaponSlots()) {
-            member.getVariant().clearSlot(slotId);
-        }
     }
 }

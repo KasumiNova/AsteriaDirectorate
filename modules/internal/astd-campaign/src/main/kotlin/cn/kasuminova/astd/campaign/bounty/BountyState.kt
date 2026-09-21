@@ -1,7 +1,6 @@
 package cn.kasuminova.astd.campaign.bounty
 
 import com.fs.starfarer.api.Global
-import java.util.LinkedHashSet
 
 /**
  * 存档持久化的赏金系统状态。
@@ -11,7 +10,7 @@ import java.util.LinkedHashSet
  * v3 词缀语义：S/M 型词缀常驻开放（不再有按进度解锁的词缀池），
  * R 型词缀不由进度解锁，由赏金定义侧的 allowRAffixes 开关控制（仅第三章赏金与结局后无限赏金）。
  */
-class BountyState() {
+class BountyState {
 
     /**
      * 已完成的主线数量（框架保留，内容重做后接入驱动源）。
@@ -360,7 +359,8 @@ class LockedFleetPlan() {
     )
 }
 
-/** 无限赏金核销流水行（账户页展示）。XStream 存档口径同上。 */class InfiniteSettleRecord() {
+/** 无限赏金核销流水行（账户页展示）。XStream 存档口径同上。 */
+class InfiniteSettleRecord() {
     /** 文书编号（含换代序号）。 */
     @JvmField
     var serial: String = ""

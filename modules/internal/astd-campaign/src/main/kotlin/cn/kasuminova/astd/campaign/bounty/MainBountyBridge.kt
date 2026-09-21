@@ -1,5 +1,12 @@
 package cn.kasuminova.astd.campaign.bounty
 
+import cn.kasuminova.astd.campaign.bounty.MainBountyBridge.onMainBountyFailed
+import cn.kasuminova.astd.campaign.bounty.MainBountyBridge.postWorkOrder
+import cn.kasuminova.astd.campaign.bounty.MainBountyBridge.resetMainlineBounty
+import cn.kasuminova.astd.campaign.bounty.MainBountyBridge.settleWorkOrder
+import cn.kasuminova.astd.campaign.bounty.MainBountyBridge.settlingKeys
+import cn.kasuminova.astd.campaign.bounty.MainBountyBridge.syncNodeDrivenStages
+import cn.kasuminova.astd.campaign.bounty.MainBountyBridge.tickPosted
 import cn.kasuminova.astd.campaign.story.StoryQuestItems
 import cn.kasuminova.astd.campaign.ui.HudMessages
 import cn.kasuminova.astd.campaign.world.GravityNodes
@@ -9,11 +16,10 @@ import cn.kasuminova.astd.internal.i18n.I18n
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.campaign.FleetAssignment
 import com.fs.starfarer.api.campaign.SectorAPI
-import java.awt.Color
 import org.apache.log4j.Logger
-import org.magiclib.bounty.ActiveBounty
 import org.magiclib.bounty.MagicBountyCoordinator
 import org.magiclib.bounty.MagicBountySpec
+import java.awt.Color
 
 /**
  * 主线工单 ↔ MagicBounty 桥接层（游戏侧副作用集中在这里）。
@@ -143,7 +149,7 @@ object MainBountyBridge {
             state.postedWorkOrders.add(def.key)
             log.info(
                 "[ASTD] 主线工单已挂出（引力节点拔除驱动阶段）：${def.serial}（${def.key}，" +
-                    "阶段 ${stageIndex + 1}/${def.stages.size}，整单报价 $quote）",
+                        "阶段 ${stageIndex + 1}/${def.stages.size}，整单报价 $quote）",
             )
             return true
         }
@@ -197,7 +203,7 @@ object MainBountyBridge {
 
         log.info(
             "[ASTD] 主线工单已挂出：${def.serial}（${def.key}，阶段 ${stageIndex + 1}/${def.stages.size}，" +
-                "整单报价 $quote）",
+                    "整单报价 $quote）",
         )
         return true
     }
@@ -241,6 +247,7 @@ object MainBountyBridge {
                 postWorkOrder(def, state, coord)
                 log.info("[ASTD] 主线工单 ${def.serial} 进入阶段 ${result.nextStageIndex + 1}/${def.stages.size}")
             }
+
             MainlineProgression.StageDestroy.FinalStage -> {
                 printStageReceipt(def, justClearedStage, state)
                 // 已击毁待核销标记（本模组自有键；`$<key>` 归 MagicLib 写，见类注释）
@@ -354,8 +361,8 @@ object MainBountyBridge {
         printSettleReceipts(def, key, result)
         log.info(
             "[ASTD] 主线工单已核销：${def?.serial ?: key}，发放 ${result.totalPayout} " +
-                "（单票 ${result.orderPayout} + 结清奖 ${result.groupBonus?.second ?: 0}），" +
-                "清算序列进度 ${formatProgress(result.liquidationProgress)}",
+                    "（单票 ${result.orderPayout} + 结清奖 ${result.groupBonus?.second ?: 0}），" +
+                    "清算序列进度 ${formatProgress(result.liquidationProgress)}",
         )
         return result
     }

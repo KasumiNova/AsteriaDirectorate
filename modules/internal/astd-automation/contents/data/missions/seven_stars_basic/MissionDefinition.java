@@ -11,7 +11,7 @@ import com.fs.starfarer.api.mission.MissionDefinitionPlugin;
 
 /**
  * Dev-only mission surface for seven stars teleport launcher in-game automation.
- *
+ * <p>
  * 玩家奥德赛（清空全部槽位后 WS 001 大型能量槽装“七星”折跃发射器）；
  * 敌方两艘警戒级靶舰（BREAK 相位 600su 穿舰/断链观测 + TERMINAL 相位对舰终结观测，
  * 分相位部署避免互相污染证据）+ 一艘敌版奥德赛（ENEMY_MULTI 相位携带七星，破晓多段终结观测）。
@@ -24,6 +24,12 @@ import com.fs.starfarer.api.mission.MissionDefinitionPlugin;
  * → TERMINAL（单段 50% 无 EMP）→ ENEMY_MULTI（破晓敌版多段终结）→ COMPLETED。
  */
 public final class MissionDefinition implements MissionDefinitionPlugin {
+    private static void clearAllWeaponSlots(final FleetMemberAPI member) {
+        for (final String slotId : member.getVariant().getFittedWeaponSlots()) {
+            member.getVariant().clearSlot(slotId);
+        }
+    }
+
     @Override
     public void defineMission(final MissionDefinitionAPI api) {
         api.initFleet(FleetSide.PLAYER, "ASTD", FleetGoal.ATTACK, false, 5);
@@ -51,11 +57,5 @@ public final class MissionDefinition implements MissionDefinitionPlugin {
         api.initMap(-9000f, 9000f, -6000f, 6000f);
         api.setBackgroundSpriteName("graphics/backgrounds/background2.jpg");
         api.addPlugin(new ASTDAutomationCombatPlugin());
-    }
-
-    private static void clearAllWeaponSlots(final FleetMemberAPI member) {
-        for (final String slotId : member.getVariant().getFittedWeaponSlots()) {
-            member.getVariant().clearSlot(slotId);
-        }
     }
 }

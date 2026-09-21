@@ -37,7 +37,12 @@ class ASTDVisionShiftSystemAI : ShipSystemAIScript {
         scanInterval.forceIntervalElapsed()
     }
 
-    override fun advance(amount: Float, missileDangerDir: org.lwjgl.util.vector.Vector2f?, collisionDangerDir: org.lwjgl.util.vector.Vector2f?, target: ShipAPI?) {
+    override fun advance(
+        amount: Float,
+        missileDangerDir: org.lwjgl.util.vector.Vector2f?,
+        collisionDangerDir: org.lwjgl.util.vector.Vector2f?,
+        target: ShipAPI?
+    ) {
         val ship = this.ship ?: return
         val system = this.system ?: return
         val engine = this.engine ?: return
@@ -61,7 +66,7 @@ class ASTDVisionShiftSystemAI : ShipSystemAIScript {
         }
         chosen ?: return
 
-        ship.setShipTarget(chosen)
+        ship.shipTarget = chosen
         ship.useSystem()
     }
 

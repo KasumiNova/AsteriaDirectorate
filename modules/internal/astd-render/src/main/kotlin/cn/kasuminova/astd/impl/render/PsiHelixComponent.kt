@@ -68,8 +68,32 @@ class PsiHelixComponent(
         for (idx in 0..1) {
             val bodyWidth = (coreW * 0.92f).coerceAtLeast(8f)
             val glowWidth = (coreW * 0.62f).coerceAtLeast(6f)
-            updateWisp(wispBodies[idx], frame.origin.x, frame.origin.y, frame.facing, wispLenSmooth, time, ramp, idx, WispStyle.BODY, bodyWidth, glowColor)
-            updateWisp(wispGlows[idx], frame.origin.x, frame.origin.y, frame.facing, wispLenSmooth, time, ramp, idx, WispStyle.GLOW, glowWidth, glowColor)
+            updateWisp(
+                wispBodies[idx],
+                frame.origin.x,
+                frame.origin.y,
+                frame.facing,
+                wispLenSmooth,
+                time,
+                ramp,
+                idx,
+                WispStyle.BODY,
+                bodyWidth,
+                glowColor
+            )
+            updateWisp(
+                wispGlows[idx],
+                frame.origin.x,
+                frame.origin.y,
+                frame.facing,
+                wispLenSmooth,
+                time,
+                ramp,
+                idx,
+                WispStyle.GLOW,
+                glowWidth,
+                glowColor
+            )
         }
     }
 
@@ -99,8 +123,26 @@ class PsiHelixComponent(
         val bodies = ArrayList<CurveEntity>(2)
         val glows = ArrayList<CurveEntity>(2)
         repeat(2) {
-            val body = createWispTrail(engine, diffuseSprite = sprite.second, emissiveSprite = sprite.first, additive = false, mixFactor = 2.2f, texSpeed = WISP_TEX_SPEED * 0.70f, interpolation = WISP_INTERP_BODY, glowPower = 1.05f)
-            val glow = createWispTrail(engine, diffuseSprite = sprite.first, emissiveSprite = sprite.second, additive = true, mixFactor = 3.6f, texSpeed = WISP_TEX_SPEED, interpolation = WISP_INTERP_GLOW, glowPower = 1.60f)
+            val body = createWispTrail(
+                engine,
+                diffuseSprite = sprite.second,
+                emissiveSprite = sprite.first,
+                additive = false,
+                mixFactor = 2.2f,
+                texSpeed = WISP_TEX_SPEED * 0.70f,
+                interpolation = WISP_INTERP_BODY,
+                glowPower = 1.05f
+            )
+            val glow = createWispTrail(
+                engine,
+                diffuseSprite = sprite.first,
+                emissiveSprite = sprite.second,
+                additive = true,
+                mixFactor = 3.6f,
+                texSpeed = WISP_TEX_SPEED,
+                interpolation = WISP_INTERP_GLOW,
+                glowPower = 1.60f
+            )
             if (body == null || glow == null) {
                 bodies.forEach { it.delete() }
                 glows.forEach { it.delete() }
@@ -127,14 +169,14 @@ class PsiHelixComponent(
     ): CurveEntity? {
         val e = CurveEntity()
         e.setInterpolation(interpolation)
-        e.setGlobalUV(true)
+        e.isGlobalUV = true
 
         val initCount = WISP_NODES_INIT.coerceAtLeast(2)
         val nodes = ArrayList<NodeData>(initCount)
         repeat(initCount) {
             val n = NodeData()
-            n.setWidth(8f)
-            n.setMixFactor(mixFactor)
+            n.width = 8f
+            n.mixFactor = mixFactor
             n.setColor(DEFAULT_GLOW_COLOR)
             n.setEmissiveColor(DEFAULT_GLOW_COLOR)
             nodes.add(n)
@@ -149,20 +191,20 @@ class PsiHelixComponent(
         e.materialData.setDiffuse(diffuseSprite)
         e.materialData.setEmissive(emissiveSprite)
         val mat = e.materialData
-        mat.setAlphaToEmissive(0f)
-        mat.setColorToEmissive(0f)
-        mat.setGlowPower(glowPower)
+        mat.alphaToEmissive = 0f
+        mat.isColorToEmissive = 0f
+        mat.glowPower = glowPower
         mat.setColor(DEFAULT_GLOW_COLOR)
         mat.setEmissiveColor(DEFAULT_GLOW_COLOR)
 
-        e.setTexturePixels(WISP_TEX_PIXELS)
-        e.setTextureSpeed(texSpeed)
-        e.setUVOffset((BeamMath.rand01() * 2f) - 1f)
+        e.texturePixels = WISP_TEX_PIXELS
+        e.textureSpeed = texSpeed
+        e.uvOffset = (BeamMath.rand01() * 2f) - 1f
 
-        e.setFillStartAlpha(1f)
-        e.setFillStartFactor(0f)
-        e.setFillEndAlpha(1f)
-        e.setFillEndFactor(0f)
+        e.fillStartAlpha = 1f
+        e.fillStartFactor = 0f
+        e.fillEndAlpha = 1f
+        e.fillEndFactor = 0f
 
         val state = BoxUtilCombatVfx.addEntity(engine, e)
         if (state != 0) {
@@ -244,8 +286,8 @@ class PsiHelixComponent(
 
             val node = nodes[i]
             node.setLocation(localX, localY)
-            node.setWidth((baseW * zWidthMod).coerceAtLeast(1f))
-            node.setMixFactor(if (style == WispStyle.GLOW) 0.92f else 0.85f)
+            node.width = (baseW * zWidthMod).coerceAtLeast(1f)
+            node.mixFactor = if (style == WispStyle.GLOW) 0.92f else 0.85f
 
             val nodeAlpha = (baseAlpha * alphaMod * endEnv).coerceIn(0f, 1f)
             val nodeEmA = (baseEmissiveAlpha * emissiveAMod * endEnv).coerceIn(0f, 1f)
@@ -273,14 +315,14 @@ class PsiHelixComponent(
             node.setTangentRight(tx, ty)
         }
 
-        e.setNodeRenderingCount(nodeCount)
+        e.nodeRenderingCount = nodeCount
         e.setNodeRefreshIndex(0)
         e.setNodeRefreshSize(nodeCount)
         e.submitNodes()
 
-        e.setTexturePixels(WISP_TEX_PIXELS)
+        e.texturePixels = WISP_TEX_PIXELS
         val speedMul = if (style == WispStyle.BODY) 0.85f else 1.00f
-        e.setTextureSpeed(WISP_TEX_SPEED * speedMul * (0.80f + 0.35f * s))
+        e.textureSpeed = WISP_TEX_SPEED * speedMul * (0.80f + 0.35f * s)
         e.materialData.setColor(Color(255, 255, 255, 255))
         e.materialData.setEmissiveColor(baseColor)
         e.setStateVanilla(org.lwjgl.util.vector.Vector2f(startX, startY), facing)

@@ -27,6 +27,7 @@ object Sys_astd_lh_001_burst_flow : ShipSystemWithSystemFileEntry() {
     override val cooldown: Double = 1.0
 
     override val icon: String = "graphics/icons/hullsys/temporal_shell.png"
+
     // 音效 id 以 data/config/sounds.json 为准（无第二个下划线）
     override val useSound: String = "system_temporalshell"
 }
@@ -46,6 +47,7 @@ object Sys_astd_lh_002_vision_shift : ShipSystemWithSystemFileEntry() {
     override val cooldown: Double = 15.0
 
     override val icon: String = "graphics/icons/hullsys/quantum_disruptor.png"
+
     // 音效对齐原版熵放大器（entropyamplifier.system 三件套）。
     override val useSound: String = "system_entropy"
     override val loopSound: String = "system_entropy_loop"

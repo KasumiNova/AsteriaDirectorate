@@ -2,6 +2,7 @@ package cn.kasuminova.astd.campaign.story
 
 import cn.kasuminova.astd.campaign.bounty.BountyState
 import cn.kasuminova.astd.campaign.bounty.MainBounties
+import cn.kasuminova.astd.campaign.story.StoryArchives.unlocked
 import cn.kasuminova.astd.campaign.world.GravityNodes
 
 /**
@@ -70,8 +71,10 @@ object StoryArchives {
         // 第一层：批次结清递进（doc 05）
         "l1_charter", "l1_councils_memo" ->
             MainBounties.GROUP_CH1_BATCH1 in state.clearedGroups
+
         "l1_tritech_bulletin", "l1_annual_inspection", "l1_coordinator_regulation" ->
             MainBounties.GROUP_CH1_BATCH2 in state.clearedGroups
+
         "l1_battlegroup_index", "l1_contractor_policy" ->
             MainBounties.GROUP_CH1_BATCH3 in state.clearedGroups
 
@@ -93,8 +96,8 @@ object StoryArchives {
         "l4_liquidation_review_full" -> (state.workOrderStageIndex[MainBounties.KEY_ZQ_0001] ?: 0) >= 1
         "l4_vote_tally" -> (state.workOrderStageIndex[MainBounties.KEY_ZQ_0001] ?: 0) >= 2
         "l4_deregister_execution_summary" -> (state.workOrderStageIndex[MainBounties.KEY_ZQ_0001] ?: 0) >= 3 ||
-            MainBounties.KEY_ZQ_0001 in state.destroyedWorkOrders ||
-            MainBounties.KEY_ZQ_0001 in state.settledWorkOrders
+                MainBounties.KEY_ZQ_0001 in state.destroyedWorkOrders ||
+                MainBounties.KEY_ZQ_0001 in state.settledWorkOrders
 
         // 最终档案：ZQ 核销后开放（doc 11）
         "final_liquidation_order" -> MainBounties.KEY_ZQ_0001 in state.settledWorkOrders

@@ -1,6 +1,7 @@
 package cn.kasuminova.astd.impl.render
 
 import cn.kasuminova.astd.api.render.RenderEntity
+import cn.kasuminova.astd.impl.render.StrikeSprayVfx.spawnSpray
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import org.lazywizard.lazylib.MathUtils

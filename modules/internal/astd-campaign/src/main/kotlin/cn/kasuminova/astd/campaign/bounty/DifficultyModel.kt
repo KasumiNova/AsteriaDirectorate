@@ -1,7 +1,7 @@
 package cn.kasuminova.astd.campaign.bounty
 
-import cn.kasuminova.astd.api.difficulty.StrengthSnapshot
 import cn.kasuminova.astd.api.AstdLog
+import cn.kasuminova.astd.api.difficulty.StrengthSnapshot
 import kotlin.math.min
 
 /**
@@ -54,8 +54,8 @@ object DifficultyModel {
 
         AstdLog.logger.info(
             "[ASTD] 赏金进程评估：tier=$threatTier, ref=$reference, " +
-                snapshot.breakdown.joinToString(", ") { "${it.label}=${"%.2f".format(it.value)}" } +
-                " => p=${"%.3f".format(player)}, k_p=${"%.3f".format(snapshot.k)}, totalMult=${"%.2f".format(total)}",
+                    snapshot.breakdown.joinToString(", ") { "${it.label}=${"%.2f".format(it.value)}" } +
+                    " => p=${"%.3f".format(player)}, k_p=${"%.3f".format(snapshot.k)}, totalMult=${"%.2f".format(total)}",
         )
 
         return Scale(difficulty, player, total, snapshot.k)

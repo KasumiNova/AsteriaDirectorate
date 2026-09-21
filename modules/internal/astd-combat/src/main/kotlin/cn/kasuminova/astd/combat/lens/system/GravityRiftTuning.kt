@@ -2,6 +2,10 @@ package cn.kasuminova.astd.combat.lens.system
 
 import cn.kasuminova.astd.api.difficulty.DifficultyTuning
 import cn.kasuminova.astd.api.difficulty.ScalingEntry
+import cn.kasuminova.astd.combat.lens.system.GravityRiftTuning.MINE_BASE_DAMAGE
+import cn.kasuminova.astd.combat.lens.system.GravityRiftTuning.VORTEX_DURATION
+import cn.kasuminova.astd.combat.lens.system.GravityRiftTuning.VORTEX_FADE_IN
+import cn.kasuminova.astd.combat.lens.system.GravityRiftTuning.VORTEX_FADE_OUT
 
 /**
  * 引力裂隙发生器（茑萝级舰船系统）的机制数值声明与纯函数
@@ -103,7 +107,7 @@ object GravityRiftTuning {
     fun vortexAlpha(elapsed: Float, forceFadeOutAt: Float = -1f): Float {
         if (elapsed <= 0f) return 0f
         val envelope = (elapsed / VORTEX_FADE_IN).coerceIn(0f, 1f) *
-            ((VORTEX_DURATION - elapsed) / VORTEX_FADE_OUT).coerceIn(0f, 1f)
+                ((VORTEX_DURATION - elapsed) / VORTEX_FADE_OUT).coerceIn(0f, 1f)
         if (forceFadeOutAt < 0f || elapsed < forceFadeOutAt) return envelope
         val fade = (1f - (elapsed - forceFadeOutAt) / VORTEX_FADE_OUT).coerceIn(0f, 1f)
         return minOf(envelope, fade)

@@ -3,6 +3,7 @@ package cn.kasuminova.astd.impl.buff
 import cn.kasuminova.astd.api.buff.Buff
 import cn.kasuminova.astd.api.buff.BuffHost
 import cn.kasuminova.astd.api.buff.BuffLifetime
+import cn.kasuminova.astd.impl.buff.BuffHostImpl.Companion.HOST_KEY
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.combat.WeaponAPI

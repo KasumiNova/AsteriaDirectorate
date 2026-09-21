@@ -1,6 +1,8 @@
 package cn.kasuminova.astd.impl.combat
 
 import cn.kasuminova.astd.api.combat.ConeImpactSpec
+import cn.kasuminova.astd.impl.combat.ConeImpactHandler.ANGLE_EPS
+import cn.kasuminova.astd.impl.combat.ConeImpactHandler.DIST_EPS
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEntityAPI

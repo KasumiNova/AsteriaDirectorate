@@ -73,9 +73,9 @@ object ASTDProjectileVfxLayout {
         val travelX = ASTDProjectileVfxMath.lerp(startX, endX, flightProgress)
         val curveEnvelope = Math.pow(
             (
-                ASTDProjectileVfxMath.smoothstep(0.08f, 0.28f, progress) *
-                    (1f - ASTDProjectileVfxMath.smoothstep(0.72f, 0.98f, progress))
-                ).toDouble(),
+                    ASTDProjectileVfxMath.smoothstep(0.08f, 0.28f, progress) *
+                            (1f - ASTDProjectileVfxMath.smoothstep(0.72f, 0.98f, progress))
+                    ).toDouble(),
             0.9,
         ).toFloat()
         val curveDissolve = Math.pow((1f - dissolve).toDouble(), 1.35).toFloat()

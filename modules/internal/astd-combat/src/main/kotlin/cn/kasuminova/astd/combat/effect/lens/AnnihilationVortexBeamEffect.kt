@@ -1,7 +1,7 @@
 package cn.kasuminova.astd.combat.effect.lens
 
-import cn.kasuminova.astd.api.buff.getOrCreateBuffByWeapon
 import cn.kasuminova.astd.api.buff.buffHost
+import cn.kasuminova.astd.api.buff.getOrCreateBuffByWeapon
 import cn.kasuminova.astd.api.combat.CombatFeedback
 import cn.kasuminova.astd.impl.combat.CombatFeedbackImpl
 import cn.kasuminova.astd.impl.render.AnnihilationVortexVortexComponent
@@ -171,7 +171,7 @@ class AnnihilationVortexBeamEffect : EveryFrameWeaponEffectPlugin {
                 if (!hostAlive) {
                     log.info(
                         "[ASTD] 湮灭涡旋宿主失效（hulk=${ship.isHulk}, alive=${ship.isAlive}），本周期不触发坍缩，" +
-                            "吞噬池 ${p.convertedTotal}（吸收 ${p.absorbedCount} 发）转自回收: weapon=${weapon.spec?.weaponId}",
+                                "吞噬池 ${p.convertedTotal}（吸收 ${p.absorbedCount} 发）转自回收: weapon=${weapon.spec?.weaponId}",
                     )
                 } else if (center != null) {
                     val damage = AnnihilationVortexDifficulty.collapseDamage(p.convertedTotal, aoeMult)
@@ -179,8 +179,16 @@ class AnnihilationVortexBeamEffect : EveryFrameWeaponEffectPlugin {
                     val hits = collapse.resolve(engine, center, collapseRadius, damage, ship)
                     AnnihilationVortexVfx.collapse(engine, center, collapseRadius)
                     telemetryInc(engine, TELEMETRY_COLLAPSE_COUNT)
-                    telemetryRecord(engine, if (ship.owner == 0) TELEMETRY_LAST_COLLAPSE_DAMAGE_PLAYER else TELEMETRY_LAST_COLLAPSE_DAMAGE_ENEMY, damage)
-                    telemetryRecord(engine, if (ship.owner == 0) TELEMETRY_LAST_COLLAPSE_HITS_PLAYER else TELEMETRY_LAST_COLLAPSE_HITS_ENEMY, hits.toFloat())
+                    telemetryRecord(
+                        engine,
+                        if (ship.owner == 0) TELEMETRY_LAST_COLLAPSE_DAMAGE_PLAYER else TELEMETRY_LAST_COLLAPSE_DAMAGE_ENEMY,
+                        damage
+                    )
+                    telemetryRecord(
+                        engine,
+                        if (ship.owner == 0) TELEMETRY_LAST_COLLAPSE_HITS_PLAYER else TELEMETRY_LAST_COLLAPSE_HITS_ENEMY,
+                        hits.toFloat()
+                    )
                     if (ship === engine.playerShip) {
                         feedback.floatingText(
                             engine,
@@ -260,8 +268,10 @@ class AnnihilationVortexBeamEffect : EveryFrameWeaponEffectPlugin {
         const val TELEMETRY_LAST_AOEMULT_PLAYER = "astd_av_last_aoemult_player"
         const val TELEMETRY_LAST_AOEMULT_ENEMY = "astd_av_last_aoemult_enemy"
         const val TELEMETRY_POOL_RECYCLED = "astd_av_pool_recycled"
+
         /** HUD 状态条目刷新帧数（HUD 可见性证据：仅玩家船携带且池在时逐帧 +1）。 */
         const val TELEMETRY_HUD_FRAMES = "astd_av_hud_frames"
+
         /** 吸收入池浮字次数（单次吸收浮字证据）。 */
         const val TELEMETRY_FLOATY_COUNT = "astd_av_floaty_count"
 

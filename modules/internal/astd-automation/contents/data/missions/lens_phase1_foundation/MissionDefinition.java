@@ -9,7 +9,7 @@ import com.fs.starfarer.api.mission.MissionDefinitionPlugin;
 
 /**
  * Dev-only mission surface for phase-1 gravitational lens automation evidence.
- *
+ * <p>
  * Deploys the gravitational lens flagship (default crewed dual-mode), one ally to
  * provide a friendly ECM/intel-hub context, and one enemy so combat does not auto-end.
  */

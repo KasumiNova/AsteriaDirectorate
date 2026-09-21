@@ -63,24 +63,26 @@ object StorySiteDialog {
     /** 构建站点对话图（测试可直接消费）。 */
     fun createGraph(siteKey: String, backend: StorySiteBackend): DialogGraph =
         dialogGraph(start = NODE_DESCRIBE) {
-            node(NODE_DESCRIBE, DialogDsl.timedNode(
-                onEnter = { ctx ->
-                    ctx.sessionState[STATE_DESCRIBE_FIRED] = false
-                    ctx.enqueueI18nFading(CAT, "story.site.$siteKey.desc", 0.3f, fadeIn = 0.3f)
-                    val stateKey = when (backend.orderState()) {
-                        SiteOrderState.NONE -> "none"
-                        SiteOrderState.ACTIVE -> "active"
-                        SiteOrderState.SETTLED -> "settled"
-                    }
-                    ctx.enqueueI18n(CAT, "story.site.$siteKey.state.$stateKey", 0.8f)
-                },
-                onAdvance = { ctx, _ ->
-                    if (!ctx.textQueue.hasPending && ctx.sessionState[STATE_DESCRIBE_FIRED] != true) {
-                        ctx.sessionState[STATE_DESCRIBE_FIRED] = true
-                        ctx.goto(NODE_MENU)
-                    }
-                },
-            ))
+            node(
+                NODE_DESCRIBE, DialogDsl.timedNode(
+                    onEnter = { ctx ->
+                        ctx.sessionState[STATE_DESCRIBE_FIRED] = false
+                        ctx.enqueueI18nFading(CAT, "story.site.$siteKey.desc", 0.3f, fadeIn = 0.3f)
+                        val stateKey = when (backend.orderState()) {
+                            SiteOrderState.NONE -> "none"
+                            SiteOrderState.ACTIVE -> "active"
+                            SiteOrderState.SETTLED -> "settled"
+                        }
+                        ctx.enqueueI18n(CAT, "story.site.$siteKey.state.$stateKey", 0.8f)
+                    },
+                    onAdvance = { ctx, _ ->
+                        if (!ctx.textQueue.hasPending && ctx.sessionState[STATE_DESCRIBE_FIRED] != true) {
+                            ctx.sessionState[STATE_DESCRIBE_FIRED] = true
+                            ctx.goto(NODE_MENU)
+                        }
+                    },
+                )
+            )
             node(NODE_MENU, DialogDsl.node { ctx ->
                 val options = backend.recoverableAssets().map { itemId ->
                     DialogDsl.option(

@@ -1,6 +1,7 @@
 package cn.kasuminova.astd.campaign.ending
 
 import cn.kasuminova.astd.campaign.bounty.BountyState
+import cn.kasuminova.astd.campaign.ending.EndingEffects.remountAll
 import cn.kasuminova.astd.campaign.ui.HudMessages
 import cn.kasuminova.astd.internal.i18n.I18n
 import com.fs.starfarer.api.EveryFrameScript
@@ -8,8 +9,8 @@ import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.campaign.SectorAPI
 import com.fs.starfarer.api.campaign.econ.MarketAPI
 import com.fs.starfarer.api.impl.campaign.ids.Stats
-import java.awt.Color
 import org.apache.log4j.Logger
+import java.awt.Color
 
 /**
  * 归档三选效果的游戏侧挂载（势力变强 stat 修正 / 关系变动 / 延迟激活调度）。
@@ -147,7 +148,7 @@ class EndingCampaignManager : EveryFrameScript {
         val now = sector.clock.timestamp
         val activated = EndingProgression.activateDelayedEffects(state, now) { factionId ->
             val alive = sector.getFaction(factionId) != null &&
-                sector.economy.marketsCopy.any { it.factionId == factionId }
+                    sector.economy.marketsCopy.any { it.factionId == factionId }
             if (!alive) {
                 log.info("[ASTD] 延迟强度条目到期作废：势力已无市场或不存在（$factionId）")
             }
@@ -166,6 +167,6 @@ class EndingCampaignManager : EveryFrameScript {
         }
 
         // 周期幂等重挂（事实源 = appliedStrengthPct）
-        EndingEffects.remountAll(sector, state)
+        remountAll(sector, state)
     }
 }

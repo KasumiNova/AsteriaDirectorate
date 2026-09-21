@@ -1,5 +1,8 @@
 package cn.kasuminova.astd.api.difficulty
 
+import cn.kasuminova.astd.api.difficulty.ScalingMap.Companion.LINEAR
+
+
 /**
  * 轨一（固有缩放系数 k_s → 最终值）的映射策略。
  *

@@ -42,20 +42,22 @@ object ExecutorCoreDialog {
     fun createGraph(spec: ExecutorSpec?): DialogGraph {
         val specId = spec?.name?.lowercase() ?: ExecutorSpec.COMBAT.name.lowercase()
         return dialogGraph(start = NODE_ENTRY) {
-            node(NODE_ENTRY, DialogDsl.timedNode(
-                onEnter = { ctx ->
-                    ctx.sessionState[STATE_ENTRY_FIRED] = false
-                    ctx.enqueueI18n(CAT, "dialog.executor.voice.$specId.1", 0.4f)
-                    ctx.enqueueI18n(CAT, "dialog.executor.voice.$specId.2", 0.9f)
-                    ctx.enqueueI18n(CAT, "dialog.executor.voice.common.online", 0.9f)
-                },
-                onAdvance = { ctx, _ ->
-                    if (!ctx.textQueue.hasPending && ctx.sessionState[STATE_ENTRY_FIRED] != true) {
-                        ctx.sessionState[STATE_ENTRY_FIRED] = true
-                        ctx.goto(NODE_MENU)
-                    }
-                },
-            ))
+            node(
+                NODE_ENTRY, DialogDsl.timedNode(
+                    onEnter = { ctx ->
+                        ctx.sessionState[STATE_ENTRY_FIRED] = false
+                        ctx.enqueueI18n(CAT, "dialog.executor.voice.$specId.1", 0.4f)
+                        ctx.enqueueI18n(CAT, "dialog.executor.voice.$specId.2", 0.9f)
+                        ctx.enqueueI18n(CAT, "dialog.executor.voice.common.online", 0.9f)
+                    },
+                    onAdvance = { ctx, _ ->
+                        if (!ctx.textQueue.hasPending && ctx.sessionState[STATE_ENTRY_FIRED] != true) {
+                            ctx.sessionState[STATE_ENTRY_FIRED] = true
+                            ctx.goto(NODE_MENU)
+                        }
+                    },
+                )
+            )
             node(NODE_MENU, DialogDsl.node { _ ->
                 listOf(
                     DialogDsl.option(

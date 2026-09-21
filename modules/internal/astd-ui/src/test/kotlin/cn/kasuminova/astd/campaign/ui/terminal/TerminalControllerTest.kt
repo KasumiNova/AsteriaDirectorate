@@ -317,8 +317,9 @@ class TerminalControllerTest {
         val effects = controller.pressPrimary()
 
         assertEquals(listOf("o1"), backend.settled)
-        assertTrue(effects.filterIsInstance<TerminalEffect.PlaySound>()
-            .none { it.sound == TerminalSound.REJECTED })
+        assertTrue(
+            effects.filterIsInstance<TerminalEffect.PlaySound>()
+                .none { it.sound == TerminalSound.REJECTED })
     }
 
     @Test

@@ -1,6 +1,5 @@
 package cn.kasuminova.astd.combat.hullmods.affix
 
-import cn.kasuminova.astd.api.difficulty.DifficultyTuning
 import cn.kasuminova.astd.api.difficulty.ScalingEntry
 import cn.kasuminova.astd.combat.affix.AffixRegistry
 import com.fs.starfarer.api.Global

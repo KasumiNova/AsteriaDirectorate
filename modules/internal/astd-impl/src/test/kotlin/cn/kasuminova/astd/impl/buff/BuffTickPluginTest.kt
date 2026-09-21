@@ -3,13 +3,13 @@ package cn.kasuminova.astd.impl.buff
 import cn.kasuminova.astd.api.buff.BuffLifetime
 import cn.kasuminova.astd.api.buff.buffHost
 import com.fs.starfarer.api.combat.CombatEngineAPI
+import org.mockito.Mockito.mock
+import org.mockito.Mockito.`when`
+import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertSame
-import org.mockito.Mockito.mock
-import org.mockito.Mockito.`when`
-import kotlin.test.BeforeTest
 
 /**
  * 规格 §1.4-6 与 §6 风险表：心跳回收（宿主失效/换装/hulk）、暂停跳过、advance 透传。

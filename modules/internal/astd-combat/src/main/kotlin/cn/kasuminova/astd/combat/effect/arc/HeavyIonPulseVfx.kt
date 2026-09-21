@@ -85,7 +85,17 @@ object HeavyIonPulseVfx {
      * 再乘一次，故 [applied] 为折算补偿量（extra/max(mult, 0.01)），引擎二次乘算后实际结算
      * 回补到 [extra]；浮字显示 [extra]——显示值 = 实际结算量（mult ≥ 0.01 时精确）。
      */
-    fun pierce(engine: CombatEngineAPI, ship: ShipAPI, point: Vector2f, extra: Float, applied: Float, source: ShipAPI?, mult: Float, baseEmp: Float, arcEmp: Float) {
+    fun pierce(
+        engine: CombatEngineAPI,
+        ship: ShipAPI,
+        point: Vector2f,
+        extra: Float,
+        applied: Float,
+        source: ShipAPI?,
+        mult: Float,
+        baseEmp: Float,
+        arcEmp: Float
+    ) {
         engine.applyDamage(ship, point, 0f, DamageType.ENERGY, applied, false, false, source)
         feedback.floatingDamage(engine, point, extra, ARC_CORE, ship, source)
         engine.addHitParticle(point, Vector2f(), 30f, 1f, 0.2f, ARC_CORE)

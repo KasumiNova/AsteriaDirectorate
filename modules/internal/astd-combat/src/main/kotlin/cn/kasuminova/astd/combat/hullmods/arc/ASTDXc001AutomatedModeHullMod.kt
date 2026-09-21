@@ -8,7 +8,6 @@ import cn.kasuminova.astd.renderer.effect.system.Xc001OverdriveVisualState
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseHullMod
 import com.fs.starfarer.api.combat.CombatEngineAPI
-import com.fs.starfarer.api.combat.CombatEntityAPI
 import com.fs.starfarer.api.combat.DamageType
 import com.fs.starfarer.api.combat.EmpArcEntityAPI
 import com.fs.starfarer.api.combat.MissileAPI
@@ -61,7 +60,7 @@ class ASTDXc001AutomatedModeHullMod : BaseHullMod() {
         }
 
         // 无人模式：使用无人版系统（xc_001 已显式声明，非空）
-        XC_001_DUAL_MODE_CONFIG.automatedSystemId?.let { variant.hullSpec?.setShipSystemId(it) }
+        XC_001_DUAL_MODE_CONFIG.automatedSystemId?.let { variant.hullSpec?.shipSystemId = it }
 
         stats.maxSpeed.modifyFlat(id, MAX_SPEED_BONUS)
         stats.acceleration.modifyMult(id, ACCEL_MULT)
@@ -121,7 +120,13 @@ class ASTDXc001AutomatedModeHullMod : BaseHullMod() {
 
     override fun isApplicableToShip(ship: ShipAPI): Boolean = ship.isASTDShip()
 
-    override fun addPostDescriptionSection(tooltip: TooltipMakerAPI, hullSize: ShipAPI.HullSize, ship: ShipAPI?, width: Float, isForModSpec: Boolean) {
+    override fun addPostDescriptionSection(
+        tooltip: TooltipMakerAPI,
+        hullSize: ShipAPI.HullSize,
+        ship: ShipAPI?,
+        width: Float,
+        isForModSpec: Boolean
+    ) {
         ASTDHullModTooltipRenderer.renderBlocks(
             tooltip = tooltip,
             width = width,
@@ -177,13 +182,15 @@ class ASTDXc001AutomatedModeHullMod : BaseHullMod() {
             }
             try {
                 val arc = engine.spawnEmpArcVisual(from, null, to, null, thickness, arcFringe, arcCore, arcParams)
-                arc.setCoreWidthOverride(thickness * 0.4f)
+                arc.coreWidthOverride = thickness * 0.4f
                 arc.setSingleFlickerMode(true)
                 arc.setRenderGlowAtStart(false)
-            } catch (_: Throwable) {}
+            } catch (_: Throwable) {
+            }
             try {
                 MagicLensFlare.createSharpFlare(engine, ship, to, 4f, 35f + 25f * systemLevel, 0f, arcFringe, arcCore)
-            } catch (_: Throwable) {}
+            } catch (_: Throwable) {
+            }
 
             if (target.isFighter) {
                 engine.applyDamage(target, to, 110f + 70f * systemLevel, DamageType.ENERGY, 80f, false, false, ship)
@@ -219,13 +226,15 @@ class ASTDXc001AutomatedModeHullMod : BaseHullMod() {
             }
             try {
                 val arc = engine.spawnEmpArcVisual(from, null, to, null, thickness, arcFringe, arcCore, arcParams)
-                arc.setCoreWidthOverride(thickness * 0.4f)
+                arc.coreWidthOverride = thickness * 0.4f
                 arc.setSingleFlickerMode(true)
                 arc.setRenderGlowAtStart(false)
-            } catch (_: Throwable) {}
+            } catch (_: Throwable) {
+            }
             try {
                 MagicLensFlare.createSharpFlare(engine, ship, to, 3f, 25f + 20f * systemLevel, 0f, arcFringe, arcCore)
-            } catch (_: Throwable) {}
+            } catch (_: Throwable) {
+            }
             engine.applyDamage(missile, to, 180f + 90f * systemLevel, DamageType.ENERGY, 120f, false, false, ship)
             arcsSpawned++
         }
@@ -243,19 +252,25 @@ class ASTDXc001AutomatedModeHullMod : BaseHullMod() {
             }
             try {
                 val arc = engine.spawnEmpArcVisual(from, null, to, null, thickness, arcFringe, arcCore, arcParams)
-                arc.setCoreWidthOverride(thickness * 0.4f)
+                arc.coreWidthOverride = thickness * 0.4f
                 arc.setSingleFlickerMode(true)
                 arc.setRenderGlowAtStart(false)
                 arc.setFadedOutAtStart(true)
-            } catch (_: Throwable) {}
+            } catch (_: Throwable) {
+            }
             try {
                 MagicLensFlare.createSharpFlare(engine, ship, to, 3f, 30f + 20f * systemLevel, 0f, arcFringe, arcCore)
-            } catch (_: Throwable) {}
+            } catch (_: Throwable) {
+            }
         }
     }
 
     private fun randomArcPoint(ship: ShipAPI, radiusMulMin: Float, radiusMulMax: Float): Vector2f {
-        val bounds = try { ship.exactBounds } catch (_: Throwable) { null }
+        val bounds = try {
+            ship.exactBounds
+        } catch (_: Throwable) {
+            null
+        }
         if (bounds != null) {
             try {
                 bounds.update(ship.location, ship.facing)
@@ -279,7 +294,8 @@ class ASTDXc001AutomatedModeHullMod : BaseHullMod() {
                     }
                     return base
                 }
-            } catch (_: Throwable) {}
+            } catch (_: Throwable) {
+            }
         }
         val angle = MathUtils.getRandomNumberInRange(0f, 360f)
         val radius = ship.collisionRadius * MathUtils.getRandomNumberInRange(radiusMulMin, radiusMulMax)

@@ -4,16 +4,16 @@ import cn.kasuminova.astd.combat.hullmods.base.ASTDHullModTooltipRenderer
 import cn.kasuminova.astd.internal.i18n.I18n
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseHullMod
+import com.fs.starfarer.api.combat.BeamAPI
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEntityAPI
 import com.fs.starfarer.api.combat.DamageAPI
 import com.fs.starfarer.api.combat.MutableShipStatsAPI
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.combat.ShipVariantAPI
-import com.fs.starfarer.api.combat.BeamAPI
-import com.fs.starfarer.api.impl.campaign.ids.HullMods
 import com.fs.starfarer.api.combat.listeners.AdvanceableListener
 import com.fs.starfarer.api.combat.listeners.DamageTakenModifier
+import com.fs.starfarer.api.impl.campaign.ids.HullMods
 import com.fs.starfarer.api.ui.TooltipMakerAPI
 import com.fs.starfarer.api.util.Misc
 import org.lazywizard.lazylib.MathUtils
@@ -152,7 +152,13 @@ class ASTDPlasmaArmorShieldHullMod : BaseHullMod() {
 
     override fun showInRefitScreenModPickerFor(ship: ShipAPI): Boolean = false
 
-    override fun addPostDescriptionSection(tooltip: TooltipMakerAPI, hullSize: ShipAPI.HullSize, ship: ShipAPI?, width: Float, isForModSpec: Boolean) {
+    override fun addPostDescriptionSection(
+        tooltip: TooltipMakerAPI,
+        hullSize: ShipAPI.HullSize,
+        ship: ShipAPI?,
+        width: Float,
+        isForModSpec: Boolean
+    ) {
         ASTDHullModTooltipRenderer.renderBlocks(
             tooltip = tooltip,
             width = width,
@@ -170,9 +176,9 @@ class ASTDPlasmaArmorShieldHullMod : BaseHullMod() {
     private fun hasForbiddenHullMod(variant: ShipVariantAPI): Boolean =
         FORBIDDEN_HULLMOD_IDS.any { forbiddenId ->
             variant.hasHullMod(forbiddenId) ||
-                variant.getPermaMods().contains(forbiddenId) ||
-                variant.getSMods().contains(forbiddenId) ||
-                variant.getSModdedBuiltIns().contains(forbiddenId)
+                    variant.permaMods.contains(forbiddenId) ||
+                    variant.sMods.contains(forbiddenId) ||
+                    variant.sModdedBuiltIns.contains(forbiddenId)
         }
 
     private fun stripForbiddenHullMods(variant: ShipVariantAPI?) {
@@ -180,8 +186,8 @@ class ASTDPlasmaArmorShieldHullMod : BaseHullMod() {
         FORBIDDEN_HULLMOD_IDS.forEach { forbiddenId ->
             variant.removeMod(forbiddenId)
             variant.removePermaMod(forbiddenId)
-            variant.getSMods().remove(forbiddenId)
-            variant.getSModdedBuiltIns().remove(forbiddenId)
+            variant.sMods.remove(forbiddenId)
+            variant.sModdedBuiltIns.remove(forbiddenId)
             variant.removeSuppressedMod(forbiddenId)
         }
     }
@@ -280,7 +286,11 @@ class ASTDPlasmaArmorShieldHullMod : BaseHullMod() {
         private fun isArmorHit(point: Vector2f): Boolean {
             val cell = ship.armorGrid.getCellAtLocation(point) ?: return false
             if (cell.size < 2) return false
-            val armor = try { ship.armorGrid.getArmorValue(cell[0], cell[1]) } catch (_: Throwable) { 0f }
+            val armor = try {
+                ship.armorGrid.getArmorValue(cell[0], cell[1])
+            } catch (_: Throwable) {
+                0f
+            }
             return armor > 1f
         }
 

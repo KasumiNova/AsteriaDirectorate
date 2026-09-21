@@ -93,7 +93,11 @@ class PsiSunderBeamEffect : BeamEffectPlugin {
             state.baseWidth = beam.width
         }
 
-        val brightness = try { beam.brightness } catch (_: Throwable) { 0f }
+        val brightness = try {
+            beam.brightness
+        } catch (_: Throwable) {
+            0f
+        }
         val beamActive = brightness > BEAM_ACTIVE_BRIGHTNESS_MIN && beam.length > 10f
 
         if (!beamActive) {
@@ -108,10 +112,10 @@ class PsiSunderBeamEffect : BeamEffectPlugin {
         val rawTarget = beam.damageTarget
         val target = rawTarget as? ShipAPI
         val canDrain = target != null
-            && engine.isEntityInPlay(target)
-            && !target.isHulk
-            && target.owner != source.owner
-            && brightness > DRAIN_BRIGHTNESS_MIN
+                && engine.isEntityInPlay(target)
+                && !target.isHulk
+                && target.owner != source.owner
+                && brightness > DRAIN_BRIGHTNESS_MIN
 
         if (canDrain) {
             // 新目标：重置 ramp，并重新 roll 持续时间（5~10s）
@@ -162,8 +166,16 @@ class PsiSunderBeamEffect : BeamEffectPlugin {
                     val rateDrain = (state.statusDrain / state.statusT) * 100f
                     val rateRestore = (state.statusRestoreApplied / state.statusT) * 100f
                     val ratePpt = (state.statusPptAppliedSec / state.statusT)
-                    val cur = try { source.currentCR } catch (_: Throwable) { 0f }
-                    val maxCr = try { source.mutableStats.maxCombatReadiness.modifiedValue } catch (_: Throwable) { 1f }
+                    val cur = try {
+                        source.currentCR
+                    } catch (_: Throwable) {
+                        0f
+                    }
+                    val maxCr = try {
+                        source.mutableStats.maxCombatReadiness.modifiedValue
+                    } catch (_: Throwable) {
+                        1f
+                    }
                     val cap = max(cur, maxCr).coerceIn(0f, 1f)
                     val capped = cur >= cap - 1e-4f
                     state.lastStatusLine = if (capped) {
@@ -192,7 +204,7 @@ class PsiSunderBeamEffect : BeamEffectPlugin {
             )
 
             // 可选日志：仅 devMode，每 1s 输出一次
-            if (canDrain && Global.getSettings().isDevMode()) {
+            if (canDrain && Global.getSettings().isDevMode) {
                 state.logT += amount
                 if (state.logT >= 1f) {
                     state.logT = 0f
@@ -241,27 +253,47 @@ class PsiSunderBeamEffect : BeamEffectPlugin {
     }
 
     private fun isUnmanned(target: ShipAPI): Boolean {
-        val drone = try { target.isDrone } catch (_: Throwable) { false }
+        val drone = try {
+            target.isDrone
+        } catch (_: Throwable) {
+            false
+        }
         if (drone) return true
-        val minCrew: Float = try { target.hullSpec.minCrew } catch (_: Throwable) { 1f }
+        val minCrew: Float = try {
+            target.hullSpec.minCrew
+        } catch (_: Throwable) {
+            1f
+        }
         return minCrew <= 0f
     }
 
     private fun isShieldHit(target: ShipAPI, point: Vector2f): Boolean {
-        val shield = try { target.shield } catch (_: Throwable) { null } ?: return false
+        val shield = try {
+            target.shield
+        } catch (_: Throwable) {
+            null
+        } ?: return false
         if (!shield.isOn) return false
         val dx = point.x - shield.location.x
         val dy = point.y - shield.location.y
         val rr = shield.radius + 20f
         if (dx * dx + dy * dy > rr * rr) return false
-        return try { shield.isWithinArc(point) } catch (_: Throwable) { true }
+        return try {
+            shield.isWithinArc(point)
+        } catch (_: Throwable) {
+            true
+        }
     }
 
     /**
      * @return drained amount in CR fraction (0..1) for restore calculation
      */
     private fun drainCr(target: ShipAPI, ramp: Float, mult: Float, amount: Float): Float {
-        val cur = try { target.currentCR } catch (_: Throwable) { return 0f }
+        val cur = try {
+            target.currentCR
+        } catch (_: Throwable) {
+            return 0f
+        }
         if (cur <= 0.001f) return 0f
 
         val rate = lerp(CR_DRAIN_MIN, CR_DRAIN_MAX, ramp) * mult
@@ -278,7 +310,11 @@ class PsiSunderBeamEffect : BeamEffectPlugin {
      * @return drained amount as PPT fraction (0..1) for restore calculation
      */
     private fun drainPpt(target: ShipAPI, ramp: Float, mult: Float, amount: Float): Float {
-        val specBase = try { target.hullSpec.noCRLossTime } catch (_: Throwable) { 0f }
+        val specBase = try {
+            target.hullSpec.noCRLossTime
+        } catch (_: Throwable) {
+            0f
+        }
         if (specBase <= 0.01f) {
             // fallback：没有 PPT 概念的目标，按 CR 处理
             return drainCr(target, ramp, mult, amount)
@@ -319,7 +355,11 @@ class PsiSunderBeamEffect : BeamEffectPlugin {
     private fun restoreSource(source: ShipAPI, target: ShipAPI, drained: Float, ramp: Float): Pair<Float, Float> {
         if (drained <= 0f) return 0f to 0f
 
-        val eff = when (try { target.hullSize } catch (_: Throwable) { ShipAPI.HullSize.DEFAULT }) {
+        val eff = when (try {
+            target.hullSize
+        } catch (_: Throwable) {
+            ShipAPI.HullSize.DEFAULT
+        }) {
             ShipAPI.HullSize.FRIGATE -> 0.9f
             ShipAPI.HullSize.DESTROYER -> 0.7f
             ShipAPI.HullSize.CRUISER -> 0.5f
@@ -353,7 +393,11 @@ class PsiSunderBeamEffect : BeamEffectPlugin {
     private fun restorePpt(source: ShipAPI, restoreCrFraction: Float): Float {
         if (restoreCrFraction <= 0f) return 0f
 
-        val base = try { source.hullSpec.noCRLossTime } catch (_: Throwable) { 0f }
+        val base = try {
+            source.hullSpec.noCRLossTime
+        } catch (_: Throwable) {
+            0f
+        }
         if (base <= 0.01f) return 0f
 
         val curBonus = try {
@@ -379,8 +423,14 @@ class PsiSunderBeamEffect : BeamEffectPlugin {
         val applied = (nextBonus - curBonus).coerceAtLeast(0f)
         if (applied <= 0f) return 0f
 
-        try { source.customData[KEY_PPT_RESTORE] = nextBonus } catch (_: Throwable) {}
-        try { source.mutableStats.peakCRDuration.modifyFlat(STAT_PPT_RESTORE, nextBonus) } catch (_: Throwable) {}
+        try {
+            source.customData[KEY_PPT_RESTORE] = nextBonus
+        } catch (_: Throwable) {
+        }
+        try {
+            source.mutableStats.peakCRDuration.modifyFlat(STAT_PPT_RESTORE, nextBonus)
+        } catch (_: Throwable) {
+        }
 
         return applied
     }

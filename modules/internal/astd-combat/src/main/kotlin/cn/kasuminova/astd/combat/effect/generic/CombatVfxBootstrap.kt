@@ -1,15 +1,14 @@
 package cn.kasuminova.astd.combat.effect.generic
 
-import cn.kasuminova.astd.renderer.effect.system.Xc001EmissiveOverlayEffect
-import cn.kasuminova.astd.renderer.effect.system.Xc001EngineFlareEffect
+import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
 import cn.kasuminova.astd.renderer.effect.system.ASTDAfterimageEffect
 import cn.kasuminova.astd.renderer.effect.system.ASTDEngineShardSprayEffect
 import cn.kasuminova.astd.renderer.effect.system.ASTDVectorThrustEngineManager
 import cn.kasuminova.astd.renderer.effect.system.WeaponGlowLayer
-import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
+import cn.kasuminova.astd.renderer.effect.system.Xc001EmissiveOverlayEffect
+import cn.kasuminova.astd.renderer.effect.system.Xc001EngineFlareEffect
 import cn.kasuminova.astd.renderer.projectile.driver.ProjectileVfxDriverPlugin
 import cn.kasuminova.astd.renderer.projectile.driver.ProjectileVfxSpecs
-
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
 

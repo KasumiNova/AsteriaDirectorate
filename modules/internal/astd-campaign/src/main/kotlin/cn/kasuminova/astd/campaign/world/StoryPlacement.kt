@@ -1,5 +1,11 @@
 package cn.kasuminova.astd.campaign.world
 
+import cn.kasuminova.astd.campaign.world.StoryPlacement.CH2_DISTANCE_FROM_MAIN
+import cn.kasuminova.astd.campaign.world.StoryPlacement.EDGE_MIN_RADIUS
+import cn.kasuminova.astd.campaign.world.StoryPlacement.MAIN_MAX_RADIUS
+import cn.kasuminova.astd.campaign.world.StoryPlacement.MAIN_MIN_CLEARANCE
+import cn.kasuminova.astd.campaign.world.StoryPlacement.MAX_TRIES
+import cn.kasuminova.astd.campaign.world.StoryPlacement.MIN_ANGULAR_SEPARATION_DEG
 import java.util.Random
 import kotlin.math.abs
 import kotlin.math.cos

@@ -4,9 +4,9 @@ plugins {
     `java-test-fixtures`
 }
 
-import org.gradle.api.GradleException
+import org . gradle . api . GradleException
 
-group = "cn.kasuminova"
+        group = "cn.kasuminova"
 version = "1.0-SNAPSHOT"
 
 repositories {
@@ -171,7 +171,7 @@ val validateSsCsvClassRefs by tasks.registering {
         if (missing.isNotEmpty()) {
             throw GradleException(
                 "ss-csv class ref validation failed. Missing classes:\n" +
-                    missing.joinToString(separator = "\n")
+                        missing.joinToString(separator = "\n")
             )
         }
     }

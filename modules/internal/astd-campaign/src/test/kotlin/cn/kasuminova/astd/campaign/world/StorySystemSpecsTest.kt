@@ -166,13 +166,13 @@ class StorySystemSpecsTest {
         val rows = CsvTestUtil.readRowsById(Path.of("contents/data/campaign/market_conditions.csv"))
         val expected = mapOf(
             StoryWorldIds.CONDITION_WANXING_ADMIN_RUINS to
-                "cn.kasuminova.astd.campaign.world.WanxingAdminRuinsCondition",
+                    "cn.kasuminova.astd.campaign.world.WanxingAdminRuinsCondition",
             StoryWorldIds.CONDITION_STARFALL_ENGINEERING_RUINS to
-                "cn.kasuminova.astd.campaign.world.StarfallEngineeringRuinsCondition",
+                    "cn.kasuminova.astd.campaign.world.StarfallEngineeringRuinsCondition",
             StoryWorldIds.CONDITION_EVENT_HORIZON_POWER to
-                "cn.kasuminova.astd.campaign.world.EventHorizonPowerCondition",
+                    "cn.kasuminova.astd.campaign.world.EventHorizonPowerCondition",
             StoryWorldIds.CONDITION_ASTER_RESEARCH_RUINS to
-                "cn.kasuminova.astd.campaign.world.AsterResearchRuinsCondition",
+                    "cn.kasuminova.astd.campaign.world.AsterResearchRuinsCondition",
         )
         for ((id, script) in expected) {
             val row = assertNotNull(rows[id], "market_conditions.csv 缺少 $id")
@@ -183,7 +183,7 @@ class StorySystemSpecsTest {
 
         // 规格中引用的全部 astd_ 前缀状况必须已注册
         val allConditionIds = (listOf(main, starfall, aster).flatMap { it.planets.mapNotNull { p -> p.market } } +
-            listOf(main, starfall, aster).flatMap { s -> s.entities.mapNotNull { it.market } })
+                listOf(main, starfall, aster).flatMap { s -> s.entities.mapNotNull { it.market } })
             .flatMap { it.conditionIds }
         for (conditionId in allConditionIds.filter { it.startsWith("astd_") }) {
             assertTrue(rows.containsKey(conditionId), "规格引用的状况未注册：$conditionId")

@@ -1,5 +1,6 @@
 package cn.kasuminova.astd.internal.debug
 
+import cn.kasuminova.astd.testutil.RepoLayout
 import org.json.JSONObject
 import java.nio.file.Files
 import java.nio.file.Path
@@ -7,17 +8,24 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
-import cn.kasuminova.astd.testutil.RepoLayout
 
 class ASTDInGameAutomationScenarioTest {
     @Test
     fun `automation scenario ids match ship weapon projectile and vfx config`() {
-        assertTrue(Files.readString(Path.of("contents/data/hulls/astd_xc_001.ship")).contains("\"hullId\": \"${ASTDInGameAutomationScenario.SHIP_ID}\""))
-        assertTrue(Files.readString(Path.of("contents/data/hulls/astd_xc_001.ship")).contains("\"WS MAIN\": \"${ASTDInGameAutomationScenario.WEAPON_ID}\""))
-        assertTrue(Files.readString(Path.of("contents/data/weapons/astd_aod7.wpn")).contains("\"projectileSpecId\": \"${ASTDInGameAutomationScenario.PROJECTILE_SPEC_ID}\""))
+        assertTrue(
+            Files.readString(Path.of("contents/data/hulls/astd_xc_001.ship")).contains("\"hullId\": \"${ASTDInGameAutomationScenario.SHIP_ID}\"")
+        )
+        assertTrue(
+            Files.readString(Path.of("contents/data/hulls/astd_xc_001.ship")).contains("\"WS MAIN\": \"${ASTDInGameAutomationScenario.WEAPON_ID}\"")
+        )
+        assertTrue(
+            Files.readString(Path.of("contents/data/weapons/astd_aod7.wpn"))
+                .contains("\"projectileSpecId\": \"${ASTDInGameAutomationScenario.PROJECTILE_SPEC_ID}\"")
+        )
         assertTrue(Files.readString(Path.of("contents/data/weapons/proj/astd_aod7_shot.proj")).contains("ProjectileSpecOnFireDispatcher"))
 
-        val scenarios = JSONObject(Files.readString(RepoLayout.automationContentsRoot.resolve("data/config/astd_automation_scenarios.json"))).getJSONArray("scenarios")
+        val scenarios =
+            JSONObject(Files.readString(RepoLayout.automationContentsRoot.resolve("data/config/astd_automation_scenarios.json"))).getJSONArray("scenarios")
         val scenario = scenarios.getJSONObject(0)
         assertEquals(ASTDInGameAutomationScenario.SCENARIO_ID, scenario.getString("id"))
         assertEquals(ASTDInGameAutomationScenario.VARIANT_ID, scenario.getString("variantId"))
@@ -36,7 +44,8 @@ class ASTDInGameAutomationScenarioTest {
             "arc production scenario must have a concrete mission for SSOptimizer launch",
         )
 
-        val scenarios = JSONObject(Files.readString(RepoLayout.automationContentsRoot.resolve("data/config/astd_automation_scenarios.json"))).getJSONArray("scenarios")
+        val scenarios =
+            JSONObject(Files.readString(RepoLayout.automationContentsRoot.resolve("data/config/astd_automation_scenarios.json"))).getJSONArray("scenarios")
         val scenario = (0 until scenarios.length())
             .map { scenarios.getJSONObject(it) }
             .firstOrNull { it.getString("id") == ASTDInGameAutomationScenario.ARC_PRODUCTION_SCENARIO_ID }
@@ -76,8 +85,14 @@ class ASTDInGameAutomationScenarioTest {
 
         assertTrue(scenario.contains("isArcProductionEnabled"), "scenario helper should expose the arc production mode")
         assertTrue(plugin.contains("advanceArcProductionScenario"), "automation plugin must branch into ARC production staging")
-        assertFalse(plugin.contains("writeArcProductionTelemetry"), "SSOptimizer only patches writeTelemetry; ARC must not expose an unpatched empty hook")
-        assertTrue(plugin.contains("arcProductionTelemetryShip"), "ARC automation should route screenshot evidence through the patched telemetry hook")
+        assertFalse(
+            plugin.contains("writeArcProductionTelemetry"),
+            "SSOptimizer only patches writeTelemetry; ARC must not expose an unpatched empty hook"
+        )
+        assertTrue(
+            plugin.contains("arcProductionTelemetryShip"),
+            "ARC automation should route screenshot evidence through the patched telemetry hook"
+        )
         listOf(
             "xc102ShockwaveFrames",
             "xc102ShockwaveRadius",
@@ -225,7 +240,8 @@ class ASTDInGameAutomationScenarioTest {
             "mission_list.csv missing grav rift scenario",
         )
 
-        val scenarios = JSONObject(Files.readString(RepoLayout.automationContentsRoot.resolve("data/config/astd_automation_scenarios.json"))).getJSONArray("scenarios")
+        val scenarios =
+            JSONObject(Files.readString(RepoLayout.automationContentsRoot.resolve("data/config/astd_automation_scenarios.json"))).getJSONArray("scenarios")
         val scenario = (0 until scenarios.length())
             .map { scenarios.getJSONObject(it) }
             .firstOrNull { it.getString("id") == ASTDInGameAutomationScenario.GRG_SCENARIO_ID }
@@ -234,9 +250,15 @@ class ASTDInGameAutomationScenarioTest {
         assertEquals(ASTDInGameAutomationScenario.GRG_SYSTEM_ID, scenario.getString("systemId"))
 
         val shipIds = scenario.getJSONArray("shipIds")
-        assertTrue((0 until shipIds.length()).any { shipIds.getString(it) == ASTDInGameAutomationScenario.GRG_HULL_ID }, "scenario missing ship id: ${ASTDInGameAutomationScenario.GRG_HULL_ID}")
+        assertTrue(
+            (0 until shipIds.length()).any { shipIds.getString(it) == ASTDInGameAutomationScenario.GRG_HULL_ID },
+            "scenario missing ship id: ${ASTDInGameAutomationScenario.GRG_HULL_ID}"
+        )
         val variantIds = scenario.getJSONArray("variantIds")
-        assertTrue((0 until variantIds.length()).any { variantIds.getString(it) == ASTDInGameAutomationScenario.GRG_VARIANT_ID }, "scenario missing variant id: ${ASTDInGameAutomationScenario.GRG_VARIANT_ID}")
+        assertTrue(
+            (0 until variantIds.length()).any { variantIds.getString(it) == ASTDInGameAutomationScenario.GRG_VARIANT_ID },
+            "scenario missing variant id: ${ASTDInGameAutomationScenario.GRG_VARIANT_ID}"
+        )
 
         val requiredEvidence = scenario.getJSONArray("requiredEvidence")
         listOf(
@@ -282,7 +304,8 @@ class ASTDInGameAutomationScenarioTest {
             "mission_list.csv missing fighter grav link scenario",
         )
 
-        val scenarios = JSONObject(Files.readString(RepoLayout.automationContentsRoot.resolve("data/config/astd_automation_scenarios.json"))).getJSONArray("scenarios")
+        val scenarios =
+            JSONObject(Files.readString(RepoLayout.automationContentsRoot.resolve("data/config/astd_automation_scenarios.json"))).getJSONArray("scenarios")
         val scenario = (0 until scenarios.length())
             .map { scenarios.getJSONObject(it) }
             .firstOrNull { it.getString("id") == ASTDInGameAutomationScenario.FGL_SCENARIO_ID }
@@ -291,9 +314,15 @@ class ASTDInGameAutomationScenarioTest {
         assertEquals(ASTDInGameAutomationScenario.FGL_SYSTEM_ID, scenario.getString("systemId"))
 
         val shipIds = scenario.getJSONArray("shipIds")
-        assertTrue((0 until shipIds.length()).any { shipIds.getString(it) == ASTDInGameAutomationScenario.FGL_HULL_ID }, "scenario missing ship id: ${ASTDInGameAutomationScenario.FGL_HULL_ID}")
+        assertTrue(
+            (0 until shipIds.length()).any { shipIds.getString(it) == ASTDInGameAutomationScenario.FGL_HULL_ID },
+            "scenario missing ship id: ${ASTDInGameAutomationScenario.FGL_HULL_ID}"
+        )
         val variantIds = scenario.getJSONArray("variantIds")
-        assertTrue((0 until variantIds.length()).any { variantIds.getString(it) == ASTDInGameAutomationScenario.FGL_VARIANT_ID }, "scenario missing variant id: ${ASTDInGameAutomationScenario.FGL_VARIANT_ID}")
+        assertTrue(
+            (0 until variantIds.length()).any { variantIds.getString(it) == ASTDInGameAutomationScenario.FGL_VARIANT_ID },
+            "scenario missing variant id: ${ASTDInGameAutomationScenario.FGL_VARIANT_ID}"
+        )
 
         val requiredEvidence = scenario.getJSONArray("requiredEvidence")
         listOf(
@@ -364,7 +393,10 @@ class ASTDInGameAutomationScenarioTest {
         assertFalse(source.contains("GL11.glReadPixels"), "Starsector script sandbox blocks ASTD direct framebuffer file capture")
         assertFalse(source.contains("ImageIO.write"), "Starsector script sandbox blocks ASTD direct screenshot file writes")
         assertTrue(source.contains("SSOptimizer patches this method"), "ASTD should delegate concrete evidence writes to SSOptimizer")
-        assertTrue(verifier.contains("_arc_production_data_from_log"), "verifier should read ARC evidence from ASTD diagnostics when SSOptimizer telemetry is scenario-specific")
+        assertTrue(
+            verifier.contains("_arc_production_data_from_log"),
+            "verifier should read ARC evidence from ASTD diagnostics when SSOptimizer telemetry is scenario-specific"
+        )
         assertTrue(verifier.contains("_merge_screenshot_evidence"), "verifier should merge SSOptimizer screenshot files into ASTD ARC diagnostics")
         assertTrue(verifier.contains("ASTD_DIAGNOSTICS_PATTERN"), "verifier should parse ASTD diagnostics JSON from starsector.log")
         assertFalse(source.contains("writeArcProductionTelemetry"), "ARC automation must use the real SSOptimizer-patched hook")
@@ -376,10 +408,19 @@ class ASTDInGameAutomationScenarioTest {
         val diagnosticsBody = source.substringAfter("private fun writeDiagnostics(").substringBefore("private fun jsonString")
 
         assertTrue(source.contains("private fun writeDiagnostics("), "diagnostics should not be embedded only in writeTelemetry")
-        assertTrue(source.contains("writeDiagnostics(combatEngine, \"Completed\""), "render-time diagnostics should run after completed frame staging")
+        assertTrue(
+            source.contains("writeDiagnostics(combatEngine, \"Completed\""),
+            "render-time diagnostics should run after completed frame staging"
+        )
         assertTrue(source.contains("writeDiagnostics(engine, \"CombatReady\""), "init diagnostics should run even when telemetry is intercepted")
-        assertTrue(source.contains("telemetry.lastProjectileSpecId == ASTDInGameAutomationScenario.PROJECTILE_SPEC_ID"), "VFX observation should key off the projectile spec actually tracked")
-        assertTrue(source.contains("telemetry.trackedCount > 0"), "VFX observation should require a tracked driver instead of only a projectile id string")
+        assertTrue(
+            source.contains("telemetry.lastProjectileSpecId == ASTDInGameAutomationScenario.PROJECTILE_SPEC_ID"),
+            "VFX observation should key off the projectile spec actually tracked"
+        )
+        assertTrue(
+            source.contains("telemetry.trackedCount > 0"),
+            "VFX observation should require a tracked driver instead of only a projectile id string"
+        )
         listOf(
             "displayWidth",
             "displayHeight",
@@ -407,7 +448,10 @@ class ASTDInGameAutomationScenarioTest {
 
         assertTrue(source.contains("captureCenter = Vector2f(100f, 0f)"), "camera should keep the mature projectile trail in the verification ROI")
         assertTrue(source.contains("playerAnchor = Vector2f(-260f, 0f)"), "ship should be visible while staying clear of the projectile ROI")
-        assertTrue(source.contains("projectilePreviewAnchor = Vector2f(40f, 0f)"), "projectile VFX should start clear of ship sprite overlap and fly through the ROI")
+        assertTrue(
+            source.contains("projectilePreviewAnchor = Vector2f(40f, 0f)"),
+            "projectile VFX should start clear of ship sprite overlap and fly through the ROI"
+        )
         assertTrue(source.contains("enemyAnchor = Vector2f(900f, 0f)"), "enemy target should stay beyond the preview projectile")
         assertTrue(source.contains("visibleHeight = 600f"), "parity capture should keep projectile scale close to the preview reference")
         assertTrue(lockCameraBody.contains("viewport.set("), "camera should set an aspect-correct world viewport")
@@ -427,19 +471,46 @@ class ASTDInGameAutomationScenarioTest {
         assertTrue(source.contains("fallbackProjectileSpawnedAt"), "fallback projectile should expose its flight age for capture staging")
         assertTrue(source.contains("evidenceReady"), "automation should wait for a mature trail before screenshot capture")
         assertTrue(source.contains("SCREENSHOT_FLIGHT_SECONDS"), "capture delay should be an explicit automation constant")
-        assertTrue(source.contains("visualFramesWritten > 0 && elapsed - lastVisualFrameAt < 0.18f"), "first evidence frame should be captured on the completion frame")
-        assertTrue(source.contains("FALLBACK_PROJECTILE_SPEED = ${projSpeed.toInt()}f"), "fallback projectile should use weapon_data proj speed instead of weapon range")
-        assertTrue(source.contains("driveFallbackProjectileCurve"), "automation should drive a real curved projectile path for curve parity screenshots")
+        assertTrue(
+            source.contains("visualFramesWritten > 0 && elapsed - lastVisualFrameAt < 0.18f"),
+            "first evidence frame should be captured on the completion frame"
+        )
+        assertTrue(
+            source.contains("FALLBACK_PROJECTILE_SPEED = ${projSpeed.toInt()}f"),
+            "fallback projectile should use weapon_data proj speed instead of weapon range"
+        )
+        assertTrue(
+            source.contains("driveFallbackProjectileCurve"),
+            "automation should drive a real curved projectile path for curve parity screenshots"
+        )
         assertTrue(source.contains("AUTOMATION_CURVE_AMOUNT = 96f"), "automation curve should match the preview curve reference amplitude")
-        assertTrue(source.contains("previewFlightTrack"), "automation curve should use the shared preview flight track instead of a private curve formula")
-        assertTrue(source.contains("projectile.location.set(curvePositionAt(age))"), "fallback projectile location should follow the shared preview curve path")
+        assertTrue(
+            source.contains("previewFlightTrack"),
+            "automation curve should use the shared preview flight track instead of a private curve formula"
+        )
+        assertTrue(
+            source.contains("projectile.location.set(curvePositionAt(age))"),
+            "fallback projectile location should follow the shared preview curve path"
+        )
         assertTrue(source.contains("automationReferenceWorldUnitsPerPixel"), "automation should use stable max-zoom reference scale")
-        assertTrue(source.contains("ASTDProjectileVfxLayout.referenceWorldUnitsPerPixel"), "automation scale should share the runtime reference projection")
+        assertTrue(
+            source.contains("ASTDProjectileVfxLayout.referenceWorldUnitsPerPixel"),
+            "automation scale should share the runtime reference projection"
+        )
         assertTrue(source.contains("track.headOffset.x * scale"), "automation curve x offset must use stable reference world units")
         assertTrue(source.contains("track.headOffset.y * scale"), "automation curve y offset must use stable reference world units")
-        assertFalse(source.contains("FALLBACK_PROJECTILE_SPEED * age"), "automation should not drift away from preview track timing by integrating weapon speed")
-        assertFalse(source.contains("projectile.location.set(projectilePreviewAnchor)"), "projectile should not be pinned to the preview anchor every frame")
-        assertFalse(source.contains("projectile.location.y = projectilePreviewAnchor.y"), "curve parity automation must not flatten projectile history to a straight visual lane")
+        assertFalse(
+            source.contains("FALLBACK_PROJECTILE_SPEED * age"),
+            "automation should not drift away from preview track timing by integrating weapon speed"
+        )
+        assertFalse(
+            source.contains("projectile.location.set(projectilePreviewAnchor)"),
+            "projectile should not be pinned to the preview anchor every frame"
+        )
+        assertFalse(
+            source.contains("projectile.location.y = projectilePreviewAnchor.y"),
+            "curve parity automation must not flatten projectile history to a straight visual lane"
+        )
         assertFalse(source.contains("projectile.velocity.set(0f, 0f)"), "projectile velocity should not be zeroed during visual evidence capture")
     }
 
@@ -454,7 +525,10 @@ class ASTDInGameAutomationScenarioTest {
         )
         assertTrue(script.contains("ASTD_SMOKE_START_RES:-2560x1440"), "automation mode should default to 2560x1440")
         assertTrue(script.contains("-Dssoptimizer.automation.enabled=true"), "automation mode should enable SSOptimizer automation")
-        assertTrue(script.contains("ASTD_AUTOMATION_SCENARIO:-xc_001_aod7_basic"), "automation mode should allow selecting the ARC production scenario")
+        assertTrue(
+            script.contains("ASTD_AUTOMATION_SCENARIO:-xc_001_aod7_basic"),
+            "automation mode should allow selecting the ARC production scenario"
+        )
         assertTrue(script.contains("-Dssoptimizer.automation.requireScreenshotFile=true"), "automation mode should require a concrete screenshot")
         assertTrue(script.contains("-Dssoptimizer.automation.outputDir="), "automation mode should write evidence to a known output dir")
         assertTrue(gradle.contains("smokeTestGame"), "Gradle should expose the full in-game smoke task")
@@ -479,15 +553,33 @@ class ASTDInGameAutomationScenarioTest {
         assertTrue(script.contains("ship visible pixels"), "verification should require a visible Arc Flare region")
         assertTrue(script.contains("projectile VFX dynamic ROI"), "verification should require visible AOD-7 body VFX through dynamic ROI")
         assertTrue(script.contains("projectile VFX bright head/core pixels"), "verification should require visible AOD-7 filled head VFX")
-        assertTrue(script.contains("_crop_projectile_roi(path, (0.36, 0.32, 0.88, 0.70))"), "verification should not use a fixed small projectile pixel window")
-        assertTrue(script.contains("suppress_grid_lines=True"), "preview reference cropping should suppress editor grid lines before component matching")
+        assertTrue(
+            script.contains("_crop_projectile_roi(path, (0.36, 0.32, 0.88, 0.70))"),
+            "verification should not use a fixed small projectile pixel window"
+        )
+        assertTrue(
+            script.contains("suppress_grid_lines=True"),
+            "preview reference cropping should suppress editor grid lines before component matching"
+        )
         assertTrue(script.contains("_suppress_preview_grid_lines"), "verification should not compare against grid-contaminated preview components")
-        assertTrue(script.contains("_suppress_screenshot_tactical_lines"), "verification should not compare against combat tactical guide line contamination")
-        assertTrue(script.contains("_main_projectile_mask"), "verification should measure the projectile component instead of unrelated stars in the ROI")
+        assertTrue(
+            script.contains("_suppress_screenshot_tactical_lines"),
+            "verification should not compare against combat tactical guide line contamination"
+        )
+        assertTrue(
+            script.contains("_main_projectile_mask"),
+            "verification should measure the projectile component instead of unrelated stars in the ROI"
+        )
         assertTrue(script.contains("_crop_projectile_roi_by_bright_core"), "preview parity should anchor dynamic crops on the projectile bright core")
         assertTrue(script.contains("--visual-compare-output"), "verification should be able to emit a side-by-side crop for visual review")
-        assertTrue(script.contains("--screenshot"), "verification should allow explicit screenshot input for manual visual review without relaxing telemetry pass criteria")
-        assertTrue(script.contains("_write_visual_compare"), "verification should provide visual review evidence instead of relying only on numeric pixel deltas")
+        assertTrue(
+            script.contains("--screenshot"),
+            "verification should allow explicit screenshot input for manual visual review without relaxing telemetry pass criteria"
+        )
+        assertTrue(
+            script.contains("_write_visual_compare"),
+            "verification should provide visual review evidence instead of relying only on numeric pixel deltas"
+        )
         assertTrue(script.contains("def _print_result("), "verification should print screenshot details for both pass and fail cases")
         assertTrue(script.contains("ship template scale ratio"), "verification should guard against non-uniform ship flattening")
         assertTrue(script.contains("EXPECTED_ROTATED_SHIP_ASPECT"), "verification should compare ship shape to the rotated source sprite")

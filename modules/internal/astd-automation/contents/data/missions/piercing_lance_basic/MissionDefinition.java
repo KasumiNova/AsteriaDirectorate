@@ -11,7 +11,7 @@ import com.fs.starfarer.api.mission.MissionDefinitionPlugin;
 
 /**
  * Dev-only mission surface for piercing lance in-game automation.
- *
+ * <p>
  * 玩家方：onslaught（清空全部槽位后大型实弹炮塔 WS 019 装贯星之矛，HYBRID 实弹槽装配 +
  * 能量结算探针 + 循环/命中主测试射手）+ champion（清空后大型能量炮塔 WS 008 装贯星之矛，
  * HYBRID 能量槽装配证明 + 敌版相位锥面侧目标）+ 两艘 enforcer 僚舰（敌版相位锥面集群目标）。
@@ -22,6 +22,12 @@ import com.fs.starfarer.api.mission.MissionDefinitionPlugin;
  * → 集群（锥面破片浮字 + 本体豁免）→ 敌版三档（锥面 80°/600su 放大）。
  */
 public final class MissionDefinition implements MissionDefinitionPlugin {
+    private static void clearAllWeaponSlots(final FleetMemberAPI member) {
+        for (final String slotId : member.getVariant().getFittedWeaponSlots()) {
+            member.getVariant().clearSlot(slotId);
+        }
+    }
+
     @Override
     public void defineMission(final MissionDefinitionAPI api) {
         api.initFleet(FleetSide.PLAYER, "ASTD", FleetGoal.ATTACK, false, 5);
@@ -59,11 +65,5 @@ public final class MissionDefinition implements MissionDefinitionPlugin {
         api.initMap(-9000f, 9000f, -6000f, 6000f);
         api.setBackgroundSpriteName("graphics/backgrounds/background2.jpg");
         api.addPlugin(new ASTDAutomationCombatPlugin());
-    }
-
-    private static void clearAllWeaponSlots(final FleetMemberAPI member) {
-        for (final String slotId : member.getVariant().getFittedWeaponSlots()) {
-            member.getVariant().clearSlot(slotId);
-        }
     }
 }

@@ -144,7 +144,7 @@ class AffixAggressiveSwarmNetworkHullMod : BaseHullMod() {
                 // AI 行为侧（指令响应集火）：setShipTarget 锁定攻击目标，同时按帧刷写
                 // 原版舰 AI 每帧读取的旗标——向指令目标压进（PURSUING/MANEUVER_TARGET 携带目标）、
                 // 指令期间不后撤（DO_NOT_BACK_OFF）。旗标 0.5s 自然衰减，指令结束后无需手动清除。
-                responder.setShipTarget(newTarget)
+                responder.shipTarget = newTarget
                 responder.aiFlags?.let { flags ->
                     flags.setFlag(ShipwideAIFlags.AIFlags.PURSUING, FLAG_REFRESH_SEC, newTarget)
                     flags.setFlag(ShipwideAIFlags.AIFlags.MANEUVER_TARGET, FLAG_REFRESH_SEC, newTarget)
@@ -166,7 +166,7 @@ class AffixAggressiveSwarmNetworkHullMod : BaseHullMod() {
             for (responder in responders) {
                 if (responder.isAlive && !responder.isHulk) {
                     if (responder.shipTarget != current) {
-                        responder.setShipTarget(current)
+                        responder.shipTarget = current
                     }
                     // 旗标自然衰减期为 0.5s，指令期间按帧续期（见 startDirective 注释）
                     responder.aiFlags?.let { flags ->

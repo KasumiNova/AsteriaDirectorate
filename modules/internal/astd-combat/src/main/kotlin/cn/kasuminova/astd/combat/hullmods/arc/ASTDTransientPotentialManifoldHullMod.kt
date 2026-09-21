@@ -1,9 +1,9 @@
 package cn.kasuminova.astd.combat.hullmods.arc
 
 import cn.kasuminova.astd.combat.hullmods.base.ASTDHullModTooltipRenderer
-import cn.kasuminova.astd.renderer.effect.hullmods.ASTDNegentropyChargeBarRenderer
-import cn.kasuminova.astd.combat.shipsystems.ASTDXc002State
 import cn.kasuminova.astd.combat.shipsystems.ASTDXc002DroneSubsystem
+import cn.kasuminova.astd.combat.shipsystems.ASTDXc002State
+import cn.kasuminova.astd.renderer.effect.hullmods.ASTDNegentropyChargeBarRenderer
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseHullMod
 import com.fs.starfarer.api.combat.MutableShipStatsAPI
@@ -58,7 +58,11 @@ class ASTDTransientPotentialManifoldHullMod : BaseHullMod() {
         ASTDXc002State.advanceWindows(ship, amount)
 
         val reloading = ship.allWeapons.any { w ->
-            try { w.spec?.weaponId == ASTDXc002State.SPC3_WEAPON_ID && w.ammo <= 0 && w.maxAmmo > 0 } catch (_: Throwable) { false }
+            try {
+                w.spec?.weaponId == ASTDXc002State.SPC3_WEAPON_ID && w.ammo <= 0 && w.maxAmmo > 0
+            } catch (_: Throwable) {
+                false
+            }
         }
         if (reloading) {
             ship.mutableStats.fluxDissipation.modifyFlat(RELOAD_MOD_ID, RELOAD_HEAT_DISSIPATION_BONUS)
@@ -67,7 +71,13 @@ class ASTDTransientPotentialManifoldHullMod : BaseHullMod() {
         }
     }
 
-    override fun addPostDescriptionSection(tooltip: TooltipMakerAPI, hullSize: ShipAPI.HullSize, ship: ShipAPI?, width: Float, isForModSpec: Boolean) {
+    override fun addPostDescriptionSection(
+        tooltip: TooltipMakerAPI,
+        hullSize: ShipAPI.HullSize,
+        ship: ShipAPI?,
+        width: Float,
+        isForModSpec: Boolean
+    ) {
         ASTDHullModTooltipRenderer.renderBlocks(
             tooltip = tooltip,
             width = width,
@@ -80,7 +90,10 @@ class ASTDTransientPotentialManifoldHullMod : BaseHullMod() {
                     rows = arrayOf(
                         ASTDHullModTooltipRenderer.row("ui.hullmod.negentropy.manifold.attr.op", "ui.hullmod.negentropy.manifold.value.op"),
                         ASTDHullModTooltipRenderer.row("ui.hullmod.negentropy.manifold.attr.range", "ui.hullmod.negentropy.manifold.value.range"),
-                        ASTDHullModTooltipRenderer.row("ui.hullmod.negentropy.manifold.attr.projectile_speed", "ui.hullmod.negentropy.manifold.value.projectile_speed"),
+                        ASTDHullModTooltipRenderer.row(
+                            "ui.hullmod.negentropy.manifold.attr.projectile_speed",
+                            "ui.hullmod.negentropy.manifold.value.projectile_speed"
+                        ),
                     ),
                 ),
                 ASTDHullModTooltipRenderer.heading("ui.hullmod.export.section.pulse"),
@@ -93,7 +106,10 @@ class ASTDTransientPotentialManifoldHullMod : BaseHullMod() {
                         ASTDHullModTooltipRenderer.row("ui.hullmod.negentropy.manifold.attr.rof", "ui.hullmod.negentropy.manifold.value.rof"),
                         ASTDHullModTooltipRenderer.row("ui.hullmod.negentropy.manifold.attr.damage", "ui.hullmod.negentropy.manifold.value.damage"),
                         ASTDHullModTooltipRenderer.row("ui.hullmod.negentropy.manifold.attr.flux", "ui.hullmod.negentropy.manifold.value.flux"),
-                        ASTDHullModTooltipRenderer.row("ui.hullmod.negentropy.manifold.attr.ammo_regen", "ui.hullmod.negentropy.manifold.value.ammo_regen"),
+                        ASTDHullModTooltipRenderer.row(
+                            "ui.hullmod.negentropy.manifold.attr.ammo_regen",
+                            "ui.hullmod.negentropy.manifold.value.ammo_regen"
+                        ),
                     ),
                 ),
             ),

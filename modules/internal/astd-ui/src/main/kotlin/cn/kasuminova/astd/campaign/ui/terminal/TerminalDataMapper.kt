@@ -111,8 +111,10 @@ object TerminalDataMapper {
         return when (ending.executorSpec) {
             ExecutorSpec.COMBAT ->
                 if (ending.commandShipName == null) EndingStage.AWAITING_COMMAND_SHIP else EndingStage.COMPLETE
+
             ExecutorSpec.ADMIN ->
                 if (ending.adminMarketName == null) EndingStage.AWAITING_ADMIN_MARKET else EndingStage.COMPLETE
+
             null -> EndingStage.AWAITING_EXECUTOR_SPEC
         }
     }

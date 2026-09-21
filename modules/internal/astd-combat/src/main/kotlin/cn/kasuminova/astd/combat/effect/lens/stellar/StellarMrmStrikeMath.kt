@@ -1,5 +1,7 @@
 package cn.kasuminova.astd.combat.effect.lens.stellar
 
+import cn.kasuminova.astd.combat.effect.lens.stellar.StellarMrmStrikeMath.leadPoint
+import cn.kasuminova.astd.combat.effect.lens.stellar.StellarMrmStrikeMath.lineCrossThreshold
 import com.fs.starfarer.api.Global
 import org.lwjgl.util.vector.Vector2f
 

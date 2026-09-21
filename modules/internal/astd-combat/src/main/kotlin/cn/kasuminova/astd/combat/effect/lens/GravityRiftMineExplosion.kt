@@ -20,12 +20,14 @@ class GravityRiftMineExplosion : ProximityExplosionEffect {
         val center = Vector2f(explosion.location)
         val radius = 15f * sizeMult
 
-        RiftExplosionVfx.riftExplosion(engine, center, radius, palette = RiftExplosionPalette(
-            border = Color(255, 100, 100, 100),
-            underglow = Color(200, 60, 60, 100),
-            windup = Color(200, 60, 60, 50),
-            black = Color(255, 200, 200, 100)
-        ))
+        RiftExplosionVfx.riftExplosion(
+            engine, center, radius, palette = RiftExplosionPalette(
+                border = Color(255, 100, 100, 100),
+                underglow = Color(200, 60, 60, 100),
+                windup = Color(200, 60, 60, 50),
+                black = Color(255, 200, 200, 100)
+            )
+        )
     }
 
 }

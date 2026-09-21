@@ -6,15 +6,18 @@ import cn.kasuminova.astd.campaign.bounty.InfiniteSettleRecord
 import cn.kasuminova.astd.campaign.bounty.InfiniteSlotState
 import cn.kasuminova.astd.campaign.bounty.LockedFleetPlan
 import cn.kasuminova.astd.campaign.bounty.StandardCores
+import cn.kasuminova.astd.campaign.ending.InfiniteBountyBridge.postSlot
+import cn.kasuminova.astd.campaign.ending.InfiniteBountyBridge.settle
+import cn.kasuminova.astd.campaign.ending.InfiniteBountyBridge.tick
 import cn.kasuminova.astd.campaign.ui.HudMessages
 import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import cn.kasuminova.astd.internal.i18n.I18n
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.campaign.FleetAssignment
-import java.awt.Color
 import org.apache.log4j.Logger
 import org.magiclib.bounty.MagicBountyCoordinator
 import org.magiclib.bounty.MagicBountySpec
+import java.awt.Color
 
 /**
  * 《无限期承包合同》无限赏金 ↔ MagicBounty 桥接层（游戏侧副作用集中在这里）。
@@ -65,6 +68,7 @@ object InfiniteBountyBridge {
                     // 失败/消失终态（含被第三方消灭、尸体消散）：清残留 → 换代重滚 → 下 tick 重挂
                     onInfiniteFailed(state, key, slot, coord)
                 }
+
                 "DESTROYED" -> Unit // 待分局终端核销
                 else -> postSlot(state, slot, coord)
             }
@@ -130,7 +134,7 @@ object InfiniteBountyBridge {
 
         log.info(
             "[ASTD] 无限赏金已挂出：${InfiniteBountyGenerator.serialOf(slot.index, slot.generation)}" +
-                "（$key，危险级 ${slot.danger}，${slot.fp} FP，报价 ${slot.quotedReward}）",
+                    "（$key，危险级 ${slot.danger}，${slot.fp} FP，报价 ${slot.quotedReward}）",
         )
         return true
     }
@@ -196,7 +200,7 @@ object InfiniteBountyBridge {
         val next = InfiniteBountyGenerator.regenerateSlot(state, slotIndex, DifficultyTuningImpl.fixedScale, SEED_BASE)
         log.info(
             "[ASTD] 无限赏金已核销：$serial，发放 ${slot.quotedReward}；换代至 " +
-                (next?.let { InfiniteBountyGenerator.serialOf(it.index, it.generation) } ?: "（失败）"),
+                    (next?.let { InfiniteBountyGenerator.serialOf(it.index, it.generation) } ?: "（失败）"),
         )
         return true
     }
@@ -229,7 +233,7 @@ object InfiniteBountyBridge {
         val next = InfiniteBountyGenerator.regenerateSlot(state, slot.index, DifficultyTuningImpl.fixedScale, SEED_BASE)
         log.info(
             "[ASTD] 无限赏金失败换代：${InfiniteBountyGenerator.serialOf(slot.index, slot.generation)} → " +
-                (next?.let { InfiniteBountyGenerator.serialOf(it.index, it.generation) } ?: "（槽位缺失）"),
+                    (next?.let { InfiniteBountyGenerator.serialOf(it.index, it.generation) } ?: "（槽位缺失）"),
         )
     }
 

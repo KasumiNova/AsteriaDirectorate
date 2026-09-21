@@ -2,6 +2,10 @@ package cn.kasuminova.astd.combat.shipsystems
 
 import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcCombatUtil
 import cn.kasuminova.astd.combat.lens.system.EchoFixationField
+import cn.kasuminova.astd.combat.shipsystems.EchoFixationSystemStats.Companion.BURST_DONE_KEY
+import cn.kasuminova.astd.combat.shipsystems.EchoFixationSystemStats.Companion.CLUSTER_SCAN_RADIUS
+import cn.kasuminova.astd.combat.shipsystems.EchoFixationSystemStats.Companion.FORWARD_PROBE_DIST
+import cn.kasuminova.astd.combat.shipsystems.EchoFixationSystemStats.Companion.MAX_PICK_RANGE
 import cn.kasuminova.astd.internal.i18n.I18n
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
@@ -102,9 +106,9 @@ open class EchoFixationSystemStats : BaseShipSystemScript() {
         if (index != 0) return null
         val prefix = if (isAutomatedSystem) "automated" else "crewed"
         val suffix = when (state) {
-            ShipSystemStatsScript.State.IN     -> "in"
+            ShipSystemStatsScript.State.IN -> "in"
             ShipSystemStatsScript.State.ACTIVE -> "active"
-            ShipSystemStatsScript.State.OUT    -> "out"
+            ShipSystemStatsScript.State.OUT -> "out"
             else -> return null
         }
         return ShipSystemStatsScript.StatusData(

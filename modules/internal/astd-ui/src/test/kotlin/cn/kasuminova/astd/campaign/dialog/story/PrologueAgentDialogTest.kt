@@ -5,16 +5,15 @@ import cn.kasuminova.astd.campaign.dialog.core.DialogAction
 import cn.kasuminova.astd.campaign.dialog.core.DialogContext
 import cn.kasuminova.astd.campaign.dialog.core.DialogGraph
 import cn.kasuminova.astd.campaign.dialog.core.GraphDialogPlugin
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertNotNull
-import kotlin.test.assertNull
-import kotlin.test.assertTrue
 import org.mockito.ArgumentMatchers.any
 import org.mockito.ArgumentMatchers.anyString
 import org.mockito.Mockito.never
 import org.mockito.Mockito.verify
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class PrologueAgentDialogTest {
 

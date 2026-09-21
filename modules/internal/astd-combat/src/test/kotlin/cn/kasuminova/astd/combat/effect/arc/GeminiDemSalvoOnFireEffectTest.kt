@@ -119,9 +119,9 @@ class GeminiDemSalvoOnFireEffectTest {
         // 双弹装配：source / armingTime / TrackAI / 批次号 / DEMScript 插件
         for ((missile, expectTarget) in listOf(kineticMissile to target, heMissile to target)) {
             verify(missile).source = ship
-            verify(missile).setArmingTime(GeminiDemDifficulty.WARHEAD_ARMING_TIME)
+            verify(missile).armingTime = GeminiDemDifficulty.WARHEAD_ARMING_TIME
             val aiCaptor = ArgumentCaptor.forClass(com.fs.starfarer.api.combat.MissileAIPlugin::class.java)
-            verify(missile).setMissileAI(aiCaptor.capture())
+            verify(missile).missileAI = aiCaptor.capture()
             val ai = aiCaptor.value
             assertIs<GeminiDemTrackAI>(ai, "装配的导弹 AI 必须是 GeminiDemTrackAI")
             assertSame(expectTarget, ai.target, "TrackAI 出生即持有齐射目标（GuidedMissileAI 供 DEM WAIT 段）")
@@ -181,8 +181,8 @@ class GeminiDemSalvoOnFireEffectTest {
             "ERROR 日志含生成失败说明（实际：${capture.messages()}）",
         )
         // 另一枚照常装配
-        verify(heMissile).setArmingTime(GeminiDemDifficulty.WARHEAD_ARMING_TIME)
-        verify(heMissile).setMissileAI(org.mockito.ArgumentMatchers.any(GeminiDemTrackAI::class.java))
+        verify(heMissile).armingTime = GeminiDemDifficulty.WARHEAD_ARMING_TIME
+        verify(heMissile).missileAI = org.mockito.ArgumentMatchers.any(GeminiDemTrackAI::class.java)
         assertEquals(1, GeminiDemSalvoOnFireEffect.warheadsSpawned(engine), "失败枚不计入生成遥测")
         assertEquals(1, GeminiDemSalvoOnFireEffect.salvoCount(engine))
     }

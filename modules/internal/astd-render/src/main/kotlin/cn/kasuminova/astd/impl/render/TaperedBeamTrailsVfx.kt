@@ -1,8 +1,7 @@
 package cn.kasuminova.astd.impl.render
 
-import cn.kasuminova.astd.renderer.effect.projectile.beam.BeamLineUtil
 import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
-
+import cn.kasuminova.astd.renderer.effect.projectile.beam.BeamLineUtil
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEngineLayers

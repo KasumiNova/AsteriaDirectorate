@@ -1,13 +1,13 @@
 package cn.kasuminova.astd.campaign.dialog.story
 
 import cn.kasuminova.astd.campaign.dialog.DialogTestRig
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 import org.mockito.ArgumentMatchers.anyString
 import org.mockito.ArgumentMatchers.eq
 import org.mockito.Mockito.times
 import org.mockito.Mockito.verify
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class StorySiteDialogTest {
 

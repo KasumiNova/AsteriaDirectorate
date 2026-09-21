@@ -52,7 +52,7 @@ object IndEvoCareerProbe {
     private fun artilleryPresent(sector: SectorAPI, planetId: String): Boolean {
         val planet = sector.getEntityById(planetId) ?: return false
         return planet.hasTag(TAG_ENTITY_HAS_ARTILLERY) &&
-            planet.memoryWithoutUpdate.contains(MEM_ARTILLERY_SCRIPT)
+                planet.memoryWithoutUpdate.contains(MEM_ARTILLERY_SCRIPT)
     }
 
     private fun artilleryCondition(sector: SectorAPI, marketId: String): Boolean =

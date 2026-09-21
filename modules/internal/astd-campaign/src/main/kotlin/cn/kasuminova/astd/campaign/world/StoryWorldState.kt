@@ -1,7 +1,6 @@
 package cn.kasuminova.astd.campaign.world
 
 import com.fs.starfarer.api.Global
-import java.util.LinkedHashSet
 
 /**
  * 剧情世界生成的存档持久化状态（存 sector.persistentData）。
@@ -13,7 +12,7 @@ import java.util.LinkedHashSet
  *
  * 序列化兼容：可序列化普通字段 + 无参构造（同 BountyState 的 XStream 约定）。
  */
-class StoryWorldState() {
+class StoryWorldState {
 
     /** 主星系是否已生成。 */
     @JvmField

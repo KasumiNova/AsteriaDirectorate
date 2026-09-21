@@ -1,5 +1,9 @@
 package cn.kasuminova.astd.combat.shipsystems
 
+import cn.kasuminova.astd.combat.shipsystems.EchoFixationSystemAI.Companion.CLUSTER_RADIUS
+import cn.kasuminova.astd.combat.shipsystems.EchoFixationSystemAI.Companion.MIN_CLUSTER_SIZE
+import cn.kasuminova.astd.combat.shipsystems.EchoFixationSystemAI.Companion.SCAN_INTERVAL_SEC
+import cn.kasuminova.astd.combat.shipsystems.EchoFixationSystemAI.Companion.SELECT_RANGE
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.combat.ShipSystemAIScript

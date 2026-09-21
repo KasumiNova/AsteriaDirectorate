@@ -154,7 +154,9 @@ class AnchorArcComponentTest {
     fun `非弹体宿主时跟随端不绑锚实体，端点取当前 origin`() {
         val stub = StubEngine()
         val component = AnchorArcComponent("arc", spec)
-        val plainHost = object : RenderHost { override val hostId = "plain" }
+        val plainHost = object : RenderHost {
+            override val hostId = "plain"
+        }
         component.onAttach(context(stub.engine, Vector2f(0f, 0f), host = plainHost))
         component.advance(context(stub.engine, Vector2f(50f, 0f), host = plainHost), 0.05f)
 

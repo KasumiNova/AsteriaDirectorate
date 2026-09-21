@@ -1,12 +1,11 @@
 package cn.kasuminova.astd.campaign.dialog.core
 
+import cn.kasuminova.astd.internal.i18n.I18n
 import com.fs.starfarer.api.campaign.InteractionDialogAPI
 import com.fs.starfarer.api.campaign.InteractionDialogPlugin
 import com.fs.starfarer.api.campaign.SectorEntityToken
 import com.fs.starfarer.api.campaign.rules.MemoryAPI
 import com.fs.starfarer.api.combat.EngagementResultAPI
-import java.util.LinkedHashMap
-import cn.kasuminova.astd.internal.i18n.I18n
 
 /**
  * 可复用的 InteractionDialogPlugin 模板：

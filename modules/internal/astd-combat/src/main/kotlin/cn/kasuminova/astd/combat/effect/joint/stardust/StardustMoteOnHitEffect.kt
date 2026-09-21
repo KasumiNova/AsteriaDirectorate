@@ -51,12 +51,14 @@ class StardustMoteOnHitEffect : OnHitEffectPlugin {
                     DamageType.ENERGY, 0f, false, false, source, true,
                 )
             }
+
             target is ShipAPI && target.isFighter -> {
                 engine.applyDamage(
                     projectile, target, point, base * values.antiFighterBonus,
                     DamageType.ENERGY, 0f, false, false, source, true,
                 )
             }
+
             target is ShipAPI -> {
                 // 护盾阻挡时按目标硬辐能比例概率穿透（设计案：硬辐能越高越容易被透盾）
                 var pierceChance = 1f

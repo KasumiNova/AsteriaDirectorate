@@ -94,6 +94,7 @@ class TerminalController(
                     ).withDelays(stampSettle = true)
                 }
             }
+
             TerminalAction.TRACK -> {
                 if (!backend.trackOrder(order.key)) {
                     listOf(TerminalEffect.PlaySound(TerminalSound.REJECTED))
@@ -101,6 +102,7 @@ class TerminalController(
                     listOf(TerminalEffect.PlaySound(TerminalSound.TRACK))
                 }
             }
+
             TerminalAction.SETTLE -> {
                 val outcome = backend.settleOrder(order.key)
                 if (!outcome.success) {
@@ -109,6 +111,7 @@ class TerminalController(
                     buildSettleEffects(order, outcome)
                 }
             }
+
             TerminalAction.NONE -> emptyList()
         }
     }
@@ -284,9 +287,11 @@ class TerminalController(
                     TerminalSound.GLITCH -> if (receipt) StampTimeline.SETTLE + 0.3f else 0f
                     else -> 0f
                 }
+
                 is TerminalEffect.GlitchFx -> if (receipt) StampTimeline.SETTLE + 0.3f else 0f
                 is TerminalEffect.RebuildList, is TerminalEffect.ReprintDetail, is TerminalEffect.RefreshTopbar ->
                     if (stampSeen && stampSettle) StampTimeline.SETTLE else 0f
+
                 is TerminalEffect.StampSlam -> {
                     stampSeen = true
                     0f

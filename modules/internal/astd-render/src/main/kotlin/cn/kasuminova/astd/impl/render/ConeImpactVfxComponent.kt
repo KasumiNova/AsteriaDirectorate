@@ -1,6 +1,9 @@
 package cn.kasuminova.astd.impl.render
 
 import cn.kasuminova.astd.api.render.RenderContext
+import cn.kasuminova.astd.impl.render.ConeImpactVfxComponent.Companion.SPRAY_ARC_MAX
+import cn.kasuminova.astd.impl.render.ConeImpactVfxComponent.Companion.SPRAY_RAYS_PER_10DEG_MAX
+import cn.kasuminova.astd.impl.render.ConeImpactVfxComponent.Companion.SPRAY_RAYS_PER_10DEG_MIN
 import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
@@ -149,14 +152,14 @@ class ConeImpactVfxComponent(
             val e = DistortionEntity()
             e.setGlobalTimer(spec.fadeIn, spec.full, spec.fadeOut)
             e.setInnerFull(0.30f, 0.30f)
-            e.setInnerHardness(0.75f)
-            e.setRingHardness(0.50f)
+            e.innerHardness = 0.75f
+            e.ringHardness = 0.50f
             e.setSizeIn(spec.sizeIn, spec.sizeIn)
             e.setSizeFull(spec.sizeFull, spec.sizeFull)
             e.setSizeOut(spec.sizeOut, spec.sizeOut)
-            e.setPowerIn(0f)
-            e.setPowerFull(spec.powerFull)
-            e.setPowerOut(0f)
+            e.powerIn = 0f
+            e.powerFull = spec.powerFull
+            e.powerOut = 0f
             e.setLocation(Vector2f(origin))
             val result = BoxUtilCombatVfx.addEntity(engine, e)
             if (result != 0) {

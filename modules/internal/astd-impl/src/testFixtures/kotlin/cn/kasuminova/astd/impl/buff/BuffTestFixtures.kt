@@ -178,6 +178,7 @@ class ReferenceStackableBuff(
                     applyDecay(rate * minOf(amount, overshoot))
                 }
             }
+
             StackDecayMode.EXPIRE_ALL -> {
                 if (!expired && elapsedSinceRefresh >= durationSeconds) {
                     expired = true

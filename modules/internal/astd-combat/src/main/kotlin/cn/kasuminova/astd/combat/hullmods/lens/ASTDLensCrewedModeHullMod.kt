@@ -25,7 +25,7 @@ class ASTDLensCrewedModeHullMod : BaseHullMod() {
             return
         }
 
-        variant.hullSpec?.setShipSystemId(LensArrayCoreHullModIds.SYSTEM_CREWED)
+        variant.hullSpec?.shipSystemId = LensArrayCoreHullModIds.SYSTEM_CREWED
     }
 
     override fun isApplicableToShip(ship: ShipAPI): Boolean = ship.isZw001Ship()

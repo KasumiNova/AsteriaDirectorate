@@ -2,15 +2,19 @@ package cn.kasuminova.astd.campaign
 
 import com.fs.starfarer.api.EveryFrameScript
 import com.fs.starfarer.api.Global
-import com.fs.starfarer.api.campaign.CargoAPI
-import com.fs.starfarer.api.campaign.SpecialItemData
 import com.fs.starfarer.api.campaign.SectorAPI
 import com.fs.starfarer.api.campaign.SectorEntityToken
+import com.fs.starfarer.api.campaign.SpecialItemData
 import com.fs.starfarer.api.campaign.econ.EconomyAPI
 import com.fs.starfarer.api.campaign.econ.MarketAPI
 import com.fs.starfarer.api.campaign.listeners.EconomyTickListener
 import com.fs.starfarer.api.fleet.FleetMemberType
-import com.fs.starfarer.api.impl.campaign.ids.*
+import com.fs.starfarer.api.impl.campaign.ids.Conditions
+import com.fs.starfarer.api.impl.campaign.ids.Factions
+import com.fs.starfarer.api.impl.campaign.ids.Industries
+import com.fs.starfarer.api.impl.campaign.ids.Planets
+import com.fs.starfarer.api.impl.campaign.ids.StarTypes
+import com.fs.starfarer.api.impl.campaign.ids.Submarkets
 import com.fs.starfarer.api.impl.campaign.submarkets.LocalResourcesSubmarketPlugin
 import com.fs.starfarer.api.impl.campaign.submarkets.StoragePlugin
 import org.apache.log4j.Logger
@@ -140,7 +144,7 @@ object AsteriaTestCampaignBootstrap {
         val market: MarketAPI,
     )
 
-    private fun createTestSystemAndMarket(sector: SectorAPI): TestTarget? {
+    private fun createTestSystemAndMarket(sector: SectorAPI): TestTarget {
         findTestPlanet(sector)?.let { planet ->
             return TestTarget(planet, ensureTestMarket(sector, planet))
         }
@@ -148,7 +152,7 @@ object AsteriaTestCampaignBootstrap {
         val system = sector.createStarSystem(TEST_SYSTEM_NAME)
         // 放在核心区附近，方便在大地图里快速找到
         system.location.set(1500f, 5500f)
-        system.setBackgroundTextureFilename("graphics/backgrounds/background2.jpg")
+        system.backgroundTextureFilename = "graphics/backgrounds/background2.jpg"
 
         val star = system.initStar(TEST_STAR_ID, StarTypes.YELLOW, 450f, 400f)
         val planet = system.addPlanet(TEST_PLANET_ID, star, "测试补给站", Planets.BARREN, 60f, 120f, 2200f, 50f)
@@ -163,14 +167,14 @@ object AsteriaTestCampaignBootstrap {
     private fun ensureTestMarket(sector: SectorAPI, planet: SectorEntityToken): MarketAPI {
         val market = selectCanonicalTestMarket(sector, planet)
 
-        market.setName("测试补给站")
+        market.name = "测试补给站"
         market.size = 5
         market.factionId = Factions.PLAYER
-        market.setPlayerOwned(true)
+        market.isPlayerOwned = true
         market.admin = sector.playerPerson
-        market.setSurveyLevel(MarketAPI.SurveyLevel.FULL)
-        market.setPlanetConditionMarketOnly(false)
-        market.setHidden(false)
+        market.surveyLevel = MarketAPI.SurveyLevel.FULL
+        market.isPlanetConditionMarketOnly = false
+        market.isHidden = false
         market.primaryEntity = planet
         market.tariff.modifyFlat("asteria_test", 0f)
         market.memoryWithoutUpdate["\$core_noDeciv"] = true
@@ -187,9 +191,9 @@ object AsteriaTestCampaignBootstrap {
             market.addIndustry(Industries.SPACEPORT)
         }
         market.setHasSpaceport(true)
-        market.setEconGroup(TEST_MARKET_ID)
+        market.econGroup = TEST_MARKET_ID
         for (cond in market.conditions) {
-            cond.setSurveyed(true)
+            cond.isSurveyed = true
         }
 
         removeDevLocalResourcesSubmarket(market)
@@ -202,7 +206,7 @@ object AsteriaTestCampaignBootstrap {
         removeDevLocalResourcesListeners(sector)
 
         planet.market = market
-        sector.playerFaction.production.setGatheringPoint(market)
+        sector.playerFaction.production.gatheringPoint = market
         removeDuplicateTestMarketsFromEconomy(sector, market)
 
         if (!isRegisteredInEconomy(sector, market)) {
@@ -272,7 +276,7 @@ object AsteriaTestCampaignBootstrap {
             canonicalCargo.sort()
             log.info(
                 "[AsteriaTestCampaignBootstrap] Migrated duplicate test storage cargo: " +
-                    "$mergedMarkets markets, $mergedStacks stacks, $mergedShips ships."
+                        "$mergedMarkets markets, $mergedStacks stacks, $mergedShips ships."
             )
         }
     }
@@ -352,13 +356,13 @@ object AsteriaTestCampaignBootstrap {
         val shipCount = cargo?.mothballedShips?.membersListCopy?.size ?: 0
         log.info(
             "[AsteriaTestCampaignBootstrap] Test market $phase: " +
-                "market=${System.identityHashCode(market)}, " +
-                "planetMarketSame=${planet.market === market}, " +
-                "economyMarketSame=${economyMarket === market}, " +
-                "productionSame=${productionMarket === market}, " +
-                "inEconomy=${market.isInEconomy}, " +
-                "storageStacks=$stackCount, storageShips=$shipCount."
-            )
+                    "market=${System.identityHashCode(market)}, " +
+                    "planetMarketSame=${planet.market === market}, " +
+                    "economyMarketSame=${economyMarket === market}, " +
+                    "productionSame=${productionMarket === market}, " +
+                    "inEconomy=${market.isInEconomy}, " +
+                    "storageStacks=$stackCount, storageShips=$shipCount."
+        )
     }
 
     private fun validateTestStorageAcceptance(
@@ -394,7 +398,7 @@ object AsteriaTestCampaignBootstrap {
 
         log.info(
             "[AsteriaTestCampaignBootstrap] Dev storage acceptance passed: " +
-                "storageStacks=$storageStacks, storageShips=$storageShips."
+                    "storageStacks=$storageStacks, storageShips=$storageShips."
         )
     }
 
@@ -461,8 +465,8 @@ object AsteriaTestCampaignBootstrap {
     private fun hasDevStoragePayload(market: MarketAPI): Boolean {
         val cargo = market.getSubmarket(Submarkets.SUBMARKET_STORAGE)?.cargoNullOk ?: return false
         return cargo.mothballedShips.membersListCopy.isNotEmpty() ||
-            cargo.weapons.isNotEmpty() ||
-            cargo.fighters.isNotEmpty()
+                cargo.weapons.isNotEmpty() ||
+                cargo.fighters.isNotEmpty()
     }
 
     private fun fillStorageWithModContent(market: MarketAPI): Boolean {
@@ -561,7 +565,7 @@ object AsteriaTestCampaignBootstrap {
         if (skippedVariantCount > MAX_SKIPPED_VARIANT_LOGS) {
             log.warn(
                 "[AsteriaTestCampaignBootstrap] Skipped ${skippedVariantCount - MAX_SKIPPED_VARIANT_LOGS} " +
-                    "additional dev storage variants; earlier warnings show representative reasons."
+                        "additional dev storage variants; earlier warnings show representative reasons."
             )
         }
 
@@ -622,10 +626,10 @@ object AsteriaTestCampaignBootstrap {
         logTestMarketState(Global.getSector(), market.primaryEntity, market, "filled")
         log.info(
             "[AsteriaTestCampaignBootstrap] Filled storage: " +
-                "$shipCount ships, $weaponCount weapons, $hullModCount hullmods, $fighterCount fighters, " +
-                "$commodityCount commodities, $specialItemCount special items; " +
-                "skipped=$skippedVariantCount variants; " +
-                "known=$knownShipCount ships/$knownWeaponCount weapons/$knownFighterCount fighters/$knownHullModCount hullmods."
+                    "$shipCount ships, $weaponCount weapons, $hullModCount hullmods, $fighterCount fighters, " +
+                    "$commodityCount commodities, $specialItemCount special items; " +
+                    "skipped=$skippedVariantCount variants; " +
+                    "known=$knownShipCount ships/$knownWeaponCount weapons/$knownFighterCount fighters/$knownHullModCount hullmods."
         )
         return true
     }

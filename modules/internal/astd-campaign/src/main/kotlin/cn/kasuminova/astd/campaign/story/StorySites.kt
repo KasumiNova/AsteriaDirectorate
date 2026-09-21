@@ -5,10 +5,10 @@ import cn.kasuminova.astd.campaign.bounty.MainBounties
 import cn.kasuminova.astd.campaign.dialog.story.StorySiteDialog
 import cn.kasuminova.astd.campaign.dialog.story.StorySiteDialog.SiteOrderState
 import cn.kasuminova.astd.campaign.world.StoryWorldIds
+import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.campaign.InteractionDialogPlugin
 import com.fs.starfarer.api.campaign.SectorEntityToken
 import org.apache.log4j.Logger
-import com.fs.starfarer.api.Global
 
 /**
  * 剧情站点交互注册表（doc 05/07/09/11 与 [StoryWorldIds] 实体清单对齐）。
@@ -112,7 +112,7 @@ object StorySites {
 
         override fun recoverAsset(itemId: String): Boolean {
             if (itemId !in recoverableAssets()) {
-                StorySites.log.warn("[ASTD] 托管资产回收被拒绝：${def.entityId} 当前不可回收 $itemId")
+                log.warn("[ASTD] 托管资产回收被拒绝：${def.entityId} 当前不可回收 $itemId")
                 return false
             }
             StoryQuestItems.grantToPlayer(itemId)

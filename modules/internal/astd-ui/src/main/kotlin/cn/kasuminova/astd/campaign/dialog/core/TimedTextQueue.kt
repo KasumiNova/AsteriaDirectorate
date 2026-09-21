@@ -53,7 +53,7 @@ class TimedTextQueue(private val textPanel: TextPanelAPI) {
         // 在播动画段落必须终态化而非遗弃：fadeIn 起步的标签停在 opacity=0，
         // 若不推至终态，段落将永远全透明（实机表现：跳转节点清空队列后文本面板整段空白）。
         for (a in actives) {
-            a.label.setOpacity(if (a.fadeOut > 0f) 0f else a.maxOpacity)
+            a.label.opacity = if (a.fadeOut > 0f) 0f else a.maxOpacity
         }
         actives.clear()
     }
@@ -177,7 +177,7 @@ class TimedTextQueue(private val textPanel: TextPanelAPI) {
         }
 
         if (immediate) {
-            label.setOpacity(1f)
+            label.opacity = 1f
             return
         }
 
@@ -186,14 +186,14 @@ class TimedTextQueue(private val textPanel: TextPanelAPI) {
         // 仅调整最大透明度，但不需要随时间变化：直接设定并结束。
         if (!hasFade) {
             if (e.maxOpacity < 1f) {
-                label.setOpacity(e.maxOpacity)
+                label.opacity = e.maxOpacity
             }
             return
         }
 
         // 初始透明度：有 fadeIn 则从 0 开始，否则直接到 maxOpacity。
         val start = if (e.fadeIn > 0f) 0f else e.maxOpacity
-        label.setOpacity(start)
+        label.opacity = start
         actives.add(
             Active(
                 label = label,
@@ -229,7 +229,7 @@ class TimedTextQueue(private val textPanel: TextPanelAPI) {
                 else -> max
             }
 
-            a.label.setOpacity(opacity)
+            a.label.opacity = opacity
 
             val done = when {
                 fadeOut > 0f -> t >= fadeIn + hold + fadeOut

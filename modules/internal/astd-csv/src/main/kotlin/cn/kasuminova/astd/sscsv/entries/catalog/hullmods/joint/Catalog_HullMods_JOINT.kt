@@ -21,6 +21,7 @@ object HullMod_astd_singularity_stabilizer : HullModEntry() {
     override val script: String = "cn.kasuminova.astd.combat.hullmods.base.ASTDSingularityStabilizerHullMod"
     override val desc: String = SsI18n.t("hullmod.$id.desc")
     override val short: String = SsI18n.t("hullmod.$id.short")
+
     // 素材占位：复用现有稳定器图标，正式美术后续替换。
     override val sprite: String = "graphics/hullmods/astd_arch_stabilizer.png"
 }

@@ -1,8 +1,11 @@
 package cn.kasuminova.astd.campaign.ending
 
 import cn.kasuminova.astd.campaign.bounty.BountyState
-import cn.kasuminova.astd.campaign.bounty.InfiniteSlotState
 import cn.kasuminova.astd.campaign.bounty.PendingStrengthEffect
+import cn.kasuminova.astd.campaign.ending.EndingProgression.activateDelayedEffects
+import cn.kasuminova.astd.campaign.ending.EndingProgression.issueExecutor
+import cn.kasuminova.astd.campaign.ending.EndingProgression.planSign
+import cn.kasuminova.astd.campaign.ending.EndingProgression.sign
 import java.util.Random
 import kotlin.math.min
 import kotlin.math.roundToInt

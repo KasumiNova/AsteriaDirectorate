@@ -60,9 +60,11 @@ object Wpn_astd_lh_stardust_launcher_arc : WeaponDataEntry(), SsProjMissileOutpu
     override val rarity: Int = 1
     override val baseValue: Int = 0
     override val range: Int = 600
+
     // 冷却口径（原版导弹武器约定）：冷却由 chargedown 驱动（harpoon=1s / annihilator=5s），
     // damage/second 列仅光束武器使用、导弹留 0；chargedown=0 时持续秒伤推导 200/0 溢出 INT_MAX
     override val damagePerShot: Int = 200
+
     // EMP 电弧为面板等额 × 难度倍率（100%~500%），面板列展示基准倍率
     override val emp: Int = 200
     override val turnRate: Int = 30
@@ -70,22 +72,27 @@ object Wpn_astd_lh_stardust_launcher_arc : WeaponDataEntry(), SsProjMissileOutpu
     override val ammoPerSec: Double = 0.25
     override val reloadSize: Int = 2
     override val type: String = "ENERGY"
+
     // 单发辐能 100（CSV 伤害类型列即 ENERGY，与 .wpn 安装类型 MISSILE 无关）
     override val energyPerShot: Int = 100
     override val chargedown: Double = 1.0
+
     // burst size 必须为 1（原版空列默认 1）：写 0 会把开火辐能结算与面板 fluxPerDam 推导
     // （energyPerShot × burstSize）乘成 0，辐能产出被静默吞掉、面板恒「不会产生辐能」
     override val burstSize: Number = 1
+
     // 喷出动能（对齐原版光尘发射器 30° 锥形喷洒 + 200 初速，弹体极限速度仍为 projSpeed 400）
     override val minSpread: Double = 30.0
     override val maxSpread: Double = 30.0
     override val projSpeed: Int = 400
     override val launchSpeed: Int = 200
+
     // 环绕待命寿命：未接敌光尘 60s 后自然熄灭（设计上光尘常驻环绕，弹药节奏由武器恢复承担）
     override val flightTime: Double = 60.0
     override val projHitpoints: Int = 400
     override val tags: String = "no_drop, no_drop_salvage"
     override val tech: String = "联制"
+
     // NO_MANUAL_FIRE：原版 AutofireManagerV2 对「导弹 + 弹药 ≤20 + 无本 hint」的武器组判不可用并
     // 关闭自动开火（舰尾 arc 0 永不可瞄 → 永不开火）；本 hint 让武器组保持自动开火，开火决策
     // 由 StardustLauncherAutofireAI 无条件接管（手动开火对本武器无意义，光尘全向自寻的）。
@@ -127,6 +134,7 @@ object Wpn_astd_lh_stardust_launcher_lens : WeaponDataEntry(), SsProjMissileOutp
     override val projHitpoints: Int = 400
     override val tags: String = "no_drop, no_drop_salvage"
     override val tech: String = "联制"
+
     // NO_MANUAL_FIRE：同 ARC 线（AutofireManagerV2 弹药 ≤20 判不可用问题，AI 开火无条件接管）
     override val aiHints: Set<AiHint> = setOf(AiHint.NO_MANUAL_FIRE)
     override val primaryRoleStr: String = SsI18n.t("weapon.astd_lh_stardust_launcher.primaryRoleStr")

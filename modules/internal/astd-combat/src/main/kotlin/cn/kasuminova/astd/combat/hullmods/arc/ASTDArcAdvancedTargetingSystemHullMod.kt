@@ -107,6 +107,7 @@ class ASTDArcAdvancedTargetingSystemHullMod : BaseHullMod() {
                 WeaponAPI.WeaponType.DECORATIVE,
                 WeaponAPI.WeaponType.SYSTEM,
                 WeaponAPI.WeaponType.STATION_MODULE -> false
+
                 else -> true
             }
         }

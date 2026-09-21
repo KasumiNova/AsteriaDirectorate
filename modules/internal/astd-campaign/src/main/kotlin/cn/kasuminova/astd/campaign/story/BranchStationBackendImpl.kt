@@ -1,16 +1,17 @@
 package cn.kasuminova.astd.campaign.story
 
 import cn.kasuminova.astd.campaign.bounty.BountyState
-import cn.kasuminova.astd.campaign.bounty.MainBountyBridge
 import cn.kasuminova.astd.campaign.bounty.MainBounties
+import cn.kasuminova.astd.campaign.bounty.MainBountyBridge
 import cn.kasuminova.astd.campaign.bounty.MainlineProgression
+import cn.kasuminova.astd.campaign.dialog.story.BranchStationDialog.BranchStationBackend
+import cn.kasuminova.astd.campaign.dialog.story.BranchStationDialog.BranchStationPhase
 import cn.kasuminova.astd.campaign.ending.EndingEffects
 import cn.kasuminova.astd.campaign.ending.EndingProgression
 import cn.kasuminova.astd.campaign.ending.ExecutorCores
 import cn.kasuminova.astd.campaign.ending.InfiniteBountyBridge
 import cn.kasuminova.astd.campaign.ending.InfiniteBountyGenerator
-import cn.kasuminova.astd.campaign.dialog.story.BranchStationDialog.BranchStationBackend
-import cn.kasuminova.astd.campaign.dialog.story.BranchStationDialog.BranchStationPhase
+import cn.kasuminova.astd.campaign.story.BranchTerminalData.snapshot
 import cn.kasuminova.astd.campaign.ui.HudMessages
 import cn.kasuminova.astd.campaign.ui.terminal.ArchivalChoice
 import cn.kasuminova.astd.campaign.ui.terminal.ArchiveSnapshot
@@ -51,9 +52,11 @@ object BranchTerminalData {
     fun phase(state: BountyState): BranchStationPhase = when {
         MainBounties.KEY_PROLOGUE in state.settledWorkOrders || state.contractorLevel >= 1 ->
             BranchStationPhase.OPEN
+
         MainBounties.KEY_PROLOGUE in state.postedWorkOrders ||
-            MainBounties.KEY_PROLOGUE in state.destroyedWorkOrders ->
+                MainBounties.KEY_PROLOGUE in state.destroyedWorkOrders ->
             BranchStationPhase.PENDING
+
         else -> BranchStationPhase.LOCKED
     }
 
@@ -237,7 +240,7 @@ class BranchStationBackendImpl : BranchStationBackend, BranchTerminalBackend {
             log.error("[ASTD] 终端快照装配失败：sector 不可用")
         }
         val playerFleet = sector?.playerFleet
-        return BranchTerminalData.snapshot(
+        return snapshot(
             state = BountyState.getOrCreate(),
             pulledCount = GravityNodes.pulledCount(),
             hasItem = StoryQuestItems::playerHas,

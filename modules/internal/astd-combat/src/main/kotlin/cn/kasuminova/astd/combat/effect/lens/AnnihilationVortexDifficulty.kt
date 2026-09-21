@@ -3,6 +3,10 @@ package cn.kasuminova.astd.combat.effect.lens
 import cn.kasuminova.astd.api.difficulty.DifficultyTuning
 import cn.kasuminova.astd.api.difficulty.ScalingEntry
 import cn.kasuminova.astd.api.difficulty.ScalingMap
+import cn.kasuminova.astd.combat.effect.lens.AnnihilationVortexDifficulty.ABSORB_RADIUS_MIN
+import cn.kasuminova.astd.combat.effect.lens.AnnihilationVortexDifficulty.ABSORB_RADIUS_MUL
+import cn.kasuminova.astd.combat.effect.lens.AnnihilationVortexDifficulty.COLLAPSE_RAD_MUL
+import cn.kasuminova.astd.combat.effect.lens.AnnihilationVortexDifficulty.POOL_FLOOR
 import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 
 /**

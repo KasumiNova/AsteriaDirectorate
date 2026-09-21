@@ -1,26 +1,26 @@
 package cn.kasuminova.astd.combat.shipsystems
 
-import cn.kasuminova.astd.renderer.effect.system.Xc001OverdriveVisualState
 import cn.kasuminova.astd.internal.i18n.I18n
+import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
+import cn.kasuminova.astd.renderer.effect.system.Xc001OverdriveVisualState
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEngineLayers
+import com.fs.starfarer.api.combat.CombatEntityAPI
 import com.fs.starfarer.api.combat.EmpArcEntityAPI
 import com.fs.starfarer.api.combat.MutableShipStatsAPI
-import com.fs.starfarer.api.combat.CombatEntityAPI
 import com.fs.starfarer.api.combat.ShipAPI
-import com.fs.starfarer.api.util.Misc
 import com.fs.starfarer.api.impl.combat.BaseShipSystemScript
 import com.fs.starfarer.api.plugins.ShipSystemStatsScript
+import com.fs.starfarer.api.util.Misc
 import org.boxutil.units.standard.entity.DistortionEntity
-import org.magiclib.util.MagicLensFlare
-import org.magiclib.util.MagicRender
 import org.lazywizard.lazylib.MathUtils
 import org.lwjgl.util.vector.Vector2f
+import org.magiclib.util.MagicLensFlare
+import org.magiclib.util.MagicRender
 import java.awt.Color
 import kotlin.math.cos
 import kotlin.math.sin
-import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
 
 /**
  * astd_tactical_overdrive（战术超频）
@@ -203,8 +203,16 @@ open class ASTDXc001OverdriveSystemStats : BaseShipSystemScript() {
         )
 
         // 使用 MagicRender.battlespace 渲染残影，呈现于舰体层下方（bultach_utils.afterimage 方案）。
-        val spriteApi = try { ship.spriteAPI } catch (_: Throwable) { null }
-        val hullSprite = try { Global.getSettings().getSprite(ship.hullSpec.spriteName) } catch (_: Throwable) { null }
+        val spriteApi = try {
+            ship.spriteAPI
+        } catch (_: Throwable) {
+            null
+        }
+        val hullSprite = try {
+            Global.getSettings().getSprite(ship.hullSpec.spriteName)
+        } catch (_: Throwable) {
+            null
+        }
         if (spriteApi != null && hullSprite != null) {
             val facing = ship.facing
             val width = spriteApi.width
@@ -294,14 +302,14 @@ open class ASTDXc001OverdriveSystemStats : BaseShipSystemScript() {
         }
 
         val shieldLevel = (visualLevel * (0.40f + 0.60f * rampLevel)).coerceIn(0f, 1f)
-        val pulse = 0.80f + 0.20f * kotlin.math.sin(engine.getTotalElapsedTime(false) * (3.0f + shieldLevel * 2.5f))
+        val pulse = 0.80f + 0.20f * sin(engine.getTotalElapsedTime(false) * (3.0f + shieldLevel * 2.5f))
         val innerColor = blendColor(snapshot.innerColor, Color(255, 148, 50, (118f + 32f * pulse).toInt()), shieldLevel)
         val ringColor = blendColor(snapshot.ringColor, Color(255, 120, 38, (220f + 20f * pulse).toInt()), shieldLevel)
 
-        shield.setInnerColor(innerColor)
-        shield.setRingColor(ringColor)
-        shield.setInnerRotationRate(snapshot.innerRotationRate * (1f + 0.75f * shieldLevel))
-        shield.setRingRotationRate(snapshot.ringRotationRate * (1f + 0.62f * shieldLevel))
+        shield.innerColor = innerColor
+        shield.ringColor = ringColor
+        shield.innerRotationRate = snapshot.innerRotationRate * (1f + 0.75f * shieldLevel)
+        shield.ringRotationRate = snapshot.ringRotationRate * (1f + 0.62f * shieldLevel)
 
         if (isAutomated) {
             // 自动模式：橙色发光描边（与护盾颜色保持一致）
@@ -310,13 +318,13 @@ open class ASTDXc001OverdriveSystemStats : BaseShipSystemScript() {
             val hotJitter = Color(fringeBase.red, fringeBase.green, fringeBase.blue, 200)
             val hotUnder = Color(coreBase.red, coreBase.green, coreBase.blue, 140)
             val jitterIntensity = (0.3f + 0.7f * shieldLevel).coerceIn(0f, 1f)
-            ship.setJitterShields(true)
+            ship.isJitterShields = true
             ship.setJitter(id, hotJitter, 0.05f + 0.06f * shieldLevel, 3, 0f, 3f + 5f * shieldLevel)
             ship.setJitterUnder(id, hotUnder, jitterIntensity, 22, 0f, 7f + 8f * shieldLevel)
         } else {
             val hotBase = Xc001OverdriveVisualState.hotFringe
             val jitterColor = Color(hotBase.red, hotBase.green, hotBase.blue, 255)
-            ship.setJitterShields(true)
+            ship.isJitterShields = true
             ship.setJitter(id, jitterColor, 0.04f + 0.05f * shieldLevel, 2, 0f, 3f + 4f * shieldLevel)
         }
     }
@@ -325,11 +333,11 @@ open class ASTDXc001OverdriveSystemStats : BaseShipSystemScript() {
         val snapshotKey = "$SHIELD_SNAPSHOT_KEY$shipKey"
         val snapshot = engine.customData.remove(snapshotKey) as? ShieldVisualSnapshot ?: return
         val shield = ship.shield ?: return
-        shield.setInnerColor(snapshot.innerColor)
-        shield.setRingColor(snapshot.ringColor)
-        shield.setInnerRotationRate(snapshot.innerRotationRate)
-        shield.setRingRotationRate(snapshot.ringRotationRate)
-        ship.setJitterShields(false)
+        shield.innerColor = snapshot.innerColor
+        shield.ringColor = snapshot.ringColor
+        shield.innerRotationRate = snapshot.innerRotationRate
+        shield.ringRotationRate = snapshot.ringRotationRate
+        ship.isJitterShields = false
     }
 
     private fun spawnScatteredFlare(ship: ShipAPI, engine: CombatEngineAPI) {
@@ -365,7 +373,7 @@ open class ASTDXc001OverdriveSystemStats : BaseShipSystemScript() {
             val thickness = 6f + MathUtils.getRandomNumberInRange(0f, 2f)
             try {
                 val arc = engine.spawnEmpArcVisual(from, ship, to, ship as CombatEntityAPI, thickness, arcFringe, arcCore, params)
-                arc.setCoreWidthOverride(thickness * 0.5f)
+                arc.coreWidthOverride = thickness * 0.5f
                 arc.setSingleFlickerMode(true)
                 arc.setRenderGlowAtStart(false)
             } catch (_: Throwable) {
@@ -402,11 +410,12 @@ open class ASTDXc001OverdriveSystemStats : BaseShipSystemScript() {
                     from, ship, to, ship as CombatEntityAPI,
                     thickness, arcFringe, arcCore, params,
                 )
-                arc.setCoreWidthOverride(thickness * 0.5f)
+                arc.coreWidthOverride = thickness * 0.5f
                 arc.setSingleFlickerMode(true)
                 arc.setRenderGlowAtStart(false)
                 arc.setFadedOutAtStart(true)
-            } catch (_: Throwable) {}
+            } catch (_: Throwable) {
+            }
         }
         repeat(3) {
             val pos = MathUtils.getRandomPointInCircle(ship.location, ship.collisionRadius * 0.55f)
@@ -416,7 +425,8 @@ open class ASTDXc001OverdriveSystemStats : BaseShipSystemScript() {
                     engine, ship, pos, 6f, length, 0f,
                     Xc001OverdriveVisualState.coldFringe, Xc001OverdriveVisualState.coldCore,
                 )
-            } catch (_: Throwable) {}
+            } catch (_: Throwable) {
+            }
         }
         spawnActivationDistortion(ship, engine)
     }
@@ -435,20 +445,25 @@ open class ASTDXc001OverdriveSystemStats : BaseShipSystemScript() {
             e.setSizeFull(r * 0.70f, r * 0.70f)
             e.setSizeOut(r * 1.90f, r * 1.90f)
             // 扭曲强度：淡入微弱，满值明显，淡出消散
-            e.setPowerIn(0.0f)
-            e.setPowerFull(0.60f)
-            e.setPowerOut(0.0f)
+            e.powerIn = 0.0f
+            e.powerFull = 0.60f
+            e.powerOut = 0.0f
             // 内环比例：形成中空环状，向外扩散时内环增大（更像冲击波）
             e.setInnerFull(0.20f, 0.20f)
             e.setInnerOut(0.55f, 0.55f)
             e.setLocation(ship.location)
             val state = BoxUtilCombatVfx.addEntity(engine, e)
             if (state != 0) e.delete()
-        } catch (_: Throwable) {}
+        } catch (_: Throwable) {
+        }
     }
 
     private fun hullBoundaryPoint(ship: ShipAPI): Vector2f {
-        val bounds = try { ship.exactBounds } catch (_: Throwable) { null }
+        val bounds = try {
+            ship.exactBounds
+        } catch (_: Throwable) {
+            null
+        }
         if (bounds != null) {
             try {
                 bounds.update(ship.location, ship.facing)
@@ -461,7 +476,8 @@ open class ASTDXc001OverdriveSystemStats : BaseShipSystemScript() {
                         seg.p1.y + (seg.p2.y - seg.p1.y) * t,
                     )
                 }
-            } catch (_: Throwable) {}
+            } catch (_: Throwable) {
+            }
         }
         // Fallback：无 ExactBounds 时使用碰撞半径近似
         val angle = MathUtils.getRandomNumberInRange(0f, 360f)
@@ -481,9 +497,9 @@ open class ASTDXc001OverdriveSystemStats : BaseShipSystemScript() {
         if (index != 0) return null
         val prefix = if (isAutomatedMode) "automated" else "crewed"
         val suffix = when (state) {
-            ShipSystemStatsScript.State.IN     -> "in"
+            ShipSystemStatsScript.State.IN -> "in"
             ShipSystemStatsScript.State.ACTIVE -> "active"
-            ShipSystemStatsScript.State.OUT    -> "out"
+            ShipSystemStatsScript.State.OUT -> "out"
             else -> return null
         }
         return ShipSystemStatsScript.StatusData(

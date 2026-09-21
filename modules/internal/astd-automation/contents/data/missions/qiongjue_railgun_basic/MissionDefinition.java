@@ -11,7 +11,7 @@ import com.fs.starfarer.api.mission.MissionDefinitionPlugin;
 
 /**
  * Dev-only mission surface for qiongjue phase railgun in-game automation.
- *
+ * <p>
  * 玩家侧统治者级（清空全部槽位后两座大型实弹槽 WS 012/WS 013 各装一门穷距，验证同舰双穷距
  * 复合键隔离）对敌方统治者级（WS 012 单装穷距，敌版三档）+ 两艘无武装警戒级
  * （切换目标折算 / 打死目标转火不折算的靶舰）。
@@ -20,6 +20,21 @@ import com.fs.starfarer.api.mission.MissionDefinitionPlugin;
  * → DECAY（3s 窗口衰减）→ KILL（打死转火不折算）→ ENEMY_SCALE（敌版三档）→ COMPLETED。
  */
 public final class MissionDefinition implements MissionDefinitionPlugin {
+    private static void clearAllWeaponSlots(final FleetMemberAPI member) {
+        for (final String slotId : member.getVariant().getFittedWeaponSlots()) {
+            member.getVariant().clearSlot(slotId);
+        }
+    }
+
+    /**
+     * 摘除全部外加 hullmod（舞台舰按基线 hull 断言；先复制集合防边迭代边删；Janino 不支持 diamond，显式类型参数）。
+     */
+    private static void stripAllHullMods(final FleetMemberAPI member) {
+        for (final String mod : new java.util.ArrayList<String>(member.getVariant().getHullMods())) {
+            member.getVariant().removeMod(mod);
+        }
+    }
+
     @Override
     public void defineMission(final MissionDefinitionAPI api) {
         api.initFleet(FleetSide.PLAYER, "ASTD", FleetGoal.ATTACK, false, 5);
@@ -52,18 +67,5 @@ public final class MissionDefinition implements MissionDefinitionPlugin {
         api.initMap(-9000f, 9000f, -6000f, 6000f);
         api.setBackgroundSpriteName("graphics/backgrounds/background2.jpg");
         api.addPlugin(new ASTDAutomationCombatPlugin());
-    }
-
-    private static void clearAllWeaponSlots(final FleetMemberAPI member) {
-        for (final String slotId : member.getVariant().getFittedWeaponSlots()) {
-            member.getVariant().clearSlot(slotId);
-        }
-    }
-
-    /** 摘除全部外加 hullmod（舞台舰按基线 hull 断言；先复制集合防边迭代边删；Janino 不支持 diamond，显式类型参数）。 */
-    private static void stripAllHullMods(final FleetMemberAPI member) {
-        for (final String mod : new java.util.ArrayList<String>(member.getVariant().getHullMods())) {
-            member.getVariant().removeMod(mod);
-        }
     }
 }

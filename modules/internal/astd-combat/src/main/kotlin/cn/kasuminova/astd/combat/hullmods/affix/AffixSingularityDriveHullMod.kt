@@ -1,8 +1,10 @@
 package cn.kasuminova.astd.combat.hullmods.affix
 
-import cn.kasuminova.astd.api.difficulty.DifficultyTuning
 import cn.kasuminova.astd.api.difficulty.ScalingEntry
 import cn.kasuminova.astd.combat.affix.AffixRegistry
+import cn.kasuminova.astd.combat.hullmods.affix.AffixSingularityDriveHullMod.SingularityBurstSubsystem.Companion.DECIDE_INTERVAL
+import cn.kasuminova.astd.combat.hullmods.affix.AffixSingularityDriveHullMod.SingularityBurstSubsystem.Companion.ENGAGE_RANGE_MULT
+import cn.kasuminova.astd.combat.hullmods.affix.AffixSingularityDriveHullMod.SingularityBurstSubsystem.Companion.FLUX_TRIGGER_LEVEL
 import cn.kasuminova.astd.internal.i18n.I18n
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseHullMod
@@ -136,10 +138,10 @@ class AffixSingularityDriveHullMod : BaseHullMod() {
             val engine = Global.getCombatEngine() ?: return false
             return engine.projectiles.any { projectile ->
                 projectile is DamagingProjectileAPI &&
-                    projectile.owner != ship.owner &&
-                    !projectile.didDamage() &&
-                    MathUtils.getDistance(ship.location, projectile.location) <= THREAT_RANGE &&
-                    projectile.damageAmount + projectile.empAmount * 0.25f >= THREAT_MIN_DAMAGE
+                        projectile.owner != ship.owner &&
+                        !projectile.didDamage() &&
+                        MathUtils.getDistance(ship.location, projectile.location) <= THREAT_RANGE &&
+                        projectile.damageAmount + projectile.empAmount * 0.25f >= THREAT_MIN_DAMAGE
             }
         }
 

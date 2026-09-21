@@ -9,12 +9,12 @@ import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.DamageAPI
 import com.fs.starfarer.api.combat.DamagingProjectileAPI
 import com.fs.starfarer.api.combat.MutableStat
+import org.mockito.Mockito.mock
+import org.mockito.Mockito.`when`
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
-import org.mockito.Mockito.mock
-import org.mockito.Mockito.`when`
 
 /**
  * “穷距”逐命中伤害乘区通道（QiongjueDamageDealtModifier）逻辑验证（全部调用真实逻辑）。
@@ -32,7 +32,10 @@ class QiongjueDamageDealtModifierTest {
     }
 
     /** 带真实叠层 Buff 的宿主：stub 船 + 真 BuffHost 登记真 QiongjueCalcStacks（不 advance，仅读层数）。 */
-    private fun hostWithStacks(stacks: Int, owner: Int): Triple<com.fs.starfarer.api.combat.ShipAPI, com.fs.starfarer.api.combat.WeaponAPI, QiongjueCalcStacks> {
+    private fun hostWithStacks(
+        stacks: Int,
+        owner: Int
+    ): Triple<com.fs.starfarer.api.combat.ShipAPI, com.fs.starfarer.api.combat.WeaponAPI, QiongjueCalcStacks> {
         val weapon = stubWeapon("WS 012", QiongjuePhaseRailgunDifficulty.WEAPON_ID)
         val ship = stubShip(weapons = listOf(weapon))
         `when`(ship.owner).thenReturn(owner)

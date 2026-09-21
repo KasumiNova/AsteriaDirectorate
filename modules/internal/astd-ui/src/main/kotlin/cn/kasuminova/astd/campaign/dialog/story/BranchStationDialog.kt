@@ -75,23 +75,25 @@ object BranchStationDialog {
     /** 构建分局站对话图（测试可直接消费）。 */
     fun createGraph(backend: BranchStationBackend, terminalOpener: TerminalOpener): DialogGraph =
         dialogGraph(start = NODE_ENTRY) {
-            node(NODE_ENTRY, DialogDsl.timedNode(
-                onEnter = { ctx ->
-                    ctx.sessionState[STATE_ENTRY_FIRED] = false
-                    val key = when (backend.phase()) {
-                        BranchStationPhase.LOCKED -> "locked"
-                        BranchStationPhase.PENDING -> "pending"
-                        BranchStationPhase.OPEN -> "open"
-                    }
-                    ctx.enqueueI18nFading(CAT, "story.branch.intro.$key", 0.3f, fadeIn = 0.3f)
-                },
-                onAdvance = { ctx, _ ->
-                    if (!ctx.textQueue.hasPending && ctx.sessionState[STATE_ENTRY_FIRED] != true) {
-                        ctx.sessionState[STATE_ENTRY_FIRED] = true
-                        ctx.goto(NODE_MENU)
-                    }
-                },
-            ))
+            node(
+                NODE_ENTRY, DialogDsl.timedNode(
+                    onEnter = { ctx ->
+                        ctx.sessionState[STATE_ENTRY_FIRED] = false
+                        val key = when (backend.phase()) {
+                            BranchStationPhase.LOCKED -> "locked"
+                            BranchStationPhase.PENDING -> "pending"
+                            BranchStationPhase.OPEN -> "open"
+                        }
+                        ctx.enqueueI18nFading(CAT, "story.branch.intro.$key", 0.3f, fadeIn = 0.3f)
+                    },
+                    onAdvance = { ctx, _ ->
+                        if (!ctx.textQueue.hasPending && ctx.sessionState[STATE_ENTRY_FIRED] != true) {
+                            ctx.sessionState[STATE_ENTRY_FIRED] = true
+                            ctx.goto(NODE_MENU)
+                        }
+                    },
+                )
+            )
 
             node(NODE_MENU, DialogDsl.node { ctx ->
                 when (backend.phase()) {
@@ -100,6 +102,7 @@ object BranchStationDialog {
                         terminalOption(OPT_TERMINAL, TerminalTab.ORDERS, terminalOpener),
                         leaveOption(),
                     )
+
                     BranchStationPhase.OPEN -> buildList {
                         add(terminalOption(OPT_TERMINAL, TerminalTab.ORDERS, terminalOpener))
                         add(terminalOption(OPT_ARCHIVES, TerminalTab.ARCHIVES, terminalOpener))
@@ -111,7 +114,7 @@ object BranchStationDialog {
                                     OPT_EXECUTOR,
                                     I18n[CAT, "story.branch.option.executor"],
                                     DialogDsl.run { c ->
-                                        c.dialog.setPlugin(ExecutorCoreDialog.createPlugin(backend.executorSpec()))
+                                        c.dialog.plugin = ExecutorCoreDialog.createPlugin(backend.executorSpec())
                                     },
                                 ),
                             )

@@ -36,6 +36,7 @@ object ProjectileVfxDispatchState {
                 logLegacyBoolOnce(engine, "MARK")
                 false
             }
+
             else -> false
         }
     }
@@ -71,6 +72,7 @@ object ProjectileVfxDispatchState {
                 logLegacyBoolOnce(engine, "LOCK")
                 false
             }
+
             else -> false
         }
     }

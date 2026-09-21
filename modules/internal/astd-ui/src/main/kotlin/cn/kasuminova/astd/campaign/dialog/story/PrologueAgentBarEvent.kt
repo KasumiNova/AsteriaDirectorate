@@ -89,7 +89,7 @@ class PrologueAgentBarEvent : BaseBarEventWithPerson() {
             },
         )
         graphPlugin = plugin
-        dialog.setPlugin(plugin)
+        dialog.plugin = plugin
         plugin.init(dialog)
     }
 

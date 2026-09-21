@@ -3,6 +3,10 @@ package cn.kasuminova.astd.combat.effect.arc
 import cn.kasuminova.astd.api.difficulty.DifficultyTuning
 import cn.kasuminova.astd.api.difficulty.ScalingEntry
 import cn.kasuminova.astd.api.difficulty.ScalingTable
+import cn.kasuminova.astd.combat.effect.arc.ChargeNeedleTuning.DECAY_FLOOR_PER_SECOND
+import cn.kasuminova.astd.combat.effect.arc.ChargeNeedleTuning.DECAY_RATIO_PER_SECOND
+import cn.kasuminova.astd.combat.effect.arc.ChargeNeedleTuning.DECAY_SHIELD_OFF_MULT
+import cn.kasuminova.astd.combat.effect.arc.ChargeNeedleTuning.DISSIPATION_CAP_MULT
 import com.fs.starfarer.api.combat.ShipAPI
 import kotlin.math.min
 
@@ -105,6 +109,7 @@ object ChargeNeedleTuning {
                 }
                 FLAT_FLUX_FRIGATE
             }
+
             else -> FLAT_FLUX_FRIGATE
         }
         return if (isPlayer) entry.v2 else tuning.value(entry)

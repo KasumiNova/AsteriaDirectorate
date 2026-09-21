@@ -1,7 +1,7 @@
 package cn.kasuminova.astd.combat.effect.arc
 
-import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import cn.kasuminova.astd.impl.buff.WarnCapture
+import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import com.fs.starfarer.api.combat.ShipAPI
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.`when`

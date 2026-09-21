@@ -1,5 +1,10 @@
 package cn.kasuminova.astd.renderer.effect.lens
 
+import cn.kasuminova.astd.renderer.effect.lens.GhostSignalWaveEffect.PULSE_RANGE
+import cn.kasuminova.astd.renderer.effect.lens.GhostSignalWaveEffect.WAVE_DURATION
+import cn.kasuminova.astd.renderer.effect.lens.GhostSignalWaveEffect.effectSpec
+import cn.kasuminova.astd.renderer.effect.lens.GhostSignalWaveEffect.frame
+import cn.kasuminova.astd.renderer.effect.lens.GhostSignalWaveEffect.submitFrame
 import cn.kasuminova.astd.renderer.shader.base.ShaderBlendMode
 import cn.kasuminova.astd.renderer.shader.base.ShaderEffectKey
 import cn.kasuminova.astd.renderer.shader.base.ShaderEffectLayer

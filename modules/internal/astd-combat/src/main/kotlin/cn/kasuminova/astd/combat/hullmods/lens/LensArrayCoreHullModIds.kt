@@ -10,6 +10,7 @@ object LensArrayCoreHullModIds {
     const val HULL_ID: String = "astd_zw_001"
 
     const val CORE: String = "astd_lens_array_core"
+
     // 注：lens 自造切换器 SWITCHER（旧 id astd_zw_001_mode_switcher）已废弃，统一改用通用切换器
     // ASTDDualModeSwitcherIds.SWITCHER_ID（见 LENS_DUAL_MODE_CONFIG），此常量已移除。
     const val MODE_CREWED: String = "astd_zw_001_mode_crewed"

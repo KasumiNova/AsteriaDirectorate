@@ -3,7 +3,6 @@ package cn.kasuminova.astd.campaign.world
 import cn.kasuminova.astd.api.difficulty.DifficultyTuning
 import cn.kasuminova.astd.api.difficulty.ScalingEntry
 import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
-import cn.kasuminova.astd.internal.i18n.I18n
 import cn.kasuminova.astd.internal.i18n.I18n.Categories
 import cn.kasuminova.astd.internal.i18n.I18nUi
 import com.fs.starfarer.api.campaign.econ.Industry

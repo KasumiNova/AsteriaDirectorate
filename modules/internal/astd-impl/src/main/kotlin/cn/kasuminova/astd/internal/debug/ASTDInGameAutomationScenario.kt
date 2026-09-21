@@ -1,5 +1,21 @@
 package cn.kasuminova.astd.internal.debug
 
+import cn.kasuminova.astd.internal.debug.ASTDInGameAutomationScenario.LENS_PHASE1_SCENARIO_ID
+import cn.kasuminova.astd.internal.debug.ASTDInGameAutomationScenario.LENS_PHASE2_SCENARIO_ID
+import cn.kasuminova.astd.internal.debug.ASTDInGameAutomationScenario.isArcProductionEnabled
+import cn.kasuminova.astd.internal.debug.ASTDInGameAutomationScenario.isAvEnabled
+import cn.kasuminova.astd.internal.debug.ASTDInGameAutomationScenario.isChargeNeedleEnabled
+import cn.kasuminova.astd.internal.debug.ASTDInGameAutomationScenario.isEdaEnabled
+import cn.kasuminova.astd.internal.debug.ASTDInGameAutomationScenario.isGdEnabled
+import cn.kasuminova.astd.internal.debug.ASTDInGameAutomationScenario.isGravRiftScenarioEnabled
+import cn.kasuminova.astd.internal.debug.ASTDInGameAutomationScenario.isHipEnabled
+import cn.kasuminova.astd.internal.debug.ASTDInGameAutomationScenario.isLensPhase1Enabled
+import cn.kasuminova.astd.internal.debug.ASTDInGameAutomationScenario.isPlEnabled
+import cn.kasuminova.astd.internal.debug.ASTDInGameAutomationScenario.isPsEnabled
+import cn.kasuminova.astd.internal.debug.ASTDInGameAutomationScenario.isQjEnabled
+import cn.kasuminova.astd.internal.debug.ASTDInGameAutomationScenario.isSmEnabled
+import cn.kasuminova.astd.internal.debug.ASTDInGameAutomationScenario.isSsEnabled
+import cn.kasuminova.astd.internal.debug.ASTDInGameAutomationScenario.isTrailPauseProbeEnabled
 import java.nio.file.Path
 
 /**
@@ -56,6 +72,7 @@ object ASTDInGameAutomationScenario {
     const val VARIANT_ID: String = "astd_xc_001_Standard"
     const val WEAPON_ID: String = "astd_aod7"
     const val PROJECTILE_SPEC_ID: String = "astd_aod7_shot"
+
     // SSOptimizer 遥测契约标签（其 helper/verifier 硬编码的字面值）；运行期 preset 已随旧管线删除，此处仅作场景描述符。
     const val VFX_PRESET_ID: String = "aod7_shot"
 

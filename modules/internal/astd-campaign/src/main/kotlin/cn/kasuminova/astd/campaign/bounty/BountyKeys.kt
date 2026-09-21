@@ -1,5 +1,9 @@
 package cn.kasuminova.astd.campaign.bounty
 
+import cn.kasuminova.astd.campaign.bounty.BountyKeys.MEM_AFFIXES
+import cn.kasuminova.astd.campaign.bounty.BountyKeys.MEM_SETTLED_PREFIX
+
+
 /**
  * 赏金系统统一常量。
  */

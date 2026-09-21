@@ -5,14 +5,13 @@ import cn.kasuminova.astd.api.difficulty.ScalingEntry
 import cn.kasuminova.astd.impl.buff.WarnCapture
 import cn.kasuminova.astd.impl.buff.stubShip
 import cn.kasuminova.astd.impl.buff.stubWeapon
-import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import com.fs.starfarer.api.combat.CombatEngineAPI
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 import org.mockito.ArgumentMatchers.anyBoolean
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.`when`
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 /**
  * 规格 05 §2.5 用例 1~9：穷距持续演算纯逻辑全量验证（全部调用真实逻辑，禁止源码 contain）。
@@ -56,7 +55,8 @@ class QiongjueStackMathTest {
     @Test
     fun `用例4 衰减窗口边界`() {
         // 恰 3.0s（含端）不衰减，累加器清零。
-        val atWindow = QiongjueStackMath.decayAdvance(stacks = 10, pendingDecay = 0.5f, secondsSinceLastHit = 3.0f, amount = 0.016f, decayRate = 1.75f)
+        val atWindow =
+            QiongjueStackMath.decayAdvance(stacks = 10, pendingDecay = 0.5f, secondsSinceLastHit = 3.0f, amount = 0.016f, decayRate = 1.75f)
         assertEquals(10, atWindow.stacks)
         assertEquals(0f, atWindow.pendingDecay)
 

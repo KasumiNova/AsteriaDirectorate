@@ -3,6 +3,7 @@ package cn.kasuminova.astd.renderer.effect.system
 import cn.kasuminova.astd.combat.hullmods.base.isASTDShip
 import cn.kasuminova.astd.impl.render.TriShardComponent
 import cn.kasuminova.astd.impl.render.TriShardSpec
+import cn.kasuminova.astd.renderer.effect.system.ASTDEngineShardSprayEffect.FLUSH_INTERVAL
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseEveryFrameCombatPlugin
 import com.fs.starfarer.api.combat.CombatEngineAPI
@@ -231,7 +232,7 @@ internal object ASTDEngineShardSprayEffect {
                 while (spray.emitAcc >= 1f) {
                     spray.emitAcc -= 1f
                     val speed = (SPEED_MIN + (SPEED_MAX - SPEED_MIN) * level) *
-                        MathUtils.getRandomNumberInRange(0.8f, 1.2f)
+                            MathUtils.getRandomNumberInRange(0.8f, 1.2f)
                     val sizeScale = (0.6f + 0.5f * level) * MathUtils.getRandomNumberInRange(0.85f, 1.15f)
                     val angle = Math.toRadians((baseAngle + MathUtils.getRandomNumberInRange(-SPREAD_DEG, SPREAD_DEG)).toDouble())
                     var vx = cos(angle).toFloat() * speed

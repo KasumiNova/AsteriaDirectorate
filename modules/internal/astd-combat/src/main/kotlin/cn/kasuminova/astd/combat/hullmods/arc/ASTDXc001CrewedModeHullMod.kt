@@ -55,7 +55,7 @@ class ASTDXc001CrewedModeHullMod : BaseHullMod() {
         }
 
         // 载人模式：使用载人版系统（xc_001 已显式声明，非空）
-        XC_001_DUAL_MODE_CONFIG.crewedSystemId?.let { variant.hullSpec?.setShipSystemId(it) }
+        XC_001_DUAL_MODE_CONFIG.crewedSystemId?.let { variant.hullSpec?.shipSystemId = it }
 
         stats.peakCRDuration.modifyFlat(id, PEAK_CR_BONUS_FLAT)
         stats.shieldUpkeepMult.modifyMult(id, SHIELD_UPKEEP_MULT)
@@ -73,8 +73,14 @@ class ASTDXc001CrewedModeHullMod : BaseHullMod() {
 
         val systemLevel = try {
             ship.system?.effectLevel ?: 0f
-        } catch (_: Throwable) { 0f }.coerceIn(0f, 1f)
-        val state = try { ship.system?.state } catch (_: Throwable) { null }
+        } catch (_: Throwable) {
+            0f
+        }.coerceIn(0f, 1f)
+        val state = try {
+            ship.system?.state
+        } catch (_: Throwable) {
+            null
+        }
         val visualLevel = Xc001OverdriveVisualState.getLevel(ship, engine).coerceAtLeast(systemLevel)
 
         val timerKey = "$ARC_TIMER_KEY:${System.identityHashCode(ship)}"
@@ -131,14 +137,19 @@ class ASTDXc001CrewedModeHullMod : BaseHullMod() {
         val thickness = 5f + systemLevel * 3f
         try {
             val arc = engine.spawnEmpArcVisual(from, ship, to, ship, thickness, arcFringe, arcCore, params)
-            arc.setCoreWidthOverride(thickness * 0.45f)
+            arc.coreWidthOverride = thickness * 0.45f
             arc.setSingleFlickerMode(true)
             arc.setRenderGlowAtStart(false)
-        } catch (_: Throwable) {}
+        } catch (_: Throwable) {
+        }
     }
 
     private fun hullBoundaryPoint(ship: ShipAPI): Vector2f {
-        val bounds = try { ship.exactBounds } catch (_: Throwable) { null }
+        val bounds = try {
+            ship.exactBounds
+        } catch (_: Throwable) {
+            null
+        }
         if (bounds != null) {
             try {
                 bounds.update(ship.location, ship.facing)
@@ -151,7 +162,8 @@ class ASTDXc001CrewedModeHullMod : BaseHullMod() {
                         seg.p1.y + (seg.p2.y - seg.p1.y) * t,
                     )
                 }
-            } catch (_: Throwable) {}
+            } catch (_: Throwable) {
+            }
         }
         val angle = MathUtils.getRandomNumberInRange(0f, 360f)
         val radius = ship.collisionRadius * 0.90f
@@ -162,7 +174,13 @@ class ASTDXc001CrewedModeHullMod : BaseHullMod() {
         )
     }
 
-    override fun addPostDescriptionSection(tooltip: TooltipMakerAPI, hullSize: ShipAPI.HullSize, ship: ShipAPI?, width: Float, isForModSpec: Boolean) {
+    override fun addPostDescriptionSection(
+        tooltip: TooltipMakerAPI,
+        hullSize: ShipAPI.HullSize,
+        ship: ShipAPI?,
+        width: Float,
+        isForModSpec: Boolean
+    ) {
         ASTDHullModTooltipRenderer.renderBlocks(
             tooltip = tooltip,
             width = width,

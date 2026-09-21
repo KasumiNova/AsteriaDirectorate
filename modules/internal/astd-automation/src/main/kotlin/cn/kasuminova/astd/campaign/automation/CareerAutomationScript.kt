@@ -2,10 +2,9 @@ package cn.kasuminova.astd.campaign.automation
 
 import cn.kasuminova.astd.campaign.bounty.BountyKeys
 import cn.kasuminova.astd.campaign.bounty.BountyState
-import cn.kasuminova.astd.campaign.bounty.MainBountyBridge
 import cn.kasuminova.astd.campaign.bounty.MainBounties
+import cn.kasuminova.astd.campaign.bounty.MainBountyBridge
 import cn.kasuminova.astd.campaign.bounty.MainlineProgression
-import cn.kasuminova.astd.campaign.ending.EndingProgression
 import cn.kasuminova.astd.campaign.ending.InfiniteBountyGenerator
 import cn.kasuminova.astd.campaign.story.BranchStationBackendImpl
 import cn.kasuminova.astd.campaign.story.BranchTerminalData
@@ -20,15 +19,15 @@ import cn.kasuminova.astd.campaign.world.StoryWorldIds
 import cn.kasuminova.astd.campaign.world.StoryWorldState
 import com.fs.starfarer.api.EveryFrameScript
 import com.fs.starfarer.api.Global
-import com.fs.starfarer.api.campaign.econ.MarketAPI
 import com.fs.starfarer.api.campaign.SectorAPI
 import com.fs.starfarer.api.campaign.StarSystemAPI
+import com.fs.starfarer.api.campaign.econ.MarketAPI
 import com.fs.starfarer.campaign.CampaignEngine
 import com.fs.starfarer.campaign.save.CampaignGameManager
-import java.io.File
 import org.apache.log4j.Logger
 import org.magiclib.bounty.ActiveBounty
 import org.magiclib.bounty.MagicBountyCoordinator
+import java.io.File
 
 /**
  * 生涯集成自动化检查脚本（实机验收基建）。
@@ -90,6 +89,7 @@ class CareerAutomationScript : EveryFrameScript {
                     "\"${d}\""
                 }
             }
+
             is String -> buildString {
                 append('"')
                 for (c in value) {
@@ -104,9 +104,11 @@ class CareerAutomationScript : EveryFrameScript {
                 }
                 append('"')
             }
+
             is Map<*, *> -> value.entries.joinToString(prefix = "{", postfix = "}") {
                 "${toJson(it.key.toString())}:${toJson(it.value)}"
             }
+
             is Iterable<*> -> value.joinToString(prefix = "[", postfix = "]") { toJson(it) }
             is Array<*> -> value.joinToString(prefix = "[", postfix = "]") { toJson(it) }
             else -> toJson(value.toString())
@@ -218,8 +220,8 @@ class CareerAutomationScript : EveryFrameScript {
             val listing = workDir.listFiles()?.joinToString(",") { f -> "${f.name}(${f.length()})" } ?: "<null>"
             log.info(
                 "[ASTD-Career] advance 探针：ticks=$advanceTicks amount=$amount" +
-                    " paused=${sector?.isPaused} dialog=${ui?.currentInteractionDialog != null}" +
-                    " showingDialog=${ui?.isShowingDialog} cmdFile=${commandFile.isFile} dir=[$listing]",
+                        " paused=${sector?.isPaused} dialog=${ui?.currentInteractionDialog != null}" +
+                        " showingDialog=${ui?.isShowingDialog} cmdFile=${commandFile.isFile} dir=[$listing]",
             )
             debugLogTimer = 0f
         }
@@ -236,7 +238,7 @@ class CareerAutomationScript : EveryFrameScript {
             if (sector != null && sector.isPaused) {
                 val ui = sector.campaignUI
                 if (ui != null && ui.currentInteractionDialog == null && !ui.isShowingDialog) {
-                    sector.setPaused(false)
+                    sector.isPaused = false
                 }
             }
             pollCommand()
@@ -311,8 +313,8 @@ class CareerAutomationScript : EveryFrameScript {
         writeResult(running.seq, running.raw, ok, error, data)
         log.info(
             "[ASTD-Career] 命令完成 seq=${running.seq} ok=$ok" +
-                (error?.let { " error=$it" } ?: "") +
-                " 耗时 ${System.currentTimeMillis() - running.startedAtMs}ms",
+                    (error?.let { " error=$it" } ?: "") +
+                    " 耗时 ${System.currentTimeMillis() - running.startedAtMs}ms",
         )
         writeStatus("idle")
     }
@@ -387,6 +389,7 @@ class CareerAutomationScript : EveryFrameScript {
             File(workDir, "session-done").writeText("done", Charsets.UTF_8)
             mapOf("sessionDone" to true)
         }
+
         else -> throw IllegalArgumentException("未知生涯自动化命令：$command")
     }
 
@@ -605,7 +608,7 @@ class CareerAutomationScript : EveryFrameScript {
             condition = {
                 val state = BountyState.getOrCreate()
                 key in state.postedWorkOrders &&
-                    MagicBountyCoordinator.getInstance().getActiveBounty(key) != null
+                        MagicBountyCoordinator.getInstance().getActiveBounty(key) != null
             },
             result = { mapOf("posted" to true, "key" to key) },
         )
@@ -634,7 +637,7 @@ class CareerAutomationScript : EveryFrameScript {
             condition = {
                 val now = BountyState.getOrCreate()
                 key in now.destroyedWorkOrders ||
-                    ((now.workOrderStageIndex[key] ?: 0) > initialStage && key in now.postedWorkOrders)
+                        ((now.workOrderStageIndex[key] ?: 0) > initialStage && key in now.postedWorkOrders)
             },
             result = {
                 val now = BountyState.getOrCreate()
@@ -1046,8 +1049,8 @@ class CareerAutomationScript : EveryFrameScript {
                 val now = BountyState.getOrCreate()
                 val current = now.infiniteSlots.firstOrNull { it.index == slotIndex } ?: return@WaitTask false
                 current.generation > generationBefore && current.lifecycle == "POSTED" &&
-                    MagicBountyCoordinator.getInstance()
-                        .getActiveBounty(InfiniteBountyGenerator.keyOf(slotIndex, current.generation)) != null
+                        MagicBountyCoordinator.getInstance()
+                            .getActiveBounty(InfiniteBountyGenerator.keyOf(slotIndex, current.generation)) != null
             },
             result = {
                 val creditsAfter = Global.getSector()?.playerFleet?.cargo?.credits?.get()?.toLong() ?: -1L

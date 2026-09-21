@@ -78,7 +78,7 @@ class DialogTestRig {
         val label = mock(LabelAPI::class.java)
         val history = mutableListOf<Float>()
         opacityHistory[label] = history
-        doAnswer { inv -> history += inv.getArgument<Float>(0); null }.`when`(label).setOpacity(anyFloat())
+        doAnswer { inv -> history += inv.getArgument<Float>(0); null }.`when`(label).opacity = anyFloat()
         return label
     }
 

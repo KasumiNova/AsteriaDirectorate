@@ -1,5 +1,6 @@
 package cn.kasuminova.astd.combat.hullmods.base
 
+import cn.kasuminova.astd.combat.hullmods.base.ASTDAutofitPlugin.Companion.resolveAutofitGoalMode
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.PluginPick
 import com.fs.starfarer.api.campaign.BaseCampaignPlugin
@@ -81,7 +82,7 @@ class ASTDAutofitPlugin(fleetCommander: PersonAPI?) : CoreAutofitPlugin(fleetCom
                 logger.warn("ASTDAutofitPlugin: 还原 AI 核心舰长时玩家货舱不可达，核心退回件无法核销（$aiCoreId）")
             }
         }
-        member.setCaptain(preFitCaptain)
+        member.captain = preFitCaptain
     }
 
     companion object {
@@ -128,8 +129,8 @@ object ASTDAutofitPluginPicker {
         val variant = member?.variant ?: return null
         val config = ASTDDualModeRegistry.configForVariant(variant) ?: return null
         val dualModeRelevant = variant.hasHullMod(config.switcherId) ||
-            variant.permaMods.contains(config.crewedModeId) ||
-            variant.permaMods.contains(config.automatedModeId)
+                variant.permaMods.contains(config.crewedModeId) ||
+                variant.permaMods.contains(config.automatedModeId)
         if (!dualModeRelevant) return null
 
         val commander = member.fleetCommanderForStats ?: member.fleetCommander

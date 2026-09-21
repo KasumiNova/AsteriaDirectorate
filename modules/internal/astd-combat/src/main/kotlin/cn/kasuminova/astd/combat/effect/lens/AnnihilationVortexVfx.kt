@@ -36,10 +36,28 @@ object AnnihilationVortexVfx {
             val a = (i.toFloat() / 10f) * (2f * Math.PI.toFloat())
             val loc = Vector2f(center.x + Math.cos(a.toDouble()).toFloat() * r * 0.35f, center.y + Math.sin(a.toDouble()).toFloat() * r * 0.35f)
             val vel = Vector2f(Math.cos(a.toDouble()).toFloat() * 45f, Math.sin(a.toDouble()).toFloat() * 45f)
-            engine.addNebulaParticle(loc, vel, r * 0.30f, 2.1f, 0.10f, 0.45f, 0.90f, Color(NEBULA_COLOR.red, NEBULA_COLOR.green, NEBULA_COLOR.blue, 120))
+            engine.addNebulaParticle(
+                loc,
+                vel,
+                r * 0.30f,
+                2.1f,
+                0.10f,
+                0.45f,
+                0.90f,
+                Color(NEBULA_COLOR.red, NEBULA_COLOR.green, NEBULA_COLOR.blue, 120)
+            )
         }
         // 中心底尘。
-        engine.addNebulaParticle(center, Vector2f(0f, 0f), r * 0.55f, 2.4f, 0.08f, 0.35f, 0.80f, Color(NEBULA_COLOR.red, NEBULA_COLOR.green, NEBULA_COLOR.blue, 100))
+        engine.addNebulaParticle(
+            center,
+            Vector2f(0f, 0f),
+            r * 0.55f,
+            2.4f,
+            0.08f,
+            0.35f,
+            0.80f,
+            Color(NEBULA_COLOR.red, NEBULA_COLOR.green, NEBULA_COLOR.blue, 100)
+        )
 
         spawnCollapseDistortion(engine, center, r)
     }
@@ -55,8 +73,8 @@ object AnnihilationVortexVfx {
         e.setInnerIn(0.35f, 0.35f)
         e.setInnerFull(0.35f, 0.35f)
         e.setInnerOut(0.35f, 0.35f)
-        e.setInnerHardness(0.90f)
-        e.setRingHardness(0.70f)
+        e.innerHardness = 0.90f
+        e.ringHardness = 0.70f
 
         // 外 → 内：从坍缩全半径开始，快速坍缩到近心点。
         e.setSizeIn(radius, radius)
@@ -64,9 +82,9 @@ object AnnihilationVortexVfx {
         e.setSizeOut(radius * 0.18f, radius * 0.18f)
 
         // 强度外弱内强，最后快速消散。
-        e.setPowerIn(0.35f)
-        e.setPowerFull(0.75f)
-        e.setPowerOut(0.95f)
+        e.powerIn = 0.35f
+        e.powerFull = 0.75f
+        e.powerOut = 0.95f
 
         e.setLocation(center)
         val result = BoxUtilCombatVfx.addEntity(engine, e)

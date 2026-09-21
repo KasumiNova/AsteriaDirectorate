@@ -72,6 +72,7 @@ object I18nUi {
         baseColor: Color,
     ): LabelAPI {
         data class Match(val start: Int, val end: Int, val text: String, val color: Color)
+
         val matches = mutableListOf<Match>()
         var searchFrom = 0
         for (hl in highlights) {
@@ -101,7 +102,7 @@ object I18nUi {
         sb.append(text.substring(lastEnd).replace("%", "%%"))
 
         val label = tooltip.addPara(sb.toString(), pad, hlColors.toTypedArray(), *hlValues.toTypedArray())
-        label.setColor(baseColor)
+        label.color = baseColor
         return label
     }
 }

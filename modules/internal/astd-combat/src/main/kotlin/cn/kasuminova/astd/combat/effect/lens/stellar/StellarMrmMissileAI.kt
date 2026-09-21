@@ -60,7 +60,7 @@ class StellarMrmMissileAI(
                         }
                         log.info(
                             "[辉星] 导弹选定目标：类型=${if (picked.isFighter) "战机" else "舰船"}" +
-                                " hull=${picked.hullSpec?.hullId} dist=${MathUtils.getDistance(missile.location, picked.location).toInt()}",
+                                    " hull=${picked.hullSpec?.hullId} dist=${MathUtils.getDistance(missile.location, picked.location).toInt()}",
                         )
                     } else {
                         log.info("[辉星] 导弹无可选目标（候选全空/全越射程），直飞")

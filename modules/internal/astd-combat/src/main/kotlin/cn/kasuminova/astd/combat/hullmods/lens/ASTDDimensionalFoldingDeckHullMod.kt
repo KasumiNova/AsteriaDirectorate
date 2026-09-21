@@ -163,5 +163,5 @@ internal fun ShipAPI?.isZw102Ship(): Boolean {
     val hullId = s.hullSpec?.hullId
     val baseHullId = s.hullSpec?.baseHullId
     return hullId == ASTDDimensionalFoldingDeckHullMod.HULL_ID ||
-        baseHullId == ASTDDimensionalFoldingDeckHullMod.HULL_ID
+            baseHullId == ASTDDimensionalFoldingDeckHullMod.HULL_ID
 }

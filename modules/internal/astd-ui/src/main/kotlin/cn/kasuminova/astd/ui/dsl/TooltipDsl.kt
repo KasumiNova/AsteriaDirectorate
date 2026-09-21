@@ -1,8 +1,8 @@
 package cn.kasuminova.astd.ui.dsl
 
-import cn.kasuminova.astd.ui.effect.ASTDLatticePulseTooltipBackground
 import cn.kasuminova.astd.internal.i18n.I18n
 import cn.kasuminova.astd.internal.i18n.I18nUi
+import cn.kasuminova.astd.ui.effect.ASTDLatticePulseTooltipBackground
 import com.fs.starfarer.api.ui.Alignment
 import com.fs.starfarer.api.ui.TooltipMakerAPI
 import java.awt.Color

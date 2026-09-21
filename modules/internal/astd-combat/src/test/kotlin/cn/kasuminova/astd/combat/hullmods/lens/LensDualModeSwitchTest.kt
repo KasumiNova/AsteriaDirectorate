@@ -118,12 +118,30 @@ private class FakeLensVariant : ShipVariantAPI {
 
     override fun getHullSpec(): ShipHullSpecAPI? = null
     override fun getPermaMods(): MutableSet<String> = perma
-    override fun addPermaMod(id: String) { perma.add(id) }
-    override fun addPermaMod(id: String, p1: Boolean) { perma.add(id) }
-    override fun removePermaMod(id: String) { perma.remove(id) }
-    override fun clearPermaMods() { perma.clear() }
-    override fun addMod(id: String) { mods.add(id) }
-    override fun removeMod(id: String) { mods.remove(id) }
+    override fun addPermaMod(id: String) {
+        perma.add(id)
+    }
+
+    override fun addPermaMod(id: String, p1: Boolean) {
+        perma.add(id)
+    }
+
+    override fun removePermaMod(id: String) {
+        perma.remove(id)
+    }
+
+    override fun clearPermaMods() {
+        perma.clear()
+    }
+
+    override fun addMod(id: String) {
+        mods.add(id)
+    }
+
+    override fun removeMod(id: String) {
+        mods.remove(id)
+    }
+
     override fun hasHullMod(id: String): Boolean = mods.contains(id) || perma.contains(id)
 
     private fun notUsed(): Nothing =

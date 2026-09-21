@@ -96,6 +96,8 @@ class RenderEntityDslTest {
         override fun advance(ctx: RenderContext, amount: Float) {}
         override fun render(ctx: RenderContext) {}
         override fun beginFadeOut(reason: FadeReason, seconds: Float) {}
-        override fun onDetach() { detachCount++ }
+        override fun onDetach() {
+            detachCount++
+        }
     }
 }

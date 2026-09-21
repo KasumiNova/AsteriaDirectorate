@@ -136,7 +136,7 @@ class BoltRenderComponent(
         val scale = Vector2f(frame.scaleX, 1f)
         passes.forEach {
             it.setStateVanilla(frame.center, frame.facingDeg, scale)
-            it.materialData.setColorAlpha(alpha)
+            it.materialData.colorAlpha = alpha
         }
     }
 

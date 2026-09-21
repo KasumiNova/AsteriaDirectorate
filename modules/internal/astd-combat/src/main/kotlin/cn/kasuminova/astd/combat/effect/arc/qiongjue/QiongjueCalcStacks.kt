@@ -13,7 +13,6 @@ import cn.kasuminova.astd.internal.i18n.I18n
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.ShipAPI
-import com.fs.starfarer.api.combat.WeaponAPI
 
 /**
  * 全舰“穷距”相位轨道炮共享的持续演算叠层状态（规格 05 §2.1，2026-09 修订：Weapon 级 → Ship 级共享）。
@@ -147,7 +146,7 @@ class QiongjueCalcStacks(
 
     override fun isHostValid(): Boolean =
         ship.isAlive && !ship.isHulk &&
-            ship.allWeapons.any { it?.spec?.weaponId == QiongjuePhaseRailgunDifficulty.WEAPON_ID }
+                ship.allWeapons.any { it?.spec?.weaponId == QiongjuePhaseRailgunDifficulty.WEAPON_ID }
 
     companion object {
         /** Ship 级 Buff 登记 id（同时充当 customData 键段）。 */

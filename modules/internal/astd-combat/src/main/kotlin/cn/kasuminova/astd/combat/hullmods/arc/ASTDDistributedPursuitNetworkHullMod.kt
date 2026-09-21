@@ -117,7 +117,11 @@ class ASTDDistributedPursuitNetworkHullMod : BaseHullMod() {
 
     private fun clearStaleTargets(engine: CombatEngineAPI, source: ShipAPI, activeSet: Set<Int>) {
         val previous = engine.customData[targetsKey(source)] as? Set<*> ?: emptySet<Any>()
-        val ships = try { engine.ships } catch (_: Throwable) { null } ?: return
+        val ships = try {
+            engine.ships
+        } catch (_: Throwable) {
+            null
+        } ?: return
         for (entry in previous) {
             val identity = entry as? Int ?: continue
             if (identity in activeSet) continue

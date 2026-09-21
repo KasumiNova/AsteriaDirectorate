@@ -4,8 +4,6 @@ import cn.kasuminova.astd.sscsv.entries.AiHint
 import cn.kasuminova.astd.sscsv.entries.WeaponDataEntry
 import cn.kasuminova.astd.sscsv.entries.catalog.weapondata.weaponName
 import cn.kasuminova.astd.sscsv.i18n.SsI18n
-import cn.kasuminova.astd.sscsv.outputs.proj.MissileEngineSlot
-import cn.kasuminova.astd.sscsv.outputs.proj.MissileEngineSlotStyleSpec
 import cn.kasuminova.astd.sscsv.outputs.proj.MissileEngineSpec
 import cn.kasuminova.astd.sscsv.outputs.proj.MissileProjSpec
 import cn.kasuminova.astd.sscsv.outputs.proj.ProjectileProjSpec
@@ -233,6 +231,7 @@ object Wpn_astd_gcp2 : WeaponDataEntry() {
     override val projSpeed: Int = 0
 
     override val aiHints: Set<AiHint> = setOf(AiHint.PD)
+
     // autofit 类别标签（CoreAutofitPlugin 按 类别+等级 匹配，缺失会导致装配方案无法装回本武器）
     override val tags: String = "pd6, beam6, SR, astd_production"
     override val groupTag: String = "astd"

@@ -52,13 +52,13 @@ class ASTDDecorativeLightsEffect : EveryFrameWeaponEffectPlugin {
         val alpha = if (ship.isHulk || ship.isPiece) 0f else 1.0f
 
         try {
-            animation?.setAlphaMult(alpha)
+            animation?.alphaMult = alpha
         } catch (_: Throwable) {
         }
 
         try {
             sprite.setAdditiveBlend()
-            val c = baseColor ?: Color.WHITE
+            baseColor ?: Color.WHITE
             val color = if (weaponId == BLOOM_WEAPON_ID) {
                 // 始终使用冷态蓝色，不随战术系统过载状态变色。
                 val from = Xc001OverdriveVisualState.lerpColor(

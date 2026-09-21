@@ -2,8 +2,8 @@ package cn.kasuminova.astd.combat.shipsystems
 
 import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcAuraUtil
 import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcCombatUtil
-import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcProductionVfx
 import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcProductionShipIds
+import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcProductionVfx
 import cn.kasuminova.astd.internal.i18n.I18n
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
@@ -53,7 +53,10 @@ class ASTDArcSharedFluxNetworkSystemStats : BaseShipSystemScript() {
 
         val level = effectLevel.coerceIn(0f, 1f)
         if ((ship.fluxTracker?.fluxLevel ?: 0f) > MAX_SOURCE_FLUX_LEVEL) {
-            try { ship.system?.deactivate() } catch (_: Throwable) {}
+            try {
+                ship.system?.deactivate()
+            } catch (_: Throwable) {
+            }
         }
 
         applySourceStats(stats, id, level)
@@ -110,7 +113,11 @@ class ASTDArcSharedFluxNetworkSystemStats : BaseShipSystemScript() {
     }
 
     private fun selectTargets(engine: CombatEngineAPI, source: ShipAPI): List<ShipAPI> {
-        val candidates = try { engine.ships } catch (_: Throwable) { null } ?: return emptyList()
+        val candidates = try {
+            engine.ships
+        } catch (_: Throwable) {
+            null
+        } ?: return emptyList()
         val bySummaryId = LinkedHashMap<String, ShipAPI>()
         for (candidate in candidates) {
             if (candidate === source) continue
@@ -129,7 +136,11 @@ class ASTDArcSharedFluxNetworkSystemStats : BaseShipSystemScript() {
     }
 
     private fun ASTDArcAuraUtil.CandidateSummary.withPressureBias(ship: ShipAPI): ASTDArcAuraUtil.CandidateSummary {
-        val flux = try { ship.fluxTracker?.fluxLevel ?: 0f } catch (_: Throwable) { 0f }
+        val flux = try {
+            ship.fluxTracker?.fluxLevel ?: 0f
+        } catch (_: Throwable) {
+            0f
+        }
         val sizeBias = when (ship.hullSize) {
             ShipAPI.HullSize.CAPITAL_SHIP -> 0.24f
             ShipAPI.HullSize.CRUISER -> 0.16f
@@ -160,7 +171,11 @@ class ASTDArcSharedFluxNetworkSystemStats : BaseShipSystemScript() {
     private fun clearStaleTargets(engine: CombatEngineAPI, source: ShipAPI, activeSet: Set<Int>) {
         val key = "$TARGETS_KEY${System.identityHashCode(source)}"
         val previous = engine.customData[key] as? Set<*> ?: emptySet<Any>()
-        val ships = try { engine.ships } catch (_: Throwable) { null } ?: return
+        val ships = try {
+            engine.ships
+        } catch (_: Throwable) {
+            null
+        } ?: return
         for (entry in previous) {
             val identity = entry as? Int ?: continue
             if (identity in activeSet) continue
@@ -205,7 +220,7 @@ class ASTDArcSharedFluxNetworkSystemStats : BaseShipSystemScript() {
 
         val newHard = (targetTracker.hardFlux - hardTransfer).coerceAtLeast(0f)
         targetTracker.decreaseFlux(totalTransfer)
-        targetTracker.setHardFlux(newHard)
+        targetTracker.hardFlux = newHard
         if (softTransfer > 0f) sourceTracker.increaseFlux(softTransfer, false)
         if (hardTransfer > 0f) sourceTracker.increaseFlux(hardTransfer, true)
         return FluxTransfer(
@@ -250,7 +265,11 @@ class ASTDArcSharedFluxNetworkSystemStats : BaseShipSystemScript() {
     }
 
     override fun isUsable(system: ShipSystemAPI, ship: ShipAPI): Boolean {
-        val fluxLevel = try { ship.fluxTracker?.fluxLevel ?: 0f } catch (_: Throwable) { 0f }
+        val fluxLevel = try {
+            ship.fluxTracker?.fluxLevel ?: 0f
+        } catch (_: Throwable) {
+            0f
+        }
         return fluxLevel <= MAX_SOURCE_FLUX_LEVEL
     }
 
@@ -294,7 +313,11 @@ class ASTDArcSharedFluxNetworkSystemStats : BaseShipSystemScript() {
         "${(value.coerceAtLeast(0f) * 100f).roundToInt()}%"
 
     private fun safeElapsed(engine: CombatEngineAPI): Float =
-        try { engine.elapsedInLastFrame.coerceIn(0.001f, 0.25f) } catch (_: Throwable) { 0.0167f }
+        try {
+            engine.elapsedInLastFrame.coerceIn(0.001f, 0.25f)
+        } catch (_: Throwable) {
+            0.0167f
+        }
 
     private fun targetModId(source: ShipAPI, target: ShipAPI): String =
         "${ASTDArcProductionShipIds.STAT_ARC_SHARED_FLUX_NETWORK}:${System.identityHashCode(source)}:${System.identityHashCode(target)}"

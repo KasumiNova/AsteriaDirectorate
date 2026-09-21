@@ -2,6 +2,8 @@ package cn.kasuminova.astd.combat.shipsystems
 
 import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcCombatUtil
 import cn.kasuminova.astd.combat.lens.system.GravityRiftTuning
+import cn.kasuminova.astd.combat.shipsystems.GravityRiftSystemAI.Companion.ENGAGE_RANGE_FRAC
+import cn.kasuminova.astd.combat.shipsystems.GravityRiftSystemAI.Companion.SCAN_INTERVAL_SEC
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.combat.ShipSystemAIScript

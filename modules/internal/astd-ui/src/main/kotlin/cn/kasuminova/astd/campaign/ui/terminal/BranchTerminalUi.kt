@@ -229,7 +229,7 @@ class BranchTerminalDelegate(
         time += amount
 
         if (bootActive) {
-            val prev = bootT
+            bootT
             bootT += amount
             if (!bootSweepSoundFired && bootT >= BootTimeline.SWEEP_START) {
                 bootSweepSoundFired = true
@@ -334,12 +334,14 @@ class BranchTerminalDelegate(
                 buildListPane()
                 buildBottomBar()
             }
+
             is TerminalEffect.ReprintDetail -> buildDetailPane()
             is TerminalEffect.StampSlam -> {
                 stampT = 0f
                 stampKind = effect.kind
                 stampSeed++
             }
+
             is TerminalEffect.ShowReceipt -> openReceipt(effect.receipt, effect.glitchSpec)
             is TerminalEffect.ShowNarrative -> openNarrative(effect.pages)
             is TerminalEffect.GlitchFx -> startGlitch(effect.spec, effect.targetOrderKey)
@@ -360,15 +362,15 @@ class BranchTerminalDelegate(
         // 目标行不在当前列表（如 glitch 期间切 tab）时放弃文字瞬替，仅保留噪点/撕裂
         val target = glitchTargetKey?.let(orderStatusLabels::get) ?: return
         glitchSwapped = target
-        target.label.setText(I18n[TerminalStyle.CAT, "ui.terminal.glitch.target_status"])
-        target.label.setColor(TerminalStyle.glitchRed)
+        target.label.text = I18n[TerminalStyle.CAT, "ui.terminal.glitch.target_status"]
+        target.label.color = TerminalStyle.glitchRed
     }
 
     private fun endGlitch() {
         glitchT = Float.NaN
         glitchSwapped?.let {
-            it.label.setText(it.text)
-            it.label.setColor(it.color)
+            it.label.text = it.text
+            it.label.color = it.color
         }
         glitchSwapped = null
         glitchTargetKey = null
@@ -383,7 +385,7 @@ class BranchTerminalDelegate(
         for (event in events) {
             when (event) {
                 is LinePrinter.Event.LineStarted -> TerminalStyle.play(TerminalSound.PRINT_LINE)
-                is LinePrinter.Event.JamLineErased -> printTargets.getOrNull(event.index)?.label?.setText("")
+                is LinePrinter.Event.JamLineErased -> printTargets.getOrNull(event.index)?.label?.text = ""
                 LinePrinter.Event.AllDone -> {}
             }
         }
@@ -391,7 +393,7 @@ class BranchTerminalDelegate(
             val text = pr.visibleText(i)
             if (text != printedTexts[i]) {
                 printedTexts[i] = text
-                printTargets[i].label.setText(text)
+                printTargets[i].label.text = text
             }
         }
         if (pr.done) printer = null
@@ -405,7 +407,7 @@ class BranchTerminalDelegate(
             for (event in events) {
                 when (event) {
                     is LinePrinter.Event.LineStarted -> TerminalStyle.play(TerminalSound.PRINT_LINE)
-                    is LinePrinter.Event.JamLineErased -> receiptTargets.getOrNull(event.index)?.label?.setText("")
+                    is LinePrinter.Event.JamLineErased -> receiptTargets.getOrNull(event.index)?.label?.text = ""
                     LinePrinter.Event.AllDone -> {
                         // 明细打印完毕 → 金额数字滚动到位
                         receiptRollT = 0f
@@ -417,7 +419,7 @@ class BranchTerminalDelegate(
                 val text = pr.visibleText(i)
                 if (text != receiptTexts[i]) {
                     receiptTexts[i] = text
-                    receiptTargets[i].label.setText(text)
+                    receiptTargets[i].label.text = text
                 }
             }
             return
@@ -425,7 +427,7 @@ class BranchTerminalDelegate(
         if (!receiptRollT.isNaN()) {
             receiptRollT += amount
             val rolled = ReceiptRoll.amountAt(receiptAmountTarget, receiptRollT)
-            receiptAmountLabel?.setText(receiptAmountPrefix + Misc.getDGSCredits(rolled.toFloat()))
+            receiptAmountLabel?.text = receiptAmountPrefix + Misc.getDGSCredits(rolled.toFloat())
             if (ReceiptRoll.done(receiptRollT)) receiptRollT = Float.NaN
         }
     }
@@ -550,7 +552,7 @@ class BranchTerminalDelegate(
         val summary = order.summary
 
         val textTT = rowPanel.createUIElement(rowW - TerminalStyle.STATUS_W - 14f, TerminalStyle.ROW_H, false)
-        textTT.addPara("$tier  ${order.serial}　$summary", 0f, TerminalStyle.orange, tier).setColor(textColor)
+        textTT.addPara("$tier  ${order.serial}　$summary", 0f, TerminalStyle.orange, tier).color = textColor
         rowPanel.addUIElement(textTT).inTL(8f, 4f)
 
         val statusTT = rowPanel.createUIElement(TerminalStyle.STATUS_W, TerminalStyle.ROW_H, false)
@@ -666,7 +668,7 @@ class BranchTerminalDelegate(
             for (i in printTargets.indices) {
                 val text = pr.visibleText(i)
                 printedTexts[i] = text
-                printTargets[i].label.setText(text)
+                printTargets[i].label.text = text
             }
         }
     }
@@ -1013,10 +1015,12 @@ class BranchTerminalDelegate(
                 I18n.t(TerminalStyle.CAT, "ui.terminal.ending.complete.command_ship", "ship" to (snapshot.commandShipName ?: "")),
                 TerminalStyle.text, 3f,
             )
+
             ExecutorSpec.ADMIN -> tt.addPara(
                 I18n.t(TerminalStyle.CAT, "ui.terminal.ending.complete.admin_market", "market" to (snapshot.adminMarketName ?: "")),
                 TerminalStyle.text, 3f,
             )
+
             null -> Unit
         }
     }
@@ -1051,10 +1055,13 @@ class BranchTerminalDelegate(
             when {
                 action == TerminalAction.ACCEPT ->
                     actionButton(I18n[TerminalStyle.CAT, "ui.terminal.action.accept"], ActionButtonId.PRIMARY, true, true)
+
                 action == TerminalAction.TRACK ->
                     actionButton(I18n[TerminalStyle.CAT, "ui.terminal.action.track"], ActionButtonId.PRIMARY, true, true)
+
                 action == TerminalAction.SETTLE ->
                     actionButton(I18n[TerminalStyle.CAT, "ui.terminal.action.settle"], ActionButtonId.PRIMARY, true, true)
+
                 order?.status == OrderStatus.SETTLED -> {
                     actionButton(I18n[TerminalStyle.CAT, "ui.terminal.action.settled"], ActionButtonId.PRIMARY, false, false)
                     actionButton(I18n[TerminalStyle.CAT, "ui.terminal.action.replay_receipt"], ActionButtonId.REPLAY_RECEIPT, true, false)
@@ -1167,7 +1174,7 @@ class BranchTerminalDelegate(
             for (i in receiptTargets.indices) {
                 val text = pr.visibleText(i)
                 receiptTexts[i] = text
-                receiptTargets[i].label.setText(text)
+                receiptTargets[i].label.text = text
             }
         }
     }
@@ -1193,7 +1200,7 @@ class BranchTerminalDelegate(
             for (event in events) {
                 when (event) {
                     is LinePrinter.Event.LineStarted -> TerminalStyle.play(TerminalSound.PRINT_LINE)
-                    is LinePrinter.Event.JamLineErased -> narrativeTargets.getOrNull(event.index)?.label?.setText("")
+                    is LinePrinter.Event.JamLineErased -> narrativeTargets.getOrNull(event.index)?.label?.text = ""
                     LinePrinter.Event.AllDone -> {
                         if (narrativeAmountTarget > 0) {
                             narrativeRollT = 0f
@@ -1206,7 +1213,7 @@ class BranchTerminalDelegate(
                 val text = pr.visibleText(i)
                 if (text != narrativeTexts[i]) {
                     narrativeTexts[i] = text
-                    narrativeTargets[i].label.setText(text)
+                    narrativeTargets[i].label.text = text
                 }
             }
             return
@@ -1214,7 +1221,7 @@ class BranchTerminalDelegate(
         if (!narrativeRollT.isNaN()) {
             narrativeRollT += amount
             val rolled = ReceiptRoll.amountAt(narrativeAmountTarget, narrativeRollT)
-            narrativeAmountLabel?.setText(narrativeAmountPrefix + Misc.getDGSCredits(rolled.toFloat()))
+            narrativeAmountLabel?.text = narrativeAmountPrefix + Misc.getDGSCredits(rolled.toFloat())
             if (ReceiptRoll.done(narrativeRollT)) narrativeRollT = Float.NaN
         }
     }
@@ -1308,7 +1315,7 @@ class BranchTerminalDelegate(
             for (i in narrativeTargets.indices) {
                 val text = pr.visibleText(i)
                 narrativeTexts[i] = text
-                narrativeTargets[i].label.setText(text)
+                narrativeTargets[i].label.text = text
             }
         }
     }

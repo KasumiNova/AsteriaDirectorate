@@ -1,8 +1,8 @@
 package cn.kasuminova.astd.campaign.story
 
 import cn.kasuminova.astd.campaign.bounty.BountyState
-import cn.kasuminova.astd.campaign.bounty.MainBountyBridge
 import cn.kasuminova.astd.campaign.bounty.MainBounties
+import cn.kasuminova.astd.campaign.bounty.MainBountyBridge
 import cn.kasuminova.astd.campaign.dialog.story.StoryDialogBackend
 import cn.kasuminova.astd.campaign.dialog.story.StoryDialogBackends
 import cn.kasuminova.astd.campaign.world.StoryWorldIds
@@ -46,9 +46,9 @@ private object StoryDialogBackendImpl : StoryDialogBackend {
         // 状态兜底：工单已挂出/击毁/核销或承包商已注册，都视为已接取（如旧档缺 memory 标记）
         val state = BountyState.getOrCreate()
         return MainBounties.KEY_PROLOGUE in state.postedWorkOrders ||
-            MainBounties.KEY_PROLOGUE in state.destroyedWorkOrders ||
-            MainBounties.KEY_PROLOGUE in state.settledWorkOrders ||
-            state.contractorLevel >= 1
+                MainBounties.KEY_PROLOGUE in state.destroyedWorkOrders ||
+                MainBounties.KEY_PROLOGUE in state.settledWorkOrders ||
+                state.contractorLevel >= 1
     }
 
     override fun isPrologueAgentMet(): Boolean =

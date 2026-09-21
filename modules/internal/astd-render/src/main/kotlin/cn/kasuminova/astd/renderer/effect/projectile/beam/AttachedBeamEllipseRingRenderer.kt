@@ -165,13 +165,13 @@ internal object AttachedBeamEllipseRingRenderer {
             if (map.isEmpty()) return
 
             val eng = engine ?: Global.getCombatEngine() ?: return
-            val nowGlobal = safeTime(eng)
+            safeTime(eng)
 
             GL11.glPushAttrib(
                 GL11.GL_ENABLE_BIT or
-                    GL11.GL_COLOR_BUFFER_BIT or
-                    GL11.GL_LINE_BIT or
-                    GL11.GL_TEXTURE_BIT
+                        GL11.GL_COLOR_BUFFER_BIT or
+                        GL11.GL_LINE_BIT or
+                        GL11.GL_TEXTURE_BIT
             )
 
             try {

@@ -1,5 +1,8 @@
 package cn.kasuminova.astd.campaign.bounty
 
+import cn.kasuminova.astd.campaign.bounty.StandardCores.lockFleetPlan
+import cn.kasuminova.astd.campaign.bounty.StandardCores.planFleetCores
+import cn.kasuminova.astd.campaign.bounty.StandardCores.rollCoreLoot
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.PluginPick
 import com.fs.starfarer.api.campaign.AICoreAdminPlugin
@@ -9,8 +12,8 @@ import com.fs.starfarer.api.characters.FullName
 import com.fs.starfarer.api.characters.PersonAPI
 import com.fs.starfarer.api.impl.campaign.BaseAICoreOfficerPluginImpl
 import com.fs.starfarer.api.impl.campaign.ids.Ranks
-import java.util.Random
 import org.apache.log4j.Logger
+import java.util.Random
 
 /**
  * ASTD 量产级（制式）AI 核心（docs/design/85 §2：G/B/A 三级可打捞，O 级仅作设定标尺）。
@@ -187,20 +190,20 @@ object StandardCores {
     fun createOfficerPerson(tier: Tier, factionId: String?): PersonAPI {
         val person = Global.getFactory().createPerson()
         person.setFaction(factionId)
-        person.setAICoreId(tier.commodityId)
+        person.aiCoreId = tier.commodityId
         val spec = Global.getSettings().getCommoditySpec(tier.commodityId)
-        person.stats.setSkipRefresh(true)
+        person.stats.isSkipRefresh = true
         person.name = FullName(spec.name, "", FullName.Gender.ANY)
-        person.setPortraitSprite(tier.portrait)
-        person.stats.setLevel(tier.officerLevel)
+        person.portraitSprite = tier.portrait
+        person.stats.level = tier.officerLevel
         for (skill in tier.officerSkills) {
             person.stats.setSkillLevel(skill, 2f)
         }
         person.memoryWithoutUpdate.set("\$autoPointsMult", tier.autoPointsMult)
         person.setPersonality("reckless")
-        person.setRankId(Ranks.SPACE_CAPTAIN)
-        person.setPostId(null)
-        person.stats.setSkipRefresh(false)
+        person.rankId = Ranks.SPACE_CAPTAIN
+        person.postId = null
+        person.stats.isSkipRefresh = false
         return person
     }
 
@@ -212,12 +215,12 @@ object StandardCores {
         val tier = Tier.A
         val person = Global.getFactory().createPerson()
         person.setFaction(factionId)
-        person.setAICoreId(tier.commodityId)
+        person.aiCoreId = tier.commodityId
         val spec = Global.getSettings().getCommoditySpec(tier.commodityId)
         person.name = FullName(spec.name, "", FullName.Gender.ANY)
-        person.setPortraitSprite(tier.portrait)
-        person.setRankId(null)
-        person.setPostId(Ranks.POST_ADMINISTRATOR)
+        person.portraitSprite = tier.portrait
+        person.rankId = null
+        person.postId = Ranks.POST_ADMINISTRATOR
         person.stats.setSkillLevel("industrial_planning", 1f)
         person.stats.setSkillLevel("hypercognition", 1f)
         return person

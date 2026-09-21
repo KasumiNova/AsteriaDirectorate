@@ -101,10 +101,50 @@ data class BeamCoreSpec(
             val core = Color(30, 0, 70, 240)
             val glow = Color(65, 15, 130, 220)
             return listOf(
-                BeamCorePieceSpec(reversedU = false, useGlowWidth = false, palette = BeamPalette.CORE, baseAlpha = 0.55f * 0.50f, emissiveAlpha = 0.45f * 0.50f, mixPower = 3.6f, texSpeed = -540f, createDiffuse = core, createFringe = glow),
-                BeamCorePieceSpec(reversedU = true, useGlowWidth = false, palette = BeamPalette.CORE, baseAlpha = 0.20f * 0.50f, emissiveAlpha = 0.22f * 0.50f, mixPower = 3.2f, texSpeed = -540f * -0.92f, createDiffuse = core, createFringe = glow),
-                BeamCorePieceSpec(reversedU = false, useGlowWidth = true, palette = BeamPalette.GLOW, baseAlpha = 0.14f, emissiveAlpha = 0.50f, mixPower = 3.0f, texSpeed = -340f, createDiffuse = glow, createFringe = glow),
-                BeamCorePieceSpec(reversedU = true, useGlowWidth = true, palette = BeamPalette.GLOW, baseAlpha = 0.08f, emissiveAlpha = 0.28f, mixPower = 2.8f, texSpeed = -340f * -0.92f, createDiffuse = glow, createFringe = glow),
+                BeamCorePieceSpec(
+                    reversedU = false,
+                    useGlowWidth = false,
+                    palette = BeamPalette.CORE,
+                    baseAlpha = 0.55f * 0.50f,
+                    emissiveAlpha = 0.45f * 0.50f,
+                    mixPower = 3.6f,
+                    texSpeed = -540f,
+                    createDiffuse = core,
+                    createFringe = glow
+                ),
+                BeamCorePieceSpec(
+                    reversedU = true,
+                    useGlowWidth = false,
+                    palette = BeamPalette.CORE,
+                    baseAlpha = 0.20f * 0.50f,
+                    emissiveAlpha = 0.22f * 0.50f,
+                    mixPower = 3.2f,
+                    texSpeed = -540f * -0.92f,
+                    createDiffuse = core,
+                    createFringe = glow
+                ),
+                BeamCorePieceSpec(
+                    reversedU = false,
+                    useGlowWidth = true,
+                    palette = BeamPalette.GLOW,
+                    baseAlpha = 0.14f,
+                    emissiveAlpha = 0.50f,
+                    mixPower = 3.0f,
+                    texSpeed = -340f,
+                    createDiffuse = glow,
+                    createFringe = glow
+                ),
+                BeamCorePieceSpec(
+                    reversedU = true,
+                    useGlowWidth = true,
+                    palette = BeamPalette.GLOW,
+                    baseAlpha = 0.08f,
+                    emissiveAlpha = 0.28f,
+                    mixPower = 2.8f,
+                    texSpeed = -340f * -0.92f,
+                    createDiffuse = glow,
+                    createFringe = glow
+                ),
             )
         }
     }
@@ -213,21 +253,23 @@ class BeamCoreComponent(
             entity.submitNodes()
         }
 
-        entity.setTexturePixels(spec.texturePixels)
+        entity.texturePixels = spec.texturePixels
         var bodyW = (width * (spec.bodyWidthBase + spec.bodyWidthRamp * ramp))
         if (spec.fadeMulScalesWidth) bodyW *= fade
         bodyW = bodyW.coerceAtLeast(2f)
         val tipW = (bodyW * spec.tipWidthMul).coerceAtLeast(1f)
         // node[0]=base（factor 0），node[1]=tip；镜像片 node 反转，宽度端亦反转。
         if (!piece.reversedU) {
-            entity.setStartWidth(bodyW); entity.setEndWidth(tipW)
+            entity.startWidth = bodyW; entity.endWidth = tipW
         } else {
-            entity.setStartWidth(tipW); entity.setEndWidth(bodyW)
+            entity.startWidth = tipW; entity.endWidth = bodyW
         }
 
         var a = piece.baseAlpha * (spec.alphaRampBase + spec.alphaRampMul * ramp)
         var ea = piece.emissiveAlpha * (spec.emissiveRampBase + spec.emissiveRampMul * ramp)
-        if (spec.fadeMulScalesAlpha) { a *= fade; ea *= fade }
+        if (spec.fadeMulScalesAlpha) {
+            a *= fade; ea *= fade
+        }
         a = a.coerceIn(0f, 1.2f)
         ea = ea.coerceIn(0f, 10f)
         entity.setStartColor(1f, 1f, 1f, a)
@@ -241,8 +283,13 @@ class BeamCoreComponent(
             val coreColor = BeamMath.colorLerp(spec.coreColor0, spec.coreColor1, ramp)
             val glowColor = BeamMath.colorLerp(spec.glowColor0, spec.glowColor1, ramp)
             when (piece.palette) {
-                BeamPalette.CORE -> { entity.materialData.setColor(coreColor); entity.materialData.setEmissiveColor(glowColor) }
-                BeamPalette.GLOW -> { entity.materialData.setColor(glowColor); entity.materialData.setEmissiveColor(glowColor) }
+                BeamPalette.CORE -> {
+                    entity.materialData.setColor(coreColor); entity.materialData.setEmissiveColor(glowColor)
+                }
+
+                BeamPalette.GLOW -> {
+                    entity.materialData.setColor(glowColor); entity.materialData.setEmissiveColor(glowColor)
+                }
             }
         }
 
@@ -258,20 +305,20 @@ class BeamCoreComponent(
     }
 
     private fun initFlowParams(e: TrailEntity, textureSpeed: Float) {
-        e.setTexturePixels(spec.texturePixels)
-        e.setTextureSpeed(textureSpeed)
-        e.setFlowWhenPaused(false)
-        e.setUVOffset((Math.random().toFloat() * 2f) - 1f)
-        e.setJitterPower(spec.jitterPower)
-        e.setFlick(false)
-        e.setSyncFlick(false)
+        e.texturePixels = spec.texturePixels
+        e.textureSpeed = textureSpeed
+        e.isFlowWhenPaused = false
+        e.uvOffset = (Math.random().toFloat() * 2f) - 1f
+        e.jitterPower = spec.jitterPower
+        e.isFlick = false
+        e.isSyncFlick = false
     }
 
     private fun initEndFade(e: TrailEntity) {
-        e.setFillStartAlpha(spec.startFadeAlpha)
-        e.setFillStartFactor(spec.startFadeFactor)
-        e.setFillEndAlpha(spec.endFadeAlpha)
-        e.setFillEndFactor(spec.endFadeFactor)
+        e.fillStartAlpha = spec.startFadeAlpha
+        e.fillStartFactor = spec.startFadeFactor
+        e.fillEndAlpha = spec.endFadeAlpha
+        e.fillEndFactor = spec.endFadeFactor
     }
 
     companion object {

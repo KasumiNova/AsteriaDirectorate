@@ -34,7 +34,7 @@ class ASTDLensAutomatedModeHullMod : BaseHullMod() {
             return
         }
 
-        variant.hullSpec?.setShipSystemId(LensArrayCoreHullModIds.SYSTEM_AUTOMATED)
+        variant.hullSpec?.shipSystemId = LensArrayCoreHullModIds.SYSTEM_AUTOMATED
 
         // 蜂群思维：舰载机非导弹武器射程 +20%
         stats.fighterWingRange.modifyMult(id, FIGHTER_WING_RANGE_MULT)

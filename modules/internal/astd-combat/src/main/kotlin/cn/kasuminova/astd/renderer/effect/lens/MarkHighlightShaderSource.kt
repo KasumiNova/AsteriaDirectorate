@@ -1,5 +1,8 @@
 package cn.kasuminova.astd.renderer.effect.lens
 
+import cn.kasuminova.astd.renderer.effect.lens.MarkHighlightShaderSource.ALPHA_PEAK_PROGRESS
+
+
 /**
  * 误差/深水标记高光的共享 GLSL 源（Task 8）。
  *

@@ -84,6 +84,7 @@ object GeminiDemSyncHandler {
                     onWarn("双子星 DEM 同步冲击：beam.source 解析失败（$source），保守取 v2 倍率（目标=${target.id}）")
                     GeminiDemDifficulty.SYNC_MULT.v2
                 }
+
                 sourceShip.owner == 0 -> GeminiDemDifficulty.SYNC_MULT.v2
                 else -> tuning.value(GeminiDemDifficulty.SYNC_MULT)
             }
@@ -95,7 +96,7 @@ object GeminiDemSyncHandler {
             engine.customData[TELEMETRY_SYNC_LAST_MULT] = mult
             log.info(
                 "双子星 DEM 同步冲击：target=${target.id} damage=$damage mult=$mult " +
-                    "source=${sourceShip?.id ?: "不可判"} owner=${sourceShip?.owner ?: "不可判"}（配对=${prev.kind}->$kind，Δt=${now - prev.hitTime}s）",
+                        "source=${sourceShip?.id ?: "不可判"} owner=${sourceShip?.owner ?: "不可判"}（配对=${prev.kind}->$kind，Δt=${now - prev.hitTime}s）",
             )
             return true
         }
@@ -109,7 +110,7 @@ object GeminiDemSyncHandler {
     @Suppress("UNCHECKED_CAST")
     fun registryOf(engine: CombatEngineAPI): MutableMap<String, SyncRecord> =
         engine.customData.getOrPut(GeminiDemDifficulty.SYNC_REGISTRY_KEY) { mutableMapOf<String, SyncRecord>() }
-            as MutableMap<String, SyncRecord>
+                as MutableMap<String, SyncRecord>
 
     fun syncTriggerCount(engine: CombatEngineAPI): Int = engine.customData[TELEMETRY_SYNC_TRIGGER] as? Int ?: 0
     fun hitRegisteredCount(engine: CombatEngineAPI): Int = engine.customData[TELEMETRY_HIT_REGISTERED] as? Int ?: 0

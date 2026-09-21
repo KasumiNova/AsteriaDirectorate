@@ -1,5 +1,6 @@
 package cn.kasuminova.astd.renderer.effect.lens
 
+import cn.kasuminova.astd.renderer.effect.lens.LensVfxTelemetry.counter
 import com.fs.starfarer.api.combat.CombatEngineAPI
 
 /**

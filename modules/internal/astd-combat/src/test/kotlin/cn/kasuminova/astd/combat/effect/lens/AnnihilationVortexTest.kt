@@ -79,8 +79,18 @@ class AnnihilationVortexTuningTest {
         for ((scale, expected) in cases) {
             DifficultyTuningImpl.installScaleForTests(scale)
             assertEquals(expected.first, AnnihilationVortexDifficulty.resolve(AnnihilationVortexDifficulty.RADIUS, 1), 1e-4f, "k_s=$scale 半径")
-            assertEquals(expected.second, AnnihilationVortexDifficulty.resolve(AnnihilationVortexDifficulty.AOE_MULT, 1), 1e-6f, "k_s=$scale AOE 倍率")
-            assertEquals(expected.third, AnnihilationVortexDifficulty.resolve(AnnihilationVortexDifficulty.ABSORB_LIMIT, 1), 1e-2f, "k_s=$scale 吸收阈值")
+            assertEquals(
+                expected.second,
+                AnnihilationVortexDifficulty.resolve(AnnihilationVortexDifficulty.AOE_MULT, 1),
+                1e-6f,
+                "k_s=$scale AOE 倍率"
+            )
+            assertEquals(
+                expected.third,
+                AnnihilationVortexDifficulty.resolve(AnnihilationVortexDifficulty.ABSORB_LIMIT, 1),
+                1e-2f,
+                "k_s=$scale 吸收阈值"
+            )
         }
     }
 
@@ -239,7 +249,14 @@ class AnnihilationVortexPoolTest {
  */
 class AnnihilationVortexAbsorbTest {
 
-    private fun projectile(owner: Int, at: Vector2f, velocity: Vector2f = Vector2f(0f, 0f), damage: Float = 100f, type: DamageType = DamageType.ENERGY, collision: Float = 4f): DamagingProjectileAPI {
+    private fun projectile(
+        owner: Int,
+        at: Vector2f,
+        velocity: Vector2f = Vector2f(0f, 0f),
+        damage: Float = 100f,
+        type: DamageType = DamageType.ENERGY,
+        collision: Float = 4f
+    ): DamagingProjectileAPI {
         val p = mock(DamagingProjectileAPI::class.java)
         `when`(p.owner).thenReturn(owner)
         `when`(p.location).thenReturn(at)

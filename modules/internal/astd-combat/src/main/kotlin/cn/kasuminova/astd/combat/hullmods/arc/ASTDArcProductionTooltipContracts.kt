@@ -31,9 +31,18 @@ object ASTDArcProductionTooltipContracts {
             ASTDHullModTooltipRenderer.heading("ui.hullmod.export.section.effect"),
             ASTDHullModTooltipRenderer.table(
                 rows = arrayOf(
-                    ASTDHullModTooltipRenderer.row("ui.hullmod.arc_advanced_fire_control.attr.weapon_flux", "ui.hullmod.arc_advanced_fire_control.value.weapon_flux"),
-                    ASTDHullModTooltipRenderer.row("ui.hullmod.arc_advanced_fire_control.attr.weapon_rate", "ui.hullmod.arc_advanced_fire_control.value.weapon_rate"),
-                    ASTDHullModTooltipRenderer.row("ui.hullmod.arc_advanced_fire_control.attr.ramp", "ui.hullmod.arc_advanced_fire_control.value.ramp"),
+                    ASTDHullModTooltipRenderer.row(
+                        "ui.hullmod.arc_advanced_fire_control.attr.weapon_flux",
+                        "ui.hullmod.arc_advanced_fire_control.value.weapon_flux"
+                    ),
+                    ASTDHullModTooltipRenderer.row(
+                        "ui.hullmod.arc_advanced_fire_control.attr.weapon_rate",
+                        "ui.hullmod.arc_advanced_fire_control.value.weapon_rate"
+                    ),
+                    ASTDHullModTooltipRenderer.row(
+                        "ui.hullmod.arc_advanced_fire_control.attr.ramp",
+                        "ui.hullmod.arc_advanced_fire_control.value.ramp"
+                    ),
                 ),
             ),
             ASTDHullModTooltipRenderer.paragraph("ui.hullmod.arc_advanced_fire_control.note"),
@@ -47,11 +56,26 @@ object ASTDArcProductionTooltipContracts {
             ASTDHullModTooltipRenderer.heading("ui.hullmod.export.section.effect"),
             ASTDHullModTooltipRenderer.table(
                 rows = arrayOf(
-                    ASTDHullModTooltipRenderer.row("ui.hullmod.arc_shared_tactical_network.attr.network", "ui.hullmod.arc_shared_tactical_network.value.network"),
-                    ASTDHullModTooltipRenderer.row("ui.hullmod.arc_shared_tactical_network.attr.command", "ui.hullmod.arc_shared_tactical_network.value.command"),
-                    ASTDHullModTooltipRenderer.row("ui.hullmod.arc_shared_tactical_network.attr.frigate", "ui.hullmod.arc_shared_tactical_network.value.frigate"),
-                    ASTDHullModTooltipRenderer.row("ui.hullmod.arc_shared_tactical_network.attr.destroyer", "ui.hullmod.arc_shared_tactical_network.value.destroyer"),
-                    ASTDHullModTooltipRenderer.row("ui.hullmod.arc_shared_tactical_network.attr.cruiser", "ui.hullmod.arc_shared_tactical_network.value.cruiser"),
+                    ASTDHullModTooltipRenderer.row(
+                        "ui.hullmod.arc_shared_tactical_network.attr.network",
+                        "ui.hullmod.arc_shared_tactical_network.value.network"
+                    ),
+                    ASTDHullModTooltipRenderer.row(
+                        "ui.hullmod.arc_shared_tactical_network.attr.command",
+                        "ui.hullmod.arc_shared_tactical_network.value.command"
+                    ),
+                    ASTDHullModTooltipRenderer.row(
+                        "ui.hullmod.arc_shared_tactical_network.attr.frigate",
+                        "ui.hullmod.arc_shared_tactical_network.value.frigate"
+                    ),
+                    ASTDHullModTooltipRenderer.row(
+                        "ui.hullmod.arc_shared_tactical_network.attr.destroyer",
+                        "ui.hullmod.arc_shared_tactical_network.value.destroyer"
+                    ),
+                    ASTDHullModTooltipRenderer.row(
+                        "ui.hullmod.arc_shared_tactical_network.attr.cruiser",
+                        "ui.hullmod.arc_shared_tactical_network.value.cruiser"
+                    ),
                 ),
             ),
             ASTDHullModTooltipRenderer.paragraph("ui.hullmod.arc_shared_tactical_network.note"),
@@ -67,9 +91,21 @@ object ASTDArcProductionTooltipContracts {
                 headerAKey = "ui.hullmod.plasma_armor_shield.table.direction.header_a",
                 headerBKey = "ui.hullmod.plasma_armor_shield.table.direction.header_b",
                 rows = arrayOf(
-                    ASTDHullModTooltipRenderer.row("ui.hullmod.plasma_armor_shield.table.direction.row_0.label", "ui.hullmod.plasma_armor_shield.table.direction.row_0.value", role = "warning"),
-                    ASTDHullModTooltipRenderer.row("ui.hullmod.plasma_armor_shield.table.direction.row_1.label", "ui.hullmod.plasma_armor_shield.table.direction.row_1.value", role = "warning"),
-                    ASTDHullModTooltipRenderer.row("ui.hullmod.plasma_armor_shield.table.direction.row_2.label", "ui.hullmod.plasma_armor_shield.table.direction.row_2.value", role = "warning"),
+                    ASTDHullModTooltipRenderer.row(
+                        "ui.hullmod.plasma_armor_shield.table.direction.row_0.label",
+                        "ui.hullmod.plasma_armor_shield.table.direction.row_0.value",
+                        role = "warning"
+                    ),
+                    ASTDHullModTooltipRenderer.row(
+                        "ui.hullmod.plasma_armor_shield.table.direction.row_1.label",
+                        "ui.hullmod.plasma_armor_shield.table.direction.row_1.value",
+                        role = "warning"
+                    ),
+                    ASTDHullModTooltipRenderer.row(
+                        "ui.hullmod.plasma_armor_shield.table.direction.row_2.label",
+                        "ui.hullmod.plasma_armor_shield.table.direction.row_2.value",
+                        role = "warning"
+                    ),
                 ),
             ),
             ASTDHullModTooltipRenderer.heading("ui.hullmod.plasma_armor_shield.section.effect"),
@@ -78,10 +114,26 @@ object ASTDArcProductionTooltipContracts {
                 headerAKey = "ui.hullmod.plasma_armor_shield.table.shield_damage.header_a",
                 headerBKey = "ui.hullmod.plasma_armor_shield.table.shield_damage.header_b",
                 rows = arrayOf(
-                    ASTDHullModTooltipRenderer.row("ui.hullmod.plasma_armor_shield.table.shield_damage.row_0.label", "ui.hullmod.plasma_armor_shield.table.shield_damage.row_0.value", role = "warning"),
-                    ASTDHullModTooltipRenderer.row("ui.hullmod.plasma_armor_shield.table.shield_damage.row_1.label", "ui.hullmod.plasma_armor_shield.table.shield_damage.row_1.value", role = "warning"),
-                    ASTDHullModTooltipRenderer.row("ui.hullmod.plasma_armor_shield.table.shield_damage.row_2.label", "ui.hullmod.plasma_armor_shield.table.shield_damage.row_2.value", role = "warning"),
-                    ASTDHullModTooltipRenderer.row("ui.hullmod.plasma_armor_shield.table.shield_damage.row_3.label", "ui.hullmod.plasma_armor_shield.table.shield_damage.row_3.value", role = "warning"),
+                    ASTDHullModTooltipRenderer.row(
+                        "ui.hullmod.plasma_armor_shield.table.shield_damage.row_0.label",
+                        "ui.hullmod.plasma_armor_shield.table.shield_damage.row_0.value",
+                        role = "warning"
+                    ),
+                    ASTDHullModTooltipRenderer.row(
+                        "ui.hullmod.plasma_armor_shield.table.shield_damage.row_1.label",
+                        "ui.hullmod.plasma_armor_shield.table.shield_damage.row_1.value",
+                        role = "warning"
+                    ),
+                    ASTDHullModTooltipRenderer.row(
+                        "ui.hullmod.plasma_armor_shield.table.shield_damage.row_2.label",
+                        "ui.hullmod.plasma_armor_shield.table.shield_damage.row_2.value",
+                        role = "warning"
+                    ),
+                    ASTDHullModTooltipRenderer.row(
+                        "ui.hullmod.plasma_armor_shield.table.shield_damage.row_3.label",
+                        "ui.hullmod.plasma_armor_shield.table.shield_damage.row_3.value",
+                        role = "warning"
+                    ),
                 ),
             ),
             ASTDHullModTooltipRenderer.heading("ui.hullmod.plasma_armor_shield.section.limits"),
@@ -105,9 +157,21 @@ object ASTDArcProductionTooltipContracts {
                 headerAKey = "ui.hullmod.ionized_recoil_accumulator.table.flux.header_a",
                 headerBKey = "ui.hullmod.ionized_recoil_accumulator.table.flux.header_b",
                 rows = arrayOf(
-                    ASTDHullModTooltipRenderer.row("ui.hullmod.ionized_recoil_accumulator.table.flux.row_0.label", "ui.hullmod.ionized_recoil_accumulator.table.flux.row_0.value", role = "warning"),
-                    ASTDHullModTooltipRenderer.row("ui.hullmod.ionized_recoil_accumulator.table.flux.row_1.label", "ui.hullmod.ionized_recoil_accumulator.table.flux.row_1.value", role = "warning"),
-                    ASTDHullModTooltipRenderer.row("ui.hullmod.ionized_recoil_accumulator.table.flux.row_2.label", "ui.hullmod.ionized_recoil_accumulator.table.flux.row_2.value", role = "warning"),
+                    ASTDHullModTooltipRenderer.row(
+                        "ui.hullmod.ionized_recoil_accumulator.table.flux.row_0.label",
+                        "ui.hullmod.ionized_recoil_accumulator.table.flux.row_0.value",
+                        role = "warning"
+                    ),
+                    ASTDHullModTooltipRenderer.row(
+                        "ui.hullmod.ionized_recoil_accumulator.table.flux.row_1.label",
+                        "ui.hullmod.ionized_recoil_accumulator.table.flux.row_1.value",
+                        role = "warning"
+                    ),
+                    ASTDHullModTooltipRenderer.row(
+                        "ui.hullmod.ionized_recoil_accumulator.table.flux.row_2.label",
+                        "ui.hullmod.ionized_recoil_accumulator.table.flux.row_2.value",
+                        role = "warning"
+                    ),
                 ),
             ),
             ASTDHullModTooltipRenderer.paragraph(
@@ -149,8 +213,14 @@ object ASTDArcProductionTooltipContracts {
             ASTDHullModTooltipRenderer.heading("ui.hullmod.export.section.effect"),
             ASTDHullModTooltipRenderer.table(
                 rows = arrayOf(
-                    ASTDHullModTooltipRenderer.row("ui.hullmod.arc_advanced_targeting_system.attr.range", "ui.hullmod.arc_advanced_targeting_system.value.range"),
-                    ASTDHullModTooltipRenderer.row("ui.hullmod.arc_advanced_targeting_system.attr.short_range", "ui.hullmod.arc_advanced_targeting_system.value.short_range"),
+                    ASTDHullModTooltipRenderer.row(
+                        "ui.hullmod.arc_advanced_targeting_system.attr.range",
+                        "ui.hullmod.arc_advanced_targeting_system.value.range"
+                    ),
+                    ASTDHullModTooltipRenderer.row(
+                        "ui.hullmod.arc_advanced_targeting_system.attr.short_range",
+                        "ui.hullmod.arc_advanced_targeting_system.value.short_range"
+                    ),
                 ),
             ),
             ASTDHullModTooltipRenderer.heading("ui.hullmod.export.section.note"),
@@ -165,16 +235,31 @@ object ASTDArcProductionTooltipContracts {
             ASTDHullModTooltipRenderer.heading("ui.hullmod.distributed_pursuit_network.section.members"),
             ASTDHullModTooltipRenderer.table(
                 rows = arrayOf(
-                    ASTDHullModTooltipRenderer.row("ui.hullmod.distributed_pursuit_network.attr.members", "ui.hullmod.distributed_pursuit_network.value.members"),
-                    ASTDHullModTooltipRenderer.row("ui.hullmod.distributed_pursuit_network.attr.same_network", "ui.hullmod.distributed_pursuit_network.value.same_network"),
+                    ASTDHullModTooltipRenderer.row(
+                        "ui.hullmod.distributed_pursuit_network.attr.members",
+                        "ui.hullmod.distributed_pursuit_network.value.members"
+                    ),
+                    ASTDHullModTooltipRenderer.row(
+                        "ui.hullmod.distributed_pursuit_network.attr.same_network",
+                        "ui.hullmod.distributed_pursuit_network.value.same_network"
+                    ),
                 ),
             ),
             ASTDHullModTooltipRenderer.heading("ui.hullmod.distributed_pursuit_network.section.bonus"),
             ASTDHullModTooltipRenderer.table(
                 rows = arrayOf(
-                    ASTDHullModTooltipRenderer.row("ui.hullmod.distributed_pursuit_network.attr.speed", "ui.hullmod.distributed_pursuit_network.value.speed"),
-                    ASTDHullModTooltipRenderer.row("ui.hullmod.distributed_pursuit_network.attr.range", "ui.hullmod.distributed_pursuit_network.value.range"),
-                    ASTDHullModTooltipRenderer.row("ui.hullmod.distributed_pursuit_network.attr.peak", "ui.hullmod.distributed_pursuit_network.value.peak"),
+                    ASTDHullModTooltipRenderer.row(
+                        "ui.hullmod.distributed_pursuit_network.attr.speed",
+                        "ui.hullmod.distributed_pursuit_network.value.speed"
+                    ),
+                    ASTDHullModTooltipRenderer.row(
+                        "ui.hullmod.distributed_pursuit_network.attr.range",
+                        "ui.hullmod.distributed_pursuit_network.value.range"
+                    ),
+                    ASTDHullModTooltipRenderer.row(
+                        "ui.hullmod.distributed_pursuit_network.attr.peak",
+                        "ui.hullmod.distributed_pursuit_network.value.peak"
+                    ),
                 ),
             ),
             ASTDHullModTooltipRenderer.paragraph("ui.hullmod.distributed_pursuit_network.note"),

@@ -21,7 +21,7 @@ object AsteriaDevStorageAcceptanceAutoload {
 
         log.info(
             "[AsteriaDevStorageAcceptanceAutoload] Dev storage acceptance requested; " +
-                "waiting for title-screen javaagent hook."
+                    "waiting for title-screen javaagent hook."
         )
     }
 }

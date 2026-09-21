@@ -1,11 +1,11 @@
 package cn.kasuminova.astd.combat.shipsystems
 
-import cn.kasuminova.astd.renderer.effect.hullmods.ASTDXc002Vfx
 import cn.kasuminova.astd.internal.i18n.I18n
+import cn.kasuminova.astd.renderer.effect.hullmods.ASTDXc002Vfx
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseEveryFrameCombatPlugin
-import com.fs.starfarer.api.combat.CombatEntityAPI
 import com.fs.starfarer.api.combat.CombatEngineAPI
+import com.fs.starfarer.api.combat.CombatEntityAPI
 import com.fs.starfarer.api.combat.EmpArcEntityAPI
 import com.fs.starfarer.api.combat.MutableShipStatsAPI
 import com.fs.starfarer.api.combat.ShipAPI
@@ -16,9 +16,9 @@ import com.fs.starfarer.api.plugins.ShipSystemStatsScript
 import com.fs.starfarer.api.util.Misc
 import org.lazywizard.lazylib.MathUtils
 import org.lazywizard.lazylib.VectorUtils
+import org.lwjgl.util.vector.Vector2f
 import org.magiclib.subsystems.MagicSubsystemsManager
 import org.magiclib.util.MagicLensFlare
-import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
 import kotlin.math.abs
 import kotlin.math.cos
@@ -167,8 +167,16 @@ open class CollapseShiftSystemStats : BaseShipSystemScript() {
 
     private fun desiredDestination(ship: ShipAPI, distance: Float): Vector2f {
         val target = aiTargetCoords(ship)
-            ?: try { ship.mouseTarget } catch (_: Throwable) { null }
-            ?: try { ship.shipTarget?.location } catch (_: Throwable) { null }
+            ?: try {
+                ship.mouseTarget
+            } catch (_: Throwable) {
+                null
+            }
+            ?: try {
+                ship.shipTarget?.location
+            } catch (_: Throwable) {
+                null
+            }
         if (target != null) {
             val delta = Vector2f.sub(target, ship.location, null)
             val targetDistance = delta.length()
@@ -186,19 +194,31 @@ open class CollapseShiftSystemStats : BaseShipSystemScript() {
         if (ship.shipAI == null) return null
         val flags = ship.aiFlags ?: return null
         if (!flags.hasFlag(ShipwideAIFlags.AIFlags.SYSTEM_TARGET_COORDS)) return null
-        return try { flags.getCustom(ShipwideAIFlags.AIFlags.SYSTEM_TARGET_COORDS) as? Vector2f } catch (_: Throwable) { null }
+        return try {
+            flags.getCustom(ShipwideAIFlags.AIFlags.SYSTEM_TARGET_COORDS) as? Vector2f
+        } catch (_: Throwable) {
+            null
+        }
     }
 
     private fun facingDirection(ship: ShipAPI): Vector2f {
         val angleRad = Math.toRadians(ship.facing.toDouble())
-        return Vector2f(kotlin.math.cos(angleRad).toFloat(), kotlin.math.sin(angleRad).toFloat())
+        return Vector2f(cos(angleRad).toFloat(), sin(angleRad).toFloat())
     }
 
     private fun turnToAimingTarget(engine: CombatEngineAPI, ship: ShipAPI) {
         val target = nearestEnemyInWeaponArc(engine, ship)?.location
             ?: aiFacingTarget(ship)?.location
-            ?: try { ship.mouseTarget } catch (_: Throwable) { null }
-            ?: try { ship.shipTarget?.location } catch (_: Throwable) { null }
+            ?: try {
+                ship.mouseTarget
+            } catch (_: Throwable) {
+                null
+            }
+            ?: try {
+                ship.shipTarget?.location
+            } catch (_: Throwable) {
+                null
+            }
             ?: nearestEnemy(engine, ship)?.location
             ?: return
         if (MathUtils.getDistance(ship.location, target) <= 16f) return
@@ -236,7 +256,11 @@ open class CollapseShiftSystemStats : BaseShipSystemScript() {
         if (ship.shipAI == null) return null
         val flags = ship.aiFlags ?: return null
         if (!flags.hasFlag(ShipwideAIFlags.AIFlags.TARGET_FOR_SHIP_SYSTEM)) return null
-        return try { flags.getCustom(ShipwideAIFlags.AIFlags.TARGET_FOR_SHIP_SYSTEM) as? ShipAPI } catch (_: Throwable) { null }
+        return try {
+            flags.getCustom(ShipwideAIFlags.AIFlags.TARGET_FOR_SHIP_SYSTEM) as? ShipAPI
+        } catch (_: Throwable) {
+            null
+        }
     }
 
     private fun nearestEnemy(engine: CombatEngineAPI, ship: ShipAPI): ShipAPI? {
@@ -354,7 +378,15 @@ open class CollapseShiftSystemStats : BaseShipSystemScript() {
         ship.setJitter("astd_collapse_shift", Color(120, 220, 255, 120), 0.35f, 8, 2f, 12f)
     }
 
-    private fun spawnArc(engine: CombatEngineAPI, from: Vector2f, fromEntity: CombatEntityAPI?, to: Vector2f, toEntity: CombatEntityAPI?, width: Float, level: Float) {
+    private fun spawnArc(
+        engine: CombatEngineAPI,
+        from: Vector2f,
+        fromEntity: CombatEntityAPI?,
+        to: Vector2f,
+        toEntity: CombatEntityAPI?,
+        width: Float,
+        level: Float
+    ) {
         val params = EmpArcEntityAPI.EmpArcParams().apply {
             segmentLengthMult = 7f
             zigZagReductionFactor = 0.10f
@@ -371,7 +403,7 @@ open class CollapseShiftSystemStats : BaseShipSystemScript() {
             val arc = engine.spawnEmpArcVisual(from, fromEntity, to, toEntity, width, Color(100, 205, 255, 210), Color(245, 252, 255, 240), params)
             arc.setFadedOutAtStart(true)
             arc.setSingleFlickerMode(true)
-            arc.setCoreWidthOverride(width * (0.36f + 0.18f * level))
+            arc.coreWidthOverride = width * (0.36f + 0.18f * level)
         } catch (_: Throwable) {
         }
     }
@@ -403,7 +435,7 @@ open class CollapseShiftSystemStats : BaseShipSystemScript() {
             val thickness = 3.8f + MathUtils.getRandomNumberInRange(0f, 2.4f) + 1.2f * s
             try {
                 val arc = engine.spawnEmpArcVisual(from, null, to, null, thickness, arcFringe, arcCore, params)
-                arc.setCoreWidthOverride(thickness * 0.46f)
+                arc.coreWidthOverride = thickness * 0.46f
                 arc.setSingleFlickerMode(true)
                 arc.setRenderGlowAtStart(false)
                 arc.setFadedOutAtStart(true)
@@ -420,15 +452,29 @@ open class CollapseShiftSystemStats : BaseShipSystemScript() {
             if (escort === carrier || escort.owner != carrier.owner || escort.isHulk || !escort.isAlive) continue
             if (!escort.isFighter && !escort.isDrone) continue
             if (!isCraftFromCarrier(escort, carrier)) continue
-            out += EscortShift(escort, Vector2f.sub(escort.location, carrier.location, null), escort.facing, Vector2f(escort.velocity), escort.angularVelocity)
+            out += EscortShift(
+                escort,
+                Vector2f.sub(escort.location, carrier.location, null),
+                escort.facing,
+                Vector2f(escort.velocity),
+                escort.angularVelocity
+            )
         }
         return out
     }
 
     private fun isCraftFromCarrier(craft: ShipAPI, carrier: ShipAPI): Boolean {
-        val wingSource = try { craft.wing?.sourceShip } catch (_: Throwable) { null }
+        val wingSource = try {
+            craft.wing?.sourceShip
+        } catch (_: Throwable) {
+            null
+        }
         if (wingSource === carrier) return true
-        val mothership = try { craft.aiFlags?.getCustom(ShipwideAIFlags.AIFlags.DRONE_MOTHERSHIP) as? ShipAPI } catch (_: Throwable) { null }
+        val mothership = try {
+            craft.aiFlags?.getCustom(ShipwideAIFlags.AIFlags.DRONE_MOTHERSHIP) as? ShipAPI
+        } catch (_: Throwable) {
+            null
+        }
         return mothership === carrier
     }
 
@@ -504,7 +550,11 @@ open class CollapseShiftSystemStats : BaseShipSystemScript() {
     private fun normalizeAngle(angle: Float): Float = ((angle % 360f) + 360f) % 360f
 
     private fun hullBoundaryPoint(ship: ShipAPI): Vector2f {
-        val bounds = try { ship.exactBounds } catch (_: Throwable) { null }
+        val bounds = try {
+            ship.exactBounds
+        } catch (_: Throwable) {
+            null
+        }
         if (bounds != null) {
             try {
                 bounds.update(ship.location, ship.facing)

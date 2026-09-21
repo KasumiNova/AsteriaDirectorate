@@ -1,5 +1,8 @@
 package cn.kasuminova.astd.impl.render
 
+import cn.kasuminova.astd.impl.render.StaticTrailDataFactory.FADE_IN_RATIO
+import cn.kasuminova.astd.impl.render.StaticTrailDataFactory.FADE_OUT_RATIO
+import cn.kasuminova.astd.impl.render.StaticTrailDataFactory.FULL_RATIO
 import com.fs.starfarer.api.Global
 import org.boxutil.define.struct.statictrail.StaticTrailData
 import org.lwjgl.util.vector.Vector2f
@@ -78,7 +81,7 @@ object StaticTrailDataFactory {
             // emissive 复用同一贴图（形在 alpha）：发光颜色由头部色染色，强度走 glowPower → bloom G-buffer
             data.material.setEmissive(sprite)
             data.material.setEmissiveColor(spec.headColor.toVector4f())
-            data.material.setGlowPower(spec.glowPower)
+            data.material.glowPower = spec.glowPower
         }
         log.info("[ASTD] static trail registered: id=$treeId/$layerName total=${total}s speed=$projectileSpeedSuPerSec tex=${spec.texturePath}")
         return data

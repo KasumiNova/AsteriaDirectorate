@@ -62,7 +62,11 @@ class ASTDXc002DroneSubsystem(ship: ShipAPI) : MagicDroneSubsystem(ship) {
         val out = LinkedHashSet<ShipAPI>()
         for (leader in activeWings.keys) {
             if (leader.isAlive && !leader.isHulk) out += leader
-            val members = try { leader.wing?.wingMembers } catch (_: Throwable) { null }
+            val members = try {
+                leader.wing?.wingMembers
+            } catch (_: Throwable) {
+                null
+            }
             if (members != null) {
                 for (member in members) {
                     if (member.isAlive && !member.isHulk) out += member

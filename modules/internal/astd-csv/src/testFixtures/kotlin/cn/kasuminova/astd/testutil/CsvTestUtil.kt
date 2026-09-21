@@ -33,11 +33,13 @@ object CsvTestUtil {
                     cell.append('"')
                     i++
                 }
+
                 ch == '"' -> inQuotes = !inQuotes
                 ch == ',' && !inQuotes -> {
                     row += cell.toString()
                     cell.setLength(0)
                 }
+
                 (ch == '\n' || ch == '\r') && !inQuotes -> {
                     row += cell.toString()
                     cell.setLength(0)
@@ -45,6 +47,7 @@ object CsvTestUtil {
                     row.clear()
                     if (ch == '\r' && i + 1 < text.length && text[i + 1] == '\n') i++
                 }
+
                 else -> cell.append(ch)
             }
             i++

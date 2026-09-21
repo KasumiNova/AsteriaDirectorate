@@ -4,12 +4,12 @@ import cn.kasuminova.astd.api.buff.buffHost
 import cn.kasuminova.astd.api.buff.getOrCreateBuff
 import cn.kasuminova.astd.api.buff.getOrCreateBuffByWeapon
 import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
-import kotlin.test.BeforeTest
 
 /**
  * 规格 §1.4-1/2/4：复合键隔离与换装不可见、getOrCreate 幂等、同键覆盖 WARN。
@@ -21,6 +21,7 @@ class BuffHostImplTest {
         // api 扩展函数族走 BuffBackends 桥：本模块测试装真后端（引擎为 null 时跳过心跳登记）。
         BuffInstall.install()
     }
+
     private val captures = mutableListOf<WarnCapture>()
 
     @AfterTest

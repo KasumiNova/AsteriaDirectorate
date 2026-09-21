@@ -1,5 +1,14 @@
 package cn.kasuminova.astd.renderer.effect.explosion
 
+import cn.kasuminova.astd.renderer.effect.explosion.RiftExplosionPalette.Companion.BLUE
+import cn.kasuminova.astd.renderer.effect.explosion.RiftExplosionVfx.DEFAULT_RADIUS
+import cn.kasuminova.astd.renderer.effect.explosion.RiftExplosionVfx.NUM_RIFTS
+import cn.kasuminova.astd.renderer.effect.explosion.RiftExplosionVfx.SIZE_SCALE
+import cn.kasuminova.astd.renderer.effect.explosion.RiftExplosionVfx.SOUND_EXPLOSION
+import cn.kasuminova.astd.renderer.effect.explosion.RiftExplosionVfx.SOUND_WINDUP
+import cn.kasuminova.astd.renderer.effect.explosion.RiftExplosionVfx.THICKNESS_RATIO
+import cn.kasuminova.astd.renderer.effect.explosion.RiftExplosionVfx.WINDUP_SECONDS
+import cn.kasuminova.astd.renderer.effect.explosion.RiftExplosionVfx.buildRiftParams
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEntityAPI
@@ -147,7 +156,7 @@ object RiftExplosionVfx {
         at: Vector2f,
         radius: Float = DEFAULT_RADIUS,
         fadeOut: Float = DEFAULT_FADE_OUT,
-        palette: RiftExplosionPalette = RiftExplosionPalette.BLUE,
+        palette: RiftExplosionPalette = BLUE,
     ): Int {
         if (radius.isNaN() || radius <= 0f || fadeOut.isNaN() || fadeOut <= 0f) {
             log.warn("裂隙爆炸参数非法（radius=$radius fadeOut=$fadeOut），属配置错误，本次不生成特效")
@@ -189,7 +198,7 @@ object RiftExplosionVfx {
         engine: CombatEngineAPI,
         at: Vector2f,
         radius: Float = DEFAULT_RADIUS,
-        palette: RiftExplosionPalette = RiftExplosionPalette.BLUE,
+        palette: RiftExplosionPalette = BLUE,
     ) {
         engine.addSmoothParticle(at, ZERO_VEL, radius * 4f, 0.6f, WINDUP_SECONDS, palette.windup)
     }

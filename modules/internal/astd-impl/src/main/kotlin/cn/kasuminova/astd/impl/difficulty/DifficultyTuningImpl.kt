@@ -1,8 +1,10 @@
 package cn.kasuminova.astd.impl.difficulty
 
+import cn.kasuminova.astd.api.AstdLog
 import cn.kasuminova.astd.api.difficulty.DifficultyTuning
 import cn.kasuminova.astd.api.difficulty.ScalingEntry
-import cn.kasuminova.astd.api.AstdLog
+import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl.applyResolvedScale
+import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl.fixedScale
 
 /**
  * [DifficultyTuning] 的单例实现：持有当前固有缩放系数 k_s。

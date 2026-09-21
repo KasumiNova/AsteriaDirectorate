@@ -1,6 +1,7 @@
 package cn.kasuminova.astd.combat.effect.generic
 
-import cn.kasuminova.astd.combat.effect.generic.projectile.ProjectileSpecOnFireDispatcher
+import cn.kasuminova.astd.api.buff.buffHost
+import cn.kasuminova.astd.api.buff.getBuff
 import cn.kasuminova.astd.combat.effect.arc.ChargeNeedleVfx
 import cn.kasuminova.astd.combat.effect.arc.ElectricDriveAcceleratorOnHitEffect
 import cn.kasuminova.astd.combat.effect.arc.GeminiDemDifficulty
@@ -13,44 +14,47 @@ import cn.kasuminova.astd.combat.effect.arc.HeavyIonPulseTuning
 import cn.kasuminova.astd.combat.effect.arc.HeavyIonPulseVfx
 import cn.kasuminova.astd.combat.effect.arc.PositronShockwaveFuseScript
 import cn.kasuminova.astd.combat.effect.arc.SevenStarsChainScript
+import cn.kasuminova.astd.combat.effect.arc.chargeNeedleStacks
 import cn.kasuminova.astd.combat.effect.arc.piercinglance.PiercingLanceConeStrike
 import cn.kasuminova.astd.combat.effect.arc.piercinglance.PiercingLanceVfx
-import cn.kasuminova.astd.combat.effect.arc.chargeNeedleStacks
 import cn.kasuminova.astd.combat.effect.arc.qiongjue.QiongjueCalcStacks
 import cn.kasuminova.astd.combat.effect.arc.qiongjue.QiongjueDamageDealtModifier
 import cn.kasuminova.astd.combat.effect.arc.qiongjue.QiongjuePhaseRailgunDifficulty
 import cn.kasuminova.astd.combat.effect.arc.qiongjue.QiongjuePhaseRailgunOnHitEffect
 import cn.kasuminova.astd.combat.effect.arc.qiongjue.qiongjueCalcStacks
+import cn.kasuminova.astd.combat.effect.generic.ASTDAutomationCombatPlugin.Companion.EDA_BURST_GROUP_GAP
+import cn.kasuminova.astd.combat.effect.generic.ASTDAutomationCombatPlugin.Companion.PS_MISSILE_FEED_INTERVAL
+import cn.kasuminova.astd.combat.effect.generic.ASTDAutomationCombatPlugin.Companion.SS_NOKILL_MISSILE_HP
+import cn.kasuminova.astd.combat.effect.generic.ASTDAutomationCombatPlugin.Companion.TPP_PAUSE_SECONDS
+import cn.kasuminova.astd.combat.effect.generic.ASTDAutomationCombatPlugin.Companion.TPP_POST_RESUME_FLIGHT_SECONDS
+import cn.kasuminova.astd.combat.effect.generic.ASTDAutomationCombatPlugin.Companion.TPP_PRE_PAUSE_FLIGHT_SECONDS
+import cn.kasuminova.astd.combat.effect.generic.projectile.ProjectileSpecOnFireDispatcher
 import cn.kasuminova.astd.combat.effect.lens.AnnihilationVortexBeamEffect
 import cn.kasuminova.astd.combat.effect.lens.stellar.StellarMrmMissileAI
 import cn.kasuminova.astd.combat.effect.lens.stellar.StellarMrmStrikeImpl
-import cn.kasuminova.astd.api.buff.buffHost
-import cn.kasuminova.astd.api.buff.getBuff
-import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
+import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcProductionShipIds
 import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcProductionTooltipContracts
 import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcProductionVfx
-import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcProductionShipIds
-import cn.kasuminova.astd.combat.hullmods.base.ASTDHullModTooltipRenderer
 import cn.kasuminova.astd.combat.hullmods.lens.LENS_DUAL_MODE_CONFIG
 import cn.kasuminova.astd.combat.hullmods.lens.LensArrayCoreHullModIds
 import cn.kasuminova.astd.combat.lens.marks.LensMarks
 import cn.kasuminova.astd.combat.lens.system.EchoFixationField
 import cn.kasuminova.astd.combat.lens.system.GravityRiftTuning
 import cn.kasuminova.astd.combat.shipsystems.GravityRiftSystemStats
+import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
+import cn.kasuminova.astd.impl.render.ASTDProjectileVfxLayout
+import cn.kasuminova.astd.internal.debug.ASTDInGameAutomationScenario
+import cn.kasuminova.astd.internal.i18n.I18n
 import cn.kasuminova.astd.renderer.effect.lens.EchoFixationAfterimageRenderer
 import cn.kasuminova.astd.renderer.effect.lens.LensVfxTelemetry
-import cn.kasuminova.astd.internal.i18n.I18n
-import cn.kasuminova.astd.internal.debug.ASTDInGameAutomationScenario
 import cn.kasuminova.astd.renderer.projectile.driver.ProjectileVfxDriverPlugin
 import cn.kasuminova.astd.renderer.projectile.driver.ProjectileVfxSpecs
-import cn.kasuminova.astd.impl.render.ASTDProjectileVfxLayout
 import com.fs.starfarer.api.Global
-import com.fs.starfarer.combat.CombatState
 import com.fs.starfarer.api.combat.BaseEveryFrameCombatPlugin
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEntityAPI
-import com.fs.starfarer.api.combat.DamagingProjectileAPI
 import com.fs.starfarer.api.combat.DamageType
+import com.fs.starfarer.api.combat.DamagingProjectileAPI
 import com.fs.starfarer.api.combat.GuidedMissileAI
 import com.fs.starfarer.api.combat.MissileAIPlugin
 import com.fs.starfarer.api.combat.ShipAIConfig
@@ -62,8 +66,9 @@ import com.fs.starfarer.api.combat.ViewportAPI
 import com.fs.starfarer.api.combat.WeaponAPI
 import com.fs.starfarer.api.impl.combat.dem.DEMScript
 import com.fs.starfarer.api.input.InputEventAPI
-import com.fs.starfarer.api.util.Misc
 import com.fs.starfarer.api.mission.FleetSide
+import com.fs.starfarer.api.util.Misc
+import com.fs.starfarer.combat.CombatState
 import org.lazywizard.lazylib.MathUtils
 import org.lwjgl.opengl.Display
 import org.lwjgl.util.vector.Vector2f
@@ -99,10 +104,13 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     private var fallbackProjectileSpawnedAt = -1f
     private var lensMarksInjected = false
     private val lensAnchor = Vector2f(-260f, 0f)
+
     /** phase2 幽灵信号导弹投放计时累积（秒），见 feedGhostSignalMissiles。 */
     private var ghostMissileFeedAcc = 0f
+
     /** phase2 fighter 误差标记降级 log 的 once 守卫（避免每帧刷屏，参照 lensMarksInjected 模式）。 */
     private var lensPhase2DowngradeLogged = false
+
     // trail_pause_probe 探针状态：相位机 + 待捕获标签（由 renderInUICoords 消费完成截图）。
     private var tppPhase = TPP_PHASE_FIRE
     private var tppPhaseStartedAt = -1f
@@ -131,6 +139,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     private var edaScaleStepAt = -1f
     private var edaEnemyExtraBaseline = -1
     private var edaMinPlayerAmmo = Int.MAX_VALUE
+
     // 每触发弹数分组：spawn 间隔 > EDA_BURST_GROUP_GAP 视为新一轮触发（burst delay 0.1s，组内 2 弹）。
     private var edaCurrentBurstCount = 0
     private var edaLastSpawnAt = -1f
@@ -144,6 +153,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     private var avAbsorbBaseline = 0
     private var avCollapseBaseline = 0
     private var avEmptyCollapseDamage = -1f
+
     // 爆发循环计时：beam on/off 沿（isFiring 沿检测），验证 2s 开火 / 9s 循环。
     private var avBeamOnSince = -1f
     private var avBeamOffSince = -1f
@@ -169,6 +179,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     // ==== qiongjue phase railgun 场景状态（相位机 MOUNT → STACK → DUAL → SWITCH → DECAY → KILL → ENEMY_SCALE → COMPLETED） ====
     private var qjPhase = QJ_PHASE_MOUNT
     private var qjPhaseStartedAt = 0f
+
     // STACK：满层证据（伤害乘区 / 射速间隔 / spike / HUD / 浮字 / 帧率）。
     private var qjDmgMultAtFull = -1f
     private var qjRefireMinAtFull = Float.MAX_VALUE
@@ -178,15 +189,19 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     private var qjStackFpsTicks = 0
     private var qjStackFpsWallStartNanos = 0L
     private var qjStackFps = -1f
+
     // DUAL（2026-09 修订：共享证据）：w1 独建满层后 w2 补射，首发同享满层乘区（读 qjW2DealtMult 遥测）。
     // SWITCH：异目标折算证据（floor(10×0.3125)+1=4）。
     private var qjSwitchW1Stacks = -1
+
     // DECAY：停火窗口衰减证据（3s 窗口 + 1.75 层/s 归零耗时）。
     private var qjDecaySeconds = -1f
+
     // KILL：旧目标失效不折算证据（击沉 B 转火 C，首中=旧值+1）。
     private var qjStacksBeforeKill = -1
     private var qjStacksAfterKillHit = -1
     private var qjKillRetargeted = false
+
     // ENEMY_SCALE：敌版三档逐命中伤害乘区证据（v1 2%/v2 4%/v5 10% × 4~5 层）；采样前停火 settle 防层数续爬。
     private var qjScaleStep = 0
     private var qjScaleSampling = false
@@ -198,13 +213,16 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     // ==== positron shockwave 场景状态（相位机 MOUNT → PASS_THROUGH → SPLASH → FUSE → COMPLETED） ====
     private var psPhase = PS_PHASE_MOUNT
     private var psPhaseStartedAt = 0f
+
     // SPLASH 相位基线：进入相位时的锥面舰船命中计数与近炸引爆计数（增量即本相位证据）。
     private var psSplashShipHitsBaseline = 0
     private var psSplashFuseBaseline = 0
     private var psSplashMaxRangeBaseline = 0
+
     // FUSE 相位导弹投喂节流与左右舷交替。
     private var psMissileFeedAt = -1f
     private var psMissileFeedSide = 1
+
     // COMPLETED 截图门控：最近一次近炸引爆时刻（截图帧需含锥面 VFX/浮字）。
     private var psLastFuseDetonateAt = -1f
     private var psLastTrackedFuseCount = 0
@@ -212,12 +230,15 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     // ==== gemini dem 场景状态（相位机 MOUNT → SALVO → KILL_ONE → POD → ENEMY_SCALE → COMPLETED） ====
     private var gdPhase = GD_PHASE_MOUNT
     private var gdPhaseStartedAt = 0f
+
     // R1 观测面：弹头 unwrappedMissileAI 身份轮询（TrackAI 供目标 / DEMScript 接管）。
     private val gdTrackAiSeen = mutableSetOf<Int>()
     private var gdTrackTargetNonNull = 0
     private val gdDemTakeoverSeen = mutableSetOf<Int>()
+
     // R1 诊断面：弹头三路 AI 读回的类名三元组（首次出现各记一条日志，防刷屏）。
     private val gdAiClassTriplesSeen = mutableSetOf<String>()
+
     // SALVO 相位：齐射后 ammo 采样（一轮一耗证据）与 R2 读数基线。
     // ammo 绝对值断言走 spec 层（weapon_data.csv 口径）；运行时 maxAmmo 可能受环境 stat 加成
     // （实机判例：本机任务环境 missileAmmoBonus ×2，launcher 2→4 / pod 4→8），
@@ -226,12 +247,14 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     private var gdLauncherAmmoAfterSalvo = -1
     private var gdSalvoTargetHpBaseline = -1f
     private var gdSalvoTargetMinHp = Float.MAX_VALUE
+
     // KILL_ONE 相位：同步计数基线与高爆弹头移除守卫。
     private var gdKillSyncBaseline = 0
     private var gdKillKineticBaseline = 0
     private var gdKillHeBaseline = 0
     private var gdKillWarheadsBaseline = 0
     private var gdKillHeRemoved = false
+
     // POD 相位：发射舱齐射基线（ammo 一轮一耗 / 同步配对证据）。
     private var gdPodSalvoBaseline = 0
     private var gdPodKineticBaseline = 0
@@ -239,10 +262,12 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     private var gdPodSyncBaseline = 0
     private var gdPodAmmoBaseline = -1
     private var gdPodAmmoAfterSalvo = -1
+
     // ENEMY_SCALE 相位：敌版破晓同步基线与玩家掉血观测。
     private var gdEnemySyncBaseline = 0
     private var gdEnemyMinPlayerHp = Float.MAX_VALUE
     private var gdEnemyFirstSyncAt = -1f
+
     // COMPLETED 截图门控：最近一次 payload 首伤帧时刻（截图帧需含双色尾焰/锁定激光/光束）。
     private var gdLastStrikeAt = -1f
     private var gdLastTrackedStrikeCount = 0
@@ -250,13 +275,16 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     // === Heavy ion pulse scenario fields ===
     private var hipPhase = HIP_PHASE_MOUNT
     private var hipPhaseStartedAt = 0f
+
     // SHIELD 相位弹药基线（消耗 ≥8 发证明确实在命中护盾）。
     private var hipShieldAmmoBaseline = -1
+
     // HULL 相位弹匣节奏观测（满匣倾泻：最小弹药 / 打空时刻）与 mult=1.0 EMP 瘫痪正向对照。
     private var hipHullAmmoBaseline = -1
     private var hipMinAmmo = Int.MAX_VALUE
     private var hipEmptiedAt = -1f
     private var hipHullEnemyMaxDisabled = 0
+
     // SCALE5_PLAYER / PIERCE 相位遥测基线（相位内差分断言）。
     private var hipScale5PlayerHitsBaseline = 0
     private var hipScale5PiercePlayerBaseline = 0
@@ -265,9 +293,11 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     private var hipK5PierceOtherBaseline = 0
     private var hipK5DisabledBaseline = -1
     private var hipK5MaxDisabled = 0
+
     // COMPLETED 截图门控：最近一次泄放/贯穿事件时刻（截图帧需含电弧/浮字/新鲜拖尾）。
     private var hipLastEventAt = -1f
     private var hipLastTrackedEventCount = 0
+
     // PIERCE_K5 帧率采样（持续命中下 FPS 证据）。
     private var hipK5FpsTicks = 0
     private var hipK5FpsWallStartNanos = 0L
@@ -276,18 +306,22 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     // ==== stellar mrm 场景状态（相位机 MOUNT → PRIORITY → FIGHTER_HIT → SHIP_HIT → LINE_CROSS → ENEMY_SCALE → COMPLETED） ====
     private var smPhase = SM_PHASE_MOUNT
     private var smPhaseStartedAt = 0f
+
     // PRIORITY：发射舱单次两发证据（同帧/近帧 spawn 分组，间隔 >SM_BURST_GROUP_GAP 判定新一轮触发）。
     private val smSeenPodProjectiles = mutableSetOf<Int>()
     private var smPodLastSpawnAt = -1f
     private var smPodBurstCurrent = 0
     private var smPodBurstMax = 0
+
     // 备弹经济观测（min ammo 遥测）。
     private var smMinLauncherAmmo = Int.MAX_VALUE
     private var smMinPodAmmo = Int.MAX_VALUE
+
     // PRIORITY 帧率采样（多发齐射 AI + VFX 开销证据）。
     private var smFpsTicks = 0
     private var smFpsWallStartNanos = 0L
     private var smFps = -1f
+
     // FIGHTER_HIT：敌战机被瘫痪武器数峰值（战机武器熄火观测面）。
     private var smMaxFighterDisabled = 0
 
@@ -296,11 +330,13 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     private var smMinWeaponHealthRatio = 1f
     private var smMaxDisabledDuration = 0f
     private var smMinFighterHullRatio = 1f
+
     // SHIP_HIT：相位基线与航母/残机清理守卫（令导弹只剩舰船可咬）。
     private var smShipHitExplosionsBaseline = 0
     private var smShipHitAoeBaseline = 0
     private var smShipHitShieldBaseline = 0
     private var smCarrierCleared = false
+
     // LINE_CROSS：阶段（0=投喂低结构 atropos / 1=投喂增压 harpoon）、投喂集合与判据。
     private var smLineCrossStage = 0
     private val smFedHighMissiles = mutableSetOf<Int>()
@@ -308,6 +344,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     private var smHighHpHitConfirmed = false
     private var smFeedAt = -1f
     private var smFeedLane = 0
+
     // ENEMY_SCALE：敌版三档逐档观测（installScaleForTests 1/2/5 → 爆炸倍率 0.5/1.0/2.5）。
     private var smScaleStep = 0
     private var smScaleStepAt = -1f
@@ -315,12 +352,14 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     // ==== piercing lance 场景状态（相位机 MOUNT → CYCLE → CLUSTER → ENEMY_SCALE → COMPLETED） ====
     private var plPhase = PL_PHASE_MOUNT
     private var plPhaseStartedAt = 0f
+
     // MOUNT：能量结算探针分步（0=装配断言+基线 / 1=能量加成断言 / 2=实弹加成反证）。
     private var plMountStep = 0
     private var plMountStepAt = -1f
     private var plProbeR0 = -1f
     private var plProbeR1 = -1f
     private var plProbeR2 = -1f
+
     // CYCLE：出膛计时（7s 循环证据）与充能窗口观测（2s 充能条可读证据）。
     private val plSeenProjectiles = mutableSetOf<Int>()
     private val plSpawnTimes = mutableListOf<Float>()
@@ -328,12 +367,15 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     private var plChargeStartAt = -1f
     private var plFirstChargeToShotSeconds = -1f
     private var plCycleIntervalSeconds = -1f
+
     // CYCLE：弹体 VFX 驱动接管闩（Static Trail 拖尾在线证据，弹体在飞窗口外 trackedCount 归零故闩存）。
     private var plVfxDriverSeen = false
+
     // CLUSTER：相位基线（锥面命中/浮字增量即本相位证据）。
     private var plClusterConeHitsBaseline = 0
     private var plClusterFloatyBaseline = 0
     private var plClusterMaxLastConeHits = 0
+
     // ENEMY_SCALE：敌版三档逐档观测（installScaleForTests 1/2/5 → 半角 20/25/40、锥长 300/375/600、伤害 2500/3125/5000）。
     private var plScaleStep = 0
     private var plScaleStepAt = -1f
@@ -342,6 +384,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     private var plScaleFpsTicks = 0
     private var plScaleFpsWallStartNanos = 0L
     private var plScaleFps = -1f
+
     // COMPLETED 截图门控：最近一次锥面结算时刻（截图帧需含大光柱/锥面/浮字）。
     private var plLastResolveAt = -1f
     private var plLastTrackedResolveCount = 0
@@ -353,24 +396,30 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     // ==== seven stars 场景状态（相位机 MOUNT → NOKILL → CHAIN → TERMINAL → ENEMY_MULTI → COMPLETED） ====
     private var ssPhase = SS_PHASE_MOUNT
     private var ssPhaseStartedAt = 0f
+
     // NOKILL 相位：相位基线（固定 7 跳 / 零击杀观测面；投喂走 feedSsNokillMissiles 环形增压）。
     private var ssNokillKillsBaseline = 0
     private var ssNokillFlashBaseline = 0
     private var ssNokillRiftBaseline = 0
+
     // CHAIN 相位基线与帧率采样（连跳峰值性能门槛）。
     private var ssChainNoShipBaseline = 0
     private var ssChainFlashBaseline = 0
     private var ssChainFpsTicks = 0
     private var ssChainFpsWallStartNanos = 0L
     private var ssChainFps = -1f
+
     // TERMINAL 相位基线（单段终结与 EMP 电弧观测面）。
     private var ssTerminalSingleBaseline = 0
     private var ssTerminalEmpArcsBaseline = 0
+
     // ENEMY_MULTI 相位基线与玩家掉血观测（多段终结打玩家舰）。
     private var ssEnemyMultiBaseline = 0
     private var ssEnemyMinPlayerHp = Float.MAX_VALUE
+
     // 导弹投喂节流（CHAIN/COMPLETED 喂敌方鱼叉；ENEMY_MULTI 喂玩家侧鱼叉；环位角度见 feedSsMissiles）。
     private var ssMissileFeedAt = -1f
+
     // COMPLETED 截图门控：最近一次裂隙爆炸时刻（截图帧需含裂隙爆炸/折跃电弧）。
     private var ssLastFlashAt = -1f
     private var ssLastTrackedFlashCount = 0
@@ -378,10 +427,12 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     // ==== 茑萝引力裂隙发生器场景状态（相位机 SPAWN → WAIT_WINGS → PHASE_LINK → FLUX_RETURN → RIFT_FIRE → SCREENSHOT_VOLLEY → COMPLETED） ====
     private var grgPhase = GRG_PHASE_SPAWN
     private var grgPhaseStartedAt = 0f
+
     // WAIT_WINGS：ion/lance 两联队各自在场存活数峰值与全场战机数峰值（auto_fighter 爬编需要时间）。
     private var grgWingIonSizeMax = 0
     private var grgWingLanceSizeMax = 0
     private var grgFightersInPlayMax = 0
+
     // PHASE_LINK：step 0=母舰已置相位等战机联动 / 1=母舰已退相位等战机恢复；两阶段各自计时。
     private var grgPhaseLinkStep = 0
     private var grgPhaseLinkStartedAt = -1f
@@ -392,6 +443,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     private var grgScreenshotActiveAt = -1f
     private var grgScreenshotStagedFired = false
     private var grgScreenshotStagedLit = false
+
     // FLUX_RETURN：step 0=清零战机辐能待 hullmod 基线稳定 / 1=已注入等母舰软辐能返还。
     private var grgFluxStep = 0
     private var grgFluxFighter: ShipAPI? = null
@@ -400,6 +452,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     private var grgFluxInjectedAt = -1f
     private var grgPlayerFluxBaseline = -1f
     private var grgPlayerFluxDeltaMax = 0f
+
     // RIFT_FIRE：step 0=无目标闸门（清空锁定后断言不可用且提示「无目标」，随后锁定靶舰）/
     // 1=点火首波 / 2=旋涡观测窗 / 3=光束观测窗 / 4=裂隙与伤害收口窗；
     // useSystem 重试计数、点火时刻（各观测窗截止的计时基准）、敌舰血量基线与在场地雷数峰值（诊断）。
@@ -415,20 +468,25 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     // ==== 飞蓬战机引力联结器场景状态（相位机 SPAWN → WAIT_WINGS → ACTIVATE → OBSERVE_ACTIVE → WAIT_RECALL → RELAUNCH → COMPLETED） ====
     private var fglPhase = FGL_PHASE_SPAWN
     private var fglPhaseStartedAt = 0f
+
     // WAIT_WINGS（断言点 A）：任一已装联队甲板 extraDeploymentLimit 峰值 / 单联队在场数峰值 / 全场该机战机数峰值。
     private var fglExtraDeploymentLimitMax = 0
     private var fglWingSizeMax = 0
     private var fglFightersInPlayMax = 0
+
     // ACTIVATE：激活时刻基线（母舰辐能读数与在外战机 identity 集合，断言点 E 的清点底账）。
     private var fglActivatedAt = -1f
     private var fglActivationCurrFlux = -1f
     private var fglActivationHardFlux = -1f
+
     // WAIT_RECALL：toggle 主动关闭（useSystem fire 路径）的发出节流时间戳；<0 表示尚未发出。
     // 与 ACTIVATE 同款考虑：单次 useSystem() 可能被原版闸门吞掉，未检测到召回前按
     // FGL_MANUAL_CANCEL_RETRY_SECONDS 节流补发，日志只记首次。
     private var fglManualCancelAt = -1f
+
     // ACTIVATE 重试计数（useSystem 被原版起飞动画窗吞掉时按帧重试，激活确认日志附带）。
     private var fglActivateAttempts = 0
+
     // 断言点 E 强化底账：各已装联队甲板 numLost 合计（原版语义：numLost 只在战机真正被击毁
     // 路径自增，land 召回不计），召回前后不变才能区分「被召回」与「被击毁」。
     // fglNumLostAtActivation 仅作诊断证据；判定基线是 fglNumLostBeforeRecall——与
@@ -439,19 +497,23 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     private var fglNumLostAfterRecall = -1
     private val fglRecordedFighterIds = mutableSetOf<Int>()
     private var fglRecordedFighterCount = 0
+
     // OBSERVE_ACTIVE（断言点 B/C/D）：时流/承伤/辐能涨幅采样峰值。
     private var fglTimeMultMax = 0f
     private var fglHullDamageTakenMultMin = Float.MAX_VALUE
+
     // 断言点 D 基线：OBSERVE_ACTIVE 进入（forceShield 已生效）后 settle 0.5s 才采样，
     // 避开开盾瞬间的辐能扰动；护盾维持 640/s 恒定贯穿整个观测窗后，currFlux 净涨只能
     // 来自系统 1120/s 软辐能产出（无系统时净 -760/s，判别力成立）。
     private var fglObserveFluxBaseline = -1f
     private var fglCurrFluxDeltaMax = 0f
+
     // WAIT_RECALL（断言点 E/F）：召回前后硬辐能读数与 identity 清点结果。
     private var fglHardFluxBeforeRecall = -1f
     private var fglHardFluxAfterRecall = -1f
     private var fglRecallDetectedAt = -1f
     private var fglRecordedFightersCleared = false
+
     // RELAUNCH（断言点 G）：召回后新 identity 战机重新出击证据。
     private var fglRelaunchObserved = false
 
@@ -499,7 +561,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             lockPlCamera(engine)
             // 锥面破片浮字与敌版三档仅 devMode 渲染（2026-07-29 审批裁定先例）：本场景为 dev-only 舞台，
             // 开启 devMode 以目检命中浮字/大光柱/锥面特效（进程被早退杀掉，设置不落盘）。
-            Global.getSettings().setDevMode(true)
+            Global.getSettings().isDevMode = true
             writeDiagnostics(engine, "CombatReady")
             writeTelemetry(engine, "CombatReady", findPlShipA(engine), null)
             log.info("[ASTD-Automation] scenario=${ASTDInGameAutomationScenario.PL_SCENARIO_ID} combat plugin initialized")
@@ -508,7 +570,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             lockSmCamera(engine)
             // 增伤/AOE 浮字仅 devMode 渲染（2026-07-29 审批裁定先例）：本场景为 dev-only 舞台，
             // 开启 devMode 以目检命中浮字与敌版三档（进程被早退杀掉，设置不落盘）。
-            Global.getSettings().setDevMode(true)
+            Global.getSettings().isDevMode = true
             writeDiagnostics(engine, "CombatReady")
             writeTelemetry(engine, "CombatReady", findSmPlayer(engine), null)
             log.info("[ASTD-Automation] scenario=${ASTDInGameAutomationScenario.SM_SCENARIO_ID} combat plugin initialized")
@@ -523,7 +585,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             lockHipCamera(engine)
             // 贯穿浮字与 FPS 仅 devMode 渲染（2026-07-29 审批裁定先例）：本场景为 dev-only 舞台，
             // 开启 devMode 以目检 EMP 贯穿补伤浮字（进程被早退杀掉，设置不落盘）。
-            Global.getSettings().setDevMode(true)
+            Global.getSettings().isDevMode = true
             writeDiagnostics(engine, "CombatReady")
             writeTelemetry(engine, "CombatReady", findHipPlayer(engine), null)
             log.info("[ASTD-Automation] scenario=${ASTDInGameAutomationScenario.HIP_SCENARIO_ID} combat plugin initialized")
@@ -539,7 +601,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             lockPsCamera(engine)
             // 引爆计数浮字仅 devMode 渲染（2026-07-29 审批裁定）：本场景为 dev-only 舞台，
             // 开启 devMode 以目检「近炸命中 ×n」浮字（进程被早退杀掉，设置不落盘）。
-            Global.getSettings().setDevMode(true)
+            Global.getSettings().isDevMode = true
             // 与其他场景一致：reserves 部署放到 advance()，init 阶段渲染器未就绪。
             writeDiagnostics(engine, "CombatReady")
             writeTelemetry(engine, "CombatReady", findPsPlayer(engine), null)
@@ -549,7 +611,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             lockQjCamera(engine)
             // HUD 状态条目仅 devMode 渲染（2026-07-29 审批裁定）：本场景为 dev-only 舞台，
             // 开启 devMode 以目检「持续演算」状态条目与敌版三档（进程被早退杀掉，设置不落盘）。
-            Global.getSettings().setDevMode(true)
+            Global.getSettings().isDevMode = true
             // 与其他场景一致：reserves 部署放到 advance()，init 阶段渲染器未就绪。
             writeDiagnostics(engine, "CombatReady")
             writeTelemetry(engine, "CombatReady", findQjPlayer(engine), null)
@@ -559,7 +621,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             lockAvCamera(engine)
             // HUD 状态条目仅 devMode 渲染（2026-07-29 审批裁定）：本场景为 dev-only 舞台，
             // 开启 devMode 以目检吞噬池 HUD 与敌版三档（进程被早退杀掉，设置不落盘）。
-            Global.getSettings().setDevMode(true)
+            Global.getSettings().isDevMode = true
             // 与其他场景一致：reserves 部署放到 advance()，init 阶段渲染器未就绪。
             writeDiagnostics(engine, "CombatReady")
             writeTelemetry(engine, "CombatReady", findAvPlayer(engine), null)
@@ -569,7 +631,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             lockEdaCamera(engine)
             // HUD 状态条目仅 devMode 渲染（2026-07-29 审批裁定）：本场景为 dev-only 舞台，
             // 开启 devMode 以目检 HUD 条目与敌版三档（进程被早退杀掉，设置不落盘）。
-            Global.getSettings().setDevMode(true)
+            Global.getSettings().isDevMode = true
             // 与其他场景一致：reserves 部署放到 advance()，init 阶段渲染器未就绪。
             writeDiagnostics(engine, "CombatReady")
             writeTelemetry(engine, "CombatReady", findEdaPlayer(engine), null)
@@ -625,7 +687,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             return
         }
         if (ASTDInGameAutomationScenario.isFighterGravLinkScenarioEnabled()) {
-            if (combatEngine.isPaused) combatEngine.setPaused(false)
+            if (combatEngine.isPaused) combatEngine.isPaused = false
             elapsed += amount.coerceAtLeast(0f)
             advanceFglScenario(combatEngine)
             return
@@ -638,79 +700,79 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             return
         }
         if (ASTDInGameAutomationScenario.isPlEnabled()) {
-            if (combatEngine.isPaused) combatEngine.setPaused(false)
+            if (combatEngine.isPaused) combatEngine.isPaused = false
             elapsed += amount.coerceAtLeast(0f)
             advancePlScenario(combatEngine)
             return
         }
         if (ASTDInGameAutomationScenario.isSmEnabled()) {
-            if (combatEngine.isPaused) combatEngine.setPaused(false)
+            if (combatEngine.isPaused) combatEngine.isPaused = false
             elapsed += amount.coerceAtLeast(0f)
             advanceSmScenario(combatEngine)
             return
         }
         if (ASTDInGameAutomationScenario.isGdEnabled()) {
-            if (combatEngine.isPaused) combatEngine.setPaused(false)
+            if (combatEngine.isPaused) combatEngine.isPaused = false
             elapsed += amount.coerceAtLeast(0f)
             advanceGdScenario(combatEngine)
             return
         }
         if (ASTDInGameAutomationScenario.isHipEnabled()) {
-            if (combatEngine.isPaused) combatEngine.setPaused(false)
+            if (combatEngine.isPaused) combatEngine.isPaused = false
             elapsed += amount.coerceAtLeast(0f)
             advanceHipScenario(combatEngine)
             return
         }
         if (ASTDInGameAutomationScenario.isSsEnabled()) {
-            if (combatEngine.isPaused) combatEngine.setPaused(false)
+            if (combatEngine.isPaused) combatEngine.isPaused = false
             elapsed += amount.coerceAtLeast(0f)
             advanceSsScenario(combatEngine)
             return
         }
         if (ASTDInGameAutomationScenario.isPsEnabled()) {
-            if (combatEngine.isPaused) combatEngine.setPaused(false)
+            if (combatEngine.isPaused) combatEngine.isPaused = false
             elapsed += amount.coerceAtLeast(0f)
             advancePsScenario(combatEngine)
             return
         }
         if (ASTDInGameAutomationScenario.isQjEnabled()) {
-            if (combatEngine.isPaused) combatEngine.setPaused(false)
+            if (combatEngine.isPaused) combatEngine.isPaused = false
             elapsed += amount.coerceAtLeast(0f)
             advanceQjScenario(combatEngine)
             return
         }
         if (ASTDInGameAutomationScenario.isAvEnabled()) {
-            if (combatEngine.isPaused) combatEngine.setPaused(false)
+            if (combatEngine.isPaused) combatEngine.isPaused = false
             elapsed += amount.coerceAtLeast(0f)
             advanceAvScenario(combatEngine)
             return
         }
         if (ASTDInGameAutomationScenario.isEdaEnabled()) {
-            if (combatEngine.isPaused) combatEngine.setPaused(false)
+            if (combatEngine.isPaused) combatEngine.isPaused = false
             elapsed += amount.coerceAtLeast(0f)
             advanceEdaScenario(combatEngine)
             return
         }
         if (ASTDInGameAutomationScenario.isChargeNeedleEnabled()) {
-            if (combatEngine.isPaused) combatEngine.setPaused(false)
+            if (combatEngine.isPaused) combatEngine.isPaused = false
             elapsed += amount.coerceAtLeast(0f)
             advanceChargeNeedleScenario(combatEngine)
             return
         }
         if (ASTDInGameAutomationScenario.isLensPhase2Enabled()) {
-            if (combatEngine.isPaused) combatEngine.setPaused(false)
+            if (combatEngine.isPaused) combatEngine.isPaused = false
             elapsed += amount.coerceAtLeast(0f)
             advanceLensPhase2Scenario(combatEngine, amount.coerceAtLeast(0f))
             return
         }
         if (ASTDInGameAutomationScenario.isLensPhase1Enabled()) {
-            if (combatEngine.isPaused) combatEngine.setPaused(false)
+            if (combatEngine.isPaused) combatEngine.isPaused = false
             elapsed += amount.coerceAtLeast(0f)
             advanceLensPhase1Scenario(combatEngine)
             return
         }
         if (ASTDInGameAutomationScenario.isArcProductionEnabled()) {
-            if (combatEngine.isPaused) combatEngine.setPaused(false)
+            if (combatEngine.isPaused) combatEngine.isPaused = false
             elapsed += amount.coerceAtLeast(0f)
             advanceArcProductionScenario(combatEngine)
             return
@@ -730,8 +792,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             combatEngine.setPlayerShipExternal(ship)
             ship.shipAI = null
             ship.setControlsLocked(false)
-            ship.setHoldFireOneFrame(false)
-            ship.setShipTarget(null)
+            ship.isHoldFireOneFrame = false
+            ship.shipTarget = null
         }
 
         if (!completed && ship != null && weapon != null && elapsed >= 0.5f) {
@@ -905,7 +967,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     private fun findXc001(engine: CombatEngineAPI): ShipAPI? {
         return engine.ships.firstOrNull { ship ->
             ship.hullSpec?.hullId == ASTDInGameAutomationScenario.SHIP_ID ||
-                ship.variant?.hullVariantId == ASTDInGameAutomationScenario.VARIANT_ID
+                    ship.variant?.hullVariantId == ASTDInGameAutomationScenario.VARIANT_ID
         }
     }
 
@@ -914,20 +976,28 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
 
     private fun lockCamera(engine: CombatEngineAPI) {
         val viewport = engine.viewport
-        val displayWidth = try { Display.getWidth().takeIf { it > 0 } ?: 2560 } catch (_: Throwable) { 2560 }
-        val displayHeight = try { Display.getHeight().takeIf { it > 0 } ?: 1440 } catch (_: Throwable) { 1440 }
+        val displayWidth = try {
+            Display.getWidth().takeIf { it > 0 } ?: 2560
+        } catch (_: Throwable) {
+            2560
+        }
+        val displayHeight = try {
+            Display.getHeight().takeIf { it > 0 } ?: 1440
+        } catch (_: Throwable) {
+            1440
+        }
         val displayAspect = displayWidth.toFloat() / displayHeight.toFloat()
         val visibleHeight = 600f
         val visibleWidth = visibleHeight * displayAspect
 
-        viewport.setExternalControl(true)
+        viewport.isExternalControl = true
         viewport.set(
             captureCenter.x - visibleWidth * 0.5f,
             captureCenter.y - visibleHeight * 0.5f,
             visibleWidth,
             visibleHeight,
         )
-        viewport.setEverythingNearViewport(true)
+        viewport.isEverythingNearViewport = true
     }
 
     private fun arrangeShips(engine: CombatEngineAPI, playerShip: ShipAPI?) {
@@ -944,10 +1014,10 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         ship.angularVelocity = 0f
         if (!preserveAI) {
             ship.shipAI = null
-            ship.setShipTarget(null)
+            ship.shipTarget = null
         }
         ship.setControlsLocked(false)
-        ship.setHoldFireOneFrame(!allowFire)
+        ship.isHoldFireOneFrame = !allowFire
         ship.blockCommandForOneFrame(ShipCommand.ACCELERATE)
         ship.blockCommandForOneFrame(ShipCommand.ACCELERATE_BACKWARDS)
         ship.blockCommandForOneFrame(ShipCommand.STRAFE_LEFT)
@@ -959,15 +1029,23 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
 
     private fun lockArcProductionCamera(engine: CombatEngineAPI) {
         val viewport = engine.viewport
-        val displayWidth = try { Display.getWidth().takeIf { it > 0 } ?: 2560 } catch (_: Throwable) { 2560 }
-        val displayHeight = try { Display.getHeight().takeIf { it > 0 } ?: 1440 } catch (_: Throwable) { 1440 }
+        val displayWidth = try {
+            Display.getWidth().takeIf { it > 0 } ?: 2560
+        } catch (_: Throwable) {
+            2560
+        }
+        val displayHeight = try {
+            Display.getHeight().takeIf { it > 0 } ?: 1440
+        } catch (_: Throwable) {
+            1440
+        }
         val displayAspect = displayWidth.toFloat() / displayHeight.toFloat()
         val visibleHeight = 980f
         val visibleWidth = visibleHeight * displayAspect
 
-        viewport.setExternalControl(true)
+        viewport.isExternalControl = true
         viewport.set(-40f - visibleWidth * 0.5f, -20f - visibleHeight * 0.5f, visibleWidth, visibleHeight)
-        viewport.setEverythingNearViewport(true)
+        viewport.isEverythingNearViewport = true
     }
 
     private fun deployArcProductionReserveShips(engine: CombatEngineAPI) {
@@ -978,8 +1056,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
 
     private fun deployArcProductionSide(engine: CombatEngineAPI, side: FleetSide) {
         val manager = engine.getFleetManager(side)
-        manager.setSuppressDeploymentMessages(true)
-        val reserves = manager.getReservesCopy().toList()
+        manager.isSuppressDeploymentMessages = true
+        val reserves = manager.reservesCopy.toList()
         if (reserves.isEmpty()) return
 
         var allyIndex = 0
@@ -996,6 +1074,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     val base = arcProductionAnchors.getValue("enemy_target")
                     Vector2f(base.x + enemyIndex++ * 170f, base.y)
                 }
+
                 hullId == ASTDArcProductionShipIds.HULL_XC_102 -> arcProductionAnchors.getValue(ASTDArcProductionShipIds.HULL_XC_102)
                 hullId == ASTDArcProductionShipIds.HULL_XC_101 -> arcProductionAnchors.getValue(ASTDArcProductionShipIds.HULL_XC_101)
                 hullId == ASTDArcProductionShipIds.HULL_XC_103 -> arcProductionAnchors.getValue(ASTDArcProductionShipIds.HULL_XC_103)
@@ -1028,11 +1107,25 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         val xc101 = findShipByHull(engine, ASTDArcProductionShipIds.HULL_XC_101)
         val xc103 = findShipByHull(engine, ASTDArcProductionShipIds.HULL_XC_103)
         xc102?.let { stabilizeShip(it, arcProductionAnchors.getValue(ASTDArcProductionShipIds.HULL_XC_102), 0f, allowFire = false) }
-        xc101?.let { stabilizeShip(it, arcProductionAnchors.getValue(ASTDArcProductionShipIds.HULL_XC_101), 0f, allowFire = false, preserveAI = true) }
+        xc101?.let {
+            stabilizeShip(
+                it,
+                arcProductionAnchors.getValue(ASTDArcProductionShipIds.HULL_XC_101),
+                0f,
+                allowFire = false,
+                preserveAI = true
+            )
+        }
         xc103?.let { stabilizeShip(it, arcProductionAnchors.getValue(ASTDArcProductionShipIds.HULL_XC_103), 180f, allowFire = false) }
 
         engine.ships
-            .filter { it.hullSpec?.hullId !in setOf(ASTDArcProductionShipIds.HULL_XC_102, ASTDArcProductionShipIds.HULL_XC_101, ASTDArcProductionShipIds.HULL_XC_103) }
+            .filter {
+                it.hullSpec?.hullId !in setOf(
+                    ASTDArcProductionShipIds.HULL_XC_102,
+                    ASTDArcProductionShipIds.HULL_XC_101,
+                    ASTDArcProductionShipIds.HULL_XC_103
+                )
+            }
             .filter { it.owner == xc102?.owner || it.owner == xc101?.owner || it.owner == xc103?.owner }
             .forEachIndexed { index, ship ->
                 val anchor = if (index % 2 == 0) arcProductionAnchors.getValue("ally_frigate") else arcProductionAnchors.getValue("ally_destroyer")
@@ -1051,8 +1144,12 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
 
     private fun pressureXc101ForSystemAI(ship: ShipAPI, xc101: ShipAPI?) {
         if (xc101 == null || ship.owner == xc101.owner) return
-        ship.setShipTarget(xc101)
-        for (weapon in try { ship.allWeapons } catch (_: Throwable) { return }) {
+        ship.shipTarget = xc101
+        for (weapon in try {
+            ship.allWeapons
+        } catch (_: Throwable) {
+            return
+        }) {
             weapon.setForceFireOneFrame(true)
         }
     }
@@ -1080,6 +1177,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 failureReason = "arc production ships missing: ${missingShips.joinToString(",")}"
                 "Failed"
             }
+
             else -> "CombatReady"
         }
         if (state == "Completed" && !completed) {
@@ -1125,20 +1223,28 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
 
     private fun lockChargeNeedleCamera(engine: CombatEngineAPI) {
         val viewport = engine.viewport
-        val displayWidth = try { Display.getWidth().takeIf { it > 0 } ?: 2560 } catch (_: Throwable) { 2560 }
-        val displayHeight = try { Display.getHeight().takeIf { it > 0 } ?: 1440 } catch (_: Throwable) { 1440 }
+        val displayWidth = try {
+            Display.getWidth().takeIf { it > 0 } ?: 2560
+        } catch (_: Throwable) {
+            2560
+        }
+        val displayHeight = try {
+            Display.getHeight().takeIf { it > 0 } ?: 1440
+        } catch (_: Throwable) {
+            1440
+        }
         val displayAspect = displayWidth.toFloat() / displayHeight.toFloat()
         val visibleHeight = 760f
         val visibleWidth = visibleHeight * displayAspect
 
-        viewport.setExternalControl(true)
+        viewport.isExternalControl = true
         viewport.set(
             CHARGE_NEEDLE_CAMERA_CENTER.x - visibleWidth * 0.5f,
             CHARGE_NEEDLE_CAMERA_CENTER.y - visibleHeight * 0.5f,
             visibleWidth,
             visibleHeight,
         )
-        viewport.setEverythingNearViewport(true)
+        viewport.isEverythingNearViewport = true
     }
 
     /** 强制部署 mission reserves（敌方伯劳鸟非旗舰，必须手动出场；范式同 deployLensPhase1Side）。 */
@@ -1146,8 +1252,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         engine.setDoNotEndCombat(true)
         for (side in listOf(FleetSide.PLAYER, FleetSide.ENEMY)) {
             val manager = engine.getFleetManager(side)
-            manager.setSuppressDeploymentMessages(true)
-            for (member in manager.getReservesCopy().toList()) {
+            manager.isSuppressDeploymentMessages = true
+            for (member in manager.reservesCopy.toList()) {
                 val anchor = if (side == FleetSide.ENEMY) CHARGE_NEEDLE_ENEMY_ANCHOR else CHARGE_NEEDLE_PLAYER_ANCHOR
                 val facing = if (side == FleetSide.ENEMY) 180f else 0f
                 manager.spawnFleetMember(member, Vector2f(anchor), facing, 0f)
@@ -1195,13 +1301,13 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             // 且敌方 AutofireAI 拒射。AI 存活 + 命令封锁 + 钉死即可兼顾稳定与机制行为。
             // 注：真正阻断开火的是每帧 setRemainingCooldownTo(0f)（已移除），而非 AI 置空与否。
             stabilizeShip(player, CHARGE_NEEDLE_PLAYER_ANCHOR, 0f, allowFire = chargeNeedlePhase != CHARGE_NEEDLE_PHASE_CEASE, preserveAI = true)
-            player.setShipTarget(enemy)
+            player.shipTarget = enemy
             // 玩家盾常开：敌方针刺命中玩家护盾触发受击方淤积（victim HUD 证据）。
             player.shield?.let { if (!it.isOn) it.toggleOn() }
             // 舞台保活：场景内双方血量/辐能顶格，避免过载/击沉打断相位机（纯 staging，非机制兜底）。
-            player.setHitpoints(player.maxHitpoints)
-            player.fluxTracker.setCurrFlux(0f)
-            player.fluxTracker.setHardFlux(0f)
+            player.hitpoints = player.maxHitpoints
+            player.fluxTracker.currFlux = 0f
+            player.fluxTracker.hardFlux = 0f
             setChargeNeedleAutofire(player, chargeNeedlePhase != CHARGE_NEEDLE_PHASE_CEASE, CHARGE_NEEDLE_PLAYER_WEAPON_IDS)
             // 窄射界槽位（野狼 WS 004 仅 5° 弧）AutofireAI 目标采纳存在死锁：currAngle 停在弧缘 → 目标判出弧置空
             // → 无人修正 currAngle（实机判别：同槽挂小型针刺同样 aiTarget=null 拒射，与重型 spec 无关，
@@ -1209,7 +1315,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             if (enemy != null) {
                 for (w in player.allWeapons) {
                     if (w.id in CHARGE_NEEDLE_PLAYER_WEAPON_IDS) {
-                        w.setCurrAngle(Misc.getAngleInDegrees(w.location, enemy.location))
+                        w.currAngle = Misc.getAngleInDegrees(w.location, enemy.location)
                     }
                 }
             }
@@ -1224,10 +1330,10 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         }
         if (enemy != null) {
             stabilizeShip(enemy, CHARGE_NEEDLE_ENEMY_ANCHOR, 180f, allowFire = true, preserveAI = true)
-            enemy.setShipTarget(player)
-            enemy.setHitpoints(enemy.maxHitpoints)
-            enemy.fluxTracker.setCurrFlux(0f)
-            enemy.fluxTracker.setHardFlux(0f)
+            enemy.shipTarget = player
+            enemy.hitpoints = enemy.maxHitpoints
+            enemy.fluxTracker.currFlux = 0f
+            enemy.fluxTracker.hardFlux = 0f
             // 敌方针刺开火（命中玩家护盾 → victim 淤积证据）。
             setChargeNeedleAutofire(enemy, true, CHARGE_NEEDLE_ENEMY_WEAPON_IDS)
         }
@@ -1246,6 +1352,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 if (stacks > chargeNeedlePeakStacks) chargeNeedlePeakStacks = stacks
                 if (stacks >= CHARGE_NEEDLE_STACK_TARGET) transitionChargeNeedlePhase(CHARGE_NEEDLE_PHASE_HULL)
             }
+
             CHARGE_NEEDLE_PHASE_HULL -> {
                 enemy?.shield?.let { if (it.isOn) it.toggleOff() }
                 val stacks = enemy?.chargeNeedleStacks()?.stacks ?: 0
@@ -1256,12 +1363,14 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     transitionChargeNeedlePhase(CHARGE_NEEDLE_PHASE_CEASE)
                 }
             }
+
             CHARGE_NEEDLE_PHASE_CEASE -> {
                 enemy?.shield?.let { if (!it.isOn) it.toggleOn() }
                 val stacks = enemy?.chargeNeedleStacks()?.stacks ?: 0
                 if (stacks == 0 && chargeNeedlePeakStacks > 0) chargeNeedleDecayVerified = true
                 if (chargeNeedleDecayVerified) transitionChargeNeedlePhase(CHARGE_NEEDLE_PHASE_COMPLETED)
             }
+
             else -> {
                 stageChargeNeedleCompletedFrame(engine)
             }
@@ -1285,11 +1394,13 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     "CombatReady"
                 }
             }
+
             chargeNeedlePhase != CHARGE_NEEDLE_PHASE_COMPLETED &&
-                elapsed - chargeNeedlePhaseStartedAt > CHARGE_NEEDLE_PHASE_TIMEOUT -> {
+                    elapsed - chargeNeedlePhaseStartedAt > CHARGE_NEEDLE_PHASE_TIMEOUT -> {
                 failureReason = "charge needle phase timeout: $chargeNeedlePhase"
                 "Failed"
             }
+
             chargeNeedlePhase == CHARGE_NEEDLE_PHASE_COMPLETED -> "Completed"
             else -> "CombatReady"
         }
@@ -1315,13 +1426,13 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         val dist = if (targetLoc != null) Misc.getDistance(weapon.location, targetLoc) else -1f
         val distFromArc = if (targetLoc != null) weapon.distanceFromArc(targetLoc) else -1f
         return "id=${weapon.id},slot=${weapon.slot?.id},ammo=${weapon.ammo},cd=${"%.2f".format(weapon.cooldownRemaining)}," +
-            "disabled=${weapon.isDisabled},firing=${weapon.isFiring},group=${group != null},autofiring=${group?.isAutofiring}," +
-            "groupType=${group?.type},shipTarget=${target?.hullSpec?.hullId}," +
-            "shipAI=${ship?.shipAI != null},aiShouldFire=${autofireAI?.shouldFire()}," +
-            "aiTarget=${autofireAI?.targetShip?.hullSpec?.hullId ?: autofireAI?.target}," +
-            "dist=${"%.0f".format(dist)},range=${"%.0f".format(weapon.range)}," +
-            "currAngle=${"%.1f".format(weapon.currAngle)},arcFacing=${"%.1f".format(weapon.arcFacing)}," +
-            "arc=${"%.0f".format(weapon.arc)},distFromArc=${"%.1f".format(distFromArc)}"
+                "disabled=${weapon.isDisabled},firing=${weapon.isFiring},group=${group != null},autofiring=${group?.isAutofiring}," +
+                "groupType=${group?.type},shipTarget=${target?.hullSpec?.hullId}," +
+                "shipAI=${ship?.shipAI != null},aiShouldFire=${autofireAI?.shouldFire()}," +
+                "aiTarget=${autofireAI?.targetShip?.hullSpec?.hullId ?: autofireAI?.target}," +
+                "dist=${"%.0f".format(dist)},range=${"%.0f".format(weapon.range)}," +
+                "currAngle=${"%.1f".format(weapon.currAngle)},arcFacing=${"%.1f".format(weapon.arcFacing)}," +
+                "arc=${"%.0f".format(weapon.arc)},distFromArc=${"%.1f".format(distFromArc)}"
     }
 
     /** 排障用护盾状态串：相位/开关/弧度/辐能（排查敌方盾为何未升起导致零淤积）。 */
@@ -1329,8 +1440,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         ship ?: return "missing-ship"
         val shield = ship.shield ?: return "missing-shield,phased=${ship.isPhased}"
         return "isOn=${shield.isOn},isOff=${shield.isOff},activeArc=${"%.0f".format(shield.activeArc)}," +
-            "arc=${"%.0f".format(shield.arc)},upkeep=${"%.0f".format(shield.upkeep)}," +
-            "phased=${ship.isPhased},flux=${"%.0f".format(ship.currFlux)},overloaded=${ship.fluxTracker.isOverloaded}"
+                "arc=${"%.0f".format(shield.arc)},upkeep=${"%.0f".format(shield.upkeep)}," +
+                "phased=${ship.isPhased},flux=${"%.0f".format(ship.currFlux)},overloaded=${ship.fluxTracker.isOverloaded}"
     }
 
     /** COMPLETED 截图舞台：敌方盾开 + 双方自动开火（新鲜拖尾、叠层 HUD、泄放电弧进入捕获帧）。 */
@@ -1339,14 +1450,14 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         val enemy = findChargeNeedleEnemy(engine)
         player?.let {
             stabilizeShip(it, CHARGE_NEEDLE_PLAYER_ANCHOR, 0f, allowFire = true, preserveAI = true)
-            it.setShipTarget(enemy)
+            it.shipTarget = enemy
             it.shield?.let { shield -> if (!shield.isOn) shield.toggleOn() }
             setChargeNeedleAutofire(it, true, CHARGE_NEEDLE_PLAYER_WEAPON_IDS)
             // 与相位机同款窄射界 currAngle 死锁解除 + 重型直控开火（详见 advanceChargeNeedleScenario 注释）。
             if (enemy != null) {
                 for (w in it.allWeapons) {
                     if (w.id in CHARGE_NEEDLE_PLAYER_WEAPON_IDS) {
-                        w.setCurrAngle(Misc.getAngleInDegrees(w.location, enemy.location))
+                        w.currAngle = Misc.getAngleInDegrees(w.location, enemy.location)
                     }
                 }
             }
@@ -1359,7 +1470,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         enemy?.let {
             stabilizeShip(it, CHARGE_NEEDLE_ENEMY_ANCHOR, 180f, allowFire = true, preserveAI = true)
             it.shield?.let { shield -> if (!shield.isOn) shield.toggleOn() }
-            it.setShipTarget(player)
+            it.shipTarget = player
             setChargeNeedleAutofire(it, true, CHARGE_NEEDLE_ENEMY_WEAPON_IDS)
         }
         lockChargeNeedleCamera(engine)
@@ -1378,20 +1489,28 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
 
     private fun lockEdaCamera(engine: CombatEngineAPI) {
         val viewport = engine.viewport
-        val displayWidth = try { Display.getWidth().takeIf { it > 0 } ?: 2560 } catch (_: Throwable) { 2560 }
-        val displayHeight = try { Display.getHeight().takeIf { it > 0 } ?: 1440 } catch (_: Throwable) { 1440 }
+        val displayWidth = try {
+            Display.getWidth().takeIf { it > 0 } ?: 2560
+        } catch (_: Throwable) {
+            2560
+        }
+        val displayHeight = try {
+            Display.getHeight().takeIf { it > 0 } ?: 1440
+        } catch (_: Throwable) {
+            1440
+        }
         val displayAspect = displayWidth.toFloat() / displayHeight.toFloat()
         val visibleHeight = 900f
         val visibleWidth = visibleHeight * displayAspect
 
-        viewport.setExternalControl(true)
+        viewport.isExternalControl = true
         viewport.set(
             EDA_CAMERA_CENTER.x - visibleWidth * 0.5f,
             EDA_CAMERA_CENTER.y - visibleHeight * 0.5f,
             visibleWidth,
             visibleHeight,
         )
-        viewport.setEverythingNearViewport(true)
+        viewport.isEverythingNearViewport = true
     }
 
     /** 强制部署 mission reserves（敌方锤头级非旗舰，必须手动出场；范式同 deployChargeNeedleReserveShips）。 */
@@ -1399,8 +1518,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         engine.setDoNotEndCombat(true)
         for (side in listOf(FleetSide.PLAYER, FleetSide.ENEMY)) {
             val manager = engine.getFleetManager(side)
-            manager.setSuppressDeploymentMessages(true)
-            for (member in manager.getReservesCopy().toList()) {
+            manager.isSuppressDeploymentMessages = true
+            for (member in manager.reservesCopy.toList()) {
                 val anchor = if (side == FleetSide.ENEMY) EDA_ENEMY_ANCHOR else EDA_PLAYER_ANCHOR
                 val facing = if (side == FleetSide.ENEMY) 180f else 0f
                 manager.spawnFleetMember(member, Vector2f(anchor), facing, 0f)
@@ -1422,16 +1541,16 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         if (player != null) {
             engine.setPlayerShipExternal(player)
             stabilizeShip(player, EDA_PLAYER_ANCHOR, 0f, allowFire = playerFire, preserveAI = true)
-            player.setShipTarget(enemy)
-            player.setHitpoints(player.maxHitpoints)
+            player.shipTarget = enemy
+            player.hitpoints = player.maxHitpoints
             player.shield?.let { if (!it.isOn) it.toggleOn() }
             setChargeNeedleAutofire(player, playerFire, EDA_WEAPON_IDS)
             stageEdaFireControl(player, enemy, playerFire)
         }
         if (enemy != null) {
             stabilizeShip(enemy, EDA_ENEMY_ANCHOR, 180f, allowFire = enemyFire, preserveAI = true)
-            enemy.setShipTarget(player)
-            enemy.setHitpoints(enemy.maxHitpoints)
+            enemy.shipTarget = player
+            enemy.hitpoints = enemy.maxHitpoints
             setChargeNeedleAutofire(enemy, enemyFire, EDA_WEAPON_IDS)
             stageEdaFireControl(enemy, player, enemyFire)
         }
@@ -1446,7 +1565,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     private fun stageEdaFireControl(ship: ShipAPI, target: ShipAPI?, fire: Boolean) {
         for (w in ship.allWeapons) {
             if (w.id != ASTDInGameAutomationScenario.EDA_WEAPON_ID) continue
-            if (target != null) w.setCurrAngle(Misc.getAngleInDegrees(w.location, target.location))
+            if (target != null) w.currAngle = Misc.getAngleInDegrees(w.location, target.location)
             w.setForceFireOneFrame(fire)
         }
     }
@@ -1455,8 +1574,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     private fun pinFluxLevel(ship: ShipAPI?, level: Float) {
         ship ?: return
         val max = ship.maxFlux.takeIf { it > 0f } ?: return
-        ship.fluxTracker.setCurrFlux((level * max).coerceIn(0f, max))
-        ship.fluxTracker.setHardFlux(0f)
+        ship.fluxTracker.currFlux = (level * max).coerceIn(0f, max)
+        ship.fluxTracker.hardFlux = 0f
     }
 
     /** 每触发弹数分组：新弹 spawn 间隔 > [EDA_BURST_GROUP_GAP] 视为新一轮触发（burst delay 0.1s）。 */
@@ -1516,6 +1635,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     }
                 }
             }
+
             EDA_PHASE_RANGE_MID -> {
                 stabilizeEdaShips(engine, playerFire = false, enemyFire = false)
                 pinFluxLevel(player, EDA_MID_FLUX_LEVEL)
@@ -1530,6 +1650,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     }
                 }
             }
+
             EDA_PHASE_RANGE_HIGH -> {
                 stabilizeEdaShips(engine, playerFire = false, enemyFire = false)
                 pinFluxLevel(player, EDA_HIGH_FLUX_LEVEL)
@@ -1544,6 +1665,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     }
                 }
             }
+
             EDA_PHASE_FIRE -> {
                 stabilizeEdaShips(engine, playerFire = true, enemyFire = false)
                 enemy?.shield?.let { if (!it.isOn) it.toggleOn() }
@@ -1560,6 +1682,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     DifficultyTuningImpl.installScaleForTests(1f)
                 }
             }
+
             EDA_PHASE_ENEMY_SCALE -> {
                 stabilizeEdaShips(engine, playerFire = false, enemyFire = edaScaleStep >= 3)
                 pinFluxLevel(player, 0f)
@@ -1571,12 +1694,14 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                         DifficultyTuningImpl.installScaleForTests(2f)
                         edaScaleStep = 1; edaScaleStepAt = elapsed
                     }
+
                     1 -> if (elapsed - edaScaleStepAt >= EDA_RANGE_SETTLE_SECONDS) {
                         edaEnemyRangeScale2 = enemyEda?.range ?: -1f
                         log.info("[ASTD-Automation] eda enemy range@k_s=2: $edaEnemyRangeScale2")
                         DifficultyTuningImpl.installScaleForTests(5f)
                         edaScaleStep = 2; edaScaleStepAt = elapsed
                     }
+
                     2 -> if (elapsed - edaScaleStepAt >= EDA_RANGE_SETTLE_SECONDS) {
                         edaEnemyRangeScale5 = enemyEda?.range ?: -1f
                         log.info("[ASTD-Automation] eda enemy range@k_s=5: $edaEnemyRangeScale5")
@@ -1593,6 +1718,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     }
                 }
             }
+
             EDA_PHASE_COMPLETED -> {
                 stageEdaCompletedFrame(engine)
             }
@@ -1607,12 +1733,14 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     "CombatReady"
                 }
             }
+
             edaPhase == EDA_PHASE_FAILED -> "Failed"
             edaPhase != EDA_PHASE_COMPLETED &&
-                elapsed - edaPhaseStartedAt > EDA_PHASE_TIMEOUT -> {
+                    elapsed - edaPhaseStartedAt > EDA_PHASE_TIMEOUT -> {
                 failureReason = "eda phase timeout: $edaPhase"
                 "Failed"
             }
+
             edaPhase == EDA_PHASE_COMPLETED -> "Completed"
             else -> "CombatReady"
         }
@@ -1662,20 +1790,28 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
 
     private fun lockAvCamera(engine: CombatEngineAPI) {
         val viewport = engine.viewport
-        val displayWidth = try { Display.getWidth().takeIf { it > 0 } ?: 2560 } catch (_: Throwable) { 2560 }
-        val displayHeight = try { Display.getHeight().takeIf { it > 0 } ?: 1440 } catch (_: Throwable) { 1440 }
+        val displayWidth = try {
+            Display.getWidth().takeIf { it > 0 } ?: 2560
+        } catch (_: Throwable) {
+            2560
+        }
+        val displayHeight = try {
+            Display.getHeight().takeIf { it > 0 } ?: 1440
+        } catch (_: Throwable) {
+            1440
+        }
         val displayAspect = displayWidth.toFloat() / displayHeight.toFloat()
         val visibleHeight = 900f
         val visibleWidth = visibleHeight * displayAspect
 
-        viewport.setExternalControl(true)
+        viewport.isExternalControl = true
         viewport.set(
             AV_CAMERA_CENTER.x - visibleWidth * 0.5f,
             AV_CAMERA_CENTER.y - visibleHeight * 0.5f,
             visibleWidth,
             visibleHeight,
         )
-        viewport.setEverythingNearViewport(true)
+        viewport.isEverythingNearViewport = true
     }
 
     /** 强制部署 mission reserves（协同/敌版/投喂三舰非旗舰，必须手动出场；按舰体分配锚点）。 */
@@ -1683,8 +1819,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         engine.setDoNotEndCombat(true)
         for (side in listOf(FleetSide.PLAYER, FleetSide.ENEMY)) {
             val manager = engine.getFleetManager(side)
-            manager.setSuppressDeploymentMessages(true)
-            for (member in manager.getReservesCopy().toList()) {
+            manager.isSuppressDeploymentMessages = true
+            for (member in manager.reservesCopy.toList()) {
                 val hullId = member.hullId ?: continue
                 val anchor = when {
                     side == FleetSide.PLAYER && hullId == AV_PLAYER_HULL -> AV_PLAYER_ANCHOR
@@ -1725,29 +1861,29 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         if (player != null && !player.isHulk) {
             engine.setPlayerShipExternal(player)
             stabilizeShip(player, AV_PLAYER_ANCHOR, 0f, allowFire = playerFire, preserveAI = true)
-            player.setShipTarget(feeder)
-            if (keepPlayerAlive) player.setHitpoints(player.maxHitpoints)
+            player.shipTarget = feeder
+            if (keepPlayerAlive) player.hitpoints = player.maxHitpoints
             setChargeNeedleAutofire(player, playerFire, AV_WEAPON_IDS)
             stageAvFireControl(player, feeder, playerFire)
         }
         if (feeder != null && !feeder.isHulk) {
             stabilizeShip(feeder, AV_FEEDER_ANCHOR, 180f, allowFire = feederFire, preserveAI = true)
-            feeder.setShipTarget(player)
-            feeder.setHitpoints(feeder.maxHitpoints)
+            feeder.shipTarget = player
+            feeder.hitpoints = feeder.maxHitpoints
             setChargeNeedleAutofire(feeder, feederFire, AV_FEEDER_WEAPON_IDS)
             stageAvFireControl(feeder, player, feederFire)
         }
         if (synergy != null && !synergy.isHulk) {
             stabilizeShip(synergy, AV_SYNERGY_ANCHOR, 0f, allowFire = synergyFire, preserveAI = true)
-            synergy.setShipTarget(feeder)
-            synergy.setHitpoints(synergy.maxHitpoints)
+            synergy.shipTarget = feeder
+            synergy.hitpoints = synergy.maxHitpoints
             setChargeNeedleAutofire(synergy, synergyFire, AV_WEAPON_IDS)
             stageAvFireControl(synergy, feeder, synergyFire)
         }
         if (enemy != null && !enemy.isHulk) {
             stabilizeShip(enemy, AV_ENEMY_ANCHOR, 180f, allowFire = enemyFire, preserveAI = true)
-            enemy.setShipTarget(player)
-            enemy.setHitpoints(enemy.maxHitpoints)
+            enemy.shipTarget = player
+            enemy.hitpoints = enemy.maxHitpoints
             setChargeNeedleAutofire(enemy, enemyFire, AV_WEAPON_IDS)
             stageAvFireControl(enemy, player, enemyFire)
         }
@@ -1758,7 +1894,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         val ids = if (ship.hullSpec?.hullId == AV_FEEDER_HULL) AV_FEEDER_WEAPON_IDS else AV_WEAPON_IDS
         for (w in ship.allWeapons) {
             if (w.id !in ids) continue
-            if (target != null) w.setCurrAngle(Misc.getAngleInDegrees(w.location, target.location))
+            if (target != null) w.currAngle = Misc.getAngleInDegrees(w.location, target.location)
             w.setForceFireOneFrame(fire)
         }
     }
@@ -1810,11 +1946,13 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                         avAbsorbBaseline = AnnihilationVortexBeamEffect.counter(engine, AnnihilationVortexBeamEffect.TELEMETRY_ABSORBED_PLAYER)
                         transitionAvPhase(AV_PHASE_ABSORB)
                     } else {
-                        failureReason = "av mount mismatch: playerSlot=$playerSlot(expect ${AV_PLAYER_EXPECT_SLOT}), synergySlot=$synergySlot(expect ${AV_SYNERGY_EXPECT_SLOT})"
+                        failureReason =
+                            "av mount mismatch: playerSlot=$playerSlot(expect ${AV_PLAYER_EXPECT_SLOT}), synergySlot=$synergySlot(expect ${AV_SYNERGY_EXPECT_SLOT})"
                         transitionAvPhase(AV_PHASE_FAILED)
                     }
                 }
             }
+
             AV_PHASE_ABSORB -> {
                 stabilizeAvShips(engine, playerFire = true, feederFire = true)
                 trackAvBurstCycle(playerAv)
@@ -1835,9 +1973,11 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     }
                 }
             }
+
             AV_PHASE_COLLAPSE -> {
                 stabilizeAvShips(engine, playerFire = false, feederFire = false)
-                val collapses = AnnihilationVortexBeamEffect.counter(engine, AnnihilationVortexBeamEffect.TELEMETRY_COLLAPSE_COUNT) - avCollapseBaseline
+                val collapses =
+                    AnnihilationVortexBeamEffect.counter(engine, AnnihilationVortexBeamEffect.TELEMETRY_COLLAPSE_COUNT) - avCollapseBaseline
                 val hits = AnnihilationVortexBeamEffect.counter(engine, AnnihilationVortexBeamEffect.TELEMETRY_LAST_COLLAPSE_HITS_PLAYER)
                 if (collapses >= 1) {
                     if (hits >= 1) {
@@ -1848,6 +1988,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     }
                 }
             }
+
             AV_PHASE_EMPTY_PREP -> {
                 stabilizeAvShips(engine, playerFire = false, feederFire = false)
                 if (!avProjectilesSwept) {
@@ -1860,11 +2001,14 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     transitionAvPhase(AV_PHASE_EMPTY_FIRE)
                 }
             }
+
             AV_PHASE_EMPTY_FIRE -> {
                 stabilizeAvShips(engine, playerFire = true, feederFire = false)
-                val collapses = AnnihilationVortexBeamEffect.counter(engine, AnnihilationVortexBeamEffect.TELEMETRY_COLLAPSE_COUNT) - avCollapseBaseline
+                val collapses =
+                    AnnihilationVortexBeamEffect.counter(engine, AnnihilationVortexBeamEffect.TELEMETRY_COLLAPSE_COUNT) - avCollapseBaseline
                 if (collapses >= 1) {
-                    avEmptyCollapseDamage = AnnihilationVortexBeamEffect.telemetryFloat(engine, AnnihilationVortexBeamEffect.TELEMETRY_LAST_COLLAPSE_DAMAGE_PLAYER)
+                    avEmptyCollapseDamage =
+                        AnnihilationVortexBeamEffect.telemetryFloat(engine, AnnihilationVortexBeamEffect.TELEMETRY_LAST_COLLAPSE_DAMAGE_PLAYER)
                     if (kotlin.math.abs(avEmptyCollapseDamage - AV_EXPECT_EMPTY_DAMAGE) <= AV_EMPTY_DAMAGE_TOLERANCE) {
                         DifficultyTuningImpl.installScaleForTests(1f)
                         avScaleStep = 0
@@ -1876,6 +2020,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     }
                 }
             }
+
             AV_PHASE_ENEMY_SCALE -> {
                 // k_s=5 帧率窗口：step3 期间累计 tick 数 / 墙钟秒。
                 if (avScaleStep == 3) avScale5Ticks++
@@ -1888,50 +2033,59 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                         DifficultyTuningImpl.installScaleForTests(2f)
                         avScaleStep = 1; avScaleStepAt = elapsed
                     }
+
                     1 -> if (enemyRadius > 0f && kotlin.math.abs(enemyRadius - avScaleRadius1) > 0.5f) {
                         avScaleRadius2 = enemyRadius
                         log.info("[ASTD-Automation] av enemy radius@k_s=2: $avScaleRadius2")
                         DifficultyTuningImpl.installScaleForTests(5f)
                         avScaleStep = 2; avScaleStepAt = elapsed
                     }
+
                     2 -> if (enemyRadius > 0f && kotlin.math.abs(enemyRadius - avScaleRadius2) > 0.5f) {
                         avScaleRadius5 = enemyRadius
-                        avScaleThreshold5 = AnnihilationVortexBeamEffect.telemetryFloat(engine, AnnihilationVortexBeamEffect.TELEMETRY_LAST_THRESHOLD_ENEMY)
+                        avScaleThreshold5 =
+                            AnnihilationVortexBeamEffect.telemetryFloat(engine, AnnihilationVortexBeamEffect.TELEMETRY_LAST_THRESHOLD_ENEMY)
                         avScaleAoe5 = AnnihilationVortexBeamEffect.telemetryFloat(engine, AnnihilationVortexBeamEffect.TELEMETRY_LAST_AOEMULT_ENEMY)
                         log.info("[ASTD-Automation] av enemy radius@k_s=5: $avScaleRadius5 threshold=$avScaleThreshold5 aoe=$avScaleAoe5")
                         avScale5Ticks = 0
                         avScale5WallStartNanos = System.nanoTime()
                         avScaleStep = 3; avScaleStepAt = elapsed
                     }
+
                     3 -> if (elapsed - avScaleStepAt >= AV_SCALE5_FPS_WINDOW_SECONDS) {
                         val wallSeconds = (System.nanoTime() - avScale5WallStartNanos) / 1_000_000_000.0
                         avScale5Fps = if (wallSeconds > 0.0) (avScale5Ticks / wallSeconds).toFloat() else -1f
                         DifficultyTuningImpl.installScaleForTests(null)
                         val radiusOk = kotlin.math.abs(avScaleRadius1 - 150f) <= 1f &&
-                            kotlin.math.abs(avScaleRadius2 - 187.5f) <= 1f &&
-                            kotlin.math.abs(avScaleRadius5 - 300f) <= 1f
+                                kotlin.math.abs(avScaleRadius2 - 187.5f) <= 1f &&
+                                kotlin.math.abs(avScaleRadius5 - 300f) <= 1f
                         val k5Ok = kotlin.math.abs(avScaleThreshold5 - 16000f) <= 1f && kotlin.math.abs(avScaleAoe5 - 2.5f) <= 0.01f
                         when {
                             !radiusOk -> {
                                 failureReason = "av enemy radius 三档=$avScaleRadius1/$avScaleRadius2/$avScaleRadius5, expect 150/187.5/300"
                                 transitionAvPhase(AV_PHASE_FAILED)
                             }
+
                             !k5Ok -> {
                                 failureReason = "av enemy k_s=5 threshold=$avScaleThreshold5 aoe=$avScaleAoe5, expect 16000/2.5"
                                 transitionAvPhase(AV_PHASE_FAILED)
                             }
+
                             avScale5Fps < AV_SCALE5_MIN_FPS -> {
                                 failureReason = "av k_s=5 fps=$avScale5Fps < $AV_SCALE5_MIN_FPS（300su 涡旋性能门槛）"
                                 transitionAvPhase(AV_PHASE_FAILED)
                             }
+
                             else -> {
-                                avHostDeathPoolRecycledBaseline = AnnihilationVortexBeamEffect.counter(engine, AnnihilationVortexBeamEffect.TELEMETRY_POOL_RECYCLED)
+                                avHostDeathPoolRecycledBaseline =
+                                    AnnihilationVortexBeamEffect.counter(engine, AnnihilationVortexBeamEffect.TELEMETRY_POOL_RECYCLED)
                                 transitionAvPhase(AV_PHASE_HOST_DEATH)
                             }
                         }
                     }
                 }
             }
+
             AV_PHASE_HOST_DEATH -> {
                 // 击杀对象 = 协同槽 odyssey_A（非旗舰）：宿主死亡机制验证与旗舰解耦——
                 // 杀旗舰会弹出增援/换旗舰对话框遮住整个画面，COMPLETED 截图舞台将无画面可拍（第三轮实证）。
@@ -1941,26 +2095,35 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     avHostKilled = true
                     avHostKilledAt = elapsed
                     avHostDeathCollapseBaseline = AnnihilationVortexBeamEffect.counter(engine, AnnihilationVortexBeamEffect.TELEMETRY_COLLAPSE_COUNT)
-                    synergy.setHitpoints(1f)
+                    synergy.hitpoints = 1f
                     engine.applyDamage(synergy, synergy.location, 1_000_000f, DamageType.ENERGY, 0f, true, false, feeder ?: synergy, false)
                     log.info("[ASTD-Automation] av synergy host killed mid-beam at ${"%.2f".format(elapsed)}s")
                 }
                 if (avHostKilled && elapsed - avHostKilledAt >= AV_HOST_DEATH_SETTLE_SECONDS) {
-                    val recycled = AnnihilationVortexBeamEffect.counter(engine, AnnihilationVortexBeamEffect.TELEMETRY_POOL_RECYCLED) - avHostDeathPoolRecycledBaseline
-                    val collapses = AnnihilationVortexBeamEffect.counter(engine, AnnihilationVortexBeamEffect.TELEMETRY_COLLAPSE_COUNT) - avHostDeathCollapseBaseline
+                    val recycled = AnnihilationVortexBeamEffect.counter(
+                        engine,
+                        AnnihilationVortexBeamEffect.TELEMETRY_POOL_RECYCLED
+                    ) - avHostDeathPoolRecycledBaseline
+                    val collapses = AnnihilationVortexBeamEffect.counter(
+                        engine,
+                        AnnihilationVortexBeamEffect.TELEMETRY_COLLAPSE_COUNT
+                    ) - avHostDeathCollapseBaseline
                     when {
                         recycled < 1 -> {
                             failureReason = "av host death pool recycled=$recycled, expect>=1（SELF_MANAGED 自回收 + INFO）"
                             transitionAvPhase(AV_PHASE_FAILED)
                         }
+
                         collapses != 0 -> {
                             failureReason = "av host death collapses=$collapses, expect 0（宿主死亡涡旋哑火不坍缩）"
                             transitionAvPhase(AV_PHASE_FAILED)
                         }
+
                         else -> transitionAvPhase(AV_PHASE_COMPLETED)
                     }
                 }
             }
+
             AV_PHASE_COMPLETED -> {
                 stageAvCompletedFrame(engine)
             }
@@ -1970,24 +2133,28 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             // 宿主死亡相位后协同舰允许缺席（中束击杀即消失正是观测对象）；其余三舰全程必须在场。
             (synergy == null && !avHostKilled) || player == null || feeder == null || enemy == null -> {
                 if (elapsed > 12f) {
-                    failureReason = "av ships missing: player=${player != null}, feeder=${feeder != null}, synergy=${synergy != null}, enemy=${enemy != null}"
+                    failureReason =
+                        "av ships missing: player=${player != null}, feeder=${feeder != null}, synergy=${synergy != null}, enemy=${enemy != null}"
                     "Failed"
                 } else {
                     "CombatReady"
                 }
             }
+
             avPhase == AV_PHASE_FAILED -> "Failed"
             avPhase != AV_PHASE_COMPLETED &&
-                elapsed - avPhaseStartedAt > AV_PHASE_TIMEOUT -> {
+                    elapsed - avPhaseStartedAt > AV_PHASE_TIMEOUT -> {
                 failureReason = "av phase timeout: $avPhase"
                 "Failed"
             }
+
             avPhase == AV_PHASE_COMPLETED -> {
                 // 截图门控：爆发中段才上报 Completed——SSOptimizer 在上报时刻连拍三帧，
                 // 2s on / 9s off 爆发循环下随机时刻大概率拍到无束空场；保底超时防舞台卡死。
                 val midBurst = avBeamOnSince >= 0f && elapsed - avBeamOnSince >= AV_COMPLETED_BEAM_ON_SECONDS
                 if (midBurst || elapsed - avPhaseStartedAt >= AV_COMPLETED_STAGE_TIMEOUT) "Completed" else "CombatReady"
             }
+
             else -> "CombatReady"
         }
         if (state == "Completed" && !completed) {
@@ -2035,19 +2202,27 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
 
     private fun lockQjCamera(engine: CombatEngineAPI) {
         val viewport = engine.viewport
-        val displayWidth = try { Display.getWidth().takeIf { it > 0 } ?: 2560 } catch (_: Throwable) { 2560 }
-        val displayHeight = try { Display.getHeight().takeIf { it > 0 } ?: 1440 } catch (_: Throwable) { 1440 }
+        val displayWidth = try {
+            Display.getWidth().takeIf { it > 0 } ?: 2560
+        } catch (_: Throwable) {
+            2560
+        }
+        val displayHeight = try {
+            Display.getHeight().takeIf { it > 0 } ?: 1440
+        } catch (_: Throwable) {
+            1440
+        }
         val displayAspect = displayWidth.toFloat() / displayHeight.toFloat()
         val visibleWidth = QJ_CAMERA_VISIBLE_HEIGHT * displayAspect
 
-        viewport.setExternalControl(true)
+        viewport.isExternalControl = true
         viewport.set(
             QJ_CAMERA_CENTER.x - visibleWidth * 0.5f,
             QJ_CAMERA_CENTER.y - QJ_CAMERA_VISIBLE_HEIGHT * 0.5f,
             visibleWidth,
             QJ_CAMERA_VISIBLE_HEIGHT,
         )
-        viewport.setEverythingNearViewport(true)
+        viewport.isEverythingNearViewport = true
     }
 
     /** 强制部署 mission reserves（玩家/敌版统治者 + 双警戒靶舰全部非旗舰，按舰体与出场顺序分配锚点）。 */
@@ -2056,8 +2231,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         var vigilanceIndex = 0
         for (side in listOf(FleetSide.PLAYER, FleetSide.ENEMY)) {
             val manager = engine.getFleetManager(side)
-            manager.setSuppressDeploymentMessages(true)
-            for (member in manager.getReservesCopy().toList()) {
+            manager.isSuppressDeploymentMessages = true
+            for (member in manager.reservesCopy.toList()) {
                 val hullId = member.hullId ?: continue
                 val anchor = when {
                     side == FleetSide.PLAYER && hullId == QJ_PLAYER_HULL -> QJ_PLAYER_ANCHOR
@@ -2066,6 +2241,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                         vigilanceIndex++
                         QJ_SWITCH_ANCHOR
                     }
+
                     hullId == QJ_TARGET_HULL -> QJ_KILL_ANCHOR
                     else -> continue
                 }
@@ -2103,8 +2279,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         if (player != null && !player.isHulk) {
             engine.setPlayerShipExternal(player)
             stabilizeShip(player, QJ_PLAYER_ANCHOR, 0f, allowFire = fireW1 || fireW2, preserveAI = true)
-            player.setShipTarget(playerTarget)
-            player.setHitpoints(player.maxHitpoints)
+            player.shipTarget = playerTarget
+            player.hitpoints = player.maxHitpoints
             player.fluxTracker.currFlux = 0f
             // 变体武器组自带 autofire（第四轮实证：w2 停火相位 AutofireAI 继续开火，层数不衰减），
             // 双穷距一律改由 force fire 独占驱动（开/停逐槽位精确）。
@@ -2113,26 +2289,26 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         }
         if (enemy != null && !enemy.isHulk) {
             stabilizeShip(enemy, QJ_ENEMY_ANCHOR, 180f, allowFire = enemyFire, preserveAI = true)
-            enemy.setShipTarget(player)
-            enemy.setHitpoints(enemy.maxHitpoints)
+            enemy.shipTarget = player
+            enemy.hitpoints = enemy.maxHitpoints
             enemy.fluxTracker.currFlux = 0f
             setQjAutofire(enemy, false)
             for (w in enemy.allWeapons) {
                 if (w.id != ASTDInGameAutomationScenario.QJ_WEAPON_ID) continue
-                if (player != null) w.setCurrAngle(Misc.getAngleInDegrees(w.location, player.location))
+                if (player != null) w.currAngle = Misc.getAngleInDegrees(w.location, player.location)
                 w.setForceFireOneFrame(enemyFire)
             }
         }
         if (switch != null && !switch.isHulk) {
             stabilizeShip(switch, QJ_SWITCH_ANCHOR, 180f, allowFire = false, preserveAI = true)
-            switch.setShipTarget(null)
-            if (healSwitchTarget) switch.setHitpoints(switch.maxHitpoints)
+            switch.shipTarget = null
+            if (healSwitchTarget) switch.hitpoints = switch.maxHitpoints
             switch.shield?.toggleOff()
         }
         if (kill != null && !kill.isHulk) {
             stabilizeShip(kill, QJ_KILL_ANCHOR, 180f, allowFire = false, preserveAI = true)
-            kill.setShipTarget(null)
-            kill.setHitpoints(kill.maxHitpoints)
+            kill.shipTarget = null
+            kill.hitpoints = kill.maxHitpoints
             kill.shield?.toggleOff()
         }
     }
@@ -2156,7 +2332,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 QJ_PLAYER_SLOT_W2 -> fireW2
                 else -> false
             }
-            if (target != null) w.setCurrAngle(Misc.getAngleInDegrees(w.location, target.location))
+            if (target != null) w.currAngle = Misc.getAngleInDegrees(w.location, target.location)
             w.setForceFireOneFrame(fire)
         }
     }
@@ -2227,6 +2403,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     }
                 }
             }
+
             QJ_PHASE_STACK -> {
                 stabilizeQjShips(engine, playerTarget = enemy, fireW1 = true, fireW2 = true)
                 trackQjRefire(engine, w1, shipBuff?.stacks ?: 0)
@@ -2254,26 +2431,33 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                             failureReason = "qj full dmg mult=$qjDmgMultAtFull, expect≈$QJ_EXPECT_FULL_DMG_MULT（10 层 × v2 4%）"
                             transitionQjPhase(QJ_PHASE_FAILED)
                         }
+
                         qjRefireMinAtFull < QJ_REFIRE_MIN || qjRefireMinAtFull > QJ_REFIRE_MAX -> {
-                            failureReason = "qj full refire min=$qjRefireMinAtFull, expect [$QJ_REFIRE_MIN, $QJ_REFIRE_MAX]（2.5s 全周期/1.4≈1.79s spike，cooldownRemaining 含充能段）"
+                            failureReason =
+                                "qj full refire min=$qjRefireMinAtFull, expect [$QJ_REFIRE_MIN, $QJ_REFIRE_MAX]（2.5s 全周期/1.4≈1.79s spike，cooldownRemaining 含充能段）"
                             transitionQjPhase(QJ_PHASE_FAILED)
                         }
+
                         spike < 1 -> {
                             failureReason = "qj spike applied=$spike, expect>=1（setRemainingCooldownTo 周期起点扣减）"
                             transitionQjPhase(QJ_PHASE_FAILED)
                         }
+
                         hud < 1 -> {
                             failureReason = "qj hud frames=$hud, expect>=1（「持续演算」状态条目）"
                             transitionQjPhase(QJ_PHASE_FAILED)
                         }
+
                         cone < 1 -> {
                             failureReason = "qj cone vfx=$cone, expect>=1（命中小号锥面特效）"
                             transitionQjPhase(QJ_PHASE_FAILED)
                         }
+
                         qjStackFps < QJ_STACK_MIN_FPS -> {
                             failureReason = "qj stack fps=$qjStackFps < $QJ_STACK_MIN_FPS（叠层期帧率门槛）"
                             transitionQjPhase(QJ_PHASE_FAILED)
                         }
+
                         else -> {
                             // dealtMult 为常驻遥测（相位间不清零）：进 DUAL 前抹掉 w2 历史读数，
                             // 保证本相位的 w2Mult>0 只能来自「w1 独建满层后 w2 补射首发」的新命中。
@@ -2285,6 +2469,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     }
                 }
             }
+
             QJ_PHASE_DUAL -> {
                 // 共享验证（2026-09 修订）：w1 独打保持满层，w2 停火 4s 后补射——
                 // w2 首发命中同样享受全舰共享满层乘区（Ship 级 Buff 证据）。
@@ -2305,7 +2490,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     ) {
                         transitionQjPhase(QJ_PHASE_SWITCH)
                     } else {
-                        failureReason = "qj shared w2 mult=$w2Mult stacks=${shipBuff?.stacks}, expect≈$QJ_EXPECT_FULL_DMG_MULT（w1 独建满层，w2 首发同享）"
+                        failureReason =
+                            "qj shared w2 mult=$w2Mult stacks=${shipBuff?.stacks}, expect≈$QJ_EXPECT_FULL_DMG_MULT（w1 独建满层，w2 首发同享）"
                         transitionQjPhase(QJ_PHASE_FAILED)
                     }
                 } else if (elapsed - qjPhaseStartedAt >= QJ_DUAL_SECONDS) {
@@ -2313,6 +2499,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     transitionQjPhase(QJ_PHASE_FAILED)
                 }
             }
+
             QJ_PHASE_SWITCH -> {
                 stabilizeQjShips(engine, playerTarget = switch, fireW1 = true, fireW2 = true)
                 if (switch != null && shipBuff?.target === switch) {
@@ -2321,11 +2508,13 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     if (qjSwitchW1Stacks in QJ_SWITCH_MIN_STACKS..QJ_SWITCH_MAX_STACKS && transfer >= 1) {
                         transitionQjPhase(QJ_PHASE_DECAY)
                     } else {
-                        failureReason = "qj switch stacks=$qjSwitchW1Stacks(expect $QJ_SWITCH_MIN_STACKS~$QJ_SWITCH_MAX_STACKS: floor(10×0.3125)+1=4) transfer=$transfer(expect>=1)"
+                        failureReason =
+                            "qj switch stacks=$qjSwitchW1Stacks(expect $QJ_SWITCH_MIN_STACKS~$QJ_SWITCH_MAX_STACKS: floor(10×0.3125)+1=4) transfer=$transfer(expect>=1)"
                         transitionQjPhase(QJ_PHASE_FAILED)
                     }
                 }
             }
+
             QJ_PHASE_DECAY -> {
                 stabilizeQjShips(engine, playerTarget = null, fireW1 = false, fireW2 = false)
                 if ((shipBuff?.stacks ?: 0) == 0) {
@@ -2338,6 +2527,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     }
                 }
             }
+
             QJ_PHASE_KILL -> {
                 val armed = (shipBuff?.stacks ?: 0) >= QJ_KILL_ARM_STACKS
                 // 叠到 ≥3 层后停奶 B（盾已舞台性常关）让其被击沉；击沉瞬间转火 C 并清一次冷却，抢在 3s 窗口内命中。
@@ -2365,11 +2555,13 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                         qjScaleSampling = false
                         transitionQjPhase(QJ_PHASE_ENEMY_SCALE)
                     } else {
-                        failureReason = "qj kill switch stacks=$qjStacksAfterKillHit, expect=$expected（旧目标失效不折算，首中=旧值+1；前值=$qjStacksBeforeKill）"
+                        failureReason =
+                            "qj kill switch stacks=$qjStacksAfterKillHit, expect=$expected（旧目标失效不折算，首中=旧值+1；前值=$qjStacksBeforeKill）"
                         transitionQjPhase(QJ_PHASE_FAILED)
                     }
                 }
             }
+
             QJ_PHASE_ENEMY_SCALE -> {
                 // 达 5 层即停火 + settle 采样（第 5 发命中后逐命中乘区恰为 4 层值，停火防第 6 发覆盖采样窗口）。
                 stabilizeQjShips(
@@ -2391,11 +2583,13 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                             log.info("[ASTD-Automation] qj enemy dealt mult@k_s=1: $qjEnemyMult1")
                             DifficultyTuningImpl.installScaleForTests(2f)
                         }
+
                         1 -> {
                             qjEnemyMult2 = mult
                             log.info("[ASTD-Automation] qj enemy dealt mult@k_s=2: $qjEnemyMult2")
                             DifficultyTuningImpl.installScaleForTests(5f)
                         }
+
                         else -> {
                             qjEnemyMult5 = mult
                             log.info("[ASTD-Automation] qj enemy dealt mult@k_s=5: $qjEnemyMult5")
@@ -2408,17 +2602,19 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                         qjScaleSampling = false
                     } else {
                         val ok = qjEnemyMult1 in QJ_ENEMY_MULT_1_MIN..QJ_ENEMY_MULT_1_MAX &&
-                            qjEnemyMult2 in QJ_ENEMY_MULT_2_MIN..QJ_ENEMY_MULT_2_MAX &&
-                            qjEnemyMult5 in QJ_ENEMY_MULT_5_MIN..QJ_ENEMY_MULT_5_MAX
+                                qjEnemyMult2 in QJ_ENEMY_MULT_2_MIN..QJ_ENEMY_MULT_2_MAX &&
+                                qjEnemyMult5 in QJ_ENEMY_MULT_5_MIN..QJ_ENEMY_MULT_5_MAX
                         if (ok) {
                             transitionQjPhase(QJ_PHASE_COMPLETED)
                         } else {
-                            failureReason = "qj enemy dealt mult 三档=$qjEnemyMult1/$qjEnemyMult2/$qjEnemyMult5, expect [1.07,1.11]/[1.15,1.21]/[1.39,1.51]（v1 2%/v2 4%/v5 10% × 4~5 层逐命中乘区）"
+                            failureReason =
+                                "qj enemy dealt mult 三档=$qjEnemyMult1/$qjEnemyMult2/$qjEnemyMult5, expect [1.07,1.11]/[1.15,1.21]/[1.39,1.51]（v1 2%/v2 4%/v5 10% × 4~5 层逐命中乘区）"
                             transitionQjPhase(QJ_PHASE_FAILED)
                         }
                     }
                 }
             }
+
             QJ_PHASE_COMPLETED -> {
                 stageQjCompletedFrame(engine)
             }
@@ -2429,24 +2625,28 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         val state = when {
             player == null || enemy == null || !switchOk || kill == null -> {
                 if (elapsed > 12f) {
-                    failureReason = "qj ships missing: player=${player != null}, enemy=${enemy != null}, switch=${switch != null}, kill=${kill != null}"
+                    failureReason =
+                        "qj ships missing: player=${player != null}, enemy=${enemy != null}, switch=${switch != null}, kill=${kill != null}"
                     "Failed"
                 } else {
                     "CombatReady"
                 }
             }
+
             qjPhase == QJ_PHASE_FAILED -> "Failed"
             qjPhase != QJ_PHASE_COMPLETED &&
-                elapsed - qjPhaseStartedAt > QJ_PHASE_TIMEOUT -> {
+                    elapsed - qjPhaseStartedAt > QJ_PHASE_TIMEOUT -> {
                 failureReason = "qj phase timeout: $qjPhase"
                 "Failed"
             }
+
             qjPhase == QJ_PHASE_COMPLETED -> {
                 // 截图门控：叠层回升到可见水位才上报 Completed——SSOptimizer 在上报时刻连拍三帧，
                 // 令「持续演算」HUD 条目与白色拖尾/命中锥面入帧（对齐 AV 中段门控先例）；保底超时防舞台卡死。
                 val stackedForShot = (shipBuff?.stacks ?: 0) >= QJ_COMPLETED_STACKS_FOR_SHOT
                 if (stackedForShot || elapsed - qjPhaseStartedAt >= QJ_COMPLETED_STAGE_TIMEOUT) "Completed" else "CombatReady"
             }
+
             else -> "CombatReady"
         }
         if (state == "Completed" && !completed) {
@@ -2483,18 +2683,26 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
 
     private fun lockPsCamera(engine: CombatEngineAPI) {
         val viewport = engine.viewport
-        val displayWidth = try { Display.getWidth().takeIf { it > 0 } ?: 2560 } catch (_: Throwable) { 2560 }
-        val displayHeight = try { Display.getHeight().takeIf { it > 0 } ?: 1440 } catch (_: Throwable) { 1440 }
+        val displayWidth = try {
+            Display.getWidth().takeIf { it > 0 } ?: 2560
+        } catch (_: Throwable) {
+            2560
+        }
+        val displayHeight = try {
+            Display.getHeight().takeIf { it > 0 } ?: 1440
+        } catch (_: Throwable) {
+            1440
+        }
         val displayAspect = displayWidth.toFloat() / displayHeight.toFloat()
         val visibleWidth = PS_CAMERA_VISIBLE_HEIGHT * displayAspect
-        viewport.setExternalControl(true)
+        viewport.isExternalControl = true
         viewport.set(
             PS_CAMERA_CENTER.x - visibleWidth * 0.5f,
             PS_CAMERA_CENTER.y - PS_CAMERA_VISIBLE_HEIGHT * 0.5f,
             visibleWidth,
             PS_CAMERA_VISIBLE_HEIGHT,
         )
-        viewport.setEverythingNearViewport(true)
+        viewport.isEverythingNearViewport = true
     }
 
     /** 强制部署 mission reserves（玩家野狼 + 无武装警戒级靶舰均非旗舰，按舰体分配锚点）。 */
@@ -2502,8 +2710,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         engine.setDoNotEndCombat(true)
         for (side in listOf(FleetSide.PLAYER, FleetSide.ENEMY)) {
             val manager = engine.getFleetManager(side)
-            manager.setSuppressDeploymentMessages(true)
-            for (member in manager.getReservesCopy().toList()) {
+            manager.isSuppressDeploymentMessages = true
+            for (member in manager.reservesCopy.toList()) {
                 val hullId = member.hullId ?: continue
                 val anchor = when {
                     side == FleetSide.PLAYER && hullId == PS_PLAYER_HULL -> PS_PLAYER_ANCHOR
@@ -2535,13 +2743,13 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         if (player != null && !player.isHulk) {
             engine.setPlayerShipExternal(player)
             stabilizeShip(player, PS_PLAYER_ANCHOR, 0f, allowFire = fire, preserveAI = true)
-            player.setShipTarget(target)
-            player.setHitpoints(player.maxHitpoints)
+            player.shipTarget = target
+            player.hitpoints = player.maxHitpoints
             player.fluxTracker.currFlux = 0f
             setPsAutofire(player, false)
             val w = findPsWeapon(player)
             if (w != null) {
-                w.setCurrAngle(0f)
+                w.currAngle = 0f
                 w.setForceFireOneFrame(fire)
             }
         }
@@ -2551,8 +2759,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 else -> PS_TARGET_SPLASH_ANCHOR
             }
             stabilizeShip(target, anchor, 180f, allowFire = false, preserveAI = true)
-            target.setShipTarget(null)
-            if (psPhase != PS_PHASE_IMPACT) target.setHitpoints(target.maxHitpoints)
+            target.shipTarget = null
+            if (psPhase != PS_PHASE_IMPACT) target.hitpoints = target.maxHitpoints
             target.shield?.toggleOff()
         }
     }
@@ -2631,46 +2839,53 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 if (elapsed - psPhaseStartedAt >= PS_MOUNT_SETTLE_SECONDS) {
                     val slot = weapon?.slot?.id
                     val range = weapon?.range ?: -1f
-                    val hintsPd = weapon?.spec?.getAIHints()?.contains(WeaponAPI.AIHints.PD) == true
+                    val hintsPd = weapon?.spec?.aiHints?.contains(WeaponAPI.AIHints.PD) == true
                     when {
                         slot != PS_PLAYER_SLOT || kotlin.math.abs(range - PS_EXPECT_RANGE) > PS_RANGE_TOLERANCE -> {
                             failureReason = "ps mount mismatch: slot=$slot range=$range(expect $PS_EXPECT_RANGE)"
                             transitionPsPhase(PS_PHASE_FAILED)
                         }
+
                         !hintsPd -> {
                             failureReason = "ps aiHints missing PD（装配面板 hints 校验）"
                             transitionPsPhase(PS_PHASE_FAILED)
                         }
+
                         else -> {
                             // 进入撞舰相位：靶舰奶满一次作伤害观测基线（本相位不逐帧奶）；
                             // 装甲整格剥除——警戒级装甲全额吸收破片伤害会令舰体读数恒满
                             // （2026-09 撞舰裁定后首次实机暴露），与逐帧 toggleOff 护盾同口径剥除防御层，
                             // 直读撞舰引爆 + 锥面结算的舰体伤害
-                            target?.setHitpoints(target.maxHitpoints)
+                            target?.hitpoints = target.maxHitpoints
                             target?.let { stripPsTargetArmor(it) }
                             transitionPsPhase(PS_PHASE_IMPACT)
                         }
                     }
                 }
             }
+
             PS_PHASE_IMPACT -> {
                 stabilizePsShips(engine, fire = true)
                 if (impactCount >= PS_IMPACT_DETONATIONS) {
                     val targetDamaged = target != null && !target.isHulk &&
-                        target.hitpoints < target.maxHitpoints - PS_IMPACT_MIN_DAMAGE
+                            target.hitpoints < target.maxHitpoints - PS_IMPACT_MIN_DAMAGE
                     when {
                         fuseCount != 0 -> {
                             failureReason = "ps impact fuse=$fuseCount, expect 0（无导弹环境不应有近炸引爆）"
                             transitionPsPhase(PS_PHASE_FAILED)
                         }
+
                         maxRangeCount != 0 -> {
                             failureReason = "ps impact max-range=$maxRangeCount, expect 0（靶舰锚在 400su 弹道上，弹体应撞舰引爆而非飞到 600su 自爆）"
                             transitionPsPhase(PS_PHASE_FAILED)
                         }
+
                         !targetDamaged -> {
-                            failureReason = "ps impact target hp=${target?.hitpoints}/${target?.maxHitpoints}（撞舰引爆 + 锥面结算应对舰船造成可观伤害）"
+                            failureReason =
+                                "ps impact target hp=${target?.hitpoints}/${target?.maxHitpoints}（撞舰引爆 + 锥面结算应对舰船造成可观伤害）"
                             transitionPsPhase(PS_PHASE_FAILED)
                         }
+
                         else -> {
                             psSplashShipHitsBaseline = shipHits
                             psSplashFuseBaseline = fuseCount
@@ -2680,22 +2895,27 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     }
                 }
             }
+
             PS_PHASE_SPLASH -> {
                 stabilizePsShips(engine, fire = true)
                 if (maxRangeCount - psSplashMaxRangeBaseline >= PS_SPLASH_DETONATIONS) {
                     when {
                         shipHits - psSplashShipHitsBaseline < 1 -> {
-                            failureReason = "ps splash ship hits delta=${shipHits - psSplashShipHitsBaseline}, expect>=1（700su 处舰船应被满射程自爆锥面波及）"
+                            failureReason =
+                                "ps splash ship hits delta=${shipHits - psSplashShipHitsBaseline}, expect>=1（700su 处舰船应被满射程自爆锥面波及）"
                             transitionPsPhase(PS_PHASE_FAILED)
                         }
+
                         fuseCount - psSplashFuseBaseline != 0 -> {
                             failureReason = "ps splash fuse delta=${fuseCount - psSplashFuseBaseline}, expect 0（舰船蹭波及但不触发近炸）"
                             transitionPsPhase(PS_PHASE_FAILED)
                         }
+
                         else -> transitionPsPhase(PS_PHASE_FUSE)
                     }
                 }
             }
+
             PS_PHASE_FUSE -> {
                 stabilizePsShips(engine, fire = true)
                 feedPsMissiles(engine)
@@ -2705,14 +2925,17 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                             failureReason = "ps floaty=$floatyCount, expect>=1（devMode 引爆计数浮字「近炸命中 ×n」）"
                             transitionPsPhase(PS_PHASE_FAILED)
                         }
+
                         coneVfxCount < 1 -> {
                             failureReason = "ps cone vfx=$coneVfxCount, expect>=1（引爆锥面 VFX）"
                             transitionPsPhase(PS_PHASE_FAILED)
                         }
+
                         else -> transitionPsPhase(PS_PHASE_COMPLETED)
                     }
                 }
             }
+
             PS_PHASE_COMPLETED -> {
                 stabilizePsShips(engine, fire = true)
                 feedPsMissiles(engine)
@@ -2734,16 +2957,19 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     "CombatReady"
                 }
             }
+
             psPhase == PS_PHASE_FAILED -> "Failed"
             psPhase != PS_PHASE_COMPLETED &&
-                elapsed - psPhaseStartedAt > PS_PHASE_TIMEOUT -> {
+                    elapsed - psPhaseStartedAt > PS_PHASE_TIMEOUT -> {
                 failureReason = "ps phase timeout: $psPhase"
                 "Failed"
             }
+
             psPhase == PS_PHASE_COMPLETED -> {
                 val recentDetonate = psLastFuseDetonateAt >= 0f && elapsed - psLastFuseDetonateAt <= PS_COMPLETED_DETONATE_WINDOW
                 if (recentDetonate || elapsed - psPhaseStartedAt >= PS_COMPLETED_STAGE_TIMEOUT) "Completed" else "CombatReady"
             }
+
             else -> "CombatReady"
         }
         if (state == "Completed" && !completed) {
@@ -2774,18 +3000,26 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
 
     private fun lockSsCamera(engine: CombatEngineAPI) {
         val viewport = engine.viewport
-        val displayWidth = try { Display.getWidth().takeIf { it > 0 } ?: 2560 } catch (_: Throwable) { 2560 }
-        val displayHeight = try { Display.getHeight().takeIf { it > 0 } ?: 1440 } catch (_: Throwable) { 1440 }
+        val displayWidth = try {
+            Display.getWidth().takeIf { it > 0 } ?: 2560
+        } catch (_: Throwable) {
+            2560
+        }
+        val displayHeight = try {
+            Display.getHeight().takeIf { it > 0 } ?: 1440
+        } catch (_: Throwable) {
+            1440
+        }
         val displayAspect = displayWidth.toFloat() / displayHeight.toFloat()
         val visibleWidth = SS_CAMERA_VISIBLE_HEIGHT * displayAspect
-        viewport.setExternalControl(true)
+        viewport.isExternalControl = true
         viewport.set(
             SS_CAMERA_CENTER.x - visibleWidth * 0.5f,
             SS_CAMERA_CENTER.y - SS_CAMERA_VISIBLE_HEIGHT * 0.5f,
             visibleWidth,
             SS_CAMERA_VISIBLE_HEIGHT,
         )
-        viewport.setEverythingNearViewport(true)
+        viewport.isEverythingNearViewport = true
     }
 
     /**
@@ -2799,25 +3033,28 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         engine.setDoNotEndCombat(true)
         for (side in listOf(FleetSide.PLAYER, FleetSide.ENEMY)) {
             val manager = engine.getFleetManager(side)
-            manager.setSuppressDeploymentMessages(true)
-            for (member in manager.getReservesCopy().toList()) {
+            manager.isSuppressDeploymentMessages = true
+            for (member in manager.reservesCopy.toList()) {
                 val hullId = member.hullId ?: continue
                 when {
                     side == FleetSide.PLAYER && hullId == SS_PLAYER_HULL -> {
                         manager.spawnFleetMember(member, Vector2f(SS_PLAYER_ANCHOR), 0f, 0f)
                         manager.removeFromReserves(member)
                     }
+
                     side == FleetSide.ENEMY && hullId == SS_TARGET_HULL && ssVigilanceSpawned == 0 -> {
                         manager.spawnFleetMember(member, Vector2f(SS_TARGET_ANCHOR), 180f, 0f)
                         manager.removeFromReserves(member)
                         ssVigilanceSpawned++
                     }
+
                     side == FleetSide.ENEMY && hullId == SS_TARGET_HULL &&
-                        ssPhase in listOf(SS_PHASE_TERMINAL, SS_PHASE_ENEMY_MULTI, SS_PHASE_COMPLETED) -> {
+                            ssPhase in listOf(SS_PHASE_TERMINAL, SS_PHASE_ENEMY_MULTI, SS_PHASE_COMPLETED) -> {
                         manager.spawnFleetMember(member, Vector2f(SS_TARGET_ANCHOR), 180f, 0f)
                         manager.removeFromReserves(member)
                         ssVigilanceSpawned++
                     }
+
                     side == FleetSide.ENEMY && hullId == SS_PLAYER_HULL && ssPhase == SS_PHASE_ENEMY_MULTI -> {
                         manager.spawnFleetMember(member, Vector2f(SS_ENEMY_ANCHOR), 180f, 0f)
                         manager.removeFromReserves(member)
@@ -2847,41 +3084,41 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             // 舞台舰一律摘除 AI（实机判例：保留 AI 会每帧抢开盾，与 stabilize 的 toggleOff
             // 形成拉锯——终结单段 125 被盾面全额吸收，「命中掉血」观测面拿到 HP 满值误判失败）。
             stabilizeShip(player, SS_PLAYER_ANCHOR, 0f, allowFire = fire, preserveAI = false)
-            player.setShipTarget(target)
-            if (ssPhase != SS_PHASE_ENEMY_MULTI) player.setHitpoints(player.maxHitpoints)
+            player.shipTarget = target
+            if (ssPhase != SS_PHASE_ENEMY_MULTI) player.hitpoints = player.maxHitpoints
             player.fluxTracker.currFlux = 0f
             // 玩家舰盾舞台性常关：ENEMY_MULTI 相位敌版多段终结证据要求伤害落到玩家船体。
             player.shield?.toggleOff()
             setSsAutofire(player, false)
             val w = findSsWeapon(player)
             if (w != null) {
-                w.setCurrAngle(0f)
+                w.currAngle = 0f
                 w.setForceFireOneFrame(fire && ssPhase != SS_PHASE_ENEMY_MULTI)
             }
         }
         if (target != null && !target.isHulk) {
             stabilizeShip(target, SS_TARGET_ANCHOR, 180f, allowFire = false, preserveAI = false)
-            target.setShipTarget(null)
+            target.shipTarget = null
             if (ssPhase != SS_PHASE_TERMINAL && ssPhase != SS_PHASE_COMPLETED) {
-                target.setHitpoints(target.maxHitpoints)
+                target.hitpoints = target.maxHitpoints
             }
             target.shield?.toggleOff()
         }
         if (carrier != null && !carrier.isHulk) {
             stabilizeShip(carrier, SS_ENEMY_ANCHOR, 180f, allowFire = true, preserveAI = false)
-            carrier.setShipTarget(player)
-            carrier.setHitpoints(carrier.maxHitpoints)
+            carrier.shipTarget = player
+            carrier.hitpoints = carrier.maxHitpoints
             carrier.fluxTracker.currFlux = 0f
             setSsAutofire(carrier, false)
             val w = findSsWeapon(carrier)
             if (w != null) {
-                w.setCurrAngle(180f)
+                w.currAngle = 180f
                 // 部署免疫闸（实机判例第 7 轮：reserves 手动 spawn 舰船在部署后 ~2.5s 内，
                 // 其作为 source 的脚本 applyDamage 同样全额无效——敌版多段终结前两段 0 伤害、
                 // 2.5s 后各段正常掉血）——敌版舰部署后 4s 内不放行开火（同 SS_TERMINAL_SETTLE_SECONDS）。
                 w.setForceFireOneFrame(
                     ssPhase == SS_PHASE_ENEMY_MULTI &&
-                        elapsed - ssPhaseStartedAt >= SS_ENEMY_MULTI_SETTLE_SECONDS,
+                            elapsed - ssPhaseStartedAt >= SS_ENEMY_MULTI_SETTLE_SECONDS,
                 )
             }
         }
@@ -2997,26 +3234,29 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     // 校验数据面原始射程（spec.maxRange）：舰体内置射程 hullmod（如奥德赛 targeting core）
                     // 只放大 weapon.range 有效值，不应计入装配校验。
                     val range = weapon?.spec?.maxRange ?: -1f
-                    val hintsPd = weapon?.spec?.getAIHints()?.contains(WeaponAPI.AIHints.PD) == true
+                    val hintsPd = weapon?.spec?.aiHints?.contains(WeaponAPI.AIHints.PD) == true
                     when {
                         slot != SS_PLAYER_SLOT || kotlin.math.abs(range - SS_EXPECT_RANGE) > SS_RANGE_TOLERANCE -> {
                             failureReason = "ss mount mismatch: slot=$slot range=$range(expect $SS_EXPECT_RANGE)"
                             transitionSsPhase(SS_PHASE_FAILED)
                         }
+
                         !hintsPd -> {
                             failureReason = "ss aiHints missing PD（装配面板 hints 校验）"
                             transitionSsPhase(SS_PHASE_FAILED)
                         }
+
                         else -> {
                             ssNokillKillsBaseline = kills
                             ssNokillFlashBaseline = flash
                             ssNokillRiftBaseline = rift
-                            target?.setHitpoints(target.maxHitpoints)
+                            target?.hitpoints = target.maxHitpoints
                             transitionSsPhase(SS_PHASE_NOKILL)
                         }
                     }
                 }
             }
+
             SS_PHASE_NOKILL -> {
                 stabilizeSsShips(engine, fire = true)
                 feedSsNokillMissiles(engine)
@@ -3030,10 +3270,12 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                             failureReason = "ss nokill kills delta=${kills - ssNokillKillsBaseline}, expect 0（增压鱼叉不可摧毁）"
                             transitionSsPhase(SS_PHASE_FAILED)
                         }
+
                         rift - ssNokillRiftBaseline < SS_CHAIN_MAX_JUMPS -> {
                             failureReason = "ss nokill rift delta=${rift - ssNokillRiftBaseline} < $SS_CHAIN_MAX_JUMPS（每跳一次裂隙爆炸）"
                             transitionSsPhase(SS_PHASE_FAILED)
                         }
+
                         else -> {
                             // 进入连跳相位：移除靶舰 A（空域无敌舰，无处可去终结走「无舰消散」路径）
                             target?.let { engine.removeEntity(it) }
@@ -3046,6 +3288,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     }
                 }
             }
+
             SS_PHASE_CHAIN -> {
                 stabilizeSsShips(engine, fire = true)
                 feedSsMissiles(engine, atPlayerSide = true)
@@ -3063,22 +3306,27 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                             failureReason = "ss chain jumps max=$chainJumpsMax > $SS_CHAIN_MAX_JUMPS（7 跳硬上限被突破）"
                             transitionSsPhase(SS_PHASE_FAILED)
                         }
+
                         kills < SS_CHAIN_MIN_KILLS -> {
                             failureReason = "ss chain kills=$kills < $SS_CHAIN_MIN_KILLS（连跳成片清除证据不足）"
                             transitionSsPhase(SS_PHASE_FAILED)
                         }
+
                         rift < chainJumpsMax -> {
                             failureReason = "ss rift=$rift < chainJumpsMax=$chainJumpsMax（每跳一次裂隙爆炸）"
                             transitionSsPhase(SS_PHASE_FAILED)
                         }
+
                         teleportArc < 1 -> {
                             failureReason = "ss teleport arc=$teleportArc, expect>=1（折跃起止 EMP 电弧）"
                             transitionSsPhase(SS_PHASE_FAILED)
                         }
+
                         ssChainFps < SS_CHAIN_MIN_FPS -> {
                             failureReason = "ss chain fps=$ssChainFps < $SS_CHAIN_MIN_FPS（连跳峰值帧率门槛）"
                             transitionSsPhase(SS_PHASE_FAILED)
                         }
+
                         else -> {
                             ssTerminalSingleBaseline = terminalSingle
                             ssTerminalEmpArcsBaseline = terminalEmpArcs
@@ -3087,6 +3335,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     }
                 }
             }
+
             SS_PHASE_TERMINAL -> {
                 // 盾折叠闸（实机判例：靶舰 B 部署时 OMNI 盾处于开启态，toggleOff 后仍有 ~1s 折叠
                 // 窗口继续挡伤——窗口内终结单段 125 被盾面全额吸收，「命中掉血」观测面拿到 HP 满值
@@ -3109,6 +3358,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                             failureReason = "ss terminal emp arcs delta=${terminalEmpArcs - ssTerminalEmpArcsBaseline}, expect 0（玩家单段终结无 EMP）"
                             transitionSsPhase(SS_PHASE_FAILED)
                         }
+
                         targetDamaged -> {
                             ssEnemyMultiBaseline = terminalMulti
                             ssEnemyMinPlayerHp = player?.maxHitpoints ?: Float.MAX_VALUE
@@ -3125,6 +3375,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     }
                 }
             }
+
             SS_PHASE_ENEMY_MULTI -> {
                 stabilizeSsShips(engine, fire = false)
                 feedSsMissiles(engine, atPlayerSide = false)
@@ -3139,14 +3390,16 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                             failureReason = "ss enemy terminal segments max=$terminalSegmentsMax < $SS_ENEMY_MULTI_MIN_SEGMENTS（破晓多段终结段数不足）"
                             transitionSsPhase(SS_PHASE_FAILED)
                         }
+
                         terminalEmpArcs < SS_ENEMY_MULTI_MIN_SEGMENTS -> {
                             failureReason = "ss enemy terminal emp arcs=$terminalEmpArcs < $SS_ENEMY_MULTI_MIN_SEGMENTS（多段终结逐段 EMP 电弧）"
                             transitionSsPhase(SS_PHASE_FAILED)
                         }
+
                         player != null && ssEnemyMinPlayerHp < player.maxHitpoints - SS_TERMINAL_HP_DROP_MIN -> {
                             DifficultyTuningImpl.installScaleForTests(null)
                             findSsEnemyCarrier(engine)?.let { engine.removeEntity(it) }
-                            player.setHitpoints(player.maxHitpoints)
+                            player.hitpoints = player.maxHitpoints
                             transitionSsPhase(SS_PHASE_COMPLETED)
                         }
                         // 部署免疫宽限（同 SS_PHASE_TERMINAL 注：source 为敌版舰时其脚本伤害在
@@ -3159,6 +3412,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     }
                 }
             }
+
             SS_PHASE_COMPLETED -> {
                 stabilizeSsShips(engine, fire = true)
                 feedSsMissiles(engine, atPlayerSide = true)
@@ -3180,16 +3434,19 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     "CombatReady"
                 }
             }
+
             ssPhase == SS_PHASE_FAILED -> "Failed"
             ssPhase != SS_PHASE_COMPLETED &&
-                elapsed - ssPhaseStartedAt > SS_PHASE_TIMEOUT -> {
+                    elapsed - ssPhaseStartedAt > SS_PHASE_TIMEOUT -> {
                 failureReason = "ss phase timeout: $ssPhase"
                 "Failed"
             }
+
             ssPhase == SS_PHASE_COMPLETED -> {
                 val recentFlash = ssLastFlashAt >= 0f && elapsed - ssLastFlashAt <= SS_COMPLETED_FLASH_WINDOW
                 if (recentFlash || elapsed - ssPhaseStartedAt >= SS_COMPLETED_STAGE_TIMEOUT) "Completed" else "CombatReady"
             }
+
             else -> "CombatReady"
         }
         if (state == "Completed" && !completed) {
@@ -3223,18 +3480,26 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
 
     private fun lockGdCamera(engine: CombatEngineAPI) {
         val viewport = engine.viewport
-        val displayWidth = try { Display.getWidth().takeIf { it > 0 } ?: 2560 } catch (_: Throwable) { 2560 }
-        val displayHeight = try { Display.getHeight().takeIf { it > 0 } ?: 1440 } catch (_: Throwable) { 1440 }
+        val displayWidth = try {
+            Display.getWidth().takeIf { it > 0 } ?: 2560
+        } catch (_: Throwable) {
+            2560
+        }
+        val displayHeight = try {
+            Display.getHeight().takeIf { it > 0 } ?: 1440
+        } catch (_: Throwable) {
+            1440
+        }
         val displayAspect = displayWidth.toFloat() / displayHeight.toFloat()
         val visibleWidth = GD_CAMERA_VISIBLE_HEIGHT * displayAspect
-        viewport.setExternalControl(true)
+        viewport.isExternalControl = true
         viewport.set(
             GD_CAMERA_CENTER.x - visibleWidth * 0.5f,
             GD_CAMERA_CENTER.y - GD_CAMERA_VISIBLE_HEIGHT * 0.5f,
             visibleWidth,
             GD_CAMERA_VISIBLE_HEIGHT,
         )
-        viewport.setEverythingNearViewport(true)
+        viewport.isEverythingNearViewport = true
     }
 
     /**
@@ -3245,18 +3510,20 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         engine.setDoNotEndCombat(true)
         for (side in listOf(FleetSide.PLAYER, FleetSide.ENEMY)) {
             val manager = engine.getFleetManager(side)
-            manager.setSuppressDeploymentMessages(true)
-            for (member in manager.getReservesCopy().toList()) {
+            manager.isSuppressDeploymentMessages = true
+            for (member in manager.reservesCopy.toList()) {
                 val hullId = member.hullId ?: continue
                 when {
                     side == FleetSide.PLAYER && hullId == GD_PLAYER_HULL -> {
                         manager.spawnFleetMember(member, Vector2f(GD_PLAYER_ANCHOR), 0f, 0f)
                         manager.removeFromReserves(member)
                     }
+
                     side == FleetSide.ENEMY && hullId == GD_TARGET_HULL -> {
                         manager.spawnFleetMember(member, Vector2f(GD_TARGET_ANCHOR), 180f, 0f)
                         manager.removeFromReserves(member)
                     }
+
                     side == FleetSide.ENEMY && hullId == GD_PLAYER_HULL && gdPhase == GD_PHASE_ENEMY_SCALE -> {
                         manager.spawnFleetMember(member, Vector2f(GD_ENEMY_ANCHOR), 180f, 0f)
                         manager.removeFromReserves(member)
@@ -3285,23 +3552,23 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             engine.setPlayerShipExternal(player)
             // 舞台舰一律摘除 AI（实机判例：保留 AI 会每帧抢开盾，与 toggleOff 拉锯污染掉血证据）。
             stabilizeShip(player, GD_PLAYER_ANCHOR, 0f, allowFire = true, preserveAI = false)
-            player.setShipTarget(target ?: carrier)
-            if (gdPhase != GD_PHASE_ENEMY_SCALE) player.setHitpoints(player.maxHitpoints)
+            player.shipTarget = target ?: carrier
+            if (gdPhase != GD_PHASE_ENEMY_SCALE) player.hitpoints = player.maxHitpoints
             player.fluxTracker.currFlux = 0f
             player.shield?.toggleOff()
             setGdAutofire(player, false)
             findGdLauncher(player)?.let {
-                it.setCurrAngle(0f)
+                it.currAngle = 0f
                 it.setForceFireOneFrame(fireLauncher)
             }
             findGdPod(player)?.let {
-                it.setCurrAngle(0f)
+                it.currAngle = 0f
                 it.setForceFireOneFrame(firePod)
             }
         }
         if (target != null && !target.isHulk) {
             stabilizeShip(target, GD_TARGET_ANCHOR, 180f, allowFire = false, preserveAI = false)
-            target.setShipTarget(null)
+            target.shipTarget = null
             target.shield?.toggleOff()
             if (gdPhase == GD_PHASE_SALVO || gdPhase == GD_PHASE_KILL_ONE || gdPhase == GD_PHASE_POD) {
                 gdSalvoTargetMinHp = minOf(gdSalvoTargetMinHp, target.hitpoints)
@@ -3309,12 +3576,12 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         }
         if (carrier != null && !carrier.isHulk) {
             stabilizeShip(carrier, GD_ENEMY_ANCHOR, 180f, allowFire = true, preserveAI = false)
-            carrier.setShipTarget(player)
-            carrier.setHitpoints(carrier.maxHitpoints)
+            carrier.shipTarget = player
+            carrier.hitpoints = carrier.maxHitpoints
             carrier.fluxTracker.currFlux = 0f
             setGdAutofire(carrier, false)
             findGdPod(carrier)?.let {
-                it.setCurrAngle(180f)
+                it.currAngle = 180f
                 // 部署免疫闸（实机判例：reserves 手动 spawn 舰船部署后数秒内脚本 applyDamage 可能全额无效）
                 it.setForceFireOneFrame(
                     gdPhase == GD_PHASE_ENEMY_SCALE && elapsed - gdPhaseStartedAt >= GD_ENEMY_SETTLE_SECONDS,
@@ -3329,7 +3596,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         for (group in ship.weaponGroupsCopy) {
             if (group.weaponsCopy.none {
                     it.id == ASTDInGameAutomationScenario.GD_LAUNCHER_WEAPON_ID ||
-                        it.id == ASTDInGameAutomationScenario.GD_POD_WEAPON_ID
+                            it.id == ASTDInGameAutomationScenario.GD_POD_WEAPON_ID
                 }
             ) {
                 continue
@@ -3421,42 +3688,50 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     }
                     val payloadHintLeak = listOf(GeminiDemDifficulty.KINETIC_PAYLOAD_ID, GeminiDemDifficulty.HE_PAYLOAD_ID)
                         .firstOrNull { id ->
-                            Global.getSettings().getWeaponSpec(id)?.getAIHints()?.contains(WeaponAPI.AIHints.SYSTEM) != true
+                            Global.getSettings().getWeaponSpec(id)?.aiHints?.contains(WeaponAPI.AIHints.SYSTEM) != true
                         }
                     when {
                         launcherSlot != GD_PLAYER_SLOT_LAUNCHER || podSlot != GD_PLAYER_SLOT_POD -> {
                             failureReason = "gd mount mismatch: launcherSlot=$launcherSlot podSlot=$podSlot"
                             transitionGdPhase(GD_PHASE_FAILED)
                         }
+
                         kotlin.math.abs(launcherRange - GD_EXPECT_RANGE) > GD_RANGE_TOLERANCE ||
-                            kotlin.math.abs(podRange - GD_EXPECT_RANGE) > GD_RANGE_TOLERANCE -> {
+                                kotlin.math.abs(podRange - GD_EXPECT_RANGE) > GD_RANGE_TOLERANCE -> {
                             failureReason = "gd range mismatch: launcher=$launcherRange pod=$podRange(expect $GD_EXPECT_RANGE)"
                             transitionGdPhase(GD_PHASE_FAILED)
                         }
+
                         launcher == null || launcher.spec?.maxAmmo != GD_LAUNCHER_AMMO -> {
-                            failureReason = "gd launcher spec maxAmmo=${launcher?.spec?.maxAmmo} runtime ammo=${launcher?.ammo}, expect spec $GD_LAUNCHER_AMMO（weapon_data.csv 口径）"
+                            failureReason =
+                                "gd launcher spec maxAmmo=${launcher?.spec?.maxAmmo} runtime ammo=${launcher?.ammo}, expect spec $GD_LAUNCHER_AMMO（weapon_data.csv 口径）"
                             transitionGdPhase(GD_PHASE_FAILED)
                         }
+
                         pod == null || pod.spec?.maxAmmo != GD_POD_AMMO -> {
-                            failureReason = "gd pod spec maxAmmo=${pod?.spec?.maxAmmo} runtime ammo=${pod?.ammo}, expect spec $GD_POD_AMMO（weapon_data.csv 口径）"
+                            failureReason =
+                                "gd pod spec maxAmmo=${pod?.spec?.maxAmmo} runtime ammo=${pod?.ammo}, expect spec $GD_POD_AMMO（weapon_data.csv 口径）"
                             transitionGdPhase(GD_PHASE_FAILED)
                         }
+
                         hiddenLeak != null -> {
                             failureReason = "gd hidden weapon leak: $hiddenLeak 缺 no_drop 系 tags（codex/掉落泄漏防线）"
                             transitionGdPhase(GD_PHASE_FAILED)
                         }
+
                         payloadHintLeak != null -> {
                             failureReason = "gd payload hint leak: $payloadHintLeak 缺 SYSTEM hint"
                             transitionGdPhase(GD_PHASE_FAILED)
                         }
+
                         else -> {
                             gdLauncherAmmoBaseline = launcher.ammo
                             val ammoBonus = player?.mutableStats?.missileAmmoBonus
                             log.info(
                                 "[ASTD-Automation] gd ammo env: launcher spec=${launcher.spec.maxAmmo} runtime=${launcher.ammo} " +
-                                    "pod spec=${pod.spec.maxAmmo} runtime=${pod.ammo} " +
-                                    "missileAmmoBonus(mult=${ammoBonus?.mult} pct=${ammoBonus?.percentMod} flat=${ammoBonus?.flatBonus})" +
-                                    "（runtime≠spec 时一轮一耗断言走基线差分）",
+                                        "pod spec=${pod.spec.maxAmmo} runtime=${pod.ammo} " +
+                                        "missileAmmoBonus(mult=${ammoBonus?.mult} pct=${ammoBonus?.percentMod} flat=${ammoBonus?.flatBonus})" +
+                                        "（runtime≠spec 时一轮一耗断言走基线差分）",
                             )
                             gdSalvoTargetHpBaseline = target?.hitpoints ?: -1f
                             gdSalvoTargetMinHp = target?.hitpoints ?: Float.MAX_VALUE
@@ -3465,6 +3740,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     }
                 }
             }
+
             GD_PHASE_SALVO -> {
                 stabilizeGdShips(engine, fireLauncher = true, firePod = false)
                 if (warheads >= 2 && gdLauncherAmmoAfterSalvo < 0) {
@@ -3476,30 +3752,38 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                             failureReason = "gd salvo mismatch: salvo=$salvoCount warheads=$warheads（每轮齐射恰两枚弹头）"
                             transitionGdPhase(GD_PHASE_FAILED)
                         }
+
                         gdTrackAiCreated < 2 || gdTrackAiTargetNonNull < 2 -> {
-                            failureReason = "gd R1 fail: TrackAI 装配=$gdTrackAiCreated 目标非空=$gdTrackAiTargetNonNull（应各 ≥2，DEMScript WAIT 段触发前提的供给侧证据）"
+                            failureReason =
+                                "gd R1 fail: TrackAI 装配=$gdTrackAiCreated 目标非空=$gdTrackAiTargetNonNull（应各 ≥2，DEMScript WAIT 段触发前提的供给侧证据）"
                             transitionGdPhase(GD_PHASE_FAILED)
                         }
+
                         empArcs != GD_EMP_ARC_COUNT -> {
                             failureReason = "gd emp arcs=$empArcs, expect $GD_EMP_ARC_COUNT（动能光束首伤帧 4 道 EMP 电弧）"
                             transitionGdPhase(GD_PHASE_FAILED)
                         }
+
                         syncTriggers < 1 -> {
                             failureReason = "gd sync=0（双弹同目标 Δt≤1s 应触发同步冲击）"
                             transitionGdPhase(GD_PHASE_FAILED)
                         }
+
                         kotlin.math.abs(lastMult - GD_PLAYER_V2_MULT) > GD_MULT_TOLERANCE -> {
                             failureReason = "gd sync mult=$lastMult, expect ${GD_PLAYER_V2_MULT}（玩家来源恒 v2）"
                             transitionGdPhase(GD_PHASE_FAILED)
                         }
+
                         gdLauncherAmmoAfterSalvo != gdLauncherAmmoBaseline - 1 -> {
-                            failureReason = "gd launcher ammo after salvo=$gdLauncherAmmoAfterSalvo, expect ${gdLauncherAmmoBaseline - 1}（基线 $gdLauncherAmmoBaseline，一次触发一轮齐射）"
+                            failureReason =
+                                "gd launcher ammo after salvo=$gdLauncherAmmoAfterSalvo, expect ${gdLauncherAmmoBaseline - 1}（基线 $gdLauncherAmmoBaseline，一次触发一轮齐射）"
                             transitionGdPhase(GD_PHASE_FAILED)
                         }
+
                         else -> {
                             log.info(
                                 "[ASTD-Automation] gd salvo evidence: targetHp ${gdSalvoTargetHpBaseline}→min ${gdSalvoTargetMinHp} " +
-                                    "（R2 读数：payload+sync 落船体；beamDamage 面板见 payload 首伤帧日志）",
+                                        "（R2 读数：payload+sync 落船体；beamDamage 面板见 payload 首伤帧日志）",
                             )
                             // DEMScript 接管硬证据 = payload 光束命中本身（payload 只能由 DEMScript 打击段结算，
                             // 规格 §0.1 事实 #7）；包装弹头读回观测面（gdDemTakeoverSeen）只作诊断。
@@ -3511,12 +3795,13 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                             gdKillHeBaseline = heHits
                             gdKillWarheadsBaseline = warheads
                             gdKillHeRemoved = false
-                            target?.setHitpoints(target.maxHitpoints)
+                            target?.hitpoints = target.maxHitpoints
                             transitionGdPhase(GD_PHASE_KILL_ONE)
                         }
                     }
                 }
             }
+
             GD_PHASE_KILL_ONE -> {
                 stabilizeGdShips(engine, fireLauncher = true, firePod = false)
                 if (warheads - gdKillWarheadsBaseline >= 2) {
@@ -3538,10 +3823,12 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                             failureReason = "gd kill_one sync delta=${syncTriggers - gdKillSyncBaseline}, expect 0（击落一枚，同步冲击即告落空）"
                             transitionGdPhase(GD_PHASE_FAILED)
                         }
+
                         heHits != gdKillHeBaseline -> {
                             failureReason = "gd kill_one he hits delta=${heHits - gdKillHeBaseline}, expect 0（高爆弹头已移除不得命中）"
                             transitionGdPhase(GD_PHASE_FAILED)
                         }
+
                         else -> {
                             gdPodSalvoBaseline = salvoCount
                             gdPodKineticBaseline = kineticHits
@@ -3549,12 +3836,13 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                             gdPodSyncBaseline = syncTriggers
                             gdPodAmmoBaseline = pod?.ammo ?: -1
                             gdPodAmmoAfterSalvo = -1
-                            target?.setHitpoints(target.maxHitpoints)
+                            target?.hitpoints = target.maxHitpoints
                             transitionGdPhase(GD_PHASE_POD)
                         }
                     }
                 }
             }
+
             GD_PHASE_POD -> {
                 stabilizeGdShips(engine, fireLauncher = false, firePod = true)
                 if (salvoCount - gdPodSalvoBaseline >= 1 && gdPodAmmoAfterSalvo < 0) {
@@ -3563,24 +3851,28 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 if (kineticHits - gdPodKineticBaseline >= 1 && heHits - gdPodHeBaseline >= 1) {
                     when {
                         gdPodAmmoAfterSalvo != gdPodAmmoBaseline - 1 -> {
-                            failureReason = "gd pod ammo after salvo=$gdPodAmmoAfterSalvo, expect ${gdPodAmmoBaseline - 1}（基线 $gdPodAmmoBaseline，发射舱一轮一耗）"
+                            failureReason =
+                                "gd pod ammo after salvo=$gdPodAmmoAfterSalvo, expect ${gdPodAmmoBaseline - 1}（基线 $gdPodAmmoBaseline，发射舱一轮一耗）"
                             transitionGdPhase(GD_PHASE_FAILED)
                         }
+
                         syncTriggers - gdPodSyncBaseline < 1 -> {
                             failureReason = "gd pod sync delta=${syncTriggers - gdPodSyncBaseline} < 1（发射舱双弹同目标应触发同步）"
                             transitionGdPhase(GD_PHASE_FAILED)
                         }
+
                         else -> {
                             gdEnemySyncBaseline = syncTriggers
                             gdEnemyMinPlayerHp = player?.maxHitpoints ?: Float.MAX_VALUE
                             gdEnemyFirstSyncAt = -1f
                             DifficultyTuningImpl.installScaleForTests(5f)
-                            target?.setHitpoints(target.maxHitpoints)
+                            target?.hitpoints = target.maxHitpoints
                             transitionGdPhase(GD_PHASE_ENEMY_SCALE)
                         }
                     }
                 }
             }
+
             GD_PHASE_ENEMY_SCALE -> {
                 stabilizeGdShips(engine, fireLauncher = false, firePod = false)
                 if (player != null && !player.isHulk) {
@@ -3595,11 +3887,12 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                             failureReason = "gd enemy sync mult=$lastMult, expect $GD_ENEMY_V5_MULT（破晓敌版走轨一）"
                             transitionGdPhase(GD_PHASE_FAILED)
                         }
+
                         player != null && gdEnemyMinPlayerHp < player.maxHitpoints - GD_HP_DROP_MIN -> {
                             DifficultyTuningImpl.installScaleForTests(null)
                             findGdEnemyCarrier(engine)?.let { engine.removeEntity(it) }
-                            player.setHitpoints(player.maxHitpoints)
-                            target?.setHitpoints(target.maxHitpoints)
+                            player.hitpoints = player.maxHitpoints
+                            target?.hitpoints = target.maxHitpoints
                             transitionGdPhase(GD_PHASE_COMPLETED)
                         }
                         // 部署免疫宽限（实机判例同 SS：source 为敌版舰时脚本伤害在部署后数秒内可能全额无效）
@@ -3610,6 +3903,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     }
                 }
             }
+
             GD_PHASE_COMPLETED -> {
                 stabilizeGdShips(engine, fireLauncher = true, firePod = false)
             }
@@ -3631,16 +3925,19 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     "CombatReady"
                 }
             }
+
             gdPhase == GD_PHASE_FAILED -> "Failed"
             gdPhase != GD_PHASE_COMPLETED &&
-                elapsed - gdPhaseStartedAt > GD_PHASE_TIMEOUT -> {
+                    elapsed - gdPhaseStartedAt > GD_PHASE_TIMEOUT -> {
                 failureReason = "gd phase timeout: $gdPhase"
                 "Failed"
             }
+
             gdPhase == GD_PHASE_COMPLETED -> {
                 val recentStrike = gdLastStrikeAt >= 0f && elapsed - gdLastStrikeAt <= GD_COMPLETED_STRIKE_WINDOW
                 if (recentStrike || elapsed - gdPhaseStartedAt >= GD_COMPLETED_STAGE_TIMEOUT) "Completed" else "CombatReady"
             }
+
             else -> "CombatReady"
         }
         if (state == "Completed" && !completed) {
@@ -3668,18 +3965,26 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
 
     private fun lockHipCamera(engine: CombatEngineAPI) {
         val viewport = engine.viewport
-        val displayWidth = try { Display.getWidth().takeIf { it > 0 } ?: 2560 } catch (_: Throwable) { 2560 }
-        val displayHeight = try { Display.getHeight().takeIf { it > 0 } ?: 1440 } catch (_: Throwable) { 1440 }
+        val displayWidth = try {
+            Display.getWidth().takeIf { it > 0 } ?: 2560
+        } catch (_: Throwable) {
+            2560
+        }
+        val displayHeight = try {
+            Display.getHeight().takeIf { it > 0 } ?: 1440
+        } catch (_: Throwable) {
+            1440
+        }
         val displayAspect = displayWidth.toFloat() / displayHeight.toFloat()
         val visibleWidth = HIP_CAMERA_VISIBLE_HEIGHT * displayAspect
-        viewport.setExternalControl(true)
+        viewport.isExternalControl = true
         viewport.set(
             HIP_CAMERA_CENTER.x - visibleWidth * 0.5f,
             HIP_CAMERA_CENTER.y - HIP_CAMERA_VISIBLE_HEIGHT * 0.5f,
             visibleWidth,
             HIP_CAMERA_VISIBLE_HEIGHT,
         )
-        viewport.setEverythingNearViewport(true)
+        viewport.isEverythingNearViewport = true
     }
 
     /** 强制部署 mission reserves（双桑德均非旗舰，范式同 deployGdReserveShips）。 */
@@ -3687,8 +3992,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         engine.setDoNotEndCombat(true)
         for (side in listOf(FleetSide.PLAYER, FleetSide.ENEMY)) {
             val manager = engine.getFleetManager(side)
-            manager.setSuppressDeploymentMessages(true)
-            for (member in manager.getReservesCopy().toList()) {
+            manager.isSuppressDeploymentMessages = true
+            for (member in manager.reservesCopy.toList()) {
                 if (member.hullId != HIP_HULL) continue
                 val anchor = if (side == FleetSide.ENEMY) HIP_ENEMY_ANCHOR else HIP_PLAYER_ANCHOR
                 val facing = if (side == FleetSide.ENEMY) 180f else 0f
@@ -3727,31 +4032,31 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         if (player != null && !player.isHulk) {
             engine.setPlayerShipExternal(player)
             stabilizeShip(player, HIP_PLAYER_ANCHOR, 0f, allowFire = true, preserveAI = true)
-            player.setShipTarget(enemy)
-            player.setHitpoints(player.maxHitpoints)
-            player.fluxTracker.setCurrFlux(0f)
-            player.fluxTracker.setHardFlux(0f)
+            player.shipTarget = enemy
+            player.hitpoints = player.maxHitpoints
+            player.fluxTracker.currFlux = 0f
+            player.fluxTracker.hardFlux = 0f
             // 护盾策略：PIERCE 相位玩家盾关（贯穿须落船体），其余相位常开。
             val shieldOn = hipPhase != HIP_PHASE_PIERCE_K2 && hipPhase != HIP_PHASE_PIERCE_K5 && hipPhase != HIP_PHASE_COMPLETED
             player.shield?.let { if (shieldOn && !it.isOn) it.toggleOn(); if (!shieldOn && it.isOn) it.toggleOff() }
             setHipAutofire(player, false)
             findHipWeapon(player)?.let {
-                if (enemy != null) it.setCurrAngle(Misc.getAngleInDegrees(it.location, enemy.location))
+                if (enemy != null) it.currAngle = Misc.getAngleInDegrees(it.location, enemy.location)
                 it.setForceFireOneFrame(playerFire)
             }
         }
         if (enemy != null && !enemy.isHulk) {
             stabilizeShip(enemy, HIP_ENEMY_ANCHOR, 180f, allowFire = true, preserveAI = true)
-            enemy.setShipTarget(player)
-            enemy.setHitpoints(enemy.maxHitpoints)
-            enemy.fluxTracker.setCurrFlux(0f)
-            enemy.fluxTracker.setHardFlux(0f)
+            enemy.shipTarget = player
+            enemy.hitpoints = enemy.maxHitpoints
+            enemy.fluxTracker.currFlux = 0f
+            enemy.fluxTracker.hardFlux = 0f
             // 护盾策略：SHIELD 相位敌盾开（验证护盾命中无电弧），其余相位常关（泄放/贯穿须落船体）。
             val shieldOn = hipPhase == HIP_PHASE_SHIELD
             enemy.shield?.let { if (shieldOn && !it.isOn) it.toggleOn(); if (!shieldOn && it.isOn) it.toggleOff() }
             setHipAutofire(enemy, false)
             findHipWeapon(enemy)?.let {
-                if (player != null) it.setCurrAngle(Misc.getAngleInDegrees(it.location, player.location))
+                if (player != null) it.currAngle = Misc.getAngleInDegrees(it.location, player.location)
                 val gated = enemyFire && elapsed - hipPhaseStartedAt >= HIP_ENEMY_SETTLE_SECONDS
                 it.setForceFireOneFrame(gated)
             }
@@ -3812,22 +4117,27 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                             failureReason = "hip mount mismatch: slot=$slot, expect $HIP_PLAYER_SLOT"
                             transitionHipPhase(HIP_PHASE_FAILED)
                         }
+
                         kotlin.math.abs(range - HIP_EXPECT_RANGE) > HIP_RANGE_TOLERANCE -> {
                             failureReason = "hip range=$range, expect $HIP_EXPECT_RANGE"
                             transitionHipPhase(HIP_PHASE_FAILED)
                         }
+
                         playerWeapon.spec?.maxAmmo != HIP_AMMO -> {
                             failureReason = "hip spec maxAmmo=${playerWeapon.spec?.maxAmmo}, expect $HIP_AMMO（weapon_data.csv 口径）"
                             transitionHipPhase(HIP_PHASE_FAILED)
                         }
+
                         barrels != HIP_BARRELS -> {
                             failureReason = "hip barrels=$barrels, expect $HIP_BARRELS（双炮管交替射击，.wpn turretOffsets×2 + ALTERNATING）"
                             transitionHipPhase(HIP_PHASE_FAILED)
                         }
+
                         !ProjectileVfxSpecs.has(ASTDInGameAutomationScenario.HIP_PROJECTILE_SPEC_ID) -> {
                             failureReason = "hip projectile VFX 未登记: ${ASTDInGameAutomationScenario.HIP_PROJECTILE_SPEC_ID}"
                             transitionHipPhase(HIP_PHASE_FAILED)
                         }
+
                         else -> {
                             hipShieldAmmoBaseline = playerWeapon.ammo
                             log.info("[ASTD-Automation] hip mount ok: slot=$slot range=$range specMaxAmmo=${playerWeapon.spec.maxAmmo} barrels=$barrels（双管 ALTERNATING）")
@@ -3836,6 +4146,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     }
                 }
             }
+
             HIP_PHASE_SHIELD -> {
                 stabilizeHipShips(engine, playerFire = true, enemyFire = false)
                 if (hipShieldAmmoBaseline >= 0 && playerWeapon != null &&
@@ -3853,6 +4164,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     }
                 }
             }
+
             HIP_PHASE_HULL -> {
                 stabilizeHipShips(engine, playerFire = true, enemyFire = false)
                 playerWeapon?.let {
@@ -3873,8 +4185,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 ) {
                     log.info(
                         "[ASTD-Automation] hip hull evidence: discharge=$dischargePlayer hits=$hitsPlayer " +
-                            "minAmmo=$hipMinAmmo emptiedAt=${"%.2f".format(hipEmptiedAt)}s " +
-                            "enemyMaxDisabled=$hipHullEnemyMaxDisabled（mult=1.0 正向对照：EMP 瘫痪机制生效）",
+                                "minAmmo=$hipMinAmmo emptiedAt=${"%.2f".format(hipEmptiedAt)}s " +
+                                "enemyMaxDisabled=$hipHullEnemyMaxDisabled（mult=1.0 正向对照：EMP 瘫痪机制生效）",
                     )
                     // k_s=5 玩家恒 v2：玩家来源无贯穿（贯穿为破晓敌版逐项解锁）；敌舰 mult→0.01f 令贯穿条件成立，
                     // 若玩家口径漂移出 v2 则此相位必产出贯穿浮字（反面断言）。
@@ -3886,6 +4198,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     transitionHipPhase(HIP_PHASE_SCALE5_PLAYER)
                 }
             }
+
             HIP_PHASE_SCALE5_PLAYER -> {
                 stabilizeHipShips(engine, playerFire = true, enemyFire = false)
                 val hitsDelta = hitsPlayer - hipScale5PlayerHitsBaseline
@@ -3898,7 +4211,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                         val disDelta = dischargePlayer - 0
                         log.info(
                             "[ASTD-Automation] hip scale5 player evidence: hitsDelta=$hitsDelta pierceDelta=0 " +
-                                "（k_s=5 玩家恒 v2；本相位玩家累计泄放 $disDelta 次、泄放仍按 v2 口径）",
+                                    "（k_s=5 玩家恒 v2；本相位玩家累计泄放 $disDelta 次、泄放仍按 v2 口径）",
                         )
                         // 敌版 k_s=2 无贯穿（反面）：玩家停火，敌版开火落玩家船体。
                         // 玩家 mult 钉 0.01f（近零抗性）：原 0f 舞台为 A9 证明所用（绝对 0 乘区下
@@ -3914,6 +4227,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     }
                 }
             }
+
             HIP_PHASE_PIERCE_K2 -> {
                 stabilizeHipShips(engine, playerFire = false, enemyFire = true)
                 // 贯穿舞台守卫（2026-09 修订）：逐帧摘除 EMP 抗性削减叠层 Buff，保持玩家侧钉死的
@@ -3938,6 +4252,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     }
                 }
             }
+
             HIP_PHASE_PIERCE_K5 -> {
                 stabilizeHipShips(engine, playerFire = false, enemyFire = true)
                 stripHipResistStacks(player)
@@ -3962,15 +4277,16 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     } else {
                         log.info(
                             "[ASTD-Automation] hip pierce k5 evidence: pierce=${pierceOther - hipK5PierceOtherBaseline} " +
-                                "lastExtra=$lastExtra lastApplied=$lastApplied lastMult=$lastMult lastBaseEmp=$lastBase lastArcEmp=$lastArc " +
-                                "playerDisabledWeapons ${hipK5DisabledBaseline}→max $hipK5MaxDisabled " +
-                                "（A9 已修：applied 遥测断言证明折算链路；disabled 为观测项——mult 低于折算下限时少量欠补，瘫痪非必然）" +
-                                "fps=${"%.1f".format(hipK5Fps)}",
+                                    "lastExtra=$lastExtra lastApplied=$lastApplied lastMult=$lastMult lastBaseEmp=$lastBase lastArcEmp=$lastArc " +
+                                    "playerDisabledWeapons ${hipK5DisabledBaseline}→max $hipK5MaxDisabled " +
+                                    "（A9 已修：applied 遥测断言证明折算链路；disabled 为观测项——mult 低于折算下限时少量欠补，瘫痪非必然）" +
+                                    "fps=${"%.1f".format(hipK5Fps)}",
                         )
                         transitionHipPhase(HIP_PHASE_COMPLETED)
                     }
                 }
             }
+
             HIP_PHASE_COMPLETED -> {
                 stabilizeHipShips(engine, playerFire = true, enemyFire = true)
             }
@@ -3992,16 +4308,19 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     "CombatReady"
                 }
             }
+
             hipPhase == HIP_PHASE_FAILED -> "Failed"
             hipPhase != HIP_PHASE_COMPLETED &&
-                elapsed - hipPhaseStartedAt > HIP_PHASE_TIMEOUT -> {
+                    elapsed - hipPhaseStartedAt > HIP_PHASE_TIMEOUT -> {
                 failureReason = "hip phase timeout: $hipPhase"
                 "Failed"
             }
+
             hipPhase == HIP_PHASE_COMPLETED -> {
                 val recentEvent = hipLastEventAt >= 0f && elapsed - hipLastEventAt <= HIP_COMPLETED_EVENT_WINDOW
                 if (recentEvent || elapsed - hipPhaseStartedAt >= HIP_COMPLETED_STAGE_TIMEOUT) "Completed" else "CombatReady"
             }
+
             else -> "CombatReady"
         }
         if (state == "Completed" && !completed) {
@@ -4043,18 +4362,26 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
 
     private fun lockSmCamera(engine: CombatEngineAPI) {
         val viewport = engine.viewport
-        val displayWidth = try { Display.getWidth().takeIf { it > 0 } ?: 2560 } catch (_: Throwable) { 2560 }
-        val displayHeight = try { Display.getHeight().takeIf { it > 0 } ?: 1440 } catch (_: Throwable) { 1440 }
+        val displayWidth = try {
+            Display.getWidth().takeIf { it > 0 } ?: 2560
+        } catch (_: Throwable) {
+            2560
+        }
+        val displayHeight = try {
+            Display.getHeight().takeIf { it > 0 } ?: 1440
+        } catch (_: Throwable) {
+            1440
+        }
         val displayAspect = displayWidth.toFloat() / displayHeight.toFloat()
         val visibleWidth = SM_CAMERA_VISIBLE_HEIGHT * displayAspect
-        viewport.setExternalControl(true)
+        viewport.isExternalControl = true
         viewport.set(
             SM_CAMERA_CENTER.x - visibleWidth * 0.5f,
             SM_CAMERA_CENTER.y - SM_CAMERA_VISIBLE_HEIGHT * 0.5f,
             visibleWidth,
             SM_CAMERA_VISIBLE_HEIGHT,
         )
-        viewport.setEverythingNearViewport(true)
+        viewport.isEverythingNearViewport = true
     }
 
     /** 强制部署 mission reserves（玩家狮鹫 / 敌方秃鹰航母 / 敌方狮鹫均非旗舰，范式同 deployHipReserveShips）。 */
@@ -4062,8 +4389,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         engine.setDoNotEndCombat(true)
         for (side in listOf(FleetSide.PLAYER, FleetSide.ENEMY)) {
             val manager = engine.getFleetManager(side)
-            manager.setSuppressDeploymentMessages(true)
-            for (member in manager.getReservesCopy().toList()) {
+            manager.isSuppressDeploymentMessages = true
+            for (member in manager.reservesCopy.toList()) {
                 val anchor = when {
                     side == FleetSide.PLAYER && member.hullId == SM_PLAYER_HULL -> SM_PLAYER_ANCHOR
                     side == FleetSide.ENEMY && member.hullId == SM_CARRIER_HULL -> SM_CARRIER_ANCHOR
@@ -4098,33 +4425,33 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         if (player != null && !player.isHulk) {
             engine.setPlayerShipExternal(player)
             stabilizeShip(player, SM_PLAYER_ANCHOR, 0f, allowFire = true, preserveAI = true)
-            player.setHitpoints(player.maxHitpoints)
-            player.fluxTracker.setCurrFlux(0f)
-            player.fluxTracker.setHardFlux(0f)
+            player.hitpoints = player.maxHitpoints
+            player.fluxTracker.currFlux = 0f
+            player.fluxTracker.hardFlux = 0f
             // 玩家盾常关：敌版三档相位令敌弹落船体（爆炸恒触发 + 浮字目检）。
             player.shield?.let { if (it.isOn) it.toggleOff() }
             setSmAutofire(player, false)
             val aim: CombatEntityAPI? = aimOverride
                 ?: smEnemyFighters(engine).minByOrNull { MathUtils.getDistance(player.location, it.location) }
                 ?: enemy
-            player.setShipTarget(if (aimOverride == null) aim as? ShipAPI else enemy)
+            player.shipTarget = if (aimOverride == null) aim as? ShipAPI else enemy
             for (weapon in listOfNotNull(findSmLauncher(player), findSmPod(player))) {
-                if (aim != null) weapon.setCurrAngle(Misc.getAngleInDegrees(weapon.location, aim.location))
+                if (aim != null) weapon.currAngle = Misc.getAngleInDegrees(weapon.location, aim.location)
                 weapon.setForceFireOneFrame(playerFire)
             }
         }
         if (enemy != null && !enemy.isHulk) {
             stabilizeShip(enemy, SM_ENEMY_ANCHOR, 180f, allowFire = true, preserveAI = true)
-            enemy.setShipTarget(player)
-            enemy.setHitpoints(enemy.maxHitpoints)
-            enemy.fluxTracker.setCurrFlux(0f)
-            enemy.fluxTracker.setHardFlux(0f)
+            enemy.shipTarget = player
+            enemy.hitpoints = enemy.maxHitpoints
+            enemy.fluxTracker.currFlux = 0f
+            enemy.fluxTracker.hardFlux = 0f
             // 护盾策略：SHIP_HIT 相位敌盾开（验证撞击护盾爆炸照常），其余相位常关。
             val shieldOn = smPhase == SM_PHASE_SHIP_HIT
             enemy.shield?.let { if (shieldOn && !it.isOn) it.toggleOn(); if (!shieldOn && it.isOn) it.toggleOff() }
             setSmAutofire(enemy, false)
             findSmLauncher(enemy)?.let {
-                if (player != null) it.setCurrAngle(Misc.getAngleInDegrees(it.location, player.location))
+                if (player != null) it.currAngle = Misc.getAngleInDegrees(it.location, player.location)
                 val gated = enemyFire && elapsed - smPhaseStartedAt >= SM_ENEMY_SETTLE_SECONDS
                 it.setForceFireOneFrame(gated)
             }
@@ -4133,8 +4460,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         val carrier = findSmCarrier(engine)
         if (carrier != null && !carrier.isHulk) {
             stabilizeShip(carrier, SM_CARRIER_ANCHOR, 180f, allowFire = false, preserveAI = true)
-            carrier.setHitpoints(carrier.maxHitpoints)
-            carrier.fluxTracker.setCurrFlux(0f)
+            carrier.hitpoints = carrier.maxHitpoints
+            carrier.fluxTracker.currFlux = 0f
         }
     }
 
@@ -4144,7 +4471,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         for (group in ship.weaponGroupsCopy) {
             if (group.weaponsCopy.none {
                     it.id == ASTDInGameAutomationScenario.SM_LAUNCHER_WEAPON_ID ||
-                        it.id == ASTDInGameAutomationScenario.SM_POD_WEAPON_ID
+                            it.id == ASTDInGameAutomationScenario.SM_POD_WEAPON_ID
                 }
             ) continue
             if (enabled && !group.isAutofiring) group.toggleOn()
@@ -4222,7 +4549,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         val bonus = smTeleCount(engine, StellarMrmStrikeImpl.TELE_BONUS_HITS)
         val empHits = smTeleCount(engine, StellarMrmStrikeImpl.TELE_EMP_HITS)
         val empArcs = smTeleCount(engine, StellarMrmStrikeImpl.TELE_EMP_ARCS)
-        val aoeHits = smTeleCount(engine, StellarMrmStrikeImpl.TELE_AOE_HITS)
+        smTeleCount(engine, StellarMrmStrikeImpl.TELE_AOE_HITS)
         val aoeShipHits = smTeleCount(engine, StellarMrmStrikeImpl.TELE_AOE_SHIP_HITS)
         val shieldHits = smTeleCount(engine, StellarMrmStrikeImpl.TELE_SHIELD_HITS)
         val explosions = smTeleCount(engine, StellarMrmStrikeImpl.TELE_EXPLOSIONS)
@@ -4236,55 +4563,72 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     val podSlot = pod?.slot?.id
                     val launcherRange = launcher?.spec?.maxRange ?: -1f
                     val podRange = pod?.spec?.maxRange ?: -1f
-                    val launcherOp = try { launcher?.spec?.getOrdnancePointCost(null, null) ?: -1f } catch (_: Throwable) { -1f }
-                    val podOp = try { pod?.spec?.getOrdnancePointCost(null, null) ?: -1f } catch (_: Throwable) { -1f }
+                    val launcherOp = try {
+                        launcher?.spec?.getOrdnancePointCost(null, null) ?: -1f
+                    } catch (_: Throwable) {
+                        -1f
+                    }
+                    val podOp = try {
+                        pod?.spec?.getOrdnancePointCost(null, null) ?: -1f
+                    } catch (_: Throwable) {
+                        -1f
+                    }
                     val tagsOk = launcher?.spec?.tags?.containsAll(SM_REQUIRED_TAGS) == true &&
-                        pod?.spec?.tags?.containsAll(SM_REQUIRED_TAGS) == true
+                            pod?.spec?.tags?.containsAll(SM_REQUIRED_TAGS) == true
                     val slotOk = launcher?.slot?.slotSize == WeaponAPI.WeaponSize.SMALL &&
-                        launcher?.slot?.weaponType == WeaponAPI.WeaponType.MISSILE &&
-                        pod?.slot?.slotSize == WeaponAPI.WeaponSize.MEDIUM &&
-                        pod?.slot?.weaponType == WeaponAPI.WeaponType.MISSILE
+                            launcher?.slot?.weaponType == WeaponAPI.WeaponType.MISSILE &&
+                            pod?.slot?.slotSize == WeaponAPI.WeaponSize.MEDIUM &&
+                            pod?.slot?.weaponType == WeaponAPI.WeaponType.MISSILE
                     when {
                         launcher == null || pod == null ||
-                            launcherSlot != SM_PLAYER_LAUNCHER_SLOT || podSlot != SM_PLAYER_POD_SLOT -> {
+                                launcherSlot != SM_PLAYER_LAUNCHER_SLOT || podSlot != SM_PLAYER_POD_SLOT -> {
                             failureReason = "sm mount mismatch: launcherSlot=$launcherSlot podSlot=$podSlot"
                             transitionSmPhase(SM_PHASE_FAILED)
                         }
+
                         !slotOk -> {
-                            failureReason = "sm slot type/size mismatch: launcher=${launcher.slot?.slotSize}/${launcher.slot?.weaponType} pod=${pod.slot?.slotSize}/${pod.slot?.weaponType}"
+                            failureReason =
+                                "sm slot type/size mismatch: launcher=${launcher.slot?.slotSize}/${launcher.slot?.weaponType} pod=${pod.slot?.slotSize}/${pod.slot?.weaponType}"
                             transitionSmPhase(SM_PHASE_FAILED)
                         }
+
                         kotlin.math.abs(launcherRange - SM_EXPECT_RANGE) > SM_RANGE_TOLERANCE ||
-                            kotlin.math.abs(podRange - SM_EXPECT_RANGE) > SM_RANGE_TOLERANCE -> {
+                                kotlin.math.abs(podRange - SM_EXPECT_RANGE) > SM_RANGE_TOLERANCE -> {
                             failureReason = "sm range=$launcherRange/$podRange, expect $SM_EXPECT_RANGE"
                             transitionSmPhase(SM_PHASE_FAILED)
                         }
+
                         launcher.spec?.maxAmmo != SM_LAUNCHER_AMMO || pod.spec?.maxAmmo != SM_POD_AMMO -> {
                             failureReason = "sm spec maxAmmo=${launcher.spec?.maxAmmo}/${pod.spec?.maxAmmo}, expect $SM_LAUNCHER_AMMO/$SM_POD_AMMO"
                             transitionSmPhase(SM_PHASE_FAILED)
                         }
+
                         pod.spec?.burstSize != SM_POD_BURST -> {
                             failureReason = "sm pod burstSize=${pod.spec?.burstSize}, expect $SM_POD_BURST（发射舱单次两发）"
                             transitionSmPhase(SM_PHASE_FAILED)
                         }
+
                         kotlin.math.abs(launcherOp - SM_LAUNCHER_OP) > 0.01f || kotlin.math.abs(podOp - SM_POD_OP) > 0.01f -> {
                             failureReason = "sm OP=$launcherOp/$podOp, expect $SM_LAUNCHER_OP/$SM_POD_OP"
                             transitionSmPhase(SM_PHASE_FAILED)
                         }
+
                         !tagsOk -> {
                             failureReason = "sm tags 缺 no_drop 两件套: launcher=${launcher.spec?.tags} pod=${pod.spec?.tags}"
                             transitionSmPhase(SM_PHASE_FAILED)
                         }
+
                         !ProjectileVfxSpecs.has(ASTDInGameAutomationScenario.SM_LAUNCHER_PROJECTILE_SPEC_ID) ||
-                            !ProjectileVfxSpecs.has(ASTDInGameAutomationScenario.SM_POD_PROJECTILE_SPEC_ID) -> {
+                                !ProjectileVfxSpecs.has(ASTDInGameAutomationScenario.SM_POD_PROJECTILE_SPEC_ID) -> {
                             failureReason = "sm projectile VFX 未登记: launcher/pod shot"
                             transitionSmPhase(SM_PHASE_FAILED)
                         }
+
                         else -> {
                             log.info(
                                 "[ASTD-Automation] sm mount ok: slots=$launcherSlot/$podSlot range=$launcherRange " +
-                                    "ammo=${launcher.spec?.maxAmmo}/${pod.spec?.maxAmmo} burst=${pod.spec?.burstSize} " +
-                                    "OP=$launcherOp/$podOp tags=no_drop 两件套",
+                                        "ammo=${launcher.spec?.maxAmmo}/${pod.spec?.maxAmmo} burst=${pod.spec?.burstSize} " +
+                                        "OP=$launcherOp/$podOp tags=no_drop 两件套",
                             )
                             smFpsTicks = 0
                             smFpsWallStartNanos = System.nanoTime()
@@ -4293,6 +4637,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     }
                 }
             }
+
             SM_PHASE_PRIORITY -> {
                 // 战机在场才放行开火：首个目标选择必定发生在「战机+舰船同场」的局面下（优先追猎真验证）。
                 val fightersPresent = smEnemyFighters(engine).isNotEmpty()
@@ -4324,13 +4669,14 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                         if (wallSeconds > 0f) smFps = smFpsTicks / wallSeconds
                         log.info(
                             "[ASTD-Automation] sm priority evidence: firstTarget=fighter selFighter=$selFighter " +
-                                "podBurstMax=$smPodBurstMax minAmmo=$smMinLauncherAmmo/$smMinPodAmmo " +
-                                "fps=${"%.1f".format(smFps)}",
+                                    "podBurstMax=$smPodBurstMax minAmmo=$smMinLauncherAmmo/$smMinPodAmmo " +
+                                    "fps=${"%.1f".format(smFps)}",
                         )
                         transitionSmPhase(SM_PHASE_FIGHTER_HIT)
                     }
                 }
             }
+
             SM_PHASE_FIGHTER_HIT -> {
                 stabilizeSmShips(engine, playerFire = true, enemyFire = false)
                 for (fighter in smEnemyFighters(engine)) {
@@ -4348,7 +4694,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 if (bonus >= 1 && empHits >= 1 && empArcs >= 1 && smMaxFighterDisabled >= 1) {
                     log.info(
                         "[ASTD-Automation] sm fighter hit evidence: bonus=$bonus emp=$empHits arcs=$empArcs " +
-                            "fighterDisabledMax=$smMaxFighterDisabled（战机武器熄火 + 逐武器电弧可读）",
+                                "fighterDisabledMax=$smMaxFighterDisabled（战机武器熄火 + 逐武器电弧可读）",
                     )
                     smShipHitExplosionsBaseline = explosions
                     smShipHitAoeBaseline = aoeShipHits
@@ -4356,6 +4702,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     transitionSmPhase(SM_PHASE_SHIP_HIT)
                 }
             }
+
             SM_PHASE_SHIP_HIT -> {
                 // 清航母与残机：令导弹只剩舰船可咬（撞击舰船/护盾的真验证面）。
                 if (!smCarrierCleared) {
@@ -4370,14 +4717,15 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 ) {
                     log.info(
                         "[ASTD-Automation] sm ship hit evidence: explosionsDelta=${explosions - smShipHitExplosionsBaseline} " +
-                            "aoeShipDelta=${aoeShipHits - smShipHitAoeBaseline} shieldDelta=${shieldHits - smShipHitShieldBaseline}" +
-                            "（撞击舰船 AOE + 撞击护盾爆炸恒触发）",
+                                "aoeShipDelta=${aoeShipHits - smShipHitAoeBaseline} shieldDelta=${shieldHits - smShipHitShieldBaseline}" +
+                                "（撞击舰船 AOE + 撞击护盾爆炸恒触发）",
                     )
                     smLineCrossStage = 0
                     smFeedAt = -1f
                     transitionSmPhase(SM_PHASE_LINE_CROSS)
                 }
             }
+
             SM_PHASE_LINE_CROSS -> {
                 // 撞线相位瞄准特例：发射指向最近敌导弹（lane 对头），保证有限携弹内必出相撞；
                 // 目标选择遥测不因此出现导弹型（AI 自选目标，与发射指向无关）。
@@ -4405,7 +4753,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     }
                     log.info(
                         "[ASTD-Automation] sm line-cross evidence: atropos hp=300 < 阈值 600 同归于尽 lineCross=$lineCross " +
-                            "selFighter=$selFighter selShip=$selShip（敌导弹海经过期间目标遥测无导弹型）",
+                                "selFighter=$selFighter selShip=$selShip（敌导弹海经过期间目标遥测无导弹型）",
                     )
                 }
                 if (smLineCrossStage == 1 && !smHighHpHitConfirmed) {
@@ -4415,7 +4763,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                             smHighHpHitConfirmed = true
                             log.info(
                                 "[ASTD-Automation] sm high-hp evidence: harpoon ${SM_HIGH_HP_BOOST.toInt()}HP 被命中存活 hp=${"%.0f".format(missile.hitpoints)}" +
-                                    " lineCrossDelta=${lineCross - smLineCrossBaseline}（> 阈值仅爆炸不移除）",
+                                        " lineCrossDelta=${lineCross - smLineCrossBaseline}（> 阈值仅爆炸不移除）",
                             )
                         }
                     }
@@ -4432,6 +4780,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     }
                 }
             }
+
             SM_PHASE_ENEMY_SCALE -> {
                 stabilizeSmShips(engine, playerFire = false, enemyFire = true)
                 if (smScaleStepAt < 0f) smScaleStepAt = elapsed
@@ -4440,7 +4789,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 if (expMultE != null && kotlin.math.abs(expMultE - expected) <= SM_SCALE_TOLERANCE) {
                     log.info(
                         "[ASTD-Automation] sm enemy scale evidence: k_s=${SM_SCALE_KS[smScaleStep]} expMult=$expMultE" +
-                            "（敌版三档爆炸倍率 0.5/1.0/2.5 之 ${SM_SCALE_KS[smScaleStep]} 档）",
+                                "（敌版三档爆炸倍率 0.5/1.0/2.5 之 ${SM_SCALE_KS[smScaleStep]} 档）",
                     )
                     smScaleStep++
                     if (smScaleStep >= SM_SCALE_KS.size) {
@@ -4456,6 +4805,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     transitionSmPhase(SM_PHASE_FAILED)
                 }
             }
+
             SM_PHASE_COMPLETED -> {
                 stabilizeSmShips(engine, playerFire = true, enemyFire = true)
                 // 截图舞台弹药续航：令双方导弹流与裂隙爆炸持续入帧。
@@ -4480,16 +4830,22 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     "CombatReady"
                 }
             }
+
             smPhase == SM_PHASE_FAILED -> "Failed"
             smPhase != SM_PHASE_COMPLETED &&
-                elapsed - smPhaseStartedAt > SM_PHASE_TIMEOUT -> {
-                failureReason = "sm phase timeout: $smPhase（selFighter=$selFighter selShip=$selShip bonus=$bonus emp=$empHits arcs=$empArcs explosions=$explosions lineCross=$lineCross disabledMax=$smMaxFighterDisabled weaponHpRatio=${"%.2f".format(smMinWeaponHealthRatio)} disabledDur=${"%.2f".format(smMaxDisabledDuration)} fighterHullRatio=${"%.2f".format(smMinFighterHullRatio)}）"
+                    elapsed - smPhaseStartedAt > SM_PHASE_TIMEOUT -> {
+                failureReason =
+                    "sm phase timeout: $smPhase（selFighter=$selFighter selShip=$selShip bonus=$bonus emp=$empHits arcs=$empArcs explosions=$explosions lineCross=$lineCross disabledMax=$smMaxFighterDisabled weaponHpRatio=${
+                        "%.2f".format(smMinWeaponHealthRatio)
+                    } disabledDur=${"%.2f".format(smMaxDisabledDuration)} fighterHullRatio=${"%.2f".format(smMinFighterHullRatio)}）"
                 "Failed"
             }
+
             smPhase == SM_PHASE_COMPLETED -> {
                 val recentEvent = smLastExplosionAt >= 0f && elapsed - smLastExplosionAt <= SM_COMPLETED_EVENT_WINDOW
                 if (recentEvent || elapsed - smPhaseStartedAt >= SM_COMPLETED_STAGE_TIMEOUT) "Completed" else "CombatReady"
             }
+
             else -> "CombatReady"
         }
         if (state == "Completed" && !completed) {
@@ -4545,7 +4901,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
      * statsScript 实例由引擎持有、插件侧无引用，故直接构造 GravityRiftSystemStats 求解。
      */
     private fun grgTargetGateFailure(engine: CombatEngineAPI, player: ShipAPI, system: ShipSystemAPI, enemy: ShipAPI): String? {
-        player.setShipTarget(null)
+        player.shipTarget = null
         player.aiFlags.removeFlag(ShipwideAIFlags.AIFlags.TARGET_FOR_SHIP_SYSTEM)
 
         // 闸门通过后各观测窗的读数必须只归因于首波：战级遥测键不随 unapply 清除，
@@ -4556,7 +4912,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         val preMines = grgTelemetryInt(engine, player, GravityRiftSystemStats.TELEMETRY_MINES_KEY)
         if (preTarget != null || preVortex >= 0 || preBeam >= 0 || preMines >= 0) {
             return "grg target gate: 首波前遥测已被写入（target=$preTarget vortex=$preVortex beam=$preBeam mines=$preMines）" +
-                "——系统在封锁期被提前施放，首波观测窗不成立（断言点 G-0）"
+                    "——系统在封锁期被提前施放，首波观测窗不成立（断言点 G-0）"
         }
 
         val stats = GravityRiftSystemStats()
@@ -4567,17 +4923,17 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         val infoText = stats.getInfoText(system, player)
         if (infoText != expectedInfo) {
             return "grg target gate: getInfoText=${jsonString(infoText)}，expect \"$expectedInfo\"" +
-                "（systemState=${system.state}，断言点 G-0）"
+                    "（systemState=${system.state}，断言点 G-0）"
         }
 
-        player.setShipTarget(enemy)
+        player.shipTarget = enemy
         if (!stats.isUsable(system, player)) {
             return "grg target gate: 锁定靶舰 ${enemy.id}（dist=${"%.0f".format(Misc.getDistance(player.location, enemy.location))}）" +
-                "后 isUsable 仍为 false（断言点 G-1：锁定制）"
+                    "后 isUsable 仍为 false（断言点 G-1：锁定制）"
         }
         log.info(
             "[ASTD-Automation] grg target gate evidence: 无目标时 isUsable=false 且 infoText=\"$infoText\"" +
-                "；锁定 ${enemy.id} 后 isUsable=true（断言点 G-0/G-1）",
+                    "；锁定 ${enemy.id} 后 isUsable=true（断言点 G-0/G-1）",
         )
         return null
     }
@@ -4591,8 +4947,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         engine.setDoNotEndCombat(true)
         for (side in listOf(FleetSide.PLAYER, FleetSide.ENEMY)) {
             val manager = engine.getFleetManager(side)
-            manager.setSuppressDeploymentMessages(true)
-            for (member in manager.getReservesCopy().toList()) {
+            manager.isSuppressDeploymentMessages = true
+            for (member in manager.reservesCopy.toList()) {
                 val anchor = when {
                     side == FleetSide.PLAYER && member.hullId == GRG_PLAYER_HULL -> GRG_PLAYER_ANCHOR
                     side == FleetSide.ENEMY && member.hullId == GRG_ENEMY_HULL -> GRG_ENEMY_ANCHOR
@@ -4639,18 +4995,18 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 player.shipAI = Global.getSettings().createDefaultShipAI(player, ShipAIConfig())
             }
             stabilizeShip(player, GRG_PLAYER_ANCHOR, 0f, allowFire = false, preserveAI = true)
-            player.setHitpoints(player.maxHitpoints)
+            player.hitpoints = player.maxHitpoints
             if (zeroPlayerFlux) {
-                player.fluxTracker.setCurrFlux(0f)
-                player.fluxTracker.setHardFlux(0f)
+                player.fluxTracker.currFlux = 0f
+                player.fluxTracker.hardFlux = 0f
             }
             if (blockSystem) player.blockCommandForOneFrame(ShipCommand.USE_SYSTEM)
         }
         if (enemy != null && !enemy.isHulk) {
             stabilizeShip(enemy, GRG_ENEMY_ANCHOR, 180f, allowFire = false, preserveAI = true)
-            if (healEnemy) enemy.setHitpoints(enemy.maxHitpoints)
-            enemy.fluxTracker.setCurrFlux(0f)
-            enemy.fluxTracker.setHardFlux(0f)
+            if (healEnemy) enemy.hitpoints = enemy.maxHitpoints
+            enemy.fluxTracker.currFlux = 0f
+            enemy.fluxTracker.hardFlux = 0f
             // 靶舰护盾压下：裂隙地雷近炸需结算到船体而非护盾（范式同 stabilizePlShips 的靶舰处理）。
             enemy.blockCommandForOneFrame(ShipCommand.TOGGLE_SHIELD_OR_PHASE_CLOAK)
             enemy.shield?.let { if (it.isOn) it.toggleOff() }
@@ -4659,18 +5015,26 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
 
     private fun lockGrgCamera(engine: CombatEngineAPI) {
         val viewport = engine.viewport
-        val displayWidth = try { Display.getWidth().takeIf { it > 0 } ?: 2560 } catch (_: Throwable) { 2560 }
-        val displayHeight = try { Display.getHeight().takeIf { it > 0 } ?: 1440 } catch (_: Throwable) { 1440 }
+        val displayWidth = try {
+            Display.getWidth().takeIf { it > 0 } ?: 2560
+        } catch (_: Throwable) {
+            2560
+        }
+        val displayHeight = try {
+            Display.getHeight().takeIf { it > 0 } ?: 1440
+        } catch (_: Throwable) {
+            1440
+        }
         val displayAspect = displayWidth.toFloat() / displayHeight.toFloat()
         val visibleWidth = GRG_CAMERA_VISIBLE_HEIGHT * displayAspect
-        viewport.setExternalControl(true)
+        viewport.isExternalControl = true
         viewport.set(
             GRG_CAMERA_CENTER.x - visibleWidth * 0.5f,
             GRG_CAMERA_CENTER.y - GRG_CAMERA_VISIBLE_HEIGHT * 0.5f,
             visibleWidth,
             GRG_CAMERA_VISIBLE_HEIGHT,
         )
-        viewport.setEverythingNearViewport(true)
+        viewport.isEverythingNearViewport = true
     }
 
     /**
@@ -4720,21 +5084,23 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     transitionGrgPhase(GRG_PHASE_WAIT_WINGS)
                 }
             }
+
             GRG_PHASE_WAIT_WINGS -> {
                 stabilizeGrgShips(engine, healEnemy = true, zeroPlayerFlux = true, blockSystem = true)
                 // 断言点 A：双甲板联队齐备且各联队在场存活数达到基础编制（wing_data.csv num=2）。
                 if (grgWingIonSizeMax >= GRG_EXPECT_WING_SIZE && grgWingLanceSizeMax >= GRG_EXPECT_WING_SIZE) {
                     log.info(
                         "[ASTD-Automation] grg wing evidence: ionWingSizeMax=$grgWingIonSizeMax " +
-                            "lanceWingSizeMax=$grgWingLanceSizeMax fightersInPlayMax=$grgFightersInPlayMax（断言点 A：双联队齐备且各 2 架在场）",
+                                "lanceWingSizeMax=$grgWingLanceSizeMax fightersInPlayMax=$grgFightersInPlayMax（断言点 A：双联队齐备且各 2 架在场）",
                     )
                     transitionGrgPhase(GRG_PHASE_PHASE_LINK)
                 } else if (elapsed - grgPhaseStartedAt >= GRG_WAIT_WINGS_TIMEOUT) {
                     failureReason = "grg wait wings timeout: ionWingSizeMax=$grgWingIonSizeMax lanceWingSizeMax=$grgWingLanceSizeMax" +
-                        "（各 ≥$GRG_EXPECT_WING_SIZE）fighters=${fighters.size}/$grgFightersInPlayMax（断言点 A）"
+                            "（各 ≥$GRG_EXPECT_WING_SIZE）fighters=${fighters.size}/$grgFightersInPlayMax（断言点 A）"
                     transitionGrgPhase(GRG_PHASE_FAILED)
                 }
             }
+
             GRG_PHASE_PHASE_LINK -> {
                 stabilizeGrgShips(engine, healEnemy = true, zeroPlayerFlux = true, blockSystem = true)
                 if (player != null) {
@@ -4745,7 +5111,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                                     failureReason = "grg phase link: 进入相位联动时无在外战机（断言点 B 无法观测）"
                                     transitionGrgPhase(GRG_PHASE_FAILED)
                                 } else {
-                                    player.setPhased(true)
+                                    player.isPhased = true
                                     grgPhaseLinkStartedAt = elapsed
                                     grgPhaseLinkFighterCount = fighters.size
                                     log.info("[ASTD-Automation] grg mothership phased at ${"%.2f".format(elapsed)}s fighters=${fighters.size}")
@@ -4753,15 +5119,16 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                             } else if (fighters.isNotEmpty() && fighters.all { it.isPhased }) {
                                 grgPhaseLinkedAll = true
                                 log.info("[ASTD-Automation] grg phase link evidence: ${fighters.size} 架在外战机全部 isPhased（断言点 B）")
-                                player.setPhased(false)
+                                player.isPhased = false
                                 grgPhaseLinkRestoreStartedAt = elapsed
                                 grgPhaseLinkStep = 1
                             } else if (elapsed - grgPhaseLinkStartedAt >= GRG_PHASE_LINK_TIMEOUT) {
                                 failureReason = "grg phase link timeout: ${GRG_PHASE_LINK_TIMEOUT}s 内仍有战机未联动相位" +
-                                    "（linked=${fighters.count { it.isPhased }}/${fighters.size}，断言点 B）"
+                                        "（linked=${fighters.count { it.isPhased }}/${fighters.size}，断言点 B）"
                                 transitionGrgPhase(GRG_PHASE_FAILED)
                             }
                         }
+
                         else -> {
                             if (fighters.all { !it.isPhased }) {
                                 grgPhaseRestoredAll = true
@@ -4769,13 +5136,14 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                                 transitionGrgPhase(GRG_PHASE_FLUX_RETURN)
                             } else if (elapsed - grgPhaseLinkRestoreStartedAt >= GRG_PHASE_RESTORE_TIMEOUT) {
                                 failureReason = "grg phase restore timeout: ${GRG_PHASE_RESTORE_TIMEOUT}s 内仍有战机滞留相位" +
-                                    "（phased=${fighters.count { it.isPhased }}/${fighters.size}，断言点 C：phasedByThis 配对恢复）"
+                                        "（phased=${fighters.count { it.isPhased }}/${fighters.size}，断言点 C：phasedByThis 配对恢复）"
                                 transitionGrgPhase(GRG_PHASE_FAILED)
                             }
                         }
                     }
                 }
             }
+
             GRG_PHASE_FLUX_RETURN -> {
                 stabilizeGrgShips(engine, healEnemy = true, zeroPlayerFlux = false, blockSystem = true)
                 if (player != null) {
@@ -4795,32 +5163,34 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                                 if (grgFluxSettleStartedAt < 0f) grgFluxSettleStartedAt = elapsed
                                 // 注入前持续清零战机辐能：注入增量顶不到 maxFlux 过载线，
                                 // 且 hullmod 基线表（lastFluxByFighter）稳定在低读数。
-                                fighter.fluxTracker.setCurrFlux(0f)
+                                fighter.fluxTracker.currFlux = 0f
                                 if (elapsed - grgFluxSettleStartedAt >= GRG_FLUX_SETTLE_SECONDS) {
                                     grgPlayerFluxBaseline = player.fluxTracker.currFlux
                                     grgFluxInjected = fighter.fluxTracker.maxFlux * GRG_FLUX_INJECT_FRAC
-                                    fighter.fluxTracker.setCurrFlux(fighter.fluxTracker.currFlux + grgFluxInjected)
+                                    fighter.fluxTracker.currFlux = fighter.fluxTracker.currFlux + grgFluxInjected
                                     grgFluxInjectedAt = elapsed
                                     grgFluxStep = 1
                                     log.info(
                                         "[ASTD-Automation] grg flux injected: +${"%.0f".format(grgFluxInjected)} " +
-                                            "baseline=${"%.0f".format(grgPlayerFluxBaseline)}（断言点 D：预期返还 ≈ 注入量 ×0.6）",
+                                                "baseline=${"%.0f".format(grgPlayerFluxBaseline)}（断言点 D：预期返还 ≈ 注入量 ×0.6）",
                                     )
                                 }
                             }
+
                             else -> {
                                 grgPlayerFluxDeltaMax = maxOf(grgPlayerFluxDeltaMax, player.fluxTracker.currFlux - grgPlayerFluxBaseline)
                                 when {
                                     grgPlayerFluxDeltaMax > grgFluxInjected * GRG_FLUX_RETURN_MAX_FRAC -> {
                                         failureReason = "grg flux return overshoot: 母舰辐能峰值增量 ${"%.0f".format(grgPlayerFluxDeltaMax)}" +
-                                            " > 注入量 ×$GRG_FLUX_RETURN_MAX_FRAC（${"%.0f".format(grgFluxInjected * GRG_FLUX_RETURN_MAX_FRAC)}，断言点 D 上界）"
+                                                " > 注入量 ×$GRG_FLUX_RETURN_MAX_FRAC（${"%.0f".format(grgFluxInjected * GRG_FLUX_RETURN_MAX_FRAC)}，断言点 D 上界）"
                                         transitionGrgPhase(GRG_PHASE_FAILED)
                                     }
+
                                     grgPlayerFluxDeltaMax >= grgFluxInjected * GRG_FLUX_RETURN_MIN_FRAC -> {
                                         log.info(
                                             "[ASTD-Automation] grg flux return evidence: deltaMax=${"%.0f".format(grgPlayerFluxDeltaMax)}" +
-                                                " ∈ [${"%.0f".format(grgFluxInjected * GRG_FLUX_RETURN_MIN_FRAC)}, ${"%.0f".format(grgFluxInjected * GRG_FLUX_RETURN_MAX_FRAC)}]" +
-                                                "（注入 ${"%.0f".format(grgFluxInjected)}，断言点 D：战机辐能净增量 ×0.6 返还母舰软辐能）",
+                                                    " ∈ [${"%.0f".format(grgFluxInjected * GRG_FLUX_RETURN_MIN_FRAC)}, ${"%.0f".format(grgFluxInjected * GRG_FLUX_RETURN_MAX_FRAC)}]" +
+                                                    "（注入 ${"%.0f".format(grgFluxInjected)}，断言点 D：战机辐能净增量 ×0.6 返还母舰软辐能）",
                                         )
                                         // 点火前剥光靶舰装甲（实机判例：单轮光束 1000dps×2s + 散布 5 雷
                                         // 对满甲 dominator（2050）的 hull 溢出恒为 0——装甲格未耗尽时
@@ -4828,10 +5198,11 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                                         enemy?.armorGrid?.grid?.forEach { row -> row.fill(0f) }
                                         transitionGrgPhase(GRG_PHASE_RIFT_FIRE)
                                     }
+
                                     elapsed - grgFluxInjectedAt >= GRG_FLUX_OBSERVE_TIMEOUT -> {
                                         failureReason = "grg flux return timeout: ${GRG_FLUX_OBSERVE_TIMEOUT}s 内母舰辐能峰值增量" +
-                                            " ${"%.0f".format(grgPlayerFluxDeltaMax)} < 注入量 ×$GRG_FLUX_RETURN_MIN_FRAC" +
-                                            "（${"%.0f".format(grgFluxInjected * GRG_FLUX_RETURN_MIN_FRAC)}，断言点 D 下界）"
+                                                " ${"%.0f".format(grgPlayerFluxDeltaMax)} < 注入量 ×$GRG_FLUX_RETURN_MIN_FRAC" +
+                                                "（${"%.0f".format(grgFluxInjected * GRG_FLUX_RETURN_MIN_FRAC)}，断言点 D 下界）"
                                         transitionGrgPhase(GRG_PHASE_FAILED)
                                     }
                                 }
@@ -4840,6 +5211,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     }
                 }
             }
+
             GRG_PHASE_RIFT_FIRE -> {
                 // 靶舰停奶：裂隙伤害需要真实 hitpoints 读数；玩家侧继续奶血保活。
                 stabilizeGrgShips(engine, healEnemy = false, zeroPlayerFlux = false, blockSystem = false)
@@ -4871,7 +5243,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                             // step 1：点火首波。锁定制下逐帧回写 shipTarget（舰 AI 与引擎帧序都可能改写它），
                             // 系统空闲即 useSystem()（按帧重试，单次可能被原版起飞动画窗闸门吞掉，同 FGL）。
                             1 -> {
-                                player.setShipTarget(enemy)
+                                player.shipTarget = enemy
                                 if (system.isOn) {
                                     grgRiftFired = true
                                     grgRiftActivatedAt = elapsed
@@ -4879,14 +5251,21 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                                     grgEnemyMinHpAfterFire = enemy.hitpoints
                                     grgRiftStep = 2
                                     log.info(
-                                        "[ASTD-Automation] grg rift fired: dist=${"%.0f".format(Misc.getDistance(player.location, enemy.location))} " +
-                                            "attempts=$grgRiftAttempts enemyHp=${"%.0f".format(enemy.hitpoints)}（断言点 G-1：锁定后点火成）",
+                                        "[ASTD-Automation] grg rift fired: dist=${
+                                            "%.0f".format(
+                                                Misc.getDistance(
+                                                    player.location,
+                                                    enemy.location
+                                                )
+                                            )
+                                        } " +
+                                                "attempts=$grgRiftAttempts enemyHp=${"%.0f".format(enemy.hitpoints)}（断言点 G-1：锁定后点火成）",
                                     )
                                 } else if (elapsed - grgPhaseStartedAt >= GRG_RIFT_PHASE_TIMEOUT) {
                                     failureReason = "grg rift ignition timeout: ${GRG_RIFT_PHASE_TIMEOUT}s 内系统未点亮" +
-                                        "（attempts=$grgRiftAttempts isUsable=${GravityRiftSystemStats().isUsable(system, player)}" +
-                                        " cooldown=${"%.1f".format(system.cooldownRemaining)} shipTarget=${player.shipTarget?.id}" +
-                                        " systemState=${system.state}，断言点 G-1）"
+                                            "（attempts=$grgRiftAttempts isUsable=${GravityRiftSystemStats().isUsable(system, player)}" +
+                                            " cooldown=${"%.1f".format(system.cooldownRemaining)} shipTarget=${player.shipTarget?.id}" +
+                                            " systemState=${system.state}，断言点 G-1）"
                                     transitionGrgPhase(GRG_PHASE_FAILED)
                                 } else if (system.cooldownRemaining <= 0f) {
                                     grgRiftAttempts++
@@ -4897,7 +5276,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                             // step 2：旋涡观测窗（断言点 G-2）。IN 首帧在目标舰体生成旋涡并写入
                             // telemetry target/vortex；光束遥测必须晚于蓄能窗出现（时序倒置即失败）。
                             2 -> {
-                                player.setShipTarget(enemy)
+                                player.shipTarget = enemy
                                 val t = elapsed - grgRiftActivatedAt
                                 val targetId = grgTelemetryText(engine, player, GravityRiftSystemStats.TELEMETRY_TARGET_KEY)
                                 val vortex = grgTelemetryInt(engine, player, GravityRiftSystemStats.TELEMETRY_VORTEX_KEY)
@@ -4905,19 +5284,21 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                                 when {
                                     beam >= 0 -> {
                                         failureReason = "grg rift chargeUp: ${"%.2f".format(t)}s 已出现光束遥测（beam=$beam）" +
-                                            "——旋涡必须先于光束（断言点 G-2 时序）"
+                                                "——旋涡必须先于光束（断言点 G-2 时序）"
                                         transitionGrgPhase(GRG_PHASE_FAILED)
                                     }
+
                                     targetId == enemy.id && vortex == 1 -> {
                                         log.info(
                                             "[ASTD-Automation] grg rift vortex evidence: t=${"%.2f".format(t)}s " +
-                                                "telemetry target=$targetId vortex=$vortex（断言点 G-2：IN 首帧在目标舰体生成旋涡）",
+                                                    "telemetry target=$targetId vortex=$vortex（断言点 G-2：IN 首帧在目标舰体生成旋涡）",
                                         )
                                         grgRiftStep = 3
                                     }
+
                                     t >= GRG_RIFT_VORTEX_DEADLINE -> {
                                         failureReason = "grg rift vortex timeout: ${"%.2f".format(t)}s 内 telemetry target=$targetId" +
-                                            "（expect ${enemy.id}）vortex=$vortex（expect 1）（断言点 G-2）"
+                                                "（expect ${enemy.id}）vortex=$vortex（expect 1）（断言点 G-2）"
                                         transitionGrgPhase(GRG_PHASE_FAILED)
                                     }
                                 }
@@ -4925,7 +5306,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                             // step 3：光束观测窗（断言点 G-3）。ACTIVE 首帧生成 FX drone（dem_drone）真实光束，
                             // telemetry beam 置 1，两者同帧可查。
                             3 -> {
-                                player.setShipTarget(enemy)
+                                player.shipTarget = enemy
                                 val t = elapsed - grgRiftActivatedAt
                                 val beam = grgTelemetryInt(engine, player, GravityRiftSystemStats.TELEMETRY_BEAM_KEY)
                                 val drones = grgBeamDrones(engine)
@@ -4933,13 +5314,14 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                                     beam == 1 && drones.isNotEmpty() -> {
                                         log.info(
                                             "[ASTD-Automation] grg rift beam evidence: t=${"%.2f".format(t)}s telemetry beam=$beam " +
-                                                "drones=${drones.size}（hullId=$GRG_BEAM_DRONE_HULL_ID，断言点 G-3：ACTIVE 首帧生成真实光束）",
+                                                    "drones=${drones.size}（hullId=$GRG_BEAM_DRONE_HULL_ID，断言点 G-3：ACTIVE 首帧生成真实光束）",
                                         )
                                         grgRiftStep = 4
                                     }
+
                                     t >= GRG_RIFT_BEAM_DEADLINE -> {
                                         failureReason = "grg rift beam timeout: ${"%.2f".format(t)}s 内 telemetry beam=$beam（expect 1）" +
-                                            " drones=${drones.size}（expect ≥1）systemState=${system.state}（断言点 G-3）"
+                                                " drones=${drones.size}（expect ≥1）systemState=${system.state}（断言点 G-3）"
                                         transitionGrgPhase(GRG_PHASE_FAILED)
                                     }
                                 }
@@ -4948,7 +5330,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                             // 结束时 unapply 移除 drone（drone 自身 2s 计时是另一条移除路径），到点后 drone 应已消失；
                             // 裂隙由光束命中期间每 0.1s 布一枚，mines 为战斗级累计口径（本场景首波即 5）。
                             else -> {
-                                player.setShipTarget(enemy)
+                                player.shipTarget = enemy
                                 val t = elapsed - grgRiftActivatedAt
                                 if (t >= GRG_RIFT_SETTLE_DEADLINE) {
                                     val mines = grgTelemetryInt(engine, player, GravityRiftSystemStats.TELEMETRY_MINES_KEY)
@@ -4956,32 +5338,35 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                                     when {
                                         mines !in 1..GravityRiftTuning.MAX_RIFTS -> {
                                             failureReason = "grg rift mines out of range: telemetry mines=$mines，" +
-                                                "expect [1,${GravityRiftTuning.MAX_RIFTS}]（断言点 G-4）"
+                                                    "expect [1,${GravityRiftTuning.MAX_RIFTS}]（断言点 G-4）"
                                             transitionGrgPhase(GRG_PHASE_FAILED)
                                         }
+
                                         drones.isNotEmpty() -> {
                                             failureReason = "grg rift drone not removed: ${"%.2f".format(t)}s 仍有 ${drones.size} 架 " +
-                                                "$GRG_BEAM_DRONE_HULL_ID（expect 0，断言点 G-4）"
+                                                    "$GRG_BEAM_DRONE_HULL_ID（expect 0，断言点 G-4）"
                                             transitionGrgPhase(GRG_PHASE_FAILED)
                                         }
+
                                         grgEnemyHpDropMax < GRG_EXPECT_ENEMY_HP_DROP -> {
                                             failureReason = "grg rift damage shortfall: hpDrop=${"%.0f".format(grgEnemyHpDropMax)}" +
-                                                " < $GRG_EXPECT_ENEMY_HP_DROP（enemyHp=${"%.0f".format(enemy.hitpoints)}" +
-                                                "/${"%.0f".format(enemy.maxHitpoints)} mines=$mines，断言点 G-4）"
+                                                    " < $GRG_EXPECT_ENEMY_HP_DROP（enemyHp=${"%.0f".format(enemy.hitpoints)}" +
+                                                    "/${"%.0f".format(enemy.maxHitpoints)} mines=$mines，断言点 G-4）"
                                             transitionGrgPhase(GRG_PHASE_FAILED)
                                         }
+
                                         else -> {
                                             if (mines != GravityRiftTuning.MAX_RIFTS) {
                                                 log.warn(
                                                     "[ASTD-Automation] grg rift mines telemetry=$mines，按契约本场景应恒为 " +
-                                                        "${GravityRiftTuning.MAX_RIFTS}（光束命中长度极短、数量公式取上限）——仍落在断言区间内",
+                                                            "${GravityRiftTuning.MAX_RIFTS}（光束命中长度极短、数量公式取上限）——仍落在断言区间内",
                                                 )
                                             }
                                             log.info(
                                                 "[ASTD-Automation] grg rift evidence: t=${"%.2f".format(t)}s mines=$mines " +
-                                                    "enemyHp ${"%.0f".format(grgEnemyHpBeforeFire)} -> min " +
-                                                    "${"%.0f".format(grgEnemyMinHpAfterFire)}（drop=${"%.0f".format(grgEnemyHpDropMax)} " +
-                                                    "≥ $GRG_EXPECT_ENEMY_HP_DROP）drone 已移除 minesInPlayMax=$grgMinesInPlayMax（断言点 G-4）",
+                                                        "enemyHp ${"%.0f".format(grgEnemyHpBeforeFire)} -> min " +
+                                                        "${"%.0f".format(grgEnemyMinHpAfterFire)}（drop=${"%.0f".format(grgEnemyHpDropMax)} " +
+                                                        "≥ $GRG_EXPECT_ENEMY_HP_DROP）drone 已移除 minesInPlayMax=$grgMinesInPlayMax（断言点 G-4）",
                                             )
                                             transitionGrgPhase(GRG_PHASE_SCREENSHOT)
                                         }
@@ -4992,6 +5377,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     }
                 }
             }
+
             GRG_PHASE_SCREENSHOT -> {
                 // 取景波：证据已齐，专为截图再放一波（锁定制下同样先回写 shipTarget）。
                 // 定格于 ACTIVE 首帧 +GRG_SCREENSHOT_HOLD_DELAY：ACTIVE 沿 ≈ 光束起射点（系统 IN 段
@@ -5006,27 +5392,30 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 // useSystem 可能被原版起飞动画窗吞掉，故点亮前按帧重试点火（同 RIFT_FIRE）。
                 stabilizeGrgShips(engine, healEnemy = true, zeroPlayerFlux = false, blockSystem = false)
                 if (player != null && enemy != null && system != null) {
-                    if (!grgScreenshotStagedLit) player.setShipTarget(enemy)
+                    if (!grgScreenshotStagedLit) player.shipTarget = enemy
                     when {
                         // ACTIVE 沿先记录时刻，推迟 GRG_SCREENSHOT_HOLD_DELAY 再收口。
                         grgScreenshotStagedLit && system.state == ShipSystemAPI.SystemState.ACTIVE -> {
                             if (grgScreenshotActiveAt < 0f) grgScreenshotActiveAt = elapsed
                             if (elapsed - grgScreenshotActiveAt >= GRG_SCREENSHOT_HOLD_DELAY) {
                                 // 定格舞台：暂停后三帧拍到的就是定格的光束+旋涡+裂隙瞬间。
-                                engine.setPaused(true)
+                                engine.isPaused = true
                                 transitionGrgPhase(GRG_PHASE_COMPLETED)
                             }
                         }
+
                         elapsed - grgPhaseStartedAt >= GRG_SCREENSHOT_TIMEOUT -> {
                             log.info(
                                 "[ASTD-Automation] grg screenshot volley timeout, completing without staged frame" +
-                                    "（stagedFired=$grgScreenshotStagedFired enemyHulk=${enemy.isHulk}" +
-                                    " systemState=${system.state} cooldown=${"%.1f".format(system.cooldownRemaining)}）",
+                                        "（stagedFired=$grgScreenshotStagedFired enemyHulk=${enemy.isHulk}" +
+                                        " systemState=${system.state} cooldown=${"%.1f".format(system.cooldownRemaining)}）",
                             )
                             transitionGrgPhase(GRG_PHASE_COMPLETED)
                         }
+
                         grgScreenshotStagedFired && system.isOn && !grgScreenshotStagedLit ->
                             grgScreenshotStagedLit = true
+
                         !grgScreenshotStagedLit && !system.isOn && system.cooldownRemaining <= 0f -> {
                             grgRiftAttempts++
                             grgScreenshotStagedFired = true
@@ -5036,6 +5425,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     }
                 }
             }
+
             GRG_PHASE_COMPLETED -> {
                 stabilizeGrgShips(engine, healEnemy = true, zeroPlayerFlux = false, blockSystem = false)
             }
@@ -5050,16 +5440,18 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     "CombatReady"
                 }
             }
+
             grgPhase == GRG_PHASE_FAILED -> "Failed"
             grgPhase != GRG_PHASE_COMPLETED &&
-                elapsed - grgPhaseStartedAt > GRG_PHASE_TIMEOUT -> {
+                    elapsed - grgPhaseStartedAt > GRG_PHASE_TIMEOUT -> {
                 failureReason = "grg phase timeout: $grgPhase（ionWingMax=$grgWingIonSizeMax lanceWingMax=$grgWingLanceSizeMax " +
-                    "fighters=${fighters.size}/$grgFightersInPlayMax linked=$grgPhaseLinkedAll restored=$grgPhaseRestoredAll " +
-                    "fluxDelta=${"%.0f".format(grgPlayerFluxDeltaMax)} riftStep=$grgRiftStep fired=$grgRiftFired " +
-                    "mines=${grgTelemetryInt(engine, player, GravityRiftSystemStats.TELEMETRY_MINES_KEY)} " +
-                    "drones=${grgBeamDrones(engine).size} hpDrop=${"%.0f".format(grgEnemyHpDropMax)}）"
+                        "fighters=${fighters.size}/$grgFightersInPlayMax linked=$grgPhaseLinkedAll restored=$grgPhaseRestoredAll " +
+                        "fluxDelta=${"%.0f".format(grgPlayerFluxDeltaMax)} riftStep=$grgRiftStep fired=$grgRiftFired " +
+                        "mines=${grgTelemetryInt(engine, player, GravityRiftSystemStats.TELEMETRY_MINES_KEY)} " +
+                        "drones=${grgBeamDrones(engine).size} hpDrop=${"%.0f".format(grgEnemyHpDropMax)}）"
                 "Failed"
             }
+
             grgPhase == GRG_PHASE_COMPLETED -> "Completed"
             else -> "CombatReady"
         }
@@ -5097,8 +5489,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         engine.setDoNotEndCombat(true)
         for (side in listOf(FleetSide.PLAYER, FleetSide.ENEMY)) {
             val manager = engine.getFleetManager(side)
-            manager.setSuppressDeploymentMessages(true)
-            for (member in manager.getReservesCopy().toList()) {
+            manager.isSuppressDeploymentMessages = true
+            for (member in manager.reservesCopy.toList()) {
                 val anchor = when {
                     side == FleetSide.PLAYER && member.hullId == FGL_PLAYER_HULL -> FGL_PLAYER_ANCHOR
                     side == FleetSide.ENEMY && member.hullId == FGL_ENEMY_HULL -> FGL_ENEMY_ANCHOR
@@ -5134,33 +5526,41 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         if (player != null && !player.isHulk) {
             engine.setPlayerShipExternal(player)
             stabilizeShip(player, FGL_PLAYER_ANCHOR, 0f, allowFire = false, preserveAI = true)
-            player.setHitpoints(player.maxHitpoints)
+            player.hitpoints = player.maxHitpoints
             if (forceShield) {
                 player.shield?.let { if (!it.isOn) it.toggleOn() }
             }
         }
         if (enemy != null && !enemy.isHulk) {
             stabilizeShip(enemy, FGL_ENEMY_ANCHOR, 180f, allowFire = false, preserveAI = true)
-            enemy.setHitpoints(enemy.maxHitpoints)
-            enemy.fluxTracker.setCurrFlux(0f)
-            enemy.fluxTracker.setHardFlux(0f)
+            enemy.hitpoints = enemy.maxHitpoints
+            enemy.fluxTracker.currFlux = 0f
+            enemy.fluxTracker.hardFlux = 0f
         }
     }
 
     private fun lockFglCamera(engine: CombatEngineAPI) {
         val viewport = engine.viewport
-        val displayWidth = try { Display.getWidth().takeIf { it > 0 } ?: 2560 } catch (_: Throwable) { 2560 }
-        val displayHeight = try { Display.getHeight().takeIf { it > 0 } ?: 1440 } catch (_: Throwable) { 1440 }
+        val displayWidth = try {
+            Display.getWidth().takeIf { it > 0 } ?: 2560
+        } catch (_: Throwable) {
+            2560
+        }
+        val displayHeight = try {
+            Display.getHeight().takeIf { it > 0 } ?: 1440
+        } catch (_: Throwable) {
+            1440
+        }
         val displayAspect = displayWidth.toFloat() / displayHeight.toFloat()
         val visibleWidth = FGL_CAMERA_VISIBLE_HEIGHT * displayAspect
-        viewport.setExternalControl(true)
+        viewport.isExternalControl = true
         viewport.set(
             FGL_CAMERA_CENTER.x - visibleWidth * 0.5f,
             FGL_CAMERA_CENTER.y - FGL_CAMERA_VISIBLE_HEIGHT * 0.5f,
             visibleWidth,
             FGL_CAMERA_VISIBLE_HEIGHT,
         )
-        viewport.setEverythingNearViewport(true)
+        viewport.isEverythingNearViewport = true
     }
 
     /**
@@ -5201,6 +5601,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     transitionFglPhase(FGL_PHASE_WAIT_WINGS)
                 }
             }
+
             FGL_PHASE_WAIT_WINGS -> {
                 stabilizeFglShips(engine, forceShield = false)
                 if (player != null) {
@@ -5215,11 +5616,12 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 ) {
                     log.info(
                         "[ASTD-Automation] fgl deck evidence: extraDeploymentLimitMax=$fglExtraDeploymentLimitMax " +
-                            "wingSizeMax=$fglWingSizeMax fightersInPlayMax=$fglFightersInPlayMax（断言点 A：每甲板锚定 5 / 单联队在场 ≥3）",
+                                "wingSizeMax=$fglWingSizeMax fightersInPlayMax=$fglFightersInPlayMax（断言点 A：每甲板锚定 5 / 单联队在场 ≥3）",
                     )
                     transitionFglPhase(FGL_PHASE_ACTIVATE)
                 }
             }
+
             FGL_PHASE_ACTIVATE -> {
                 stabilizeFglShips(engine, forceShield = false)
                 if (player != null && system != null) {
@@ -5246,8 +5648,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                         fglRecordedFighterCount = fglRecordedFighterIds.size
                         log.info(
                             "[ASTD-Automation] fgl activated: state=${system.state} fighters=$fglRecordedFighterCount " +
-                                "currFlux=${"%.0f".format(fglActivationCurrFlux)} hardFlux=${"%.0f".format(fglActivationHardFlux)} " +
-                                "retries=$fglActivateAttempts",
+                                    "currFlux=${"%.0f".format(fglActivationCurrFlux)} hardFlux=${"%.0f".format(fglActivationHardFlux)} " +
+                                    "retries=$fglActivateAttempts",
                         )
                         transitionFglPhase(FGL_PHASE_OBSERVE_ACTIVE)
                     } else {
@@ -5260,12 +5662,13 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                         // 超时兜底独立于冷却分支：即便系统处于长冷却，相位也必须收口判失败。
                         if (elapsed - fglPhaseStartedAt >= FGL_ACTIVATE_TIMEOUT) {
                             failureReason = "fgl activate timeout: ${FGL_ACTIVATE_TIMEOUT}s 内系统未点亮" +
-                                "（attempts=$fglActivateAttempts state=${system.state} cd=${system.cooldownRemaining}）"
+                                    "（attempts=$fglActivateAttempts state=${system.state} cd=${system.cooldownRemaining}）"
                             transitionFglPhase(FGL_PHASE_FAILED)
                         }
                     }
                 }
             }
+
             FGL_PHASE_OBSERVE_ACTIVE -> {
                 stabilizeFglShips(engine, forceShield = true)
                 if (player != null) {
@@ -5298,17 +5701,18 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 ) {
                     log.info(
                         "[ASTD-Automation] fgl active evidence: timeMultMax=${"%.2f".format(fglTimeMultMax)} " +
-                            "hullDamageTakenMultMin=${"%.2f".format(fglHullDamageTakenMultMin)} " +
-                            "currFluxDeltaMax=${"%.0f".format(fglCurrFluxDeltaMax)}（断言点 B/C/D）",
+                                "hullDamageTakenMultMin=${"%.2f".format(fglHullDamageTakenMultMin)} " +
+                                "currFluxDeltaMax=${"%.0f".format(fglCurrFluxDeltaMax)}（断言点 B/C/D）",
                     )
                     transitionFglPhase(FGL_PHASE_WAIT_RECALL)
                 } else if (elapsed - fglActivatedAt >= FGL_OBSERVE_TIMEOUT) {
                     failureReason = "fgl observe timeout: timeMultMax=${"%.2f".format(fglTimeMultMax)}（≥$FGL_EXPECT_TIME_MULT_MIN）" +
-                        " hullDamageTakenMultMin=${"%.2f".format(if (fglHullDamageTakenMultMin == Float.MAX_VALUE) -1f else fglHullDamageTakenMultMin)}（≤$FGL_EXPECT_DAMAGE_TAKEN_MAX）" +
-                        " currFluxDeltaMax=${"%.0f".format(fglCurrFluxDeltaMax)}（≥$FGL_EXPECT_FLUX_RISE）"
+                            " hullDamageTakenMultMin=${"%.2f".format(if (fglHullDamageTakenMultMin == Float.MAX_VALUE) -1f else fglHullDamageTakenMultMin)}（≤$FGL_EXPECT_DAMAGE_TAKEN_MAX）" +
+                            " currFluxDeltaMax=${"%.0f".format(fglCurrFluxDeltaMax)}（≥$FGL_EXPECT_FLUX_RISE）"
                     transitionFglPhase(FGL_PHASE_FAILED)
                 }
             }
+
             FGL_PHASE_WAIT_RECALL -> {
                 stabilizeFglShips(engine, forceShield = true)
                 // toggle 主动关闭路径验证：玩家再次按键同路径补发 useSystem()（ACTIVE → OUT →
@@ -5328,7 +5732,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     if (firstIssue) {
                         log.info(
                             "[ASTD-Automation] fgl manual cancel issued at ${"%.2f".format(elapsed)}s " +
-                                "currFlux=${"%.0f".format(player.fluxTracker.currFlux)}（toggle 主动关闭路径）",
+                                    "currFlux=${"%.0f".format(player.fluxTracker.currFlux)}（toggle 主动关闭路径）",
                         )
                     }
                 }
@@ -5339,8 +5743,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                         .sumOf { it.numLost }
                 }
                 val recallDetected = system != null &&
-                    (system.state == ShipSystemAPI.SystemState.OUT ||
-                        (!system.isOn && system.cooldownRemaining > 0f))
+                        (system.state == ShipSystemAPI.SystemState.OUT ||
+                                (!system.isOn && system.cooldownRemaining > 0f))
                 if (recallDetected && fglRecallDetectedAt < 0f) {
                     fglRecallDetectedAt = elapsed
                     log.info("[ASTD-Automation] fgl recall detected at ${"%.2f".format(elapsed)}s（ACTIVE→OUT）")
@@ -5365,30 +5769,33 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                             failureReason = "fgl recall incomplete: 底账 $fglRecordedFighterCount 架仍有 identity 在场（断言点 E）"
                             transitionFglPhase(FGL_PHASE_FAILED)
                         }
+
                         fglNumLostAfterRecall != fglNumLostBeforeRecall -> {
                             failureReason = "fgl recall confused with kill: numLost $fglNumLostBeforeRecall -> $fglNumLostAfterRecall" +
-                                "（断言点 E：召回窗内有击毁，无法归因 land 召回）"
+                                    "（断言点 E：召回窗内有击毁，无法归因 land 召回）"
                             transitionFglPhase(FGL_PHASE_FAILED)
                         }
                         // 断言点 F：软→硬转化阈显式 ≥1000。外部来源不可能满足——敌方仅秃鹰
                         // 双阔剑联队，1s settle 窗内战机火力对护盾产生的硬辐能贡献在数十量级。
                         fglHardFluxAfterRecall - fglHardFluxBeforeRecall < FGL_EXPECT_HARD_FLUX_RISE -> {
                             failureReason = "fgl hard flux rise=${"%.0f".format(fglHardFluxAfterRecall - fglHardFluxBeforeRecall)}" +
-                                " < $FGL_EXPECT_HARD_FLUX_RISE（before=${"%.0f".format(fglHardFluxBeforeRecall)}" +
-                                " after=${"%.0f".format(fglHardFluxAfterRecall)}，断言点 F：软→硬转化）"
+                                    " < $FGL_EXPECT_HARD_FLUX_RISE（before=${"%.0f".format(fglHardFluxBeforeRecall)}" +
+                                    " after=${"%.0f".format(fglHardFluxAfterRecall)}，断言点 F：软→硬转化）"
                             transitionFglPhase(FGL_PHASE_FAILED)
                         }
+
                         else -> {
                             log.info(
                                 "[ASTD-Automation] fgl recall evidence: recorded=$fglRecordedFighterCount 全清 " +
-                                    "numLost=$fglNumLostBeforeRecall 不变（激活时 $fglNumLostAtActivation） " +
-                                    "hardFlux ${"%.0f".format(fglHardFluxBeforeRecall)} -> ${"%.0f".format(fglHardFluxAfterRecall)}（断言点 E/F）",
+                                        "numLost=$fglNumLostBeforeRecall 不变（激活时 $fglNumLostAtActivation） " +
+                                        "hardFlux ${"%.0f".format(fglHardFluxBeforeRecall)} -> ${"%.0f".format(fglHardFluxAfterRecall)}（断言点 E/F）",
                             )
                             transitionFglPhase(FGL_PHASE_RELAUNCH)
                         }
                     }
                 }
             }
+
             FGL_PHASE_RELAUNCH -> {
                 stabilizeFglShips(engine, forceShield = false)
                 // 断言点 G：底账之外的新 identity 战机出现即重新出击证据（旧机已全部召回/战损）。
@@ -5396,8 +5803,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     fglRelaunchObserved = true
                     log.info(
                         "[ASTD-Automation] fgl relaunch evidence: 召回后 ${"%.2f".format(elapsed - fglRecallDetectedAt)}s " +
-                            "出现新 identity 战机（fighters=${fighters.size}，断言点 G；" +
-                            "在场峰值 $fglFightersInPlayMax / 单联队峰值 $fglWingSizeMax，诊断证据）",
+                                "出现新 identity 战机（fighters=${fighters.size}，断言点 G；" +
+                                "在场峰值 $fglFightersInPlayMax / 单联队峰值 $fglWingSizeMax，诊断证据）",
                     )
                     transitionFglPhase(FGL_PHASE_COMPLETED)
                 } else if (!fglRelaunchObserved && elapsed - fglRecallDetectedAt > FGL_RELAUNCH_TIMEOUT) {
@@ -5405,6 +5812,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     transitionFglPhase(FGL_PHASE_FAILED)
                 }
             }
+
             FGL_PHASE_COMPLETED -> {
                 stabilizeFglShips(engine, forceShield = false)
             }
@@ -5419,15 +5827,17 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     "CombatReady"
                 }
             }
+
             fglPhase == FGL_PHASE_FAILED -> "Failed"
             fglPhase != FGL_PHASE_COMPLETED &&
-                elapsed - fglPhaseStartedAt > FGL_PHASE_TIMEOUT -> {
+                    elapsed - fglPhaseStartedAt > FGL_PHASE_TIMEOUT -> {
                 failureReason = "fgl phase timeout: $fglPhase（limitMax=$fglExtraDeploymentLimitMax wingMax=$fglWingSizeMax " +
-                    "fighters=${fighters.size}/$fglFightersInPlayMax timeMult=${"%.2f".format(fglTimeMultMax)} " +
-                    "dmgTaken=${"%.2f".format(if (fglHullDamageTakenMultMin == Float.MAX_VALUE) -1f else fglHullDamageTakenMultMin)} " +
-                    "fluxDelta=${"%.0f".format(fglCurrFluxDeltaMax)} recallAt=${"%.2f".format(fglRecallDetectedAt)} relaunch=$fglRelaunchObserved）"
+                        "fighters=${fighters.size}/$fglFightersInPlayMax timeMult=${"%.2f".format(fglTimeMultMax)} " +
+                        "dmgTaken=${"%.2f".format(if (fglHullDamageTakenMultMin == Float.MAX_VALUE) -1f else fglHullDamageTakenMultMin)} " +
+                        "fluxDelta=${"%.0f".format(fglCurrFluxDeltaMax)} recallAt=${"%.2f".format(fglRecallDetectedAt)} relaunch=$fglRelaunchObserved）"
                 "Failed"
             }
+
             fglPhase == FGL_PHASE_COMPLETED -> "Completed"
             else -> "CombatReady"
         }
@@ -5472,8 +5882,16 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
 
     private fun lockPlCamera(engine: CombatEngineAPI) {
         val viewport = engine.viewport
-        val displayWidth = try { Display.getWidth().takeIf { it > 0 } ?: 2560 } catch (_: Throwable) { 2560 }
-        val displayHeight = try { Display.getHeight().takeIf { it > 0 } ?: 1440 } catch (_: Throwable) { 1440 }
+        val displayWidth = try {
+            Display.getWidth().takeIf { it > 0 } ?: 2560
+        } catch (_: Throwable) {
+            2560
+        }
+        val displayHeight = try {
+            Display.getHeight().takeIf { it > 0 } ?: 1440
+        } catch (_: Throwable) {
+            1440
+        }
         val displayAspect = displayWidth.toFloat() / displayHeight.toFloat()
         val visibleWidth = PL_CAMERA_VISIBLE_HEIGHT * displayAspect
         // 敌版三档相位起镜头切到东侧敌版舞台（x≈2500），此前锁定西侧主舞台。
@@ -5482,14 +5900,14 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         } else {
             PL_CAMERA_CENTER_MAIN
         }
-        viewport.setExternalControl(true)
+        viewport.isExternalControl = true
         viewport.set(
             center.x - visibleWidth * 0.5f,
             center.y - PL_CAMERA_VISIBLE_HEIGHT * 0.5f,
             visibleWidth,
             PL_CAMERA_VISIBLE_HEIGHT,
         )
-        viewport.setEverythingNearViewport(true)
+        viewport.isEverythingNearViewport = true
     }
 
     /** 强制部署 mission reserves（范式同 deploySmReserveShips；三靶/两僚按身份哈希序分配锚点）。 */
@@ -5497,8 +5915,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         engine.setDoNotEndCombat(true)
         for (side in listOf(FleetSide.PLAYER, FleetSide.ENEMY)) {
             val manager = engine.getFleetManager(side)
-            manager.setSuppressDeploymentMessages(true)
-            val members = manager.getReservesCopy().toList()
+            manager.isSuppressDeploymentMessages = true
+            val members = manager.reservesCopy.toList()
                 .sortedBy { member -> PL_DEPLOY_ORDER.indexOf(member.hullId).let { if (it < 0) Int.MAX_VALUE else it } }
             var decoyIndex = 0
             var targetIndex = 0
@@ -5508,11 +5926,13 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     side == FleetSide.PLAYER && member.hullId == PL_PLAYER_B_HULL -> PL_B_ANCHOR
                     side == FleetSide.PLAYER && member.hullId == PL_DECOY_HULL ->
                         if (decoyIndex++ == 0) PL_D1_PARK_ANCHOR else PL_D2_PARK_ANCHOR
+
                     side == FleetSide.ENEMY && member.hullId == PL_ENEMY_TARGET_HULL -> when (targetIndex++) {
                         0 -> PL_E1_ANCHOR
                         1 -> PL_E2_PARK_ANCHOR
                         else -> PL_E3_PARK_ANCHOR
                     }
+
                     side == FleetSide.ENEMY && member.hullId == PL_ENEMY_LANCE_HULL -> PL_ENEMY_LANCE_ANCHOR
                     else -> continue
                 }
@@ -5548,24 +5968,24 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         if (shipA != null && !shipA.isHulk) {
             engine.setPlayerShipExternal(shipA)
             stabilizeShip(shipA, PL_A_ANCHOR, 0f, allowFire = true, preserveAI = true)
-            shipA.setHitpoints(shipA.maxHitpoints)
-            shipA.fluxTracker.setCurrFlux(0f)
-            shipA.fluxTracker.setHardFlux(0f)
+            shipA.hitpoints = shipA.maxHitpoints
+            shipA.fluxTracker.currFlux = 0f
+            shipA.fluxTracker.hardFlux = 0f
             shipA.shield?.let { if (it.isOn) it.toggleOff() }
             setPlAutofire(shipA, false)
             val target = targets.firstOrNull()
-            shipA.setShipTarget(target)
+            shipA.shipTarget = target
             findPlLance(shipA)?.let { weapon ->
-                if (target != null) weapon.setCurrAngle(Misc.getAngleInDegrees(weapon.location, target.location))
+                if (target != null) weapon.currAngle = Misc.getAngleInDegrees(weapon.location, target.location)
                 weapon.setForceFireOneFrame(playerFire)
             }
         }
         // B：能量槽装配证明件，全程不开火（autofire 关闭 + 不 force fire），仅钉锚点奶血。
         if (shipB != null && !shipB.isHulk) {
             stabilizeShip(shipB, PL_B_ANCHOR, 0f, allowFire = false, preserveAI = true)
-            shipB.setHitpoints(shipB.maxHitpoints)
-            shipB.fluxTracker.setCurrFlux(0f)
-            shipB.fluxTracker.setHardFlux(0f)
+            shipB.hitpoints = shipB.maxHitpoints
+            shipB.fluxTracker.currFlux = 0f
+            shipB.fluxTracker.hardFlux = 0f
             shipB.shield?.let { if (it.isOn) it.toggleOff() }
             setPlAutofire(shipB, false)
         }
@@ -5577,9 +5997,9 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 if (index == 0) PL_D1_PARK_ANCHOR else PL_D2_PARK_ANCHOR
             }
             stabilizeShip(decoy, staged, 0f, allowFire = false, preserveAI = true)
-            decoy.setHitpoints(decoy.maxHitpoints)
-            decoy.fluxTracker.setCurrFlux(0f)
-            decoy.fluxTracker.setHardFlux(0f)
+            decoy.hitpoints = decoy.maxHitpoints
+            decoy.fluxTracker.currFlux = 0f
+            decoy.fluxTracker.hardFlux = 0f
             decoy.shield?.let { if (it.isOn) it.toggleOff() }
         }
         targets.forEachIndexed { index, target ->
@@ -5590,22 +6010,22 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 else -> if (clusterAnchored) PL_E3_CLUSTER_ANCHOR else PL_E3_PARK_ANCHOR
             }
             stabilizeShip(target, anchor, 180f, allowFire = false, preserveAI = true)
-            target.setHitpoints(target.maxHitpoints)
-            target.fluxTracker.setCurrFlux(0f)
-            target.fluxTracker.setHardFlux(0f)
+            target.hitpoints = target.maxHitpoints
+            target.fluxTracker.currFlux = 0f
+            target.fluxTracker.hardFlux = 0f
             target.shield?.let { if (it.isOn) it.toggleOff() }
         }
         if (enemyLance != null && !enemyLance.isHulk) {
             stabilizeShip(enemyLance, PL_ENEMY_LANCE_ANCHOR, PL_ENEMY_LANCE_FACING, allowFire = true, preserveAI = true)
-            enemyLance.setHitpoints(enemyLance.maxHitpoints)
-            enemyLance.fluxTracker.setCurrFlux(0f)
-            enemyLance.fluxTracker.setHardFlux(0f)
+            enemyLance.hitpoints = enemyLance.maxHitpoints
+            enemyLance.fluxTracker.currFlux = 0f
+            enemyLance.fluxTracker.hardFlux = 0f
             enemyLance.shield?.let { if (it.isOn) it.toggleOff() }
             setPlAutofire(enemyLance, false)
             val target = decoys.firstOrNull()
-            enemyLance.setShipTarget(target)
+            enemyLance.shipTarget = target
             findPlLance(enemyLance)?.let { weapon ->
-                if (target != null) weapon.setCurrAngle(Misc.getAngleInDegrees(weapon.location, target.location))
+                if (target != null) weapon.currAngle = Misc.getAngleInDegrees(weapon.location, target.location)
                 val gated = enemyFire && elapsed - plScaleStepAt >= PL_ENEMY_SETTLE_SECONDS
                 weapon.setForceFireOneFrame(gated)
             }
@@ -5687,52 +6107,69 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                             val slotA = lanceA?.slot
                             val slotB = lanceB?.slot
                             val spec = lanceA?.spec
-                            val op = try { spec?.getOrdnancePointCost(null, null) ?: -1f } catch (_: Throwable) { -1f }
+                            val op = try {
+                                spec?.getOrdnancePointCost(null, null) ?: -1f
+                            } catch (_: Throwable) {
+                                -1f
+                            }
                             val tagsOk = spec?.tags?.containsAll(PL_REQUIRED_TAGS) == true
                             when {
                                 lanceA == null || lanceB == null -> {
                                     failureReason = "pl mount missing: lanceA=${lanceA != null} lanceB=${lanceB != null}"
                                     transitionPlPhase(PL_PHASE_FAILED)
                                 }
+
                                 slotA?.id != PL_A_SLOT || slotA?.weaponType != WeaponAPI.WeaponType.BALLISTIC ||
-                                    slotA.slotSize != WeaponAPI.WeaponSize.LARGE -> {
-                                    failureReason = "pl A slot mismatch: ${slotA?.id}/${slotA?.weaponType}/${slotA?.slotSize}（应为 $PL_A_SLOT BALLISTIC LARGE）"
+                                        slotA.slotSize != WeaponAPI.WeaponSize.LARGE -> {
+                                    failureReason =
+                                        "pl A slot mismatch: ${slotA?.id}/${slotA?.weaponType}/${slotA?.slotSize}（应为 $PL_A_SLOT BALLISTIC LARGE）"
                                     transitionPlPhase(PL_PHASE_FAILED)
                                 }
+
                                 slotB?.id != PL_B_SLOT || slotB?.weaponType != WeaponAPI.WeaponType.ENERGY ||
-                                    slotB.slotSize != WeaponAPI.WeaponSize.LARGE -> {
-                                    failureReason = "pl B slot mismatch: ${slotB?.id}/${slotB?.weaponType}/${slotB?.slotSize}（应为 $PL_B_SLOT ENERGY LARGE）"
+                                        slotB.slotSize != WeaponAPI.WeaponSize.LARGE -> {
+                                    failureReason =
+                                        "pl B slot mismatch: ${slotB?.id}/${slotB?.weaponType}/${slotB?.slotSize}（应为 $PL_B_SLOT ENERGY LARGE）"
                                     transitionPlPhase(PL_PHASE_FAILED)
                                 }
+
                                 spec?.type != WeaponAPI.WeaponType.ENERGY ||
-                                    spec.mountType != WeaponAPI.WeaponType.HYBRID -> {
-                                    failureReason = "pl spec type/mountType mismatch: ${spec?.type}/${spec?.mountType}（应为 ENERGY 结算 + HYBRID 挂载）"
+                                        spec.mountType != WeaponAPI.WeaponType.HYBRID -> {
+                                    failureReason =
+                                        "pl spec type/mountType mismatch: ${spec?.type}/${spec?.mountType}（应为 ENERGY 结算 + HYBRID 挂载）"
                                     transitionPlPhase(PL_PHASE_FAILED)
                                 }
+
                                 kotlin.math.abs((spec?.maxRange ?: -1f) - PL_EXPECT_RANGE) > PL_RANGE_TOLERANCE -> {
                                     failureReason = "pl spec maxRange=${spec?.maxRange}, expect $PL_EXPECT_RANGE"
                                     transitionPlPhase(PL_PHASE_FAILED)
                                 }
+
                                 kotlin.math.abs(lanceA.cooldown - PL_EXPECT_COOLDOWN) > PL_COOLDOWN_TOLERANCE -> {
                                     failureReason = "pl cooldown=${lanceA.cooldown}, expect $PL_EXPECT_COOLDOWN"
                                     transitionPlPhase(PL_PHASE_FAILED)
                                 }
+
                                 kotlin.math.abs(op - PL_EXPECT_OP) > 0.01f -> {
                                     failureReason = "pl OP=$op, expect $PL_EXPECT_OP"
                                     transitionPlPhase(PL_PHASE_FAILED)
                                 }
+
                                 !tagsOk -> {
                                     failureReason = "pl tags 缺 no_drop 两件套: ${spec?.tags}"
                                     transitionPlPhase(PL_PHASE_FAILED)
                                 }
+
                                 !ProjectileVfxSpecs.has(ASTDInGameAutomationScenario.PL_PROJECTILE_SPEC_ID) -> {
                                     failureReason = "pl projectile VFX 未登记: ${ASTDInGameAutomationScenario.PL_PROJECTILE_SPEC_ID}"
                                     transitionPlPhase(PL_PHASE_FAILED)
                                 }
+
                                 shipA == null -> {
                                     failureReason = "pl shipA missing for stat probe"
                                     transitionPlPhase(PL_PHASE_FAILED)
                                 }
+
                                 else -> {
                                     // 能量结算探针步骤 1：能量射程加成 +50%（检查点 1「按能量结算」正向证据）。
                                     plProbeR0 = lanceA.range
@@ -5743,6 +6180,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                                 }
                             }
                         }
+
                         1 -> if (elapsed - plMountStepAt >= PL_STAT_PROBE_SETTLE_SECONDS) {
                             if (lanceA == null || shipA == null) {
                                 failureReason = "pl 探针步骤 1 舰船/武器丢失: lanceA=${lanceA != null} shipA=${shipA != null}"
@@ -5755,6 +6193,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                                 plMountStepAt = elapsed
                             }
                         }
+
                         else -> if (elapsed - plMountStepAt >= PL_STAT_PROBE_SETTLE_SECONDS) {
                             if (lanceA == null || shipA == null) {
                                 failureReason = "pl 探针步骤 2 舰船/武器丢失: lanceA=${lanceA != null} shipA=${shipA != null}"
@@ -5770,9 +6209,11 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                                     }
                                     // 实弹加成不得生效（反证：按能量结算而非实弹）。
                                     kotlin.math.abs(plProbeR2 - plProbeR0) > PL_BALLISTIC_PROBE_TOLERANCE -> {
-                                        failureReason = "pl 能量结算探针反证失败：ballisticWeaponRangeBonus +50% 后 range $plProbeR0 → $plProbeR2（实弹加成不应生效）"
+                                        failureReason =
+                                            "pl 能量结算探针反证失败：ballisticWeaponRangeBonus +50% 后 range $plProbeR0 → $plProbeR2（实弹加成不应生效）"
                                         transitionPlPhase(PL_PHASE_FAILED)
                                     }
+
                                     else -> {
                                         log.info("[ASTD-Automation] pl energy settlement probe ok: r0=$plProbeR0 r1(energy+50%)=$plProbeR1 r2(ballistic+50%)=$plProbeR2")
                                         transitionPlPhase(PL_PHASE_CYCLE)
@@ -5783,6 +6224,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     }
                 }
             }
+
             PL_PHASE_CYCLE -> {
                 stabilizePlShips(engine, playerFire = true, enemyFire = false)
                 // 充能窗口观测：chargeLevel ∈ (0,1) 即原版充能条在推进（2s 充能可读证据）。
@@ -5817,37 +6259,46 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                             failureReason = "pl 充能窗口未观测到（chargeLevel 恒 0 或恒 1，2s 充能条不可读）"
                             transitionPlPhase(PL_PHASE_FAILED)
                         }
+
                         plFirstChargeToShotSeconds < PL_FIRST_CHARGE_MIN || plFirstChargeToShotSeconds > PL_FIRST_CHARGE_MAX -> {
-                            failureReason = "pl 首充耗时=${"%.2f".format(plFirstChargeToShotSeconds)}s, expect ∈ [$PL_FIRST_CHARGE_MIN, $PL_FIRST_CHARGE_MAX]（2s 充能）"
+                            failureReason =
+                                "pl 首充耗时=${"%.2f".format(plFirstChargeToShotSeconds)}s, expect ∈ [$PL_FIRST_CHARGE_MIN, $PL_FIRST_CHARGE_MAX]（2s 充能）"
                             transitionPlPhase(PL_PHASE_FAILED)
                         }
+
                         plCycleIntervalSeconds < PL_CYCLE_INTERVAL_MIN || plCycleIntervalSeconds > PL_CYCLE_INTERVAL_MAX -> {
-                            failureReason = "pl 出膛间隔=${"%.2f".format(plCycleIntervalSeconds)}s, expect ∈ [$PL_CYCLE_INTERVAL_MIN, $PL_CYCLE_INTERVAL_MAX]（2s 充能 + 5s 冷却 = 7s 循环）"
+                            failureReason =
+                                "pl 出膛间隔=${"%.2f".format(plCycleIntervalSeconds)}s, expect ∈ [$PL_CYCLE_INTERVAL_MIN, $PL_CYCLE_INTERVAL_MAX]（2s 充能 + 5s 冷却 = 7s 循环）"
                             transitionPlPhase(PL_PHASE_FAILED)
                         }
+
                         !plVfxDriverSeen -> {
                             failureReason = "pl 弹体 VFX 驱动未观测（Static Trail 拖尾未接管弹体观感）"
                             transitionPlPhase(PL_PHASE_FAILED)
                         }
+
                         impactFlashes < 1 || pillars < 1 || coneVfx < 1 -> {
                             failureReason = "pl 命中三层特效计数不足: flash=$impactFlashes pillar=$pillars coneVfx=$coneVfx"
                             transitionPlPhase(PL_PHASE_FAILED)
                         }
+
                         coneHits != 0 || floaty != 0 -> {
                             failureReason = "pl 命中单体出现连带: coneHits=$coneHits floaty=$floaty（单体靶锥内应零连带）"
                             transitionPlPhase(PL_PHASE_FAILED)
                         }
+
                         kotlin.math.abs(lastHalfAngle - 25f) > PL_SCALE_TOLERANCE ||
-                            kotlin.math.abs(lastRange - 375f) > PL_SCALE_TOLERANCE ||
-                            kotlin.math.abs(lastDamage - 3125f) > PL_SCALE_TOLERANCE -> {
+                                kotlin.math.abs(lastRange - 375f) > PL_SCALE_TOLERANCE ||
+                                kotlin.math.abs(lastDamage - 3125f) > PL_SCALE_TOLERANCE -> {
                             failureReason = "pl 玩家恒 v2 读数偏差: halfAngle=$lastHalfAngle range=$lastRange damage=$lastDamage（应 25/375/3125）"
                             transitionPlPhase(PL_PHASE_FAILED)
                         }
+
                         else -> {
                             log.info(
                                 "[ASTD-Automation] pl cycle ok: firstCharge=${"%.2f".format(plFirstChargeToShotSeconds)}s " +
-                                    "interval=${"%.2f".format(plCycleIntervalSeconds)}s shots=${plSpawnTimes.size} " +
-                                    "flash=$impactFlashes pillar=$pillars coneVfx=$coneVfx 单体零连带 v2=25/375/3125",
+                                        "interval=${"%.2f".format(plCycleIntervalSeconds)}s shots=${plSpawnTimes.size} " +
+                                        "flash=$impactFlashes pillar=$pillars coneVfx=$coneVfx 单体零连带 v2=25/375/3125",
                             )
                             plClusterConeHitsBaseline = coneHits
                             plClusterFloatyBaseline = floaty
@@ -5857,6 +6308,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     }
                 }
             }
+
             PL_PHASE_CLUSTER -> {
                 stabilizePlShips(engine, playerFire = true, enemyFire = false)
                 plClusterMaxLastConeHits = maxOf(plClusterMaxLastConeHits, lastConeHits)
@@ -5877,6 +6329,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     }
                 }
             }
+
             PL_PHASE_ENEMY_SCALE -> {
                 // 敌版逐档：玩家停火（LAST_* 读数唯一归因敌版），敌版贯星打僚舰集群。
                 stabilizePlShips(engine, playerFire = false, enemyFire = true)
@@ -5892,7 +6345,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                         kotlin.math.abs(lastRange - expectRange) > PL_SCALE_TOLERANCE ||
                         kotlin.math.abs(lastDamage - expectDamage) > PL_SCALE_TOLERANCE
                     ) {
-                        failureReason = "pl 敌版 k_s=${PL_SCALE_KS[plScaleStep]} 读数偏差: halfAngle=$lastHalfAngle range=$lastRange damage=$lastDamage（应 $expectHalfAngle/$expectRange/$expectDamage）"
+                        failureReason =
+                            "pl 敌版 k_s=${PL_SCALE_KS[plScaleStep]} 读数偏差: halfAngle=$lastHalfAngle range=$lastRange damage=$lastDamage（应 $expectHalfAngle/$expectRange/$expectDamage）"
                         transitionPlPhase(PL_PHASE_FAILED)
                     } else if (plScaleStep < PL_SCALE_KS.lastIndex) {
                         log.info("[ASTD-Automation] pl enemy scale k_s=${PL_SCALE_KS[plScaleStep]} ok: $lastHalfAngle/$lastRange/$lastDamage")
@@ -5913,18 +6367,27 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                                 failureReason = "pl 破晓档锥面未波及僚舰: maxConeHits=$plScaleMaxConeHits（80°/600su 放大未生效）"
                                 transitionPlPhase(PL_PHASE_FAILED)
                             }
+
                             plScaleFps > 0f && plScaleFps < PL_MIN_FPS -> {
                                 failureReason = "pl 破晓档帧率塌陷: fps=${"%.1f".format(plScaleFps)} < $PL_MIN_FPS"
                                 transitionPlPhase(PL_PHASE_FAILED)
                             }
+
                             else -> {
-                                log.info("[ASTD-Automation] pl enemy scale k_s=5 ok: 40/600/5000 coneHits=$plScaleMaxConeHits fps=${"%.1f".format(plScaleFps)}")
+                                log.info(
+                                    "[ASTD-Automation] pl enemy scale k_s=5 ok: 40/600/5000 coneHits=$plScaleMaxConeHits fps=${
+                                        "%.1f".format(
+                                            plScaleFps
+                                        )
+                                    }"
+                                )
                                 transitionPlPhase(PL_PHASE_COMPLETED)
                             }
                         }
                     }
                 }
             }
+
             PL_PHASE_COMPLETED -> {
                 stabilizePlShips(engine, playerFire = true, enemyFire = true)
             }
@@ -5945,16 +6408,20 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     "CombatReady"
                 }
             }
+
             plPhase == PL_PHASE_FAILED -> "Failed"
             plPhase != PL_PHASE_COMPLETED &&
-                elapsed - plPhaseStartedAt > plPhaseTimeout() -> {
-                failureReason = "pl phase timeout: $plPhase（resolves=$resolves coneHits=$coneHits floaty=$floaty shots=${plSpawnTimes.size} scaleStep=$plScaleStep chargeObserved=$plChargeObserved）"
+                    elapsed - plPhaseStartedAt > plPhaseTimeout() -> {
+                failureReason =
+                    "pl phase timeout: $plPhase（resolves=$resolves coneHits=$coneHits floaty=$floaty shots=${plSpawnTimes.size} scaleStep=$plScaleStep chargeObserved=$plChargeObserved）"
                 "Failed"
             }
+
             plPhase == PL_PHASE_COMPLETED -> {
                 val recentEvent = plLastResolveAt >= 0f && elapsed - plLastResolveAt <= PL_COMPLETED_EVENT_WINDOW
                 if (recentEvent || elapsed - plPhaseStartedAt >= PL_COMPLETED_STAGE_TIMEOUT) "Completed" else "CombatReady"
             }
+
             else -> "CombatReady"
         }
         if (state == "Completed" && !completed) {
@@ -5990,8 +6457,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
 
     private fun deployLensPhase1Side(engine: CombatEngineAPI, side: FleetSide) {
         val manager = engine.getFleetManager(side)
-        manager.setSuppressDeploymentMessages(true)
-        val reserves = manager.getReservesCopy().toList()
+        manager.isSuppressDeploymentMessages = true
+        val reserves = manager.reservesCopy.toList()
         if (reserves.isEmpty()) return
 
         var allyIndex = 0
@@ -6059,6 +6526,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 failureReason = "gravitational lens missing: ${LensArrayCoreHullModIds.HULL_ID}"
                 "Failed"
             }
+
             else -> "CombatReady"
         }
         if (state == "Completed" && !completed) {
@@ -6098,22 +6566,22 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     private fun findCrewedLens(engine: CombatEngineAPI): ShipAPI? =
         engine.ships.firstOrNull { ship ->
             ship.hullSpec?.hullId == LensArrayCoreHullModIds.HULL_ID &&
-                ship.variant?.hasHullMod(LensArrayCoreHullModIds.MODE_AUTOMATED) != true &&
-                ship.variant?.hasLensAutomatedModeSafe() != true
+                    ship.variant?.hasHullMod(LensArrayCoreHullModIds.MODE_AUTOMATED) != true &&
+                    ship.variant?.hasLensAutomatedModeSafe() != true
         }
 
     /** 无人决明级（MODE_AUTOMATED perma-mod）。唯一跑幽灵信号的模式。 */
     private fun findAutomatedLens(engine: CombatEngineAPI): ShipAPI? =
         engine.ships.firstOrNull { ship ->
             ship.hullSpec?.hullId == LensArrayCoreHullModIds.HULL_ID &&
-                ship.variant?.hasHullMod(LensArrayCoreHullModIds.MODE_AUTOMATED) == true
+                    ship.variant?.hasHullMod(LensArrayCoreHullModIds.MODE_AUTOMATED) == true
         }
 
     /** ShipVariantAPI.hasLensAutomatedMode 的安全包装（perma-mod 或普通 hullmod 任一即无人模式）。 */
     private fun com.fs.starfarer.api.combat.ShipVariantAPI.hasLensAutomatedModeSafe(): Boolean =
         try {
-            getPermaMods().contains(LensArrayCoreHullModIds.MODE_AUTOMATED) ||
-                hasHullMod(LensArrayCoreHullModIds.MODE_AUTOMATED)
+            permaMods.contains(LensArrayCoreHullModIds.MODE_AUTOMATED) ||
+                    hasHullMod(LensArrayCoreHullModIds.MODE_AUTOMATED)
         } catch (_: Throwable) {
             false
         }
@@ -6132,8 +6600,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
 
     private fun deployLensPhase2Side(engine: CombatEngineAPI, side: FleetSide) {
         val manager = engine.getFleetManager(side)
-        manager.setSuppressDeploymentMessages(true)
-        val reserves = manager.getReservesCopy().toList()
+        manager.isSuppressDeploymentMessages = true
+        val reserves = manager.reservesCopy.toList()
         if (reserves.isEmpty()) return
 
         var enemyIndex = 0
@@ -6143,6 +6611,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 side == FleetSide.ENEMY -> Vector2f(LENS_PHASE2_ENEMY_CLUSTER_X + enemyIndex++ * 140f, -200f + (enemyIndex % 3) * 200f)
                 hullId == LensArrayCoreHullModIds.HULL_ID ->
                     if (member.variant?.hasLensAutomatedModeSafe() == true) LENS_PHASE2_AUTOMATED_ANCHOR else LENS_PHASE2_CREWED_ANCHOR
+
                 else -> Vector2f(-560f, 0f)
             }
             val facing = if (side == FleetSide.ENEMY) 180f else 0f
@@ -6203,8 +6672,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             lensPhase2DowngradeLogged = true
             log.info(
                 "[ASTD-Automation] lens phase2: parallaxDriftStacksFromFighters downgraded to " +
-                    "parallaxDecksHullmod mount assertion (fighter on-hit mark hard to trigger " +
-                    "deterministically in-game; fighter-driven drift visuals left to manual review)"
+                        "parallaxDecksHullmod mount assertion (fighter on-hit mark hard to trigger " +
+                        "deterministically in-game; fighter-driven drift visuals left to manual review)"
             )
         }
 
@@ -6214,6 +6683,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 failureReason = "crewed gravitational lens missing: ${LensArrayCoreHullModIds.HULL_ID}"
                 "Failed"
             }
+
             evidenceReady -> "Completed"
             else -> "CombatReady"
         }
@@ -6272,23 +6742,27 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     private fun lensPhase2EvidenceReady(engine: CombatEngineAPI, enemies: List<ShipAPI>): Boolean {
         if (elapsed < 1.5f) return false
         val mechOk = EchoFixationField.hasActiveField(engine) &&
-            lensPhase2CognitiveTearApplied(enemies) &&
-            EchoFixationAfterimageRenderer.afterimageFrames(engine) > 0 &&
-            lensPhase2MaxDeepWaterOnEnemy(enemies) > 0 &&
-            lensPhase2PermeatingTideHullmod(engine) &&
-            lensPhase2ParallaxDecksHullmod(engine)
+                lensPhase2CognitiveTearApplied(enemies) &&
+                EchoFixationAfterimageRenderer.afterimageFrames(engine) > 0 &&
+                lensPhase2MaxDeepWaterOnEnemy(enemies) > 0 &&
+                lensPhase2PermeatingTideHullmod(engine) &&
+                lensPhase2ParallaxDecksHullmod(engine)
         val visualOk = LensVfxTelemetry.counter(engine, LensVfxTelemetry.TELEMETRY_ECHO_FIXATION_FIELD_FRAMES) > 0 &&
-            LensVfxTelemetry.counter(engine, LensVfxTelemetry.TELEMETRY_DRIFT_MARK_FRAMES) > 0 &&
-            LensVfxTelemetry.counter(engine, LensVfxTelemetry.TELEMETRY_DEEP_WATER_MARK_FRAMES) > 0 &&
-            LensVfxTelemetry.counter(engine, LensVfxTelemetry.TELEMETRY_GHOST_SIGNAL_WAVE_FRAMES) > 0 &&
-            LensVfxTelemetry.counter(engine, LensVfxTelemetry.TELEMETRY_TIDE_FIELD_FRAMES) > 0
+                LensVfxTelemetry.counter(engine, LensVfxTelemetry.TELEMETRY_DRIFT_MARK_FRAMES) > 0 &&
+                LensVfxTelemetry.counter(engine, LensVfxTelemetry.TELEMETRY_DEEP_WATER_MARK_FRAMES) > 0 &&
+                LensVfxTelemetry.counter(engine, LensVfxTelemetry.TELEMETRY_GHOST_SIGNAL_WAVE_FRAMES) > 0 &&
+                LensVfxTelemetry.counter(engine, LensVfxTelemetry.TELEMETRY_TIDE_FIELD_FRAMES) > 0
         return mechOk && visualOk
     }
 
     /** 是否有敌舰被认知撕裂：承伤 mult>1（EchoFixationField 回放写 hullDamageTakenMult.modifyMult）。 */
     private fun lensPhase2CognitiveTearApplied(enemies: List<ShipAPI>): Boolean =
         enemies.any { ship ->
-            try { (ship.mutableStats?.hullDamageTakenMult?.modifiedValue ?: 0f) > 1.0001f } catch (_: Throwable) { false }
+            try {
+                (ship.mutableStats?.hullDamageTakenMult?.modifiedValue ?: 0f) > 1.0001f
+            } catch (_: Throwable) {
+                false
+            }
         }
 
     /** 场内敌舰深水标记最大层数（潮汐叠层证据）。 */
@@ -6406,7 +6880,11 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     }
 
     private fun automationReferenceWorldUnitsPerPixel(): Float {
-        val pixelHeight = try { Display.getHeight().toFloat().takeIf { it > 0f } ?: 1f } catch (_: Throwable) { 1f }
+        val pixelHeight = try {
+            Display.getHeight().toFloat().takeIf { it > 0f } ?: 1f
+        } catch (_: Throwable) {
+            1f
+        }
         return ASTDProjectileVfxLayout.referenceWorldUnitsPerPixel(pixelHeight)
     }
 
@@ -6434,7 +6912,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     private fun vfxObserved(engine: CombatEngineAPI): Boolean {
         val telemetry = ProjectileVfxDriverPlugin.telemetrySnapshot(engine)
         return telemetry.trackedCount > 0 &&
-            telemetry.lastProjectileSpecId == ASTDInGameAutomationScenario.PROJECTILE_SPEC_ID
+                telemetry.lastProjectileSpecId == ASTDInGameAutomationScenario.PROJECTILE_SPEC_ID
     }
 
     private fun evidenceReady(engine: CombatEngineAPI): Boolean {
@@ -6463,8 +6941,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             engine.setPlayerShipExternal(ship)
             ship.shipAI = null
             ship.setControlsLocked(false)
-            ship.setHoldFireOneFrame(false)
-            ship.setShipTarget(null)
+            ship.isHoldFireOneFrame = false
+            ship.shipTarget = null
         }
 
         if (tppProjectileFirstSeenAt < 0f && projectileObserved(engine)) {
@@ -6487,14 +6965,16 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     tppPhase = TPP_PHASE_PAUSE_ARMED
                 }
             }
+
             TPP_PHASE_PAUSE_ARMED -> {
                 if (tppCapturePending == null) {
-                    engine.setPaused(true)
+                    engine.isPaused = true
                     tppPhaseStartedAt = elapsed
                     tppPhase = TPP_PHASE_PAUSED
                     log.info("[ASTD-Automation] TPP paused at elapsed=$elapsed")
                 }
             }
+
             TPP_PHASE_PAUSED -> {
                 // 对照组：-Dastd.tpp.pauseSeconds=0 时暂停仅持续一帧（VFX 状态等价于无暂停直通）。
                 val pauseSeconds = System.getProperty("astd.tpp.pauseSeconds")?.toFloatOrNull() ?: TPP_PAUSE_SECONDS
@@ -6503,20 +6983,23 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     tppPhase = TPP_PHASE_RESUME_ARMED
                 }
             }
+
             TPP_PHASE_RESUME_ARMED -> {
                 if (tppCapturePending == null) {
-                    engine.setPaused(false)
+                    engine.isPaused = false
                     tppPhaseStartedAt = elapsed
                     tppPhase = TPP_PHASE_RESUMED
                     log.info("[ASTD-Automation] TPP resumed at elapsed=$elapsed")
                 }
             }
+
             TPP_PHASE_RESUMED -> {
                 if (elapsed - tppPhaseStartedAt >= TPP_POST_RESUME_FLIGHT_SECONDS) {
                     tppCapturePending = "AfterResume"
                     tppPhase = TPP_PHASE_FINISH_ARMED
                 }
             }
+
             TPP_PHASE_FINISH_ARMED -> {
                 if (tppCapturePending == null) {
                     writeDiagnostics(engine, "Completed", ship)
@@ -6579,12 +7062,32 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             return
         }
 
-        val displayMode = try { Display.getDisplayMode() } catch (_: Throwable) { null }
-        val displayWidth = try { Display.getWidth() } catch (_: Throwable) { -1 }
-        val displayHeight = try { Display.getHeight() } catch (_: Throwable) { -1 }
-        val displayPixelScale = try { Display.getPixelScaleFactor() } catch (_: Throwable) { -1f }
+        val displayMode = try {
+            Display.getDisplayMode()
+        } catch (_: Throwable) {
+            null
+        }
+        val displayWidth = try {
+            Display.getWidth()
+        } catch (_: Throwable) {
+            -1
+        }
+        val displayHeight = try {
+            Display.getHeight()
+        } catch (_: Throwable) {
+            -1
+        }
+        val displayPixelScale = try {
+            Display.getPixelScaleFactor()
+        } catch (_: Throwable) {
+            -1f
+        }
         val viewport = engine.viewport
-        val shipSprite = try { ship?.spriteAPI } catch (_: Throwable) { null }
+        val shipSprite = try {
+            ship?.spriteAPI
+        } catch (_: Throwable) {
+            null
+        }
         val vfxTelemetry = ProjectileVfxDriverPlugin.telemetrySnapshot(engine)
         val scenarioId = when {
             ASTDInGameAutomationScenario.isGravRiftScenarioEnabled() -> ASTDInGameAutomationScenario.GRG_SCENARIO_ID
@@ -6632,7 +7135,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             // （后备 != 1）场景已调 CombatState.setShowDeploymentDialogOnStart(false)，单舰场景
             // 保留闸门让 vanilla 静默 deployAll（2026-07-31 修正）；本字段在 CombatReady 与各相位
             // 写出时采样，任何时刻为 true 都说明闸门被重新打开（多舰场景会常驻遮屏）。
-            appendLine("  \"deploymentDialogShowing\": ${engine.combatUI?.isShowingDeploymentDialog()},")
+            appendLine("  \"deploymentDialogShowing\": ${engine.combatUI?.isShowingDeploymentDialog},")
             if (ASTDInGameAutomationScenario.isGravRiftScenarioEnabled()) {
                 val grgPlayer = findGrgPlayer(engine)
                 val grgSystem = grgPlayer?.system
@@ -6661,11 +7164,48 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 appendLine("  \"grgMinesInPlayMax\": $grgMinesInPlayMax,")
                 appendLine("  \"grgBeamDronesInPlay\": ${grgBeamDrones(engine).size},")
                 // ---- 系统战级遥测（键 = 前缀 + 母舰 id，战斗级生命周期；-1/null 表示尚未写入）----
-                appendLine("  \"grgTelemetryTarget\": ${jsonString(grgPlayer?.let { grgTelemetryText(engine, it, GravityRiftSystemStats.TELEMETRY_TARGET_KEY) })},")
-                appendLine("  \"grgTelemetryVortex\": ${grgPlayer?.let { grgTelemetryInt(engine, it, GravityRiftSystemStats.TELEMETRY_VORTEX_KEY) } ?: -1},")
-                appendLine("  \"grgTelemetryBeam\": ${grgPlayer?.let { grgTelemetryInt(engine, it, GravityRiftSystemStats.TELEMETRY_BEAM_KEY) } ?: -1},")
+                appendLine(
+                    "  \"grgTelemetryTarget\": ${
+                        jsonString(grgPlayer?.let {
+                            grgTelemetryText(
+                                engine,
+                                it,
+                                GravityRiftSystemStats.TELEMETRY_TARGET_KEY
+                            )
+                        })
+                    },"
+                )
+                appendLine(
+                    "  \"grgTelemetryVortex\": ${
+                        grgPlayer?.let {
+                            grgTelemetryInt(
+                                engine,
+                                it,
+                                GravityRiftSystemStats.TELEMETRY_VORTEX_KEY
+                            )
+                        } ?: -1
+                    },")
+                appendLine(
+                    "  \"grgTelemetryBeam\": ${
+                        grgPlayer?.let {
+                            grgTelemetryInt(
+                                engine,
+                                it,
+                                GravityRiftSystemStats.TELEMETRY_BEAM_KEY
+                            )
+                        } ?: -1
+                    },")
                 // mines 为战斗级累计口径（首波 5，取景波再 +5）。
-                appendLine("  \"grgTelemetryMines\": ${grgPlayer?.let { grgTelemetryInt(engine, it, GravityRiftSystemStats.TELEMETRY_MINES_KEY) } ?: -1},")
+                appendLine(
+                    "  \"grgTelemetryMines\": ${
+                        grgPlayer?.let {
+                            grgTelemetryInt(
+                                engine,
+                                it,
+                                GravityRiftSystemStats.TELEMETRY_MINES_KEY
+                            )
+                        } ?: -1
+                    },")
                 appendLine("  \"grgShipTargetId\": ${jsonString(grgPlayer?.shipTarget?.id)},")
                 appendLine("  \"grgEnemyHpBeforeFire\": ${formatFloat(grgEnemyHpBeforeFire)},")
                 appendLine("  \"grgEnemyMinHpAfterFire\": ${formatFloat(if (grgEnemyMinHpAfterFire == Float.MAX_VALUE) -1f else grgEnemyMinHpAfterFire)},")
@@ -6830,7 +7370,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 appendLine("  \"ssPhase\": \"$ssPhase\",")
                 appendLine("  \"ssSlotId\": ${jsonString(ssWeapon?.slot?.id)},")
                 appendLine("  \"ssWeaponRange\": ${formatFloat(ssWeapon?.range ?: -1f)},")
-                appendLine("  \"ssHintsPd\": ${ssWeapon?.spec?.getAIHints()?.contains(WeaponAPI.AIHints.PD) == true},")
+                appendLine("  \"ssHintsPd\": ${ssWeapon?.spec?.aiHints?.contains(WeaponAPI.AIHints.PD) == true},")
                 appendLine("  \"ssTargetHitpoints\": ${formatFloat(ssTarget?.hitpoints ?: -1f)},")
                 appendLine("  \"ssTargetMaxHitpoints\": ${formatFloat(ssTarget?.maxHitpoints ?: -1f)},")
                 appendLine("  \"ssPlayerHitpoints\": ${formatFloat(ssPlayer?.hitpoints ?: -1f)},")
@@ -6843,11 +7383,39 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 appendLine("  \"ssTeleportArc\": ${SevenStarsChainScript.telemetryCount(engine, SevenStarsChainScript.TELEMETRY_TELEPORT_ARC)},")
                 appendLine("  \"ssKills\": ${SevenStarsChainScript.telemetryCount(engine, SevenStarsChainScript.TELEMETRY_KILLS)},")
                 appendLine("  \"ssChainJumpsMax\": ${SevenStarsChainScript.telemetryCount(engine, SevenStarsChainScript.TELEMETRY_CHAIN_JUMPS_MAX)},")
-                appendLine("  \"ssDissipateNoShip\": ${SevenStarsChainScript.telemetryCount(engine, SevenStarsChainScript.TELEMETRY_DISSIPATE_NO_SHIP)},")
-                appendLine("  \"ssTerminalSingle\": ${SevenStarsChainScript.telemetryCount(engine, SevenStarsChainScript.TELEMETRY_TERMINAL_SINGLE)},")
+                appendLine(
+                    "  \"ssDissipateNoShip\": ${
+                        SevenStarsChainScript.telemetryCount(
+                            engine,
+                            SevenStarsChainScript.TELEMETRY_DISSIPATE_NO_SHIP
+                        )
+                    },"
+                )
+                appendLine(
+                    "  \"ssTerminalSingle\": ${
+                        SevenStarsChainScript.telemetryCount(
+                            engine,
+                            SevenStarsChainScript.TELEMETRY_TERMINAL_SINGLE
+                        )
+                    },"
+                )
                 appendLine("  \"ssTerminalMulti\": ${SevenStarsChainScript.telemetryCount(engine, SevenStarsChainScript.TELEMETRY_TERMINAL_MULTI)},")
-                appendLine("  \"ssTerminalSegmentsMax\": ${SevenStarsChainScript.telemetryCount(engine, SevenStarsChainScript.TELEMETRY_TERMINAL_SEGMENTS_MAX)},")
-                appendLine("  \"ssTerminalEmpArcs\": ${SevenStarsChainScript.telemetryCount(engine, SevenStarsChainScript.TELEMETRY_TERMINAL_EMP_ARCS)},")
+                appendLine(
+                    "  \"ssTerminalSegmentsMax\": ${
+                        SevenStarsChainScript.telemetryCount(
+                            engine,
+                            SevenStarsChainScript.TELEMETRY_TERMINAL_SEGMENTS_MAX
+                        )
+                    },"
+                )
+                appendLine(
+                    "  \"ssTerminalEmpArcs\": ${
+                        SevenStarsChainScript.telemetryCount(
+                            engine,
+                            SevenStarsChainScript.TELEMETRY_TERMINAL_EMP_ARCS
+                        )
+                    },"
+                )
                 appendLine("  \"ssChainFps\": ${formatFloat(ssChainFps)},")
                 appendLine("  \"ssEnemyMissilesInPlay\": ${engine.missiles.count { it.owner != 0 }},")
             } else if (ASTDInGameAutomationScenario.isPsEnabled()) {
@@ -6861,15 +7429,59 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 appendLine("  \"psPhase\": \"$psPhase\",")
                 appendLine("  \"psSlotId\": ${jsonString(psWeapon?.slot?.id)},")
                 appendLine("  \"psWeaponRange\": ${formatFloat(psWeapon?.range ?: -1f)},")
-                appendLine("  \"psHintsPd\": ${psWeapon?.spec?.getAIHints()?.contains(WeaponAPI.AIHints.PD) == true},")
+                appendLine("  \"psHintsPd\": ${psWeapon?.spec?.aiHints?.contains(WeaponAPI.AIHints.PD) == true},")
                 appendLine("  \"psTargetHitpoints\": ${formatFloat(psTarget?.hitpoints ?: -1f)},")
                 appendLine("  \"psTargetMaxHitpoints\": ${formatFloat(psTarget?.maxHitpoints ?: -1f)},")
-                appendLine("  \"psDetonateFuse\": ${PositronShockwaveFuseScript.telemetryCount(engine, PositronShockwaveFuseScript.TELEMETRY_DETONATE_FUSE)},")
-                appendLine("  \"psDetonateMaxRange\": ${PositronShockwaveFuseScript.telemetryCount(engine, PositronShockwaveFuseScript.TELEMETRY_DETONATE_MAX_RANGE)},")
-                appendLine("  \"psLastDetonateDist\": ${formatFloat(PositronShockwaveFuseScript.telemetryFloat(engine, PositronShockwaveFuseScript.TELEMETRY_LAST_DETONATE_DIST))},")
-                appendLine("  \"psConeShipHits\": ${PositronShockwaveFuseScript.telemetryCount(engine, PositronShockwaveFuseScript.TELEMETRY_CONE_SHIP_HITS)},")
-                appendLine("  \"psConeMissileHits\": ${PositronShockwaveFuseScript.telemetryCount(engine, PositronShockwaveFuseScript.TELEMETRY_CONE_MISSILE_HITS)},")
-                appendLine("  \"psConeFighterHits\": ${PositronShockwaveFuseScript.telemetryCount(engine, PositronShockwaveFuseScript.TELEMETRY_CONE_FIGHTER_HITS)},")
+                appendLine(
+                    "  \"psDetonateFuse\": ${
+                        PositronShockwaveFuseScript.telemetryCount(
+                            engine,
+                            PositronShockwaveFuseScript.TELEMETRY_DETONATE_FUSE
+                        )
+                    },"
+                )
+                appendLine(
+                    "  \"psDetonateMaxRange\": ${
+                        PositronShockwaveFuseScript.telemetryCount(
+                            engine,
+                            PositronShockwaveFuseScript.TELEMETRY_DETONATE_MAX_RANGE
+                        )
+                    },"
+                )
+                appendLine(
+                    "  \"psLastDetonateDist\": ${
+                        formatFloat(
+                            PositronShockwaveFuseScript.telemetryFloat(
+                                engine,
+                                PositronShockwaveFuseScript.TELEMETRY_LAST_DETONATE_DIST
+                            )
+                        )
+                    },"
+                )
+                appendLine(
+                    "  \"psConeShipHits\": ${
+                        PositronShockwaveFuseScript.telemetryCount(
+                            engine,
+                            PositronShockwaveFuseScript.TELEMETRY_CONE_SHIP_HITS
+                        )
+                    },"
+                )
+                appendLine(
+                    "  \"psConeMissileHits\": ${
+                        PositronShockwaveFuseScript.telemetryCount(
+                            engine,
+                            PositronShockwaveFuseScript.TELEMETRY_CONE_MISSILE_HITS
+                        )
+                    },"
+                )
+                appendLine(
+                    "  \"psConeFighterHits\": ${
+                        PositronShockwaveFuseScript.telemetryCount(
+                            engine,
+                            PositronShockwaveFuseScript.TELEMETRY_CONE_FIGHTER_HITS
+                        )
+                    },"
+                )
                 appendLine("  \"psConeVfx\": ${PositronShockwaveFuseScript.telemetryCount(engine, PositronShockwaveFuseScript.TELEMETRY_CONE_VFX)},")
                 appendLine("  \"psFloaty\": ${PositronShockwaveFuseScript.telemetryCount(engine, PositronShockwaveFuseScript.TELEMETRY_FLOATY)},")
                 appendLine("  \"psDevMode\": ${Global.getSettings().isDevMode},")
@@ -6894,19 +7506,84 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 appendLine("  \"qjW2Stacks\": ${qjPlayer?.qiongjueCalcStacks()?.stacks ?: -1},")
                 appendLine("  \"qjEnemyStacks\": ${qjEnemy?.qiongjueCalcStacks()?.stacks ?: -1},")
                 // 逐命中伤害乘区遥测（同 spec 武器共享 damage.modifier stat 后的唯一逐武器证据通道）。
-                appendLine("  \"qjW1DealtMult\": ${formatFloat(if (qjPlayer != null && qjW1 != null) QiongjueDamageDealtModifier.dealtMult(engine, qjPlayer, qjW1) else -1f)},")
-                appendLine("  \"qjW2DealtMult\": ${formatFloat(if (qjPlayer != null && qjW2 != null) QiongjueDamageDealtModifier.dealtMult(engine, qjPlayer, qjW2) else -1f)},")
-                appendLine("  \"qjEnemyDealtMult\": ${formatFloat(if (qjEnemy != null && qjEnemyW != null) QiongjueDamageDealtModifier.dealtMult(engine, qjEnemy, qjEnemyW) else -1f)},")
+                appendLine(
+                    "  \"qjW1DealtMult\": ${
+                        formatFloat(
+                            if (qjPlayer != null && qjW1 != null) QiongjueDamageDealtModifier.dealtMult(
+                                engine,
+                                qjPlayer,
+                                qjW1
+                            ) else -1f
+                        )
+                    },"
+                )
+                appendLine(
+                    "  \"qjW2DealtMult\": ${
+                        formatFloat(
+                            if (qjPlayer != null && qjW2 != null) QiongjueDamageDealtModifier.dealtMult(
+                                engine,
+                                qjPlayer,
+                                qjW2
+                            ) else -1f
+                        )
+                    },"
+                )
+                appendLine(
+                    "  \"qjEnemyDealtMult\": ${
+                        formatFloat(
+                            if (qjEnemy != null && qjEnemyW != null) QiongjueDamageDealtModifier.dealtMult(
+                                engine,
+                                qjEnemy,
+                                qjEnemyW
+                            ) else -1f
+                        )
+                    },"
+                )
                 // 同舰双穷距伤害 stat 同一性探针（第三轮烟测实证 true：同 spec 武器共享底层 MutableStat）。
                 appendLine("  \"qjDmgStatShared\": ${qjW1 != null && qjW2 != null && qjW1.damage?.modifier === qjW2.damage?.modifier},")
                 appendLine("  \"qjDmgMultAtFull\": ${formatFloat(qjDmgMultAtFull)},")
                 appendLine("  \"qjRefireMinAtFull\": ${formatFloat(if (qjRefireMinAtFull == Float.MAX_VALUE) -1f else qjRefireMinAtFull)},")
-                appendLine("  \"qjSpikeApplied\": ${QiongjuePhaseRailgunOnHitEffect.telemetryCount(engine, QiongjueCalcStacks.TELEMETRY_SPIKE_APPLIED)},")
+                appendLine(
+                    "  \"qjSpikeApplied\": ${
+                        QiongjuePhaseRailgunOnHitEffect.telemetryCount(
+                            engine,
+                            QiongjueCalcStacks.TELEMETRY_SPIKE_APPLIED
+                        )
+                    },"
+                )
                 appendLine("  \"qjHudFrames\": ${QiongjuePhaseRailgunOnHitEffect.telemetryCount(engine, QiongjueCalcStacks.TELEMETRY_HUD_FRAMES)},")
-                appendLine("  \"qjHitPlayer\": ${QiongjuePhaseRailgunOnHitEffect.telemetryCount(engine, QiongjuePhaseRailgunOnHitEffect.TELEMETRY_HIT_PLAYER)},")
-                appendLine("  \"qjHitOther\": ${QiongjuePhaseRailgunOnHitEffect.telemetryCount(engine, QiongjuePhaseRailgunOnHitEffect.TELEMETRY_HIT_OTHER)},")
-                appendLine("  \"qjTransferPlayer\": ${QiongjuePhaseRailgunOnHitEffect.telemetryCount(engine, QiongjuePhaseRailgunOnHitEffect.TELEMETRY_TRANSFER_PLAYER)},")
-                appendLine("  \"qjConeVfx\": ${QiongjuePhaseRailgunOnHitEffect.telemetryCount(engine, QiongjuePhaseRailgunOnHitEffect.TELEMETRY_CONE_VFX)},")
+                appendLine(
+                    "  \"qjHitPlayer\": ${
+                        QiongjuePhaseRailgunOnHitEffect.telemetryCount(
+                            engine,
+                            QiongjuePhaseRailgunOnHitEffect.TELEMETRY_HIT_PLAYER
+                        )
+                    },"
+                )
+                appendLine(
+                    "  \"qjHitOther\": ${
+                        QiongjuePhaseRailgunOnHitEffect.telemetryCount(
+                            engine,
+                            QiongjuePhaseRailgunOnHitEffect.TELEMETRY_HIT_OTHER
+                        )
+                    },"
+                )
+                appendLine(
+                    "  \"qjTransferPlayer\": ${
+                        QiongjuePhaseRailgunOnHitEffect.telemetryCount(
+                            engine,
+                            QiongjuePhaseRailgunOnHitEffect.TELEMETRY_TRANSFER_PLAYER
+                        )
+                    },"
+                )
+                appendLine(
+                    "  \"qjConeVfx\": ${
+                        QiongjuePhaseRailgunOnHitEffect.telemetryCount(
+                            engine,
+                            QiongjuePhaseRailgunOnHitEffect.TELEMETRY_CONE_VFX
+                        )
+                    },"
+                )
                 appendLine("  \"qjStackFps\": ${formatFloat(qjStackFps)},")
                 appendLine("  \"qjSwitchW1Stacks\": $qjSwitchW1Stacks,")
                 appendLine("  \"qjDecaySeconds\": ${formatFloat(qjDecaySeconds)},")
@@ -6929,18 +7606,69 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 appendLine("  \"avSynergySlotId\": ${jsonString(avSynergyW?.slot?.id)},")
                 appendLine("  \"avPlayerWeaponRange\": ${formatFloat(avPlayerW?.range ?: -1f)},")
                 appendLine("  \"avPlayerWeaponFiring\": ${avPlayerW?.isFiring ?: false},")
-                appendLine("  \"avAbsorbedPlayer\": ${AnnihilationVortexBeamEffect.counter(engine, AnnihilationVortexBeamEffect.TELEMETRY_ABSORBED_PLAYER)},")
-                appendLine("  \"avAbsorbedEnemy\": ${AnnihilationVortexBeamEffect.counter(engine, AnnihilationVortexBeamEffect.TELEMETRY_ABSORBED_ENEMY)},")
-                appendLine("  \"avCollapseCount\": ${AnnihilationVortexBeamEffect.counter(engine, AnnihilationVortexBeamEffect.TELEMETRY_COLLAPSE_COUNT)},")
-                appendLine("  \"avLastCollapseDamagePlayer\": ${formatFloat(AnnihilationVortexBeamEffect.telemetryFloat(engine, AnnihilationVortexBeamEffect.TELEMETRY_LAST_COLLAPSE_DAMAGE_PLAYER))},")
-                appendLine("  \"avLastCollapseHitsPlayer\": ${AnnihilationVortexBeamEffect.counter(engine, AnnihilationVortexBeamEffect.TELEMETRY_LAST_COLLAPSE_HITS_PLAYER)},")
+                appendLine(
+                    "  \"avAbsorbedPlayer\": ${
+                        AnnihilationVortexBeamEffect.counter(
+                            engine,
+                            AnnihilationVortexBeamEffect.TELEMETRY_ABSORBED_PLAYER
+                        )
+                    },"
+                )
+                appendLine(
+                    "  \"avAbsorbedEnemy\": ${
+                        AnnihilationVortexBeamEffect.counter(
+                            engine,
+                            AnnihilationVortexBeamEffect.TELEMETRY_ABSORBED_ENEMY
+                        )
+                    },"
+                )
+                appendLine(
+                    "  \"avCollapseCount\": ${
+                        AnnihilationVortexBeamEffect.counter(
+                            engine,
+                            AnnihilationVortexBeamEffect.TELEMETRY_COLLAPSE_COUNT
+                        )
+                    },"
+                )
+                appendLine(
+                    "  \"avLastCollapseDamagePlayer\": ${
+                        formatFloat(
+                            AnnihilationVortexBeamEffect.telemetryFloat(
+                                engine,
+                                AnnihilationVortexBeamEffect.TELEMETRY_LAST_COLLAPSE_DAMAGE_PLAYER
+                            )
+                        )
+                    },"
+                )
+                appendLine(
+                    "  \"avLastCollapseHitsPlayer\": ${
+                        AnnihilationVortexBeamEffect.counter(
+                            engine,
+                            AnnihilationVortexBeamEffect.TELEMETRY_LAST_COLLAPSE_HITS_PLAYER
+                        )
+                    },"
+                )
                 appendLine("  \"avEmptyCollapseDamage\": ${formatFloat(avEmptyCollapseDamage)},")
                 appendLine("  \"avBurstOnSeconds\": ${formatFloat(avBurstOnSeconds)},")
                 appendLine("  \"avBurstOffSeconds\": ${formatFloat(avBurstOffSeconds)},")
                 appendLine("  \"avHiddenBeamOk\": $avHiddenBeamOk,")
                 appendLine("  \"avHudFrames\": ${AnnihilationVortexBeamEffect.counter(engine, AnnihilationVortexBeamEffect.TELEMETRY_HUD_FRAMES)},")
-                appendLine("  \"avFloatyCount\": ${AnnihilationVortexBeamEffect.counter(engine, AnnihilationVortexBeamEffect.TELEMETRY_FLOATY_COUNT)},")
-                appendLine("  \"avPoolRecycled\": ${AnnihilationVortexBeamEffect.counter(engine, AnnihilationVortexBeamEffect.TELEMETRY_POOL_RECYCLED)},")
+                appendLine(
+                    "  \"avFloatyCount\": ${
+                        AnnihilationVortexBeamEffect.counter(
+                            engine,
+                            AnnihilationVortexBeamEffect.TELEMETRY_FLOATY_COUNT
+                        )
+                    },"
+                )
+                appendLine(
+                    "  \"avPoolRecycled\": ${
+                        AnnihilationVortexBeamEffect.counter(
+                            engine,
+                            AnnihilationVortexBeamEffect.TELEMETRY_POOL_RECYCLED
+                        )
+                    },"
+                )
                 appendLine("  \"avScaleRadius1\": ${formatFloat(avScaleRadius1)},")
                 appendLine("  \"avScaleRadius2\": ${formatFloat(avScaleRadius2)},")
                 appendLine("  \"avScaleRadius5\": ${formatFloat(avScaleRadius5)},")
@@ -6990,9 +7718,39 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 appendLine("  \"chargeNeedlePhase\": \"$chargeNeedlePhase\",")
                 appendLine("  \"chargeNeedleTargetStacks\": ${enemyStacks?.stacks ?: 0},")
                 appendLine("  \"chargeNeedleTargetMaxStacks\": ${enemyStacks?.maxStacks ?: 0},")
-                appendLine("  \"chargeNeedleTargetUpkeepMult\": ${formatFloat(try { enemy?.mutableStats?.shieldUpkeepMult?.modifiedValue ?: -1f } catch (_: Throwable) { -1f })},")
-                appendLine("  \"chargeNeedleTargetDissipation\": ${formatFloat(try { enemy?.mutableStats?.fluxDissipation?.modifiedValue ?: -1f } catch (_: Throwable) { -1f })},")
-                appendLine("  \"chargeNeedleTargetBaseUpkeep\": ${formatFloat(try { enemy?.hullSpec?.shieldSpec?.upkeepCost ?: -1f } catch (_: Throwable) { -1f })},")
+                appendLine(
+                    "  \"chargeNeedleTargetUpkeepMult\": ${
+                        formatFloat(
+                            try {
+                                enemy?.mutableStats?.shieldUpkeepMult?.modifiedValue ?: -1f
+                            } catch (_: Throwable) {
+                                -1f
+                            }
+                        )
+                    },"
+                )
+                appendLine(
+                    "  \"chargeNeedleTargetDissipation\": ${
+                        formatFloat(
+                            try {
+                                enemy?.mutableStats?.fluxDissipation?.modifiedValue ?: -1f
+                            } catch (_: Throwable) {
+                                -1f
+                            }
+                        )
+                    },"
+                )
+                appendLine(
+                    "  \"chargeNeedleTargetBaseUpkeep\": ${
+                        formatFloat(
+                            try {
+                                enemy?.hullSpec?.shieldSpec?.upkeepCost ?: -1f
+                            } catch (_: Throwable) {
+                                -1f
+                            }
+                        )
+                    },"
+                )
                 appendLine("  \"chargeNeedlePeakStacks\": $chargeNeedlePeakStacks,")
                 appendLine("  \"chargeNeedlePlayerVictimStacks\": ${player?.chargeNeedleStacks()?.stacks ?: 0},")
                 appendLine("  \"chargeNeedleDischargeCount\": ${ChargeNeedleVfx.dischargeCount(engine)},")
@@ -7005,8 +7763,9 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 appendLine("  \"chargeNeedleOwnProjectiles\": ${engine.projectiles.count { it.projectileSpecId in CHARGE_NEEDLE_PROJECTILE_SPEC_IDS }},")
                 // ---- 舞台排障：三武器组/自动开火/AI 判定状态 ----
                 // WS 004 判别轮该槽挂的是小型针刺：heavyNeedleW 按槽位取（不拘 id），区分槽位阻断与规格阻断。
-                val smallNeedleW = player?.allWeapons?.firstOrNull { it.id == ASTDInGameAutomationScenario.CHARGE_NEEDLE_WEAPON_ID && it.slot?.id == "WS 001" }
-                    ?: player?.allWeapons?.firstOrNull { it.id == ASTDInGameAutomationScenario.CHARGE_NEEDLE_WEAPON_ID }
+                val smallNeedleW =
+                    player?.allWeapons?.firstOrNull { it.id == ASTDInGameAutomationScenario.CHARGE_NEEDLE_WEAPON_ID && it.slot?.id == "WS 001" }
+                        ?: player?.allWeapons?.firstOrNull { it.id == ASTDInGameAutomationScenario.CHARGE_NEEDLE_WEAPON_ID }
                 val heavyNeedleW = player?.allWeapons?.firstOrNull { it.slot?.id == "WS 004" }
                 val enemyNeedleW = enemy?.allWeapons?.firstOrNull { it.id == ASTDInGameAutomationScenario.CHARGE_NEEDLE_WEAPON_ID }
                 appendLine("  \"chargeNeedleSmallState\": ${jsonString(chargeNeedleWeaponState(player, smallNeedleW))},")
@@ -7033,15 +7792,30 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 appendLine("  \"lensCrewedDeployed\": ${crewed != null},")
                 appendLine("  \"lensAutomatedDeployed\": ${findAutomatedLens(engine) != null},")
                 // ---- shader 提交计数（视觉管线生效证据，每次真实 upsert +1）----
-                appendLine("  \"echoFixationFieldVisualFrames\": ${LensVfxTelemetry.counter(engine, LensVfxTelemetry.TELEMETRY_ECHO_FIXATION_FIELD_FRAMES)},")
+                appendLine(
+                    "  \"echoFixationFieldVisualFrames\": ${
+                        LensVfxTelemetry.counter(
+                            engine,
+                            LensVfxTelemetry.TELEMETRY_ECHO_FIXATION_FIELD_FRAMES
+                        )
+                    },"
+                )
                 appendLine("  \"driftMarkVisualFrames\": ${LensVfxTelemetry.counter(engine, LensVfxTelemetry.TELEMETRY_DRIFT_MARK_FRAMES)},")
                 appendLine("  \"deepWaterMarkVisualFrames\": ${LensVfxTelemetry.counter(engine, LensVfxTelemetry.TELEMETRY_DEEP_WATER_MARK_FRAMES)},")
                 appendLine("  \"ghostSignalWaveFrames\": ${LensVfxTelemetry.counter(engine, LensVfxTelemetry.TELEMETRY_GHOST_SIGNAL_WAVE_FRAMES)},")
                 appendLine("  \"tideFieldVisualFrames\": ${LensVfxTelemetry.counter(engine, LensVfxTelemetry.TELEMETRY_TIDE_FIELD_FRAMES)},")
             } else if (ASTDInGameAutomationScenario.isLensPhase1Enabled()) {
                 val lens = findShipByHull(engine, LensArrayCoreHullModIds.HULL_ID)
-                val lensVariant = try { lens?.variant } catch (_: Throwable) { null }
-                val lensShield = try { lens?.shield } catch (_: Throwable) { null }
+                val lensVariant = try {
+                    lens?.variant
+                } catch (_: Throwable) {
+                    null
+                }
+                val lensShield = try {
+                    lens?.shield
+                } catch (_: Throwable) {
+                    null
+                }
                 appendLine("  \"runtimeElapsedSeconds\": 0,")
                 appendLine("  \"runtimeTrackedCount\": 0,")
                 appendLine("  \"runtimeLastProjectileSpecId\": null,")
@@ -7051,12 +7825,40 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 appendLine("  \"lensSwitcherHullmod\": ${safeBool { lensVariant?.hasHullMod(LENS_DUAL_MODE_CONFIG.switcherId) == true }},")
                 appendLine("  \"lensCrewedModeHullmod\": ${safeBool { lensVariant?.hasHullMod(LensArrayCoreHullModIds.MODE_CREWED) == true }},")
                 appendLine("  \"lensShieldOn\": ${safeBool { lensShield?.isOn == true }},")
-                appendLine("  \"lensShieldArc\": ${formatFloat(try { lensShield?.arc ?: lens?.hullSpec?.shieldSpec?.arc ?: 0f } catch (_: Throwable) { 0f })},")
-                appendLine("  \"lensFighterBays\": ${try { lens?.hullSpec?.fighterBays ?: 0 } catch (_: Throwable) { 0 }},")
+                appendLine(
+                    "  \"lensShieldArc\": ${
+                        formatFloat(
+                            try {
+                                lensShield?.arc ?: lens?.hullSpec?.shieldSpec?.arc ?: 0f
+                            } catch (_: Throwable) {
+                                0f
+                            }
+                        )
+                    },"
+                )
+                appendLine(
+                    "  \"lensFighterBays\": ${
+                        try {
+                            lens?.hullSpec?.fighterBays ?: 0
+                        } catch (_: Throwable) {
+                            0
+                        }
+                    },"
+                )
                 appendLine("  \"lensCoreTooltipKeys\": ${lensCoreTooltipKeyCount(engine)},")
                 appendLine("  \"lensSelfDriftStacks\": ${lens?.let { LensMarks.driftStacks(it) } ?: 0},")
                 appendLine("  \"lensSelfDeepWaterStacks\": ${lens?.let { LensMarks.deepWaterStacks(it) } ?: 0},")
-                appendLine("  \"lensSelfHullDamageTakenMult\": ${formatFloat(try { lens?.mutableStats?.hullDamageTakenMult?.modifiedValue ?: 0f } catch (_: Throwable) { 0f })},")
+                appendLine(
+                    "  \"lensSelfHullDamageTakenMult\": ${
+                        formatFloat(
+                            try {
+                                lens?.mutableStats?.hullDamageTakenMult?.modifiedValue ?: 0f
+                            } catch (_: Throwable) {
+                                0f
+                            }
+                        )
+                    },"
+                )
             } else if (ASTDInGameAutomationScenario.isArcProductionEnabled()) {
                 val xc101 = findShipByHull(engine, ASTDArcProductionShipIds.HULL_XC_101)
                 val plasmaSystem = xc101?.system
@@ -7073,9 +7875,18 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 appendLine("  \"arcProductionDeployedShipIds\": ${jsonStringList(arcProductionDeployedShipIds(engine))},")
                 appendLine("  \"arcProductionDeployedVariantIds\": ${jsonStringList(arcProductionDeployedVariantIds(engine))},")
                 appendLine("  \"arcProductionSourceVariantIds\": ${jsonStringList(arcProductionSourceVariantIds(engine))},")
-                appendLine("  \"arcProductionPlayerReserves\": ${engine.getFleetManager(FleetSide.PLAYER).getReservesCopy().size},")
-                appendLine("  \"arcProductionEnemyReserves\": ${engine.getFleetManager(FleetSide.ENEMY).getReservesCopy().size},")
-                appendLine("  \"xc103SystemState\": ${jsonString(findShipByHull(engine, ASTDArcProductionShipIds.HULL_XC_103)?.system?.state?.name)},")
+                appendLine("  \"arcProductionPlayerReserves\": ${engine.getFleetManager(FleetSide.PLAYER).reservesCopy.size},")
+                appendLine("  \"arcProductionEnemyReserves\": ${engine.getFleetManager(FleetSide.ENEMY).reservesCopy.size},")
+                appendLine(
+                    "  \"xc103SystemState\": ${
+                        jsonString(
+                            findShipByHull(
+                                engine,
+                                ASTDArcProductionShipIds.HULL_XC_103
+                            )?.system?.state?.name
+                        )
+                    },"
+                )
                 appendLine("  \"xc101SystemId\": ${jsonString(plasmaSystem?.id)},")
                 appendLine("  \"xc101SystemState\": ${jsonString(plasmaSystem?.state?.name)},")
                 appendLine("  \"xc101SystemCanBeActivated\": ${safeBool { plasmaSystem?.canBeActivated() == true }},")
@@ -7121,17 +7932,59 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             appendLine("  \"fallbackFading\": ${fallbackProjectile?.isFading ?: false},")
             appendLine("  \"xc102ShockwaveFrames\": ${ASTDArcProductionVfx.counter(engine, ASTDArcProductionVfx.TELEMETRY_XC_102_SHOCKWAVE_FRAMES)},")
             appendLine("  \"xc102ShockwaveRadius\": ${ASTDArcProductionVfx.counter(engine, ASTDArcProductionVfx.TELEMETRY_XC_102_SHOCKWAVE_RADIUS)},")
-            appendLine("  \"xc102ShockwaveFluxPressure\": ${ASTDArcProductionVfx.counter(engine, ASTDArcProductionVfx.TELEMETRY_XC_102_SHOCKWAVE_FLUX_PRESSURE)},")
+            appendLine(
+                "  \"xc102ShockwaveFluxPressure\": ${
+                    ASTDArcProductionVfx.counter(
+                        engine,
+                        ASTDArcProductionVfx.TELEMETRY_XC_102_SHOCKWAVE_FLUX_PRESSURE
+                    )
+                },"
+            )
             appendLine("  \"xc101ShieldOpen\": ${ASTDArcProductionVfx.counter(engine, ASTDArcProductionVfx.TELEMETRY_XC_101_SHIELD_OPEN)},")
             appendLine("  \"xc101SystemActive\": ${ASTDArcProductionVfx.counter(engine, ASTDArcProductionVfx.TELEMETRY_XC_101_SYSTEM_ACTIVE)},")
-            appendLine("  \"xc101ShieldArcEmissions\": ${ASTDArcProductionVfx.counter(engine, ASTDArcProductionVfx.TELEMETRY_XC_101_SHIELD_ARC_EMISSIONS)},")
-            appendLine("  \"xc103SystemAfterimages\": ${ASTDArcProductionVfx.counter(engine, ASTDArcProductionVfx.TELEMETRY_XC_103_SYSTEM_AFTERIMAGES)},")
+            appendLine(
+                "  \"xc101ShieldArcEmissions\": ${
+                    ASTDArcProductionVfx.counter(
+                        engine,
+                        ASTDArcProductionVfx.TELEMETRY_XC_101_SHIELD_ARC_EMISSIONS
+                    )
+                },"
+            )
+            appendLine(
+                "  \"xc103SystemAfterimages\": ${
+                    ASTDArcProductionVfx.counter(
+                        engine,
+                        ASTDArcProductionVfx.TELEMETRY_XC_103_SYSTEM_AFTERIMAGES
+                    )
+                },"
+            )
             val xc102TooltipKeys = tooltipResolvedKeyCount(ASTDArcProductionShipIds.HULL_XC_102, ASTDArcProductionTooltipContracts.xc102Contracts)
             val xc101TooltipKeys = tooltipResolvedKeyCount(ASTDArcProductionShipIds.HULL_XC_101, ASTDArcProductionTooltipContracts.xc101Contracts)
             val xc103TooltipKeys = tooltipResolvedKeyCount(ASTDArcProductionShipIds.HULL_XC_103, ASTDArcProductionTooltipContracts.xc103Contracts)
-            appendLine("  \"xc102Tooltip\": ${tooltipBlocksResolved(ASTDArcProductionShipIds.HULL_XC_102, ASTDArcProductionTooltipContracts.xc102Contracts)},")
-            appendLine("  \"xc101Tooltip\": ${tooltipBlocksResolved(ASTDArcProductionShipIds.HULL_XC_101, ASTDArcProductionTooltipContracts.xc101Contracts)},")
-            appendLine("  \"xc103Tooltip\": ${tooltipBlocksResolved(ASTDArcProductionShipIds.HULL_XC_103, ASTDArcProductionTooltipContracts.xc103Contracts)},")
+            appendLine(
+                "  \"xc102Tooltip\": ${
+                    tooltipBlocksResolved(
+                        ASTDArcProductionShipIds.HULL_XC_102,
+                        ASTDArcProductionTooltipContracts.xc102Contracts
+                    )
+                },"
+            )
+            appendLine(
+                "  \"xc101Tooltip\": ${
+                    tooltipBlocksResolved(
+                        ASTDArcProductionShipIds.HULL_XC_101,
+                        ASTDArcProductionTooltipContracts.xc101Contracts
+                    )
+                },"
+            )
+            appendLine(
+                "  \"xc103Tooltip\": ${
+                    tooltipBlocksResolved(
+                        ASTDArcProductionShipIds.HULL_XC_103,
+                        ASTDArcProductionTooltipContracts.xc103Contracts
+                    )
+                },"
+            )
             appendLine("  \"xc102TooltipKeys\": $xc102TooltipKeys,")
             appendLine("  \"xc101TooltipKeys\": $xc101TooltipKeys,")
             appendLine("  \"xc103TooltipKeys\": $xc103TooltipKeys,")
@@ -7171,9 +8024,9 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         if (xc101 == null) return 0
         return engine.ships.count { ship ->
             ship.owner != xc101.owner &&
-                ship.isAlive &&
-                !ship.isHulk &&
-                distanceSquared(ship.location, xc101.location) <= PLASMA_AI_PRESSURE_RANGE * PLASMA_AI_PRESSURE_RANGE
+                    ship.isAlive &&
+                    !ship.isHulk &&
+                    distanceSquared(ship.location, xc101.location) <= PLASMA_AI_PRESSURE_RANGE * PLASMA_AI_PRESSURE_RANGE
         }
     }
 
@@ -7203,8 +8056,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             val damaging = projectile as? DamagingProjectileAPI ?: return@count false
             val source = damaging.source ?: return@count false
             source.owner != xc101.owner &&
-                !damaging.isExpired &&
-                distanceSquared(damaging.location, xc101.location) <= PLASMA_AI_PRESSURE_RANGE * PLASMA_AI_PRESSURE_RANGE
+                    !damaging.isExpired &&
+                    distanceSquared(damaging.location, xc101.location) <= PLASMA_AI_PRESSURE_RANGE * PLASMA_AI_PRESSURE_RANGE
         }
     }
 
@@ -7223,7 +8076,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
 
     private fun plasmaAIFlagTarget(ship: ShipAPI?, flag: ShipwideAIFlags.AIFlags): PlasmaTargetDiagnostic {
         val flags = ship?.shipAI?.aiFlags ?: ship?.aiFlags
-            ?: return PlasmaTargetDiagnostic(null, "missing AI flags for ${flag.name}")
+        ?: return PlasmaTargetDiagnostic(null, "missing AI flags for ${flag.name}")
         val custom = try {
             flags.getCustom(flag)
         } catch (e: Throwable) {
@@ -7255,7 +8108,11 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     }
 
     private fun hasHullmod(ship: ShipAPI, hullmodId: String): Boolean =
-        try { ship.variant?.hasHullMod(hullmodId) == true } catch (_: Throwable) { false }
+        try {
+            ship.variant?.hasHullMod(hullmodId) == true
+        } catch (_: Throwable) {
+            false
+        }
 
     private fun isResolvedTextKey(key: String): Boolean {
         val text = I18n[I18n.Categories.MOD, key]
@@ -7276,7 +8133,11 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     }
 
     private fun safeBool(block: () -> Boolean): Boolean =
-        try { block() } catch (_: Throwable) { false }
+        try {
+            block()
+        } catch (_: Throwable) {
+            false
+        }
 
     private fun escapeJson(value: String): String = value
         .replace("\\", "\\\\")
@@ -7298,17 +8159,22 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             ASTDArcProductionShipIds.HULL_XC_101,
             ASTDArcProductionShipIds.HULL_XC_103,
         )
+
         // 决明级自标记验收层数（spec：误差/深水各叠 3 层）。
         private const val LENS_SELF_MARK_STACKS = 3
+
         // phase2 部署锚点：载人透镜上方、无人透镜下方，敌群居中（落入两者作用范围）。
         private val LENS_PHASE2_CREWED_ANCHOR = Vector2f(-260f, 260f)
         private val LENS_PHASE2_AUTOMATED_ANCHOR = Vector2f(-260f, -380f)
         private const val LENS_PHASE2_ENEMY_CLUSTER_X = 360f
+
         // phase2 幽灵信号导弹投放：每 0.3s 一批，每批 6 枚环绕无人透镜（确保落入 2000su 幽灵范围）。
         private const val GHOST_MISSILE_FEED_INTERVAL = 0.3f
         private const val GHOST_MISSILE_BURST = 6
+
         // 投放用导弹 weaponId（ASTD 既有导弹型武器，保证模组已加载；范式同 ASTDVirtualParticleLatticeWebHullMod）。
         private const val GHOST_FEED_MISSILE_ID = "astd_virtual_particle_mote_launcher"
+
         // 透镜阵列核心 hullmod tooltip 文本 key（与 ASTDLensArrayCoreHullMod.addPostDescriptionSection 一致，共 7 个）。
         private val LENS_CORE_TOOLTIP_KEYS = listOf(
             "ui.hullmod.lens_core.summary",
@@ -7328,10 +8194,12 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private const val AUTOMATION_CURVE_AMOUNT = 96f
         private const val AUTOMATION_CURVE_FREQUENCY = 0.8f
         private const val AUTOMATION_REFERENCE_CAPTURE_HEIGHT = 600f
+
         // 合成截图场景的飞行窗口参数（旧 aod7 preset lifecycle 默认；新管线 DSL 不再建模这两段，按场景常量固化）。
         private const val AUTOMATION_FLIGHT_END_RATIO = 0.6f
         private const val AUTOMATION_PRE_DISSOLVE_FRACTION = 0.82f
         private const val SCREENSHOT_FLIGHT_SECONDS = 0.13333334f
+
         // trail_pause_probe 探针：相位机与计时窗口（秒）。
         private const val TPP_PHASE_FIRE = "FIRE"
         private const val TPP_PHASE_PAUSE_ARMED = "PAUSE_ARMED"
@@ -7342,14 +8210,17 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private const val TPP_PHASE_DONE = "DONE"
         private const val TPP_PRE_PAUSE_FLIGHT_SECONDS = 0.1f
         private const val TPP_PAUSE_SECONDS = 1.2f
+
         // 恢复后观测窗：2880su/s 下 0.05s = 144su，保证弹体仍在取景内（视口右界 x≈633）。
         private const val TPP_POST_RESUME_FLIGHT_SECONDS = 0.05f
+
         // 旧 aod7 spec 的拖尾锚宽/飞行时长/溶解起点/参考取景宽（Static Trail 迁移后 policy 不再携带，取景曲线按常量固化）。
         private const val AUTOMATION_REF_TRAIL_START_WIDTH = 96f
         private const val AUTOMATION_REF_DURATION_SECONDS = 1.25f
         private const val AUTOMATION_REF_DISSOLVE_START_RATIO = 0.6f
         private const val AUTOMATION_REF_CAPTURE_WIDTH = 1846f
         private const val PLASMA_AI_PRESSURE_RANGE = 1800f
+
         // 电荷针刺场景：相位机与锚点。
         private const val CHARGE_NEEDLE_PHASE_SHIELD = "SHIELD"
         private const val CHARGE_NEEDLE_PHASE_HULL = "HULL"
@@ -7360,6 +8231,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private val CHARGE_NEEDLE_PLAYER_ANCHOR = Vector2f(-350f, 0f)
         private val CHARGE_NEEDLE_ENEMY_ANCHOR = Vector2f(300f, 0f)
         private val CHARGE_NEEDLE_CAMERA_CENTER = Vector2f(0f, 0f)
+
         // 叠层相位达标层数：v2 小型针刺 40 层安全闸内、可在盾相期内稳定堆到。
         private const val CHARGE_NEEDLE_STACK_TARGET = 8
         private const val CHARGE_NEEDLE_DISCHARGE_TARGET = 1
@@ -7373,6 +8245,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             ASTDInGameAutomationScenario.CHARGE_NEEDLE_PROJECTILE_SPEC_ID,
             ASTDInGameAutomationScenario.CHARGE_NEEDLE_HEAVY_PROJECTILE_SPEC_ID,
         )
+
         // 电驱加速炮场景：相位机、锚点与期望证据。
         private const val EDA_PHASE_RANGE_ZERO = "RANGE_ZERO"
         private const val EDA_PHASE_RANGE_MID = "RANGE_MID"
@@ -7385,6 +8258,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private val EDA_PLAYER_ANCHOR = Vector2f(-350f, 0f)
         private val EDA_ENEMY_ANCHOR = Vector2f(350f, 0f)
         private val EDA_CAMERA_CENTER = Vector2f(0f, 0f)
+
         // 射程相位期望：基线 750 + 净空加成（v2 满额 200；30% 辐能衰减 0.5 → +100；50% ≥40% 阈值归零）。
         private const val EDA_EXPECT_RANGE_ZERO = 950f
         private const val EDA_EXPECT_RANGE_MID = 850f
@@ -7393,13 +8267,16 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private const val EDA_MID_FLUX_LEVEL = 0.3f
         private const val EDA_HIGH_FLUX_LEVEL = 0.5f
         private const val EDA_RANGE_SETTLE_SECONDS = 0.6f
+
         // 每触发 2 弹（双管交替 × burst 2）；轮间隔 = chargedown 0.3s，间隔 >0.2s 判定新一轮触发。
         private const val EDA_EXPECT_TRIGGER_PROJECTILES = 2
         private const val EDA_BURST_GROUP_GAP = 0.2f
+
         // 敌版开火观察窗：k_s=5 档下等待敌版追加伤害遥测增量。
         private const val EDA_ENEMY_FIRE_SECONDS = 20f
         private const val EDA_PHASE_TIMEOUT = 90f
         private val EDA_WEAPON_IDS = setOf(ASTDInGameAutomationScenario.EDA_WEAPON_ID)
+
         // 湮灭涡旋场景：相位机、锚点与期望证据。
         private const val AV_PHASE_MOUNT = "MOUNT"
         private const val AV_PHASE_ABSORB = "ABSORB"
@@ -7422,28 +8299,36 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private val AV_CAMERA_CENTER = Vector2f(60f, -60f)
         private val AV_WEAPON_IDS = setOf(ASTDInGameAutomationScenario.AV_WEAPON_ID)
         private val AV_FEEDER_WEAPON_IDS = setOf("lightac", "annihilatorpod")
+
         // MOUNT 相位 settle；装配检查在渲染器就绪后一次判定。
         private const val AV_MOUNT_SETTLE_SECONDS = 0.6f
+
         // ABSORB 相位达标：玩家侧累计吸收 3 发 + 观察到一个完整 2s/9s 爆发循环。
         private const val AV_ABSORB_TARGET = 3
         private const val AV_EXPECT_BURST_ON = 2f
         private const val AV_BURST_ON_TOLERANCE = 0.7f
         private const val AV_EXPECT_BURST_OFF = 9f
         private const val AV_BURST_OFF_TOLERANCE = 2f
+
         // EMPTY_PREP：清场后等待武器 9s 冷却 settle 再点空池爆发。
         private const val AV_EMPTY_PREP_SECONDS = 10f
+
         // 空池保底：玩家 v2 AOE 倍率 1.0 → max(0, 500)×1.0 = 500。
         private const val AV_EXPECT_EMPTY_DAMAGE = 500f
         private const val AV_EMPTY_DAMAGE_TOLERANCE = 1f
+
         // k_s=5 帧率窗口（墙钟 3s）与最低帧率门槛（300su 涡旋性能检查点）。
         private const val AV_SCALE5_FPS_WINDOW_SECONDS = 3f
         private const val AV_SCALE5_MIN_FPS = 30f
+
         // HOST_DEATH：击杀后观察窗（池自回收 + 无坍缩断言）。
         private const val AV_HOST_DEATH_SETTLE_SECONDS = 3f
+
         // COMPLETED 截图门控：爆发进行中满此时长才上报 Completed（保证截图帧含束体/涡旋）；保底舞台超时。
         private const val AV_COMPLETED_BEAM_ON_SECONDS = 0.8f
         private const val AV_COMPLETED_STAGE_TIMEOUT = 15f
         private const val AV_PHASE_TIMEOUT = 90f
+
         // 穷距相位轨道炮场景：相位机、锚点与期望证据（规格 05 §2.5 烟测检查点）。
         private const val QJ_PHASE_MOUNT = "MOUNT"
         private const val QJ_PHASE_STACK = "STACK"
@@ -7454,6 +8339,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private const val QJ_PHASE_ENEMY_SCALE = "ENEMY_SCALE"
         private const val QJ_PHASE_COMPLETED = "COMPLETED"
         private const val QJ_PHASE_FAILED = "FAILED"
+
         // COMPLETED 相位截图门控：叠层回升到该层数才上报（HUD/拖尾/锥面入帧），超时保底防舞台卡死。
         private const val QJ_COMPLETED_STACKS_FOR_SHOT = 3
         private const val QJ_COMPLETED_STAGE_TIMEOUT = 25f
@@ -7468,9 +8354,11 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private val QJ_CAMERA_CENTER = Vector2f(0f, 0f)
         private const val QJ_CAMERA_VISIBLE_HEIGHT = 1250f
         private const val QJ_MOUNT_SETTLE_SECONDS = 0.6f
+
         // MOUNT 相位校验：dedicated_targeting_core 已在 MissionDefinition 摘除，射程断言基线 1100（2026-09 修订）。
         private const val QJ_EXPECT_RANGE = 1100f
         private const val QJ_RANGE_TOLERANCE = 5f
+
         // 满层证据期望：v2 每层 4% × 10 → 伤害乘区 1.4（600→840）；
         // 射速 spike 压缩全周期（烟测实证 cooldownRemaining 含充能段）：2.5s/1.4≈1.79s。
         private const val QJ_EXPECT_FULL_DMG_MULT = 1.4f
@@ -7479,20 +8367,26 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private const val QJ_REFIRE_MAX = 2.0f
         private const val QJ_FULL_HOLD_SECONDS = 2.5f
         private const val QJ_STACK_MIN_FPS = 30f
+
         // DUAL（共享验证）：w1 独打续层，w2 停火 4s 后补射，7s 内必须拿到 w2 首发命中乘区记录。
         private const val QJ_DUAL_W2_FIRE_AFTER = 4f
         private const val QJ_DUAL_SECONDS = 7f
+
         // SWITCH：w1 10 层折算 floor(10×0.3125)+1=4（采样帧可能已再叠 1 层，容差到 5）。
         private const val QJ_SWITCH_MIN_STACKS = 4
         private const val QJ_SWITCH_MAX_STACKS = 5
+
         // DECAY：停火至归零期望 ≈ 3s 窗口 + 4 层/1.75 ≈ 5.3s。
         private const val QJ_DECAY_MIN_SECONDS = 4f
         private const val QJ_DECAY_MAX_SECONDS = 8f
+
         // KILL：叠到 ≥3 层后停奶切换靶舰让其被击沉，转火 C 首中 = 旧值+1（不折算）。
         private const val QJ_KILL_ARM_STACKS = 3
+
         // ENEMY_SCALE：换档采样前停火 settle；目标 5 层（第 5 发命中的监听器按 4 层结算 → 逐命中乘区恰为 4 层值）。
         private const val QJ_SCALE_SETTLE_SECONDS = 0.3f
         private const val QJ_ENEMY_SCALE_TARGET_STACKS = 5
+
         // 敌版三档逐命中乘区期望：1 + 4~5 × v1 2% / v2 4% / v5 10% = 1.08~1.10 / 1.16~1.20 / 1.40~1.50；
         // 监听器按命中前层数结算（天然滞后一层），采样窗口内容忍 4~5 层两值，三档区间互不重叠。
         private const val QJ_ENEMY_MULT_1_MIN = 1.07f
@@ -7502,6 +8396,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private const val QJ_ENEMY_MULT_5_MIN = 1.39f
         private const val QJ_ENEMY_MULT_5_MAX = 1.51f
         private const val QJ_PHASE_TIMEOUT = 90f
+
         // 正电子冲击波场景：相位机、锚点与期望证据（规格 06 §4.2 烟测检查点）。
         private const val PS_PHASE_MOUNT = "MOUNT"
         private const val PS_PHASE_IMPACT = "IMPACT"
@@ -7513,34 +8408,42 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private const val PS_TARGET_HULL = "vigilance"
         private const val PS_PLAYER_SLOT = "WS 001"
         private val PS_PLAYER_ANCHOR = Vector2f(0f, 0f)
+
         // 撞舰相位靶舰锚点（400su 在弹道上）；波及相位移至 700su（满射程 600 引爆点前方 100，锥长 250 内）。
         private val PS_TARGET_IMPACT_ANCHOR = Vector2f(400f, 0f)
         private val PS_TARGET_SPLASH_ANCHOR = Vector2f(700f, 0f)
         private val PS_CAMERA_CENTER = Vector2f(400f, 0f)
         private const val PS_CAMERA_VISIBLE_HEIGHT = 950f
         private const val PS_MOUNT_SETTLE_SECONDS = 0.6f
+
         // MOUNT 相位校验：射程断言基线 600（无射程向 hullmod 干扰）。
         private const val PS_EXPECT_RANGE = 600f
         private const val PS_RANGE_TOLERANCE = 5f
+
         // IMPACT（2026-09 修订：弹体识别舰船碰撞，撞舰即时引爆）：靶舰锚在弹道上，
         // 撞舰引爆 ≥3 次且目标掉血 ≥50；期间近炸/满射程计数必须恒 0（弹体不应飞过 400su 靶舰）。
         private const val PS_IMPACT_DETONATIONS = 3
         private const val PS_IMPACT_MIN_DAMAGE = 50f
+
         // SPLASH：相位内两次满射程自爆，锥面舰船命中计数 +1（700su 靶舰在 600 引爆点锥内）。
         private const val PS_SPLASH_DETONATIONS = 2
+
         // FUSE：近炸引爆 ≥2 次、锥面导弹命中 ≥3（成片清除证据）。
         private const val PS_FUSE_DETONATIONS = 2
         private const val PS_FUSE_MISSILE_HITS = 3
+
         // 导弹投喂：鱼叉（vanilla MRM），0.9s 一发，820su 处左右舷交替，初速 250su/s 指向玩家。
         private const val PS_FEED_MISSILE_ID = "harpoon"
         private const val PS_MISSILE_FEED_INTERVAL = 0.9f
         private const val PS_MISSILE_SPAWN_X = 820f
         private const val PS_MISSILE_SPAWN_Y = 80f
         private const val PS_MISSILE_INITIAL_SPEED = 250f
+
         // COMPLETED 截图门控：近炸引爆近 1.2s 内发生才上报（锥面 VFX/浮字入帧）；保底舞台超时。
         private const val PS_COMPLETED_DETONATE_WINDOW = 1.2f
         private const val PS_COMPLETED_STAGE_TIMEOUT = 25f
         private const val PS_PHASE_TIMEOUT = 60f
+
         // “七星”折跃发射器场景：相位机、锚点与期望证据（规格 07 §4.2 烟测检查点）。
         private const val SS_PHASE_MOUNT = "MOUNT"
         private const val SS_PHASE_NOKILL = "NOKILL"
@@ -7553,51 +8456,64 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private const val SS_TARGET_HULL = "vigilance"
         private const val SS_PLAYER_SLOT = "WS 001"
         private val SS_PLAYER_ANCHOR = Vector2f(0f, 0f)
+
         // 靶舰锚点（600su 弹道上；TERMINAL 相位对舰终结观测位）。
         private val SS_TARGET_ANCHOR = Vector2f(600f, 0f)
         private val SS_ENEMY_ANCHOR = Vector2f(1000f, 0f)
         private val SS_CAMERA_CENTER = Vector2f(500f, 0f)
         private const val SS_CAMERA_VISIBLE_HEIGHT = 1300f
         private const val SS_MOUNT_SETTLE_SECONDS = 0.6f
+
         // MOUNT 相位校验：射程断言基线 800（无射程向 hullmod 干扰）。
         private const val SS_EXPECT_RANGE = 800f
         private const val SS_RANGE_TOLERANCE = 5f
+
         // NOKILL：增压鱼叉 HP（裂隙爆炸不可摧毁，固定 7 跳零击杀证据面；环形投喂复用通用环位常量）。
         private const val SS_NOKILL_MISSILE_HP = 1_000_000f
+
         // CHAIN：连跳证据下限/上限（7 跳硬上限断言）；成片清除与帧率门槛。
         private const val SS_CHAIN_MIN_JUMPS = 3
         private const val SS_CHAIN_MAX_JUMPS = 7
         private const val SS_CHAIN_MIN_KILLS = 3
         private const val SS_CHAIN_MIN_FPS = 30f
+
         // TERMINAL：靶舰掉血下限（单段 50% = 125 能量 vs 装甲减免后实机 ~9 船体，门槛按可见掉血定）。
         private const val SS_TERMINAL_HP_DROP_MIN = 5f
+
         // TERMINAL：在飞链沉降窗口（秒）——相位入场后该窗口内不放行开火且逐帧重定终结基线，
         // 吞掉 CHAIN 末发 stale 链脚本打在未折叠盾面上的终结段（见 SS_PHASE_TERMINAL 注）。
         // 取 4s 的另一重原因（实机判例第 6 轮）：reserves 手动 spawn 的舰船部署后约 2~3s 内
         // applyDamage 全额无效（部署后 1.3s 舰心+bypass 同点 0 伤害、3.3s 同点正常掉血），
         // 窗口须覆盖该免疫期，否则终结证据必然拿到 HP 满值。
         private const val SS_TERMINAL_SETTLE_SECONDS = 4.0f
+
         // ENEMY_MULTI：敌版舰部署免疫窗口（秒，同 SS_TERMINAL_SETTLE_SECONDS 实机判例）。
         private const val SS_ENEMY_MULTI_SETTLE_SECONDS = 4.0f
+
         // 部署免疫宽限（秒）：免疫窗口非固定时长（实机判例第 8 轮同 4.0s 时刻两轮结果相反），
         // 首发终结未掉血不立即判负，2s/发连发在宽限期内补段；远小于相位超时 90s。
         private const val SS_TERMINAL_GRACE_SECONDS = 15f
         private const val SS_ENEMY_MULTI_GRACE_SECONDS = 15f
+
         // ENEMY_MULTI：破晓敌版多段终结段数下限（连跳 ≥2 跳 → segments = jumps ≥ 2）。
         private const val SS_ENEMY_MULTI_MIN_SEGMENTS = 2
+
         // 导弹投喂：鱼叉（vanilla MRM）；CHAIN/ENEMY_MULTI 环形稠密投喂（见 feedSsMissiles 文档）。
         private const val SS_FEED_MISSILE_ID = "harpoon"
         private const val SS_MISSILE_FEED_INTERVAL = 0.15f
         private const val SS_ENEMY_FEED_INTERVAL = 0.15f
+
         // 投喂环：环心距锚点 280su、环半径 100su（任意两弹间距 <=200su < 400su 跳程）、低速 40su/s 堆积。
         private const val SS_MISSILE_RING_OFFSET = 280f
         private const val SS_MISSILE_RING_RADIUS = 100f
         private const val SS_MISSILE_RING_SPEED = 40f
         private const val SS_MISSILE_INITIAL_SPEED = 250f
+
         // COMPLETED 截图门控：裂隙爆炸近 0.6s 内发生才上报（特效入帧）；保底舞台超时。
         private const val SS_COMPLETED_FLASH_WINDOW = 0.6f
         private const val SS_COMPLETED_STAGE_TIMEOUT = 25f
         private const val SS_PHASE_TIMEOUT = 90f
+
         // 双子星 DEM 场景：相位机、锚点与期望证据（规格 10 §4.2 烟测检查点）。
         private const val GD_PHASE_MOUNT = "MOUNT"
         private const val GD_PHASE_SALVO = "SALVO"
@@ -7616,21 +8532,26 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private val GD_CAMERA_CENTER = Vector2f(600f, 0f)
         private const val GD_CAMERA_VISIBLE_HEIGHT = 1500f
         private const val GD_MOUNT_SETTLE_SECONDS = 0.6f
+
         // MOUNT 相位校验：射程断言基线 2500（无射程向 hullmod 干扰）。
         private const val GD_EXPECT_RANGE = 2500f
         private const val GD_RANGE_TOLERANCE = 5f
         private const val GD_LAUNCHER_AMMO = 2
         private const val GD_POD_AMMO = 4
+
         // SALVO：动能光束首伤帧 EMP 电弧期望道数（规格 §2.1）。
         private const val GD_EMP_ARC_COUNT = 4
+
         // 同步倍率期望：玩家恒 v2=0.4375；破晓敌版 v5=1.0。
         private const val GD_PLAYER_V2_MULT = 0.4375f
         private const val GD_ENEMY_V5_MULT = 1.0f
         private const val GD_MULT_TOLERANCE = 0.001f
+
         // ENEMY_SCALE：敌版舰部署免疫窗口（秒，同 SS_ENEMY_MULTI_SETTLE_SECONDS 实机判例）与掉血宽限。
         private const val GD_ENEMY_SETTLE_SECONDS = 4.0f
         private const val GD_ENEMY_GRACE_SECONDS = 20f
         private const val GD_HP_DROP_MIN = 50f
+
         // COMPLETED 截图门控：payload 打击近 2.5s 内发生才上报（双色尾焰/锁定激光/光束入帧）；保底舞台超时。
         private const val GD_COMPLETED_STRIKE_WINDOW = 2.5f
         private const val GD_COMPLETED_STAGE_TIMEOUT = 30f
@@ -7652,28 +8573,37 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private val HIP_CAMERA_CENTER = Vector2f(0f, 0f)
         private const val HIP_CAMERA_VISIBLE_HEIGHT = 760f
         private const val HIP_MOUNT_SETTLE_SECONDS = 0.6f
+
         // MOUNT 相位校验：射程 800 / spec maxAmmo 24（weapon_data.csv 口径，2026-09 修订）/ 双炮管 offsets（ALTERNATING 交替射击证据）。
         private const val HIP_EXPECT_RANGE = 800f
         private const val HIP_RANGE_TOLERANCE = 5f
         private const val HIP_AMMO = 24
         private const val HIP_BARRELS = 2
+
         // SHIELD：消耗 ≥8 发证明确实在命中护盾后断言零泄放。
         private const val HIP_SHIELD_MIN_SPENT = 8
+
         // HULL：泄放 ≥2 且消耗 ≥16 发（弹匣倾泻节奏证据）。
         private const val HIP_HULL_MIN_DISCHARGE = 2
         private const val HIP_HULL_MIN_SPENT = 16
+
         // SCALE5_PLAYER：相位内玩家船体命中 ≥12 次后断言贯穿增量 0（k_s=5 玩家恒 v2）。
         private const val HIP_SCALE5_MIN_PLAYER_HITS = 12
+
         // PIERCE_K2：相位内敌方船体命中 ≥8 次后断言贯穿增量 0（v2 档无贯穿）。
         private const val HIP_K2_MIN_ENEMY_HITS = 8
+
         // PIERCE_K5：mult≈0 目标下每次船体命中必贯穿，采样 ≥3 次贯穿事件强化 §2.5 待验证项读数。
         private const val HIP_K5_MIN_PIERCE = 3
+
         // 敌方开火部署免疫闸（GD/SS 实机判例同款；兼作敌舰武器 EMP 瘫痪恢复窗口）。
         private const val HIP_ENEMY_SETTLE_SECONDS = 4.0f
+
         // COMPLETED 截图门控：泄放/贯穿事件近 2.5s 内发生才上报（电弧/浮字/新鲜拖尾入帧）；保底舞台超时。
         private const val HIP_COMPLETED_EVENT_WINDOW = 2.5f
         private const val HIP_COMPLETED_STAGE_TIMEOUT = 30f
         private const val HIP_PHASE_TIMEOUT = 90f
+
         // dev 舞台 EMP 抗性注入 modifierId（empDamageTakenMult ×0 造 mult≈0 目标；相位收尾 unmodify 无残留）。
         private const val HIP_RESIST_MOD_ID = "astd_hip_automation_resist"
 
@@ -7697,6 +8627,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private val SM_CAMERA_CENTER = Vector2f(300f, 100f)
         private const val SM_CAMERA_VISIBLE_HEIGHT = 1500f
         private const val SM_MOUNT_SETTLE_SECONDS = 0.6f
+
         // MOUNT 相位校验：射程 2500 / ammo 8/20 / 发射舱 burst 2 / OP 4/10 / no_drop 两件套（weapon_data.csv 口径）。
         private const val SM_EXPECT_RANGE = 2500f
         private const val SM_RANGE_TOLERANCE = 5f
@@ -7706,14 +8637,18 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private const val SM_LAUNCHER_OP = 4f
         private const val SM_POD_OP = 10f
         private val SM_REQUIRED_TAGS = setOf("no_drop", "no_drop_salvage")
+
         // PRIORITY：战机在场才开火 + 最短观察窗；发射舱两发分组间隔（burst delay 0，同帧两发常态）。
         private const val SM_PRIORITY_MIN_SECONDS = 4f
         private const val SM_BURST_GROUP_GAP = 0.5f
+
         // SHIP_HIT：相位内爆炸 ≥3 次且舰船 AOE 与护盾命中各 ≥1（撞击舰船/护盾爆炸恒触发证据）。
         private const val SM_SHIP_HIT_MIN_EXPLOSIONS = 3
+
         // LINE_CROSS 投喂：中场 lane 布点直线喂向玩家（与玩家导弹流对头相撞）。
         private const val SM_FEED_MISSILE_LOW_ID = "atropos"
         private const val SM_FEED_MISSILE_HIGH_ID = "harpoon"
+
         // 高结构增压值：阈值 600 之上必须不可达——stage 1 投喂点在敌舰处堆叠生成，弹流在
         // 敌舰附近命中的爆炸 AOE（半径 50、面板 100）会持续削低扎堆投喂弹血量；2000 口径
         // 被 AOE 削进 <600 撞线区间后遭流弹移除（被移除弹体不计入命中确认，同帧其它被波及
@@ -7725,13 +8660,16 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private const val SM_FEED_LANE_GAP = 150f
         private const val SM_FEED_SPAWN_X = 100f
         private const val SM_FEED_SPEED = 200f
+
         // ENEMY_SCALE：敌版三档逐档（installScaleForTests 1/2/5 → 爆炸倍率 0.5/1.0/2.5）。
         private val SM_SCALE_KS = floatArrayOf(1f, 2f, 5f)
         private val SM_SCALE_EXPECTED_EXP_MULT = floatArrayOf(0.5f, 1.0f, 2.5f)
         private const val SM_SCALE_TOLERANCE = 0.001f
         private const val SM_SCALE_STEP_TIMEOUT = 30f
+
         // 敌方开火部署免疫闸（GD/SS/HIP 实机判例同款）。
         private const val SM_ENEMY_SETTLE_SECONDS = 4.0f
+
         // COMPLETED 截图门控：爆炸事件近 2.5s 内发生才上报（裂隙爆炸/双拖尾入帧）；保底舞台超时。
         private const val SM_COMPLETED_EVENT_WINDOW = 2.5f
         private const val SM_COMPLETED_STAGE_TIMEOUT = 30f
@@ -7751,6 +8689,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private const val GRG_SYSTEM_ID = "astd_grav_rift_generator"
         private const val GRG_ION_WING_ID = "astd_zw_103_ion_wing"
         private const val GRG_LANCE_WING_ID = "astd_zw_103_lance_wing"
+
         // 靶舰锚点在母舰正前方 400su：在系统有效射程 1000su 内（锁定制可用），
         // 同时给战机陪练留出活动空间。
         private val GRG_PLAYER_ANCHOR = Vector2f(-700f, 0f)
@@ -7758,13 +8697,16 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private val GRG_CAMERA_CENTER = Vector2f(-500f, 0f)
         private const val GRG_CAMERA_VISIBLE_HEIGHT = 1500f
         private const val GRG_SPAWN_SETTLE_SECONDS = 0.6f
+
         // WAIT_WINGS（断言点 A）：两联队基础编制各 2（wing_data.csv num=2，无折叠甲板扩容）；
         // auto_fighter 自动出击的爬编时间给 25s 冗余。
         private const val GRG_EXPECT_WING_SIZE = 2
         private const val GRG_WAIT_WINGS_TIMEOUT = 25f
+
         // PHASE_LINK（断言点 B/C）：hullmod 逐帧驱动，联动与恢复都应在下一帧内完成，3s 超时纯兜底。
         private const val GRG_PHASE_LINK_TIMEOUT = 3f
         private const val GRG_PHASE_RESTORE_TIMEOUT = 3f
+
         // FLUX_RETURN（断言点 D）：注入 maxFlux×0.4（清零 settle 后注入，顶不到过载线）；
         // 玩家恒 v2 返还比例 0.6，界 [×0.4, ×0.85] 容忍逐帧耗散与基线量化。
         private const val GRG_FLUX_SETTLE_SECONDS = 0.5f
@@ -7772,6 +8714,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private const val GRG_FLUX_OBSERVE_TIMEOUT = 2f
         private const val GRG_FLUX_RETURN_MIN_FRAC = 0.4f
         private const val GRG_FLUX_RETURN_MAX_FRAC = 0.85f
+
         // RIFT_FIRE（断言点 G-0~G-4）：系统契约 = chargeUp 1s（t=0 生成旋涡 + telemetry target/vortex）
         // → active 1.2s（ACTIVE 首帧生成 dem_drone 真实光束 + telemetry beam）→ down 0.5s，冷却 12s。
         // 各观测窗截止自点火沿计：旋涡取半个蓄能窗；光束取 ACTIVE 首帧（1.0s）+0.6s 余量；
@@ -7779,22 +8722,28 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private const val GRG_RIFT_VORTEX_DEADLINE = 0.5f
         private const val GRG_RIFT_BEAM_DEADLINE = 1.6f
         private const val GRG_RIFT_SETTLE_DEADLINE = 3.5f
+
         // 点火预算：进入 RIFT_FIRE 时系统空闲且无冷却（封锁期不允许施放），useSystem 按帧重试；
         // 30s 覆盖「封锁失效导致残留一次 12s 冷却」的极端情形，超时判失败并暴露遥测诊断。
         private const val GRG_RIFT_PHASE_TIMEOUT = 30f
         private const val GRG_MINE_SPEC_ID = "astd_grav_rift_mine"
+
         /** 光束 FX drone 舰体（GravityRiftSystemStats 内部常量同款；engine.ships 口径）。 */
         private const val GRG_BEAM_DRONE_HULL_ID = "dem_drone"
+
         /** 「无目标」提示键（GravityRiftSystemStats.getInfoText 同款 i18n 键）。 */
         private const val GRG_NO_TARGET_I18N_KEY = "ui.grav_rift.info.no_target"
+
         // 伤害阈值：单波原始能量 = 光束 1000 DPS × 2s（2000）+ 5 枚 v2 裂隙 800~1400（合计 5500），
         // 靶舰护盾已强制压下故无护盾吸收，装甲网格吃掉其中大部分。阈值取光束单源贡献的保守下界：
         // 2000 原始 × 60% 穿透 = 1200（靶舰 dominator 14000 HP 的 8.6%），裂隙 AOE 与战机陪练火力
         // 只会把读数推高，不会让达标变难。
         private const val GRG_EXPECT_ENEMY_HP_DROP = 1200f
+
         // SCREENSHOT_VOLLEY（纯取景，无断言）：冷却 12s + 系统周期 2.7s 内必到 ACTIVE 沿，
         // 20s 超时兜底直接收口。
         private const val GRG_SCREENSHOT_TIMEOUT = 20f
+
         // 取景定格推迟到 ACTIVE 首帧 +0.6s（点火后 ≈1.6s）：光束满亮度、旋涡满亮度、
         // 首批裂隙近炸星云成形（「光束 + 旋涡 + 裂隙」同框窗），避开 ACTIVE 首帧的爆炸初闪。
         private const val GRG_SCREENSHOT_HOLD_DELAY = 0.2f
@@ -7817,19 +8766,23 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private val FGL_CAMERA_CENTER = Vector2f(300f, 0f)
         private const val FGL_CAMERA_VISIBLE_HEIGHT = 1500f
         private const val FGL_SPAWN_SETTLE_SECONDS = 0.6f
+
         // WAIT_WINGS（断言点 A）：玩家侧固定 v2 档 → 每甲板 extraDeploymentLimit 锚定 round(2×(1+1.5))=5；
         // 单联队在场 ≥3 超出基础编制 num=2（wing_data.csv 口径），为扩容生效的直接证据
         // （总在场数口径无效：3 甲板基础编制合计已达 6）。
         private const val FGL_EXPECT_EXTRA_DEPLOYMENT_LIMIT = 5
         private const val FGL_EXPANDED_WING_MIN = 3
+
         // 在场峰值/单联队峰值全程采样，仅作诊断证据，不作硬断言：满编口径（总在场 15 /
         // 单联队 5）受交战 RNG 影响——敌方阔剑可在爬编期击落战机（实机曾 numLost 0→1 致
         // 峰值 14），且 wingMembers 计数不覆盖额外编制（实机曾在场 15 而单联队峰值仅 3）。
         // 扩容的机制级硬证据由 WAIT_WINGS 的 extraDeploymentLimit==5 + 单联队超基础编制承担。
         private const val FGL_MIN_FIGHTERS_FOR_ACTIVATION = 2
+
         // ACTIVATE：useSystem() 可能被原版起飞动画窗（giveCommand 的 isLiftingOffOrLanding
         // 闸门）静默吞掉，按帧重试直到 system.isOn；超时兜底判失败（点亮本身即机制断言）。
         private const val FGL_ACTIVATE_TIMEOUT = 10f
+
         // OBSERVE_ACTIVE（断言点 B/C/D）：玩家恒 v2 → 时流 ×2.5（界 2.4）、四承伤 ×0.5（界 0.51）；
         // 软辐能 1120/s（基础最大辐能 16000×7%）对冲盾开净耗散 760/s（耗散 1400 − 护盾维持 640）
         // 后净涨 ≈360/s。断言点 D 基线在相位进入（开盾生效）后 settle 0.5s 采样：护盾维持 640/s
@@ -7841,6 +8794,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private const val FGL_EXPECT_TIME_MULT_MIN = 2.4f
         private const val FGL_EXPECT_DAMAGE_TAKEN_MAX = 0.51f
         private const val FGL_EXPECT_FLUX_RISE = 800f
+
         // WAIT_RECALL（断言点 E/F）：currFlux ≥ FGL_MANUAL_CANCEL_MIN_FLUX 时补发 useSystem()
         // 验证 toggle 主动关闭路径（玩家再次按键同路径；不用 deactivate()——其直接跳 COOLDOWN、
         // 跳过 OUT 窗口）；召回检测后 settle 1.5s 采样硬辐能峰值与 identity 清点——OUT 召回
@@ -7849,11 +8803,13 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         // 战机火力对护盾的硬辐能贡献在数十量级，外部来源不可能满足，上升只能归因 OUT 首帧
         // setHardFlux(currFlux) 转化；ACTIVE 期净涨 ~360/s，1500 约 4s 达成（远早于 15s 上限）。
         private const val FGL_MANUAL_CANCEL_MIN_FLUX = 1500f
+
         // toggle 主动关闭的补发节流（秒）：单次 useSystem() 可能被原版闸门吞掉（同 ACTIVATE），
         // 未检测到召回前按该间隔重发，确保「主动取消」路径被真实验证而非静默落到 15s 上限收口。
         private const val FGL_MANUAL_CANCEL_RETRY_SECONDS = 0.5f
         private const val FGL_RECALL_SETTLE_SECONDS = 1.5f
         private const val FGL_EXPECT_HARD_FLUX_RISE = 1000f
+
         // RELAUNCH（断言点 G）：召回后 15s 内必须出现新 identity 战机（快速整备 0.3~0.8s/架）。
         private const val FGL_RELAUNCH_TIMEOUT = 15f
         private const val FGL_PHASE_TIMEOUT = 90f
@@ -7870,14 +8826,18 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private const val PL_DECOY_HULL = "enforcer"
         private const val PL_ENEMY_TARGET_HULL = "enforcer"
         private const val PL_ENEMY_LANCE_HULL = "champion"
+
         // A=onslaught 前向大型实弹炮塔（angle 0 / arc 150）；B/敌版=champion 前向大型能量炮塔（angle 0 / arc 130）。
         private const val PL_A_SLOT = "WS 019"
         private const val PL_B_SLOT = "WS 008"
+
         // reserves 部署序：mission addToFleet 顺序与 hull 计数（三靶两僚按序分锚点）。
         private val PL_DEPLOY_ORDER = listOf("onslaught", "champion", "enforcer")
+
         // 舞台自有舰体集合：本场景全部舰船（A/B 射手 + 两僚 + 三靶 + 敌版射手）仅这三种舰体；
         // 其余舰船（含全部战机）与导弹一律视为第三方 mod 舞台污染，由 sweepPlForeignEntities 逐帧移除。
         private val PL_SCENARIO_HULLS = setOf("onslaught", "champion", "enforcer")
+
         // 西侧主舞台：A 主射手 + E1 单体靶 + E2/E3 集群靶（v2 锥 375su/半角 25° 几何：命中点≈(45,0) 起算）。
         private val PL_A_ANCHOR = Vector2f(-950f, 0f)
         private val PL_B_ANCHOR = Vector2f(-950f, -600f)
@@ -7886,6 +8846,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private val PL_E3_CLUSTER_ANCHOR = Vector2f(355f, -120f)
         private val PL_E2_PARK_ANCHOR = Vector2f(1500f, 300f)
         private val PL_E3_PARK_ANCHOR = Vector2f(1500f, 500f)
+
         // 东侧敌版舞台：敌版贯星北射南（facing 270），僚舰 D1/D2 沿敌版弹道线（v5 锥 600su/半角 40° 几何）。
         private val PL_ENEMY_LANCE_ANCHOR = Vector2f(2500f, 800f)
         private const val PL_ENEMY_LANCE_FACING = 270f
@@ -7896,6 +8857,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private val PL_CAMERA_CENTER_MAIN = Vector2f(-200f, 0f)
         private val PL_CAMERA_CENTER_ENEMY = Vector2f(2500f, 100f)
         private const val PL_CAMERA_VISIBLE_HEIGHT = 1500f
+
         // MOUNT 相位校验：射程 1000 / 冷却 5s / OP 30 / no_drop 两件套（weapon_data.csv 口径）。
         private const val PL_MOUNT_SETTLE_SECONDS = 1.0f
         private const val PL_EXPECT_RANGE = 1000f
@@ -7904,6 +8866,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private const val PL_COOLDOWN_TOLERANCE = 0.5f
         private const val PL_EXPECT_OP = 30f
         private val PL_REQUIRED_TAGS = setOf("no_drop", "no_drop_salvage")
+
         // 能量结算探针：energyWeaponRangeBonus +50% 必须生效（≥1.3× 宽松界）；
         // ballisticWeaponRangeBonus +50% 必须不生效（±1su 容差）。modifierId 相位收尾 unmodify 无残留。
         private const val PL_STAT_PROBE_ID = "astd_pl_automation_stat_probe"
@@ -7911,23 +8874,28 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private const val PL_STAT_PROBE_SETTLE_SECONDS = 0.3f
         private const val PL_ENERGY_PROBE_MIN_RATIO = 1.3f
         private const val PL_BALLISTIC_PROBE_TOLERANCE = 1f
+
         // CYCLE：首充 2s（窗口 [1.2, 3.0]）；出膛间隔 7s = 充能 2s + 冷却 5s（窗口 [6.0, 8.5]，帧粒度宽松界）。
         private const val PL_CYCLE_MIN_HITS = 2
         private const val PL_FIRST_CHARGE_MIN = 1.2f
         private const val PL_FIRST_CHARGE_MAX = 3.0f
         private const val PL_CYCLE_INTERVAL_MIN = 6.0f
         private const val PL_CYCLE_INTERVAL_MAX = 8.5f
+
         // CLUSTER：单次锥面结算命中 ≥2（E2+E3 并入弹道线）+ 破片浮字 ≥2 + 本体豁免契约零破坏。
         private const val PL_CLUSTER_MIN_CONE_HITS = 2
+
         // ENEMY_SCALE：敌版三档逐档（installScaleForTests 1/2/5 → 半角 20/25/40、锥长 300/375/600、伤害 2500/3125/5000）。
         private val PL_SCALE_KS = floatArrayOf(1f, 2f, 5f)
         private val PL_SCALE_EXPECTED_HALF_ANGLE = floatArrayOf(20f, 25f, 40f)
         private val PL_SCALE_EXPECTED_RANGE = floatArrayOf(300f, 375f, 600f)
         private val PL_SCALE_EXPECTED_DAMAGE = floatArrayOf(2500f, 3125f, 5000f)
         private const val PL_SCALE_TOLERANCE = 0.01f
+
         // 敌方开火部署免疫闸（GD/SS/HIP/SM 实机判例同款）。
         private const val PL_ENEMY_SETTLE_SECONDS = 2.0f
         private const val PL_MIN_FPS = 45f
+
         // COMPLETED 截图门控：锥面结算事件近 2.5s 内发生才上报（大光柱/锥面/浮字入帧）；保底舞台超时。
         private const val PL_COMPLETED_EVENT_WINDOW = 2.5f
         private const val PL_COMPLETED_STAGE_TIMEOUT = 30f

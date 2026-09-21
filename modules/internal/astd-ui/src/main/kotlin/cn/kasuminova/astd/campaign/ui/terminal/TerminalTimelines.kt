@@ -1,5 +1,10 @@
 package cn.kasuminova.astd.campaign.ui.terminal
 
+import cn.kasuminova.astd.campaign.ui.terminal.LinePrinter.Companion.JAM_CHAR_RATIO
+import cn.kasuminova.astd.campaign.ui.terminal.LinePrinter.Companion.JAM_HOLD_MS
+import cn.kasuminova.astd.campaign.ui.terminal.LinePrinter.Companion.LINE_GAP_MS
+import cn.kasuminova.astd.campaign.ui.terminal.LinePrinter.Companion.TICK_MS
+import cn.kasuminova.astd.campaign.ui.terminal.LinePrinter.Companion.charsPerTick
 import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
@@ -132,6 +137,7 @@ class LinePrinter(
                         }
                     }
                 }
+
                 Phase.GAP -> {
                     val need = LINE_GAP_MS - phaseAccMs
                     val step = min(remaining, need)
@@ -139,6 +145,7 @@ class LinePrinter(
                     remaining -= step
                     if (phaseAccMs >= LINE_GAP_MS) nextLine(events)
                 }
+
                 Phase.JAM_HOLD -> {
                     val need = JAM_HOLD_MS - phaseAccMs
                     val step = min(remaining, need)

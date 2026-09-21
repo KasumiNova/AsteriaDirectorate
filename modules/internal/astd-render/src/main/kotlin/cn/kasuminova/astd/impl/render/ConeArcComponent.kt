@@ -1,6 +1,13 @@
 package cn.kasuminova.astd.impl.render
 
 import cn.kasuminova.astd.api.render.RenderContext
+import cn.kasuminova.astd.impl.render.ConeArcComponent.Companion.ARC_EMISSIVE_GAIN
+import cn.kasuminova.astd.impl.render.ConeArcComponent.Companion.B_RATIO
+import cn.kasuminova.astd.impl.render.ConeArcComponent.Companion.CENTER_DEG
+import cn.kasuminova.astd.impl.render.ConeArcComponent.Companion.LINE_WIDTHS_PX
+import cn.kasuminova.astd.impl.render.ConeArcComponent.Companion.NODE_COUNT
+import cn.kasuminova.astd.impl.render.ConeArcComponent.Companion.SWEEP_DEG
+import cn.kasuminova.astd.impl.render.ConeArcComponent.Companion.VIEW_MULT_PX_PER_SU
 import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
@@ -145,26 +152,26 @@ class ConeArcComponent(
             entity.setAdditiveBlend()
             // v2.2 时间包络 alpha×(1−t)：fadeIn/full 为 0 时 BoxUtil 直接进线性淡出相，逐字等价。
             entity.setGlobalTimer(0f, 0f, arc.duration)
-            entity.setStartWidth(arc.widthSu)
-            entity.setEndWidth(arc.widthSu)
-            entity.setMixFactor(ARC_MIX_FACTOR)
+            entity.startWidth = arc.widthSu
+            entity.endWidth = arc.widthSu
+            entity.mixFactor = ARC_MIX_FACTOR
             entity.setStartColor(1f, 1f, 1f, arc.alphaNorm)
             entity.setEndColor(1f, 1f, 1f, arc.alphaNorm)
             entity.setStartEmissive(1f, 1f, 1f, arc.alphaNorm * ARC_EMISSIVE_GAIN)
             entity.setEndEmissive(1f, 1f, 1f, arc.alphaNorm * ARC_EMISSIVE_GAIN)
             val mat = entity.materialData
-            mat.setAlphaToEmissive(0f)
-            mat.setColorToEmissive(0f)
-            mat.setGlowPower(1f)
+            mat.alphaToEmissive = 0f
+            mat.isColorToEmissive = 0f
+            mat.glowPower = 1f
             mat.setColor(fringeColor)
             mat.setEmissiveColor(fringeColor)
             mat.setDiffuse(pair.first)
             mat.setEmissive(pair.second)
             // 逐顶点 alpha 包络的 fill 复刻（恒等映射见类文档）：两端归零、峰值偏前 0.65。
-            entity.setFillStartAlpha(0f)
-            entity.setFillStartFactor(FILL_START_FACTOR)
-            entity.setFillEndAlpha(0f)
-            entity.setFillEndFactor(FILL_END_FACTOR)
+            entity.fillStartAlpha = 0f
+            entity.fillStartFactor = FILL_START_FACTOR
+            entity.fillEndAlpha = 0f
+            entity.fillEndFactor = FILL_END_FACTOR
             // 实体变换恒等（锚弧心、朝弹道、缩放 1）：扩张靠逐帧节点重写，梁宽不随矩阵放大。
             entity.setStateVanilla(arc.center, facingDeg, UNIT_SCALE)
             val state = BoxUtilCombatVfx.addEntity(engine, entity)

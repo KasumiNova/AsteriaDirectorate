@@ -1,7 +1,7 @@
 package cn.kasuminova.astd.campaign.dialog.core
 
-import cn.kasuminova.astd.internal.i18n.I18n
 import cn.kasuminova.astd.campaign.ui.HudMessages
+import cn.kasuminova.astd.internal.i18n.I18n
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.campaign.InteractionDialogAPI
 import com.fs.starfarer.api.campaign.OptionPanelAPI

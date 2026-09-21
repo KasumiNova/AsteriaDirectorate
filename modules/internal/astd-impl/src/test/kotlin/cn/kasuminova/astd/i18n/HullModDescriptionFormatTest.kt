@@ -24,8 +24,8 @@ class HullModDescriptionFormatTest {
         val keys = properties.stringPropertyNames()
             .filter {
                 it.startsWith("hullmod.") ||
-                    it.startsWith("desc.") ||
-                    it.startsWith("system.")
+                        it.startsWith("desc.") ||
+                        it.startsWith("system.")
             }
             .sorted()
 
@@ -68,7 +68,7 @@ class HullModDescriptionFormatTest {
         val values = Regex("\"((?:\\\\.|[^\\\"])*)\"\\s*:\\s*\"((?:\\\\.|[^\\\"])*)\"")
             .findAll(text)
             .map { it.groupValues[1] to it.groupValues[2].replace("\\\"", "\"").replace("\\n", "\n") }
-            .filterNot { (_, value) -> Regex("%[A-Za-z][A-Za-z0-9_]*%") .containsMatchIn(value) }
+            .filterNot { (_, value) -> Regex("%[A-Za-z][A-Za-z0-9_]*%").containsMatchIn(value) }
             .toList()
 
         assertTrue(values.isNotEmpty(), "未找到任何适合原生格式化检查的系统字符串值")

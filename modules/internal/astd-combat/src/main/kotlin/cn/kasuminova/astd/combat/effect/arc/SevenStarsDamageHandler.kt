@@ -1,5 +1,9 @@
 package cn.kasuminova.astd.combat.effect.arc
 
+import cn.kasuminova.astd.combat.effect.arc.SevenStarsDamageHandler.TERMINAL_CORE_RADIUS
+import cn.kasuminova.astd.combat.effect.arc.SevenStarsDamageHandler.TERMINAL_SPACING
+import cn.kasuminova.astd.combat.effect.arc.SevenStarsDamageHandler.resolveShipDamagePoint
+import cn.kasuminova.astd.combat.effect.arc.SevenStarsDamageHandler.shieldCovers
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEntityAPI
@@ -7,9 +11,10 @@ import com.fs.starfarer.api.combat.DamageType
 import com.fs.starfarer.api.combat.MissileAPI
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.util.Misc
-import org.lazywizard.lazylib.combat.CombatUtils
 import org.lazywizard.lazylib.MathUtils
+import org.lazywizard.lazylib.combat.CombatUtils
 import org.lwjgl.util.vector.Vector2f
+
 /**
  * “七星”折跃发射器的伤害结算薄层（规格 07 §2.2）：
  * 一次闪光爆炸的圆形区域结算（粗筛 → 逐目标 applyDamage → 摧毁统计）；
@@ -164,7 +169,7 @@ object SevenStarsDamageHandler {
         repeat(count) {
             val circlePoint = MathUtils.getPointOnCircumference(center, targetRadius, angle)
             val actualRadius = Global.getSettings().getTargetingRadius(circlePoint, ship, shieldOn) +
-                TARGETING_RADIUS_PAD_MIN + Misc.random.nextFloat() * TARGETING_RADIUS_PAD_SPAN
+                    TARGETING_RADIUS_PAD_MIN + Misc.random.nextFloat() * TARGETING_RADIUS_PAD_SPAN
             var point = MathUtils.getPointOnCircumference(center, actualRadius, angle)
             if (!shieldOn) {
                 val bounds = ship.exactBounds

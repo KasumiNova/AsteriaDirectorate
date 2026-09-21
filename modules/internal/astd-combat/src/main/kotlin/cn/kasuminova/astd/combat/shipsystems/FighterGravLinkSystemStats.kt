@@ -1,6 +1,7 @@
 package cn.kasuminova.astd.combat.shipsystems
 
 import cn.kasuminova.astd.combat.lens.system.FighterGravLinkTuning
+import cn.kasuminova.astd.combat.shipsystems.FighterGravLinkSystemStats.Companion.LAND_EFFECT_LEVEL
 import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import cn.kasuminova.astd.internal.i18n.I18n
 import com.fs.starfarer.api.Global
@@ -67,11 +68,13 @@ class FighterGravLinkSystemStats : BaseShipSystemScript() {
                     cancelWhenNoFighters(engine, ship)
                 }
             }
+
             ShipSystemStatsScript.State.OUT -> {
                 removeFighterBuffs(ship)
                 triggerRecallOnce(engine, ship)
                 advanceRecallVfx(engine, ship, effectLevel)
             }
+
             else -> removeFighterBuffs(ship)
         }
     }
@@ -191,7 +194,7 @@ class FighterGravLinkSystemStats : BaseShipSystemScript() {
         // setHardFlux 无闸门，转化在所有状态下都确定生效。
         val tracker = ship.fluxTracker
         if (FighterGravLinkTuning.softFluxNow(tracker.currFlux, tracker.hardFlux) > 0f) {
-            tracker.setHardFlux(tracker.currFlux)
+            tracker.hardFlux = tracker.currFlux
         }
     }
 
@@ -209,16 +212,16 @@ class FighterGravLinkSystemStats : BaseShipSystemScript() {
             val bay = fighter.wing?.source
             if (bay == null) {
                 // 联队/甲板已失效（如母舰甲板被摧毁）：复位视觉状态，不做回收。
-                fighter.setPhased(false)
-                fighter.setExtraAlphaMult(1f)
+                fighter.isPhased = false
+                fighter.extraAlphaMult = 1f
                 continue
             }
             if (landNow) {
                 bay.makeCurrentIntervalFast()
                 bay.land(fighter)
             } else {
-                fighter.setPhased(true)
-                fighter.setExtraAlphaMult(effectLevel.coerceIn(0f, 1f))
+                fighter.isPhased = true
+                fighter.extraAlphaMult = effectLevel.coerceIn(0f, 1f)
                 fighter.setJitter(
                     RECALL_JITTER_KEY, RECALL_JITTER_COLOR, 1f, RECALL_JITTER_COPIES,
                     0f, 5f + fighter.collisionRadius,
@@ -242,8 +245,8 @@ class FighterGravLinkSystemStats : BaseShipSystemScript() {
             if (fighter.isHulk || !fighter.isAlive) continue
             val bay = fighter.wing?.source
             if (bay == null) {
-                fighter.setPhased(false)
-                fighter.setExtraAlphaMult(1f)
+                fighter.isPhased = false
+                fighter.extraAlphaMult = 1f
                 stranded++
             } else {
                 bay.makeCurrentIntervalFast()
@@ -253,7 +256,7 @@ class FighterGravLinkSystemStats : BaseShipSystemScript() {
         if (stranded > 0) {
             log.warn(
                 "fighter_grav_link: $stranded fighter(s) stranded without a valid bay on ${ship.hullSpec?.hullId}, " +
-                    "visual state reset instead of landing",
+                        "visual state reset instead of landing",
             )
         }
     }

@@ -52,10 +52,10 @@ object BountyRewards {
         val supplies = (15 + threatTier * 8 + (k * 25f).toInt()).coerceAtMost(120)
         cargo.addSupplies(supplies.toFloat())
 
-            HudMessages.campaign(
-                I18n.t("asteria_directorate_bounty", "hud.side_loot", "count" to modWeapons.values.sum().toString()),
-                Color(200, 170, 120)
-            )
+        HudMessages.campaign(
+            I18n.t("asteria_directorate_bounty", "hud.side_loot", "count" to modWeapons.values.sum().toString()),
+            Color(200, 170, 120)
+        )
 
         val commOut = LinkedHashMap(comm)
         commOut[Commodities.SUPPLIES] = supplies

@@ -2,6 +2,8 @@ package cn.kasuminova.astd.combat.hullmods.lens
 
 import cn.kasuminova.astd.combat.hullmods.affix.AffixUtil
 import cn.kasuminova.astd.combat.hullmods.base.ASTDHullModTooltipRenderer
+import cn.kasuminova.astd.combat.hullmods.lens.ASTDLensPermeatingTideHullMod.Companion.TIDE_EBB_SECONDS
+import cn.kasuminova.astd.combat.hullmods.lens.ASTDLensPermeatingTideHullMod.Companion.TIDE_RISE_SECONDS
 import cn.kasuminova.astd.combat.lens.marks.LensMarks
 import cn.kasuminova.astd.renderer.effect.lens.LensVfxTelemetry
 import cn.kasuminova.astd.renderer.effect.lens.PermeatingTideFieldEffect

@@ -1,8 +1,8 @@
 package cn.kasuminova.astd.combat.effect.arc.signature.aod7
 
-import cn.kasuminova.astd.renderer.effect.system.Xc001OverdriveVisualState
-import cn.kasuminova.astd.renderer.effect.projectile.beam.OglEllipseRingRenderer
 import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
+import cn.kasuminova.astd.renderer.effect.projectile.beam.OglEllipseRingRenderer
+import cn.kasuminova.astd.renderer.effect.system.Xc001OverdriveVisualState
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.DamagingProjectileAPI
 import com.fs.starfarer.api.combat.OnFireEffectPlugin
@@ -35,7 +35,9 @@ class Aod7OnFireEffect : OnFireEffectPlugin {
 
         val overdriveLevel = try {
             Xc001OverdriveVisualState.getLevel(ship, engine)
-        } catch (_: Throwable) { 0f }
+        } catch (_: Throwable) {
+            0f
+        }
 
         val core = Xc001OverdriveVisualState.lerpColor(
             COLD_CORE, Xc001OverdriveVisualState.hotCore, overdriveLevel, 235,
@@ -61,17 +63,18 @@ class Aod7OnFireEffect : OnFireEffectPlugin {
                 val e = DistortionEntity()
                 e.setGlobalTimer(0.03f, 0.04f, 0.16f)
                 e.setInnerFull(0.30f, 0.30f)
-                e.setInnerHardness(0.75f)
-                e.setRingHardness(0.50f)
+                e.innerHardness = 0.75f
+                e.ringHardness = 0.50f
                 e.setSizeIn(12f, 12f)
                 e.setSizeFull(38f, 38f)
                 e.setSizeOut(70f, 70f)
-                e.setPowerIn(0f)
-                e.setPowerFull(0.32f)
-                e.setPowerOut(0f)
+                e.powerIn = 0f
+                e.powerFull = 0.32f
+                e.powerOut = 0f
                 e.setLocation(Vector2f(loc))
                 CombatRenderingManager.addEntity(e)
-            } catch (_: Throwable) {}
+            } catch (_: Throwable) {
+            }
         }
 
         private fun spawnSmoke(engine: CombatEngineAPI, loc: Vector2f, vel: Vector2f, facing: Float, smoke: Color) {
@@ -88,7 +91,8 @@ class Aod7OnFireEffect : OnFireEffectPlugin {
                         1.3f, 0.08f, 0.22f, 0.7f,
                         smoke, true,
                     )
-                } catch (_: Throwable) {}
+                } catch (_: Throwable) {
+                }
             }
         }
 
@@ -109,7 +113,8 @@ class Aod7OnFireEffect : OnFireEffectPlugin {
                         tangentialSpeed = 0f,
                     ),
                 )
-            } catch (_: Throwable) {}
+            } catch (_: Throwable) {
+            }
             try {
                 OglEllipseRingRenderer.spawn(
                     engine,
@@ -126,16 +131,19 @@ class Aod7OnFireEffect : OnFireEffectPlugin {
                         tangentialSpeed = -2f,
                     ),
                 )
-            } catch (_: Throwable) {}
+            } catch (_: Throwable) {
+            }
         }
 
         private fun spawnHalo(engine: CombatEngineAPI, loc: Vector2f, core: Color, fringe: Color) {
             try {
                 engine.addHitParticle(loc, Vector2f(), 90f, 1.4f, 0.10f, core)
-            } catch (_: Throwable) {}
+            } catch (_: Throwable) {
+            }
             try {
                 engine.addSmoothParticle(loc, Vector2f(), 160f, 1.0f, 0.20f, fringe)
-            } catch (_: Throwable) {}
+            } catch (_: Throwable) {
+            }
         }
     }
 }

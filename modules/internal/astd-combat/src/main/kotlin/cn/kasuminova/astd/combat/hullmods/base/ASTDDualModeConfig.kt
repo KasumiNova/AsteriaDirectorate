@@ -1,5 +1,11 @@
 package cn.kasuminova.astd.combat.hullmods.base
 
+import cn.kasuminova.astd.combat.hullmods.base.ASTDDualModeRegistry.configFor
+import cn.kasuminova.astd.combat.hullmods.base.ASTDDualModeRegistry.configForShip
+import cn.kasuminova.astd.combat.hullmods.base.ASTDDualModeRegistry.configForVariant
+import cn.kasuminova.astd.combat.hullmods.base.ASTDDualModeRegistry.genericConfigFor
+import cn.kasuminova.astd.combat.hullmods.base.ASTDDualModeRegistry.register
+import cn.kasuminova.astd.combat.hullmods.base.ASTDDualModeSwitcherIds.SWITCHER_ID
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.MutableShipStatsAPI
 import com.fs.starfarer.api.combat.ShipAPI
@@ -68,7 +74,7 @@ object ASTDDualModeGenericIds {
 
 /** 通用双模式配置：任意 ASTD 舰的兜底配置（无系统互换，纯 载人 ⇄ 无人 轮换）。 */
 val GENERIC_DUAL_MODE_CONFIG = ASTDDualModeConfig(
-    switcherId = ASTDDualModeSwitcherIds.SWITCHER_ID,
+    switcherId = SWITCHER_ID,
     crewedModeId = ASTDDualModeGenericIds.MODE_CREWED,
     automatedModeId = ASTDDualModeGenericIds.MODE_AUTOMATED,
     nextCrewedMarker = ASTDDualModeGenericIds.NEXT_CREWED,
@@ -122,10 +128,18 @@ object ASTDDualModeRegistry {
      */
     fun configForVariant(variant: ShipVariantAPI?): ASTDDualModeConfig? {
         val v = variant ?: return null
-        val hullId = try { v.hullSpec?.hullId } catch (_: Throwable) { null }
-        val baseHullId = try { v.hullSpec?.baseHullId } catch (_: Throwable) { null }
+        val hullId = try {
+            v.hullSpec?.hullId
+        } catch (_: Throwable) {
+            null
+        }
+        val baseHullId = try {
+            v.hullSpec?.baseHullId
+        } catch (_: Throwable) {
+            null
+        }
         return configFor(hullId) ?: configFor(baseHullId)
-            ?: genericConfigFor(hullId) ?: genericConfigFor(baseHullId)
+        ?: genericConfigFor(hullId) ?: genericConfigFor(baseHullId)
     }
 
     /**
@@ -134,10 +148,18 @@ object ASTDDualModeRegistry {
      */
     fun configForShip(ship: ShipAPI?): ASTDDualModeConfig? {
         val s = ship ?: return null
-        val hullId = try { s.hullSpec?.hullId } catch (_: Throwable) { null }
-        val baseHullId = try { s.hullSpec?.baseHullId } catch (_: Throwable) { null }
+        val hullId = try {
+            s.hullSpec?.hullId
+        } catch (_: Throwable) {
+            null
+        }
+        val baseHullId = try {
+            s.hullSpec?.baseHullId
+        } catch (_: Throwable) {
+            null
+        }
         return configFor(hullId) ?: configFor(baseHullId)
-            ?: genericConfigFor(hullId) ?: genericConfigFor(baseHullId)
+        ?: genericConfigFor(hullId) ?: genericConfigFor(baseHullId)
     }
 }
 
@@ -150,8 +172,16 @@ object ASTDDualModeRegistry {
  */
 internal fun ShipVariantAPI?.isASTDShipVariant(): Boolean {
     val variant = this ?: return false
-    val hullId = try { variant.hullSpec?.hullId } catch (_: Throwable) { null }
-    val baseHullId = try { variant.hullSpec?.baseHullId } catch (_: Throwable) { null }
+    val hullId = try {
+        variant.hullSpec?.hullId
+    } catch (_: Throwable) {
+        null
+    }
+    val baseHullId = try {
+        variant.hullSpec?.baseHullId
+    } catch (_: Throwable) {
+        null
+    }
     return (hullId ?: "").startsWith("astd_") || (baseHullId ?: "").startsWith("astd_")
 }
 
@@ -161,8 +191,16 @@ internal fun ShipVariantAPI?.isASTDShipVariant(): Boolean {
  */
 internal fun ShipAPI?.isASTDShip(): Boolean {
     val ship = this ?: return false
-    val hullId = try { ship.hullSpec?.hullId } catch (_: Throwable) { null }
-    val baseHullId = try { ship.hullSpec?.baseHullId } catch (_: Throwable) { null }
+    val hullId = try {
+        ship.hullSpec?.hullId
+    } catch (_: Throwable) {
+        null
+    }
+    val baseHullId = try {
+        ship.hullSpec?.baseHullId
+    } catch (_: Throwable) {
+        null
+    }
     return (hullId ?: "").startsWith("astd_") || (baseHullId ?: "").startsWith("astd_")
 }
 
@@ -182,8 +220,8 @@ fun ShipVariantAPI.ensureASTDDualModeState(config: ASTDDualModeConfig, stats: Mu
 
     migrateLegacyDualModeState(config)
 
-    val hasCrewed = getPermaMods().contains(config.crewedModeId)
-    val hasAutomated = getPermaMods().contains(config.automatedModeId)
+    val hasCrewed = permaMods.contains(config.crewedModeId)
+    val hasAutomated = permaMods.contains(config.automatedModeId)
 
     if (hasCrewed && hasAutomated) {
         removePermaMod(config.automatedModeId)
@@ -197,8 +235,8 @@ fun ShipVariantAPI.ensureASTDDualModeState(config: ASTDDualModeConfig, stats: Mu
         hasCrewed -> setDualModeNextMarker(config, config.nextCrewedMarker)
         hasAutomated -> setDualModeNextMarker(config, config.nextAutomatedMarker)
         // 无模式时：按 next marker 激活
-        getPermaMods().contains(config.nextAutomatedMarker) -> activateDualMode(config, config.automatedModeId, stats)
-        getPermaMods().contains(config.nextCrewedMarker) -> activateDualMode(config, config.crewedModeId, stats)
+        permaMods.contains(config.nextAutomatedMarker) -> activateDualMode(config, config.automatedModeId, stats)
+        permaMods.contains(config.nextCrewedMarker) -> activateDualMode(config, config.crewedModeId, stats)
         else -> activateDualMode(config, config.crewedModeId, stats)
     }
 }
@@ -222,7 +260,7 @@ fun ShipVariantAPI.activateDualMode(config: ASTDDualModeConfig, modeId: String, 
     setDualModeNextMarker(config, nextMarker)
     // 同步原版 'automated' 船插（全自动舰船）
     if (modeId == config.automatedModeId) {
-        if (!getPermaMods().contains("automated")) addPermaMod("automated")
+        if (!permaMods.contains("automated")) addPermaMod("automated")
     } else {
         removePermaMod("automated")
     }
@@ -235,7 +273,7 @@ fun ShipVariantAPI.activateDualMode(config: ASTDDualModeConfig, modeId: String, 
  * 同时检查 permaMods 与已挂 hullMods，覆盖 refit 临时态与稳定态。
  */
 fun ShipVariantAPI.hasASTDDualModeAutomated(config: ASTDDualModeConfig): Boolean =
-    getPermaMods().contains(config.automatedModeId) || hasHullMod(config.automatedModeId)
+    permaMods.contains(config.automatedModeId) || hasHullMod(config.automatedModeId)
 
 /**
  * 私有：把历史存档里以普通 hullMod 形式存在的模式/标记迁移为 permaMod（泛化自 arc migrateLegacyModeState）。
@@ -249,7 +287,7 @@ private fun ShipVariantAPI.migrateLegacyDualModeState(config: ASTDDualModeConfig
         config.nextAutomatedMarker,
     )
     for (id in stateIds) {
-        if (hasHullMod(id) && !getPermaMods().contains(id)) {
+        if (hasHullMod(id) && !permaMods.contains(id)) {
             removeMod(id)
             addPermaMod(id)
         }
@@ -273,11 +311,23 @@ private fun ShipVariantAPI.setDualModeNextMarker(config: ASTDDualModeConfig, mar
  * 可能不可用，此处吞错而非崩溃，但每个 catch 都不是空操作（要么有归还逻辑，要么是无害的 best-effort 卸载）。
  */
 private fun clearIncompatibleDualModeCaptain(stats: MutableShipStatsAPI?) {
-    val member = try { stats?.fleetMember } catch (_: Throwable) { null } ?: return
-    val captain = try { member.captain } catch (_: Throwable) { null }
+    val member = try {
+        stats?.fleetMember
+    } catch (_: Throwable) {
+        null
+    } ?: return
+    val captain = try {
+        member.captain
+    } catch (_: Throwable) {
+        null
+    }
     if (captain != null) {
         // AI 核心：先归还到玩家货舱，再移除舰长，避免核心丢失
-        val aiCoreId = try { captain.aiCoreId } catch (_: Throwable) { null }
+        val aiCoreId = try {
+            captain.aiCoreId
+        } catch (_: Throwable) {
+            null
+        }
         if (aiCoreId != null) {
             try {
                 Global.getSector()?.playerFleet?.cargo?.addCommodity(aiCoreId, 1f)
@@ -288,7 +338,7 @@ private fun clearIncompatibleDualModeCaptain(stats: MutableShipStatsAPI?) {
         }
     }
     try {
-        member.setCaptain(null)
+        member.captain = null
     } catch (_: Throwable) {
         // 卸载舰长失败为 best-effort：refit 外/无 fleetMember 上下文不可达，
         // 不应因此崩溃影响整个战役层（核心逻辑防崩例外，有意静默）。

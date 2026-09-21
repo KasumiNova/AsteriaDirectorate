@@ -44,7 +44,7 @@ object DifficultySettingsKeys {
 
     /** 全部 radio 选项的显示名（预设档 + 自定义），供注册与精确匹配。 */
     fun tierDisplayNames(): List<String> = TIERS.map { I18n[I18n.Categories.MOD, it.nameI18nKey] } +
-        I18n[I18n.Categories.MOD, CUSTOM_NAME_KEY]
+            I18n[I18n.Categories.MOD, CUSTOM_NAME_KEY]
 
     /** 自定义档显示名。 */
     fun customDisplayName(): String = I18n[I18n.Categories.MOD, CUSTOM_NAME_KEY]

@@ -22,7 +22,7 @@ object Sys_astd_echo_fixation_crewed : ShipSystemWithSystemFileEntry() {
 
     override val statsScript: String =
         "cn.kasuminova.astd.combat.shipsystems.EchoFixationCrewedSystemStats"
-    override val aiScript: String? =
+    override val aiScript: String =
         "cn.kasuminova.astd.combat.shipsystems.EchoFixationSystemAI"
 
     override val chargeUp: Double = 0.5
@@ -40,7 +40,7 @@ object Sys_astd_echo_fixation_automated : ShipSystemWithSystemFileEntry() {
 
     override val statsScript: String =
         "cn.kasuminova.astd.combat.shipsystems.EchoFixationAutomatedSystemStats"
-    override val aiScript: String? =
+    override val aiScript: String =
         "cn.kasuminova.astd.combat.shipsystems.EchoFixationSystemAI"
 
     override val chargeUp: Double = 0.5
@@ -102,9 +102,9 @@ object Sys_astd_fighter_grav_link : ShipSystemWithSystemFileEntry() {
     override val statsScript: String =
         "cn.kasuminova.astd.combat.shipsystems.FighterGravLinkSystemStats"
     override val aiType: String = "CUSTOM"
-    override val aiScript: String? =
+    override val aiScript: String =
         "cn.kasuminova.astd.combat.shipsystems.FighterGravLinkSystemAI"
-    override val useSound: String? = "system_recall_device"
+    override val useSound: String = "system_recall_device"
 
     override val chargeUp: Double = 0.5
     override val active: Double = 15.0
@@ -211,7 +211,7 @@ object Sys_astd_grav_rift_generator : ShipSystemWithSystemFileEntry() {
     override val statsScript: String =
         "cn.kasuminova.astd.combat.shipsystems.GravityRiftSystemStats"
     override val aiType: String = "CUSTOM"
-    override val aiScript: String? =
+    override val aiScript: String =
         "cn.kasuminova.astd.combat.shipsystems.GravityRiftSystemAI"
 
     override val chargeUp: Double = 1.0

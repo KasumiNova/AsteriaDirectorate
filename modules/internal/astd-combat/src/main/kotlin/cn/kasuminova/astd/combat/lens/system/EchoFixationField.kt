@@ -233,7 +233,7 @@ object EchoFixationField {
                             targetCapLogged = true
                             log.warn(
                                 "[ASTD] EchoFixationField target cap reached ($MAX_TARGETS), " +
-                                    "dropping further in-field targets this fixation"
+                                        "dropping further in-field targets this fixation"
                             )
                         }
                         continue
@@ -254,7 +254,7 @@ object EchoFixationField {
                     // 正常不会触顶；触顶意味异常长定影或时间缩放，必须告警。
                     log.warn(
                         "[ASTD] EchoFixationField snapshot cap reached " +
-                            "($MAX_SNAPSHOTS_PER_SHIP) for a target, dropping newest snapshot"
+                                "($MAX_SNAPSHOTS_PER_SHIP) for a target, dropping newest snapshot"
                     )
                     continue
                 }
@@ -406,7 +406,7 @@ object EchoFixationField {
         ensurePlugin(engine).add(field)
         log.info(
             "[ASTD] EchoFixationField spawned center=($centerX,$centerY) radius=$radius " +
-                "m=${field.difficultyFactor} rangeMult=$rangeMult"
+                    "m=${field.difficultyFactor} rangeMult=$rangeMult"
         )
     }
 

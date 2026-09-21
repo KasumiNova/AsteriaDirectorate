@@ -103,7 +103,7 @@ class TriShardComponent(
      */
     fun addShard(batchIndex: Int, pos: Vector2f, vel: Vector2f, sizeScale: Float = 1f) {
         val side = (length * spec.sizeMul).coerceIn(spec.sizeMin, spec.sizeMax) *
-            MathUtils.getRandomNumberInRange(spec.sizeJitterLo, spec.sizeJitterHi) * sizeScale
+                MathUtils.getRandomNumberInRange(spec.sizeJitterLo, spec.sizeJitterHi) * sizeScale
         val sideRatio = MathUtils.getRandomNumberInRange(spec.skewLo, spec.skewHi)
         val brighten = MathUtils.getRandomNumberInRange(0f, 1f) < spec.coreRatio
         val base = if (brighten) coreColor else fringeColor
@@ -153,7 +153,7 @@ class TriShardComponent(
                 data.setTurnRate(inst.turnRateDegPerSec)
                 data.setScale(inst.scaleX, inst.scaleY)
                 data.setTimer(spec.timerFadeIn, inst.timerFull, spec.timerFadeOut)
-                data.setColor(inst.color)
+                data.color = inst.color
                 data.setEmissiveColor(inst.color.red, inst.color.green, inst.color.blue, inst.emissiveAlpha)
                 dataList.add(data)
                 maxFull = maxOf(maxFull, inst.timerFull)
@@ -168,7 +168,7 @@ class TriShardComponent(
                 return
             }
             entity.setRenderingCount(pending.size)
-            entity.setAlwaysRefreshInstanceData(true)
+            entity.isAlwaysRefreshInstanceData = true
 
             val state = BoxUtilCombatVfx.addEntity(engine, entity)
             if (state != 0) {
@@ -188,14 +188,14 @@ class TriShardComponent(
         if (instanceCount < 1) return false
         return try {
             val memory = entity.instanceDataMemory
-            if (memory == null || memory.is_type_fixed()) {
+            if (memory == null || memory.is_type_fixed) {
                 entity.mallocInstance(InstanceType.DYNAMIC_2D, instanceCount)
-                entity.setInstanceDataRefreshIndex(0)
-                entity.setInstanceDataRefreshOffset(0)
+                entity.instanceDataRefreshIndex = 0
+                entity.instanceDataRefreshOffset = 0
                 entity.setInstanceDataRefreshAllFromCurrentIndex()
             }
             val after = entity.instanceDataMemory
-            if (after == null || after.is_type_fixed()) {
+            if (after == null || after.is_type_fixed) {
                 log.warn("三角碎片实例内存分配失败（id=$id），本批视觉缺席")
                 return false
             }

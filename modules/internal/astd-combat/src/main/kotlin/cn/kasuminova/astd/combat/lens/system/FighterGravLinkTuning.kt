@@ -2,6 +2,7 @@ package cn.kasuminova.astd.combat.lens.system
 
 import cn.kasuminova.astd.api.difficulty.DifficultyTuning
 import cn.kasuminova.astd.api.difficulty.ScalingEntry
+import cn.kasuminova.astd.combat.lens.system.FighterGravLinkTuning.SOFT_FLUX_RATIO_OF_BASE_CAP
 
 /**
  * 战机引力联结器（Fighter Gravity Link）的机制数值声明与纯函数

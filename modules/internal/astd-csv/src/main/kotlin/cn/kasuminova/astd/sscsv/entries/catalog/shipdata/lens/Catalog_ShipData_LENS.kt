@@ -23,10 +23,12 @@ object Ship_astd_zw_001 : ShipDataEntry() {
     override val maxTurnRate: Int = 30
     override val turnAcceleration: Int = 60
     override val mass: Int = 16000
+
     // 决明级：OMNI 全向护盾（240°）+ 4 甲板（与 contents/.ship 一致，阶段一验收要求）。
     override val fighterBays: Int = 4
     override val shieldType: String = "OMNI"
     override val shieldArc: Int = 240
+
     // 护盾维持 360 = 耗散 900 × 0.4。
     override val shieldUpkeep: Double = 0.4
     override val shieldEfficiency: Double = 0.6
@@ -109,12 +111,15 @@ object Ship_astd_zw_102 : ShipDataEntry() {
     override val maxTurnRate: Int = 30
     override val turnAcceleration: Int = 60
     override val mass: Int = 30000
+
     // 飞蓬：全盾化（FRONT 120° → OMNI 240°）+ 护盾效率 0.6。
     override val shieldType: String = "OMNI"
     override val shieldArc: Int = 240
+
     // 护盾维持 640 = 耗散 1100 × 0.5818。
     override val shieldUpkeep: Double = 0.5818
     override val shieldEfficiency: Double = 0.6
+
     // CARRIER：图鉴「航母」分类的判定 hint（原版 ShipBlueprintRow 按 hints 分类，对齐原版军团级判例）。
     override val hints: String = "CARRIER"
     override val minCrew: Int = 500
@@ -154,6 +159,7 @@ object Ship_astd_zw_002 : ShipDataEntry() {
     override val maxTurnRate: Int = 30
     override val turnAcceleration: Int = 60
     override val mass: Int = 16000
+
     // 密蒙：相位化改造——防御方式由 FRONT 护盾改为自定义相位系统「引力相位」
     // （defense id=astd_gravity_phase，stats 脚本 GravityPhaseCloakStats 为后续特效接入点）。
     // hints 必须带 PHASE：原版 ShipHullSpec.isPhase() 仅在 hints 含 PHASE 或
@@ -162,6 +168,7 @@ object Ship_astd_zw_002 : ShipDataEntry() {
     override val hints: String = "PHASE"
     override val shieldType: String = "PHASE"
     override val defenseId: String = "astd_gravity_phase"
+
     // 相位激活/维持辐能均为 400：ship_data 的 phase cost/upkeep 是辐能容量比例（400/12000）。
     override val phaseCost: Double = 0.0333
     override val phaseUpkeep: Double = 0.0333
@@ -214,6 +221,7 @@ object Ship_astd_zw_103 : ShipDataEntry() {
     override val hints: String = "PHASE"
     override val shieldType: String = "PHASE"
     override val defenseId: String = "astd_gravity_phase"
+
     // 相位激活/维持辐能均为 200：ship_data 的 phase cost/upkeep 是辐能容量比例（200/8000）。
     override val phaseCost: Double = 0.025
     override val phaseUpkeep: Double = 0.025

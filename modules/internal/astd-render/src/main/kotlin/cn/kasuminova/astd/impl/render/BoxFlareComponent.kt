@@ -44,13 +44,13 @@ class BoxFlareComponent(
         entity.setLayer(spec.boxLayer)
         entity.setAdditiveBlend()
         entity.applyFlareStyle(spec.style)
-        entity.setDiscRatio(spec.discRatio)
+        entity.discRatio = spec.discRatio
         entity.setSize(spec.width, spec.height)
         entity.autoAspect()
-        entity.setFlick(spec.flick)
-        entity.setFlickerAnimationRateMulti(spec.flickerRate)
-        entity.setGlowPower(spec.glowPower)
-        entity.setNoisePower(spec.noisePower)
+        entity.isFlick = spec.flick
+        entity.flickerAnimationRateMulti = spec.flickerRate
+        entity.glowPower = spec.glowPower
+        entity.noisePower = spec.noisePower
         // 用 Color 重载：BoxUtil 的 setCoreColor(float,float,float,float) 有源码 bug（误写 fringe 槽位）
         entity.setCoreColor(spec.coreColor.toAwt())
         entity.setFringeColor(spec.fringeColor.toAwt())
@@ -94,7 +94,7 @@ class BoxFlareComponent(
         )
         val facing = spec.fixedFacingDeg ?: BoxUtilCombatVfx.normalizeFacingDeg(frame.facing + spec.facingOffsetDeg)
         entity.setStateVanilla(pos, facing)
-        entity.setGlobalAlpha(frame.intensity * fadeMul)
+        entity.globalAlpha = frame.intensity * fadeMul
     }
 
     override fun beginFadeOutSelf(reason: FadeReason, seconds: Float) {

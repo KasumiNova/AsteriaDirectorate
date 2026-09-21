@@ -116,6 +116,7 @@ class ShaderUniformSchema(definitions: List<ShaderUniformDefinition>) {
                     }
                     resolved[definition.key] = supplied
                 }
+
                 definition.required -> throw IllegalArgumentException("Missing required shader uniform: ${definition.key}")
                 definition.defaultValue != null -> resolved[definition.key] = definition.defaultValue
             }

@@ -32,6 +32,7 @@ open class ASTDXc001OverdriveSystemAI : ShipSystemAIScript {
         private const val FALLBACK_RANGE = 800f
         private const val SCAN_INTERVAL_SEC = 0.75f
         private const val HIGH_FLUX_THRESHOLD = 0.65f
+
         // "附近" = 武器射程的 2 倍（用于判断有没有敌人在战场上）
         private const val NEARBY_RANGE_MULT = 2.0f
     }
@@ -56,9 +57,19 @@ open class ASTDXc001OverdriveSystemAI : ShipSystemAIScript {
         weaponRange = try {
             ship.allWeapons
                 ?.filter { w ->
-                    try { w.type != WeaponAPI.WeaponType.MISSILE } catch (_: Throwable) { true }
+                    try {
+                        w.type != WeaponAPI.WeaponType.MISSILE
+                    } catch (_: Throwable) {
+                        true
+                    }
                 }
-                ?.mapNotNull { w -> try { w.range } catch (_: Throwable) { null } }
+                ?.mapNotNull { w ->
+                    try {
+                        w.range
+                    } catch (_: Throwable) {
+                        null
+                    }
+                }
                 ?.maxOrNull()
                 ?: FALLBACK_RANGE
         } catch (_: Throwable) {
@@ -87,8 +98,16 @@ open class ASTDXc001OverdriveSystemAI : ShipSystemAIScript {
         }
 
         val ft = ship.fluxTracker ?: return
-        val fluxLevel = try { ft.fluxLevel } catch (_: Throwable) { 0f }
-        val overloadedOrVenting = try { ft.isOverloadedOrVenting } catch (_: Throwable) { false }
+        val fluxLevel = try {
+            ft.fluxLevel
+        } catch (_: Throwable) {
+            0f
+        }
+        val overloadedOrVenting = try {
+            ft.isOverloadedOrVenting
+        } catch (_: Throwable) {
+            false
+        }
 
         if (isAutomated) {
             advanceAutoMode(ship, system, cachedResult.hasEnemyNearby, cachedResult.hasEnemyInRange, fluxLevel, overloadedOrVenting)
@@ -122,7 +141,10 @@ open class ASTDXc001OverdriveSystemAI : ShipSystemAIScript {
         }
 
         if (shouldUse) {
-            try { ship.useSystem() } catch (_: Throwable) {}
+            try {
+                ship.useSystem()
+            } catch (_: Throwable) {
+            }
         }
     }
 
@@ -138,7 +160,10 @@ open class ASTDXc001OverdriveSystemAI : ShipSystemAIScript {
 
         // 载人模式：只在射程内有敌时开启
         if (hasEnemyInRange) {
-            try { ship.useSystem() } catch (_: Throwable) {}
+            try {
+                ship.useSystem()
+            } catch (_: Throwable) {
+            }
         }
     }
 
@@ -155,7 +180,8 @@ open class ASTDXc001OverdriveSystemAI : ShipSystemAIScript {
         try {
             val st = ship.shipTarget
             if (st != null && st !in candidates) candidates.add(st)
-        } catch (_: Throwable) {}
+        } catch (_: Throwable) {
+        }
 
         for (t in candidates) {
             if (!isValidTarget(engine, ship, t, nearbyRange)) continue
@@ -165,7 +191,11 @@ open class ASTDXc001OverdriveSystemAI : ShipSystemAIScript {
         }
 
         // 全量扫描（已节流，约每 0.75s 一次）
-        val ships = try { engine.ships } catch (_: Throwable) { null }
+        val ships = try {
+            engine.ships
+        } catch (_: Throwable) {
+            null
+        }
         if (ships != null) {
             for (s in ships) {
                 val t = s as? ShipAPI ?: continue

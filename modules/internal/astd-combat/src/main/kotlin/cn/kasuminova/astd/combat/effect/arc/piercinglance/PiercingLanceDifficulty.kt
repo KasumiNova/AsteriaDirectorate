@@ -1,6 +1,7 @@
 package cn.kasuminova.astd.combat.effect.arc.piercinglance
 
 import cn.kasuminova.astd.api.difficulty.ScalingEntry
+import cn.kasuminova.astd.combat.effect.arc.piercinglance.PiercingLanceDifficulty.CONE_DAMAGE
 import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import com.fs.starfarer.api.combat.ShipAPI
 

@@ -2,6 +2,12 @@ package cn.kasuminova.astd.combat.shipsystems
 
 import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcCombatUtil
 import cn.kasuminova.astd.combat.lens.system.GravityRiftTuning
+import cn.kasuminova.astd.combat.shipsystems.GravityRiftSystemStats.Companion.ANCHOR_SAMPLES
+import cn.kasuminova.astd.combat.shipsystems.GravityRiftSystemStats.Companion.DRONE_LINGER_SECONDS
+import cn.kasuminova.astd.combat.shipsystems.GravityRiftSystemStats.Companion.TELEMETRY_BEAM_KEY
+import cn.kasuminova.astd.combat.shipsystems.GravityRiftSystemStats.Companion.TELEMETRY_MINES_KEY
+import cn.kasuminova.astd.combat.shipsystems.GravityRiftSystemStats.Companion.TELEMETRY_TARGET_KEY
+import cn.kasuminova.astd.combat.shipsystems.GravityRiftSystemStats.Companion.TELEMETRY_VORTEX_KEY
 import cn.kasuminova.astd.internal.i18n.I18n
 import cn.kasuminova.astd.renderer.effect.lens.GravityRiftVortexVisual
 import com.fs.starfarer.api.Global
@@ -146,9 +152,9 @@ class GravityRiftSystemStats : BaseShipSystemScript() {
         drone.mutableStats.beamWeaponDamageMult.applyMods(ship.mutableStats.beamWeaponDamageMult)
         drone.aiFlags.setFlag(ShipwideAIFlags.AIFlags.DRONE_MOTHERSHIP, Float.MAX_VALUE, ship)
         drone.owner = ship.owner
-        drone.setCollisionClass(CollisionClass.NONE)
+        drone.collisionClass = CollisionClass.NONE
         drone.giveCommand(ShipCommand.SELECT_GROUP, null, 0)
-        drone.setDrone(true)
+        drone.isDrone = true
 
         @Suppress("UNCHECKED_CAST")
         val beamWeapon = drone.allWeapons[0] as WeaponAPI
@@ -194,7 +200,7 @@ class GravityRiftSystemStats : BaseShipSystemScript() {
                 lastFacing = Misc.getAngleInDegrees(from, target.location)
             }
             drone.facing = lastFacing
-            weapon.setCurrAngle(lastFacing)
+            weapon.currAngle = lastFacing
             if (elapsed < GravityRiftTuning.BEAM_DURATION) {
                 weapon.setForceFireOneFrame(true)
             }
@@ -244,7 +250,7 @@ class GravityRiftSystemStats : BaseShipSystemScript() {
 
     private fun isValidTarget(ship: ShipAPI, target: ShipAPI?): Boolean =
         target != null && target !== ship && target.owner != ship.owner &&
-            !target.isFighter && !target.isHulk && !target.isPhased && target.isAlive
+                !target.isFighter && !target.isHulk && !target.isPhased && target.isAlive
 
     override fun isUsable(system: ShipSystemAPI, ship: ShipAPI): Boolean =
         findTarget(ship) != null

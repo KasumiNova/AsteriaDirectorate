@@ -203,10 +203,17 @@ object ASTDXc002Vfx {
             entity.materialData.setDiffuse(sprite)
             entity.materialData.setEmissive(sprite)
             entity.materialData.setColor(Color(color.red, color.green, color.blue, (255f * alpha * 0.22f).toInt().coerceIn(0, 255)))
-            entity.materialData.setEmissiveColor(Color(emissiveColor.red, emissiveColor.green, emissiveColor.blue, (255f * alpha * 0.70f).toInt().coerceIn(0, 255)))
-            entity.materialData.setAlphaToEmissive(0f)
-            entity.materialData.setColorToEmissive(0f)
-            entity.materialData.setGlowPower(0.75f)
+            entity.materialData.setEmissiveColor(
+                Color(
+                    emissiveColor.red,
+                    emissiveColor.green,
+                    emissiveColor.blue,
+                    (255f * alpha * 0.70f).toInt().coerceIn(0, 255)
+                )
+            )
+            entity.materialData.alphaToEmissive = 0f
+            entity.materialData.isColorToEmissive = 0f
+            entity.materialData.glowPower = 0.75f
             val state = BoxUtilCombatVfx.addEntity(engine, entity)
             if (state != 0) entity.delete()
         } catch (_: Throwable) {
@@ -295,14 +302,14 @@ object ASTDXc002Vfx {
             e.setGlobalTimer(0.04f, full, 0.28f)
             e.setLocation(Vector2f(loc))
             e.setInnerFull(0.2f, 0.2f)
-            e.setInnerHardness(0.78f)
-            e.setRingHardness(0.52f)
+            e.innerHardness = 0.78f
+            e.ringHardness = 0.52f
             e.setSizeIn(size * 0.35f, size * 0.35f)
             e.setSizeFull(size, size)
             e.setSizeOut(size * 0.25f, size * 0.25f)
-            e.setPowerIn(power * 0.55f)
-            e.setPowerFull(power)
-            e.setPowerOut(power * 0.12f)
+            e.powerIn = power * 0.55f
+            e.powerFull = power
+            e.powerOut = power * 0.12f
             val state = BoxUtilCombatVfx.addEntity(engine, e)
             if (state != 0) e.delete()
         } catch (_: Throwable) {

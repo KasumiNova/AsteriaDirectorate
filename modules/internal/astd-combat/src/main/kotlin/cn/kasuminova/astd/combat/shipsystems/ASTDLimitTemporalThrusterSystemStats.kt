@@ -1,7 +1,6 @@
 package cn.kasuminova.astd.combat.shipsystems
 
 import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcProductionShipIds
-import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcProductionVfx
 import cn.kasuminova.astd.internal.i18n.I18n
 import cn.kasuminova.astd.renderer.effect.system.ASTDAfterimageEffect
 import com.fs.starfarer.api.Global
@@ -67,7 +66,7 @@ class ASTDLimitTemporalThrusterSystemStats : BaseShipSystemScript() {
             engine.customData.remove(PLAYER_TIME_MULT_OWNER_KEY)
         }
         ship ?: return
-        ship.setJitterShields(false)
+        ship.isJitterShields = false
         val baseKey = "${ASTDArcProductionShipIds.STAT_LIMIT_TEMPORAL_THRUSTER}:${System.identityHashCode(ship)}"
         engine?.customData?.remove("$baseKey:pulse")
         engine?.customData?.remove("$baseKey:afterimage")
@@ -101,7 +100,7 @@ class ASTDLimitTemporalThrusterSystemStats : BaseShipSystemScript() {
             else -> 0f
         }
         if (level > 0f) {
-            ship.setJitterShields(false)
+            ship.isJitterShields = false
             ship.setJitterUnder(id, TEMPORAL_JITTER_UNDER, level, 25, 0f, 7f)
             ship.setJitter(id, TEMPORAL_JITTER, 0.30f * level, 3, 0f, 0f)
         }

@@ -28,17 +28,20 @@ object CsvCodec {
                         continue
                     }
                 }
+
                 !inQuotes && ch == '"' -> {
                     inQuotes = true
                     i++
                     continue
                 }
+
                 !inQuotes && ch == ',' -> {
                     out += sb.toString()
                     sb.setLength(0)
                     i++
                     continue
                 }
+
                 else -> {
                     sb.append(ch)
                     i++

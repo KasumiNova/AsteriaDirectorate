@@ -1,8 +1,8 @@
 package cn.kasuminova.astd.combat.hullmods.base
 
-import cn.kasuminova.astd.ui.dsl.buildWith
 import cn.kasuminova.astd.internal.i18n.I18n
 import cn.kasuminova.astd.internal.i18n.I18nUi
+import cn.kasuminova.astd.ui.dsl.buildWith
 import com.fs.starfarer.api.ui.Alignment
 import com.fs.starfarer.api.ui.TooltipMakerAPI
 import com.fs.starfarer.api.util.Misc

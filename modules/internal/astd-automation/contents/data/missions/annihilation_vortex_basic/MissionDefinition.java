@@ -11,13 +11,19 @@ import com.fs.starfarer.api.mission.MissionDefinitionPlugin;
 
 /**
  * Dev-only mission surface for annihilation vortex in-game automation.
- *
+ * <p>
  * 玩家旗舰桑德级（清空全部槽位后大型能量槽 WS 003 装湮灭涡旋）+ 玩家侧奥德赛级
  * （大型协同槽 WS 001 同款，挂载验证与 COMPLETED 截图舞台）对敌方警戒级
  * （WS 001 lightac + WS 002 annihilatorpod，弹药投喂舰）与敌方奥德赛级（WS 001 同款，敌版三档）。
  * 相位机验证：双槽位装配 → 牵引/吸收 → 停火坍缩 → 空池保底 → 敌版三档 → 宿主死亡不坍缩。
  */
 public final class MissionDefinition implements MissionDefinitionPlugin {
+    private static void clearAllWeaponSlots(final FleetMemberAPI member) {
+        for (final String slotId : member.getVariant().getFittedWeaponSlots()) {
+            member.getVariant().clearSlot(slotId);
+        }
+    }
+
     @Override
     public void defineMission(final MissionDefinitionAPI api) {
         api.initFleet(FleetSide.PLAYER, "ASTD", FleetGoal.ATTACK, false, 5);
@@ -50,11 +56,5 @@ public final class MissionDefinition implements MissionDefinitionPlugin {
         api.initMap(-9000f, 9000f, -6000f, 6000f);
         api.setBackgroundSpriteName("graphics/backgrounds/background2.jpg");
         api.addPlugin(new ASTDAutomationCombatPlugin());
-    }
-
-    private static void clearAllWeaponSlots(final FleetMemberAPI member) {
-        for (final String slotId : member.getVariant().getFittedWeaponSlots()) {
-            member.getVariant().clearSlot(slotId);
-        }
     }
 }

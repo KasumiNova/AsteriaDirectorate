@@ -15,18 +15,20 @@ class GraphDialogPluginTest {
 
     /** 单 timed 节点：两条延迟文本 + 两个正常选项，无自动跳转。 */
     private fun singleTimedNodeGraph(): DialogGraph = dialogGraph(start = "play") {
-        node("play", DialogDsl.timedNode(
-            onEnter = { ctx ->
-                ctx.enqueue("line-1", 0.3f)
-                ctx.enqueue("line-2", 0.5f)
-            },
-            options = {
-                listOf(
-                    DialogDsl.option("opt_a", "A", DialogDsl.close()),
-                    DialogDsl.option("opt_b", "B", DialogDsl.close()),
-                )
-            },
-        ))
+        node(
+            "play", DialogDsl.timedNode(
+                onEnter = { ctx ->
+                    ctx.enqueue("line-1", 0.3f)
+                    ctx.enqueue("line-2", 0.5f)
+                },
+                options = {
+                    listOf(
+                        DialogDsl.option("opt_a", "A", DialogDsl.close()),
+                        DialogDsl.option("opt_b", "B", DialogDsl.close()),
+                    )
+                },
+            )
+        )
     }
 
     @Test
@@ -62,22 +64,26 @@ class GraphDialogPluginTest {
     @Test
     fun `auto goto between timed nodes keeps skip panel until the next queue finishes`() {
         val graph = dialogGraph(start = "a") {
-            node("a", DialogDsl.timedNode(
-                onEnter = { ctx ->
-                    ctx.sessionState["fired"] = false
-                    ctx.enqueue("a-line", 0.2f)
-                },
-                onAdvance = { ctx, _ ->
-                    if (!ctx.textQueue.hasPending && ctx.sessionState["fired"] != true) {
-                        ctx.sessionState["fired"] = true
-                        ctx.goto("b")
-                    }
-                },
-            ))
-            node("b", DialogDsl.timedNode(
-                onEnter = { ctx -> ctx.enqueue("b-line", 0.2f) },
-                options = { listOf(DialogDsl.option("opt_end", "END", DialogDsl.close())) },
-            ))
+            node(
+                "a", DialogDsl.timedNode(
+                    onEnter = { ctx ->
+                        ctx.sessionState["fired"] = false
+                        ctx.enqueue("a-line", 0.2f)
+                    },
+                    onAdvance = { ctx, _ ->
+                        if (!ctx.textQueue.hasPending && ctx.sessionState["fired"] != true) {
+                            ctx.sessionState["fired"] = true
+                            ctx.goto("b")
+                        }
+                    },
+                )
+            )
+            node(
+                "b", DialogDsl.timedNode(
+                    onEnter = { ctx -> ctx.enqueue("b-line", 0.2f) },
+                    options = { listOf(DialogDsl.option("opt_end", "END", DialogDsl.close())) },
+                )
+            )
         }
         val rig = DialogTestRig()
         val plugin = GraphDialogPlugin(graph, closeOnEscapeOptionId = null)
@@ -105,18 +111,20 @@ class GraphDialogPluginTest {
     @Test
     fun `host rebuilt options survive graph close during advance`() {
         val graph = dialogGraph(start = "end") {
-            node("end", DialogDsl.timedNode(
-                onEnter = { ctx ->
-                    ctx.sessionState["fired"] = false
-                    ctx.enqueue("bye", 0.2f)
-                },
-                onAdvance = { ctx, _ ->
-                    if (!ctx.textQueue.hasPending && ctx.sessionState["fired"] != true) {
-                        ctx.sessionState["fired"] = true
-                        ctx.close()
-                    }
-                },
-            ))
+            node(
+                "end", DialogDsl.timedNode(
+                    onEnter = { ctx ->
+                        ctx.sessionState["fired"] = false
+                        ctx.enqueue("bye", 0.2f)
+                    },
+                    onAdvance = { ctx, _ ->
+                        if (!ctx.textQueue.hasPending && ctx.sessionState["fired"] != true) {
+                            ctx.sessionState["fired"] = true
+                            ctx.close()
+                        }
+                    },
+                )
+            )
         }
         val rig = DialogTestRig()
         // 宿主钩子：模拟 BarCMD.showOptions 同步重建选项面板
@@ -138,9 +146,11 @@ class GraphDialogPluginTest {
     @Test
     fun `host rebuilt options survive close triggered by option selection`() {
         val graph = dialogGraph(start = "menu") {
-            node("menu", DialogDsl.node(
-                options = { listOf(DialogDsl.option("opt_leave", "离开", DialogDsl.close())) },
-            ))
+            node(
+                "menu", DialogDsl.node(
+                    options = { listOf(DialogDsl.option("opt_leave", "离开", DialogDsl.close())) },
+                )
+            )
         }
         val rig = DialogTestRig()
         val plugin = GraphDialogPlugin(graph, closeOnEscapeOptionId = null, onClose = {

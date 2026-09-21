@@ -1,6 +1,8 @@
 package cn.kasuminova.astd.campaign.world
 
 import cn.kasuminova.astd.campaign.dialog.story.PrologueAgentBarEventCreator
+import cn.kasuminova.astd.campaign.world.StoryWorldBootstrap.onGameLoad
+import cn.kasuminova.astd.campaign.world.StoryWorldBootstrap.onNewGameAfterEconomyLoad
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.impl.campaign.intel.bar.events.BarEventManager
 import org.apache.log4j.Logger

@@ -1,5 +1,8 @@
 package cn.kasuminova.astd.renderer.effect.lens
 
+import cn.kasuminova.astd.renderer.effect.lens.EchoFixationAfterimageRenderer.TELEMETRY_KEY
+import cn.kasuminova.astd.renderer.effect.lens.EchoFixationAfterimageRenderer.afterimageFrames
+import cn.kasuminova.astd.renderer.effect.lens.EchoFixationAfterimageRenderer.renderPersistent
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEngineLayers

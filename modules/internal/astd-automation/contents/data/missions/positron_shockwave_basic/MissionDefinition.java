@@ -11,7 +11,7 @@ import com.fs.starfarer.api.mission.MissionDefinitionPlugin;
 
 /**
  * Dev-only mission surface for positron shockwave in-game automation.
- *
+ * <p>
  * 玩家野狼（清空全部槽位后 WS 001 小型能量槽装正电子冲击波）对一艘无武装警戒级靶舰：
  * 穿舰相位靶舰置 400su 弹道上（无触碰体积证据），波及相位移至 700su（满射程自爆锥面波及证据），
  * 近炸相位由插件投喂鱼叉导弹群（近炸引爆成片清除证据）。
@@ -20,6 +20,12 @@ import com.fs.starfarer.api.mission.MissionDefinitionPlugin;
  * → FUSE（近炸成片清除 + devMode 浮字 + 锥面 VFX）→ COMPLETED。
  */
 public final class MissionDefinition implements MissionDefinitionPlugin {
+    private static void clearAllWeaponSlots(final FleetMemberAPI member) {
+        for (final String slotId : member.getVariant().getFittedWeaponSlots()) {
+            member.getVariant().clearSlot(slotId);
+        }
+    }
+
     @Override
     public void defineMission(final MissionDefinitionAPI api) {
         api.initFleet(FleetSide.PLAYER, "ASTD", FleetGoal.ATTACK, false, 5);
@@ -40,11 +46,5 @@ public final class MissionDefinition implements MissionDefinitionPlugin {
         api.initMap(-9000f, 9000f, -6000f, 6000f);
         api.setBackgroundSpriteName("graphics/backgrounds/background2.jpg");
         api.addPlugin(new ASTDAutomationCombatPlugin());
-    }
-
-    private static void clearAllWeaponSlots(final FleetMemberAPI member) {
-        for (final String slotId : member.getVariant().getFittedWeaponSlots()) {
-            member.getVariant().clearSlot(slotId);
-        }
     }
 }

@@ -1,6 +1,7 @@
 package cn.kasuminova.astd.impl.render
 
 import cn.kasuminova.astd.api.render.RenderContext
+import cn.kasuminova.astd.impl.render.StrikeSprayComponent.Companion.RAMP_MIN_RAYS
 import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
@@ -199,10 +200,10 @@ class StrikeSprayComponent(
         }
         // createBeamVisual 默认 fadeOut=0：手动补淡出 + 端点羽化（v2.2 针参数逐字）。
         entity.setGlobalTimer(0f, needle.full, needle.fadeOut)
-        entity.setFillStartAlpha(0f)
-        entity.setFillStartFactor(FILL_START_FACTOR)
-        entity.setFillEndAlpha(0f)
-        entity.setFillEndFactor(FILL_END_FACTOR)
+        entity.fillStartAlpha = 0f
+        entity.fillStartFactor = FILL_START_FACTOR
+        entity.fillEndAlpha = 0f
+        entity.fillEndFactor = FILL_END_FACTOR
         needle.entity = entity
         // 针尖补光（v2.2 主路径同款：尖端小亮点强化「尖」，随针同速 1/4 漂移）。
         engine.addSmoothParticle(

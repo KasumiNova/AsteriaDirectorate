@@ -2,14 +2,15 @@ package cn.kasuminova.astd.combat.effect.arc
 
 import cn.kasuminova.astd.api.combat.ConeImpactSpec
 import cn.kasuminova.astd.api.combat.ConeTargetFilter
+import cn.kasuminova.astd.combat.effect.arc.PositronShockwaveFuseScript.Companion.detonate
 import cn.kasuminova.astd.impl.combat.ConeImpactHandler
 import cn.kasuminova.astd.impl.render.ConeImpactVfx
 import cn.kasuminova.astd.impl.render.ConeImpactVfxSpec
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseEveryFrameCombatPlugin
 import com.fs.starfarer.api.combat.CombatEngineAPI
-import com.fs.starfarer.api.combat.DamagingProjectileAPI
 import com.fs.starfarer.api.combat.DamageType
+import com.fs.starfarer.api.combat.DamagingProjectileAPI
 import com.fs.starfarer.api.combat.MissileAPI
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.input.InputEventAPI
@@ -78,8 +79,8 @@ class PositronShockwaveFuseScript(
             engine.customData[TELEMETRY_FIRST_FRAME_LOGGED] = true
             log.info(
                 "正电子引信脚本首帧运行：elapsed=${projectile.elapsed}, moveSpeed=${projectile.moveSpeed}, " +
-                    "maxRange=$maxRange, fading=${projectile.isFading}, halfAngle=${spec.halfAngleDeg}, " +
-                    "coneRange=${spec.range}, damage=${spec.damage}",
+                        "maxRange=$maxRange, fading=${projectile.isFading}, halfAngle=${spec.halfAngleDeg}, " +
+                        "coneRange=${spec.range}, damage=${spec.damage}",
             )
         }
 
@@ -88,8 +89,8 @@ class PositronShockwaveFuseScript(
         val fuseRange = spec.range * PositronShockwaveDifficulty.FUSE_RANGE_RATIO
         var detonate = CombatUtils.getEntitiesWithinRange(loc, fuseRange).any { e ->
             e !== projectile &&
-                PositronShockwaveDifficulty.isFuseTarget(e, fuseOwner) &&
-                ConeImpactHandler.isInsideCone(loc, dir.x, dir.y, spec.halfAngleDeg, fuseRange, e.location, e.collisionRadius)
+                    PositronShockwaveDifficulty.isFuseTarget(e, fuseOwner) &&
+                    ConeImpactHandler.isInsideCone(loc, dir.x, dir.y, spec.halfAngleDeg, fuseRange, e.location, e.collisionRadius)
         }
 
         // 条件 2：抵达最大射程——无条件自爆（裁定：不会静默消散）。
@@ -109,7 +110,7 @@ class PositronShockwaveFuseScript(
         if (!detonate && projectile.isFading) {
             log.warn(
                 "正电子冲击波弹体淡出先于引信触发（elapsed=${projectile.elapsed}, " +
-                    "moveSpeed=${projectile.moveSpeed}, maxRange=$maxRange），按满射程路径就地引爆",
+                        "moveSpeed=${projectile.moveSpeed}, maxRange=$maxRange），按满射程路径就地引爆",
             )
             detonateAndFinish(engine, loc, dir, fuseOwner, fuse = false)
             return

@@ -92,10 +92,14 @@ class ASTDArcAdvancedFireControlHullMod : BaseHullMod() {
     }
 
     private fun hasSustainedLargeFire(ship: ShipAPI): Boolean {
-        val weapons = try { ship.allWeapons } catch (_: Throwable) { null } ?: return false
+        val weapons = try {
+            ship.allWeapons
+        } catch (_: Throwable) {
+            null
+        } ?: return false
         return weapons.any { weapon ->
             weapon.isEligibleLargeMainWeapon() &&
-                (safeIsFiring(weapon) || safeChargeLevel(weapon) > 0.2f || safeBurstFireTime(weapon) > 0f)
+                    (safeIsFiring(weapon) || safeChargeLevel(weapon) > 0.2f || safeBurstFireTime(weapon) > 0f)
         }
     }
 
@@ -104,12 +108,18 @@ class ASTDArcAdvancedFireControlHullMod : BaseHullMod() {
         if (safeType(this) == WeaponAPI.WeaponType.MISSILE) return false
         if (safeSize(this) != WeaponAPI.WeaponSize.LARGE) return false
         return !safeHasHint(this, WeaponAPI.AIHints.PD) &&
-            !safeHasHint(this, WeaponAPI.AIHints.PD_ONLY) &&
-            !safeHasHint(this, WeaponAPI.AIHints.PD_ALSO) &&
-            !safeHasHint(this, WeaponAPI.AIHints.ANTI_FTR)
+                !safeHasHint(this, WeaponAPI.AIHints.PD_ONLY) &&
+                !safeHasHint(this, WeaponAPI.AIHints.PD_ALSO) &&
+                !safeHasHint(this, WeaponAPI.AIHints.ANTI_FTR)
     }
 
-    override fun addPostDescriptionSection(tooltip: TooltipMakerAPI, hullSize: ShipAPI.HullSize, ship: ShipAPI?, width: Float, isForModSpec: Boolean) {
+    override fun addPostDescriptionSection(
+        tooltip: TooltipMakerAPI,
+        hullSize: ShipAPI.HullSize,
+        ship: ShipAPI?,
+        width: Float,
+        isForModSpec: Boolean
+    ) {
         ASTDHullModTooltipRenderer.renderBlocks(
             tooltip = tooltip,
             width = width,
@@ -125,11 +135,45 @@ class ASTDArcAdvancedFireControlHullMod : BaseHullMod() {
 
     override fun getNameColor(): Color = THEME.nameColor
 
-    private fun safeIsFiring(weapon: WeaponAPI): Boolean = try { weapon.isFiring } catch (_: Throwable) { false }
-    private fun safeChargeLevel(weapon: WeaponAPI): Float = try { weapon.chargeLevel } catch (_: Throwable) { 0f }
-    private fun safeBurstFireTime(weapon: WeaponAPI): Float = try { weapon.burstFireTimeRemaining } catch (_: Throwable) { 0f }
-    private fun safeIsDecorative(weapon: WeaponAPI): Boolean = try { weapon.isDecorative } catch (_: Throwable) { false }
-    private fun safeType(weapon: WeaponAPI): WeaponAPI.WeaponType? = try { weapon.type } catch (_: Throwable) { null }
-    private fun safeSize(weapon: WeaponAPI): WeaponAPI.WeaponSize? = try { weapon.size } catch (_: Throwable) { null }
-    private fun safeHasHint(weapon: WeaponAPI, hint: WeaponAPI.AIHints): Boolean = try { weapon.hasAIHint(hint) } catch (_: Throwable) { false }
+    private fun safeIsFiring(weapon: WeaponAPI): Boolean = try {
+        weapon.isFiring
+    } catch (_: Throwable) {
+        false
+    }
+
+    private fun safeChargeLevel(weapon: WeaponAPI): Float = try {
+        weapon.chargeLevel
+    } catch (_: Throwable) {
+        0f
+    }
+
+    private fun safeBurstFireTime(weapon: WeaponAPI): Float = try {
+        weapon.burstFireTimeRemaining
+    } catch (_: Throwable) {
+        0f
+    }
+
+    private fun safeIsDecorative(weapon: WeaponAPI): Boolean = try {
+        weapon.isDecorative
+    } catch (_: Throwable) {
+        false
+    }
+
+    private fun safeType(weapon: WeaponAPI): WeaponAPI.WeaponType? = try {
+        weapon.type
+    } catch (_: Throwable) {
+        null
+    }
+
+    private fun safeSize(weapon: WeaponAPI): WeaponAPI.WeaponSize? = try {
+        weapon.size
+    } catch (_: Throwable) {
+        null
+    }
+
+    private fun safeHasHint(weapon: WeaponAPI, hint: WeaponAPI.AIHints): Boolean = try {
+        weapon.hasAIHint(hint)
+    } catch (_: Throwable) {
+        false
+    }
 }

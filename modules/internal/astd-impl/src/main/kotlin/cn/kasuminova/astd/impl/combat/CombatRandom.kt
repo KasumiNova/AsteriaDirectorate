@@ -1,5 +1,6 @@
 package cn.kasuminova.astd.impl.combat
 
+import cn.kasuminova.astd.impl.combat.CombatRandom.seedOf
 import com.fs.starfarer.api.Global
 import java.util.Random
 

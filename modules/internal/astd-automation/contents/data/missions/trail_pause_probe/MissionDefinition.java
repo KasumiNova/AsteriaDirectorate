@@ -8,7 +8,9 @@ import com.fs.starfarer.api.mission.FleetSide;
 import com.fs.starfarer.api.mission.MissionDefinitionAPI;
 import com.fs.starfarer.api.mission.MissionDefinitionPlugin;
 
-/** Dev-only mission surface for the trail pause/resume comparison probe (AOD-7 stage). */
+/**
+ * Dev-only mission surface for the trail pause/resume comparison probe (AOD-7 stage).
+ */
 public final class MissionDefinition implements MissionDefinitionPlugin {
     @Override
     public void defineMission(final MissionDefinitionAPI api) {

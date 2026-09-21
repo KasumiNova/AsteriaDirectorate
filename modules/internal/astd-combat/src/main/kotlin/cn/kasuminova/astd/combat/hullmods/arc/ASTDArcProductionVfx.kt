@@ -1,17 +1,15 @@
 package cn.kasuminova.astd.combat.hullmods.arc
 
 import cn.kasuminova.astd.internal.debug.ASTDInGameAutomationScenario
-import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
 import cn.kasuminova.astd.renderer.effect.system.Xc102ShockwaveRingEffect
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
-import com.fs.starfarer.api.combat.CombatEngineLayers
 import com.fs.starfarer.api.combat.EmpArcEntityAPI
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.util.Misc
 import org.lazywizard.lazylib.MathUtils
-import org.magiclib.util.MagicLensFlare
 import org.lwjgl.util.vector.Vector2f
+import org.magiclib.util.MagicLensFlare
 import java.awt.Color
 import kotlin.math.roundToInt
 
@@ -114,7 +112,7 @@ object ASTDArcProductionVfx {
             arc.setFadedOutAtStart(true)
             arc.setRenderGlowAtStart(false)
             arc.setRenderGlowAtEnd(false)
-            arc.setCoreWidthOverride(PLASMA_ARC_WIDTH * if (boosted) 0.46f else 0.36f)
+            arc.coreWidthOverride = PLASMA_ARC_WIDTH * if (boosted) 0.46f else 0.36f
             arc.setWarping(0f)
             emitShieldArcEndpointFlare(engine, ship, from, boosted)
             emitShieldArcEndpointFlare(engine, ship, to, boosted)
@@ -129,8 +127,8 @@ object ASTDArcProductionVfx {
         val level = boostLevel.coerceIn(0f, 1f)
         val ring = Misc.interpolateColor(PLASMA_SHIELD_BLUE_RING, PLASMA_SHIELD_PURPLE_RING, level)
         val inner = Misc.interpolateColor(PLASMA_SHIELD_BLUE_INNER, PLASMA_SHIELD_PURPLE_INNER, level)
-        shield.setRingColor(ring)
-        shield.setInnerColor(inner)
+        shield.ringColor = ring
+        shield.innerColor = inner
         shield.applyShieldEffects(
             ring,
             inner,

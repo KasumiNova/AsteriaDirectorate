@@ -6,7 +6,6 @@ import com.fs.starfarer.api.combat.BeamEffectPlugin
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.DamageType
 import com.fs.starfarer.api.combat.ShipAPI
-import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
 import java.util.IdentityHashMap
 
@@ -80,11 +79,12 @@ class GeminiDemPayloadBeamEffect : BeamEffectPlugin {
         // R2 读数校准面（规格 §4.2 检查点 4）：首伤帧打印 payload 光束结算面板，与「dps × burstSize」口径核对
         log.info(
             "双子星 DEM payload 首伤帧：kind=$kind target=${target.id} " +
-                "beamDamage=${beam.damage?.damage} source=${(beam.source as? ShipAPI)?.id ?: beam.source} owner=${beam.source?.owner}",
+                    "beamDamage=${beam.damage?.damage} source=${(beam.source as? ShipAPI)?.id ?: beam.source} owner=${beam.source?.owner}",
         )
         when (kind) {
             GeminiDemSyncHandler.WarheadKind.KINETIC ->
                 engine.customData[TELEMETRY_KINETIC_HIT] = kineticHitCount(engine) + 1
+
             GeminiDemSyncHandler.WarheadKind.HE ->
                 engine.customData[TELEMETRY_HE_HIT] = heHitCount(engine) + 1
         }

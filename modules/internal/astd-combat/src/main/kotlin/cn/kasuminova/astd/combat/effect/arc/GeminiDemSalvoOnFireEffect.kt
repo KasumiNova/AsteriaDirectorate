@@ -74,8 +74,8 @@ class GeminiDemSalvoOnFireEffect(
                 continue
             }
             missile.source = ship
-            missile.setArmingTime(GeminiDemDifficulty.WARHEAD_ARMING_TIME)
-            missile.setMissileAI(GeminiDemTrackAI(missile, target))
+            missile.armingTime = GeminiDemDifficulty.WARHEAD_ARMING_TIME
+            missile.missileAI = GeminiDemTrackAI(missile, target)
             // 供给侧 R1 证据（规格 §4.2 检查点 3）：TrackAI 装配即 GuidedMissileAI 供目标；
             // 实机判例：API 侧包装弹头的 getAI 读回是引擎包装对象，读回路径不可作观测面。
             engine.customData[TELEMETRY_TRACK_AI_CREATED] = trackAiCreated(engine) + 1
@@ -137,6 +137,6 @@ class GeminiDemSalvoOnFireEffect(
         @Suppress("UNCHECKED_CAST")
         fun warheadsOf(engine: CombatEngineAPI): MutableList<WarheadRef> =
             engine.customData.getOrPut(TELEMETRY_WARHEAD_REGISTRY) { mutableListOf<WarheadRef>() }
-                as MutableList<WarheadRef>
+                    as MutableList<WarheadRef>
     }
 }

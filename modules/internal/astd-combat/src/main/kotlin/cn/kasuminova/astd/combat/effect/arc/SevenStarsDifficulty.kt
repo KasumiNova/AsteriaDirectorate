@@ -1,6 +1,7 @@
 package cn.kasuminova.astd.combat.effect.arc
 
 import cn.kasuminova.astd.api.difficulty.ScalingEntry
+import cn.kasuminova.astd.combat.effect.arc.SevenStarsDifficulty.snapshot
 import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.ShipAPI

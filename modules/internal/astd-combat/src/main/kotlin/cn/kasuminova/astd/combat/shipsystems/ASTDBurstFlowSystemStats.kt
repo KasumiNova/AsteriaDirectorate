@@ -95,7 +95,7 @@ class ASTDBurstFlowSystemStats : BaseShipSystemScript() {
             engine.customData.remove(PLAYER_TIME_MULT_OWNER_KEY)
         }
         ship ?: return
-        ship.setJitterShields(false)
+        ship.isJitterShields = false
         engine?.customData?.remove(AFTERIMAGE_TIMER_KEY_PREFIX + System.identityHashCode(ship))
         engine?.customData?.remove(MOMENTUM_LATCH_KEY_PREFIX + ship.id)
     }
@@ -153,7 +153,7 @@ class ASTDBurstFlowSystemStats : BaseShipSystemScript() {
             else -> 0f
         }
         if (level > 0f) {
-            ship.setJitterShields(false)
+            ship.isJitterShields = false
             ship.setJitterUnder(id, JITTER_UNDER, level, 25, 0f, 7f)
             ship.setJitter(id, JITTER, 0.6f * level, 3, 0f, 0f)
         }

@@ -1,5 +1,6 @@
 package cn.kasuminova.astd.renderer.effect.lens
 
+import cn.kasuminova.astd.renderer.effect.lens.DriftMarkVisualEffect.STALE_AFTER_SECONDS
 import cn.kasuminova.astd.renderer.shader.base.ShaderBlendMode
 import cn.kasuminova.astd.renderer.shader.base.ShaderEffectKey
 import cn.kasuminova.astd.renderer.shader.base.ShaderEffectLayer

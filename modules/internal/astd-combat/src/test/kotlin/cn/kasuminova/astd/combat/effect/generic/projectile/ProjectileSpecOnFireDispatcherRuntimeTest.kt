@@ -82,6 +82,7 @@ class ProjectileSpecOnFireDispatcherRuntimeTest {
                         customData[args?.get(0) as String] = args[1]
                         null
                     }
+
                     "getLocation" -> Vector2f(10f, 20f)
                     "getFacing" -> 30f
                     else -> defaultReturn(method.returnType)
@@ -102,11 +103,11 @@ class ProjectileSpecOnFireDispatcherRuntimeTest {
         java.lang.Boolean.TYPE -> false
         java.lang.Byte.TYPE -> 0.toByte()
         java.lang.Short.TYPE -> 0.toShort()
-        java.lang.Integer.TYPE -> 0
+        Integer.TYPE -> 0
         java.lang.Long.TYPE -> 0L
         java.lang.Float.TYPE -> 0f
         java.lang.Double.TYPE -> 0.0
-        java.lang.Character.TYPE -> '\u0000'
+        Character.TYPE -> '\u0000'
         else -> null
     }
 }

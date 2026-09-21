@@ -26,6 +26,7 @@ class BountyCampaignManager : EveryFrameScript {
     private companion object {
         private val log: Logger = Global.getLogger(BountyCampaignManager::class.java)
     }
+
     private var timer = 0f
 
     override fun isDone(): Boolean = false
@@ -104,6 +105,7 @@ class BountyCampaignManager : EveryFrameScript {
                 state.concludedBountyKeys.add(key)
                 deferred += { InfiniteBountyBridge.onSucceeded(key, state) }
             }
+
             bounty.stage.ordinal in ActiveBounty.Stage.FailedSalvagedFlagship.ordinal..ActiveBounty.Stage.EndedWithoutPlayerInvolvement.ordinal -> {
                 // 失败终态不加标记：resetBounty 后条目即移除；消失兜底走 InfiniteBountyBridge.tick
                 deferred += { InfiniteBountyBridge.onFailed(key, state, coord) }
@@ -130,6 +132,7 @@ class BountyCampaignManager : EveryFrameScript {
                 state.concludedBountyKeys.add(marker)
                 deferred += { MainBountyBridge.onMainBountySucceeded(key, def, state, coord) }
             }
+
             bounty.stage.ordinal in ActiveBounty.Stage.FailedSalvagedFlagship.ordinal..ActiveBounty.Stage.EndedWithoutPlayerInvolvement.ordinal -> {
                 // 失败终态不加标记：resetBounty 后条目即移除；重挂走 tickPosted 的消失探测兜底
                 deferred += { MainBountyBridge.onMainBountyFailed(key, state, coord) }
@@ -142,7 +145,7 @@ class BountyCampaignManager : EveryFrameScript {
         bounty: ActiveBounty,
         state: BountyState,
         main: MainBounties.WorkOrder?,
-        infiniteSlot: cn.kasuminova.astd.campaign.bounty.InfiniteSlotState?,
+        infiniteSlot: InfiniteSlotState?,
     ) {
         val fleet = bounty.fleet
         val flagship = fleet.flagship ?: return

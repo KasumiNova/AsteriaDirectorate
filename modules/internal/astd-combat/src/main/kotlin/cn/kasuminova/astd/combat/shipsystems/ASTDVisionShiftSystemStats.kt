@@ -1,6 +1,7 @@
 package cn.kasuminova.astd.combat.shipsystems
 
 import cn.kasuminova.astd.combat.effect.joint.VisionShiftTuning
+import cn.kasuminova.astd.combat.shipsystems.ASTDVisionShiftSystemStats.Companion.targetStatId
 import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import cn.kasuminova.astd.internal.i18n.I18n
 import cn.kasuminova.astd.renderer.effect.system.ASTDAfterimageEffect
@@ -13,9 +14,9 @@ import com.fs.starfarer.api.combat.DamagingProjectileAPI
 import com.fs.starfarer.api.combat.MutableShipStatsAPI
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.combat.ShipSystemAPI
-import com.fs.starfarer.api.impl.combat.BaseShipSystemScript
 import com.fs.starfarer.api.combat.listeners.AdvanceableListener
 import com.fs.starfarer.api.combat.listeners.DamageTakenModifier
+import com.fs.starfarer.api.impl.combat.BaseShipSystemScript
 import com.fs.starfarer.api.plugins.ShipSystemStatsScript
 import org.lazywizard.lazylib.MathUtils
 import org.lwjgl.util.vector.Vector2f
@@ -125,7 +126,7 @@ class ASTDVisionShiftSystemStats : BaseShipSystemScript() {
             engine.customData.remove(PLAYER_TIME_MULT_OWNER_KEY)
         }
         ship ?: return
-        ship.setJitterShields(false)
+        ship.isJitterShields = false
         engine?.customData?.remove(SELF_AFTERIMAGE_KEY_PREFIX + System.identityHashCode(ship))
     }
 
@@ -149,6 +150,7 @@ class ASTDVisionShiftSystemStats : BaseShipSystemScript() {
                 I18n.t(I18n.Categories.MOD, "system.vision_shift.status.self", "percent" to formatPercent(mark.values.selfTimeMult - 1f)),
                 false,
             )
+
             1 -> ShipSystemStatsScript.StatusData(
                 I18n.t(
                     I18n.Categories.MOD, "system.vision_shift.status.target",
@@ -157,6 +159,7 @@ class ASTDVisionShiftSystemStats : BaseShipSystemScript() {
                 ),
                 false,
             )
+
             else -> null
         }
     }
@@ -200,7 +203,7 @@ class ASTDVisionShiftSystemStats : BaseShipSystemScript() {
         stat.unmodifyMult(statId)
         stat.modifyMult(statId, mark.values.targetTimeMult)
 
-        target.setJitterShields(false)
+        target.isJitterShields = false
         target.setJitterUnder(statId, JITTER_UNDER, 0.7f, 18, 0f, 15f)
         target.setJitter(statId, JITTER, 0.6f, 6, 0f, 0f)
 
@@ -250,7 +253,7 @@ class ASTDVisionShiftSystemStats : BaseShipSystemScript() {
             else -> 0f
         }
         if (level > 0f) {
-            ship.setJitterShields(false)
+            ship.isJitterShields = false
             ship.setJitterUnder(id, JITTER_UNDER, level, 25, 0f, 15f)
             ship.setJitter(id, JITTER, 0.6f * level, 6, 0f, 0f)
         }

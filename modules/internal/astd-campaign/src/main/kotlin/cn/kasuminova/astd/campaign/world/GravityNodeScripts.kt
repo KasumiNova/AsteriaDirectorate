@@ -1,10 +1,10 @@
 package cn.kasuminova.astd.campaign.world
 
+import cn.kasuminova.astd.api.difficulty.DifficultyTuning
+import cn.kasuminova.astd.campaign.dialog.story.BranchStationDialog
 import cn.kasuminova.astd.campaign.story.BranchStationBackendImpl
 import cn.kasuminova.astd.campaign.story.StorySites
-import cn.kasuminova.astd.campaign.dialog.story.BranchStationDialog
 import cn.kasuminova.astd.campaign.ui.terminal.BranchTerminalUi
-import cn.kasuminova.astd.api.difficulty.DifficultyTuning
 import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import cn.kasuminova.astd.internal.i18n.I18n
 import cn.kasuminova.astd.internal.i18n.I18n.Categories
@@ -95,7 +95,7 @@ object GravityNodes {
             log.error("[ASTD] 引力节点护卫舰队生成失败：${node.id}")
             return
         }
-        fleet.setName(I18n.t(Categories.MOD, "world.aster.node.guard_fleet_name"))
+        fleet.name = I18n.t(Categories.MOD, "world.aster.node.guard_fleet_name")
         fleet.memoryWithoutUpdate.set("\$astd_gravity_node_guard", node.id)
         fleet.memoryWithoutUpdate.set("\$doNotGetSidetracked", true)
 
@@ -162,8 +162,8 @@ object GravityNodes {
                 val fleetId = iterator.next()
                 val fleet = sector.getEntityById(fleetId) as? CampaignFleetAPI
                 val inRange = fleet != null && fleet.isAlive && station != null &&
-                    fleet.containingLocation === station.containingLocation &&
-                    Misc.getDistance(station.location, fleet.location) <= StoryWorldIds.EVENT_HORIZON_IMMUNITY_RADIUS
+                        fleet.containingLocation === station.containingLocation &&
+                        Misc.getDistance(station.location, fleet.location) <= StoryWorldIds.EVENT_HORIZON_IMMUNITY_RADIUS
                 if (!inRange) {
                     if (fleet != null && fleet.memoryWithoutUpdate.getBoolean(MEM_SHIELDED)) {
                         fleet.removeTag(Tags.FLEET_IGNORES_CORONA)

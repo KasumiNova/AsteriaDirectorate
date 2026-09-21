@@ -3,6 +3,11 @@ package cn.kasuminova.astd.combat.effect.arc
 import cn.kasuminova.astd.api.difficulty.DifficultyTuning
 import cn.kasuminova.astd.api.difficulty.ScalingEntry
 import cn.kasuminova.astd.api.difficulty.ScalingMap
+import cn.kasuminova.astd.combat.effect.arc.ElectricDriveAcceleratorDifficulty.EXTRA_APPLY_THRESHOLD
+import cn.kasuminova.astd.combat.effect.arc.ElectricDriveAcceleratorDifficulty.FLUX_FULL_THRESHOLD
+import cn.kasuminova.astd.combat.effect.arc.ElectricDriveAcceleratorDifficulty.FLUX_ZERO_THRESHOLD
+import cn.kasuminova.astd.combat.effect.arc.ElectricDriveAcceleratorDifficulty.fluxDecayFactor
+import cn.kasuminova.astd.combat.effect.arc.ElectricDriveAcceleratorDifficulty.rangeBonusBase
 import cn.kasuminova.astd.impl.combat.CombatRandom
 
 /**

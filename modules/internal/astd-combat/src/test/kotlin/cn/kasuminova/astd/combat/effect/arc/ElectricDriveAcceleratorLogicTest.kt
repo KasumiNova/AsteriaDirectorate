@@ -4,12 +4,12 @@ import cn.kasuminova.astd.api.difficulty.DifficultyTuning
 import cn.kasuminova.astd.api.difficulty.ScalingEntry
 import cn.kasuminova.astd.impl.buff.stubShip
 import cn.kasuminova.astd.impl.buff.stubWeapon
+import org.mockito.Mockito.`when`
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
-import org.mockito.Mockito.`when`
 
 /**
  * 规格 03 §4.1 用例 1~7：电驱加速炮机制纯逻辑全量验证（全部调用真实逻辑，禁止源码 contain）。

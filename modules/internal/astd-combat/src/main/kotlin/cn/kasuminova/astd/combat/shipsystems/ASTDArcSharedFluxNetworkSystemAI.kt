@@ -45,13 +45,24 @@ class ASTDArcSharedFluxNetworkSystemAI : ShipSystemAIScript {
         if (engine.isPaused || ship.isHulk) return
 
         val tracker = ship.fluxTracker ?: return
-        val fluxLevel = try { tracker.fluxLevel } catch (_: Throwable) { 0f }
-        val overloadedOrVenting = try { tracker.isOverloadedOrVenting } catch (_: Throwable) { false }
+        val fluxLevel = try {
+            tracker.fluxLevel
+        } catch (_: Throwable) {
+            0f
+        }
+        val overloadedOrVenting = try {
+            tracker.isOverloadedOrVenting
+        } catch (_: Throwable) {
+            false
+        }
         val retreating = isRetreating()
 
         if (system.isOn || system.state == ShipSystemAPI.SystemState.IN || system.state == ShipSystemAPI.SystemState.ACTIVE) {
             if (fluxLevel > SOURCE_ABORT_FLUX || overloadedOrVenting || retreating) {
-                try { ship.useSystem() } catch (_: Throwable) {}
+                try {
+                    ship.useSystem()
+                } catch (_: Throwable) {
+                }
             }
             return
         }
@@ -66,14 +77,21 @@ class ASTDArcSharedFluxNetworkSystemAI : ShipSystemAIScript {
         }
 
         val wantsNetwork = cachedScan.eligibleCount >= 2 ||
-            (cachedScan.pressuredValue >= 1.5f && !cachedScan.enemyPressure)
+                (cachedScan.pressuredValue >= 1.5f && !cachedScan.enemyPressure)
         if (wantsNetwork) {
-            try { ship.useSystem() } catch (_: Throwable) {}
+            try {
+                ship.useSystem()
+            } catch (_: Throwable) {
+            }
         }
     }
 
     private fun scanFriendlies(engine: CombatEngineAPI, source: ShipAPI): ScanResult {
-        val ships = try { engine.ships } catch (_: Throwable) { null } ?: return ScanResult(0, 0f, false)
+        val ships = try {
+            engine.ships
+        } catch (_: Throwable) {
+            null
+        } ?: return ScanResult(0, 0f, false)
         var eligible = 0
         var value = 0f
         var nearbyEnemy = false
@@ -85,7 +103,11 @@ class ASTDArcSharedFluxNetworkSystemAI : ShipSystemAIScript {
                 if (candidate.isFighter || candidate.isDrone) continue
                 if (distance > ASTDArcAuraUtil.XC_102_SYSTEM_MAX_RANGE) continue
                 eligible++
-                val flux = try { candidate.fluxTracker?.fluxLevel ?: 0f } catch (_: Throwable) { 0f }
+                val flux = try {
+                    candidate.fluxTracker?.fluxLevel ?: 0f
+                } catch (_: Throwable) {
+                    0f
+                }
                 val sizeValue = when (candidate.hullSize) {
                     ShipAPI.HullSize.CAPITAL_SHIP -> 2.2f
                     ShipAPI.HullSize.CRUISER -> 1.6f
@@ -106,8 +128,8 @@ class ASTDArcSharedFluxNetworkSystemAI : ShipSystemAIScript {
         val flags = this.flags ?: return false
         return try {
             flags.hasFlag(ShipwideAIFlags.AIFlags.RUN_QUICKLY) ||
-                flags.hasFlag(ShipwideAIFlags.AIFlags.BACK_OFF) ||
-                flags.hasFlag(ShipwideAIFlags.AIFlags.BACKING_OFF)
+                    flags.hasFlag(ShipwideAIFlags.AIFlags.BACK_OFF) ||
+                    flags.hasFlag(ShipwideAIFlags.AIFlags.BACKING_OFF)
         } catch (_: Throwable) {
             false
         }

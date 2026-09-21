@@ -197,7 +197,7 @@ object FleetComposer {
         if (officerCoreIds.size != fleetMembers.size) {
             log.warn(
                 "[FleetComposer] 核心配置与舰队成员数不齐（bounty=$bountyKey）：" +
-                    "cores=${officerCoreIds.size} members=${fleetMembers.size}，按下标对齐截断",
+                        "cores=${officerCoreIds.size} members=${fleetMembers.size}，按下标对齐截断",
             )
         }
 

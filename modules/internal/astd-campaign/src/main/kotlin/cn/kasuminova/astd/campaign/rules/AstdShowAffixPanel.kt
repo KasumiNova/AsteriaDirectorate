@@ -1,7 +1,7 @@
 package cn.kasuminova.astd.campaign.rules
 
-import cn.kasuminova.astd.combat.affix.AffixRegistry
 import cn.kasuminova.astd.campaign.bounty.BountyKeys
+import cn.kasuminova.astd.combat.affix.AffixRegistry
 import cn.kasuminova.astd.internal.i18n.I18n
 import com.fs.starfarer.api.campaign.InteractionDialogAPI
 import com.fs.starfarer.api.campaign.TextPanelAPI

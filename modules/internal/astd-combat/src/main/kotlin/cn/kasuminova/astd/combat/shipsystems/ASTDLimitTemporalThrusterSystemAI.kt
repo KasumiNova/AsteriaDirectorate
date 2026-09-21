@@ -50,11 +50,23 @@ class ASTDLimitTemporalThrusterSystemAI : ShipSystemAIScript {
         scanInterval.advance(amount)
         if (!scanInterval.intervalElapsed()) return
 
-        val fluxLevel = try { ship.fluxTracker?.fluxLevel ?: 0f } catch (_: Throwable) { 0f }
+        val fluxLevel = try {
+            ship.fluxTracker?.fluxLevel ?: 0f
+        } catch (_: Throwable) {
+            0f
+        }
         if (fluxLevel >= HIGH_FLUX || ship.fluxTracker?.isOverloadedOrVenting == true) return
 
-        val ammo = try { system.ammo } catch (_: Throwable) { 1 }
-        val maxAmmo = try { system.maxAmmo } catch (_: Throwable) { 1 }
+        val ammo = try {
+            system.ammo
+        } catch (_: Throwable) {
+            1
+        }
+        val maxAmmo = try {
+            system.maxAmmo
+        } catch (_: Throwable) {
+            1
+        }
         val hasReserveCharge = maxAmmo <= 1 || ammo > 1
         val now = engine.getTotalElapsedTime(false)
         if (now - lastUseAt < 1.4f) return
@@ -65,26 +77,44 @@ class ASTDLimitTemporalThrusterSystemAI : ShipSystemAIScript {
         }
 
         val actualTarget = validTarget(ship, engine, target)
-            ?: validTarget(ship, engine, try { ship.shipTarget } catch (_: Throwable) { null })
+            ?: validTarget(
+                ship, engine, try {
+                    ship.shipTarget
+                } catch (_: Throwable) {
+                    null
+                }
+            )
             ?: nearestEnemy(ship, engine)
             ?: return
         val distance = MathUtils.getDistance(ship.location, actualTarget.location)
         val range = longestWeaponRange(ship).coerceAtLeast(600f)
         val angleDiff = abs(angleDiffDeg(ship.facing, VectorUtils.getAngle(ship.location, actualTarget.location)))
-        val targetFlux = try { actualTarget.fluxTracker?.fluxLevel ?: 0f } catch (_: Throwable) { 0f }
+        val targetFlux = try {
+            actualTarget.fluxTracker?.fluxLevel ?: 0f
+        } catch (_: Throwable) {
+            0f
+        }
         val targetVulnerable = targetFlux >= 0.55f ||
-            (try { actualTarget.fluxTracker?.isOverloadedOrVenting == true } catch (_: Throwable) { false }) ||
-            (try { actualTarget.hullLevel <= 0.45f } catch (_: Throwable) { false })
+                (try {
+                    actualTarget.fluxTracker?.isOverloadedOrVenting == true
+                } catch (_: Throwable) {
+                    false
+                }) ||
+                (try {
+                    actualTarget.hullLevel <= 0.45f
+                } catch (_: Throwable) {
+                    false
+                })
 
         val wantsChase = hasReserveCharge &&
-            fluxLevel <= OFFENSE_FLUX_LIMIT &&
-            targetVulnerable &&
-            distance in (range * GOOD_RANGE_MULT)..CHASE_RANGE
+                fluxLevel <= OFFENSE_FLUX_LIMIT &&
+                targetVulnerable &&
+                distance in (range * GOOD_RANGE_MULT)..CHASE_RANGE
         val wantsReposition = hasReserveCharge &&
-            fluxLevel <= OFFENSE_FLUX_LIMIT &&
-            distance <= range * 1.05f &&
-            angleDiff > FIRING_ARC &&
-            angleDiff < 130f
+                fluxLevel <= OFFENSE_FLUX_LIMIT &&
+                distance <= range * 1.05f &&
+                angleDiff > FIRING_ARC &&
+                angleDiff < 130f
 
         if (wantsChase || wantsReposition) {
             activate(ship, now)
@@ -109,10 +139,10 @@ class ASTDLimitTemporalThrusterSystemAI : ShipSystemAIScript {
         if (collisionDangerDir != null && collisionDangerDir.lengthSquared() > 0.01f) return true
         return engine.projectiles.any { projectile ->
             projectile is DamagingProjectileAPI &&
-                projectile.owner != ship.owner &&
-                !projectile.didDamage() &&
-                MathUtils.getDistance(ship.location, projectile.location) <= THREAT_RANGE &&
-                projectile.damageAmount + projectile.empAmount * 0.25f >= 250f
+                    projectile.owner != ship.owner &&
+                    !projectile.didDamage() &&
+                    MathUtils.getDistance(ship.location, projectile.location) <= THREAT_RANGE &&
+                    projectile.damageAmount + projectile.empAmount * 0.25f >= 250f
         }
     }
 

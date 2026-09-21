@@ -71,7 +71,11 @@ class ASTDArcSharedTacticalNetworkHullMod : BaseHullMod() {
     }
 
     private fun selectTargets(engine: CombatEngineAPI, source: ShipAPI): List<ShipAPI> {
-        val candidates = try { engine.ships } catch (_: Throwable) { null } ?: return emptyList()
+        val candidates = try {
+            engine.ships
+        } catch (_: Throwable) {
+            null
+        } ?: return emptyList()
         val byId = LinkedHashMap<Int, ShipAPI>()
         for (candidate in candidates) {
             if (candidate === source) continue
@@ -124,7 +128,11 @@ class ASTDArcSharedTacticalNetworkHullMod : BaseHullMod() {
     private fun clearStaleTargets(engine: CombatEngineAPI, source: ShipAPI, activeSet: Set<Int>) {
         val key = "$TARGETS_KEY${System.identityHashCode(source)}"
         val previous = engine.customData[key] as? Set<*> ?: emptySet<Any>()
-        val ships = try { engine.ships } catch (_: Throwable) { null } ?: return
+        val ships = try {
+            engine.ships
+        } catch (_: Throwable) {
+            null
+        } ?: return
         for (entry in previous) {
             val identity = entry as? Int ?: continue
             if (identity in activeSet) continue
@@ -147,7 +155,13 @@ class ASTDArcSharedTacticalNetworkHullMod : BaseHullMod() {
         stats.shieldDamageTakenMult.unmodify(modId)
     }
 
-    override fun addPostDescriptionSection(tooltip: TooltipMakerAPI, hullSize: ShipAPI.HullSize, ship: ShipAPI?, width: Float, isForModSpec: Boolean) {
+    override fun addPostDescriptionSection(
+        tooltip: TooltipMakerAPI,
+        hullSize: ShipAPI.HullSize,
+        ship: ShipAPI?,
+        width: Float,
+        isForModSpec: Boolean
+    ) {
         ASTDHullModTooltipRenderer.renderBlocks(
             tooltip = tooltip,
             width = width,
@@ -195,12 +209,22 @@ class ASTDArcSharedTacticalNetworkHullMod : BaseHullMod() {
                 WeaponAPI.WeaponType.DECORATIVE,
                 WeaponAPI.WeaponType.SYSTEM,
                 WeaponAPI.WeaponType.STATION_MODULE -> false
+
                 else -> true
             }
         }
 
-        private fun safeIsDecorative(weapon: WeaponAPI): Boolean = try { weapon.isDecorative } catch (_: Throwable) { false }
-        private fun safeType(weapon: WeaponAPI): WeaponAPI.WeaponType? = try { weapon.type } catch (_: Throwable) { null }
+        private fun safeIsDecorative(weapon: WeaponAPI): Boolean = try {
+            weapon.isDecorative
+        } catch (_: Throwable) {
+            false
+        }
+
+        private fun safeType(weapon: WeaponAPI): WeaponAPI.WeaponType? = try {
+            weapon.type
+        } catch (_: Throwable) {
+            null
+        }
     }
 
     private fun affinityScale(ship: ShipAPI): Float {

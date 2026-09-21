@@ -1,5 +1,7 @@
 package cn.kasuminova.astd.combat.shipsystems
 
+import cn.kasuminova.astd.combat.shipsystems.ASTDBurstFlowSystemAI.Companion.AMMO_LOW_RATIO
+import cn.kasuminova.astd.combat.shipsystems.ASTDBurstFlowSystemAI.Companion.ENGAGE_RANGE_MULT
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.combat.ShipSystemAIScript
@@ -81,11 +83,11 @@ class ASTDBurstFlowSystemAI : ShipSystemAIScript {
     private fun hasLowAmmoWeapon(ship: ShipAPI): Boolean =
         ship.allWeapons.any { weapon ->
             !weapon.isDecorative &&
-                weapon.slot?.isSystemSlot == false &&
-                weapon.type != WeaponAPI.WeaponType.MISSILE &&
-                weapon.usesAmmo() &&
-                weapon.maxAmmo > 0 &&
-                weapon.ammo.toFloat() / weapon.maxAmmo < AMMO_LOW_RATIO
+                    weapon.slot?.isSystemSlot == false &&
+                    weapon.type != WeaponAPI.WeaponType.MISSILE &&
+                    weapon.usesAmmo() &&
+                    weapon.maxAmmo > 0 &&
+                    weapon.ammo.toFloat() / weapon.maxAmmo < AMMO_LOW_RATIO
         }
 
     /** 任一有效敌舰进入本舰最长非导弹武器射程 × [ENGAGE_RANGE_MULT]（owner 100 中立残骸不算交战对象）。 */
@@ -93,10 +95,10 @@ class ASTDBurstFlowSystemAI : ShipSystemAIScript {
         val range = longestNonMissileRange(ship) * ENGAGE_RANGE_MULT
         return engine.ships.any { other ->
             other !== ship &&
-                !other.isHulk &&
-                other.owner != ship.owner &&
-                other.owner != 100 &&
-                MathUtils.getDistance(ship.location, other.location) <= range
+                    !other.isHulk &&
+                    other.owner != ship.owner &&
+                    other.owner != 100 &&
+                    MathUtils.getDistance(ship.location, other.location) <= range
         }
     }
 

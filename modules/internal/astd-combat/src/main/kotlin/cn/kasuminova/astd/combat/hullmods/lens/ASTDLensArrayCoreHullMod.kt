@@ -1,6 +1,10 @@
 package cn.kasuminova.astd.combat.hullmods.lens
 
 import cn.kasuminova.astd.combat.hullmods.base.ASTDHullModTooltipRenderer
+import cn.kasuminova.astd.combat.hullmods.lens.ASTDLensArrayCoreHullMod.Companion.DIFFICULTY_FACTOR
+import cn.kasuminova.astd.combat.hullmods.lens.ASTDLensArrayCoreHullMod.Companion.FLAMEOUT_CHANCE
+import cn.kasuminova.astd.combat.hullmods.lens.ASTDLensArrayCoreHullMod.Companion.MARK_PULSE_PERIOD
+import cn.kasuminova.astd.combat.hullmods.lens.ASTDLensArrayCoreHullMod.Companion.MARK_PULSE_PHASES_KEY
 import cn.kasuminova.astd.combat.lens.marks.LensMarkMath
 import cn.kasuminova.astd.combat.lens.marks.LensMarks
 import cn.kasuminova.astd.combat.lens.ui.LensMarkStatusBar
@@ -134,6 +138,7 @@ class ASTDLensArrayCoreHullMod : BaseHullMod() {
 
         /** 幽灵信号 IntervalUtil 存储 key（按 shipId 拼接）。 */
         private const val INTERVAL_KEY = "astd_lens_core_interval"
+
         /** 情报中枢 IntervalUtil 存储 key（按 shipId 拼接）。 */
         private const val ECM_INTERVAL_KEY = "astd_lens_core_ecm_interval"
 
@@ -312,6 +317,7 @@ class ASTDLensArrayCoreHullMod : BaseHullMod() {
      */
     private fun spawnGhostPulse(engine: CombatEngineAPI, shipId: Int, x: Float, y: Float) {
         val key = "$GHOST_PULSE_KEY:$shipId"
+
         @Suppress("UNCHECKED_CAST")
         val pulses = (engine.customData[key] as? MutableList<GhostPulse>)
             ?: ArrayList<GhostPulse>().also { engine.customData[key] = it }
@@ -328,6 +334,7 @@ class ASTDLensArrayCoreHullMod : BaseHullMod() {
      */
     private fun advanceGhostPulses(engine: CombatEngineAPI, shipId: Int, amount: Float) {
         val key = "$GHOST_PULSE_KEY:$shipId"
+
         @Suppress("UNCHECKED_CAST")
         val pulses = engine.customData[key] as? MutableList<GhostPulse> ?: return
         if (pulses.isEmpty()) return
@@ -371,7 +378,7 @@ class ASTDLensArrayCoreHullMod : BaseHullMod() {
     private fun defuse(missile: MissileAPI) {
         try {
             // no-op：制导被剥离，导弹保持当前航向直飞（不发出任何转向/加速指令）。
-            missile.setMissileAI(MissileAIPlugin { /* no-op：制导被剥离 */ })
+            missile.missileAI = MissileAIPlugin { /* no-op：制导被剥离 */ }
             // 剥离制导基础上额外 50% 熄火（引擎死亡、导弹坠落）。
             if (Math.random().toFloat() < FLAMEOUT_CHANCE) missile.flameOut()
         } catch (t: Throwable) {

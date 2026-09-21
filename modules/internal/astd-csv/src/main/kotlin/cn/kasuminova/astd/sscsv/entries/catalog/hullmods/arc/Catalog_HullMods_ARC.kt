@@ -1,9 +1,7 @@
 package cn.kasuminova.astd.sscsv.entries.catalog.hullmods.arc
 
 import cn.kasuminova.astd.sscsv.entries.HullModEntry
-import cn.kasuminova.astd.sscsv.entries.catalog.hullmods.PLACEHOLDER_DESC
 import cn.kasuminova.astd.sscsv.entries.catalog.hullmods.PLACEHOLDER_SCRIPT
-import cn.kasuminova.astd.sscsv.entries.catalog.hullmods.PLACEHOLDER_SHORT
 import cn.kasuminova.astd.sscsv.entries.catalog.hullmods.TAGS_BUILTIN
 import cn.kasuminova.astd.sscsv.entries.catalog.hullmods.hullmodName
 import cn.kasuminova.astd.sscsv.i18n.SsI18n

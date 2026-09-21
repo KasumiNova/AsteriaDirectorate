@@ -3,6 +3,12 @@ package cn.kasuminova.astd.campaign.ending
 import cn.kasuminova.astd.campaign.bounty.BountyDef
 import cn.kasuminova.astd.campaign.bounty.BountyState
 import cn.kasuminova.astd.campaign.bounty.InfiniteSlotState
+import cn.kasuminova.astd.campaign.ending.InfiniteBountyGenerator.SLOT_COUNT
+import cn.kasuminova.astd.campaign.ending.InfiniteBountyGenerator.TARGET_FACTIONS
+import cn.kasuminova.astd.campaign.ending.InfiniteBountyGenerator.ensureSlots
+import cn.kasuminova.astd.campaign.ending.InfiniteBountyGenerator.keyOf
+import cn.kasuminova.astd.campaign.ending.InfiniteBountyGenerator.regenerateSlot
+import cn.kasuminova.astd.campaign.ending.InfiniteBountyGenerator.rollSlot
 import cn.kasuminova.astd.combat.affix.AffixRegistry
 import com.fs.starfarer.api.impl.campaign.ids.Factions
 import java.util.Random

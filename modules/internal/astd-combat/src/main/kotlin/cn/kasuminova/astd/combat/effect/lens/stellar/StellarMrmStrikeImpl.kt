@@ -1,6 +1,7 @@
 package cn.kasuminova.astd.combat.effect.lens.stellar
 
 import cn.kasuminova.astd.api.combat.StellarMrmStrike
+import cn.kasuminova.astd.combat.effect.lens.stellar.StellarMrmStrikeImpl.LAZYLIB_COARSE_QUERY
 import cn.kasuminova.astd.renderer.effect.explosion.RiftExplosionVfx
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
@@ -132,7 +133,7 @@ object StellarMrmStrikeImpl : StellarMrmStrike {
             val empDamage = StellarMrmStrikeMath.weaponEmpDamage(panel, wEmp)
             for (weapon in target.allWeapons) {
                 if (weapon.isDisabled) continue
-                weapon.setCurrHealth(maxOf(0f, weapon.currHealth - empDamage))
+                weapon.currHealth = maxOf(0f, weapon.currHealth - empDamage)
             }
             bump(engine, TELE_EMP_HITS)
             // c. 逐武器电弧视觉：存活武器槽位各锚一道紫色电弧（allWeapons 为空合法零次循环）

@@ -2,10 +2,10 @@ package cn.kasuminova.astd.campaign
 
 import cn.kasuminova.astd.testutil.CsvTestUtil
 import com.fs.starfarer.api.combat.ShipAPI
+import java.nio.file.Path
 import kotlin.test.Test
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
-import java.nio.file.Path
 
 internal class ASTDDevContentSelectorTest {
 

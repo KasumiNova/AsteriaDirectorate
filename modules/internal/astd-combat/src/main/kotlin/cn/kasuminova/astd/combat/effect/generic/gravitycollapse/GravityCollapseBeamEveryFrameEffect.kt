@@ -1,11 +1,11 @@
 package cn.kasuminova.astd.combat.effect.generic.gravitycollapse
 
-import cn.kasuminova.astd.renderer.effect.projectile.beam.BeamLineUtil
 import cn.kasuminova.astd.impl.render.BeamHostImpl
 import cn.kasuminova.astd.renderer.beam.driver.BeamFrame
 import cn.kasuminova.astd.renderer.beam.driver.BeamVfxDriver
 import cn.kasuminova.astd.renderer.beam.driver.BeamVfxDriverImpl
 import cn.kasuminova.astd.renderer.beam.driver.BeamVfxSpecs
+import cn.kasuminova.astd.renderer.effect.projectile.beam.BeamLineUtil
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.EveryFrameWeaponEffectPlugin
 import com.fs.starfarer.api.combat.WeaponAPI

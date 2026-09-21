@@ -2,6 +2,7 @@ package cn.kasuminova.astd.combat.effect.arc.qiongjue
 
 import cn.kasuminova.astd.api.difficulty.DifficultyTuning
 import cn.kasuminova.astd.api.difficulty.ScalingEntry
+import cn.kasuminova.astd.combat.effect.arc.qiongjue.QiongjueStackMath.switchRetainStacks
 import kotlin.math.floor
 import kotlin.math.round
 

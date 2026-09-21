@@ -1,7 +1,6 @@
 package cn.kasuminova.astd.sscsv.gen
 
 import cn.kasuminova.astd.sscsv.CsvCodec
-import cn.kasuminova.astd.sscsv.CsvTarget
 import cn.kasuminova.astd.sscsv.GeneratedFile
 import cn.kasuminova.astd.sscsv.SsCsvCellsEntry
 import cn.kasuminova.astd.sscsv.SsCsvEntry
@@ -60,22 +59,27 @@ private fun parseArgs(raw: Array<String>): GenArgs {
                 out = requireValue(i)
                 i += 2
             }
+
             "--schema" -> {
                 schema = requireValue(i)
                 i += 2
             }
+
             "--scan" -> {
                 scan = requireValue(i)
                 i += 2
             }
+
             "--comment" -> {
                 comment = requireValue(i)
                 i += 2
             }
+
             "--manifest" -> {
                 manifest = requireValue(i)
                 i += 2
             }
+
             else -> error("Unknown arg: ${raw[i]}")
         }
     }
@@ -216,6 +220,7 @@ private fun writeCsv(path: Path, header: List<String>, entries: List<SsCsvEntry>
                 }
                 rawCells.joinToString(",") { cell -> csvEscape(cell ?: "") }
             }
+
             else -> {
                 val row = e.toRow()
                 val cells = header.map { col ->

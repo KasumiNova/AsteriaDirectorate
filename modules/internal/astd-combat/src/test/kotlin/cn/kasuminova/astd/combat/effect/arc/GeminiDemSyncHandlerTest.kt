@@ -180,7 +180,16 @@ class GeminiDemSyncHandlerTest {
             val target = stubShip("T1", 1)
             val enemy = stubShip("E1", 1)
             val registry = mutableMapOf<String, SyncRecord>()
-            GeminiDemSyncHandler.recordHit(engine, target, WarheadKind.KINETIC, p1, enemy, tuning = fakeTuning(scale), now = 10.0f, registry = registry)
+            GeminiDemSyncHandler.recordHit(
+                engine,
+                target,
+                WarheadKind.KINETIC,
+                p1,
+                enemy,
+                tuning = fakeTuning(scale),
+                now = 10.0f,
+                registry = registry
+            )
             GeminiDemSyncHandler.recordHit(engine, target, WarheadKind.HE, p2, enemy, tuning = fakeTuning(scale), now = 10.5f, registry = registry)
             verify(engine).applyDamage(target, p2, damage, DamageType.ENERGY, 0f, true, false, enemy, true)
         }

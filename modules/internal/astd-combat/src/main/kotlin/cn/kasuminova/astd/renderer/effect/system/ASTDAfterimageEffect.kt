@@ -47,7 +47,8 @@ internal object ASTDAfterimageEffect {
         return renderer
     }
 
-    private class Renderer(private val engine: CombatEngineAPI) : BaseCombatLayeredRenderingPlugin(CombatEngineLayers.ABOVE_SHIPS_AND_MISSILES_LAYER) {
+    private class Renderer(private val engine: CombatEngineAPI) :
+        BaseCombatLayeredRenderingPlugin(CombatEngineLayers.ABOVE_SHIPS_AND_MISSILES_LAYER) {
         private val snapshots = ArrayList<Snapshot>(64)
         private var expired = false
 

@@ -1,7 +1,8 @@
 package cn.kasuminova.astd.impl.difficulty
 
-import cn.kasuminova.astd.internal.i18n.I18n
 import cn.kasuminova.astd.api.AstdLog
+import cn.kasuminova.astd.impl.difficulty.DifficultySettingsRegistrar.register
+import cn.kasuminova.astd.internal.i18n.I18n
 import lunalib.lunaSettings.LunaSettings
 import lunalib.lunaSettings.LunaSettingsListener
 

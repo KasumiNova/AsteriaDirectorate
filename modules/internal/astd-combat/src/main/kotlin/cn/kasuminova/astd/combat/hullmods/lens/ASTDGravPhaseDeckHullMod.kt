@@ -1,6 +1,7 @@
 package cn.kasuminova.astd.combat.hullmods.lens
 
 import cn.kasuminova.astd.combat.hullmods.base.ASTDHullModTooltipRenderer
+import cn.kasuminova.astd.combat.hullmods.lens.ASTDGravPhaseDeckHullMod.Companion.isZw103Ship
 import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseHullMod
@@ -53,8 +54,8 @@ class ASTDGravPhaseDeckHullMod : BaseHullMod() {
         if (ship.isHulk) {
             val state = ship.customData[STATE_KEY] as? LinkState ?: return
             for (fighter in state.phasedByThis) {
-                if (fighter.isPhased) fighter.setPhased(false)
-                fighter.setExtraAlphaMult(1f)
+                if (fighter.isPhased) fighter.isPhased = false
+                fighter.extraAlphaMult = 1f
             }
             ship.removeCustomData(STATE_KEY)
             return
@@ -79,13 +80,13 @@ class ASTDGravPhaseDeckHullMod : BaseHullMod() {
                 // ---- 引力联结：母舰相位 ↔ 战机相位 ----
                 if (mothershipPhased) {
                     if (!fighter.isPhased) {
-                        fighter.setPhased(true)
-                        fighter.setExtraAlphaMult(LINKED_PHASE_ALPHA)
+                        fighter.isPhased = true
+                        fighter.extraAlphaMult = LINKED_PHASE_ALPHA
                         state.phasedByThis += fighter
                     }
                 } else if (state.phasedByThis.remove(fighter)) {
-                    if (fighter.isPhased) fighter.setPhased(false)
-                    fighter.setExtraAlphaMult(1f)
+                    if (fighter.isPhased) fighter.isPhased = false
+                    fighter.extraAlphaMult = 1f
                 }
 
                 // ---- 辐能返还：战机净产出 × 比例 → 母舰软辐能 ----

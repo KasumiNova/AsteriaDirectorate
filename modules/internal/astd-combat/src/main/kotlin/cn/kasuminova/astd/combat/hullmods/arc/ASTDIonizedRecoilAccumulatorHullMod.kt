@@ -14,9 +14,9 @@ import com.fs.starfarer.api.combat.WeaponAPI
 import com.fs.starfarer.api.combat.listeners.AdvanceableListener
 import com.fs.starfarer.api.combat.listeners.DamageTakenModifier
 import com.fs.starfarer.api.ui.TooltipMakerAPI
-import org.magiclib.util.MagicLensFlare
 import org.lazywizard.lazylib.MathUtils
 import org.lwjgl.util.vector.Vector2f
+import org.magiclib.util.MagicLensFlare
 import java.awt.Color
 import kotlin.math.ceil
 import kotlin.math.cos
@@ -69,7 +69,13 @@ class ASTDIonizedRecoilAccumulatorHullMod : BaseHullMod() {
 
     override fun showInRefitScreenModPickerFor(ship: ShipAPI): Boolean = false
 
-    override fun addPostDescriptionSection(tooltip: TooltipMakerAPI, hullSize: ShipAPI.HullSize, ship: ShipAPI?, width: Float, isForModSpec: Boolean) {
+    override fun addPostDescriptionSection(
+        tooltip: TooltipMakerAPI,
+        hullSize: ShipAPI.HullSize,
+        ship: ShipAPI?,
+        width: Float,
+        isForModSpec: Boolean
+    ) {
         ASTDHullModTooltipRenderer.renderBlocks(
             tooltip = tooltip,
             width = width,
@@ -115,7 +121,11 @@ class ASTDIonizedRecoilAccumulatorHullMod : BaseHullMod() {
         private fun isArmorHit(point: Vector2f): Boolean {
             val cell = ship.armorGrid.getCellAtLocation(point) ?: return false
             if (cell.size < 2) return false
-            val armor = try { ship.armorGrid.getArmorValue(cell[0], cell[1]) } catch (_: Throwable) { 0f }
+            val armor = try {
+                ship.armorGrid.getArmorValue(cell[0], cell[1])
+            } catch (_: Throwable) {
+                0f
+            }
             return armor > 1f
         }
 
@@ -154,17 +164,45 @@ class ASTDIonizedRecoilAccumulatorHullMod : BaseHullMod() {
                 val to = targetPoint(target)
                 val params = arcParams()
                 val arc = if (Math.random().toFloat() < pierceChance) {
-                    engine.spawnEmpArcPierceShields(ship, from, ship, target, DamageType.ENERGY, damage, emp, range, null, ARC_THICKNESS, ARC_FRINGE, ARC_CORE, params)
+                    engine.spawnEmpArcPierceShields(
+                        ship,
+                        from,
+                        ship,
+                        target,
+                        DamageType.ENERGY,
+                        damage,
+                        emp,
+                        range,
+                        null,
+                        ARC_THICKNESS,
+                        ARC_FRINGE,
+                        ARC_CORE,
+                        params
+                    )
                 } else {
-                    engine.spawnEmpArc(ship, from, ship, target, DamageType.ENERGY, damage, emp, range, null, ARC_THICKNESS, ARC_FRINGE, ARC_CORE, params)
+                    engine.spawnEmpArc(
+                        ship,
+                        from,
+                        ship,
+                        target,
+                        DamageType.ENERGY,
+                        damage,
+                        emp,
+                        range,
+                        null,
+                        ARC_THICKNESS,
+                        ARC_FRINGE,
+                        ARC_CORE,
+                        params
+                    )
                 }
-                arc.setCoreWidthOverride(ARC_CORE_WIDTH)
+                arc.coreWidthOverride = ARC_CORE_WIDTH
                 arc.setSingleFlickerMode(true)
                 emitRecoilArcPathFlares(engine, from, to, ARC_FRINGE, ARC_CORE)
             } else {
                 val angle = MathUtils.getRandomNumberInRange(0f, 360f)
                 val dist = MathUtils.getRandomNumberInRange(ship.collisionRadius * 0.45f, ship.collisionRadius * 0.95f)
-                val rad = java.lang.Math.toRadians(angle.toDouble())
+                val rad = Math.toRadians(angle.toDouble())
                 val to = Vector2f(from.x + cos(rad).toFloat() * dist, from.y + sin(rad).toFloat() * dist)
                 engine.spawnEmpArcVisual(from, ship, to, ship, ARC_VISUAL_THICKNESS, ARC_FRINGE, ARC_CORE, arcParams()).setSingleFlickerMode(true)
                 emitRecoilArcPathFlares(engine, from, to, ARC_FRINGE, ARC_CORE)
@@ -178,8 +216,8 @@ class ASTDIonizedRecoilAccumulatorHullMod : BaseHullMod() {
             val base = BASE_PROC_CHANCE + (MAX_PROC_CHANCE - BASE_PROC_CHANCE) * t
             val beamMult = if (param is BeamAPI) BEAM_PROC_MULT else 1f
             return (base *
-                beamMult *
-                hitStrengthProcMult(damage.baseDamage)).coerceIn(0f, 1f)
+                    beamMult *
+                    hitStrengthProcMult(damage.baseDamage)).coerceIn(0f, 1f)
         }
 
         private fun hitStrengthProcMult(baseDamage: Float): Float {

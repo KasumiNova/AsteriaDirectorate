@@ -4,7 +4,6 @@ import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEntityAPI
 import com.fs.starfarer.api.combat.MissileAPI
-import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.impl.combat.MoteAIScript
 import com.fs.starfarer.api.impl.combat.MoteControlScript
 import org.lazywizard.lazylib.MathUtils
@@ -49,7 +48,7 @@ class StardustMoteAI(missile: MissileAPI) : MoteAIScript(missile) {
 
         target = pickMissile(engine)
             ?: pickShip(engine, fighters = true)
-            ?: pickShip(engine, fighters = false)
+                    ?: pickShip(engine, fighters = false)
         // 环绕基准跟随源舰（不使用原版 attractor 机制，data.attractorLock 恒 null）
         if (source.isHulk) target = null
     }

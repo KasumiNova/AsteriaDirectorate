@@ -1,5 +1,6 @@
 package cn.kasuminova.astd.combat.effect.arc.qiongjue
 
+import cn.kasuminova.astd.combat.effect.arc.qiongjue.QiongjueDamageDealtModifier.Companion.ensure
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEntityAPI

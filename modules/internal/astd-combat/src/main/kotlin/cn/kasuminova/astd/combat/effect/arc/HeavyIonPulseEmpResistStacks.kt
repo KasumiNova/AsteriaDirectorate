@@ -6,6 +6,7 @@ import cn.kasuminova.astd.api.buff.StackDecayMode
 import cn.kasuminova.astd.api.buff.StackableBuff
 import cn.kasuminova.astd.api.buff.getBuff
 import cn.kasuminova.astd.api.combat.CombatFeedback
+import cn.kasuminova.astd.combat.effect.arc.HeavyIonPulseEmpResistStacks.Companion.BUFF_ID
 import cn.kasuminova.astd.impl.combat.CombatFeedbackImpl
 import cn.kasuminova.astd.internal.i18n.I18n
 import com.fs.starfarer.api.combat.CombatEngineAPI
@@ -142,4 +143,4 @@ class HeavyIonPulseEmpResistStacks(
 
 /** 便捷扩展：取该船的 EMP 抗性削减 Buff（不存在返回 null）。一行入口不沉淀进公共 API（00 §1.3 约定）。 */
 fun ShipAPI.heavyIonPulseEmpResistStacks(): HeavyIonPulseEmpResistStacks? =
-    getBuff(HeavyIonPulseEmpResistStacks.BUFF_ID) as? HeavyIonPulseEmpResistStacks
+    getBuff(BUFF_ID) as? HeavyIonPulseEmpResistStacks

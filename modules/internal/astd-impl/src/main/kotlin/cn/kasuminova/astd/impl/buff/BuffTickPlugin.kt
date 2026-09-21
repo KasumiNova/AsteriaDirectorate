@@ -1,5 +1,6 @@
 package cn.kasuminova.astd.impl.buff
 
+import cn.kasuminova.astd.impl.buff.BuffTickPlugin.Companion.ENGINE_PLUGIN_KEY
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseEveryFrameCombatPlugin
 import com.fs.starfarer.api.combat.CombatEngineAPI

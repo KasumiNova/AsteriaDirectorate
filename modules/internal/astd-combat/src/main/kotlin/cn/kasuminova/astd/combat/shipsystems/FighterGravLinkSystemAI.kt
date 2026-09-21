@@ -1,5 +1,8 @@
 package cn.kasuminova.astd.combat.shipsystems
 
+import cn.kasuminova.astd.combat.shipsystems.FighterGravLinkSystemAI.Companion.ENGAGE_SCAN_RANGE
+import cn.kasuminova.astd.combat.shipsystems.FighterGravLinkSystemAI.Companion.MIN_DEPLOYED_FIGHTERS
+import cn.kasuminova.astd.combat.shipsystems.FighterGravLinkSystemAI.Companion.SCAN_INTERVAL_SEC
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.combat.ShipSystemAIScript

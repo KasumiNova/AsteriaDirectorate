@@ -11,13 +11,19 @@ import com.fs.starfarer.api.mission.MissionDefinitionPlugin;
 
 /**
  * Dev-only mission surface for heavy ion pulse in-game automation.
- *
+ * <p>
  * 玩家桑德级与敌方桑德级（均清空全部槽位后大型能量槽 WS 003 装重型离子脉冲，全走 reserves
  * 由插件手动 spawn，玩家舰身份由插件 setPlayerShipExternal 赋予）。
  * 相位机验证：装配（双炮管/ammo 40/射程 700）→ 护盾命中无电弧 → 船体泄放电弧 + 弹匣节奏 →
  * k_s=5 玩家恒 v2（无贯穿）→ 敌版 k_s=2 无贯穿 → 敌版 k_s=5 EMP 贯穿浮字（§2.5 待验证项核对）。
  */
 public final class MissionDefinition implements MissionDefinitionPlugin {
+    private static void clearAllWeaponSlots(final FleetMemberAPI member) {
+        for (final String slotId : member.getVariant().getFittedWeaponSlots()) {
+            member.getVariant().clearSlot(slotId);
+        }
+    }
+
     @Override
     public void defineMission(final MissionDefinitionAPI api) {
         api.initFleet(FleetSide.PLAYER, "ASTD", FleetGoal.ATTACK, false, 5);
@@ -44,11 +50,5 @@ public final class MissionDefinition implements MissionDefinitionPlugin {
         api.initMap(-9000f, 9000f, -6000f, 6000f);
         api.setBackgroundSpriteName("graphics/backgrounds/background2.jpg");
         api.addPlugin(new ASTDAutomationCombatPlugin());
-    }
-
-    private static void clearAllWeaponSlots(final FleetMemberAPI member) {
-        for (final String slotId : member.getVariant().getFittedWeaponSlots()) {
-            member.getVariant().clearSlot(slotId);
-        }
     }
 }

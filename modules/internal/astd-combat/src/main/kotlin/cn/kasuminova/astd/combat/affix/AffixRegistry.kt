@@ -1,5 +1,8 @@
 package cn.kasuminova.astd.combat.affix
 
+import cn.kasuminova.astd.combat.affix.AffixRegistry.EXCLUSIVE_PAIRS
+import cn.kasuminova.astd.combat.affix.AffixRegistry.pickAffixes
+import cn.kasuminova.astd.combat.affix.AffixRegistry.slotCounts
 import cn.kasuminova.astd.internal.i18n.I18n
 import java.util.Random
 import kotlin.math.floor
