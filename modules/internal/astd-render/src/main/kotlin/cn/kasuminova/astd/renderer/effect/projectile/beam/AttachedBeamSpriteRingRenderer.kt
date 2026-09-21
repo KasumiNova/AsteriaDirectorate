@@ -13,7 +13,6 @@ import org.boxutil.base.api.InstanceDataAPI
 import org.boxutil.define.BoxDatabase
 import org.boxutil.define.BoxEnum
 import org.boxutil.define.InstanceType
-import org.boxutil.manager.CombatRenderingManager
 import org.boxutil.units.standard.attribute.Instance2Data
 import org.boxutil.units.standard.entity.SpriteEntity
 import org.lazywizard.lazylib.MathUtils
@@ -230,7 +229,7 @@ internal object AttachedBeamSpriteRingRenderer {
         }
 
         val addState = try {
-            BoxUtilCombatVfx.addEntity(engine, BoxEnum.ENTITY_SPRITE, spriteEntity)
+            BoxUtilCombatVfx.addEntity(engine, spriteEntity)
         } catch (t: Throwable) {
             if (engine.customData[KEY_LOG_ADD_SPRITE_FAIL_ONCE] != true) {
                 engine.customData[KEY_LOG_ADD_SPRITE_FAIL_ONCE] = true

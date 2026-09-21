@@ -6,7 +6,6 @@ import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEngineLayers
 import com.fs.starfarer.api.graphics.SpriteAPI
-import org.boxutil.define.BoxEnum
 import org.boxutil.units.standard.entity.TrailEntity
 import org.lazywizard.lazylib.MathUtils
 import org.lwjgl.util.vector.Vector2f
@@ -168,7 +167,7 @@ class ConeArcComponent(
             entity.setFillEndFactor(FILL_END_FACTOR)
             // 实体变换恒等（锚弧心、朝弹道、缩放 1）：扩张靠逐帧节点重写，梁宽不随矩阵放大。
             entity.setStateVanilla(arc.center, facingDeg, UNIT_SCALE)
-            val state = BoxUtilCombatVfx.addEntity(engine, BoxEnum.ENTITY_TRAIL, entity)
+            val state = BoxUtilCombatVfx.addEntity(engine, entity)
             if (state != 0) {
                 log.warn("锥面弧曲梁注册失败（addEntity 返回 $state，id=$id），本道弧视觉缺席")
                 entity.delete()

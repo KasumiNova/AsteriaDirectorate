@@ -6,7 +6,6 @@ import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
 import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx.addEntity
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineLayers
-import org.boxutil.define.BoxEnum
 import org.boxutil.units.standard.entity.FlareEntity
 import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
@@ -57,7 +56,7 @@ class BoxFlareComponent(
         entity.setFringeColor(spec.fringeColor.toAwt())
         entity.setGlobalTimer(0.05f, FLARE_FULL_SECONDS, 0.1f)
         BoxUtilCombatVfx.ensureReady(engine)
-        val state = addEntity(engine, BoxEnum.ENTITY_FLARE, entity)
+        val state = addEntity(engine, entity)
         if (state != 0) {
             log.warn("ASTD box flare 注册失败（addEntity 返回 $state）：id=$id，本弹体光斑层缺失，其余特效层照常")
             entity.delete()

@@ -98,27 +98,27 @@ object Wpn_astd_gcp12 : WeaponDataEntry() {
     override val name: String = weaponName(id)
     override val tier: Int = 3
     override val baseValue: Int = 24000
-    override val range: Int = 1100
+    override val range: Int = 1000
 
-    // Burst beam：爆发伤害=3600，发射时间=3s => 束内 DPS=1200
-    override val damagePerSecond: Int = 1200
+    // 光束每秒伤害
+    override val damagePerSecond: Int = 800
     override val damagePerShot: Int = 0
     override val emp: Int = 0
     override val impact: Int = 0
 
     override val turnRate: Int = 20
-    override val ops: Int = 22
+    override val ops: Int = 28
     override val type: String = "HIGH_EXPLOSIVE"
 
-    // 维持与旧版大致一致的耗幅比（~1.2 flux/dmg）
-    override val energyPerSecond: Int = 1440
+    override val energyPerSecond: Int = 880
 
-    override val chargeup: Double = 1.5
-    override val chargedown: Double = 0.6
+    // 开火前摇与开火后冷却
+    override val chargeup: Double = 1.0
+    override val chargedown: Double = 0.5
 
     // Beam 的 burst size/ delay 对应 burstDuration / burstCooldown
-    override val burstSize: Double = 3.0
-    override val burstDelay: Double = 8.0
+    override val burstSize: Double = 2.5
+    override val burstDelay: Double = 3.0
 
     override val beamSpeed: Int = 10000
     override val projSpeed: Int = 0
@@ -139,10 +139,9 @@ object Wpn_astd_gcp8 : WeaponDataEntry() {
     override val name: String = weaponName(id)
     override val tier: Int = 2
     override val baseValue: Int = 12000
-    override val range: Int = 900
+    override val range: Int = 800
 
-    // Burst beam：爆发伤害=1600，发射时间=2s => 束内 DPS=800
-    override val damagePerSecond: Int = 800
+    override val damagePerSecond: Int = 500
     override val damagePerShot: Int = 0
     override val emp: Int = 0
     override val impact: Int = 0
@@ -150,12 +149,12 @@ object Wpn_astd_gcp8 : WeaponDataEntry() {
     override val turnRate: Int = 30
     override val ops: Int = 14
     override val type: String = "HIGH_EXPLOSIVE"
-    override val energyPerSecond: Int = 960
+    override val energyPerSecond: Int = 550
 
-    override val chargeup: Double = 1.0
-    override val chargedown: Double = 0.45
+    override val chargeup: Double = 0.75
+    override val chargedown: Double = 0.5
     override val burstSize: Double = 2.0
-    override val burstDelay: Double = 6.0
+    override val burstDelay: Double = 2.5
 
     override val beamSpeed: Int = 10000
     override val projSpeed: Int = 0
@@ -176,10 +175,9 @@ object Wpn_astd_gcp4 : WeaponDataEntry() {
     override val name: String = weaponName(id)
     override val tier: Int = 1
     override val baseValue: Int = 6000
-    override val range: Int = 700
+    override val range: Int = 600
 
-    // Burst beam：爆发伤害=700，发射时间=1.5s => 束内 DPS≈466.7（取 467）
-    override val damagePerSecond: Int = 467
+    override val damagePerSecond: Int = 350
     override val damagePerShot: Int = 0
     override val emp: Int = 0
     override val impact: Int = 0
@@ -187,12 +185,12 @@ object Wpn_astd_gcp4 : WeaponDataEntry() {
     override val turnRate: Int = 30
     override val ops: Int = 8
     override val type: String = "HIGH_EXPLOSIVE"
-    override val energyPerSecond: Int = 584
+    override val energyPerSecond: Int = 385
 
     override val chargeup: Double = 0.5
-    override val chargedown: Double = 0.35
+    override val chargedown: Double = 0.25
     override val burstSize: Double = 1.5
-    override val burstDelay: Double = 4.0
+    override val burstDelay: Double = 2.75
 
     override val beamSpeed: Int = 10000
     override val projSpeed: Int = 0
@@ -213,7 +211,7 @@ object Wpn_astd_gcp2 : WeaponDataEntry() {
     override val name: String = weaponName(id)
     override val tier: Int = 1
     override val baseValue: Int = 5000
-    override val range: Int = 550
+    override val range: Int = 600
 
     // Burst beam：爆发伤害=300，发射时间=1s => 束内 DPS=300
     override val damagePerSecond: Int = 300
@@ -224,12 +222,12 @@ object Wpn_astd_gcp2 : WeaponDataEntry() {
     override val turnRate: Int = 60
     override val ops: Int = 6
     override val type: String = "HIGH_EXPLOSIVE"
-    override val energyPerSecond: Int = 400
+    override val energyPerSecond: Int = 300
 
     override val chargeup: Double = 0.5
     override val chargedown: Double = 0.25
     override val burstSize: Double = 1.0
-    override val burstDelay: Double = 2.0
+    override val burstDelay: Double = 1.25
 
     override val beamSpeed: Int = 10000
     override val projSpeed: Int = 0

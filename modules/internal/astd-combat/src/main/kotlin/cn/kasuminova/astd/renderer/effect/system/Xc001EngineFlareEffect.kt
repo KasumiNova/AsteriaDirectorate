@@ -210,7 +210,7 @@ internal object Xc001EngineFlareEffect {
             }
 
             val state = try {
-                BoxUtilCombatVfx.addEntity(combatEngine, BoxEnum.ENTITY_FLARE, entity)
+                BoxUtilCombatVfx.addEntity(combatEngine, entity)
             } catch (_: Throwable) {
                 -1
             }

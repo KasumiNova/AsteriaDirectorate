@@ -7,7 +7,6 @@ import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEngineLayers
 import org.boxutil.base.api.InstanceDataAPI
 import org.boxutil.base.api.InstanceRenderAPI
-import org.boxutil.define.BoxEnum
 import org.boxutil.define.InstanceType
 import org.boxutil.units.standard.attribute.Instance2Data
 import org.boxutil.units.standard.entity.SpriteEntity
@@ -171,7 +170,7 @@ class TriShardComponent(
             entity.setRenderingCount(pending.size)
             entity.setAlwaysRefreshInstanceData(true)
 
-            val state = BoxUtilCombatVfx.addEntity(engine, BoxEnum.ENTITY_SPRITE, entity)
+            val state = BoxUtilCombatVfx.addEntity(engine, entity)
             if (state != 0) {
                 log.warn("三角碎片批注册失败（addEntity 返回 $state，id=$id），本批视觉缺席")
                 entity.delete()

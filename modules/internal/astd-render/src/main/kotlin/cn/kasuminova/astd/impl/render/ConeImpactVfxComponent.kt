@@ -4,7 +4,6 @@ import cn.kasuminova.astd.api.render.RenderContext
 import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
-import org.boxutil.define.BoxEnum
 import org.boxutil.units.standard.entity.DistortionEntity
 import org.lazywizard.lazylib.MathUtils
 import org.lwjgl.util.vector.Vector2f
@@ -159,7 +158,7 @@ class ConeImpactVfxComponent(
             e.setPowerFull(spec.powerFull)
             e.setPowerOut(0f)
             e.setLocation(Vector2f(origin))
-            val result = BoxUtilCombatVfx.addEntity(engine, BoxEnum.ENTITY_DISTORTION, e)
+            val result = BoxUtilCombatVfx.addEntity(engine, e)
             if (result != 0) {
                 log.warn("锥面冲击特效 DistortionEntity 注册失败（addEntity 返回 $result，id=$id），扭曲层缺席（闪光/碎片/弧照常）")
             }

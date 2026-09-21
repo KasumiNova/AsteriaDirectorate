@@ -7,7 +7,6 @@ import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEngineLayers
 import com.fs.starfarer.api.graphics.SpriteAPI
-import org.boxutil.define.BoxEnum
 import org.boxutil.units.standard.attribute.NodeData
 import org.boxutil.units.standard.entity.CurveEntity
 import java.awt.Color
@@ -165,7 +164,7 @@ class PsiHelixComponent(
         e.setFillEndAlpha(1f)
         e.setFillEndFactor(0f)
 
-        val state = BoxUtilCombatVfx.addEntity(engine, BoxEnum.ENTITY_CURVE, e)
+        val state = BoxUtilCombatVfx.addEntity(engine, e)
         if (state != 0) {
             e.delete()
             return null

@@ -20,12 +20,10 @@ import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEngineLayers
 import com.fs.starfarer.api.util.IntervalUtil
-import org.boxutil.define.BoxEnum
 import org.boxutil.units.standard.entity.DistortionEntity
 import org.lazywizard.lazylib.MathUtils
 import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
-import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -159,7 +157,7 @@ class AnnihilationVortexVortexComponent(
         e.setPowerFull(0.22f)
         e.setPowerOut(0.30f)
         e.setLocation(center)
-        val result = BoxUtilCombatVfx.addEntity(engine, BoxEnum.ENTITY_DISTORTION, e)
+        val result = BoxUtilCombatVfx.addEntity(engine, e)
         if (result != 0 && !warnedDistortion) {
             warnedDistortion = true
             log.warn("[ASTD] 湮灭涡旋低频扭曲 DistortionEntity 注册失败（addEntity 返回 $result），扭曲点缀缺失（涡旋面/火花照常）")

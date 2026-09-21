@@ -9,7 +9,6 @@ import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEngineLayers
 import com.fs.starfarer.api.combat.DamagingProjectileAPI
 import com.fs.starfarer.api.combat.MissileAPI
-import org.boxutil.define.BoxEnum
 import org.boxutil.units.standard.entity.SpriteEntity
 import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
@@ -115,7 +114,7 @@ class BoltRenderComponent(
         // 常驻：消亡由组件按弹体状态显式 delete，不走全局计时器
         entity.setGlobalTimer(0f, BOLT_FULL_SECONDS, 0f)
         BoxUtilCombatVfx.ensureReady(engine)
-        val state = addEntity(engine, BoxEnum.ENTITY_SPRITE, entity)
+        val state = addEntity(engine, entity)
         if (state != 0) {
             log.warn("ASTD box bolt 注册失败（addEntity 返回 $state）：id=$id，本弹体螺栓层缺失，其余特效层照常")
             entity.delete()

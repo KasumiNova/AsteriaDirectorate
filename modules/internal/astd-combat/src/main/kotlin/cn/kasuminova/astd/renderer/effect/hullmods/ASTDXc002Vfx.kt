@@ -4,7 +4,6 @@ import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEngineLayers
-import org.boxutil.define.BoxEnum
 import org.boxutil.units.standard.entity.DistortionEntity
 import org.boxutil.units.standard.entity.SpriteEntity
 import org.lazywizard.lazylib.MathUtils
@@ -208,7 +207,7 @@ object ASTDXc002Vfx {
             entity.materialData.setAlphaToEmissive(0f)
             entity.materialData.setColorToEmissive(0f)
             entity.materialData.setGlowPower(0.75f)
-            val state = BoxUtilCombatVfx.addEntity(engine, BoxEnum.ENTITY_SPRITE, entity)
+            val state = BoxUtilCombatVfx.addEntity(engine, entity)
             if (state != 0) entity.delete()
         } catch (_: Throwable) {
         }
@@ -304,7 +303,7 @@ object ASTDXc002Vfx {
             e.setPowerIn(power * 0.55f)
             e.setPowerFull(power)
             e.setPowerOut(power * 0.12f)
-            val state = BoxUtilCombatVfx.addEntity(engine, BoxEnum.ENTITY_DISTORTION, e)
+            val state = BoxUtilCombatVfx.addEntity(engine, e)
             if (state != 0) e.delete()
         } catch (_: Throwable) {
         }

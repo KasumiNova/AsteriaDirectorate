@@ -9,12 +9,13 @@ import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.combat.WeaponAPI
 import com.fs.starfarer.api.util.IntervalUtil
 import com.fs.starfarer.api.util.Misc
-import org.boxutil.define.BoxEnum
 import org.boxutil.units.standard.entity.DistortionEntity
 import org.lazywizard.lazylib.MathUtils
 import org.lazywizard.lazylib.combat.CombatUtils
 import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
+import kotlin.random.Random.Default.nextDouble
+import kotlin.random.Random.Default.nextFloat
 
 /**
  * 引力坍缩炮：命中持续效果（坍缩扭曲 + 周期性 AOE 额外伤害 + 引力撕裂）。
@@ -95,12 +96,7 @@ internal class GravityCollapseOnHitHandler(
         if (tickDamageBase <= 0f) return
 
         val source = weapon.ship
-
-        val owner = try {
-            source?.owner
-        } catch (_: Throwable) {
-            null
-        }
+        val owner = source?.owner
 
         val radiusMul = lerp(config.aoeRadiusIntensityMinMul, config.aoeRadiusIntensityMaxMul, t)
         val radius = (config.aoeRadiusBase * radiusMul).coerceAtLeast(1f)
@@ -115,28 +111,15 @@ internal class GravityCollapseOnHitHandler(
                     if (source != null && other === source) continue
 
                     if (!config.affectAlliesAndNeutral && owner != null) {
-                        val otherOwner = try {
-                            other.owner
-                        } catch (_: Throwable) {
-                            null
-                        }
-                        if (otherOwner != null && otherOwner == owner) continue
+                        val otherOwner = other.owner
+                        if (otherOwner == owner) continue
                     }
 
                     val ship = other as? ShipAPI
                     if (ship != null && ship.isHulk && !config.affectHulks) continue
 
-                    val loc = try {
-                        other.location
-                    } catch (_: Throwable) {
-                        null
-                    } ?: continue
-
-                    val cr = try {
-                        other.collisionRadius
-                    } catch (_: Throwable) {
-                        0f
-                    }.coerceAtLeast(0f)
+                    val loc = other.location
+                    val cr = other.collisionRadius
 
                     // 用“到外壳/实体边界的最短距离”做衰减，避免大型目标被误判为离得很远。
                     val distToSurface = (MathUtils.getDistance(point, loc) - cr).coerceAtLeast(0f)
@@ -389,46 +372,32 @@ internal class GravityCollapseOnHitHandler(
     }
 
     private fun spawnSustainedHitCollapseDistortion(engine: CombatEngineAPI, point: Vector2f, intensity: Float) {
-        // 小范围、可持续的“引力坍缩”读感：频率高，所以尺寸/强度要克制。
-        val ok = try {
-            BoxUtilCombatVfx.ensureReady(engine)
+        BoxUtilCombatVfx.ensureReady(engine)
 
-            val e = DistortionEntity()
-            e.setGlobalTimer(0.02f, 0.06f, 0.25f)
+        DistortionEntity().apply {
+            setGlobalTimer(0.02f, 0.06f, 0.25f)
 
-            // 固定内圈比例：避免默认 innerIn=0 导致的极端值，同时让形态更稳定。
-            e.setInnerIn(0.35f, 0.35f)
-            e.setInnerFull(0.35f, 0.35f)
-            e.setInnerOut(0.35f, 0.35f)
-            e.setInnerHardness(0.90f)
-            e.setRingHardness(0.70f)
+            setInnerIn(0.35f, 0.35f)
+            setInnerFull(0.35f, 0.35f)
+            setInnerOut(0.35f, 0.35f)
+
+            innerHardness = 0.90f
+            ringHardness = 0.70f
 
             val vfxS = config.vfxScale.coerceIn(0.35f, 2.25f)
-            val s = lerp(config.aoeRadiusIntensityMinMul, config.aoeRadiusIntensityMaxMul, intensity.coerceIn(0f, 1f))
-            // 外 -> 内：从较大范围开始，快速坍缩到较小范围。
-            e.setSizeIn(config.aoeRadiusBase * s * vfxS, config.aoeRadiusBase * s * vfxS)
-            e.setSizeFull(config.aoeRadiusBase * 0.63f * s * vfxS, config.aoeRadiusBase * 0.63f * s * vfxS)
-            e.setSizeOut(config.aoeRadiusBase * 0.32f * s * vfxS, config.aoeRadiusBase * 0.32f * s * vfxS)
+            val aoeScale = lerp(config.aoeRadiusIntensityMinMul, config.aoeRadiusIntensityMaxMul, intensity.coerceIn(0f, 1f))
+            val scale = aoeScale * vfxS
+            setSizeIn(config.aoeRadiusBase * 0.35f * scale, config.aoeRadiusBase * 0.35f * scale)
+            setSizeFull(config.aoeRadiusBase * 0.7f * scale, config.aoeRadiusBase * 0.7f * scale)
+            setSizeOut(config.aoeRadiusBase * scale, config.aoeRadiusBase * scale)
 
-            // 强度也随“坍缩”略升（外弱内强），最后快速消散。
-            e.setPowerIn(lerp(0.30f, 0.45f, intensity))
-            e.setPowerFull(lerp(0.40f, 0.70f, intensity))
-            e.setPowerOut(lerp(0.55f, 0.95f, intensity))
+            powerIn = lerp(0.2f, 0.4f, intensity)
+            powerFull = lerp(0.4f, 0.8f, intensity)
+            powerOut = 0f
 
-            e.setLocation(point)
-            BoxUtilCombatVfx.addEntity(engine, BoxEnum.ENTITY_DISTORTION, e)
-            true
-        } catch (_: Throwable) {
-            false
-        }
-        if (ok) return
+            setLocation(point)
 
-        // 回退：nebula 近似（更克制）
-        try {
-            val vfxS = config.vfxScale.coerceIn(0.35f, 2.25f)
-            val c = Color(255, 45, 45, 45)
-            engine.addNebulaParticle(point, Vector2f(0f, 0f), config.aoeRadiusBase * 0.63f * vfxS, 2.4f, 0.06f, 0.18f, 0.55f, c, true)
-        } catch (_: Throwable) {
+            BoxUtilCombatVfx.addEntity(engine, this)
         }
     }
 
@@ -438,35 +407,22 @@ internal class GravityCollapseOnHitHandler(
         val vis = 1.5f
         val vfxS = config.vfxScale.coerceIn(0.35f, 2.25f)
 
-        try {
-            engine.spawnExplosion(
+        val color = Color(255, 35, 35, 55)
+        repeat(5) {
+            engine.addNebulaParticle(
                 point,
-                Vector2f(0f, 0f),
-                Color(255, 45, 45, 115),
-                lerp(34f, 54f, t) * vis * vfxS,
-                0.12f,
+                Vector2f(nextDouble(-10.0, 10.0).toFloat(), nextDouble(-10.0, 10.0).toFloat()),
+                lerp(85f, 135f, t) * vis * vfxS,
+                3f * nextFloat(),
+                0.1f,
+                0.2f,
+                0.8f,
+                color,
+                true
             )
-        } catch (_: Throwable) {
-        }
-        try {
-            engine.addSmoothParticle(
-                point,
-                Vector2f(0f, 0f),
-                lerp(60f, 95f, t) * vis * vfxS,
-                1.15f * vis,
-                0.15f,
-                Color(255, 70, 70, 180),
-            )
-        } catch (_: Throwable) {
-        }
-
-        // 烟雾：用 nebula 粒子做一口“红尘”
-        try {
-            val c = Color(255, 35, 35, 55)
-            engine.addNebulaParticle(point, Vector2f(0f, 0f), lerp(85f, 135f, t) * vis * vfxS, 2.6f, 0.06f, 0.20f, 0.55f, c, true)
-        } catch (_: Throwable) {
         }
     }
 
     private fun lerp(a: Float, b: Float, t: Float): Float = a + (b - a) * t
+
 }

@@ -57,7 +57,7 @@ object BoxUtilCombatVfx {
     /**
      * @return 0 表示成功；非 0 表示失败（BoxUtil 内部状态码）。
      */
-    fun addEntity(engine: CombatEngineAPI, target: Byte, entity: RenderDataAPI): Int {
+    fun addEntity(engine: CombatEngineAPI, entity: RenderDataAPI): Int {
         var state = CombatRenderingManager.addEntity(entity).toInt()
         if (state != 0) {
             inviteCombatRenderingManagerIfNeeded(engine)
@@ -285,7 +285,7 @@ object BoxUtilCombatVfx {
         )
 
         val state = try {
-            addEntity(engine, BoxEnum.ENTITY_TRAIL, entity)
+            addEntity(engine, entity)
         } catch (t: Throwable) {
             // 可能是 BoxUtil/渲染管理器尚未就绪，或依赖缺失导致的类加载异常。
             if (engine.customData[KEY_LOG_ADD_ENTITY_FAIL_ONCE] != true) {
@@ -348,7 +348,7 @@ object BoxUtilCombatVfx {
         )
 
         val state = try {
-            addEntity(engine, BoxEnum.ENTITY_TRAIL, entity)
+            addEntity(engine, entity)
         } catch (t: Throwable) {
             if (engine.customData[KEY_LOG_ADD_ENTITY_FAIL_ONCE] != true) {
                 engine.customData[KEY_LOG_ADD_ENTITY_FAIL_ONCE] = true
@@ -410,7 +410,7 @@ object BoxUtilCombatVfx {
         )
 
         val state = try {
-            addEntity(engine, BoxEnum.ENTITY_TRAIL, entity)
+            addEntity(engine, entity)
         } catch (t: Throwable) {
             if (engine.customData[KEY_LOG_ADD_ENTITY_FAIL_ONCE] != true) {
                 engine.customData[KEY_LOG_ADD_ENTITY_FAIL_ONCE] = true

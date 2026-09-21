@@ -12,7 +12,6 @@ import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.util.Misc
 import com.fs.starfarer.api.impl.combat.BaseShipSystemScript
 import com.fs.starfarer.api.plugins.ShipSystemStatsScript
-import org.boxutil.define.BoxEnum
 import org.boxutil.units.standard.entity.DistortionEntity
 import org.magiclib.util.MagicLensFlare
 import org.magiclib.util.MagicRender
@@ -443,7 +442,7 @@ open class ASTDXc001OverdriveSystemStats : BaseShipSystemScript() {
             e.setInnerFull(0.20f, 0.20f)
             e.setInnerOut(0.55f, 0.55f)
             e.setLocation(ship.location)
-            val state = BoxUtilCombatVfx.addEntity(engine, BoxEnum.ENTITY_DISTORTION, e)
+            val state = BoxUtilCombatVfx.addEntity(engine, e)
             if (state != 0) e.delete()
         } catch (_: Throwable) {}
     }

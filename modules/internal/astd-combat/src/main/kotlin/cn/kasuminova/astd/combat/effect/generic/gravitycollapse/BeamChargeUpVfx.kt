@@ -1,12 +1,8 @@
 package cn.kasuminova.astd.combat.effect.generic.gravitycollapse
 
-import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
-
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEngineLayers
 import com.fs.starfarer.api.combat.WeaponAPI
-import org.boxutil.manager.CombatRenderingManager
-import org.boxutil.units.standard.entity.DistortionEntity
 import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
 import kotlin.math.cos
@@ -113,75 +109,6 @@ internal class BeamChargeUpVfx(
             } catch (_: Throwable) {
             }
         }
-    }
-
-    fun onChargeComplete(engine: CombatEngineAPI, weapon: WeaponAPI) {
-        val ship = weapon.ship ?: return
-        if (ship.isHulk) return
-
-        val center = Vector2f(weapon.location)
-        val vel = ship.velocity ?: Vector2f(0f, 0f)
-
-        val sz = scale.coerceIn(0.35f, 2.25f)
-
-        // 核心闪光
-        try {
-            engine.spawnExplosion(center, vel, coreColor, 120f * sz, 0.18f)
-        } catch (_: Throwable) {
-        }
-        try {
-            engine.addHitParticle(center, vel, 160f * sz, 1.6f, 0.10f, coreColor)
-        } catch (_: Throwable) {
-        }
-        try {
-            engine.addSmoothParticle(center, vel, 260f * sz, 1.05f, 0.22f, glowColor)
-        } catch (_: Throwable) {
-        }
-
-        // 范围扭曲：DistortionEntity 是 BoxUtil 的基本渲染实体，直接作为扭曲效果组件用（透镜/折射观感）。
-        spawnChargeCompleteDistortion(center)
-
-        // 外扩火花：带一点“冲击”反馈
-        val sparks = 14
-        for (i in 0 until sparks) {
-            val ang = rand01() * 360f
-            val rad = Math.toRadians(ang.toDouble())
-            val speed = lerp(220f, 720f, rand01())
-            val v = Vector2f(cos(rad).toFloat() * speed + vel.x * 0.35f, sin(rad).toFloat() * speed + vel.y * 0.35f)
-            val size = lerp(10f, 22f, rand01()) * sz
-            val dur = lerp(0.18f, 0.32f, rand01())
-            val c = if (rand01() < 0.35f) coreColor else glowColor
-            try {
-                engine.addSmoothParticle(center, v, size, 1.25f, dur, c)
-            } catch (_: Throwable) {
-            }
-        }
-    }
-
-    /** 充能完成时的“由小到大扩张”透镜扰动环。DistortionEntity 自带生命周期定时（in/full/out），fire-and-forget。 */
-    private fun spawnChargeCompleteDistortion(center: Vector2f) {
-        val sz = scale.coerceIn(0.35f, 2.25f)
-        val e = DistortionEntity()
-
-        // 扩张波纹：出得快、全盛短、淡出稍长
-        e.setGlobalTimer(0.06f, 0.10f, 0.48f)
-
-        // 形状：中心较硬、外围较柔
-        e.setInnerFull(0.35f, 0.35f)
-        e.setInnerHardness(0.80f)
-        e.setRingHardness(0.58f)
-
-        // 逐渐变大：小 -> 中 -> 大（随后 power 归零）
-        e.setSizeIn(90f * sz, 90f * sz)
-        e.setSizeFull(240f * sz, 240f * sz)
-        e.setSizeOut(520f * sz, 520f * sz)
-
-        e.setPowerIn(0.00f)
-        e.setPowerFull(1.10f)
-        e.setPowerOut(0f)
-
-        e.setLocation(center)
-        CombatRenderingManager.addEntity(e)
     }
 
     private fun emitCenterDot(

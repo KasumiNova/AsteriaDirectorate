@@ -15,7 +15,6 @@ import org.boxutil.define.InstanceType
 import org.boxutil.units.standard.attribute.Instance2Data
 import org.boxutil.units.standard.entity.FlareEntity
 import org.magiclib.util.MagicLensFlare
-import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
 import kotlin.math.sin
 
@@ -200,7 +199,7 @@ internal object Xc001EmissiveOverlayEffect {
             }
 
             val state = try {
-                BoxUtilCombatVfx.addEntity(engine, BoxEnum.ENTITY_FLARE, entity)
+                BoxUtilCombatVfx.addEntity(engine, entity)
             } catch (_: Throwable) {
                 -1
             }
@@ -246,7 +245,7 @@ internal object Xc001EmissiveOverlayEffect {
             }
 
             val state = try {
-                BoxUtilCombatVfx.addEntity(engine, BoxEnum.ENTITY_FLARE, entity)
+                BoxUtilCombatVfx.addEntity(engine, entity)
             } catch (_: Throwable) {
                 -1
             }
@@ -292,7 +291,7 @@ internal object Xc001EmissiveOverlayEffect {
             }
 
             val state = try {
-                BoxUtilCombatVfx.addEntity(engine, BoxEnum.ENTITY_FLARE, entity)
+                BoxUtilCombatVfx.addEntity(engine, entity)
             } catch (_: Throwable) {
                 -1
             }

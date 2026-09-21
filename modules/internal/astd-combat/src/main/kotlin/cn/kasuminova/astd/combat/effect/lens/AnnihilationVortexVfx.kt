@@ -3,7 +3,6 @@ package cn.kasuminova.astd.combat.effect.lens
 import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
-import org.boxutil.define.BoxEnum
 import org.boxutil.units.standard.entity.DistortionEntity
 import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
@@ -70,7 +69,7 @@ object AnnihilationVortexVfx {
         e.setPowerOut(0.95f)
 
         e.setLocation(center)
-        val result = BoxUtilCombatVfx.addEntity(engine, BoxEnum.ENTITY_DISTORTION, e)
+        val result = BoxUtilCombatVfx.addEntity(engine, e)
         if (result != 0) {
             log.warn("[ASTD] 湮灭涡旋坍缩 DistortionEntity 注册失败（addEntity 返回 $result），扭曲视觉缺失但爆炸/烟云照常")
         }
