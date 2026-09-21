@@ -1,5 +1,6 @@
 package cn.kasuminova.astd.combat.effect.arc
 
+import cn.kasuminova.astd.combat.effect.arc.chargeneedle.ChargeNeedleTuning
 import cn.kasuminova.astd.impl.combat.CombatRandom
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -7,7 +8,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
- * 规格 01 §4.1 用例 13：泄放判定边界（[ChargeNeedleTuning.shouldDischarge] 严格小于口径）。
+ * 规格 01 §4.1 用例 13：泄放判定边界（[cn.kasuminova.astd.combat.effect.arc.chargeneedle.ChargeNeedleTuning.shouldDischarge] 严格小于口径）。
  * roll 由固定 seed 的 [CombatRandom] 序列喂入（共享基建件，此处只断言映射，不重复测基建）。
  */
 class ChargeNeedleDischargeTest {

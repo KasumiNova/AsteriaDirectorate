@@ -2,7 +2,7 @@
     "id": "astd_seven_stars_shot",
     "specClass": "projectile",
     "spawnType": "BALLISTIC",
-    "onFireEffect": "cn.kasuminova.astd.combat.effect.arc.SevenStarsOnFireEffect",
+    "onFireEffect": "cn.kasuminova.astd.combat.effect.arc.sevenstars.SevenStarsOnFireEffect",
     "collisionClass": "NONE",
     "collisionClassByFighter": "NONE",
     "length": 2,

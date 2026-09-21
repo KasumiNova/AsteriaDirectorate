@@ -435,7 +435,7 @@ object Wpn_astd_electric_drive_accelerator : WeaponDataEntry(), SsProjProjectile
     override val projSpec: ProjectileProjSpec = ProjectileProjSpec.boxBolt(
         id = "astd_electric_drive_accelerator_shot",
         spawnType = ProjectileSpawnType.BALLISTIC,
-        onHitEffect = "cn.kasuminova.astd.combat.effect.arc.ElectricDriveAcceleratorOnHitEffect",
+        onHitEffect = "cn.kasuminova.astd.combat.effect.arc.eda.ElectricDriveAcceleratorOnHitEffect",
         fringeColor = Rgba(255, 220, 120, 255),
         coreColor = Rgba(255, 240, 200, 200),
         // 弹体宽度 −50%、长度 −25%（散射弹小型化观感）
@@ -554,9 +554,9 @@ object Wpn_astd_positron_shockwave : WeaponDataEntry(), SsProjProjectileOutputs 
         id = "astd_positron_shockwave_shot",
         spawnType = ProjectileSpawnType.BALLISTIC,
         // 引信脚本注册 + VFX 追踪（PositronShockwaveOnFireEffect 内组合 ProjectileSpecOnFireDispatcher）
-        onFireEffect = "cn.kasuminova.astd.combat.effect.arc.PositronShockwaveOnFireEffect",
+        onFireEffect = "cn.kasuminova.astd.combat.effect.arc.positronshockwave.PositronShockwaveOnFireEffect",
         // 撞舰引爆路径（2026-09 修订：弹体识别舰船对象，不再穿过）
-        onHitEffect = "cn.kasuminova.astd.combat.effect.arc.PositronShockwaveOnHitEffect",
+        onHitEffect = "cn.kasuminova.astd.combat.effect.arc.positronshockwave.PositronShockwaveOnHitEffect",
         // 识别舰船/战机碰撞（原版高爆同口径 NO_FF 不误伤友军）；导弹仍由近炸引信承担
         collisionClass = "PROJECTILE_NO_FF",
         collisionClassByFighter = "PROJECTILE_NO_FF",
@@ -620,7 +620,7 @@ object Wpn_astd_seven_stars : WeaponDataEntry(), SsProjProjectileOutputs {
     override val projSpec: ProjectileProjSpec = ProjectileProjSpec(
         id = "astd_seven_stars_shot",
         spawnType = ProjectileSpawnType.BALLISTIC,
-        onFireEffect = "cn.kasuminova.astd.combat.effect.arc.SevenStarsOnFireEffect",
+        onFireEffect = "cn.kasuminova.astd.combat.effect.arc.sevenstars.SevenStarsOnFireEffect",
         // collisionClass=NONE 永无命中回调
         onHitEffect = null,
         // 射弹发射即折跃，碰撞类别 NONE 杜绝瞬移间隙帧的原版触碰结算（规格 §0-1）
@@ -693,7 +693,7 @@ object Wpn_astd_gemini_dem_launcher : WeaponDataEntry(), SsProjMissileOutputs {
     override val projSpec: MissileProjSpec = MissileProjSpec(
         id = "astd_gemini_dem_dummy",
         missileType = "MISSILE",
-        onFireEffect = "cn.kasuminova.astd.combat.effect.arc.GeminiDemSalvoOnFireEffect",
+        onFireEffect = "cn.kasuminova.astd.combat.effect.arc.geminidem.GeminiDemSalvoOnFireEffect",
         sprite = "graphics/textures/BUtil_NONE.png",
         size = Vec2i(4, 4),
         center = Vec2(2, 2),
@@ -988,7 +988,7 @@ object Wpn_astd_heavy_ion_pulse : WeaponDataEntry(), SsProjProjectileOutputs {
     override val projSpec: ProjectileProjSpec = ProjectileProjSpec.boxBolt(
         id = "astd_heavy_ion_pulse_shot",
         spawnType = ProjectileSpawnType.BALLISTIC,
-        onHitEffect = "cn.kasuminova.astd.combat.effect.arc.HeavyIonPulseOnHitEffect",
+        onHitEffect = "cn.kasuminova.astd.combat.effect.arc.heavyionpulse.HeavyIonPulseOnHitEffect",
         fringeColor = Rgba(140, 200, 255, 255),
         coreColor = Rgba(225, 242, 255, 200),
         // 弹体宽度 −50%

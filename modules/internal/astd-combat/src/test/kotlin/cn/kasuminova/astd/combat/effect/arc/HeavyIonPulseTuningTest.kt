@@ -1,5 +1,6 @@
 package cn.kasuminova.astd.combat.effect.arc
 
+import cn.kasuminova.astd.combat.effect.arc.heavyionpulse.HeavyIonPulseTuning
 import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import kotlin.test.AfterTest
 import kotlin.test.Test

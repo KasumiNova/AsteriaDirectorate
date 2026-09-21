@@ -1,5 +1,6 @@
 package cn.kasuminova.astd.combat.effect.arc
 
+import cn.kasuminova.astd.combat.effect.arc.sevenstars.SevenStarsDifficulty
 import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import com.fs.starfarer.api.combat.ShipAPI
 import org.mockito.Mockito.mock

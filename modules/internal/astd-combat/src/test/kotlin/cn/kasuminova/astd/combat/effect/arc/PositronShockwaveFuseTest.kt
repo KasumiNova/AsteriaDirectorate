@@ -1,5 +1,6 @@
 package cn.kasuminova.astd.combat.effect.arc
 
+import cn.kasuminova.astd.combat.effect.arc.positronshockwave.PositronShockwaveDifficulty
 import cn.kasuminova.astd.impl.buff.WarnCapture
 import com.fs.starfarer.api.combat.MissileAPI
 import com.fs.starfarer.api.combat.ShipAPI
@@ -14,7 +15,7 @@ import kotlin.test.assertTrue
 
 /**
  * 规格 06 §4.1 用例 5~7：满射程引爆判定（边界含等号 / 弹速为 0 立即引爆并报 ERROR）
- * 与近炸目标类型六宫格（真实调用 [PositronShockwaveDifficulty] 纯函数）。
+ * 与近炸目标类型六宫格（真实调用 [cn.kasuminova.astd.combat.effect.arc.positronshockwave.PositronShockwaveDifficulty] 纯函数）。
  */
 class PositronShockwaveFuseTest {
     private var warnCapture: WarnCapture? = null

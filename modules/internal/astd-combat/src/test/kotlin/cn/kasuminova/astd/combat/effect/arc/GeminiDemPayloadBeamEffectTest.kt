@@ -1,5 +1,8 @@
 package cn.kasuminova.astd.combat.effect.arc
 
+import cn.kasuminova.astd.combat.effect.arc.geminidem.GeminiDemDifficulty
+import cn.kasuminova.astd.combat.effect.arc.geminidem.GeminiDemPayloadBeamEffect
+import cn.kasuminova.astd.combat.effect.arc.geminidem.GeminiDemSyncHandler
 import com.fs.starfarer.api.combat.BeamAPI
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.DamageType

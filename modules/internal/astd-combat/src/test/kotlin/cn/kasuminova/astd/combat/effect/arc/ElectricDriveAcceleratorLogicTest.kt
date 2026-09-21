@@ -2,6 +2,8 @@ package cn.kasuminova.astd.combat.effect.arc
 
 import cn.kasuminova.astd.api.difficulty.DifficultyTuning
 import cn.kasuminova.astd.api.difficulty.ScalingEntry
+import cn.kasuminova.astd.combat.effect.arc.eda.ElectricDriveAcceleratorDifficulty
+import cn.kasuminova.astd.combat.effect.arc.eda.ElectricDriveChargeState
 import cn.kasuminova.astd.impl.buff.stubShip
 import cn.kasuminova.astd.impl.buff.stubWeapon
 import org.mockito.Mockito.`when`

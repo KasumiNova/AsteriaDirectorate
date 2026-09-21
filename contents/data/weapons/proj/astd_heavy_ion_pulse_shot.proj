@@ -3,7 +3,7 @@
     "specClass": "projectile",
     "spawnType": "BALLISTIC",
     "onFireEffect": "cn.kasuminova.astd.combat.effect.generic.ProjectileSpecOnFireDispatcher",
-    "onHitEffect": "cn.kasuminova.astd.combat.effect.arc.HeavyIonPulseOnHitEffect",
+    "onHitEffect": "cn.kasuminova.astd.combat.effect.arc.heavyionpulse.HeavyIonPulseOnHitEffect",
     "collisionClass": "PROJECTILE_FF",
     "collisionClassByFighter": "PROJECTILE_FIGHTER",
     "length": 75,

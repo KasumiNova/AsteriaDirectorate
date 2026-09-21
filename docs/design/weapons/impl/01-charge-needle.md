@@ -44,7 +44,7 @@ number 段位按 00-共享基建 §3 预分配：电荷针刺 **9210**、重型�
 
 - id = `astd_charge_needle_shot`，spawnType = `ProjectileSpawnType.BALLISTIC`
 - onFireEffect = `cn.kasuminova.astd.combat.effect.generic.ProjectileSpecOnFireDispatcher`
-- onHitEffect = `cn.kasuminova.astd.combat.effect.arc.ChargeNeedleOnHitEffect`
+- onHitEffect = `cn.kasuminova.astd.combat.effect.arc.chargeneedle.ChargeNeedleOnHitEffect`
 - collisionClass = `PROJECTILE_FF`，collisionClassByFighter = `PROJECTILE_FIGHTER`
 - 原版弹体视觉隐藏四件套：length = 2.0、width = 2.0、fringeColor = `Rgba(140, 200, 255, 0)`、coreColor = `Rgba(225, 242, 255, 0)`、bulletSprite = `graphics/textures/BUtil_NONE.png`、fadeTime = 0.2、textureScrollSpeed = 0.0、pixelsPerTexel = 1.0
 

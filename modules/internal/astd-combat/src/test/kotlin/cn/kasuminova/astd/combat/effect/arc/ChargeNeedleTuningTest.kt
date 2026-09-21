@@ -1,6 +1,7 @@
 package cn.kasuminova.astd.combat.effect.arc
 
 import cn.kasuminova.astd.api.difficulty.ScalingMap
+import cn.kasuminova.astd.combat.effect.arc.chargeneedle.ChargeNeedleTuning
 import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import com.fs.starfarer.api.combat.ShipAPI
 import kotlin.test.AfterTest

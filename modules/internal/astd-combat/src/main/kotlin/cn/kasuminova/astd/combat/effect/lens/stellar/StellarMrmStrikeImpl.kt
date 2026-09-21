@@ -27,7 +27,7 @@ import java.awt.Color
  * 保持辉星较小观感）。
  *
  * 脚本 `applyDamage` 落点与 bypassShields 走七星实机判例同款口径
- * （[cn.kasuminova.astd.combat.effect.arc.SevenStarsDamageHandler] 注记：盾覆盖 → 盾面落点 +
+ * （[cn.kasuminova.astd.combat.effect.arc.sevenstars.SevenStarsDamageHandler] 注记：盾覆盖 → 盾面落点 +
  * bypass=false；未覆盖 → 舰心落点 + bypass=true，否则盾关闭的带盾舰船全额无伤害、
  * 界内边缘点恒 0）——规格字面调用参数与该判例冲突，按设计意图「爆炸恒有范围伤害」落判例口径。
  * 战机 EMP 不走引擎伤害通路：三轮烟测 + 探针实证 0.98 的 emp-only applyDamage 与

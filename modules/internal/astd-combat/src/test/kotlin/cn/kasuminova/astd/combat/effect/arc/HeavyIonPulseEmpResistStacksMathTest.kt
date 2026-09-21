@@ -1,6 +1,7 @@
 package cn.kasuminova.astd.combat.effect.arc
 
 import cn.kasuminova.astd.api.buff.BuffHost
+import cn.kasuminova.astd.combat.effect.arc.heavyionpulse.HeavyIonPulseEmpResistStacks
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.MutableShipStatsAPI
 import com.fs.starfarer.api.combat.MutableStat

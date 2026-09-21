@@ -1,11 +1,12 @@
 package cn.kasuminova.astd.combat.effect.arc
 
+import cn.kasuminova.astd.combat.effect.arc.chargeneedle.ChargeNeedleTuning
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 /**
  * 规格 01 §4.1 用例 4~9（2026-09 机制修订）：200% 耗散上限折算纯函数
- * [ChargeNeedleTuning.dissipationCapFactor] 全分支。
+ * [cn.kasuminova.astd.combat.effect.arc.chargeneedle.ChargeNeedleTuning.dissipationCapFactor] 全分支。
  * 0 值分支只断言返回值语义；WARN/ERROR 日志路径由调用侧（ChargeNeedleStacks）承担。
  */
 class ChargeNeedleCapTest {

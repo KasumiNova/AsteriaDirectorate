@@ -16,7 +16,7 @@
     "glowColor": [140, 200, 255, 255],
     "fringeColor": [120, 180, 255, 225],
     "coreColor": [220, 240, 255, 255],
-    "beamEffect": "cn.kasuminova.astd.combat.effect.arc.GeminiDemPayloadBeamEffect",
+    "beamEffect": "cn.kasuminova.astd.combat.effect.arc.geminidem.GeminiDemPayloadBeamEffect",
     "hitGlowBrightenDuration": 0,
     "hitGlowRadius": 350,
     "width": 30.0,

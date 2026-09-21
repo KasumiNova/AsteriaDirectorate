@@ -1,6 +1,7 @@
 package cn.kasuminova.astd.combat.effect.arc
 
-import cn.kasuminova.astd.combat.effect.arc.SevenStarsTargetSelector.Candidate
+import cn.kasuminova.astd.combat.effect.arc.sevenstars.SevenStarsTargetSelector
+import cn.kasuminova.astd.combat.effect.arc.sevenstars.SevenStarsTargetSelector.Candidate
 import com.fs.starfarer.api.combat.CombatEntityAPI
 import com.fs.starfarer.api.combat.MissileAPI
 import com.fs.starfarer.api.combat.ShipAPI
@@ -16,7 +17,7 @@ import kotlin.test.assertTrue
 /**
  * 规格 07 §4.1 用例 7~10：目标排序（可摧毁优先/最近次优）、过滤矩阵、
  * 终结最近敌舰、护盾不预估的已知简化——手工构造候选值对象列表驱动
- * [SevenStarsTargetSelector] 纯函数重载，不 mock 引擎（实体桩仅作标签与属性载体）。
+ * [cn.kasuminova.astd.combat.effect.arc.sevenstars.SevenStarsTargetSelector] 纯函数重载，不 mock 引擎（实体桩仅作标签与属性载体）。
  */
 class SevenStarsTargetSelectorTest {
 

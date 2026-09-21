@@ -2,8 +2,9 @@ package cn.kasuminova.astd.combat.effect.arc
 
 import cn.kasuminova.astd.api.difficulty.DifficultyTuning
 import cn.kasuminova.astd.api.difficulty.ScalingEntry
-import cn.kasuminova.astd.combat.effect.arc.GeminiDemSyncHandler.SyncRecord
-import cn.kasuminova.astd.combat.effect.arc.GeminiDemSyncHandler.WarheadKind
+import cn.kasuminova.astd.combat.effect.arc.geminidem.GeminiDemSyncHandler
+import cn.kasuminova.astd.combat.effect.arc.geminidem.GeminiDemSyncHandler.SyncRecord
+import cn.kasuminova.astd.combat.effect.arc.geminidem.GeminiDemSyncHandler.WarheadKind
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.DamageType
 import com.fs.starfarer.api.combat.ShipAPI

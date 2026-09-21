@@ -2,7 +2,7 @@
     "id": "astd_gemini_dem_dummy",
     "specClass": "missile",
     "missileType": "MISSILE",
-    "onFireEffect": "cn.kasuminova.astd.combat.effect.arc.GeminiDemSalvoOnFireEffect",
+    "onFireEffect": "cn.kasuminova.astd.combat.effect.arc.geminidem.GeminiDemSalvoOnFireEffect",
     "sprite": "graphics/textures/BUtil_NONE.png",
     "size": [4, 4],
     "center": [2, 2],

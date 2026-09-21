@@ -1,11 +1,12 @@
 package cn.kasuminova.astd.combat.effect.arc
 
+import cn.kasuminova.astd.combat.effect.arc.heavyionpulse.HeavyIonPulseTuning
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * 规格 02 §4.1 用例 4~8：纯函数 [HeavyIonPulseTuning.empPierceExtra] 贯穿补伤三档
+ * 规格 02 §4.1 用例 4~8：纯函数 [cn.kasuminova.astd.combat.effect.arc.heavyionpulse.HeavyIonPulseTuning.empPierceExtra] 贯穿补伤三档
  * （<0.1 / =0.1 / >0.1，90 计划 §2.5 指定）与 mult=0 防线。
  */
 class HeavyIonPulsePierceTest {
