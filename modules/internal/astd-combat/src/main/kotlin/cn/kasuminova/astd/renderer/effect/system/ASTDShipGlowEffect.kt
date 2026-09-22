@@ -9,7 +9,8 @@ import java.awt.Color
 
 /**
  * ASTD 舰船覆盖发光层（bloom / 装饰灯）装饰武器的 everyFrameEffect：
- * 战斗内禁用原版装饰武器渲染（sprite/animation alpha 压 0，暂停帧也压住——
+ * 战斗内禁用原版装饰武器渲染（sprite 颜色 alpha 压 0——非动画武器的 render 每帧
+ * 覆写 alphaMult，压颜色才有效；animation alphaMult 同步压 0，暂停帧也压住——
  * 定格取景依赖），画面由 [ShipGlowRenderer] 的 BoxUtil 实体完全接管；
  * 装配界面不运行本 effect，仍走原版静态渲染。
  */
@@ -41,11 +42,16 @@ class ASTDShipGlowEffect : EveryFrameWeaponEffectPlugin {
         // 渲染器未安装（初始化失败）时不压制原版渲染，保留装饰层可见
         if (!ShipGlowRenderer.isReady(engine)) return
 
-        // 禁用原版装饰武器渲染
+        // 禁用原版装饰武器渲染：非动画武器的 render 每帧以舰船 alpha 覆写
+        // sprite.alphaMult（obf MissileWeapon.render），压 alphaMult 无效，
+        // 必须压颜色 alpha（render 不触碰 color）
         try {
-            weapon.sprite?.alphaMult = 0f
+            val sprite = weapon.sprite
+            if (sprite != null && sprite.color.alpha != 0) {
+                sprite.color = Color(sprite.color.red, sprite.color.green, sprite.color.blue, 0)
+            }
         } catch (t: Throwable) {
-            warnOnce("sprite.alphaMult", t)
+            warnOnce("sprite.color", t)
         }
         try {
             weapon.animation?.alphaMult = 0f

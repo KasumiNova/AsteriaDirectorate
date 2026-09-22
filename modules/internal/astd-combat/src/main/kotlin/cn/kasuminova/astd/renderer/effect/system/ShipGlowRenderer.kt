@@ -9,6 +9,11 @@ import com.fs.starfarer.api.combat.CombatEngineLayers
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.combat.WeaponAPI
 import com.fs.starfarer.api.input.InputEventAPI
+import org.boxutil.base.api.InstanceDataAPI
+import org.boxutil.base.api.InstanceRenderAPI
+import org.boxutil.define.BoxEnum
+import org.boxutil.define.InstanceType
+import org.boxutil.units.standard.attribute.Instance2Data
 import org.boxutil.units.standard.entity.SpriteEntity
 import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
@@ -40,7 +45,7 @@ internal object ShipGlowRenderer {
 
     private const val ENGINE_KEY = "astd_ship_glow_renderer"
 
-    /** 常驻实体时长（秒）：生命周期由舰船状态显式驱动，不自然到期。 */
+    /** 常驻实体实例满亮相时长（秒）：生命周期由舰船状态显式驱动，不自然到期。 */
     private const val FULL_SECONDS = 1e7f
 
     /** 覆盖层贴图路径前缀（ASTD 舰体覆盖层约定放在 ships 目录）。 */
@@ -164,6 +169,8 @@ internal object ShipGlowRenderer {
                 return
             }
             attachments[key] = attachment
+            log.info("[ASTD] 舰船覆盖发光层实体已创建：ship=${ship.hullSpec?.hullId} weapon=${attachment.weaponId} " +
+                "size=${ship.spriteAPI?.width}x${ship.spriteAPI?.height} tex=${attachment.base.materialData.diffuse?.textureId}")
         }
 
         fun setRecolor(ship: ShipAPI, blend: Float) {
@@ -192,10 +199,9 @@ internal object ShipGlowRenderer {
 
         private fun createEntity(ship: ShipAPI, path: String): SpriteEntity? {
             if (path !in loadedPaths) return null
-            val sprite = Global.getSettings().getSprite(path)
+            val shipSprite = ship.spriteAPI ?: return null
             val entity = try {
-                // diffuse+emissive 同贴图（TriShard/Bolt 已验证路径）
-                SpriteEntity(sprite, true)
+                SpriteEntity(path)
             } catch (t: Throwable) {
                 log.warn("[ASTD] 舰船覆盖发光层渲染器：实体创建失败 $path（ship=${ship.hullSpec?.hullId}）", t)
                 return null
@@ -203,15 +209,19 @@ internal object ShipGlowRenderer {
             try {
                 entity.setLayer(CombatEngineLayers.ABOVE_SHIPS_LAYER)
                 entity.setAdditiveBlend()
-                val shipSprite = ship.spriteAPI
                 entity.setBaseSizePerTiles(shipSprite.width / 2f, shipSprite.height / 2f)
-                entity.setEmissiveSprite(sprite)
-                entity.materialData.setColor(Color.WHITE)
-                entity.materialData.setEmissiveColor(Color.WHITE)
-                entity.materialData.setGlowPower(1f)
-                entity.setGlobalTimer(0f, FULL_SECONDS, 0f)
-                entity.materialData.setColorAlpha(0f)
-                entity.materialData.setEmissiveColorAlpha(0f)
+                entity.materialData.setColor(1f, 1f, 1f, 0f)
+                entity.materialData.emissive = entity.materialData.diffuse
+                entity.materialData.setEmissiveColor(1f, 1f, 1f, 0f)
+                entity.materialData.glowPower = 0.5f
+
+                // SpriteEntity 走实例化渲染：无实例数据时 glDraw 绘制 0 个实例（什么都不画），
+                // 必须灌一个 FIXED 单实例（实体本体承载位置/朝向/尺寸，实例锚原点单位缩放）。
+                if (!initFixedOneInstance(entity)) {
+                    log.warn("[ASTD] 舰船覆盖发光层渲染器：实例初始化失败（ship=${ship.hullSpec?.hullId}），覆盖层视觉缺席")
+                    entity.delete()
+                    return null
+                }
 
                 val state = BoxUtilCombatVfx.addEntity(engine, entity)
                 if (state != 0) {
@@ -225,6 +235,44 @@ internal object ShipGlowRenderer {
                 return null
             }
             return entity
+        }
+
+        /**
+         * 灌入一个常驻 FIXED_2D 实例（镜像 Xc001EmissiveOverlayEffect 的已验证路径）：
+         * 实例位置/朝向归零、单位缩放（由实体本体的 setStateVanilla/setBaseSizePerTiles 承载），
+         * 满亮相 timer 由 setInstanceTimerOverride 钉住，任何一步失败返回 false（覆盖层缺席，禁兜底）。
+         */
+        private fun initFixedOneInstance(entity: InstanceRenderAPI): Boolean {
+            val inst = Instance2Data().apply {
+                setLocation(0f, 0f)
+                setFacing(0f)
+                setTurnRate(0f)
+                setScale(1f, 1f)
+                setTimer(0f, FULL_SECONDS, 0f)
+                setColor(255, 255, 255, 255)
+                setEmissiveColor(255, 255, 255, 255)
+                setFixedInstanceAlpha(1f, BoxEnum.TIMER_FULL)
+            }
+
+            val dataList: MutableList<InstanceDataAPI> = mutableListOf(inst)
+            if (entity.setInstanceData(dataList, 0f, FULL_SECONDS, 0f) != BoxEnum.STATE_SUCCESS) return false
+
+            entity.renderingCount = 1
+            entity.instanceDataRefreshIndex = 0
+            entity.instanceDataRefreshSize = 1
+            entity.setInstanceTimerOverride(1f, BoxEnum.TIMER_FULL)
+
+            val memory = entity.instanceDataMemory
+            if (memory == null || !memory.is_type_fixed) {
+                entity.mallocInstance(InstanceType.FIXED_2D, 1)
+                entity.instanceDataRefreshOffset = 0
+                entity.setInstanceDataRefreshAllFromCurrentIndex()
+            }
+            val after = entity.instanceDataMemory
+            if (after == null || !after.is_type_fixed) return false
+
+            entity.submitInstance()
+            return entity.haveValidInstanceData() && entity.validInstanceDataCount >= 1
         }
 
         override fun advance(amount: Float, events: MutableList<InputEventAPI>?) {
@@ -258,6 +306,9 @@ internal object ShipGlowRenderer {
                 val redPath = redVariantPaths[att.weaponId]
                 if (redPath != null) {
                     att.recolor = createEntity(ship, redPath)
+                    if (att.recolor != null) {
+                        log.info("[ASTD] 舰船覆盖发光层换色实体已创建：ship=${ship.hullSpec?.hullId} path=$redPath")
+                    }
                 } else if (missingRecolorWarned.add(att.weaponId)) {
                     log.warn("[ASTD] 舰船覆盖发光层渲染器：${att.weaponId} 无红色变体预载，相位换色缺席")
                 }
