@@ -18,7 +18,7 @@ import java.util.EnumSet
  * 原版 `.wpn` 只有 `turretGlowSprite`/`hardpointGlowSprite`（由开火瞬间驱动），缺少两档发光槽位：
  * - **常驻档（AMBIENT）**：常亮发光贴图，透明度跟随视口淡入淡出；
  * - **蓄能档（CHARGE）**：带 `chargeup` 的武器在充能条推进期间的进度反馈，亮度取
- *   `WeaponAPI.getChargeLevel()`（开火瞬间由 .wpn 开火发光层接管，本档不显示）。
+ *   `WeaponAPI.getChargeLevel()`（开火瞬间由 .wpn 开火发光层接管、冷却期间不显示，本档仅在充能推进时显示）。
  * 两档均为加法混合叠在武器之上，共用同一扫描/渲染管线（2026-09 审查裁定合并，此前两份逐行同构）。
  *
  * 贴图约定（炮塔/挂点各一，与武器底图同画布同朝向，只含发光部位）：
@@ -53,6 +53,10 @@ internal object WeaponGlowLayer {
         "astd_piercing_lance",
         "astd_electric_drive_accelerator",
         "astd_positron_shockwave",
+        "astd_gemini_dem_launcher",
+        "astd_gemini_dem_pod",
+        "astd_gcp12",
+        "astd_gcp8",
     )
 
     /** 登记蓄能发光的武器 id；贴图路径按命名约定派生。 */
@@ -188,9 +192,10 @@ internal object WeaponGlowLayer {
                     if (ship.isHulk) continue
                     val alpha = when (att.slot) {
                         GlowSlot.AMBIENT -> viewport.alphaMult
-                        // 蓄能中＝充能条在推进且尚未开火；未开始/正在开火两态不显示蓄能层
+                        // 蓄能中＝充能条在推进且尚未开火；未开始/正在开火/冷却三态不显示蓄能层
                         GlowSlot.CHARGE -> {
-                            if (weapon.isFiring || weapon.chargeLevel <= CHARGE_MIN) continue
+                            if (weapon.isFiring || weapon.cooldownRemaining > 0.01f) continue
+                            if (weapon.chargeLevel <= CHARGE_MIN) continue
                             weapon.chargeLevel * viewport.alphaMult
                         }
                     }

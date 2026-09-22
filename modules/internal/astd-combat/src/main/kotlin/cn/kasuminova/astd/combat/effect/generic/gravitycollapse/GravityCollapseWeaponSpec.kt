@@ -1,13 +1,20 @@
 package cn.kasuminova.astd.combat.effect.generic.gravitycollapse
 
+import cn.kasuminova.astd.api.difficulty.ScalingEntry
+import cn.kasuminova.astd.api.difficulty.ScalingMap
+
 /**
  * “引力坍缩炮”通用配置（按武器 id 分发）。
  *
- * 目前仅把“系列差异”收敛在：
+ * 系列差异收敛在：
  * - 光束/环尺寸（[beamScale]）
  * - 持续命中额外 AOE 的半径（[aoeRadiusBase]）
+ * - 难度缩放数值（[aoeDamageRatio] / [mobilityReduction] / [mobilityDuration] / [armorReductionIgnore]）
  *
- * 其余观感与机制保持一致，便于后续统一调参。
+ * 难度锚点口径（线性数值，k_s=1 取下限 / k_s=5 取上限，v2 锚点落在两点线性插值上）：
+ * 范围高爆伤害比例（大/中/小/PD）20％/25％/33％/50％ ~ 40％/50％/66％/100％；
+ * 航速机动性降低 50％/40％/30％/20％ ~ 75％/60％/45％/30％，持续 2s ~ 4s；
+ * 装甲减伤无视 50％ ~ 90％。
  */
 internal data class GravityCollapseWeaponSpec(
     /** 视觉缩放：影响束宽、环尺寸、炮口爆发等的“整体尺寸感”。 */
@@ -25,9 +32,24 @@ internal data class GravityCollapseWeaponSpec(
     val aoeAffectNonShips: Boolean = false,
     /** AOE 是否影响残骸（ShipAPI.isHulk）。 */
     val aoeAffectHulks: Boolean = false,
+
+    /** 范围高爆伤害比例（相对面板 tick 伤害）三锚点。 */
+    val aoeDamageRatio: ScalingEntry,
+    /** 最大航速与机动性降低比例三锚点。 */
+    val mobilityReduction: ScalingEntry,
+    /** 机动抑制持续时间（秒）三锚点。 */
+    val mobilityDuration: ScalingEntry,
+    /** 无视目标最终装甲减伤的比例三锚点。 */
+    val armorReductionIgnore: ScalingEntry,
 )
 
 internal object GravityCollapseWeaponSpecs {
+
+    /** 全系列共用的机动抑制时长锚点：2s（迟暮）~ 4s（破晓）。 */
+    private val MOBILITY_DURATION = ScalingEntry(2f, 2.5f, 4f, ScalingMap.LINEAR)
+
+    /** 全系列共用的装甲减伤无视锚点：50％（迟暮）~ 90％（破晓）。 */
+    private val ARMOR_REDUCTION_IGNORE = ScalingEntry(0.50f, 0.60f, 0.90f, ScalingMap.LINEAR)
 
     private val specs: Map<String, GravityCollapseWeaponSpec> = mapOf(
         // GCP（Gravity Collapse Projector）系列
@@ -40,6 +62,10 @@ internal object GravityCollapseWeaponSpecs {
             aoeAffectAlliesAndNeutral = true,
             aoeAffectNonShips = true,
             aoeAffectHulks = true,
+            aoeDamageRatio = ScalingEntry(0.20f, 0.25f, 0.40f, ScalingMap.LINEAR),
+            mobilityReduction = ScalingEntry(0.50f, 0.5625f, 0.75f, ScalingMap.LINEAR),
+            mobilityDuration = MOBILITY_DURATION,
+            armorReductionIgnore = ARMOR_REDUCTION_IGNORE,
         ),
         "astd_gcp8" to GravityCollapseWeaponSpec(
             beamScale = 0.85f,
@@ -49,6 +75,10 @@ internal object GravityCollapseWeaponSpecs {
             aoeAffectAlliesAndNeutral = true,
             aoeAffectNonShips = true,
             aoeAffectHulks = true,
+            aoeDamageRatio = ScalingEntry(0.25f, 0.3125f, 0.50f, ScalingMap.LINEAR),
+            mobilityReduction = ScalingEntry(0.40f, 0.45f, 0.60f, ScalingMap.LINEAR),
+            mobilityDuration = MOBILITY_DURATION,
+            armorReductionIgnore = ARMOR_REDUCTION_IGNORE,
         ),
         "astd_gcp4" to GravityCollapseWeaponSpec(
             beamScale = 0.70f,
@@ -58,6 +88,10 @@ internal object GravityCollapseWeaponSpecs {
             aoeAffectAlliesAndNeutral = true,
             aoeAffectNonShips = true,
             aoeAffectHulks = true,
+            aoeDamageRatio = ScalingEntry(0.33f, 0.4125f, 0.66f, ScalingMap.LINEAR),
+            mobilityReduction = ScalingEntry(0.30f, 0.3375f, 0.45f, ScalingMap.LINEAR),
+            mobilityDuration = MOBILITY_DURATION,
+            armorReductionIgnore = ARMOR_REDUCTION_IGNORE,
         ),
         "astd_gcp2" to GravityCollapseWeaponSpec(
             beamScale = 0.55f,
@@ -67,6 +101,10 @@ internal object GravityCollapseWeaponSpecs {
             aoeAffectAlliesAndNeutral = true,
             aoeAffectNonShips = true,
             aoeAffectHulks = true,
+            aoeDamageRatio = ScalingEntry(0.50f, 0.625f, 1.00f, ScalingMap.LINEAR),
+            mobilityReduction = ScalingEntry(0.20f, 0.225f, 0.30f, ScalingMap.LINEAR),
+            mobilityDuration = MOBILITY_DURATION,
+            armorReductionIgnore = ARMOR_REDUCTION_IGNORE,
         ),
     )
 

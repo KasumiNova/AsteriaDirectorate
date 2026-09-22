@@ -14,6 +14,8 @@ import cn.kasuminova.astd.combat.hullmods.lens.LensArrayCoreModeUtilKt;
 import cn.kasuminova.astd.impl.buff.BuffInstall;
 import cn.kasuminova.astd.impl.difficulty.DifficultySettingsRegistrar;
 import cn.kasuminova.astd.renderer.effect.system.WeaponGlowLayer;
+import cn.kasuminova.astd.renderer.effect.system.GeminiDemRackVisuals;
+import cn.kasuminova.astd.renderer.effect.system.GravityPhaseVisualEffect;
 import com.fs.starfarer.api.BaseModPlugin;
 import com.fs.starfarer.api.Global;
 import com.fs.starfarer.api.PluginPick;
@@ -60,6 +62,10 @@ public final class AsteriaDirectoratePlugin extends BaseModPlugin {
         StandardCores.INSTANCE.preloadPortraits();
         // 预加载武器补档发光贴图（常驻 + 蓄能；同上原因，未被 .wpn 引用的贴图不会上传 GL）。
         WeaponGlowLayer.INSTANCE.preloadTextures();
+        // 预加载双子星 DEM 导轨弹体光效贴图（同上原因）。
+        GeminiDemRackVisuals.INSTANCE.preloadTextures();
+        // 预加载引力相位舰船的描边/红化 bloom 贴图（同上原因；战斗中加载会损坏上传队列）。
+        GravityPhaseVisualEffect.INSTANCE.preloadTextures();
     }
 
     @Override

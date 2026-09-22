@@ -424,7 +424,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     private var ssLastFlashAt = -1f
     private var ssLastTrackedFlashCount = 0
 
-    // ==== 茑萝引力裂隙发生器场景状态（相位机 SPAWN → WAIT_WINGS → PHASE_LINK → FLUX_RETURN → RIFT_FIRE → SCREENSHOT_VOLLEY → COMPLETED） ====
+    // ==== 茑萝引力裂隙发生器场景状态（相位机 SPAWN → WAIT_WINGS → PHASE_LINK → FLUX_RETURN → RIFT_FIRE → SCREENSHOT_VOLLEY → PHASE_SHOWCASE → COMPLETED） ====
     private var grgPhase = GRG_PHASE_SPAWN
     private var grgPhaseStartedAt = 0f
 
@@ -5398,9 +5398,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                         grgScreenshotStagedLit && system.state == ShipSystemAPI.SystemState.ACTIVE -> {
                             if (grgScreenshotActiveAt < 0f) grgScreenshotActiveAt = elapsed
                             if (elapsed - grgScreenshotActiveAt >= GRG_SCREENSHOT_HOLD_DELAY) {
-                                // 定格舞台：暂停后三帧拍到的就是定格的光束+旋涡+裂隙瞬间。
-                                engine.isPaused = true
-                                transitionGrgPhase(GRG_PHASE_COMPLETED)
+                                // 取景波光束/旋涡定格完成后转入相位特效取景（不立即暂停）。
+                                transitionGrgPhase(GRG_PHASE_SHOWCASE)
                             }
                         }
 
@@ -5423,6 +5422,22 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                             player.useSystem()
                         }
                     }
+                }
+            }
+
+            GRG_PHASE_SHOWCASE -> {
+                // 相位特效取景：截图只拍 Completed 上报时刻，而相位联动阶段是 setPhased 直驱
+                // （斗篷 effectLevel 不起表），故定格前强制斗篷 ACTIVE 保持 GRG_SHOWCASE_HOLD 秒——
+                // 整舰红色辉光爬满 + 残影生成后再暂停定格，三连拍即相位激活态。
+                stabilizeGrgShips(engine, healEnemy = true, zeroPlayerFlux = false, blockSystem = false)
+                player?.phaseCloak?.forceState(ShipSystemAPI.SystemState.ACTIVE, GRG_SHOWCASE_HOLD)
+                if (elapsed - grgPhaseStartedAt >= GRG_SHOWCASE_HOLD) {
+                    log.info(
+                        "[ASTD-Automation] grg phase showcase freeze: cloakLevel=" +
+                                "${player?.phaseCloak?.effectLevel} cloakState=${player?.phaseCloak?.state} phased=${player?.isPhased}",
+                    )
+                    engine.isPaused = true
+                    transitionGrgPhase(GRG_PHASE_COMPLETED)
                 }
             }
 
@@ -8682,6 +8697,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private const val GRG_PHASE_FLUX_RETURN = "FLUX_RETURN"
         private const val GRG_PHASE_RIFT_FIRE = "RIFT_FIRE"
         private const val GRG_PHASE_SCREENSHOT = "SCREENSHOT_VOLLEY"
+        private const val GRG_PHASE_SHOWCASE = "PHASE_SHOWCASE"
         private const val GRG_PHASE_COMPLETED = "COMPLETED"
         private const val GRG_PHASE_FAILED = "FAILED"
         private const val GRG_PLAYER_HULL = "astd_zw_103"
@@ -8747,6 +8763,10 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         // 取景定格推迟到 ACTIVE 首帧 +0.6s（点火后 ≈1.6s）：光束满亮度、旋涡满亮度、
         // 首批裂隙近炸星云成形（「光束 + 旋涡 + 裂隙」同框窗），避开 ACTIVE 首帧的爆炸初闪。
         private const val GRG_SCREENSHOT_HOLD_DELAY = 0.2f
+
+        // 相位特效取景保持时长：强制引力相位斗篷 ACTIVE 并保持 1.2s（不暂停），
+        // 让整舰红色辉光爬满、相位残影至少生成两次后再定格三连拍。
+        private const val GRG_SHOWCASE_HOLD = 1.2f
         private const val GRG_PHASE_TIMEOUT = 90f
 
         // 飞蓬战机引力联结器场景：相位机、锚点与期望证据（断言点 A~G）。

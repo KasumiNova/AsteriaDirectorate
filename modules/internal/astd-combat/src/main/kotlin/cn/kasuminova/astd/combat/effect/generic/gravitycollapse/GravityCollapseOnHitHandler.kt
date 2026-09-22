@@ -1,10 +1,13 @@
 package cn.kasuminova.astd.combat.effect.generic.gravitycollapse
 
+import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
+import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BeamAPI
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEntityAPI
 import com.fs.starfarer.api.combat.DamageType
+import com.fs.starfarer.api.combat.ShieldAPI
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.combat.WeaponAPI
 import com.fs.starfarer.api.util.IntervalUtil
@@ -14,31 +17,47 @@ import org.lazywizard.lazylib.MathUtils
 import org.lazywizard.lazylib.combat.CombatUtils
 import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
+import kotlin.math.min
 import kotlin.random.Random.Default.nextDouble
 import kotlin.random.Random.Default.nextFloat
 
 /**
- * 引力坍缩炮：命中持续效果（坍缩扭曲 + 周期性 AOE 额外伤害 + 引力撕裂）。
+ * 引力坍缩炮：命中持续效果（坍缩扭曲 + 周期性范围高爆伤害 + 装甲减伤无视 + 机动抑制）。
  *
- * 设计目标：从具体武器 everyFrameEffect 中抽离，以便多个尺寸/变体复用。
+ * 机制口径（weapon_data tooltip 文案双向绑定）：
+ * - 每 [GravityCollapseOnHitConfig.tickInterval] 秒在光束终点位置的一定半径造成
+ *   “面板 tick 伤害 × 难度缩放比例”的范围高爆伤害（半径内全额，无边缘衰减）；
+ * - 命中装甲或船体的目标：无视其一定比例的最终装甲减伤（把被减免的部分按比例直扣船体），
+ *   并施加“引力抑制”——最大航速与机动性降低，持续数秒；
+ * - 命中护盾的目标只结算护盾伤害，不触发装甲减伤无视与机动抑制；
+ * - 上述比例/时长全部受难度系数线性缩放（玩家来源固定 v2 设计基准）。
  */
 internal class GravityCollapseOnHitHandler(
     private val config: GravityCollapseOnHitConfig,
 ) {
 
     companion object {
+        private val log = Global.getLogger(GravityCollapseOnHitHandler::class.java)
+
         // 盾面吸附容差：点略微在盾外也认为被盾覆盖（避免浮点/采样误差导致“看起来打到盾但实际扣船体”）。
         private const val SHIELD_SNAP_EPS = 12f
+
+        /** 高爆伤害对装甲的克制倍率（结算装甲减伤无视时与原版口径一致）。 */
+        private const val HE_VS_ARMOR_MULT = 2f
     }
 
     private val hitCollapseInterval = IntervalUtil(config.tickInterval, config.tickInterval)
     private val extraDamageInterval = IntervalUtil(config.tickInterval, config.tickInterval)
     private var wasHittingLastFrame = false
 
+    /** 难度解析结果（一次开火周期内不变；reset 时清空以便下一轮重新解析）。 */
+    private var resolved: GravityCollapseDifficulty.ResolvedValues? = null
+
     fun reset() {
         hitCollapseInterval.forceIntervalElapsed()
         extraDamageInterval.forceIntervalElapsed()
         wasHittingLastFrame = false
+        resolved = null
     }
 
     fun advance(
@@ -62,11 +81,7 @@ internal class GravityCollapseOnHitHandler(
             return
         }
 
-        val target = try {
-            beam.damageTarget
-        } catch (_: Throwable) {
-            null
-        }
+        val target = beam.damageTarget
 
         val isHitting = target != null
         if (config.requireDamageTarget && !isHitting) {
@@ -88,11 +103,13 @@ internal class GravityCollapseOnHitHandler(
             spawnSustainedHitCollapseDistortion(engine, point, t)
         }
 
-        // 2) 周期性额外伤害：每 tick 一次
+        // 2) 周期性范围高爆伤害：每 tick 一次
         extraDamageInterval.advance(amount)
         if (!extraDamageInterval.intervalElapsed()) return
 
-        val tickDamageBase = (panelDps.coerceAtLeast(0f) * config.tickInterval).coerceAtLeast(0f)
+        val values = resolved ?: resolveDifficulty(weapon).also { resolved = it }
+        val tickDamageBase = (panelDps.coerceAtLeast(0f) * config.tickInterval * values.aoeDamageRatio)
+            .coerceAtLeast(0f)
         if (tickDamageBase <= 0f) return
 
         val source = weapon.ship
@@ -101,117 +118,152 @@ internal class GravityCollapseOnHitHandler(
         val radiusMul = lerp(config.aoeRadiusIntensityMinMul, config.aoeRadiusIntensityMaxMul, t)
         val radius = (config.aoeRadiusBase * radiusMul).coerceAtLeast(1f)
 
-        val gravityTearTarget = target as? ShipAPI
+        if (config.affectNonShips) {
+            val entities = CombatUtils.getEntitiesWithinRange(point, radius)
+            for (other in entities) {
+                if (other == null) continue
+                if (source != null && other === source) continue
 
-        try {
-            if (config.affectNonShips) {
-                val entities = CombatUtils.getEntitiesWithinRange(point, radius)
-                for (other in entities) {
-                    if (other == null) continue
-                    if (source != null && other === source) continue
-
-                    if (!config.affectAlliesAndNeutral && owner != null) {
-                        val otherOwner = other.owner
-                        if (otherOwner == owner) continue
-                    }
-
-                    val ship = other as? ShipAPI
-                    if (ship != null && ship.isHulk && !config.affectHulks) continue
-
-                    val loc = other.location
-                    val cr = other.collisionRadius
-
-                    // 用“到外壳/实体边界的最短距离”做衰减，避免大型目标被误判为离得很远。
-                    val distToSurface = (MathUtils.getDistance(point, loc) - cr).coerceAtLeast(0f)
-                    if (distToSurface > radius) continue
-
-                    val u = (distToSurface / radius).coerceIn(0f, 1f)
-                    val falloff = lerp(1f, config.aoeEdgeDamageMul, u)
-                    val dmg = tickDamageBase * falloff
-                    if (dmg <= 0f) continue
-
-                    // 关键修复：若目标有盾且该点被盾覆盖，则把伤害落点吸附到盾面，避免穿透到装甲/船体。
-                    val applyPoint = (other as? ShipAPI)?.let { resolveShieldedDamagePoint(it, point) } ?: point
-
-                    engine.applyDamage(
-                        other as CombatEntityAPI,
-                        applyPoint,
-                        dmg,
-                        DamageType.HIGH_EXPLOSIVE,
-                        0f,
-                        false,
-                        false,
-                        source,
-                        true,
-                    )
-
-                    // 需求：坍缩脉冲范围内单位获得机动/航速下降（可叠加）。
-                    if (ship != null && !ship.isHulk) {
-                        GravityCollapseMobilityDebuff.apply(engine = engine, source = source, target = ship)
-                    }
-
-                    if (gravityTearTarget != null && other === gravityTearTarget) {
-                        tryApplyGravityTearOnHullHit(
-                            engine = engine,
-                            source = source,
-                            targetShip = gravityTearTarget,
-                            // 关键：撕裂判定必须与本次伤害落点一致。
-                            // 否则会出现“打在盾上但按船体点计算撕裂/穿透”的问题。
-                            point = applyPoint,
-                            aoeDamageApplied = dmg,
-                        )
-                    }
+                if (!config.affectAlliesAndNeutral && owner != null) {
+                    val otherOwner = other.owner
+                    if (otherOwner == owner) continue
                 }
-            } else {
-                for (other in engine.ships) {
-                    if (source != null && other === source) continue
-                    if (!config.affectAlliesAndNeutral && owner != null && other.owner == owner) continue
-                    if (other.isHulk && !config.affectHulks) continue
 
-                    // 用“到外壳的最短距离”做衰减，避免大型舰被误判为离得很远
-                    val distToHull = (MathUtils.getDistance(point, other.location) - other.collisionRadius).coerceAtLeast(0f)
-                    if (distToHull > radius) continue
+                val ship = other as? ShipAPI
+                if (ship != null && ship.isHulk && !config.affectHulks) continue
 
-                    val u = (distToHull / radius).coerceIn(0f, 1f)
-                    val falloff = lerp(1f, config.aoeEdgeDamageMul, u)
-                    val dmg = tickDamageBase * falloff
-                    if (dmg <= 0f) continue
+                val loc = other.location
+                val cr = other.collisionRadius
 
-                    // 关键修复：若目标有盾且该点被盾覆盖，则把伤害落点吸附到盾面，避免穿透到装甲/船体。
-                    val applyPoint = resolveShieldedDamagePoint(other, point)
+                // 用“到外壳/实体边界的最短距离”做范围判定，避免大型目标被误判为离得很远。
+                val distToSurface = (MathUtils.getDistance(point, loc) - cr).coerceAtLeast(0f)
+                if (distToSurface > radius) continue
 
-                    engine.applyDamage(
-                        other,
-                        applyPoint,
-                        dmg,
-                        DamageType.HIGH_EXPLOSIVE,
-                        0f,
-                        false,
-                        false,
-                        source,
-                        true,
-                    )
-
-                    // 需求：坍缩脉冲范围内单位获得机动/航速下降（可叠加）。
-                    if (!other.isHulk) {
-                        GravityCollapseMobilityDebuff.apply(engine = engine, source = source, target = other)
-                    }
-
-                    if (gravityTearTarget != null && other === gravityTearTarget) {
-                        tryApplyGravityTearOnHullHit(
-                            engine = engine,
-                            source = source,
-                            targetShip = gravityTearTarget,
-                            point = applyPoint,
-                            aoeDamageApplied = dmg,
-                        )
-                    }
-                }
+                applyTickToEntity(engine, source, other, point, tickDamageBase, values)
             }
-        } catch (_: Throwable) {
+        } else {
+            for (other in engine.ships) {
+                if (source != null && other === source) continue
+                if (!config.affectAlliesAndNeutral && owner != null && other.owner == owner) continue
+                if (other.isHulk && !config.affectHulks) continue
+
+                // 用“到外壳的最短距离”做范围判定，避免大型舰被误判为离得很远
+                val distToHull = (MathUtils.getDistance(point, other.location) - other.collisionRadius).coerceAtLeast(0f)
+                if (distToHull > radius) continue
+
+                applyTickToEntity(engine, source, other, point, tickDamageBase, values)
+            }
         }
 
         spawnExtraHitTickFx(engine, point, t)
+    }
+
+    /**
+     * 对单个范围内实体结算一次 tick：
+     * 护盾覆盖 → 只结算护盾伤害；命中装甲/船体 → 追加装甲减伤无视与机动抑制。
+     */
+    private fun applyTickToEntity(
+        engine: CombatEngineAPI,
+        source: ShipAPI?,
+        other: CombatEntityAPI,
+        point: Vector2f,
+        damage: Float,
+        values: GravityCollapseDifficulty.ResolvedValues,
+    ) {
+        val ship = other as? ShipAPI
+        val shieldCovered = ship?.let { shieldCovers(it, point) } ?: false
+
+        // 关键：若目标有盾且该点被盾覆盖，则把伤害落点吸附到盾面，避免穿透到装甲/船体。
+        val applyPoint = if (ship != null && shieldCovered) {
+            resolveShieldedDamagePoint(ship, point)
+        } else {
+            point
+        }
+
+        engine.applyDamage(
+            other,
+            applyPoint,
+            damage,
+            DamageType.HIGH_EXPLOSIVE,
+            0f,
+            false,
+            false,
+            source,
+            true,
+        )
+
+        if (ship == null || ship.isHulk || shieldCovered) return
+
+        // 命中装甲/船体：无视目标一定比例的最终装甲减伤（被减免部分按比例直扣船体）。
+        applyArmorReductionIgnore(engine, source, ship, point, damage, values.armorReductionIgnore)
+
+        // 命中装甲/船体：施加机动/航速抑制（刷新持续）。
+        GravityCollapseMobilityDebuff.apply(
+            engine = engine,
+            source = source,
+            target = ship,
+            reduction = values.mobilityReduction,
+            duration = values.mobilityDuration,
+        )
+    }
+
+    /** 难度解析（委托 [GravityCollapseDifficulty] 唯一入口；结果缓存至 reset）。 */
+    private fun resolveDifficulty(weapon: WeaponAPI): GravityCollapseDifficulty.ResolvedValues =
+        GravityCollapseDifficulty.resolve(DifficultyTuningImpl, weapon.ship?.owner, config, weapon.id)
+
+    /**
+     * 装甲减伤无视：原版最终装甲减伤为 `r = min(dmg / (dmg + armor), maxArmorDamageReduction)`，
+     * 本效果把结算伤害从 `dmg × (1 − r)` 提升到 `dmg × (1 − r × (1 − ignoreFrac))`，
+     * 差值 `dmg_eff × r × ignoreFrac` 以直扣船体形式追加（命中点装甲已耗尽时不存在减伤，无追加）。
+     */
+    private fun applyArmorReductionIgnore(
+        engine: CombatEngineAPI,
+        source: ShipAPI?,
+        target: ShipAPI,
+        point: Vector2f,
+        baseDamage: Float,
+        ignoreFrac: Float,
+    ) {
+        if (baseDamage <= 0f || ignoreFrac <= 0f) return
+
+        val grid = target.armorGrid ?: return
+        val cell = grid.getCellAtLocation(point) ?: return
+        if (cell.size < 2) return
+        val armor = grid.getArmorValue(cell[0], cell[1]).coerceAtLeast(0f)
+        if (armor <= 0.01f) return
+
+        val effectiveDamage = baseDamage * HE_VS_ARMOR_MULT
+        val maxReduction = target.mutableStats.maxArmorDamageReduction.modifiedValue.coerceIn(0f, 1f)
+        val reduction = min(effectiveDamage / (effectiveDamage + armor), maxReduction)
+        val extra = effectiveDamage * reduction * ignoreFrac
+        if (extra <= 0f) return
+
+        val hp0 = target.hitpoints
+        // 直扣船体保留至少 1 点：正常 AOE 伤害已走原版死亡链路，濒死目标由正常伤害结算，
+        // 避免 setHitpoints 直接扣到 0 带来的异常死亡链路/表现。
+        if (hp0 <= 1f) return
+
+        val loss = min(extra, hp0 - 1f)
+        target.hitpoints = hp0 - loss
+
+        // 直接扣 hitpoints 不会自动弹出伤害数字；这里补一条 floaty。
+        if (Misc.shouldShowDamageFloaty(source, target)) {
+            val p2 = Vector2f(point)
+            p2.y += 20f
+            engine.addFloatingDamageText(p2, loss, Misc.FLOATY_HULL_DAMAGE_COLOR, target, source)
+        }
+    }
+
+    /** 判定 [point] 是否被 [ship] 的护盾覆盖（与盾面吸附使用同一容差）。 */
+    private fun shieldCovers(ship: ShipAPI, point: Vector2f): Boolean {
+        val shield = ship.shield ?: return false
+        if (shield.type == ShieldAPI.ShieldType.NONE) return false
+        if (!shield.isOn) return false
+        if (!shield.isWithinArc(point)) return false
+        val sl = shield.location ?: return false
+        val r = shield.radius
+        if (r <= 0f) return false
+        return MathUtils.getDistance(point, sl) <= r + SHIELD_SNAP_EPS
     }
 
     /**
@@ -219,33 +271,14 @@ internal class GravityCollapseOnHitHandler(
      * 这样 AOE 不会“看起来打到盾但实际穿透扣船体”。
      */
     private fun resolveShieldedDamagePoint(ship: ShipAPI, explosionPoint: Vector2f): Vector2f {
-        val shield = try {
-            ship.shield
-        } catch (_: Throwable) {
-            null
-        } ?: return explosionPoint
-
+        val shield = ship.shield ?: return explosionPoint
         if (!shield.isOn) return explosionPoint
 
-        val inArc = try {
-            shield.isWithinArc(explosionPoint)
-        } catch (_: Throwable) {
-            // 某些实现下 isWithinArc 可能抛异常；保守起见视为在弧内。
-            true
-        }
-        if (!inArc) return explosionPoint
+        if (!shield.isWithinArc(explosionPoint)) return explosionPoint
 
-        val sl = try {
-            shield.location
-        } catch (_: Throwable) {
-            null
-        } ?: return explosionPoint
+        val sl = shield.location ?: return explosionPoint
 
-        val r = try {
-            shield.radius
-        } catch (_: Throwable) {
-            0f
-        }
+        val r = shield.radius
         if (r <= 0f) return explosionPoint
 
         val d = MathUtils.getDistance(explosionPoint, sl)
@@ -253,122 +286,6 @@ internal class GravityCollapseOnHitHandler(
 
         val ang = Misc.getAngleInDegrees(sl, explosionPoint)
         return MathUtils.getPointOnCircumference(sl, r, ang)
-    }
-
-    private fun tryApplyGravityTearOnHullHit(
-        engine: CombatEngineAPI,
-        source: ShipAPI?,
-        targetShip: ShipAPI,
-        point: Vector2f,
-        aoeDamageApplied: Float,
-    ) {
-        if (aoeDamageApplied <= 0f) return
-        if (targetShip.isHulk) return
-
-        // 若命中点被盾覆盖，则视为“未击中船体”，不触发引力撕裂。
-        // 使用与 resolveShieldedDamagePoint 相同的容差，避免“点略微在盾外”导致误触发。
-        try {
-            val shield = targetShip.shield
-            if (shield != null && shield.isOn) {
-                val inArc = try {
-                    shield.isWithinArc(point)
-                } catch (_: Throwable) {
-                    true
-                }
-                if (inArc) {
-                    val sl = shield.location
-                    val r = shield.radius
-                    if (sl != null && r > 0f) {
-                        val d = MathUtils.getDistance(point, sl)
-                        if (d <= r + SHIELD_SNAP_EPS) return
-                    }
-                }
-            }
-        } catch (_: Throwable) {
-        }
-
-        val grid = try {
-            targetShip.armorGrid
-        } catch (_: Throwable) {
-            null
-        } ?: return
-
-        val cell = try {
-            grid.getCellAtLocation(point)
-        } catch (_: Throwable) {
-            null
-        } ?: return
-        if (cell.size < 2) return
-
-        val cx = cell[0]
-        val cy = cell[1]
-        if (cx < 0 || cy < 0) return
-
-        val armor0 = try {
-            grid.getArmorValue(cx, cy)
-        } catch (_: Throwable) {
-            0f
-        }.coerceAtLeast(0f)
-
-        val maxArmor = try {
-            grid.maxArmorInCell
-        } catch (_: Throwable) {
-            0f
-        }.coerceAtLeast(0f)
-
-        val armorFrac = if (maxArmor > 0.01f) (armor0 / maxArmor).coerceIn(0f, 1f) else 0f
-
-        // 穿透：局部装甲不足时，额外直扣船体（无视装甲减伤）
-        if (armorFrac < config.tearArmorThreshold) {
-            // 让“穿透”在阈值处为 0，装甲越低越接近 1；避免装甲仍然充足时也产生明显船体直扣。
-            val thr = config.tearArmorThreshold.coerceAtLeast(0.01f)
-            val pierceFactor = ((thr - armorFrac) / thr).coerceIn(0f, 1f)
-            val hullExtra = (aoeDamageApplied * pierceFactor).coerceAtLeast(0f)
-            if (hullExtra <= 0f) return
-
-            val hp0 = try {
-                targetShip.hitpoints
-            } catch (_: Throwable) {
-                0f
-            }
-
-            // - 穿透直扣船体保留至少 1 点（避免 setHitpoints 直接扣到 0 带来的异常死亡链路/表现）。
-            // - 若目标已濒死（船体 <= 1），则用一次小额 applyDamage 走正常死亡链路。
-            if (hp0 <= 1f) {
-                try {
-                    engine.applyDamage(
-                        targetShip,
-                        point,
-                        config.executeDamage,
-                        DamageType.HIGH_EXPLOSIVE,
-                        0f,
-                        true,
-                        false,
-                        source,
-                        true,
-                    )
-                } catch (_: Throwable) {
-                }
-                return
-            }
-
-            val hpAfter = (hp0 - hullExtra).coerceAtLeast(1f)
-            val directLoss = (hp0 - hpAfter).coerceAtLeast(0f)
-            try {
-                targetShip.hitpoints = hpAfter
-            } catch (_: Throwable) {
-            }
-
-            // 直接扣 hitpoints 不会自动弹出伤害数字；这里补一条 floaty。
-            try {
-                if (directLoss > 0f && Misc.shouldShowDamageFloaty(source, targetShip)) {
-                    val p2 = Vector2f(point)
-                    p2.y += 20f
-                    engine.addFloatingDamageText(p2, directLoss, Misc.FLOATY_HULL_DAMAGE_COLOR, targetShip, source)
-                }
-            } catch (_: Throwable) {
-            }
-        }
     }
 
     private fun spawnSustainedHitCollapseDistortion(engine: CombatEngineAPI, point: Vector2f, intensity: Float) {
@@ -397,7 +314,11 @@ internal class GravityCollapseOnHitHandler(
 
             setLocation(point)
 
-            BoxUtilCombatVfx.addEntity(engine, this)
+            val state = BoxUtilCombatVfx.addEntity(engine, this)
+            if (state != 0) {
+                log.warn("[ASTD] 引力坍缩炮：命中坍缩扭曲 addEntity 失败（state=$state），本次视觉缺席")
+                delete()
+            }
         }
     }
 

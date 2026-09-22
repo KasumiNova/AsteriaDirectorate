@@ -1,9 +1,14 @@
 package cn.kasuminova.astd.combat.effect.generic.gravitycollapse
 
+import cn.kasuminova.astd.api.difficulty.ScalingEntry
+
 /**
  * 引力坍缩炮：命中持续效果配置。
  *
  * 该类型被 [GravityCollapseOnHitHandler] 使用；单独放文件里以保证文件名与类名对应。
+ *
+ * 难度缩放数值以三锚点 [ScalingEntry] 登记（线性映射），运行时按来源舰归属解析：
+ * 玩家来源固定取 v2 设计基准，敌方来源由固有缩放系数 k_s 派生。
  */
 internal data class GravityCollapseOnHitConfig(
     /** tick 间隔（秒）。 */
@@ -14,8 +19,6 @@ internal data class GravityCollapseOnHitConfig(
     val aoeRadiusIntensityMinMul: Float = 0.75f,
     /** AOE 半径：intensity=1 时的倍率。 */
     val aoeRadiusIntensityMaxMul: Float = 1.15f,
-    /** AOE 伤害衰减：边缘倍率（中心=1.0）。 */
-    val aoeEdgeDamageMul: Float = 0.5f,
 
     /** 是否要求 beam 有 damageTarget 才触发（旧行为：只有命中才触发）。 */
     val requireDamageTarget: Boolean = true,
@@ -29,13 +32,12 @@ internal data class GravityCollapseOnHitConfig(
     /** 仅用于视觉：随武器尺寸缩放（不影响机制半径/伤害）。 */
     val vfxScale: Float = 1f,
 
-    /**
-     * （已弃用）旧版“引力撕裂：额外撕裂装甲”的倍率（相对本次 AOE 伤害）。
-     * 当前实现已移除“额外扣装甲”，仅保留低装甲时的贯穿船体伤害。
-     */
-    val tearArmorFraction: Float = 0.5f,
-    /** 引力撕裂：低于该装甲比例才允许“穿透扣船体”。 */
-    val tearArmorThreshold: Float = 0.50f,
-    /** “斩杀”用的小额伤害：目标已濒死（船体<=1）时用于结算死亡链路。 */
-    val executeDamage: Float = 100f,
+    /** 范围高爆伤害比例（相对面板 tick 伤害）三锚点。 */
+    val aoeDamageRatio: ScalingEntry,
+    /** 最大航速与机动性降低比例三锚点（命中装甲/船体时施加）。 */
+    val mobilityReduction: ScalingEntry,
+    /** 机动抑制持续时间（秒）三锚点。 */
+    val mobilityDuration: ScalingEntry,
+    /** 无视目标最终装甲减伤的比例三锚点（命中装甲/船体时生效）。 */
+    val armorReductionIgnore: ScalingEntry,
 )

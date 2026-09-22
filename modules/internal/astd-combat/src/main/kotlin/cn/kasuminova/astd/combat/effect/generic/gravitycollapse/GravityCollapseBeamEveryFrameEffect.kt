@@ -1,5 +1,6 @@
 package cn.kasuminova.astd.combat.effect.generic.gravitycollapse
 
+import cn.kasuminova.astd.api.AstdLog
 import cn.kasuminova.astd.impl.render.BeamHostImpl
 import cn.kasuminova.astd.renderer.beam.driver.BeamFrame
 import cn.kasuminova.astd.renderer.beam.driver.BeamVfxDriver
@@ -27,6 +28,17 @@ class GravityCollapseBeamEveryFrameEffect : EveryFrameWeaponEffectPlugin {
 
         // 渲染端“快速延伸”：前 BEAM_GROW_TIME 秒内把束长按比例拉长（仅视觉，不影响命中）。
         private const val BEAM_GROW_TIME = 0.08f
+
+        private val log = AstdLog.logger
+
+        /** 每帧回调里的异常告警按调用点只记一次，避免刷屏。 */
+        private val warnedSites = HashSet<String>()
+
+        private fun warnOnce(site: String, t: Throwable) {
+            if (warnedSites.add(site)) {
+                log.warn("[ASTD] 引力坍缩炮光束效果：$site 调用异常，取保守默认（后续同类异常不再重复记录）", t)
+            }
+        }
     }
 
     private var initedForWeaponId: String? = null
@@ -71,6 +83,10 @@ class GravityCollapseBeamEveryFrameEffect : EveryFrameWeaponEffectPlugin {
                 affectNonShips = s.aoeAffectNonShips,
                 affectHulks = s.aoeAffectHulks,
                 vfxScale = s.beamScale,
+                aoeDamageRatio = s.aoeDamageRatio,
+                mobilityReduction = s.mobilityReduction,
+                mobilityDuration = s.mobilityDuration,
+                armorReductionIgnore = s.armorReductionIgnore,
             )
         )
 
@@ -117,7 +133,8 @@ class GravityCollapseBeamEveryFrameEffect : EveryFrameWeaponEffectPlugin {
 
         val weaponId = try {
             weapon.spec?.weaponId
-        } catch (_: Throwable) {
+        } catch (t: Throwable) {
+            warnOnce("weapon.spec", t)
             null
         } ?: return
 
@@ -127,19 +144,22 @@ class GravityCollapseBeamEveryFrameEffect : EveryFrameWeaponEffectPlugin {
 
         val now = try {
             engine.getTotalElapsedTime(false)
-        } catch (_: Throwable) {
+        } catch (t: Throwable) {
+            warnOnce("engine.totalElapsedTime", t)
             0f
         }
 
         val beam = try {
             weapon.beams?.firstOrNull()
-        } catch (_: Throwable) {
+        } catch (t: Throwable) {
+            warnOnce("weapon.beams", t)
             null
         }
 
         val chargeLevel = try {
             weapon.chargeLevel
-        } catch (_: Throwable) {
+        } catch (t: Throwable) {
+            warnOnce("weapon.chargeLevel", t)
             0f
         }.coerceIn(0f, 1f)
 
@@ -148,13 +168,15 @@ class GravityCollapseBeamEveryFrameEffect : EveryFrameWeaponEffectPlugin {
         // 这里用 chargeLevel + beam.brightness 双重门控，确保“充能时不发射光束”。
         val beamBrightness = try {
             beam?.brightness ?: 0f
-        } catch (_: Throwable) {
+        } catch (t: Throwable) {
+            warnOnce("beam.brightness", t)
             0f
         }.coerceIn(0f, 1f)
 
         val cooldownRemaining = try {
             weapon.cooldownRemaining
-        } catch (_: Throwable) {
+        } catch (t: Throwable) {
+            warnOnce("weapon.cooldownRemaining", t)
             0f
         }.coerceAtLeast(0f)
 
@@ -183,7 +205,8 @@ class GravityCollapseBeamEveryFrameEffect : EveryFrameWeaponEffectPlugin {
                 // 命中机制：用 weapon.damage.damage 作为“面板 DPS”（已含加成）。
                 val panelDps = try {
                     weapon.damage?.damage ?: 0f
-                } catch (_: Throwable) {
+                } catch (t: Throwable) {
+                    warnOnce("weapon.damage", t)
                     0f
                 }
                 hit.advance(engine, amount, weapon, beam, 1f, panelDps)
@@ -230,7 +253,8 @@ class GravityCollapseBeamEveryFrameEffect : EveryFrameWeaponEffectPlugin {
             suppressVanillaDamageDuringCharge(weapon, beam)
             try {
                 cu?.advance(engine, amount, weapon, chargeLevel)
-            } catch (_: Throwable) {
+            } catch (t: Throwable) {
+                warnOnce("chargeUpVfx.advance", t)
             }
             lastChargeLevel = chargeLevel
             return
@@ -243,7 +267,8 @@ class GravityCollapseBeamEveryFrameEffect : EveryFrameWeaponEffectPlugin {
         if (chargeLevel <= 0.001f && lastChargeLevel > 0.001f) {
             try {
                 cu?.reset()
-            } catch (_: Throwable) {
+            } catch (t: Throwable) {
+                warnOnce("chargeUpVfx.reset", t)
             }
         }
         lastChargeLevel = chargeLevel
@@ -260,7 +285,8 @@ class GravityCollapseBeamEveryFrameEffect : EveryFrameWeaponEffectPlugin {
                 }
                 d.damage = 0f
             }
-        } catch (_: Throwable) {
+        } catch (t: Throwable) {
+            warnOnce("suppress.weaponDamage", t)
         }
 
         try {
@@ -268,7 +294,8 @@ class GravityCollapseBeamEveryFrameEffect : EveryFrameWeaponEffectPlugin {
             if (bd != null) {
                 bd.damage = 0f
             }
-        } catch (_: Throwable) {
+        } catch (t: Throwable) {
+            warnOnce("suppress.beamDamage", t)
         }
     }
 
@@ -279,7 +306,8 @@ class GravityCollapseBeamEveryFrameEffect : EveryFrameWeaponEffectPlugin {
             if (d != null) {
                 d.damage = saved
             }
-        } catch (_: Throwable) {
+        } catch (t: Throwable) {
+            warnOnce("restore.weaponDamage", t)
         }
         suppressedWeaponDamage = null
     }

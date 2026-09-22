@@ -40,6 +40,11 @@
 		"system.burst_flow.status.default.out": "花影收束中",
 		"system.vision_shift.status.self": "自身时间流速 +%percent%",
 		"system.vision_shift.status.target": "%name% 时间流速 -%percent%",
+		"system.gravity_phase.status.altered": "时间流速已改变",
+		"system.gravity_phase.status.coils_stable": "引力相位线圈稳定",
+		"system.gravity_phase.status.full_speed": "最大航速保持 100％",
+		"system.gravity_phase.status.coil_stress": "引力相位线圈过载",
+		"system.gravity_phase.status.speed_limited": "最大航速降至 %speed%％",
 
 		"ui.hullmod.table.attribute": "属性",
 		"ui.hullmod.table.effect": "影响",

@@ -49,7 +49,9 @@ class ASTDDecorativeLightsEffect : EveryFrameWeaponEffectPlugin {
         } catch (_: Throwable) {
             null
         }
-        val alpha = if (ship.isHulk || ship.isPiece) 0f else 1.0f
+        // 引力相位激活期间原紫色 bloom 层按相位等级淡出（乘法染色无法转红，
+        // 红色表现由 GravityPhaseVisualEffect 的预生成红色 bloom 叠加层接管，交叉淡入淡出换色）
+        val alpha = (if (ship.isHulk || ship.isPiece) 0f else 1.0f) * (1f - GravityPhaseVisualEffect.phaseLevelOf(ship))
 
         try {
             animation?.alphaMult = alpha
@@ -58,6 +60,7 @@ class ASTDDecorativeLightsEffect : EveryFrameWeaponEffectPlugin {
 
         try {
             sprite.setAdditiveBlend()
+            sprite.alphaMult = alpha
             baseColor ?: Color.WHITE
             val color = if (weaponId == BLOOM_WEAPON_ID) {
                 // 始终使用冷态蓝色，不随战术系统过载状态变色。

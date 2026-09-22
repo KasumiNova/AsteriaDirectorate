@@ -11,32 +11,32 @@ LENS 的引力光束基线武器族：坍缩脉冲 AOE + 低装甲点引力撕�
 
 ## 2. 现状
 
-- 四件武器**共用** `astd_ftb_omega_base.png` / `astd_ftb_omega_gun.png` 一对贴图（旧武器集借用的临时方案），大/中/小/PD 无法从外观区分，且该贴图属 ARC 火炮语汇，与 LENS 仪器感不符
+- 大型（`astd_gcp12`，48×70）与中型（`astd_gcp8`，36×57）已交付独立贴图：炮塔/挂点共用同一底图，配 GLOW 动画发光层（`_glow` / `_hp_glow`），另由 `WeaponGlowLayer` 派生常驻微光层（`_glow_ambient` / `_hp_glow_ambient`）；紫色发光变体（`*_purple.png`）留档备用
+- 小型（`astd_gcp4`）与 PD（`astd_gcp2`）仍共用旧 `astd_ftb_omega_*` 临时贴图，待补
 - 光束色已实装：core RGB(255,70,70)、fringe RGB(255,25,25)、glow RGB(255,45,45)，束体暂用原版 `beamcoreb/beamfringeb`
 - 光圈环特效已用自有 `astd_generated_ring.png`，不需要新特效贴图
 
-## 3. 资产需求清单
+## 3. 资产清单
 
-| 资产 | 文件命名 | 画布基准 | 说明 |
+已交付（大型/中型）：
+
+| 资产 | 文件命名 | 画布 | 说明 |
 |---|---|---|---|
-| 大型炮塔底图 | `astd_gcp12_base.png` | 68×68 | 兼作图标，三环结构 |
-| 大型炮塔发光层 | `astd_gcp12_glow.png` | 68×68 | 开火/工作发光层（加法混合） |
-| 大型挂点底图 | `astd_gcp12_hp.png` | 48×68 纵向 | |
-| 大型挂点发光层 | `astd_gcp12_hp_glow.png` | 48×68 纵向 | 开火/工作发光层（加法混合） |
-| 中型炮塔底图 | `astd_gcp8_base.png` | 42×42 | 兼作图标，双环 |
-| 中型炮塔发光层 | `astd_gcp8_glow.png` | 42×42 | 开火/工作发光层（加法混合） |
-| 中型挂点底图 | `astd_gcp8_hp.png` | 32×48 纵向 | |
-| 中型挂点发光层 | `astd_gcp8_hp_glow.png` | 32×48 纵向 | 开火/工作发光层（加法混合） |
-| 小型炮塔底图 | `astd_gcp4_base.png` | 28×28 | 兼作图标，单环 |
-| 小型炮塔发光层 | `astd_gcp4_glow.png` | 28×28 | 开火/工作发光层（加法混合） |
-| 小型挂点底图 | `astd_gcp4_hp.png` | 28×28 纵向可拉长 | |
-| 小型挂点发光层 | `astd_gcp4_hp_glow.png` | 28×28 纵向可拉长 | 开火/工作发光层（加法混合） |
-| PD 炮塔底图 | `astd_gcp2_base.png` | 26×26 | 兼作图标，单环简化 |
-| PD 炮塔发光层 | `astd_gcp2_glow.png` | 26×26 | 开火/工作发光层（加法混合） |
-| PD 挂点底图 | `astd_gcp2_hp.png` | 26×26 纵向可拉长 | |
-| PD 挂点发光层 | `astd_gcp2_hp_glow.png` | 26×26 纵向可拉长 | 开火/工作发光层（加法混合） |
+| 大型底图 | `astd_gcp12_base.png` | 48×70 | 炮塔/挂点共用，兼作图标 |
+| 大型发光层 | `astd_gcp12_glow.png` / `astd_gcp12_hp_glow.png` | 48×70 | GLOW 动画发光层（加法混合） |
+| 大型常驻微光 | `astd_gcp12_glow_ambient.png` / `astd_gcp12_hp_glow_ambient.png` | 48×70 | WeaponGlowLayer AMBIENT 档（冷却期常驻） |
+| 中型底图 | `astd_gcp8_base.png` | 36×57 | 炮塔/挂点共用，兼作图标 |
+| 中型发光层 | `astd_gcp8_glow.png` / `astd_gcp8_hp_glow.png` | 36×57 | GLOW 动画发光层（加法混合） |
+| 中型常驻微光 | `astd_gcp8_glow_ambient.png` / `astd_gcp8_hp_glow_ambient.png` | 36×57 | WeaponGlowLayer AMBIENT 档（冷却期常驻） |
 
-路径：`contents/graphics/weapons/`。环轴朝上，转轴居中。各尺寸如需枪身覆层（光束武器一般不需要后坐层）可省略。
+待补（小型/PD，沿用同结构）：
+
+| 资产 | 文件命名 | 说明 |
+|---|---|---|
+| 小型底图 + 发光层 + 常驻微光 | `astd_gcp4_base.png` 等 5 张 | 单环结构 |
+| PD 底图 + 发光层 + 常驻微光 | `astd_gcp2_base.png` 等 5 张 | 单环简化 |
+
+路径：`contents/graphics/weapons/`。环轴朝上，转轴居中。光束武器无后坐层（gun sprite 为空白占位）。
 
 ## 4. 视觉设计需求
 

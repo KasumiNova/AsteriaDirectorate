@@ -689,14 +689,15 @@ object Wpn_astd_gemini_dem_launcher : WeaponDataEntry(), SsProjMissileOutputs {
     override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
     override val number: Int = 9221
 
-    // dummy 导弹：发射同帧被 GeminiDemSalvoOnFireEffect 拦截移除，数值只保证“发射即拦截”不出异常（规格 §1.3）
+    // dummy 导弹：发射同帧被 GeminiDemSalvoOnFireEffect 拦截移除，数值只保证“发射即拦截”不出异常（规格 §1.3）。
+    // 弹体贴图即装填渲染贴图（RENDER_LOADED_MISSILES 按炮管渲染本 sprite；双色染色/光效由 GeminiDemRackVisuals 叠加）。
     override val projSpec: MissileProjSpec = MissileProjSpec(
         id = "astd_gemini_dem_dummy",
         missileType = "MISSILE",
         onFireEffect = "cn.kasuminova.astd.combat.effect.arc.geminidem.GeminiDemSalvoOnFireEffect",
-        sprite = "graphics/textures/BUtil_NONE.png",
-        size = Vec2i(4, 4),
-        center = Vec2(2, 2),
+        sprite = "graphics/weapons/astd_gemini_dem_missile.png",
+        size = Vec2i(12, 25),
+        center = Vec2(6, 12.5),
         collisionRadius = 7,
         collisionClass = "MISSILE_NO_FF",
         explosionColor = Rgba(0, 0, 0, 0),
