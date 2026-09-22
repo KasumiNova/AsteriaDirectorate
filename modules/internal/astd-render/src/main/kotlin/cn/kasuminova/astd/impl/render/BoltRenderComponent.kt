@@ -111,6 +111,9 @@ class BoltRenderComponent(
         entity.setAdditiveBlend()
         entity.setBaseSizePerTiles(specLength / 2f, specWidth / 2f)
         entity.materialData.setColor(spec.color.red, spec.color.green, spec.color.blue, spec.color.alpha)
+        entity.materialData.emissive = entity.materialData.diffuse
+        entity.materialData.setEmissiveColor(spec.color.red, spec.color.green, spec.color.blue, spec.color.alpha)
+        entity.materialData.glowPower = 0.5f
         // 常驻：消亡由组件按弹体状态显式 delete，不走全局计时器
         entity.setGlobalTimer(0f, BOLT_FULL_SECONDS, 0f)
         BoxUtilCombatVfx.ensureReady(engine)
@@ -171,7 +174,7 @@ class BoltRenderComponent(
         const val RENDER_ORDER_BOLT = 200
 
         /** 双趟叠加（= 原版 ProjectileRenderer body 双 pass，加色下提升头部饱和）。 */
-        const val BOLT_PASSES = 2
+        const val BOLT_PASSES = 1
 
         /** 螺栓常驻时长（秒）：生命周期由弹体状态显式驱动，这里给一个永不自然到期的值。 */
         private const val BOLT_FULL_SECONDS = 1e7f

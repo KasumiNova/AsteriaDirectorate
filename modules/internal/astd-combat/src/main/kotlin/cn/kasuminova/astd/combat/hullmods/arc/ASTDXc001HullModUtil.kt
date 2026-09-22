@@ -38,7 +38,7 @@ internal object ASTDXc001HullModIds {
     const val KEY_EMISSIVE_OVERLAY_MANAGER: String = "astd_xc_001_emissive_overlay_manager"
     const val KEY_ENGINE_FLARE_MANAGER: String = "astd_xc_001_engine_flare_manager"
 
-    /** 静态装饰灯 bloom 描边武器 id（[cn.kasuminova.astd.renderer.effect.system.ASTDDecorativeLightsEffect] 识别 bloom 层用）。 */
+    /** 静态装饰灯 bloom 描边武器 id（[cn.kasuminova.astd.renderer.effect.system.ASTDShipGlowEffect] 识别冷态蓝基底用）。 */
     const val WEAPON_LIGHTS_BLOOM: String = "astd_xc_001_lights_bloom"
 }
 

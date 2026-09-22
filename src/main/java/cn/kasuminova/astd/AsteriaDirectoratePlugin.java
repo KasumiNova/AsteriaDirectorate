@@ -16,6 +16,7 @@ import cn.kasuminova.astd.impl.difficulty.DifficultySettingsRegistrar;
 import cn.kasuminova.astd.renderer.effect.system.WeaponGlowLayer;
 import cn.kasuminova.astd.renderer.effect.system.GeminiDemRackVisuals;
 import cn.kasuminova.astd.renderer.effect.system.GravityPhaseVisualEffect;
+import cn.kasuminova.astd.renderer.effect.system.ShipGlowRenderer;
 import com.fs.starfarer.api.BaseModPlugin;
 import com.fs.starfarer.api.Global;
 import com.fs.starfarer.api.PluginPick;
@@ -64,7 +65,9 @@ public final class AsteriaDirectoratePlugin extends BaseModPlugin {
         WeaponGlowLayer.INSTANCE.preloadTextures();
         // 预加载双子星 DEM 导轨弹体光效贴图（同上原因）。
         GeminiDemRackVisuals.INSTANCE.preloadTextures();
-        // 预加载引力相位舰船的描边/红化 bloom 贴图（同上原因；战斗中加载会损坏上传队列）。
+        // 预加载舰船覆盖发光层（bloom/装饰灯）贴图与引力相位红色变体（同上原因）。
+        ShipGlowRenderer.INSTANCE.preloadTextures();
+        // 动态生成引力相位舰船的 SDF 描边纹理（同上原因；战斗中加载会损坏上传队列）。
         GravityPhaseVisualEffect.INSTANCE.preloadTextures();
     }
 

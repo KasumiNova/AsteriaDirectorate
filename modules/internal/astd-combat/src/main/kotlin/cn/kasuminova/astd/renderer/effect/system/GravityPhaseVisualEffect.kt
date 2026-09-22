@@ -1,5 +1,6 @@
 package cn.kasuminova.astd.renderer.effect.system
 
+import cn.kasuminova.astd.api.AstdLog
 import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseEveryFrameCombatPlugin
@@ -8,17 +9,21 @@ import com.fs.starfarer.api.combat.CombatEngineLayers
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.input.InputEventAPI
 import org.boxutil.units.standard.entity.SpriteEntity
+import org.boxutil.util.ShaderUtil
+import org.lwjgl.opengl.GL11
 import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
+import java.nio.ByteBuffer
 import kotlin.math.cos
+import kotlin.math.roundToInt
 import kotlin.math.sin
 
 /**
  * 「引力相位」（astd_gravity_phase）相位激活态视觉：
- * - 描边红色辉光：BoxUtil `SpriteEntity` 以 `<舰体>_phase_outline.png`（alpha 外环掩码，
- *   由 `tools/generate_phase_vfx_assets.py` 生成）为 emissive 层红色发光， hull 轮廓描边 + bloom 外扩；
- * - bloom 层红化：bloom 贴图紫色素材无法靠乘法染色转红，改用预生成的 `<舰体>_bloom_red.png`
- *   色相旋转变体做加法叠加，同时 [ASTDDecorativeLightsEffect] 按相位等级淡出原紫色 bloom 层；
+ * - 描边红色辉光：运行期以 BoxUtil [ShaderUtil.genLegacySDF] 从舰体贴图 alpha 动态生成
+ *   SDF，CPU 阈值化为外环描边纹理后由 [SpriteEntity] 红色发光渲染（不再使用预生成贴图）；
+ * - bloom 层红化：复用 [ShipGlowRenderer.setRecolor]，按相位等级把覆盖发光层
+ *   交叉淡入到预生成的红色变体；
  * - 相位残影：相位期间每 0.5s 经 [ASTDAfterimageEffect] 生成一次 70％ 不透明度红色残影（平方淡出）。
  *
  * 接入点：[cn.kasuminova.astd.combat.shipsystems.GravityPhaseCloakStats] 每帧 apply 时调用 [track] 登记舰船；
@@ -37,14 +42,11 @@ internal object GravityPhaseVisualEffect {
     /** 残影淡出时长（秒）。 */
     private const val AFTERIMAGE_DURATION = 0.7f
 
-    /** 相位等级低于该值视为未激活（辉光归零、不产残影）。 */
+    /** 相位等级低于该值视为未激活（辉光归零、不产残影、换色层淡出至原色）。 */
     private const val ACTIVE_LEVEL_MIN = 0.05f
 
-    /** 描边辉光 emissive 颜色（纯红，bloom 外扩成红色光晕）。 */
-    private val OUTLINE_EMISSIVE = Color(255, 28, 28, 255)
-
-    /** 红色 bloom 叠加的 emissive 颜色（贴图已预转红，白色原样透出）。 */
-    private val BLOOM_EMISSIVE = Color(255, 255, 255, 255)
+    /** 描边辉光颜色（纯红，bloom 外扩成红色光晕）。 */
+    private val OUTLINE_COLOR = Color(255, 28, 28, 255)
 
     /** 残影颜色（70％ 不透明度红）。 */
     private val AFTERIMAGE_COLOR = Color(255, 60, 60)
@@ -52,40 +54,141 @@ internal object GravityPhaseVisualEffect {
     /** 常驻实体时长（秒）：生命周期由舰船状态显式驱动，不自然到期。 */
     private const val GLOW_FULL_SECONDS = 1e7f
 
-    private val log = Global.getLogger(GravityPhaseVisualEffect::class.java)
+    /** 描边外扩像素（SDF 边界宽度，同时是描边衰减长度）。 */
+    private const val OUTLINE_BORDER = 8
+
+    /** SDF alpha 阈值：低于该 alpha 的像素视为舰体外部（抗锯齿边缘算作内部，描边贴紧轮廓）。 */
+    private const val OUTSIDE_THRESHOLD = 0.1f
+
+    private val log = AstdLog.logger
 
     /** 引力相位系统 id（相位斗篷 spec id 过滤用）。 */
     const val SYSTEM_ID = "astd_gravity_phase"
 
-    /** preloadTextures 加载成功的贴图路径集合；实体创建只使用此集合内的路径。 */
-    private val preloadedPaths = HashSet<String>()
+    /** 舰体 id → 动态生成的描边纹理。 */
+    private class OutlineTex(
+        val textureId: Int,
+        val width: Int,
+        val height: Int,
+        val potWidth: Int,
+        val potHeight: Int,
+    )
+
+    private val outlineTextures = HashMap<String, OutlineTex>()
 
     /**
-     * 预加载所有引力相位舰船的描边/红化 bloom 贴图（onApplicationLoad 调用）。
-     *
-     * SSOptimizer 延迟加载下战斗中 loadTexture 既可能损坏其上传队列（实机 2026-09-23
-     * glTexImage2D 缓冲尺寸不匹配崩溃），且 SpriteAPI.textureId 捕获时机早于上传完成会恒为 0，
-     * 故必须在应用加载阶段完成 GL 上传。
+     * 预生成所有引力相位舰船的描边纹理（onApplicationLoad 调用）。
+     * 直接经 BoxUtil [ShaderUtil.genLegacySDF] 从舰体贴图 alpha 生成 SDF，
+     * 再读回 CPU 阈值化并上传为描边纹理；自动化环境（SSOptimizer）不覆盖
+     * 该阶段 GL 调用面时生成会失败，仅记录 WARN，不影响正式游戏。
      */
     fun preloadTextures() {
         for (spec in Global.getSettings().allShipHullSpecs) {
             if (!spec.isPhase || spec.shipDefenseId != SYSTEM_ID) continue
-            val base = spec.spriteName?.removeSuffix(".png") ?: continue
-            for (path in listOf(base + "_phase_outline.png", base + "_bloom_red.png")) {
-                try {
-                    Global.getSettings().loadTexture(path)
-                    preloadedPaths += path
-                } catch (t: Throwable) {
-                    log.warn("[ASTD] 引力相位视觉：贴图预加载失败 $path（hull=${spec.hullId}）", t)
-                }
+            val spriteName = spec.spriteName ?: continue
+            try {
+                Global.getSettings().loadTexture(spriteName)
+                val outline = generateOutline(spec.hullId, spriteName)
+                if (outline != null) outlineTextures[spec.hullId] = outline
+            } catch (t: Throwable) {
+                log.warn("[ASTD] 引力相位视觉：描边纹理生成失败（hull=${spec.hullId}）", t)
             }
         }
-        log.info("[ASTD] 引力相位视觉贴图预加载完成：${preloadedPaths.size} 张")
+        log.info("[ASTD] 引力相位视觉描边纹理生成完成：${outlineTextures.size} 张")
+    }
+
+    /**
+     * 单舰描边纹理生成：舰体贴图 alpha → genLegacySDF（CPU 多线程）→ 读回阈值化为
+     * 「外环二次衰减」的 RGBA 描边纹理（白色 RGB，alpha 承载形状）。
+     */
+    private fun generateOutline(hullId: String, spriteName: String): OutlineTex? {
+        val sprite = Global.getSettings().getSprite(spriteName)
+        val sourceTex = sprite.textureId
+        if (sourceTex <= 0) {
+            log.warn("[ASTD] 引力相位视觉：舰体贴图未上传（hull=$hullId, textureId=0），跳过描边生成")
+            return null
+        }
+
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, sourceTex)
+        val texWidth = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_WIDTH)
+        val texHeight = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_HEIGHT)
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0)
+        if (texWidth <= 0 || texHeight <= 0) {
+            log.warn("[ASTD] 引力相位视觉：舰体贴图尺寸查询失败（hull=$hullId），跳过描边生成")
+            return null
+        }
+
+        val srcX = (sprite.texX * texWidth).roundToInt()
+        val srcY = (sprite.texY * texHeight).roundToInt()
+        val srcW = sprite.width.toInt()
+        val srcH = sprite.height.toInt()
+
+        val sdf = ShaderUtil.genLegacySDF(
+            sourceTex, GL11.GL_ALPHA, srcX, srcY, srcW, srcH,
+            OUTLINE_BORDER, OUTLINE_BORDER, OUTSIDE_THRESHOLD, 8,
+            0.01f, 1f / OUTLINE_BORDER,
+        )
+        if (sdf[0] <= 0) {
+            log.warn("[ASTD] 引力相位视觉：SDF 生成失败（hull=$hullId），跳过描边生成")
+            return null
+        }
+        val validW = sdf[1]
+        val validH = sdf[2]
+        val potW = sdf[3]
+        val potH = sdf[4]
+
+        try {
+            // 读回 SDF（GL_LUMINANCE 单通道）并阈值化：仅边界外侧成环，alpha 按 (1-d/border)²
+            // 衰减；内侧（sdfValue<0.5）必须为 0，否则整舰被填成实心剪影
+            val sdfBuf = ByteBuffer.allocateDirect(potW * potH)
+            GL11.glBindTexture(GL11.GL_TEXTURE_2D, sdf[0])
+            GL11.glGetTexImage(GL11.GL_TEXTURE_2D, 0, GL11.GL_LUMINANCE, GL11.GL_UNSIGNED_BYTE, sdfBuf)
+            GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0)
+
+            val outBuf = ByteBuffer.allocateDirect(potW * potH * 4)
+            for (i in 0 until potW * potH) {
+                val sdfValue = (sdfBuf.get(i).toInt() and 0xFF) / 255f
+                val alpha = if (sdfValue > 0.5f) {
+                    val outside = ((sdfValue - 0.5f) * 2f).coerceIn(0f, 1f)
+                    ((1f - outside) * (1f - outside) * 255f).roundToInt().coerceIn(0, 255)
+                } else {
+                    0
+                }
+                outBuf.put(255.toByte())
+                outBuf.put(255.toByte())
+                outBuf.put(255.toByte())
+                outBuf.put(alpha.toByte())
+            }
+            outBuf.flip()
+
+            val outlineTex = GL11.glGenTextures()
+            if (outlineTex <= 0) {
+                log.warn("[ASTD] 引力相位视觉：描边纹理 glGenTextures 失败（hull=$hullId）")
+                return null
+            }
+            try {
+                GL11.glBindTexture(GL11.GL_TEXTURE_2D, outlineTex)
+                GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR)
+                GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR)
+                GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL11.GL_CLAMP)
+                GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL11.GL_CLAMP)
+                GL11.glTexImage2D(
+                    GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, potW, potH, 0,
+                    GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, outBuf,
+                )
+                GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0)
+            } catch (t: Throwable) {
+                GL11.glDeleteTextures(outlineTex)
+                throw t
+            }
+            return OutlineTex(outlineTex, validW, validH, potW, potH)
+        } finally {
+            GL11.glDeleteTextures(sdf[0])
+        }
     }
 
     /**
      * 相位等级：引力相位斗篷的 effectLevel；非本系统（或无斗篷）恒 0。
-     * [ASTDDecorativeLightsEffect] 淡出原 bloom 层也读这里。
      */
     fun phaseLevelOf(ship: ShipAPI): Float {
         val cloak = ship.phaseCloak ?: return 0f
@@ -115,11 +218,10 @@ internal object GravityPhaseVisualEffect {
         }
     }
 
-    /** 舰船的相位视觉实体组：描边辉光 + 红色 bloom 叠加（任一缺失即不建对应层）。 */
+    /** 舰船的相位视觉实体组：SDF 描边辉光（缺失即不建）。 */
     private class Attachment(
         val ship: ShipAPI,
-        val outline: SpriteEntity?,
-        val bloom: SpriteEntity?,
+        val outline: SpriteEntity,
         /** 舰体贴图中心补偿（世界偏移由朝向旋转后叠加）：sprite 中心相对几何中心的偏移量。 */
         val centerOffsetX: Float,
         val centerOffsetY: Float,
@@ -129,55 +231,46 @@ internal object GravityPhaseVisualEffect {
     private class Plugin(private val engine: CombatEngineAPI) : BaseEveryFrameCombatPlugin() {
 
         private val attachments = LinkedHashMap<Int, Attachment>()
-        private val missingTextureWarned = HashSet<String>()
+
+        /** 实体创建失败的舰船（不再重试，避免每帧重建实体与刷屏告警）。 */
+        private val failedShips = HashSet<Int>()
 
         fun track(ship: ShipAPI) {
             val key = System.identityHashCode(ship)
-            if (attachments.containsKey(key)) return
-            val attachment = createAttachment(ship) ?: return
+            if (attachments.containsKey(key) || key in failedShips) return
+            val attachment = try {
+                createAttachment(ship)
+            } catch (t: Throwable) {
+                log.warn("[ASTD] 引力相位辉光：实体创建异常（ship=${ship.hullSpec?.hullId}），该舰不再重试", t)
+                null
+            } ?: run {
+                failedShips += key
+                return
+            }
             attachments[key] = attachment
         }
 
         private fun createAttachment(ship: ShipAPI): Attachment? {
             val sprite = ship.spriteAPI ?: return null
-            val spriteName = ship.hullSpec?.spriteName ?: return null
-            val base = spriteName.removeSuffix(".png")
+            val hullId = ship.hullSpec?.hullId ?: return null
+            val outlineTex = outlineTextures[hullId] ?: return null
 
-            val outline = createGlowEntity(ship, sprite, base + "_phase_outline.png", OUTLINE_EMISSIVE, 1.2f)
-            val bloom = createGlowEntity(ship, sprite, base + "_bloom_red.png", BLOOM_EMISSIVE, 1.0f)
-            if (outline == null && bloom == null) return null
-
-            log.info(
-                "[ASTD] 引力相位视觉 attached ship=${ship.hullSpec?.hullId} " +
-                        "outline=${outline != null} bloom=${bloom != null}",
-            )
+            val outline = createOutlineEntity(ship, sprite, outlineTex) ?: return null
             return Attachment(
                 ship = ship,
                 outline = outline,
-                bloom = bloom,
                 centerOffsetX = sprite.width / 2f - sprite.centerX,
                 centerOffsetY = sprite.height / 2f - sprite.centerY,
             )
         }
 
-        /** 创建单层发光实体：emissive 贴图缺失时记一次 WARN 并返回 null（不建该层）。 */
-        private fun createGlowEntity(
+        private fun createOutlineEntity(
             ship: ShipAPI,
             sprite: com.fs.starfarer.api.graphics.SpriteAPI,
-            texturePath: String,
-            emissiveColor: Color,
-            glowPower: Float,
+            tex: OutlineTex,
         ): SpriteEntity? {
-            if (texturePath !in preloadedPaths) {
-                if (missingTextureWarned.add(texturePath)) {
-                    log.warn("[ASTD] 引力相位视觉：贴图未预加载 $texturePath（ship=${ship.hullSpec?.hullId}），跳过该层")
-                }
-                return null
-            }
-            val texture = Global.getSettings().getSprite(texturePath)
-
             val glow = try {
-                SpriteEntity(texture, true)
+                SpriteEntity()
             } catch (t: Throwable) {
                 log.warn("[ASTD] 引力相位辉光：SpriteEntity 创建失败（ship=${ship.hullSpec?.hullId}）", t)
                 return null
@@ -185,13 +278,15 @@ internal object GravityPhaseVisualEffect {
             try {
                 glow.setLayer(CombatEngineLayers.ABOVE_SHIPS_LAYER)
                 glow.setAdditiveBlend()
-                glow.setBaseSizePerTiles(sprite.width / 2f, sprite.height / 2f)
-                // diffuse+emissive 同贴图（TriShard/Bolt 已验证路径；emissive-only 实机不渲染）：
-                // additive 下 diffuse 提供形状与亮度，emissive 接 bloom 外扩光晕
-                glow.setEmissiveSprite(texture)
-                glow.materialData.setColor(emissiveColor)
-                glow.materialData.setEmissiveColor(emissiveColor)
-                glow.materialData.setGlowPower(glowPower)
+                glow.setBaseSizePerTiles(tex.width / 2f, tex.height / 2f)
+                glow.setUVStart(0f, 0f)
+                glow.setUVEnd(tex.width.toFloat() / tex.potWidth, tex.height.toFloat() / tex.potHeight)
+                // diffuse+emissive 同纹理（TriShard/Bolt 已验证路径）：原始 GL 纹理 id 直挂
+                glow.materialData.setDiffuse(tex.textureId)
+                glow.materialData.setEmissive(tex.textureId)
+                glow.materialData.setColor(OUTLINE_COLOR)
+                glow.materialData.setEmissiveColor(OUTLINE_COLOR)
+                glow.materialData.setGlowPower(1.2f)
                 glow.setGlobalTimer(0f, GLOW_FULL_SECONDS, 0f)
                 glow.materialData.setColorAlpha(0f)
                 glow.materialData.setEmissiveColorAlpha(0f)
@@ -218,14 +313,15 @@ internal object GravityPhaseVisualEffect {
                 val att = it.next().value
                 val ship = att.ship
                 if (ship.isHulk || !engine.isEntityInPlay(ship)) {
-                    att.outline?.delete()
-                    att.bloom?.delete()
+                    att.outline.delete()
                     it.remove()
                     continue
                 }
 
                 val level = phaseLevelOf(ship)
                 updateGlow(att, level)
+                // bloom 层红化：经 ShipGlowRenderer 交叉淡入红色变体
+                ShipGlowRenderer.setRecolor(ship, level)
 
                 if (engine.isPaused) continue
                 if (level > ACTIVE_LEVEL_MIN) {
@@ -249,19 +345,10 @@ internal object GravityPhaseVisualEffect {
                 ship.location.x + (att.centerOffsetX * cos(theta) - att.centerOffsetY * sin(theta)).toFloat(),
                 ship.location.y + (att.centerOffsetX * sin(theta) + att.centerOffsetY * cos(theta)).toFloat(),
             )
-            // 描边是细线需要满透明度；红化 bloom 与原紫色层交叉淡入淡出，0.9 上限避免过曝
-            att.outline?.let {
-                it.setStateVanilla(loc, facing)
-                val alpha = level.coerceIn(0f, 0.2f)
-                it.materialData.setColorAlpha(alpha)
-                it.materialData.setEmissiveColorAlpha(alpha)
-            }
-            att.bloom?.let {
-                it.setStateVanilla(loc, facing)
-                val alpha = (level * 0.9f).coerceIn(0f, 1f)
-                it.materialData.setColorAlpha(alpha)
-                it.materialData.setEmissiveColorAlpha(alpha)
-            }
+            val alpha = level.coerceIn(0f, 1f)
+            att.outline.setStateVanilla(loc, facing)
+            att.outline.materialData.setColorAlpha(alpha)
+            att.outline.materialData.setEmissiveColorAlpha(alpha)
         }
 
         private fun spawnAfterimage(ship: ShipAPI) {

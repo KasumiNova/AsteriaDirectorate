@@ -3,7 +3,7 @@
     "specClass": "beam",
     "type": "DECORATIVE",
     "size": "MEDIUM",
-    "everyFrameEffect": "cn.kasuminova.astd.renderer.effect.system.ASTDDecorativeLightsEffect",
+    "everyFrameEffect": "cn.kasuminova.astd.renderer.effect.system.ASTDShipGlowEffect",
     "showDamageWhenDecorative": false,
     "renderBelowAllWeapons": true,
     "renderHints": [
