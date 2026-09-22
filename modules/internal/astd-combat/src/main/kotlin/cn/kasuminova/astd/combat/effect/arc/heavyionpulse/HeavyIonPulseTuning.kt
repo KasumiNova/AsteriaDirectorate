@@ -2,8 +2,6 @@ package cn.kasuminova.astd.combat.effect.arc.heavyionpulse
 
 import cn.kasuminova.astd.api.difficulty.DifficultyTuning
 import cn.kasuminova.astd.api.difficulty.ScalingTable
-import cn.kasuminova.astd.combat.effect.arc.heavyionpulse.HeavyIonpulse.HeavyIonPulseTuning.PIERCE_COMPENSATION_FLOOR
-import cn.kasuminova.astd.combat.effect.arc.heavyionpulse.HeavyIonpulse.HeavyIonPulseTuning.PIERCE_FLOOR
 
 /**
  * 彗星冲击波（原重型离子脉冲）的机制数值声明与纯函数（规格 02 §2.2 / §2.5，2026-09 机制修订）。

@@ -6,7 +6,6 @@ import cn.kasuminova.astd.api.buff.StackDecayMode
 import cn.kasuminova.astd.api.buff.StackableBuff
 import cn.kasuminova.astd.api.buff.getBuff
 import cn.kasuminova.astd.api.combat.CombatFeedback
-import cn.kasuminova.astd.combat.effect.arc.heavyionpulse.HeavyIonpulse.HeavyIonPulseEmpResistStacks.Companion.BUFF_ID
 import cn.kasuminova.astd.impl.combat.CombatFeedbackImpl
 import cn.kasuminova.astd.internal.i18n.I18n
 import com.fs.starfarer.api.combat.CombatEngineAPI
