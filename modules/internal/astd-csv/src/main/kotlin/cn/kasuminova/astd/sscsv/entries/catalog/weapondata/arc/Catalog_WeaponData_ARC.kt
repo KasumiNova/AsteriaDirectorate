@@ -311,7 +311,7 @@ object Wpn_astd_charge_needle : WeaponDataEntry(), SsProjProjectileOutputs {
     override val projSpec: ProjectileProjSpec = ProjectileProjSpec.boxBolt(
         id = "astd_charge_needle_shot",
         spawnType = ProjectileSpawnType.BALLISTIC,
-        onHitEffect = "cn.kasuminova.astd.combat.effect.arc.ChargeNeedleOnHitEffect",
+        onHitEffect = "cn.kasuminova.astd.combat.effect.arc.chargeneedle.ChargeNeedleOnHitEffect",
         fringeColor = Rgba(140, 200, 255, 255),
         coreColor = Rgba(225, 242, 255, 200),
         // 细针观感：弹体宽度 −75%
@@ -371,7 +371,7 @@ object Wpn_astd_heavy_charge_needle : WeaponDataEntry(), SsProjProjectileOutputs
     override val projSpec: ProjectileProjSpec = ProjectileProjSpec.boxBolt(
         id = "astd_heavy_charge_needle_shot",
         spawnType = ProjectileSpawnType.BALLISTIC,
-        onHitEffect = "cn.kasuminova.astd.combat.effect.arc.ChargeNeedleOnHitEffect",
+        onHitEffect = "cn.kasuminova.astd.combat.effect.arc.chargeneedle.ChargeNeedleOnHitEffect",
         fringeColor = Rgba(140, 200, 255, 255),
         coreColor = Rgba(225, 242, 255, 200),
         // 细针观感：弹体宽度 −75%
