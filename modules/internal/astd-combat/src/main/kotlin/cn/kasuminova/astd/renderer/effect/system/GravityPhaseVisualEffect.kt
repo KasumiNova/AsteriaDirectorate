@@ -296,6 +296,9 @@ internal object GravityPhaseVisualEffect {
                 glow.materialData.setGlowPower(1.2f)
                 glow.materialData.setColorAlpha(0f)
                 glow.materialData.setEmissiveColorAlpha(0f)
+                // 常驻：全局计时器缺省值会在首个逻辑帧被判 TIMER_INVALID 直接 delete，
+                // 必须显式钉一个超长 full（消亡由舰船状态驱动 delete）
+                glow.setGlobalTimer(0f, GLOW_FULL_SECONDS, 0f)
 
                 // SpriteEntity 走实例化渲染：无实例数据时 glDraw 绘制 0 个实例（什么都不画），
                 // 必须灌一个 FIXED 单实例（实体本体承载位置/朝向/尺寸，实例锚原点单位缩放）。

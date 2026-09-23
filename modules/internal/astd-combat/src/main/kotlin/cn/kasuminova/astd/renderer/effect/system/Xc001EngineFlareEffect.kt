@@ -198,6 +198,8 @@ internal object Xc001EngineFlareEffect {
                 entity.globalAlpha = 0.14f
                 entity.noisePower = 0.10f
                 entity.flickMixValue = 0.68f
+                // 常驻：全局计时器缺省值会在首个逻辑帧被判 TIMER_INVALID 直接 delete，必须钉超长 full
+                entity.setGlobalTimer(0f, 1e7f, 0f)
             } catch (_: Throwable) {
             }
 

@@ -227,6 +227,9 @@ internal object AttachedBeamSpriteRingRenderer {
             spriteEntity.setInstanceTimerOverride(1f, BoxEnum.TIMER_FULL)
         } catch (_: Throwable) {
         }
+        // 常驻：全局计时器缺省值会在首个逻辑帧被判 TIMER_INVALID 直接 delete，必须钉超长 full
+        // （消亡由 remove() 按光束生命周期显式 delete）
+        spriteEntity.setGlobalTimer(0f, 1e7f, 0f)
 
         val addState = try {
             BoxUtilCombatVfx.addEntity(engine, spriteEntity)

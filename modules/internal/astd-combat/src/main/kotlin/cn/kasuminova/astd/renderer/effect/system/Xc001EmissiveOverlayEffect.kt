@@ -187,6 +187,8 @@ internal object Xc001EmissiveOverlayEffect {
                 entity.globalAlpha = 0f
                 entity.noisePower = 0.10f
                 entity.flickMixValue = 0.68f
+                // 常驻：全局计时器缺省值会在首个逻辑帧被判 TIMER_INVALID 直接 delete，必须钉超长 full
+                entity.setGlobalTimer(0f, 1e7f, 0f)
             } catch (_: Throwable) {
             }
 
@@ -233,6 +235,8 @@ internal object Xc001EmissiveOverlayEffect {
                 entity.globalAlpha = 0.18f
                 entity.noisePower = 0.12f
                 entity.flickMixValue = 0.72f
+                // 常驻：全局计时器缺省值会在首个逻辑帧被判 TIMER_INVALID 直接 delete，必须钉超长 full
+                entity.setGlobalTimer(0f, 1e7f, 0f)
             } catch (_: Throwable) {
             }
 
@@ -279,6 +283,8 @@ internal object Xc001EmissiveOverlayEffect {
                 entity.globalAlpha = 0f
                 entity.noisePower = 0.10f
                 entity.flickMixValue = 0.70f
+                // 常驻：全局计时器缺省值会在首个逻辑帧被判 TIMER_INVALID 直接 delete，必须钉超长 full
+                entity.setGlobalTimer(0f, 1e7f, 0f)
             } catch (_: Throwable) {
             }
 

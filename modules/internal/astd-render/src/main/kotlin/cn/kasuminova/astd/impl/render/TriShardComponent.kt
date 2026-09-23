@@ -160,6 +160,9 @@ class TriShardComponent(
             }
 
             entity.setInstanceData(dataList, spec.timerFadeIn, maxFull, spec.timerFadeOut)
+            // 实体全局计时器对齐最长实例寿命：缺省值会在首个逻辑帧被判 TIMER_INVALID 直接 delete，
+            // 到期自然消亡（批视觉随最长实例寿终正寝）
+            entity.setGlobalTimer(spec.timerFadeIn, maxFull, spec.timerFadeOut)
             entity.setInstanceDataRefreshAllFromCurrentIndex()
             if (!submitDynamicInstanceData(entity, dataList.size)) {
                 // 实体未注册进渲染队列，但实例内存可能已 malloc——delete 释放资源防泄漏

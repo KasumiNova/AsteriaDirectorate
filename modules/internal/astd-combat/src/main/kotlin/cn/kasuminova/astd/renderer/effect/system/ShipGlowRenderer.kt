@@ -268,6 +268,9 @@ internal object ShipGlowRenderer {
                 entity.materialData.emissive = entity.materialData.diffuse
                 entity.materialData.setEmissiveColor(1f, 1f, 1f, 0f)
                 entity.materialData.glowPower = 0.5f
+                // 常驻：全局计时器缺省值会在首个逻辑帧被判 TIMER_INVALID 直接 delete，
+                // 必须显式钉一个超长 full（消亡由舰船状态驱动 delete）
+                entity.setGlobalTimer(0f, FULL_SECONDS, 0f)
 
                 // SpriteEntity 走实例化渲染：无实例数据时 glDraw 绘制 0 个实例（什么都不画），
                 // 必须灌一个 FIXED 单实例（实体本体承载位置/朝向/尺寸，实例锚原点单位缩放）。
