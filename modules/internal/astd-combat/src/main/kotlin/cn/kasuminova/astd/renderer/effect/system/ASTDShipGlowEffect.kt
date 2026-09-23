@@ -12,7 +12,8 @@ import java.awt.Color
  * 战斗内禁用原版装饰武器渲染（sprite 颜色 alpha 压 0——非动画武器的 render 每帧
  * 覆写 alphaMult，压颜色才有效；animation alphaMult 同步压 0，暂停帧也压住——
  * 定格取景依赖），画面由 [ShipGlowRenderer] 的 BoxUtil 实体完全接管；
- * 装配界面不运行本 effect，仍走原版静态渲染。
+ * sprite 是规格级共享缓存实例，压色会残留污染装配界面，由战役侧
+ * [ShipGlowRenderer.SpriteRestoreScript] 每帧还原；装配界面不运行本 effect，走原版静态渲染。
  */
 class ASTDShipGlowEffect : EveryFrameWeaponEffectPlugin {
 
@@ -43,12 +44,13 @@ class ASTDShipGlowEffect : EveryFrameWeaponEffectPlugin {
         if (!ShipGlowRenderer.isReady(engine)) return
 
         // 禁用原版装饰武器渲染：非动画武器的 render 每帧以舰船 alpha 覆写
-        // sprite.alphaMult（obf MissileWeapon.render），压 alphaMult 无效，
-        // 必须压颜色 alpha（render 不触碰 color）
+        // sprite.alphaMult（obf WeaponSpriteRenderer 系），压 alphaMult 无效，
+        // 必须压颜色 alpha（render 不触碰 color）；sprite 为规格级共享缓存实例，
+        // 经 ShipGlowRenderer 登记原始颜色，战役侧恢复脚本负责还原（否则污染装配界面）
         try {
             val sprite = weapon.sprite
-            if (sprite != null && sprite.color.alpha != 0) {
-                sprite.color = Color(sprite.color.red, sprite.color.green, sprite.color.blue, 0)
+            if (sprite != null) {
+                ShipGlowRenderer.suppressVanillaSprite(sprite)
             }
         } catch (t: Throwable) {
             warnOnce("sprite.color", t)

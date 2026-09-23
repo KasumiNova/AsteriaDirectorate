@@ -2,12 +2,14 @@ package cn.kasuminova.astd.renderer.effect.system
 
 import cn.kasuminova.astd.api.AstdLog
 import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
+import com.fs.starfarer.api.EveryFrameScript
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseEveryFrameCombatPlugin
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEngineLayers
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.combat.WeaponAPI
+import com.fs.starfarer.api.graphics.SpriteAPI
 import com.fs.starfarer.api.input.InputEventAPI
 import org.boxutil.base.api.InstanceDataAPI
 import org.boxutil.base.api.InstanceRenderAPI
@@ -17,6 +19,7 @@ import org.boxutil.units.standard.attribute.Instance2Data
 import org.boxutil.units.standard.entity.SpriteEntity
 import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
+import java.util.IdentityHashMap
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -45,6 +48,9 @@ internal object ShipGlowRenderer {
 
     private const val ENGINE_KEY = "astd_ship_glow_renderer"
 
+    /** Sector memory key：贴图恢复脚本注册去重（口径同 BountyBootstrapper 的注册去重）。 */
+    private const val MEMORY_RESTORE_SCRIPT_ADDED = "\$astd_ship_glow_restore_script_added"
+
     /** 常驻实体实例满亮相时长（秒）：生命周期由舰船状态显式驱动，不自然到期。 */
     private const val FULL_SECONDS = 1e7f
 
@@ -61,6 +67,54 @@ internal object ShipGlowRenderer {
 
     /** 覆盖层武器 id → 红色变体路径（仅引力相位舰船预载）。 */
     private val redVariantPaths = HashMap<String, String>()
+
+    /**
+     * 被压制原版装饰层贴图 → 原始颜色。
+     * weapon.sprite 是规格级共享缓存实例，战斗中压 alpha 会污染装配界面渲染
+     * （武器 render 每帧覆写 alphaMult 但不触碰 color，压 alphaMult 无效、压 color 会残留），
+     * 必须由战役侧恢复脚本（[SpriteRestoreScript]）显式还原。
+     */
+    private val suppressedSprites = IdentityHashMap<SpriteAPI, Color>()
+
+    /** 压制原版装饰武器渲染：首次登记原始颜色后把颜色 alpha 压 0（每帧调用，幂等）。 */
+    fun suppressVanillaSprite(sprite: SpriteAPI) {
+        suppressedSprites.getOrPut(sprite) { Color(sprite.color.red, sprite.color.green, sprite.color.blue, sprite.color.alpha) }
+        if (sprite.color.alpha != 0) {
+            sprite.color = Color(sprite.color.red, sprite.color.green, sprite.color.blue, 0)
+        }
+    }
+
+    /** 恢复全部被压制贴图的原始颜色并清空登记（战役侧每帧调用；战斗进行时战役脚本不推进，天然互斥）。 */
+    fun restoreSuppressedSprites() {
+        if (suppressedSprites.isEmpty()) return
+        for ((sprite, color) in suppressedSprites) {
+            try {
+                sprite.color = color
+            } catch (t: Throwable) {
+                log.warn("[ASTD] 舰船覆盖发光层渲染器：贴图颜色恢复异常", t)
+            }
+        }
+        suppressedSprites.clear()
+    }
+
+    /** 战役侧常驻恢复脚本（onGameLoad 注册，幂等去重）。 */
+    fun ensureRestoreScriptRegistered() {
+        val sector = Global.getSector() ?: return
+        val mem = sector.memoryWithoutUpdate
+        if (mem.getBoolean(MEMORY_RESTORE_SCRIPT_ADDED)) return
+        sector.addScript(SpriteRestoreScript())
+        mem.set(MEMORY_RESTORE_SCRIPT_ADDED, true)
+    }
+
+    /**
+     * 装饰层贴图恢复脚本：战役侧每帧还原被战斗内压制污染的共享贴图颜色。
+     * 战斗激活时战役脚本不推进，不会与战斗内的每帧压制互相打架。
+     */
+    class SpriteRestoreScript : EveryFrameScript {
+        override fun isDone(): Boolean = false
+        override fun runWhilePaused(): Boolean = true
+        override fun advance(amount: Float) = restoreSuppressedSprites()
+    }
 
     /** 预加载覆盖层贴图（onApplicationLoad 调用）。 */
     fun preloadTextures() {

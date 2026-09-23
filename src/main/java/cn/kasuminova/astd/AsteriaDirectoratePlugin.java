@@ -91,6 +91,8 @@ public final class AsteriaDirectoratePlugin extends BaseModPlugin {
         // 注册赏金动态生成/词缀管理脚本（主线内容重做中，框架先行）。
         // 注意：允许多实例；脚本添加由 sector memory key 去重。
         BountyBootstrapper.onGameLoad();
+        // 覆盖发光层贴图恢复脚本（战斗内压制共享 sprite 颜色的战役侧还原，幂等去重）
+        ShipGlowRenderer.INSTANCE.ensureRestoreScriptRegistered();
         // 剧情世界：生涯层脚本/战役插件注册 + 读档补齐（含第二章钩子补齐路径）
         StoryWorldBootstrap.INSTANCE.onGameLoad(newGame);
         // 生涯集成自动化（astd.careerAutomation.enabled 属性门控 + automation 模块在包内才生效）
