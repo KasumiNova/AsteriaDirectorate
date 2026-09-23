@@ -8,11 +8,6 @@ import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEngineLayers
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.input.InputEventAPI
-import org.boxutil.base.api.InstanceDataAPI
-import org.boxutil.base.api.InstanceRenderAPI
-import org.boxutil.define.BoxEnum
-import org.boxutil.define.InstanceType
-import org.boxutil.units.standard.attribute.Instance2Data
 import org.boxutil.units.standard.entity.SpriteEntity
 import org.boxutil.util.ShaderUtil
 import org.lwjgl.opengl.GL11
@@ -299,14 +294,9 @@ internal object GravityPhaseVisualEffect {
                 // 常驻：全局计时器缺省值会在首个逻辑帧被判 TIMER_INVALID 直接 delete，
                 // 必须显式钉一个超长 full（消亡由舰船状态驱动 delete）
                 glow.setGlobalTimer(0f, GLOW_FULL_SECONDS, 0f)
-
-                // SpriteEntity 走实例化渲染：无实例数据时 glDraw 绘制 0 个实例（什么都不画），
-                // 必须灌一个 FIXED 单实例（实体本体承载位置/朝向/尺寸，实例锚原点单位缩放）。
-                if (!initFixedOneInstance(glow)) {
-                    log.warn("[ASTD] 引力相位辉光：实例初始化失败（ship=${ship.hullSpec?.hullId}），描边视觉缺席")
-                    glow.delete()
-                    return null
-                }
+                // 非实例化直绘：QuadObject.glDraw 对无实例数据按 max(count,1) 画单 quad，
+                // 位置/朝向/尺寸由实体本体承载（updateGlow 每帧 setStateVanilla）；
+                // FIXED_2D 单实例灌数据路径在本环境实测零像素（SSBO 数据未生效），已弃用
             } catch (t: Throwable) {
                 log.warn("[ASTD] 引力相位辉光：实体配置失败（ship=${ship.hullSpec?.hullId}）", t)
                 glow.delete()
@@ -320,44 +310,6 @@ internal object GravityPhaseVisualEffect {
                 return null
             }
             return glow
-        }
-
-        /**
-         * 灌入一个常驻 FIXED_2D 实例（镜像 Xc001EmissiveOverlayEffect 的已验证路径）：
-         * 实例位置/朝向归零、单位缩放（由实体本体的 setStateVanilla/setBaseSizePerTiles 承载），
-         * 满亮相 timer 由 setInstanceTimerOverride 钉住，任何一步失败返回 false（描边视觉缺席，禁兜底）。
-         */
-        private fun initFixedOneInstance(entity: InstanceRenderAPI): Boolean {
-            val inst = Instance2Data().apply {
-                setLocation(0f, 0f)
-                setFacing(0f)
-                setTurnRate(0f)
-                setScale(1f, 1f)
-                setTimer(0f, GLOW_FULL_SECONDS, 0f)
-                setColor(255, 255, 255, 255)
-                setEmissiveColor(255, 255, 255, 255)
-                setFixedInstanceAlpha(1f, BoxEnum.TIMER_FULL)
-            }
-
-            val dataList: MutableList<InstanceDataAPI> = mutableListOf(inst)
-            if (entity.setInstanceData(dataList, 0f, GLOW_FULL_SECONDS, 0f) != BoxEnum.STATE_SUCCESS) return false
-
-            entity.renderingCount = 1
-            entity.instanceDataRefreshIndex = 0
-            entity.instanceDataRefreshSize = 1
-            entity.setInstanceTimerOverride(1f, BoxEnum.TIMER_FULL)
-
-            val memory = entity.instanceDataMemory
-            if (memory == null || !memory.is_type_fixed) {
-                entity.mallocInstance(InstanceType.FIXED_2D, 1)
-                entity.instanceDataRefreshOffset = 0
-                entity.setInstanceDataRefreshAllFromCurrentIndex()
-            }
-            val after = entity.instanceDataMemory
-            if (after == null || !after.is_type_fixed) return false
-
-            entity.submitInstance()
-            return entity.haveValidInstanceData() && entity.validInstanceDataCount >= 1
         }
 
         override fun advance(amount: Float, events: MutableList<InputEventAPI>?) {

@@ -9,11 +9,6 @@ import com.fs.starfarer.api.combat.CombatEngineLayers
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.combat.ShipEngineControllerAPI.ShipEngineAPI
 import com.fs.starfarer.api.input.InputEventAPI
-import org.boxutil.base.api.InstanceDataAPI
-import org.boxutil.base.api.InstanceRenderAPI
-import org.boxutil.define.BoxEnum
-import org.boxutil.define.InstanceType
-import org.boxutil.units.standard.attribute.Instance2Data
 import org.boxutil.units.standard.entity.FlareEntity
 import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
@@ -27,6 +22,9 @@ import kotlin.math.sin
  * 目标：
  * - 保留原版 HIGH_TECH 尾焰主体
  * - 额外叠一层轻量 BoxUtil flare，让主喷口在机动/提速/系统激活时更有“白蓝电离”质感
+ *
+ * 渲染路径：非实例化直绘（QuadObject.glDraw 对无实例数据按 max(count,1) 画单 quad）；
+ * FIXED_2D 单实例灌数据路径在本环境实测零像素（SSBO 数据未生效），已弃用。
  */
 internal object Xc001EngineFlareEffect {
 
@@ -203,14 +201,6 @@ internal object Xc001EngineFlareEffect {
             } catch (_: Throwable) {
             }
 
-            if (!initFixedOneInstance(entity)) {
-                try {
-                    entity.delete()
-                } catch (_: Throwable) {
-                }
-                return null
-            }
-
             val state = try {
                 BoxUtilCombatVfx.addEntity(combatEngine, entity)
             } catch (_: Throwable) {
@@ -225,64 +215,6 @@ internal object Xc001EngineFlareEffect {
             }
 
             return entity
-        }
-
-        private fun initFixedOneInstance(entity: InstanceRenderAPI): Boolean {
-            val inst = Instance2Data().apply {
-                setLocation(0f, 0f)
-                setFacing(0f)
-                setTurnRate(0f)
-                setScale(1f, 1f)
-                setTimer(0f, 99999f, 0f)
-                setColor(255, 255, 255, 255)
-                setEmissiveColor(255, 255, 255, 255)
-                try {
-                    setFixedInstanceAlpha(1f, BoxEnum.TIMER_FULL)
-                } catch (_: Throwable) {
-                }
-            }
-
-            val apiList: MutableList<InstanceDataAPI> = mutableListOf(inst)
-            val stSet = try {
-                entity.setInstanceData(apiList, 0f, 99999f, 0f)
-            } catch (_: Throwable) {
-                BoxEnum.STATE_FAILED_OTHER
-            }
-            if (stSet != BoxEnum.STATE_SUCCESS) return false
-
-            try {
-                entity.renderingCount = 1
-                entity.instanceDataRefreshIndex = 0
-                entity.instanceDataRefreshSize = 1
-                entity.setInstanceTimerOverride(1f, BoxEnum.TIMER_FULL)
-            } catch (_: Throwable) {
-            }
-
-            return submitFixedInstanceDataCompat(entity, apiList.size) == BoxEnum.STATE_SUCCESS
-                    && entity.haveValidInstanceData()
-                    && entity.validInstanceDataCount >= 1
-        }
-
-        private fun submitFixedInstanceDataCompat(entity: InstanceRenderAPI, instanceCount: Int): Byte {
-            if (instanceCount < 1) return BoxEnum.STATE_FAILED_OTHER
-            return try {
-                val memory = entity.instanceDataMemory
-                val needAlloc = memory == null || !memory.is_type_fixed
-                if (needAlloc) {
-                    entity.mallocInstance(InstanceType.FIXED_2D, instanceCount)
-                    entity.instanceDataRefreshIndex = 0
-                    entity.instanceDataRefreshOffset = 0
-                    entity.setInstanceDataRefreshAllFromCurrentIndex()
-                }
-
-                val after = entity.instanceDataMemory
-                if (after == null || !after.is_type_fixed) return BoxEnum.STATE_FAILED_OTHER
-
-                entity.submitInstance()
-                BoxEnum.STATE_SUCCESS
-            } catch (_: Throwable) {
-                BoxEnum.STATE_FAILED_OTHER
-            }
         }
 
         private fun updateAttachment(att: Attachment, now: Float) {
