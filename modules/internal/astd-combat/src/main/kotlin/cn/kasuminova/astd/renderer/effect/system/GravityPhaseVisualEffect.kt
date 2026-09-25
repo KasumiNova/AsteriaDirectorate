@@ -8,6 +8,8 @@ import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEngineLayers
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.input.InputEventAPI
+import org.boxutil.BoxUtilModPlugin
+import org.boxutil.manager.ShaderCore
 import org.boxutil.manager.TextureManager
 import org.boxutil.units.standard.entity.SpriteEntity
 import org.boxutil.util.ShaderUtil
@@ -21,8 +23,8 @@ import kotlin.math.sin
 
 /**
  * 「引力相位」（astd_gravity_phase）相位激活态视觉：
- * - 描边红色辉光：运行期以 BoxUtil [ShaderUtil.genLegacySDF] 从舰体贴图 alpha
- *   动态生成 SDF，CPU 阈值化为外环描边纹理后由 [SpriteEntity] 红色发光渲染
+ * - 描边红色辉光：运行期以 BoxUtil [ShaderUtil.genSDF]（GPU compute）从舰体贴图
+ *   alpha 动态生成 SDF，CPU 阈值化为外环描边纹理后由 [SpriteEntity] 红色发光渲染
  *   （不再使用预生成贴图）；
  * - bloom 层红化：复用 [ShipGlowRenderer.setRecolor]，按相位等级把覆盖发光层
  *   交叉淡入到预生成的红色变体；
@@ -78,12 +80,31 @@ internal object GravityPhaseVisualEffect {
 
     private val outlineTextures = HashMap<String, OutlineTex>()
 
+    /** 描边纹理是否已生成（仅成功生成后置位；失败保持 false，下个入口重试）。 */
+    @Volatile
+    private var texturesInitialized = false
+
     /**
-     * 预生成所有引力相位舰船的描边纹理（onApplicationLoad 调用）。
-     * 经 BoxUtil [TextureManager] 真 GL 上传舰体贴图后由 [ShaderUtil.genLegacySDF]
-     * （CPU 多线程，vanilla 兼容）从 alpha 生成 SDF，再读回 CPU 阈值化并上传为描边纹理。
+     * 生成所有引力相位舰船的描边纹理（onApplicationLoad 与首次战斗接入各调一次，幂等）。
+     * 经 BoxUtil [TextureManager] 真 GL 上传舰体贴图后由 [ShaderUtil.genSDF]
+     * （GPU compute shader）从 alpha 生成 SDF，再读回 CPU 阈值化并上传为描边纹理。
+     *
+     * genSDF 依赖 ShaderCore 的 compute program，其初始化由 BoxUtil 自身在
+     * onGameLoad 完成；ASTD 的 onApplicationLoad 先于它执行，故此处静默推迟，
+     * 战斗期 [getOrCreate] 再次调用本方法完成生成。
+     * 绝不可在此代调 BoxUtilModPlugin.initLater——globalInitLater 先置 globalInit
+     * 再在 GLState 未建时抛 NPE，会永久毒化 BoxUtil 全局初始化（已实证）。
      */
     fun preloadTextures() {
+        if (texturesInitialized) return
+        if (!BoxUtilModPlugin.isGlobalInitialized()) {
+            log.info("[ASTD] 引力相位视觉：BoxUtil 尚未全局初始化（onApplicationLoad 阶段正常），描边生成推迟到战斗期")
+            return
+        }
+        if (!ShaderCore.isSDFGenValid()) {
+            log.warn("[ASTD] 引力相位视觉：BoxUtil SDF compute program 不可用（isSDFGenValid=false），描边纹理生成跳过")
+            return
+        }
         for (spec in Global.getSettings().allShipHullSpecs) {
             if (!spec.isPhase || spec.shipDefenseId != SYSTEM_ID) continue
             val spriteName = spec.spriteName ?: continue
@@ -94,6 +115,7 @@ internal object GravityPhaseVisualEffect {
                 log.warn("[ASTD] 引力相位视觉：描边纹理生成失败（hull=${spec.hullId}）", t)
             }
         }
+        texturesInitialized = true
         log.info("[ASTD] 引力相位视觉描边纹理生成完成：${outlineTextures.size} 张")
     }
 
@@ -102,12 +124,13 @@ internal object GravityPhaseVisualEffect {
      * 读回 CPU 阈值化为「外环二次衰减」的 RGBA 描边纹理（白色 RGB，alpha 承载形状）。
      *
      * 源贴图走 BoxUtil [TextureManager] 真 GL 上传（vanilla getSprite 的懒加载
-     * textureId 在本环境未真实上传，与 bloom 贴图根因同源）；genLegacySDF 结果为
-     * INTENSITY POT 纹理（[0,1]，0.5 为轮廓边界），GL_LUMINANCE 读回后阈值化。
+     * textureId 在本环境未真实上传，与 bloom 贴图根因同源）；genSDF 结果为
+     * R8 NPOT 纹理（[0,1]，0.5 为轮廓边界），GL_RED 读回后阈值化，
+     * 最终描边纹理同为 NPOT（UV 端点即 1.0）。
      *
-     * 备注：GPU 版 genSDF 实测在本机 Mesa 环境 compute init pass 写入丢失
-     * （坐标图全零，SDF 退化为以原点为中心的径向渐变），不可用；genLegacySDF
-     * 为当前唯一可用且双平台验证过的路径。
+     * 备注：genSDF 的 compute 管线曾在本机 Mesa 环境失效（pass 间屏障缺
+     * GL_TEXTURE_FETCH_BARRIER_BIT，imageStore 写入对 texelFetch 不可见），
+     * 已在 BoxUtil 侧修复；genLegacySDF 为备选 CPU 路径。
      */
     private fun generateOutline(hullId: String, spriteName: String): OutlineTex? {
         val src = TextureManager.loadTexture(spriteName)
@@ -118,31 +141,33 @@ internal object GravityPhaseVisualEffect {
         val srcW = src[4]
         val srcH = src[5]
 
-        val sdf = ShaderUtil.genLegacySDF(
+        val sdf = ShaderUtil.genSDF(
             src[0], GL11.GL_ALPHA, 0, 0, srcW, srcH,
             OUTLINE_BORDER, OUTLINE_BORDER, OUTSIDE_THRESHOLD, 8,
-            0.01f, 1f / OUTLINE_BORDER,
+            0.01f, 1f / OUTLINE_BORDER, false,
         )
         if (sdf[0] <= 0) {
             log.warn("[ASTD] 引力相位视觉：SDF 生成失败（hull=$hullId），跳过描边生成")
             return null
         }
-        val validW = sdf[1]
-        val validH = sdf[2]
-        val potW = sdf[3]
-        val potH = sdf[4]
+        val outW = sdf[1]
+        val outH = sdf[2]
 
         try {
-            // 读回 SDF（GL_LUMINANCE 单通道）并阈值化：仅边界外侧成环，alpha 按 (1-d/border)²
-            // 衰减；内侧（sdfValue<0.5）必须为 0，否则整舰被填成实心剪影
-            var litPixels = 0
-            val sdfBuf = ByteBuffer.allocateDirect(potW * potH)
+            // 读回 R8 单通道（NPOT）：行宽非 4 倍数时默认 PACK_ALIGNMENT=4 会错位溢出，
+            // 读取期间临时压 1，读完恢复
+            val sdfBuf = ByteBuffer.allocateDirect(outW * outH)
             GL11.glBindTexture(GL11.GL_TEXTURE_2D, sdf[0])
-            GL11.glGetTexImage(GL11.GL_TEXTURE_2D, 0, GL11.GL_LUMINANCE, GL11.GL_UNSIGNED_BYTE, sdfBuf)
+            GL11.glPixelStorei(GL11.GL_PACK_ALIGNMENT, 1)
+            GL11.glGetTexImage(GL11.GL_TEXTURE_2D, 0, GL11.GL_RED, GL11.GL_UNSIGNED_BYTE, sdfBuf)
+            GL11.glPixelStorei(GL11.GL_PACK_ALIGNMENT, 4)
             GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0)
 
-            val outBuf = ByteBuffer.allocateDirect(potW * potH * 4)
-            for (i in 0 until potW * potH) {
+            // 阈值化：仅 hull 外侧成环，alpha 按 (1-d/BORDER)² 衰减；内侧（sdfValue<0.5）
+            // 必须为 0，否则整舰被填成实心剪影
+            var litPixels = 0
+            val outBuf = ByteBuffer.allocateDirect(outW * outH * 4)
+            for (i in 0 until outW * outH) {
                 val sdfValue = (sdfBuf.get(i).toInt() and 0xFF) / 255f
                 val alpha = if (sdfValue > 0.5f) {
                     val outside = ((sdfValue - 0.5f) * 2f).coerceIn(0f, 1f)
@@ -157,8 +182,7 @@ internal object GravityPhaseVisualEffect {
                 outBuf.put(alpha.toByte())
             }
             outBuf.flip()
-            // 覆盖率为 0 即描边静默缺席（本机 Mesa 下 genLegacySDF 的 INTENSITY 纹理
-            // 创建失败即表现为此），必须显式告警
+            // 覆盖率为 0 即描边静默缺席（源 alpha 全零或 SDF 读回全零），必须显式告警
             if (litPixels <= 0) {
                 log.warn("[ASTD] 引力相位视觉：描边纹理覆盖率为 0（hull=$hullId，源贴图 alpha 或 SDF 读回异常），跳过描边生成")
                 return null
@@ -176,7 +200,7 @@ internal object GravityPhaseVisualEffect {
                 GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL11.GL_CLAMP)
                 GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL11.GL_CLAMP)
                 GL11.glTexImage2D(
-                    GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, potW, potH, 0,
+                    GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, outW, outH, 0,
                     GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, outBuf,
                 )
                 GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0)
@@ -184,9 +208,9 @@ internal object GravityPhaseVisualEffect {
                 GL11.glDeleteTextures(outlineTex)
                 throw t
             }
-            log.info("[ASTD] 引力相位视觉：描边纹理已生成 hull=$hullId 尺寸=${validW}x${validH} " +
-                "发光像素覆盖率=${"%.2f".format(100f * litPixels / (potW * potH))}％")
-            return OutlineTex(outlineTex, validW, validH, potW, potH)
+            log.info("[ASTD] 引力相位视觉：描边纹理已生成 hull=$hullId 尺寸=${outW}x${outH} " +
+                "发光像素覆盖率=${"%.2f".format(100f * litPixels / (outW * outH))}％")
+            return OutlineTex(outlineTex, outW, outH, outW, outH)
         } finally {
             GL11.glDeleteTextures(sdf[0])
         }
@@ -212,6 +236,8 @@ internal object GravityPhaseVisualEffect {
         engine.customData[ENGINE_KEY]?.let { return it as? Plugin }
         return try {
             BoxUtilCombatVfx.ensureReady(engine)
+            // 战斗期 BoxUtil 已完成全局初始化，补做 app-load 阶段被推迟的描边纹理生成
+            preloadTextures()
             val plugin = Plugin(engine)
             engine.addPlugin(plugin)
             engine.customData[ENGINE_KEY] = plugin
