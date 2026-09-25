@@ -10,6 +10,7 @@ import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.input.InputEventAPI
 import org.boxutil.manager.TextureManager
 import org.boxutil.units.standard.entity.SpriteEntity
+import org.boxutil.util.ShaderUtil
 import org.lwjgl.opengl.GL11
 import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
@@ -20,10 +21,9 @@ import kotlin.math.sin
 
 /**
  * 「引力相位」（astd_gravity_phase）相位激活态视觉：
- * - 描边红色辉光：运行期从舰体贴图 alpha 做 CPU 距离变换生成外环描边纹理，
- *   由 [SpriteEntity] 红色发光渲染（不用 BoxUtil genLegacySDF：其 legacy
- *   GL_INTENSITY 结果纹理在本 GL 上下文创建即 GL_INVALID_ENUM，详见
- *   [generateOutline] 注释）；
+ * - 描边红色辉光：运行期以 BoxUtil [ShaderUtil.genLegacySDF] 从舰体贴图 alpha
+ *   动态生成 SDF，CPU 阈值化为外环描边纹理后由 [SpriteEntity] 红色发光渲染
+ *   （不再使用预生成贴图）；
  * - bloom 层红化：复用 [ShipGlowRenderer.setRecolor]，按相位等级把覆盖发光层
  *   交叉淡入到预生成的红色变体；
  * - 相位残影：相位期间每 0.5s 经 [ASTDAfterimageEffect] 生成一次 70％ 不透明度红色残影（平方淡出）。
@@ -80,8 +80,8 @@ internal object GravityPhaseVisualEffect {
 
     /**
      * 预生成所有引力相位舰船的描边纹理（onApplicationLoad 调用）。
-     * 经 BoxUtil [TextureManager] 真 GL 上传舰体贴图，读回 alpha 做 CPU 距离变换，
-     * 再上传为描边纹理。
+     * 经 BoxUtil [TextureManager] 真 GL 上传舰体贴图后由 [ShaderUtil.genLegacySDF]
+     * （CPU 多线程，vanilla 兼容）从 alpha 生成 SDF，再读回 CPU 阈值化并上传为描边纹理。
      */
     fun preloadTextures() {
         for (spec in Global.getSettings().allShipHullSpecs) {
@@ -98,18 +98,16 @@ internal object GravityPhaseVisualEffect {
     }
 
     /**
-     * 单舰描边纹理生成：舰体贴图 alpha → CPU 两遍 chamfer 距离变换 →
-     * 「外环二次衰减」的 RGBA 描边纹理（白色 RGB，alpha 承载形状）。
-     *
-     * 为何不用 BoxUtil genLegacySDF：其内部硬编码 legacy
-     * GL_INTENSITY8/GL_INTENSITY 结果纹理，在本 GL 上下文创建即抛
-     * GL_INVALID_ENUM(1280)（纹理不完整，后续写入/读回静默得零，
-     * 诊断日志证实源 alpha 14380 像素可读而 SDF 读回 min=max=0），
-     * 连自提供结果纹理的重载也会在 glTexSubImage2D(GL_INTENSITY) 上撞墙，无药可救。
+     * 单舰描边纹理生成：舰体贴图 alpha → genSDF（GPU compute shader，R8 结果）→
+     * 读回 CPU 阈值化为「外环二次衰减」的 RGBA 描边纹理（白色 RGB，alpha 承载形状）。
      *
      * 源贴图走 BoxUtil [TextureManager] 真 GL 上传（vanilla getSprite 的懒加载
-     * textureId 在本环境未真实上传，与 bloom 贴图根因同源），glGetTexImage(RGBA)
-     * 读回 alpha 后全部 CPU 计算，结果上传 RGBA8，全程不触 legacy GL。
+     * textureId 在本环境未真实上传，与 bloom 贴图根因同源）；genLegacySDF 结果为
+     * INTENSITY POT 纹理（[0,1]，0.5 为轮廓边界），GL_LUMINANCE 读回后阈值化。
+     *
+     * 备注：GPU 版 genSDF 实测在本机 Mesa 环境 compute init pass 写入丢失
+     * （坐标图全零，SDF 退化为以原点为中心的径向渐变），不可用；genLegacySDF
+     * 为当前唯一可用且双平台验证过的路径。
      */
     private fun generateOutline(hullId: String, spriteName: String): OutlineTex? {
         val src = TextureManager.loadTexture(spriteName)
@@ -120,115 +118,78 @@ internal object GravityPhaseVisualEffect {
         val srcW = src[4]
         val srcH = src[5]
 
-        val probe = ByteBuffer.allocateDirect(src[2] * src[3] * 4)
-        GL11.glBindTexture(GL11.GL_TEXTURE_2D, src[0])
-        GL11.glGetTexImage(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, probe)
-        GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0)
-
-        // 描边画布 = 源图四边各外扩 OUTLINE_BORDER，源图锚 (BORDER, BORDER)
-        val outW = srcW + OUTLINE_BORDER * 2
-        val outH = srcH + OUTLINE_BORDER * 2
-        val potW = nextPOT(outW)
-        val potH = nextPOT(outH)
-
-        val insideThreshold = (OUTSIDE_THRESHOLD * 255f).roundToInt()
-        val dist = FloatArray(outW * outH) { i ->
-            val x = i % outW - OUTLINE_BORDER
-            val y = i / outW - OUTLINE_BORDER
-            val inside = x >= 0 && y >= 0 && x < srcW && y < srcH &&
-                (probe.get((y * src[2] + x) * 4 + 3).toInt() and 0xFF) > insideThreshold
-            if (inside) 0f else Float.MAX_VALUE
+        val sdf = ShaderUtil.genLegacySDF(
+            src[0], GL11.GL_ALPHA, 0, 0, srcW, srcH,
+            OUTLINE_BORDER, OUTLINE_BORDER, OUTSIDE_THRESHOLD, 8,
+            0.01f, 1f / OUTLINE_BORDER,
+        )
+        if (sdf[0] <= 0) {
+            log.warn("[ASTD] 引力相位视觉：SDF 生成失败（hull=$hullId），跳过描边生成")
+            return null
         }
-        // 两遍 chamfer 距离变换（3x3 邻域，直角 1、对角 √2），外环只需 ≤BORDER 的近似欧氏距离
-        val diag = 1.4142135f
-        for (y in 0 until outH) {
-            for (x in 0 until outW) {
-                val i = y * outW + x
-                var d = dist[i]
-                if (x > 0) d = minOf(d, dist[i - 1] + 1f)
-                if (y > 0) {
-                    d = minOf(d, dist[i - outW] + 1f)
-                    if (x > 0) d = minOf(d, dist[i - outW - 1] + diag)
-                    if (x < outW - 1) d = minOf(d, dist[i - outW + 1] + diag)
-                }
-                dist[i] = d
-            }
-        }
-        for (y in outH - 1 downTo 0) {
-            for (x in outW - 1 downTo 0) {
-                val i = y * outW + x
-                var d = dist[i]
-                if (x < outW - 1) d = minOf(d, dist[i + 1] + 1f)
-                if (y < outH - 1) {
-                    d = minOf(d, dist[i + outW] + 1f)
-                    if (x < outW - 1) d = minOf(d, dist[i + outW + 1] + diag)
-                    if (x > 0) d = minOf(d, dist[i + outW - 1] + diag)
-                }
-                dist[i] = d
-            }
-        }
+        val validW = sdf[1]
+        val validH = sdf[2]
+        val potW = sdf[3]
+        val potH = sdf[4]
 
-        // 阈值化：仅 hull 外侧成环，alpha 按 (1-d/BORDER)² 衰减；内侧（dist=0）必须为 0，
-        // 否则整舰被填成实心剪影；POT  padding 恒 0
-        var litPixels = 0
-        val outBuf = ByteBuffer.allocateDirect(potW * potH * 4)
-        for (i in 0 until potW * potH) {
-            val x = i % potW
-            val y = i / potW
-            val alpha = if (x < outW && y < outH) {
-                val d = dist[y * outW + x]
-                if (d > 0f && d <= OUTLINE_BORDER) {
-                    val t = 1f - d / OUTLINE_BORDER
-                    (t * t * 255f).roundToInt().coerceIn(0, 255)
+        try {
+            // 读回 SDF（GL_LUMINANCE 单通道）并阈值化：仅边界外侧成环，alpha 按 (1-d/border)²
+            // 衰减；内侧（sdfValue<0.5）必须为 0，否则整舰被填成实心剪影
+            var litPixels = 0
+            val sdfBuf = ByteBuffer.allocateDirect(potW * potH)
+            GL11.glBindTexture(GL11.GL_TEXTURE_2D, sdf[0])
+            GL11.glGetTexImage(GL11.GL_TEXTURE_2D, 0, GL11.GL_LUMINANCE, GL11.GL_UNSIGNED_BYTE, sdfBuf)
+            GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0)
+
+            val outBuf = ByteBuffer.allocateDirect(potW * potH * 4)
+            for (i in 0 until potW * potH) {
+                val sdfValue = (sdfBuf.get(i).toInt() and 0xFF) / 255f
+                val alpha = if (sdfValue > 0.5f) {
+                    val outside = ((sdfValue - 0.5f) * 2f).coerceIn(0f, 1f)
+                    ((1f - outside) * (1f - outside) * 255f).roundToInt().coerceIn(0, 255)
                 } else {
                     0
                 }
-            } else {
-                0
+                if (alpha > 0) litPixels++
+                outBuf.put(255.toByte())
+                outBuf.put(255.toByte())
+                outBuf.put(255.toByte())
+                outBuf.put(alpha.toByte())
             }
-            if (alpha > 0) litPixels++
-            outBuf.put(255.toByte())
-            outBuf.put(255.toByte())
-            outBuf.put(255.toByte())
-            outBuf.put(alpha.toByte())
-        }
-        outBuf.flip()
-        // 覆盖率为 0 即描边静默缺席（源 alpha 全零），必须显式告警而不是正常出图
-        if (litPixels <= 0) {
-            log.warn("[ASTD] 引力相位视觉：描边纹理覆盖率为 0（hull=$hullId，源贴图 alpha 读取异常），跳过描边生成")
-            return null
-        }
+            outBuf.flip()
+            // 覆盖率为 0 即描边静默缺席（本机 Mesa 下 genLegacySDF 的 INTENSITY 纹理
+            // 创建失败即表现为此），必须显式告警
+            if (litPixels <= 0) {
+                log.warn("[ASTD] 引力相位视觉：描边纹理覆盖率为 0（hull=$hullId，源贴图 alpha 或 SDF 读回异常），跳过描边生成")
+                return null
+            }
 
-        val outlineTex = GL11.glGenTextures()
-        if (outlineTex <= 0) {
-            log.warn("[ASTD] 引力相位视觉：描边纹理 glGenTextures 失败（hull=$hullId）")
-            return null
+            val outlineTex = GL11.glGenTextures()
+            if (outlineTex <= 0) {
+                log.warn("[ASTD] 引力相位视觉：描边纹理 glGenTextures 失败（hull=$hullId）")
+                return null
+            }
+            try {
+                GL11.glBindTexture(GL11.GL_TEXTURE_2D, outlineTex)
+                GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR)
+                GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR)
+                GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL11.GL_CLAMP)
+                GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL11.GL_CLAMP)
+                GL11.glTexImage2D(
+                    GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, potW, potH, 0,
+                    GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, outBuf,
+                )
+                GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0)
+            } catch (t: Throwable) {
+                GL11.glDeleteTextures(outlineTex)
+                throw t
+            }
+            log.info("[ASTD] 引力相位视觉：描边纹理已生成 hull=$hullId 尺寸=${validW}x${validH} " +
+                "发光像素覆盖率=${"%.2f".format(100f * litPixels / (potW * potH))}％")
+            return OutlineTex(outlineTex, validW, validH, potW, potH)
+        } finally {
+            GL11.glDeleteTextures(sdf[0])
         }
-        try {
-            GL11.glBindTexture(GL11.GL_TEXTURE_2D, outlineTex)
-            GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR)
-            GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR)
-            GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL11.GL_CLAMP)
-            GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL11.GL_CLAMP)
-            GL11.glTexImage2D(
-                GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, potW, potH, 0,
-                GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, outBuf,
-            )
-            GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0)
-        } catch (t: Throwable) {
-            GL11.glDeleteTextures(outlineTex)
-            throw t
-        }
-        log.info("[ASTD] 引力相位视觉：描边纹理已生成 hull=$hullId 尺寸=${outW}x${outH} " +
-            "发光像素覆盖率=${"%.2f".format(100f * litPixels / (potW * potH))}％")
-        return OutlineTex(outlineTex, outW, outH, potW, potH)
-    }
-
-    /** 不小于 n 的最小 2 次幂（POT 画布对齐）。 */
-    private fun nextPOT(n: Int): Int {
-        var pot = 1
-        while (pot < n) pot = pot shl 1
-        return pot
     }
 
     /**
@@ -332,7 +293,7 @@ internal object GravityPhaseVisualEffect {
                 glow.materialData.setEmissive(tex.textureId)
                 glow.materialData.setColor(OUTLINE_COLOR)
                 glow.materialData.setEmissiveColor(OUTLINE_COLOR)
-                glow.materialData.setGlowPower(1.2f)
+                glow.materialData.setGlowPower(0.1f)
                 glow.materialData.setColorAlpha(0f)
                 glow.materialData.setEmissiveColorAlpha(0f)
                 // 常驻：全局计时器缺省值会在首个逻辑帧被判 TIMER_INVALID 直接 delete，
