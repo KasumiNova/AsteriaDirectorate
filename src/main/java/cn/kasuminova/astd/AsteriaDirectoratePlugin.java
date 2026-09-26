@@ -13,6 +13,7 @@ import cn.kasuminova.astd.combat.hullmods.base.ASTDCampaignPlugin;
 import cn.kasuminova.astd.combat.hullmods.lens.LensArrayCoreModeUtilKt;
 import cn.kasuminova.astd.impl.buff.BuffInstall;
 import cn.kasuminova.astd.impl.difficulty.DifficultySettingsRegistrar;
+import cn.kasuminova.astd.renderer.effect.system.GravStormConeIndicator;
 import cn.kasuminova.astd.renderer.effect.system.WeaponGlowLayer;
 import cn.kasuminova.astd.renderer.effect.system.GeminiDemRackVisuals;
 import cn.kasuminova.astd.renderer.effect.system.GravityPhaseVisualEffect;
@@ -69,6 +70,8 @@ public final class AsteriaDirectoratePlugin extends BaseModPlugin {
         ShipGlowRenderer.INSTANCE.preloadTextures();
         // 动态生成引力相位舰船的 SDF 描边纹理（同上原因；战斗中加载会损坏上传队列）。
         GravityPhaseVisualEffect.INSTANCE.preloadTextures();
+        // 预加载引力磁暴发生器充能锥形提示圈贴图（同上原因）。
+        GravStormConeIndicator.preloadTextures();
     }
 
     @Override

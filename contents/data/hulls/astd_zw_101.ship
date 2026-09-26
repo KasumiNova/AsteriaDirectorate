@@ -13,9 +13,7 @@
   "viewOffset": 0,
   "builtInMods": [
     "astd_nano_restoration_protocol",
-    "astd_echo_emitter",
-    "astd_echo_reentry_buffer",
-    "astd_phase_resonance_jamming"
+    "astd_grav_space_fold"
   ],
   "builtInWeapons": {
     "WS0004": "astd_zw_101_bloom"
@@ -34,7 +32,7 @@
       "id": "WS0002",
       "size": "SMALL",
       "type": "UNIVERSAL",
-      "mount": "HARDPOINT",
+      "mount": "TURRET",
       "arc": 120,
       "angle": 30,
       "locations": [24, 28.5]
@@ -43,7 +41,7 @@
       "id": "WS0003",
       "size": "SMALL",
       "type": "UNIVERSAL",
-      "mount": "HARDPOINT",
+      "mount": "TURRET",
       "arc": 120,
       "angle": -30,
       "locations": [50, -24.5]

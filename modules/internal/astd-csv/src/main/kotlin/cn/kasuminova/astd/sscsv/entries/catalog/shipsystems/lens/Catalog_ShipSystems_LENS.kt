@@ -63,21 +63,6 @@ object Sys_astd_jamming_swarm : ShipSystemWithSystemFileEntry() {
     override val icon: String = "graphics/icons/hullsys/drone_pd_high.png"
 }
 
-object Sys_astd_targeting_beacon : ShipSystemWithSystemFileEntry() {
-    override val id: String = "astd_targeting_beacon"
-    override val name: String = systemName(id)
-
-    override val maxUses: Int = 3
-    override val regen: Double = 10.0
-
-    override val chargeUp: Double = 0.2
-    override val active: Double = 0.5
-    override val down: Double = 0.2
-    override val cooldown: Double = 6.0
-
-    override val icon: String = "graphics/icons/hullsys/phase_cloak.png"
-}
-
 /**
  * 飞蓬级舰船系统「战机引力联结器」（purple/20-production.md §1，2026-09 重构；
  * 2026-09 二轮：toggle 化 + CUSTOM AI）。
@@ -179,18 +164,6 @@ object Sys_astd_gravity_phase : ShipSystemWithSystemFileEntry() {
     )
 }
 
-object Sys_astd_em_smoke : ShipSystemWithSystemFileEntry() {
-    override val id: String = "astd_em_smoke"
-    override val name: String = systemName(id)
-
-    override val chargeUp: Double = 0.4
-    override val active: Double = 3.0
-    override val down: Double = 0.4
-    override val cooldown: Double = 14.0
-
-    override val icon: String = "graphics/icons/hullsys/phase_cloak.png"
-}
-
 /**
  * 茑萝级舰船系统「引力裂隙发生器」（purple/20-production.md §2，2026-09 D27 重做；
  * 2026-09-20 二轮重做：目标锁定 + 贴图旋涡 + 真实光束）。
@@ -221,6 +194,63 @@ object Sys_astd_grav_rift_generator : ShipSystemWithSystemFileEntry() {
 
     override val icon: String = "graphics/icons/hullsys/mine_strike.png"
     override val useSound: String = "riftcascade_windup"
+}
+
+/**
+ * 密蒙级舰船系统「引力磁暴发生器」（purple/10-unique.md §2，2026-09 D27 全重做）。
+ *
+ * 以原版量子干扰为基线的增强：充能最多 4s（满 2s 可提前释放，充能期间进相位中止），
+ * 随后对前方 60° 锥、1200su（受系统射程加成）内全部敌对目标（含相位单位）的武器与引擎
+ * 打出分批 EMP 电弧并施加强制过载；释放期间全类型减伤。代价 20% 基础辐能容量软辐能，
+ * 冷却 24s。stats/AI 见 [GravStormSystemStats] / [GravStormSystemAI]。
+ */
+object Sys_astd_grav_storm : ShipSystemWithSystemFileEntry() {
+    override val id: String = "astd_grav_storm"
+    override val name: String = systemName(id)
+
+    override val statsScript: String =
+        "cn.kasuminova.astd.combat.shipsystems.GravStormSystemStats"
+    override val aiType: String = "CUSTOM"
+    override val aiScript: String =
+        "cn.kasuminova.astd.combat.shipsystems.GravStormSystemAI"
+
+    // toggle=true：IN 充能期间再次按键经原版 ChargeTracker 转 OUT 提前释放
+    // （effectLevel=释放时充能进度，脚本侧据此折算电弧/过载强度）；
+    // active 在 toggle 下被忽略，填 0.5 占位；down=1.5 为电弧释放窗口。
+    override val toggle: Boolean = true
+    override val chargeUp: Double = 4.0
+    override val active: Double = 0.5
+    override val down: Double = 1.5
+    override val cooldown: Double = 24.0
+
+    override val icon: String = "graphics/icons/hullsys/quantum_disruptor.png"
+    override val useSound: String = "system_quantumdisruptor"
+}
+
+/**
+ * 舜华级舰船系统「引力空间复制器」（purple/20-production.md §3，2026-09 D27 全重做）。
+ *
+ * 激活 2s 内本舰发射的能量武器射弹（不含实弹/光束/导弹）在发射 0.5s 后于发射点
+ * 复制两次（间隔 0.5s），复制体伤害与辐能产出按难度锚点折算。代价 10% 基础辐能容量
+ * 软辐能，冷却 12s。stats/AI 见 [GravReplicatorSystemStats] / [GravReplicatorSystemAI]。
+ */
+object Sys_astd_grav_replicator : ShipSystemWithSystemFileEntry() {
+    override val id: String = "astd_grav_replicator"
+    override val name: String = systemName(id)
+
+    override val statsScript: String =
+        "cn.kasuminova.astd.combat.shipsystems.GravReplicatorSystemStats"
+    override val aiType: String = "CUSTOM"
+    override val aiScript: String =
+        "cn.kasuminova.astd.combat.shipsystems.GravReplicatorSystemAI"
+
+    override val chargeUp: Double = 0.0
+    override val active: Double = 2.0
+    override val down: Double = 0.0
+    override val cooldown: Double = 12.0
+
+    override val icon: String = "graphics/icons/hullsys/entropy_amplifier.png"
+    override val useSound: String = "system_entropy"
 }
 
 /**

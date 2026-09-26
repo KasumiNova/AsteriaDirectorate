@@ -20,7 +20,7 @@ import java.awt.Color
  * 三分支：
  * - 导弹/战机：面板伤害照常碰撞结算，本效果追加 [StardustMoteTuning] 难度倍率的额外伤害；
  * - 舰船（非战机）：生成 EMP 电弧（伤害 = 面板等额 × 难度倍率，EMP 机制天然随机瘫痪武器/引擎）；
- *   被护盾阻挡时按目标硬辐能比例概率穿透（`spawnEmpArcPierceShields`，与原版光尘同一 API）。
+ *   被护盾阻挡时有 50% 概率穿透（`spawnEmpArcPierceShields`，与原版光尘同一 API）。
  *
  * EMP 电弧颜色按弹体 spec id 分线（ARC 蓝 / LENS 紫，[StardustMoteTuning.colorForProj]）。
  * 小行星等场景物目标不做任何结算，仅播放命中音效（与原版 MoteOnHitEffect 一致）。
@@ -60,17 +60,11 @@ class StardustMoteOnHitEffect : OnHitEffectPlugin {
             }
 
             target is ShipAPI -> {
-                // 护盾阻挡时按目标硬辐能比例概率穿透（设计案：硬辐能越高越容易被透盾）
+                // 护盾阻挡时固定 50% 概率穿透（设计案 20-joint.md §武器三轮调整）
                 var pierceChance = 1f
                 pierceChance *= target.mutableStats.dynamic.getValue("shield_pierced_mult", 1f)
                 if (shieldHit) {
-                    val tracker = target.fluxTracker
-                    val hardFluxRatio = if (tracker != null && tracker.maxFlux > 0f) {
-                        tracker.hardFlux / tracker.maxFlux
-                    } else {
-                        0f
-                    }
-                    pierceChance *= hardFluxRatio
+                    pierceChance *= SHIELD_PIERCE_CHANCE
                 }
                 if (!shieldHit || Math.random() < pierceChance) {
                     engine.spawnEmpArcPierceShields(
@@ -98,5 +92,8 @@ class StardustMoteOnHitEffect : OnHitEffectPlugin {
         /** 命中音效（原版光尘资源，占位即正式）。 */
         private const val IMPACT_SOUND = "mote_attractor_impact_normal"
         private const val IMPACT_ARC_SOUND = "mote_attractor_impact_emp_arc"
+
+        /** 护盾阻挡时的穿透概率（设计案固定 50%，仍受 shield_pierced_mult 动态修正）。 */
+        private const val SHIELD_PIERCE_CHANCE = 0.5f
     }
 }

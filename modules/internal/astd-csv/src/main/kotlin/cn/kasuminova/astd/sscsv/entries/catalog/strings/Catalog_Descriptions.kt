@@ -53,6 +53,8 @@ object Desc_astd_echo_fixation_automated : LocalizedDescription("astd_echo_fixat
 object Desc_astd_gravity_phase : LocalizedDescription("astd_gravity_phase", "SHIP_SYSTEM")
 object Desc_astd_fighter_grav_link : LocalizedDescription("astd_fighter_grav_link", "SHIP_SYSTEM")
 object Desc_astd_grav_rift_generator : LocalizedDescription("astd_grav_rift_generator", "SHIP_SYSTEM")
+object Desc_astd_grav_storm : LocalizedDescription("astd_grav_storm", "SHIP_SYSTEM")
+object Desc_astd_grav_replicator : LocalizedDescription("astd_grav_replicator", "SHIP_SYSTEM")
 object Desc_astd_burst_flow_fighter : LocalizedDescription("astd_burst_flow_fighter", "SHIP_SYSTEM")
 
 object Desc_astd_lh_001 : LocalizedDescription("astd_lh_001", "SHIP")

@@ -27,7 +27,7 @@ object StardustMoteTuning {
     val SHIP_EMP_MULT = ScalingEntry(1.0f, 3.0f, 5.0f)
 
     /** 环绕/接敌半径缺省值（su，对应武器面板射程；武器实例不可用时兜底）。 */
-    const val DEFAULT_ENGAGE_RANGE = 600f
+    const val DEFAULT_ENGAGE_RANGE = 800f
 
     /** 同一目标的最大追踪光尘数（防全群堆叠单目标，对齐原版 mote 口径）。 */
     const val MAX_MOTES_PER_TARGET = 4

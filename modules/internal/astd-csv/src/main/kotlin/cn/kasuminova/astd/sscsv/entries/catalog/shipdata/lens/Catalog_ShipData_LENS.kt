@@ -51,28 +51,36 @@ object Ship_astd_zw_001 : ShipDataEntry() {
     override val number: Int = 9104
 }
 
+/**
+ * 舜华级（ZW-101）：相位驱逐舰·量产档（purple/20-production.md §3，2026-09 D27 全重做）。
+ *
+ * 防御方式由 FRONT 护盾改为相位（复用紫菀防御系统「引力相位」astd_gravity_phase），
+ * hints 必须带 PHASE（原版 ShipHullSpec.isPhase() 判定口径，见 [Ship_astd_zw_002] 注释）。
+ * 相位激活/维持 200 辐能 = 辐能容量比例 200/8500 ≈ 0.0235。
+ */
 object Ship_astd_zw_101 : ShipDataEntry() {
     override val id: String = "astd_zw_101"
     override val name: String = shipName(id)
-    override val designation: String = "驱逐舰"
+    override val designation: String = "相位驱逐舰"
     override val tech: String = "菀星设计局-紫菀"
-    override val systemId: String = "astd_targeting_beacon"
-    override val fleetPts: Int = 12
-    override val hitpoints: Int = 2000
-    override val armorRating: Int = 300
-    override val maxFlux: Int = 4000
-    override val fluxDissipation: Int = 300
-    override val ordnancePoints: Int = 60
-    override val maxSpeed: Int = 160
+    override val systemId: String = "astd_grav_replicator"
+    override val fleetPts: Int = 20
+    override val hitpoints: Int = 5000
+    override val armorRating: Int = 700
+    override val maxFlux: Int = 8500
+    override val fluxDissipation: Int = 550
+    override val ordnancePoints: Int = 95
+    override val maxSpeed: Int = 120
     override val acceleration: Int = 80
     override val deceleration: Int = 80
     override val maxTurnRate: Int = 30
     override val turnAcceleration: Int = 60
     override val mass: Int = 8000
-    override val shieldType: String = "FRONT"
-    override val shieldArc: Int = 120
-    override val shieldUpkeep: Double = 0.6
-    override val shieldEfficiency: Double = 0.8
+    override val hints: String = "PHASE"
+    override val shieldType: String = "PHASE"
+    override val defenseId: String = "astd_gravity_phase"
+    override val phaseCost: Double = 0.0235
+    override val phaseUpkeep: Double = 0.0235
     override val minCrew: Int = 10
     override val maxCrew: Int = 250
     override val cargo: Int = 60
@@ -83,7 +91,7 @@ object Ship_astd_zw_101 : ShipDataEntry() {
     override val baseValue: Int = 100000
     override val crPercentPerDay: Double = 5.0
     override val crToDeploy: Double = 20.0
-    override val peakCrSec: Int = 480
+    override val peakCrSec: Int = 420
     override val crLossPerSec: Double = 0.25
     override val suppliesRec: Int = 12
     override val suppliesPerMonth: Int = 12
@@ -146,8 +154,8 @@ object Ship_astd_zw_002 : ShipDataEntry() {
     override val name: String = shipName(id)
     override val designation: String = "相位巡洋舰"
     override val tech: String = "菀星设计局-紫菀"
-    override val systemId: String = "astd_em_smoke"
-    override val fleetPts: Int = 22
+    override val systemId: String = "astd_grav_storm"
+    override val fleetPts: Int = 40
     override val hitpoints: Int = 8000
     override val armorRating: Int = 1200
     override val maxFlux: Int = 12000
@@ -159,6 +167,9 @@ object Ship_astd_zw_002 : ShipDataEntry() {
     override val maxTurnRate: Int = 30
     override val turnAcceleration: Int = 60
     override val mass: Int = 16000
+
+    // 保留 1 个飞行甲板（D27 重做前提：非主要战术目的，.ship 对应 LB 1 隐藏机库）
+    override val fighterBays: Int = 1
 
     // 密蒙：相位化改造——防御方式由 FRONT 护盾改为自定义相位系统「引力相位」
     // （defense id=astd_gravity_phase，stats 脚本 GravityPhaseCloakStats 为后续特效接入点）。
@@ -205,7 +216,7 @@ object Ship_astd_zw_103 : ShipDataEntry() {
     override val designation: String = "相位护航航母"
     override val tech: String = "菀星设计局-紫菀"
     override val systemId: String = "astd_grav_rift_generator"
-    override val fleetPts: Int = 16
+    override val fleetPts: Int = 24
     override val hitpoints: Int = 5000
     override val armorRating: Int = 800
     override val maxFlux: Int = 8000

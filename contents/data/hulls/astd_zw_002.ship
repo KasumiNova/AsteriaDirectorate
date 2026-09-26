@@ -13,7 +13,7 @@
   "viewOffset": 0,
   "builtInMods": [
     "astd_nano_restoration_protocol",
-    "astd_dark_tide_jammer",
+    "astd_grav_em_field",
     "phasefield"
   ],
   "builtInWeapons": {
@@ -60,7 +60,7 @@
       "id": "WS0005",
       "size": "SMALL",
       "type": "SYNERGY",
-      "mount": "TURRET",
+      "mount": "HARDPOINT",
       "arc": 10,
       "angle": 0,
       "locations": [76, 22]
@@ -69,7 +69,7 @@
       "id": "WS0006",
       "size": "SMALL",
       "type": "SYNERGY",
-      "mount": "TURRET",
+      "mount": "HARDPOINT",
       "arc": 10,
       "angle": 0,
       "locations": [94.5, 3]
@@ -78,7 +78,7 @@
       "id": "WS0007",
       "size": "SMALL",
       "type": "SYNERGY",
-      "mount": "TURRET",
+      "mount": "HARDPOINT",
       "arc": 10,
       "angle": 0,
       "locations": [97.5, -37]
@@ -87,10 +87,19 @@
       "id": "WS0008",
       "size": "SMALL",
       "type": "SYNERGY",
-      "mount": "TURRET",
+      "mount": "HARDPOINT",
       "arc": 10,
       "angle": 0,
       "locations": [81, -53]
+    },
+    {
+      "id": "LB 1",
+      "size": "LARGE",
+      "type": "LAUNCH_BAY",
+      "mount": "HIDDEN",
+      "arc": 360,
+      "angle": 0,
+      "locations": [-40, -20]
     },
     {
       "id": "WS0009",

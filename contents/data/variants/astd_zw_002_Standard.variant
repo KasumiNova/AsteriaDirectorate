@@ -7,6 +7,7 @@
     "hullMods": [],
     "quality": 1.0,
     "variantId": "astd_zw_002_Standard",
+    "wings": ["astd_surge_fighter_wing"],
     "weaponGroups": [
         {
             "autofire": false,

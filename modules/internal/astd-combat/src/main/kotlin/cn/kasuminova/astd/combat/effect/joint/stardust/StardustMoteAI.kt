@@ -73,14 +73,14 @@ class StardustMoteAI(missile: MissileAPI) : MoteAIScript(missile) {
             .filter { getNumMotesTargeting(it) < StardustMoteTuning.MAX_MOTES_PER_TARGET }
             .minByOrNull { MathUtils.getDistance(missile.location, it.location) }
 
-    /** 接敌判定：目标距光尘自身 ≤ 武器面板射程（武器实例缺失时按缺省 600su 并一次性 WARN——配置异常不静默）。 */
+    /** 接敌判定：目标距光尘自身 ≤ 武器面板射程（武器实例缺失时按缺省 800su 并一次性 WARN——配置异常不静默）。 */
     private fun isInEngageRange(entity: CombatEntityAPI): Boolean {
         // 源舰消亡后光尘不再接敌（孤儿弹体只环绕游荡至自然熄灭）
         if (missile.source == null) return false
         val weapon = missile.weapon
         if (weapon == null) {
             StardustMoteTuning.warnOnce("missingWeapon") {
-                "星尘光尘 ${missile.projectileSpecId} 无武器实例可查射程（脚本生成路径？），按缺省 600su 接敌半径兜底"
+                "星尘光尘 ${missile.projectileSpecId} 无武器实例可查射程（脚本生成路径？），按缺省 800su 接敌半径兜底"
             }
         }
         val range = weapon?.range ?: StardustMoteTuning.DEFAULT_ENGAGE_RANGE

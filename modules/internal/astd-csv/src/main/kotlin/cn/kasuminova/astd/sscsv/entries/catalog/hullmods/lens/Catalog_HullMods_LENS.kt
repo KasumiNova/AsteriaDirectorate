@@ -106,45 +106,6 @@ object HullMod_astd_zw_001_mode_next_automated : HullModEntry() {
     override val sprite: String = "graphics/hullmods/astd_lens_array_core.png"
 }
 
-object HullMod_astd_echo_emitter : HullModEntry() {
-    override val id: String = "astd_echo_emitter"
-    override val name: String = hullmodName(id)
-    override val tier: Int = 3
-    override val rarity: Int = 1
-    override val tech: String = "LENS"
-    override val tags: String = TAGS_BUILTIN
-    override val script: String = PLACEHOLDER_SCRIPT
-    override val desc: String = PLACEHOLDER_DESC
-    override val short: String = PLACEHOLDER_SHORT
-    override val sprite: String = "graphics/hullmods/astd_echo_emitter.png"
-}
-
-object HullMod_astd_echo_reentry_buffer : HullModEntry() {
-    override val id: String = "astd_echo_reentry_buffer"
-    override val name: String = hullmodName(id)
-    override val tier: Int = 3
-    override val rarity: Int = 1
-    override val tech: String = "LENS"
-    override val tags: String = TAGS_BUILTIN
-    override val script: String = PLACEHOLDER_SCRIPT
-    override val desc: String = PLACEHOLDER_DESC
-    override val short: String = PLACEHOLDER_SHORT
-    override val sprite: String = "graphics/hullmods/astd_echo_reentry_buffer.png"
-}
-
-object HullMod_astd_phase_resonance_jamming : HullModEntry() {
-    override val id: String = "astd_phase_resonance_jamming"
-    override val name: String = hullmodName(id)
-    override val tier: Int = 3
-    override val rarity: Int = 1
-    override val tech: String = "LENS"
-    override val tags: String = TAGS_BUILTIN
-    override val script: String = PLACEHOLDER_SCRIPT
-    override val desc: String = PLACEHOLDER_DESC
-    override val short: String = PLACEHOLDER_SHORT
-    override val sprite: String = "graphics/hullmods/astd_phase_resonance_jamming.png"
-}
-
 object HullMod_astd_dimensional_folding_deck : HullModEntry() {
     override val id: String = "astd_dimensional_folding_deck"
     override val name: String = hullmodName(id)
@@ -158,17 +119,45 @@ object HullMod_astd_dimensional_folding_deck : HullModEntry() {
     override val sprite: String = "graphics/hullmods/astd_dimensional_folding_deck.png"
 }
 
-object HullMod_astd_dark_tide_jammer : HullModEntry() {
-    override val id: String = "astd_dark_tide_jammer"
+/**
+ * 密蒙级内置船插「引力电磁力场」（purple/10-unique.md §2，2026-09 D27 全重做）。
+ *
+ * 机制脚本 [GravEmFieldHullMod]：1500su 光环削弱敌舰 EMP 抗性/航速机动/武器射程并抬高开火辐能，
+ * 随距离衰减（≤750su 满效，边缘 25% 下限），全部最终乘区；舰船系统冷却期间力场消失。
+ * 取代旧占位船插 astd_dark_tide_jammer（已随重做移除）。
+ */
+object HullMod_astd_grav_em_field : HullModEntry() {
+    override val id: String = "astd_grav_em_field"
     override val name: String = hullmodName(id)
-    override val tier: Int = 1
+    override val tier: Int = 3
     override val rarity: Int = 1
     override val tech: String = "LENS"
     override val tags: String = TAGS_BUILTIN
-    override val script: String = PLACEHOLDER_SCRIPT
-    override val desc: String = PLACEHOLDER_DESC
-    override val short: String = PLACEHOLDER_SHORT
-    override val sprite: String = "graphics/hullmods/astd_dark_tide_jammer.png"
+    override val script: String = "cn.kasuminova.astd.combat.hullmods.lens.GravEmFieldHullMod"
+    override val desc: String = SsI18n.t("hullmod.$id.desc")
+    override val short: String = SsI18n.t("hullmod.$id.short")
+    override val sprite: String = "graphics/hullmods/astd_lens_array_core.png"
+}
+
+/**
+ * 舜华级内置船插「引力空间折跃器」（purple/20-production.md §3，2026-09 D27 全重做）。
+ *
+ * 机制脚本 [GravSpaceFoldHullMod]：碰撞圈 +200su 内敌方射弹/导弹概率折跃至舰体另一端
+ * （基础概率 + 弹体伤害加计，双锚点缩放），并附固定光束减伤；相位状态或系统冷却期间失效。
+ * 取代旧占位三件套 astd_echo_emitter / astd_echo_reentry_buffer / astd_phase_resonance_jamming
+ * （已随重做移除）。
+ */
+object HullMod_astd_grav_space_fold : HullModEntry() {
+    override val id: String = "astd_grav_space_fold"
+    override val name: String = hullmodName(id)
+    override val tier: Int = 3
+    override val rarity: Int = 1
+    override val tech: String = "LENS"
+    override val tags: String = TAGS_BUILTIN
+    override val script: String = "cn.kasuminova.astd.combat.hullmods.lens.GravSpaceFoldHullMod"
+    override val desc: String = SsI18n.t("hullmod.$id.desc")
+    override val short: String = SsI18n.t("hullmod.$id.short")
+    override val sprite: String = "graphics/hullmods/astd_lens_array_core.png"
 }
 
 object HullMod_astd_grav_phase_deck : HullModEntry() {
