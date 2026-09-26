@@ -99,7 +99,7 @@ object Wpn_astd_gcp12 : WeaponDataEntry() {
     override val range: Int = 1000
 
     // 光束每秒伤害
-    override val damagePerSecond: Int = 800
+    override val damagePerSecond: Int = 1120
     override val damagePerShot: Int = 0
     override val emp: Int = 0
     override val impact: Int = 0
@@ -139,7 +139,7 @@ object Wpn_astd_gcp8 : WeaponDataEntry() {
     override val baseValue: Int = 12000
     override val range: Int = 800
 
-    override val damagePerSecond: Int = 500
+    override val damagePerSecond: Int = 700
     override val damagePerShot: Int = 0
     override val emp: Int = 0
     override val impact: Int = 0
@@ -175,7 +175,7 @@ object Wpn_astd_gcp4 : WeaponDataEntry() {
     override val baseValue: Int = 6000
     override val range: Int = 600
 
-    override val damagePerSecond: Int = 350
+    override val damagePerSecond: Int = 490
     override val damagePerShot: Int = 0
     override val emp: Int = 0
     override val impact: Int = 0
@@ -211,8 +211,7 @@ object Wpn_astd_gcp2 : WeaponDataEntry() {
     override val baseValue: Int = 5000
     override val range: Int = 600
 
-    // Burst beam：爆发伤害=300，发射时间=1s => 束内 DPS=300
-    override val damagePerSecond: Int = 300
+    override val damagePerSecond: Int = 420
     override val damagePerShot: Int = 0
     override val emp: Int = 0
     override val impact: Int = 0
@@ -848,7 +847,7 @@ object Wpn_astd_gemini_dem_fighter : WeaponDataEntry() {
     override val name: String = weaponName(id)
     override val tier: Int = 2
     override val baseValue: Int = 0
-    override val range: Int = 2500
+    override val range: Int = 2000
     override val damagePerSecond: Int = 0
     override val damagePerShot: Int = 1250
     override val emp: Int = 1250
