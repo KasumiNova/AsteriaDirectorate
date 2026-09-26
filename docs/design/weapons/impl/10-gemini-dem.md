@@ -75,13 +75,14 @@ GeminiDemPayloadBeamEffect（beamEffect）：
 | base value | 6000（提案待裁定） | 14000（提案待裁定） |
 | range | 2500 | 2500 |
 | damage/second | 0（留空；非持续武器） | 0 |
-| damage/shot | 1250（单弹面板；双管齐射面板自动显示 1250 x2） | 1250 |
+| damage/shot | 1250（单弹面板；tooltip「1250 x2」由 burst 列驱动，见下行） | 1250 |
 | emp | 1250（0.1s 电弧 ×10 道合计，展示/AI 口径） | 1250 |
 | turn rate | 30 | 30 |
 | OPs | 14 | 28 |
 | ammo / ammo/sec / reload size | 4 / 0.0334 / 2 | 8 / 0.0667 / 2 |
 | type（伤害类型列，展示用） | ENERGY（对齐龙炎显示惯例） | ENERGY |
 | chargedown | 12 | 12 |
+| burst size / burst delay | **2 / 0.1**（2026-09-26 落地：burst 列驱动面板「x2」显示，原版 squall/locust 先例；burst delay 必须非 0——0 被引擎当无 burst 处理，实机判例；一次触发引擎连发 2 发 dummy 各扣 1 弹药，次发由 SalvoOnFireEffect 回声去重） | 2 / 0.1 |
 | proj speed | 225（龙炎 150 的 150%） | 225 |
 | flight time | 14（提案，2500su÷225≈11.1s 上浮；烟测校正） | 14 |
 | proj hitpoints | 600 | 600 |
@@ -238,7 +239,7 @@ MissileProjSpec(
 }
 ```
 
-发射架贴图为 v1 资源选型（引用原版龙炎发射架；pod 用 `dragonfire_launcher_lrg_*`，已对 dragonpod.wpn 核实）。单管 LINKED：一次触发只出一枚 dummy，双弹由脚本生成。**弹药口径（2026-09-26 裁定）**：一轮齐射消耗 2 弹药——引擎只扣 dummy 的 1 枚，`GeminiDemSalvoOnFireEffect` 在 onFire 回调内补扣第 2 枚（原版 MissileWeapon.fireShot 先扣弹药再回调 onFire，时序已核实）；装填量恒为偶数（发射器 2 / 发射舱 4），一轮回充 2 枚正好补一轮齐射。专用发射架贴图列后续美术任务。
+发射架贴图为 v1 资源选型（引用原版龙炎发射架；pod 用 `dragonfire_launcher_lrg_*`，已对 dragonpod.wpn 核实）。**弹药与 burst 口径（2026-09-26 第二次裁定）**：burst size=2 / burst delay=0.1——一次触发引擎连发 2 发 dummy 并各扣 1 弹药（合计 -2，语义对齐「一轮齐射两枚弹头」；面板「1250 x2」亦由 burst 列驱动）；两发 dummy 各回调一次 onFire，首发生成完整双弹齐射，次发（回声发，+0.1s 落账）由 `GeminiDemSalvoOnFireEffect` 0.5s 窗口去重——只移除 dummy 不再生成（chargedown 12s 下合法齐射不可能落进窗口）；装填量恒为偶数（发射器 4 / 发射舱 8），一轮回充 2 枚正好补一轮齐射。专用发射架贴图列后续美术任务。
 
 **`astd_gemini_dem_kinetic.wpn` / `astd_gemini_dem_he.wpn`（隐藏弹头武器，永不上架）：**
 
@@ -405,7 +406,10 @@ const val SYNC_REGISTRY_KEY = "astd_gemini_sync_registry"
 ```
 1. ship = weapon.ship；若 ship == null：记 WARN，放行 dummy 正常飞行（不改变 vanilla 路径外的行为）并 return
    —— 正常发射路径 ship 必非空，此分支只兜住异常调用且必须有日志。
-2. engine.removeEntity(projectile)  // dummy 同帧移除
+2. engine.removeEntity(projectile)  // dummy 同帧移除（回声发同样移除，dummy 永不留场）
+2.5. burst=2 回声发去重（2026-09-26 落地）：查 engine.customData 的「武器 → 最近齐射时刻」表，
+     同武器 0.5s 窗口内已有齐射记录 → 记 DEBUG 并 return（不生成、不重复扣弹药——
+     弹药由引擎 burst 连发自扣，每发 dummy 1 枚，一轮合计 -2）；否则记录本时刻
 3. target = ship.shipTarget?.takeIf { it.isAlive && !it.isHulk && it.owner != ship.owner }
        ?: 2500su 内最近敌舰（遍历 engine.ships：owner 不同、isAlive、!isHulk、!isFighter、!isDrone）
    target 为 null：仍生成双弹（直飞，定义行为，见 §2.4-1），记 DEBUG
@@ -528,7 +532,7 @@ prev != null 时先惰性过期：now - prev.hitTime > 1s → 视为无记录
 | 8 | spawnProjectile 返回非 MissileAPI | 记 ERROR 并跳过该枚（理论不可达；不空 catch，不静默） |
 | 9 | 数值反算 | 同步增伤 = 1 + SYNC_DAMAGE_BONUS（纯乘区修饰，无反算、无除零面）；WARHEAD_PANEL_DAMAGE 在 `GeminiDemDifficulty` 注释中与 warhead/payload 行数值双向绑定 |
 | 10 | 同一目标被两艘异源舰的弹头 1s 内配对命中 | 双源均可判且不同 → 不触发（同源严格）；任一不可判 → 按规则可触发（§0.2-2 已论证该误触发窗口的实际概率与无害性，并在此显式登记为已知近似） |
-| 11 | 一轮齐射弹药消耗 | 实机判例（2026-09-26）：双管 ALTERNATING 挂点单发 onFire 仅一次，但引擎按双管各耗 1 → 一轮稳定 -2（语义对齐「一轮齐射两枚弹头」）；烟测断言按基线差分 -2 |
+| 11 | 一轮齐射弹药消耗 | burst=2：一次触发引擎连发 2 发 dummy 各扣 1 → 一轮稳定 -2；回声发（+0.1s）由 0.5s 窗口去重不重复生成；烟测弹药采样须持续刷新到断言时刻（首帧快照只记到第一次扣弹，实机判例：快照 7 / 终值 6） |
 
 ---
 
@@ -567,6 +571,7 @@ prev != null 时先惰性过期：now - prev.hitTime > 1s → 视为无记录
 11. **TrackAI 追踪**：有目标且偏角 >1° → 断言 giveCommand 序列含正确 TURN 方向 + ACCELERATE；目标置失效 → 下一帧重搜索逻辑被调用（注入搜索函数桩），仍无目标 → 仅 ACCELERATE。
 12. **批次号写入**：Salvo 流程（fake engine 记录 spawnProjectile 调用）→ 两枚弹头 weaponId 正确（动能/高爆各一）、customData 写入同一 salvoId、TrackAI 与 DEMScript 均被装配、dummy 收到 removeEntity。
 13. **生成失败路径**：spawnProjectile 桩返回非 MissileAPI → ERROR 日志 + 另一枚不受影响。
+14. **burst 回声发去重**：同武器同帧第二次 onFire → 只移除 dummy、不产生新齐射、不触碰 ammo；窗口（0.5s）过后可再次正常齐射。
 
 ### 4.2 烟测检查点（`deployMod` + `launchSmokeTestGame`，到达终态即退出）
 
@@ -577,7 +582,7 @@ prev != null 时先惰性过期：now - prev.hitTime > 1s → 视为无记录
 5. 同步共振：双弹同目标命中 Δt≤1s → 双光束渐变转紫 + 白闪 + 后续照射伤害 ×(1+难度加成)（玩家 v2=×2.0 遥测断言）；击落一枚 → 无同步。
 6. 隐藏六件（弹头×2、payload×2、锁定激光×2）不出现在 codex 与掉落（dev 仓储 + codex 检索确认）。
 7. `beam.getSource()` 归属：日志打印同步触发时的 source/owner，确认玩家舰固定 v2、敌舰走轨一。
-8. 12s 开火间隔、spec ammo 4/8 与装填节奏（一轮一耗 2：双管 ALTERNATING 各耗 1，边界表 #11；runtime 受环境 missileAmmoBonus 加成，断言走基线差分）。
+8. 12s 开火间隔、spec ammo 4/8 与装填节奏（一轮一耗 2：burst=2 引擎自扣，边界表 #11；runtime 受环境 missileAmmoBonus 加成，断言走基线差分）。
 
 ---
 

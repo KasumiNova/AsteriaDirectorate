@@ -839,7 +839,7 @@ object Wpn_astd_ice_shard_sub : WeaponDataEntry(), SsProjMissileOutputs {
 /**
  * 双子星 DEM（战机）：双子座轰炸联队武备（purple/30-fighters.md §双子座 v1 定案）。
  *
- * 备弹 2（= 2 次双弹齐射）、不可恢复（ammoPerSec/reloadSize 0）、发射不产辐能；
+ * 备弹 2（burst=2 一次触发即 -2，= 1 次双弹齐射）、不可恢复（ammoPerSec/reloadSize 0）、发射不产辐能；
  * 弹体复用舰装版 dummy spec（astd_gemini_dem_dummy），齐射/追踪/同步冲击机制全部由
  * GeminiDemSalvoOnFireEffect 沿用，不复制第二份实现。.wpn 为手写全隐资源。
  */
@@ -859,6 +859,8 @@ object Wpn_astd_gemini_dem_fighter : WeaponDataEntry() {
     override val reloadSize: Int = 0
     override val type: String = "ENERGY"
     override val chargedown: Double = 12.0
+    override val burstSize: Int = 2
+    override val burstDelay: Double = 0.1
     override val projSpeed: Int = 225
     override val flightTime: Double = 14.0
     override val projHitpoints: Int = 600

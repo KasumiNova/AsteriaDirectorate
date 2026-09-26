@@ -12,6 +12,7 @@ import com.fs.starfarer.api.combat.WeaponAPI
 import com.fs.starfarer.api.impl.combat.dem.DEMScript
 import org.lazywizard.lazylib.MathUtils
 import org.lwjgl.util.vector.Vector2f
+import java.util.IdentityHashMap
 
 /**
  * 双子星 DEM 齐射发射回调（规格 10 §2.2，主武器 dummy .proj 的 `onFireEffect`，唯一插件入口）。
@@ -28,9 +29,12 @@ import org.lwjgl.util.vector.Vector2f
  * - `weapon.ship == null`：记 WARN 放行 dummy 正常飞行（只兜异常调用，不改变 vanilla 路径外行为）；
  * - `spawnProjectile` 返回非 [MissileAPI]：记 ERROR 跳过该枚，另一枚不受影响（理论不可达）。
  *
- * 弹药口径（2026-09-26 裁定）：一次发射 = 一轮双弹齐射 = 消耗 2 弹药。
- * 原版 MissileWeapon.fireShot 先 `deductOneAmmo()` 再回调 onFire（已核实调用序），
- * 引擎只扣了 dummy 的 1 枚，此处补扣第 2 枚；剩余 1 枚的奇数残弹场景钳制到 0（全装填量恒为偶数，正常不可达）。
+ * 弹药口径（2026-09-26 第二次裁定）：主武器 weapon_data 行 `burst size=2 / burst delay=0.1`
+ * （原版 squall/locust 先例：burst 列驱动 tooltip「1250 x2」面板显示；burst delay 必须为
+ * 非 0 才真实连发——0 会被引擎当无 burst 处理，实机判例），一次触发引擎
+ * 连发 2 发 dummy 并各扣 1 弹药（合计 -2，与「一轮齐射两枚弹头」语义对齐）。
+ * 两发 dummy 各回调一次 onFire：首发生成完整双弹齐射，次发（回声发）只移除 dummy 不再生成；
+ * 回声判定 = 同一武器 0.5s 窗口内已有齐射记录（chargedown 12s 下合法齐射不可能落进窗口）。
  *
  * @param demPluginFactory DEM 打击段插件装配（默认真实 DEMScript；测试注入记录桩断言装配发生）
  */
@@ -47,13 +51,18 @@ class GeminiDemSalvoOnFireEffect(
             return
         }
 
-        // dummy 同帧移除（规格 §2.2 第 2 步）
+        // dummy 同帧移除（规格 §2.2 第 2 步；回声发同样移除，dummy 永不留场）
         engine.removeEntity(projectile)
 
-        // 补扣第 2 枚弹药（一轮齐射 = 2 弹药；引擎仅扣了 dummy 的 1 枚，见类注释）
-        if (weapon.usesAmmo()) {
-            weapon.ammo = (weapon.ammo - 1).coerceAtLeast(0)
+        // burst=2 回声发去重：引擎一次触发连发 2 发 dummy 各回调一次，仅首发生成齐射
+        val now = engine.getTotalElapsedTime(false)
+        val lastSalvos = lastSalvoOf(engine)
+        val lastAt = lastSalvos[weapon]
+        if (lastAt != null && now - lastAt < SALVO_DEDUP_WINDOW_SECONDS) {
+            log.debug("双子星 DEM 齐射：回声发（burst 第 2 发），仅移除 dummy（weapon=${weapon.id}）")
+            return
         }
+        lastSalvos[weapon] = now
 
         val shipTarget = ship.shipTarget?.takeIf {
             it.isAlive && !it.isHulk && it.owner != ship.owner
@@ -133,6 +142,12 @@ class GeminiDemSalvoOnFireEffect(
         /** customData 键：弹头出生登记簿（脚本 spawn 弹头的唯一可靠观测面，见 warheadsOf 注释）。 */
         const val TELEMETRY_WARHEAD_REGISTRY = "astd_gemini_dem_warhead_registry"
 
+        /** customData 键：各武器最近一次齐射时刻表（burst=2 回声发去重窗口判定）。 */
+        const val TELEMETRY_LAST_SALVO_AT = "astd_gemini_dem_last_salvo_at"
+
+        /** 回声发去重窗口（秒）：远小于 chargedown 12s，合法齐射不可能落进窗口。 */
+        const val SALVO_DEDUP_WINDOW_SECONDS = 0.5f
+
         fun salvoCount(engine: CombatEngineAPI): Int = engine.customData[TELEMETRY_SALVO] as? Int ?: 0
         fun warheadsSpawned(engine: CombatEngineAPI): Int = engine.customData[TELEMETRY_WARHEADS_SPAWNED] as? Int ?: 0
         fun trackAiCreated(engine: CombatEngineAPI): Int = engine.customData[TELEMETRY_TRACK_AI_CREATED] as? Int ?: 0
@@ -151,5 +166,11 @@ class GeminiDemSalvoOnFireEffect(
         fun warheadsOf(engine: CombatEngineAPI): MutableList<WarheadRef> =
             engine.customData.getOrPut(TELEMETRY_WARHEAD_REGISTRY) { mutableListOf<WarheadRef>() }
                     as MutableList<WarheadRef>
+
+        /** 各武器最近一次齐射时刻表（engine.customData 惰性创建，战斗结束自然销毁）。 */
+        @Suppress("UNCHECKED_CAST")
+        private fun lastSalvoOf(engine: CombatEngineAPI): IdentityHashMap<WeaponAPI, Float> =
+            engine.customData.getOrPut(TELEMETRY_LAST_SALVO_AT) { IdentityHashMap<WeaponAPI, Float>() }
+                    as IdentityHashMap<WeaponAPI, Float>
     }
 }

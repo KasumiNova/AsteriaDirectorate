@@ -3819,7 +3819,9 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
 
             GD_PHASE_SALVO -> {
                 stabilizeGdShips(engine, fireLauncher = true, firePod = false)
-                if (warheads >= 2 && gdLauncherAmmoAfterSalvo < 0) {
+                if (warheads >= 2) {
+                    // burst=2 第二发在首发 +0.1s 落账：采样须持续刷新到断言时刻，
+                    // 否则首帧快照只记到引擎第一次扣弹（实机判例：快照 7、实际终值 6）
                     gdLauncherAmmoAfterSalvo = launcher?.ammo ?: -1
                 }
                 if (kineticHits >= 1 && heHits >= 1) {
@@ -3928,7 +3930,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
 
             GD_PHASE_POD -> {
                 stabilizeGdShips(engine, fireLauncher = false, firePod = true)
-                if (salvoCount - gdPodSalvoBaseline >= 1 && gdPodAmmoAfterSalvo < 0) {
+                if (salvoCount - gdPodSalvoBaseline >= 1) {
+                    // 同 SALVO 相位判例：burst 第二发 +0.1s 落账，采样持续刷新到断言时刻
                     gdPodAmmoAfterSalvo = pod?.ammo ?: -1
                 }
                 if (kineticHits - gdPodKineticBaseline >= 1 && heHits - gdPodHeBaseline >= 1) {

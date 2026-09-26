@@ -89,9 +89,7 @@ class GeminiDemSalvoOnFireEffectTest {
         val weapon = mock(WeaponAPI::class.java)
         `when`(weapon.ship).thenReturn(ship)
         `when`(weapon.id).thenReturn("astd_gemini_dem_launcher")
-        // onFire 回调时引擎已为本发 dummy 扣除 1 弹药（MissileWeapon.fireShot 调用序），桩返回扣后余量 1
-        `when`(weapon.usesAmmo()).thenReturn(true)
-        `when`(weapon.ammo).thenReturn(1)
+        // burst=2 口径：弹药由引擎按连发次数自扣（每发 dummy 1 枚），onFire 不再触碰 weapon.ammo
         val projectile = stubProjectile()
 
         val kineticMissile = stubWarheadMissile()
@@ -126,8 +124,8 @@ class GeminiDemSalvoOnFireEffectTest {
 
         verify(engine).removeEntity(projectile)
 
-        // 单次发射消耗 2 弹药：引擎已扣 dummy 的 1 枚，效果补扣第 2 枚（2 → 0）
-        verify(weapon).ammo = 0
+        // 弹药由引擎 burst=2 自扣（每发 dummy 1 枚），onFire 不得再触碰 ammo
+        verify(weapon, times(0)).ammo = org.mockito.ArgumentMatchers.anyInt()
 
         // 双弹装配：source / armingTime / TrackAI / 批次号 / DEMScript 插件
         for ((missile, expectTarget) in listOf(kineticMissile to target, heMissile to target)) {
@@ -154,6 +152,45 @@ class GeminiDemSalvoOnFireEffectTest {
         assertEquals(1, GeminiDemSalvoOnFireEffect.salvoCount(engine))
         assertEquals(2, GeminiDemSalvoOnFireEffect.warheadsSpawned(engine))
         assertEquals(2, ProjectileVfxDriverPlugin.trackedCountForTests(engine), "双弹头均登记进 Static Trail 拖尾管线")
+    }
+
+    @Test
+    fun `用例14 burst 回声发去重：同帧第二发只移除 dummy 不再生成，窗口过后可再次齐射`() {
+        val engine = stubEngine()
+        val target = stubTarget("T1")
+        val ship = stubShip("P1", 0, target)
+        val weapon = mock(WeaponAPI::class.java)
+        `when`(weapon.ship).thenReturn(ship)
+        `when`(weapon.id).thenReturn("astd_gemini_dem_launcher")
+        val spawned = stubWarheadMissile()
+        `when`(
+            engine.spawnProjectile(
+                org.mockito.ArgumentMatchers.same(ship),
+                org.mockito.ArgumentMatchers.isNull(),
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyFloat(), org.mockito.ArgumentMatchers.any(),
+            ),
+        ).thenReturn(spawned)
+
+        ProjectileVfxSpecs.install()
+        val effect = GeminiDemSalvoOnFireEffect { _, _, _ -> BaseEveryFrameCombatPlugin() }
+
+        val first = stubProjectile()
+        effect.onFire(first, weapon, engine)
+        assertEquals(1, GeminiDemSalvoOnFireEffect.salvoCount(engine))
+
+        // 回声发（burst 第 2 发，同一帧 12.5s）：dummy 仍被移除，但不产生第二轮齐射
+        val echo = stubProjectile()
+        effect.onFire(echo, weapon, engine)
+        verify(engine).removeEntity(echo)
+        assertEquals(1, GeminiDemSalvoOnFireEffect.salvoCount(engine), "回声发不得产生新齐射")
+        assertEquals(2, GeminiDemSalvoOnFireEffect.warheadsSpawned(engine), "回声发不得生成新弹头")
+
+        // 窗口过后（12s 装填后的下一轮）可再次正常齐射
+        `when`(engine.getTotalElapsedTime(false)).thenReturn(25.0f)
+        effect.onFire(stubProjectile(), weapon, engine)
+        assertEquals(2, GeminiDemSalvoOnFireEffect.salvoCount(engine))
+        assertEquals(4, GeminiDemSalvoOnFireEffect.warheadsSpawned(engine))
     }
 
     @Test

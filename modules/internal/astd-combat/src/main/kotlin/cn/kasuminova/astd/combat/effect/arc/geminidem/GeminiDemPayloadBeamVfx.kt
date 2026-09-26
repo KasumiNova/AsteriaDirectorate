@@ -141,7 +141,7 @@ class GeminiDemPayloadBeamVfx : EveryFrameWeaponEffectPlugin {
             syncFlares(engine, state, from, facing, core, fringe, alphaMul = ramp)
             advanceAmbientNebula(state, engine, amount, from, facing, length, fringe)
             if (kind == Kind.KINETIC) {
-                advanceDecorArcs(state, engine, amount, from, facing, length)
+                advanceDecorArcs(state, engine, amount, from, facing, length, core, fringe)
             }
             return
         }
@@ -356,7 +356,7 @@ class GeminiDemPayloadBeamVfx : EveryFrameWeaponEffectPlugin {
         }
     }
 
-    /** 动能光束装饰电弧：一道横跨束线全长（发射点 → 命中点，两端钉死不抖动），纯视觉。 */
+    /** 动能光束装饰电弧：一道横跨束线全长（发射点 → 命中点，两端钉死不抖动），颜色跟随光束当前色（含同步紫色渐变），纯视觉。 */
     private fun advanceDecorArcs(
         state: BeamVisualState,
         engine: CombatEngineAPI,
@@ -364,15 +364,13 @@ class GeminiDemPayloadBeamVfx : EveryFrameWeaponEffectPlugin {
         from: Vector2f,
         facing: Float,
         length: Float,
+        core: Color,
+        fringe: Color,
     ) {
         state.decorArcInterval.advance(amount)
         if (!state.decorArcInterval.intervalElapsed()) return
         val dir = Misc.getUnitVectorAtDegreeAngle(facing)
-        spawnDecorArc(engine, from, offset(from, dir, length))
-    }
-
-    private fun spawnDecorArc(engine: CombatEngineAPI, a: Vector2f, b: Vector2f) {
-        engine.spawnEmpArcVisual(a, null, b, null, DECOR_ARC_THICKNESS, Kind.KINETIC.fringe, Kind.KINETIC.core)
+        engine.spawnEmpArcVisual(from, null, offset(from, dir, length), null, DECOR_ARC_THICKNESS, fringe, core)
     }
 
     private fun offset(origin: Vector2f, dir: Vector2f, dist: Float): Vector2f =

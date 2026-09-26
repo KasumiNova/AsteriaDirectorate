@@ -7,6 +7,7 @@ import com.fs.starfarer.api.combat.BeamAPI
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEntityAPI
 import com.fs.starfarer.api.combat.DamageType
+import com.fs.starfarer.api.combat.MissileAPI
 import com.fs.starfarer.api.combat.ShieldAPI
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.combat.WeaponAPI
@@ -31,7 +32,9 @@ import kotlin.random.Random.Default.nextFloat
  *   （不随难度缩放），穿透差额以追加伤害形式结算（走原版伤害结算链路，
  *   计入装甲/船体伤害计算而非直扣船体），并施加“引力抑制”——最大航速与机动性降低，持续数秒；
  * - 命中护盾的目标只结算护盾伤害，不触发穿甲伤害与机动抑制；
- * - 伤害比例/抑制数值受难度系数线性缩放（玩家来源固定 v2 设计基准），穿甲伤害不缩放。
+ * - 伤害比例/抑制数值受难度系数线性缩放（玩家来源固定 v2 设计基准），穿甲伤害不缩放；
+ * - 友方豁免（2026-09-26 裁定）：AOE 波及友军大舰属机制设计（affectAlliesAndNeutral=true），
+ *   但**友方战机与导弹一律豁免**（体量小、价值密，被波及不符合预期），与友军开关无关。
  */
 internal class GravityCollapseOnHitHandler(
     private val config: GravityCollapseOnHitConfig,
@@ -129,6 +132,12 @@ internal class GravityCollapseOnHitHandler(
                     val otherOwner = other.owner
                     if (otherOwner == owner) continue
                 }
+
+                // 友方战机与导弹豁免（2026-09-26 裁定）：AOE 波及友军大舰属机制设计，
+                // 但友方战机/导弹体量小、价值密，被波及不符合预期——无论 affectAlliesAndNeutral 如何都跳过
+                if (owner != null && other.owner == owner &&
+                    (other is MissileAPI || (other as? ShipAPI)?.isFighter == true)
+                ) continue
 
                 val ship = other as? ShipAPI
                 if (ship != null && ship.isHulk && !config.affectHulks) continue
