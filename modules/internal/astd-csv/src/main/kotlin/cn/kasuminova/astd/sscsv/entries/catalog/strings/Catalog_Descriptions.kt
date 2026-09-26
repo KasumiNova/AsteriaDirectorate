@@ -81,6 +81,10 @@ object Desc_astd_heavy_ion_pulse : LocalizedDescription("astd_heavy_ion_pulse", 
 object Desc_astd_stellar_mrm_launcher : LocalizedDescription("astd_stellar_mrm_launcher", "WEAPON")
 object Desc_astd_stellar_mrm_pod : LocalizedDescription("astd_stellar_mrm_pod", "WEAPON", notesId = "astd_stellar_mrm_launcher")
 object Desc_astd_piercing_lance : LocalizedDescription("astd_piercing_lance", "WEAPON")
+object Desc_astd_cuifeng_torpedo : LocalizedDescription("astd_cuifeng_torpedo", "WEAPON")
+object Desc_astd_cuifeng_launcher : LocalizedDescription("astd_cuifeng_launcher", "WEAPON", notesId = "astd_cuifeng_torpedo")
+object Desc_astd_ice_shard_mirv : LocalizedDescription("astd_ice_shard_mirv", "WEAPON")
+object Desc_astd_ice_shard_mirv_pod : LocalizedDescription("astd_ice_shard_mirv_pod", "WEAPON", notesId = "astd_ice_shard_mirv")
 
 object Desc_astd_executor_core : LocalizedDescription("astd_executor_core", "RESOURCE")
 object Desc_astd_executor_core_combat : LocalizedDescription("astd_executor_core_combat", "RESOURCE")

@@ -1060,3 +1060,123 @@ object Wpn_astd_piercing_lance : WeaponDataEntry(), SsProjProjectileOutputs {
         width = 36.0,
     )
 }
+
+/** 摧锋鱼雷公共面板/弹头口径（blue/30-superlative.md 定案 v1.0）：两槽位共用同一弹体 spec。 */
+private fun cuifengTorpedoProjSpec(): MissileProjSpec = MissileProjSpec(
+    id = "astd_cuifeng_torpedo_shot",
+    missileType = "MISSILE",
+    onFireEffect = "cn.kasuminova.astd.combat.effect.arc.cuifeng.CuifengTorpedoOnFireEffect",
+    onHitEffect = "cn.kasuminova.astd.combat.effect.arc.cuifeng.CuifengTorpedoOnHitEffect",
+    // v1 资源选型：引用原版制导鱼雷贴图（用户裁定缺素材先用原版资源）；引擎辉光/尾焰隐藏，
+    // 拖尾由 ProjectileVfxSpecs 贴图拖尾层承担（辉星同款口径）。
+    sprite = "graphics/missiles/torpedo_guided2.png",
+    size = Vec2i(10, 21),
+    center = Vec2(5, 10.5),
+    collisionRadius = 15,
+    collisionClass = "MISSILE_NO_FF",
+    explosionColor = Rgba(140, 190, 255, 160),
+    explosionRadius = 150,
+    armingTime = 0.0,
+    flameoutTime = 0.5,
+    noEngineGlowTime = 999.0,
+    fadeTime = 0.25,
+    engineSpec = MissileEngineSpec(turnAcc = 2000, turnRate = 500, acc = 2000, dec = 2000),
+    engineSlots = emptyList(),
+)
+
+/** 摧锋鱼雷（小型导弹，blue/30-superlative.md）：ARC 稀有反舰终结件，自适应增伤 + 硬辐推进。 */
+object Wpn_astd_cuifeng_torpedo : WeaponDataEntry(), SsProjMissileOutputs {
+    override val id: String = "astd_cuifeng_torpedo"
+    override val name: String = weaponName(id)
+    override val tier: Int = 3
+    override val baseValue: Int = 20000
+    override val range: Int = 1600
+
+    // 导弹武器 DPS 列留空（对照 amsrm csv 行 damage/second 空）；自适应机制走脚本不进面板
+    override val damagePerShot: Int = 1500
+
+    override val turnRate: Int = 30
+    override val ops: Int = 8
+
+    // 备弹 2 发，60s/+1
+    override val ammo: Int = 2
+    override val ammoPerSec: Double = 0.0167
+    override val reloadSize: Int = 1
+
+    // 发射冷却 3s，单次发射量 1
+    override val chargedown: Double = 3.0
+    override val burstSize: Number = 1
+    override val burstDelay: Double = 0.0
+
+    override val type: String = "ENERGY"
+    override val energyPerShot: Int = 500
+    override val energyPerSecond: Int = 167
+
+    // “反物质 SRM 150% 航速”：amsrm projSpeed=1000 × 1.5；launch speed 对齐 amsrm 200
+    override val projSpeed: Int = 1500
+    override val launchSpeed: Int = 200
+
+    // 1600 射程 / 1500 满速 ≈ 1.4s（含二段式慢速段）+ 追踪冗余（目检微调）
+    override val flightTime: Double = 2.0
+    override val projHitpoints: Int = 500
+
+    override val trackingStr: String = "优秀"
+    override val speedStr: String = "极快"
+
+    // P6 前口径；P6 后改赏金掉落（90-plan §14）
+    override val tags: String = "no_drop, no_drop_salvage"
+    override val groupTag: String = "astd"
+    override val tech: String = "菀星设计局-星坠"
+    override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
+    override val customPrimary: String = SsI18n.t("weapon.$id.tooltip.customPrimary")
+    override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
+    override val noDpsInTooltip: Boolean = false
+    override val number: Int = 9227
+
+    override val projSpec: MissileProjSpec = cuifengTorpedoProjSpec()
+}
+
+/** 摧锋鱼雷发射器（中型导弹）：与小型共用弹体 spec，备弹经济 5/40s，冷却 12s。 */
+object Wpn_astd_cuifeng_launcher : WeaponDataEntry() {
+    override val id: String = "astd_cuifeng_launcher"
+    override val name: String = weaponName(id)
+    override val tier: Int = 3
+    override val baseValue: Int = 40000
+    override val range: Int = 1600
+
+    override val damagePerShot: Int = 1500
+
+    override val turnRate: Int = 30
+    override val ops: Int = 16
+
+    // 备弹 5 发，40s/+1
+    override val ammo: Int = 5
+    override val ammoPerSec: Double = 1.0 / 40.0
+    override val reloadSize: Int = 1
+
+    // 发射冷却 12s，单次发射量 1
+    override val chargedown: Double = 12.0
+    override val burstSize: Number = 1
+    override val burstDelay: Double = 0.0
+
+    override val type: String = "ENERGY"
+    override val energyPerShot: Int = 500
+    override val energyPerSecond: Int = 42
+
+    override val projSpeed: Int = 1500
+    override val launchSpeed: Int = 200
+    override val flightTime: Double = 2.0
+    override val projHitpoints: Int = 500
+
+    override val trackingStr: String = "优秀"
+    override val speedStr: String = "极快"
+
+    override val tags: String = "no_drop, no_drop_salvage"
+    override val groupTag: String = "astd"
+    override val tech: String = "菀星设计局-星坠"
+    override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
+    override val customPrimary: String = SsI18n.t("weapon.$id.tooltip.customPrimary")
+    override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
+    override val noDpsInTooltip: Boolean = false
+    override val number: Int = 9228
+}

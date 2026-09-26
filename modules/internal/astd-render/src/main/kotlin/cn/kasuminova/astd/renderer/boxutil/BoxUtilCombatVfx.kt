@@ -32,18 +32,20 @@ object BoxUtilCombatVfx {
     fun normalizeFacingDeg(deg: Float): Float = ((deg % 360f) + 360f) % 360f
 
     fun ensureReady(engine: CombatEngineAPI) {
-        if (engine.customData[KEY_LATER_INIT] != true) {
+        if (engine.customData[KEY_LATER_INIT] == true) return
+        // isGlobalInitialized 首次触碰会触发 BoxConfigGUI 类初始化：无 GL 环境（单测/无头）
+        // 直接抛 ExceptionInInitializerError，必须一并收进 try（否则一次失败后续全是 NoClassDefFoundError）
+        val initialized = try {
             if (!BoxUtilModPlugin.isGlobalInitialized()) {
-                try {
-                    BoxUtilModPlugin.initLater()
-                } catch (t: Throwable) {
-                    log.warn("BoxUtil initLater() 失败，BoxUtil VFX 将暂时不可用", t)
-                    return
-                }
+                BoxUtilModPlugin.initLater()
             }
-            if (BoxUtilModPlugin.isGlobalInitialized()) {
-                engine.customData[KEY_LATER_INIT] = true
-            }
+            BoxUtilModPlugin.isGlobalInitialized()
+        } catch (t: Throwable) {
+            log.warn("BoxUtil 初始化不可用（${t.javaClass.simpleName}），BoxUtil VFX 将暂时不可用", t)
+            return
+        }
+        if (initialized) {
+            engine.customData[KEY_LATER_INIT] = true
         }
     }
 

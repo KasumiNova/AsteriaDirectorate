@@ -621,3 +621,209 @@ object Wpn_astd_grav_rift_minelayer : WeaponDataEntry(), SsProjMissileOutputs {
         ),
     )
 }
+
+/** 源生冰晶 MIRV 母弹公共弹头口径（purple/30-superlative.md）：两槽位共用同一弹体 spec。 */
+private fun iceShardMirvProjSpec(): MissileProjSpec = MissileProjSpec(
+    id = "astd_ice_shard_mirv_shot",
+    // MIRV 型：面板伤害显示（400x15）、autofit 伤害评估（400×15=6000）与护盾 AI 威慑判定
+    // 均按原版 MIRV 语义取值（CargoTooltipFactory/WeaponSpreadsheetLoader 读 behaviorSpec params）。
+    // 原版 MirvAI 会随 MIRV 型自动指派（ProjectileFactory）：引导段由其内嵌 MissileAI 承担（原版 MIRV 同款追踪），
+    // 内建分裂经 minTimeToSplit=9999 关停——分裂由自定义引信脚本全权承担
+    // （随机伤害分配 200~800 / 定制分裂 VFX / 遥测），behaviorSpec 其余参数仅供面板与引擎语义消费。
+    missileType = "MIRV",
+    onFireEffect = "cn.kasuminova.astd.combat.effect.lens.iceshard.IceShardMirvOnFireEffect",
+    // 母弹无 onHitEffect：直击命中仅面板伤害（分裂逻辑由发射时每弹一注册的引信脚本承担）
+    sprite = "graphics/missiles/missile_MIRV.png",
+    size = Vec2i(12, 28),
+    center = Vec2(6, 14),
+    collisionRadius = 16,
+    collisionClass = "MISSILE_NO_FF",
+    explosionColor = Rgba(160, 220, 255, 160),
+    explosionRadius = 100,
+    armingTime = 0.25,
+    flameoutTime = 0.5,
+    noEngineGlowTime = 999.0,
+    fadeTime = 0.25,
+    // “追踪普通”：引擎参数对齐原版 type_1_mirv（飓风 MIRV）
+    engineSpec = MissileEngineSpec(turnAcc = 600, turnRate = 150, acc = 250, dec = 200),
+    engineSlots = emptyList(),
+    behaviorSpec = linkedMapOf(
+        "behavior" to "MIRV",
+        // 内建分裂关停：分裂时机/产物由 IceShardMirvSplitScript 承担（含 1s 发射豁免）
+        "minTimeToSplit" to 9999,
+        "canSplitEarly" to false,
+        // 以下参数对齐真实机制数值，供面板显示（damage×numShots = 400x15）与引擎 MIRV 语义消费
+        "splitRange" to 600,
+        "numShots" to 15,
+        "damage" to 400,
+        "impact" to 5,
+        "emp" to 0,
+        "damageType" to "FRAGMENTATION",
+        "hitpoints" to 100,
+        "arc" to 20,
+        "arcOffset" to 0,
+        "evenSpread" to false,
+        // 末端引导速度覆盖对齐子弹实速 1000（MirvAI 取 max(spreadSpeed, 子弹 spec 最大航速)，此处写满一致值）
+        "spreadSpeed" to 1000,
+        "spreadSpeedRange" to 250,
+        "projectileSpec" to "astd_ice_shard_sub_msl",
+        "splitSound" to "hurricane_mirv_split",
+        "smokeSpec" to linkedMapOf(
+            "particleSizeMin" to 30.0,
+            "particleSizeRange" to 30.0,
+            "cloudParticleCount" to 15,
+            "cloudDuration" to 1.0,
+            "cloudRadius" to 20.0,
+            "blowbackParticleCount" to 0,
+            "blowbackDuration" to 0,
+            "blowbackLength" to 0,
+            "blowbackSpread" to 0,
+            "particleColor" to listOf(170, 225, 255, 200),
+        ),
+    ),
+)
+
+/** 源生冰晶 MIRV 发射器（小型导弹，purple/30-superlative.md）：600su 近距分裂 15 枚冰晶射弹。 */
+object Wpn_astd_ice_shard_mirv : WeaponDataEntry(), SsProjMissileOutputs {
+    override val id: String = "astd_ice_shard_mirv"
+    override val name: String = weaponName(id)
+    override val tier: Int = 3
+    override val baseValue: Int = 12000
+    override val range: Int = 1600
+
+    // 面板伤害为单枚冰晶射弹口径（400×15=6000 总伤由脚本分配）；母弹直击仅 400
+    override val damagePerShot: Int = 400
+
+    override val turnRate: Int = 30
+    override val ops: Int = 6
+
+    // 备弹 1 发，50s/+1
+    override val ammo: Int = 1
+    override val ammoPerSec: Double = 0.02
+    override val reloadSize: Int = 1
+
+    // 发射冷却 4s，单次发射量 1
+    override val chargedown: Double = 4.0
+    override val burstSize: Number = 1
+    override val burstDelay: Double = 0.0
+
+    override val type: String = "FRAGMENTATION"
+    override val energyPerShot: Int = 500
+    override val energyPerSecond: Int = 125
+
+    // “鱼叉 MRM 100% 航速”：harpoon projSpeed=300；launch speed 对齐 harpoon 100
+    override val projSpeed: Int = 300
+    override val launchSpeed: Int = 100
+
+    // 1600 射程 / 300 航速 ≈ 5.3s 直线 + 追踪冗余
+    override val flightTime: Double = 6.0
+    override val projHitpoints: Int = 600
+
+    override val trackingStr: String = "普通"
+    override val speedStr: String = "普通"
+
+    // P6 前口径；P6 后改赏金掉落（90-plan §14）
+    override val tags: String = "no_drop, no_drop_salvage"
+    override val groupTag: String = "astd"
+    override val tech: String = "菀星设计局-紫菀"
+    override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
+    override val customPrimary: String = SsI18n.t("weapon.$id.tooltip.customPrimary")
+    override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
+    override val noDpsInTooltip: Boolean = false
+    override val number: Int = 9229
+
+    override val projSpec: MissileProjSpec = iceShardMirvProjSpec()
+}
+
+/** 源生冰晶 MIRV 发射舱（中型导弹）：与小型共用母弹 spec，单次发射量 2，备弹经济 2/20s。 */
+object Wpn_astd_ice_shard_mirv_pod : WeaponDataEntry() {
+    override val id: String = "astd_ice_shard_mirv_pod"
+    override val name: String = weaponName(id)
+    override val tier: Int = 3
+    override val baseValue: Int = 24000
+    override val range: Int = 1600
+
+    override val damagePerShot: Int = 400
+
+    override val turnRate: Int = 30
+    override val ops: Int = 12
+
+    // 备弹 2 发，20s/+1
+    override val ammo: Int = 2
+    override val ammoPerSec: Double = 0.05
+    override val reloadSize: Int = 1
+
+    // 发射冷却 6s，单次发射量 2
+    override val chargedown: Double = 6.0
+    override val burstSize: Number = 2
+    override val burstDelay: Double = 0.0
+
+    override val type: String = "FRAGMENTATION"
+    override val energyPerShot: Int = 500
+    override val energyPerSecond: Int = 167
+
+    override val projSpeed: Int = 300
+    override val launchSpeed: Int = 100
+    override val flightTime: Double = 6.0
+    override val projHitpoints: Int = 600
+
+    override val trackingStr: String = "普通"
+    override val speedStr: String = "普通"
+
+    override val tags: String = "no_drop, no_drop_salvage"
+    override val groupTag: String = "astd"
+    override val tech: String = "菀星设计局-紫菀"
+    override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
+    override val customPrimary: String = SsI18n.t("weapon.$id.tooltip.customPrimary")
+    override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
+    override val noDpsInTooltip: Boolean = false
+    override val number: Int = 9233
+}
+
+/** 源生冰晶子射弹（隐藏内部武器，永不装配/掉落）：MIRV 分裂产物，命中舰体附着并施加冻结。 */
+object Wpn_astd_ice_shard_sub : WeaponDataEntry(), SsProjMissileOutputs {
+    override val id: String = "astd_ice_shard_sub"
+    override val name: String = weaponName(id)
+    override val tier: Int = 3
+    override val baseValue: Int = 0
+    override val range: Int = 1000
+
+    // 单枚基准伤害（脚本按“15 枚合计 6000、单枚 200~800”覆写 damageAmount）
+    override val damagePerShot: Int = 400
+
+    override val turnRate: Int = 30
+    override val type: String = "FRAGMENTATION"
+
+    // 基准弹速 1000（±25% 浮动由脚本经初速矢量实现）；基准寿命 = 1000 射程 / 1000 弹速。
+    // launchSpeed 必须保持默认 0：引擎生成导弹的初速 = 脚本矢量 + launchSpeed 沿朝向，非零会污染散布锥
+    override val projSpeed: Int = 1000
+    override val flightTime: Double = 1.0
+    override val projHitpoints: Int = 100
+
+    override val tags: String = "no_drop, no_drop_salvage"
+    override val tech: String = "菀星设计局-紫菀"
+    override val noDpsInTooltip: Boolean = true
+    override val number: Int = 9234
+
+    override val projSpec: MissileProjSpec = MissileProjSpec(
+        id = "astd_ice_shard_sub_msl",
+        // ROCKET：原版直线飞行语义（无追踪 AI），分裂锥内随机散布由脚本给初速矢量
+        missileType = "ROCKET",
+        onHitEffect = "cn.kasuminova.astd.combat.effect.lens.iceshard.IceShardSubOnHitEffect",
+        // 原版弹体贴图渲染屏蔽：本体由弹体 VFX 管线的 spriteBody 层接管
+        // （BoxUtil SpriteEntity 逐帧跟随，贴图 graphics/fx/astd_ice_shard.png）
+        sprite = "graphics/textures/BUtil_NONE.png",
+        size = Vec2i(20, 20),
+        center = Vec2(10, 10),
+        collisionRadius = 8,
+        collisionClass = "MISSILE_NO_FF",
+        explosionColor = Rgba(170, 225, 255, 160),
+        explosionRadius = 25,
+        flameoutTime = 0.5,
+        noEngineGlowTime = 999.0,
+        fadeTime = 0.25,
+        // 零推力：冰晶速度由分裂脚本赋予的初速矢量全权决定（±25% 浮动），引擎不再干预
+        engineSpec = MissileEngineSpec(turnAcc = 0, turnRate = 0, acc = 0, dec = 0),
+        engineSlots = emptyList(),
+    )
+}

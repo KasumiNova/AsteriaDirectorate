@@ -1,0 +1,17 @@
+{
+    "id": "astd_ice_shard_sub",
+    "specClass": "projectile",
+    "type": "MISSILE",
+    "size": "SMALL",
+    "turretSprite": "graphics/weapons/missile_rack_open_m_3x_turret_base.png",
+    "hardpointSprite": "graphics/weapons/missile_rack_open_m_3x_hardpoint_base.png",
+    "hardpointOffsets": [15, 0],
+    "turretOffsets": [8, 0],
+    "hardpointAngleOffsets": [0],
+    "turretAngleOffsets": [0],
+    "barrelMode": "LINKED",
+    "animationType": "MUZZLE_FLASH",
+    "renderHints": [RENDER_LOADED_MISSILES],
+    "projectileSpecId": "astd_ice_shard_sub_msl",
+    "everyFrameEffect": "cn.kasuminova.astd.combat.effect.generic.CombatVfxBootstrapEveryFrameEffect"
+}

@@ -213,6 +213,78 @@
         "grgEnemyMinHpAfterFire",
         "grgEnemyHpDropMax"
       ]
+    },
+    {
+      "id": "cuifeng_torpedo_basic",
+      "missionId": "cuifeng_torpedo_basic",
+      "shipIds": [
+        "gryphon",
+        "eagle",
+        "hound"
+      ],
+      "variantIds": [
+        "gryphon_Standard",
+        "eagle_Assault",
+        "hound_Standard"
+      ],
+      "weaponIds": [
+        "astd_cuifeng_torpedo",
+        "astd_cuifeng_launcher"
+      ],
+      "projectileSpecIds": [
+        "astd_cuifeng_torpedo_shot"
+      ],
+      "requiredEvidence": [
+        "cuifengPhase",
+        "cuifengTorpedoSlotId",
+        "cuifengLauncherSlotId",
+        "cuifengWeaponRange",
+        "cuifengTargetSelected",
+        "cuifengGovernedFrames",
+        "cuifengLastSpeedFactor",
+        "cuifengAdaptiveHits",
+        "cuifengHardFluxPushes",
+        "cuifengAoeHits",
+        "cuifengAoeShipHits",
+        "cuifengImpactVfx",
+        "cuifengCrossFlare",
+        "cuifengNebulaBurst",
+        "cuifengLastAdaptiveBonusP",
+        "cuifengLastHardFluxP"
+      ]
+    },
+    {
+      "id": "ice_shard_mirv_basic",
+      "missionId": "ice_shard_mirv_basic",
+      "shipIds": [
+        "gryphon",
+        "dominator"
+      ],
+      "variantIds": [
+        "gryphon_Standard",
+        "dominator_Assault"
+      ],
+      "weaponIds": [
+        "astd_ice_shard_mirv",
+        "astd_ice_shard_mirv_pod"
+      ],
+      "projectileSpecIds": [
+        "astd_ice_shard_mirv_shot"
+      ],
+      "requiredEvidence": [
+        "iceShardPhase",
+        "iceShardMirvSlotId",
+        "iceShardPodSlotId",
+        "iceShardWeaponRange",
+        "iceShardFusesRegistered",
+        "iceShardSplits",
+        "iceShardShardsSpawned",
+        "iceShardLastSplitDist",
+        "iceShardAttaches",
+        "iceShardTicks",
+        "iceShardSplitVfx",
+        "iceShardAttachNebula"
+      ]
     }
   ]
 }

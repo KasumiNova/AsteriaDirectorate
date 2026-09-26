@@ -48,6 +48,14 @@ bolt {                          // Box 螺栓弹头（默认开启；导弹类�
     texture("graphics/fx/astd_bolt_body.png")  // 弹头贴图（默认烘焙版彗形图，见下节）
     color(0xE4F2FFC8)           // 弹头染色（0xRRGGBBAA，原版 coreColor 语义，通常近白）
 }
+
+spriteBody("graphics/fx/astd_ice_shard.png", width = 20f, height = 20f) {
+    // 弹体本体贴图层（默认不声明）：BoxUtil SpriteEntity 逐帧跟随弹体 location/facing，
+    // normal alpha（对齐原版 Missile.render 弹体贴图，含熄火淡出 alpha 语义），ABOVE_SHIPS 层。
+    // 用于有实体贴图的弹体（冰晶碎片等）；.proj 侧须配 sprite=graphics/textures/BUtil_NONE.png
+    // 屏蔽原版贴图渲染。贴图约定：文件右（+u）= 飞行正向。width/height = 世界全宽/全高（对齐 .proj size）。
+    glow(0.3f)                  // bloom 发光强度（默认 0 不发光；>0 时 emissive 复用本体贴图原色）
+}
 ```
 
 - 可声明多条 `staticTrail` 叠层。
@@ -136,6 +144,8 @@ bolt {                          // Box 螺栓弹头（默认开启；导弹类�
 - **逐帧同步**：几何 `boltFrame`（贴图跨 [tailEnd → 弹体位置]，X 缩放 = 覆盖长/spec.length，出生伸入同 TrailExtender distanceRatio 语义）；alpha = `getBrightness()`² × 染色 alpha（原版 body 两趟均吃平方亮度）。暂停时 driver 门控冻结，与弹体同步，无 30Hz cadence 跳变。
 
 ss-csv 侧：接入管线的弹体统一用 `ProjectileProjSpec.boxBolt(...)`——发射 `bulletSprite=graphics/textures/BUtil_NONE.png` + core/fringe 色 alpha=0（屏蔽原版螺栓视觉与原版命中光晕）+ scroll=0，但 **length/width/fadeTime(0.25)/hitGlowRadius 保真实值**：length 仍是 brightness 伸入距离、boltFrame 几何与 recede 上限规则的数据源。导弹不走此路径（组件 attach 时 `projectile is MissileAPI` 即禁用自身；辉星 MRM 弹头 = 原版导弹贴图 `graphics/missiles/am_srm.png`）。`vanillaBolt(...)` 工厂保留，仅供不对接管线的弹体。
+
+**导弹本体也可接管**：声明 `spriteBody(...)` 层（SpriteEntity 逐帧跟随，normal alpha 对齐原版 Missile.render 语义）+ .proj 配 `sprite=BUtil_NONE.png` 屏蔽原版贴图（冰晶子射弹先例）。注意 `engine.spawnProjectile` 脚本路径生成的弹体**不触发 onFireEffect**（原版仅在武器开火时回调），其 VFX 须由生成脚本显式调 `ProjectileVfxDriverPlugin.track(engine, projectile, projectileSpecId)` 登记（冰晶分裂/附着脚本先例）。
 
 **命中光晕由组件补发**：原版光晕走 fringeColor（已被屏蔽为 alpha=0），`BoltRenderComponent.didDamage` 按 `hitGlowRadius × 3 × 伤害缩放`（DSL 染色 0.4s）+ 白色芯（×0.5，0.8s）发 hitParticle。因此 **`hitGlowRadius` 必须显式给值**（boxBolt 默认 25，原版高射速武器口径：火神 15 / 重机枪 20 / 重型针刺 25）；缺省时原版取 `length × 2` 作基准半径（`Misc.getHitGlowSize` 再按伤害放大），length 75 即 150 基准，高射速武器连续命中会叠成吞没整舰的数百 su 加色巨球。
 

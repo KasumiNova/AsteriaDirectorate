@@ -5,6 +5,8 @@ import cn.kasuminova.astd.impl.render.BoltRenderComponent
 import cn.kasuminova.astd.impl.render.BoltSpec
 import cn.kasuminova.astd.impl.render.BoxFlareComponent
 import cn.kasuminova.astd.impl.render.BoxFlareSpec
+import cn.kasuminova.astd.impl.render.SpriteBodyRenderComponent
+import cn.kasuminova.astd.impl.render.SpriteBodySpec
 import cn.kasuminova.astd.impl.render.StaticTrailComponent
 import cn.kasuminova.astd.impl.render.StaticTrailSpec
 import kotlin.test.Test
@@ -24,6 +26,7 @@ class ProjectileVfxTreeAssemblerTest {
             "zappy" to trailSpec(layer = 2),
         ),
         bolt = BoltSpec(color = ASTDColor(0.6f, 0.85f, 1f, 1f)),
+        spriteBody = null,
         boxFlares = listOf(
             "flare" to BoxFlareSpec(
                 width = 120f,
@@ -70,13 +73,38 @@ class ProjectileVfxTreeAssemblerTest {
     @Test
     fun `bolt 为 null 时不组装螺栓组件`() {
         val spec = treeSpec().let {
-            ProjectileVfxTreeSpec(it.id, it.staticTrails, null, it.boxFlares, it.anchorArcs)
+            ProjectileVfxTreeSpec(
+                id = it.id,
+                staticTrails = it.staticTrails,
+                bolt = null,
+                spriteBody = null,
+                boxFlares = it.boxFlares,
+                anchorArcs = it.anchorArcs,
+            )
         }
         val tree = ProjectileVfxTreeAssembler.assemble(spec)
         assertEquals(
             listOf("asm_test_trail_twin", "asm_test_trail_zappy", "asm_test_boxflare_flare"),
             tree.children.map { it.id },
         )
+    }
+
+    @Test
+    fun `spriteBody 声明时组装 SpriteBodyRenderComponent 且绘制序压在螺栓之下`() {
+        val base = treeSpec()
+        val spec = ProjectileVfxTreeSpec(
+            id = base.id,
+            staticTrails = base.staticTrails,
+            bolt = base.bolt,
+            spriteBody = SpriteBodySpec("graphics/fx/astd_ice_shard.png", width = 20f, height = 20f),
+            boxFlares = base.boxFlares,
+            anchorArcs = base.anchorArcs,
+        )
+        val tree = ProjectileVfxTreeAssembler.assemble(spec)
+        val body = tree.children.first { it.id == "asm_test_spritebody" }
+        assertIs<SpriteBodyRenderComponent>(body)
+        assertEquals(190, body.renderOrder)
+        assertEquals("graphics/fx/astd_ice_shard.png", (body as SpriteBodyRenderComponent).spec.texturePath)
     }
 
     @Test

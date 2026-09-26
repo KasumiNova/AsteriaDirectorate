@@ -1,0 +1,27 @@
+{
+    "id": "astd_ice_shard_mirv",
+    "specClass": "projectile",
+    "type": "MISSILE",
+    "size": "SMALL",
+    "turretSprite": "graphics/weapons/missile_rack_open_m_3x_turret_base.png",
+    "hardpointSprite": "graphics/weapons/missile_rack_open_m_3x_hardpoint_base.png",
+    "hardpointOffsets": [15, 0],
+    "turretOffsets": [8, 0],
+    "hardpointAngleOffsets": [0],
+    "turretAngleOffsets": [0],
+    "barrelMode": "LINKED",
+    "animationType": "MUZZLE_FLASH",
+    "renderHints": [RENDER_LOADED_MISSILES],
+    "muzzleFlashSpec": {
+        "length": 20.0,
+        "spread": 10.0,
+        "particleSizeMin": 8.0,
+        "particleSizeRange": 10.0,
+        "particleDuration": 0.25,
+        "particleCount": 8,
+        "particleColor": [170, 225, 255, 170]
+    },
+    "projectileSpecId": "astd_ice_shard_mirv_shot",
+    "everyFrameEffect": "cn.kasuminova.astd.combat.effect.generic.CombatVfxBootstrapEveryFrameEffect",
+    "fireSoundTwo": "hurricane_mirv_fire"
+}

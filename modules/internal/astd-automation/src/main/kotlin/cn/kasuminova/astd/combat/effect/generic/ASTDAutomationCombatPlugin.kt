@@ -3,6 +3,9 @@ package cn.kasuminova.astd.combat.effect.generic
 import cn.kasuminova.astd.api.buff.buffHost
 import cn.kasuminova.astd.api.buff.getBuff
 import cn.kasuminova.astd.combat.effect.arc.chargeneedle.ChargeNeedleVfx
+import cn.kasuminova.astd.combat.effect.arc.cuifeng.CuifengTorpedoAI
+import cn.kasuminova.astd.combat.effect.arc.cuifeng.CuifengTorpedoStrikeImpl
+import cn.kasuminova.astd.combat.effect.arc.cuifeng.CuifengTorpedoVfx
 import cn.kasuminova.astd.combat.effect.arc.eda.ElectricDriveAcceleratorOnHitEffect
 import cn.kasuminova.astd.combat.effect.arc.geminidem.GeminiDemDifficulty
 import cn.kasuminova.astd.combat.effect.arc.geminidem.GeminiDemPayloadBeamEffect
@@ -30,6 +33,10 @@ import cn.kasuminova.astd.combat.effect.generic.ASTDAutomationCombatPlugin.Compa
 import cn.kasuminova.astd.combat.effect.generic.ASTDAutomationCombatPlugin.Companion.TPP_PRE_PAUSE_FLIGHT_SECONDS
 import cn.kasuminova.astd.combat.effect.generic.projectile.ProjectileSpecOnFireDispatcher
 import cn.kasuminova.astd.combat.effect.lens.AnnihilationVortexBeamEffect
+import cn.kasuminova.astd.combat.effect.lens.iceshard.IceShardAttachScript
+import cn.kasuminova.astd.combat.effect.lens.iceshard.IceShardMirvOnFireEffect
+import cn.kasuminova.astd.combat.effect.lens.iceshard.IceShardMirvSplitScript
+import cn.kasuminova.astd.combat.effect.lens.iceshard.IceShardMirvVfx
 import cn.kasuminova.astd.combat.effect.lens.stellar.StellarMrmMissileAI
 import cn.kasuminova.astd.combat.effect.lens.stellar.StellarMrmStrikeImpl
 import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcProductionShipIds
@@ -393,6 +400,22 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     private var smLastExplosionAt = -1f
     private var smLastTrackedExplosionCount = 0
 
+    // ==== 摧锋鱼雷场景状态（相位机 MOUNT → STRIKE → COMPLETED；玩家版基础验证，无敌版三档） ====
+    private var cuifengPhase = CUIFENG_PHASE_MOUNT
+    private var cuifengPhaseStartedAt = 0f
+
+    // COMPLETED 截图门控：最近一次摧锋命中特效时刻（截图帧需含十字辉星/星云/新鲜拖尾）。
+    private var cuifengLastImpactVfxAt = -1f
+    private var cuifengLastTrackedImpactVfxCount = 0
+
+    // ==== 源生冰晶 MIRV 场景状态（相位机 MOUNT → SPLIT → ATTACH → COMPLETED；玩家版基础验证） ====
+    private var iceShardPhase = ICE_SHARD_PHASE_MOUNT
+    private var iceShardPhaseStartedAt = 0f
+
+    // COMPLETED 截图门控：最近一次附着/周期伤害事件时刻（截图帧需含附着星云/冰晶散布）。
+    private var iceShardLastEventAt = -1f
+    private var iceShardLastTrackedEventCount = 0
+
     // ==== seven stars 场景状态（相位机 MOUNT → NOKILL → CHAIN → TERMINAL → ENEMY_MULTI → COMPLETED） ====
     private var ssPhase = SS_PHASE_MOUNT
     private var ssPhaseStartedAt = 0f
@@ -574,6 +597,21 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             writeDiagnostics(engine, "CombatReady")
             writeTelemetry(engine, "CombatReady", findSmPlayer(engine), null)
             log.info("[ASTD-Automation] scenario=${ASTDInGameAutomationScenario.SM_SCENARIO_ID} combat plugin initialized")
+        } else if (ASTDInGameAutomationScenario.isCuifengEnabled()) {
+            engine.setDoNotEndCombat(true)
+            lockCuifengCamera(engine)
+            // 硬辐推进/自适应增伤浮字仅 devMode 渲染（2026-07-29 审批裁定先例）：本场景为 dev-only 舞台，
+            // 开启 devMode 以目检命中浮字（进程被早退杀掉，设置不落盘）。
+            Global.getSettings().isDevMode = true
+            writeDiagnostics(engine, "CombatReady")
+            writeTelemetry(engine, "CombatReady", findCuifengPlayer(engine), null)
+            log.info("[ASTD-Automation] scenario=${ASTDInGameAutomationScenario.CUIFENG_SCENARIO_ID} combat plugin initialized")
+        } else if (ASTDInGameAutomationScenario.isIceShardMirvEnabled()) {
+            engine.setDoNotEndCombat(true)
+            lockIceShardCamera(engine)
+            writeDiagnostics(engine, "CombatReady")
+            writeTelemetry(engine, "CombatReady", findIceShardPlayer(engine), null)
+            log.info("[ASTD-Automation] scenario=${ASTDInGameAutomationScenario.ICE_SHARD_SCENARIO_ID} combat plugin initialized")
         } else if (ASTDInGameAutomationScenario.isGdEnabled()) {
             engine.setDoNotEndCombat(true)
             lockGdCamera(engine)
@@ -709,6 +747,18 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             if (combatEngine.isPaused) combatEngine.isPaused = false
             elapsed += amount.coerceAtLeast(0f)
             advanceSmScenario(combatEngine)
+            return
+        }
+        if (ASTDInGameAutomationScenario.isCuifengEnabled()) {
+            if (combatEngine.isPaused) combatEngine.isPaused = false
+            elapsed += amount.coerceAtLeast(0f)
+            advanceCuifengScenario(combatEngine)
+            return
+        }
+        if (ASTDInGameAutomationScenario.isIceShardMirvEnabled()) {
+            if (combatEngine.isPaused) combatEngine.isPaused = false
+            elapsed += amount.coerceAtLeast(0f)
+            advanceIceShardScenario(combatEngine)
             return
         }
         if (ASTDInGameAutomationScenario.isGdEnabled()) {
@@ -863,6 +913,28 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 ship?.allWeapons?.firstOrNull { it.id == ASTDInGameAutomationScenario.WEAPON_ID },
             )
             log.info("[ASTD-Automation] TPP captured $label at elapsed=$elapsed")
+            return
+        }
+        if (ASTDInGameAutomationScenario.isCuifengEnabled()) {
+            if (!completed || visualFramesWritten >= 3) return
+            // 捕获帧间隔 0.6s：鱼雷弹流/十字辉星/爆炸星云在三帧内进入捕获帧。
+            if (visualFramesWritten > 0 && elapsed - lastVisualFrameAt < 0.6f) return
+            lockCuifengCamera(combatEngine)
+            lastVisualFrameAt = elapsed
+            visualFramesWritten++
+            writeDiagnostics(combatEngine, "Completed", findCuifengPlayer(combatEngine))
+            writeTelemetry(combatEngine, "Completed", findCuifengPlayer(combatEngine), null)
+            return
+        }
+        if (ASTDInGameAutomationScenario.isIceShardMirvEnabled()) {
+            if (!completed || visualFramesWritten >= 3) return
+            // 捕获帧间隔 0.6s：分裂爆发/冰晶散布/附着星云在三帧内进入捕获帧。
+            if (visualFramesWritten > 0 && elapsed - lastVisualFrameAt < 0.6f) return
+            lockIceShardCamera(combatEngine)
+            lastVisualFrameAt = elapsed
+            visualFramesWritten++
+            writeDiagnostics(combatEngine, "Completed", findIceShardPlayer(combatEngine))
+            writeTelemetry(combatEngine, "Completed", findIceShardPlayer(combatEngine), null)
             return
         }
         if (ASTDInGameAutomationScenario.isQjEnabled()) {
@@ -4862,6 +4934,604 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     }
 
 
+    // === 摧锋鱼雷场景（装配 / 反舰目标选择+二段式调速器 / 自适应增伤+硬辐推进+AOE+十字辉星星云证据） ===
+
+    private fun findCuifengPlayer(engine: CombatEngineAPI): ShipAPI? =
+        engine.ships.firstOrNull { ship -> ship.owner == 0 && ship.hullSpec?.hullId == CUIFENG_PLAYER_HULL && !ship.isFighter }
+
+    private fun findCuifengCruiser(engine: CombatEngineAPI): ShipAPI? =
+        engine.ships.firstOrNull { ship -> ship.owner != 0 && ship.hullSpec?.hullId == CUIFENG_CRUISER_HULL && !ship.isFighter }
+
+    private fun findCuifengFrigate(engine: CombatEngineAPI): ShipAPI? =
+        engine.ships.firstOrNull { ship -> ship.owner != 0 && ship.hullSpec?.hullId == CUIFENG_FRIGATE_HULL && !ship.isFighter }
+
+    private fun findCuifengTorpedo(ship: ShipAPI?): WeaponAPI? =
+        ship?.allWeapons?.firstOrNull { it.id == ASTDInGameAutomationScenario.CUIFENG_TORPEDO_WEAPON_ID }
+
+    private fun findCuifengLauncher(ship: ShipAPI?): WeaponAPI? =
+        ship?.allWeapons?.firstOrNull { it.id == ASTDInGameAutomationScenario.CUIFENG_LAUNCHER_WEAPON_ID }
+
+    private fun cuifengTeleCount(engine: CombatEngineAPI, key: String): Int = engine.customData[key] as? Int ?: 0
+
+    private fun lockCuifengCamera(engine: CombatEngineAPI) {
+        val viewport = engine.viewport
+        val displayWidth = try {
+            Display.getWidth().takeIf { it > 0 } ?: 2560
+        } catch (_: Throwable) {
+            2560
+        }
+        val displayHeight = try {
+            Display.getHeight().takeIf { it > 0 } ?: 1440
+        } catch (_: Throwable) {
+            1440
+        }
+        val displayAspect = displayWidth.toFloat() / displayHeight.toFloat()
+        val visibleWidth = CUIFENG_CAMERA_VISIBLE_HEIGHT * displayAspect
+        viewport.isExternalControl = true
+        viewport.set(
+            CUIFENG_CAMERA_CENTER.x - visibleWidth * 0.5f,
+            CUIFENG_CAMERA_CENTER.y - CUIFENG_CAMERA_VISIBLE_HEIGHT * 0.5f,
+            visibleWidth,
+            CUIFENG_CAMERA_VISIBLE_HEIGHT,
+        )
+        viewport.isEverythingNearViewport = true
+    }
+
+    /** 强制部署 mission reserves（玩家狮鹫 / 敌方猎鹰级巡洋舰 / 敌方猎犬级护卫舰均非旗舰，范式同 deploySmReserveShips）。 */
+    private fun deployCuifengReserveShips(engine: CombatEngineAPI) {
+        engine.setDoNotEndCombat(true)
+        for (side in listOf(FleetSide.PLAYER, FleetSide.ENEMY)) {
+            val manager = engine.getFleetManager(side)
+            manager.isSuppressDeploymentMessages = true
+            for (member in manager.reservesCopy.toList()) {
+                val anchor = when {
+                    side == FleetSide.PLAYER && member.hullId == CUIFENG_PLAYER_HULL -> CUIFENG_PLAYER_ANCHOR
+                    side == FleetSide.ENEMY && member.hullId == CUIFENG_CRUISER_HULL -> CUIFENG_CRUISER_ANCHOR
+                    side == FleetSide.ENEMY && member.hullId == CUIFENG_FRIGATE_HULL -> CUIFENG_FRIGATE_ANCHOR
+                    else -> continue
+                }
+                val facing = if (side == FleetSide.ENEMY) 180f else 0f
+                manager.spawnFleetMember(member, Vector2f(anchor), facing, 0f)
+                manager.removeFromReserves(member)
+            }
+        }
+    }
+
+    private fun transitionCuifengPhase(next: String) {
+        log.info("[ASTD-Automation] cuifeng phase $cuifengPhase -> $next at ${"%.2f".format(elapsed)}s")
+        cuifengPhase = next
+        cuifengPhaseStartedAt = elapsed
+    }
+
+    /**
+     * 舞台保活与站位（范式同 stabilizeSmShips）：三舰逐帧奶 + 辐能清零 + 钉死锚点 +
+     * force fire 独占驱动（autofire 关闭）。玩家武器瞄准敌方巡洋舰（反舰口径最近目标，
+     * 鱼雷 AI 自选目标与发射指向一致）；巡洋舰盾常开（护盾命中硬辐推进观测面），
+     * 猎犬级护卫舰无盾贴身摆放（150su 全额面板 AOE 连带观测面）。
+     */
+    private fun stabilizeCuifengShips(engine: CombatEngineAPI, playerFire: Boolean) {
+        val player = findCuifengPlayer(engine)
+        val cruiser = findCuifengCruiser(engine)
+        if (player != null && !player.isHulk) {
+            engine.setPlayerShipExternal(player)
+            stabilizeShip(player, CUIFENG_PLAYER_ANCHOR, 0f, allowFire = true, preserveAI = true)
+            player.hitpoints = player.maxHitpoints
+            player.fluxTracker.currFlux = 0f
+            player.fluxTracker.hardFlux = 0f
+            player.shield?.let { if (it.isOn) it.toggleOff() }
+            setCuifengAutofire(player, false)
+            player.shipTarget = cruiser
+            for (weapon in listOfNotNull(findCuifengTorpedo(player), findCuifengLauncher(player))) {
+                if (cruiser != null) weapon.currAngle = Misc.getAngleInDegrees(weapon.location, cruiser.location)
+                weapon.setForceFireOneFrame(playerFire)
+            }
+        }
+        if (cruiser != null && !cruiser.isHulk) {
+            stabilizeShip(cruiser, CUIFENG_CRUISER_ANCHOR, 180f, allowFire = false)
+            cruiser.hitpoints = cruiser.maxHitpoints
+            cruiser.fluxTracker.currFlux = 0f
+            cruiser.fluxTracker.hardFlux = 0f
+            // 盾常开：鱼雷直击落盾触发硬辐推进（辐能逐帧清零不影响遥测计数，只保舞台不超载）。
+            cruiser.shield?.let { if (!it.isOn) it.toggleOn() }
+        }
+        val frigate = findCuifengFrigate(engine)
+        if (frigate != null && !frigate.isHulk) {
+            stabilizeShip(frigate, CUIFENG_FRIGATE_ANCHOR, 180f, allowFire = false)
+            frigate.hitpoints = frigate.maxHitpoints
+            frigate.fluxTracker.currFlux = 0f
+            frigate.fluxTracker.hardFlux = 0f
+            frigate.shield?.let { if (it.isOn) it.toggleOff() }
+        }
+    }
+
+    /** 摧锋武器组 autofire 总开关（范式同 setSmAutofire）：force fire 独占驱动时关闭。 */
+    private fun setCuifengAutofire(ship: ShipAPI?, enabled: Boolean) {
+        ship ?: return
+        for (group in ship.weaponGroupsCopy) {
+            if (group.weaponsCopy.none {
+                    it.id == ASTDInGameAutomationScenario.CUIFENG_TORPEDO_WEAPON_ID ||
+                            it.id == ASTDInGameAutomationScenario.CUIFENG_LAUNCHER_WEAPON_ID
+                }
+            ) continue
+            if (enabled && !group.isAutofiring) group.toggleOn()
+            if (!enabled && group.isAutofiring) group.toggleOff()
+        }
+    }
+
+    /**
+     * 摧锋鱼雷相位机（玩家版基础验证，不照搬辉星敌版三档）：
+     * MOUNT（装配校验：小/中导弹槽/射程 1600/ammo 2/5/OP 8/16/no_drop 两件套/弹体 VFX 登记）→
+     * STRIKE（反舰目标选择 ≥1 + 自适应增伤 ≥1 + 护盾命中硬辐推进 ≥1 + 命中特效 ≥1）→
+     * COMPLETED（持续开火做截图舞台，近期有命中特效才上报令十字辉星/星云/拖尾入帧）。
+     */
+    private fun advanceCuifengScenario(engine: CombatEngineAPI) {
+        engine.setDoNotEndCombat(true)
+        deployCuifengReserveShips(engine)
+        lockCuifengCamera(engine)
+
+        val player = findCuifengPlayer(engine)
+        val cruiser = findCuifengCruiser(engine)
+        val frigate = findCuifengFrigate(engine)
+        val torpedo = findCuifengTorpedo(player)
+        val launcher = findCuifengLauncher(player)
+
+        val targetSelected = cuifengTeleCount(engine, CuifengTorpedoAI.TELE_TARGET_SELECTED)
+        val governedFrames = cuifengTeleCount(engine, CuifengTorpedoAI.TELE_GOVERNED_FRAMES)
+        val adaptiveHits = cuifengTeleCount(engine, CuifengTorpedoStrikeImpl.TELE_ADAPTIVE_HITS)
+        val hardFluxPushes = cuifengTeleCount(engine, CuifengTorpedoStrikeImpl.TELE_HARD_FLUX_PUSHES)
+        val aoeHits = cuifengTeleCount(engine, CuifengTorpedoStrikeImpl.TELE_AOE_HITS)
+        val aoeShipHits = cuifengTeleCount(engine, CuifengTorpedoStrikeImpl.TELE_AOE_SHIP_HITS)
+        val impactVfx = cuifengTeleCount(engine, CuifengTorpedoStrikeImpl.TELE_IMPACT_VFX)
+        val crossFlare = cuifengTeleCount(engine, CuifengTorpedoVfx.TELEMETRY_CROSS_FLARE)
+        val nebulaBurst = cuifengTeleCount(engine, CuifengTorpedoVfx.TELEMETRY_NEBULA_BURST)
+
+        when (cuifengPhase) {
+            CUIFENG_PHASE_MOUNT -> {
+                stabilizeCuifengShips(engine, playerFire = false)
+                if (elapsed - cuifengPhaseStartedAt >= CUIFENG_MOUNT_SETTLE_SECONDS) {
+                    val torpedoSlot = torpedo?.slot?.id
+                    val launcherSlot = launcher?.slot?.id
+                    val torpedoRange = torpedo?.spec?.maxRange ?: -1f
+                    val launcherRange = launcher?.spec?.maxRange ?: -1f
+                    val torpedoOp = try {
+                        torpedo?.spec?.getOrdnancePointCost(null, null) ?: -1f
+                    } catch (_: Throwable) {
+                        -1f
+                    }
+                    val launcherOp = try {
+                        launcher?.spec?.getOrdnancePointCost(null, null) ?: -1f
+                    } catch (_: Throwable) {
+                        -1f
+                    }
+                    val tagsOk = torpedo?.spec?.tags?.containsAll(CUIFENG_REQUIRED_TAGS) == true &&
+                            launcher?.spec?.tags?.containsAll(CUIFENG_REQUIRED_TAGS) == true
+                    val slotOk = torpedo?.slot?.slotSize == WeaponAPI.WeaponSize.SMALL &&
+                            torpedo?.slot?.weaponType == WeaponAPI.WeaponType.MISSILE &&
+                            launcher?.slot?.slotSize == WeaponAPI.WeaponSize.MEDIUM &&
+                            launcher?.slot?.weaponType == WeaponAPI.WeaponType.MISSILE
+                    when {
+                        torpedo == null || launcher == null ||
+                                torpedoSlot != CUIFENG_PLAYER_TORPEDO_SLOT || launcherSlot != CUIFENG_PLAYER_LAUNCHER_SLOT -> {
+                            failureReason = "cuifeng mount mismatch: torpedoSlot=$torpedoSlot launcherSlot=$launcherSlot"
+                            transitionCuifengPhase(CUIFENG_PHASE_FAILED)
+                        }
+
+                        !slotOk -> {
+                            failureReason =
+                                "cuifeng slot type/size mismatch: torpedo=${torpedo.slot?.slotSize}/${torpedo.slot?.weaponType} launcher=${launcher.slot?.slotSize}/${launcher.slot?.weaponType}"
+                            transitionCuifengPhase(CUIFENG_PHASE_FAILED)
+                        }
+
+                        kotlin.math.abs(torpedoRange - CUIFENG_EXPECT_RANGE) > CUIFENG_RANGE_TOLERANCE ||
+                                kotlin.math.abs(launcherRange - CUIFENG_EXPECT_RANGE) > CUIFENG_RANGE_TOLERANCE -> {
+                            failureReason = "cuifeng range=$torpedoRange/$launcherRange, expect $CUIFENG_EXPECT_RANGE"
+                            transitionCuifengPhase(CUIFENG_PHASE_FAILED)
+                        }
+
+                        torpedo.spec?.maxAmmo != CUIFENG_TORPEDO_AMMO || launcher.spec?.maxAmmo != CUIFENG_LAUNCHER_AMMO -> {
+                            failureReason = "cuifeng spec maxAmmo=${torpedo.spec?.maxAmmo}/${launcher.spec?.maxAmmo}, expect $CUIFENG_TORPEDO_AMMO/$CUIFENG_LAUNCHER_AMMO"
+                            transitionCuifengPhase(CUIFENG_PHASE_FAILED)
+                        }
+
+                        kotlin.math.abs(torpedoOp - CUIFENG_TORPEDO_OP) > 0.01f || kotlin.math.abs(launcherOp - CUIFENG_LAUNCHER_OP) > 0.01f -> {
+                            failureReason = "cuifeng OP=$torpedoOp/$launcherOp, expect $CUIFENG_TORPEDO_OP/$CUIFENG_LAUNCHER_OP"
+                            transitionCuifengPhase(CUIFENG_PHASE_FAILED)
+                        }
+
+                        !tagsOk -> {
+                            failureReason = "cuifeng tags 缺 no_drop 两件套: torpedo=${torpedo.spec?.tags} launcher=${launcher.spec?.tags}"
+                            transitionCuifengPhase(CUIFENG_PHASE_FAILED)
+                        }
+
+                        !ProjectileVfxSpecs.has(ASTDInGameAutomationScenario.CUIFENG_PROJECTILE_SPEC_ID) -> {
+                            failureReason = "cuifeng projectile VFX 未登记: torpedo shot"
+                            transitionCuifengPhase(CUIFENG_PHASE_FAILED)
+                        }
+
+                        else -> {
+                            log.info(
+                                "[ASTD-Automation] cuifeng mount ok: slots=$torpedoSlot/$launcherSlot range=$torpedoRange " +
+                                        "ammo=${torpedo.spec?.maxAmmo}/${launcher.spec?.maxAmmo} " +
+                                        "OP=$torpedoOp/$launcherOp tags=no_drop 两件套",
+                            )
+                            transitionCuifengPhase(CUIFENG_PHASE_STRIKE)
+                        }
+                    }
+                }
+            }
+
+            CUIFENG_PHASE_STRIKE -> {
+                stabilizeCuifengShips(engine, playerFire = true)
+                // 携弹续航（dev 舞台）：2+5 携弹耗尽即补满，令弹流持续到证据齐备（辉星撞线相位同款口径）。
+                torpedo?.let { if (it.ammo <= 0) it.resetAmmo() }
+                launcher?.let { if (it.ammo <= 0) it.resetAmmo() }
+                if (targetSelected >= 1 && adaptiveHits >= 1 && impactVfx >= 1 && hardFluxPushes >= 1) {
+                    log.info(
+                        "[ASTD-Automation] cuifeng strike evidence: sel=$targetSelected gov=$governedFrames " +
+                                "adaptive=$adaptiveHits hardFlux=$hardFluxPushes aoe=$aoeHits/$aoeShipHits " +
+                                "vfx=$impactVfx flare=$crossFlare nebula=$nebulaBurst" +
+                                "（反舰目标选择 + 自适应增伤 + 护盾硬辐推进 + 150su AOE + 十字辉星/星云）",
+                    )
+                    transitionCuifengPhase(CUIFENG_PHASE_COMPLETED)
+                }
+            }
+
+            CUIFENG_PHASE_COMPLETED -> {
+                stabilizeCuifengShips(engine, playerFire = true)
+                // 截图舞台携弹续航：令鱼雷弹流与命中特效持续入帧。
+                torpedo?.let { if (it.ammo <= 0) it.resetAmmo() }
+                launcher?.let { if (it.ammo <= 0) it.resetAmmo() }
+            }
+        }
+
+        // 最近一次摧锋命中特效时刻（COMPLETED 截图门控：事件近期发生才上报，令十字辉星/星云/拖尾入帧）
+        if (impactVfx > cuifengLastTrackedImpactVfxCount) {
+            cuifengLastTrackedImpactVfxCount = impactVfx
+            cuifengLastImpactVfxAt = elapsed
+        }
+
+        val state = when {
+            player == null || cruiser == null || frigate == null -> {
+                if (elapsed > 12f) {
+                    failureReason = "cuifeng ships missing: player=${player != null}, cruiser=${cruiser != null}, frigate=${frigate != null}"
+                    "Failed"
+                } else {
+                    "CombatReady"
+                }
+            }
+
+            cuifengPhase == CUIFENG_PHASE_FAILED -> "Failed"
+            cuifengPhase != CUIFENG_PHASE_COMPLETED &&
+                    elapsed - cuifengPhaseStartedAt > CUIFENG_PHASE_TIMEOUT -> {
+                failureReason =
+                    "cuifeng phase timeout: $cuifengPhase（sel=$targetSelected gov=$governedFrames adaptive=$adaptiveHits hardFlux=$hardFluxPushes aoe=$aoeHits/$aoeShipHits vfx=$impactVfx flare=$crossFlare nebula=$nebulaBurst）"
+                "Failed"
+            }
+
+            cuifengPhase == CUIFENG_PHASE_COMPLETED -> {
+                val recentEvent = cuifengLastImpactVfxAt >= 0f && elapsed - cuifengLastImpactVfxAt <= CUIFENG_COMPLETED_EVENT_WINDOW
+                if (recentEvent || elapsed - cuifengPhaseStartedAt >= CUIFENG_COMPLETED_STAGE_TIMEOUT) "Completed" else "CombatReady"
+            }
+
+            else -> "CombatReady"
+        }
+        if (state == "Completed" && !completed) {
+            completed = true
+            completedAt = elapsed
+            log.info("[ASTD-Automation] Completed: cuifeng_torpedo_basic mount/strike (target-select/adaptive/hard-flux/aoe/vfx) evidence observed")
+        }
+        if (elapsed - lastWriteAt >= 0.18f || state == "Completed" || state == "Failed") {
+            lastWriteAt = elapsed
+            writeDiagnostics(engine, state, player)
+            writeTelemetry(engine, state, player, launcher)
+        }
+    }
+
+
+    // === 源生冰晶 MIRV 场景（装配 / 引信注册+600su 分裂 15 枚 / 附着周期伤害+增伤+星云证据） ===
+
+    private fun findIceShardPlayer(engine: CombatEngineAPI): ShipAPI? =
+        engine.ships.firstOrNull { ship -> ship.owner == 0 && ship.hullSpec?.hullId == ICE_SHARD_PLAYER_HULL && !ship.isFighter }
+
+    private fun findIceShardTarget(engine: CombatEngineAPI): ShipAPI? =
+        engine.ships.firstOrNull { ship -> ship.owner != 0 && ship.hullSpec?.hullId == ICE_SHARD_TARGET_HULL && !ship.isFighter }
+
+    private fun findIceShardMirv(ship: ShipAPI?): WeaponAPI? =
+        ship?.allWeapons?.firstOrNull { it.id == ASTDInGameAutomationScenario.ICE_SHARD_MIRV_WEAPON_ID }
+
+    private fun findIceShardPod(ship: ShipAPI?): WeaponAPI? =
+        ship?.allWeapons?.firstOrNull { it.id == ASTDInGameAutomationScenario.ICE_SHARD_POD_WEAPON_ID }
+
+    private fun iceShardTeleCount(engine: CombatEngineAPI, key: String): Int = engine.customData[key] as? Int ?: 0
+
+    private fun lockIceShardCamera(engine: CombatEngineAPI) {
+        val viewport = engine.viewport
+        val displayWidth = try {
+            Display.getWidth().takeIf { it > 0 } ?: 2560
+        } catch (_: Throwable) {
+            2560
+        }
+        val displayHeight = try {
+            Display.getHeight().takeIf { it > 0 } ?: 1440
+        } catch (_: Throwable) {
+            1440
+        }
+        val displayAspect = displayWidth.toFloat() / displayHeight.toFloat()
+        val visibleWidth = ICE_SHARD_CAMERA_VISIBLE_HEIGHT * displayAspect
+        viewport.isExternalControl = true
+        viewport.set(
+            ICE_SHARD_CAMERA_CENTER.x - visibleWidth * 0.5f,
+            ICE_SHARD_CAMERA_CENTER.y - ICE_SHARD_CAMERA_VISIBLE_HEIGHT * 0.5f,
+            visibleWidth,
+            ICE_SHARD_CAMERA_VISIBLE_HEIGHT,
+        )
+        viewport.isEverythingNearViewport = true
+    }
+
+    /** 强制部署 mission reserves（玩家狮鹫 / 敌方统治者级巡洋舰靶舰均非旗舰，范式同 deploySmReserveShips）。 */
+    private fun deployIceShardReserveShips(engine: CombatEngineAPI) {
+        engine.setDoNotEndCombat(true)
+        for (side in listOf(FleetSide.PLAYER, FleetSide.ENEMY)) {
+            val manager = engine.getFleetManager(side)
+            manager.isSuppressDeploymentMessages = true
+            for (member in manager.reservesCopy.toList()) {
+                val anchor = when {
+                    side == FleetSide.PLAYER && member.hullId == ICE_SHARD_PLAYER_HULL -> ICE_SHARD_PLAYER_ANCHOR
+                    side == FleetSide.ENEMY && member.hullId == ICE_SHARD_TARGET_HULL -> ICE_SHARD_TARGET_ANCHOR
+                    else -> continue
+                }
+                val facing = if (side == FleetSide.ENEMY) 180f else 0f
+                manager.spawnFleetMember(member, Vector2f(anchor), facing, 0f)
+                manager.removeFromReserves(member)
+            }
+        }
+    }
+
+    private fun transitionIceShardPhase(next: String) {
+        log.info("[ASTD-Automation] ice shard phase $iceShardPhase -> $next at ${"%.2f".format(elapsed)}s")
+        iceShardPhase = next
+        iceShardPhaseStartedAt = elapsed
+    }
+
+    /**
+     * 舞台保活与站位（范式同 stabilizeSmShips）：双舰逐帧奶 + 辐能清零 + 钉死锚点 +
+     * force fire 独占驱动（autofire 关闭）。玩家武器瞄准敌方巡洋舰（原版追踪导弹 AI
+     * 目标源 = shipTarget，分裂引信读 AI 目标判定 600su）；靶舰盾常关
+     * （子冰晶仅命中舰体附着，命中护盾无附加效果）。
+     */
+    private fun stabilizeIceShardShips(engine: CombatEngineAPI, playerFire: Boolean) {
+        val player = findIceShardPlayer(engine)
+        val target = findIceShardTarget(engine)
+        if (player != null && !player.isHulk) {
+            engine.setPlayerShipExternal(player)
+            stabilizeShip(player, ICE_SHARD_PLAYER_ANCHOR, 0f, allowFire = true, preserveAI = true)
+            player.hitpoints = player.maxHitpoints
+            player.fluxTracker.currFlux = 0f
+            player.fluxTracker.hardFlux = 0f
+            player.shield?.let { if (it.isOn) it.toggleOff() }
+            setIceShardAutofire(player, false)
+            player.shipTarget = target
+            for (weapon in listOfNotNull(findIceShardMirv(player), findIceShardPod(player))) {
+                if (target != null) weapon.currAngle = Misc.getAngleInDegrees(weapon.location, target.location)
+                weapon.setForceFireOneFrame(playerFire)
+            }
+        }
+        if (target != null && !target.isHulk) {
+            stabilizeShip(target, ICE_SHARD_TARGET_ANCHOR, 180f, allowFire = false)
+            target.hitpoints = target.maxHitpoints
+            target.fluxTracker.currFlux = 0f
+            target.fluxTracker.hardFlux = 0f
+            target.shield?.let { if (it.isOn) it.toggleOff() }
+        }
+    }
+
+    /** 冰晶 MIRV 武器组 autofire 总开关（范式同 setSmAutofire）：force fire 独占驱动时关闭。 */
+    private fun setIceShardAutofire(ship: ShipAPI?, enabled: Boolean) {
+        ship ?: return
+        for (group in ship.weaponGroupsCopy) {
+            if (group.weaponsCopy.none {
+                    it.id == ASTDInGameAutomationScenario.ICE_SHARD_MIRV_WEAPON_ID ||
+                            it.id == ASTDInGameAutomationScenario.ICE_SHARD_POD_WEAPON_ID
+                }
+            ) continue
+            if (enabled && !group.isAutofiring) group.toggleOn()
+            if (!enabled && group.isAutofiring) group.toggleOff()
+        }
+    }
+
+    /**
+     * 源生冰晶 MIRV 相位机（玩家版基础验证）：
+     * MOUNT（装配校验：小/中导弹槽/射程 1600/ammo 1/2/发射舱 burst 2/OP 6/12/no_drop 两件套/弹体 VFX 登记）→
+     * SPLIT（母弹引信注册 ≥1 + 分裂 ≥1 + 子冰晶生成数 == 15×分裂次数）→
+     * ATTACH（子冰晶命中舰体附着 ≥1 + 周期伤害结算 ≥1）→
+     * COMPLETED（持续开火做截图舞台，近期有附着/周期伤害事件才上报令附着星云/冰晶散布入帧）。
+     */
+    private fun advanceIceShardScenario(engine: CombatEngineAPI) {
+        engine.setDoNotEndCombat(true)
+        deployIceShardReserveShips(engine)
+        lockIceShardCamera(engine)
+
+        val player = findIceShardPlayer(engine)
+        val target = findIceShardTarget(engine)
+        val mirv = findIceShardMirv(player)
+        val pod = findIceShardPod(player)
+
+        val fusesRegistered = iceShardTeleCount(engine, IceShardMirvOnFireEffect.TELEMETRY_FUSES_REGISTERED)
+        val splits = IceShardMirvSplitScript.splits(engine)
+        val shardsSpawned = IceShardMirvSplitScript.shardsSpawned(engine)
+        val lastSplitDist = engine.customData[IceShardMirvSplitScript.TELEMETRY_LAST_SPLIT_DIST] as? Float ?: -1f
+        val attaches = iceShardTeleCount(engine, IceShardAttachScript.TELEMETRY_ATTACHES)
+        val ticks = iceShardTeleCount(engine, IceShardAttachScript.TELEMETRY_TICKS)
+        val splitVfx = iceShardTeleCount(engine, IceShardMirvVfx.TELEMETRY_SPLIT_VFX)
+        val attachNebula = iceShardTeleCount(engine, IceShardMirvVfx.TELEMETRY_ATTACH_NEBULA)
+
+        when (iceShardPhase) {
+            ICE_SHARD_PHASE_MOUNT -> {
+                stabilizeIceShardShips(engine, playerFire = false)
+                if (elapsed - iceShardPhaseStartedAt >= ICE_SHARD_MOUNT_SETTLE_SECONDS) {
+                    val mirvSlot = mirv?.slot?.id
+                    val podSlot = pod?.slot?.id
+                    val mirvRange = mirv?.spec?.maxRange ?: -1f
+                    val podRange = pod?.spec?.maxRange ?: -1f
+                    val mirvOp = try {
+                        mirv?.spec?.getOrdnancePointCost(null, null) ?: -1f
+                    } catch (_: Throwable) {
+                        -1f
+                    }
+                    val podOp = try {
+                        pod?.spec?.getOrdnancePointCost(null, null) ?: -1f
+                    } catch (_: Throwable) {
+                        -1f
+                    }
+                    val tagsOk = mirv?.spec?.tags?.containsAll(ICE_SHARD_REQUIRED_TAGS) == true &&
+                            pod?.spec?.tags?.containsAll(ICE_SHARD_REQUIRED_TAGS) == true
+                    val slotOk = mirv?.slot?.slotSize == WeaponAPI.WeaponSize.SMALL &&
+                            mirv?.slot?.weaponType == WeaponAPI.WeaponType.MISSILE &&
+                            pod?.slot?.slotSize == WeaponAPI.WeaponSize.MEDIUM &&
+                            pod?.slot?.weaponType == WeaponAPI.WeaponType.MISSILE
+                    when {
+                        mirv == null || pod == null ||
+                                mirvSlot != ICE_SHARD_PLAYER_MIRV_SLOT || podSlot != ICE_SHARD_PLAYER_POD_SLOT -> {
+                            failureReason = "ice shard mount mismatch: mirvSlot=$mirvSlot podSlot=$podSlot"
+                            transitionIceShardPhase(ICE_SHARD_PHASE_FAILED)
+                        }
+
+                        !slotOk -> {
+                            failureReason =
+                                "ice shard slot type/size mismatch: mirv=${mirv.slot?.slotSize}/${mirv.slot?.weaponType} pod=${pod.slot?.slotSize}/${pod.slot?.weaponType}"
+                            transitionIceShardPhase(ICE_SHARD_PHASE_FAILED)
+                        }
+
+                        kotlin.math.abs(mirvRange - ICE_SHARD_EXPECT_RANGE) > ICE_SHARD_RANGE_TOLERANCE ||
+                                kotlin.math.abs(podRange - ICE_SHARD_EXPECT_RANGE) > ICE_SHARD_RANGE_TOLERANCE -> {
+                            failureReason = "ice shard range=$mirvRange/$podRange, expect $ICE_SHARD_EXPECT_RANGE"
+                            transitionIceShardPhase(ICE_SHARD_PHASE_FAILED)
+                        }
+
+                        mirv.spec?.maxAmmo != ICE_SHARD_MIRV_AMMO || pod.spec?.maxAmmo != ICE_SHARD_POD_AMMO -> {
+                            failureReason = "ice shard spec maxAmmo=${mirv.spec?.maxAmmo}/${pod.spec?.maxAmmo}, expect $ICE_SHARD_MIRV_AMMO/$ICE_SHARD_POD_AMMO"
+                            transitionIceShardPhase(ICE_SHARD_PHASE_FAILED)
+                        }
+
+                        pod.spec?.burstSize != ICE_SHARD_POD_BURST -> {
+                            failureReason = "ice shard pod burstSize=${pod.spec?.burstSize}, expect $ICE_SHARD_POD_BURST（发射舱单次两发）"
+                            transitionIceShardPhase(ICE_SHARD_PHASE_FAILED)
+                        }
+
+                        kotlin.math.abs(mirvOp - ICE_SHARD_MIRV_OP) > 0.01f || kotlin.math.abs(podOp - ICE_SHARD_POD_OP) > 0.01f -> {
+                            failureReason = "ice shard OP=$mirvOp/$podOp, expect $ICE_SHARD_MIRV_OP/$ICE_SHARD_POD_OP"
+                            transitionIceShardPhase(ICE_SHARD_PHASE_FAILED)
+                        }
+
+                        !tagsOk -> {
+                            failureReason = "ice shard tags 缺 no_drop 两件套: mirv=${mirv.spec?.tags} pod=${pod.spec?.tags}"
+                            transitionIceShardPhase(ICE_SHARD_PHASE_FAILED)
+                        }
+
+                        !ProjectileVfxSpecs.has(ASTDInGameAutomationScenario.ICE_SHARD_MIRV_PROJECTILE_SPEC_ID) -> {
+                            failureReason = "ice shard projectile VFX 未登记: mirv shot"
+                            transitionIceShardPhase(ICE_SHARD_PHASE_FAILED)
+                        }
+
+                        else -> {
+                            log.info(
+                                "[ASTD-Automation] ice shard mount ok: slots=$mirvSlot/$podSlot range=$mirvRange " +
+                                        "ammo=${mirv.spec?.maxAmmo}/${pod.spec?.maxAmmo} burst=${pod.spec?.burstSize} " +
+                                        "OP=$mirvOp/$podOp tags=no_drop 两件套",
+                            )
+                            transitionIceShardPhase(ICE_SHARD_PHASE_SPLIT)
+                        }
+                    }
+                }
+            }
+
+            ICE_SHARD_PHASE_SPLIT -> {
+                stabilizeIceShardShips(engine, playerFire = true)
+                // 携弹续航（dev 舞台）：1+2 携弹耗尽即补满，令母弹流持续到分裂证据齐备。
+                mirv?.let { if (it.ammo <= 0) it.resetAmmo() }
+                pod?.let { if (it.ammo <= 0) it.resetAmmo() }
+                if (fusesRegistered >= 1 && splits >= 1) {
+                    if (shardsSpawned != splits * ICE_SHARD_EXPECT_SHARDS_PER_SPLIT) {
+                        failureReason =
+                            "ice shard shardsSpawned=$shardsSpawned, expect ${splits * ICE_SHARD_EXPECT_SHARDS_PER_SPLIT}（15×splits，不足即有子冰晶生成失败）"
+                        transitionIceShardPhase(ICE_SHARD_PHASE_FAILED)
+                    } else {
+                        log.info(
+                            "[ASTD-Automation] ice shard split evidence: fuses=$fusesRegistered splits=$splits " +
+                                    "shards=$shardsSpawned lastSplitDist=${"%.0f".format(lastSplitDist)} splitVfx=$splitVfx" +
+                                    "（600su 分裂 15 枚子冰晶全数生成）",
+                        )
+                        transitionIceShardPhase(ICE_SHARD_PHASE_ATTACH)
+                    }
+                }
+            }
+
+            ICE_SHARD_PHASE_ATTACH -> {
+                stabilizeIceShardShips(engine, playerFire = true)
+                mirv?.let { if (it.ammo <= 0) it.resetAmmo() }
+                pod?.let { if (it.ammo <= 0) it.resetAmmo() }
+                if (attaches >= 1 && ticks >= 1) {
+                    log.info(
+                        "[ASTD-Automation] ice shard attach evidence: attaches=$attaches ticks=$ticks " +
+                                "attachNebula=$attachNebula（命中舰体附着 + 周期伤害 + 附着星云）",
+                    )
+                    transitionIceShardPhase(ICE_SHARD_PHASE_COMPLETED)
+                }
+            }
+
+            ICE_SHARD_PHASE_COMPLETED -> {
+                stabilizeIceShardShips(engine, playerFire = true)
+                // 截图舞台携弹续航：令母弹分裂与附着星云持续入帧。
+                mirv?.let { if (it.ammo <= 0) it.resetAmmo() }
+                pod?.let { if (it.ammo <= 0) it.resetAmmo() }
+            }
+        }
+
+        // 最近一次附着/周期伤害事件时刻（COMPLETED 截图门控：事件近期发生才上报，令附着星云入帧）
+        val eventCount = attaches + ticks
+        if (eventCount > iceShardLastTrackedEventCount) {
+            iceShardLastTrackedEventCount = eventCount
+            iceShardLastEventAt = elapsed
+        }
+
+        val state = when {
+            player == null || target == null -> {
+                if (elapsed > 12f) {
+                    failureReason = "ice shard ships missing: player=${player != null}, target=${target != null}"
+                    "Failed"
+                } else {
+                    "CombatReady"
+                }
+            }
+
+            iceShardPhase == ICE_SHARD_PHASE_FAILED -> "Failed"
+            iceShardPhase != ICE_SHARD_PHASE_COMPLETED &&
+                    elapsed - iceShardPhaseStartedAt > ICE_SHARD_PHASE_TIMEOUT -> {
+                failureReason =
+                    "ice shard phase timeout: $iceShardPhase（fuses=$fusesRegistered splits=$splits shards=$shardsSpawned lastSplitDist=${"%.0f".format(lastSplitDist)} attaches=$attaches ticks=$ticks splitVfx=$splitVfx nebula=$attachNebula）"
+                "Failed"
+            }
+
+            iceShardPhase == ICE_SHARD_PHASE_COMPLETED -> {
+                val recentEvent = iceShardLastEventAt >= 0f && elapsed - iceShardLastEventAt <= ICE_SHARD_COMPLETED_EVENT_WINDOW
+                if (recentEvent || elapsed - iceShardPhaseStartedAt >= ICE_SHARD_COMPLETED_STAGE_TIMEOUT) "Completed" else "CombatReady"
+            }
+
+            else -> "CombatReady"
+        }
+        if (state == "Completed" && !completed) {
+            completed = true
+            completedAt = elapsed
+            log.info("[ASTD-Automation] Completed: ice_shard_mirv_basic mount/split/attach (fuse/shards/attach-tick/vfx) evidence observed")
+        }
+        if (elapsed - lastWriteAt >= 0.18f || state == "Completed" || state == "Failed") {
+            lastWriteAt = elapsed
+            writeDiagnostics(engine, state, player)
+            writeTelemetry(engine, state, player, pod)
+        }
+    }
+
+
     // === 茑萝引力裂隙发生器场景（双甲板联队齐备 / 相位联动恢复 / 战机辐能返还 / 目标锁定+旋涡+真实光束+裂隙证据） ===
 
     private fun findGrgPlayer(engine: CombatEngineAPI): ShipAPI? =
@@ -7069,6 +7739,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             !ASTDInGameAutomationScenario.isGdEnabled() &&
             !ASTDInGameAutomationScenario.isHipEnabled() &&
             !ASTDInGameAutomationScenario.isSmEnabled() &&
+            !ASTDInGameAutomationScenario.isCuifengEnabled() &&
+            !ASTDInGameAutomationScenario.isIceShardMirvEnabled() &&
             !ASTDInGameAutomationScenario.isPlEnabled() &&
             !ASTDInGameAutomationScenario.isTrailPauseProbeEnabled() &&
             !ASTDInGameAutomationScenario.isGravRiftScenarioEnabled() &&
@@ -7110,6 +7782,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             ASTDInGameAutomationScenario.isTrailPauseProbeEnabled() -> ASTDInGameAutomationScenario.TPP_SCENARIO_ID
             ASTDInGameAutomationScenario.isPlEnabled() -> ASTDInGameAutomationScenario.PL_SCENARIO_ID
             ASTDInGameAutomationScenario.isSmEnabled() -> ASTDInGameAutomationScenario.SM_SCENARIO_ID
+            ASTDInGameAutomationScenario.isCuifengEnabled() -> ASTDInGameAutomationScenario.CUIFENG_SCENARIO_ID
+            ASTDInGameAutomationScenario.isIceShardMirvEnabled() -> ASTDInGameAutomationScenario.ICE_SHARD_SCENARIO_ID
             ASTDInGameAutomationScenario.isGdEnabled() -> ASTDInGameAutomationScenario.GD_SCENARIO_ID
             ASTDInGameAutomationScenario.isHipEnabled() -> ASTDInGameAutomationScenario.HIP_SCENARIO_ID
             ASTDInGameAutomationScenario.isSsEnabled() -> ASTDInGameAutomationScenario.SS_SCENARIO_ID
@@ -7343,6 +8017,62 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 appendLine("  \"smOwnLauncherProjectiles\": ${engine.projectiles.count { it.projectileSpecId == ASTDInGameAutomationScenario.SM_LAUNCHER_PROJECTILE_SPEC_ID }},")
                 appendLine("  \"smOwnPodProjectiles\": ${engine.projectiles.count { it.projectileSpecId == ASTDInGameAutomationScenario.SM_POD_PROJECTILE_SPEC_ID }},")
                 appendLine("  \"smEnemyMissilesInPlay\": ${engine.missiles.count { it.owner != 0 }},")
+            } else if (ASTDInGameAutomationScenario.isCuifengEnabled()) {
+                val cuifengPlayer = findCuifengPlayer(engine)
+                val cuifengTorpedo = findCuifengTorpedo(cuifengPlayer)
+                val cuifengLauncher = findCuifengLauncher(cuifengPlayer)
+                appendLine("  \"runtimeElapsedSeconds\": 0,")
+                appendLine("  \"runtimeTrackedCount\": ${vfxTelemetry.trackedCount},")
+                appendLine("  \"runtimeLastProjectileSpecId\": ${jsonString(vfxTelemetry.lastProjectileSpecId)},")
+                // ---- 机制证据（摧锋鱼雷烟测检查点：装配 / 反舰目标选择+调速器 / 自适应增伤+硬辐推进+AOE+特效）----
+                appendLine("  \"cuifengPhase\": \"$cuifengPhase\",")
+                appendLine("  \"cuifengTorpedoSlotId\": ${jsonString(cuifengTorpedo?.slot?.id)},")
+                appendLine("  \"cuifengLauncherSlotId\": ${jsonString(cuifengLauncher?.slot?.id)},")
+                appendLine("  \"cuifengWeaponRange\": ${formatFloat(cuifengTorpedo?.range ?: -1f)},")
+                appendLine("  \"cuifengTorpedoAmmo\": ${cuifengTorpedo?.ammo ?: -1},")
+                appendLine("  \"cuifengLauncherAmmo\": ${cuifengLauncher?.ammo ?: -1},")
+                appendLine("  \"cuifengTargetSelected\": ${cuifengTeleCount(engine, CuifengTorpedoAI.TELE_TARGET_SELECTED)},")
+                appendLine("  \"cuifengGovernedFrames\": ${cuifengTeleCount(engine, CuifengTorpedoAI.TELE_GOVERNED_FRAMES)},")
+                appendLine("  \"cuifengLastSpeedFactor\": ${formatFloat(engine.customData[CuifengTorpedoAI.TELE_LAST_SPEED_FACTOR] as? Float ?: -1f)},")
+                appendLine("  \"cuifengAdaptiveHits\": ${cuifengTeleCount(engine, CuifengTorpedoStrikeImpl.TELE_ADAPTIVE_HITS)},")
+                appendLine("  \"cuifengHardFluxPushes\": ${cuifengTeleCount(engine, CuifengTorpedoStrikeImpl.TELE_HARD_FLUX_PUSHES)},")
+                appendLine("  \"cuifengAoeHits\": ${cuifengTeleCount(engine, CuifengTorpedoStrikeImpl.TELE_AOE_HITS)},")
+                appendLine("  \"cuifengAoeShipHits\": ${cuifengTeleCount(engine, CuifengTorpedoStrikeImpl.TELE_AOE_SHIP_HITS)},")
+                appendLine("  \"cuifengImpactVfx\": ${cuifengTeleCount(engine, CuifengTorpedoStrikeImpl.TELE_IMPACT_VFX)},")
+                appendLine("  \"cuifengCrossFlare\": ${cuifengTeleCount(engine, CuifengTorpedoVfx.TELEMETRY_CROSS_FLARE)},")
+                appendLine("  \"cuifengNebulaBurst\": ${cuifengTeleCount(engine, CuifengTorpedoVfx.TELEMETRY_NEBULA_BURST)},")
+                appendLine("  \"cuifengLastAdaptiveBonusP\": ${formatFloat(engine.customData[CuifengTorpedoStrikeImpl.TELE_LAST_ADAPTIVE_BONUS + CuifengTorpedoStrikeImpl.TELE_OWNER_PLAYER] as? Float ?: -1f)},")
+                appendLine("  \"cuifengLastAdaptiveBonusE\": ${formatFloat(engine.customData[CuifengTorpedoStrikeImpl.TELE_LAST_ADAPTIVE_BONUS + CuifengTorpedoStrikeImpl.TELE_OWNER_ENEMY] as? Float ?: -1f)},")
+                appendLine("  \"cuifengLastHardFluxP\": ${formatFloat(engine.customData[CuifengTorpedoStrikeImpl.TELE_LAST_HARD_FLUX + CuifengTorpedoStrikeImpl.TELE_OWNER_PLAYER] as? Float ?: -1f)},")
+                appendLine("  \"cuifengLastHardFluxE\": ${formatFloat(engine.customData[CuifengTorpedoStrikeImpl.TELE_LAST_HARD_FLUX + CuifengTorpedoStrikeImpl.TELE_OWNER_ENEMY] as? Float ?: -1f)},")
+                appendLine("  \"cuifengLastAoeVictim\": ${jsonString(engine.customData[CuifengTorpedoStrikeImpl.TELE_LAST_AOE_VICTIM + CuifengTorpedoStrikeImpl.TELE_OWNER_PLAYER] as? String)},")
+                appendLine("  \"cuifengDevMode\": ${Global.getSettings().isDevMode},")
+                appendLine("  \"cuifengOwnProjectiles\": ${engine.projectiles.count { it.projectileSpecId == ASTDInGameAutomationScenario.CUIFENG_PROJECTILE_SPEC_ID }},")
+            } else if (ASTDInGameAutomationScenario.isIceShardMirvEnabled()) {
+                val iceShardPlayer = findIceShardPlayer(engine)
+                val iceShardMirv = findIceShardMirv(iceShardPlayer)
+                val iceShardPod = findIceShardPod(iceShardPlayer)
+                appendLine("  \"runtimeElapsedSeconds\": 0,")
+                appendLine("  \"runtimeTrackedCount\": ${vfxTelemetry.trackedCount},")
+                appendLine("  \"runtimeLastProjectileSpecId\": ${jsonString(vfxTelemetry.lastProjectileSpecId)},")
+                // ---- 机制证据（源生冰晶 MIRV 烟测检查点：装配 / 引信+分裂 / 附着周期伤害+特效）----
+                appendLine("  \"iceShardPhase\": \"$iceShardPhase\",")
+                appendLine("  \"iceShardMirvSlotId\": ${jsonString(iceShardMirv?.slot?.id)},")
+                appendLine("  \"iceShardPodSlotId\": ${jsonString(iceShardPod?.slot?.id)},")
+                appendLine("  \"iceShardWeaponRange\": ${formatFloat(iceShardMirv?.range ?: -1f)},")
+                appendLine("  \"iceShardMirvAmmo\": ${iceShardMirv?.ammo ?: -1},")
+                appendLine("  \"iceShardPodAmmo\": ${iceShardPod?.ammo ?: -1},")
+                appendLine("  \"iceShardFusesRegistered\": ${iceShardTeleCount(engine, IceShardMirvOnFireEffect.TELEMETRY_FUSES_REGISTERED)},")
+                appendLine("  \"iceShardSplits\": ${IceShardMirvSplitScript.splits(engine)},")
+                appendLine("  \"iceShardShardsSpawned\": ${IceShardMirvSplitScript.shardsSpawned(engine)},")
+                appendLine("  \"iceShardLastSplitDist\": ${formatFloat(engine.customData[IceShardMirvSplitScript.TELEMETRY_LAST_SPLIT_DIST] as? Float ?: -1f)},")
+                appendLine("  \"iceShardAttaches\": ${iceShardTeleCount(engine, IceShardAttachScript.TELEMETRY_ATTACHES)},")
+                appendLine("  \"iceShardTicks\": ${iceShardTeleCount(engine, IceShardAttachScript.TELEMETRY_TICKS)},")
+                appendLine("  \"iceShardSplitVfx\": ${iceShardTeleCount(engine, IceShardMirvVfx.TELEMETRY_SPLIT_VFX)},")
+                appendLine("  \"iceShardAttachNebula\": ${iceShardTeleCount(engine, IceShardMirvVfx.TELEMETRY_ATTACH_NEBULA)},")
+                appendLine("  \"iceShardOwnProjectiles\": ${engine.projectiles.count { it.projectileSpecId == ASTDInGameAutomationScenario.ICE_SHARD_MIRV_PROJECTILE_SPEC_ID }},")
+                // 子冰晶弹体 spec id（astd_ice_shard_sub_msl，目录登记口径；子武器隐藏不装配）。
+                appendLine("  \"iceShardSubShardsInPlay\": ${engine.missiles.count { it.projectileSpecId == "astd_ice_shard_sub_msl" }},")
             } else if (ASTDInGameAutomationScenario.isGdEnabled()) {
                 val gdPlayer = findGdPlayer(engine)
                 val gdTarget = findGdTarget(engine)
@@ -8689,6 +9419,75 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private const val SM_COMPLETED_EVENT_WINDOW = 2.5f
         private const val SM_COMPLETED_STAGE_TIMEOUT = 30f
         private const val SM_PHASE_TIMEOUT = 90f
+
+        // 摧锋鱼雷场景：相位机、锚点与期望证据（玩家版基础验证，不照搬辉星敌版三档）。
+        private const val CUIFENG_PHASE_MOUNT = "MOUNT"
+        private const val CUIFENG_PHASE_STRIKE = "STRIKE"
+        private const val CUIFENG_PHASE_COMPLETED = "COMPLETED"
+        private const val CUIFENG_PHASE_FAILED = "FAILED"
+        private const val CUIFENG_PLAYER_HULL = "gryphon"
+        private const val CUIFENG_CRUISER_HULL = "eagle"
+        private const val CUIFENG_FRIGATE_HULL = "hound"
+        private const val CUIFENG_PLAYER_LAUNCHER_SLOT = "WS 008"
+        private const val CUIFENG_PLAYER_TORPEDO_SLOT = "WS 010"
+        private val CUIFENG_PLAYER_ANCHOR = Vector2f(-700f, 0f)
+        private val CUIFENG_CRUISER_ANCHOR = Vector2f(600f, 0f)
+
+        // 护卫舰靶舰贴身巡洋舰摆放（150su 全额面板 AOE 连带观测面；猎犬级无盾）。
+        private val CUIFENG_FRIGATE_ANCHOR = Vector2f(740f, 110f)
+        private val CUIFENG_CAMERA_CENTER = Vector2f(150f, 30f)
+        private const val CUIFENG_CAMERA_VISIBLE_HEIGHT = 1700f
+        private const val CUIFENG_MOUNT_SETTLE_SECONDS = 0.6f
+
+        // MOUNT 相位校验：射程 1600 / ammo 2/5 / OP 8/16 / no_drop 两件套（weapon_data.csv 口径）。
+        private const val CUIFENG_EXPECT_RANGE = 1600f
+        private const val CUIFENG_RANGE_TOLERANCE = 5f
+        private const val CUIFENG_TORPEDO_AMMO = 2
+        private const val CUIFENG_LAUNCHER_AMMO = 5
+        private const val CUIFENG_TORPEDO_OP = 8f
+        private const val CUIFENG_LAUNCHER_OP = 16f
+        private val CUIFENG_REQUIRED_TAGS = setOf("no_drop", "no_drop_salvage")
+
+        // COMPLETED 截图门控：命中特效近 2.5s 内发生才上报（十字辉星/星云/拖尾入帧）；保底舞台超时。
+        private const val CUIFENG_COMPLETED_EVENT_WINDOW = 2.5f
+        private const val CUIFENG_COMPLETED_STAGE_TIMEOUT = 30f
+        private const val CUIFENG_PHASE_TIMEOUT = 90f
+
+        // 源生冰晶 MIRV 场景：相位机、锚点与期望证据（玩家版基础验证）。
+        private const val ICE_SHARD_PHASE_MOUNT = "MOUNT"
+        private const val ICE_SHARD_PHASE_SPLIT = "SPLIT"
+        private const val ICE_SHARD_PHASE_ATTACH = "ATTACH"
+        private const val ICE_SHARD_PHASE_COMPLETED = "COMPLETED"
+        private const val ICE_SHARD_PHASE_FAILED = "FAILED"
+        private const val ICE_SHARD_PLAYER_HULL = "gryphon"
+        private const val ICE_SHARD_TARGET_HULL = "dominator"
+        private const val ICE_SHARD_PLAYER_POD_SLOT = "WS 008"
+        private const val ICE_SHARD_PLAYER_MIRV_SLOT = "WS 010"
+        private val ICE_SHARD_PLAYER_ANCHOR = Vector2f(-700f, 0f)
+
+        // 靶舰距玩家 1300su（<1600 射程）：母弹 ≤600su 分裂后子冰晶射程 1000su 必然覆盖。
+        private val ICE_SHARD_TARGET_ANCHOR = Vector2f(600f, 0f)
+        private val ICE_SHARD_CAMERA_CENTER = Vector2f(150f, 0f)
+        private const val ICE_SHARD_CAMERA_VISIBLE_HEIGHT = 1700f
+        private const val ICE_SHARD_MOUNT_SETTLE_SECONDS = 0.6f
+
+        // MOUNT 相位校验：射程 1600 / ammo 1/2 / 发射舱 burst 2 / OP 6/12 / no_drop 两件套（weapon_data.csv 口径）。
+        private const val ICE_SHARD_EXPECT_RANGE = 1600f
+        private const val ICE_SHARD_RANGE_TOLERANCE = 5f
+        private const val ICE_SHARD_MIRV_AMMO = 1
+        private const val ICE_SHARD_POD_AMMO = 2
+        private const val ICE_SHARD_POD_BURST = 2
+        private const val ICE_SHARD_MIRV_OP = 6f
+        private const val ICE_SHARD_POD_OP = 12f
+        private val ICE_SHARD_REQUIRED_TAGS = setOf("no_drop", "no_drop_salvage")
+
+        // SPLIT 相位校验：子冰晶生成数 == 分裂次数 ×15（设计案定稿单母弹 15 枚）。
+        private const val ICE_SHARD_EXPECT_SHARDS_PER_SPLIT = 15
+
+        // COMPLETED 截图门控：附着/周期伤害事件近 2.5s 内发生才上报（附着星云/冰晶散布入帧）；保底舞台超时。
+        private const val ICE_SHARD_COMPLETED_EVENT_WINDOW = 2.5f
+        private const val ICE_SHARD_COMPLETED_STAGE_TIMEOUT = 30f
+        private const val ICE_SHARD_PHASE_TIMEOUT = 90f
 
         // 茑萝引力裂隙发生器场景：相位机、锚点与期望证据（断言点 A~G）。
         private const val GRG_PHASE_SPAWN = "SPAWN"

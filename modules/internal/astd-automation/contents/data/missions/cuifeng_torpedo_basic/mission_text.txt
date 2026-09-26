@@ -1,0 +1,1 @@
+ASTD dev-only automation scenario: cuifeng torpedo target-select / governor / adaptive bonus / shield hard-flux push / 150su AOE evidence.

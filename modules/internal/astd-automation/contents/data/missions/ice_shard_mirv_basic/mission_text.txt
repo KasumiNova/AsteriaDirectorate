@@ -1,0 +1,1 @@
+ASTD dev-only automation scenario: ice shard MIRV fuse-register / 600su split into 15 shards / hull attach dot evidence.

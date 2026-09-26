@@ -56,6 +56,14 @@ object ASTDInGameAutomationScenario {
     const val SM_POD_WEAPON_ID: String = "astd_stellar_mrm_pod"
     const val SM_LAUNCHER_PROJECTILE_SPEC_ID: String = "astd_stellar_mrm_launcher_shot"
     const val SM_POD_PROJECTILE_SPEC_ID: String = "astd_stellar_mrm_pod_shot"
+    const val CUIFENG_SCENARIO_ID: String = "cuifeng_torpedo_basic"
+    const val CUIFENG_TORPEDO_WEAPON_ID: String = "astd_cuifeng_torpedo"
+    const val CUIFENG_LAUNCHER_WEAPON_ID: String = "astd_cuifeng_launcher"
+    const val CUIFENG_PROJECTILE_SPEC_ID: String = "astd_cuifeng_torpedo_shot"
+    const val ICE_SHARD_SCENARIO_ID: String = "ice_shard_mirv_basic"
+    const val ICE_SHARD_MIRV_WEAPON_ID: String = "astd_ice_shard_mirv"
+    const val ICE_SHARD_POD_WEAPON_ID: String = "astd_ice_shard_mirv_pod"
+    const val ICE_SHARD_MIRV_PROJECTILE_SPEC_ID: String = "astd_ice_shard_mirv_shot"
     const val PL_SCENARIO_ID: String = "piercing_lance_basic"
     const val PL_WEAPON_ID: String = "astd_piercing_lance"
     const val PL_PROJECTILE_SPEC_ID: String = "astd_piercing_lance_shot"
@@ -225,6 +233,31 @@ object ASTDInGameAutomationScenario {
         val enabled = System.getProperty(ENABLED_PROPERTY)?.equals("true", ignoreCase = true) == true
         val scenario = System.getProperty(SCENARIO_PROPERTY, SCENARIO_ID)
         return enabled && scenario == SM_SCENARIO_ID
+    }
+
+    /**
+     * 摧锋鱼雷实机场景开关：镜像 [isSmEnabled]。
+     * 验证装配（小/中导弹槽 1600 射程 no_drop 两件套 tags）、反舰目标选择（仅舰船入选）、
+     * 二段式调速器（截速帧 + 速度系数 0.5~1.0）、命中结算（自适应增伤 / 护盾命中硬辐推进 /
+     * 150su 全额面板 AOE）与十字辉星 + 爆炸星云特效计数。
+     */
+    fun isCuifengEnabled(): Boolean {
+        val enabled = System.getProperty(ENABLED_PROPERTY)?.equals("true", ignoreCase = true) == true
+        val scenario = System.getProperty(SCENARIO_PROPERTY, SCENARIO_ID)
+        return enabled && scenario == CUIFENG_SCENARIO_ID
+    }
+
+    /**
+     * 源生冰晶 MIRV 实机场景开关：镜像 [isCuifengEnabled]。
+     * 验证装配（小/中导弹槽 1600 射程、发射舱 burst 2、no_drop 两件套 tags）、
+     * 母弹引信注册与 600su 分裂（分裂次数 / 15 枚子冰晶全数生成 / 分裂距离读数）、
+     * 子冰晶命中舰体附着（周期伤害 + 命中点周围承伤增伤）
+     * 与分裂爆发 / 附着星云特效计数。
+     */
+    fun isIceShardMirvEnabled(): Boolean {
+        val enabled = System.getProperty(ENABLED_PROPERTY)?.equals("true", ignoreCase = true) == true
+        val scenario = System.getProperty(SCENARIO_PROPERTY, SCENARIO_ID)
+        return enabled && scenario == ICE_SHARD_SCENARIO_ID
     }
 
     /**

@@ -5,6 +5,7 @@ import cn.kasuminova.astd.impl.render.AnchorArcSpec
 import cn.kasuminova.astd.impl.render.BoltSpec
 import cn.kasuminova.astd.impl.render.BoxFlareSpec
 import cn.kasuminova.astd.impl.render.BoxFlareStyle
+import cn.kasuminova.astd.impl.render.SpriteBodySpec
 import cn.kasuminova.astd.impl.render.StaticTrailSpec
 import cn.kasuminova.astd.impl.render.TrailDriftRange
 import com.fs.starfarer.api.combat.CombatEngineAPI
@@ -28,6 +29,11 @@ class ProjectileVfxTreeSpec(
      * 如导弹等由原版弹体贴图承担的弹体）。
      */
     val bolt: BoltSpec?,
+    /**
+     * 弹体本体贴图层（BoxUtil SpriteEntity 逐帧跟随，normal alpha，取代原版弹体贴图渲染）；
+     * null = 不渲染（默认）。用于有实体贴图的弹体（如冰晶碎片），.proj 侧须以 `BUtil_NONE.png` 屏蔽原版贴图。
+     */
+    val spriteBody: SpriteBodySpec?,
     /** BoxUtil 光斑层（名称 → spec）。 */
     val boxFlares: List<Pair<String, BoxFlareSpec>>,
     /** 锚点电弧层（名称 → spec）。 */
@@ -81,6 +87,9 @@ class ProjectileVfxScope(private val id: String) {
     /** Box 螺栓弹头：默认开启（取代原版螺栓渲染）；`bolt { off() }` 关闭（如导弹弹体）。 */
     private var bolt: BoltBuilder? = BoltBuilder()
 
+    /** 弹体本体贴图层（默认不渲染；`spriteBody(...)` 开启，取代原版弹体贴图渲染）。 */
+    private var spriteBody: SpriteBodyBuilder? = null
+
     private val lifecycle = LifecycleBuilder()
     private val fade = FadeBuilder()
 
@@ -107,6 +116,18 @@ class ProjectileVfxScope(private val id: String) {
         boxFlares += name to BoxFlareBuilder().apply(block).build()
     }
 
+    /**
+     * 弹体本体贴图层（BoxUtil SpriteEntity 逐帧跟随弹体 location/facing，normal alpha，
+     * 对齐原版 Missile.render 弹体贴图语义含熄火淡出）：用于有实体贴图的弹体（如冰晶碎片），
+     * .proj 侧须以 `sprite=BUtil_NONE.png` 屏蔽原版贴图渲染。贴图约定：文件右（+u）= 飞行正向。
+     *
+     * @param width 世界全宽（su，沿飞行向长度，对齐 .proj size[0]）。
+     * @param height 世界全高（su，横向宽度，对齐 .proj size[1]）。
+     */
+    fun spriteBody(texturePath: String, width: Float, height: Float, block: SpriteBodyBuilder.() -> Unit = {}) {
+        spriteBody = SpriteBodyBuilder(texturePath, width, height).apply(block)
+    }
+
     /** 拉一条原版 EMP 锚点电弧：发射点（attach 时捕获的固定位置）→ 弹体头部（每帧跟随），随弹体生命周期存续。 */
     fun anchorArc(name: String, block: AnchorArcBuilder.() -> Unit) {
         anchorArcs += name to AnchorArcBuilder().apply(block).build()
@@ -127,8 +148,9 @@ class ProjectileVfxScope(private val id: String) {
 
     internal fun build(): ProjectileVfx {
         val boltSpec = bolt?.build()
-        if (boltSpec == null && staticTrails.isEmpty() && boxFlares.isEmpty() && anchorArcs.isEmpty()) {
-            throw IllegalStateException("projectileVfx '$id' 未声明任何特效层（bolt/staticTrail/boxFlare/anchorArc 至少一个）")
+        val spriteBodySpec = spriteBody?.build()
+        if (boltSpec == null && spriteBodySpec == null && staticTrails.isEmpty() && boxFlares.isEmpty() && anchorArcs.isEmpty()) {
+            throw IllegalStateException("projectileVfx '$id' 未声明任何特效层（bolt/spriteBody/staticTrail/boxFlare/anchorArc 至少一个）")
         }
 
         val headLead = lifecycle.headLeadWorld
@@ -137,6 +159,7 @@ class ProjectileVfxScope(private val id: String) {
             // headLead 统一盖印到每条拖尾层：tracker 锚点与树原点（光斑锚）保持一致
             staticTrails = staticTrails.map { (name, spec) -> name to spec.copy(headLeadWorld = headLead) },
             bolt = boltSpec,
+            spriteBody = spriteBodySpec,
             boxFlares = boxFlares.toList(),
             anchorArcs = anchorArcs.toList(),
         )
@@ -308,6 +331,30 @@ class FadeBuilder {
     fun expire(v: Float) {
         expireSeconds = v
     }
+}
+
+/**
+ * 弹体本体贴图层构建器（DSL `spriteBody(...)`）：贴图/尺寸为构造参数，这里只有 bloom 发光一个旋钮。
+ */
+@ProjectileVfxDslMarker
+class SpriteBodyBuilder(
+    private val texturePath: String,
+    private val width: Float,
+    private val height: Float,
+) {
+    private var glowPower = 0f
+
+    /** bloom 发光强度（0 = 不发光；>0 时 emissive 复用本体 diffuse 贴图原色发光，进 bloom G-buffer）。 */
+    fun glow(power: Float) {
+        glowPower = power.coerceAtLeast(0f)
+    }
+
+    internal fun build(): SpriteBodySpec = SpriteBodySpec(
+        texturePath = texturePath,
+        width = width,
+        height = height,
+        glowPower = glowPower,
+    )
 }
 
 /** BoxUtil 光斑（lens-flare）：尺寸/双色/形态/朝向偏移/闪烁速度/锚点偏移。 */

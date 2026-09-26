@@ -2,6 +2,8 @@ package cn.kasuminova.astd.renderer.effect.system
 
 import cn.kasuminova.astd.api.AstdLog
 import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
+import cn.kasuminova.astd.renderer.effect.system.GravityPhaseVisualEffect.getOrCreate
+import cn.kasuminova.astd.renderer.effect.system.GravityPhaseVisualEffect.track
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseEveryFrameCombatPlugin
 import com.fs.starfarer.api.combat.CombatEngineAPI
@@ -59,7 +61,7 @@ internal object GravityPhaseVisualEffect {
     private const val GLOW_FULL_SECONDS = 1e7f
 
     /** 描边外扩像素（SDF 边界宽度，同时是描边衰减长度）。 */
-    private const val OUTLINE_BORDER = 8
+    private const val OUTLINE_BORDER = 16
 
     /** SDF alpha 阈值：低于该 alpha 的像素视为舰体外部（抗锯齿边缘算作内部，描边贴紧轮廓）。 */
     private const val OUTSIDE_THRESHOLD = 0.1f
@@ -208,8 +210,10 @@ internal object GravityPhaseVisualEffect {
                 GL11.glDeleteTextures(outlineTex)
                 throw t
             }
-            log.info("[ASTD] 引力相位视觉：描边纹理已生成 hull=$hullId 尺寸=${outW}x${outH} " +
-                "发光像素覆盖率=${"%.2f".format(100f * litPixels / (outW * outH))}％")
+            log.info(
+                "[ASTD] 引力相位视觉：描边纹理已生成 hull=$hullId 尺寸=${outW}x${outH} " +
+                        "发光像素覆盖率=${"%.2f".format(100f * litPixels / (outW * outH))}％"
+            )
             return OutlineTex(outlineTex, outW, outH, outW, outH)
         } finally {
             GL11.glDeleteTextures(sdf[0])
@@ -319,9 +323,9 @@ internal object GravityPhaseVisualEffect {
                 glow.materialData.setEmissive(tex.textureId)
                 glow.materialData.setColor(OUTLINE_COLOR)
                 glow.materialData.setEmissiveColor(OUTLINE_COLOR)
-                glow.materialData.setGlowPower(0.1f)
-                glow.materialData.setColorAlpha(0f)
-                glow.materialData.setEmissiveColorAlpha(0f)
+                glow.materialData.glowPower = 0.1f
+                glow.materialData.colorAlpha = 0f
+                glow.materialData.emissiveColorAlpha = 0f
                 // 常驻：全局计时器缺省值会在首个逻辑帧被判 TIMER_INVALID 直接 delete，
                 // 必须显式钉一个超长 full（消亡由舰船状态驱动 delete）
                 glow.setGlobalTimer(0f, GLOW_FULL_SECONDS, 0f)
@@ -385,8 +389,8 @@ internal object GravityPhaseVisualEffect {
             )
             val alpha = level.coerceIn(0f, 1f)
             att.outline.setStateVanilla(loc, facing)
-            att.outline.materialData.setColorAlpha(alpha)
-            att.outline.materialData.setEmissiveColorAlpha(alpha)
+            att.outline.materialData.colorAlpha = alpha
+            att.outline.materialData.emissiveColorAlpha = alpha
         }
 
         private fun spawnAfterimage(ship: ShipAPI) {

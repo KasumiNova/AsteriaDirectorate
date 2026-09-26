@@ -65,7 +65,8 @@ object ProjectileVfxSpecs {
                 range = range,
                 rangeRatio = 0.25f,
                 trailWidthScale = 0.5f,
-                tailColor = emberRedTail()
+                tailColor = emberRedTail(),
+                decorTrail = false
             )
         },
         // 穷距相位轨道炮：ARC 冷蓝白弹体 + 长距离明亮拖尾（蓝→淡绿渐变尾），trail 长 = 射程×50%、宽 −35%、
@@ -119,6 +120,22 @@ object ProjectileVfxSpecs {
         },
         // 贯星之矛（规格 09 §3.1）：width=36 大圆形弹体 + glowScale 4.0 放大带宽（公式派生）。
         "astd_piercing_lance_shot" to ::piercingLanceShot,
+        // 摧锋鱼雷（blue/30-superlative.md §特效）：ARC 冷蓝白，trail 长 = 射程×50%、recede 0（带体亮头直抵弹头），
+        // 弹头处 SMOOTH 光斑补鱼雷本体贴图之外的辉光（辉星同款口径）。
+        "astd_cuifeng_torpedo_shot" to { range -> cuifengTorpedoShot("astd_cuifeng_torpedo_shot", range) },
+        // 源生冰晶 MIRV 母弹（purple/30-superlative.md §特效）：冰蓝白，trail 长 = 射程×50%、recede 0。
+        "astd_ice_shard_mirv_shot" to { range -> iceShardMirvShot("astd_ice_shard_mirv_shot", range) },
+        // 源生冰晶子射弹：15 枚小冰晶成群，克制处理（width 4 / 固定短拖尾 120、装饰层关闭保持冰晶群可读性，
+        // 星尘光尘同款口径）；弹体本体由 spriteBody 接管（BoxUtil SpriteEntity 逐帧跟随，normal alpha 对齐原版
+        // 导弹贴图语义），原版贴图渲染由 .proj 的 sprite=BUtil_NONE.png 屏蔽，bolt 显式关闭（本体贴图取代螺栓）。
+        "astd_ice_shard_sub_msl" to {
+            simpleProjectileVfx("astd_ice_shard_sub_msl", iceBlue(), width = 6f, length = 120f, decorTrail = false, recede = -10f) {
+                bolt { off() }
+                spriteBody("graphics/fx/astd_ice_shard.png", width = 40f, height = 40f) {
+                    glow(0.5f)
+                }
+            }
+        },
     )
 
     private val installed = AtomicBoolean(false)
@@ -344,6 +361,48 @@ object ProjectileVfxSpecs {
             PiercingLanceVfx.spawnMuzzleDistortion(engine, Vector2f(projectile.location))
         })
     }
+
+    // 摧锋鱼雷：simpleProjectileVfx 四层惯例 + 带长 = 射程 ×50% + recede 0（带体亮头直抵弹头）+
+    // 弹头处 SMOOTH 光斑（light：柔边球光，补鱼雷本体贴图之外的辉光，ARC 冷蓝白调色）。
+    private fun cuifengTorpedoShot(id: String, range: Float?): ProjectileVfx = simpleProjectileVfx(
+        id,
+        qiongjueBlue(),
+        width = 10f,
+        length = 420f,
+        range = range,
+        rangeRatio = 0.5f,
+        recede = 0f,
+    ) {
+        boxFlare("light") {
+            style(BoxFlareStyle.SMOOTH)
+            colors(ASTDColor(0xD0E8FF).a(0.5f).hex(), ASTDColor(0x78BEFF).a(0.5f).hex())
+            size(30f, 30f)
+            glow(0.1f, 4f)
+            noise(0.1f)
+        }
+    }
+
+    // 源生冰晶 MIRV 母弹：simpleProjectileVfx 四层惯例（同辉星/摧锋口径），冰蓝白调色。
+    private fun iceShardMirvShot(id: String, range: Float?): ProjectileVfx = simpleProjectileVfx(
+        id,
+        iceBlue(),
+        width = 8f,
+        length = 420f,
+        range = range,
+        rangeRatio = 0.5f,
+        recede = 0f,
+    ) {
+        boxFlare("light") {
+            style(BoxFlareStyle.SMOOTH)
+            colors(ASTDColor(0xE0F4FFFF).a(0.5f).hex(), ASTDColor(0x9CD8FFc1).a(0.5f).hex())
+            size(30f, 30f)
+            glow(0.1f, 4f)
+            noise(0.1f)
+        }
+    }
+
+    // 源生冰晶族：冰蓝白（LENS 紫线中的冰晶冷色，全局美术约定新调色板由收口人添加）。
+    private fun iceBlue() = ASTDColor(0.72f, 0.9f, 1f, 1f)
 
     // 正电子冲击波：冷蓝白系（全局美术约定「正电子用白色弹体与明亮拖尾」），分支内内联字面量。
     private fun positronWhiteBlue() = ASTDColor(0.62f, 0.82f, 1f, 1f)
