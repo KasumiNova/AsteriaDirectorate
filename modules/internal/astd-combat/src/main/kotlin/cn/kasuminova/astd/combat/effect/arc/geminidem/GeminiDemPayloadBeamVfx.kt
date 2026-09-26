@@ -25,7 +25,9 @@ import java.util.IdentityHashMap
  * - 出现：RAMP_IN 秒内宽度/透明度 0 → 全额；
  * - 存续：每帧跟随 beam.from → beam.to（长度/朝向同步）；
  * - 消散：beam 停火后 FADE_OUT 秒内透明度 → 0、宽度 → 30%，结束 delete；
- * - 兜底：实体 globalTimer 设有上限（导弹被击毁导致 advance 停更时由 BoxUtil 定时器自动淡出回收）。
+ * - 兜底：firing 期间逐帧重钉实体 globalTimer 的 FULL 段（KEEPALIVE 秒）——advance 停更
+ *   （导弹命中/被击毁）时定时器自然走完 KEEPALIVE + FADE_OUT 自动淡出回收，
+ *   不得恢复创建期长 full 兜底（full=10 曾致弹头命中后光束滞留 10s+）。
  *
  * 状态按 WeaponAPI 实例存于 engine.customData（战斗域自动销毁）；插件实例为 spec 级共享，禁止持有单武器状态字段。
  */
@@ -97,6 +99,10 @@ class GeminiDemPayloadBeamVfx : EveryFrameWeaponEffectPlugin {
             val entity = state.entity ?: createEntity(engine, kind, from, facing, length).also { state.entity = it }
             if (entity != null) {
                 updateEntity(entity, state.nodes, from, facing, length, alphaMul = ramp, widthMul = ramp)
+                // 存活保活钉：setGlobalTimer 每次调用重置计时，firing 期间逐帧钉住 FULL 段；
+                // advance 停更（导弹命中销毁等）时定时器自然走完 KEEPALIVE + FADE_OUT 自动淡出回收，
+                // 不再依赖创建期长兜底（full=10 曾导致弹头命中后光束滞留 10s+）
+                entity.setGlobalTimer(0f, KEEPALIVE, FADE_OUT)
             }
             return
         }
@@ -145,8 +151,8 @@ class GeminiDemPayloadBeamVfx : EveryFrameWeaponEffectPlugin {
             coreSprite = spriteOf(kind),
             fringeSprite = spriteOf(kind),
             layer = CombatEngineLayers.ABOVE_SHIPS_AND_MISSILES_LAYER,
-            // 上限兜底：正常路径由消散动画 delete；此处仅防泄漏（advance 停更时由定时器淡出）
-            full = 10f,
+            // 初始定时器即保活口径：firing 分支逐帧重钉（见 advance），停帧后 KEEPALIVE + FADE_OUT 内自动淡出
+            full = KEEPALIVE,
             baseAlphaMul = BASE_ALPHA,
             tipAlphaMul = TIP_ALPHA,
             baseEmissiveAlphaMul = BASE_EMISSIVE_ALPHA,
@@ -202,6 +208,9 @@ class GeminiDemPayloadBeamVfx : EveryFrameWeaponEffectPlugin {
 
         /** 停火消散时长（秒）。 */
         private const val FADE_OUT = 0.45f
+
+        /** firing 期间逐帧重钉的定时器 FULL 段（秒）：advance 停更后实体最多再存活本值 + FADE_OUT。 */
+        private const val KEEPALIVE = 0.25f
 
         /** 消散末端宽度比例（宽度从全额过渡到该倍率）。 */
         private const val FADE_WIDTH_END_MUL = 0.3f

@@ -511,7 +511,7 @@ prev != null 时先惰性过期：now - prev.hitTime > 1s → 视为无记录
 | 检查项 | 结论 | 理由 |
 |---|---|---|
 | 弹体 VFX 登记 | `astd_gemini_dem_kinetic_msl` / `astd_gemini_dem_he_msl` | 2026-09-26（实机裁定）：双弹头接入 Static Trail 拖尾管线（四层惯例，width 5 / 固定带长 250 / recede 0，动能冷蓝白 140,190,255 / 高爆破晓暖橙 255,190,130，配色锚 .proj 引擎焰色）；脚本 spawn 弹体不触发 onFireEffect，由 `GeminiDemSalvoOnFireEffect` 显式 `ProjectileVfxDriverPlugin.track` 登记（冰晶脚本先例）；bolt 组件对 MissileAPI 自动禁用，弹体本体仍走原版导弹贴图渲染 |
-| 光束 VFX 登记 | `GeminiDemPayloadBeamVfx` | 2026-09-26：payload 光束改 BoxUtil 光束实体自绘（动能 zappy / 高爆 flow 贴图），原版束体由 beamEffect 隐藏；出现 ramp-in 0.1s、停火消散 0.45s（透明度→0、宽度→30%）。节点表必须传可变 ArrayList——`TrailEntity._deleteExc`/`resetNodes` 会 `nodeList.clear()`，Kotlin `listOf` 产出的定长 list 在 delete 时抛 UnsupportedOperationException 并卡死淡出 |
+| 光束 VFX 登记 | `GeminiDemPayloadBeamVfx` | 2026-09-26：payload 光束改 BoxUtil 光束实体自绘（动能 zappy / 高爆 flow 贴图），原版束体由 beamEffect 隐藏；出现 ramp-in 0.1s、停火消散 0.45s（透明度→0、宽度→30%）。两个实机判例：①节点表必须传可变 ArrayList——`TrailEntity._deleteExc`/`resetNodes` 会 `nodeList.clear()`，Kotlin `listOf` 产出的定长 list 在 delete 时抛 UnsupportedOperationException 并卡死淡出；②firing 期间必须逐帧重钉 globalTimer FULL 段（KEEPALIVE 0.25s）——弹头命中后导弹销毁、everyFrameEffect 停更，创建期长 full 兜底（10s）会导致光束滞留 10s+，重钉后停帧 0.7s 内自动淡出 |
 | 爆炸/冲击 | 复用原版 | 弹头爆炸色 .proj 直配；同步冲击闪光用 `spawnExplosion`；不上锥面组件（本组无锥状机制） |
 | HUD | N/A | §2.3 已说明 |
 | i18n | 见 §1.5 | 键清单齐全 |
