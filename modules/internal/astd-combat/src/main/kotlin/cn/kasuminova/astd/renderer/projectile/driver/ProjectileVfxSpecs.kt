@@ -139,28 +139,10 @@ object ProjectileVfxSpecs {
         // （追踪段摆动弹道在带上可读），recede 0（带体亮头直抵弹头，同摧锋/辉星导弹口径）；
         // bolt 组件对 MissileAPI 自动禁用，本体贴图走原版渲染；弹头 SMOOTH 光斑补导弹辉光（辉星同款口径）。
         "astd_gemini_dem_kinetic_msl" to {
-            simpleProjectileVfx("astd_gemini_dem_kinetic_msl", geminiKineticBlue(), width = 5f, length = 250f, recede = 0f, decorTrail = false) {
-                boxFlare("light") {
-                    style(BoxFlareStyle.SMOOTH)
-                    colors(mixWhite(geminiKineticBlue(), 0.85f).a(0.6f).hex(), geminiKineticBlue().a(0.3f).hex())
-                    size(24f, 24f)
-                    glow(2.0f, 4f)
-                    flicker(0.2f)
-                    noise(0.1f)
-                }
-            }
+            simpleProjectileVfx("astd_gemini_dem_kinetic_msl", geminiKineticBlue(), width = 5f, length = 400f, recede = 0f, decorTrail = false)
         },
         "astd_gemini_dem_he_msl" to {
-            simpleProjectileVfx("astd_gemini_dem_he_msl", geminiHeRed(), width = 5f, length = 250f, recede = 0f, decorTrail = false) {
-                boxFlare("light") {
-                    style(BoxFlareStyle.SMOOTH)
-                    colors(mixWhite(geminiHeRed(), 0.85f).a(0.6f).hex(), geminiHeRed().a(0.3f).hex())
-                    size(24f, 24f)
-                    glow(2.0f, 4f)
-                    flicker(0.2f)
-                    noise(0.1f)
-                }
-            }
+            simpleProjectileVfx("astd_gemini_dem_he_msl", geminiHeRed(), width = 5f, length = 400f, recede = 0f, decorTrail = false)
         },
         // 源生冰晶子射弹：15 枚小冰晶成群，弹体本体由 spriteBody 接管（BoxUtil SpriteEntity 逐帧跟随，normal alpha 对齐原版
         // 导弹贴图语义），原版贴图渲染由 .proj 的 sprite=BUtil_NONE.png 屏蔽，bolt 显式关闭（本体贴图取代螺栓）。
