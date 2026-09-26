@@ -46,6 +46,9 @@ description: "渲染/特效规范：优先使用 BoxUtil 的高性能实现，�
   若粒子间仅 `location`/`scale|size`/`rotate|facing`/`velocity`/`scaleRate`/`turnRate|rotateRate`/
   `color`/`emissive`/`lifetime` 不同，必须共用同一个 Entity 作为子粒子池（实例属性继承池 Entity）。
   统一入口：`PooledCombatVfx.spawnSprite/spawnTrail`（详见 boxutil-guidelines 的实体池化规范）。
+- **星云粒子（`engine.addNebulaParticle` 系）一律改走 `BoxUtilCombatVfx.addNebulaParticle`**：
+  Box 内置星云控制器本身就是「单常驻 SpriteEntity + 8192 实例池」（原版 nebula_particles 图集），
+  参数语义与原版完全对齐、视野外自动剔除，无需也不应再自池化或调用原版 API。
 
 ### 2) 束体/拖尾：TrailEntity 优先
 

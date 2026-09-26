@@ -325,10 +325,10 @@ class GeminiDemPayloadBeamVfx : EveryFrameWeaponEffectPlugin {
             val dir = Misc.getUnitVectorAtDegreeAngle(MathUtils.getRandomNumberInRange(0f, 360f))
             dir.scale(MathUtils.getRandomNumberInRange(LAUNCH_BURST_OFFSET_MIN, LAUNCH_BURST_OFFSET_MAX))
             val pos = Vector2f(from.x + dir.x, from.y + dir.y)
-            engine.addNebulaParticle(
-                pos, ZERO, MathUtils.getRandomNumberInRange(LAUNCH_NEBULA_SIZE_MIN, LAUNCH_NEBULA_SIZE_MAX),
+            BoxUtilCombatVfx.addNebulaParticle(
+                engine, pos, ZERO, MathUtils.getRandomNumberInRange(LAUNCH_NEBULA_SIZE_MIN, LAUNCH_NEBULA_SIZE_MAX),
                 1.5f, 0.05f, 0.1f, 1f,
-                Color(fringe.red, fringe.green, fringe.blue, LAUNCH_NEBULA_ALPHA), true,
+                Color(fringe.red, fringe.green, fringe.blue, LAUNCH_NEBULA_ALPHA),
             )
         }
     }
@@ -351,10 +351,10 @@ class GeminiDemPayloadBeamVfx : EveryFrameWeaponEffectPlugin {
             val jitter = Misc.getUnitVectorAtDegreeAngle(MathUtils.getRandomNumberInRange(0f, 360f))
             jitter.scale(MathUtils.getRandomNumberInRange(0f, AMBIENT_NEBULA_JITTER))
             val pos = Vector2f(from.x + dir.x * along + jitter.x, from.y + dir.y * along + jitter.y)
-            engine.addNebulaParticle(
-                pos, ZERO, MathUtils.getRandomNumberInRange(AMBIENT_NEBULA_SIZE_MIN, AMBIENT_NEBULA_SIZE_MAX),
+            BoxUtilCombatVfx.addNebulaParticle(
+                engine, pos, ZERO, MathUtils.getRandomNumberInRange(AMBIENT_NEBULA_SIZE_MIN, AMBIENT_NEBULA_SIZE_MAX),
                 1.3f, 0.05f, 0.1f, 0.8f,
-                Color(fringe.red, fringe.green, fringe.blue, AMBIENT_NEBULA_ALPHA), true,
+                Color(fringe.red, fringe.green, fringe.blue, AMBIENT_NEBULA_ALPHA),
             )
         }
     }

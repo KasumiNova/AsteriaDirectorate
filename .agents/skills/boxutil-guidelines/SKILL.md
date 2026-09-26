@@ -100,6 +100,12 @@ description: "BoxUtil 使用指南（API 速览、调试建议、避坑点），
 - `RenderingUtil.addCombatBeamVisual(...)` / `addCampaignBeamVisual(...)`
 - `RenderingUtil.addCombatParticleField(...)` / `addCombatFlareField(...)`
 - `RenderingUtil.createTextField(...)` / `debugText(...)`
+- `RenderingUtil.VanillaFX.addNebulaParticle(...)`：内置星云粒子（替代原版 `engine.addNebulaParticle`）。
+  底层单个常驻 SpriteEntity + SimpleParticleControlData 实例池（8192 槽，原版 nebula_particles
+  4x4 图集随机 tile，加色混合不受光照，渲染层 ABOVE_SHIPS_AND_MISSILES_LAYER）；参数语义与原版
+  完全对齐（size/endSizeMult/rampUpFraction/fullBrightnessFraction/totalDuration/color），
+  视野外自动剔除。同族：`addNegativeNebulaParticle` / `addSwirlyNebulaParticle` /
+  `addNebulaSmokeParticle`（非加色 diffuse 版）/ `addNebulaSmoothParticle`。
 
 ### 8) 枚举与状态码
 
@@ -114,10 +120,14 @@ description: "BoxUtil 使用指南（API 速览、调试建议、避坑点），
   - 初始化 BoxUtil（`initLater()`）
   - 处理 CombatRenderingManager 未就绪的重试
   - 创建常用 “tapered beam trail”
+  - 星云粒子入口 `addNebulaParticle(engine, ...)`：封装 `RenderingUtil.VanillaFX.addNebulaParticle`，
+    战斗域专用，失败（shader 未启用/实例池满）每场战斗告警一次；**模组内星云粒子一律走此入口**，
+    不再调用原版 `engine.addNebulaParticle`（试点：GeminiDemPayloadBeamVfx 发射爆发/节律星云）。
 - 可直接调用：
   - `createAndAddTaperedBeamTrail(...)`
   - `createAndAddTaperedBeamTrailFromCenter(...)`
   - `createAndAddTaperedBeamTrailFromCenterReversedU(...)`
+  - `addNebulaParticle(...)`
 
 ### B) 弹体拖尾/弹头（Static Trail 管线 + Box 螺栓）
 
@@ -227,6 +237,8 @@ description: "BoxUtil 使用指南（API 速览、调试建议、避坑点），
   几何/颜色，到期 alpha 归零泊车；参考实现 ASTDXc002Vfx 尘埃拖尾）。
 - 池满按游标覆盖最旧粒子（视觉等同提前寿终）；池实体随 BoxUtil 战斗切换清理，数量有界。
 - 注意 CPU 侧积分后实例 `velocity`/`turnRate` 必须清零，避免与 BoxUtil 实例自管理双重积分。
+- **例外**：星云类粒子（原版 `addNebulaParticle` 系语义）不走 PooledCombatVfx——Box 内置星云控制器
+  本身就是「单常驻 SpriteEntity + 实例池」结构，统一走 `BoxUtilCombatVfx.addNebulaParticle` 即可。
 
 ## 参考资料
 

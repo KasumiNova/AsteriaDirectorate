@@ -20,6 +20,7 @@ object BoxUtilCombatVfx {
     private const val KEY_LATER_INIT = "astd_boxutil_later_init"
     private const val KEY_INVITED_CRM = "astd_boxutil_invited_combat_rendering_manager"
     private const val KEY_LOG_ADD_ENTITY_FAIL_ONCE = "astd_boxutil_add_entity_fail_once"
+    private const val KEY_LOG_NEBULA_FAIL_ONCE = "astd_boxutil_nebula_fail_once"
 
     private val log = Global.getLogger(BoxUtilCombatVfx::class.java)
 
@@ -66,6 +67,42 @@ object BoxUtilCombatVfx {
             state = CombatRenderingManager.addEntity(entity).toInt()
         }
         return state
+    }
+
+    /**
+     * 星云粒子（战斗域）：替代 `engine.addNebulaParticle` 的标准入口。
+     *
+     * 直接复用 Box 内置的星云粒子控制器（`RenderingUtil.VanillaFX.addNebulaParticle`）——
+     * 底层是单个常驻 SpriteEntity + SimpleParticleControlData 实例池（8192 槽，
+     * 原版 nebula_particles 4x4 图集随机 tile，加色混合，不受光照），不存在 renderEntityMap
+     * 滞留问题，无需再走 PooledCombatVfx 自池化。
+     *
+     * 参数语义与原版 `CombatEngineAPI.addNebulaParticle` 完全对齐（尺寸/末端尺寸倍率/淡入比例/
+     * 全亮比例/总时长/颜色）；Box 侧固定加色混合（等价原版 additive=true），渲染层固定
+     * ABOVE_SHIPS_AND_MISSILES_LAYER（原版星云粒子在 "top particles" 阶段渲染，同属顶层区间）。
+     *
+     * @return false 表示未渲染（shader 未启用或实例池满）；视野外剔除属正常路径，返回 true。
+     */
+    fun addNebulaParticle(
+        engine: CombatEngineAPI,
+        location: Vector2f,
+        velocity: Vector2f,
+        size: Float,
+        endSizeMult: Float,
+        rampUpFraction: Float,
+        fullBrightnessFraction: Float,
+        totalDuration: Float,
+        color: Color,
+    ): Boolean {
+        ensureReady(engine)
+        val ok = RenderingUtil.VanillaFX.addNebulaParticle(
+            false, location, velocity, size, endSizeMult, rampUpFraction, fullBrightnessFraction, totalDuration, color,
+        )
+        if (!ok && engine.customData[KEY_LOG_NEBULA_FAIL_ONCE] != true) {
+            engine.customData[KEY_LOG_NEBULA_FAIL_ONCE] = true
+            log.warn("BoxUtil 星云粒子渲染失败（shader 未启用或实例池满），本场战斗后续同类失败不再重复告警")
+        }
+        return ok
     }
 
     fun createTaperedBeamTrail(
