@@ -12,7 +12,7 @@
     "visualRecoil": 6.0,
     "turretOffsets": [21.5, 1],
     "turretAngleOffsets": [0],
-    "hardpointOffsets": [39.75, 1],
+    "hardpointOffsets": [26.25, 1],
     "hardpointAngleOffsets": [0],
     "barrelMode": "LINKED",
     "animationType": "GLOW_AND_FLASH",

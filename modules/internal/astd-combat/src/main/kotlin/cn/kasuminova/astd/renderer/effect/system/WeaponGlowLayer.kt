@@ -27,6 +27,9 @@ import java.util.EnumSet
  *
  * 贴图缺失防线：[preloadTextures] 逐路径登记加载结果，只有加载成功的路径才会被扫描挂载
  * （SSOptimizer 延迟加载下裸 getSprite 是 textureID=0 空壳）；渲染循环因此无失败路径可兜底。
+ *
+ * 渲染锚点与引擎一致（WeaponSpriteRenderer.setSpriteCenter）：挂点武器锚在画布底部 1/4 高度处，
+ * 炮塔武器锚在画布中心；锚点对准 weapon.location，贴图绕锚点旋转。
  */
 internal object WeaponGlowLayer {
 
@@ -200,12 +203,18 @@ internal object WeaponGlowLayer {
                         }
                     }
 
-                    // SpriteAPI 为全局共享缓存实例，尺寸/混合状态可能被其他渲染方改写，须逐帧重取并重置
+                    // SpriteAPI 为全局共享缓存实例，尺寸/混合/锚点状态可能被其他渲染方改写，须逐帧重取并重置
                     val sprite = Global.getSettings().getSprite(att.spritePath)
                     sprite.setAdditiveBlend()
                     sprite.color = Color(255, 255, 255, 255)
                     sprite.alphaMult = alpha
                     sprite.setSize(att.width, att.height)
+                    // 与引擎武器底图锚点对齐：挂点锚在底部 1/4 高度，炮塔锚在中心
+                    if (weapon.slot?.isHardpoint == true) {
+                        sprite.setCenter(att.width / 2f, att.height / 4f)
+                    } else {
+                        sprite.setCenter(att.width / 2f, att.height / 2f)
+                    }
                     sprite.angle = weapon.currAngle - 90f
                     sprite.renderAtCenter(weapon.location.x, weapon.location.y)
                 }

@@ -18,17 +18,11 @@
 
     "visualRecoil": 0.0,
 
-    "turretOffsets": [
-        26.5,
-        1
-    ],
+    "turretOffsets": [24.5, 1],
     "turretAngleOffsets": [
         0
     ],
-    "hardpointOffsets": [
-        40.75,
-        1
-    ],
+    "hardpointOffsets": [37.75, 1],
     "hardpointAngleOffsets": [
         0
     ],

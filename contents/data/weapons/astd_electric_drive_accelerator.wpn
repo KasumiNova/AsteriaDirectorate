@@ -19,12 +19,7 @@
         0,
         0
     ],
-    "hardpointOffsets": [
-        17,
-        -4,
-        17,
-        4
-    ],
+    "hardpointOffsets": [6.5, -4, 6.5, 4],
     "hardpointAngleOffsets": [
         0,
         0
