@@ -438,7 +438,7 @@ object Wpn_astd_stellar_mrm_pod : WeaponDataEntry(), SsProjMissileOutputs {
 }
 
 /**
- * 离子脉冲（战机）：茑萝级内置战机「游丝」武备（purple/20-production.md §2）。
+ * 离子脉冲（战机型）：茑萝级内置战机「游丝」武备（purple/20-production.md §2）。
  *
  * 原版离子脉冲（ionpulser）的战机化调参：burst 2 发、单发 90 能量 + 200 EMP，
  * 单发辐能 50（战机 900/150 辐能池可持续）；hints SYSTEM 不进常规配装列表。
@@ -491,7 +491,7 @@ object Wpn_astd_ion_pulse_fighter : WeaponDataEntry(), SsProjProjectileOutputs {
 }
 
 /**
- * 相位长矛（战机）：茑萝级内置战机「游丝」武备（purple/20-production.md §2）。
+ * 相位长矛（战机型）：茑萝级内置战机「游丝」武备（purple/20-production.md §2）。
  *
  * 原版相位长矛（phasebeam）的战机化调参：1s 脉冲光束 / 3s 间隔，150 DPS、120 辐能/秒
  * （战机 900/150 辐能池可持续）；hints SYSTEM 不进常规配装列表。.wpn 为手写光束资源。
@@ -836,7 +836,7 @@ object Wpn_astd_ice_shard_sub : WeaponDataEntry(), SsProjMissileOutputs {
 }
 
 /**
- * 双子星 DEM（战机）：双子座轰炸联队武备（purple/30-fighters.md §双子座 v1 定案）。
+ * 双子星 DEM（战机型）：双子座轰炸联队武备（purple/30-fighters.md §双子座 v1 定案）。
  *
  * 备弹 2（burst=2 一次触发即 -2，= 1 次双弹齐射）、不可恢复（ammoPerSec/reloadSize 0）、发射不产辐能；
  * 弹体复用舰装版 dummy spec（astd_gemini_dem_dummy），齐射/追踪/同步冲击机制全部由
@@ -875,7 +875,7 @@ object Wpn_astd_gemini_dem_fighter : WeaponDataEntry() {
 }
 
 /**
- * 电荷针刺（战机）：电涌战斗联队武备（purple/30-fighters.md §电涌 v1 定案）。
+ * 电荷针刺（战机型）：电涌战斗联队武备（purple/30-fighters.md §电涌 v1 定案）。
  *
  * 连发 10 @ 10发/s（burstSize 10 / burstDelay 0.1）、射程 600、单发辐能 40；
  * 弹匣 20 / 回充 10 发每 4s（ammoPerSec 2.5 × reloadSize 10）；弹体复用 astd_charge_needle_shot，
@@ -927,7 +927,7 @@ object Wpn_astd_charge_needle_fighter : WeaponDataEntry() {
 }
 
 /**
- * 引力坍缩炮 PD（战机）：引力井截击联队武备（purple/30-fighters.md §引力井 v1 定案）。
+ * 引力坍缩炮 PD（战机型）：引力井截击联队武备（purple/30-fighters.md §引力井 v1 定案）。
  *
  * 数据全量复用舰装版 astd_gcp2（射程 600 / 束内 DPS 300 / 辐能 300/s / 充能-爆发-冷却周期一致），
  * 唯一差异是不渲染武器贴图（.wpn 全隐资源）；光束渲染与引力坍缩机制复用

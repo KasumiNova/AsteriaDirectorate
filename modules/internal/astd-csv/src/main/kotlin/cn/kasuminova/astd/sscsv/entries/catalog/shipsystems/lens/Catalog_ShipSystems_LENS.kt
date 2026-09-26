@@ -224,7 +224,7 @@ object Sys_astd_grav_rift_generator : ShipSystemWithSystemFileEntry() {
 }
 
 /**
- * 落叶飞花（战机）：茑萝级内置战机「游丝」的战术系统（purple/20-production.md §2）。
+ * 落叶飞花（战机型）：茑萝级内置战机「游丝」的战术系统（purple/20-production.md §2）。
  *
  * 机制与飞星 (ARC) 的落叶飞花一致（复用 [ASTDBurstFlowSystemStats] / [ASTDBurstFlowSystemAI]），
  * 仅节奏调整：回充时间 10s（regen 0.1）、最大充能 2。

@@ -248,7 +248,7 @@ object Ship_astd_zw_103 : ShipDataEntry() {
  * 茑萝级内置相位无人战机「游丝」（purple/20-production.md §2 内置战机）。
  *
  * 无人重型战斗机：双联队共两个甲板各 2 架，0 OP 内置（wing op cost 0），
- * 战术系统为落叶飞花（战机）astd_burst_flow_fighter（回充 10s、2 充能）。
+ * 战术系统为落叶飞花（战机型）astd_burst_flow_fighter（回充 10s、2 充能）。
  * 护盾前向 240° 效率 0.5；物流列全部置空（战机无 CR/补给概念，对齐原版 broadsword 行）。
  */
 object Ship_astd_zw_103_fighter : ShipDataEntry() {
