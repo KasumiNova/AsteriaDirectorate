@@ -36,11 +36,16 @@ description: "渲染/特效规范：优先使用 BoxUtil 的高性能实现，�
 
 ## “优先 BoxUtil”的落地建议
 
-### 1) 大量粒子/曳光：实例化优先
+### 1) 大量粒子/曳光：实例化优先 + 高频必须池化
 
 - 如果同屏可能出现几十到几百个实例（曳光、碎片光点、薄雾粒子）：
   - 优先 `InstanceRenderAPI` 或 `SimpleParticleControlData`
   - 避免每次 `engine.addHitParticle/addNebulaParticle` 创建大量短寿命对象
+- **每帧/每节拍级的高频 spawn 禁止「新建实体 + 定时器自删」**：BoxUtil `renderEntityMap`
+  战斗内只增不删，实体引用滞留至战斗切换（实机实锤 99 万实例 / 1 GB）。
+  若粒子间仅 `location`/`scale|size`/`rotate|facing`/`velocity`/`scaleRate`/`turnRate|rotateRate`/
+  `color`/`emissive`/`lifetime` 不同，必须共用同一个 Entity 作为子粒子池（实例属性继承池 Entity）。
+  统一入口：`PooledCombatVfx.spawnSprite/spawnTrail`（详见 boxutil-guidelines 的实体池化规范）。
 
 ### 2) 束体/拖尾：TrailEntity 优先
 

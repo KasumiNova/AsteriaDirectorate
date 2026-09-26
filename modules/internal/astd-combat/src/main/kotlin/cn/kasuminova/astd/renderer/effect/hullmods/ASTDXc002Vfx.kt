@@ -1,11 +1,11 @@
 package cn.kasuminova.astd.renderer.effect.hullmods
 
 import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
+import cn.kasuminova.astd.renderer.boxutil.pool.PooledCombatVfx
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEngineLayers
 import org.boxutil.units.standard.entity.DistortionEntity
-import org.boxutil.units.standard.entity.SpriteEntity
 import org.lazywizard.lazylib.MathUtils
 import org.lazywizard.lazylib.VectorUtils
 import org.lwjgl.util.vector.Vector2f
@@ -16,6 +16,24 @@ object ASTDXc002Vfx {
     private const val CORE_SPRITE = "graphics/fx/beamcoreb.png"
     private const val FRINGE_SPRITE = "graphics/fx/beamfringeb.png"
     private const val DUST_SPRITE = "graphics/fx/glow64.png"
+
+    /** 尘埃粒子池（glowPower/alphaToEmissive 对齐旧逐实体材质参数，观感零漂移）。 */
+    private val DUST_POOL_KEY = PooledCombatVfx.SpritePoolKey(
+        spritePath = DUST_SPRITE,
+        layer = CombatEngineLayers.ABOVE_SHIPS_AND_MISSILES_LAYER,
+        glowPower = 0.75f,
+        alphaToEmissive = 0f,
+        capacity = 512,
+    )
+
+    /** 尘埃拖尾光束段池（防御/追击两变体共享：逐段颜色为 spawn 参数；容量覆盖逐帧喷散速率）。 */
+    private val DUST_TRAIL_POOL_KEY = PooledCombatVfx.TrailPoolKey(
+        layer = CombatEngineLayers.ABOVE_SHIPS_AND_MISSILES_LAYER,
+        coreSpritePath = CORE_SPRITE,
+        fringeSpritePath = FRINGE_SPRITE,
+        mixPower = 2.7f,
+        capacity = 1024,
+    )
 
     private val core = Color(180, 232, 255, 220)
     private val fringe = Color(92, 178, 255, 190)
@@ -128,28 +146,26 @@ object ASTDXc002Vfx {
         val delta = Vector2f.sub(to, from, null)
         val len = delta.length()
         if (len < 1.5f) return
-        val coreSprite = getSprite(CORE_SPRITE) ?: return
-        val fringeSprite = getSprite(FRINGE_SPRITE) ?: return
         val s = level.coerceIn(0f, 1f)
-        BoxUtilCombatVfx.createAndAddTaperedBeamTrail(
+        // 统一光束段池（池化迁移：逐帧新建 TrailEntity 同样滞留 renderEntityMap）。
+        PooledCombatVfx.spawnTrail(
             engine = engine,
+            key = DUST_TRAIL_POOL_KEY,
             location = Vector2f(to),
-            facing = VectorUtils.getFacing(delta) + 180f,
+            facingDeg = VectorUtils.getFacing(delta) + 180f,
             length = len.coerceIn(10f, 58f) * (1.05f + 0.35f * s),
             tailWidth = 0.35f + 0.35f * s,
             headWidth = 2.4f + 2.2f * s,
             coreColor = core,
             fringeColor = fringe,
-            coreSprite = coreSprite,
-            fringeSprite = fringeSprite,
-            layer = CombatEngineLayers.ABOVE_SHIPS_AND_MISSILES_LAYER,
-            full = 0.10f,
             tailAlphaMul = 0.04f,
             headAlphaMul = 0.28f + 0.18f * s,
             tailEmissiveAlphaMul = 0.25f,
             headEmissiveAlphaMul = 1.8f + 0.9f * s,
-            mixPower = 2.7f,
-        )?.setGlobalTimer(0.01f, 0.06f, 0.22f)
+            fadeIn = 0.01f,
+            full = 0.06f,
+            fadeOut = 0.22f,
+        )
     }
 
     fun spawnPursuitDustTrail(engine: CombatEngineAPI, from: Vector2f, to: Vector2f, level: Float) {
@@ -157,28 +173,25 @@ object ASTDXc002Vfx {
         val delta = Vector2f.sub(to, from, null)
         val len = delta.length()
         if (len < 1.5f) return
-        val coreSprite = getSprite(CORE_SPRITE) ?: return
-        val fringeSprite = getSprite(FRINGE_SPRITE) ?: return
         val s = level.coerceIn(0f, 1f)
-        BoxUtilCombatVfx.createAndAddTaperedBeamTrail(
+        PooledCombatVfx.spawnTrail(
             engine = engine,
+            key = DUST_TRAIL_POOL_KEY,
             location = Vector2f(to),
-            facing = VectorUtils.getFacing(delta) + 180f,
+            facingDeg = VectorUtils.getFacing(delta) + 180f,
             length = len.coerceIn(10f, 58f) * (1.05f + 0.35f * s),
             tailWidth = 0.35f + 0.35f * s,
             headWidth = 2.4f + 2.2f * s,
             coreColor = pursuitCore,
             fringeColor = pursuitFringe,
-            coreSprite = coreSprite,
-            fringeSprite = fringeSprite,
-            layer = CombatEngineLayers.ABOVE_SHIPS_AND_MISSILES_LAYER,
-            full = 0.10f,
             tailAlphaMul = 0.04f,
             headAlphaMul = 0.28f + 0.18f * s,
             tailEmissiveAlphaMul = 0.25f,
             headEmissiveAlphaMul = 1.8f + 0.9f * s,
-            mixPower = 2.7f,
-        )?.setGlobalTimer(0.01f, 0.06f, 0.22f)
+            fadeIn = 0.01f,
+            full = 0.06f,
+            fadeOut = 0.22f,
+        )
     }
 
     private fun spawnDustMoteSprite(
@@ -193,31 +206,27 @@ object ASTDXc002Vfx {
         color: Color,
         emissiveColor: Color,
     ) {
-        val sprite = getSprite(DUST_SPRITE) ?: return
-        try {
-            val entity = SpriteEntity(sprite)
-            entity.setAdditiveBlend()
-            entity.setLayer(CombatEngineLayers.ABOVE_SHIPS_AND_MISSILES_LAYER)
-            entity.setStateVanilla(Vector2f(loc), facing, Vector2f(radius, radius))
-            entity.setGlobalTimer(fadeIn, full, fadeOut)
-            entity.materialData.setDiffuse(sprite)
-            entity.materialData.setEmissive(sprite)
-            entity.materialData.setColor(Color(color.red, color.green, color.blue, (255f * alpha * 0.22f).toInt().coerceIn(0, 255)))
-            entity.materialData.setEmissiveColor(
-                Color(
-                    emissiveColor.red,
-                    emissiveColor.green,
-                    emissiveColor.blue,
-                    (255f * alpha * 0.70f).toInt().coerceIn(0, 255)
-                )
-            )
-            entity.materialData.alphaToEmissive = 0f
-            entity.materialData.isColorToEmissive = 0f
-            entity.materialData.glowPower = 0.75f
-            val state = BoxUtilCombatVfx.addEntity(engine, entity)
-            if (state != 0) entity.delete()
-        } catch (_: Throwable) {
-        }
+        // 统一粒子池（2026-09 池化迁移：renderEntityMap 战斗内只增不删，每帧新建 SpriteEntity
+        // 会累积百万级滞留实例）；池不可用记 WARN 后视觉缺席。
+        PooledCombatVfx.spawnSprite(
+            engine = engine,
+            key = DUST_POOL_KEY,
+            x = loc.x,
+            y = loc.y,
+            facingDeg = facing,
+            scaleX = radius,
+            scaleY = radius,
+            color = Color(color.red, color.green, color.blue, (255f * alpha * 0.22f).toInt().coerceIn(0, 255)),
+            emissiveColor = Color(
+                emissiveColor.red,
+                emissiveColor.green,
+                emissiveColor.blue,
+                (255f * alpha * 0.70f).toInt().coerceIn(0, 255),
+            ),
+            fadeIn = fadeIn,
+            full = full,
+            fadeOut = fadeOut,
+        )
     }
 
     fun spawnCollapseStrike(engine: CombatEngineAPI, from: Vector2f, to: Vector2f, level: Float) {

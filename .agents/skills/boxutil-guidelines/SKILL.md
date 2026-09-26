@@ -205,6 +205,29 @@ description: "BoxUtil 使用指南（API 速览、调试建议、避坑点），
 8) **战役层渲染会在跳跃/换星系时清理**
   - 不要把渲染实体存入 Memory；重新进入场景时再创建。
 
+## 实体池化规范（强制，防 renderEntityMap 滞留泄漏）
+
+**背景**：BoxUtil 的 `renderEntityMap` 在单场战斗内**只增不删**——实体定时器到期或 `delete()`
+仅停止渲染，引用仍滞留列表，直至战斗切换的 `cleanupAllQueue()` 才清理（2026-09 实机堆转储实锤：
+高频 spawn 一场长战斗累积 99.2 万 SpriteEntity / 1 GB）。因此「每次 spawn 新建实体 +
+定时器自删」只允许用于低频事件级特效（每次命中数个）；每帧/每节拍级的高频粒子**必须池化**。
+
+**池化判定准则**：若一组粒子仅有以下属性不同——
+`location` / `scale|size` / `rotate|facing` / `velocity` / `scaleRate` / `turnRate|rotateRate` /
+`color` / `emissive` / `lifetime`——则这些同种 Entity 可共用**同一个 Entity 作为子粒子池**：
+上述属性逐实例写在实例数据（Instance2Data）或槽位上，其余属性（贴图/渲染层/混合/材质参数）
+由池 Entity 统一持有。**每个实例与 Entity 的属性是继承的**——实例只覆写上述可逐实例化的属性，
+未覆写的属性继承池 Entity 的当前值。
+
+**本项目落地**：统一走 `cn.kasuminova.astd.renderer.boxutil.pool.PooledCombatVfx`
+（astd-render）：
+- `spawnSprite`：sprite 粒子池（每 key 一个常驻 SpriteEntity + 固定容量实例槽，CPU 侧积分
+  位置/自转 + 三段包络驱动 alpha；参考实现 TriShardComponent、ASTDXc002Vfx 尘埃粒子）；
+- `spawnTrail`：双节点光束段池（每 key 固定容量常驻 TrailEntity，spawn 认领槽位重写
+  几何/颜色，到期 alpha 归零泊车；参考实现 ASTDXc002Vfx 尘埃拖尾）。
+- 池满按游标覆盖最旧粒子（视觉等同提前寿终）；池实体随 BoxUtil 战斗切换清理，数量有界。
+- 注意 CPU 侧积分后实例 `velocity`/`turnRate` 必须清零，避免与 BoxUtil 实例自管理双重积分。
+
 ## 参考资料
 
 - 本仓库内部封装：

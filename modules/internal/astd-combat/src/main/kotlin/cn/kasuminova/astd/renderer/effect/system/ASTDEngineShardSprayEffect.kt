@@ -22,8 +22,8 @@ import kotlin.math.sin
  * 数量（喷散频率）、速度、尺寸随出力（level）线性放大，颜色/基准尺寸取自引擎自身。
  *
  * 渲染复用 astd-render 的 [TriShardComponent] 树外持续发射用法：每舰每引擎一个组件
- * （单批 spec），逐帧按 level 累积碎片，按 [FLUSH_INTERVAL] 节拍灌成 SpriteEntity
- * 实例化批；实体全局定时器走完由 BoxUtil 自删，无句柄回收负担。
+ * （单批 spec），逐帧按 level 累积碎片，按 [FLUSH_INTERVAL] 节拍灌入统一粒子池
+ * （2026-09 池化迁移：不再每节拍新建 SpriteEntity，renderEntityMap 滞留根因修复）。
  *
  * level 来源：[ASTDVectorThrustEngineManager] 每帧发布到
  * ship.customData[ASTDVectorThrustEngineManager.ENGINE_LEVELS_KEY]；缺失

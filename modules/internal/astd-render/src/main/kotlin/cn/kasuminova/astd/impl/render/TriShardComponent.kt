@@ -1,15 +1,10 @@
 package cn.kasuminova.astd.impl.render
 
 import cn.kasuminova.astd.api.render.RenderContext
-import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
+import cn.kasuminova.astd.renderer.boxutil.pool.PooledCombatVfx
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEngineLayers
-import org.boxutil.base.api.InstanceDataAPI
-import org.boxutil.base.api.InstanceRenderAPI
-import org.boxutil.define.InstanceType
-import org.boxutil.units.standard.attribute.Instance2Data
-import org.boxutil.units.standard.entity.SpriteEntity
 import org.lazywizard.lazylib.MathUtils
 import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
@@ -46,7 +41,7 @@ data class TriShardSpec(
      * 并把小三角经高斯扩散糊成圆光斑；降权后 bloom 只留一圈淡辉，形状主体由硬边 diffuse 保住。
      */
     val emissiveAlphaMul: Float = 0.4f,
-    /** 实例定时器（秒）：fadeIn/fadeOut 定值，full 随机域。默认总寿命 0.52~0.67s。 */
+    /** 实例寿命包络（秒）：fadeIn/fadeOut 定值，full 随机域。默认总寿命 0.52~0.67s。 */
     val timerFadeIn: Float = 0.02f,
     val timerFadeOut: Float = 0.32f,
     val timerFullLo: Float = 0.18f,
@@ -57,20 +52,24 @@ data class TriShardSpec(
 
 /**
  * 「三角碎片」渲染组件（原 ConeShardComponent，通用化改名）：一簇随机旋转的三角形碎片，
- * 渲染后端为 **SpriteEntity 实例化渲染**——贴图 [TriShardSpec.spritePath] + additive +
- * emissive 同色降权（[TriShardSpec.emissiveAlphaMul]）接原生泛光。
+ * 渲染后端为**统一粒子池**（[PooledCombatVfx] 的 SpriteEntity 实例化池）——
+ * 贴图 [TriShardSpec.spritePath] + additive + emissive 同色降权（[TriShardSpec.emissiveAlphaMul]）接原生泛光。
+ *
+ * v4.3 池化迁移（2026-09 实机堆转储实锤 renderEntityMap 战斗内只增不删、99 万实例滞留 1 GB）：
+ * 不再「每批新建 SpriteEntity 靠定时器自删」——该模式下实体引用全部滞留至战斗切换，
+ * 持续发射器一场长战斗可灌出十万级实例。池化后本组件只做参数累积与灌批分发，
+ * 实例位置/速度/自转/包络由池 CPU 侧驱动（暂停冻结），实体总数 = 池 key 容量，有界。
  *
  * 两类用法：
  * - 树内一次性爆发（锥面冲击特效 [ConeImpactVfxComponent]）：根组件按错峰阈值灌批，
- *   advanceSelf 自动把有实例的批激活成实体；
+ *   advanceSelf 自动把有实例的批灌入粒子池；
  * - 树外持续发射（引擎碎片喷散 ASTDEngineShardSprayEffect）：持有方直接 [addShard] 累积，
  *   按节拍调 [activatePendingBatches] 灌批。
  *
- * 激活即消费：批内实例灌入**新建**的 SpriteEntity 后清空，可反复灌批；实体全局定时器
- * （fadeIn + 批内最大 full + fadeOut）走完由 BoxUtil 自删，无需持有方回收。
- * 实例位置/速度/自转/定时器均由 BoxUtil 自管理，本组件不逐帧积分。
+ * 灌批即消费：批内实例喷入粒子池后清空，可反复灌批；池满时按游标覆盖最旧粒子
+ * （视觉等同最旧碎片提前寿终）。
  *
- * 失败语义：贴图加载/addEntity/实例数据提交失败记 WARN，该批视觉缺席（对齐扭曲层先例，无兜底）。
+ * 失败语义：池不可用（BoxUtil 未就绪/实体注册失败）记 WARN，该批视觉缺席（对齐扭曲层先例，无兜底）。
  */
 class TriShardComponent(
     id: String,
@@ -82,6 +81,9 @@ class TriShardComponent(
 
     private val log = Global.getLogger(TriShardComponent::class.java)
 
+    /** 粒子池键（贴图/层/材质默认参数；容量默认 1024 覆盖舰队级喷散规模）。 */
+    private val poolKey = PooledCombatVfx.SpritePoolKey(spec.spritePath, spec.layer)
+
     /** 各批待发射实例参数（internal 供单测断言批次错峰/实例总数/参数域）。 */
     internal val batches = List(spec.batchCount) { Batch() }
 
@@ -90,7 +92,7 @@ class TriShardComponent(
         activatePendingBatches(engine)
     }
 
-    /** 立即把所有含待发射实例的批灌成实体（树内由 advanceSelf 调；树外持续发射器按自有节拍调）。 */
+    /** 立即把所有含待发射实例的批灌入粒子池（树内由 advanceSelf 调；树外持续发射器按自有节拍调）。 */
     fun activatePendingBatches(engine: CombatEngineAPI) {
         for (batch in batches) {
             if (batch.instances.isNotEmpty()) activateBatch(engine, batch)
@@ -125,92 +127,37 @@ class TriShardComponent(
         )
     }
 
-    /** 灌一批：建 SpriteEntity 并灌入全部待发射实例参数（失败记 WARN，本批视觉缺席；无论成败批即消费清空）。 */
+    /** 灌一批：把全部待发射实例喷入统一粒子池（池不可用记 WARN，本批视觉缺席；无论成败批即消费清空）。 */
     private fun activateBatch(engine: CombatEngineAPI, batch: Batch) {
         val pending = ArrayList(batch.instances)
         batch.instances.clear()
-        try {
-            BoxUtilCombatVfx.ensureReady(engine)
-            // 须先 loadTexture 进缓存，否则裸 getSprite 拿到 textureID=0 的壳（采样默认纹理
-            // alpha=0 → frag discard → 整批零渲染；v4.2 实机"碎片完全消失"+诊断 texID=0 实锤）。
-            // loadTexture 全局幂等只跑一次（对齐 AttachedBeamSpriteRingRenderer 先例）。
-            val sprite = Global.getSettings().apply { loadTexture(spec.spritePath) }.getSprite(spec.spritePath)
-            val entity = SpriteEntity()
-            entity.setAdditiveBlend()
-            entity.materialData.setDiffuse(sprite)
-            entity.materialData.setEmissive(sprite)
-            // 实例坐标即世界坐标：实体锚原点、零朝向。
-            entity.setStateVanilla(ZERO, 0f)
-            entity.setLayer(spec.layer)
-
-            val dataList = ArrayList<InstanceDataAPI>(pending.size)
-            var maxFull = 0f
-            for (inst in pending) {
-                val data = Instance2Data()
-                data.setLocation(inst.pos.x, inst.pos.y)
-                data.setVelocity(inst.vel.x, inst.vel.y)
-                data.setFacing(inst.facingDeg)
-                data.setTurnRate(inst.turnRateDegPerSec)
-                data.setScale(inst.scaleX, inst.scaleY)
-                data.setTimer(spec.timerFadeIn, inst.timerFull, spec.timerFadeOut)
-                data.color = inst.color
-                data.setEmissiveColor(inst.color.red, inst.color.green, inst.color.blue, inst.emissiveAlpha)
-                dataList.add(data)
-                maxFull = maxOf(maxFull, inst.timerFull)
-            }
-
-            entity.setInstanceData(dataList, spec.timerFadeIn, maxFull, spec.timerFadeOut)
-            // 实体全局计时器对齐最长实例寿命：缺省值会在首个逻辑帧被判 TIMER_INVALID 直接 delete，
-            // 到期自然消亡（批视觉随最长实例寿终正寝）
-            entity.setGlobalTimer(spec.timerFadeIn, maxFull, spec.timerFadeOut)
-            entity.setInstanceDataRefreshAllFromCurrentIndex()
-            if (!submitDynamicInstanceData(entity, dataList.size)) {
-                // 实体未注册进渲染队列，但实例内存可能已 malloc——delete 释放资源防泄漏
-                // （持续发射器按节拍反复灌批，失败路径不得累积泄漏）。
-                entity.delete()
-                return
-            }
-            entity.setRenderingCount(pending.size)
-            entity.isAlwaysRefreshInstanceData = true
-
-            val state = BoxUtilCombatVfx.addEntity(engine, entity)
-            if (state != 0) {
-                log.warn("三角碎片批注册失败（addEntity 返回 $state，id=$id），本批视觉缺席")
-                entity.delete()
-            }
-        } catch (t: Throwable) {
-            log.warn("三角碎片批生成异常（id=$id），本批视觉缺席", t)
+        var dropped = 0
+        for (inst in pending) {
+            val accepted = PooledCombatVfx.spawnSprite(
+                engine = engine,
+                key = poolKey,
+                x = inst.pos.x,
+                y = inst.pos.y,
+                velX = inst.vel.x,
+                velY = inst.vel.y,
+                facingDeg = inst.facingDeg,
+                turnRateDeg = inst.turnRateDegPerSec,
+                scaleX = inst.scaleX,
+                scaleY = inst.scaleY,
+                color = inst.color,
+                emissiveColor = Color(inst.color.red, inst.color.green, inst.color.blue, inst.emissiveAlpha),
+                fadeIn = spec.timerFadeIn,
+                full = inst.timerFull,
+                fadeOut = spec.timerFadeOut,
+            )
+            if (!accepted) dropped++
+        }
+        if (dropped > 0) {
+            log.warn("三角碎片批灌入粒子池失败（$dropped/${pending.size} 颗缺席，id=$id），本批视觉缺席")
         }
     }
 
-    /**
-     * 实例数据提交（动态实例内存未分配则先 malloc，再 submit）：
-     * 任何一步失败记 WARN 返回 false（本批视觉缺席，禁兜底）。
-     */
-    private fun submitDynamicInstanceData(entity: InstanceRenderAPI, instanceCount: Int): Boolean {
-        if (instanceCount < 1) return false
-        return try {
-            val memory = entity.instanceDataMemory
-            if (memory == null || memory.is_type_fixed) {
-                entity.mallocInstance(InstanceType.DYNAMIC_2D, instanceCount)
-                entity.instanceDataRefreshIndex = 0
-                entity.instanceDataRefreshOffset = 0
-                entity.setInstanceDataRefreshAllFromCurrentIndex()
-            }
-            val after = entity.instanceDataMemory
-            if (after == null || after.is_type_fixed) {
-                log.warn("三角碎片实例内存分配失败（id=$id），本批视觉缺席")
-                return false
-            }
-            entity.submitInstance()
-            true
-        } catch (t: Throwable) {
-            log.warn("三角碎片实例数据提交异常（id=$id），本批视觉缺席", t)
-            false
-        }
-    }
-
-    /** 一批碎片：待发射实例参数表（世界系）。激活即清空，可反复灌批。 */
+    /** 一批碎片：待发射实例参数表（世界系）。灌批即清空，可反复灌批。 */
     internal class Batch {
         val instances = ArrayList<ShardInstance>()
     }
@@ -227,9 +174,4 @@ class TriShardComponent(
         val emissiveAlpha: Int,
         val timerFull: Float,
     )
-
-    companion object {
-        /** 实体锚点（实例坐标即世界坐标）。 */
-        private val ZERO = Vector2f(0f, 0f)
-    }
 }
