@@ -279,8 +279,8 @@ object ShipGlowRenderer {
                 entity.materialData.setDiffuse(tex.texId)
                 entity.materialData.setEmissive(tex.texId)
                 entity.materialData.setColor(1f, 1f, 1f, 0f)
-                entity.materialData.setEmissiveColor(1f, 1f, 1f, 0f)
-                entity.materialData.glowPower = 0.5f
+                entity.materialData.setEmissiveColor(0.6f, 0.6f, 0.6f, 0f)
+                entity.materialData.glowPower = 0.05f
                 entity.materialData.isIgnoreIllumination = true
                 // 常驻：全局计时器缺省值会在首个逻辑帧被判 TIMER_INVALID 直接 delete，
                 // 必须显式钉一个超长 full（消亡由舰船状态驱动 delete）

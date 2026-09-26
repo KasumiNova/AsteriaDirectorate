@@ -367,11 +367,11 @@ internal object GravityPhaseVisualEffect {
 
                 if (engine.isPaused) continue
                 if (level > ACTIVE_LEVEL_MIN) {
-                    att.afterimageAcc += amount
-                    if (att.afterimageAcc >= AFTERIMAGE_INTERVAL) {
-                        att.afterimageAcc -= AFTERIMAGE_INTERVAL
-                        spawnAfterimage(ship)
-                    }
+//                    att.afterimageAcc += amount
+//                    if (att.afterimageAcc >= AFTERIMAGE_INTERVAL) {
+//                        att.afterimageAcc -= AFTERIMAGE_INTERVAL
+//                        spawnAfterimage(ship)
+//                    }
                 } else {
                     att.afterimageAcc = 0f
                 }
@@ -387,7 +387,7 @@ internal object GravityPhaseVisualEffect {
                 ship.location.x + (att.centerOffsetX * cos(theta) - att.centerOffsetY * sin(theta)).toFloat(),
                 ship.location.y + (att.centerOffsetX * sin(theta) + att.centerOffsetY * cos(theta)).toFloat(),
             )
-            val alpha = level.coerceIn(0f, 1f)
+            val alpha = level.coerceIn(0f, 1f) * 0.6f
             att.outline.setStateVanilla(loc, facing)
             att.outline.materialData.colorAlpha = alpha
             att.outline.materialData.emissiveColorAlpha = alpha

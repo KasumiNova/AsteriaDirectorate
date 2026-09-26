@@ -327,7 +327,7 @@ class GeminiDemPayloadBeamVfx : EveryFrameWeaponEffectPlugin {
             val pos = Vector2f(from.x + dir.x, from.y + dir.y)
             BoxUtilCombatVfx.addNebulaParticle(
                 engine, pos, ZERO, MathUtils.getRandomNumberInRange(LAUNCH_NEBULA_SIZE_MIN, LAUNCH_NEBULA_SIZE_MAX),
-                1.5f, 0.05f, 0.1f, 1f,
+                1.4f, 0.2f, 0.3f, 1f,
                 Color(fringe.red, fringe.green, fringe.blue, LAUNCH_NEBULA_ALPHA),
             )
         }
@@ -353,7 +353,7 @@ class GeminiDemPayloadBeamVfx : EveryFrameWeaponEffectPlugin {
             val pos = Vector2f(from.x + dir.x * along + jitter.x, from.y + dir.y * along + jitter.y)
             BoxUtilCombatVfx.addNebulaParticle(
                 engine, pos, ZERO, MathUtils.getRandomNumberInRange(AMBIENT_NEBULA_SIZE_MIN, AMBIENT_NEBULA_SIZE_MAX),
-                1.3f, 0.05f, 0.1f, 0.8f,
+                1.2f, 0.1f, 0.3f, 0.8f,
                 Color(fringe.red, fringe.green, fringe.blue, AMBIENT_NEBULA_ALPHA),
             )
         }
@@ -429,7 +429,7 @@ class GeminiDemPayloadBeamVfx : EveryFrameWeaponEffectPlugin {
         private const val LAUNCH_BURST_OFFSET_MAX = 40f
         private const val LAUNCH_NEBULA_SIZE_MIN = 80f
         private const val LAUNCH_NEBULA_SIZE_MAX = 160f
-        private const val LAUNCH_NEBULA_ALPHA = 100
+        private const val LAUNCH_NEBULA_ALPHA = 200
 
         // 束体周围节律星云
         private const val AMBIENT_NEBULA_INTERVAL = 0.2f
@@ -437,7 +437,7 @@ class GeminiDemPayloadBeamVfx : EveryFrameWeaponEffectPlugin {
         private const val AMBIENT_NEBULA_SIZE_MIN = 60f
         private const val AMBIENT_NEBULA_SIZE_MAX = 120f
         private const val AMBIENT_NEBULA_JITTER = 20f
-        private const val AMBIENT_NEBULA_ALPHA = 90
+        private const val AMBIENT_NEBULA_ALPHA = 150
 
         // 动能装饰电弧（全长一道，发射点→命中点钉死）
         private const val DECOR_ARC_INTERVAL = 0.1f
