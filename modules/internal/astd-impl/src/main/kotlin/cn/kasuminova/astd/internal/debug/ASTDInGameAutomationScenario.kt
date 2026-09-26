@@ -76,6 +76,14 @@ object ASTDInGameAutomationScenario {
     const val FGL_SYSTEM_ID: String = "astd_fighter_grav_link"
     const val FGL_HULL_ID: String = "astd_zw_102"
     const val FGL_VARIANT_ID: String = "astd_zw_102_Standard"
+    const val GS_SCENARIO_ID: String = "lens_grav_storm_zw002"
+    const val GS_SYSTEM_ID: String = "astd_grav_storm"
+    const val GS_HULL_ID: String = "astd_zw_002"
+    const val GS_VARIANT_ID: String = "astd_zw_002_Standard"
+    const val GSR_SCENARIO_ID: String = "lens_grav_replicator_zw101"
+    const val GSR_SYSTEM_ID: String = "astd_grav_replicator"
+    const val GSR_HULL_ID: String = "astd_zw_101"
+    const val GSR_VARIANT_ID: String = "astd_zw_101_Standard"
     const val SHIP_ID: String = "astd_xc_001"
     const val VARIANT_ID: String = "astd_xc_001_Standard"
     const val WEAPON_ID: String = "astd_aod7"
@@ -311,6 +319,31 @@ object ASTDInGameAutomationScenario {
         val enabled = System.getProperty(ENABLED_PROPERTY)?.equals("true", ignoreCase = true) == true
         val scenario = System.getProperty(SCENARIO_PROPERTY, SCENARIO_ID)
         return enabled && scenario == FGL_SCENARIO_ID
+    }
+
+    /**
+     * 密蒙级引力磁暴发生器实机场景开关：镜像 [isFighterGravLinkScenarioEnabled]。
+     * 验证引力电磁力场满效压制（敌舰航速/转向 ×0.8、EMP 承伤 +0.5 位移）、
+     * 充能代价（基础容量 ×20% 软辐能）与充能期全承伤 ×0.5、
+     * 满充能自然释放（锥内电弧结算掉血 + 巡洋舰 2s 强制过载）、
+     * 系统冷却后力场收口复原。
+     */
+    fun isGravStormScenarioEnabled(): Boolean {
+        val enabled = System.getProperty(ENABLED_PROPERTY)?.equals("true", ignoreCase = true) == true
+        val scenario = System.getProperty(SCENARIO_PROPERTY, SCENARIO_ID)
+        return enabled && scenario == GS_SCENARIO_ID
+    }
+
+    /**
+     * 舜华级引力空间复制器/折跃器实机场景开关：镜像 [isGravStormScenarioEnabled]。
+     * 验证非冷却期光束承伤 ×0.75、激活代价（基础容量 ×10% 软辐能）、
+     * 弹道复制（原发 +0.5s/+1.0s 各复制 1 发、复制体伤害 ×0.5、逐发复制附加 单发辐能 ×0.5 尖峰）、
+     * 冷却期折跃停判与光束减免复原、冷却后折跃恢复（三态标记 folded/no_fold 与镜像离场）。
+     */
+    fun isGravReplicatorScenarioEnabled(): Boolean {
+        val enabled = System.getProperty(ENABLED_PROPERTY)?.equals("true", ignoreCase = true) == true
+        val scenario = System.getProperty(SCENARIO_PROPERTY, SCENARIO_ID)
+        return enabled && scenario == GSR_SCENARIO_ID
     }
 
     fun outputDir(): Path {

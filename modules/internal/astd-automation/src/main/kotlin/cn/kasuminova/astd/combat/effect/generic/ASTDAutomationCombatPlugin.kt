@@ -46,7 +46,9 @@ import cn.kasuminova.astd.combat.hullmods.lens.LENS_DUAL_MODE_CONFIG
 import cn.kasuminova.astd.combat.hullmods.lens.LensArrayCoreHullModIds
 import cn.kasuminova.astd.combat.lens.marks.LensMarks
 import cn.kasuminova.astd.combat.lens.system.EchoFixationField
+import cn.kasuminova.astd.combat.lens.system.GravReplicatorTuning
 import cn.kasuminova.astd.combat.lens.system.GravityRiftTuning
+import cn.kasuminova.astd.combat.hullmods.lens.GravSpaceFoldTuning
 import cn.kasuminova.astd.combat.shipsystems.GravityRiftSystemStats
 import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import cn.kasuminova.astd.impl.render.ASTDProjectileVfxLayout
@@ -63,6 +65,7 @@ import com.fs.starfarer.api.combat.CombatEntityAPI
 import com.fs.starfarer.api.combat.DamageType
 import com.fs.starfarer.api.combat.DamagingProjectileAPI
 import com.fs.starfarer.api.combat.GuidedMissileAI
+import com.fs.starfarer.api.combat.MissileAPI
 import com.fs.starfarer.api.combat.MissileAIPlugin
 import com.fs.starfarer.api.combat.ShipAIConfig
 import com.fs.starfarer.api.combat.ShipAPI
@@ -544,6 +547,72 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     // RELAUNCH（断言点 G）：召回后新 identity 战机重新出击证据。
     private var fglRelaunchObserved = false
 
+    // ==== 密蒙引力磁暴发生器场景状态（相位机 SPAWN → FIELD_OBSERVE → ACTIVATE → RELEASE → COOLDOWN_FIELD_OFF → COMPLETED） ====
+    private var gsPhase = GS_PHASE_SPAWN
+    private var gsPhaseStartedAt = 0f
+
+    // FIELD_OBSERVE（断言点 GS-A）：力场满效压制采样（敌舰钉在 600su ≤ 半射程 750su 满效区）。
+    private var gsFieldMaxSpeedMultMin = Float.MAX_VALUE
+    private var gsFieldTurnRateMultMin = Float.MAX_VALUE
+    private var gsFieldEmpMultMax = 0f
+
+    // ACTIVATE（断言点 GS-B）：激活软辐能峰值增量与充能期全承伤乘区谷值。
+    private var gsActivateAttempts = 0
+    private var gsActivatedAt = -1f
+    private var gsActivationFluxDeltaMax = 0f
+    private var gsChargeDamageTakenMultMin = Float.MAX_VALUE
+
+    // RELEASE（断言点 GS-C/D）：释放闩、系统激活期力场修饰键在场对账、靶舰过载时长与电弧结算掉血。
+    // 注意：电弧 EMP 会熄火敌舰引擎把 maxSpeed 打到 0，力场存续判定只能对账修饰键，不能读值。
+    private var gsStormActivationLatched = false
+    private var gsFieldMultMinDuringRelease = Float.MAX_VALUE
+    private var gsFieldModifierLostEarly = false
+    private var gsFieldModifierLostDetail = ""
+    private var gsEnemyOverloadStartedAt = -1f
+    private var gsEnemyOverloadSeconds = -1f
+    private var gsEnemyHpBeforeRelease = -1f
+    private var gsEnemyHpMinAfterRelease = Float.MAX_VALUE
+
+    // COOLDOWN_FIELD_OFF（断言点 GS-E）：系统冷却后力场收口，靶舰力场修饰键移除且 EMP 承伤复原。
+    private var gsFieldModifierCleared = false
+    private var gsFieldRestoredEmpMult = -1f
+
+    // ==== 舜华引力空间复制器/折跃器场景状态（相位机 SPAWN → ACTIVATE → OBSERVE_COOLDOWN → FOLD_FEED → COMPLETED） ====
+    private var gsrPhase = GSR_PHASE_SPAWN
+    private var gsrPhaseStartedAt = 0f
+
+    // SPAWN（断言点 GSR-A）：系统非冷却期光束承伤乘区峰值（v2 ×0.75）。
+    private var gsrBeamMultIdleMax = 0f
+
+    // ACTIVATE（断言点 GSR-B/C）：激活软辐能峰值增量、原发/复制弹分类计数与逐帧辐能尖峰清单。
+    private var gsrActivateAttempts = 0
+    private var gsrActivatedAt = -1f
+    private var gsrActivationFluxDeltaMax = 0f
+    private var gsrFired = false
+    private var gsrOrigDamage = -1f
+    private var gsrOriginalShots = 0
+    private var gsrReplicaShots = 0
+    private var gsrReplicaDamageMax = 0f
+    private var gsrPrevFlux = -1f
+    private val gsrFluxSpikes = mutableListOf<Float>()
+    private val gsrSeenOwnProjectiles = mutableSetOf<Int>()
+
+    // OBSERVE_COOLDOWN（断言点 GSR-D/E）：冷却期光束乘区复原与投喂弹体零判定标记（identityHash → 最小接近距离）。
+    private var gsrCooldownBeamMultMax = 0f
+    private var gsrCooldownFedAt = -1f
+    private var gsrCooldownFedCount = 0
+    private var gsrCooldownMarked = 0
+    private val gsrCooldownFeedDist = mutableMapOf<Int, Float>()
+
+    // FOLD_FEED（断言点 GSR-F）：折跃恢复后三态标记统计与镜像离场验证。
+    private var gsrFoldFedAt = -1f
+    private var gsrFoldFedCount = 0
+    private var gsrFoldedCount = 0
+    private var gsrNoFoldCount = 0
+    private var gsrFoldedMovingAway = 0
+    private val gsrFoldFeedIds = mutableSetOf<Int>()
+    private val gsrFoldFeedMarked = mutableSetOf<Int>()
+
     override fun init(engine: CombatEngineAPI) {
         this.engine = engine
         // 关闭原版开局部署对话框（仅多舰场景）：CombatState.traverse 的弹框闸门在 engine.init()
@@ -577,6 +646,20 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             writeDiagnostics(engine, "CombatReady")
             writeTelemetry(engine, "CombatReady", findFglPlayer(engine), null)
             log.info("[ASTD-Automation] scenario=${ASTDInGameAutomationScenario.FGL_SCENARIO_ID} combat plugin initialized")
+        } else if (ASTDInGameAutomationScenario.isGravStormScenarioEnabled()) {
+            engine.setDoNotEndCombat(true)
+            lockGsCamera(engine)
+            // 与其他场景一致：reserves 部署放到 advance()，init 阶段渲染器未就绪。
+            writeDiagnostics(engine, "CombatReady")
+            writeTelemetry(engine, "CombatReady", findGsPlayer(engine), null)
+            log.info("[ASTD-Automation] scenario=${ASTDInGameAutomationScenario.GS_SCENARIO_ID} combat plugin initialized")
+        } else if (ASTDInGameAutomationScenario.isGravReplicatorScenarioEnabled()) {
+            engine.setDoNotEndCombat(true)
+            lockGsrCamera(engine)
+            // 与其他场景一致：reserves 部署放到 advance()，init 阶段渲染器未就绪。
+            writeDiagnostics(engine, "CombatReady")
+            writeTelemetry(engine, "CombatReady", findGsrPlayer(engine), null)
+            log.info("[ASTD-Automation] scenario=${ASTDInGameAutomationScenario.GSR_SCENARIO_ID} combat plugin initialized")
         } else if (ASTDInGameAutomationScenario.isTrailPauseProbeEnabled()) {
             lockCamera(engine)
             arrangeShips(engine, findXc001(engine))
@@ -732,6 +815,18 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             if (combatEngine.isPaused) combatEngine.isPaused = false
             elapsed += amount.coerceAtLeast(0f)
             advanceFglScenario(combatEngine)
+            return
+        }
+        if (ASTDInGameAutomationScenario.isGravStormScenarioEnabled()) {
+            if (combatEngine.isPaused) combatEngine.isPaused = false
+            elapsed += amount.coerceAtLeast(0f)
+            advanceGsScenario(combatEngine)
+            return
+        }
+        if (ASTDInGameAutomationScenario.isGravReplicatorScenarioEnabled()) {
+            if (combatEngine.isPaused) combatEngine.isPaused = false
+            elapsed += amount.coerceAtLeast(0f)
+            advanceGsrScenario(combatEngine)
             return
         }
         if (ASTDInGameAutomationScenario.isTrailPauseProbeEnabled()) {
@@ -901,6 +996,28 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             visualFramesWritten++
             writeDiagnostics(combatEngine, "Completed", findFglPlayer(combatEngine))
             writeTelemetry(combatEngine, "Completed", findFglPlayer(combatEngine), null)
+            return
+        }
+        if (ASTDInGameAutomationScenario.isGravStormScenarioEnabled()) {
+            if (!completed || visualFramesWritten >= 3) return
+            // 捕获帧间隔 0.6s：过载靶舰/力场电弧视觉与密蒙在三帧内进入捕获帧。
+            if (visualFramesWritten > 0 && elapsed - lastVisualFrameAt < 0.6f) return
+            lockGsCamera(combatEngine)
+            lastVisualFrameAt = elapsed
+            visualFramesWritten++
+            writeDiagnostics(combatEngine, "Completed", findGsPlayer(combatEngine))
+            writeTelemetry(combatEngine, "Completed", findGsPlayer(combatEngine), null)
+            return
+        }
+        if (ASTDInGameAutomationScenario.isGravReplicatorScenarioEnabled()) {
+            if (!completed || visualFramesWritten >= 3) return
+            // 捕获帧间隔 0.6s：折跃扭曲/红色星云与舜华在三帧内进入捕获帧。
+            if (visualFramesWritten > 0 && elapsed - lastVisualFrameAt < 0.6f) return
+            lockGsrCamera(combatEngine)
+            lastVisualFrameAt = elapsed
+            visualFramesWritten++
+            writeDiagnostics(combatEngine, "Completed", findGsrPlayer(combatEngine))
+            writeTelemetry(combatEngine, "Completed", findGsrPlayer(combatEngine), null)
             return
         }
         if (ASTDInGameAutomationScenario.isTrailPauseProbeEnabled()) {
@@ -6553,6 +6670,868 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     }
 
 
+    // === 密蒙引力磁暴发生器场景（力场压制 / 充能代价+减伤 / 满充能释放电弧+强制过载 / 冷却力场收口证据） ===
+
+    private fun findGsPlayer(engine: CombatEngineAPI): ShipAPI? =
+        engine.ships.firstOrNull { ship -> ship.owner == 0 && ship.hullSpec?.hullId == GS_PLAYER_HULL && !ship.isFighter }
+
+    private fun findGsEnemy(engine: CombatEngineAPI): ShipAPI? =
+        engine.ships.firstOrNull { ship -> ship.owner != 0 && ship.hullSpec?.hullId == GS_ENEMY_HULL && !ship.isFighter }
+
+    /**
+     * 力场修饰键在场对账：电弧 EMP 熄火会把目标 maxSpeed 值打到 0（力场复原断言的值层面读数不可信），
+     * 直接查目标 maxSpeed 乘区修饰表中的力场键。键前缀口径同 GravEmFieldHullMod.MOD_ID_PREFIX
+     * （其 private 不便开放，此处字面值镜像，改动 hullmod 键名时需同步）。
+     */
+    private fun hasGsFieldModifier(ship: ShipAPI): Boolean =
+        ship.mutableStats.maxSpeed.multMods.keys.any { it.startsWith(GS_FIELD_MOD_ID_PREFIX) }
+
+    /** 力场修饰键缺席取证：记录首丢帧的相位/源舰系统状态/间距/靶舰乘区表现有键，供失败归因。 */
+    private fun trackGsFieldModifier(enemy: ShipAPI, player: ShipAPI?) {
+        if (gsFieldModifierLostEarly || hasGsFieldModifier(enemy)) return
+        gsFieldModifierLostEarly = true
+        val keys = enemy.mutableStats.maxSpeed.multMods.keys.joinToString(",")
+        val dist = player?.let { Misc.getDistance(it.location, enemy.location).toInt() } ?: -1
+        gsFieldModifierLostDetail = "phase=$gsPhase sys=${player?.system?.state} srcAlive=${player?.isAlive} " +
+                "dist=${dist}su keys=[$keys]"
+    }
+
+    /** 强制部署 mission reserves（范式同 deployGrgReserveShips；已出场成员按 hull 判重跳过并移出后备）。 */
+    private fun deployGsReserveShips(engine: CombatEngineAPI) {
+        engine.setDoNotEndCombat(true)
+        for (side in listOf(FleetSide.PLAYER, FleetSide.ENEMY)) {
+            val manager = engine.getFleetManager(side)
+            manager.isSuppressDeploymentMessages = true
+            for (member in manager.reservesCopy.toList()) {
+                val anchor = when {
+                    side == FleetSide.PLAYER && member.hullId == GS_PLAYER_HULL -> GS_PLAYER_ANCHOR
+                    side == FleetSide.ENEMY && member.hullId == GS_ENEMY_HULL -> GS_ENEMY_ANCHOR
+                    else -> continue
+                }
+                if (findShipByHull(engine, member.hullId) != null) {
+                    manager.removeFromReserves(member)
+                    continue
+                }
+                val facing = if (side == FleetSide.ENEMY) 180f else 0f
+                manager.spawnFleetMember(member, Vector2f(anchor), facing, 0f)
+                manager.removeFromReserves(member)
+            }
+        }
+    }
+
+    private fun transitionGsPhase(next: String) {
+        log.info("[ASTD-Automation] gs phase $gsPhase -> $next at ${"%.2f".format(elapsed)}s")
+        gsPhase = next
+        gsPhaseStartedAt = elapsed
+    }
+
+    /**
+     * 舞台保活与站位（范式同 stabilizeGrgShips）：双方逐帧钉死锚点 + 舰 AI 置空
+     * （密蒙舰载机联队不需要出库，无 AI 即不出击；系统施放时机由插件独占，
+     * [blockSystem] 在 ACTIVATE 之前逐帧封锁 USE_SYSTEM 防系统 AI 路径抢跑）。
+     * 玩家舰逐帧封锁相位斗篷：充能中进相位会 deactivate 取消释放（机制口径），
+     * 本场景验证完整释放链路，相位路径不在观测面内。
+     * [healEnemy] 在 RELEASE 起关闭：电弧结算需要真实 hitpoints 读数（靶舰装甲已在
+     * 进 ACTIVATE 时剥零，范式同 GRG 的 RIFT_FIRE 前剥甲）。
+     */
+    private fun stabilizeGsShips(engine: CombatEngineAPI, healEnemy: Boolean, zeroPlayerFlux: Boolean, blockSystem: Boolean) {
+        val player = findGsPlayer(engine)
+        val enemy = findGsEnemy(engine)
+        if (player != null && !player.isHulk) {
+            engine.setPlayerShipExternal(player)
+            stabilizeShip(player, GS_PLAYER_ANCHOR, 0f, allowFire = false, preserveAI = false)
+            player.hitpoints = player.maxHitpoints
+            if (zeroPlayerFlux) {
+                player.fluxTracker.currFlux = 0f
+                player.fluxTracker.hardFlux = 0f
+            }
+            if (blockSystem) player.blockCommandForOneFrame(ShipCommand.USE_SYSTEM)
+            player.blockCommandForOneFrame(ShipCommand.TOGGLE_SHIELD_OR_PHASE_CLOAK)
+        }
+        if (enemy != null && !enemy.isHulk) {
+            stabilizeShip(enemy, GS_ENEMY_ANCHOR, 180f, allowFire = false, preserveAI = false)
+            if (healEnemy) enemy.hitpoints = enemy.maxHitpoints
+            enemy.fluxTracker.currFlux = 0f
+            enemy.fluxTracker.hardFlux = 0f
+            // 靶舰护盾压下：电弧与过载结算落船体（范式同 stabilizeGrgShips 的靶舰处理）。
+            enemy.blockCommandForOneFrame(ShipCommand.TOGGLE_SHIELD_OR_PHASE_CLOAK)
+            enemy.shield?.let { if (it.isOn) it.toggleOff() }
+        }
+    }
+
+    private fun lockGsCamera(engine: CombatEngineAPI) {
+        val viewport = engine.viewport
+        val displayWidth = try {
+            Display.getWidth().takeIf { it > 0 } ?: 2560
+        } catch (_: Throwable) {
+            2560
+        }
+        val displayHeight = try {
+            Display.getHeight().takeIf { it > 0 } ?: 1440
+        } catch (_: Throwable) {
+            1440
+        }
+        val displayAspect = displayWidth.toFloat() / displayHeight.toFloat()
+        val visibleWidth = GS_CAMERA_VISIBLE_HEIGHT * displayAspect
+        viewport.isExternalControl = true
+        viewport.set(
+            GS_CAMERA_CENTER.x - visibleWidth * 0.5f,
+            GS_CAMERA_CENTER.y - GS_CAMERA_VISIBLE_HEIGHT * 0.5f,
+            visibleWidth,
+            GS_CAMERA_VISIBLE_HEIGHT,
+        )
+        viewport.isEverythingNearViewport = true
+    }
+
+    /**
+     * 密蒙引力磁暴发生器相位机：
+     * SPAWN（双方出场/钉位/锁相机）→
+     * FIELD_OBSERVE（断言点 GS-A：力场满效压制——敌舰钉在 600su ≤ 半射程 750su 满效区，
+     *   玩家恒 v2 → 航速/转向 ×0.8、EMP 承伤 1.0 +0.5 绝对位移到 1.5）→
+     * ACTIVATE（断言点 GS-B：剥甲后 useSystem() 按帧重试点火；IN 首帧计入 基础容量×20%
+     *   软辐能（zw_002 12000 → ≈2400），充能期 hullDamageTakenMult ≤0.51）→
+     * RELEASE（充满 4s 自然 ACTIVE 首帧释放并归位 OUT：断言点 GS-C 释放闩 +
+     *   靶舰过载时长 ∈ [1.5, 2.5]（巡洋舰 v2 满充能 2s）；断言点 GS-D 电弧结算掉血 ≥1500；
+     *   断言点 GS-E 前置：系统激活期（IN/ACTIVE/OUT）力场修饰键不离场）→
+     * COOLDOWN_FIELD_OFF（断言点 GS-E：系统进 COOLDOWN 后力场收口，敌舰力场修饰键移除 + EMP 承伤复原 1.0）→
+     * COMPLETED（renderInUICoords 三帧捕获）。
+     */
+    private fun advanceGsScenario(engine: CombatEngineAPI) {
+        engine.setDoNotEndCombat(true)
+        deployGsReserveShips(engine)
+        lockGsCamera(engine)
+
+        val player = findGsPlayer(engine)
+        val enemy = findGsEnemy(engine)
+        val system = player?.system
+
+        when (gsPhase) {
+            GS_PHASE_SPAWN -> {
+                stabilizeGsShips(engine, healEnemy = true, zeroPlayerFlux = true, blockSystem = true)
+                if (player != null && enemy != null && elapsed - gsPhaseStartedAt >= GS_SPAWN_SETTLE_SECONDS) {
+                    transitionGsPhase(GS_PHASE_FIELD_OBSERVE)
+                }
+            }
+
+            GS_PHASE_FIELD_OBSERVE -> {
+                stabilizeGsShips(engine, healEnemy = true, zeroPlayerFlux = true, blockSystem = true)
+                if (enemy != null && !enemy.isHulk) {
+                    val stats = enemy.mutableStats
+                    gsFieldMaxSpeedMultMin = minOf(gsFieldMaxSpeedMultMin, stats.maxSpeed.modifiedValue / stats.maxSpeed.baseValue)
+                    gsFieldTurnRateMultMin = minOf(gsFieldTurnRateMultMin, stats.maxTurnRate.modifiedValue / stats.maxTurnRate.baseValue)
+                    gsFieldEmpMultMax = maxOf(gsFieldEmpMultMax, stats.empDamageTakenMult.modifiedValue)
+                }
+                if (elapsed - gsPhaseStartedAt >= GS_FIELD_OBSERVE_SECONDS) {
+                    when {
+                        gsFieldMaxSpeedMultMin !in GS_FIELD_STAT_MULT_MIN..GS_FIELD_STAT_MULT_MAX -> {
+                            failureReason = "gs field maxSpeed mult=${"%.3f".format(gsFieldMaxSpeedMultMin)}" +
+                                    " ∉ [$GS_FIELD_STAT_MULT_MIN, $GS_FIELD_STAT_MULT_MAX]（断言点 GS-A：满效 ×0.8）"
+                            transitionGsPhase(GS_PHASE_FAILED)
+                        }
+
+                        gsFieldTurnRateMultMin !in GS_FIELD_STAT_MULT_MIN..GS_FIELD_STAT_MULT_MAX -> {
+                            failureReason = "gs field turnRate mult=${"%.3f".format(gsFieldTurnRateMultMin)}" +
+                                    " ∉ [$GS_FIELD_STAT_MULT_MIN, $GS_FIELD_STAT_MULT_MAX]（断言点 GS-A：满效 ×0.8）"
+                            transitionGsPhase(GS_PHASE_FAILED)
+                        }
+
+                        gsFieldEmpMultMax !in GS_FIELD_EMP_MULT_MIN..GS_FIELD_EMP_MULT_MAX -> {
+                            failureReason = "gs field empMult=${"%.3f".format(gsFieldEmpMultMax)}" +
+                                    " ∉ [$GS_FIELD_EMP_MULT_MIN, $GS_FIELD_EMP_MULT_MAX]（断言点 GS-A：EMP 承伤 +0.5 位移）"
+                            transitionGsPhase(GS_PHASE_FAILED)
+                        }
+
+                        else -> {
+                            log.info(
+                                "[ASTD-Automation] gs field evidence: maxSpeedMultMin=${"%.3f".format(gsFieldMaxSpeedMultMin)} " +
+                                        "turnRateMultMin=${"%.3f".format(gsFieldTurnRateMultMin)} " +
+                                        "empMultMax=${"%.3f".format(gsFieldEmpMultMax)}（断言点 GS-A：力场满效压制）",
+                            )
+                            // 释放前剥光靶舰装甲（范式同 GRG：断言的是电弧出伤链路而非原版装甲数学）。
+                            enemy?.armorGrid?.grid?.forEach { row -> row.fill(0f) }
+                            transitionGsPhase(GS_PHASE_ACTIVATE)
+                        }
+                    }
+                }
+            }
+
+            GS_PHASE_ACTIVATE -> {
+                // 辐能清零闸只认原版状态机：IDLE 才清零。toggle 系统充满后 ACTIVE 仅存在
+                // 脚本 apply 一帧（随即 forceState OUT），isOn 观测面既留不住激活代价读数
+                // （chargeTick 首帧计入的软辐能会被下一帧清零抹掉）也抓不到释放闩，必须直接读 state。
+                val systemState = system?.state
+                stabilizeGsShips(
+                    engine, healEnemy = true,
+                    zeroPlayerFlux = systemState == null || systemState == ShipSystemAPI.SystemState.IDLE,
+                    blockSystem = false,
+                )
+                if (player != null && enemy != null && system != null) {
+                    if (system.id != GS_SYSTEM_ID) {
+                        failureReason = "gs system id=${system.id}, expect $GS_SYSTEM_ID（ship_data.csv 生成物未刷新）"
+                        transitionGsPhase(GS_PHASE_FAILED)
+                    } else {
+                        if (systemState == ShipSystemAPI.SystemState.IN ||
+                            systemState == ShipSystemAPI.SystemState.ACTIVE ||
+                            systemState == ShipSystemAPI.SystemState.OUT
+                        ) {
+                            if (gsActivatedAt < 0f) {
+                                gsActivatedAt = elapsed
+                                log.info(
+                                    "[ASTD-Automation] gs activated: state=$systemState attempts=$gsActivateAttempts " +
+                                            "currFlux=${"%.0f".format(player.fluxTracker.currFlux)}",
+                                )
+                            }
+                            // 断言点 GS-B 观测面：激活软辐能峰值增量（基线为逐帧清零的 0）与充能期承伤乘区谷值。
+                            gsActivationFluxDeltaMax = maxOf(gsActivationFluxDeltaMax, player.fluxTracker.currFlux)
+                            gsChargeDamageTakenMultMin = minOf(gsChargeDamageTakenMultMin, player.mutableStats.hullDamageTakenMult.modifiedValue)
+                            // 断言点 GS-E 前置观测：系统激活期力场修饰键必须在场（失效条件仅 COOLDOWN/残骸化）。
+                            trackGsFieldModifier(enemy, player)
+                        }
+                        // 释放闩逐帧对账（release() 写入后 OUT 窗口 1.5s 内均可读，不受 isOn 口径影响）。
+                        if (engine.customData[GS_STORM_ACTIVATION_KEY + player.id] != null) gsStormActivationLatched = true
+                        if (gsStormActivationLatched || systemState == ShipSystemAPI.SystemState.OUT) {
+                            when {
+                                gsActivationFluxDeltaMax !in GS_EXPECT_ACTIVATION_FLUX_MIN..GS_EXPECT_ACTIVATION_FLUX_MAX -> {
+                                    failureReason = "gs activation flux delta=${"%.0f".format(gsActivationFluxDeltaMax)}" +
+                                            " ∉ [$GS_EXPECT_ACTIVATION_FLUX_MIN, $GS_EXPECT_ACTIVATION_FLUX_MAX]" +
+                                            "（断言点 GS-B：基础容量 ×20% 软辐能，zw_002 ≈2400）"
+                                    transitionGsPhase(GS_PHASE_FAILED)
+                                }
+
+                                gsChargeDamageTakenMultMin > GS_EXPECT_DAMAGE_TAKEN_MAX -> {
+                                    failureReason = "gs charge damageTakenMult min=${"%.3f".format(gsChargeDamageTakenMultMin)}" +
+                                            " > $GS_EXPECT_DAMAGE_TAKEN_MAX（断言点 GS-B：充能期全承伤 ×0.5）"
+                                    transitionGsPhase(GS_PHASE_FAILED)
+                                }
+
+                                else -> {
+                                    gsEnemyHpBeforeRelease = enemy.hitpoints
+                                    gsEnemyHpMinAfterRelease = enemy.hitpoints
+                                    log.info(
+                                        "[ASTD-Automation] gs charge evidence: fluxDeltaMax=${"%.0f".format(gsActivationFluxDeltaMax)} " +
+                                                "damageTakenMultMin=${"%.3f".format(gsChargeDamageTakenMultMin)}（断言点 GS-B）",
+                                    )
+                                    transitionGsPhase(GS_PHASE_RELEASE)
+                                }
+                            }
+                        } else if (systemState == ShipSystemAPI.SystemState.IDLE && system.cooldownRemaining <= 0f) {
+                            // 按帧重试 useSystem()（单次调用可能被原版闸门吞掉，范式同 FGL ACTIVATE）；
+                            // 只在 IDLE 重试：IN 期间再按对 toggle 系统是提前结束/取消路径。
+                            gsActivateAttempts++
+                            player.useSystem()
+                        }
+                    }
+                    if (gsPhase == GS_PHASE_ACTIVATE && elapsed - gsPhaseStartedAt >= GS_ACTIVATE_TIMEOUT) {
+                        failureReason = "gs activate timeout: ${GS_ACTIVATE_TIMEOUT.toInt()}s 内系统未点亮" +
+                                "（attempts=$gsActivateAttempts state=${system.state} cd=${"%.1f".format(system.cooldownRemaining)}）"
+                        transitionGsPhase(GS_PHASE_FAILED)
+                    }
+                }
+            }
+
+            GS_PHASE_RELEASE -> {
+                // 靶舰停奶：电弧结算需要真实 hitpoints 读数；玩家侧继续奶血保活。
+                stabilizeGsShips(engine, healEnemy = false, zeroPlayerFlux = false, blockSystem = false)
+                if (player != null && enemy != null && system != null && gsActivatedAt >= 0f) {
+                    if (engine.customData[GS_STORM_ACTIVATION_KEY + player.id] != null) gsStormActivationLatched = true
+                    if (!enemy.isHulk) {
+                        // 断言点 GS-E 前置观测：系统激活期力场修饰键必须在场（值层面被电弧熄火污染，只对账键）。
+                        // COOLDOWN 一起即停对账：冷却关场是机制口径（断言点 GS-E 验的就是这个收口），
+                        //  hullmod 在状态翻转帧即 unmodify，纳入对账会把正常收口误判为提前失效。
+                        gsFieldMultMinDuringRelease = minOf(
+                            gsFieldMultMinDuringRelease,
+                            enemy.mutableStats.maxSpeed.modifiedValue / enemy.mutableStats.maxSpeed.baseValue,
+                        )
+                        if (system.state != ShipSystemAPI.SystemState.COOLDOWN) trackGsFieldModifier(enemy, player)
+                        gsEnemyHpMinAfterRelease = minOf(gsEnemyHpMinAfterRelease, enemy.hitpoints)
+                        if (enemy.fluxTracker.isOverloaded) {
+                            if (gsEnemyOverloadStartedAt < 0f) gsEnemyOverloadStartedAt = elapsed
+                        } else if (gsEnemyOverloadStartedAt >= 0f && gsEnemyOverloadSeconds < 0f &&
+                            !enemy.fluxTracker.isOverloadedOrVenting
+                        ) {
+                            gsEnemyOverloadSeconds = elapsed - gsEnemyOverloadStartedAt
+                        }
+                    }
+                    val cooldownReached = system.state == ShipSystemAPI.SystemState.COOLDOWN
+                    val overloadPending = gsEnemyOverloadStartedAt >= 0f && gsEnemyOverloadSeconds < 0f
+                    if (cooldownReached && !overloadPending) {
+                        val hpDrop = gsEnemyHpBeforeRelease - gsEnemyHpMinAfterRelease
+                        when {
+                            !gsStormActivationLatched -> {
+                                failureReason = "gs release latch missing: 释放闩 ${GS_STORM_ACTIVATION_KEY}* 未出现（断言点 GS-C）"
+                                transitionGsPhase(GS_PHASE_FAILED)
+                            }
+
+                            gsEnemyOverloadStartedAt < 0f -> {
+                                failureReason = "gs enemy never overloaded: 释放后靶舰未进过载（断言点 GS-C：锥内锁定+强制过载）"
+                                transitionGsPhase(GS_PHASE_FAILED)
+                            }
+
+                            gsEnemyOverloadSeconds !in GS_OVERLOAD_SECONDS_MIN..GS_OVERLOAD_SECONDS_MAX -> {
+                                failureReason = "gs overload seconds=${"%.2f".format(gsEnemyOverloadSeconds)}" +
+                                        " ∉ [$GS_OVERLOAD_SECONDS_MIN, $GS_OVERLOAD_SECONDS_MAX]（断言点 GS-C：巡洋舰 v2 满充能 2s）"
+                                transitionGsPhase(GS_PHASE_FAILED)
+                            }
+
+                            hpDrop < GS_EXPECT_ENEMY_HP_DROP -> {
+                                failureReason = "gs arc damage shortfall: hpDrop=${"%.0f".format(hpDrop)}" +
+                                        " < $GS_EXPECT_ENEMY_HP_DROP（enemyHp=${"%.0f".format(enemy.hitpoints)}" +
+                                        "/${"%.0f".format(enemy.maxHitpoints)}，断言点 GS-D：8~16 道电弧剥甲结算）"
+                                transitionGsPhase(GS_PHASE_FAILED)
+                            }
+
+                            gsFieldModifierLostEarly -> {
+                                failureReason = "gs field lost during system use: 激活期力场修饰键 $GS_FIELD_MOD_ID_PREFIX* 缺席" +
+                                        "（$gsFieldModifierLostDetail，断言点 GS-E 前置：IN/ACTIVE/OUT 力场不失效）"
+                                transitionGsPhase(GS_PHASE_FAILED)
+                            }
+
+                            else -> {
+                                log.info(
+                                    "[ASTD-Automation] gs release evidence: overload=${"%.2f".format(gsEnemyOverloadSeconds)}s " +
+                                            "hpDrop=${"%.0f".format(hpDrop)}（${"%.0f".format(gsEnemyHpBeforeRelease)} -> " +
+                                            "${"%.0f".format(gsEnemyHpMinAfterRelease)}）fieldModifierKept=true（断言点 GS-C/D + GS-E 前置）",
+                                )
+                                transitionGsPhase(GS_PHASE_COOLDOWN_FIELD_OFF)
+                            }
+                        }
+                    } else if (elapsed - gsActivatedAt >= GS_RELEASE_TIMEOUT) {
+                        failureReason = "gs release timeout: 激活后 ${GS_RELEASE_TIMEOUT.toInt()}s 内未收口" +
+                                "（state=${system.state} latched=$gsStormActivationLatched overloadAt=" +
+                                "${"%.2f".format(gsEnemyOverloadStartedAt)} overloadSeconds=${"%.2f".format(gsEnemyOverloadSeconds)}）"
+                        transitionGsPhase(GS_PHASE_FAILED)
+                    }
+                }
+            }
+
+            GS_PHASE_COOLDOWN_FIELD_OFF -> {
+                stabilizeGsShips(engine, healEnemy = false, zeroPlayerFlux = false, blockSystem = true)
+                if (enemy != null && !enemy.isHulk && elapsed - gsPhaseStartedAt >= GS_FIELD_RESTORE_SETTLE_SECONDS) {
+                    // 断言点 GS-E：系统冷却期力场消失——修饰键从靶舰乘区表移除（hullmod 逐帧对账口径），
+                    // 且 EMP 承伤乘区复原 1.0。不读 maxSpeed 值：电弧 EMP 熄火会把航速值打到 0，与力场无关。
+                    val modifierCleared = !hasGsFieldModifier(enemy)
+                    val empMult = enemy.mutableStats.empDamageTakenMult.modifiedValue
+                    gsFieldModifierCleared = modifierCleared
+                    gsFieldRestoredEmpMult = empMult
+                    if (modifierCleared && kotlin.math.abs(empMult - 1f) <= GS_FIELD_RESTORE_TOLERANCE) {
+                        log.info(
+                            "[ASTD-Automation] gs field restore evidence: 冷却后修饰键已移除、empMult=${"%.3f".format(empMult)} 复原（断言点 GS-E）",
+                        )
+                        transitionGsPhase(GS_PHASE_COMPLETED)
+                    } else {
+                        failureReason = "gs field not restored: 冷却后 modifierCleared=$modifierCleared empMult=${"%.3f".format(empMult)}" +
+                                "（expect 键移除 + empMult 1.0 ± $GS_FIELD_RESTORE_TOLERANCE，断言点 GS-E：COOLDOWN 力场收口）"
+                        transitionGsPhase(GS_PHASE_FAILED)
+                    }
+                } else if (elapsed - gsPhaseStartedAt >= GS_FIELD_RESTORE_TIMEOUT) {
+                    failureReason = "gs field restore timeout: ${GS_FIELD_RESTORE_TIMEOUT.toInt()}s 内未完成复原采样（enemy=${enemy != null}）"
+                    transitionGsPhase(GS_PHASE_FAILED)
+                }
+            }
+
+            GS_PHASE_COMPLETED -> {
+                stabilizeGsShips(engine, healEnemy = true, zeroPlayerFlux = false, blockSystem = true)
+            }
+        }
+
+        val state = when {
+            player == null || enemy == null -> {
+                if (elapsed > 12f) {
+                    failureReason = "gs ships missing: player=${player != null}, enemy=${enemy != null}"
+                    "Failed"
+                } else {
+                    "CombatReady"
+                }
+            }
+
+            gsPhase == GS_PHASE_FAILED -> "Failed"
+            gsPhase != GS_PHASE_COMPLETED &&
+                    elapsed - gsPhaseStartedAt > GS_PHASE_TIMEOUT -> {
+                failureReason = "gs phase timeout: $gsPhase（fieldMultMin=${"%.3f".format(if (gsFieldMaxSpeedMultMin == Float.MAX_VALUE) -1f else gsFieldMaxSpeedMultMin)} " +
+                        "fluxDelta=${"%.0f".format(gsActivationFluxDeltaMax)} latched=$gsStormActivationLatched " +
+                        "overloadSeconds=${"%.2f".format(gsEnemyOverloadSeconds)}）"
+                "Failed"
+            }
+
+            gsPhase == GS_PHASE_COMPLETED -> "Completed"
+            else -> "CombatReady"
+        }
+        if (state == "Completed" && !completed) {
+            completed = true
+            completedAt = elapsed
+            log.info("[ASTD-Automation] Completed: lens_grav_storm_zw002 field/charge/release/overload/cooldown-restore evidence observed")
+        }
+        if (elapsed - lastWriteAt >= 0.18f || state == "Completed" || state == "Failed") {
+            lastWriteAt = elapsed
+            writeDiagnostics(engine, state, player)
+            writeTelemetry(engine, state, player, null)
+        }
+    }
+
+
+    // === 舜华引力空间复制器/折跃器场景（光束减免 / 激活代价 / 弹道复制 / 冷却失效复原 / 折跃三态标记证据） ===
+
+    private fun findGsrPlayer(engine: CombatEngineAPI): ShipAPI? =
+        engine.ships.firstOrNull { ship -> ship.owner == 0 && ship.hullSpec?.hullId == GSR_PLAYER_HULL && !ship.isFighter }
+
+    private fun findGsrEnemy(engine: CombatEngineAPI): ShipAPI? =
+        engine.ships.firstOrNull { ship -> ship.owner != 0 && ship.hullSpec?.hullId == GSR_ENEMY_HULL && !ship.isFighter }
+
+    /** 强制部署 mission reserves（范式同 deployGrgReserveShips；敌靶舰钉远场，仅作投喂弹体的敌对 source）。 */
+    private fun deployGsrReserveShips(engine: CombatEngineAPI) {
+        engine.setDoNotEndCombat(true)
+        for (side in listOf(FleetSide.PLAYER, FleetSide.ENEMY)) {
+            val manager = engine.getFleetManager(side)
+            manager.isSuppressDeploymentMessages = true
+            for (member in manager.reservesCopy.toList()) {
+                val anchor = when {
+                    side == FleetSide.PLAYER && member.hullId == GSR_PLAYER_HULL -> GSR_PLAYER_ANCHOR
+                    side == FleetSide.ENEMY && member.hullId == GSR_ENEMY_HULL -> GSR_ENEMY_ANCHOR
+                    else -> continue
+                }
+                if (findShipByHull(engine, member.hullId) != null) {
+                    manager.removeFromReserves(member)
+                    continue
+                }
+                val facing = if (side == FleetSide.ENEMY) 180f else 0f
+                manager.spawnFleetMember(member, Vector2f(anchor), facing, 0f)
+                manager.removeFromReserves(member)
+            }
+        }
+    }
+
+    private fun transitionGsrPhase(next: String) {
+        log.info("[ASTD-Automation] gsr phase $gsrPhase -> $next at ${"%.2f".format(elapsed)}s")
+        gsrPhase = next
+        gsrPhaseStartedAt = elapsed
+    }
+
+    /**
+     * 舞台保活与站位（范式同 stabilizeGsShips）：双方逐帧钉死锚点 + 舰 AI 置空。
+     * 玩家舰逐帧封锁相位斗篷（zw_101 为相位驱逐舰：进相位折跃停判，本场景观测面不含相位路径）
+     * 并压盾兜底；[playerFire] 仅在 ACTIVATE 相位强制单发脉冲激光的那帧放开开火闸
+     * （isHoldFireOneFrame 会吞 setForceFireOneFrame，范式同 xc_001 默认场景先清 holdFire 再强火）。
+     */
+    private fun stabilizeGsrShips(engine: CombatEngineAPI, playerFire: Boolean, zeroPlayerFlux: Boolean, blockSystem: Boolean) {
+        val player = findGsrPlayer(engine)
+        val enemy = findGsrEnemy(engine)
+        if (player != null && !player.isHulk) {
+            engine.setPlayerShipExternal(player)
+            // 保留舰 AI（preserveAI=true）：实机验证 setForceFireOneFrame 对无舰 AI 的舞台舰不生效
+            // （范式同电荷针刺重型直控开火路径）；移动/相位/系统由钉位与命令封锁兜底。
+            stabilizeShip(player, GSR_PLAYER_ANCHOR, 0f, allowFire = playerFire, preserveAI = true)
+            player.hitpoints = player.maxHitpoints
+            if (zeroPlayerFlux) {
+                player.fluxTracker.currFlux = 0f
+                player.fluxTracker.hardFlux = 0f
+            }
+            if (blockSystem) player.blockCommandForOneFrame(ShipCommand.USE_SYSTEM)
+            player.blockCommandForOneFrame(ShipCommand.TOGGLE_SHIELD_OR_PHASE_CLOAK)
+            player.shield?.let { if (it.isOn) it.toggleOff() }
+        }
+        if (enemy != null && !enemy.isHulk) {
+            stabilizeShip(enemy, GSR_ENEMY_ANCHOR, 180f, allowFire = false, preserveAI = false)
+            enemy.hitpoints = enemy.maxHitpoints
+            enemy.fluxTracker.currFlux = 0f
+            enemy.fluxTracker.hardFlux = 0f
+            enemy.blockCommandForOneFrame(ShipCommand.TOGGLE_SHIELD_OR_PHASE_CLOAK)
+            enemy.shield?.let { if (it.isOn) it.toggleOff() }
+        }
+    }
+
+    private fun lockGsrCamera(engine: CombatEngineAPI) {
+        val viewport = engine.viewport
+        val displayWidth = try {
+            Display.getWidth().takeIf { it > 0 } ?: 2560
+        } catch (_: Throwable) {
+            2560
+        }
+        val displayHeight = try {
+            Display.getHeight().takeIf { it > 0 } ?: 1440
+        } catch (_: Throwable) {
+            1440
+        }
+        val displayAspect = displayWidth.toFloat() / displayHeight.toFloat()
+        val visibleWidth = GSR_CAMERA_VISIBLE_HEIGHT * displayAspect
+        viewport.isExternalControl = true
+        viewport.set(
+            GSR_CAMERA_CENTER.x - visibleWidth * 0.5f,
+            GSR_CAMERA_CENTER.y - GSR_CAMERA_VISIBLE_HEIGHT * 0.5f,
+            visibleWidth,
+            GSR_CAMERA_VISIBLE_HEIGHT,
+        )
+        viewport.isEverythingNearViewport = true
+    }
+
+    /**
+     * 投喂一发折跃判定弹（范式同 feedGhostSignalMissiles：weapon=null + weaponId 直生成，
+     * source=敌靶舰保证 owner 敌对）：靶舰东侧 GSR_FEED_SPAWN_DIST 起垂直舰心线西射，
+     * 纵向散布保证全部穿过折跃判定圈（碰撞圈 +200su）。返回弹体 identityHash；spawn 失败
+     * 走 FAILED 上报（Fail Fast，同幽灵信号投喂口径）。
+     */
+    private fun gsrFeedShot(engine: CombatEngineAPI, player: ShipAPI, enemy: ShipAPI): Int? {
+        val spread = MathUtils.getRandomNumberInRange(-GSR_FEED_SPREAD, GSR_FEED_SPREAD)
+        val spawn = Vector2f(player.location.x + GSR_FEED_SPAWN_DIST, player.location.y + spread)
+        val spawned = engine.spawnProjectile(enemy, null, GSR_FEED_WEAPON_ID, spawn, 180f, Vector2f())
+        if (spawned == null) {
+            failureReason = "gsr feed: spawnProjectile($GSR_FEED_WEAPON_ID) 返回 null（weaponId 不可用）"
+            transitionGsrPhase(GSR_PHASE_FAILED)
+            return null
+        }
+        return System.identityHashCode(spawned)
+    }
+
+    /** 本舰实弹分类统计（断言点 GSR-C 观测面）：首见弹按伤害口径分类——复制体出生即原弹 ×0.5，严格分流。 */
+    private fun trackGsrOwnProjectiles(engine: CombatEngineAPI, player: ShipAPI) {
+        for (proj in engine.projectiles) {
+            if (proj.source !== player || proj is MissileAPI) continue
+            val damaging = proj as? DamagingProjectileAPI ?: continue
+            val key = System.identityHashCode(proj)
+            if (!gsrSeenOwnProjectiles.add(key)) continue
+            val damage = damaging.damageAmount
+            if (gsrOrigDamage < 0f || damage > gsrOrigDamage * 0.7f) {
+                if (gsrOrigDamage < 0f) gsrOrigDamage = damage
+                gsrOriginalShots++
+            } else {
+                gsrReplicaShots++
+                gsrReplicaDamageMax = maxOf(gsrReplicaDamageMax, damage)
+            }
+        }
+    }
+
+    /**
+     * 舜华引力空间复制器/折跃器相位机：
+     * SPAWN（断言点 GSR-A：系统非冷却期 beamDamageTakenMult ×0.75）→
+     * ACTIVATE（断言点 GSR-B/C：useSystem() 点火——chargeUp=0 直入 ACTIVE，首帧计
+     *   基础容量×10% 软辐能；+0.3s 强制单发脉冲激光，0.5s/1.0s 于原发射点各复制 1 发，
+     *   复制体伤害 = 原弹 ×0.5，逐发复制附加 单发辐能×0.5 软辐能尖峰）→
+     * OBSERVE_COOLDOWN（断言点 GSR-D/E：冷却 12s 期内 beamDamageTakenMult 复原 1.0，
+     *   投喂 6 发全部穿圈但零判定标记——系统 COOLDOWN 折跃停判）→
+     * FOLD_FEED（断言点 GSR-F：冷却结束折跃恢复，投喂 30 发统计三态标记——50% 基础概率下
+     *   folded/no_fold 各 ≥1 且至少一发 folded 镜像后远离舰心）→
+     * COMPLETED（renderInUICoords 三帧捕获）。
+     */
+    private fun advanceGsrScenario(engine: CombatEngineAPI) {
+        engine.setDoNotEndCombat(true)
+        deployGsrReserveShips(engine)
+        lockGsrCamera(engine)
+
+        val player = findGsrPlayer(engine)
+        val enemy = findGsrEnemy(engine)
+        val system = player?.system
+
+        when (gsrPhase) {
+            GSR_PHASE_SPAWN -> {
+                stabilizeGsrShips(engine, playerFire = false, zeroPlayerFlux = true, blockSystem = true)
+                if (player != null && !player.isHulk) {
+                    gsrBeamMultIdleMax = maxOf(gsrBeamMultIdleMax, player.mutableStats.beamDamageTakenMult.modifiedValue)
+                }
+                if (player != null && enemy != null && elapsed - gsrPhaseStartedAt >= GSR_SPAWN_SETTLE_SECONDS) {
+                    if (gsrBeamMultIdleMax !in GSR_BEAM_MULT_IDLE_MIN..GSR_BEAM_MULT_IDLE_MAX) {
+                        failureReason = "gsr beam mult idle=${"%.3f".format(gsrBeamMultIdleMax)}" +
+                                " ∉ [$GSR_BEAM_MULT_IDLE_MIN, $GSR_BEAM_MULT_IDLE_MAX]（断言点 GSR-A：非冷却期光束承伤 ×0.75）"
+                        transitionGsrPhase(GSR_PHASE_FAILED)
+                    } else {
+                        log.info(
+                            "[ASTD-Automation] gsr beam dr evidence: idle beamDamageTakenMult=${"%.3f".format(gsrBeamMultIdleMax)}（断言点 GSR-A）",
+                        )
+                        transitionGsrPhase(GSR_PHASE_ACTIVATE)
+                    }
+                }
+            }
+
+            GSR_PHASE_ACTIVATE -> {
+                // 开火窗口：激活 +0.3s 起逐帧强火直至首见原发弹（脉冲激光 1s 射速，窗口内恰一发）。
+                // setForceFireOneFrame 必须逐帧调用且舰 AI 在场（无 AI 舞台舰不生效，针刺场景实机验证）；
+                // 不得 setRemainingCooldownTo(0f)——逐帧重置会把开火周期反复归零导致零弹体。
+                val inFireWindow = gsrActivatedAt >= 0f && gsrOriginalShots < 1 &&
+                        elapsed - gsrActivatedAt >= GSR_FIRE_DELAY_SECONDS
+                // 辐能清零闸只认原版状态机：IDLE 才清零。激活代价在首个 apply 帧计入
+                // （chargeUp=0 无 IN 帧），按 gsrActivatedAt 闸会在点亮帧把代价同步清零抹掉。
+                stabilizeGsrShips(
+                    engine, playerFire = inFireWindow,
+                    zeroPlayerFlux = system?.state == null || system.state == ShipSystemAPI.SystemState.IDLE,
+                    blockSystem = false,
+                )
+                if (player != null && enemy != null && system != null) {
+                    if (system.id != GSR_SYSTEM_ID) {
+                        failureReason = "gsr system id=${system.id}, expect $GSR_SYSTEM_ID（ship_data.csv 生成物未刷新）"
+                        transitionGsrPhase(GSR_PHASE_FAILED)
+                    } else {
+                        val replicaWeapon = player.allWeapons.firstOrNull { it.id == GSR_REPLICA_WEAPON_ID }
+                        if (replicaWeapon == null) {
+                            failureReason = "gsr weapon missing: 脉冲激光 $GSR_REPLICA_WEAPON_ID 未装配（MissionDefinition 接线缺失）"
+                            transitionGsrPhase(GSR_PHASE_FAILED)
+                        } else {
+                            if (system.isOn) {
+                                if (gsrActivatedAt < 0f) {
+                                    gsrActivatedAt = elapsed
+                                    gsrPrevFlux = player.fluxTracker.currFlux
+                                    log.info(
+                                        "[ASTD-Automation] gsr activated: state=${system.state} attempts=$gsrActivateAttempts " +
+                                                "currFlux=${"%.0f".format(player.fluxTracker.currFlux)}",
+                                    )
+                                }
+                                if (inFireWindow) {
+                                    if (!gsrFired) {
+                                        gsrFired = true
+                                        log.info("[ASTD-Automation] gsr pulse laser force-fire window open at ${"%.2f".format(elapsed)}s")
+                                    }
+                                    replicaWeapon.setForceFireOneFrame(true)
+                                }
+                            } else if (system.state != ShipSystemAPI.SystemState.COOLDOWN && system.cooldownRemaining <= 0f) {
+                                // 按帧重试 useSystem()（单次调用可能被原版闸门吞掉，范式同 FGL ACTIVATE）。
+                                gsrActivateAttempts++
+                                player.useSystem()
+                            }
+                            if (gsrActivatedAt >= 0f) {
+                                // 断言点 GSR-B/C 观测面：激活软辐能峰值增量只在开火前采样
+                                // （开火/复制尖峰会叠加进 currFlux，污染激活代价归因）；
+                                // 原发/复制弹分类计数、逐帧辐能尖峰（开火 ≈1×f / 复制 ≈0.5×f）。
+                                if (!gsrFired) {
+                                    gsrActivationFluxDeltaMax = maxOf(gsrActivationFluxDeltaMax, player.fluxTracker.currFlux)
+                                }
+                                trackGsrOwnProjectiles(engine, player)
+                                val currFlux = player.fluxTracker.currFlux
+                                val delta = currFlux - gsrPrevFlux
+                                if (gsrPrevFlux >= 0f && delta >= GSR_SPIKE_MIN_DELTA) gsrFluxSpikes += delta
+                                gsrPrevFlux = currFlux
+                            }
+                            // 结算宽限：ACTIVE 2s 转 COOLDOWN 后多等 0.5s——晚发的原发弹复制调度
+                            // （发射 +0.5s/+1.0s，由舰船 listener 队列推进，不随系统关闭取消）可能压线落地。
+                            if (system.state == ShipSystemAPI.SystemState.COOLDOWN &&
+                                elapsed - gsrActivatedAt >= GSR_EVAL_GRACE_SECONDS
+                            ) {
+                                val capacity = player.mutableStats.fluxCapacity.baseValue
+                                val expectedActivation = capacity * GravReplicatorTuning.ACTIVATION_FLUX_FRACTION
+                                val fluxPerShot = replicaWeapon.fluxCostToFire
+                                val halfSpikes = gsrFluxSpikes.count {
+                                    it >= fluxPerShot * GSR_SPIKE_HALF_MIN && it <= fluxPerShot * GSR_SPIKE_HALF_MAX
+                                }
+                                val fullSpikes = gsrFluxSpikes.count {
+                                    it >= fluxPerShot * GSR_SPIKE_FULL_MIN && it <= fluxPerShot * GSR_SPIKE_FULL_MAX
+                                }
+                                when {
+                                    gsrActivationFluxDeltaMax < expectedActivation * (1f - GSR_ACTIVATION_FLUX_TOLERANCE) ||
+                                            gsrActivationFluxDeltaMax > expectedActivation * (1f + GSR_ACTIVATION_FLUX_TOLERANCE) -> {
+                                        failureReason = "gsr activation flux delta=${"%.0f".format(gsrActivationFluxDeltaMax)}" +
+                                                "，expect ${"%.0f".format(expectedActivation)} ±${(GSR_ACTIVATION_FLUX_TOLERANCE * 100).toInt()}%" +
+                                                "（断言点 GSR-B：基础容量 ×10% 软辐能）"
+                                        transitionGsrPhase(GSR_PHASE_FAILED)
+                                    }
+
+                                    gsrOriginalShots < 1 -> {
+                                        failureReason = "gsr no original shot: 激活期未观测到脉冲激光原发弹（断言点 GSR-C 无法观测）"
+                                        transitionGsrPhase(GSR_PHASE_FAILED)
+                                    }
+
+                                    gsrReplicaShots != gsrOriginalShots * GravReplicatorTuning.COPY_COUNT -> {
+                                        failureReason = "gsr replica count=$gsrReplicaShots，expect 原发 $gsrOriginalShots × " +
+                                                "${GravReplicatorTuning.COPY_COUNT}（断言点 GSR-C：0.5s/1.0s 各复制 1 发）"
+                                        transitionGsrPhase(GSR_PHASE_FAILED)
+                                    }
+
+                                    gsrReplicaDamageMax < gsrOrigDamage * GSR_REPLICA_DAMAGE_RATIO_MIN ||
+                                            gsrReplicaDamageMax > gsrOrigDamage * GSR_REPLICA_DAMAGE_RATIO_MAX -> {
+                                        failureReason = "gsr replica damage=${"%.1f".format(gsrReplicaDamageMax)}" +
+                                                " / orig=${"%.1f".format(gsrOrigDamage)} ∉ [$GSR_REPLICA_DAMAGE_RATIO_MIN, $GSR_REPLICA_DAMAGE_RATIO_MAX]" +
+                                                "（断言点 GSR-C：复制体伤害 ×0.5）"
+                                        transitionGsrPhase(GSR_PHASE_FAILED)
+                                    }
+
+                                    fullSpikes < 1 || halfSpikes < GravReplicatorTuning.COPY_COUNT -> {
+                                        failureReason = "gsr flux spikes: full=$fullSpikes（≥1）half=$halfSpikes（≥${GravReplicatorTuning.COPY_COUNT}）" +
+                                                " fluxPerShot=${"%.0f".format(fluxPerShot)} spikes=${gsrFluxSpikes.map { "%.0f".format(it) }}" +
+                                                "（断言点 GSR-C：每发复制附加 单发辐能 ×0.5 软辐能）"
+                                        transitionGsrPhase(GSR_PHASE_FAILED)
+                                    }
+
+                                    else -> {
+                                        log.info(
+                                            "[ASTD-Automation] gsr replica evidence: fluxDeltaMax=${"%.0f".format(gsrActivationFluxDeltaMax)} " +
+                                                    "originals=$gsrOriginalShots replicas=$gsrReplicaShots " +
+                                                    "replicaDamage=${"%.1f".format(gsrReplicaDamageMax)}/${"%.1f".format(gsrOrigDamage)} " +
+                                                    "spikes(full=$fullSpikes half=$halfSpikes)（断言点 GSR-B/C）",
+                                        )
+                                        transitionGsrPhase(GSR_PHASE_OBSERVE_COOLDOWN)
+                                    }
+                                }
+                            } else if (elapsed - gsrPhaseStartedAt >= GSR_ACTIVATE_TIMEOUT) {
+                                failureReason = "gsr activate timeout: ${GSR_ACTIVATE_TIMEOUT.toInt()}s 内系统未走完激活周期" +
+                                        "（attempts=$gsrActivateAttempts state=${system.state} fired=$gsrFired " +
+                                        "originals=$gsrOriginalShots replicas=$gsrReplicaShots）"
+                                transitionGsrPhase(GSR_PHASE_FAILED)
+                            }
+                        }
+                    }
+                }
+            }
+
+            GSR_PHASE_OBSERVE_COOLDOWN -> {
+                stabilizeGsrShips(engine, playerFire = false, zeroPlayerFlux = false, blockSystem = true)
+                if (player != null && enemy != null && system != null) {
+                    gsrCooldownBeamMultMax = maxOf(gsrCooldownBeamMultMax, player.mutableStats.beamDamageTakenMult.modifiedValue)
+                    if (system.state == ShipSystemAPI.SystemState.COOLDOWN &&
+                        gsrCooldownFedCount < GSR_COOLDOWN_FEED_COUNT &&
+                        (gsrCooldownFedAt < 0f || elapsed - gsrCooldownFedAt >= GSR_COOLDOWN_FEED_INTERVAL)
+                    ) {
+                        val id = gsrFeedShot(engine, player, enemy)
+                        if (id != null) {
+                            gsrCooldownFedAt = elapsed
+                            gsrCooldownFedCount++
+                            gsrCooldownFeedDist[id] = Float.MAX_VALUE
+                        }
+                    }
+                    // 投喂弹跟踪：最小接近距离（穿圈判据）；冷却期出现任何判定标记立即判失败
+                    // （断言点 GSR-E：系统 COOLDOWN 折跃停判）。
+                    for (proj in engine.projectiles) {
+                        val id = System.identityHashCode(proj)
+                        val minDist = gsrCooldownFeedDist[id] ?: continue
+                        val dist = Misc.getDistance(player.location, proj.location)
+                        if (dist < minDist) gsrCooldownFeedDist[id] = dist
+                        val mark = proj.customData[GSR_FOLD_MARK_KEY] as? String
+                        if (mark != null) {
+                            gsrCooldownMarked++
+                            failureReason = "gsr cooldown fold mark: 冷却期投喂弹体被判定标记（mark=$mark，断言点 GSR-E：折跃停判）"
+                            transitionGsrPhase(GSR_PHASE_FAILED)
+                            break
+                        }
+                    }
+                    if (gsrPhase == GSR_PHASE_OBSERVE_COOLDOWN && system.state != ShipSystemAPI.SystemState.COOLDOWN) {
+                        val entered = gsrCooldownFeedDist.values.count { it <= GSR_FOLD_ENTER_DIST }
+                        when {
+                            gsrCooldownBeamMultMax !in GSR_COOLDOWN_BEAM_MULT_MIN..GSR_COOLDOWN_BEAM_MULT_MAX -> {
+                                failureReason = "gsr cooldown beam mult=${"%.3f".format(gsrCooldownBeamMultMax)}" +
+                                        " ∉ [$GSR_COOLDOWN_BEAM_MULT_MIN, $GSR_COOLDOWN_BEAM_MULT_MAX]（断言点 GSR-D：冷却期光束减免复原 1.0）"
+                                transitionGsrPhase(GSR_PHASE_FAILED)
+                            }
+
+                            entered < GSR_COOLDOWN_MIN_ENTERED -> {
+                                failureReason = "gsr cooldown feed entered=$entered < $GSR_COOLDOWN_MIN_ENTERED" +
+                                        "（fed=$gsrCooldownFedCount，断言点 GSR-E 观测面不成立：投喂弹未穿圈）"
+                                transitionGsrPhase(GSR_PHASE_FAILED)
+                            }
+
+                            else -> {
+                                log.info(
+                                    "[ASTD-Automation] gsr cooldown evidence: beamMultMax=${"%.3f".format(gsrCooldownBeamMultMax)} " +
+                                            "fed=$gsrCooldownFedCount entered=$entered marked=$gsrCooldownMarked（断言点 GSR-D/E：冷却期减免复原+折跃停判）",
+                                )
+                                transitionGsrPhase(GSR_PHASE_FOLD_FEED)
+                            }
+                        }
+                    } else if (gsrPhase == GSR_PHASE_OBSERVE_COOLDOWN && elapsed - gsrPhaseStartedAt >= GSR_COOLDOWN_TIMEOUT) {
+                        failureReason = "gsr cooldown timeout: ${GSR_COOLDOWN_TIMEOUT.toInt()}s 内冷却未结束" +
+                                "（state=${system.state} cd=${"%.1f".format(system.cooldownRemaining)} fed=$gsrCooldownFedCount）"
+                        transitionGsrPhase(GSR_PHASE_FAILED)
+                    }
+                }
+            }
+
+            GSR_PHASE_FOLD_FEED -> {
+                stabilizeGsrShips(engine, playerFire = false, zeroPlayerFlux = false, blockSystem = true)
+                if (player != null && enemy != null && system != null) {
+                    if (gsrFoldFedCount < GSR_FOLD_FEED_COUNT &&
+                        (gsrFoldFedAt < 0f || elapsed - gsrFoldFedAt >= GSR_FOLD_FEED_INTERVAL)
+                    ) {
+                        val id = gsrFeedShot(engine, player, enemy)
+                        if (id != null) {
+                            gsrFoldFedAt = elapsed
+                            gsrFoldFedCount++
+                            gsrFoldFeedIds += id
+                        }
+                    }
+                    // 三态标记统计（断言点 GSR-F）：folded 弹体验证镜像后远离舰心
+                    // （速度向量不变、位置中心对称 → 速度与离心方向同向）。
+                    for (proj in engine.projectiles) {
+                        val id = System.identityHashCode(proj)
+                        if (id !in gsrFoldFeedIds || id in gsrFoldFeedMarked) continue
+                        val mark = proj.customData[GSR_FOLD_MARK_KEY] as? String ?: continue
+                        gsrFoldFeedMarked += id
+                        when (mark) {
+                            GravSpaceFoldTuning.MARK_FOLDED -> {
+                                gsrFoldedCount++
+                                val away = proj.velocity.x * (proj.location.x - player.location.x) +
+                                        proj.velocity.y * (proj.location.y - player.location.y) > 0f
+                                if (away) gsrFoldedMovingAway++
+                            }
+
+                            GravSpaceFoldTuning.MARK_NO_FOLD -> gsrNoFoldCount++
+                            else -> log.warn("[ASTD-Automation] gsr fold 未知判定标记 mark=$mark（proj=${proj.projectileSpecId}），不计入统计")
+                        }
+                    }
+                    val aliveIds = engine.projectiles.mapTo(HashSet()) { System.identityHashCode(it) }
+                    val resolved = gsrFoldFeedIds.count { it in gsrFoldFeedMarked || it !in aliveIds }
+                    if (gsrFoldFedCount >= GSR_FOLD_FEED_COUNT && resolved >= GSR_FOLD_FEED_COUNT) {
+                        when {
+                            gsrFoldedCount < 1 || gsrNoFoldCount < 1 -> {
+                                failureReason = "gsr fold marks one-sided: folded=$gsrFoldedCount no_fold=$gsrNoFoldCount" +
+                                        "（fed=$gsrFoldFedCount，断言点 GSR-F：50% 基础概率三态标记各 ≥1）"
+                                transitionGsrPhase(GSR_PHASE_FAILED)
+                            }
+
+                            gsrFoldedMovingAway < 1 -> {
+                                failureReason = "gsr folded not mirrored away: folded=$gsrFoldedCount 但无一远离舰心" +
+                                        "（断言点 GSR-F：镜像折跃保持速度向量）"
+                                transitionGsrPhase(GSR_PHASE_FAILED)
+                            }
+
+                            else -> {
+                                log.info(
+                                    "[ASTD-Automation] gsr fold evidence: fed=$gsrFoldFedCount folded=$gsrFoldedCount " +
+                                            "no_fold=$gsrNoFoldCount movingAway=$gsrFoldedMovingAway（断言点 GSR-F）",
+                                )
+                                transitionGsrPhase(GSR_PHASE_COMPLETED)
+                            }
+                        }
+                    } else if (elapsed - gsrPhaseStartedAt >= GSR_FOLD_FEED_TIMEOUT) {
+                        failureReason = "gsr fold feed timeout: ${GSR_FOLD_FEED_TIMEOUT.toInt()}s 内未收口" +
+                                "（fed=$gsrFoldFedCount resolved=$resolved folded=$gsrFoldedCount no_fold=$gsrNoFoldCount）"
+                        transitionGsrPhase(GSR_PHASE_FAILED)
+                    }
+                }
+            }
+
+            GSR_PHASE_COMPLETED -> {
+                stabilizeGsrShips(engine, playerFire = false, zeroPlayerFlux = false, blockSystem = true)
+            }
+        }
+
+        val state = when {
+            player == null || enemy == null -> {
+                if (elapsed > 12f) {
+                    failureReason = "gsr ships missing: player=${player != null}, enemy=${enemy != null}"
+                    "Failed"
+                } else {
+                    "CombatReady"
+                }
+            }
+
+            gsrPhase == GSR_PHASE_FAILED -> "Failed"
+            gsrPhase != GSR_PHASE_COMPLETED &&
+                    elapsed - gsrPhaseStartedAt > GSR_PHASE_TIMEOUT -> {
+                failureReason = "gsr phase timeout: $gsrPhase（beamIdle=${"%.3f".format(gsrBeamMultIdleMax)} " +
+                        "fluxDelta=${"%.0f".format(gsrActivationFluxDeltaMax)} originals=$gsrOriginalShots replicas=$gsrReplicaShots " +
+                        "cooldownMarked=$gsrCooldownMarked folded=$gsrFoldedCount noFold=$gsrNoFoldCount）"
+                "Failed"
+            }
+
+            gsrPhase == GSR_PHASE_COMPLETED -> "Completed"
+            else -> "CombatReady"
+        }
+        if (state == "Completed" && !completed) {
+            completed = true
+            completedAt = elapsed
+            log.info("[ASTD-Automation] Completed: lens_grav_replicator_zw101 beam-dr/activation/replica/cooldown/fold evidence observed")
+        }
+        if (elapsed - lastWriteAt >= 0.18f || state == "Completed" || state == "Failed") {
+            lastWriteAt = elapsed
+            writeDiagnostics(engine, state, player)
+            writeTelemetry(engine, state, player, null)
+        }
+    }
+
+
     // === Piercing lance scenario ===
 
     private fun findPlShipA(engine: CombatEngineAPI): ShipAPI? =
@@ -7758,7 +8737,9 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             !ASTDInGameAutomationScenario.isPlEnabled() &&
             !ASTDInGameAutomationScenario.isTrailPauseProbeEnabled() &&
             !ASTDInGameAutomationScenario.isGravRiftScenarioEnabled() &&
-            !ASTDInGameAutomationScenario.isFighterGravLinkScenarioEnabled()
+            !ASTDInGameAutomationScenario.isFighterGravLinkScenarioEnabled() &&
+            !ASTDInGameAutomationScenario.isGravStormScenarioEnabled() &&
+            !ASTDInGameAutomationScenario.isGravReplicatorScenarioEnabled()
         ) {
             return
         }
@@ -7793,6 +8774,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         val scenarioId = when {
             ASTDInGameAutomationScenario.isGravRiftScenarioEnabled() -> ASTDInGameAutomationScenario.GRG_SCENARIO_ID
             ASTDInGameAutomationScenario.isFighterGravLinkScenarioEnabled() -> ASTDInGameAutomationScenario.FGL_SCENARIO_ID
+            ASTDInGameAutomationScenario.isGravStormScenarioEnabled() -> ASTDInGameAutomationScenario.GS_SCENARIO_ID
+            ASTDInGameAutomationScenario.isGravReplicatorScenarioEnabled() -> ASTDInGameAutomationScenario.GSR_SCENARIO_ID
             ASTDInGameAutomationScenario.isTrailPauseProbeEnabled() -> ASTDInGameAutomationScenario.TPP_SCENARIO_ID
             ASTDInGameAutomationScenario.isPlEnabled() -> ASTDInGameAutomationScenario.PL_SCENARIO_ID
             ASTDInGameAutomationScenario.isSmEnabled() -> ASTDInGameAutomationScenario.SM_SCENARIO_ID
@@ -7946,6 +8929,67 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 appendLine("  \"fglRelaunchObserved\": $fglRelaunchObserved,")
                 appendLine("  \"fglPlayerCurrFlux\": ${formatFloat(fglPlayer?.fluxTracker?.currFlux ?: -1f)},")
                 appendLine("  \"fglPlayerHardFlux\": ${formatFloat(fglPlayer?.fluxTracker?.hardFlux ?: -1f)},")
+            } else if (ASTDInGameAutomationScenario.isGravStormScenarioEnabled()) {
+                val gsPlayer = findGsPlayer(engine)
+                val gsSystem = gsPlayer?.system
+                appendLine("  \"runtimeElapsedSeconds\": 0,")
+                appendLine("  \"runtimeTrackedCount\": ${vfxTelemetry.trackedCount},")
+                appendLine("  \"runtimeLastProjectileSpecId\": ${jsonString(vfxTelemetry.lastProjectileSpecId)},")
+                // ---- 机制证据（断言点 GS-A~GS-E）----
+                appendLine("  \"gsPhase\": \"$gsPhase\",")
+                appendLine("  \"gsSystemId\": ${jsonString(gsSystem?.id)},")
+                appendLine("  \"gsSystemState\": ${jsonString(gsSystem?.state?.name)},")
+                appendLine("  \"gsSystemCooldownRemaining\": ${formatFloat(gsSystem?.cooldownRemaining ?: -1f)},")
+                appendLine("  \"gsFieldMaxSpeedMultMin\": ${formatFloat(if (gsFieldMaxSpeedMultMin == Float.MAX_VALUE) -1f else gsFieldMaxSpeedMultMin)},")
+                appendLine("  \"gsFieldTurnRateMultMin\": ${formatFloat(if (gsFieldTurnRateMultMin == Float.MAX_VALUE) -1f else gsFieldTurnRateMultMin)},")
+                appendLine("  \"gsFieldEmpMultMax\": ${formatFloat(gsFieldEmpMultMax)},")
+                appendLine("  \"gsActivationFluxDeltaMax\": ${formatFloat(gsActivationFluxDeltaMax)},")
+                appendLine("  \"gsChargeDamageTakenMultMin\": ${formatFloat(if (gsChargeDamageTakenMultMin == Float.MAX_VALUE) -1f else gsChargeDamageTakenMultMin)},")
+                appendLine("  \"gsStormActivationLatched\": $gsStormActivationLatched,")
+                appendLine("  \"gsFieldMultMinDuringRelease\": ${formatFloat(if (gsFieldMultMinDuringRelease == Float.MAX_VALUE) -1f else gsFieldMultMinDuringRelease)},")
+                appendLine("  \"gsEnemyOverloadObserved\": ${gsEnemyOverloadStartedAt >= 0f},")
+                appendLine("  \"gsEnemyOverloadSeconds\": ${formatFloat(gsEnemyOverloadSeconds)},")
+                appendLine("  \"gsEnemyHpBeforeRelease\": ${formatFloat(gsEnemyHpBeforeRelease)},")
+                appendLine("  \"gsEnemyHpMinAfterRelease\": ${formatFloat(if (gsEnemyHpMinAfterRelease == Float.MAX_VALUE) -1f else gsEnemyHpMinAfterRelease)},")
+                appendLine(
+                    "  \"gsEnemyHpDropMax\": ${
+                        formatFloat(
+                            if (gsEnemyHpBeforeRelease < 0f || gsEnemyHpMinAfterRelease == Float.MAX_VALUE) -1f
+                            else gsEnemyHpBeforeRelease - gsEnemyHpMinAfterRelease
+                        )
+                    },"
+                )
+                appendLine("  \"gsFieldModifierLostEarly\": $gsFieldModifierLostEarly,")
+                appendLine("  \"gsFieldModifierCleared\": $gsFieldModifierCleared,")
+                appendLine("  \"gsFieldRestoredEmpMult\": ${formatFloat(gsFieldRestoredEmpMult)},")
+                appendLine("  \"gsPlayerCurrFlux\": ${formatFloat(gsPlayer?.fluxTracker?.currFlux ?: -1f)},")
+            } else if (ASTDInGameAutomationScenario.isGravReplicatorScenarioEnabled()) {
+                val gsrPlayer = findGsrPlayer(engine)
+                val gsrSystem = gsrPlayer?.system
+                appendLine("  \"runtimeElapsedSeconds\": 0,")
+                appendLine("  \"runtimeTrackedCount\": ${vfxTelemetry.trackedCount},")
+                appendLine("  \"runtimeLastProjectileSpecId\": ${jsonString(vfxTelemetry.lastProjectileSpecId)},")
+                // ---- 机制证据（断言点 GSR-A~GSR-F）----
+                appendLine("  \"gsrPhase\": \"$gsrPhase\",")
+                appendLine("  \"gsrSystemId\": ${jsonString(gsrSystem?.id)},")
+                appendLine("  \"gsrSystemState\": ${jsonString(gsrSystem?.state?.name)},")
+                appendLine("  \"gsrSystemCooldownRemaining\": ${formatFloat(gsrSystem?.cooldownRemaining ?: -1f)},")
+                appendLine("  \"gsrBeamMultIdleMax\": ${formatFloat(gsrBeamMultIdleMax)},")
+                appendLine("  \"gsrActivationFluxDeltaMax\": ${formatFloat(gsrActivationFluxDeltaMax)},")
+                appendLine("  \"gsrOrigDamage\": ${formatFloat(gsrOrigDamage)},")
+                appendLine("  \"gsrOriginalShots\": $gsrOriginalShots,")
+                appendLine("  \"gsrReplicaShots\": $gsrReplicaShots,")
+                appendLine("  \"gsrReplicaDamageMax\": ${formatFloat(gsrReplicaDamageMax)},")
+                appendLine("  \"gsrFluxSpikeCount\": ${gsrFluxSpikes.size},")
+                appendLine("  \"gsrCooldownBeamMultMax\": ${formatFloat(gsrCooldownBeamMultMax)},")
+                appendLine("  \"gsrCooldownFedCount\": $gsrCooldownFedCount,")
+                appendLine("  \"gsrCooldownFedEntered\": ${gsrCooldownFeedDist.values.count { it <= GSR_FOLD_ENTER_DIST }},")
+                appendLine("  \"gsrCooldownMarked\": $gsrCooldownMarked,")
+                appendLine("  \"gsrFoldFedCount\": $gsrFoldFedCount,")
+                appendLine("  \"gsrFoldedCount\": $gsrFoldedCount,")
+                appendLine("  \"gsrNoFoldCount\": $gsrNoFoldCount,")
+                appendLine("  \"gsrFoldedMovingAway\": $gsrFoldedMovingAway,")
+                appendLine("  \"gsrPlayerCurrFlux\": ${formatFloat(gsrPlayer?.fluxTracker?.currFlux ?: -1f)},")
             } else if (ASTDInGameAutomationScenario.isPlEnabled()) {
                 val plShipA = findPlShipA(engine)
                 val plShipB = findPlShipB(engine)
@@ -9654,6 +10698,139 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         // RELAUNCH（断言点 G）：召回后 15s 内必须出现新 identity 战机（快速整备 0.3~0.8s/架）。
         private const val FGL_RELAUNCH_TIMEOUT = 15f
         private const val FGL_PHASE_TIMEOUT = 90f
+
+        // 密蒙引力磁暴发生器场景：相位机、锚点与期望证据（断言点 GS-A~GS-E）。
+        private const val GS_PHASE_SPAWN = "SPAWN"
+        private const val GS_PHASE_FIELD_OBSERVE = "FIELD_OBSERVE"
+        private const val GS_PHASE_ACTIVATE = "ACTIVATE"
+        private const val GS_PHASE_RELEASE = "RELEASE"
+        private const val GS_PHASE_COOLDOWN_FIELD_OFF = "COOLDOWN_FIELD_OFF"
+        private const val GS_PHASE_COMPLETED = "COMPLETED"
+        private const val GS_PHASE_FAILED = "FAILED"
+        private const val GS_PLAYER_HULL = "astd_zw_002"
+        private const val GS_ENEMY_HULL = "dominator"
+        private const val GS_SYSTEM_ID = "astd_grav_storm"
+
+        // 靶舰锚点在母舰正前方 600su：锥内（±30°）且在系统射程 1200su 内，
+        // 同时 ≤ 力场半射程 750su 满效区（断言点 GS-A 满效口径）。
+        private val GS_PLAYER_ANCHOR = Vector2f(-700f, 0f)
+        private val GS_ENEMY_ANCHOR = Vector2f(-100f, 0f)
+        private val GS_CAMERA_CENTER = Vector2f(-400f, 0f)
+        private const val GS_CAMERA_VISIBLE_HEIGHT = 1500f
+        private const val GS_SPAWN_SETTLE_SECONDS = 0.6f
+
+        // 释放闩键（GravStormSystemStats.ACTIVATION_KEY 同款字面值，其声明为 private：
+        // release() 写入、unapply 清除；OUT 期间存在即满充能/提前释放已真实发生）。
+        private const val GS_STORM_ACTIVATION_KEY = "astd_grav_storm_activation:"
+
+        // FIELD_OBSERVE（断言点 GS-A）：玩家恒 v2 → 航速/转向 ×0.8（界 [0.74, 0.86] 容忍帧量化），
+        // EMP 承伤 +0.5 绝对位移（dominator 基础 1.0 → 1.5，界 [1.4, 1.6]）。
+        private const val GS_FIELD_OBSERVE_SECONDS = 1.2f
+        private const val GS_FIELD_STAT_MULT_MIN = 0.74f
+        private const val GS_FIELD_STAT_MULT_MAX = 0.86f
+        private const val GS_FIELD_EMP_MULT_MIN = 1.4f
+        private const val GS_FIELD_EMP_MULT_MAX = 1.6f
+
+        // ACTIVATE（断言点 GS-B）：激活软辐能 = 基础容量 ×20%（zw_002 12000 → ≈2400；
+        // 界 [2000, 2800] 容忍逐帧耗散 900/s 的帧量化）；充能期全承伤 ×0.5（界 0.51）。
+        // useSystem 按帧重试（同 FGL），10s 超时兜底。
+        private const val GS_ACTIVATE_TIMEOUT = 10f
+        private const val GS_EXPECT_ACTIVATION_FLUX_MIN = 2000f
+        private const val GS_EXPECT_ACTIVATION_FLUX_MAX = 2800f
+        private const val GS_EXPECT_DAMAGE_TAKEN_MAX = 0.51f
+
+        // RELEASE（断言点 GS-C/D + GS-E 前置）：充能 4s + 释放窗 1.5s + 过载收尾余量；
+        // 巡洋舰 v2 满充能强制过载锚点 2s（界 [1.5, 2.5]，帧粒度宽松）；
+        // 电弧 8~16 道 × 300 能量对剥甲靶舰（dominator 14000 HP）结算，下界 1500 取保守口径；
+        // 系统激活期（IN/ACTIVE/OUT）力场不失效——对账敌舰乘区表中的力场修饰键在场
+        // （键前缀同 GravEmFieldHullMod.MOD_ID_PREFIX；电弧 EMP 熄火会把 maxSpeed 值打 0，值层面不可信）。
+        private const val GS_RELEASE_TIMEOUT = 12f
+        private const val GS_OVERLOAD_SECONDS_MIN = 1.5f
+        private const val GS_OVERLOAD_SECONDS_MAX = 2.5f
+        private const val GS_EXPECT_ENEMY_HP_DROP = 1500f
+        private const val GS_FIELD_MOD_ID_PREFIX = "astd_grav_em_field:"
+
+        // COOLDOWN_FIELD_OFF（断言点 GS-E）：冷却首帧 hullmod 逐帧对账 unmodify，
+        // settle 0.6s 后力场修饰键必须离场且 EMP 承伤乘区回 1.0（±0.03）。
+        private const val GS_FIELD_RESTORE_SETTLE_SECONDS = 0.6f
+        private const val GS_FIELD_RESTORE_TOLERANCE = 0.03f
+        private const val GS_FIELD_RESTORE_TIMEOUT = 5f
+        private const val GS_PHASE_TIMEOUT = 90f
+
+        // 舜华引力空间复制器/折跃器场景：相位机、锚点与期望证据（断言点 GSR-A~GSR-F）。
+        private const val GSR_PHASE_SPAWN = "SPAWN"
+        private const val GSR_PHASE_ACTIVATE = "ACTIVATE"
+        private const val GSR_PHASE_OBSERVE_COOLDOWN = "OBSERVE_COOLDOWN"
+        private const val GSR_PHASE_FOLD_FEED = "FOLD_FEED"
+        private const val GSR_PHASE_COMPLETED = "COMPLETED"
+        private const val GSR_PHASE_FAILED = "FAILED"
+        private const val GSR_PLAYER_HULL = "astd_zw_101"
+        private const val GSR_ENEMY_HULL = "dominator"
+        private const val GSR_SYSTEM_ID = "astd_grav_replicator"
+
+        // 敌靶舰钉远场（3000su 外）：仅作投喂弹体的敌对 source，不进入复制/折跃观测面。
+        private val GSR_PLAYER_ANCHOR = Vector2f(-700f, 0f)
+        private val GSR_ENEMY_ANCHOR = Vector2f(3000f, 0f)
+        private val GSR_CAMERA_CENTER = Vector2f(-350f, 0f)
+        private const val GSR_CAMERA_VISIBLE_HEIGHT = 1500f
+        private const val GSR_SPAWN_SETTLE_SECONDS = 1.0f
+
+        // 复制器观测武器（MissionDefinition 装入 WS0001 中型协同槽的原版脉冲激光：能量实弹、
+        // 非光束非装饰，正落复制口径）与折跃投喂弹种（原版轻机枪：伤害 25 ≤ 50 走基础概率 v2 50%）。
+        private const val GSR_REPLICA_WEAPON_ID = "pulselaser"
+        private const val GSR_FEED_WEAPON_ID = "lightmg"
+
+        // 折跃判定标记键（GravSpaceFoldHullMod.FOLD_MARK_KEY 同款字面值，其声明为 private；
+        // 三态标记写在弹体 customData，值口径取 GravSpaceFoldTuning.MARK_FOLDED/MARK_NO_FOLD）。
+        private const val GSR_FOLD_MARK_KEY = "astd_grav_space_fold_rolled"
+
+        // 投喂弹道：靶舰东侧 450su 起垂直舰心线西射，纵向散布 ±80su。lightmg 射程仅 300su、
+        // 折跃判定圈 = 碰撞圈 +200su（驱逐舰 ≈260su），入圈行程 ≈190su 留足衰减余量——
+        // fade 中的弹体被 tryFold 跳过（isFading 提前返回），过远投喂会在进圈前 fade 而零判定。
+        private const val GSR_FEED_SPAWN_DIST = 450f
+        private const val GSR_FEED_SPREAD = 80f
+
+        // 折跃判定入圈距离上限（碰撞圈 +200su 的观测口径；驱逐舰碰撞半径 60 量级，取 300su 宽松界）。
+        private const val GSR_FOLD_ENTER_DIST = 300f
+
+        // SPAWN（断言点 GSR-A）：系统非冷却期光束承伤乘区 v2 ×0.75（界 [0.73, 0.77]）。
+        private const val GSR_BEAM_MULT_IDLE_MIN = 0.73f
+        private const val GSR_BEAM_MULT_IDLE_MAX = 0.77f
+
+        // ACTIVATE（断言点 GSR-B/C）：激活软辐能 = 基础容量 ×10%（运行时读 baseValue 求期望，
+        // 界 ±25% 容忍逐帧耗散的帧量化）；+0.3s 强制单发；辐能尖峰口径——开火 ≈1×单发辐能
+        // （界 [0.8, 1.2]×f）、每发复制 ≈0.5×单发辐能（界 [0.3, 0.7]×f），尖峰起判 20
+        // （远高于逐帧耗散 300/s × 帧间隔 ≈ 5 的底噪）；复制体伤害界 [0.45, 0.55]×原弹。
+        private const val GSR_ACTIVATE_TIMEOUT = 10f
+        private const val GSR_ACTIVATION_FLUX_TOLERANCE = 0.25f
+        private const val GSR_FIRE_DELAY_SECONDS = 0.3f
+
+        // 结算宽限：ACTIVE（2s）转 COOLDOWN 后再等 0.5s 才评估复制证据——晚发原发弹的
+        // 第二发复制（发射 +1.0s，listener 队列推进不随系统关闭取消）可能压线落地。
+        private const val GSR_EVAL_GRACE_SECONDS = 2.5f
+        private const val GSR_SPIKE_MIN_DELTA = 20f
+        private const val GSR_SPIKE_HALF_MIN = 0.3f
+        private const val GSR_SPIKE_HALF_MAX = 0.7f
+        private const val GSR_SPIKE_FULL_MIN = 0.8f
+        private const val GSR_SPIKE_FULL_MAX = 1.2f
+        private const val GSR_REPLICA_DAMAGE_RATIO_MIN = 0.45f
+        private const val GSR_REPLICA_DAMAGE_RATIO_MAX = 0.55f
+
+        // OBSERVE_COOLDOWN（断言点 GSR-D/E）：冷却 12s 期内光束乘区复原 1.0（界 [0.98, 1.02]），
+        // 投喂 6 发（0.4s 间隔）全部穿圈但零判定标记；20s 超时覆盖整条冷却窗。
+        private const val GSR_COOLDOWN_FEED_COUNT = 6
+        private const val GSR_COOLDOWN_FEED_INTERVAL = 0.4f
+        private const val GSR_COOLDOWN_MIN_ENTERED = 4
+        private const val GSR_COOLDOWN_BEAM_MULT_MIN = 0.98f
+        private const val GSR_COOLDOWN_BEAM_MULT_MAX = 1.02f
+        private const val GSR_COOLDOWN_TIMEOUT = 20f
+
+        // FOLD_FEED（断言点 GSR-F）：投喂 30 发（0.25s 间隔）统计三态标记——50% 基础概率下
+        // 30 发全同侧概率 ~2e-9，folded/no_fold 各 ≥1 且至少一发 folded 镜像后远离舰心。
+        private const val GSR_FOLD_FEED_COUNT = 30
+        private const val GSR_FOLD_FEED_INTERVAL = 0.25f
+        private const val GSR_FOLD_FEED_TIMEOUT = 30f
+        private const val GSR_PHASE_TIMEOUT = 90f
 
         // 贯星之矛场景：相位机、锚点与期望证据（规格 09 §4.2 烟测检查点）。
         private const val PL_PHASE_MOUNT = "MOUNT"

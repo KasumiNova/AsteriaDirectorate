@@ -1,0 +1,1 @@
+ASTD dev-only automation scenario: ZW-002 grav-em-field full-effect suppression / charge cost + damage reduction / full-charge storm release (arcs + forced overload) / cooldown field restore evidence.

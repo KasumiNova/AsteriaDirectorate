@@ -1,0 +1,1 @@
+ASTD dev-only automation scenario: ZW-101 beam damage reduction / activation flux / projectile replication (copies + damage + flux spikes) / cooldown restore & fold suspension / space-fold tri-state marks evidence.

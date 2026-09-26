@@ -215,6 +215,70 @@
       ]
     },
     {
+      "id": "lens_grav_storm_zw002",
+      "missionId": "lens_grav_storm_zw002",
+      "shipIds": [
+        "astd_zw_002",
+        "dominator"
+      ],
+      "variantIds": [
+        "astd_zw_002_Standard",
+        "dominator_Assault"
+      ],
+      "systemId": "astd_grav_storm",
+      "requiredEvidence": [
+        "gsPhase",
+        "gsSystemId",
+        "gsFieldMaxSpeedMultMin",
+        "gsFieldTurnRateMultMin",
+        "gsFieldEmpMultMax",
+        "gsActivationFluxDeltaMax",
+        "gsChargeDamageTakenMultMin",
+        "gsStormActivationLatched",
+        "gsFieldMultMinDuringRelease",
+        "gsEnemyOverloadObserved",
+        "gsEnemyOverloadSeconds",
+        "gsEnemyHpBeforeRelease",
+        "gsEnemyHpMinAfterRelease",
+        "gsEnemyHpDropMax",
+        "gsFieldRestoredEmpMult",
+        "gsFieldModifierLostEarly",
+        "gsFieldModifierCleared"
+      ]
+    },
+    {
+      "id": "lens_grav_replicator_zw101",
+      "missionId": "lens_grav_replicator_zw101",
+      "shipIds": [
+        "astd_zw_101",
+        "dominator"
+      ],
+      "variantIds": [
+        "astd_zw_101_Standard",
+        "dominator_Assault"
+      ],
+      "systemId": "astd_grav_replicator",
+      "requiredEvidence": [
+        "gsrPhase",
+        "gsrSystemId",
+        "gsrBeamMultIdleMax",
+        "gsrActivationFluxDeltaMax",
+        "gsrOrigDamage",
+        "gsrOriginalShots",
+        "gsrReplicaShots",
+        "gsrReplicaDamageMax",
+        "gsrFluxSpikeCount",
+        "gsrCooldownBeamMultMax",
+        "gsrCooldownFedCount",
+        "gsrCooldownFedEntered",
+        "gsrCooldownMarked",
+        "gsrFoldFedCount",
+        "gsrFoldedCount",
+        "gsrNoFoldCount",
+        "gsrFoldedMovingAway"
+      ]
+    },
+    {
       "id": "cuifeng_torpedo_basic",
       "missionId": "cuifeng_torpedo_basic",
       "shipIds": [
