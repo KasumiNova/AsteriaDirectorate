@@ -24,7 +24,6 @@ internal object GravityCollapseDifficulty {
         val aoeDamageRatio: Float,
         val mobilityReduction: Float,
         val mobilityDuration: Float,
-        val armorPierceMult: Float,
     )
 
     /**
@@ -46,7 +45,6 @@ internal object GravityCollapseDifficulty {
             aoeDamageRatio = pick(tuning, isPlayer, config.aoeDamageRatio),
             mobilityReduction = pick(tuning, isPlayer, config.mobilityReduction),
             mobilityDuration = pick(tuning, isPlayer, config.mobilityDuration),
-            armorPierceMult = pick(tuning, isPlayer, config.armorPierceMult),
         )
     }
 

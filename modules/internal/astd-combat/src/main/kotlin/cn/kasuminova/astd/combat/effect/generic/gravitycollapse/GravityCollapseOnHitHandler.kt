@@ -27,11 +27,11 @@ import kotlin.random.Random.Default.nextFloat
  * 机制口径（weapon_data tooltip 文案双向绑定）：
  * - 每 [GravityCollapseOnHitConfig.tickInterval] 秒在光束终点位置的一定半径造成
  *   “面板总伤害 × tick 间隔 × 难度缩放比例”的范围高爆伤害（半径内全额，无边缘衰减）；
- * - 命中装甲或船体的目标：穿甲力度生效——计算装甲减伤的伤害值提高至打击伤害 × 难度倍率，
- *   穿透差额以追加伤害形式结算（走原版伤害结算链路，计入装甲/船体伤害计算而非直扣船体），
- *   并施加“引力抑制”——最大航速与机动性降低，持续数秒；
- * - 命中护盾的目标只结算护盾伤害，不触发装甲减伤无视与机动抑制；
- * - 上述比例/时长全部受难度系数线性缩放（玩家来源固定 v2 设计基准）。
+ * - 命中装甲或船体的目标：穿甲伤害生效——计算装甲减伤的伤害值固定取全额面板总伤害
+ *   （不随难度缩放），穿透差额以追加伤害形式结算（走原版伤害结算链路，
+ *   计入装甲/船体伤害计算而非直扣船体），并施加“引力抑制”——最大航速与机动性降低，持续数秒；
+ * - 命中护盾的目标只结算护盾伤害，不触发穿甲伤害与机动抑制；
+ * - 伤害比例/抑制数值受难度系数线性缩放（玩家来源固定 v2 设计基准），穿甲伤害不缩放。
  */
 internal class GravityCollapseOnHitHandler(
     private val config: GravityCollapseOnHitConfig,
@@ -140,7 +140,7 @@ internal class GravityCollapseOnHitHandler(
                 val distToSurface = (MathUtils.getDistance(point, loc) - cr).coerceAtLeast(0f)
                 if (distToSurface > radius) continue
 
-                applyTickToEntity(engine, source, other, point, tickDamageBase, values)
+                applyTickToEntity(engine, source, other, point, tickDamageBase, panelDamage.coerceAtLeast(0f), values)
             }
         } else {
             for (other in engine.ships) {
@@ -152,7 +152,7 @@ internal class GravityCollapseOnHitHandler(
                 val distToHull = (MathUtils.getDistance(point, other.location) - other.collisionRadius).coerceAtLeast(0f)
                 if (distToHull > radius) continue
 
-                applyTickToEntity(engine, source, other, point, tickDamageBase, values)
+                applyTickToEntity(engine, source, other, point, tickDamageBase, panelDamage.coerceAtLeast(0f), values)
             }
         }
 
@@ -161,7 +161,9 @@ internal class GravityCollapseOnHitHandler(
 
     /**
      * 对单个范围内实体结算一次 tick：
-     * 护盾覆盖 → 只结算护盾伤害；命中装甲/船体 → 追加装甲减伤无视与机动抑制。
+     * 护盾覆盖 → 只结算护盾伤害；命中装甲/船体 → 追加穿甲伤害与机动抑制。
+     *
+     * @param panelDamage 全额面板总伤害（穿甲伤害的打击强度口径，见 [applyArmorPiercing]）
      */
     private fun applyTickToEntity(
         engine: CombatEngineAPI,
@@ -169,6 +171,7 @@ internal class GravityCollapseOnHitHandler(
         other: CombatEntityAPI,
         point: Vector2f,
         damage: Float,
+        panelDamage: Float,
         values: GravityCollapseDifficulty.ResolvedValues,
     ) {
         val ship = other as? ShipAPI
@@ -195,8 +198,8 @@ internal class GravityCollapseOnHitHandler(
 
         if (ship == null || ship.isHulk || shieldCovered) return
 
-        // 命中装甲/船体：穿甲力度结算（计算装甲减伤的伤害值提高至打击伤害 × 倍率，穿透差额追加）。
-        applyArmorPiercing(engine, source, ship, point, damage, values.armorPierceMult)
+        // 命中装甲/船体：穿甲伤害结算（计算装甲减伤的伤害值固定取全额面板总伤害，穿透差额追加）。
+        applyArmorPiercing(engine, source, ship, point, damage, panelDamage)
 
         // 命中装甲/船体：施加机动/航速抑制（刷新持续）。
         GravityCollapseMobilityDebuff.apply(
@@ -213,9 +216,10 @@ internal class GravityCollapseOnHitHandler(
         GravityCollapseDifficulty.resolve(DifficultyTuningImpl, weapon.ship?.owner, config, weapon.id)
 
     /**
-     * 穿甲力度结算：原版最终伤害倍率为 `1 - min(h / (h + armor), maxArmorDamageReduction)`，
+     * 穿甲伤害结算：原版最终伤害倍率为 `1 - min(h / (h + armor), maxArmorDamageReduction)`，
      * 其中打击强度 h = 伤害 × 类型倍率（高爆对装甲 ×2）。本效果把打击强度替换为
-     * `伤害 × pierceMult`，两口径的伤害差值 `dmg_eff × (multPierced - multNormal)` 以追加高爆伤害
+     * **全额面板总伤害**（固定口径，不随难度缩放；2026-09-26 裁定弃用难度倍率机制），
+     * 两口径的伤害差值 `dmg_eff × (multPierced - multNormal)` 以追加高爆伤害
      * 形式结算（走原版 applyDamage 链路，计入装甲/船体伤害计算而非直扣船体值）；
      * 命中点装甲已耗尽时不存在减伤，无追加。
      */
@@ -225,9 +229,9 @@ internal class GravityCollapseOnHitHandler(
         target: ShipAPI,
         point: Vector2f,
         baseDamage: Float,
-        pierceMult: Float,
+        panelDamage: Float,
     ) {
-        if (baseDamage <= 0f || pierceMult <= 0f) return
+        if (baseDamage <= 0f || panelDamage <= 0f) return
 
         val grid = target.armorGrid ?: return
         val cell = grid.getCellAtLocation(point) ?: return
@@ -238,7 +242,7 @@ internal class GravityCollapseOnHitHandler(
         val effectiveDamage = baseDamage * HE_VS_ARMOR_MULT
         val maxReduction = target.mutableStats.maxArmorDamageReduction.modifiedValue.coerceIn(0f, 1f)
         val multNormal = 1f - min(effectiveDamage / (effectiveDamage + armor), maxReduction)
-        val hitPierced = baseDamage * pierceMult
+        val hitPierced = panelDamage * HE_VS_ARMOR_MULT
         val multPierced = 1f - min(hitPierced / (hitPierced + armor), maxReduction)
         val extra = effectiveDamage * (multPierced - multNormal)
         if (extra <= 0f) return

@@ -38,6 +38,4 @@ internal data class GravityCollapseOnHitConfig(
     val mobilityReduction: ScalingEntry,
     /** 机动抑制持续时间（秒）三锚点。 */
     val mobilityDuration: ScalingEntry,
-    /** 穿甲力度三锚点（命中装甲/船体时生效；计算装甲减伤的伤害值 = 单次打击伤害 × 倍率，差额以追加穿甲伤害结算）。 */
-    val armorPierceMult: ScalingEntry,
 )
