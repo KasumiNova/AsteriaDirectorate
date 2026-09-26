@@ -86,7 +86,7 @@ class GravityCollapseBeamEveryFrameEffect : EveryFrameWeaponEffectPlugin {
                 aoeDamageRatio = s.aoeDamageRatio,
                 mobilityReduction = s.mobilityReduction,
                 mobilityDuration = s.mobilityDuration,
-                armorReductionIgnore = s.armorReductionIgnore,
+                armorPierceMult = s.armorPierceMult,
             )
         )
 

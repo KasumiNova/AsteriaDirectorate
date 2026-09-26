@@ -87,6 +87,9 @@ class GeminiDemSalvoOnFireEffectTest {
         val weapon = mock(WeaponAPI::class.java)
         `when`(weapon.ship).thenReturn(ship)
         `when`(weapon.id).thenReturn("astd_gemini_dem_launcher")
+        // onFire 回调时引擎已为本发 dummy 扣除 1 弹药（MissileWeapon.fireShot 调用序），桩返回扣后余量 1
+        `when`(weapon.usesAmmo()).thenReturn(true)
+        `when`(weapon.ammo).thenReturn(1)
         val projectile = stubProjectile()
 
         val kineticMissile = stubWarheadMissile()
@@ -118,6 +121,9 @@ class GeminiDemSalvoOnFireEffectTest {
         effect.onFire(projectile, weapon, engine)
 
         verify(engine).removeEntity(projectile)
+
+        // 单次发射消耗 2 弹药：引擎已扣 dummy 的 1 枚，效果补扣第 2 枚（2 → 0）
+        verify(weapon).ammo = 0
 
         // 双弹装配：source / armingTime / TrackAI / 批次号 / DEMScript 插件
         for ((missile, expectTarget) in listOf(kineticMissile to target, heMissile to target)) {

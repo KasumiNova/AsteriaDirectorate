@@ -29,6 +29,11 @@ class GeminiDemPayloadBeamEffect : BeamEffectPlugin {
     private val triggeredBeams = IdentityHashMap<BeamAPI, Boolean>()
 
     override fun advance(amount: Float, engine: CombatEngineAPI, beam: BeamAPI) {
+        // 隐藏原版束体渲染（保留伤害/命中结算），视觉由 GeminiDemPayloadBeamVfx 的 BoxUtil 光束实体接管
+        beam.coreColor = COLOR_TRANSPARENT
+        beam.fringeColor = COLOR_TRANSPARENT
+        beam.width = 0.01f
+
         val kind = when (beam.weapon?.spec?.weaponId) {
             GeminiDemDifficulty.KINETIC_PAYLOAD_ID -> GeminiDemSyncHandler.WarheadKind.KINETIC
             GeminiDemDifficulty.HE_PAYLOAD_ID -> GeminiDemSyncHandler.WarheadKind.HE
@@ -98,6 +103,9 @@ class GeminiDemPayloadBeamEffect : BeamEffectPlugin {
         /** EMP 电弧配色（动能冷蓝白，与 payload 光束三色同族）。 */
         private val ARC_FRINGE = Color(140, 200, 255)
         private val ARC_CORE = Color(225, 242, 255)
+
+        /** 原版束体隐藏色（全透明；视觉由 GeminiDemPayloadBeamVfx 接管）。 */
+        private val COLOR_TRANSPARENT = Color(0, 0, 0, 0)
 
         /** 电弧音效（settings.json 音效表已核实存在）。 */
         private const val EMP_ARC_SOUND_ID = "tachyon_lance_emp_impact"

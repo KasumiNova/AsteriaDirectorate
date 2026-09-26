@@ -10,7 +10,7 @@ import kotlin.test.assertEquals
  * 引力坍缩炮难度锚点回归：锁定四档武器的三锚点数值与线性映射口径
  * （k_s=1 取下限 / k_s=2 落在两点线性插值 / k_s=5 取上限）。
  *
- * 数值需求来源：weapon_data tooltip 文案（0.5s | 比例 | 无视 | 减速 | 时长 | 难度系数）。
+ * 数值需求来源：weapon_data tooltip 文案（0.5s | 比例 | 穿甲力度 | 减速 | 时长 | 难度系数）。
  */
 class GravityCollapseDifficultyTest {
 
@@ -54,10 +54,11 @@ class GravityCollapseDifficultyTest {
     }
 
     @Test
-    fun `机动抑制时长与装甲减伤无视锚点（全系列共用）`() {
+    fun `机动抑制时长与穿甲力度锚点（全系列共用）`() {
         for (id in listOf("astd_gcp12", "astd_gcp8", "astd_gcp4", "astd_gcp2")) {
             assertAnchor(spec(id).mobilityDuration, 2f, 2.5f, 3f, 4f)
-            assertAnchor(spec(id).armorReductionIgnore, 0.50f, 0.60f, 0.70f, 0.90f)
+            // 穿甲力度：k_s 整数档恰好命中 150/200/300/500%（k4=400% 由分段线性自然落点）
+            assertAnchor(spec(id).armorPierceMult, 1.50f, 2.00f, 3.00f, 5.00f)
         }
     }
 
@@ -69,7 +70,7 @@ class GravityCollapseDifficultyTest {
         assertEquals(0.25f, values.aoeDamageRatio, 1e-4f)
         assertEquals(0.5625f, values.mobilityReduction, 1e-4f)
         assertEquals(2.5f, values.mobilityDuration, 1e-4f)
-        assertEquals(0.60f, values.armorReductionIgnore, 1e-4f)
+        assertEquals(2.00f, values.armorPierceMult, 1e-4f)
     }
 
     @Test
@@ -80,7 +81,7 @@ class GravityCollapseDifficultyTest {
         assertEquals(0.375f, values.aoeDamageRatio, 1e-4f)
         assertEquals(0.50f, values.mobilityReduction, 1e-4f)
         assertEquals(3f, values.mobilityDuration, 1e-4f)
-        assertEquals(0.70f, values.armorReductionIgnore, 1e-4f)
+        assertEquals(3.00f, values.armorPierceMult, 1e-4f)
     }
 
     @Test
@@ -103,7 +104,7 @@ class GravityCollapseDifficultyTest {
             aoeDamageRatio = s.aoeDamageRatio,
             mobilityReduction = s.mobilityReduction,
             mobilityDuration = s.mobilityDuration,
-            armorReductionIgnore = s.armorReductionIgnore,
+            armorPierceMult = s.armorPierceMult,
         )
     }
 }

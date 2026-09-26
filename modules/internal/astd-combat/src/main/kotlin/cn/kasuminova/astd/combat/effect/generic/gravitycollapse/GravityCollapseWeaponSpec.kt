@@ -9,12 +9,12 @@ import cn.kasuminova.astd.api.difficulty.ScalingMap
  * 系列差异收敛在：
  * - 光束/环尺寸（[beamScale]）
  * - 持续命中额外 AOE 的半径（[aoeRadiusBase]）
- * - 难度缩放数值（[aoeDamageRatio] / [mobilityReduction] / [mobilityDuration] / [armorReductionIgnore]）
+ * - 难度缩放数值（[aoeDamageRatio] / [mobilityReduction] / [mobilityDuration] / [armorPierceMult]）
  *
  * 难度锚点口径（线性数值，k_s=1 取下限 / k_s=5 取上限，v2 锚点落在两点线性插值上）：
  * 范围高爆伤害比例（大/中/小/PD）20％/25％/33％/50％ ~ 40％/50％/66％/100％；
  * 航速机动性降低 50％/40％/30％/20％ ~ 75％/60％/45％/30％，持续 2s ~ 4s；
- * 装甲减伤无视 50％ ~ 90％。
+ * 穿甲力度（计算装甲减伤的伤害值 = 单次打击伤害 × 倍率）150％ ~ 500％（k_s 整数档 150/200/300/400/500％）。
  */
 internal data class GravityCollapseWeaponSpec(
     /** 视觉缩放：影响束宽、环尺寸、炮口爆发等的“整体尺寸感”。 */
@@ -39,8 +39,8 @@ internal data class GravityCollapseWeaponSpec(
     val mobilityReduction: ScalingEntry,
     /** 机动抑制持续时间（秒）三锚点。 */
     val mobilityDuration: ScalingEntry,
-    /** 无视目标最终装甲减伤的比例三锚点。 */
-    val armorReductionIgnore: ScalingEntry,
+    /** 穿甲力度三锚点：计算装甲减伤时的伤害值 = 单次打击伤害 × 本倍率。 */
+    val armorPierceMult: ScalingEntry,
 )
 
 internal object GravityCollapseWeaponSpecs {
@@ -48,8 +48,11 @@ internal object GravityCollapseWeaponSpecs {
     /** 全系列共用的机动抑制时长锚点：2s（迟暮）~ 4s（破晓）。 */
     private val MOBILITY_DURATION = ScalingEntry(2f, 2.5f, 4f, ScalingMap.LINEAR)
 
-    /** 全系列共用的装甲减伤无视锚点：50％（迟暮）~ 90％（破晓）。 */
-    private val ARMOR_REDUCTION_IGNORE = ScalingEntry(0.50f, 0.60f, 0.90f, ScalingMap.LINEAR)
+    /**
+     * 全系列共用的穿甲力度锚点：150％（迟暮）~ 500％（破晓），v2 设计基准 200％。
+     * 分段线性在 k_s 整数档恰好命中 150/200/300/400/500％（k2→k5 段步进 100％/档）。
+     */
+    private val ARMOR_PIERCE_MULT = ScalingEntry(1.50f, 2.00f, 5.00f, ScalingMap.LINEAR)
 
     /** PD 规格（astd_gcp2 / 战机版 astd_gcp_fighter 共用：战机版数据全量复用舰装版）。 */
     private val GCP_PD_SPEC = GravityCollapseWeaponSpec(
@@ -63,7 +66,7 @@ internal object GravityCollapseWeaponSpecs {
         aoeDamageRatio = ScalingEntry(0.50f, 0.625f, 1.00f, ScalingMap.LINEAR),
         mobilityReduction = ScalingEntry(0.20f, 0.225f, 0.30f, ScalingMap.LINEAR),
         mobilityDuration = MOBILITY_DURATION,
-        armorReductionIgnore = ARMOR_REDUCTION_IGNORE,
+        armorPierceMult = ARMOR_PIERCE_MULT,
     )
 
     private val specs: Map<String, GravityCollapseWeaponSpec> = mapOf(
@@ -80,7 +83,7 @@ internal object GravityCollapseWeaponSpecs {
             aoeDamageRatio = ScalingEntry(0.20f, 0.25f, 0.40f, ScalingMap.LINEAR),
             mobilityReduction = ScalingEntry(0.50f, 0.5625f, 0.75f, ScalingMap.LINEAR),
             mobilityDuration = MOBILITY_DURATION,
-            armorReductionIgnore = ARMOR_REDUCTION_IGNORE,
+            armorPierceMult = ARMOR_PIERCE_MULT,
         ),
         "astd_gcp8" to GravityCollapseWeaponSpec(
             beamScale = 0.85f,
@@ -93,7 +96,7 @@ internal object GravityCollapseWeaponSpecs {
             aoeDamageRatio = ScalingEntry(0.25f, 0.3125f, 0.50f, ScalingMap.LINEAR),
             mobilityReduction = ScalingEntry(0.40f, 0.45f, 0.60f, ScalingMap.LINEAR),
             mobilityDuration = MOBILITY_DURATION,
-            armorReductionIgnore = ARMOR_REDUCTION_IGNORE,
+            armorPierceMult = ARMOR_PIERCE_MULT,
         ),
         "astd_gcp4" to GravityCollapseWeaponSpec(
             beamScale = 0.70f,
@@ -106,7 +109,7 @@ internal object GravityCollapseWeaponSpecs {
             aoeDamageRatio = ScalingEntry(0.33f, 0.4125f, 0.66f, ScalingMap.LINEAR),
             mobilityReduction = ScalingEntry(0.30f, 0.3375f, 0.45f, ScalingMap.LINEAR),
             mobilityDuration = MOBILITY_DURATION,
-            armorReductionIgnore = ARMOR_REDUCTION_IGNORE,
+            armorPierceMult = ARMOR_PIERCE_MULT,
         ),
         "astd_gcp2" to GCP_PD_SPEC,
         // 战机版引力坍缩炮 PD：数据与特效全量复用舰装版 astd_gcp2（仅不渲染武器贴图）

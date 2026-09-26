@@ -168,9 +168,9 @@ MissileProjSpec(
     id = "astd_gemini_dem_kinetic_msl",          // 高爆：astd_gemini_dem_he_msl
     missileType = "MISSILE",
     onFireEffect = null,                          // 单一路径：DEMScript 由 SalvoOnFireEffect 手动挂载（事实 #3/#4）
-    sprite = "graphics/missiles/dragonfire.png",  // v1 资源选型：引用原版贴图；专用异色贴图列后续美术任务
-    size = Vec2i(15, 24), center = Vec2(7.5, 12),
-    collisionRadius = 12, collisionClass = "MISSILE_NO_FF",
+    sprite = "graphics/weapons/astd_gemini_dem_missile.png",  // 2026-09-26：改用 ASTD 导弹本体贴图（与 dummy 装填渲染一致），不再引用龙炎
+    size = Vec2i(12, 25), center = Vec2(6, 12.5),
+    collisionRadius = 7, collisionClass = "MISSILE_NO_FF",
     explosionColor = Rgba(140, 190, 255, 180),    // 高爆：Rgba(255, 180, 110, 180)
     explosionRadius = 50,
     armingTime = 0.3,
@@ -237,7 +237,7 @@ MissileProjSpec(
 }
 ```
 
-发射架贴图为 v1 资源选型（引用原版龙炎发射架；pod 用 `dragonfire_launcher_lrg_*`，已对 dragonpod.wpn 核实）。单管 LINKED：一次触发只出一枚 dummy，双弹由脚本生成（设计「单次装填量 = 一轮齐射」由 ammo=2 体现）。专用发射架贴图列后续美术任务。
+发射架贴图为 v1 资源选型（引用原版龙炎发射架；pod 用 `dragonfire_launcher_lrg_*`，已对 dragonpod.wpn 核实）。单管 LINKED：一次触发只出一枚 dummy，双弹由脚本生成。**弹药口径（2026-09-26 裁定）**：一轮齐射消耗 2 弹药——引擎只扣 dummy 的 1 枚，`GeminiDemSalvoOnFireEffect` 在 onFire 回调内补扣第 2 枚（原版 MissileWeapon.fireShot 先扣弹药再回调 onFire，时序已核实）；装填量恒为偶数（发射器 2 / 发射舱 4），一轮回充 2 枚正好补一轮齐射。专用发射架贴图列后续美术任务。
 
 **`astd_gemini_dem_kinetic.wpn` / `astd_gemini_dem_he.wpn`（隐藏弹头武器，永不上架）：**
 
@@ -282,6 +282,7 @@ MissileProjSpec(
     "fringeColor": [120, 180, 255, 225],       "高爆：[255, 170, 110, 225]",
     "coreColor": [220, 240, 255, 255],         "高爆：[255, 240, 220, 255]",
     "beamEffect": "cn.kasuminova.astd.combat.effect.arc.GeminiDemPayloadBeamEffect",
+    "everyFrameEffect": "cn.kasuminova.astd.combat.effect.arc.GeminiDemPayloadBeamVfx",   "2026-09-26：BoxUtil 光束实体接管渲染",
     "hitGlowBrightenDuration": 0,
     "hitGlowRadius": 350,
     "width": 30.0,
@@ -294,7 +295,7 @@ MissileProjSpec(
 }
 ```
 
-插件挂载点汇总：主武器 → dummy .proj 的 `onFireEffect`（唯一入口）；弹头 → 无插件（DEMScript 脚本挂载）；payload 光束 → `.wpn` 的 `beamEffect`。
+插件挂载点汇总：主武器 → dummy .proj 的 `onFireEffect`（唯一入口）；弹头 → 无插件（DEMScript 脚本挂载）；payload 光束 → `.wpn` 的 `beamEffect`（命中逻辑 + 隐藏原版束体渲染）与 `everyFrameEffect`（BoxUtil 光束实体自绘，动能 astd_trails_zappy / 高爆 astd_trails_flow，含出现 ramp-in 与停火消散的透明度/宽度过渡）。
 
 ### 1.5 i18n 键清单（`ss-csv/src/main/resources/i18n/zh-cn.properties` 文件末尾集中追加）
 
@@ -503,7 +504,7 @@ prev != null 时先惰性过期：now - prev.hitTime > 1s → 视为无记录
 | 检查项 | 结论 | 理由 |
 |---|---|---|
 | 弹体 VFX 登记 | N/A | texTrail 管线服务 BALLISTIC 射弹；本组弹体是导弹，走原版导弹渲染（贴图 + engineSlots 喷流/尾焰配色），数据面 §1.3 已配双色 |
-| 光束 VFX 登记 | N/A | payload 光束走原版光束渲染，颜色在 .wpn 直配（§1.4）；无光束驱动需求 |
+| 光束 VFX 登记 | `GeminiDemPayloadBeamVfx` | 2026-09-26：payload 光束改 BoxUtil 光束实体自绘（动能 zappy / 高爆 flow 贴图），原版束体由 beamEffect 隐藏；出现 ramp-in 0.1s、停火消散 0.45s（透明度→0、宽度→30%） |
 | 爆炸/冲击 | 复用原版 | 弹头爆炸色 .proj 直配；同步冲击闪光用 `spawnExplosion`；不上锥面组件（本组无锥状机制） |
 | HUD | N/A | §2.3 已说明 |
 | i18n | 见 §1.5 | 键清单齐全 |

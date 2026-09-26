@@ -820,11 +820,11 @@ private fun geminiDemWarheadProjSpec(
     missileType = "MISSILE",
     // 单一路径：DEMScript 由 GeminiDemSalvoOnFireEffect 手动挂载（规格 §0.1 事实 #3/#4）
     onFireEffect = null,
-    // v1 资源选型：引用原版贴图；专用异色贴图列后续美术任务
-    sprite = "graphics/missiles/dragonfire.png",
-    size = Vec2i(15, 24),
-    center = Vec2(7.5, 12),
-    collisionRadius = 12,
+    // 贴图沿用 ASTD 双子星导弹本体（与 dummy 装填渲染一致；异色区分由引擎喷流/爆炸色/payload 光束承担）
+    sprite = "graphics/weapons/astd_gemini_dem_missile.png",
+    size = Vec2i(12, 25),
+    center = Vec2(6, 12.5),
+    collisionRadius = 7,
     collisionClass = "MISSILE_NO_FF",
     explosionColor = explosionColor,
     explosionRadius = 50,

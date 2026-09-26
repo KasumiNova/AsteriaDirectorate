@@ -27,6 +27,10 @@ import org.lwjgl.util.vector.Vector2f
  * - `weapon.ship == null`：记 WARN 放行 dummy 正常飞行（只兜异常调用，不改变 vanilla 路径外行为）；
  * - `spawnProjectile` 返回非 [MissileAPI]：记 ERROR 跳过该枚，另一枚不受影响（理论不可达）。
  *
+ * 弹药口径（2026-09-26 裁定）：一次发射 = 一轮双弹齐射 = 消耗 2 弹药。
+ * 原版 MissileWeapon.fireShot 先 `deductOneAmmo()` 再回调 onFire（已核实调用序），
+ * 引擎只扣了 dummy 的 1 枚，此处补扣第 2 枚；剩余 1 枚的奇数残弹场景钳制到 0（全装填量恒为偶数，正常不可达）。
+ *
  * @param demPluginFactory DEM 打击段插件装配（默认真实 DEMScript；测试注入记录桩断言装配发生）
  */
 class GeminiDemSalvoOnFireEffect(
@@ -44,6 +48,11 @@ class GeminiDemSalvoOnFireEffect(
 
         // dummy 同帧移除（规格 §2.2 第 2 步）
         engine.removeEntity(projectile)
+
+        // 补扣第 2 枚弹药（一轮齐射 = 2 弹药；引擎仅扣了 dummy 的 1 枚，见类注释）
+        if (weapon.usesAmmo()) {
+            weapon.ammo = (weapon.ammo - 1).coerceAtLeast(0)
+        }
 
         val shipTarget = ship.shipTarget?.takeIf {
             it.isAlive && !it.isHulk && it.owner != ship.owner

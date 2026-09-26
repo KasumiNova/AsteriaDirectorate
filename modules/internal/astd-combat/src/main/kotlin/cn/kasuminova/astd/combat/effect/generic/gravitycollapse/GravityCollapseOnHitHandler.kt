@@ -27,8 +27,9 @@ import kotlin.random.Random.Default.nextFloat
  * 机制口径（weapon_data tooltip 文案双向绑定）：
  * - 每 [GravityCollapseOnHitConfig.tickInterval] 秒在光束终点位置的一定半径造成
  *   “面板总伤害 × tick 间隔 × 难度缩放比例”的范围高爆伤害（半径内全额，无边缘衰减）；
- * - 命中装甲或船体的目标：按其一定比例的最终装甲减伤追加穿甲伤害（走原版伤害结算链路，
- *   计入装甲/船体伤害计算而非直扣船体），并施加“引力抑制”——最大航速与机动性降低，持续数秒；
+ * - 命中装甲或船体的目标：穿甲力度生效——计算装甲减伤的伤害值提高至打击伤害 × 难度倍率，
+ *   穿透差额以追加伤害形式结算（走原版伤害结算链路，计入装甲/船体伤害计算而非直扣船体），
+ *   并施加“引力抑制”——最大航速与机动性降低，持续数秒；
  * - 命中护盾的目标只结算护盾伤害，不触发装甲减伤无视与机动抑制；
  * - 上述比例/时长全部受难度系数线性缩放（玩家来源固定 v2 设计基准）。
  */
@@ -194,8 +195,8 @@ internal class GravityCollapseOnHitHandler(
 
         if (ship == null || ship.isHulk || shieldCovered) return
 
-        // 命中装甲/船体：无视目标一定比例的最终装甲减伤（被减免部分以追加穿甲伤害结算）。
-        applyArmorReductionIgnore(engine, source, ship, point, damage, values.armorReductionIgnore)
+        // 命中装甲/船体：穿甲力度结算（计算装甲减伤的伤害值提高至打击伤害 × 倍率，穿透差额追加）。
+        applyArmorPiercing(engine, source, ship, point, damage, values.armorPierceMult)
 
         // 命中装甲/船体：施加机动/航速抑制（刷新持续）。
         GravityCollapseMobilityDebuff.apply(
@@ -212,19 +213,21 @@ internal class GravityCollapseOnHitHandler(
         GravityCollapseDifficulty.resolve(DifficultyTuningImpl, weapon.ship?.owner, config, weapon.id)
 
     /**
-     * 装甲减伤无视（穿甲加成）：原版最终装甲减伤为 `r = min(dmg / (dmg + armor), maxArmorDamageReduction)`，
-     * 本效果按 `dmg_eff × r × ignoreFrac` 追加一次高爆伤害，走原版 applyDamage 结算链路
-     * （计入装甲/船体伤害计算，而非直扣船体值）；命中点装甲已耗尽时不存在减伤，无追加。
+     * 穿甲力度结算：原版最终伤害倍率为 `1 - min(h / (h + armor), maxArmorDamageReduction)`，
+     * 其中打击强度 h = 伤害 × 类型倍率（高爆对装甲 ×2）。本效果把打击强度替换为
+     * `伤害 × pierceMult`，两口径的伤害差值 `dmg_eff × (multPierced - multNormal)` 以追加高爆伤害
+     * 形式结算（走原版 applyDamage 链路，计入装甲/船体伤害计算而非直扣船体值）；
+     * 命中点装甲已耗尽时不存在减伤，无追加。
      */
-    private fun applyArmorReductionIgnore(
+    private fun applyArmorPiercing(
         engine: CombatEngineAPI,
         source: ShipAPI?,
         target: ShipAPI,
         point: Vector2f,
         baseDamage: Float,
-        ignoreFrac: Float,
+        pierceMult: Float,
     ) {
-        if (baseDamage <= 0f || ignoreFrac <= 0f) return
+        if (baseDamage <= 0f || pierceMult <= 0f) return
 
         val grid = target.armorGrid ?: return
         val cell = grid.getCellAtLocation(point) ?: return
@@ -234,8 +237,10 @@ internal class GravityCollapseOnHitHandler(
 
         val effectiveDamage = baseDamage * HE_VS_ARMOR_MULT
         val maxReduction = target.mutableStats.maxArmorDamageReduction.modifiedValue.coerceIn(0f, 1f)
-        val reduction = min(effectiveDamage / (effectiveDamage + armor), maxReduction)
-        val extra = effectiveDamage * reduction * ignoreFrac
+        val multNormal = 1f - min(effectiveDamage / (effectiveDamage + armor), maxReduction)
+        val hitPierced = baseDamage * pierceMult
+        val multPierced = 1f - min(hitPierced / (hitPierced + armor), maxReduction)
+        val extra = effectiveDamage * (multPierced - multNormal)
         if (extra <= 0f) return
 
         engine.applyDamage(
