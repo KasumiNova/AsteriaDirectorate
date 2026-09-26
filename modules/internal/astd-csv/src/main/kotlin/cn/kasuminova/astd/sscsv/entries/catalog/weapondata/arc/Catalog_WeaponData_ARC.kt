@@ -663,13 +663,14 @@ object Wpn_astd_gemini_dem_launcher : WeaponDataEntry(), SsProjMissileOutputs {
     // 单弹面板：burst=2 驱动 tooltip「1250 x2」显示（原版 squall/locust 先例：burst 列即面板 xN 口径）；
     // 一次触发引擎连发 2 发 dummy 各扣 1 弹药，次发由 SalvoOnFireEffect 回声去重（规格 §2.2）
     override val damagePerShot: Int = 1250
+    override val energyPerShot: Int = 625
 
     // EMP 电弧总面板：每 0.1s 一道 × 125（= 面板 10%），持续 1s 合计与单弹面板等额
     override val emp: Int = 1250
     override val turnRate: Int = 30
     override val ops: Int = 14
     override val ammo: Int = 4
-    override val ammoPerSec: Double = 0.0334
+    override val ammoPerSec: Double = 0.0333
     override val reloadSize: Int = 2
 
     // 对齐龙炎显示惯例（同步冲击为能量伤害）
@@ -725,11 +726,12 @@ object Wpn_astd_gemini_dem_pod : WeaponDataEntry() {
     override val range: Int = 2500
     override val damagePerSecond: Int = 0
     override val damagePerShot: Int = 1250
+    override val energyPerShot: Int = 625
     override val emp: Int = 1250
     override val turnRate: Int = 30
     override val ops: Int = 28
     override val ammo: Int = 8
-    override val ammoPerSec: Double = 0.0667
+    override val ammoPerSec: Double = 0.0666
     override val reloadSize: Int = 2
     override val type: String = "ENERGY"
     override val chargedown: Double = 12.0
