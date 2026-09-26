@@ -5,6 +5,7 @@ import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BeamAPI
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEngineLayers
+import com.fs.starfarer.api.combat.EmpArcEntityAPI
 import com.fs.starfarer.api.combat.EveryFrameWeaponEffectPlugin
 import com.fs.starfarer.api.combat.WeaponAPI
 import com.fs.starfarer.api.graphics.SpriteAPI
@@ -139,7 +140,9 @@ class GeminiDemPayloadBeamVfx : EveryFrameWeaponEffectPlugin {
                 spawnLaunchBurst(engine, from, fringe)
             }
             syncFlares(engine, state, from, facing, core, fringe, alphaMul = ramp)
-            advanceAmbientNebula(state, engine, amount, from, facing, length, fringe)
+            if (kind == Kind.HE) {
+                advanceAmbientNebula(state, engine, amount, from, facing, length, fringe)
+            }
             if (kind == Kind.KINETIC) {
                 advanceDecorArcs(state, engine, amount, from, facing, length, core, fringe)
             }
@@ -324,7 +327,7 @@ class GeminiDemPayloadBeamVfx : EveryFrameWeaponEffectPlugin {
             val pos = Vector2f(from.x + dir.x, from.y + dir.y)
             engine.addNebulaParticle(
                 pos, ZERO, MathUtils.getRandomNumberInRange(LAUNCH_NEBULA_SIZE_MIN, LAUNCH_NEBULA_SIZE_MAX),
-                1.5f, 0.05f, 0.1f, 0.6f,
+                1.5f, 0.05f, 0.1f, 1f,
                 Color(fringe.red, fringe.green, fringe.blue, LAUNCH_NEBULA_ALPHA), true,
             )
         }
@@ -350,7 +353,7 @@ class GeminiDemPayloadBeamVfx : EveryFrameWeaponEffectPlugin {
             val pos = Vector2f(from.x + dir.x * along + jitter.x, from.y + dir.y * along + jitter.y)
             engine.addNebulaParticle(
                 pos, ZERO, MathUtils.getRandomNumberInRange(AMBIENT_NEBULA_SIZE_MIN, AMBIENT_NEBULA_SIZE_MAX),
-                1.3f, 0.05f, 0.1f, 0.3f,
+                1.3f, 0.05f, 0.1f, 0.8f,
                 Color(fringe.red, fringe.green, fringe.blue, AMBIENT_NEBULA_ALPHA), true,
             )
         }
@@ -424,21 +427,21 @@ class GeminiDemPayloadBeamVfx : EveryFrameWeaponEffectPlugin {
         private const val LAUNCH_BURST_COUNT = 10
         private const val LAUNCH_BURST_OFFSET_MIN = 20f
         private const val LAUNCH_BURST_OFFSET_MAX = 40f
-        private const val LAUNCH_NEBULA_SIZE_MIN = 100f
-        private const val LAUNCH_NEBULA_SIZE_MAX = 200f
-        private const val LAUNCH_NEBULA_ALPHA = 110
+        private const val LAUNCH_NEBULA_SIZE_MIN = 80f
+        private const val LAUNCH_NEBULA_SIZE_MAX = 160f
+        private const val LAUNCH_NEBULA_ALPHA = 100
 
         // 束体周围节律星云
         private const val AMBIENT_NEBULA_INTERVAL = 0.2f
-        private const val AMBIENT_NEBULA_COUNT = 2
-        private const val AMBIENT_NEBULA_SIZE_MIN = 50f
-        private const val AMBIENT_NEBULA_SIZE_MAX = 100f
-        private const val AMBIENT_NEBULA_JITTER = 40f
+        private const val AMBIENT_NEBULA_COUNT = 6
+        private const val AMBIENT_NEBULA_SIZE_MIN = 60f
+        private const val AMBIENT_NEBULA_SIZE_MAX = 120f
+        private const val AMBIENT_NEBULA_JITTER = 20f
         private const val AMBIENT_NEBULA_ALPHA = 90
 
         // 动能装饰电弧（全长一道，发射点→命中点钉死）
         private const val DECOR_ARC_INTERVAL = 0.1f
-        private const val DECOR_ARC_THICKNESS = 10f
+        private const val DECOR_ARC_THICKNESS = 15f
 
         // 发射点常驻光斑尺寸
         private const val FLARE_GLOW_SIZE = 46f

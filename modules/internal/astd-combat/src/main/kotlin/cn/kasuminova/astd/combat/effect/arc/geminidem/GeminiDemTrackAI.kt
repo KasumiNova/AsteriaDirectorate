@@ -108,12 +108,12 @@ class GeminiDemTrackAI(
         private const val WEAVE_PROXIMITY_RANGE = 500f
 
         /** 摆动幅度区间（su）：瞄准点横向偏移峰值。 */
-        private const val WEAVE_AMP_MIN = 80f
-        private const val WEAVE_AMP_MAX = 160f
+        private const val WEAVE_AMP_MIN = 160f
+        private const val WEAVE_AMP_MAX = 320f
 
         /** 摆动频率区间（Hz）：正弦周期 1/f 秒。 */
-        private const val WEAVE_FREQ_MIN = 0.5f
-        private const val WEAVE_FREQ_MAX = 1.1f
+        private const val WEAVE_FREQ_MIN = 0.7f
+        private const val WEAVE_FREQ_MAX = 1.4f
 
         private const val PI_F = Math.PI.toFloat()
 
