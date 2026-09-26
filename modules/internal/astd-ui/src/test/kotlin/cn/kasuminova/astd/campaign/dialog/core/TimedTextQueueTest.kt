@@ -1,9 +1,11 @@
 package cn.kasuminova.astd.campaign.dialog.core
 
 import cn.kasuminova.astd.campaign.dialog.DialogTestRig
+import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class TimedTextQueueTest {
 
@@ -124,8 +126,11 @@ class TimedTextQueueTest {
 
         val histories = rig.opacityHistory.values.toList()
         // 无 fadeOut 的段落终态为 maxOpacity；有 fadeOut 的段落终态为 0
-        assertEquals(0.8f, histories[0].last(), 1e-4f)
-        assertEquals(0f, histories[1].last(), 1e-4f)
+        // （opacityHistory 是 IdentityHashMap，迭代序随身份哈希漂移，按终态集合断言而非按下标）
+        val terminals = histories.map { it.last() }
+        assertEquals(2, terminals.size)
+        assertTrue(terminals.any { abs(it - 0.8f) < 1e-4f }, "无 fadeOut 段落终态应为 maxOpacity 0.8，实际 $terminals")
+        assertTrue(terminals.any { abs(it) < 1e-4f }, "有 fadeOut 段落终态应为 0，实际 $terminals")
         // 终态化后不再有任何动画推进
         val sizes = histories.map { it.size }
         queue.advance(1f)
