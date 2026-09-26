@@ -701,13 +701,13 @@ object Wpn_astd_ice_shard_mirv : WeaponDataEntry(), SsProjMissileOutputs {
     override val turnRate: Int = 30
     override val ops: Int = 6
 
-    // 备弹 1 发，50s/+1
-    override val ammo: Int = 1
-    override val ammoPerSec: Double = 0.02
+    // 备弹 2 发，40s/+1
+    override val ammo: Int = 2
+    override val ammoPerSec: Double = 0.025
     override val reloadSize: Int = 1
 
-    // 发射冷却 4s，单次发射量 1
-    override val chargedown: Double = 4.0
+    // 发射冷却 10s，单次发射量 1
+    override val chargedown: Double = 10.0
     override val burstSize: Number = 1
     override val burstDelay: Double = 0.0
 
@@ -754,15 +754,15 @@ object Wpn_astd_ice_shard_mirv_pod : WeaponDataEntry() {
     override val turnRate: Int = 30
     override val ops: Int = 12
 
-    // 备弹 2 发，20s/+1
-    override val ammo: Int = 2
+    // 备弹 6 发，20s/+1
+    override val ammo: Int = 6
     override val ammoPerSec: Double = 0.05
-    override val reloadSize: Int = 1
+    override val reloadSize: Int = 2
 
-    // 发射冷却 6s，单次发射量 2
-    override val chargedown: Double = 6.0
+    // 发射冷却 12s，单次发射量 2
+    override val chargedown: Double = 12.0
     override val burstSize: Number = 2
-    override val burstDelay: Double = 0.0
+    override val burstDelay: Double = 0.5
 
     override val type: String = "FRAGMENTATION"
     override val energyPerShot: Int = 500
@@ -850,8 +850,8 @@ object Wpn_astd_gemini_dem_fighter : WeaponDataEntry() {
     override val baseValue: Int = 0
     override val range: Int = 2500
     override val damagePerSecond: Int = 0
-    override val damagePerShot: Int = 2500
-    override val emp: Int = 2000
+    override val damagePerShot: Int = 1250
+    override val emp: Int = 1250
     override val turnRate: Int = 30
     override val ops: Int = 0
     override val ammo: Int = 2

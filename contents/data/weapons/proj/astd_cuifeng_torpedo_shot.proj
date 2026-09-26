@@ -1,0 +1,25 @@
+{
+    "id": "astd_cuifeng_torpedo_shot",
+    "specClass": "missile",
+    "missileType": "MISSILE",
+    "onFireEffect": "cn.kasuminova.astd.combat.effect.arc.cuifeng.CuifengTorpedoOnFireEffect",
+    "onHitEffect": "cn.kasuminova.astd.combat.effect.arc.cuifeng.CuifengTorpedoOnHitEffect",
+    "sprite": "graphics/missiles/torpedo_guided2.png",
+    "size": [10, 21],
+    "center": [5, 10.5],
+    "collisionRadius": 15,
+    "collisionClass": "MISSILE_NO_FF",
+    "explosionColor": [140, 190, 255, 160],
+    "explosionRadius": 150,
+    "armingTime": 0,
+    "flameoutTime": 0.5,
+    "noEngineGlowTime": 999,
+    "fadeTime": 0.25,
+    "engineSpec": {
+        "turnAcc": 2000,
+        "turnRate": 500,
+        "acc": 2000,
+        "dec": 2000
+    },
+    "engineSlots": []
+}

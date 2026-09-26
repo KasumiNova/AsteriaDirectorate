@@ -10,7 +10,7 @@
         "turnRateBoost": 100,
         "targetingTime": 2,
         "firingTime": 1,
-        "targetingLaserId": "targetinglaser3",
+        "targetingLaserId": "astd_gemini_dem_targetinglaser_kinetic",
         "targetingLaserFireOffset": [8, 0, 8, 0],
         "targetingLaserSweepAngles": [0, -7, 0, 7],
         "payloadWeaponId": "astd_gemini_dem_kinetic_payload",

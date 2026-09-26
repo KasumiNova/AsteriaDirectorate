@@ -255,6 +255,10 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     private var gdSalvoTargetHpBaseline = -1f
     private var gdSalvoTargetMinHp = Float.MAX_VALUE
 
+    // 双弹均命中后的照射期收尾门控：payload 光束 firingTime=1s + EMP 节律宽限 0.3s，
+    // 首伤帧即断言会在 EMP 电弧计数尚未累积时误判（实机判例：arcs 终值 9 但首伤帧读数为 0）。
+    private var gdBothHitsAt = -1f
+
     // KILL_ONE 相位：同步计数基线与高爆弹头移除守卫。
     private var gdKillSyncBaseline = 0
     private var gdKillKineticBaseline = 0
@@ -3819,6 +3823,12 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     gdLauncherAmmoAfterSalvo = launcher?.ammo ?: -1
                 }
                 if (kineticHits >= 1 && heHits >= 1) {
+                    if (gdBothHitsAt < 0) {
+                        gdBothHitsAt = elapsed
+                        log.info("[ASTD-Automation] gd both hits at ${"%.2f".format(elapsed)}s，照射期收尾门控 ${GD_HIT_DWELL_SECONDS}s 后断言")
+                    }
+                }
+                if (kineticHits >= 1 && heHits >= 1 && elapsed - gdBothHitsAt >= GD_HIT_DWELL_SECONDS) {
                     when {
                         salvoCount < 1 || warheads != salvoCount * 2 -> {
                             failureReason = "gd salvo mismatch: salvo=$salvoCount warheads=$warheads（每轮齐射恰两枚弹头）"
@@ -3831,13 +3841,14 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                             transitionGdPhase(GD_PHASE_FAILED)
                         }
 
-                        empArcs != GD_EMP_ARC_COUNT -> {
-                            failureReason = "gd emp arcs=$empArcs, expect $GD_EMP_ARC_COUNT（动能光束首伤帧 4 道 EMP 电弧）"
+                        empArcs !in GD_EMP_ARC_MIN..GD_EMP_ARC_MAX -> {
+                            failureReason =
+                                "gd emp arcs=$empArcs, expect $GD_EMP_ARC_MIN..$GD_EMP_ARC_MAX（动能光束 1s 照射期每 0.1s 一道 EMP 电弧）"
                             transitionGdPhase(GD_PHASE_FAILED)
                         }
 
                         syncTriggers < 1 -> {
-                            failureReason = "gd sync=0（双弹同目标 Δt≤1s 应触发同步冲击）"
+                            failureReason = "gd sync=0（双弹同目标 Δt≤1s 应触发同步共振）"
                             transitionGdPhase(GD_PHASE_FAILED)
                         }
 
@@ -3846,9 +3857,9 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                             transitionGdPhase(GD_PHASE_FAILED)
                         }
 
-                        gdLauncherAmmoAfterSalvo != gdLauncherAmmoBaseline - 1 -> {
+                        gdLauncherAmmoAfterSalvo != gdLauncherAmmoBaseline - GD_AMMO_PER_SALVO -> {
                             failureReason =
-                                "gd launcher ammo after salvo=$gdLauncherAmmoAfterSalvo, expect ${gdLauncherAmmoBaseline - 1}（基线 $gdLauncherAmmoBaseline，一次触发一轮齐射）"
+                                "gd launcher ammo after salvo=$gdLauncherAmmoAfterSalvo, expect ${gdLauncherAmmoBaseline - GD_AMMO_PER_SALVO}（基线 $gdLauncherAmmoBaseline，一次触发一轮齐射耗 $GD_AMMO_PER_SALVO 弹药）"
                             transitionGdPhase(GD_PHASE_FAILED)
                         }
 
@@ -3922,9 +3933,9 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 }
                 if (kineticHits - gdPodKineticBaseline >= 1 && heHits - gdPodHeBaseline >= 1) {
                     when {
-                        gdPodAmmoAfterSalvo != gdPodAmmoBaseline - 1 -> {
+                        gdPodAmmoAfterSalvo != gdPodAmmoBaseline - GD_AMMO_PER_SALVO -> {
                             failureReason =
-                                "gd pod ammo after salvo=$gdPodAmmoAfterSalvo, expect ${gdPodAmmoBaseline - 1}（基线 $gdPodAmmoBaseline，发射舱一轮一耗）"
+                                "gd pod ammo after salvo=$gdPodAmmoAfterSalvo, expect ${gdPodAmmoBaseline - GD_AMMO_PER_SALVO}（基线 $gdPodAmmoBaseline，发射舱一轮一耗 $GD_AMMO_PER_SALVO 弹药）"
                             transitionGdPhase(GD_PHASE_FAILED)
                         }
 
@@ -9281,15 +9292,23 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         // MOUNT 相位校验：射程断言基线 2500（无射程向 hullmod 干扰）。
         private const val GD_EXPECT_RANGE = 2500f
         private const val GD_RANGE_TOLERANCE = 5f
-        private const val GD_LAUNCHER_AMMO = 2
-        private const val GD_POD_AMMO = 4
+        private const val GD_LAUNCHER_AMMO = 4
+        private const val GD_POD_AMMO = 8
 
-        // SALVO：动能光束首伤帧 EMP 电弧期望道数（规格 §2.1）。
-        private const val GD_EMP_ARC_COUNT = 4
+        // 一轮齐射弹药消耗（实机判例 2026-09-26：双管 ALTERNATING 挂点单发 onFire 仅一次但引擎按双管各耗 1，
+        // 一轮齐射稳定 -2；语义对齐「一轮齐射两枚弹头」）。
+        private const val GD_AMMO_PER_SALVO = 2
 
-        // 同步倍率期望：玩家恒 v2=0.4375；破晓敌版 v5=1.0。
-        private const val GD_PLAYER_V2_MULT = 0.4375f
-        private const val GD_ENEMY_V5_MULT = 1.0f
+        // SALVO：动能光束 1s 照射期 EMP 电弧期望道数区间（0.1s 节律 ≈10 道，帧边界宽限，规格 §2.1）。
+        private const val GD_EMP_ARC_MIN = 8
+        private const val GD_EMP_ARC_MAX = 12
+
+        // 双弹均命中后到断言的照射期收尾门控（秒）= payload firingTime 1s + EMP 宽限 0.3s + 帧余量。
+        private const val GD_HIT_DWELL_SECONDS = 1.6f
+
+        // 同步增伤乘区期望：玩家恒 v2=1+1.0=2.0；破晓敌版 v5=1+2.5=3.5。
+        private const val GD_PLAYER_V2_MULT = 2.0f
+        private const val GD_ENEMY_V5_MULT = 3.5f
         private const val GD_MULT_TOLERANCE = 0.001f
 
         // ENEMY_SCALE：敌版舰部署免疫窗口（秒，同 SS_ENEMY_MULTI_SETTLE_SECONDS 实机判例）与掉血宽限。

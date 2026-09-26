@@ -33,12 +33,12 @@
 
 1. **打击段复用原版 DEMScript，删除 `GeminiDemMissileAI` 全量自定义 AI 方案**（计划中的主方案）。依据事实 #7：无反射路径下自实现 AI 无法让导弹打出真实结算光束；DEMScript 是公开类且行为参数完全数据驱动（事实 #4）。自定义面收缩为**追踪段** `GeminiDemTrackAI`（实现 `MissileAIPlugin + GuidedMissileAI`，为事实 #5 的 WAIT 触发供目标）。计划中的「回退方案」升格为主路径。
 2. **齐射批次号不作为同步判定的主键**。同步判定键 = 目标舰身份 + 异种弹头配对 + ≤1s 窗口 + 同源判定（可判时）。理由：12s 开火间隔 ≫ 1s 窗口，同一发射舰不可能有两批齐射落入同一窗口，批次号对判定无增量信息；批次号仍写入 `missile.customData["astd_gemini_salvo"]`，仅作日志/调试关联。
-3. **number 段位扩展占用 9225/9226**：合并协议为双子星预分配 9221~9224（主×2 + 弹头×2），实际还需两件 payload 光束隐藏武器行。9225/9226 仍在首批 9210~9229 池内且后续无其他组，请收口人确认。
+3. **number 段位扩展占用 9225/9226 + 9235/9236**：合并协议为双子星预分配 9221~9224（主×2 + 弹头×2），实际还需两件 payload 光束隐藏武器行（9225/9226）与两件异色锁定激光隐藏武器行（9235/9236，2026-09-26 落地）。均在首批 9210~9229 池外沿（9235/9236 超池，后续无其他组占用），请收口人确认。
 
 ### 0.3 机制总览（实现形态）
 
 ```
-主武器（发射架，ammo 2/4）──发射──► dummy 导弹（astd_gemini_dem_dummy）
+主武器（发射架，spec ammo 4；发射舱 8）──发射──► dummy 导弹（astd_gemini_dem_dummy）
     │ onFireEffect: GeminiDemSalvoOnFireEffect（同帧）
     ├─ 移除 dummy
     ├─ 取目标：ship.shipTarget → 空则 2500su 内最近敌舰 → 仍空则双弹直飞
@@ -49,23 +49,24 @@
 弹头飞行：TrackAI 追踪（GuidedMissileAI.getTarget 供 DEM WAIT 段读取）
     │ 进入触发距离（700~750su）且已 armed
     ▼
-DEMScript 接管：转向 → 锁定激光（targetingTime 2s）→ payload 光束打击（firingTime 1s）
+DEMScript 接管：转向 → 锁定激光（targetingTime 2s，异色：动能蓝白/高爆共振红）→ payload 光束打击（firingTime 1s）
     │ payload 光束 = astd_gemini_dem_kinetic_payload / astd_gemini_dem_he_payload
-    │ 伤害：payload 行 damage/second × burstSize(1s) = 1000 动能 / 1500 高爆
+    │ 伤害：payload 行 damage/second × burstSize(1s) = 1250 动能 / 1250 高爆（demDrone 挂载结算）
     ▼
-GeminiDemPayloadBeamEffect（beamEffect）首伤帧：
-    ├─ 动能光束：追加 4 道 500 EMP 电弧（spawnEmpArc，索敌武器/引擎）
-    └─ 两光束均：命中登记到 GeminiDemSyncHandler
+GeminiDemPayloadBeamEffect（beamEffect）：
+    ├─ 动能光束：照射期每 0.1s 一道 EMP 电弧（spawnEmpArc，索敌武器/引擎；单道 EMP = 面板×10%，合计 1250）
+    └─ 两光束均：首伤帧命中登记到 GeminiDemSyncHandler
                     │ 同目标 + 异种弹头 + |Δt| ≤ 1s + 同源（可判时）
                     ▼
-              同步冲击：applyDamage(ENERGY, 2500 × 难度倍率，原生伤害数字) + 闪光
+              同步共振（2026-09-26 重做：弃一次性爆发伤害）：双弹 demDrone energyWeaponDamageMult ×(1+难度加成)
+              （+50%/+100%/+250%）覆盖剩余照射伤害 + 光束渐变转紫（仅视觉）+ 白闪反馈
 ```
 
 ---
 
 ## 1. 数据面
 
-### 1.1 ss-csv catalog 条目（6 件，全部落 `Catalog_WeaponData_ARC.kt` 文件末尾）
+### 1.1 ss-csv catalog 条目（8 件，全部落 `Catalog_WeaponData_ARC.kt` 文件末尾；含两件异色锁定激光隐藏行 9235/9236）
 
 | 列 | Wpn_astd_gemini_dem_launcher | Wpn_astd_gemini_dem_pod |
 |---|---|---|
@@ -74,11 +75,11 @@ GeminiDemPayloadBeamEffect（beamEffect）首伤帧：
 | base value | 6000（提案待裁定） | 14000（提案待裁定） |
 | range | 2500 | 2500 |
 | damage/second | 0（留空；非持续武器） | 0 |
-| damage/shot | 2500（双弹面板之和，展示/AI 口径） | 2500 |
-| emp | 2000（500×4，展示/AI 口径） | 2000 |
+| damage/shot | 1250（单弹面板；双管齐射面板自动显示 1250 x2） | 1250 |
+| emp | 1250（0.1s 电弧 ×10 道合计，展示/AI 口径） | 1250 |
 | turn rate | 30 | 30 |
 | OPs | 14 | 28 |
-| ammo / ammo/sec / reload size | 2 / 0.05 / 2 | 4 / 0.1 / 2 |
+| ammo / ammo/sec / reload size | 4 / 0.0334 / 2 | 8 / 0.0667 / 2 |
 | type（伤害类型列，展示用） | ENERGY（对齐龙炎显示惯例） | ENERGY |
 | chargedown | 12 | 12 |
 | proj speed | 225（龙炎 150 的 150%） | 225 |
@@ -98,8 +99,8 @@ GeminiDemPayloadBeamEffect（beamEffect）首伤帧：
 | id | `astd_gemini_dem_kinetic` | `astd_gemini_dem_he` |
 | tier / base value | 2 / 0 | 2 / 0 |
 | range | 2500（AI/展示） | 2500 |
-| damage/shot | 1000（展示口径；真实伤害由 payload 行结算） | 1500 |
-| emp | 2000（展示口径） | 0 |
+| damage/shot | 1250（展示口径；真实伤害由 payload 行结算） | 1250 |
+| emp | 1250（展示口径） | 0 |
 | turn rate | 30 | 30 |
 | OPs | 0（永不装配） | 0 |
 | type（伤害类型列） | KINETIC | HIGH_EXPLOSIVE |
@@ -114,7 +115,7 @@ GeminiDemPayloadBeamEffect（beamEffect）首伤帧：
 |---|---|---|
 | id | `astd_gemini_dem_kinetic_payload` | `astd_gemini_dem_he_payload` |
 | tier / base value | 2 / 0 | 2 / 0 |
-| damage/second | **1000**（结算口径：dps × burstSize 1s = 1000/发） | **1500** |
+| damage/second | **1250**（结算口径：dps × burstSize 1s = 1250/发） | **1250** |
 | damage/shot | 0（留空，beam 行惯例） | 0 |
 | type（伤害类型列） | KINETIC | HIGH_EXPLOSIVE |
 | burst size / burst delay | 1 / 0（单次 1s 照射） | 1 / 0 |
@@ -186,7 +187,7 @@ MissileProjSpec(
                 contrailWidthMult = 1.0, contrailWidthAddedFractionAtEnd = 2.5,
                 contrailMinSeg = 5, contrailMaxSpeedMult = 0.5, contrailAngularVelocityMult = 0.5,
                 contrailSpawnDistMult = 1.0,
-                contrailColor = Rgba(120, 170, 255, 75),    // 高爆：Rgba(255, 150, 90, 75)
+                contrailColor = Rgba(120, 170, 255, 75),    // 高爆：Rgba(255, 60, 70, 75)（2026-09-26 共振红族）
                 type = "GLOW",
             ),
             width = 7.0, length = 40.0, angle = 180.0,
@@ -200,7 +201,7 @@ MissileProjSpec(
         "turnRateBoost" to 100,
         "targetingTime" to 2,                       // 提案：龙炎为 3，设计「短暂充能」收紧到 2；烟测目检
         "firingTime" to 1,
-        "targetingLaserId" to "targetinglaser3",    // v1 复用原版红色锁定激光；异色锁定激光列后续美术任务
+        "targetingLaserId" to "astd_gemini_dem_targetinglaser_kinetic",  // 高爆：astd_gemini_dem_targetinglaser_he（异色锁定激光，2026-09-26 落地：结构照原版 targetinglaser3，动能蓝白/高爆共振红）
         "targetingLaserFireOffset" to listOf(8, 0, 8, 0),
         "targetingLaserSweepAngles" to listOf(0, -7, 0, 7),
         "payloadWeaponId" to "astd_gemini_dem_kinetic_payload",  // 高爆：astd_gemini_dem_he_payload
@@ -278,9 +279,9 @@ MissileProjSpec(
     "turretAngleOffsets": [0],
     "hardpointOffsets": [8, 0],
     "hardpointAngleOffsets": [0],
-    "glowColor": [140, 200, 255, 255],         "动能冷蓝白；高爆：[255, 180, 120, 255]",
-    "fringeColor": [120, 180, 255, 225],       "高爆：[255, 170, 110, 225]",
-    "coreColor": [220, 240, 255, 255],         "高爆：[255, 240, 220, 255]",
+    "glowColor": [140, 200, 255, 255],         "动能冷蓝白；高爆：[255, 120, 130, 255]",
+    "fringeColor": [120, 180, 255, 225],       "高爆：[255, 40, 60, 225]",
+    "coreColor": [220, 240, 255, 255],         "高爆：[255, 150, 150, 255]",
     "beamEffect": "cn.kasuminova.astd.combat.effect.arc.GeminiDemPayloadBeamEffect",
     "everyFrameEffect": "cn.kasuminova.astd.combat.effect.arc.GeminiDemPayloadBeamVfx",   "2026-09-26：BoxUtil 光束实体接管渲染",
     "hitGlowBrightenDuration": 0,
@@ -306,21 +307,23 @@ weapon.astd_gemini_dem_kinetic.name=双子星 DEM 动能弹头（隐藏）
 weapon.astd_gemini_dem_he.name=双子星 DEM 高爆弹头（隐藏）
 weapon.astd_gemini_dem_kinetic_payload.name=双子星 DEM 动能光束（隐藏）
 weapon.astd_gemini_dem_he_payload.name=双子星 DEM 高爆光束（隐藏）
+weapon.astd_gemini_dem_targetinglaser_kinetic.name=双子星 DEM 锁定激光 - 蓝（隐藏）
+weapon.astd_gemini_dem_targetinglaser_he.name=双子星 DEM 锁定激光 - 红（隐藏）
 weapon.astd_gemini_dem_launcher.primaryRoleStr=终结打击
 weapon.astd_gemini_dem_pod.primaryRoleStr=终结打击
-weapon.astd_gemini_dem_launcher.tooltip.customPrimary=一次发射两枚异色 DEM 导弹：动能弹头附带瘫痪电弧，高爆弹头专职拆甲；两弹同时锁定并命中同一目标时，将额外造成双弹面板总和 {%s} 的能量冲击。效果受到{%s}影响。
-weapon.astd_gemini_dem_launcher.tooltip.customPrimaryHL=43.75% | 难度系数
-weapon.astd_gemini_dem_pod.tooltip.customPrimary=一次发射两枚异色 DEM 导弹：动能弹头附带瘫痪电弧，高爆弹头专职拆甲；两弹同时锁定并命中同一目标时，将额外造成双弹面板总和 {%s} 的能量冲击。效果受到{%s}影响。
-weapon.astd_gemini_dem_pod.tooltip.customPrimaryHL=43.75% | 难度系数
-desc.astd_gemini_dem_launcher.text1=龙炎 DEM 鱼雷的深化改进型。两枚弹头共用同一套推进与导引舱段，却装着截然不同的战斗部——一枚以动能冲击剥开护盾并释放瘫痪电弧，一枚以高爆装药撕开装甲。只有当双弹在近乎同一瞬间命中时，两股能量才会在目标体内交汇，引发远超单装药总和的终结爆发。
-desc.astd_gemini_dem_launcher.notes=试射记录：靶舰日志显示，两枚弹头命中时间相差 0.8 秒时，终结爆发如约而至；相差 1.1 秒时，什么都没有发生。火控组据此把同步窗口正式写进了验收标准——“让双子学会握手，容许一秒的迟到。”
-desc.astd_gemini_dem_pod.text1=龙炎 DEM 鱼雷的深化改进型。两枚弹头共用同一套推进与导引舱段，却装着截然不同的战斗部——一枚以动能冲击剥开护盾并释放瘫痪电弧，一枚以高爆装药撕开装甲。只有当双弹在近乎同一瞬间命中时，两股能量才会在目标体内交汇，引发远超单装药总和的终结爆发。
+weapon.astd_gemini_dem_launcher.tooltip.customPrimary=发射两枚异色导弹，导弹接近目标会发射高功率激光，蓝色导弹造成与面板等额的动能伤害和打击武器与引擎的 EMP 电弧伤害；红色导弹造成与面板等额的高爆伤害。当两种类型的导弹同时打击目标时，激光造成的伤害提高 {%s}。效果受到{%s}影响。
+weapon.astd_gemini_dem_launcher.tooltip.customPrimaryHL=100% | 难度系数
+weapon.astd_gemini_dem_pod.tooltip.customPrimary=发射两枚异色导弹，导弹接近目标会发射高功率激光，蓝色导弹造成与面板等额的动能伤害和打击武器与引擎的 EMP 电弧伤害；红色导弹造成与面板等额的高爆伤害。当两种类型的导弹同时打击目标时，激光造成的伤害提高 {%s}。效果受到{%s}影响。
+weapon.astd_gemini_dem_pod.tooltip.customPrimaryHL=100% | 难度系数
+desc.astd_gemini_dem_launcher.text1=可以认作是龙炎 DEM 的深化改进型，这座由坠星科研部设计的导弹装载了独特的分装式共振等离子束装药，当两枚导弹同时对目标发起打击时，能够引发共振效果，使其造成更具毁灭性的爆发伤害。改进后的发射架还内置了纳米导弹工厂，使用一定的装配开销来提升战场续航。
+desc.astd_gemini_dem_launcher.notes=
+desc.astd_gemini_dem_pod.text1=（同 launcher 行）
 ```
 
-- tip = 设计案定稿原文 + v2 数值插入（同步冲击 43.75%，2026-07-29 字段分工铁律，审批通过）；描述原文照抄设计案定稿（notes 去掉了 md 的斜体标记与「深灰」说明，descriptions.csv 不支持样式；引号保留弯引号）。
+- tip = 2026-09-26 机制重做后用户定稿原文 + v2 数值插入（同步增伤 +100%，难度系数）；desc text1 为用户 2026-09-26 重写定稿（勿动），notes 留空。
 - `desc.astd_gemini_dem_pod.notes` **不写**：`Desc_astd_gemini_dem_pod` 用 `notesId = "astd_gemini_dem_launcher"` 复用（对齐 `Desc_astd_gcp8` 先例）。
 - `desc.text2~text5` 不写（`LocalizedDescription` 对缺键 fallback 为空串，已核实）。
-- tip 含 `%` 数值（43.75%），按 01/02 已修正先例使用半角 `%`，无需全角转义。
+- tip 含 `%` 数值（100%），按 01/02 已修正先例使用半角 `%`，无需全角转义。
 
 `Catalog_Descriptions.kt` WEAPON 分组尾部（`Desc_astd_psi_omega` 之后）追加两行：
 
@@ -329,7 +332,7 @@ object Desc_astd_gemini_dem_launcher : LocalizedDescription("astd_gemini_dem_lau
 object Desc_astd_gemini_dem_pod : LocalizedDescription("astd_gemini_dem_pod", "WEAPON", notesId = "astd_gemini_dem_launcher")
 ```
 
-隐藏四件（弹头×2、payload×2）不登记 Desc（对齐原版 dragon_payload 无 desc 先例）。
+隐藏六件（弹头×2、payload×2、锁定激光×2）不登记 Desc（对齐原版 dragon_payload 无 desc 先例）。
 
 ### 1.6 special_items.csv 条目（文件末尾追加，order 段位 9205/9206）
 
@@ -342,7 +345,7 @@ object Desc_astd_gemini_dem_pod : LocalizedDescription("astd_gemini_dem_pod", "W
 双子星 DEM 发射舱蓝图,astd_gemini_dem_pod_bp,"single_bp, astd",弧光阵列,,2000,1000,1,,graphics/icons/cargo/blueprint_weapons.png,ui_chip_pickup,ui_weapon_bp_drop,com.fs.starfarer.api.campaign.impl.items.WeaponBlueprintItemPlugin,astd_gemini_dem_pod,使重工业设施能够制造出该蓝图所描述的武器。,9206
 ```
 
-隐藏四件不出现在任何蓝图/掉落（tags `no_drop, no_drop_salvage` + hints SYSTEM）。
+隐藏六件不出现在任何蓝图/掉落（tags `no_drop, no_drop_salvage` + hints SYSTEM）。
 
 ---
 
@@ -350,30 +353,41 @@ object Desc_astd_gemini_dem_pod : LocalizedDescription("astd_gemini_dem_pod", "W
 
 ### 2.1 类清单表
 
-包：`cn.kasuminova.astd.combat.effect.arc`（ARC 线武器机制包；引擎回调类直接实现引擎接口，不另立项目内接口——与既有 `HighFluxShieldPressureOnHitEffect` 等先例一致；本组无可沉淀公共抽象，同步判定为一次性机制）。
+包：`cn.kasuminova.astd.combat.effect.arc.geminidem`（ARC 线武器机制包的武器组子包；引擎回调类直接实现引擎接口，不另立项目内接口——与既有 `HighFluxShieldPressureOnHitEffect` 等先例一致）。
 
 | 类名 | 形态 | 职责 | 挂载点 | 文件路径 |
 |---|---|---|---|---|
-| `GeminiDemSalvoOnFireEffect` | class : OnFireEffectPlugin | 拦截 dummy 并移除；定目标；spawn 双弹头并装配 TrackAI + DEMScript；写批次号 | 主武器 dummy .proj 的 `onFireEffect` | `src/main/kotlin/cn/kasuminova/astd/combat/effect/arc/GeminiDemSalvoOnFireEffect.kt` |
-| `GeminiDemTrackAI` | class : MissileAIPlugin, GuidedMissileAI | 追踪段 AI：转向/加速指令追踪目标；目标失效重搜索；`getTarget()` 供 DEMScript WAIT 段读取 | SalvoOnFireEffect 中 `missile.setMissileAI(...)` | `src/main/kotlin/cn/kasuminova/astd/combat/effect/arc/GeminiDemTrackAI.kt` |
-| `GeminiDemPayloadBeamEffect` | class : BeamEffectPlugin | payload 光束首伤帧：动能光束追加 4 道 EMP 电弧；两光束均向 SyncHandler 登记命中 | 两件 payload .wpn 的 `beamEffect` | `src/main/kotlin/cn/kasuminova/astd/combat/effect/arc/GeminiDemPayloadBeamEffect.kt` |
-| `GeminiDemSyncHandler` | object（无状态结算器，对齐 `ConeImpactHandler` 形态） | 同步窗口登记/判定/追加结算/反馈 | 由 PayloadBeamEffect 调用 | `src/main/kotlin/cn/kasuminova/astd/combat/effect/arc/GeminiDemSyncHandler.kt` |
-| `GeminiDemDifficulty` | object 常量持有者（对齐 `ElectricDriveAcceleratorDifficulty` 先例） | 同步倍率 ScalingEntry、面板常量、id 常量 | 被上述类引用 | `src/main/kotlin/cn/kasuminova/astd/combat/effect/arc/GeminiDemDifficulty.kt` |
+| `GeminiDemSalvoOnFireEffect` | class : OnFireEffectPlugin | 拦截 dummy 并移除；定目标；spawn 双弹头并装配 TrackAI + DEMScript；写批次号 | 主武器 dummy .proj 的 `onFireEffect` | `effect/arc/geminidem/GeminiDemSalvoOnFireEffect.kt` |
+| `GeminiDemTrackAI` | class : MissileAIPlugin, GuidedMissileAI | 追踪段 AI：转向/加速指令追踪目标；目标失效重搜索；`getTarget()` 供 DEMScript WAIT 段读取 | SalvoOnFireEffect 中 `missile.setMissileAI(...)` | `effect/arc/geminidem/GeminiDemTrackAI.kt` |
+| `GeminiDemPayloadBeamEffect` | class : BeamEffectPlugin | payload 光束首伤帧向 SyncHandler 登记命中；动能光束照射期每 0.1s 一道 EMP 电弧（单道 EMP=面板 10%） | 两件 payload .wpn 的 `beamEffect` | `effect/arc/geminidem/GeminiDemPayloadBeamEffect.kt` |
+| `GeminiDemPayloadBeamVfx` | class（特效层，2026-09-26 新增） | payload 光束视觉：束体 trail、发射爆发星云、发射点双 Flare、环绕星云、动能装饰电弧、同步紫色渐变 | 由 PayloadBeamEffect 驱动 | `effect/arc/geminidem/GeminiDemPayloadBeamVfx.kt` |
+| `GeminiDemRackEveryFrameEffect` | class : EveryFrameWeaponEffectPlugin | 发射舱挂弹视觉：冷却期双管导弹均不渲染（原版只熄已击发管的补足） | launcher/pod .wpn 的 `everyFrameEffect` | `effect/arc/geminidem/GeminiDemRackEveryFrameEffect.kt` |
+| `GeminiDemSyncHandler` | object（无状态结算器，对齐 `ConeImpactHandler` 形态） | 同步窗口登记/判定/增伤乘区/紫色视觉标记/反馈 | 由 PayloadBeamEffect 调用 | `effect/arc/geminidem/GeminiDemSyncHandler.kt` |
+| `GeminiDemDifficulty` | object 常量持有者（对齐 `ElectricDriveAcceleratorDifficulty` 先例） | 同步增伤 ScalingEntry、面板常量、id 常量 | 被上述类引用 | `effect/arc/geminidem/GeminiDemDifficulty.kt` |
 
-`GeminiDemDifficulty` 常量（全部带注释绑定设计案出处）：
+`GeminiDemDifficulty` 常量（2026-09-26 机制重做后口径）：
 
 ```kotlin
 const val KINETIC_WEAPON_ID = "astd_gemini_dem_kinetic"
 const val HE_WEAPON_ID = "astd_gemini_dem_he"
 const val KINETIC_PAYLOAD_ID = "astd_gemini_dem_kinetic_payload"
 const val HE_PAYLOAD_ID = "astd_gemini_dem_he_payload"
-/** 同步冲击基准 = 双弹面板之和（1000 动能 + 1500 高爆）；面板改动须同步本值（注释双向绑定 warhead 行 damagePerShot）。 */
-const val SYNC_BASE_DAMAGE = 2500f
+/** 弹头弹体 spec id（拖尾管线登记键）。 */
+const val KINETIC_PROJ_ID = "astd_gemini_dem_kinetic_msl"
+const val HE_PROJ_ID = "astd_gemini_dem_he_msl"
+/** 单弹头面板伤害 = 1250（双弹合计 1250×2）；面板改动须同步 warhead/payload 行。 */
+const val WARHEAD_PANEL_DAMAGE = 1250f
 const val SYNC_WINDOW_SECONDS = 1f
-const val EMP_ARC_COUNT = 4
-const val EMP_ARC_EMP_DAMAGE = 500f
-/** 同步冲击倍率：迟暮 25%（625）/ 砺刃 43.75%（≈1094）/ 破晓 100%（2500）。 */
-val SYNC_MULT = ScalingEntry(0.25f, 0.4375f, 1.0f, ScalingMap.LINEAR)
+/** 动能光束照射期 EMP 电弧节律（秒）与单道 EMP = 面板 × 0.1（合计与单弹面板等额）。 */
+const val EMP_ARC_INTERVAL = 0.1f
+const val EMP_ARC_EMP_FRACTION = 0.1f
+/** 同步增伤加成（作用于后续照射伤害）：迟暮 50% / 砺刃 100% / 破晓 250%。 */
+val SYNC_DAMAGE_BONUS = ScalingEntry(0.5f, 1.0f, 2.5f, ScalingMap.LINEAR)
+/** 增伤乘区 id（写两侧 demDrone 的 energyWeaponDamageMult）。 */
+const val SYNC_STAT_MOD_ID = "astd_gemini_dem_sync"
+/** 紫色视觉窗口（秒）与实体 customData 键（写在弹头 demDrone 上，非引擎级表）。 */
+const val SYNC_VISUAL_DURATION = 1.2f
+const val SYNC_VISUAL_KEY = "astd_gemini_dem_sync_visual"
 const val TRACK_TARGET_RANGE = 2500f
 const val SALVO_LATERAL_OFFSET = 12f
 const val SALVO_FACING_SPREAD_DEG = 2f
@@ -437,55 +451,68 @@ getTarget() = target；setTarget(t) { target = t as? ShipAPI }
 
 说明：DEMScript 触发后自行 `setMissileAI(this)` 接管（事实 #6），TrackAI 生命周期自然结束，无清理负担。转向只做指令级（不直写 facing/velocity），把机动手感交给弹体引擎参数——与 DEM 段衔接平滑（DEMScript 的 turnRateBoost 在同一引擎参数上加成）。
 
-**GeminiDemPayloadBeamEffect.advance(amount, engine, beam)**（同一类服务两件 payload，靠 weapon spec id 区分弹头种类）：
+**GeminiDemPayloadBeamEffect.advance(amount, engine, beam)**（同一类服务两件 payload，靠 weapon spec id 区分弹头种类；2026-09-26 节律重做）：
 
 ```
 kind = when (beam.weapon.spec.weaponId) { KINETIC_PAYLOAD_ID → KINETIC; HE_PAYLOAD_ID → HE; 其他 → return }
-if (beam.didDamageThisFrame() && beam.damageTarget is ShipAPI):
-    perBeam 状态（IdentityHashMap<BeamAPI, BeamHitState>，beam 停火即 weapon.isFiring()==false 时移除）：
-        首次伤害帧才执行下列步骤（防 1s 照射期多帧重复触发）：
-    1. target = beam.damageTarget as ShipAPI；point = beam.to
-       target.isHulk → 不登记不触发（残骸不算有效目标），但仍记 DEBUG
-    2. kind == KINETIC 且 target 非战机：
-           repeat(4): engine.spawnEmpArc(beam.source, point, target, target,
-                                          DamageType.ENERGY, 0f, 500f, 10000f,
-                                          "tachyon_lance_emp_impact", 20f, 冷蓝白 fringe, 白 core)
-           （spawnEmpArc 原版行为自动索敌武器/引擎模块——事实 #15；音效 id 实现时从 settings.json 音效表核实后落定）
-    3. GeminiDemSyncHandler.recordHit(engine, target, kind, point, beam.source)
+state = perBeam 状态（IdentityHashMap<BeamAPI, BeamState>：firstHitDone / eligible / lastTarget / lastPoint /
+      sinceLastDamage / empInterval(0.1s)）；停火且无伤害帧即移除，新一轮打击可重新登记
+每帧：
+    sinceLastDamage += amount
+    beam.didDamageThisFrame() && beam.damageTarget is ShipAPI 时：
+        sinceLastDamage = 0
+        首伤帧（!firstHitDone）才执行（防 1s 照射期重复登记）：
+            1. target = beam.damageTarget as ShipAPI；point = beam.to
+               target.isHulk → eligible=false 不登记（记 DEBUG）；isFighter → EMP/同步跳过（光束伤害照常）
+               否则 eligible=true，定格 lastTarget/lastPoint
+            2. GeminiDemSyncHandler.recordHit(engine, target, kind, point, beam.source)
+    kind == KINETIC 且 eligible 且 sinceLastDamage ≤ EMP_GRACE_SECONDS(0.3s)：
+        empInterval.advance(amount)（照射期每帧累积——原版 payload 伤害按 ≈4Hz tick 落账，
+            didDamageThisFrame 每 ~15 帧才 true 一次，按伤害帧累积会全程归零，2026-09-26 实机诊断）
+        每 0.1s 触发：engine.spawnEmpArc(beam.source, lastPoint, lastTarget, lastTarget,
+                                         DamageType.ENERGY, 0f, WARHEAD_PANEL_DAMAGE × 0.1(=125), 10000f,
+                                         "tachyon_lance_emp_impact", 20f, 冷蓝白 fringe, 白 core)
+            （spawnEmpArc 原版行为自动索敌武器/引擎模块——事实 #15；目标变 hulk/离场（!engine.isEntityInPlay）即断电弧）
+    PayloadBeamVfx.advance(...)（束体 trail 节点重提交、发射爆发/双 Flare/环绕星云/装饰电弧/紫色渐变）
 ```
 
-**GeminiDemSyncHandler.recordHit**（结算顺序与难度取值调用点）：
+**GeminiDemSyncHandler.recordHit**（结算顺序与难度取值调用点，2026-09-26 重做：弃一次性爆发伤害）：
 
 ```
 registry = engine.customData.getOrPut(SYNC_REGISTRY_KEY) { mutableMapOf<String, SyncRecord>() }
-// SyncRecord(hitTime: Float, kind: WarheadKind, sourceId: String?, point: Vector2f)
+// SyncRecord(hitTime: Float, kind: WarheadKind, source: CombatEntityAPI?, point: Vector2f)
 now = engine.getTotalElapsedTime(false)
 prev = registry[target.id]
 prev != null 时先惰性过期：now - prev.hitTime > 1s → 视为无记录
 触发条件（全部满足）：
     prev 有效 && prev.kind != kind                       // 异种弹头配对
-    && (prev.sourceId == null || curSourceId == null || prev.sourceId == curSourceId)  // 同源（可判时严格）
-触发：
-    mult = 难度取值：source（当前 beam.source，为 ShipAPI 且 owner == 0）→ SYNC_MULT.v2   // 玩家固定 v2
-                  否则 → difficultyTuning.value(SYNC_MULT)                                // 敌方/友军 AI 走轨一
-           source 解析不到（null 或非 ShipAPI）→ 记 WARN 并取 SYNC_MULT.v2（不静默）
-    damage = 2500f × mult
-    engine.applyDamage(target, point, damage, DamageType.ENERGY, 0f, true, false, source, true)
+    && (prev.source == null || curSource == null || prev.source == curSource)  // 同源（可判时严格）
+触发（无直接伤害结算）：
+    bonus = 难度取值：source（当前 beam.source 链条解析到 ShipAPI 且 owner == 0）→ SYNC_DAMAGE_BONUS.v2
+                    否则 → difficultyTuning.value(SYNC_DAMAGE_BONUS)
+           source 解析不到 → 记 WARN 并取 v2（不静默）
+    对两侧配对记录各自的 source as? ShipAPI（即弹头 demDrone）：
+        mutableStats.energyWeaponDamageMult.modifyMult(SYNC_STAT_MOD_ID, 1f + bonus)
+        // payload 光束由 demDrone 挂载发射且 type=ENERGY → 后续照射伤害 ×(1+bonus)
+        drone.customData[SYNC_VISUAL_KEY] = now + SYNC_VISUAL_DURATION   // 紫色视觉窗口
+        // （写在实体自身表而非引擎级表：FX drone id 为空串，引擎级表会按 id 碰撞）
     registry.remove(target.id)                            // 触发即清，不重复触发
-    反馈（§2.3）：applyDamage 末参 true 原生伤害数字 + spawnExplosion 白闪（不另绘自定义浮字，2026-07-29 审批裁定）
+    反馈（§2.3）：spawnExplosion 白闪（保留）+ 光束紫色渐变（PayloadBeamVfx 读 SYNC_VISUAL_KEY）
 未触发：
-    registry[target.id] = SyncRecord(now, kind, curSourceId, point)   // 覆盖为新首击
+    registry[target.id] = SyncRecord(now, kind, curSource, point)   // 覆盖为新首击
 ```
 
 ### 2.3 玩家可见反馈（对照实现注意事项 2，逐机制核对）
 
 | 机制 | 反馈通道 | 落点 |
 |---|---|---|
-| 同步冲击（唯一缩放数值机制） | `applyDamage(..., showDamageFloaty = true)` 原生伤害数字 + `spawnExplosion(point, ...)` 白色闪光（2026-07-29 审批裁定：原生已弹字，不再自绘 `addFloatingDamageText`/`addFloatingText`） | SyncHandler 触发同帧 |
-| 动能弹头 EMP 电弧 ×4 | `spawnEmpArc` 自带电弧视觉 + 武器/引擎瘫痪的原版 UI 反馈 | PayloadBeamEffect 首伤帧 |
-| 双弹头异色 | 引擎喷流/尾焰（.proj engineSlots）、爆炸色、payload 光束色（.wpn）：动能冷蓝白 / 高爆暖橙白 | 数据面 §1.3/§1.4 |
-| 锁定充能过程 | 原版 DEM 锁定激光（targetinglaser3 红色扫掠）——v1 复用 | behaviorSpec |
-| HUD 状态栏 | **不设置**：本组无叠层/持续数值机制（同步是瞬时事件，原生伤害数字 + 白闪已覆盖） | — |
+| 同步共振（唯一缩放数值机制，2026-09-26 重做） | 双光束渐变转紫（0.25s 升/降，仅视觉）+ 后续照射伤害 ×(1+难度加成) + `spawnExplosion` 白色闪光（保留原审批裁定） | SyncHandler 触发同帧 / PayloadBeamVfx 读 SYNC_VISUAL_KEY |
+| 动能弹头 EMP 电弧 | 照射期每 0.1s 一道 `spawnEmpArc`（单道 EMP=面板 10%，自带电弧视觉 + 武器/引擎瘫痪的原版 UI 反馈） | PayloadBeamEffect 照射期节律 |
+| 双弹头异色 | 引擎喷流/尾焰（.proj engineSlots）、爆炸色、payload 光束色（.wpn）、锁定激光双色（两件隐藏 beam .wpn）：动能冷蓝白 / 高爆共振红（2026-09-26 裁定，弃暖橙） | 数据面 §1.3/§1.4 |
+| 锁定充能过程 | 异色锁定激光（astd_gemini_dem_targetinglaser_kinetic/_he，结构照原版 targetinglaser3，behaviorSpec `targetingLaserId` 参数化直换） | behaviorSpec |
+| 光束发射点特效 | 出现瞬间 10 个同色星云（100~200su、偏移 20~40su、零速度、~1s 消散）+ 存续期双 Flare（SMOOTH 圆斑 + SHARP_DISC 垂直光柱） | PayloadBeamVfx |
+| 光束存续氛围 | 每 0.2s 冒 2 个同色星云（50~100su、偏移 ≤40su、~0.5s 消散）；动能光束头尾装饰电弧（端点抖动合计 ≤80su） | PayloadBeamVfx |
+| HUD 状态栏 | **不设置**：同步是瞬时事件，紫色渐变 + 白闪已覆盖 | — |
 
 ### 2.4 0 值与边界处理（对照实现注意事项 3）
 
@@ -493,14 +520,15 @@ prev != null 时先惰性过期：now - prev.hitTime > 1s → 视为无记录
 |---|---|---|
 | 1 | 发射瞬间无目标（shipTarget 空且 2500su 无敌舰） | 双弹照常生成直飞；TrackAI 只发 ACCELERATE；DEMScript WAIT 段 target 为 null 永不触发（事实 #5）；flightTime 耗尽自毁。记 DEBUG，无伤害、无异常 |
 | 2 | 目标在飞行/锁定途中死亡或离场 | TrackAI 重搜索 2500su 敌舰，找不到则直飞自毁；DEM 段目标失效由原版 DEMScript 自带处理 |
-| 3 | 一枚弹头被击落/干扰 | 另一枚照常打击；无配对记录 → 无同步冲击（设计明文：「击落一枚，同步冲击即告落空」） |
+| 3 | 一枚弹头被击落/干扰 | 另一枚照常打击；无配对记录 → 无同步共振（设计明文：「击落一枚，同步共振即告落空」） |
 | 4 | 同步记录过期 | 仅访问时惰性比较 `Δt > 1s` 覆盖，无每帧扫描；engine.customData 表随战斗结束自然销毁 |
-| 5 | 目标为战机 | EMP 电弧与同步登记均跳过（`isFighter` 排除；dron e按舰船计）；光束本身伤害照常（原版结算） |
-| 6 | 目标为 hulk | 不登记、不触发同步；记 DEBUG |
-| 7 | 来源解析失败（beam.source 非 ShipAPI / null） | 记 WARN，难度取 v2（保守）；同源判定在该记录上降级为「可判缺失」（触发规则 §2.2 已写死，非静默） |
+| 5 | 目标为战机 | EMP 电弧与同步登记均跳过（`isFighter` 排除；drone 按舰船计）；光束本身伤害照常（原版结算） |
+| 6 | 目标为 hulk | 不登记、不触发同步；记 DEBUG；照射中途目标变 hulk/离场即断电弧 |
+| 7 | 来源解析失败（beam.source 链条无 ShipAPI / null） | 记 WARN，难度取 v2（保守）；同源判定在该记录上降级为「可判缺失」（触发规则 §2.2 已写死，非静默） |
 | 8 | spawnProjectile 返回非 MissileAPI | 记 ERROR 并跳过该枚（理论不可达；不空 catch，不静默） |
-| 9 | 数值反算 | 同步伤害 = 2500 × mult，纯乘法无反算、无除零面；2500 常量在 `GeminiDemDifficulty` 注释中与两件 warhead 行 damagePerShot 双向绑定 |
+| 9 | 数值反算 | 同步增伤 = 1 + SYNC_DAMAGE_BONUS（纯乘区修饰，无反算、无除零面）；WARHEAD_PANEL_DAMAGE 在 `GeminiDemDifficulty` 注释中与 warhead/payload 行数值双向绑定 |
 | 10 | 同一目标被两艘异源舰的弹头 1s 内配对命中 | 双源均可判且不同 → 不触发（同源严格）；任一不可判 → 按规则可触发（§0.2-2 已论证该误触发窗口的实际概率与无害性，并在此显式登记为已知近似） |
+| 11 | 一轮齐射弹药消耗 | 实机判例（2026-09-26）：双管 ALTERNATING 挂点单发 onFire 仅一次，但引擎按双管各耗 1 → 一轮稳定 -2（语义对齐「一轮齐射两枚弹头」）；烟测断言按基线差分 -2 |
 
 ---
 
@@ -510,9 +538,9 @@ prev != null 时先惰性过期：now - prev.hitTime > 1s → 视为无记录
 
 | 检查项 | 结论 | 理由 |
 |---|---|---|
-| 弹体 VFX 登记 | `astd_gemini_dem_kinetic_msl` / `astd_gemini_dem_he_msl` | 2026-09-26（实机裁定）：双弹头接入 Static Trail 拖尾管线（四层惯例，width 5 / 固定带长 250 / recede 0，动能冷蓝白 140,190,255 / 高爆破晓暖橙 255,190,130，配色锚 .proj 引擎焰色）；脚本 spawn 弹体不触发 onFireEffect，由 `GeminiDemSalvoOnFireEffect` 显式 `ProjectileVfxDriverPlugin.track` 登记（冰晶脚本先例）；bolt 组件对 MissileAPI 自动禁用，弹体本体仍走原版导弹贴图渲染 |
-| 光束 VFX 登记 | `GeminiDemPayloadBeamVfx` | 2026-09-26：payload 光束改 BoxUtil 光束实体自绘（动能 zappy / 高爆 flow 贴图），原版束体由 beamEffect 隐藏；出现 ramp-in 0.1s、停火消散 0.45s（透明度→0、宽度→30%）。两个实机判例：①节点表必须传可变 ArrayList——`TrailEntity._deleteExc`/`resetNodes` 会 `nodeList.clear()`，Kotlin `listOf` 产出的定长 list 在 delete 时抛 UnsupportedOperationException 并卡死淡出；②firing 期间必须逐帧重钉 globalTimer FULL 段（KEEPALIVE 0.25s）——弹头命中后导弹销毁、everyFrameEffect 停更，创建期长 full 兜底（10s）会导致光束滞留 10s+，重钉后停帧 0.7s 内自动淡出 |
-| 爆炸/冲击 | 复用原版 | 弹头爆炸色 .proj 直配；同步冲击闪光用 `spawnExplosion`；不上锥面组件（本组无锥状机制） |
+| 弹体 VFX 登记 | `astd_gemini_dem_kinetic_msl` / `astd_gemini_dem_he_msl` | 2026-09-26（实机裁定）：双弹头接入 Static Trail 拖尾管线（四层惯例，width 5 / 固定带长 250 / recede 0，动能冷蓝白 140,190,255 / 高爆共振红 255,41,61（2026-09-26 裁定弃暖橙，配色锚 .proj 引擎焰色），两弹头另挂 boxFlare 发光组件（SMOOTH，size 24，glow 2.0/4.0）；脚本 spawn 弹体不触发 onFireEffect，由 `GeminiDemSalvoOnFireEffect` 显式 `ProjectileVfxDriverPlugin.track` 登记（冰晶脚本先例）；bolt 组件对 MissileAPI 自动禁用，弹体本体仍走原版导弹贴图渲染 |
+| 光束 VFX 登记 | `GeminiDemPayloadBeamVfx` | 2026-09-26 重做：payload 光束 BoxUtil 光束实体自绘（动能 zappy / 高爆 flow 贴图），原版束体隐藏；出现 ramp-in 0.1s、停火消散 0.45s；发射瞬间 10 个同色星云爆发 + 存续期发射点双 Flare（SMOOTH 圆斑 + SHARP_DISC 垂直光柱）+ 每 0.2s×2 环绕星云 + 动能头尾装饰电弧；同步触发时束体/双 Flare 渐变转紫（SYNC_BLEND 0.25s 升降，读 demDrone.customData SYNC_VISUAL_KEY）。三个实机判例：①节点表必须传可变 ArrayList——`TrailEntity._deleteExc`/`resetNodes` 会 `nodeList.clear()`，定长 list 在 delete 时抛 UnsupportedOperationException；②firing 期间必须逐帧重钉 globalTimer FULL 段（KEEPALIVE 保活），否则创建期长 full 兜底导致光束滞留；③**同尺寸节点表再提交必须 `setNodeRefreshAllFromCurrentIndex()` 后再 `submitNodes()`**——BoxUtil TrailEntity.submitNodes 只上传 setNodeRefresh 圈定区间，默认刷新计数为 0 会静默跳过，光束长度/几何随之写死不跟随受击点（2026-09-26 用户实机报告的根因） |
+| 爆炸/冲击 | 复用原版 | 弹头爆炸色 .proj 直配（HE 改共振红族，2026-09-26）；同步共振白闪保留 `spawnExplosion`；不上锥面组件（本组无锥状机制） |
 | HUD | N/A | §2.3 已说明 |
 | i18n | 见 §1.5 | 键清单齐全 |
 
@@ -526,16 +554,16 @@ prev != null 时先惰性过期：now - prev.hitTime > 1s → 视为无记录
 
 逻辑可测性设计：`GeminiDemSyncHandler.recordHit` 的引擎依赖收敛为「registry 读写 / now / applyDamage / 反馈」四个注入点（构造传入或默认实参取真实引擎），测试用 fake 直接驱动真实判定逻辑；`GeminiDemTrackAI` 用记录桩 MissileAPI 驱动真实 `advance`。
 
-1. **同步窗口触发**：首击 KINETIC(t=10.0) → 次击 HE(t=10.8)，同目标同源 → 触发一次；断言 applyDamage 收到 `2500 × mult`、ENERGY 类型、目标与点位正确。
+1. **同步窗口触发**：首击 KINETIC(t=10.0) → 次击 HE(t=10.8)，同目标同源 → 触发一次；断言两侧 demDrone `energyWeaponDamageMult.modifyMult(SYNC_STAT_MOD_ID, 1+bonus)`（玩家 v2=2.0 / 敌 v1=1.5 / v5=3.5）、紫色视觉键写入 missile.customData、无 applyDamage 调用。
 2. **恰界 Δt = 1.0s**：触发（≤1s 含边界）。
 3. **越界 Δt = 1.1s**：不触发；且次击覆盖为新首击（断言 registry 内容被替换）。
 4. **同种弹头配对**（KINETIC→KINETIC）：不触发，记录覆盖。
 5. **不同目标**：两目标各自登记，互不触发。
-6. **异源可判**：两 sourceId 均非空且不同 → 不触发。
+6. **异源可判**：两 source 均非空且不同 → 不触发。
 7. **触发后清零**：触发后第三击不再重复触发（须重新配对）。
-8. **难度取值**：source.owner==0 → 恒 0.4375（与 k_s 无关）；敌方桩 → 走注入的 DifficultyTuning fake（v1/v2/v5 三值）；source 为 null → 取 v2 且 WARN 日志被记录（捕获 logger 断言）。
+8. **难度取值**：source.owner==0 → 恒 v2（与 k_s 无关）；敌方桩 → 走注入的 DifficultyTuning fake（v1/v2/v5 三值）；source 为 null → 取 v2 且 WARN 日志被记录（捕获 logger 断言）。
 9. **hulk/战机目标**：`isHulk` 或 `isFighter` 目标不登记不触发。
-10. **EMP 电弧一次性**：动能光束连续 5 帧 `didDamageThisFrame()=true` → spawnEmpArc 恰 4 次且只在首帧；高爆光束 0 次；停火（isFiring=false）后状态移除，再次伤害帧可重新触发（新一轮打击）。
+10. **EMP 电弧节律**：动能光束照射期 5 帧 × 0.06s（didDamageThisFrame 间歇 true）→ spawnEmpArc 恰 2 次（0.1s 节律，自末次伤害帧 0.3s 宽限内仍累积——原版 payload 伤害按 ≈4Hz tick 落账，2026-09-26 实机诊断），单道 EMP=125（面板 10%）；高爆光束 0 次；停火且无伤害帧后状态移除，新一轮打击可重新登记。
 11. **TrackAI 追踪**：有目标且偏角 >1° → 断言 giveCommand 序列含正确 TURN 方向 + ACCELERATE；目标置失效 → 下一帧重搜索逻辑被调用（注入搜索函数桩），仍无目标 → 仅 ACCELERATE。
 12. **批次号写入**：Salvo 流程（fake engine 记录 spawnProjectile 调用）→ 两枚弹头 weaponId 正确（动能/高爆各一）、customData 写入同一 salvoId、TrackAI 与 DEMScript 均被装配、dummy 收到 removeEntity。
 13. **生成失败路径**：spawnProjectile 桩返回非 MissileAPI → ERROR 日志 + 另一枚不受影响。
@@ -545,11 +573,11 @@ prev != null 时先惰性过期：now - prev.hitTime > 1s → 视为无记录
 1. 装配：两件主武器可在中/大导弹槽装配，蓝图进 dev 仓储（`AsteriaTestCampaignBootstrap` 投放）。
 2. 齐射：一次开火出两枚异色弹头（动能蓝尾焰 / 高爆橙尾焰），dummy 不可见。
 3. **DEM 行为生效（最高优先验证项，unwrapped 读回 + payload 命中双证）**：弹头追踪 → 700~750su 触发锁定激光 → 充能 → 光束打击。证据一：`setMissileAI(GeminiDemTrackAI)` 后 **`missile.getUnwrappedMissileAI()`** 读回的 GuidedMissileAI 目标非空（2026-07-29 实机判例：`getAI()`/`getMissileAI()` 读回为引擎包装实例，真实 AI 只在 unwrapped 通道）；证据二：payload 光束实际命中结算（DEMScript 完成接管并走完 FIRE 段的硬证据，见 §5 风险表 R1）。
-4. 伤害读数：动能光束 ≈1000 动能 + 4 道 EMP 电弧（武器/引擎瘫痪）；高爆光束 ≈1500 高爆；**payload 实际结算量与面板口径校准**（原版龙炎存在 8000×0.75 vs tip 4000 的未明差异，本组必须读数核对，不符则调 payload 行 damage/second）。
-5. 同步冲击：双弹同目标命中 Δt≤1s → 追加能量伤害（原生伤害数字）+ 白闪；击落一枚 → 无同步。
-6. 隐藏四件不出现在 codex 与掉落（dev 仓储 + codex 检索确认）。
+4. 伤害读数：动能/高爆光束各 ≈1250（面板等额）+ 动能照射期 EMP 电弧 ≈10 道（0.1s 节律 × 1s 照射，断言区间 8..12；断言须在双弹命中后 1.6s 照射期收尾门控之后执行——实机判例：首伤帧即断言时电弧计数尚未累积误报 0）；**payload 实际结算量与面板口径校准**（原版龙炎存在 8000×0.75 vs tip 4000 的未明差异，本组必须读数核对，不符则调 payload 行 damage/second）。
+5. 同步共振：双弹同目标命中 Δt≤1s → 双光束渐变转紫 + 白闪 + 后续照射伤害 ×(1+难度加成)（玩家 v2=×2.0 遥测断言）；击落一枚 → 无同步。
+6. 隐藏六件（弹头×2、payload×2、锁定激光×2）不出现在 codex 与掉落（dev 仓储 + codex 检索确认）。
 7. `beam.getSource()` 归属：日志打印同步触发时的 source/owner，确认玩家舰固定 v2、敌舰走轨一。
-8. 12s 开火间隔、ammo 2/4 与装填节奏（中 40s/大 20s 一轮）。
+8. 12s 开火间隔、spec ammo 4/8 与装填节奏（一轮一耗 2：双管 ALTERNATING 各耗 1，边界表 #11；runtime 受环境 missileAmmoBonus 加成，断言走基线差分）。
 
 ---
 
@@ -561,7 +589,7 @@ prev != null 时先惰性过期：now - prev.hitTime > 1s → 视为无记录
 |---|---|---|
 | `ss-csv/.../i18n/zh-cn.properties` | §1.5 全部键 | `weapon.astd_gemini_dem_*` / `desc.astd_gemini_dem_*` 天然隔离；文件末尾集中追加 |
 | `ss-csv/.../strings/Catalog_Descriptions.kt` | 2 个 Desc object | WEAPON 分组尾部（`Desc_astd_psi_omega` 之后），收口人字典序归位 |
-| `ss-csv/.../weapondata/arc/Catalog_WeaponData_ARC.kt` | 6 个 Wpn object | number **9221~9226**（9225/9226 为超原协议扩展占用，待收口确认）；文件末尾追加 |
+| `ss-csv/.../weapondata/arc/Catalog_WeaponData_ARC.kt` | 8 个 Wpn object | number **9221~9226 + 9235/9236**（超原协议扩展占用，待收口确认）；文件末尾追加 |
 | `contents/data/campaign/special_items.csv` | 2 行 weapon_bp | 文件末尾追加；order = **9205/9206** |
 | `ss-csv/.../outputs/proj/ProjMissileSpec.kt` | **公共扩展**（behaviorSpec 字段） | 非武器组私有文件；按协议在 PR 中单独提出、先于武器组合入；首批其他组不触碰此文件 |
 | `src/.../ProjectileVfxSpecs.kt` / `BeamVfxSpecs.kt` | **不动** | §3 已说明 N/A |
@@ -579,18 +607,18 @@ prev != null 时先惰性过期：now - prev.hitTime > 1s → 视为无记录
 | R1 | `setMissileAI(自定义)` 后 `missile.getAI()` 可能被引擎包裹，导致 DEMScript WAIT 段 `instanceof GuidedMissileAI` 失败、永不触发（事实 #5 的前提被破坏） | **已烟测闭环（2026-07-29）**：DEMScript 引擎内部读取路径不受包装影响（payload 光束实际命中结算证实接管成立）；包装只影响脚本侧观测——读数一律走 `getUnwrappedMissileAI()`（`getAI()`/`getMissileAI()` 读回恒为包装实例，三路全扫判例已登记自动化插件）。原备用方案（TrackAI 直设 DEMScript / 自实现充能）无需启用 |
 | R2 | payload 光束实际结算量与「damage/second × burstSize」口径不符（原版龙炎 8000×0.75 与 tip 4000 存在未明差异） | 烟测读数校准 payload 行 damage/second；禁止靠猜 |
 | R3 | 脚本生成导弹 + 手动 `addPlugin(DEMScript)` 的打击归因（击杀归功/经验）与 `beam.getSource()` 归属 | 烟测日志核对；归属异常时同步难度取值改从登记表首击 source 判定 |
-| R4 | 隐藏四件进 codex/掉落 | tags/hints 已按先例配齐；烟测确认，若泄漏补 `SHOW_IN_CODEX` 反向核查与掉落表排查 |
-| R5 | 锁定激光仅红色（v1 复用 targetinglaser3），双色区分度不足 | 目检裁定；不足则自绘双色锁定光束武器（两件隐藏 beam，行为参数 `targetingLaserId` 直换），列后续美术任务 |
+| R4 | 隐藏六件进 codex/掉落 | tags/hints 已按先例配齐；烟测确认，若泄漏补 `SHOW_IN_CODEX` 反向核查与掉落表排查 |
+| R5 | ~~锁定激光仅红色（v1 复用 targetinglaser3）~~ | **已落地（2026-09-26）**：自绘双色锁定激光两件隐藏 beam .wpn（动能蓝白/高爆共振红，结构照 targetinglaser3），behaviorSpec `targetingLaserId` 参数化直换；注意隐藏 beam .wpn 必须有 weapon_data.csv 行，否则加载即报错（首轮烟测判例） |
 
 ---
 
 ## 6. 验收要点（主代理逐项核对）
 
 **数据面**
-- [ ] 6 个 `WeaponDataEntry` object 落 ARC catalog 文件末尾，number 9221~9226 无撞号，列值与 §1.1 逐列一致
+- [ ] 8 个 `WeaponDataEntry` object 落 ARC catalog 文件末尾，number 9221~9226 + 9235/9236 无撞号，列值与 §1.1 逐列一致
 - [ ] `MissileProjSpec` behaviorSpec 扩展已落地且 JSON 输出含嵌套结构（生成物目检）
 - [ ] 3 件 .proj 生成物：dummy 挂对 onFireEffect；弹头 behaviorSpec 键名逐字（含 `destroyMissleWhenDoneFiring` 原版拼写）、payloadWeaponId 正确
-- [ ] 6 件 .wpn：插件挂载点只有两处（dummy onFireEffect、payload beamEffect），弹头 .wpn 无插件；pod 的 projectileSpecId 复用 dummy
+- [ ] 8 件 .wpn：插件挂载点三处（dummy onFireEffect、payload beamEffect、launcher/pod everyFrameEffect 挂弹视觉），弹头与锁定激光 .wpn 无插件；pod 的 projectileSpecId 复用 dummy
 - [ ] i18n 键齐全（name/desc 与设计案一致；tip = 定稿原文 + v2 数值插入，审批通过）；pod notes 走 notesId 复用；launcher/pod HL 键均覆写数值
 - [ ] special_items.csv 两行 params 为武器 id，order = 9205/9206
 
@@ -598,8 +626,8 @@ prev != null 时先惰性过期：now - prev.hitTime > 1s → 视为无记录
 - [ ] 5 个类路径/形态与 §2.1 表一致；无 XxxManager/Service/Runtime 命名；无反射；无空 catch；错误分支均有日志
 - [ ] Salvo 流程：dummy 同帧移除、双弹 weaponId/错位/散布/批次号正确、TrackAI + DEMScript 装配顺序正确
 - [ ] TrackAI 双接口实现；无目标直飞定义行为
-- [ ] PayloadBeamEffect 首伤帧一次性（防 1s 照射期重复）；动能 4 道 EMP 电弧、高爆无
-- [ ] SyncHandler：目标键 + 异种配对 + ≤1s + 同源规则与 §2.2 逐条一致；触发即清；玩家 v2 取值调用点正确；source 解析失败 WARN + v2
+- [ ] PayloadBeamEffect：首伤帧登记一次性（防 1s 照射期重复）；动能照射期 0.1s EMP 电弧节律（帧累积 + 0.3s 伤害帧宽限）、高爆无
+- [ ] SyncHandler：目标键 + 异种配对 + ≤1s + 同源规则与 §2.2 逐条一致；触发即清；玩家 v2 取值调用点正确；source 解析失败 WARN + v2；增伤写 demDrone energyWeaponDamageMult（非一次性伤害）
 - [ ] 无刻意兼容/兜底；§2.4 十条边界各有定义行为
 
 **特效面**
@@ -612,5 +640,5 @@ prev != null 时先惰性过期：now - prev.hitTime > 1s → 视为无记录
 - [ ] 烟测到达终态即退出，未干等超时
 
 **目检**
-- [ ] 双弹异色可区分（尾焰/爆炸/光束）；锁定激光扫掠可见；同步冲击原生伤害数字+白闪不遮挡战场
+- [ ] 双弹异色可区分（尾焰/爆炸/光束/锁定激光：动能蓝白 / 高爆共振红）；同步紫色渐变不遮挡战场；发射点双 Flare 与星云爆发可见
 - [ ] 弹体 600 结构可被点防拆解队形（设计克制面成立）；12s 节奏符合窗口武器定位

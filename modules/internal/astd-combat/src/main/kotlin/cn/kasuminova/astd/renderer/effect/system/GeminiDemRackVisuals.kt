@@ -20,6 +20,9 @@ import java.util.EnumSet
  *   1 号管（右舷）染蓝（动能弹头位），与 [GeminiDemSalvoOnFireEffect] 的齐射编成舷侧一致；
  * - 弹体发光叠加：逐管在弹体中心以加法混合渲染红/蓝光效贴图，
  *   透明度跟随原版装填渲染的 brightness（发射熄管 / 冷却回填的明暗变化自动同步）。
+ * - 冷却期双弹隐藏：原版 `MissileWeapon` 充能下降段只复燃已击发炮管，未击发管 brightness 恒 1
+ *   （冷却期总亮一枚弹）；本层在冷却期（cooldownRemaining > 0 或弹药不足一次齐射）把两管
+ *   `sprite.color` 写成全透明并跳过发光（原版每帧只重写 alphaMult 不动 color，染色写 color 对本版安全）。
  *
  * 弹体染色与发光都依赖 `missileRenderData`（无 RENDER_LOADED_MISSILES 时为 null，记一次 WARN 后停摆）。
  *
@@ -83,15 +86,23 @@ internal object GeminiDemRackVisuals {
             }
             return
         }
+        val loaded = isSalvoLoaded(weapon)
         for ((index, data) in renderData.withIndex()) {
             val tint = BARREL_TINTS.getOrNull(index) ?: break
             try {
-                data.sprite.color = tint
+                // 冷却期隐藏装填弹体：原版充能下降段只复燃已击发管，未击发管 brightness 恒 1
+                // （不隐藏会总亮一枚弹）；color alpha 不会被原版逐帧重写（原版只写 alphaMult）
+                data.sprite.color = if (loaded) tint
+                else Color(tint.red, tint.green, tint.blue, 0)
             } catch (t: Throwable) {
                 log.warn("[ASTD] 双子星 DEM 导轨：弹体染色失败 weapon=$weaponId barrel=$index", t)
             }
         }
     }
+
+    /** 一次齐射是否装填完毕（冷却完毕且弹药够双管）：不满足时两管弹体均不渲染。 */
+    private fun isSalvoLoaded(weapon: WeaponAPI): Boolean =
+        weapon.cooldownRemaining <= 0f && weapon.ammo >= BARREL_TINTS.size
 
     private val missingRenderDataWarned = HashSet<String>()
 
@@ -150,6 +161,7 @@ internal object GeminiDemRackVisuals {
                 for (weapon in weapons) {
                     val ship = weapon.ship ?: continue
                     if (ship.isHulk || weapon.isDisabled) continue
+                    if (!isSalvoLoaded(weapon)) continue
                     val renderData = weapon.missileRenderData ?: continue
                     for ((index, data) in renderData.withIndex()) {
                         val glowPath = BARREL_GLOW_PATHS.getOrNull(index) ?: break

@@ -1,0 +1,23 @@
+{
+    "id": "astd_ice_shard_sub_msl",
+    "specClass": "missile",
+    "missileType": "ROCKET",
+    "onHitEffect": "cn.kasuminova.astd.combat.effect.lens.iceshard.IceShardSubOnHitEffect",
+    "sprite": "graphics/textures/BUtil_NONE.png",
+    "size": [20, 20],
+    "center": [10, 10],
+    "collisionRadius": 8,
+    "collisionClass": "MISSILE_NO_FF",
+    "explosionColor": [170, 225, 255, 160],
+    "explosionRadius": 25,
+    "flameoutTime": 0.5,
+    "noEngineGlowTime": 999,
+    "fadeTime": 0.25,
+    "engineSpec": {
+        "turnAcc": 0,
+        "turnRate": 0,
+        "acc": 0,
+        "dec": 0
+    },
+    "engineSlots": []
+}

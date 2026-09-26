@@ -32,23 +32,33 @@ object GeminiDemDifficulty {
     const val HE_PAYLOAD_ID = "astd_gemini_dem_he_payload"
 
     /**
-     * 同步冲击基准 = 双弹面板之和（1000 动能 + 1500 高爆）。
-     * 面板改动须同步本值（注释双向绑定 warhead 行 damagePerShot：
-     * `astd_gemini_dem_kinetic` 1000 + `astd_gemini_dem_he` 1500）。
+     * 单弹头面板伤害（动能/高爆等额）：EMP 电弧单道伤害与同步增伤皆以本值为基准。
+     * 面板改动须同步 catalog warhead/payload 行（`astd_gemini_dem_kinetic`/`_he` damagePerShot
+     * 与 `astd_gemini_dem_*_payload` dps，均为 1250）。
      */
-    const val SYNC_BASE_DAMAGE = 2500f
+    const val WARHEAD_PANEL_DAMAGE = 1250f
 
-    /** 同步窗口：异种弹头命中时间差 ≤ 该秒数触发同步冲击（含边界）。 */
+    /** 同步窗口：异种弹头命中时间差 ≤ 该秒数触发同步共振（含边界）。 */
     const val SYNC_WINDOW_SECONDS = 1f
 
-    /** 动能光束首伤帧追加 EMP 电弧道数。 */
-    const val EMP_ARC_COUNT = 4
+    /** 动能光束命中期间 EMP 电弧打击间隔（秒）。 */
+    const val EMP_ARC_INTERVAL = 0.1f
 
-    /** 每道 EMP 电弧的 EMP 伤害。 */
-    const val EMP_ARC_EMP_DAMAGE = 500f
+    /** 每道 EMP 电弧的 EMP 伤害 = 单弹面板 × 本比例。 */
+    const val EMP_ARC_EMP_FRACTION = 0.1f
 
-    /** 同步冲击倍率：迟暮 25%（625）/ 砺刃 43.75%（≈1094）/ 破晓 100%（2500）。 */
-    val SYNC_MULT = ScalingEntry(0.25f, 0.4375f, 1.0f, ScalingMap.LINEAR)
+    /**
+     * 同步共振增伤倍率（加算于 payload 光束后续伤害）：迟暮 +50% / 砺刃 +100% / 破晓 +250%。
+     * 触发时对双弹头导弹的 energyWeaponDamageMult 施加乘区（payload 光束 type=ENERGY，导弹是 ShipAPI），
+     * 实际结算略低于面板加成属可接受范畴。
+     */
+    val SYNC_DAMAGE_BONUS = ScalingEntry(0.5f, 1.0f, 2.5f, ScalingMap.LINEAR)
+
+    /** 同步增伤写入导弹 stats 的乘区修饰 id。 */
+    const val SYNC_STAT_MOD_ID = "astd_gemini_dem_sync"
+
+    /** 同步共振紫色光束视觉的持续时长（秒，自触发时刻起算；略长于 payload 光束 1s 照射）。 */
+    const val SYNC_VISUAL_DURATION = 1.2f
 
     /** 追踪段目标搜索半径（su）：shipTarget 为空时的最近敌舰兜底搜索范围。 */
     const val TRACK_TARGET_RANGE = 2500f
@@ -67,4 +77,7 @@ object GeminiDemDifficulty {
 
     /** engine.customData 键：同步登记表（目标 id → 首击记录）。 */
     const val SYNC_REGISTRY_KEY = "astd_gemini_sync_registry"
+
+    /** 弹头 demDrone 实体 customData 键：紫色共振视觉到期时刻（战斗总秒）。键在实体自身表上，规避引擎级表按 id 碰撞（FX drone id 为空串）。 */
+    const val SYNC_VISUAL_KEY = "astd_gemini_dem_sync_visual"
 }
