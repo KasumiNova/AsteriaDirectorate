@@ -26,9 +26,9 @@ import kotlin.random.Random.Default.nextFloat
  *
  * 机制口径（weapon_data tooltip 文案双向绑定）：
  * - 每 [GravityCollapseOnHitConfig.tickInterval] 秒在光束终点位置的一定半径造成
- *   “面板 tick 伤害 × 难度缩放比例”的范围高爆伤害（半径内全额，无边缘衰减）；
- * - 命中装甲或船体的目标：无视其一定比例的最终装甲减伤（把被减免的部分按比例直扣船体），
- *   并施加“引力抑制”——最大航速与机动性降低，持续数秒；
+ *   “面板总伤害 × tick 间隔 × 难度缩放比例”的范围高爆伤害（半径内全额，无边缘衰减）；
+ * - 命中装甲或船体的目标：按其一定比例的最终装甲减伤追加穿甲伤害（走原版伤害结算链路，
+ *   计入装甲/船体伤害计算而非直扣船体），并施加“引力抑制”——最大航速与机动性降低，持续数秒；
  * - 命中护盾的目标只结算护盾伤害，不触发装甲减伤无视与机动抑制；
  * - 上述比例/时长全部受难度系数线性缩放（玩家来源固定 v2 设计基准）。
  */
@@ -67,10 +67,10 @@ internal class GravityCollapseOnHitHandler(
         beam: BeamAPI?,
         intensity: Float,
         /**
-         * 面板 DPS（用于把“每秒值”换算成 tick 伤害）。
-         * 通常传：weapon.damage.damage（已包含技能/改装等加成）。
+         * 面板总伤害（burstDamage 口径，用于换算 tick 伤害，特效秒伤 = 面板总伤害 × 伤害比例）。
+         * 通常传：weapon.damage.damage × ((chargeup + chargedown) × 0.333 + burstDuration)（已包含技能/改装等加成）。
          */
-        panelDps: Float,
+        panelDamage: Float,
     ) {
         if (beam == null) {
             if (wasHittingLastFrame) {
@@ -108,7 +108,7 @@ internal class GravityCollapseOnHitHandler(
         if (!extraDamageInterval.intervalElapsed()) return
 
         val values = resolved ?: resolveDifficulty(weapon).also { resolved = it }
-        val tickDamageBase = (panelDps.coerceAtLeast(0f) * config.tickInterval * values.aoeDamageRatio)
+        val tickDamageBase = (panelDamage.coerceAtLeast(0f) * config.tickInterval * values.aoeDamageRatio)
             .coerceAtLeast(0f)
         if (tickDamageBase <= 0f) return
 
@@ -194,7 +194,7 @@ internal class GravityCollapseOnHitHandler(
 
         if (ship == null || ship.isHulk || shieldCovered) return
 
-        // 命中装甲/船体：无视目标一定比例的最终装甲减伤（被减免部分按比例直扣船体）。
+        // 命中装甲/船体：无视目标一定比例的最终装甲减伤（被减免部分以追加穿甲伤害结算）。
         applyArmorReductionIgnore(engine, source, ship, point, damage, values.armorReductionIgnore)
 
         // 命中装甲/船体：施加机动/航速抑制（刷新持续）。
@@ -212,9 +212,9 @@ internal class GravityCollapseOnHitHandler(
         GravityCollapseDifficulty.resolve(DifficultyTuningImpl, weapon.ship?.owner, config, weapon.id)
 
     /**
-     * 装甲减伤无视：原版最终装甲减伤为 `r = min(dmg / (dmg + armor), maxArmorDamageReduction)`，
-     * 本效果把结算伤害从 `dmg × (1 − r)` 提升到 `dmg × (1 − r × (1 − ignoreFrac))`，
-     * 差值 `dmg_eff × r × ignoreFrac` 以直扣船体形式追加（命中点装甲已耗尽时不存在减伤，无追加）。
+     * 装甲减伤无视（穿甲加成）：原版最终装甲减伤为 `r = min(dmg / (dmg + armor), maxArmorDamageReduction)`，
+     * 本效果按 `dmg_eff × r × ignoreFrac` 追加一次高爆伤害，走原版 applyDamage 结算链路
+     * （计入装甲/船体伤害计算，而非直扣船体值）；命中点装甲已耗尽时不存在减伤，无追加。
      */
     private fun applyArmorReductionIgnore(
         engine: CombatEngineAPI,
@@ -238,20 +238,17 @@ internal class GravityCollapseOnHitHandler(
         val extra = effectiveDamage * reduction * ignoreFrac
         if (extra <= 0f) return
 
-        val hp0 = target.hitpoints
-        // 直扣船体保留至少 1 点：正常 AOE 伤害已走原版死亡链路，濒死目标由正常伤害结算，
-        // 避免 setHitpoints 直接扣到 0 带来的异常死亡链路/表现。
-        if (hp0 <= 1f) return
-
-        val loss = min(extra, hp0 - 1f)
-        target.hitpoints = hp0 - loss
-
-        // 直接扣 hitpoints 不会自动弹出伤害数字；这里补一条 floaty。
-        if (Misc.shouldShowDamageFloaty(source, target)) {
-            val p2 = Vector2f(point)
-            p2.y += 20f
-            engine.addFloatingDamageText(p2, loss, Misc.FLOATY_HULL_DAMAGE_COLOR, target, source)
-        }
+        engine.applyDamage(
+            target,
+            point,
+            extra,
+            DamageType.HIGH_EXPLOSIVE,
+            0f,
+            false,
+            false,
+            source,
+            true,
+        )
     }
 
     /** 判定 [point] 是否被 [ship] 的护盾覆盖（与盾面吸附使用同一容差）。 */

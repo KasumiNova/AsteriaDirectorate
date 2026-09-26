@@ -338,15 +338,16 @@ object Ship_astd_surge_fighter : ShipDataEntry() {
 }
 
 /**
- * 引力井（LENS 量产截击联队单机，purple/30-fighters.md §引力井 v1 定案）。
+ * 引力井（LENS 量产支援联队单机，purple/30-fighters.md §引力井 v1 定案）。
  *
- * 3 机编组无人截击机：挂战机版小型 GCP PD（射程 500 / 辐能 90/s），交战范围 800 贴身护卫
- * （护卫行为走原版截击机原生 AI）。护盾全向 180° 效率 0.6；战术系统为原版闪现（displacer）。
+ * 3 机编组无人支援战斗机：挂战机版小型 GCP PD（数据全量复用舰装版 astd_gcp2，仅不渲染贴图），
+ * wing role=SUPPORT、支援范围 2000（贴身护卫行为走原版支援战斗机原生 AI，标签显示为「最大支援范围」）。
+ * 护盾全向 180° 效率 0.6；战术系统为原版闪现（displacer）。
  */
 object Ship_astd_gravwell_interceptor : ShipDataEntry() {
     override val id: String = "astd_gravwell_interceptor"
     override val name: String = shipName(id)
-    override val designation: String = "截击机"
+    override val designation: String = "支援战斗机"
     override val tech: String = "菀星设计局-紫菀"
     override val systemId: String = "displacer"
     override val hitpoints: Int = 500

@@ -202,14 +202,22 @@ class GravityCollapseBeamEveryFrameEffect : EveryFrameWeaponEffectPlugin {
                 val reach = beamStartedAt?.let { ((now - it) / BEAM_GROW_TIME).coerceIn(0f, 1f) } ?: 1f
                 driveBeam(engine, line, amount, reach = reach, fadeMul = 1f)
 
-                // 命中机制：用 weapon.damage.damage 作为“面板 DPS”（已含加成）。
-                val panelDps = try {
-                    weapon.damage?.damage ?: 0f
+                // 命中机制：折算基准为「面板总伤害」（burstDamage 口径，已含加成），而非面板每秒伤害。
+                // 原版 burstDamage = dps × ((chargeup + chargedown) × 0.333 + burstDuration)
+                // （WeaponSpreadsheetLoader 公式，与装配面板「伤害」列一致）；非爆发光束回退为 dps。
+                val panelDamage = try {
+                    val dps = weapon.damage?.damage ?: 0f
+                    val ws = weapon.spec
+                    if (ws != null && ws.burstDuration > 0f) {
+                        dps * ((ws.beamChargeupTime + ws.beamChargedownTime) * 0.333f + ws.burstDuration)
+                    } else {
+                        dps
+                    }
                 } catch (t: Throwable) {
                     warnOnce("weapon.damage", t)
                     0f
                 }
-                hit.advance(engine, amount, weapon, beam, 1f, panelDps)
+                hit.advance(engine, amount, weapon, beam, 1f, panelDamage)
             }
             lastChargeLevel = chargeLevel
             return

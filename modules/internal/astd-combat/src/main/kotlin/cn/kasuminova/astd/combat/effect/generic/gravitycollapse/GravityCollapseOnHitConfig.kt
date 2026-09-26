@@ -32,12 +32,12 @@ internal data class GravityCollapseOnHitConfig(
     /** 仅用于视觉：随武器尺寸缩放（不影响机制半径/伤害）。 */
     val vfxScale: Float = 1f,
 
-    /** 范围高爆伤害比例（相对面板 tick 伤害）三锚点。 */
+    /** 范围高爆伤害比例（相对面板总伤害的 tick 折算值）三锚点。 */
     val aoeDamageRatio: ScalingEntry,
     /** 最大航速与机动性降低比例三锚点（命中装甲/船体时施加）。 */
     val mobilityReduction: ScalingEntry,
     /** 机动抑制持续时间（秒）三锚点。 */
     val mobilityDuration: ScalingEntry,
-    /** 无视目标最终装甲减伤的比例三锚点（命中装甲/船体时生效）。 */
+    /** 无视目标最终装甲减伤的比例三锚点（命中装甲/船体时生效，以追加穿甲伤害结算）。 */
     val armorReductionIgnore: ScalingEntry,
 )

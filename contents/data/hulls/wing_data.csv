@@ -4,4 +4,4 @@ astd_zw_103_ion_wing,astd_zw_103_fighter_ion,"no_drop, no_sell, auto_fighter, re
 astd_zw_103_lance_wing,astd_zw_103_fighter_lance,"no_drop, no_sell, auto_fighter, restricted, hide_in_codex",3,,6,0,V,1000,500,,2,FIGHTER,重型战斗机,15,6000,,,,,,,,,,,,,9129
 astd_gemini_bomber_wing,astd_gemini_bomber_Bomber,"auto_fighter, fighter, astd_production",2,,8,22,V,4000,2000,600,2,BOMBER,轰炸机,25,12000,,,,,,,,,,,,,9133
 astd_surge_fighter_wing,astd_surge_fighter_Fighter,"auto_fighter, fighter, astd_production",2,,5,16,V,4000,500,,3,FIGHTER,战斗机,12,8000,,,,,,,,,,,,,9134
-astd_gravwell_interceptor_wing,astd_gravwell_interceptor_Interceptor,"auto_fighter, interceptor, astd_production",2,,5,15,V,800,200,600,3,INTERCEPTOR,截击机,12,7500,,,,,,,,,,,,,9135
+astd_gravwell_interceptor_wing,astd_gravwell_interceptor_Interceptor,"auto_fighter, support3, fighter, astd_production",2,,5,15,V,2000,200,600,3,SUPPORT,支援战斗机,12,7500,,,,,,,,,,,,,9135

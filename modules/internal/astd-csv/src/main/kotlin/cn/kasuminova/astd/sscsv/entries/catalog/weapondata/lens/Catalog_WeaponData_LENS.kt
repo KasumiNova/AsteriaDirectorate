@@ -876,8 +876,8 @@ object Wpn_astd_gemini_dem_fighter : WeaponDataEntry() {
 /**
  * 电荷针刺（战机）：电涌战斗联队武备（purple/30-fighters.md §电涌 v1 定案）。
  *
- * 连发 15 @ 15发/s（burstSize 15 / burstDelay 1/15）、射程 600、单发辐能 35；
- * 弹匣三列沿用舰装版（30 / 2.5 / 15）；弹体复用 astd_charge_needle_shot，
+ * 连发 10 @ 10发/s（burstSize 10 / burstDelay 0.1）、射程 600、单发辐能 40；
+ * 弹匣 20 / 回充 10 发每 4s（ammoPerSec 2.5 × reloadSize 10）；弹体复用 astd_charge_needle_shot，
  * 电荷淤积/泄放机制全部由 ChargeNeedleOnHitEffect 沿用。.wpn 为手写全隐资源。
  */
 object Wpn_astd_charge_needle_fighter : WeaponDataEntry() {
@@ -886,24 +886,24 @@ object Wpn_astd_charge_needle_fighter : WeaponDataEntry() {
     override val tier: Int = 1
     override val baseValue: Int = 0
     override val range: Int = 600
-    override val damagePerSecond: Int = 750
+    override val damagePerSecond: Int = 500
     override val damagePerShot: Int = 50
     override val emp: Int = 100
     override val turnRate: Int = 30
     override val ops: Int = 0
 
-    // 连发 15 @ 15发/s；burst 间隔下限由弹匣回充（2.5/s）自然门控
+    // 连发 10 @ 10发/s；burst 间隔下限由弹匣回充（2.5/s）自然门控
     override val chargedown: Double = 0.1
-    override val burstSize: Number = 15
-    override val burstDelay: Double = 0.0667
-    override val ammo: Int = 30
+    override val burstSize: Number = 10
+    override val burstDelay: Double = 0.1
+    override val ammo: Int = 20
     override val ammoPerSec: Double = 2.5
-    override val reloadSize: Int = 15
+    override val reloadSize: Int = 10
     override val type: String = "ENERGY"
-    override val energyPerShot: Int = 35
+    override val energyPerShot: Int = 40
 
-    // 持续口径 = 回充 2.5 发/s × 35 辐能
-    override val energyPerSecond: Int = 88
+    // 持续口径 = 回充 2.5 发/s × 40 辐能
+    override val energyPerSecond: Int = 100
     override val projSpeed: Int = 1350
 
     // 精度口径沿用舰装版（对齐原版轻型针刺）
@@ -919,21 +919,25 @@ object Wpn_astd_charge_needle_fighter : WeaponDataEntry() {
     // 跨线武备：设计方沿用舰装版星坠口径
     override val tech: String = "菀星设计局-星坠"
     override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
+    // 特效描述直接沿用舰装版电荷针刺文案（机制一致，见 ChargeNeedleOnHitEffect）
+    override val customPrimary: String = SsI18n.t("weapon.$id.tooltip.customPrimary")
+    override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
     override val number: Int = 9247
 }
 
 /**
  * 引力坍缩炮 PD（战机）：引力井截击联队武备（purple/30-fighters.md §引力井 v1 定案）。
  *
- * 舰装版 astd_gcp2 的战机化调参：射程 500、辐能 90/s（设计案绝对口径）；光束渲染与
- * 引力坍缩机制复用 HiddenBeamRenderEffect + GravityCollapseBeamEveryFrameEffect（.wpn 接线同源）。
+ * 数据全量复用舰装版 astd_gcp2（射程 600 / 束内 DPS 300 / 辐能 300/s / 充能-爆发-冷却周期一致），
+ * 唯一差异是不渲染武器贴图（.wpn 全隐资源）；光束渲染与引力坍缩机制复用
+ * HiddenBeamRenderEffect + GravityCollapseBeamEveryFrameEffect（.wpn 接线同源）。
  */
 object Wpn_astd_gcp_fighter : WeaponDataEntry() {
     override val id: String = "astd_gcp_fighter"
     override val name: String = weaponName(id)
     override val tier: Int = 1
     override val baseValue: Int = 0
-    override val range: Int = 500
+    override val range: Int = 600
     override val damagePerSecond: Int = 300
     override val damagePerShot: Int = 0
     override val emp: Int = 0
@@ -941,7 +945,7 @@ object Wpn_astd_gcp_fighter : WeaponDataEntry() {
     override val turnRate: Int = 60
     override val ops: Int = 0
     override val type: String = "HIGH_EXPLOSIVE"
-    override val energyPerSecond: Int = 90
+    override val energyPerSecond: Int = 300
     override val chargeup: Double = 0.5
     override val chargedown: Double = 0.25
     override val burstSize: Double = 1.0

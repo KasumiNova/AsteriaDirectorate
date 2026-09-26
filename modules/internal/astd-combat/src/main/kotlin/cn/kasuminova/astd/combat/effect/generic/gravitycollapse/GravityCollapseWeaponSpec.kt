@@ -33,7 +33,7 @@ internal data class GravityCollapseWeaponSpec(
     /** AOE 是否影响残骸（ShipAPI.isHulk）。 */
     val aoeAffectHulks: Boolean = false,
 
-    /** 范围高爆伤害比例（相对面板 tick 伤害）三锚点。 */
+    /** 范围高爆伤害比例（相对面板总伤害的 tick 折算值）三锚点。 */
     val aoeDamageRatio: ScalingEntry,
     /** 最大航速与机动性降低比例三锚点。 */
     val mobilityReduction: ScalingEntry,
@@ -50,6 +50,21 @@ internal object GravityCollapseWeaponSpecs {
 
     /** 全系列共用的装甲减伤无视锚点：50％（迟暮）~ 90％（破晓）。 */
     private val ARMOR_REDUCTION_IGNORE = ScalingEntry(0.50f, 0.60f, 0.90f, ScalingMap.LINEAR)
+
+    /** PD 规格（astd_gcp2 / 战机版 astd_gcp_fighter 共用：战机版数据全量复用舰装版）。 */
+    private val GCP_PD_SPEC = GravityCollapseWeaponSpec(
+        beamScale = 0.55f,
+        beamWidthMul = 0.455f,
+        aoeRadiusBase = 110f * 1.5f,
+        aoeRequireDamageTarget = false,
+        aoeAffectAlliesAndNeutral = true,
+        aoeAffectNonShips = true,
+        aoeAffectHulks = true,
+        aoeDamageRatio = ScalingEntry(0.50f, 0.625f, 1.00f, ScalingMap.LINEAR),
+        mobilityReduction = ScalingEntry(0.20f, 0.225f, 0.30f, ScalingMap.LINEAR),
+        mobilityDuration = MOBILITY_DURATION,
+        armorReductionIgnore = ARMOR_REDUCTION_IGNORE,
+    )
 
     private val specs: Map<String, GravityCollapseWeaponSpec> = mapOf(
         // GCP（Gravity Collapse Projector）系列
@@ -93,19 +108,9 @@ internal object GravityCollapseWeaponSpecs {
             mobilityDuration = MOBILITY_DURATION,
             armorReductionIgnore = ARMOR_REDUCTION_IGNORE,
         ),
-        "astd_gcp2" to GravityCollapseWeaponSpec(
-            beamScale = 0.55f,
-            beamWidthMul = 0.455f,
-            aoeRadiusBase = 110f * 1.5f,
-            aoeRequireDamageTarget = false,
-            aoeAffectAlliesAndNeutral = true,
-            aoeAffectNonShips = true,
-            aoeAffectHulks = true,
-            aoeDamageRatio = ScalingEntry(0.50f, 0.625f, 1.00f, ScalingMap.LINEAR),
-            mobilityReduction = ScalingEntry(0.20f, 0.225f, 0.30f, ScalingMap.LINEAR),
-            mobilityDuration = MOBILITY_DURATION,
-            armorReductionIgnore = ARMOR_REDUCTION_IGNORE,
-        ),
+        "astd_gcp2" to GCP_PD_SPEC,
+        // 战机版引力坍缩炮 PD：数据与特效全量复用舰装版 astd_gcp2（仅不渲染武器贴图）
+        "astd_gcp_fighter" to GCP_PD_SPEC,
     )
 
     fun forWeaponId(weaponId: String?): GravityCollapseWeaponSpec? {

@@ -9,7 +9,7 @@
     "collisionClass": RAY,
     "collisionClassByFighter": RAY_FIGHTER,
 
-    "displayArcRadius": 500,
+    "displayArcRadius": 550,
 
     "turretSprite": "graphics/textures/BUtil_NONE.png",
     "turretGunSprite": "graphics/textures/BUtil_NONE.png",
