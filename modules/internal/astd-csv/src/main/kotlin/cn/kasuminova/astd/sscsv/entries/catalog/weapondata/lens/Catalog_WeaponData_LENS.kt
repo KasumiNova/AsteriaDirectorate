@@ -333,6 +333,8 @@ object Wpn_astd_stellar_mrm_launcher : WeaponDataEntry(), SsProjMissileOutputs {
     override val customPrimary: String = SsI18n.t("weapon.$id.tooltip.customPrimary")
     override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
     override val noDpsInTooltip: Boolean = false
+    // AI 行为：无需瞄准即可开火 + 战机点防御（对齐原版蜂群/蝗虫系 PD 导弹口径）
+    override val aiHints: Set<AiHint> = setOf(AiHint.PD, AiHint.ANTI_FTR, AiHint.DO_NOT_AIM)
     override val number: Int = 9217
 
     override val projSpec: MissileProjSpec = MissileProjSpec(
@@ -405,6 +407,8 @@ object Wpn_astd_stellar_mrm_pod : WeaponDataEntry(), SsProjMissileOutputs {
     override val customPrimary: String = SsI18n.t("weapon.$id.tooltip.customPrimary")
     override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
     override val noDpsInTooltip: Boolean = false
+    // AI 行为：无需瞄准即可开火 + 战机点防御（对齐原版蜂群/蝗虫系 PD 导弹口径）
+    override val aiHints: Set<AiHint> = setOf(AiHint.PD, AiHint.ANTI_FTR, AiHint.DO_NOT_AIM)
     override val number: Int = 9218
 
     override val projSpec: MissileProjSpec = MissileProjSpec(
@@ -730,6 +734,8 @@ object Wpn_astd_ice_shard_mirv : WeaponDataEntry(), SsProjMissileOutputs {
     override val customPrimary: String = SsI18n.t("weapon.$id.tooltip.customPrimary")
     override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
     override val noDpsInTooltip: Boolean = false
+    // AI 行为对齐原版阿特罗波斯鱼雷
+    override val aiHints: Set<AiHint> = setOf(AiHint.GUIDED_POOR)
     override val number: Int = 9229
 
     override val projSpec: MissileProjSpec = iceShardMirvProjSpec()
@@ -777,6 +783,8 @@ object Wpn_astd_ice_shard_mirv_pod : WeaponDataEntry() {
     override val customPrimary: String = SsI18n.t("weapon.$id.tooltip.customPrimary")
     override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
     override val noDpsInTooltip: Boolean = false
+    // AI 行为对齐原版阿特罗波斯鱼雷
+    override val aiHints: Set<AiHint> = setOf(AiHint.GUIDED_POOR)
     override val number: Int = 9233
 }
 
@@ -826,4 +834,126 @@ object Wpn_astd_ice_shard_sub : WeaponDataEntry(), SsProjMissileOutputs {
         engineSpec = MissileEngineSpec(turnAcc = 0, turnRate = 0, acc = 0, dec = 0),
         engineSlots = emptyList(),
     )
+}
+
+/**
+ * 双子星 DEM（战机）：双子座轰炸联队武备（purple/30-fighters.md §双子座 v1 定案）。
+ *
+ * 备弹 2（= 2 次双弹齐射）、不可恢复（ammoPerSec/reloadSize 0）、发射不产辐能；
+ * 弹体复用舰装版 dummy spec（astd_gemini_dem_dummy），齐射/追踪/同步冲击机制全部由
+ * GeminiDemSalvoOnFireEffect 沿用，不复制第二份实现。.wpn 为手写全隐资源。
+ */
+object Wpn_astd_gemini_dem_fighter : WeaponDataEntry() {
+    override val id: String = "astd_gemini_dem_fighter"
+    override val name: String = weaponName(id)
+    override val tier: Int = 2
+    override val baseValue: Int = 0
+    override val range: Int = 2500
+    override val damagePerSecond: Int = 0
+    override val damagePerShot: Int = 2500
+    override val emp: Int = 2000
+    override val turnRate: Int = 30
+    override val ops: Int = 0
+    override val ammo: Int = 2
+    override val ammoPerSec: Double = 0.0
+    override val reloadSize: Int = 0
+    override val type: String = "ENERGY"
+    override val chargedown: Double = 12.0
+    override val projSpeed: Int = 225
+    override val flightTime: Double = 14.0
+    override val projHitpoints: Int = 600
+
+    // 战机内置武器：SYSTEM 不进配装列表；AI 口径对齐原版龙炎 DEM（不瞄准直接射、打击定位）
+    override val aiHints: Set<AiHint> = setOf(AiHint.SYSTEM, AiHint.DO_NOT_AIM, AiHint.STRIKE)
+    override val tags: String = "strike8, missile0, show_in_codex"
+    override val groupTag: String = "astd"
+    // 跨线武备：LENS 投送平台 × ARC 制式弹药，设计方沿用舰装版星坠口径
+    override val tech: String = "菀星设计局-星坠"
+    override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
+    override val number: Int = 9246
+}
+
+/**
+ * 电荷针刺（战机）：电涌战斗联队武备（purple/30-fighters.md §电涌 v1 定案）。
+ *
+ * 连发 15 @ 15发/s（burstSize 15 / burstDelay 1/15）、射程 600、单发辐能 35；
+ * 弹匣三列沿用舰装版（30 / 2.5 / 15）；弹体复用 astd_charge_needle_shot，
+ * 电荷淤积/泄放机制全部由 ChargeNeedleOnHitEffect 沿用。.wpn 为手写全隐资源。
+ */
+object Wpn_astd_charge_needle_fighter : WeaponDataEntry() {
+    override val id: String = "astd_charge_needle_fighter"
+    override val name: String = weaponName(id)
+    override val tier: Int = 1
+    override val baseValue: Int = 0
+    override val range: Int = 600
+    override val damagePerSecond: Int = 750
+    override val damagePerShot: Int = 50
+    override val emp: Int = 100
+    override val turnRate: Int = 30
+    override val ops: Int = 0
+
+    // 连发 15 @ 15发/s；burst 间隔下限由弹匣回充（2.5/s）自然门控
+    override val chargedown: Double = 0.1
+    override val burstSize: Number = 15
+    override val burstDelay: Double = 0.0667
+    override val ammo: Int = 30
+    override val ammoPerSec: Double = 2.5
+    override val reloadSize: Int = 15
+    override val type: String = "ENERGY"
+    override val energyPerShot: Int = 35
+
+    // 持续口径 = 回充 2.5 发/s × 35 辐能
+    override val energyPerSecond: Int = 88
+    override val projSpeed: Int = 1350
+
+    // 精度口径沿用舰装版（对齐原版轻型针刺）
+    override val minSpread: Double = 0.0
+    override val maxSpread: Double = 10.0
+    override val spreadPerShot: Double = 0.66
+    override val spreadDecayPerSec: Double = 5.0
+
+    // 战机内置武器：SYSTEM 不进配装列表
+    override val aiHints: Set<AiHint> = setOf(AiHint.SYSTEM)
+    override val tags: String = "energy8, show_in_codex"
+    override val groupTag: String = "astd"
+    // 跨线武备：设计方沿用舰装版星坠口径
+    override val tech: String = "菀星设计局-星坠"
+    override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
+    override val number: Int = 9247
+}
+
+/**
+ * 引力坍缩炮 PD（战机）：引力井截击联队武备（purple/30-fighters.md §引力井 v1 定案）。
+ *
+ * 舰装版 astd_gcp2 的战机化调参：射程 500、辐能 90/s（设计案绝对口径）；光束渲染与
+ * 引力坍缩机制复用 HiddenBeamRenderEffect + GravityCollapseBeamEveryFrameEffect（.wpn 接线同源）。
+ */
+object Wpn_astd_gcp_fighter : WeaponDataEntry() {
+    override val id: String = "astd_gcp_fighter"
+    override val name: String = weaponName(id)
+    override val tier: Int = 1
+    override val baseValue: Int = 0
+    override val range: Int = 500
+    override val damagePerSecond: Int = 300
+    override val damagePerShot: Int = 0
+    override val emp: Int = 0
+    override val impact: Int = 0
+    override val turnRate: Int = 60
+    override val ops: Int = 0
+    override val type: String = "HIGH_EXPLOSIVE"
+    override val energyPerSecond: Int = 90
+    override val chargeup: Double = 0.5
+    override val chargedown: Double = 0.25
+    override val burstSize: Double = 1.0
+    override val burstDelay: Double = 1.25
+    override val beamSpeed: Int = 10000
+    override val projSpeed: Int = 0
+
+    // 战机内置武器：SYSTEM 不进配装列表；PD 口径沿用舰装版
+    override val aiHints: Set<AiHint> = setOf(AiHint.SYSTEM, AiHint.PD)
+    override val tags: String = "beam6, show_in_codex"
+    override val groupTag: String = "astd"
+    override val tech: String = "菀星设计局-紫菀"
+    override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
+    override val number: Int = 9248
 }

@@ -1,0 +1,72 @@
+{
+    "bounds": [
+        15,
+        6,
+        -15,
+        10,
+        -6,
+        -1,
+        -15,
+        -10,
+        12,
+        -11,
+        5,
+        0
+    ],
+    "center": [
+        15,
+        17
+    ],
+    "collisionRadius": 22,
+    "engineSlots": [
+        {
+            "angle": 180,
+            "contrailSize": 64,
+            "length": 20,
+            "location": [
+                -16,
+                7
+            ],
+            "style": "HIGH_TECH",
+            "width": 12
+        },
+        {
+            "angle": 180,
+            "contrailSize": 64,
+            "length": 20,
+            "location": [
+                -16,
+                -7
+            ],
+            "style": "HIGH_TECH",
+            "width": 12
+        }
+    ],
+    "height": 34,
+    "hullId": "astd_gemini_bomber",
+    "hullName": "双子座",
+    "hullSize": "FIGHTER",
+    "shieldCenter": [
+        0,
+        0
+    ],
+    "shieldRadius": 22,
+    "spriteName": "graphics/ships/piranha_bmb.png",
+    "style": "ASTD_HIGH_TECH",
+    "viewOffset": 0,
+    "weaponSlots": [
+        {
+            "angle": 0,
+            "arc": 90,
+            "id": "WS 001",
+            "locations": [
+                12,
+                0
+            ],
+            "mount": "HIDDEN",
+            "size": "SMALL",
+            "type": "MISSILE"
+        }
+    ],
+    "width": 30
+}

@@ -1,0 +1,17 @@
+{
+    "displayName": "电涌",
+    "fluxCapacitors": 0,
+    "fluxVents": 0,
+    "hullId": "astd_surge_fighter",
+    "hullMods": [],
+    "quality": 1.0,
+    "variantId": "astd_surge_fighter_Fighter",
+    "weaponGroups": [
+        {
+            "mode": "LINKED",
+            "weapons": {
+                "WS 001": "astd_charge_needle_fighter"
+            }
+        }
+    ]
+}

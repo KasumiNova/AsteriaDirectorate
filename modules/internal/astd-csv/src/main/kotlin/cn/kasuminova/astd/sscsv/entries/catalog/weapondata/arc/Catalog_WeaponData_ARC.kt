@@ -687,6 +687,8 @@ object Wpn_astd_gemini_dem_launcher : WeaponDataEntry(), SsProjMissileOutputs {
     override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
     override val customPrimary: String = SsI18n.t("weapon.$id.tooltip.customPrimary")
     override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
+    // AI 行为对齐原版龙炎 DEM：不瞄准直接发射、定位为打击武器
+    override val aiHints: Set<AiHint> = setOf(AiHint.DO_NOT_AIM, AiHint.STRIKE)
     override val number: Int = 9221
 
     // dummy 导弹：发射同帧被 GeminiDemSalvoOnFireEffect 拦截移除，数值只保证“发射即拦截”不出异常（规格 §1.3）。
@@ -739,6 +741,8 @@ object Wpn_astd_gemini_dem_pod : WeaponDataEntry() {
     override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
     override val customPrimary: String = SsI18n.t("weapon.$id.tooltip.customPrimary")
     override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
+    // AI 行为对齐原版龙炎 DEM：不瞄准直接发射、定位为打击武器
+    override val aiHints: Set<AiHint> = setOf(AiHint.DO_NOT_AIM, AiHint.STRIKE)
     override val number: Int = 9222
 }
 
@@ -1131,6 +1135,8 @@ object Wpn_astd_cuifeng_torpedo : WeaponDataEntry(), SsProjMissileOutputs {
     override val customPrimary: String = SsI18n.t("weapon.$id.tooltip.customPrimary")
     override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
     override val noDpsInTooltip: Boolean = false
+    // AI 行为对齐原版阿特罗波斯鱼雷
+    override val aiHints: Set<AiHint> = setOf(AiHint.GUIDED_POOR)
     override val number: Int = 9227
 
     override val projSpec: MissileProjSpec = cuifengTorpedoProjSpec()
@@ -1178,5 +1184,7 @@ object Wpn_astd_cuifeng_launcher : WeaponDataEntry() {
     override val customPrimary: String = SsI18n.t("weapon.$id.tooltip.customPrimary")
     override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
     override val noDpsInTooltip: Boolean = false
+    // AI 行为对齐原版阿特罗波斯鱼雷
+    override val aiHints: Set<AiHint> = setOf(AiHint.GUIDED_POOR)
     override val number: Int = 9228
 }

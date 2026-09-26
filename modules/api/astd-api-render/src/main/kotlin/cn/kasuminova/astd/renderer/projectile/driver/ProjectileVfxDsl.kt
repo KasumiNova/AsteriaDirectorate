@@ -53,8 +53,8 @@ class ProjectileVfxTreeSpec(
 class ProjectileVfx(
     val tree: ProjectileVfxTreeSpec,
     val policy: ProjectileVfxDriverPolicy,
-    /** 发射瞬间附加动作（如发射点扭曲特效）；null 则无。 */
-    val onFire: ProjectileVfxOnFireHook? = null,
+    /** 发射瞬间附加动作列表（如炮口锥面冲击、发射点扭曲特效），按登记序执行；空则无事发生。 */
+    val onFire: List<ProjectileVfxOnFireHook> = emptyList(),
 )
 
 /** 颜色字面量：0xRRGGBBAA。 */
@@ -82,7 +82,7 @@ class ProjectileVfxScope(private val id: String) {
     private val staticTrails = ArrayList<Pair<String, StaticTrailSpec>>()
     private val boxFlares = ArrayList<Pair<String, BoxFlareSpec>>()
     private val anchorArcs = ArrayList<Pair<String, AnchorArcSpec>>()
-    private var onFireHook: ProjectileVfxOnFireHook? = null
+    private val onFireHooks = ArrayList<ProjectileVfxOnFireHook>()
 
     /** Box 螺栓弹头：默认开启（取代原版螺栓渲染）；`bolt { off() }` 关闭（如导弹弹体）。 */
     private var bolt: BoltBuilder? = BoltBuilder()
@@ -133,9 +133,9 @@ class ProjectileVfxScope(private val id: String) {
         anchorArcs += name to AnchorArcBuilder().apply(block).build()
     }
 
-    /** 发射瞬间附加动作（如发射点扭曲特效）：登记弹体成功后由分发器调用一次。 */
+    /** 发射瞬间附加动作（如炮口锥面冲击、发射点扭曲特效）：登记弹体成功后由分发器各调用一次，可登记多个。 */
     fun onFire(hook: ProjectileVfxOnFireHook) {
-        onFireHook = hook
+        onFireHooks += hook
     }
 
     fun lifecycle(block: LifecycleBuilder.() -> Unit) {
@@ -170,7 +170,7 @@ class ProjectileVfxScope(private val id: String) {
             removedFadeOutSeconds = fade.outSeconds,
             headLeadWorld = headLead,
         )
-        return ProjectileVfx(treeSpec, policy, onFireHook)
+        return ProjectileVfx(treeSpec, policy, onFireHooks.toList())
     }
 }
 

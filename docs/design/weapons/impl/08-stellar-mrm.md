@@ -51,7 +51,7 @@
 | `projHitpoints` | `200` | 定案弹体结构值 200 |
 | `trackingStr` | `"优秀"` | 定案追踪优秀（amsrm csv 同文案） |
 | `speedStr` | `"快"`（提案） | amsrm 为「极快」，75% 航速降一档 |
-| `aiHints` / `hints` | 不覆写 | 不挂 PD hint——本武器反战机而非反导弹，PD hint 会诱导 AI 拿去拦导弹（与设计「从不主动拦截导弹」冲突）；AI 开火时机目检后再评估 |
+| `aiHints` / `hints` | `PD, ANTI_FTR, DO_NOT_AIM` | 2026-09-26 用户裁定推翻原案：明确要求「无须瞄准即可射击 + 战机点防御行为」，对齐原版蜂群/蝗虫系 PD 导弹口径；「诱导 AI 拦导弹」风险实机观察后再调 |
 | `tags` | `"no_drop, no_drop_salvage"` | P6 前口径（90-计划 §14）；P6 后改稀有赏金掉落，另立任务 |
 | `groupTag` | `"astd"`；`tech` | `"透镜矩阵"` | LENS 族惯例 |
 | `primaryRoleStr` | `SsI18n.t("weapon.$id.primaryRoleStr")` | §1.3 |

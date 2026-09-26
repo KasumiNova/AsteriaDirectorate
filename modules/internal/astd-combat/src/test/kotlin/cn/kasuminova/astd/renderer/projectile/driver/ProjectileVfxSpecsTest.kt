@@ -145,7 +145,8 @@ class ProjectileVfxSpecsTest {
         assertEquals(listOf("twin", "core", "zappy_0", "zappy_1"), vfx.tree.staticTrails.map { it.first })
         assertEquals(listOf("core", "light"), vfx.tree.boxFlares.map { it.first })
         assertEquals(listOf("arc"), vfx.tree.anchorArcs.map { it.first })
-        assertNotNull(vfx.onFire, "贯星之矛带发射点扭曲钩子")
+        // 炮口锥面冲击 + 发射点扭曲两个发射钩子（顺序：muzzleBurst 先于 extra 块登记）
+        assertEquals(2, vfx.onFire.size, "贯星之矛带炮口冲击与发射点扭曲两个发射钩子")
 
         // 亮度 +25%：主色 alpha 0.95 × 0.78 × 1.25 ≈ 0.9263，hex 量化（×255 取整 236）后 0.9255
         val twin = vfx.tree.staticTrails.first { it.first == "twin" }.second

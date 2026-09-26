@@ -29,7 +29,7 @@ object ProjectileVfxSpecs {
     /**
      * projectileSpecId → 构建函数（参数 = 武器面板射程 su，null 时用 spec 固定带长）。加入一个即接入本管线。
      *
-     * 当前接入：aod7（hero，双层）+ 12 个 simpleProjectileVfx spec（四层惯例）。
+     * 当前接入：aod7（hero，双层）+ 15 个 simpleProjectileVfx spec（四层惯例）。
      */
     private val builders: Map<String, (Float?) -> ProjectileVfx> = mapOf(
         "astd_aod7_shot" to ::aod7Shot,
@@ -55,7 +55,7 @@ object ProjectileVfxSpecs {
                 decorTrail = false
             )
         },
-        // 电驱加速炮：黄色射弹（美术裁定），trail 长 = 射程×25%、宽 −50%，尾色金→红渐变。
+        // 电驱加速炮：黄色射弹（美术裁定），trail 长 = 射程×25%、宽 −50%，尾色金→红渐变；开火火光与射弹同色。
         "astd_electric_drive_accelerator_shot" to { range ->
             simpleProjectileVfx(
                 "astd_electric_drive_accelerator_shot",
@@ -66,6 +66,7 @@ object ProjectileVfxSpecs {
                 rangeRatio = 0.25f,
                 trailWidthScale = 0.5f,
                 tailColor = emberRedTail(),
+                muzzleBurst = MuzzleBurst(),
                 decorTrail = false
             )
         },
@@ -83,13 +84,20 @@ object ProjectileVfxSpecs {
                 trailGlow = 0.8f,
                 tailColor = paleGreenTail(),
                 boltFlare = 48f,
-                muzzleBurst = true,
+                muzzleBurst = MuzzleBurst(),
                 decorTrail = false
             )
         },
-        // 正电子冲击波：小型 PD 弹体克制处理（width 5 / length 90 短拖尾，不抢主炮视觉——设计案特效节）。
+        // 正电子冲击波：小型 PD 弹体克制处理（width 5 / length 90 短拖尾，不抢主炮视觉——设计案特效节）；
+        // 开火火光为小槽规格锥面冲击。
         "astd_positron_shockwave_shot" to {
-            simpleProjectileVfx("astd_positron_shockwave_shot", positronWhiteBlue(), width = 5f, length = 90f)
+            simpleProjectileVfx(
+                "astd_positron_shockwave_shot",
+                positronWhiteBlue(),
+                width = 5f,
+                length = 90f,
+                muzzleBurst = MuzzleBurst(length = 55f, halfAngleDeg = 24f, duration = 0.25f),
+            )
         },
         // 重型离子脉冲：trail 长 = 射程×25%、宽 −25%；弹头光斑强化弹体发光，开火附带炮口锥面碎片。
         "astd_heavy_ion_pulse_shot" to { range ->
@@ -103,7 +111,7 @@ object ProjectileVfxSpecs {
                 trailWidthScale = 0.75f,
                 trailGlow = 0.7f,
                 boltFlare = 36f,
-                muzzleBurst = true
+                muzzleBurst = MuzzleBurst()
             )
         },
         // 辉星 MRM（规格 08 §3.1）：LENS 紫辉星弹体/拖尾（爆炸为裂隙组件蓝色族），trail 长 = 射程×50%、recede 0；
@@ -162,6 +170,16 @@ object ProjectileVfxSpecs {
     }
 
     /**
+     * 炮口锥面冲击规格（[simpleProjectileVfx] 的 muzzleBurst 参数）。
+     * 默认值为中大型舰炮口径（穷距轨道炮/彗星冲击波同款）；小槽武器缩小，旗舰级武器放大。
+     */
+    private data class MuzzleBurst(
+        val length: Float = 120f,
+        val halfAngleDeg: Float = 20f,
+        val duration: Float = 0.35f,
+    )
+
+    /**
      * 通用弹体特效：4 高层旋钮 → 四层贴图拖尾混合（Static Trail）。
      *
      * 四层构图（美术裁定，全弹体统一）：
@@ -182,7 +200,8 @@ object ProjectileVfxSpecs {
      * @param tailColor 拖尾尾色（自选 RGB，null = 同色压暗淡化；非空 = 头色 → 尾色两段渐变，rgb 直取、
      *   alpha 乘层透明度，如蓝→淡绿、金→红）。
      * @param boltFlare 弹头 SMOOTH 光斑尺寸（su，null = 不加；组件层，支持字面量热交换）。
-     * @param muzzleBurst 开火瞬间在炮口附加一发小型锥面冲击（三角碎片 + 刺束 + 顶点闪光，ConeImpactVfx 一发即走）。
+     * @param muzzleBurst 开火瞬间在炮口附加一发锥面冲击（三角碎片 + 刺束 + 顶点闪光，ConeImpactVfx 一发即走）；
+     *   null = 不加。配色自动取弹体主色，尺寸规格见 [MuzzleBurst]。
      * @param decorTrail 是否带 zappy 电弧装饰层 ×2（关闭同时去掉其随机扭转/漂移抖动）。
      * @param recede 带体退距显式值（null = 自动取弹体长度 ×0.2，tracker 运行期解析）。
      */
@@ -199,7 +218,7 @@ object ProjectileVfxSpecs {
         trailGlow: Float = 0.7f,
         tailColor: ASTDColor? = null,
         boltFlare: Float? = null,
-        muzzleBurst: Boolean = false,
+        muzzleBurst: MuzzleBurst? = null,
         decorTrail: Boolean = true,
         recede: Float? = null,
         extra: ProjectileVfxScope.() -> Unit = {},
@@ -250,18 +269,18 @@ object ProjectileVfxSpecs {
                 offset(-boltFlare / 2)
             }
         }
-        if (muzzleBurst) {
+        if (muzzleBurst != null) {
             onFire { engine, projectile ->
                 ConeImpactVfx.spawn(
                     engine,
                     ConeImpactVfxSpec(
                         origin = Vector2f(projectile.location),
                         facingDeg = projectile.facing,
-                        halfAngleDeg = 20f,
-                        length = 120f,
+                        halfAngleDeg = muzzleBurst.halfAngleDeg,
+                        length = muzzleBurst.length,
                         coreColor = awt(mixWhite(color, 0.7f)),
                         fringeColor = awt(color),
-                        duration = 0.35f,
+                        duration = muzzleBurst.duration,
                     ),
                 )
             }
@@ -322,7 +341,8 @@ object ProjectileVfxSpecs {
     // 贯星之矛（规格 09 §3.1）：冷蓝白 ARC 主色内联字面量；width 36 / glowScale 4.0 大圆形弹体观感；
     // 带长 = 射程 ×85%（基线 260），recede 0（带体亮头直抵弹头），亮度 +25%。
     // 追加：BoxUtil 水平光斑 core（锚在弹体前端 = 螺栓头部）+ 弹头处 SMOOTH 光斑 light（50su 柔边球光）+
-    // 原版 EMP 锚点电弧（发射点固定 → 弹体头部拉伸）+ 发射瞬间发射点扭曲（PiercingLanceVfx.spawnMuzzleDistortion）。
+    // 原版 EMP 锚点电弧（发射点固定 → 弹体头部拉伸）+ 发射瞬间发射点扭曲（PiercingLanceVfx.spawnMuzzleDistortion）+
+    // 大规格炮口锥面冲击（旗舰级开火火光）。
     private fun piercingLanceShot(range: Float?): ProjectileVfx = simpleProjectileVfx(
         "astd_piercing_lance_shot",
         ASTDColor(0.55f, 0.78f, 1f, 0.95f),
@@ -332,6 +352,7 @@ object ProjectileVfxSpecs {
         range = range,
         rangeRatio = 0.85f,
         brightness = 1.25f,
+        muzzleBurst = MuzzleBurst(length = 320f, halfAngleDeg = 28f, duration = 0.5f),
         recede = 0f,
     ) {
         boxFlare("core") {

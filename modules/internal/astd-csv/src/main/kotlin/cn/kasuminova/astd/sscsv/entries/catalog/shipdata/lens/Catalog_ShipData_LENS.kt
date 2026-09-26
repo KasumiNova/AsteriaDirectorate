@@ -275,3 +275,95 @@ object Ship_astd_zw_103_fighter : ShipDataEntry() {
     override val maxCrew: Int = 0
     override val number: Int = 9121
 }
+
+/**
+ * 双子座（LENS 量产轰炸联队单机，purple/30-fighters.md §双子座 v1 定案）。
+ *
+ * 2 机编组无人轰炸机：挂战机版双子星 DEM（备弹 2 不可恢复，打空后按原版轰炸机逻辑返航重武装）。
+ * 护盾前向 120° 效率 0.6；无战术系统；物流列置空（对齐原版战机行）。
+ */
+object Ship_astd_gemini_bomber : ShipDataEntry() {
+    override val id: String = "astd_gemini_bomber"
+    override val name: String = shipName(id)
+    override val designation: String = "轰炸机"
+    override val tech: String = "菀星设计局-紫菀"
+    override val hitpoints: Int = 500
+    override val armorRating: Int = 100
+    override val maxFlux: Int = 500
+    override val fluxDissipation: Int = 75
+    override val maxSpeed: Int = 150
+    override val acceleration: Int = 300
+    override val deceleration: Int = 250
+    override val maxTurnRate: Int = 60
+    override val turnAcceleration: Int = 120
+    override val mass: Int = 40
+    override val shieldType: String = "FRONT"
+    override val shieldArc: Int = 120
+    override val shieldUpkeep: Double = 0.5
+    override val shieldEfficiency: Double = 0.6
+    override val minCrew: Int = 0
+    override val maxCrew: Int = 0
+    override val number: Int = 9130
+}
+
+/**
+ * 电涌（LENS 量产战斗联队单机，purple/30-fighters.md §电涌 v1 定案）。
+ *
+ * 3 机编组无人战斗机：挂战机版电荷针刺（射程 600 / 连发 15 @15发/s / 单发辐能 35）。
+ * 护盾前向 270° 效率 0.6；战术系统为原版等离子推进器（plasmajets），零自定义代码。
+ */
+object Ship_astd_surge_fighter : ShipDataEntry() {
+    override val id: String = "astd_surge_fighter"
+    override val name: String = shipName(id)
+    override val designation: String = "战斗机"
+    override val tech: String = "菀星设计局-紫菀"
+    override val systemId: String = "plasmajets"
+    override val hitpoints: Int = 400
+    override val armorRating: Int = 75
+    override val maxFlux: Int = 700
+    override val fluxDissipation: Int = 100
+    override val maxSpeed: Int = 200
+    override val acceleration: Int = 400
+    override val deceleration: Int = 350
+    override val maxTurnRate: Int = 90
+    override val turnAcceleration: Int = 180
+    override val mass: Int = 25
+    override val shieldType: String = "FRONT"
+    override val shieldArc: Int = 270
+    override val shieldUpkeep: Double = 0.5
+    override val shieldEfficiency: Double = 0.6
+    override val minCrew: Int = 0
+    override val maxCrew: Int = 0
+    override val number: Int = 9131
+}
+
+/**
+ * 引力井（LENS 量产截击联队单机，purple/30-fighters.md §引力井 v1 定案）。
+ *
+ * 3 机编组无人截击机：挂战机版小型 GCP PD（射程 500 / 辐能 90/s），交战范围 800 贴身护卫
+ * （护卫行为走原版截击机原生 AI）。护盾全向 180° 效率 0.6；战术系统为原版闪现（displacer）。
+ */
+object Ship_astd_gravwell_interceptor : ShipDataEntry() {
+    override val id: String = "astd_gravwell_interceptor"
+    override val name: String = shipName(id)
+    override val designation: String = "截击机"
+    override val tech: String = "菀星设计局-紫菀"
+    override val systemId: String = "displacer"
+    override val hitpoints: Int = 500
+    override val armorRating: Int = 50
+    override val maxFlux: Int = 600
+    override val fluxDissipation: Int = 80
+    override val maxSpeed: Int = 150
+    override val acceleration: Int = 300
+    override val deceleration: Int = 250
+    override val maxTurnRate: Int = 60
+    override val turnAcceleration: Int = 120
+    override val mass: Int = 35
+    override val shieldType: String = "OMNI"
+    override val shieldArc: Int = 180
+    override val shieldUpkeep: Double = 0.5
+    override val shieldEfficiency: Double = 0.6
+    override val minCrew: Int = 0
+    override val maxCrew: Int = 0
+    override val number: Int = 9132
+}

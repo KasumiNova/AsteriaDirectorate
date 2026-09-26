@@ -96,3 +96,6 @@ object Desc_astd_ai_core_a : LocalizedDescription("astd_ai_core_a", "RESOURCE")
 object Desc_astd_ai_core_o : LocalizedDescription("astd_ai_core_o", "RESOURCE")
 
 object Desc_astd_reserved_station : LocalizedDescription("astd_reserved_station", "CUSTOM")
+object Desc_astd_gemini_bomber : LocalizedDescription("astd_gemini_bomber", "SHIP")
+object Desc_astd_surge_fighter : LocalizedDescription("astd_surge_fighter", "SHIP")
+object Desc_astd_gravwell_interceptor : LocalizedDescription("astd_gravwell_interceptor", "SHIP")

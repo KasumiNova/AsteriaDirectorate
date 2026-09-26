@@ -74,7 +74,7 @@ class ProjectileVfxDriverPlugin : BaseEveryFrameCombatPlugin() {
                         spec.policy,
                     ),
                 )
-            spec.onFire?.onFire(engine, projectile)
+            spec.onFire.forEach { it.onFire(engine, projectile) }
             return true
         }
 

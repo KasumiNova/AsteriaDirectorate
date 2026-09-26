@@ -1,0 +1,17 @@
+{
+    "displayName": "双子座",
+    "fluxCapacitors": 0,
+    "fluxVents": 0,
+    "hullId": "astd_gemini_bomber",
+    "hullMods": [],
+    "quality": 1.0,
+    "variantId": "astd_gemini_bomber_Bomber",
+    "weaponGroups": [
+        {
+            "mode": "LINKED",
+            "weapons": {
+                "WS 001": "astd_gemini_dem_fighter"
+            }
+        }
+    ]
+}
