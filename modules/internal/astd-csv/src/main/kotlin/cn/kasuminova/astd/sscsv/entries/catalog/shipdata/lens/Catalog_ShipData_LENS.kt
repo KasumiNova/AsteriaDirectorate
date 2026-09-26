@@ -287,10 +287,10 @@ object Ship_astd_gemini_bomber : ShipDataEntry() {
     override val name: String = shipName(id)
     override val designation: String = "轰炸机"
     override val tech: String = "菀星设计局-紫菀"
-    override val hitpoints: Int = 500
-    override val armorRating: Int = 100
-    override val maxFlux: Int = 500
-    override val fluxDissipation: Int = 75
+    override val hitpoints: Int = 800
+    override val armorRating: Int = 200
+    override val maxFlux: Int = 800
+    override val fluxDissipation: Int = 80
     override val maxSpeed: Int = 150
     override val acceleration: Int = 300
     override val deceleration: Int = 250
