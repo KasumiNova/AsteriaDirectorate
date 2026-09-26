@@ -511,7 +511,7 @@ prev != null 时先惰性过期：now - prev.hitTime > 1s → 视为无记录
 | 双弹头异色 | 引擎喷流/尾焰（.proj engineSlots）、爆炸色、payload 光束色（.wpn）、锁定激光双色（两件隐藏 beam .wpn）：动能冷蓝白 / 高爆共振红（2026-09-26 裁定，弃暖橙） | 数据面 §1.3/§1.4 |
 | 锁定充能过程 | 异色锁定激光（astd_gemini_dem_targetinglaser_kinetic/_he，结构照原版 targetinglaser3，behaviorSpec `targetingLaserId` 参数化直换） | behaviorSpec |
 | 光束发射点特效 | 出现瞬间 10 个同色星云（100~200su、偏移 20~40su、零速度、~1s 消散）+ 存续期双 Flare（SMOOTH 圆斑 + SHARP_DISC 垂直光柱） | PayloadBeamVfx |
-| 光束存续氛围 | 每 0.2s 冒 2 个同色星云（50~100su、偏移 ≤40su、~0.5s 消散）；动能光束头尾装饰电弧（端点抖动合计 ≤80su） | PayloadBeamVfx |
+| 光束存续氛围 | 每 0.2s 冒 2 个同色星云（50~100su、偏移 ≤40su、~0.5s 消散）；动能光束一道装饰电弧横跨束线全长（发射点 → 命中点钉死，2026-09-26 裁定） | PayloadBeamVfx |
 | HUD 状态栏 | **不设置**：同步是瞬时事件，紫色渐变 + 白闪已覆盖 | — |
 
 ### 2.4 0 值与边界处理（对照实现注意事项 3）
@@ -539,7 +539,7 @@ prev != null 时先惰性过期：now - prev.hitTime > 1s → 视为无记录
 | 检查项 | 结论 | 理由 |
 |---|---|---|
 | 弹体 VFX 登记 | `astd_gemini_dem_kinetic_msl` / `astd_gemini_dem_he_msl` | 2026-09-26（实机裁定）：双弹头接入 Static Trail 拖尾管线（四层惯例，width 5 / 固定带长 250 / recede 0，动能冷蓝白 140,190,255 / 高爆共振红 255,41,61（2026-09-26 裁定弃暖橙，配色锚 .proj 引擎焰色），两弹头另挂 boxFlare 发光组件（SMOOTH，size 24，glow 2.0/4.0）；脚本 spawn 弹体不触发 onFireEffect，由 `GeminiDemSalvoOnFireEffect` 显式 `ProjectileVfxDriverPlugin.track` 登记（冰晶脚本先例）；bolt 组件对 MissileAPI 自动禁用，弹体本体仍走原版导弹贴图渲染 |
-| 光束 VFX 登记 | `GeminiDemPayloadBeamVfx` | 2026-09-26 重做：payload 光束 BoxUtil 光束实体自绘（动能 zappy / 高爆 flow 贴图），原版束体隐藏；出现 ramp-in 0.1s、停火消散 0.45s；发射瞬间 10 个同色星云爆发 + 存续期发射点双 Flare（SMOOTH 圆斑 + SHARP_DISC 垂直光柱）+ 每 0.2s×2 环绕星云 + 动能头尾装饰电弧；同步触发时束体/双 Flare 渐变转紫（SYNC_BLEND 0.25s 升降，读 demDrone.customData SYNC_VISUAL_KEY）。三个实机判例：①节点表必须传可变 ArrayList——`TrailEntity._deleteExc`/`resetNodes` 会 `nodeList.clear()`，定长 list 在 delete 时抛 UnsupportedOperationException；②firing 期间必须逐帧重钉 globalTimer FULL 段（KEEPALIVE 保活），否则创建期长 full 兜底导致光束滞留；③**同尺寸节点表再提交必须 `setNodeRefreshAllFromCurrentIndex()` 后再 `submitNodes()`**——BoxUtil TrailEntity.submitNodes 只上传 setNodeRefresh 圈定区间，默认刷新计数为 0 会静默跳过，光束长度/几何随之写死不跟随受击点（2026-09-26 用户实机报告的根因） |
+| 光束 VFX 登记 | `GeminiDemPayloadBeamVfx` | 2026-09-26 重做：payload 光束 BoxUtil 光束实体自绘（动能 zappy / 高爆 flow 贴图），原版束体隐藏；出现 ramp-in 0.1s、停火消散 0.45s；发射瞬间 10 个同色星云爆发 + 存续期发射点双 Flare（SMOOTH 圆斑 + SHARP_DISC 垂直光柱）+ 每 0.2s×2 环绕星云 + 动能束线全长装饰电弧（发射点→命中点钉死）；同步触发时束体/双 Flare 渐变转紫（SYNC_BLEND 0.25s 升降，读 demDrone.customData SYNC_VISUAL_KEY）。三个实机判例：①节点表必须传可变 ArrayList——`TrailEntity._deleteExc`/`resetNodes` 会 `nodeList.clear()`，定长 list 在 delete 时抛 UnsupportedOperationException；②firing 期间必须逐帧重钉 globalTimer FULL 段（KEEPALIVE 保活），否则创建期长 full 兜底导致光束滞留；③**同尺寸节点表再提交必须 `setNodeRefreshAllFromCurrentIndex()` 后再 `submitNodes()`**——BoxUtil TrailEntity.submitNodes 只上传 setNodeRefresh 圈定区间，默认刷新计数为 0 会静默跳过，光束长度/几何随之写死不跟随受击点（2026-09-26 用户实机报告的根因） |
 | 爆炸/冲击 | 复用原版 | 弹头爆炸色 .proj 直配（HE 改共振红族，2026-09-26）；同步共振白闪保留 `spawnExplosion`；不上锥面组件（本组无锥状机制） |
 | HUD | N/A | §2.3 已说明 |
 | i18n | 见 §1.5 | 键清单齐全 |

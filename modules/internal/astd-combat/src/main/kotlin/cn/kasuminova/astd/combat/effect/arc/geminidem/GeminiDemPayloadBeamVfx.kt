@@ -356,7 +356,7 @@ class GeminiDemPayloadBeamVfx : EveryFrameWeaponEffectPlugin {
         }
     }
 
-    /** 动能光束装饰电弧：头尾各一道，端点相对束线抖动 ≤40su（合计误差 ≤80su），纯视觉。 */
+    /** 动能光束装饰电弧：一道横跨束线全长（发射点 → 命中点，两端钉死不抖动），纯视觉。 */
     private fun advanceDecorArcs(
         state: BeamVisualState,
         engine: CombatEngineAPI,
@@ -368,11 +368,7 @@ class GeminiDemPayloadBeamVfx : EveryFrameWeaponEffectPlugin {
         state.decorArcInterval.advance(amount)
         if (!state.decorArcInterval.intervalElapsed()) return
         val dir = Misc.getUnitVectorAtDegreeAngle(facing)
-        val seg = (length * DECOR_ARC_SEGMENT_FRACTION).coerceAtMost(DECOR_ARC_SEGMENT_MAX)
-        // 尾段（发射点侧）
-        spawnDecorArc(engine, jitter(from), jitter(offset(from, dir, seg)))
-        // 头段（命中点侧）
-        spawnDecorArc(engine, jitter(offset(from, dir, length - seg)), jitter(offset(from, dir, length)))
+        spawnDecorArc(engine, from, offset(from, dir, length))
     }
 
     private fun spawnDecorArc(engine: CombatEngineAPI, a: Vector2f, b: Vector2f) {
@@ -381,12 +377,6 @@ class GeminiDemPayloadBeamVfx : EveryFrameWeaponEffectPlugin {
 
     private fun offset(origin: Vector2f, dir: Vector2f, dist: Float): Vector2f =
         Vector2f(origin.x + dir.x * dist, origin.y + dir.y * dist)
-
-    private fun jitter(pos: Vector2f): Vector2f {
-        val j = Misc.getUnitVectorAtDegreeAngle(MathUtils.getRandomNumberInRange(0f, 360f))
-        j.scale(MathUtils.getRandomNumberInRange(0f, DECOR_ARC_JITTER))
-        return Vector2f(pos.x + j.x, pos.y + j.y)
-    }
 
     private fun spriteOf(kind: Kind): SpriteAPI = when (kind) {
         Kind.KINETIC -> kineticSprite
@@ -448,12 +438,9 @@ class GeminiDemPayloadBeamVfx : EveryFrameWeaponEffectPlugin {
         private const val AMBIENT_NEBULA_JITTER = 40f
         private const val AMBIENT_NEBULA_ALPHA = 90
 
-        // 动能装饰电弧
+        // 动能装饰电弧（全长一道，发射点→命中点钉死）
         private const val DECOR_ARC_INTERVAL = 0.1f
-        private const val DECOR_ARC_JITTER = 40f
         private const val DECOR_ARC_THICKNESS = 10f
-        private const val DECOR_ARC_SEGMENT_FRACTION = 0.3f
-        private const val DECOR_ARC_SEGMENT_MAX = 250f
 
         // 发射点常驻光斑尺寸
         private const val FLARE_GLOW_SIZE = 46f
