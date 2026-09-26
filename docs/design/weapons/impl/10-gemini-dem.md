@@ -409,6 +409,7 @@ const val SYNC_REGISTRY_KEY = "astd_gemini_sync_registry"
        missile.setMissileAI(GeminiDemTrackAI(missile, target))
        missile.customData[SALVO_KEY] = salvoId
        engine.addPlugin(DEMScript(missile, ship, weapon))   // 等价 DEMEffect 全部逻辑（事实 #3）
+       ProjectileVfxDriverPlugin.track(engine, missile, projId)   // 拖尾登记（2026-09-26：脚本 spawn 不触发 onFireEffect）
 ```
 
 **GeminiDemTrackAI**（状态机：`target: ShipAPI?`）：
@@ -417,14 +418,20 @@ const val SYNC_REGISTRY_KEY = "astd_gemini_sync_registry"
 advance(amount):
     engine = Global.getCombatEngine()；engine.isPaused → return
     missile.isFading / isExpired → return
+    flightElapsed += amount
     target 失效（null / !isAlive / isHulk / !engine.isEntityInPlay）→
         target = 2500su 内最近敌舰（规则同 Salvo 第 3 步）
     t = target
     t != null：
-        angleTo = VectorUtils.getAngle(missile.location, t.location)
-        diff = MathUtils.getShortestRotation(missile.facing, angleTo)
+        // 摆动飞行（2026-09-26 实机裁定）：瞄准点 = 目标位置 + 垂直弹目连线的正弦横向偏移，
+        // 幅度 80~160su / 频率 0.5~1.1Hz / 相位随机（每枚弹头构造期抽取，互不同步）
+        offset = sin(flightElapsed×2π×freq + phase) × amp
+                 × min(flightElapsed/0.6s, 1)        // 起飞渐强
+                 × min(dist/500su, 1)                 // 末端收敛（命中段回归直线）
+        aim = offset != 0 ? t.location 沿 (弹目方向+90°) 偏移 offset : t.location
+        diff = MathUtils.getShortestRotation(missile.facing, VectorUtils.getAngle(missile.location, aim))
         |diff| > 1° → giveCommand(TURN_LEFT/TURN_RIGHT)
-    giveCommand(ACCELERATE)   // 有无目标都加速（无目标直飞）
+    giveCommand(ACCELERATE)   // 有无目标都加速（无目标直飞，直飞不摆动）
 getTarget() = target；setTarget(t) { target = t as? ShipAPI }
 ```
 
@@ -503,13 +510,13 @@ prev != null 时先惰性过期：now - prev.hitTime > 1s → 视为无记录
 
 | 检查项 | 结论 | 理由 |
 |---|---|---|
-| 弹体 VFX 登记 | N/A | texTrail 管线服务 BALLISTIC 射弹；本组弹体是导弹，走原版导弹渲染（贴图 + engineSlots 喷流/尾焰配色），数据面 §1.3 已配双色 |
-| 光束 VFX 登记 | `GeminiDemPayloadBeamVfx` | 2026-09-26：payload 光束改 BoxUtil 光束实体自绘（动能 zappy / 高爆 flow 贴图），原版束体由 beamEffect 隐藏；出现 ramp-in 0.1s、停火消散 0.45s（透明度→0、宽度→30%） |
+| 弹体 VFX 登记 | `astd_gemini_dem_kinetic_msl` / `astd_gemini_dem_he_msl` | 2026-09-26（实机裁定）：双弹头接入 Static Trail 拖尾管线（四层惯例，width 5 / 固定带长 250 / recede 0，动能冷蓝白 140,190,255 / 高爆破晓暖橙 255,190,130，配色锚 .proj 引擎焰色）；脚本 spawn 弹体不触发 onFireEffect，由 `GeminiDemSalvoOnFireEffect` 显式 `ProjectileVfxDriverPlugin.track` 登记（冰晶脚本先例）；bolt 组件对 MissileAPI 自动禁用，弹体本体仍走原版导弹贴图渲染 |
+| 光束 VFX 登记 | `GeminiDemPayloadBeamVfx` | 2026-09-26：payload 光束改 BoxUtil 光束实体自绘（动能 zappy / 高爆 flow 贴图），原版束体由 beamEffect 隐藏；出现 ramp-in 0.1s、停火消散 0.45s（透明度→0、宽度→30%）。节点表必须传可变 ArrayList——`TrailEntity._deleteExc`/`resetNodes` 会 `nodeList.clear()`，Kotlin `listOf` 产出的定长 list 在 delete 时抛 UnsupportedOperationException 并卡死淡出 |
 | 爆炸/冲击 | 复用原版 | 弹头爆炸色 .proj 直配；同步冲击闪光用 `spawnExplosion`；不上锥面组件（本组无锥状机制） |
 | HUD | N/A | §2.3 已说明 |
 | i18n | 见 §1.5 | 键清单齐全 |
 
-烟测目检若判定原版尾焰/光束表现不足（对照设计案「异色 DEM」预期），再评估是否补登记——届时单独提出，不属于本规格范围。
+烟测目检若判定尾焰/光束表现仍不足（对照设计案「异色 DEM」预期），再评估参数面调整——届时单独提出，不属于本规格范围。
 
 ---
 
@@ -596,8 +603,8 @@ prev != null 时先惰性过期：now - prev.hitTime > 1s → 视为无记录
 - [ ] 无刻意兼容/兜底；§2.4 十条边界各有定义行为
 
 **特效面**
-- [ ] ProjectileVfxSpecs / BeamVfxSpecs 两处零改动
-- [ ] 双色配色落点（.proj engineSlots + 爆炸色 + .wpn 光束三色）与设计案主色一致
+- [x] ~~ProjectileVfxSpecs / BeamVfxSpecs 两处零改动~~（2026-09-26 实机裁定推翻：双弹头已登记 ProjectileVfxSpecs 拖尾，见 §3 表）
+- [ ] 双色配色落点（.proj engineSlots + 爆炸色 + .wpn 光束三色 + Static Trail 拖尾双色）与设计案主色一致
 
 **测试面**
 - [ ] §4.1 十三条单测全部存在且为真实逻辑驱动（无源码 contain）；窗口恰界/触发清零/难度三档/WARN 路径断言点齐全

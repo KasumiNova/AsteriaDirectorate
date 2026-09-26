@@ -1,5 +1,6 @@
 package cn.kasuminova.astd.combat.effect.arc.geminidem
 
+import cn.kasuminova.astd.renderer.projectile.driver.ProjectileVfxDriverPlugin
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.DamagingProjectileAPI
@@ -67,7 +68,7 @@ class GeminiDemSalvoOnFireEffect(
         val facing = projectile.facing
         val baseLoc = projectile.location
 
-        for ((weaponId, lateralSign) in WARHEADS) {
+        for ((weaponId, projId, lateralSign) in WARHEADS) {
             // 垂直错位：沿 facing 垂直方向偏移 lateralSign × 12su（规格 §2.2 第 5 步）
             val loc = MathUtils.getPointOnCircumference(
                 Vector2f(baseLoc),
@@ -82,6 +83,9 @@ class GeminiDemSalvoOnFireEffect(
                 log.error("双子星 DEM 齐射：spawnProjectile($weaponId) 返回非 MissileAPI（$spawned），跳过本枚（理论不可达）")
                 continue
             }
+            // 拖尾接入（规格 10 §特效）：脚本 spawn 弹体不触发 onFireEffect，显式登记进 Static Trail 管线
+            // （冰晶分裂/附着脚本先例）；bolt 组件对 MissileAPI 自动禁用，弹体本体仍走原版导弹贴图渲染
+            ProjectileVfxDriverPlugin.track(engine, missile, projId)
             missile.source = ship
             missile.armingTime = GeminiDemDifficulty.WARHEAD_ARMING_TIME
             missile.missileAI = GeminiDemTrackAI(missile, target)
@@ -105,10 +109,10 @@ class GeminiDemSalvoOnFireEffect(
     companion object {
         private val log = Global.getLogger(GeminiDemSalvoOnFireEffect::class.java)
 
-        /** 齐射编成：动能 -1 舷 / 高爆 +1 舷。 */
+        /** 齐射编成：动能 -1 舷 / 高爆 +1 舷（三元组：弹头武器 id、弹体 spec id、舷侧符号）。 */
         private val WARHEADS = listOf(
-            GeminiDemDifficulty.KINETIC_WEAPON_ID to -1f,
-            GeminiDemDifficulty.HE_WEAPON_ID to 1f,
+            Triple(GeminiDemDifficulty.KINETIC_WEAPON_ID, GeminiDemDifficulty.KINETIC_PROJ_ID, -1f),
+            Triple(GeminiDemDifficulty.HE_WEAPON_ID, GeminiDemDifficulty.HE_PROJ_ID, 1f),
         )
 
         /** 遥测键：齐射次数（automation 场景观测面，对齐既有组遥测先例）。 */

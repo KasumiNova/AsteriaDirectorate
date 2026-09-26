@@ -48,6 +48,11 @@ class GeminiDemPayloadBeamVfx : EveryFrameWeaponEffectPlugin {
         var lastFrom: Vector2f? = null
         var lastFacing = 0f
         var lastLength = 0f
+
+        // 可复用节点表：TrailEntity.setNodes 持有引用且 _deleteExc/resetNodes 会 clear()，
+        // 必须传可变的 java.util.ArrayList（Kotlin listOf 产出的定长 list 会在 delete 时抛
+        // UnsupportedOperationException）；逐帧原地改写元素避免每帧分配
+        val nodes = arrayListOf(Vector2f(0f, 0f), Vector2f(0f, 0f))
     }
 
     override fun advance(amount: Float, engine: CombatEngineAPI, weapon: WeaponAPI) {
@@ -91,7 +96,7 @@ class GeminiDemPayloadBeamVfx : EveryFrameWeaponEffectPlugin {
             val ramp = (state.activeElapsed / RAMP_IN).coerceIn(0f, 1f)
             val entity = state.entity ?: createEntity(engine, kind, from, facing, length).also { state.entity = it }
             if (entity != null) {
-                updateEntity(entity, from, facing, length, alphaMul = ramp, widthMul = ramp)
+                updateEntity(entity, state.nodes, from, facing, length, alphaMul = ramp, widthMul = ramp)
             }
             return
         }
@@ -112,7 +117,7 @@ class GeminiDemPayloadBeamVfx : EveryFrameWeaponEffectPlugin {
         val entity = state.entity
         val from = state.lastFrom
         if (entity != null && from != null) {
-            updateEntity(entity, from, state.lastFacing, state.lastLength, alphaMul = 1f - t, widthMul = lerp(1f, FADE_WIDTH_END_MUL, t))
+            updateEntity(entity, state.nodes, from, state.lastFacing, state.lastLength, alphaMul = 1f - t, widthMul = lerp(1f, FADE_WIDTH_END_MUL, t))
         }
         if (t >= 1f) {
             entity?.delete()
@@ -157,13 +162,15 @@ class GeminiDemPayloadBeamVfx : EveryFrameWeaponEffectPlugin {
     /** 每帧同步几何与生命阶段参数（长度跟随 beam；alpha/宽度乘数由 ramp-in 与消散淡出驱动）。 */
     private fun updateEntity(
         entity: TrailEntity,
+        nodes: ArrayList<Vector2f>,
         from: Vector2f,
         facing: Float,
         length: Float,
         alphaMul: Float,
         widthMul: Float,
     ) {
-        entity.setNodes(listOf(Vector2f(0f, 0f), Vector2f(length, 0f)))
+        nodes[1].x = length
+        entity.setNodes(nodes)
         entity.submitNodes()
         entity.setStateVanilla(from, BoxUtilCombatVfx.normalizeFacingDeg(facing))
 

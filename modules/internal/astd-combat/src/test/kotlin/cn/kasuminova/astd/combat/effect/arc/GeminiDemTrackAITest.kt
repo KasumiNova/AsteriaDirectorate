@@ -12,6 +12,7 @@ import org.mockito.Mockito.never
 import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
@@ -113,5 +114,34 @@ class GeminiDemTrackAITest {
         val ai = GeminiDemTrackAI(missile, target, engineProvider = { engine }, retarget = { _, _ -> null })
         ai.advance(0.016f)
         verify(missile, never()).giveCommand(ShipCommand.ACCELERATE)
+    }
+
+    @Test
+    fun `用例11d 摆动飞行：纯函数波形锚定 + 远距离追踪段转向指令左右交替`() {
+        // 纯函数锚定：weaveOffset = sin(elapsed×2π×freq + phase) × amp
+        assertEquals(0f, GeminiDemTrackAI.weaveOffset(0f, 0f, 1f, 120f), 1e-4f)
+        assertEquals(120f, GeminiDemTrackAI.weaveOffset(0.25f, 0f, 1f, 120f), 1e-4f)
+        assertEquals(-120f, GeminiDemTrackAI.weaveOffset(0.75f, 0f, 1f, 120f), 1e-4f)
+
+        // 定值种子驱动真实 advance：目标正前方 2000su（proximity 全额），4 秒内正弦偏移多次过零，
+        // 瞄准点左右交替 → 转向指令必须同时出现过 LEFT 与 RIGHT（直线追尾只会单边或死区静默）
+        val engine = stubEngine()
+        val missile = stubMissile(0f, 0f, 0f)
+        val target = stubShip("T1", 2000f, 0f)
+        `when`(engine.isEntityInPlay(target)).thenReturn(true)
+        val commands = mutableListOf<ShipCommand>()
+        org.mockito.Mockito.doAnswer { inv -> commands += inv.getArgument<ShipCommand>(0); null }
+            .`when`(missile).giveCommand(org.mockito.ArgumentMatchers.any())
+
+        val ai = GeminiDemTrackAI(
+            missile, target,
+            engineProvider = { engine },
+            retarget = { _, _ -> null },
+            random = kotlin.random.Random(42),
+        )
+        repeat(40) { ai.advance(0.1f) }
+
+        assertTrue(ShipCommand.TURN_LEFT in commands, "摆动段应出现过左转指令")
+        assertTrue(ShipCommand.TURN_RIGHT in commands, "摆动段应出现过右转指令")
     }
 }

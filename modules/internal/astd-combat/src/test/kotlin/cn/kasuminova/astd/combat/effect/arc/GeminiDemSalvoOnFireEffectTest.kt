@@ -4,6 +4,8 @@ import cn.kasuminova.astd.combat.effect.arc.geminidem.GeminiDemDifficulty
 import cn.kasuminova.astd.combat.effect.arc.geminidem.GeminiDemSalvoOnFireEffect
 import cn.kasuminova.astd.combat.effect.arc.geminidem.GeminiDemTrackAI
 import cn.kasuminova.astd.impl.buff.WarnCapture
+import cn.kasuminova.astd.renderer.projectile.driver.ProjectileVfxDriverPlugin
+import cn.kasuminova.astd.renderer.projectile.driver.ProjectileVfxSpecs
 import com.fs.starfarer.api.combat.BaseEveryFrameCombatPlugin
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEntityAPI
@@ -118,6 +120,8 @@ class GeminiDemSalvoOnFireEffectTest {
                 BaseEveryFrameCombatPlugin()
             },
         )
+        // 拖尾管线构建函数注册表（实机由 CombatVfxBootstrap 装配，测试侧显式装一次以对齐实机前提）
+        ProjectileVfxSpecs.install()
         effect.onFire(projectile, weapon, engine)
 
         verify(engine).removeEntity(projectile)
@@ -144,10 +148,12 @@ class GeminiDemSalvoOnFireEffectTest {
         assertEquals(2, demAttached.size, "两枚弹头均装配 DEMScript 插件")
         assertSame(kineticMissile, demAttached[0])
         assertSame(heMissile, demAttached[1])
-        verify(engine, times(2)).addPlugin(org.mockito.ArgumentMatchers.any(EveryFrameCombatPlugin::class.java))
+        // addPlugin 共 3 次：DEMScript ×2 + 拖尾管线 ProjectileVfxDriverPlugin 安装 ×1（track → ensureInstalled）
+        verify(engine, times(3)).addPlugin(org.mockito.ArgumentMatchers.any(EveryFrameCombatPlugin::class.java))
 
         assertEquals(1, GeminiDemSalvoOnFireEffect.salvoCount(engine))
         assertEquals(2, GeminiDemSalvoOnFireEffect.warheadsSpawned(engine))
+        assertEquals(2, ProjectileVfxDriverPlugin.trackedCountForTests(engine), "双弹头均登记进 Static Trail 拖尾管线")
     }
 
     @Test

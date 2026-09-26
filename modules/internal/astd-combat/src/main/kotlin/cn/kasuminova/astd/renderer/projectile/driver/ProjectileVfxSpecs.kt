@@ -133,6 +133,16 @@ object ProjectileVfxSpecs {
         "astd_cuifeng_torpedo_shot" to { range -> cuifengTorpedoShot("astd_cuifeng_torpedo_shot", range) },
         // 源生冰晶 MIRV 母弹（purple/30-superlative.md §特效）：冰蓝白，trail 长 = 射程×50%、recede 0。
         "astd_ice_shard_mirv_shot" to { range -> iceShardMirvShot("astd_ice_shard_mirv_shot", range) },
+        // 双子星 DEM 双弹头（规格 10 §特效）：脚本 spawn 弹体不触发 onFireEffect，由 GeminiDemSalvoOnFireEffect
+        // 显式 ProjectileVfxDriverPlugin.track 接入。动能冷蓝白（同引擎焰色 140,190,255）/ 高爆破晓暖橙
+        // （255,190,130），width 5 小型导弹（12×25 贴图），带长固定 250（追踪段摆动弹道在带上可读），
+        // recede 0（带体亮头直抵弹头，同摧锋/辉星导弹口径）；bolt 组件对 MissileAPI 自动禁用，本体贴图走原版渲染。
+        "astd_gemini_dem_kinetic_msl" to {
+            simpleProjectileVfx("astd_gemini_dem_kinetic_msl", geminiKineticBlue(), width = 5f, length = 250f, recede = 0f)
+        },
+        "astd_gemini_dem_he_msl" to {
+            simpleProjectileVfx("astd_gemini_dem_he_msl", geminiHeOrange(), width = 5f, length = 250f, recede = 0f)
+        },
         // 源生冰晶子射弹：15 枚小冰晶成群，弹体本体由 spriteBody 接管（BoxUtil SpriteEntity 逐帧跟随，normal alpha 对齐原版
         // 导弹贴图语义），原版贴图渲染由 .proj 的 sprite=BUtil_NONE.png 屏蔽，bolt 显式关闭（本体贴图取代螺栓）。
         "astd_ice_shard_sub_msl" to {
@@ -423,6 +433,10 @@ object ProjectileVfxSpecs {
 
     // 源生冰晶族：冰蓝白（LENS 紫线中的冰晶冷色，全局美术约定新调色板由收口人添加）。
     private fun iceBlue() = ASTDColor(0.72f, 0.9f, 1f, 1f)
+
+    // 双子星 DEM 弹头：配色锚 .proj 引擎焰色（动能 140,190,255 冷蓝白 / 高爆 255,190,130 暖橙），组内内联。
+    private fun geminiKineticBlue() = ASTDColor(0.55f, 0.75f, 1f, 1f)
+    private fun geminiHeOrange() = ASTDColor(1f, 0.75f, 0.51f, 1f)
 
     // 正电子冲击波：冷蓝白系（全局美术约定「正电子用白色弹体与明亮拖尾」），分支内内联字面量。
     private fun positronWhiteBlue() = ASTDColor(0.62f, 0.82f, 1f, 1f)

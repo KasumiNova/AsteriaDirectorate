@@ -19,6 +19,12 @@ object GeminiDemDifficulty {
     /** 隐藏弹头武器 id：高爆。 */
     const val HE_WEAPON_ID = "astd_gemini_dem_he"
 
+    /** 弹头弹体 spec id（拖尾管线登记键，对齐 catalog 生成器 geminiDemWarheadProjSpec）：动能。 */
+    const val KINETIC_PROJ_ID = "astd_gemini_dem_kinetic_msl"
+
+    /** 弹头弹体 spec id（拖尾管线登记键）：高爆。 */
+    const val HE_PROJ_ID = "astd_gemini_dem_he_msl"
+
     /** payload 光束武器 id：动能（DEMScript 打击段结算光束）。 */
     const val KINETIC_PAYLOAD_ID = "astd_gemini_dem_kinetic_payload"
 
