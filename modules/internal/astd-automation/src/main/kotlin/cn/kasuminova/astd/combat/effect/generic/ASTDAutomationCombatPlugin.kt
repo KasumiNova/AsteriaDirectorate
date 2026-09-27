@@ -597,9 +597,11 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     private var gsrActivationFluxDeltaMax = 0f
     private var gsrFired = false
     private var gsrOrigDamage = -1f
+    private var gsrOrigFacing = -1f
     private var gsrOriginalShots = 0
     private var gsrReplicaShots = 0
     private var gsrReplicaDamageMax = 0f
+    private var gsrReplicaFacingMaxDelta = 0f
     private var gsrPrevFlux = -1f
     private val gsrFluxSpikes = mutableListOf<Float>()
     private val gsrSeenOwnProjectiles = mutableSetOf<Int>()
@@ -7249,11 +7251,23 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             if (!gsrSeenOwnProjectiles.add(key)) continue
             val damage = damaging.damageAmount
             if (gsrOrigDamage < 0f || damage > gsrOrigDamage * 0.7f) {
-                if (gsrOrigDamage < 0f) gsrOrigDamage = damage
+                if (gsrOrigDamage < 0f) {
+                    gsrOrigDamage = damage
+                    gsrOrigFacing = damaging.facing
+                }
                 gsrOriginalShots++
             } else {
                 gsrReplicaShots++
                 gsrReplicaDamageMax = maxOf(gsrReplicaDamageMax, damage)
+                // 收敛射向证据：复制弹朝向与原发弹朝向的角差（环带随机出生点 → 指向同一终点
+                // 必然与原射向有夹角；退化为 0 即复制弹与原弹平行，是收敛失效的直接特征）。
+                // 闸门用 gsrOrigDamage 而非 gsrOrigFacing：朝向合法域含负值，不能用负数当未初始化哨兵。
+                if (gsrOrigDamage >= 0f) {
+                    gsrReplicaFacingMaxDelta = maxOf(
+                        gsrReplicaFacingMaxDelta,
+                        Math.abs(Misc.getAngleDiff(damaging.facing, gsrOrigFacing)),
+                    )
+                }
             }
         }
     }
@@ -7395,6 +7409,13 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                                         failureReason = "gsr replica damage=${"%.1f".format(gsrReplicaDamageMax)}" +
                                                 " / orig=${"%.1f".format(gsrOrigDamage)} ∉ [$GSR_REPLICA_DAMAGE_RATIO_MIN, $GSR_REPLICA_DAMAGE_RATIO_MAX]" +
                                                 "（断言点 GSR-C：复制体伤害 ×0.5）"
+                                        transitionGsrPhase(GSR_PHASE_FAILED)
+                                    }
+
+                                    gsrReplicaFacingMaxDelta < GSR_REPLICA_CONVERGE_MIN_DELTA -> {
+                                        failureReason = "gsr replica facing delta=${"%.2f".format(gsrReplicaFacingMaxDelta)}°" +
+                                                " < $GSR_REPLICA_CONVERGE_MIN_DELTA°（origFacing=${"%.2f".format(gsrOrigFacing)}）" +
+                                                "（断言点 GSR-C：复制弹从环带出生点收敛到主射弹终点，射向必须与原射向有夹角）"
                                         transitionGsrPhase(GSR_PHASE_FAILED)
                                     }
 
@@ -9042,6 +9063,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 appendLine("  \"gsrOriginalShots\": $gsrOriginalShots,")
                 appendLine("  \"gsrReplicaShots\": $gsrReplicaShots,")
                 appendLine("  \"gsrReplicaDamageMax\": ${formatFloat(gsrReplicaDamageMax)},")
+                appendLine("  \"gsrReplicaFacingMaxDelta\": ${formatFloat(gsrReplicaFacingMaxDelta)},")
                 appendLine("  \"gsrFluxSpikeCount\": ${gsrFluxSpikes.size},")
                 appendLine("  \"gsrCooldownBeamMultMax\": ${formatFloat(gsrCooldownBeamMultMax)},")
                 appendLine("  \"gsrCooldownFedCount\": $gsrCooldownFedCount,")
@@ -10873,6 +10895,10 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private const val GSR_ACTIVATE_TIMEOUT = 10f
         private const val GSR_ACTIVATION_FLUX_TOLERANCE = 0.25f
         private const val GSR_FIRE_DELAY_SECONDS = 0.3f
+
+        // 复制弹收敛射向断言下限（度）：环带出生点偏离原弹道轴 → 收敛射向与原射向必有夹角；
+        // 取 max 口径（任一发复制弹明显收敛即通过），随机出生点恰好压在弹道轴上的概率近零。
+        private const val GSR_REPLICA_CONVERGE_MIN_DELTA = 0.5f
 
         // 结算宽限：ACTIVE（2s）转 COOLDOWN 后再等 0.5s 才评估复制证据——晚发原发弹的
         // 第二发复制（发射 +1.0s，listener 队列推进不随系统关闭取消）可能压线落地。

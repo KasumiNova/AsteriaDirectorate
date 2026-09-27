@@ -267,6 +267,7 @@
         "gsrOriginalShots",
         "gsrReplicaShots",
         "gsrReplicaDamageMax",
+        "gsrReplicaFacingMaxDelta",
         "gsrFluxSpikeCount",
         "gsrCooldownBeamMultMax",
         "gsrCooldownFedCount",
