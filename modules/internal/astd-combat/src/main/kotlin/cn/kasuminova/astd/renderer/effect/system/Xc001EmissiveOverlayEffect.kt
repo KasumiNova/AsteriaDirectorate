@@ -84,7 +84,8 @@ internal object Xc001EmissiveOverlayEffect {
             while (it.hasNext()) {
                 val (_, att) = it.next()
                 val ship = att.ship
-                if (ship.isHulk || ship.hitpoints <= 0f) {
+                // 残骸化/击毁/撤离战场（retreat 离场后 isEntityInPlay=false）均收口删除常驻光斑
+                if (ship.isHulk || ship.hitpoints <= 0f || !engine.isEntityInPlay(ship)) {
                     deleteAttachment(att)
                     it.remove()
                     continue

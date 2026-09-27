@@ -7,7 +7,6 @@ import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.DamagingProjectileAPI
 import com.fs.starfarer.api.combat.OnFireEffectPlugin
 import com.fs.starfarer.api.combat.WeaponAPI
-import org.boxutil.manager.CombatRenderingManager
 import org.boxutil.units.standard.entity.DistortionEntity
 import org.lazywizard.lazylib.MathUtils
 import org.lwjgl.util.vector.Vector2f
@@ -72,7 +71,7 @@ class Aod7OnFireEffect : OnFireEffectPlugin {
                 e.powerFull = 0.32f
                 e.powerOut = 0f
                 e.setLocation(Vector2f(loc))
-                CombatRenderingManager.addEntity(e)
+                BoxUtilCombatVfx.addEntity(engine, e)
             } catch (_: Throwable) {
             }
         }

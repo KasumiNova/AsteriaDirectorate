@@ -6,10 +6,12 @@ import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import cn.kasuminova.astd.internal.i18n.I18n
 import cn.kasuminova.astd.ui.dsl.buildWith
 import com.fs.starfarer.api.Global
+import com.fs.starfarer.api.combat.BaseEveryFrameCombatPlugin
 import com.fs.starfarer.api.combat.BaseHullMod
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.combat.ShipSystemAPI
+import com.fs.starfarer.api.input.InputEventAPI
 import com.fs.starfarer.api.ui.TooltipMakerAPI
 import com.fs.starfarer.api.util.Misc
 import java.awt.Color
@@ -30,7 +32,8 @@ import java.awt.Color
  *    从舰体碰撞箱边缘向随机外方向发射一波波形光斑（FlareEntity 组合：SMOOTH 圆斑 +
  *    SMOOTH_DISC 柔和光柱，外飘淡出，池化常驻实体）；舰船中心常驻一个极大 SMOOTH 圆斑
  *    （碰撞半径数倍，alpha 固定 10%）。舰船相位时全部切换为红色系，退出相位恢复紫色。
- *    力场失效/残骸化时中心光斑移除（收口挂 FieldState/hulk 路径）。
+ *    力场失效/残骸化时中心光斑移除（收口挂 FieldState/hulk 路径）；
+ *    舰船撤离战场（非残骸化）由 [DepartedCleanupWatcher] 探活收口（含被压制目标的 stat 修饰）。
  *
  * 失效条件：舰船系统处于冷却（[ShipSystemAPI.SystemState.COOLDOWN]；IN/ACTIVE/OUT 激活过程保持），
  * 或舰船残骸化（残骸化瞬间对全部受影响目标执行 unmodify 收口）。
@@ -51,6 +54,33 @@ class GravEmFieldHullMod : BaseHullMod() {
         val affected = HashSet<ShipAPI>()
         var waveTimer = 0f
         var centerFlare: GravEmFieldVfx.CenterFlare? = null
+        var departedWatcherInstalled = false
+    }
+
+    /**
+     * 离场清场哨兵：舰船撤离战场（retreat 等非残骸化移除）后 advanceInCombat 不再被调用，
+     * 力场视觉（中心光斑/波形池）与被压制目标的 stat 修饰都失去收口路径——本插件每帧探活
+     * （[CombatEngineAPI.isEntityInPlay]），确认离场即全量收口并自移除。
+     * 残骸化不触发本路径（hulk 仍在 engine 视图中），hulk/冷却收口走 advanceInCombat 既有路径。
+     */
+    private inner class DepartedCleanupWatcher(
+        private val engine: CombatEngineAPI,
+        private val ship: ShipAPI,
+    ) : BaseEveryFrameCombatPlugin() {
+        override fun advance(amount: Float, events: MutableList<InputEventAPI>?) {
+            if (engine.isEntityInPlay(ship)) return
+            val state = ship.customData[STATE_KEY] as? FieldState
+            if (state != null) {
+                for (target in state.affected) unmodifyTarget(target, modIdOf(ship))
+                state.affected.clear()
+                state.centerFlare?.dispose()
+                state.centerFlare = null
+                ship.removeCustomData(STATE_KEY)
+            }
+            GravEmFieldVfx.disposeWavePools(engine)
+            log.info("[ASTD] 引力电磁力场：舰船离场（ship=${ship.id}），中心光斑/波形池/压制修饰已收口")
+            engine.removePlugin(this)
+        }
     }
 
     override fun advanceInCombat(ship: ShipAPI, amount: Float) {
@@ -87,6 +117,10 @@ class GravEmFieldHullMod : BaseHullMod() {
 
         // 首写走 setCustomData（见类注释 customData 写入契约）
         val activeState = state ?: FieldState().also { ship.setCustomData(STATE_KEY, it) }
+        if (!activeState.departedWatcherInstalled) {
+            activeState.departedWatcherInstalled = true
+            engine.addPlugin(DepartedCleanupWatcher(engine, ship))
+        }
         val values = GravEmFieldTuning.resolve(DifficultyTuningImpl, ship.owner == 0)
         val modId = modIdOf(ship)
 
@@ -234,6 +268,8 @@ class GravEmFieldHullMod : BaseHullMod() {
         const val HULLMOD_ID = "astd_grav_em_field"
 
         private const val HULL_ID = "astd_zw_002"
+
+        private val log = Global.getLogger(GravEmFieldHullMod::class.java)
 
         /** 逐舰力场状态挂载键（ShipAPI.customData，战斗内随实体生命周期）。 */
         private const val STATE_KEY = "astd_grav_em_field_state"

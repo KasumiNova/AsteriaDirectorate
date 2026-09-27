@@ -7,6 +7,7 @@ import com.fs.starfarer.api.combat.DamagingProjectileAPI
 import com.fs.starfarer.api.graphics.SpriteAPI
 import org.boxutil.BoxUtilModPlugin
 import org.boxutil.base.api.RenderDataAPI
+import org.boxutil.base.api.resource.TemporaryCleanupPlugin
 import org.boxutil.define.BoxEnum
 import org.boxutil.manager.CombatRenderingManager
 import org.boxutil.units.standard.entity.TrailEntity
@@ -14,7 +15,19 @@ import org.boxutil.util.RenderingUtil
 import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
 
-/** BoxUtil combat 侧 VFX 小工具：确保 initLater/CombatRenderingManager 就绪，并提供常用 TrailEntity 构造方法。 */
+/**
+ * BoxUtil combat 侧 VFX 小工具：确保 initLater/CombatRenderingManager 就绪，并提供常用 TrailEntity 构造方法。
+ *
+ * 战斗域实体登记簿（[entityRegistry]）：`CombatRenderingManager.addEntity` 是静态全局注册、
+ * 无 engine 作用域，BoxUtil 对 renderEntityMap 的跨战斗清理在生涯追击/多轮接战路径上证据不足
+ * （实机堆转储实锤 99 万实例 / 1.3 GB 滞留）。addEntity 注册成功的实体全部入簿，
+ * 由两条路径兜底收口：
+ * 1. 全局 [TemporaryCleanupPlugin]（仅登记一次；BoxUtil cleanupAllQueue 回调后清空钩子集，
+ *    钩子内部会自我重新登记）；
+ * 2. engine 实例切换探测（ensureReady/addEntity 入口比较 engine 身份）——覆盖 cleanupCombatOnce
+ *    未触发的路径。
+ * 簿体自身防滞留：实体 delete 后经 [removeEntity] 摘除或注册越阈时顺手清理失效条目。
+ */
 object BoxUtilCombatVfx {
 
     private const val KEY_LATER_INIT = "astd_boxutil_later_init"
@@ -23,6 +36,17 @@ object BoxUtilCombatVfx {
     private const val KEY_LOG_NEBULA_FAIL_ONCE = "astd_boxutil_nebula_fail_once"
 
     private val log = Global.getLogger(BoxUtilCombatVfx::class.java)
+
+    private val entityRegistry = CombatEntityRegistry<RenderDataAPI>({ it.hasDelete() }, { it.delete() })
+
+    /** 当前战斗的 engine 身份标记（战斗边界判据：无公开战斗 id，engine 实例身份是最可靠口径）。 */
+    private var registryEngine: CombatEngineAPI? = null
+
+    private val cleanupHook = CombatCleanupHook()
+
+    /** 清理钩子全局只需登记一次；登记动作必须排在 BoxUtil initLater 成功之后（无 GL 环境触碰会抛类初始化异常）。 */
+    @Volatile
+    private var cleanupHookInstalled = false
 
     /**
      * 归一化朝向到 [0, 360)：BoxUtil `TrigUtil.sinFormCosF` 从 cos(半角) 反推 sin(半角) 时只做
@@ -33,6 +57,7 @@ object BoxUtilCombatVfx {
     fun normalizeFacingDeg(deg: Float): Float = ((deg % 360f) + 360f) % 360f
 
     fun ensureReady(engine: CombatEngineAPI) {
+        purgeOnEngineSwitch(engine)
         if (engine.customData[KEY_LATER_INIT] == true) return
         // isGlobalInitialized 首次触碰会触发 BoxConfigGUI 类初始化：无 GL 环境（单测/无头）
         // 直接抛 ExceptionInInitializerError，必须一并收进 try（否则一次失败后续全是 NoClassDefFoundError）
@@ -47,6 +72,45 @@ object BoxUtilCombatVfx {
         }
         if (initialized) {
             engine.customData[KEY_LATER_INIT] = true
+            installCleanupHookOnce()
+        }
+    }
+
+    /** engine 实例切换即视为战斗边界：上一场战斗的登记实体全部 delete 清簿（cleanupCombatOnce 未触发路径的兜底）。 */
+    private fun purgeOnEngineSwitch(engine: CombatEngineAPI) {
+        val previous = registryEngine
+        if (previous === engine) return
+        registryEngine = engine
+        if (previous != null) purgeRegistry("engine 实例切换兜底")
+    }
+
+    private fun purgeRegistry(reason: String) {
+        if (entityRegistry.size == 0) return
+        val result = entityRegistry.purge()
+        val message = "[ASTD] BoxUtil 战斗实体登记簿 purge（$reason）：登记 ${result.registered}，" +
+            "delete ${result.deleted}，已失效 ${result.alreadyDeleted}，失败 ${result.failures}"
+        if (result.failures > 0) {
+            val first = result.firstFailure
+            log.warn("$message；首个异常 ${first?.javaClass?.simpleName}: ${first?.message}（失败条目留簿待下轮重试）", first)
+        } else {
+            log.info(message)
+        }
+    }
+
+    private fun installCleanupHookOnce() {
+        if (cleanupHookInstalled) return
+        cleanupHookInstalled = true
+        CombatRenderingManager.addCleanupPlugin(cleanupHook)
+    }
+
+    /**
+     * 跨战斗清理钩子：BoxUtil `cleanupAllQueue` 在战斗↔标题/回生涯时回调本钩子，
+     * 但回调后随即清空钩子集（一次性语义），因此每次回调末尾自我重新登记以保持后续战斗仍受保护。
+     */
+    private class CombatCleanupHook : TemporaryCleanupPlugin {
+        override fun cleanupCombatOnce() {
+            purgeRegistry("cleanupCombatOnce")
+            CombatRenderingManager.addCleanupPlugin(this)
         }
     }
 
@@ -61,12 +125,33 @@ object BoxUtilCombatVfx {
      * @return 0 表示成功；非 0 表示失败（BoxUtil 内部状态码）。
      */
     fun addEntity(engine: CombatEngineAPI, entity: RenderDataAPI): Int {
+        purgeOnEngineSwitch(engine)
         var state = CombatRenderingManager.addEntity(entity).toInt()
         if (state != 0) {
             inviteCombatRenderingManagerIfNeeded(engine)
             state = CombatRenderingManager.addEntity(entity).toInt()
         }
+        if (state == 0) entityRegistry.register(entity)
         return state
+    }
+
+    /**
+     * 常驻实体的显式收尸入口：先 delete 后摘簿（簿体防滞留的主路径；
+     * 直接 `entity.delete()` 的调用点由注册越阈顺手清理与战斗切换 purge 兜底）。
+     * delete 抛异常时条目留簿（WARN 一次），等待战斗切换 purge 重试，避免摘簿后失联。
+     */
+    fun removeEntity(entity: RenderDataAPI) {
+        if (entity.hasDelete()) {
+            entityRegistry.unregister(entity)
+            return
+        }
+        try {
+            entity.delete()
+        } catch (t: Throwable) {
+            log.warn("BoxUtil 实体 delete 失败（${t.javaClass.simpleName}: ${t.message}），条目留簿等待 purge 重试", t)
+            return
+        }
+        entityRegistry.unregister(entity)
     }
 
     /**

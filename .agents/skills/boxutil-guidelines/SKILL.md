@@ -235,10 +235,24 @@ description: "BoxUtil 使用指南（API 速览、调试建议、避坑点），
   位置/自转 + 三段包络驱动 alpha；参考实现 TriShardComponent、ASTDXc002Vfx 尘埃粒子）；
 - `spawnTrail`：双节点光束段池（每 key 固定容量常驻 TrailEntity，spawn 认领槽位重写
   几何/颜色，到期 alpha 归零泊车；参考实现 ASTDXc002Vfx 尘埃拖尾）。
-- 池满按游标覆盖最旧粒子（视觉等同提前寿终）；池实体随 BoxUtil 战斗切换清理，数量有界。
+- 池满按游标覆盖最旧粒子（视觉等同提前寿终）；池实体随战斗切换清簿 delete（见下），数量有界。
 - 注意 CPU 侧积分后实例 `velocity`/`turnRate` 必须清零，避免与 BoxUtil 实例自管理双重积分。
 - **例外**：星云类粒子（原版 `addNebulaParticle` 系语义）不走 PooledCombatVfx——Box 内置星云控制器
   本身就是「单常驻 SpriteEntity + 实例池」结构，统一走 `BoxUtilCombatVfx.addNebulaParticle` 即可。
+
+## 跨战斗实体清理（战斗域实体登记簿）
+
+BoxUtil 对 renderEntityMap 的跨战斗清理（`cleanupAllQueue`）在生涯追击/多轮接战路径上不可靠，
+且其清理钩子集是一次性语义（回调后清空）。`BoxUtilCombatVfx` 内置战斗域实体登记簿
+（`CombatEntityRegistry`，astd-render）兜底：
+
+- `addEntity` 注册成功的实体全部入簿；`cleanupCombatOnce`（钩子自我重新登记）与
+  engine 实例切换探测双路径触发 purge（delete 全簿并打 INFO 日志，含 delete 数量）。
+- 常驻实体显式收尸走 `BoxUtilCombatVfx.removeEntity(entity)`（delete + 簿内摘除）；
+  直接 `entity.delete()` 的调用点由注册越阈顺手清理与 purge 兜底，登记簿自身不滞留。
+- 舰船离场（retreat 等非残骸化移除）时 advanceInCombat 不再被调用，常驻实体需在
+  EveryFrameCombatPlugin 里用 `engine.isEntityInPlay(ship)` 探活收口（先例：GravEmFieldHullMod
+  的 DepartedCleanupWatcher）。
 
 ## 参考资料
 

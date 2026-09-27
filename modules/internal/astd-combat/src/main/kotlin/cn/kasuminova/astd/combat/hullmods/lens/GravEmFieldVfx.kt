@@ -24,7 +24,7 @@ import kotlin.math.sin
  *   速度积分与包络），防 renderEntityMap 滞留泄漏（实体池化规范的高频池化口径）。
  * - **中心光斑**（[CenterFlare]）：力场存续期间常驻舰船中心的极大 SMOOTH 圆斑
  *   （碰撞半径 ×[CENTER_FLARE_RADIUS_MULT]，alpha 固定 10%），逐帧跟随舰位；
- *   力场失效/残骸化时由调用方 dispose。
+ *   力场失效/残骸化/舰船离场时由调用方 dispose。
  * - **相位变红**：舰船处于相位状态时（密蒙为相位巡洋舰），波形光斑与中心光斑
  *   切换为红色系（[PHASE_FRINGE]/[PHASE_CORE]，对照 GravSpaceFoldHullMod 折跃红），
  *   退出相位恢复透镜协议紫。
@@ -60,8 +60,24 @@ internal object GravEmFieldVfx {
         }
 
         fun dispose() {
-            if (!entity.hasDelete()) entity.delete()
+            BoxUtilCombatVfx.removeEntity(entity)
         }
+    }
+
+    /**
+     * 舰船离场（撤退等非残骸化移除）清场：delete 两个波形光斑池并摘除 customData 键。
+     * 池按 engine 共享而非逐舰，多密蒙同场时先离场者拆池后，在场者的下一次 [spawnWave]
+     * 会经 [poolOf] 按需重建，无需调用方区分。
+     */
+    fun disposeWavePools(engine: CombatEngineAPI) {
+        disposePool(engine, GLOW_POOL_KEY)
+        disposePool(engine, PILLAR_POOL_KEY)
+    }
+
+    private fun disposePool(engine: CombatEngineAPI, key: String) {
+        val pool = engine.customData[key] as? FlarePool ?: return
+        BoxUtilCombatVfx.removeEntity(pool.entity)
+        engine.customData.remove(key)
     }
 
     /**

@@ -9,7 +9,6 @@ import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEngineLayers
 import com.fs.starfarer.api.graphics.SpriteAPI
-import org.boxutil.manager.CombatRenderingManager
 import org.boxutil.units.standard.entity.DistortionEntity
 import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
@@ -131,7 +130,7 @@ object PiercingLanceVfx {
             powerOut = 0f
             setLocation(Vector2f(muzzle))
         }
-        CombatRenderingManager.addEntity(d)
+        BoxUtilCombatVfx.addEntity(engine, d)
         bumpTelemetry(engine, TELEMETRY_MUZZLE_DISTORTION)
     }
 
@@ -155,7 +154,7 @@ object PiercingLanceVfx {
             powerOut = 0f
             setLocation(Vector2f(spec.origin))
         }
-        CombatRenderingManager.addEntity(distortion)
+        BoxUtilCombatVfx.addEntity(engine, distortion)
         bumpTelemetry(engine, TELEMETRY_IMPACT_FLASH)
     }
 
