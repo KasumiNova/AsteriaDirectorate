@@ -65,6 +65,7 @@ object PooledCombatVfx {
 
     /**
      * 喷一颗池化 sprite 粒子。[scaleX]/[scaleY] 为世界半尺寸（对齐 Instance2Data scale 语义）；
+     * [scaleRateX]/[scaleRateY] 为半尺寸每秒增量（0 = 尺寸恒定，如马赫环的缓慢扩大）；
      * [color]/[emissiveColor] 的 alpha 为基准值，逐帧再乘包络。
      *
      * @return false = 池不可用（BoxUtil 未就绪/实体注册失败），本颗视觉缺席（已记 WARN）
@@ -76,11 +77,15 @@ object PooledCombatVfx {
         velX: Float = 0f, velY: Float = 0f,
         facingDeg: Float = 0f, turnRateDeg: Float = 0f,
         scaleX: Float, scaleY: Float,
+        scaleRateX: Float = 0f, scaleRateY: Float = 0f,
         color: Color, emissiveColor: Color,
         fadeIn: Float, full: Float, fadeOut: Float,
     ): Boolean {
         val binding = manager(engine).spritePools.getOrPut(key) { SpritePoolBinding(engine, key) }
-        return binding.spawn(x, y, velX, velY, facingDeg, turnRateDeg, scaleX, scaleY, color, emissiveColor, fadeIn, full, fadeOut)
+        return binding.spawn(
+            x, y, velX, velY, facingDeg, turnRateDeg, scaleX, scaleY, scaleRateX, scaleRateY,
+            color, emissiveColor, fadeIn, full, fadeOut,
+        )
     }
 
     /**
@@ -157,13 +162,14 @@ object PooledCombatVfx {
             velX: Float, velY: Float,
             facingDeg: Float, turnRateDeg: Float,
             scaleX: Float, scaleY: Float,
+            scaleRateX: Float, scaleRateY: Float,
             color: Color, emissiveColor: Color,
             fadeIn: Float, full: Float, fadeOut: Float,
         ): Boolean {
             if (broken) return false
             if (entity == null && createEntity() == null) return false
             slots.spawn(
-                x, y, velX, velY, facingDeg, turnRateDeg, scaleX, scaleY,
+                x, y, velX, velY, facingDeg, turnRateDeg, scaleX, scaleY, scaleRateX, scaleRateY,
                 color.red, color.green, color.blue, color.alpha,
                 emissiveColor.red, emissiveColor.green, emissiveColor.blue, emissiveColor.alpha,
                 fadeIn, full, fadeOut,

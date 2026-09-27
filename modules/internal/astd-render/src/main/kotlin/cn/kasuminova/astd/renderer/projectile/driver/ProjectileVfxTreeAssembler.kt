@@ -4,6 +4,8 @@ import cn.kasuminova.astd.api.render.RenderEntity
 import cn.kasuminova.astd.impl.render.AnchorArcComponent
 import cn.kasuminova.astd.impl.render.BoltRenderComponent
 import cn.kasuminova.astd.impl.render.BoxFlareComponent
+import cn.kasuminova.astd.impl.render.MachRingComponent
+import cn.kasuminova.astd.impl.render.ShardWakeComponent
 import cn.kasuminova.astd.impl.render.SpriteBodyRenderComponent
 import cn.kasuminova.astd.impl.render.StaticTrailComponent
 import cn.kasuminova.astd.impl.render.renderEntity
@@ -21,5 +23,7 @@ object ProjectileVfxTreeAssembler {
         }
         tree.boxFlares.forEach { (name, spec) -> addChild(BoxFlareComponent("${tree.id}_boxflare_$name", spec)) }
         tree.anchorArcs.forEach { (name, spec) -> addChild(AnchorArcComponent("${tree.id}_anchorarc_$name", spec)) }
+        tree.shardWakes.forEach { (name, spec) -> addChild(ShardWakeComponent("${tree.id}_shardwake_$name", spec)) }
+        tree.machRings.forEach { (name, spec) -> addChild(MachRingComponent("${tree.id}_machring_$name", spec)) }
     }
 }

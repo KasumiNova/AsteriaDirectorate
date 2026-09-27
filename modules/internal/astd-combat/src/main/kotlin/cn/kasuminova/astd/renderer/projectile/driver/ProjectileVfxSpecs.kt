@@ -33,8 +33,8 @@ object ProjectileVfxSpecs {
      * 同 spec，由 OnFire 脚本打标记并显式 track）+ 15 个 simpleProjectileVfx spec（四层惯例）。
      */
     private val builders: Map<String, (Float?) -> ProjectileVfx> = mapOf(
-        // 坠星残响（XC-001 内置主炮，blue/10-signature.md）：通用四层拖尾（蓝白）+ 开火锥状冲击；
-        // 特殊 trail（同色三角碎片 / 马赫环）由 .wpn EveryFrame（StarfallEchoWeaponEffect）逐帧发射，不进树。
+        // 坠星残响（XC-001 内置主炮，blue/10-signature.md）：通用四层拖尾（蓝白）+ 开火锥状冲击 +
+        // 三角碎片/马赫环持续发射器层（树内组件，统一粒子池渲染）。
         "astd_starfall_echo_shot" to { range -> starfallEchoShot("astd_starfall_echo_shot", range) },
         // 坠星残响第 5 发（200% 弹体）：红色同款拖尾 + 三枚同位光斑
         // （SMOOTH 圆斑 / SHARP_DISC 顺向大光柱 / SHARP_DISC 转 90° 横向光柱）。
@@ -314,7 +314,7 @@ object ProjectileVfxSpecs {
 
     /**
      * 坠星残响普通弹：simpleProjectileVfx 四层惯例（蓝白），带长 = 射程 ×50%，弹头 SMOOTH 光斑 +
-     * 开火锥状冲击（通用口径）。
+     * 开火锥状冲击（通用口径）+ 三角碎片/马赫环持续发射器（原 .wpn EveryFrame 逐帧发射迁移进树）。
      */
     private fun starfallEchoShot(id: String, range: Float?): ProjectileVfx = simpleProjectileVfx(
         id,
@@ -327,11 +327,32 @@ object ProjectileVfxSpecs {
         trailGlow = 0.8f,
         boltFlare = 40f,
         muzzleBurst = MuzzleBurst(),
-    )
+    ) {
+        // 航迹三角碎片：0.01s×3 颗，弹体位置散布 8、沿飞行向 100~150su/s ±8°，小尺寸短寿命（普通蓝白）。
+        shardWake("wake") {
+            cadence(0.01f, 3)
+            emission(scatterRadius = 8f, speedMin = 100f, speedMax = 150f, spreadDeg = 8f)
+            shardLength(34f)
+            colors(core = 0xF0F8FFFF, fringe = 0x78BEFFFF)
+            shard(
+                sizeMul = 0.2f, sizeMin = 4f, sizeMax = 9f,
+                spinMin = 90f, spinMax = 360f,
+                alphaLo = 120, alphaHi = 180,
+                timerFullLo = 0.15f, timerFullHi = 0.3f, timerFadeOut = 0.3f,
+            )
+        }
+        // 马赫环：0.1s 一枚，半径 35、alpha 0.6、拍扁 0.45、0.7→1.6 扩大，包络 0.06+0.5+0.44 = 1s。
+        machRing("ring") {
+            cadence(0.1f, 35f)
+            color(0x78BEFFFF, alpha = 0.6f)
+            shape(flatten = 0.45f, growthStart = 0.7f, growthEnd = 1.6f, fadeIn = 0.06f, full = 0.5f, fadeOut = 0.44f)
+        }
+    }
 
     /**
      * 坠星残响第 5 发（弹体 200% 尺寸）：同款红色拖尾（宽度 ×2 由弹体口径表达）+
-     * 三枚同位光斑——SMOOTH 圆斑（弹头柔光）、SHARP_DISC 顺向大光柱、SHARP_DISC 转 90° 横向光柱。
+     * 三枚同位光斑——SMOOTH 圆斑（弹头柔光）、SHARP_DISC 顺向大光柱、SHARP_DISC 转 90° 横向光柱 +
+     * 共振红配色的三角碎片/马赫环发射器（半径/尺寸 ×2）。
      */
     private fun starfallEchoFinalShot(id: String, range: Float?): ProjectileVfx = simpleProjectileVfx(
         id,
@@ -362,6 +383,24 @@ object ProjectileVfxSpecs {
             colors(0xFFEDE6FF, 0xFF5A3CB4)
             size(160f, 18f)
             glow(1.6f, 4f)
+        }
+        // 共振红航迹发射器：碎片/马赫环口径 ×2（shardLength 68、环半径 70），节拍与普通弹一致。
+        shardWake("wake") {
+            cadence(0.01f, 3)
+            emission(scatterRadius = 8f, speedMin = 100f, speedMax = 150f, spreadDeg = 8f)
+            shardLength(68f)
+            colors(core = 0xFFEBE1FF, fringe = 0xFF5A3CFF)
+            shard(
+                sizeMul = 0.2f, sizeMin = 4f, sizeMax = 9f,
+                spinMin = 90f, spinMax = 360f,
+                alphaLo = 120, alphaHi = 180,
+                timerFullLo = 0.15f, timerFullHi = 0.3f, timerFadeOut = 0.3f,
+            )
+        }
+        machRing("ring") {
+            cadence(0.1f, 70f)
+            color(0xFF5A3CFF, alpha = 0.6f)
+            shape(flatten = 0.45f, growthStart = 0.7f, growthEnd = 1.6f, fadeIn = 0.06f, full = 0.5f, fadeOut = 0.44f)
         }
     }
 

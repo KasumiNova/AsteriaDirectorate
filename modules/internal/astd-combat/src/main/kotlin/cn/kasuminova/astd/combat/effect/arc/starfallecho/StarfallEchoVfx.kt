@@ -28,9 +28,6 @@ object StarfallEchoVfx {
     val FINAL_CORE = Color(255, 235, 225)
     val FINAL_FRINGE = Color(255, 90, 60)
 
-    /** 马赫环贴图（须先 loadTexture 预加载，见 texture-loading-guidelines）。 */
-    const val RING_TEXTURE = "graphics/fx/astd_generated_ring.png"
-
     /**
      * 第 5 发爆炸特效：[stacks] = 消耗的谐振层数（1~4 = 100%~400% 规模），[radius] = 爆炸半径。
      * 纯视觉，不含伤害结算（结算在 StarfallEchoOnHitEffect）。
@@ -44,6 +41,9 @@ object StarfallEchoVfx {
 
     /** 星云：10 + 5×(规模−1) 片，单片大小 = 爆炸直径；整片大尺码下压透明度、拉长淡出保可读性。 */
     private fun spawnNebula(engine: CombatEngineAPI, center: Vector2f, scale: Int, radius: Float) {
+        // BoxUtil 星云控制器闲置缺陷旁路（详见 resetNebulaControllerIfIdle 文档）：
+        // 每次爆炸事件调一次、在 repeat 喷池之前；严禁逐颗粒调。
+        BoxUtilCombatVfx.resetNebulaControllerIfIdle(engine)
         val count = 10 + 5 * (scale - 1)
         repeat(count) {
             val pos = MathUtils.getRandomPointInCircle(center, radius * 0.4f)

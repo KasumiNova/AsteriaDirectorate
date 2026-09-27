@@ -52,6 +52,19 @@ class ProjectileVfxSpecsTest {
 
         // 开火锥状冲击（muzzleBurst 登记一发 onFire 钩子）
         assertEquals(1, vfx.onFire.size, "普通弹带一个开火锥状冲击钩子")
+
+        // 航迹持续发射器（原 .wpn EveryFrame 迁移进树）：蓝白碎片 + 半径 35 马赫环
+        assertEquals(listOf("wake"), vfx.tree.shardWakes.map { it.first })
+        val wake = vfx.tree.shardWakes.first().second
+        assertEquals(0.01f, wake.interval, 1e-6f)
+        assertEquals(3, wake.perTick)
+        assertEquals(34f, wake.shardLength)
+        assertEquals(listOf("ring"), vfx.tree.machRings.map { it.first })
+        val ring = vfx.tree.machRings.first().second
+        assertEquals(0.1f, ring.interval, 1e-6f)
+        assertEquals(35f, ring.halfSize)
+        assertEquals("graphics/fx/astd_generated_ring.png", ring.texturePath)
+        assertTrue(ring.color.blue > ring.color.red, "普通弹马赫环应为蓝白色系")
     }
 
     @Test
@@ -95,6 +108,15 @@ class ProjectileVfxSpecsTest {
         assertEquals(160f, pillarCross.width)
         assertEquals(18f, pillarCross.height)
         assertEquals(90f, pillarCross.facingOffsetDeg, "横向光柱转 90°")
+
+        // 共振红航迹发射器：碎片/环口径 ×2（shardLength 68、环半径 70），节拍与普通弹一致
+        val wake = vfx.tree.shardWakes.first { it.first == "wake" }.second
+        assertEquals(68f, wake.shardLength)
+        assertTrue(wake.fringeColor.red > wake.fringeColor.blue, "第 5 发碎片应为共振红色系")
+        val ring = vfx.tree.machRings.first { it.first == "ring" }.second
+        assertEquals(70f, ring.halfSize)
+        assertEquals(0.1f, ring.interval, 1e-6f)
+        assertTrue(ring.color.red > ring.color.blue, "第 5 发马赫环应为共振红色系")
     }
 
     @Test

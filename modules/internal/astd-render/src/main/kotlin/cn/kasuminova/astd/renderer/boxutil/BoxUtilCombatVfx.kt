@@ -190,6 +190,39 @@ object BoxUtilCombatVfx {
         return ok
     }
 
+    /**
+     * 星云控制器闲置重置（BoxUtil 上游缺陷旁路，勿删）。
+     *
+     * 缺陷机理（SimpleParticleControlData 源码实锤）：`clearParticles()` 清空实例池时只复位
+     * `state[0]/[1]/[2]`，**漏复位提交游标 `state[4]`**；闲置超 maxDur（3.2s）后控制器清池并把
+     * renderingCount 置 0，而 `controlAdvance` 提交块的判据是 `state[0] != state[4]`——下一批
+     * 粒子数若恰好等于残留 state[4]（同层数爆炸数量恒等：10+5×(scale−1)），提交块整体跳过，
+     * renderingCount 永远停在 0 → 该批及之后同数量批次永久不可见。
+     *
+     * 旁路：星云闲置（实体 renderingCount == 0）时 delete 旧控制器实体，Box `getController`
+     * 的 `isEntityExpired()` 探测随即重建全新控制器（state 全零，提交游标归零）。
+     *
+     * 调用纪律：**每次爆炸事件在喷第一批粒子前调一次**——严禁逐颗粒调用（renderingCount 在
+     * controlAdvance 提交前恒 0，会把本爆发刚喷入的池一并判死删掉）。
+     */
+    fun resetNebulaControllerIfIdle(engine: CombatEngineAPI) {
+        ensureReady(engine)
+        val controller = try {
+            RenderingUtil.VanillaFX.Controllers.getNebulaParticle(false)
+        } catch (t: Throwable) {
+            log.warn("BoxUtil 星云控制器获取失败（${t.javaClass.simpleName}），本次闲置重置跳过", t)
+            return
+        }
+        val entity = controller.entity ?: return
+        if (entity.renderingCount > 0) return
+        val renderEntity = entity as? RenderDataAPI
+        if (renderEntity == null) {
+            log.warn("BoxUtil 星云控制器实体未实现 RenderDataAPI（${entity.javaClass.simpleName}），本次闲置重置跳过")
+            return
+        }
+        if (!renderEntity.hasDelete()) renderEntity.delete()
+    }
+
     fun createTaperedBeamTrail(
         location: Vector2f,
         facing: Float,

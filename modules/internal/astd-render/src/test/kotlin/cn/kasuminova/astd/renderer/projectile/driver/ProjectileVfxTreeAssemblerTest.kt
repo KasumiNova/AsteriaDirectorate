@@ -5,10 +5,15 @@ import cn.kasuminova.astd.impl.render.BoltRenderComponent
 import cn.kasuminova.astd.impl.render.BoltSpec
 import cn.kasuminova.astd.impl.render.BoxFlareComponent
 import cn.kasuminova.astd.impl.render.BoxFlareSpec
+import cn.kasuminova.astd.impl.render.MachRingComponent
+import cn.kasuminova.astd.impl.render.MachRingSpec
+import cn.kasuminova.astd.impl.render.ShardWakeComponent
+import cn.kasuminova.astd.impl.render.ShardWakeSpec
 import cn.kasuminova.astd.impl.render.SpriteBodyRenderComponent
 import cn.kasuminova.astd.impl.render.SpriteBodySpec
 import cn.kasuminova.astd.impl.render.StaticTrailComponent
 import cn.kasuminova.astd.impl.render.StaticTrailSpec
+import cn.kasuminova.astd.impl.render.TriShardComponent
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -113,5 +118,40 @@ class ProjectileVfxTreeAssemblerTest {
         val twin = tree.children.first { it.id == "asm_test_trail_twin" } as StaticTrailComponent
         assertEquals(1, twin.spec.layer)
         assertEquals("graphics/fx/astd_trails_twin.png", twin.spec.texturePath)
+    }
+
+    @Test
+    fun `持续发射器层组装为 ShardWakeComponent 与 MachRingComponent`() {
+        val base = treeSpec()
+        val spec = ProjectileVfxTreeSpec(
+            id = base.id,
+            staticTrails = base.staticTrails,
+            bolt = base.bolt,
+            spriteBody = null,
+            boxFlares = base.boxFlares,
+            anchorArcs = base.anchorArcs,
+            shardWakes = listOf(
+                "wake" to ShardWakeSpec(
+                    interval = 0.01f, perTick = 3, scatterRadius = 8f,
+                    speedMin = 100f, speedMax = 150f, spreadDeg = 8f, shardLength = 34f,
+                    coreColor = ASTDColor(0.94f, 0.97f, 1f, 1f), fringeColor = ASTDColor(0.47f, 0.75f, 1f, 1f),
+                ),
+            ),
+            machRings = listOf(
+                "ring" to MachRingSpec(interval = 0.1f, halfSize = 35f, color = ASTDColor(0.47f, 0.75f, 1f, 1f)),
+            ),
+        )
+        val tree = ProjectileVfxTreeAssembler.assemble(spec)
+        val wake = tree.children.first { it.id == "asm_test_shardwake_wake" }
+        assertIs<ShardWakeComponent>(wake)
+        assertEquals(0.01f, (wake as ShardWakeComponent).spec.interval)
+        assertEquals(3, wake.spec.perTick)
+        val ring = tree.children.first { it.id == "asm_test_machring_ring" }
+        assertIs<MachRingComponent>(ring)
+        assertEquals(35f, (ring as MachRingComponent).spec.halfSize)
+        assertEquals("graphics/fx/astd_generated_ring.png", ring.spec.texturePath)
+        // 碎片发射器带一个 TriShardComponent 子节点喂共享池。
+        assertEquals(1, wake.children.size, "ShardWakeComponent 须挂 TriShardComponent 子节点")
+        assertIs<TriShardComponent>(wake.children.first())
     }
 }

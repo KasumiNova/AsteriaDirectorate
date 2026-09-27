@@ -5,6 +5,8 @@ import cn.kasuminova.astd.impl.render.AnchorArcSpec
 import cn.kasuminova.astd.impl.render.BoltSpec
 import cn.kasuminova.astd.impl.render.BoxFlareSpec
 import cn.kasuminova.astd.impl.render.BoxFlareStyle
+import cn.kasuminova.astd.impl.render.MachRingSpec
+import cn.kasuminova.astd.impl.render.ShardWakeSpec
 import cn.kasuminova.astd.impl.render.SpriteBodySpec
 import cn.kasuminova.astd.impl.render.StaticTrailSpec
 import cn.kasuminova.astd.impl.render.TrailDriftRange
@@ -38,13 +40,18 @@ class ProjectileVfxTreeSpec(
     val boxFlares: List<Pair<String, BoxFlareSpec>>,
     /** 锚点电弧层（名称 → spec）。 */
     val anchorArcs: List<Pair<String, AnchorArcSpec>>,
+    /** 三角碎片航迹发射器层（名称 → spec）：持续型，弹体 Active 期间按节拍喷碎片。 */
+    val shardWakes: List<Pair<String, ShardWakeSpec>> = emptyList(),
+    /** 马赫环航迹发射器层（名称 → spec）：持续型，弹体 Active 期间按节拍留环。 */
+    val machRings: List<Pair<String, MachRingSpec>> = emptyList(),
 )
 
 /**
  * 弹体特效的**唯一作者面**：手写 DSL 直接产出场景树蓝图 + 驱动策略。
  * 一个 [projectileVfx] 块内：`bolt` 定制 Box 螺栓弹头（默认开启，取代原版螺栓渲染），
  * `staticTrail` 声明 Static Trail 拖尾主体层（可多条叠层，BoxUtil 托管），
- * `boxFlare`/`anchorArc`/`onFire` 声明附加层，`lifecycle`/`fade` 声明驱动策略。
+ * `boxFlare`/`anchorArc`/`onFire` 声明附加层，`shardWake`/`machRing` 声明持续发射器层
+ * （三角碎片航迹/马赫环，统一粒子池渲染），`lifecycle`/`fade` 声明驱动策略。
  *
  * 本 DSL 只负责把作者旋钮折成渲染器所需的层 spec（[ProjectileVfxTreeSpec] 纯数据蓝图）；
  * 场景树组装在渲染实现侧（astd-render 的 `ProjectileVfxTreeAssembler`）。
@@ -82,6 +89,8 @@ class ProjectileVfxScope(private val id: String) {
     private val staticTrails = ArrayList<Pair<String, StaticTrailSpec>>()
     private val boxFlares = ArrayList<Pair<String, BoxFlareSpec>>()
     private val anchorArcs = ArrayList<Pair<String, AnchorArcSpec>>()
+    private val shardWakes = ArrayList<Pair<String, ShardWakeSpec>>()
+    private val machRings = ArrayList<Pair<String, MachRingSpec>>()
     private val onFireHooks = ArrayList<ProjectileVfxOnFireHook>()
 
     /** Box 螺栓弹头：默认开启（取代原版螺栓渲染）；`bolt { off() }` 关闭（如导弹弹体）。 */
@@ -133,6 +142,16 @@ class ProjectileVfxScope(private val id: String) {
         anchorArcs += name to AnchorArcBuilder().apply(block).build()
     }
 
+    /** 三角碎片航迹发射器：弹体飞行中按节拍喷一撮同色三角碎片（统一粒子池渲染），弹体消亡即停喷。 */
+    fun shardWake(name: String, block: ShardWakeBuilder.() -> Unit) {
+        shardWakes += name to ShardWakeBuilder().apply(block).build()
+    }
+
+    /** 马赫环航迹发射器：弹体飞行中按节拍在弹体当前位置留一枚拍扁椭圆环（统一粒子池渲染），环不跟弹、自然寿终。 */
+    fun machRing(name: String, block: MachRingBuilder.() -> Unit) {
+        machRings += name to MachRingBuilder().apply(block).build()
+    }
+
     /** 发射瞬间附加动作（如炮口锥面冲击、发射点扭曲特效）：登记弹体成功后由分发器各调用一次，可登记多个。 */
     fun onFire(hook: ProjectileVfxOnFireHook) {
         onFireHooks += hook
@@ -149,8 +168,10 @@ class ProjectileVfxScope(private val id: String) {
     internal fun build(): ProjectileVfx {
         val boltSpec = bolt?.build()
         val spriteBodySpec = spriteBody?.build()
-        if (boltSpec == null && spriteBodySpec == null && staticTrails.isEmpty() && boxFlares.isEmpty() && anchorArcs.isEmpty()) {
-            throw IllegalStateException("projectileVfx '$id' 未声明任何特效层（bolt/spriteBody/staticTrail/boxFlare/anchorArc 至少一个）")
+        if (boltSpec == null && spriteBodySpec == null && staticTrails.isEmpty() && boxFlares.isEmpty() && anchorArcs.isEmpty()
+            && shardWakes.isEmpty() && machRings.isEmpty()
+        ) {
+            throw IllegalStateException("projectileVfx '$id' 未声明任何特效层（bolt/spriteBody/staticTrail/boxFlare/anchorArc/shardWake/machRing 至少一个）")
         }
 
         val headLead = lifecycle.headLeadWorld
@@ -162,6 +183,8 @@ class ProjectileVfxScope(private val id: String) {
             spriteBody = spriteBodySpec,
             boxFlares = boxFlares.toList(),
             anchorArcs = anchorArcs.toList(),
+            shardWakes = shardWakes.toList(),
+            machRings = machRings.toList(),
         )
 
         val policy = ProjectileVfxDriverPolicy(
@@ -457,5 +480,145 @@ class AnchorArcBuilder {
         thickness = thickness,
         fringeColor = fringeColor,
         coreColor = coreColor,
+    )
+}
+
+
+/** 三角碎片航迹发射器构建器（DSL `shardWake(name){}`）：节拍/散布/速度域/张角 + 碎片外观旋钮。 */
+@ProjectileVfxDslMarker
+class ShardWakeBuilder {
+    private var interval = 0.05f
+    private var perTick = 5
+    private var scatterRadius = 8f
+    private var speedMin = 100f
+    private var speedMax = 150f
+    private var spreadDeg = 8f
+    private var shardLength = 34f
+    private var coreColor = rgba(0xF0F8FFFFL)
+    private var fringeColor = rgba(0x78BEFFFFL)
+    private var sizeMul = 0.2f
+    private var sizeMin = 4f
+    private var sizeMax = 9f
+    private var spinMin = 90f
+    private var spinMax = 360f
+    private var alphaLo = 120
+    private var alphaHi = 180
+    private var timerFullLo = 0.15f
+    private var timerFullHi = 0.3f
+    private var timerFadeOut = 0.3f
+
+    /** 发射节拍（秒）与每节拍颗数。 */
+    fun cadence(intervalSeconds: Float, count: Int) {
+        interval = intervalSeconds; perTick = count
+    }
+
+    /** 发射行为：散布半径 / 初速域 / 飞行方向张角（±度）。 */
+    fun emission(scatterRadius: Float, speedMin: Float, speedMax: Float, spreadDeg: Float) {
+        this.scatterRadius = scatterRadius
+        this.speedMin = speedMin
+        this.speedMax = speedMax
+        this.spreadDeg = spreadDeg
+    }
+
+    /** 尺寸基准长度（世界单位）：碎片边长 = clamp(本值×sizeMul, sizeMin, sizeMax) × 抖动。 */
+    fun shardLength(v: Float) {
+        shardLength = v
+    }
+
+    /** 提亮色 / 底色（0xRRGGBBAA）。 */
+    fun colors(core: Long, fringe: Long) {
+        coreColor = rgba(core); fringeColor = rgba(fringe)
+    }
+
+    /** 碎片外观微调（尺寸域/自旋域/alpha 域/寿命域），默认值即坠星残响航迹观感。 */
+    fun shard(
+        sizeMul: Float = this.sizeMul, sizeMin: Float = this.sizeMin, sizeMax: Float = this.sizeMax,
+        spinMin: Float = this.spinMin, spinMax: Float = this.spinMax,
+        alphaLo: Int = this.alphaLo, alphaHi: Int = this.alphaHi,
+        timerFullLo: Float = this.timerFullLo, timerFullHi: Float = this.timerFullHi,
+        timerFadeOut: Float = this.timerFadeOut,
+    ) {
+        this.sizeMul = sizeMul; this.sizeMin = sizeMin; this.sizeMax = sizeMax
+        this.spinMin = spinMin; this.spinMax = spinMax
+        this.alphaLo = alphaLo; this.alphaHi = alphaHi
+        this.timerFullLo = timerFullLo; this.timerFullHi = timerFullHi; this.timerFadeOut = timerFadeOut
+    }
+
+    internal fun build(): ShardWakeSpec = ShardWakeSpec(
+        interval = interval,
+        perTick = perTick,
+        scatterRadius = scatterRadius,
+        speedMin = speedMin,
+        speedMax = speedMax,
+        spreadDeg = spreadDeg,
+        shardLength = shardLength,
+        coreColor = coreColor,
+        fringeColor = fringeColor,
+        sizeMul = sizeMul,
+        sizeMin = sizeMin,
+        sizeMax = sizeMax,
+        spinMin = spinMin,
+        spinMax = spinMax,
+        alphaLo = alphaLo,
+        alphaHi = alphaHi,
+        timerFullLo = timerFullLo,
+        timerFullHi = timerFullHi,
+        timerFadeOut = timerFadeOut,
+    )
+}
+
+/** 马赫环航迹发射器构建器（DSL `machRing(name){}`）：节拍/半径/染色 + 形态包络旋钮。 */
+@ProjectileVfxDslMarker
+class MachRingBuilder {
+    private var interval = 0.5f
+    private var halfSize = 35f
+    private var color = rgba(0x78BEFFFFL)
+    private var alpha = 0.6f
+    private var flatten = 0.45f
+    private var growthStart = 0.7f
+    private var growthEnd = 1.6f
+    private var fadeIn = 0.06f
+    private var full = 0.5f
+    private var fadeOut = 0.44f
+    private var texturePath = "graphics/fx/astd_generated_ring.png"
+
+    /** 发射节拍（秒）与环基准半径（世界半尺寸）。 */
+    fun cadence(intervalSeconds: Float, halfSize: Float) {
+        interval = intervalSeconds; this.halfSize = halfSize
+    }
+
+    /** 环染色（0xRRGGBBAA）与基准透明度 0..1。 */
+    fun color(hex: Long, alpha: Float = this.alpha) {
+        color = rgba(hex); this.alpha = alpha.coerceIn(0f, 1f)
+    }
+
+    /** 环贴图路径（256×256 旋转对称圆环，形在 alpha）。 */
+    fun texture(path: String) {
+        texturePath = path
+    }
+
+    /** 形态与寿命包络：横向拍扁比 / 出生→寿终尺寸倍率 / 三段时长（秒）。 */
+    fun shape(
+        flatten: Float = this.flatten,
+        growthStart: Float = this.growthStart, growthEnd: Float = this.growthEnd,
+        fadeIn: Float = this.fadeIn, full: Float = this.full, fadeOut: Float = this.fadeOut,
+    ) {
+        this.flatten = flatten
+        this.growthStart = growthStart; this.growthEnd = growthEnd
+        this.fadeIn = fadeIn; this.full = full; this.fadeOut = fadeOut
+    }
+
+    internal fun build(): MachRingSpec = MachRingSpec(
+        interval = interval,
+        halfSize = halfSize,
+        color = color,
+        alpha = alpha,
+        flatten = flatten,
+        growthStart = growthStart,
+        growthEnd = growthEnd,
+        fadeIn = fadeIn,
+        full = full,
+        fadeOut = fadeOut,
+        texturePath = texturePath,
     )
 }

@@ -102,6 +102,23 @@ class SpriteParticleSlotsTest {
     }
 
     @Test
+    fun `advance integrates scale growth on cpu side`() {
+        val slots = SpriteParticleSlots(2)
+        val index = slots.spawn(
+            posX = 0f, posY = 0f, velX = 0f, velY = 0f,
+            facingDeg = 0f, turnRateDeg = 0f, scaleX = 24.5f, scaleY = 11.025f,
+            scaleRateX = 31.5f, scaleRateY = 14.175f,
+            r = 0, g = 0, b = 0, a = 255, er = 0, eg = 0, eb = 0, ea = 255,
+            fadeIn = 0.06f, full = 0.5f, fadeOut = 0.44f,
+        )
+        slots.advance(0.5f)
+        val s = slots.slots[index]
+        assertEquals(40.25f, s.scaleX, 1e-3f, "scaleX = 24.5 + 31.5×0.5s（马赫环 0.7→1.6 倍扩大半程）")
+        assertEquals(18.1125f, s.scaleY, 1e-3f, "scaleY = 11.025 + 14.175×0.5s（拍扁比 0.45 随生长保持）")
+        assertTrue(s.active, "总寿命 1s 内不得回收")
+    }
+
+    @Test
     fun `zero fadeIn envelope starts at full alpha`() {
         assertEquals(1f, poolEnvelopeAlpha(0f, 0f, 0.5f, 0.5f), 1e-4f, "fadeIn=0 时 age=0 即满亮")
         assertFalse(poolEnvelopeExpired(0.9f, 0f, 0.5f, 0.5f))

@@ -6,7 +6,7 @@ package cn.kasuminova.astd.renderer.boxutil.pool
  *
  * 语义：
  * - [spawn] 认领一个空闲槽位；无空闲时按游标覆盖最旧槽位（视觉等同最旧粒子提前寿终）；
- * - [advance] 推进年龄并按速度/自转角速度做 CPU 侧积分（实例侧 velocity/turnRate 恒 0，
+ * - [advance] 推进年龄并按速度/自转/尺寸增速做 CPU 侧积分（实例侧 velocity/turnRate 恒 0，
  *   避免与 BoxUtil 实例自管理双重积分）；
  * - alpha 包络由 [poolEnvelopeAlpha] 逐帧派生，定时器不再交给 BoxUtil。
  */
@@ -30,6 +30,8 @@ internal class SpriteParticleSlots(val capacity: Int) {
         var turnRateDeg = 0f
         var scaleX = 0f
         var scaleY = 0f
+        var scaleRateX = 0f
+        var scaleRateY = 0f
         var r = 0
         var g = 0
         var b = 0
@@ -48,12 +50,13 @@ internal class SpriteParticleSlots(val capacity: Int) {
     var activeCount = 0
         private set
 
-    /** 认领并初始化一个槽位，返回槽位索引（供测试断言复用行为）。 */
+    /** 认领并初始化一个槽位，返回槽位索引（供测试断言复用行为）。[scaleRateX]/[scaleRateY] 为半尺寸每秒增量（0 = 尺寸恒定）。 */
     fun spawn(
         posX: Float, posY: Float,
         velX: Float, velY: Float,
         facingDeg: Float, turnRateDeg: Float,
         scaleX: Float, scaleY: Float,
+        scaleRateX: Float = 0f, scaleRateY: Float = 0f,
         r: Int, g: Int, b: Int, a: Int,
         er: Int, eg: Int, eb: Int, ea: Int,
         fadeIn: Float, full: Float, fadeOut: Float,
@@ -74,6 +77,8 @@ internal class SpriteParticleSlots(val capacity: Int) {
         s.turnRateDeg = turnRateDeg
         s.scaleX = scaleX
         s.scaleY = scaleY
+        s.scaleRateX = scaleRateX
+        s.scaleRateY = scaleRateY
         s.r = r
         s.g = g
         s.b = b
@@ -98,6 +103,8 @@ internal class SpriteParticleSlots(val capacity: Int) {
             s.posX += s.velX * amount
             s.posY += s.velY * amount
             s.facingDeg += s.turnRateDeg * amount
+            s.scaleX += s.scaleRateX * amount
+            s.scaleY += s.scaleRateY * amount
         }
     }
 
