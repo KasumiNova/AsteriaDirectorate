@@ -637,6 +637,11 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     private var pfSweepMin = 0f
     private var pfSweepMax = 0f
     private var pfCombatStartAt = -1f
+    // 走位驱动探针：相位帧数 / 其中 PHASE_ATTACK_RUN 旗标在场的帧数 / 相位中最大航速——
+    // 区分「旗标没挂上」与「旗标挂了但走位模块没响应」两类失效。
+    private var pfPhasedFrames = 0
+    private var pfAttackRunFrames = 0
+    private var pfPhasedSpeedMax = 0f
 
     override fun init(engine: CombatEngineAPI) {
         this.engine = engine
@@ -7771,6 +7776,12 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 pfCombatStartAt = elapsed
                 log.info("[ASTD-Automation] pf combat start: 舜华 vs 统治者 AI 对抗观测窗开启")
             }
+            // 走位驱动探针采样（逐帧，不走扫描节拍）
+            if (player.isPhased) {
+                pfPhasedFrames++
+                if (player.aiFlags.hasFlag(ShipwideAIFlags.AIFlags.PHASE_ATTACK_RUN)) pfAttackRunFrames++
+                pfPhasedSpeedMax = maxOf(pfPhasedSpeedMax, player.velocity.length())
+            }
             trackPfPhaseEdges(player, enemy)
             val combatSeconds = elapsed - pfCombatStartAt
             if (pfDiveCount >= 1 &&
@@ -9297,6 +9308,9 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 appendLine("  \"pfSurfaceCount\": $pfSurfaceCount,")
                 appendLine("  \"pfPhaseSweepMax\": ${formatFloat(pfPhaseSweepMax)},")
                 appendLine("  \"pfSurfaceBearingDiffMax\": ${formatFloat(pfSurfaceBearingDiffMax)},")
+                appendLine("  \"pfPhasedFrames\": $pfPhasedFrames,")
+                appendLine("  \"pfAttackRunFrames\": $pfAttackRunFrames,")
+                appendLine("  \"pfPhasedSpeedMax\": ${formatFloat(pfPhasedSpeedMax)},")
                 appendLine("  \"pfCombatSeconds\": ${formatFloat(if (pfCombatStartAt < 0f) 0f else elapsed - pfCombatStartAt)},")
                 appendLine("  \"pfPlayerCurrFlux\": ${formatFloat(pfPlayer?.fluxTracker?.currFlux ?: -1f)},")
             } else if (ASTDInGameAutomationScenario.isPlEnabled()) {

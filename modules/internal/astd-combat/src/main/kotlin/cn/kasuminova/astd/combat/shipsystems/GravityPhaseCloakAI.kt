@@ -513,8 +513,12 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
         // 绕后走位驱动：原版相位 AI 被替换后 PHASE_ATTACK_RUN 无人管理——
         // 意图途中挂 PHASE_ATTACK_RUN（StrafeTargetManeuverV2 会把相位舰带往目标背后 5000su 点），
         // 进入侧后薄弱区改挂 PHASE_ATTACK_RUN_IN_GOOD_SPOT（走位模块就地保持攻击距离）；
-        // 两旗标短时效滚动刷新，意图结束/上浮后自然过期，无需手动 unset
+        // 两旗标短时效滚动刷新，意图结束/上浮后自然过期，无需手动 unset。
+        // 同挂 DO_NOT_BACK_OFF：走位模块的穿透分支要求非后撤/非规避状态（var52/var58），
+        // 相位累积辐能推高 fluxLevel 后会命中「辐能高于目标」规避判定把穿透驱动掐掉，
+        // 意图期间由本 AI 的辐能闸（SURFACE_HARD_FLUX）兜底生存，走位层不再自行后撤
         if (situation.flankIntentActive && phased) {
+            ship.aiFlags.setFlag(ShipwideAIFlags.AIFlags.DO_NOT_BACK_OFF, 0.5f)
             if (situation.inTargetRearArc) {
                 ship.aiFlags.setFlag(ShipwideAIFlags.AIFlags.PHASE_ATTACK_RUN_IN_GOOD_SPOT, 0.5f)
             } else {
