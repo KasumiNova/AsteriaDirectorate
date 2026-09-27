@@ -2,6 +2,7 @@ package cn.kasuminova.astd.combat.hullmods.lens
 
 import cn.kasuminova.astd.combat.hullmods.base.ASTDHullModTooltipRenderer
 import cn.kasuminova.astd.combat.hullmods.lens.GravEmFieldHullMod.Companion.isZw002Ship
+import cn.kasuminova.astd.combat.shipsystems.GravStormSystemStats
 import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import cn.kasuminova.astd.internal.i18n.I18n
 import cn.kasuminova.astd.ui.dsl.buildWith
@@ -219,12 +220,17 @@ class GravEmFieldHullMod : BaseHullMod() {
         stats.missileWeaponFluxCostMod.unmodifyMult(modId)
     }
 
-    /** 波形光斑节拍：每隔 [GravEmFieldTuning.WAVE_INTERVAL]s 一波（数量区间见 tuning），相位过渡系数决定红/紫渐变。 */
+    /**
+     * 波形光斑节拍：每隔 [GravEmFieldTuning.WAVE_INTERVAL]s 一波（数量区间见 tuning），相位过渡系数决定红/紫渐变。
+     * 同舰引力磁暴充能期间（[GravStormSystemStats.CHARGE_PROGRESS_KEY] 共享的充能进度）：
+     * 波形改为朝舰船本体反向聚集，速度随充能进度线性提升（[GravEmFieldVfx.spawnWave]）。
+     */
     private fun driveWaveVisuals(engine: CombatEngineAPI, ship: ShipAPI, state: FieldState, amount: Float) {
         state.waveTimer += amount
+        val chargeGather = ship.customData[GravStormSystemStats.CHARGE_PROGRESS_KEY] as? Float ?: 0f
         while (state.waveTimer >= GravEmFieldTuning.WAVE_INTERVAL) {
             state.waveTimer -= GravEmFieldTuning.WAVE_INTERVAL
-            GravEmFieldVfx.spawnWave(engine, ship, state.phaseBlend)
+            GravEmFieldVfx.spawnWave(engine, ship, state.phaseBlend, chargeGather)
         }
     }
 

@@ -10,8 +10,11 @@ import kotlin.math.roundToInt
  * （原版「量子干扰」acausaldisruptor / AcausalDisruptorStats 的增强基线）。
  *
  * 动机：充能窗口（2s 下限 / 4s 上限）、充能前段相位锁定（[PHASE_LOCKOUT_SECONDS]）、
- * 锥状锁定（60° 锥 × 基础射程）、按舰级的电弧数量区间、多目标电弧衰减、
- * 强制过载时长插值、单发电弧伤害与系统期间伤害减免的难度三锚点集中在此声明，
+ * 锥状锁定（60° 锥 × 基础射程，含相位单位与战机——战机按护卫舰档 50% 打击折算、
+ * 过载对齐护卫舰档）、按舰级的电弧数量区间、多目标电弧衰减、强制过载时长插值、
+ * 过载触发的硬辐能→软辐能转化（[hardToSoftPerSecond]，总辐能不变）、
+ * 充能期装饰电弧渐变（[chargeArcCount]/[chargeArcInterval]）、
+ * 单发电弧伤害与系统期间伤害减免的难度三锚点集中在此声明，
  * 供系统脚本每帧实时解析（LunaLib 设置变更即时生效），并由单元测试直接驱动。
  *
  * 玩家来源（owner == 0）按我方档位取值（默认砺刃 v2，见 DifficultyTuning.valueFor）。
@@ -105,9 +108,11 @@ object GravStormTuning {
 
     /**
      * 目标舰级的基础电弧数量区间（护卫舰 2~4 / 驱逐舰 4~8 / 巡洋舰 8~16 / 主力舰 12~24）；
-     * 战机等非舰船级返回 null（锁定口径不含战机，调用侧过滤）。
+     * 战机按护卫舰档（2~4，单发伤害另经 [FIGHTER_DAMAGE_MULT] 折算）；
+     * 其余非舰船级返回 null（调用侧过滤）。
      */
     fun arcBaseCountRange(hullSize: ShipAPI.HullSize?): IntRange? = when (hullSize) {
+        ShipAPI.HullSize.FIGHTER -> 2..4
         ShipAPI.HullSize.FRIGATE -> 2..4
         ShipAPI.HullSize.DESTROYER -> 4..8
         ShipAPI.HullSize.CRUISER -> 8..16
@@ -115,14 +120,53 @@ object GravStormTuning {
         else -> null
     }
 
-    /** 满充能过载时长锚点按舰级查值；非舰船级返回 null（调用侧过滤）。 */
+    /** 满充能过载时长锚点按舰级查值（战机对齐护卫舰档）；其余非舰船级返回 null（调用侧过滤）。 */
     fun overloadAnchor(values: Values, hullSize: ShipAPI.HullSize?): Float? = when (hullSize) {
+        ShipAPI.HullSize.FIGHTER -> values.overloadFrigate
         ShipAPI.HullSize.FRIGATE -> values.overloadFrigate
         ShipAPI.HullSize.DESTROYER -> values.overloadDestroyer
         ShipAPI.HullSize.CRUISER -> values.overloadCruiser
         ShipAPI.HullSize.CAPITAL_SHIP -> values.overloadCapital
         else -> null
     }
+
+    /** 战机目标的单发电弧伤害系数（护卫舰档打击效果的 50%；电弧数量与过载时长对齐护卫舰档）。 */
+    const val FIGHTER_DAMAGE_MULT = 0.5f
+
+    /**
+     * 硬辐能→软辐能转化比例（纯函数）：目标每承受 1 秒强制过载，将其当前硬辐能的该比例
+     * 转为等额软辐能（总辐能不变，设计意图：迫使敌方靠耗散/过载处理软辐能）。
+     * 按舰级分档：战机 0.25% / 护卫舰 1% / 驱逐舰 2% / 巡洋舰 3% / 主力舰 4%；
+     * 未列舰级返回 0（调用侧只对可锁定舰级结算）。
+     */
+    fun hardToSoftPerSecond(hullSize: ShipAPI.HullSize?): Float = when (hullSize) {
+        ShipAPI.HullSize.FIGHTER -> 0.0025f
+        ShipAPI.HullSize.FRIGATE -> 0.01f
+        ShipAPI.HullSize.DESTROYER -> 0.02f
+        ShipAPI.HullSize.CRUISER -> 0.03f
+        ShipAPI.HullSize.CAPITAL_SHIP -> 0.04f
+        else -> 0f
+    }
+
+    /** 硬→软转化量（纯函数）：目标当前硬辐能 × 每秒比例（[hardToSoftPerSecond]）× 过载时长。 */
+    fun hardToSoftAmount(hardFlux: Float, hullSize: ShipAPI.HullSize?, overloadSeconds: Float): Float =
+        hardFlux * hardToSoftPerSecond(hullSize) * overloadSeconds
+
+    /** 充能期装饰电弧：每波数量随充能进度线性渐变（0% → [CHARGE_ARC_COUNT_MIN]，100% → [CHARGE_ARC_COUNT_MAX]）。 */
+    const val CHARGE_ARC_COUNT_MIN = 2
+    const val CHARGE_ARC_COUNT_MAX = 8
+
+    /** 充能期装饰电弧：生成间隔随充能进度线性缩短（0% → 0.5s，100% → 0.1s）。 */
+    const val CHARGE_ARC_INTERVAL_MAX_SECONDS = 0.5f
+    const val CHARGE_ARC_INTERVAL_MIN_SECONDS = 0.1f
+
+    /** 充能期装饰电弧每波数量（纯函数）：随充能进度（0-1，clamp）线性渐变后四舍五入。 */
+    fun chargeArcCount(progress: Float): Int =
+        (CHARGE_ARC_COUNT_MIN + (CHARGE_ARC_COUNT_MAX - CHARGE_ARC_COUNT_MIN) * progress.coerceIn(0f, 1f)).roundToInt()
+
+    /** 充能期装饰电弧生成间隔秒（纯函数）：随充能进度（0-1，clamp）线性缩短。 */
+    fun chargeArcInterval(progress: Float): Float =
+        CHARGE_ARC_INTERVAL_MAX_SECONDS + (CHARGE_ARC_INTERVAL_MIN_SECONDS - CHARGE_ARC_INTERVAL_MAX_SECONDS) * progress.coerceIn(0f, 1f)
 
     /** 多目标电弧衰减（纯函数）：每多锁定一个目标总电弧数 -10%，最多 -50%（1 个目标不衰减）。 */
     fun targetCountMultiplier(targetCount: Int): Float =

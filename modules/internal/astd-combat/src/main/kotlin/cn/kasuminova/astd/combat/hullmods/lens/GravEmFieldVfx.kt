@@ -90,29 +90,40 @@ internal object GravEmFieldVfx {
     }
 
     /**
-     * 发射一波波形光斑：从舰体碰撞箱随机边缘取点，向该点的随机外方向（±30° 抖动）
+     * 发射一波波形光斑：常态从舰体碰撞箱随机边缘取点，向该点的随机外方向（±30° 抖动）
      * 投出一枚 SMOOTH 圆斑 + 一枚 SMOOTH_DISC 光柱。粒子速度 = 本波生成时刻的舰速快照 +
      * 外散速度（SimpleParticleControlData.addParticle 的速度向量直传口径），喷散图案整体
      * 随舰船平移；粒子生成后不再跟踪舰位。[phaseBlend]（0=力场紫，1=相位红）插值本波色系，
      * 过渡中途的波取中间色（粒子生成后颜色固定，渐变靠逐波新色推进）。
+     * [chargeGather]（引力磁暴充能进度 0-1，由 GravStormSystemStats 写入 ship.customData）
+     * > 0 时本波改为反向聚集：方向朝舰船本体（±30° 抖动不变），
+     * 外散速度 × (1 + [CHARGE_GATHER_SPEED_SPAN] × 进度)（100% → 400% 线性）。
      */
-    fun spawnWave(engine: CombatEngineAPI, ship: ShipAPI, phaseBlend: Float) {
+    fun spawnWave(engine: CombatEngineAPI, ship: ShipAPI, phaseBlend: Float, chargeGather: Float = 0f) {
         val glowPool = poolOf(engine, GLOW_POOL_KEY, smooth = true) ?: return
         val pillarPool = poolOf(engine, PILLAR_POOL_KEY, smooth = false) ?: return
         val core = lerpColor(FIELD_CORE, PHASE_CORE, phaseBlend)
         val fringe = lerpColor(FIELD_FRINGE, PHASE_FRINGE, phaseBlend)
         val shipVel = Vector2f(ship.velocity)
+        val gather = chargeGather.coerceIn(0f, 1f)
+        val speedMult = 1f + CHARGE_GATHER_SPEED_SPAN * gather
 
         val count = MathUtils.getRandomNumberInRange(
             GravEmFieldTuning.WAVE_COUNT_MIN, GravEmFieldTuning.WAVE_COUNT_MAX,
         )
         repeat(count) {
             val from = hullBoundaryPoint(ship)
+            // 聚集口径：方向由「舰心→出生点」反转为「出生点→舰心」，抖动区间不变
+            val baseAngle = if (gather > 0f) {
+                Misc.getAngleInDegrees(from, ship.location)
+            } else {
+                Misc.getAngleInDegrees(ship.location, from)
+            }
             val outAngle = BoxUtilCombatVfx.normalizeFacingDeg(
-                Misc.getAngleInDegrees(ship.location, from) + MathUtils.getRandomNumberInRange(-30f, 30f),
+                baseAngle + MathUtils.getRandomNumberInRange(-30f, 30f),
             )
             val rad = Math.toRadians(outAngle.toDouble())
-            val speed = MathUtils.getRandomNumberInRange(WAVE_SPEED_MIN, WAVE_SPEED_MAX)
+            val speed = MathUtils.getRandomNumberInRange(WAVE_SPEED_MIN, WAVE_SPEED_MAX) * speedMult
             val velocity = Vector2f(
                 shipVel.x + (cos(rad) * speed).toFloat(),
                 shipVel.y + (sin(rad) * speed).toFloat(),
@@ -292,6 +303,9 @@ internal object GravEmFieldVfx {
 
     /** 常驻实体时长（秒）：生命周期由调用方显式驱动，不自然到期。 */
     private const val RESIDENT_FULL_SECONDS = 1e7f
+
+    /** 磁暴充能聚集的速度增益跨度：聚集波外散速度倍率 = 1 + 本值 × 充能进度（100% → 400% 线性）。 */
+    private const val CHARGE_GATHER_SPEED_SPAN = 3f
 
     /** 相位色系过渡时长（秒）：红/紫线性渐变的全程时长。 */
     const val PHASE_BLEND_SECONDS = 0.4f
