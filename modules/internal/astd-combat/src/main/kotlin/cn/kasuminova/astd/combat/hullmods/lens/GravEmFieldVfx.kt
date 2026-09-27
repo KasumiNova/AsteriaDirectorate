@@ -97,7 +97,8 @@ internal object GravEmFieldVfx {
      * 过渡中途的波取中间色（粒子生成后颜色固定，渐变靠逐波新色推进）。
      * [chargeGather]（引力磁暴充能进度 0-1，由 GravStormSystemStats 写入 ship.customData）
      * > 0 时本波改为反向聚集：方向朝舰船本体（±30° 抖动不变），
-     * 外散速度 × (1 + [CHARGE_GATHER_SPEED_SPAN] × 进度)（100% → 400% 线性）。
+     * 外散速度 × (1 + [CHARGE_GATHER_SPEED_SPAN] × 进度)（100% → 400% 线性）；
+     * 聚集波寿命包络按抵达舰心时间收缩（抵达即淡出消散，不穿越舰体从另一侧外飞）。
      */
     fun spawnWave(engine: CombatEngineAPI, ship: ShipAPI, phaseBlend: Float, chargeGather: Float = 0f) {
         val glowPool = poolOf(engine, GLOW_POOL_KEY, smooth = true) ?: return
@@ -128,14 +129,30 @@ internal object GravEmFieldVfx {
                 shipVel.x + (cos(rad) * speed).toFloat(),
                 shipVel.y + (sin(rad) * speed).toFloat(),
             )
+            // 聚集口径的寿命包络：按「抵达舰心时间」动态收缩，粒子在舰心附近淡出消散。
+            // 不收缩则粒子以常态包络存活 2.5s——出生点到舰心不足 1s 航程，穿越舰体后
+            // 以聚集加速（最高 400%）从另一侧继续外飞，视觉上仍是向外扩散。
+            val fadeIn: Float
+            val full: Float
+            val fadeOut: Float
+            if (gather > 0f) {
+                val flightSeconds = Misc.getDistance(from, ship.location) / speed
+                fadeIn = minOf(WAVE_FADE_IN, flightSeconds * CHARGE_GATHER_FADE_IN_FRACTION)
+                full = 0f
+                fadeOut = (flightSeconds - fadeIn).coerceAtLeast(CHARGE_GATHER_MIN_FADE_OUT_SECONDS)
+            } else {
+                fadeIn = WAVE_FADE_IN
+                full = WAVE_FULL
+                fadeOut = WAVE_FADE_OUT
+            }
             val scale = MathUtils.getRandomNumberInRange(WAVE_SCALE_MIN, WAVE_SCALE_MAX)
             glowPool.controller.addParticle(
                 from, 0f, 0f, velocity, Vector2f(scale, scale), ZERO,
-                core, fringe, WAVE_FADE_IN, WAVE_FULL, WAVE_FADE_OUT,
+                core, fringe, fadeIn, full, fadeOut,
             )
             pillarPool.controller.addParticle(
                 from, outAngle, 0f, velocity, Vector2f(scale, scale), ZERO,
-                core, fringe, WAVE_FADE_IN, WAVE_FULL, WAVE_FADE_OUT,
+                core, fringe, fadeIn, full, fadeOut,
             )
         }
     }
@@ -306,6 +323,12 @@ internal object GravEmFieldVfx {
 
     /** 磁暴充能聚集的速度增益跨度：聚集波外散速度倍率 = 1 + 本值 × 充能进度（100% → 400% 线性）。 */
     private const val CHARGE_GATHER_SPEED_SPAN = 3f
+
+    /** 聚集波寿命包络：淡入占「抵达舰心时间」的比例上限（余下时长全部用于淡出，抵达舰心即消散）。 */
+    private const val CHARGE_GATHER_FADE_IN_FRACTION = 0.3f
+
+    /** 聚集波淡出时长下限（秒）：近中心出生点航程极短时保住可读性，防瞬生瞬灭。 */
+    private const val CHARGE_GATHER_MIN_FADE_OUT_SECONDS = 0.05f
 
     /** 相位色系过渡时长（秒）：红/紫线性渐变的全程时长。 */
     const val PHASE_BLEND_SECONDS = 0.4f
