@@ -387,7 +387,7 @@ internal object GravityPhaseVisualEffect {
                 ship.location.x + (att.centerOffsetX * cos(theta) - att.centerOffsetY * sin(theta)).toFloat(),
                 ship.location.y + (att.centerOffsetX * sin(theta) + att.centerOffsetY * cos(theta)).toFloat(),
             )
-            val alpha = level.coerceIn(0f, 1f) * 0.6f
+            val alpha = level.coerceIn(0f, 1f) * 0.4f
             att.outline.setStateVanilla(loc, facing)
             att.outline.materialData.colorAlpha = alpha
             att.outline.materialData.emissiveColorAlpha = alpha
