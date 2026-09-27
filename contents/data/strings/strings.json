@@ -21,6 +21,7 @@
 		"system.grav_storm.status.default.in": "磁暴汇聚中",
 		"system.grav_storm.status.default.active": "磁暴临界释放",
 		"system.grav_storm.status.default.out": "磁暴弧光倾泻中",
+		"system.grav_storm.status.default.phase_locked": "相位线圈被磁暴抑制",
 		"system.arc_shared_flux_network.status.default.in.line1": "自身射速/机动 -%selfRof%",
 		"system.arc_shared_flux_network.status.default.in.line2": "自身耗散 +%selfDissipation%，硬辐能耗散 +%hardDissipation%",
 		"system.arc_shared_flux_network.status.default.active.line1": "友舰耗散 +%targetDissipation%，射速 +%targetRof%",

@@ -116,15 +116,6 @@ class GravStormTuningTest {
     }
 
     @Test
-    fun `电弧释放节奏 首道立即 窗口内均匀排开`() {
-        assertEquals(0f, GravStormTuning.arcFireTime(0, 1), 1e-6f)
-        assertEquals(0f, GravStormTuning.arcFireTime(0, 4), 1e-6f)
-        assertEquals(0.375f, GravStormTuning.arcFireTime(1, 4), 1e-6f)
-        assertEquals(0.75f, GravStormTuning.arcFireTime(2, 4), 1e-6f)
-        assertEquals(1.125f, GravStormTuning.arcFireTime(3, 4), 1e-6f)
-    }
-
-    @Test
     fun `锥状锁定角差口径 六十度锥`() {
         assertTrue(GravStormTuning.isInCone(0f))
         assertTrue(GravStormTuning.isInCone(30f))

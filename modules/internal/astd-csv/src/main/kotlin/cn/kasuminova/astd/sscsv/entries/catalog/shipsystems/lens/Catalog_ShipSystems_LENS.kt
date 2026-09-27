@@ -199,9 +199,10 @@ object Sys_astd_grav_rift_generator : ShipSystemWithSystemFileEntry() {
 /**
  * 密蒙级舰船系统「引力磁暴发生器」（purple/10-unique.md §2，2026-09 D27 全重做）。
  *
- * 以原版量子干扰为基线的增强：充能最多 4s（满 2s 可提前释放，充能期间进相位中止），
- * 随后对前方 60° 锥、1200su（受系统射程加成）内全部敌对目标（含相位单位）的武器与引擎
- * 打出分批 EMP 电弧并施加强制过载；释放期间全类型减伤。代价 20% 基础辐能容量软辐能，
+ * 以原版量子干扰为基线的增强：充能最多 4s（充能前 2s 相位系统锁定，满 2s 可提前释放，
+ * 锁定解除后充能期间进相位中止），随后对前方 60° 锥、1200su（受系统射程加成）内全部
+ * 敌对目标（含相位单位）的武器与引擎一次性打出 EMP 电弧并施加强制过载（锥内无目标时
+ * 改为装饰性电弧齐射）；释放期间全类型减伤。代价 20% 基础辐能容量软辐能，
  * 冷却 24s。stats/AI 见 [GravStormSystemStats] / [GravStormSystemAI]。
  */
 object Sys_astd_grav_storm : ShipSystemWithSystemFileEntry() {
@@ -216,7 +217,8 @@ object Sys_astd_grav_storm : ShipSystemWithSystemFileEntry() {
 
     // toggle=true：IN 充能期间再次按键经原版 ChargeTracker 转 OUT 提前释放
     // （effectLevel=释放时充能进度，脚本侧据此折算电弧/过载强度）；
-    // active 在 toggle 下被忽略，填 0.5 占位；down=1.5 为电弧释放窗口。
+    // active 在 toggle 下被忽略，填 0.5 占位；down=1.5 为释放窗口（电弧在释放瞬间一次性打出，
+    // 窗口存续期即系统期间伤害减免的存续期）。
     override val toggle: Boolean = true
     override val chargeUp: Double = 4.0
     override val active: Double = 0.5
@@ -230,9 +232,10 @@ object Sys_astd_grav_storm : ShipSystemWithSystemFileEntry() {
 /**
  * 舜华级舰船系统「引力空间复制器」（purple/20-production.md §3，2026-09 D27 全重做）。
  *
- * 激活 2s 内本舰发射的能量武器射弹（不含实弹/光束/导弹）在发射 0.5s 后于发射点
- * 复制两次（间隔 0.5s），复制体伤害与辐能产出按难度锚点折算。代价 10% 基础辐能容量
- * 软辐能，冷却 12s。stats/AI 见 [GravReplicatorSystemStats] / [GravReplicatorSystemAI]。
+ * 激活 2s 内本舰发射的能量武器射弹（不含实弹/光束/导弹）在登记 0.5s 后于舰船周界
+ * 环带随机点复制两次（间隔 0.5s，优先射向当前锁定目标并带预判量），复制体伤害与
+ * 辐能产出按难度锚点折算。代价 10% 基础辐能容量软辐能，冷却 12s。
+ * stats/AI 见 [GravReplicatorSystemStats] / [GravReplicatorSystemAI]。
  */
 object Sys_astd_grav_replicator : ShipSystemWithSystemFileEntry() {
     override val id: String = "astd_grav_replicator"

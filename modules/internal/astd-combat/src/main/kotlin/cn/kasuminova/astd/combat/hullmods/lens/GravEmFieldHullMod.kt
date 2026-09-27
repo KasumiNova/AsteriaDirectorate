@@ -8,16 +8,11 @@ import cn.kasuminova.astd.ui.dsl.buildWith
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseHullMod
 import com.fs.starfarer.api.combat.CombatEngineAPI
-import com.fs.starfarer.api.combat.EmpArcEntityAPI
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.combat.ShipSystemAPI
 import com.fs.starfarer.api.ui.TooltipMakerAPI
 import com.fs.starfarer.api.util.Misc
-import org.lazywizard.lazylib.MathUtils
-import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
-import kotlin.math.cos
-import kotlin.math.sin
 
 /**
  * 引力电磁力场（Gravity Electromagnetic Field，hullmod id：astd_grav_em_field）——密蒙级（ZW-002）内置插件。
@@ -31,8 +26,11 @@ import kotlin.math.sin
  *    三类武器开火辐能增加。效果随距离衰减：[GravEmFieldTuning.effectScale]
  *    （≤半射程满效，边缘线性衰减到 [GravEmFieldTuning.EDGE_SCALE]）。
  *    受影响目标集合逐帧对账：新离场/失效目标立即 unmodify 全套修饰，不留 stat 残留。
- * 2. **力场电弧视觉**：力场生效期间每隔 [GravEmFieldTuning.ARC_WAVE_INTERVAL]s 从舰体真实碰撞箱
- *    （exactBounds）随机边缘向随机方向发射 5~10 个紫色特效电弧（spawnEmpArcVisual 纯视觉，无伤害）。
+ * 2. **力场视觉**（[GravEmFieldVfx]）：力场生效期间每隔 [GravEmFieldTuning.WAVE_INTERVAL]s
+ *    从舰体碰撞箱边缘向随机外方向发射一波波形光斑（FlareEntity 组合：SMOOTH 圆斑 +
+ *    SMOOTH_DISC 柔和光柱，外飘淡出，池化常驻实体）；舰船中心常驻一个极大 SMOOTH 圆斑
+ *    （碰撞半径数倍，alpha 固定 10%）。舰船相位时全部切换为红色系，退出相位恢复紫色。
+ *    力场失效/残骸化时中心光斑移除（收口挂 FieldState/hulk 路径）。
  *
  * 失效条件：舰船系统处于冷却（[ShipSystemAPI.SystemState.COOLDOWN]；IN/ACTIVE/OUT 激活过程保持），
  * 或舰船残骸化（残骸化瞬间对全部受影响目标执行 unmodify 收口）。
@@ -48,10 +46,11 @@ import kotlin.math.sin
  */
 class GravEmFieldHullMod : BaseHullMod() {
 
-    /** 单舰力场状态：当前被压制的目标集合 + 电弧视觉节拍计时器。 */
+    /** 单舰力场状态：当前被压制的目标集合 + 波形光斑节拍计时器 + 中心光斑句柄。 */
     private class FieldState {
         val affected = HashSet<ShipAPI>()
-        var arcTimer = 0f
+        var waveTimer = 0f
+        var centerFlare: GravEmFieldVfx.CenterFlare? = null
     }
 
     override fun advanceInCombat(ship: ShipAPI, amount: Float) {
@@ -61,10 +60,11 @@ class GravEmFieldHullMod : BaseHullMod() {
 
         val state = ship.customData[STATE_KEY] as? FieldState
 
-        // 残骸化：对仍在场目标逐一 unmodify 后移除本舰状态（hulk 的引擎视图中目标引用仍有效）
+        // 残骸化：对仍在场目标逐一 unmodify、移除中心光斑后移除本舰状态（hulk 的引擎视图中目标引用仍有效）
         if (ship.isHulk) {
             if (state != null) {
                 for (target in state.affected) unmodifyTarget(target, modIdOf(ship))
+                state.centerFlare?.dispose()
                 ship.removeCustomData(STATE_KEY)
             }
             return
@@ -73,10 +73,14 @@ class GravEmFieldHullMod : BaseHullMod() {
         val systemState = ship.system?.state
         val fieldActive = systemState != ShipSystemAPI.SystemState.COOLDOWN
         if (!fieldActive) {
-            // 系统冷却力场消失：对账清理全部受影响目标（冷却结束重新进场照常压制）
-            if (state != null && state.affected.isNotEmpty()) {
-                for (target in state.affected) unmodifyTarget(target, modIdOf(ship))
-                state.affected.clear()
+            // 系统冷却力场消失：对账清理全部受影响目标与中心光斑（冷却结束重新进场照常压制）
+            if (state != null) {
+                if (state.affected.isNotEmpty()) {
+                    for (target in state.affected) unmodifyTarget(target, modIdOf(ship))
+                    state.affected.clear()
+                }
+                state.centerFlare?.dispose()
+                state.centerFlare = null
             }
             return
         }
@@ -105,7 +109,8 @@ class GravEmFieldHullMod : BaseHullMod() {
         }
         activeState.affected += seenThisFrame
 
-        driveArcVisuals(engine, ship, activeState, amount)
+        activeState.centerFlare = GravEmFieldVfx.maintainCenterFlare(engine, ship, activeState.centerFlare)
+        driveWaveVisuals(engine, ship, activeState, amount)
 
         if (ship === engine.playerShip) {
             maintainStatusBar(engine, values)
@@ -159,64 +164,13 @@ class GravEmFieldHullMod : BaseHullMod() {
         stats.missileWeaponFluxCostMod.unmodifyMult(modId)
     }
 
-    /** 力场电弧视觉节拍：每隔 [GravEmFieldTuning.ARC_WAVE_INTERVAL]s 一波，每波 5~10 个紫色特效电弧。 */
-    private fun driveArcVisuals(engine: CombatEngineAPI, ship: ShipAPI, state: FieldState, amount: Float) {
-        state.arcTimer += amount
-        while (state.arcTimer >= GravEmFieldTuning.ARC_WAVE_INTERVAL) {
-            state.arcTimer -= GravEmFieldTuning.ARC_WAVE_INTERVAL
-            val count = MathUtils.getRandomNumberInRange(
-                GravEmFieldTuning.ARC_WAVE_COUNT_MIN, GravEmFieldTuning.ARC_WAVE_COUNT_MAX,
-            )
-            repeat(count) { spawnFieldArc(engine, ship) }
+    /** 波形光斑节拍：每隔 [GravEmFieldTuning.WAVE_INTERVAL]s 一波（数量区间见 tuning），相位状态决定红/紫。 */
+    private fun driveWaveVisuals(engine: CombatEngineAPI, ship: ShipAPI, state: FieldState, amount: Float) {
+        state.waveTimer += amount
+        while (state.waveTimer >= GravEmFieldTuning.WAVE_INTERVAL) {
+            state.waveTimer -= GravEmFieldTuning.WAVE_INTERVAL
+            GravEmFieldVfx.spawnWave(engine, ship, ship.isPhased)
         }
-    }
-
-    /** 单发特效电弧：舰体真实碰撞箱随机边缘 → 随机方向（纯视觉，无伤害结算）。 */
-    private fun spawnFieldArc(engine: CombatEngineAPI, ship: ShipAPI) {
-        val from = hullBoundaryPoint(ship)
-        val outAngle = Misc.getAngleInDegrees(ship.location, from) + MathUtils.getRandomNumberInRange(-30f, 30f)
-        val outDist = ship.collisionRadius * MathUtils.getRandomNumberInRange(0.25f, 0.45f)
-        val rad = Math.toRadians(outAngle.toDouble())
-        val to = Vector2f(
-            from.x + (cos(rad) * outDist).toFloat(),
-            from.y + (sin(rad) * outDist).toFloat(),
-        )
-        val params = EmpArcEntityAPI.EmpArcParams().apply {
-            segmentLengthMult = 5f
-            zigZagReductionFactor = 0.12f
-            fadeOutDist = 32f
-            minFadeOutMult = 6f
-            flickerRateMult = 0.42f
-        }
-        val thickness = MathUtils.getRandomNumberInRange(4f, 7f)
-        val arc = engine.spawnEmpArcVisual(from, ship, to, ship, thickness, ARC_FRINGE, ARC_CORE, params)
-        arc.coreWidthOverride = thickness * 0.45f
-        arc.setSingleFlickerMode(true)
-        arc.setRenderGlowAtStart(false)
-    }
-
-    /** 舰体真实碰撞箱随机边缘点（exactBounds 随机段上插值；无碰撞箱时按碰撞半径近似）。 */
-    private fun hullBoundaryPoint(ship: ShipAPI): Vector2f {
-        val bounds = ship.exactBounds
-        if (bounds != null) {
-            bounds.update(ship.location, ship.facing)
-            val segments = bounds.segments
-            if (segments.isNotEmpty()) {
-                val seg = segments[MathUtils.getRandomNumberInRange(0, segments.size - 1)]
-                val t = MathUtils.getRandomNumberInRange(0f, 1f)
-                return Vector2f(
-                    seg.p1.x + (seg.p2.x - seg.p1.x) * t,
-                    seg.p1.y + (seg.p2.y - seg.p1.y) * t,
-                )
-            }
-        }
-        val angle = MathUtils.getRandomNumberInRange(0f, 360f)
-        val radius = ship.collisionRadius * 0.90f
-        val rad = Math.toRadians(angle.toDouble())
-        return Vector2f(
-            ship.location.x + (cos(rad) * radius).toFloat(),
-            ship.location.y + (sin(rad) * radius).toFloat(),
-        )
     }
 
     /** 玩家船左侧状态行（每帧调用刷新）：台词短句 + 当前难度档位的力场数值。 */
@@ -289,10 +243,6 @@ class GravEmFieldHullMod : BaseHullMod() {
 
         /** 玩家船状态行键。 */
         private const val STATUS_KEY = "astd_grav_em_field_status"
-
-        /** 力场电弧配色（透镜协议紫）。 */
-        private val ARC_FRINGE = Color(186, 120, 255, 180)
-        private val ARC_CORE = Color(232, 205, 255, 140)
 
         private val LINE_COLOR = Color(200, 200, 210)
 

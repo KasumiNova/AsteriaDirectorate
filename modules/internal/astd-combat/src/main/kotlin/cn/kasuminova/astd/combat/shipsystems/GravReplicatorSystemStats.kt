@@ -15,10 +15,14 @@ import com.fs.starfarer.api.combat.WeaponAPI
 import com.fs.starfarer.api.combat.listeners.AdvanceableListener
 import com.fs.starfarer.api.impl.combat.BaseShipSystemScript
 import com.fs.starfarer.api.plugins.ShipSystemStatsScript
+import com.fs.starfarer.api.util.Misc
 import org.boxutil.units.standard.entity.DistortionEntity
 import org.boxutil.units.standard.entity.FlareEntity
+import org.lazywizard.lazylib.MathUtils
 import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
+import kotlin.math.cos
+import kotlin.math.sin
 
 /**
  * 引力空间复制器（Gravity Space Replicator，系统 id：astd_grav_replicator）——舜华级（ZW-101）舰船系统。
@@ -30,21 +34,25 @@ import java.awt.Color
  *    （engine.customData 闩，unapply 清除，保证下次激活可再触发）。
  * 2. **弹道复制**：系统开启期间（IN/ACTIVE/OUT，apply 被调用的全部窗口）扫描
  *    engine.projectiles，本舰发射的能量武器实弹（武器 type=ENERGY、非光束、非装饰；
- *    导弹与实弹武器天然排除）逐发登记一条复制单（[ReplicaOrder]，记原发射点
- *    [DamagingProjectileAPI.getSpawnLocation]、朝向、初速、面板伤害与武器单发辐能）；
- *    每个弹体只登记一次（弹体 customData [SCAN_MARK_KEY]，复制体出生即带标记防二次复制）。
- *    已在飞行中的弹体（首次观测时 elapsed 超过 [SCAN_AGE_TOLERANCE]）视为系统开启前发射，
- *    只标记不登记。
+ *    导弹与实弹武器天然排除）逐发登记一条复制单（[ReplicaOrder]，记原朝向、初速、
+ *    面板伤害与武器单发辐能快照）；每个弹体只登记一次（弹体 customData [SCAN_MARK_KEY]，
+ *    复制体出生即带标记防二次复制）。已在飞行中的弹体（首次观测时 elapsed 超过
+ *    [SCAN_AGE_TOLERANCE]）视为系统开启前发射，只标记不登记。
  * 3. **复制调度**：[ReplicaQueueProcessor]（挂在舰船上的 AdvanceableListener，逐舰一份，
- *    存于 ship.customData [QUEUE_KEY]）逐帧推进复制单：发射后 0.5s 于原发射点复制第一发，
+ *    存于 ship.customData [QUEUE_KEY]）逐帧推进复制单：登记后 0.5s 复制第一发，
  *    再过 0.5s 复制第二发（共两发，[GravReplicatorTuning.copyDueTime]）。复制瞬间重新校验
  *    源弹体 spec 可复制性（武器 spec 与弹体 spec 仍可解析）；每发复制体伤害 = 原弹体
  *    伤害 × 难度比例（乘在 damageAmount 上），并给舰船附加 武器单发辐能 × 难度比例 的软辐能。
  *    舰船死亡/残骸化清空队列；队列随舰船实体回收，战斗结束不泄漏。
+ * 4. **复制体出现位置与射向**：不锁定武器发射点——出现点在舰船中心周围
+ *    碰撞半径 ×[SPAWN_RING_MIN_FRACTION, SPAWN_RING_MAX_FRACTION] 环带内均匀随机取点。
+ *    若 ship.shipTarget 非 null 且存活，复制体初速向量取「出现点 → 预判命中点」方向 ×
+ *    登记时快照的原弹速模长（预判命中点 = 目标位置 + 目标速度 × 距离/弹速），facing 与
+ *    速度方向一致；无锁定目标时保持登记快照的原朝向/初速（仅位置随机化）。
  *
- * 特效：激活期间舰船紫色 jitter；每次复制在发射点放两个 FlareEntity（SMOOTH 圆斑 +
- * SHARP_DISC 光柱，0.5s 消散，紫色）+ 一次小型扩散扭曲（0.5s/0.5s/0.5s，40→80su，
- * 按发射角度旋转）。
+ * 特效：激活期间舰船紫色 jitter；每次复制在出现点放两个 FlareEntity（SMOOTH 圆斑 +
+ * SHARP_DISC 光柱，0.5s 消散，紫色；光柱在复制体射向基础上再转 90° 作横向辉光）+
+ * 一次小型扩散扭曲（0.5s/0.5s/0.5s，40→80su，按射向旋转）。
  */
 class GravReplicatorSystemStats : BaseShipSystemScript() {
 
@@ -114,7 +122,6 @@ class GravReplicatorSystemStats : BaseShipSystemScript() {
                 ReplicaOrder(
                     weapon = weapon,
                     weaponId = weaponId,
-                    point = Vector2f(proj.spawnLocation),
                     facing = proj.facing,
                     velocity = Vector2f(proj.velocity),
                     damageAmount = proj.damageAmount,
@@ -151,11 +158,10 @@ class GravReplicatorSystemStats : BaseShipSystemScript() {
         )
     }
 
-    /** 一条复制单：源弹体的 spec/原发射点/朝向/初速/面板伤害/武器单发辐能快照 + 复制进度。 */
+    /** 一条复制单：源弹体的 spec/朝向/初速/面板伤害/武器单发辐能快照 + 复制进度。 */
     private class ReplicaOrder(
         val weapon: WeaponAPI,
         val weaponId: String,
-        val point: Vector2f,
         val facing: Float,
         val velocity: Vector2f,
         val damageAmount: Float,
@@ -167,7 +173,8 @@ class GravReplicatorSystemStats : BaseShipSystemScript() {
 
     /**
      * 复制调度器（逐舰一份，挂 ShipAPI listener + customData）：逐帧推进复制单队列，
-     * 到期在**原发射点** spawn 同类弹体。舰船死亡/残骸化清空队列（队列随舰船实体回收）。
+     * 到期在舰船周界环带随机点 spawn 同类弹体（射向见 [spawnReplica]）。
+     * 舰船死亡/残骸化清空队列（队列随舰船实体回收）。
      */
     private class ReplicaQueueProcessor(private val ship: ShipAPI) : AdvanceableListener {
         val queue = ArrayList<ReplicaOrder>()
@@ -195,7 +202,11 @@ class GravReplicatorSystemStats : BaseShipSystemScript() {
         }
 
         /**
-         * 生成一发复制体：复制瞬间重新校验源弹体可复制性——武器 spec 与弹体 spec 仍可解析，
+         * 生成一发复制体：出现点在舰船中心周围 碰撞半径 ×[SPAWN_RING_MIN_FRACTION,
+         * SPAWN_RING_MAX_FRACTION] 环带内均匀随机取点；若 ship.shipTarget 非 null 且存活，
+         * 初速改为「出现点 → 预判命中点」方向 × 登记快照的弹速模长（预判命中点 = 目标位置 +
+         * 目标速度 × 出现点距离/弹速），facing 与速度方向一致；无锁定目标时保持登记快照的
+         * 原朝向/初速。复制瞬间重新校验源弹体可复制性——武器 spec 与弹体 spec 仍可解析，
          * 且武器实例仍有效（延迟 0.5s/1.0s 后武器可能已损毁/被移除：仍挂在舰船 allWeapons 中
          * 且未禁用）；校验失败丢弃本条复制单剩余复制并告警。复制体出生即带扫描标记防二次复制；
          * 每发复制给舰船附加 武器单发辐能 × 难度比例 的软辐能。
@@ -214,9 +225,11 @@ class GravReplicatorSystemStats : BaseShipSystemScript() {
                 return
             }
 
+            val point = randomSpawnPoint(ship)
+            val (facing, velocity) = resolveReplicaTrajectory(ship, order, point)
             val spawned = engine.spawnProjectile(
                 ship, order.weapon, order.weaponId,
-                Vector2f(order.point), order.facing, Vector2f(order.velocity),
+                Vector2f(point), facing, velocity,
             )
             if (spawned is DamagingProjectileAPI) {
                 spawned.damageAmount = GravReplicatorTuning.replicaDamage(order.damageAmount, values.damageRatio)
@@ -227,17 +240,51 @@ class GravReplicatorSystemStats : BaseShipSystemScript() {
             ship.fluxTracker.increaseFlux(
                 GravReplicatorTuning.replicaFlux(order.fluxPerShot, values.fluxRatio), false,
             )
-            spawnReplicaVfx(engine, order.point, order.facing)
+            spawnReplicaVfx(engine, point, facing)
+        }
+
+        /** 复制体出现点：舰船中心为圆心、碰撞半径 ×[SPAWN_RING_MIN_FRACTION, SPAWN_RING_MAX_FRACTION] 环带内均匀随机。 */
+        private fun randomSpawnPoint(ship: ShipAPI): Vector2f {
+            val angle = MathUtils.getRandomNumberInRange(0f, 360f)
+            val radius = ship.collisionRadius * MathUtils.getRandomNumberInRange(SPAWN_RING_MIN_FRACTION, SPAWN_RING_MAX_FRACTION)
+            val rad = Math.toRadians(angle.toDouble())
+            return Vector2f(
+                ship.location.x + (cos(rad) * radius).toFloat(),
+                ship.location.y + (sin(rad) * radius).toFloat(),
+            )
         }
 
         /**
-         * 复制一次性视觉（发射点）：SMOOTH 圆形光斑 + SHARP_DISC 光柱（按发射角度旋转，
-         * 0.5s 消散，紫色）+ 小型扩散扭曲（0.5s/0.5s/0.5s，40→80su，按发射角度旋转）。
+         * 复制体射向结算：优先射向当前锁定目标并带预判量（预判命中点 = 目标位置 +
+         * 目标速度 × 出现点到目标距离/弹速），方向取「出现点 → 预判命中点」、模长保持
+         * 登记快照的原弹速；无锁定目标（或快照弹速为零）时保持原朝向/初速。
+         */
+        private fun resolveReplicaTrajectory(ship: ShipAPI, order: ReplicaOrder, point: Vector2f): Pair<Float, Vector2f> {
+            val speed = order.velocity.length()
+            val target = ship.shipTarget
+            if (speed <= 0f || target == null || !target.isAlive || target.isHulk) {
+                return order.facing to Vector2f(order.velocity)
+            }
+            val travelSeconds = Misc.getDistance(point, target.location) / speed
+            val aimPoint = Vector2f(
+                target.location.x + target.velocity.x * travelSeconds,
+                target.location.y + target.velocity.y * travelSeconds,
+            )
+            val direction = Vector2f.sub(aimPoint, point, null)
+            if (direction.lengthSquared() <= 0f) return order.facing to Vector2f(order.velocity)
+            direction.normalise(direction)
+            return Misc.getAngleInDegrees(direction) to Vector2f(direction.x * speed, direction.y * speed)
+        }
+
+        /**
+         * 复制一次性视觉（出现点）：SMOOTH 圆形光斑 + SHARP_DISC 光柱（在复制体射向基础上
+         * 再转 90° 作横向辉光，0.5s 消散，紫色）+ 小型扩散扭曲（0.5s/0.5s/0.5s，40→80su，
+         * 按射向旋转）。
          */
         private fun spawnReplicaVfx(engine: CombatEngineAPI, point: Vector2f, facing: Float) {
             BoxUtilCombatVfx.ensureReady(engine)
             spawnFlare(engine, point, 0f, smooth = true)
-            spawnFlare(engine, point, BoxUtilCombatVfx.normalizeFacingDeg(facing), smooth = false)
+            spawnFlare(engine, point, BoxUtilCombatVfx.normalizeFacingDeg(facing + 90f), smooth = false)
 
             val distortion = DistortionEntity()
             distortion.setGlobalTimer(0.5f, 0.5f, 0.5f)
@@ -299,6 +346,10 @@ class GravReplicatorSystemStats : BaseShipSystemScript() {
 
         /** 系统开启前已飞行弹体的判定容忍窗（秒）：首次观测时 elapsed 超过本值只标记不登记。 */
         private const val SCAN_AGE_TOLERANCE = 0.1f
+
+        /** 复制体出现环带（碰撞半径倍数）：舰船中心周围 [0.5, 1.3] 倍碰撞半径环带内均匀随机取点。 */
+        private const val SPAWN_RING_MIN_FRACTION = 0.5f
+        private const val SPAWN_RING_MAX_FRACTION = 1.3f
 
         // 复制光斑尺寸（紫色）
         private const val FLARE_GLOW_SIZE = 42f

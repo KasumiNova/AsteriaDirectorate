@@ -106,7 +106,7 @@ object Ship_astd_zw_102 : ShipDataEntry() {
     override val designation: String = "航空战列舰"
     override val tech: String = "菀星设计局-紫菀"
     override val systemId: String = "astd_fighter_grav_link"
-    override val fleetPts: Int = 40
+    override val fleetPts: Int = 55
     override val hitpoints: Int = 12000
     override val armorRating: Int = 1200
     override val maxFlux: Int = 16000

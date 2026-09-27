@@ -30,12 +30,12 @@ object GravEmFieldTuning {
     /** 影响范围边缘的最小效力（线性衰减终点，25%）。 */
     const val EDGE_SCALE = 0.25f
 
-    /** 力场电弧视觉节拍（秒）：每隔该时长向随机方向发射一波紫色特效电弧。 */
-    const val ARC_WAVE_INTERVAL = 0.5f
+    /** 力场波形光斑视觉节拍（秒）：每隔该时长从舰体边缘向外发射一波光斑组合。 */
+    const val WAVE_INTERVAL = 0.5f
 
-    /** 每波特效电弧数量区间。 */
-    const val ARC_WAVE_COUNT_MIN = 5
-    const val ARC_WAVE_COUNT_MAX = 10
+    /** 每波波形光斑组合数量区间。 */
+    const val WAVE_COUNT_MIN = 5
+    const val WAVE_COUNT_MAX = 10
 
     /** 一次力场结算所需的全部机制数值（难度解析结果；最终乘区口径，直接可用）。 */
     data class Values(

@@ -21,7 +21,7 @@ object GravReplicatorTuning {
     /** 每发实弹的复制体数量（共两发复制体）。 */
     const val COPY_COUNT = 2
 
-    /** 首发复制延迟（秒）：弹体发射后 0.5s 于原发射点复制第一发。 */
+    /** 首发复制延迟（秒）：弹体登记后 0.5s 复制第一发（出现点在舰船周界环带随机取点，见系统脚本 KDoc）。 */
     const val FIRST_COPY_DELAY = 0.5f
 
     /** 复制间隔（秒）：第一发复制后再过 0.5s 复制第二发。 */

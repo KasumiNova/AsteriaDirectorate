@@ -9,8 +9,9 @@ import kotlin.math.roundToInt
  * 引力磁暴发生器（密蒙级 ZW-002 舰船系统，系统 id：astd_grav_storm）的机制数值声明与纯函数
  * （原版「量子干扰」acausaldisruptor / AcausalDisruptorStats 的增强基线）。
  *
- * 动机：充能窗口（2s 下限 / 4s 上限）、锥状锁定（60° 锥 × 基础射程）、按舰级的电弧数量区间、
- * 多目标电弧衰减、强制过载时长插值、单发电弧伤害与系统期间伤害减免的难度三锚点集中在此声明，
+ * 动机：充能窗口（2s 下限 / 4s 上限）、充能前段相位锁定（[PHASE_LOCKOUT_SECONDS]）、
+ * 锥状锁定（60° 锥 × 基础射程）、按舰级的电弧数量区间、多目标电弧衰减、
+ * 强制过载时长插值、单发电弧伤害与系统期间伤害减免的难度三锚点集中在此声明，
  * 供系统脚本每帧实时解析（LunaLib 设置变更即时生效），并由单元测试直接驱动。
  *
  * 玩家来源（owner == 0）固定 v2（砺刃档），对照 GravPhaseDeckTuning 既有口径。
@@ -30,7 +31,25 @@ object GravStormTuning {
     const val MAX_CHARGE_SECONDS = 4f
     const val MIN_CHARGE_SECONDS = 2f
 
-    /** 释放窗口（秒）：电弧在该窗口内按节奏分批打出（对应 .system 的 chargedown/out 段）。 */
+    /**
+     * 相位锁定时长（秒，口径等同 [MIN_CHARGE_SECONDS]）：系统 IN 状态且充能不足该时长期间，
+     * 本舰相位系统不可激活（脚本每帧把相位 cloak 压入 COOLDOWN 并钉住小余量，见
+     * [PHASE_LOCKOUT_COOLDOWN_REMAINING]；原版 ChargeTracker 实证 COOLDOWN 态按键不激活，
+     * 且相位脚本 unapply 即撤 phased——forceState(IDLE) 口径下 Ship.advance 同帧
+     * system→cloak 顺序会让「IDLE+按键→IN」在同帧复活，压不住，已弃用）；
+     * 达到该时长后恢复「充能期间进相位 → 中止充能进冷却」的既有行为。
+     */
+    const val PHASE_LOCKOUT_SECONDS = MIN_CHARGE_SECONDS
+
+    /**
+     * 相位锁定压制的残留冷却（秒）：锁定期间每帧把相位 cloak 剩余冷却钉为本值
+     * （ShipSystemAPI.setCooldownRemaining → ChargeTracker.startCooldown 一步置 COOLDOWN）；
+     * 停止压制后余量自行消退归 IDLE（≤ 本值），不污染正常相位循环；cloak 处于
+     * 更长的自然冷却时不改写（锁定效果本就成立，不缩短既有冷却）。
+     */
+    const val PHASE_LOCKOUT_COOLDOWN_REMAINING = 0.1f
+
+    /** 释放窗口（秒，对应 .system 的 chargedown/out 段）：电弧在释放瞬间一次性全部打出，窗口存续期即系统期间伤害减免的存续期。 */
     const val RELEASE_WINDOW_SECONDS = 1.5f
 
     /** 系统冷却（秒，文档口径；实际生效值以 ship_systems.csv 为准）。 */
@@ -125,12 +144,8 @@ object GravStormTuning {
     fun overloadDuration(anchor: Float, chargeNorm: Float): Float =
         anchor * (0.5f + 0.5f * chargeNorm)
 
-    /**
-     * 第 [index] 道（0 起）电弧的释放时刻（纯函数）：目标自身电弧在释放窗口内均匀排开，
-     * 首道立即打出（index 0 → 0s），末道落在 window × (count-1)/count。
-     */
-    fun arcFireTime(index: Int, count: Int, window: Float = RELEASE_WINDOW_SECONDS): Float =
-        if (count <= 1) 0f else window * index / count
+    /** 相位锁定判定（纯函数）：充能时长不足 [PHASE_LOCKOUT_SECONDS] 期间相位系统被抑制。 */
+    fun phaseLockoutActive(chargeSeconds: Float): Boolean = chargeSeconds < PHASE_LOCKOUT_SECONDS
 
     /** 锥状锁定判定（纯函数）：目标相对方位角与舰船朝向的角差 ≤ [CONE_HALF_ANGLE_DEG]。 */
     fun isInCone(angleDiffDeg: Float): Boolean = angleDiffDeg <= CONE_HALF_ANGLE_DEG

@@ -562,6 +562,13 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     private var gsActivationFluxDeltaMax = 0f
     private var gsChargeDamageTakenMultMin = Float.MAX_VALUE
 
+    // ACTIVATE 锁定窗（断言点 GS-B2）：充能前段相位锁定取证——窗内逐帧对玩家舰发
+    // TOGGLE_SHIELD_OR_PHASE_CLOAK（真实按键路径），统计施压帧数、isPhased 成立帧数
+    // （必须为 0）与 cloak 被压入 COOLDOWN 的帧数。
+    private var gsPhaseLockoutPressFrames = 0
+    private var gsPhaseLockoutPhasedFrames = 0
+    private var gsPhaseLockoutCloakPinnedFrames = 0
+
     // RELEASE（断言点 GS-C/D）：释放闩、系统激活期力场修饰键在场对账、靶舰过载时长与电弧结算掉血。
     // 注意：电弧 EMP 会熄火敌舰引擎把 maxSpeed 打到 0，力场存续判定只能对账修饰键，不能读值。
     private var gsStormActivationLatched = false
@@ -6729,12 +6736,19 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
      * 舞台保活与站位（范式同 stabilizeGrgShips）：双方逐帧钉死锚点 + 舰 AI 置空
      * （密蒙舰载机联队不需要出库，无 AI 即不出击；系统施放时机由插件独占，
      * [blockSystem] 在 ACTIVATE 之前逐帧封锁 USE_SYSTEM 防系统 AI 路径抢跑）。
-     * 玩家舰逐帧封锁相位斗篷：充能中进相位会 deactivate 取消释放（机制口径），
-     * 本场景验证完整释放链路，相位路径不在观测面内。
+     * 玩家舰默认逐帧封锁相位斗篷（[blockPhase]）：充能锁定窗（断言点 GS-B2）需要放开
+     * 封锁并反向施压相位键，其余阶段封锁——锁定解除后充能中进相位会 deactivate
+     * 取消释放（机制口径），本场景主线验证完整释放链路。
      * [healEnemy] 在 RELEASE 起关闭：电弧结算需要真实 hitpoints 读数（靶舰装甲已在
      * 进 ACTIVATE 时剥零，范式同 GRG 的 RIFT_FIRE 前剥甲）。
      */
-    private fun stabilizeGsShips(engine: CombatEngineAPI, healEnemy: Boolean, zeroPlayerFlux: Boolean, blockSystem: Boolean) {
+    private fun stabilizeGsShips(
+        engine: CombatEngineAPI,
+        healEnemy: Boolean,
+        zeroPlayerFlux: Boolean,
+        blockSystem: Boolean,
+        blockPhase: Boolean = true,
+    ) {
         val player = findGsPlayer(engine)
         val enemy = findGsEnemy(engine)
         if (player != null && !player.isHulk) {
@@ -6746,7 +6760,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 player.fluxTracker.hardFlux = 0f
             }
             if (blockSystem) player.blockCommandForOneFrame(ShipCommand.USE_SYSTEM)
-            player.blockCommandForOneFrame(ShipCommand.TOGGLE_SHIELD_OR_PHASE_CLOAK)
+            if (blockPhase) player.blockCommandForOneFrame(ShipCommand.TOGGLE_SHIELD_OR_PHASE_CLOAK)
         }
         if (enemy != null && !enemy.isHulk) {
             stabilizeShip(enemy, GS_ENEMY_ANCHOR, 180f, allowFire = false, preserveAI = false)
@@ -6860,11 +6874,22 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 // 脚本 apply 一帧（随即 forceState OUT），isOn 观测面既留不住激活代价读数
                 // （chargeTick 首帧计入的软辐能会被下一帧清零抹掉）也抓不到释放闩，必须直接读 state。
                 val systemState = system?.state
+                // 断言点 GS-B2 施压窗：充能前段相位锁定期（留 0.2s 余量防锁定解除瞬间误激活），
+                // 窗内放开相位封锁并逐帧反向施压相位键（真实 TOGGLE_SHIELD_OR_PHASE_CLOAK 路径）。
+                val inPhaseLockout = gsActivatedAt >= 0f && systemState == ShipSystemAPI.SystemState.IN &&
+                        elapsed - gsActivatedAt < GS_PHASE_LOCKOUT_PRESS_SECONDS
                 stabilizeGsShips(
                     engine, healEnemy = true,
                     zeroPlayerFlux = systemState == null || systemState == ShipSystemAPI.SystemState.IDLE,
                     blockSystem = false,
+                    blockPhase = !inPhaseLockout,
                 )
+                if (inPhaseLockout && player != null) {
+                    gsPhaseLockoutPressFrames++
+                    player.giveCommand(ShipCommand.TOGGLE_SHIELD_OR_PHASE_CLOAK, null, 0)
+                    if (player.isPhased) gsPhaseLockoutPhasedFrames++
+                    if (player.phaseCloak?.state == ShipSystemAPI.SystemState.COOLDOWN) gsPhaseLockoutCloakPinnedFrames++
+                }
                 if (player != null && enemy != null && system != null) {
                     if (system.id != GS_SYSTEM_ID) {
                         failureReason = "gs system id=${system.id}, expect $GS_SYSTEM_ID（ship_data.csv 生成物未刷新）"
@@ -6904,12 +6929,29 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                                     transitionGsPhase(GS_PHASE_FAILED)
                                 }
 
+                                gsPhaseLockoutPhasedFrames > 0 -> {
+                                    failureReason = "gs phase lockout breached: 锁定窗内 isPhased 成立 $gsPhaseLockoutPhasedFrames 帧" +
+                                            "（断言点 GS-B2：充能前段相位锁定，isPhased 须恒 false）"
+                                    transitionGsPhase(GS_PHASE_FAILED)
+                                }
+
+                                gsPhaseLockoutPressFrames < GS_PHASE_LOCKOUT_MIN_PRESS_FRAMES -> {
+                                    failureReason = "gs phase lockout 施压不足: pressFrames=$gsPhaseLockoutPressFrames" +
+                                            " < $GS_PHASE_LOCKOUT_MIN_PRESS_FRAMES（断言点 GS-B2：锁定窗未充分施压，证据不可信）"
+                                    transitionGsPhase(GS_PHASE_FAILED)
+                                }
+
                                 else -> {
                                     gsEnemyHpBeforeRelease = enemy.hitpoints
                                     gsEnemyHpMinAfterRelease = enemy.hitpoints
                                     log.info(
                                         "[ASTD-Automation] gs charge evidence: fluxDeltaMax=${"%.0f".format(gsActivationFluxDeltaMax)} " +
                                                 "damageTakenMultMin=${"%.3f".format(gsChargeDamageTakenMultMin)}（断言点 GS-B）",
+                                    )
+                                    log.info(
+                                        "[ASTD-Automation] gs phase lockout evidence: pressFrames=$gsPhaseLockoutPressFrames " +
+                                                "phasedFrames=$gsPhaseLockoutPhasedFrames cloakPinnedFrames=$gsPhaseLockoutCloakPinnedFrames" +
+                                                "（断言点 GS-B2：充能前段相位锁定，锁定窗内 isPhased 恒 false）",
                                     )
                                     transitionGsPhase(GS_PHASE_RELEASE)
                                 }
@@ -8945,6 +8987,9 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 appendLine("  \"gsFieldEmpMultMax\": ${formatFloat(gsFieldEmpMultMax)},")
                 appendLine("  \"gsActivationFluxDeltaMax\": ${formatFloat(gsActivationFluxDeltaMax)},")
                 appendLine("  \"gsChargeDamageTakenMultMin\": ${formatFloat(if (gsChargeDamageTakenMultMin == Float.MAX_VALUE) -1f else gsChargeDamageTakenMultMin)},")
+                appendLine("  \"gsPhaseLockoutPressFrames\": $gsPhaseLockoutPressFrames,")
+                appendLine("  \"gsPhaseLockoutPhasedFrames\": $gsPhaseLockoutPhasedFrames,")
+                appendLine("  \"gsPhaseLockoutCloakPinnedFrames\": $gsPhaseLockoutCloakPinnedFrames,")
                 appendLine("  \"gsStormActivationLatched\": $gsStormActivationLatched,")
                 appendLine("  \"gsFieldMultMinDuringRelease\": ${formatFloat(if (gsFieldMultMinDuringRelease == Float.MAX_VALUE) -1f else gsFieldMultMinDuringRelease)},")
                 appendLine("  \"gsEnemyOverloadObserved\": ${gsEnemyOverloadStartedAt >= 0f},")
@@ -10738,6 +10783,12 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private const val GS_EXPECT_ACTIVATION_FLUX_MIN = 2000f
         private const val GS_EXPECT_ACTIVATION_FLUX_MAX = 2800f
         private const val GS_EXPECT_DAMAGE_TAKEN_MAX = 0.51f
+
+        // ACTIVATE 锁定窗（断言点 GS-B2）：相位锁定时长 2s（GravStormTuning.PHASE_LOCKOUT_SECONDS
+        // 口径，其声明不在本模块可见面，此处字面值镜像，改动锁定时长需同步）；施压窗口留 0.2s
+        // 余量（防止锁定解除瞬间的相位键真激活把充能打断）；窗内施压帧数下限容忍帧率抖动。
+        private const val GS_PHASE_LOCKOUT_PRESS_SECONDS = 1.8f
+        private const val GS_PHASE_LOCKOUT_MIN_PRESS_FRAMES = 30
 
         // RELEASE（断言点 GS-C/D + GS-E 前置）：充能 4s + 释放窗 1.5s + 过载收尾余量；
         // 巡洋舰 v2 满充能强制过载锚点 2s（界 [1.5, 2.5]，帧粒度宽松）；
