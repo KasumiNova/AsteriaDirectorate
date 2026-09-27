@@ -203,7 +203,9 @@ object BoxUtilCombatVfx {
      * 的 `isEntityExpired()` 探测随即重建全新控制器（state 全零，提交游标归零）。
      *
      * 调用纪律：**每次爆炸事件在喷第一批粒子前调一次**——严禁逐颗粒调用（renderingCount 在
-     * controlAdvance 提交前恒 0，会把本爆发刚喷入的池一并判死删掉）。
+     * controlAdvance 提交前恒 0，会把本爆发刚喷入的池一并判死删掉）。同帧边界：若其他特效
+     * （如 GeminiDemPayloadBeamVfx）同一帧刚喷入尚未提交的批次，会被本次重置连带清除，
+     * 概率低、纯视觉、下一拍即恢复，属可接受口径。
      */
     fun resetNebulaControllerIfIdle(engine: CombatEngineAPI) {
         ensureReady(engine)
