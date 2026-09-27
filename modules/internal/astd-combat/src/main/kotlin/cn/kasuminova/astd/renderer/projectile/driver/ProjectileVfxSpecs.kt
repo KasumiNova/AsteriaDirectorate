@@ -29,7 +29,8 @@ object ProjectileVfxSpecs {
     /**
      * projectileSpecId → 构建函数（参数 = 武器面板射程 su，null 时用 spec 固定带长）。加入一个即接入本管线。
      *
-     * 当前接入：坠星残响双 spec（普通蓝白 / 第 5 发红色）+ 15 个 simpleProjectileVfx spec（四层惯例）。
+     * 当前接入：坠星残响双配色（普通蓝白 / 第 5 发红色——后者为纯 VFX 键，第 5 发与普通弹
+     * 同 spec，由 OnFire 脚本打标记并显式 track）+ 15 个 simpleProjectileVfx spec（四层惯例）。
      */
     private val builders: Map<String, (Float?) -> ProjectileVfx> = mapOf(
         // 坠星残响（XC-001 内置主炮，blue/10-signature.md）：通用四层拖尾（蓝白）+ 开火锥状冲击；

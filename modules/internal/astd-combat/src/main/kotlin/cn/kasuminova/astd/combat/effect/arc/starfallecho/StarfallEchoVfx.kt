@@ -42,7 +42,7 @@ object StarfallEchoVfx {
         spawnArcs(engine, center, scale, radius)
     }
 
-    /** 星云：10 + 5×(规模−1) 片，单片大小 = 爆炸直径，缓慢外扩渐隐。 */
+    /** 星云：10 + 5×(规模−1) 片，单片大小 = 爆炸直径；整片大尺码下压透明度、拉长淡出保可读性。 */
     private fun spawnNebula(engine: CombatEngineAPI, center: Vector2f, scale: Int, radius: Float) {
         val count = 10 + 5 * (scale - 1)
         repeat(count) {
@@ -54,10 +54,10 @@ object StarfallEchoVfx {
             val base = if (brighten) FINAL_CORE else FINAL_FRINGE
             BoxUtilCombatVfx.addNebulaParticle(
                 engine, pos, vel,
-                radius * 2f * MathUtils.getRandomNumberInRange(0.4f, 0.8f),
-                1.3f, 0.1f, 0.3f,
-                MathUtils.getRandomNumberInRange(0.8f, 1.4f),
-                Color(base.red, base.green, base.blue, 120),
+                radius * 2f,
+                1.5f, 0.1f, 0.25f,
+                MathUtils.getRandomNumberInRange(1.0f, 1.8f),
+                Color(base.red, base.green, base.blue, 90),
             )
         }
     }

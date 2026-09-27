@@ -103,7 +103,7 @@ override val projSpec: ProjectileProjSpec = ProjectileProjSpec(
 ```
 
 - 插件挂载点：`everyFrameEffect` = 现成 VFX 安全网（机制逻辑不在这里，见 §0）；`onHitEffect` / `onFireEffect` 在 `.proj`（由 ss-csv 生成）。
-- **美术资产待补**：`graphics/weapons/astd_qiongjue_base.png` / `astd_qiongjue_gun.png`（命名对齐 `astd_aod7_base.png` 现有惯例）。机制分支阶段允许先填 `graphics/fx/empty.png` 跑烟测，但**本武器在贴图到位前不算完工**（列入验收目检项）。
+- **美术资产待补**：`graphics/weapons/astd_qiongjue_base.png` / `astd_qiongjue_gun.png`（命名对齐 `astd_ftb_omega_base.png` 现有惯例）。机制分支阶段允许先填 `graphics/fx/empty.png` 跑烟测，但**本武器在贴图到位前不算完工**（列入验收目检项）。
 - `fireSoundTwo = gauss_fire`：提案（1100 射程动能主炮定位对齐高斯听觉），耳检可换。
 - `turretOffsets`/`visualRecoil` 数值为提案，随贴图到位后按实尺寸校正。
 

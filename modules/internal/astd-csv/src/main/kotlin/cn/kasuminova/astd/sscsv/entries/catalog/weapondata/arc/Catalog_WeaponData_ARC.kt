@@ -73,20 +73,8 @@ object Wpn_astd_starfall_echo : WeaponDataEntry(), SsJsonOutputs {
         width = 34.0,
     )
 
-    /** 第 5 发：同规格红色弹体，尺寸 ×2（onFire 脚本替换产出，VFX 走通用分发器登记 final spec）。 */
-    val finalProjSpec: ProjectileProjSpec = ProjectileProjSpec.boxBolt(
-        id = "astd_starfall_echo_shot_final",
-        onHitEffect = "cn.kasuminova.astd.combat.effect.arc.starfallecho.StarfallEchoOnHitEffect",
-        fringeColor = Rgba(255, 90, 60, 255),
-        coreColor = Rgba(255, 235, 225, 200),
-        hitGlowRadius = 50.0,
-        length = 276.0,
-        width = 68.0,
-    )
-
     override fun jsonExtraFiles(): List<GeneratedJsonFile> = listOf(
         GeneratedJsonFile("data/weapons/proj/${projSpec.id}.proj", projSpec.toJson()),
-        GeneratedJsonFile("data/weapons/proj/${finalProjSpec.id}.proj", finalProjSpec.toJson()),
     )
 }
 

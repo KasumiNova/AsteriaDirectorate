@@ -30,7 +30,7 @@ import kotlin.test.assertTrue
  * - 侧飞回归：12~18 针（错峰三段全激活）逐针位移方向 == 自身 facing，侧向分量 < 1e-3；
  * - 错峰三段：v2.2 二次曲线权重配额（1/9 : 3/9 : 5/9，末段最大）、段延迟单调、首段零延迟；
  * - 参数域：锥面 v2.2 档（9~13 针、[220,520] 速度、0.30~0.70L×0.85×1.20 塑形域）与
- *   aod7 轻量档（7~10 针、无错峰零延迟）逐字域；
+ *   轻量档（7~10 针、无错峰零延迟）逐字域；
  * - 过期停驱；入口防线与烟雾：非法入参 WARN + null；spawnSmoke 星云颗粒数在参数域内。
  */
 class StrikeSprayComponentTest {
@@ -78,7 +78,7 @@ class StrikeSprayComponentTest {
         ),
     )
 
-    private fun aod7Style() = StrikeSprayVfx.SprayStyle(
+    private fun lightStyle() = StrikeSprayVfx.SprayStyle(
         baseRaysMin = 7,
         baseRaysExtra = 3,
         arc = 58f,
@@ -103,10 +103,10 @@ class StrikeSprayComponentTest {
         arcDeg = 60f,
         coreColor = core,
         fringeColor = fringe,
-        style = aod7Style().copy(baseRaysMin = 12, baseRaysExtra = 6, arc = 60f),
+        style = lightStyle().copy(baseRaysMin = 12, baseRaysExtra = 6, arc = 60f),
     )
 
-    private fun explicitSpec(arcDeg: Float = 58f, style: StrikeSprayVfx.SprayStyle = aod7Style()) = StrikeSprayVfx.StrikeSpraySpec(
+    private fun explicitSpec(arcDeg: Float = 58f, style: StrikeSprayVfx.SprayStyle = lightStyle()) = StrikeSprayVfx.StrikeSpraySpec(
         origin = Vector2f(origin),
         facingDeg = 90f,
         arcDeg = arcDeg,
@@ -251,23 +251,23 @@ class StrikeSprayComponentTest {
     @Test
     fun `exact rays overrides fixed domain when present`() {
         // v4.4 数量动态化通路：exactRays=15 精确生效（固定域 9+4 只给 9~13，绝不产出 15）。
-        val comp15 = StrikeSprayComponent("t15", explicitSpec(style = aod7Style().copy(exactRays = 15)))
+        val comp15 = StrikeSprayComponent("t15", explicitSpec(style = lightStyle().copy(exactRays = 15)))
         assertEquals(15, comp15.needles.size, "exactRays 必须精确驱动针数")
 
         // exactRays 下限直通（clamp [1,80] 内）：3 根精确生效（固定域永远 ≥7）。
-        val comp3 = StrikeSprayComponent("t3", explicitSpec(style = aod7Style().copy(exactRays = 3)))
+        val comp3 = StrikeSprayComponent("t3", explicitSpec(style = lightStyle().copy(exactRays = 3)))
         assertEquals(3, comp3.needles.size, "exactRays 小值必须精确驱动")
 
-        // null 走原固定域随机（aod7 显式档零影响）。
+        // null 走固定域随机。
         val compNull = StrikeSprayComponent("tn", explicitSpec())
         assertTrue(compNull.needles.size in 7..10, "exactRays=null 必须走固定域 7~10: ${compNull.needles.size}")
     }
 
     @Test
-    fun `aod7 light tier ports explicit params without ramp`() {
+    fun `light tier ports explicit params without ramp`() {
         val comp = StrikeSprayComponent("t", explicitSpec())
 
-        assertTrue(comp.needles.size in 7..10, "aod7 轻量档针数 7~10: ${comp.needles.size}")
+        assertTrue(comp.needles.size in 7..10, "轻量档针数 7~10: ${comp.needles.size}")
         for (needle in comp.needles) {
             // 针数 < 12 → 无错峰：全部零延迟 attach 即激活段。
             assertEquals(0f, needle.activationDelay, "显式轻量档不得错峰")
@@ -315,7 +315,7 @@ class StrikeSprayComponentTest {
         val engine = mock(CombatEngineAPI::class.java)
 
         assertNull(StrikeSprayVfx.spawnSpray(engine, explicitSpec(arcDeg = 0f)))
-        assertNull(StrikeSprayVfx.spawnSpray(engine, explicitSpec(style = aod7Style().copy(speedMin = 0f))))
+        assertNull(StrikeSprayVfx.spawnSpray(engine, explicitSpec(style = lightStyle().copy(speedMin = 0f))))
         assertTrue(capture.messages().any { it.contains("arcDeg 非正") }, "必须记 WARN: ${capture.messages()}")
         assertTrue(capture.messages().any { it.contains("非正区间端点") }, "必须记 WARN: ${capture.messages()}")
     }
@@ -334,7 +334,7 @@ class StrikeSprayComponentTest {
     fun `spawn smoke emits nebula puffs within style count domain`() {
         val engine = mock(CombatEngineAPI::class.java)
 
-        // aod7 轻量档烟雾参数：puff 2+2 → 2~4 颗。
+        // 轻量档烟雾参数：puff 2+2 → 2~4 颗。
         StrikeSprayVfx.spawnSmoke(
             engine,
             origin,
@@ -373,7 +373,7 @@ class StrikeSprayComponentTest {
             smokeColor = Color(130, 195, 255, 85),
             coreColor = core,
             fringeColor = fringe,
-            sprayStyle = aod7Style(),
+            sprayStyle = lightStyle(),
             smokeStyle = StrikeSprayVfx.SmokeStyle(puffCountBase = 2, puffCountExtra = 2),
         )
 

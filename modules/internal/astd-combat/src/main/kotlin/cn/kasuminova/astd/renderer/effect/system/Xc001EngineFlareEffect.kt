@@ -225,7 +225,6 @@ internal object Xc001EngineFlareEffect {
             } catch (_: Throwable) {
                 0f
             }.coerceIn(0f, 1f)
-            val visualLevel = Xc001OverdriveVisualState.getLevel(ship, combatEngine).coerceAtLeast(systemLevel)
             val fluxLevel = try {
                 ship.fluxTracker?.fluxLevel ?: 0f
             } catch (_: Throwable) {
@@ -263,11 +262,9 @@ internal object Xc001EngineFlareEffect {
             } catch (_: Throwable) {
                 1f
             }
-            val controllerBoost = (movementLevel * 0.34f + visualLevel * 0.60f + fluxLevel * 0.08f).coerceIn(0f, 1.0f) * overloadPenalty
-            val primaryTint =
-                Xc001OverdriveVisualState.lerpColor(Xc001OverdriveVisualState.coldFringe, Xc001OverdriveVisualState.hotFringe, visualLevel, 168)
-            val secondaryTint =
-                Xc001OverdriveVisualState.lerpColor(Xc001OverdriveVisualState.coldCore, Xc001OverdriveVisualState.hotCore, visualLevel, 62)
+            val controllerBoost = (movementLevel * 0.34f + systemLevel * 0.60f + fluxLevel * 0.08f).coerceIn(0f, 1.0f) * overloadPenalty
+            val primaryTint = Xc001ColdPalette.withAlpha(Xc001ColdPalette.coldFringe, 168)
+            val secondaryTint = Xc001ColdPalette.withAlpha(Xc001ColdPalette.coldCore, 62)
 
             try {
                 engineController?.fadeToOtherColor(
@@ -294,7 +291,7 @@ internal object Xc001EngineFlareEffect {
                     true
                 }
                 if (!active) {
-                    updateFlare(flare.entity, ship.location, flare.baseSize * 0.55f, 0f, 0.10f, visualLevel)
+                    updateFlare(flare.entity, ship.location, flare.baseSize * 0.55f, 0f, 0.10f, systemLevel)
                     continue
                 }
 
@@ -314,10 +311,10 @@ internal object Xc001EngineFlareEffect {
                     0f
                 }
                 val pulse = 0.94f + 0.06f * sin(now * 6.6f + flare.phase + index * 0.11f)
-                val thrust = (0.04f + movementLevel * 0.50f + visualLevel * 0.26f + fluxLevel * 0.06f + systemBoost + edgeBias * 0.35f)
+                val thrust = (0.04f + movementLevel * 0.50f + systemLevel * 0.26f + fluxLevel * 0.06f + systemBoost + edgeBias * 0.35f)
                     .coerceIn(0f, 0.95f) * overloadPenalty * contributionBoost
                 val alpha = (0.015f + thrust * 0.22f).coerceIn(0f, 0.36f) * pulse
-                val size = flare.baseSize * (0.78f + thrust * 0.58f + systemBoost * 0.28f + visualLevel * 0.08f) * pulse
+                val size = flare.baseSize * (0.78f + thrust * 0.58f + systemBoost * 0.28f + systemLevel * 0.08f) * pulse
                 val noise = (0.08f + thrust * 0.08f).coerceIn(0.08f, 0.18f)
 
                 updateFlare(
@@ -326,34 +323,20 @@ internal object Xc001EngineFlareEffect {
                     size,
                     alpha,
                     noise,
-                    visualLevel,
+                    systemLevel,
                 )
             }
         }
 
-        private fun updateFlare(entity: FlareEntity, location: Vector2f, size: Float, alpha: Float, noisePower: Float, visualLevel: Float) {
+        private fun updateFlare(entity: FlareEntity, location: Vector2f, size: Float, alpha: Float, noisePower: Float, systemLevel: Float) {
             try {
                 entity.setStateVanilla(location, 0f)
                 entity.setSize(size, size)
                 entity.globalAlpha = alpha.coerceIn(0f, 1f)
-                entity.glowPower = (0.95f + alpha * 2.0f + visualLevel * 0.75f).coerceIn(0.95f, 4.0f)
+                entity.glowPower = (0.95f + alpha * 2.0f + systemLevel * 0.75f).coerceIn(0.95f, 4.0f)
                 entity.noisePower = noisePower
-                entity.setCoreColor(
-                    Xc001OverdriveVisualState.lerpColor(
-                        Xc001OverdriveVisualState.coldFringe,
-                        Xc001OverdriveVisualState.hotFringe,
-                        visualLevel,
-                        20
-                    )
-                )
-                entity.setFringeColor(
-                    Xc001OverdriveVisualState.lerpColor(
-                        Xc001OverdriveVisualState.coldCore,
-                        Xc001OverdriveVisualState.hotCore,
-                        visualLevel,
-                        78
-                    )
-                )
+                entity.setCoreColor(Xc001ColdPalette.withAlpha(Xc001ColdPalette.coldFringe, 20))
+                entity.setFringeColor(Xc001ColdPalette.withAlpha(Xc001ColdPalette.coldCore, 78))
             } catch (_: Throwable) {
             }
         }

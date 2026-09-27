@@ -69,20 +69,17 @@ class ASTDShipGlowEffect : EveryFrameWeaponEffectPlugin {
         }
     }
 
-    /** 覆盖层基底颜色：xc_001 bloom 始终冷态蓝（不随战术系统过载变色），其余白色原样。 */
+    /** 覆盖层基底颜色：xc_001 bloom 始终冷态蓝，其余白色原样。 */
     private fun baseColorOf(weaponId: String): Color {
         if (weaponId != XC001_BLOOM_WEAPON_ID) return Color.WHITE
         return XC001_COLD_BLUE
     }
 
     /** xc_001 bloom 冷态蓝基底（常量，避免每帧构造）。 */
-    private val XC001_COLD_BLUE: Color = run {
-        val from = Xc001OverdriveVisualState.lerpColor(
-            Xc001OverdriveVisualState.coldFringe,
-            Color(255, 236, 228, 255),
-            0.22f,
-            255,
-        )
-        Color(from.red, from.green, from.blue, 255)
-    }
+    private val XC001_COLD_BLUE: Color = Xc001ColdPalette.lerpColor(
+        Xc001ColdPalette.coldFringe,
+        Color(255, 236, 228, 255),
+        0.22f,
+        255,
+    )
 }

@@ -142,9 +142,9 @@ internal object Xc001EmissiveOverlayEffect {
                 }
                 return null
             }
-            updateHalo(halo, ship, 0.16f, 1.55f, 0f)
-            updateBloomHalo(bloomHalo, ship, 0.08f, 1.75f, 0f)
-            updatePulseHalo(pulseHalo, ship, 0f, 0.9f, 1, 0f, 0f)
+            updateHalo(halo, ship, 0.16f, 1.55f)
+            updateBloomHalo(bloomHalo, ship, 0.08f, 1.75f)
+            updatePulseHalo(pulseHalo, ship, 0f, 0.9f, 1, 0f)
             val systemLevel = try {
                 ship.system?.effectLevel ?: 0f
             } catch (_: Throwable) {
@@ -294,7 +294,6 @@ internal object Xc001EmissiveOverlayEffect {
             } catch (_: Throwable) {
                 0f
             }.coerceIn(0f, 1f)
-            val visualLevel = Xc001OverdriveVisualState.getLevel(ship, engine).coerceAtLeast(systemLevel)
             try {
                 ship.fluxTracker?.fluxLevel ?: 0f
             } catch (_: Throwable) {
@@ -332,13 +331,13 @@ internal object Xc001EmissiveOverlayEffect {
                 1f
             }
 
-            val haloAlpha = (0.005f + visualLevel * (0.02f + 0.01f * pulse) + overloadBoost * 0.015f).coerceIn(0f, 0.06f)
-            val haloGlow = (0.85f + visualLevel * 0.85f + overloadBoost * 0.25f).coerceIn(0f, 1.9f)
-            val bloomAlpha = (0.008f + visualLevel * (0.03f + 0.015f * pulse) + overloadBoost * 0.02f).coerceIn(0f, 0.08f)
-            val bloomGlow = (0.95f + visualLevel * 1.05f + overloadBoost * 0.30f).coerceIn(0f, 2.2f)
+            val haloAlpha = (0.005f + systemLevel * (0.02f + 0.01f * pulse) + overloadBoost * 0.015f).coerceIn(0f, 0.06f)
+            val haloGlow = (0.85f + systemLevel * 0.85f + overloadBoost * 0.25f).coerceIn(0f, 1.9f)
+            val bloomAlpha = (0.008f + systemLevel * (0.03f + 0.015f * pulse) + overloadBoost * 0.02f).coerceIn(0f, 0.08f)
+            val bloomGlow = (0.95f + systemLevel * 1.05f + overloadBoost * 0.30f).coerceIn(0f, 2.2f)
 
-            updateHalo(att.halo, ship, haloAlpha, haloGlow, visualLevel)
-            updateBloomHalo(att.bloomHalo, ship, bloomAlpha, bloomGlow, visualLevel)
+            updateHalo(att.halo, ship, haloAlpha, haloGlow)
+            updateBloomHalo(att.bloomHalo, ship, bloomAlpha, bloomGlow)
 
             if (att.pulseTimer <= att.pulseDuration) {
                 att.pulseTimer += amount
@@ -353,15 +352,15 @@ internal object Xc001EmissiveOverlayEffect {
                     (0.28f * fade).coerceIn(0f, 0.28f)
                 }
                 val glow = if (att.pulseMode == 2) {
-                    3.40f + fade * 1.35f + visualLevel * 1.10f
+                    3.40f + fade * 1.35f + systemLevel * 1.10f
                 } else if (att.pulseMode > 0) {
-                    2.55f + fade * 1.15f + visualLevel * 0.80f
+                    2.55f + fade * 1.15f + systemLevel * 0.80f
                 } else {
                     1.90f + fade * 0.75f
                 }
-                updatePulseHalo(att.pulseHalo, ship, alpha, glow, att.pulseMode, expand, visualLevel)
+                updatePulseHalo(att.pulseHalo, ship, alpha, glow, att.pulseMode, expand)
             } else {
-                updatePulseHalo(att.pulseHalo, ship, 0f, 0.9f, 1, 0f, visualLevel)
+                updatePulseHalo(att.pulseHalo, ship, 0f, 0.9f, 1, 0f)
             }
         }
 
@@ -375,7 +374,7 @@ internal object Xc001EmissiveOverlayEffect {
             }
         }
 
-        private fun updateHalo(entity: FlareEntity, ship: ShipAPI, alphaMul: Float, glowPower: Float, visualLevel: Float) {
+        private fun updateHalo(entity: FlareEntity, ship: ShipAPI, alphaMul: Float, glowPower: Float) {
             val size = ship.collisionRadius * (1.34f + alphaMul * 0.48f)
             try {
                 entity.setStateVanilla(ship.location, 0f)
@@ -384,17 +383,17 @@ internal object Xc001EmissiveOverlayEffect {
                 entity.glowPower = glowPower.coerceIn(0.8f, 4.8f)
                 entity.noisePower = (0.10f + alphaMul * 0.18f).coerceIn(0.10f, 0.28f)
                 entity.setCoreColor(
-                    Xc001OverdriveVisualState.lerpColor(
-                        Xc001OverdriveVisualState.coldFringe,
-                        Xc001OverdriveVisualState.coldCore,
+                    Xc001ColdPalette.lerpColor(
+                        Xc001ColdPalette.coldFringe,
+                        Xc001ColdPalette.coldCore,
                         0.35f,
                         10
                     )
                 )
                 entity.setFringeColor(
-                    Xc001OverdriveVisualState.lerpColor(
-                        Xc001OverdriveVisualState.coldCore,
-                        Xc001OverdriveVisualState.coldFringe,
+                    Xc001ColdPalette.lerpColor(
+                        Xc001ColdPalette.coldCore,
+                        Xc001ColdPalette.coldFringe,
                         0.45f,
                         18
                     )
@@ -403,7 +402,7 @@ internal object Xc001EmissiveOverlayEffect {
             }
         }
 
-        private fun updateBloomHalo(entity: FlareEntity, ship: ShipAPI, alphaMul: Float, glowPower: Float, visualLevel: Float) {
+        private fun updateBloomHalo(entity: FlareEntity, ship: ShipAPI, alphaMul: Float, glowPower: Float) {
             val size = ship.collisionRadius * (1.58f + alphaMul * 0.66f)
             try {
                 entity.setStateVanilla(ship.location, 0f)
@@ -412,17 +411,17 @@ internal object Xc001EmissiveOverlayEffect {
                 entity.glowPower = glowPower.coerceIn(1.0f, 5.2f)
                 entity.noisePower = (0.08f + alphaMul * 0.12f).coerceIn(0.08f, 0.22f)
                 entity.setCoreColor(
-                    Xc001OverdriveVisualState.lerpColor(
-                        Xc001OverdriveVisualState.coldFringe,
-                        Xc001OverdriveVisualState.coldCore,
+                    Xc001ColdPalette.lerpColor(
+                        Xc001ColdPalette.coldFringe,
+                        Xc001ColdPalette.coldCore,
                         0.40f,
                         12
                     )
                 )
                 entity.setFringeColor(
-                    Xc001OverdriveVisualState.lerpColor(
-                        Xc001OverdriveVisualState.coldCore,
-                        Xc001OverdriveVisualState.coldFringe,
+                    Xc001ColdPalette.lerpColor(
+                        Xc001ColdPalette.coldCore,
+                        Xc001ColdPalette.coldFringe,
                         0.55f,
                         20
                     )
@@ -438,7 +437,6 @@ internal object Xc001EmissiveOverlayEffect {
             glowPower: Float,
             mode: Int,
             expand: Float = 0f,
-            visualLevel: Float
         ) {
             val size = if (mode == 2) {
                 ship.collisionRadius * (0.40f + expand * 0.38f)
@@ -455,48 +453,13 @@ internal object Xc001EmissiveOverlayEffect {
                 entity.noisePower = (0.09f + alphaMul * 0.10f).coerceIn(0.09f, 0.20f)
                 if (mode == 2) {
                     entity.setCoreColor(Color(255, 248, 240, 180))
-                    entity.setFringeColor(
-                        Xc001OverdriveVisualState.lerpColor(
-                            Xc001OverdriveVisualState.hotCore,
-                            Color(255, 112, 38, 220),
-                            visualLevel,
-                            220
-                        )
-                    )
+                    entity.setFringeColor(Xc001ColdPalette.withAlpha(Xc001ColdPalette.coldCore, 220))
                 } else if (mode > 0) {
-                    entity.setCoreColor(
-                        Xc001OverdriveVisualState.lerpColor(
-                            Xc001OverdriveVisualState.coldFringe,
-                            Xc001OverdriveVisualState.hotCore,
-                            visualLevel,
-                            32
-                        )
-                    )
-                    entity.setFringeColor(
-                        Xc001OverdriveVisualState.lerpColor(
-                            Xc001OverdriveVisualState.coldCore,
-                            Xc001OverdriveVisualState.hotFringe,
-                            visualLevel,
-                            126
-                        )
-                    )
+                    entity.setCoreColor(Xc001ColdPalette.withAlpha(Xc001ColdPalette.coldFringe, 32))
+                    entity.setFringeColor(Xc001ColdPalette.withAlpha(Xc001ColdPalette.coldCore, 126))
                 } else {
-                    entity.setCoreColor(
-                        Xc001OverdriveVisualState.lerpColor(
-                            Xc001OverdriveVisualState.coldFringe,
-                            Xc001OverdriveVisualState.hotCore,
-                            visualLevel,
-                            20
-                        )
-                    )
-                    entity.setFringeColor(
-                        Xc001OverdriveVisualState.lerpColor(
-                            Xc001OverdriveVisualState.coldCore,
-                            Xc001OverdriveVisualState.hotFringe,
-                            visualLevel,
-                            76
-                        )
-                    )
+                    entity.setCoreColor(Xc001ColdPalette.withAlpha(Xc001ColdPalette.coldFringe, 20))
+                    entity.setFringeColor(Xc001ColdPalette.withAlpha(Xc001ColdPalette.coldCore, 76))
                 }
             } catch (_: Throwable) {
             }
@@ -504,7 +467,12 @@ internal object Xc001EmissiveOverlayEffect {
 
         private fun spawnCenterLensFlare(ship: ShipAPI, intensity: Float) {
             val t = intensity.coerceIn(0f, 1f)
-            val fringe = Xc001OverdriveVisualState.lerpColor(Xc001OverdriveVisualState.hotFringe, Color(255, 108, 35), t, (120f + 60f * t).toInt())
+            val fringe = Xc001ColdPalette.lerpColor(
+                Xc001ColdPalette.coldFringe,
+                Xc001ColdPalette.coldCore,
+                t,
+                (120f + 60f * t).toInt()
+            )
             val core = Color(255, 245, 235, (180f + 60f * t).toInt().coerceIn(0, 255))
             val length = 100f + 120f * t
             val thickness = 4f + 5f * t

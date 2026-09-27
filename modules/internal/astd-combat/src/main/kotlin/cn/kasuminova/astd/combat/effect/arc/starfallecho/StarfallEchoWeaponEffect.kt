@@ -1,6 +1,6 @@
 package cn.kasuminova.astd.combat.effect.arc.starfallecho
 
-import cn.kasuminova.astd.combat.effect.arc.starfallecho.StarfallEchoOnFireEffect.Companion.SPEC_ID_FINAL
+import cn.kasuminova.astd.combat.effect.arc.starfallecho.StarfallEchoOnFireEffect.Companion.FINAL_SHOT_MARK_KEY
 import cn.kasuminova.astd.combat.effect.arc.starfallecho.StarfallEchoOnFireEffect.Companion.SPEC_ID_NORMAL
 import cn.kasuminova.astd.combat.effect.generic.CombatVfxBootstrap
 import cn.kasuminova.astd.impl.render.TriShardComponent
@@ -58,16 +58,12 @@ class StarfallEchoWeaponEffect : EveryFrameWeaponEffectPlugin {
         advanceRings(engine, amount)
     }
 
-    /** 扫入本武器新弹体，剔除已离场的。 */
+    /** 扫入本武器新弹体，剔除已离场的；第 5 发与普通弹同 spec，按 [FINAL_SHOT_MARK_KEY] 标记分色。 */
     private fun scanProjectiles(engine: CombatEngineAPI, weapon: WeaponAPI) {
         for (projectile in engine.projectiles) {
             if (projectile.weapon !== weapon) continue
-            val specId = projectile.projectileSpecId
-            val final = when (specId) {
-                SPEC_ID_NORMAL -> false
-                SPEC_ID_FINAL -> true
-                else -> continue
-            }
+            if (projectile.projectileSpecId != SPEC_ID_NORMAL) continue
+            val final = projectile.customData[FINAL_SHOT_MARK_KEY] == true
             tracked.getOrPut(projectile) { Trail(final) }
         }
         val it = tracked.entries.iterator()

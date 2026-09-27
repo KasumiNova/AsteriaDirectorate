@@ -1,7 +1,7 @@
 package cn.kasuminova.astd.combat.effect.arc.starfallecho
 
 import cn.kasuminova.astd.api.buff.buffHost
-import cn.kasuminova.astd.combat.effect.arc.starfallecho.StarfallEchoOnFireEffect.Companion.SPEC_ID_FINAL
+import cn.kasuminova.astd.combat.effect.arc.starfallecho.StarfallEchoOnFireEffect.Companion.FINAL_SHOT_MARK_KEY
 import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEntityAPI
@@ -16,7 +16,8 @@ import org.lazywizard.lazylib.combat.CombatUtils
 import org.lwjgl.util.vector.Vector2f
 
 /**
- * 坠星残响的命中路由（普通弹与第 5 发 spec 共用，挂 `.proj` 的 `onHitEffect`）。
+ * 坠星残响的命中路由（挂普通弹 `.proj` 的 `onHitEffect`；第 5 发与普通弹同 spec，
+ * 由 [FINAL_SHOT_MARK_KEY] 标记区分）：
  *
  * - 普通弹：命中舰船（护盾/船体均可，设计案未区分）叠 1 层「结构谐振」
  *   （[StarfallEchoResonanceStacks]，至多 4 层，不随时间消散）；
@@ -48,20 +49,24 @@ class StarfallEchoOnHitEffect : OnHitEffectPlugin {
 
         val values = StarfallEchoTuning.resolve(DifficultyTuningImpl, isPlayer = projectile.source?.owner == 0)
 
-        if (projectile.projectileSpecId == SPEC_ID_FINAL) {
+        if (projectile.customData[FINAL_SHOT_MARK_KEY] == true) {
             onFinalHit(projectile, ship, hitPoint, values, engine)
         } else {
             onNormalHit(projectile, ship, values, engine)
         }
     }
 
-    /** 普通弹命中：叠 1 层结构谐振（上限 4），每层易伤按难度查表。 */
+    /**
+     * 普通弹命中：叠 1 层结构谐振（上限 4），每层易伤按难度查表。
+     * 同阵营目标不叠层（与第 5 发 AOE 的同阵营豁免同口径；source 缺失时按 0 处理）。
+     */
     private fun onNormalHit(
         projectile: DamagingProjectileAPI,
         ship: ShipAPI,
         values: StarfallEchoTuning.Values,
         engine: CombatEngineAPI,
     ) {
+        if (ship.owner == (projectile.source?.owner ?: 0)) return
         val host = ship.buffHost()
         val buff = host.find(StarfallEchoResonanceStacks.BUFF_ID) as? StarfallEchoResonanceStacks
             ?: StarfallEchoResonanceStacks(ship, engine, host).also { host.register(it) }

@@ -7,14 +7,18 @@ import com.fs.starfarer.api.combat.DamagingProjectileAPI
 import com.fs.starfarer.api.combat.OnFireEffectPlugin
 import com.fs.starfarer.api.combat.WeaponAPI
 import org.lwjgl.util.vector.Vector2f
+import java.util.IdentityHashMap
 
 /**
  * 坠星残响的开火路由（挂普通弹 spec 的 `onFireEffect`）：连射序数计数 + 第 5 发弹体替换。
  *
  * - 前 4 发：登记普通弹 VFX 树（等价 ProjectileSpecOnFireDispatcher 的 track 行为）；
- * - 第 [StarfallEchoTuning.BURST_SIZE] 发：移除原弹体，原地替换为 `astd_starfall_echo_shot_final`
- *   （200% 尺寸 / 200% 伤害），追加 300% 辐能差额（[StarfallEchoTuning.FINAL_FLUX_EXTRA]），
- *   并显式 track final spec（脚本 spawn 不触发 onFireEffect，见 ProjectileVfxSpecs 双子星注记）。
+ * - 第 [StarfallEchoTuning.BURST_SIZE] 发：移除原弹体，原地重生成一枚普通 spec 弹体并打
+ *   [FINAL_SHOT_MARK_KEY] 标记（不能走 spawnProjectile 指定 specId 的 7 参重载：原版加载器
+ *   不给 projectile 类 spec 填 damage，该路径构造 BallisticProjectile 恒 NPE），伤害/碰撞
+ *   半径按倍率覆写，追加 300% 辐能差额（[StarfallEchoTuning.FINAL_FLUX_EXTRA]），VFX 显式
+ *   track final 配色（脚本 spawn 不触发 onFireEffect，见 ProjectileVfxSpecs 双子星注记）；
+ *   OnHit/武器级拖尾按标记识别第 5 发。
  *
  * 连射序数按武器实例计数，状态存 `engine.customData`（OnFire 插件实例为 spec 级共享，
  * 不能持有单武器状态）；距上一发超过 [StarfallEchoTuning.BURST_RESET_SECONDS] 视为新一轮。
@@ -36,6 +40,8 @@ class StarfallEchoOnFireEffect : OnFireEffectPlugin {
         }
 
         // 第 5 发：替换弹体。源舰/武器缺失属理论边界（弹体必有武器），缺源舰时不替换只告警。
+        // 重生成走 6 参重载（武器自身 spec）：指定 specId 的 7 参重载要求 spec 自带 damage，
+        // 原版加载器不给 projectile 类 spec 填该字段，实机恒 NPE；第 5 发身份改由 customData 标记承载
         val source = weapon.ship ?: projectile.source
         if (source == null) {
             log.warn("坠星残响第 5 发替换跳过：源舰缺失: weapon=${weapon.id}")
@@ -50,7 +56,7 @@ class StarfallEchoOnFireEffect : OnFireEffectPlugin {
         engine.removeEntity(projectile)
 
         val spawned = engine.spawnProjectile(
-            source, weapon, WEAPON_ID, SPEC_ID_FINAL, loc, facing, Vector2f(source.velocity),
+            source, weapon, WEAPON_ID, loc, facing, Vector2f(source.velocity),
         ) as? DamagingProjectileAPI
         if (spawned == null) {
             log.warn("坠星残响第 5 发替换失败：spawnProjectile 未产出 DamagingProjectileAPI: weapon=${weapon.id}")
@@ -58,6 +64,7 @@ class StarfallEchoOnFireEffect : OnFireEffectPlugin {
         }
         spawned.setDamageAmount(baseDamage * StarfallEchoTuning.FINAL_DAMAGE_MULT)
         spawned.collisionRadius = baseRadius * StarfallEchoTuning.FINAL_SIZE_MULT
+        spawned.setCustomData(FINAL_SHOT_MARK_KEY, true)
         source.fluxTracker.increaseFlux(StarfallEchoTuning.FINAL_FLUX_EXTRA, false)
         ProjectileVfxDriverPlugin.track(engine, spawned, SPEC_ID_FINAL)
     }
@@ -68,18 +75,23 @@ class StarfallEchoOnFireEffect : OnFireEffectPlugin {
     companion object {
         const val WEAPON_ID = "astd_starfall_echo"
         const val SPEC_ID_NORMAL = "astd_starfall_echo_shot"
+
+        /** 第 5 发弹体 VFX 配色键（ProjectileVfxSpecs 注册键，非可生成 spec）。 */
         const val SPEC_ID_FINAL = "astd_starfall_echo_shot_final"
 
-        /** engine.customData 键：武器 identityHashCode → 连射状态。 */
+        /** 弹体 customData 键：第 5 发身份标记（OnHit 爆发路由与武器级拖尾配色按此识别）。 */
+        const val FINAL_SHOT_MARK_KEY = "astd_starfall_echo_final_shot"
+
+        /** engine.customData 键：武器实例（IdentityHashMap）→ 连射状态。 */
         private const val KEY_BURST_STATES = "astd_starfall_echo_burst_states"
 
         private val log = Global.getLogger(StarfallEchoOnFireEffect::class.java)
 
         @Suppress("UNCHECKED_CAST")
         private fun burstState(engine: CombatEngineAPI, weapon: WeaponAPI): BurstState {
-            val states = engine.customData.getOrPut(KEY_BURST_STATES) { HashMap<Int, BurstState>() }
-                as HashMap<Int, BurstState>
-            return states.getOrPut(System.identityHashCode(weapon)) { BurstState() }
+            val states = engine.customData.getOrPut(KEY_BURST_STATES) { IdentityHashMap<WeaponAPI, BurstState>() }
+                as IdentityHashMap<WeaponAPI, BurstState>
+            return states.getOrPut(weapon) { BurstState() }
         }
     }
 }

@@ -18,7 +18,7 @@ import java.awt.Color
  *   vel ∥ facing 由构造保证（治「概率侧飞」——旧两层驱动：插件推 loc 与 BoxUtil 自管理状态互撞）；
  * - 三级兜底链（TrailEntity→SpriteEntity→vanilla 粒子）整体退役：只留 TrailEntity 主路径，
  *   BoxUtil 不可用记 WARN 缺席本层（全局规范禁兜底）；
- * - intensityMult 折叠：两个真实调用方（锥面/aod7）恒传 1f，vis 派生全部按 1 化简。
+ * - intensityMult 折叠：唯一真实调用方（锥面）恒传 1f，vis 派生全部按 1 化简。
  */
 object StrikeSprayVfx {
     private val log = Global.getLogger(StrikeSprayVfx::class.java)
@@ -55,8 +55,7 @@ object StrikeSprayVfx {
 
     /**
      * 刺束显式参数组（自 `ImpactStrikeFx.ImpactSprayStyle` 逐字迁移，默认值为原重量级档）：
-     * 针长/宽/速度直接取随机区间（×impactScale ×内部塑形系数）；锥面 v2.2 档与 aod7 命中轻量档
-     * 均经此组逐字传参。
+     * 针长/宽/速度直接取随机区间（×impactScale ×内部塑形系数）；锥面 v2.2 档经此组逐字传参。
      */
     data class SprayStyle(
         val baseRaysMin: Int = 22,

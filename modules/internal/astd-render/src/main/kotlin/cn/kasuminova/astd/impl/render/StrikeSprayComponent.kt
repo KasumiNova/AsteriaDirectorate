@@ -25,7 +25,7 @@ import kotlin.math.roundToInt
  *   派生 dir 与 vel，数学上无侧向分量），单测以侧向分量 < 1e-3 做回归断言；
  * - **兜底链退役**：旧三级退化（TrailEntity→SpriteEntity→vanilla 粒子）整体删除，只留
  *   TrailEntity 主路径；贴图/addEntity 失败记 WARN（组件级去重）缺席视觉，参数积分照常；
- * - **intensityMult 折叠**：两个真实调用方（锥面/aod7）恒传 1f，vis 派生（sizeScale、
+ * - **intensityMult 折叠**：唯一真实调用方（锥面）恒传 1f，vis 派生（sizeScale、
  *   速度/内缩/烟雾系数）全部按 1 化简；随之恒不触发的高倍率尺寸封顶一并省略。
  *
  * 错峰渐现为 v2.2 三段分批逐字移植：针数 ≥ [RAMP_MIN_RAYS] 且 introRamp > 0 时按二次曲线

@@ -11,7 +11,7 @@ class StaticTrailDataFactoryTest {
 
     @Test
     fun `带长按弹体速度折算为总寿命`() {
-        // aod7：420su 带长 / 800su/s = 0.525s
+        // 420su 带长 / 800su/s = 0.525s
         assertEquals(0.525f, StaticTrailDataFactory.totalDurationSeconds(420f, 800f), 1e-3f)
         // spc3：135su / 600su/s = 0.225s
         assertEquals(0.225f, StaticTrailDataFactory.totalDurationSeconds(135f, 600f), 1e-3f)
