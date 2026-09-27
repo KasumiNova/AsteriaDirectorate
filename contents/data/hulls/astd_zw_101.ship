@@ -13,7 +13,8 @@
   "viewOffset": 0,
   "builtInMods": [
     "astd_nano_restoration_protocol",
-    "astd_grav_space_fold"
+    "astd_grav_space_fold",
+    "phasefield"
   ],
   "builtInWeapons": {
     "WS0004": "astd_zw_101_bloom"

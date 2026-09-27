@@ -28,7 +28,7 @@ abstract class ShipDataEntry : SsCsvEntry {
     /** 系统 id（system id）。 */
     open val systemId: String = ""
 
-    /** 舰队点数（fleet pts）。 */
+    /** 舰队点数（fleet pts）：自动战斗强度评分；部署点（战备部署成本）由 supplies/rec 承担，勿在此写部署点。 */
     open val fleetPts: Int = 0
 
     /** 结构值（hitpoints）。 */
@@ -127,7 +127,7 @@ abstract class ShipDataEntry : SsCsvEntry {
     /** 峰值后 CR 流失速率（CR loss/sec）。 */
     open val crLossPerSec: Double = 0.0
 
-    /** 修复补给消耗（supplies/rec）。 */
+    /** 修复补给消耗（supplies/rec）：即战备部署成本（补给），舰船部署点数值由本列承担。 */
     open val suppliesRec: Int = 0
 
     /** 每月补给消耗（supplies/mo）。 */

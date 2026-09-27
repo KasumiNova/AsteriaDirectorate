@@ -11,7 +11,9 @@ object Ship_astd_xc_001 : ShipDataEntry() {
     override val designation: String = "主力舰"
     override val tech: String = "菀星设计局-星坠"
     override val systemId: String = "astd_xc_001_overdrive_crewed"
-    override val fleetPts: Int = 55
+
+    // 自动战斗分数对齐原版主力战列舰（典范 fp=30）；部署点 55 由 supplies/rec 承担。
+    override val fleetPts: Int = 30
     override val hitpoints: Int = 20000
     override val armorRating: Int = 1500
     override val maxFlux: Int = 23000
@@ -39,8 +41,8 @@ object Ship_astd_xc_001 : ShipDataEntry() {
     override val crToDeploy: Double = 20.0
     override val peakCrSec: Int = 920
     override val crLossPerSec: Double = 0.25
-    override val suppliesRec: Int = 60
-    override val suppliesPerMonth: Int = 60
+    override val suppliesRec: Int = 55
+    override val suppliesPerMonth: Int = 55
     override val tags: String = "astd_unique"
     override val codexVariantId: String = "astd_xc_001_Standard"
     override val number: Int = 9101
@@ -52,7 +54,9 @@ object Ship_astd_xc_002 : ShipDataEntry() {
     override val designation: String = "驱逐舰"
     override val tech: String = "菀星设计局-星坠"
     override val systemId: String = "astd_collapse_shift"
-    override val fleetPts: Int = 20
+
+    // 自动战斗分数对齐原版精锐相位驱逐舰（灾星 fp=15）；部署点 20 由 supplies/rec 承担。
+    override val fleetPts: Int = 15
     override val hitpoints: Int = 6500
     override val armorRating: Int = 650
     override val maxFlux: Int = 9000
@@ -81,8 +85,8 @@ object Ship_astd_xc_002 : ShipDataEntry() {
     override val crToDeploy: Double = 20.0
     override val peakCrSec: Int = 480
     override val crLossPerSec: Double = 0.25
-    override val suppliesRec: Int = 12
-    override val suppliesPerMonth: Int = 12
+    override val suppliesRec: Int = 20
+    override val suppliesPerMonth: Int = 20
     override val tags: String = "astd_unique"
     override val codexVariantId: String = "astd_xc_002_Standard"
     override val number: Int = 9102
@@ -114,7 +118,9 @@ object Ship_astd_xc_102 : ShipDataEntry() {
     override val designation: String = "主力舰"
     override val tech: String = "菀星设计局-星坠"
     override val systemId: String = "astd_arc_shared_flux_network"
-    override val fleetPts: Int = 55
+
+    // 自动战斗分数对齐原版量产战列舰（攻势 fp=28）；部署点 55 由 supplies/rec 承担。
+    override val fleetPts: Int = 28
     override val hitpoints: Int = 20000
     override val armorRating: Int = 1800
     override val maxFlux: Int = 25000
@@ -144,8 +150,8 @@ object Ship_astd_xc_102 : ShipDataEntry() {
     override val crToDeploy: Double = 15.0
     override val peakCrSec: Int = 720
     override val crLossPerSec: Double = 0.25
-    override val suppliesRec: Int = 60
-    override val suppliesPerMonth: Int = 60
+    override val suppliesRec: Int = 55
+    override val suppliesPerMonth: Int = 55
     override val tags: String = "astd_production"
     override val codexVariantId: String = "astd_xc_102_Standard"
     override val number: Int = 9107
@@ -157,7 +163,9 @@ object Ship_astd_xc_101 : ShipDataEntry() {
     override val designation: String = "巡洋舰"
     override val tech: String = "菀星设计局-星坠"
     override val systemId: String = "astd_plasma_armor_shield_boost"
-    override val fleetPts: Int = 32
+
+    // 自动战斗分数对齐原版顶级巡洋舰（极光 fp=17）；部署点 32 由 supplies/rec 承担。
+    override val fleetPts: Int = 17
     override val hitpoints: Int = 13000
     override val armorRating: Int = 1600
     override val maxFlux: Int = 14000
@@ -187,8 +195,8 @@ object Ship_astd_xc_101 : ShipDataEntry() {
     override val crToDeploy: Double = 12.0
     override val peakCrSec: Int = 600
     override val crLossPerSec: Double = 0.25
-    override val suppliesRec: Int = 26
-    override val suppliesPerMonth: Int = 26
+    override val suppliesRec: Int = 32
+    override val suppliesPerMonth: Int = 32
     override val tags: String = "astd_production"
     override val codexVariantId: String = "astd_xc_101_Standard"
     override val number: Int = 9108
@@ -200,7 +208,9 @@ object Ship_astd_xc_103 : ShipDataEntry() {
     override val designation: String = "驱逐舰"
     override val tech: String = "菀星设计局-星坠"
     override val systemId: String = "astd_limit_temporal_thruster"
-    override val fleetPts: Int = 14
+
+    // 自动战斗分数对齐原版高速驱逐舰（美杜莎 fp=12）；部署点 14 由 supplies/rec 承担。
+    override val fleetPts: Int = 12
     override val hitpoints: Int = 5500
     override val armorRating: Int = 650
     override val maxFlux: Int = 6500
@@ -228,8 +238,8 @@ object Ship_astd_xc_103 : ShipDataEntry() {
     override val crToDeploy: Double = 15.0
     override val peakCrSec: Int = 360
     override val crLossPerSec: Double = 0.25
-    override val suppliesRec: Int = 11
-    override val suppliesPerMonth: Int = 11
+    override val suppliesRec: Int = 14
+    override val suppliesPerMonth: Int = 14
     override val tags: String = "astd_production"
     override val codexVariantId: String = "astd_xc_103_Standard"
     override val number: Int = 9109
@@ -268,8 +278,8 @@ object Ship_astd_xc_104 : ShipDataEntry() {
     override val crToDeploy: Double = 20.0
     override val peakCrSec: Int = 120
     override val crLossPerSec: Double = 0.5
-    override val suppliesRec: Int = 3
-    override val suppliesPerMonth: Int = 3
+    override val suppliesRec: Int = 5
+    override val suppliesPerMonth: Int = 5
     override val tags: String = "astd_production"
     override val codexVariantId: String = "astd_xc_104_Standard"
     override val number: Int = 9110

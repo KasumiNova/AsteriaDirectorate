@@ -11,7 +11,9 @@ object Ship_astd_zw_001 : ShipDataEntry() {
     override val designation: String = "巡洋舰"
     override val tech: String = "菀星设计局-紫菀"
     override val systemId: String = "astd_jamming_swarm"
-    override val fleetPts: Int = 30
+
+    // 自动战斗分数高于原版全部巡洋舰（厄运 fp=22 相位巡洋舰档）；部署点 30 由 supplies/rec 承担。
+    override val fleetPts: Int = 22
     override val hitpoints: Int = 8000
     override val armorRating: Int = 1000
     override val maxFlux: Int = 14000
@@ -64,7 +66,9 @@ object Ship_astd_zw_101 : ShipDataEntry() {
     override val designation: String = "相位驱逐舰"
     override val tech: String = "菀星设计局-紫菀"
     override val systemId: String = "astd_grav_replicator"
-    override val fleetPts: Int = 20
+
+    // 自动战斗分数对齐原版相位驱逐舰（灾星 fp=15）；部署点 20 由 supplies/rec 承担。
+    override val fleetPts: Int = 15
     override val hitpoints: Int = 5000
     override val armorRating: Int = 700
     override val maxFlux: Int = 8500
@@ -93,8 +97,8 @@ object Ship_astd_zw_101 : ShipDataEntry() {
     override val crToDeploy: Double = 20.0
     override val peakCrSec: Int = 420
     override val crLossPerSec: Double = 0.25
-    override val suppliesRec: Int = 12
-    override val suppliesPerMonth: Int = 12
+    override val suppliesRec: Int = 20
+    override val suppliesPerMonth: Int = 20
     override val tags: String = "astd_production"
     override val codexVariantId: String = "astd_zw_101_Standard"
     override val number: Int = 9105
@@ -106,7 +110,9 @@ object Ship_astd_zw_102 : ShipDataEntry() {
     override val designation: String = "航空战列舰"
     override val tech: String = "菀星设计局-紫菀"
     override val systemId: String = "astd_fighter_grav_link"
-    override val fleetPts: Int = 55
+
+    // 自动战斗分数对齐原版航空战列舰（军团 fp=28）；部署点 55 由 supplies/rec 承担。
+    override val fleetPts: Int = 28
     override val hitpoints: Int = 12000
     override val armorRating: Int = 1200
     override val maxFlux: Int = 16000
@@ -161,7 +167,9 @@ object Ship_astd_zw_002 : ShipDataEntry() {
     override val designation: String = "相位巡洋舰"
     override val tech: String = "菀星设计局-紫菀"
     override val systemId: String = "astd_grav_storm"
-    override val fleetPts: Int = 40
+
+    // 自动战斗分数对齐原版相位巡洋舰（厄运 fp=22）；部署点 40 由 supplies/rec 承担。
+    override val fleetPts: Int = 22
     override val hitpoints: Int = 8000
     override val armorRating: Int = 1200
     override val maxFlux: Int = 12000
@@ -173,9 +181,6 @@ object Ship_astd_zw_002 : ShipDataEntry() {
     override val maxTurnRate: Int = 30
     override val turnAcceleration: Int = 60
     override val mass: Int = 16000
-
-    // 保留 1 个飞行甲板（D27 重做前提：非主要战术目的，.ship 对应 LB 1 隐藏机库）
-    override val fighterBays: Int = 1
 
     // 密蒙：相位化改造——防御方式由 FRONT 护盾改为自定义相位系统「引力相位」
     // （defense id=astd_gravity_phase，stats 脚本 GravityPhaseCloakStats 为后续特效接入点）。
@@ -201,8 +206,8 @@ object Ship_astd_zw_002 : ShipDataEntry() {
     override val crToDeploy: Double = 12.0
     override val peakCrSec: Int = 720
     override val crLossPerSec: Double = 0.25
-    override val suppliesRec: Int = 33
-    override val suppliesPerMonth: Int = 33
+    override val suppliesRec: Int = 40
+    override val suppliesPerMonth: Int = 40
     override val tags: String = "astd_unique"
     override val codexVariantId: String = "astd_zw_002_Standard"
     override val number: Int = 9112
@@ -222,7 +227,9 @@ object Ship_astd_zw_103 : ShipDataEntry() {
     override val designation: String = "相位护航航母"
     override val tech: String = "菀星设计局-紫菀"
     override val systemId: String = "astd_grav_rift_generator"
-    override val fleetPts: Int = 24
+
+    // 自动战斗分数对齐原版相位驱逐舰（灾星 fp=15）；部署点 24 由 supplies/rec 承担。
+    override val fleetPts: Int = 15
     override val hitpoints: Int = 5000
     override val armorRating: Int = 800
     override val maxFlux: Int = 8000
@@ -254,8 +261,8 @@ object Ship_astd_zw_103 : ShipDataEntry() {
     override val crToDeploy: Double = 15.0
     override val peakCrSec: Int = 480
     override val crLossPerSec: Double = 0.25
-    override val suppliesRec: Int = 16
-    override val suppliesPerMonth: Int = 16
+    override val suppliesRec: Int = 24
+    override val suppliesPerMonth: Int = 24
     override val tags: String = "astd_production"
     override val codexVariantId: String = "astd_zw_103_Standard"
     override val number: Int = 9113

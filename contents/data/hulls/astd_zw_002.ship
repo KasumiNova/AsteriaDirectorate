@@ -93,15 +93,6 @@
       "locations": [81, -53]
     },
     {
-      "id": "LB 1",
-      "size": "LARGE",
-      "type": "LAUNCH_BAY",
-      "mount": "HIDDEN",
-      "arc": 360,
-      "angle": 0,
-      "locations": [-40, -20]
-    },
-    {
       "id": "WS0009",
       "size": "LARGE",
       "type": "DECORATIVE",

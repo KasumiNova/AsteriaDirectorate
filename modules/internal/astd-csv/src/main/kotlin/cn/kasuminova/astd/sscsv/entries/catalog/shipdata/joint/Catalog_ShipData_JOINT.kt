@@ -12,7 +12,8 @@ import cn.kasuminova.astd.sscsv.entries.catalog.shipdata.shipName
  * - 飞星（LH-002）：紫菀侧表达，系统「视界变速」。
  *
  * 表外字段（机动/后勤/CR 系）doc 未给，按原版超级护卫舰（亥伯龙档）补齐。
- * 代价三件套落地：fleet pts 18（护卫舰档极高位）、supplies/rec+mo 18、base value 150000。
+ * 代价三件套落地：supplies/rec+mo 18（部署点口径，护卫舰档极高位）、fleet pts 15
+ * （自动战斗分数，对齐原版亥伯龙 fp=15）、base value 150000。
  */
 
 /** 联制线共用数值块（[ShipDataEntry] 字段不可抽基类复用，两舰逐字段保持一致，改动需同步两侧）。 */
@@ -22,7 +23,7 @@ object Ship_astd_lh_001 : ShipDataEntry() {
     override val designation: String = "先进炮艇"
     override val tech: String = "菀星设计局-星坠"
     override val systemId: String = "astd_lh_001_burst_flow"
-    override val fleetPts: Int = 18
+    override val fleetPts: Int = 15
     override val hitpoints: Int = 3000
     override val armorRating: Int = 400
     override val maxFlux: Int = 7000
@@ -66,7 +67,7 @@ object Ship_astd_lh_002 : ShipDataEntry() {
     override val designation: String = "先进炮艇"
     override val tech: String = "菀星设计局-紫菀"
     override val systemId: String = "astd_lh_002_vision_shift"
-    override val fleetPts: Int = 18
+    override val fleetPts: Int = 15
     override val hitpoints: Int = 3000
     override val armorRating: Int = 400
     override val maxFlux: Int = 9000
