@@ -1,0 +1,1 @@
+ASTD dev-only automation scenario: ZW-101 isolated with a distant dummy Dominator (7000su, never engages within the window); the plugin periodically feeds friendly (same-owner) hellbore shots aimed at the ship - a dive edge within 1.5s of a feed counts as a friendly-fire defensive dive hit; >= 2 hits within 60s completes.

@@ -101,6 +101,13 @@ object ASTDInGameAutomationScenario {
     const val PFC_SCENARIO_ID: String = "lens_phase_flank_zw101_hh"
     const val PFC_ENEMY_VARIANT_ID: String = "hammerhead_Balanced"
     const val PFC_ENEMY_HULL_ID: String = "hammerhead"
+
+    // 友伤防御下潜实测：插件周期性生成友方直射弹瞄准本舰，验证 collectFriendly 防御链路。
+    const val PFB_SCENARIO_ID: String = "lens_phase_friendly_beam"
+    const val PFB_HULL_ID: String = "astd_zw_101"
+    const val PFB_VARIANT_ID: String = "astd_zw_101_Standard"
+    const val PFB_ENEMY_VARIANT_ID: String = "dominator_Assault"
+    const val PFB_ENEMY_HULL_ID: String = "dominator"
     const val SHIP_ID: String = "astd_xc_001"
     const val VARIANT_ID: String = "astd_xc_001_Standard"
     const val WEAPON_ID: String = "astd_aod7"
@@ -398,6 +405,16 @@ object ASTDInGameAutomationScenario {
         val enabled = System.getProperty(ENABLED_PROPERTY)?.equals("true", ignoreCase = true) == true
         val scenario = System.getProperty(SCENARIO_PROPERTY, SCENARIO_ID)
         return enabled && scenario == PFC_SCENARIO_ID
+    }
+
+    /**
+     * 友伤防御下潜实测场景开关：插件周期性向舜华投喂友方（owner 同侧）直射弹，
+     * 验证 GravityPhaseCloakAI 的 collectFriendly 防御链路在实机中触发下潜规避友军火力。
+     */
+    fun isPhaseFriendlyBeamEnabled(): Boolean {
+        val enabled = System.getProperty(ENABLED_PROPERTY)?.equals("true", ignoreCase = true) == true
+        val scenario = System.getProperty(SCENARIO_PROPERTY, SCENARIO_ID)
+        return enabled && scenario == PFB_SCENARIO_ID
     }
 
     fun outputDir(): Path {

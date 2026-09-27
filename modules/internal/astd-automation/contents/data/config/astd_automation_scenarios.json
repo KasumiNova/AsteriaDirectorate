@@ -433,6 +433,26 @@
         "pfPhasedFrames",
         "pfCombatSeconds"
       ]
+    },
+    {
+      "id": "lens_phase_friendly_beam",
+      "missionId": "lens_phase_friendly_beam",
+      "shipIds": [
+        "astd_zw_101",
+        "dominator"
+      ],
+      "variantIds": [
+        "astd_zw_101_Standard",
+        "dominator_Assault"
+      ],
+      "systemId": "astd_gravity_phase",
+      "requiredEvidence": [
+        "pfbPhase",
+        "pfbFeedCount",
+        "pfbDiveHits",
+        "pfbDiveTotal",
+        "pfbCombatSeconds"
+      ]
     }
   ]
 }
