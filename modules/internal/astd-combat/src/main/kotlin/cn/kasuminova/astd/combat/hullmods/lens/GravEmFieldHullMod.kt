@@ -31,8 +31,10 @@ import java.awt.Color
  * 2. **力场视觉**（[GravEmFieldVfx]）：力场生效期间每隔 [GravEmFieldTuning.WAVE_INTERVAL]s
  *    从舰体碰撞箱边缘向随机外方向发射一波波形光斑（FlareEntity 组合：SMOOTH 圆斑 +
  *    SMOOTH_DISC 柔和光柱，外飘淡出，池化常驻实体）；舰船中心常驻一个极大 SMOOTH 圆斑
- *    （碰撞半径数倍，alpha 固定 10%）。舰船相位时全部切换为红色系，退出相位恢复紫色。
- *    力场失效/残骸化时中心光斑移除（收口挂 FieldState/hulk 路径）；
+ *    （碰撞半径数倍）。相位与激活状态走线性过渡（[FieldState] 的 phaseBlend/fieldBlend）：
+ *    相位切换时红/紫色系渐变；冷却时机制立即收口（压制修饰即时 unmodify）而视觉淡出——
+ *    波形停喷（存量粒子按包络自然消散）、中心光斑 alpha/尺寸渐隐后移除，重新激活淡入。
+ *    残骸化中心光斑立即移除（hulk 路径不过渡）；
  *    舰船撤离战场（非残骸化）由 [DepartedCleanupWatcher] 探活收口（含被压制目标的 stat 修饰）。
  *
  * 失效条件：舰船系统处于冷却（[ShipSystemAPI.SystemState.COOLDOWN]；IN/ACTIVE/OUT 激活过程保持），
@@ -49,12 +51,18 @@ import java.awt.Color
  */
 class GravEmFieldHullMod : BaseHullMod() {
 
-    /** 单舰力场状态：当前被压制的目标集合 + 波形光斑节拍计时器 + 中心光斑句柄。 */
+    /** 单舰力场状态：当前被压制的目标集合 + 波形光斑节拍计时器 + 中心光斑句柄 + 相位/激活过渡系数。 */
     private class FieldState {
         val affected = HashSet<ShipAPI>()
         var waveTimer = 0f
         var centerFlare: GravEmFieldVfx.CenterFlare? = null
         var departedWatcherInstalled = false
+
+        /** 相位色过渡系数（0=力场紫，1=相位红），激活/冷却期都持续跟随相位状态。 */
+        var phaseBlend = 0f
+
+        /** 力场激活过渡系数（0=冷却不可见，1=完全激活），驱动中心光斑淡入淡出。 */
+        var fieldBlend = 0f
     }
 
     /**
@@ -103,14 +111,23 @@ class GravEmFieldHullMod : BaseHullMod() {
         val systemState = ship.system?.state
         val fieldActive = systemState != ShipSystemAPI.SystemState.COOLDOWN
         if (!fieldActive) {
-            // 系统冷却力场消失：对账清理全部受影响目标与中心光斑（冷却结束重新进场照常压制）
+            // 系统冷却：机制立即收口（压制修饰即时 unmodify），视觉走淡出过渡——
+            // 波形停喷（低成本口径：存量粒子按各自包络自然消散，不额外排空粒子池），
+            // 中心光斑随 fieldBlend 渐隐，归零后移除。状态体保留（离场哨兵安装标记随状态存续）
             if (state != null) {
                 if (state.affected.isNotEmpty()) {
                     for (target in state.affected) unmodifyTarget(target, modIdOf(ship))
                     state.affected.clear()
                 }
-                state.centerFlare?.dispose()
-                state.centerFlare = null
+                advanceBlends(ship, state, false, amount)
+                if (state.fieldBlend > 0f) {
+                    state.centerFlare = GravEmFieldVfx.maintainCenterFlare(
+                        engine, ship, state.centerFlare, state.phaseBlend, state.fieldBlend,
+                    )
+                } else if (state.centerFlare != null) {
+                    state.centerFlare?.dispose()
+                    state.centerFlare = null
+                }
             }
             return
         }
@@ -123,6 +140,8 @@ class GravEmFieldHullMod : BaseHullMod() {
         }
         val values = GravEmFieldTuning.resolve(DifficultyTuningImpl, ship.owner == 0)
         val modId = modIdOf(ship)
+
+        advanceBlends(ship, activeState, true, amount)
 
         val seenThisFrame = HashSet<ShipAPI>()
         for (target in engine.ships) {
@@ -143,7 +162,9 @@ class GravEmFieldHullMod : BaseHullMod() {
         }
         activeState.affected += seenThisFrame
 
-        activeState.centerFlare = GravEmFieldVfx.maintainCenterFlare(engine, ship, activeState.centerFlare)
+        activeState.centerFlare = GravEmFieldVfx.maintainCenterFlare(
+            engine, ship, activeState.centerFlare, activeState.phaseBlend, activeState.fieldBlend,
+        )
         driveWaveVisuals(engine, ship, activeState, amount)
 
         if (ship === engine.playerShip) {
@@ -198,13 +219,25 @@ class GravEmFieldHullMod : BaseHullMod() {
         stats.missileWeaponFluxCostMod.unmodifyMult(modId)
     }
 
-    /** 波形光斑节拍：每隔 [GravEmFieldTuning.WAVE_INTERVAL]s 一波（数量区间见 tuning），相位状态决定红/紫。 */
+    /** 波形光斑节拍：每隔 [GravEmFieldTuning.WAVE_INTERVAL]s 一波（数量区间见 tuning），相位过渡系数决定红/紫渐变。 */
     private fun driveWaveVisuals(engine: CombatEngineAPI, ship: ShipAPI, state: FieldState, amount: Float) {
         state.waveTimer += amount
         while (state.waveTimer >= GravEmFieldTuning.WAVE_INTERVAL) {
             state.waveTimer -= GravEmFieldTuning.WAVE_INTERVAL
-            GravEmFieldVfx.spawnWave(engine, ship, ship.isPhased)
+            GravEmFieldVfx.spawnWave(engine, ship, state.phaseBlend)
         }
+    }
+
+    /** 相位/激活过渡系数推进：朝目标（相位态/力场激活态）按各自过渡时长线性步进。 */
+    private fun advanceBlends(ship: ShipAPI, state: FieldState, fieldActive: Boolean, amount: Float) {
+        state.phaseBlend = stepBlend(state.phaseBlend, ship.isPhased, amount / GravEmFieldVfx.PHASE_BLEND_SECONDS)
+        state.fieldBlend = stepBlend(state.fieldBlend, fieldActive, amount / GravEmFieldVfx.FIELD_BLEND_SECONDS)
+    }
+
+    private fun stepBlend(current: Float, on: Boolean, step: Float): Float {
+        val target = if (on) 1f else 0f
+        return if (current < target) (current + step).coerceAtMost(target)
+        else (current - step).coerceAtLeast(target)
     }
 
     /** 玩家船左侧状态行（每帧调用刷新）：台词短句 + 当前难度档位的力场数值。 */

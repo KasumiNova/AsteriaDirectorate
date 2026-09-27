@@ -1,0 +1,11 @@
+{
+	"astd_grav_storm_release":{
+		"sounds":[
+			{
+				"file":"sounds/sfx_shields/shields_burnout_dweller.ogg",
+				"pitch":1,
+				"volume":1
+			},
+		],
+	},
+}

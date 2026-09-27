@@ -459,8 +459,8 @@ class GravStormSystemStats : BaseShipSystemScript() {
     companion object {
         private val log = Global.getLogger(GravStormSystemStats::class.java)
 
-        /** 释放音效：原版 shield_burnout（过载击穿音，其采样池含 shields_burnout_dweller.ogg）。 */
-        private const val RELEASE_SOUND_ID = "shield_burnout"
+        /** 释放音效：模组 sounds.json 单变体池 astd_grav_storm_release（钉死原版 shields_burnout_dweller.ogg 采样，避免原版 shield_burnout 池随机到另一变体）。 */
+        private const val RELEASE_SOUND_ID = "astd_grav_storm_release"
 
         /** 电弧命中音效（原版 EMP 发射器命中音）。 */
         private const val ARC_IMPACT_SOUND_ID = "system_emp_emitter_impact"

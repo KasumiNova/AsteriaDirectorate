@@ -23,6 +23,7 @@ import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
 import kotlin.math.cos
 import kotlin.math.sin
+import kotlin.math.sqrt
 
 /**
  * 引力空间复制器（Gravity Space Replicator，系统 id：astd_grav_replicator）——舜华级（ZW-101）舰船系统。
@@ -35,8 +36,8 @@ import kotlin.math.sin
  * 2. **弹道复制**：系统开启期间（IN/ACTIVE/OUT，apply 被调用的全部窗口）扫描
  *    engine.projectiles，本舰发射的能量武器实弹（武器 type=ENERGY、非光束、非装饰；
  *    导弹与实弹武器天然排除）逐发登记一条复制单（[ReplicaOrder]，记原射弹实体引用、
- *    原朝向、初速、面板伤害与武器单发辐能快照，及主射弹终点推导依据——总飞行时长与
- *    登记时刻外推终点）；每个弹体只登记一次（弹体 customData [SCAN_MARK_KEY]，
+ *    原朝向、初速、面板伤害与武器单发辐能快照，及主射弹弹道推导依据——总飞行时长与
+ *    登记时刻位置/射程终点快照）；每个弹体只登记一次（弹体 customData [SCAN_MARK_KEY]，
  *    复制体出生即带标记防二次复制）。已在飞行中的弹体（首次观测时 elapsed 超过
  *    [SCAN_AGE_TOLERANCE]）视为系统开启前发射，只标记不登记。
  * 3. **复制调度**：[ReplicaQueueProcessor]（挂在舰船上的 AdvanceableListener，逐舰一份，
@@ -47,11 +48,12 @@ import kotlin.math.sin
  *    舰船死亡/残骸化清空队列；队列随舰船实体回收，战斗结束不泄漏。
  * 4. **复制体出现位置与射向**：不锁定武器发射点——出现点在舰船中心周围
  *    碰撞半径 ×[SPAWN_RING_MIN_FRACTION, SPAWN_RING_MAX_FRACTION] 环带内均匀随机取点。
- *    复制体飞行方向永远指向主射弹（被复制的原射弹）终点：原射弹仍存活时终点 =
- *    原射弹当前位置 + 原射弹当前速度 × 剩余飞行时间（登记时由武器实际射程/弹速推导的
- *    总飞行时长 - 原射弹已飞行时间，clamp 不为负）；原射弹已消亡时退用登记时刻快照的
- *    外推终点。速度模长保持登记快照的原弹速。无法确定主射弹终点（射程/弹速
- *    不可推导）时回退锁定目标预判射向并打 WARN（每舰每武器一次，见 ReplicaQueueProcessor）。
+ *    复制体飞行方向永远指向主射弹（被复制的原射弹）预期命中点：先取主射弹弹道段
+ *    （原射弹仍存活时按当前位置 + 当前速度 × 剩余飞行时间外推射程终点，剩余时间由登记时
+ *    武器实际射程/弹速推导的总飞行时长 - 已飞行时间得出，clamp 不为负；原射弹已消亡时退用
+ *    登记时刻快照的弹道段），再沿弹道段与敌舰碰撞圆求交取最近命中点，无命中保持射程终点。
+ *    速度模长保持登记快照的原弹速。弹道不可推导（射程/弹速不可解析）时回退锁定目标
+ *    预判射向并打 WARN（每舰每武器一次，见 ReplicaQueueProcessor）。
  *
  * 特效：激活期间舰船紫色 jitter；每次复制在出现点放两个 FlareEntity（SMOOTH 圆斑 +
  * SHARP_DISC 光柱，0.5s 消散，紫色；光柱在复制体射向基础上再转 90° 作横向辉光）+
@@ -121,7 +123,7 @@ class GravReplicatorSystemStats : BaseShipSystemScript() {
                 continue
             }
 
-            // 登记时刻快照：总飞行时长（武器实际射程/弹速）与外推终点，供复制时刻收敛射向
+            // 登记时刻快照：总飞行时长（武器实际射程/弹速）、位置与外推射程终点，供复制时刻收敛射向
             val flightSeconds = resolveFlightSeconds(proj, weapon)
             queueOf(engine, ship).queue.add(
                 ReplicaOrder(
@@ -133,6 +135,7 @@ class GravReplicatorSystemStats : BaseShipSystemScript() {
                     damageAmount = proj.damageAmount,
                     fluxPerShot = weapon.fluxCostToFire,
                     flightSeconds = flightSeconds,
+                    snapshotOrigin = Vector2f(proj.location),
                     endpointSnapshot = flightSeconds?.let { seconds ->
                         extrapolateEndpoint(proj.location, proj.velocity, seconds - proj.elapsed)
                     },
@@ -170,8 +173,9 @@ class GravReplicatorSystemStats : BaseShipSystemScript() {
 
     /**
      * 一条复制单：源弹体的实体引用/spec/朝向/初速/面板伤害/武器单发辐能快照 +
-     * 主射弹终点推导依据（[flightSeconds] 总飞行时长、[endpointSnapshot] 登记时刻外推终点，
-     * 射程/弹速不可推导时两者为 null，复制时刻回退锁定目标预判射向）+ 复制进度。
+     * 主射弹弹道推导依据（[flightSeconds] 总飞行时长、[snapshotOrigin] 登记时刻位置、
+     * [endpointSnapshot] 登记时刻外推射程终点，射程/弹速不可推导时后两者失效，
+     * 复制时刻回退锁定目标预判射向）+ 复制进度。
      */
     private class ReplicaOrder(
         val weapon: WeaponAPI,
@@ -182,6 +186,7 @@ class GravReplicatorSystemStats : BaseShipSystemScript() {
         val damageAmount: Float,
         val fluxPerShot: Float,
         val flightSeconds: Float?,
+        val snapshotOrigin: Vector2f,
         val endpointSnapshot: Vector2f?,
     ) {
         var copyIndex = 0
@@ -226,7 +231,7 @@ class GravReplicatorSystemStats : BaseShipSystemScript() {
 
         /**
          * 生成一发复制体：出现点在舰船中心周围 碰撞半径 ×[SPAWN_RING_MIN_FRACTION,
-         * SPAWN_RING_MAX_FRACTION] 环带内均匀随机取点；射向收敛到主射弹终点（结算见
+         * SPAWN_RING_MAX_FRACTION] 环带内均匀随机取点；射向收敛到主射弹预期命中点（结算见
          * [resolveReplicaTrajectory]），速度模长保持登记快照的原弹速。复制瞬间重新校验
          * 源弹体可复制性——武器 spec 与弹体 spec 仍可解析，且武器实例仍有效（延迟 0.5s/1.0s
          * 后武器可能已损毁/被移除：仍挂在舰船 allWeapons 中且未禁用）；校验失败丢弃本条
@@ -248,7 +253,7 @@ class GravReplicatorSystemStats : BaseShipSystemScript() {
             }
 
             val point = randomSpawnPoint(ship)
-            val (facing, velocity) = resolveReplicaTrajectory(ship, order, point)
+            val (facing, velocity) = resolveReplicaTrajectory(engine, ship, order, point)
             val spawned = engine.spawnProjectile(
                 ship, order.weapon, order.weaponId,
                 Vector2f(point), facing, velocity,
@@ -277,39 +282,91 @@ class GravReplicatorSystemStats : BaseShipSystemScript() {
         }
 
         /**
-         * 复制体射向结算：方向永远指向主射弹（被复制的原射弹）终点（[resolveMainEndpoint]），
-         * 模长保持登记快照的原弹速，facing 与速度方向一致。无法确定主射弹终点时回退锁定目标
+         * 复制体射向结算：方向永远指向主射弹（被复制的原射弹）预期命中点——先取主射弹弹道段
+         * （[resolveMainSegment]：存活按活体外推射程终点，消亡用登记快照），再沿弹道段与敌舰
+         * 碰撞圆求交取最近命中点为终点（[raycastHullHit]，无命中保持射程终点）。
+         * 模长保持登记快照的原弹速，facing 与速度方向一致。弹道不可推导时回退锁定目标
          * 预判射向（[resolveTargetLeadTrajectory]）并告警；快照弹速为零或方向退化时保持
          * 登记快照的原朝向/初速。
          */
-        private fun resolveReplicaTrajectory(ship: ShipAPI, order: ReplicaOrder, point: Vector2f): Pair<Float, Vector2f> {
+        private fun resolveReplicaTrajectory(
+            engine: CombatEngineAPI,
+            ship: ShipAPI,
+            order: ReplicaOrder,
+            point: Vector2f,
+        ): Pair<Float, Vector2f> {
             val speed = order.velocity.length()
             if (speed <= 0f) return order.facing to Vector2f(order.velocity)
-            val endpoint = resolveMainEndpoint(order)
-            if (endpoint == null) {
+            val segment = resolveMainSegment(order)
+            if (segment == null) {
                 if (warnedFallbackWeaponIds.add(order.weaponId)) {
-                    log.warn("引力空间复制器无法确定主射弹终点（weaponId=${order.weaponId}，ship=${ship.id}），该武器在本舰的后续复制均回退锁定目标预判射向（每舰每武器只告警一次）")
+                    log.warn("引力空间复制器无法确定主射弹弹道（weaponId=${order.weaponId}，ship=${ship.id}），该武器在本舰的后续复制均回退锁定目标预判射向（每舰每武器只告警一次）")
                 }
                 return resolveTargetLeadTrajectory(ship, order, point, speed)
             }
+            val endpoint = raycastHullHit(engine, ship, segment) ?: segment.endpoint
             val direction = Vector2f.sub(endpoint, point, null)
             if (direction.lengthSquared() <= 0f) return order.facing to Vector2f(order.velocity)
             direction.normalise(direction)
             return Misc.getAngleInDegrees(direction) to Vector2f(direction.x * speed, direction.y * speed)
         }
 
+        /** 主射弹弹道段：射线求交用的起点与射程终点。 */
+        private class BallisticSegment(val origin: Vector2f, val endpoint: Vector2f)
+
         /**
-         * 主射弹终点：原射弹仍存活（未 expired）时按活体外推——当前位置 + 当前速度 ×
-         * 剩余飞行时间（总飞行时长 - 已飞行时间，clamp 不为负）；原射弹已消亡时退用登记
-         * 时刻快照的外推终点；总飞行时长不可推导返回 null。
+         * 主射弹弹道段：原射弹仍存活（未 expired）时起点取活体当前位置、终点按当前速度 ×
+         * 剩余飞行时间（总飞行时长 - 已飞行时间，clamp 不为负）外推；原射弹已消亡时退用登记
+         * 时刻快照的起点/射程终点；总飞行时长不可推导返回 null。
          */
-        private fun resolveMainEndpoint(order: ReplicaOrder): Vector2f? {
+        private fun resolveMainSegment(order: ReplicaOrder): BallisticSegment? {
             val flightSeconds = order.flightSeconds ?: return null
             val source = order.source
             if (!source.isExpired) {
-                return extrapolateEndpoint(source.location, source.velocity, flightSeconds - source.elapsed)
+                return BallisticSegment(
+                    Vector2f(source.location),
+                    extrapolateEndpoint(source.location, source.velocity, flightSeconds - source.elapsed),
+                )
             }
-            return order.endpointSnapshot?.let { Vector2f(it) }
+            val snapshot = order.endpointSnapshot ?: return null
+            return BallisticSegment(Vector2f(order.snapshotOrigin), Vector2f(snapshot))
+        }
+
+        /**
+         * 射线-碰撞圆求交：沿弹道段扫描敌舰（owner 不同、存活、非残骸、非战机——与锥状锁定
+         * 同口径；相位舰不与弹体碰撞，排除），取弹道方向上最近的进入碰撞圆交点；
+         * 无交点返回 null（终点保持射程终点）。护盾口径：不做盾弧朝向判断，直接用碰撞圆
+         * （命中判定以舰体碰撞圆为准；盾半径覆盖判断成本高，且 overshoot 主要由射程外推
+         * 超出实际命中点引起，碰撞圆已覆盖主弹道终止语义）。
+         */
+        private fun raycastHullHit(engine: CombatEngineAPI, ship: ShipAPI, segment: BallisticSegment): Vector2f? {
+            val dx = segment.endpoint.x - segment.origin.x
+            val dy = segment.endpoint.y - segment.origin.y
+            val segLenSq = dx * dx + dy * dy
+            if (segLenSq <= 0f) return null
+            var bestT = Float.MAX_VALUE
+            var bestPoint: Vector2f? = null
+            for (target in engine.ships) {
+                if (target == null || target === ship) continue
+                if (target.owner == ship.owner || target.isFighter || target.isHulk || !target.isAlive) continue
+                if (target.isPhased) continue
+                // 圆方程 |origin + d·t - c|² = r²，t 归一到线段参数（0=起点，1=射程终点）
+                val cx = target.location.x - segment.origin.x
+                val cy = target.location.y - segment.origin.y
+                val r = target.collisionRadius
+                val tCenter = (cx * dx + cy * dy) / segLenSq
+                val closestSq = cx * cx + cy * cy - tCenter * tCenter * segLenSq
+                if (closestSq > r * r) continue
+                val tHalfChord = sqrt((r * r - closestSq) / segLenSq)
+                // 整圆位于起点后方（圆心沿弹道反方向且远端都未到起点）：剔除，不计命中
+                if (tCenter + tHalfChord < 0f) continue
+                // 起点已在圆内（tEnter < 0 < tExit）：交点取起点
+                val t = (tCenter - tHalfChord).coerceAtLeast(0f)
+                if (t > 1f || t >= bestT) continue
+                bestT = t
+                bestPoint = Vector2f(segment.origin.x + dx * t, segment.origin.y + dy * t)
+            }
+            return bestPoint
         }
 
         /**
