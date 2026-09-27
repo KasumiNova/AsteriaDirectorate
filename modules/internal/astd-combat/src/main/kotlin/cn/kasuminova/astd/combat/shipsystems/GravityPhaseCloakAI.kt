@@ -37,7 +37,8 @@ import org.lwjgl.util.vector.Vector2f
  * - 绕后下潜：主威胁目标为低机动舰（[isLowMobilityTarget] 代理指标）且本舰尚未进入其侧后
  *   薄弱区、武器过半可输出、硬辐能 < [FLANK_DIVE_HARD_FLUX_MAX] 时，借相位穿透占位
  *   （闸门收敛在 [isFlankDive]，decide 与 advance 的意图布防共用）；下潜后开启
- *   [FLANK_INTENT_SEC] 绕后意图窗口，相位中挂 PHASE_ATTACK_RUN 旗标驱动原版走位
+ *   绕后意图窗口（[flankIntentWindowSec] 按布防距离缩放基准值 [FLANK_INTENT_SEC]），
+ *   相位中挂 PHASE_ATTACK_RUN 旗标驱动原版走位
  *   把舰船带往目标背后（原版相位 AI 被替换后该旗标无人管理，正面硬点装配的舰船
  *   下潜后会原地罚站），进入侧后改挂 PHASE_ATTACK_RUN_IN_GOOD_SPOT 就地保持；
  * - 威胁下潜：[NEAR_WINDOW_SEC] 内预计命中伤害达 [diveNearThreshold]；
@@ -52,8 +53,8 @@ import org.lwjgl.util.vector.Vector2f
  * 上浮（相位中时）：
  * - 辐能强制上浮：硬辐能 ≥ [SURFACE_HARD_FLUX]（继续潜只会涨辐能减速被围死）；
  * - 时长强制上浮：连续相位 ≥ [MAX_PHASE_TIME_SEC]（错峰节奏，强制回到战场）；
- *   绕后意图生效期间上限放宽到 [FLANK_MAX_PHASE_TIME_SEC]（穿透机动需要位移时间，
- *   辐能闸不受放宽）；
+ *   绕后意图生效期间上限放宽到武装窗口 + [FLANK_PHASE_CAP_MARGIN_SEC]（穿透机动
+ *   需要位移时间，辐能闸不受放宽）；
  * - 致命豁免：上述强制上浮触发时，若 [SOON_WINDOW_SEC] 内有致命来袭（≥ 舰体 20%，
  *   含友军火力烧身）且硬辐能 < [HOLD_MAX_HARD_FLUX]，等这一下过去再上浮；
  * - 即将受击闸：全部主动上浮路径统一要求 [SOON_WINDOW_SEC] 窗口来袭低于 [diveSoonThreshold]
@@ -189,11 +190,17 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
         /** 绕后下潜的硬辐能上限。 */
         internal const val FLANK_DIVE_HARD_FLUX_MAX = 0.4f
 
-        /** 绕后意图时长（s）：绕后下潜后保持相位机动穿透的时间窗。 */
+        /** 绕后意图基准时长（s）：绕后下潜后保持相位机动穿透的时间窗（按布防距离缩放，见 [flankIntentWindowSec]）。 */
         internal const val FLANK_INTENT_SEC = 12f
 
-        /** 绕后意图期间的相位时长上限（s）：穿透机动需要位移时间，放宽常规上限；辐能闸不受放宽。 */
-        internal const val FLANK_MAX_PHASE_TIME_SEC = 14f
+        /** 绕后窗口参考距离（su）：布防距离不超过本值时窗口保持基准时长。 */
+        internal const val FLANK_INTENT_REF_DIST = 1200f
+
+        /** 绕后意图窗口上限（s）：慢速舰远处布防需要更长的穿透位移时间。 */
+        internal const val FLANK_INTENT_MAX_SEC = 24f
+
+        /** 绕后意图期间相位时长上限相对意图窗口的富余（s）。 */
+        internal const val FLANK_PHASE_CAP_MARGIN_SEC = 2f
 
         /** 死角上浮允许的最大武器覆盖数（目标侧后射界内能瞄准本舰的武器 ≤ 本值立即上浮）。 */
         internal const val REAR_SURFACE_MAX_COVERAGE = 1
@@ -293,6 +300,10 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
             val friendlyCatchDamage: Float,
             /** 绕后意图是否生效中（绕后下潜后保持相位机动穿透的窗口期）。 */
             val flankIntentActive: Boolean,
+            /** 布防时武装的绕后意图窗口长度（s）；意图未生效时取值不影响判定。 */
+            val flankIntentWindowSec: Float,
+            /** 主威胁目标距离（su；无威胁时为 [Float.MAX_VALUE]）。 */
+            val threatDistance: Float,
             /** 友军火力在 soon 窗口内命中本舰的估计伤害（友伤规避只触发防御性下潜）。 */
             val incomingFriendlySoonDamage: Float,
         )
@@ -312,9 +323,11 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
                             s.hardFluxLevel < HOLD_MAX_HARD_FLUX
 
                 if (s.hardFluxLevel >= SURFACE_HARD_FLUX && !holdForLethal) return PhaseOrder.SURFACE
-                // 绕后意图期间放宽相位时长上限：穿透机动需要位移时间（辐能闸不受放宽）
+                // 绕后意图期间放宽相位时长上限：穿透机动需要位移时间（辐能闸不受放宽），
+                // 上限跟随布防时按距离武装的窗口长度
                 val maxPhaseTime =
-                    if (s.flankIntentActive) FLANK_MAX_PHASE_TIME_SEC else MAX_PHASE_TIME_SEC
+                    if (s.flankIntentActive) s.flankIntentWindowSec + FLANK_PHASE_CAP_MARGIN_SEC
+                    else MAX_PHASE_TIME_SEC
                 if (s.phaseActiveTime >= maxPhaseTime && !holdForLethal) return PhaseOrder.SURFACE
                 if (s.phaseActiveTime < MIN_PHASE_TIME_SEC) return PhaseOrder.NONE
 
@@ -422,6 +435,16 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
                     s.hardFluxLevel < FLANK_DIVE_HARD_FLUX_MAX &&
                     s.incomingNearDamage < diveNearThreshold(s.maxHull)
 
+        /**
+         * 绕后意图窗口（纯函数）：按布防时距主威胁目标的距离相对 [FLANK_INTENT_REF_DIST]
+         * 线性缩放基准窗口 [FLANK_INTENT_SEC]——穿透机动的时间预算就是位移预算，慢速舰
+         * 远处下潜时固定窗口会在抵达目标背后前过期，导致意图作废、正面上浮白潜一趟；
+         * 下限基准值（近距离布防行为不变），上限 [FLANK_INTENT_MAX_SEC]。
+         */
+        internal fun flankIntentWindowSec(threatDistance: Float): Float =
+            (FLANK_INTENT_SEC * threatDistance / FLANK_INTENT_REF_DIST)
+                .coerceIn(FLANK_INTENT_SEC, FLANK_INTENT_MAX_SEC)
+
         /** 光束威胁折算（纯函数）：持续光束按 DPS × [CONT_BEAM_THREAT_WINDOW_SEC] 计入 near 窗口。 */
         internal fun beamThreatNear(dps: Float): Float = dps * CONT_BEAM_THREAT_WINDOW_SEC
 
@@ -445,6 +468,9 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
 
     /** 绕后意图剩余时长（s）：绕后下潜布防后递减，上浮即清零。 */
     private var flankIntentRemaining = 0f
+
+    /** 布防时武装的绕后意图窗口长度（s）：随 [flankIntentRemaining] 一同布防，供相位时长上限推导。 */
+    private var flankIntentWindowArmed = FLANK_INTENT_SEC
 
     override fun init(ship: ShipAPI, system: ShipSystemAPI, flags: ShipwideAIFlags, engine: CombatEngineAPI) {
         this.ship = ship
@@ -533,10 +559,13 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
                 // 绕后意图布防：绕后下潜命中完整闸门且开关指令真正发出时才开启意图窗口
                 // （闸门与 decide 共用 [isFlankDive]；开关被守卫拦住时不空布防）
                 if (isFlankDive(situation)) {
-                    flankIntentRemaining = FLANK_INTENT_SEC
+                    // 窗口按布防距离缩放：穿透机动的时间预算就是位移预算（见 flankIntentWindowSec）
+                    flankIntentRemaining = flankIntentWindowSec(situation.threatDistance)
+                    flankIntentWindowArmed = flankIntentRemaining
                     log.info(
                         "[GravityPhaseAI] ${ship.name} 绕后意图布防：目标低机动，" +
-                                "PHASE_ATTACK_RUN 驱动穿透窗口 ${FLANK_INTENT_SEC.toInt()}s",
+                                "PHASE_ATTACK_RUN 驱动穿透窗口 ${"%.1f".format(flankIntentRemaining)}s" +
+                                "（距离 ${"%.0f".format(situation.threatDistance)}su）",
                     )
                 }
             }
@@ -629,6 +658,9 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
             friendlyCatchDamage = estimateFriendlyCatch(engine, ship),
             // 绕后意图生效口径：窗口未过期、相位中、主威胁仍为低机动目标
             flankIntentActive = flankIntentRemaining > 0f && phased && lowMobility,
+            flankIntentWindowSec = flankIntentWindowArmed,
+            threatDistance = if (threat == null) Float.MAX_VALUE
+            else kotlin.math.sqrt(distanceSq(ship.location, threat.location)),
             incomingFriendlySoonDamage = friendlyIncoming[0],
         )
     }

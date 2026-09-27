@@ -622,7 +622,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     private val gsrFoldFeedIds = mutableSetOf<Int>()
     private val gsrFoldFeedMarked = mutableSetOf<Int>()
 
-    // === Phase flank scenario（lens_phase_flank_zw101）===
+    // === Phase flank scenario（lens_phase_flank_zw101 及其矩阵扩展）===
     // 观测面：舜华相位状态边沿——下潜计数、相位中绕敌舰的方位角扫描幅度（去卷绕累计）、
     // 每次上浮时「敌舰艏向 vs 敌→己方位角」差值。绕后意图生效时扫描幅度/上浮方位差显著。
     private var pfPhase = PF_PHASE_OBSERVE
@@ -690,10 +690,10 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             writeDiagnostics(engine, "CombatReady")
             writeTelemetry(engine, "CombatReady", findGsrPlayer(engine), null)
             log.info("[ASTD-Automation] scenario=${ASTDInGameAutomationScenario.GSR_SCENARIO_ID} combat plugin initialized")
-        } else if (ASTDInGameAutomationScenario.isPhaseFlankScenarioEnabled()) {
+        } else if (pfSetup() != null) {
             engine.setDoNotEndCombat(true)
             // 玩家后备恰 1 艘时通用块保留 vanilla 静默 deployAll（单舰场景范式）——本场景需要
-            // 舜华留在 reserves 由 deployPfReserveShips 锚点入场，关断闸门把静默部署一并跳过
+            // 玩家舰留在 reserves 由 deployPfReserveShips 锚点入场，关断闸门把静默部署一并跳过
             (engine.combatUI as? CombatState)?.setShowDeploymentDialogOnStart(false)
             lockPfCamera(engine)
             // 与其他场景一致：reserves 部署放到 advance()，init 阶段渲染器未就绪。
@@ -869,7 +869,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             advanceGsrScenario(combatEngine)
             return
         }
-        if (ASTDInGameAutomationScenario.isPhaseFlankScenarioEnabled()) {
+        if (pfSetup() != null) {
             if (combatEngine.isPaused) combatEngine.isPaused = false
             elapsed += amount.coerceAtLeast(0f)
             advancePfScenario(combatEngine, amount.coerceAtLeast(0f))
@@ -1066,9 +1066,9 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             writeTelemetry(combatEngine, "Completed", findGsrPlayer(combatEngine), null)
             return
         }
-        if (ASTDInGameAutomationScenario.isPhaseFlankScenarioEnabled()) {
+        if (pfSetup() != null) {
             if (!completed || visualFramesWritten >= 3) return
-            // 捕获帧间隔 0.6s：舜华绕后对抗舞台在三帧内进入捕获帧。
+            // 捕获帧间隔 0.6s：相位对抗舞台在三帧内进入捕获帧。
             if (visualFramesWritten > 0 && elapsed - lastVisualFrameAt < 0.6f) return
             lockPfCamera(combatEngine)
             lastVisualFrameAt = elapsed
@@ -7660,24 +7660,58 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     }
 
 
-    // === Phase flank scenario（lens_phase_flank_zw101）===
+    // === Phase flank scenario（lens_phase_flank_zw101 及矩阵扩展：zw002/zw103/zw101_hh 对照组）===
 
-    private fun findPfPlayer(engine: CombatEngineAPI): ShipAPI? =
-        engine.ships.firstOrNull { ship -> ship.owner == 0 && ship.hullSpec?.hullId == PF_PLAYER_HULL && !ship.isFighter }
+    /** 判定模式：FLANK 绕后证据 / HEALTH 航母相位节奏健康 / CONTROL_NO_FLANK 高速目标零绕后旗标。 */
+    private enum class PfMode { FLANK, HEALTH, CONTROL_NO_FLANK }
 
-    private fun findPfEnemy(engine: CombatEngineAPI): ShipAPI? =
-        engine.ships.firstOrNull { ship -> ship.owner != 0 && ship.hullSpec?.hullId == PF_ENEMY_HULL && !ship.isFighter }
+    /** 当前激活的 pf 系场景配置（舰队构成由各自 MissionDefinition 决定，此处只取舰体口径与判定模式）。 */
+    private data class PfSetup(val scenarioId: String, val playerHull: String, val enemyHull: String, val mode: PfMode)
+
+    private fun pfSetup(): PfSetup? = when {
+        ASTDInGameAutomationScenario.isPhaseFlankScenarioEnabled() -> PfSetup(
+            ASTDInGameAutomationScenario.PF_SCENARIO_ID,
+            ASTDInGameAutomationScenario.PF_HULL_ID, ASTDInGameAutomationScenario.PF_ENEMY_HULL_ID, PfMode.FLANK,
+        )
+
+        ASTDInGameAutomationScenario.isPhaseFlankZw002Enabled() -> PfSetup(
+            ASTDInGameAutomationScenario.PF2_SCENARIO_ID,
+            ASTDInGameAutomationScenario.PF2_HULL_ID, ASTDInGameAutomationScenario.PF_ENEMY_HULL_ID, PfMode.HEALTH,
+        )
+
+        ASTDInGameAutomationScenario.isPhaseFlankZw103Enabled() -> PfSetup(
+            ASTDInGameAutomationScenario.PF3_SCENARIO_ID,
+            ASTDInGameAutomationScenario.PF3_HULL_ID, ASTDInGameAutomationScenario.PF_ENEMY_HULL_ID, PfMode.HEALTH,
+        )
+
+        ASTDInGameAutomationScenario.isPhaseFlankControlEnabled() -> PfSetup(
+            ASTDInGameAutomationScenario.PFC_SCENARIO_ID,
+            ASTDInGameAutomationScenario.PF_HULL_ID, ASTDInGameAutomationScenario.PFC_ENEMY_HULL_ID, PfMode.CONTROL_NO_FLANK,
+        )
+
+        else -> null
+    }
+
+    private fun findPfPlayer(engine: CombatEngineAPI): ShipAPI? {
+        val hull = pfSetup()?.playerHull ?: ASTDInGameAutomationScenario.PF_HULL_ID
+        return engine.ships.firstOrNull { ship -> ship.owner == 0 && ship.hullSpec?.hullId == hull && !ship.isFighter }
+    }
+
+    private fun findPfEnemy(engine: CombatEngineAPI): ShipAPI? {
+        val hull = pfSetup()?.enemyHull ?: ASTDInGameAutomationScenario.PF_ENEMY_HULL_ID
+        return engine.ships.firstOrNull { ship -> ship.owner != 0 && ship.hullSpec?.hullId == hull && !ship.isFighter }
+    }
 
     /** 强制部署 mission reserves（范式同 deployGsrReserveShips）；两舰锚点相对入场后 AI 自由对抗。 */
-    private fun deployPfReserveShips(engine: CombatEngineAPI) {
+    private fun deployPfReserveShips(engine: CombatEngineAPI, setup: PfSetup) {
         engine.setDoNotEndCombat(true)
         for (side in listOf(FleetSide.PLAYER, FleetSide.ENEMY)) {
             val manager = engine.getFleetManager(side)
             manager.isSuppressDeploymentMessages = true
             for (member in manager.reservesCopy.toList()) {
                 val anchor = when {
-                    side == FleetSide.PLAYER && member.hullId == PF_PLAYER_HULL -> PF_PLAYER_ANCHOR
-                    side == FleetSide.ENEMY && member.hullId == PF_ENEMY_HULL -> PF_ENEMY_ANCHOR
+                    side == FleetSide.PLAYER && member.hullId == setup.playerHull -> PF_PLAYER_ANCHOR
+                    side == FleetSide.ENEMY && member.hullId == setup.enemyHull -> PF_ENEMY_ANCHOR
                     else -> continue
                 }
                 if (findShipByHull(engine, member.hullId) != null) {
@@ -7753,15 +7787,15 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     }
 
     /**
-     * 舜华相位绕后观测：不钉位、不清辐能、不动舰 AI——两舰满装配 AI 自由对抗，
+     * 相位对抗观测：不钉位、不清辐能、不动舰 AI——两舰满装配 AI 自由对抗，
      * 逐帧回满双方舰体（保住对抗时长；辐能保留，相位 AI 的辐能压力链路输入保持真实）。
-     * 成功判据：90s 观测窗内下潜 ≥1 且（相位中绕敌方位角扫描幅度 ≥ [PF_SWEEP_MIN_DEG]°
-     * 或 上浮时相对敌艏方位差 ≥ [PF_SURFACE_BEARING_MIN_DEG]°）——修复前原版走位旗标
-     * PHASE_ATTACK_RUN 无人管理，舜华下潜后原地罚站，两值都趋近 0。
+     * 判据按 [PfSetup.mode] 分支：FLANK 判绕后证据（90s 窗内下潜 ≥1 且扫描幅度/上浮方位差达标），
+     * HEALTH 判航母相位节奏（下潜/上浮各 ≥2），CONTROL_NO_FLANK 判高速目标对照零绕后旗标帧。
      */
     private fun advancePfScenario(engine: CombatEngineAPI, amount: Float) {
+        val setup = pfSetup() ?: return
         engine.setDoNotEndCombat(true)
-        deployPfReserveShips(engine)
+        deployPfReserveShips(engine, setup)
         lockPfCamera(engine)
 
         val player = findPfPlayer(engine)
@@ -7774,7 +7808,10 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         if (player != null && enemy != null && pfPhase == PF_PHASE_OBSERVE) {
             if (pfCombatStartAt < 0f) {
                 pfCombatStartAt = elapsed
-                log.info("[ASTD-Automation] pf combat start: 舜华 vs 统治者 AI 对抗观测窗开启")
+                log.info(
+                    "[ASTD-Automation] pf combat start: ${setup.playerHull} vs ${setup.enemyHull} " +
+                            "AI 对抗观测窗开启（mode=${setup.mode}）",
+                )
             }
             // 走位驱动探针采样（逐帧，不走扫描节拍）
             if (player.isPhased) {
@@ -7784,22 +7821,58 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             }
             trackPfPhaseEdges(player, enemy)
             val combatSeconds = elapsed - pfCombatStartAt
-            if (pfDiveCount >= 1 &&
-                (pfPhaseSweepMax >= PF_SWEEP_MIN_DEG || pfSurfaceBearingDiffMax >= PF_SURFACE_BEARING_MIN_DEG)
-            ) {
-                pfPhase = PF_PHASE_COMPLETED
-                log.info(
-                    "[ASTD-Automation] pf flank evidence: dives=$pfDiveCount surfaces=$pfSurfaceCount " +
-                            "sweepMax=${"%.1f".format(pfPhaseSweepMax)}° " +
-                            "surfaceBearingDiffMax=${"%.1f".format(pfSurfaceBearingDiffMax)}° " +
-                            "at ${"%.1f".format(combatSeconds)}s",
-                )
-            } else if (combatSeconds >= PF_OBSERVE_TIMEOUT) {
-                failureReason = "pf observe timeout: ${PF_OBSERVE_TIMEOUT.toInt()}s 内绕后证据不足" +
-                        "（dives=$pfDiveCount surfaces=$pfSurfaceCount " +
-                        "sweepMax=${"%.1f".format(pfPhaseSweepMax)}° < $PF_SWEEP_MIN_DEG° 且 " +
-                        "surfaceBearingDiffMax=${"%.1f".format(pfSurfaceBearingDiffMax)}° < $PF_SURFACE_BEARING_MIN_DEG°）"
-                pfPhase = PF_PHASE_FAILED
+            when (setup.mode) {
+                PfMode.FLANK -> {
+                    if (pfDiveCount >= 1 &&
+                        (pfPhaseSweepMax >= PF_SWEEP_MIN_DEG || pfSurfaceBearingDiffMax >= PF_SURFACE_BEARING_MIN_DEG)
+                    ) {
+                        pfPhase = PF_PHASE_COMPLETED
+                        log.info(
+                            "[ASTD-Automation] pf flank evidence: dives=$pfDiveCount surfaces=$pfSurfaceCount " +
+                                    "sweepMax=${"%.1f".format(pfPhaseSweepMax)}° " +
+                                    "surfaceBearingDiffMax=${"%.1f".format(pfSurfaceBearingDiffMax)}° " +
+                                    "at ${"%.1f".format(combatSeconds)}s",
+                        )
+                    } else if (combatSeconds >= PF_OBSERVE_TIMEOUT) {
+                        failureReason = "pf observe timeout: ${PF_OBSERVE_TIMEOUT.toInt()}s 内绕后证据不足" +
+                                "（dives=$pfDiveCount surfaces=$pfSurfaceCount " +
+                                "sweepMax=${"%.1f".format(pfPhaseSweepMax)}° < $PF_SWEEP_MIN_DEG° 且 " +
+                                "surfaceBearingDiffMax=${"%.1f".format(pfSurfaceBearingDiffMax)}° < $PF_SURFACE_BEARING_MIN_DEG°）"
+                        pfPhase = PF_PHASE_FAILED
+                    }
+                }
+
+                PfMode.HEALTH -> {
+                    if (pfDiveCount >= 2 && pfSurfaceCount >= 2) {
+                        pfPhase = PF_PHASE_COMPLETED
+                        log.info(
+                            "[ASTD-Automation] pf health evidence: dives=$pfDiveCount surfaces=$pfSurfaceCount " +
+                                    "at ${"%.1f".format(combatSeconds)}s",
+                        )
+                    } else if (combatSeconds >= PF_OBSERVE_TIMEOUT) {
+                        failureReason = "pf health timeout: ${PF_OBSERVE_TIMEOUT.toInt()}s 内相位节奏不达标" +
+                                "（dives=$pfDiveCount surfaces=$pfSurfaceCount，要求各 ≥2）"
+                        pfPhase = PF_PHASE_FAILED
+                    }
+                }
+
+                PfMode.CONTROL_NO_FLANK -> {
+                    if (pfAttackRunFrames > 0) {
+                        failureReason = "pf control violated: 对照组出现绕后旗标帧（attackRunFrames=$pfAttackRunFrames）"
+                        pfPhase = PF_PHASE_FAILED
+                    } else if (combatSeconds >= PF_CONTROL_WINDOW_SEC) {
+                        if (pfDiveCount >= 1) {
+                            pfPhase = PF_PHASE_COMPLETED
+                            log.info(
+                                "[ASTD-Automation] pf control clean: dives=$pfDiveCount attackRunFrames=0 " +
+                                        "at ${"%.1f".format(combatSeconds)}s",
+                            )
+                        } else {
+                            failureReason = "pf control no dive: ${PF_CONTROL_WINDOW_SEC.toInt()}s 内未下潜，相位 AI 未运行"
+                            pfPhase = PF_PHASE_FAILED
+                        }
+                    }
+                }
             }
         }
 
@@ -7820,7 +7893,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         if (state == "Completed" && !completed) {
             completed = true
             completedAt = elapsed
-            log.info("[ASTD-Automation] Completed: lens_phase_flank_zw101 dive/sweep/rear-surface evidence observed")
+            log.info("[ASTD-Automation] Completed: ${setup.scenarioId}")
         }
         if (elapsed - lastWriteAt >= 0.18f || state == "Completed" || state == "Failed") {
             lastWriteAt = elapsed
@@ -9038,7 +9111,10 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             !ASTDInGameAutomationScenario.isFighterGravLinkScenarioEnabled() &&
             !ASTDInGameAutomationScenario.isGravStormScenarioEnabled() &&
             !ASTDInGameAutomationScenario.isGravReplicatorScenarioEnabled() &&
-            !ASTDInGameAutomationScenario.isPhaseFlankScenarioEnabled()
+            !ASTDInGameAutomationScenario.isPhaseFlankScenarioEnabled() &&
+            !ASTDInGameAutomationScenario.isPhaseFlankZw002Enabled() &&
+            !ASTDInGameAutomationScenario.isPhaseFlankZw103Enabled() &&
+            !ASTDInGameAutomationScenario.isPhaseFlankControlEnabled()
         ) {
             return
         }
@@ -9076,6 +9152,9 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             ASTDInGameAutomationScenario.isGravStormScenarioEnabled() -> ASTDInGameAutomationScenario.GS_SCENARIO_ID
             ASTDInGameAutomationScenario.isGravReplicatorScenarioEnabled() -> ASTDInGameAutomationScenario.GSR_SCENARIO_ID
             ASTDInGameAutomationScenario.isPhaseFlankScenarioEnabled() -> ASTDInGameAutomationScenario.PF_SCENARIO_ID
+            ASTDInGameAutomationScenario.isPhaseFlankZw002Enabled() -> ASTDInGameAutomationScenario.PF2_SCENARIO_ID
+            ASTDInGameAutomationScenario.isPhaseFlankZw103Enabled() -> ASTDInGameAutomationScenario.PF3_SCENARIO_ID
+            ASTDInGameAutomationScenario.isPhaseFlankControlEnabled() -> ASTDInGameAutomationScenario.PFC_SCENARIO_ID
             ASTDInGameAutomationScenario.isTrailPauseProbeEnabled() -> ASTDInGameAutomationScenario.TPP_SCENARIO_ID
             ASTDInGameAutomationScenario.isPlEnabled() -> ASTDInGameAutomationScenario.PL_SCENARIO_ID
             ASTDInGameAutomationScenario.isSmEnabled() -> ASTDInGameAutomationScenario.SM_SCENARIO_ID
@@ -9294,7 +9373,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 appendLine("  \"gsrNoFoldCount\": $gsrNoFoldCount,")
                 appendLine("  \"gsrFoldedMovingAway\": $gsrFoldedMovingAway,")
                 appendLine("  \"gsrPlayerCurrFlux\": ${formatFloat(gsrPlayer?.fluxTracker?.currFlux ?: -1f)},")
-            } else if (ASTDInGameAutomationScenario.isPhaseFlankScenarioEnabled()) {
+            } else if (pfSetup() != null) {
                 val pfPlayer = findPfPlayer(engine)
                 val pfCloak = pfPlayer?.phaseCloak
                 appendLine("  \"runtimeElapsedSeconds\": 0,")
@@ -9302,6 +9381,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 appendLine("  \"runtimeLastProjectileSpecId\": ${jsonString(vfxTelemetry.lastProjectileSpecId)},")
                 // ---- 机制证据（相位绕后 AI：下潜计数 / 相位扫描幅度 / 上浮方位差）----
                 appendLine("  \"pfPhase\": \"$pfPhase\",")
+                appendLine("  \"pfMode\": \"${pfSetup()?.mode}\",")
                 appendLine("  \"pfSystemId\": ${jsonString(pfCloak?.id)},")
                 appendLine("  \"pfPlayerPhased\": ${pfPlayer?.isPhased == true},")
                 appendLine("  \"pfDiveCount\": $pfDiveCount,")
@@ -11170,8 +11250,6 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private const val PF_PHASE_OBSERVE = "OBSERVE"
         private const val PF_PHASE_COMPLETED = "COMPLETED"
         private const val PF_PHASE_FAILED = "FAILED"
-        private const val PF_PLAYER_HULL = "astd_zw_101"
-        private const val PF_ENEMY_HULL = "dominator"
         private val PF_PLAYER_ANCHOR = Vector2f(-1800f, 0f)
         private val PF_ENEMY_ANCHOR = Vector2f(1800f, 0f)
         private val PF_CAMERA_CENTER = Vector2f(0f, 0f)
@@ -11182,6 +11260,9 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private const val PF_SWEEP_MIN_DEG = 60f
         private const val PF_SURFACE_BEARING_MIN_DEG = 100f
         private const val PF_OBSERVE_TIMEOUT = 90f
+
+        // 高速对照组观测窗：60s 内不得出现绕后旗标帧，且至少下潜一次证明相位 AI 在运行。
+        private const val PF_CONTROL_WINDOW_SEC = 60f
 
         // 贯星之矛场景：相位机、锚点与期望证据（规格 09 §4.2 烟测检查点）。
         private const val PL_PHASE_MOUNT = "MOUNT"

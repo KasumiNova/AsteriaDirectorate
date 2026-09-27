@@ -1,0 +1,1 @@
+ASTD dev-only automation scenario: ZW-103 carrier gravity phase AI health check - dive count >= 2 and surface count >= 2 within the 90s observe window (carrier strafing naturally sweeps bearings, so flank amplitude criteria do not apply).

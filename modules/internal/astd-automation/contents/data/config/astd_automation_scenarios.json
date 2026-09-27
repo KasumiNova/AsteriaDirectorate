@@ -371,6 +371,68 @@
         "pfSurfaceBearingDiffMax",
         "pfCombatSeconds"
       ]
+    },
+    {
+      "id": "lens_phase_flank_zw002",
+      "missionId": "lens_phase_flank_zw002",
+      "shipIds": [
+        "astd_zw_002",
+        "dominator"
+      ],
+      "variantIds": [
+        "astd_zw_002_Standard",
+        "dominator_Assault"
+      ],
+      "systemId": "astd_gravity_phase",
+      "requiredEvidence": [
+        "pfPhase",
+        "pfDiveCount",
+        "pfPhaseSweepMax",
+        "pfSurfaceCount",
+        "pfSurfaceBearingDiffMax",
+        "pfCombatSeconds"
+      ]
+    },
+    {
+      "id": "lens_phase_flank_zw103",
+      "missionId": "lens_phase_flank_zw103",
+      "shipIds": [
+        "astd_zw_103",
+        "dominator"
+      ],
+      "variantIds": [
+        "astd_zw_103_Standard",
+        "dominator_Assault"
+      ],
+      "systemId": "astd_gravity_phase",
+      "requiredEvidence": [
+        "pfPhase",
+        "pfDiveCount",
+        "pfPhaseSweepMax",
+        "pfSurfaceCount",
+        "pfSurfaceBearingDiffMax",
+        "pfCombatSeconds"
+      ]
+    },
+    {
+      "id": "lens_phase_flank_zw101_hh",
+      "missionId": "lens_phase_flank_zw101_hh",
+      "shipIds": [
+        "astd_zw_101",
+        "hammerhead"
+      ],
+      "variantIds": [
+        "astd_zw_101_Standard",
+        "hammerhead_Balanced"
+      ],
+      "systemId": "astd_gravity_phase",
+      "requiredEvidence": [
+        "pfPhase",
+        "pfDiveCount",
+        "pfAttackRunFrames",
+        "pfPhasedFrames",
+        "pfCombatSeconds"
+      ]
     }
   ]
 }

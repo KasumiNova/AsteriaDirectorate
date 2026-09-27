@@ -89,6 +89,18 @@ object ASTDInGameAutomationScenario {
     const val PF_VARIANT_ID: String = "astd_zw_101_Standard"
     const val PF_ENEMY_VARIANT_ID: String = "dominator_Assault"
     const val PF_ENEMY_HULL_ID: String = "dominator"
+
+    // 绕后验证矩阵扩展：密蒙巡洋 / 茑萝航母 / 锤头高速对照组（与 PF 共用一套插件相位机，
+    // 各自 MissionDefinition 只决定舰队构成，判定模式由插件按场景 id 选择）。
+    const val PF2_SCENARIO_ID: String = "lens_phase_flank_zw002"
+    const val PF2_HULL_ID: String = "astd_zw_002"
+    const val PF2_VARIANT_ID: String = "astd_zw_002_Standard"
+    const val PF3_SCENARIO_ID: String = "lens_phase_flank_zw103"
+    const val PF3_HULL_ID: String = "astd_zw_103"
+    const val PF3_VARIANT_ID: String = "astd_zw_103_Standard"
+    const val PFC_SCENARIO_ID: String = "lens_phase_flank_zw101_hh"
+    const val PFC_ENEMY_VARIANT_ID: String = "hammerhead_Balanced"
+    const val PFC_ENEMY_HULL_ID: String = "hammerhead"
     const val SHIP_ID: String = "astd_xc_001"
     const val VARIANT_ID: String = "astd_xc_001_Standard"
     const val WEAPON_ID: String = "astd_aod7"
@@ -362,6 +374,30 @@ object ASTDInGameAutomationScenario {
         val enabled = System.getProperty(ENABLED_PROPERTY)?.equals("true", ignoreCase = true) == true
         val scenario = System.getProperty(SCENARIO_PROPERTY, SCENARIO_ID)
         return enabled && scenario == PF_SCENARIO_ID
+    }
+
+    /** 相位绕后矩阵·密蒙巡洋场景开关：镜像 [isPhaseFlankScenarioEnabled]（敌舰同为统治者）。 */
+    fun isPhaseFlankZw002Enabled(): Boolean {
+        val enabled = System.getProperty(ENABLED_PROPERTY)?.equals("true", ignoreCase = true) == true
+        val scenario = System.getProperty(SCENARIO_PROPERTY, SCENARIO_ID)
+        return enabled && scenario == PF2_SCENARIO_ID
+    }
+
+    /** 相位绕后矩阵·茑萝航母场景开关：航母走位天然绕行，验证相位节奏健康（不憋死不卡潜）而非绕后幅度。 */
+    fun isPhaseFlankZw103Enabled(): Boolean {
+        val enabled = System.getProperty(ENABLED_PROPERTY)?.equals("true", ignoreCase = true) == true
+        val scenario = System.getProperty(SCENARIO_PROPERTY, SCENARIO_ID)
+        return enabled && scenario == PF3_SCENARIO_ID
+    }
+
+    /**
+     * 相位绕后矩阵·高速对照组场景开关：舜华对锤头级（极速 90 > 低机动闸），
+     * 验证绕后意图对高机动目标完全不布防（PHASE_ATTACK_RUN 全程零帧），防御性相位仍正常。
+     */
+    fun isPhaseFlankControlEnabled(): Boolean {
+        val enabled = System.getProperty(ENABLED_PROPERTY)?.equals("true", ignoreCase = true) == true
+        val scenario = System.getProperty(SCENARIO_PROPERTY, SCENARIO_ID)
+        return enabled && scenario == PFC_SCENARIO_ID
     }
 
     fun outputDir(): Path {

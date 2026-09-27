@@ -36,6 +36,8 @@ class GravityPhaseCloakAITest {
         weaponCoverage = 2,
         friendlyCatchDamage = 0f,
         flankIntentActive = false,
+        flankIntentWindowSec = GravityPhaseCloakAI.FLANK_INTENT_SEC,
+        threatDistance = 1000f,
         incomingFriendlySoonDamage = 0f,
     )
 
@@ -61,6 +63,8 @@ class GravityPhaseCloakAITest {
         weaponCoverage = 2,
         friendlyCatchDamage = 0f,
         flankIntentActive = false,
+        flankIntentWindowSec = GravityPhaseCloakAI.FLANK_INTENT_SEC,
+        threatDistance = 1000f,
         incomingFriendlySoonDamage = 0f,
     )
 
@@ -461,7 +465,7 @@ class GravityPhaseCloakAITest {
 
     @Test
     fun `绕后意图期间放宽相位时长上限`() {
-        // 常规上限（8s）到意图上限（14s）之间：意图生效时不强制上浮
+        // 常规上限（8s）到意图上限（基准窗口 12s + 2s 富余）之间：意图生效时不强制上浮
         val intent = phasedSituation().copy(
             flankIntentActive = true,
             phaseActiveTime = GravityPhaseCloakAI.MAX_PHASE_TIME_SEC + 2f,
@@ -472,9 +476,49 @@ class GravityPhaseCloakAITest {
         val noIntent = intent.copy(flankIntentActive = false)
         assertEquals(PhaseOrder.SURFACE, GravityPhaseCloakAI.decide(noIntent))
 
-        // 意图放宽上限到达后同样强制上浮
-        val overtime = intent.copy(phaseActiveTime = GravityPhaseCloakAI.FLANK_MAX_PHASE_TIME_SEC)
+        // 意图放宽上限（武装窗口 + 富余）到达后同样强制上浮
+        val overtime = intent.copy(
+            phaseActiveTime = GravityPhaseCloakAI.FLANK_INTENT_SEC +
+                    GravityPhaseCloakAI.FLANK_PHASE_CAP_MARGIN_SEC,
+        )
         assertEquals(PhaseOrder.SURFACE, GravityPhaseCloakAI.decide(overtime))
+    }
+
+    @Test
+    fun `绕后意图相位时长上限跟随按距离武装的窗口`() {
+        // 远处布防武装的长窗口（24s）下，超过基准意图上限（14s）仍在穿透途中不强制上浮
+        val farArmed = phasedSituation().copy(
+            flankIntentActive = true,
+            flankIntentWindowSec = GravityPhaseCloakAI.FLANK_INTENT_MAX_SEC,
+            phaseActiveTime = GravityPhaseCloakAI.FLANK_INTENT_SEC +
+                    GravityPhaseCloakAI.FLANK_PHASE_CAP_MARGIN_SEC + 2f,
+        )
+        assertEquals(PhaseOrder.NONE, GravityPhaseCloakAI.decide(farArmed))
+
+        // 到达长窗口 + 富余后强制上浮
+        val overtime = farArmed.copy(
+            phaseActiveTime = GravityPhaseCloakAI.FLANK_INTENT_MAX_SEC +
+                    GravityPhaseCloakAI.FLANK_PHASE_CAP_MARGIN_SEC,
+        )
+        assertEquals(PhaseOrder.SURFACE, GravityPhaseCloakAI.decide(overtime))
+    }
+
+    @Test
+    fun `绕后意图窗口按布防距离缩放且夹取上下限`() {
+        // 下限夹取：近距离布防窗口不再缩短（半参考距离与参考距离同窗口）
+        assertEquals(
+            GravityPhaseCloakAI.flankIntentWindowSec(GravityPhaseCloakAI.FLANK_INTENT_REF_DIST * 0.5f),
+            GravityPhaseCloakAI.flankIntentWindowSec(GravityPhaseCloakAI.FLANK_INTENT_REF_DIST),
+        )
+        // 线性放大：两倍参考距离的窗口大于参考距离
+        val ref = GravityPhaseCloakAI.flankIntentWindowSec(GravityPhaseCloakAI.FLANK_INTENT_REF_DIST)
+        val doubled = GravityPhaseCloakAI.flankIntentWindowSec(GravityPhaseCloakAI.FLANK_INTENT_REF_DIST * 2f)
+        assertTrue(doubled > ref)
+        // 上限封顶：到达上限距离后窗口不再增长
+        assertEquals(
+            GravityPhaseCloakAI.flankIntentWindowSec(GravityPhaseCloakAI.FLANK_INTENT_REF_DIST * 10f),
+            doubled,
+        )
     }
 
     @Test
