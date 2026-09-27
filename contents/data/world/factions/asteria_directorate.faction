@@ -1,0 +1,81 @@
+{
+	# 菀星设计局：模拟战势力列表用势力定义（当前无战役市场与舰队生成）。
+	# 列表条目由原版 SimulatorPluginImpl.getCategories() 依据 custom.simulatorData.showInSimulator 生成；
+	# 条目内舰船来自下方 shipRoles（按 knownShips 过滤，仅收录 stock variant，
+	# 自动排除 no_sim / restricted / 空间站 hint），部署点数显示与排序为原版机制自带。
+
+	"id":"asteria_directorate",
+	"displayName":"菀星设计局",
+	"displayNameWithArticle":"菀星设计局",
+
+	# 纹章与徽标正式素材未产出，暂用原版中立贴图占位；素材落地后替换为 graphics/factions/ 下自有贴图
+	"logo":"graphics/factions/neutral.png",
+	"crest":"graphics/factions/crest_neutral.png",
+
+	# 主题色沿用模组文本口径 #FF9600
+	"color":[255,150,0,255],
+	"baseUIColor":[255,150,0,255],
+	"showInIntelTab":false,
+
+	"names":{},
+	"shipNameSources":{"ALL":1},
+	"portraits":{},
+
+	# 已知舰体口径：contents/data/hulls 下全部舰船 hull（astd_production / astd_unique / astd_automated
+	# 三个 tag 覆盖全部 17 艘舰船；战斗机与无人机 hull 不带这些 tag，天然排除）
+	"knownShips":{
+		"tags":["astd_production", "astd_unique", "astd_automated"],
+		"hulls":[],
+	},
+
+	# 装配变体按原版 doctrine 角色分组列出；权重仅影响舰队抽取，模拟战列表不消费，统一取 10
+	"shipRoles":{
+		# 护卫舰：飞星 ×2 / 逐电 / 值星
+		"combatSmall":{
+			"astd_lh_001_Standard":10,
+			"astd_lh_002_Standard":10,
+			"astd_xc_104_Standard":10,
+			"astd_zl_103_Standard":10,
+		},
+		# 驱逐舰：淬刃 / 列星 / 游徼 / 舜华
+		"combatMedium":{
+			"astd_xc_002_Standard":10,
+			"astd_xc_103_Standard":10,
+			"astd_zl_102_Standard":10,
+			"astd_zw_101_Standard":10,
+		},
+		# 巡洋舰：熔壁 / 列栅 / 决明（载人 + 自律双装配）
+		"combatLarge":{
+			"astd_xc_101_Standard":10,
+			"astd_zl_101_Standard":10,
+			"astd_zw_001_Standard":10,
+			"astd_zw_001_Automated":10,
+		},
+		# 主力舰：星坠 / 烽燧 / 统律 / 飞蓬（航空战列舰，兼列 carrierLarge）
+		"combatCapital":{
+			"astd_xc_001_Standard":10,
+			"astd_xc_102_Standard":10,
+			"astd_zl_001_Standard":10,
+			"astd_zw_102_Standard":10,
+		},
+		# 相位：密蒙（巡洋舰级）/ 茑萝（驱逐舰级护航航母，兼列 carrierSmall）
+		"phaseMedium":{
+			"astd_zw_103_Standard":10,
+		},
+		"phaseLarge":{
+			"astd_zw_002_Standard":10,
+		},
+		"carrierSmall":{
+			"astd_zw_103_Standard":10,
+		},
+		"carrierLarge":{
+			"astd_zw_102_Standard":10,
+		},
+	},
+
+	"custom":{
+		"simulatorData":{
+			"showInSimulator":true,
+		},
+	},
+}
