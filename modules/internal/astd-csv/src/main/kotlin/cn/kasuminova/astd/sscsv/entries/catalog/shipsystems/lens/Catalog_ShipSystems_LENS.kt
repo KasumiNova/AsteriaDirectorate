@@ -103,13 +103,18 @@ object Sys_astd_fighter_grav_link : ShipSystemWithSystemFileEntry() {
 /**
  * 密蒙级防御系统「引力相位」（相位舰船化改造，2026-09）。
  *
- * 行为与原版相位线圈（phasecloak / PhaseCloakStats）一致；独立系统 id 的意义：
+ * 数值与 stats 行为与原版相位线圈（phasecloak / PhaseCloakStats）一致；独立系统 id 的意义：
  * - 防御名从原版「相位线圈」独立为「引力相位」（ship_data.csv defense id 指向本系统）；
  * - statsScript 指向 [GravityPhaseCloakStats]（PhaseCloakStats 子类）——后续引力相位专属特效
  *   的接入点，舰船侧无需再改。
  *
  * 数值对齐原版 phasecloak 行（toggle/noHardDissipation/hardFlux/noFiring/noShield/isPhaseCloak）；
  * 相位激活/维持辐能消耗在 ship_data.csv 的 phase cost/upkeep（按辐能容量比例）配置。
+ *
+ * aiType=CUSTOM + aiScript=[GravityPhaseCloakAI]：原版 PHASE_CLOAK AI 面向纯相位舰，
+ * 本系舰船相位外还携带需非相位施放的攻击系统，原版续潜链路会长时间潜水憋死；
+ * 自定义 AI 以防憋死口径决策相位进出（辐能/时长强制上浮、下潜错峰、战术上浮），
+ * 决策细节见 [GravityPhaseCloakAI] KDoc。
  */
 object Sys_astd_gravity_phase : ShipSystemWithSystemFileEntry() {
     override val id: String = "astd_gravity_phase"
@@ -119,7 +124,9 @@ object Sys_astd_gravity_phase : ShipSystemWithSystemFileEntry() {
         "cn.kasuminova.astd.combat.shipsystems.GravityPhaseCloakStats"
 
     override val systemType: String = "PHASE_CLOAK"
-    override val aiType: String = "PHASE_CLOAK"
+    override val aiType: String = "CUSTOM"
+    override val aiScript: String =
+        "cn.kasuminova.astd.combat.shipsystems.GravityPhaseCloakAI"
 
     override val toggle: Boolean = true
     override val noHardDissipation: Boolean = true
