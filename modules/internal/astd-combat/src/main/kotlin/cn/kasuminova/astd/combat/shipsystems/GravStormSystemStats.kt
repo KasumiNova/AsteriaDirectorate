@@ -48,8 +48,8 @@ import kotlin.math.sin
  *   折算为 50%，不含残骸），释放瞬间对全部锁定目标一次性打出紫色 EMP 电弧
  *   （spawnEmpArc 不穿盾口径：中盾只吃能量伤害；落点随机取目标武器/引擎槽位附近；
  *   发射点为母舰真实碰撞箱随机边缘），并在释放瞬间施加按舰级 × 充能占比插值的强制过载；
- *   过载触发硬辐能→软辐能转化（[GravStormTuning.hardToSoftAmount]：按目标舰级每 1s 过载
- *   将当前硬辐能 0.25%~4% 转为等额软辐能，总辐能不变）；
+ *   过载触发硬辐能→软辐能转化（[GravStormTuning.hardToSoftRatio]：按各被过载目标的舰级档位
+ *   × 过载时长累加总比例，对密蒙自身当前硬辐能一次性结算等额转化，总辐能不变）；
  *   锥内无锁定目标时改为向前方 60° 锥发射一批装饰性电弧（spawnEmpArcVisual 纯视觉，无伤害）。
  *   释放窗口存续期即伤害减免存续期（电弧已全部打出，窗口内不再追加）。
  * - **unapply**：解除伤害减免、描边选框收口、清理激活态。
@@ -77,7 +77,7 @@ class GravStormSystemStats : BaseShipSystemScript() {
     }
 
     /** 单目标打击计划：电弧数（多目标衰减后）、单发伤害系数（战机折算）与强制过载时长；电弧在释放瞬间一次性全部打出。 */
-    private class TargetPlan(
+    internal class TargetPlan(
         val target: ShipAPI,
         val arcCount: Int,
         val damageMult: Float,
@@ -325,16 +325,22 @@ class GravStormSystemStats : BaseShipSystemScript() {
         engine.spawnEmpArcVisual(from, ship, to, ship, DECOR_ARC_THICKNESS, ARC_FRINGE, ARC_CORE, params)
     }
 
-    /** 强制过载：释放瞬间施加；已过载/排气目标跳过（对齐原版量子干扰口径），紫色过载色由插件托管复原。过载生效的同时结算硬辐能→软辐能转化（[convertHardToSoft]）。 */
-    private fun applyOverloads(engine: CombatEngineAPI, ship: ShipAPI, plans: List<TargetPlan>) {
+    /**
+     * 强制过载：释放瞬间施加；已过载/排气目标跳过（对齐原版量子干扰口径），紫色过载色由插件托管复原。
+     * 硬辐能→软辐能转化（[convertHardToSoft]）按实际被过载的目标逐个累加比例贡献，
+     * 全部过载结算完毕后在循环外对释放舰船自身一次性扣除——只读一次自身 hardFlux，
+     * 避免逐目标结算中途改写自身辐能状态污染后续比例基数。
+     */
+    internal fun applyOverloads(engine: CombatEngineAPI, ship: ShipAPI, plans: List<TargetPlan>) {
         val tracked = ArrayList<ShipAPI>(plans.size)
+        var totalRatio = 0f
         for (plan in plans) {
             val target = plan.target
             if (!target.isAlive || target.isHulk) continue
             if (target.fluxTracker.isOverloadedOrVenting) continue
             target.setOverloadColor(OVERLOAD_COLOR)
             target.fluxTracker.beginOverloadWithTotalBaseDuration(plan.overloadSeconds)
-            convertHardToSoft(target, plan.overloadSeconds)
+            totalRatio += GravStormTuning.hardToSoftRatio(target.hullSize, plan.overloadSeconds)
             if (target.fluxTracker.showFloaty() || ship === engine.playerShip || target === engine.playerShip) {
                 target.fluxTracker.playOverloadSound()
                 target.fluxTracker.showOverloadFloatyIfNeeded(
@@ -344,23 +350,25 @@ class GravStormSystemStats : BaseShipSystemScript() {
             }
             tracked += target
         }
+        convertHardToSoft(ship, totalRatio)
         if (tracked.isNotEmpty()) {
             engine.addPlugin(OverloadColorResetPlugin(engine, tracked))
         }
     }
 
     /**
-     * 硬辐能→软辐能转化：目标每承受 1s 过载，按舰级比例（[GravStormTuning.hardToSoftPerSecond]）
-     * 将其当前硬辐能的一部分转为等额软辐能——hardFlux -= x，总辐能不变则软辐能自动 +x
-     * （设计意图：不降低当前总辐能，迫使敌方靠耗散/过载处理转化出的软辐能）。
+     * 硬辐能→软辐能转化（对释放舰船自身一次性结算）：[totalRatio] 为所有被过载目标的
+     * 比例贡献累加（每目标 过载秒数 × 舰级档位 [GravStormTuning.hardToSoftPerSecond]），
+     * 转化量 = 自身当前硬辐能 × 总比例——hardFlux -= x，总辐能不变则软辐能自动 +x
+     * （设计意图：磁暴以自身辐能形态劣化为代价换取群体过载）。
      * 只需 setHardFlux 即完成等额转化：setHardFlux 不动 currFlux，软辐能 = currFlux − hardFlux
      * 自动 +x；不得再调 increaseFlux——其第二参 true 加的是硬辐能且总辐能 +x，与转化语义相反。
      */
-    internal fun convertHardToSoft(target: ShipAPI, overloadSeconds: Float) {
-        val tracker = target.fluxTracker
-        val amount = GravStormTuning.hardToSoftAmount(tracker.hardFlux, target.hullSize, overloadSeconds)
+    internal fun convertHardToSoft(ship: ShipAPI, totalRatio: Float) {
+        val tracker = ship.fluxTracker
+        val amount = tracker.hardFlux * totalRatio
         if (amount <= 0f) return
-        tracker.hardFlux = tracker.hardFlux - amount
+        tracker.hardFlux -= amount
     }
 
     /** 单发电弧：母舰碰撞箱随机边缘 → 目标武器/引擎槽位附近随机点；不穿盾（中盾只吃能量伤害）。伤害经 [TargetPlan.damageMult] 折算（战机目标为护卫舰档 50%）。 */

@@ -109,12 +109,12 @@ class GravStormTuningTest {
         assertEquals(0.04f, GravStormTuning.hardToSoftPerSecond(ShipAPI.HullSize.CAPITAL_SHIP), 1e-7f)
         assertEquals(0f, GravStormTuning.hardToSoftPerSecond(null), 1e-7f)
 
-        // 转化量 = 当前硬辐能 × 每秒比例 × 过载时长（巡洋舰 3% × 2s 过载 = 当前硬辐能的 6%）
-        assertEquals(600f, GravStormTuning.hardToSoftAmount(10000f, ShipAPI.HullSize.CRUISER, 2f), 1e-3f)
-        assertEquals(25f, GravStormTuning.hardToSoftAmount(10000f, ShipAPI.HullSize.FIGHTER, 1f), 1e-3f)
-        // 零硬辐能/未列舰级不转化
-        assertEquals(0f, GravStormTuning.hardToSoftAmount(0f, ShipAPI.HullSize.CRUISER, 2f), 1e-6f)
-        assertEquals(0f, GravStormTuning.hardToSoftAmount(10000f, null, 2f), 1e-6f)
+        // 单目标比例贡献 = 每秒比例 × 过载时长（巡洋舰 3% × 2s 过载 = 贡献总比例 6%）
+        assertEquals(0.06f, GravStormTuning.hardToSoftRatio(ShipAPI.HullSize.CRUISER, 2f), 1e-7f)
+        assertEquals(0.0025f, GravStormTuning.hardToSoftRatio(ShipAPI.HullSize.FIGHTER, 1f), 1e-7f)
+        // 未列舰级/零过载时长不贡献比例
+        assertEquals(0f, GravStormTuning.hardToSoftRatio(null, 2f), 1e-7f)
+        assertEquals(0f, GravStormTuning.hardToSoftRatio(ShipAPI.HullSize.CRUISER, 0f), 1e-7f)
     }
 
     @Test

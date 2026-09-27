@@ -12,7 +12,8 @@ import kotlin.math.roundToInt
  * 动机：充能窗口（2s 下限 / 4s 上限）、充能前段相位锁定（[PHASE_LOCKOUT_SECONDS]）、
  * 锥状锁定（60° 锥 × 基础射程，含相位单位与战机——战机按护卫舰档 50% 打击折算、
  * 过载对齐护卫舰档）、按舰级的电弧数量区间、多目标电弧衰减、强制过载时长插值、
- * 过载触发的硬辐能→软辐能转化（[hardToSoftPerSecond]，总辐能不变）、
+ * 过载触发的硬辐能→软辐能转化（[hardToSoftPerSecond]：按被过载目标舰级累加比例，
+ * 对释放舰船自身硬辐能一次性结算，总辐能不变）、
  * 充能期装饰电弧渐变（[chargeArcCount]/[chargeArcInterval]）、
  * 单发电弧伤害与系统期间伤害减免的难度三锚点集中在此声明，
  * 供系统脚本每帧实时解析（LunaLib 设置变更即时生效），并由单元测试直接驱动。
@@ -134,8 +135,11 @@ object GravStormTuning {
     const val FIGHTER_DAMAGE_MULT = 0.5f
 
     /**
-     * 硬辐能→软辐能转化比例（纯函数）：目标每承受 1 秒强制过载，将其当前硬辐能的该比例
-     * 转为等额软辐能（总辐能不变，设计意图：迫使敌方靠耗散/过载处理软辐能）。
+     * 硬辐能→软辐能转化的单目标比例贡献（纯函数）：被转化硬辐能的是释放舰船自身——
+     * 每令一个敌对目标承受 1 秒强制过载，按其舰级档位向总转化比例累加一份
+     * （本函数 = [hardToSoftPerSecond] × 过载时长），所有目标的比例贡献累加为总转化比例，
+     * 乘以释放舰船当前硬辐能对释放舰船一次性结算（总辐能不变，
+     * 设计意图：磁暴以自身辐能形态劣化为代价换取群体过载）。
      * 按舰级分档：战机 0.25% / 护卫舰 1% / 驱逐舰 2% / 巡洋舰 3% / 主力舰 4%；
      * 未列舰级返回 0（调用侧只对可锁定舰级结算）。
      */
@@ -148,9 +152,9 @@ object GravStormTuning {
         else -> 0f
     }
 
-    /** 硬→软转化量（纯函数）：目标当前硬辐能 × 每秒比例（[hardToSoftPerSecond]）× 过载时长。 */
-    fun hardToSoftAmount(hardFlux: Float, hullSize: ShipAPI.HullSize?, overloadSeconds: Float): Float =
-        hardFlux * hardToSoftPerSecond(hullSize) * overloadSeconds
+    /** 单目标对总转化比例的贡献（纯函数）：目标舰级每秒比例（[hardToSoftPerSecond]）× 过载时长。 */
+    fun hardToSoftRatio(hullSize: ShipAPI.HullSize?, overloadSeconds: Float): Float =
+        hardToSoftPerSecond(hullSize) * overloadSeconds
 
     /** 充能期装饰电弧：每波数量随充能进度线性渐变（0% → [CHARGE_ARC_COUNT_MIN]，100% → [CHARGE_ARC_COUNT_MAX]）。 */
     const val CHARGE_ARC_COUNT_MIN = 2
