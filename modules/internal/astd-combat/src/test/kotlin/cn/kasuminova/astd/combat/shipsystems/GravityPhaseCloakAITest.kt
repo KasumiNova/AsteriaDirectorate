@@ -35,6 +35,8 @@ class GravityPhaseCloakAITest {
         inTargetRearArc = false,
         weaponCoverage = 2,
         friendlyCatchDamage = 0f,
+        flankIntentActive = false,
+        incomingFriendlySoonDamage = 0f,
     )
 
     /** 基准快照：未相位、斗篷就绪、错峰已过、无来袭、有交战对象、武器全就绪。 */
@@ -58,6 +60,8 @@ class GravityPhaseCloakAITest {
         inTargetRearArc = false,
         weaponCoverage = 2,
         friendlyCatchDamage = 0f,
+        flankIntentActive = false,
+        incomingFriendlySoonDamage = 0f,
     )
 
     @Test
@@ -423,5 +427,123 @@ class GravityPhaseCloakAITest {
             incomingSoonDamage = GravityPhaseCloakAI.beamThreatSoon(3500f),
         )
         assertEquals(PhaseOrder.DIVE, GravityPhaseCloakAI.decide(s))
+    }
+
+    @Test
+    fun `绕后闸门单一口径 decide 与意图布防共用`() {
+        // 完整闸门成立：低机动目标、未入侧后、武器过半、硬辐能有余量、环境安全
+        val gateOpen = unphasedSituation().copy(targetLowMobility = true)
+        assertTrue(GravityPhaseCloakAI.isFlankDive(gateOpen))
+        assertEquals(PhaseOrder.DIVE, GravityPhaseCloakAI.decide(gateOpen))
+
+        // 目标高机动：闸门不成立，decide 也不下潜
+        val mobile = gateOpen.copy(targetLowMobility = false)
+        assertFalse(GravityPhaseCloakAI.isFlankDive(mobile))
+        assertEquals(PhaseOrder.NONE, GravityPhaseCloakAI.decide(mobile))
+
+        // 已在侧后：闸门不成立（无需重复穿透）
+        val behind = gateOpen.copy(inTargetRearArc = true)
+        assertFalse(GravityPhaseCloakAI.isFlankDive(behind))
+        assertEquals(PhaseOrder.NONE, GravityPhaseCloakAI.decide(behind))
+
+        // 来袭达威胁阈值：闸门不成立（此时走威胁下潜链路，不布防绕后意图）
+        val unsafe = gateOpen.copy(incomingNearDamage = GravityPhaseCloakAI.diveNearThreshold(5000f))
+        assertFalse(GravityPhaseCloakAI.isFlankDive(unsafe))
+        assertEquals(PhaseOrder.DIVE, GravityPhaseCloakAI.decide(unsafe))
+    }
+
+    @Test
+    fun `绕后意图途中拦截战术上浮保持相位穿透`() {
+        // 攻击系统就绪本可战术上浮，意图途中（未入侧后）保持相位机动
+        val s = phasedSituation().copy(flankIntentActive = true, systemReady = true)
+        assertEquals(PhaseOrder.NONE, GravityPhaseCloakAI.decide(s))
+    }
+
+    @Test
+    fun `绕后意图期间放宽相位时长上限`() {
+        // 常规上限（8s）到意图上限（14s）之间：意图生效时不强制上浮
+        val intent = phasedSituation().copy(
+            flankIntentActive = true,
+            phaseActiveTime = GravityPhaseCloakAI.MAX_PHASE_TIME_SEC + 2f,
+        )
+        assertEquals(PhaseOrder.NONE, GravityPhaseCloakAI.decide(intent))
+
+        // 无意图时同一时长早已触发强制上浮
+        val noIntent = intent.copy(flankIntentActive = false)
+        assertEquals(PhaseOrder.SURFACE, GravityPhaseCloakAI.decide(noIntent))
+
+        // 意图放宽上限到达后同样强制上浮
+        val overtime = intent.copy(phaseActiveTime = GravityPhaseCloakAI.FLANK_MAX_PHASE_TIME_SEC)
+        assertEquals(PhaseOrder.SURFACE, GravityPhaseCloakAI.decide(overtime))
+    }
+
+    @Test
+    fun `绕后意图达成后放宽覆盖闸上浮输出`() {
+        // 覆盖 2 超过死角上限（1）但未超常规上限（3）：无意图时继续等死角，意图达成即上浮
+        val s = phasedSituation().copy(
+            inTargetRearArc = true,
+            weaponCoverage = GravityPhaseCloakAI.REAR_SURFACE_MAX_COVERAGE + 1,
+        )
+        assertEquals(PhaseOrder.NONE, GravityPhaseCloakAI.decide(s))
+
+        val achieved = s.copy(flankIntentActive = true)
+        assertEquals(PhaseOrder.SURFACE, GravityPhaseCloakAI.decide(achieved))
+    }
+
+    @Test
+    fun `友军火力达阈触发防御下潜`() {
+        // 友军高伤火力在 soon 窗口烧向本舰：与敌方来袭同口径触发紧急下潜
+        val s = unphasedSituation().copy(
+            incomingFriendlySoonDamage = GravityPhaseCloakAI.diveSoonThreshold(5000f),
+        )
+        assertEquals(PhaseOrder.DIVE, GravityPhaseCloakAI.decide(s))
+    }
+
+    @Test
+    fun `友军火力只走防御链路不触发战术下潜`() {
+        // 未达紧急阈值的友军火力不引发任何下潜（不参与绕后/耗软辐/威胁等战术链路）
+        val s = unphasedSituation().copy(
+            incomingFriendlySoonDamage = GravityPhaseCloakAI.diveSoonThreshold(5000f) - 1f,
+        )
+        assertEquals(PhaseOrder.NONE, GravityPhaseCloakAI.decide(s))
+    }
+
+    @Test
+    fun `友军火力烧身未濒危时受让渡闸压制`() {
+        // 达紧急阈值但未濒危：穿透误伤友军的接盘风险优先，按住不下潜
+        val s = unphasedSituation().copy(
+            incomingFriendlySoonDamage = GravityPhaseCloakAI.diveSoonThreshold(5000f),
+            friendlyCatchDamage = GravityPhaseCloakAI.FRIENDLY_CATCH_DAMAGE_MIN,
+        )
+        assertEquals(PhaseOrder.NONE, GravityPhaseCloakAI.decide(s))
+    }
+
+    @Test
+    fun `友军火力烧身濒危时无视接盘闸下潜`() {
+        // 与友军接盘博弈时自身生存优先：致命友军火力烧身仍可紧急下潜
+        val s = unphasedSituation().copy(
+            incomingFriendlySoonDamage = 5000f * GravityPhaseCloakAI.LETHAL_SOON_HULL_FRACTION,
+            friendlyCatchDamage = 9999f,
+        )
+        assertEquals(PhaseOrder.DIVE, GravityPhaseCloakAI.decide(s))
+    }
+
+    @Test
+    fun `相位中被友军火力持续照射时按住不上浮`() {
+        // 友军火力并入即将受击闸：上浮即被烧，战术上浮也被拦下
+        val s = phasedSituation().copy(
+            systemReady = true,
+            incomingFriendlySoonDamage = GravityPhaseCloakAI.diveSoonThreshold(5000f),
+        )
+        assertEquals(PhaseOrder.NONE, GravityPhaseCloakAI.decide(s))
+    }
+
+    @Test
+    fun `相位中友军火力烧身致命时强制上浮被豁免`() {
+        val s = phasedSituation().copy(
+            hardFluxLevel = GravityPhaseCloakAI.SURFACE_HARD_FLUX,
+            incomingFriendlySoonDamage = 5000f * GravityPhaseCloakAI.LETHAL_SOON_HULL_FRACTION,
+        )
+        assertEquals(PhaseOrder.NONE, GravityPhaseCloakAI.decide(s))
     }
 }

@@ -1,0 +1,1 @@
+ASTD dev-only automation scenario: ZW-101 gravity phase cloak flank AI - dive count / in-phase bearing sweep amplitude around a low-mobility Dominator / surface bearing diff vs enemy facing evidence.

@@ -350,6 +350,27 @@
         "iceShardSplitVfx",
         "iceShardAttachNebula"
       ]
+    },
+    {
+      "id": "lens_phase_flank_zw101",
+      "missionId": "lens_phase_flank_zw101",
+      "shipIds": [
+        "astd_zw_101",
+        "dominator"
+      ],
+      "variantIds": [
+        "astd_zw_101_Standard",
+        "dominator_Assault"
+      ],
+      "systemId": "astd_gravity_phase",
+      "requiredEvidence": [
+        "pfPhase",
+        "pfDiveCount",
+        "pfPhaseSweepMax",
+        "pfSurfaceCount",
+        "pfSurfaceBearingDiffMax",
+        "pfCombatSeconds"
+      ]
     }
   ]
 }

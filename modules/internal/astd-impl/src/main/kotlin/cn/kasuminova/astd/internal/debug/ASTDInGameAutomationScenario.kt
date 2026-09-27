@@ -84,6 +84,11 @@ object ASTDInGameAutomationScenario {
     const val GSR_SYSTEM_ID: String = "astd_grav_replicator"
     const val GSR_HULL_ID: String = "astd_zw_101"
     const val GSR_VARIANT_ID: String = "astd_zw_101_Standard"
+    const val PF_SCENARIO_ID: String = "lens_phase_flank_zw101"
+    const val PF_HULL_ID: String = "astd_zw_101"
+    const val PF_VARIANT_ID: String = "astd_zw_101_Standard"
+    const val PF_ENEMY_VARIANT_ID: String = "dominator_Assault"
+    const val PF_ENEMY_HULL_ID: String = "dominator"
     const val SHIP_ID: String = "astd_xc_001"
     const val VARIANT_ID: String = "astd_xc_001_Standard"
     const val WEAPON_ID: String = "astd_aod7"
@@ -344,6 +349,19 @@ object ASTDInGameAutomationScenario {
         val enabled = System.getProperty(ENABLED_PROPERTY)?.equals("true", ignoreCase = true) == true
         val scenario = System.getProperty(SCENARIO_PROPERTY, SCENARIO_ID)
         return enabled && scenario == GSR_SCENARIO_ID
+    }
+
+    /**
+     * 舜华级相位绕后实机场景开关：镜像 [isGravReplicatorScenarioEnabled]。
+     * 验证 GravityPhaseCloakAI 对低机动目标的绕后意图：满装配舜华（AI 驾驶）对
+     * 满装配统治者级（AI 驾驶），两舰逐帧回血不结束战斗，统计下潜次数、
+     * 相位中绕敌舰的方位角扫描幅度与每次上浮时相对敌舰舰艏的方位差——
+     * 修复前（PHASE_ATTACK_RUN 无人管理）舜华下潜后原地罚站，上浮方位差恒小。
+     */
+    fun isPhaseFlankScenarioEnabled(): Boolean {
+        val enabled = System.getProperty(ENABLED_PROPERTY)?.equals("true", ignoreCase = true) == true
+        val scenario = System.getProperty(SCENARIO_PROPERTY, SCENARIO_ID)
+        return enabled && scenario == PF_SCENARIO_ID
     }
 
     fun outputDir(): Path {
