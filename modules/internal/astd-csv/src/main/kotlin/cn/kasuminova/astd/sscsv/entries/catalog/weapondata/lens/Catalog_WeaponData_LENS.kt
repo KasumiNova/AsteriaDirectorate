@@ -527,8 +527,6 @@ object Wpn_astd_phase_lance_fighter : WeaponDataEntry() {
  * 面板射程 1000 是光束基础射程（实际挂载在 FX drone 上，射程/伤害加成由系统脚本
  * 从源舰 energyWeaponRangeBonus/beamWeaponRangeBonus 等折算到 drone）。
  * damage/second 1000 取原版 riftcascade 平价（裁定价，待实机校准）。
- * burst size 30 = 光束持续秒数：远超系统 2s 光束窗口，收口由系统脚本停止强火 +
- * chargedown 0.3s 淡出后移除 drone 承担。
  */
 object Wpn_astd_grav_rift_beam : WeaponDataEntry() {
     override val id: String = "astd_grav_rift_beam"
@@ -540,10 +538,10 @@ object Wpn_astd_grav_rift_beam : WeaponDataEntry() {
     override val turnRate: Int = 0
     override val ops: Int = 0
     override val type: String = "ENERGY"
-    override val chargeup: Double = 0.0
+    override val chargeup: Double = 0.3
     override val chargedown: Double = 0.3
-    override val burstSize: Number = 30
-    override val burstDelay: Double = 0.0
+    override val burstSize: Number = 1
+    override val burstDelay: Double = 10.0
     override val beamSpeed: Int = 10000
     override val aiHints: Set<AiHint> = setOf(AiHint.SYSTEM)
     override val tags: String = "no_drop, no_drop_salvage"
@@ -746,7 +744,7 @@ object Wpn_astd_ice_shard_mirv_pod : WeaponDataEntry() {
     override val name: String = weaponName(id)
     override val tier: Int = 3
     override val baseValue: Int = 24000
-    override val range: Int = 1600
+    override val range: Int = 2500
 
     override val damagePerShot: Int = 400
 
@@ -769,7 +767,7 @@ object Wpn_astd_ice_shard_mirv_pod : WeaponDataEntry() {
 
     override val projSpeed: Int = 300
     override val launchSpeed: Int = 100
-    override val flightTime: Double = 6.0
+    override val flightTime: Double = 9.0
     override val projHitpoints: Int = 600
 
     override val trackingStr: String = "普通"
@@ -782,8 +780,8 @@ object Wpn_astd_ice_shard_mirv_pod : WeaponDataEntry() {
     override val customPrimary: String = SsI18n.t("weapon.$id.tooltip.customPrimary")
     override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
     override val noDpsInTooltip: Boolean = false
-    // AI 行为对齐原版阿特罗波斯鱼雷
-    override val aiHints: Set<AiHint> = setOf(AiHint.GUIDED_POOR)
+    // AI 行为对齐原版龙炎
+    override val aiHints: Set<AiHint> = setOf(AiHint.DO_NOT_AIM, AiHint.STRIKE)
     override val number: Int = 9233
 }
 

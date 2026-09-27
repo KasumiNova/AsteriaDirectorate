@@ -469,10 +469,10 @@ object Wpn_astd_qiongjue_phase_railgun : WeaponDataEntry(), SsProjProjectileOutp
 
     override val type: String = "KINETIC"
 
-    // 单发 900（辐伤比 1.5）；energy/second 置 0——充能武器该列会被 ChargeFireTracker
+    // 单发伤害；energy/second 置 0——充能武器该列会被 ChargeFireTracker
     // 在 1s 充能期间按秒真实扣辐（原版高斯炮同口径留空），填 450 时每周期实际扣 900+450=1350；
     // tooltip 持续辐能由派生公式 sustainedDps × fluxPerDam 自动算回 450/s
-    override val energyPerShot: Int = 900
+    override val energyPerShot: Int = 960
     override val energyPerSecond: Int = 0
     override val projSpeed: Int = 1800
     override val turnRateStr: String = "非常慢"
@@ -663,7 +663,7 @@ object Wpn_astd_gemini_dem_launcher : WeaponDataEntry(), SsProjMissileOutputs {
     // 单弹面板：burst=2 驱动 tooltip「1000 x2」显示（原版 squall/locust 先例：burst 列即面板 xN 口径）；
     // 一次触发引擎连发 2 发 dummy 各扣 1 弹药，次发由 SalvoOnFireEffect 回声去重（规格 §2.2）
     override val damagePerShot: Int = 1000
-    override val energyPerShot: Int = 625
+    override val energyPerShot: Int = 500
 
     // EMP 电弧面板：实际机制为固定 5 道 × 总量 200% 面板（v2），本列仅面板展示口径
     override val emp: Int = 1000
@@ -726,7 +726,7 @@ object Wpn_astd_gemini_dem_pod : WeaponDataEntry() {
     override val range: Int = 2500
     override val damagePerSecond: Int = 0
     override val damagePerShot: Int = 1000
-    override val energyPerShot: Int = 625
+    override val energyPerShot: Int = 500
     override val emp: Int = 1000
     override val turnRate: Int = 30
     override val ops: Int = 28
@@ -1292,8 +1292,8 @@ object Wpn_astd_cuifeng_torpedo : WeaponDataEntry(), SsProjMissileOutputs {
     override val customPrimary: String = SsI18n.t("weapon.$id.tooltip.customPrimary")
     override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
     override val noDpsInTooltip: Boolean = false
-    // AI 行为对齐原版阿特罗波斯鱼雷
-    override val aiHints: Set<AiHint> = setOf(AiHint.GUIDED_POOR)
+    // AI 行为对齐原版龙炎鱼雷
+    override val aiHints: Set<AiHint> = setOf(AiHint.DO_NOT_AIM, AiHint.STRIKE)
     override val number: Int = 9227
 
     override val projSpec: MissileProjSpec = cuifengTorpedoProjSpec()
@@ -1341,7 +1341,7 @@ object Wpn_astd_cuifeng_launcher : WeaponDataEntry() {
     override val customPrimary: String = SsI18n.t("weapon.$id.tooltip.customPrimary")
     override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
     override val noDpsInTooltip: Boolean = false
-    // AI 行为对齐原版阿特罗波斯鱼雷
-    override val aiHints: Set<AiHint> = setOf(AiHint.GUIDED_POOR)
+    // AI 行为对齐原版龙炎鱼雷
+    override val aiHints: Set<AiHint> = setOf(AiHint.DO_NOT_AIM, AiHint.STRIKE)
     override val number: Int = 9228
 }
