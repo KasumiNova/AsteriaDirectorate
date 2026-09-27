@@ -18,8 +18,10 @@ import kotlin.math.sin
  * 引力电磁力场（密蒙级 ZW-002 内置 hullmod）的 BoxUtil 视觉层，由 [GravEmFieldHullMod] 驱动。
  *
  * - **波形光斑**（[spawnWave]）：每波从舰体真实碰撞箱随机边缘向随机外方向发射若干
- *   FlareEntity 组合——SMOOTH 圆形光斑 + SMOOTH_DISC 柔和光柱，带向外速度，
- *   寿命包络（淡入/满值/淡出）由 BoxUtil 实例定时器托管。0.5s 节拍级高频 spawn，
+ *   FlareEntity 组合——SMOOTH 圆形光斑 + SMOOTH_DISC 柔和光柱，粒子速度取
+ *   「生成时刻舰速快照 + 外散速度」（喷散图案整体随舰船平移，生成后不再跟踪），
+ *   寿命包络（淡入/满值/淡出）由 BoxUtil 实例定时器托管。节拍级高频 spawn
+ *   （节拍与每波数量见 [GravEmFieldTuning.WAVE_INTERVAL]/[GravEmFieldTuning.WAVE_COUNT_MAX]），
  *   两个池化常驻 FlareEntity + [SimpleParticleControlData] 实例槽（BoxUtil 自管理
  *   速度积分与包络），防 renderEntityMap 滞留泄漏（实体池化规范的高频池化口径）。
  * - **中心光斑**（[CenterFlare]）：力场存续期间常驻舰船中心的极大 SMOOTH 圆斑
@@ -82,13 +84,16 @@ internal object GravEmFieldVfx {
 
     /**
      * 发射一波波形光斑：从舰体碰撞箱随机边缘取点，向该点的随机外方向（±30° 抖动）
-     * 投出一枚 SMOOTH 圆斑 + 一枚 SMOOTH_DISC 光柱，向外飘移并淡出。
+     * 投出一枚 SMOOTH 圆斑 + 一枚 SMOOTH_DISC 光柱。粒子速度 = 本波生成时刻的舰速快照 +
+     * 外散速度（SimpleParticleControlData.addParticle 的速度向量直传口径），喷散图案整体
+     * 随舰船平移；粒子生成后不再跟踪舰位。
      */
     fun spawnWave(engine: CombatEngineAPI, ship: ShipAPI, phased: Boolean) {
         val glowPool = poolOf(engine, GLOW_POOL_KEY, smooth = true) ?: return
         val pillarPool = poolOf(engine, PILLAR_POOL_KEY, smooth = false) ?: return
         val core = if (phased) PHASE_CORE else FIELD_CORE
         val fringe = if (phased) PHASE_FRINGE else FIELD_FRINGE
+        val shipVel = Vector2f(ship.velocity)
 
         val count = MathUtils.getRandomNumberInRange(
             GravEmFieldTuning.WAVE_COUNT_MIN, GravEmFieldTuning.WAVE_COUNT_MAX,
@@ -100,7 +105,10 @@ internal object GravEmFieldVfx {
             )
             val rad = Math.toRadians(outAngle.toDouble())
             val speed = MathUtils.getRandomNumberInRange(WAVE_SPEED_MIN, WAVE_SPEED_MAX)
-            val velocity = Vector2f((cos(rad) * speed).toFloat(), (sin(rad) * speed).toFloat())
+            val velocity = Vector2f(
+                shipVel.x + (cos(rad) * speed).toFloat(),
+                shipVel.y + (sin(rad) * speed).toFloat(),
+            )
             val scale = MathUtils.getRandomNumberInRange(WAVE_SCALE_MIN, WAVE_SCALE_MAX)
             glowPool.controller.addParticle(
                 from, 0f, 0f, velocity, Vector2f(scale, scale), ZERO,
@@ -252,7 +260,7 @@ internal object GravEmFieldVfx {
     /** 闭锁标记（warnOnce/poolOf/maintainCenterFlare 共用的 customData 值）。 */
     private const val DISABLED = "disabled"
 
-    /** 池实例容量（单池）：0.5s 节拍 × 10 上限 × ~1s 寿命，留双倍余量。 */
+    /** 池实例容量（单池）：在场峰值 = 每波上限 × 包络寿命 ÷ 节拍，本值留充足余量。 */
     private const val WAVE_POOL_CAPACITY = 256
 
     /** 控制器最大时长口径（秒）：仅兜底，逐实例寿命由 addParticle 三段包络钉死。 */
