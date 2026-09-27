@@ -15,7 +15,7 @@ import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
 
 /**
- * 落叶飞花（飞星 (ARC) / astd_lh_001_burst_flow）：1s 瞬时爆发时流 + 加减速 + 非导弹备弹恢复 +
+ * 落叶飞花（飞星 (ARC) / astd_lh_001_burst_flow）：1s 瞬时爆发时流 + 加减速 + 武器备弹恢复 +
  * 辐能耗散加成 + 冲刺动量。
  *
  * 设计案 20-joint.md §战术系统-坠星：爆发不随时间线性增长/减弱——恒定口径
@@ -65,9 +65,10 @@ class ASTDBurstFlowSystemStats : BaseShipSystemScript() {
         stats.maxTurnRate.modifyMult(id, 0f)
         stats.turnAcceleration.modifyMult(id, 0f)
         stats.fluxDissipation.modifyMult(id, values.fluxDissipationMult)
-        // 弹道/能耗两条备弹恢复通道天然排除导弹武器
+        // 弹道/能耗/导弹三条备弹恢复通道同一乘区
         stats.ballisticAmmoRegenMult.modifyMult(id, values.ammoRegenMult)
         stats.energyAmmoRegenMult.modifyMult(id, values.ammoRegenMult)
+        stats.missileAmmoRegenMult.modifyMult(id, values.ammoRegenMult)
 
         if (ship != null && engine != null && !engine.isPaused) {
             applyMomentumOnce(engine, ship, stats, values)
@@ -88,6 +89,7 @@ class ASTDBurstFlowSystemStats : BaseShipSystemScript() {
         stats.fluxDissipation.unmodifyMult(id)
         stats.ballisticAmmoRegenMult.unmodifyMult(id)
         stats.energyAmmoRegenMult.unmodifyMult(id)
+        stats.missileAmmoRegenMult.unmodifyMult(id)
         val ship = stats.entity as? ShipAPI
         val engine = Global.getCombatEngine()
         if (ship != null && engine?.customData?.get(PLAYER_TIME_MULT_OWNER_KEY) == System.identityHashCode(ship)) {

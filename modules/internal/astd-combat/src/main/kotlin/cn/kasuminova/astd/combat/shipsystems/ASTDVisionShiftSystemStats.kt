@@ -26,7 +26,7 @@ import java.awt.Color
  * 视界变速（飞星 (LENS) / astd_lh_002_vision_shift）：自身时流提升 + 单目标时流压制与承伤转嫁。
  *
  * 设计案 20-joint.md §战术系统-紫菀：激活时锁定一艘敌对舰船（玩家取 shipTarget/鼠标位置附近敌舰，
- * AI 取 shipTarget/最近敌舰），10s 窗口内：
+ * AI 取 shipTarget/最近敌舰），14s 窗口内：
  * - 自身 timeMult 提升（玩家船经 engine.timeMult 反补偿，口径同落叶飞花）；
  * - 目标 timeMult 按体型分档压制（每帧 unmodify+modify 幂等刷写，窗口结束/目标失效即清理）；
  * - 目标承伤方向修正由挂目标舰的 [VisionShiftDamageListener] 结算

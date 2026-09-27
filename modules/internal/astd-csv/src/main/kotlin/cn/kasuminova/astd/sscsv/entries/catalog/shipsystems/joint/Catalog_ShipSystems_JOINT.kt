@@ -32,7 +32,7 @@ object Sys_astd_lh_001_burst_flow : ShipSystemWithSystemFileEntry() {
     override val useSound: String = "system_temporalshell"
 }
 
-/** 飞星 (LENS)（LH-002）：「视界变速」——自身时流提升 + 单目标时流压制与伤害转嫁，10s 持续、15s 冷却。 */
+/** 飞星 (LENS)（LH-002）：「视界变速」——自身时流提升 + 单目标时流压制与伤害转嫁，14s 持续、15s 冷却。 */
 object Sys_astd_lh_002_vision_shift : ShipSystemWithSystemFileEntry() {
     override val id: String = "astd_lh_002_vision_shift"
     override val name: String = systemName(id)
@@ -42,7 +42,7 @@ object Sys_astd_lh_002_vision_shift : ShipSystemWithSystemFileEntry() {
     override val aiScript: String = "cn.kasuminova.astd.combat.shipsystems.ASTDVisionShiftSystemAI"
 
     override val chargeUp: Double = 0.5
-    override val active: Double = 10.0
+    override val active: Double = 14.0
     override val down: Double = 0.5
     override val cooldown: Double = 15.0
 
