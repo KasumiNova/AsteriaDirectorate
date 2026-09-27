@@ -4,6 +4,8 @@ import cn.kasuminova.astd.combat.shipsystems.GravityPhaseCloakAI.Companion.Phase
 import cn.kasuminova.astd.combat.shipsystems.GravityPhaseCloakAI.Companion.PhaseSituation
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 /**
  * 引力相位 AI 决策核心 [GravityPhaseCloakAI.decide] 的规则覆盖：
@@ -28,6 +30,11 @@ class GravityPhaseCloakAITest {
         weaponsReadyFrac = 0.5f,
         retreating = false,
         cloakReady = false,
+        softFluxLevel = 0.1f,
+        targetLowMobility = false,
+        inTargetRearArc = false,
+        weaponCoverage = 2,
+        friendlyCatchDamage = 0f,
     )
 
     /** 基准快照：未相位、斗篷就绪、错峰已过、无来袭、有交战对象、武器全就绪。 */
@@ -46,6 +53,11 @@ class GravityPhaseCloakAITest {
         weaponsReadyFrac = 1f,
         retreating = false,
         cloakReady = true,
+        softFluxLevel = 0.1f,
+        targetLowMobility = false,
+        inTargetRearArc = false,
+        weaponCoverage = 2,
+        friendlyCatchDamage = 0f,
     )
 
     @Test
@@ -225,5 +237,191 @@ class GravityPhaseCloakAITest {
     @Test
     fun `相位中无新条件时保持相位`() {
         assertEquals(PhaseOrder.NONE, GravityPhaseCloakAI.decide(phasedSituation()))
+    }
+
+    @Test
+    fun `软辐可观且环境安全时耗软辐下潜`() {
+        val s = unphasedSituation().copy(
+            softFluxLevel = GravityPhaseCloakAI.SOFT_FLUX_DIVE_MIN,
+            fluxLevel = 0.55f,
+        )
+        assertEquals(PhaseOrder.DIVE, GravityPhaseCloakAI.decide(s))
+    }
+
+    @Test
+    fun `辐能水平接近过载时压低耗软辐下潜积极性`() {
+        val s = unphasedSituation().copy(
+            softFluxLevel = 0.4f,
+            fluxLevel = GravityPhaseCloakAI.SOFT_FLUX_DIVE_MAX_FLUX_LEVEL,
+        )
+        assertEquals(PhaseOrder.NONE, GravityPhaseCloakAI.decide(s))
+    }
+
+    @Test
+    fun `耗软辐下潜要求环境安全`() {
+        val s = unphasedSituation().copy(
+            softFluxLevel = 0.4f,
+            fluxLevel = 0.55f,
+            incomingNearDamage = GravityPhaseCloakAI.diveNearThreshold(5000f) *
+                    GravityPhaseCloakAI.SOFT_FLUX_DIVE_SAFE_NEAR_FRAC,
+        )
+        assertEquals(PhaseOrder.NONE, GravityPhaseCloakAI.decide(s))
+    }
+
+    @Test
+    fun `低机动目标触发绕后下潜 已在侧后则不重复下潜`() {
+        val s = unphasedSituation().copy(targetLowMobility = true)
+        assertEquals(PhaseOrder.DIVE, GravityPhaseCloakAI.decide(s))
+
+        val alreadyBehind = s.copy(inTargetRearArc = true)
+        assertEquals(PhaseOrder.NONE, GravityPhaseCloakAI.decide(alreadyBehind))
+    }
+
+    @Test
+    fun `绕后下潜受武器就绪与硬辐能约束`() {
+        val weaponsNotReady = unphasedSituation().copy(
+            targetLowMobility = true,
+            weaponsReadyFrac = GravityPhaseCloakAI.FLANK_DIVE_WEAPONS_FRAC - 0.1f,
+        )
+        assertEquals(PhaseOrder.NONE, GravityPhaseCloakAI.decide(weaponsNotReady))
+
+        val fluxHigh = unphasedSituation().copy(
+            targetLowMobility = true,
+            hardFluxLevel = GravityPhaseCloakAI.FLANK_DIVE_HARD_FLUX_MAX,
+        )
+        assertEquals(PhaseOrder.NONE, GravityPhaseCloakAI.decide(fluxHigh))
+    }
+
+    @Test
+    fun `相位中进入目标侧后死角且覆盖稀少时立即上浮`() {
+        val s = phasedSituation().copy(inTargetRearArc = true, weaponCoverage = 1)
+        assertEquals(PhaseOrder.SURFACE, GravityPhaseCloakAI.decide(s))
+    }
+
+    @Test
+    fun `武器覆盖超闸时拦截主动上浮继续等死角`() {
+        val s = phasedSituation().copy(
+            systemReady = true,
+            weaponsReadyFrac = 1f,
+            weaponCoverage = GravityPhaseCloakAI.SURFACE_COVERAGE_MAX + 1,
+        )
+        assertEquals(PhaseOrder.NONE, GravityPhaseCloakAI.decide(s))
+    }
+
+    @Test
+    fun `强制上浮不受覆盖闸约束`() {
+        val s = phasedSituation().copy(
+            hardFluxLevel = GravityPhaseCloakAI.SURFACE_HARD_FLUX,
+            weaponCoverage = 99,
+        )
+        assertEquals(PhaseOrder.SURFACE, GravityPhaseCloakAI.decide(s))
+    }
+
+    @Test
+    fun `穿透火力将误伤友军时压制非濒危下潜`() {
+        val threatened = unphasedSituation().copy(
+            incomingNearDamage = GravityPhaseCloakAI.diveNearThreshold(5000f),
+            friendlyCatchDamage = GravityPhaseCloakAI.FRIENDLY_CATCH_DAMAGE_MIN,
+        )
+        assertEquals(PhaseOrder.NONE, GravityPhaseCloakAI.decide(threatened))
+
+        val emergencySuppressed = unphasedSituation().copy(
+            incomingSoonDamage = GravityPhaseCloakAI.diveSoonThreshold(5000f),
+            friendlyCatchDamage = GravityPhaseCloakAI.FRIENDLY_CATCH_DAMAGE_MIN,
+        )
+        assertEquals(PhaseOrder.NONE, GravityPhaseCloakAI.decide(emergencySuppressed))
+    }
+
+    @Test
+    fun `自身濒危时无视友军接盘风险下潜`() {
+        val s = unphasedSituation().copy(
+            incomingSoonDamage = 5000f * GravityPhaseCloakAI.LETHAL_SOON_HULL_FRACTION,
+            friendlyCatchDamage = 9999f,
+        )
+        assertEquals(PhaseOrder.DIVE, GravityPhaseCloakAI.decide(s))
+    }
+
+    @Test
+    fun `低机动代理指标口径`() {
+        // 极速达标即低机动
+        assertTrue(GravityPhaseCloakAI.isLowMobilityTarget(GravityPhaseCloakAI.LOW_MOBILITY_MAX_SPEED, 200f, 90f))
+        // 转向与加速度双低也是低机动
+        assertTrue(GravityPhaseCloakAI.isLowMobilityTarget(120f, GravityPhaseCloakAI.LOW_MOBILITY_ACCEL, GravityPhaseCloakAI.LOW_MOBILITY_TURN_RATE))
+        // 三项都不低不算低机动
+        assertFalse(GravityPhaseCloakAI.isLowMobilityTarget(120f, 200f, 90f))
+    }
+
+    @Test
+    fun `穿透弹道线段与友军碰撞圈相交判定`() {
+        // 正向贯穿：线段从原点附近直指圆心
+        assertTrue(GravityPhaseCloakAI.segmentHitsCircle(0f, 0f, 100f, 0f, 80f, 0f, 20f))
+        // 横向偏离超过半径不命中
+        assertFalse(GravityPhaseCloakAI.segmentHitsCircle(0f, 0f, 100f, 0f, 80f, 30f, 20f))
+        // 圆在线段起点后方不命中（投影截断到线段内）
+        assertFalse(GravityPhaseCloakAI.segmentHitsCircle(0f, 0f, 100f, 0f, -50f, 0f, 20f))
+        // 零长度线段不命中
+        assertFalse(GravityPhaseCloakAI.segmentHitsCircle(0f, 0f, 0f, 0f, 5f, 0f, 20f))
+    }
+
+    @Test
+    fun `角度差纯函数口径`() {
+        assertEquals(120f, GravityPhaseCloakAI.angleDiffAbs(0f, 120f), 1e-4f)
+        assertEquals(120f, GravityPhaseCloakAI.angleDiffAbs(0f, -120f), 1e-4f)
+        assertEquals(10f, GravityPhaseCloakAI.angleDiffAbs(350f, 0f), 1e-4f)
+        assertEquals(180f, GravityPhaseCloakAI.angleDiffAbs(90f, 270f), 1e-4f)
+    }
+
+    @Test
+    fun `耗软辐闸门单一口径 decide 与 vent 压制共用`() {
+        // 完整闸门成立：软辐可观、辐能有余量、环境安全、有交战对象
+        val gateOpen = unphasedSituation().copy(softFluxLevel = 0.4f, fluxLevel = 0.55f)
+        assertTrue(GravityPhaseCloakAI.isSoftFluxDumpDive(gateOpen))
+        assertEquals(PhaseOrder.DIVE, GravityPhaseCloakAI.decide(gateOpen))
+
+        // 脱战（无交战对象）：闸门不成立——vent 不应被压制，decide 也不下潜
+        val disengaged = gateOpen.copy(engagedEnemyNear = false)
+        assertFalse(GravityPhaseCloakAI.isSoftFluxDumpDive(disengaged))
+        assertEquals(PhaseOrder.NONE, GravityPhaseCloakAI.decide(disengaged))
+
+        // 来袭偏高：闸门不成立，两侧同样都不动作
+        val unsafe = gateOpen.copy(
+            incomingNearDamage = GravityPhaseCloakAI.diveNearThreshold(5000f) *
+                    GravityPhaseCloakAI.SOFT_FLUX_DIVE_SAFE_NEAR_FRAC,
+        )
+        assertFalse(GravityPhaseCloakAI.isSoftFluxDumpDive(unsafe))
+        // 注意：该来袭量低于威胁下潜阈值，decide 整体也不下潜
+        assertEquals(PhaseOrder.NONE, GravityPhaseCloakAI.decide(unsafe))
+
+        // 斗篷未就绪（冷却中）：闸门不成立，vent 放行兜底
+        val cloakCooling = gateOpen.copy(cloakReady = false)
+        assertFalse(GravityPhaseCloakAI.isSoftFluxDumpDive(cloakCooling))
+    }
+
+    @Test
+    fun `光束威胁折算口径`() {
+        // 持续光束：DPS × 窗口秒计入 near
+        assertEquals(
+            600f * GravityPhaseCloakAI.CONT_BEAM_THREAT_WINDOW_SEC,
+            GravityPhaseCloakAI.beamThreatNear(600f),
+            1e-4f,
+        )
+        // 爆发光束：爆发总伤 × 权重计入 soon
+        assertEquals(
+            3500f * GravityPhaseCloakAI.BURST_BEAM_THREAT_WEIGHT,
+            GravityPhaseCloakAI.beamThreatSoon(3500f),
+            1e-4f,
+        )
+        // 折算单调性：高伤光束威胁值高于低伤光束
+        assertTrue(GravityPhaseCloakAI.beamThreatSoon(3500f) > GravityPhaseCloakAI.beamThreatSoon(500f))
+        assertTrue(GravityPhaseCloakAI.beamThreatNear(600f) > GravityPhaseCloakAI.beamThreatNear(100f))
+    }
+
+    @Test
+    fun `高伤光束折算进 soon 窗口后触发紧急下潜`() {
+        // 爆发光束照射的折算伤害进入 soon 窗口，达到紧急下潜阈值即下潜（相位断照射）
+        val s = unphasedSituation().copy(
+            incomingSoonDamage = GravityPhaseCloakAI.beamThreatSoon(3500f),
+        )
+        assertEquals(PhaseOrder.DIVE, GravityPhaseCloakAI.decide(s))
     }
 }
