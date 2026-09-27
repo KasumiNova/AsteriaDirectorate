@@ -19,13 +19,13 @@ import java.awt.Color
  * 以原版召回装置（recalldevice / RecallDeviceStats）为基线的增强，三段行为：
  *
  * 1. **持续强化（IN/ACTIVE，至多 15s，可提前手动关闭）**：本舰全部机群时间流速 +100%~200%、
- *    承伤 -25%~75%（轨一三锚点，玩家固定 v2，数值见 [FighterGravLinkTuning]），按 effectLevel
+ *    承伤 -25%~75%（轨一三锚点，玩家按我方档位系数（默认砺刃 v2），数值见 [FighterGravLinkTuning]），按 effectLevel
  *    平滑渐入；战机附加持续 jitter 特效（透镜紫）。buff 打在战机自身 mutableStats 上（原版无
  *    航母侧「战机承伤」键），随系统结束在 OUT 帧 / unapply 严格配对 unmodify。
  *    系统为 **toggle 型**（CSV active=15s + toggle=true）：ACTIVE 期间系统条按 15s 上限
  *    推进（玩家可见剩余时间），到期由引擎自动转 OUT；ACTIVE 期再次按键可提前关闭
- *    （canBeDeactivated 默认 true）；机群全灭（宽限 1s 后无在外战机）由本脚本计时补发
- *    useSystem() 提前结束。收口必须走 fire 路径——`ShipSystemAPI.deactivate()` 等价
+ *    （canBeDeactivated 默认 true）；机群失去全部存活战力（被摧毁且无返航/整备排产，
+ *    宽限 1s 后）由本脚本计时补发 useSystem() 提前结束。收口必须走 fire 路径——`ShipSystemAPI.deactivate()` 等价
  *    forceDeactivate，直接跳 COOLDOWN、跳过 OUT 窗口，召回结算不会触发。
  * 2. **代价（IN/ACTIVE）**：每秒产出舰船**基础**最大辐能 7% 的软辐能（按 effectLevel 折算）；
  *    进入 OUT 瞬间将全部当前辐能直接置为硬辐能（`setHardFlux(currFlux)`：软辐能等量硬化）。
@@ -141,9 +141,9 @@ class FighterGravLinkSystemStats : BaseShipSystemScript() {
     }
 
     /**
-     * 机群全灭提前结束（ACTIVE 每帧）：记录 ACTIVE 起始时间戳，宽限期后若无在外战机
-     * 则补发 useSystem() 主动关闭（无可强化对象，提前进冷却结算）。15s 持续上限由
-     * CSV active=15s 引擎自动收口，无需脚本计时。
+     * 机群失去全部存活战力时提前结束（ACTIVE 每帧）：记录 ACTIVE 起始时间戳，宽限期后
+     * 若机群无任何存活战力则补发 useSystem() 主动关闭（无可强化对象，提前进冷却结算）。
+     * 15s 持续上限由 CSV active=15s 引擎自动收口，无需脚本计时。
      *
      * 关闭必须走 fire 路径（useSystem → ACTIVE 期再次按键 → OUT 充能消退），不能用
      * `ShipSystemAPI.deactivate()`——其等价 ChargeTracker.forceDeactivate，直接跳 COOLDOWN、
@@ -158,14 +158,30 @@ class FighterGravLinkSystemStats : BaseShipSystemScript() {
             return
         }
         val elapsed = now - start
-        if (elapsed >= FighterGravLinkTuning.NO_FIGHTER_CANCEL_GRACE_SECONDS && !hasDeployedFighters(ship)) {
+        if (elapsed >= FighterGravLinkTuning.NO_FIGHTER_CANCEL_GRACE_SECONDS && !hasAliveFighters(ship)) {
             ship.useSystem()
         }
     }
 
-    /** 任一联队仍有存活在外战机。 */
-    private fun hasDeployedFighters(ship: ShipAPI): Boolean =
-        ship.allWings.any { wing -> wing.wingMembers.any { !it.isHulk } }
+    /**
+     * 任一联队仍保有存活战力（三类口径，满足其一即视为有战力，不误关系统）：
+     * 1. 在外存活战机（wingMembers）；
+     * 2. 返航/着舰途中的战机——原版 orderReturn 会把战机从 wingMembers 移入 returning
+     *    列表（轰炸机投弹完毕返航即此情形），着舰后由甲板整备重新出击，属存活战力；
+     * 3. 甲板排产中的整备补员（replacement 倒计时 ≥ 0）——倒计时结束即重新出击；
+     *    CR 归零时原版闸门（canRequestReplacement）不再排产，自然不会计入。
+     *
+     * 只有机群被摧毁且不可恢复（三条全不满足）时才触发提前结束。注意 land 后到排产建立
+     * 存在原版 tick 间隙：宽限期相对 ACTIVE 起始时刻一次性计时，仅覆盖 ACTIVE 首
+     * 1s 窗口（[FighterGravLinkTuning.NO_FIGHTER_CANCEL_GRACE_SECONDS]）；窗口之后的间隙
+     * 不被覆盖（原版大概率同 tick 排产，实际命中概率低），不做额外兜底。
+     */
+    private fun hasAliveFighters(ship: ShipAPI): Boolean =
+        ship.allWings.any { wing ->
+            wing.wingMembers.any { !it.isHulk } ||
+                wing.returning.any { it.fighter.isAlive && !it.fighter.isHulk } ||
+                wing.source?.getTimeUntilNextReplacement()?.let { it >= 0f } == true
+        }
 
     /**
      * OUT 首帧一次性触发（customData 闩）：快照召回目标机群 + 软→硬辐能转化 + 逐机音效。

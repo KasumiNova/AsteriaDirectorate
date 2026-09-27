@@ -128,8 +128,14 @@ object Ship_astd_zw_102 : ShipDataEntry() {
     override val shieldUpkeep: Double = 0.5818
     override val shieldEfficiency: Double = 0.6
 
-    // CARRIER：图鉴「航母」分类的判定 hint（原版 ShipBlueprintRow 按 hints 分类，对齐原版军团级判例）。
-    override val hints: String = "CARRIER"
+    // 对齐原版军团级（Legion，航空战列舰）hints 判例 "CARRIER, COMBAT, NO_AUTO_ESCORT"：
+    // - CARRIER：图鉴「航母」分类的判定 hint（原版 ShipBlueprintRow 按 hints 分类），
+    //   同时令 ShipHullSpec.isCarrier() 为 true；
+    // - COMBAT + NO_AUTO_ESCORT：战斗航母口径。原版 BasicShipAI 对 CARRIER 舰默认走
+    //   「自动护航友舰/回避交战」机动（hints 无 NO_AUTO_ESCORT 且甲板完好数 ≥ 66% 时
+    //   触发 EscortTarget 机动并抢占目标选择），OrderResponseModule 对无 COMBAT 的航母
+    //   不响应 STRIKE 类任务的交战引导；缺这两个 hint 会导致飞蓬 AI 倾向脱离战场。
+    override val hints: String = "CARRIER, COMBAT, NO_AUTO_ESCORT"
     override val minCrew: Int = 500
     override val maxCrew: Int = 1000
     override val cargo: Int = 1000

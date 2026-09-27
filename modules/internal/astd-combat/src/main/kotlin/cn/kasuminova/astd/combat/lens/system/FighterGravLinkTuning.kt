@@ -26,7 +26,7 @@ object FighterGravLinkTuning {
     /** 激活期间软辐能产出速率：每秒产出舰船**基础**最大辐能的该比例（固定 7%，不随难度变化）。 */
     const val SOFT_FLUX_RATIO_OF_BASE_CAP = 0.07f
 
-    /** 机群全灭提前终止的宽限期（秒）：ACTIVE 开始该时长后才允许「无在外战机」提前结束。 */
+    /** 机群战力归零提前终止的宽限期（秒）：ACTIVE 开始该时长后才允许「无存活战力」提前结束。 */
     const val NO_FIGHTER_CANCEL_GRACE_SECONDS = 1f
 
     /** 一次激活所需的全部机制数值（难度解析结果）。 */
