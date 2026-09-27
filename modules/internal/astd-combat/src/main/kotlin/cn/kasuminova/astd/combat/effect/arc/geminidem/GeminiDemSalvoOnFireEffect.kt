@@ -30,7 +30,7 @@ import java.util.IdentityHashMap
  * - `spawnProjectile` 返回非 [MissileAPI]：记 ERROR 跳过该枚，另一枚不受影响（理论不可达）。
  *
  * 弹药口径（2026-09-26 第二次裁定）：主武器 weapon_data 行 `burst size=2 / burst delay=0.1`
- * （原版 squall/locust 先例：burst 列驱动 tooltip「1250 x2」面板显示；burst delay 必须为
+ * （原版 squall/locust 先例：burst 列驱动 tooltip「1000 x2」面板显示；burst delay 必须为
  * 非 0 才真实连发——0 会被引擎当无 burst 处理，实机判例），一次触发引擎
  * 连发 2 发 dummy 并各扣 1 弹药（合计 -2，与「一轮齐射两枚弹头」语义对齐）。
  * 两发 dummy 各回调一次 onFire：首发生成完整双弹齐射，次发（回声发）只移除 dummy 不再生成；
@@ -76,8 +76,14 @@ class GeminiDemSalvoOnFireEffect(
         val salvoId = "astd_gemini_salvo:${ship.id}:${engine.getTotalElapsedTime(false)}"
         val facing = projectile.facing
         val baseLoc = projectile.location
+        // 战机型发射切换战机版弹头编成（数据驱动 ×0.75 削弱：独立弹头/payload spec，见 GeminiDemDifficulty 战机链注释）
+        val warheads = if (weapon.spec?.weaponId == GeminiDemDifficulty.FIGHTER_WEAPON_ID) {
+            WARHEADS_FIGHTER
+        } else {
+            WARHEADS_SHIP
+        }
 
-        for ((weaponId, projId, lateralSign) in WARHEADS) {
+        for ((weaponId, projId, lateralSign) in warheads) {
             // 垂直错位：沿 facing 垂直方向偏移 lateralSign × 12su（规格 §2.2 第 5 步）
             val loc = MathUtils.getPointOnCircumference(
                 Vector2f(baseLoc),
@@ -118,10 +124,16 @@ class GeminiDemSalvoOnFireEffect(
     companion object {
         private val log = Global.getLogger(GeminiDemSalvoOnFireEffect::class.java)
 
-        /** 齐射编成：动能 -1 舷 / 高爆 +1 舷（三元组：弹头武器 id、弹体 spec id、舷侧符号）。 */
-        private val WARHEADS = listOf(
+        /** 齐射编成（舰装）：动能 -1 舷 / 高爆 +1 舷（三元组：弹头武器 id、弹体 spec id、舷侧符号）。 */
+        private val WARHEADS_SHIP = listOf(
             Triple(GeminiDemDifficulty.KINETIC_WEAPON_ID, GeminiDemDifficulty.KINETIC_PROJ_ID, -1f),
             Triple(GeminiDemDifficulty.HE_WEAPON_ID, GeminiDemDifficulty.HE_PROJ_ID, 1f),
+        )
+
+        /** 齐射编成（战机型）：战机版弹头链（面板 750、payload 指向战机版光束），舷侧口径同舰装。 */
+        private val WARHEADS_FIGHTER = listOf(
+            Triple(GeminiDemDifficulty.KINETIC_FIGHTER_WEAPON_ID, GeminiDemDifficulty.KINETIC_FIGHTER_PROJ_ID, -1f),
+            Triple(GeminiDemDifficulty.HE_FIGHTER_WEAPON_ID, GeminiDemDifficulty.HE_FIGHTER_PROJ_ID, 1f),
         )
 
         /** 遥测键：齐射次数（automation 场景观测面，对齐既有组遥测先例）。 */

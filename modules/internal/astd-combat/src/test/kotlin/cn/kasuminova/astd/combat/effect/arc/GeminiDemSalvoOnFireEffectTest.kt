@@ -14,6 +14,7 @@ import com.fs.starfarer.api.combat.EveryFrameCombatPlugin
 import com.fs.starfarer.api.combat.MissileAPI
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.combat.WeaponAPI
+import com.fs.starfarer.api.loading.WeaponSpecAPI
 import org.lwjgl.util.vector.Vector2f
 import org.mockito.ArgumentCaptor
 import org.mockito.Mockito.mock
@@ -142,6 +143,11 @@ class GeminiDemSalvoOnFireEffectTest {
         assertNotNull(salvoK)
         assertEquals(salvoK, salvoH, "双弹写入同一齐射批次号")
         assertTrue(salvoK.startsWith("astd_gemini_salvo:P1:"))
+        // 舰装编成：出生登记簿武器 id 为舰装弹头（观测面按 weaponId 过滤，如 KILL_ONE 相位）
+        assertEquals(
+            listOf(GeminiDemDifficulty.KINETIC_WEAPON_ID, GeminiDemDifficulty.HE_WEAPON_ID),
+            GeminiDemSalvoOnFireEffect.warheadsOf(engine).map { it.weaponId },
+        )
 
         assertEquals(2, demAttached.size, "两枚弹头均装配 DEMScript 插件")
         assertSame(kineticMissile, demAttached[0])
@@ -237,5 +243,55 @@ class GeminiDemSalvoOnFireEffectTest {
         verify(heMissile).missileAI = org.mockito.ArgumentMatchers.any(GeminiDemTrackAI::class.java)
         assertEquals(1, GeminiDemSalvoOnFireEffect.warheadsSpawned(engine), "失败枚不计入生成遥测")
         assertEquals(1, GeminiDemSalvoOnFireEffect.salvoCount(engine))
+    }
+
+    @Test
+    fun `战机型发射：切换战机版弹头编成（战机弹头 id spawn 且登记入册），舰装弹头 id 不出现`() {
+        val engine = stubEngine()
+        val target = stubTarget("T1")
+        val ship = stubShip("P1", 0, target)
+
+        val spec = mock(WeaponSpecAPI::class.java)
+        `when`(spec.weaponId).thenReturn(GeminiDemDifficulty.FIGHTER_WEAPON_ID)
+        val weapon = mock(WeaponAPI::class.java)
+        `when`(weapon.ship).thenReturn(ship)
+        `when`(weapon.id).thenReturn(GeminiDemDifficulty.FIGHTER_WEAPON_ID)
+        `when`(weapon.spec).thenReturn(spec)
+
+        val kineticMissile = stubWarheadMissile()
+        val heMissile = stubWarheadMissile()
+        `when`(
+            engine.spawnProjectile(
+                org.mockito.ArgumentMatchers.same(ship),
+                org.mockito.ArgumentMatchers.isNull(),
+                org.mockito.ArgumentMatchers.eq(GeminiDemDifficulty.KINETIC_FIGHTER_WEAPON_ID),
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyFloat(), org.mockito.ArgumentMatchers.any(),
+            ),
+        ).thenReturn(kineticMissile)
+        `when`(
+            engine.spawnProjectile(
+                org.mockito.ArgumentMatchers.same(ship),
+                org.mockito.ArgumentMatchers.isNull(),
+                org.mockito.ArgumentMatchers.eq(GeminiDemDifficulty.HE_FIGHTER_WEAPON_ID),
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyFloat(), org.mockito.ArgumentMatchers.any(),
+            ),
+        ).thenReturn(heMissile)
+
+        ProjectileVfxSpecs.install()
+        GeminiDemSalvoOnFireEffect { _, _, _ -> BaseEveryFrameCombatPlugin() }.onFire(stubProjectile(), weapon, engine)
+
+        // 数据驱动削弱链：撞碰 750 与 payload dps 750/1125 由战机版 spec 承担，脚本只负责选对编成
+        assertSame(kineticMissile, GeminiDemSalvoOnFireEffect.warheadsOf(engine)[0].missile)
+        assertSame(heMissile, GeminiDemSalvoOnFireEffect.warheadsOf(engine)[1].missile)
+        assertEquals(
+            listOf(GeminiDemDifficulty.KINETIC_FIGHTER_WEAPON_ID, GeminiDemDifficulty.HE_FIGHTER_WEAPON_ID),
+            GeminiDemSalvoOnFireEffect.warheadsOf(engine).map { it.weaponId },
+            "战机发射必须产出战机版弹头（payloadWeaponId 链到战机版光束）",
+        )
+        for (missile in listOf(kineticMissile, heMissile)) {
+            verify(missile).armingTime = GeminiDemDifficulty.WARHEAD_ARMING_TIME
+            verify(missile).missileAI = org.mockito.ArgumentMatchers.any(GeminiDemTrackAI::class.java)
+        }
+        assertEquals(2, GeminiDemSalvoOnFireEffect.warheadsSpawned(engine))
     }
 }

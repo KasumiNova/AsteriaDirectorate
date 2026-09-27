@@ -1,0 +1,31 @@
+{
+    "id": "astd_gemini_dem_he_fighter",
+    "specClass": "projectile",
+    "type": "MISSILE",
+    "size": "MEDIUM",
+    "turretSprite": "graphics/textures/BUtil_NONE.png",
+    "hardpointSprite": "graphics/textures/BUtil_NONE.png",
+    "turretGunSprite": "graphics/textures/BUtil_NONE.png",
+    "hardpointGunSprite": "graphics/textures/BUtil_NONE.png",
+    "hardpointOffsets": [0, 0],
+    "turretOffsets": [0, 0],
+    "hardpointAngleOffsets": [0],
+    "turretAngleOffsets": [0],
+    "barrelMode": "LINKED",
+    "animationType": "MUZZLE_FLASH",
+    "muzzleFlashSpec": {
+        "length": 24.0,
+        "spread": 26.0,
+        "particleSizeMin": 10.0,
+        "particleSizeRange": 16.0,
+        "particleDuration": 0.14,
+        "particleCount": 22,
+        "particleColor": [
+            255,
+            200,
+            120,
+            190
+        ]
+    },
+    "projectileSpecId": "astd_gemini_dem_he_fighter_msl"
+}

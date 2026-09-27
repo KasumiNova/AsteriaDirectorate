@@ -144,6 +144,13 @@ object ProjectileVfxSpecs {
         "astd_gemini_dem_he_msl" to {
             simpleProjectileVfx("astd_gemini_dem_he_msl", geminiHeRed(), width = 5f, length = 400f, recede = 0f, decorTrail = false)
         },
+        // 战机版弹头链（数据驱动 ×0.75 削弱）：弹体 spec 独立，拖尾配色/口径与舰装版完全一致
+        "astd_gemini_dem_kinetic_fighter_msl" to {
+            simpleProjectileVfx("astd_gemini_dem_kinetic_fighter_msl", geminiKineticBlue(), width = 5f, length = 400f, recede = 0f, decorTrail = false)
+        },
+        "astd_gemini_dem_he_fighter_msl" to {
+            simpleProjectileVfx("astd_gemini_dem_he_fighter_msl", geminiHeRed(), width = 5f, length = 400f, recede = 0f, decorTrail = false)
+        },
         // 源生冰晶子射弹：15 枚小冰晶成群，弹体本体由 spriteBody 接管（BoxUtil SpriteEntity 逐帧跟随，normal alpha 对齐原版
         // 导弹贴图语义），原版贴图渲染由 .proj 的 sprite=BUtil_NONE.png 屏蔽，bolt 显式关闭（本体贴图取代螺栓）。
         "astd_ice_shard_sub_msl" to {

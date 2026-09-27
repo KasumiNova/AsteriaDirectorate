@@ -3842,7 +3842,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
      * 双子星 DEM 相位机（规格 10 §4.2 烟测检查点映射）：
      * MOUNT（双槽装配/射程/ammo 2/4/tags/隐藏四件 no_drop+SYSTEM 校验，检查点 1/6）→
      * SALVO（齐射双弹 + dummy 拦截；R1：TrackAI 供目标 + DEMScript 接管；
-     *   R2：payload 首伤帧读数；动能 4 道 EMP 电弧；同步冲击触发 + 玩家恒 v2，检查点 2/3/4/5/7）→
+     *   R2：payload 首伤帧读数（动能 ≈1000 / 高爆 ≈1500 面板）；动能 5 道 EMP 电弧（单道 v2=400）；同步冲击触发 + 玩家恒 v2，检查点 2/3/4/5/7）→
      * KILL_ONE（击落高爆弹头：动能独发命中、同步计数恒不变，检查点 5 反面）→
      * POD（发射舱齐射 + ammo 4→3 + 同步配对，检查点 1/8）→
      * ENEMY_SCALE（installScaleForTests(5) + 敌版携带：敌版同步 mult=1.0 + 玩家掉血，检查点 7）→
@@ -3881,15 +3881,25 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                         GeminiDemDifficulty.HE_WEAPON_ID,
                         GeminiDemDifficulty.KINETIC_PAYLOAD_ID,
                         GeminiDemDifficulty.HE_PAYLOAD_ID,
+                        // 战机版弹头链（数据驱动 ×0.75 削弱）：四件隐藏 spec 同口径校验
+                        GeminiDemDifficulty.KINETIC_FIGHTER_WEAPON_ID,
+                        GeminiDemDifficulty.HE_FIGHTER_WEAPON_ID,
+                        GeminiDemDifficulty.KINETIC_PAYLOAD_FIGHTER_ID,
+                        GeminiDemDifficulty.HE_PAYLOAD_FIGHTER_ID,
                     )
                     val hiddenLeak = hiddenIds.firstOrNull { id ->
                         val spec = Global.getSettings().getWeaponSpec(id)
                         spec == null || !spec.tags.contains("no_drop") || !spec.tags.contains("no_drop_salvage")
                     }
-                    val payloadHintLeak = listOf(GeminiDemDifficulty.KINETIC_PAYLOAD_ID, GeminiDemDifficulty.HE_PAYLOAD_ID)
+                    val payloadHintLeak = listOf(
+                        GeminiDemDifficulty.KINETIC_PAYLOAD_ID, GeminiDemDifficulty.HE_PAYLOAD_ID,
+                        GeminiDemDifficulty.KINETIC_PAYLOAD_FIGHTER_ID, GeminiDemDifficulty.HE_PAYLOAD_FIGHTER_ID,
+                    )
                         .firstOrNull { id ->
                             Global.getSettings().getWeaponSpec(id)?.aiHints?.contains(WeaponAPI.AIHints.SYSTEM) != true
                         }
+                    // 战机型发射武器 spec（射程削弱 2500→2000 的实机核对面）
+                    val fighterRange = Global.getSettings().getWeaponSpec(GeminiDemDifficulty.FIGHTER_WEAPON_ID)?.maxRange ?: -1f
                     when {
                         launcherSlot != GD_PLAYER_SLOT_LAUNCHER || podSlot != GD_PLAYER_SLOT_POD -> {
                             failureReason = "gd mount mismatch: launcherSlot=$launcherSlot podSlot=$podSlot"
@@ -3921,6 +3931,11 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
 
                         payloadHintLeak != null -> {
                             failureReason = "gd payload hint leak: $payloadHintLeak 缺 SYSTEM hint"
+                            transitionGdPhase(GD_PHASE_FAILED)
+                        }
+
+                        kotlin.math.abs(fighterRange - GD_FIGHTER_EXPECT_RANGE) > GD_RANGE_TOLERANCE -> {
+                            failureReason = "gd fighter range=$fighterRange, expect $GD_FIGHTER_EXPECT_RANGE（战机型射程削弱 2500→2000）"
                             transitionGdPhase(GD_PHASE_FAILED)
                         }
 
@@ -3969,7 +3984,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
 
                         empArcs !in GD_EMP_ARC_MIN..GD_EMP_ARC_MAX -> {
                             failureReason =
-                                "gd emp arcs=$empArcs, expect $GD_EMP_ARC_MIN..$GD_EMP_ARC_MAX（动能光束 1s 照射期每 0.1s 一道 EMP 电弧）"
+                                "gd emp arcs=$empArcs, expect $GD_EMP_ARC_MIN..$GD_EMP_ARC_MAX（动能光束每轮打击预算 5 道 EMP 电弧，0.2s 节律）"
                             transitionGdPhase(GD_PHASE_FAILED)
                         }
 
@@ -6803,7 +6818,9 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
      * FIELD_OBSERVE（断言点 GS-A：力场满效压制——敌舰钉在 600su ≤ 半射程 750su 满效区，
      *   玩家恒 v2 → 航速/转向 ×0.8、EMP 承伤 1.0 +0.5 绝对位移到 1.5）→
      * ACTIVATE（断言点 GS-B：剥甲后 useSystem() 按帧重试点火；IN 首帧计入 基础容量×20%
-     *   软辐能（zw_002 12000 → ≈2400），充能期 hullDamageTakenMult ≤0.51）→
+     *   软辐能（zw_002 12000 → ≈2400），充能期 hullDamageTakenMult ≤0.51；
+     *   断言点 GS-B2：充能前段相位锁定——锁定窗内逐帧施压相位键（真实按键路径），
+     *   isPhased 须恒 false、cloak 被压入 COOLDOWN；锁定窗后不再施压，主线满充能释放照旧）→
      * RELEASE（充满 4s 自然 ACTIVE 首帧释放并归位 OUT：断言点 GS-C 释放闩 +
      *   靶舰过载时长 ∈ [1.5, 2.5]（巡洋舰 v2 满充能 2s）；断言点 GS-D 电弧结算掉血 ≥1500；
      *   断言点 GS-E 前置：系统激活期（IN/ACTIVE/OUT）力场修饰键不离场）→
@@ -10381,8 +10398,9 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private const val GD_CAMERA_VISIBLE_HEIGHT = 1500f
         private const val GD_MOUNT_SETTLE_SECONDS = 0.6f
 
-        // MOUNT 相位校验：射程断言基线 2500（无射程向 hullmod 干扰）。
+        // MOUNT 相位校验：射程断言基线 2500（无射程向 hullmod 干扰）；战机型 spec 射程 2000（削弱口径）。
         private const val GD_EXPECT_RANGE = 2500f
+        private const val GD_FIGHTER_EXPECT_RANGE = 2000f
         private const val GD_RANGE_TOLERANCE = 5f
         private const val GD_LAUNCHER_AMMO = 4
         private const val GD_POD_AMMO = 8
@@ -10391,9 +10409,9 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         // 一轮齐射稳定 -2；语义对齐「一轮齐射两枚弹头」）。
         private const val GD_AMMO_PER_SALVO = 2
 
-        // SALVO：动能光束 1s 照射期 EMP 电弧期望道数区间（0.1s 节律 ≈10 道，帧边界宽限，规格 §2.1）。
-        private const val GD_EMP_ARC_MIN = 8
-        private const val GD_EMP_ARC_MAX = 12
+        // SALVO：动能光束每轮打击 EMP 电弧预算恰 5 道（0.2s 节律固定预算，与照射时长解耦，规格 §2.1）。
+        private const val GD_EMP_ARC_MIN = 5
+        private const val GD_EMP_ARC_MAX = 5
 
         // 双弹均命中后到断言的照射期收尾门控（秒）= payload firingTime 1s + EMP 宽限 0.3s + 帧余量。
         private const val GD_HIT_DWELL_SECONDS = 1.6f

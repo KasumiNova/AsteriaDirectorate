@@ -19,7 +19,7 @@ import java.awt.Color
 import java.util.IdentityHashMap
 
 /**
- * 双子星 DEM payload 光束的 BoxUtil 自绘渲染（两件 payload .wpn 的 `everyFrameEffect`）。
+ * 双子星 DEM payload 光束的 BoxUtil 自绘渲染（四件 payload .wpn 的 `everyFrameEffect`：舰装/战机版共用本层，按 weaponId 分色）。
  *
  * 原版束体渲染由 [GeminiDemPayloadBeamEffect] 隐藏（保留伤害结算），本效果按 beam 几何每帧驱动一条
  * tapered beam trail：动能用 astd_trails_zappy（冷蓝白）、高爆用 astd_trails_flow（共振红）。
@@ -79,8 +79,8 @@ class GeminiDemPayloadBeamVfx : EveryFrameWeaponEffectPlugin {
     override fun advance(amount: Float, engine: CombatEngineAPI, weapon: WeaponAPI) {
         if (engine.isPaused) return
         val kind = when (weapon.spec?.weaponId) {
-            GeminiDemDifficulty.KINETIC_PAYLOAD_ID -> Kind.KINETIC
-            GeminiDemDifficulty.HE_PAYLOAD_ID -> Kind.HE
+            GeminiDemDifficulty.KINETIC_PAYLOAD_ID, GeminiDemDifficulty.KINETIC_PAYLOAD_FIGHTER_ID -> Kind.KINETIC
+            GeminiDemDifficulty.HE_PAYLOAD_ID, GeminiDemDifficulty.HE_PAYLOAD_FIGHTER_ID -> Kind.HE
             else -> return
         }
 

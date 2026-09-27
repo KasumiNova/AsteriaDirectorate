@@ -206,7 +206,7 @@ object ASTDInGameAutomationScenario {
     /**
      * 双子星 DEM 实机场景开关：镜像 [isSsEnabled]。
      * 验证双槽装配（中/大导弹槽）、齐射双弹（dummy 拦截 + TrackAI 供目标 R1 + DEMScript 接管打击）、
-     * payload 光束结算读数（R2：动能 ≈1000 + 4 道 EMP 电弧 / 高爆 ≈1500）、
+     * payload 光束结算读数（R2：动能 ≈1000 / 高爆 ≈1500 面板 + 每轮固定 5 道 EMP 电弧，单道 v2=400）、
      * 同步冲击（异种配对 ≤1s 窗口追加能量伤害 + 白闪，玩家恒 v2）、击落一枚无同步、
      * 敌版破晓档同步（installScaleForTests(5) + 敌版携带发射舱）与 12s 节奏（ammo 2/4）。
      */
