@@ -87,7 +87,7 @@ class QiongjueCalcStacks(
 
     override fun advance(amount: Float) {
         val now = engine.getTotalElapsedTime(false)
-        // 难度取值每帧重取（玩家 owner==0 恒 v2；LunaLib 热变更即时生效，成本可忽略）。
+        // 难度取值每帧重取（玩家 owner==0 按我方档位系数；LunaLib 热变更即时生效，成本可忽略）。
         val perStack = QiongjueStackMath.resolve(DifficultyTuningImpl, perStackEntry, ship.owner)
         val decayRate = QiongjueStackMath.resolve(DifficultyTuningImpl, decayRateEntry, ship.owner)
         currentPerStack = perStack

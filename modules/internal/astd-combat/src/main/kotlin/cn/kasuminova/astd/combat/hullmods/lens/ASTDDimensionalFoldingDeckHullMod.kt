@@ -25,7 +25,7 @@ import java.awt.Color
  *    （原版 `updateStatsForOpCosts`），否则装配界面 OP 总量仍按基础价扣除。
  *    （已知的原版显示边界：LPC 详情面板 `FighterWingStatsDisplay` 恒以 `getOpCost(null)`
  *    取基础价，任何船插都无法改变该面板读数；选择器列表与实际扣点为本船插生效口径。）
- * 2. **联队扩容（难度系数）**：每甲板联队战机数量 +50%/+150%/+250%（轨一三锚点，玩家固定 v2）。
+ * 2. **联队扩容（难度系数）**：每甲板联队战机数量 +50%/+150%/+250%（轨一三锚点，玩家按我方档位系数，默认砺刃 v2）。
  *    经 `FighterLaunchBayAPI` extraDeployments 体系实现（引擎唯一按甲板生效的扩容通道，
  *    见 [FoldingDeckTuning] 头注）：每帧把每个甲板的 extraDeploymentLimit 锚定到折算上限
  *    （上限变更时同步把 extraDuration 置 1e7，与原生战机一致，不触发强制返航）、

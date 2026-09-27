@@ -28,7 +28,9 @@ starsector {
     dependency("MagicLib", "MagicLib")
     dependency("shaderLib", "GraphicsLib")
     dependency("BoxUtil", "zz BoxUtil")
-    dependency("lunalib", "LunaLib")
+    // LunaLib 为可选前置：不声明进 mod_info 依赖（未装也能加载），
+    // 运行时经 LunaLibSupport.isAvailable()（modManager.isModEnabled）检测；
+    // 编译期经各模块的已装模组 jar 桥（astdGameCompileOnlyJars，扫描 mods/ 全部 mod_info）挂 compileOnly。
     gameDependencyMode.set(GameDependencyMode.GAME_DIR)
     gameDir.fileValue(file(providers.gradleProperty("starsector.gameDir").get()))
     launchMode.set(LaunchMode.NANOFORGE)

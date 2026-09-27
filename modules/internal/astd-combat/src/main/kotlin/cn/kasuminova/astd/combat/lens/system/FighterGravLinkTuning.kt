@@ -13,7 +13,7 @@ import cn.kasuminova.astd.combat.lens.system.FighterGravLinkTuning.SOFT_FLUX_RAT
  * 重新出击）；代价为持续软辐能产出与结束时的软→硬辐能转化。三锚点查值与辐能折算
  * 集中在此声明，供系统脚本调用并由单元测试直接驱动。
  *
- * 玩家来源（owner == 0）固定 v2（砺刃档）。
+ * 玩家来源（owner == 0）按我方档位取值（默认砺刃 v2，见 DifficultyTuning.valueFor）。
  */
 object FighterGravLinkTuning {
 
@@ -38,12 +38,12 @@ object FighterGravLinkTuning {
     )
 
     /**
-     * 难度取值唯一入口：玩家固定 v2，否则按轨一 k_s 映射。
+     * 难度取值唯一入口：玩家阵营按我方档位（默认砺刃 v2）映射，其余阵营按轨一 k_s 映射。
      * 每帧调用（不缓存），保证 LunaLib 设置变更即时生效。
      */
     fun resolve(tuning: DifficultyTuning, isPlayer: Boolean): Values = Values(
-        timeMult = 1f + if (isPlayer) TIME_MULT_BONUS.v2 else tuning.value(TIME_MULT_BONUS),
-        damageTakenMult = 1f - if (isPlayer) DAMAGE_TAKEN_REDUCTION.v2 else tuning.value(DAMAGE_TAKEN_REDUCTION),
+        timeMult = 1f + tuning.valueFor(TIME_MULT_BONUS, isPlayer),
+        damageTakenMult = 1f - tuning.valueFor(DAMAGE_TAKEN_REDUCTION, isPlayer),
     )
 
     /** 软辐能产出速率（纯函数）：基础最大辐能 × [SOFT_FLUX_RATIO_OF_BASE_CAP]（su/s）。 */

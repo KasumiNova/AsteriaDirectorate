@@ -10,9 +10,11 @@ import cn.kasuminova.astd.combat.effect.joint.stardust.StardustLauncherAutofireA
 import cn.kasuminova.astd.combat.effect.joint.stardust.StardustMoteAiPicker;
 import cn.kasuminova.astd.combat.hullmods.arc.ASTDXc001HullModUtilKt;
 import cn.kasuminova.astd.combat.hullmods.base.ASTDCampaignPlugin;
+import cn.kasuminova.astd.combat.hullmods.base.ASTDDualModeConfigKt;
 import cn.kasuminova.astd.combat.hullmods.lens.LensArrayCoreModeUtilKt;
 import cn.kasuminova.astd.impl.buff.BuffInstall;
 import cn.kasuminova.astd.impl.difficulty.DifficultySettingsRegistrar;
+import cn.kasuminova.astd.impl.difficulty.LunaLibSupport;
 import cn.kasuminova.astd.renderer.effect.system.WeaponGlowLayer;
 import cn.kasuminova.astd.renderer.effect.system.GeminiDemRackVisuals;
 import cn.kasuminova.astd.renderer.effect.system.GravityPhaseVisualEffect;
@@ -57,8 +59,19 @@ public final class AsteriaDirectoratePlugin extends BaseModPlugin {
         BuffInstall.INSTANCE.install();
         // 注入剧情对话后端到 ui 侧 StoryDialogBackends（ui 不反向依赖 campaign，桥接口在此注入）。
         StoryDialogInstall.INSTANCE.install();
-        // 注册难度设置（轨一：固有缩放系数）到 LunaLib 设置界面，并应用当前生效档位。
-        DifficultySettingsRegistrar.INSTANCE.register();
+        // 安装「双模式切换器自动模式免自动化点数」的热重载钩子（须在 LunaLib 设置注册前装好，
+        // 保证注册/回调路径触发变更时钩子已在位）。
+        ASTDDualModeConfigKt.installDualModeAutoPointsHook();
+        // LunaLib 为可选前置（mod_info 不声明依赖）：不可用时跳过设置注册，
+        // 难度档位与双模式开关全部取默认值（敌方砺刃 2.0 / 我方砺刃 2.0 / 免自动化点数开启）。
+        // 注意：DifficultySettingsRegistrar 类体触碰 lunalib.* 类型，未安装 LunaLib 时
+        // 连方法调用都会 NoClassDefFoundError，必须经 LunaLibSupport 门控后再触碰。
+        if (LunaLibSupport.INSTANCE.isAvailable()) {
+            // 注册全部 LunaLib 设置项（敌方/我方难度档位 + 双模式免自动化点数开关），并应用当前生效值。
+            DifficultySettingsRegistrar.INSTANCE.register();
+        } else {
+            logger.info("[ASTD] 未检测到 LunaLib：难度档位与双模式免自动化点数开关不可用，全部使用默认值");
+        }
         // 预加载制式核心军官头像（SSOptimizer 延迟加载下裸 getSprite 是 textureID=0 黑壳）。
         StandardCores.INSTANCE.preloadPortraits();
         // 预加载武器补档发光贴图（常驻 + 蓄能；同上原因，未被 .wpn 引用的贴图不会上传 GL）。

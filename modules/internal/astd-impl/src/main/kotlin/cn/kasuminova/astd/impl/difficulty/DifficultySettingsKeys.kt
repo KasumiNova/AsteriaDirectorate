@@ -14,8 +14,11 @@ object DifficultySettingsKeys {
     /** 模组 id（LunaSettings 的 ModID 入参）。 */
     const val MOD_ID: String = "asteria_directorate"
 
-    /** 档位 radio 的 field id。 */
+    /** 敌方档位 radio 的 field id。 */
     const val FIELD_TIER: String = "astd_difficulty_tier"
+
+    /** 我方（玩家阵营）档位 radio 的 field id；仅四个预设档，无自定义滑条。 */
+    const val FIELD_PLAYER_TIER: String = "astd_difficulty_player_tier"
 
     /** 自定义系数滑条的 field id。 */
     const val FIELD_CUSTOM_SCALE: String = "astd_difficulty_custom_scale"
@@ -45,6 +48,9 @@ object DifficultySettingsKeys {
     /** 全部 radio 选项的显示名（预设档 + 自定义），供注册与精确匹配。 */
     fun tierDisplayNames(): List<String> = TIERS.map { I18n[I18n.Categories.MOD, it.nameI18nKey] } +
             I18n[I18n.Categories.MOD, CUSTOM_NAME_KEY]
+
+    /** 仅四个预设档的显示名（我方档位 radio 用：无自定义档）。 */
+    fun presetTierDisplayNames(): List<String> = TIERS.map { I18n[I18n.Categories.MOD, it.nameI18nKey] }
 
     /** 自定义档显示名。 */
     fun customDisplayName(): String = I18n[I18n.Categories.MOD, CUSTOM_NAME_KEY]

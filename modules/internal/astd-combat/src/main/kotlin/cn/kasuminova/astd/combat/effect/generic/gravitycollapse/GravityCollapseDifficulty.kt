@@ -2,11 +2,10 @@ package cn.kasuminova.astd.combat.effect.generic.gravitycollapse
 
 import cn.kasuminova.astd.api.AstdLog
 import cn.kasuminova.astd.api.difficulty.DifficultyTuning
-import cn.kasuminova.astd.api.difficulty.ScalingEntry
 
 /**
  * 引力坍缩炮的难度取值唯一入口（对照 `BurstFlowTuning` 既有口径）：
- * 玩家来源（owner == 0）固定 v2 设计基准；敌方来源按轨一 k_s 三锚点映射。
+ * 玩家来源（owner == 0）按我方档位取值（默认砺刃 v2，见 DifficultyTuning.valueFor）；敌方来源按轨一 k_s 三锚点映射。
  *
  * 数值锚点按武器规格区分（大/中/小/PD），由各 [GravityCollapseOnHitConfig] 持有；
  * 本对象只负责「玩家/敌方/无来源」三分支的取值决策与无来源告警（WARN-once）。
@@ -42,9 +41,9 @@ internal object GravityCollapseDifficulty {
         }
         val isPlayer = sourceOwner == null || sourceOwner == 0
         return ResolvedValues(
-            aoeDamageRatio = pick(tuning, isPlayer, config.aoeDamageRatio),
-            mobilityReduction = pick(tuning, isPlayer, config.mobilityReduction),
-            mobilityDuration = pick(tuning, isPlayer, config.mobilityDuration),
+            aoeDamageRatio = tuning.valueFor(config.aoeDamageRatio, isPlayer),
+            mobilityReduction = tuning.valueFor(config.mobilityReduction, isPlayer),
+            mobilityDuration = tuning.valueFor(config.mobilityDuration, isPlayer),
         )
     }
 
@@ -52,7 +51,4 @@ internal object GravityCollapseDifficulty {
     fun resetWarnStateForTests() {
         nullSourceWarned = false
     }
-
-    private fun pick(tuning: DifficultyTuning, isPlayer: Boolean, entry: ScalingEntry): Float =
-        if (isPlayer) entry.v2 else tuning.value(entry)
 }

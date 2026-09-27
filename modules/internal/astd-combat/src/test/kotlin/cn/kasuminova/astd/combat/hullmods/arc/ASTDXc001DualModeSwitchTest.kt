@@ -106,7 +106,7 @@ class ASTDXc001DualModeSwitchTest {
 }
 
 /**
- * 最小 ShipVariantAPI 假实现：仅承载状态机触达的 permaMods / hullMods 集合。
+ * 最小 ShipVariantAPI 假实现：仅承载状态机触达的 permaMods / hullMods / tags 集合。
  * getHullSpec 返回 null（被测的 [activateDualMode] / [hasASTDDualModeAutomated] 不读 hullSpec）。
  * 其余方法抛 [notUsed]，确保状态机若触达预期外接口立即失败（Fail Fast）。不使用反射 / mock 框架。
  */
@@ -114,6 +114,7 @@ private class FakeArcVariant : ShipVariantAPI {
 
     private val perma = linkedSetOf<String>()
     private val mods = linkedSetOf<String>()
+    private val tags = linkedSetOf<String>()
 
     override fun getHullSpec(): ShipHullSpecAPI? = null
     override fun getPermaMods(): MutableSet<String> = perma
@@ -211,11 +212,19 @@ private class FakeArcVariant : ShipVariantAPI {
     override fun isDHull(): Boolean = notUsed()
     override fun getStationModules(): MutableMap<String, String> = notUsed()
     override fun getNonBuiltInWings(): MutableList<String> = notUsed()
-    override fun hasTag(p0: String): Boolean = notUsed()
-    override fun addTag(p0: String) = notUsed()
-    override fun removeTag(p0: String) = notUsed()
-    override fun getTags(): MutableCollection<String> = notUsed()
-    override fun clearTags() = notUsed()
+    override fun hasTag(p0: String): Boolean = tags.contains(p0)
+    override fun addTag(p0: String) {
+        tags.add(p0)
+    }
+
+    override fun removeTag(p0: String) {
+        tags.remove(p0)
+    }
+
+    override fun getTags(): MutableCollection<String> = tags
+    override fun clearTags() {
+        tags.clear()
+    }
     override fun clear() = notUsed()
     override fun getOriginalVariant(): String = notUsed()
     override fun setOriginalVariant(p0: String) = notUsed()

@@ -14,7 +14,7 @@ import kotlin.math.roundToInt
  * 强制过载时长插值、单发电弧伤害与系统期间伤害减免的难度三锚点集中在此声明，
  * 供系统脚本每帧实时解析（LunaLib 设置变更即时生效），并由单元测试直接驱动。
  *
- * 玩家来源（owner == 0）固定 v2（砺刃档），对照 GravPhaseDeckTuning 既有口径。
+ * 玩家来源（owner == 0）按我方档位取值（默认砺刃 v2，见 DifficultyTuning.valueFor）。
  */
 object GravStormTuning {
 
@@ -92,15 +92,15 @@ object GravStormTuning {
         val overloadCapital: Float,
     )
 
-    /** 难度取值唯一入口：玩家固定 v2，否则按轨一 k_s 映射。 */
+    /** 难度取值唯一入口：玩家阵营按我方档位（默认砺刃 v2）映射，其余阵营按轨一 k_s 映射。 */
     fun resolve(tuning: DifficultyTuning, isPlayer: Boolean): Values = Values(
-        arcEnergyDamage = pick(tuning, isPlayer, ARC_ENERGY_DAMAGE),
-        arcEmpDamage = pick(tuning, isPlayer, ARC_EMP_DAMAGE),
-        damageTakenReduction = pick(tuning, isPlayer, DAMAGE_TAKEN_REDUCTION),
-        overloadFrigate = pick(tuning, isPlayer, OVERLOAD_FRIGATE),
-        overloadDestroyer = pick(tuning, isPlayer, OVERLOAD_DESTROYER),
-        overloadCruiser = pick(tuning, isPlayer, OVERLOAD_CRUISER),
-        overloadCapital = pick(tuning, isPlayer, OVERLOAD_CAPITAL),
+        arcEnergyDamage = tuning.valueFor(ARC_ENERGY_DAMAGE, isPlayer),
+        arcEmpDamage = tuning.valueFor(ARC_EMP_DAMAGE, isPlayer),
+        damageTakenReduction = tuning.valueFor(DAMAGE_TAKEN_REDUCTION, isPlayer),
+        overloadFrigate = tuning.valueFor(OVERLOAD_FRIGATE, isPlayer),
+        overloadDestroyer = tuning.valueFor(OVERLOAD_DESTROYER, isPlayer),
+        overloadCruiser = tuning.valueFor(OVERLOAD_CRUISER, isPlayer),
+        overloadCapital = tuning.valueFor(OVERLOAD_CAPITAL, isPlayer),
     )
 
     /**
@@ -149,7 +149,4 @@ object GravStormTuning {
 
     /** 锥状锁定判定（纯函数）：目标相对方位角与舰船朝向的角差 ≤ [CONE_HALF_ANGLE_DEG]。 */
     fun isInCone(angleDiffDeg: Float): Boolean = angleDiffDeg <= CONE_HALF_ANGLE_DEG
-
-    private fun pick(tuning: DifficultyTuning, isPlayer: Boolean, entry: ScalingEntry): Float =
-        if (isPlayer) entry.v2 else tuning.value(entry)
 }

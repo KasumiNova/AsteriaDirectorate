@@ -17,7 +17,8 @@ import cn.kasuminova.astd.impl.combat.CombatRandom
  * 难度取值与几何公式集中在一处，供 OnHitEffect / WeaponEffect 两个插件接线调用，
  * 单元测试直接驱动本对象，插件内不留重复逻辑。
  *
- * 数值缩放口径（90 计划全局约定）：敌方按轨一 k_s 三锚点映射；玩家来源（owner == 0）固定 v2。
+ * 数值缩放口径（90 计划全局约定）：敌方按轨一 k_s 三锚点映射；
+ * 玩家来源（owner == 0）按我方档位取值（默认砺刃 v2，见 DifficultyTuning.valueFor）。
  */
 object ElectricDriveAcceleratorDifficulty {
 
@@ -50,13 +51,13 @@ object ElectricDriveAcceleratorDifficulty {
     /** 追加伤害触发阈值：extra ≥ 该值才产生伤害事件与浮字（roll ≈ 0 不弹 0 伤害浮字）。 */
     const val EXTRA_APPLY_THRESHOLD = 1f
 
-    /** 装药上限取值：玩家来源（owner == 0）固定 v2，否则按轨一 k_s 映射。每次命中调用一次。 */
+    /** 装药上限取值：玩家来源（owner == 0）按我方档位（默认砺刃 v2）取值，否则按轨一 k_s 映射。每次命中调用一次。 */
     fun chargeMaxPct(tuning: DifficultyTuning, owner: Int): Float =
-        if (owner == 0) CHARGE_MAX_PCT.v2 else tuning.value(CHARGE_MAX_PCT)
+        tuning.valueFor(CHARGE_MAX_PCT, owner == 0)
 
-    /** 射程加成基础值取值：玩家固定 v2，否则按轨一 k_s 映射。每帧调用一次（LunaLib 调档即时生效）。 */
+    /** 射程加成基础值取值：玩家来源按我方档位（默认砺刃 v2）取值，否则按轨一 k_s 映射。每帧调用一次（LunaLib 调档即时生效）。 */
     fun rangeBonusBase(tuning: DifficultyTuning, owner: Int): Float =
-        if (owner == 0) RANGE_BONUS_SU.v2 else tuning.value(RANGE_BONUS_SU)
+        tuning.valueFor(RANGE_BONUS_SU, owner == 0)
 
     /**
      * 辐能衰减系数：[level] ≤ [FLUX_FULL_THRESHOLD] → 1.0；≥ [FLUX_ZERO_THRESHOLD] → 0.0；中间线性。

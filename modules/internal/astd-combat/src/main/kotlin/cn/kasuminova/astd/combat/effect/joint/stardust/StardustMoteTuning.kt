@@ -13,7 +13,7 @@ import java.awt.Color
  *
  * 数值口径：设计案给定 v1/v5 区间（导弹 +50%~250%、战机 +100%~500%、EMP 100%~500%），
  * v2 取区间中点；全部线性步进登记 LINEAR（一次性命中结算，无叠乘放大）。
- * 玩家来源（owner == 0）固定 v2（砺刃档）。
+ * 玩家来源（owner == 0）按我方档位取值（默认砺刃 v2，见 DifficultyTuning.valueFor）。
  */
 object StardustMoteTuning {
 
@@ -51,11 +51,11 @@ object StardustMoteTuning {
         val shipEmpMult: Float,
     )
 
-    /** 难度取值唯一入口：玩家固定 v2，否则按轨一 k_s 映射。 */
+    /** 难度取值唯一入口：玩家阵营按我方档位（默认砺刃 v2）映射，其余阵营按轨一 k_s 映射。 */
     fun resolve(tuning: DifficultyTuning, isPlayer: Boolean): Values = Values(
-        antiMissileBonus = pick(tuning, isPlayer, ANTI_MISSILE_BONUS),
-        antiFighterBonus = pick(tuning, isPlayer, ANTI_FIGHTER_BONUS),
-        shipEmpMult = pick(tuning, isPlayer, SHIP_EMP_MULT),
+        antiMissileBonus = tuning.valueFor(ANTI_MISSILE_BONUS, isPlayer),
+        antiFighterBonus = tuning.valueFor(ANTI_FIGHTER_BONUS, isPlayer),
+        shipEmpMult = tuning.valueFor(SHIP_EMP_MULT, isPlayer),
     )
 
     /** 弹体 spec id → 线色（ARC 蓝 / LENS 紫；未知 id 按 ARC 蓝兜底并一次性 WARN——注册表只产出两条线，未知 id 属配置异常）。 */
@@ -77,9 +77,6 @@ object StardustMoteTuning {
             log.warn(message())
         }
     }
-
-    private fun pick(tuning: DifficultyTuning, isPlayer: Boolean, entry: ScalingEntry): Float =
-        if (isPlayer) entry.v2 else tuning.value(entry)
 }
 
 /** 星尘发射器双线 id 集中声明（武器/弹体 spec；.wpn 与 catalog 行引用同一组常量口径）。 */

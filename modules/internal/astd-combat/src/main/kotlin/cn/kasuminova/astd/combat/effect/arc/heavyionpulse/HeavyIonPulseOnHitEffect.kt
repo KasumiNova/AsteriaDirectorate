@@ -58,7 +58,7 @@ class HeavyIonPulseOnHitEffect : OnHitEffectPlugin {
         // 某些实体命中回调 point 可能为 null；回退弹体当前位置（对齐 HighFluxShieldPressure 样板）。
         val hitPoint = point ?: projectile.location ?: return
 
-        // 玩家固定 v2 取值在每次命中处调用（非缓存）；projectile.source 为 null（游离弹）按非玩家口径。
+        // 玩家按我方档位系数取值，每次命中处调用（非缓存）；projectile.source 为 null（游离弹）按非玩家口径。
         val values = HeavyIonPulseTuning.resolve(DifficultyTuningImpl, isPlayer = projectile.source?.owner == 0)
 
         // 面板 600 × 武器侧修正；≤ 0 属配置异常（emp 列被清/被其他 mod 清零）——

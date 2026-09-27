@@ -27,7 +27,7 @@ import java.awt.Color
  *
  * 未触发：覆盖为新首击记录。
  *
- * 难度取值调用点（规格 §2.2）：来源为玩家舰（[ShipAPI] 且 owner == 0）固定 v2；
+ * 难度取值调用点（规格 §2.2）：来源为玩家舰（[ShipAPI] 且 owner == 0）按我方档位系数映射；
  * 敌方/友军 AI 走轨一 [DifficultyTuning.value]；来源解析不到记 WARN 并保守取 v2（不静默，§2.4-7）。
  *
  * 引擎依赖收敛为 registry / now / tuning / onWarn 四个注入点（默认实参取真实引擎），
@@ -49,7 +49,7 @@ object GeminiDemSyncHandler {
     /** 遥测键：同步共振触发次数（automation 场景观测面）。 */
     const val TELEMETRY_SYNC_TRIGGER = "astd_gemini_dem_sync_trigger_count"
 
-    /** 遥测键：最近一次同步共振施加的伤害乘区（1 + 难度加成；玩家恒 v2=2.0 / 敌版轨一）。 */
+    /** 遥测键：最近一次同步共振施加的伤害乘区（1 + 难度加成；玩家默认砺刃 v2=2.0 / 敌版轨一）。 */
     const val TELEMETRY_SYNC_LAST_MULT = "astd_gemini_dem_sync_last_mult"
 
     /** 遥测键：同步登记累计次数（首击写入；与触发次数配对观测「击落一枚无同步」）。 */
@@ -91,7 +91,7 @@ object GeminiDemSyncHandler {
                     GeminiDemDifficulty.SYNC_DAMAGE_BONUS.v2
                 }
 
-                sourceShip.owner == 0 -> GeminiDemDifficulty.SYNC_DAMAGE_BONUS.v2
+                sourceShip.owner == 0 -> tuning.valueFor(GeminiDemDifficulty.SYNC_DAMAGE_BONUS, true)
                 else -> tuning.value(GeminiDemDifficulty.SYNC_DAMAGE_BONUS)
             }
             val mult = 1f + bonus

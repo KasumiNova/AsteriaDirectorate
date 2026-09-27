@@ -11,7 +11,7 @@ import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcAuraUtil
  * 与距离衰减曲线集中在此声明，供 hullmod 每帧实时解析（LunaLib 设置变更即时生效），
  * 并由单元测试直接驱动。
  *
- * 玩家来源（owner == 0）固定 v2（砺刃档），对照 GravPhaseDeckTuning 既有口径。
+ * 玩家来源（owner == 0）按我方档位取值（默认砺刃 v2，见 DifficultyTuning.valueFor）。
  */
 object GravEmFieldTuning {
 
@@ -47,11 +47,11 @@ object GravEmFieldTuning {
         val statPenalty: Float,
     )
 
-    /** 难度取值唯一入口：玩家固定 v2，否则按轨一 k_s 映射。 */
+    /** 难度取值唯一入口：玩家阵营按我方档位（默认砺刃 v2）映射，其余阵营按轨一 k_s 映射。 */
     fun resolve(tuning: DifficultyTuning, isPlayer: Boolean): Values = Values(
-        range = pick(tuning, isPlayer, RANGE),
-        empResistReduction = pick(tuning, isPlayer, EMP_RESIST_REDUCTION),
-        statPenalty = pick(tuning, isPlayer, STAT_PENALTY),
+        range = tuning.valueFor(RANGE, isPlayer),
+        empResistReduction = tuning.valueFor(EMP_RESIST_REDUCTION, isPlayer),
+        statPenalty = tuning.valueFor(STAT_PENALTY, isPlayer),
     )
 
     /**
@@ -60,7 +60,4 @@ object GravEmFieldTuning {
      */
     fun effectScale(distance: Float, range: Float): Float =
         ASTDArcAuraUtil.distanceFalloff(distance, range * FULL_EFFECT_FRACTION, range, EDGE_SCALE)
-
-    private fun pick(tuning: DifficultyTuning, isPlayer: Boolean, entry: ScalingEntry): Float =
-        if (isPlayer) entry.v2 else tuning.value(entry)
 }

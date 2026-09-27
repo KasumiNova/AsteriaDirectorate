@@ -12,10 +12,12 @@ import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 /**
  * 湮灭涡旋的机制数值锚点与难度取值入口（规格 04 §2.2）。
  *
- * 动机：涡旋半径 / 坍缩 AOE 倍率 / 吸收阈值三条三锚点集中登记，玩家固定 v2 的取值口径
- * 与轨一 k_s 映射只有一处实现（对齐首批计划 §11「沉淀前各自实现」口径，与 01/03 组同型）。
+ * 动机：涡旋半径 / 坍缩 AOE 倍率 / 吸收阈值三条三锚点集中登记，难度取值经
+ * [DifficultyTuning.valueFor] 统一收口（我方档位 / 轨一 k_s 双口径唯一实现，
+ * 对齐首批计划 §11「沉淀前各自实现」口径，与 01/03 组同型）。
  *
- * 数值缩放口径（90 计划全局约定）：敌方按轨一 k_s 三锚点线性映射；玩家来源（owner == 0）固定 v2。
+ * 数值缩放口径（90 计划全局约定）：敌方按轨一 k_s 三锚点线性映射；
+ * 玩家来源（owner == 0）按我方档位取值（默认砺刃 v2）。
  */
 object AnnihilationVortexDifficulty {
 
@@ -55,7 +57,7 @@ object AnnihilationVortexDifficulty {
     )
 
     /**
-     * 难度统一取值：玩家来源（[sourceOwner] == 0）固定 v2，否则按轨一 k_s 映射。
+     * 难度统一取值：玩家来源（[sourceOwner] == 0）按我方档位（默认砺刃 v2）取值，否则按轨一 k_s 映射。
      * 开火起点一次性调用并缓存本周期（规格 04 §2.2）。
      */
     fun resolve(entry: ScalingEntry, sourceOwner: Int): Float =
@@ -63,7 +65,7 @@ object AnnihilationVortexDifficulty {
 
     /** 可注入 [DifficultyTuning] 的取值入口（单元测试与运行共用同一路径）。 */
     fun resolve(tuning: DifficultyTuning, entry: ScalingEntry, sourceOwner: Int): Float =
-        if (sourceOwner == 0) entry.v2 else tuning.value(entry)
+        tuning.valueFor(entry, sourceOwner == 0)
 
     /** 吸收半径 = max([ABSORB_RADIUS_MIN], 涡旋半径 × [ABSORB_RADIUS_MUL])；[radius] 先 clamp 到最小涡旋半径。 */
     fun absorbRadiusFor(radius: Float): Float =

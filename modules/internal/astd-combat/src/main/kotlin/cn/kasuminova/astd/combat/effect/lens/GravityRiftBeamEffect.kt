@@ -39,7 +39,7 @@ class GravityRiftBeamEffect : BeamEffectPlugin {
     private var untilNextSpawn = 0f
     private var spawnDir = 0f
 
-    /** 难度伤害区间（首帧惰性解析，取 drone 母舰；玩家舰固定 v2）。 */
+    /** 难度伤害区间（首帧惰性解析，取 drone 母舰；玩家舰按我方档位系数）。 */
     private var damageMin = -1f
     private var damageMax = -1f
 

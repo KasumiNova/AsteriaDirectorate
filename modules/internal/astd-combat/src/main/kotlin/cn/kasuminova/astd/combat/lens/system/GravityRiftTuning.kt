@@ -18,7 +18,7 @@ import cn.kasuminova.astd.combat.lens.system.GravityRiftTuning.VORTEX_FADE_OUT
  * 布一枚裂隙雷，(射程 − 命中长度)/200 + 1、上限 5）。数值集中在此声明，
  * 供系统脚本每帧实时解析（LunaLib 设置变更即时生效），并由单元测试直接驱动。
  *
- * 玩家来源（owner == 0）固定 v2（砺刃档）。
+ * 玩家来源（owner == 0）按我方档位取值（默认砺刃 v2，见 DifficultyTuning.valueFor）。
  */
 object GravityRiftTuning {
 
@@ -76,10 +76,10 @@ object GravityRiftTuning {
         val damageMax: Float,
     )
 
-    /** 难度取值唯一入口：玩家固定 v2，否则按轨一 k_s 映射。 */
+    /** 难度取值唯一入口：玩家阵营按我方档位（默认砺刃 v2）映射，其余阵营按轨一 k_s 映射。 */
     fun resolve(tuning: DifficultyTuning, isPlayer: Boolean): Values = Values(
-        damageMin = if (isPlayer) RIFT_DAMAGE_MIN.v2 else tuning.value(RIFT_DAMAGE_MIN),
-        damageMax = if (isPlayer) RIFT_DAMAGE_MAX.v2 else tuning.value(RIFT_DAMAGE_MAX),
+        damageMin = tuning.valueFor(RIFT_DAMAGE_MIN, isPlayer),
+        damageMax = tuning.valueFor(RIFT_DAMAGE_MAX, isPlayer),
     )
 
     /**

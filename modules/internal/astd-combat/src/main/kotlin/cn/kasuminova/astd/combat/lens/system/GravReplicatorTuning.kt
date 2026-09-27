@@ -11,7 +11,7 @@ import cn.kasuminova.astd.api.difficulty.ScalingEntry
  * 集中在此声明，供系统脚本每帧实时解析（LunaLib 设置变更即时生效），
  * 并由单元测试直接驱动。
  *
- * 玩家来源（owner == 0）固定 v2（砺刃档），对照 GravityRiftTuning 既有口径。
+ * 玩家来源（owner == 0）按我方档位取值（默认砺刃 v2，见 DifficultyTuning.valueFor）。
  */
 object GravReplicatorTuning {
 
@@ -41,10 +41,10 @@ object GravReplicatorTuning {
         val fluxRatio: Float,
     )
 
-    /** 难度取值唯一入口：玩家固定 v2，否则按轨一 k_s 映射。 */
+    /** 难度取值唯一入口：玩家阵营按我方档位（默认砺刃 v2）映射，其余阵营按轨一 k_s 映射。 */
     fun resolve(tuning: DifficultyTuning, isPlayer: Boolean): Values = Values(
-        damageRatio = pick(tuning, isPlayer, REPLICA_DAMAGE_RATIO),
-        fluxRatio = pick(tuning, isPlayer, REPLICA_FLUX_RATIO),
+        damageRatio = tuning.valueFor(REPLICA_DAMAGE_RATIO, isPlayer),
+        fluxRatio = tuning.valueFor(REPLICA_FLUX_RATIO, isPlayer),
     )
 
     /** 第 [copyIndex] 发（0 起）复制体的到期时刻（纯函数，相对弹体被扫描记录的秒数）。 */
@@ -58,7 +58,4 @@ object GravReplicatorTuning {
 
     /** 激活软辐能（纯函数）：舰船基础最大辐能容量 × [ACTIVATION_FLUX_FRACTION]。 */
     fun activationFlux(maxFluxBase: Float): Float = maxFluxBase * ACTIVATION_FLUX_FRACTION
-
-    private fun pick(tuning: DifficultyTuning, isPlayer: Boolean, entry: ScalingEntry): Float =
-        if (isPlayer) entry.v2 else tuning.value(entry)
 }

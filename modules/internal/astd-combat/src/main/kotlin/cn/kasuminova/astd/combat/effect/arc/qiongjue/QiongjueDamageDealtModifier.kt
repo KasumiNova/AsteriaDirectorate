@@ -21,7 +21,7 @@ import org.lwjgl.util.vector.Vector2f
  * 按 weaponId 过滤逐命中写入本发伤害乘区——只加成穷距弹体，天然不波及其他武器。
  *
  * 每舰至多登记一个实例（[ensure] 幂等）；无 Buff / 层数为 0 / 非穷距弹体时返回 null 零开销放行。
- * 难度取值每次命中调用 [QiongjueStackMath.resolve] 一次（不缓存，玩家固定 v2）。
+ * 难度取值每次命中调用 [QiongjueStackMath.resolve] 一次（不缓存，玩家按我方档位系数）。
  */
 class QiongjueDamageDealtModifier : DamageDealtModifier {
 

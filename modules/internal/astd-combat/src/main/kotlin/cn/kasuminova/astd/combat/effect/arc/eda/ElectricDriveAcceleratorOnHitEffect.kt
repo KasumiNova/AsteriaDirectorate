@@ -72,7 +72,7 @@ class ElectricDriveAcceleratorOnHitEffect : OnHitEffectPlugin {
             return
         }
 
-        // 3. 难度取值：玩家固定 v2（每次命中取一次，不缓存）。
+        // 3. 难度取值：玩家按我方档位系数（每次命中取一次，不缓存）。
         val maxPct = ElectricDriveAcceleratorDifficulty.chargeMaxPct(DifficultyTuningImpl, source.owner)
         if (maxPct <= 0f) {
             if (!warnedZeroMaxPct) {

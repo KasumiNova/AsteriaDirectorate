@@ -20,7 +20,7 @@ import java.util.IdentityHashMap
  * - 首道电弧随首伤帧立即打出，其后每 [GeminiDemDifficulty.EMP_ARC_INTERVAL] 秒一道
  *   （末次命中点 → 目标，`spawnEmpArc` 原版行为自动索敌武器/引擎模块——规格 §0.1 事实 #15），
  *   每轮打击（自 beam 首伤帧起）预算固定 [GeminiDemDifficulty.EMP_ARC_COUNT] 道，打满即止；
- *   单道 EMP = 面板 × EMP 总量难度倍率（[GeminiDemDifficulty.EMP_TOTAL_FRACTION]，玩家恒 v2/敌版轨一）
+ *   单道 EMP = 面板 × EMP 总量难度倍率（[GeminiDemDifficulty.EMP_TOTAL_FRACTION]，玩家按我方档位系数/敌版轨一）
  *   × [GeminiDemDifficulty.EMP_ARC_SHARE_OF_TOTAL]，战机型弹头再乘 [GeminiDemDifficulty.FIGHTER_DAMAGE_MULT]。
  *
  * 战机型削弱（数据驱动链，见 [GeminiDemDifficulty] 战机链注释）：战机版弹头 spec 的
@@ -143,7 +143,7 @@ class GeminiDemPayloadBeamEffect : BeamEffectPlugin {
     }
 
     /**
-     * 单道 EMP 伤害结算：面板 × EMP 总量难度倍率（玩家恒 v2/敌版轨一）× 单道占比 × 战机削弱。
+     * 单道 EMP 伤害结算：面板 × EMP 总量难度倍率（玩家按我方档位系数/敌版轨一）× 单道占比 × 战机削弱。
      * [fighterPayload] 按 payload 武器 spec id 判定（数据驱动削弱链的脚本侧落点：
      * 光束伤害已由战机版 spec dps 折算，EMP 电弧是脚本显式数值，须在此乘算）。
      */

@@ -1,7 +1,9 @@
 package cn.kasuminova.astd.combat.hullmods.base
 
+import cn.kasuminova.astd.impl.combat.DualModeSettingsImpl
 import com.fs.starfarer.api.combat.ShipHullSpecAPI
 import com.fs.starfarer.api.combat.ShipVariantAPI
+import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
@@ -78,10 +80,51 @@ class ASTDGenericDualModeTest {
             "载人模式应设同向 next marker",
         )
     }
+
+    @AfterTest
+    fun clearExemptOverride() {
+        DualModeSettingsImpl.installExemptForTests(null)
+    }
+
+    @Test
+    fun `automated mode carries no_auto_penalty tag when exemption enabled`() {
+        val variant = FakeGenericVariant()
+        variant.activateDualMode(GENERIC_DUAL_MODE_CONFIG, GENERIC_DUAL_MODE_CONFIG.automatedModeId, null)
+        assertTrue(
+            variant.hasTag(NO_AUTO_PENALTY_TAG),
+            "无人模式且免自动化点数选项默认开启：应挂 no_auto_penalty 标签",
+        )
+    }
+
+    @Test
+    fun `crewed mode never carries no_auto_penalty tag`() {
+        val variant = FakeGenericVariant()
+        variant.activateDualMode(GENERIC_DUAL_MODE_CONFIG, GENERIC_DUAL_MODE_CONFIG.automatedModeId, null)
+        variant.activateDualMode(GENERIC_DUAL_MODE_CONFIG, GENERIC_DUAL_MODE_CONFIG.crewedModeId, null)
+        assertFalse(variant.hasTag(NO_AUTO_PENALTY_TAG), "载人模式应移除 no_auto_penalty 标签")
+    }
+
+    @Test
+    fun `syncDualModeAutoPenaltyTag converges tag when exemption toggled`() {
+        val variant = FakeGenericVariant()
+        variant.activateDualMode(GENERIC_DUAL_MODE_CONFIG, GENERIC_DUAL_MODE_CONFIG.automatedModeId, null)
+        assertTrue(variant.hasTag(NO_AUTO_PENALTY_TAG), "前置：无人模式默认挂标签")
+
+        // 选项热重载为关闭：下次 stats 刷新（ensureASTDDualModeState 内部调用本同步）收敛为无标签
+        DualModeSettingsImpl.installExemptForTests(false)
+        variant.syncDualModeAutoPenaltyTag(GENERIC_DUAL_MODE_CONFIG)
+        assertFalse(variant.hasTag(NO_AUTO_PENALTY_TAG), "选项关闭后应在 stats 刷新收敛为无标签")
+
+        // 选项恢复开启：收敛回有标签（幂等：重复同步不产生额外写操作）
+        DualModeSettingsImpl.installExemptForTests(true)
+        variant.syncDualModeAutoPenaltyTag(GENERIC_DUAL_MODE_CONFIG)
+        variant.syncDualModeAutoPenaltyTag(GENERIC_DUAL_MODE_CONFIG)
+        assertTrue(variant.hasTag(NO_AUTO_PENALTY_TAG), "选项重新开启后应在 stats 刷新收敛回有标签")
+    }
 }
 
 /**
- * 最小 ShipVariantAPI 假实现：仅承载状态机触达的 permaMods / hullMods 集合。
+ * 最小 ShipVariantAPI 假实现：仅承载状态机触达的 permaMods / hullMods / tags 集合。
  * getHullSpec 返回 null（被测的 [activateDualMode] / [hasASTDDualModeAutomated] 不读 hullSpec）。
  * 其余方法抛 [notUsed]，确保状态机若触达预期外接口立即失败（Fail Fast）。不使用反射 / mock 框架。
  */
@@ -89,6 +132,7 @@ private class FakeGenericVariant : ShipVariantAPI {
 
     private val perma = linkedSetOf<String>()
     private val mods = linkedSetOf<String>()
+    private val tags = linkedSetOf<String>()
 
     override fun getHullSpec(): ShipHullSpecAPI? = null
     override fun getPermaMods(): MutableSet<String> = perma
@@ -186,11 +230,19 @@ private class FakeGenericVariant : ShipVariantAPI {
     override fun isDHull(): Boolean = notUsed()
     override fun getStationModules(): MutableMap<String, String> = notUsed()
     override fun getNonBuiltInWings(): MutableList<String> = notUsed()
-    override fun hasTag(p0: String): Boolean = notUsed()
-    override fun addTag(p0: String) = notUsed()
-    override fun removeTag(p0: String) = notUsed()
-    override fun getTags(): MutableCollection<String> = notUsed()
-    override fun clearTags() = notUsed()
+    override fun hasTag(p0: String): Boolean = tags.contains(p0)
+    override fun addTag(p0: String) {
+        tags.add(p0)
+    }
+
+    override fun removeTag(p0: String) {
+        tags.remove(p0)
+    }
+
+    override fun getTags(): MutableCollection<String> = tags
+    override fun clearTags() {
+        tags.clear()
+    }
     override fun clear() = notUsed()
     override fun getOriginalVariant(): String = notUsed()
     override fun setOriginalVariant(p0: String) = notUsed()

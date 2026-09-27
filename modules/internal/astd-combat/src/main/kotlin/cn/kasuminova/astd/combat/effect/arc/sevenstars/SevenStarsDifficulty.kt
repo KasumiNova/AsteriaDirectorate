@@ -14,7 +14,7 @@ import com.fs.starfarer.api.combat.ShipAPI
  * （战斗中途改 LunaLib 设置不影响在飞弹体），连跳脚本与单元测试直接驱动本对象。
  *
  * 数值缩放口径（90 计划全局约定）：敌方/友军 AI 按轨一 k_s 三锚点映射；
- * 玩家来源（owner == 0）固定 v2（对照 ASTDVirtualParticleLatticeWebHullMod 既有口径）。
+ * 玩家来源（owner == 0）按我方档位系数映射（默认砺刃 2.0，等价早期固定 v2 口径）。
  * 多段终结为破晓（k_s = 5）敌版限定（设计案 2026-07-28 微调）：玩家恒单段。
  */
 object SevenStarsDifficulty {
@@ -85,7 +85,7 @@ object SevenStarsDifficulty {
     )
 
     /**
-     * 按来源快照三锚点：玩家（owner == 0）固定 v2 且恒单段终结；
+     * 按来源快照三锚点：玩家（owner == 0）按我方档位系数映射且恒单段终结；
      * 敌方/友军 AI 走 [DifficultyTuningImpl] 的 k_s 映射，k_s >= 5 解锁多段终结；
      * 无主弹体（source == null，罕见）按敌方口径取值并 WARN 一次。
      */
@@ -95,11 +95,10 @@ object SevenStarsDifficulty {
             log.warn("“七星”折跃发射器弹体无来源舰船，难度取值按敌方口径（k_s 映射）结算")
         }
         val playerOwned = source?.owner == 0
-        fun pick(e: ScalingEntry): Float = if (playerOwned) e.v2 else DifficultyTuningImpl.value(e)
         return SevenStarsTuning(
-            firstHitMult = pick(FIRST_HIT_MULT),
-            perJumpBonus = pick(PER_JUMP_BONUS),
-            bonusCap = pick(BONUS_CAP),
+            firstHitMult = DifficultyTuningImpl.valueFor(FIRST_HIT_MULT, playerOwned),
+            perJumpBonus = DifficultyTuningImpl.valueFor(PER_JUMP_BONUS, playerOwned),
+            bonusCap = DifficultyTuningImpl.valueFor(BONUS_CAP, playerOwned),
             multiSegmentTerminal = !playerOwned && DifficultyTuningImpl.fixedScale >= DAWN_SCALE_THRESHOLD,
         )
     }

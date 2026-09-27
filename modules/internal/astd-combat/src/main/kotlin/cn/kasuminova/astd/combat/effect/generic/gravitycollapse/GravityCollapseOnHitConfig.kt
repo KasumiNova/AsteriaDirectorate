@@ -8,7 +8,7 @@ import cn.kasuminova.astd.api.difficulty.ScalingEntry
  * 该类型被 [GravityCollapseOnHitHandler] 使用；单独放文件里以保证文件名与类名对应。
  *
  * 难度缩放数值以三锚点 [ScalingEntry] 登记（线性映射），运行时按来源舰归属解析：
- * 玩家来源固定取 v2 设计基准，敌方来源由固有缩放系数 k_s 派生。
+ * 玩家来源按我方档位系数映射（默认砺刃 2.0，等价早期固定 v2 口径），敌方来源由固有缩放系数 k_s 派生。
  */
 internal data class GravityCollapseOnHitConfig(
     /** tick 间隔（秒）。 */

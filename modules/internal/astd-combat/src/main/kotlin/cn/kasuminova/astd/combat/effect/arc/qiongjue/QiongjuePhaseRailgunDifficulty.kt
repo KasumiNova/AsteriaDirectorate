@@ -6,7 +6,7 @@ import cn.kasuminova.astd.api.difficulty.ScalingEntry
  * “穷距”相位轨道炮的难度三锚点声明（规格 05 §2.1，定案 v1.0 数值）。
  *
  * 动机：持续演算的三项缩放数值（每层加成/切换保留/衰减速率）集中登记在一处，
- * 取值统一走 [QiongjueStackMath.resolve]（玩家 owner==0 固定 v2，否则轨一 k_s 映射）；
+ * 取值统一走 [QiongjueStackMath.resolve]（玩家 owner==0 按我方档位系数映射，否则轨一 k_s 映射）；
  * 层数上限/衰减窗口/射程/面板为不缩放常量（2026-07-29 裁定）。
  */
 object QiongjuePhaseRailgunDifficulty {

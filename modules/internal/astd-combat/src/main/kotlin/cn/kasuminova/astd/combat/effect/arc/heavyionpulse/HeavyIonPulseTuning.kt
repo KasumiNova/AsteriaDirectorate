@@ -11,9 +11,10 @@ import cn.kasuminova.astd.api.difficulty.ScalingTable
  * 供 OnHit 调用并由单元测试直接驱动。
  *
  * 数值缩放口径（2026-09 修订）：泄放概率 / EMP 倍率 / 抗性削减改为五档精确查表
- * （[ScalingTable]，逐档语义不做线性插值）；玩家来源（owner == 0）固定取 v2（砺刃档）。
+ * （[ScalingTable]，逐档语义不做线性插值）；玩家来源（owner == 0）按我方档位取值
+ * （默认砺刃 v2，见 DifficultyTuning.valueFor）。
  * EMP 贯穿不入查表——激活条件为 `fixedScale >= 5f && !isPlayer`（破晓敌版限定，
- * 玩家版本 owner == 0 固定 v2 口径天然排除：玩家永远不会获得此特效）。
+ * 玩家版本天然排除：玩家永远不会获得此特效）。
  */
 object HeavyIonPulseTuning {
 
@@ -49,23 +50,23 @@ object HeavyIonPulseTuning {
         val dischargeEmpMult: Float,
         /** 每层 EMP 抗性削减（绝对百分点，作用于目标 empDamageTakenMult 的绝对位移）。 */
         val empResistPerStack: Float,
-        /** 来源是否为玩家（owner == 0）：贯穿激活判定与玩家固定 v2 口径的身份依据。 */
+        /** 来源是否为玩家（owner == 0）：贯穿激活判定（敌版限定）与我方档位取值的身份依据。 */
         val isPlayer: Boolean,
     )
 
     /**
-     * 难度取值唯一入口：玩家来源固定 v2，否则按轨一 k_s 五档查表。
+     * 难度取值唯一入口：玩家阵营按我方档位（默认砺刃 v2）五档查表，其余阵营按轨一 k_s 查表。
      * 每次命中调用一次（不缓存），保证 LunaLib 设置变更即时生效。
      */
     fun resolve(tuning: DifficultyTuning, isPlayer: Boolean): Values = Values(
-        dischargeChance = if (isPlayer) DISCHARGE_CHANCE.v2 else tuning.value(DISCHARGE_CHANCE),
-        dischargeEmpMult = if (isPlayer) DISCHARGE_EMP_MULT.v2 else tuning.value(DISCHARGE_EMP_MULT),
-        empResistPerStack = if (isPlayer) EMP_RESIST_PER_STACK.v2 else tuning.value(EMP_RESIST_PER_STACK),
+        dischargeChance = tuning.valueFor(DISCHARGE_CHANCE, isPlayer),
+        dischargeEmpMult = tuning.valueFor(DISCHARGE_EMP_MULT, isPlayer),
+        empResistPerStack = tuning.valueFor(EMP_RESIST_PER_STACK, isPlayer),
         isPlayer = isPlayer,
     )
 
     /**
-     * EMP 贯穿激活判定：破晓敌版限定（玩家固定 v2 口径天然排除）。
+     * EMP 贯穿激活判定：破晓敌版限定（玩家阵营不参与）。
      */
     fun pierceActive(isPlayer: Boolean, fixedScale: Float): Boolean = !isPlayer && fixedScale >= PIERCE_MIN_SCALE
 

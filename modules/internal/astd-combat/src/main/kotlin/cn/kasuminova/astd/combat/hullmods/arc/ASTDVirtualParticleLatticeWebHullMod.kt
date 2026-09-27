@@ -252,10 +252,10 @@ class ASTDVirtualParticleLatticeWebHullMod : BaseHullMod() {
 
         /**
          * 防守虚粒子上限：敌方本舰走轨一（[DifficultyTuningImpl] 按固有缩放系数映射三锚点）；
-         * 玩家本舰固定设计基准 v2（玩家侧数值不吃难度轨）。
+         * 玩家本舰按我方档位系数映射（默认砺刃 2.0，等价早期设计基准 v2 口径）。
          */
         private fun defensiveCap(ship: ShipAPI): Int {
-            val cap = if (ship.owner == 0) DEFENSIVE_CAP.v2 else DifficultyTuningImpl.value(DEFENSIVE_CAP)
+            val cap = DifficultyTuningImpl.valueFor(DEFENSIVE_CAP, ship.owner == 0)
             return cap.toInt().coerceIn(DEFENSIVE_CAP.v1.toInt(), DEFENSIVE_CAP.v5.toInt())
         }
 

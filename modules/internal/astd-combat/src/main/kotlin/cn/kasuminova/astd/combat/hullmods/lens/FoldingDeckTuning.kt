@@ -17,7 +17,7 @@ import kotlin.math.roundToInt
  * 联队成员上限判定）。`extraDuration` 设为与原生战机一致的 1e7（≈ 永久），使额外编制
  * 与原生战机行为完全一致（不会因整备倒计时归零而强制返航）。
  *
- * 玩家来源（owner == 0）固定 v2（砺刃档）。
+ * 玩家来源（owner == 0）按我方档位取值（默认砺刃 v2，见 DifficultyTuning.valueFor）。
  */
 object FoldingDeckTuning {
 
@@ -31,11 +31,11 @@ object FoldingDeckTuning {
     const val EXTRA_FIGHTER_DURATION = 1e7f
 
     /**
-     * 难度取值唯一入口：玩家固定 v2，否则按轨一 k_s 映射。
+     * 难度取值唯一入口：玩家阵营按我方档位（默认砺刃 v2）映射，其余阵营按轨一 k_s 映射。
      * 每次 advance 调用（不缓存），保证 LunaLib 设置变更即时生效。
      */
     fun resolveWingSizeMult(tuning: DifficultyTuning, isPlayer: Boolean): Float =
-        if (isPlayer) WING_SIZE_BONUS.v2 else tuning.value(WING_SIZE_BONUS)
+        tuning.valueFor(WING_SIZE_BONUS, isPlayer)
 
     /**
      * 联队规模上限折算（纯函数）：基础编制 × (1 + 加成) 四舍五入；加成失效（≤ 0）时

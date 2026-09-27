@@ -11,7 +11,7 @@ import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
  * 动机：EMP 电弧总量与同步冲击增伤是本组的两条缩放数值机制；id 常量与难度锚点集中一处，
  * 供 Salvo/TrackAI/PayloadBeam/SyncHandler 四类接线引用，面板改动时单点核对。
  *
- * 数值缩放口径（90 计划全局约定）：敌方按轨一 k_s 三锚点映射；玩家来源（owner == 0）固定 v2。
+ * 数值缩放口径（90 计划全局约定）：敌方按轨一 k_s 三锚点映射；玩家来源（owner == 0）按我方档位系数（默认砺刃 2.0）。
  */
 object GeminiDemDifficulty {
 
@@ -72,7 +72,7 @@ object GeminiDemDifficulty {
     /**
      * EMP 电弧总量（面板倍率）：迟暮 100% / 砺刃 200% / 破晓 500%。
      * 单道 EMP = 面板 × 本倍率 × [EMP_ARC_SHARE_OF_TOTAL]（v1/v2/v5 = 200/400/1000）；
-     * 玩家固定 v2，敌方按轨一 k_s（[resolve]）。
+     * 玩家按我方档位系数，敌方按轨一 k_s（[resolve]）。
      */
     val EMP_TOTAL_FRACTION = ScalingEntry(1.0f, 2.0f, 5.0f, ScalingMap.LINEAR)
 
@@ -118,7 +118,7 @@ object GeminiDemDifficulty {
     const val SYNC_VISUAL_KEY = "astd_gemini_dem_sync_visual"
 
     /**
-     * 难度统一取值：玩家来源（[sourceOwner] == 0）固定 v2，否则按轨一 k_s 映射。
+     * 难度统一取值：玩家来源（[sourceOwner] == 0）按我方档位系数，否则按轨一 k_s 映射。
      * 命中时每次调用（不缓存，对齐 `StellarMrmDifficulty` 同型入口）。
      */
     fun resolve(entry: ScalingEntry, sourceOwner: Int): Float =
@@ -126,5 +126,5 @@ object GeminiDemDifficulty {
 
     /** 可注入 [DifficultyTuning] 的取值入口（单元测试与运行共用同一路径）。 */
     fun resolve(tuning: DifficultyTuning, entry: ScalingEntry, sourceOwner: Int): Float =
-        if (sourceOwner == 0) entry.v2 else tuning.value(entry)
+        tuning.valueFor(entry, sourceOwner == 0)
 }

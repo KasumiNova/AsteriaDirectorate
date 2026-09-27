@@ -20,11 +20,11 @@ object QiongjueStackMath {
     internal const val STACK_EPS = 1e-4f
 
     /**
-     * 难度取值唯一入口：玩家来源（owner == 0）固定 v2，否则按轨一 k_s 三锚点映射。
+     * 难度取值唯一入口：玩家来源（owner == 0）按我方档位（默认砺刃 v2）取值，否则按轨一 k_s 三锚点映射。
      * 每次命中/每帧调用（不缓存），LunaLib 设置变更即时生效。
      */
     fun resolve(tuning: DifficultyTuning, entry: ScalingEntry, owner: Int): Float =
-        if (owner == 0) entry.v2 else tuning.value(entry)
+        tuning.valueFor(entry, owner == 0)
 
     /**
      * 异目标折算保留层数：`floor(stacks × retainPct)`。

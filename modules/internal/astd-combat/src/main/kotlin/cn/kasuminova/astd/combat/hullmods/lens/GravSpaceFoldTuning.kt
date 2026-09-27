@@ -11,7 +11,7 @@ import org.lwjgl.util.vector.Vector2f
  * 计算集中在此声明，供 hullmod 每帧实时解析（LunaLib 设置变更即时生效），
  * 并由单元测试直接驱动。
  *
- * 玩家来源（owner == 0）固定 v2（砺刃档），对照 GravPhaseDeckTuning 既有口径。
+ * 玩家来源（owner == 0）按我方档位取值（默认砺刃 v2，见 DifficultyTuning.valueFor）。
  */
 object GravSpaceFoldTuning {
 
@@ -43,11 +43,11 @@ object GravSpaceFoldTuning {
         val beamDamageTakenMult: Float,
     )
 
-    /** 难度取值唯一入口：玩家固定 v2，否则按轨一 k_s 映射。 */
+    /** 难度取值唯一入口：玩家阵营按我方档位（默认砺刃 v2）映射，其余阵营按轨一 k_s 映射。 */
     fun resolve(tuning: DifficultyTuning, isPlayer: Boolean): Values = Values(
-        foldChanceBase = pick(tuning, isPlayer, FOLD_CHANCE_BASE),
-        foldChanceCap = pick(tuning, isPlayer, FOLD_CHANCE_CAP),
-        beamDamageTakenMult = 1f - pick(tuning, isPlayer, BEAM_DAMAGE_TAKEN_REDUCTION),
+        foldChanceBase = tuning.valueFor(FOLD_CHANCE_BASE, isPlayer),
+        foldChanceCap = tuning.valueFor(FOLD_CHANCE_CAP, isPlayer),
+        beamDamageTakenMult = 1f - tuning.valueFor(BEAM_DAMAGE_TAKEN_REDUCTION, isPlayer),
     )
 
     /**
@@ -79,7 +79,4 @@ object GravSpaceFoldTuning {
         if (existingMark != null) return existingMark to false
         return if (roll < chance) MARK_FOLDED to true else MARK_NO_FOLD to false
     }
-
-    private fun pick(tuning: DifficultyTuning, isPlayer: Boolean, entry: ScalingEntry): Float =
-        if (isPlayer) entry.v2 else tuning.value(entry)
 }

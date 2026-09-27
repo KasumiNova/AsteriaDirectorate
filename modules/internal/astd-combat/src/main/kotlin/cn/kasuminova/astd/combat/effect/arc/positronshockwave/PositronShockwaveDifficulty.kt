@@ -18,7 +18,7 @@ import com.fs.starfarer.api.combat.ShipAPI
  * 插件内不留重复逻辑。
  *
  * 数值缩放口径（90 计划全局约定）：敌方/友军 AI 按轨一 k_s 三锚点映射；
- * 玩家来源（owner == 0）固定 v2（对照 ASTDVirtualParticleLatticeWebHullMod 既有口径）。
+ * 玩家来源（owner == 0）按我方档位系数映射（默认砺刃 2.0，等价早期固定 v2 口径）。
  */
 object PositronShockwaveDifficulty {
     private val log = Global.getLogger(PositronShockwaveDifficulty::class.java)
@@ -55,7 +55,7 @@ object PositronShockwaveDifficulty {
     data class Resolved(val halfAngleDeg: Float, val range: Float, val damage: Float)
 
     /**
-     * 按来源结算三锚点：玩家（owner == 0）固定 v2；敌方/友军 AI 走 [DifficultyTuningImpl] 的 k_s 映射；
+     * 按来源结算三锚点：玩家（owner == 0）按我方档位系数映射；敌方/友军 AI 走 [DifficultyTuningImpl] 的 k_s 映射；
      * 无主弹体（source == null，罕见）按敌方口径取值并 WARN 一次。
      */
     fun resolve(source: ShipAPI?): Resolved {
@@ -63,8 +63,12 @@ object PositronShockwaveDifficulty {
             nullSourceWarned = true
             log.warn("正电子冲击波弹体无来源舰船，难度取值按敌方口径（k_s 映射）结算")
         }
-        fun pick(e: ScalingEntry): Float = if (source?.owner == 0) e.v2 else DifficultyTuningImpl.value(e)
-        return Resolved(pick(CONE_ANGLE) / 2f, pick(CONE_RANGE), PANEL_DAMAGE * pick(DAMAGE_MULT))
+        val isPlayer = source?.owner == 0
+        return Resolved(
+            DifficultyTuningImpl.valueFor(CONE_ANGLE, isPlayer) / 2f,
+            DifficultyTuningImpl.valueFor(CONE_RANGE, isPlayer),
+            PANEL_DAMAGE * DifficultyTuningImpl.valueFor(DAMAGE_MULT, isPlayer),
+        )
     }
 
     /**

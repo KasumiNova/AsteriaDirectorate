@@ -50,7 +50,7 @@ class ChargeNeedleOnHitEffect : OnHitEffectPlugin {
         // 某些实体命中回调 point 可能为 null；回退弹体当前位置（对齐 HighFluxShieldPressure 样板）。
         val hitPoint = point ?: projectile.location ?: return
 
-        // 玩家固定 v2 取值在每次命中处调用（非缓存）；projectile.source 为 null（游离弹）按非玩家口径。
+        // 玩家按我方档位系数取值，每次命中处调用（非缓存）；projectile.source 为 null（游离弹）按非玩家口径。
         // 固定软辐能分档依据目标舰体型（hullSize 实时读取）。
         val values = ChargeNeedleTuning.resolve(DifficultyTuningImpl, isPlayer = projectile.source?.owner == 0, ship.hullSize)
 

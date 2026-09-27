@@ -12,12 +12,12 @@ import kotlin.math.roundToInt
  * 自定义非整数 k_s（LunaLib 自定义档）：就近取整到最近档位（half-up，如 2.5 → v3），
  * clamp 到 [1, 5]；查表不插值，保证逐档语义不被中间态稀释。
  *
- * 玩家侧口径与 [ScalingEntry] 一致：固定取 [v2]（砺刃档 = 设计基准）。
+ * 玩家侧口径与 [ScalingEntry] 一致：以我方档位系数（默认砺刃 2.0，等价早期固定 v2 口径）查表。
  */
 data class ScalingTable(
     /** k_s = 1（迟暮档）取值。 */
     val v1: Float,
-    /** k_s = 2（砺刃档，设计基准；玩家侧固定取此值）取值。 */
+    /** k_s = 2（砺刃档，设计基准；玩家侧默认取此值）取值。 */
     val v2: Float,
     /** k_s = 3（远征档）取值。 */
     val v3: Float,

@@ -6,10 +6,12 @@ import cn.kasuminova.astd.combat.hullmods.base.ASTDDualModeRegistry.configForVar
 import cn.kasuminova.astd.combat.hullmods.base.ASTDDualModeRegistry.genericConfigFor
 import cn.kasuminova.astd.combat.hullmods.base.ASTDDualModeRegistry.register
 import cn.kasuminova.astd.combat.hullmods.base.ASTDDualModeSwitcherIds.SWITCHER_ID
+import cn.kasuminova.astd.impl.combat.DualModeSettingsImpl
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.MutableShipStatsAPI
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.combat.ShipVariantAPI
+import com.fs.starfarer.api.impl.campaign.ids.Tags
 
 /**
  * ASTD 通用双模式（载人/无人）配置：一艘双模式舰船的全部 hullmod / 系统 id 集合。
@@ -219,6 +221,9 @@ fun ShipVariantAPI.ensureASTDDualModeState(config: ASTDDualModeConfig, stats: Mu
     if (!isASTDShipVariant()) return
 
     migrateLegacyDualModeState(config)
+    // 稳定态/异常态收敛前同步一次免惩罚标签：选项热重载后无需切模式即可在下次 stats 刷新收敛
+    // （切模式路径由 activateDualMode 内部再同步一次，幂等）。
+    syncDualModeAutoPenaltyTag(config)
 
     val hasCrewed = permaMods.contains(config.crewedModeId)
     val hasAutomated = permaMods.contains(config.automatedModeId)
@@ -227,6 +232,9 @@ fun ShipVariantAPI.ensureASTDDualModeState(config: ASTDDualModeConfig, stats: Mu
         removePermaMod(config.automatedModeId)
         removePermaMod("automated")
         setDualModeNextMarker(config, config.nextCrewedMarker)
+        // 收敛到载人后再同步一次免惩罚标签：上面的前置同步发生在移除无人模式之前，
+        // 不补这一次会留下「已载人但仍挂 no_auto_penalty」的短暂错位窗口
+        syncDualModeAutoPenaltyTag(config)
         return
     }
 
@@ -264,6 +272,8 @@ fun ShipVariantAPI.activateDualMode(config: ASTDDualModeConfig, modeId: String, 
     } else {
         removePermaMod("automated")
     }
+    // 同步原版 no_auto_penalty 标签（「免自动化点数」选项开启时的无人模式豁免）
+    syncDualModeAutoPenaltyTag(config)
     // 战役上下文：切换模式时自动卸下不兼容的舰长/AI 核心
     clearIncompatibleDualModeCaptain(stats)
 }
@@ -274,6 +284,52 @@ fun ShipVariantAPI.activateDualMode(config: ASTDDualModeConfig, modeId: String, 
  */
 fun ShipVariantAPI.hasASTDDualModeAutomated(config: ASTDDualModeConfig): Boolean =
     permaMods.contains(config.automatedModeId) || hasHullMod(config.automatedModeId)
+
+/** 原版「无自动化惩罚」variant 标签：挂上后不计入自动化舰船点数，且不受 Automated 船插的最大 CR 惩罚。 */
+const val NO_AUTO_PENALTY_TAG: String = Tags.TAG_AUTOMATED_NO_PENALTY
+
+/**
+ * 同步原版 [NO_AUTO_PENALTY_TAG] 标签（「双模式切换器自动模式免自动化点数」选项的落点）。
+ *
+ * 口径：无人模式且选项开启 → 挂标签（不计自动化点数、不受 Automated 船插 CR 惩罚，原版
+ * `no_auto_penalty` 把这两件事捆绑为同一「无自动化惩罚」语义，见 impl 侧 DualModeSettingsImpl）；
+ * 其余情况（载人模式 / 选项关闭）→ 移除标签。
+ *
+ * 调用点：[ensureASTDDualModeState] 与 [activateDualMode]（每次 stats 刷新必经，幂等——
+ * 标签状态与目标一致时不做任何写操作）。
+ */
+fun ShipVariantAPI.syncDualModeAutoPenaltyTag(config: ASTDDualModeConfig) {
+    val exempt = hasASTDDualModeAutomated(config) && DualModeSettingsImpl.automatedModeExemptFromAutoPoints
+    if (exempt == hasTag(NO_AUTO_PENALTY_TAG)) return
+    if (exempt) addTag(NO_AUTO_PENALTY_TAG) else removeTag(NO_AUTO_PENALTY_TAG)
+}
+
+/**
+ * 安装「免自动化点数」选项的热重载钩子：LunaLib 设置变更时立即对玩家舰队全部双模式舰
+ * 同步 [NO_AUTO_PENALTY_TAG] 标签并刷新成员 stats（满足「改后即时生效」，免等下次 stats 重建）。
+ *
+ * 由 AsteriaDirectoratePlugin.onApplicationLoad 调用（与 registerLensDualModeConfig 同批）；
+ * 重复调用等价于重装同一钩子，幂等。
+ */
+fun installDualModeAutoPointsHook() {
+    DualModeSettingsImpl.exemptChangedHook = { syncPlayerFleetAutoPenaltyTags() }
+}
+
+/**
+ * 对玩家舰队全部已注册双模式舰同步免惩罚标签并刷新 stats。
+ * 无战役上下文（主菜单等）时无事可做——标签由 stats 刷新路径（[ensureASTDDualModeState]）兜底收敛。
+ */
+private fun syncPlayerFleetAutoPenaltyTags() {
+    val fleet = Global.getSector()?.playerFleet ?: return
+    fleet.fleetData.membersListCopy.forEach { member ->
+        val variant = member.variant ?: return@forEach
+        if (!variant.isASTDShipVariant()) return@forEach
+        val config = ASTDDualModeRegistry.configForVariant(variant) ?: return@forEach
+        variant.syncDualModeAutoPenaltyTag(config)
+        // 标签影响 Automated 船插的 CR 惩罚（stats 层），显式重建成员 stats 令其即时生效
+        member.updateStats()
+    }
+}
 
 /**
  * 私有：把历史存档里以普通 hullMod 形式存在的模式/标记迁移为 permaMod（泛化自 arc migrateLegacyModeState）。

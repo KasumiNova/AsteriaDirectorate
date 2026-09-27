@@ -189,7 +189,7 @@ class GravSpaceFoldHullMod : BaseHullMod() {
         width: Float,
         isForModSpec: Boolean,
     ) {
-        // tooltip 展示口径：无舰上下文（装配面板）按玩家档 v2 展示
+        // tooltip 展示口径：无舰上下文（装配面板）按我方档位展示（默认砺刃 v2）
         val values = GravSpaceFoldTuning.resolve(DifficultyTuningImpl, ship == null || ship.owner == 0)
         tooltip.buildWith {
             spacer(6f)

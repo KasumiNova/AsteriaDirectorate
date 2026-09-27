@@ -30,7 +30,7 @@ import java.awt.Color
  * 约贯星 25% 规模起始：半角 12°、锥长 90su、冷白主色）——穷距没有锥状冲击机制，
  * 仅借用锥面视觉表达相位弹头命中质构，无伤害结算。
  *
- * 难度取值每次命中调用 [QiongjueStackMath.resolve] 一次（不缓存，玩家固定 v2）。
+ * 难度取值每次命中调用 [QiongjueStackMath.resolve] 一次（不缓存，玩家按我方档位系数）。
  */
 class QiongjuePhaseRailgunOnHitEffect : OnHitEffectPlugin {
 

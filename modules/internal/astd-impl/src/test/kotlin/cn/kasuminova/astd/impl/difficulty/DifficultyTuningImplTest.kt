@@ -1,6 +1,8 @@
 package cn.kasuminova.astd.impl.difficulty
 
+import cn.kasuminova.astd.api.difficulty.DifficultyTuning
 import cn.kasuminova.astd.api.difficulty.ScalingEntry
+import cn.kasuminova.astd.api.difficulty.ScalingTable
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -18,6 +20,7 @@ class DifficultyTuningImplTest {
     @AfterTest
     fun clearOverride() {
         DifficultyTuningImpl.installScaleForTests(null)
+        DifficultyTuningImpl.installPlayerScaleForTests(null)
     }
 
     @Test
@@ -66,5 +69,35 @@ class DifficultyTuningImplTest {
         val resolved = DifficultySettingsKeys.resolveTier("不存在的档位", 2f)
         assertFalse(resolved.matched)
         assertEquals(DifficultySettingsKeys.DEFAULT_SCALE, resolved.scale, 1e-6f)
+    }
+
+    @Test
+    fun `我方系数注入后 valueFor 按来源分流且与敌方系数独立`() {
+        DifficultyTuningImpl.installScaleForTests(5f)
+        DifficultyTuningImpl.installPlayerScaleForTests(1f)
+        assertEquals(entry.v1, DifficultyTuningImpl.valueFor(entry, isPlayer = true), 1e-6f)
+        assertEquals(entry.v5, DifficultyTuningImpl.valueFor(entry, isPlayer = false), 1e-6f)
+        DifficultyTuningImpl.installPlayerScaleForTests(3f)
+        assertEquals(13f + 5f / 3f, DifficultyTuningImpl.valueFor(entry, isPlayer = true), 1e-5f)
+        assertEquals(entry.v5, DifficultyTuningImpl.valueFor(entry, isPlayer = false), 1e-6f)
+    }
+
+    @Test
+    fun `五档查表的 valueFor 玩家路径按我方系数就近取档`() {
+        val table = ScalingTable(v1 = 10f, v2 = 20f, v3 = 30f, v4 = 40f, v5 = 50f)
+        DifficultyTuningImpl.installPlayerScaleForTests(5f)
+        assertEquals(50f, DifficultyTuningImpl.valueFor(table, isPlayer = true), 1e-6f)
+        DifficultyTuningImpl.installPlayerScaleForTests(2.4f)
+        assertEquals(20f, DifficultyTuningImpl.valueFor(table, isPlayer = true), 1e-6f)
+        DifficultyTuningImpl.installScaleForTests(4f)
+        assertEquals(40f, DifficultyTuningImpl.valueFor(table, isPlayer = false), 1e-6f)
+    }
+
+    @Test
+    fun `清除我方注入后 playerFixedScale 回退设计基准 2_0`() {
+        DifficultyTuningImpl.installPlayerScaleForTests(5f)
+        DifficultyTuningImpl.installPlayerScaleForTests(null)
+        assertEquals(DifficultyTuning.PLAYER_SCALE_DESIGN_BASELINE, DifficultyTuningImpl.playerFixedScale, 1e-6f)
+        assertEquals(entry.v2, DifficultyTuningImpl.valueFor(entry, isPlayer = true), 1e-6f)
     }
 }

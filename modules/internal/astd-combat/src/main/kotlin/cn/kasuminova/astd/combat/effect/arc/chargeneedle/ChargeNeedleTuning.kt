@@ -22,7 +22,7 @@ import kotlin.math.min
  * 每层维持加成 1%~5% 与体型固定软辐能（0.5/1/1.5/2 ~ 2.5/5/7.5/10）保持三锚点 LINEAR（逐档恰重合）；
  * 固定软辐能仅在目标**护盾开启期间**产出（Stacks 逐帧按 shield.isOn 门控）；
  * 消散速率（当前层数 4%/s、护盾关闭时翻倍 8%/s、下限 2 层/s）与 200% 耗散上限**不受难度系数影响**（用户裁定）。
- * 玩家来源（owner == 0）固定 v2（砺刃档）。
+ * 玩家来源（owner == 0）按我方档位取值（默认砺刃 v2，见 DifficultyTuning.valueFor）。
  */
 object ChargeNeedleTuning {
 
@@ -84,16 +84,16 @@ object ChargeNeedleTuning {
     )
 
     /**
-     * 难度取值唯一入口：玩家来源固定 v2，否则按轨一 k_s 映射（查表项五档精确取档）。
+     * 难度取值唯一入口：玩家阵营按我方档位（默认砺刃 v2）映射，其余阵营按轨一 k_s 映射（查表项五档精确取档）。
      * 每次命中调用一次（不缓存），保证 LunaLib 设置变更即时生效。
      *
      * @param hullSize 目标舰体型（固定软辐能分档依据；null 按护卫舰档兜底并视为配置异常的上游遗漏）
      */
     fun resolve(tuning: DifficultyTuning, isPlayer: Boolean, hullSize: ShipAPI.HullSize?): Values = Values(
-        perStack = if (isPlayer) PER_STACK.v2 else tuning.value(PER_STACK),
+        perStack = tuning.valueFor(PER_STACK, isPlayer),
         flatFluxPerStack = flatFluxForSize(tuning, isPlayer, hullSize),
-        dischargeChance = if (isPlayer) DISCHARGE_CHANCE.v2 else tuning.value(DISCHARGE_CHANCE),
-        dischargeEmpMult = if (isPlayer) DISCHARGE_EMP_MULT.v2 else tuning.value(DISCHARGE_EMP_MULT),
+        dischargeChance = tuning.valueFor(DISCHARGE_CHANCE, isPlayer),
+        dischargeEmpMult = tuning.valueFor(DISCHARGE_EMP_MULT, isPlayer),
     )
 
     /** 体型固定软辐能分档（纯函数）：护卫/驱逐/巡洋/主力四档；战机/DEFAULT 按护卫舰档（辐能池体量相当，
@@ -113,7 +113,7 @@ object ChargeNeedleTuning {
 
             else -> FLAT_FLUX_FRIGATE
         }
-        return if (isPlayer) entry.v2 else tuning.value(entry)
+        return tuning.valueFor(entry, isPlayer)
     }
 
     /**
