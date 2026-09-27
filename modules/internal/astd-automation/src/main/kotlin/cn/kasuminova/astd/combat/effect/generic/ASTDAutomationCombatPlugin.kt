@@ -84,7 +84,7 @@ import org.lwjgl.opengl.Display
 import org.lwjgl.util.vector.Vector2f
 
 /**
- * Dev-only combat automation surface for validating Arc Flare + AOD-7 runtime VFX in game.
+ * Dev-only combat automation surface for validating Arc Flare + 坠星残响 runtime VFX in game.
  */
 class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     private val captureCenter = Vector2f(100f, 0f)
@@ -643,9 +643,9 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         // 关闭原版开局部署对话框（仅多舰场景）：CombatState.traverse 的弹框闸门在 engine.init()
         // （即本方法）返回后才判定，玩家后备 != 1 艘时弹「增援部署」对话框（过期快照不刷新、
         // 公开 API 无关闭入口、常驻遮屏；2026-07-30 反编译 CombatState 实锤）。
-        // 关键约束（2026-07-31 aod7 场景回归实锤）：静默 deployAll 与弹框在同一闸门块内——
+        // 关键约束（2026-07-31 坠星残响前身场景回归实锤）：静默 deployAll 与弹框在同一闸门块内——
         // 玩家后备 == 1 艘时 vanilla 走静默 deployAll（不弹框但会部署），此处关断会把静默部署
-        // 一并跳过，单舰场景（如 xc_001_aod7_basic）将无船可部署。故仅在后备 != 1 艘
+        // 一并跳过，单舰场景（如 xc_001_starfall_echo_basic）将无船可部署。故仅在后备 != 1 艘
         // （必弹框路径）时关断；单舰路径本就不弹框，保留 flag 让 vanilla 静默部署。
         val combatUI = engine.combatUI
         if (combatUI is CombatState) {
@@ -975,7 +975,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         val weapon = ship?.allWeapons?.firstOrNull { it.id == ASTDInGameAutomationScenario.WEAPON_ID }
         lockCamera(combatEngine)
         arrangeShips(combatEngine, ship)
-        alignAod7ProjectilesForEvidence(combatEngine)
+        alignStarfallEchoProjectilesForEvidence(combatEngine)
         if (completed && elapsed - completedAt >= 0.75f) return
 
         if (ship != null) {
@@ -994,7 +994,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
 
         if (!completed && ship != null && weapon != null && elapsed >= 1.5f && !projectileObserved(combatEngine) && !fallbackSpawned) {
             fallbackSpawned = true
-            spawnAod7Projectile(combatEngine, ship, weapon)
+            spawnStarfallEchoProjectile(combatEngine, ship, weapon)
             fireMechanism = "spawnProjectileFallback"
         }
 
@@ -1003,7 +1003,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             if (!completed) {
                 completed = true
                 completedAt = elapsed
-                log.info("[ASTD-Automation] Completed: xc_001/aod7/${ASTDInGameAutomationScenario.PROJECTILE_SPEC_ID}/VFX observed")
+                log.info("[ASTD-Automation] Completed: xc_001/starfall_echo/${ASTDInGameAutomationScenario.PROJECTILE_SPEC_ID}/VFX observed")
             }
             return
         }
@@ -1194,7 +1194,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         lockCamera(combatEngine)
         val ship = findXc001(combatEngine)
         arrangeShips(combatEngine, ship)
-        alignAod7ProjectilesForEvidence(combatEngine)
+        alignStarfallEchoProjectilesForEvidence(combatEngine)
         lastVisualFrameAt = elapsed
         visualFramesWritten++
         writeDiagnostics(combatEngine, "Completed", ship)
@@ -1511,7 +1511,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
      * 针刺武器组自动开火开关：`setForceFireOneFrame` 对无舰 AI 的舞台舰不生效（实机 90s 零发射验证），
      * 改用原版武器组 autofire 管线——toggleOn 后组内武器 AutofireAI 自行瞄准 shipTarget 开火。
      * 注意：不得每帧 `setRemainingCooldownTo(0f)`——实机验证它会把武器开火周期反复重置导致零弹体
-     * （aod7 场景同款写法即因此依赖 spawnProjectile 兜底）。
+     * （坠星残响场景同款写法即因此依赖 spawnProjectile 兜底）。
      */
     private fun setChargeNeedleAutofire(ship: ShipAPI?, enabled: Boolean, weaponIds: Set<String>) {
         ship ?: return
@@ -8754,7 +8754,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         return hasHullmod(crewed, "astd_lens_parallax_decks")
     }
 
-    private fun spawnAod7Projectile(engine: CombatEngineAPI, ship: ShipAPI, weapon: WeaponAPI) {
+    private fun spawnStarfallEchoProjectile(engine: CombatEngineAPI, ship: ShipAPI, weapon: WeaponAPI) {
         val location = Vector2f(projectilePreviewAnchor)
         val velocity = Vector2f(ship.velocity ?: Vector2f())
         val projectile = engine.spawnProjectile(
@@ -8769,7 +8769,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         if (projectile != null) {
             fallbackProjectile = projectile
             fallbackProjectileSpawnedAt = elapsed
-            projectile.velocity.x = FALLBACK_PROJECTILE_SPEED
+            projectile.velocity.x = projectile.moveSpeed
             projectile.velocity.y = 0f
             alignFallbackProjectileForEvidence()
             ProjectileSpecOnFireDispatcher().onFire(projectile, weapon, engine)
@@ -8782,7 +8782,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         driveFallbackProjectileCurve(projectile)
     }
 
-    private fun alignAod7ProjectilesForEvidence(engine: CombatEngineAPI) {
+    private fun alignStarfallEchoProjectilesForEvidence(engine: CombatEngineAPI) {
         fallbackProjectile?.let { alignProjectileForEvidence(it) }
         engine.projectiles
             .filter { it.projectileSpecId == ASTDInGameAutomationScenario.PROJECTILE_SPEC_ID }
@@ -8825,7 +8825,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     }
 
     /**
-     * AOD-7 合成截图场景的参考参数（旧管线 spec 的数值，2026-09 Static Trail 迁移后 policy 不再建模这些字段，
+     * 坠星残响合成截图场景的参考参数（旧管线 spec 的数值，2026-09 Static Trail 迁移后 policy 不再建模这些字段，
      * 按场景常量固化——本曲线只服务截图取景，与运行期拖尾无关）。
      */
     private fun automationPreviewTrack(age: Float): ASTDProjectileVfxLayout.PreviewFlightTrack {
@@ -8860,7 +8860,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             return if (elapsed > 10f) "Failed" else "CombatReady"
         }
         if (weapon == null) {
-            failureReason = "aod7 weapon not found on xc_001"
+            failureReason = "starfall_echo weapon not found on xc_001"
             return if (elapsed > 10f) "Failed" else "CombatReady"
         }
         if (projectileObserved(engine) && vfxObserved(engine) && evidenceReady(engine)) return "Completed"
@@ -8891,9 +8891,9 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
      * trail_pause_probe 相位机：FORCE_FIRE →（弹体飞行 [TPP_PRE_PAUSE_FLIGHT_SECONDS]）抓 BeforePause
      * → setPaused(true) 保持 [TPP_PAUSE_SECONDS] → 抓 DuringPause → setPaused(false)
      * → 飞行 [TPP_POST_RESUME_FLIGHT_SECONDS] → 抓 AfterResume → 第 4 次 "Completed" 写出终态触发早退。
-     * 与默认 aod7 场景的差异：不调用 alignAod7ProjectilesForEvidence（该取景驱动按 elapsed 改写弹体位置，
+     * 与默认坠星残响场景的差异：不调用 alignStarfallEchoProjectilesForEvidence（该取景驱动按 elapsed 改写弹体位置，
      * 暂停期 elapsed 继续推进会污染对照实验），弹体全程自由飞行。
-     * 注意必须用 [spawnTppProjectile] 的全速 spawn（spec 2880su/s），不能用 spawnAod7Projectile——
+     * 注意必须用 [spawnTppProjectile] 的全速 spawn（弹体 moveSpeed 直出），不能用 spawnStarfallEchoProjectile——
      * 后者的一次性取景曲线对齐会把弹速压到 ~340su/s，30Hz 节点间距从 96su 缩到 11su，
      * 恰好把要观测的「螺栓头 vs 拖尾头 cadence 滞后」藏没（2026-09 首轮探针教训）。
      */
@@ -10302,12 +10302,11 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
             ASTDArcProductionShipIds.HULL_XC_101 to "astd_xc_101_Standard",
             ASTDArcProductionShipIds.HULL_XC_103 to "astd_xc_103_Standard",
         )
-        private const val FALLBACK_PROJECTILE_SPEED = 2400f
         private const val AUTOMATION_CURVE_AMOUNT = 96f
         private const val AUTOMATION_CURVE_FREQUENCY = 0.8f
         private const val AUTOMATION_REFERENCE_CAPTURE_HEIGHT = 600f
 
-        // 合成截图场景的飞行窗口参数（旧 aod7 preset lifecycle 默认；新管线 DSL 不再建模这两段，按场景常量固化）。
+        // 合成截图场景的飞行窗口参数（旧弹体 preset lifecycle 默认；新管线 DSL 不再建模这两段，按场景常量固化）。
         private const val AUTOMATION_FLIGHT_END_RATIO = 0.6f
         private const val AUTOMATION_PRE_DISSOLVE_FRACTION = 0.82f
         private const val SCREENSHOT_FLIGHT_SECONDS = 0.13333334f
@@ -10326,7 +10325,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         // 恢复后观测窗：2880su/s 下 0.05s = 144su，保证弹体仍在取景内（视口右界 x≈633）。
         private const val TPP_POST_RESUME_FLIGHT_SECONDS = 0.05f
 
-        // 旧 aod7 spec 的拖尾锚宽/飞行时长/溶解起点/参考取景宽（Static Trail 迁移后 policy 不再携带，取景曲线按常量固化）。
+        // 截图场景的拖尾锚宽/飞行时长/溶解起点/参考取景宽（Static Trail 迁移后 policy 不再携带，取景曲线按常量固化）。
         private const val AUTOMATION_REF_TRAIL_START_WIDTH = 96f
         private const val AUTOMATION_REF_DURATION_SECONDS = 1.25f
         private const val AUTOMATION_REF_DISSOLVE_START_RATIO = 0.6f

@@ -9,8 +9,8 @@ import cn.kasuminova.astd.sscsv.i18n.SsI18n
 /**
  * ASTD 通用（跨设计系）HullMod 注册（原始数据来自 `contents/data/hullmods/hull_mods.csv`）。
  *
- * 目前仅含通用双模式切换器 [HullMod_astd_dual_mode_switcher]：astd_xc_001 / astd_zw_001 等
- * 所有双模式舰共用同一个切换器 hullmod（脚本 ASTDDualModeSwitcherHullMod）。
+ * 目前仅含通用双模式切换器 [HullMod_astd_dual_mode_switcher]：astd_zw_001 等
+ * 双模式舰共用同一个切换器 hullmod（脚本 ASTDDualModeSwitcherHullMod）。
  *
  * 真相源纪律：此处是通用切换器在 hull_mods.csv 的**唯一**注册点。lens（Task 4）在此注册，
  * arc（Task 5）复用同一行，**不得重复注册**。各舰旧的自造切换器（如 astd_lens_mode_switcher）
@@ -65,7 +65,7 @@ object HullMod_astd_nano_restoration_protocol : HullModEntry() {
  * - id 必须与 [cn.kasuminova.astd.combat.hullmods.base.ASTDDualModeGenericIds.MODE_CREWED] 完全一致。
  * - 舰船无关：未显式注册专属双模式配置的 ASTD 舰在激活载人模式时统一挂它（permaMod），
  *   由脚本 ASTDCrewedModeHullMod 提供拆即切与可选系统互换。
- * - 与 xc_001 / zw_001 的专属模式行一致：对玩家可见（展示当前模式），但不可在选择器中手动拆装。
+ * - 与 zw_001 的专属模式行一致：对玩家可见（展示当前模式），但不可在选择器中手动拆装。
  */
 object HullMod_astd_mode_crewed : HullModEntry() {
     override val id: String = "astd_mode_crewed"

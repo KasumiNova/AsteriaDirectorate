@@ -55,7 +55,7 @@ class HeavyIonPulseOnHitEffect : OnHitEffectPlugin {
         val ship = target as? ShipAPI ?: return
         if (ship.isHulk || ship.isPhased) return
 
-        // 某些实体命中回调 point 可能为 null；回退弹体当前位置（对齐 HighFluxShieldPressure 样板）。
+        // 某些实体命中回调 point 可能为 null；回退弹体当前位置（同族 OnHit 统一口径）。
         val hitPoint = point ?: projectile.location ?: return
 
         // 玩家按我方档位系数取值，每次命中处调用（非缓存）；projectile.source 为 null（游离弹）按非玩家口径。

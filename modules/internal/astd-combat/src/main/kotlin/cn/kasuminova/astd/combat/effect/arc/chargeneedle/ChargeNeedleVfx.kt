@@ -37,7 +37,7 @@ object ChargeNeedleVfx {
     const val TELEMETRY_DISCHARGE_COUNT = "astd_charge_needle_discharge_count"
 
     /**
-     * 护盾命中轻粒子：一发 hitParticle + 一发 smoothParticle（量级对齐 HighFluxShieldPressure 克制档）。
+     * 护盾命中轻粒子：一发 hitParticle + 一发 smoothParticle（克制档，不喧宾夺主）。
      */
     fun shieldHitParticles(engine: CombatEngineAPI, point: Vector2f, ship: ShipAPI) {
         val vel = ship.velocity?.let { Vector2f(it) } ?: Vector2f()

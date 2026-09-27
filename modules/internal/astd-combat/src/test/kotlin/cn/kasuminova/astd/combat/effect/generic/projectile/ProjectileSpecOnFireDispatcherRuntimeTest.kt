@@ -14,7 +14,7 @@ class ProjectileSpecOnFireDispatcherRuntimeTest {
     @Test
     fun `configured projectile tracks through driver pipeline`() {
         val engine = engineStub()
-        val projectile = projectileStub("astd_aod7_shot")
+        val projectile = projectileStub("astd_starfall_echo_shot")
         val weapon = weaponStub()
 
         ProjectileSpecOnFireDispatcher().onFire(projectile, weapon, engine.api)
@@ -37,7 +37,7 @@ class ProjectileSpecOnFireDispatcherRuntimeTest {
     fun `duplicate onFire for same projectile tracks once`() {
         val engine = engineStub()
         // 同一弹体重复派发：新管线按弹体身份去重（driversByProjectile 以弹体为键），只登记一份。
-        val projectile = projectileStub("astd_aod7_shot")
+        val projectile = projectileStub("astd_starfall_echo_shot")
         val weapon = weaponStub()
         val dispatcher = ProjectileSpecOnFireDispatcher()
 

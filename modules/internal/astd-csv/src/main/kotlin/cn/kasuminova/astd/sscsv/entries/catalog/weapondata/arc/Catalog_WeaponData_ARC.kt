@@ -1,5 +1,7 @@
 package cn.kasuminova.astd.sscsv.entries.catalog.weapondata.arc
 
+import cn.kasuminova.astd.sscsv.GeneratedJsonFile
+import cn.kasuminova.astd.sscsv.SsJsonOutputs
 import cn.kasuminova.astd.sscsv.entries.AiHint
 import cn.kasuminova.astd.sscsv.entries.WeaponDataEntry
 import cn.kasuminova.astd.sscsv.entries.catalog.weapondata.weaponName
@@ -18,28 +20,36 @@ import cn.kasuminova.astd.sscsv.outputs.proj.Vec2i
 
 /** ARC 系武器（weapon_data.csv）。 */
 
-object Wpn_astd_aod7 : WeaponDataEntry(), SsProjProjectileOutputs {
-    override val id: String = "astd_aod7"
+/**
+ * 坠星残响（XC-001 星坠内置主炮，规格 10-signature 坠星残响节）：5 发连射弹匣炮。
+ *
+ * 前 4 发命中附加「结构谐振」叠层（装甲/结构易伤），第 5 发大号红色弹体命中带层目标时
+ * 消耗全部层数并按层数爆发范围能量爆炸；弹匣低于 5 发时无法射击（隐藏机制，脚本侧闸）。
+ * 第 5 发的替换/增幅由 onFireEffect（StarfallEchoOnFireEffect）承担，爆炸结算在
+ * onHitEffect（StarfallEchoOnHitEffect）。
+ */
+object Wpn_astd_starfall_echo : WeaponDataEntry(), SsJsonOutputs {
+    override val id: String = "astd_starfall_echo"
     override val name: String = weaponName(id)
     override val tier: Int = 3
     override val baseValue: Int = 50000
-    override val range: Int = 950
-    override val damagePerSecond: Int = 625
-    override val damagePerShot: Int = 750
+    override val range: Int = 1000
+    override val damagePerShot: Int = 1000
 
-    // 非 Beam：用 chargedown/burst 描述射速，避免 tooltip 统计除 0 溢出
-    override val chargedown: Double = 0.5
-    override val burstSize: Int = 1
-    override val burstDelay: Double = 0.0
+    // 一轮循环 = 5 发连射（0.2s × 4 间隔）+ 5s 开火间隔 ≈ 5.8s；tooltip 统计按整轮折算
+    override val damagePerSecond: Int = 862
+    override val energyPerSecond: Int = 991
+    override val chargedown: Double = 5.0
+    override val burstSize: Int = 5
+    override val burstDelay: Double = 0.2
     override val turnRate: Int = 30
     override val type: String = "ENERGY"
-    override val energyPerShot: Int = 700
-    override val energyPerSecond: Int = 583
-    override val projSpeed: Int = 2400
+    override val energyPerShot: Int = 1150
+    override val projSpeed: Int = 1500
 
-    // 弹匣：5 发，6s 整组装填
-    override val ammo: Int = 5
-    override val ammoPerSec: Double = 0.8333
+    // 弹匣：10 发，每 10s 恢复 5 发
+    override val ammo: Int = 10
+    override val ammoPerSec: Double = 0.5
     override val reloadSize: Int = 5
 
     // autofit 类别标签（CoreAutofitPlugin 按 类别+等级 匹配，缺失会导致装配方案无法装回本武器）
@@ -48,17 +58,35 @@ object Wpn_astd_aod7 : WeaponDataEntry(), SsProjProjectileOutputs {
     override val groupTag: String = "astd"
     override val tech: String = "菀星设计局-星坠"
     override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
+    override val customPrimary: String = SsI18n.t("weapon.$id.tooltip.customPrimary")
+    override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
     override val number: Int = 9001
 
-    // 原版螺栓渲染（2026-09 起）：代码弹头网格已随自研渲染栈删除，弹头回归原版 projbody/projtrail；
-    // 尺寸对齐旧代码弹头几何 138×34（hero 体量），配色沿用暖白并复原 alpha。拖尾由 VFX 管线（Static Trail）承担。
-    override val projSpec: ProjectileProjSpec = ProjectileProjSpec.boxBolt(
-        id = "astd_aod7_shot",
-        onHitEffect = "cn.kasuminova.astd.combat.effect.generic.HighFluxShieldPressureOnHitEffect",
-        fringeColor = Rgba(255, 198, 126, 255),
-        coreColor = Rgba(248, 242, 232, 200),
+    /** 前 4 发：蓝白色锥形射弹（原版螺栓视觉屏蔽，弹头/拖尾由 VFX 管线承担，尺寸对齐旧 hero 体量 138×34）。 */
+    val projSpec: ProjectileProjSpec = ProjectileProjSpec.boxBolt(
+        id = "astd_starfall_echo_shot",
+        onFireEffect = "cn.kasuminova.astd.combat.effect.arc.starfallecho.StarfallEchoOnFireEffect",
+        onHitEffect = "cn.kasuminova.astd.combat.effect.arc.starfallecho.StarfallEchoOnHitEffect",
+        fringeColor = Rgba(120, 190, 255, 255),
+        coreColor = Rgba(240, 248, 255, 200),
         length = 138.0,
         width = 34.0,
+    )
+
+    /** 第 5 发：同规格红色弹体，尺寸 ×2（onFire 脚本替换产出，VFX 走通用分发器登记 final spec）。 */
+    val finalProjSpec: ProjectileProjSpec = ProjectileProjSpec.boxBolt(
+        id = "astd_starfall_echo_shot_final",
+        onHitEffect = "cn.kasuminova.astd.combat.effect.arc.starfallecho.StarfallEchoOnHitEffect",
+        fringeColor = Rgba(255, 90, 60, 255),
+        coreColor = Rgba(255, 235, 225, 200),
+        hitGlowRadius = 50.0,
+        length = 276.0,
+        width = 68.0,
+    )
+
+    override fun jsonExtraFiles(): List<GeneratedJsonFile> = listOf(
+        GeneratedJsonFile("data/weapons/proj/${projSpec.id}.proj", projSpec.toJson()),
+        GeneratedJsonFile("data/weapons/proj/${finalProjSpec.id}.proj", finalProjSpec.toJson()),
     )
 }
 

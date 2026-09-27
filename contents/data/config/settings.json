@@ -12,6 +12,7 @@
       "astd_trails_flow": "graphics/fx/astd_trails_flow.png",
       "astd_trails_surge": "graphics/fx/astd_trails_surge.png",
       "astd_bolt_body": "graphics/fx/astd_bolt_body.png",
+      "astd_generated_ring": "graphics/fx/astd_generated_ring.png",
       "astd_ice_shard": "graphics/fx/astd_ice_shard.png"
     }
   },

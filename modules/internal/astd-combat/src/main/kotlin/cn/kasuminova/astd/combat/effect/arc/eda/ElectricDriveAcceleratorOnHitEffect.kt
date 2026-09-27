@@ -44,7 +44,7 @@ class ElectricDriveAcceleratorOnHitEffect : OnHitEffectPlugin {
         damageResult: ApplyDamageResultAPI,
         engine: CombatEngineAPI,
     ) {
-        // 1. 目标边界：hulk/phased 舰船不结算（对齐 HighFluxShieldPressureOnHitEffect 样板）；
+        // 1. 目标边界：hulk/phased 舰船不结算（同族 OnHit 统一口径）；
         //    战机/导弹等非 Ship 目标照常结算（设计「射弹击中目标时」不限目标类型）。
         val ship = target as? ShipAPI
         if (ship != null && (ship.isHulk || ship.isPhased)) return

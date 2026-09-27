@@ -21,8 +21,7 @@ import kotlin.random.Random
  * 贯星之矛命中特效触发层（规格 09 §3.2）：顶点大闪光 + 大光柱 + 锥状冲击锥面。
  *
  * 动机：单发 2500 重击与锥状冲击两层机制各需同帧玩家可见反馈（机制可视化铁律）：
- * - 顶点：大号 hitParticle 核心闪 + smoothParticle 光晕 + BoxUtil DistortionEntity（样板
- *   Aod7OnFireEffect.spawnDistortion），冷蓝白；
+ * - 顶点：大号 hitParticle 核心闪 + smoothParticle 光晕 + BoxUtil DistortionEntity，冷蓝白；
  * - 大光柱：沿命中矢量的短寿命 BoxUtil 渐变拖尾光柱（emissive 增益并入 bloom 管线，
  *   提案参数：长 ≈ 锥长 × 0.6、存续 0.25s，目检调宽度/时长）；
  * - 锥状冲击锥面：调共享锥面组件 [ConeImpactVfx]（正电子首发落地），锥角/锥长随结算 spec，

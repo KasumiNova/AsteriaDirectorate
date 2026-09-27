@@ -1,13 +1,13 @@
 {
   "scenarios": [
     {
-      "id": "xc_001_aod7_basic",
-      "missionId": "xc_001_aod7_basic",
+      "id": "xc_001_starfall_echo_basic",
+      "missionId": "xc_001_starfall_echo_basic",
       "shipId": "astd_xc_001",
       "variantId": "astd_xc_001_Standard",
-      "weaponId": "astd_aod7",
-      "projectileSpecId": "astd_aod7_shot",
-      "vfxPresetId": "aod7_shot"
+      "weaponId": "astd_starfall_echo",
+      "projectileSpecId": "astd_starfall_echo_shot",
+      "vfxPresetId": "starfall_echo_shot"
     },
     {
       "id": "arc_production_ships_vfx_tooltip",

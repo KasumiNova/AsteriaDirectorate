@@ -23,10 +23,9 @@ import kotlin.math.sin
  * - jitter：越接近抖动越强（站桩重合者残影剧烈撕裂）。
  * - 红化：越接近颜色越红（从紫罗兰插值到红），呼应「被拽回过去、即将再死一次」的危险语义。
  *
- * 技术范式（与 [cn.kasuminova.astd.combat.shipsystems.ASTDXc001OverdriveSystemStats]
- * 的 applyVisualFeedback 一致）：舰体残影的正确范式是 [MagicRender.battlespace]——取舰体
- * hullSprite，在「过去坐标」按「过去 facing」旋转、additive 叠加绘制。本渲染器照搬 Xc001 的
- * sprite 中心偏移几何（修正 spriteAPI.centerX/centerY 与 facing 旋转），确保残影与「过去时刻
+ * 技术范式：舰体残影的正确范式是 [MagicRender.battlespace]——取舰体
+ * hullSprite，在「过去坐标」按「过去 facing」旋转、additive 叠加绘制。本渲染器沿用 XC-001
+ * 残影的 sprite 中心偏移几何（修正 spriteAPI.centerX/centerY 与 facing 旋转），确保残影与「过去时刻
  * 的舰体」严格对齐。
  *
  * Fail Fast：sprite 取不到（hullSprite 为 null）是异常情况而非正常路径，故 log.warn 跳过该

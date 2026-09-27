@@ -1,4 +1,4 @@
-package data.missions.xc_001_aod7_basic;
+package data.missions.xc_001_starfall_echo_basic;
 
 import cn.kasuminova.astd.combat.effect.generic.ASTDAutomationCombatPlugin;
 import cn.kasuminova.astd.internal.debug.ASTDInGameAutomationScenario;
@@ -9,7 +9,7 @@ import com.fs.starfarer.api.mission.MissionDefinitionAPI;
 import com.fs.starfarer.api.mission.MissionDefinitionPlugin;
 
 /**
- * Dev-only mission surface for Arc Flare + AOD-7 in-game VFX automation.
+ * Dev-only mission surface for 坠星残响 in-game VFX automation.
  */
 public final class MissionDefinition implements MissionDefinitionPlugin {
     @Override
@@ -17,14 +17,14 @@ public final class MissionDefinition implements MissionDefinitionPlugin {
         api.initFleet(FleetSide.PLAYER, "ASTD", FleetGoal.ATTACK, false, 5);
         api.initFleet(FleetSide.ENEMY, "DRONE", FleetGoal.ATTACK, true, 5);
 
-        api.setFleetTagline(FleetSide.PLAYER, "ASTD automation: Arc Flare AOD-7 VFX");
+        api.setFleetTagline(FleetSide.PLAYER, "ASTD automation: Starfall Echo VFX");
         api.setFleetTagline(FleetSide.ENEMY, "Automation target fleet");
 
         api.addToFleet(FleetSide.PLAYER, ASTDInGameAutomationScenario.VARIANT_ID, FleetMemberType.SHIP, true);
         api.addToFleet(FleetSide.ENEMY, "onslaught_Standard", FleetMemberType.SHIP, false);
 
         api.defeatOnShipLoss("ASTD " + ASTDInGameAutomationScenario.SHIP_ID);
-        api.addBriefingItem("Deploy Arc Flare and observe AOD-7 projectile VFX telemetry.");
+        api.addBriefingItem("Deploy XC-001 and observe Starfall Echo projectile VFX telemetry.");
 
         api.initMap(-9000f, 9000f, -6000f, 6000f);
         api.setBackgroundSpriteName("graphics/backgrounds/background2.jpg");

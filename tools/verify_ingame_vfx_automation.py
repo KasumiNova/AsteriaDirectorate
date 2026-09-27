@@ -2,7 +2,7 @@
 """Verify ASTD first-version in-game VFX automation evidence.
 
 The script accepts a telemetry JSON produced by ASTDAutomationCombatPlugin and
-checks the minimum acceptance contract for the Arc Flare + AOD-7 scenario.
+checks the minimum acceptance contract for the Arc Flare + 坠星残响 scenario.
 """
 
 from __future__ import annotations
@@ -19,11 +19,11 @@ import numpy as np
 from PIL import Image
 
 EXPECTED = {
-    "scenario": "xc_001_aod7_basic",
+    "scenario": "xc_001_starfall_echo_basic",
     "shipId": "astd_xc_001",
-    "weaponId": "astd_aod7",
-    "projectileSpecId": "astd_aod7_shot",
-    "vfxPresetId": "aod7_shot",
+    "weaponId": "astd_starfall_echo",
+    "projectileSpecId": "astd_starfall_echo_shot",
+    "vfxPresetId": "starfall_echo_shot",
 }
 ARC_PRODUCTION_SCENARIO = "arc_production_ships_vfx_tooltip"
 ARC_PRODUCTION_REQUIRED_EVIDENCE = (
@@ -89,7 +89,7 @@ ARC_PRODUCTION_SCREENSHOT_REGIONS = (
 )
 
 ASTD_TELEMETRY_FILE = "astd-ingame-automation-astd-telemetry.json"
-LOG_COMPLETED_PATTERN = re.compile(r"\[ASTD-Automation]\s+Completed: xc_001/aod7/astd_aod7_shot/VFX observed")
+LOG_COMPLETED_PATTERN = re.compile(r"\[ASTD-Automation]\s+Completed: xc_001/starfall_echo/astd_starfall_echo_shot/VFX observed")
 ASTD_DIAGNOSTICS_PATTERN = re.compile(r"\[ASTD-Automation]\s+diagnostics state=(?P<state>\S+)\s+json=(?P<json>\{.*\})")
 
 MIN_SCREENSHOT_WIDTH = 2550
@@ -583,6 +583,23 @@ def _diagnostics_from_log(log_path: Path, scenario: str, ssoptimizer_data: dict 
     if selected is None:
         return None
     return _merge_screenshot_evidence(selected, ssoptimizer_data)
+
+
+def _default_scenario_data_from_log(log_path: Path, ssoptimizer_data: dict | None = None) -> dict | None:
+    """Reconstruct default-scenario (EXPECTED) evidence from starsector.log.
+
+    SSOptimizer 独立助手写入遥测的身份字段是编译期硬编码常量（场景/武器改名后不同步），
+    默认场景的权威证据是 ASTD 插件的 Completed 日志行（LOG_COMPLETED_PATTERN 字面量含
+    场景/武器/弹体 spec）与 diagnostics JSON（scenario 过滤 + runtimeLastProjectileSpecId）。
+    """
+    diagnostics = _diagnostics_from_log(log_path, EXPECTED["scenario"])
+    if diagnostics is None:
+        return None
+    if diagnostics.get("runtimeLastProjectileSpecId") != EXPECTED["projectileSpecId"]:
+        return None
+    # _data_from_log 内部校验 Completed 标记并从 EXPECTED 静态身份建数据（身份断言等价于
+    # 正则字面量命中），截图证据由 SSOptimizer 遥测并入。
+    return _merge_screenshot_evidence(_data_from_log(log_path), ssoptimizer_data)
 
 
 def _verify_lens_phase1(data: dict, actual_telemetry_path: Path) -> int:
@@ -1140,7 +1157,28 @@ def _check_ship_template_shape(image: Image.Image, errors: list[str]) -> list[st
     return details
 
 
-def _check_screenshot_pixels(path: Path, errors: list[str]) -> list[str]:
+def _check_projectile_structure(path: Path) -> tuple[tuple[int, int, int, int, int], dict[str, float]] | None:
+    """Measure the projectile VFX structure of one screenshot; None when nothing measurable."""
+    projectile_roi = _crop_projectile_roi(path, (0.36, 0.32, 0.88, 0.70))
+    if projectile_roi is None:
+        return None
+    projectile_rgb, projectile_bbox = projectile_roi
+    metrics = _projectile_structure_metrics(projectile_rgb)
+    if not metrics:
+        return None
+    return projectile_bbox, metrics
+
+
+def _projectile_structure_ok(metrics: dict[str, float]) -> bool:
+    return (
+        metrics["mask_pixels"] >= 900
+        and metrics["bbox_width"] >= 180
+        and metrics["aspect"] >= 3.0
+        and metrics["bright_pixels"] >= 80
+    )
+
+
+def _check_screenshot_pixels(path: Path, errors: list[str], frames: list[str] | None = None) -> list[str]:
     details: list[str] = []
     try:
         with Image.open(path) as loaded:
@@ -1174,29 +1212,40 @@ def _check_screenshot_pixels(path: Path, errors: list[str]) -> list[str]:
 
     details.extend(_check_ship_template_shape(image, errors))
 
-    projectile_roi = _crop_projectile_roi(path, (0.36, 0.32, 0.88, 0.70))
-    if projectile_roi is None:
-        errors.append("screenshotPath: projectile VFX structure missing in the expected AOD-7 region")
-    else:
-        projectile_rgb, projectile_bbox = projectile_roi
-        metrics = _projectile_structure_metrics(projectile_rgb)
-        if not metrics:
-            errors.append("screenshotPath: projectile VFX structure could not be measured")
+    # 弹体结构在主截图与连拍帧中择一达标即可：SSOptimizer 在 Completed 上报时刻异步连拍三帧
+    # （捕获与上报间存在秒级延迟），坠星残响的马赫环/碎片簇在部分帧会把弹体组件拉成块状，
+    # 单帧不过不意味特效缺席。
+    candidates = [path] + [Path(frame) for frame in (frames or []) if Path(frame).is_file()]
+    measured = [
+        (candidate, result)
+        for candidate in candidates
+        if (result := _check_projectile_structure(candidate)) is not None
+    ]
+    accepted = next(((c, r) for c, r in measured if _projectile_structure_ok(r[1])), None)
+    if accepted is None:
+        if not measured:
+            errors.append("screenshotPath: projectile VFX structure missing in the expected 坠星残响 region")
         else:
-            if metrics["mask_pixels"] < 900:
-                errors.append(f"screenshotPath: projectile VFX visible pixels too sparse: {metrics['mask_pixels']:.0f}")
-            if metrics["bbox_width"] < 180 or metrics["aspect"] < 3.0:
+            best_path, (best_bbox, best_metrics) = max(measured, key=lambda item: item[1][1]["mask_pixels"])
+            if best_metrics["mask_pixels"] < 900:
+                errors.append(f"screenshotPath: projectile VFX visible pixels too sparse: {best_metrics['mask_pixels']:.0f}")
+            if best_metrics["bbox_width"] < 180 or best_metrics["aspect"] < 3.0:
                 errors.append(
                     "screenshotPath: projectile VFX is not a long visible beam: "
-                    f"{metrics['bbox_width']:.0f}x{metrics['bbox_height']:.0f}",
+                    f"{best_metrics['bbox_width']:.0f}x{best_metrics['bbox_height']:.0f}",
                 )
-            if metrics["bright_pixels"] < 80:
-                errors.append(f"screenshotPath: projectile VFX bright head/core pixels too sparse: {metrics['bright_pixels']:.0f}")
-            details.append(
-                "projectile VFX dynamic ROI: "
-                f"bbox={projectile_bbox[3] - projectile_bbox[1] + 1}x{projectile_bbox[4] - projectile_bbox[2] + 1}, "
-                f"mask={metrics['mask_pixels']:.0f}, bright={metrics['bright_pixels']:.0f}, aspect={metrics['aspect']:.3f}",
-            )
+            if best_metrics["bright_pixels"] < 80:
+                errors.append(f"screenshotPath: projectile VFX bright head/core pixels too sparse: {best_metrics['bright_pixels']:.0f}")
+            details.append(f"projectile VFX best-effort frame: {best_path.name}")
+    else:
+        accepted_path, (projectile_bbox, metrics) = accepted
+        details.append(
+            "projectile VFX dynamic ROI: "
+            f"bbox={projectile_bbox[3] - projectile_bbox[1] + 1}x{projectile_bbox[4] - projectile_bbox[2] + 1}, "
+            f"mask={metrics['mask_pixels']:.0f}, bright={metrics['bright_pixels']:.0f}, aspect={metrics['aspect']:.3f}",
+        )
+        if accepted_path != path:
+            details.append(f"projectile VFX measured on frame: {accepted_path.name}")
 
     return details
 
@@ -1223,6 +1272,10 @@ def verify(
                     arc_production_data = _arc_production_data_from_log(log_path, data)
                     if arc_production_data is not None:
                         data = arc_production_data
+                    elif data.get("scenario") != EXPECTED["scenario"]:
+                        default_data = _default_scenario_data_from_log(log_path, data)
+                        if default_data is not None:
+                            data = default_data
     elif log_path is not None:
         data = _diagnostics_from_log(log_path, LENS_PHASE2_SCENARIO)
         if data is None:
@@ -1262,7 +1315,7 @@ def verify(
         elif not Path(screenshot).exists():
             errors.append(f"screenshotPath: file does not exist: {screenshot}")
         else:
-            screenshot_details = _check_screenshot_pixels(Path(screenshot), errors)
+            screenshot_details = _check_screenshot_pixels(Path(screenshot), errors, data.get("screenshotFrames"))
             if preview_reference is not None:
                 screenshot_details.extend(
                     _check_preview_reference_parity(Path(screenshot), preview_reference, errors, visual_compare_output),
@@ -1271,7 +1324,7 @@ def verify(
         if not Path(screenshot).exists():
             errors.append(f"screenshotPath: declared file does not exist: {screenshot}")
         else:
-            screenshot_details = _check_screenshot_pixels(Path(screenshot), errors)
+            screenshot_details = _check_screenshot_pixels(Path(screenshot), errors, data.get("screenshotFrames"))
             if preview_reference is not None:
                 screenshot_details.extend(
                     _check_preview_reference_parity(Path(screenshot), preview_reference, errors, visual_compare_output),

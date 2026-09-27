@@ -217,5 +217,85 @@ class ProjectileStructureMetricsTest(unittest.TestCase):
         self.assertEqual(1, rc)
 
 
+class DefaultScenarioLogFallbackTest(unittest.TestCase):
+    """默认场景（EXPECTED）在 SSOptimizer 独立助手遥测身份字段过期时，回落 starsector.log 重建证据。"""
+
+    def _write_default_scenario_log(self, path: Path) -> None:
+        diagnostics = {
+            "source": "ASTD",
+            "scenario": "xc_001_starfall_echo_basic",
+            "state": "Completed",
+            "runtimeTrackedCount": 1,
+            "runtimeLastProjectileSpecId": "astd_starfall_echo_shot",
+        }
+        path.write_text(
+            "[ASTD-Automation] diagnostics state=Completed json=" + json.dumps(diagnostics) + "\n"
+            + "[ASTD-Automation] Completed: xc_001/starfall_echo/astd_starfall_echo_shot/VFX observed\n",
+            encoding="utf-8",
+        )
+
+    def _stale_ssoptimizer_telemetry(self, tmp_path: Path, screenshot: Path) -> Path:
+        data = {
+            "source": "SSOptimizer",
+            "scenario": "arc_flare_aod7_basic",
+            "state": "Completed",
+            "shipId": "astd_arc_flare",
+            "weaponId": "astd_aod7",
+            "projectileSpecId": "astd_aod7_shot",
+            "vfxPresetId": "aod7_shot",
+            "screenshotPath": str(screenshot),
+        }
+        telemetry = tmp_path / "telemetry.json"
+        telemetry.write_text(json.dumps(data), encoding="utf-8")
+        return telemetry
+
+    def _write_beam_image(self, path: Path) -> None:
+        width, height = 2560, 1440
+        rgb = np.zeros((height, width, 3), dtype=np.uint8)
+        rgb[:, :] = [8, 10, 14]
+        # 舰船区域亮块（满足 ship visible pixels 检查；右缘压在弹体 ROI 左缘 0.36 之内，避免粘连）
+        left, top = int(width * 0.06), int(height * 0.30)
+        right, bottom = int(width * 0.34), int(height * 0.75)
+        rgb[top:bottom, left:right] = [120, 130, 140]
+        # 弹体区域长亮条（满足弹体结构检查）
+        pl, pt = int(width * 0.45), int(height * 0.46)
+        pr, pb = int(width * 0.80), int(height * 0.50)
+        rgb[pt:pb, pl:pr] = [140, 180, 255]
+        rgb[pt + 4:pb - 4, pl + 100:pr] = [240, 248, 255]
+        Image.fromarray(rgb, "RGB").save(path)
+
+    def test_default_scenario_falls_back_to_log_when_ssoptimizer_identity_is_stale(self) -> None:
+        verifier = _load_verifier_module()
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            screenshot = tmp_path / "screenshot.jpg"
+            self._write_beam_image(screenshot)
+            telemetry = self._stale_ssoptimizer_telemetry(tmp_path, screenshot)
+            log = tmp_path / "starsector.log"
+            self._write_default_scenario_log(log)
+
+            rc = verifier.verify(telemetry, require_screenshot_file=False, log_path=log)
+
+        self.assertEqual(0, rc)
+
+    def test_default_scenario_rejects_log_without_matching_projectile_spec(self) -> None:
+        verifier = _load_verifier_module()
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            screenshot = tmp_path / "screenshot.jpg"
+            self._write_beam_image(screenshot)
+            telemetry = self._stale_ssoptimizer_telemetry(tmp_path, screenshot)
+            log = tmp_path / "starsector.log"
+            self._write_default_scenario_log(log)
+            log.write_text(
+                log.read_text(encoding="utf-8").replace("astd_starfall_echo_shot", "astd_other_shot"),
+                encoding="utf-8",
+            )
+
+            rc = verifier.verify(telemetry, require_screenshot_file=False, log_path=log)
+
+        self.assertEqual(1, rc)
+
+
 if __name__ == "__main__":
     unittest.main()

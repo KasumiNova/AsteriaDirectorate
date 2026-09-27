@@ -1,7 +1,8 @@
 {
     "id": "astd_gravity_phase",
     "type": "PHASE_CLOAK",
-    "aiType": "PHASE_CLOAK",
+    "aiType": "CUSTOM",
+    "aiScript": "cn.kasuminova.astd.combat.shipsystems.GravityPhaseCloakAI",
     "statsScript": "cn.kasuminova.astd.combat.shipsystems.GravityPhaseCloakStats",
     "useSound": "system_phase_cloak_activate",
     "deactivateSound": "system_phase_cloak_deactivate",

@@ -52,7 +52,7 @@ internal class ASTDDevContentSelectorTest {
     fun `dev weapon storage allows hidden weapons but excludes decorative and system-linked weapons`() {
         val rows = CsvTestUtil.readRowsById(Path.of("contents/data/weapons/weapon_data.csv"))
 
-        assertTrue(ASTDDevContentSelector.isDevStorageWeapon(rows.getValue("astd_aod7").toWeaponRow()))
+        assertTrue(ASTDDevContentSelector.isDevStorageWeapon(rows.getValue("astd_starfall_echo").toWeaponRow()))
         assertTrue(ASTDDevContentSelector.isDevStorageWeapon(rows.getValue("astd_spc3").toWeaponRow()))
         assertTrue(ASTDDevContentSelector.isDevStorageWeapon(rows.getValue("astd_gcp12").toWeaponRow()))
         assertTrue(ASTDDevContentSelector.isDevStorageWeapon(rows.getValue("astd_psi_omega").toWeaponRow()))

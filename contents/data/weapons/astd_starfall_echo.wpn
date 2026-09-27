@@ -1,5 +1,5 @@
 {
-    "id": "astd_aod7",
+    "id": "astd_starfall_echo",
     "specClass": "projectile",
     "type": "ENERGY",
     "size": "LARGE",
@@ -33,13 +33,13 @@
         "particleDuration": 0.25,
         "particleCount": 22,
         "particleColor": [
-            180,
-            220,
+            150,
+            210,
             255,
             220
         ]
     },
-    "projectileSpecId": "astd_aod7_shot",
-    "everyFrameEffect": "cn.kasuminova.astd.combat.effect.generic.CombatVfxBootstrapEveryFrameEffect",
+    "projectileSpecId": "astd_starfall_echo_shot",
+    "everyFrameEffect": "cn.kasuminova.astd.combat.effect.arc.starfallecho.StarfallEchoWeaponEffect",
     "fireSoundTwo": "autocannon_fire"
 }

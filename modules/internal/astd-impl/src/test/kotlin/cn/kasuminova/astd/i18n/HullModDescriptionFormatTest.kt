@@ -49,14 +49,13 @@ class HullModDescriptionFormatTest {
     }
 
     @Test
-    fun `tactical overdrive runtime status strings exist`() {
+    fun `burst flow runtime status strings exist`() {
         val jsonPath = Path.of("contents", "data", "strings", "strings.json")
         assertTrue(Files.exists(jsonPath), "缺少运行时字符串文件: $jsonPath")
 
         val text = Files.readString(jsonPath)
         assertTrue(text.contains("\"asteria_directorate\""), "缺少 asteria_directorate 分类")
-        assertTrue(text.contains("\"system.xc_001_overdrive.status.crewed.active\""), "缺少 system.xc_001_overdrive.status.crewed.active")
-        assertTrue(text.contains("\"system.xc_001_overdrive.status.automated.active\""), "缺少 system.xc_001_overdrive.status.automated.active")
+        assertTrue(text.contains("\"system.burst_flow.status.default.active\""), "缺少 system.burst_flow.status.default.active")
     }
 
     @Test

@@ -12,12 +12,12 @@
   "shieldRadius": 268,
   "viewOffset": 0,
   "builtInMods": [
-    "astd_arc_loop_interface",
+    "astd_arc_advanced_energy_integration",
     "astd_nano_restoration_protocol"
   ],
   "builtInWeapons": {
     "WS BLOOM": "astd_xc_001_lights_bloom",
-    "WS MAIN": "astd_aod7"
+    "WS MAIN": "astd_starfall_echo"
   },
   "weaponSlots": [
     {

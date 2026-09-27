@@ -3,14 +3,9 @@
     "fluxCapacitors": 0,
     "fluxVents": 0,
     "goalVariant": true,
-    "hullMods": [
-        "astd_dual_mode_switcher"
-    ],
+    "hullMods": [],
     "hullId": "astd_xc_001",
-    "permaMods": [
-        "astd_xc_001_mode_crewed",
-        "astd_xc_001_mode_next_crewed"
-    ],
+    "permaMods": [],
     "quality": 0.0,
     "variantId": "astd_xc_001_Standard",
     "weaponGroups": []

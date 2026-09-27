@@ -1,0 +1,8 @@
+{
+    "id": "astd_grav_storm",
+    "type": "STAT_MOD",
+    "aiType": "CUSTOM",
+    "aiScript": "cn.kasuminova.astd.combat.shipsystems.GravStormSystemAI",
+    "statsScript": "cn.kasuminova.astd.combat.shipsystems.GravStormSystemStats",
+    "useSound": "system_quantumdisruptor"
+}

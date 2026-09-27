@@ -22,7 +22,7 @@ import java.nio.file.Path
  * Dev-only descriptor for the first in-game projectile VFX automation scenario.
  */
 object ASTDInGameAutomationScenario {
-    const val SCENARIO_ID: String = "xc_001_aod7_basic"
+    const val SCENARIO_ID: String = "xc_001_starfall_echo_basic"
     const val ARC_PRODUCTION_SCENARIO_ID: String = "arc_production_ships_vfx_tooltip"
     const val LENS_PHASE1_SCENARIO_ID: String = "lens_phase1_foundation"
     const val LENS_PHASE2_SCENARIO_ID: String = "lens_phase2_mechanisms"
@@ -91,11 +91,11 @@ object ASTDInGameAutomationScenario {
     const val PF_ENEMY_HULL_ID: String = "dominator"
     const val SHIP_ID: String = "astd_xc_001"
     const val VARIANT_ID: String = "astd_xc_001_Standard"
-    const val WEAPON_ID: String = "astd_aod7"
-    const val PROJECTILE_SPEC_ID: String = "astd_aod7_shot"
+    const val WEAPON_ID: String = "astd_starfall_echo"
+    const val PROJECTILE_SPEC_ID: String = "astd_starfall_echo_shot"
 
     // SSOptimizer 遥测契约标签（其 helper/verifier 硬编码的字面值）；运行期 preset 已随旧管线删除，此处仅作场景描述符。
-    const val VFX_PRESET_ID: String = "aod7_shot"
+    const val VFX_PRESET_ID: String = "starfall_echo_shot"
 
     const val ENABLED_PROPERTY: String = "ssoptimizer.automation.enabled"
     const val SCENARIO_PROPERTY: String = "ssoptimizer.automation.scenario"
@@ -291,7 +291,7 @@ object ASTDInGameAutomationScenario {
 
     /**
      * 拖尾暂停对照探针场景开关：镜像 [isPlEnabled]。
-     * 复用 aod7 舞台，按 BeforePause / DuringPause / AfterResume 三帧截图对照，
+     * 复用坠星残响舞台，按 BeforePause / DuringPause / AfterResume 三帧截图对照，
      * 定位「暂停后射弹贴图/拖尾跳变」；相位机刻意不 unpause（其余场景分支均强制 unpause）。
      */
     fun isTrailPauseProbeEnabled(): Boolean {

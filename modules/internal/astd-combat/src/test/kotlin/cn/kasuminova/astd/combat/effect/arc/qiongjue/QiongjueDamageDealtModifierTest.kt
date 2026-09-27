@@ -114,7 +114,7 @@ class QiongjueDamageDealtModifierTest {
         val (ship, _, _) = hostWithStacks(stacks = 10, owner = 0)
         val (damage, stat) = damageOf(600f)
         // 其他武器 id。
-        val otherWeapon = stubWeapon("WS 001", "astd_aod7")
+        val otherWeapon = stubWeapon("WS 001", "astd_starfall_echo")
         assertNull(
             QiongjueDamageDealtModifier().modifyDamageDealt(projectileOf(ship, otherWeapon), null, damage, null, false),
             "非穷距武器弹体不得写乘区",

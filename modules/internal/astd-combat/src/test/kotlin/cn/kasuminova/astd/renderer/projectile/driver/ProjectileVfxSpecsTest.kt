@@ -1,6 +1,7 @@
 package cn.kasuminova.astd.renderer.projectile.driver
 
 import cn.kasuminova.astd.impl.render.ASTDColor
+import cn.kasuminova.astd.impl.render.BoxFlareStyle
 import cn.kasuminova.astd.impl.render.TrailDriftRange
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -19,56 +20,81 @@ import kotlin.test.assertTrue
 class ProjectileVfxSpecsTest {
 
     @Test
-    fun `aod7 蓝图：Box 螺栓 + twin 与 zappy 两条 Static Trail 拖尾`() {
-        val vfx = assertNotNull(ProjectileVfxSpecs.build("astd_aod7_shot"))
+    fun `坠星残响普通弹蓝图：Box 螺栓 + 四层拖尾 + 弹头光斑 + 开火锥状冲击`() {
+        val vfx = assertNotNull(ProjectileVfxSpecs.build("astd_starfall_echo_shot"))
 
-        val bolt = assertNotNull(vfx.tree.bolt, "aod7 弹头为 Box 螺栓（默认开启）")
-        assertEquals(0xE4 / 255f, bolt.color.red, 1e-3f)
-        assertEquals(0xF2 / 255f, bolt.color.green, 1e-3f)
+        val bolt = assertNotNull(vfx.tree.bolt, "坠星残响弹头为 Box 螺栓（默认开启）")
+        // 主色 starfallBlue(0.55, 0.78, 1) mix 白 0.7 → 0.865/0.934/1.0，hex 舍入 221/238/255
+        assertEquals(221 / 255f, bolt.color.red, 1e-3f)
+        assertEquals(238 / 255f, bolt.color.green, 1e-3f)
         assertEquals(1f, bolt.color.blue, 1e-3f)
-        assertEquals(0xC8 / 255f, bolt.color.alpha, 1e-3f)
+        assertEquals(0.78f, bolt.color.alpha, 1e-3f)
 
-        assertEquals(listOf("twin", "zappy"), vfx.tree.staticTrails.map { it.first })
+        assertEquals(listOf("twin", "core", "zappy_0", "zappy_1"), vfx.tree.staticTrails.map { it.first })
+        assertEquals(listOf(1, 2, 3, 3), vfx.tree.staticTrails.map { it.second.layer })
         val twin = vfx.tree.staticTrails.first { it.first == "twin" }.second
-        val zappy = vfx.tree.staticTrails.first { it.first == "zappy" }.second
+        val core = vfx.tree.staticTrails.first { it.first == "core" }.second
+        val zappy = vfx.tree.staticTrails.first { it.first == "zappy_0" }.second
+        // bandWidth(14, 2.2)=round05(max(4.9, 6.93))=7 ×2 ×0.75=10.5；核心 ×0.5=5.5；装饰 ×0.6=6.5
+        assertEquals(10.5f, twin.width)
+        assertEquals(5.5f, core.width)
+        assertEquals(6.5f, zappy.width)
+        vfx.tree.staticTrails.forEach { (_, spec) ->
+            assertEquals(320f, spec.bandLength, "无射程入参时取固定带长 320")
+            assertEquals(0.8f, spec.glowPower, "坠星残响 trailGlow 0.8 全层统一")
+        }
 
-        assertEquals(TEX_TWIN, twin.texturePath)
-        assertEquals(1, twin.layer)
-        assertEquals(30f, twin.width)
-        assertEquals(420f, twin.bandLength)
-        assertNull(twin.recede, "recede 不声明 = 自动取弹体长度 ×0.75（tracker 运行期解析）")
+        // 弹头 SMOOTH 光斑（boltFlare=40）
+        val boltGlow = vfx.tree.boxFlares.firstOrNull { it.first == "boltGlow" }?.second
+        assertNotNull(boltGlow, "普通弹弹头 SMOOTH 光斑")
+        assertEquals(40f, boltGlow.width)
+        assertEquals(40f, boltGlow.height)
 
-        assertEquals(TEX_ZAPPY, zappy.texturePath)
-        assertEquals(2, zappy.layer)
-        assertEquals(24f, zappy.width)
-        assertEquals(420f, zappy.bandLength)
-        assertNull(zappy.angularOutRange, "aod7 zappy 不做尾端自旋（新旧段拼接扭曲跳变主要来自 angular 随机自旋）")
-        assertNull(zappy.velocityOutRange, "angular 需配合非零 velocity 才生效，zappy 两者均不声明")
-        assertEquals(0.5f, zappy.glowPower)
-        assertNull(zappy.angularInRange)
-        assertNull(zappy.velocityInRange)
-        assertNull(twin.angularOutRange, "twin 外带不加自旋")
+        // 开火锥状冲击（muzzleBurst 登记一发 onFire 钩子）
+        assertEquals(1, vfx.onFire.size, "普通弹带一个开火锥状冲击钩子")
     }
 
     @Test
-    fun `aod7 带长随武器射程折算`() {
-        val vfx = assertNotNull(ProjectileVfxSpecs.build("astd_aod7_shot", weaponRangeSu = 1200f))
+    fun `坠星残响带长随射程折算 50`() {
+        val vfx = assertNotNull(ProjectileVfxSpecs.build("astd_starfall_echo_shot", weaponRangeSu = 1000f))
         vfx.tree.staticTrails.forEach { (_, spec) ->
-            assertEquals(900f, spec.bandLength, "round5(1200×0.75)=900")
+            assertEquals(500f, spec.bandLength, "round5(1000×0.5)=500")
         }
         // 平铺/滚动随带长同比例缩放（保持图案密度）
         val twin = vfx.tree.staticTrails.first { it.first == "twin" }.second
-        assertEquals(300f, twin.tileLength, "round5(900/3)=300")
-        assertEquals(110f, twin.scrollSpeed, "round5(900×0.12)=round5(108)=110")
+        assertEquals(210f, twin.tileLength, "round5(500/2.4)=210")
+        assertEquals(85f, twin.scrollSpeed, "round5(500/6)=round5(83.3)=85")
     }
 
     @Test
-    fun `aod7 策略：仅淡出与 headLead 缺省`() {
-        val p = assertNotNull(ProjectileVfxSpecs.build("astd_aod7_shot")).policy
-        assertEquals(0.15f, p.hitFadeOutSeconds)
-        assertEquals(0.15f, p.expireFadeOutSeconds)
-        assertEquals(0.15f, p.removedFadeOutSeconds)
-        assertNull(p.headLeadWorld, "headLead 不声明 = 缺省 0，锚点压在弹体前端（螺栓头部）")
+    fun `坠星残响第 5 发：红色拖尾 + 三枚同位光斑 顺向与横向光柱`() {
+        val vfx = assertNotNull(ProjectileVfxSpecs.build("astd_starfall_echo_shot_final", weaponRangeSu = 1000f))
+
+        // 红色主色（starfallFinalRed）：拖尾头部色 mix 白后仍红>蓝；螺栓弹头染红近白
+        val twin = vfx.tree.staticTrails.first { it.first == "twin" }.second
+        assertTrue(twin.headColor.red > twin.headColor.blue, "第 5 发拖尾应为红色系")
+        assertEquals(0.9f, twin.glowPower, "第 5 发 trailGlow 0.9")
+        val bolt = assertNotNull(vfx.tree.bolt)
+        assertTrue(bolt.color.red > bolt.color.blue, "第 5 发螺栓弹头染色偏红")
+
+        // 弹头 SMOOTH 光斑（boltFlare=60）+ 三枚同位光斑
+        assertEquals(listOf("boltGlow", "light", "pillar", "pillar_cross"), vfx.tree.boxFlares.map { it.first })
+        val boltGlow = vfx.tree.boxFlares.first { it.first == "boltGlow" }.second
+        assertEquals(60f, boltGlow.width)
+        val light = vfx.tree.boxFlares.first { it.first == "light" }.second
+        assertEquals(BoxFlareStyle.SMOOTH, light.style)
+        assertEquals(48f, light.width)
+        assertEquals(48f, light.height)
+        val pillar = vfx.tree.boxFlares.first { it.first == "pillar" }.second
+        assertEquals(BoxFlareStyle.SHARP_DISC, pillar.style)
+        assertEquals(220f, pillar.width)
+        assertEquals(26f, pillar.height)
+        assertEquals(0f, pillar.facingOffsetDeg, "顺向光柱不偏移朝向")
+        val pillarCross = vfx.tree.boxFlares.first { it.first == "pillar_cross" }.second
+        assertEquals(BoxFlareStyle.SHARP_DISC, pillarCross.style)
+        assertEquals(160f, pillarCross.width)
+        assertEquals(18f, pillarCross.height)
+        assertEquals(90f, pillarCross.facingOffsetDeg, "横向光柱转 90°")
     }
 
     @Test
@@ -110,7 +136,8 @@ class ProjectileVfxSpecsTest {
     fun `未知 spec 返回 null；已接入 spec 均可构建`() {
         assertEquals(null, ProjectileVfxSpecs.build("astd_does_not_exist"))
         // 抽查若干已接入。
-        assertTrue(ProjectileVfxSpecs.has("astd_aod7_shot"))
+        assertTrue(ProjectileVfxSpecs.has("astd_starfall_echo_shot"))
+        assertTrue(ProjectileVfxSpecs.has("astd_starfall_echo_shot_final"))
         assertTrue(ProjectileVfxSpecs.has("astd_spc3_shot"))
     }
 

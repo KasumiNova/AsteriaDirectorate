@@ -1,0 +1,8 @@
+{
+    "id": "astd_grav_replicator",
+    "type": "STAT_MOD",
+    "aiType": "CUSTOM",
+    "aiScript": "cn.kasuminova.astd.combat.shipsystems.GravReplicatorSystemAI",
+    "statsScript": "cn.kasuminova.astd.combat.shipsystems.GravReplicatorSystemStats",
+    "useSound": "system_entropy"
+}

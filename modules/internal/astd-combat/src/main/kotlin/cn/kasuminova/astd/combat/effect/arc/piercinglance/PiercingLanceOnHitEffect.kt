@@ -10,8 +10,8 @@ import org.lwjgl.util.vector.Vector2f
 /**
  * 贯星之矛 `.proj` 侧命中回调（规格 09 §2.1）：引擎回调入口（引擎要求具体类实例化）。
  *
- * 职责仅为命中上下文校验与调用点：命中点 null 回退（陨石等路径，样板
- * HighFluxShieldPressureOnHitEffect）后委托 [PiercingLanceConeStrike] 完成
+ * 职责仅为命中上下文校验与调用点：命中点 null 回退（陨石等路径，同族 OnHit 统一口径）后委托
+ * [PiercingLanceConeStrike] 完成
  * 难度取值、锥状冲击结算与玩家可见反馈；锥面波及其他目标不因本体状态（hulk/相位）豁免——
  * 本体由 filter 单独豁免，故此处不做 target 状态早退。
  */

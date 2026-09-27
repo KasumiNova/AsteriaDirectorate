@@ -29,10 +29,15 @@ object ProjectileVfxSpecs {
     /**
      * projectileSpecId → 构建函数（参数 = 武器面板射程 su，null 时用 spec 固定带长）。加入一个即接入本管线。
      *
-     * 当前接入：aod7（hero，双层）+ 15 个 simpleProjectileVfx spec（四层惯例）。
+     * 当前接入：坠星残响双 spec（普通蓝白 / 第 5 发红色）+ 15 个 simpleProjectileVfx spec（四层惯例）。
      */
     private val builders: Map<String, (Float?) -> ProjectileVfx> = mapOf(
-        "astd_aod7_shot" to ::aod7Shot,
+        // 坠星残响（XC-001 内置主炮，blue/10-signature.md）：通用四层拖尾（蓝白）+ 开火锥状冲击；
+        // 特殊 trail（同色三角碎片 / 马赫环）由 .wpn EveryFrame（StarfallEchoWeaponEffect）逐帧发射，不进树。
+        "astd_starfall_echo_shot" to { range -> starfallEchoShot("astd_starfall_echo_shot", range) },
+        // 坠星残响第 5 发（200% 弹体）：红色同款拖尾 + 三枚同位光斑
+        // （SMOOTH 圆斑 / SHARP_DISC 顺向大光柱 / SHARP_DISC 转 90° 横向光柱）。
+        "astd_starfall_echo_shot_final" to { range -> starfallEchoFinalShot("astd_starfall_echo_shot_final", range) },
         "astd_spc3_shot" to { simpleProjectileVfx("astd_spc3_shot", violet(), width = 6f, length = 135f) },
         // 电荷针刺族：固定短拖尾 180、无 zappy 装饰层（去随机扭转抖动）、宽度 −75%。
         "astd_charge_needle_shot" to {
@@ -307,29 +312,55 @@ object ProjectileVfxSpecs {
     }
 
     /**
-     * aod7 hero：两条贴图拖尾为拖尾主体（复刻参考模组 zappy+twin 叠加构图）；
-     * 弹头 = Box 螺栓（染 aod7 冷蓝白近白色）。
-     * 拖尾吃 astd_trails 贴图（twin 脆丝垫底 layer1、zappy 电弧 layer2，宽比 twin=1.25×zappy）。
-     * 带长 = 武器面板射程 ×75%（range 缺失时 420 基线）；headLead/recede 均缺省
-     * （锚点压弹体前端，退距 = 弹体长度 ×0.2，tracker 运行期解析）。
-     * zappy 不做尾端自旋（实机观测：新旧段拼接处扭曲跳变主要来自 angular 随机自旋）。
+     * 坠星残响普通弹：simpleProjectileVfx 四层惯例（蓝白），带长 = 射程 ×50%，弹头 SMOOTH 光斑 +
+     * 开火锥状冲击（通用口径）。
      */
-    private fun aod7Shot(range: Float?): ProjectileVfx = projectileVfx("astd_aod7_shot") {
-        fade { out(0.15f) }
+    private fun starfallEchoShot(id: String, range: Float?): ProjectileVfx = simpleProjectileVfx(
+        id,
+        starfallBlue(),
+        width = 14f,
+        length = 320f,
+        range = range,
+        rangeRatio = 0.5f,
+        trailWidthScale = 0.75f,
+        trailGlow = 0.8f,
+        boltFlare = 40f,
+        muzzleBurst = MuzzleBurst(),
+    )
 
-        bolt { color(0xE4F2FFC8) }
-
-        val bandLen = if (range != null) round5(range * 0.75f) else 420f
-        staticTrail("twin", TEX_TWIN) {
-            layer(1); width(30f); length(bandLen)
-            colors(0xCFE8FF90, 0x0A1C3810)
-            tile(round5(bandLen / 3f), round5(bandLen * 0.12f))
+    /**
+     * 坠星残响第 5 发（弹体 200% 尺寸）：同款红色拖尾（宽度 ×2 由弹体口径表达）+
+     * 三枚同位光斑——SMOOTH 圆斑（弹头柔光）、SHARP_DISC 顺向大光柱、SHARP_DISC 转 90° 横向光柱。
+     */
+    private fun starfallEchoFinalShot(id: String, range: Float?): ProjectileVfx = simpleProjectileVfx(
+        id,
+        starfallFinalRed(),
+        width = 28f,
+        length = 320f,
+        range = range,
+        rangeRatio = 0.5f,
+        trailWidthScale = 0.75f,
+        trailGlow = 0.9f,
+        boltFlare = 60f,
+        muzzleBurst = MuzzleBurst(length = 200f, halfAngleDeg = 24f, duration = 0.4f),
+    ) {
+        boxFlare("light") {
+            style(BoxFlareStyle.SMOOTH)
+            colors(0xFFEDE6FF, 0xFF5A3CB4)
+            size(48f, 48f)
+            glow(1.2f, 4f)
         }
-        staticTrail("zappy", TEX_ZAPPY) {
-            layer(2); width(24f); length(bandLen)
-            colors(0xF0F8FFB4, 0x0A1C3812)
-            tile(round5(bandLen * 0.476f), round5(bandLen * 0.215f))
-            glow(0.5f)
+        boxFlare("pillar") {
+            style(BoxFlareStyle.SHARP_DISC)
+            colors(0xFFEDE6FF, 0xFF5A3CB4)
+            size(220f, 26f)
+            glow(1.6f, 4f)
+        }
+        boxFlare("pillar_cross") {
+            style(BoxFlareStyle.SHARP_DISC, facingOffsetDeg = 90f)
+            colors(0xFFEDE6FF, 0xFF5A3CB4)
+            size(160f, 18f)
+            glow(1.6f, 4f)
         }
     }
 
@@ -438,6 +469,10 @@ object ProjectileVfxSpecs {
             noise(0.1f)
         }
     }
+
+    // 坠星残响：ARC 冷蓝白（与普通弹同族）；第 5 发共振红（255,90,60，与 .proj fringe 同族）。
+    private fun starfallBlue() = ASTDColor(0.55f, 0.78f, 1f, 1f)
+    private fun starfallFinalRed() = ASTDColor(1f, 0.35f, 0.24f, 1f)
 
     // 源生冰晶族：冰蓝白（LENS 紫线中的冰晶冷色，全局美术约定新调色板由收口人添加）。
     private fun iceBlue() = ASTDColor(0.72f, 0.9f, 1f, 1f)
