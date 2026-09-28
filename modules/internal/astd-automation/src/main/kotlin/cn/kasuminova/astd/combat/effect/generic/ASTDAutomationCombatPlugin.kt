@@ -7594,13 +7594,13 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                         when {
                             contactDrop < XC2_EXPECT_CONTACT_HP_DROP -> {
                                 failureReason = "xc2 contact damage shortfall: hpDrop=${"%.0f".format(contactDrop)}" +
-                                        " < $XC2_EXPECT_CONTACT_HP_DROP（断言点 XC2-D：成形掠过 0.1s/拍×400 + 驻留 0.2s/拍×200，靶舰钉在路径上且装甲已剥光）"
+                                        " < $XC2_EXPECT_CONTACT_HP_DROP（断言点 XC2-D：成形掠过 0.1s/拍×400 + 驻留 0.2s/拍×200，靶舰钉在第 5 点位正中且装甲已剥光）"
                                 transitionXc2Phase(XC2_PHASE_FAILED)
                             }
 
                             closureDrop < XC2_EXPECT_CLOSURE_HP_DROP -> {
                                 failureReason = "xc2 closure damage shortfall: hpDrop=${"%.0f".format(closureDrop)}" +
-                                        " < $XC2_EXPECT_CLOSURE_HP_DROP（断言点 XC2-E：闭合收拢掠过 0.1s/拍×400 + 残余驻留，靶舰钉在路径中段）"
+                                        " < $XC2_EXPECT_CLOSURE_HP_DROP（断言点 XC2-E：闭合同向扫掠——扫过点位即席结算一拍 400 + 扫前残余驻留，靶舰钉在第 5 点位正中）"
                                 transitionXc2Phase(XC2_PHASE_FAILED)
                             }
 
@@ -11720,8 +11720,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         // 折跃舞台锚点：玩家舰静止朝 +X 激活（速度近零回退朝向，断言点 XC2-B 定向口径），
         // 变距折跃目标点经 SYSTEM_TARGET_COORDS 注入到达锚点（= 起点 +X 推进 RiftShiftTuning.SHIFT_DISTANCE，
         // 恰为满距——到达锚点同源派生，位移断言界亦由该常量派生，改折跃距离无需双处同步）；
-        // 虚空锚雷沿路径步进 100su（mineAnchorPoints 按路径实长展开），靶舰钉在路径中段
-        // （断言点 XC2-D/E 口径：全程吃掠过/驻留/收拢三类结算）。
+        // 伤害点位/虚空锚雷沿路径步进 100su（anchorPoints 按路径实长展开），靶舰钉在路径中段
+        // 第 5 点位正中（断言点 XC2-D/E 口径：全程吃成形掠过/驻留/闭合扫掠三类结算）。
         private val XC2_PLAYER_ANCHOR = Vector2f(-800f, -100f)
         private val XC2_ENEMY_ANCHOR = Vector2f(-300f, -100f)
         private val XC2_PLAYER_ARRIVAL = Vector2f(XC2_PLAYER_ANCHOR.x + RiftShiftTuning.SHIFT_DISTANCE, XC2_PLAYER_ANCHOR.y)
@@ -11742,8 +11742,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         // （容忍钉位恢复帧；与 XC2_PLAYER_ARRIVAL 同源，改折跃距离无需双处同步）；折跃窗 1.2s
         // 内不钉舰位（裂隙插件逐帧改写 location，钉位互搏会掩盖位移证据）；速度窗口 maxSpeed 峰值
         // 砺刃 +100%（期望峰值按 (base×(1+峰值%)+常驻 flat)/静止值 实算——零幅能加速 flat 不吃百分比
-        // 乘区，容差 ±0.1 覆盖帧量化）；5.2s 转入 CLOSURE（须在闭合收拢前快照靶舰 HP：
-        // 收拢 = 激活 +5.7s：0.7s 折跃 + 5s 驻留）。
+        // 乘区，容差 ±0.1 覆盖帧量化）；5.0s 转入 CLOSURE（须在闭合扫掠前快照靶舰 HP：裂隙时钟为
+        // 舰船时间，满距闭合起点 = 1s 拉开 + 5s 驻留，相位时流折算世界钟 ≈激活 +5.3~5.6s）。
         private const val XC2_ACTIVATE_TIMEOUT = 10f
         private const val XC2_SHIFT_PIN_FREE_SECONDS = 1.2f
         private const val XC2_SHIFT_ASSERT_SECONDS = 1.5f
@@ -11751,15 +11751,16 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private const val XC2_SHIFT_DISPLACEMENT_MIN = RiftShiftTuning.SHIFT_DISTANCE - XC2_SHIFT_DISPLACEMENT_TOLERANCE
         private const val XC2_SHIFT_DISPLACEMENT_MAX = RiftShiftTuning.SHIFT_DISTANCE + XC2_SHIFT_DISPLACEMENT_TOLERANCE
         private const val XC2_SPEED_MULT_TOLERANCE = 0.1f
-        private const val XC2_SHIFT_WINDOW_SECONDS = 5.2f
+        private const val XC2_SHIFT_WINDOW_SECONDS = 5.0f
 
-        // CLOSURE（断言点 XC2-D/E 评估）：接触掉血下界 3000（装甲已在 XC2-A 剥光，固定值结算：
-        // 成形掠过 ≈7 拍×400 + 快照前驻留 0.7→5.2s ≈22 拍×200 ≈7200 名义，保守口径取不足半）；
-        // 闭合掉血下界 1200（快照后驻留 5.2→5.7s ≈2 拍×200 + 收拢掠过覆盖靶舰半程 ≈5 拍×400，
-        // 保守口径）；+7.3s 评估（收拢 6.7s 完毕后 0.6s 余量）。
+        // CLOSURE（断言点 XC2-D/E 评估）：接触掉血下界由常量派生（装甲已在 XC2-A 剥光，固定值结算：
+        // 靶舰钉在第 5 点位正中——成形后段 ≈5 拍×400 + 快照前驻留 ≈23 拍×200 ≈6600 名义，
+        // 保守口径取 3 拍掠过 + 10 拍驻留）；闭合掉血下界 = 一拍掠过（快照后残余驻留拍 +
+        // 扫掠头抵达第 5 点位前的驻留拍 + 扫过时刻即席结算一拍 400，保守口径只取即席一拍）；
+        // +7.3s 评估（闭合扫掠 ≈6.3~6.6s 完毕后余量充足）。
         private const val XC2_CLOSURE_EVAL_SECONDS = 7.3f
-        private const val XC2_EXPECT_CONTACT_HP_DROP = 3000f
-        private const val XC2_EXPECT_CLOSURE_HP_DROP = 1200f
+        private const val XC2_EXPECT_CONTACT_HP_DROP = RiftShiftTuning.GRAZE_DAMAGE * 3 + RiftShiftTuning.CONTACT_DAMAGE * 10
+        private const val XC2_EXPECT_CLOSURE_HP_DROP = RiftShiftTuning.GRAZE_DAMAGE
 
         // WEAPON_SHIELD/HULL（断言点 XC2-F/G）：盾相 5s 评估叠层峰值 ≥0.5（主弹穿盾首触 +1/子射弹
         // 撞盾 +0.5）；体相 6s 评估穿透掉血 ≥300（穿透单点 面板×穿透比例 × 穿透节拍 + 子射弹撞船体全额，

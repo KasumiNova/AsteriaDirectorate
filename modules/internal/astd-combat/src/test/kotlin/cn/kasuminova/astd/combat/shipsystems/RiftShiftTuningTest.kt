@@ -2,43 +2,48 @@ package cn.kasuminova.astd.combat.shipsystems
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import org.lwjgl.util.vector.Vector2f
 
 /**
  * 裂隙折跃机制数值（blue/10-unique.md XC-002 节舰船系统）的契约测试：
- * 虚空锚雷布点序列的间距/数量/方向、折跃方向的飞行向量优先与朝向回退、
- * 变距折跃长度的下限/上限钳制、裂隙接触判定的固定接触范围边界、闭合收拢末端曲线。
+ * 伤害点位布点序列的间距/数量/方向、折跃方向的飞行向量优先与朝向回退、
+ * 变距折跃长度的下限/上限钳制、动态拉开时长的距离线性映射、
+ * 路径推进点端点口径、点位接触判定的最近点选取与界外剔除、折跃缓动曲线。
  */
 class RiftShiftTuningTest {
 
     @Test
-    fun `虚空锚雷布点序列 沿路径按间距均布`() {
-        val spacing = RiftShiftTuning.MINE_SPACING
-        val points = RiftShiftTuning.mineAnchorPoints(Vector2f(0f, 0f), Vector2f(800f, 0f))
-        assertEquals(8, points.size, "800su 路径按间距布点 8 枚")
+    fun `伤害点位序列 沿路径按间距均布`() {
+        val spacing = RiftShiftTuning.ANCHOR_SPACING
+        val points = RiftShiftTuning.anchorPoints(Vector2f(0f, 0f), Vector2f(800f, 0f))
+        assertEquals(8, points.size, "800su 路径按间距布点 8 个")
         points.forEachIndexed { index, point ->
             assertEquals(spacing * (index + 1), point.x, 1e-4f)
             assertEquals(0f, point.y, 1e-4f)
         }
         // 斜向路径（3-4-5 方向，全长 1000su）：布点落在 from→to 连线上
-        val diag = RiftShiftTuning.mineAnchorPoints(Vector2f(0f, 0f), Vector2f(600f, 800f))
-        assertEquals(10, diag.size, "1000su 斜线路径按间距布点 10 枚")
+        val diag = RiftShiftTuning.anchorPoints(Vector2f(0f, 0f), Vector2f(600f, 800f))
+        assertEquals(10, diag.size, "1000su 斜线路径按间距布点 10 个")
         val first = diag.first()
-        assertEquals(0.6f, first.x / spacing, 1e-4f, "首枚布点方向与路径一致")
+        assertEquals(0.6f, first.x / spacing, 1e-4f, "首个点位方向与路径一致")
         assertEquals(0.8f, first.y / spacing, 1e-4f)
+        // 末点不超过路径全长（850su 路径只布 8 个，余量不足一个间距）
+        val rest = RiftShiftTuning.anchorPoints(Vector2f(0f, 0f), Vector2f(850f, 0f))
+        assertEquals(8, rest.size)
+        assertEquals(800f, rest.last().x, 1e-4f)
     }
 
     @Test
-    fun `虚空锚雷布点序列 短于间距的路径为空`() {
-        val spacing = RiftShiftTuning.MINE_SPACING
+    fun `伤害点位序列 短于间距的路径为空`() {
+        val spacing = RiftShiftTuning.ANCHOR_SPACING
         assertTrue(
-            RiftShiftTuning.mineAnchorPoints(Vector2f(0f, 0f), Vector2f(spacing - 1f, 0f)).isEmpty(),
+            RiftShiftTuning.anchorPoints(Vector2f(0f, 0f), Vector2f(spacing - 1f, 0f)).isEmpty(),
         )
         assertEquals(
             1,
-            RiftShiftTuning.mineAnchorPoints(Vector2f(0f, 0f), Vector2f(spacing, 0f)).size,
+            RiftShiftTuning.anchorPoints(Vector2f(0f, 0f), Vector2f(spacing, 0f)).size,
         )
     }
 
@@ -68,32 +73,71 @@ class RiftShiftTuningTest {
     }
 
     @Test
-    fun `裂隙接触判定 目标心到段距离以固定接触范围为界`() {
-        val from = Vector2f(0f, 0f)
-        val to = Vector2f(800f, 0f)
-        val range = RiftShiftTuning.CONTACT_RANGE
-        // 界内：垂距恰为接触范围
-        assertTrue(RiftShiftTuning.contactsRift(Vector2f(400f, range), from, to))
-        // 界外：垂距超出接触范围
-        assertFalse(RiftShiftTuning.contactsRift(Vector2f(400f, range + 0.1f), from, to))
-        // 投影在线段外：端点外接触范围处（到端点距离恰在界上）
-        assertTrue(RiftShiftTuning.contactsRift(Vector2f(-range, 0f), from, to))
-        assertFalse(RiftShiftTuning.contactsRift(Vector2f(-range - 0.1f, 0f), from, to))
+    fun `动态拉开时长 按折跃距离占比线性映射`() {
+        val max = RiftShiftTuning.SHIFT_DISTANCE
+        val full = RiftShiftTuning.shiftDurationSeconds(max, max)
+        assertEquals(RiftShiftTuning.SHIFT_DURATION_MAX, full, 1e-6f, "满距拉开时长为名义最大值")
+        val shortest = RiftShiftTuning.shiftDurationSeconds(max, max * RiftShiftTuning.MIN_SHIFT_FRACTION)
+        assertEquals(
+            RiftShiftTuning.SHIFT_DURATION_MAX * RiftShiftTuning.MIN_SHIFT_FRACTION,
+            shortest, 1e-6f,
+            "最短折跃（25% 占比）拉开时长为名义最大值的 25%",
+        )
+        val half = RiftShiftTuning.shiftDurationSeconds(max, max * 0.5f)
+        assertEquals(RiftShiftTuning.SHIFT_DURATION_MAX * 0.5f, half, 1e-6f, "半程距离线性映射半程时长")
+        assertEquals(
+            RiftShiftTuning.SHIFT_DURATION_MAX,
+            RiftShiftTuning.shiftDurationSeconds(max, max * 2f), 1e-6f,
+            "占比超出 100% 钳到名义最大值",
+        )
+        assertEquals(
+            shortest,
+            RiftShiftTuning.shiftDurationSeconds(max, max * 0.1f), 1e-6f,
+            "占比低于 25% 钳到下限时长",
+        )
     }
 
     @Test
-    fun `闭合收拢末端 起点在成形末端 终点回起点 中点在半程`() {
+    fun `路径推进点 端点恒等 中点在半程 闭合扫掠头与拉开共用`() {
         val from = Vector2f(0f, 0f)
         val to = Vector2f(800f, 0f)
-        val start = RiftShiftTuning.closureTip(from, to, 0f)
-        assertEquals(to.x, start.x, 1e-4f, "收拢进度 0 时末端在成形末端")
-        assertEquals(to.y, start.y, 1e-4f)
-        val end = RiftShiftTuning.closureTip(from, to, 1f)
-        assertEquals(from.x, end.x, 1e-4f, "收拢进度 1 时末端回到起点")
-        assertEquals(from.y, end.y, 1e-4f)
-        val mid = RiftShiftTuning.closureTip(from, to, 0.5f)
-        assertEquals(400f, mid.x, 1e-4f, "缓动曲线中点恒等，收拢半程末端在路径中点")
+        val start = RiftShiftTuning.pathPointAt(from, to, 0f)
+        assertEquals(from.x, start.x, 1e-4f, "进度 0 在路径起点")
+        assertEquals(from.y, start.y, 1e-4f)
+        val end = RiftShiftTuning.pathPointAt(from, to, 1f)
+        assertEquals(to.x, end.x, 1e-4f, "进度 1 在路径终点")
+        assertEquals(to.y, end.y, 1e-4f)
+        val mid = RiftShiftTuning.pathPointAt(from, to, 0.5f)
+        assertEquals(400f, mid.x, 1e-4f, "缓动曲线中点恒等，半程推进在路径中点")
         assertEquals(0f, mid.y, 1e-4f)
+        // 闭合扫掠头与成形拉开同向同曲线：同一进度取同一点
+        val t = 0.3f
+        val a = RiftShiftTuning.pathPointAt(from, to, t)
+        val b = RiftShiftTuning.pathPointAt(from, to, t)
+        assertEquals(a.x, b.x, 1e-6f)
+        assertEquals(a.y, b.y, 1e-6f)
+    }
+
+    @Test
+    fun `点位接触判定 界内取最近点位 交叠区单点结算 界外剔除`() {
+        val points = RiftShiftTuning.anchorPoints(Vector2f(0f, 0f), Vector2f(800f, 0f))
+        val range = RiftShiftTuning.CONTACT_RANGE
+        // 正对点位：最近点位即正对点
+        val headOn = RiftShiftTuning.nearestAnchorInRange(Vector2f(400f, 50f), points)
+        assertEquals(400f, headOn!!.x, 1e-4f)
+        assertEquals(0f, headOn.y, 1e-4f)
+        // 两点交叠区（距 (100,0) 40su、距 (200,0) 60su）：取最近点 (100,0)
+        val overlap = RiftShiftTuning.nearestAnchorInRange(Vector2f(140f, 0f), points)
+        assertEquals(100f, overlap!!.x, 1e-4f, "交叠区只按最近点位结算")
+        // 界上恰为接触范围
+        val onEdge = RiftShiftTuning.nearestAnchorInRange(Vector2f(400f, range), points)
+        assertEquals(400f, onEdge!!.x, 1e-4f)
+        // 界外：垂距超出接触范围
+        assertNull(RiftShiftTuning.nearestAnchorInRange(Vector2f(400f, range + 0.1f), points))
+        // 界外：路径端外（起点后方无点位覆盖）
+        assertNull(RiftShiftTuning.nearestAnchorInRange(Vector2f(-range - 0.1f, 0f), points))
+        // 空点位序列
+        assertNull(RiftShiftTuning.nearestAnchorInRange(Vector2f(0f, 0f), emptyList()))
     }
 
     @Test
@@ -114,20 +158,5 @@ class RiftShiftTuningTest {
         // 域外钳制
         assertEquals(0f, RiftShiftTuning.easeProgress(-0.3f), 1e-6f)
         assertEquals(1f, RiftShiftTuning.easeProgress(1.3f), 1e-6f)
-    }
-
-    @Test
-    fun `段最近点 投影界内取垂足 界外取端点 退化段取端点`() {
-        val from = Vector2f(0f, 0f)
-        val to = Vector2f(800f, 0f)
-        val foot = RiftShiftTuning.closestPointOnSegment(Vector2f(400f, 50f), from, to)
-        assertEquals(400f, foot.x, 1e-4f)
-        assertEquals(0f, foot.y, 1e-4f)
-        val beyond = RiftShiftTuning.closestPointOnSegment(Vector2f(-30f, 40f), from, to)
-        assertEquals(0f, beyond.x, 1e-4f, "投影在线段外取最近端点")
-        assertEquals(0f, beyond.y, 1e-4f)
-        val degenerate = RiftShiftTuning.closestPointOnSegment(Vector2f(10f, 0f), from, from)
-        assertEquals(0f, degenerate.x, 1e-4f, "退化为点的线段返回端点")
-        assertEquals(0f, degenerate.y, 1e-4f)
     }
 }
