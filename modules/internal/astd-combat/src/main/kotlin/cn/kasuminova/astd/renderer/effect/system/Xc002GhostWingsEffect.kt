@@ -62,12 +62,16 @@ object Xc002GhostWingsEffect {
 
     private val log = AstdLog.logger
 
+    /** 预加载成功的贴图路径集合：render 只画登记在册的路径，缺失贴图不得在渲染循环里触发战斗中懒加载。 */
+    private val loadedSprites = mutableSetOf<String>()
+
     /** 预加载光翼贴图（onApplicationLoad 调用；渲染循环走 vanilla getSprite 共享缓存）。 */
     fun preloadTextures() {
         var loaded = 0
         for (path in listOf(SPRITE_DARK, SPRITE_LIGHT)) {
             try {
                 Global.getSettings().loadTexture(path)
+                loadedSprites += path
                 loaded++
             } catch (t: Throwable) {
                 log.warn("[ASTD] 虚数之翼光翼贴图预加载失败 $path", t)
@@ -157,7 +161,7 @@ object Xc002GhostWingsEffect {
             // 残影：每 0.1s 一帧 ghost_dark（alpha 0.1，0.5s 平方淡出由残影渲染器承担）；
             // 残影是历史快照语义，位置/朝向取生成时刻值
             att.afterimageTimer += amount
-            if (att.afterimageTimer >= AFTERIMAGE_INTERVAL) {
+            if (att.afterimageTimer >= AFTERIMAGE_INTERVAL && SPRITE_DARK in loadedSprites) {
                 att.afterimageTimer -= AFTERIMAGE_INTERVAL
                 ASTDAfterimageEffect.spawn(
                     engine,
@@ -203,6 +207,7 @@ object Xc002GhostWingsEffect {
         }
 
         private fun renderWing(spritePath: String, ship: ShipAPI, tint: Color, alpha: Float) {
+            if (spritePath !in loadedSprites) return
             // SpriteAPI 为全局共享缓存实例，尺寸/混合/颜色状态可能被其他渲染方改写，须逐帧重取并重置
             val sprite = Global.getSettings().getSprite(spritePath)
             sprite.setAdditiveBlend()
