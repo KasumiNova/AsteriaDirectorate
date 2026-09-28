@@ -7835,8 +7835,15 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         val enemy = findPfEnemy(engine)
         if (player != null && !player.isHulk) player.hitpoints = player.maxHitpoints
         if (enemy != null && !enemy.isHulk) enemy.hitpoints = enemy.maxHitpoints
-        // 玩家舰身份照 GRG 范式赋予（保留舰 AI——不置空 shipAI、不锁操控，AI 自由对抗）
-        if (player != null && !player.isHulk) engine.setPlayerShipExternal(player)
+        // 玩家舰身份照 GRG 范式赋予（不锁操控，AI 自由对抗）：CombatState.setPlayerShip
+        // 会把舰 AI 收进 prevAI 并置空（玩家接管口径），系统 AI 挂在舰 AI 上会随之停转，
+        // 必须补建默认舰 AI（config 必须空实例：传 null 会让 BasicShipAI.pickManeuver NPE）
+        if (player != null && !player.isHulk) {
+            engine.setPlayerShipExternal(player)
+            if (player.shipAI == null) {
+                player.shipAI = Global.getSettings().createDefaultShipAI(player, ShipAIConfig())
+            }
+        }
 
         if (player != null && enemy != null && pfPhase == PF_PHASE_OBSERVE) {
             if (pfCombatStartAt < 0f) {
@@ -8041,7 +8048,13 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         val enemy = findPfbEnemy(engine)
         if (player != null && !player.isHulk) player.hitpoints = player.maxHitpoints
         if (enemy != null && !enemy.isHulk) enemy.hitpoints = enemy.maxHitpoints
-        if (player != null && !player.isHulk) engine.setPlayerShipExternal(player)
+        // 同 pf 场景：玩家舰身份会清空舰 AI（CombatState.setPlayerShip 口径），补建默认舰 AI
+        if (player != null && !player.isHulk) {
+            engine.setPlayerShipExternal(player)
+            if (player.shipAI == null) {
+                player.shipAI = Global.getSettings().createDefaultShipAI(player, ShipAIConfig())
+            }
+        }
 
         if (player != null && enemy != null && pfbPhase == PFB_PHASE_OBSERVE) {
             if (pfbCombatStartAt < 0f) {
