@@ -69,7 +69,11 @@ import org.lwjgl.util.vector.Vector2f
  *   继续相位机动等死角（强制上浮不受此闸约束）；
  * - 战术上浮：攻击系统就绪且有交战对象——上浮施放磁暴/复制器；
  * - 输出窗口上浮：可输出武器占比 ≥ [WEAPONS_READY_SURFACE_FRAC] 且来袭可控；
- * - 反闪烁：相位不足 [MIN_PHASE_TIME_SEC] 不主动上浮（强制上浮不受限）。
+ * - 反闪烁：相位不足 [MIN_PHASE_TIME_SEC] 不主动上浮（强制上浮不受限）；
+ * - 落点安全闸：本舰与任一非战机舰船深度重叠（间距 < 双方碰撞半径和 ×
+ *   [UNPHASE_UNSAFE_OVERLAP_FRAC]，与原版斗篷 canBeDeactivated 的 locationSafe 口径一致）时，
+ *   一切上浮指令按住（含强制上浮）——此时 toggle 会被原版拒绝，白耗开关守卫；
+ *   按住续潜无过载风险（canNotCauseOverload），漂出重叠后上浮自然放行。
  *
  * 威胁评估口径：直射弹体按弹道外推 + 横向偏差判定；制导导弹（含龙炎 DEM 等跟踪武器）
  * 跳过横向偏差检查并以极速一半兜底接近速度；光束瞬时命中无弹体，扫描正在开火且射界/射程
@@ -202,6 +206,9 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
         /** 绕后意图期间相位时长上限相对意图窗口的富余（s）。 */
         internal const val FLANK_PHASE_CAP_MARGIN_SEC = 2f
 
+        /** 上浮落点重叠判定系数：与他舰间距 < （双方碰撞半径和）× 本值时退相位被原版拒绝（对齐原版 locationSafe 口径）。 */
+        internal const val UNPHASE_UNSAFE_OVERLAP_FRAC = 0.35f
+
         /** 死角上浮允许的最大武器覆盖数（目标侧后射界内能瞄准本舰的武器 ≤ 本值立即上浮）。 */
         internal const val REAR_SURFACE_MAX_COVERAGE = 1
 
@@ -304,6 +311,8 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
             val flankIntentWindowSec: Float,
             /** 主威胁目标距离（su；无威胁时为 [Float.MAX_VALUE]）。 */
             val threatDistance: Float,
+            /** 上浮落点是否不安全：本舰碰撞圈与他舰深度重叠（原版斗篷此时拒绝退相位）。 */
+            val unphaseUnsafe: Boolean,
             /** 友军火力在 soon 窗口内命中本舰的估计伤害（友伤规避只触发防御性下潜）。 */
             val incomingFriendlySoonDamage: Float,
         )
@@ -313,6 +322,15 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
 
         /** 相位决策核心（纯函数）：口径见类 KDoc 规则清单。 */
         internal fun decide(s: PhaseSituation): PhaseOrder {
+            val order = decideOrder(s)
+            // 上浮落点安全闸：与他舰深度重叠时原版斗篷拒绝退相位（canBeDeactivated=false，
+            // toggle 空发），按住一切上浮指令直到漂出重叠——否则实机会出现「指令三连发、
+            // 舰船卡相位」的拒退循环（本系统 canNotCauseOverload，续潜无过载风险）
+            if (order == PhaseOrder.SURFACE && s.phased && s.unphaseUnsafe) return PhaseOrder.NONE
+            return order
+        }
+
+        private fun decideOrder(s: PhaseSituation): PhaseOrder {
             // 防御性来袭口径：敌方与友军火力合并——被友军高伤火力命中同样是生存威胁，
             // 相位可以规避友伤；友军火力只走这条防御链路，不参与绕后/耗软辐等战术下潜
             val defensiveSoon = s.incomingSoonDamage + s.incomingFriendlySoonDamage
@@ -542,10 +560,11 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
         // 两旗标短时效滚动刷新，意图结束/上浮后自然过期，无需手动 unset。
         // 同挂 DO_NOT_BACK_OFF：走位模块的穿透分支要求非后撤/非规避状态（var52/var58），
         // 相位累积辐能推高 fluxLevel 后会命中「辐能高于目标」规避判定把穿透驱动掐掉，
-        // 意图期间由本 AI 的辐能闸（SURFACE_HARD_FLUX）兜底生存，走位层不再自行后撤
+        // 意图期间由本 AI 的辐能闸（SURFACE_HARD_FLUX）兜底生存，走位层不再自行后撤；
+        // 落点重叠时原版斗篷拒绝退相位，不就地保持，继续穿透驱动直到漂出重叠
         if (situation.flankIntentActive && phased) {
             ship.aiFlags.setFlag(ShipwideAIFlags.AIFlags.DO_NOT_BACK_OFF, 0.5f)
-            if (situation.inTargetRearArc) {
+            if (situation.inTargetRearArc && !situation.unphaseUnsafe) {
                 ship.aiFlags.setFlag(ShipwideAIFlags.AIFlags.PHASE_ATTACK_RUN_IN_GOOD_SPOT, 0.5f)
             } else {
                 ship.aiFlags.setFlag(ShipwideAIFlags.AIFlags.PHASE_ATTACK_RUN, 0.5f)
@@ -656,13 +675,33 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
             ) >= REAR_ARC_MIN_DIFF,
             weaponCoverage = if (threat == null) 0 else weaponCoverageOn(ship, threat),
             friendlyCatchDamage = estimateFriendlyCatch(engine, ship),
-            // 绕后意图生效口径：窗口未过期、相位中、主威胁仍为低机动目标
-            flankIntentActive = flankIntentRemaining > 0f && phased && lowMobility,
+            // 绕后意图生效口径：窗口未过期、相位中、且主威胁未明确换成高机动舰。
+            // 威胁短暂掉出交战圈（threat == null）不取消意图——布防闸在 isFlankDive
+            // 一次性把关，途中抖动取消会让布防早夭（实测 zw101 四次布防三次以
+            // 上浮时 engaged=false 夭折，相位白潜）
+            flankIntentActive = flankIntentRemaining > 0f && phased && (threat == null || lowMobility),
             flankIntentWindowSec = flankIntentWindowArmed,
             threatDistance = if (threat == null) Float.MAX_VALUE
             else kotlin.math.sqrt(distanceSq(ship.location, threat.location)),
+            unphaseUnsafe = isUnphaseUnsafe(engine, ship),
             incomingFriendlySoonDamage = friendlyIncoming[0],
         )
+    }
+
+    /**
+     * 上浮落点重叠判定：本舰碰撞圈与任一非战机舰船深度重叠时，原版斗篷拒绝退相位
+     * （canBeDeactivated 的 locationSafe 口径：间距 < 双方碰撞半径和 × [UNPHASE_UNSAFE_OVERLAP_FRAC]）。
+     * 小行星不查：原版对环带小行星豁免而公开 API 无法区分环带归属，实测唯一触发源是舰船重叠；
+     * hulk 不排除——残骸物理上同样占据落点。
+     */
+    private fun isUnphaseUnsafe(engine: CombatEngineAPI, ship: ShipAPI): Boolean {
+        for (other in engine.ships) {
+            if (other === ship || other.isFighter) continue
+            if (other.parentStation === ship) continue
+            val limit = (other.collisionRadius + ship.collisionRadius) * UNPHASE_UNSAFE_OVERLAP_FRAC
+            if (distanceSq(ship.location, other.location) < limit * limit) return true
+        }
+        return false
     }
 
     /** 主威胁目标：当前目标有效则用之，否则取交战圈内最近敌舰（无则 null；回退同样限交战圈）。 */

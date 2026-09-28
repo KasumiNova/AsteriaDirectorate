@@ -38,6 +38,7 @@ class GravityPhaseCloakAITest {
         flankIntentActive = false,
         flankIntentWindowSec = GravityPhaseCloakAI.FLANK_INTENT_SEC,
         threatDistance = 1000f,
+        unphaseUnsafe = false,
         incomingFriendlySoonDamage = 0f,
     )
 
@@ -65,6 +66,7 @@ class GravityPhaseCloakAITest {
         flankIntentActive = false,
         flankIntentWindowSec = GravityPhaseCloakAI.FLANK_INTENT_SEC,
         threatDistance = 1000f,
+        unphaseUnsafe = false,
         incomingFriendlySoonDamage = 0f,
     )
 
@@ -72,6 +74,17 @@ class GravityPhaseCloakAITest {
     fun `硬辐能达闸强制上浮`() {
         val s = phasedSituation().copy(hardFluxLevel = GravityPhaseCloakAI.SURFACE_HARD_FLUX)
         assertEquals(PhaseOrder.SURFACE, GravityPhaseCloakAI.decide(s))
+    }
+
+    @Test
+    fun `上浮落点重叠不安全时按住一切上浮指令`() {
+        // 强制上浮路径（硬辐能达闸）：落点重叠时被按住，漂出重叠后放行
+        val unsafe = phasedSituation().copy(
+            hardFluxLevel = GravityPhaseCloakAI.SURFACE_HARD_FLUX,
+            unphaseUnsafe = true,
+        )
+        assertEquals(PhaseOrder.NONE, GravityPhaseCloakAI.decide(unsafe))
+        assertEquals(PhaseOrder.SURFACE, GravityPhaseCloakAI.decide(unsafe.copy(unphaseUnsafe = false)))
     }
 
     @Test
