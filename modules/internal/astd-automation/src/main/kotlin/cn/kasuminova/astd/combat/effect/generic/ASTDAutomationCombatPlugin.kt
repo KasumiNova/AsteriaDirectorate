@@ -32,7 +32,7 @@ import org.lwjgl.opengl.Display
  * renderInUICoords 捕获分发与诊断 JSON 编排（公共头尾 + 活跃场景证据段）。
  *
  * 外部硬契约（不得破坏）：
- * - 类 FQN 被 24 个 MissionDefinition.java 以 `new ASTDAutomationCombatPlugin()` 引用；
+ * - 类 FQN 被 23 个 MissionDefinition.java 以 `new ASTDAutomationCombatPlugin()` 引用；
  * - [writeTelemetry] 四参私有方法是 SSOptimizer 的 ASM 注入点（签名逐字节保留）；
  * - 诊断日志行格式 `[ASTD-Automation] diagnostics state=$state json=...` 被
  *   tools/verify_ingame_vfx_automation.py 解析。
