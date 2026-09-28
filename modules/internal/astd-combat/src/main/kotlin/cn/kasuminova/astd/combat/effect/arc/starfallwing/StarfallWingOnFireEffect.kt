@@ -11,27 +11,27 @@ import java.util.IdentityHashMap
 /**
  * 坠星残翼的开火路由（挂主弹 spec 的 `onFireEffect`）：
  *
- * - 登记弹体状态（穿透结算 / 子射弹散发节拍），状态存 `engine.customData`
+ * - 登记主弹状态（穿透结算 / 子射弹散发节拍），状态存 `engine.customData`
  *   （OnFire 插件实例为 spec 级共享，不能持有单武器状态；坠星残响同款判例）；
  * - 弹体 VFX 树登记（[ProjectileVfxDriverPlugin.track]，主弹紫色锥形 + 碎片航迹 + 马赫环）。
  *
  * 主弹 collisionClass=NONE：原版触碰结算恒不触发，护盾阻挡/穿盾/穿船体高频伤害
- * 全部由 [StarfallWingWeaponEffect] 的逐帧脚本碰撞判定承担。
+ * 全部由 [StarfallWingWeaponEffect] 的逐帧脚本碰撞判定承担。子射弹已回归原版导弹
+ * 口径（MISSILE_NO_FF + spec onHitEffect），不登记本表。
  */
 class StarfallWingOnFireEffect : OnFireEffectPlugin {
 
     override fun onFire(projectile: DamagingProjectileAPI, weapon: WeaponAPI, engine: CombatEngineAPI) {
         if (engine.isPaused) return
         projectileStates(engine)[projectile] = ProjectileState(
-            ownerWeapon = weapon, isMote = false, lastPierceLocation = Vector2f(projectile.location),
+            ownerWeapon = weapon, lastPierceLocation = Vector2f(projectile.location),
         )
         ProjectileVfxDriverPlugin.track(engine, projectile, StarfallWingTuning.SHOT_SPEC_ID)
     }
 
-    /** 单枚弹体的脚本结算状态（穿透/散发节拍；子射弹由散发时登记，[isMote]=true）。 */
+    /** 单枚主弹的脚本结算状态（穿透/散发节拍；子射弹走原版碰撞，不登记）。 */
     class ProjectileState(
         val ownerWeapon: WeaponAPI,
-        val isMote: Boolean,
         var pierceTimer: Float = 0f,
         var moteTimer: Float = 0f,
         /** 上一帧扫掠起点（登记时初始化为出生点，保证首帧扫全段而非零长段）。 */

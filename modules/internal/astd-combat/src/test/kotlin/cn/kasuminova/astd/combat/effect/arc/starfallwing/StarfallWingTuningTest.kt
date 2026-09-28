@@ -8,7 +8,7 @@ import org.lwjgl.util.vector.Vector2f
 
 /**
  * 坠星残翼机制数值（blue/10-signature.md 坠星残翼节）的契约测试：
- * 振频适应承伤比映射的削弱/封顶/免伤口径、护盾接触行为（主弹恒穿盾/子射弹撞盾）、
+ * 振频适应承伤比映射的削弱/封顶/免伤口径、子射弹追踪延迟闸门（1s 惯性直飞后开追踪）、
  * 穿透扫掠用的点到线段距离与最近点（投影内/外/退化段）、碰撞箱多边形内部点判定。
  */
 class StarfallWingTuningTest {
@@ -33,9 +33,20 @@ class StarfallWingTuningTest {
     }
 
     @Test
-    fun `护盾接触行为 主弹恒穿盾 子射弹撞盾阻挡`() {
-        assertTrue(StarfallWingTuning.shieldContactPierces(isMote = false), "主弹恒穿盾（无层数门槛）")
-        assertFalse(StarfallWingTuning.shieldContactPierces(isMote = true), "子射弹不继承穿盾，撞盾阻挡")
+    fun `子射弹追踪闸门 延迟窗内不追踪 满 1s 开追踪`() {
+        assertFalse(StarfallWingTuning.moteTrackingActive(0f), "射出瞬间惯性直飞")
+        assertFalse(
+            StarfallWingTuning.moteTrackingActive(StarfallWingTuning.MOTE_TRACK_DELAY_SECONDS - 0.01f),
+            "延迟窗内不索敌不转向",
+        )
+        assertTrue(
+            StarfallWingTuning.moteTrackingActive(StarfallWingTuning.MOTE_TRACK_DELAY_SECONDS),
+            "满延迟即开追踪（闭区间下界）",
+        )
+        assertTrue(
+            StarfallWingTuning.moteTrackingActive(StarfallWingTuning.MOTE_TRACK_DELAY_SECONDS + 1f),
+            "延迟窗后持续追踪",
+        )
     }
 
     @Test

@@ -5,9 +5,9 @@ import org.lwjgl.util.vector.Vector2f
 /**
  * 坠星残翼（XC-002 星翼内置主炮，规格 blue/10-signature.md 坠星残翼节）的机制数值声明与纯函数。
  *
- * 动机：穿透高频结算节拍、子射弹散发/伤害比例与「振频适应」叠层的承伤比映射集中在一处
- * 声明；穿透 tick 伤害/EMP、子射弹伤害、承伤比映射、护盾接触行为与扫掠几何判定均为
- * 纯函数，供 OnFire/EveryFrame 调用并由单元测试直接驱动。
+ * 动机：穿透高频结算节拍、子射弹散发/伤害比例/追踪延迟与「振频适应」叠层的承伤比映射
+ * 集中在一处声明；穿透 tick 伤害/EMP、子射弹伤害与追踪闸门、承伤比映射与扫掠几何判定均为
+ * 纯函数，供 OnFire/EveryFrame/导弹 AI 调用并由单元测试直接驱动。
  *
  * 设计案锁死项（不随难度缩放）：每层承伤削弱 10%、单层 3s 消散（1/3 层/s）、主弹恒穿盾、
  * 穿透拍率 0.1s、穿透结算 20% 面板 + 20% 面板 EMP、子射弹 20% 面板与撞盾 +0.5 层。
@@ -40,6 +40,9 @@ object StarfallWingTuning {
     /** 子射弹散发时的侧向初速（su/s，沿主弹飞行向量 ±90°）。 */
     const val MOTE_SIDE_SPEED = 250f
 
+    /** 子射弹追踪延迟（秒）：射出后先按初速惯性直飞，满 1s 后才索敌/转向。 */
+    const val MOTE_TRACK_DELAY_SECONDS = 1.0f
+
     /** 振频适应单层承伤比增量（+0.1/层，承伤比口径见 [adaptationShieldMult]）。 */
     const val ADAPTATION_TAKEN_PER_STACK = 0.1f
 
@@ -58,8 +61,8 @@ object StarfallWingTuning {
     /** 子射弹面板伤害（纯函数）：主弹面板 × [MOTE_DAMAGE_RATIO]。 */
     fun moteDamage(mainPanel: Float): Float = mainPanel * MOTE_DAMAGE_RATIO
 
-    /** 护盾接触行为（纯函数）：主弹恒穿透护盾；子射弹不继承穿盾，撞盾 = 阻挡消散。 */
-    fun shieldContactPierces(isMote: Boolean): Boolean = !isMote
+    /** 子射弹追踪闸门（纯函数）：飞行时间满 [MOTE_TRACK_DELAY_SECONDS] 才允许索敌/转向。 */
+    fun moteTrackingActive(flightTimeSeconds: Float): Boolean = flightTimeSeconds >= MOTE_TRACK_DELAY_SECONDS
 
     /**
      * 振频适应护盾承伤映射（纯函数，承伤比口径）：目标承伤比 = min(base + 0.1×层数, 1.0)，

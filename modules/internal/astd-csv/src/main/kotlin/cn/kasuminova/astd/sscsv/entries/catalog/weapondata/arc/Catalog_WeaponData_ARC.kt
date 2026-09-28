@@ -236,8 +236,10 @@ object Wpn_astd_starfall_wing : WeaponDataEntry(), SsProjProjectileOutputs {
 /**
  * 星翼：坠星残翼追踪子射弹真实导弹体（脚本生成，规格 10-signature 坠星残翼节）。
  *
- * 实体碰撞类别 NONE：护盾命中（+0.5 层振频适应）与穿船体高频伤害由主武器脚本逐帧判定；
- * 追踪由脚本指派 MissileAIPlugin（生成时 `missileAI = ...`，追击虚粒子同款范式）。
+ * 实体碰撞类别 MISSILE_NO_FF（原版导弹口径）：撞盾/撞船体/阻挡消散全走原版结算，
+ * 撞盾附加 0.5 层振频适应用 proj 的 onHitEffect（StarfallWingMoteOnHitEffect，shieldHit 参数）；
+ * 追踪由脚本指派 MissileAIPlugin（生成时 `missileAI = ...`，追击虚粒子同款范式），
+ * 射出后前 1s 惯性直飞不追踪（StarfallWingMoteAi 内闸门）。
  */
 object Wpn_astd_starfall_wing_mote_launcher : WeaponDataEntry(), SsProjMissileOutputs {
     override val id: String = "astd_starfall_wing_mote_launcher"
@@ -264,12 +266,16 @@ object Wpn_astd_starfall_wing_mote_launcher : WeaponDataEntry(), SsProjMissileOu
     override val projSpec: MissileProjSpec = MissileProjSpec(
         id = "astd_starfall_wing_mote",
         missileType = "MISSILE",
+        // 撞盾附加 0.5 层振频适应（原版 OnHitEffectPlugin.onHit 的 shieldHit 参数口径）；
+        // 伤害结算全走原版碰撞，脚本不再插手
+        onHitEffect = "cn.kasuminova.astd.combat.effect.arc.starfallwing.StarfallWingMoteOnHitEffect",
         // 原版弹体贴图渲染屏蔽：本体由弹体 VFX 管线接管（追击虚粒子同款判例）
         sprite = "graphics/textures/BUtil_NONE.png",
         size = Vec2i(4, 4),
         center = Vec2(2, 2),
         collisionRadius = 7,
-        collisionClass = "NONE",
+        // 原版导弹碰撞口径（无友伤）：撞盾/撞船体/被拦截全走原版
+        collisionClass = "MISSILE_NO_FF",
         explosionColor = Rgba(170, 110, 255, 180),
         explosionRadius = 24,
         armingTime = 0.05,

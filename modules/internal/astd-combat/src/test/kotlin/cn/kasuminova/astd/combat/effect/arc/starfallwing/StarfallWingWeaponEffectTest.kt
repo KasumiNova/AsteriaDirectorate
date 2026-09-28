@@ -27,12 +27,13 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * 坠星残翼脚本碰撞结算的真实逻辑验证（Mockito 桩 + 真 BuffHost + 真 MutableStat）：
- * - 船体穿透单点结算：拍到期一次 applyDamage，落点 = 射弹当前位置，伤害 = 20% 面板、
- *   EMP = 20% EMP 面板，bypassShields=true（装甲格分摊由原版装甲池承担，不逐格结算）；
+ * 坠星残翼脚本碰撞结算与子射弹 onHit 钩子的真实逻辑验证（Mockito 桩 + 真 BuffHost + 真 MutableStat）：
+ * - 船体穿透单点结算：拍到期一次 applyDamage，落点 = 射弹当前位置，伤害/EMP = 面板×穿透比例
+ *   （bypassShields=true；装甲格分摊由原版装甲池承担，不逐格结算）；
  * - 主弹振频适应全局闩锁：重复结算只附加一次 1 层；
- * - 护盾接触行为：主弹恒穿盾（到期拍 20%+EMP、不移除弹体、拍外不结算）、
- *   子射弹撞盾全额面板 + 0.5 层 + 阻挡消散。
+ * - 护盾接触行为：主弹恒穿盾（到期拍结算面板×穿透比例 + EMP、不移除弹体、拍外不结算）；
+ * - 子射弹原版碰撞的 onHit 钩子：撞盾（shieldHit=true）附加 0.5 层振频适应，
+ *   撞船体（shieldHit=false）不附加；伤害本身由原版结算，脚本不触碰。
  */
 class StarfallWingWeaponEffectTest {
 
@@ -92,20 +93,21 @@ class StarfallWingWeaponEffectTest {
     }
 
     @Test
-    fun `船体穿透单点结算 落点射弹当前位置 20% 面板与 EMP bypassShields`() {
+    fun `船体穿透单点结算 落点射弹当前位置 穿透比例面板与 EMP bypassShields`() {
         val (engine, calls) = recordingEngine()
         val ship = stubTargetShip()
         val projLocation = Vector2f(120f, -45f)
         val proj = projectileOf(damage = 1000f, emp = 500f, at = projLocation)
-        val state = StarfallWingOnFireEffect.ProjectileState(stubWeapon("WS 001", "astd_starfall_wing"), isMote = false)
+        val state = StarfallWingOnFireEffect.ProjectileState(stubWeapon("WS 001", "astd_starfall_wing"))
 
         effect.settleHullPierce(engine, proj, state, ship)
 
         assertEquals(1, calls.size, "一拍对一个目标只结算一次（不逐格遍历装甲）")
         val call = calls.single()
         assertTrue(call.entity === ship, "结算实体必须是目标舰")
-        assertEquals(200f, call.damage, 1e-4f, "单拍 20% 面板（1000×0.2）")
-        assertEquals(100f, call.emp, 1e-4f, "单拍附带 20% EMP 面板（500×0.2）")
+        // 期望从 tuning 纯函数派生（比例数值是调参面，不硬编码）
+        assertEquals(StarfallWingTuning.pierceTickDamage(1000f), call.damage, 1e-4f, "单拍伤害 = 面板×穿透比例")
+        assertEquals(StarfallWingTuning.pierceTickEmp(500f), call.emp, 1e-4f, "单拍 EMP = EMP 面板×穿透比例")
         assertEquals(DamageType.ENERGY, call.type)
         assertTrue(call.bypassShield, "穿船体结算 bypassShield=true（只跳过引擎护盾弧判定，装甲池结算照走）")
         assertEquals(projLocation.x, call.point.x, 1e-4f, "落点 = 射弹当前位置")
@@ -117,7 +119,7 @@ class StarfallWingWeaponEffectTest {
         val (engine, _) = recordingEngine()
         val ship = stubTargetShip()
         val proj = projectileOf(damage = 1000f, emp = 500f)
-        val state = StarfallWingOnFireEffect.ProjectileState(stubWeapon("WS 001", "astd_starfall_wing"), isMote = false)
+        val state = StarfallWingOnFireEffect.ProjectileState(stubWeapon("WS 001", "astd_starfall_wing"))
 
         effect.settleHullPierce(engine, proj, state, ship)
         effect.settleHullPierce(engine, proj, state, ship)
@@ -127,27 +129,28 @@ class StarfallWingWeaponEffectTest {
     }
 
     @Test
-    fun `主弹护盾接触 恒穿盾 到期拍结算 20% 面板与 EMP 不移除弹体`() {
+    fun `主弹护盾接触 恒穿盾 到期拍结算穿透比例面板与 EMP 不移除弹体`() {
         val (engine, calls) = recordingEngine()
         val ship = stubTargetShip()
         val shield = mock(ShieldAPI::class.java)
         `when`(shield.radius).thenReturn(100f)
         `when`(ship.shield).thenReturn(shield)
         val proj = projectileOf(damage = 1000f, emp = 500f)
-        val state = StarfallWingOnFireEffect.ProjectileState(stubWeapon("WS 001", "astd_starfall_wing"), isMote = false)
+        val state = StarfallWingOnFireEffect.ProjectileState(stubWeapon("WS 001", "astd_starfall_wing"))
 
         // 拍外接触：不结算
-        val blockedOutsideTick = effect.resolveShieldContact(engine, proj, state, ship, Vector2f(50f, 0f), tickDue = false)
-        assertTrue(!blockedOutsideTick && calls.isEmpty(), "拍率限外的主弹盾接触不得结算")
+        val settledOutsideTick = effect.resolveShieldContact(engine, proj, state, ship, Vector2f(50f, 0f), tickDue = false)
+        assertTrue(!settledOutsideTick && calls.isEmpty(), "拍率限外的主弹盾接触不得结算")
         // 到期拍：穿盾结算
-        val blocked = effect.resolveShieldContact(engine, proj, state, ship, Vector2f(50f, 0f), tickDue = true)
+        val settled = effect.resolveShieldContact(engine, proj, state, ship, Vector2f(50f, 0f), tickDue = true)
 
-        assertTrue(!blocked, "主弹恒穿盾，不得阻挡移除")
+        assertTrue(settled, "到期拍必须结算")
         verify(engine, never()).removeEntity(proj)
         assertEquals(1, calls.size)
         val call = calls.single()
-        assertEquals(200f, call.damage, 1e-4f, "穿盾拍 20% 面板")
-        assertEquals(100f, call.emp, 1e-4f, "穿盾拍附带 20% EMP 面板")
+        // 期望从 tuning 纯函数派生（比例数值是调参面，不硬编码）
+        assertEquals(StarfallWingTuning.pierceTickDamage(1000f), call.damage, 1e-4f, "穿盾拍 = 面板×穿透比例")
+        assertEquals(StarfallWingTuning.pierceTickEmp(500f), call.emp, 1e-4f, "穿盾拍附带 EMP 面板×穿透比例")
         assertTrue(!call.bypassShield, "盾结算 bypassShield=false")
         assertEquals(100f, call.point.x, 1e-3f, "盾面落点 = 舰心沿命中方向外推盾半径")
         assertEquals(0f, call.point.y, 1e-3f)
@@ -156,82 +159,48 @@ class StarfallWingWeaponEffectTest {
     }
 
     @Test
-    fun `子射弹船体接触 全额面板结算后阻挡消散 不附加振频适应`() {
-        val (engine, calls) = recordingEngine()
+    fun `子射弹原版碰撞 onHit 撞盾附加半层振频适应 撞船体不附加`() {
+        val (engine, _) = recordingEngine()
         val ship = stubTargetShip()
+        val onHit = StarfallWingMoteOnHitEffect()
         val proj = projectileOf(damage = 200f, emp = 0f)
-        val state = StarfallWingOnFireEffect.ProjectileState(stubWeapon("WS 001", "astd_starfall_wing"), isMote = true)
-        val contact = Vector2f(30f, -10f)
+        val impact = mock(com.fs.starfarer.api.combat.listeners.ApplyDamageResultAPI::class.java)
 
-        effect.resolveMoteHullBlock(engine, proj, ship, contact)
+        // 撞船体：不附加（伤害由原版碰撞结算，脚本不触碰）
+        onHit.onHit(proj, ship, Vector2f(30f, -10f), false, impact, engine)
+        assertTrue(
+            ship.getBuff(StarfallWingAdaptationStacks.BUFF_ID) == null,
+            "撞船体不附加振频适应",
+        )
 
-        verify(engine).removeEntity(proj)
-        assertEquals(1, calls.size, "撞船体只结算一次（穿透权只归主弹）")
-        val call = calls.single()
-        assertEquals(200f, call.damage, 1e-4f, "子射弹撞船体结算全额面板（不吃穿透拍率限）")
-        assertEquals(0f, call.emp, 1e-4f)
-        assertTrue(!call.bypassShield, "撞盾路径同款裁定：bypassShield=false")
-        assertEquals(30f, call.point.x, 1e-4f, "落点 = 首个船体接触点")
-        assertEquals(-10f, call.point.y, 1e-4f)
-        val buff = ship.getBuff(StarfallWingAdaptationStacks.BUFF_ID) as? StarfallWingAdaptationStacks
-        assertTrue(buff == null, "振频适应只在撞盾路径附加，撞船体不附加")
-    }
-
-    @Test
-    fun `子射弹护盾接触 全额面板加半层并阻挡消散`() {
-        val (engine, calls) = recordingEngine()
-        val ship = stubTargetShip()
-        val shield = mock(ShieldAPI::class.java)
-        `when`(shield.radius).thenReturn(100f)
-        `when`(ship.shield).thenReturn(shield)
-        val proj = projectileOf(damage = 200f, emp = 0f)
-        val state = StarfallWingOnFireEffect.ProjectileState(stubWeapon("WS 001", "astd_starfall_wing"), isMote = true)
-
-        val blocked = effect.resolveShieldContact(engine, proj, state, ship, Vector2f(50f, 0f), tickDue = false)
-
-        assertTrue(blocked, "子射弹撞盾 = 阻挡消散")
-        verify(engine).removeEntity(proj)
-        assertEquals(1, calls.size)
-        val call = calls.single()
-        assertEquals(200f, call.damage, 1e-4f, "子射弹撞盾结算全额面板（不吃穿透拍率限）")
-        assertEquals(0f, call.emp, 1e-4f)
+        // 撞盾：附加 0.5 层
+        onHit.onHit(proj, ship, Vector2f(50f, 0f), true, impact, engine)
         val buff = ship.getBuff(StarfallWingAdaptationStacks.BUFF_ID) as? StarfallWingAdaptationStacks
         assertEquals(0.5f, buff?.stacks ?: -1f, 1e-4f, "子射弹撞盾附加 0.5 层振频适应")
+        // 重复撞盾可继续叠加（无弹体级闩锁，每枚子射弹独立一次原版碰撞）
+        onHit.onHit(proj, ship, Vector2f(50f, 0f), true, impact, engine)
+        assertEquals(1f, buff?.stacks ?: -1f, 1e-4f, "两次撞盾累计 1 层")
     }
 
     @Test
-    fun `子射弹撞非舰船目标 全额面板结算后消散 主弹维持单次穿越穿透结算`() {
+    fun `主弹撞非舰船目标 维持单次穿越穿透结算`() {
         val (engine, calls) = recordingEngine()
         val missile = mock(com.fs.starfarer.api.combat.MissileAPI::class.java)
         `when`(missile.location).thenReturn(Vector2f(50f, 0f))
         `when`(missile.collisionRadius).thenReturn(10f)
 
-        // 子射弹：撞导弹 = 全额面板 + 0 EMP + 消散（穿透权只归主弹）
-        val mote = projectileOf(damage = 200f, emp = 0f)
-        val moteState = StarfallWingOnFireEffect.ProjectileState(stubWeapon("WS 001", "astd_starfall_wing"), isMote = true)
-        val moteHit = effect.pierceSimpleTarget(
-            engine, mote, moteState, missile,
-            Vector2f(40f, 0f), Vector2f(60f, 0f), 50f, 0f, 20f, 5f, HashSet(),
-        )
-        assertTrue(moteHit)
-        verify(engine).removeEntity(mote)
-        assertEquals(1, calls.size)
-        assertEquals(200f, calls.single().damage, 1e-4f)
-        assertEquals(0f, calls.single().emp, 1e-4f)
-        assertTrue(!calls.single().bypassShield)
-
-        // 主弹：同目标维持 20% 面板 + EMP 穿透结算，不消散；重复接触被单次穿越闩锁拦截
-        calls.clear()
+        // 主弹：穿透比例面板 + EMP 穿透结算，不消散；重复接触被单次穿越闩锁拦截
         val main = projectileOf(damage = 1000f, emp = 500f)
-        val mainState = StarfallWingOnFireEffect.ProjectileState(stubWeapon("WS 001", "astd_starfall_wing"), isMote = false)
+        val mainState = StarfallWingOnFireEffect.ProjectileState(stubWeapon("WS 001", "astd_starfall_wing"))
         val mainHit = effect.pierceSimpleTarget(
             engine, main, mainState, missile,
             Vector2f(40f, 0f), Vector2f(60f, 0f), 50f, 0f, 20f, 5f, HashSet(),
         )
         assertTrue(mainHit)
         verify(engine, never()).removeEntity(main)
-        assertEquals(200f, calls.single().damage, 1e-4f)
-        assertEquals(100f, calls.single().emp, 1e-4f)
+        // 期望从 tuning 纯函数派生（比例数值是调参面，不硬编码）
+        assertEquals(StarfallWingTuning.pierceTickDamage(1000f), calls.single().damage, 1e-4f)
+        assertEquals(StarfallWingTuning.pierceTickEmp(500f), calls.single().emp, 1e-4f)
         calls.clear()
         val again = effect.pierceSimpleTarget(
             engine, main, mainState, missile,

@@ -3,6 +3,7 @@ package cn.kasuminova.astd.combat.effect.arc.starfallwing
 import cn.kasuminova.astd.api.buff.Buff
 import cn.kasuminova.astd.api.buff.BuffHost
 import cn.kasuminova.astd.api.buff.BuffLifetime
+import cn.kasuminova.astd.api.buff.buffHost
 import cn.kasuminova.astd.api.buff.getBuff
 import cn.kasuminova.astd.api.combat.CombatFeedback
 import cn.kasuminova.astd.impl.combat.CombatFeedbackImpl
@@ -108,6 +109,18 @@ class StarfallWingAdaptationStacks(
     companion object {
         /** Ship 级 Buff 登记 id（同时充当 customData 键段与 stat modifierId）。 */
         const val BUFF_ID = "astd_starfall_wing_adaptation"
+
+        /**
+         * 振频适应叠层统一入口（不存在即创建注册；主弹穿透与子射弹撞盾共用）。
+         * [attacker] 为玩家船时打开目标侧 HUD 状态行。
+         */
+        fun attachStacks(ship: ShipAPI, engine: CombatEngineAPI, stacks: Float, attacker: ShipAPI?) {
+            val host = ship.buffHost()
+            val buff = host.find(BUFF_ID) as? StarfallWingAdaptationStacks
+                ?: StarfallWingAdaptationStacks(ship, engine, host).also { host.register(it) }
+            buff.addStacks(stacks)
+            if (attacker != null && attacker == engine.playerShip) buff.showOnPlayerHud = true
+        }
 
         /** 攻击方视角 HUD 状态键。 */
         private const val HUD_KEY = "astd_starfall_wing_adaptation_status"

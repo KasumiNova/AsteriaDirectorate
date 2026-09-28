@@ -19,6 +19,7 @@ import cn.kasuminova.astd.combat.effect.arc.positronshockwave.PositronShockwaveF
 import cn.kasuminova.astd.combat.effect.arc.sevenstars.SevenStarsChainScript
 import cn.kasuminova.astd.combat.effect.arc.starfallwing.StarfallWingAdaptationStacks
 import cn.kasuminova.astd.combat.effect.arc.starfallwing.StarfallWingOnFireEffect
+import cn.kasuminova.astd.combat.effect.arc.starfallwing.StarfallWingTuning
 import cn.kasuminova.astd.combat.hullmods.arc.ImaginaryWingsTuning
 import cn.kasuminova.astd.combat.effect.arc.chargeneedle.chargeNeedleStacks
 import cn.kasuminova.astd.combat.effect.arc.piercinglance.PiercingLanceConeStrike
@@ -7365,16 +7366,22 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         viewport.isEverythingNearViewport = true
     }
 
-    /** WEAPON 相位供给登记对账（范式同 pollGdWarheads 的登记簿口径）：主弹/子射弹 ever-seen identity 计数。 */
+    /**
+     * WEAPON 相位供给登记对账（范式同 pollGdWarheads 的登记簿口径）：主弹走 onFireEffect
+     * 登记表 ever-seen identity；子射弹已回归原版碰撞（不登记脚本状态表），改按
+     * engine.missiles 扫描 projectileSpecId 计数。
+     */
     private fun trackXc2WeaponSupply(engine: CombatEngineAPI, weapon: WeaponAPI) {
         for ((proj, state) in StarfallWingOnFireEffect.projectileStates(engine)) {
             if (state.ownerWeapon !== weapon) continue
             val key = System.identityHashCode(proj)
-            if (state.isMote) {
-                if (xc2SeenMotes.add(key)) xc2MotesSeen++
-            } else if (xc2SeenMain.add(key)) {
-                xc2MainShots++
-            }
+            if (xc2SeenMain.add(key)) xc2MainShots++
+        }
+        for (missile in engine.missiles) {
+            if (missile.projectileSpecId != StarfallWingTuning.MOTE_SPEC_ID) continue
+            if (missile.source?.owner != 0) continue
+            val key = System.identityHashCode(missile)
+            if (xc2SeenMotes.add(key)) xc2MotesSeen++
         }
     }
 
@@ -7686,7 +7693,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
 
                             weaponDrop < XC2_EXPECT_WEAPON_HP_DROP -> {
                                 failureReason = "xc2 pierce damage shortfall: hpDrop=${"%.0f".format(weaponDrop)}" +
-                                        " < $XC2_EXPECT_WEAPON_HP_DROP（断言点 XC2-G：穿透单点 20% 面板/0.1s 拍 + 子射弹结算）"
+                                        " < $XC2_EXPECT_WEAPON_HP_DROP（断言点 XC2-G：穿透单点 面板×穿透比例/穿透节拍 + 子射弹结算）"
                                 transitionXc2Phase(XC2_PHASE_FAILED)
                             }
 
@@ -11758,7 +11765,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private const val XC2_EXPECT_MOTES = 1
         private const val XC2_PHASE_TIMEOUT = 120f
 
-        // 武器相位舞台结构冗余：穿透单拍量级（200/拍 × 多拍多发）仍超统治者级原始结构值
+        // 武器相位舞台结构冗余：穿透单拍量级（面板×穿透比例/拍 × 多拍多发）仍超统治者级原始结构值
         // （断言点 XC2-G 舞台保全）。
         private const val XC2_STAGE_MOD_ID = "astd_xc2_stage"
         private const val XC2_STAGE_ENEMY_HULL_BUFFER = 500000f
