@@ -11746,9 +11746,9 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private const val XC2_EXPECT_CLOSURE_HP_DROP = 500f
 
         // WEAPON_SHIELD/HULL（断言点 XC2-F/G）：盾相 5s 评估叠层峰值 ≥0.5（主弹穿盾首触 +1/子射弹
-        // 撞盾 +0.5）；体相 6s 评估穿透掉血 ≥300（穿透单点 20% 面板 × 0.1s 拍 + 子射弹，靶舰垫
-        // 舞台结构冗余并逐帧奶回、掉血按逐帧差额累加——装甲已在 XC2-A 后剥光，单拍 200 直打
-        // 结构，穿越期 2 拍/发即越过下界，300 为保守口径）、
+        // 撞盾 +0.5）；体相 6s 评估穿透掉血 ≥300（穿透单点 20% 面板 × 0.1s 拍 + 子射弹撞船体全额 200，靶舰垫
+        // 舞台结构冗余并逐帧奶回、掉血按逐帧差额累加——装甲已在 XC2-A 后剥光，主弹穿越期 ≥2 拍/发
+        // （内部点口径：采样点在碰撞箱多边形内即接触，中段不再漏拍），实机 8 发 2947，300 为保守口径）、
         // 供给登记主弹 ≥3（固定 1.5s/发 × 11s 两相 ≈7 发）、子射弹 ≥1（0.2s 散发节拍）。
         private const val XC2_WEAPON_SHIELD_EVAL_SECONDS = 5f
         private const val XC2_WEAPON_HULL_EVAL_SECONDS = 6f

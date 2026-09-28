@@ -9,7 +9,7 @@ import org.lwjgl.util.vector.Vector2f
 /**
  * 坠星残翼机制数值（blue/10-signature.md 坠星残翼节）的契约测试：
  * 振频适应承伤比映射的削弱/封顶/免伤口径、护盾接触行为（主弹恒穿盾/子射弹撞盾）、
- * 穿透扫掠用的点到线段距离与最近点（投影内/外/退化段）。
+ * 穿透扫掠用的点到线段距离与最近点（投影内/外/退化段）、碰撞箱多边形内部点判定。
  */
 class StarfallWingTuningTest {
 
@@ -36,6 +36,33 @@ class StarfallWingTuningTest {
     fun `护盾接触行为 主弹恒穿盾 子射弹撞盾阻挡`() {
         assertTrue(StarfallWingTuning.shieldContactPierces(isMote = false), "主弹恒穿盾（无层数门槛）")
         assertFalse(StarfallWingTuning.shieldContactPierces(isMote = true), "子射弹不继承穿盾，撞盾阻挡")
+    }
+
+    @Test
+    fun `多边形内部点判定 内部真 外部假 空段集假`() {
+        // 正方形碰撞箱 [0,100]×[0,100]
+        val square = listOf(
+            Vector2f(0f, 0f) to Vector2f(100f, 0f),
+            Vector2f(100f, 0f) to Vector2f(100f, 100f),
+            Vector2f(100f, 100f) to Vector2f(0f, 100f),
+            Vector2f(0f, 100f) to Vector2f(0f, 0f),
+        )
+        assertTrue(
+            StarfallWingTuning.pointInPolygon(Vector2f(50f, 50f), square),
+            "深内部位采样点算接触（中段漏拍闸门修复口径）",
+        )
+        assertFalse(
+            StarfallWingTuning.pointInPolygon(Vector2f(150f, 50f), square),
+            "界外点不算内部接触",
+        )
+        assertFalse(
+            StarfallWingTuning.pointInPolygon(Vector2f(-10f, -10f), square),
+            "角部界外点不算内部接触",
+        )
+        assertFalse(
+            StarfallWingTuning.pointInPolygon(Vector2f(50f, 50f), emptyList()),
+            "空段集无碰撞箱语义，恒 false（调用方走碰撞圈近似）",
+        )
     }
 
     @Test

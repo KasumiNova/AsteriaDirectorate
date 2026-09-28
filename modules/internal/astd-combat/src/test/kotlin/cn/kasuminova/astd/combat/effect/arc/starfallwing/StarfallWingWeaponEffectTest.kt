@@ -156,6 +156,28 @@ class StarfallWingWeaponEffectTest {
     }
 
     @Test
+    fun `子射弹船体接触 全额面板结算后阻挡消散 不附加振频适应`() {
+        val (engine, calls) = recordingEngine()
+        val ship = stubTargetShip()
+        val proj = projectileOf(damage = 200f, emp = 0f)
+        val state = StarfallWingOnFireEffect.ProjectileState(stubWeapon("WS 001", "astd_starfall_wing"), isMote = true)
+        val contact = Vector2f(30f, -10f)
+
+        effect.resolveMoteHullBlock(engine, proj, ship, contact)
+
+        verify(engine).removeEntity(proj)
+        assertEquals(1, calls.size, "撞船体只结算一次（穿透权只归主弹）")
+        val call = calls.single()
+        assertEquals(200f, call.damage, 1e-4f, "子射弹撞船体结算全额面板（不吃穿透拍率限）")
+        assertEquals(0f, call.emp, 1e-4f)
+        assertTrue(!call.bypassShield, "撞盾路径同款裁定：bypassShield=false")
+        assertEquals(30f, call.point.x, 1e-4f, "落点 = 首个船体接触点")
+        assertEquals(-10f, call.point.y, 1e-4f)
+        val buff = ship.getBuff(StarfallWingAdaptationStacks.BUFF_ID) as? StarfallWingAdaptationStacks
+        assertTrue(buff == null, "振频适应只在撞盾路径附加，撞船体不附加")
+    }
+
+    @Test
     fun `子射弹护盾接触 全额面板加半层并阻挡消散`() {
         val (engine, calls) = recordingEngine()
         val ship = stubTargetShip()

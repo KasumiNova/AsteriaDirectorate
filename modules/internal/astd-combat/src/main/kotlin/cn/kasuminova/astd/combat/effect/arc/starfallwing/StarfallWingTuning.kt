@@ -106,4 +106,21 @@ object StarfallWingTuning {
         val t = (((p.x - a.x) * abx + (p.y - a.y) * aby) / lenSq).coerceIn(0f, 1f)
         return Vector2f(a.x + abx * t, a.y + aby * t)
     }
+
+    /**
+     * 点是否在多边形内（纯函数，+X 水平射线偶奇规则）：边跨越 p.y 且交点在 p 右侧则翻转。
+     * 穿透扫掠的船体接触子件：多边形 = 舰船真实碰撞箱边界段集——采样点深入舰体内部也算接触
+     * （中段漏拍闸门修复：只算贴面时穿越大舰中段会丢到期拍）。空段集无碰撞箱语义，恒 false，
+     * 调用方在无碰撞箱时走碰撞圈近似。
+     */
+    fun pointInPolygon(p: Vector2f, segments: List<Pair<Vector2f, Vector2f>>): Boolean {
+        var inside = false
+        for ((a, b) in segments) {
+            if ((a.y > p.y) == (b.y > p.y)) continue
+            val t = (p.y - a.y) / (b.y - a.y)
+            val xCross = a.x + t * (b.x - a.x)
+            if (xCross > p.x) inside = !inside
+        }
+        return inside
+    }
 }

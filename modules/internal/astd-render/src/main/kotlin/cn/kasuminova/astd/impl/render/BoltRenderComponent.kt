@@ -34,7 +34,8 @@ import kotlin.math.sqrt
  * 导弹（MissileAPI）默认不接管：原版导弹贴图渲染保留，组件 attach 时直接禁用自身；
  * [BoltSpec.allowMissile] 开启时接管（原版贴图须另行屏蔽，尺寸取 [BoltSpec.lengthOverride]/
  * [BoltSpec.widthOverride]——导弹 spec 无 length/width 键；导弹 getTailEnd 恒 null，
- * 螺栓尾点沿朝向反推全长合成，无出生伸入）。
+ * 螺栓尾点沿朝向反推全长合成，无出生伸入）。显式接管路径（override 尺寸齐全）不读
+ * projectileSpec——脚本 spawnProjectile 产出的 MissileAPI 该值为 null（[resolveBoltDimensions]）。
  * BoxUtil 未就绪/建实体失败时 WARN 一次并禁用自身（不重试风暴），弹体其余特效层不受影响。
  */
 class BoltRenderComponent(
@@ -60,20 +61,26 @@ class BoltRenderComponent(
             return true
         }
         missileMode = projectile is MissileAPI
-        val projSpec = projectile.projectileSpec
-        if (projSpec == null) {
-            log.warn("ASTD box bolt 无法读取 projectileSpec：id=$id，本弹体螺栓层缺失，其余特效层照常")
+        // 显式接管路径（override 尺寸齐全）不依赖 projectileSpec：脚本 spawnProjectile 产出的
+        // MissileAPI 其 projectileSpec 为 null（实机判例：astd_starfall_wing_mote 螺栓层曾因此自禁用）；
+        // 只有缺 override 时才需要 spec 读 length/width。WARN 弹体级一次性（onAttachSelf 每实例只跑一次）。
+        val dims = resolveBoltDimensions(
+            spec.lengthOverride, spec.widthOverride,
+            projectile.projectileSpec?.length, projectile.projectileSpec?.width,
+            projectile.projectileSpec?.hitGlowRadius,
+        )
+        if (dims == null) {
+            log.warn(
+                "ASTD box bolt 尺寸裁定失败（hasSpec=${projectile.projectileSpec != null} " +
+                    "lengthOverride=${spec.lengthOverride} widthOverride=${spec.widthOverride}）：id=$id，" +
+                    "本弹体螺栓层缺失，其余特效层照常",
+            )
             disabled = true
             return true
         }
-        specLength = spec.lengthOverride ?: projSpec.length
-        specWidth = spec.widthOverride ?: projSpec.width
-        hitGlowRadius = projSpec.hitGlowRadius
-        if (specLength <= 0f || specWidth <= 0f) {
-            log.warn("ASTD box bolt 弹体尺寸非法（length=$specLength width=$specWidth）：id=$id，本弹体螺栓层缺失，其余特效层照常")
-            disabled = true
-            return true
-        }
+        specLength = dims.length
+        specWidth = dims.width
+        hitGlowRadius = dims.hitGlowRadius
         try {
             Global.getSettings().openStream(spec.texturePath).use { }
         } catch (e: Exception) {
@@ -179,8 +186,7 @@ class BoltRenderComponent(
     }
 
     companion object {
-        /** 螺栓绘制序：原版弹体同层（ABOVE_SHIPS），拖尾/光斑在其上的 ABOVE_PARTICLES 层。 */
-        const val RENDER_ORDER_BOLT = 200
+        /** 螺栓绘制序：原版弹体同层（ABOVE_SHIPS），拖尾/光斑在其上的 ABOVE_PARTICLES 层。 */        const val RENDER_ORDER_BOLT = 200
 
         /** 双趟叠加（= 原版 ProjectileRenderer body 双 pass，加色下提升头部饱和）。 */
         const val BOLT_PASSES = 1
@@ -192,6 +198,28 @@ class BoltRenderComponent(
 
 /** 螺栓帧几何输出：世界中心、归一化朝向（度）、X 向伸入缩放（0..1，出生拉长）。 */
 internal data class BoltFrame(val center: Vector2f, val facingDeg: Float, val scaleX: Float)
+
+/** 螺栓尺寸裁定输出：全长/全宽（su）与命中光晕半径。 */
+internal data class BoltDimensions(val length: Float, val width: Float, val hitGlowRadius: Float)
+
+/**
+ * 螺栓尺寸裁定（纯函数）：override 优先，缺省读弹体 spec 值；spec 缺失（脚本 spawnProjectile
+ * 产出的 MissileAPI 其 projectileSpec 为 null，实机判例）但 override 齐全时直接裁定——
+ * 显式接管路径不依赖 spec。命中光晕半径无 spec 时退化为螺栓全宽（最保守视觉量级）。
+ * 长度/宽度任一无法裁定或 ≤0 → null（调用方 WARN + 禁用本层）。
+ */
+internal fun resolveBoltDimensions(
+    lengthOverride: Float?,
+    widthOverride: Float?,
+    specLength: Float?,
+    specWidth: Float?,
+    specHitGlowRadius: Float?,
+): BoltDimensions? {
+    val length = lengthOverride ?: specLength ?: return null
+    val width = widthOverride ?: specWidth ?: return null
+    if (length <= 0f || width <= 0f) return null
+    return BoltDimensions(length, width, specHitGlowRadius ?: width)
+}
 
 /**
  * 螺栓帧几何：贴图跨 [tail → head]（原版 body 带体区间），sprite 基准全长 = specLength，

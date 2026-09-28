@@ -4,12 +4,15 @@ import org.lwjgl.util.vector.Vector2f
 import kotlin.math.sqrt
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 
 /**
- * Box 螺栓几何纯函数（[boltFrame]/[hitGlowScale]）的完整逻辑验证。
+ * Box 螺栓几何与尺寸裁定纯函数（[boltFrame]/[hitGlowScale]/[resolveBoltDimensions]）的完整逻辑验证。
  *
  * 锚点：贴图跨 [tailEnd → 弹体位置]（原版 body 带体区间）、X 向缩放 = 覆盖长/spec.length
- * （TrailExtender distanceRatio 出生伸入同语义）、命中光晕伤害缩放 sqrt(damage/250) 钳 [0.8, 2.5]。
+ * （TrailExtender distanceRatio 出生伸入同语义）、命中光晕伤害缩放 sqrt(damage/250) 钳 [0.8, 2.5]、
+ * 尺寸裁定 override 优先/spec 缺失时 override 齐全仍可渲染（脚本 spawn 弹体 projectileSpec 为 null 判例）。
  */
 class BoltRenderComponentTest {
 
@@ -95,6 +98,38 @@ class BoltRenderComponentTest {
         val frame = boltFrame(Vector2f(50f, 50f), tail, 90f, 28f)
         assertEquals(1f, frame.scaleX, 1e-3f)
         assertEquals(36f, frame.center.y, 1e-3f)
+    }
+
+    @Test
+    fun `尺寸裁定 spec 缺失但 override 齐全仍可渲染`() {
+        // 脚本 spawnProjectile 产出的 MissileAPI 其 projectileSpec 为 null（实机判例）：
+        // 显式接管路径（length/width override 齐全）不依赖 spec
+        val dims = resolveBoltDimensions(
+            lengthOverride = 28f, widthOverride = 8f,
+            specLength = null, specWidth = null, specHitGlowRadius = null,
+        )
+        assertNotNull(dims, "override 齐全时无 spec 也必须裁定成功")
+        assertEquals(28f, dims.length, 1e-4f)
+        assertEquals(8f, dims.width, 1e-4f)
+        assertEquals(8f, dims.hitGlowRadius, 1e-4f, "无 spec 时命中光晕半径退化为螺栓全宽")
+    }
+
+    @Test
+    fun `尺寸裁定 override 优先 缺 override 且无 spec 不可裁定`() {
+        val overridden = resolveBoltDimensions(28f, 8f, 100f, 40f, 50f)
+        assertNotNull(overridden)
+        assertEquals(28f, overridden.length, 1e-4f, "override 优先于 spec 值")
+        assertEquals(8f, overridden.width, 1e-4f)
+        assertEquals(50f, overridden.hitGlowRadius, 1e-4f, "有 spec 时光晕半径取 spec 值")
+
+        val fromSpec = resolveBoltDimensions(null, null, 100f, 40f, 50f)
+        assertNotNull(fromSpec)
+        assertEquals(100f, fromSpec.length, 1e-4f)
+        assertEquals(40f, fromSpec.width, 1e-4f)
+
+        assertNull(resolveBoltDimensions(28f, null, null, null, null), "缺 width override 且无 spec → 不可裁定")
+        assertNull(resolveBoltDimensions(null, null, null, null, null))
+        assertNull(resolveBoltDimensions(0f, 8f, null, null, null), "尺寸 ≤0 非法")
     }
 
     @Test

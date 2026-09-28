@@ -7,7 +7,7 @@ import cn.kasuminova.astd.sscsv.entries.catalog.shipsystems.systemName
 
 /**
  * 淬刃级舰船系统「裂隙折跃」（规格 blue/10-unique.md XC-002 节）：
- * 短暂相位（0.5s 激活窗口）并向飞行向量折跃 1200su（缓动曲线加减速），途中撕开虚空裂隙（接触持续能量伤害），
+ * 短暂相位（0.5s 激活窗口）并向飞行向量折跃（距离见 RiftShiftTuning.SHIFT_DISTANCE，缓动曲线加减速），途中撕开虚空裂隙（接触持续能量伤害），
  * 折跃完成后 5s 裂隙闭合并沿路径爆炸。stats 脚本 [RiftShiftSystemStats] 继承 PhaseCloakStats
  * （相位机制原版口径），折跃位移/裂隙伤害/闭合爆炸由脚本侧承担。
  *
