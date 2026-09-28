@@ -2,7 +2,8 @@ package cn.kasuminova.astd.impl.render
 
 /**
  * 马赫环航迹发射器（持续型，首发：坠星残响）：弹体飞行中按节拍在弹体当前位置留一枚
- * 拍扁椭圆环（定向沿飞行方向、横向压扁 [flatten]），环不跟弹——借统一粒子池包络自然
+ * 拍扁椭圆环（定向沿飞行方向、横向压扁 [flatten]），环不跟弹——可带前飞动量
+ * （[speedMin]/[speedMax]，方向 = 发射瞬间弹体 facing），借统一粒子池包络自然
  * 存活超过弹体死亡（缓慢扩大渐透明），无需消亡移交。
  *
  * 渲染后端为统一粒子池（PooledCombatVfx sprite 池）：池槽位 CPU 侧积分尺寸增速
@@ -29,6 +30,9 @@ data class MachRingSpec(
     val fadeOut: Float = 0.44f,
     /** 环贴图（256×256 旋转对称圆环，形在 alpha）。 */
     val texturePath: String = "graphics/fx/astd_generated_ring.png",
+    /** 前飞动量速度域（世界单位/秒，方向 = 发射瞬间弹体 facing，逐枚随机取值）；0 = 锚在原地。 */
+    val speedMin: Float = 0f,
+    val speedMax: Float = 0f,
 ) {
     /** 环寿命合计（秒）。 */
     val lifetime: Float get() = fadeIn + full + fadeOut

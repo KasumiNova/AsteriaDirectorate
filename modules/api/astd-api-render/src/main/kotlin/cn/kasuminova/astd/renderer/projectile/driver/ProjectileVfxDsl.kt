@@ -581,6 +581,8 @@ class MachRingBuilder {
     private var full = 0.5f
     private var fadeOut = 0.44f
     private var texturePath = "graphics/fx/astd_generated_ring.png"
+    private var speedMin = 0f
+    private var speedMax = 0f
 
     /** 发射节拍（秒）与环基准半径（世界半尺寸）。 */
     fun cadence(intervalSeconds: Float, halfSize: Float) {
@@ -608,6 +610,11 @@ class MachRingBuilder {
         this.fadeIn = fadeIn; this.full = full; this.fadeOut = fadeOut
     }
 
+    /** 前飞动量（世界单位/秒，方向 = 发射瞬间弹体 facing，逐枚在 [speedMin, speedMax] 随机）；不传 = 锚在原地。 */
+    fun momentum(speedMin: Float, speedMax: Float = speedMin) {
+        this.speedMin = speedMin; this.speedMax = speedMax
+    }
+
     internal fun build(): MachRingSpec = MachRingSpec(
         interval = interval,
         halfSize = halfSize,
@@ -620,5 +627,7 @@ class MachRingBuilder {
         full = full,
         fadeOut = fadeOut,
         texturePath = texturePath,
+        speedMin = speedMin,
+        speedMax = speedMax,
     )
 }

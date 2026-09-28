@@ -6,6 +6,8 @@ import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
 import cn.kasuminova.astd.renderer.boxutil.pool.PooledCombatVfx
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineLayers
+import org.lazywizard.lazylib.MathUtils
+import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
 
 /**
@@ -13,7 +15,8 @@ import java.awt.Color
  * 当前位置留一枚拍扁椭圆环，渲染走统一粒子池（[PooledCombatVfx] sprite 池，池槽位 CPU 侧
  * 积分尺寸增速实现 [MachRingSpec.growthStart]→[MachRingSpec.growthEnd] 线性扩大）。
  *
- * 环不跟弹：spawn 后锚在原地，由池包络自然存活超过弹体死亡，弹体淡出/移除即停喷，
+ * 环不跟弹：spawn 后按 [MachRingSpec.speedMin]/[MachRingSpec.speedMax] 给沿发射瞬间飞行向的
+ * 初速（默认 0 = 锚在原地），由池包络自然存活超过弹体死亡，弹体淡出/移除即停喷，
  * 无需消亡移交（对齐 .wpn EveryFrame 旧实现的存活语义，但不再自行持有/推进实体表）。
  *
  * 朝向口径：环长轴垂直于飞行方向（facing + 90°）——旧实现 setStateVanilla 的 scale.x 沿
@@ -33,7 +36,7 @@ class MachRingComponent(
     private val poolKey = PooledCombatVfx.SpritePoolKey(
         spec.texturePath,
         CombatEngineLayers.ABOVE_SHIPS_AND_MISSILES_LAYER,
-        glowPower = 0.5f,
+        glowPower = 1f,
         capacity = 256,
     )
 
@@ -52,17 +55,21 @@ class MachRingComponent(
         emit(ctx)
     }
 
-    /** 留一枚环：锚在弹体当前位置、零速度、长轴 ⊥ 飞行向、出生尺寸 [MachRingSpec.growthStart] 倍并线性扩大。 */
+    /** 留一枚环：弹体当前位置、沿飞行向 [MachRingSpec.speedMin]~[MachRingSpec.speedMax] 初速、长轴 ⊥ 飞行向、出生尺寸 [MachRingSpec.growthStart] 倍并线性扩大。 */
     private fun emit(ctx: RenderContext) {
         val engine = ctx.engine ?: return
         val frame = ctx.frame
         val lifetime = spec.lifetime
         val scaleX = spec.halfSize * spec.growthStart
+        val speed = MathUtils.getRandomNumberInRange(spec.speedMin, spec.speedMax)
+        val vel = MathUtils.getPointOnCircumference(Vector2f(), speed, frame.facing)
         val accepted = PooledCombatVfx.spawnSprite(
             engine = engine,
             key = poolKey,
             x = frame.origin.x,
             y = frame.origin.y,
+            velX = vel.x,
+            velY = vel.y,
             facingDeg = BoxUtilCombatVfx.normalizeFacingDeg(frame.facing + 90f),
             scaleX = scaleX,
             scaleY = scaleX * spec.flatten,
