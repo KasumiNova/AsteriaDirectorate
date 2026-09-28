@@ -111,16 +111,23 @@ class StarfallEchoOnHitEffect : OnHitEffectPlugin {
             )
         }
 
-        // 范围能量结算（存活直击目标与同阵营豁免，摧锋同款裁定）；0 层伤害为 0 直接跳过
+        // 范围能量结算（存活直击目标与同阵营豁免，摧锋同款裁定）；0 层伤害为 0 直接跳过。
+        // 模块舰（空间站）按站去重选举一名代表结算——逐模块全额叠加会把空间站按模块数倍数
+        // 击穿（实机判例：750su 半径全覆盖模块群，总伤害 = 单发 × 模块数 + 主舰体）。
         if (damage > 0f) {
-            for (victim in CombatUtils.getEntitiesWithinRange(hitPoint, radius)) {
-                if (victim === projectile) continue
-                if (victim.owner == owner) continue
-                if (victim !is ShipAPI && victim !is MissileAPI) continue
-                if (victim is ShipAPI && (victim.isHulk || victim.isPhased)) continue
-                if (victim is MissileAPI && victim.isExpired) continue
-                if (victim === ship && engine.isEntityInPlay(victim)) continue
-
+            val victims = CombatUtils.getEntitiesWithinRange(hitPoint, radius).filter { victim ->
+                when {
+                    victim === projectile -> false
+                    victim.owner == owner -> false
+                    victim !is ShipAPI && victim !is MissileAPI -> false
+                    victim is ShipAPI && (victim.isHulk || victim.isPhased) -> false
+                    victim is MissileAPI && victim.isExpired -> false
+                    victim === ship && engine.isEntityInPlay(victim) -> false
+                    else -> true
+                }
+            }
+            val plan = planStationElection(victims, hitPoint, radius)
+            for (victim in plan.regular + plan.stationRepresentatives) {
                 val covered = (victim as? ShipAPI)?.let { shieldCovers(it, hitPoint) } == true
                 val dmgPoint = (victim as? ShipAPI)?.let { resolveShipDamagePoint(it, hitPoint) } ?: Vector2f(hitPoint)
                 engine.applyDamage(
@@ -185,5 +192,45 @@ class StarfallEchoOnHitEffect : OnHitEffectPlugin {
             return MathUtils.getPointOnCircumference(shieldLoc, radius, angle)
         }
         return Vector2f(ship.location)
+    }
+
+    /** AOE 目标分配结果：[regular] 逐个全额结算；[stationRepresentatives] 每座空间站一名代表。 */
+    internal data class AoEVictimPlan(
+        val regular: List<CombatEntityAPI>,
+        val stationRepresentatives: List<ShipAPI>,
+    )
+
+    /**
+     * 模块舰（空间站）按站选举（纯逻辑，供单元测试直接驱动）：
+     * 同一站（模块的 parentStation 组 + 模块舰主舰体自身）只保留距爆心最近的成员作为
+     * 结算代表；成员中心距必须 ≤ [radius]——CombatUtils.getEntitiesWithinRange 的粗筛
+     * 把碰撞半径计入判定，空间站巨模块会把判定圈虚扩近一倍，此处按中心距复判。
+     * 非模块舰目标与导弹原样进 [AoEVictimPlan.regular]。
+     */
+    internal fun planStationElection(
+        victims: List<CombatEntityAPI>,
+        hitPoint: Vector2f,
+        radius: Float,
+    ): AoEVictimPlan {
+        val regular = ArrayList<CombatEntityAPI>(victims.size)
+        val elect = LinkedHashMap<ShipAPI, Pair<ShipAPI, Float>>()
+        for (victim in victims) {
+            val ship = victim as? ShipAPI
+            val groupKey = when {
+                ship == null -> null
+                ship.parentStation != null -> ship.parentStation
+                ship.isShipWithModules -> ship
+                else -> null
+            }
+            if (groupKey == null || ship == null) {
+                regular.add(victim)
+                continue
+            }
+            val dist = MathUtils.getDistance(ship.location, hitPoint)
+            if (dist > radius) continue
+            val prev = elect[groupKey]
+            if (prev == null || dist < prev.second) elect[groupKey] = ship to dist
+        }
+        return AoEVictimPlan(regular, elect.values.map { it.first })
     }
 }
