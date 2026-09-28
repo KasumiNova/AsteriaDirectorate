@@ -31,6 +31,10 @@ import kotlin.math.roundToInt
  *    原版候选船插不受控无法灰掉，接受"装上即清理"行为（SKILL: hullmod-incompatibility-guidelines）。
  *
  * OP 减免与短射程补偿数学抽为纯函数（单元测试直接驱动）。
+ *
+ * 注意：必须重写 [affectsOPCosts] 返回 true——装配界面 OP 走 variant.statsForOpCosts，
+ * 仅当任一船插声明影响 OP 时该 stats 才会创建并回调 applyEffectsBeforeShipCreation
+ * （原版 HullVariantSpec.updateStatsForOpCosts 判例，DiableAvionicsMountBI 同口径）。
  */
 class ASTDArcAdvancedTargetingSystemHullMod : BaseHullMod() {
 
@@ -131,6 +135,8 @@ class ASTDArcAdvancedTargetingSystemHullMod : BaseHullMod() {
             blocks = ASTDArcProductionTooltipContracts.arcAdvancedTargetingSystem.blocks,
         )
     }
+
+    override fun affectsOPCosts(): Boolean = true
 
     override fun isApplicableToShip(ship: ShipAPI): Boolean =
         !hasIncompatibleTargetingSystem(ship)

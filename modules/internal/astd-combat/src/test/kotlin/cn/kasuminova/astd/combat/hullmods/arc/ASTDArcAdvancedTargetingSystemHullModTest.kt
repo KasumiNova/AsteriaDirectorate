@@ -174,6 +174,14 @@ class ASTDArcAdvancedTargetingSystemHullModTest {
     }
 
     @Test
+    fun `声明影响装配点 否则statsForOpCosts不创建导致OP监听器不生效`() {
+        assertTrue(
+            hullmod.affectsOPCosts(),
+            "必须声明 affectsOPCosts=true，否则装配界面 OP 结算不回调本船插（原版 HullVariantSpec.updateStatsForOpCosts 口径）",
+        )
+    }
+
+    @Test
     fun `软提示 装有冲突目标定位系统时不可安装`() {
         val conflictVariant = cleanVariant()
         `when`(conflictVariant.hasHullMod("advancedoptics")).thenReturn(true)
