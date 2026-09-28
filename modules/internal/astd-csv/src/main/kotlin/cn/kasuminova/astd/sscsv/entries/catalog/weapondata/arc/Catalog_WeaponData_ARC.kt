@@ -37,15 +37,13 @@ object Wpn_astd_starfall_echo : WeaponDataEntry(), SsJsonOutputs {
     override val damagePerShot: Int = 1000
 
     // 一轮循环 = 5 发连射（0.2s × 4 间隔）+ 5s 开火间隔 ≈ 5.8s；tooltip 统计按整轮折算
-    override val damagePerSecond: Int = 862
-    override val energyPerSecond: Int = 991
     override val chargedown: Double = 5.0
     override val burstSize: Int = 5
-    override val burstDelay: Double = 0.2
+    override val burstDelay: Double = 0.1
     override val turnRate: Int = 30
     override val type: String = "ENERGY"
     override val energyPerShot: Int = 1150
-    override val projSpeed: Int = 1500
+    override val projSpeed: Int = 2000
 
     // 弹匣：10 发，每 10s 恢复 5 发
     override val ammo: Int = 10
@@ -62,15 +60,15 @@ object Wpn_astd_starfall_echo : WeaponDataEntry(), SsJsonOutputs {
     override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
     override val number: Int = 9001
 
-    /** 前 4 发：蓝白色锥形射弹（原版螺栓视觉屏蔽，弹头/拖尾由 VFX 管线承担，尺寸对齐旧 hero 体量 138×34）。 */
+    /** 前 4 发：蓝白色锥形射弹（原版螺栓视觉屏蔽，弹头/拖尾由 VFX 管线承担）。 */
     val projSpec: ProjectileProjSpec = ProjectileProjSpec.boxBolt(
         id = "astd_starfall_echo_shot",
         onFireEffect = "cn.kasuminova.astd.combat.effect.arc.starfallecho.StarfallEchoOnFireEffect",
         onHitEffect = "cn.kasuminova.astd.combat.effect.arc.starfallecho.StarfallEchoOnHitEffect",
         fringeColor = Rgba(120, 190, 255, 255),
         coreColor = Rgba(240, 248, 255, 200),
-        length = 138.0,
-        width = 34.0,
+        length = 120.0,
+        width = 24.0,
     )
 
     override fun jsonExtraFiles(): List<GeneratedJsonFile> = listOf(
@@ -199,8 +197,6 @@ object Wpn_astd_starfall_wing : WeaponDataEntry(), SsProjProjectileOutputs {
     override val damagePerShot: Int = 1000
 
     // 单发循环 1s（chargedown）：tooltip 统计即面板口径
-    override val damagePerSecond: Int = 1000
-    override val energyPerSecond: Int = 1250
     override val chargedown: Double = 1.0
     override val burstSize: Int = 1
     override val burstDelay: Double = 0.0
@@ -326,8 +322,6 @@ object Wpn_astd_charge_needle : WeaponDataEntry(), SsProjProjectileOutputs {
     override val type: String = "ENERGY"
     override val energyPerShot: Int = 40
 
-    // 持续 2.5 发/s × 40 折算
-    override val energyPerSecond: Int = 100
     override val projSpeed: Int = 1350
 
     // 精度对齐原版轻型针刺（“中等”）：min 0 / max 10 / 每发 +0.66 / 衰减 5
@@ -383,7 +377,6 @@ object Wpn_astd_heavy_charge_needle : WeaponDataEntry(), SsProjProjectileOutputs
     override val energyPerShot: Int = 40
 
     // 持续 5 发/s × 40 折算
-    override val energyPerSecond: Int = 200
     override val projSpeed: Int = 1350
 
     // 精度对齐原版重型针刺（“中等”）：min 1 / max 10 / 每发 +0.5 / 衰减 5
@@ -449,9 +442,7 @@ object Wpn_astd_electric_drive_accelerator : WeaponDataEntry(), SsProjProjectile
     override val reloadSize: Int = 8
     override val type: String = "KINETIC"
 
-    // 每颗子弹 140（裁定口径）；700 = 2 弹 × 140 / 0.4s 连发周期
     override val energyPerShot: Int = 140
-    override val energyPerSecond: Int = 700
     override val projSpeed: Int = 1000
 
     // 霰弹式散布：min=max 固定散布锥，burst 首发起即带散布（不随连发累积）
@@ -510,7 +501,6 @@ object Wpn_astd_qiongjue_phase_railgun : WeaponDataEntry(), SsProjProjectileOutp
     // 在 1s 充能期间按秒真实扣辐（原版高斯炮同口径留空），填 450 时每周期实际扣 900+450=1350；
     // tooltip 持续辐能由派生公式 sustainedDps × fluxPerDam 自动算回 450/s
     override val energyPerShot: Int = 960
-    override val energyPerSecond: Int = 0
     override val projSpeed: Int = 1800
     override val turnRateStr: String = "非常慢"
     override val accuracyStr: String = "完美"
@@ -570,7 +560,6 @@ object Wpn_astd_positron_shockwave : WeaponDataEntry(), SsProjProjectileOutputs 
     override val energyPerShot: Int = 100
 
     // 100 ÷ 1.5s 折算
-    override val energyPerSecond: Int = 67
     override val projSpeed: Int = 900
 
     // 弹体原版寿命：原版会将其钳制为 range ÷ projSpeed（≈0.667s），故取值 ≥ 该值即可（0.75 留余量）。
@@ -629,9 +618,6 @@ object Wpn_astd_seven_stars : WeaponDataEntry(), SsProjProjectileOutputs {
     override val ops: Int = 28
     override val type: String = "ENERGY"
     override val energyPerShot: Int = 750
-
-    // 750 / 2s
-    override val energyPerSecond: Int = 375
 
     // 射速 2s/发
     override val chargedown: Double = 2.0
@@ -1163,9 +1149,6 @@ object Wpn_astd_heavy_ion_pulse : WeaponDataEntry(), SsProjProjectileOutputs {
     override val type: String = "ENERGY"
     override val energyPerShot: Int = 275
 
-    // energy/second 置 0：充能武器该列会被 ChargeFireTracker 按秒真实扣辐（原版 ionpulser 等全部留空），
-    // 持续辐能由派生公式算回（sustainedDps × fluxPerDam ≈ 440/s）
-    override val energyPerSecond: Int = 0
     override val projSpeed: Int = 1000
 
     // 对齐原版 ionpulser 散布
@@ -1229,11 +1212,6 @@ object Wpn_astd_piercing_lance : WeaponDataEntry(), SsProjProjectileOutputs {
 
     override val type: String = "ENERGY"
     override val energyPerShot: Int = 3000
-
-    // 充能武器 energy/second 必须置 0（原版口径：gauss/plasma/gigacannon 全部留空）——
-    // 该列会被 ChargeFireTracker 在充能/开火期间按秒真实扣辐，非纯面板统计值；
-    // tooltip 持续辐能由派生公式 sustainedDps × fluxPerDam 自动算回 429/s 口径
-    override val energyPerSecond: Int = 0
 
     // “极快”：1000su 射程约 0.33s 飞行（提案值，目检面；aod7 为 2400）
     override val projSpeed: Int = 3000
@@ -1308,7 +1286,6 @@ object Wpn_astd_cuifeng_torpedo : WeaponDataEntry(), SsProjMissileOutputs {
 
     override val type: String = "ENERGY"
     override val energyPerShot: Int = 500
-    override val energyPerSecond: Int = 167
 
     // “反物质 SRM 150% 航速”：amsrm projSpeed=1000 × 1.5；launch speed 对齐 amsrm 200
     override val projSpeed: Int = 1500
@@ -1361,7 +1338,6 @@ object Wpn_astd_cuifeng_launcher : WeaponDataEntry() {
 
     override val type: String = "ENERGY"
     override val energyPerShot: Int = 500
-    override val energyPerSecond: Int = 42
 
     override val projSpeed: Int = 1500
     override val launchSpeed: Int = 200

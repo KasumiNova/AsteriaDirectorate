@@ -310,7 +310,6 @@ object Wpn_astd_stellar_mrm_launcher : WeaponDataEntry(), SsProjMissileOutputs {
 
     override val type: String = "ENERGY"
     override val energyPerShot: Int = 60
-    override val energyPerSecond: Int = 60
 
     // “反物质 SRM 75% 航速”：amsrm projSpeed=1000 × 0.75；launch speed 对齐 amsrm 200
     override val projSpeed: Int = 750
@@ -389,7 +388,6 @@ object Wpn_astd_stellar_mrm_pod : WeaponDataEntry(), SsProjMissileOutputs {
 
     override val type: String = "ENERGY"
     override val energyPerShot: Int = 60
-    override val energyPerSecond: Int = 120
 
     override val projSpeed: Int = 750
     override val launchSpeed: Int = 200
@@ -710,7 +708,6 @@ object Wpn_astd_ice_shard_mirv : WeaponDataEntry(), SsProjMissileOutputs {
 
     override val type: String = "FRAGMENTATION"
     override val energyPerShot: Int = 500
-    override val energyPerSecond: Int = 125
 
     // “鱼叉 MRM 100% 航速”：harpoon projSpeed=300；launch speed 对齐 harpoon 100
     override val projSpeed: Int = 300
@@ -763,7 +760,6 @@ object Wpn_astd_ice_shard_mirv_pod : WeaponDataEntry() {
 
     override val type: String = "FRAGMENTATION"
     override val energyPerShot: Int = 500
-    override val energyPerSecond: Int = 167
 
     override val projSpeed: Int = 300
     override val launchSpeed: Int = 100
@@ -901,8 +897,6 @@ object Wpn_astd_charge_needle_fighter : WeaponDataEntry() {
     override val type: String = "ENERGY"
     override val energyPerShot: Int = 40
 
-    // 持续口径 = 回充 2.5 发/s × 40 辐能
-    override val energyPerSecond: Int = 100
     override val projSpeed: Int = 1350
 
     // 精度口径沿用舰装版（对齐原版轻型针刺）
