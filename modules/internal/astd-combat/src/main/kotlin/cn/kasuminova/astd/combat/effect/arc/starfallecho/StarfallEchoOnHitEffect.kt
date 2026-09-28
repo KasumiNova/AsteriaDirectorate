@@ -140,8 +140,8 @@ class StarfallEchoOnHitEffect : OnHitEffectPlugin {
 
     /**
      * 受击点方位角（度）：目标舰心 → 命中点。不取 Misc.getAngleInDegrees：Misc 类初始化依赖
-     * 游戏运行时（无头/单测直接 ExceptionInInitializerError），此处语义等价于 atan2 直出角度。
-     * 允许负值（绽放辉星实现侧归一化到 [0,360)）。
+     * 游戏运行时（无头/单测直接 ExceptionInInitializerError），LazyLib MathUtils 无等价函数，
+     * 此处语义等价于 atan2 直出角度。允许负值（绽放辉星实现侧归一化到 [0,360)）。
      */
     private fun hitFacingDeg(ship: ShipAPI, hitPoint: Vector2f): Float {
         val origin = ship.location ?: return 0f

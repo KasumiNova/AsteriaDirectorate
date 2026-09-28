@@ -3,6 +3,7 @@ package cn.kasuminova.astd.combat.effect.arc.cuifeng
 import cn.kasuminova.astd.impl.render.ASTDColor
 import cn.kasuminova.astd.impl.render.BloomFlareSpec
 import cn.kasuminova.astd.impl.render.BoxFlareStyle
+import cn.kasuminova.astd.api.render.BloomFlareVfx
 import cn.kasuminova.astd.renderer.effect.explosion.BloomFlareVfxImpl
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import org.lwjgl.util.vector.Vector2f
@@ -12,10 +13,13 @@ import kotlin.random.Random
 
 /**
  * 摧锋鱼雷命中特效触发层（blue/30-superlative.md §特效）：
- * 十字辉星 ×2（[BloomFlareVfxImpl] 绽放辉星，SMOOTH_DISC 90° 交叉，0.5s 内长轴扩散并渐隐，
+ * 十字辉星 ×2（[BloomFlareVfx] 绽放辉星，SMOOTH_DISC 90° 交叉，0.5s 内长轴扩散并渐隐，
  * 短轴固定不收窄）+ 爆炸星云（ARC 蓝白主色）。
  */
 object CuifengTorpedoVfx {
+
+    /** 绽放辉星通用 API（接口持有实现，AGENTS.md 面向接口口径）。 */
+    private val bloomFlare: BloomFlareVfx = BloomFlareVfxImpl
 
     /** 十字辉星存续。 */
     private const val CROSS_FLARE_DURATION = 0.5f
@@ -53,7 +57,7 @@ object CuifengTorpedoVfx {
 
     /** 十字辉星：两枚 SMOOTH_DISC 光斑 90° 交叉同位叠放，由绽放辉星 API 推进扩散消散。 */
     private fun spawnCrossFlare(engine: CombatEngineAPI, point: Vector2f) {
-        val spawned = BloomFlareVfxImpl.spawn(
+        val spawned = bloomFlare.spawn(
             engine, point, CROSS_FLARE_DURATION,
             listOf(
                 crossFlareSpec(0f),

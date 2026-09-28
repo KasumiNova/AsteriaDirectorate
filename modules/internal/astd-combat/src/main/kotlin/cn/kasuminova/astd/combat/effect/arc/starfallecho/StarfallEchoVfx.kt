@@ -5,6 +5,7 @@ import cn.kasuminova.astd.impl.render.BloomFlareSpec
 import cn.kasuminova.astd.impl.render.BoxFlareStyle
 import cn.kasuminova.astd.impl.render.TriShardComponent
 import cn.kasuminova.astd.impl.render.TriShardSpec
+import cn.kasuminova.astd.api.render.BloomFlareVfx
 import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
 import cn.kasuminova.astd.renderer.effect.explosion.BloomFlareVfxImpl
 import com.fs.starfarer.api.combat.CombatEngineAPI
@@ -20,7 +21,7 @@ import java.awt.Color
  * 爆炸构成（规格 10-signature 特效节）：
  * - 爆心十字辉星：两枚 SMOOTH_DISC 光柱以 [facingDeg]/[facingDeg]+90° 交叉
  *   （跟随受击点方位：目标舰心 → 命中点的朝向）+ 一枚 SMOOTH 圆形光斑同位叠放，
- *   随爆炸规模扩散并逐渐变淡至消失（[BloomFlareVfxImpl] 绽放辉星通用 API 推进，
+ *   随爆炸规模扩散并逐渐变淡至消失（[BloomFlareVfx] 绽放辉星通用 API 推进，
  *   FlareEntity 无内建尺寸关键帧）；
  * - 星云：基础 5 片，每 100% 规模（每级）+5 片；单片大小 = 爆炸直径；
  * - 三角碎片：基础 100 片，每 100% 规模 +100 片且尺寸 +5%（走统一粒子池，事件级大批量）；
@@ -28,6 +29,9 @@ import java.awt.Color
  *   `setFadedOutAtStart(true)`（先隐后现的爆发帧感）；数量按规模 8+4/级（裁定值，设计案未给）。
  */
 object StarfallEchoVfx {
+
+    /** 绽放辉星通用 API（接口持有实现，AGENTS.md 面向接口口径）。 */
+    private val bloomFlare: BloomFlareVfx = BloomFlareVfxImpl
 
     /** 普通弹配色（蓝白）。 */
     val NORMAL_CORE = Color(240, 248, 255)
@@ -75,7 +79,7 @@ object StarfallEchoVfx {
         val crossEnd = radius * CROSS_LEN_END_RATIO
         val coreStart = radius * CORE_SIZE_START_RATIO
         val coreEnd = radius * CORE_SIZE_END_RATIO
-        BloomFlareVfxImpl.spawn(
+        bloomFlare.spawn(
             engine, center, CENTER_FLARE_DURATION,
             listOf(
                 // 十字光柱 ×2：跟随受击点方位交叉
@@ -105,9 +109,6 @@ object StarfallEchoVfx {
         val count = 5 * scale
         repeat(count) {
             val pos = MathUtils.getRandomPointInCircle(center, radius * 0.4f)
-            val dir = MathUtils.getRandomNumberInRange(0f, 360f)
-            val speed = MathUtils.getRandomNumberInRange(20f, 60f) * scale
-            MathUtils.getPointOnCircumference(Vector2f(), speed, dir)
             val brighten = MathUtils.getRandomNumberInRange(0f, 1f) < 0.3f
             val base = if (brighten) FINAL_CORE else FINAL_FRINGE
             BoxUtilCombatVfx.addNebulaParticle(
