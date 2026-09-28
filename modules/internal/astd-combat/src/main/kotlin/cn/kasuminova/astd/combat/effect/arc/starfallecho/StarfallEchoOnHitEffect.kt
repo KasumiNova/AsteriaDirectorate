@@ -21,9 +21,11 @@ import org.lwjgl.util.vector.Vector2f
  *
  * - 普通弹：命中舰船（护盾/船体均可，设计案未区分）叠 1 层「结构谐振」
  *   （[StarfallEchoResonanceStacks]，至多 4 层，不随时间消散）；
- * - 第 5 发：命中带层舰船时按层数爆发——先范围结算等额能量伤害（半径 200su×层数，
- *   伤害 = 第 5 发面板 × 层数 × 难度倍率），后消耗全部层数，最后播放爆炸特效
- *   （[StarfallEchoVfx.explosion]）；目标无层数时不爆炸。
+ * - 第 5 发：命中恒爆炸（无论目标有无谐振层）——半径 150su×(层数+1)（0 层 150su 纯视觉、
+ *   4 层封顶 750su）；范围结算等额能量伤害（伤害 = 提升后第 5 发面板 × 层数 × 难度倍率，
+ *   层数 0 即 0，无 AOE），每层被消耗的谐振使第 5 发伤害 +50%（直击额外部分由脚本
+ *   applyDamage 补给直击目标），后消耗全部层数，最后播放爆炸特效
+ *   （[StarfallEchoVfx.explosion]，十字辉星跟随「目标舰心 → 命中点」方位交叉）。
  *
  * AOE 口径（摧锋同款裁定）：存活直击目标豁免 AOE（直击面板已由引擎原生结算，重复计入会双倍）；
  * 同阵营目标豁免。脚本 `applyDamage` 落点与 bypassShields 走七星/辉星/摧锋实机判例同款口径
@@ -75,7 +77,10 @@ class StarfallEchoOnHitEffect : OnHitEffectPlugin {
         if (projectile.source != null && projectile.source == engine.playerShip) buff.showOnPlayerHud = true
     }
 
-    /** 第 5 发命中：目标带层时按层数爆发（先伤害 → 后消层 → 特效），无层不爆炸。 */
+    /**
+     * 第 5 发命中：恒爆炸（无论目标有无谐振层）——直击补伤 → AOE（层数 0 即 0，跳过）→
+     * 消层 → 特效。十字辉星跟随「目标舰心 → 命中点」方位交叉。
+     */
     private fun onFinalHit(
         projectile: DamagingProjectileAPI,
         ship: ShipAPI,
@@ -83,9 +88,8 @@ class StarfallEchoOnHitEffect : OnHitEffectPlugin {
         values: StarfallEchoTuning.Values,
         engine: CombatEngineAPI,
     ) {
-        val buff = ship.starfallEchoResonanceStacks() ?: return
-        val stacks = buff.stacks
-        if (stacks <= 0) return
+        val buff = ship.starfallEchoResonanceStacks()
+        val stacks = buff?.stacks ?: 0
 
         val panel = projectile.damageAmount
         if (!panel.isFinite() || panel <= 0f) return
@@ -95,29 +99,58 @@ class StarfallEchoOnHitEffect : OnHitEffectPlugin {
         val source = projectile.source
         val owner = source?.owner ?: 0
 
-        // 先伤害：范围能量结算（存活直击目标与同阵营豁免，摧锋同款裁定）
-        for (victim in CombatUtils.getEntitiesWithinRange(hitPoint, radius)) {
-            if (victim === projectile) continue
-            if (victim.owner == owner) continue
-            if (victim !is ShipAPI && victim !is MissileAPI) continue
-            if (victim is ShipAPI && (victim.isHulk || victim.isPhased)) continue
-            if (victim is MissileAPI && victim.isExpired) continue
-            if (victim === ship && engine.isEntityInPlay(victim)) continue
-
-            val covered = (victim as? ShipAPI)?.let { shieldCovers(it, hitPoint) } == true
-            val dmgPoint = (victim as? ShipAPI)?.let { resolveShipDamagePoint(it, hitPoint) } ?: Vector2f(hitPoint)
+        // 直击补伤：每层被消耗的谐振使第 5 发伤害 +50%，提升部分由脚本补给直击目标
+        // （盾覆盖 → 盾面落点 + bypass=false；未覆盖 → 舰心落点 + bypass=true，与 AOE 同判例口径）
+        val bonus = StarfallEchoTuning.finalShotBonusDamage(panel, stacks)
+        if (bonus > 0f && engine.isEntityInPlay(ship)) {
+            val covered = shieldCovers(ship, hitPoint)
             engine.applyDamage(
-                victim, dmgPoint, damage,
+                ship, resolveShipDamagePoint(ship, hitPoint), bonus,
                 DamageType.ENERGY, 0f,
-                victim is ShipAPI && !covered, false, source, true,
+                !covered, false, source, true,
             )
         }
 
-        // 后消层
-        buff.consume()
+        // 范围能量结算（存活直击目标与同阵营豁免，摧锋同款裁定）；0 层伤害为 0 直接跳过
+        if (damage > 0f) {
+            for (victim in CombatUtils.getEntitiesWithinRange(hitPoint, radius)) {
+                if (victim === projectile) continue
+                if (victim.owner == owner) continue
+                if (victim !is ShipAPI && victim !is MissileAPI) continue
+                if (victim is ShipAPI && (victim.isHulk || victim.isPhased)) continue
+                if (victim is MissileAPI && victim.isExpired) continue
+                if (victim === ship && engine.isEntityInPlay(victim)) continue
 
-        // 特效恒执行（星云 + 三角碎片 + 径向电弧）
-        StarfallEchoVfx.explosion(engine, hitPoint, stacks, radius)
+                val covered = (victim as? ShipAPI)?.let { shieldCovers(it, hitPoint) } == true
+                val dmgPoint = (victim as? ShipAPI)?.let { resolveShipDamagePoint(it, hitPoint) } ?: Vector2f(hitPoint)
+                engine.applyDamage(
+                    victim, dmgPoint, damage,
+                    DamageType.ENERGY, 0f,
+                    victim is ShipAPI && !covered, false, source, true,
+                )
+            }
+        }
+
+        // 后消层
+        buff?.consume()
+
+        // 特效恒执行（十字辉星跟随受击点方位 + 星云 + 三角碎片 + 径向电弧）
+        StarfallEchoVfx.explosion(engine, hitPoint, stacks, radius, hitFacingDeg(ship, hitPoint))
+    }
+
+    /**
+     * 受击点方位角（度）：目标舰心 → 命中点。不取 Misc.getAngleInDegrees：Misc 类初始化依赖
+     * 游戏运行时（无头/单测直接 ExceptionInInitializerError），此处语义等价于 atan2 直出角度。
+     * 允许负值（绽放辉星实现侧归一化到 [0,360)）。
+     */
+    private fun hitFacingDeg(ship: ShipAPI, hitPoint: Vector2f): Float {
+        val origin = ship.location ?: return 0f
+        return Math.toDegrees(
+            kotlin.math.atan2(
+                (hitPoint.y - origin.y).toDouble(),
+                (hitPoint.x - origin.x).toDouble(),
+            ),
+        ).toFloat()
     }
 
     /**

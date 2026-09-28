@@ -1,8 +1,13 @@
 package cn.kasuminova.astd.combat.effect.arc.starfallecho
 
+import cn.kasuminova.astd.combat.effect.arc.starfallecho.StarfallEchoTuning.EXPLOSION_BASE_RADIUS
+import cn.kasuminova.astd.combat.effect.arc.starfallecho.StarfallEchoTuning.FINAL_STACK_DAMAGE_BONUS
+import cn.kasuminova.astd.combat.effect.arc.starfallecho.StarfallEchoTuning.RESONANCE_MAX_STACKS
 import cn.kasuminova.astd.combat.effect.arc.starfallecho.StarfallEchoTuning.canFire
 import cn.kasuminova.astd.combat.effect.arc.starfallecho.StarfallEchoTuning.explosionDamage
 import cn.kasuminova.astd.combat.effect.arc.starfallecho.StarfallEchoTuning.explosionRadius
+import cn.kasuminova.astd.combat.effect.arc.starfallecho.StarfallEchoTuning.finalShotBonusDamage
+import cn.kasuminova.astd.combat.effect.arc.starfallecho.StarfallEchoTuning.finalShotDamage
 import cn.kasuminova.astd.combat.effect.arc.starfallecho.StarfallEchoTuning.nextBurstOrdinal
 import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import kotlin.test.AfterTest
@@ -13,7 +18,8 @@ import kotlin.test.assertTrue
 
 /**
  * 坠星残响机制数值（blue/10-signature.md）的契约测试：
- * 爆炸半径/伤害纯函数映射、弹匣禁射闸、连射序数推进、谐振易伤与爆炸倍率的五档查表解析。
+ * 爆炸半径/伤害纯函数映射（恒爆炸：半径 = 基础 ×(层数+1)，每层消耗 +50% 第 5 发伤害）、
+ * 弹匣禁射闸、连射序数推进、谐振易伤与爆炸倍率的五档查表解析。
  * 难度系数经 [DifficultyTuningImpl.installScaleForTests] 注入走完整查表链路（对齐 JointTuningTest 先例）。
  */
 class StarfallEchoTuningTest {
@@ -30,18 +36,31 @@ class StarfallEchoTuningTest {
     }
 
     @Test
-    fun `爆炸半径 基础半径乘层数 零层恒零`() {
-        assertEquals(0f, explosionRadius(0))
-        assertEquals(200f, explosionRadius(1), "1 层 = 100% 规模 = 200su")
-        assertEquals(800f, explosionRadius(4), "4 层 = 400% 规模 = 800su")
+    fun `爆炸半径 基础半径乘层数加一 零层恒基础半径`() {
+        assertEquals(EXPLOSION_BASE_RADIUS, explosionRadius(0), "0 层恒爆炸：150su 纯视觉爆炸")
+        assertEquals(EXPLOSION_BASE_RADIUS * 2, explosionRadius(1), "1 层 = 基础 150 + 每层 150")
+        assertEquals(
+            EXPLOSION_BASE_RADIUS * (RESONANCE_MAX_STACKS + 1), explosionRadius(RESONANCE_MAX_STACKS),
+            "4 层封顶 = 150 × 5 = 750su",
+        )
     }
 
     @Test
-    fun `爆炸伤害 第5发面板乘层数乘难度倍率`() {
-        // k2 基准（倍率 1.0）：第 5 发面板 2000（单发 1000 ×200%）×4 层 = 8000
-        assertEquals(8000f, explosionDamage(2000f, 4, 1f))
-        assertEquals(2000f, explosionDamage(2000f, 1, 1f))
-        assertEquals(0f, explosionDamage(2000f, 0, 1f), "0 层不结算爆炸")
+    fun `第5发伤害 每层被消耗谐振提升五成`() {
+        val panel = 750f * StarfallEchoTuning.FINAL_DAMAGE_MULT // 第 5 发面板 = 单发 750 ×200%
+        assertEquals(panel, finalShotDamage(panel, 0), "0 层 = 面板原值")
+        assertEquals(panel * (1f + FINAL_STACK_DAMAGE_BONUS * 4), finalShotDamage(panel, 4), "4 层 = 面板 ×(1+0.5×4)")
+        assertEquals(0f, finalShotBonusDamage(panel, 0), "0 层无直击补伤")
+        assertEquals(panel * FINAL_STACK_DAMAGE_BONUS * 4, finalShotBonusDamage(panel, 4), "直击补伤 = 面板 ×0.5×层数")
+    }
+
+    @Test
+    fun `爆炸伤害 提升后第5发面板乘层数乘难度倍率`() {
+        val panel = 750f * StarfallEchoTuning.FINAL_DAMAGE_MULT // 第 5 发面板 = 单发 750 ×200%
+        assertEquals(finalShotDamage(panel, 4) * 4, explosionDamage(panel, 4, 1f), "k2 基准（倍率 1.0）：爆炸吃每层 +50% 提升")
+        assertEquals(finalShotDamage(panel, 1), explosionDamage(panel, 1, 1f))
+        assertEquals(0f, explosionDamage(panel, 0, 1f), "0 层仅视觉爆炸，无 AOE 伤害（裁定口径）")
+        assertEquals(explosionDamage(panel, 4, 1f) * 2f, explosionDamage(panel, 4, 2f), "难度倍率线性作用于结算")
     }
 
     @Test

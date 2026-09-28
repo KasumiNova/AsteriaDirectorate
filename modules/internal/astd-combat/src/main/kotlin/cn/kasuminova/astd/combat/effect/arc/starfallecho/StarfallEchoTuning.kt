@@ -12,7 +12,8 @@ import cn.kasuminova.astd.api.difficulty.ScalingTable
  *
  * 数值缩放口径：每层谐振易伤与爆炸伤害倍率走五档精确查表（[ScalingTable]）；
  * 玩家来源（owner == 0）按我方档位取值（默认砺刃 v2，见 DifficultyTuning.valueFor）。
- * 设计案只给基准口径（每层 10% 易伤、爆炸 100%~400% 规模），各档数值为裁定值（k2 = 基准）。
+ * 设计案只给基准口径（每层 10% 易伤、爆炸 150su 起每层 +150su、每层消耗 +50% 第 5 发伤害），
+ * 各档数值为裁定值（k2 = 基准）。
  */
 object StarfallEchoTuning {
 
@@ -22,8 +23,11 @@ object StarfallEchoTuning {
     /** 结构谐振层数上限（前 4 发每发命中叠 1 层）。 */
     const val RESONANCE_MAX_STACKS = 4
 
-    /** 爆炸基础半径（su）：100% 规模（1 层）= 200su，规模 = 层数 ×100%。 */
-    const val EXPLOSION_BASE_RADIUS = 200f
+    /** 爆炸基础半径（su）：第 5 发命中恒爆炸，0 层 = 150su 纯视觉，每层 +150su，4 层封顶 750su。 */
+    const val EXPLOSION_BASE_RADIUS = 150f
+
+    /** 每层被消耗的谐振对第 5 发伤害的提升（+50%/层，作用于直击与爆炸结算）。 */
+    const val FINAL_STACK_DAMAGE_BONUS = 0.5f
 
     /** 第 5 发面板伤害倍率（200% 伤害）。 */
     const val FINAL_DAMAGE_MULT = 2f
@@ -31,8 +35,8 @@ object StarfallEchoTuning {
     /** 第 5 发碰撞半径倍率（200% 尺寸）。 */
     const val FINAL_SIZE_MULT = 2f
 
-    /** 第 5 发额外辐能产出：单发 1150 × 300% − 引擎已结算的 1150 = 2300。 */
-    const val FINAL_FLUX_EXTRA = 2300f
+    /** 第 5 发额外辐能产出：单发 1125 × 300% − 引擎已结算的 1125 = 2250。 */
+    const val FINAL_FLUX_EXTRA = 2250f
 
     /** 弹匣禁射阈值（隐藏机制）：弹药低于本值且不在连射中时禁止起射新一轮。 */
     const val AMMO_GATE = 5
@@ -50,7 +54,7 @@ object StarfallEchoTuning {
     data class Values(
         /** 每层谐振易伤（乘区增量，如 0.10 = +10% 承伤）。 */
         val vulnPerStack: Float,
-        /** 爆炸伤害倍率（作用于「第 5 发面板 × 层数」）。 */
+        /** 爆炸伤害倍率（作用于「提升后第 5 发面板 × 层数」）。 */
         val explosionDamageMult: Float,
         /** 来源是否为玩家（owner == 0）。 */
         val isPlayer: Boolean,
@@ -66,12 +70,30 @@ object StarfallEchoTuning {
         isPlayer = isPlayer,
     )
 
-    /** 爆炸半径（纯函数）：基础半径 × 层数（1~4 层 = 100%~400% 规模）；0 层恒 0。 */
-    fun explosionRadius(stacks: Int): Float = EXPLOSION_BASE_RADIUS * stacks.coerceAtLeast(0)
+    /**
+     * 爆炸半径（纯函数）：基础半径 ×（层数+1），0 层 = 150su 纯视觉爆炸，4 层封顶 750su。
+     * 裁定口径：0 层也爆炸（仅视觉），伤害按层数结算（层数 0 即 0，见 [explosionDamage]）。
+     */
+    fun explosionRadius(stacks: Int): Float = EXPLOSION_BASE_RADIUS * (stacks.coerceAtLeast(0) + 1)
 
-    /** 爆炸结算伤害（纯函数）：第 5 发面板 × 层数 × 难度倍率；0 层恒 0。 */
+    /** 第 5 发总伤害（纯函数）：面板 ×（1 + [FINAL_STACK_DAMAGE_BONUS]×层数）；0 层 = 面板。 */
+    fun finalShotDamage(finalDamage: Float, stacks: Int): Float =
+        finalDamage * (1f + FINAL_STACK_DAMAGE_BONUS * stacks.coerceAtLeast(0))
+
+    /**
+     * 第 5 发直击补伤（纯函数）：面板 × [FINAL_STACK_DAMAGE_BONUS]×层数。
+     * 直击面板已由引擎原生结算，本函数只给「提升部分」，由脚本 applyDamage 补给直击目标
+     * （shieldCovers/resolveShipDamagePoint 同款判例口径；直击目标仍豁免 AOE）。
+     */
+    fun finalShotBonusDamage(finalDamage: Float, stacks: Int): Float =
+        finalDamage * FINAL_STACK_DAMAGE_BONUS * stacks.coerceAtLeast(0)
+
+    /**
+     * 爆炸结算伤害（纯函数）：提升后的第 5 发面板 × 层数 × 难度倍率
+     * （= 面板 ×（1 + [FINAL_STACK_DAMAGE_BONUS]×层数）× 层数 × 倍率）；0 层恒 0（无 AOE 伤害）。
+     */
     fun explosionDamage(finalDamage: Float, stacks: Int, mult: Float): Float =
-        finalDamage * stacks.coerceAtLeast(0) * mult
+        finalShotDamage(finalDamage, stacks) * stacks.coerceAtLeast(0) * mult
 
     /**
      * 弹匣禁射闸（纯函数）：弹药低于 [AMMO_GATE] 且不在连射中时不允许起射新一轮；

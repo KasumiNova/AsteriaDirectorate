@@ -1,48 +1,41 @@
 package cn.kasuminova.astd.combat.effect.arc.cuifeng
 
-import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
-import com.fs.starfarer.api.Global
-import com.fs.starfarer.api.combat.BaseEveryFrameCombatPlugin
+import cn.kasuminova.astd.impl.render.ASTDColor
+import cn.kasuminova.astd.impl.render.BloomFlareSpec
+import cn.kasuminova.astd.impl.render.BoxFlareStyle
+import cn.kasuminova.astd.renderer.effect.explosion.BloomFlareVfxImpl
 import com.fs.starfarer.api.combat.CombatEngineAPI
-import com.fs.starfarer.api.combat.CombatEngineLayers
-import com.fs.starfarer.api.input.InputEventAPI
-import org.boxutil.units.standard.entity.FlareEntity
 import org.lwjgl.util.vector.Vector2f
-import java.awt.Color
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
 
 /**
  * 摧锋鱼雷命中特效触发层（blue/30-superlative.md §特效）：
- * 十字辉星 ×2（BoxUtil FlareEntity SHARP 同位叠放，1s 内 100px→200px 扩散并逐渐变淡）
- * + 爆炸星云 ×10（50~100px，ARC 蓝白主色）。
- *
- * 十字辉星扩散/变淡无 BoxUtil 内建动画通道（FlareEntity 只有全局计时器，无尺寸关键帧），
- * 由本文件内 [CrossFlarePlugin] 每帧推进尺寸与透明度（StarfallWingVfx 炮口光斑同款口径）。
+ * 十字辉星 ×2（[BloomFlareVfxImpl] 绽放辉星，SMOOTH_DISC 90° 交叉，0.5s 内长轴扩散并渐隐，
+ * 短轴固定不收窄）+ 爆炸星云（ARC 蓝白主色）。
  */
 object CuifengTorpedoVfx {
-    private val log = Global.getLogger(CuifengTorpedoVfx::class.java)
 
     /** 十字辉星存续。 */
     private const val CROSS_FLARE_DURATION = 0.5f
 
-    /** 十字辉星起止尺寸（px；第二枚 0.7 倍错位叠放）。 */
+    /** 十字辉星长轴起止尺寸（px）；短轴固定为长轴起值的 1/8。 */
     private const val FLARE_SIZE_START = 200f
     private const val FLARE_SIZE_END = 600f
-    private const val FLARE_SECOND_SCALE = 0.7f
+    private const val FLARE_HEIGHT = FLARE_SIZE_START / 8f
 
     /** 辉星核心色（ARC 冷蓝白近白）。 */
-    private val FLARE_CORE_COLOR = Color(225, 242, 255)
+    private val FLARE_CORE_COLOR = ASTDColor(0xFFE1F2FF)
 
     /** 辉星辉光色（ARC 蓝）。 */
-    private val FLARE_FRINGE_COLOR = Color(140, 205, 255)
+    private val FLARE_FRINGE_COLOR = ASTDColor(0xFF8CCDFF)
 
     /** 星云色（ARC 蓝白，alpha 由 addNebulaParticle 亮度参数调制）。 */
-    private val NEBULA_COLOR = Color(140, 200, 255, 130)
+    private val NEBULA_COLOR = java.awt.Color(140, 200, 255, 130)
 
     /** 爆炸闪光色（星云同色系的顶点补光）。 */
-    private val FLASH_COLOR = Color(160, 210, 255, 90)
+    private val FLASH_COLOR = java.awt.Color(160, 210, 255, 90)
 
     /** 静止速度矢量（闪光/星云用，避免逐次分配）。 */
     private val ZERO_VEL = Vector2f(0f, 0f)
@@ -58,53 +51,31 @@ object CuifengTorpedoVfx {
         spawnNebulaBurst(engine, point, random)
     }
 
-    /** 十字辉星：两枚 SHARP 光斑同位叠放（第二枚 0.7× 尺寸、45° 错位），由插件推进 1s 扩散消散。 */
+    /** 十字辉星：两枚 SMOOTH_DISC 光斑 90° 交叉同位叠放，由绽放辉星 API 推进扩散消散。 */
     private fun spawnCrossFlare(engine: CombatEngineAPI, point: Vector2f) {
-        BoxUtilCombatVfx.ensureReady(engine)
-        val first = buildFlare(point, FLARE_SIZE_START, 0f) ?: return
-        val second = buildFlare(point, FLARE_SIZE_START, 90f) ?: run {
-            first.delete()
-            return
-        }
-        engine.addPlugin(CrossFlarePlugin(engine, first, second))
-        bumpTelemetry(engine, TELEMETRY_CROSS_FLARE)
+        val spawned = BloomFlareVfxImpl.spawn(
+            engine, point, CROSS_FLARE_DURATION,
+            listOf(
+                crossFlareSpec(0f),
+                crossFlareSpec(90f),
+            ),
+        )
+        if (spawned > 0) bumpTelemetry(engine, TELEMETRY_CROSS_FLARE)
     }
 
-    /** 建一枚钉住生命周期的 SHARP 光斑（全局计时器钉超长 full，扩散/消散由插件接管）。 */
-    private fun buildFlare(point: Vector2f, size: Float, facingDeg: Float): FlareEntity? {
-        // FlareEntity 构造在无 GL 环境（单测/无头）会抛异常，收住并降级为无辉星（星云/闪光不受影响）
-        val entity = try {
-            FlareEntity()
-        } catch (t: Throwable) {
-            log.warn("摧锋十字辉星建实体失败（${t.javaClass.simpleName}），本次跳过辉星", t)
-            return null
-        }
-        entity.setLayer(CombatEngineLayers.ABOVE_PARTICLES)
-        entity.setAdditiveBlend()
-        entity.setSmoothDisc()
-        entity.isFlick = false
-        entity.isSyncFlick = false
-        entity.glowPower = 0.1f
-        entity.noisePower = 0.05f
-        // 用 Color 重载：BoxUtil 的 setCoreColor(float×4) 有源码 bug（误写 fringe 槽位，BoxFlareComponent 注记）
-        entity.setCoreColor(FLARE_CORE_COLOR)
-        entity.setFringeColor(FLARE_FRINGE_COLOR)
-        entity.setSize(size, size / 8)
-        entity.autoAspect()
-        entity.setGlobalTimer(0f, 1e7f, 0f)
-        entity.setStateVanilla(Vector2f(point), facingDeg)
-        val engine = Global.getCombatEngine() ?: run {
-            entity.delete()
-            return null
-        }
-        val state = BoxUtilCombatVfx.addEntity(engine, entity)
-        if (state != 0) {
-            log.warn("摧锋十字辉星注册失败（addEntity 返回 $state），本次跳过辉星（星云/闪光不受影响）")
-            entity.delete()
-            return null
-        }
-        return entity
-    }
+    /** 单枚十字光柱规格：长轴 200→600 扩散，短轴固定 25，低 glow + 轻噪点。 */
+    private fun crossFlareSpec(facingDeg: Float) = BloomFlareSpec(
+        style = BoxFlareStyle.SMOOTH_DISC,
+        sizeStart = FLARE_SIZE_START,
+        sizeEnd = FLARE_SIZE_END,
+        heightStart = FLARE_HEIGHT,
+        heightEnd = FLARE_HEIGHT,
+        facingDeg = facingDeg,
+        coreColor = FLARE_CORE_COLOR,
+        fringeColor = FLARE_FRINGE_COLOR,
+        glowPower = 0.1f,
+        noisePower = 0.05f,
+    )
 
     /** 爆炸星云。 */
     private fun spawnNebulaBurst(engine: CombatEngineAPI, point: Vector2f, random: Random) {
@@ -123,32 +94,6 @@ object CuifengTorpedoVfx {
         }
         engine.spawnExplosion(point, ZERO_VEL, NEBULA_COLOR, 100f, 1f)
         bumpTelemetry(engine, TELEMETRY_NEBULA_BURST)
-    }
-
-    /** 十字辉星推进插件：1s 内尺寸 100→200px 线性扩散、透明度线性归零，到期删实体自注销。 */
-    private class CrossFlarePlugin(
-        private val engine: CombatEngineAPI,
-        private val first: FlareEntity,
-        private val second: FlareEntity,
-    ) : BaseEveryFrameCombatPlugin() {
-        private var elapsed = 0f
-
-        override fun advance(amount: Float, events: MutableList<InputEventAPI>?) {
-            if (engine.isPaused) return
-            elapsed += amount
-            val t = (elapsed / CROSS_FLARE_DURATION).coerceIn(0f, 1f)
-            val size = FLARE_SIZE_START + (FLARE_SIZE_END - FLARE_SIZE_START) * t
-            val alpha = 1f - t
-            first.setSize(size, first.height)
-            first.globalAlpha = alpha
-            second.setSize(size, second.height)
-            second.globalAlpha = alpha
-            if (t >= 1f) {
-                first.delete()
-                second.delete()
-                engine.removePlugin(this)
-            }
-        }
     }
 
     /** dev 自动化烟测证据计数（对齐贯星 VFX 遥测先例）：engine.customData 整数自增。 */
