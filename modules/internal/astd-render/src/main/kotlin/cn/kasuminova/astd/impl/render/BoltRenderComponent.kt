@@ -186,7 +186,8 @@ class BoltRenderComponent(
     }
 
     companion object {
-        /** 螺栓绘制序：原版弹体同层（ABOVE_SHIPS），拖尾/光斑在其上的 ABOVE_PARTICLES 层。 */        const val RENDER_ORDER_BOLT = 200
+        /** 螺栓绘制序：原版弹体同层（ABOVE_SHIPS），拖尾/光斑在其上的 ABOVE_PARTICLES 层。 */
+        const val RENDER_ORDER_BOLT = 200
 
         /** 双趟叠加（= 原版 ProjectileRenderer body 双 pass，加色下提升头部饱和）。 */
         const val BOLT_PASSES = 1

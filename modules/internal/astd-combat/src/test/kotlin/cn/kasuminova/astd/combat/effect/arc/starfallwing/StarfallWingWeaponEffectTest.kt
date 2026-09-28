@@ -198,4 +198,46 @@ class StarfallWingWeaponEffectTest {
         val buff = ship.getBuff(StarfallWingAdaptationStacks.BUFF_ID) as? StarfallWingAdaptationStacks
         assertEquals(0.5f, buff?.stacks ?: -1f, 1e-4f, "子射弹撞盾附加 0.5 层振频适应")
     }
+
+    @Test
+    fun `子射弹撞非舰船目标 全额面板结算后消散 主弹维持单次穿越穿透结算`() {
+        val (engine, calls) = recordingEngine()
+        val missile = mock(com.fs.starfarer.api.combat.MissileAPI::class.java)
+        `when`(missile.location).thenReturn(Vector2f(50f, 0f))
+        `when`(missile.collisionRadius).thenReturn(10f)
+
+        // 子射弹：撞导弹 = 全额面板 + 0 EMP + 消散（穿透权只归主弹）
+        val mote = projectileOf(damage = 200f, emp = 0f)
+        val moteState = StarfallWingOnFireEffect.ProjectileState(stubWeapon("WS 001", "astd_starfall_wing"), isMote = true)
+        val moteHit = effect.pierceSimpleTarget(
+            engine, mote, moteState, missile,
+            Vector2f(40f, 0f), Vector2f(60f, 0f), 50f, 0f, 20f, 5f, HashSet(),
+        )
+        assertTrue(moteHit)
+        verify(engine).removeEntity(mote)
+        assertEquals(1, calls.size)
+        assertEquals(200f, calls.single().damage, 1e-4f)
+        assertEquals(0f, calls.single().emp, 1e-4f)
+        assertTrue(!calls.single().bypassShield)
+
+        // 主弹：同目标维持 20% 面板 + EMP 穿透结算，不消散；重复接触被单次穿越闩锁拦截
+        calls.clear()
+        val main = projectileOf(damage = 1000f, emp = 500f)
+        val mainState = StarfallWingOnFireEffect.ProjectileState(stubWeapon("WS 001", "astd_starfall_wing"), isMote = false)
+        val mainHit = effect.pierceSimpleTarget(
+            engine, main, mainState, missile,
+            Vector2f(40f, 0f), Vector2f(60f, 0f), 50f, 0f, 20f, 5f, HashSet(),
+        )
+        assertTrue(mainHit)
+        verify(engine, never()).removeEntity(main)
+        assertEquals(200f, calls.single().damage, 1e-4f)
+        assertEquals(100f, calls.single().emp, 1e-4f)
+        calls.clear()
+        val again = effect.pierceSimpleTarget(
+            engine, main, mainState, missile,
+            Vector2f(40f, 0f), Vector2f(60f, 0f), 50f, 0f, 20f, 5f, HashSet(),
+        )
+        assertTrue(!again, "同一穿越中重复接触不再结算")
+        assertEquals(0, calls.size)
+    }
 }

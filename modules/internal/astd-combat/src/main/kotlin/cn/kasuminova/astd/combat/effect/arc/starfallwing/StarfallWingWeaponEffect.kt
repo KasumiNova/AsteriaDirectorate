@@ -76,7 +76,7 @@ class StarfallWingWeaponEffect : EveryFrameWeaponEffectPlugin {
     }
 
     /**
-     * @return true = 弹体已被移除（子射弹撞盾阻挡），调用方停止后续推进并摘表。
+     * @return true = 弹体已被移除（子射弹撞盾/船体/非舰船目标阻挡），调用方停止后续推进并摘表。
      */
     private fun advanceProjectile(
         engine: CombatEngineAPI,
@@ -202,12 +202,14 @@ class StarfallWingWeaponEffect : EveryFrameWeaponEffectPlugin {
         for (missile in engine.missiles) {
             if (missile === proj || missile.owner == owner || missile.isExpired) continue
             if (pierceSimpleTarget(engine, proj, state, missile, from, to, midX, midY, swept, projRadius, contactedTargets)) {
+                if (!engine.isEntityInPlay(proj)) return PierceOutcome.BLOCKED
                 damaged = true
             }
         }
         for (asteroid in engine.asteroids) {
             if (asteroid.owner == owner || !engine.isEntityInPlay(asteroid)) continue
             if (pierceSimpleTarget(engine, proj, state, asteroid, from, to, midX, midY, swept, projRadius, contactedTargets)) {
+                if (!engine.isEntityInPlay(proj)) return PierceOutcome.BLOCKED
                 damaged = true
             }
         }
@@ -243,12 +245,13 @@ class StarfallWingWeaponEffect : EveryFrameWeaponEffectPlugin {
     }
 
     /**
-     * 非舰船目标（导弹/陨石）的穿透结算：碰撞圈与扫掠段相交即接触，
-     * 单次穿越只结算一次 20% 面板 + EMP（[PiercePassTracker.trySettleOnce] 闩锁），
-     * 落点 = 表面接触点。判定半径维持弹体原半径（不吃舰舰翻倍口径）。
+     * 非舰船目标（导弹/陨石）的接触结算：碰撞圈与扫掠段相交即接触，落点 = 表面接触点。
+     * 主弹：单次穿越只结算一次 20% 面板 + EMP（[PiercePassTracker.trySettleOnce] 闩锁）。
+     * 子射弹：穿透权只归主弹——全额面板一次结算（0 EMP，撞盾/撞船体同款裁定）后消散，
+     * 由调用方判 isEntityInPlay 转 BLOCKED。
      * @return true = 本帧发生了结算。
      */
-    private fun pierceSimpleTarget(
+    internal fun pierceSimpleTarget(
         engine: CombatEngineAPI,
         proj: DamagingProjectileAPI,
         state: ProjectileState,
@@ -272,6 +275,16 @@ class StarfallWingWeaponEffect : EveryFrameWeaponEffectPlugin {
         contactedTargets.add(target)
         if (!state.passContacts.trySettleOnce(target)) return false
         val contact = surfaceContactPoint(target.location, target.collisionRadius, from, to)
+        if (state.isMote) {
+            // 子射弹无穿透权：全额面板一次结算后消散（与撞盾/撞船体同为碰撞事件，不吃拍率限）
+            engine.applyDamage(
+                target, contact, proj.damageAmount,
+                DamageType.ENERGY, 0f,
+                false, false, proj.source, true,
+            )
+            engine.removeEntity(proj)
+            return true
+        }
         engine.applyDamage(
             target, contact, StarfallWingTuning.pierceTickDamage(proj.damageAmount),
             DamageType.ENERGY, StarfallWingTuning.pierceTickEmp(proj.empAmount),
