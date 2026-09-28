@@ -47,10 +47,22 @@ object ProjectileVfxSpecs {
         // 子射弹为真实 MissileAPI（追踪 AI 需要）：bolt 组件默认对导弹自禁用，须显式接管补回弹头；
         // 导弹 spec 无 length/width 键，螺栓尺寸显式给定（全长 28 × 全宽 8，对齐带宽 14 的弹头观感）。
         "astd_starfall_wing_mote" to {
-            simpleProjectileVfx("astd_starfall_wing_mote", violet(), width = 4f, length = 100f, decorTrail = false) {
+            simpleProjectileVfx("astd_starfall_wing_mote", violet(), width = 5f, length = 260f) {
                 bolt {
                     onMissile()
-                    size(28f, 8f)
+                    size(28f, 10f)
+                }
+                shardWake("wake") {
+                    cadence(0.02f, 1)
+                    emission(scatterRadius = 8f, speedMin = 20f, speedMax = 40f, spreadDeg = 0f)
+                    shardLength(34f)
+                    colors(core = 0xF0E1FFFF, fringe = 0xAA6EFFFF)
+                    shard(
+                        sizeMul = 0.2f, sizeMin = 3f, sizeMax = 6f,
+                        spinMin = 90f, spinMax = 360f,
+                        alphaLo = 120, alphaHi = 180,
+                        timerFullLo = 0.15f, timerFullHi = 0.3f, timerFadeOut = 0.3f,
+                    )
                 }
             }
         },
@@ -333,13 +345,13 @@ object ProjectileVfxSpecs {
     private fun starfallEchoShot(id: String, range: Float?): ProjectileVfx = simpleProjectileVfx(
         id,
         starfallBlue(),
-        width = 14f,
+        width = 16f,
         length = 320f,
         range = range,
         rangeRatio = 0.5f,
-        trailWidthScale = 0.75f,
+        trailWidthScale = 1.25f,
         trailGlow = 0.8f,
-        boltFlare = 40f,
+        boltFlare = 100f,
         muzzleBurst = MuzzleBurst(),
     ) {
         // 航迹三角碎片：0.01s×3 颗，弹体位置散布 8、沿飞行向 100~150su/s ±8°，小尺寸短寿命（普通蓝白）。
@@ -355,11 +367,12 @@ object ProjectileVfxSpecs {
                 timerFullLo = 0.15f, timerFullHi = 0.3f, timerFadeOut = 0.3f,
             )
         }
-        // 马赫环：0.1s 一枚，半径 35、alpha 0.6、拍扁 0.45、0.7→1.6 扩大，包络 0.06+0.5+0.44 = 1s。
+        // 马赫环：0.2s 一枚，半径 30、拍扁 0.45、0.7→3 扩大，包络 0.05+0.05+0.4 = 0.5s；前飞动量对齐碎片速度域。
         machRing("ring") {
-            cadence(0.1f, 35f)
-            color(0x78BEFFFF, alpha = 0.6f)
-            shape(flatten = 0.45f, growthStart = 0.7f, growthEnd = 1.6f, fadeIn = 0.06f, full = 0.5f, fadeOut = 0.44f)
+            cadence(0.2f, 30f)
+            color(0x78BEFFFF, alpha = 1f)
+            shape(flatten = 0.45f, growthStart = 0.5f, growthEnd = 2.5f, fadeIn = 0.05f, full = 0.05f, fadeOut = 0.3f)
+            momentum(800f, 1000f)
         }
     }
 
@@ -371,32 +384,35 @@ object ProjectileVfxSpecs {
     private fun starfallEchoFinalShot(id: String, range: Float?): ProjectileVfx = simpleProjectileVfx(
         id,
         starfallFinalRed(),
-        width = 28f,
+        width = 40f,
         length = 320f,
         range = range,
         rangeRatio = 0.5f,
-        trailWidthScale = 0.75f,
+        trailWidthScale = 1f,
         trailGlow = 0.9f,
-        boltFlare = 60f,
+        boltFlare = 90f,
         muzzleBurst = MuzzleBurst(length = 200f, halfAngleDeg = 24f, duration = 0.4f),
     ) {
-        boxFlare("light") {
-            style(BoxFlareStyle.SMOOTH)
-            colors(0xFFEDE6FF, 0xFF5A3CB4)
-            size(48f, 48f)
-            glow(1.2f, 4f)
-        }
+//        boxFlare("light") {
+//            style(BoxFlareStyle.SMOOTH)
+//            colors(0xFFEDE6FF, 0xFF5A3CA0)
+//            size(100f, 100f)
+//            glow(0.2f, 4f)
+//            offset(-40f)
+//        }
         boxFlare("pillar") {
-            style(BoxFlareStyle.SHARP_DISC)
-            colors(0xFFEDE6FF, 0xFF5A3CB4)
-            size(220f, 26f)
-            glow(1.6f, 4f)
+            style(BoxFlareStyle.SMOOTH_DISC, facingOffsetDeg = 45f)
+            colors(0xFFEDE6FF, 0xFF5A3CA0)
+            size(250f, 10f)
+            glow(1.2f, 4f)
+            offset(-45f)
         }
         boxFlare("pillar_cross") {
-            style(BoxFlareStyle.SHARP_DISC, facingOffsetDeg = 90f)
-            colors(0xFFEDE6FF, 0xFF5A3CB4)
-            size(160f, 18f)
-            glow(1.6f, 4f)
+            style(BoxFlareStyle.SMOOTH_DISC, facingOffsetDeg = 45f + 90f)
+            colors(0xFFEDE6FF, 0xFF5A3CA0)
+            size(250f, 10f)
+            glow(1.2f, 4f)
+            offset(-45f)
         }
         // 共振红航迹发射器：碎片/马赫环口径 ×2（shardLength 68、环半径 70），节拍与普通弹一致。
         shardWake("wake") {
@@ -412,9 +428,10 @@ object ProjectileVfxSpecs {
             )
         }
         machRing("ring") {
-            cadence(0.1f, 70f)
-            color(0xFF5A3CFF, alpha = 0.6f)
-            shape(flatten = 0.45f, growthStart = 0.7f, growthEnd = 1.6f, fadeIn = 0.06f, full = 0.5f, fadeOut = 0.44f)
+            cadence(0.15f, 50f)
+            color(0xFF5A3CFF, alpha = 1f)
+            shape(flatten = 0.45f, growthStart = 0.5f, growthEnd = 2.5f, fadeIn = 0.05f, full = 0.05f, fadeOut = 0.4f)
+            momentum(800f, 1000f)
         }
     }
 
@@ -447,11 +464,11 @@ object ProjectileVfxSpecs {
                 timerFullLo = 0.15f, timerFullHi = 0.3f, timerFadeOut = 0.3f,
             )
         }
-        // 马赫环：0.1s 一枚，半径 35、alpha 0.6、拍扁 0.45、0.7→1.6 扩大，包络 0.06+0.5+0.44 = 1s。
         machRing("ring") {
-            cadence(0.1f, 35f)
-            color(0xAA6EFFFF, alpha = 0.6f)
-            shape(flatten = 0.45f, growthStart = 0.7f, growthEnd = 1.6f, fadeIn = 0.06f, full = 0.5f, fadeOut = 0.44f)
+            cadence(0.2f, 35f)
+            color(0xAA6EFFFF, alpha = 1f)
+            shape(flatten = 0.45f, growthStart = 0.7f, growthEnd = 3f, fadeIn = 0.05f, full = 0.05f, fadeOut = 0.5f)
+            momentum(100f, 200f)
         }
     }
 
