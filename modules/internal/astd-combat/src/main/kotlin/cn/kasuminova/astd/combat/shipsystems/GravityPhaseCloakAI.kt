@@ -69,8 +69,10 @@ import org.lwjgl.util.vector.Vector2f
  * - 无威胁上浮：威胁圈无交战对象且来袭轻微（撤退赶路且硬辐能有余量时保持相位）；
  * - 死角上浮：已机动到主威胁目标侧后射界薄弱区（[REAR_ARC_MIN_DIFF] 口径）且能瞄准本舰的
  *   武器 ≤ [REAR_SURFACE_MAX_COVERAGE] 时立即上浮输出；
- * - 绕后意图：意图途中（未入侧后）不中途上浮，保持相位机动穿透；意图达成（已入侧后）
- *   时覆盖闸放宽到 [SURFACE_COVERAGE_MAX] 即上浮输出；
+ * - 绕后意图拦截（先于无威胁/死角上浮判定）：意图途中（未入侧后）一切主动上浮按住，
+ *   保持相位机动穿透——就位点在目标背后远点，途中短暂掉出交战圈不等于脱战，
+ *   掉圈提前上浮即布防早夭；意图达成（已入侧后）时覆盖闸放宽到 [SURFACE_COVERAGE_MAX]
+ *   即上浮输出；
  * - 覆盖闸：主威胁目标能瞄准本舰的武器数 > [SURFACE_COVERAGE_MAX] 时，战术/输出窗口上浮
  *   继续相位机动等死角（强制上浮不受此闸约束）；
  * - 战术上浮：攻击系统就绪且有交战对象——上浮施放磁暴/复制器；
@@ -393,6 +395,17 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
                 // 不在无威胁上浮的 near 窗口口径内，但同样会在 soon 窗口落地；
                 // 友军火力持续照射本舰时同样按住不上浮——上浮即被烧）
                 if (defensiveSoon >= diveSoonThreshold(s.maxHull)) return PhaseOrder.NONE
+                // 绕后意图拦截（先于无威胁/死角上浮）：意图途中一切主动上浮按住——
+                // 穿透机动的就位点在目标背后远点，途中短暂掉出交战圈不等于脱战，
+                // 掉圈提前上浮即布防早夭（实测 zw101 多次 intent=true engaged=false
+                // 途中上浮，绕后扫描幅度被压掉）
+                if (s.flankIntentActive) {
+                    // 绕后意图达成：已进入侧后薄弱区，覆盖闸放宽到常规上限即上浮输出
+                    if (s.inTargetRearArc && s.weaponCoverage <= SURFACE_COVERAGE_MAX) {
+                        return PhaseOrder.SURFACE
+                    }
+                    return PhaseOrder.NONE
+                }
                 if (!s.engagedEnemyNear && s.incomingNearDamage < diveNearThreshold(s.maxHull) * 0.5f) {
                     // 撤退赶路且硬辐能有余量时保持相位
                     if (!(s.retreating && s.hardFluxLevel < RETREAT_STAY_HARD_FLUX)) {
@@ -405,15 +418,6 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
                 ) {
                     return PhaseOrder.SURFACE
                 }
-                // 绕后意图达成：已进入侧后薄弱区，覆盖闸放宽到常规上限即上浮输出
-                if (s.flankIntentActive && s.inTargetRearArc &&
-                    s.weaponCoverage <= SURFACE_COVERAGE_MAX
-                ) {
-                    return PhaseOrder.SURFACE
-                }
-                // 绕后意图途中：未就位不中途上浮，保持相位机动穿透（由 advance 挂
-                //  PHASE_ATTACK_RUN 驱动原版走位把舰船带往目标背后）
-                if (s.flankIntentActive) return PhaseOrder.NONE
                 // 覆盖闸：主威胁能瞄准本舰的武器过多时，继续相位机动等死角（强制上浮不受此闸约束）
                 if (s.weaponCoverage > SURFACE_COVERAGE_MAX) return PhaseOrder.NONE
                 if (s.systemReady && s.engagedEnemyNear) return PhaseOrder.SURFACE

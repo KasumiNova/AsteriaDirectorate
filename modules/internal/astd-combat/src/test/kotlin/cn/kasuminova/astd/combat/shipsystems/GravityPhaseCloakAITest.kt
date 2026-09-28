@@ -531,6 +531,16 @@ class GravityPhaseCloakAITest {
     }
 
     @Test
+    fun `绕后意图途中敌舰掉出交战圈不提前上浮`() {
+        // 穿透机动途中敌舰短暂掉出交战圈：无威胁上浮被意图拦截按住，布防不早夭
+        val s = phasedSituation().copy(flankIntentActive = true, engagedEnemyNear = false)
+        assertEquals(PhaseOrder.NONE, GravityPhaseCloakAI.decide(s))
+
+        // 无意图时同参数走无威胁上浮
+        assertEquals(PhaseOrder.SURFACE, GravityPhaseCloakAI.decide(s.copy(flankIntentActive = false)))
+    }
+
+    @Test
     fun `绕后意图期间放宽相位时长上限`() {
         // 常规上限（8s）到意图上限（基准窗口 12s + 2s 富余）之间：意图生效时不强制上浮
         val intent = phasedSituation().copy(
