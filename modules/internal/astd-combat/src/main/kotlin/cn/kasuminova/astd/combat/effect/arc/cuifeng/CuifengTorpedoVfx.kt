@@ -28,8 +28,8 @@ object CuifengTorpedoVfx {
     private const val CROSS_FLARE_DURATION = 0.5f
 
     /** 十字辉星起止尺寸（px；第二枚 0.7 倍错位叠放）。 */
-    private const val FLARE_SIZE_START = 100f
-    private const val FLARE_SIZE_END = 400f
+    private const val FLARE_SIZE_START = 200f
+    private const val FLARE_SIZE_END = 600f
     private const val FLARE_SECOND_SCALE = 0.7f
 
     /** 辉星核心色（ARC 冷蓝白近白）。 */
@@ -52,8 +52,8 @@ object CuifengTorpedoVfx {
 
     /** 可注入随机源的入口（单元测试与运行共用同一路径）。 */
     fun spawnImpact(engine: CombatEngineAPI, point: Vector2f, random: Random) {
-        engine.addHitParticle(point, ZERO_VEL, FLASH_SIZE, 1.1f, 0.12f, FLARE_CORE_COLOR)
-        engine.addSmoothParticle(point, ZERO_VEL, FLASH_SIZE * 1.6f, 0.8f, 0.2f, FLASH_COLOR)
+//        engine.addHitParticle(point, ZERO_VEL, FLASH_SIZE, 1.1f, 0.12f, FLARE_CORE_COLOR)
+//        engine.addSmoothParticle(point, ZERO_VEL, FLASH_SIZE * 1.6f, 0.8f, 0.2f, FLASH_COLOR)
         spawnCrossFlare(engine, point)
         spawnNebulaBurst(engine, point, random)
     }
@@ -81,7 +81,7 @@ object CuifengTorpedoVfx {
         }
         entity.setLayer(CombatEngineLayers.ABOVE_PARTICLES)
         entity.setAdditiveBlend()
-        entity.setSharpDisc()
+        entity.setSmoothDisc()
         entity.isFlick = false
         entity.isSyncFlick = false
         entity.glowPower = 0.1f
@@ -89,7 +89,7 @@ object CuifengTorpedoVfx {
         // 用 Color 重载：BoxUtil 的 setCoreColor(float×4) 有源码 bug（误写 fringe 槽位，BoxFlareComponent 注记）
         entity.setCoreColor(FLARE_CORE_COLOR)
         entity.setFringeColor(FLARE_FRINGE_COLOR)
-        entity.setSize(size, size / 4)
+        entity.setSize(size, size / 8)
         entity.autoAspect()
         entity.setGlobalTimer(0f, 1e7f, 0f)
         entity.setStateVanilla(Vector2f(point), facingDeg)
@@ -167,10 +167,10 @@ object CuifengTorpedoVfx {
     private const val FLASH_SIZE = 80f
 
     /** 星云参数。 */
-    private const val NEBULA_COUNT = 8
-    private const val NEBULA_SIZE_MIN = 50f
-    private const val NEBULA_SIZE_MAX = 100f
-    private const val NEBULA_SPEED_MIN = 10f
-    private const val NEBULA_SPEED_MAX = 20f
+    private const val NEBULA_COUNT = 12
+    private const val NEBULA_SIZE_MIN = 75f
+    private const val NEBULA_SIZE_MAX = 150f
+    private const val NEBULA_SPEED_MIN = 20f
+    private const val NEBULA_SPEED_MAX = 40f
     private const val NEBULA_DURATION_AVG = 1.0f
 }
