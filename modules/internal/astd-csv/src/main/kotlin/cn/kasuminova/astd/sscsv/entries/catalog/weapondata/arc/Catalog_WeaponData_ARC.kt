@@ -293,6 +293,93 @@ object Wpn_astd_starfall_wing_mote_launcher : WeaponDataEntry(), SsProjMissileOu
 }
 
 /**
+ * 星翼：裂隙折跃虚空锚雷发射器（隐藏武器，RiftShiftSystemStats 脚本 spawn 专用，不装配舰船）。
+ *
+ * 沿裂隙路径每 100su 布设一枚 PHASE_MINE 地雷（永不引爆：PROXIMITY_FUSE 引信 range=0 永不触发、
+ * 撞不到任何实体——原版会为 PHASE_MINE 自动挂 GuidedProximityFuseAI，behaviorSpec 缺块会在
+ * spawn 时 NPE，故引信声明必填、仅将触发半径归零），4000 面板伤害只为让原版 mine AI 规避逻辑
+ * 把裂隙路径判定为致命威胁区，驱动敌舰主动绕行；地雷生命周期绑裂隙，闭合收拢完成后由脚本统一回收。
+ */
+object Wpn_astd_rift_mine_layer : WeaponDataEntry(), SsProjMissileOutputs {
+    override val id: String = "astd_rift_mine_layer"
+    override val name: String = weaponName(id)
+    override val tier: Int = 5
+    override val baseValue: Int = 0
+    // 脚本 spawn 不消费射程；写 0 保隐藏武器语义（不出现在装配统计）
+    override val range: Int = 0
+
+    // 威慑面板（与 RiftShiftTuning.MINE_PANEL_DAMAGE 对齐；真实伤害恒零——地雷永不引爆）
+    override val damagePerShot: Int = 4000
+    override val type: String = "ENERGY"
+    override val projSpeed: Int = 0
+    override val flightTime: Double = 10.0
+    override val projHitpoints: Int = 10000
+    override val tags: String = "astd_signature"
+    override val groupTag: String = ""
+    override val tech: String = "菀星设计局-星坠"
+    override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
+    override val noDpsInTooltip: Boolean = true
+    override val number: Int = 9133
+
+    override val projSpec: MissileProjSpec = MissileProjSpec(
+        id = "astd_rift_mine",
+        missileType = "PHASE_MINE",
+        // 原版会为 PHASE_MINE 自动挂 GuidedProximityFuseAI（构造即解析 behaviorSpec，缺块 spawn 时
+        // NPE——实机判例）；声明块照抄原版 minelayer_mine 结构，仅将触发/告警半径归零使永不引爆
+        behaviorSpec = mapOf(
+            "behavior" to "PROXIMITY_FUSE",
+            "range" to 0,
+            "slowToMaxSpeed" to false,
+            "delay" to 3,
+            "pingSound" to "mine_ping",
+            "pingColor" to listOf(170, 110, 255, 0),
+            "pingRadius" to 0,
+            "pingDuration" to 0.25,
+            "windupSound" to "mine_windup_heavy",
+            "windupDelay" to 1,
+            "explosionSpec" to mapOf(
+                "duration" to 0.1,
+                "radius" to 0,
+                "coreRadius" to 0,
+                "collisionClass" to "MISSILE_FF",
+                "collisionClassByFighter" to "MISSILE_FF",
+                "particleSizeMin" to 3.0,
+                "particleSizeRange" to 3.0,
+                "particleDuration" to 1,
+                "particleCount" to 0,
+                "particleColor" to listOf(170, 110, 255, 0),
+                "explosionColor" to listOf(170, 110, 255, 0),
+                "useDetailedExplosion" to false,
+                "sound" to "mine_explosion",
+            ),
+        ),
+        // 原版弹体贴图渲染屏蔽：地雷本体完全不可见，裂隙路径视觉由 VFX 管线承担
+        sprite = "graphics/textures/BUtil_NONE.png",
+        size = Vec2i(4, 4),
+        center = Vec2(2, 2),
+        collisionRadius = 20,
+        // NONE：地雷永不与任何实体碰撞，永不触发引爆链
+        collisionClass = "NONE",
+        collisionClassAfterFlameout = "NONE",
+        renderTargetIndicator = false,
+        explosionColor = Rgba(170, 110, 255, 0),
+        explosionRadius = 0,
+        armingTime = 0.0,
+        flameoutTime = 0.5,
+        noEngineGlowTime = 999.0,
+        fadeTime = 0.25,
+        // 全零推进：锚雷驻留原位不飘移（脚本 spawn 时速度同步清零）
+        engineSpec = MissileEngineSpec(
+            turnAcc = 0,
+            turnRate = 0,
+            acc = 0,
+            dec = 0,
+        ),
+        engineSlots = emptyList(),
+    )
+}
+
+/**
  * ARC-13“三位一体”：大型能量武器（蓝稀有）。
  *
  * 机制：burst 3 发；每发脚本生成一次弧光（命中点即时结算一次性伤害）。

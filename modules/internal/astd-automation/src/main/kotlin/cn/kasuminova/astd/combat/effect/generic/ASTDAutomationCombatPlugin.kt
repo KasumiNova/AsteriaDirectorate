@@ -7238,7 +7238,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     }
 
 
-    // === XC-002 星翼场景（虚数之翼伤害乘区 / 裂隙折跃位移与接触 / 闭合爆炸 / 坠星残翼供给登记与叠层） ===
+    // === XC-002 星翼场景（虚数之翼伤害乘区 / 裂隙折跃变距位移与掠过驻留 / 闭合收拢 / 坠星残翼供给登记与叠层） ===
 
     private fun findXc2Player(engine: CombatEngineAPI): ShipAPI? =
         engine.ships.firstOrNull { ship -> ship.owner == 0 && ship.hullSpec?.hullId == XC2_PLAYER_HULL && !ship.isFighter }
@@ -7406,13 +7406,15 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
      * WINGS_OBSERVE（断言点 XC2-A：虚数之翼静止伤害乘区——钉死 0 航速，砺刃档 0% 航速 −25%，
      *   energyWeaponDamageMult ∈ [0.70, 0.80]；同时校验系统 id / 坠星残翼装配 / 内置船插在场，
      *   通过时剥光靶舰装甲——范式同 GS：断言伤害链路而非原版装甲数学）→
-     * SHIFT（断言点 XC2-B：useSystem() 按帧重试点火（静止舰回退朝向 +X），折跃窗 1.2s 内
-     *   不钉舰位，位移峰值 ∈ [700, 900]；断言点 XC2-C：速度窗口 maxSpeed 峰值相对
-     *   WINGS_OBSERVE 静止 maxSpeed 的乘区 ≈ 实算期望（砺刃 +100%；零幅能加速 flat 与百分比
-     *   乘区叠乘，期望按 (base×(1+峰值%)+flat)/静止值 合成，容差 ±0.1）；断言点 XC2-D 观测面：
-     *   接触期靶舰 HP 谷值——靶舰钉在裂隙路径上，砺刃名义 200/s、统治者最低装甲减伤后 ≈56/s）→
-     * CLOSURE（断言点 XC2-E：折跃起点 +6.3s 评估——闭合爆炸 800/爆点（砺刃）+ 残余接触，
-     *   靶舰恰压 x=-300 爆点，闭合窗掉血 ≥500；接触期累计掉血 ≥250）→
+     * SHIFT（断言点 XC2-B：变距折跃目标点经 SYSTEM_TARGET_COORDS 注入到达锚点（确定性满距），
+     *   useSystem() 按帧重试点火（静止舰回退朝向 +X），折跃窗 1.2s 内
+     *   不钉舰位，位移峰值 ∈ [SHIFT_DISTANCE−100, SHIFT_DISTANCE+100]；断言点 XC2-C：速度窗口
+     *   maxSpeed 峰值相对 WINGS_OBSERVE 静止 maxSpeed 的乘区 ≈ 实算期望（砺刃 +100%；零幅能
+     *   加速 flat 与百分比乘区叠乘，期望按 (base×(1+峰值%)+flat)/静止值 合成，容差 ±0.1）；
+     *   断言点 XC2-D 观测面：成形掠过 + 驻留接触期靶舰 HP 谷值——靶舰钉在裂隙路径上，
+     *   掠过 0.1s/拍×400 + 驻留 0.2s/拍×200（装甲已剥光，固定值不吃难度缩放））→
+     * CLOSURE（断言点 XC2-E：折跃起点 +7.3s 评估——闭合收拢（激活 +5.7s 起、1s 收拢）的掠过
+     *   结算 + 残余驻留，闭合窗掉血 ≥1200；接触期累计掉血 ≥3000）→
      * WEAPON_SHIELD（断言点 XC2-F：靶舰护盾放开，主弹撞盾 +1 层/子射弹 +0.5 层，
      *   振频适应叠层峰值 ≥0.5）→
      * WEAPON_HULL（断言点 XC2-G：靶舰压盾，穿透掉血 ≥300；供给登记主弹 ≥3、子射弹 ≥1）→
@@ -7507,8 +7509,13 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                         log.info("[ASTD-Automation] xc2 activated: state=$systemState attempts=$xc2ActivateAttempts")
                     }
                     if (xc2ActivatedAt < 0f && systemState == ShipSystemAPI.SystemState.IDLE && system.cooldownRemaining <= 0f) {
-                        // 按帧重试 useSystem()（单次调用可能被原版闸门吞掉，范式同 GS ACTIVATE）
+                        // 按帧重试 useSystem()（单次调用可能被原版闸门吞掉，范式同 GS ACTIVATE）；
+                        // 变距折跃目标点经 AI 决策通道 SYSTEM_TARGET_COORDS 注入到达锚点
+                        // （原版 MineStrikeStats 同款口径；舞台舰无鼠标，确定性满距 1000su）
                         xc2ActivateAttempts++
+                        player.aiFlags.setFlag(
+                            ShipwideAIFlags.AIFlags.SYSTEM_TARGET_COORDS, 1f, Vector2f(XC2_PLAYER_ARRIVAL),
+                        )
                         player.useSystem()
                     }
                     if (sinceActivate >= 0f) {
@@ -7587,13 +7594,13 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                         when {
                             contactDrop < XC2_EXPECT_CONTACT_HP_DROP -> {
                                 failureReason = "xc2 contact damage shortfall: hpDrop=${"%.0f".format(contactDrop)}" +
-                                        " < $XC2_EXPECT_CONTACT_HP_DROP（断言点 XC2-D：裂隙接触砺刃名义 200/s（装甲减伤后 ≈56/s），靶舰钉在路径上）"
+                                        " < $XC2_EXPECT_CONTACT_HP_DROP（断言点 XC2-D：成形掠过 0.1s/拍×400 + 驻留 0.2s/拍×200，靶舰钉在路径上且装甲已剥光）"
                                 transitionXc2Phase(XC2_PHASE_FAILED)
                             }
 
                             closureDrop < XC2_EXPECT_CLOSURE_HP_DROP -> {
                                 failureReason = "xc2 closure damage shortfall: hpDrop=${"%.0f".format(closureDrop)}" +
-                                        " < $XC2_EXPECT_CLOSURE_HP_DROP（断言点 XC2-E：闭合爆炸砺刃 800/爆点，靶舰压 x=-300 爆点）"
+                                        " < $XC2_EXPECT_CLOSURE_HP_DROP（断言点 XC2-E：闭合收拢掠过 0.1s/拍×400 + 残余驻留，靶舰钉在路径中段）"
                                 transitionXc2Phase(XC2_PHASE_FAILED)
                             }
 
@@ -11711,9 +11718,10 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private const val XC2_HULLMOD_ID = "astd_imaginary_wings"
 
         // 折跃舞台锚点：玩家舰静止朝 +X 激活（速度近零回退朝向，断言点 XC2-B 定向口径），
-        // 裂隙路径自 XC2_PLAYER_ANCHOR 向 +X 推进 RiftShiftTuning.SHIFT_DISTANCE——到达锚点同源派生
-        // （位移断言界亦由该常量派生，800/1200 两档数值下提交自洽）；闭合爆点沿路径步进 100
-        // （closureBlastPoints 按路径实长展开），靶舰恰压 x=-300 爆点（断言点 XC2-E 口径）。
+        // 变距折跃目标点经 SYSTEM_TARGET_COORDS 注入到达锚点（= 起点 +X 推进 RiftShiftTuning.SHIFT_DISTANCE，
+        // 恰为满距——到达锚点同源派生，位移断言界亦由该常量派生，改折跃距离无需双处同步）；
+        // 虚空锚雷沿路径步进 100su（mineAnchorPoints 按路径实长展开），靶舰钉在路径中段
+        // （断言点 XC2-D/E 口径：全程吃掠过/驻留/收拢三类结算）。
         private val XC2_PLAYER_ANCHOR = Vector2f(-800f, -100f)
         private val XC2_ENEMY_ANCHOR = Vector2f(-300f, -100f)
         private val XC2_PLAYER_ARRIVAL = Vector2f(XC2_PLAYER_ANCHOR.x + RiftShiftTuning.SHIFT_DISTANCE, XC2_PLAYER_ANCHOR.y)
@@ -11734,8 +11742,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         // （容忍钉位恢复帧；与 XC2_PLAYER_ARRIVAL 同源，改折跃距离无需双处同步）；折跃窗 1.2s
         // 内不钉舰位（裂隙插件逐帧改写 location，钉位互搏会掩盖位移证据）；速度窗口 maxSpeed 峰值
         // 砺刃 +100%（期望峰值按 (base×(1+峰值%)+常驻 flat)/静止值 实算——零幅能加速 flat 不吃百分比
-        // 乘区，容差 ±0.1 覆盖帧量化）；5.2s 转入 CLOSURE（须在闭合前快照靶舰 HP：闭合 = 激活 +5.5s：
-        // 0.5s 折跃 + 5s 延迟）。
+        // 乘区，容差 ±0.1 覆盖帧量化）；5.2s 转入 CLOSURE（须在闭合收拢前快照靶舰 HP：
+        // 收拢 = 激活 +5.7s：0.7s 折跃 + 5s 驻留）。
         private const val XC2_ACTIVATE_TIMEOUT = 10f
         private const val XC2_SHIFT_PIN_FREE_SECONDS = 1.2f
         private const val XC2_SHIFT_ASSERT_SECONDS = 1.5f
@@ -11745,16 +11753,17 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private const val XC2_SPEED_MULT_TOLERANCE = 0.1f
         private const val XC2_SHIFT_WINDOW_SECONDS = 5.2f
 
-        // CLOSURE（断言点 XC2-D/E 评估）：接触掉血下界 250（砺刃名义 200/s × 靶舰在成形段上 ≈5s，
-        // 统治者级最低装甲减伤后实测有效 ≈56/s ≈280，保守口径取下界 250）；闭合掉血下界 500
-        // （砺刃 800/爆点 + 残余接触，保守口径）；+6.3s 评估（闭合后 0.8s）。
-        private const val XC2_CLOSURE_EVAL_SECONDS = 6.3f
-        private const val XC2_EXPECT_CONTACT_HP_DROP = 250f
-        private const val XC2_EXPECT_CLOSURE_HP_DROP = 500f
+        // CLOSURE（断言点 XC2-D/E 评估）：接触掉血下界 3000（装甲已在 XC2-A 剥光，固定值结算：
+        // 成形掠过 ≈7 拍×400 + 快照前驻留 0.7→5.2s ≈22 拍×200 ≈7200 名义，保守口径取不足半）；
+        // 闭合掉血下界 1200（快照后驻留 5.2→5.7s ≈2 拍×200 + 收拢掠过覆盖靶舰半程 ≈5 拍×400，
+        // 保守口径）；+7.3s 评估（收拢 6.7s 完毕后 0.6s 余量）。
+        private const val XC2_CLOSURE_EVAL_SECONDS = 7.3f
+        private const val XC2_EXPECT_CONTACT_HP_DROP = 3000f
+        private const val XC2_EXPECT_CLOSURE_HP_DROP = 1200f
 
         // WEAPON_SHIELD/HULL（断言点 XC2-F/G）：盾相 5s 评估叠层峰值 ≥0.5（主弹穿盾首触 +1/子射弹
-        // 撞盾 +0.5）；体相 6s 评估穿透掉血 ≥300（穿透单点 20% 面板 × 0.1s 拍 + 子射弹撞船体全额 200，靶舰垫
-        // 舞台结构冗余并逐帧奶回、掉血按逐帧差额累加——装甲已在 XC2-A 后剥光，主弹穿越期 ≥2 拍/发
+        // 撞盾 +0.5）；体相 6s 评估穿透掉血 ≥300（穿透单点 面板×穿透比例 × 穿透节拍 + 子射弹撞船体全额，
+        // 靶舰垫舞台结构冗余并逐帧奶回、掉血按逐帧差额累加——装甲已在 XC2-A 后剥光，主弹穿越期 ≥2 拍/发
         // （内部点口径：采样点在碰撞箱多边形内即接触，中段不再漏拍），实机 8 发 2947，300 为保守口径）、
         // 供给登记主弹 ≥3（固定 1.5s/发 × 11s 两相 ≈7 发）、子射弹 ≥1（0.2s 散发节拍）。
         private const val XC2_WEAPON_SHIELD_EVAL_SECONDS = 5f

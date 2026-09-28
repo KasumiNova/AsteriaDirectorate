@@ -7,12 +7,14 @@ import cn.kasuminova.astd.sscsv.entries.catalog.shipsystems.systemName
 
 /**
  * 星翼级舰船系统「裂隙折跃」（规格 blue/10-unique.md XC-002 节）：
- * 短暂相位（0.5s 激活窗口）并向飞行向量折跃（距离见 RiftShiftTuning.SHIFT_DISTANCE，
- * 缓动曲线加减速），途中撕开虚空裂隙（接触持续能量伤害），折跃完成后 5s 裂隙闭合并
- * 沿路径爆炸。stats 脚本 [RiftShiftSystemStats] 继承 PhaseCloakStats（相位机制原版口径），
- * 折跃位移/裂隙伤害/闭合爆炸由脚本侧承担。
+ * 短暂相位（0.7s 激活窗口）并向飞行向量变距折跃（基准 1000su × 系统射程加成，
+ * 玩家按鼠标选距/AI 按情境选距，25%~100% 钳制，缓动曲线加减速），途中撕开虚空裂隙
+ * （成形/闭合掠过 0.1s 一拍 400 能量，驻留接触 0.2s 一拍 200 能量，接触范围 100su），
+ * 折跃完成后 5s 裂隙自末端反向收拢闭合（1s，掠过结算同口径）；路径上布设隐藏虚空锚雷
+ * 驱离敌方 AI。stats 脚本 [RiftShiftSystemStats] 继承 PhaseCloakStats（相位机制原版口径），
+ * 折跃位移/裂隙伤害/闭合收拢由脚本侧承担。
  *
- * 非开关相位（toggle=false + active=0.5s）：相位斗篷类系统对齐原版 phasecloak 标记组
+ * 非开关相位（toggle=false + active=0.7s）：相位斗篷类系统对齐原版 phasecloak 标记组
  * （isPhaseCloak/hardFlux/noHardDissipation/noFiring/noShield）；冷却 8s 为裁定值
  * （设计案未给，旧坍缩折跃的充能池消耗语义已随机制删除）。
  */
@@ -27,7 +29,7 @@ object Sys_astd_rift_shift : ShipSystemWithSystemFileEntry() {
     override val aiScript: String = "cn.kasuminova.astd.combat.shipsystems.RiftShiftSystemAI"
 
     override val chargeUp: Double = 0.25
-    override val active: Double = 0.5
+    override val active: Double = 0.7
     override val down: Double = 0.25
     override val cooldown: Double = 8.0
 

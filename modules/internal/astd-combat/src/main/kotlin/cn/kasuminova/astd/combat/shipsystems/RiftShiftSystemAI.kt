@@ -10,10 +10,14 @@ import org.lazywizard.lazylib.MathUtils
 import org.lwjgl.util.vector.Vector2f
 
 /**
- * 裂隙折跃系统 AI（简化口径）：折跃方向恒为飞行向量，AI 只决定激活时机——
- * - 导弹来袭且护盾未覆盖危险方向时立即折跃规避；
- * - 高幅能（≥75%）或低结构（≤40%）且正在远离最近敌舰时折跃撤退；
- * - 朝目标飞行（速度向量与目标方向夹角 ≤60°）且距离 400~1500su 时折跃切入。
+ * 裂隙折跃系统 AI（简化口径）：折跃方向恒为飞行向量，AI 决定激活时机与折跃长度——
+ * 激活前经 SYSTEM_TARGET_COORDS 注入目标点（原版 MineStrikeStats 同款通道，
+ * stats 脚本侧钳进 25%~100% 最大距离），选距决策：
+ * - 导弹来袭且护盾未覆盖危险方向时立即折跃规避（中距 50%：快速脱离即可，
+ *   避免长距撞进未知区域）；
+ * - 高幅能（≥75%）或低结构（≤40%）且正在远离最近敌舰时折跃撤退（满距 100%）；
+ * - 朝目标飞行（速度向量与目标方向夹角 ≤60°）且距离 400~1500su 时折跃切入：
+ *   远距（>800su）用满距压进，近距缠斗用短距（25%）过穿换位。
  */
 class RiftShiftSystemAI : ShipSystemAIScript {
 
@@ -39,7 +43,7 @@ class RiftShiftSystemAI : ShipSystemAIScript {
 
         // 导弹规避为即时反应，不走扫描节拍
         if (missileThreat(ship, engine) && shieldNotCoveringDanger(ship, missileDangerDir)) {
-            ship.useSystem()
+            activateWithDistance(ship, DISTANCE_FRACTION_DODGE)
             return
         }
 
@@ -64,13 +68,30 @@ class RiftShiftSystemAI : ShipSystemAIScript {
         val fluxLevel = ship.fluxTracker?.fluxLevel ?: 0f
         val hullLevel = ship.hullLevel
         if ((fluxLevel >= RETREAT_FLUX_THRESHOLD || hullLevel <= RETREAT_HULL_THRESHOLD) && approach < 0f) {
-            ship.useSystem()
+            activateWithDistance(ship, DISTANCE_FRACTION_FULL)
             return
         }
 
         if (distance in ENGAGE_MIN_RANGE..ENGAGE_MAX_RANGE && approach >= ENGAGE_APPROACH_MIN) {
-            ship.useSystem()
+            // 远距压进用满距；贴身缠斗用短距过穿（穿到目标身后换位，避免长距脱战）
+            val fraction = if (distance > ENGAGE_LONG_RANGE) DISTANCE_FRACTION_FULL else RiftShiftTuning.MIN_SHIFT_FRACTION
+            activateWithDistance(ship, fraction)
         }
+    }
+
+    /**
+     * 以选定长度激活折跃：目标点 = 舰心 + 折跃方向 × 最大距离×[fraction]，
+     * 经 SYSTEM_TARGET_COORDS 注入（stats 脚本激活边沿读取并二次钳制，时长 1s 覆盖点火窗）。
+     */
+    private fun activateWithDistance(ship: ShipAPI, fraction: Float) {
+        val maxDist = ship.mutableStats.systemRangeBonus.computeEffective(RiftShiftTuning.SHIFT_DISTANCE)
+        val dir = RiftShiftTuning.shiftDirection(ship.velocity, ship.facing)
+        val target = Vector2f(
+            ship.location.x + dir.x * maxDist * fraction,
+            ship.location.y + dir.y * maxDist * fraction,
+        )
+        ship.aiFlags?.setFlag(ShipwideAIFlags.AIFlags.SYSTEM_TARGET_COORDS, 1.0f, target)
+        ship.useSystem()
     }
 
     /** 导弹威胁：近身（3 倍碰撞半径）来袭导弹 ≥3 枚，或单枚伤害 ≥ 20% 最大结构。 */
@@ -128,6 +149,13 @@ class RiftShiftSystemAI : ShipSystemAIScript {
         private const val ENGAGE_MIN_RANGE = 400f
         private const val ENGAGE_MAX_RANGE = 1500f
         private const val ENGAGE_APPROACH_MIN = 0.5f
+
+        /** 远距/近距分界（su）：超过则用满距压进，否则短距过穿换位。 */
+        private const val ENGAGE_LONG_RANGE = 800f
+
+        /** 选距占比：满距（撤退/远距压进）与中距（导弹规避，避免长距撞进未知区域）。 */
+        private const val DISTANCE_FRACTION_FULL = 1.0f
+        private const val DISTANCE_FRACTION_DODGE = 0.5f
 
         /** 导弹规避的数量门槛（单枚高伤另判）。 */
         private const val MISSILE_COUNT_THRESHOLD = 3

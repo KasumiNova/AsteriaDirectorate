@@ -1,8 +1,6 @@
 package cn.kasuminova.astd.combat.shipsystems
 
 import cn.kasuminova.astd.api.AstdLog
-import cn.kasuminova.astd.impl.render.TriShardComponent
-import cn.kasuminova.astd.impl.render.TriShardSpec
 import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEngineLayers
@@ -13,16 +11,16 @@ import java.awt.Color
 import kotlin.math.sqrt
 
 /**
- * 裂隙折跃的紫色虚空星云裂隙与闭合爆炸特效（规格 blue/10-unique.md XC-002 节特效段，
+ * 裂隙折跃的紫色虚空星云裂隙特效（规格 blue/10-unique.md XC-002 节特效段，
  * 参考 tools/game-vfx-preview#Void Cutter Beam 与 docs/design/ships/blue/fissure.png）。
  *
  * - 裂隙本体（[riftBodyFrame]/[closeRiftBody]，映射 Void Cutter Beam 预设的「黑色空洞核心 +
  *   两侧紫白高温撕裂边缘」到 BoxUtil 实体）：normal 混合的近黑紫虚空暗核压暗背景
  *   （BELOW_SHIPS 层，不遮舰船）+ additive 的 SHARP_DISC 热缘亮线（逐帧横向抖动/宽度抖动
- *   表达边缘撕裂）+ SMOOTH_DISC 外鞘辉光；成形段随折跃舰位拉长；
- * - [riftFrame]：每帧沿已成形裂隙段释放同色星云并向两侧扩散，偶发垂直裂隙的电弧；
- * - [closureBlast]：闭合爆点的小爆发（星云 + 三角碎片 + 径向电弧），构成参考
- *   StarfallEchoVfx.explosion 的缩小版。
+ *   表达边缘撕裂）+ SMOOTH_DISC 外鞘辉光；
+ * - 成形/闭合观感：调用方传入的存续段即动画——成形期随折跃舰位拉长，闭合期自末端反向
+ *   收拢回起点（「拉上」观感，不再有爆炸表现），收拢完毕由 [closeRiftBody] 立即回收；
+ * - [riftFrame]：每帧沿存续段释放同色星云并向两侧扩散，偶发垂直裂隙的电弧。
  *
  * 纯视觉，不含伤害结算（结算在 RiftShiftSystemStats）。
  */
@@ -35,6 +33,9 @@ object RiftShiftVfx {
     /** 星云释放密度：基础 24 片/秒 + 每 20su 裂隙长度追加 1 片/秒（800su 全程 ≈ 64 片/秒）。 */
     private const val NEBULA_BASE_PER_SECOND = 24f
     private const val NEBULA_PER_LENGTH_PER_SECOND = 1f / 20f
+
+    /** 星云横向散布半宽（su，视觉裁定值）：裂隙带星云片横向抖散幅度。 */
+    private const val NEBULA_LATERAL_SPREAD = 24f
 
     /** 裂隙电弧每帧出现概率（≈5 次/秒 @60fps）。 */
     private const val RIFT_ARC_CHANCE_PER_FRAME = 0.08f
@@ -128,7 +129,7 @@ object RiftShiftVfx {
         body.edgeGlow.globalAlpha = EDGE_GLOW_ALPHA * intensity
     }
 
-    /** 裂隙闭合（或宿主舰离场）：立即回收本体实体（闭合爆点遮蔽回收帧）。 */
+    /** 裂隙闭合（或宿主舰离场）：立即回收本体实体（收拢末帧段长 <1su 时本体已不可见）。 */
     fun closeRiftBody(engine: CombatEngineAPI, riftKey: String) {
         val bodies = engine.customData[KEY_BODIES] as? MutableMap<String, RiftBody> ?: return
         val body = bodies.remove(riftKey) ?: return
@@ -229,7 +230,7 @@ object RiftShiftVfx {
     }
 
     /**
-     * 裂隙逐帧喷放：沿 from→to（已成形段）均匀取采样点，横向抖动后生成星云片，
+     * 裂隙逐帧喷放：沿 from→to（存续段）均匀取采样点，横向抖动后生成星云片，
      * 速度恒垂直裂隙向两侧扩散（「裂隙周围不断释放并扩散同色星云」）。
      */
     fun riftFrame(engine: CombatEngineAPI, from: Vector2f, to: Vector2f, amount: Float) {
@@ -249,7 +250,7 @@ object RiftShiftVfx {
         if (count > 0) BoxUtilCombatVfx.resetNebulaControllerIfIdle(engine)
         repeat(count) {
             val t = MathUtils.getRandomNumberInRange(0f, 1f)
-            val lateral = MathUtils.getRandomNumberInRange(-1f, 1f) * RiftShiftTuning.RIFT_HALF_WIDTH * 0.6f
+            val lateral = MathUtils.getRandomNumberInRange(-1f, 1f) * NEBULA_LATERAL_SPREAD
             val pos = Vector2f(from.x + dx * t - uy * lateral, from.y + dy * t + ux * lateral)
             val side = if (MathUtils.getRandomNumberInRange(0f, 1f) < 0.5f) 1f else -1f
             val speed = MathUtils.getRandomNumberInRange(12f, 36f)
@@ -276,68 +277,6 @@ object RiftShiftVfx {
                 MathUtils.getRandomNumberInRange(3f, 6f),
                 RIFT_FRINGE, RIFT_CORE,
             ).setFadedOutAtStart(true)
-        }
-    }
-
-    /** 闭合爆点小爆发：8 片星云 + 30 片三角碎片 + 4 条径向电弧，半径取 [RiftShiftTuning.BLAST_RADIUS]。 */
-    fun closureBlast(engine: CombatEngineAPI, point: Vector2f) {
-        val radius = RiftShiftTuning.BLAST_RADIUS
-        spawnNebula(engine, point, radius)
-        spawnShards(engine, point, radius)
-        spawnArcs(engine, point, radius)
-    }
-
-    /** 星云：8 片，单片大小 = 爆炸直径；大尺码下压透明度、拉长淡出保可读性。 */
-    private fun spawnNebula(engine: CombatEngineAPI, point: Vector2f, radius: Float) {
-        // BoxUtil 星云控制器闲置缺陷旁路：每次爆炸事件调一次、在 repeat 喷池之前；严禁逐颗粒调。
-        BoxUtilCombatVfx.resetNebulaControllerIfIdle(engine)
-        repeat(8) {
-            val pos = MathUtils.getRandomPointInCircle(point, radius * 0.4f)
-            val dir = MathUtils.getRandomNumberInRange(0f, 360f)
-            val speed = MathUtils.getRandomNumberInRange(20f, 60f)
-            val vel = MathUtils.getPointOnCircumference(Vector2f(), speed, dir)
-            val brighten = MathUtils.getRandomNumberInRange(0f, 1f) < 0.3f
-            val base = if (brighten) RIFT_CORE else RIFT_FRINGE
-            BoxUtilCombatVfx.addNebulaParticle(
-                engine, pos, vel,
-                radius * 2f,
-                1.5f, 0.1f, 0.25f,
-                MathUtils.getRandomNumberInRange(0.8f, 1.4f),
-                Color(base.red, base.green, base.blue, 90),
-            )
-        }
-    }
-
-    /** 三角碎片：30 片自爆心向四周飞散（统一粒子池，事件级批量）。 */
-    private fun spawnShards(engine: CombatEngineAPI, point: Vector2f, radius: Float) {
-        val shards = TriShardComponent(
-            "astd_rift_shift_closure",
-            radius * 2f,
-            RIFT_CORE,
-            RIFT_FRINGE,
-            TriShardSpec(batchCount = 1, layer = CombatEngineLayers.ABOVE_SHIPS_AND_MISSILES_LAYER),
-        )
-        repeat(30) {
-            val pos = MathUtils.getRandomPointInCircle(point, radius * 0.3f)
-            val dir = MathUtils.getRandomNumberInRange(0f, 360f)
-            val speed = MathUtils.getRandomNumberInRange(120f, 300f)
-            shards.addShard(0, pos, MathUtils.getPointOnCircumference(Vector2f(), speed, dir), 1f)
-        }
-        shards.activatePendingBatches(engine)
-    }
-
-    /** 电弧：方向恒爆心向边缘（径向向外），起点/长度 25%~75% 半径，先隐后现。 */
-    private fun spawnArcs(engine: CombatEngineAPI, point: Vector2f, radius: Float) {
-        repeat(4) {
-            val dir = MathUtils.getRandomNumberInRange(0f, 360f)
-            val from = MathUtils.getPointOnCircumference(
-                point, radius * MathUtils.getRandomNumberInRange(0.25f, 0.75f), dir,
-            )
-            val to = MathUtils.getPointOnCircumference(
-                from, radius * MathUtils.getRandomNumberInRange(0.25f, 0.75f), dir,
-            )
-            engine.spawnEmpArcVisual(from, null, to, null, 6f, RIFT_FRINGE, RIFT_CORE)
-                .setFadedOutAtStart(true)
         }
     }
 }
