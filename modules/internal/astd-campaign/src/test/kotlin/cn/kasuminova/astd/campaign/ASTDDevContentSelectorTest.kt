@@ -53,7 +53,7 @@ internal class ASTDDevContentSelectorTest {
         val rows = CsvTestUtil.readRowsById(Path.of("contents/data/weapons/weapon_data.csv"))
 
         assertTrue(ASTDDevContentSelector.isDevStorageWeapon(rows.getValue("astd_starfall_echo").toWeaponRow()))
-        assertTrue(ASTDDevContentSelector.isDevStorageWeapon(rows.getValue("astd_spc3").toWeaponRow()))
+        assertTrue(ASTDDevContentSelector.isDevStorageWeapon(rows.getValue("astd_starfall_wing").toWeaponRow()))
         assertTrue(ASTDDevContentSelector.isDevStorageWeapon(rows.getValue("astd_gcp12").toWeaponRow()))
         assertTrue(ASTDDevContentSelector.isDevStorageWeapon(rows.getValue("astd_psi_omega").toWeaponRow()))
 
@@ -77,7 +77,7 @@ internal class ASTDDevContentSelectorTest {
         assertFalse(ASTDDevContentSelector.isDevStorageWeapon(rows.getValue("astd_xc_002_bloom").toWeaponRow()))
         assertFalse(ASTDDevContentSelector.isDevStorageWeapon(rows.getValue("astd_xc_101_bloom").toWeaponRow()))
         assertFalse(ASTDDevContentSelector.isDevStorageWeapon(rows.getValue("astd_xc_103_bloom").toWeaponRow()))
-        assertFalse(ASTDDevContentSelector.isDevStorageWeapon(rows.getValue("astd_virtual_particle_mote_launcher").toWeaponRow()))
+        assertFalse(ASTDDevContentSelector.isDevStorageWeapon(rows.getValue("astd_starfall_wing_mote_launcher").toWeaponRow()))
 
         val vanillaRows = CsvTestUtil.readRowsById(Path.of("/mnt/store/Games/Starsector098-linux/data/weapons/weapon_data.csv"))
         assertTrue(ASTDDevContentSelector.isDevStorageWeapon(vanillaRows.getValue("lightmg").toWeaponRow()))

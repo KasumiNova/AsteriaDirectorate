@@ -13,11 +13,10 @@
   "viewOffset": 0,
   "builtInMods": [
     "astd_nano_restoration_protocol",
-    "astd_virtual_particle_lattice_web",
-    "astd_transient_potential_manifold"
+    "astd_imaginary_wings"
   ],
   "builtInWeapons": {
-    "WS 001": "astd_spc3",
+    "WS 001": "astd_starfall_wing",
     "WS BLOOM": "astd_xc_002_bloom"
   },
   "weaponSlots": [

@@ -93,6 +93,11 @@ object ASTDInGameAutomationScenario {
     const val VARIANT_ID: String = "astd_xc_001_Standard"
     const val WEAPON_ID: String = "astd_starfall_echo"
     const val PROJECTILE_SPEC_ID: String = "astd_starfall_echo_shot"
+    const val XC002_SCENARIO_ID: String = "xc_002_rift_shift_basic"
+    const val XC002_HULL_ID: String = "astd_xc_002"
+    const val XC002_VARIANT_ID: String = "astd_xc_002_Standard"
+    const val XC002_SYSTEM_ID: String = "astd_rift_shift"
+    const val XC002_WEAPON_ID: String = "astd_starfall_wing"
 
     // SSOptimizer 遥测契约标签（其 helper/verifier 硬编码的字面值）；运行期 preset 已随旧管线删除，此处仅作场景描述符。
     const val VFX_PRESET_ID: String = "starfall_echo_shot"
@@ -362,6 +367,19 @@ object ASTDInGameAutomationScenario {
         val enabled = System.getProperty(ENABLED_PROPERTY)?.equals("true", ignoreCase = true) == true
         val scenario = System.getProperty(SCENARIO_PROPERTY, SCENARIO_ID)
         return enabled && scenario == PF_SCENARIO_ID
+    }
+
+    /**
+     * XC-002 淬刃（裂隙折跃/虚数之翼/坠星残翼）实机场景开关：镜像 [isPhaseFlankScenarioEnabled]。
+     * 验证虚数之翼静止伤害乘区（−25% 锚点）与 3s 速度窗口峰值（砺刃 +100%）、
+     * 裂隙折跃 800su 位移、裂隙接触持续掉血与闭合爆炸掉血、
+     * 坠星残翼主弹/子射弹供给登记（StarfallWingOnFireEffect.projectileStates）
+     * 与目标振频适应叠层。
+     */
+    fun isXc002Enabled(): Boolean {
+        val enabled = System.getProperty(ENABLED_PROPERTY)?.equals("true", ignoreCase = true) == true
+        val scenario = System.getProperty(SCENARIO_PROPERTY, SCENARIO_ID)
+        return enabled && scenario == XC002_SCENARIO_ID
     }
 
     fun outputDir(): Path {

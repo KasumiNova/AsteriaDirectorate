@@ -183,18 +183,82 @@ object Wpn_astd_xc_101_bloom : WeaponDataEntry() {
     override val number: Int = 9129
 }
 
-/** 淬刃：追击虚粒子真实导弹体（脚本生成，实体碰撞结算）。 */
-object Wpn_astd_virtual_particle_mote_launcher : WeaponDataEntry(), SsProjMissileOutputs {
-    override val id: String = "astd_virtual_particle_mote_launcher"
+/**
+ * 坠星残翼（XC-002 淬刃内置主炮，规格 10-signature 坠星残翼节）：单发弹匣直射炮。
+ *
+ * 主弹碰撞类别 NONE（原版触碰结算全关）：护盾阻挡/超层穿盾/穿船体高频伤害全部由脚本承担
+ * （StarfallWingOnFireEffect 登记 + StarfallWingWeaponEffect 逐帧判定），onHitEffect 恒不触发；
+ * 命中护盾附加「振频适应」叠层（削弱护盾承伤效率），飞行中每 0.2s 向两侧随机散发一枚追踪子射弹。
+ */
+object Wpn_astd_starfall_wing : WeaponDataEntry(), SsProjProjectileOutputs {
+    override val id: String = "astd_starfall_wing"
+    override val name: String = weaponName(id)
+    override val tier: Int = 3
+    override val baseValue: Int = 50000
+    override val range: Int = 900
+    override val damagePerShot: Int = 1000
+
+    // 单发循环 1s（chargedown）：tooltip 统计即面板口径
+    override val damagePerSecond: Int = 1000
+    override val energyPerSecond: Int = 1250
+    override val chargedown: Double = 1.0
+    override val burstSize: Int = 1
+    override val burstDelay: Double = 0.0
+    override val turnRate: Int = 30
+    override val type: String = "ENERGY"
+    override val energyPerShot: Int = 1250
+    override val projSpeed: Int = 1500
+
+    // 弹匣：5 发，每 2s 恢复 1 发
+    override val ammo: Int = 5
+    override val ammoPerSec: Double = 0.5
+    override val reloadSize: Int = 1
+
+    // autofit 类别标签（CoreAutofitPlugin 按 类别+等级 匹配，缺失会导致装配方案无法装回本武器）
+    // 等级对齐原版 LARGE ENERGY 带（18~22）
+    override val tags: String = "energy20, astd_signature"
+    override val groupTag: String = "astd"
+    override val tech: String = "菀星设计局-星坠"
+    override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
+    override val customPrimary: String = SsI18n.t("weapon.$id.tooltip.customPrimary")
+    override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
+    override val number: Int = 9002
+
+    /** 主弹：紫色锥形射弹（原版螺栓视觉屏蔽，弹头/拖尾由 VFX 管线承担，尺寸对齐坠星残响 hero 体量 138×34）。 */
+    override val projSpec: ProjectileProjSpec = ProjectileProjSpec.boxBolt(
+        id = "astd_starfall_wing_shot",
+        onFireEffect = "cn.kasuminova.astd.combat.effect.arc.starfallwing.StarfallWingOnFireEffect",
+        // collisionClass=NONE 永无命中回调：护盾/船体结算全走脚本碰撞判定
+        onHitEffect = null,
+        collisionClass = "NONE",
+        // 原版 ProjectileSpec 加载强制要求该键（缺键 RuntimeException）；与 collisionClass 同写 NONE
+        // （七星 astd_seven_stars_shot 同款判例）。
+        collisionClassByFighter = "NONE",
+        fringeColor = Rgba(170, 110, 255, 255),
+        coreColor = Rgba(240, 225, 255, 200),
+        length = 138.0,
+        width = 34.0,
+    )
+}
+
+/**
+ * 淬刃：坠星残翼追踪子射弹真实导弹体（脚本生成，规格 10-signature 坠星残翼节）。
+ *
+ * 实体碰撞类别 NONE：护盾命中（+0.5 层振频适应）与穿船体高频伤害由主武器脚本逐帧判定；
+ * 追踪由脚本指派 MissileAIPlugin（生成时 `missileAI = ...`，追击虚粒子同款范式）。
+ */
+object Wpn_astd_starfall_wing_mote_launcher : WeaponDataEntry(), SsProjMissileOutputs {
+    override val id: String = "astd_starfall_wing_mote_launcher"
     override val name: String = weaponName(id)
     override val tier: Int = 5
     override val baseValue: Int = 0
-    override val range: Int = 1400
-    override val damagePerShot: Int = 150
-    override val emp: Int = 300
+    override val range: Int = 900
+
+    // 主弹面板 20%（1000 × 0.2）；真实结算由主武器脚本覆写 damageAmount
+    override val damagePerShot: Int = 200
     override val turnRate: Int = 30
     override val type: String = "ENERGY"
-    override val projSpeed: Int = 1440
+    override val projSpeed: Int = 900
     override val flightTime: Double = 2.0
     override val projHitpoints: Int = 10000
     override val tags: String = "astd_signature"
@@ -205,16 +269,16 @@ object Wpn_astd_virtual_particle_mote_launcher : WeaponDataEntry(), SsProjMissil
     override val number: Int = 9132
 
     override val projSpec: MissileProjSpec = MissileProjSpec(
-        id = "astd_virtual_particle_mote",
+        id = "astd_starfall_wing_mote",
         missileType = "MISSILE",
-        onHitEffect = "cn.kasuminova.astd.combat.hullmods.arc.ASTDPursuitVirtualParticleOnHitEffect",
+        // 原版弹体贴图渲染屏蔽：本体由弹体 VFX 管线接管（追击虚粒子同款判例）
         sprite = "graphics/textures/BUtil_NONE.png",
         size = Vec2i(4, 4),
         center = Vec2(2, 2),
         collisionRadius = 7,
-        collisionClass = "MISSILE_NO_FF",
-        explosionColor = Rgba(120, 210, 255, 180),
-        explosionRadius = 36,
+        collisionClass = "NONE",
+        explosionColor = Rgba(170, 110, 255, 180),
+        explosionRadius = 24,
         armingTime = 0.05,
         flameoutTime = 0.5,
         noEngineGlowTime = 999.0,
@@ -226,49 +290,6 @@ object Wpn_astd_virtual_particle_mote_launcher : WeaponDataEntry(), SsProjMissil
             dec = 1600,
         ),
         engineSlots = emptyList(),
-    )
-}
-
-object Wpn_astd_spc3 : WeaponDataEntry(), SsProjProjectileOutputs {
-    override val id: String = "astd_spc3"
-    override val name: String = weaponName(id)
-    override val tier: Int = 3
-    override val baseValue: Int = 50000
-    override val range: Int = 700
-    override val damagePerSecond: Int = 2239
-    override val damagePerShot: Int = 150
-
-    // 非 Beam：用 chargedown/burst 描述射速，避免 tooltip 统计除 0 溢出
-    override val chargedown: Double = 0.067
-    override val burstSize: Int = 1
-    override val burstDelay: Double = 0.0
-    override val turnRate: Int = 30
-
-    // 设计案：弹匣式近距爆发主炮（打空 -> 等整匣装填）
-    override val ammo: Int = 24
-
-    // 每 4s 装填 8 发，维持三段式再装填节奏。
-    override val ammoPerSec: Double = 2.0
-    override val reloadSize: Int = 8
-    override val type: String = "ENERGY"
-    override val energyPerShot: Int = 150
-    override val energyPerSecond: Int = 2239
-    override val projSpeed: Int = 1350
-
-    // autofit 类别标签（CoreAutofitPlugin 按 类别+等级 匹配，缺失会导致装配方案无法装回本武器）
-    // 等级对齐原版 MEDIUM ENERGY 带（12~15）
-    override val tags: String = "energy13, astd_signature"
-    override val groupTag: String = "astd"
-    override val tech: String = "菀星设计局-星坠"
-    override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
-    override val number: Int = 9002
-
-    override val projSpec: ProjectileProjSpec = ProjectileProjSpec.boxBolt(
-        id = "astd_spc3_shot",
-        spawnType = ProjectileSpawnType.BALLISTIC,
-        // 弹头/弹芯交回原版螺栓渲染（projbody/projtrail，离子脉冲尺寸），拖尾仍由 ASTD VFX 三层贴图混合承担。
-        fringeColor = Rgba(120, 200, 255, 255),
-        coreColor = Rgba(220, 245, 255, 200),
     )
 }
 

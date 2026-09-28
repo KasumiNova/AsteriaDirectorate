@@ -2,14 +2,13 @@ package cn.kasuminova.astd.combat.hullmods
 
 import cn.kasuminova.astd.api.difficulty.DifficultyTuning
 import cn.kasuminova.astd.combat.hullmods.affix.BountyScalingHullMod
-import cn.kasuminova.astd.combat.hullmods.arc.ASTDVirtualParticleLatticeWebHullMod
 import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 /**
- * 存量接轨锚点验证：k_s=1.0/2.0/5.0 时赏金缩放倍率与断熵虚粒子上限精确命中三锚点。
+ * 存量接轨锚点验证：k_s=1.0/2.0/5.0 时赏金缩放倍率精确命中三锚点。
  * 通过 [DifficultyTuningImpl] 注入系数走完整映射链路。
  */
 class BountyScalingHullModTest {
@@ -52,17 +51,6 @@ class BountyScalingHullModTest {
         assertEquals(1.16f, b.fluxCapacity, 1e-6f)
         assertEquals(1.24f, b.fluxDissipation, 1e-6f)
         assertEquals(1.08f, b.maxSpeed, 1e-6f)
-    }
-
-    @Test
-    fun `断熵虚粒子上限三锚点`() {
-        val entry = ASTDVirtualParticleLatticeWebHullMod.DEFENSIVE_CAP
-        DifficultyTuningImpl.installScaleForTests(1.0f)
-        assertEquals(6f, DifficultyTuningImpl.value(entry), 1e-6f)
-        DifficultyTuningImpl.installScaleForTests(2.0f)
-        assertEquals(13f, DifficultyTuningImpl.value(entry), 1e-6f)
-        DifficultyTuningImpl.installScaleForTests(5.0f)
-        assertEquals(18f, DifficultyTuningImpl.value(entry), 1e-6f)
     }
 
     @Test

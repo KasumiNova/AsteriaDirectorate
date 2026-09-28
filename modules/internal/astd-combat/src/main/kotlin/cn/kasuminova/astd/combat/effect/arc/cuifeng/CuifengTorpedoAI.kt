@@ -22,7 +22,7 @@ import kotlin.math.abs
  *
  * 二段式的实现约束（规格实装核查）：`MissileAPI` 无 `setMaxSpeed`，引擎加速由 `.proj`
  * engineSpec 持续供给；调速器在每帧命令下发后对 `missile.velocity` 超帽部分直接截速
- * （velocity 可变 Vector2f，仓库已有 `ASTDXc002DroneSubsystem` 同款直写先例）。
+ * （velocity 为可变 Vector2f，引擎命令下发后直写截速是仓库既有先例）。
  */
 class CuifengTorpedoAI(
     private val missile: MissileAPI,

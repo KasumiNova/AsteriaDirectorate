@@ -15,7 +15,7 @@ import kotlin.math.abs
  * 辉星导弹的自定义追踪 AI（规格 08 §2.2）：目标有效性校验 → 0.25s 节流重选
  * （[StellarMrmTargeting] 战机优先，导弹永不入选）→ 领先瞄准 → giveCommand 转向加速。
  *
- * 形态对齐 `ASTDPursuitVirtualParticleAI` 先例（同表 `engine.getShips()` 上按 isFighter 过滤、
+ * 形态对齐仓库既有自定义追踪导弹 AI 先例（同表 `engine.getShips()` 上按 isFighter 过滤、
  * TURN_LEFT/RIGHT + ACCELERATE 驱动）；挂载点：由 [StellarMrmOnFireEffect] 经
  * `missile.setMissileAI(...)` 安装。
  *

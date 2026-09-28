@@ -78,7 +78,7 @@ object IceShardMirvMath {
 
     /**
      * 附着点的舰体局部偏移（附着时刻快照）：世界命中点 − 舰心，再按当前朝向反旋进舰体系。
-     * 与 [attachWorldPoint] 互为正反换算（CollapseShiftSystemStats 同款范式）。
+     * 与 [attachWorldPoint] 互为正反换算（世界系 ↔ 舰体系的快照回算范式）。
      */
     fun attachLocalOffset(shipLocation: Vector2f, shipFacing: Float, hitPoint: Vector2f): Vector2f =
         VectorUtils.rotate(Vector2f(hitPoint).apply {

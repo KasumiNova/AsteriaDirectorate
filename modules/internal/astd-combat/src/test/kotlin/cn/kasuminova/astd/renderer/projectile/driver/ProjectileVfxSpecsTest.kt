@@ -121,8 +121,9 @@ class ProjectileVfxSpecsTest {
 
     @Test
     fun `简单 spec 蓝图拓扑：Box 螺栓 + 四层 Static Trail 拖尾`() {
-        // spc3：Box 螺栓染 boltColor 近白单色系 + twin 外带 + smooth 核心 + zappy 装饰×2 按声明序叠层。
-        val plain = assertNotNull(ProjectileVfxSpecs.build("astd_spc3_shot"))
+        // 坠星残翼主弹：Box 螺栓染 boltColor 近白单色系 + twin 外带 + smooth 核心 + zappy 装饰×2 按声明序叠层
+        // + 三角碎片/马赫环航迹发射器。
+        val plain = assertNotNull(ProjectileVfxSpecs.build("astd_starfall_wing_shot"))
         val bolt = assertNotNull(plain.tree.bolt)
         assertEquals(229 / 255f, bolt.color.red, 1e-3f, "boltColor(violet)=mix(主色, 白, 0.7)=0.898，hex 舍入 229")
         assertEquals(211 / 255f, bolt.color.green, 1e-3f, "0.826，hex 舍入 211")
@@ -131,22 +132,33 @@ class ProjectileVfxSpecsTest {
 
         assertEquals(listOf("twin", "core", "zappy_0", "zappy_1"), plain.tree.staticTrails.map { it.first })
 
-        // bandWidth(6, 2.2)=round05(max(2.1, 6.93))=7 ×2 = 14；核心 ×0.5=7；装饰 ×0.6=8.5
+        // bandWidth(34, 2.2)=round05(max(11.9, 6.93))=12 ×2 = 24；核心 ×0.5=12；装饰 ×0.6=14.5
         val twin = plain.tree.staticTrails.first { it.first == "twin" }.second
         val core = plain.tree.staticTrails.first { it.first == "core" }.second
         val zappy = plain.tree.staticTrails.first { it.first == "zappy_0" }.second
-        assertEquals(14f, twin.width)
-        assertEquals(7f, core.width)
-        assertEquals(8.5f, zappy.width)
+        assertEquals(24f, twin.width)
+        assertEquals(12f, core.width)
+        assertEquals(14.5f, zappy.width)
         assertEquals(-45f..45f, zappy.angularOutRange, "简单 spec 的 zappy 装饰层同样带默认尾端自旋")
         assertEquals(TrailDriftRange(-12f, -6f, 12f, 6f), zappy.velocityOutRange)
-        assertEquals(0.7f, core.glowPower, "全层统一 trailGlow 默认 0.7")
-        assertEquals(0.7f, twin.glowPower, "外带同样吃 trailGlow")
+        assertEquals(0.8f, core.glowPower, "坠星残翼 trailGlow 0.8 全层统一")
+        assertEquals(0.8f, twin.glowPower, "外带同样吃 trailGlow")
         assertEquals(listOf(1, 2, 3, 3), plain.tree.staticTrails.map { it.second.layer })
         plain.tree.staticTrails.forEach { (_, spec) ->
-            assertEquals(135f, spec.bandLength)
+            assertEquals(450f, spec.bandLength)
             assertNull(spec.recede, "recede 不声明 = 自动取弹体长度 ×0.2")
         }
+
+        // 航迹发射器：同色三角碎片（0.01s×2，向前慢速零散布）+ 马赫环（0.1s，半径 35）
+        val wake = plain.tree.shardWakes.first { it.first == "wake" }.second
+        assertEquals(0.01f, wake.interval, 1e-6f)
+        assertEquals(2, wake.perTick)
+        assertEquals(0f, wake.spreadDeg, "坠星残翼碎片统一向前飞行（设计案特效节）")
+        assertEquals(34f, wake.shardLength)
+        val ring = plain.tree.machRings.first { it.first == "ring" }.second
+        assertEquals(0.1f, ring.interval, 1e-6f)
+        assertEquals(35f, ring.halfSize)
+        assertTrue(ring.color.blue > ring.color.red, "坠星残翼马赫环应为紫色系（蓝>红）")
 
         assertEquals(0.18f, plain.policy.removedFadeOutSeconds)
         assertEquals(0.1f, plain.policy.hitFadeOutSeconds)
@@ -160,7 +172,8 @@ class ProjectileVfxSpecsTest {
         // 抽查若干已接入。
         assertTrue(ProjectileVfxSpecs.has("astd_starfall_echo_shot"))
         assertTrue(ProjectileVfxSpecs.has("astd_starfall_echo_shot_final"))
-        assertTrue(ProjectileVfxSpecs.has("astd_spc3_shot"))
+        assertTrue(ProjectileVfxSpecs.has("astd_starfall_wing_shot"))
+        assertTrue(ProjectileVfxSpecs.has("astd_starfall_wing_mote"))
     }
 
     @Test

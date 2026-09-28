@@ -371,6 +371,33 @@
         "pfSurfaceBearingDiffMax",
         "pfCombatSeconds"
       ]
+    },
+    {
+      "id": "xc_002_rift_shift_basic",
+      "missionId": "xc_002_rift_shift_basic",
+      "shipIds": [
+        "astd_xc_002",
+        "dominator"
+      ],
+      "variantIds": [
+        "astd_xc_002_Standard",
+        "dominator_Assault"
+      ],
+      "systemId": "astd_rift_shift",
+      "weaponId": "astd_starfall_wing",
+      "requiredEvidence": [
+        "xc2Phase",
+        "xc2SystemId",
+        "xc2RestDamageMultMin",
+        "xc2ShiftDisplacementMax",
+        "xc2SpeedMultMax",
+        "xc2ContactHpDrop",
+        "xc2ClosureHpDrop",
+        "xc2MainShots",
+        "xc2MotesSeen",
+        "xc2WeaponHpDrop",
+        "xc2AdaptationStacksMax"
+      ]
     }
   ]
 }

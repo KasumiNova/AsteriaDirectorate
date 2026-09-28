@@ -3,8 +3,10 @@
     "system.high_energy_loader.status.0": "高能装填：能量武器过驱",
     "system.high_energy_loader.status.1": "幅耗上升",
 
-    "system.collapse_shift.status.0": "坍缩折跃：相位切流",
-    "system.collapse_shift.status.1": "激变窗口：火力与虚粒子加速",    "system.tactical_overdrive.status.0": "战术超频：火力过驱",
+    "system.rift_shift.status.0": "相位穿行，虚空裂隙成形中",
+    "system.rift_shift.status.1": "虚空裂隙将于 %seconds% 秒后闭合",
+
+    "system.tactical_overdrive.status.0": "战术超频：火力过驱",
     "system.tactical_overdrive.status.1": "结束后进入恢复段（输出/机动下降）"
   }
 }

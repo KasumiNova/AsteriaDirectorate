@@ -30,7 +30,7 @@ object ProjectileVfxSpecs {
      * projectileSpecId → 构建函数（参数 = 武器面板射程 su，null 时用 spec 固定带长）。加入一个即接入本管线。
      *
      * 当前接入：坠星残响双配色（普通蓝白 / 第 5 发红色——后者为纯 VFX 键，第 5 发与普通弹
-     * 同 spec，由 OnFire 脚本打标记并显式 track）+ 15 个 simpleProjectileVfx spec（四层惯例）。
+     * 同 spec，由 OnFire 脚本打标记并显式 track）+ 坠星残翼主弹/子射弹 + 其余 simpleProjectileVfx spec（四层惯例）。
      */
     private val builders: Map<String, (Float?) -> ProjectileVfx> = mapOf(
         // 坠星残响（XC-001 内置主炮，blue/10-signature.md）：通用四层拖尾（蓝白）+ 开火锥状冲击 +
@@ -39,7 +39,14 @@ object ProjectileVfxSpecs {
         // 坠星残响第 5 发（200% 弹体）：红色同款拖尾 + 三枚同位光斑
         // （SMOOTH 圆斑 / SHARP_DISC 顺向大光柱 / SHARP_DISC 转 90° 横向光柱）。
         "astd_starfall_echo_shot_final" to { range -> starfallEchoFinalShot("astd_starfall_echo_shot_final", range) },
-        "astd_spc3_shot" to { simpleProjectileVfx("astd_spc3_shot", violet(), width = 6f, length = 135f) },
+        // 坠星残翼主弹（XC-002 内置主炮，blue/10-signature.md 坠星残翼节）：紫色锥形射弹，
+        // 通用四层拖尾 + 同色三角碎片航迹（0.01s×2，统一向前缓慢飞行）+ 同色马赫环（0.1s 一枚）；
+        // 炮口两枚一次性 Flare 由 StarfallWingOnFireEffect 承担（设计案特效节）。
+        "astd_starfall_wing_shot" to { range -> starfallWingShot("astd_starfall_wing_shot", range) },
+        // 坠星残翼追踪子射弹：紫色小光团（装饰层关闭保持群体可读性——星尘光尘同款裁定），带长固定。
+        "astd_starfall_wing_mote" to {
+            simpleProjectileVfx("astd_starfall_wing_mote", violet(), width = 4f, length = 100f, decorTrail = false)
+        },
         // 电荷针刺族：固定短拖尾 180、无 zappy 装饰层（去随机扭转抖动）、宽度 −75%。
         "astd_charge_needle_shot" to {
             simpleProjectileVfx(
@@ -400,6 +407,43 @@ object ProjectileVfxSpecs {
         machRing("ring") {
             cadence(0.1f, 70f)
             color(0xFF5A3CFF, alpha = 0.6f)
+            shape(flatten = 0.45f, growthStart = 0.7f, growthEnd = 1.6f, fadeIn = 0.06f, full = 0.5f, fadeOut = 0.44f)
+        }
+    }
+
+    /**
+     * 坠星残翼主弹（规格 10-signature 坠星残翼节）：紫色锥形射弹（violet 主色，与 .proj fringe 同族）。
+     * 通用四层拖尾 + 同色三角碎片航迹发射器（0.01s×2，统一向前缓慢飞行 spreadDeg 0）+
+     * 同色马赫环（0.1s 一枚，口径对齐坠星残响普通弹）；炮口一次性 Flare 不走本管线
+     * （StarfallWingOnFireEffect 脚本承担，设计案特效节）。
+     */
+    private fun starfallWingShot(id: String, range: Float?): ProjectileVfx = simpleProjectileVfx(
+        id,
+        violet(),
+        width = 34f,
+        length = 450f,
+        range = range,
+        rangeRatio = 0.5f,
+        trailGlow = 0.8f,
+        boltFlare = 68f,
+    ) {
+        // 航迹三角碎片：0.01s×2 颗，弹体位置散布 8、统一向前缓慢飞行（20~40su/s，零散布角）。
+        shardWake("wake") {
+            cadence(0.01f, 2)
+            emission(scatterRadius = 8f, speedMin = 20f, speedMax = 40f, spreadDeg = 0f)
+            shardLength(34f)
+            colors(core = 0xF0E1FFFF, fringe = 0xAA6EFFFF)
+            shard(
+                sizeMul = 0.2f, sizeMin = 4f, sizeMax = 9f,
+                spinMin = 90f, spinMax = 360f,
+                alphaLo = 120, alphaHi = 180,
+                timerFullLo = 0.15f, timerFullHi = 0.3f, timerFadeOut = 0.3f,
+            )
+        }
+        // 马赫环：0.1s 一枚，半径 35、alpha 0.6、拍扁 0.45、0.7→1.6 扩大，包络 0.06+0.5+0.44 = 1s。
+        machRing("ring") {
+            cadence(0.1f, 35f)
+            color(0xAA6EFFFF, alpha = 0.6f)
             shape(flatten = 0.45f, growthStart = 0.7f, growthEnd = 1.6f, fadeIn = 0.06f, full = 0.5f, fadeOut = 0.44f)
         }
     }

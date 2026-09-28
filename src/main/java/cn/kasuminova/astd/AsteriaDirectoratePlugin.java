@@ -18,6 +18,7 @@ import cn.kasuminova.astd.renderer.effect.system.WeaponGlowLayer;
 import cn.kasuminova.astd.renderer.effect.system.GeminiDemRackVisuals;
 import cn.kasuminova.astd.renderer.effect.system.GravityPhaseVisualEffect;
 import cn.kasuminova.astd.renderer.effect.system.ShipGlowRenderer;
+import cn.kasuminova.astd.renderer.effect.system.Xc002GhostWingsEffect;
 import com.fs.starfarer.api.BaseModPlugin;
 import com.fs.starfarer.api.Global;
 import com.fs.starfarer.api.PluginPick;
@@ -80,6 +81,8 @@ public final class AsteriaDirectoratePlugin extends BaseModPlugin {
         ShipGlowRenderer.INSTANCE.preloadTextures();
         // 动态生成引力相位舰船的 SDF 描边纹理（同上原因；战斗中加载会损坏上传队列）。
         GravityPhaseVisualEffect.INSTANCE.preloadTextures();
+        // 预加载 XC-002 虚数之翼光翼贴图（同上原因）。
+        Xc002GhostWingsEffect.INSTANCE.preloadTextures();
     }
 
     @Override

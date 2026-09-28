@@ -8,6 +8,7 @@ import cn.kasuminova.astd.renderer.effect.system.ShipGlowRenderer
 import cn.kasuminova.astd.renderer.effect.system.WeaponGlowLayer
 import cn.kasuminova.astd.renderer.effect.system.Xc001EmissiveOverlayEffect
 import cn.kasuminova.astd.renderer.effect.system.Xc001EngineFlareEffect
+import cn.kasuminova.astd.renderer.effect.system.Xc002GhostWingsEffect
 import cn.kasuminova.astd.renderer.projectile.driver.ProjectileVfxDriverPlugin
 import cn.kasuminova.astd.renderer.projectile.driver.ProjectileVfxSpecs
 import com.fs.starfarer.api.Global
@@ -79,6 +80,13 @@ internal object CombatVfxBootstrap {
             ShipGlowRenderer.ensureInstalled(engine)
         } catch (ex: Throwable) {
             log.warn("[ASTD] ShipGlowRenderer.ensureInstalled failed", ex)
+        }
+
+        // XC-002 虚数之翼光翼渲染（呼吸 + 残影 + 系统激活染紫）。
+        try {
+            Xc002GhostWingsEffect.ensureInstalled(engine)
+        } catch (ex: Throwable) {
+            log.warn("[ASTD] Xc002GhostWingsEffect.ensureInstalled failed", ex)
         }
     }
 }

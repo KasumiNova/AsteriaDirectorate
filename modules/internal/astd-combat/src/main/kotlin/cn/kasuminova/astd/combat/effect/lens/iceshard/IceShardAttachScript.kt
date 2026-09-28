@@ -25,8 +25,8 @@ import kotlin.random.Random
  * [IceShardMirvDifficulty.ATTACH_DURATION] 秒。
  *
  * 每帧职责：
- * 1. 钉住冰晶弹体——舰体局部坐标偏移（附着时刻记录，随舰船移动/转向回算世界坐标，
- *    CollapseShiftSystemStats 同款换算范式），速度跟随宿主，碰撞类置 NONE 防二次命中；
+ * 1. 钉住冰晶弹体——舰体局部坐标偏移（附着时刻记录，随舰船移动/转向回算世界坐标），
+ *    速度跟随宿主，碰撞类置 NONE 防二次命中；
  * 2. 周期伤害——每个伤害周期（[IceShardMirvDifficulty.TICK_INTERVAL]）在附着点对宿主造成
  *    「子射弹伤害 ×难度缩放 ÷ 周期数」的能量伤害
  *    （bypassShields=true：冰晶已刺入舰体，护盾不再起效）；

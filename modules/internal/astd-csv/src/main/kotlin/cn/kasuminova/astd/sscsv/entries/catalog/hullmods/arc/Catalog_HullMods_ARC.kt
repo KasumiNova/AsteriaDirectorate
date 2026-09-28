@@ -24,27 +24,19 @@ object HullMod_astd_arc_advanced_energy_integration : HullModEntry() {
     override val sprite: String = "graphics/hullmods/astd_arc_loop_interface.png"
 }
 
-object HullMod_astd_virtual_particle_lattice_web : HullModEntry() {
-    override val id: String = "astd_virtual_particle_lattice_web"
+/**
+ * 虚数之翼（XC-002 淬刃内置船插，规格 blue/10-unique.md XC-002 节）：
+ * 战术系统激活后 3s 内逐渐削减的最大航速/机动性加成；武器伤害随当前航速占最大航速
+ * 比例缩放（0% 航速 −25%、100% 航速 +50%、超上限每 1% 再 +2%；难度三锚点见实现）。
+ */
+object HullMod_astd_imaginary_wings : HullModEntry() {
+    override val id: String = "astd_imaginary_wings"
     override val name: String = hullmodName(id)
     override val tier: Int = 3
     override val rarity: Int = 1
     override val tech: String = "ARC"
     override val tags: String = TAGS_BUILTIN
-    override val script: String = "cn.kasuminova.astd.combat.hullmods.arc.ASTDVirtualParticleLatticeWebHullMod"
-    override val desc: String = SsI18n.t("hullmod.$id.desc")
-    override val short: String = SsI18n.t("hullmod.$id.short")
-    override val sprite: String = "graphics/hullmods/astd_arc_loop_interface.png"
-}
-
-object HullMod_astd_transient_potential_manifold : HullModEntry() {
-    override val id: String = "astd_transient_potential_manifold"
-    override val name: String = hullmodName(id)
-    override val tier: Int = 3
-    override val rarity: Int = 1
-    override val tech: String = "ARC"
-    override val tags: String = TAGS_BUILTIN
-    override val script: String = "cn.kasuminova.astd.combat.hullmods.arc.ASTDTransientPotentialManifoldHullMod"
+    override val script: String = "cn.kasuminova.astd.combat.hullmods.arc.ASTDImaginaryWingsHullMod"
     override val desc: String = SsI18n.t("hullmod.$id.desc")
     override val short: String = SsI18n.t("hullmod.$id.short")
     override val sprite: String = "graphics/hullmods/astd_vectorized_jet_array.png"

@@ -1,0 +1,61 @@
+package cn.kasuminova.astd.combat.effect.arc.starfallwing
+
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
+import org.lwjgl.util.vector.Vector2f
+
+/**
+ * 坠星残翼机制数值（blue/10-signature.md 坠星残翼节）的契约测试：
+ * 振频适应承伤比映射的削弱/封顶/免伤口径、穿盾门槛的严格大于边界、
+ * 穿透扫掠用的点到线段距离（投影内/外/退化段）。
+ */
+class StarfallWingTuningTest {
+
+    @Test
+    fun `承伤比映射 层数线性抬升承伤比且封顶 1`() {
+        // base 0.7（XC-002 护盾效率口径）：5 层 → min(0.7+0.5, 1.0)/0.7 = 1/0.7
+        assertEquals(1f / 0.7f, StarfallWingTuning.adaptationShieldMult(0.7f, 5f), 1e-6f)
+        // 3 层恰好把 0.7 抬到 1.0（封顶边沿）
+        assertEquals(1f / 0.7f, StarfallWingTuning.adaptationShieldMult(0.7f, 3f), 1e-6f)
+        // 1 层未封顶：0.8/0.7
+        assertEquals(0.8f / 0.7f, StarfallWingTuning.adaptationShieldMult(0.7f, 1f), 1e-6f)
+        // 0 层不改动承伤比
+        assertEquals(1f, StarfallWingTuning.adaptationShieldMult(0.7f, 0f), 1e-6f)
+    }
+
+    @Test
+    fun `承伤比映射 免伤与等额承伤护盾恒 1`() {
+        assertEquals(1f, StarfallWingTuning.adaptationShieldMult(0f, 10f), "base≤0 为免伤规格，不产生除零")
+        assertEquals(1f, StarfallWingTuning.adaptationShieldMult(1f, 10f), "base≥1 已等额承伤，无削弱空间")
+        assertEquals(1f, StarfallWingTuning.adaptationShieldMult(1.2f, 10f))
+    }
+
+    @Test
+    fun `穿盾门槛 严格大于 10 层才穿透`() {
+        assertFalse(StarfallWingTuning.piercesShields(0f))
+        assertFalse(StarfallWingTuning.piercesShields(10f), "恰好 10 层不穿透（严格大于）")
+        assertTrue(StarfallWingTuning.piercesShields(10.5f))
+    }
+
+    @Test
+    fun `点到线段距离 投影在线段内取垂距 投影在外取端点距`() {
+        val a = Vector2f(0f, 0f)
+        val b = Vector2f(100f, 0f)
+        assertEquals(0f, StarfallWingTuning.distanceToSegment(Vector2f(50f, 0f), a, b), 1e-6f, "点在线段上")
+        assertEquals(30f, StarfallWingTuning.distanceToSegment(Vector2f(50f, 30f), a, b), 1e-6f, "投影在线段内")
+        assertEquals(50f, StarfallWingTuning.distanceToSegment(Vector2f(-40f, 30f), a, b), 1e-6f, "投影在 a 外侧")
+        assertEquals(50f, StarfallWingTuning.distanceToSegment(Vector2f(140f, 30f), a, b), 1e-6f, "投影在 b 外侧")
+    }
+
+    @Test
+    fun `点到线段距离 退化线段按点到点处理`() {
+        val a = Vector2f(10f, 10f)
+        assertEquals(
+            5f,
+            StarfallWingTuning.distanceToSegment(Vector2f(13f, 14f), a, Vector2f(a)),
+            1e-6f,
+        )
+    }
+}

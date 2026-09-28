@@ -1,5 +1,5 @@
 {
-    "id": "astd_virtual_particle_mote_launcher",
+    "id": "astd_starfall_wing_mote_launcher",
     "specClass": "projectile",
     "type": "SYSTEM",
     "size": "SMALL",
@@ -24,11 +24,11 @@
         "particleCount": 6,
         "particleColor": [
             170,
-            210,
+            110,
             255,
             180
         ]
     },
-    "projectileSpecId": "astd_virtual_particle_mote",
+    "projectileSpecId": "astd_starfall_wing_mote",
     "fireSoundTwo": "mote_attractor_launch_mote"
 }
