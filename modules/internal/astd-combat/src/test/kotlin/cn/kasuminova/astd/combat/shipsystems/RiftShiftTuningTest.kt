@@ -98,7 +98,7 @@ class RiftShiftTuningTest {
     }
 
     @Test
-    fun `路径推进点 端点恒等 中点在半程 闭合扫掠头与拉开共用`() {
+    fun `路径推进点 端点恒等 中点在半程`() {
         val from = Vector2f(0f, 0f)
         val to = Vector2f(800f, 0f)
         val start = RiftShiftTuning.pathPointAt(from, to, 0f)
@@ -110,12 +110,6 @@ class RiftShiftTuningTest {
         val mid = RiftShiftTuning.pathPointAt(from, to, 0.5f)
         assertEquals(400f, mid.x, 1e-4f, "缓动曲线中点恒等，半程推进在路径中点")
         assertEquals(0f, mid.y, 1e-4f)
-        // 闭合扫掠头与成形拉开同向同曲线：同一进度取同一点
-        val t = 0.3f
-        val a = RiftShiftTuning.pathPointAt(from, to, t)
-        val b = RiftShiftTuning.pathPointAt(from, to, t)
-        assertEquals(a.x, b.x, 1e-6f)
-        assertEquals(a.y, b.y, 1e-6f)
     }
 
     @Test
