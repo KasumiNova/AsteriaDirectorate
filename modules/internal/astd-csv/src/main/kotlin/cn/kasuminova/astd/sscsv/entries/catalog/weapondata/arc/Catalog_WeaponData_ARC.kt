@@ -23,8 +23,9 @@ import cn.kasuminova.astd.sscsv.outputs.proj.Vec2i
 /**
  * 坠星残响（XC-001 星坠内置主炮，规格 10-signature 坠星残响节）：5 发连射弹匣炮。
  *
- * 前 4 发命中附加「结构谐振」叠层（装甲/结构易伤），第 5 发大号红色弹体命中带层目标时
- * 消耗全部层数并按层数爆发范围能量爆炸；弹匣低于 5 发时无法射击（隐藏机制，脚本侧闸）。
+ * 前 4 发命中附加「结构谐振」叠层（装甲/结构易伤），第 5 发大号红色弹体命中恒爆发能量爆炸
+ * （半径 150su×(层数+1)，爆炸伤害按消耗层数结算，每层被消耗的谐振使第 5 发伤害 +50%），
+ * 随后消耗全部层数；弹匣低于 5 发时无法射击（隐藏机制，脚本侧闸）。
  * 第 5 发的替换/增幅由 onFireEffect（StarfallEchoOnFireEffect）承担，爆炸结算在
  * onHitEffect（StarfallEchoOnHitEffect）。
  */
@@ -34,16 +35,24 @@ object Wpn_astd_starfall_echo : WeaponDataEntry(), SsJsonOutputs {
     override val tier: Int = 3
     override val baseValue: Int = 50000
     override val range: Int = 1000
-    override val damagePerShot: Int = 1000
+    override val damagePerShot: Int = 750
 
-    // 一轮循环 = 5 发连射（0.2s × 4 间隔）+ 5s 开火间隔 ≈ 5.8s；tooltip 统计按整轮折算
-    override val chargedown: Double = 5.0
+    // 一轮循环 = 5 发连射（0.1s × 4 间隔）+ 4.6s 开火间隔 ≈ 5.0s；tooltip 统计按整轮折算
+    override val chargedown: Double = 4.6
     override val burstSize: Int = 5
     override val burstDelay: Double = 0.1
     override val turnRate: Int = 30
     override val type: String = "ENERGY"
-    override val energyPerShot: Int = 1150
+    override val energyPerShot: Int = 1125
     override val projSpeed: Int = 2000
+
+    // 精度「较差」档（对齐原版 vulcan min0/max15、chaingun max20 的较差散布带）：
+    // 上限收敛到 15——内置挂载武器不过度扭曲弹道；5 发连射每发 +1，burst 间 5/s 衰减
+    override val minSpread: Double = 2.0
+    override val maxSpread: Double = 15.0
+    override val spreadPerShot: Double = 1.0
+    override val spreadDecayPerSec: Double = 5.0
+    override val accuracyStr: String = "较差"
 
     // 弹匣：10 发，每 10s 恢复 5 发
     override val ammo: Int = 10
