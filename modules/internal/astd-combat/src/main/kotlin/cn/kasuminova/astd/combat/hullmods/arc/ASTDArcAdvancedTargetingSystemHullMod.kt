@@ -52,6 +52,7 @@ class ASTDArcAdvancedTargetingSystemHullMod : BaseHullMod() {
             "dedicatedtargetingcore",
             "advancedcore",
             "advancedoptics",
+            "supercomputer",
             HullMods.DISTRIBUTED_FIRE_CONTROL,
         )
 

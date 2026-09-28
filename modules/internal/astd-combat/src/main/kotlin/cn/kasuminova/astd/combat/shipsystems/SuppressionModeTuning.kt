@@ -4,7 +4,7 @@ import cn.kasuminova.astd.api.difficulty.DifficultyTuning
 import cn.kasuminova.astd.api.difficulty.ScalingEntry
 
 /**
- * 压制模式（列星级 XC-103 舰船系统，hullmod id / 系统 id：astd_suppression_mode，
+ * 压制模式（列星级 XC-103 舰船系统，系统 id：astd_suppression_mode，
  * 规格 blue/20-production.md §驱逐舰-舰船系统）的机制数值声明与纯函数。
  *
  * 动机：压制模式四项难度缩放（航速机动削减 / 武器辐能减免 / 射程加成 / 护盾减伤共用

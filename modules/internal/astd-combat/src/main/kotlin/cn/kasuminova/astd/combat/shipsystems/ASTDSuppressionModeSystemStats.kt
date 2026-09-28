@@ -1,5 +1,6 @@
 package cn.kasuminova.astd.combat.shipsystems
 
+import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcProductionShipIds
 import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcProductionVfx
 import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import cn.kasuminova.astd.internal.i18n.I18n
@@ -32,8 +33,8 @@ class ASTDSuppressionModeSystemStats : BaseShipSystemScript() {
 
     companion object {
         private const val AFTERIMAGE_INTERVAL = 0.1f
-        private const val ACTIVE_ELAPSED_KEY_PREFIX = "astd_suppression_mode_active_elapsed:"
-        private const val AFTERIMAGE_TIMER_KEY_PREFIX = "astd_suppression_mode_afterimage:"
+        private const val ACTIVE_ELAPSED_KEY_PREFIX = ASTDArcProductionShipIds.STAT_SUPPRESSION_MODE + "_active_elapsed:"
+        private const val AFTERIMAGE_TIMER_KEY_PREFIX = ASTDArcProductionShipIds.STAT_SUPPRESSION_MODE + "_afterimage:"
         private val JITTER_UNDER = Color(90, 165, 255, 155)
         private val JITTER = Color(90, 165, 255, 55)
         private val AFTERIMAGE_COLOR = Color(105, 210, 255, 96)
