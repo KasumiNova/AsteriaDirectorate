@@ -12,10 +12,8 @@ import com.fs.starfarer.api.combat.ShipVariantAPI
 internal object ASTDXc001HullModIds {
     const val HULL_ID: String = "astd_xc_001"
 
-    /** 舰体渲染插件的 combat engine key，由各 effect/manager 共用，避免各自持有字面量。 */
+    /** 残影渲染插件的 combat engine key（ASTDAfterimageEffect，多系统共用的通用残影渲染器）。 */
     const val KEY_AFTERIMAGE_RENDERER: String = "astd_xc_001_afterimage_renderer"
-    const val KEY_EMISSIVE_OVERLAY_MANAGER: String = "astd_xc_001_emissive_overlay_manager"
-    const val KEY_ENGINE_FLARE_MANAGER: String = "astd_xc_001_engine_flare_manager"
 
     /** 静态装饰灯 bloom 描边武器 id（[cn.kasuminova.astd.renderer.effect.system.ASTDShipGlowEffect] 识别冷态蓝基底用）。 */
     const val WEAPON_LIGHTS_BLOOM: String = "astd_xc_001_lights_bloom"

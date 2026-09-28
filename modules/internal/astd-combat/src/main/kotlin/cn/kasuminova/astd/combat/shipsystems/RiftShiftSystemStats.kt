@@ -103,12 +103,14 @@ class RiftShiftSystemStats : PhaseCloakStats() {
                     val rift = value as? RiftState ?: continue
                     val ship = rift.ship
                     if (!engine.isEntityInPlay(ship) || ship.isHulk || !ship.isAlive) {
+                        RiftShiftVfx.closeRiftBody(engine, key)
                         engine.customData.remove(key)
                         continue
                     }
-                    advanceRift(engine, rift, amount, now)
+                    advanceRift(engine, key, rift, amount, now)
                     if (now >= rift.startTime + RiftShiftTuning.SHIFT_DURATION + RiftShiftTuning.CLOSURE_DELAY_SECONDS) {
                         closeRift(engine, rift)
+                        RiftShiftVfx.closeRiftBody(engine, key)
                         engine.customData.remove(key)
                     }
                 }
@@ -121,8 +123,8 @@ class RiftShiftSystemStats : PhaseCloakStats() {
         })
     }
 
-    /** 单条裂隙的逐帧推进：折跃位移（1s 插值）、成形段跟踪、接触结算拍、裂隙星云。 */
-    private fun advanceRift(engine: CombatEngineAPI, rift: RiftState, amount: Float, now: Float) {
+    /** 单条裂隙的逐帧推进：折跃位移（1s 插值）、成形段跟踪、接触结算拍、裂隙本体与星云。 */
+    private fun advanceRift(engine: CombatEngineAPI, riftKey: String, rift: RiftState, amount: Float, now: Float) {
         val ship = rift.ship
         val elapsed = now - rift.startTime
         if (elapsed <= RiftShiftTuning.SHIFT_DURATION) {
@@ -143,6 +145,7 @@ class RiftShiftSystemStats : PhaseCloakStats() {
             contactTick(engine, rift)
         }
 
+        RiftShiftVfx.riftBodyFrame(engine, riftKey, rift.from, rift.formedTo, RiftShiftVfx.bodyIntensity(elapsed))
         RiftShiftVfx.riftFrame(engine, rift.from, rift.formedTo, amount)
     }
 

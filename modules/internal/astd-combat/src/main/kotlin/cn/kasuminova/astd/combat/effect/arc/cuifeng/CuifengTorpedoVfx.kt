@@ -19,7 +19,7 @@ import kotlin.random.Random
  * + 爆炸星云 ×10（50~100px，ARC 蓝白主色）。
  *
  * 十字辉星扩散/变淡无 BoxUtil 内建动画通道（FlareEntity 只有全局计时器，无尺寸关键帧），
- * 由本文件内 [CrossFlarePlugin] 每帧推进尺寸与透明度（Xc001EmissiveOverlayEffect 逐帧调参先例）。
+ * 由本文件内 [CrossFlarePlugin] 每帧推进尺寸与透明度（StarfallWingVfx 炮口光斑同款口径）。
  */
 object CuifengTorpedoVfx {
     private val log = Global.getLogger(CuifengTorpedoVfx::class.java)

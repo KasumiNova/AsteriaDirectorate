@@ -248,6 +248,7 @@ class StarfallWingWeaponEffect : EveryFrameWeaponEffectPlugin {
         spawned.spriteAlphaOverride = 0f
         spawned.glowRadius = 0f
         ProjectileVfxDriverPlugin.track(engine, spawned, StarfallWingTuning.MOTE_SPEC_ID)
+        StarfallWingVfx.spawnMoteSplitFlare(engine, Vector2f(spawned.location))
         projectileStates(engine)[spawned] = ProjectileState(
             ownerWeapon = weapon, isMote = true, lastPierceLocation = Vector2f(spawned.location),
         )

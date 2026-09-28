@@ -6,8 +6,6 @@ import cn.kasuminova.astd.renderer.effect.system.ASTDEngineShardSprayEffect
 import cn.kasuminova.astd.renderer.effect.system.ASTDVectorThrustEngineManager
 import cn.kasuminova.astd.renderer.effect.system.ShipGlowRenderer
 import cn.kasuminova.astd.renderer.effect.system.WeaponGlowLayer
-import cn.kasuminova.astd.renderer.effect.system.Xc001EmissiveOverlayEffect
-import cn.kasuminova.astd.renderer.effect.system.Xc001EngineFlareEffect
 import cn.kasuminova.astd.renderer.effect.system.Xc002GhostWingsEffect
 import cn.kasuminova.astd.renderer.projectile.driver.ProjectileVfxDriverPlugin
 import cn.kasuminova.astd.renderer.projectile.driver.ProjectileVfxSpecs
@@ -33,19 +31,6 @@ internal object CombatVfxBootstrap {
             BoxUtilCombatVfx.ensureReady(engine)
         } catch (ex: Throwable) {
             log.warn("[ASTD] BoxUtilCombatVfx.ensureReady failed", ex)
-        }
-
-        // 舰体 emissive 覆盖层：目前用于 Arc Flare 整船发光贴图。
-        try {
-            Xc001EmissiveOverlayEffect.ensureInstalled(engine)
-        } catch (ex: Throwable) {
-            log.warn("[ASTD] Xc001EmissiveOverlayEffect.ensureInstalled failed", ex)
-        }
-
-        try {
-            Xc001EngineFlareEffect.ensureInstalled(engine)
-        } catch (ex: Throwable) {
-            log.warn("[ASTD] Xc001EngineFlareEffect.ensureInstalled failed", ex)
         }
 
         try {
