@@ -48,7 +48,7 @@ class RiftShiftSystemStats : PhaseCloakStats() {
         super.unapply(stats, id)
         val ship = stats.entity as? ShipAPI ?: return
         val engine = Global.getCombatEngine() ?: return
-        engine.customData[TRIGGER_KEY_PREFIX + System.identityHashCode(ship)] = null
+        engine.customData.remove(TRIGGER_KEY_PREFIX + System.identityHashCode(ship))
     }
 
     override fun maintainStatus(playerShip: ShipAPI, state: ShipSystemStatsScript.State, effectLevel: Float) {
@@ -103,17 +103,18 @@ class RiftShiftSystemStats : PhaseCloakStats() {
                     val rift = value as? RiftState ?: continue
                     val ship = rift.ship
                     if (!engine.isEntityInPlay(ship) || ship.isHulk || !ship.isAlive) {
-                        engine.customData[key] = null
+                        engine.customData.remove(key)
                         continue
                     }
                     advanceRift(engine, rift, amount, now)
                     if (now >= rift.startTime + RiftShiftTuning.SHIFT_DURATION + RiftShiftTuning.CLOSURE_DELAY_SECONDS) {
                         closeRift(engine, rift)
-                        engine.customData[key] = null
+                        engine.customData.remove(key)
                     }
                 }
+                // 自卸条件按键存在性判定：清理必须 remove 移除键（置 null 会残留键导致恒 false）
                 if (engine.customData.keys.none { it.startsWith(RIFT_KEY_PREFIX) }) {
-                    engine.customData[PLUGIN_KEY] = null
+                    engine.customData.remove(PLUGIN_KEY)
                     engine.removePlugin(this)
                 }
             }

@@ -24,8 +24,9 @@ import kotlin.math.ceil
  * 主弹与子射弹的 collisionClass 均为 NONE（原版触碰结算全关），以下判定全部由本插件承担：
  * - 穿透高频结算：接触沿弹体扫掠路径逐帧判定（上一帧→当前位置按 20su 采样，
  *   0.2s 拍内 1500su/s 弹速位移 300su，点判/拍边界判都会隧穿），伤害按
- *   [StarfallWingTuning.PIERCE_TICK_SECONDS]s 拍率限——新接触首触即结算一拍，
- *   持续接触每拍一拍（拍相位与接触窗错开会整段穿越零结算，实机判例）。
+ *   [StarfallWingTuning.PIERCE_TICK_SECONDS]s 拍率限——新接触目标首触即结算一拍
+ *   （按目标闩锁，率限窗内切换目标时新目标仍补拍），持续接触每拍一拍
+ *   （拍相位与接触窗错开会整段穿越零结算，实机判例）。
  *   对每个敌舰判定护盾/船体接触——
  *   护盾接触且目标「振频适应」层数 ≤ [StarfallWingTuning.PIERCE_SHIELD_STACK_THRESHOLD]：
  *   全额面板结算 + 1 层 + 弹体移除（护盾阻挡，属碰撞事件不吃拍率限）；层数超限时
@@ -74,17 +75,16 @@ class StarfallWingWeaponEffect : EveryFrameWeaponEffectPlugin {
         val sweepFrom = state.lastPierceLocation ?: Vector2f(proj.location)
         val sweepTo = Vector2f(proj.location)
         state.lastPierceLocation = sweepTo
-        // 接触逐帧判定；伤害拍级率限，新接触首触补拍（见类头注记的实机判例）。
-        val tickDue = state.pierceTimer >= StarfallWingTuning.PIERCE_TICK_SECONDS || !state.wasInContact
-        when (pierceSweep(engine, proj, state, sweepFrom, sweepTo, tickDue)) {
+        // 接触逐帧判定；穿透伤害全局 0.2s 拍率限，首触补拍按目标闩锁（lastContactShips，
+        // 见 pierceSweep 注记）——全局闩锁在率限窗内换目标时会漏掉新目标的首触拍。
+        val contacted = ArrayList<ShipAPI>(2)
+        when (pierceSweep(engine, proj, state, sweepFrom, sweepTo, contacted)) {
             PierceOutcome.BLOCKED -> return true
-            PierceOutcome.DAMAGED -> {
-                state.pierceTimer = 0f
-                state.wasInContact = true
-            }
-            PierceOutcome.CONTACT -> state.wasInContact = true
-            PierceOutcome.NONE -> state.wasInContact = false
+            PierceOutcome.DAMAGED -> state.pierceTimer = 0f
+            else -> {}
         }
+        state.lastContactShips.clear()
+        state.lastContactShips.addAll(contacted)
 
         if (!state.isMote) {
             state.moteTimer += amount
@@ -99,8 +99,11 @@ class StarfallWingWeaponEffect : EveryFrameWeaponEffectPlugin {
     private enum class PierceOutcome { NONE, CONTACT, DAMAGED, BLOCKED }
 
     /**
-     * 扫掠段接触判定：沿段采样判定敌舰护盾/船体接触。
-     * [damageDue] 为 false 时穿透伤害不结算（拍率限），但护盾阻挡（碰撞事件）照常。
+     * 扫掠段接触判定：沿段采样判定敌舰护盾/船体接触，本帧接触到的舰记入 [contactedShips]。
+     * 穿透伤害全局 0.2s 拍率限（[ProjectileState.pierceTimer]），但目标不在
+     * [ProjectileState.lastContactShips]（上帧未接触）时首触补拍——率限窗内弹体从 A 舰
+     * 切换到 B 舰时 B 仍吃首触拍，高速弹不会整段穿越一艘船零结算（审查判例）。
+     * 护盾阻挡属碰撞事件不吃拍率限。
      * @return BLOCKED = 弹体已被移除（护盾阻挡/子射弹撞盾），调用方停止后续推进。
      */
     private fun pierceSweep(
@@ -109,7 +112,7 @@ class StarfallWingWeaponEffect : EveryFrameWeaponEffectPlugin {
         state: ProjectileState,
         from: Vector2f,
         to: Vector2f,
-        damageDue: Boolean,
+        contactedShips: MutableList<ShipAPI>,
     ): PierceOutcome {
         val source = proj.source
         val owner = source?.owner ?: 0
@@ -119,6 +122,7 @@ class StarfallWingWeaponEffect : EveryFrameWeaponEffectPlugin {
 
         var contacted = false
         var damaged = false
+        val tickDueGlobal = state.pierceTimer >= StarfallWingTuning.PIERCE_TICK_SECONDS
         for (candidate in engine.ships) {
             val ship = candidate as? ShipAPI ?: continue
             if (ship === source || ship.owner == owner) continue
@@ -147,25 +151,23 @@ class StarfallWingWeaponEffect : EveryFrameWeaponEffectPlugin {
             }
 
             val contactPoint = shieldContact
+            if (contactPoint == null && !hullContact) continue
+            contacted = true
+            contactedShips.add(ship)
+            // 穿透伤害拍级判定：全局拍到点，或该目标上帧未接触（首触补拍）
+            val tickDue = tickDueGlobal || ship !in state.lastContactShips
             if (contactPoint != null) {
                 val stacks = ship.starfallWingAdaptationStacks()?.stacks ?: 0f
                 val pierce = !state.isMote && StarfallWingTuning.piercesShields(stacks)
-                if (pierce && !damageDue) {
-                    contacted = true
-                } else {
-                    // 护盾阻挡属碰撞事件不吃拍率限；穿盾伤害只在到期拍结算
-                    if (resolveShieldContact(engine, proj, state, ship, contactPoint)) {
-                        return PierceOutcome.BLOCKED
-                    }
-                    damaged = true
+                if (pierce && !tickDue) continue
+                // 护盾阻挡属碰撞事件不吃拍率限；穿盾伤害只在到期拍结算
+                if (resolveShieldContact(engine, proj, state, ship, contactPoint)) {
+                    return PierceOutcome.BLOCKED
                 }
-            } else if (hullContact) {
-                if (damageDue) {
-                    resolveHullContact(engine, proj, state, ship)
-                    damaged = true
-                } else {
-                    contacted = true
-                }
+                damaged = true
+            } else if (tickDue) {
+                resolveHullContact(engine, proj, state, ship)
+                damaged = true
             }
         }
         return when {
