@@ -671,7 +671,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     private val xc2SeenMotes = mutableSetOf<Int>()
     private var xc2AdaptationStacksMax = 0f
 
-    // 武器相位掉血证据：穿透全装甲格结算单拍伤害远超统治者级原始结构值，改为「舞台结构冗余 +
+    // 武器相位掉血证据：穿透结算（单点 20% 面板/0.1s 拍）累计伤害超统治者级原始结构值，改为「舞台结构冗余 +
     // 逐帧奶回 + 逐帧差额累加」口径——不掉成 hulk（实体蒸发会让 findXc2Enemy 判失联），证据不冻结。
     private var xc2WeaponDamageAccum = 0f
     private var xc2EnemyHpPrevFrame = -1f
@@ -7686,7 +7686,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
 
                             weaponDrop < XC2_EXPECT_WEAPON_HP_DROP -> {
                                 failureReason = "xc2 pierce damage shortfall: hpDrop=${"%.0f".format(weaponDrop)}" +
-                                        " < $XC2_EXPECT_WEAPON_HP_DROP（断言点 XC2-G：穿透全装甲格 20% 面板/0.1s 拍 + 子射弹结算）"
+                                        " < $XC2_EXPECT_WEAPON_HP_DROP（断言点 XC2-G：穿透单点 20% 面板/0.1s 拍 + 子射弹结算）"
                                 transitionXc2Phase(XC2_PHASE_FAILED)
                             }
 
@@ -11746,8 +11746,9 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private const val XC2_EXPECT_CLOSURE_HP_DROP = 500f
 
         // WEAPON_SHIELD/HULL（断言点 XC2-F/G）：盾相 5s 评估叠层峰值 ≥0.5（主弹穿盾首触 +1/子射弹
-        // 撞盾 +0.5）；体相 6s 评估穿透掉血 ≥300（全装甲格 20% 面板 × 0.1s 拍 + 子射弹，靶舰垫
-        // 舞台结构冗余并逐帧奶回、掉血按逐帧差额累加——单拍全格结算即越过下界，300 为保守口径）、
+        // 撞盾 +0.5）；体相 6s 评估穿透掉血 ≥300（穿透单点 20% 面板 × 0.1s 拍 + 子射弹，靶舰垫
+        // 舞台结构冗余并逐帧奶回、掉血按逐帧差额累加——装甲已在 XC2-A 后剥光，单拍 200 直打
+        // 结构，穿越期 2 拍/发即越过下界，300 为保守口径）、
         // 供给登记主弹 ≥3（固定 1.5s/发 × 11s 两相 ≈7 发）、子射弹 ≥1（0.2s 散发节拍）。
         private const val XC2_WEAPON_SHIELD_EVAL_SECONDS = 5f
         private const val XC2_WEAPON_HULL_EVAL_SECONDS = 6f
@@ -11757,7 +11758,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private const val XC2_EXPECT_MOTES = 1
         private const val XC2_PHASE_TIMEOUT = 120f
 
-        // 武器相位舞台结构冗余：全格穿透单拍量级远超统治者级原始结构值（断言点 XC2-G 舞台保全）。
+        // 武器相位舞台结构冗余：穿透单拍量级（200/拍 × 多拍多发）仍超统治者级原始结构值
+        // （断言点 XC2-G 舞台保全）。
         private const val XC2_STAGE_MOD_ID = "astd_xc2_stage"
         private const val XC2_STAGE_ENEMY_HULL_BUFFER = 500000f
 

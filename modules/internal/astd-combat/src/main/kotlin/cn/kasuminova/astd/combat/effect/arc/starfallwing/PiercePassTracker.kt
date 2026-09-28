@@ -1,5 +1,6 @@
 package cn.kasuminova.astd.combat.effect.arc.starfallwing
 
+import java.util.Collections
 import java.util.IdentityHashMap
 
 /**
@@ -17,20 +18,22 @@ import java.util.IdentityHashMap
  */
 class PiercePassTracker {
 
-    /** 非舰船目标的一次性结算标记（占位格号语义已随装甲格全格结算移除，仅作穿越标记）。 */
-    private val settled = IdentityHashMap<Any, HashSet<Int>>()
+    /** 本穿越周期内接触/已结算的目标集（脱离接触满一帧即整项移除，见 [retainContacts]）。 */
+    private val settled = Collections.newSetFromMap(IdentityHashMap<Any, Boolean>())
 
     /** 主弹振频适应全局闩锁：true = 本弹已附加过一次。 */
     private var adaptationLatched = false
 
-    /** 本帧接触登记；返回该目标本穿越已结算的标记集（首次接触创建空集）。 */
-    fun touch(target: Any): HashSet<Int> = settled.getOrPut(target) { HashSet() }
+    /** 本帧接触登记（首次接触即入集）。 */
+    fun touch(target: Any) {
+        settled.add(target)
+    }
 
     /** 首触判定：目标上一帧未接触（不在闩锁表内）。 */
     fun isFirstContact(target: Any): Boolean = target !in settled
 
     /** 非舰船目标一次性结算闩锁：本穿越未结算 → 记入并返回 true。 */
-    fun trySettleOnce(target: Any): Boolean = touch(target).add(ONCE_MARKER)
+    fun trySettleOnce(target: Any): Boolean = settled.add(target)
 
     /**
      * 主弹振频适应附加闩锁：本弹从未附加 → 闩锁并返回 true（调用方据此附加 1 层）。
@@ -44,10 +47,6 @@ class PiercePassTracker {
 
     /** 帧末清理：脱离接触的目标整项移除（下次接触 = 新穿越）；不影响 [tryLatchAdaptation]。 */
     fun retainContacts(contacts: Set<Any>) {
-        settled.keys.retainAll(contacts)
-    }
-
-    private companion object {
-        private const val ONCE_MARKER = -1
+        settled.retainAll(contacts)
     }
 }

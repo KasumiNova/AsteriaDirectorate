@@ -5,9 +5,9 @@ import org.lwjgl.util.vector.Vector2f
 /**
  * 坠星残翼（XC-002 星翼内置主炮，规格 blue/10-signature.md 坠星残翼节）的机制数值声明与纯函数。
  *
- * 动机：穿透高频结算节拍、子射弹散发/伤害比例、「振频适应」叠层的承伤比映射与装甲格
- * 空格判定集中在一处声明；穿透 tick 伤害/EMP、子射弹伤害、承伤比映射、护盾接触行为与
- * 几何判定均为纯函数，供 OnFire/EveryFrame 调用并由单元测试直接驱动。
+ * 动机：穿透高频结算节拍、子射弹散发/伤害比例与「振频适应」叠层的承伤比映射集中在一处
+ * 声明；穿透 tick 伤害/EMP、子射弹伤害、承伤比映射、护盾接触行为与扫掠几何判定均为
+ * 纯函数，供 OnFire/EveryFrame 调用并由单元测试直接驱动。
  *
  * 设计案锁死项（不随难度缩放）：每层承伤削弱 10%、单层 3s 消散（1/3 层/s）、主弹恒穿盾、
  * 穿透拍率 0.1s、穿透结算 20% 面板 + 20% 面板 EMP、子射弹 20% 面板与撞盾 +0.5 层。
@@ -19,20 +19,14 @@ object StarfallWingTuning {
     const val MOTE_WEAPON_ID = "astd_starfall_wing_mote_launcher"
     const val MOTE_SPEC_ID = "astd_starfall_wing_mote"
 
-    /** 穿透结算节拍（秒）：穿盾 tick 与船体/装甲全格结算共用同一时间拍（首触补拍除外）。 */
+    /** 穿透结算节拍（秒）：穿盾 tick 与船体/装甲单点结算共用同一时间拍（首触补拍除外）。 */
     const val PIERCE_TICK_SECONDS = 0.1f
 
-    /** 穿透单次结算伤害占面板比例（20%）：穿盾每拍、全装甲格每拍每格、导弹/陨石单次穿越一次。 */
+    /** 穿透单次结算伤害占面板比例（20%）：穿盾每拍、穿船体每拍单点、导弹/陨石单次穿越一次。 */
     const val PIERCE_TICK_RATIO = 0.2f
 
     /** 穿透单次结算附带的 EMP 占 EMP 面板比例（20%）。 */
     const val PIERCE_EMP_RATIO = 0.2f
-
-    /**
-     * 穿透判定用的弹体碰撞半径倍率（×2，仅判定口径，不影响任何渲染参数）：
-     * 作用于护盾覆盖判定、船体接触判定与舰舰粗筛；导弹/陨石路径维持原半径。
-     */
-    const val PIERCE_COLLISION_RADIUS_MULT = 2f
 
     /** 子射弹散发节拍（秒）：主弹飞行中每拍向两侧随机散发一枚追踪子射弹。 */
     const val MOTE_INTERVAL_SECONDS = 0.2f
@@ -111,34 +105,5 @@ object StarfallWingTuning {
         if (lenSq <= 1e-6f) return Vector2f(a)
         val t = (((p.x - a.x) * abx + (p.y - a.y) * aby) / lenSq).coerceIn(0f, 1f)
         return Vector2f(a.x + abx * t, a.y + aby * t)
-    }
-
-    /**
-     * 点是否在多边形内（纯函数，+X 水平射线偶奇规则）：边跨越 p.y 且交点在 p 右侧则翻转。
-     * 装甲格「空格」判定的子件：多边形 = 舰船真实碰撞箱边界段集。
-     */
-    fun pointInPolygon(p: Vector2f, segments: List<Pair<Vector2f, Vector2f>>): Boolean {
-        var inside = false
-        for ((a, b) in segments) {
-            if ((a.y > p.y) == (b.y > p.y)) continue
-            val t = (p.y - a.y) / (b.y - a.y)
-            val xCross = a.x + t * (b.x - a.x)
-            if (xCross > p.x) inside = !inside
-        }
-        return inside
-    }
-
-    /**
-     * 装甲格是否与舰体重叠（纯函数，「空格」判定）：格心在碰撞箱多边形内（整格覆舰体），
-     * 或格心距最近边界段 ≤ 半对角线（边界格，部分覆盖）→ 活格；否则为空格
-     * （矩形装甲网中无舰体覆盖的角部格，穿透结算跳过）。空段集无碰撞箱语义，恒 false，
-     * 调用方在无碰撞箱时走碰撞圈近似。
-     */
-    fun armorCellOverlapsHull(center: Vector2f, cellSize: Float, segments: List<Pair<Vector2f, Vector2f>>): Boolean {
-        if (segments.isEmpty()) return false
-        if (pointInPolygon(center, segments)) return true
-        // 正方形格半对角线 = 边长 × √2/2
-        val halfDiagonal = cellSize * 0.70710678f
-        return segments.any { (a, b) -> distanceToSegment(center, a, b) <= halfDiagonal }
     }
 }

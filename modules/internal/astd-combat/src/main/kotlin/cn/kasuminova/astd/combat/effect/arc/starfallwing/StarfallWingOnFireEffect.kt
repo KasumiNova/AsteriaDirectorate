@@ -38,8 +38,6 @@ class StarfallWingOnFireEffect : OnFireEffectPlugin {
         var lastPierceLocation: Vector2f? = null,
         /** 穿越结算闩锁（护盾首触补拍 / 非舰船目标穿越一次）与主弹振频适应全局闩锁。 */
         val passContacts: PiercePassTracker = PiercePassTracker(),
-        /** 目标无装甲网的 WARN 只记一次（弹体级），避免穿透拍刷日志。 */
-        var missingArmorGridWarned: Boolean = false,
     )
 
     companion object {

@@ -4,7 +4,6 @@ import cn.kasuminova.astd.api.buff.getBuff
 import cn.kasuminova.astd.impl.buff.BuffInstall
 import cn.kasuminova.astd.impl.buff.stubShip
 import cn.kasuminova.astd.impl.buff.stubWeapon
-import com.fs.starfarer.api.combat.ArmorGridAPI
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEntityAPI
 import com.fs.starfarer.api.combat.DamageType
@@ -29,7 +28,8 @@ import kotlin.test.assertTrue
 
 /**
  * 坠星残翼脚本碰撞结算的真实逻辑验证（Mockito 桩 + 真 BuffHost + 真 MutableStat）：
- * - 全装甲格穿透结算：活格逐格结算 20% 面板 + 20% EMP、空格跳过、格心落点；
+ * - 船体穿透单点结算：拍到期一次 applyDamage，落点 = 射弹当前位置，伤害 = 20% 面板、
+ *   EMP = 20% EMP 面板，bypassShields=true（装甲格分摊由原版装甲池承担，不逐格结算）；
  * - 主弹振频适应全局闩锁：重复结算只附加一次 1 层；
  * - 护盾接触行为：主弹恒穿盾（到期拍 20%+EMP、不移除弹体、拍外不结算）、
  *   子射弹撞盾全额面板 + 0.5 层 + 阻挡消散。
@@ -72,84 +72,55 @@ class StarfallWingWeaponEffectTest {
         return engine to calls
     }
 
-    private fun projectileOf(damage: Float, emp: Float): DamagingProjectileAPI {
+    private fun projectileOf(damage: Float, emp: Float, at: Vector2f = Vector2f(120f, -45f)): DamagingProjectileAPI {
         val proj = mock(DamagingProjectileAPI::class.java)
         `when`(proj.damageAmount).thenReturn(damage)
         `when`(proj.empAmount).thenReturn(emp)
+        `when`(proj.location).thenReturn(at)
         return proj
     }
 
-    /** 带护盾承伤 stat 与装甲网的 stub 船：facing 0、舰心原点、承伤比 base 0.7。 */
-    private fun shipWithGrid(grid: ArmorGridAPI?): com.fs.starfarer.api.combat.ShipAPI {
+    /** 带护盾承伤 stat 的 stub 船：facing 0、舰心原点、承伤比 base 0.7。 */
+    private fun stubTargetShip(): com.fs.starfarer.api.combat.ShipAPI {
         val ship = stubShip()
         `when`(ship.location).thenReturn(Vector2f(0f, 0f))
         `when`(ship.facing).thenReturn(0f)
-        `when`(ship.armorGrid).thenReturn(grid)
         val stats = mock(MutableShipStatsAPI::class.java)
         `when`(stats.shieldDamageTakenMult).thenReturn(MutableStat(0.7f))
         `when`(ship.mutableStats).thenReturn(stats)
         return ship
     }
 
-    /**
-     * 4×4 装甲网（格边长 10，leftOf=below=0）：facing 0 时 getLocation(x,y) = (y·10, −x·10)
-     * （与 ArmorGrid.getLocation 的 rotate(facing−90) 同式），格心 = 格角 + (5, −5)。
-     */
-    private fun grid4x4(): ArmorGridAPI {
-        val grid = mock(ArmorGridAPI::class.java)
-        `when`(grid.grid).thenReturn(Array(4) { FloatArray(4) { 100f } })
-        `when`(grid.cellSize).thenReturn(10f)
-        doAnswer { inv ->
-            val x = inv.getArgument<Int>(0)
-            val y = inv.getArgument<Int>(1)
-            Vector2f(y * 10f, -x * 10f)
-        }.`when`(grid).getLocation(org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.anyInt())
-        return grid
-    }
-
-    /** 正方形碰撞箱 [0,12]×[−12,0]：仅格心 (5,−5)/(15,−5)/(5,−15)/(15,−15) 四格为活格。 */
-    private val squareHull = listOf(
-        Vector2f(0f, 0f) to Vector2f(12f, 0f),
-        Vector2f(12f, 0f) to Vector2f(12f, -12f),
-        Vector2f(12f, -12f) to Vector2f(0f, -12f),
-        Vector2f(0f, -12f) to Vector2f(0f, 0f),
-    )
-
     @Test
-    fun `全装甲格穿透结算 活格逐格 20% 面板与 EMP 空格跳过 落点格心`() {
+    fun `船体穿透单点结算 落点射弹当前位置 20% 面板与 EMP bypassShields`() {
         val (engine, calls) = recordingEngine()
-        val ship = shipWithGrid(grid4x4())
-        val proj = projectileOf(damage = 1000f, emp = 500f)
+        val ship = stubTargetShip()
+        val projLocation = Vector2f(120f, -45f)
+        val proj = projectileOf(damage = 1000f, emp = 500f, at = projLocation)
         val state = StarfallWingOnFireEffect.ProjectileState(stubWeapon("WS 001", "astd_starfall_wing"), isMote = false)
 
-        effect.settleAllArmorCells(engine, proj, state, ship, squareHull)
+        effect.settleHullPierce(engine, proj, state, ship)
 
-        val expectedPoints = setOf(
-            Vector2f(5f, -5f), Vector2f(15f, -5f), Vector2f(5f, -15f), Vector2f(15f, -15f),
-        )
-        assertEquals(4, calls.size, "4×4 装甲网仅 4 个活格，空格（界外/角部）必须跳过")
-        for (call in calls) {
-            assertTrue(call.entity === ship, "结算实体必须是目标舰")
-            assertEquals(200f, call.damage, 1e-4f, "每格 20% 面板（1000×0.2）")
-            assertEquals(100f, call.emp, 1e-4f, "每格附带 20% EMP 面板（500×0.2）")
-            assertEquals(DamageType.ENERGY, call.type)
-            assertTrue(call.bypassShield, "穿船体结算 bypassShield=true（只跳过引擎护盾弧判定）")
-            assertTrue(
-                expectedPoints.any { it.x == call.point.x && it.y == call.point.y },
-                "落点必须是活格格心，实际 (${call.point.x}, ${call.point.y})",
-            )
-        }
+        assertEquals(1, calls.size, "一拍对一个目标只结算一次（不逐格遍历装甲）")
+        val call = calls.single()
+        assertTrue(call.entity === ship, "结算实体必须是目标舰")
+        assertEquals(200f, call.damage, 1e-4f, "单拍 20% 面板（1000×0.2）")
+        assertEquals(100f, call.emp, 1e-4f, "单拍附带 20% EMP 面板（500×0.2）")
+        assertEquals(DamageType.ENERGY, call.type)
+        assertTrue(call.bypassShield, "穿船体结算 bypassShield=true（只跳过引擎护盾弧判定，装甲池结算照走）")
+        assertEquals(projLocation.x, call.point.x, 1e-4f, "落点 = 射弹当前位置")
+        assertEquals(projLocation.y, call.point.y, 1e-4f)
     }
 
     @Test
     fun `主弹振频适应全局闩锁 重复穿透结算只附加一次 1 层`() {
         val (engine, _) = recordingEngine()
-        val ship = shipWithGrid(grid4x4())
+        val ship = stubTargetShip()
         val proj = projectileOf(damage = 1000f, emp = 500f)
         val state = StarfallWingOnFireEffect.ProjectileState(stubWeapon("WS 001", "astd_starfall_wing"), isMote = false)
 
-        effect.settleAllArmorCells(engine, proj, state, ship, squareHull)
-        effect.settleAllArmorCells(engine, proj, state, ship, squareHull)
+        effect.settleHullPierce(engine, proj, state, ship)
+        effect.settleHullPierce(engine, proj, state, ship)
 
         val buff = ship.getBuff(StarfallWingAdaptationStacks.BUFF_ID) as? StarfallWingAdaptationStacks
         assertEquals(1f, buff?.stacks ?: -1f, 1e-4f, "同一枚主弹多次穿透结算只附加一次 1 层")
@@ -158,7 +129,7 @@ class StarfallWingWeaponEffectTest {
     @Test
     fun `主弹护盾接触 恒穿盾 到期拍结算 20% 面板与 EMP 不移除弹体`() {
         val (engine, calls) = recordingEngine()
-        val ship = shipWithGrid(null)
+        val ship = stubTargetShip()
         val shield = mock(ShieldAPI::class.java)
         `when`(shield.radius).thenReturn(100f)
         `when`(ship.shield).thenReturn(shield)
@@ -187,7 +158,7 @@ class StarfallWingWeaponEffectTest {
     @Test
     fun `子射弹护盾接触 全额面板加半层并阻挡消散`() {
         val (engine, calls) = recordingEngine()
-        val ship = shipWithGrid(null)
+        val ship = stubTargetShip()
         val shield = mock(ShieldAPI::class.java)
         `when`(shield.radius).thenReturn(100f)
         `when`(ship.shield).thenReturn(shield)
