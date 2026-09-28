@@ -14,7 +14,7 @@ import com.fs.starfarer.api.ui.TooltipMakerAPI
 import java.awt.Color
 
 /**
- * 虚数之翼（XC-002 淬刃内置船插，规格 blue/10-unique.md XC-002 节）：
+ * 虚数之翼（XC-002 星翼内置船插，规格 blue/10-unique.md XC-002 节）：
  *
  * - 战术系统（裂隙折跃）激活后的 [ImaginaryWingsTuning.WINDOW_SECONDS]s 内，舰船获得
  *   逐渐削减的最大航速与机动性加成（峰值随难度，砺刃档 +100%）；

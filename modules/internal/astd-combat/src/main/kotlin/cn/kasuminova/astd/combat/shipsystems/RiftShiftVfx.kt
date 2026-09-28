@@ -29,8 +29,8 @@ import kotlin.math.sqrt
 object RiftShiftVfx {
 
     /** 裂隙配色（虚空紫）。 */
-    val RIFT_CORE = Color(240, 225, 255)
-    val RIFT_FRINGE = Color(170, 110, 255)
+    val RIFT_CORE = Color(160, 150, 255)
+    val RIFT_FRINGE = Color(100, 80, 255)
 
     /** 星云释放密度：基础 24 片/秒 + 每 20su 裂隙长度追加 1 片/秒（800su 全程 ≈ 64 片/秒）。 */
     private const val NEBULA_BASE_PER_SECOND = 24f
@@ -261,7 +261,7 @@ object RiftShiftVfx {
                 MathUtils.getRandomNumberInRange(36f, 80f),
                 1.6f, 0.12f, 0.3f,
                 MathUtils.getRandomNumberInRange(1.0f, 1.8f),
-                Color(base.red, base.green, base.blue, MathUtils.getRandomNumberInRange(60, 110)),
+                Color(base.red, base.green, base.blue, MathUtils.getRandomNumberInRange(100, 200)),
             )
         }
 

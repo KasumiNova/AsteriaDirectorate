@@ -106,7 +106,7 @@ object Wpn_astd_xc_001_lights_bloom : WeaponDataEntry() {
     override val number: Int = 9125
 }
 
-/** 淬刃：整船 bloom 描边层（装配界面/战斗 decorative outline）。 */
+/** 星翼：整船 bloom 描边层（装配界面/战斗 decorative outline）。 */
 object Wpn_astd_xc_002_bloom : WeaponDataEntry() {
     override val id: String = "astd_xc_002_bloom"
     override val name: String = weaponName(id)
@@ -234,7 +234,7 @@ object Wpn_astd_starfall_wing : WeaponDataEntry(), SsProjProjectileOutputs {
 }
 
 /**
- * 淬刃：坠星残翼追踪子射弹真实导弹体（脚本生成，规格 10-signature 坠星残翼节）。
+ * 星翼：坠星残翼追踪子射弹真实导弹体（脚本生成，规格 10-signature 坠星残翼节）。
  *
  * 实体碰撞类别 NONE：护盾命中（+0.5 层振频适应）与穿船体高频伤害由主武器脚本逐帧判定；
  * 追踪由脚本指派 MissileAIPlugin（生成时 `missileAI = ...`，追击虚粒子同款范式）。

@@ -15,7 +15,7 @@ import java.util.EnumSet
 import kotlin.math.cos
 
 /**
- * XC-002 淬刃的「虚数之翼」光翼虚影渲染（规格 blue/10-unique.md XC-002 节特殊特效）：
+ * XC-002 星翼的「虚数之翼」光翼虚影渲染（规格 blue/10-unique.md XC-002 节特殊特效）：
  *
  * - 战斗中常驻渲染 astd_xc_002_ghost_dark.png 与 astd_xc_002_ghost_light.png 两层光翼
  *   （additive；画布 208×273 = 舰体 148×213 四周各扩 30px，

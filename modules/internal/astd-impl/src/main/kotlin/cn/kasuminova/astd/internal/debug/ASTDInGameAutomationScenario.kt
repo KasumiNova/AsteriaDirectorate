@@ -370,7 +370,7 @@ object ASTDInGameAutomationScenario {
     }
 
     /**
-     * XC-002 淬刃（裂隙折跃/虚数之翼/坠星残翼）实机场景开关：镜像 [isPhaseFlankScenarioEnabled]。
+     * XC-002 星翼（裂隙折跃/虚数之翼/坠星残翼）实机场景开关：镜像 [isPhaseFlankScenarioEnabled]。
      * 验证虚数之翼静止伤害乘区（−25% 锚点）与 3s 速度窗口峰值（砺刃 +100%）、
      * 裂隙折跃 800su 位移、裂隙接触持续掉血与闭合爆炸掉血、
      * 坠星残翼主弹/子射弹供给登记（StarfallWingOnFireEffect.projectileStates）

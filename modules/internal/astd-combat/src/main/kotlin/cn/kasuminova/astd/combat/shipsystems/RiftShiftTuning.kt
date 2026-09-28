@@ -8,7 +8,7 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
- * 裂隙折跃（XC-002 淬刃舰船系统，规格 blue/10-unique.md XC-002 节）的机制数值声明与纯函数。
+ * 裂隙折跃（XC-002 星翼舰船系统，规格 blue/10-unique.md XC-002 节）的机制数值声明与纯函数。
  *
  * 动机：折跃距离/时长、裂隙接触判定、闭合爆点序列与难度缩放锚点集中在一处声明；
  * 爆点序列、折跃方向与接触判定均为纯函数，供 stats 脚本/每帧插件调用并由单元测试直接驱动。
@@ -20,7 +20,7 @@ import kotlin.math.sqrt
 object RiftShiftTuning {
 
     /** 折跃距离（su）。 */
-    const val SHIFT_DISTANCE = 800f
+    const val SHIFT_DISTANCE = 1200f
 
     /** 折跃时长（秒，与 .system active 窗口一致）。 */
     const val SHIFT_DURATION = 0.5f

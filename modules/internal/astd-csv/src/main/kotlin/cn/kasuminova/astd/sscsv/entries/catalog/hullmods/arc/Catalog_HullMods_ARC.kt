@@ -25,7 +25,7 @@ object HullMod_astd_arc_advanced_energy_integration : HullModEntry() {
 }
 
 /**
- * 虚数之翼（XC-002 淬刃内置船插，规格 blue/10-unique.md XC-002 节）：
+ * 虚数之翼（XC-002 星翼内置船插，规格 blue/10-unique.md XC-002 节）：
  * 战术系统激活后 3s 内逐渐削减的最大航速/机动性加成；武器伤害随当前航速占最大航速
  * 比例缩放（0% 航速 −25%、100% 航速 +50%、超上限每 1% 再 +2%；难度三锚点见实现）。
  */

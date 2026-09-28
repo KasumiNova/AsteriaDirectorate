@@ -10,9 +10,9 @@ import com.fs.starfarer.api.mission.MissionDefinitionAPI;
 import com.fs.starfarer.api.mission.MissionDefinitionPlugin;
 
 /**
- * Dev-only mission surface for XC-002 淬刃 (rift shift / imaginary wings / starfall wing) in-game automation.
+ * Dev-only mission surface for XC-002 星翼 (rift shift / imaginary wings / starfall wing) in-game automation.
  * <p>
- * 玩家淬刃级（清空全部非内置武器槽，内置船插虚数之翼/纳米修复协议与内置主炮坠星残翼不动）；
+ * 玩家星翼级（清空全部非内置武器槽，内置船插虚数之翼/纳米修复协议与内置主炮坠星残翼不动）；
  * 敌方统治者级突击型（清空武器槽，皮实巡洋舰做裂隙接触/闭合爆炸/主炮穿透靶舰，
  * 靠插件 stabilize 钉在折跃路径上）。全走 reserves 由插件手动 spawn
  * （范式同 lens_grav_storm_zw002），玩家舰身份由插件 setPlayerShipExternal 赋予。

@@ -15,7 +15,7 @@ import org.lazywizard.lazylib.MathUtils
 import org.lwjgl.util.vector.Vector2f
 
 /**
- * 裂隙折跃（astd_rift_shift，XC-002 淬刃舰船系统）的 stats 脚本。
+ * 裂隙折跃（astd_rift_shift，XC-002 星翼舰船系统）的 stats 脚本。
  *
  * 相位机制与原版相位线圈（[PhaseCloakStats]）完全一致——继承即全部。本类额外承担：
  * - 折跃位移与虚空裂隙：IN 边沿记录裂隙状态（起点/终点 = [RiftShiftTuning.shiftDirection]

@@ -6,10 +6,11 @@ import cn.kasuminova.astd.sscsv.entries.catalog.shipsystems.systemName
 /** ARC 系舰船系统（ship_systems.csv + 对应 .system 文件）。 */
 
 /**
- * 淬刃级舰船系统「裂隙折跃」（规格 blue/10-unique.md XC-002 节）：
- * 短暂相位（0.5s 激活窗口）并向飞行向量折跃（距离见 RiftShiftTuning.SHIFT_DISTANCE，缓动曲线加减速），途中撕开虚空裂隙（接触持续能量伤害），
- * 折跃完成后 5s 裂隙闭合并沿路径爆炸。stats 脚本 [RiftShiftSystemStats] 继承 PhaseCloakStats
- * （相位机制原版口径），折跃位移/裂隙伤害/闭合爆炸由脚本侧承担。
+ * 星翼级舰船系统「裂隙折跃」（规格 blue/10-unique.md XC-002 节）：
+ * 短暂相位（0.5s 激活窗口）并向飞行向量折跃（距离见 RiftShiftTuning.SHIFT_DISTANCE，
+ * 缓动曲线加减速），途中撕开虚空裂隙（接触持续能量伤害），折跃完成后 5s 裂隙闭合并
+ * 沿路径爆炸。stats 脚本 [RiftShiftSystemStats] 继承 PhaseCloakStats（相位机制原版口径），
+ * 折跃位移/裂隙伤害/闭合爆炸由脚本侧承担。
  *
  * 非开关相位（toggle=false + active=0.5s）：相位斗篷类系统对齐原版 phasecloak 标记组
  * （isPhaseCloak/hardFlux/noHardDissipation/noFiring/noShield）；冷却 8s 为裁定值
@@ -41,7 +42,7 @@ object Sys_astd_rift_shift : ShipSystemWithSystemFileEntry() {
     override val deactivateSound: String = "system_phase_cloak_deactivate"
     override val outOfUsesSound: String = "system_phase_cloak_collision"
 
-    // 相位斗篷 .system 必备字段（对齐原版 phasecloak.system；淬刃无 _glow1/_glow2 贴图，
+    // 相位斗篷 .system 必备字段（对齐原版 phasecloak.system；星翼无 _glow1/_glow2 贴图，
     // phaseHighlight/phaseDiffuse 键省略；特效色取虚空裂隙紫色调）。
     override val extraSystemRawFields: Map<String, String> = linkedMapOf(
         "runScriptWhilePaused" to "true",

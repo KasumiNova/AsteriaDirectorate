@@ -642,7 +642,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     private var pfSweepMax = 0f
     private var pfCombatStartAt = -1f
 
-    // ==== XC-002 淬刃场景状态（相位机 SPAWN → WINGS_OBSERVE → SHIFT → CLOSURE → WEAPON_SHIELD → WEAPON_HULL → COMPLETED） ====
+    // ==== XC-002 星翼场景状态（相位机 SPAWN → WINGS_OBSERVE → SHIFT → CLOSURE → WEAPON_SHIELD → WEAPON_HULL → COMPLETED） ====
     private var xc2Phase = XC2_PHASE_SPAWN
     private var xc2PhaseStartedAt = 0f
 
@@ -1105,7 +1105,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         }
         if (ASTDInGameAutomationScenario.isXc002Enabled()) {
             if (!completed || visualFramesWritten >= 3) return
-            // 捕获帧间隔 0.6s：淬刃/靶舰舞台（裂隙星云残响与光翼虚影）在三帧内进入捕获帧。
+            // 捕获帧间隔 0.6s：星翼/靶舰舞台（裂隙星云残响与光翼虚影）在三帧内进入捕获帧。
             if (visualFramesWritten > 0 && elapsed - lastVisualFrameAt < 0.6f) return
             lockXc2Camera(combatEngine)
             lastVisualFrameAt = elapsed
@@ -7237,7 +7237,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     }
 
 
-    // === XC-002 淬刃场景（虚数之翼伤害乘区 / 裂隙折跃位移与接触 / 闭合爆炸 / 坠星残翼供给登记与叠层） ===
+    // === XC-002 星翼场景（虚数之翼伤害乘区 / 裂隙折跃位移与接触 / 闭合爆炸 / 坠星残翼供给登记与叠层） ===
 
     private fun findXc2Player(engine: CombatEngineAPI): ShipAPI? =
         engine.ships.firstOrNull { ship -> ship.owner == 0 && ship.hullSpec?.hullId == XC2_PLAYER_HULL && !ship.isFighter }
@@ -7394,7 +7394,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     }
 
     /**
-     * XC-002 淬刃相位机：
+     * XC-002 星翼相位机：
      * SPAWN（双方出场/钉位/锁相机）→
      * WINGS_OBSERVE（断言点 XC2-A：虚数之翼静止伤害乘区——钉死 0 航速，砺刃档 0% 航速 −25%，
      *   energyWeaponDamageMult ∈ [0.70, 0.80]；同时校验系统 id / 坠星残翼装配 / 内置船插在场，
@@ -11688,7 +11688,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private const val GS_FIELD_RESTORE_TIMEOUT = 5f
         private const val GS_PHASE_TIMEOUT = 90f
 
-        // XC-002 淬刃场景（裂隙折跃/虚数之翼/坠星残翼）：相位机、锚点与期望证据（断言点 XC2-A~XC2-G）。
+        // XC-002 星翼场景（裂隙折跃/虚数之翼/坠星残翼）：相位机、锚点与期望证据（断言点 XC2-A~XC2-G）。
         private const val XC2_PHASE_SPAWN = "SPAWN"
         private const val XC2_PHASE_WINGS_OBSERVE = "WINGS_OBSERVE"
         private const val XC2_PHASE_SHIFT = "SHIFT"

@@ -3,7 +3,7 @@ package cn.kasuminova.astd.combat.hullmods.arc
 import cn.kasuminova.astd.api.difficulty.ScalingEntry
 
 /**
- * 虚数之翼（XC-002 淬刃内置船插，规格 blue/10-unique.md XC-002 节）的机制数值声明与纯函数。
+ * 虚数之翼（XC-002 星翼内置船插，规格 blue/10-unique.md XC-002 节）的机制数值声明与纯函数。
  *
  * 动机：系统激活后的 3s 衰减速度窗口与「伤害随航速比例缩放」的映射集中在一处声明；
  * 窗口加成衰减与伤害倍率均为纯函数，供 HullMod 每帧调用并由单元测试直接驱动。
