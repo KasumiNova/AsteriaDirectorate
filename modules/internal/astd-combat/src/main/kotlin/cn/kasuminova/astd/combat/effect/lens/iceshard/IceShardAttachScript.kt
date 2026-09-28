@@ -30,7 +30,7 @@ import kotlin.random.Random
  * 2. 周期伤害——每个伤害周期（[IceShardMirvDifficulty.TICK_INTERVAL]）在附着点对宿主造成
  *    「子射弹伤害 ×难度缩放 ÷ 周期数」的能量伤害
  *    （bypassShields=true：冰晶已刺入舰体，护盾不再起效）；
- * 3. 星云特效——与伤害同节奏在附着点渲染一批淡蓝色星云；
+ * 3. 星云特效——与伤害同节奏在附着点渲染一批淡紫色星云；
  * 4. 增伤区——附着期间经 [AmpListener] 对命中点周围 [IceShardMirvDifficulty.AMP_RADIUS] su
  *    的承伤施加难度缩放增伤乘区；多枚冰晶共用同一增伤 statId，同一承伤事件至多生效一次。
  *

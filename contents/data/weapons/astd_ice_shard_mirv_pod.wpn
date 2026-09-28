@@ -3,10 +3,10 @@
     "specClass": "projectile",
     "type": "MISSILE",
     "size": "MEDIUM",
-    "turretSprite": "graphics/weapons/launcher_m4_2x_turret_base.png",
-    "hardpointSprite": "graphics/weapons/launcher_m4_2x_hardpoint_base.png",
-    "hardpointOffsets": [8, -8, 8, 8],
-    "turretOffsets": [5, -8, 5, 8],
+    "turretSprite": "graphics/weapons/astd_ice_shard_mirv_pod_base.png",
+    "hardpointSprite": "graphics/weapons/astd_ice_shard_mirv_pod_base.png",
+    "hardpointOffsets": [13, -6, 22, -6],
+    "turretOffsets": [5, -6, 14, -6],
     "hardpointAngleOffsets": [0, 0],
     "turretAngleOffsets": [0, 0],
     "barrelMode": "ALTERNATING",
@@ -19,7 +19,7 @@
         "particleSizeRange": 12.0,
         "particleDuration": 0.3,
         "particleCount": 10,
-        "particleColor": [170, 225, 255, 170]
+        "particleColor": [190, 140, 255, 170]
     },
     "projectileSpecId": "astd_ice_shard_mirv_shot",
     "everyFrameEffect": "cn.kasuminova.astd.combat.effect.generic.CombatVfxBootstrapEveryFrameEffect",

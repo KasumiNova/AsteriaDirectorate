@@ -19,7 +19,7 @@
         "particleSizeRange": 10.0,
         "particleDuration": 0.25,
         "particleCount": 8,
-        "particleColor": [170, 225, 255, 170]
+        "particleColor": [190, 140, 255, 170]
     },
     "projectileSpecId": "astd_ice_shard_mirv_shot",
     "everyFrameEffect": "cn.kasuminova.astd.combat.effect.generic.CombatVfxBootstrapEveryFrameEffect",

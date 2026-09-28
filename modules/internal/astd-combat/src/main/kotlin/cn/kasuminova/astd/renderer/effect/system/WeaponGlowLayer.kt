@@ -60,6 +60,12 @@ internal object WeaponGlowLayer {
         "astd_gemini_dem_pod",
         "astd_gcp12",
         "astd_gcp8",
+        "astd_gcp4",
+        "astd_gcp2",
+        "astd_annihilation_vortex",
+        "astd_stellar_mrm_launcher",
+        "astd_stellar_mrm_pod",
+        "astd_ice_shard_mirv_pod",
     )
 
     /** 登记蓄能发光的武器 id；贴图路径按命名约定派生。 */

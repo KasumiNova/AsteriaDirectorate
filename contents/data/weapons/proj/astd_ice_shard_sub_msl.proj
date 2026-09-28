@@ -8,7 +8,7 @@
     "center": [10, 10],
     "collisionRadius": 8,
     "collisionClass": "MISSILE_NO_FF",
-    "explosionColor": [170, 225, 255, 160],
+    "explosionColor": [190, 140, 255, 160],
     "explosionRadius": 25,
     "flameoutTime": 0.5,
     "noEngineGlowTime": 999,

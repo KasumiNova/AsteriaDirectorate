@@ -11,34 +11,30 @@
 
     "displayArcRadius": 550,
 
-    "turretSprite": "graphics/weapons/astd_ftb_omega_base.png",
-    "turretGunSprite": "graphics/weapons/astd_ftb_omega_gun.png",
-    "hardpointSprite": "graphics/weapons/astd_ftb_omega_base.png",
-    "hardpointGunSprite": "graphics/weapons/astd_ftb_omega_gun.png",
+    "turretSprite": "graphics/weapons/astd_gcp2_base.png",
+    "turretGunSprite": "graphics/textures/BUtil_NONE.png",
+    "hardpointSprite": "graphics/weapons/astd_gcp2_base.png",
+    "hardpointGunSprite": "graphics/textures/BUtil_NONE.png",
 
     "visualRecoil": 0.0,
 
-    "turretOffsets": [
-        0,
-        0
-    ],
+    "turretOffsets": [11.5, 1],
     "turretAngleOffsets": [
         0
     ],
-    "hardpointOffsets": [
-        0,
-        0
-    ],
+    "hardpointOffsets": [22, 1],
     "hardpointAngleOffsets": [
         0
     ],
 
     "barrelMode": "LINKED",
-    "animationType": "MUZZLE_FLASH",
+    "animationType": "GLOW",
+    "turretGlowSprite": "graphics/weapons/astd_gcp2_glow.png",
+    "hardpointGlowSprite": "graphics/weapons/astd_gcp2_hp_glow.png",
+    "glowColor": [255, 255, 255, 255],
 
     "fringeColor": [255, 25, 25, 255],
     "coreColor": [255, 70, 70, 255],
-    "glowColor": [255, 45, 45, 220],
 
     "darkCore": false,
 
