@@ -1333,11 +1333,11 @@ private fun cuifengTorpedoProjSpec(): MissileProjSpec = MissileProjSpec(
     missileType = "MISSILE",
     onFireEffect = "cn.kasuminova.astd.combat.effect.arc.cuifeng.CuifengTorpedoOnFireEffect",
     onHitEffect = "cn.kasuminova.astd.combat.effect.arc.cuifeng.CuifengTorpedoOnHitEffect",
-    // v1 资源选型：引用原版制导鱼雷贴图（用户裁定缺素材先用原版资源）；引擎辉光/尾焰隐藏，
+    // 贴图用自制摧峰导弹（同图承担挂点 RENDER_LOADED_MISSILES 渲染与飞行本体渲染）；引擎辉光/尾焰隐藏，
     // 拖尾由 ProjectileVfxSpecs 贴图拖尾层承担（辉星同款口径）。
-    sprite = "graphics/missiles/torpedo_guided2.png",
-    size = Vec2i(10, 21),
-    center = Vec2(5, 10.5),
+    sprite = "graphics/weapons/astd_cuifeng_missile.png",
+    size = Vec2i(13, 35),
+    center = Vec2(6.5, 17.5),
     collisionRadius = 15,
     collisionClass = "MISSILE_NO_FF",
     explosionColor = Rgba(140, 190, 255, 160),

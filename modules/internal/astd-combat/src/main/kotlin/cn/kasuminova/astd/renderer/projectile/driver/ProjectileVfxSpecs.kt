@@ -163,7 +163,7 @@ object ProjectileVfxSpecs {
         // 摧锋鱼雷（blue/30-superlative.md §特效）：ARC 冷蓝白，trail 长 = 射程×50%、recede 0（带体亮头直抵弹头），
         // 弹头处 SMOOTH 光斑补鱼雷本体贴图之外的辉光（辉星同款口径）。
         "astd_cuifeng_torpedo_shot" to { range -> cuifengTorpedoShot("astd_cuifeng_torpedo_shot", range) },
-        // 源生冰晶 MIRV 母弹（purple/30-superlative.md §特效）：冰蓝白，trail 长 = 射程×50%、recede 0。
+        // 源生冰晶 MIRV 母弹（purple/30-superlative.md §特效）：LENS 紫族（同爆炸/炮口焰重构口径），trail 长 = 射程×50%、recede 0。
         "astd_ice_shard_mirv_shot" to { range -> iceShardMirvShot("astd_ice_shard_mirv_shot", range) },
         // 双子星 DEM 双弹头（规格 10 §特效）：脚本 spawn 弹体不触发 onFireEffect，由 GeminiDemSalvoOnFireEffect
         // 显式 ProjectileVfxDriverPlugin.track 接入。动能冷蓝白（同引擎焰色 140,190,255）/ 高爆共振红
@@ -186,9 +186,9 @@ object ProjectileVfxSpecs {
         // 源生冰晶子射弹：15 枚小冰晶成群，弹体本体由 spriteBody 接管（BoxUtil SpriteEntity 逐帧跟随，normal alpha 对齐原版
         // 导弹贴图语义），原版贴图渲染由 .proj 的 sprite=BUtil_NONE.png 屏蔽，bolt 显式关闭（本体贴图取代螺栓）。
         "astd_ice_shard_sub_msl" to {
-            simpleProjectileVfx("astd_ice_shard_sub_msl", iceBlue(), width = 6f, length = 120f, decorTrail = false, recede = -10f) {
+            simpleProjectileVfx("astd_ice_shard_sub_msl", violet(), width = 6f, length = 120f, decorTrail = false, recede = -10f) {
                 bolt { off() }
-                spriteBody("graphics/fx/astd_ice_shard.png", width = 40f, height = 40f) {
+                spriteBody("graphics/fx/astd_ice_shard_crystal.png", width = 40f, height = 20f) {
                     glow(0.5f)
                 }
             }
@@ -559,10 +559,11 @@ object ProjectileVfxSpecs {
         }
     }
 
-    // 源生冰晶 MIRV 母弹：simpleProjectileVfx 四层惯例（同辉星/摧锋口径），冰蓝白调色。
+    // 源生冰晶 MIRV 母弹：simpleProjectileVfx 四层惯例（同辉星/摧锋口径），LENS 紫族调色（violet 主色 ≈170,110,255，
+    // 同 1f9c6e3 爆炸/烟尾/炮口焰紫化口径）；弹头光斑高光留近白淡紫。
     private fun iceShardMirvShot(id: String, range: Float?): ProjectileVfx = simpleProjectileVfx(
         id,
-        iceBlue(),
+        violet(),
         width = 8f,
         length = 420f,
         range = range,
@@ -571,7 +572,7 @@ object ProjectileVfxSpecs {
     ) {
         boxFlare("light") {
             style(BoxFlareStyle.SMOOTH)
-            colors(ASTDColor(0xE0F4FFFF).a(0.5f).hex(), ASTDColor(0x9CD8FFc1).a(0.5f).hex())
+            colors(ASTDColor(0xEFE2FFFF).a(0.5f).hex(), ASTDColor(0xBE8CFFc1).a(0.5f).hex())
             size(30f, 30f)
             glow(0.1f, 4f)
             noise(0.1f)
@@ -581,9 +582,6 @@ object ProjectileVfxSpecs {
     // 坠星残响：ARC 冷蓝白（与普通弹同族）；第 5 发共振红（255,90,60，与 .proj fringe 同族）。
     private fun starfallBlue() = ASTDColor(0.55f, 0.78f, 1f, 1f)
     private fun starfallFinalRed() = ASTDColor(1f, 0.35f, 0.24f, 1f)
-
-    // 源生冰晶族：冰蓝白（LENS 紫线中的冰晶冷色，全局美术约定新调色板由收口人添加）。
-    private fun iceBlue() = ASTDColor(0.72f, 0.9f, 1f, 1f)
 
     // 双子星 DEM 弹头：配色锚 .proj 引擎焰色与 payload 光束（动能 140,190,255 冷蓝白 / 高爆 255,40,60 共振红），组内内联。
     private fun geminiKineticBlue() = ASTDColor(0.55f, 0.75f, 1f, 1f)

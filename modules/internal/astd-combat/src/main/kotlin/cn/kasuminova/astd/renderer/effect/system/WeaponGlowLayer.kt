@@ -66,6 +66,7 @@ internal object WeaponGlowLayer {
         "astd_stellar_mrm_launcher",
         "astd_stellar_mrm_pod",
         "astd_ice_shard_mirv_pod",
+        "astd_cuifeng_torpedo",
     )
 
     /** 登记蓄能发光的武器 id；贴图路径按命名约定派生。 */
