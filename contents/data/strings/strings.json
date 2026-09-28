@@ -209,7 +209,7 @@
 		"ui.hullmod.ionized_recoil_accumulator.line.targeting": "打击优先随机选择未下线的武器或引擎。如果击中护盾，则根据舰船自身的辐能水平概率穿透。",
 		"ui.hullmod.ionized_recoil_accumulator.line.cooldown": "打击效果具有 1s 的固定冷却时间。",
 
-		"ui.hullmod.arc_advanced_targeting_system.summary": "<param:#FF9600:菀星设计局-星坠> 前缘瞄准阵列持续修正高速目标轨迹。列星在追击窗口中先一步点燃射线。",
+		"ui.hullmod.arc_advanced_targeting_system.summary": "<param:#FF9600:菀星设计局-星坠> 目标定位与武器管线深度集成。列星的每一门武器都在同一拍点上开火。",
 		"ui.hullmod.arc_advanced_targeting_system.attr.range": "非导弹武器射程",
 		"ui.hullmod.arc_advanced_targeting_system.value.range": "非导弹武器射程+20%",
 		"ui.hullmod.arc_advanced_targeting_system.attr.projectile_speed": "射弹飞行速度",
