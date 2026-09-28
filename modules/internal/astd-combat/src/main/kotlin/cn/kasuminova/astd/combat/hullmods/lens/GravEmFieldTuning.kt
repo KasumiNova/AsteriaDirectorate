@@ -31,11 +31,11 @@ object GravEmFieldTuning {
     const val EDGE_SCALE = 0.25f
 
     /** 力场波形光斑视觉节拍（秒）：每隔该时长从舰体边缘向外发射一波光斑组合。 */
-    const val WAVE_INTERVAL = 0.5f
+    const val WAVE_INTERVAL = 0.2f
 
     /** 每波波形光斑组合数量区间。 */
-    const val WAVE_COUNT_MIN = 5
-    const val WAVE_COUNT_MAX = 10
+    const val WAVE_COUNT_MIN = 2
+    const val WAVE_COUNT_MAX = 4
 
     /** 一次力场结算所需的全部机制数值（难度解析结果；最终乘区口径，直接可用）。 */
     data class Values(

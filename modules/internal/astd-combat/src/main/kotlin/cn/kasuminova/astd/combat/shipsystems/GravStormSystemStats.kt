@@ -556,8 +556,8 @@ class GravStormSystemStats : BaseShipSystemScript() {
         private const val CONE_ALPHA_SPAN = 0.35f
 
         /** 充能 jitter 强度：基底 + 充能进度增量。 */
-        private const val JITTER_LEVEL_BASE = 0.25f
-        private const val JITTER_LEVEL_SPAN = 0.75f
+        private const val JITTER_LEVEL_BASE = 0.5f
+        private const val JITTER_LEVEL_SPAN = 1f
 
         private val JITTER_COLOR = Color(190, 130, 255, 75)
         private val JITTER_UNDER_COLOR = Color(190, 130, 255, 155)

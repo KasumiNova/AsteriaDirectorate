@@ -294,7 +294,7 @@ internal object GravEmFieldVfx {
             }
         }
         val angle = MathUtils.getRandomNumberInRange(0f, 360f)
-        val radius = ship.collisionRadius * 0.90f
+        val radius = ship.collisionRadius * 1.5f
         val rad = Math.toRadians(angle.toDouble())
         return Vector2f(
             ship.location.x + (cos(rad) * radius).toFloat(),
@@ -340,28 +340,28 @@ internal object GravEmFieldVfx {
     private const val CENTER_MIN_SCALE_FRACTION = 0.2f
 
     // 波形光斑参数：圆斑/光柱基尺寸（实例 scale 为倍率）、外飘速度、尺寸抖动、寿命包络
-    private const val WAVE_GLOW_SIZE = 46f
-    private const val WAVE_PILLAR_LENGTH = 150f
+    private const val WAVE_GLOW_SIZE = 30f
+    private const val WAVE_PILLAR_LENGTH = 200f
     private const val WAVE_PILLAR_WIDTH = 18f
-    private const val WAVE_SPEED_MIN = 70f
-    private const val WAVE_SPEED_MAX = 130f
+    private const val WAVE_SPEED_MIN = 200f
+    private const val WAVE_SPEED_MAX = 400f
     private const val WAVE_SCALE_MIN = 0.75f
     private const val WAVE_SCALE_MAX = 1.25f
-    private const val WAVE_FADE_IN = 0.08f
-    private const val WAVE_FULL = 0.20f
-    private const val WAVE_FADE_OUT = 0.70f
+    private const val WAVE_FADE_IN = 0.75f
+    private const val WAVE_FULL = 1f
+    private const val WAVE_FADE_OUT = 0.75f
 
-    /** 中心光斑半径倍率（碰撞半径 ×3.5）与固定透明度（10%）。 */
-    private const val CENTER_FLARE_RADIUS_MULT = 3.5f
+    /** 中心光斑半径倍率（乘碰撞半径）与固定透明度（10%）。 */
+    private const val CENTER_FLARE_RADIUS_MULT = 10f
     private const val CENTER_ALPHA = 26
 
     /** 力场紫（透镜协议）：波形光斑与中心光斑的常态度色。 */
-    private val FIELD_CORE = Color(232, 205, 255, 200)
-    private val FIELD_FRINGE = Color(186, 120, 255, 160)
+    private val FIELD_CORE = Color(232, 205, 255, 80)
+    private val FIELD_FRINGE = Color(186, 120, 255, 60)
 
     /** 相位红（对照 GravSpaceFoldHullMod FOLD_NEBULA_COLOR 红）：相位状态色。 */
-    private val PHASE_CORE = Color(255, 170, 160, 200)
-    private val PHASE_FRINGE = Color(215, 45, 60, 170)
+    private val PHASE_CORE = Color(255, 170, 160, 80)
+    private val PHASE_FRINGE = Color(215, 45, 60, 60)
 
     private val CENTER_CORE = Color(232, 205, 255, CENTER_ALPHA)
     private val CENTER_FRINGE = Color(186, 120, 255, CENTER_ALPHA)
