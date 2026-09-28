@@ -60,6 +60,12 @@ import org.lwjgl.util.vector.Vector2f
  * - 即将受击闸：全部主动上浮路径统一要求 [SOON_WINDOW_SEC] 窗口来袭低于 [diveSoonThreshold]
  *   （先于一刀切上浮规则判定——交战圈外发射的高速弹不在无威胁上浮的 near 窗口口径内，
  *   但同样会在 soon 窗口落地，不能漏拦；友军火力并入同一口径，持续照射本舰时按住不上浮）；
+ * - 上浮安全闸：主动上浮统一要求落点相对安全（[isSurfaceSafe]，强制上浮不受约束）——
+ *   与最近敌舰间距 < 双方碰撞半径和 × [SURFACE_PROXIMITY_FRAC]（贴脸上浮必吃点射与撞击）、
+ *   [SURFACE_WINDOW_SEC] 弹幕窗口来袭合计 ≥ [surfaceDangerThreshold]（上浮僵直期承伤窗口
+ *   比 soon 更长，已在途的鱼雷/齐射在命中前即按住）、或位于主威胁正脸火力轴
+ *   （±[SURFACE_FRONT_AXIS_HALF_ARC]° 且 [SURFACE_FRONT_AXIS_MAX_DIST]su 内，优先侧后上浮）
+ *   时按住不上浮，保持相位机动等时机；
  * - 无威胁上浮：威胁圈无交战对象且来袭轻微（撤退赶路且硬辐能有余量时保持相位）；
  * - 死角上浮：已机动到主威胁目标侧后射界薄弱区（[REAR_ARC_MIN_DIFF] 口径）且能瞄准本舰的
  *   武器 ≤ [REAR_SURFACE_MAX_COVERAGE] 时立即上浮输出；
@@ -132,6 +138,22 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
 
         /** 反闪烁最短相位时长（s），主动上浮的下限。 */
         internal const val MIN_PHASE_TIME_SEC = 1.0f
+
+        /** 上浮弹幕窗口（s）：窗口内预计命中伤害计入上浮安全评估（上浮僵直期承伤窗口比 soon 更长，鱼雷/齐射在途中即按住）。 */
+        internal const val SURFACE_WINDOW_SEC = 2.0f
+
+        /** 上浮弹幕伤害阈值：max(本值, 舰体上限 × 比例)。 */
+        internal fun surfaceDangerThreshold(maxHull: Float): Float =
+            maxOf(600f, maxHull * 0.10f)
+
+        /** 上浮贴脸判定系数：与最近敌舰间距 < 双方碰撞半径和 × 本值时不上浮（大于原版拒退重叠口径 0.35，留出漂离余量）。 */
+        internal const val SURFACE_PROXIMITY_FRAC = 0.9f
+
+        /** 正脸火力轴判定半角（°）：主威胁朝向与本舰相对方位差 ≤ 本值且距离够近时不上浮。 */
+        internal const val SURFACE_FRONT_AXIS_HALF_ARC = 60f
+
+        /** 正脸火力轴判定距离（su）：超出本距离敌舰正脸火力不构成贴脸上浮风险。 */
+        internal const val SURFACE_FRONT_AXIS_MAX_DIST = 1000f
 
         /** 下潜错峰（s）：上浮后间隔不足本值不做常规下潜。 */
         internal const val MIN_UNPHASE_TIME_SEC = 2.5f
@@ -313,12 +335,26 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
             val threatDistance: Float,
             /** 上浮落点是否不安全：本舰碰撞圈与他舰深度重叠（原版斗篷此时拒绝退相位）。 */
             val unphaseUnsafe: Boolean,
+            /** 上浮贴脸：最近敌舰间距进入双方碰撞半径和的 [SURFACE_PROXIMITY_FRAC] 倍内。 */
+            val surfaceTooClose: Boolean,
+            /** 上浮弹幕窗口（[SURFACE_WINDOW_SEC]）内预计命中本舰的伤害合计（敌方三窗口 + 友方 soon）。 */
+            val incomingSurfaceDamage: Float,
+            /** 正脸火力轴：位于主威胁舰艏 ±[SURFACE_FRONT_AXIS_HALF_ARC]° 锥内且距离在 [SURFACE_FRONT_AXIS_MAX_DIST] 内。 */
+            val threatFrontAxisClose: Boolean,
             /** 友军火力在 soon 窗口内命中本舰的估计伤害（友伤规避只触发防御性下潜）。 */
             val incomingFriendlySoonDamage: Float,
         )
 
         /** 相位指令：NONE 保持 / DIVE 下潜 / SURFACE 上浮。 */
         internal enum class PhaseOrder { NONE, DIVE, SURFACE }
+
+        /**
+         * 上浮安全评估（纯函数）：贴脸、弹幕窗口来袭达闸、正脸火力轴任一不安全即按住。
+         * 只约束主动上浮——强制上浮（辐能/时长闸）在 decideOrder 中先行返回，不经本闸。
+         */
+        internal fun isSurfaceSafe(s: PhaseSituation): Boolean =
+            !s.surfaceTooClose && !s.threatFrontAxisClose &&
+                    s.incomingSurfaceDamage < surfaceDangerThreshold(s.maxHull)
 
         /** 相位决策核心（纯函数）：口径见类 KDoc 规则清单。 */
         internal fun decide(s: PhaseSituation): PhaseOrder {
@@ -348,6 +384,10 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
                     else MAX_PHASE_TIME_SEC
                 if (s.phaseActiveTime >= maxPhaseTime && !holdForLethal) return PhaseOrder.SURFACE
                 if (s.phaseActiveTime < MIN_PHASE_TIME_SEC) return PhaseOrder.NONE
+
+                // 上浮安全闸：贴脸/弹幕窗口/正脸火力轴任一不安全时一切主动上浮按住，
+                // 保持相位机动等时机（强制上浮已先行返回，不受此闸约束）
+                if (!isSurfaceSafe(s)) return PhaseOrder.NONE
 
                 // 即将受击不主动上浮（先于一刀切主动上浮规则判定：交战圈外发射的高速弹
                 // 不在无威胁上浮的 near 窗口口径内，但同样会在 soon 窗口落地；
@@ -623,13 +663,13 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
         phased: Boolean,
         target: ShipAPI?,
     ): PhaseSituation {
-        val incoming = FloatArray(2)
+        val incoming = FloatArray(3)
         estimateIncoming(engine.projectiles, ship, incoming, collectFriendly = false)
         estimateIncoming(engine.missiles, ship, incoming, collectFriendly = false)
         estimateBeamThreat(engine, ship, incoming, collectFriendly = false)
 
         // 友军火力只计 soon 窗口（防御性下潜输入）：同口径采样取 owner == 本舰一侧
-        val friendlyIncoming = FloatArray(2)
+        val friendlyIncoming = FloatArray(3)
         estimateIncoming(engine.projectiles, ship, friendlyIncoming, collectFriendly = true)
         estimateIncoming(engine.missiles, ship, friendlyIncoming, collectFriendly = true)
         estimateBeamThreat(engine, ship, friendlyIncoming, collectFriendly = true)
@@ -643,6 +683,17 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
                     threat.mutableStats.acceleration.baseValue,
                     threat.mutableStats.maxTurnRate.baseValue,
                 )
+        val threatDist = if (threat == null) Float.MAX_VALUE
+        else kotlin.math.sqrt(distanceSq(ship.location, threat.location))
+        // 主威胁看向本舰的绝对方位：侧后薄弱区与正脸火力轴共用同一 bearing
+        val threatToUsBearing = threat?.let {
+            Math.toDegrees(
+                kotlin.math.atan2(
+                    (ship.location.y - it.location.y).toDouble(),
+                    (ship.location.x - it.location.x).toDouble(),
+                )
+            ).toFloat()
+        }
         val attackSystem = ship.system?.takeIf { it !== cloak }
         return PhaseSituation(
             phased = phased,
@@ -664,15 +715,8 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
                     cloak.cooldownRemaining <= 0f && cloak.canBeActivated(),
             softFluxLevel = ship.fluxLevel - ship.hardFluxLevel,
             targetLowMobility = lowMobility,
-            inTargetRearArc = threat != null && angleDiffAbs(
-                threat.facing,
-                Math.toDegrees(
-                    kotlin.math.atan2(
-                        (ship.location.y - threat.location.y).toDouble(),
-                        (ship.location.x - threat.location.x).toDouble(),
-                    )
-                ).toFloat(),
-            ) >= REAR_ARC_MIN_DIFF,
+            inTargetRearArc = threat != null &&
+                    angleDiffAbs(threat.facing, threatToUsBearing!!) >= REAR_ARC_MIN_DIFF,
             weaponCoverage = if (threat == null) 0 else weaponCoverageOn(ship, threat),
             friendlyCatchDamage = estimateFriendlyCatch(engine, ship),
             // 绕后意图生效口径：窗口未过期、相位中、且主威胁未明确换成高机动舰。
@@ -681,11 +725,26 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
             // 上浮时 engaged=false 夭折，相位白潜）
             flankIntentActive = flankIntentRemaining > 0f && phased && (threat == null || lowMobility),
             flankIntentWindowSec = flankIntentWindowArmed,
-            threatDistance = if (threat == null) Float.MAX_VALUE
-            else kotlin.math.sqrt(distanceSq(ship.location, threat.location)),
+            threatDistance = threatDist,
             unphaseUnsafe = isUnphaseUnsafe(engine, ship),
+            surfaceTooClose = isSurfaceTooClose(engine, ship),
+            // 上浮弹幕口径：敌方 soon+near+弹幕窗口三段合并，叠加友方 soon——
+            // 上浮僵直期撞上任何一侧的已在途火力都是承伤
+            incomingSurfaceDamage = incoming[0] + incoming[1] + incoming[2] + friendlyIncoming[0],
+            threatFrontAxisClose = threat != null && threatDist <= SURFACE_FRONT_AXIS_MAX_DIST &&
+                    angleDiffAbs(threat.facing, threatToUsBearing!!) <= SURFACE_FRONT_AXIS_HALF_ARC,
             incomingFriendlySoonDamage = friendlyIncoming[0],
         )
+    }
+
+    /** 上浮贴脸采样：最近敌舰间距进入双方碰撞半径和的 [SURFACE_PROXIMITY_FRAC] 倍内（只计有效敌舰，残骸不构成火力威胁）。 */
+    private fun isSurfaceTooClose(engine: CombatEngineAPI, ship: ShipAPI): Boolean {
+        for (other in engine.ships) {
+            if (!isValidEnemyShip(ship, other)) continue
+            val limit = (other.collisionRadius + ship.collisionRadius) * SURFACE_PROXIMITY_FRAC
+            if (distanceSq(ship.location, other.location) < limit * limit) return true
+        }
+        return false
     }
 
     /**
@@ -860,9 +919,9 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
     }
 
     /**
-     * 来袭伤害估计（两窗口累加进 [out]：[0]=紧急窗口，[1]=威胁窗口）：
+     * 来袭伤害估计（三窗口累加进 [out]：[0]=紧急窗口，[1]=威胁窗口，[2]=上浮弹幕窗口）：
      * 弹体朝本舰的分速度超阈值、按当前弹道在窗口内到达且横向偏差落在碰撞圈余量内才计入；
-     * 忽略本舰机动，窗口短（≤1.2s）口径足够。
+     * 忽略本舰机动，窗口短（≤2.0s）口径足够。
      * 制导导弹（含龙炎 DEM 等跟踪武器）放宽口径：会自行修正弹道，跳过横向偏差检查，
      * 接近速度取其极速的一半兜底（当前速度不代表命中时刻速度）。
      *
@@ -894,7 +953,7 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
             if (approach <= APPROACH_SPEED_MIN) continue
 
             val eta = (dist - radius) / approach
-            if (eta < 0f || eta > NEAR_WINDOW_SEC) continue
+            if (eta < 0f || eta > SURFACE_WINDOW_SEC) continue
 
             if (!guided) {
                 // 命中时刻弹体位置与本舰中心的横向偏差：落在碰撞圈余量内才算会命中
@@ -906,7 +965,11 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
             if (eta <= SOON_WINDOW_SEC) {
                 out[0] += proj.damageAmount
             } else if (!collectFriendly) {
-                out[1] += proj.damageAmount
+                if (eta <= NEAR_WINDOW_SEC) {
+                    out[1] += proj.damageAmount
+                } else {
+                    out[2] += proj.damageAmount
+                }
             }
         }
     }

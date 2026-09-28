@@ -39,6 +39,9 @@ class GravityPhaseCloakAITest {
         flankIntentWindowSec = GravityPhaseCloakAI.FLANK_INTENT_SEC,
         threatDistance = 1000f,
         unphaseUnsafe = false,
+        surfaceTooClose = false,
+        incomingSurfaceDamage = 0f,
+        threatFrontAxisClose = false,
         incomingFriendlySoonDamage = 0f,
     )
 
@@ -67,6 +70,9 @@ class GravityPhaseCloakAITest {
         flankIntentWindowSec = GravityPhaseCloakAI.FLANK_INTENT_SEC,
         threatDistance = 1000f,
         unphaseUnsafe = false,
+        surfaceTooClose = false,
+        incomingSurfaceDamage = 0f,
+        threatFrontAxisClose = false,
         incomingFriendlySoonDamage = 0f,
     )
 
@@ -173,6 +179,54 @@ class GravityPhaseCloakAITest {
     fun `武器就绪且来袭可控时输出窗口上浮`() {
         val s = phasedSituation().copy(
             weaponsReadyFrac = GravityPhaseCloakAI.WEAPONS_READY_SURFACE_FRAC,
+        )
+        assertEquals(PhaseOrder.SURFACE, GravityPhaseCloakAI.decide(s))
+    }
+
+    @Test
+    fun `贴脸时主动上浮按住等待时机`() {
+        // 输出窗口本可上浮，与敌舰贴脸（碰撞圈深度贴近）时按住，漂离后放行
+        val s = phasedSituation().copy(
+            weaponsReadyFrac = GravityPhaseCloakAI.WEAPONS_READY_SURFACE_FRAC,
+            surfaceTooClose = true,
+        )
+        assertEquals(PhaseOrder.NONE, GravityPhaseCloakAI.decide(s))
+        assertEquals(PhaseOrder.SURFACE, GravityPhaseCloakAI.decide(s.copy(surfaceTooClose = false)))
+    }
+
+    @Test
+    fun `弹幕窗口来袭达闸时主动上浮按住`() {
+        // 已在途的弹幕/鱼雷在 2s 上浮弹幕窗口内合计达闸即按住，低于阈值放行
+        val s = phasedSituation().copy(
+            weaponsReadyFrac = GravityPhaseCloakAI.WEAPONS_READY_SURFACE_FRAC,
+            incomingSurfaceDamage = GravityPhaseCloakAI.surfaceDangerThreshold(5000f),
+        )
+        assertEquals(PhaseOrder.NONE, GravityPhaseCloakAI.decide(s))
+        assertEquals(
+            PhaseOrder.SURFACE,
+            GravityPhaseCloakAI.decide(s.copy(incomingSurfaceDamage = 0f)),
+        )
+    }
+
+    @Test
+    fun `正脸火力轴上主动上浮按住`() {
+        // 位于主威胁舰艏火力轴锥内时按住，离开火力轴放行
+        val s = phasedSituation().copy(
+            weaponsReadyFrac = GravityPhaseCloakAI.WEAPONS_READY_SURFACE_FRAC,
+            threatFrontAxisClose = true,
+        )
+        assertEquals(PhaseOrder.NONE, GravityPhaseCloakAI.decide(s))
+        assertEquals(PhaseOrder.SURFACE, GravityPhaseCloakAI.decide(s.copy(threatFrontAxisClose = false)))
+    }
+
+    @Test
+    fun `强制上浮不受上浮安全闸约束`() {
+        // 硬辐能达闸必须上浮：贴脸/弹幕/正脸火力轴全部不安全也照常上浮
+        val s = phasedSituation().copy(
+            hardFluxLevel = GravityPhaseCloakAI.SURFACE_HARD_FLUX,
+            surfaceTooClose = true,
+            incomingSurfaceDamage = GravityPhaseCloakAI.surfaceDangerThreshold(5000f) * 2f,
+            threatFrontAxisClose = true,
         )
         assertEquals(PhaseOrder.SURFACE, GravityPhaseCloakAI.decide(s))
     }
