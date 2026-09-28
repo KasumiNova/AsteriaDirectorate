@@ -244,45 +244,7 @@ object ASTDArcProductionTooltipContracts {
         ),
     )
 
-    val distributedPursuitNetwork = Contract(
-        hullmodId = ASTDArcProductionShipIds.HULLMOD_DISTRIBUTED_PURSUIT_NETWORK,
-        blocks = listOf(
-            ASTDHullModTooltipRenderer.paragraph("ui.hullmod.distributed_pursuit_network.summary"),
-            ASTDHullModTooltipRenderer.heading("ui.hullmod.distributed_pursuit_network.section.members"),
-            ASTDHullModTooltipRenderer.table(
-                rows = arrayOf(
-                    ASTDHullModTooltipRenderer.row(
-                        "ui.hullmod.distributed_pursuit_network.attr.members",
-                        "ui.hullmod.distributed_pursuit_network.value.members"
-                    ),
-                    ASTDHullModTooltipRenderer.row(
-                        "ui.hullmod.distributed_pursuit_network.attr.same_network",
-                        "ui.hullmod.distributed_pursuit_network.value.same_network"
-                    ),
-                ),
-            ),
-            ASTDHullModTooltipRenderer.heading("ui.hullmod.distributed_pursuit_network.section.bonus"),
-            ASTDHullModTooltipRenderer.table(
-                rows = arrayOf(
-                    ASTDHullModTooltipRenderer.row(
-                        "ui.hullmod.distributed_pursuit_network.attr.speed",
-                        "ui.hullmod.distributed_pursuit_network.value.speed"
-                    ),
-                    ASTDHullModTooltipRenderer.row(
-                        "ui.hullmod.distributed_pursuit_network.attr.range",
-                        "ui.hullmod.distributed_pursuit_network.value.range"
-                    ),
-                    ASTDHullModTooltipRenderer.row(
-                        "ui.hullmod.distributed_pursuit_network.attr.peak",
-                        "ui.hullmod.distributed_pursuit_network.value.peak"
-                    ),
-                ),
-            ),
-            ASTDHullModTooltipRenderer.paragraph("ui.hullmod.distributed_pursuit_network.note"),
-        ),
-    )
-
     val xc102Contracts = listOf(arcAdvancedFireControl, arcSharedTacticalNetwork)
     val xc101Contracts = listOf(plasmaArmorShield, ionizedRecoilAccumulator)
-    val xc103Contracts = listOf(arcAdvancedTargetingSystem, distributedPursuitNetwork)
+    val xc103Contracts = listOf(arcAdvancedTargetingSystem)
 }

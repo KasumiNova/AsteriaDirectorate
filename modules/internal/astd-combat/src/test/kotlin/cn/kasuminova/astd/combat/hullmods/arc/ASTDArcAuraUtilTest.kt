@@ -118,7 +118,6 @@ class ASTDArcAuraUtilTest {
     fun `ship ids are centralized for all redesigned hullmods and systems`() {
         assertTrue(ASTDArcProductionShipIds.UNIQUE_HULLMOD_IDS.contains("astd_arc_advanced_fire_control"))
         assertTrue(ASTDArcProductionShipIds.UNIQUE_HULLMOD_IDS.contains("astd_plasma_armor_shield"))
-        assertTrue(ASTDArcProductionShipIds.UNIQUE_HULLMOD_IDS.contains("astd_distributed_pursuit_network"))
         assertEquals("astd_arc_shared_flux_network", ASTDArcProductionShipIds.SYSTEM_ARC_SHARED_FLUX_NETWORK)
         assertEquals("astd_plasma_armor_shield_boost", ASTDArcProductionShipIds.SYSTEM_PLASMA_ARMOR_SHIELD_BOOST)
         assertEquals("astd_suppression_mode", ASTDArcProductionShipIds.SYSTEM_SUPPRESSION_MODE)

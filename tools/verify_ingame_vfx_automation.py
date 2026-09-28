@@ -43,7 +43,7 @@ ARC_PRODUCTION_REQUIRED_VARIANT_IDS = ("astd_xc_102_Standard", "astd_xc_101_Stan
 ARC_PRODUCTION_TOOLTIP_KEY_MINIMUMS = {
     "xc102TooltipKeys": 20,
     "xc101TooltipKeys": 44,
-    "xc103TooltipKeys": 26,
+    "xc103TooltipKeys": 18,
 }
 LENS_PHASE1_SCENARIO = "lens_phase1_foundation"
 LENS_PHASE1_REQUIRED_SHIP_ID = "astd_zw_001"

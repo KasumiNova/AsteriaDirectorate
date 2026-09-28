@@ -12,8 +12,7 @@
   "shieldRadius": 113,
   "viewOffset": 0,
   "builtInMods": [
-    "astd_arc_advanced_targeting_system",
-    "astd_distributed_pursuit_network"
+    "astd_arc_advanced_targeting_system"
   ],
   "builtInWeapons": {
     "WS0009": "astd_xc_103_bloom"
