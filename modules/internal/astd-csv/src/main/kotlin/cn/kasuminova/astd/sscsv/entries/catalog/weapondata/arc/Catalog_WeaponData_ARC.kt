@@ -182,11 +182,11 @@ object Wpn_astd_xc_101_bloom : WeaponDataEntry() {
 }
 
 /**
- * 坠星残翼（XC-002 淬刃内置主炮，规格 10-signature 坠星残翼节）：单发弹匣直射炮。
+ * 坠星残翼（XC-002 星翼内置主炮，规格 10-signature 坠星残翼节）：固定 1.5s/发直射炮（无弹匣）。
  *
- * 主弹碰撞类别 NONE（原版触碰结算全关）：护盾阻挡/超层穿盾/穿船体高频伤害全部由脚本承担
+ * 主弹碰撞类别 NONE（原版触碰结算全关）：恒穿盾/穿船体高频伤害全部由脚本承担
  * （StarfallWingOnFireEffect 登记 + StarfallWingWeaponEffect 逐帧判定），onHitEffect 恒不触发；
- * 命中护盾附加「振频适应」叠层（削弱护盾承伤效率），飞行中每 0.2s 向两侧随机散发一枚追踪子射弹。
+ * 命中附加「振频适应」叠层（只削弱护盾承伤效率），飞行中每 0.2s 向两侧随机散发一枚追踪子射弹。
  */
 object Wpn_astd_starfall_wing : WeaponDataEntry(), SsProjProjectileOutputs {
     override val id: String = "astd_starfall_wing"
@@ -195,20 +195,16 @@ object Wpn_astd_starfall_wing : WeaponDataEntry(), SsProjProjectileOutputs {
     override val baseValue: Int = 50000
     override val range: Int = 1200
     override val damagePerShot: Int = 1000
+    override val emp: Int = 500
 
-    // 单发循环 1s（chargedown）：tooltip 统计即面板口径
-    override val chargedown: Double = 1.0
+    // 固定 1.5s/发（chargedown，无弹匣）：tooltip 统计即面板口径
+    override val chargedown: Double = 1.5
     override val burstSize: Int = 1
     override val burstDelay: Double = 0.0
     override val turnRate: Int = 30
     override val type: String = "ENERGY"
-    override val energyPerShot: Int = 1250
+    override val energyPerShot: Int = 1000
     override val projSpeed: Int = 1500
-
-    // 弹匣：5 发，每 2s 恢复 1 发
-    override val ammo: Int = 5
-    override val ammoPerSec: Double = 0.5
-    override val reloadSize: Int = 1
 
     // autofit 类别标签（CoreAutofitPlugin 按 类别+等级 匹配，缺失会导致装配方案无法装回本武器）
     // 等级对齐原版 LARGE ENERGY 带（18~22）

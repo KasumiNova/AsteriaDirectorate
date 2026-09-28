@@ -13,13 +13,13 @@ import kotlin.math.floor
 import kotlin.math.round
 
 /**
- * 单艘目标舰的「振频适应」层数（坠星残翼命中护盾机制的状态承载，舰船侧全局叠层）。
+ * 单艘目标舰的「振频适应」层数（坠星残翼命中机制的状态承载，舰船侧全局叠层）。
  *
- * 动机：主弹命中护盾叠 1 层、子射弹命中叠 0.5 层（故层数为 Float，不走整层
- * StackableBuff）；每层削弱目标 10% 最终护盾承伤效率——承伤比口径：
- * `shieldDamageTakenMult` 目标值 = min(base + 0.1×层数, 1.0)（[StarfallWingTuning.adaptationShieldMult]），
- * 层数每秒流失 1 层，归零即自行移除。层数 >10 时坠星残翼主弹穿透护盾
- * （判定在 StarfallWingWeaponEffect，本类只承载层数与承伤修饰）。
+ * 动机：主弹对首个接触目标附加 1 层（弹体级全局闩锁，判定在 StarfallWingWeaponEffect）、
+ * 子射弹命中护盾附加 0.5 层（故层数为 Float，不走整层 StackableBuff）；唯一效果为
+ * 护盾易伤——承伤比口径：`shieldDamageTakenMult` 目标值 = min(base + 0.1×层数, 1.0)
+ * （[StarfallWingTuning.adaptationShieldMult]）；层数按单层 3s 的速率流失
+ * （[StarfallWingTuning.ADAPTATION_DECAY_PER_SECOND] 层/s），归零即自行移除。
  *
  * 生命周期：Ship 级 [BuffLifetime.HOST_BOUND]，经 `ShipAPI.buffHost()` 注册（id [BUFF_ID]）；
  * 宿主 hulk/死亡由 BuffTickPlugin 心跳回收，[onRemove] 恰一次 unmodify，无 stat 残留。
@@ -47,7 +47,7 @@ class StarfallWingAdaptationStacks(
     override val id: String get() = BUFF_ID
     override val lifetime: BuffLifetime get() = BuffLifetime.HOST_BOUND
 
-    /** 叠加 [n] 层（无上限——穿盾门槛与承伤比上限各自封顶语义）并刷新承伤修饰。 */
+    /** 叠加 [n] 层（无上限——承伤比上限 [StarfallWingTuning.ADAPTATION_TAKEN_CAP] 自行封顶）并刷新承伤修饰。 */
     fun addStacks(n: Float) {
         if (n <= 0f) return
         stacks += n

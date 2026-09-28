@@ -670,8 +670,12 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     private val xc2SeenMain = mutableSetOf<Int>()
     private val xc2SeenMotes = mutableSetOf<Int>()
     private var xc2AdaptationStacksMax = 0f
-    private var xc2EnemyHpAtWeaponStart = -1f
-    private var xc2EnemyHpMinWeapon = Float.MAX_VALUE
+
+    // 武器相位掉血证据：穿透全装甲格结算单拍伤害远超统治者级原始结构值，改为「舞台结构冗余 +
+    // 逐帧奶回 + 逐帧差额累加」口径——不掉成 hulk（实体蒸发会让 findXc2Enemy 判失联），证据不冻结。
+    private var xc2WeaponDamageAccum = 0f
+    private var xc2EnemyHpPrevFrame = -1f
+    private var xc2WeaponStageBuffed = false
     private var xc2WeaponDiagLogged = false
 
     override fun init(engine: CombatEngineAPI) {
@@ -7375,6 +7379,21 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
     }
 
     /**
+     * 武器相位掉血证据累计：逐帧差额累加后立即奶回满结构（配合 CLOSURE 转段时垫的
+     * [XC2_STAGE_ENEMY_HULL_BUFFER] 结构冗余）——全格穿透单拍伤害远超原始结构值，
+     * 不奶回会掉成 hulk 甚至实体蒸发（findXc2Enemy 判失联），证据也会随 hulk 冻结。
+     */
+    private fun accumulateXc2WeaponDamage(enemy: ShipAPI) {
+        if (!xc2WeaponStageBuffed || enemy.isHulk) return
+        val hpNow = enemy.hitpoints
+        if (xc2EnemyHpPrevFrame >= 0f && hpNow < xc2EnemyHpPrevFrame) {
+            xc2WeaponDamageAccum += xc2EnemyHpPrevFrame - hpNow
+        }
+        enemy.hitpoints = enemy.maxHitpoints
+        xc2EnemyHpPrevFrame = enemy.hitpoints
+    }
+
+    /**
      * XC-002 淬刃相位机：
      * SPAWN（双方出场/钉位/锁相机）→
      * WINGS_OBSERVE（断言点 XC2-A：虚数之翼静止伤害乘区——钉死 0 航速，砺刃档 0% 航速 −25%，
@@ -7576,7 +7595,13 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                                     "[ASTD-Automation] xc2 rift evidence: contactDrop=${"%.0f".format(contactDrop)} " +
                                             "closureDrop=${"%.0f".format(closureDrop)}（断言点 XC2-D/E）",
                                 )
-                                xc2EnemyHpAtWeaponStart = enemy.hitpoints
+                                // 舞台结构冗余：全格穿透单拍即可打穿统治者级原始结构值，
+                                // 先垫结构池（xc2 武器相位逐帧奶回 + 差额累加掉血证据）
+                                enemy.mutableStats.hullBonus.modifyFlat(XC2_STAGE_MOD_ID, XC2_STAGE_ENEMY_HULL_BUFFER)
+                                enemy.hitpoints = enemy.maxHitpoints
+                                xc2EnemyHpPrevFrame = enemy.hitpoints
+                                xc2WeaponDamageAccum = 0f
+                                xc2WeaponStageBuffed = true
                                 transitionXc2Phase(XC2_PHASE_WEAPON_SHIELD)
                             }
                         }
@@ -7593,6 +7618,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     preservePlayerAI = true,
                 )
                 if (player != null && enemy != null && weapon != null) {
+                    accumulateXc2WeaponDamage(enemy)
                     player.shipTarget = enemy
                     weapon.currAngle = Misc.getAngleInDegrees(weapon.location, enemy.location)
                     // 不得逐帧 setRemainingCooldownTo(0f)：实机验证会把武器开火周期反复重置导致
@@ -7616,7 +7642,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     if (elapsed - xc2PhaseStartedAt >= XC2_WEAPON_SHIELD_EVAL_SECONDS) {
                         if (xc2AdaptationStacksMax < XC2_EXPECT_STACKS_MIN) {
                             failureReason = "xc2 adaptation stacks max=${"%.1f".format(xc2AdaptationStacksMax)}" +
-                                    " < $XC2_EXPECT_STACKS_MIN（断言点 XC2-F：主弹撞盾 +1 层/子射弹 +0.5 层）"
+                                    " < $XC2_EXPECT_STACKS_MIN（断言点 XC2-F：主弹穿盾首触 +1 层/子射弹撞盾 +0.5 层）"
                             transitionXc2Phase(XC2_PHASE_FAILED)
                         } else {
                             log.info(
@@ -7638,15 +7664,13 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                     preservePlayerAI = true,
                 )
                 if (player != null && enemy != null && weapon != null) {
+                    accumulateXc2WeaponDamage(enemy)
                     player.shipTarget = enemy
                     weapon.currAngle = Misc.getAngleInDegrees(weapon.location, enemy.location)
                     weapon.setForceFireOneFrame(true)
                     trackXc2WeaponSupply(engine, weapon)
-                    if (!enemy.isHulk) {
-                        xc2EnemyHpMinWeapon = minOf(xc2EnemyHpMinWeapon, enemy.hitpoints)
-                    }
                     if (elapsed - xc2PhaseStartedAt >= XC2_WEAPON_HULL_EVAL_SECONDS) {
-                        val weaponDrop = xc2EnemyHpAtWeaponStart - xc2EnemyHpMinWeapon
+                        val weaponDrop = xc2WeaponDamageAccum
                         when {
                             xc2MainShots < XC2_EXPECT_MAIN_SHOTS -> {
                                 failureReason = "xc2 main shots=$xc2MainShots < $XC2_EXPECT_MAIN_SHOTS" +
@@ -7662,7 +7686,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
 
                             weaponDrop < XC2_EXPECT_WEAPON_HP_DROP -> {
                                 failureReason = "xc2 pierce damage shortfall: hpDrop=${"%.0f".format(weaponDrop)}" +
-                                        " < $XC2_EXPECT_WEAPON_HP_DROP（断言点 XC2-G：穿透按装甲格逐格 10% 面板 + 子射弹结算）"
+                                        " < $XC2_EXPECT_WEAPON_HP_DROP（断言点 XC2-G：穿透全装甲格 20% 面板/0.1s 拍 + 子射弹结算）"
                                 transitionXc2Phase(XC2_PHASE_FAILED)
                             }
 
@@ -9841,8 +9865,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                 appendLine(
                     "  \"xc2WeaponHpDrop\": ${
                         formatFloat(
-                            if (xc2EnemyHpAtWeaponStart < 0f || xc2EnemyHpMinWeapon == Float.MAX_VALUE) -1f
-                            else xc2EnemyHpAtWeaponStart - xc2EnemyHpMinWeapon
+                            if (!xc2WeaponStageBuffed) -1f else xc2WeaponDamageAccum
                         )
                     },"
                 )
@@ -11722,9 +11745,10 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private const val XC2_EXPECT_CONTACT_HP_DROP = 250f
         private const val XC2_EXPECT_CLOSURE_HP_DROP = 500f
 
-        // WEAPON_SHIELD/HULL（断言点 XC2-F/G）：盾相 5s 评估叠层峰值 ≥0.5（主弹撞盾 +1/子射弹 +0.5）；
-        // 体相 6s 评估穿透掉血 ≥300（装甲格逐格 10% 面板 × 单穿多格 + 子射弹，保守口径）、
-        // 供给登记主弹 ≥3（1s 循环 × 11s 两相）、子射弹 ≥1（0.2s 散发节拍）。
+        // WEAPON_SHIELD/HULL（断言点 XC2-F/G）：盾相 5s 评估叠层峰值 ≥0.5（主弹穿盾首触 +1/子射弹
+        // 撞盾 +0.5）；体相 6s 评估穿透掉血 ≥300（全装甲格 20% 面板 × 0.1s 拍 + 子射弹，靶舰垫
+        // 舞台结构冗余并逐帧奶回、掉血按逐帧差额累加——单拍全格结算即越过下界，300 为保守口径）、
+        // 供给登记主弹 ≥3（固定 1.5s/发 × 11s 两相 ≈7 发）、子射弹 ≥1（0.2s 散发节拍）。
         private const val XC2_WEAPON_SHIELD_EVAL_SECONDS = 5f
         private const val XC2_WEAPON_HULL_EVAL_SECONDS = 6f
         private const val XC2_EXPECT_STACKS_MIN = 0.5f
@@ -11732,6 +11756,10 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private const val XC2_EXPECT_MAIN_SHOTS = 3
         private const val XC2_EXPECT_MOTES = 1
         private const val XC2_PHASE_TIMEOUT = 120f
+
+        // 武器相位舞台结构冗余：全格穿透单拍量级远超统治者级原始结构值（断言点 XC2-G 舞台保全）。
+        private const val XC2_STAGE_MOD_ID = "astd_xc2_stage"
+        private const val XC2_STAGE_ENEMY_HULL_BUFFER = 500000f
 
         // 舜华引力空间复制器/折跃器场景：相位机、锚点与期望证据（断言点 GSR-A~GSR-F）。
         private const val GSR_PHASE_SPAWN = "SPAWN"

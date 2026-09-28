@@ -6,6 +6,7 @@ import cn.kasuminova.astd.combat.effect.arc.starfallwing.StarfallWingOnFireEffec
 import cn.kasuminova.astd.combat.effect.arc.starfallwing.StarfallWingOnFireEffect.ProjectileState
 import cn.kasuminova.astd.combat.effect.generic.CombatVfxBootstrap
 import cn.kasuminova.astd.renderer.projectile.driver.ProjectileVfxDriverPlugin
+import com.fs.starfarer.api.combat.BoundsAPI
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEntityAPI
 import com.fs.starfarer.api.combat.DamageType
@@ -25,25 +26,28 @@ import kotlin.math.ceil
  * 坠星残翼的武器级每帧效果（挂 `.wpn` 的 `everyFrameEffect`）：脚本碰撞结算中枢。
  *
  * 主弹与子射弹的 collisionClass 均为 NONE（原版触碰结算全关），以下判定全部由本插件承担：
- * - 穿透结算（目标面 = 全部敌对实体）：敌舰（含 hulk 残骸与战机）、敌方导弹（engine.missiles）、
- *   中立陨石（engine.asteroids）（均按 owner 过滤友军）。接触沿弹体扫掠路径逐帧判定
- *   （上一帧→当前位置按 20su 采样，0.2s 拍内 1500su/s 弹速位移 300su，点判/拍边界判都会隧穿）。
- *   - 护盾（仅舰船）：接触且目标「振频适应」层数 ≤ [StarfallWingTuning.PIERCE_SHIELD_STACK_THRESHOLD]
- *     时全额面板结算 + 1 层 + 弹体移除（阻挡属碰撞事件不吃拍率限）；层数超限穿盾，
- *     每 [StarfallWingTuning.PIERCE_TICK_SECONDS]s 拍结算 10% 面板——穿盾拍率限不变，
- *     首触补拍按目标闩锁（率限窗内切换目标时新目标仍补拍）。
- *   - 船体/装甲：按扫掠路径**逐装甲格**结算——采样点映射到的每个装甲格在单次穿越中
- *     各结算一次 10% 面板（[PiercePassTracker] 按目标闩锁已结算格，脱离接触一帧即重置），
- *     落点 = 格内表面接触点（applyDamage 落点自动走原版装甲格结算，不再舰心固定点）。
- *   - 导弹/陨石：无护盾无装甲格，按表面接触点结算一次 10% 面板（单穿越一次）。
+ * - 穿透结算（目标面 = 全部敌对实体，**含相位中的舰船**）：敌舰（含 hulk 残骸与战机）、
+ *   敌方导弹（engine.missiles）、中立陨石（engine.asteroids）（均按 owner 过滤友军）。
+ *   接触沿弹体扫掠路径逐帧判定（上一帧→当前位置按 20su 采样，0.1s 拍内 1500su/s 弹速
+ *   位移 150su，点判/拍边界判都会隧穿）；舰舰判定半径 = 弹体碰撞半径
+ *   ×[StarfallWingTuning.PIERCE_COLLISION_RADIUS_MULT]（仅判定口径，不动任何渲染参数）。
+ *   - 护盾（仅舰船）：主弹**恒穿盾**——接触且穿透拍到期（[StarfallWingTuning.PIERCE_TICK_SECONDS]
+ *     秒一拍，首触补拍按目标闩锁：率限窗内切换目标时新目标仍补拍）时对护盾结算 20% 面板
+ *     + 20% EMP 面板；子射弹不继承穿盾——撞盾 = 全额面板 + 0.5 层振频适应 + 阻挡消散
+ *     （阻挡属碰撞事件不吃拍率限）。
+ *   - 船体/装甲：拍到期时对目标**全部活装甲格**各结算一次 20% 面板 + 20% EMP 面板
+ *     （[settleAllArmorCells]），落点 = 格心；空格（矩形装甲网中无舰体覆盖的角部格，
+ *     碰撞箱多边形判定）跳过。
+ *   - 导弹/陨石：无护盾无装甲格，碰撞圈接触按表面接触点结算一次 20% 面板 + EMP
+ *     （单穿越一次，[PiercePassTracker.trySettleOnce] 闩锁）。
+ * - 振频适应附加：每枚主弹全局闩锁——首个接触目标附加 1 层后，该弹后续对任何目标
+ *   都不再附加（[PiercePassTracker.tryLatchAdaptation]）；子射弹仅撞盾附加 0.5 层。
  * - 子射弹散发：主弹飞行中每 [StarfallWingTuning.MOTE_INTERVAL_SECONDS]s 向两侧随机
- *   散发一枚追踪子射弹（真实 MissileAPI + [StarfallWingMoteAi]），伤害 = 主弹当前面板 ×20%；
- *   子射弹命中护盾结算全额 + 0.5 层并消散（不继承穿盾增益），穿船体同主弹口径。
+ *   散发一枚追踪子射弹（真实 MissileAPI + [StarfallWingMoteAi]），伤害 = 主弹当前面板 ×20%。
  * - 代行 VFX bootstrap（`.wpn` 只有一个 everyFrame 槽，本武器独占）与子射弹分裂光斑推进。
  *
  * applyDamage 落点口径（坠星残响同款判例注记）：盾覆盖 → 盾面落点 + bypass=false；
- * 穿船体 → 格内表面接触点 + bypass=true（只跳过引擎的护盾弧判定，装甲格结算照走；
- * ArmorGrid.getCellAtLocation 与 ArmorGrid.applyDamage 的落点→格映射同源同式，已核对反编译源码）。
+ * 穿船体 → 装甲格格心 + bypass=true（只跳过引擎的护盾弧判定，装甲格结算照走）。
  */
 class StarfallWingWeaponEffect : EveryFrameWeaponEffectPlugin {
 
@@ -67,7 +71,7 @@ class StarfallWingWeaponEffect : EveryFrameWeaponEffectPlugin {
     }
 
     /**
-     * @return true = 弹体已被移除（护盾阻挡），调用方停止后续推进并摘表。
+     * @return true = 弹体已被移除（子射弹撞盾阻挡），调用方停止后续推进并摘表。
      */
     private fun advanceProjectile(
         engine: CombatEngineAPI,
@@ -80,7 +84,7 @@ class StarfallWingWeaponEffect : EveryFrameWeaponEffectPlugin {
         val sweepFrom = state.lastPierceLocation ?: Vector2f(proj.location)
         val sweepTo = Vector2f(proj.location)
         state.lastPierceLocation = sweepTo
-        // 接触逐帧判定；穿盾伤害 0.2s 拍率限，首触补拍按目标闩锁（passContacts，
+        // 接触逐帧判定；穿透伤害 0.1s 拍率限，首触补拍按目标闩锁（passContacts，
         // 见 pierceSweep 注记）——全局闩锁在率限窗内换目标时会漏掉新目标的首触拍。
         val contacted = Collections.newSetFromMap<CombatEntityAPI>(IdentityHashMap())
         when (pierceSweep(engine, proj, state, sweepFrom, sweepTo, contacted)) {
@@ -88,7 +92,7 @@ class StarfallWingWeaponEffect : EveryFrameWeaponEffectPlugin {
             PierceOutcome.DAMAGED -> state.pierceTimer = 0f
             else -> {}
         }
-        // 帧末清理穿越闩锁：本帧脱离接触的目标整项移除，下次接触算新穿越（装甲格重新可结算）
+        // 帧末清理穿越闩锁：本帧脱离接触的目标整项移除，下次接触算新穿越
         state.passContacts.retainContacts(contacted)
 
         if (!state.isMote) {
@@ -105,13 +109,13 @@ class StarfallWingWeaponEffect : EveryFrameWeaponEffectPlugin {
 
     /**
      * 扫掠段接触判定：沿段采样判定所有敌对实体的接触，本帧接触到的目标记入 [contactedTargets]。
-     * 舰船：护盾接触优先（盾覆盖即走护盾结算，本帧不再结算船体格）；未触盾时采样点逐个映射
-     * 装甲格，本穿越未结算的格各结算一次（格内表面接触点落点）。导弹/陨石：碰撞圈接触，
-     * 按表面接触点一次性结算。穿盾伤害全局 0.2s 拍率限（[ProjectileState.pierceTimer]），
+     * 舰船：护盾接触优先（盾覆盖即走护盾结算，本帧不再结算船体）；未触盾且贴到船体时，
+     * 拍到期对该舰全部活装甲格各结算一次（[settleAllArmorCells]）。导弹/陨石：碰撞圈接触，
+     * 按表面接触点一次性结算。穿透伤害全局 0.1s 拍率限（[ProjectileState.pierceTimer]），
      * 目标上帧未接触（[PiercePassTracker.isFirstContact]）时首触补拍——率限窗内弹体从 A 舰
      * 切换到 B 舰时 B 仍吃首触拍，高速弹不会整段穿越一艘船零结算（审查判例）。
-     * 护盾阻挡属碰撞事件不吃拍率限。
-     * @return BLOCKED = 弹体已被移除（护盾阻挡/子射弹撞盾），调用方停止后续推进；
+     * 子射弹撞盾阻挡属碰撞事件不吃拍率限。
+     * @return BLOCKED = 弹体已被移除（子射弹撞盾），调用方停止后续推进；
      *   DAMAGED = 本帧有伤害结算（穿透节拍清零）。
      */
     private fun pierceSweep(
@@ -124,7 +128,9 @@ class StarfallWingWeaponEffect : EveryFrameWeaponEffectPlugin {
     ): PierceOutcome {
         val source = proj.source
         val owner = source?.owner ?: 0
+        // 舰舰判定半径翻倍（视觉不变）；导弹/陨石路径维持原半径
         val projRadius = proj.collisionRadius
+        val shipTouchRadius = projRadius * StarfallWingTuning.PIERCE_COLLISION_RADIUS_MULT
         val swept = MathUtils.getDistance(from, to)
         val samples = ceil(swept / SWEEP_SAMPLE_SPACING).toInt().coerceAtLeast(1)
         val tickDueGlobal = state.pierceTimer >= StarfallWingTuning.PIERCE_TICK_SECONDS
@@ -133,60 +139,52 @@ class StarfallWingWeaponEffect : EveryFrameWeaponEffectPlugin {
 
         var damaged = false
 
-        // —— 敌舰（含 hulk 残骸与战机；相位中的目标不可触及）——
+        // —— 敌舰（含 hulk 残骸、战机与相位中的目标）——
         for (candidate in engine.ships) {
             val ship = candidate as? ShipAPI ?: continue
             if (ship === source || ship.owner == owner) continue
-            if ((!ship.isAlive && !ship.isHulk) || ship.isPhased) continue
-            // 粗筛：舰心到扫掠段中点超过 最大接触半径 + 半程 + 弹体半径 时不可能接触
+            if (!ship.isAlive && !ship.isHulk) continue
+            // 粗筛：舰心到扫掠段中点超过 最大接触半径 + 半程 + 判定半径 时不可能接触
             val shieldRadius = ship.shield?.radius ?: 0f
-            val reach = maxOf(shieldRadius, ship.collisionRadius) + swept * 0.5f + projRadius + CONTACT_MARGIN
+            val reach = maxOf(shieldRadius, ship.collisionRadius) + swept * 0.5f + shipTouchRadius + CONTACT_MARGIN
             val mdx = ship.location.x - midX
             val mdy = ship.location.y - midY
             if (mdx * mdx + mdy * mdy > reach * reach) continue
 
-            // 逐采样点：护盾接触优先（首个盾覆盖点即停，走护盾结算）；未触盾的采样点
-            // 映射装甲格并按格号帧内去重（格号 → 格内表面接触点）
+            // 碰撞箱姿态每舰每帧只刷新一次（采样循环与全格结算共用，勿逐采样点重复 update）
+            val bounds = ship.exactBounds
+            bounds?.update(ship.location, ship.facing)
+
+            // 逐采样点：护盾接触优先（首个盾覆盖点即停，走护盾结算）；否则记录是否贴到船体
             var shieldContact: Vector2f? = null
-            val cellHits = LinkedHashMap<Int, Vector2f>(4)
+            var hullContact = false
             for (i in 0..samples) {
                 val t = i / samples.toFloat()
                 val p = Vector2f(from.x + (to.x - from.x) * t, from.y + (to.y - from.y) * t)
-                if (shieldCoversAt(ship, p, projRadius)) {
+                if (shieldCoversAt(ship, p, shipTouchRadius)) {
                     shieldContact = p
                     break
                 }
-                val surface = closestHullSurfacePoint(ship, p, projRadius) ?: continue
-                val cell = ship.armorGrid?.getCellAtLocation(surface) ?: continue
-                cellHits.putIfAbsent(state.passContacts.packCell(cell[0], cell[1]), surface)
+                if (!hullContact && touchesHull(ship, p, shipTouchRadius, bounds)) hullContact = true
             }
-            if (shieldContact == null && cellHits.isEmpty()) continue
+            if (shieldContact == null && !hullContact) continue
             contactedTargets.add(ship)
             val firstContact = state.passContacts.isFirstContact(ship)
             state.passContacts.touch(ship)
+            // 穿透伤害拍级判定：全局拍到点，或该目标上帧未接触（首触补拍）
+            val tickDue = tickDueGlobal || firstContact
 
             if (shieldContact != null) {
-                // 穿透伤害拍级判定：全局拍到点，或该目标上帧未接触（首触补拍）
-                val tickDue = tickDueGlobal || firstContact
-                val stacks = ship.starfallWingAdaptationStacks()?.stacks ?: 0f
-                val pierce = !state.isMote && StarfallWingTuning.piercesShields(stacks)
-                if (pierce && !tickDue) continue
-                // 护盾阻挡属碰撞事件不吃拍率限；穿盾伤害只在到期拍结算
-                if (resolveShieldContact(engine, proj, state, ship, shieldContact)) {
+                // 子射弹撞盾阻挡属碰撞事件不吃拍率限；主弹穿盾伤害只在到期拍结算
+                if (resolveShieldContact(engine, proj, state, ship, shieldContact, tickDue)) {
                     return PierceOutcome.BLOCKED
                 }
+                if (tickDue) damaged = true
+            } else if (tickDue) {
+                // 全装甲格结算：拍到期对该舰全部活装甲格各结算一次 20% 面板 + EMP（空格跳过）
+                val segments = bounds?.segments?.map { Vector2f(it.p1) to Vector2f(it.p2) }
+                settleAllArmorCells(engine, proj, state, ship, segments)
                 damaged = true
-            } else {
-                // 装甲格逐格结算：本穿越未结算的格各结算一次 10% 面板，落点 = 格内表面接触点
-                for ((packed, point) in cellHits) {
-                    if (!state.passContacts.trySettleCell(ship, packed)) continue
-                    engine.applyDamage(
-                        ship, point, StarfallWingTuning.pierceTickDamage(proj.damageAmount),
-                        DamageType.ENERGY, 0f,
-                        true, false, proj.source, true,
-                    )
-                    damaged = true
-                }
             }
         }
 
@@ -212,8 +210,68 @@ class StarfallWingWeaponEffect : EveryFrameWeaponEffectPlugin {
     }
 
     /**
+     * 全装甲格穿透结算：对目标装甲网全部活格各结算一次 20% 面板 + 20% EMP 面板
+     * （[StarfallWingTuning.pierceTickDamage] / [StarfallWingTuning.pierceTickEmp]），
+     * 落点 = 格心世界坐标（applyDamage 落点→格映射走原版装甲结算）。
+     *
+     * 空格口径（注释锁死）：装甲网是覆盖整张贴图的矩形（grid[x][y] 的装甲值只表达损耗，
+     * 不表达有无舰体），矩形角部格可能没有舰体覆盖——空格 = 格心在碰撞箱多边形外且距
+     * 最近边界段超过半对角线的格（[StarfallWingTuning.armorCellOverlapsHull]），跳过不结算；
+     * 无碰撞箱时退化为碰撞圈近似（格心距舰心 ≤ 碰撞半径）。
+     *
+     * [hullSegments] = 已按当前舰位/朝向刷新过的碰撞箱边界段（调用方每舰每帧只 update 一次）。
+     */
+    internal fun settleAllArmorCells(
+        engine: CombatEngineAPI,
+        proj: DamagingProjectileAPI,
+        state: ProjectileState,
+        ship: ShipAPI,
+        hullSegments: List<Pair<Vector2f, Vector2f>>?,
+    ) {
+        val grid = ship.armorGrid
+        if (grid == null) {
+            // 原版 Ship 恒有装甲网；缺失属异常，记 WARN 且本拍不结算（不静默吞掉）
+            if (!state.missingArmorGridWarned) {
+                state.missingArmorGridWarned = true
+                log.warn("[ASTD] 坠星残翼穿透结算跳过：目标无装甲网: ship=${ship.hullSpec?.hullId}")
+            }
+            return
+        }
+        val damage = StarfallWingTuning.pierceTickDamage(proj.damageAmount)
+        val emp = StarfallWingTuning.pierceTickEmp(proj.empAmount)
+        val cellSize = grid.cellSize
+        // 格心 = getLocation 格角 + R(facing-90)·(半边长, 半边长)——与 ArmorGrid.getLocation
+        // 内部的 Utils.rotate(facing-90) 同源同式（已核对反编译源码），线性变换可拆
+        val rot = Math.toRadians((ship.facing - 90f).toDouble())
+        val cos = kotlin.math.cos(rot).toFloat()
+        val sin = kotlin.math.sin(rot).toFloat()
+        val half = cellSize * 0.5f
+        val offX = half * cos - half * sin
+        val offY = half * sin + half * cos
+        val armor = grid.grid
+        for (x in armor.indices) {
+            for (y in armor[x].indices) {
+                val corner = grid.getLocation(x, y)
+                val center = Vector2f(corner.x + offX, corner.y + offY)
+                if (hullSegments != null) {
+                    if (!StarfallWingTuning.armorCellOverlapsHull(center, cellSize, hullSegments)) continue
+                } else if (MathUtils.getDistance(center, ship.location) > ship.collisionRadius) {
+                    continue
+                }
+                engine.applyDamage(
+                    ship, center, damage,
+                    DamageType.ENERGY, emp,
+                    true, false, proj.source, true,
+                )
+            }
+        }
+        attachAdaptationOnce(engine, proj, state, ship)
+    }
+
+    /**
      * 非舰船目标（导弹/陨石）的穿透结算：碰撞圈与扫掠段相交即接触，
-     * 单次穿越只结算一次 10% 面板（[PiercePassTracker.trySettleOnce] 闩锁），落点 = 表面接触点。
+     * 单次穿越只结算一次 20% 面板 + EMP（[PiercePassTracker.trySettleOnce] 闩锁），
+     * 落点 = 表面接触点。判定半径维持弹体原半径（不吃舰舰翻倍口径）。
      * @return true = 本帧发生了结算。
      */
     private fun pierceSimpleTarget(
@@ -242,37 +300,48 @@ class StarfallWingWeaponEffect : EveryFrameWeaponEffectPlugin {
         val contact = surfaceContactPoint(target.location, target.collisionRadius, from, to)
         engine.applyDamage(
             target, contact, StarfallWingTuning.pierceTickDamage(proj.damageAmount),
-            DamageType.ENERGY, 0f,
+            DamageType.ENERGY, StarfallWingTuning.pierceTickEmp(proj.empAmount),
             false, false, proj.source, true,
         )
         return true
     }
 
     /**
-     * 护盾接触结算。
-     * @return true = 弹体移除（阻挡/撞盾）。
+     * 护盾接触结算：主弹恒穿盾——到期拍（含首触补拍）结算 20% 面板 + 20% EMP 面板，
+     * 并经全局闩锁附加 1 层振频适应；子射弹不继承穿盾——撞盾 = 全额面板结算 + 0.5 层
+     * 振频适应 + 阻挡消散（碰撞事件不吃拍率限）。
+     * @return true = 弹体移除（子射弹撞盾）。
      */
-    private fun resolveShieldContact(
+    internal fun resolveShieldContact(
         engine: CombatEngineAPI,
         proj: DamagingProjectileAPI,
         state: ProjectileState,
         ship: ShipAPI,
         contactPoint: Vector2f,
+        tickDue: Boolean,
     ): Boolean {
-        val stacks = ship.starfallWingAdaptationStacks()?.stacks ?: 0f
-        val pierce = !state.isMote && StarfallWingTuning.piercesShields(stacks)
         val damagePoint = shieldSurfacePoint(ship, contactPoint)
-        val damage = if (pierce) StarfallWingTuning.pierceTickDamage(proj.damageAmount) else proj.damageAmount
+        if (state.isMote) {
+            engine.applyDamage(
+                ship, damagePoint, proj.damageAmount,
+                DamageType.ENERGY, 0f,
+                false, false, proj.source, true,
+            )
+            addAdaptation(engine, proj, ship, StarfallWingTuning.MOTE_STACKS_ON_SHIELD)
+            spawnShieldSpark(engine, contactPoint)
+            engine.removeEntity(proj)
+            return true
+        }
+        // 主弹穿盾伤害 0.1s 拍率限（首触补拍由调用侧并入 tickDue）
+        if (!tickDue) return false
         engine.applyDamage(
-            ship, damagePoint, damage,
-            DamageType.ENERGY, 0f,
+            ship, damagePoint, StarfallWingTuning.pierceTickDamage(proj.damageAmount),
+            DamageType.ENERGY, StarfallWingTuning.pierceTickEmp(proj.empAmount),
             false, false, proj.source, true,
         )
-        addAdaptation(engine, proj, ship, if (state.isMote) StarfallWingTuning.MOTE_STACKS_ON_SHIELD else 1f)
+        attachAdaptationOnce(engine, proj, state, ship)
         spawnShieldSpark(engine, contactPoint)
-        if (pierce) return false
-        engine.removeEntity(proj)
-        return true
+        return false
     }
 
     /** 散发一枚追踪子射弹（主弹两侧随机 ±90°；脚本 spawn 不触发 onFireEffect，VFX 显式 track）。 */
@@ -320,42 +389,39 @@ class StarfallWingWeaponEffect : EveryFrameWeaponEffectPlugin {
     }
 
     /**
-     * 采样点护盾覆盖判定：盾开启、点在盾半径内（含弹体半径余量）且在盾弧内。
+     * 主弹振频适应全局闩锁附加：每枚主弹只对首个接触目标附加一次 1 层，
+     * 闩锁后该弹对任何目标都不再附加；子射弹走撞盾附加，不经此路。
+     */
+    private fun attachAdaptationOnce(engine: CombatEngineAPI, proj: DamagingProjectileAPI, state: ProjectileState, ship: ShipAPI) {
+        if (state.isMote) return
+        if (!state.passContacts.tryLatchAdaptation()) return
+        addAdaptation(engine, proj, ship, 1f)
+    }
+
+    /**
+     * 采样点护盾覆盖判定：盾开启、点在盾半径内（含判定半径余量）且在盾弧内。
      * （坠星残响 shieldCovers 同型注记：盾开 + isWithinArc；此处加半径接触项——穿透弹逐点采样。）
      */
-    private fun shieldCoversAt(ship: ShipAPI, point: Vector2f, projRadius: Float): Boolean {
+    private fun shieldCoversAt(ship: ShipAPI, point: Vector2f, touchRadius: Float): Boolean {
         val shield = ship.shield ?: return false
         if (!shield.isOn) return false
-        if (MathUtils.getDistance(point, ship.location) > shield.radius + projRadius) return false
+        if (MathUtils.getDistance(point, ship.location) > shield.radius + touchRadius) return false
         return shield.isWithinArc(point)
     }
 
     /**
-     * 采样点贴面船体接触点：舰体真实碰撞箱边界段上离采样点最近的点，
-     * 距离 ≤ 弹体半径 + 余量时视为接触并返回该表面点（装甲格落点的真相来源）；
-     * 无碰撞箱时按碰撞圈近似（表面点 = 舰心方向压回圈面），粗筛已通过故恒返回非空。
+     * 采样点船体接触判定（touchesHull）：采样点距碰撞箱最近边界段 ≤ 判定半径 + 余量即接触；
+     * 无碰撞箱时按碰撞圈近似（粗筛已通过，圈面接触即算贴面）。
      */
-    private fun closestHullSurfacePoint(ship: ShipAPI, point: Vector2f, projRadius: Float): Vector2f? {
-        val limit = projRadius + CONTACT_MARGIN
-        val bounds = ship.exactBounds
+    private fun touchesHull(ship: ShipAPI, point: Vector2f, touchRadius: Float, bounds: BoundsAPI?): Boolean {
+        val limit = touchRadius + CONTACT_MARGIN
         if (bounds == null) {
-            // 无碰撞箱按碰撞圈近似：圈面最近点
-            val dist = MathUtils.getDistance(point, ship.location)
-            if (dist > ship.collisionRadius + limit) return null
-            return surfaceContactPoint(ship.location, ship.collisionRadius, point, point)
+            return MathUtils.getDistance(point, ship.location) <= ship.collisionRadius + limit
         }
-        bounds.update(ship.location, ship.facing)
-        var best: Vector2f? = null
-        var bestDist = Float.MAX_VALUE
         for (segment in bounds.segments) {
-            val closest = StarfallWingTuning.closestPointOnSegment(point, segment.p1, segment.p2)
-            val dist = StarfallWingTuning.distanceToSegment(point, segment.p1, segment.p2)
-            if (dist < bestDist) {
-                bestDist = dist
-                best = closest
-            }
+            if (StarfallWingTuning.distanceToSegment(point, segment.p1, segment.p2) <= limit) return true
         }
-        return if (bestDist <= limit) best else null
+        return false
     }
 
     /**

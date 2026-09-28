@@ -8,8 +8,8 @@ import org.lwjgl.util.vector.Vector2f
 
 /**
  * 坠星残翼机制数值（blue/10-signature.md 坠星残翼节）的契约测试：
- * 振频适应承伤比映射的削弱/封顶/免伤口径、穿盾门槛的严格大于边界、
- * 穿透扫掠用的点到线段距离（投影内/外/退化段）。
+ * 振频适应承伤比映射的削弱/封顶/免伤口径、护盾接触行为（主弹恒穿盾/子射弹撞盾）、
+ * 装甲格空格判定（多边形射线法 + 边界格半对角线容差）、穿透扫掠用的点到线段距离（投影内/外/退化段）。
  */
 class StarfallWingTuningTest {
 
@@ -33,10 +33,41 @@ class StarfallWingTuningTest {
     }
 
     @Test
-    fun `穿盾门槛 严格大于 10 层才穿透`() {
-        assertFalse(StarfallWingTuning.piercesShields(0f))
-        assertFalse(StarfallWingTuning.piercesShields(10f), "恰好 10 层不穿透（严格大于）")
-        assertTrue(StarfallWingTuning.piercesShields(10.5f))
+    fun `护盾接触行为 主弹恒穿盾 子射弹撞盾阻挡`() {
+        assertTrue(StarfallWingTuning.shieldContactPierces(isMote = false), "主弹恒穿盾（无层数门槛）")
+        assertFalse(StarfallWingTuning.shieldContactPierces(isMote = true), "子射弹不继承穿盾，撞盾阻挡")
+    }
+
+    @Test
+    fun `装甲格空格判定 格心在多边形内为活格 远离边界为空格`() {
+        // 正方形碰撞箱 [0,100]×[0,100]
+        val square = listOf(
+            Vector2f(0f, 0f) to Vector2f(100f, 0f),
+            Vector2f(100f, 0f) to Vector2f(100f, 100f),
+            Vector2f(100f, 100f) to Vector2f(0f, 100f),
+            Vector2f(0f, 100f) to Vector2f(0f, 0f),
+        )
+        val cellSize = 30f
+        assertTrue(
+            StarfallWingTuning.armorCellOverlapsHull(Vector2f(50f, 50f), cellSize, square),
+            "格心深入舰体内部 → 活格",
+        )
+        assertTrue(
+            StarfallWingTuning.armorCellOverlapsHull(Vector2f(110f, 50f), cellSize, square),
+            "格心在界外但距边界段 10 ≤ 半对角线 ≈21.2 → 边界活格",
+        )
+        assertFalse(
+            StarfallWingTuning.armorCellOverlapsHull(Vector2f(130f, 50f), cellSize, square),
+            "格心距边界段 30 > 半对角线 → 空格跳过",
+        )
+        assertFalse(
+            StarfallWingTuning.armorCellOverlapsHull(Vector2f(140f, 140f), cellSize, square),
+            "矩形装甲网角部无舰体覆盖 → 空格跳过",
+        )
+        assertFalse(
+            StarfallWingTuning.armorCellOverlapsHull(Vector2f(50f, 50f), cellSize, emptyList()),
+            "空段集无碰撞箱语义，恒 false（调用方走碰撞圈近似）",
+        )
     }
 
     @Test
