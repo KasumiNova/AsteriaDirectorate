@@ -12,8 +12,6 @@
   "shieldRadius": 113,
   "viewOffset": 0,
   "builtInMods": [
-    "magazines",
-    "auxiliarythrusters",
     "astd_arc_advanced_targeting_system",
     "astd_distributed_pursuit_network"
   ],
