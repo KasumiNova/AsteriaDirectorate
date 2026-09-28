@@ -18,7 +18,7 @@ object ASTDArcProductionShipIds {
 
     const val SYSTEM_ARC_SHARED_FLUX_NETWORK = "astd_arc_shared_flux_network"
     const val SYSTEM_PLASMA_ARMOR_SHIELD_BOOST = "astd_plasma_armor_shield_boost"
-    const val SYSTEM_LIMIT_TEMPORAL_THRUSTER = "astd_limit_temporal_thruster"
+    const val SYSTEM_SUPPRESSION_MODE = "astd_suppression_mode"
 
     const val STAT_ARC_ADVANCED_FIRE_CONTROL = "astd_arc_advanced_fire_control"
     const val STAT_ARC_SHARED_TACTICAL_NETWORK_SELF = "astd_arc_shared_tactical_network_self"
@@ -30,7 +30,7 @@ object ASTDArcProductionShipIds {
     const val STAT_IONIZED_RECOIL_ACCUMULATOR = "astd_ionized_recoil_accumulator"
     const val STAT_ARC_ADVANCED_TARGETING_SYSTEM = "astd_arc_advanced_targeting_system"
     const val STAT_DISTRIBUTED_PURSUIT_NETWORK = "astd_distributed_pursuit_network"
-    const val STAT_LIMIT_TEMPORAL_THRUSTER = "astd_limit_temporal_thruster"
+    const val STAT_SUPPRESSION_MODE = "astd_suppression_mode"
 
     const val DATA_ARC_SHARED_FLUX_TARGETS = "astd_arc_shared_flux_network_targets"
     const val DATA_PLASMA_SHIELD_BOOST_LEVEL = "astd_plasma_shield_boost_level"

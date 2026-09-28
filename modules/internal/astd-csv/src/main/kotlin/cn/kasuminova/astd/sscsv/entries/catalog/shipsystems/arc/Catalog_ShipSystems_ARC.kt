@@ -156,26 +156,29 @@ object Sys_astd_high_energy_loader : ShipSystemWithSystemFileEntry() {
     override val icon: String = "graphics/icons/hullsys/ammo_feeder.png"
 }
 
-object Sys_astd_limit_temporal_thruster : ShipSystemWithSystemFileEntry() {
-    override val id: String = "astd_limit_temporal_thruster"
+/**
+ * 列星级舰船系统「压制模式」（规格 blue/20-production.md §驱逐舰-舰船系统）：
+ * 以机动为代价的火力强化窗口——最大航速/机动性与武器辐能产出削减、护盾承伤减免、
+ * 武器射程/射速提升，开启期间持续产出硬辐能（2%/s 起，第 4 秒爬坡至 6%/s 封顶）。
+ * 数值三锚点与硬辐能曲线见 SuppressionModeTuning；时序：渐入 1s → 持续 8s → 淡出 1s，冷却 10s。
+ */
+object Sys_astd_suppression_mode : ShipSystemWithSystemFileEntry() {
+    override val id: String = "astd_suppression_mode"
     override val name: String = systemName(id)
 
-    override val statsScript: String = "cn.kasuminova.astd.combat.shipsystems.ASTDLimitTemporalThrusterSystemStats"
+    override val statsScript: String = "cn.kasuminova.astd.combat.shipsystems.ASTDSuppressionModeSystemStats"
 
-    override val systemType: String = "ENGINE_MOD"
+    override val systemType: String = "STAT_MOD"
     override val aiType: String = "CUSTOM"
-    override val aiScript: String = "cn.kasuminova.astd.combat.shipsystems.ASTDLimitTemporalThrusterSystemAI"
+    override val aiScript: String = "cn.kasuminova.astd.combat.shipsystems.ASTDSuppressionModeSystemAI"
 
-    override val maxUses: Int = 3
-    override val regen: Double = 0.1
+    override val chargeUp: Double = 1.0
+    override val active: Double = 8.0
+    override val down: Double = 1.0
+    override val cooldown: Double = 10.0
 
-    override val chargeUp: Double = 0.2
-    override val active: Double = 2.0
-    override val down: Double = 0.2
-    override val cooldown: Double = 1.5
-
-    override val icon: String = "graphics/icons/hullsys/maneuvering_jets.png"
-    override val useSound: String = "system_burn_drive_activate"
+    override val icon: String = "graphics/icons/hullsys/ammo_feeder.png"
+    override val useSound: String = "system_ammo_feeder"
 }
 
 object Sys_astd_static_discharge : ShipSystemWithSystemFileEntry() {

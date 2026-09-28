@@ -218,8 +218,24 @@ object ASTDArcProductionTooltipContracts {
                         "ui.hullmod.arc_advanced_targeting_system.value.range"
                     ),
                     ASTDHullModTooltipRenderer.row(
+                        "ui.hullmod.arc_advanced_targeting_system.attr.projectile_speed",
+                        "ui.hullmod.arc_advanced_targeting_system.value.projectile_speed"
+                    ),
+                    ASTDHullModTooltipRenderer.row(
+                        "ui.hullmod.arc_advanced_targeting_system.attr.weapon_flux",
+                        "ui.hullmod.arc_advanced_targeting_system.value.weapon_flux"
+                    ),
+                    ASTDHullModTooltipRenderer.row(
                         "ui.hullmod.arc_advanced_targeting_system.attr.short_range",
                         "ui.hullmod.arc_advanced_targeting_system.value.short_range"
+                    ),
+                    ASTDHullModTooltipRenderer.row(
+                        "ui.hullmod.arc_advanced_targeting_system.attr.op_small",
+                        "ui.hullmod.arc_advanced_targeting_system.value.op_small"
+                    ),
+                    ASTDHullModTooltipRenderer.row(
+                        "ui.hullmod.arc_advanced_targeting_system.attr.op_medium",
+                        "ui.hullmod.arc_advanced_targeting_system.value.op_medium"
                     ),
                 ),
             ),

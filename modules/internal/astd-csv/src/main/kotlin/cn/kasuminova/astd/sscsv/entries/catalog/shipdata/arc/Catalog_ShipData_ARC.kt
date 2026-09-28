@@ -207,16 +207,16 @@ object Ship_astd_xc_103 : ShipDataEntry() {
     override val name: String = shipName(id)
     override val designation: String = "驱逐舰"
     override val tech: String = "菀星设计局-星坠"
-    override val systemId: String = "astd_limit_temporal_thruster"
+    override val systemId: String = "astd_suppression_mode"
 
-    // 自动战斗分数对齐原版高速驱逐舰（美杜莎 fp=12）；部署点 14 由 supplies/rec 承担。
-    override val fleetPts: Int = 12
-    override val hitpoints: Int = 5500
-    override val armorRating: Int = 650
-    override val maxFlux: Int = 6500
+    // 设计规格 blue/20-production.md §列星级（XC-103）：fp/部署点 14 由 supplies/rec 承担。
+    override val fleetPts: Int = 14
+    override val hitpoints: Int = 6000
+    override val armorRating: Int = 600
+    override val maxFlux: Int = 7000
     override val fluxDissipation: Int = 500
-    override val ordnancePoints: Int = 90
-    override val maxSpeed: Int = 95
+    override val ordnancePoints: Int = 140
+    override val maxSpeed: Int = 100
     override val acceleration: Int = 42
     override val deceleration: Int = 42
     override val maxTurnRate: Int = 30
@@ -224,7 +224,9 @@ object Ship_astd_xc_103 : ShipDataEntry() {
     override val mass: Int = 8000
     override val shieldType: String = "OMNI"
     override val shieldArc: Int = 200
-    override val shieldUpkeep: Double = 0.6
+
+    // 护盾维持 240 = 耗散 500 × 0.48。
+    override val shieldUpkeep: Double = 0.48
     override val shieldEfficiency: Double = 0.70
     override val minCrew: Int = 50
     override val maxCrew: Int = 70
@@ -236,7 +238,7 @@ object Ship_astd_xc_103 : ShipDataEntry() {
     override val baseValue: Int = 45000
     override val crPercentPerDay: Double = 5.0
     override val crToDeploy: Double = 15.0
-    override val peakCrSec: Int = 360
+    override val peakCrSec: Int = 420
     override val crLossPerSec: Double = 0.25
     override val suppliesRec: Int = 14
     override val suppliesPerMonth: Int = 14

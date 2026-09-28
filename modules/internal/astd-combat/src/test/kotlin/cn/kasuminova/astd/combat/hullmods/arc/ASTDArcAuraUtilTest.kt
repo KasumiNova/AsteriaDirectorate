@@ -121,7 +121,7 @@ class ASTDArcAuraUtilTest {
         assertTrue(ASTDArcProductionShipIds.UNIQUE_HULLMOD_IDS.contains("astd_distributed_pursuit_network"))
         assertEquals("astd_arc_shared_flux_network", ASTDArcProductionShipIds.SYSTEM_ARC_SHARED_FLUX_NETWORK)
         assertEquals("astd_plasma_armor_shield_boost", ASTDArcProductionShipIds.SYSTEM_PLASMA_ARMOR_SHIELD_BOOST)
-        assertEquals("astd_limit_temporal_thruster", ASTDArcProductionShipIds.SYSTEM_LIMIT_TEMPORAL_THRUSTER)
+        assertEquals("astd_suppression_mode", ASTDArcProductionShipIds.SYSTEM_SUPPRESSION_MODE)
     }
 
     private fun candidate(

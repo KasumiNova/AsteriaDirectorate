@@ -74,7 +74,7 @@ class AffixSingularityDriveHullMod : BaseHullMod() {
      * AI 口径（affixes.md R-17「AI 逻辑沿用原版时流之壳」）：
      * 原版时流之壳（temporalshell.system）的 AI 实现为混淆内核内建类型
      * （`aiType: TEMPORAL_SHELL`，dev-resources 未镜像对应类，规范禁反射故无法直接复用），
-     * 此处按原版可观察行为等效移植（参照本模组 ASTDLimitTemporalThrusterSystemAI 的既有移植风格）：
+     * 此处按原版可观察行为等效移植：
      * - 进攻窗口：目标进入本舰最长非导弹武器射程的 [ENGAGE_RANGE_MULT] 倍内，借时间膨胀抢占交战段；
      * - 防御窗口：近距存在来袭弹体/导弹威胁，借时间膨胀脱离或机动；
      * - 辐能压力：辐能水平越过 [FLUX_TRIGGER_LEVEL] 时借时间膨胀抢排辐窗口；

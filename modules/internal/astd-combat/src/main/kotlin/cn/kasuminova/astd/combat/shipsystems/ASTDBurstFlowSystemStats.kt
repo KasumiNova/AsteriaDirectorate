@@ -27,8 +27,7 @@ import java.awt.Color
  * 辐能耗散速率（50%/100%/250%）；系统不再提升最大航速，只保留加减速乘区，
  * 附加速度由舰船既有阻力自然消退。
  *
- * 玩家船反补偿：激活期间对 `engine.timeMult` 乘 `1/timeMult`（口径与
- * [ASTDLimitTemporalThrusterSystemStats] 一致），避免玩家视角整体加速。
+ * 玩家船反补偿：激活期间对 `engine.timeMult` 乘 `1/timeMult`，避免玩家视角整体加速。
  */
 class ASTDBurstFlowSystemStats : BaseShipSystemScript() {
 
