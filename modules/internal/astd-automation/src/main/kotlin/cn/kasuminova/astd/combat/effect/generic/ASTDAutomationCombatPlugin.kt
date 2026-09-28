@@ -7383,9 +7383,9 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
      *   不钉舰位，位移峰值 ∈ [700, 900]；断言点 XC2-C：速度窗口 maxSpeed 峰值相对
      *   WINGS_OBSERVE 静止 maxSpeed 的乘区 ≈ 实算期望（砺刃 +100%；零幅能加速 flat 与百分比
      *   乘区叠乘，期望按 (base×(1+峰值%)+flat)/静止值 合成，容差 ±0.1）；断言点 XC2-D 观测面：
-     *   接触期靶舰 HP 谷值——靶舰钉在裂隙路径上，砺刃 200/s 接触）→
-     * CLOSURE（断言点 XC2-E：折跃起点 +6.8s 评估——闭合爆炸 800/爆点（砺刃）+ 残余接触，
-     *   靶舰恰压 x=-300 爆点，闭合窗掉血 ≥500；接触期累计掉血 ≥300）→
+     *   接触期靶舰 HP 谷值——靶舰钉在裂隙路径上，砺刃名义 200/s、统治者最低装甲减伤后 ≈56/s）→
+     * CLOSURE（断言点 XC2-E：折跃起点 +6.3s 评估——闭合爆炸 800/爆点（砺刃）+ 残余接触，
+     *   靶舰恰压 x=-300 爆点，闭合窗掉血 ≥500；接触期累计掉血 ≥250）→
      * WEAPON_SHIELD（断言点 XC2-F：靶舰护盾放开，主弹撞盾 +1 层/子射弹 +0.5 层，
      *   振频适应叠层峰值 ≥0.5）→
      * WEAPON_HULL（断言点 XC2-G：靶舰压盾，穿透掉血 ≥300；供给登记主弹 ≥3、子射弹 ≥1）→
@@ -7501,7 +7501,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                             xc2DisplacementAsserted = true
                             if (xc2ShiftDisplacementMax !in XC2_SHIFT_DISPLACEMENT_MIN..XC2_SHIFT_DISPLACEMENT_MAX) {
                                 failureReason = "xc2 shift displacement=${"%.0f".format(xc2ShiftDisplacementMax)}" +
-                                        " ∉ [$XC2_SHIFT_DISPLACEMENT_MIN, $XC2_SHIFT_DISPLACEMENT_MAX]（断言点 XC2-B：向飞行向量折跃 800su）"
+                                        " ∉ [$XC2_SHIFT_DISPLACEMENT_MIN, $XC2_SHIFT_DISPLACEMENT_MAX]（断言点 XC2-B：向飞行向量折跃 1200su）"
                                 transitionXc2Phase(XC2_PHASE_FAILED)
                             }
                         }
@@ -7559,7 +7559,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                         when {
                             contactDrop < XC2_EXPECT_CONTACT_HP_DROP -> {
                                 failureReason = "xc2 contact damage shortfall: hpDrop=${"%.0f".format(contactDrop)}" +
-                                        " < $XC2_EXPECT_CONTACT_HP_DROP（断言点 XC2-D：裂隙接触砺刃 200/s，靶舰钉在路径上）"
+                                        " < $XC2_EXPECT_CONTACT_HP_DROP（断言点 XC2-D：裂隙接触砺刃名义 200/s（装甲减伤后 ≈56/s），靶舰钉在路径上）"
                                 transitionXc2Phase(XC2_PHASE_FAILED)
                             }
 
@@ -7660,7 +7660,7 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
 
                             weaponDrop < XC2_EXPECT_WEAPON_HP_DROP -> {
                                 failureReason = "xc2 pierce damage shortfall: hpDrop=${"%.0f".format(weaponDrop)}" +
-                                        " < $XC2_EXPECT_WEAPON_HP_DROP（断言点 XC2-G：穿透 10% 面板/拍 + 子射弹结算）"
+                                        " < $XC2_EXPECT_WEAPON_HP_DROP（断言点 XC2-G：穿透按装甲格逐格 10% 面板 + 子射弹结算）"
                                 transitionXc2Phase(XC2_PHASE_FAILED)
                             }
 
@@ -11679,11 +11679,11 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private const val XC2_HULLMOD_ID = "astd_imaginary_wings"
 
         // 折跃舞台锚点：玩家舰静止朝 +X 激活（速度近零回退朝向，断言点 XC2-B 定向口径），
-        // 裂隙路径 (-800,-100)→(0,-100) 纵穿靶舰锚点；闭合爆点 x=-700..-100 步进 100，
+        // 裂隙路径 (-800,-100)→(400,-100) 纵穿靶舰锚点；闭合爆点 x=-700..400 步进 100，
         // 靶舰恰压 x=-300 爆点（断言点 XC2-E 口径）。
         private val XC2_PLAYER_ANCHOR = Vector2f(-800f, -100f)
         private val XC2_ENEMY_ANCHOR = Vector2f(-300f, -100f)
-        private val XC2_PLAYER_ARRIVAL = Vector2f(0f, -100f)
+        private val XC2_PLAYER_ARRIVAL = Vector2f(400f, -100f)
 
         // 武器舞台锚点（与折跃舞台分离，靶舰重置站位）：玩家正前方 500su（坠星残翼射程 900 内）。
         private val XC2_WEAPON_PLAYER_ANCHOR = Vector2f(-800f, 300f)
@@ -11697,26 +11697,28 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private const val XC2_REST_DAMAGE_MULT_MIN = 0.70f
         private const val XC2_REST_DAMAGE_MULT_MAX = 0.80f
 
-        // SHIFT（断言点 XC2-B/C/D）：折跃位移 800su（界 [700, 900]，容忍钉位恢复帧）；折跃窗 1.2s
+        // SHIFT（断言点 XC2-B/C/D）：折跃位移 1200su（界 [1100, 1300]，容忍钉位恢复帧）；折跃窗 1.2s
         // 内不钉舰位（裂隙插件逐帧改写 location，钉位互搏会掩盖位移证据）；速度窗口 maxSpeed 峰值
         // 砺刃 +100%（期望峰值按 (base×(1+峰值%)+常驻 flat)/静止值 实算——零幅能加速 flat 不吃百分比
-        // 乘区，容差 ±0.1 覆盖帧量化）；5.7s 转入 CLOSURE（闭合 = 激活 +6.0s：1s 折跃 + 5s 延迟）。
+        // 乘区，容差 ±0.1 覆盖帧量化）；5.2s 转入 CLOSURE（须在闭合前快照靶舰 HP：闭合 = 激活 +5.5s：
+        // 0.5s 折跃 + 5s 延迟）。
         private const val XC2_ACTIVATE_TIMEOUT = 10f
         private const val XC2_SHIFT_PIN_FREE_SECONDS = 1.2f
         private const val XC2_SHIFT_ASSERT_SECONDS = 1.5f
-        private const val XC2_SHIFT_DISPLACEMENT_MIN = 700f
-        private const val XC2_SHIFT_DISPLACEMENT_MAX = 900f
+        private const val XC2_SHIFT_DISPLACEMENT_MIN = 1100f
+        private const val XC2_SHIFT_DISPLACEMENT_MAX = 1300f
         private const val XC2_SPEED_MULT_TOLERANCE = 0.1f
-        private const val XC2_SHIFT_WINDOW_SECONDS = 5.7f
+        private const val XC2_SHIFT_WINDOW_SECONDS = 5.2f
 
-        // CLOSURE（断言点 XC2-D/E 评估）：接触掉血下界 300（砺刃 200/s × 靶舰在成形段上 ≈5s，
-        // 保守口径）；闭合掉血下界 500（砺刃 800/爆点 + 残余接触，保守口径）；+6.8s 评估。
-        private const val XC2_CLOSURE_EVAL_SECONDS = 6.8f
-        private const val XC2_EXPECT_CONTACT_HP_DROP = 300f
+        // CLOSURE（断言点 XC2-D/E 评估）：接触掉血下界 250（砺刃名义 200/s × 靶舰在成形段上 ≈5s，
+        // 统治者级最低装甲减伤后实测有效 ≈56/s ≈280，保守口径取下界 250）；闭合掉血下界 500
+        // （砺刃 800/爆点 + 残余接触，保守口径）；+6.3s 评估（闭合后 0.8s）。
+        private const val XC2_CLOSURE_EVAL_SECONDS = 6.3f
+        private const val XC2_EXPECT_CONTACT_HP_DROP = 250f
         private const val XC2_EXPECT_CLOSURE_HP_DROP = 500f
 
         // WEAPON_SHIELD/HULL（断言点 XC2-F/G）：盾相 5s 评估叠层峰值 ≥0.5（主弹撞盾 +1/子射弹 +0.5）；
-        // 体相 6s 评估穿透掉血 ≥300（10% 面板/拍 × 多拍 + 子射弹，保守口径）、
+        // 体相 6s 评估穿透掉血 ≥300（装甲格逐格 10% 面板 × 单穿多格 + 子射弹，保守口径）、
         // 供给登记主弹 ≥3（1s 循环 × 11s 两相）、子射弹 ≥1（0.2s 散发节拍）。
         private const val XC2_WEAPON_SHIELD_EVAL_SECONDS = 5f
         private const val XC2_WEAPON_HULL_EVAL_SECONDS = 6f

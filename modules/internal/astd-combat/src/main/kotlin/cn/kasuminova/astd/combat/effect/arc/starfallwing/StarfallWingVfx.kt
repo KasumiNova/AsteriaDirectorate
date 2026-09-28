@@ -11,9 +11,6 @@ import java.awt.Color
 /**
  * 坠星残翼的一次性光斑特效（规格 10-signature 坠星残翼节特效段）：
  *
- * - 炮口：每次发射在炮口放两枚无运动向量的一次性 FlareEntity——
- *   SMOOTH_DISC 盘形光斑尺寸 100→200su 扩散并同步变淡；SMOOTH 圆形光斑尺寸 100su 不变同步变淡；
- *   两者寿命 0.66s。
  * - 子射弹分裂：主弹两侧散发子射弹时在分裂点放一枚小型 SMOOTH 光斑
  *   （尺寸/寿命为 [MOTE_FLARE_SIZE_START] 等可调常量），标记分裂位置。
  *
@@ -25,18 +22,6 @@ import java.awt.Color
  * 到期显式 delete（一次性实体不托管给 BoxUtil 注册簿的常驻清理）。
  */
 object StarfallWingVfx {
-
-    /** 炮口光斑总寿命（秒，规格定值）。 */
-    const val FLARE_LIFETIME = 0.66f
-
-    private const val DISC_START_SIZE = 100f
-    private const val DISC_END_SIZE = 200f
-    private const val GLOW_SIZE = 100f
-
-    /** 炮口 alpha 包络：淡入 / 满亮 / 淡出（合计 = [FLARE_LIFETIME]）。 */
-    private const val FADE_IN = 0.06f
-    private const val FULL = 0.20f
-    private const val FADE_OUT = 0.40f
 
     /** 子射弹分裂光斑：起止尺寸（su）与寿命（秒），实机可调。 */
     private const val MOTE_FLARE_SIZE_START = 14f
@@ -62,26 +47,12 @@ object StarfallWingVfx {
     )
 
     /** engine key → 活跃光斑列表。 */
-    private const val KEY_FLARES = "astd_starfall_wing_muzzle_flares"
-
-    /** 发射瞬间在 [loc] 放两枚炮口光斑（实体创建/注册失败记 WARN 并跳过该枚，不影响另一枚）。 */
-    fun spawnMuzzleFlares(engine: CombatEngineAPI, loc: Vector2f) {
-        spawnFlare(
-            engine, loc, smoothDisc = true,
-            startSize = DISC_START_SIZE, endSize = DISC_END_SIZE,
-            lifetime = FLARE_LIFETIME, fadeIn = FADE_IN, full = FULL, fadeOut = FADE_OUT,
-        )
-        spawnFlare(
-            engine, loc, smoothDisc = false,
-            startSize = GLOW_SIZE, endSize = GLOW_SIZE,
-            lifetime = FLARE_LIFETIME, fadeIn = FADE_IN, full = FULL, fadeOut = FADE_OUT,
-        )
-    }
+    private const val KEY_FLARES = "astd_starfall_wing_split_flares"
 
     /** 子射弹分裂点在 [loc] 放一枚小型 SMOOTH 光斑（分裂位置可见性标记）。 */
     fun spawnMoteSplitFlare(engine: CombatEngineAPI, loc: Vector2f) {
         spawnFlare(
-            engine, loc, smoothDisc = false,
+            engine, loc,
             startSize = MOTE_FLARE_SIZE_START, endSize = MOTE_FLARE_SIZE_END,
             lifetime = MOTE_FLARE_LIFETIME,
             fadeIn = MOTE_FLARE_FADE_IN, full = MOTE_FLARE_FULL, fadeOut = MOTE_FLARE_FADE_OUT,
@@ -110,7 +81,6 @@ object StarfallWingVfx {
     private fun spawnFlare(
         engine: CombatEngineAPI,
         loc: Vector2f,
-        smoothDisc: Boolean,
         startSize: Float,
         endSize: Float,
         lifetime: Float,
@@ -127,7 +97,7 @@ object StarfallWingVfx {
         }
         entity.setLayer(CombatEngineLayers.ABOVE_SHIPS_AND_MISSILES_LAYER)
         entity.setAdditiveBlend()
-        if (smoothDisc) entity.setSmoothDisc() else entity.setSmooth()
+        entity.setSmooth()
         entity.isFlick = false
         // 不喂 bloom：additive 光斑 glow 叠 bloom 会过曝成盖住整舰的白团（实机判例）
         entity.glowPower = 0f

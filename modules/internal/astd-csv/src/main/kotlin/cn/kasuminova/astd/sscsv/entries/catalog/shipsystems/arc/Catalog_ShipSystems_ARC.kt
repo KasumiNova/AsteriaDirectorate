@@ -7,11 +7,11 @@ import cn.kasuminova.astd.sscsv.entries.catalog.shipsystems.systemName
 
 /**
  * 淬刃级舰船系统「裂隙折跃」（规格 blue/10-unique.md XC-002 节）：
- * 短暂相位（1s 激活窗口）并向飞行向量折跃 800su，途中撕开虚空裂隙（接触持续能量伤害），
+ * 短暂相位（0.5s 激活窗口）并向飞行向量折跃 1200su（缓动曲线加减速），途中撕开虚空裂隙（接触持续能量伤害），
  * 折跃完成后 5s 裂隙闭合并沿路径爆炸。stats 脚本 [RiftShiftSystemStats] 继承 PhaseCloakStats
  * （相位机制原版口径），折跃位移/裂隙伤害/闭合爆炸由脚本侧承担。
  *
- * 非开关相位（toggle=false + active=1.0s）：相位斗篷类系统对齐原版 phasecloak 标记组
+ * 非开关相位（toggle=false + active=0.5s）：相位斗篷类系统对齐原版 phasecloak 标记组
  * （isPhaseCloak/hardFlux/noHardDissipation/noFiring/noShield）；冷却 8s 为裁定值
  * （设计案未给，旧坍缩折跃的充能池消耗语义已随机制删除）。
  */
@@ -26,7 +26,7 @@ object Sys_astd_rift_shift : ShipSystemWithSystemFileEntry() {
     override val aiScript: String = "cn.kasuminova.astd.combat.shipsystems.RiftShiftSystemAI"
 
     override val chargeUp: Double = 0.25
-    override val active: Double = 1.0
+    override val active: Double = 0.5
     override val down: Double = 0.25
     override val cooldown: Double = 8.0
 

@@ -63,4 +63,24 @@ class RiftShiftTuningTest {
         assertTrue(RiftShiftTuning.contactsRift(Vector2f(-100f, 0f), radius, from, to))
         assertFalse(RiftShiftTuning.contactsRift(Vector2f(-100.1f, 0f), radius, from, to))
     }
+
+    @Test
+    fun `折跃缓动曲线 端点恒等 中点过半 单调不减 域外钳制`() {
+        assertEquals(0f, RiftShiftTuning.easeProgress(0f), 1e-6f, "起点 0→0")
+        assertEquals(1f, RiftShiftTuning.easeProgress(1f), 1e-6f, "终点 1→1")
+        assertEquals(0.5f, RiftShiftTuning.easeProgress(0.5f), 1e-6f, "中点 0.5→0.5")
+        // smoothstep 加速段慢于线性、减速段快于线性（起步/到达速度为零）
+        assertTrue(RiftShiftTuning.easeProgress(0.25f) < 0.25f, "前半程慢于线性（加速段）")
+        assertTrue(RiftShiftTuning.easeProgress(0.75f) > 0.75f, "后半程快于线性（减速段）")
+        // 单调不减（密集采样）
+        var prev = -1f
+        for (i in 0..100) {
+            val v = RiftShiftTuning.easeProgress(i / 100f)
+            assertTrue(v >= prev, "单调不减：t=${i / 100f}")
+            prev = v
+        }
+        // 域外钳制
+        assertEquals(0f, RiftShiftTuning.easeProgress(-0.3f), 1e-6f)
+        assertEquals(1f, RiftShiftTuning.easeProgress(1.3f), 1e-6f)
+    }
 }

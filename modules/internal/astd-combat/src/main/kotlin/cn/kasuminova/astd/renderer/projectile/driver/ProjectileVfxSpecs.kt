@@ -41,11 +41,18 @@ object ProjectileVfxSpecs {
         "astd_starfall_echo_shot_final" to { range -> starfallEchoFinalShot("astd_starfall_echo_shot_final", range) },
         // 坠星残翼主弹（XC-002 内置主炮，blue/10-signature.md 坠星残翼节）：紫色锥形射弹，
         // 通用四层拖尾 + 同色三角碎片航迹（0.01s×2，统一向前缓慢飞行）+ 同色马赫环（0.1s 一枚）；
-        // 炮口两枚一次性 Flare 由 StarfallWingOnFireEffect 承担（设计案特效节）。
+        // 炮口一次性 Flare 已移除（设计案特效节修订：炮口大光斑并入螺栓弹头层）。
         "astd_starfall_wing_shot" to { range -> starfallWingShot("astd_starfall_wing_shot", range) },
         // 坠星残翼追踪子射弹：紫色小光团（装饰层关闭保持群体可读性——星尘光尘同款裁定），带长固定。
+        // 子射弹为真实 MissileAPI（追踪 AI 需要）：bolt 组件默认对导弹自禁用，须显式接管补回弹头；
+        // 导弹 spec 无 length/width 键，螺栓尺寸显式给定（全长 28 × 全宽 8，对齐带宽 14 的弹头观感）。
         "astd_starfall_wing_mote" to {
-            simpleProjectileVfx("astd_starfall_wing_mote", violet(), width = 4f, length = 100f, decorTrail = false)
+            simpleProjectileVfx("astd_starfall_wing_mote", violet(), width = 4f, length = 100f, decorTrail = false) {
+                bolt {
+                    onMissile()
+                    size(28f, 8f)
+                }
+            }
         },
         // 电荷针刺族：固定短拖尾 180、无 zappy 装饰层（去随机扭转抖动）、宽度 −75%。
         "astd_charge_needle_shot" to {

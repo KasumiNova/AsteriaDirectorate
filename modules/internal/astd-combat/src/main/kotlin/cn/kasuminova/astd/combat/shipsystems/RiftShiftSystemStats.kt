@@ -19,9 +19,9 @@ import org.lwjgl.util.vector.Vector2f
  *
  * 相位机制与原版相位线圈（[PhaseCloakStats]）完全一致——继承即全部。本类额外承担：
  * - 折跃位移与虚空裂隙：IN 边沿记录裂隙状态（起点/终点 = [RiftShiftTuning.shiftDirection]
- *   × 800su），引擎级共享每帧插件推进——1s 折跃窗内按进度插值舰位（裂隙成形段随舰位
- *   拉长）、每 0.2s 一拍对接触成形段的敌舰结算接触伤害、折跃完成后 5s 沿路径每 100su
- *   一个爆点闭合爆炸；裂隙星云逐帧特效走 [RiftShiftVfx]；
+ *   × [RiftShiftTuning.SHIFT_DISTANCE]su），引擎级共享每帧插件推进——0.5s 折跃窗内按缓动曲线
+ *   插值舰位（裂隙成形段随舰位拉长）、每 0.2s 一拍对接触成形段的敌舰结算接触伤害、
+ *   折跃完成后 5s 沿路径每 100su 一个爆点闭合爆炸；裂隙星云逐帧特效走 [RiftShiftVfx]；
  * - HUD 状态行中文化：原版 [PhaseCloakStats.maintainStatus] 硬编码英文状态文本，
  *   这里按相同结构输出 I18n 文本，并为玩家船维持裂隙闭合倒计时行。
  *
@@ -123,12 +123,13 @@ class RiftShiftSystemStats : PhaseCloakStats() {
         })
     }
 
-    /** 单条裂隙的逐帧推进：折跃位移（1s 插值）、成形段跟踪、接触结算拍、裂隙本体与星云。 */
+    /** 单条裂隙的逐帧推进：折跃位移（0.5s 缓动插值）、成形段跟踪、接触结算拍、裂隙本体与星云。 */
     private fun advanceRift(engine: CombatEngineAPI, riftKey: String, rift: RiftState, amount: Float, now: Float) {
         val ship = rift.ship
         val elapsed = now - rift.startTime
         if (elapsed <= RiftShiftTuning.SHIFT_DURATION) {
-            val progress = (elapsed / RiftShiftTuning.SHIFT_DURATION).coerceIn(0f, 1f)
+            // 缓动曲线插值（smoothstep）：起步/到达速度为零，加减速自然成立
+            val progress = RiftShiftTuning.easeProgress(elapsed / RiftShiftTuning.SHIFT_DURATION)
             val loc = Vector2f(
                 rift.from.x + (rift.to.x - rift.from.x) * progress,
                 rift.from.y + (rift.to.y - rift.from.y) * progress,

@@ -10,7 +10,7 @@ import org.lwjgl.util.vector.Vector2f
  * 供 OnFire/EveryFrame 调用并由单元测试直接驱动。
  *
  * 设计案锁死项（不随难度缩放）：每层承伤削弱 10%、层数流失 1 层/s、穿盾门槛 10 层、
- * 穿透/散发节拍 0.2s、子射弹 20% 面板与 +0.5 层。
+ * 穿盾/散发节拍 0.2s（船体/装甲按格结算不吃时间拍）、子射弹 20% 面板与 +0.5 层。
  */
 object StarfallWingTuning {
 
@@ -19,10 +19,11 @@ object StarfallWingTuning {
     const val MOTE_WEAPON_ID = "astd_starfall_wing_mote_launcher"
     const val MOTE_SPEC_ID = "astd_starfall_wing_mote"
 
-    /** 穿透结算节拍（秒）：每拍对接触的护盾/船体/装甲结算一次 [PIERCE_TICK_RATIO] 面板伤害。 */
+    /** 穿盾结算节拍（秒）：穿透护盾时对接触护盾每拍结算一次 [PIERCE_TICK_RATIO] 面板伤害
+     * （船体/装甲改为按格结算、非舰船目标按穿越结算，均不再吃时间拍）。 */
     const val PIERCE_TICK_SECONDS = 0.2f
 
-    /** 穿透单次结算伤害占面板比例（10%）。 */
+    /** 穿透单次结算伤害占面板比例（10%）：穿盾每拍、每装甲格单次穿越一次、导弹/陨石单次穿越一次。 */
     const val PIERCE_TICK_RATIO = 0.1f
 
     /** 子射弹散发节拍（秒）：主弹飞行中每拍向两侧随机散发一枚追踪子射弹。 */
@@ -89,5 +90,18 @@ object StarfallWingTuning {
         val dx = p.x - cx
         val dy = p.y - cy
         return kotlin.math.sqrt(dx * dx + dy * dy)
+    }
+
+    /**
+     * 点到线段的最近点（纯函数；RiftShiftTuning 同名实现同型注记——裂隙伤害落点同款）。
+     * 穿透扫掠的装甲格表面接触点与非舰船目标接触点取数用；退化为点的线段返回端点 a。
+     */
+    fun closestPointOnSegment(p: Vector2f, a: Vector2f, b: Vector2f): Vector2f {
+        val abx = b.x - a.x
+        val aby = b.y - a.y
+        val lenSq = abx * abx + aby * aby
+        if (lenSq <= 1e-6f) return Vector2f(a)
+        val t = (((p.x - a.x) * abx + (p.y - a.y) * aby) / lenSq).coerceIn(0f, 1f)
+        return Vector2f(a.x + abx * t, a.y + aby * t)
     }
 }

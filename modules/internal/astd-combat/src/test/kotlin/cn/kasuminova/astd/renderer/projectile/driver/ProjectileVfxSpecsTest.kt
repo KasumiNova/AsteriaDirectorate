@@ -296,4 +296,13 @@ class ProjectileVfxSpecsTest {
         assertEquals(0.07f, tail.alpha, 1e-3f)
     }
 
+    @Test
+    fun `坠星残翼子射弹：导弹螺栓显式接管 尺寸覆盖 28×8`() {
+        val vfx = assertNotNull(ProjectileVfxSpecs.build("astd_starfall_wing_mote"))
+        val bolt = assertNotNull(vfx.tree.bolt, "子射弹为 MissileAPI，bolt 默认自禁用，须显式 onMissile 接管")
+        assertTrue(bolt.allowMissile, "子射弹 bolt 须显式接管导弹")
+        assertEquals(28f, bolt.lengthOverride, "导弹 spec 无 length 键，显式给定全长 28")
+        assertEquals(8f, bolt.widthOverride, "导弹 spec 无 width 键，显式给定全宽 8")
+    }
+
 }

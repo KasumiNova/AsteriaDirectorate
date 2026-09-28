@@ -303,6 +303,9 @@ class BoltBuilder {
     internal var isOff = false; private set
     private var texturePath = BoltSpec.DEFAULT_TEXTURE
     private var color = rgba(0xFFFFFFC8L)
+    private var allowMissile = false
+    private var lengthOverride: Float? = null
+    private var widthOverride: Float? = null
 
     /** 关闭 Box 螺栓弹头（弹体视觉由其它路径承担，如原版导弹贴图）。 */
     fun off() {
@@ -319,9 +322,27 @@ class BoltBuilder {
         this.color = rgba(color)
     }
 
+    /**
+     * 接管导弹弹体（默认关闭：MissileAPI 保留原版贴图渲染，组件 attach 时自禁用）。
+     * 开启时原版贴图须另行屏蔽，且必须用 [size] 显式给尺寸（导弹 spec 无 length/width 键）；
+     * 导弹无 TrailExtender 尾迹真值，螺栓按全长渲染、无出生伸入。
+     */
+    fun onMissile() {
+        allowMissile = true
+    }
+
+    /** 螺栓尺寸显式覆盖（su）：length=全长（飞行向），width=全宽（横向）；省略 = 读弹体 spec 的 length/width。 */
+    fun size(length: Float, width: Float) {
+        lengthOverride = length
+        widthOverride = width
+    }
+
     internal fun build(): BoltSpec = BoltSpec(
         texturePath = texturePath,
         color = color,
+        allowMissile = allowMissile,
+        lengthOverride = lengthOverride,
+        widthOverride = widthOverride,
     )
 }
 

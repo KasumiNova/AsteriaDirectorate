@@ -23,7 +23,7 @@ object RiftShiftTuning {
     const val SHIFT_DISTANCE = 800f
 
     /** 折跃时长（秒，与 .system active 窗口一致）。 */
-    const val SHIFT_DURATION = 1.0f
+    const val SHIFT_DURATION = 0.5f
 
     /** 裂隙接触半宽（su，裁定值）：舰心到裂隙段距离 ≤ 半宽 + 舰船碰撞半径 判定接触。 */
     const val RIFT_HALF_WIDTH = 40f
@@ -77,6 +77,16 @@ object RiftShiftTuning {
     /** 裂隙接触判定（纯函数）：舰心到裂隙段的最短距离 ≤ 半宽 + 舰船碰撞半径。 */
     fun contactsRift(shipLoc: Vector2f, shipRadius: Float, from: Vector2f, to: Vector2f): Boolean =
         distanceToSegment(shipLoc, from, to) <= RIFT_HALF_WIDTH + shipRadius
+
+    /**
+     * 折跃位移缓动（纯函数）：smoothstep 3t²−2t³，[t] 钳 [0,1]。
+     * 端点 0→0 / 1→1、中点 0.5→0.5、单调不减；端点导数为零——速度即位移导数，
+     * 曲线插值后起步加速/到达减速自然成立，无需额外速度窗口。
+     */
+    fun easeProgress(t: Float): Float {
+        val x = t.coerceIn(0f, 1f)
+        return x * x * (3f - 2f * x)
+    }
 
     /** 点到线段的最近点（纯函数）：伤害落点方向判定用；退化为点的线段返回端点 a。 */
     fun closestPointOnSegment(p: Vector2f, a: Vector2f, b: Vector2f): Vector2f {

@@ -17,7 +17,7 @@ import com.fs.starfarer.api.mission.MissionDefinitionPlugin;
  * 靠插件 stabilize 钉在折跃路径上）。全走 reserves 由插件手动 spawn
  * （范式同 lens_grav_storm_zw002），玩家舰身份由插件 setPlayerShipExternal 赋予。
  * 相位机验证：SPAWN → WINGS_OBSERVE（静止伤害乘区 −25%）→ SHIFT（useSystem 点火 /
- * 800su 位移 / 速度窗口峰值 / 裂隙接触掉血）→ CLOSURE（闭合爆炸掉血）→
+ * 1200su 位移 / 速度窗口峰值 / 裂隙接触掉血）→ CLOSURE（闭合爆炸掉血）→
  * WEAPON（主弹/子射弹供给登记 + 目标振频适应叠层 + 穿透掉血）。
  */
 public final class MissionDefinition implements MissionDefinitionPlugin {

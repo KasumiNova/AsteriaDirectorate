@@ -193,7 +193,7 @@ object Wpn_astd_starfall_wing : WeaponDataEntry(), SsProjProjectileOutputs {
     override val name: String = weaponName(id)
     override val tier: Int = 3
     override val baseValue: Int = 50000
-    override val range: Int = 900
+    override val range: Int = 1200
     override val damagePerShot: Int = 1000
 
     // 单发循环 1s（chargedown）：tooltip 统计即面板口径
@@ -248,7 +248,8 @@ object Wpn_astd_starfall_wing_mote_launcher : WeaponDataEntry(), SsProjMissileOu
     override val name: String = weaponName(id)
     override val tier: Int = 5
     override val baseValue: Int = 0
-    override val range: Int = 900
+    // 与主武器射程列保持一致（脚本 spawn 不消费射程，仅保数据真相不分裂）
+    override val range: Int = 1200
 
     // 主弹面板 20%（1000 × 0.2）；真实结算由主武器脚本覆写 damageAmount
     override val damagePerShot: Int = 200

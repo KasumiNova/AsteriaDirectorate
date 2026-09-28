@@ -58,4 +58,22 @@ class StarfallWingTuningTest {
             1e-6f,
         )
     }
+
+    @Test
+    fun `点到线段最近点 投影内取垂足 投影外钳端点 退化段返回端点`() {
+        val a = Vector2f(0f, 0f)
+        val b = Vector2f(100f, 0f)
+        val foot = StarfallWingTuning.closestPointOnSegment(Vector2f(40f, 30f), a, b)
+        assertEquals(40f, foot.x, 1e-6f, "投影在线段内取垂足")
+        assertEquals(0f, foot.y, 1e-6f)
+        val clampA = StarfallWingTuning.closestPointOnSegment(Vector2f(-20f, 30f), a, b)
+        assertEquals(0f, clampA.x, 1e-6f, "投影在 a 外侧钳到端点 a")
+        assertEquals(0f, clampA.y, 1e-6f)
+        val clampB = StarfallWingTuning.closestPointOnSegment(Vector2f(140f, -10f), a, b)
+        assertEquals(100f, clampB.x, 1e-6f, "投影在 b 外侧钳到端点 b")
+        assertEquals(0f, clampB.y, 1e-6f)
+        val degenerate = StarfallWingTuning.closestPointOnSegment(Vector2f(5f, 5f), a, Vector2f(a))
+        assertEquals(0f, degenerate.x, 1e-6f, "退化线段返回端点 a")
+        assertEquals(0f, degenerate.y, 1e-6f)
+    }
 }

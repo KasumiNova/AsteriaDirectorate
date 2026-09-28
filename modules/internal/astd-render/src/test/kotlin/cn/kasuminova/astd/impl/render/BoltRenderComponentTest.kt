@@ -76,6 +76,28 @@ class BoltRenderComponentTest {
     }
 
     @Test
+    fun `导弹合成尾点：沿朝向反推全长 喂 boltFrame 后拉满且中心退半程`() {
+        // 0° 朝向：尾 = 头 − (specLength, 0)
+        val tail = missileBoltTail(Vector2f(100f, 20f), 0f, 28f)
+        assertEquals(72f, tail.x, 1e-3f)
+        assertEquals(20f, tail.y, 1e-3f)
+        val frame = boltFrame(Vector2f(100f, 20f), tail, 0f, 28f)
+        assertEquals(1f, frame.scaleX, 1e-3f, "合成全长尾点 → 无出生伸入")
+        assertEquals(86f, frame.center.x, 1e-3f, "中心 = 头退半程")
+        assertEquals(20f, frame.center.y, 1e-3f)
+    }
+
+    @Test
+    fun `导弹合成尾点任意朝向几何一致（90 度）`() {
+        val tail = missileBoltTail(Vector2f(50f, 50f), 90f, 28f)
+        assertEquals(50f, tail.x, 1e-3f)
+        assertEquals(22f, tail.y, 1e-3f)
+        val frame = boltFrame(Vector2f(50f, 50f), tail, 90f, 28f)
+        assertEquals(1f, frame.scaleX, 1e-3f)
+        assertEquals(36f, frame.center.y, 1e-3f)
+    }
+
+    @Test
     fun `命中光晕伤害缩放锚点`() {
         assertEquals(0.8f, hitGlowScale(0f), 1e-3f)
         assertEquals(0.8f, hitGlowScale(100f), 1e-3f, "sqrt(0.4)≈0.63 被下限钳住")

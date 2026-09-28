@@ -31,7 +31,10 @@ import kotlin.math.sqrt
  * 弹体移出引擎即删除实体；命中时补发一次命中光晕（原版用 .proj 的 fringeColor 画 hit glow，
  * 屏蔽后 alpha=0 不可见，这里用 DSL 染色补回）。
  *
- * 导弹（MissileAPI）不接管：原版导弹贴图渲染保留，组件 attach 时直接禁用自身。
+ * 导弹（MissileAPI）默认不接管：原版导弹贴图渲染保留，组件 attach 时直接禁用自身；
+ * [BoltSpec.allowMissile] 开启时接管（原版贴图须另行屏蔽，尺寸取 [BoltSpec.lengthOverride]/
+ * [BoltSpec.widthOverride]——导弹 spec 无 length/width 键；导弹 getTailEnd 恒 null，
+ * 螺栓尾点沿朝向反推全长合成，无出生伸入）。
  * BoxUtil 未就绪/建实体失败时 WARN 一次并禁用自身（不重试风暴），弹体其余特效层不受影响。
  */
 class BoltRenderComponent(
@@ -47,22 +50,24 @@ class BoltRenderComponent(
     private var specLength = 0f
     private var specWidth = 0f
     private var hitGlowRadius = 0f
+    private var missileMode = false
 
     override fun onAttachSelf(ctx: RenderContext): Boolean {
         val engine = ctx.engine ?: return false
         val projectile = (ctx.host as? ProjectileHost)?.projectile ?: return false
-        if (projectile is MissileAPI) {
+        if (projectile is MissileAPI && !spec.allowMissile) {
             disabled = true
             return true
         }
+        missileMode = projectile is MissileAPI
         val projSpec = projectile.projectileSpec
         if (projSpec == null) {
             log.warn("ASTD box bolt 无法读取 projectileSpec：id=$id，本弹体螺栓层缺失，其余特效层照常")
             disabled = true
             return true
         }
-        specLength = projSpec.length
-        specWidth = projSpec.width
+        specLength = spec.lengthOverride ?: projSpec.length
+        specWidth = spec.widthOverride ?: projSpec.width
         hitGlowRadius = projSpec.hitGlowRadius
         if (specLength <= 0f || specWidth <= 0f) {
             log.warn("ASTD box bolt 弹体尺寸非法（length=$specLength width=$specWidth）：id=$id，本弹体螺栓层缺失，其余特效层照常")
@@ -129,10 +134,14 @@ class BoltRenderComponent(
     private fun syncBolt(ctx: RenderContext, projectile: DamagingProjectileAPI) {
         val brightness = projectile.brightness
         if (!brightness.isFinite()) return
+        val facing = BoxUtilCombatVfx.normalizeFacingDeg(ctx.frame.facing)
+        // 导弹无 TrailExtender 尾迹真值（getTailEnd 恒 null）：沿朝向反推 specLength 合成全长尾点，
+        // 螺栓按全长渲染（无出生伸入）；实弹仍消费原版 tailEnd 真值。
+        val tail = projectile.tailEnd ?: if (missileMode) missileBoltTail(projectile.location, facing, specLength) else null
         val frame = boltFrame(
             head = projectile.location,
-            tail = projectile.tailEnd,
-            facingDeg = BoxUtilCombatVfx.normalizeFacingDeg(ctx.frame.facing),
+            tail = tail,
+            facingDeg = facing,
             specLength = specLength,
         )
         val alpha = brightness * brightness * spec.color.alpha
@@ -211,3 +220,16 @@ internal fun boltFrame(
 /** 命中光晕伤害缩放：sqrt(damage/250) 钳 [0.8, 2.5]，对齐原版按伤害放大的观感量级。 */
 internal fun hitGlowScale(damageAmount: Float): Float =
     (sqrt((damageAmount.coerceAtLeast(0f)) / 250f)).coerceIn(0.8f, 2.5f)
+
+/**
+ * 导弹螺栓尾点（纯函数）：MissileAPI.getTailEnd 恒 null（无 TrailExtender），
+ * 沿朝向反推 specLength 合成全长尾点——喂给 [boltFrame] 后 scaleX=1（全长螺栓）、
+ * 中心 = 头沿朝向退半程。
+ */
+internal fun missileBoltTail(head: Vector2f, facingDeg: Float, specLength: Float): Vector2f {
+    val rad = Math.toRadians(facingDeg.toDouble())
+    return Vector2f(
+        head.x - (kotlin.math.cos(rad) * specLength).toFloat(),
+        head.y - (kotlin.math.sin(rad) * specLength).toFloat(),
+    )
+}
