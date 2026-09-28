@@ -1,15 +1,15 @@
 {
-  "hullName": "淬刃",
+  "hullName": "星翼",
   "hullId": "astd_xc_002",
   "hullSize": "DESTROYER",
   "spriteName": "graphics/ships/astd_xc_002.png",
   "style": "ASTD_HIGH_TECH",
-  "height": 213,
-  "width": 148,
-  "center": [74, 106],
-  "collisionRadius": 106,
-  "shieldCenter": [0, 0],
-  "shieldRadius": 120,
+  "height": 263,
+  "width": 202,
+  "center": [101, 129.5],
+  "collisionRadius": 112,
+  "shieldCenter": [0, -0],
+  "shieldRadius": 125,
   "viewOffset": 0,
   "builtInMods": [
     "astd_nano_restoration_protocol",
@@ -27,7 +27,7 @@
       "mount": "HARDPOINT",
       "arc": 10,
       "angle": 0,
-      "locations": [36, -0]
+      "locations": [40, -0]
     },
     {
       "id": "WS BLOOM",
@@ -36,7 +36,7 @@
       "mount": "TURRET",
       "arc": 0,
       "angle": 0,
-      "locations": [0, 0],
+      "locations": [-4, -0],
       "renderOrderMod": 3
     },
     {
@@ -46,7 +46,7 @@
       "mount": "TURRET",
       "arc": 180,
       "angle": 45,
-      "locations": [-24.5, 25.5]
+      "locations": [-23, 26]
     },
     {
       "id": "WS 003",
@@ -55,138 +55,98 @@
       "mount": "TURRET",
       "arc": 180,
       "angle": -45,
-      "locations": [-24.5, -25.5]
+      "locations": [-23, -26]
+    },
+    {
+      "id": "LB 1",
+      "size": "LARGE",
+      "type": "LAUNCH_BAY",
+      "mount": "HIDDEN",
+      "arc": 360,
+      "angle": 0,
+      "locations": [-82.5, -0]
     }
   ],
   "engineSlots": [
     {
-      "location": [-84, 20],
-      "length": 40,
-      "width": 10,
+      "location": [-81.5, 21],
+      "length": 65,
+      "width": 15,
       "angle": 180,
       "contrailSize": 30,
       "style": "ASTD_ARC"
     },
     {
-      "location": [-84, 16],
-      "length": 22,
-      "width": 6,
-      "angle": 180,
-      "contrailSize": 17,
-      "style": "ASTD_ARC"
-    },
-    {
-      "location": [-84, 24],
-      "length": 22,
-      "width": 6,
-      "angle": 180,
-      "contrailSize": 17,
-      "style": "ASTD_ARC"
-    },
-    {
-      "location": [-84, -20],
-      "length": 40,
-      "width": 10,
+      "location": [-81.5, -21],
+      "length": 65,
+      "width": 15,
       "angle": -180,
       "contrailSize": 30,
       "style": "ASTD_ARC"
     },
     {
-      "location": [-84, -24],
-      "length": 22,
-      "width": 6,
-      "angle": -180,
-      "contrailSize": 17,
-      "style": "ASTD_ARC"
-    },
-    {
-      "location": [-84, -16],
-      "length": 22,
-      "width": 6,
-      "angle": -180,
-      "contrailSize": 17,
-      "style": "ASTD_ARC"
-    },
-    {
-      "location": [-59, 47],
-      "length": 40,
+      "location": [-59.5, 43],
+      "length": 50,
       "width": 10,
-      "angle": 145,
+      "angle": 135,
       "contrailSize": 30,
       "style": "ASTD_ARC"
     },
     {
-      "location": [-61.5, 43.5],
-      "length": 22,
-      "width": 6,
-      "angle": 145,
-      "contrailSize": 17,
-      "style": "ASTD_ARC"
-    },
-    {
-      "location": [-56.5, 50.5],
-      "length": 22,
-      "width": 6,
-      "angle": 145,
-      "contrailSize": 17,
-      "style": "ASTD_ARC"
-    },
-    {
-      "location": [-59, -47],
-      "length": 40,
+      "location": [-59.5, -43],
+      "length": 50,
       "width": 10,
-      "angle": -145,
+      "angle": -135,
       "contrailSize": 30,
       "style": "ASTD_ARC"
     },
     {
-      "location": [-56.5, -50.5],
-      "length": 22,
-      "width": 6,
-      "angle": -145,
-      "contrailSize": 17,
+      "location": [-68.5, 40],
+      "length": 30,
+      "width": 10,
+      "angle": 135,
+      "contrailSize": 30,
       "style": "ASTD_ARC"
     },
     {
-      "location": [-61.5, -43.5],
-      "length": 22,
-      "width": 6,
-      "angle": -145,
-      "contrailSize": 17,
+      "location": [-68.5, -40],
+      "length": 30,
+      "width": 10,
+      "angle": -135,
+      "contrailSize": 30,
       "style": "ASTD_ARC"
-    }  ],
+    }
+  ],
   "bounds": [
-    -104, -6,
-    -85.5, -18.5,
-    -92.5, -32.5,
-    -90.5, -40.5,
-    -73, -37.5,
-    -59, -48.5,
-    -67, -74,
-    -55.5, -74,
-    -28.5, -52.5,
-    -13, -63,
-    -6.5, -57.5,
-    -9, -43.5,
-    41, -21.5,
-    53, -33.5,
-    81, -19,
-    104.5, -5,
-    104.5, 5,
-    81, 19,
-    53, 33.5,
-    41, 21.5,
-    -9, 43.5,
-    -6.5, 57.5,
-    -13, 63,
-    -28.5, 52.5,
-    -55.5, 74,
-    -67, 74,
-    -59, 48.5,
-    -73, 37.5,
-    -90.5, 40.5,
-    -92.5, 32.5,
-    -85.5, 18.5,
-    -104, 6
+    -103, -7,
+    -83.5, -16.5,
+    -90.5, -33.5,
+    -90, -41.5,
+    -63, -40,
+    -65.5, -75.5,
+    -55, -75.5,
+    -27, -52.5,
+    -12.5, -64.5,
+    -4, -60,
+    -8.5, -43.5,
+    17.5, -31,
+    55.5, -33.5,
+    84.5, -17.5,
+    105.5, -7,
+    105.5, 7,
+    84.5, 17.5,
+    55.5, 33.5,
+    17.5, 31,
+    -8.5, 43.5,
+    -4, 60,
+    -12.5, 64.5,
+    -27, 52.5,
+    -55, 75.5,
+    -65.5, 75.5,
+    -63, 40,
+    -90, 41.5,
+    -90.5, 33.5,
+    -83.5, 16.5,
+    -103, 7
   ]
 }
