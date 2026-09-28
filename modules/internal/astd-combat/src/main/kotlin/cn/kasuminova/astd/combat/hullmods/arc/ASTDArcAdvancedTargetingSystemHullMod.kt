@@ -1,12 +1,11 @@
 package cn.kasuminova.astd.combat.hullmods.arc
 
 import cn.kasuminova.astd.combat.hullmods.base.ASTDHullModTooltipRenderer
+import cn.kasuminova.astd.combat.hullmods.base.IncompatibleHullmodStripper
 import cn.kasuminova.astd.internal.i18n.I18n
-import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseHullMod
 import com.fs.starfarer.api.combat.MutableShipStatsAPI
 import com.fs.starfarer.api.combat.ShipAPI
-import com.fs.starfarer.api.combat.ShipVariantAPI
 import com.fs.starfarer.api.combat.WeaponAPI
 import com.fs.starfarer.api.combat.listeners.WeaponBaseRangeModifier
 import com.fs.starfarer.api.combat.listeners.WeaponOPCostModifier
@@ -27,8 +26,11 @@ import kotlin.math.roundToInt
  *    （战斗内 WeaponBaseRangeModifier 监听器逐武器结算，see [shortRangeFlatBonus]）；
  * 5. 小型武器装配点 -1 再 -20%，中型武器 -2 再 -20%
  *    （WeaponOPCostModifier 监听器，装配结算唯一入口 [weaponOpCost]）；
- * 6. 不兼容任何其他目标定位系统——创建前后双路径五路清理（stripForbiddenHullMods），
- *    原版候选船插不受控无法灰掉，接受"装上即清理"行为（SKILL: hullmod-incompatibility-guidelines）。
+ * 6. 不兼容任何其他目标定位系统——互斥走 [IncompatibleHullmodStripper] 延迟清理：
+ *    applyEffectsBeforeShipCreation 只检测入队（原版 updateStatsForOpCosts 实时迭代 hullMods
+ *    期间回调本方法，结构性 removeMod 必抛 CME），五路清理延后到 AfterCreation/advanceInCombat/
+ *    战役每帧 drainer 安全点执行；原版候选船插不受控无法灰掉，接受"装上即清理"行为
+ *    （SKILL: hullmod-incompatibility-guidelines）。
  *
  * OP 减免与短射程补偿数学抽为纯函数（单元测试直接驱动）。
  *
@@ -68,8 +70,6 @@ class ASTDArcAdvancedTargetingSystemHullMod : BaseHullMod() {
             accentColor = Color(60, 150, 230),
         )
 
-        private val log = Global.getLogger(ASTDArcAdvancedTargetingSystemHullMod::class.java)
-
         /**
          * 短射程武器基础射程补偿（纯函数）：基础射程 < [SHORT_RANGE_THRESHOLD] 时补偿
          * min(阈值 - 基础射程, [SHORT_RANGE_MAX_FLAT])，其余 0。
@@ -94,7 +94,12 @@ class ASTDArcAdvancedTargetingSystemHullMod : BaseHullMod() {
     }
 
     override fun applyEffectsBeforeShipCreation(hullSize: ShipAPI.HullSize, stats: MutableShipStatsAPI, id: String) {
-        stripForbiddenHullMods(stats.variant)
+        // 只检测入队：本回调可能在原版 OP 结算的 hullMods 实时迭代内触发，结构性移除会抛 CME
+        IncompatibleHullmodStripper.requestStrip(
+            stats.variant,
+            INCOMPATIBLE_TARGETING_HULLMODS,
+            ASTDArcProductionShipIds.HULLMOD_ARC_ADVANCED_TARGETING_SYSTEM,
+        )
 
         stats.ballisticWeaponRangeBonus.modifyPercent(id, RANGE_PERCENT)
         stats.energyWeaponRangeBonus.modifyPercent(id, RANGE_PERCENT)
@@ -110,10 +115,17 @@ class ASTDArcAdvancedTargetingSystemHullMod : BaseHullMod() {
     }
 
     override fun applyEffectsAfterShipCreation(ship: ShipAPI, id: String) {
-        stripForbiddenHullMods(ship.variant)
+        // ShipFactory 迭代 getAllMods() 快照，此处入队并立即清理是安全的
+        IncompatibleHullmodStripper.requestStrip(
+            ship.variant,
+            INCOMPATIBLE_TARGETING_HULLMODS,
+            ASTDArcProductionShipIds.HULLMOD_ARC_ADVANCED_TARGETING_SYSTEM,
+        )
+        IncompatibleHullmodStripper.drainPending()
     }
 
     override fun advanceInCombat(ship: ShipAPI, amount: Float) {
+        IncompatibleHullmodStripper.drainPending()
         if (ship.isHulk) return
         if (!ship.hasListenerOfClass(ShortWeaponBaseRangeModifier::class.java)) {
             ship.addListener(ShortWeaponBaseRangeModifier())
@@ -157,24 +169,6 @@ class ASTDArcAdvancedTargetingSystemHullMod : BaseHullMod() {
     private fun hasIncompatibleTargetingSystem(ship: ShipAPI): Boolean {
         val variant = ship.variant ?: return false
         return INCOMPATIBLE_TARGETING_HULLMODS.any { variant.hasHullMod(it) }
-    }
-
-    private fun stripForbiddenHullMods(variant: ShipVariantAPI?) {
-        variant ?: return
-        INCOMPATIBLE_TARGETING_HULLMODS.forEach { forbiddenId ->
-            val installed = variant.hasHullMod(forbiddenId) ||
-                    forbiddenId in variant.sMods ||
-                    forbiddenId in variant.sModdedBuiltIns ||
-                    forbiddenId in variant.suppressedMods
-            if (installed) {
-                log.info("astd_arc_advanced_targeting_system: 移除不兼容的目标定位系统船插 $forbiddenId（variant=${variant.hullVariantId}）")
-            }
-            variant.removeMod(forbiddenId)
-            variant.removePermaMod(forbiddenId)
-            variant.sMods.remove(forbiddenId)
-            variant.sModdedBuiltIns.remove(forbiddenId)
-            variant.removeSuppressedMod(forbiddenId)
-        }
     }
 
     private class WeaponOPCostReduction : WeaponOPCostModifier {

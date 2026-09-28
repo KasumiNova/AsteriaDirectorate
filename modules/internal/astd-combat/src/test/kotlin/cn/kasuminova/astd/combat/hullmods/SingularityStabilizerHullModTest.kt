@@ -1,21 +1,24 @@
 package cn.kasuminova.astd.combat.hullmods
 
 import cn.kasuminova.astd.combat.hullmods.base.ASTDSingularityStabilizerHullMod
+import cn.kasuminova.astd.combat.hullmods.base.IncompatibleHullmodStripper
 import com.fs.starfarer.api.combat.MutableShipStatsAPI
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.combat.ShipVariantAPI
 import com.fs.starfarer.api.impl.campaign.ids.HullMods
 import org.mockito.Mockito.mock
+import org.mockito.Mockito.never
 import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 /**
  * 奇点稳定器锚定判定（[ASTDSingularityStabilizerHullMod.resolveTimeAnchor] 纯函数全分支）
- * 与安全协议超驰五路清理（applyEffectsBeforeShipCreation → stripForbiddenHullMods）验证。
+ * 与安全协议超驰延迟清理（applyEffectsBeforeShipCreation 只入队 → [IncompatibleHullmodStripper.drainPending] 五路清理）验证。
  */
 class SingularityStabilizerHullModTest {
 
@@ -50,7 +53,8 @@ class SingularityStabilizerHullModTest {
     }
 
     @Test
-    fun `安全协议超驰五路清理`() {
+    fun `安全协议超驰 创建前只入队 drain后五路清理`() {
+        IncompatibleHullmodStripper.drainPending()
         val sMods = linkedSetOf(HullMods.SAFETYOVERRIDES)
         val sModdedBuiltIns = linkedSetOf(HullMods.SAFETYOVERRIDES)
         val variant = mock(ShipVariantAPI::class.java)
@@ -61,6 +65,12 @@ class SingularityStabilizerHullModTest {
 
         ASTDSingularityStabilizerHullMod()
             .applyEffectsBeforeShipCreation(ShipAPI.HullSize.FRIGATE, stats, "test")
+
+        // 创建前回调不得结构性移除（原版 OP 结算实时迭代 hullMods 期间回调，removeMod 必抛 CME）
+        verify(variant, never()).removeMod(HullMods.SAFETYOVERRIDES)
+        assertTrue(sMods.contains(HullMods.SAFETYOVERRIDES))
+
+        IncompatibleHullmodStripper.drainPending()
 
         verify(variant).removeMod(HullMods.SAFETYOVERRIDES)
         verify(variant).removePermaMod(HullMods.SAFETYOVERRIDES)

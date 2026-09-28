@@ -19,28 +19,31 @@ description: "船插互斥/禁装实现规范：当内置船插或特殊舰体�
 
 ## 推荐硬禁止模式
 
-在控制方船插中集中定义禁止列表，并复用一个清理函数：
+> ⚠️ **CME 判例（必读）**：原版 `HullVariantSpec.updateStatsForOpCosts` 会**实时迭代** `variant.getHullMods()`
+> （LinkedHashSet 活性集合）并回调 `applyEffectsBeforeShipCreation`（仅 `affectsOPCosts()=true` 的船插）。
+> 在该回调里结构性 `removeMod` 会在自动装配路径抛出 `ConcurrentModificationException`
+> （堆栈：CoreAutofitPlugin.addExtraVentsAndCaps → computeOPCost → updateStatsForOpCosts）。
+> `ShipFactory`/`FleetMember` 等路径迭代的是 `getAllMods()` 快照，无此问题。
+>
+> **因此禁止在 `applyEffectsBeforeShipCreation` 里直接做结构性移除。** 统一使用
+> `cn.kasuminova.astd.combat.hullmods.base.IncompatibleHullmodStripper`：
+> - BeforeCreation：`IncompatibleHullmodStripper.requestStrip(variant, FORBIDDEN_IDS, sourceId)`（只检测入队）；
+> - AfterCreation / advanceInCombat：`requestStrip(...)` 后 `IncompatibleHullmodStripper.drainPending()`
+>   （ShipFactory 快照迭代，安全）；
+> - 战役侧由 stripper 自注册的 transient 每帧 drainer 兜底（装配界面改动下一帧生效）。
+
+在控制方船插中集中定义禁止列表，并在船插内委托 stripper：
 
 ```kotlin
 private val FORBIDDEN_HULLMOD_IDS = setOf(HullMods.SHIELD_SHUNT)
 
 override fun applyEffectsBeforeShipCreation(hullSize: ShipAPI.HullSize, stats: MutableShipStatsAPI, id: String) {
-    stripForbiddenHullMods(stats.variant)
+    IncompatibleHullmodStripper.requestStrip(stats.variant, FORBIDDEN_HULLMOD_IDS, myHullmodId)
 }
 
 override fun applyEffectsAfterShipCreation(ship: ShipAPI, id: String) {
-    stripForbiddenHullMods(ship.variant)
-}
-
-private fun stripForbiddenHullMods(variant: ShipVariantAPI?) {
-    variant ?: return
-    FORBIDDEN_HULLMOD_IDS.forEach { forbiddenId ->
-        variant.removeMod(forbiddenId)
-        variant.removePermaMod(forbiddenId)
-        variant.getSMods().remove(forbiddenId)
-        variant.getSModdedBuiltIns().remove(forbiddenId)
-        variant.removeSuppressedMod(forbiddenId)
-    }
+    IncompatibleHullmodStripper.requestStrip(ship.variant, FORBIDDEN_HULLMOD_IDS, myHullmodId)
+    IncompatibleHullmodStripper.drainPending()
 }
 ```
 
@@ -57,6 +60,8 @@ private fun stripForbiddenHullMods(variant: ShipVariantAPI?) {
 
 ## 测试约束
 
-- 测试必须覆盖普通 hullmod、permaMod、S-mod、S-modded built-in 的清理。
+- 测试必须覆盖普通 hullmod、permaMod、S-mod、S-modded built-in 的清理（经 `drainPending()` 驱动断言）。
+- 必须断言 `applyEffectsBeforeShipCreation` **不做**结构性移除（`verify(never()).removeMod(...)`），
+  作为 OP 结算实时迭代 CME 的回归防线。
 - 测试应断言禁止列表集中定义，避免散落字符串。
 - 若有玩家可见提示，按 `copy-style-guidelines` 审查文案。

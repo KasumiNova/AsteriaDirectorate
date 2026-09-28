@@ -1,5 +1,6 @@
 package cn.kasuminova.astd.combat.hullmods.arc
 
+import cn.kasuminova.astd.combat.hullmods.base.IncompatibleHullmodStripper
 import com.fs.starfarer.api.combat.MutableShipStatsAPI
 import com.fs.starfarer.api.combat.MutableStat
 import com.fs.starfarer.api.combat.ShipAPI
@@ -11,6 +12,7 @@ import com.fs.starfarer.api.impl.campaign.ids.HullMods
 import com.fs.starfarer.api.loading.WeaponSpecAPI
 import org.mockito.ArgumentCaptor
 import org.mockito.Mockito.mock
+import org.mockito.Mockito.never
 import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
 import kotlin.test.Test
@@ -23,7 +25,8 @@ import kotlin.test.assertTrue
  * - applyEffectsBeforeShipCreation 的射程/弹速/武器辐能乘区写入与 WeaponOPCostModifier 注册；
  * - OP 减免纯函数（小型 -1 再 -20%、中型 -2 再 -20%、下限 0、大型不动）；
  * - 短射程补偿纯函数（基础射程 <700 至多 +200）；
- * - 目标定位系统互斥：创建前后双路径五路清理（普通/permaMod/S-mod/S-modded built-in/suppressed）
+ * - 目标定位系统互斥：创建前只检测入队（[IncompatibleHullmodStripper]，OP 结算实时迭代 CME 防线）、
+ *   drain/创建后安全点五路清理（普通/permaMod/S-mod/S-modded built-in/suppressed）
  *   与 isApplicableToShip 软提示；禁止列表集中定义断言。
  */
 class ASTDArcAdvancedTargetingSystemHullModTest {
@@ -116,7 +119,8 @@ class ASTDArcAdvancedTargetingSystemHullModTest {
     }
 
     @Test
-    fun `互斥硬清理 创建前五路全清`() {
+    fun `互斥清理 创建前只检测入队 drain后五路全清`() {
+        IncompatibleHullmodStripper.drainPending()
         val sMods = linkedSetOf("targetingunit")
         val sModdedBuiltIns = linkedSetOf("integratedtargetingunit")
         val suppressed = mutableSetOf("dedicated_targeting_core")
@@ -129,7 +133,17 @@ class ASTDArcAdvancedTargetingSystemHullModTest {
 
         hullmod.applyEffectsBeforeShipCreation(ShipAPI.HullSize.DESTROYER, stats, "test")
 
-        // 普通 + permaMod + suppressed 走 variant 移除调用，S-mod 与 S-modded built-in 走集合移除
+        // 创建前回调不得做任何结构性移除：原版 updateStatsForOpCosts 实时迭代 hullMods
+        // 期间回调本方法，removeMod 会抛 ConcurrentModificationException（自动装配实机判例）
+        ASTDArcAdvancedTargetingSystemHullMod.INCOMPATIBLE_TARGETING_HULLMODS.forEach { forbiddenId ->
+            verify(variant, never()).removeMod(forbiddenId)
+            verify(variant, never()).removePermaMod(forbiddenId)
+        }
+        assertTrue(sMods.contains("targetingunit"), "创建前只入队，S-mod 集合不变")
+
+        IncompatibleHullmodStripper.drainPending()
+
+        // drain 后五路全清：普通 + permaMod + suppressed 走 variant 移除调用，S-mod 与 S-modded built-in 走集合移除
         ASTDArcAdvancedTargetingSystemHullMod.INCOMPATIBLE_TARGETING_HULLMODS.forEach { forbiddenId ->
             verify(variant).removeMod(forbiddenId)
             verify(variant).removePermaMod(forbiddenId)
@@ -140,7 +154,8 @@ class ASTDArcAdvancedTargetingSystemHullModTest {
     }
 
     @Test
-    fun `互斥硬清理 创建后同路径生效`() {
+    fun `互斥清理 创建后入队并立即drain`() {
+        IncompatibleHullmodStripper.drainPending()
         val sMods = linkedSetOf(HullMods.DISTRIBUTED_FIRE_CONTROL)
         val variant = cleanVariant()
         `when`(variant.sMods).thenReturn(sMods)
@@ -149,6 +164,7 @@ class ASTDArcAdvancedTargetingSystemHullModTest {
 
         hullmod.applyEffectsAfterShipCreation(ship, "test")
 
+        // AfterCreation 走 ShipFactory 快照迭代，安全点内立即完成清理
         ASTDArcAdvancedTargetingSystemHullMod.INCOMPATIBLE_TARGETING_HULLMODS.forEach { forbiddenId ->
             verify(variant).removeMod(forbiddenId)
             verify(variant).removePermaMod(forbiddenId)

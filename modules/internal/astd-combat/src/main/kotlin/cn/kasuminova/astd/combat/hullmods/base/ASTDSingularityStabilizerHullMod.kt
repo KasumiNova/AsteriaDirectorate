@@ -5,7 +5,6 @@ import cn.kasuminova.astd.combat.hullmods.base.ASTDSingularityStabilizerHullMod.
 import com.fs.starfarer.api.combat.BaseHullMod
 import com.fs.starfarer.api.combat.MutableShipStatsAPI
 import com.fs.starfarer.api.combat.ShipAPI
-import com.fs.starfarer.api.combat.ShipVariantAPI
 import com.fs.starfarer.api.impl.campaign.ids.HullMods
 
 /**
@@ -23,8 +22,11 @@ import com.fs.starfarer.api.impl.campaign.ids.HullMods
  *    若被外部减益压到 1 以下则乘回 `1/mv`（免疫时流减益，含敌方视界变速等）。
  *    钳制生效的帧不再做锚定补偿：引擎结算所用的时流已被钳回 1，amount 即真实秒数，
  *    再乘 1/mv 会双重补偿（峰值反而以 1/mv 倍加速流逝，审查实测推演确认）。
- * 3. 禁止安装安全协议超驰——创建前后双路径清理（`stripForbiddenHullMods` 五路），
- *    原版候选不受控无法灰掉，接受「装上即清理」行为（SKILL: hullmod-incompatibility-guidelines）。
+ * 3. 禁止安装安全协议超驰——互斥走 [IncompatibleHullmodStripper] 延迟清理：
+ *    applyEffectsBeforeShipCreation 只检测入队（原版 updateStatsForOpCosts 实时迭代 hullMods
+ *    期间回调本方法，结构性 removeMod 必抛 CME），五路清理延后到 AfterCreation/advanceInCombat/
+ *    战役每帧 drainer 安全点执行；原版候选不受控无法灰掉，接受「装上即清理」行为
+ *    （SKILL: hullmod-incompatibility-guidelines）。
  *
  * 锚定判定数学抽为纯函数 [resolveTimeAnchor]（单元测试直接驱动，见 JointTuningTest 同族测试）。
  */
@@ -62,14 +64,18 @@ class ASTDSingularityStabilizerHullMod : BaseHullMod() {
     }
 
     override fun applyEffectsBeforeShipCreation(hullSize: ShipAPI.HullSize, stats: MutableShipStatsAPI, id: String) {
-        stripForbiddenHullMods(stats.variant)
+        // 只检测入队：本回调可能在原版 OP 结算的 hullMods 实时迭代内触发，结构性移除会抛 CME
+        IncompatibleHullmodStripper.requestStrip(stats.variant, FORBIDDEN_HULLMOD_IDS, MOD_ID)
     }
 
     override fun applyEffectsAfterShipCreation(ship: ShipAPI, id: String) {
-        stripForbiddenHullMods(ship.variant)
+        // ShipFactory 迭代 getAllMods() 快照，此处入队并立即清理是安全的
+        IncompatibleHullmodStripper.requestStrip(ship.variant, FORBIDDEN_HULLMOD_IDS, MOD_ID)
+        IncompatibleHullmodStripper.drainPending()
     }
 
     override fun advanceInCombat(ship: ShipAPI, amount: Float) {
+        IncompatibleHullmodStripper.drainPending()
         if (amount <= 0f || ship.isHulk || !ship.isAlive) return
         val stats = ship.mutableStats
 
@@ -92,16 +98,5 @@ class ASTDSingularityStabilizerHullMod : BaseHullMod() {
         // ShipAPI 无 getTimeDeployed()，等值读取口为 getTimeDeployedForCRReduction()（经原版实现核实），
         // 写入侧无对应 getter 故用显式 setter 调用（Kotlin 属性语法要求读写成对）
         ship.setTimeDeployed(ship.timeDeployedForCRReduction - amount * (1f - anchor))
-    }
-
-    private fun stripForbiddenHullMods(variant: ShipVariantAPI?) {
-        variant ?: return
-        FORBIDDEN_HULLMOD_IDS.forEach { forbiddenId ->
-            variant.removeMod(forbiddenId)
-            variant.removePermaMod(forbiddenId)
-            variant.sMods.remove(forbiddenId)
-            variant.sModdedBuiltIns.remove(forbiddenId)
-            variant.removeSuppressedMod(forbiddenId)
-        }
     }
 }
