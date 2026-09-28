@@ -15,7 +15,7 @@ data class ProjectileVfxDriverPolicy(
     /**
      * 拖尾锚点前移量（世界单位）：树原点（光斑锚点）与 Static Trail tracker 的锚点从弹体中心沿朝向
      * 提前本值，使视觉头部对齐原版螺栓贴图的视觉头部（贴图中心在弹体位置，头在 +length/2 处）。
-     * null = 自动取弹体 spec.length/2；显式 0 = 锚回弹体中心。
+     * null = 缺省 0（锚回弹体中心，实现侧 `policy.headLeadWorld ?: 0f`，不会自动取 spec.length/2）。
      */
     val headLeadWorld: Float? = null,
 )

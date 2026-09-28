@@ -53,6 +53,7 @@ import cn.kasuminova.astd.combat.lens.system.GravReplicatorTuning
 import cn.kasuminova.astd.combat.lens.system.GravityRiftTuning
 import cn.kasuminova.astd.combat.hullmods.lens.GravSpaceFoldTuning
 import cn.kasuminova.astd.combat.shipsystems.GravityRiftSystemStats
+import cn.kasuminova.astd.combat.shipsystems.RiftShiftTuning
 import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import cn.kasuminova.astd.impl.render.ASTDProjectileVfxLayout
 import cn.kasuminova.astd.internal.debug.ASTDInGameAutomationScenario
@@ -7501,7 +7502,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
                             xc2DisplacementAsserted = true
                             if (xc2ShiftDisplacementMax !in XC2_SHIFT_DISPLACEMENT_MIN..XC2_SHIFT_DISPLACEMENT_MAX) {
                                 failureReason = "xc2 shift displacement=${"%.0f".format(xc2ShiftDisplacementMax)}" +
-                                        " ∉ [$XC2_SHIFT_DISPLACEMENT_MIN, $XC2_SHIFT_DISPLACEMENT_MAX]（断言点 XC2-B：向飞行向量折跃 1200su）"
+                                        " ∉ [$XC2_SHIFT_DISPLACEMENT_MIN, $XC2_SHIFT_DISPLACEMENT_MAX]（断言点 XC2-B：" +
+                                        "向飞行向量折跃 ${RiftShiftTuning.SHIFT_DISTANCE.toInt()}su，界由 SHIFT_DISTANCE ±100 派生）"
                                 transitionXc2Phase(XC2_PHASE_FAILED)
                             }
                         }
@@ -11679,13 +11681,14 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private const val XC2_HULLMOD_ID = "astd_imaginary_wings"
 
         // 折跃舞台锚点：玩家舰静止朝 +X 激活（速度近零回退朝向，断言点 XC2-B 定向口径），
-        // 裂隙路径 (-800,-100)→(400,-100) 纵穿靶舰锚点；闭合爆点 x=-700..400 步进 100，
-        // 靶舰恰压 x=-300 爆点（断言点 XC2-E 口径）。
+        // 裂隙路径自 XC2_PLAYER_ANCHOR 向 +X 推进 RiftShiftTuning.SHIFT_DISTANCE——到达锚点同源派生
+        // （位移断言界亦由该常量派生，800/1200 两档数值下提交自洽）；闭合爆点沿路径步进 100
+        // （closureBlastPoints 按路径实长展开），靶舰恰压 x=-300 爆点（断言点 XC2-E 口径）。
         private val XC2_PLAYER_ANCHOR = Vector2f(-800f, -100f)
         private val XC2_ENEMY_ANCHOR = Vector2f(-300f, -100f)
-        private val XC2_PLAYER_ARRIVAL = Vector2f(400f, -100f)
+        private val XC2_PLAYER_ARRIVAL = Vector2f(XC2_PLAYER_ANCHOR.x + RiftShiftTuning.SHIFT_DISTANCE, XC2_PLAYER_ANCHOR.y)
 
-        // 武器舞台锚点（与折跃舞台分离，靶舰重置站位）：玩家正前方 500su（坠星残翼射程 900 内）。
+        // 武器舞台锚点（与折跃舞台分离，靶舰重置站位）：玩家正前方 500su（坠星残翼射程 1200 内）。
         private val XC2_WEAPON_PLAYER_ANCHOR = Vector2f(-800f, 300f)
         private val XC2_WEAPON_ENEMY_ANCHOR = Vector2f(-300f, 300f)
         private val XC2_CAMERA_CENTER = Vector2f(-400f, 100f)
@@ -11697,7 +11700,8 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private const val XC2_REST_DAMAGE_MULT_MIN = 0.70f
         private const val XC2_REST_DAMAGE_MULT_MAX = 0.80f
 
-        // SHIFT（断言点 XC2-B/C/D）：折跃位移 1200su（界 [1100, 1300]，容忍钉位恢复帧）；折跃窗 1.2s
+        // SHIFT（断言点 XC2-B/C/D）：折跃位移界从 RiftShiftTuning.SHIFT_DISTANCE 常量 ±100su 派生
+        // （容忍钉位恢复帧；与 XC2_PLAYER_ARRIVAL 同源，改折跃距离无需双处同步）；折跃窗 1.2s
         // 内不钉舰位（裂隙插件逐帧改写 location，钉位互搏会掩盖位移证据）；速度窗口 maxSpeed 峰值
         // 砺刃 +100%（期望峰值按 (base×(1+峰值%)+常驻 flat)/静止值 实算——零幅能加速 flat 不吃百分比
         // 乘区，容差 ±0.1 覆盖帧量化）；5.2s 转入 CLOSURE（须在闭合前快照靶舰 HP：闭合 = 激活 +5.5s：
@@ -11705,8 +11709,9 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin() {
         private const val XC2_ACTIVATE_TIMEOUT = 10f
         private const val XC2_SHIFT_PIN_FREE_SECONDS = 1.2f
         private const val XC2_SHIFT_ASSERT_SECONDS = 1.5f
-        private const val XC2_SHIFT_DISPLACEMENT_MIN = 1100f
-        private const val XC2_SHIFT_DISPLACEMENT_MAX = 1300f
+        private const val XC2_SHIFT_DISPLACEMENT_TOLERANCE = 100f
+        private const val XC2_SHIFT_DISPLACEMENT_MIN = RiftShiftTuning.SHIFT_DISTANCE - XC2_SHIFT_DISPLACEMENT_TOLERANCE
+        private const val XC2_SHIFT_DISPLACEMENT_MAX = RiftShiftTuning.SHIFT_DISTANCE + XC2_SHIFT_DISPLACEMENT_TOLERANCE
         private const val XC2_SPEED_MULT_TOLERANCE = 0.1f
         private const val XC2_SHIFT_WINDOW_SECONDS = 5.2f
 
