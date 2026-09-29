@@ -17,8 +17,13 @@ dependencies {
 }
 
 // 装配：向根工程 mod 主 jar 贡献本模块产物。
-// 自动化测试模块不随 release 打包：-Pastd.includeAutomation=false 时跳过（根工程 copyContents 同步门控）。
-if (providers.gradleProperty("astd.includeAutomation").map(String::toBooleanStrict).orElse(true).get()) {
+// 自动化测试模块不随 release 打包：release 模式（-Pastd.release=true）默认排除，
+// 与根工程 copyContents 同步门控共用 -Pastd.includeAutomation 显式覆盖。
+val astdIncludeAutomation: Boolean =
+    providers.gradleProperty("astd.includeAutomation").map(String::toBooleanStrict)
+        .orElse(providers.gradleProperty("astd.release").map { release -> !release.toBooleanStrict() })
+        .orElse(true).get()
+if (astdIncludeAutomation) {
     rootProject.tasks.named<Jar>("jar") {
         from(sourceSets.main.get().output)
         dependsOn(tasks.named("classes"))

@@ -14,7 +14,20 @@ plugins {
 }
 
 group = "cn.kasuminova"
-version = "1.0-SNAPSHOT"
+
+/**
+ * release 打包统一开关：`-Pastd.release=true` 产出玩家向干净包。
+ * 开启后：automation 内容与类不进包、jars 只剩主 jar（无 sources / 验收 agent jar）、
+ * 主 jar manifest 不带 Premain-Class、版本默认 0.1.0。
+ */
+val astdRelease: Boolean =
+    providers.gradleProperty("astd.release").map(String::toBooleanStrict).orElse(false).get()
+
+/** 模组版本：`-Pastd.modVersion` 显式覆盖；release 默认 0.1.0，dev 默认 1.0-SNAPSHOT。flows 到 mod_info / jar 名 / zip 名。 */
+val astdModVersion: String =
+    providers.gradleProperty("astd.modVersion").orElse(if (astdRelease) "0.1.0" else "1.0-SNAPSHOT").get()
+
+version = astdModVersion
 
 starsector {
     modId.set("asteria_directorate")
@@ -146,9 +159,9 @@ astdModulePaths.forEach { path ->
     }
 }
 
-/** 自动化测试模块是否进入打包（dev/deploy 默认包含；release zip 用 -Pastd.includeAutomation=false 排除）。 */
+/** 自动化测试模块是否进入打包（dev/deploy 默认包含；release 模式默认排除，可用 -Pastd.includeAutomation 显式覆盖）。 */
 val astdIncludeAutomation: Boolean =
-    providers.gradleProperty("astd.includeAutomation").map(String::toBooleanStrict).orElse(true).get()
+    providers.gradleProperty("astd.includeAutomation").map(String::toBooleanStrict).orElse(!astdRelease).get()
 
 kotlin {
     jvmToolchain(17)
@@ -169,16 +182,28 @@ tasks.withType<KotlinCompile>().configureEach {
 tasks.withType<Jar>().configureEach {
     isPreserveFileTimestamps = false
     isReproducibleFileOrder = true
-    manifest {
-        attributes(
-            "Premain-Class" to "cn.kasuminova.astd.agent.AsteriaDevStorageAcceptanceAgent",
-            "Can-Retransform-Classes" to "true",
-            "Can-Redefine-Classes" to "true",
-        )
+    // dev 验收 agent 挂接属性只随 dev 包携带；release 包不得声明 Premain-Class。
+    if (!astdRelease) {
+        manifest {
+            attributes(
+                "Premain-Class" to "cn.kasuminova.astd.agent.AsteriaDevStorageAcceptanceAgent",
+                "Can-Retransform-Classes" to "true",
+                "Can-Redefine-Classes" to "true",
+            )
+        }
     }
 }
 
-val acceptanceAgentJar = tasks.register<Jar>("acceptanceAgentJar") {
+// release 模式：dev 验收 agent 类不进主 jar（agent 仅经 -javaagent + Premain-Class 激活，release 无此入口；
+// 代码与数据侧均无对 cn.kasuminova.astd.agent 的引用）。
+tasks.named<Jar>("jar") {
+    if (astdRelease) {
+        exclude("cn/kasuminova/astd/agent/**")
+    }
+}
+
+// 验收 agent jar 仅 dev 构建注册；release 模式下 SDG copyJars 的附加产物汇集自然不含它。
+val acceptanceAgentJar = if (!astdRelease) tasks.register<Jar>("acceptanceAgentJar") {
     archiveClassifier.set("acceptance-agent")
     isPreserveFileTimestamps = false
     isReproducibleFileOrder = true
@@ -200,12 +225,21 @@ val acceptanceAgentJar = tasks.register<Jar>("acceptanceAgentJar") {
             "Can-Redefine-Classes" to "true",
         )
     }
-}
+} else null
 
 // build 时自动生成 ss-csv 到 build/generated/ss-csv/
 tasks.named("build") {
     dependsOn(":astd-csv:generateSsCsv")
-    dependsOn(acceptanceAgentJar)
+    if (acceptanceAgentJar != null) dependsOn(acceptanceAgentJar)
+}
+
+// release 模式：sources / 验收 agent jar 不进产物布局。
+// copyJars 是 Sync 任务，排除的同时会清掉布局 jars/ 内的历史副本，mod_info.json 随之只剩主 jar。
+tasks.named<Sync>("copyJars") {
+    if (astdRelease) {
+        exclude("**/*-sources.jar")
+        exclude("**/*-acceptance-agent.jar")
+    }
 }
 
 // 生产目录使用 build/generated/ss-csv 叠加静态 contents，保持 contents 不被自动覆盖。

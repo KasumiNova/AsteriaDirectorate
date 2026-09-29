@@ -16,7 +16,7 @@ description: "ASTD 包结构规范：多模块布局、根包、internal、rende
 - `modules/internal/astd-render`：非特化渲染实现（RenderEntity 树实现、Static Trail/flare/arc 组件、shader 运行时、弹体/光束驱动），包 `cn.kasuminova.astd.impl.render` / `cn.kasuminova.astd.renderer.*`。
 - `modules/internal/astd-combat`：武器/船插/战术系统/军官技能及武器特效具体实现，包 `cn.kasuminova.astd.combat.*`（含武器专属 VFX spec 定义，如 `ProjectileVfxSpecs`/`BeamVfxSpecs` 在 `cn.kasuminova.astd.renderer.*.driver` 包但物理位于本模块）。
 - `modules/internal/astd-campaign`：生涯模式功能（赏金、剧情线等），包 `cn.kasuminova.astd.campaign.*`。
-- `modules/internal/astd-automation`：自动化测试功能与测试战役定义（`contents/` 资源也在本模块），**不随 release 打包**（`-Pastd.includeAutomation=false`）。
+- `modules/internal/astd-automation`：自动化测试功能与测试战役定义（`contents/` 资源也在本模块），**不随 release 打包**（统一开关 `-Pastd.release=true`，或单独 `-Pastd.includeAutomation=false`）。
 - `modules/internal/astd-csv`：CSV/数据文件生成器（原 `ss-csv`），包 `cn.kasuminova.astd.sscsv`，产物仍输出 `build/generated/ss-csv/`。
 - 根工程：装配工程（SDG mod 插件、`contents/`、mod 入口 `src/main/java/cn/kasuminova/astd/AsteriaDirectoratePlugin.java`、字节码 agent），各模块向根 jar 贡献产物。
 
