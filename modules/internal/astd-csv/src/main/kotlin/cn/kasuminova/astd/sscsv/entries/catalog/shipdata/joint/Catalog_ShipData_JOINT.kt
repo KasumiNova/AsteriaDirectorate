@@ -30,11 +30,11 @@ object Ship_astd_lh_001 : ShipDataEntry() {
     override val fluxDissipation: Int = 600
     override val ordnancePoints: Int = 60
     override val maxSpeed: Int = 120
-    override val acceleration: Int = 100
-    override val deceleration: Int = 80
-    override val maxTurnRate: Int = 30
-    override val turnAcceleration: Int = 60
-    override val mass: Int = 400
+    override val acceleration: Int = 175
+    override val deceleration: Int = 150
+    override val maxTurnRate: Int = 50
+    override val turnAcceleration: Int = 100
+    override val mass: Int = 250
     override val shieldType: String = "OMNI"
     override val shieldArc: Int = 240
 
@@ -74,11 +74,11 @@ object Ship_astd_lh_002 : ShipDataEntry() {
     override val fluxDissipation: Int = 450
     override val ordnancePoints: Int = 60
     override val maxSpeed: Int = 100
-    override val acceleration: Int = 100
-    override val deceleration: Int = 80
-    override val maxTurnRate: Int = 30
-    override val turnAcceleration: Int = 60
-    override val mass: Int = 400
+    override val acceleration: Int = 175
+    override val deceleration: Int = 150
+    override val maxTurnRate: Int = 50
+    override val turnAcceleration: Int = 100
+    override val mass: Int = 250
     override val shieldType: String = "OMNI"
     override val shieldArc: Int = 240
 

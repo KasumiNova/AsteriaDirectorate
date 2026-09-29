@@ -20,11 +20,11 @@ object Ship_astd_xc_001 : ShipDataEntry() {
     override val fluxDissipation: Int = 1300
     override val ordnancePoints: Int = 300
     override val maxSpeed: Int = 50
-    override val acceleration: Int = 20
+    override val acceleration: Int = 30
     override val deceleration: Int = 20
-    override val maxTurnRate: Int = 20
-    override val turnAcceleration: Int = 40
-    override val mass: Int = 3500
+    override val maxTurnRate: Int = 15
+    override val turnAcceleration: Int = 20
+    override val mass: Int = 3200
     override val shieldType: String = "OMNI"
     override val shieldArc: Int = 180
     override val shieldUpkeep: Double = 0.37
@@ -55,8 +55,7 @@ object Ship_astd_xc_002 : ShipDataEntry() {
     override val tech: String = "菀星设计局-星坠"
     override val systemId: String = "astd_rift_shift"
 
-    // 自动战斗分数对齐原版精锐相位驱逐舰（灾星 fp=15）；部署点 24 由 supplies/rec 承担。
-    override val fleetPts: Int = 15
+    override val fleetPts: Int = 25
     override val hitpoints: Int = 6500
     override val armorRating: Int = 650
     override val maxFlux: Int = 12000
@@ -64,11 +63,11 @@ object Ship_astd_xc_002 : ShipDataEntry() {
     override val ordnancePoints: Int = 120
     override val fighterBays: Int = 1
     override val maxSpeed: Int = 115
-    override val acceleration: Int = 74
-    override val deceleration: Int = 74
-    override val maxTurnRate: Int = 30
-    override val turnAcceleration: Int = 60
-    override val mass: Int = 350
+    override val acceleration: Int = 90
+    override val deceleration: Int = 80
+    override val maxTurnRate: Int = 70
+    override val turnAcceleration: Int = 90
+    override val mass: Int = 400
     override val shieldType: String = "OMNI"
     override val shieldArc: Int = 180
     override val shieldUpkeep: Double = 0.32
@@ -127,11 +126,11 @@ object Ship_astd_xc_102 : ShipDataEntry() {
     override val fluxDissipation: Int = 1400
     override val ordnancePoints: Int = 360
     override val maxSpeed: Int = 40
-    override val acceleration: Int = 15
+    override val acceleration: Int = 20
     override val deceleration: Int = 15
     override val maxTurnRate: Int = 20
-    override val turnAcceleration: Int = 40
-    override val mass: Int = 4200
+    override val turnAcceleration: Int = 20
+    override val mass: Int = 4000
     override val shieldType: String = "OMNI"
     override val shieldArc: Int = 240
 
@@ -164,8 +163,7 @@ object Ship_astd_xc_101 : ShipDataEntry() {
     override val tech: String = "菀星设计局-星坠"
     override val systemId: String = "astd_plasma_armor_shield_boost"
 
-    // 自动战斗分数对齐原版顶级巡洋舰（极光 fp=17）；部署点 32 由 supplies/rec 承担。
-    override val fleetPts: Int = 17
+    override val fleetPts: Int = 20
     override val hitpoints: Int = 13000
     override val armorRating: Int = 1600
     override val maxFlux: Int = 14000
@@ -195,8 +193,8 @@ object Ship_astd_xc_101 : ShipDataEntry() {
     override val crToDeploy: Double = 12.0
     override val peakCrSec: Int = 600
     override val crLossPerSec: Double = 0.25
-    override val suppliesRec: Int = 32
-    override val suppliesPerMonth: Int = 32
+    override val suppliesRec: Int = 30
+    override val suppliesPerMonth: Int = 30
     override val tags: String = "astd_production"
     override val codexVariantId: String = "astd_xc_101_Standard"
     override val number: Int = 9108
@@ -260,10 +258,10 @@ object Ship_astd_xc_104 : ShipDataEntry() {
     override val fluxDissipation: Int = 180
     override val ordnancePoints: Int = 55
     override val maxSpeed: Int = 140
-    override val acceleration: Int = 70
-    override val deceleration: Int = 70
-    override val maxTurnRate: Int = 30
-    override val turnAcceleration: Int = 60
+    override val acceleration: Int = 200
+    override val deceleration: Int = 200
+    override val maxTurnRate: Int = 90
+    override val turnAcceleration: Int = 200
     override val mass: Int = 200
     override val shieldType: String = "FRONT"
     override val shieldArc: Int = 120

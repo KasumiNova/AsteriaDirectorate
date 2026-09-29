@@ -406,13 +406,6 @@ object Wpn_astd_rift_mine_layer : WeaponDataEntry(), SsProjMissileOutputs {
     )
 }
 
-/**
- * ARC-13“三位一体”：大型能量武器（蓝稀有）。
- *
- * 机制：burst 3 发；每发脚本生成一次弧光（命中点即时结算一次性伤害）。
- * 因此 weapon_data.csv 中 damage 字段仅用于 UI/AI 基础信息，不做实际伤害来源。
- */
-
 /** 电荷针刺：小型能量弹匣速射（量产）。护盾命中淤积抬维持，船体命中概率泄放 EMP 电弧（机制见 ChargeNeedleOnHitEffect）。 */
 object Wpn_astd_charge_needle : WeaponDataEntry(), SsProjProjectileOutputs {
     override val id: String = "astd_charge_needle"
@@ -421,9 +414,8 @@ object Wpn_astd_charge_needle : WeaponDataEntry(), SsProjProjectileOutputs {
     override val rarity: Int = 1
     override val baseValue: Int = 6000
     override val range: Int = 700
-    override val damagePerSecond: Int = 1000
     override val damagePerShot: Int = 50
-    override val emp: Int = 100
+    override val emp: Int = 200
     override val turnRate: Int = 30
     override val ops: Int = 8
 
@@ -441,10 +433,9 @@ object Wpn_astd_charge_needle : WeaponDataEntry(), SsProjProjectileOutputs {
 
     override val projSpeed: Int = 1350
 
-    // 精度对齐原版轻型针刺（“中等”）：min 0 / max 10 / 每发 +0.66 / 衰减 5
-    override val minSpread: Double = 0.0
-    override val maxSpread: Double = 10.0
-    override val spreadPerShot: Double = 0.66
+    override val minSpread: Double = 5.0
+    override val maxSpread: Double = 15.0
+    override val spreadPerShot: Double = 0.75
     override val spreadDecayPerSec: Double = 5.0
 
     // autofit 类别标签（CoreAutofitPlugin 按 类别+等级 匹配，缺失会导致装配方案无法装回本武器）
@@ -475,9 +466,8 @@ object Wpn_astd_heavy_charge_needle : WeaponDataEntry(), SsProjProjectileOutputs
     override val rarity: Int = 1
     override val baseValue: Int = 14000
     override val range: Int = 700
-    override val damagePerSecond: Int = 1000
     override val damagePerShot: Int = 50
-    override val emp: Int = 100
+    override val emp: Int = 200
     override val turnRate: Int = 30
     override val ops: Int = 16
 
@@ -496,14 +486,11 @@ object Wpn_astd_heavy_charge_needle : WeaponDataEntry(), SsProjProjectileOutputs
     // 持续 5 发/s × 40 折算
     override val projSpeed: Int = 1350
 
-    // 精度对齐原版重型针刺（“中等”）：min 1 / max 10 / 每发 +0.5 / 衰减 5
-    override val minSpread: Double = 1.0
-    override val maxSpread: Double = 10.0
-    override val spreadPerShot: Double = 0.5
+    override val minSpread: Double = 5.0
+    override val maxSpread: Double = 15.0
+    override val spreadPerShot: Double = 0.75
     override val spreadDecayPerSec: Double = 5.0
 
-    // 窄射界挂载（如野狼 WS 004 仅 5° 弧）下原版 AutofireAI 的目标采纳测试按武器弧判定会拒绝目标
-    // （实机诊断：aiTarget=null 永不击发）；对齐 shockrepeater 先例补 25° AI 弧度补偿。
     override val extraArcForAI: Int = 25
 
     // autofit 类别标签（CoreAutofitPlugin 按 类别+等级 匹配，缺失会导致装配方案无法装回本武器）
@@ -541,9 +528,7 @@ object Wpn_astd_electric_drive_accelerator : WeaponDataEntry(), SsProjProjectile
     override val baseValue: Int = 11000
     override val range: Int = 750
 
-    // 600 = 2 弹 × 120 / 0.4s 连发周期（对齐原版连发武器的面板推导口径）
-    override val damagePerSecond: Int = 600
-    override val damagePerShot: Int = 120
+    override val damagePerShot: Int = 100
     override val impact: Int = 4
     override val turnRate: Int = 30
     override val ops: Int = 15
@@ -559,13 +544,12 @@ object Wpn_astd_electric_drive_accelerator : WeaponDataEntry(), SsProjProjectile
     override val reloadSize: Int = 8
     override val type: String = "KINETIC"
 
-    override val energyPerShot: Int = 140
+    override val energyPerShot: Int = 120
     override val projSpeed: Int = 1000
 
-    // 霰弹式散布：min=max 固定散布锥，burst 首发起即带散布（不随连发累积）
-    override val minSpread: Double = 8.0
+    override val minSpread: Double = 4.0
     override val maxSpread: Double = 8.0
-    override val spreadPerShot: Double = 0.0
+    override val spreadPerShot: Double = 2.0
     override val spreadDecayPerSec: Double = 4.0
 
     // autofit 类别标签（CoreAutofitPlugin 按 类别+等级 匹配，缺失会导致装配方案无法装回本武器）
@@ -601,7 +585,6 @@ object Wpn_astd_qiongjue_phase_railgun : WeaponDataEntry(), SsProjProjectileOutp
     override val tier: Int = 2
     override val baseValue: Int = 25000
     override val range: Int = 1100
-    override val damagePerSecond: Int = 300
     override val damagePerShot: Int = 600
     override val turnRate: Int = 8
     override val ops: Int = 28
@@ -662,8 +645,6 @@ object Wpn_astd_positron_shockwave : WeaponDataEntry(), SsProjProjectileOutputs 
     override val baseValue: Int = 2500
     override val range: Int = 600
 
-    // 200 ÷ 1.5s 折算 tooltip 统计
-    override val damagePerSecond: Int = 133
     override val damagePerShot: Int = 200
     override val turnRate: Int = 45
     override val ops: Int = 6
@@ -1260,7 +1241,7 @@ object Wpn_astd_heavy_ion_pulse : WeaponDataEntry(), SsProjProjectileOutputs {
     override val emp: Int = 500
     override val impact: Int = 0
     override val turnRate: Int = 20
-    override val ops: Int = 28
+    override val ops: Int = 27
 
     // 4 连发 0.1s/发、射击冷却 0.4s
     override val chargeup: Double = 0.05

@@ -12,8 +12,7 @@ object Ship_astd_zw_001 : ShipDataEntry() {
     override val tech: String = "菀星设计局-紫菀"
     override val systemId: String = "astd_jamming_swarm"
 
-    // 自动战斗分数高于原版全部巡洋舰（厄运 fp=22 相位巡洋舰档）；部署点 30 由 supplies/rec 承担。
-    override val fleetPts: Int = 22
+    override val fleetPts: Int = 30
     override val hitpoints: Int = 8000
     override val armorRating: Int = 1000
     override val maxFlux: Int = 14000
@@ -24,10 +23,16 @@ object Ship_astd_zw_001 : ShipDataEntry() {
     override val deceleration: Int = 30
     override val maxTurnRate: Int = 30
     override val turnAcceleration: Int = 60
-    override val mass: Int = 16000
+    override val mass: Int = 2250
 
-    // 决明级：OMNI 全向护盾（240°）+ 4 甲板（与 contents/.ship 一致，阶段一验收要求）。
     override val fighterBays: Int = 4
+
+    // 对齐原版航空战列舰（Legion）与本舰 zw_102 判例 hints "CARRIER, COMBAT, NO_AUTO_ESCORT"：
+    // 决明为 4 甲板母舰 + 半巡洋平台（purple/10-unique.md §1 定位「锚点控场型指挥舰 / 4 甲板母舰」），
+    // 需要 CARRIER 令图鉴分类与 ShipHullSpec.isCarrier() 成立；其电战潮汐/引力场均为自身中圈机制，
+    // 缺 COMBAT + NO_AUTO_ESCORT 时原版 BasicShipAI 会让航母自动护航友舰并回避交战，
+    // 导致旗舰脱离战场中圈、机制半径形同虚设（判例注释详见 [Ship_astd_zw_102]）。
+    override val hints: String = "CARRIER, COMBAT, NO_AUTO_ESCORT"
     override val shieldType: String = "OMNI"
     override val shieldArc: Int = 240
 
@@ -74,12 +79,12 @@ object Ship_astd_zw_101 : ShipDataEntry() {
     override val maxFlux: Int = 8500
     override val fluxDissipation: Int = 550
     override val ordnancePoints: Int = 95
-    override val maxSpeed: Int = 120
-    override val acceleration: Int = 80
-    override val deceleration: Int = 80
-    override val maxTurnRate: Int = 30
-    override val turnAcceleration: Int = 60
-    override val mass: Int = 8000
+    override val maxSpeed: Int = 130
+    override val acceleration: Int = 100
+    override val deceleration: Int = 100
+    override val maxTurnRate: Int = 50
+    override val turnAcceleration: Int = 80
+    override val mass: Int = 2000
     override val hints: String = "PHASE"
     override val shieldType: String = "PHASE"
     override val defenseId: String = "astd_gravity_phase"
@@ -111,28 +116,26 @@ object Ship_astd_zw_102 : ShipDataEntry() {
     override val tech: String = "菀星设计局-紫菀"
     override val systemId: String = "astd_fighter_grav_link"
 
-    // 自动战斗分数对齐原版航空战列舰（军团 fp=28）；部署点 55 由 supplies/rec 承担。
-    override val fleetPts: Int = 28
+    override val fleetPts: Int = 35
     override val hitpoints: Int = 12000
     override val armorRating: Int = 1200
     override val maxFlux: Int = 16000
-    override val fluxDissipation: Int = 1100
+    override val fluxDissipation: Int = 1200
     override val ordnancePoints: Int = 340
     override val fighterBays: Int = 3
     override val maxSpeed: Int = 50
-    override val acceleration: Int = 25
-    override val deceleration: Int = 25
+    override val acceleration: Int = 20
+    override val deceleration: Int = 30
     override val maxTurnRate: Int = 30
-    override val turnAcceleration: Int = 60
-    override val mass: Int = 30000
+    override val turnAcceleration: Int = 35
+    override val mass: Int = 3500
 
-    // 飞蓬：全盾化（FRONT 120° → OMNI 240°）+ 护盾效率 0.6。
     override val shieldType: String = "OMNI"
     override val shieldArc: Int = 240
 
     // 护盾维持 640 = 耗散 1100 × 0.5818。
     override val shieldUpkeep: Double = 0.5818
-    override val shieldEfficiency: Double = 0.6
+    override val shieldEfficiency: Double = 0.5333
 
     // 对齐原版军团级（Legion，航空战列舰）hints 判例 "CARRIER, COMBAT, NO_AUTO_ESCORT"：
     // - CARRIER：图鉴「航母」分类的判定 hint（原版 ShipBlueprintRow 按 hints 分类），
@@ -175,12 +178,12 @@ object Ship_astd_zw_002 : ShipDataEntry() {
     override val maxFlux: Int = 12000
     override val fluxDissipation: Int = 900
     override val ordnancePoints: Int = 165
-    override val maxSpeed: Int = 70
-    override val acceleration: Int = 35
-    override val deceleration: Int = 35
-    override val maxTurnRate: Int = 30
-    override val turnAcceleration: Int = 60
-    override val mass: Int = 16000
+    override val maxSpeed: Int = 80
+    override val acceleration: Int = 60
+    override val deceleration: Int = 60
+    override val maxTurnRate: Int = 60
+    override val turnAcceleration: Int = 80
+    override val mass: Int = 1500
 
     // 密蒙：相位化改造——防御方式由 FRONT 护盾改为自定义相位系统「引力相位」
     // （defense id=astd_gravity_phase，stats 脚本 GravityPhaseCloakStats 为后续特效接入点）。
@@ -236,13 +239,18 @@ object Ship_astd_zw_103 : ShipDataEntry() {
     override val fluxDissipation: Int = 600
     override val ordnancePoints: Int = 115
     override val fighterBays: Int = 2
-    override val maxSpeed: Int = 100
-    override val acceleration: Int = 50
-    override val deceleration: Int = 50
-    override val maxTurnRate: Int = 40
+    override val maxSpeed: Int = 110
+    override val acceleration: Int = 80
+    override val deceleration: Int = 80
+    override val maxTurnRate: Int = 60
     override val turnAcceleration: Int = 80
     override val mass: Int = 8000
-    override val hints: String = "PHASE"
+
+    // PHASE：自定义相位系统 id 不走原版 isPhase() 的 "phasecloak" 分支，必须显式声明
+    // （见 [Ship_astd_zw_002] 注释）。CARRIER：护航航母定位（2 内置机库），对齐原版纯航母
+    // （Astral/苍鹭/兀鹫 hints 仅 CARRIER）——相位护航航母舰体脆弱、不抢交战引导，
+    // 故不加 COMBAT / NO_AUTO_ESCORT（与 zw_102 战斗航母口径区分）。
+    override val hints: String = "PHASE, CARRIER"
     override val shieldType: String = "PHASE"
     override val defenseId: String = "astd_gravity_phase"
 
@@ -280,8 +288,8 @@ object Ship_astd_zw_103_fighter : ShipDataEntry() {
     override val hitpoints: Int = 1000
     override val armorRating: Int = 300
     override val maxFlux: Int = 1500
-    override val fluxDissipation: Int = 200
-    override val maxSpeed: Int = 175
+    override val fluxDissipation: Int = 300
+    override val maxSpeed: Int = 200
     override val acceleration: Int = 400
     override val deceleration: Int = 350
     override val maxTurnRate: Int = 90
@@ -334,12 +342,12 @@ object Ship_astd_surge_fighter : ShipDataEntry() {
     override val systemId: String = "plasmajets"
     override val hitpoints: Int = 500
     override val armorRating: Int = 150
-    override val maxFlux: Int = 800
-    override val fluxDissipation: Int = 200
-    override val maxSpeed: Int = 200
-    override val acceleration: Int = 400
-    override val deceleration: Int = 350
-    override val maxTurnRate: Int = 90
+    override val maxFlux: Int = 900
+    override val fluxDissipation: Int = 300
+    override val maxSpeed: Int = 250
+    override val acceleration: Int = 500
+    override val deceleration: Int = 400
+    override val maxTurnRate: Int = 100
     override val turnAcceleration: Int = 180
     override val mass: Int = 25
     override val shieldType: String = "FRONT"
@@ -366,8 +374,8 @@ object Ship_astd_gravwell_interceptor : ShipDataEntry() {
     override val systemId: String = "displacer"
     override val hitpoints: Int = 500
     override val armorRating: Int = 100
-    override val maxFlux: Int = 1000
-    override val fluxDissipation: Int = 200
+    override val maxFlux: Int = 900
+    override val fluxDissipation: Int = 300
     override val maxSpeed: Int = 150
     override val acceleration: Int = 300
     override val deceleration: Int = 250

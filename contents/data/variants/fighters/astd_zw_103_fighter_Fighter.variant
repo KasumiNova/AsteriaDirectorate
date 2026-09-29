@@ -7,13 +7,14 @@
         "autorepair"
     ],
     "quality": 1.0,
-    "variantId": "astd_zw_103_fighter_lance",
+    "variantId": "astd_zw_103_fighter_Fighter",
     "weaponGroups": [
         {
             "mode": "LINKED",
             "weapons": {
-                "WS 001": "astd_phase_lance_fighter",
-                "WS 002": "astd_positron_shockwave"
+                "WS 001": "astd_ion_pulse_fighter",
+                "WS 002": "astd_phase_lance_fighter",
+                "WS 003": "astd_positron_shockwave"
             }
         }
     ]

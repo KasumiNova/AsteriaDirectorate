@@ -18,7 +18,7 @@
         }
     ],
     "wings": [
-        "astd_zw_103_ion_wing",
-        "astd_zw_103_lance_wing"
+        "astd_zw_103_wing",
+        "astd_zw_103_wing"
     ]
 }

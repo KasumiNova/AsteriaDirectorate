@@ -183,7 +183,7 @@ object Wpn_astd_gcp12 : WeaponDataEntry() {
     override val impact: Int = 0
 
     override val turnRate: Int = 20
-    override val ops: Int = 28
+    override val ops: Int = 26
     override val type: String = "HIGH_EXPLOSIVE"
 
     override val energyPerSecond: Int = 880
@@ -223,7 +223,7 @@ object Wpn_astd_gcp8 : WeaponDataEntry() {
     override val impact: Int = 0
 
     override val turnRate: Int = 30
-    override val ops: Int = 14
+    override val ops: Int = 13
     override val type: String = "HIGH_EXPLOSIVE"
     override val energyPerSecond: Int = 550
 
@@ -259,7 +259,7 @@ object Wpn_astd_gcp4 : WeaponDataEntry() {
     override val impact: Int = 0
 
     override val turnRate: Int = 30
-    override val ops: Int = 8
+    override val ops: Int = 7
     override val type: String = "HIGH_EXPLOSIVE"
     override val energyPerSecond: Int = 385
 
@@ -295,7 +295,7 @@ object Wpn_astd_gcp2 : WeaponDataEntry() {
     override val impact: Int = 0
 
     override val turnRate: Int = 60
-    override val ops: Int = 6
+    override val ops: Int = 5
     override val type: String = "HIGH_EXPLOSIVE"
     override val energyPerSecond: Int = 300
 
@@ -975,7 +975,7 @@ object Wpn_astd_charge_needle_fighter : WeaponDataEntry() {
     override val range: Int = 600
     override val damagePerSecond: Int = 500
     override val damagePerShot: Int = 50
-    override val emp: Int = 100
+    override val emp: Int = 200
     override val turnRate: Int = 30
     override val ops: Int = 0
 
@@ -991,10 +991,9 @@ object Wpn_astd_charge_needle_fighter : WeaponDataEntry() {
 
     override val projSpeed: Int = 1350
 
-    // 精度口径沿用舰装版（对齐原版轻型针刺）
-    override val minSpread: Double = 0.0
-    override val maxSpread: Double = 10.0
-    override val spreadPerShot: Double = 0.66
+    override val minSpread: Double = 5.0
+    override val maxSpread: Double = 15.0
+    override val spreadPerShot: Double = 0.75
     override val spreadDecayPerSec: Double = 5.0
 
     // 战机内置武器：SYSTEM 不进配装列表
@@ -1030,7 +1029,7 @@ object Wpn_astd_gcp_fighter : WeaponDataEntry() {
     override val turnRate: Int = 60
     override val ops: Int = 0
     override val type: String = "HIGH_EXPLOSIVE"
-    override val energyPerSecond: Int = 300
+    override val energyPerSecond: Int = 200
     override val chargeup: Double = 0.5
     override val chargedown: Double = 0.25
     override val burstSize: Double = 1.0
