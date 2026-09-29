@@ -15,7 +15,9 @@ class BountyFleetTuneScript(
 
     override fun isDone(): Boolean = false
 
-    override fun runWhilePaused(): Boolean = false
+    // 玩家打开赏金情报面板时游戏处于暂停：必须在暂停期也完成后处理，
+    // 否则 intel 的舰队编成显示（ShowFleet.Vanilla 读实际舰队成员）会露出清退前的原始舰队。
+    override fun runWhilePaused(): Boolean = true
 
     override fun advance(amount: Float) {
         // 制式核心头像必须早于赏金舰队生成完成预加载，否则 AI 核心军官指派/渲染路径拿到黑壳贴图。

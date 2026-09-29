@@ -278,7 +278,9 @@ class BountyFleetTunerImpl(
         const val CORES_MEMKEY_PREFIX: String = "\$astd_bounty_cores_"
 
         const val UNIQUE_HULL_TAG: String = "astd_unique"
-        const val EXCLUDED_PRODUCTION_HULL: String = "astd_xc_104"
+
+        /** 发布范围外舰体的显式排除清单（与 astd_unique tag 并用的双保险：tag 漏标时仍然生效）。 */
+        val EXCLUDED_HULL_IDS: Set<String> = setOf("astd_zw_001", "astd_xc_104")
 
         /** 补抽护航时按原版 doctrine 角色加权抽取（独特舰角色命中后由排除逻辑重抽）。 */
         val ROLE_WEIGHTS: List<Pair<String, Float>> = listOf(
@@ -304,11 +306,13 @@ class BountyFleetTunerImpl(
         )
 
         /**
-         * 护航排除判定：全部独特舰（astd_unique，含发布范围外的决明与当期旗舰同型舰）
-         * 以及逐电 astd_xc_104 不得出现在赏金舰队护航位。
+         * 护航排除判定，对所有注入路径（MagicLib 生成清退、doctrine 随机补抽、纠偏补抽）统一生效：
+         * 全部独特舰（astd_unique tag 标于 ship_data.csv，含发布范围外的决明与当期唯一舰旗舰同型舰）
+         * 以及显式清单内的发布范围外舰体（决明 zw_001 / 逐电 xc_104）不得出现在赏金舰队护航位。
+         * 当期旗舰同型：唯一舰旗舰的同型由 astd_unique tag 覆盖；量产旗舰的同型为主力舰，正常放行。
          */
         fun isEscortExcludedHull(hullId: String, astdUnique: Boolean): Boolean =
-            astdUnique || hullId == EXCLUDED_PRODUCTION_HULL
+            astdUnique || hullId in EXCLUDED_HULL_IDS
 
         /** 原版 settings.json 的 AI 舰队最大舰船数（0.98 无 FP 口径的舰队上限配置）。 */
         fun maxFleetSizeSetting(): Int {

@@ -7,6 +7,8 @@
 	"id":"asteria_directorate",
 	"displayName":"菀星设计局",
 	"displayNameWithArticle":"菀星设计局",
+	# 原版英文 is/are 助词位：中文模板（如 MagicLib 赏金报酬文本）直接拼接该值，置空避免混入英文
+	"displayNameIsOrAre":"",
 
 	# 纹章与徽标正式素材未产出，暂用原版中立贴图占位；素材落地后替换为 graphics/factions/ 下自有贴图
 	"logo":"graphics/factions/neutral.png",
@@ -52,12 +54,12 @@
 	},
 
 	# 装配变体按原版 doctrine 角色分组列出；权重仅影响舰队抽取，模拟战列表不消费，统一取 10
+	# 发布范围外舰体（决明 zw_001、逐电 xc_104）不入池
 	"shipRoles":{
-		# 护卫舰：飞星 ×2 / 逐电
+		# 护卫舰：飞星 ×2
 		"combatSmall":{
 			"astd_lh_001_Standard":10,
 			"astd_lh_002_Standard":10,
-			"astd_xc_104_Standard":10,
 		},
 		# 驱逐舰：淬刃 / 列星 / 舜华
 		"combatMedium":{
@@ -65,11 +67,9 @@
 			"astd_xc_103_Standard":10,
 			"astd_zw_101_Standard":10,
 		},
-		# 巡洋舰：熔壁 / 决明（载人 + 自律双装配）
+		# 巡洋舰：熔壁
 		"combatLarge":{
 			"astd_xc_101_Standard":10,
-			"astd_zw_001_Standard":10,
-			"astd_zw_001_Automated":10,
 		},
 		# 主力舰：星坠 / 烽燧 / 飞蓬（航空战列舰，兼列 carrierLarge）
 		"combatCapital":{
