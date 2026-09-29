@@ -1,6 +1,7 @@
 package cn.kasuminova.astd;
 
 import cn.kasuminova.astd.campaign.AsteriaTestCampaignBootstrap;
+import cn.kasuminova.astd.campaign.bounty.StandardCores;
 import cn.kasuminova.astd.campaign.world.StoryWorldBootstrap;
 import cn.kasuminova.astd.combat.effect.joint.stardust.StardustLauncherAutofireAiPicker;
 import cn.kasuminova.astd.combat.effect.joint.stardust.StardustMoteAiPicker;
@@ -75,6 +76,8 @@ public final class AsteriaDirectoratePlugin extends BaseModPlugin {
         GravityPhaseVisualEffect.INSTANCE.preloadTextures();
         // 预加载 XC-002 虚数之翼光翼贴图（同上原因）。
         Xc002GhostWingsEffect.INSTANCE.preloadTextures();
+        // 预加载制式核心军官头像贴图（同上原因；核心指派界面为裸 getSprite 路径）。
+        StandardCores.INSTANCE.preloadPortraits();
     }
 
     @Override

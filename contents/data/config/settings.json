@@ -21,5 +21,8 @@
     "菀星设计局-星坠": [142, 200, 255, 255],
     "菀星设计局-紫菀": [200, 160, 255, 255],
     "灵能链路": [255, 100, 180, 255]
-  }
+  },
+  "drop_prob_officer_astd_ai_core_g": 0.2,
+  "drop_prob_officer_astd_ai_core_b": 0.1,
+  "drop_prob_officer_astd_ai_core_a": 0.05
 }

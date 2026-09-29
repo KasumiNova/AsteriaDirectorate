@@ -85,6 +85,13 @@ object Desc_astd_ice_shard_mirv : LocalizedDescription("astd_ice_shard_mirv", "W
 object Desc_astd_ice_shard_mirv_pod : LocalizedDescription("astd_ice_shard_mirv_pod", "WEAPON", notesId = "astd_ice_shard_mirv")
 
 object Desc_astd_reserved_station : LocalizedDescription("astd_reserved_station", "CUSTOM")
+
+// 制式（量产）AI 核心物品描述
+object Desc_astd_ai_core_g : LocalizedDescription("astd_ai_core_g", "RESOURCE")
+object Desc_astd_ai_core_b : LocalizedDescription("astd_ai_core_b", "RESOURCE")
+object Desc_astd_ai_core_a : LocalizedDescription("astd_ai_core_a", "RESOURCE")
+object Desc_astd_ai_core_o : LocalizedDescription("astd_ai_core_o", "RESOURCE")
+
 object Desc_astd_gemini_bomber : LocalizedDescription("astd_gemini_bomber", "SHIP")
 object Desc_astd_surge_fighter : LocalizedDescription("astd_surge_fighter", "SHIP")
 object Desc_astd_gravwell_interceptor : LocalizedDescription("astd_gravwell_interceptor", "SHIP")

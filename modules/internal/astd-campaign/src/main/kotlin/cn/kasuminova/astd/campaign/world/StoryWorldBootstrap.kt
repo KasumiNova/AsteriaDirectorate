@@ -1,6 +1,7 @@
 package cn.kasuminova.astd.campaign.world
 
 import cn.kasuminova.astd.campaign.bounty.BountyFleetTuneScript
+import cn.kasuminova.astd.campaign.bounty.StandardCoreCampaignPlugin
 import cn.kasuminova.astd.campaign.world.StoryWorldBootstrap.onGameLoad
 import cn.kasuminova.astd.campaign.world.StoryWorldBootstrap.onNewGameAfterEconomyLoad
 import com.fs.starfarer.api.Global
@@ -32,6 +33,13 @@ object StoryWorldBootstrap {
         // 生涯层脚本为 transient：每次读档重新注册（状态均在 persistentData）。
         sector.addTransientScript(EventHorizonShieldScript())
         sector.addTransientScript(BountyFleetTuneScript())
+
+        // 制式（量产）核心战役插件：astd_ai_core_g/b/a/o 军官分发 + A 档行政官分发。
+        // 非 transient 口径，memory key 去重防止重复注册。
+        if (!sector.memoryWithoutUpdate.getBoolean(StandardCoreCampaignPlugin.MEMORY_PLUGIN_ADDED)) {
+            sector.registerPlugin(StandardCoreCampaignPlugin())
+            sector.memoryWithoutUpdate.set(StandardCoreCampaignPlugin.MEMORY_PLUGIN_ADDED, true)
+        }
 
         if (newGame) return
 
