@@ -15,8 +15,8 @@ import kotlin.math.sqrt
 /**
  * 剧情星系落位算法（纯函数层，不触碰 Global，可直接单测）。
  *
- * 约束（07 文档「遗址星系规格」）：
- * - 第二章双星系距剧情主星系约 [CH2_DISTANCE_FROM_MAIN] su；
+ * 约束：
+ * - 双遗址星系距剧情主星系约 [CH2_DISTANCE_FROM_MAIN] su；
  * - 固定位于边缘星区：距星区中心（原点）≥ [EDGE_MIN_RADIUS] su；
  * - 与既有剧情星系的最小角距 [MIN_ANGULAR_SEPARATION_DEG]°（以星区中心为顶点的夹角）。
  */

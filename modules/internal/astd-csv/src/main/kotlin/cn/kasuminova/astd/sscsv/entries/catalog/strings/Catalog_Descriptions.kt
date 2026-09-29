@@ -7,7 +7,7 @@ import cn.kasuminova.astd.sscsv.i18n.SsI18n
  * `data/strings/descriptions.csv`：武器/系统等“顶部描述文本”。
  *
  * 约定：
- * - 这些文本会直接进入 UI，尽量避免 ASCII `%`（推荐用全角 `％`）。
+ * - 这些文本会直接进入 UI；百分号一律使用半角 `%`，不使用全角。
  */
 
 private fun desc(id: String, key: String, fallback: String = ""): String =
@@ -29,18 +29,14 @@ abstract class LocalizedDescription(
 object Desc_astd_xc_001 : LocalizedDescription("astd_xc_001", "SHIP")
 object Desc_astd_xc_104 : LocalizedDescription("astd_xc_104", "SHIP")
 object Desc_astd_xc_102 : LocalizedDescription("astd_xc_102", "SHIP")
-object Desc_astd_zl_101 : LocalizedDescription("astd_zl_101", "SHIP")
 object Desc_astd_zw_002 : LocalizedDescription("astd_zw_002", "SHIP")
 object Desc_astd_zw_103 : LocalizedDescription("astd_zw_103", "SHIP")
-object Desc_astd_zl_103 : LocalizedDescription("astd_zl_103", "SHIP")
 object Desc_astd_zw_001 : LocalizedDescription("astd_zw_001", "SHIP")
-object Desc_astd_zl_102 : LocalizedDescription("astd_zl_102", "SHIP")
 object Desc_astd_zw_102 : LocalizedDescription("astd_zw_102", "SHIP")
 object Desc_astd_zw_101 : LocalizedDescription("astd_zw_101", "SHIP")
 object Desc_astd_xc_002 : LocalizedDescription("astd_xc_002", "SHIP")
 object Desc_astd_xc_101 : LocalizedDescription("astd_xc_101", "SHIP")
 object Desc_astd_xc_103 : LocalizedDescription("astd_xc_103", "SHIP")
-object Desc_astd_zl_001 : LocalizedDescription("astd_zl_001", "SHIP")
 
 object Desc_astd_arc_shared_flux_network : LocalizedDescription("astd_arc_shared_flux_network", "SHIP_SYSTEM")
 object Desc_astd_plasma_armor_shield_boost : LocalizedDescription("astd_plasma_armor_shield_boost", "SHIP_SYSTEM")
@@ -87,15 +83,6 @@ object Desc_astd_cuifeng_torpedo : LocalizedDescription("astd_cuifeng_torpedo", 
 object Desc_astd_cuifeng_launcher : LocalizedDescription("astd_cuifeng_launcher", "WEAPON", notesId = "astd_cuifeng_torpedo")
 object Desc_astd_ice_shard_mirv : LocalizedDescription("astd_ice_shard_mirv", "WEAPON")
 object Desc_astd_ice_shard_mirv_pod : LocalizedDescription("astd_ice_shard_mirv_pod", "WEAPON", notesId = "astd_ice_shard_mirv")
-
-object Desc_astd_executor_core : LocalizedDescription("astd_executor_core", "RESOURCE")
-object Desc_astd_executor_core_combat : LocalizedDescription("astd_executor_core_combat", "RESOURCE")
-object Desc_astd_executor_core_admin : LocalizedDescription("astd_executor_core_admin", "RESOURCE")
-
-object Desc_astd_ai_core_g : LocalizedDescription("astd_ai_core_g", "RESOURCE")
-object Desc_astd_ai_core_b : LocalizedDescription("astd_ai_core_b", "RESOURCE")
-object Desc_astd_ai_core_a : LocalizedDescription("astd_ai_core_a", "RESOURCE")
-object Desc_astd_ai_core_o : LocalizedDescription("astd_ai_core_o", "RESOURCE")
 
 object Desc_astd_reserved_station : LocalizedDescription("astd_reserved_station", "CUSTOM")
 object Desc_astd_gemini_bomber : LocalizedDescription("astd_gemini_bomber", "SHIP")

@@ -41,7 +41,7 @@ class StoryWorldCompletionTest {
     @Test
     fun `残缺判定可发现紫菀半途残留`() {
         // 紫菀生成到一半（黑洞恒星 + 部分行星）就抛异常：实体集合含恒星但缺核心实体。
-        val partial = aster.allEntityIds().toSet() - StoryWorldIds.ASTER_CORE_VAULT - StoryWorldIds.ASTER_STATION_MAIN
+        val partial = aster.allEntityIds().toSet() - StoryWorldIds.ASTER_STATION_SHIGUANG - StoryWorldIds.ASTER_STATION_MAIN
         assertTrue(StoryWorldIds.ASTER_STAR in partial, "恒星已生成")
         assertFalse(aster.isComplete(partial), "恒星存在但实体残缺时必须判定不完整，否则旧版幂等会误判成功")
     }

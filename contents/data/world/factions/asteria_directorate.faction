@@ -22,7 +22,7 @@
 	"portraits":{},
 
 	# 已知舰体口径：contents/data/hulls 下全部舰船 hull（astd_production / astd_unique / astd_automated
-	# 三个 tag 覆盖全部 17 艘舰船；战斗机与无人机 hull 不带这些 tag，天然排除）
+	# tag 覆盖全部舰船；战斗机与无人机 hull 不带这些 tag，天然排除）
 	"knownShips":{
 		"tags":["astd_production", "astd_unique", "astd_automated"],
 		"hulls":[],
@@ -30,32 +30,28 @@
 
 	# 装配变体按原版 doctrine 角色分组列出；权重仅影响舰队抽取，模拟战列表不消费，统一取 10
 	"shipRoles":{
-		# 护卫舰：飞星 ×2 / 逐电 / 值星
+		# 护卫舰：飞星 ×2 / 逐电
 		"combatSmall":{
 			"astd_lh_001_Standard":10,
 			"astd_lh_002_Standard":10,
 			"astd_xc_104_Standard":10,
-			"astd_zl_103_Standard":10,
 		},
-		# 驱逐舰：淬刃 / 列星 / 游徼 / 舜华
+		# 驱逐舰：淬刃 / 列星 / 舜华
 		"combatMedium":{
 			"astd_xc_002_Standard":10,
 			"astd_xc_103_Standard":10,
-			"astd_zl_102_Standard":10,
 			"astd_zw_101_Standard":10,
 		},
-		# 巡洋舰：熔壁 / 列栅 / 决明（载人 + 自律双装配）
+		# 巡洋舰：熔壁 / 决明（载人 + 自律双装配）
 		"combatLarge":{
 			"astd_xc_101_Standard":10,
-			"astd_zl_101_Standard":10,
 			"astd_zw_001_Standard":10,
 			"astd_zw_001_Automated":10,
 		},
-		# 主力舰：星坠 / 烽燧 / 统律 / 飞蓬（航空战列舰，兼列 carrierLarge）
+		# 主力舰：星坠 / 烽燧 / 飞蓬（航空战列舰，兼列 carrierLarge）
 		"combatCapital":{
 			"astd_xc_001_Standard":10,
 			"astd_xc_102_Standard":10,
-			"astd_zl_001_Standard":10,
 			"astd_zw_102_Standard":10,
 		},
 		# 相位：密蒙（巡洋舰级）/ 茑萝（驱逐舰级护航航母，兼列 carrierSmall）

@@ -4,11 +4,10 @@ import cn.kasuminova.astd.api.difficulty.DifficultyTuning
 import cn.kasuminova.astd.api.difficulty.ScalingEntry
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
- * 剧情状况数值缩放（k_s 三锚点端点命中）+ 引力节点状态机（拔除进度幂等）。
+ * 剧情状况数值缩放（k_s 三锚点端点命中）。
  */
 class StoryWorldContentTest {
 
@@ -84,35 +83,5 @@ class StoryWorldContentTest {
         assertTrue(s.heavyIndustryOutput in 2f..6f)
         val p = StoryConditionEffects.eventHorizonPower(base)
         assertTrue(p.upkeepReduction in 0.15f..0.75f)
-    }
-
-    @Test
-    fun `护卫舰队 FP 为基准 300 乘难度系数`() {
-        assertEquals(300f, GravityNodes.guardFleetPoints(FixedTuning(1f)), 1e-4f)
-        assertEquals(600f, GravityNodes.guardFleetPoints(FixedTuning(2f)), 1e-4f)
-        assertEquals(1500f, GravityNodes.guardFleetPoints(FixedTuning(5f)), 1e-4f)
-    }
-
-    @Test
-    fun `节点拔除进度状态机幂等`() {
-        val state = StoryWorldState()
-        assertEquals(0, state.pulledNodeCount())
-        assertFalse(state.allNodesPulled())
-        assertFalse(state.isNodePulled(StoryWorldIds.ASTER_NODE_1))
-
-        // 重复拔除登记幂等
-        state.gravityNodesPulled.add(StoryWorldIds.ASTER_NODE_1)
-        state.gravityNodesPulled.add(StoryWorldIds.ASTER_NODE_1)
-        assertEquals(1, state.pulledNodeCount())
-        assertTrue(state.isNodePulled(StoryWorldIds.ASTER_NODE_1))
-        assertFalse(state.allNodesPulled())
-
-        // 非节点 id 不影响判定
-        state.gravityNodesPulled.add("astd_story_aster_core_vault")
-        assertFalse(state.allNodesPulled())
-
-        state.gravityNodesPulled.add(StoryWorldIds.ASTER_NODE_2)
-        state.gravityNodesPulled.add(StoryWorldIds.ASTER_NODE_3)
-        assertTrue(state.allNodesPulled(), "三节点全部拔除后核心数据舱应解禁")
     }
 }

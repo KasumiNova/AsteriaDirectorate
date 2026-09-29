@@ -3,16 +3,19 @@ package cn.kasuminova.astd.combat.hullmods.affix
 import com.fs.starfarer.api.combat.ShipAPI
 
 /**
- * 赏金舰队 memory 读取工具（存量遗留）：
+ * 词缀体系 memory 读取工具：
  * - 从 FleetMember memory 读取 k_p（0..1，轨二进程系数）与 totalMult（1..15）。
+ *
+ * **当前状态（2026-09 剧情重做后）**：赏金舰队生成器已移除，两个 memory key **暂无写入方**，
+ * getK 恒 0、getTotalMult 恒 1，读取点（lens 系词条）按中性值运行。词缀体系代码保留，
+ * 后续剧情重做落地新的挂载方时恢复写入。
  *
  * **取值约束**：k_p 是生成表专用系数——舰队规模与词缀选量在生成时已按其定案，
  * 进入战斗后机制数值禁止再从此取（机制数值走轨一 [cn.kasuminova.astd.api.difficulty.DifficultyTuning]）。
- * 现存读取点（lens 系词条）属于待迁移存量（P5 词条阶段统一处理），新代码不得新增 getK 调用。
  */
 internal object AffixUtil {
 
-    // 与 campaign/bounty/BountyKeys.kt 保持一致（避免引 Kotlin 常量导致加载顺序问题）。
+    // memory key 字面值固定（舰队生成侧按同名字面值写入；避免引 Kotlin 常量导致加载顺序问题）。
     const val MEM_K: String = "\$astd_bounty_k"
     const val MEM_TOTAL_MULT: String = "\$astd_bounty_total_mult"
 

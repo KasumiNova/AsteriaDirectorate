@@ -34,7 +34,7 @@ import org.apache.log4j.Logger
  *   观锚站需同时打 IndEvo 原生标签 `IndEvo_watchtower`：addArtilleryToPlanet 以该标签判定
  *   星系已有观锚站（否则它会在跳点旁再补一套），且 ArtilleryStationScript 经该标签同步激活状态。
  *
- * 紫菀遗址星系：07 文档定稿「模组联动：暂无」，IndEvo 无适配内容，不生成任何 IndEvo 实体。
+ * 紫菀遗址星系：定稿「模组联动：暂无」，IndEvo 无适配内容，不生成任何 IndEvo 实体。
  *
  * 调用约定：
  * - 主星系：生成当刻 [addMainSystemExtrasIfEnabled] + 每次经过 [repairMainSystemIfEnabled] 双入口；
@@ -59,7 +59,7 @@ object IndEvoWorldExtras {
     /** 观锚站稳定点轨道半径（各星系通用，位于常规行星轨道之外）。 */
     private const val WATCHTOWER_ORBIT_RADIUS: Float = 21000f
 
-    /** 每星系观锚站稳定点数量（03/07 文档）。 */
+    /** 每星系观锚站稳定点数量。 */
     private const val WATCHTOWER_COUNT: Int = 4
 
     /** 检测标志位缓存（mod 列表在运行期不变，缓存一次即可）。 */

@@ -47,7 +47,7 @@ object StorySystemSpecs {
         val radius: Float,
         val orbit: OrbitSpec,
         val market: MarketSpec?,
-        /** 轨道恒星镜数量（03 文档：兰台的宜居链设施）。 */
+        /** 轨道恒星镜数量（兰台的宜居链设施）。 */
         val stellarMirrors: Int = 0,
     )
 
@@ -180,7 +180,7 @@ object StorySystemSpecs {
         }
     }
 
-    // ─── 剧情主星系（03 文档） ───
+    // ─── 剧情主星系 ───
 
     fun mainSystemSpec(seed: Long): SystemSpec {
         val rnd = Random(seed)
@@ -322,7 +322,7 @@ object StorySystemSpecs {
         )
     }
 
-    // ─── 星坠遗址星系（07 文档） ───
+    // ─── 星坠遗址星系 ───
 
     fun starfallSystemSpec(seed: Long): SystemSpec {
         val rnd = Random(seed)
@@ -425,7 +425,7 @@ object StorySystemSpecs {
         )
     }
 
-    // ─── 紫菀遗址星系（07 文档） ───
+    // ─── 紫菀遗址星系 ───
 
     fun asterSystemSpec(seed: Long): SystemSpec {
         val rnd = Random(seed)
@@ -487,35 +487,6 @@ object StorySystemSpecs {
                             ),
                             inEconomy = true,
                         ),
-                    )
-                )
-                // 引力节点 ×3：等边三角布局
-                StoryWorldIds.ASTER_NODE_IDS.forEachIndexed { index, nodeId ->
-                    add(
-                        EntitySpec(
-                            id = nodeId,
-                            nameKey = "world.aster.node.${index + 1}",
-                            entityType = Entities.STATION_RESEARCH_REMNANT,
-                            orbit = OrbitSpec(star, 90f + index * 120f, 3200f, 71f),
-                            factionId = Factions.REMNANTS,
-                            market = MarketSpec(
-                                marketId = listOf(StoryWorldIds.MARKET_NODE_1, StoryWorldIds.MARKET_NODE_2, StoryWorldIds.MARKET_NODE_3)[index],
-                                size = 1,
-                                factionId = Factions.REMNANTS,
-                                conditionOnly = true,
-                            ),
-                            tags = listOf(StoryWorldIds.TAG_GRAVITY_NODE),
-                        )
-                    )
-                }
-                // 核心数据舱（节点阵地内侧，未拔全节点前交互被拒）
-                add(
-                    EntitySpec(
-                        id = StoryWorldIds.ASTER_CORE_VAULT,
-                        nameKey = "world.aster.core_vault",
-                        entityType = Entities.STATION_RESEARCH_REMNANT,
-                        orbit = OrbitSpec(star, 270f, 1800f, 40f),
-                        factionId = Factions.REMNANTS,
                     )
                 )
                 add(

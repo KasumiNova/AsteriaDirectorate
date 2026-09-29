@@ -61,7 +61,7 @@ class StorySystemSpecsTest {
     }
 
     @Test
-    fun `主星系实体清单符合 03 文档`() {
+    fun `主星系实体清单符合规格`() {
         // 蓝巨星 + 兰台（宜居链 + 菀星行政部遗址 + 恒星镜）+ 洪炉/淬池（固定荒芜特征链）
         assertEquals("star_blue_giant", main.starType)
         val lantai = main.planets.first { it.id == StoryWorldIds.MAIN_PLANET_LANTAI }
@@ -103,7 +103,7 @@ class StorySystemSpecsTest {
     }
 
     @Test
-    fun `星坠星系实体清单符合 07 文档`() {
+    fun `星坠星系实体清单符合规格`() {
         assertEquals("star_blue_supergiant", starfall.starType)
         val duanyuan = starfall.planets.first { it.id == StoryWorldIds.STARFALL_PLANET_DUANYUAN }
         assertEquals("jungle", duanyuan.typeId)
@@ -120,7 +120,7 @@ class StorySystemSpecsTest {
     }
 
     @Test
-    fun `紫菀星系实体清单符合 07 文档`() {
+    fun `紫菀星系实体清单符合规格`() {
         assertEquals("black_hole", aster.starType)
         assertTrue(aster.blackHole)
         // 拾光：FULL size 4 + 宜居 + 两剧情状况
@@ -137,22 +137,8 @@ class StorySystemSpecsTest {
                 )
             ),
         )
-        // 引力节点 ×3：等边三角 + 标签 + condition-only 市场
-        val nodes = aster.entities.filter { StoryWorldIds.TAG_GRAVITY_NODE in it.tags }
-        assertEquals(3, nodes.size)
-        val radii = nodes.map { it.orbit.radius }.distinct()
-        assertEquals(1, radii.size, "节点须在共同半径上")
-        val angles = nodes.map { it.orbit.angleDeg }.sorted()
-        for (i in angles.indices) {
-            val gap = (angles[(i + 1) % angles.size] - angles[i] + 360f) % 360f
-            assertEquals(120f, gap, 1e-3f, "节点角距须为 120°（等边三角）")
-        }
-        assertTrue(nodes.all { it.market?.conditionOnly == true })
-        // 节点/核心数据舱须在事件视界（~1200su）之外
-        assertTrue(nodes.all { it.orbit.radius > 1400f })
-        val vault = aster.entities.first { it.id == StoryWorldIds.ASTER_CORE_VAULT }
-        assertTrue(vault.orbit.radius > 1400f, "核心数据舱须位于事件视界之外")
-        assertTrue(vault.orbit.radius < radii.first(), "核心数据舱应位于节点阵地内侧")
+        // 拾光须在事件视界（~1200su）之外
+        assertTrue(shiguang.orbit.radius > 1400f, "拾光须位于事件视界之外")
         // 冰封 2~4（固定极寒+黑暗）、荒芜 1~2、气态巨 2~4（固定黑暗）、带 ×2、占位站 ×2
         val frozen = aster.planets.filter { it.market!!.conditionIds.containsAll(listOf(Conditions.VERY_COLD, Conditions.DARK)) }
         assertTrue(frozen.size in 2..4, "冰封行星数量 ${frozen.size} 越界")

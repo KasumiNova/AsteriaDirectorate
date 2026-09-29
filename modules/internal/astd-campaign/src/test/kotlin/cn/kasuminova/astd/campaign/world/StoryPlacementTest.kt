@@ -18,7 +18,7 @@ class StoryPlacementTest {
     }
 
     @Test
-    fun `第二章落位满足距离与角距约束`() {
+    fun `遗址星系落位满足距离与角距约束`() {
         val mainLocs = listOf(
             Vec(0f, 0f),
             Vec(5000f, 0f),

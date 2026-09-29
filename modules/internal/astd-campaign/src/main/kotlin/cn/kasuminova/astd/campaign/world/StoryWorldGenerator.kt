@@ -1,10 +1,7 @@
 package cn.kasuminova.astd.campaign.world
 
-import cn.kasuminova.astd.campaign.bounty.BountyState
-import cn.kasuminova.astd.campaign.bounty.MainlineProgression
 import cn.kasuminova.astd.campaign.world.StoryWorldGenerator.ensureAll
 import cn.kasuminova.astd.campaign.world.StoryWorldGenerator.ensureChapter2Systems
-import cn.kasuminova.astd.campaign.world.StoryWorldGenerator.onChapterCleared
 import cn.kasuminova.astd.internal.i18n.I18n
 import cn.kasuminova.astd.internal.i18n.I18n.Categories
 import com.fs.starfarer.api.Global
@@ -22,9 +19,7 @@ import org.apache.log4j.Logger
 /**
  * 剧情星系生成器（游戏侧，触碰 Global）。
  *
- * - 主星系：生涯开局（onNewGameAfterEconomyLoad）生成，位置半随机（种子 = 星区种子串）；
- * - 第二章双星系：第一章结清钩子（[MainlineProgression.HOOK_SEALED_CATEGORIES]）触发生成——
- *   结算时即时生成（[onChapterCleared]）+ 读档补齐（[ensureAll]）双路径；
+ * - 三个剧情星系均生涯开局（onNewGameAfterEconomyLoad）常生成，位置半随机（种子 = 星区种子串）；
  * - 幂等：以规格实体清单（[StorySystemSpecs.SystemSpec.allEntityIds]）对照当前星系，半途失败
  *   留下的残缺星系会被规范校验拦下并整体重放；补齐成功才写 [StoryWorldState] 状态标志位；
  * - IndEvo 联动统一走 [IndEvoWorldExtras]（软依赖，缺模组时该类不被加载）——主星系创建时注入 +
@@ -43,7 +38,7 @@ object StoryWorldGenerator {
     /**
      * 全部剧情内容的幂等入口（新开档经济加载后 + 读档）。
      *
-     * 顺序：主星系 → 第二章双星系（钩子门控）。
+     * 顺序：主星系 → 双遗址星系。
      */
     fun ensureAll(sector: SectorAPI) {
         val state = StoryWorldState.getOrCreate()
@@ -55,7 +50,7 @@ object StoryWorldGenerator {
         try {
             ensureChapter2Systems(sector, state)
         } catch (t: Throwable) {
-            log.error("[ASTD] 第二章遗址星系生成失败", t)
+            log.error("[ASTD] 遗址星系生成失败", t)
         }
     }
 
@@ -66,7 +61,7 @@ object StoryWorldGenerator {
      * 星系会带着残缺实体留在星区；此后恒星 canonical id 已存在，旧版幂等判定会误认为生成成功、
      * 残缺内容永不补齐。规范校验（而非只看恒星一个 id）把这类星系识别为失败态交给本方法整体重放。
      *
-     * 失败必须有日志（调用方 ensureAll/onChapterCleared 亦各自记录）。
+     * 失败必须有日志（调用方 ensureAll 亦各自记录）。
      */
     private fun recreateSystemIfIncomplete(
         sector: SectorAPI,
@@ -121,16 +116,6 @@ object StoryWorldGenerator {
         }
     }
 
-    /** 章节结清钩子回调（MainBountyBridge 结算路径调用）：第一章结清即生成第二章双星系。 */
-    fun onChapterCleared(sector: SectorAPI, chapter: Int) {
-        if (chapter != 1) return
-        try {
-            ensureChapter2Systems(sector, StoryWorldState.getOrCreate())
-        } catch (t: Throwable) {
-            log.error("[ASTD] 第一章结清钩子触发的第二章遗址星系生成失败", t)
-        }
-    }
-
     /**
      * 主星系：恒星已存在且完整则做 IndEvo 联动补齐（读档/模组中途启用路径），并校正缺失的生成标志位；
      * 恒星缺失则新生成（创建后立即做一次 IndEvo 注入）；残缺（半途失败残留）则回滚重建，重建后补一次注入。
@@ -162,8 +147,8 @@ object StoryWorldGenerator {
     }
 
     /**
-     * 第二章双星系：钩子未触发则不动；两星系均已完整则做星坠 IndEvo 补齐后幂等返回；
-     * 已触发但星系缺失或残缺则按存档落位（无存档落位时按种子现算并写入存档）补齐或回滚重建。
+     * 双遗址星系（星坠/紫菀）：两星系均已完整则做星坠 IndEvo 补齐后幂等返回；
+     * 星系缺失或残缺则按存档落位（无存档落位时按种子现算并写入存档）补齐或回滚重建。
      *
      * 状态机语义：只有两个星系全部按规格落地成功才置 [StoryWorldState.chapter2SystemsGenerated]；
      * 任一星系中途失败/残缺，下次进入本方法时以规范实体清单拦下并回滚重建。
@@ -171,14 +156,7 @@ object StoryWorldGenerator {
      */
     fun ensureChapter2Systems(sector: SectorAPI, state: StoryWorldState) {
         val starfallSpec = StorySystemSpecs.starfallSystemSpec(sectorSeed(sector, SEED_SALT_CH2))
-        // 已拔除的引力节点是「合法缺席」：从规格剔除，否则读档补齐会把节点缺失误判为
-        // 星系残缺并整体重建，导致已拔除节点复活（完整性判定/回滚重建/落盘校验共用此 spec）
-        val asterSpecFull = StorySystemSpecs.asterSystemSpec(sectorSeed(sector, SEED_SALT_CH2))
-        val asterSpec = if (state.gravityNodesPulled.isEmpty()) {
-            asterSpecFull
-        } else {
-            asterSpecFull.copy(entities = asterSpecFull.entities.filterNot { it.id in state.gravityNodesPulled })
-        }
+        val asterSpec = StorySystemSpecs.asterSystemSpec(sectorSeed(sector, SEED_SALT_CH2))
         val starfallStar = sector.getEntityById(StoryWorldIds.STARFALL_STAR)
         val asterStar = sector.getEntityById(StoryWorldIds.ASTER_STAR)
         val starfallSystem = starfallStar?.containingLocation as? StarSystemAPI
@@ -192,14 +170,9 @@ object StoryWorldGenerator {
             return
         }
 
-        val bountyState = BountyState.getOrCreate()
-        if (MainlineProgression.HOOK_SEALED_CATEGORIES !in bountyState.chapterHooks) {
-            return
-        }
-
         val mainStar = sector.getEntityById(StoryWorldIds.MAIN_STAR)
         if (mainStar == null) {
-            log.error("[ASTD] 第二章遗址星系生成失败：主星系不存在（钩子已触发但主星系缺失）")
+            log.error("[ASTD] 遗址星系生成失败：主星系不存在")
             return
         }
         val mainLoc = StoryPlacement.Vec(
@@ -210,7 +183,7 @@ object StoryWorldGenerator {
         // 状态位与实体不一致（曾置位但星系残缺）：复位状态位，回到未置位分支按当前星系状态补齐。
         if (state.chapter2SystemsGenerated && !(starfallComplete && asterComplete)) {
             log.error(
-                "[ASTD] 第二章遗址星系状态位与实体不一致（已置位但星系残缺），复位生成状态：" +
+                "[ASTD] 遗址星系状态位与实体不一致（已置位但星系残缺），复位生成状态：" +
                         "starfallComplete=$starfallComplete asterComplete=$asterComplete",
             )
             state.chapter2SystemsGenerated = false
@@ -254,7 +227,7 @@ object StoryWorldGenerator {
         ) {
             state.chapter2SystemsGenerated = true
         } else {
-            log.error("[ASTD] 第二章遗址星系仍有缺失，生成状态未落盘（下次进入本类继续补齐）")
+            log.error("[ASTD] 遗址星系仍有缺失，生成状态未落盘（下次进入本类继续补齐）")
         }
     }
 

@@ -8,7 +8,7 @@ import java.util.Random
 import kotlin.math.floor
 
 /**
- * 词缀注册表（v3 定稿，对应 docs/design/bounty/affixes.md）。
+ * 词缀注册表（v3 定稿，对应 docs/design/affixes.md）。
  *
  * 词缀 = 菀星设计总局通用改装标准（改装件），17 条：
  * S 型×8（编目号 S-01~S-08）、M 型×6（M-09~M-14）、R 型×3（R-15~R-17）。
@@ -32,7 +32,7 @@ object AffixRegistry {
      * 单条词缀的编目定义。
      *
      * @property id 词缀 id（即规格书 ID，与隐藏 HullMod id 一致）
-     * @property catalogNo 编目号（S-01 等；赏金文书"追加条款"栏的条款编号）
+     * @property catalogNo 编目号（S-01 等；总局改装标准的条款编号）
      * @property type 词缀类型（层级/稀有度）
      * @property hullModId 对应的隐藏 HullMod id（与 [id] 一致，单独保留以便 CSV/面板按 hullmod 反查）
      * @property phaseOnly 仅相位舰船可搭载（抽取时按舰队相位能力过滤，HullMod 侧再按舰体判定生效）
@@ -166,7 +166,7 @@ object AffixRegistry {
      * 计算数量搭配表。
      *
      * @param kS 难度系数（轨一固有缩放系数，1.0~5.0；越界自动收敛）
-     * @param allowR 是否允许 R 型出现（仅第三章赏金与结局后无限赏金，由调用方显式开关）
+     * @param allowR 是否允许 R 型出现（由调用方显式开关）
      */
     fun slotCounts(kS: Float, allowR: Boolean): AffixSlots {
         val t = normalizeKS(kS)
@@ -206,11 +206,10 @@ object AffixRegistry {
     }
 
     /**
-     * 无限赏金口径的抽取（docs/story/13：结局后无限赏金开放 R 全谱系）。
+     * R 全谱系口径的抽取（R 型开放是明示条款，非稀有度抽奖）。
      *
      * 与 [pickAffixes] 的差异：R 型数量由调用方按危险等级显式给定（0→2 条），
-     * 且必定填满——不走 allowR 槽位的低权重落空（无限赏金的 R 开放是文书明示条款，
-     * 不是稀有度抽奖）；S/M 数量仍由难度系数搭配表决定。
+     * 且必定填满——不走 allowR 槽位的低权重落空；S/M 数量仍由难度系数搭配表决定。
      *
      * @param rCount R 型条数（收敛到 0~2）
      */

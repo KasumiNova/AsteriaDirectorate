@@ -1,10 +1,6 @@
 package cn.kasuminova.astd;
 
 import cn.kasuminova.astd.campaign.AsteriaTestCampaignBootstrap;
-import cn.kasuminova.astd.campaign.automation.CareerAutomationInstall;
-import cn.kasuminova.astd.campaign.bounty.BountyBootstrapper;
-import cn.kasuminova.astd.campaign.bounty.StandardCores;
-import cn.kasuminova.astd.campaign.story.StoryDialogInstall;
 import cn.kasuminova.astd.campaign.world.StoryWorldBootstrap;
 import cn.kasuminova.astd.combat.effect.joint.stardust.StardustLauncherAutofireAiPicker;
 import cn.kasuminova.astd.combat.effect.joint.stardust.StardustMoteAiPicker;
@@ -56,8 +52,6 @@ public final class AsteriaDirectoratePlugin extends BaseModPlugin {
         LensArrayCoreModeUtilKt.registerLensDualModeConfig();
         // 注册 Buff 系统后端到 api 侧 BuffBackends（api 不反向依赖 impl，桥接口在此注入）。
         BuffInstall.INSTANCE.install();
-        // 注入剧情对话后端到 ui 侧 StoryDialogBackends（ui 不反向依赖 campaign，桥接口在此注入）。
-        StoryDialogInstall.INSTANCE.install();
         // 安装「双模式切换器自动模式免自动化点数」的热重载钩子（须在 LunaLib 设置注册前装好，
         // 保证注册/回调路径触发变更时钩子已在位）。
         ASTDDualModeConfigKt.installDualModeAutoPointsHook();
@@ -71,8 +65,6 @@ public final class AsteriaDirectoratePlugin extends BaseModPlugin {
         } else {
             logger.info("[ASTD] 未检测到 LunaLib：难度档位与双模式免自动化点数开关不可用，全部使用默认值");
         }
-        // 预加载制式核心军官头像（SSOptimizer 延迟加载下裸 getSprite 是 textureID=0 黑壳）。
-        StandardCores.INSTANCE.preloadPortraits();
         // 预加载武器补档发光贴图（常驻 + 蓄能；同上原因，未被 .wpn 引用的贴图不会上传 GL）。
         WeaponGlowLayer.INSTANCE.preloadTextures();
         // 预加载双子星 DEM 导轨弹体光效贴图（同上原因）。
@@ -102,15 +94,10 @@ public final class AsteriaDirectoratePlugin extends BaseModPlugin {
 
     @Override
     public void onGameLoad(boolean newGame) {
-        // 注册赏金动态生成/词缀管理脚本（主线内容重做中，框架先行）。
-        // 注意：允许多实例；脚本添加由 sector memory key 去重。
-        BountyBootstrapper.onGameLoad();
         // 覆盖发光层贴图恢复脚本（战斗内压制共享 sprite 颜色的战役侧还原，幂等去重）
         ShipGlowRenderer.INSTANCE.ensureRestoreScriptRegistered();
-        // 剧情世界：生涯层脚本/战役插件注册 + 读档补齐（含第二章钩子补齐路径）
+        // 剧情世界：生涯层脚本注册 + 读档补齐
         StoryWorldBootstrap.INSTANCE.onGameLoad(newGame);
-        // 生涯集成自动化（astd.careerAutomation.enabled 属性门控 + automation 模块在包内才生效）
-        CareerAutomationInstall.onGameLoad();
         // 战役插件：向原版插件挑选体系暴露 ASTDAutofitPlugin（双模式舰自动装配保护）。
         // 固定 id 去重，重复读档注册互相替换；0.98 ModPlugin 不继承 CampaignPlugin，必须走 registerPlugin。
         Global.getSector().registerPlugin(new ASTDCampaignPlugin());

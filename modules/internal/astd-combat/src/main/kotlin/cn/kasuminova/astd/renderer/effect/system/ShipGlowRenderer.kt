@@ -44,7 +44,7 @@ object ShipGlowRenderer {
 
     private const val ENGINE_KEY = "astd_ship_glow_renderer"
 
-    /** Sector memory key：贴图恢复脚本注册去重（口径同 BountyBootstrapper 的注册去重）。 */
+    /** Sector memory key：贴图恢复脚本注册去重。 */
     private const val MEMORY_RESTORE_SCRIPT_ADDED = "\$astd_ship_glow_restore_script_added"
 
     /** 常驻实体实例满亮相时长（秒）：生命周期由舰船状态显式驱动，不自然到期。 */

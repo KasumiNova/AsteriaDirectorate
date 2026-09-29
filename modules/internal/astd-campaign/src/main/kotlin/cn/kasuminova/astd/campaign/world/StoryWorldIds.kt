@@ -3,10 +3,7 @@ package cn.kasuminova.astd.campaign.world
 /**
  * 剧情世界生成的统一 id 契约（对外定稿，后续阶段直接消费）。
  *
- * 覆盖：三个剧情星系（主星系 / 星坠 / 紫菀）、全部固定实体与市场、
- * 引力节点实体标签、4 个剧情市场状况 id。
- *
- * 规格真相来源：docs/story/03（主星系）、docs/story/07（两遗址星系）。
+ * 覆盖：三个剧情星系（主星系 / 星坠 / 紫菀）、全部固定实体与市场、4 个剧情市场状况 id。
  */
 object StoryWorldIds {
 
@@ -15,13 +12,13 @@ object StoryWorldIds {
     /** 剧情主星系（生涯开局生成；菀星设计总局英仙座第七分局驻地）。 */
     const val SYSTEM_MAIN: String = "astd_story_main"
 
-    /** 星坠遗址星系（第二章，第一章结清钩子触发生成）。 */
+    /** 星坠遗址星系（生涯开局常生成）。 */
     const val SYSTEM_STARFALL: String = "astd_story_starfall"
 
-    /** 紫菀遗址星系（第二章，第一章结清钩子触发生成）。 */
+    /** 紫菀遗址星系（生涯开局常生成）。 */
     const val SYSTEM_ASTER: String = "astd_story_aster"
 
-    // ─── 主星系实体（03 文档「剧情主星系规格」） ───
+    // ─── 主星系实体 ───
 
     /** 主星：蓝巨星。 */
     const val MAIN_STAR: String = "astd_story_main_star"
@@ -43,7 +40,7 @@ object StoryWorldIds {
     const val MAIN_STATION_RESERVE_A: String = "astd_story_main_reserve_a"
 
     /** 预留轨道船坞（占位，本体阶段仅提供描述文本）。 */
-    // TODO（后续内容扩展）：轨道船坞功能（03 文档：可能以轨道船坞形式提供新功能）
+    // TODO（后续内容扩展）：轨道船坞功能（可能以轨道船坞形式提供新功能）
     const val MAIN_STATION_RESERVE_B: String = "astd_story_main_reserve_b"
 
     const val MAIN_COMM_RELAY: String = "astd_story_main_comm_relay"
@@ -54,7 +51,7 @@ object StoryWorldIds {
     // TODO（后续内容）：星门激活/剧情联动
     const val MAIN_GATE: String = "astd_story_main_gate"
 
-    // ─── 星坠遗址星系实体（07 文档） ───
+    // ─── 星坠遗址星系实体 ───
 
     /** 主星：蓝超巨星。 */
     const val STARFALL_STAR: String = "astd_story_starfall_star"
@@ -77,7 +74,7 @@ object StoryWorldIds {
     const val STARFALL_NAV_BUOY: String = "astd_story_starfall_nav_buoy"
     const val STARFALL_GATE: String = "astd_story_starfall_gate"
 
-    // ─── 紫菀遗址星系实体（07 文档） ───
+    // ─── 紫菀遗址星系实体 ───
 
     /** 主星：黑洞（带事件视界地形）。 */
     const val ASTER_STAR: String = "astd_story_aster_star"
@@ -93,30 +90,16 @@ object StoryWorldIds {
     const val ASTER_STATION_SINGULARITY: String = "astd_story_aster_singularity"
 
     /** 预留位（占位，力场防御系统使用）。 */
-    // TODO（后续内容）：力场防御系统（07 文档预留位）
+    // TODO（后续内容）：力场防御系统
     const val ASTER_STATION_DEFENSE: String = "astd_story_aster_defense"
 
     /** 轨道生活空间站「拾光」：FULL 市场 size 4 + 视界动力/紫菀科研部遗址两状况。 */
     const val ASTER_STATION_SHIGUANG: String = "astd_story_aster_shiguang"
 
-    /** 核心数据舱：未拔除全部引力节点前交互被拒（力场排斥）。 */
-    const val ASTER_CORE_VAULT: String = "astd_story_aster_core_vault"
-
-    /** 引力节点站 ×3（等边三角布局，station_research 类型实体 + condition-only 市场）。 */
-    const val ASTER_NODE_1: String = "astd_story_aster_node_1"
-    const val ASTER_NODE_2: String = "astd_story_aster_node_2"
-    const val ASTER_NODE_3: String = "astd_story_aster_node_3"
-
-    /** 三个引力节点实体 id（剧情顺序：外环测距 / 引力校准 / 权限剥离）。 */
-    val ASTER_NODE_IDS: List<String> = listOf(ASTER_NODE_1, ASTER_NODE_2, ASTER_NODE_3)
-
     const val ASTER_COMM_RELAY: String = "astd_story_aster_comm_relay"
     const val ASTER_SENSOR_ARRAY: String = "astd_story_aster_sensor_array"
     const val ASTER_NAV_BUOY: String = "astd_story_aster_nav_buoy"
     const val ASTER_GATE: String = "astd_story_aster_gate"
-
-    /** 引力节点实体标签：生涯层识别（接触触发护卫舰队 / 摧毁状态追踪）。 */
-    const val TAG_GRAVITY_NODE: String = "astd_gravity_node"
 
     // ─── 市场 id ───
 
@@ -126,9 +109,6 @@ object StoryWorldIds {
     const val MARKET_MAIN_STATION: String = "astd_story_market_main_station"
     const val MARKET_DUANYUAN: String = "astd_story_market_duanyuan"
     const val MARKET_SHIGUANG: String = "astd_story_market_shiguang"
-    const val MARKET_NODE_1: String = "astd_story_market_node_1"
-    const val MARKET_NODE_2: String = "astd_story_market_node_2"
-    const val MARKET_NODE_3: String = "astd_story_market_node_3"
 
     // ─── 剧情市场状况 id（market_conditions.csv order 700~703 段） ───
 

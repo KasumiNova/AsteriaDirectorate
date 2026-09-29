@@ -12,7 +12,7 @@
   - 统一入口：`I18n[category, key]` / `I18n.t(category, key, "var" to value)`
   - 支持变量替换：`%var%`
   - 支持额外字符串表：当前已加载：
-    - `contents/data/strings/bounty_strings.json`
+    - `contents/data/strings/bounty_strings.json`（词缀体系专用表）
 
 ---
 
@@ -34,7 +34,7 @@
 
 1. **新增 key**
    - 通用 UI/对话：放 `contents/data/strings/strings.json` 或拆分到额外表并在 `I18n` 中登记。
-   - 赏金相关：优先放 `contents/data/strings/bounty_strings.json`（分类 `asteria_directorate_bounty`）。
+   - 词缀相关：放 `contents/data/strings/bounty_strings.json`（分类 `asteria_directorate_bounty`，历史命名保留）。
 
 2. **代码读取方式**
    - Kotlin：
@@ -51,6 +51,6 @@
 
 ## 已迁移示例
 
-- 赏金 HUD 文案：重组舰队提示、主线推进提示、支线打捞提示
+- 词缀文案：17 条词缀船插的名称与描述
   - `contents/data/strings/bounty_strings.json`
-  - `campaign/bounty/*`
+  - `combat/hullmods/affix/*`
