@@ -62,7 +62,7 @@
         0
     ],
     "shieldRadius": 22,
-    "spriteName": "graphics/ships/电涌.png",
+    "spriteName": "graphics/ships/astd_surge_fighter.png",
     "style": "ASTD_HIGH_TECH",
     "viewOffset": 0,
     "weaponSlots": [

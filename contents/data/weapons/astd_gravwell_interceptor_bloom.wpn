@@ -9,8 +9,8 @@
     "renderHints": [
         "RENDER_ADDITIVE"
     ],
-    "turretSprite": "graphics/ships/引力光效.png",
-    "hardpointSprite": "graphics/ships/引力光效.png",
+    "turretSprite": "graphics/ships/astd_gravwell_interceptor_bloom.png",
+    "hardpointSprite": "graphics/ships/astd_gravwell_interceptor_bloom.png",
     "turretOffsets": [
         0,
         0

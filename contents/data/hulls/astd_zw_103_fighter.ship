@@ -77,7 +77,7 @@
         0
     ],
     "shieldRadius": 27,
-    "spriteName": "graphics/ships/游丝.png",
+    "spriteName": "graphics/ships/astd_zw_103_fighter.png",
     "style": "ASTD_HIGH_TECH",
     "viewOffset": 0,
     "weaponSlots": [
