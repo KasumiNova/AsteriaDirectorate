@@ -11,12 +11,23 @@ class BountyFleetTuneScript(
 
     private val log: Logger = Global.getLogger(BountyFleetTuneScript::class.java)
     private var timer: Float = 0f
+    private var portraitsPreloaded: Boolean = false
 
     override fun isDone(): Boolean = false
 
     override fun runWhilePaused(): Boolean = false
 
     override fun advance(amount: Float) {
+        // 制式核心头像必须早于赏金舰队生成完成预加载，否则 AI 核心军官指派/渲染路径拿到黑壳贴图。
+        if (!portraitsPreloaded) {
+            portraitsPreloaded = true
+            try {
+                StandardCores.preloadPortraits()
+            } catch (t: Throwable) {
+                log.error("[ASTD] 制式核心头像预加载失败", t)
+            }
+        }
+
         timer += amount
         if (timer < SCAN_INTERVAL) return
         timer = 0f
