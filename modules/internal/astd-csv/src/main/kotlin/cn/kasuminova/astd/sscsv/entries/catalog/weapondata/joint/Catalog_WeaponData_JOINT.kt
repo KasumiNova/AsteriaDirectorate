@@ -32,6 +32,8 @@ object Wpn_astd_lh_001_bloom : WeaponDataEntry() {
     override val turnRate: Int = 0
     override val type: String = "OTHER"
     override val tags: String = "no_drop, no_drop_salvage"
+    // 装饰/发光层武器：SYSTEM 隐藏图鉴与模拟战装配列表（原版 lights_buffalo 同口径）
+    override val aiHints: Set<AiHint> = setOf(AiHint.SYSTEM)
     override val tech: String = "菀星设计局-星坠"
     override val noDpsInTooltip: Boolean = true
     override val number: Int = 9133
@@ -47,6 +49,8 @@ object Wpn_astd_lh_002_bloom : WeaponDataEntry() {
     override val turnRate: Int = 0
     override val type: String = "OTHER"
     override val tags: String = "no_drop, no_drop_salvage"
+    // 装饰/发光层武器：SYSTEM 隐藏图鉴与模拟战装配列表（原版 lights_buffalo 同口径）
+    override val aiHints: Set<AiHint> = setOf(AiHint.SYSTEM)
     override val tech: String = "菀星设计局-紫菀"
     override val noDpsInTooltip: Boolean = true
     override val number: Int = 9134

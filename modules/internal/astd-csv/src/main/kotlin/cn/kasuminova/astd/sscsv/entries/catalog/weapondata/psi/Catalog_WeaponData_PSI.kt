@@ -37,8 +37,10 @@ object Wpn_astd_psi_omega : WeaponDataEntry() {
     // Beam：必须给出足够大的 beam speed，否则光束可能无法正确延伸/结算。
     override val beamSpeed: Int = 10000
 
-    // autofit 类别标签（CoreAutofitPlugin 按 类别+等级 匹配，缺失会导致装配方案无法装回本武器）
-    override val tags: String = "energy20, beam18, LR, astd_omega"
+    // autofit 类别标签（CoreAutofitPlugin 按 类别+等级 匹配，缺失会导致装配方案无法装回本武器）；
+    // restricted + codex_unlockable 对齐原版 Omega 稀有度语义（原版 Omega 组合：类别标签 + omega + restricted + codex_unlockable；
+    // 本模组以 astd_omega 替代 vanilla omega 标签，避免触发原版 Omega 专属逻辑）
+    override val tags: String = "energy20, beam18, LR, restricted, codex_unlockable, astd_omega"
     override val groupTag: String = "astd"
     override val tech: String = "灵能链路"
 

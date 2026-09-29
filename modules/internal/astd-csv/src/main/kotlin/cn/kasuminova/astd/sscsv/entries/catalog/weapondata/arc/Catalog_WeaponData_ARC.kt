@@ -95,6 +95,8 @@ object Wpn_astd_xc_001_lights : WeaponDataEntry() {
     override val turnRate: Int = 0
     override val type: String = "OTHER"
     override val tags: String = "no_drop, no_drop_salvage"
+    // 装饰/发光层武器：SYSTEM 隐藏图鉴与模拟战装配列表（原版 lights_buffalo 同口径）
+    override val aiHints: Set<AiHint> = setOf(AiHint.SYSTEM)
     override val tech: String = "菀星设计局-星坠"
     override val noDpsInTooltip: Boolean = true
     override val number: Int = 9106
@@ -110,6 +112,8 @@ object Wpn_astd_xc_001_lights_bloom : WeaponDataEntry() {
     override val turnRate: Int = 0
     override val type: String = "OTHER"
     override val tags: String = "no_drop, no_drop_salvage"
+    // 装饰/发光层武器：SYSTEM 隐藏图鉴与模拟战装配列表（原版 lights_buffalo 同口径）
+    override val aiHints: Set<AiHint> = setOf(AiHint.SYSTEM)
     override val tech: String = "菀星设计局-星坠"
     override val noDpsInTooltip: Boolean = true
     override val number: Int = 9125
@@ -125,6 +129,8 @@ object Wpn_astd_xc_002_bloom : WeaponDataEntry() {
     override val turnRate: Int = 0
     override val type: String = "OTHER"
     override val tags: String = "no_drop, no_drop_salvage"
+    // 装饰/发光层武器：SYSTEM 隐藏图鉴与模拟战装配列表（原版 lights_buffalo 同口径）
+    override val aiHints: Set<AiHint> = setOf(AiHint.SYSTEM)
     override val tech: String = "菀星设计局-星坠"
     override val noDpsInTooltip: Boolean = true
     override val number: Int = 9126
@@ -140,6 +146,8 @@ object Wpn_astd_xc_103_bloom : WeaponDataEntry() {
     override val turnRate: Int = 0
     override val type: String = "OTHER"
     override val tags: String = "no_drop, no_drop_salvage"
+    // 装饰/发光层武器：SYSTEM 隐藏图鉴与模拟战装配列表（原版 lights_buffalo 同口径）
+    override val aiHints: Set<AiHint> = setOf(AiHint.SYSTEM)
     override val tech: String = "菀星设计局-星坠"
     override val noDpsInTooltip: Boolean = true
     override val number: Int = 9128
@@ -155,6 +163,8 @@ object Wpn_astd_xc_102_bloom : WeaponDataEntry() {
     override val turnRate: Int = 0
     override val type: String = "OTHER"
     override val tags: String = "no_drop, no_drop_salvage"
+    // 装饰/发光层武器：SYSTEM 隐藏图鉴与模拟战装配列表（原版 lights_buffalo 同口径）
+    override val aiHints: Set<AiHint> = setOf(AiHint.SYSTEM)
     override val tech: String = "菀星设计局-星坠"
     override val noDpsInTooltip: Boolean = true
     override val number: Int = 9130
@@ -170,6 +180,8 @@ object Wpn_astd_xc_104_bloom : WeaponDataEntry() {
     override val turnRate: Int = 0
     override val type: String = "OTHER"
     override val tags: String = "no_drop, no_drop_salvage"
+    // 装饰/发光层武器：SYSTEM 隐藏图鉴与模拟战装配列表（原版 lights_buffalo 同口径）
+    override val aiHints: Set<AiHint> = setOf(AiHint.SYSTEM)
     override val tech: String = "菀星设计局-星坠"
     override val noDpsInTooltip: Boolean = true
     override val number: Int = 9131
@@ -185,6 +197,8 @@ object Wpn_astd_xc_101_bloom : WeaponDataEntry() {
     override val turnRate: Int = 0
     override val type: String = "OTHER"
     override val tags: String = "no_drop, no_drop_salvage"
+    // 装饰/发光层武器：SYSTEM 隐藏图鉴与模拟战装配列表（原版 lights_buffalo 同口径）
+    override val aiHints: Set<AiHint> = setOf(AiHint.SYSTEM)
     override val tech: String = "菀星设计局-星坠"
     override val noDpsInTooltip: Boolean = true
     override val number: Int = 9129
@@ -265,7 +279,9 @@ object Wpn_astd_starfall_wing_mote_launcher : WeaponDataEntry(), SsProjMissileOu
     override val projSpeed: Int = 900
     override val flightTime: Double = 2.0
     override val projHitpoints: Int = 10000
-    override val tags: String = "astd_signature"
+    // 脚本 spawn 内部武器：SYSTEM 隐藏图鉴/装配列表 + 禁掉落（隐藏武器口径对齐双子星隐藏六件）
+    override val tags: String = "no_drop, no_drop_salvage, astd_signature"
+    override val aiHints: Set<AiHint> = setOf(AiHint.SYSTEM)
     override val groupTag: String = ""
     override val tech: String = "菀星设计局-星坠"
     override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
@@ -323,7 +339,9 @@ object Wpn_astd_rift_mine_layer : WeaponDataEntry(), SsProjMissileOutputs {
     override val projSpeed: Int = 0
     override val flightTime: Double = 10.0
     override val projHitpoints: Int = 10000
-    override val tags: String = "astd_signature"
+    // 脚本 spawn 隐藏武器：SYSTEM 隐藏图鉴/装配列表 + 禁掉落（隐藏武器口径对齐双子星隐藏六件）
+    override val tags: String = "no_drop, no_drop_salvage, astd_signature"
+    override val aiHints: Set<AiHint> = setOf(AiHint.SYSTEM)
     override val groupTag: String = ""
     override val tech: String = "菀星设计局-星坠"
     override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
@@ -730,8 +748,9 @@ object Wpn_astd_seven_stars : WeaponDataEntry(), SsProjProjectileOutputs {
     override val flightTime: Double = 6.0
     override val aiHints: Set<AiHint> = setOf(AiHint.PD)
 
-    // P6 前口径；P6 后改特定赏金/主线限定（90-plan §14）
-    override val tags: String = "no_drop, no_drop_salvage"
+    // P6 前 no_drop 口径（90-plan §14）；autofit 类别标签对齐原版 Omega 组合（大型能量 PD：guardian=pd19 / 大槽能量带 18~22），
+    // restricted + codex_unlockable 对齐原版 Omega 稀有度语义（不进 procgen/定制生产池，图鉴获得后解锁）
+    override val tags: String = "pd19, energy20, no_drop, no_drop_salvage, restricted, codex_unlockable"
     override val groupTag: String = "astd"
     override val tech: String = "菀星设计局-星坠"
     override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
@@ -891,7 +910,9 @@ object Wpn_astd_gemini_dem_kinetic : WeaponDataEntry(), SsProjMissileOutputs {
     override val projSpeed: Int = 225
     override val flightTime: Double = 14.0
     override val projHitpoints: Int = 600
+    // 隐藏内部武器：SYSTEM 隐藏图鉴/装配列表（设计案 10-gemini-dem §349：隐藏件 = no_drop + hints SYSTEM）
     override val tags: String = "no_drop, no_drop_salvage"
+    override val aiHints: Set<AiHint> = setOf(AiHint.SYSTEM)
     override val tech: String = "菀星设计局-星坠"
     override val noDpsInTooltip: Boolean = true
     override val number: Int = 9223
@@ -920,7 +941,9 @@ object Wpn_astd_gemini_dem_he : WeaponDataEntry(), SsProjMissileOutputs {
     override val projSpeed: Int = 225
     override val flightTime: Double = 14.0
     override val projHitpoints: Int = 600
+    // 隐藏内部武器：SYSTEM 隐藏图鉴/装配列表（设计案 10-gemini-dem §349：隐藏件 = no_drop + hints SYSTEM）
     override val tags: String = "no_drop, no_drop_salvage"
+    override val aiHints: Set<AiHint> = setOf(AiHint.SYSTEM)
     override val tech: String = "菀星设计局-星坠"
     override val noDpsInTooltip: Boolean = true
     override val number: Int = 9224
@@ -1085,7 +1108,9 @@ object Wpn_astd_gemini_dem_kinetic_fighter : WeaponDataEntry(), SsProjMissileOut
     override val projSpeed: Int = 225
     override val flightTime: Double = 14.0
     override val projHitpoints: Int = 600
+    // 隐藏内部武器：SYSTEM 隐藏图鉴/装配列表（设计案 10-gemini-dem §349：隐藏件 = no_drop + hints SYSTEM）
     override val tags: String = "no_drop, no_drop_salvage"
+    override val aiHints: Set<AiHint> = setOf(AiHint.SYSTEM)
     override val tech: String = "菀星设计局-星坠"
     override val noDpsInTooltip: Boolean = true
     override val number: Int = 9249
@@ -1114,7 +1139,9 @@ object Wpn_astd_gemini_dem_he_fighter : WeaponDataEntry(), SsProjMissileOutputs 
     override val projSpeed: Int = 225
     override val flightTime: Double = 14.0
     override val projHitpoints: Int = 600
+    // 隐藏内部武器：SYSTEM 隐藏图鉴/装配列表（设计案 10-gemini-dem §349：隐藏件 = no_drop + hints SYSTEM）
     override val tags: String = "no_drop, no_drop_salvage"
+    override val aiHints: Set<AiHint> = setOf(AiHint.SYSTEM)
     override val tech: String = "菀星设计局-星坠"
     override val noDpsInTooltip: Boolean = true
     override val number: Int = 9250
@@ -1315,8 +1342,9 @@ object Wpn_astd_piercing_lance : WeaponDataEntry(), SsProjProjectileOutputs {
     // “极快”：1000su 射程约 0.33s 飞行（提案值，目检面；aod7 为 2400）
     override val projSpeed: Int = 3000
 
-    // P6 前口径；P6 后改赏金掉落（90-plan §14）
-    override val tags: String = "no_drop, no_drop_salvage"
+    // P6 前 no_drop 口径；P6 后改赏金掉落（90-plan §14）。autofit 类别标签对齐原版 Omega 组合
+    // （大型能量单发重炮：gauss/tachyon 口径 energy20 + LR），restricted + codex_unlockable 对齐 Omega 稀有度语义
+    override val tags: String = "energy20, LR, no_drop, no_drop_salvage, restricted, codex_unlockable"
     override val groupTag: String = "astd"
     override val tech: String = "菀星设计局-星坠"
     override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
@@ -1397,8 +1425,9 @@ object Wpn_astd_cuifeng_torpedo : WeaponDataEntry(), SsProjMissileOutputs {
     override val trackingStr: String = "优秀"
     override val speedStr: String = "极快"
 
-    // P6 前口径；P6 后改赏金掉落（90-plan §14）
-    override val tags: String = "no_drop, no_drop_salvage"
+    // P6 前 no_drop 口径；P6 后改赏金掉落（90-plan §14）。autofit 类别标签对齐原版 Omega 组合
+    // （小型打击导弹：atropos=strike9 / harpoon=missile8 口径），restricted + codex_unlockable 对齐 Omega 稀有度语义
+    override val tags: String = "missile8, strike9, no_drop, no_drop_salvage, restricted, codex_unlockable"
     override val groupTag: String = "astd"
     override val tech: String = "菀星设计局-星坠"
     override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
@@ -1446,7 +1475,9 @@ object Wpn_astd_cuifeng_launcher : WeaponDataEntry() {
     override val trackingStr: String = "优秀"
     override val speedStr: String = "极快"
 
-    override val tags: String = "no_drop, no_drop_salvage"
+    // 与小型同口径：P6 前 no_drop（90-plan §14）；autofit 类别标签对齐原版中型导弹舱带
+    // （harpoonpod=missile12 / typhoon=strike13 口径），restricted + codex_unlockable 对齐 Omega 稀有度语义
+    override val tags: String = "missile12, strike13, no_drop, no_drop_salvage, restricted, codex_unlockable"
     override val groupTag: String = "astd"
     override val tech: String = "菀星设计局-星坠"
     override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
