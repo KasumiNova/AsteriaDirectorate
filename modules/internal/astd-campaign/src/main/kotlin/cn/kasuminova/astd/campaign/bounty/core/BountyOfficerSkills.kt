@@ -4,86 +4,86 @@ package cn.kasuminova.astd.campaign.bounty.core
  * 赏金 ASTD 变体的核心军官技能表。
  *
  * 源自实机装配导出的核心军官 dump（素材：按 hullId+displayName 分组，组内技能一致，
- * 原 dump 全为 omega 9 级配置）。键为 contents/data/variants/bounty/ 下导入变体 id；
+ * 原 dump 全为 omega 9 级配置）。键为 contents/data/variants/ 下正式 stock variant id；
  * 技能全 2 级照用，军官等级不随表——按实际装舰核心档定（BountyFleetTunerImpl.assignCrew）。
  * 非本表变体（余晖等）不覆盖技能，使用核心插件默认技能。
  */
 object BountyOfficerSkills {
 
     val TABLES: Map<String, List<String>> = mapOf(
-        "astd_lh_001_Standard_Bounty" to listOf(
+        "astd_lh_001_Standard" to listOf(
             "combat_endurance", "field_modulation", "gunnery_implants", "helmsmanship",
             "missile_specialization", "polarized_armor", "systems_expertise", "target_analysis",
         ),
-        "astd_lh_001_Missile_Bounty" to listOf(
+        "astd_lh_001_Missile" to listOf(
             "combat_endurance", "field_modulation", "gunnery_implants", "helmsmanship",
             "missile_specialization", "polarized_armor", "systems_expertise", "target_analysis",
         ),
-        "astd_lh_002_Standard_Bounty" to listOf(
+        "astd_lh_002_Standard" to listOf(
             "combat_endurance", "field_modulation", "gunnery_implants", "helmsmanship",
             "missile_specialization", "polarized_armor", "systems_expertise", "target_analysis",
         ),
-        "astd_lh_002_Omega_Bounty" to listOf(
+        "astd_lh_002_Omega" to listOf(
             "combat_endurance", "energy_weapon_mastery", "field_modulation", "gunnery_implants",
             "helmsmanship", "missile_specialization", "systems_expertise", "target_analysis",
         ),
-        "astd_xc_001_Standard_Bounty" to listOf(
+        "astd_xc_001_Standard" to listOf(
             "combat_endurance", "damage_control", "field_modulation", "helmsmanship",
             "missile_specialization", "polarized_armor", "systems_expertise", "target_analysis",
         ),
-        "astd_xc_001_Omega_Bounty" to listOf(
+        "astd_xc_001_Omega" to listOf(
             "combat_endurance", "damage_control", "field_modulation", "helmsmanship",
             "missile_specialization", "polarized_armor", "systems_expertise", "target_analysis",
         ),
-        "astd_xc_002_Standard_Bounty" to listOf(
+        "astd_xc_002_Standard" to listOf(
             "combat_endurance", "energy_weapon_mastery", "field_modulation", "gunnery_implants",
             "helmsmanship", "polarized_armor", "systems_expertise", "target_analysis",
         ),
-        "astd_xc_101_Standard_Bounty" to listOf(
+        "astd_xc_101_Standard" to listOf(
             "combat_endurance", "field_modulation", "gunnery_implants", "helmsmanship",
             "missile_specialization", "ordnance_expert", "systems_expertise", "target_analysis",
         ),
-        "astd_xc_102_Standard_Bounty" to listOf(
+        "astd_xc_102_Standard" to listOf(
             "combat_endurance", "field_modulation", "gunnery_implants", "helmsmanship",
             "missile_specialization", "polarized_armor", "systems_expertise", "target_analysis",
         ),
-        "astd_xc_102_Combat_Bounty" to listOf(
+        "astd_xc_102_Combat" to listOf(
             "combat_endurance", "field_modulation", "gunnery_implants", "helmsmanship",
             "missile_specialization", "ordnance_expert", "polarized_armor", "systems_expertise",
         ),
-        "astd_xc_103_Standard_Bounty" to listOf(
+        "astd_xc_103_Standard" to listOf(
             "combat_endurance", "field_modulation", "gunnery_implants", "helmsmanship",
             "missile_specialization", "polarized_armor", "systems_expertise", "target_analysis",
         ),
-        "astd_zw_002_Standard_Bounty" to listOf(
+        "astd_zw_002_Standard" to listOf(
             "combat_endurance", "field_modulation", "helmsmanship", "impact_mitigation",
             "missile_specialization", "polarized_armor", "systems_expertise", "target_analysis",
         ),
-        "astd_zw_002_Omega_Bounty" to listOf(
+        "astd_zw_002_Omega" to listOf(
             "combat_endurance", "field_modulation", "gunnery_implants", "helmsmanship",
             "missile_specialization", "polarized_armor", "systems_expertise", "target_analysis",
         ),
-        "astd_zw_101_Standard_Bounty" to listOf(
+        "astd_zw_101_Standard" to listOf(
             "combat_endurance", "energy_weapon_mastery", "field_modulation", "gunnery_implants",
             "helmsmanship", "impact_mitigation", "systems_expertise", "target_analysis",
         ),
-        "astd_zw_102_Fighter_Bounty" to listOf(
+        "astd_zw_102_Fighter" to listOf(
             "combat_endurance", "field_modulation", "gunnery_implants", "helmsmanship",
             "missile_specialization", "point_defense", "polarized_armor", "systems_expertise",
         ),
-        "astd_zw_102_Bomber_Bounty" to listOf(
+        "astd_zw_102_Bomber" to listOf(
             "combat_endurance", "field_modulation", "gunnery_implants", "helmsmanship",
             "missile_specialization", "point_defense", "polarized_armor", "systems_expertise",
         ),
-        "astd_zw_102_Hybrid_Bounty" to listOf(
+        "astd_zw_102_Hybrid" to listOf(
             "combat_endurance", "field_modulation", "gunnery_implants", "helmsmanship",
             "missile_specialization", "point_defense", "polarized_armor", "systems_expertise",
         ),
-        "astd_zw_103_Standard_Bounty" to listOf(
+        "astd_zw_103_Standard" to listOf(
             "combat_endurance", "field_modulation", "gunnery_implants", "helmsmanship",
             "missile_specialization", "polarized_armor", "systems_expertise", "target_analysis",
         ),
-        "astd_zw_103_Strike_Bounty" to listOf(
+        "astd_zw_103_Strike" to listOf(
             "combat_endurance", "energy_weapon_mastery", "field_modulation", "gunnery_implants",
             "helmsmanship", "missile_specialization", "polarized_armor", "systems_expertise",
         ),

@@ -26,7 +26,7 @@
     "tags": [
         "no_auto_penalty"
     ],
-    "variantId": "astd_xc_102_Combat_Bounty",
+    "variantId": "astd_xc_102_Combat",
     "weaponGroups": [
         {
             "autofire": true,

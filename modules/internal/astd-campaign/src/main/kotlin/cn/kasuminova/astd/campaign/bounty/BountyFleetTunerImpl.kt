@@ -10,11 +10,13 @@ import com.fs.starfarer.api.campaign.CampaignFleetAPI
 import com.fs.starfarer.api.characters.PersonAPI
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.combat.ShipHullSpecAPI
+import com.fs.starfarer.api.combat.ShipVariantAPI
 import com.fs.starfarer.api.fleet.FleetMemberAPI
 import com.fs.starfarer.api.fleet.FleetMemberType
 import com.fs.starfarer.api.impl.campaign.events.OfficerManagerEvent
 import com.fs.starfarer.api.impl.campaign.ids.Factions
 import com.fs.starfarer.api.loading.HullModSpecAPI
+import com.fs.starfarer.api.loading.VariantSource
 import com.fs.starfarer.api.util.Misc
 import com.fs.starfarer.api.util.WeightedRandomPicker
 import java.util.Random
@@ -116,15 +118,84 @@ class BountyFleetTunerImpl(
         size: ShipAPI.HullSize,
         config: BountyPoolConfig,
     ): Boolean {
-        var pool = BountyPoolConfig.REMNANT_POOLS[size].orEmpty()
-        if (config.destroyerBestOf > 1 && size == ShipAPI.HullSize.DESTROYER) {
-            pool = BountyPoolConfig.topFleetPointsPicks(pool)
-        }
+        val pool = remnantPoolFor(size)
         if (pool.isEmpty()) return false
 
-        val member = createMemberIntoFleet(fleet, pool[random.nextInt(pool.size)].variantId) ?: return false
+        if (config.destroyerBestOf > 1 && size == ShipAPI.HullSize.DESTROYER) {
+            // best-of-K：实例化 K 个候选，保留部署点最高者，移除其余（与 ASTD 侧同语义）
+            val candidates = mutableListOf<FleetMemberAPI>()
+            repeat(config.destroyerBestOf) {
+                createMemberIntoFleet(fleet, pool[random.nextInt(pool.size)])?.let(candidates::add)
+            }
+            if (candidates.isEmpty()) return false
+            val best = candidates.maxBy { it.deploymentPointsCost }
+            candidates.filter { it !== best }.forEach { fleet.fleetData.removeFleetMember(it) }
+            best.captain = createAiCoreCaptain(size)
+            return true
+        }
+        val member = createMemberIntoFleet(fleet, pool[random.nextInt(pool.size)]) ?: return false
         member.captain = createAiCoreCaptain(size)
         return true
+    }
+
+    /** 余晖 doctrine 发现结果（首次混编时构建一次）。 */
+    private val discoveredRemnantPools: Map<ShipAPI.HullSize, List<String>> by lazy { discoverRemnantPools() }
+
+    private fun remnantPoolFor(size: ShipAPI.HullSize): List<String> =
+        resolveRemnantPool(discoveredRemnantPools, size)
+
+    /**
+     * 余晖混编池动态发现：以 remnant 势力 doctrine 已知舰体（knownShips）为真相来源，
+     * 逐舰体解析可用 stock variant（goal variant 优先，过滤 restricted/no_sim tag 与空装配），
+     * 按舰级分组建池。其他模组挂进余晖 doctrine 的舰体由此自然入池。
+     */
+    private fun discoverRemnantPools(): Map<ShipAPI.HullSize, List<String>> {
+        val settings = Global.getSettings()
+        val faction = Global.getSector().getFaction(Factions.REMNANTS)
+        if (faction == null) {
+            log.warn("[ASTD] 余晖势力缺失，混编池退回硬编码兜底清单")
+            return emptyMap()
+        }
+
+        // 全量 stock variant 按舰体归组（一次性索引，避免逐舰体扫描 variant 表）
+        val stockByHull = mutableMapOf<String, MutableList<ShipVariantAPI>>()
+        for (variantId in settings.allVariantIds) {
+            val variant = settings.getVariant(variantId)
+            if (variant == null) {
+                log.warn("[ASTD] settings 登记变体无法解析，跳过：$variantId")
+                continue
+            }
+            if (!variant.isStockVariant || variant.source != VariantSource.STOCK) continue
+            stockByHull.getOrPut(variant.hullSpec.hullId) { mutableListOf() }.add(variant)
+        }
+
+        val pools = mutableMapOf<ShipAPI.HullSize, MutableList<String>>()
+        for (hullId in faction.knownShips) {
+            val hullSpec = settings.getHullSpec(hullId)
+            if (hullSpec == null) {
+                log.warn("[ASTD] 余晖 doctrine 登记舰体无法解析，跳过：$hullId")
+                continue
+            }
+            if (hullSpec.isDHull || hullSpec.hullSize == ShipAPI.HullSize.FIGHTER) continue
+            if (hullSpec.hints.any { it in EXCLUDED_DOCTRINE_HULL_HINTS }) continue
+
+            val candidates = stockByHull[hullId].orEmpty()
+                .filterNot { it.hasTag("restricted") || it.hasTag("no_sim") }
+                .filter { variant ->
+                    // 模组带入的异常变体不静默：空装配记日志并跳过
+                    val emptyFit = variant.fittedWeaponSlots.isEmpty() && variant.wings.isEmpty()
+                    if (emptyFit) {
+                        log.warn("[ASTD] 余晖 doctrine 变体为空装配，跳过：${variant.hullVariantId}")
+                    }
+                    !emptyFit
+                }
+            if (candidates.isEmpty()) continue
+            val goal = candidates.filter { it.isGoalVariant }
+            val chosen = goal.ifEmpty { candidates }
+            pools.getOrPut(hullSpec.hullSize) { mutableListOf() }.addAll(chosen.map { it.hullVariantId })
+        }
+        log.info("[ASTD] 余晖 doctrine 混编池发现完成：" + pools.entries.joinToString { (size, ids) -> "$size=${ids.size}" })
+        return pools
     }
 
     /** 按显式变体池实例化成员入队（stock variant 为共享实例，克隆防污染），CR 拉满与赏金舰队初始状态对齐。 */
@@ -325,6 +396,22 @@ class BountyFleetTunerImpl(
 
         /** 发布范围外舰体的显式排除清单（与 astd_unique tag 并用的双保险：tag 漏标时仍然生效）。 */
         val EXCLUDED_HULL_IDS: Set<String> = setOf("astd_zw_001", "astd_xc_104")
+
+        /** 余晖 doctrine 发现时跳过的舰体 hint：空间站与其模块不入作战混编池。 */
+        val EXCLUDED_DOCTRINE_HULL_HINTS: Set<ShipHullSpecAPI.ShipTypeHints> = setOf(
+            ShipHullSpecAPI.ShipTypeHints.STATION,
+            ShipHullSpecAPI.ShipTypeHints.SHIP_WITH_MODULES,
+            ShipHullSpecAPI.ShipTypeHints.MODULE,
+        )
+
+        /**
+         * 余晖混编池解析：发现结果在该舰级非空时以 doctrine 为准，
+         * 否则退回 BountyPoolConfig.REMNANT_POOLS 硬编码兜底清单。
+         */
+        fun resolveRemnantPool(
+            discovered: Map<ShipAPI.HullSize, List<String>>,
+            size: ShipAPI.HullSize,
+        ): List<String> = discovered[size].orEmpty().ifEmpty { BountyPoolConfig.REMNANT_POOLS[size].orEmpty() }
 
         /** 余晖 AI 核心加权与对应军官等级。 */
         val AI_CORE_WEIGHTS: List<Pair<String, Float>> = listOf(

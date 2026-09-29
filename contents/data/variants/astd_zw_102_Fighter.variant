@@ -1,16 +1,18 @@
 {
-    "displayName": "Standard",
-    "fluxCapacitors": 30,
-    "fluxVents": 22,
+    "displayName": "Fighter",
+    "fluxCapacitors": 24,
+    "fluxVents": 23,
     "goalVariant": true,
-    "hullId": "astd_xc_101",
+    "hullId": "astd_zw_102",
     "hullMods": [
         "astd_test_shield_coverage",
-        "targetingunit",
-        "stabilizedshieldemitter",
         "astd_mode_automated",
         "automated",
         "astd_dual_mode_switcher",
+        "frontemitter",
+        "hardenedshieldemitter",
+        "stabilizedshieldemitter",
+        "targetingunit",
         "astd_mode_next_automated"
     ],
     "permaMods": [
@@ -24,38 +26,40 @@
     "tags": [
         "no_auto_penalty"
     ],
-    "variantId": "astd_xc_101_Standard_Bounty",
+    "variantId": "astd_zw_102_Fighter",
     "weaponGroups": [
         {
             "autofire": true,
             "mode": "LINKED",
             "weapons": {
-                "WS0002": "astd_heavy_ion_pulse"
+                "WS0001": "astd_gcp12",
+                "WS0002": "astd_gcp12"
             }
         },
         {
             "autofire": false,
             "mode": "LINKED",
             "weapons": {
-                "WS0012": "astd_gemini_dem_launcher",
-                "WS0013": "astd_gemini_dem_launcher"
+                "WS0003": "astd_gemini_dem_pod",
+                "WS0013": "astd_gemini_dem_pod"
             }
         },
         {
             "autofire": true,
             "mode": "LINKED",
             "weapons": {
-                "WS0003": "astd_electric_drive_accelerator",
-                "WS0004": "astd_electric_drive_accelerator"
-            }
-        },
-        {
-            "autofire": true,
-            "mode": "LINKED",
-            "weapons": {
-                "WS0001": "guardian",
+                "WS0004": "astd_positron_shockwave",
+                "WS0005": "astd_positron_shockwave",
+                "WS0007": "astd_positron_shockwave",
+                "WS0008": "astd_positron_shockwave",
+                "WS0009": "astd_positron_shockwave",
                 "WS0010": "astd_positron_shockwave"
             }
         }
+    ],
+    "wings": [
+        "astd_surge_fighter_wing",
+        "astd_surge_fighter_wing",
+        "astd_surge_fighter_wing"
     ]
 }

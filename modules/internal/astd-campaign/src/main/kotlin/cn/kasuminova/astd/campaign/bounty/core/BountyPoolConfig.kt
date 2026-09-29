@@ -27,66 +27,60 @@ data class BountyPoolConfig(
         fun pickPoolSide(addedAstd: Int, addedRemnant: Int): PoolSide =
             if (addedAstd <= addedRemnant) PoolSide.ASTD else PoolSide.REMNANT
 
-        /** 取池中部署点最高的全部变体（destroyerBestOf 生效时余晖驱逐舰只从最高档位抽取）。 */
-        fun topFleetPointsPicks(pool: List<RemnantPick>): List<RemnantPick> {
-            val max = pool.maxOf { it.fleetPoints }
-            return pool.filter { it.fleetPoints == max }
-        }
-
         /**
-         * ASTD 混编池：按舰级分组的导入装配变体（contents/data/variants/bounty/）。
-         * 显式变体池取代 doctrine 抽取：发布范围外舰体与唯一舰天然不入池，
-         * 装配即用户正式导出配置。唯一舰（astd_xc_001/xc_002/zw_002）的导入装配仅作旗舰引用，不入随机池。
+         * ASTD 混编池：按舰级分组的正式 stock variant（contents/data/variants/）。
+         * 显式变体池取代 doctrine 抽取：发布范围外舰体与唯一舰天然不入池。
+         * 唯一舰（astd_xc_001/xc_002/zw_002）的装配仅作旗舰引用，不入随机池。
          */
         val ASTD_POOLS: Map<ShipAPI.HullSize, List<String>> = mapOf(
             ShipAPI.HullSize.CAPITAL_SHIP to listOf(
-                "astd_xc_102_Standard_Bounty",
-                "astd_xc_102_Combat_Bounty",
-                "astd_zw_102_Fighter_Bounty",
-                "astd_zw_102_Bomber_Bounty",
-                "astd_zw_102_Hybrid_Bounty",
+                "astd_xc_102_Standard",
+                "astd_xc_102_Combat",
+                "astd_zw_102_Fighter",
+                "astd_zw_102_Bomber",
+                "astd_zw_102_Hybrid",
             ),
             ShipAPI.HullSize.CRUISER to listOf(
-                "astd_xc_101_Standard_Bounty",
+                "astd_xc_101_Standard",
             ),
             ShipAPI.HullSize.DESTROYER to listOf(
-                "astd_xc_103_Standard_Bounty",
-                "astd_zw_101_Standard_Bounty",
-                "astd_zw_103_Standard_Bounty",
-                "astd_zw_103_Strike_Bounty",
+                "astd_xc_103_Standard",
+                "astd_zw_101_Standard",
+                "astd_zw_103_Standard",
+                "astd_zw_103_Strike",
             ),
             ShipAPI.HullSize.FRIGATE to listOf(
-                "astd_lh_001_Standard_Bounty",
-                "astd_lh_001_Missile_Bounty",
-                "astd_lh_002_Standard_Bounty",
-                "astd_lh_002_Omega_Bounty",
+                "astd_lh_001_Standard",
+                "astd_lh_001_Missile",
+                "astd_lh_002_Standard",
+                "astd_lh_002_Omega",
             ),
         )
 
         /**
-         * 余晖混编池：按舰级分组的显式变体清单（原版 data/variants/remnant/ stock variant）。
-         * remnant 势力没有 doctrine 角色配置，无法走 pickShipAndAddToFleet，只能按变体直接实例化。
-         * fleetPoints 为原版 ship_data.csv 的部署点口径，供最高档过滤使用。
+         * 余晖混编池兜底清单：doctrine 动态发现（BountyFleetTunerImpl.discoverRemnantPools）
+         * 在某舰级一无所获时启用，内容为原版 data/variants/remnant/ stock variant id。
+         * 发现结果非空时以 doctrine 为准，本清单不参与混抽。
          */
-        val REMNANT_POOLS: Map<ShipAPI.HullSize, List<RemnantPick>> = mapOf(
+        val REMNANT_POOLS: Map<ShipAPI.HullSize, List<String>> = mapOf(
             ShipAPI.HullSize.CAPITAL_SHIP to listOf(
-                RemnantPick("radiant_Standard", 30f),
-                RemnantPick("nova_Standard", 24f),
+                "radiant_Standard",
+                "nova_Standard",
             ),
             ShipAPI.HullSize.CRUISER to listOf(
-                RemnantPick("apex_Standard", 18f),
-                RemnantPick("brilliant_Standard", 16f),
+                "apex_Standard",
+                "brilliant_Standard",
             ),
             ShipAPI.HullSize.DESTROYER to listOf(
-                RemnantPick("fulgent_Assault", 12f),
-                RemnantPick("fulgent_Support", 12f),
-                RemnantPick("scintilla_Strike", 12f),
-                RemnantPick("scintilla_Support", 12f),
+                "fulgent_Assault",
+                "fulgent_Support",
+                "scintilla_Strike",
+                "scintilla_Support",
             ),
             ShipAPI.HullSize.FRIGATE to listOf(
-                RemnantPick("lumen_Standard", 8f),
-                RemnantPick("glimmer_Assault", 8f),
-                RemnantPick("glimmer_Support", 8f),
+                "lumen_Standard",
+                "glimmer_Assault",
+                "glimmer_Support",
             ),
         )
 
@@ -155,9 +149,6 @@ data class BountyPoolConfig(
         )
     }
 }
-
-/** 余晖混编池单条目：变体 id 与部署点。 */
-data class RemnantPick(val variantId: String, val fleetPoints: Float)
 
 /** 混编池分边结果。 */
 enum class PoolSide { ASTD, REMNANT }

@@ -72,7 +72,7 @@ class BountyFleetTuningTest {
             BountySmodPresetsImpl.HULL_OVERRIDES.getValue("astd_zw_002"),
             presets.prioritiesFor("astd_zw_002", phase = true, carrier = false, capital = false),
         )
-        // 三个唯一舰旗舰的导入装配普通船插（contents/data/variants/bounty 下 *_Bounty.variant 的 hullMods）
+        // 三个唯一舰旗舰的导入装配普通船插（contents/data/variants 下旗舰装配的 hullMods）
         val fittedByVariant = mapOf(
             "astd_xc_001" to setOf(
                 "astd_dual_mode_switcher", "astd_mode_automated", "astd_mode_next_automated",
@@ -141,24 +141,39 @@ class BountyFleetTuningTest {
             assertTrue(BountyPoolConfig.ASTD_POOLS.getValue(size).isNotEmpty(), "ASTD 池缺少舰级 $size")
             assertTrue(BountyPoolConfig.REMNANT_POOLS.getValue(size).isNotEmpty(), "余晖池缺少舰级 $size")
         }
-        // 随机池变体必须在素材技能表中有登记（键为导入 variantId）
+        // 随机池变体必须在素材技能表中有登记（键为正式 stock variant id）
         BountyPoolConfig.ASTD_POOLS.values.flatten().forEach { variantId ->
             assertTrue(BountyOfficerSkills.forVariant(variantId) != null, "混编池变体 $variantId 缺少技能表登记")
         }
-        // 发布范围外舰体与唯一舰不得进入随机池（唯一舰导入装配仅作旗舰引用）
+        // 池内 id 均为提升后的正式 stock variant（无导入期 _Bounty 后缀残留）
         val poolIds = BountyPoolConfig.ASTD_POOLS.values.flatten()
+        assertTrue(poolIds.none { it.endsWith("_Bounty") }, "混编池残留导入期变体 id")
+        assertTrue(BountyOfficerSkills.TABLES.keys.none { it.endsWith("_Bounty") }, "技能表残留导入期变体 id")
+        // 发布范围外舰体与唯一舰不得进入随机池（唯一舰导入装配仅作旗舰引用）
         assertTrue(poolIds.none { it.startsWith("astd_zw_001") || it.startsWith("astd_xc_104") }, "发布范围外舰体混入随机池")
         assertTrue(poolIds.none { it.startsWith("astd_xc_001_") || it.startsWith("astd_xc_002_") || it.startsWith("astd_zw_002_") }, "唯一舰装配混入随机池")
     }
 
     @Test
-    fun `余晖最高档过滤结果均为池内最大部署点`() {
-        BountyPoolConfig.REMNANT_POOLS.forEach { (size, pool) ->
-            val top = BountyPoolConfig.topFleetPointsPicks(pool)
-            assertTrue(top.isNotEmpty(), "舰级 $size 最高档过滤结果为空")
-            val max = pool.maxOf { it.fleetPoints }
-            assertTrue(top.all { it.fleetPoints == max }, "舰级 $size 过滤结果混入了非最高部署点变体")
-        }
+    fun `余晖混编池发现结果优先且按舰级回退兜底清单`() {
+        // 发现结果在该舰级非空：以 doctrine 发现为准，兜底清单不参与
+        val discovered = mapOf(ShipAPI.HullSize.CRUISER to listOf("some_mod_cruiser_Standard"))
+        assertEquals(
+            listOf("some_mod_cruiser_Standard"),
+            BountyFleetTunerImpl.resolveRemnantPool(discovered, ShipAPI.HullSize.CRUISER),
+        )
+        // 发现结果缺失该舰级（含空表）：退回硬编码兜底清单
+        assertEquals(
+            BountyPoolConfig.REMNANT_POOLS.getValue(ShipAPI.HullSize.DESTROYER),
+            BountyFleetTunerImpl.resolveRemnantPool(discovered, ShipAPI.HullSize.DESTROYER),
+        )
+        assertEquals(
+            BountyPoolConfig.REMNANT_POOLS.getValue(ShipAPI.HullSize.CRUISER),
+            BountyFleetTunerImpl.resolveRemnantPool(
+                mapOf(ShipAPI.HullSize.CRUISER to emptyList()),
+                ShipAPI.HullSize.CRUISER,
+            ),
+        )
     }
 
     @Test

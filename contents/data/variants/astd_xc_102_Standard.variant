@@ -1,37 +1,72 @@
 {
     "displayName": "Standard",
-    "fluxCapacitors": 0,
-    "fluxVents": 0,
+    "fluxCapacitors": 50,
+    "fluxVents": 42,
     "goalVariant": true,
     "hullId": "astd_xc_102",
-    "hullMods": [],
-    "quality": 0.0,
+    "hullMods": [
+        "astd_arc_shared_tactical_network",
+        "astd_test_shield_coverage",
+        "frontemitter",
+        "stabilizedshieldemitter",
+        "astd_mode_automated",
+        "automated",
+        "astd_dual_mode_switcher",
+        "magazines",
+        "fluxbreakers",
+        "astd_mode_next_automated"
+    ],
+    "permaMods": [
+        "astd_test_shield_coverage",
+        "astd_mode_automated",
+        "automated",
+        "astd_mode_next_automated"
+    ],
+    "quality": 1,
+    "sMods": [],
+    "tags": [
+        "no_auto_penalty"
+    ],
     "variantId": "astd_xc_102_Standard",
     "weaponGroups": [
         {
-            "autofire": false,
+            "autofire": true,
             "mode": "LINKED",
             "weapons": {
-                "WS0001": "gauss",
-                "WS0002": "gauss",
-                "WS0003": "tachyonlance",
-                "WS0004": "tachyonlance",
-                "WS0015": "heavyneedler",
-                "WS0016": "heavyneedler"
+                "WS0001": "astd_qiongjue_phase_railgun",
+                "WS0002": "astd_qiongjue_phase_railgun"
             }
         },
         {
             "autofire": true,
             "mode": "LINKED",
             "weapons": {
-                "WS0005": "pdlaser",
-                "WS0006": "pdlaser",
-                "WS0007": "pdlaser",
-                "WS0008": "pdlaser",
-                "WS0011": "pdlaser",
-                "WS0012": "pdlaser",
-                "WS0013": "pdlaser",
-                "WS0014": "pdlaser"
+                "WS0003": "astd_gcp12",
+                "WS0004": "astd_gcp12"
+            }
+        },
+        {
+            "autofire": true,
+            "mode": "LINKED",
+            "weapons": {
+                "WS0009": "astd_electric_drive_accelerator",
+                "WS0010": "astd_electric_drive_accelerator",
+                "WS0015": "astd_electric_drive_accelerator",
+                "WS0016": "astd_electric_drive_accelerator"
+            }
+        },
+        {
+            "autofire": true,
+            "mode": "LINKED",
+            "weapons": {
+                "WS0005": "astd_positron_shockwave",
+                "WS0006": "astd_positron_shockwave",
+                "WS0007": "astd_positron_shockwave",
+                "WS0008": "astd_positron_shockwave",
+                "WS0011": "astd_positron_shockwave",
+                "WS0012": "astd_positron_shockwave",
+                "WS0013": "astd_positron_shockwave",
+                "WS0014": "astd_positron_shockwave"
             }
         }
     ]
