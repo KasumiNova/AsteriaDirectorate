@@ -37,7 +37,8 @@ import java.util.Random
  * 故仅为军官标尺、不参与打捞（[Tier.droppable]）。
  *
  * 打捞口径（[rollCoreLoot]）：
- * - 掉落池 = 舰队实际装舰的可打捞核心（G/B/A），保证「掉落的正是舰队里装的」；
+ * - 掉落池 = 舰队实际装舰的可打捞核心（astd G/B/A、原版 alpha/beta/gamma、SMS 拟核；
+ *   astd O 与原版 omega 不可掉，判定见 [isCoreDroppable]），保证「掉落的正是舰队里装的」；
  * - 旗舰核心（索引 0）可打捞时保底必掉；
  * - 僚舰核心逐枚 50% 独立判定，数量区间 [1, 可打捞装舰数]，随舰队规模自然伸缩；
  * - 若独立判定全空且舰队装有可打捞核心，强制掉落索引最小者 1 枚（至少 1 枚的设计承诺）。
@@ -110,6 +111,16 @@ object StandardCores {
     /** 按 commodity id 反查分档（未知 id → null，调用方记日志）。 */
     fun byCommodity(commodityId: String?): Tier? = Tier.entries.firstOrNull { it.commodityId == commodityId }
 
+    /**
+     * 原版不可打捞核心：omega_core 无原版掉落语义（astd O 档由 [Tier.droppable] 另行判定）。
+     * 其余核心（原版 alpha/beta/gamma、astd G/B/A、SMS 拟核）均可打捞。
+     */
+    val NON_DROPPABLE_CORE_IDS: Set<String> = setOf("omega_core")
+
+    /** 核心可打捞判定：astd 制式按分档表，其余核心按原版语义（omega 不可掉）。 */
+    fun isCoreDroppable(coreId: String): Boolean =
+        byCommodity(coreId)?.droppable ?: (coreId !in NON_DROPPABLE_CORE_IDS)
+
     /** 旗舰档位（分档映射表见类 KDoc）。 */
     fun flagshipTier(threatTier: Int): Tier = when {
         threatTier <= 1 -> Tier.G
@@ -153,8 +164,7 @@ object StandardCores {
         val loot = LinkedHashMap<String, Int>()
         var firstDroppableId: String? = null
         installedCoreIds.forEachIndexed { index, id ->
-            val tier = byCommodity(id) ?: return@forEachIndexed
-            if (!tier.droppable) return@forEachIndexed
+            if (!isCoreDroppable(id)) return@forEachIndexed
             if (firstDroppableId == null) firstDroppableId = id
             if (index == 0 || rnd.nextFloat() < ESCORT_DROP_CHANCE) {
                 loot.merge(id, 1, Int::plus)

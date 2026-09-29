@@ -6,15 +6,10 @@ import com.fs.starfarer.api.combat.ShipAPI
  * 单个赏金的随机混编池配置。
  *
  * MagicBounty 数据侧的 fleet_preset_ships 只负责最小 ASTD 编成，
- * 舰队上限内的随机混编（ASTD 与余晖 1:1 交替）由代码侧完成，
- * 各赏金对混编倾向的差异化要求（航母压制 / 相位强化 / 驱逐舰优选）收敛在本配置。
+ * 舰队上限内的随机混编（ASTD 与余晖 1:1 交替、舰级分布跟随 preset 构成）由代码侧完成。
  */
 data class BountyPoolConfig(
-    /** 航母系角色（carrierSmall/carrierLarge）权重倍率，小于 1 表示压制航母出场率。 */
-    val carrierWeightMult: Float = 1f,
-    /** 相位系角色（phaseMedium）权重倍率，大于 1 表示强化相位舰出场率。 */
-    val phaseWeightMult: Float = 1f,
-    /** ASTD 驱逐舰抽取的 best-of-K 次数，1 表示不优选，大于 1 时保留 K 次抽取中部署点最高者。 */
+    /** 驱逐舰抽取的 best-of-K 次数，1 表示不优选，大于 1 时保留 K 次抽取中部署点最高者。 */
     val destroyerBestOf: Int = 1,
 ) {
 
@@ -22,10 +17,6 @@ data class BountyPoolConfig(
         val DEFAULT: BountyPoolConfig = BountyPoolConfig()
 
         val OVERRIDES: Map<String, BountyPoolConfig> = mapOf(
-            // 坠星主控：舰载机蜂群压制，避免航母稀释主力舰密度
-            "astd_bounty_xc_001" to BountyPoolConfig(carrierWeightMult = 0.25f),
-            // 密蒙主控：相位猎杀编队，相位舰三倍权重
-            "astd_bounty_zw_002" to BountyPoolConfig(phaseWeightMult = 3f),
             // 星翼主控：远程火力编队，驱逐舰六次优选保留高部署点个体
             "astd_bounty_xc_002" to BountyPoolConfig(destroyerBestOf = 6),
         )
@@ -36,16 +27,6 @@ data class BountyPoolConfig(
         fun pickPoolSide(addedAstd: Int, addedRemnant: Int): PoolSide =
             if (addedAstd <= addedRemnant) PoolSide.ASTD else PoolSide.REMNANT
 
-        /** 角色权重应用池配置倍率（仅作用于 carrier/phase 前缀角色）。 */
-        fun weightedRoles(base: List<Pair<String, Float>>, config: BountyPoolConfig): List<Pair<String, Float>> =
-            base.map { (role, weight) ->
-                role to when {
-                    role.startsWith("carrier") -> weight * config.carrierWeightMult
-                    role.startsWith("phase") -> weight * config.phaseWeightMult
-                    else -> weight
-                }
-            }
-
         /** 取池中部署点最高的全部变体（destroyerBestOf 生效时余晖驱逐舰只从最高档位抽取）。 */
         fun topFleetPointsPicks(pool: List<RemnantPick>): List<RemnantPick> {
             val max = pool.maxOf { it.fleetPoints }
@@ -53,20 +34,37 @@ data class BountyPoolConfig(
         }
 
         /**
-         * ASTD 角色到舰级的映射，余晖混编按同舰级池抽取，保证两侧尺寸分布一致。
+         * ASTD 混编池：按舰级分组的导入装配变体（contents/data/variants/bounty/）。
+         * 显式变体池取代 doctrine 抽取：发布范围外舰体与唯一舰天然不入池，
+         * 装配即用户正式导出配置。唯一舰（astd_xc_001/xc_002/zw_002）的导入装配仅作旗舰引用，不入随机池。
          */
-        val ROLE_TO_SIZE: Map<String, ShipAPI.HullSize> = mapOf(
-            "combatSmall" to ShipAPI.HullSize.FRIGATE,
-            "combatMedium" to ShipAPI.HullSize.DESTROYER,
-            "carrierSmall" to ShipAPI.HullSize.DESTROYER,
-            "phaseMedium" to ShipAPI.HullSize.DESTROYER,
-            "combatLarge" to ShipAPI.HullSize.CRUISER,
-            "combatCapital" to ShipAPI.HullSize.CAPITAL_SHIP,
-            "carrierLarge" to ShipAPI.HullSize.CAPITAL_SHIP,
+        val ASTD_POOLS: Map<ShipAPI.HullSize, List<String>> = mapOf(
+            ShipAPI.HullSize.CAPITAL_SHIP to listOf(
+                "astd_xc_102_Standard_Bounty",
+                "astd_xc_102_Combat_Bounty",
+                "astd_zw_102_Fighter_Bounty",
+                "astd_zw_102_Bomber_Bounty",
+                "astd_zw_102_Hybrid_Bounty",
+            ),
+            ShipAPI.HullSize.CRUISER to listOf(
+                "astd_xc_101_Standard_Bounty",
+            ),
+            ShipAPI.HullSize.DESTROYER to listOf(
+                "astd_xc_103_Standard_Bounty",
+                "astd_zw_101_Standard_Bounty",
+                "astd_zw_103_Standard_Bounty",
+                "astd_zw_103_Strike_Bounty",
+            ),
+            ShipAPI.HullSize.FRIGATE to listOf(
+                "astd_lh_001_Standard_Bounty",
+                "astd_lh_001_Missile_Bounty",
+                "astd_lh_002_Standard_Bounty",
+                "astd_lh_002_Omega_Bounty",
+            ),
         )
 
         /**
-         * 余晖混编池：按舰级分组的显式变体清单。
+         * 余晖混编池：按舰级分组的显式变体清单（原版 data/variants/remnant/ stock variant）。
          * remnant 势力没有 doctrine 角色配置，无法走 pickShipAndAddToFleet，只能按变体直接实例化。
          * fleetPoints 为原版 ship_data.csv 的部署点口径，供最高档过滤使用。
          */
@@ -94,8 +92,8 @@ data class BountyPoolConfig(
 
         /**
          * 各赏金的难度档（StandardCores.planFleetCores 的 threatTier 入参）。
-         * 僚舰档位由 StandardCores 分档映射表决定；T≥5 后僚舰封顶 B50/A50，
-         * 更高层级的压迫感由编成规模与池配置承载。
+         * 仅三个唯一舰赏金消费该映射（rogue 系核心池见 [ROGUE_ESCORT_CORE_POOL]）；
+         * T≥5 僚舰封顶 B50/A50。
          */
         val THREAT_TIERS: Map<String, Int> = mapOf(
             "astd_bounty_rogue_1" to 1,
@@ -113,13 +111,47 @@ data class BountyPoolConfig(
         fun threatTierOf(key: String?): Int = THREAT_TIERS[key] ?: 1
 
         /**
-         * 旗舰允许使用 O 档核心的赏金（唯一舰主控节点）。
-         * 其余赏金的旗舰为量产舰，T5 难度档下旗舰核心封顶 A 档（O 仅作唯一舰设定标尺）。
+         * 旗舰允许使用 astd O 档核心的赏金（唯一舰主控节点），其核心方案走 planFleetCores；
+         * 其余赏金（rogue 系）旗舰固定原版 Alpha 核心，僚舰走 [ROGUE_ESCORT_CORE_POOL]。
          */
         val UNIQUE_FLAGSHIP_BOUNTIES: Set<String> = setOf(
             "astd_bounty_xc_001",
             "astd_bounty_xc_002",
             "astd_bounty_zw_002",
+        )
+
+        /** rogue 系赏金旗舰核心：固定原版 Alpha 核心。 */
+        const val ROGUE_FLAGSHIP_CORE: String = "alpha_core"
+
+        /**
+         * rogue 系赏金僚舰核心池（commodity id + 权重）。
+         * alpha/beta/gamma 三族各含原版核心、astd 制式核心、SMS 拟核，族内条目等权；
+         * SMS 翘曲/结晶拟核低权重稀有出场。软联动：按 getCommoditySpec 存在性过滤，
+         * 未安装 Ship Mastery System 时其条目自然消失，不构成 mod 硬依赖。
+         */
+        val ROGUE_ESCORT_CORE_POOL: List<Pair<String, Float>> = listOf(
+            "alpha_core" to 3f,
+            "astd_ai_core_a" to 3f,
+            "sms_alpha_pseudocore" to 3f,
+            "beta_core" to 3f,
+            "astd_ai_core_b" to 3f,
+            "sms_beta_pseudocore" to 3f,
+            "gamma_core" to 3f,
+            "astd_ai_core_g" to 3f,
+            "sms_gamma_pseudocore" to 3f,
+            "sms_fractured_gamma_core" to 3f,
+            "sms_warped_pseudocore" to 1f,
+            "sms_crystalline_pseudocore" to 1f,
+        )
+
+        /**
+         * 核心军官等级表（原版 AICoreOfficerPluginImpl 各档对齐：alpha 7 / beta 5 / gamma 3）。
+         * astd 制式核心等级见 StandardCores.Tier；SMS 核心等级不覆盖，由其模组插件默认。
+         */
+        val VANILLA_CORE_LEVELS: Map<String, Int> = mapOf(
+            "alpha_core" to 7,
+            "beta_core" to 5,
+            "gamma_core" to 3,
         )
     }
 }

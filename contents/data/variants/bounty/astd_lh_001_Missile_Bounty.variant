@@ -1,0 +1,53 @@
+{
+    "displayName": "Missile",
+    "fluxCapacitors": 10,
+    "fluxVents": 7,
+    "hullId": "astd_lh_001",
+    "hullMods": [
+        "astd_test_shield_coverage",
+        "astd_mode_automated",
+        "automated",
+        "astd_dual_mode_switcher",
+        "stabilizedshieldemitter",
+        "frontemitter",
+        "hardenedshieldemitter",
+        "fluxbreakers",
+        "astd_mode_next_automated"
+    ],
+    "permaMods": [
+        "astd_test_shield_coverage",
+        "astd_mode_automated",
+        "automated",
+        "astd_mode_next_automated"
+    ],
+    "quality": 1,
+    "sMods": [],
+    "tags": [
+        "no_auto_penalty"
+    ],
+    "variantId": "astd_lh_001_Missile_Bounty",
+    "weaponGroups": [
+        {
+            "autofire": false,
+            "mode": "LINKED",
+            "weapons": {
+                "WS0001": "astd_electric_drive_accelerator"
+            }
+        },
+        {
+            "autofire": false,
+            "mode": "LINKED",
+            "weapons": {
+                "WS0002": "astd_gemini_dem_launcher"
+            }
+        },
+        {
+            "autofire": false,
+            "mode": "LINKED",
+            "weapons": {
+                "WS0003": "astd_lh_stardust_launcher_arc",
+                "WS0004": "astd_lh_stardust_launcher_arc"
+            }
+        }
+    ]
+}

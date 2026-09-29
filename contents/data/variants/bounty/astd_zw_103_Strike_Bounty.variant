@@ -1,0 +1,57 @@
+{
+    "displayName": "Strike",
+    "fluxCapacitors": 20,
+    "fluxVents": 0,
+    "goalVariant": true,
+    "hullId": "astd_zw_103",
+    "hullMods": [
+        "astd_test_shield_coverage",
+        "targetingunit",
+        "heavyarmor",
+        "adaptive_coils",
+        "fluxbreakers",
+        "astd_mode_automated",
+        "automated",
+        "astd_dual_mode_switcher",
+        "astd_mode_next_automated"
+    ],
+    "permaMods": [
+        "astd_test_shield_coverage",
+        "astd_mode_automated",
+        "automated",
+        "astd_mode_next_automated"
+    ],
+    "quality": 1,
+    "sMods": [],
+    "tags": [
+        "no_auto_penalty"
+    ],
+    "variantId": "astd_zw_103_Strike_Bounty",
+    "weaponGroups": [
+        {
+            "autofire": false,
+            "mode": "LINKED",
+            "weapons": {
+                "WS0003": "amblaster",
+                "WS0004": "amblaster"
+            }
+        },
+        {
+            "autofire": false,
+            "mode": "ALTERNATING",
+            "weapons": {
+                "WS0005": "astd_cuifeng_torpedo",
+                "WS0006": "astd_cuifeng_torpedo"
+            }
+        },
+        {
+            "autofire": true,
+            "mode": "LINKED",
+            "weapons": {
+                "WS0001": "ionpulser",
+                "WS0002": "ionpulser"
+            }
+        }
+    ],
+    "wings": []
+}

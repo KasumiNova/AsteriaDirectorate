@@ -1,0 +1,60 @@
+{
+    "displayName": "Standard",
+    "fluxCapacitors": 20,
+    "fluxVents": 12,
+    "goalVariant": true,
+    "hullId": "astd_xc_103",
+    "hullMods": [
+        "converted_hangar",
+        "astd_test_shield_coverage",
+        "astd_mode_automated",
+        "automated",
+        "astd_dual_mode_switcher",
+        "frontemitter",
+        "stabilizedshieldemitter",
+        "hardenedshieldemitter",
+        "magazines",
+        "astd_mode_next_automated"
+    ],
+    "permaMods": [
+        "astd_test_shield_coverage",
+        "astd_mode_automated",
+        "automated",
+        "astd_mode_next_automated"
+    ],
+    "quality": 1,
+    "sMods": [],
+    "tags": [
+        "no_auto_penalty"
+    ],
+    "variantId": "astd_xc_103_Standard_Bounty",
+    "weaponGroups": [
+        {
+            "autofire": true,
+            "mode": "LINKED",
+            "weapons": {
+                "WS0002": "astd_heavy_charge_needle",
+                "WS0003": "astd_heavy_charge_needle"
+            }
+        },
+        {
+            "autofire": false,
+            "mode": "ALTERNATING",
+            "weapons": {
+                "WS0007": "astd_gemini_dem_launcher",
+                "WS0008": "astd_gemini_dem_launcher"
+            }
+        },
+        {
+            "autofire": true,
+            "mode": "LINKED",
+            "weapons": {
+                "WS0004": "railgun",
+                "WS0005": "railgun"
+            }
+        }
+    ],
+    "wings": [
+        "astd_gemini_bomber_wing"
+    ]
+}

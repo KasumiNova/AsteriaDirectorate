@@ -1,0 +1,75 @@
+{
+    "displayName": "Omega",
+    "fluxCapacitors": 50,
+    "fluxVents": 43,
+    "hullId": "astd_xc_001",
+    "hullMods": [
+        "astd_test_shield_coverage",
+        "targetingunit",
+        "frontemitter",
+        "hardenedshieldemitter",
+        "stabilizedshieldemitter",
+        "magazines",
+        "astd_mode_automated",
+        "automated",
+        "astd_dual_mode_switcher",
+        "astd_mode_next_automated"
+    ],
+    "permaMods": [
+        "astd_test_shield_coverage",
+        "astd_mode_automated",
+        "automated",
+        "astd_mode_next_automated"
+    ],
+    "quality": 1,
+    "sMods": [],
+    "tags": [
+        "no_auto_penalty"
+    ],
+    "variantId": "astd_xc_001_Omega_Bounty",
+    "weaponGroups": [
+        {
+            "autofire": false,
+            "mode": "LINKED",
+            "weapons": {
+                "WS MAIN": "astd_starfall_echo"
+            }
+        },
+        {
+            "autofire": false,
+            "mode": "ALTERNATING",
+            "weapons": {
+                "WS 005": "astd_cuifeng_launcher",
+                "WS 006": "astd_cuifeng_launcher"
+            }
+        },
+        {
+            "autofire": true,
+            "mode": "LINKED",
+            "weapons": {
+                "WS 001": "vpdriver",
+                "WS 002": "vpdriver"
+            }
+        },
+        {
+            "autofire": true,
+            "mode": "LINKED",
+            "weapons": {
+                "WS 003": "disintegrator",
+                "WS 004": "disintegrator"
+            }
+        },
+        {
+            "autofire": true,
+            "mode": "LINKED",
+            "weapons": {
+                "WS 009": "astd_positron_shockwave",
+                "WS 010": "astd_positron_shockwave",
+                "WS 011": "astd_positron_shockwave",
+                "WS 012": "astd_positron_shockwave",
+                "WS 013": "astd_positron_shockwave",
+                "WS 014": "astd_positron_shockwave"
+            }
+        }
+    ]
+}

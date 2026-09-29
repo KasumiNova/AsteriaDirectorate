@@ -1,7 +1,10 @@
 package cn.kasuminova.astd.campaign.bounty
 
+import cn.kasuminova.astd.campaign.bounty.core.BountyOfficerSkills
 import cn.kasuminova.astd.campaign.bounty.core.BountyPoolConfig
 import cn.kasuminova.astd.campaign.bounty.core.PoolSide
+import com.fs.starfarer.api.combat.ShipAPI
+import java.util.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -11,18 +14,19 @@ import kotlin.test.assertTrue
 
 /**
  * 赏金舰队后处理的纯逻辑校验：
- * - 护航排除判定（独特舰 + 逐电）；
- * - SMod 优先级预设的清单选择（专属覆盖 / 相位 / 航母 / 主力 / 通用）；
- * - 预设候选不与赏金旗舰 Bounty 变体已装配的普通船插重叠（保证 SMod 槽位有新候选可插）；
- * - 混编池配置路由、ASTD/余晖 1:1 分边、角色权重缩放与余晖池映射完整性。
+ * - 护航排除判定（独特舰 + 发布范围外显式清单）；
+ * - SMod 优先级预设的清单选择与旗舰导入装配的不重叠性；
+ * - 混编池配置路由、ASTD/余晖 1:1 分边、双池舰级覆盖与技能表引用完整性；
+ * - 核心方案（唯一舰 O 档特判 / rogue 旗舰固定 Alpha + 僚舰池）与难度档映射；
+ * - 核心打捞扩展（原版/SMS 核心可掉、omega 不可掉）。
  */
 class BountyFleetTuningTest {
 
     private val presets = BountySmodPresetsImpl()
 
     @Test
-    fun `独特舰与逐电被排除在护航位之外`() {
-        // 四艘独特舰（含发布范围外的决明）一律排除
+    fun `独特舰与发布范围外舰体被排除在护航位之外`() {
+        // 四艘独特舰（astd_unique tag 标于 ship_data.csv）一律排除
         assertTrue(BountyFleetTunerImpl.isEscortExcludedHull("astd_xc_001", astdUnique = true))
         assertTrue(BountyFleetTunerImpl.isEscortExcludedHull("astd_xc_002", astdUnique = true))
         assertTrue(BountyFleetTunerImpl.isEscortExcludedHull("astd_zw_001", astdUnique = true))
@@ -62,21 +66,32 @@ class BountyFleetTuningTest {
     }
 
     @Test
-    fun `赏金旗舰命中专属覆盖清单且与变体普通船插不重叠`() {
+    fun `赏金旗舰命中专属覆盖清单且与导入装配普通船插不重叠`() {
         // 专属覆盖优先于任何通用清单
         assertEquals(
             BountySmodPresetsImpl.HULL_OVERRIDES.getValue("astd_zw_002"),
             presets.prioritiesFor("astd_zw_002", phase = true, carrier = false, capital = false),
         )
-        // 三个旗舰变体已装配的普通船插（contents/data/variants 下 *_Bounty.variant 的 hullMods）
+        // 三个唯一舰旗舰的导入装配普通船插（contents/data/variants/bounty 下 *_Bounty.variant 的 hullMods）
         val fittedByVariant = mapOf(
-            "astd_xc_001" to setOf("targetingunit", "fluxdistributor", "hardenedshieldemitter", "armoredweapons"),
-            "astd_xc_002" to setOf("expanded_deck_crew", "fluxdistributor", "turretgyros"),
-            "astd_zw_002" to setOf("ex_phase_coils", "fluxdistributor", "fluxcoil"),
+            "astd_xc_001" to setOf(
+                "astd_dual_mode_switcher", "astd_mode_automated", "astd_mode_next_automated",
+                "astd_test_shield_coverage", "automated", "frontemitter", "hardenedshieldemitter",
+                "magazines", "stabilizedshieldemitter", "targetingunit",
+            ),
+            "astd_xc_002" to setOf(
+                "astd_dual_mode_switcher", "astd_mode_automated", "astd_mode_next_automated",
+                "astd_test_shield_coverage", "automated", "fluxbreakers", "frontemitter",
+                "hardenedshieldemitter", "stabilizedshieldemitter", "targetingunit",
+            ),
+            "astd_zw_002" to setOf(
+                "astd_dual_mode_switcher", "astd_mode_automated", "astd_mode_next_automated",
+                "astd_test_shield_coverage", "automated", "phase_anchor", "targetingunit",
+            ),
         )
         fittedByVariant.forEach { (hullId, fitted) ->
             val override = BountySmodPresetsImpl.HULL_OVERRIDES.getValue(hullId)
-            assertTrue(override.none { it in fitted }, "$hullId 专属 SMod 候选与变体普通船插重叠")
+            assertTrue(override.none { it in fitted }, "$hullId 专属 SMod 候选与导入装配普通船插重叠")
         }
     }
 
@@ -92,11 +107,6 @@ class BountyFleetTuningTest {
         assertSame(BountyPoolConfig.DEFAULT, BountyPoolConfig.forBountyKey(null))
         assertSame(BountyPoolConfig.DEFAULT, BountyPoolConfig.forBountyKey("astd_bounty_rogue_1"))
         assertSame(BountyPoolConfig.DEFAULT, BountyPoolConfig.forBountyKey("some_other_bounty"))
-        // 三个唯一舰赏金必须各自命中覆盖实例，且倍率方向与编队主题一致
-        val xc001 = BountyPoolConfig.forBountyKey("astd_bounty_xc_001")
-        assertTrue(xc001.carrierWeightMult < BountyPoolConfig.DEFAULT.carrierWeightMult, "坠星主控应压制航母权重")
-        val zw002 = BountyPoolConfig.forBountyKey("astd_bounty_zw_002")
-        assertTrue(zw002.phaseWeightMult > BountyPoolConfig.DEFAULT.phaseWeightMult, "密蒙主控应强化相位权重")
         val xc002 = BountyPoolConfig.forBountyKey("astd_bounty_xc_002")
         assertTrue(xc002.destroyerBestOf > BountyPoolConfig.DEFAULT.destroyerBestOf, "星翼主控应启用驱逐舰优选")
     }
@@ -120,28 +130,25 @@ class BountyFleetTuningTest {
     }
 
     @Test
-    fun `角色权重缩放只作用于航母与相位角色`() {
-        val base = BountyFleetTunerImpl.ROLE_WEIGHTS
-        val scaled = BountyPoolConfig.weightedRoles(base, BountyPoolConfig(carrierWeightMult = 0.25f, phaseWeightMult = 3f))
-        base.zip(scaled).forEach { (baseRole, scaledRole) ->
-            assertEquals(baseRole.first, scaledRole.first)
-            when {
-                baseRole.first.startsWith("carrier") ->
-                    assertTrue(scaledRole.second < baseRole.second, "${baseRole.first} 应被压制")
-                baseRole.first.startsWith("phase") ->
-                    assertTrue(scaledRole.second > baseRole.second, "${baseRole.first} 应被强化")
-                else -> assertEquals(baseRole.second, scaledRole.second, "${baseRole.first} 不应受影响")
-            }
+    fun `双侧混编池覆盖全部作战舰级且 ASTD 池变体均有技能表`() {
+        val combatSizes = setOf(
+            ShipAPI.HullSize.CAPITAL_SHIP,
+            ShipAPI.HullSize.CRUISER,
+            ShipAPI.HullSize.DESTROYER,
+            ShipAPI.HullSize.FRIGATE,
+        )
+        combatSizes.forEach { size ->
+            assertTrue(BountyPoolConfig.ASTD_POOLS.getValue(size).isNotEmpty(), "ASTD 池缺少舰级 $size")
+            assertTrue(BountyPoolConfig.REMNANT_POOLS.getValue(size).isNotEmpty(), "余晖池缺少舰级 $size")
         }
-    }
-
-    @Test
-    fun `全部抽取角色都能映射到非空余晖池`() {
-        BountyFleetTunerImpl.ROLE_WEIGHTS.forEach { (role, _) ->
-            val size = BountyPoolConfig.ROLE_TO_SIZE[role]
-                ?: error("角色 $role 缺少舰级映射")
-            assertTrue(BountyPoolConfig.REMNANT_POOLS.getValue(size).isNotEmpty(), "舰级 $size 的余晖池为空")
+        // 随机池变体必须在素材技能表中有登记（键为导入 variantId）
+        BountyPoolConfig.ASTD_POOLS.values.flatten().forEach { variantId ->
+            assertTrue(BountyOfficerSkills.forVariant(variantId) != null, "混编池变体 $variantId 缺少技能表登记")
         }
+        // 发布范围外舰体与唯一舰不得进入随机池（唯一舰导入装配仅作旗舰引用）
+        val poolIds = BountyPoolConfig.ASTD_POOLS.values.flatten()
+        assertTrue(poolIds.none { it.startsWith("astd_zw_001") || it.startsWith("astd_xc_104") }, "发布范围外舰体混入随机池")
+        assertTrue(poolIds.none { it.startsWith("astd_xc_001_") || it.startsWith("astd_xc_002_") || it.startsWith("astd_zw_002_") }, "唯一舰装配混入随机池")
     }
 
     @Test
@@ -155,7 +162,7 @@ class BountyFleetTuningTest {
     }
 
     @Test
-    fun `难度档沿赏金链单调不减且覆盖全部登记赏金`() {
+    fun `难度档沿赏金链单调不减且唯一舰处于 T5 以上`() {
         val chain = listOf(
             "astd_bounty_rogue_1", "astd_bounty_rogue_2", "astd_bounty_rogue_3",
             "astd_bounty_rogue_4", "astd_bounty_rogue_5", "astd_bounty_rogue_6",
@@ -177,43 +184,73 @@ class BountyFleetTuningTest {
     }
 
     @Test
-    fun `装舰核心表旗舰 O 档仅限唯一舰赏金`() {
-        // 唯一舰赏金：T5+ 旗舰档即 O 档
+    fun `唯一舰装舰核心表旗舰 O 档且僚舰可打捞`() {
         BountyPoolConfig.UNIQUE_FLAGSHIP_BOUNTIES.forEach { key ->
             val plan = BountyFleetTunerImpl.planBountyCores(key, 20, 42L)
             assertEquals(20, plan.size)
             assertEquals(StandardCores.Tier.O.commodityId, plan[0], "$key 旗舰应为 O 档")
         }
-        // 量产旗舰赏金：任何难度档下旗舰不得为 O（O 封顶回 A）
-        listOf(
-            "astd_bounty_rogue_1", "astd_bounty_rogue_2", "astd_bounty_rogue_3",
-            "astd_bounty_rogue_4", "astd_bounty_rogue_5", "astd_bounty_rogue_6",
-        ).forEach { key ->
-            val plan = BountyFleetTunerImpl.planBountyCores(key, 20, 42L)
-            assertEquals(20, plan.size)
-            assertNotEquals(StandardCores.Tier.O.commodityId, plan[0], "$key 旗舰不得为 O 档")
-        }
-        // 僚舰永不为 O；同种子方案确定
         val plan = BountyFleetTunerImpl.planBountyCores("astd_bounty_xc_001", 20, 42L)
-        assertTrue(plan.drop(1).none { it == StandardCores.Tier.O.commodityId }, "僚舰不得出现 O 档")
+        val droppableIds = StandardCores.Tier.entries.filter { it.droppable }.map { it.commodityId }.toSet()
+        assertTrue(plan.drop(1).all { it in droppableIds }, "僚舰出现不可打捞核心")
         assertEquals(plan, BountyFleetTunerImpl.planBountyCores("astd_bounty_xc_001", 20, 42L), "同种子装舰表应确定")
     }
 
     @Test
-    fun `装舰核心表各赏金档位构成符合难度档语义`() {
-        val droppableIds = StandardCores.Tier.entries.filter { it.droppable }.map { it.commodityId }.toSet()
-        BountyPoolConfig.THREAT_TIERS.keys.forEach { key ->
-            val plan = BountyFleetTunerImpl.planBountyCores(key, 30, 7L)
-            // 僚舰全部可打捞（掉落池 = 实际装舰的语义前提）
-            assertTrue(plan.drop(1).all { it in droppableIds }, "$key 僚舰出现不可打捞核心")
-            // 高档赏金僚舰应出现 B/A 档，低挡赏金僚舰全 G
-            val escortTiers = plan.drop(1).mapNotNull { StandardCores.byCommodity(it) }.toSet()
-            if (BountyPoolConfig.threatTierOf(key) <= 2) {
-                assertEquals(setOf(StandardCores.Tier.G), escortTiers, "$key 低难度僚舰应全 G 档")
-            } else {
-                assertTrue(StandardCores.Tier.G !in escortTiers || BountyPoolConfig.threatTierOf(key) == 3,
-                    "$key 高难度僚舰不应仍以 G 档为主")
-            }
+    fun `rogue 装舰核心表旗舰固定 Alpha 且僚舰出自核心池`() {
+        val pool = BountyPoolConfig.ROGUE_ESCORT_CORE_POOL
+        val plan = BountyFleetTunerImpl.planRogueCores(20, pool, Random(42L))
+        assertEquals(20, plan.size)
+        assertEquals(BountyPoolConfig.ROGUE_FLAGSHIP_CORE, plan[0], "rogue 旗舰应固定原版 Alpha 核心")
+        val poolIds = pool.map { it.first }.toSet()
+        assertTrue(plan.drop(1).all { it in poolIds }, "僚舰核心越出核心池：$plan")
+        // SMS 软联动：过滤掉 SMS 条目后方案仍然成立（模拟未安装 SMS）
+        val noSms = pool.filterNot { it.first.startsWith("sms_") }
+        val planNoSms = BountyFleetTunerImpl.planRogueCores(20, noSms, Random(42L))
+        assertTrue(planNoSms.drop(1).none { it.startsWith("sms_") }, "软过滤后僚舰不应出现 SMS 核心")
+        // 空池与零规模返回空表（调用方记日志跳过）
+        assertEquals(emptyList(), BountyFleetTunerImpl.planRogueCores(20, emptyList(), Random(1L)))
+        assertEquals(emptyList(), BountyFleetTunerImpl.planRogueCores(0, pool, Random(1L)))
+        // 同种子确定
+        assertEquals(plan, BountyFleetTunerImpl.planRogueCores(20, pool, Random(42L)))
+    }
+
+    @Test
+    fun `核心打捞扩展覆盖原版与 SMS 核心且 omega 不可掉`() {
+        assertTrue(StandardCores.isCoreDroppable("alpha_core"))
+        assertTrue(StandardCores.isCoreDroppable("beta_core"))
+        assertTrue(StandardCores.isCoreDroppable("gamma_core"))
+        assertTrue(StandardCores.isCoreDroppable("sms_alpha_pseudocore"))
+        assertTrue(StandardCores.isCoreDroppable("sms_fractured_gamma_core"))
+        assertFalse(StandardCores.isCoreDroppable("omega_core"))
+        assertFalse(StandardCores.isCoreDroppable(StandardCores.Tier.O.commodityId))
+
+        // 混合装舰表：原版旗舰保底必掉，omega 与 astd O 永不入池
+        val installed = listOf(
+            "alpha_core", "astd_ai_core_b", "sms_gamma_pseudocore", "omega_core",
+        )
+        for (seed in 0L until 64L) {
+            val loot = StandardCores.rollCoreLoot(installed, seed)
+            assertTrue("omega_core" !in loot.keys, "omega 不得入打捞池：$loot")
+            assertEquals("alpha_core", loot.keys.first(), "旗舰核心保底必掉：$loot")
+            assertTrue(loot.keys.all { it in installed }, "掉落越出实际装舰：$loot")
+            assertTrue(loot.values.sum() >= 1, "至少一枚承诺被破坏：$loot")
         }
+    }
+
+    @Test
+    fun `舰级排序档位单调且护卫舰垫底`() {
+        assertTrue(
+            BountyFleetTunerImpl.sizeRank(ShipAPI.HullSize.CAPITAL_SHIP) <
+                BountyFleetTunerImpl.sizeRank(ShipAPI.HullSize.CRUISER),
+        )
+        assertTrue(
+            BountyFleetTunerImpl.sizeRank(ShipAPI.HullSize.CRUISER) <
+                BountyFleetTunerImpl.sizeRank(ShipAPI.HullSize.DESTROYER),
+        )
+        assertTrue(
+            BountyFleetTunerImpl.sizeRank(ShipAPI.HullSize.DESTROYER) <
+                BountyFleetTunerImpl.sizeRank(ShipAPI.HullSize.FRIGATE),
+        )
     }
 }

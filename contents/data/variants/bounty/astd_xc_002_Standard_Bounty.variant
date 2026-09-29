@@ -1,0 +1,56 @@
+{
+    "displayName": "Standard",
+    "fluxCapacitors": 20,
+    "fluxVents": 19,
+    "hullId": "astd_xc_002",
+    "hullMods": [
+        "astd_test_shield_coverage",
+        "astd_mode_automated",
+        "automated",
+        "astd_dual_mode_switcher",
+        "frontemitter",
+        "hardenedshieldemitter",
+        "stabilizedshieldemitter",
+        "targetingunit",
+        "fluxbreakers",
+        "astd_mode_next_automated"
+    ],
+    "permaMods": [
+        "astd_test_shield_coverage",
+        "astd_mode_automated",
+        "automated",
+        "astd_mode_next_automated"
+    ],
+    "quality": 1,
+    "sMods": [],
+    "tags": [
+        "no_auto_penalty"
+    ],
+    "variantId": "astd_xc_002_Standard_Bounty",
+    "weaponGroups": [
+        {
+            "autofire": false,
+            "mode": "LINKED",
+            "weapons": {
+                "WS 001": "astd_starfall_wing"
+            }
+        },
+        {
+            "autofire": true,
+            "mode": "LINKED",
+            "weapons": {
+                "WS 002": "astd_electric_drive_accelerator"
+            }
+        },
+        {
+            "autofire": true,
+            "mode": "LINKED",
+            "weapons": {
+                "WS 003": "astd_heavy_charge_needle"
+            }
+        }
+    ],
+    "wings": [
+        "astd_gravwell_interceptor_wing"
+    ]
+}

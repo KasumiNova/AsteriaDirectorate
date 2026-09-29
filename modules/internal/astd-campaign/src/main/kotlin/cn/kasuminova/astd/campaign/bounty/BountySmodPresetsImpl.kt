@@ -52,11 +52,12 @@ class BountySmodPresetsImpl : BountySmodPresets {
             "reinforcedhull",
         )
 
-        // 赏金旗舰专属清单：与其 Bounty 变体已装配的普通船插错开，保证 SMod 槽位能被新候选占满。
+        // 赏金旗舰专属清单：与其导入装配（contents/data/variants/bounty/）已装配的普通船插错开，
+        // 保证 SMod 槽位能被新候选占满。
         val HULL_OVERRIDES: Map<String, List<String>> = mapOf(
             "astd_xc_001" to listOf("heavyarmor", "reinforcedhull", "blast_doors", "fluxcoil"),
-            "astd_xc_002" to listOf("targetingunit", "hardenedshieldemitter", "reinforcedhull", "armoredweapons"),
-            "astd_zw_002" to listOf("phase_anchor", "stabilizedshieldemitter", "reinforcedhull", "hardenedshieldemitter"),
+            "astd_xc_002" to listOf("armoredweapons", "reinforcedhull", "heavyarmor", "turretgyros"),
+            "astd_zw_002" to listOf("adaptive_coils", "stabilizedshieldemitter", "reinforcedhull", "hardenedshieldemitter"),
         )
     }
 }
