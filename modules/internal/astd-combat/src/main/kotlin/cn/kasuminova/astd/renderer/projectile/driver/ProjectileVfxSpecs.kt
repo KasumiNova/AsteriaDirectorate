@@ -450,6 +450,7 @@ object ProjectileVfxSpecs {
         rangeRatio = 0.5f,
         trailGlow = 0.8f,
         boltFlare = 68f,
+        muzzleBurst = MuzzleBurst(length = 160f, halfAngleDeg = 30f, duration = 0.5f)
     ) {
         // 航迹三角碎片：0.01s×2 颗，弹体位置散布 8、统一向前缓慢飞行（20~40su/s，零散布角）。
         shardWake("wake") {

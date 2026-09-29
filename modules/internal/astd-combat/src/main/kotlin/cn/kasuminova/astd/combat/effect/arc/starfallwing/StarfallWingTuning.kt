@@ -20,9 +20,9 @@ object StarfallWingTuning {
     const val MOTE_SPEC_ID = "astd_starfall_wing_mote"
 
     /** 穿透结算节拍（秒）：穿盾 tick 与船体/装甲单点结算共用同一时间拍（首触补拍除外）。 */
-    const val PIERCE_TICK_SECONDS = 0.1f
+    const val PIERCE_TICK_SECONDS = 0.05f
 
-    /** 穿透单次结算伤害占面板比例（20%）：穿盾每拍、穿船体每拍单点、导弹/陨石单次穿越一次。 */
+    /** 穿透单次结算伤害占面板比例：穿盾每拍、穿船体每拍单点、导弹/陨石单次穿越一次。 */
     const val PIERCE_TICK_RATIO = 0.2f
 
     /** 穿透单次结算附带的 EMP 占 EMP 面板比例（20%）。 */
