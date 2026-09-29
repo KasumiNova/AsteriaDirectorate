@@ -1,0 +1,1 @@
+ASTD dev-only automation scenario: ZW-101 vs Hammerhead (speed 90 > 70) high-speed control group - PHASE_ATTACK_RUN flag frames must stay 0 for 60s while at least one phase dive proves the AI is running.
