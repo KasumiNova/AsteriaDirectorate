@@ -1,78 +1,122 @@
 {
     "bounds": [
-        28,
-        -3,
-        -1,
+        25.5,
+        4.5,
+        22,
+        0.5,
+        25.5,
+        -5.5,
         10,
-        -9,
-        -7
+        -15,
+        -3.5,
+        -25.5,
+        -8.5,
+        -16,
+        -12,
+        -7,
+        -20.5,
+        0.5,
+        -12,
+        7,
+        -8.5,
+        16,
+        -3.5,
+        25.5,
+        10,
+        15
     ],
+    "builtInWeapons": {
+        "WS BLOOM": "astd_zw_103_fighter_bloom"
+    },
     "center": [
-        13,
-        13
+        29,
+        28
     ],
-    "collisionRadius": 35,
+    "collisionRadius": 26,
     "engineSlots": [
         {
             "angle": 180,
-            "contrailSize": 64,
-            "length": 48,
+            "contrailSize": 32,
+            "length": 30,
             "location": [
-                -12,
-                7
+                -19,
+                0.5
             ],
             "style": "HIGH_TECH",
-            "width": 12
+            "width": 8
         },
         {
             "angle": 180,
-            "contrailSize": 64,
-            "length": 48,
+            "contrailSize": 20,
+            "length": 18,
             "location": [
-                -12,
-                -6
+                -16.5,
+                5
             ],
             "style": "HIGH_TECH",
-            "width": 12
+            "width": 5
+        },
+        {
+            "angle": 180,
+            "contrailSize": 20,
+            "length": 18,
+            "location": [
+                -16.5,
+                -5
+            ],
+            "style": "HIGH_TECH",
+            "width": 5
         }
     ],
-    "height": 43,
+    "height": 55,
     "hullId": "astd_zw_103_fighter",
-    "hullName": "游丝",
+    "hullName": "牵丝",
     "hullSize": "FIGHTER",
     "shieldCenter": [
-        8,
+        0,
         0
     ],
-    "shieldRadius": 28,
-    "spriteName": "graphics/ships/thunder2.png",
+    "shieldRadius": 27,
+    "spriteName": "graphics/ships/游丝.png",
     "style": "ASTD_HIGH_TECH",
     "viewOffset": 0,
     "weaponSlots": [
         {
             "angle": 0,
-            "arc": 90,
+            "arc": 15,
             "id": "WS 001",
             "locations": [
-                20,
-                6
+                22.5,
+                0.5
             ],
-            "mount": "HIDDEN",
+            "mount": "HARDPOINT",
             "size": "SMALL",
             "type": "ENERGY"
         },
         {
             "angle": 0,
-            "arc": 90,
+            "arc": 120,
             "id": "WS 002",
             "locations": [
-                20,
-                -5
+                10.5,
+                0.5
             ],
-            "mount": "HIDDEN",
+            "mount": "TURRET",
             "size": "SMALL",
             "type": "ENERGY"
+        },
+        {
+            "angle": 0,
+            "arc": 0,
+            "id": "WS BLOOM",
+            "locations": [
+                0,
+                0.5
+            ],
+            "mount": "TURRET",
+            "size": "SMALL",
+            "type": "DECORATIVE"
         }
     ],
-    "width": 26
+    "width": 58
 }

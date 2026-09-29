@@ -1,70 +1,107 @@
 {
     "bounds": [
+        18,
+        0,
+        12.5,
+        -18.5,
+        6,
+        -21,
+        -2.5,
+        -15,
+        -6.5,
+        -8,
+        -15.5,
+        0,
+        -6.5,
         8,
-        8,
-        -7,
-        -7,
-        -7,
-        8,
-        9,
-        -7,
-        4,
-        0
+        -2.5,
+        15,
+        6,
+        21,
+        12.5,
+        18.5
     ],
+    "builtInWeapons": {
+        "WS BLOOM": "astd_surge_fighter_bloom"
+    },
     "center": [
-        9,
-        11
+        25,
+        22
     ],
-    "collisionRadius": 15,
+    "collisionRadius": 22,
     "engineSlots": [
         {
             "angle": 180,
-            "contrailSize": 64,
-            "length": 20,
+            "contrailSize": 32,
+            "length": 24,
             "location": [
-                -7,
-                4
+                -9,
+                4.5
             ],
             "style": "HIGH_TECH",
-            "width": 4
+            "width": 6
         },
         {
             "angle": 180,
-            "contrailSize": 64,
-            "length": 20,
+            "contrailSize": 32,
+            "length": 24,
             "location": [
-                -7,
-                -4
+                -9,
+                -4.5
             ],
             "style": "HIGH_TECH",
-            "width": 4
+            "width": 6
         }
     ],
-    "height": 21,
+    "height": 43,
     "hullId": "astd_surge_fighter",
     "hullName": "电涌",
     "hullSize": "FIGHTER",
     "shieldCenter": [
-        1,
+        0,
         0
     ],
-    "shieldRadius": 15,
-    "spriteName": "graphics/ships/wasp_ftr.png",
+    "shieldRadius": 22,
+    "spriteName": "graphics/ships/电涌.png",
     "style": "ASTD_HIGH_TECH",
     "viewOffset": 0,
     "weaponSlots": [
         {
             "angle": 0,
-            "arc": 90,
+            "arc": 15,
             "id": "WS 001",
             "locations": [
-                8,
-                0
+                10.5,
+                13
             ],
-            "mount": "HIDDEN",
+            "mount": "HARDPOINT",
             "size": "SMALL",
             "type": "ENERGY"
+        },
+        {
+            "angle": 0,
+            "arc": 15,
+            "id": "WS 002",
+            "locations": [
+                10.5,
+                -13
+            ],
+            "mount": "HARDPOINT",
+            "size": "SMALL",
+            "type": "ENERGY"
+        },
+        {
+            "angle": 0,
+            "arc": 0,
+            "id": "WS BLOOM",
+            "locations": [
+                0,
+                0.5
+            ],
+            "mount": "TURRET",
+            "size": "SMALL",
+            "type": "DECORATIVE"
         }
     ],
-    "width": 18
+    "width": 50
 }

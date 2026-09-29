@@ -97,8 +97,8 @@ object Ship_astd_zw_101 : ShipDataEntry() {
     override val crToDeploy: Double = 20.0
     override val peakCrSec: Int = 420
     override val crLossPerSec: Double = 0.25
-    override val suppliesRec: Int = 20
-    override val suppliesPerMonth: Int = 20
+    override val suppliesRec: Int = 18
+    override val suppliesPerMonth: Int = 18
     override val tags: String = "astd_production"
     override val codexVariantId: String = "astd_zw_101_Standard"
     override val number: Int = 9105
@@ -261,15 +261,15 @@ object Ship_astd_zw_103 : ShipDataEntry() {
     override val crToDeploy: Double = 15.0
     override val peakCrSec: Int = 480
     override val crLossPerSec: Double = 0.25
-    override val suppliesRec: Int = 24
-    override val suppliesPerMonth: Int = 24
+    override val suppliesRec: Int = 22
+    override val suppliesPerMonth: Int = 22
     override val tags: String = "astd_production"
     override val codexVariantId: String = "astd_zw_103_Standard"
     override val number: Int = 9113
 }
 
 /**
- * 茑萝级内置相位无人战机「游丝」（purple/20-production.md §2 内置战机）。
+ * 茑萝级内置相位无人战机「牵丝」（purple/20-production.md §2 内置战机）。
  *
  * 无人重型战斗机：双联队共两个甲板各 2 架，0 OP 内置（wing op cost 0），
  * 战术系统为落叶飞花（战机型）astd_burst_flow_fighter（回充 10s、2 充能）。

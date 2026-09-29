@@ -1,50 +1,59 @@
 {
     "bounds": [
-        10,
-        17,
+        18,
+        8,
         15,
-        -4,
-        5,
-        -15,
-        -15,
-        -9,
-        -8,
-        1,
-        -15,
+        -0.5,
+        18,
+        -7.5,
         10,
-        -3,
-        10
+        -14,
+        1.5,
+        -17.5,
+        -13,
+        -11,
+        -17.5,
+        0.5,
+        -13,
+        11,
+        1.5,
+        17.5,
+        10,
+        14
     ],
+    "builtInWeapons": {
+        "WS BLOOM": "astd_gravwell_interceptor_bloom"
+    },
     "center": [
-        19,
-        17
+        20,
+        23
     ],
-    "collisionRadius": 30,
+    "collisionRadius": 20,
     "engineSlots": [
         {
             "angle": 180,
-            "contrailSize": 64,
-            "length": 32,
+            "contrailSize": 32,
+            "length": 24,
             "location": [
-                -16,
-                8
+                -17,
+                4.5
             ],
             "style": "HIGH_TECH",
-            "width": 12
+            "width": 6
         },
         {
             "angle": 180,
-            "contrailSize": 64,
-            "length": 32,
+            "contrailSize": 32,
+            "length": 24,
             "location": [
-                -16,
-                -7
+                -17,
+                -4.5
             ],
             "style": "HIGH_TECH",
-            "width": 12
+            "width": 6
         }
     ],
-    "height": 38,
+    "height": 46,
     "hullId": "astd_gravwell_interceptor",
     "hullName": "引力井",
     "hullSize": "FIGHTER",
@@ -52,23 +61,47 @@
         0,
         0
     ],
-    "shieldRadius": 30,
-    "spriteName": "graphics/ships/xyphos.png",
+    "shieldRadius": 22,
+    "spriteName": "graphics/ships/引力.png",
     "style": "ASTD_HIGH_TECH",
     "viewOffset": 0,
     "weaponSlots": [
         {
             "angle": 0,
-            "arc": 360,
+            "arc": 90,
             "id": "WS 001",
             "locations": [
-                12,
-                0
+                15,
+                9
             ],
-            "mount": "HIDDEN",
+            "mount": "TURRET",
             "size": "SMALL",
             "type": "ENERGY"
+        },
+        {
+            "angle": 0,
+            "arc": 90,
+            "id": "WS 002",
+            "locations": [
+                15,
+                -8
+            ],
+            "mount": "TURRET",
+            "size": "SMALL",
+            "type": "ENERGY"
+        },
+        {
+            "angle": 0,
+            "arc": 0,
+            "id": "WS BLOOM",
+            "locations": [
+                0,
+                0
+            ],
+            "mount": "TURRET",
+            "size": "SMALL",
+            "type": "DECORATIVE"
         }
     ],
-    "width": 38
+    "width": 40
 }

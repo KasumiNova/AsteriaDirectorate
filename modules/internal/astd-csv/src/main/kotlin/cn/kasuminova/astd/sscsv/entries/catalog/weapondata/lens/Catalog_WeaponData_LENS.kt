@@ -90,6 +90,66 @@ object Wpn_astd_zw_103_bloom : WeaponDataEntry() {
     override val number: Int = 9232
 }
 
+/** 双子座：整船 bloom 描边层（装配界面/战斗 decorative outline）。 */
+object Wpn_astd_gemini_bomber_bloom : WeaponDataEntry() {
+    override val id: String = "astd_gemini_bomber_bloom"
+    override val name: String = weaponName(id)
+    override val tier: Int = 5
+    override val baseValue: Int = 0
+    override val range: Int = 0
+    override val turnRate: Int = 0
+    override val type: String = "OTHER"
+    override val tags: String = "no_drop, no_drop_salvage"
+    override val tech: String = "菀星设计局-紫菀"
+    override val noDpsInTooltip: Boolean = true
+    override val number: Int = 9253
+}
+
+/** 电涌：整船 bloom 描边层（装配界面/战斗 decorative outline）。 */
+object Wpn_astd_surge_fighter_bloom : WeaponDataEntry() {
+    override val id: String = "astd_surge_fighter_bloom"
+    override val name: String = weaponName(id)
+    override val tier: Int = 5
+    override val baseValue: Int = 0
+    override val range: Int = 0
+    override val turnRate: Int = 0
+    override val type: String = "OTHER"
+    override val tags: String = "no_drop, no_drop_salvage"
+    override val tech: String = "菀星设计局-紫菀"
+    override val noDpsInTooltip: Boolean = true
+    override val number: Int = 9254
+}
+
+/** 引力井：整船 bloom 描边层（装配界面/战斗 decorative outline）。 */
+object Wpn_astd_gravwell_interceptor_bloom : WeaponDataEntry() {
+    override val id: String = "astd_gravwell_interceptor_bloom"
+    override val name: String = weaponName(id)
+    override val tier: Int = 5
+    override val baseValue: Int = 0
+    override val range: Int = 0
+    override val turnRate: Int = 0
+    override val type: String = "OTHER"
+    override val tags: String = "no_drop, no_drop_salvage"
+    override val tech: String = "菀星设计局-紫菀"
+    override val noDpsInTooltip: Boolean = true
+    override val number: Int = 9255
+}
+
+/** 牵丝：整船 bloom 描边层（装配界面/战斗 decorative outline）。 */
+object Wpn_astd_zw_103_fighter_bloom : WeaponDataEntry() {
+    override val id: String = "astd_zw_103_fighter_bloom"
+    override val name: String = weaponName(id)
+    override val tier: Int = 5
+    override val baseValue: Int = 0
+    override val range: Int = 0
+    override val turnRate: Int = 0
+    override val type: String = "OTHER"
+    override val tags: String = "no_drop, no_drop_salvage"
+    override val tech: String = "菀星设计局-紫菀"
+    override val noDpsInTooltip: Boolean = true
+    override val number: Int = 9256
+}
+
 /** GCP 系列：引力坍缩炮（可装配版本；以持续命中坍缩 tick + AOE + 引力撕裂为核心机制）。 */
 object Wpn_astd_gcp12 : WeaponDataEntry() {
     override val id: String = "astd_gcp12"
@@ -436,7 +496,7 @@ object Wpn_astd_stellar_mrm_pod : WeaponDataEntry(), SsProjMissileOutputs {
 }
 
 /**
- * 离子脉冲（战机型）：茑萝级内置战机「游丝」武备（purple/20-production.md §2）。
+ * 离子脉冲（战机型）：茑萝级内置战机「牵丝」武备（purple/20-production.md §2）。
  *
  * 原版离子脉冲（ionpulser）的战机化调参：burst 2 发、单发 90 能量 + 200 EMP，
  * 单发辐能 50（战机 900/150 辐能池可持续）；hints SYSTEM 不进常规配装列表。
@@ -489,7 +549,7 @@ object Wpn_astd_ion_pulse_fighter : WeaponDataEntry(), SsProjProjectileOutputs {
 }
 
 /**
- * 相位长矛（战机型）：茑萝级内置战机「游丝」武备（purple/20-production.md §2）。
+ * 相位长矛（战机型）：茑萝级内置战机「牵丝」武备（purple/20-production.md §2）。
  *
  * 原版相位长矛（phasebeam）的战机化调参：1s 脉冲光束 / 3s 间隔，150 DPS、120 辐能/秒
  * （战机 900/150 辐能池可持续）；hints SYSTEM 不进常规配装列表。.wpn 为手写光束资源。

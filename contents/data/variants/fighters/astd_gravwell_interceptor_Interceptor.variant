@@ -10,7 +10,8 @@
         {
             "mode": "LINKED",
             "weapons": {
-                "WS 001": "astd_gcp_fighter"
+                "WS 001": "astd_gcp_fighter",
+                "WS 002": "astd_gcp_fighter"
             }
         }
     ]

@@ -1,48 +1,81 @@
 {
     "bounds": [
-        15,
-        6,
+        18.5,
+        0,
+        15.5,
         -15,
-        10,
-        -6,
-        -1,
-        -15,
-        -10,
-        12,
-        -11,
-        5,
-        0
+        -1.5,
+        -21.5,
+        -18.5,
+        -15.5,
+        -18.5,
+        -10.5,
+        -13.5,
+        0,
+        -18.5,
+        10.5,
+        -18.5,
+        15.5,
+        -1.5,
+        21.5,
+        15.5,
+        15
     ],
+    "builtInWeapons": {
+        "WS BLOOM": "astd_gemini_bomber_bloom"
+    },
     "center": [
-        15,
-        17
+        26,
+        25
     ],
     "collisionRadius": 22,
     "engineSlots": [
         {
             "angle": 180,
-            "contrailSize": 64,
-            "length": 20,
+            "contrailSize": 32,
+            "length": 28,
             "location": [
-                -16,
-                7
+                -17.5,
+                13
             ],
             "style": "HIGH_TECH",
-            "width": 12
+            "width": 8
         },
         {
             "angle": 180,
-            "contrailSize": 64,
-            "length": 20,
+            "contrailSize": 32,
+            "length": 28,
             "location": [
-                -16,
-                -7
+                -17.5,
+                -13
             ],
             "style": "HIGH_TECH",
-            "width": 12
+            "width": 8
+        },
+        {
+            "angle": 180,
+            "contrailSize": 20,
+            "length": 16,
+            "location": [
+                -16.5,
+                4
+            ],
+            "style": "HIGH_TECH",
+            "width": 5
+        },
+        {
+            "angle": 180,
+            "contrailSize": 20,
+            "length": 16,
+            "location": [
+                -16.5,
+                -4
+            ],
+            "style": "HIGH_TECH",
+            "width": 5
         }
     ],
-    "height": 34,
+    "height": 49,
     "hullId": "astd_gemini_bomber",
     "hullName": "双子座",
     "hullSize": "FIGHTER",
@@ -50,23 +83,47 @@
         0,
         0
     ],
-    "shieldRadius": 22,
-    "spriteName": "graphics/ships/piranha_bmb.png",
+    "shieldRadius": 23,
+    "spriteName": "graphics/ships/双子.png",
     "style": "ASTD_HIGH_TECH",
     "viewOffset": 0,
     "weaponSlots": [
         {
             "angle": 0,
-            "arc": 90,
+            "arc": 15,
             "id": "WS 001",
             "locations": [
-                12,
-                0
+                13.5,
+                11.5
             ],
-            "mount": "HIDDEN",
+            "mount": "HARDPOINT",
             "size": "SMALL",
             "type": "MISSILE"
+        },
+        {
+            "angle": 0,
+            "arc": 15,
+            "id": "WS 002",
+            "locations": [
+                13.5,
+                -11.5
+            ],
+            "mount": "HARDPOINT",
+            "size": "SMALL",
+            "type": "MISSILE"
+        },
+        {
+            "angle": 0,
+            "arc": 0,
+            "id": "WS BLOOM",
+            "locations": [
+                -0.5,
+                0.5
+            ],
+            "mount": "TURRET",
+            "size": "SMALL",
+            "type": "DECORATIVE"
         }
     ],
-    "width": 30
+    "width": 51
 }
