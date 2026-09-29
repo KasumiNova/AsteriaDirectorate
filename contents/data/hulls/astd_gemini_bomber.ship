@@ -1,129 +1,78 @@
 {
-    "bounds": [
-        18.5,
-        0,
-        15.5,
-        -15,
-        -1.5,
-        -21.5,
-        -18.5,
-        -15.5,
-        -18.5,
-        -10.5,
-        -13.5,
-        0,
-        -18.5,
-        10.5,
-        -18.5,
-        15.5,
-        -1.5,
-        21.5,
-        15.5,
-        15
-    ],
-    "builtInWeapons": {
-        "WS BLOOM": "astd_gemini_bomber_bloom"
+  "hullName": "双子座",
+  "hullId": "astd_gemini_bomber",
+  "hullSize": "FIGHTER",
+  "spriteName": "graphics/ships/astd_gemini_bomber.png",
+  "style": "ASTD_HIGH_TECH",
+  "height": 49,
+  "width": 51,
+  "center": [26, 23],
+  "collisionRadius": 24.5,
+  "shieldCenter": [0, -0],
+  "shieldRadius": 28.5,
+  "viewOffset": 0,
+  "builtInWeapons": {
+    "WS BLOOM": "astd_gemini_bomber_bloom"
+  },
+  "weaponSlots": [
+    {
+      "id": "WS 001",
+      "size": "SMALL",
+      "type": "MISSILE",
+      "mount": "HARDPOINT",
+      "arc": 15,
+      "angle": 0,
+      "locations": [15.5, 11.5]
     },
-    "center": [
-        26,
-        25
-    ],
-    "collisionRadius": 22,
-    "engineSlots": [
-        {
-            "angle": 180,
-            "contrailSize": 32,
-            "length": 28,
-            "location": [
-                -17.5,
-                13
-            ],
-            "style": "HIGH_TECH",
-            "width": 8
-        },
-        {
-            "angle": 180,
-            "contrailSize": 32,
-            "length": 28,
-            "location": [
-                -17.5,
-                -13
-            ],
-            "style": "HIGH_TECH",
-            "width": 8
-        },
-        {
-            "angle": 180,
-            "contrailSize": 20,
-            "length": 16,
-            "location": [
-                -16.5,
-                4
-            ],
-            "style": "HIGH_TECH",
-            "width": 5
-        },
-        {
-            "angle": 180,
-            "contrailSize": 20,
-            "length": 16,
-            "location": [
-                -16.5,
-                -4
-            ],
-            "style": "HIGH_TECH",
-            "width": 5
-        }
-    ],
-    "height": 49,
-    "hullId": "astd_gemini_bomber",
-    "hullName": "双子座",
-    "hullSize": "FIGHTER",
-    "shieldCenter": [
-        0,
-        0
-    ],
-    "shieldRadius": 23,
-    "spriteName": "graphics/ships/astd_gemini_bomber.png",
-    "style": "ASTD_HIGH_TECH",
-    "viewOffset": 0,
-    "weaponSlots": [
-        {
-            "angle": 0,
-            "arc": 15,
-            "id": "WS 001",
-            "locations": [
-                13.5,
-                11.5
-            ],
-            "mount": "HARDPOINT",
-            "size": "SMALL",
-            "type": "MISSILE"
-        },
-        {
-            "angle": 0,
-            "arc": 15,
-            "id": "WS 002",
-            "locations": [
-                13.5,
-                -11.5
-            ],
-            "mount": "HARDPOINT",
-            "size": "SMALL",
-            "type": "MISSILE"
-        },
-        {
-            "angle": 0,
-            "arc": 0,
-            "id": "WS BLOOM",
-            "locations": [
-                -0.5,
-                0.5
-            ],
-            "mount": "TURRET",
-            "size": "SMALL",
-            "type": "DECORATIVE"
-        }
-    ],
-    "width": 51
+    {
+      "id": "WS 002",
+      "size": "SMALL",
+      "type": "MISSILE",
+      "mount": "HARDPOINT",
+      "arc": 15,
+      "angle": 0,
+      "locations": [15.5, -11.5]
+    },
+    {
+      "id": "WS BLOOM",
+      "size": "SMALL",
+      "type": "DECORATIVE",
+      "mount": "TURRET",
+      "arc": 0,
+      "angle": 0,
+      "locations": [1.5, 0.5]
+    }
+  ],
+  "engineSlots": [
+    {
+      "location": [-16, 13],
+      "length": 25,
+      "width": 6,
+      "angle": 180,
+      "contrailSize": 32,
+      "style": "CUSTOM",
+      "styleId": "ASTD_LENS"
+    },
+    {
+      "location": [-16, -13],
+      "length": 25,
+      "width": 6,
+      "angle": 180,
+      "contrailSize": 32,
+      "style": "CUSTOM",
+      "styleId": "ASTD_LENS"
+    }
+  ],
+  "bounds": [
+    19, 0,
+    17.5, -15,
+    0.5, -21.5,
+    -18, -16,
+    -18, -10,
+    -12.5, 0.5,
+    -18, 10,
+    -18, 16,
+    0.5, 21.5,
+    17.5, 15
+  ]
 }

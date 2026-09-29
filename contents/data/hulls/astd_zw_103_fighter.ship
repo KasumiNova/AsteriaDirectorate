@@ -1,122 +1,89 @@
 {
-    "bounds": [
-        25.5,
-        4.5,
-        22,
-        0.5,
-        25.5,
-        -5.5,
-        10,
-        -15,
-        -3.5,
-        -25.5,
-        -8.5,
-        -16,
-        -12,
-        -7,
-        -20.5,
-        0.5,
-        -12,
-        7,
-        -8.5,
-        16,
-        -3.5,
-        25.5,
-        10,
-        15
-    ],
-    "builtInWeapons": {
-        "WS BLOOM": "astd_zw_103_fighter_bloom"
+  "hullName": "牵丝",
+  "hullId": "astd_zw_103_fighter",
+  "hullSize": "FIGHTER",
+  "spriteName": "graphics/ships/astd_zw_103_fighter.png",
+  "style": "ASTD_HIGH_TECH",
+  "height": 55,
+  "width": 58,
+  "center": [29, 28],
+  "collisionRadius": 27.5,
+  "shieldCenter": [0, 0],
+  "shieldRadius": 32,
+  "viewOffset": 0,
+  "builtInWeapons": {
+    "WS BLOOM": "astd_zw_103_fighter_bloom"
+  },
+  "weaponSlots": [
+    {
+      "id": "WS 001",
+      "size": "SMALL",
+      "type": "ENERGY",
+      "mount": "HIDDEN",
+      "arc": 15,
+      "angle": 0,
+      "locations": [19, 0.5]
     },
-    "center": [
-        29,
-        28
-    ],
-    "collisionRadius": 26,
-    "engineSlots": [
-        {
-            "angle": 180,
-            "contrailSize": 32,
-            "length": 30,
-            "location": [
-                -19,
-                0.5
-            ],
-            "style": "HIGH_TECH",
-            "width": 8
-        },
-        {
-            "angle": 180,
-            "contrailSize": 20,
-            "length": 18,
-            "location": [
-                -16.5,
-                5
-            ],
-            "style": "HIGH_TECH",
-            "width": 5
-        },
-        {
-            "angle": 180,
-            "contrailSize": 20,
-            "length": 18,
-            "location": [
-                -16.5,
-                -5
-            ],
-            "style": "HIGH_TECH",
-            "width": 5
-        }
-    ],
-    "height": 55,
-    "hullId": "astd_zw_103_fighter",
-    "hullName": "牵丝",
-    "hullSize": "FIGHTER",
-    "shieldCenter": [
-        0,
-        0
-    ],
-    "shieldRadius": 27,
-    "spriteName": "graphics/ships/astd_zw_103_fighter.png",
-    "style": "ASTD_HIGH_TECH",
-    "viewOffset": 0,
-    "weaponSlots": [
-        {
-            "angle": 0,
-            "arc": 15,
-            "id": "WS 001",
-            "locations": [
-                22.5,
-                0.5
-            ],
-            "mount": "HARDPOINT",
-            "size": "SMALL",
-            "type": "ENERGY"
-        },
-        {
-            "angle": 0,
-            "arc": 120,
-            "id": "WS 002",
-            "locations": [
-                10.5,
-                0.5
-            ],
-            "mount": "TURRET",
-            "size": "SMALL",
-            "type": "ENERGY"
-        },
-        {
-            "angle": 0,
-            "arc": 0,
-            "id": "WS BLOOM",
-            "locations": [
-                0,
-                0.5
-            ],
-            "mount": "TURRET",
-            "size": "SMALL",
-            "type": "DECORATIVE"
-        }
-    ],
-    "width": 58
+    {
+      "id": "WS 002",
+      "size": "SMALL",
+      "type": "ENERGY",
+      "mount": "HIDDEN",
+      "arc": 120,
+      "angle": 0,
+      "locations": [9.5, 0.5]
+    },
+    {
+      "id": "WS BLOOM",
+      "size": "SMALL",
+      "type": "DECORATIVE",
+      "mount": "TURRET",
+      "arc": 0,
+      "angle": 0,
+      "locations": [0, 0.5]
+    }
+  ],
+  "engineSlots": [
+    {
+      "location": [-19, -0],
+      "length": 30,
+      "width": 8,
+      "angle": 180,
+      "contrailSize": 30,
+      "style": "CUSTOM",
+      "styleId": "ASTD_LENS"
+    },
+    {
+      "location": [-12, 10],
+      "length": 20,
+      "width": 5,
+      "angle": 135,
+      "contrailSize": 30,
+      "style": "CUSTOM",
+      "styleId": "ASTD_LENS"
+    },
+    {
+      "location": [-12, -10],
+      "length": 20,
+      "width": 5,
+      "angle": -135,
+      "contrailSize": 30,
+      "style": "CUSTOM",
+      "styleId": "ASTD_LENS"
+    }
+  ],
+  "bounds": [
+    25.5, 4.5,
+    22.5, -0,
+    25.5, -5.5,
+    6, -15,
+    -4.5, -26,
+    -13.5, -15.5,
+    -15, -9,
+    -24, -0,
+    -15, 9,
+    -13.5, 15.5,
+    -4.5, 26,
+    6, 15
+  ]
 }
