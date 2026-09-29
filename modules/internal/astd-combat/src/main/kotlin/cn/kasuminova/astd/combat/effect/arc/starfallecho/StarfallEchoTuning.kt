@@ -23,7 +23,7 @@ object StarfallEchoTuning {
     /** 结构谐振层数上限（前 4 发每发命中叠 1 层）。 */
     const val RESONANCE_MAX_STACKS = 4
 
-    /** 爆炸基础半径（su）：第 5 发命中恒爆炸，0 层 = 150su 纯视觉，每层 +150su，4 层封顶 750su。 */
+    /** 爆炸基础半径（su）：第 5 发命中恒爆炸，0 层 = 150su，每层 +150su，4 层封顶 750su。 */
     const val EXPLOSION_BASE_RADIUS = 150f
 
     /** 每层被消耗的谐振对第 5 发直击伤害的提升（+50%/层，只作用于直击，不计入爆炸结算）。 */
@@ -71,8 +71,9 @@ object StarfallEchoTuning {
     )
 
     /**
-     * 爆炸半径（纯函数）：基础半径 ×（层数+1），0 层 = 150su 纯视觉爆炸，4 层封顶 750su。
-     * 裁定口径：0 层也爆炸（仅视觉），伤害按层数结算（层数 0 即 0，见 [explosionDamage]）。
+     * 爆炸半径（纯函数）：基础半径 ×（层数+1），0 层 = 150su，4 层封顶 750su。
+     * 裁定口径：爆炸规模只影响范围、不影响伤害基数；伤害只由结构谐振层数加成驱动
+     * （50%→200%，见 [explosionDamage]）。
      */
     fun explosionRadius(stacks: Int): Float = EXPLOSION_BASE_RADIUS * (stacks.coerceAtLeast(0) + 1)
 
@@ -89,14 +90,13 @@ object StarfallEchoTuning {
         finalDamage * FINAL_STACK_DAMAGE_BONUS * stacks.coerceAtLeast(0)
 
     /**
-     * 爆炸结算伤害（纯函数）：第 5 发面板 × 层数 × 难度倍率（设计案「等额规模」口径——
-     * 爆炸规模为 100%~400%，AOE 伤害与规模等额，即面板的 100%~400%）；0 层恒 0（无 AOE 伤害）。
-     * 每层 +50% 的谐振提升只作用于第 5 发直击（提升部分由 [finalShotBonusDamage] 单独补给
-     * 直击目标），不计入 AOE 基数：计入会把 4 层 AOE 抬到面板的 (1+0.5×4)×4 = 12 倍，
-     * 远超设计案 400% 的规模上限（实机判例：AOE 波及目标伤害上万，被直击舰船仅几千）。
+     * 爆炸结算伤害（纯函数）：第 5 发总伤害（面板 ×（1 + [FINAL_STACK_DAMAGE_BONUS]×层数），
+     * 即谐振层数加成 50%→200%）× 难度倍率；0 层 = 面板 × 难度倍率。
+     * 爆炸规模（半径，见 [explosionRadius]）只影响范围、不影响伤害基数；伤害只由结构谐振
+     * 层数加成驱动，与直击总伤 [finalShotDamage] 同口径。
      */
     fun explosionDamage(finalDamage: Float, stacks: Int, mult: Float): Float =
-        finalDamage * stacks.coerceAtLeast(0) * mult
+        finalShotDamage(finalDamage, stacks) * mult
 
     /**
      * 弹匣禁射闸（纯函数）：弹药低于 [AMMO_GATE] 且不在连射中时不允许起射新一轮；

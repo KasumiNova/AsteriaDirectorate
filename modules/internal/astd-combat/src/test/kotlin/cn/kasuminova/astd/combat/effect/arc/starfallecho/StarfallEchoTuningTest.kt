@@ -55,11 +55,11 @@ class StarfallEchoTuningTest {
     }
 
     @Test
-    fun `爆炸伤害 等额规模口径 第5发面板乘层数乘难度倍率`() {
+    fun `爆炸伤害 谐振层数加成口径 第5发总伤乘难度倍率`() {
         val panel = 750f * StarfallEchoTuning.FINAL_DAMAGE_MULT // 第 5 发面板 = 单发 750 ×200%
-        assertEquals(panel * 4, explosionDamage(panel, 4, 1f), "k2 基准（倍率 1.0）：等额规模 = 面板 ×400%（直击 +50%/层提升不计入 AOE 基数）")
-        assertEquals(panel, explosionDamage(panel, 1, 1f), "1 层 = 面板 ×100%")
-        assertEquals(0f, explosionDamage(panel, 0, 1f), "0 层仅视觉爆炸，无 AOE 伤害（裁定口径）")
+        assertEquals(panel * 3f, explosionDamage(panel, 4, 1f), "4 层 = 面板 ×（1 + 50%×4）= 面板 ×300%（与直击总伤同口径）")
+        assertEquals(panel * 1.5f, explosionDamage(panel, 1, 1f), "1 层 = 面板 ×150%")
+        assertEquals(panel, explosionDamage(panel, 0, 1f), "0 层无谐振加成 = 面板原值")
         assertEquals(explosionDamage(panel, 4, 1f) * 2f, explosionDamage(panel, 4, 2f), "难度倍率线性作用于结算")
     }
 
