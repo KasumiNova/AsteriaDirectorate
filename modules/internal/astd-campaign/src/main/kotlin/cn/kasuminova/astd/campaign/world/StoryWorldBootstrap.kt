@@ -1,5 +1,6 @@
 package cn.kasuminova.astd.campaign.world
 
+import cn.kasuminova.astd.campaign.bounty.BountyFleetTuneScript
 import cn.kasuminova.astd.campaign.world.StoryWorldBootstrap.onGameLoad
 import cn.kasuminova.astd.campaign.world.StoryWorldBootstrap.onNewGameAfterEconomyLoad
 import com.fs.starfarer.api.Global
@@ -30,6 +31,7 @@ object StoryWorldBootstrap {
 
         // 生涯层脚本为 transient：每次读档重新注册（状态均在 persistentData）。
         sector.addTransientScript(EventHorizonShieldScript())
+        sector.addTransientScript(BountyFleetTuneScript())
 
         if (newGame) return
 
