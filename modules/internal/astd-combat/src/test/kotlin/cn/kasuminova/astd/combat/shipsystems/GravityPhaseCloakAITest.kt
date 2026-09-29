@@ -42,6 +42,7 @@ class GravityPhaseCloakAITest {
         surfaceTooClose = false,
         incomingSurfaceDamage = 0f,
         threatFrontAxisClose = false,
+        rearSurfaceDistanceSafe = true,
         incomingFriendlySoonDamage = 0f,
     )
 
@@ -73,6 +74,7 @@ class GravityPhaseCloakAITest {
         surfaceTooClose = false,
         incomingSurfaceDamage = 0f,
         threatFrontAxisClose = false,
+        rearSurfaceDistanceSafe = true,
         incomingFriendlySoonDamage = 0f,
     )
 
@@ -538,6 +540,57 @@ class GravityPhaseCloakAITest {
 
         // 无意图时同参数走无威胁上浮
         assertEquals(PhaseOrder.SURFACE, GravityPhaseCloakAI.decide(s.copy(flankIntentActive = false)))
+    }
+
+    @Test
+    fun `绕后意图达成但脱间距不足按住不上浮`() {
+        // 已入侧后、覆盖达标但贴着敌舰护盾/碰撞箱：按住保持相位穿出拉开
+        val s = phasedSituation().copy(
+            flankIntentActive = true,
+            inTargetRearArc = true,
+            rearSurfaceDistanceSafe = false,
+        )
+        assertEquals(PhaseOrder.NONE, GravityPhaseCloakAI.decide(s))
+
+        // 同参数脱间距满足即放行上浮输出
+        assertEquals(
+            PhaseOrder.SURFACE,
+            GravityPhaseCloakAI.decide(s.copy(rearSurfaceDistanceSafe = true)),
+        )
+    }
+
+    @Test
+    fun `死角上浮脱间距不足按住不上浮`() {
+        val s = phasedSituation().copy(
+            inTargetRearArc = true,
+            weaponCoverage = GravityPhaseCloakAI.REAR_SURFACE_MAX_COVERAGE,
+            rearSurfaceDistanceSafe = false,
+        )
+        assertEquals(PhaseOrder.NONE, GravityPhaseCloakAI.decide(s))
+
+        assertEquals(
+            PhaseOrder.SURFACE,
+            GravityPhaseCloakAI.decide(s.copy(rearSurfaceDistanceSafe = true)),
+        )
+    }
+
+    @Test
+    fun `相对速度外推最近接近覆盖相向远离与窗口截断`() {
+        // 相向且窗口内到达：最近接近为 0（撞上去）
+        assertEquals(0f, GravityPhaseCloakAI.closestApproachDistance(100f, 0f, -50f, 0f, 2f))
+        // 相互远离：最近接近即当前间距
+        assertEquals(100f, GravityPhaseCloakAI.closestApproachDistance(100f, 0f, 50f, 0f, 2f))
+        // 相对静止：当前间距
+        assertEquals(100f, GravityPhaseCloakAI.closestApproachDistance(100f, 0f, 0f, 0f, 2f))
+        // 相向但到达点在窗口外：截断到窗口末的位置
+        assertEquals(900f, GravityPhaseCloakAI.closestApproachDistance(1000f, 0f, -50f, 0f, 2f))
+    }
+
+    @Test
+    fun `绕后最小脱间距随敌舰有效半径放大`() {
+        val small = GravityPhaseCloakAI.rearSurfaceMinSeparation(60f, 100f)
+        val large = GravityPhaseCloakAI.rearSurfaceMinSeparation(60f, 300f)
+        assertTrue(large > small)
     }
 
     @Test
