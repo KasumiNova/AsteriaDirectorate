@@ -37,6 +37,26 @@ cn.kasuminova.astd.campaign.ASTDVariantExporter.toJson(variant, 1.0f).toString(4
 
 导出后打开 `starsector.log` 搜索 `[ASTDVariantExporter] Exported variant` 即可拿到完整文件路径。
 
+## RPC 快捷导出（sso-debug）
+
+`./gradlew runGame` 启动的游戏默认已开启 SSOptimizer 调试端（127.0.0.1:8471），
+载入存档后可直接用客户端脚本触发导出，无需手敲 runcode：
+
+```bash
+tools/astd_variant_export_rpc.py ping                        # 探活
+tools/astd_variant_export_rpc.py export                      # 玩家舰队全部舰船
+tools/astd_variant_export_rpc.py export --mode flagship      # 仅旗舰
+tools/astd_variant_export_rpc.py export --mode hull:astd_xc_001
+```
+
+未带调试端启动的游戏实例，可在游戏内控制台（ConsoleCommands）执行一次即可热开启：
+
+```
+runcode System.setProperty("ssoptimizer.debug.enabled","true"); github.kasuminova.ssoptimizer.common.debug.DebugServerBootstrap.startIfEnabled();
+```
+
+工作流细节见 `.agents/skills/workflow-ssoptimizer-script-debug/SKILL.md`。
+
 ## 产物入库与验证
 
 1. 把 `saves/astd_variant_export/*.variant` 复制到 `contents/data/variants/`（舰载机装配放 `contents/data/variants/fighters/`）。

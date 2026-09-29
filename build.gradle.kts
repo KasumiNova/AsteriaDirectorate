@@ -50,6 +50,18 @@ starsector {
     decompilerVersion.set(providers.gradleProperty("decompiler.version").orElse("1.9.3"))
 }
 
+// dev 启动默认开启 SSOptimizer 调试端（sso-debug HTTP JSON-RPC，127.0.0.1:8471，token 见游戏目录
+// ssoptimizer-debug-output/debug-token），供装配导出等游戏内脚本秒级调试；仅注入本地 runGame。
+// 关闭：-Pastd.ssoDebug=false。工作流见 .agents/skills/workflow-ssoptimizer-script-debug。
+val astdSsoDebug: Boolean =
+    providers.gradleProperty("astd.ssoDebug").map(String::toBooleanStrict).orElse(true).get()
+
+tasks.named<JavaExec>("runGame") {
+    if (astdSsoDebug) {
+        jvmArgs("-Dssoptimizer.debug.enabled=true")
+    }
+}
+
 repositories {
     maven {
         url = uri("https://maven.aliyun.com/repository/public")

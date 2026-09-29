@@ -54,6 +54,14 @@ SDG（0.1.0-SNAPSHOT，2026-09-16 起）在附加增强重定义时会自动把 
 另外 SDG 自 2026-09-16 的 mavenLocal 发布起，JBR 层优先级已在游戏自带运行时之前（源码 HEAD 行为生效），
 `javaVendor=jetbrains` 属性保留作为显式约束即可。
 
+## SSOptimizer 调试端（sso-debug）
+
+`runGame` 默认注入 `-Dssoptimizer.debug.enabled=true`（build.gradle.kts 配置，`-Pastd.ssoDebug=false` 关闭）：
+游戏进程内启动 localhost JSON-RPC 调试服务（127.0.0.1:8471，token 在游戏目录
+`ssoptimizer-debug-output/debug-token`），支持游戏内动态编译执行 Java 脚本。
+工作流见 `.agents/skills/workflow-ssoptimizer-script-debug/SKILL.md`；
+装配导出客户端：`tools/astd_variant_export_rpc.py`（用法见 `docs/dev-docs/variant-export/README.md`）。
+
 ## launch-config.json（仅 VANILLA 模式）
 
 - `jvmArgs.common`：各平台通用 JVM 参数
