@@ -344,7 +344,7 @@ class BountyFleetTunerImpl(
         skills.forEach { person.stats.setSkillLevel(it, 2f) }
     }
 
-    /** 余晖 AI 核心军官：核心按 gamma 50 / beta 35 / alpha 15 加权，对应等级 4/5/6。 */
+    /** 余晖 AI 核心军官：核心按 gamma 50 / beta 35 / alpha 15 加权，对应等级 3/5/7（对齐原版 AICoreOfficerPluginImpl），性格统一 reckless（原版核心军官同款）。 */
     private fun createAiCoreCaptain(size: ShipAPI.HullSize, variantId: String?): PersonAPI {
         val corePicker = WeightedRandomPicker<String>(random)
         AI_CORE_WEIGHTS.forEach { (core, weight) -> corePicker.add(core, weight) }
@@ -360,6 +360,8 @@ class BountyFleetTunerImpl(
             random,
         )
         officer.setAICoreId(coreId)
+        officer.setPersonality("reckless")
+        officer.portraitSprite = AI_CORE_PORTRAITS.getValue(coreId)
         officer.stats.isSkipRefresh = true
         applyOfficerSkills(officer, variantId)
         officer.stats.isSkipRefresh = false
@@ -583,16 +585,23 @@ class BountyFleetTunerImpl(
             size: ShipAPI.HullSize,
         ): List<String> = discovered[size].orEmpty().ifEmpty { BountyPoolConfig.REMNANT_POOLS[size].orEmpty() }
 
-        /** 余晖 AI 核心加权与对应军官等级。 */
+        /** 余晖 AI 核心加权与对应军官等级（对齐原版 AICoreOfficerPluginImpl：gamma 3 / beta 5 / alpha 7）。 */
         val AI_CORE_WEIGHTS: List<Pair<String, Float>> = listOf(
             "gamma_core" to 50f,
             "beta_core" to 35f,
             "alpha_core" to 15f,
         )
         val AI_CORE_LEVELS: Map<String, Int> = mapOf(
-            "gamma_core" to 4,
+            "gamma_core" to 3,
             "beta_core" to 5,
-            "alpha_core" to 6,
+            "alpha_core" to 7,
+        )
+
+        /** 核心对应原版头像（对齐原版 AICoreOfficerPluginImpl 的 portrait 映射）。 */
+        val AI_CORE_PORTRAITS: Map<String, String> = mapOf(
+            "gamma_core" to "graphics/portraits/portrait_ai1b.png",
+            "beta_core" to "graphics/portraits/portrait_ai3b.png",
+            "alpha_core" to "graphics/portraits/portrait_ai2b.png",
         )
 
         /**
