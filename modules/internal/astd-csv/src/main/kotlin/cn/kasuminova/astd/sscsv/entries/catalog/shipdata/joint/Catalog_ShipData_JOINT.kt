@@ -56,7 +56,7 @@ object Ship_astd_lh_001 : ShipDataEntry() {
     override val suppliesRec: Int = 18
     override val suppliesPerMonth: Int = 18
     override val tags: String = "astd_production"
-    override val codexVariantId: String = "astd_lh_001_Standard"
+    override val codexVariantId: String = "astd_lh_001_Empty"
     override val number: Int = 9119
 }
 
@@ -100,6 +100,6 @@ object Ship_astd_lh_002 : ShipDataEntry() {
     override val suppliesRec: Int = 18
     override val suppliesPerMonth: Int = 18
     override val tags: String = "astd_production"
-    override val codexVariantId: String = "astd_lh_002_Standard"
+    override val codexVariantId: String = "astd_lh_002_Empty"
     override val number: Int = 9120
 }

@@ -44,7 +44,7 @@ object Ship_astd_xc_001 : ShipDataEntry() {
     override val suppliesRec: Int = 55
     override val suppliesPerMonth: Int = 55
     override val tags: String = "astd_unique"
-    override val codexVariantId: String = "astd_xc_001_Standard"
+    override val codexVariantId: String = "astd_xc_001_Empty"
     override val number: Int = 9101
 }
 
@@ -87,7 +87,7 @@ object Ship_astd_xc_002 : ShipDataEntry() {
     override val suppliesRec: Int = 24
     override val suppliesPerMonth: Int = 24
     override val tags: String = "astd_unique"
-    override val codexVariantId: String = "astd_xc_002_Standard"
+    override val codexVariantId: String = "astd_xc_002_Empty"
     override val number: Int = 9102
 }
 
@@ -152,7 +152,7 @@ object Ship_astd_xc_102 : ShipDataEntry() {
     override val suppliesRec: Int = 55
     override val suppliesPerMonth: Int = 55
     override val tags: String = "astd_production"
-    override val codexVariantId: String = "astd_xc_102_Standard"
+    override val codexVariantId: String = "astd_xc_102_Empty"
     override val number: Int = 9107
 }
 
@@ -196,7 +196,7 @@ object Ship_astd_xc_101 : ShipDataEntry() {
     override val suppliesRec: Int = 30
     override val suppliesPerMonth: Int = 30
     override val tags: String = "astd_production"
-    override val codexVariantId: String = "astd_xc_101_Standard"
+    override val codexVariantId: String = "astd_xc_101_Empty"
     override val number: Int = 9108
 }
 
@@ -241,7 +241,7 @@ object Ship_astd_xc_103 : ShipDataEntry() {
     override val suppliesRec: Int = 14
     override val suppliesPerMonth: Int = 14
     override val tags: String = "astd_production"
-    override val codexVariantId: String = "astd_xc_103_Standard"
+    override val codexVariantId: String = "astd_xc_103_Empty"
     override val number: Int = 9109
 }
 
@@ -281,6 +281,6 @@ object Ship_astd_xc_104 : ShipDataEntry() {
     override val suppliesRec: Int = 5
     override val suppliesPerMonth: Int = 5
     override val tags: String = "astd_production"
-    override val codexVariantId: String = "astd_xc_104_Standard"
+    override val codexVariantId: String = "astd_xc_104_Empty"
     override val number: Int = 9110
 }

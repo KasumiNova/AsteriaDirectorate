@@ -59,7 +59,9 @@
 		# 护卫舰：飞星 ×2
 		"combatSmall":{
 			"astd_lh_001_Standard":10,
+			"astd_lh_001_Missile":10,
 			"astd_lh_002_Standard":10,
+			"astd_lh_002_Omega":10,
 		},
 		# 驱逐舰：淬刃 / 列星 / 舜华
 		"combatMedium":{
@@ -74,21 +76,30 @@
 		# 主力舰：星坠 / 烽燧 / 飞蓬（航空战列舰，兼列 carrierLarge）
 		"combatCapital":{
 			"astd_xc_001_Standard":10,
+			"astd_xc_001_Omega":10,
 			"astd_xc_102_Standard":10,
+			"astd_xc_102_Combat":10,
 			"astd_zw_102_Hybrid":10,
+			"astd_zw_102_Fighter":10,
+			"astd_zw_102_Bomber":10,
 		},
 		# 相位：密蒙（巡洋舰级）/ 茑萝（驱逐舰级护航航母，兼列 carrierSmall）
 		"phaseMedium":{
 			"astd_zw_103_Standard":10,
+			"astd_zw_103_Strike":10,
 		},
 		"phaseLarge":{
 			"astd_zw_002_Standard":10,
+			"astd_zw_002_Omega":10,
 		},
 		"carrierSmall":{
 			"astd_zw_103_Standard":10,
+			"astd_zw_103_Strike":10,
 		},
 		"carrierLarge":{
 			"astd_zw_102_Hybrid":10,
+			"astd_zw_102_Fighter":10,
+			"astd_zw_102_Bomber":10,
 		},
 	},
 
