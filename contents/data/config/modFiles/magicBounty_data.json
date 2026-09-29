@@ -24,7 +24,7 @@
     "fleet_flagship_variant":"astd_xc_101_Standard",
     "fleet_flagship_recoverable":true,
     "fleet_no_retreat":true,
-    "fleet_behavior":"PASSIVE",
+    "fleet_behavior":"AGGRESSIVE",
     "fleet_faction":"ML_bounty",
     "fleet_transponder":false,
     "fleet_composition_faction":"asteria_directorate",
@@ -45,7 +45,7 @@
     "job_comm_reply":"目标确认为失控自律网络“辰叁”。注意其护航编队中混入了来历不明的余晖舰影，火控协议一致，按同伙处理。",
     "job_intel_success":null,
     "job_intel_failure":null,
-    "location_defaultToAnyEntity":true,
+    "location_entities":["stable_location","planet","jump_point","gate"],
     "location_distance":"FAR"
   },
   "astd_bounty_rogue_2":{
@@ -68,7 +68,7 @@
     "fleet_flagship_variant":"astd_xc_102_Standard",
     "fleet_flagship_recoverable":true,
     "fleet_no_retreat":true,
-    "fleet_behavior":"PASSIVE",
+    "fleet_behavior":"AGGRESSIVE",
     "fleet_faction":"ML_bounty",
     "fleet_transponder":false,
     "fleet_composition_faction":"asteria_directorate",
@@ -90,7 +90,7 @@
     "job_comm_reply":"危宿协议具备学习能力，同一套战术不要用第二次。其编队中的余晖舰装备标准，不可轻敌。",
     "job_intel_success":null,
     "job_intel_failure":null,
-    "location_defaultToAnyEntity":true,
+    "location_entities":["stable_location","planet","jump_point","gate"],
     "location_distance":"FAR"
   },
   "astd_bounty_rogue_3":{
@@ -113,7 +113,7 @@
     "fleet_flagship_variant":"astd_zw_102_Fighter",
     "fleet_flagship_recoverable":true,
     "fleet_no_retreat":true,
-    "fleet_behavior":"PASSIVE",
+    "fleet_behavior":"AGGRESSIVE",
     "fleet_faction":"ML_bounty",
     "fleet_transponder":false,
     "fleet_composition_faction":"asteria_directorate",
@@ -135,7 +135,7 @@
     "job_comm_reply":"井钺的分布式链路意味着击沉任何一艘僚舰都会让其余舰船重新组网。不要试图逐个击破，直取旗舰。",
     "job_intel_success":null,
     "job_intel_failure":null,
-    "location_defaultToAnyEntity":true,
+    "location_entities":["stable_location","planet","jump_point","gate"],
     "location_distance":"FAR"
   },
   "astd_bounty_rogue_4":{
@@ -158,7 +158,7 @@
     "fleet_flagship_variant":"astd_zw_102_Fighter",
     "fleet_flagship_recoverable":true,
     "fleet_no_retreat":true,
-    "fleet_behavior":"PASSIVE",
+    "fleet_behavior":"AGGRESSIVE",
     "fleet_faction":"ML_bounty",
     "fleet_transponder":false,
     "fleet_composition_faction":"asteria_directorate",
@@ -181,7 +181,7 @@
     "job_comm_reply":"奎楼掌握了战列舰级火力，你的护航舰艇不要暴露在它的主轴射界内。优先清理余晖护航舰，切断它的传感链路。",
     "job_intel_success":null,
     "job_intel_failure":null,
-    "location_defaultToAnyEntity":true,
+    "location_entities":["stable_location","planet","jump_point","gate"],
     "location_distance":"FAR"
   },
   "astd_bounty_rogue_5":{
@@ -203,7 +203,7 @@
     "fleet_flagship_variant":"astd_zw_102_Fighter",
     "fleet_flagship_recoverable":true,
     "fleet_no_retreat":true,
-    "fleet_behavior":"PASSIVE",
+    "fleet_behavior":"AGGRESSIVE",
     "fleet_faction":"ML_bounty",
     "fleet_transponder":false,
     "fleet_composition_faction":"asteria_directorate",
@@ -226,7 +226,7 @@
     "job_comm_reply":"荧惑会为僚舰的沉没重新分配算力，拖得越久它的旗舰越强。带上你最好的舰队，速战速决。",
     "job_intel_success":null,
     "job_intel_failure":null,
-    "location_defaultToAnyEntity":true,
+    "location_entities":["stable_location","planet","jump_point","gate"],
     "location_distance":"FAR"
   },
   "astd_bounty_rogue_6":{
@@ -248,7 +248,7 @@
     "fleet_flagship_variant":"astd_xc_102_Standard",
     "fleet_flagship_recoverable":true,
     "fleet_no_retreat":true,
-    "fleet_behavior":"PASSIVE",
+    "fleet_behavior":"AGGRESSIVE",
     "fleet_faction":"ML_bounty",
     "fleet_transponder":false,
     "fleet_composition_faction":"asteria_directorate",
@@ -272,7 +272,7 @@
     "job_comm_reply":"归墟序列中的辐射级拥有堡垒护盾与死亡光束，不要试图正面消耗。击沉归墟后立刻脱离，它身后的存在远超你的想象。",
     "job_intel_success":null,
     "job_intel_failure":null,
-    "location_defaultToAnyEntity":true,
+    "location_entities":["stable_location","planet","jump_point","gate"],
     "location_distance":"FAR"
   },
   "astd_bounty_xc_002":{
@@ -294,7 +294,7 @@
     "fleet_flagship_variant":"astd_xc_002_Standard",
     "fleet_flagship_recoverable":true,
     "fleet_no_retreat":true,
-    "fleet_behavior":"PASSIVE",
+    "fleet_behavior":"AGGRESSIVE",
     "fleet_faction":"ML_bounty",
     "fleet_transponder":false,
     "fleet_composition_faction":"asteria_directorate",
@@ -318,7 +318,7 @@
     "job_comm_reply":"星翼的无人机蜂群会淹没你的点防御，带足范围杀伤手段。注意其编队以远程火力见长，贴近缠斗是唯一活路。",
     "job_intel_success":null,
     "job_intel_failure":null,
-    "location_defaultToAnyEntity":true,
+    "location_entities":["stable_location","planet","jump_point","gate"],
     "location_distance":"FAR"
   },
   "astd_bounty_zw_002":{
@@ -340,7 +340,7 @@
     "fleet_flagship_variant":"astd_zw_002_Omega",
     "fleet_flagship_recoverable":true,
     "fleet_no_retreat":true,
-    "fleet_behavior":"PASSIVE",
+    "fleet_behavior":"AGGRESSIVE",
     "fleet_faction":"ML_bounty",
     "fleet_transponder":false,
     "fleet_composition_faction":"asteria_directorate",
@@ -364,7 +364,7 @@
     "job_comm_reply":"密蒙会在相位状态中重组阵型，传感器锁定对它收效甚微。用宽正面铺开你的舰队，不要给它穿插分割的空间。",
     "job_intel_success":null,
     "job_intel_failure":null,
-    "location_defaultToAnyEntity":true,
+    "location_entities":["stable_location","planet","jump_point","gate"],
     "location_distance":"FAR"
   },
   "astd_bounty_xc_001":{
@@ -386,7 +386,7 @@
     "fleet_flagship_variant":"astd_xc_001_Omega",
     "fleet_flagship_recoverable":true,
     "fleet_no_retreat":true,
-    "fleet_behavior":"PASSIVE",
+    "fleet_behavior":"AGGRESSIVE",
     "fleet_faction":"ML_bounty",
     "fleet_transponder":false,
     "fleet_composition_faction":"asteria_directorate",
@@ -410,7 +410,7 @@
     "job_comm_reply":"坠星的主炮组曾在大崩溃之夜击穿过主力舰的正面装甲。避开主轴，从侧翼切割它的护航序列，然后祈祷你的舰队比它数据库里的所有对手都难缠。",
     "job_intel_success":null,
     "job_intel_failure":null,
-    "location_defaultToAnyEntity":true,
+    "location_entities":["stable_location","planet","jump_point","gate"],
     "location_distance":"FAR"
   }
 }
