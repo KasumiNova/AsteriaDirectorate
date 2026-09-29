@@ -19,7 +19,30 @@
 
 	"names":{},
 	"shipNameSources":{"ALL":1},
-	"portraits":{},
+
+	# AI 核心头像池：失控 AI 主题舰队（赏金等）的军官头像来源；核心立绘无性别区分，两池同表
+	"portraits":{
+		"standard_male":[
+			"graphics/portraits/astd_portrait_core_g.png",
+			"graphics/portraits/astd_portrait_core_b.png",
+			"graphics/portraits/astd_portrait_core_a.png",
+			"graphics/portraits/astd_portrait_core_o.png",
+			"graphics/portraits/astd_portrait_core_sp_blue.png",
+			"graphics/portraits/astd_portrait_core_sp_copper.png",
+			"graphics/portraits/astd_portrait_core_sp_violet.png",
+			"graphics/portraits/astd_portrait_core_sp_yellow.png",
+		],
+		"standard_female":[
+			"graphics/portraits/astd_portrait_core_g.png",
+			"graphics/portraits/astd_portrait_core_b.png",
+			"graphics/portraits/astd_portrait_core_a.png",
+			"graphics/portraits/astd_portrait_core_o.png",
+			"graphics/portraits/astd_portrait_core_sp_blue.png",
+			"graphics/portraits/astd_portrait_core_sp_copper.png",
+			"graphics/portraits/astd_portrait_core_sp_violet.png",
+			"graphics/portraits/astd_portrait_core_sp_yellow.png",
+		],
+	},
 
 	# 已知舰体口径：contents/data/hulls 下全部舰船 hull（astd_production / astd_unique / astd_automated
 	# tag 覆盖全部舰船；战斗机与无人机 hull 不带这些 tag，天然排除）
