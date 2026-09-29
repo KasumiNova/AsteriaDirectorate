@@ -37,7 +37,7 @@ class StarfallEchoTuningTest {
 
     @Test
     fun `爆炸半径 基础半径乘层数加一 零层恒基础半径`() {
-        assertEquals(EXPLOSION_BASE_RADIUS, explosionRadius(0), "0 层恒爆炸：150su 纯视觉爆炸")
+        assertEquals(EXPLOSION_BASE_RADIUS, explosionRadius(0), "0 层恒爆炸：150su 基础规模爆炸")
         assertEquals(EXPLOSION_BASE_RADIUS * 2, explosionRadius(1), "1 层 = 基础 150 + 每层 150")
         assertEquals(
             EXPLOSION_BASE_RADIUS * (RESONANCE_MAX_STACKS + 1), explosionRadius(RESONANCE_MAX_STACKS),

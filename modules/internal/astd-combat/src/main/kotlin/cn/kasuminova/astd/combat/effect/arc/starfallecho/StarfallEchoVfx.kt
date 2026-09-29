@@ -60,7 +60,7 @@ object StarfallEchoVfx {
     /**
      * 第 5 发爆炸特效：[stacks] = 消耗的谐振层数（0~4），[radius] = 爆炸半径，
      * [facingDeg] = 受击点方位角（目标舰心 → 命中点，十字光柱以此为基准交叉）。
-     * 纯视觉，不含伤害结算（结算在 StarfallEchoOnHitEffect）；0 层 = 基础规模纯视觉爆炸。
+     * 只负责特效，不含伤害结算（结算在 StarfallEchoOnHitEffect）；0 层 = 基础规模爆炸。
      */
     fun explosion(engine: CombatEngineAPI, center: Vector2f, stacks: Int, radius: Float, facingDeg: Float) {
         val scale = stacks.coerceAtLeast(0) + 1
