@@ -148,6 +148,23 @@ class StarfallEchoOnHitEffectTest {
         assertFalse(effect.isOccluded(hitPoint, Vector2f(800f, 0f), tangent), "线段与整半径圆相切：擦边不算遮挡")
     }
 
+    @Test
+    fun `爆心深入直击船圆内时该船不构成遮挡`() {
+        // 宽扁舰体侧向船体命中：爆心深入直击船收敛圆内部（圆心 (200,0)，半径 300，爆心原点距圆心 200 < 270）
+        val directHit = listOf(StarfallEchoOnHitEffect.BlockerCircle(Vector2f(200f, 0f), 300f))
+
+        assertFalse(
+            effect.isOccluded(hitPoint, Vector2f(700f, 0f), directHit),
+            "爆心位于直击船收敛圆内部：该船不遮挡，避免全半径目标被静默免伤",
+        )
+        // 同场景下其他正常遮挡船仍然生效
+        val withBlocker = directHit + StarfallEchoOnHitEffect.BlockerCircle(Vector2f(400f, 0f), 100f)
+        assertTrue(
+            effect.isOccluded(hitPoint, Vector2f(700f, 0f), withBlocker),
+            "爆心外部的中间船仍正常遮挡",
+        )
+    }
+
     // ==== 同站成员识别（isSameStationGroup：同一座模块舰不互相遮挡） ====
 
     @Test

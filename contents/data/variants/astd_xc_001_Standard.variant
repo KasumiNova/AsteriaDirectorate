@@ -5,7 +5,6 @@
     "goalVariant": true,
     "hullId": "astd_xc_001",
     "hullMods": [
-        "astd_test_shield_coverage",
         "targetingunit",
         "frontemitter",
         "stabilizedshieldemitter",
@@ -17,7 +16,6 @@
         "astd_mode_next_automated"
     ],
     "permaMods": [
-        "astd_test_shield_coverage",
         "astd_mode_automated",
         "automated",
         "astd_mode_next_automated"

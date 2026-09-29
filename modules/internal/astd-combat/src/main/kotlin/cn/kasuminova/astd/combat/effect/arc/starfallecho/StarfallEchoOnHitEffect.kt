@@ -273,11 +273,19 @@ class StarfallEchoOnHitEffect : OnHitEffectPlugin {
     /**
      * 舰船遮挡判定（纯函数，供单元测试直接驱动）：爆心 [from] 到目标舰心 [to] 的线段被任一
      * 遮挡圆截断即视为被船体遮挡（完全遮挡免伤）。碰撞圆按 [OCCLUSION_RADIUS_FRACTION] 收敛：
-     * 碰撞半径本身含视觉余量，且爆心恒在直击船碰撞圆表面——不收敛时近侧目标的线段端点
-     * 恰压圆面（圆心到线段的最短距离恒为整半径）会被误判遮挡。
+     * 碰撞半径本身含视觉余量，且护盾命中时爆心恒在直击船碰撞圆表面——不收敛时近侧目标的
+     * 线段端点恰压圆面（圆心到线段的最短距离恒为整半径）会被误判遮挡。
+     * 爆心落在某遮挡船收敛圆内部时（船体命中的直击船自身，宽扁舰体侧向命中爆心可深入圆内），
+     * 该船不构成遮挡——否则端点钳制会让半径内所有目标被静默免伤。
      */
     internal fun isOccluded(from: Vector2f, to: Vector2f, blockers: List<BlockerCircle>): Boolean =
-        blockers.any { segmentIntersectsCircle(from, to, it.center, it.radius * OCCLUSION_RADIUS_FRACTION) }
+        blockers.any { blocker ->
+            val radius = blocker.radius * OCCLUSION_RADIUS_FRACTION
+            val ox = from.x - blocker.center.x
+            val oy = from.y - blocker.center.y
+            if (ox * ox + oy * oy <= radius * radius) return@any false
+            segmentIntersectsCircle(from, to, blocker.center, radius)
+        }
 
     /** 线段-圆相交（纯函数）：圆心到线段（端点钳制）的最短距离平方 ≤ 半径平方即相交。 */
     internal fun segmentIntersectsCircle(from: Vector2f, to: Vector2f, center: Vector2f, radius: Float): Boolean {

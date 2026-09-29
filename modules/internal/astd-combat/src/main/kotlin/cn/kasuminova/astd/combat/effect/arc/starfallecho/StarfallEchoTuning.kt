@@ -26,7 +26,7 @@ object StarfallEchoTuning {
     /** 爆炸基础半径（su）：第 5 发命中恒爆炸，0 层 = 150su 纯视觉，每层 +150su，4 层封顶 750su。 */
     const val EXPLOSION_BASE_RADIUS = 150f
 
-    /** 每层被消耗的谐振对第 5 发伤害的提升（+50%/层，作用于直击与爆炸结算）。 */
+    /** 每层被消耗的谐振对第 5 发直击伤害的提升（+50%/层，只作用于直击，不计入爆炸结算）。 */
     const val FINAL_STACK_DAMAGE_BONUS = 0.5f
 
     /** 第 5 发面板伤害倍率（200% 伤害）。 */
@@ -54,7 +54,7 @@ object StarfallEchoTuning {
     data class Values(
         /** 每层谐振易伤（乘区增量，如 0.10 = +10% 承伤）。 */
         val vulnPerStack: Float,
-        /** 爆炸伤害倍率（作用于「提升后第 5 发面板 × 层数」）。 */
+        /** 爆炸伤害倍率（作用于「第 5 发面板 × 层数」）。 */
         val explosionDamageMult: Float,
         /** 来源是否为玩家（owner == 0）。 */
         val isPlayer: Boolean,

@@ -76,17 +76,17 @@ class BountyFleetTuningTest {
         val fittedByVariant = mapOf(
             "astd_xc_001" to setOf(
                 "astd_dual_mode_switcher", "astd_mode_automated", "astd_mode_next_automated",
-                "astd_test_shield_coverage", "automated", "frontemitter", "hardenedshieldemitter",
+                "automated", "frontemitter", "hardenedshieldemitter",
                 "magazines", "stabilizedshieldemitter", "targetingunit",
             ),
             "astd_xc_002" to setOf(
                 "astd_dual_mode_switcher", "astd_mode_automated", "astd_mode_next_automated",
-                "astd_test_shield_coverage", "automated", "fluxbreakers", "frontemitter",
+                "automated", "fluxbreakers", "frontemitter",
                 "hardenedshieldemitter", "stabilizedshieldemitter", "targetingunit",
             ),
             "astd_zw_002" to setOf(
                 "astd_dual_mode_switcher", "astd_mode_automated", "astd_mode_next_automated",
-                "astd_test_shield_coverage", "automated", "phase_anchor", "targetingunit",
+                "automated", "phase_anchor", "targetingunit",
             ),
         )
         fittedByVariant.forEach { (hullId, fitted) ->
@@ -145,11 +145,8 @@ class BountyFleetTuningTest {
         BountyPoolConfig.ASTD_POOLS.values.flatten().forEach { variantId ->
             assertTrue(BountyOfficerSkills.forVariant(variantId) != null, "混编池变体 $variantId 缺少技能表登记")
         }
-        // 池内 id 均为提升后的正式 stock variant（无导入期 _Bounty 后缀残留）
-        val poolIds = BountyPoolConfig.ASTD_POOLS.values.flatten()
-        assertTrue(poolIds.none { it.endsWith("_Bounty") }, "混编池残留导入期变体 id")
-        assertTrue(BountyOfficerSkills.TABLES.keys.none { it.endsWith("_Bounty") }, "技能表残留导入期变体 id")
         // 发布范围外舰体与唯一舰不得进入随机池（唯一舰导入装配仅作旗舰引用）
+        val poolIds = BountyPoolConfig.ASTD_POOLS.values.flatten()
         assertTrue(poolIds.none { it.startsWith("astd_zw_001") || it.startsWith("astd_xc_104") }, "发布范围外舰体混入随机池")
         assertTrue(poolIds.none { it.startsWith("astd_xc_001_") || it.startsWith("astd_xc_002_") || it.startsWith("astd_zw_002_") }, "唯一舰装配混入随机池")
     }

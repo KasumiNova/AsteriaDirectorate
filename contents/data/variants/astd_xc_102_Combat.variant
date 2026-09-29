@@ -5,7 +5,6 @@
     "hullId": "astd_xc_102",
     "hullMods": [
         "astd_arc_shared_tactical_network",
-        "astd_test_shield_coverage",
         "hardenedshieldemitter",
         "stabilizedshieldemitter",
         "magazines",
@@ -16,7 +15,6 @@
         "astd_mode_next_automated"
     ],
     "permaMods": [
-        "astd_test_shield_coverage",
         "astd_mode_automated",
         "automated",
         "astd_mode_next_automated"

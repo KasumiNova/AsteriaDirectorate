@@ -141,8 +141,13 @@ class BountyFleetTunerImpl(
     /** 余晖 doctrine 发现结果（首次混编时构建一次）。 */
     private val discoveredRemnantPools: Map<ShipAPI.HullSize, List<String>> by lazy { discoverRemnantPools() }
 
-    private fun remnantPoolFor(size: ShipAPI.HullSize): List<String> =
-        resolveRemnantPool(discoveredRemnantPools, size)
+    private fun remnantPoolFor(size: ShipAPI.HullSize): List<String> {
+        val discovered = discoveredRemnantPools[size].orEmpty()
+        if (discovered.isEmpty()) {
+            log.warn("[ASTD] 余晖 doctrine 未发现 $size 舰级候选，混编池该舰级退回硬编码兜底清单")
+        }
+        return resolveRemnantPool(discoveredRemnantPools, size)
+    }
 
     /**
      * 余晖混编池动态发现：以 remnant 势力 doctrine 已知舰体（knownShips）为真相来源，
@@ -166,7 +171,12 @@ class BountyFleetTunerImpl(
                 continue
             }
             if (!variant.isStockVariant || variant.source != VariantSource.STOCK) continue
-            stockByHull.getOrPut(variant.hullSpec.hullId) { mutableListOf() }.add(variant)
+            val variantHull = variant.hullSpec
+            if (variantHull == null) {
+                log.warn("[ASTD] settings 登记变体舰体无法解析，跳过：$variantId")
+                continue
+            }
+            stockByHull.getOrPut(variantHull.hullId) { mutableListOf() }.add(variant)
         }
 
         val pools = mutableMapOf<ShipAPI.HullSize, MutableList<String>>()
@@ -329,8 +339,12 @@ class BountyFleetTunerImpl(
         val corePicker = WeightedRandomPicker<String>(random)
         AI_CORE_WEIGHTS.forEach { (core, weight) -> corePicker.add(core, weight) }
         val coreId = corePicker.pick() ?: AI_CORE_WEIGHTS.first().first
+        val faction = Global.getSector().getFaction(Factions.REMNANTS)
+        if (faction == null) {
+            log.warn("[ASTD] 余晖势力缺失，AI 核心军官改挂中立势力")
+        }
         val officer = OfficerManagerEvent.createOfficer(
-            Global.getSector().getFaction(Factions.REMNANTS),
+            faction ?: Global.getSector().getFaction(Factions.NEUTRAL),
             AI_CORE_LEVELS.getValue(coreId),
             OfficerManagerEvent.SkillPickPreference.GENERIC,
             random,
@@ -407,6 +421,7 @@ class BountyFleetTunerImpl(
         /**
          * 余晖混编池解析：发现结果在该舰级非空时以 doctrine 为准，
          * 否则退回 BountyPoolConfig.REMNANT_POOLS 硬编码兜底清单。
+         * 纯函数（单测直调）；兜底分支的 warn 由调用点负责。
          */
         fun resolveRemnantPool(
             discovered: Map<ShipAPI.HullSize, List<String>>,
