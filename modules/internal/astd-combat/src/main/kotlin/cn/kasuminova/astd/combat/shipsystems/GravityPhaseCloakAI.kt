@@ -57,6 +57,11 @@ import org.lwjgl.util.vector.Vector2f
  * - 时长强制上浮：连续相位 ≥ [MAX_PHASE_TIME_SEC]（错峰节奏，强制回到战场）；
  *   绕后意图生效期间上限放宽到武装窗口 + [FLANK_PHASE_CAP_MARGIN_SEC]（穿透机动
  *   需要位移时间，辐能闸不受放宽）；
+ * - 强制上浮落点安全闸：强制上浮同样要求落点相对安全（[isSurfaceSafe]），不安全时
+ *   有界暂缓（[FORCED_SURFACE_HOLD_MAX_SEC]，advance 按决策节拍累计），暂缓期间挂
+ *   BACK_OFF 主动后撤——相位高机动自己拉开间距创造安全落点，而非干等（绕后穿透
+ *   驱动让位，见 [flankDriveActive]）；超时兜底放行
+ *   防永久相位幽灵船——贴脸强制上浮正是实机「贴盾上浮/上浮即吃鱼雷」入口；
  * - 致命豁免：上述强制上浮触发时，若 [SOON_WINDOW_SEC] 内有致命来袭（≥ 舰体 20%，
  *   含友军火力烧身）且硬辐能 < [HOLD_MAX_HARD_FLUX]，等这一下过去再上浮；
  * - 即将受击闸：全部主动上浮路径统一要求 [SOON_WINDOW_SEC] 窗口来袭低于 [diveSoonThreshold]
@@ -140,6 +145,14 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
 
         /** 辐能强制上浮闸：硬辐能到达本值必须上浮。 */
         internal const val SURFACE_HARD_FLUX = 0.55f
+
+        /**
+         * 强制上浮落点安全暂缓上限（s）：强制上浮（辐能/时长闸）同样要求落点相对安全
+         * （[isSurfaceSafe]），不安全时按住有界暂缓——贴脸强制上浮正是实机「贴盾上浮/
+         * 上浮即吃鱼雷」入口（zw103 vs 辉煌实测五次上浮全为强制、多次 sepSafe=false、
+         * 最低 188su）；超过本值兜底放行，防永久相位幽灵船。
+         */
+        internal const val FORCED_SURFACE_HOLD_MAX_SEC = 6f
 
         /** 相位时长上限（s）：连续相位超过本值强制上浮。 */
         internal const val MAX_PHASE_TIME_SEC = 8f
@@ -298,6 +311,14 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
             s.inTargetRearArc && !s.unphaseUnsafe && s.rearSurfaceDistanceSafe
 
         /**
+         * 绕后走位驱动是否生效（纯函数）：意图途中且未进入强制上浮落点暂缓——
+         * 暂缓意味着本次相位必须收尾，保命后撤拉开优先于穿透就位，
+         * 防止 DO_NOT_BACK_OFF 与后撤旗标并挂互相打架。advance 的走位驱动专用口径。
+         */
+        internal fun flankDriveActive(s: PhaseSituation): Boolean =
+            s.phased && s.flankIntentActive && s.forcedSurfaceHoldSec <= 0f
+
+        /**
          * 相对运动最近接近距离（纯函数）：相对位置 (px,py)、相对速度 (vx,vy)，
          * 取 [0, windowSec] 内的最近间距；相对静止或相互远离时即当前间距。
          */
@@ -391,6 +412,8 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
             val threatFrontAxisClose: Boolean,
             /** 绕后达成上浮的脱间距是否满足：与主威胁间距（含 [SURFACE_WINDOW_SEC] 相对速度外推最近接近）≥ [rearSurfaceMinSeparation]。 */
             val rearSurfaceDistanceSafe: Boolean,
+            /** 强制上浮被落点安全闸按住的累计时长（s；达 [FORCED_SURFACE_HOLD_MAX_SEC] 兜底放行）。 */
+            val forcedSurfaceHoldSec: Float,
             /** 友军火力在 soon 窗口内命中本舰的估计伤害（友伤规避只触发防御性下潜）。 */
             val incomingFriendlySoonDamage: Float,
         )
@@ -426,13 +449,15 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
                     defensiveSoon >= s.maxHull * LETHAL_SOON_HULL_FRACTION &&
                             s.hardFluxLevel < HOLD_MAX_HARD_FLUX
 
-                if (s.hardFluxLevel >= SURFACE_HARD_FLUX && !holdForLethal) return PhaseOrder.SURFACE
-                // 绕后意图期间放宽相位时长上限：穿透机动需要位移时间（辐能闸不受放宽），
-                // 上限跟随布防时按距离武装的窗口长度
-                val maxPhaseTime =
-                    if (s.flankIntentActive) s.flankIntentWindowSec + FLANK_PHASE_CAP_MARGIN_SEC
-                    else MAX_PHASE_TIME_SEC
-                if (s.phaseActiveTime >= maxPhaseTime && !holdForLethal) return PhaseOrder.SURFACE
+                // 强制上浮（辐能/时长闸，时长闸在绕后意图期间放宽到武装窗口 + 富余）：
+                // 落点同样要求相对安全——贴脸强制上浮正是实机「贴盾上浮/上浮即吃鱼雷」入口，
+                // 不安全时有界暂缓（[FORCED_SURFACE_HOLD_MAX_SEC]），超时兜底放行防永久相位
+                if (isForcedSurfaceTrigger(s) && !holdForLethal) {
+                    if (isSurfaceSafe(s) || s.forcedSurfaceHoldSec >= FORCED_SURFACE_HOLD_MAX_SEC) {
+                        return PhaseOrder.SURFACE
+                    }
+                    return PhaseOrder.NONE
+                }
                 if (s.phaseActiveTime < MIN_PHASE_TIME_SEC) return PhaseOrder.NONE
 
                 // 上浮安全闸：贴脸/弹幕窗口/正脸火力轴任一不安全时一切主动上浮按住，
@@ -527,6 +552,19 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
             s.phased && (s.hardFluxLevel >= SURFACE_HARD_FLUX || s.phaseActiveTime >= MAX_PHASE_TIME_SEC)
 
         /**
+         * 强制上浮触发口径（纯函数）：辐能闸或时长闸（绕后意图期间时长上限放宽到
+         * 武装窗口 + 富余，辐能闸不受放宽）。decide 的强制上浮块与 advance 的
+         * 落点安全暂缓时长累计共用本口径。
+         */
+        internal fun isForcedSurfaceTrigger(s: PhaseSituation): Boolean {
+            if (!s.phased) return false
+            val maxPhaseTime =
+                if (s.flankIntentActive) s.flankIntentWindowSec + FLANK_PHASE_CAP_MARGIN_SEC
+                else MAX_PHASE_TIME_SEC
+            return s.hardFluxLevel >= SURFACE_HARD_FLUX || s.phaseActiveTime >= maxPhaseTime
+        }
+
+        /**
          * 耗软辐下潜完整闸门（纯函数）：软辐可观、总辐能离过载有距离、环境安全、有交战对象。
          * decide 的下潜规则与 advance 的 DO_NOT_VENT 压制共用本口径——压 vent 只在
          * 相位耗散确定会接手时发生，避免「既不能 vent 也不下潜」的高软辐卡死。
@@ -586,6 +624,9 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
     /** 布防时武装的绕后意图窗口长度（s）：随 [flankIntentRemaining] 一同布防，供相位时长上限推导。 */
     private var flankIntentWindowArmed = FLANK_INTENT_SEC
 
+    /** 强制上浮被落点安全闸按住的累计时长（s）：随决策节拍累计，未触发/落点安全即清零。 */
+    private var forcedSurfaceHoldSec = 0f
+
     override fun init(ship: ShipAPI, system: ShipSystemAPI, flags: ShipwideAIFlags, engine: CombatEngineAPI) {
         this.ship = ship
         this.engine = engine
@@ -630,7 +671,16 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
         scanInterval.advance(amount)
         if (!scanInterval.intervalElapsed()) return
 
-        val situation = sampleSituation(engine, ship, cloak, phased, target)
+        val sampled = sampleSituation(engine, ship, cloak, phased, target)
+        // 强制上浮落点安全暂缓时长累计（随决策节拍推进；未触发/落点安全即清零），
+        // 与 decide 的强制上浮块共用 [isForcedSurfaceTrigger] 口径
+        forcedSurfaceHoldSec =
+            if (isForcedSurfaceTrigger(sampled) && !isSurfaceSafe(sampled)) {
+                forcedSurfaceHoldSec + SCAN_INTERVAL_SEC
+            } else {
+                0f
+            }
+        val situation = sampled.copy(forcedSurfaceHoldSec = forcedSurfaceHoldSec)
 
         // 上浮僵直保护：斗篷冷却窗口内硬辐能过半或舰体残损且有交战对象时持续后撤
         if (!phased && cloak.state == ShipSystemAPI.SystemState.COOLDOWN &&
@@ -650,6 +700,13 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
             ship.aiFlags.setFlag(ShipwideAIFlags.AIFlags.DO_NOT_VENT, VENT_SUPPRESS_FLAG_SEC)
         }
 
+        // 强制上浮落点暂缓期间主动后撤：相位高机动拉开与主威胁间距，自己创造安全落点，
+        // 不干等兜底放行撞上贴脸（实机 brilliant 场景暂缓 6s 兜底放行 146su 贴盾上浮）；
+        // 绕后穿透驱动此时让位（[flankDriveActive]），DO_NOT_BACK_OFF 不再续挂
+        if (phased && forcedSurfaceHoldSec > 0f) {
+            ship.aiFlags.setFlag(ShipwideAIFlags.AIFlags.BACK_OFF, 0.5f)
+        }
+
         // 绕后走位驱动：原版相位 AI 被替换后 PHASE_ATTACK_RUN 无人管理——
         // 意图途中挂 PHASE_ATTACK_RUN（StrafeTargetManeuverV2 会把相位舰带往目标背后 5000su 点），
         // 进入侧后薄弱区改挂 PHASE_ATTACK_RUN_IN_GOOD_SPOT（走位模块就地保持攻击距离）；
@@ -660,7 +717,7 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
         // 落点重叠时原版斗篷拒绝退相位，不就地保持，继续穿透驱动直到漂出重叠；
         // 脱间距不足（侧后但贴脸）同样继续穿透——就地保持没有任何一层在创造间距，
         // 与 decide 层的脱间距闸共用 [flankDriveHoldSpot] 单一口径，避免两层决策打架
-        if (situation.flankIntentActive && phased) {
+        if (flankDriveActive(situation)) {
             ship.aiFlags.setFlag(ShipwideAIFlags.AIFlags.DO_NOT_BACK_OFF, 0.5f)
             if (flankDriveHoldSpot(situation)) {
                 ship.aiFlags.setFlag(ShipwideAIFlags.AIFlags.PHASE_ATTACK_RUN_IN_GOOD_SPOT, 0.5f)
@@ -796,6 +853,8 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
             threatFrontAxisClose = threat != null && threatDist <= SURFACE_FRONT_AXIS_MAX_DIST &&
                     angleDiffAbs(threat.facing, threatToUsBearing!!) <= SURFACE_FRONT_AXIS_HALF_ARC,
             rearSurfaceDistanceSafe = isRearSurfaceDistanceSafe(ship, threat),
+            // 暂缓时长由 advance 在采样后按节拍累计并 copy 覆写，采样恒置 0
+            forcedSurfaceHoldSec = 0f,
             incomingFriendlySoonDamage = friendlyIncoming[0],
         )
     }
