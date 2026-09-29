@@ -325,6 +325,8 @@ class BountyFleetTunerImpl(
             ?: BountyPoolConfig.VANILLA_CORE_LEVELS[coreId]
         if (level != null) {
             person.stats.level = level
+        } else {
+            log.info("[ASTD] 核心 $coreId 无登记档位等级（模组核心），沿用插件默认等级 ${person.stats.level}，插件默认技能将被整体覆盖")
         }
         applyOfficerSkills(person, member.variant.hullVariantId)
         person.stats.isSkipRefresh = false
@@ -358,7 +360,10 @@ class BountyFleetTunerImpl(
             random,
         )
         officer.setAICoreId(coreId)
+        officer.stats.isSkipRefresh = true
         applyOfficerSkills(officer, variantId)
+        officer.stats.isSkipRefresh = false
+        log.info("[ASTD] 余晖核心军官（$coreId L${officer.stats.level}）GENERIC 随机技能已被赏金技能口径整体覆盖")
         return officer
     }
 
@@ -377,19 +382,20 @@ class BountyFleetTunerImpl(
     }
 
     /**
-     * 额外装配：每艘非民用成员依次处理 SMod 内插（统一优先级）、SHU 软联动加权安装、
+     * 额外装配：每艘非民用舰船成员依次处理 SHU 软联动加权安装、SMod 内插（统一优先级）、
      * 余 OP 普通船插填充（不足时按舰级预算拆辐能寄存器/耗散通道回收 OP）。
-     * SHU 与 SMod 注入同一管线位置，作用于 protectVariants 克隆出的 runtime variant。
+     * SHU 先于 SMod：避免 SMod 内插的强化护盾被等离子充能护盾拆掉而名额不回填。
+     * 战斗机联队显式跳过（protectVariants 未克隆联队 variant，写入会外溢共享 stock 实例）。
      */
     private fun installExtraFittings(fleet: CampaignFleetAPI) {
         val neutralStats = Global.getFactory().createPerson().stats
-        val shuAvailable = BountyFitRulesImpl.SHU_HULLMOD_IDS.any { Global.getSettings().getHullModSpec(it) != null }
+        val shuAvailable = fitRules.shuHullmodIds().any { Global.getSettings().getHullModSpec(it) != null }
         if (!shuAvailable) {
             log.info("[ASTD] 未检测到 Special Hullmod Upgrades 模组，跳过 SHU 软联动装配")
         }
         var shuInstalled = 0
         for (member in fleet.fleetData.membersListCopy) {
-            if (member.isCivilian) continue
+            if (member.isCivilian || member.isFighterWing) continue
             val hull = member.hullSpec
             // protectVariants 已完成克隆与 no_autofit，可直接内插
             val variant = member.variant
@@ -397,8 +403,9 @@ class BountyFleetTunerImpl(
             val hasShield = hull.shieldType != ShieldAPI.ShieldType.NONE
             val missileCapable = hull.allWeaponSlotsCopy.any { it.weaponType in MISSILE_CAPABLE_SLOT_TYPES }
 
-            installPrioritySmods(variant, member, neutralStats, phase, hasShield, missileCapable)
-            if (shuAvailable && installShuHullmod(variant, hull)) shuInstalled++
+            val installedShu = if (shuAvailable) installShuHullmod(variant, hull, neutralStats) else null
+            if (installedShu != null) shuInstalled++
+            installPrioritySmods(variant, member, neutralStats, phase, hasShield, missileCapable, installedShu)
             fillExtraMods(variant, hull, neutralStats)
         }
         if (shuAvailable) {
@@ -406,7 +413,7 @@ class BountyFleetTunerImpl(
         }
     }
 
-    /** SMod 统一优先级内插：不适用条目跳过取下一个，直到 SMod 上限或候选耗尽。 */
+    /** SMod 统一优先级内插：不适用及与已装 SHU 冲突的条目跳过取下一个，直到 SMod 上限或候选耗尽。 */
     private fun installPrioritySmods(
         variant: ShipVariantAPI,
         member: FleetMemberAPI,
@@ -414,53 +421,73 @@ class BountyFleetTunerImpl(
         phase: Boolean,
         hasShield: Boolean,
         missileCapable: Boolean,
+        installedShu: String?,
     ) {
         val hull = member.hullSpec
-        var remaining = Misc.getMaxPermanentMods(member, neutralStats) - variant.sMods.size - variant.permaMods.size
+        val initial = Misc.getMaxPermanentMods(member, neutralStats) - variant.sMods.size - variant.permaMods.size
+        if (initial <= 0) {
+            log.warn("[ASTD] ${hull.hullId} SMod 名额已占满（内建/永久船插计入，导入装配自带 permaMods），本舰 SMod 内插不生效")
+        }
+        var remaining = initial
+        var installed = 0
         for (id in fitRules.smodPriority()) {
             if (remaining <= 0) break
             val spec = Global.getSettings().getHullModSpec(id) ?: continue
             if (hull.builtInMods.contains(id) || variant.hullMods.contains(id)) continue
-            if (!BountyFitRulesImpl.isSmodApplicable(id, phase, hasShield, missileCapable)) continue
+            if (fitRules.isSmodBlockedByShu(id, installedShu)) continue
+            if (!fitRules.isSmodApplicable(id, phase, hasShield, missileCapable)) continue
             if (variant.getUnusedOP(neutralStats) < smodCostFor(spec, hull.hullSize)) continue
             variant.addPermaMod(id, true)
             remaining--
+            installed++
+        }
+        if (installed == 0 && initial > 0) {
+            log.info("[ASTD] ${hull.hullId} SMod 候选全部被过滤（适用性/SHU 冲突/OP 不足），本舰无 SMod 内插")
         }
     }
 
     /**
-     * SHU 软联动加权安装：每舰至多一件特殊升级（SHU 脚本自身互斥口径）。
-     * 权重全 0 或无适用项时不安装；选中后先移除其互斥普通船插（如等离子充能护盾
-     * 发生器卸下已 SMod 的强化护盾），OP 随移除自然回收并在后续填充阶段再利用。
+     * SHU 软联动加权安装：每舰至多一件特殊升级（SHU 脚本自身互斥口径），返回安装的船插 id。
+     * 权重全 0 或无适用项时不安装；候选 OP 装不下记日志跳过（与 SMod/填充同一 OP 口径）。
+     * 非等离子候选按存在互斥件则跳过；等离子充能护盾发生器选中后先拆除其互斥护盾系船插
+     * （sMods/permaMods/hullMods 三路），OP 随移除自然回收并在后续阶段再利用。
      */
     private fun installShuHullmod(
         variant: ShipVariantAPI,
         hull: ShipHullSpecAPI,
-    ): Boolean {
-        if (variant.hullMods.any { it.startsWith(SHU_ID_PREFIX) }) return false
+        neutralStats: MutableCharacterStatsAPI,
+    ): String? {
+        if (variant.hullMods.any { it.startsWith(BountyFitRules.SHU_ID_PREFIX) }) return null
         val carrier = hull.hints.contains(ShipHullSpecAPI.ShipTypeHints.CARRIER)
         val picker = WeightedRandomPicker<String>(random)
         for ((id, weight) in fitRules.shuCandidates(hull.hullSize, carrier)) {
-            if (Global.getSettings().getHullModSpec(id) == null) continue
+            val spec = Global.getSettings().getHullModSpec(id) ?: continue
             if (!isShuApplicable(id, variant, hull)) continue
+            val cost = smodCostFor(spec, hull.hullSize)
+            if (variant.getUnusedOP(neutralStats) < cost) {
+                log.info("[ASTD] ${hull.hullId} SHU 候选 $id OP 不足（需 $cost），跳过该候选")
+                continue
+            }
             picker.add(id, weight)
         }
-        val pick = picker.pick() ?: return false
+        val pick = picker.pick() ?: return null
 
-        BountyFitRulesImpl.SHU_MOD_CONFLICTS[pick].orEmpty().forEach { conflictId ->
-            variant.sMods.remove(conflictId)
-            variant.removePermaMod(conflictId)
-            variant.removeMod(conflictId)
+        if (pick == BountyFitRules.SHU_PLASMA_DYNAMO) {
+            fitRules.shuConflicts(pick).forEach { conflictId ->
+                variant.sMods.remove(conflictId)
+                variant.removePermaMod(conflictId)
+                variant.removeMod(conflictId)
+            }
         }
         variant.addMod(pick)
-        return true
+        return pick
     }
 
-    /** SHU 候选适用性等效判定：等离子充能护盾须有护盾；纳米蜂群/聚变电容与既有互斥件共存时跳过。 */
+    /** SHU 候选适用性等效判定：等离子充能护盾须有护盾（互斥件安装时拆除）；其余候选存在互斥件则跳过。 */
     private fun isShuApplicable(hullmodId: String, variant: ShipVariantAPI, hull: ShipHullSpecAPI): Boolean =
         when (hullmodId) {
-            BountyFitRulesImpl.SHU_PLASMA_DYNAMO -> hull.shieldType != ShieldAPI.ShieldType.NONE
-            else -> BountyFitRulesImpl.SHU_MOD_CONFLICTS[hullmodId].orEmpty().none { variant.hullMods.contains(it) }
+            BountyFitRules.SHU_PLASMA_DYNAMO -> hull.shieldType != ShieldAPI.ShieldType.NONE
+            else -> fitRules.shuConflicts(hullmodId).none { variant.hullMods.contains(it) }
         }
 
     /**
@@ -468,25 +495,32 @@ class BountyFleetTunerImpl(
      * 舰级预算拆辐能寄存器/耗散通道回收。已装 SHU 船插的互斥件跳过，避免与 SHU 冲突。
      */
     private fun fillExtraMods(variant: ShipVariantAPI, hull: ShipHullSpecAPI, neutralStats: MutableCharacterStatsAPI) {
-        val installedShu = variant.hullMods.firstOrNull { it.startsWith(SHU_ID_PREFIX) }
-        val shuConflicts = BountyFitRulesImpl.SHU_MOD_CONFLICTS[installedShu].orEmpty()
+        val installedShu = variant.hullMods.firstOrNull { it.startsWith(BountyFitRules.SHU_ID_PREFIX) }
+        val shuConflicts = fitRules.shuConflicts(installedShu)
         var budgetLeft = fitRules.reclaimBudget(hull.hullSize)
         for (id in fitRules.extraModPriority()) {
             if (id in shuConflicts) continue
             val spec = Global.getSettings().getHullModSpec(id) ?: continue
             if (hull.builtInMods.contains(id) || variant.hullMods.contains(id)) continue
             val cost = smodCostFor(spec, hull.hullSize)
-            if (variant.getUnusedOP(neutralStats) < cost && budgetLeft > 0) {
-                budgetLeft -= reclaimOp(variant, neutralStats, cost, budgetLeft)
+            var unused = variant.getUnusedOP(neutralStats)
+            if (unused < cost && budgetLeft > 0) {
+                budgetLeft -= reclaimOp(variant, neutralStats, cost - unused, budgetLeft)
+                unused = variant.getUnusedOP(neutralStats)
             }
-            if (variant.getUnusedOP(neutralStats) < cost) continue
+            if (unused < cost) {
+                log.info("[ASTD] ${hull.hullId} 填充船插 $id OP 不足（差 ${cost - unused}，回收预算余 $budgetLeft），放弃该候选")
+                continue
+            }
             variant.addMod(id)
         }
     }
 
     /**
-     * 拆辐能寄存器/耗散通道回收 OP：先实测单点回收量（首拆计入），
-     * 其余拆除量由 BountyFitRulesImpl.planOpReclaim 按预算与存量规划。返回实际回收 OP。
+     * 拆辐能寄存器/耗散通道回收 OP：先探测实测单点回收量并还原，
+     * 实际拆除统一由 BountyFitRules.planOpReclaim 按缺口 [neededOp] 与预算规划（回收总量不超预算）。
+     * 前提：寄存器与耗散通道单点 OP 同价（原版口径一致）；若未来版本两侧定价漂移，
+     * 探测只测了被拆侧单价，另一侧按同价估算会产生偏差。返回实际回收 OP。
      */
     private fun reclaimOp(
         variant: ShipVariantAPI,
@@ -502,21 +536,17 @@ class BountyFleetTunerImpl(
         val before = variant.getUnusedOP(neutralStats)
         if (probeCap) variant.numFluxCapacitors = caps - 1 else variant.numFluxVents = vents - 1
         val opPerUnit = variant.getUnusedOP(neutralStats) - before
-        if (opPerUnit > budget) {
-            if (probeCap) variant.numFluxCapacitors = caps else variant.numFluxVents = vents
+        // 探测拆除一律还原，实际拆除由 planOpReclaim 统一规划
+        if (probeCap) variant.numFluxCapacitors = caps else variant.numFluxVents = vents
+        if (opPerUnit <= 0) {
+            log.warn("[ASTD] OP 回收探测异常：拆除辐能改装后可用 OP 未增加（差值 $opPerUnit），放弃本次回收")
             return 0
         }
 
-        val (planCaps, planVents) = BountyFitRulesImpl.planOpReclaim(
-            variant.numFluxCapacitors,
-            variant.numFluxVents,
-            opPerUnit,
-            neededOp - opPerUnit,
-            budget - opPerUnit,
-        )
-        variant.numFluxCapacitors -= planCaps
-        variant.numFluxVents -= planVents
-        return opPerUnit + (planCaps + planVents) * opPerUnit
+        val (removeCaps, removeVents) = fitRules.planOpReclaim(caps, vents, opPerUnit, neededOp, budget)
+        variant.numFluxCapacitors = caps - removeCaps
+        variant.numFluxVents = vents - removeVents
+        return (removeCaps + removeVents) * opPerUnit
     }
 
     companion object {
@@ -587,13 +617,18 @@ class BountyFleetTunerImpl(
             "combat_endurance",
         )
 
-        /** 按军官等级从全局优先级表顺序取前 N 个技能（超出表长按表长截断）。 */
+        /**
+         * 按军官等级从全局优先级表顺序取前 N 个技能（超出表长按表长截断）。
+         * 技能位 = 军官等级：StandardCores 档位等级即技能位数的裁定
+         * （原版 AICoreOfficerPluginImpl 的 gamma 3 / beta 5 / alpha 7 即按等级配等数技能，astd G/B/A/O 同口径对齐）。
+         */
         fun bountyOfficerSkills(level: Int): List<String> =
             BOUNTY_OFFICER_SKILL_PRIORITY.take(level.coerceIn(0, BOUNTY_OFFICER_SKILL_PRIORITY.size))
 
         /**
          * 军官技能组成解析：变体技能表为真相来源，全局优先级表提供取舍顺序。
-         * 命中变体表：技能位 N 不小于表长则装满全表；N 不足时表内技能按全局优先级排序
+         * 技能位 N = 军官等级（口径依据见 [bountyOfficerSkills]）。
+         * 命中变体表：N 不小于表长则装满全表；N 不足时表内技能按全局优先级排序
          * （不在优先级表中的技能排在后面、保持原相对顺序），取前 N 个。
          * 未命中（null）：退回全局优先级表顺序取前 N。
          */
@@ -606,9 +641,6 @@ class BountyFleetTunerImpl(
                 .map { it.value }
                 .take(level.coerceAtLeast(0))
         }
-
-        /** SHU 船插 id 公共前缀（已装特殊升级的检出）。 */
-        const val SHU_ID_PREFIX: String = "specialsphmod_"
 
         /** 具备导弹搭载能力的武器槽类型（扩展弹舱适用性等效判定）。 */
         val MISSILE_CAPABLE_SLOT_TYPES: Set<WeaponAPI.WeaponType> = setOf(
