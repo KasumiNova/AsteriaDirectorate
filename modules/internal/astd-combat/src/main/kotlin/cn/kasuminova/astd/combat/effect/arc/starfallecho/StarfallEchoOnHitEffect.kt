@@ -21,10 +21,11 @@ import org.lwjgl.util.vector.Vector2f
  *
  * - 普通弹：命中舰船（护盾/船体均可，设计案未区分）叠 1 层「结构谐振」
  *   （[StarfallEchoResonanceStacks]，至多 4 层，不随时间消散）；
- * - 第 5 发：命中恒爆炸（无论目标有无谐振层）——半径 150su×(层数+1)（0 层 150su、
- *   4 层封顶 750su），爆炸规模只影响范围、不影响伤害；范围结算等额能量伤害
- *   （伤害 = 第 5 发总伤 × 难度倍率 = 面板 ×（1 + 50%×层数）× 难度倍率，谐振层数加成
- *   50%→200% 与直击同口径，直击提升部分由脚本 applyDamage 补给直击目标），后消耗全部层数，
+ * - 第 5 发：命中任意目标恒爆炸（舰船、残骸、陨石等均可；谐振层只取自存活舰船目标，
+ *   其余按 0 层）——半径 150su×(层数+1)（0 层 150su、4 层封顶 750su），爆炸规模只影响范围、
+ *   不影响伤害；范围结算等额能量伤害（伤害 = 第 5 发总伤 × 难度倍率 = 面板 ×（1 + 50%×层数）
+ *   × 难度倍率，谐振层数加成 50%→200% 与直击同口径，直击提升部分由脚本 applyDamage 补给
+ *   直击目标），后消耗全部层数，
  *   最后播放爆炸特效（[StarfallEchoVfx.explosion]，十字辉星跟随「目标舰心 → 命中点」方位交叉）。
  *
  * AOE 口径（摧锋同款裁定）：存活直击目标豁免 AOE（直击面板已由引擎原生结算，重复计入会双倍）；
@@ -47,17 +48,20 @@ class StarfallEchoOnHitEffect : OnHitEffectPlugin {
     ) {
         if (engine.isPaused) return
 
-        val ship = target as? ShipAPI ?: return
-        if (ship.isHulk || ship.isPhased) return
         val hitPoint = point ?: projectile.location ?: return
-
         val values = StarfallEchoTuning.resolve(DifficultyTuningImpl, isPlayer = projectile.source?.owner == 0)
 
         if (projectile.customData[FINAL_SHOT_MARK_KEY] == true) {
+            // 第 5 发命中任意目标恒爆炸（含舰船残骸、陨石等非舰目标）；
+            // 谐振层只取自存活舰船目标（其余按 0 层结算）
+            val ship = (target as? ShipAPI)?.takeUnless { it.isHulk || it.isPhased }
             onFinalHit(projectile, ship, hitPoint, values, engine)
-        } else {
-            onNormalHit(projectile, ship, values, engine)
+            return
         }
+
+        val ship = target as? ShipAPI ?: return
+        if (ship.isHulk || ship.isPhased) return
+        onNormalHit(projectile, ship, values, engine)
     }
 
     /**
@@ -85,12 +89,12 @@ class StarfallEchoOnHitEffect : OnHitEffectPlugin {
      */
     private fun onFinalHit(
         projectile: DamagingProjectileAPI,
-        ship: ShipAPI,
+        ship: ShipAPI?,
         hitPoint: Vector2f,
         values: StarfallEchoTuning.Values,
         engine: CombatEngineAPI,
     ) {
-        val buff = ship.starfallEchoResonanceStacks()
+        val buff = ship?.starfallEchoResonanceStacks()
         val stacks = buff?.stacks ?: 0
 
         val panel = projectile.damageAmount
@@ -102,9 +106,10 @@ class StarfallEchoOnHitEffect : OnHitEffectPlugin {
         val owner = source?.owner ?: 0
 
         // 直击补伤：每层被消耗的谐振使第 5 发伤害 +50%，提升部分由脚本补给直击目标
-        // （盾覆盖 → 盾面落点 + bypass=false；未覆盖 → 舰心落点 + bypass=true，与 AOE 同判例口径）
+        // （盾覆盖 → 盾面落点 + bypass=false；未覆盖 → 舰心落点 + bypass=true，与 AOE 同判例口径）；
+        // 仅存活舰船直击目标可补（非舰目标无谐振层，恒 0 不进入此分支）
         val bonus = StarfallEchoTuning.finalShotBonusDamage(panel, stacks)
-        if (bonus > 0f && engine.isEntityInPlay(ship)) {
+        if (ship != null && bonus > 0f && engine.isEntityInPlay(ship)) {
             val covered = shieldCovers(ship, hitPoint)
             engine.applyDamage(
                 ship, resolveShipDamagePoint(ship, hitPoint), bonus,
@@ -156,8 +161,8 @@ class StarfallEchoOnHitEffect : OnHitEffectPlugin {
      * 游戏运行时（无头/单测直接 ExceptionInInitializerError），LazyLib MathUtils 无等价函数，
      * 此处语义等价于 atan2 直出角度。允许负值（绽放辉星实现侧归一化到 [0,360)）。
      */
-    private fun hitFacingDeg(ship: ShipAPI, hitPoint: Vector2f): Float {
-        val origin = ship.location ?: return 0f
+    private fun hitFacingDeg(ship: ShipAPI?, hitPoint: Vector2f): Float {
+        val origin = ship?.location ?: return 0f
         return Math.toDegrees(
             kotlin.math.atan2(
                 (hitPoint.y - origin.y).toDouble(),

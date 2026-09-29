@@ -325,10 +325,11 @@ class BountyFleetTunerImpl(
             ?: BountyPoolConfig.VANILLA_CORE_LEVELS[coreId]
         if (level != null) {
             person.stats.level = level
+            applyOfficerSkills(person, member.variant.hullVariantId)
         } else {
-            log.info("[ASTD] 核心 $coreId 无登记档位等级（模组核心），沿用插件默认等级 ${person.stats.level}，插件默认技能将被整体覆盖")
+            // 模组核心（SMS 拟核等）：技能组成由其军官插件全权负责（含其特殊技能），不做覆盖
+            log.info("[ASTD] 核心 $coreId 无登记档位等级（模组核心），沿用插件默认等级 ${person.stats.level} 与插件技能组成")
         }
-        applyOfficerSkills(person, member.variant.hullVariantId)
         person.stats.isSkipRefresh = false
         return person
     }
