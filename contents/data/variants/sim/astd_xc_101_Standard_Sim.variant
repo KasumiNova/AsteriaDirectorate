@@ -1,0 +1,56 @@
+{
+    "displayName": "Standard",
+    "fluxCapacitors": 30,
+    "fluxVents": 22,
+    "hullId": "astd_xc_101",
+    "hullMods": [
+        "targetingunit",
+        "stabilizedshieldemitter",
+        "astd_mode_automated",
+        "astd_dual_mode_switcher",
+        "astd_mode_next_automated"
+    ],
+    "permaMods": [
+        "astd_mode_automated",
+        "astd_mode_next_automated"
+    ],
+    "quality": 1,
+    "sMods": [],
+    "tags": [
+        "no_auto_penalty"
+    ],
+    "variantId": "astd_xc_101_Standard_Sim",
+    "weaponGroups": [
+        {
+            "autofire": true,
+            "mode": "LINKED",
+            "weapons": {
+                "WS0002": "astd_heavy_ion_pulse"
+            }
+        },
+        {
+            "autofire": false,
+            "mode": "LINKED",
+            "weapons": {
+                "WS0012": "astd_gemini_dem_launcher",
+                "WS0013": "astd_gemini_dem_launcher"
+            }
+        },
+        {
+            "autofire": true,
+            "mode": "LINKED",
+            "weapons": {
+                "WS0003": "astd_electric_drive_accelerator",
+                "WS0004": "astd_electric_drive_accelerator"
+            }
+        },
+        {
+            "autofire": true,
+            "mode": "LINKED",
+            "weapons": {
+                "WS0001": "guardian",
+                "WS0010": "astd_positron_shockwave"
+            }
+        }
+    ]
+}

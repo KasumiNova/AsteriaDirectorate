@@ -1,0 +1,68 @@
+{
+    "displayName": "Combat",
+    "fluxCapacitors": 50,
+    "fluxVents": 43,
+    "hullId": "astd_xc_102",
+    "hullMods": [
+        "astd_arc_shared_tactical_network",
+        "hardenedshieldemitter",
+        "stabilizedshieldemitter",
+        "magazines",
+        "astd_mode_automated",
+        "astd_dual_mode_switcher",
+        "fluxbreakers",
+        "astd_mode_next_automated"
+    ],
+    "permaMods": [
+        "astd_mode_automated",
+        "astd_mode_next_automated"
+    ],
+    "quality": 1,
+    "sMods": [],
+    "tags": [
+        "no_auto_penalty"
+    ],
+    "variantId": "astd_xc_102_Combat_Sim",
+    "weaponGroups": [
+        {
+            "autofire": true,
+            "mode": "LINKED",
+            "weapons": {
+                "WS0001": "astd_heavy_ion_pulse",
+                "WS0002": "astd_heavy_ion_pulse"
+            }
+        },
+        {
+            "autofire": true,
+            "mode": "LINKED",
+            "weapons": {
+                "WS0009": "astd_electric_drive_accelerator",
+                "WS0010": "astd_electric_drive_accelerator",
+                "WS0015": "astd_electric_drive_accelerator",
+                "WS0016": "astd_electric_drive_accelerator"
+            }
+        },
+        {
+            "autofire": true,
+            "mode": "LINKED",
+            "weapons": {
+                "WS0005": "astd_gcp4",
+                "WS0006": "astd_gcp4",
+                "WS0007": "astd_gcp4",
+                "WS0008": "astd_gcp4"
+            }
+        },
+        {
+            "autofire": true,
+            "mode": "LINKED",
+            "weapons": {
+                "WS0003": "guardian",
+                "WS0004": "guardian",
+                "WS0011": "astd_positron_shockwave",
+                "WS0012": "astd_positron_shockwave",
+                "WS0013": "astd_positron_shockwave",
+                "WS0014": "astd_positron_shockwave"
+            }
+        }
+    ]
+}

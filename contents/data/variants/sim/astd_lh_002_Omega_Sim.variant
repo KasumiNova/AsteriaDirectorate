@@ -1,0 +1,43 @@
+{
+    "displayName": "Omega",
+    "fluxCapacitors": 10,
+    "fluxVents": 5,
+    "hullId": "astd_lh_002",
+    "hullMods": [
+        "astd_mode_automated",
+        "astd_dual_mode_switcher",
+        "frontemitter",
+        "hardenedshieldemitter",
+        "stabilizedshieldemitter",
+        "fluxbreakers",
+        "astd_mode_next_automated"
+    ],
+    "permaMods": [
+        "astd_mode_automated",
+        "astd_mode_next_automated"
+    ],
+    "quality": 1,
+    "sMods": [],
+    "tags": [
+        "no_auto_penalty"
+    ],
+    "variantId": "astd_lh_002_Omega_Sim",
+    "weaponGroups": [
+        {
+            "autofire": false,
+            "mode": "LINKED",
+            "weapons": {
+                "WS0001": "cryoblaster",
+                "WS0002": "cryoflux"
+            }
+        },
+        {
+            "autofire": false,
+            "mode": "LINKED",
+            "weapons": {
+                "WS0003": "astd_lh_stardust_launcher_lens",
+                "WS0004": "astd_lh_stardust_launcher_lens"
+            }
+        }
+    ]
+}

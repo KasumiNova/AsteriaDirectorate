@@ -1,0 +1,68 @@
+{
+    "displayName": "Standard",
+    "fluxCapacitors": 50,
+    "fluxVents": 42,
+    "hullId": "astd_xc_102",
+    "hullMods": [
+        "astd_arc_shared_tactical_network",
+        "frontemitter",
+        "stabilizedshieldemitter",
+        "astd_mode_automated",
+        "astd_dual_mode_switcher",
+        "magazines",
+        "fluxbreakers",
+        "astd_mode_next_automated"
+    ],
+    "permaMods": [
+        "astd_mode_automated",
+        "astd_mode_next_automated"
+    ],
+    "quality": 1,
+    "sMods": [],
+    "tags": [
+        "no_auto_penalty"
+    ],
+    "variantId": "astd_xc_102_Standard_Sim",
+    "weaponGroups": [
+        {
+            "autofire": true,
+            "mode": "LINKED",
+            "weapons": {
+                "WS0001": "astd_qiongjue_phase_railgun",
+                "WS0002": "astd_qiongjue_phase_railgun"
+            }
+        },
+        {
+            "autofire": true,
+            "mode": "LINKED",
+            "weapons": {
+                "WS0003": "astd_gcp12",
+                "WS0004": "astd_gcp12"
+            }
+        },
+        {
+            "autofire": true,
+            "mode": "LINKED",
+            "weapons": {
+                "WS0009": "astd_electric_drive_accelerator",
+                "WS0010": "astd_electric_drive_accelerator",
+                "WS0015": "astd_electric_drive_accelerator",
+                "WS0016": "astd_electric_drive_accelerator"
+            }
+        },
+        {
+            "autofire": true,
+            "mode": "LINKED",
+            "weapons": {
+                "WS0005": "astd_positron_shockwave",
+                "WS0006": "astd_positron_shockwave",
+                "WS0007": "astd_positron_shockwave",
+                "WS0008": "astd_positron_shockwave",
+                "WS0011": "astd_positron_shockwave",
+                "WS0012": "astd_positron_shockwave",
+                "WS0013": "astd_positron_shockwave",
+                "WS0014": "astd_positron_shockwave"
+            }
+        }
+    ]
+}

@@ -160,7 +160,7 @@ object Ship_astd_zw_102 : ShipDataEntry() {
     override val suppliesRec: Int = 55
     override val suppliesPerMonth: Int = 55
     override val tags: String = "astd_production"
-    override val codexVariantId: String = "astd_zw_102_Standard"
+    override val codexVariantId: String = "astd_zw_102_Hybrid"
     override val number: Int = 9111
 }
 

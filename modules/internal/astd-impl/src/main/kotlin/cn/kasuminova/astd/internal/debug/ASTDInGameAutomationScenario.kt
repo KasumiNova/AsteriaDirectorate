@@ -75,7 +75,7 @@ object ASTDInGameAutomationScenario {
     const val FGL_SCENARIO_ID: String = "lens_fighter_grav_link"
     const val FGL_SYSTEM_ID: String = "astd_fighter_grav_link"
     const val FGL_HULL_ID: String = "astd_zw_102"
-    const val FGL_VARIANT_ID: String = "astd_zw_102_Standard"
+    const val FGL_VARIANT_ID: String = "astd_zw_102_Hybrid"
     const val GS_SCENARIO_ID: String = "lens_grav_storm_zw002"
     const val GS_SYSTEM_ID: String = "astd_grav_storm"
     const val GS_HULL_ID: String = "astd_zw_002"
