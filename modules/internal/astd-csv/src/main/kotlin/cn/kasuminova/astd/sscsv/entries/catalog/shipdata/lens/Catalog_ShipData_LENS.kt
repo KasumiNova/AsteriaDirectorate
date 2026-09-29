@@ -97,8 +97,8 @@ object Ship_astd_zw_101 : ShipDataEntry() {
     override val crToDeploy: Double = 20.0
     override val peakCrSec: Int = 420
     override val crLossPerSec: Double = 0.25
-    override val suppliesRec: Int = 18
-    override val suppliesPerMonth: Int = 18
+    override val suppliesRec: Int = 20
+    override val suppliesPerMonth: Int = 20
     override val tags: String = "astd_production"
     override val codexVariantId: String = "astd_zw_101_Standard"
     override val number: Int = 9105
@@ -261,8 +261,8 @@ object Ship_astd_zw_103 : ShipDataEntry() {
     override val crToDeploy: Double = 15.0
     override val peakCrSec: Int = 480
     override val crLossPerSec: Double = 0.25
-    override val suppliesRec: Int = 22
-    override val suppliesPerMonth: Int = 22
+    override val suppliesRec: Int = 24
+    override val suppliesPerMonth: Int = 24
     override val tags: String = "astd_production"
     override val codexVariantId: String = "astd_zw_103_Standard"
     override val number: Int = 9113
