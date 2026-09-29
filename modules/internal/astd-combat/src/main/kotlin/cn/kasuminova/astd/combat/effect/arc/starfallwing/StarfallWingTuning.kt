@@ -40,8 +40,8 @@ object StarfallWingTuning {
     /** 子射弹散发时的侧向初速（su/s，沿主弹飞行向量 ±90°）。 */
     const val MOTE_SIDE_SPEED = 250f
 
-    /** 子射弹追踪延迟（秒）：射出后先按初速惯性直飞，满 1s 后才索敌/转向。 */
-    const val MOTE_TRACK_DELAY_SECONDS = 1.0f
+    /** 子射弹追踪延迟（秒）：射出后先按初速惯性直飞，满 0.5s 后才索敌/转向。 */
+    const val MOTE_TRACK_DELAY_SECONDS = 0.5f
 
     /** 振频适应单层承伤比增量（+0.1/层，承伤比口径见 [adaptationShieldMult]）。 */
     const val ADAPTATION_TAKEN_PER_STACK = 0.1f

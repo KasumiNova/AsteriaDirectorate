@@ -11,7 +11,7 @@ import kotlin.test.assertTrue
 /**
  * 规格 02 §4.1 用例 1~3（2026-09 机制修订）：五档查表精确取档、玩家固定 v2、
  * 非整数 k_s 就近取档（查表项不插值）；贯穿激活条件钉死。
- * 经 [DifficultyTuningImpl.installScaleForTests] 走完整映射链路（对齐 BountyScalingHullModTest 先例）。
+ * 经 [DifficultyTuningImpl.installScaleForTests] 走完整映射链路（installScaleForTests 先例链路）。
  */
 class HeavyIonPulseTuningTest {
 

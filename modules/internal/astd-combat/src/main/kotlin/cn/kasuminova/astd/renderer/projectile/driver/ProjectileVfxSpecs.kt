@@ -469,7 +469,7 @@ object ProjectileVfxSpecs {
             cadence(0.2f, 35f)
             color(0xAA6EFFFF, alpha = 1f)
             shape(flatten = 0.45f, growthStart = 0.7f, growthEnd = 3f, fadeIn = 0.05f, full = 0.05f, fadeOut = 0.5f)
-            momentum(100f, 200f)
+            momentum(200f, 400f)
         }
     }
 

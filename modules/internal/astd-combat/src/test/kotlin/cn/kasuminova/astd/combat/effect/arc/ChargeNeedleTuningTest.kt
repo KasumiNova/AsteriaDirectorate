@@ -11,7 +11,7 @@ import kotlin.test.assertEquals
 /**
  * 规格 01 §4.1 用例 1~3（2026-09 机制修订二）：五档查表精确取档、玩家固定 v2、
  * 非整数 k_s 就近取档（查表项不插值）与体型固定软辐能分档（0.5/1/1.5/2 ~ 2.5/5/7.5/10）。
- * 经 [DifficultyTuningImpl.installScaleForTests] 走完整映射链路（对齐 BountyScalingHullModTest 先例）。
+ * 经 [DifficultyTuningImpl.installScaleForTests] 走完整映射链路（installScaleForTests 先例链路）。
  */
 class ChargeNeedleTuningTest {
 

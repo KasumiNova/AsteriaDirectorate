@@ -14,7 +14,7 @@ import kotlin.test.assertTrue
 /**
  * 联制线（20-joint.md）三处难度数值声明的契约测试：
  * 落叶飞花 / 视界变速 / 星尘光尘的三锚点解析与体型分档、玩家固定 v2 口径。
- * 通过 [DifficultyTuningImpl.installScaleForTests] 注入系数走完整映射链路（先例 BountyScalingHullModTest）。
+ * 通过 [DifficultyTuningImpl.installScaleForTests] 注入系数走完整映射链路（installScaleForTests 先例链路）。
  */
 class JointTuningTest {
 
