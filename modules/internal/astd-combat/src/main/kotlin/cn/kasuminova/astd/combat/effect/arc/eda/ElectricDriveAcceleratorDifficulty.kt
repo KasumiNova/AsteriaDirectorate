@@ -22,8 +22,8 @@ import cn.kasuminova.astd.impl.combat.CombatRandom
  */
 object ElectricDriveAcceleratorDifficulty {
 
-    /** 不稳定装药上限（面板百分比）：迟暮 25 / 砺刃 56.25 / 破晓 150（设计案显式锚点）。 */
-    val CHARGE_MAX_PCT = ScalingEntry(25f, 56.25f, 150f, ScalingMap.LINEAR)
+    /** 不稳定装药上限（面板百分比）：迟暮 25 / 砺刃 50 / 破晓 125。 */
+    val CHARGE_MAX_PCT = ScalingEntry(25f, 50f, 125f, ScalingMap.LINEAR)
 
     /**
      * 射程锚点专用映射：四档线性（迟暮 v1 / 砺刃 v2 / 远征 (v2+v5)/2 / 破晓 v5）。

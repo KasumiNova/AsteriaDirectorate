@@ -139,7 +139,7 @@ class ElectricDriveAcceleratorOnHitEffect : OnHitEffectPlugin {
         /** 玩家侧追加伤害结算次数遥测键（engine.customData）。 */
         const val TELEMETRY_EXTRA_COUNT_PLAYER = "astd_eda_extra_damage_count_player"
 
-        /** 玩家侧追加伤害峰值遥测键（玩家档应 ≤ 120 × 56.25% = 67.5）。 */
+        /** 玩家侧追加伤害峰值遥测键（玩家档应 ≤ 120 × 50% = 67.5）。 */
         const val TELEMETRY_EXTRA_MAX_PLAYER = "astd_eda_extra_damage_max_player"
 
         /** 非玩家侧追加伤害结算次数遥测键（敌版三档证据）。 */
