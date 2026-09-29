@@ -5,6 +5,7 @@ import cn.kasuminova.astd.combat.automation.api.PausePolicy
 import cn.kasuminova.astd.renderer.projectile.driver.ProjectileVfxTelemetrySnapshot
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
+import com.fs.starfarer.api.combat.DamagingProjectileAPI
 import com.fs.starfarer.api.combat.ShipAIConfig
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.combat.ShipwideAIFlags
@@ -26,8 +27,8 @@ import org.lwjgl.util.vector.Vector2f
  */
 abstract class AbstractPhaseFlankScenario : AbstractAutomationScenario() {
 
-    /** 判定模式：FLANK 绕后证据 / HEALTH 航母相位节奏健康 / CONTROL_NO_FLANK 高速目标零绕后旗标。 */
-    enum class PfMode { FLANK, HEALTH, CONTROL_NO_FLANK }
+    /** 判定模式：FLANK 绕后证据 / HEALTH 航母相位节奏健康 / CONTROL_NO_FLANK 高速目标零绕后旗标 / SURVIVAL 贴盾上浮与非相位硬吃高威胁投射物零容忍。 */
+    enum class PfMode { FLANK, HEALTH, CONTROL_NO_FLANK, SURVIVAL }
 
     /** 受测玩家舰船体 id（舰队构成由各自 MissionDefinition 决定）。 */
     abstract val playerHullId: String
@@ -59,6 +60,14 @@ abstract class AbstractPhaseFlankScenario : AbstractAutomationScenario() {
     private var pfPhasedFrames = 0
     private var pfAttackRunFrames = 0
     private var pfPhasedSpeedMax = 0f
+
+    // 生存判据探针：贴盾上浮计数与上浮最近间距 / 高威胁投射物命中跟踪（弹体消失帧
+    // 按最后位置与本舰碰撞圈判命中，区分相位/非相位——相位中不可被命中，命中即硬吃）。
+    private var pfSurfaceHugCount = 0
+    private var pfSurfaceClosestDist = Float.MAX_VALUE
+    private val pfTorpedoActive = HashMap<DamagingProjectileAPI, Vector2f>()
+    private var pfTorpedoHits = 0
+    private var pfTorpedoHitsUnphased = 0
 
     override fun init(ctx: AutomationCombatContext) {
         super.init(ctx)
@@ -135,6 +144,24 @@ abstract class AbstractPhaseFlankScenario : AbstractAutomationScenario() {
             pfSurfaceCount++
             val bearingDiff = Math.abs(Misc.getAngleDiff(enemy.facing, bearing))
             pfSurfaceBearingDiffMax = maxOf(pfSurfaceBearingDiffMax, bearingDiff)
+            // 贴盾上浮探针：落点间距低于（本舰碰撞半径 + 敌舰有效半径）× [PF_SURFACE_HUG_FRAC]——
+            // 敌舰护盾开启时有效半径取护盾半径（贴护盾外缘同样贴脸，对齐 AI 侧口径）
+            val enemyShield = enemy.shield
+            val enemyEffRadius =
+                if (enemyShield != null && enemyShield.isOn) {
+                    maxOf(enemy.collisionRadius, enemyShield.radius)
+                } else {
+                    enemy.collisionRadius
+                }
+            val sepDist = Misc.getDistance(player.location, enemy.location)
+            pfSurfaceClosestDist = minOf(pfSurfaceClosestDist, sepDist)
+            if (sepDist < (player.collisionRadius + enemyEffRadius) * PF_SURFACE_HUG_FRAC) {
+                pfSurfaceHugCount++
+                ctx.log.info(
+                    "[ASTD-Automation] pf surface#$pfSurfaceCount 贴盾上浮：dist=${"%.0f".format(sepDist)}su " +
+                            "< 贴脸线 ${"%.0f".format((player.collisionRadius + enemyEffRadius) * PF_SURFACE_HUG_FRAC)}su",
+                )
+            }
             ctx.log.info(
                 "[ASTD-Automation] pf surface#$pfSurfaceCount: 本次相位扫描幅度=${"%.1f".format(pfSweepMax - pfSweepMin)}° " +
                         "上浮方位差=${"%.1f".format(bearingDiff)}°（历史峰值 sweep=${"%.1f".format(pfPhaseSweepMax)}° " +
@@ -142,6 +169,48 @@ abstract class AbstractPhaseFlankScenario : AbstractAutomationScenario() {
             )
         }
         pfWasPhased = phased
+    }
+
+    /**
+     * 高威胁投射物命中跟踪（SURVIVAL 判据输入）：敌方伤害 ≥ [PF_TORPEDO_DAMAGE_MIN] 的弹体
+     * 逐帧登记，消失帧按最后位置是否落在本舰碰撞圈 + [PF_TORPEDO_HIT_MARGIN] 内判命中；
+     * 相位中不可被命中，凡命中即非相位硬吃（命中帧 isPhased 记入遥测佐证）。
+     */
+    private fun trackTorpedoHits(ctx: AutomationCombatContext, player: ShipAPI) {
+        val engine = ctx.engine
+        val seen = HashSet<DamagingProjectileAPI>()
+        for (projectiles in listOf(engine.missiles, engine.projectiles)) {
+            for (proj in projectiles) {
+                if (proj.owner == player.owner || proj.isFading || proj.isExpired) continue
+                if (proj.damageAmount < PF_TORPEDO_DAMAGE_MIN) continue
+                seen.add(proj)
+                val last = pfTorpedoActive[proj]
+                if (last == null) {
+                    pfTorpedoActive[proj] = Vector2f(proj.location)
+                } else {
+                    last.set(proj.location)
+                }
+            }
+        }
+        val iter = pfTorpedoActive.entries.iterator()
+        while (iter.hasNext()) {
+            val (proj, lastLoc) = iter.next()
+            if (seen.contains(proj)) continue
+            iter.remove()
+            val dx = player.location.x - lastLoc.x
+            val dy = player.location.y - lastLoc.y
+            val hitR = player.collisionRadius + PF_TORPEDO_HIT_MARGIN
+            if (dx * dx + dy * dy > hitR * hitR) continue
+            pfTorpedoHits++
+            if (!player.isPhased) {
+                pfTorpedoHitsUnphased++
+                ctx.log.info(
+                    "[ASTD-Automation] pf 硬吃高威胁投射物 #$pfTorpedoHitsUnphased：" +
+                            "spec=${proj.projectileSpecId} dmg=${"%.0f".format(proj.damageAmount)} " +
+                            "落点距本舰 ${"%.0f".format(Misc.getDistance(lastLoc, player.location))}su",
+                )
+            }
+        }
     }
 
     /**
@@ -184,6 +253,7 @@ abstract class AbstractPhaseFlankScenario : AbstractAutomationScenario() {
                 pfPhasedSpeedMax = maxOf(pfPhasedSpeedMax, player.velocity.length())
             }
             trackPfPhaseEdges(player, enemy)
+            trackTorpedoHits(ctx, player)
             val combatSeconds = ctx.elapsed - pfCombatStartAt
             when (mode) {
                 PfMode.FLANK -> {
@@ -235,6 +305,35 @@ abstract class AbstractPhaseFlankScenario : AbstractAutomationScenario() {
                             ctx.failureReason = "pf control no dive: ${PF_CONTROL_WINDOW_SEC.toInt()}s 内未下潜，相位 AI 未运行"
                             pfPhase = PF_PHASE_FAILED
                         }
+                    }
+                }
+
+                PfMode.SURVIVAL -> {
+                    // 违规即败：贴盾上浮或非相位硬吃高威胁投射物（用户实机两症状的判据化）；
+                    // 生存窗内相位节奏健康（下潜 ≥2）且零违规即 Completed
+                    val violation = when {
+                        pfSurfaceHugCount > 0 ->
+                            "贴盾上浮 $pfSurfaceHugCount 次（上浮最近间距 ${"%.0f".format(pfSurfaceClosestDist)}su）"
+
+                        pfTorpedoHitsUnphased > 0 ->
+                            "非相位硬吃高威胁投射物 $pfTorpedoHitsUnphased 次（总命中 $pfTorpedoHits）"
+
+                        else -> null
+                    }
+                    if (violation != null) {
+                        ctx.failureReason = "pf survival violated: $violation"
+                        pfPhase = PF_PHASE_FAILED
+                    } else if (combatSeconds >= PF_SURVIVAL_WINDOW_SEC && pfDiveCount >= 2) {
+                        pfPhase = PF_PHASE_COMPLETED
+                        ctx.log.info(
+                            "[ASTD-Automation] pf survival clean: dives=$pfDiveCount surfaces=$pfSurfaceCount " +
+                                    "hugs=0 torpedoHits=$pfTorpedoHits（相位躲过） " +
+                                    "at ${"%.1f".format(combatSeconds)}s",
+                        )
+                    } else if (combatSeconds >= PF_OBSERVE_TIMEOUT) {
+                        ctx.failureReason = "pf survival timeout: ${PF_OBSERVE_TIMEOUT.toInt()}s 内相位节奏不足" +
+                                "（dives=$pfDiveCount < 2 且未达生存窗）"
+                        pfPhase = PF_PHASE_FAILED
                     }
                 }
             }
@@ -290,6 +389,11 @@ abstract class AbstractPhaseFlankScenario : AbstractAutomationScenario() {
         json.appendLine("  \"pfPhasedSpeedMax\": ${formatFloat(pfPhasedSpeedMax)},")
         json.appendLine("  \"pfCombatSeconds\": ${formatFloat(if (pfCombatStartAt < 0f) 0f else ctx.elapsed - pfCombatStartAt)},")
         json.appendLine("  \"pfPlayerCurrFlux\": ${formatFloat(pfPlayer?.fluxTracker?.currFlux ?: -1f)},")
+        // ---- 生存判据探针（贴盾上浮 / 高威胁投射物命中）----
+        json.appendLine("  \"pfSurfaceHugCount\": $pfSurfaceHugCount,")
+        json.appendLine("  \"pfSurfaceClosestDist\": ${formatFloat(if (pfSurfaceClosestDist == Float.MAX_VALUE) -1f else pfSurfaceClosestDist)},")
+        json.appendLine("  \"pfTorpedoHits\": $pfTorpedoHits,")
+        json.appendLine("  \"pfTorpedoHitsUnphased\": $pfTorpedoHitsUnphased,")
     }
 
     private companion object {
@@ -310,5 +414,17 @@ abstract class AbstractPhaseFlankScenario : AbstractAutomationScenario() {
 
         // 高速对照组观测窗：60s 内不得出现绕后旗标帧，且至少下潜一次证明相位 AI 在运行。
         private const val PF_CONTROL_WINDOW_SEC = 60f
+
+        // SURVIVAL 判据：生存窗 60s（窗内下潜 ≥2 且零违规即 Completed，违规即 Failed）。
+        private const val PF_SURVIVAL_WINDOW_SEC = 60f
+
+        // 贴盾上浮判线：上浮落点间距 <（本舰碰撞半径 + 敌舰有效半径）× 本值（对齐 AI 侧 SURFACE_PROXIMITY_FRAC 口径）。
+        private const val PF_SURFACE_HUG_FRAC = 0.9f
+
+        // 高威胁投射物口径：单发伤害 ≥ 本值才跟踪（鱼雷级；滤掉点防/机关炮流弹）。
+        private const val PF_TORPEDO_DAMAGE_MIN = 1000f
+
+        // 命中判定余量：弹体消失帧最后位置距本舰中心 ≤ 碰撞半径 + 本值判命中（覆盖爆炸核心半径）。
+        private const val PF_TORPEDO_HIT_MARGIN = 100f
     }
 }

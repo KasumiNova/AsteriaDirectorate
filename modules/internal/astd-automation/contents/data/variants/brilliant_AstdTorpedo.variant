@@ -1,0 +1,36 @@
+{
+    "displayName": "ASTD 自动化·鱼雷",
+    "fluxCapacitors": 8,
+    "fluxVents": 30,
+    "goalVariant": false,
+    "hullId": "brilliant",
+    "hullMods": ["targetingunit"],
+    "permaMods": [],
+    "sMods": [],
+    "variantId": "brilliant_AstdTorpedo",
+    "weaponGroups": [
+        {
+            "autofire": false,
+            "mode": "ALTERNATING",
+            "weapons": {"WS 000": "plasma"}
+        },
+        {
+            "autofire": true,
+            "mode": "LINKED",
+            "weapons": {
+                "WS 004": "typhoon",
+                "WS 005": "typhoon",
+                "WS 006": "typhoon"
+            }
+        },
+        {
+            "autofire": true,
+            "mode": "LINKED",
+            "weapons": {
+                "WS 001": "heavyburst",
+                "WS 002": "pdburst",
+                "WS 003": "pdburst"
+            }
+        }
+    ]
+}

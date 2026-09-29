@@ -462,6 +462,29 @@
       ]
     },
     {
+      "id": "lens_phase_flank_zw103_brilliant",
+      "missionId": "lens_phase_flank_zw103_brilliant",
+      "shipIds": [
+        "astd_zw_103",
+        "brilliant"
+      ],
+      "variantIds": [
+        "astd_zw_103_Standard",
+        "brilliant_AstdTorpedo"
+      ],
+      "systemId": "astd_gravity_phase",
+      "requiredEvidence": [
+        "pfPhase",
+        "pfDiveCount",
+        "pfSurfaceCount",
+        "pfSurfaceHugCount",
+        "pfSurfaceClosestDist",
+        "pfTorpedoHits",
+        "pfTorpedoHitsUnphased",
+        "pfCombatSeconds"
+      ]
+    },
+    {
       "id": "lens_phase_friendly_beam",
       "missionId": "lens_phase_friendly_beam",
       "shipIds": [
