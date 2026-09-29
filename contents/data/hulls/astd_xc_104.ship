@@ -11,6 +11,9 @@
   "shieldCenter": [0, -0],
   "shieldRadius": 56.5,
   "viewOffset": 0,
+  "builtInMods": [
+    "astd_arc_singularity_power"
+  ],
   "builtInWeapons": {
     "WS0005": "astd_xc_104_bloom"
   },

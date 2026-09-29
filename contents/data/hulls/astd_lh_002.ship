@@ -12,6 +12,7 @@
   "shieldRadius": 69,
   "viewOffset": 0,
   "builtInMods": [
+    "astd_lens_singularity_power",
     "astd_singularity_stabilizer"
   ],
   "builtInWeapons": {

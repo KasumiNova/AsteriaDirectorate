@@ -36,7 +36,7 @@ description: "Use when editing Starsector SHIP_SYSTEM rows in descriptions.csv o
 
 - 需要在图鉴和装配界面都显示同一首行描述时，将 `text1` 复制到 `text3`。
 - 多段系统效果合并到 `text5`，用原生换行拆分。
-- 数值高亮沿用原版 `{{...}}}` 标记；百分号优先使用全角 `％`，避免底层格式化路径误读。
+- 数值高亮沿用原版 `{{...}}}` 标记；百分号一律使用半角 `%`（本仓库 2026-09 裁定口径，禁用全角 `％`）。按目标 CSV 分流：descriptions.csv 各列为字面渲染，写裸 `%`（含 `{{50%}}` 高亮，原版有同款先例）；hull_mods.csv 的 desc/short 列走 `String.format`，字面 `%` 必须写 `%%`。
 - `text2` 必须是短词，不写短句。
 - 不确定 `text4` 的显示位置前，不把效果文本放入 `text4`。
 

@@ -12,6 +12,7 @@
   "shieldRadius": 285.5,
   "viewOffset": 0,
   "builtInMods": [
+    "astd_arc_singularity_power",
     "advancedcore",
     "astd_arc_advanced_fire_control",
     "astd_arc_shared_tactical_network"

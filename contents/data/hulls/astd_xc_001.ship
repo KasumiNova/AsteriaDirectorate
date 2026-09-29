@@ -12,6 +12,7 @@
   "shieldRadius": 268,
   "viewOffset": 0,
   "builtInMods": [
+    "astd_arc_singularity_power",
     "astd_arc_advanced_energy_integration",
     "astd_nano_restoration_protocol"
   ],

@@ -12,6 +12,7 @@
   "shieldRadius": 158.5,
   "viewOffset": 0,
   "builtInMods": [
+    "astd_arc_singularity_power",
     "missleracks",
     "astd_plasma_armor_shield",
     "astd_ionized_recoil_accumulator"

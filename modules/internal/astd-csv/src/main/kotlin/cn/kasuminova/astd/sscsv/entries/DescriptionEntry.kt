@@ -10,7 +10,7 @@ import cn.kasuminova.astd.sscsv.SsCsvEntry
  * - `id` 同时作为 CSV 的 key。
  * - `text1..text4` 通常会在武器/系统/舰船的详情面板顶部作为“描述段落”显示。
  * - `text5` 对舰船系统常用于额外数值说明；为空时会按 CSV 默认留空。
- * - 为避免 UI 内部的格式化（String.format）踩坑，建议在描述文本中优先使用全角百分号 `％`。
+ * - 描述文本由游戏按字面渲染（`{%s}` 高亮替换不走 String.format），百分号一律使用半角 `%`，不使用全角。
  */
 abstract class DescriptionEntry : SsCsvEntry {
     final override val target: CsvTarget = CsvTarget.DESCRIPTIONS

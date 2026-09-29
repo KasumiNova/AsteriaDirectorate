@@ -21,11 +21,13 @@ class HullModDescriptionFormatTest {
             properties.load(reader)
         }
 
+        // 仅 hullmod.* 进入 hull_mods.csv 的 desc/short 列，该列经 String.format 渲染
+        // （HullModSpecAPI.getDescriptionFormat），字面百分号必须转义为 %%。
+        // desc.*/system.* 落入 descriptions.csv，由游戏按字面渲染（原版数据即含裸 %，如 "54.38%。"），
+        // 不走 String.format，不适用本检查。
         val keys = properties.stringPropertyNames()
             .filter {
-                it.startsWith("hullmod.") ||
-                        it.startsWith("desc.") ||
-                        it.startsWith("system.")
+                it.startsWith("hullmod.")
             }
             .sorted()
 

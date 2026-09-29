@@ -10,12 +10,29 @@ import cn.kasuminova.astd.sscsv.i18n.SsI18n
 
 /** LENS 设计系 HullMod（原始数据来自 `contents/data/hullmods/hull_mods.csv`）。 */
 
+/**
+ * 奇点能源·紫变体（紫菀系全舰内置）：与蓝变体共用效果脚本
+ * [cn.kasuminova.astd.combat.hullmods.base.ASTDSingularityPowerHullMod]，仅贴图与设计类型不同。
+ */
+object HullMod_astd_lens_singularity_power : HullModEntry() {
+    override val id: String = "astd_lens_singularity_power"
+    override val name: String = hullmodName(id)
+    override val tier: Int = 3
+    override val rarity: Int = 1
+    override val tech: String = "菀星设计局-紫菀"
+    override val tags: String = TAGS_BUILTIN
+    override val script: String = "cn.kasuminova.astd.combat.hullmods.base.ASTDSingularityPowerHullMod"
+    override val desc: String = SsI18n.t("hullmod.$id.desc")
+    override val short: String = SsI18n.t("hullmod.$id.short")
+    override val sprite: String = "graphics/hullmods/astd_lens_singularity_power.png"
+}
+
 object HullMod_astd_lens_array_core : HullModEntry() {
     override val id: String = "astd_lens_array_core"
     override val name: String = hullmodName(id)
     override val tier: Int = 3
     override val rarity: Int = 1
-    override val tech: String = "LENS"
+    override val tech: String = "菀星设计局-紫菀"
     override val tags: String = TAGS_BUILTIN
     override val script: String = "cn.kasuminova.astd.combat.hullmods.lens.ASTDLensArrayCoreHullMod"
     override val desc: String = SsI18n.t("hullmod.$id.desc")
@@ -28,7 +45,7 @@ object HullMod_astd_lens_parallax_decks : HullModEntry() {
     override val name: String = hullmodName(id)
     override val tier: Int = 3
     override val rarity: Int = 1
-    override val tech: String = "LENS"
+    override val tech: String = "菀星设计局-紫菀"
     override val tags: String = TAGS_BUILTIN
     override val script: String = "cn.kasuminova.astd.combat.hullmods.lens.ASTDLensParallaxDecksHullMod"
     override val desc: String = SsI18n.t("hullmod.$id.desc")
@@ -41,7 +58,7 @@ object HullMod_astd_lens_permeating_tide : HullModEntry() {
     override val name: String = hullmodName(id)
     override val tier: Int = 3
     override val rarity: Int = 1
-    override val tech: String = "LENS"
+    override val tech: String = "菀星设计局-紫菀"
     override val tags: String = TAGS_BUILTIN
     override val script: String = "cn.kasuminova.astd.combat.hullmods.lens.ASTDLensPermeatingTideHullMod"
     override val desc: String = SsI18n.t("hullmod.$id.desc")
@@ -57,7 +74,7 @@ object HullMod_astd_zw_001_mode_crewed : HullModEntry() {
     override val name: String = hullmodName(id)
     override val tier: Int = 3
     override val rarity: Int = 1
-    override val tech: String = "LENS"
+    override val tech: String = "菀星设计局-紫菀"
     override val tags: String = TAGS_BUILTIN
     override val script: String = "cn.kasuminova.astd.combat.hullmods.lens.ASTDLensCrewedModeHullMod"
     override val desc: String = PLACEHOLDER_DESC
@@ -70,7 +87,7 @@ object HullMod_astd_zw_001_mode_automated : HullModEntry() {
     override val name: String = hullmodName(id)
     override val tier: Int = 3
     override val rarity: Int = 1
-    override val tech: String = "LENS"
+    override val tech: String = "菀星设计局-紫菀"
     override val tags: String = TAGS_BUILTIN
     override val script: String = "cn.kasuminova.astd.combat.hullmods.lens.ASTDLensAutomatedModeHullMod"
     override val desc: String = PLACEHOLDER_DESC
@@ -111,7 +128,7 @@ object HullMod_astd_dimensional_folding_deck : HullModEntry() {
     override val name: String = hullmodName(id)
     override val tier: Int = 1
     override val rarity: Int = 1
-    override val tech: String = "LENS"
+    override val tech: String = "菀星设计局-紫菀"
     override val tags: String = TAGS_BUILTIN
     override val script: String = "cn.kasuminova.astd.combat.hullmods.lens.ASTDDimensionalFoldingDeckHullMod"
     override val desc: String = SsI18n.t("hullmod.$id.desc")
@@ -131,7 +148,7 @@ object HullMod_astd_grav_em_field : HullModEntry() {
     override val name: String = hullmodName(id)
     override val tier: Int = 3
     override val rarity: Int = 1
-    override val tech: String = "LENS"
+    override val tech: String = "菀星设计局-紫菀"
     override val tags: String = TAGS_BUILTIN
     override val script: String = "cn.kasuminova.astd.combat.hullmods.lens.GravEmFieldHullMod"
     override val desc: String = SsI18n.t("hullmod.$id.desc")
@@ -152,7 +169,7 @@ object HullMod_astd_grav_space_fold : HullModEntry() {
     override val name: String = hullmodName(id)
     override val tier: Int = 3
     override val rarity: Int = 1
-    override val tech: String = "LENS"
+    override val tech: String = "菀星设计局-紫菀"
     override val tags: String = TAGS_BUILTIN
     override val script: String = "cn.kasuminova.astd.combat.hullmods.lens.GravSpaceFoldHullMod"
     override val desc: String = SsI18n.t("hullmod.$id.desc")
@@ -165,7 +182,7 @@ object HullMod_astd_grav_phase_deck : HullModEntry() {
     override val name: String = hullmodName(id)
     override val tier: Int = 1
     override val rarity: Int = 1
-    override val tech: String = "LENS"
+    override val tech: String = "菀星设计局-紫菀"
     override val tags: String = TAGS_BUILTIN
     override val script: String = "cn.kasuminova.astd.combat.hullmods.lens.ASTDGravPhaseDeckHullMod"
     override val desc: String = SsI18n.t("hullmod.$id.desc")
