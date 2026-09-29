@@ -16,6 +16,7 @@ description: "舰船引擎布局规范：ASTD 舰船统一采用“1 主喷口 +
 - `contents/data/hulls/*.ship` 的 `engineSlots`。
 - 新建舰船、或为现有舰船配好 bloom/发光美术后统一引擎观感时。
 - 引擎尾焰样式（颜色/拖尾）见 [[engine-styles]]（`contents/data/config/engine_styles.json` 内的 `ASTD_ARC` / `ASTD_LENS` 等），本规范只约定**布局**，不约定颜色。
+- **战机（FIGHTER）例外**：战机喷口布局以贴图实际喷口为准做美术对齐，不强制 1 主 + 2 辅；喷口数量与贴图一致，主辅尺寸比例仍参照 §3（辅约为主 55%，贴图取整可宽松）。判例：双子座轰炸机按贴图 4 喷口落地 2 主 + 2 辅（`astd_gemini_bomber.ship`）；牵丝按贴图 3 喷口落地标准 1 主 + 2 辅（`astd_zw_103_fighter.ship`）。
 
 ## 核心约定（强制）
 
