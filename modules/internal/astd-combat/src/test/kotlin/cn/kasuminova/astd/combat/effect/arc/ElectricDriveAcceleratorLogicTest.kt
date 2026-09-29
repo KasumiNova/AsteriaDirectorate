@@ -28,11 +28,11 @@ class ElectricDriveAcceleratorLogicTest {
 
     @Test
     fun `用例1 装药上限玩家固定 v2 与敌版三锚点`() {
-        assertEquals(56.25f, ElectricDriveAcceleratorDifficulty.chargeMaxPct(FakeTuning(5f), owner = 0), 1e-6f)
+        assertEquals(50f, ElectricDriveAcceleratorDifficulty.chargeMaxPct(FakeTuning(5f), owner = 0), 1e-6f)
         assertEquals(25f, ElectricDriveAcceleratorDifficulty.chargeMaxPct(FakeTuning(1f), owner = 1), 1e-6f)
-        assertEquals(56.25f, ElectricDriveAcceleratorDifficulty.chargeMaxPct(FakeTuning(2f), owner = 1), 1e-6f)
-        assertEquals(87.5f, ElectricDriveAcceleratorDifficulty.chargeMaxPct(FakeTuning(3f), owner = 1), 1e-6f)
-        assertEquals(150f, ElectricDriveAcceleratorDifficulty.chargeMaxPct(FakeTuning(5f), owner = 1), 1e-6f)
+        assertEquals(50f, ElectricDriveAcceleratorDifficulty.chargeMaxPct(FakeTuning(2f), owner = 1), 1e-6f)
+        assertEquals(75f, ElectricDriveAcceleratorDifficulty.chargeMaxPct(FakeTuning(3f), owner = 1), 1e-6f)
+        assertEquals(125f, ElectricDriveAcceleratorDifficulty.chargeMaxPct(FakeTuning(5f), owner = 1), 1e-6f)
     }
 
     @Test

@@ -585,7 +585,7 @@ object Wpn_astd_qiongjue_phase_railgun : WeaponDataEntry(), SsProjProjectileOutp
     override val tier: Int = 2
     override val baseValue: Int = 25000
     override val range: Int = 1100
-    override val damagePerShot: Int = 600
+    override val damagePerShot: Int = 640
     override val turnRate: Int = 8
     override val ops: Int = 28
 

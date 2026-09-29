@@ -69,7 +69,7 @@ class QiongjueDamageDealtModifierTest {
             projectileOf(ship, weapon), null, damage, null, false,
         )
         assertEquals(QiongjueDamageDealtModifier.MOD_ID, result, "有层数穷距命中必须登记 stat 来源 id")
-        assertEquals(600f * 1.16f, stat.modifiedValue, 0.5f, "4 层 × v2 4% → ×1.16")
+        assertEquals(600f * 1.20f, stat.modifiedValue, 0.5f, "4 层 × v2 5% → ×1.20")
     }
 
     @Test
@@ -82,7 +82,7 @@ class QiongjueDamageDealtModifierTest {
                 projectileOf(ship, weapon), null, damage, null, false,
             )
             assertEquals(QiongjueDamageDealtModifier.MOD_ID, result)
-            assertEquals(600f * 1.08f, stat.modifiedValue, 0.5f, "4 层 × v1 2% → ×1.08")
+            assertEquals(600f * 1.10f, stat.modifiedValue, 0.5f, "4 层 × v1 2.5% → ×1.10")
         } finally {
             DifficultyTuningImpl.installScaleForTests(null)
         }
@@ -146,7 +146,7 @@ class QiongjueDamageDealtModifierTest {
         val listener = QiongjueDamageDealtModifier()
         listener.modifyDamageDealt(projectileOf(ship, w1), null, damage1, null, false)
         listener.modifyDamageDealt(projectileOf(ship, w2), null, damage2, null, false)
-        assertEquals(600f * 1.4f, stat1.modifiedValue, 0.5f, "w1 满层 → ×1.4")
-        assertEquals(600f * 1.4f, stat2.modifiedValue, 0.5f, "w2 共享同一 Buff 满层 → ×1.4")
+        assertEquals(600f * 1.5f, stat1.modifiedValue, 0.5f, "w1 满层 → ×1.5")
+        assertEquals(600f * 1.5f, stat2.modifiedValue, 0.5f, "w2 共享同一 Buff 满层 → ×1.5")
     }
 }
