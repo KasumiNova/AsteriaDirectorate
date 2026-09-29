@@ -10,8 +10,7 @@
         {
             "mode": "LINKED",
             "weapons": {
-                "WS 001": "astd_gemini_dem_fighter",
-                "WS 002": "astd_gemini_dem_fighter"
+                "WS 001": "astd_gemini_dem_fighter"
             }
         }
     ]

@@ -151,6 +151,8 @@ internal object WeaponGlowLayer {
             for (ship in engine.ships) {
                 if (ship.isHulk) continue
                 for (weapon in ship.allWeapons) {
+                    // 隐藏槽位（系统/内建伪装槽）不参与发光渲染
+                    if (weapon.slot?.isHidden == true) continue
                     val weaponId = weapon.id ?: continue
                     for (slot in slotsFor(weaponId)) {
                         val key = weapon to slot

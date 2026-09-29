@@ -5,12 +5,13 @@
     "size": "SMALL",
     "turretSprite": "graphics/textures/BUtil_NONE.png",
     "hardpointSprite": "graphics/textures/BUtil_NONE.png",
-    "hardpointOffsets": [0, 0],
-    "turretOffsets": [0, 0],
-    "hardpointAngleOffsets": [0],
-    "turretAngleOffsets": [0],
+    "hardpointOffsets": [0, 6, 0, -6],
+    "turretOffsets": [0, 6, 0, -6],
+    "hardpointAngleOffsets": [0, 0],
+    "turretAngleOffsets": [0, 0],
     "barrelMode": "LINKED",
     "animationType": "SMOKE",
+    "renderHints": ["RENDER_LOADED_MISSILES"],
     "projectileSpecId": "astd_gemini_dem_dummy",
     "fireSoundTwo": "dragonfire_fire"
 }
