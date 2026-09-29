@@ -42,6 +42,8 @@ class GravityPhaseCloakAITest {
         surfaceTooClose = false,
         incomingSurfaceDamage = 0f,
         threatFrontAxisClose = false,
+        rearSurfaceDistanceSafe = true,
+        forcedSurfaceHoldSec = 0f,
         incomingFriendlySoonDamage = 0f,
     )
 
@@ -73,6 +75,8 @@ class GravityPhaseCloakAITest {
         surfaceTooClose = false,
         incomingSurfaceDamage = 0f,
         threatFrontAxisClose = false,
+        rearSurfaceDistanceSafe = true,
+        forcedSurfaceHoldSec = 0f,
         incomingFriendlySoonDamage = 0f,
     )
 
@@ -220,15 +224,21 @@ class GravityPhaseCloakAITest {
     }
 
     @Test
-    fun `强制上浮不受上浮安全闸约束`() {
-        // 硬辐能达闸必须上浮：贴脸/弹幕/正脸火力轴全部不安全也照常上浮
+    fun `强制上浮暂缓达上限后不受上浮安全闸约束`() {
+        // 硬辐能达闸必须上浮：暂缓累计达上限后，贴脸/弹幕/正脸火力轴全部不安全也兜底放行
         val s = phasedSituation().copy(
             hardFluxLevel = GravityPhaseCloakAI.SURFACE_HARD_FLUX,
             surfaceTooClose = true,
             incomingSurfaceDamage = GravityPhaseCloakAI.surfaceDangerThreshold(5000f) * 2f,
             threatFrontAxisClose = true,
+            forcedSurfaceHoldSec = GravityPhaseCloakAI.FORCED_SURFACE_HOLD_MAX_SEC,
         )
         assertEquals(PhaseOrder.SURFACE, GravityPhaseCloakAI.decide(s))
+        // 暂缓未达上限时同参数按住（口径见「强制上浮落点不安全时有界暂缓超时兜底放行」）
+        assertEquals(
+            PhaseOrder.NONE,
+            GravityPhaseCloakAI.decide(s.copy(forcedSurfaceHoldSec = 0f)),
+        )
     }
 
     @Test
@@ -538,6 +548,123 @@ class GravityPhaseCloakAITest {
 
         // 无意图时同参数走无威胁上浮
         assertEquals(PhaseOrder.SURFACE, GravityPhaseCloakAI.decide(s.copy(flankIntentActive = false)))
+    }
+
+    @Test
+    fun `绕后意图达成但脱间距不足按住不上浮`() {
+        // 已入侧后、覆盖达标但贴着敌舰护盾/碰撞箱：按住保持相位穿出拉开
+        val s = phasedSituation().copy(
+            flankIntentActive = true,
+            inTargetRearArc = true,
+            rearSurfaceDistanceSafe = false,
+        )
+        assertEquals(PhaseOrder.NONE, GravityPhaseCloakAI.decide(s))
+
+        // 同参数脱间距满足即放行上浮输出
+        assertEquals(
+            PhaseOrder.SURFACE,
+            GravityPhaseCloakAI.decide(s.copy(rearSurfaceDistanceSafe = true)),
+        )
+    }
+
+    @Test
+    fun `死角上浮脱间距不足按住不上浮`() {
+        val s = phasedSituation().copy(
+            inTargetRearArc = true,
+            weaponCoverage = GravityPhaseCloakAI.REAR_SURFACE_MAX_COVERAGE,
+            rearSurfaceDistanceSafe = false,
+        )
+        assertEquals(PhaseOrder.NONE, GravityPhaseCloakAI.decide(s))
+
+        assertEquals(
+            PhaseOrder.SURFACE,
+            GravityPhaseCloakAI.decide(s.copy(rearSurfaceDistanceSafe = true)),
+        )
+    }
+
+    @Test
+    fun `相对速度外推最近接近覆盖相向远离与窗口截断`() {
+        // 相向且窗口内到达：最近接近为 0（撞上去）
+        assertEquals(0f, GravityPhaseCloakAI.closestApproachDistance(100f, 0f, -50f, 0f, 2f))
+        // 相互远离：最近接近即当前间距
+        assertEquals(100f, GravityPhaseCloakAI.closestApproachDistance(100f, 0f, 50f, 0f, 2f))
+        // 相对静止：当前间距
+        assertEquals(100f, GravityPhaseCloakAI.closestApproachDistance(100f, 0f, 0f, 0f, 2f))
+        // 相向但到达点在窗口外：截断到窗口末的位置
+        assertEquals(900f, GravityPhaseCloakAI.closestApproachDistance(1000f, 0f, -50f, 0f, 2f))
+    }
+
+    @Test
+    fun `绕后最小脱间距随敌舰有效半径放大`() {
+        val small = GravityPhaseCloakAI.rearSurfaceMinSeparation(60f, 100f)
+        val large = GravityPhaseCloakAI.rearSurfaceMinSeparation(60f, 300f)
+        assertTrue(large > small)
+    }
+
+    @Test
+    fun `绕后走位脱间距不足时继续穿透不就地保持`() {
+        // 侧后但贴脸：走位层挂穿透系（flankDriveHoldSpot=false），与 decide 的按住上浮同口径
+        val hugging = phasedSituation().copy(
+            flankIntentActive = true,
+            inTargetRearArc = true,
+            rearSurfaceDistanceSafe = false,
+        )
+        assertFalse(GravityPhaseCloakAI.flankDriveHoldSpot(hugging))
+
+        // 脱间距满足：就地保持现状不变
+        assertTrue(
+            GravityPhaseCloakAI.flankDriveHoldSpot(hugging.copy(rearSurfaceDistanceSafe = true)),
+        )
+        // 落点重叠：即使脱间距满足也不就地保持（原版斗篷拒退，继续穿透漂出）
+        assertFalse(
+            GravityPhaseCloakAI.flankDriveHoldSpot(
+                hugging.copy(rearSurfaceDistanceSafe = true, unphaseUnsafe = true),
+            ),
+        )
+    }
+
+    @Test
+    fun `强制上浮落点不安全时有界暂缓超时兜底放行`() {
+        // 辐能强制上浮 + 贴脸：暂缓按住（贴脸强制上浮是实机贴盾/吃鱼雷入口）
+        val forced = phasedSituation().copy(
+            hardFluxLevel = GravityPhaseCloakAI.SURFACE_HARD_FLUX,
+            surfaceTooClose = true,
+        )
+        assertEquals(PhaseOrder.NONE, GravityPhaseCloakAI.decide(forced))
+
+        // 暂缓累计达上限：兜底放行（防永久相位幽灵船）
+        assertEquals(
+            PhaseOrder.SURFACE,
+            GravityPhaseCloakAI.decide(
+                forced.copy(forcedSurfaceHoldSec = GravityPhaseCloakAI.FORCED_SURFACE_HOLD_MAX_SEC),
+            ),
+        )
+
+        // 时长强制上浮同口径暂缓；落点恢复安全即放行（暂缓清零后的正常路径）
+        val timeForced = phasedSituation().copy(
+            phaseActiveTime = GravityPhaseCloakAI.MAX_PHASE_TIME_SEC,
+            surfaceTooClose = true,
+        )
+        assertEquals(PhaseOrder.NONE, GravityPhaseCloakAI.decide(timeForced))
+        assertEquals(
+            PhaseOrder.SURFACE,
+            GravityPhaseCloakAI.decide(timeForced.copy(surfaceTooClose = false)),
+        )
+    }
+
+    @Test
+    fun `强制上浮落点暂缓期间绕后走位驱动让位`() {
+        // 意图途中且未暂缓：穿透驱动照常（DO_NOT_BACK_OFF + PHASE_ATTACK_RUN 系旗标）
+        val intentRun = phasedSituation().copy(flankIntentActive = true)
+        assertTrue(GravityPhaseCloakAI.flankDriveActive(intentRun))
+
+        // 落点暂缓中：穿透驱动让位给保命后撤，防止 DO_NOT_BACK_OFF 与后撤旗标并挂打架
+        assertFalse(
+            GravityPhaseCloakAI.flankDriveActive(intentRun.copy(forcedSurfaceHoldSec = 0.2f)),
+        )
+
+        // 非意图期本就不驱动
+        assertFalse(GravityPhaseCloakAI.flankDriveActive(phasedSituation()))
     }
 
     @Test

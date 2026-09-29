@@ -1,0 +1,1 @@
+ASTD dev-only automation scenario: ZW-103 carrier vs torpedo-armed brilliant - SURVIVAL check; any shield-hug surface or unphased high-threat projectile hit fails instantly, otherwise 2+ dives inside the 60s survival window completes.

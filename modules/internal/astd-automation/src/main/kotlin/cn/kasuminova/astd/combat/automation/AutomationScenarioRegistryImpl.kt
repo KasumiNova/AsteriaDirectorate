@@ -21,6 +21,7 @@ import cn.kasuminova.astd.combat.automation.scenario.system.FighterGravLinkScena
 import cn.kasuminova.astd.combat.automation.scenario.system.GravReplicatorScenario
 import cn.kasuminova.astd.combat.automation.scenario.system.GravRiftScenario
 import cn.kasuminova.astd.combat.automation.scenario.system.GravStormScenario
+import cn.kasuminova.astd.combat.automation.scenario.system.PhaseFlankBrilliantScenario
 import cn.kasuminova.astd.combat.automation.scenario.system.PhaseFlankControlScenario
 import cn.kasuminova.astd.combat.automation.scenario.system.PhaseFlankScenario
 import cn.kasuminova.astd.combat.automation.scenario.system.PhaseFlankZw002Scenario
@@ -51,6 +52,7 @@ class AutomationScenarioRegistryImpl : AutomationScenarioRegistry {
         PhaseFlankZw002Scenario(),
         PhaseFlankZw103Scenario(),
         PhaseFlankControlScenario(),
+        PhaseFlankBrilliantScenario(),
         PhaseFriendlyBeamScenario(),
         RiftShiftScenario(),
         TrailPauseProbeScenario(),

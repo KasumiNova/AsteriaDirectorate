@@ -102,6 +102,11 @@ object ASTDInGameAutomationScenario {
     const val PFC_ENEMY_VARIANT_ID: String = "hammerhead_Balanced"
     const val PFC_ENEMY_HULL_ID: String = "hammerhead"
 
+    // 茑萝 vs 辉煌（台风鱼雷架满挂）生存判据场景：贴盾上浮 / 非相位硬吃高威胁投射物零容忍。
+    const val PF4_SCENARIO_ID: String = "lens_phase_flank_zw103_brilliant"
+    const val PF4_ENEMY_VARIANT_ID: String = "brilliant_AstdTorpedo"
+    const val PF4_ENEMY_HULL_ID: String = "brilliant"
+
     // 友伤防御下潜实测：插件周期性生成友方直射弹瞄准本舰，验证 collectFriendly 防御链路。
     const val PFB_SCENARIO_ID: String = "lens_phase_friendly_beam"
     const val PFB_HULL_ID: String = "astd_zw_101"
@@ -423,6 +428,17 @@ object ASTDInGameAutomationScenario {
         val enabled = System.getProperty(ENABLED_PROPERTY)?.equals("true", ignoreCase = true) == true
         val scenario = System.getProperty(SCENARIO_PROPERTY, SCENARIO_ID)
         return enabled && scenario == PFC_SCENARIO_ID
+    }
+
+    /**
+     * 茑萝 vs 辉煌生存判据场景开关：辉煌挂台风鱼雷发射架（reaper 级高威胁投射物），
+     * 判据化两症状——贴盾上浮与非相位硬吃鱼雷任一发生即 Failed，生存窗 60s 零违规且
+     * 相位节奏健康（下潜 ≥2）即 Completed。
+     */
+    fun isPhaseFlankBrilliantEnabled(): Boolean {
+        val enabled = System.getProperty(ENABLED_PROPERTY)?.equals("true", ignoreCase = true) == true
+        val scenario = System.getProperty(SCENARIO_PROPERTY, SCENARIO_ID)
+        return enabled && scenario == PF4_SCENARIO_ID
     }
 
     /**
