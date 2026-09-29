@@ -89,11 +89,14 @@ object StarfallEchoTuning {
         finalDamage * FINAL_STACK_DAMAGE_BONUS * stacks.coerceAtLeast(0)
 
     /**
-     * 爆炸结算伤害（纯函数）：提升后的第 5 发面板 × 层数 × 难度倍率
-     * （= 面板 ×（1 + [FINAL_STACK_DAMAGE_BONUS]×层数）× 层数 × 倍率）；0 层恒 0（无 AOE 伤害）。
+     * 爆炸结算伤害（纯函数）：第 5 发面板 × 层数 × 难度倍率（设计案「等额规模」口径——
+     * 爆炸规模为 100%~400%，AOE 伤害与规模等额，即面板的 100%~400%）；0 层恒 0（无 AOE 伤害）。
+     * 每层 +50% 的谐振提升只作用于第 5 发直击（提升部分由 [finalShotBonusDamage] 单独补给
+     * 直击目标），不计入 AOE 基数：计入会把 4 层 AOE 抬到面板的 (1+0.5×4)×4 = 12 倍，
+     * 远超设计案 400% 的规模上限（实机判例：AOE 波及目标伤害上万，被直击舰船仅几千）。
      */
     fun explosionDamage(finalDamage: Float, stacks: Int, mult: Float): Float =
-        finalShotDamage(finalDamage, stacks) * stacks.coerceAtLeast(0) * mult
+        finalDamage * stacks.coerceAtLeast(0) * mult
 
     /**
      * 弹匣禁射闸（纯函数）：弹药低于 [AMMO_GATE] 且不在连射中时不允许起射新一轮；

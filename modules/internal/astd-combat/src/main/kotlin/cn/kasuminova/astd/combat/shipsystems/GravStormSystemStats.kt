@@ -41,7 +41,9 @@ import kotlin.math.sin
  *   - 锁定解除后充能期间进入相位 → [ShipSystemAPI.deactivate] 直接进冷却（不释放电弧）；
  *   - 玩家再次按键（toggle 系统原版路径：IN 再按 → OUT，OUT 计时按充能进度折算）→ 提前结束：
  *     充能 ≥ [GravStormTuning.MIN_CHARGE_SECONDS] 释放，不足则视为取消（deactivate 进冷却）；
- *   - 充满 4s 自然进入 ACTIVE，首帧释放并 [ShipSystemAPI.forceState] 归位完整释放窗口。
+ *   - 充满 4s 自然进入 ACTIVE，首帧释放并 [ShipSystemAPI.forceState] 归位完整释放窗口；
+ *     ACTIVE 首帧若已相位（IN 末帧进相位与充满同帧竞态：原版同一帧内 ChargeTracker.advance
+ *     先于脚本 apply 执行，chargeTick 的取消分支来不及拦截）则视为取消进冷却，不释放。
  * - **OUT（释放窗口 [GravStormTuning.RELEASE_WINDOW_SECONDS]s）**：锁定充能结束时前方 60° 锥
  *   （射程 [GravStormTuning.BASE_RANGE] 经 systemRangeBonus 折算）内全部敌对舰船（含相位单位
  *   与战机——战机按护卫舰档结算电弧数与过载、单发伤害经 [GravStormTuning.FIGHTER_DAMAGE_MULT]
@@ -105,14 +107,7 @@ class GravStormSystemStats : BaseShipSystemScript() {
 
         when (state) {
             ShipSystemStatsScript.State.IN -> chargeTick(stats, engine, ship, system, id, effectLevel)
-            ShipSystemStatsScript.State.ACTIVE -> {
-                // 充满 4s 自然落入 ACTIVE（toggle 口径下 active 段无限长）：立即满充能释放并归位释放窗口；
-                // activation 闩防 ACTIVE 段多帧重复触发释放
-                if (engine.customData[activationKey(ship)] == null) {
-                    release(engine, ship, GravStormTuning.MAX_CHARGE_SECONDS)
-                }
-                system.forceState(ShipSystemAPI.SystemState.OUT, 0f)
-            }
+            ShipSystemStatsScript.State.ACTIVE -> onActiveEntered(engine, ship, system)
             ShipSystemStatsScript.State.OUT -> releaseTick(engine, ship, system)
             else -> Unit
         }
@@ -128,6 +123,25 @@ class GravStormSystemStats : BaseShipSystemScript() {
         val engine = Global.getCombatEngine() ?: return
         disposeCharge(engine, ship)
         engine.customData.remove(activationKey(ship))
+    }
+
+    /**
+     * ACTIVE 首帧处理（internal 供单元测试直接驱动）：充满 4s 自然落入 ACTIVE（toggle 口径下
+     * active 段无限长），立即满充能释放并归位释放窗口；activation 闩防 ACTIVE 段多帧重复触发。
+     * 已相位一律视为取消（收口充能态 + deactivate 进冷却），不得进入释放/强制过载——
+     * 原版同一帧内 ChargeTracker.advance 先于脚本 apply 执行，IN 末帧进入相位（取消路径）
+     * 来不及走 [chargeTick] 的相位取消分支就会被状态机直接顶进 ACTIVE，此处是取消的末道闸。
+     */
+    internal fun onActiveEntered(engine: CombatEngineAPI, ship: ShipAPI, system: ShipSystemAPI) {
+        if (ship.isPhased) {
+            disposeCharge(engine, ship)
+            system.deactivate()
+            return
+        }
+        if (engine.customData[activationKey(ship)] == null) {
+            release(engine, ship, GravStormTuning.MAX_CHARGE_SECONDS)
+        }
+        system.forceState(ShipSystemAPI.SystemState.OUT, 0f)
     }
 
     /**

@@ -8,6 +8,7 @@ import org.mockito.Mockito.mock
 import org.mockito.Mockito.`when`
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
@@ -15,6 +16,8 @@ import kotlin.test.assertTrue
  * 同一空间站（模块 parentStation 组 + 主舰体）只结算一名距爆心最近的代表；
  * 成员中心距超半径剔除（粗筛把碰撞半径计入判定，巨模块会虚扩判定圈）；
  * 非模块舰目标与导弹原样直通。
+ * 附舰船遮挡判定（[StarfallEchoOnHitEffect.isOccluded] 线段-碰撞圆纯几何）与
+ * 同站成员识别（[StarfallEchoOnHitEffect.isSameStationGroup]）用例。
  */
 class StarfallEchoOnHitEffectTest {
 
@@ -94,5 +97,68 @@ class StarfallEchoOnHitEffectTest {
 
         assertTrue(plan.regular.isEmpty())
         assertTrue(plan.stationRepresentatives.isEmpty())
+    }
+
+    // ==== 舰船遮挡判定（isOccluded / segmentIntersectsCircle 纯几何） ====
+
+    @Test
+    fun `爆心正后方的目标被中间大船遮挡`() {
+        // 大船（碰撞圆半径 300）横在爆心与目标舰心之间
+        val blockers = listOf(StarfallEchoOnHitEffect.BlockerCircle(Vector2f(400f, 0f), 300f))
+
+        assertTrue(effect.isOccluded(hitPoint, Vector2f(700f, 0f), blockers), "线段穿过碰撞圆内部：完全遮挡免伤")
+    }
+
+    @Test
+    fun `侧向目标视线不经过遮挡船 不豁免`() {
+        val blockers = listOf(StarfallEchoOnHitEffect.BlockerCircle(Vector2f(400f, 0f), 300f))
+
+        assertFalse(effect.isOccluded(hitPoint, Vector2f(400f, 700f), blockers), "线段与碰撞圆相离：正常结算")
+    }
+
+    @Test
+    fun `遮挡船在目标背后或爆心背后 不构成遮挡`() {
+        val beyond = listOf(StarfallEchoOnHitEffect.BlockerCircle(Vector2f(900f, 0f), 100f))
+        val behind = listOf(StarfallEchoOnHitEffect.BlockerCircle(Vector2f(-300f, 0f), 100f))
+
+        assertFalse(effect.isOccluded(hitPoint, Vector2f(500f, 0f), beyond), "圆心投影落在线段端点之外（目标背后）")
+        assertFalse(effect.isOccluded(hitPoint, Vector2f(500f, 0f), behind), "圆心投影落在线段端点之外（爆心背后）")
+    }
+
+    @Test
+    fun `直击船自身遮挡正后方目标 近侧擦线目标不误判`() {
+        // 爆心压在被直击船碰撞圆表面（半径 300，圆心 (300,0)，爆心原点）
+        val directHit = listOf(StarfallEchoOnHitEffect.BlockerCircle(Vector2f(300f, 0f), 300f))
+
+        assertTrue(
+            effect.isOccluded(hitPoint, Vector2f(700f, 0f), directHit),
+            "目标在被直击船正后方：被船体挡住，豁免 AOE",
+        )
+        assertFalse(
+            effect.isOccluded(hitPoint, Vector2f(-200f, 0f), directHit),
+            "目标在爆心近侧（圆心到线段最短距离 = 整半径 > 收敛后半径）：不得误判遮挡",
+        )
+    }
+
+    @Test
+    fun `遮挡圆收敛系数生效 擦边接触不遮挡`() {
+        // 圆心到线段距离 = 整半径（相切）：收敛到 0.9 倍后相离，不遮挡
+        val tangent = listOf(StarfallEchoOnHitEffect.BlockerCircle(Vector2f(400f, 300f), 300f))
+
+        assertFalse(effect.isOccluded(hitPoint, Vector2f(800f, 0f), tangent), "线段与整半径圆相切：擦边不算遮挡")
+    }
+
+    // ==== 同站成员识别（isSameStationGroup：同一座模块舰不互相遮挡） ====
+
+    @Test
+    fun `同站成员与主舰体互为同组 异舰不同组`() {
+        val root = ship(Vector2f(0f, 0f), withModules = true)
+        val module = ship(Vector2f(100f, 0f), parent = root)
+        val other = ship(Vector2f(200f, 0f))
+
+        assertTrue(effect.isSameStationGroup(module, root), "模块与主舰体同组")
+        assertTrue(effect.isSameStationGroup(module, module), "自身同组（遮挡面剔除目标自身）")
+        assertFalse(effect.isSameStationGroup(module, other), "异舰不同组")
+        assertFalse(effect.isSameStationGroup(other, root), "普通舰与空间站不同组")
     }
 }

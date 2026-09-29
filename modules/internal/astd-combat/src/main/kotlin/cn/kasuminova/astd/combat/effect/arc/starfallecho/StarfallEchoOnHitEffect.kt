@@ -22,13 +22,15 @@ import org.lwjgl.util.vector.Vector2f
  * - 普通弹：命中舰船（护盾/船体均可，设计案未区分）叠 1 层「结构谐振」
  *   （[StarfallEchoResonanceStacks]，至多 4 层，不随时间消散）；
  * - 第 5 发：命中恒爆炸（无论目标有无谐振层）——半径 150su×(层数+1)（0 层 150su 纯视觉、
- *   4 层封顶 750su）；范围结算等额能量伤害（伤害 = 提升后第 5 发面板 × 层数 × 难度倍率，
- *   层数 0 即 0，无 AOE），每层被消耗的谐振使第 5 发伤害 +50%（直击额外部分由脚本
- *   applyDamage 补给直击目标），后消耗全部层数，最后播放爆炸特效
- *   （[StarfallEchoVfx.explosion]，十字辉星跟随「目标舰心 → 命中点」方位交叉）。
+ *   4 层封顶 750su）；范围结算等额能量伤害（设计案「等额规模」口径：伤害 = 第 5 发面板 × 层数
+ *   × 难度倍率，即面板的 100%~400%，层数 0 即 0，无 AOE），每层被消耗的谐振使第 5 发伤害
+ *   +50%（直击额外部分由脚本 applyDamage 补给直击目标，不计入 AOE 基数），后消耗全部层数，
+ *   最后播放爆炸特效（[StarfallEchoVfx.explosion]，十字辉星跟随「目标舰心 → 命中点」方位交叉）。
  *
  * AOE 口径（摧锋同款裁定）：存活直击目标豁免 AOE（直击面板已由引擎原生结算，重复计入会双倍）；
- * 同阵营目标豁免。脚本 `applyDamage` 落点与 bypassShields 走七星/辉星/摧锋实机判例同款口径
+ * 同阵营目标豁免；舰船遮挡豁免——爆心到目标舰心的视线被其他存活舰船（含被直击船、不分阵营，
+ * 不含残骸与相位单位）的碰撞圆截断时该目标不受波及（完全遮挡即免伤，见 [isOccluded]）。
+ * 脚本 `applyDamage` 落点与 bypassShields 走七星/辉星/摧锋实机判例同款口径
  * （盾覆盖 → 盾面落点 + bypass=false；未覆盖 → 舰心落点 + bypass=true）。
  *
  * 难度取值每次命中调用 [StarfallEchoTuning.resolve] 一次（不缓存）。
@@ -114,6 +116,7 @@ class StarfallEchoOnHitEffect : OnHitEffectPlugin {
         // 范围能量结算（存活直击目标与同阵营豁免，摧锋同款裁定）；0 层伤害为 0 直接跳过。
         // 模块舰（空间站）按站去重选举一名代表结算——逐模块全额叠加会把空间站按模块数倍数
         // 击穿（实机判例：750su 半径全覆盖模块群，总伤害 = 单发 × 模块数 + 主舰体）。
+        // 舰船遮挡豁免：爆心 → 目标舰心的视线被其他存活舰船碰撞圆截断的目标不受波及。
         if (damage > 0f) {
             val victims = CombatUtils.getEntitiesWithinRange(hitPoint, radius).filter { victim ->
                 when {
@@ -127,7 +130,10 @@ class StarfallEchoOnHitEffect : OnHitEffectPlugin {
                 }
             }
             val plan = planStationElection(victims, hitPoint, radius)
+            val blockers = collectOcclusionBlockers(engine)
             for (victim in plan.regular + plan.stationRepresentatives) {
+                val victimLoc = victim.location ?: continue
+                if (isOccluded(hitPoint, victimLoc, blockerCircles(blockers, victim))) continue
                 val covered = (victim as? ShipAPI)?.let { shieldCovers(it, hitPoint) } == true
                 val dmgPoint = (victim as? ShipAPI)?.let { resolveShipDamagePoint(it, hitPoint) } ?: Vector2f(hitPoint)
                 engine.applyDamage(
@@ -232,5 +238,64 @@ class StarfallEchoOnHitEffect : OnHitEffectPlugin {
             if (prev == null || dist < prev.second) elect[groupKey] = ship to dist
         }
         return AoEVictimPlan(regular, elect.values.map { it.first })
+    }
+
+    /**
+     * AOE 遮挡船收集：存活、非残骸、非相位的舰船（含被直击船、不分阵营——
+     * 爆炸的视线遮挡是物理判定，同阵营船体一样挡爆炸）。
+     */
+    private fun collectOcclusionBlockers(engine: CombatEngineAPI): List<ShipAPI> =
+        engine.ships.filter { it != null && it.isAlive && !it.isHulk && !it.isPhased }
+
+    /** 单个目标的遮挡圆面：剔除目标自身与同站成员（同一座模块舰互为整体，不互相遮挡）。 */
+    private fun blockerCircles(blockers: List<ShipAPI>, victim: CombatEntityAPI): List<BlockerCircle> {
+        val victimShip = victim as? ShipAPI
+        val circles = ArrayList<BlockerCircle>(blockers.size)
+        for (blocker in blockers) {
+            if (victimShip != null && isSameStationGroup(victimShip, blocker)) continue
+            val loc = blocker.location ?: continue
+            circles += BlockerCircle(loc, blocker.collisionRadius)
+        }
+        return circles
+    }
+
+    /** 两船是否同属一座模块舰（模块 parentStation 组 + 主舰体自身；同站成员不互相遮挡）。 */
+    internal fun isSameStationGroup(a: ShipAPI, b: ShipAPI): Boolean {
+        if (a === b) return true
+        val rootA = a.parentStation ?: if (a.isShipWithModules) a else null
+        val rootB = b.parentStation ?: if (b.isShipWithModules) b else null
+        return rootA != null && rootA === rootB
+    }
+
+    /** 遮挡圆（爆心 → 目标舰心线段与舰船碰撞圆的纯几何判定输入）。 */
+    internal data class BlockerCircle(val center: Vector2f, val radius: Float)
+
+    /**
+     * 舰船遮挡判定（纯函数，供单元测试直接驱动）：爆心 [from] 到目标舰心 [to] 的线段被任一
+     * 遮挡圆截断即视为被船体遮挡（完全遮挡免伤）。碰撞圆按 [OCCLUSION_RADIUS_FRACTION] 收敛：
+     * 碰撞半径本身含视觉余量，且爆心恒在直击船碰撞圆表面——不收敛时近侧目标的线段端点
+     * 恰压圆面（圆心到线段的最短距离恒为整半径）会被误判遮挡。
+     */
+    internal fun isOccluded(from: Vector2f, to: Vector2f, blockers: List<BlockerCircle>): Boolean =
+        blockers.any { segmentIntersectsCircle(from, to, it.center, it.radius * OCCLUSION_RADIUS_FRACTION) }
+
+    /** 线段-圆相交（纯函数）：圆心到线段（端点钳制）的最短距离平方 ≤ 半径平方即相交。 */
+    internal fun segmentIntersectsCircle(from: Vector2f, to: Vector2f, center: Vector2f, radius: Float): Boolean {
+        val dx = to.x - from.x
+        val dy = to.y - from.y
+        val lenSq = dx * dx + dy * dy
+        val t = if (lenSq <= 0f) {
+            0f
+        } else {
+            (((center.x - from.x) * dx + (center.y - from.y) * dy) / lenSq).coerceIn(0f, 1f)
+        }
+        val px = from.x + t * dx - center.x
+        val py = from.y + t * dy - center.y
+        return px * px + py * py <= radius * radius
+    }
+
+    private companion object {
+        /** 遮挡判定碰撞圆收敛系数（消除爆心压圆面的近侧误判，见 [isOccluded]）。 */
+        private const val OCCLUSION_RADIUS_FRACTION = 0.9f
     }
 }

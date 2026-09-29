@@ -3,6 +3,8 @@ package cn.kasuminova.astd.combat.shipsystems
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.FluxTrackerAPI
 import com.fs.starfarer.api.combat.ShipAPI
+import com.fs.starfarer.api.combat.ShipSystemAPI
+import org.mockito.ArgumentMatchers.any
 import org.mockito.ArgumentMatchers.anyBoolean
 import org.mockito.ArgumentMatchers.anyFloat
 import org.mockito.Mockito.mock
@@ -11,6 +13,7 @@ import org.mockito.Mockito.times
 import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
 import kotlin.test.Test
+import kotlin.test.assertTrue
 
 /**
  * 引力磁暴发生器硬辐能→软辐能转化的记账钉测：被转化的是**释放舰船自身**的硬辐能，
@@ -93,5 +96,29 @@ class GravStormSystemStatsTest {
         `when`(target.hullSize).thenReturn(hullSize)
         `when`(target.fluxTracker).thenReturn(tracker)
         return target
+    }
+
+    /**
+     * 断言点：ACTIVE 首帧相位取消闸——IN 末帧进入相位与充满同帧竞态时（原版同一帧内
+     * ChargeTracker.advance 先于脚本 apply，chargeTick 的相位取消分支来不及拦截），
+     * 已相位一律按取消处理：deactivate 进冷却、收口充能进度共享键、不写释放闩、
+     * 不归位释放窗口（不得进入释放/强制过载）。
+     */
+    @Test
+    fun `ACTIVE 首帧相位态视为取消 不进入释放与强制过载`() {
+        val engine = mock(CombatEngineAPI::class.java)
+        val customData = HashMap<String, Any>()
+        `when`(engine.customData).thenReturn(customData)
+        val ship = mock(ShipAPI::class.java)
+        `when`(ship.id).thenReturn("zw002")
+        `when`(ship.isPhased).thenReturn(true)
+        val system = mock(ShipSystemAPI::class.java)
+
+        GravStormSystemStats().onActiveEntered(engine, ship, system)
+
+        verify(system).deactivate()
+        verify(system, never()).forceState(any(), anyFloat())
+        verify(ship).removeCustomData(GravStormSystemStats.CHARGE_PROGRESS_KEY)
+        assertTrue(customData.isEmpty(), "取消路径不得写入释放闩")
     }
 }
