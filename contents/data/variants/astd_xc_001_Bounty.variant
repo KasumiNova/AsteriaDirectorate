@@ -1,0 +1,63 @@
+{
+    "displayName": "Bounty",
+    "fluxCapacitors": 20,
+    "fluxVents": 30,
+    "goalVariant": false,
+    "hullId": "astd_xc_001",
+    "hullMods": [
+        "targetingunit",
+        "fluxdistributor",
+        "hardenedshieldemitter",
+        "armoredweapons"
+    ],
+    "permaMods": [],
+    "quality": 0.0,
+    "variantId": "astd_xc_001_Bounty",
+    "weaponGroups": [
+        {
+            "autofire": false,
+            "mode": "LINKED",
+            "weapons": {
+                "WS 001": "astd_heavy_ion_pulse",
+                "WS 002": "astd_heavy_ion_pulse"
+            }
+        },
+        {
+            "autofire": false,
+            "mode": "LINKED",
+            "weapons": {
+                "WS 003": "heavyneedler",
+                "WS 004": "heavyneedler",
+                "WS0001": "heavyneedler"
+            }
+        },
+        {
+            "autofire": false,
+            "mode": "ALTERNATING",
+            "weapons": {
+                "WS 005": "astd_cuifeng_launcher",
+                "WS 006": "astd_cuifeng_launcher"
+            }
+        },
+        {
+            "autofire": true,
+            "mode": "LINKED",
+            "weapons": {
+                "WS 007": "pdlaser",
+                "WS 008": "pdlaser",
+                "WS 009": "pdlaser",
+                "WS 010": "pdlaser",
+                "WS 011": "pdlaser",
+                "WS 012": "pdlaser"
+            }
+        },
+        {
+            "autofire": false,
+            "mode": "LINKED",
+            "weapons": {
+                "WS 013": "astd_positron_shockwave",
+                "WS 014": "astd_positron_shockwave"
+            }
+        }
+    ]
+}

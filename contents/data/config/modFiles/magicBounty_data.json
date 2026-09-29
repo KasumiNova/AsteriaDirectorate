@@ -1,0 +1,221 @@
+{
+# 菀星设计总局 高难赏金（MagicLib MagicBounty 数据驱动加载）
+# 用途：首个测试发布版中 ASTD 独特舰（tags 含 astd_unique）的临时获取来源。
+# 覆盖：星坠 astd_xc_001 / 星翼 astd_xc_002 / 密蒙 astd_zw_002。
+# 排除：决明 astd_zw_001 与逐电 astd_xc_104（不在发布范围，旗舰与护航均不出现）。
+# 挂出市场：分局空间站 astd_story_market_main_station / 拾光站 astd_story_market_shiguang 必定挂出；
+# 受 MagicLib market_id 判定限制（市场 id 与实体 id 不同名时 id 排除不生效、回落到势力检查），
+# 全星系 independent / derelict 势力市场（含上述两站）也会挂出，trigger_marketFaction_any 即为该回落口径。
+# 舰队为纯 preset 构成（fleet_min_FP 等于 preset 总 FP + 旗舰 FP、无缩放），不从舰队势力随机补强；
+# 注意：任何 preset 船体 fleet pts 下调都会让差值被 fleet_composition_faction 随机舰船填满，改动后需同步核对。
+
+  "astd_bounty_xc_001":{
+    "trigger_market_id":[
+      "astd_story_market_main_station",
+      "astd_story_market_shiguang"
+    ],
+    "trigger_marketFaction_any":[
+      "independent",
+      "derelict"
+    ],
+    "trigger_player_minLevel":12,
+    "trigger_min_fleet_size":150,
+
+    "job_name":"总局遗产：星坠",
+    "job_description":"菀星设计总局解体时，第七分局封存的战列舰级原型舰星坠在混乱中被人从船坞劫走。如今它落在回收商穆恩·塔格手中，被一支武装到牙齿的私掠舰队簇拥着在边缘星系间游荡兜售，开价对象从主权势力到海盗头目无所不包。一旦舰体与图纸流入黑市，总局多年封存的技术将再无秘密可言。受总局遗产善后委员会委托，抢在交易达成前抹掉这支舰队。警告：目标舰队规模庞大、训练有素，旗舰火力足以正面击穿任何轻视它的舰队。击毁或瘫痪旗舰星坠即可完成委托，其残骸可按战场常规规则打捞回收。",
+    "job_comm_reply":"总局的遗产不卖给秃鹫，更不还给坟墓。想要，就从我的炮口下抢。",
+    "job_intel_success":"回收商舰队已被击溃，旗舰星坠确认瘫痪。善后委员会对战果表示满意，赏金与声望报酬已结算，残骸去向按战场处置规则处理，委员会不再过问。",
+    "job_intel_failure":"塔格回收团摆脱了你，委托以失败告终。",
+    "job_forFaction":"asteria_directorate",
+    "job_difficultyDescription":"极高危：主力舰级旗舰与大规模护航舰队",
+    "job_credit_reward":500000,
+    "job_reputation_reward":8,
+    "job_type":"assassination",
+    "job_show_type":true,
+    "job_show_captain":true,
+    "job_show_fleet":"preset",
+    "job_show_distance":"exact",
+    "job_show_arrow":true,
+    "job_pick_option":"接受赏金（极高危）",
+
+    "target_first_name":"穆恩",
+    "target_last_name":"塔格",
+    "target_gender":"MALE",
+    "target_personality":"aggressive",
+    "target_level":12,
+    "target_elite_skills":6,
+    "target_skills":{
+      "helmsmanship":2,
+      "combat_endurance":2,
+      "damage_control":2,
+      "impact_mitigation":1,
+      "field_modulation":1,
+      "target_analysis":2,
+      "gunnery_implants":2,
+      "energy_weapon_mastery":2,
+      "missile_specialization":1,
+      "systems_expertise":1,
+      "polarized_armor":1,
+      "ordnance_expert":2
+    },
+
+    "fleet_name":"塔格遗产回收团",
+    "fleet_faction":"ML_bounty",
+    "fleet_flagship_variant":"astd_xc_001_Bounty",
+    "fleet_flagship_name":"星坠",
+    "fleet_flagship_recoverable":true,
+    "fleet_preset_ships":{
+      "astd_xc_102_Standard":2,
+      "astd_xc_101_Standard":2,
+      "astd_xc_103_Standard":3,
+      "astd_zw_101_Standard":2
+    },
+    "fleet_min_FP":198,
+    "fleet_composition_faction":"independent",
+    "fleet_transponder":true,
+    "fleet_no_retreat":true,
+    "fleet_behavior":"PASSIVE",
+
+    "location_entities":["planet"],
+    "location_prioritizeUnexplored":true,
+    "location_defaultToAnyEntity":true
+  },
+
+  "astd_bounty_zw_002":{
+    "trigger_market_id":[
+      "astd_story_market_main_station",
+      "astd_story_market_shiguang"
+    ],
+    "trigger_marketFaction_any":[
+      "independent",
+      "derelict"
+    ],
+    "trigger_player_minLevel":10,
+    "trigger_min_fleet_size":120,
+
+    "job_name":"总局遗产：密蒙",
+    "job_description":"紫菀设计局的相位巡洋舰密蒙原本封存在黑洞遗址星系的引力船坞深处，技术窃贼伊莱·方带领的团伙破解了船坞的锁定机构，将这艘总局遗产据为己有。这伙人驾驶着一支以相位舰为核心的掠袭舰队四处出击，专门袭击收藏总局遗物的小型船队，再把赃物连同密蒙本身的使用权一起摆上黑市。善后委员会判定常规执法力量无法追踪相位目标，转而悬赏外包。警告：目标舰队擅长相位机动与伏击，追击窗口极短。击毁或瘫痪旗舰密蒙即可完成委托，其残骸可按战场常规规则打捞回收。",
+    "job_comm_reply":"看得见，摸不着。你们这些追债的，连我们的尾流都咬不住。",
+    "job_intel_success":"掠袭舰队已被击溃，旗舰密蒙确认瘫痪。善后委员会对战果表示满意，赏金与声望报酬已结算，残骸去向按战场处置规则处理，委员会不再过问。",
+    "job_intel_failure":"方氏掠袭团潜入相位空间深处消失了，委托以失败告终。",
+    "job_forFaction":"asteria_directorate",
+    "job_difficultyDescription":"极高危：相位旗舰与相位护航群",
+    "job_credit_reward":400000,
+    "job_reputation_reward":6,
+    "job_type":"assassination",
+    "job_show_type":true,
+    "job_show_captain":true,
+    "job_show_fleet":"preset",
+    "job_show_distance":"exact",
+    "job_show_arrow":true,
+    "job_pick_option":"接受赏金（极高危）",
+
+    "target_first_name":"伊莱",
+    "target_last_name":"方",
+    "target_gender":"MALE",
+    "target_personality":"reckless",
+    "target_level":10,
+    "target_elite_skills":5,
+    "target_skills":{
+      "helmsmanship":2,
+      "field_modulation":2,
+      "target_analysis":2,
+      "energy_weapon_mastery":2,
+      "systems_expertise":2,
+      "combat_endurance":1,
+      "damage_control":1,
+      "impact_mitigation":1,
+      "polarized_armor":1,
+      "ordnance_expert":1
+    },
+
+    "fleet_name":"方氏掠袭团",
+    "fleet_faction":"ML_bounty",
+    "fleet_flagship_variant":"astd_zw_002_Bounty",
+    "fleet_flagship_name":"密蒙",
+    "fleet_flagship_recoverable":true,
+    "fleet_preset_ships":{
+      "astd_zw_102_Standard":1,
+      "astd_zw_101_Standard":3,
+      "astd_zw_103_Standard":2,
+      "astd_xc_103_Standard":2
+    },
+    "fleet_min_FP":160,
+    "fleet_composition_faction":"independent",
+    "fleet_transponder":true,
+    "fleet_no_retreat":true,
+    "fleet_behavior":"PASSIVE",
+
+    "location_entities":["planet"],
+    "location_prioritizeUnexplored":true,
+    "location_defaultToAnyEntity":true
+  },
+
+  "astd_bounty_xc_002":{
+    "trigger_market_id":[
+      "astd_story_market_main_station",
+      "astd_story_market_shiguang"
+    ],
+    "trigger_marketFaction_any":[
+      "independent",
+      "derelict"
+    ],
+    "trigger_player_minLevel":8,
+    "trigger_min_fleet_size":100,
+
+    "job_name":"总局遗产：星翼",
+    "job_description":"星坠工程部的试作驱逐舰星翼本是总局航空战术验证项目的核心样机，总局解体后被雇佣兵头目薇拉·柯德率团截获。柯德把这艘性能远超民用水准的战舰当成了安身立命的本钱，带着她的混编护航舰队四处承接见不得光的买卖，买家名单越拉越长。善后委员会不打算等某一方凑齐赎金，直接以赏金形式买断问题。警告：柯德出身正规军，舰队指挥老练，旗舰的舰载机与主炮组合在中近距离极具威胁。击毁或瘫痪旗舰星翼即可完成委托，其残骸可按战场常规规则打捞回收。",
+    "job_comm_reply":"总局付不起的价码，总有人付得起。想拦我的生意，先问过我的护航队。",
+    "job_intel_success":"雇佣兵团已被击溃，旗舰星翼确认瘫痪。善后委员会对战果表示满意，赏金与声望报酬已结算，残骸去向按战场处置规则处理，委员会不再过问。",
+    "job_intel_failure":"柯德雇佣兵团甩掉了追兵，委托以失败告终。",
+    "job_forFaction":"asteria_directorate",
+    "job_difficultyDescription":"高危：驱逐舰旗舰与混编护航舰队",
+    "job_credit_reward":300000,
+    "job_reputation_reward":5,
+    "job_type":"assassination",
+    "job_show_type":true,
+    "job_show_captain":true,
+    "job_show_fleet":"preset",
+    "job_show_distance":"exact",
+    "job_show_arrow":true,
+    "job_pick_option":"接受赏金（高危）",
+
+    "target_first_name":"薇拉",
+    "target_last_name":"柯德",
+    "target_gender":"FEMALE",
+    "target_personality":"aggressive",
+    "target_level":8,
+    "target_elite_skills":2,
+    "target_skills":{
+      "helmsmanship":2,
+      "combat_endurance":1,
+      "damage_control":1,
+      "target_analysis":2,
+      "energy_weapon_mastery":1,
+      "systems_expertise":1,
+      "polarized_armor":1,
+      "ordnance_expert":1
+    },
+
+    "fleet_name":"柯德雇佣兵团",
+    "fleet_faction":"ML_bounty",
+    "fleet_flagship_variant":"astd_xc_002_Bounty",
+    "fleet_flagship_name":"星翼",
+    "fleet_flagship_recoverable":true,
+    "fleet_preset_ships":{
+      "astd_xc_102_Standard":1,
+      "astd_xc_101_Standard":2,
+      "astd_xc_103_Standard":2,
+      "astd_zw_101_Standard":1
+    },
+    "fleet_min_FP":136,
+    "fleet_composition_faction":"independent",
+    "fleet_transponder":true,
+    "fleet_no_retreat":true,
+    "fleet_behavior":"PASSIVE",
+
+    "location_entities":["planet"],
+    "location_prioritizeUnexplored":true,
+    "location_defaultToAnyEntity":true
+  }
+}
