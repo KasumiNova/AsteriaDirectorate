@@ -594,6 +594,28 @@ class GravityPhaseCloakAITest {
     }
 
     @Test
+    fun `绕后走位脱间距不足时继续穿透不就地保持`() {
+        // 侧后但贴脸：走位层挂穿透系（flankDriveHoldSpot=false），与 decide 的按住上浮同口径
+        val hugging = phasedSituation().copy(
+            flankIntentActive = true,
+            inTargetRearArc = true,
+            rearSurfaceDistanceSafe = false,
+        )
+        assertFalse(GravityPhaseCloakAI.flankDriveHoldSpot(hugging))
+
+        // 脱间距满足：就地保持现状不变
+        assertTrue(
+            GravityPhaseCloakAI.flankDriveHoldSpot(hugging.copy(rearSurfaceDistanceSafe = true)),
+        )
+        // 落点重叠：即使脱间距满足也不就地保持（原版斗篷拒退，继续穿透漂出）
+        assertFalse(
+            GravityPhaseCloakAI.flankDriveHoldSpot(
+                hugging.copy(rearSurfaceDistanceSafe = true, unphaseUnsafe = true),
+            ),
+        )
+    }
+
+    @Test
     fun `绕后意图期间放宽相位时长上限`() {
         // 常规上限（8s）到意图上限（基准窗口 12s + 2s 富余）之间：意图生效时不强制上浮
         val intent = phasedSituation().copy(

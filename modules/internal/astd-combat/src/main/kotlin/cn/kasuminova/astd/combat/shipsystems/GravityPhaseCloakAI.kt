@@ -40,7 +40,9 @@ import org.lwjgl.util.vector.Vector2f
  *   绕后意图窗口（[flankIntentWindowSec] 按布防距离缩放基准值 [FLANK_INTENT_SEC]），
  *   相位中挂 PHASE_ATTACK_RUN 旗标驱动原版走位
  *   把舰船带往目标背后（原版相位 AI 被替换后该旗标无人管理，正面硬点装配的舰船
- *   下潜后会原地罚站），进入侧后改挂 PHASE_ATTACK_RUN_IN_GOOD_SPOT 就地保持；
+ *   下潜后会原地罚站），进入侧后且脱间距满足改挂 PHASE_ATTACK_RUN_IN_GOOD_SPOT 就地保持，
+ *   脱间距不足（侧后但贴脸）继续穿透把间距拉开（与 decide 的脱间距闸共用
+ *   [flankDriveHoldSpot] 口径，避免走位层保持、决策层等拉开的两层打架）；
  * - 威胁下潜：[NEAR_WINDOW_SEC] 内预计命中伤害达 [diveNearThreshold]；
  * - 装填下潜：可输出武器占比 ≤ [RECHARGE_DIVE_WEAPONS_FRAC] 且硬辐能 < [RECHARGE_DIVE_HARD_FLUX_MAX]；
  * - 撤退下潜：撤退中且硬辐能 < [RETREAT_DIVE_HARD_FLUX]（相位赶路）；
@@ -285,6 +287,15 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
         /** 绕后达成上浮的最小脱间距（纯函数）：本舰碰撞半径与敌舰有效半径之和的 [REAR_SURFACE_SEPARATION_FRAC] 倍。 */
         internal fun rearSurfaceMinSeparation(shipRadius: Float, enemyRadius: Float): Float =
             (shipRadius + enemyRadius) * REAR_SURFACE_SEPARATION_FRAC
+
+        /**
+         * 绕后走位是否就地保持（纯函数）：进入侧后薄弱区、落点可退相位且脱间距满足时
+         * 挂 PHASE_ATTACK_RUN_IN_GOOD_SPOT 就地保持，否则继续 PHASE_ATTACK_RUN 穿透——
+         * 脱间距不足时就地保持没有任何一层在创造间距（对静止/慢速目标几何可能永不打开，
+         * 最终憋到强制上浮在同一个贴脸点收尾），必须继续穿透把间距拉开。
+         */
+        internal fun flankDriveHoldSpot(s: PhaseSituation): Boolean =
+            s.inTargetRearArc && !s.unphaseUnsafe && s.rearSurfaceDistanceSafe
 
         /**
          * 相对运动最近接近距离（纯函数）：相对位置 (px,py)、相对速度 (vx,vy)，
@@ -646,10 +657,12 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
         // 同挂 DO_NOT_BACK_OFF：走位模块的穿透分支要求非后撤/非规避状态（var52/var58），
         // 相位累积辐能推高 fluxLevel 后会命中「辐能高于目标」规避判定把穿透驱动掐掉，
         // 意图期间由本 AI 的辐能闸（SURFACE_HARD_FLUX）兜底生存，走位层不再自行后撤；
-        // 落点重叠时原版斗篷拒绝退相位，不就地保持，继续穿透驱动直到漂出重叠
+        // 落点重叠时原版斗篷拒绝退相位，不就地保持，继续穿透驱动直到漂出重叠；
+        // 脱间距不足（侧后但贴脸）同样继续穿透——就地保持没有任何一层在创造间距，
+        // 与 decide 层的脱间距闸共用 [flankDriveHoldSpot] 单一口径，避免两层决策打架
         if (situation.flankIntentActive && phased) {
             ship.aiFlags.setFlag(ShipwideAIFlags.AIFlags.DO_NOT_BACK_OFF, 0.5f)
-            if (situation.inTargetRearArc && !situation.unphaseUnsafe) {
+            if (flankDriveHoldSpot(situation)) {
                 ship.aiFlags.setFlag(ShipwideAIFlags.AIFlags.PHASE_ATTACK_RUN_IN_GOOD_SPOT, 0.5f)
             } else {
                 ship.aiFlags.setFlag(ShipwideAIFlags.AIFlags.PHASE_ATTACK_RUN, 0.5f)
