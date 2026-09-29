@@ -668,6 +668,38 @@ class GravityPhaseCloakAITest {
     }
 
     @Test
+    fun `强制上浮暂缓预算致命豁免期暂停`() {
+        // 触发且落点不安全：预算随决策节拍累计
+        val forced = phasedSituation().copy(
+            hardFluxLevel = GravityPhaseCloakAI.SURFACE_HARD_FLUX,
+            surfaceTooClose = true,
+        )
+        val step = GravityPhaseCloakAI.nextForcedSurfaceHoldSec(forced, 0f)
+        assertTrue(step > 0f)
+
+        // 致命豁免期：预算暂停不累计（豁免是等这一下过去而非等安全落点，不该烧预算）
+        val lethal = forced.copy(
+            incomingSoonDamage = 5000f * GravityPhaseCloakAI.LETHAL_SOON_HULL_FRACTION,
+        )
+        assertEquals(2f, GravityPhaseCloakAI.nextForcedSurfaceHoldSec(lethal, 2f), 1e-6f)
+
+        // 豁免结束：从暂停处续计而非清零重攒
+        assertEquals(2f + step, GravityPhaseCloakAI.nextForcedSurfaceHoldSec(forced, 2f), 1e-6f)
+
+        // 豁免在硬辐能顶格后失效（辐能本身更危险），预算照常累计
+        val lethalTopped = lethal.copy(hardFluxLevel = GravityPhaseCloakAI.HOLD_MAX_HARD_FLUX)
+        assertEquals(2f + step, GravityPhaseCloakAI.nextForcedSurfaceHoldSec(lethalTopped, 2f), 1e-6f)
+
+        // 落点恢复安全/触发解除：预算清零
+        assertEquals(
+            0f,
+            GravityPhaseCloakAI.nextForcedSurfaceHoldSec(forced.copy(surfaceTooClose = false), 2f),
+            1e-6f,
+        )
+        assertEquals(0f, GravityPhaseCloakAI.nextForcedSurfaceHoldSec(phasedSituation(), 2f), 1e-6f)
+    }
+
+    @Test
     fun `绕后意图期间放宽相位时长上限`() {
         // 常规上限（8s）到意图上限（基准窗口 12s + 2s 富余）之间：意图生效时不强制上浮
         val intent = phasedSituation().copy(

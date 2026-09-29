@@ -58,12 +58,15 @@ import org.lwjgl.util.vector.Vector2f
  *   绕后意图生效期间上限放宽到武装窗口 + [FLANK_PHASE_CAP_MARGIN_SEC]（穿透机动
  *   需要位移时间，辐能闸不受放宽）；
  * - 强制上浮落点安全闸：强制上浮同样要求落点相对安全（[isSurfaceSafe]），不安全时
- *   有界暂缓（[FORCED_SURFACE_HOLD_MAX_SEC]，advance 按决策节拍累计），暂缓期间挂
+ *   有界暂缓（[FORCED_SURFACE_HOLD_MAX_SEC]，advance 按决策节拍累计，口径
+ *   [nextForcedSurfaceHoldSec]，致命豁免期预算暂停），暂缓期间挂
  *   BACK_OFF 主动后撤——相位高机动自己拉开间距创造安全落点，而非干等（绕后穿透
  *   驱动让位，见 [flankDriveActive]）；超时兜底放行
  *   防永久相位幽灵船——贴脸强制上浮正是实机「贴盾上浮/上浮即吃鱼雷」入口；
  * - 致命豁免：上述强制上浮触发时，若 [SOON_WINDOW_SEC] 内有致命来袭（≥ 舰体 20%，
- *   含友军火力烧身）且硬辐能 < [HOLD_MAX_HARD_FLUX]，等这一下过去再上浮；
+ *   含友军火力烧身）且硬辐能 < [HOLD_MAX_HARD_FLUX]，等这一下过去再上浮（口径
+ *   [isHoldForLethal]）；豁免期暂缓预算暂停——豁免是等这一下过去而非等安全落点，
+ *   不该烧兜底预算；
  * - 即将受击闸：全部主动上浮路径统一要求 [SOON_WINDOW_SEC] 窗口来袭低于 [diveSoonThreshold]
  *   （先于一刀切上浮规则判定——交战圈外发射的高速弹不在无威胁上浮的 near 窗口口径内，
  *   但同样会在 soon 窗口落地，不能漏拦；友军火力并入同一口径，持续照射本舰时按住不上浮）；
@@ -445,9 +448,7 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
             val defensiveSoon = s.incomingSoonDamage + s.incomingFriendlySoonDamage
             if (s.phased) {
                 // 致命豁免：即将吃到致命伤害且辐能有余量时，强制上浮推迟到这一下过去之后
-                val holdForLethal =
-                    defensiveSoon >= s.maxHull * LETHAL_SOON_HULL_FRACTION &&
-                            s.hardFluxLevel < HOLD_MAX_HARD_FLUX
+                val holdForLethal = isHoldForLethal(s)
 
                 // 强制上浮（辐能/时长闸，时长闸在绕后意图期间放宽到武装窗口 + 富余）：
                 // 落点同样要求相对安全——贴脸强制上浮正是实机「贴盾上浮/上浮即吃鱼雷」入口，
@@ -565,6 +566,30 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
         }
 
         /**
+         * 致命豁免口径（纯函数）：[SOON_WINDOW_SEC] 内有致命来袭（≥ 舰体
+         * [LETHAL_SOON_HULL_FRACTION]，含友军火力烧身）且硬辐能有余量
+         * （< [HOLD_MAX_HARD_FLUX]）时，强制上浮推迟到这一下过去之后。
+         * decide 的强制上浮块与 advance 的暂缓预算节拍共用本口径。
+         */
+        internal fun isHoldForLethal(s: PhaseSituation): Boolean =
+            s.incomingSoonDamage + s.incomingFriendlySoonDamage >=
+                    s.maxHull * LETHAL_SOON_HULL_FRACTION &&
+                    s.hardFluxLevel < HOLD_MAX_HARD_FLUX
+
+        /**
+         * 强制上浮落点暂缓预算节拍（纯函数）：触发（[isForcedSurfaceTrigger]）且落点不安全时
+         * 随决策节拍累计；致命豁免（[isHoldForLethal]）期暂停——豁免是等这一下过去而非等安全
+         * 落点，不该烧兜底预算（否则豁免结束预算已被同步耗尽，于不安全落点立即兜底放行）；
+         * 未触发/落点安全即清零。advance 的预算时钟专用口径。
+         */
+        internal fun nextForcedSurfaceHoldSec(s: PhaseSituation, currentSec: Float): Float =
+            when {
+                !isForcedSurfaceTrigger(s) || isSurfaceSafe(s) -> 0f
+                isHoldForLethal(s) -> currentSec
+                else -> currentSec + SCAN_INTERVAL_SEC
+            }
+
+        /**
          * 耗软辐下潜完整闸门（纯函数）：软辐可观、总辐能离过载有距离、环境安全、有交战对象。
          * decide 的下潜规则与 advance 的 DO_NOT_VENT 压制共用本口径——压 vent 只在
          * 相位耗散确定会接手时发生，避免「既不能 vent 也不下潜」的高软辐卡死。
@@ -672,14 +697,11 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
         if (!scanInterval.intervalElapsed()) return
 
         val sampled = sampleSituation(engine, ship, cloak, phased, target)
-        // 强制上浮落点安全暂缓时长累计（随决策节拍推进；未触发/落点安全即清零），
-        // 与 decide 的强制上浮块共用 [isForcedSurfaceTrigger] 口径
-        forcedSurfaceHoldSec =
-            if (isForcedSurfaceTrigger(sampled) && !isSurfaceSafe(sampled)) {
-                forcedSurfaceHoldSec + SCAN_INTERVAL_SEC
-            } else {
-                0f
-            }
+        // 强制上浮落点安全暂缓预算节拍：触发且落点不安全时随决策节拍累计，
+        // 致命豁免期暂停（豁免是等这一下过去而非等安全落点，不该烧兜底预算），
+        // 未触发/落点安全即清零；与 decide 的强制上浮块共用
+        // [isForcedSurfaceTrigger]/[isHoldForLethal] 单一口径
+        forcedSurfaceHoldSec = nextForcedSurfaceHoldSec(sampled, forcedSurfaceHoldSec)
         val situation = sampled.copy(forcedSurfaceHoldSec = forcedSurfaceHoldSec)
 
         // 上浮僵直保护：斗篷冷却窗口内硬辐能过半或舰体残损且有交战对象时持续后撤
