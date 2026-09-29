@@ -1,16 +1,19 @@
 package cn.kasuminova.astd.campaign.bounty
 
+import cn.kasuminova.astd.campaign.bounty.core.BountyFitRules
 import cn.kasuminova.astd.campaign.bounty.core.BountyFleetTuner
 import cn.kasuminova.astd.campaign.bounty.core.BountyOfficerSkills
 import cn.kasuminova.astd.campaign.bounty.core.BountyPoolConfig
-import cn.kasuminova.astd.campaign.bounty.core.BountySmodPresets
 import cn.kasuminova.astd.campaign.bounty.core.PoolSide
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.campaign.CampaignFleetAPI
+import com.fs.starfarer.api.characters.MutableCharacterStatsAPI
 import com.fs.starfarer.api.characters.PersonAPI
+import com.fs.starfarer.api.combat.ShieldAPI
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.combat.ShipHullSpecAPI
 import com.fs.starfarer.api.combat.ShipVariantAPI
+import com.fs.starfarer.api.combat.WeaponAPI
 import com.fs.starfarer.api.fleet.FleetMemberAPI
 import com.fs.starfarer.api.fleet.FleetMemberType
 import com.fs.starfarer.api.impl.campaign.events.OfficerManagerEvent
@@ -24,7 +27,7 @@ import org.apache.log4j.Logger
 import org.magiclib.bounty.MagicBountyLoader
 
 class BountyFleetTunerImpl(
-    private val smodPresets: BountySmodPresets = BountySmodPresetsImpl(),
+    private val fitRules: BountyFitRules = BountyFitRulesImpl(),
     private val random: Random = Random(),
 ) : BountyFleetTuner {
 
@@ -45,7 +48,7 @@ class BountyFleetTunerImpl(
         reorderFleet(fleet)
         assignCrew(fleet, bountyKey)
         protectVariants(fleet)
-        installSmods(fleet)
+        installExtraFittings(fleet)
 
         fleet.fleetData.setSyncNeeded()
         fleet.fleetData.syncIfNeeded()
@@ -130,11 +133,11 @@ class BountyFleetTunerImpl(
             if (candidates.isEmpty()) return false
             val best = candidates.maxBy { it.deploymentPointsCost }
             candidates.filter { it !== best }.forEach { fleet.fleetData.removeFleetMember(it) }
-            best.captain = createAiCoreCaptain(size)
+            best.captain = createAiCoreCaptain(size, best.variant.hullVariantId)
             return true
         }
         val member = createMemberIntoFleet(fleet, pool[random.nextInt(pool.size)]) ?: return false
-        member.captain = createAiCoreCaptain(size)
+        member.captain = createAiCoreCaptain(size, member.variant.hullVariantId)
         return true
     }
 
@@ -254,7 +257,8 @@ class BountyFleetTunerImpl(
      * 军官分配：ASTD 成员（含旗舰）全部换装核心军官。
      * 三个唯一舰赏金走 StandardCores.planFleetCores 难度档（旗舰 astd O 档）；
      * rogue 系旗舰固定原版 Alpha 核心，僚舰走核心池（原版/astd/SMS 加权，软联动过滤）。
-     * 军官统一经原版插件分发链创建，等级按核心档覆盖，ASTD 导入变体套用素材技能表。
+     * 军官统一经原版插件分发链创建，等级按核心档覆盖；技能以变体技能表为准
+     * （技能位不足时按全局优先级取舍），未登记变体退回全局优先级表取前 N。
      * 装舰核心表写入 sector memory 供赏金成功后的核心打捞发放读取。
      * 余晖成员维持原版核心军官（正常路径在入队时已分配，此处兜底补漏）。
      */
@@ -288,7 +292,7 @@ class BountyFleetTunerImpl(
         for (member in fleet.fleetData.membersListCopy) {
             if (member.isFlagship || member.isFighterWing || member.hullId.startsWith(ASTD_HULL_PREFIX)) continue
             if (member.captain == null || member.captain.isDefault) {
-                member.captain = createAiCoreCaptain(member.hullSpec.hullSize)
+                member.captain = createAiCoreCaptain(member.hullSpec.hullSize, member.variant.hullVariantId)
             }
         }
     }
@@ -304,7 +308,7 @@ class BountyFleetTunerImpl(
         return pool
     }
 
-    /** 核心军官工厂：原版插件分发链创建（原版/astd/SMS 核心各自插件），随后按核心档覆盖等级、按变体套用技能表。 */
+    /** 核心军官工厂：原版插件分发链创建（原版/astd/SMS 核心各自插件），随后按核心档覆盖等级、套用变体技能表取舍。 */
     private fun createCoreOfficer(coreId: String, member: FleetMemberAPI): PersonAPI? {
         val plugin = Misc.getAICoreOfficerPlugin(coreId)
         if (plugin == null) {
@@ -322,20 +326,24 @@ class BountyFleetTunerImpl(
         if (level != null) {
             person.stats.level = level
         }
-        applyVariantSkills(person, member.variant.hullVariantId)
+        applyOfficerSkills(person, member.variant.hullVariantId)
         person.stats.isSkipRefresh = false
         return person
     }
 
-    /** ASTD 导入变体套用素材技能表（全 2 级）；非登记变体保持核心插件默认技能。 */
-    private fun applyVariantSkills(person: PersonAPI, variantId: String?) {
-        val skills = BountyOfficerSkills.forVariant(variantId) ?: return
+    /**
+     * 赏金舰队 AI 核心军官技能应用：清空插件默认技能后按 resolveOfficerSkills 的
+     * 取舍结果全 2 级套用——命中变体技能表以表为准（N 不足时按全局优先级截取），
+     * 未命中变体（余晖等）退回全局优先级表顺序取前 N。
+     */
+    private fun applyOfficerSkills(person: PersonAPI, variantId: String?) {
+        val skills = resolveOfficerSkills(BountyOfficerSkills.forVariant(variantId), person.stats.level)
         person.stats.skillsCopy.forEach { person.stats.setSkillLevel(it.skill.id, 0f) }
         skills.forEach { person.stats.setSkillLevel(it, 2f) }
     }
 
     /** 余晖 AI 核心军官：核心按 gamma 50 / beta 35 / alpha 15 加权，对应等级 4/5/6。 */
-    private fun createAiCoreCaptain(size: ShipAPI.HullSize): PersonAPI {
+    private fun createAiCoreCaptain(size: ShipAPI.HullSize, variantId: String?): PersonAPI {
         val corePicker = WeightedRandomPicker<String>(random)
         AI_CORE_WEIGHTS.forEach { (core, weight) -> corePicker.add(core, weight) }
         val coreId = corePicker.pick() ?: AI_CORE_WEIGHTS.first().first
@@ -350,6 +358,7 @@ class BountyFleetTunerImpl(
             random,
         )
         officer.setAICoreId(coreId)
+        applyOfficerSkills(officer, variantId)
         return officer
     }
 
@@ -367,31 +376,147 @@ class BountyFleetTunerImpl(
         }
     }
 
-    private fun installSmods(fleet: CampaignFleetAPI) {
+    /**
+     * 额外装配：每艘非民用成员依次处理 SMod 内插（统一优先级）、SHU 软联动加权安装、
+     * 余 OP 普通船插填充（不足时按舰级预算拆辐能寄存器/耗散通道回收 OP）。
+     * SHU 与 SMod 注入同一管线位置，作用于 protectVariants 克隆出的 runtime variant。
+     */
+    private fun installExtraFittings(fleet: CampaignFleetAPI) {
         val neutralStats = Global.getFactory().createPerson().stats
+        val shuAvailable = BountyFitRulesImpl.SHU_HULLMOD_IDS.any { Global.getSettings().getHullModSpec(it) != null }
+        if (!shuAvailable) {
+            log.info("[ASTD] 未检测到 Special Hullmod Upgrades 模组，跳过 SHU 软联动装配")
+        }
+        var shuInstalled = 0
         for (member in fleet.fleetData.membersListCopy) {
             if (member.isCivilian) continue
             val hull = member.hullSpec
             // protectVariants 已完成克隆与 no_autofit，可直接内插
             val variant = member.variant
-            var remaining = Misc.getMaxPermanentMods(member, neutralStats) - variant.sMods.size - variant.permaMods.size
-            if (remaining <= 0) continue
+            val phase = hull.isPhase
+            val hasShield = hull.shieldType != ShieldAPI.ShieldType.NONE
+            val missileCapable = hull.allWeaponSlotsCopy.any { it.weaponType in MISSILE_CAPABLE_SLOT_TYPES }
 
-            val candidates = smodPresets.prioritiesFor(
-                hull.hullId,
-                hull.isPhase,
-                hull.hints.contains(ShipHullSpecAPI.ShipTypeHints.CARRIER),
-                hull.hullSize == ShipAPI.HullSize.CAPITAL_SHIP,
-            )
-            for (id in candidates) {
-                if (remaining <= 0) break
-                val spec = Global.getSettings().getHullModSpec(id) ?: continue
-                if (hull.builtInMods.contains(id) || variant.hullMods.contains(id)) continue
-                if (variant.getUnusedOP(neutralStats) < smodCostFor(spec, hull.hullSize)) continue
-                variant.addPermaMod(id, true)
-                remaining--
-            }
+            installPrioritySmods(variant, member, neutralStats, phase, hasShield, missileCapable)
+            if (shuAvailable && installShuHullmod(variant, hull)) shuInstalled++
+            fillExtraMods(variant, hull, neutralStats)
         }
+        if (shuAvailable) {
+            log.info("[ASTD] 赏金舰队 ${fleet.name} SHU 软联动装配完成，安装 $shuInstalled 件特殊升级船插")
+        }
+    }
+
+    /** SMod 统一优先级内插：不适用条目跳过取下一个，直到 SMod 上限或候选耗尽。 */
+    private fun installPrioritySmods(
+        variant: ShipVariantAPI,
+        member: FleetMemberAPI,
+        neutralStats: MutableCharacterStatsAPI,
+        phase: Boolean,
+        hasShield: Boolean,
+        missileCapable: Boolean,
+    ) {
+        val hull = member.hullSpec
+        var remaining = Misc.getMaxPermanentMods(member, neutralStats) - variant.sMods.size - variant.permaMods.size
+        for (id in fitRules.smodPriority()) {
+            if (remaining <= 0) break
+            val spec = Global.getSettings().getHullModSpec(id) ?: continue
+            if (hull.builtInMods.contains(id) || variant.hullMods.contains(id)) continue
+            if (!BountyFitRulesImpl.isSmodApplicable(id, phase, hasShield, missileCapable)) continue
+            if (variant.getUnusedOP(neutralStats) < smodCostFor(spec, hull.hullSize)) continue
+            variant.addPermaMod(id, true)
+            remaining--
+        }
+    }
+
+    /**
+     * SHU 软联动加权安装：每舰至多一件特殊升级（SHU 脚本自身互斥口径）。
+     * 权重全 0 或无适用项时不安装；选中后先移除其互斥普通船插（如等离子充能护盾
+     * 发生器卸下已 SMod 的强化护盾），OP 随移除自然回收并在后续填充阶段再利用。
+     */
+    private fun installShuHullmod(
+        variant: ShipVariantAPI,
+        hull: ShipHullSpecAPI,
+    ): Boolean {
+        if (variant.hullMods.any { it.startsWith(SHU_ID_PREFIX) }) return false
+        val carrier = hull.hints.contains(ShipHullSpecAPI.ShipTypeHints.CARRIER)
+        val picker = WeightedRandomPicker<String>(random)
+        for ((id, weight) in fitRules.shuCandidates(hull.hullSize, carrier)) {
+            if (Global.getSettings().getHullModSpec(id) == null) continue
+            if (!isShuApplicable(id, variant, hull)) continue
+            picker.add(id, weight)
+        }
+        val pick = picker.pick() ?: return false
+
+        BountyFitRulesImpl.SHU_MOD_CONFLICTS[pick].orEmpty().forEach { conflictId ->
+            variant.sMods.remove(conflictId)
+            variant.removePermaMod(conflictId)
+            variant.removeMod(conflictId)
+        }
+        variant.addMod(pick)
+        return true
+    }
+
+    /** SHU 候选适用性等效判定：等离子充能护盾须有护盾；纳米蜂群/聚变电容与既有互斥件共存时跳过。 */
+    private fun isShuApplicable(hullmodId: String, variant: ShipVariantAPI, hull: ShipHullSpecAPI): Boolean =
+        when (hullmodId) {
+            BountyFitRulesImpl.SHU_PLASMA_DYNAMO -> hull.shieldType != ShieldAPI.ShieldType.NONE
+            else -> BountyFitRulesImpl.SHU_MOD_CONFLICTS[hullmodId].orEmpty().none { variant.hullMods.contains(it) }
+        }
+
+    /**
+     * 余 OP 普通船插填充：按统一优先级能装就装、装不下取下一个；OP 不足时先按
+     * 舰级预算拆辐能寄存器/耗散通道回收。已装 SHU 船插的互斥件跳过，避免与 SHU 冲突。
+     */
+    private fun fillExtraMods(variant: ShipVariantAPI, hull: ShipHullSpecAPI, neutralStats: MutableCharacterStatsAPI) {
+        val installedShu = variant.hullMods.firstOrNull { it.startsWith(SHU_ID_PREFIX) }
+        val shuConflicts = BountyFitRulesImpl.SHU_MOD_CONFLICTS[installedShu].orEmpty()
+        var budgetLeft = fitRules.reclaimBudget(hull.hullSize)
+        for (id in fitRules.extraModPriority()) {
+            if (id in shuConflicts) continue
+            val spec = Global.getSettings().getHullModSpec(id) ?: continue
+            if (hull.builtInMods.contains(id) || variant.hullMods.contains(id)) continue
+            val cost = smodCostFor(spec, hull.hullSize)
+            if (variant.getUnusedOP(neutralStats) < cost && budgetLeft > 0) {
+                budgetLeft -= reclaimOp(variant, neutralStats, cost, budgetLeft)
+            }
+            if (variant.getUnusedOP(neutralStats) < cost) continue
+            variant.addMod(id)
+        }
+    }
+
+    /**
+     * 拆辐能寄存器/耗散通道回收 OP：先实测单点回收量（首拆计入），
+     * 其余拆除量由 BountyFitRulesImpl.planOpReclaim 按预算与存量规划。返回实际回收 OP。
+     */
+    private fun reclaimOp(
+        variant: ShipVariantAPI,
+        neutralStats: MutableCharacterStatsAPI,
+        neededOp: Int,
+        budget: Int,
+    ): Int {
+        val caps = variant.numFluxCapacitors
+        val vents = variant.numFluxVents
+        if (caps == 0 && vents == 0) return 0
+
+        val probeCap = caps >= vents
+        val before = variant.getUnusedOP(neutralStats)
+        if (probeCap) variant.numFluxCapacitors = caps - 1 else variant.numFluxVents = vents - 1
+        val opPerUnit = variant.getUnusedOP(neutralStats) - before
+        if (opPerUnit > budget) {
+            if (probeCap) variant.numFluxCapacitors = caps else variant.numFluxVents = vents
+            return 0
+        }
+
+        val (planCaps, planVents) = BountyFitRulesImpl.planOpReclaim(
+            variant.numFluxCapacitors,
+            variant.numFluxVents,
+            opPerUnit,
+            neededOp - opPerUnit,
+            budget - opPerUnit,
+        )
+        variant.numFluxCapacitors -= planCaps
+        variant.numFluxVents -= planVents
+        return opPerUnit + (planCaps + planVents) * opPerUnit
     }
 
     companion object {
@@ -438,6 +563,60 @@ class BountyFleetTunerImpl(
             "gamma_core" to 4,
             "beta_core" to 5,
             "alpha_core" to 6,
+        )
+
+        /**
+         * 赏金舰队 AI 核心军官技能全局优先级（高 → 低）：
+         * 操舵技术 > 相场调制 > 系统专长 > 导弹特化 > 极化装甲 > 损伤管制 > 冲击缓解 >
+         * 火控植入 > 能量精通 > 军械专长 > 目标解析 > 实弹精通 > 战斗耐力。
+         * 角色：变体技能表技能位不足时的取舍顺序，以及未登记变体军官的 fallback 组成。
+         */
+        val BOUNTY_OFFICER_SKILL_PRIORITY: List<String> = listOf(
+            "helmsmanship",
+            "field_modulation",
+            "systems_expertise",
+            "missile_specialization",
+            "polarized_armor",
+            "damage_control",
+            "impact_mitigation",
+            "gunnery_implants",
+            "energy_weapon_mastery",
+            "ordnance_expert",
+            "target_analysis",
+            "ballistic_mastery",
+            "combat_endurance",
+        )
+
+        /** 按军官等级从全局优先级表顺序取前 N 个技能（超出表长按表长截断）。 */
+        fun bountyOfficerSkills(level: Int): List<String> =
+            BOUNTY_OFFICER_SKILL_PRIORITY.take(level.coerceIn(0, BOUNTY_OFFICER_SKILL_PRIORITY.size))
+
+        /**
+         * 军官技能组成解析：变体技能表为真相来源，全局优先级表提供取舍顺序。
+         * 命中变体表：技能位 N 不小于表长则装满全表；N 不足时表内技能按全局优先级排序
+         * （不在优先级表中的技能排在后面、保持原相对顺序），取前 N 个。
+         * 未命中（null）：退回全局优先级表顺序取前 N。
+         */
+        fun resolveOfficerSkills(tableSkills: List<String>?, level: Int): List<String> {
+            if (tableSkills == null) return bountyOfficerSkills(level)
+            if (level >= tableSkills.size) return tableSkills
+            val priorityIndex = BOUNTY_OFFICER_SKILL_PRIORITY.withIndex().associate { it.value to it.index }
+            return tableSkills.withIndex()
+                .sortedWith(compareBy({ priorityIndex[it.value] ?: Int.MAX_VALUE }, { it.index }))
+                .map { it.value }
+                .take(level.coerceAtLeast(0))
+        }
+
+        /** SHU 船插 id 公共前缀（已装特殊升级的检出）。 */
+        const val SHU_ID_PREFIX: String = "specialsphmod_"
+
+        /** 具备导弹搭载能力的武器槽类型（扩展弹舱适用性等效判定）。 */
+        val MISSILE_CAPABLE_SLOT_TYPES: Set<WeaponAPI.WeaponType> = setOf(
+            WeaponAPI.WeaponType.MISSILE,
+            WeaponAPI.WeaponType.HYBRID,
+            WeaponAPI.WeaponType.COMPOSITE,
+            WeaponAPI.WeaponType.UNIVERSAL,
+            WeaponAPI.WeaponType.SYNERGY,
         )
 
         /**
