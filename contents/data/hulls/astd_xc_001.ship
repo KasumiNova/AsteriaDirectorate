@@ -152,7 +152,7 @@
       "id": "WS 013",
       "size": "SMALL",
       "type": "ENERGY",
-      "mount": "HARDPOINT",
+      "mount": "TURRET",
       "arc": 120,
       "angle": 10,
       "locations": [91.5, 25]
@@ -161,7 +161,7 @@
       "id": "WS 014",
       "size": "SMALL",
       "type": "ENERGY",
-      "mount": "HARDPOINT",
+      "mount": "TURRET",
       "arc": 120,
       "angle": -10,
       "locations": [91.5, -23]

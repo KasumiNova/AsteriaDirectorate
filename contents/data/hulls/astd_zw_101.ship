@@ -13,9 +13,9 @@
   "viewOffset": 0,
   "builtInMods": [
     "astd_lens_singularity_power",
-    "astd_nano_restoration_protocol",
     "astd_grav_space_fold",
-    "phasefield"
+    "phasefield",
+    "coherer"
   ],
   "builtInWeapons": {
     "WS0004": "astd_zw_101_bloom"

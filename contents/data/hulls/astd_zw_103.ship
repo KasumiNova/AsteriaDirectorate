@@ -13,11 +13,12 @@
   "viewOffset": 0,
   "builtInMods": [
     "astd_lens_singularity_power",
-    "astd_grav_phase_deck"
+    "astd_grav_phase_deck",
+    "phasefield"
   ],
   "builtInWings": [
-    "astd_zw_103_ion_wing",
-    "astd_zw_103_lance_wing"
+    "astd_zw_103_wing",
+    "astd_zw_103_wing"
   ],
   "builtInWeapons": {
     "WS0007": "astd_zw_103_bloom"

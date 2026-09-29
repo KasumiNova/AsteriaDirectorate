@@ -13,9 +13,9 @@
   "viewOffset": 0,
   "builtInMods": [
     "astd_arc_singularity_power",
-    "missleracks",
     "astd_plasma_armor_shield",
-    "astd_ionized_recoil_accumulator"
+    "astd_ionized_recoil_accumulator",
+    "missleracks"
   ],
   "builtInWeapons": {
     "WS0011": "astd_xc_101_bloom"
