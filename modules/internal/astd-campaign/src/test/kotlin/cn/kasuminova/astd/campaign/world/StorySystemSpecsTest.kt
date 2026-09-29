@@ -61,6 +61,77 @@ class StorySystemSpecsTest {
     }
 
     @Test
+    fun `环恒星轨道间距安全无碰撞`() {
+        // 实体碰撞半径契约（原版 data/config/custom_entities.json defaultRadius；
+        // astd_reserved_station 见本模组 contents/data/config/custom_entities.json）
+        val entityCollisionRadius = mapOf(
+            "inactive_gate" to 120f,
+            "comm_relay" to 75f,
+            "sensor_array" to 75f,
+            "nav_buoy" to 75f,
+            "station_research_remnant" to 45f,
+            "station_mining_remnant" to 45f,
+            "station_side00" to 50f,
+            "station_side02" to 50f,
+            "astd_reserved_station" to 45f,
+        )
+        // 相邻天体表面最小净空（su）：紧凑布局下仍须保证任何两颗天体不重叠
+        val minClearance = 100f
+
+        for (spec in listOf(main, starfall, aster)) {
+            // 环恒星轨道体：轨道半径 + 碰撞半径 + id（绕行星的本体轨道不参与）
+            val orbiters = mutableListOf<Triple<Float, Float, String>>()
+            for (planet in spec.planets.filter { it.orbit.focusId == spec.starId }) {
+                orbiters += Triple(planet.orbit.radius, planet.radius, planet.id)
+            }
+            for (entity in spec.entities.filter { it.orbit.focusId == spec.starId }) {
+                val collision = assertNotNull(
+                    entityCollisionRadius[entity.entityType],
+                    "${entity.id} 实体类型 ${entity.entityType} 缺少碰撞半径契约",
+                )
+                orbiters += Triple(entity.orbit.radius, collision, entity.id)
+            }
+
+            for (i in orbiters.indices) {
+                for (j in i + 1 until orbiters.size) {
+                    val (r1, c1, id1) = orbiters[i]
+                    val (r2, c2, id2) = orbiters[j]
+                    val gap = kotlin.math.abs(r1 - r2)
+                    if (gap >= c1 + c2 + minClearance) continue
+                    // 同环共轨（如三处功能设施）：按角距换算弦长判定
+                    val a1 = orbitAngleOf(spec, id1)
+                    val a2 = orbitAngleOf(spec, id2)
+                    val angleDiff = kotlin.math.abs(a1 - a2) % 360f
+                    val chord = 2.0 * r1 * kotlin.math.sin(Math.toRadians((angleDiff / 2f).toDouble()))
+                    assertTrue(
+                        chord >= c1 + c2 + minClearance,
+                        "${spec.systemId} 轨道重叠：$id1($r1) 与 $id2($r2) 间隙 $gap/弦长 $chord 过近",
+                    )
+                }
+            }
+
+            // 小行星带/环带内外缘与任意环恒星天体保持净空
+            for (belt in spec.belts.filter { it.focusId == spec.starId }) {
+                val inner = belt.orbitRadius - belt.bandWidth / 2f
+                val outer = belt.orbitRadius + belt.bandWidth / 2f
+                for ((r, c, id) in orbiters) {
+                    assertTrue(
+                        r + c + minClearance <= inner || r - c - minClearance >= outer,
+                        "${spec.systemId} 小行星带与 $id 轨道穿插（带 $inner~$outer，天体 $r）",
+                    )
+                }
+                if (spec.blackHole) {
+                    assertTrue(inner > 1400f, "${spec.systemId} 小行星带内缘须位于事件视界之外")
+                }
+            }
+        }
+    }
+
+    private fun orbitAngleOf(spec: StorySystemSpecs.SystemSpec, id: String): Float =
+        (spec.planets.firstOrNull { it.id == id }?.orbit?.angleDeg
+            ?: spec.entities.first { it.id == id }.orbit.angleDeg)
+
+    @Test
     fun `主星系实体清单符合规格`() {
         // 蓝巨星 + 兰台（宜居链 + 菀星行政部遗址 + 恒星镜）+ 洪炉/淬池（固定荒芜特征链）
         assertEquals("star_blue_giant", main.starType)

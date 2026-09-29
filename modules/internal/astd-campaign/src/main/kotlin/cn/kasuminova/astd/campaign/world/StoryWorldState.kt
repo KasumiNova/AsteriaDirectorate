@@ -3,6 +3,21 @@ package cn.kasuminova.astd.campaign.world
 import com.fs.starfarer.api.Global
 
 /**
+ * 存档世界生成版本比对结果（[StoryWorldState.compareWorldgenVersion]）。
+ */
+enum class WorldgenVersionCheck {
+
+    /** 版本键缺失：旧档首次载入（中途加入模组），需补生成并写入版本记录。 */
+    FIRST_LOAD,
+
+    /** 记录版本与当前模组版本不一致：重新校验生成，并作为后续版本数据迁移的挂点。 */
+    VERSION_CHANGED,
+
+    /** 版本一致：常规读档补齐（残缺修复）。 */
+    CURRENT,
+}
+
+/**
  * 剧情世界生成的存档持久化状态（存 sector.persistentData）。
  *
  * 职责：
@@ -45,6 +60,17 @@ class StoryWorldState {
             val created = StoryWorldState()
             pd[StoryWorldIds.PERSISTENT_STATE_KEY] = created
             return created
+        }
+
+        /**
+         * 存档世界生成版本比对（纯逻辑）：键缺失 → [WorldgenVersionCheck.FIRST_LOAD]；
+         * 与当前模组版本不同 → [WorldgenVersionCheck.VERSION_CHANGED]；一致 → [WorldgenVersionCheck.CURRENT]。
+         */
+        @JvmStatic
+        fun compareWorldgenVersion(savedVersion: String?, currentVersion: String): WorldgenVersionCheck = when {
+            savedVersion == null -> WorldgenVersionCheck.FIRST_LOAD
+            savedVersion != currentVersion -> WorldgenVersionCheck.VERSION_CHANGED
+            else -> WorldgenVersionCheck.CURRENT
         }
     }
 }

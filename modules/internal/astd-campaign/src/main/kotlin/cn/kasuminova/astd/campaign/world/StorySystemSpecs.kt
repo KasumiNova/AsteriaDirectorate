@@ -13,6 +13,10 @@ import kotlin.random.Random
  * 内容固定、计数类规格（随机荒芜/气态巨行星数量等）由种子派生：
  * 同一种子下规格完全确定。轨道半径/角度/周期均为常数表，合法性由单测约束。
  *
+ * 轨道布局为紧凑设计：环恒星轨道整体收缩（各星系最远轨道 ≤ 13500su），
+ * 槽位间距须保证相邻天体表面不重叠（单测按碰撞半径 + 安全余量校验）；
+ * 紫菀内圈受黑洞事件视界下限约束，收缩比例小于外圈。
+ *
  * 名称一律使用 i18n key（strings.json 的 world.* 段），生成侧再解析。
  */
 object StorySystemSpecs {
@@ -199,7 +203,7 @@ object StorySystemSpecs {
                         nameKey = "world.main.planet.honglu",
                         typeId = Planets.BARREN_BOMBARDED,
                         radius = 110f,
-                        orbit = OrbitSpec(star, 40f, 4500f, 100f),
+                        orbit = OrbitSpec(star, 40f, 2250f, periodForOrbit(2250f)),
                         market = MarketSpec(
                             marketId = StoryWorldIds.MARKET_HONGLU,
                             size = 1,
@@ -219,7 +223,7 @@ object StorySystemSpecs {
                         nameKey = "world.main.planet.cuichi",
                         typeId = Planets.BARREN_VENUSLIKE,
                         radius = 105f,
-                        orbit = OrbitSpec(star, 200f, 6200f, 138f),
+                        orbit = OrbitSpec(star, 200f, 3100f, periodForOrbit(3100f)),
                         market = MarketSpec(
                             marketId = StoryWorldIds.MARKET_CUICHI,
                             size = 1,
@@ -239,7 +243,7 @@ object StorySystemSpecs {
                         nameKey = "world.main.planet.lantai",
                         typeId = Planets.PLANET_TERRAN,
                         radius = 150f,
-                        orbit = OrbitSpec(star, 320f, 9500f, 211f),
+                        orbit = OrbitSpec(star, 320f, 4750f, periodForOrbit(4750f)),
                         market = MarketSpec(
                             marketId = StoryWorldIds.MARKET_LANTAI,
                             size = 1,
@@ -260,7 +264,7 @@ object StorySystemSpecs {
                     randomPlanets(
                         rnd, StoryWorldIds.SYSTEM_MAIN, star, 2..4,
                         BARREN_TYPES, BARREN_TRAITS,
-                        listOf(12000f, 14000f, 16500f, 19000f), 60f, 90..130, "barren",
+                        listOf(6000f, 7000f, 8250f, 9500f), 60f, 90..130, "barren",
                     )
                 )
                 // 随机气态巨行星 ×1~2
@@ -268,7 +272,7 @@ object StorySystemSpecs {
                     randomPlanets(
                         rnd, StoryWorldIds.SYSTEM_MAIN, star, 1..2,
                         GAS_GIANT_TYPES, GAS_GIANT_TRAITS,
-                        listOf(23000f, 27000f), 150f, 240..300, "gas",
+                        listOf(11500f, 13500f), 150f, 240..300, "gas",
                     )
                 )
             },
@@ -307,18 +311,18 @@ object StorySystemSpecs {
                         factionId = Factions.NEUTRAL,
                     )
                 )
-                addAll(objectives(star, 11000f, 10f, StoryWorldIds.MAIN_COMM_RELAY, StoryWorldIds.MAIN_SENSOR_ARRAY, StoryWorldIds.MAIN_NAV_BUOY))
+                addAll(objectives(star, 5500f, 10f, StoryWorldIds.MAIN_COMM_RELAY, StoryWorldIds.MAIN_SENSOR_ARRAY, StoryWorldIds.MAIN_NAV_BUOY))
                 add(
                     EntitySpec(
                         id = StoryWorldIds.MAIN_GATE,
                         nameKey = null,
                         entityType = Entities.INACTIVE_GATE,
-                        orbit = OrbitSpec(star, 70f, 13500f, 300f),
+                        orbit = OrbitSpec(star, 70f, 6400f, periodForOrbit(6400f)),
                         factionId = Factions.NEUTRAL,
                     )
                 )
             },
-            belts = listOf(BeltSpec(star, 7800f, 600f, 240, 173f)),
+            belts = listOf(BeltSpec(star, 3900f, 600f, 240, periodForOrbit(3900f))),
         )
     }
 
@@ -341,7 +345,7 @@ object StorySystemSpecs {
                         nameKey = "world.starfall.planet.duanyuan",
                         typeId = Conditions.JUNGLE,
                         radius = 140f,
-                        orbit = OrbitSpec(star, 60f, 7000f, 156f),
+                        orbit = OrbitSpec(star, 60f, 3500f, periodForOrbit(3500f)),
                         market = MarketSpec(
                             marketId = StoryWorldIds.MARKET_DUANYUAN,
                             size = 1,
@@ -361,7 +365,7 @@ object StorySystemSpecs {
                     randomPlanets(
                         rnd, StoryWorldIds.SYSTEM_STARFALL, star, 1..3,
                         BARREN_TYPES, BARREN_TRAITS,
-                        listOf(9500f, 11500f, 13500f), 100f, 90..130, "barren",
+                        listOf(4800f, 5800f, 6800f), 100f, 90..130, "barren",
                     )
                 )
                 // 随机气态巨行星 ×1~2
@@ -369,7 +373,7 @@ object StorySystemSpecs {
                     randomPlanets(
                         rnd, StoryWorldIds.SYSTEM_STARFALL, star, 1..2,
                         GAS_GIANT_TYPES, GAS_GIANT_TRAITS,
-                        listOf(17000f, 20000f), 200f, 250..310, "gas",
+                        listOf(8600f, 10000f), 200f, 250..310, "gas",
                     )
                 )
             },
@@ -397,14 +401,14 @@ object StorySystemSpecs {
                         id = StoryWorldIds.STARFALL_STATION_RESERVE,
                         nameKey = "world.starfall.station.reserve",
                         entityType = "astd_reserved_station",
-                        orbit = OrbitSpec(star, 290f, 15500f, 344f),
+                        orbit = OrbitSpec(star, 290f, 7850f, periodForOrbit(7850f)),
                         factionId = Factions.NEUTRAL,
                     )
                 )
                 addAll(
                     objectives(
                         star,
-                        15000f,
+                        7300f,
                         45f,
                         StoryWorldIds.STARFALL_COMM_RELAY,
                         StoryWorldIds.STARFALL_SENSOR_ARRAY,
@@ -416,12 +420,12 @@ object StorySystemSpecs {
                         id = StoryWorldIds.STARFALL_GATE,
                         nameKey = null,
                         entityType = Entities.INACTIVE_GATE,
-                        orbit = OrbitSpec(star, 330f, 18000f, 400f),
+                        orbit = OrbitSpec(star, 330f, 9300f, periodForOrbit(9300f)),
                         factionId = Factions.NEUTRAL,
                     )
                 )
             },
-            belts = listOf(BeltSpec(star, 8300f, 600f, 220, 184f)),
+            belts = listOf(BeltSpec(star, 4150f, 600f, 220, periodForOrbit(4150f))),
         )
     }
 
@@ -444,7 +448,7 @@ object StorySystemSpecs {
                     randomPlanets(
                         rnd, StoryWorldIds.SYSTEM_ASTER, star, 2..4,
                         FROZEN_TYPES, FROZEN_TRAITS,
-                        listOf(6000f, 6800f, 7600f, 8400f), 80f, 80..120, "frozen",
+                        listOf(4000f, 4350f, 4700f, 5050f), 80f, 80..120, "frozen",
                         fixedTraits = listOf(Conditions.VERY_COLD, Conditions.DARK),
                     )
                 )
@@ -453,7 +457,7 @@ object StorySystemSpecs {
                     randomPlanets(
                         rnd, StoryWorldIds.SYSTEM_ASTER, star, 1..2,
                         BARREN_TYPES, BARREN_TRAITS,
-                        listOf(9200f, 10000f), 300f, 90..130, "barren",
+                        listOf(5400f, 5760f), 300f, 90..130, "barren",
                     )
                 )
                 // 随机气态巨行星 ×2~4（固定黑暗）
@@ -461,7 +465,7 @@ object StorySystemSpecs {
                     randomPlanets(
                         rnd, StoryWorldIds.SYSTEM_ASTER, star, 2..4,
                         GAS_GIANT_TYPES, GAS_GIANT_TRAITS,
-                        listOf(11000f, 12500f, 14000f, 15500f), 140f, 240..300, "gas",
+                        listOf(6300f, 7000f, 7700f, 8400f), 140f, 240..300, "gas",
                         fixedTraits = listOf(Conditions.DARK),
                     )
                 )
@@ -473,7 +477,7 @@ object StorySystemSpecs {
                         id = StoryWorldIds.ASTER_STATION_SHIGUANG,
                         nameKey = "world.aster.station.shiguang",
                         entityType = "station_side02",
-                        orbit = OrbitSpec(star, 190f, 2400f, 53f),
+                        orbit = OrbitSpec(star, 190f, 1500f, periodForOrbit(1500f)),
                         factionId = Factions.DERELICT,
                         market = MarketSpec(
                             marketId = StoryWorldIds.MARKET_SHIGUANG,
@@ -494,7 +498,7 @@ object StorySystemSpecs {
                         id = StoryWorldIds.ASTER_STATION_MAIN,
                         nameKey = "world.aster.station.main",
                         entityType = Entities.STATION_RESEARCH_REMNANT,
-                        orbit = OrbitSpec(star, 30f, 4200f, 93f),
+                        orbit = OrbitSpec(star, 30f, 2300f, periodForOrbit(2300f)),
                         factionId = Factions.DERELICT,
                     )
                 )
@@ -503,7 +507,7 @@ object StorySystemSpecs {
                         id = StoryWorldIds.ASTER_STATION_DOCKYARD,
                         nameKey = "world.aster.station.dockyard",
                         entityType = Entities.STATION_MINING_REMNANT,
-                        orbit = OrbitSpec(star, 150f, 4600f, 102f),
+                        orbit = OrbitSpec(star, 150f, 2550f, periodForOrbit(2550f)),
                         factionId = Factions.DERELICT,
                     )
                 )
@@ -512,7 +516,7 @@ object StorySystemSpecs {
                         id = StoryWorldIds.ASTER_STATION_SINGULARITY,
                         nameKey = "world.aster.station.singularity",
                         entityType = "astd_reserved_station",
-                        orbit = OrbitSpec(star, 250f, 5000f, 111f),
+                        orbit = OrbitSpec(star, 250f, 2800f, periodForOrbit(2800f)),
                         factionId = Factions.NEUTRAL,
                     )
                 )
@@ -521,24 +525,24 @@ object StorySystemSpecs {
                         id = StoryWorldIds.ASTER_STATION_DEFENSE,
                         nameKey = "world.aster.station.defense",
                         entityType = "astd_reserved_station",
-                        orbit = OrbitSpec(star, 340f, 5400f, 120f),
+                        orbit = OrbitSpec(star, 340f, 3050f, periodForOrbit(3050f)),
                         factionId = Factions.NEUTRAL,
                     )
                 )
-                addAll(objectives(star, 17000f, 15f, StoryWorldIds.ASTER_COMM_RELAY, StoryWorldIds.ASTER_SENSOR_ARRAY, StoryWorldIds.ASTER_NAV_BUOY))
+                addAll(objectives(star, 8900f, 15f, StoryWorldIds.ASTER_COMM_RELAY, StoryWorldIds.ASTER_SENSOR_ARRAY, StoryWorldIds.ASTER_NAV_BUOY))
                 add(
                     EntitySpec(
                         id = StoryWorldIds.ASTER_GATE,
                         nameKey = null,
                         entityType = Entities.INACTIVE_GATE,
-                        orbit = OrbitSpec(star, 220f, 19000f, 436f),
+                        orbit = OrbitSpec(star, 220f, 9200f, periodForOrbit(9200f)),
                         factionId = Factions.NEUTRAL,
                     )
                 )
             },
             belts = listOf(
-                BeltSpec(star, 3700f, 400f, 160, 82f),
-                BeltSpec(star, 5700f, 500f, 200, 127f),
+                BeltSpec(star, 1900f, 400f, 160, periodForOrbit(1900f)),
+                BeltSpec(star, 3500f, 500f, 200, periodForOrbit(3500f)),
             ),
         )
     }

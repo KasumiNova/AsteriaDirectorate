@@ -132,6 +132,12 @@ object StoryWorldIds {
     /** Sector persistentData key：剧情世界生成状态（[StoryWorldState]）。 */
     const val PERSISTENT_STATE_KEY: String = "astd_story_world_state"
 
+    /** 模组 id（运行时经 ModSpec 读取版本号用）。 */
+    const val ASTD_MOD_ID: String = "asteria_directorate"
+
+    /** Sector persistentData key：世界生成版本号（String，读档比对与后续数据迁移挂点）。 */
+    const val PERSISTENT_WORLDGEN_VERSION_KEY: String = "astd_worldgen_version"
+
     /** IndEvo（工业革命）mod id（软依赖检测用）。 */
     const val INDEVO_MOD_ID: String = "IndEvo"
 
