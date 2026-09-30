@@ -1,6 +1,11 @@
 package cn.kasuminova.astd.combat.hullmods.arc
 
 import cn.kasuminova.astd.combat.hullmods.base.ASTDHullModTooltipRenderer
+import cn.kasuminova.astd.api.render.BloomFlareVfx
+import cn.kasuminova.astd.impl.render.ASTDColor
+import cn.kasuminova.astd.impl.render.BloomFlareSpec
+import cn.kasuminova.astd.impl.render.BoxFlareStyle
+import cn.kasuminova.astd.renderer.effect.explosion.BloomFlareVfxImpl
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseHullMod
 import com.fs.starfarer.api.combat.BeamAPI
@@ -38,14 +43,24 @@ class ASTDIonizedRecoilAccumulatorHullMod : BaseHullMod() {
         private const val HIT_STRENGTH_BASE_FLUX_FRACTION = 0.02f
         private const val MIN_HIT_STRENGTH_PROC_MULT = 0.10f
         private const val MAX_HIT_STRENGTH_PROC_MULT = 3f
-        private const val ARC_THICKNESS = 27f
-        private const val ARC_VISUAL_THICKNESS = 18f
-        private const val ARC_CORE_WIDTH = 9f
+        private const val ARC_THICKNESS = 54f
+        private const val ARC_VISUAL_THICKNESS = 36f
+        private const val ARC_CORE_WIDTH = 18f
         private const val RECOIL_LENS_FLARE_SPACING = 150f
         private const val RECOIL_LENS_FLARE_RANDOM_OFFSET = 50f
 
+        /** 电弧终点十字辉星：两枚光柱 90° 交叉，长轴 75su 扩散至 150su，短轴随长轴等比。 */
+        private const val ENDPOINT_FLARE_DURATION = 0.6f
+        private const val ENDPOINT_CROSS_LEN_START = 75f
+        private const val ENDPOINT_CROSS_LEN_END = 150f
+        private const val ENDPOINT_CROSS_ASPECT = 0.1f
+
         private val ARC_FRINGE = Color(90, 210, 255, 220)
         private val ARC_CORE = Color(245, 252, 255, 240)
+
+        /** 终点辉星配色（与电弧同族，AARRGGBB）。 */
+        private val ENDPOINT_FLARE_CORE = ASTDColor(0xF0F5FCFF)
+        private val ENDPOINT_FLARE_FRINGE = ASTDColor(0xDC5AD2FF)
 
         private val THEME = ASTDHullModTooltipRenderer.Theme(
             nameColor = Color(160, 236, 255),
@@ -93,6 +108,9 @@ class ASTDIonizedRecoilAccumulatorHullMod : BaseHullMod() {
     private class IonizedRecoilListener(private val ship: ShipAPI) : DamageTakenModifier, AdvanceableListener {
         private var cooldown = 0f
 
+        /** 绽放辉星通用 API（接口持有实现，AGENTS.md 面向接口口径）。 */
+        private val bloomFlare: BloomFlareVfx = BloomFlareVfxImpl
+
         override fun advance(amount: Float) {
             cooldown = (cooldown - amount).coerceAtLeast(0f)
             if (ship.isHulk || !ship.isAlive) ship.removeListener(this)
@@ -113,8 +131,7 @@ class ASTDIonizedRecoilAccumulatorHullMod : BaseHullMod() {
             if (converted <= 1f) return null
 
             cooldown = COOLDOWN_SECONDS
-            val hardFluxLevel = hardFluxLevel()
-            discharge(point, converted, hardFluxLevel, boostLevel)
+            discharge(point, converted, boostLevel)
             return null
         }
 
@@ -127,11 +144,6 @@ class ASTDIonizedRecoilAccumulatorHullMod : BaseHullMod() {
                 0f
             }
             return armor > 1f
-        }
-
-        private fun hardFluxLevel(): Float {
-            val tracker = ship.fluxTracker
-            return if (tracker.maxFlux <= 0f) 0f else (tracker.hardFlux / tracker.maxFlux).coerceIn(0f, 1f)
         }
 
         private fun fluxLevel(): Float {
@@ -151,54 +163,36 @@ class ASTDIonizedRecoilAccumulatorHullMod : BaseHullMod() {
             return converted
         }
 
-        private fun discharge(from: Vector2f, converted: Float, hardFluxLevel: Float, boostLevel: Float) {
+        private fun discharge(from: Vector2f, converted: Float, boostLevel: Float) {
             val engine = Global.getCombatEngine() ?: return
             val range = effectiveRecoilRange()
             val target = chooseTarget(engine, range)
             val damage = converted * (1f + boostLevel)
             val emp = converted * EMP_MULT * (1f + boostLevel)
-            val pierceChance = (0.15f + 0.70f * hardFluxLevel).coerceIn(0f, 0.95f)
             Global.getSoundPlayer().playSound("system_emp_emitter_impact", 1f, 1f, from, ship.velocity)
 
             if (target != null) {
                 val to = targetPoint(target)
-                val params = arcParams()
-                val arc = if (Math.random().toFloat() < pierceChance) {
-                    engine.spawnEmpArcPierceShields(
-                        ship,
-                        from,
-                        ship,
-                        target,
-                        DamageType.ENERGY,
-                        damage,
-                        emp,
-                        range,
-                        null,
-                        ARC_THICKNESS,
-                        ARC_FRINGE,
-                        ARC_CORE,
-                        params
-                    )
-                } else {
-                    engine.spawnEmpArc(
-                        ship,
-                        from,
-                        ship,
-                        target,
-                        DamageType.ENERGY,
-                        damage,
-                        emp,
-                        range,
-                        null,
-                        ARC_THICKNESS,
-                        ARC_FRINGE,
-                        ARC_CORE,
-                        params
-                    )
-                }
+                // 常规电弧（不再穿盾）：命中即按路径正常结算护盾/装甲伤害
+                val arc = engine.spawnEmpArc(
+                    ship,
+                    from,
+                    ship,
+                    target,
+                    DamageType.ENERGY,
+                    damage,
+                    emp,
+                    range,
+                    null,
+                    ARC_THICKNESS,
+                    ARC_FRINGE,
+                    ARC_CORE,
+                    arcParams()
+                )
                 arc.coreWidthOverride = ARC_CORE_WIDTH
                 arc.setSingleFlickerMode(true)
                 emitRecoilArcPathFlares(engine, from, to, ARC_FRINGE, ARC_CORE)
+                emitEndpointCrossFlare(engine, from, to)
             } else {
                 val angle = MathUtils.getRandomNumberInRange(0f, 360f)
                 val dist = MathUtils.getRandomNumberInRange(ship.collisionRadius * 0.45f, ship.collisionRadius * 0.95f)
@@ -206,7 +200,29 @@ class ASTDIonizedRecoilAccumulatorHullMod : BaseHullMod() {
                 val to = Vector2f(from.x + cos(rad).toFloat() * dist, from.y + sin(rad).toFloat() * dist)
                 engine.spawnEmpArcVisual(from, ship, to, ship, ARC_VISUAL_THICKNESS, ARC_FRINGE, ARC_CORE, arcParams()).setSingleFlickerMode(true)
                 emitRecoilArcPathFlares(engine, from, to, ARC_FRINGE, ARC_CORE)
+                emitEndpointCrossFlare(engine, from, to)
             }
+        }
+
+        /** 电弧终点十字辉星：两枚光柱沿电弧路径方向 90° 交叉，75su 扩散至 150su 并渐隐。 */
+        private fun emitEndpointCrossFlare(engine: CombatEngineAPI, from: Vector2f, to: Vector2f) {
+            val facingDeg = Math.toDegrees(kotlin.math.atan2((to.y - from.y).toDouble(), (to.x - from.x).toDouble())).toFloat()
+            bloomFlare.spawn(
+                engine, Vector2f(to), ENDPOINT_FLARE_DURATION,
+                listOf(
+                    BloomFlareSpec(
+                        BoxFlareStyle.SMOOTH_DISC,
+                        ENDPOINT_CROSS_LEN_START, ENDPOINT_CROSS_LEN_END, ENDPOINT_CROSS_ASPECT, facingDeg,
+                        ENDPOINT_FLARE_CORE, ENDPOINT_FLARE_FRINGE,
+                    ),
+                    BloomFlareSpec(
+                        BoxFlareStyle.SMOOTH_DISC,
+                        ENDPOINT_CROSS_LEN_START, ENDPOINT_CROSS_LEN_END, ENDPOINT_CROSS_ASPECT, facingDeg + 90f,
+                        ENDPOINT_FLARE_CORE, ENDPOINT_FLARE_FRINGE,
+                    ),
+                ),
+                timerFadeIn = 0.05f, timerFull = 0.30f, timerFadeOut = 0.25f,
+            )
         }
 
         private fun procChance(param: Any?, damage: DamageAPI, fluxLevel: Float): Float {

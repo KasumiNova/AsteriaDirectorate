@@ -197,8 +197,6 @@
 		"ui.hullmod.ionized_recoil_accumulator.value.volley": "转换当前硬辐能3%为等额软辐能；系统启动期间翻倍",
 		"ui.hullmod.ionized_recoil_accumulator.attr.damage": "反冲电弧",
 		"ui.hullmod.ionized_recoil_accumulator.value.damage": "电弧伤害=转换量100%；EMP=转换量200%；射程受能量射弹射程影响",
-		"ui.hullmod.ionized_recoil_accumulator.attr.pierce": "护盾击穿",
-		"ui.hullmod.ionized_recoil_accumulator.value.pierce": "按硬辐能水平获得15%~85%概率",
 		"ui.hullmod.ionized_recoil_accumulator.note": "电弧优先打击武器或引擎，不攻击友军。",
 		"ui.hullmod.ionized_recoil_accumulator.section.effect": "效果",
 		"ui.hullmod.ionized_recoil_accumulator.line.proc_intro": "舰船护盾和装甲受到伤害时，会根据舰船辐能水平和伤害量概率产生电弧打击周围目标。",
@@ -215,7 +213,7 @@
 		"ui.hullmod.ionized_recoil_accumulator.section.flux_damage": "电弧打击",
 		"ui.hullmod.ionized_recoil_accumulator.line.flux_conversion": "触发电弧打击时，会将自身当前的 3% 硬辐能转换为等额软辐能，对 800su 范围（受到能量武器射程的影响）内的非导弹目标造成能量伤害。",
 		"ui.hullmod.ionized_recoil_accumulator.line.damage": "伤害为转换的硬辐能量的 100% 的能量伤害和 200% EMP 伤害。",
-		"ui.hullmod.ionized_recoil_accumulator.line.targeting": "打击优先随机选择未下线的武器或引擎。如果击中护盾，则根据舰船自身的辐能水平概率穿透。",
+		"ui.hullmod.ionized_recoil_accumulator.line.targeting": "打击优先随机选择未下线的武器或引擎。",
 		"ui.hullmod.ionized_recoil_accumulator.line.cooldown": "打击效果具有 1s 的固定冷却时间。",
 
 		"ui.hullmod.arc_advanced_targeting_system.summary": "<param:#FF9600:菀星设计局-星坠> 目标定位与武器管线深度集成。列星的每一门武器都在同一拍点上开火。",
