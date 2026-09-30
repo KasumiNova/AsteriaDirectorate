@@ -5,11 +5,13 @@ import cn.kasuminova.astd.campaign.world.StoryWorldGenerator.ensureChapter2Syste
 import cn.kasuminova.astd.internal.i18n.I18n
 import cn.kasuminova.astd.internal.i18n.I18n.Categories
 import com.fs.starfarer.api.Global
+import com.fs.starfarer.api.campaign.CustomCampaignEntityAPI
 import com.fs.starfarer.api.campaign.PlanetAPI
 import com.fs.starfarer.api.campaign.SectorAPI
 import com.fs.starfarer.api.campaign.SectorEntityToken
 import com.fs.starfarer.api.campaign.StarSystemAPI
 import com.fs.starfarer.api.campaign.econ.MarketAPI
+import com.fs.starfarer.api.impl.campaign.ids.Entities
 import com.fs.starfarer.api.impl.campaign.ids.Terrain
 import com.fs.starfarer.api.impl.campaign.procgen.StarGenDataSpec
 import com.fs.starfarer.api.impl.campaign.terrain.StarCoronaTerrainPlugin
@@ -53,6 +55,56 @@ object StoryWorldGenerator {
             log.error("[ASTD] 遗址星系生成失败", t)
         }
         ensureMarketIndustries(sector)
+        ensureStationEntityTypes(sector)
+    }
+
+    /** 旧版可打捞遗迹站实体类型（迁移来源）。 */
+    private val LEGACY_SALVAGEABLE_STATION_TYPES = setOf(
+        Entities.STATION_RESEARCH_REMNANT,
+        Entities.STATION_MINING_REMNANT,
+    )
+
+    /**
+     * 既有存档热修复：旧版本直接复用原版 station_research/mining_remnant 类型（带 salvageable 标记），
+     * 玩家打捞后实体会被原版打捞流程转换为碎片区而消失；现改为模组自定义的不可打捞类型，
+     * 读档时对类型不匹配的遗迹站按规格原地重建（保留 id/名称/轨道角）。
+     */
+    private fun ensureStationEntityTypes(sector: SectorAPI) {
+        val specs = listOf(
+            StorySystemSpecs.mainSystemSpec(sectorSeed(sector, SEED_SALT_MAIN)),
+            StorySystemSpecs.starfallSystemSpec(sectorSeed(sector, SEED_SALT_CH2)),
+            StorySystemSpecs.asterSystemSpec(sectorSeed(sector, SEED_SALT_CH2)),
+        )
+        for (spec in specs) {
+            val system = sector.getEntityById(spec.starId)?.containingLocation as? StarSystemAPI ?: continue
+            for (entitySpec in spec.entities) {
+                val existing = system.getEntityById(entitySpec.id) as? CustomCampaignEntityAPI ?: continue
+                if (existing.customEntityType == entitySpec.entityType) continue
+                if (existing.customEntityType !in LEGACY_SALVAGEABLE_STATION_TYPES) {
+                    log.error(
+                        "[ASTD] 剧情站点 ${entitySpec.id} 实体类型异常（${existing.customEntityType}，" +
+                                "期望 ${entitySpec.entityType}），非旧版可打捞类型，跳过迁移",
+                    )
+                    continue
+                }
+                val focus = system.getEntityById(entitySpec.orbit.focusId)
+                if (focus == null) {
+                    log.error("[ASTD] 剧情站点 ${entitySpec.id} 轨道焦点 ${entitySpec.orbit.focusId} 缺失，跳过迁移")
+                    continue
+                }
+                val name = existing.name
+                val angle = existing.circularOrbitAngle
+                system.removeEntity(existing)
+                val recreated = system.addCustomEntity(
+                    entitySpec.id, name, entitySpec.entityType, entitySpec.factionId,
+                )
+                recreated.setCircularOrbitPointingDown(
+                    focus, angle, entitySpec.orbit.radius, entitySpec.orbit.periodDays,
+                )
+                for (tag in entitySpec.tags) recreated.addTag(tag)
+                log.info("[ASTD] 剧情站点 ${entitySpec.id} 已迁移为不可打捞类型 ${entitySpec.entityType}（旧档热修复）")
+            }
+        }
     }
 
     /**

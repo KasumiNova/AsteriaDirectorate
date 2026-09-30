@@ -85,11 +85,11 @@ class StorySystemSpecsTest {
             "comm_relay" to 75f,
             "sensor_array" to 75f,
             "nav_buoy" to 75f,
-            "station_research_remnant" to 45f,
-            "station_mining_remnant" to 45f,
             "station_side00" to 50f,
             "station_side02" to 50f,
             "astd_reserved_station" to 45f,
+            "astd_station_research_remnant" to 45f,
+            "astd_station_mining_remnant" to 45f,
         )
         // 相邻天体表面最小净空（su）：紧凑布局下仍须保证任何两颗天体不重叠
         val minClearance = 100f

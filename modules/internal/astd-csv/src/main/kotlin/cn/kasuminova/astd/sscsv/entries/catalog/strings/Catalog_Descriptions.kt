@@ -85,6 +85,8 @@ object Desc_astd_ice_shard_mirv : LocalizedDescription("astd_ice_shard_mirv", "W
 object Desc_astd_ice_shard_mirv_pod : LocalizedDescription("astd_ice_shard_mirv_pod", "WEAPON", notesId = "astd_ice_shard_mirv")
 
 object Desc_astd_reserved_station : LocalizedDescription("astd_reserved_station", "CUSTOM")
+object Desc_astd_station_research_remnant : LocalizedDescription("astd_station_research_remnant", "CUSTOM")
+object Desc_astd_station_mining_remnant : LocalizedDescription("astd_station_mining_remnant", "CUSTOM")
 
 // 制式（量产）AI 核心物品描述
 object Desc_astd_ai_core_g : LocalizedDescription("astd_ai_core_g", "RESOURCE")

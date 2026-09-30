@@ -392,7 +392,7 @@ object StorySystemSpecs {
                     EntitySpec(
                         id = StoryWorldIds.STARFALL_STATION_MAIN,
                         nameKey = "world.starfall.station.main",
-                        entityType = Entities.STATION_RESEARCH_REMNANT,
+                        entityType = "astd_station_research_remnant",
                         orbit = OrbitSpec(StoryWorldIds.STARFALL_PLANET_DUANYUAN, 20f, 590f, 24f),
                         factionId = Factions.DERELICT,
                     )
@@ -401,7 +401,7 @@ object StorySystemSpecs {
                     EntitySpec(
                         id = StoryWorldIds.STARFALL_STATION_DOCKYARD,
                         nameKey = "world.starfall.station.dockyard",
-                        entityType = Entities.STATION_MINING_REMNANT,
+                        entityType = "astd_station_mining_remnant",
                         orbit = OrbitSpec(StoryWorldIds.STARFALL_PLANET_DUANYUAN, 200f, 640f, 25f),
                         factionId = Factions.DERELICT,
                     )
@@ -508,7 +508,7 @@ object StorySystemSpecs {
                     EntitySpec(
                         id = StoryWorldIds.ASTER_STATION_MAIN,
                         nameKey = "world.aster.station.main",
-                        entityType = Entities.STATION_RESEARCH_REMNANT,
+                        entityType = "astd_station_research_remnant",
                         orbit = OrbitSpec(star, 30f, 2300f, periodForOrbit(2300f)),
                         factionId = Factions.DERELICT,
                     )
@@ -517,7 +517,7 @@ object StorySystemSpecs {
                     EntitySpec(
                         id = StoryWorldIds.ASTER_STATION_DOCKYARD,
                         nameKey = "world.aster.station.dockyard",
-                        entityType = Entities.STATION_MINING_REMNANT,
+                        entityType = "astd_station_mining_remnant",
                         orbit = OrbitSpec(star, 150f, 2550f, periodForOrbit(2550f)),
                         factionId = Factions.DERELICT,
                     )
