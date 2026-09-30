@@ -94,6 +94,14 @@ class BountyFleetTuningTest {
     }
 
     @Test
+    fun `stock 变体回溯优先取 originalVariant`() {
+        // 充气重洗后的 REFIT 变体：真实 stock id 在 originalVariant
+        assertEquals("astd_xc_101_Standard", BountyFleetTunerImpl.stockVariantIdOf("astd_xc_101_Standard", "fleet_123_0"))
+        // 未重洗变体：originalVariant 为空，直接用 hullVariantId
+        assertEquals("astd_zw_101_Standard", BountyFleetTunerImpl.stockVariantIdOf(null, "astd_zw_101_Standard"))
+    }
+
+    @Test
     fun `模组核心技能适配保留特殊技能并按变体技能表等量替换`() {
         // SMS Alpha 拟核组成（7 技能，1 特殊）：特殊技能保留在最前，其余 6 位按变体表取舍，总量不变
         val alphaLike = listOf(

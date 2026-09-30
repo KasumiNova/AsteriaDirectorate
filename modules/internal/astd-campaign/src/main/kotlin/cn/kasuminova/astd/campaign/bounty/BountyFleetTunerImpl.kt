@@ -42,12 +42,12 @@ class BountyFleetTunerImpl(
 
         val bountyKey = bountyKeyOf(fleet)
         val poolConfig = BountyPoolConfig.forBountyKey(bountyKey)
+        refreshVariants(fleet)
         replaceExcludedEscorts(fleet)
         fillToMaxFleetSize(fleet, poolConfig)
         enforceHalfAstd(fleet, poolConfig)
         reorderFleet(fleet)
         assignCrew(fleet, bountyKey)
-        protectVariants(fleet)
         installExtraFittings(fleet)
 
         fleet.fleetData.setSyncNeeded()
@@ -380,24 +380,37 @@ class BountyFleetTunerImpl(
     }
 
     /**
-     * 变体防护：全体舰船成员克隆变体并打 no_autofit。
-     * 赏金舰队挂 ML_bounty 虚拟势力，fleet inflater 会把不认识的装配重洗成空壳
-     * （余晖 stock variant 空装配实机案例），克隆 + no_autofit 是原版标准防护。
+     * 变体修复与防护（全舰队最先执行）。
+     * 赏金舰队的 inflater 复制自增援舰队，其势力 knownWeapons/knownFighters 为空：
+     * 创建时充气（DefaultFleetInflater 空池 doFit + DModManager.setDHull）会把全舰武器/舰载机
+     * 重洗为空壳并附加 D 插，且充气早于本后处理（情报面板在暂停期创建舰队，扫描未及运行），
+     * 原「克隆现状 + no_autofit」只能防二次损伤、无法修复已发生的重洗。
+     * 此处统一以 stock 变体（originalVariant 优先、退化 hullVariantId）重新克隆装配，修复充气损伤，
+     * 打 no_autofit 并摘除舰队 inflater，阻断后续 inflate/deflate 周期的二次损伤。
+     * 旗舰的 always_recoverable 为 MagicLib 运行时附加 tag，stock 克隆不含，需随现状保留。
      */
-    private fun protectVariants(fleet: CampaignFleetAPI) {
+    private fun refreshVariants(fleet: CampaignFleetAPI) {
         for (member in fleet.fleetData.membersListCopy) {
-            if (member.isFighterWing) continue
-            val cloned = member.variant.clone()
+            val current = member.variant
+            val stockId = stockVariantIdOf(current.originalVariant, current.hullVariantId)
+            val stock = Global.getSettings().getVariant(stockId)
+            if (stock == null) {
+                log.warn("[ASTD] 赏金舰队成员 ${member.hullId} 变体无法回溯 stock（$stockId），按现状克隆防护")
+            }
+            val cloned = (stock ?: current).clone()
+            if (current.hasTag(ALWAYS_RECOVERABLE_TAG)) cloned.addTag(ALWAYS_RECOVERABLE_TAG)
             cloned.addTag("no_autofit")
             member.setVariant(cloned, false, false)
         }
+        // 全部成员已装配合格且带 no_autofit，inflater 只会制造空池重洗与 D 插，直接摘除
+        fleet.setInflater(null)
     }
 
     /**
      * 额外装配：每艘非民用舰船成员依次处理 SHU 软联动加权安装、SMod 内插（统一优先级）、
      * 余 OP 普通船插填充（不足时按舰级预算拆辐能寄存器/耗散通道回收 OP）。
      * SHU 先于 SMod：避免 SMod 内插的强化护盾被等离子充能护盾拆掉而名额不回填。
-     * 战斗机联队显式跳过（protectVariants 未克隆联队 variant，写入会外溢共享 stock 实例）。
+     * 战斗机联队显式跳过：SHU/SMod/填充均为舰船船插件，不适用于联队变体。
      */
     private fun installExtraFittings(fleet: CampaignFleetAPI) {
         val neutralStats = Global.getFactory().createPerson().stats
@@ -409,7 +422,7 @@ class BountyFleetTunerImpl(
         for (member in fleet.fleetData.membersListCopy) {
             if (member.isCivilian || member.isFighterWing) continue
             val hull = member.hullSpec
-            // protectVariants 已完成克隆与 no_autofit，可直接内插
+            // refreshVariants 已完成克隆与 no_autofit，可直接内插
             val variant = member.variant
             val phase = hull.isPhase
             val hasShield = hull.shieldType != ShieldAPI.ShieldType.NONE
@@ -574,6 +587,16 @@ class BountyFleetTunerImpl(
         const val CORES_MEMKEY_PREFIX: String = "\$astd_bounty_cores_"
 
         const val UNIQUE_HULL_TAG: String = "astd_unique"
+
+        /** MagicLib 运行时附加于旗舰变体的可回收 tag（refreshVariants 从 stock 重克隆时需随现状保留）。 */
+        const val ALWAYS_RECOVERABLE_TAG: String = "always_recoverable"
+
+        /**
+         * 成员的 stock 变体 id 解析：充气重洗后的 REFIT 变体 id 是 fleet 派生临时 id，
+         * 真实 stock id 在 originalVariant；未重洗变体 originalVariant 为空，直接用 hullVariantId。
+         */
+        fun stockVariantIdOf(originalVariant: String?, hullVariantId: String): String =
+            originalVariant ?: hullVariantId
 
         /** 发布范围外舰体的显式排除清单（与 astd_unique tag 并用的双保险：tag 漏标时仍然生效）。 */
         val EXCLUDED_HULL_IDS: Set<String> = setOf("astd_zw_001", "astd_xc_104")
