@@ -1,5 +1,6 @@
 package cn.kasuminova.astd.combat.hullmods.arc
 
+import cn.kasuminova.astd.combat.hullmods.HullmodIncompatibility
 import cn.kasuminova.astd.combat.hullmods.base.ASTDHullModTooltipRenderer
 import cn.kasuminova.astd.internal.i18n.I18n
 import com.fs.starfarer.api.Global
@@ -13,7 +14,6 @@ import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.combat.ShipVariantAPI
 import com.fs.starfarer.api.combat.listeners.AdvanceableListener
 import com.fs.starfarer.api.combat.listeners.DamageTakenModifier
-import com.fs.starfarer.api.impl.campaign.ids.HullMods
 import com.fs.starfarer.api.ui.TooltipMakerAPI
 import com.fs.starfarer.api.util.Misc
 import org.lazywizard.lazylib.MathUtils
@@ -24,7 +24,9 @@ import kotlin.math.abs
 class ASTDPlasmaArmorShieldHullMod : BaseHullMod() {
 
     companion object {
-        private val FORBIDDEN_HULLMOD_IDS = setOf(HullMods.SHIELD_SHUNT, HullMods.HARDENED_SHIELDS)
+        /** 禁装船插列表：真相来源 [HullmodIncompatibility]。 */
+        private val FORBIDDEN_HULLMOD_IDS: Set<String> =
+            HullmodIncompatibility.forbiddenByController(ASTDArcProductionShipIds.HULLMOD_PLASMA_ARMOR_SHIELD)
         private const val MAX_ARMOR_PENALTY_FRACTION = 0.50f
         private const val SPIKE_THRESHOLD_MAX_FLUX_FRACTION = 0.05f
         private const val SPIKE_EXCESS_DAMAGE_MULT = 0.50f

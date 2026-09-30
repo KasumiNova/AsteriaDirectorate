@@ -32,7 +32,10 @@ description: "船插互斥/禁装实现规范：当内置船插或特殊舰体�
 >   （ShipFactory 快照迭代，安全）；
 > - 战役侧由 stripper 自注册的 transient 每帧 drainer 兜底（装配界面改动下一帧生效）。
 
-在控制方船插中集中定义禁止列表，并在船插内委托 stripper：
+在控制方船插中集中定义禁止列表，并在船插内委托 stripper。禁止列表的唯一真相来源是
+`cn.kasuminova.astd.combat.hullmods.HullmodIncompatibility`（控制方 id → 禁装集合），
+船插的 strip 列表与赏金装配管线（BountyFleetTunerImpl 候选过滤）都必须从它取数，
+禁止在船插内另写一份字面量集合：
 
 ```kotlin
 private val FORBIDDEN_HULLMOD_IDS = setOf(HullMods.SHIELD_SHUNT)

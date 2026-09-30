@@ -1,11 +1,11 @@
 package cn.kasuminova.astd.combat.hullmods.base
 
+import cn.kasuminova.astd.combat.hullmods.HullmodIncompatibility
 import cn.kasuminova.astd.combat.hullmods.base.ASTDSingularityStabilizerHullMod.Companion.UNITY_EPSILON
 import cn.kasuminova.astd.combat.hullmods.base.ASTDSingularityStabilizerHullMod.Companion.resolveTimeAnchor
 import com.fs.starfarer.api.combat.BaseHullMod
 import com.fs.starfarer.api.combat.MutableShipStatsAPI
 import com.fs.starfarer.api.combat.ShipAPI
-import com.fs.starfarer.api.impl.campaign.ids.HullMods
 
 /**
  * 奇点稳定器（联制线两舰内置）：时流锚定船插（机制见 `docs/design/ships/20-joint.md` §舰船插件）。
@@ -33,11 +33,11 @@ import com.fs.starfarer.api.impl.campaign.ids.HullMods
 class ASTDSingularityStabilizerHullMod : BaseHullMod() {
 
     companion object {
-        /** stat 源 id：CR 扣减补偿与时流下限钳制共用。 */
-        private const val MOD_ID = "astd_singularity_stabilizer"
+        /** stat 源 id：CR 扣减补偿与时流下限钳制共用。internal 供互斥注册表引用。 */
+        internal const val MOD_ID = "astd_singularity_stabilizer"
 
-        /** 禁装船插列表（集中定义）：安全协议超驰。 */
-        private val FORBIDDEN_HULLMOD_IDS = setOf(HullMods.SAFETYOVERRIDES)
+        /** 禁装船插列表：真相来源 [HullmodIncompatibility]。 */
+        private val FORBIDDEN_HULLMOD_IDS: Set<String> = HullmodIncompatibility.forbiddenByController(MOD_ID)
 
         /** 「时流恰为 1」的浮点容差（避免外部叠乘落在 1.0±ε 时补偿/不补偿逐帧抖动）。 */
         private const val UNITY_EPSILON = 0.001f

@@ -5,6 +5,7 @@ import cn.kasuminova.astd.campaign.bounty.core.BountyFleetTuner
 import cn.kasuminova.astd.campaign.bounty.core.BountyOfficerSkills
 import cn.kasuminova.astd.campaign.bounty.core.BountyPoolConfig
 import cn.kasuminova.astd.campaign.bounty.core.PoolSide
+import cn.kasuminova.astd.combat.hullmods.HullmodIncompatibility
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.campaign.CampaignFleetAPI
 import com.fs.starfarer.api.characters.MutableCharacterStatsAPI
@@ -462,6 +463,9 @@ class BountyFleetTunerImpl(
         installedShu: String?,
     ) {
         val hull = member.hullSpec
+        // 本模组控制方船插（内置）禁装的候选过滤：与 IncompatibleHullmodStripper 同一真相来源，
+        // 避免装上即被剥离而浪费 SMod 名额（实机案例：xc_103 目标定位系统、xc_101 强化护盾）
+        val bannedByController = HullmodIncompatibility.forbiddenCandidates(hull.builtInMods + variant.hullMods)
         // 名额口径对齐原版装配 UI：Misc.getCurrSpecialMods 只计 永久+增强（perma∩sMod）的
         // 非内建/非隐藏/非 D 插船插，每个增强内置只计一次。sMod ⊆ permaMod，
         // 此前 max - sMods.size - permaMods.size 双重扣减使名额恒 ≤0，永不内插
@@ -478,6 +482,7 @@ class BountyFleetTunerImpl(
             if (remaining <= 0) break
             Global.getSettings().getHullModSpec(id) ?: continue
             if (hull.builtInMods.contains(id) || variant.hullMods.contains(id)) continue
+            if (id in bannedByController) continue
             if (fitRules.isSmodBlockedByShu(id, installedShu)) continue
             if (!fitRules.isSmodApplicable(id, phase, hasShield, missileCapable)) continue
             variant.addPermaMod(id, true)
@@ -485,7 +490,7 @@ class BountyFleetTunerImpl(
             installed++
         }
         if (installed == 0 && initial > 0) {
-            log.info("[ASTD] ${hull.hullId} SMod 候选全部被过滤（适用性/SHU 冲突），本舰无 SMod 内插")
+            log.info("[ASTD] ${hull.hullId} SMod 候选全部被过滤（适用性/SHU 冲突/模组互斥），本舰无 SMod 内插")
         }
     }
 
@@ -535,14 +540,17 @@ class BountyFleetTunerImpl(
 
     /**
      * 余 OP 普通船插填充：按统一优先级能装就装、装不下取下一个；OP 不足时先按
-     * 舰级预算拆辐能寄存器/耗散通道回收。已装 SHU 船插的互斥件跳过，避免与 SHU 冲突。
+     * 舰级预算拆辐能寄存器/耗散通道回收。已装 SHU 船插的互斥件与本模组控制方船插
+     * 禁装件（IncompatibleHullmodStripper 同一真相来源）跳过，避免冲突与装上即剥离。
      */
     private fun fillExtraMods(variant: ShipVariantAPI, hull: ShipHullSpecAPI, neutralStats: MutableCharacterStatsAPI) {
         val installedShu = variant.hullMods.firstOrNull { it.startsWith(BountyFitRules.SHU_ID_PREFIX) }
         val shuConflicts = fitRules.shuConflicts(installedShu)
+        val bannedByController = HullmodIncompatibility.forbiddenCandidates(hull.builtInMods + variant.hullMods)
         var budgetLeft = fitRules.reclaimBudget(hull.hullSize)
         for (id in fitRules.extraModPriority()) {
             if (id in shuConflicts) continue
+            if (id in bannedByController) continue
             val spec = Global.getSettings().getHullModSpec(id) ?: continue
             if (hull.builtInMods.contains(id) || variant.hullMods.contains(id)) continue
             val cost = smodCostFor(spec, hull.hullSize)

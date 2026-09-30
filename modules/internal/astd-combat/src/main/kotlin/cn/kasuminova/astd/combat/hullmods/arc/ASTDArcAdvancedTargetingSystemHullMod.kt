@@ -1,5 +1,6 @@
 package cn.kasuminova.astd.combat.hullmods.arc
 
+import cn.kasuminova.astd.combat.hullmods.HullmodIncompatibility
 import cn.kasuminova.astd.combat.hullmods.base.ASTDHullModTooltipRenderer
 import cn.kasuminova.astd.combat.hullmods.base.IncompatibleHullmodStripper
 import cn.kasuminova.astd.internal.i18n.I18n
@@ -9,7 +10,6 @@ import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.combat.WeaponAPI
 import com.fs.starfarer.api.combat.listeners.WeaponBaseRangeModifier
 import com.fs.starfarer.api.combat.listeners.WeaponOPCostModifier
-import com.fs.starfarer.api.impl.campaign.ids.HullMods
 import com.fs.starfarer.api.ui.TooltipMakerAPI
 import java.awt.Color
 import kotlin.math.roundToInt
@@ -50,17 +50,9 @@ class ASTDArcAdvancedTargetingSystemHullMod : BaseHullMod() {
         private const val MEDIUM_WEAPON_OP_FLAT_REDUCTION = 2
         private const val OP_PERCENT_REDUCTION = 0.2f
 
-        /** 禁装船插列表（集中定义）：一切其他目标定位系统。internal 供单测断言集中定义。 */
-        internal val INCOMPATIBLE_TARGETING_HULLMODS = setOf(
-            "targetingunit",
-            "integratedtargetingunit",
-            "dedicated_targeting_core",
-            "dedicatedtargetingcore",
-            "advancedcore",
-            "advancedoptics",
-            "supercomputer",
-            HullMods.DISTRIBUTED_FIRE_CONTROL,
-        )
+        /** 禁装船插列表：真相来源 [HullmodIncompatibility]，此处保留别名供单测断言集中定义。 */
+        internal val INCOMPATIBLE_TARGETING_HULLMODS: Set<String> =
+            HullmodIncompatibility.forbiddenByController(ASTDArcProductionShipIds.HULLMOD_ARC_ADVANCED_TARGETING_SYSTEM)
 
         private val THEME = ASTDHullModTooltipRenderer.Theme(
             nameColor = Color(150, 232, 255),
