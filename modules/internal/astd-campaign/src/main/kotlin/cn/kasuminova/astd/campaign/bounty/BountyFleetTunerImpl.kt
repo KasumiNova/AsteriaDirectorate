@@ -447,7 +447,11 @@ class BountyFleetTunerImpl(
         }
     }
 
-    /** SMod 统一优先级内插：不适用及与已装 SHU 冲突的条目跳过取下一个，直到 SMod 上限或候选耗尽。 */
+    /**
+     * SMod 统一优先级内插：不适用及与已装 SHU 冲突的条目跳过取下一个，直到 SMod 上限或候选耗尽。
+     * 不设 OP 门槛：0.98 起 permaMod（含 sMod）不计 OP 成本
+     * （HullVariantSpec.computeHullModOPCost 跳过 permaMods），addPermaMod(id, true) 装的 SMod 免费。
+     */
     private fun installPrioritySmods(
         variant: ShipVariantAPI,
         member: FleetMemberAPI,
@@ -472,23 +476,22 @@ class BountyFleetTunerImpl(
         var installed = 0
         for (id in fitRules.smodPriority()) {
             if (remaining <= 0) break
-            val spec = Global.getSettings().getHullModSpec(id) ?: continue
+            Global.getSettings().getHullModSpec(id) ?: continue
             if (hull.builtInMods.contains(id) || variant.hullMods.contains(id)) continue
             if (fitRules.isSmodBlockedByShu(id, installedShu)) continue
             if (!fitRules.isSmodApplicable(id, phase, hasShield, missileCapable)) continue
-            if (variant.getUnusedOP(neutralStats) < smodCostFor(spec, hull.hullSize)) continue
             variant.addPermaMod(id, true)
             remaining--
             installed++
         }
         if (installed == 0 && initial > 0) {
-            log.info("[ASTD] ${hull.hullId} SMod 候选全部被过滤（适用性/SHU 冲突/OP 不足），本舰无 SMod 内插")
+            log.info("[ASTD] ${hull.hullId} SMod 候选全部被过滤（适用性/SHU 冲突），本舰无 SMod 内插")
         }
     }
 
     /**
      * SHU 软联动加权安装：每舰至多一件特殊升级（SHU 脚本自身互斥口径），返回安装的船插 id。
-     * 权重全 0 或无适用项时不安装；候选 OP 装不下记日志跳过（与 SMod/填充同一 OP 口径）。
+     * 权重全 0 或无适用项时不安装；SHU 走 addMod 普通装配（计 OP），候选 OP 装不下记日志跳过（与填充同一 OP 口径）。
      * 非等离子候选按存在互斥件则跳过；等离子充能护盾发生器选中后先拆除其互斥护盾系船插
      * （sMods/permaMods/hullMods 三路），OP 随移除自然回收并在后续阶段再利用。
      */
