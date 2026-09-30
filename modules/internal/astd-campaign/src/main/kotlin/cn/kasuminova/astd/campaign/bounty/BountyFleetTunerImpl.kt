@@ -308,7 +308,7 @@ class BountyFleetTunerImpl(
         return pool
     }
 
-    /** 核心军官工厂：原版插件分发链创建（原版/astd/SMS 核心各自插件），随后按核心档覆盖等级、套用变体技能表取舍。 */
+    /** 核心军官工厂：原版插件分发链创建（原版/astd/SMS 核心各自插件），登记档核心按档覆盖等级并套用变体技能表取舍，模组核心做技能适配（planModuleCoreSkills）。 */
     private fun createCoreOfficer(coreId: String, member: FleetMemberAPI): PersonAPI? {
         val plugin = Misc.getAICoreOfficerPlugin(coreId)
         if (plugin == null) {
@@ -327,8 +327,17 @@ class BountyFleetTunerImpl(
             person.stats.level = level
             applyOfficerSkills(person, member.variant.hullVariantId)
         } else {
-            // 模组核心（SMS 拟核等）：技能组成由其军官插件全权负责（含其特殊技能），不做覆盖
-            log.info("[ASTD] 核心 $coreId 无登记档位等级（模组核心），沿用插件默认等级 ${person.stats.level} 与插件技能组成")
+            // 模组核心（SMS 拟核等）：等级沿用插件默认；技能适配——保留模组特殊技能（sms_ 前缀），
+            // 其余原版技能移除并按变体技能表等量替换（数量与插件原始组成一致，不额外扩位）
+            val original = person.stats.skillsCopy.filter { it.level > 0f }.map { it.skill.id }
+            val planned = planModuleCoreSkills(original, BountyOfficerSkills.forVariant(member.variant.hullVariantId))
+            person.stats.skillsCopy.forEach { person.stats.setSkillLevel(it.skill.id, 0f) }
+            planned.forEach { person.stats.setSkillLevel(it, 2f) }
+            log.info(
+                "[ASTD] 模组核心 $coreId 技能适配（沿用插件默认等级 ${person.stats.level}）：" +
+                    "保留特殊技能 ${original.filter { it.startsWith(SMS_SPECIAL_SKILL_PREFIX) }}，" +
+                    "原版技能 ${original.filterNot { it.startsWith(SMS_SPECIAL_SKILL_PREFIX) }} 已按变体技能表等量替换",
+            )
         }
         person.stats.isSkipRefresh = false
         return person
@@ -650,6 +659,30 @@ class BountyFleetTunerImpl(
                 .sortedWith(compareBy({ priorityIndex[it.value] ?: Int.MAX_VALUE }, { it.index }))
                 .map { it.value }
                 .take(level.coerceAtLeast(0))
+        }
+
+        /** SMS 拟核特殊技能 id 前缀（软联动识别口径：保留模组特殊技能，其余原版技能等量替换）。 */
+        const val SMS_SPECIAL_SKILL_PREFIX: String = "sms_"
+
+        /**
+         * 模组核心（SMS 拟核等）技能适配方案，纯函数（单测直调）：
+         * 保留模组特殊技能（[SMS_SPECIAL_SKILL_PREFIX] 前缀，SMS 模组为核心添加的标志性技能，
+         * 如 sms_shared_knowledge / sms_warped_knowledge / sms_dimensional_tether），
+         * 其余原版技能按变体技能表等量替换（技能位 = 原技能数 - 特殊技能数，不额外扩位）；
+         * 变体表技能数不足或变体未登记时由全局优先级表补齐。返回最终技能表（特殊技能在前）。
+         */
+        fun planModuleCoreSkills(originalSkillIds: List<String>, tableSkills: List<String>?): List<String> {
+            val special = originalSkillIds.filter { it.startsWith(SMS_SPECIAL_SKILL_PREFIX) }
+            val slots = originalSkillIds.size - special.size
+            if (slots <= 0) return special
+            val picked = resolveOfficerSkills(tableSkills, slots).toMutableList()
+            if (picked.size < slots) {
+                BOUNTY_OFFICER_SKILL_PRIORITY
+                    .filter { it !in picked }
+                    .take(slots - picked.size)
+                    .let(picked::addAll)
+            }
+            return special + picked
         }
 
         /** 具备导弹搭载能力的武器槽类型（扩展弹舱适用性等效判定）。 */

@@ -16,6 +16,7 @@ import kotlin.test.assertTrue
  * 赏金舰队后处理的纯逻辑校验：
  * - 护航排除判定（独特舰 + 发布范围外显式清单）；
  * - 核心军官技能组成（变体技能表按全局优先级取舍、未登记变体走 fallback）；
+ * - 模组核心（SMS 拟核）技能适配：保留 sms_ 特殊技能，原版技能按变体表等量替换；
  * - 额外装配规则：SMod 适用性等效判定、SMod 与已装 SHU 的冲突过滤、OP 回收预算与拆除方案、SHU 权重调整；
  * - 混编池配置路由、ASTD/余晖 1:1 分边、双池舰级覆盖与兜底解析；
  * - 核心方案（唯一舰 O 档特判 / rogue 旗舰固定 Alpha + 僚舰池）与难度档映射；
@@ -90,6 +91,50 @@ class BountyFleetTuningTest {
         BountyOfficerSkills.TABLES.forEach { (variantId, skills) ->
             assertEquals(skills, BountyFleetTunerImpl.resolveOfficerSkills(skills, 9), "$variantId 高位核心档应装满全表")
         }
+    }
+
+    @Test
+    fun `模组核心技能适配保留特殊技能并按变体技能表等量替换`() {
+        // SMS Alpha 拟核组成（7 技能，1 特殊）：特殊技能保留在最前，其余 6 位按变体表取舍，总量不变
+        val alphaLike = listOf(
+            "sms_shared_knowledge", "helmsmanship", "target_analysis", "impact_mitigation",
+            "field_modulation", "gunnery_implants", "combat_endurance",
+        )
+        val table = BountyOfficerSkills.forVariant("astd_xc_002_Standard")!!
+        val planned = BountyFleetTunerImpl.planModuleCoreSkills(alphaLike, table)
+        assertEquals(alphaLike.size, planned.size)
+        assertEquals(listOf("sms_shared_knowledge"), planned.take(1))
+        assertEquals(6, planned.drop(1).size)
+        planned.drop(1).forEach { assertTrue(it in table, "$it 应来自变体技能表") }
+        assertEquals(planned.distinct().size, planned.size, "技能不得重复")
+
+        // SMS 无定形拟核组成（9 技能，3 特殊，未登记变体走 fallback）：3 特殊全保留，6 位走全局优先级表
+        val amorphousLike = listOf(
+            "sms_amorphous_knowledge", "sms_dimensional_tether", "sms_shared_knowledge",
+            "helmsmanship", "target_analysis", "impact_mitigation",
+            "field_modulation", "gunnery_implants", "combat_endurance",
+        )
+        val amorphousPlan = BountyFleetTunerImpl.planModuleCoreSkills(amorphousLike, null)
+        assertEquals(amorphousLike.size, amorphousPlan.size)
+        assertEquals(amorphousLike.take(3), amorphousPlan.take(3))
+        assertEquals(
+            BountyFleetTunerImpl.BOUNTY_OFFICER_SKILL_PRIORITY.take(6),
+            amorphousPlan.drop(3),
+        )
+
+        // SMS 破损 Gamma 核心组成（1 技能，无特殊）：整体替换为 1 个变体表/优先级技能，不扩位
+        val fracturedPlan = BountyFleetTunerImpl.planModuleCoreSkills(listOf("helmsmanship"), null)
+        assertEquals(listOf("helmsmanship"), fracturedPlan)
+
+        // 变体表技能数不足技能位：优先级表补齐差量（不重复），总量仍与原组成一致
+        val shortTable = BountyFleetTunerImpl.planModuleCoreSkills(alphaLike, listOf("combat_endurance", "helmsmanship"))
+        assertEquals(alphaLike.size, shortTable.size)
+        assertEquals(listOf("sms_shared_knowledge", "combat_endurance", "helmsmanship"), shortTable.take(3))
+        assertEquals(shortTable.distinct().size, shortTable.size)
+
+        // 全特殊技能（理论边界）：原样保留，不产生替换
+        val allSpecial = listOf("sms_a", "sms_b")
+        assertEquals(allSpecial, BountyFleetTunerImpl.planModuleCoreSkills(allSpecial, table))
     }
 
     @Test
