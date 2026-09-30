@@ -2,6 +2,7 @@ package cn.kasuminova.astd.campaign.world
 
 import cn.kasuminova.astd.testutil.CsvTestUtil
 import com.fs.starfarer.api.impl.campaign.ids.Conditions
+import com.fs.starfarer.api.impl.campaign.ids.Industries
 import java.nio.file.Path
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -31,6 +32,21 @@ class StorySystemSpecsTest {
         assertEquals(entityIds.size, entityIds.toSet().size, "实体 id 重复")
         val marketIds = (main.allMarketIds() + starfall.allMarketIds() + aster.allMarketIds())
         assertEquals(marketIds.size, marketIds.toSet().size, "市场 id 重复")
+    }
+
+    @Test
+    fun `非 conditionOnly 市场必须声明人口产业`() {
+        // Nexerelin 地面战情报初始化对零产业市场越界崩溃（GroundBattleIntel.init 兜底取首个产业），
+        // FULL 市场必须至少带人口产业。
+        for (spec in listOf(main, starfall, aster)) {
+            for (market in spec.planets.mapNotNull { it.market } + spec.entities.mapNotNull { it.market }) {
+                if (market.conditionOnly) continue
+                assertTrue(
+                    market.industryIds.contains(Industries.POPULATION),
+                    "${market.marketId} 缺少人口产业",
+                )
+            }
+        }
     }
 
     @Test

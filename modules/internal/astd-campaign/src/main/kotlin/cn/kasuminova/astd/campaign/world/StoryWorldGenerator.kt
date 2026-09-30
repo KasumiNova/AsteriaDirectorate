@@ -52,6 +52,34 @@ object StoryWorldGenerator {
         } catch (t: Throwable) {
             log.error("[ASTD] 遗址星系生成失败", t)
         }
+        ensureMarketIndustries(sector)
+    }
+
+    /**
+     * 既有存档热修复：FULL 市场产业缺失时按规格补齐（幂等）。
+     *
+     * 旧版本生成的第七分局空间站/拾光市场没有任何产业，Nexerelin 对其发起入侵时
+     * 地面战情报初始化（GroundBattleIntel.init 兜底取首个产业）会因零产业越界崩溃；
+     * 星系已完整的存档不会走重建路径，需在读档时单独补齐产业。
+     */
+    private fun ensureMarketIndustries(sector: SectorAPI) {
+        val specs = listOf(
+            StorySystemSpecs.mainSystemSpec(sectorSeed(sector, SEED_SALT_MAIN)),
+            StorySystemSpecs.starfallSystemSpec(sectorSeed(sector, SEED_SALT_CH2)),
+            StorySystemSpecs.asterSystemSpec(sectorSeed(sector, SEED_SALT_CH2)),
+        )
+        for (spec in specs) {
+            for (marketSpec in spec.planets.mapNotNull { it.market } + spec.entities.mapNotNull { it.market }) {
+                if (marketSpec.conditionOnly || marketSpec.industryIds.isEmpty()) continue
+                val market = sector.economy.getMarket(marketSpec.marketId) ?: continue
+                for (industryId in marketSpec.industryIds) {
+                    if (!market.hasIndustry(industryId)) {
+                        market.addIndustry(industryId)
+                        log.info("[ASTD] 市场 ${marketSpec.marketId} 补齐缺失产业 $industryId（旧档热修复）")
+                    }
+                }
+            }
+        }
     }
 
     /**
@@ -332,6 +360,11 @@ object StoryWorldGenerator {
         entity.setFaction(spec.factionId)
         for (conditionId in spec.conditionIds) {
             market.addCondition(conditionId)
+        }
+        for (industryId in spec.industryIds) {
+            if (!market.hasIndustry(industryId)) {
+                market.addIndustry(industryId)
+            }
         }
         market.reapplyConditions()
         if (spec.inEconomy && !market.isInEconomy) {

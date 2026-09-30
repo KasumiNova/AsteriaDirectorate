@@ -3,6 +3,7 @@ package cn.kasuminova.astd.campaign.world
 import com.fs.starfarer.api.impl.campaign.ids.Conditions
 import com.fs.starfarer.api.impl.campaign.ids.Entities
 import com.fs.starfarer.api.impl.campaign.ids.Factions
+import com.fs.starfarer.api.impl.campaign.ids.Industries
 import com.fs.starfarer.api.impl.campaign.ids.Planets
 import com.fs.starfarer.api.impl.campaign.ids.StarTypes
 import kotlin.random.Random
@@ -38,6 +39,14 @@ object StorySystemSpecs {
         val conditionOnly: Boolean,
         /** 追加状况（行星地表状况或剧情特殊状况）。 */
         val conditionIds: List<String> = emptyList(),
+        /**
+         * 产业清单（仅 FULL 市场需要）。
+         *
+         * 非 conditionOnly 市场必须至少包含人口产业（[Industries.POPULATION]）：
+         * 零产业市场会让 Nexerelin 地面战情报初始化（GroundBattleIntel.init 的
+         * 兜底取首个产业）越界崩溃，且原版全部可交互市场均至少有人口产业。
+         */
+        val industryIds: List<String> = emptyList(),
         /** 是否注册进经济（仅 FULL 市场）。 */
         val inEconomy: Boolean = false,
     )
@@ -289,6 +298,7 @@ object StorySystemSpecs {
                             size = 4,
                             factionId = Factions.INDEPENDENT,
                             conditionOnly = false,
+                            industryIds = listOf(Industries.POPULATION, Industries.SPACEPORT),
                             inEconomy = true,
                         ),
                     )
@@ -489,6 +499,7 @@ object StorySystemSpecs {
                                 StoryWorldIds.CONDITION_EVENT_HORIZON_POWER,
                                 StoryWorldIds.CONDITION_ASTER_RESEARCH_RUINS,
                             ),
+                            industryIds = listOf(Industries.POPULATION, Industries.SPACEPORT),
                             inEconomy = true,
                         ),
                     )
