@@ -65,11 +65,12 @@ object StoryWorldBootstrap {
 
         try {
             StoryWorldGenerator.ensureAll(sector)
+            // 迁移内部幂等且逐档 try/catch（失败停水位重试）；与补齐同一 try：
+            // 补齐失败时不推进迁移水位，避免残缺星系上的迁移结果被固化为已完成。
+            StoryWorldMigrations.applyPending(sector, StoryWorldState.getOrCreate())
         } catch (t: Throwable) {
-            log.error("[ASTD] 剧情世界读档补齐失败", t)
+            log.error("[ASTD] 剧情世界读档补齐/迁移失败", t)
         }
-        // 迁移内部幂等且逐档 try/catch（失败停水位重试），此处不再捕获。
-        StoryWorldMigrations.applyPending(sector, StoryWorldState.getOrCreate())
         if (check != WorldgenVersionCheck.CURRENT) {
             recordWorldgenVersion(sector, currentVersion)
         }

@@ -3,12 +3,12 @@ package cn.kasuminova.astd.campaign.world
 import cn.kasuminova.astd.internal.i18n.I18n
 import cn.kasuminova.astd.internal.i18n.I18n.Categories
 import com.fs.starfarer.api.Global
-import com.fs.starfarer.api.campaign.JumpPointAPI
+import com.fs.starfarer.api.campaign.CampaignTerrainAPI
+import com.fs.starfarer.api.campaign.RingBandAPI
 import com.fs.starfarer.api.campaign.SectorAPI
 import com.fs.starfarer.api.campaign.StarSystemAPI
 import com.fs.starfarer.api.impl.campaign.ids.Factions
 import org.apache.log4j.Logger
-import org.lwjgl.util.vector.Vector2f
 
 /**
  * 剧情世界数据迁移（按版本次序按序应用，全部就地修改，不做星系整体重建）。
@@ -30,8 +30,12 @@ object StoryWorldMigrations {
     /** 当前剧情世界数据版本（每次内容更新 +1）。 */
     const val CURRENT_DATA_VERSION: Int = 2
 
-    /** 观锚站旧轨道半径识别阈值（高于即视为旧版布局）。 */
-    private const val WATCHTOWER_ORBIT_RADIUS_LEGACY_MIN = 11000f
+    /** 观锚站旧轨道半径（v2 之前为 21000su）。 */
+    private const val WATCHTOWER_ORBIT_RADIUS_LEGACY = 21000f
+
+    /** 观锚站旧轨道识别阈值（旧值与新值的中点，随 [IndEvoWorldExtras.WATCHTOWER_ORBIT_RADIUS] 联动）。 */
+    private val WATCHTOWER_ORBIT_RADIUS_LEGACY_MIN =
+        (WATCHTOWER_ORBIT_RADIUS_LEGACY + IndEvoWorldExtras.WATCHTOWER_ORBIT_RADIUS) / 2f
 
     /** 读档入口：应用全部缺失迁移并推进版本水位；单档失败停在原水位（下轮读档重试）。 */
     fun applyPending(sector: SectorAPI, state: StoryWorldState) {
@@ -65,22 +69,23 @@ object StoryWorldMigrations {
 
     // ─── v2-1 星系重命名 ───
 
-    /** 三星系重命名为现用名（Asteria Seven/Arc/Lens）；自动命名行星（"旧星系名 b/c/..."）同步换前缀。 */
+    /** 三星系重命名为现用名（Asteria Seven/Arc/Lens）；恒星本体与自动命名行星（"旧星系名 b/c/..."）同步换名。 */
     private fun renameSystems(sector: SectorAPI) {
         for (starId in listOf(StoryWorldIds.MAIN_STAR, StoryWorldIds.STARFALL_STAR, StoryWorldIds.ASTER_STAR)) {
             val spec = specOf(sector, starId) ?: continue
             val system = systemOf(sector, starId) ?: continue
             val newName = I18n.t(Categories.MOD, spec.nameKey)
-            if (system.name == newName) continue
-            val oldName = system.name
-            system.setName(newName)
+            if (system.baseName == newName) continue
+            val oldName = system.baseName
+            // setBaseName 内部同步 setName（与新建路径同形）；恒星名在生成时快照自系统名，需一并换名
             system.setBaseName(newName)
+            system.star?.setName(newName)
             // 自动命名行星（规格中 nameKey == null）：按规格次序剥离旧前缀换挂新名
+            // （序号推进不依赖实体是否存在，与生成侧口径一致，避免缺失时字母错位）
             var autoIndex = 0
             for (planetSpec in spec.planets) {
                 if (planetSpec.nameKey != null) continue
-                val planet = system.getEntityById(planetSpec.id) ?: continue
-                planet.setName("$newName ${'b' + autoIndex}")
+                system.getEntityById(planetSpec.id)?.setName("$newName ${'b' + autoIndex}")
                 autoIndex++
             }
             log.info("[ASTD] 剧情星系重命名：$oldName -> $newName")
@@ -90,57 +95,66 @@ object StoryWorldMigrations {
     // ─── v2-2 越界星系钳制搬移 ───
 
     /**
-     * 越界星系就地搬移（不重建）：星系坐标钳回地图矩形内（保持原方向），
-     * 超空间侧跳跃点按同一位移平移（跳跃点实体与星系坐标独立存储，必须随动），
-     * 存档落位（[StoryWorldState]）同步更新。
+     * 越界星系就地搬移（不重建）：星系坐标钳回地图矩形内（保持原方向），存档落位同步更新。
+     *
+     * 超空间侧跳跃点/引力井无需手动平移：其轨道焦点为星系的超空间锚点，
+     * 锚点每帧由系统坐标同步（StarSystem.UpdateFromHyperspaceLocation），搬移后自动跟随。
+     * 存档落位（[StoryWorldState]）无条件钳制：即使星系实体暂缺（ensureAll 失败等），
+     * 也不把越界坐标留给下轮重建。
      */
     private fun clampSystemsIntoMap(sector: SectorAPI, state: StoryWorldState) {
-        val targets = listOf(
-            Pair(StoryWorldIds.STARFALL_STAR) { x: Float, y: Float -> state.starfallLocX = x; state.starfallLocY = y },
-            Pair(StoryWorldIds.ASTER_STAR) { x: Float, y: Float -> state.asterLocX = x; state.asterLocY = y },
-        )
-        for ((starId, saveLoc) in targets) {
-            val system = systemOf(sector, starId) ?: continue
-            val current = StoryPlacement.Vec(system.location.x, system.location.y)
+        for (starId in listOf(StoryWorldIds.STARFALL_STAR, StoryWorldIds.ASTER_STAR)) {
+            val system = systemOf(sector, starId)
+            val current = if (system != null) {
+                StoryPlacement.Vec(system.location.x, system.location.y)
+            } else {
+                stateLoc(state, starId)
+            }
             if (StoryPlacement.isWithinMapBounds(current)) {
                 // 界内：仅校正存档落位与实际坐标的偏差（若有）
-                if (kotlin.math.abs(system.location.x - stateLocX(state, starId)) > 1f ||
-                    kotlin.math.abs(system.location.y - stateLocY(state, starId)) > 1f
+                if (system != null && (
+                        kotlin.math.abs(system.location.x - stateLoc(state, starId).x) > 1f ||
+                                kotlin.math.abs(system.location.y - stateLoc(state, starId).y) > 1f
+                        )
                 ) {
-                    saveLoc(system.location.x, system.location.y)
+                    saveStateLoc(state, starId, StoryPlacement.Vec(system.location.x, system.location.y))
                 }
                 continue
             }
             val clamped = StoryPlacement.clampToMapBounds(current)
-            val delta = Vector2f(clamped.x - current.x, clamped.y - current.y)
-            system.location.set(clamped.x, clamped.y)
-            var movedJumpPoints = 0
-            for (entity in sector.hyperspace.allEntities) {
-                val jumpPoint = entity as? JumpPointAPI ?: continue
-                val boundToSystem = jumpPoint.destinations.any { it.destination.containingLocation === system }
-                if (!boundToSystem) continue
-                jumpPoint.location.set(jumpPoint.location.x + delta.x, jumpPoint.location.y + delta.y)
-                movedJumpPoints++
-            }
-            saveLoc(clamped.x, clamped.y)
+            system?.location?.set(clamped.x, clamped.y)
+            saveStateLoc(state, starId, clamped)
             log.info(
-                "[ASTD] 剧情星系 ${system.id} 越界搬移：(${current.x.toInt()}, ${current.y.toInt()}) -> " +
-                        "(${clamped.x.toInt()}, ${clamped.y.toInt()})，随动超空间跳跃点 ×$movedJumpPoints",
+                "[ASTD] 剧情星系 $starId 越界搬移：(${current.x.toInt()}, ${current.y.toInt()}) -> " +
+                        "(${clamped.x.toInt()}, ${clamped.y.toInt()})",
             )
         }
     }
 
-    private fun stateLocX(state: StoryWorldState, starId: String): Float =
-        if (starId == StoryWorldIds.STARFALL_STAR) state.starfallLocX else state.asterLocX
+    private fun stateLoc(state: StoryWorldState, starId: String): StoryPlacement.Vec = when (starId) {
+        StoryWorldIds.STARFALL_STAR -> StoryPlacement.Vec(state.starfallLocX, state.starfallLocY)
+        else -> StoryPlacement.Vec(state.asterLocX, state.asterLocY)
+    }
 
-    private fun stateLocY(state: StoryWorldState, starId: String): Float =
-        if (starId == StoryWorldIds.STARFALL_STAR) state.starfallLocY else state.asterLocY
+    private fun saveStateLoc(state: StoryWorldState, starId: String, loc: StoryPlacement.Vec) {
+        when (starId) {
+            StoryWorldIds.STARFALL_STAR -> {
+                state.starfallLocX = loc.x; state.starfallLocY = loc.y
+            }
+            else -> {
+                state.asterLocX = loc.x; state.asterLocY = loc.y
+            }
+        }
+    }
 
     // ─── v2-3 观锚站稳定点轨道减半 ───
 
     /**
-     * 观锚站稳定点轨道 21000su → [IndEvoWorldExtras.WATCHTOWER_ORBIT_RADIUS]su：稳定点/观锚站为
-     * 无市场装饰实体，按 id 原位重建（保留轨道角与阵营）；IndEvo 未启用时实体不存在，本步骤自然空转。
+     * 观锚站稳定点轨道 21000su → [IndEvoWorldExtras.WATCHTOWER_ORBIT_RADIUS]su。
+     *
+     * 就地改轨道（不重建实体）：观锚站功能状态写在实体 memory（IndEvo 侧 $objectiveNonFunctional
+     * 等 key），remove/recreate 会丢失玩家已造成的瘫痪状态。仅观锚站实体缺失时补建。
+     * IndEvo 未启用时实体不存在，本步骤自然空转。
      */
     private fun halveWatchtowerOrbits(sector: SectorAPI) {
         for (starId in listOf(StoryWorldIds.MAIN_STAR, StoryWorldIds.STARFALL_STAR)) {
@@ -150,28 +164,27 @@ object StoryWorldMigrations {
                 val watchtowerId = "${starId}_${StoryWorldIds.TAG_INDEVO_WATCHTOWER}_$index"
                 val anchor = system.getEntityById("${watchtowerId}_anchor") ?: continue
                 if (anchor.circularOrbitRadius < WATCHTOWER_ORBIT_RADIUS_LEGACY_MIN) continue
-                val watchtower = system.getEntityById(watchtowerId)
                 val angle = anchor.circularOrbitAngle
-                val faction = watchtower?.faction?.id ?: Factions.NEUTRAL
-
-                system.removeEntity(anchor)
-                watchtower?.let { system.removeEntity(it) }
-
-                val newAnchor = system.addCustomEntity("${watchtowerId}_anchor", null, "stable_location", Factions.NEUTRAL)
-                newAnchor.setCircularOrbitPointingDown(
+                anchor.setCircularOrbitPointingDown(
                     star, angle,
                     IndEvoWorldExtras.WATCHTOWER_ORBIT_RADIUS, IndEvoWorldExtras.WATCHTOWER_ORBIT_RADIUS / 45f,
                 )
-                val newTower = system.addCustomEntity(
-                    watchtowerId,
-                    I18n.t(Categories.MOD, "world.shared.indevo_watchtower"),
-                    IndEvoWorldExtras.ENTITY_WATCHTOWER,
-                    faction,
-                )
-                val orbitRadius = newAnchor.radius + 250f
-                newTower.setCircularOrbitWithSpin(newAnchor, angle + 45f, orbitRadius, orbitRadius / 10f, 5f, 5f)
-                newTower.addTag(StoryWorldIds.TAG_INDEVO_WATCHTOWER)
-                newTower.addTag(IndEvoWorldExtras.TAG_INDEVO_NATIVE_WATCHTOWER)
+                val orbitRadius = anchor.radius + 250f
+                val watchtower = system.getEntityById(watchtowerId)
+                if (watchtower != null) {
+                    watchtower.setCircularOrbitWithSpin(anchor, angle + 45f, orbitRadius, orbitRadius / 10f, 5f, 5f)
+                } else {
+                    // 观锚站缺失：补建（原阵营/功能状态随实体灭失无法考证，退回中立）
+                    val newTower = system.addCustomEntity(
+                        watchtowerId,
+                        I18n.t(Categories.MOD, "world.shared.indevo_watchtower"),
+                        IndEvoWorldExtras.ENTITY_WATCHTOWER,
+                        Factions.NEUTRAL,
+                    )
+                    newTower.setCircularOrbitWithSpin(anchor, angle + 45f, orbitRadius, orbitRadius / 10f, 5f, 5f)
+                    newTower.addTag(StoryWorldIds.TAG_INDEVO_WATCHTOWER)
+                    newTower.addTag(IndEvoWorldExtras.TAG_INDEVO_NATIVE_WATCHTOWER)
+                }
                 log.info("[ASTD] 观锚站稳定点轨道减半：$watchtowerId @ ${system.id}")
             }
         }
@@ -181,26 +194,38 @@ object StoryWorldMigrations {
 
     /**
      * 主星系小行星带按规格补齐（逐带幂等）：一环为版本化前已存在的无标签环带，
-     * 按轨道半径近似匹配去重；新外环以标签去重。
+     * 退回轨道半径近似匹配去重（仅比对地形/环带实体，避免被同轨其他实体假命中）；
+     * 地形与环圈分别判定补齐，中途失败留下的半档（有带无圈）能在重试时自愈。
      */
     private fun addMainOuterBelts(sector: SectorAPI) {
         val spec = StorySystemSpecs.mainSystemSpec(StoryWorldGenerator.sectorSeed(sector, StoryWorldGenerator.SEED_SALT_MAIN))
         val system = systemOf(sector, StoryWorldIds.MAIN_STAR) ?: return
         val star = system.getEntityById(StoryWorldIds.MAIN_STAR) ?: return
         for (belt in spec.belts) {
-            if (system.getEntitiesWithTag(belt.tag).isNotEmpty()) continue
-            val alreadyPresent = system.allEntities.any {
-                it.orbitFocus === star && kotlin.math.abs(it.circularOrbitRadius - belt.orbitRadius) < 5f
+            fun legacyMatch(entity: com.fs.starfarer.api.campaign.SectorEntityToken): Boolean =
+                entity.orbitFocus === star && kotlin.math.abs(entity.circularOrbitRadius - belt.orbitRadius) < 5f
+
+            val terrainPresent = system.allEntities.any {
+                it is CampaignTerrainAPI && (it.hasTag(belt.tag) || legacyMatch(it))
             }
-            if (alreadyPresent) continue
-            val beltTerrain = system.addAsteroidBelt(
-                star, belt.asteroidCount, belt.orbitRadius, belt.bandWidth,
-                belt.orbitDays * 0.8f, belt.orbitDays * 1.2f,
-            )
-            beltTerrain.addTag(belt.tag)
-            val ringBand = system.addRingBand(star, "misc", "rings_asteroids0", 256f, 2, null, belt.bandWidth, belt.orbitRadius, belt.orbitDays)
-            ringBand.addTag(belt.tag)
-            log.info("[ASTD] 主星系小行星带补齐：${belt.tag} @ ${belt.orbitRadius.toInt()}su")
+            if (!terrainPresent) {
+                val beltTerrain = system.addAsteroidBelt(
+                    star, belt.asteroidCount, belt.orbitRadius, belt.bandWidth,
+                    belt.orbitDays * 0.8f, belt.orbitDays * 1.2f,
+                )
+                beltTerrain.addTag(belt.tag)
+                log.info("[ASTD] 主星系小行星带补齐（地形）：${belt.tag} @ ${belt.orbitRadius.toInt()}su")
+            }
+            val ringPresent = system.allEntities.any {
+                it is RingBandAPI && (it.hasTag(belt.tag) || legacyMatch(it))
+            }
+            if (!ringPresent) {
+                val ringBand = system.addRingBand(
+                    star, "misc", "rings_asteroids0", 256f, 2, null, belt.bandWidth, belt.orbitRadius, belt.orbitDays,
+                )
+                ringBand.addTag(belt.tag)
+                log.info("[ASTD] 主星系小行星带补齐（环圈）：${belt.tag} @ ${belt.orbitRadius.toInt()}su")
+            }
         }
     }
 

@@ -129,6 +129,20 @@ class StorySystemSpecsTest {
                     assertTrue(inner > 1400f, "${spec.systemId} 小行星带内缘须位于事件视界之外")
                 }
             }
+
+            // 小行星带之间同样保持净空（外环避障外推的正确性兜底）
+            val starBelts = spec.belts.filter { it.focusId == spec.starId }
+            for (i in starBelts.indices) {
+                for (j in i + 1 until starBelts.size) {
+                    val b1 = starBelts[i]
+                    val b2 = starBelts[j]
+                    val gap = kotlin.math.abs(b1.orbitRadius - b2.orbitRadius)
+                    assertTrue(
+                        gap >= b1.bandWidth / 2f + b2.bandWidth / 2f + minClearance,
+                        "${spec.systemId} 小行星带 ${b1.tag} 与 ${b2.tag} 轨道穿插",
+                    )
+                }
+            }
         }
     }
 
@@ -276,6 +290,23 @@ class StorySystemSpecsTest {
             )
         }
         assertEquals(2, aster.belts.size)
+    }
+
+    @Test
+    fun `受管状况池覆盖规格引用与历史档位`() {
+        // 迁移的 syncPlanetConditions 只在受管池内增删：规格当前引用的全部行星状况 +
+        // 历史版本曾写入的旧档位必须在池内，否则旧档状况无法被摘除/补挂且不会有测试报警
+        val specIds = listOf(main, starfall, aster)
+            .flatMap { s -> s.planets.mapNotNull { it.market } }
+            .flatMap { it.conditionIds }
+            .toSet()
+        // 历史档位：兰台 organics_trace（现 organics_abundant）、洪炉/淬池 ore/rare_ore_abundant（现提档）
+        val legacyIds = setOf(
+            Conditions.ORGANICS_TRACE, Conditions.ORE_ABUNDANT, Conditions.RARE_ORE_ABUNDANT,
+        )
+        for (id in specIds + legacyIds) {
+            assertTrue(id in StorySystemSpecs.MANAGED_PLANET_CONDITIONS, "$id 不在受管状况池")
+        }
     }
 
     @Test
