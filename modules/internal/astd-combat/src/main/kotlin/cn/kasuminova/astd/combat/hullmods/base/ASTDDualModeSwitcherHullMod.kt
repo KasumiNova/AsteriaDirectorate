@@ -27,7 +27,7 @@ import java.awt.Color
  *   不再要求每舰手写 permaMod 才能工作（静态声明仍保留作为首选，二者互为冗余兜底）。
  * - 模式**切换**（拆即切：拆下切换器→切到对侧）仍由各舰 mode hullmod 在自己的
  *   applyEffectsBeforeShipCreation 中处理（它们才知道对侧模式 id）；本类只负责**自举到有模式态**
- *   + 渲染动态说明 + 可装/可见判定。反查不到 config（非注册双模式舰）则跳过自举，仅作展示。
+ *   + 渲染动态说明 + 可装判定。反查不到 config（非注册双模式舰）则跳过自举，仅作展示。
  * - 本类的具体接入（.ship builtInMods / variant hullMods）由 arc / lens 各自完成。
  *
  * tooltip 动态文案实现：渲染器 [ASTDHullModTooltipRenderer] 仅支持静态 i18n key（无参数替换），
@@ -67,8 +67,9 @@ class ASTDDualModeSwitcherHullMod : BaseHullMod() {
     /** 可装判定：仅 ASTD 舰可装本通用切换器。 */
     override fun isApplicableToShip(ship: ShipAPI): Boolean = ship.isASTDShip()
 
-    /** refit 改装界面的船插选择器中，仅对 ASTD 舰显示本切换器。 */
-    override fun showInRefitScreenModPickerFor(ship: ShipAPI): Boolean = ship.isASTDShip()
+    // 选择器可见性不再由 showInRefitScreenModPickerFor 控制：hull_mods.csv 中本船插 hidden=TRUE，
+    // 原版选择器（含内置模式）以 spec.isHidden 过滤，该覆写永远不会被调用，故移除。
+    // 已装列表的可见性由 hiddenEverywhere=FALSE 保留（拆即切交互入口）。
 
     /**
      * 动态说明区：根据当前舰的双模式配置与 variant 当前模式，渲染「当前模式 + 拆下后切到的目标模式」。

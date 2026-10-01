@@ -11,6 +11,7 @@ import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.MutableShipStatsAPI
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.combat.ShipVariantAPI
+import com.fs.starfarer.api.fleet.FleetMemberAPI
 import com.fs.starfarer.api.impl.campaign.ids.Tags
 
 /**
@@ -282,7 +283,7 @@ fun ShipVariantAPI.activateDualMode(config: ASTDDualModeConfig, modeId: String, 
     // （member.variant !== this）不得触碰真实舰长、不得污染真实 variant 的模式。
     val member = stats?.fleetMember
     if (member != null && member.variant === this) {
-        clearIncompatibleDualModeCaptain(stats)
+        clearIncompatibleDualModeCaptain(member, config)
         ASTDDualModeMirror.record(member, modeId)
     }
 }
@@ -369,37 +370,46 @@ private fun ShipVariantAPI.setDualModeNextMarker(config: ASTDDualModeConfig, mar
 }
 
 /**
- * 私有：切模式时清理与新模式不兼容的舰长/AI 核心（泛化自 arc clearIncompatibleCaptain）。
+ * 内部共用：按成员当前 variant 的双模式精确清理不兼容舰长/AI 核心。
  *
- * 这是战役上下文核心防崩例外（全局规范允许）：try/catch 的 catch 体带有意义的 fallback——
- * 先把 AI 核心归还玩家货舱避免丢失，再卸下舰长。fleetMember / captain / sector 在 refit 之外的上下文
+ * 口径：无人模式不得有人类舰长（卸下，人类军官回到未分配列表）；载人模式不得有 AI 核心
+ * （核心先退还玩家货舱再卸下，避免丢失）；默认舰长（无名）与兼容组合不动。
+ * 跨模式翻转后旧舰长必然不兼容（人类舰长不能开无人船、AI 核心不能开载人船），
+ * 因此翻转场景下与旧版无条件清理等价；装配提交收敛场景下不误卸兼容舰长。
+ *
+ * 调用点：[activateDualMode] 身份门路径、[ASTDDualModeRefitListener] 提交收敛。
+ *
+ * 这是战役上下文核心防崩例外（全局规范允许）：fleetMember / captain / sector 在 refit 之外的上下文
  * 可能不可用，此处吞错而非崩溃，但每个 catch 都不是空操作（要么有归还逻辑，要么是无害的 best-effort 卸载）。
  */
-private fun clearIncompatibleDualModeCaptain(stats: MutableShipStatsAPI?) {
-    val member = try {
-        stats?.fleetMember
-    } catch (_: Throwable) {
-        null
-    } ?: return
+internal fun clearIncompatibleDualModeCaptain(member: FleetMemberAPI?, config: ASTDDualModeConfig) {
+    if (member == null) return
     val captain = try {
         member.captain
     } catch (_: Throwable) {
         null
+    } ?: return
+    if (captain.isDefault) return
+    val variant = try {
+        member.variant
+    } catch (_: Throwable) {
+        null
+    } ?: return
+    val automated = variant.hasASTDDualModeAutomated(config)
+    val aiCoreId = try {
+        captain.aiCoreId
+    } catch (_: Throwable) {
+        null
     }
-    if (captain != null) {
+    val incompatible = if (automated) aiCoreId == null else aiCoreId != null
+    if (!incompatible) return
+    if (aiCoreId != null) {
         // AI 核心：先归还到玩家货舱，再移除舰长，避免核心丢失
-        val aiCoreId = try {
-            captain.aiCoreId
+        try {
+            Global.getSector()?.playerFleet?.cargo?.addCommodity(aiCoreId, 1f)
         } catch (_: Throwable) {
-            null
-        }
-        if (aiCoreId != null) {
-            try {
-                Global.getSector()?.playerFleet?.cargo?.addCommodity(aiCoreId, 1f)
-            } catch (_: Throwable) {
-                // 归还货舱失败则接受 AI 核心丢失：refit 外/无玩家舰队上下文不可达，
-                // 不能因此崩溃影响整个战役层（核心逻辑防崩例外，有意静默）。
-            }
+            // 归还货舱失败则接受 AI 核心丢失：refit 外/无玩家舰队上下文不可达，
+            // 不能因此崩溃影响整个战役层（核心逻辑防崩例外，有意静默）。
         }
     }
     try {

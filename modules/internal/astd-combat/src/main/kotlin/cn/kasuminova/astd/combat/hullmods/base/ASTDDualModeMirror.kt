@@ -18,11 +18,16 @@ import java.util.IdentityHashMap
  * 此时临时 swap 已换回，写入的就是真实 variant。
  *
  * 边界：
+ * - 镜像是**预提交写入**：refit 尚未提交时真实 variant 的模式位已更新。若玩家随后放弃编辑
+ *   （未提交），模式位不会回滚——视作「拆即切」一旦触发即生效的有意语义（原版 refit 默认
+ *   自动保存，放弃路径仅在选择不保留修改时出现）。
  * - 镜像只写模式位，不动切换器（真实 variant 上的切换器从未被拆，拆卸只发生在工作克隆上）；
  *   后续 refit 提交会用工作克隆整体覆盖真实 variant，二者模式位一致，无冲突。
  * - 自动装配预览对克隆 variant 的翻转不经过身份门，不会登记，预览不污染真实状态。
  * - 舰长清理不在此处（镜像以 stats=null 调用 [activateDualMode]）：清理由身份门路径
  *   与 [ASTDDualModeRefitListener] 的提交时兼容清理承担。
+ * - drain 不触发成员 stats 重建：系统互换等派生状态随下一次常规 stats 刷新收敛，
+ *   头像选择界面只读 permaMods（Misc.isAutomated），镜像后即正确。
  */
 object ASTDDualModeMirror {
 
@@ -38,6 +43,14 @@ object ASTDDualModeMirror {
 
     /** 本帧内是否已有该成员的待镜像记录（ASTDAutofitPlugin 用以区分确认/预览路径）。 */
     fun isPending(member: FleetMemberAPI): Boolean = pending.containsKey(member)
+
+    /**
+     * 清空待镜像队列。onGameLoad 注册新脚本时调用：队列是进程内静态状态，不会随读档重置，
+     * 残留条目的成员引用属于读档前的旧对象图，排空可避免对游离 variant 做无意义写入。
+     */
+    fun clear() {
+        pending.clear()
+    }
 
     /** 由镜像脚本每帧调用：把登记的模式位落到成员当前真实 variant 上。 */
     fun drain() {
@@ -60,8 +73,8 @@ object ASTDDualModeMirror {
  * 双模式镜像脚本：每帧排空 [ASTDDualModeMirror] 的待镜像队列。
  *
  * runWhilePaused=true：停靠空间站时战役暂停，但 refit 界面仍可编辑——镜像必须在暂停期也走帧，
- * 否则停靠状态下切模式后头像选择界面依旧陈旧。脚本为 transient（onGameLoad 注册），不入存档，
- * 读档后由新的脚本实例接管，待镜像队列天然不残留旧存档的成员引用。
+ * 否则停靠状态下切模式后头像选择界面依旧陈旧。脚本为 transient（onGameLoad 注册，不入存档）；
+ * 待镜像队列是进程内静态状态，注册新脚本前由插件显式 [ASTDDualModeMirror.clear]。
  */
 class ASTDDualModeMirrorScript : EveryFrameScript {
     override fun isDone(): Boolean = false
