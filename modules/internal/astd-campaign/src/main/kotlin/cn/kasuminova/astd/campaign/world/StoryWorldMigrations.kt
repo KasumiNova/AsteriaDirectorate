@@ -235,6 +235,8 @@ object StoryWorldMigrations {
      * 行星市场状况按规格同步（受管池内增删）：新增状况补挂、被规格移除的旧状况摘除，
      * 池外状况（其他模组/未来玩家侧写入）不受影响。condition-only 市场经实体 market 访问
      * （不进经济表，economy.getMarket 查不到）。
+     * 已被玩家殖民的市场跳过：殖民地的状况由 [StoryWorldGenerator] 的每次读档热修复只增不删，
+     * 避免摘除地貌改造等 mod 在殖民后写入的受管池状况。
      */
     private fun syncPlanetConditions(sector: SectorAPI) {
         for (starId in listOf(StoryWorldIds.MAIN_STAR, StoryWorldIds.STARFALL_STAR, StoryWorldIds.ASTER_STAR)) {
@@ -245,6 +247,10 @@ object StoryWorldMigrations {
                 val market = system.getEntityById(planetSpec.id)?.market
                 if (market == null) {
                     log.error("[ASTD] 行星状况同步失败：${planetSpec.id} 无市场（${marketSpec.marketId}）")
+                    continue
+                }
+                if (!market.isPlanetConditionMarketOnly) {
+                    log.info("[ASTD] ${marketSpec.marketId} 已被殖民，跳过状况同步（交由殖民地热修复处理）")
                     continue
                 }
                 val desired = marketSpec.conditionIds.toSet()

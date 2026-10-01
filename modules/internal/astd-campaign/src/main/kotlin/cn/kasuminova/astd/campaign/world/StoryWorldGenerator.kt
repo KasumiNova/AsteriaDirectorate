@@ -56,6 +56,41 @@ object StoryWorldGenerator {
         }
         ensureMarketIndustries(sector)
         ensureStationEntityTypes(sector)
+        ensureColonizedPlanetConditions(sector)
+    }
+
+    /**
+     * 既有存档热修复：剧情行星被玩家殖民后的状况补齐（只增不删，每次读档执行）。
+     *
+     * Grand Colonies 等允许殖民 condition-only 行星的 mod 会接管并重写市场状况列表，
+     * 矿脉/废墟/剧情遗址等原生状况在殖民后丢失。此处对已被殖民
+     * （[com.fs.starfarer.api.campaign.econ.MarketAPI.isPlanetConditionMarketOnly] 为 false）
+     * 的剧情行星按规格补挂缺失状况；不做摘除——地貌改造等 mod 后期写入的状况不受干预
+     * （未殖民的 condition-only 市场由 [StoryWorldMigrations] 的版本化同步全权负责，含摘除）。
+     */
+    private fun ensureColonizedPlanetConditions(sector: SectorAPI) {
+        val specs = listOf(
+            StorySystemSpecs.mainSystemSpec(sectorSeed(sector, SEED_SALT_MAIN)),
+            StorySystemSpecs.starfallSystemSpec(sectorSeed(sector, SEED_SALT_CH2)),
+            StorySystemSpecs.asterSystemSpec(sectorSeed(sector, SEED_SALT_CH2)),
+        )
+        for (spec in specs) {
+            val system = sector.getEntityById(spec.starId)?.containingLocation as? StarSystemAPI ?: continue
+            for (planetSpec in spec.planets) {
+                val marketSpec = planetSpec.market ?: continue
+                val market = system.getEntityById(planetSpec.id)?.market ?: continue
+                if (market.isPlanetConditionMarketOnly) continue
+                var changed = false
+                for (conditionId in marketSpec.conditionIds) {
+                    if (!market.hasCondition(conditionId)) {
+                        market.addCondition(conditionId)
+                        changed = true
+                        log.info("[ASTD] 殖民地 ${marketSpec.marketId} 补挂原生行星状况 $conditionId（殖民兼容热修复）")
+                    }
+                }
+                if (changed) market.reapplyConditions()
+            }
+        }
     }
 
     /** 旧版可打捞遗迹站实体类型（迁移来源）。 */
