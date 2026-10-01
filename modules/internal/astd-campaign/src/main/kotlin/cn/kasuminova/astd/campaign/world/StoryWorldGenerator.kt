@@ -33,9 +33,9 @@ object StoryWorldGenerator {
     private val log: Logger = Global.getLogger(StoryWorldGenerator::class.java)
 
     /** 主星系生成种子的盐（避免与第二章落位使用同一随机流起点）。 */
-    private const val SEED_SALT_MAIN: Long = 0xA57E11A1L
+    internal const val SEED_SALT_MAIN: Long = 0xA57E11A1L
 
-    private const val SEED_SALT_CH2: Long = 0xA57E11A2L
+    internal const val SEED_SALT_CH2: Long = 0xA57E11A2L
 
     /**
      * 全部剧情内容的幂等入口（新开档经济加载后 + 读档）。
@@ -311,7 +311,7 @@ object StoryWorldGenerator {
         }
     }
 
-    private fun sectorSeed(sector: SectorAPI, salt: Long): Long =
+    internal fun sectorSeed(sector: SectorAPI, salt: Long): Long =
         (sector.seedString ?: "asteria_directorate").hashCode().toLong() xor salt
 
     // ─── 星系落地 ───
@@ -360,8 +360,10 @@ object StoryWorldGenerator {
 
         for (belt in spec.belts) {
             val focus = entitiesById.getValue(belt.focusId)
-            system.addAsteroidBelt(focus, belt.asteroidCount, belt.orbitRadius, belt.bandWidth, belt.orbitDays * 0.8f, belt.orbitDays * 1.2f)
-            system.addRingBand(focus, "misc", "rings_asteroids0", 256f, 2, null, belt.bandWidth, belt.orbitRadius, belt.orbitDays)
+            val beltTerrain = system.addAsteroidBelt(focus, belt.asteroidCount, belt.orbitRadius, belt.bandWidth, belt.orbitDays * 0.8f, belt.orbitDays * 1.2f)
+            beltTerrain.addTag(belt.tag)
+            val ringBand = system.addRingBand(focus, "misc", "rings_asteroids0", 256f, 2, null, belt.bandWidth, belt.orbitRadius, belt.orbitDays)
+            ringBand.addTag(belt.tag)
         }
 
         system.autogenerateHyperspaceJumpPoints(true, true)

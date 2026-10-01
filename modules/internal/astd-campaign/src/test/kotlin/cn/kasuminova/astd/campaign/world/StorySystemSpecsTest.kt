@@ -78,19 +78,8 @@ class StorySystemSpecsTest {
 
     @Test
     fun `环恒星轨道间距安全无碰撞`() {
-        // 实体碰撞半径契约（原版 data/config/custom_entities.json defaultRadius；
-        // astd_reserved_station 见本模组 contents/data/config/custom_entities.json）
-        val entityCollisionRadius = mapOf(
-            "inactive_gate" to 120f,
-            "comm_relay" to 75f,
-            "sensor_array" to 75f,
-            "nav_buoy" to 75f,
-            "station_side00" to 50f,
-            "station_side02" to 50f,
-            "astd_reserved_station" to 45f,
-            "astd_station_research_remnant" to 45f,
-            "astd_station_mining_remnant" to 45f,
-        )
+        // 碰撞半径契约由规格层统一持有（与布局避障共用同一份真相）
+        val entityCollisionRadius = StorySystemSpecs.ENTITY_COLLISION_RADIUS
         // 相邻天体表面最小净空（su）：紧凑布局下仍须保证任何两颗天体不重叠
         val minClearance = 100f
 
@@ -154,25 +143,34 @@ class StorySystemSpecsTest {
         val lantai = main.planets.first { it.id == StoryWorldIds.MAIN_PLANET_LANTAI }
         assertEquals(
             listOf(
-                Conditions.HABITABLE, Conditions.POLLUTION, Conditions.FARMLAND_BOUNTIFUL,
-                Conditions.RARE_ORE_SPARSE, Conditions.ORGANICS_TRACE, Conditions.RUINS_WIDESPREAD,
+                Conditions.HABITABLE, Conditions.POLLUTION,
+                Conditions.MILD_CLIMATE, Conditions.FARMLAND_BOUNTIFUL,
+                Conditions.RARE_ORE_SPARSE, Conditions.ORGANICS_ABUNDANT,
+                Conditions.RUINS_WIDESPREAD,
                 StoryWorldIds.CONDITION_WANXING_ADMIN_RUINS,
             ),
             lantai.market?.conditionIds,
         )
         assertTrue(lantai.stellarMirrors >= 1, "兰台需轨道恒星镜")
-        for (id in listOf(StoryWorldIds.MAIN_PLANET_HONGLU, StoryWorldIds.MAIN_PLANET_CUICHI)) {
-            val planet = main.planets.first { it.id == id }
-            assertTrue(
-                planet.market!!.conditionIds.containsAll(
-                    listOf(
-                        Conditions.ORE_ABUNDANT, Conditions.RARE_ORE_ABUNDANT,
-                        Conditions.VOLATILES_TRACE, Conditions.VERY_HOT, Conditions.NO_ATMOSPHERE,
-                    )
-                ),
-                "$id 荒芜特征链不完整",
-            )
-        }
+        val honglu = main.planets.first { it.id == StoryWorldIds.MAIN_PLANET_HONGLU }
+        assertEquals(
+            listOf(
+                Conditions.ORE_ULTRARICH, Conditions.RARE_ORE_ULTRARICH,
+                Conditions.VOLATILES_TRACE, Conditions.VERY_HOT,
+                Conditions.NO_ATMOSPHERE, Conditions.RUINS_WIDESPREAD,
+            ),
+            honglu.market?.conditionIds,
+            "洪炉特征链不完整",
+        )
+        val cuichi = main.planets.first { it.id == StoryWorldIds.MAIN_PLANET_CUICHI }
+        assertEquals(
+            listOf(
+                Conditions.ORE_RICH, Conditions.RARE_ORE_RICH,
+                Conditions.VOLATILES_TRACE, Conditions.VERY_HOT, Conditions.NO_ATMOSPHERE,
+            ),
+            cuichi.market?.conditionIds,
+            "淬池特征链不完整",
+        )
         // 随机荒芜 2~4 + 气态巨 1~2（随机行星无固定命名，nameKey == null）
         val randomBarren = main.planets.count { it.nameKey == null && it.typeId != "gas_giant" && it.typeId != "ice_giant" }
         assertTrue(randomBarren in 2..4, "随机荒芜行星数量 $randomBarren 越界")
@@ -186,7 +184,32 @@ class StorySystemSpecsTest {
         assertTrue(main.entities.any { it.entityType == "sensor_array" })
         assertTrue(main.entities.any { it.entityType == "nav_buoy" })
         assertTrue(main.entities.any { it.entityType == "inactive_gate" })
-        assertEquals(1, main.belts.size)
+        // 一环 + 外环 ×2（避障外推），标签唯一用于幂等去重
+        assertEquals(3, main.belts.size)
+        assertEquals(
+            listOf("astd_belt_main_1", "astd_belt_main_2", "astd_belt_main_3"),
+            main.belts.map { it.tag },
+        )
+        assertTrue(main.belts[1].orbitRadius >= 3900f * 1.6f, "外环 2 半径不足")
+        assertTrue(main.belts[2].orbitRadius >= 3900f * 2.2f, "外环 3 半径不足")
+        // 气态巨行星须从挥发物/重力/气候组各择一（去重后可能少于 3 项与基础特征重叠）
+        for (gas in main.planets.filter { it.nameKey == null && (it.typeId == "gas_giant" || it.typeId == "ice_giant") }) {
+            val conditions = gas.market!!.conditionIds
+            assertTrue(
+                conditions.any { it in listOf(Conditions.VOLATILES_ABUNDANT, Conditions.VOLATILES_PLENTIFUL) },
+                "${gas.id} 缺少挥发物组状况",
+            )
+            assertTrue(
+                conditions.any { it in listOf(Conditions.HIGH_GRAVITY, Conditions.LOW_GRAVITY) },
+                "${gas.id} 缺少重力组状况",
+            )
+            assertTrue(
+                conditions.any {
+                    it in listOf(Conditions.EXTREME_WEATHER, Conditions.HOT, Conditions.VERY_HOT, Conditions.DENSE_ATMOSPHERE)
+                },
+                "${gas.id} 缺少气候组状况",
+            )
+        }
     }
 
     @Test
@@ -197,6 +220,20 @@ class StorySystemSpecsTest {
         assertTrue(duanyuan.market!!.conditionOnly)
         assertEquals("derelict", duanyuan.market!!.factionId)
         assertTrue(StoryWorldIds.CONDITION_STARFALL_ENGINEERING_RUINS in duanyuan.market!!.conditionIds)
+        assertTrue(
+            duanyuan.market!!.conditionIds.containsAll(
+                listOf(Conditions.FARMLAND_RICH, Conditions.INIMICAL_BIOSPHERE)
+            ),
+            "锻原缺少肥沃耕地/敌意生物圈",
+        )
+        // 星坠气态巨行星：挥发物/重力/气候组各择一
+        for (gas in starfall.planets.filter { it.nameKey == null && (it.typeId == "gas_giant" || it.typeId == "ice_giant") }) {
+            val conditions = gas.market!!.conditionIds
+            assertTrue(
+                conditions.any { it in listOf(Conditions.VOLATILES_ABUNDANT, Conditions.VOLATILES_PLENTIFUL) },
+                "${gas.id} 缺少挥发物组状况",
+            )
+        }
         // 空间站 ×3 + 随机荒芜 1~3 + 气态巨 1~2 + 带 ×1 + 设施 ×4
         assertTrue(starfall.entities.any { it.id == StoryWorldIds.STARFALL_STATION_MAIN })
         assertTrue(starfall.entities.any { it.id == StoryWorldIds.STARFALL_STATION_DOCKYARD })
@@ -231,6 +268,13 @@ class StorySystemSpecsTest {
         assertTrue(frozen.size in 2..4, "冰封行星数量 ${frozen.size} 越界")
         val darkGas = aster.planets.filter { (it.typeId == "gas_giant" || it.typeId == "ice_giant") && Conditions.DARK in it.market!!.conditionIds }
         assertTrue(darkGas.size in 2..4, "气态巨行星数量 ${darkGas.size} 越界")
+        // 紫菀气态巨行星：仅挥发物组择一
+        for (gas in darkGas) {
+            assertTrue(
+                gas.market!!.conditionIds.any { it in listOf(Conditions.VOLATILES_ABUNDANT, Conditions.VOLATILES_PLENTIFUL) },
+                "${gas.id} 缺少挥发物组状况",
+            )
+        }
         assertEquals(2, aster.belts.size)
     }
 

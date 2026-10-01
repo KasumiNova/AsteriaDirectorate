@@ -12,9 +12,11 @@ import org.apache.log4j.Logger
 /**
  * 剧情世界生成装配入口（ModPlugin 调用点）。
  *
- * - [onNewGameAfterEconomyLoad]：生涯开局生成三星系（半随机落位）并写入世界生成版本记录；
+ * - [onNewGameAfterEconomyLoad]：生涯开局生成三星系（半随机落位）并写入世界生成版本记录，
+ *   数据版本直接置为最新（新档不走迁移）；
  * - [onGameLoad]：注册生涯层脚本；非新档时按存档版本记录比对（[StoryWorldState.compareWorldgenVersion]）
- *   记录日志，随后幂等补齐缺失内容（星系缺失补星系），版本记录缺失/变更时回写当前版本。
+ *   记录日志，随后幂等补齐缺失内容（星系缺失补星系），再按数据版本水位按序应用
+ *   [StoryWorldMigrations]（就地修改，不重建星系），版本记录缺失/变更时回写当前版本。
  *
  * 全部生成逻辑幂等（canonical id 去重 + [StoryWorldState] 持久化），可重复调用。
  */
@@ -26,6 +28,8 @@ object StoryWorldBootstrap {
         val sector = Global.getSector() ?: return
         StoryWorldGenerator.ensureAll(sector)
         recordWorldgenVersion(sector, currentModVersion())
+        // 新档按最新规格生成，数据版本直接置最新，不走迁移。
+        StoryWorldState.getOrCreate().worldgenDataVersion = StoryWorldMigrations.CURRENT_DATA_VERSION
     }
 
     fun onGameLoad(newGame: Boolean) {
@@ -52,8 +56,8 @@ object StoryWorldBootstrap {
             // 旧档首次载入（进行中存档中途加入模组）：补生成三星系并写入版本记录。
             WorldgenVersionCheck.FIRST_LOAD ->
                 log.info("[ASTD] 存档无世界生成版本记录（旧档首次载入），补齐剧情世界并记录版本 $currentVersion")
-            // 模组版本变更：当前仅重新跑幂等校验并更新记录；后续版本若需迁移既有存档数据
-            // （如调整已生成星系的实体布局），按 savedVersion 在此分支挂迁移逻辑。
+            // 模组版本变更：重新跑幂等校验并更新记录；既有存档数据迁移由
+            // [StoryWorldMigrations.applyPending] 按数据版本水位按序执行（就地修改，不重建星系）。
             WorldgenVersionCheck.VERSION_CHANGED ->
                 log.info("[ASTD] 模组版本变更（$savedVersion -> $currentVersion），重新校验剧情世界生成")
             WorldgenVersionCheck.CURRENT -> {}
@@ -64,6 +68,8 @@ object StoryWorldBootstrap {
         } catch (t: Throwable) {
             log.error("[ASTD] 剧情世界读档补齐失败", t)
         }
+        // 迁移内部幂等且逐档 try/catch（失败停水位重试），此处不再捕获。
+        StoryWorldMigrations.applyPending(sector, StoryWorldState.getOrCreate())
         if (check != WorldgenVersionCheck.CURRENT) {
             recordWorldgenVersion(sector, currentVersion)
         }

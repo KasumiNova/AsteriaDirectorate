@@ -82,6 +82,8 @@ object StorySystemSpecs {
         val bandWidth: Float,
         val asteroidCount: Int,
         val orbitDays: Float,
+        /** 幂等标签（生成/迁移据此去重；环带实体无 canonical id，标签是唯一落点）。 */
+        val tag: String,
     )
 
     /** 星系规格。 */
@@ -156,6 +158,62 @@ object StorySystemSpecs {
         Conditions.LOW_GRAVITY, Conditions.POOR_LIGHT, Conditions.IRRADIATED,
     )
 
+    /** 气态巨行星挥发物组（择一）：丰富/富足。 */
+    private val GAS_GIANT_VOLATILES_GROUP = listOf(Conditions.VOLATILES_ABUNDANT, Conditions.VOLATILES_PLENTIFUL)
+
+    /** 气态巨行星重力组（择一）：高/低重力。 */
+    private val GAS_GIANT_GRAVITY_GROUP = listOf(Conditions.HIGH_GRAVITY, Conditions.LOW_GRAVITY)
+
+    /** 气态巨行星气候组（择一）：极端气候/炎热/极端炎热/稠密大气层。 */
+    private val GAS_GIANT_CLIMATE_GROUP = listOf(
+        Conditions.EXTREME_WEATHER, Conditions.HOT, Conditions.VERY_HOT, Conditions.DENSE_ATMOSPHERE,
+    )
+
+    /** 主星系/星坠气态巨行星追加随机组（挥发物 + 重力 + 气候各择一）。 */
+    private val GAS_GIANT_GROUPS_FULL = listOf(GAS_GIANT_VOLATILES_GROUP, GAS_GIANT_GRAVITY_GROUP, GAS_GIANT_CLIMATE_GROUP)
+
+    /** 紫菀气态巨行星追加随机组（仅挥发物择一）。 */
+    private val GAS_GIANT_GROUPS_VOLATILES = listOf(GAS_GIANT_VOLATILES_GROUP)
+
+    /**
+     * 剧情星系生成器写入行星市场的全部状况 id（迁移的「受管池」：
+     * 旧档状况同步时仅在池内做增删，玩家侧/其他模组写入的状况不受影响）。
+     */
+    val MANAGED_PLANET_CONDITIONS: Set<String> = setOf(
+        // 通用随机池
+        *BARREN_TRAITS.toTypedArray(), *GAS_GIANT_TRAITS.toTypedArray(), *FROZEN_TRAITS.toTypedArray(),
+        // 气态巨行星追加组
+        *GAS_GIANT_VOLATILES_GROUP.toTypedArray(), *GAS_GIANT_GRAVITY_GROUP.toTypedArray(),
+        *GAS_GIANT_CLIMATE_GROUP.toTypedArray(),
+        // 固定状况（含历史版本曾写入、现已被替换的档位）
+        Conditions.HABITABLE, Conditions.POLLUTION, Conditions.MILD_CLIMATE,
+        Conditions.FARMLAND_BOUNTIFUL, Conditions.FARMLAND_RICH, Conditions.INIMICAL_BIOSPHERE,
+        Conditions.ORGANICS_TRACE, Conditions.ORGANICS_ABUNDANT,
+        Conditions.ORE_ABUNDANT, Conditions.ORE_RICH, Conditions.ORE_ULTRARICH,
+        Conditions.RARE_ORE_ABUNDANT, Conditions.RARE_ORE_RICH, Conditions.RARE_ORE_ULTRARICH,
+        Conditions.VOLATILES_TRACE, Conditions.VERY_HOT, Conditions.VERY_COLD, Conditions.DARK,
+        Conditions.NO_ATMOSPHERE, Conditions.RUINS_WIDESPREAD,
+        StoryWorldIds.CONDITION_WANXING_ADMIN_RUINS, StoryWorldIds.CONDITION_STARFALL_ENGINEERING_RUINS,
+        StoryWorldIds.CONDITION_EVENT_HORIZON_POWER, StoryWorldIds.CONDITION_ASTER_RESEARCH_RUINS,
+    )
+
+    /**
+     * 实体碰撞半径契约（原版 data/config/custom_entities.json defaultRadius；
+     * astd_* 类型见本模组 contents/data/config/custom_entities.json）。
+     * 布局间距校验与外环小行星带避障共用同一份真相。
+     */
+    val ENTITY_COLLISION_RADIUS: Map<String, Float> = mapOf(
+        "inactive_gate" to 120f,
+        "comm_relay" to 75f,
+        "sensor_array" to 75f,
+        "nav_buoy" to 75f,
+        "station_side00" to 50f,
+        "station_side02" to 50f,
+        "astd_reserved_station" to 45f,
+        "astd_station_research_remnant" to 45f,
+        "astd_station_mining_remnant" to 45f,
+    )
+
     private fun periodForOrbit(radius: Float): Float = radius / 45f
 
     private fun randomPlanets(
@@ -170,12 +228,14 @@ object StorySystemSpecs {
         planetRadiusRange: IntRange,
         marketPrefix: String,
         fixedTraits: List<String> = emptyList(),
+        /** 追加随机组：每组择一加入（同一行星可能从多个组各得一项；与既有特征去重）。 */
+        randomTraitGroups: List<List<String>> = emptyList(),
         marketFaction: String = Factions.NEUTRAL,
     ): List<PlanetSpec> {
         val count = countRange.random(rnd)
         val slots = radiusSlots.shuffled(rnd).take(count).sorted()
         return slots.mapIndexed { index, slot ->
-            val conditions = fixedTraits + traits.random(rnd)
+            val conditions = (fixedTraits + traits.random(rnd) + randomTraitGroups.map { it.random(rnd) }).distinct()
             PlanetSpec(
                 id = "${systemId}_rnd_$marketPrefix$index",
                 nameKey = null,
@@ -195,17 +255,40 @@ object StorySystemSpecs {
 
     // ─── 剧情主星系 ───
 
+    /**
+     * 外环小行星带避障解算：标称半径 = 一环 × ratio，与既有环恒星天体（行星/实体/已解算的环带）
+     * 冲突时反复外推至净空（障碍碰撞半径 + 最小净空 + 半带宽）。确定性：同一规格输入输出相同，
+     * 新生成与旧档迁移得到同一布局。
+     */
+    private fun outerBelt(
+        star: String,
+        baseRadius: Float,
+        ratio: Float,
+        obstacles: List<Pair<Float, Float>>,
+        tag: String,
+    ): BeltSpec {
+        val halfWidth = 300f
+        var radius = baseRadius * ratio
+        var adjusted = true
+        while (adjusted) {
+            adjusted = false
+            for ((orbitRadius, collision) in obstacles) {
+                val clearance = collision + BELT_MIN_CLEARANCE + halfWidth
+                if (kotlin.math.abs(radius - orbitRadius) < clearance) {
+                    radius = orbitRadius + clearance
+                    adjusted = true
+                }
+            }
+        }
+        return BeltSpec(star, radius, halfWidth * 2f, (240f * radius / baseRadius).toInt(), periodForOrbit(radius), tag)
+    }
+
+    private const val BELT_MIN_CLEARANCE = 100f
+
     fun mainSystemSpec(seed: Long): SystemSpec {
         val rnd = Random(seed)
         val star = StoryWorldIds.MAIN_STAR
-        return SystemSpec(
-            systemId = StoryWorldIds.SYSTEM_MAIN,
-            nameKey = "world.system.main.name",
-            starId = star,
-            starType = StarTypes.BLUE_GIANT,
-            starRadius = 750f,
-            coronaSize = 600f,
-            planets = buildList {
+        val planets = buildList {
                 add(
                     PlanetSpec(
                         id = StoryWorldIds.MAIN_PLANET_HONGLU,
@@ -219,9 +302,9 @@ object StorySystemSpecs {
                             factionId = Factions.NEUTRAL,
                             conditionOnly = true,
                             conditionIds = listOf(
-                                Conditions.ORE_ABUNDANT, Conditions.RARE_ORE_ABUNDANT,
+                                Conditions.ORE_ULTRARICH, Conditions.RARE_ORE_ULTRARICH,
                                 Conditions.VOLATILES_TRACE, Conditions.VERY_HOT,
-                                Conditions.NO_ATMOSPHERE,
+                                Conditions.NO_ATMOSPHERE, Conditions.RUINS_WIDESPREAD,
                             ),
                         ),
                     )
@@ -239,7 +322,7 @@ object StorySystemSpecs {
                             factionId = Factions.NEUTRAL,
                             conditionOnly = true,
                             conditionIds = listOf(
-                                Conditions.ORE_ABUNDANT, Conditions.RARE_ORE_ABUNDANT,
+                                Conditions.ORE_RICH, Conditions.RARE_ORE_RICH,
                                 Conditions.VOLATILES_TRACE, Conditions.VERY_HOT,
                                 Conditions.NO_ATMOSPHERE,
                             ),
@@ -260,8 +343,9 @@ object StorySystemSpecs {
                             conditionOnly = true,
                             conditionIds = listOf(
                                 Conditions.HABITABLE, Conditions.POLLUTION,
-                                Conditions.FARMLAND_BOUNTIFUL, Conditions.RARE_ORE_SPARSE,
-                                Conditions.ORGANICS_TRACE, Conditions.RUINS_WIDESPREAD,
+                                Conditions.MILD_CLIMATE, Conditions.FARMLAND_BOUNTIFUL,
+                                Conditions.RARE_ORE_SPARSE, Conditions.ORGANICS_ABUNDANT,
+                                Conditions.RUINS_WIDESPREAD,
                                 StoryWorldIds.CONDITION_WANXING_ADMIN_RUINS,
                             ),
                         ),
@@ -276,16 +360,17 @@ object StorySystemSpecs {
                         listOf(6000f, 7000f, 8250f, 9500f), 60f, 90..130, "barren",
                     )
                 )
-                // 随机气态巨行星 ×1~2
+                // 随机气态巨行星 ×1~2（挥发物/重力/气候各择一追加）
                 addAll(
                     randomPlanets(
                         rnd, StoryWorldIds.SYSTEM_MAIN, star, 1..2,
                         GAS_GIANT_TYPES, GAS_GIANT_TRAITS,
                         listOf(11500f, 13500f), 150f, 240..300, "gas",
+                        randomTraitGroups = GAS_GIANT_GROUPS_FULL,
                     )
                 )
-            },
-            entities = buildList {
+            }
+            val entities = buildList {
                 add(
                     EntitySpec(
                         id = StoryWorldIds.MAIN_STATION_BRANCH,
@@ -331,8 +416,42 @@ object StorySystemSpecs {
                         factionId = Factions.NEUTRAL,
                     )
                 )
-            },
-            belts = listOf(BeltSpec(star, 3900f, 600f, 240, periodForOrbit(3900f))),
+            }
+            val beltObstacles = buildList<Pair<Float, Float>> {
+                for (planet in planets.filter { it.orbit.focusId == star }) {
+                    add(planet.orbit.radius to planet.radius)
+                }
+                for (entity in entities.filter { it.orbit.focusId == star }) {
+                    add(
+                        entity.orbit.radius to
+                                (ENTITY_COLLISION_RADIUS[entity.entityType]
+                                    ?: error("实体类型 ${entity.entityType} 缺少碰撞半径契约"))
+                    )
+                }
+            }
+            val innerBelt = BeltSpec(star, 3900f, 600f, 240, periodForOrbit(3900f), "astd_belt_main_1")
+            // 外环 ×2：标称一环的 1.6x / 2.2x，与既有天体冲突时外推至净空
+            val outerBelt2 = outerBelt(
+                star, 3900f, 1.6f,
+                beltObstacles + (innerBelt.orbitRadius to innerBelt.bandWidth / 2f),
+                "astd_belt_main_2",
+            )
+            val outerBelt3 = outerBelt(
+                star, 3900f, 2.2f,
+                beltObstacles + (innerBelt.orbitRadius to innerBelt.bandWidth / 2f) +
+                        (outerBelt2.orbitRadius to outerBelt2.bandWidth / 2f),
+                "astd_belt_main_3",
+            )
+            return SystemSpec(
+            systemId = StoryWorldIds.SYSTEM_MAIN,
+            nameKey = "world.system.main.name",
+            starId = star,
+            starType = StarTypes.BLUE_GIANT,
+            starRadius = 750f,
+            coronaSize = 600f,
+            planets = planets,
+            entities = entities,
+            belts = listOf(innerBelt, outerBelt2, outerBelt3),
         )
     }
 
@@ -363,6 +482,7 @@ object StorySystemSpecs {
                             conditionOnly = true,
                             conditionIds = listOf(
                                 Conditions.HABITABLE, Conditions.POLLUTION,
+                                Conditions.FARMLAND_RICH, Conditions.INIMICAL_BIOSPHERE,
                                 Conditions.ORE_RICH, Conditions.RARE_ORE_RICH,
                                 Conditions.HOT, Conditions.RUINS_WIDESPREAD,
                                 StoryWorldIds.CONDITION_STARFALL_ENGINEERING_RUINS,
@@ -378,12 +498,13 @@ object StorySystemSpecs {
                         listOf(4800f, 5800f, 6800f), 100f, 90..130, "barren",
                     )
                 )
-                // 随机气态巨行星 ×1~2
+                // 随机气态巨行星 ×1~2（挥发物/重力/气候各择一追加）
                 addAll(
                     randomPlanets(
                         rnd, StoryWorldIds.SYSTEM_STARFALL, star, 1..2,
                         GAS_GIANT_TYPES, GAS_GIANT_TRAITS,
                         listOf(8600f, 10000f), 200f, 250..310, "gas",
+                        randomTraitGroups = GAS_GIANT_GROUPS_FULL,
                     )
                 )
             },
@@ -435,7 +556,7 @@ object StorySystemSpecs {
                     )
                 )
             },
-            belts = listOf(BeltSpec(star, 4150f, 600f, 220, periodForOrbit(4150f))),
+            belts = listOf(BeltSpec(star, 4150f, 600f, 220, periodForOrbit(4150f), "astd_belt_starfall_1")),
         )
     }
 
@@ -470,13 +591,14 @@ object StorySystemSpecs {
                         listOf(5400f, 5760f), 300f, 90..130, "barren",
                     )
                 )
-                // 随机气态巨行星 ×2~4（固定黑暗）
+                // 随机气态巨行星 ×2~4（固定黑暗；挥发物择一追加）
                 addAll(
                     randomPlanets(
                         rnd, StoryWorldIds.SYSTEM_ASTER, star, 2..4,
                         GAS_GIANT_TYPES, GAS_GIANT_TRAITS,
                         listOf(6300f, 7000f, 7700f, 8400f), 140f, 240..300, "gas",
                         fixedTraits = listOf(Conditions.DARK),
+                        randomTraitGroups = GAS_GIANT_GROUPS_VOLATILES,
                     )
                 )
             },
@@ -552,8 +674,8 @@ object StorySystemSpecs {
                 )
             },
             belts = listOf(
-                BeltSpec(star, 1900f, 400f, 160, periodForOrbit(1900f)),
-                BeltSpec(star, 3500f, 500f, 200, periodForOrbit(3500f)),
+                BeltSpec(star, 1900f, 400f, 160, periodForOrbit(1900f), "astd_belt_aster_1"),
+                BeltSpec(star, 3500f, 500f, 200, periodForOrbit(3500f), "astd_belt_aster_2"),
             ),
         )
     }

@@ -115,16 +115,19 @@ abstract class BaseStoryCondition : BaseMarketConditionPlugin() {
     /** 效果行（key → 参数），由子类在当前难度系数下求值。 */
     protected abstract fun effectLines(tuning: DifficultyTuning): List<Pair<String, List<Pair<String, Any?>>>>
 
+    /** 效果行是否默认显示（true = 不经 F1 展开即渲染效果，且 tooltip 不可展开）。 */
+    protected open val showEffectsByDefault: Boolean = false
+
     override fun createTooltip(tooltip: TooltipMakerAPI, expanded: Boolean) {
         super.createTooltip(tooltip, expanded)
-        if (!expanded) return
+        if (!expanded && !showEffectsByDefault) return
         val pad = 5f
         for ((key, vars) in effectLines(DifficultyTuningImpl)) {
             I18nUi.addPara(tooltip, Categories.MOD, key, pad, Misc.getTextColor(), *vars.toTypedArray())
         }
     }
 
-    override fun isTooltipExpandable(): Boolean = true
+    override fun isTooltipExpandable(): Boolean = !showEffectsByDefault
 }
 
 /**
@@ -140,6 +143,9 @@ abstract class BaseStoryCondition : BaseMarketConditionPlugin() {
  *   上述修正即在完整市场上真实生效。
  */
 class WanxingAdminRuinsCondition : BaseStoryCondition() {
+
+    /** 行政遗址的加成为常驻卖点，默认显示不经 F1 展开。 */
+    override val showEffectsByDefault: Boolean = true
 
     override fun effectLines(tuning: DifficultyTuning): List<Pair<String, List<Pair<String, Any?>>>> {
         val e = StoryConditionEffects.wanxingAdmin(tuning)

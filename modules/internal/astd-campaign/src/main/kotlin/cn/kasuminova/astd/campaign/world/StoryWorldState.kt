@@ -50,6 +50,14 @@ class StoryWorldState {
     @JvmField
     var asterLocY: Float = 0f
 
+    /**
+     * 剧情世界数据版本（迁移水位）：0 = 版本化之前的旧档（视为 1），
+     * [StoryWorldMigrations.CURRENT_DATA_VERSION] = 最新。读档时按版本次序逐个应用缺失迁移，
+     * 全部就地修改现有星系，不做整体重建。
+     */
+    @JvmField
+    var worldgenDataVersion: Int = 0
+
     companion object {
         @JvmStatic
         fun getOrCreate(): StoryWorldState {

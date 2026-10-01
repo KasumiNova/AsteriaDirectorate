@@ -42,6 +42,13 @@ object StoryPlacement {
     /** 边缘星区最小半径（距原点，su）。 */
     const val EDGE_MIN_RADIUS: Float = 40000f
 
+    /**
+     * 地图可玩边界（su，原版 sectorWidth/Height 164000×104000 减半再留 10000su 余量）。
+     * 候选点超出该矩形即拒绝——紫菀曾以「边缘半径无上限」飞出超空间地图可视范围。
+     */
+    const val MAP_MAX_X: Float = 72000f
+    const val MAP_MAX_Y: Float = 42000f
+
     /** 剧情星系间最小角距（以原点为顶点，度）。 */
     const val MIN_ANGULAR_SEPARATION_DEG: Float = 35f
 
@@ -104,17 +111,35 @@ object StoryPlacement {
             val distance = CH2_DISTANCE_FROM_MAIN + (rnd.nextFloat() * 2f - 1f) * CH2_DISTANCE_TOLERANCE
             val candidate = mainLoc.plus(Vec((cos(angle) * distance).toFloat(), (sin(angle) * distance).toFloat()))
             if (candidate.length() < EDGE_MIN_RADIUS) return@repeat
+            if (kotlin.math.abs(candidate.x) > MAP_MAX_X || kotlin.math.abs(candidate.y) > MAP_MAX_Y) return@repeat
             if (existing.any { angleBetweenDeg(candidate, it) < MIN_ANGULAR_SEPARATION_DEG }) return@repeat
             return candidate
         }
         return null
     }
 
+    /**
+     * 越界星系坐标钳制（旧档迁移用）：保持原方向、按比例缩进地图矩形边界内。
+     * 落点位于边界内侧（[MAP_MAX_X]/[MAP_MAX_Y]），天然满足 [EDGE_MIN_RADIUS] 下限。
+     */
+    fun clampToMapBounds(loc: Vec): Vec {
+        val factor = minOf(
+            if (kotlin.math.abs(loc.x) > MAP_MAX_X) MAP_MAX_X / kotlin.math.abs(loc.x) else 1f,
+            if (kotlin.math.abs(loc.y) > MAP_MAX_Y) MAP_MAX_Y / kotlin.math.abs(loc.y) else 1f,
+        )
+        return if (factor >= 1f) loc else Vec(loc.x * factor, loc.y * factor)
+    }
+
+    /** 坐标是否在地图可玩边界内（迁移判定用）。 */
+    fun isWithinMapBounds(loc: Vec): Boolean =
+        kotlin.math.abs(loc.x) <= MAP_MAX_X && kotlin.math.abs(loc.y) <= MAP_MAX_Y
+
     /** 距离约束校验（测试与调试断言用）。 */
     fun chapter2ConstraintsSatisfied(mainLoc: Vec, starfall: Vec, aster: Vec): Boolean {
         val distOk = { v: Vec -> abs(v.minus(mainLoc).length() - CH2_DISTANCE_FROM_MAIN) <= CH2_DISTANCE_TOLERANCE }
         if (!distOk(starfall) || !distOk(aster)) return false
         if (starfall.length() < EDGE_MIN_RADIUS || aster.length() < EDGE_MIN_RADIUS) return false
+        if (!isWithinMapBounds(starfall) || !isWithinMapBounds(aster)) return false
         if (angleBetweenDeg(starfall, aster) < MIN_ANGULAR_SEPARATION_DEG) return false
         if (angleBetweenDeg(starfall, mainLoc) < MIN_ANGULAR_SEPARATION_DEG) return false
         if (angleBetweenDeg(aster, mainLoc) < MIN_ANGULAR_SEPARATION_DEG) return false

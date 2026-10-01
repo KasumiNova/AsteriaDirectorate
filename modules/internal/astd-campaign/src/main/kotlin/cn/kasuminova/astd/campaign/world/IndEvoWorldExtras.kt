@@ -45,10 +45,10 @@ object IndEvoWorldExtras {
     private val log: Logger = Global.getLogger(IndEvoWorldExtras::class.java)
 
     /** IndEvo 观锚站实体类型 id。 */
-    private const val ENTITY_WATCHTOWER: String = "IndEvo_Watchtower"
+    internal const val ENTITY_WATCHTOWER: String = "IndEvo_Watchtower"
 
     /** IndEvo 原生观锚站标签（addArtilleryToPlanet 的星系级观锚站判定与脚本状态同步都认它）。 */
-    private const val TAG_INDEVO_NATIVE_WATCHTOWER: String = "IndEvo_watchtower"
+    internal const val TAG_INDEVO_NATIVE_WATCHTOWER: String = "IndEvo_watchtower"
 
     /** 行星「已挂炮台」标签（ArtilleryStationPlacer.addArtilleryToPlanet 的幂等去重依据）。 */
     private const val TAG_ENTITY_HAS_ARTILLERY: String = "IndEvo_Entity_has_artillery"
@@ -56,11 +56,11 @@ object IndEvoWorldExtras {
     /** IndEvo 人之领星系防御系统阵营 id（对玩家敌对）。 */
     private const val FACTION_INDEVO_DERELICT: String = "IndEvo_derelict"
 
-    /** 观锚站稳定点轨道半径（各星系通用，位于常规行星轨道之外）。 */
-    private const val WATCHTOWER_ORBIT_RADIUS: Float = 21000f
+    /** 观锚站稳定点轨道半径（各星系通用，位于常规行星轨道之外；旧版 21000su 已减半）。 */
+    internal const val WATCHTOWER_ORBIT_RADIUS: Float = 10500f
 
     /** 每星系观锚站稳定点数量。 */
-    private const val WATCHTOWER_COUNT: Int = 4
+    internal const val WATCHTOWER_COUNT: Int = 4
 
     /** 检测标志位缓存（mod 列表在运行期不变，缓存一次即可）。 */
     @Volatile

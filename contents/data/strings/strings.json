@@ -309,9 +309,9 @@
 		"ui.imaginary_wings.status.title": "虚数之翼",
 		"ui.imaginary_wings.status.desc": "机动加成 +%bonus%% / 武器伤害 %damage%%",
 
-		"world.system.main.name": "菀星第七分局",
-		"world.system.starfall.name": "星坠",
-		"world.system.aster.name": "紫菀",
+		"world.system.main.name": "Asteria Seven",
+		"world.system.starfall.name": "Asteria Arc",
+		"world.system.aster.name": "Asteria Lens",
 
 		"world.main.planet.lantai": "兰台",
 		"world.main.planet.honglu": "洪炉",
