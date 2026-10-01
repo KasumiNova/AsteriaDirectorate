@@ -55,7 +55,14 @@ class ASTDAutofitPlugin(fleetCommander: PersonAPI?) : CoreAutofitPlugin(fleetCom
             current.activateDualMode(config, desiredMode, delegate.ship?.mutableStats)
             delegate.syncUIWithVariant(current)
         }
-        restoreCaptainIfModeUnchanged(member, preFitCaptain, preFitMode, activeDualModeId(current, config))
+        val postFitMode = activeDualModeId(current, config)
+        restoreCaptainIfModeUnchanged(member, preFitCaptain, preFitMode, postFitMode)
+        // 确认路径的 strip 中途翻转已登记过待镜像（身份门命中），此处把镜像目标改写为装配最终模式，
+        // 避免真实 variant 停在 strip 中间态；预览路径的翻转作用于克隆（身份门不命中，无登记），
+        // isPending 为 false 时跳过——预览不污染真实 variant 的模式与舰长
+        if (member != null && postFitMode != null && ASTDDualModeMirror.isPending(member)) {
+            ASTDDualModeMirror.record(member, postFitMode)
+        }
     }
 
     /**

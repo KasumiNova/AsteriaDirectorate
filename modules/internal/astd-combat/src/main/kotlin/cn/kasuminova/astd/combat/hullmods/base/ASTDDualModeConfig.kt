@@ -253,11 +253,13 @@ fun ShipVariantAPI.ensureASTDDualModeState(config: ASTDDualModeConfig, stats: Mu
  * 通用：激活某模式（泛化自 arc activateMode，参数化全部 id）。
  *
  * 行为：清掉两个模式 permaMod → 挂上目标模式 → 设同向 next marker → 同步原版 "automated" 船插 →
- * 战役上下文下清理不兼容舰长。
+ * 战役上下文且被翻转 variant 是成员当前生效 variant 时（身份门 `member.variant === this`）：
+ * 清理不兼容舰长 + 登记待镜像模式（[ASTDDualModeMirror]）。对克隆 variant（装配预览等）的翻转
+ * 不做任何战役侧写入。
  *
  * @param config 本舰的双模式配置。
  * @param modeId 目标模式 hullmod id（应为 config.crewedModeId 或 config.automatedModeId）。
- * @param stats 战役上下文 stats（用于清理不兼容舰长）。
+ * @param stats 战役上下文 stats（用于定位 fleetMember 做身份判定、清理不兼容舰长）。
  */
 fun ShipVariantAPI.activateDualMode(config: ASTDDualModeConfig, modeId: String, stats: MutableShipStatsAPI? = null) {
     removePermaMod(config.crewedModeId)
@@ -274,8 +276,15 @@ fun ShipVariantAPI.activateDualMode(config: ASTDDualModeConfig, modeId: String, 
     }
     // 同步原版 no_auto_penalty 标签（「免自动化点数」选项开启时的无人模式豁免）
     syncDualModeAutoPenaltyTag(config)
-    // 战役上下文：切换模式时自动卸下不兼容的舰长/AI 核心
-    clearIncompatibleDualModeCaptain(stats)
+    // 战役上下文：切换模式时自动卸下不兼容的舰长/AI 核心，并登记模式镜像（见 ASTDDualModeMirror）。
+    // 身份门：仅当被翻转的 variant 就是成员当前生效的 variant（refit 提交前临时 swap 窗口、
+    // 战役实时 stats 刷新）才清理+登记；自动装配预览等对克隆 variant 的翻转
+    // （member.variant !== this）不得触碰真实舰长、不得污染真实 variant 的模式。
+    val member = stats?.fleetMember
+    if (member != null && member.variant === this) {
+        clearIncompatibleDualModeCaptain(stats)
+        ASTDDualModeMirror.record(member, modeId)
+    }
 }
 
 /**

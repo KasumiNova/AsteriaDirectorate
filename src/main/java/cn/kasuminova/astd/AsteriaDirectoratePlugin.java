@@ -7,6 +7,8 @@ import cn.kasuminova.astd.combat.effect.joint.stardust.StardustLauncherAutofireA
 import cn.kasuminova.astd.combat.effect.joint.stardust.StardustMoteAiPicker;
 import cn.kasuminova.astd.combat.hullmods.base.ASTDCampaignPlugin;
 import cn.kasuminova.astd.combat.hullmods.base.ASTDDualModeConfigKt;
+import cn.kasuminova.astd.combat.hullmods.base.ASTDDualModeMirrorScript;
+import cn.kasuminova.astd.combat.hullmods.base.ASTDDualModeRefitListener;
 import cn.kasuminova.astd.combat.hullmods.lens.LensArrayCoreModeUtilKt;
 import cn.kasuminova.astd.impl.buff.BuffInstall;
 import cn.kasuminova.astd.impl.difficulty.DifficultySettingsRegistrar;
@@ -104,6 +106,11 @@ public final class AsteriaDirectoratePlugin extends BaseModPlugin {
         // 战役插件：向原版插件挑选体系暴露 ASTDAutofitPlugin（双模式舰自动装配保护）。
         // 固定 id 去重，重复读档注册互相替换；0.98 ModPlugin 不继承 CampaignPlugin，必须走 registerPlugin。
         Global.getSector().registerPlugin(new ASTDCampaignPlugin());
+        // 双模式镜像脚本（transient，读档重注册）：把 refit 工作克隆上的模式翻转镜像到真实 variant，
+        // 令头像选择界面立即读到新模式；runWhilePaused，停靠状态同样走帧。
+        Global.getSector().addTransientScript(new ASTDDualModeMirrorScript());
+        // 装配提交监听（transient）：variant 提交时收敛双模式状态并按最终模式清理不兼容舰长/AI 核心。
+        Global.getSector().getListenerManager().addListener(new ASTDDualModeRefitListener(), true);
         if (!newGame) {
             AsteriaTestCampaignBootstrap.repairExistingTestStorageIfEnabled();
             AsteriaTestCampaignBootstrap.resumePendingTeleportIfEnabled();

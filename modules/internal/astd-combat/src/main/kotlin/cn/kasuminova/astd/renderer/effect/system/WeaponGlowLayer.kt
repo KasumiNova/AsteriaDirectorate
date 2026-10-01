@@ -202,6 +202,10 @@ internal object WeaponGlowLayer {
                     val weapon = att.weapon
                     val ship = weapon.ship ?: continue
                     if (ship.isHulk) continue
+                    // 武器底图被外部置零尺寸（如隐形挂载类船插 setSize(0,0) 隐藏武器）时跳过发光，
+                    // 否则发光贴图按自身尺寸画在武器坐标上，形成浮空光块
+                    val baseSprite = weapon.sprite
+                    if (baseSprite == null || baseSprite.width <= 0.01f || baseSprite.height <= 0.01f) continue
                     val alpha = when (att.slot) {
                         GlowSlot.AMBIENT -> viewport.alphaMult
                         // 蓄能中＝充能条在推进且尚未开火；未开始/正在开火/冷却三态不显示蓄能层

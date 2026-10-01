@@ -76,6 +76,7 @@ object HullMod_astd_zw_001_mode_crewed : HullModEntry() {
     override val rarity: Int = 1
     override val tech: String = "菀星设计局-紫菀"
     override val tags: String = TAGS_BUILTIN
+    override val hiddenEverywhere: Boolean = true
     override val script: String = "cn.kasuminova.astd.combat.hullmods.lens.ASTDLensCrewedModeHullMod"
     override val desc: String = PLACEHOLDER_DESC
     override val short: String = SsI18n.t("hullmod.$id.short")
@@ -89,6 +90,7 @@ object HullMod_astd_zw_001_mode_automated : HullModEntry() {
     override val rarity: Int = 1
     override val tech: String = "菀星设计局-紫菀"
     override val tags: String = TAGS_BUILTIN
+    override val hiddenEverywhere: Boolean = true
     override val script: String = "cn.kasuminova.astd.combat.hullmods.lens.ASTDLensAutomatedModeHullMod"
     override val desc: String = PLACEHOLDER_DESC
     override val short: String = SsI18n.t("hullmod.$id.short")

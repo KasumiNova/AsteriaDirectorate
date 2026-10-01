@@ -21,9 +21,10 @@ import cn.kasuminova.astd.sscsv.i18n.SsI18n
  * 通用双模式切换器。
  *
  * - id 必须与 [cn.kasuminova.astd.combat.hullmods.base.ASTDDualModeSwitcherIds.SWITCHER_ID] 完全一致。
- * - 可见（非隐藏、unlocked）：玩家需在 refit 选择器看到并拆下它来轮换载人/无人模式。
- * - tags 留空（不打 astd_builtin，避免被 HullModEntry.toRow 自动标 hidden）；
- *   它通过 .ship builtInMods 内置到具体舰，同时玩家可拆。
+ * - hidden + 不可解锁 + 不掉落：切换器只经代码分发（.ship builtInMods / 拆即切自动加回），
+ *   不进 refit 选择器、不可内置、不掉蓝图/战利品；已装时仍显示在已装列表（hiddenEverywhere=false），
+ *   玩家拆下它即轮换载人/无人模式。
+ * - tags 不打 astd_builtin：切换器并非「内置分发不可拆」语义，玩家可拆是核心交互。
  */
 object HullMod_astd_dual_mode_switcher : HullModEntry() {
     override val id: String = "astd_dual_mode_switcher"
@@ -31,8 +32,9 @@ object HullMod_astd_dual_mode_switcher : HullModEntry() {
     override val tier: Int = 3
     override val rarity: Int = 0
     override val tech: String = ""
-    override val tags: String = ""
-    override val unlocked: Boolean = true
+    override val tags: String = "no_drop, no_drop_salvage"
+    override val unlocked: Boolean = false
+    override val hidden: Boolean = true
     override val script: String = "cn.kasuminova.astd.combat.hullmods.base.ASTDDualModeSwitcherHullMod"
     override val desc: String = SsI18n.t("hullmod.$id.desc")
     override val short: String = SsI18n.t("hullmod.$id.short")
@@ -65,7 +67,8 @@ object HullMod_astd_nano_restoration_protocol : HullModEntry() {
  * - id 必须与 [cn.kasuminova.astd.combat.hullmods.base.ASTDDualModeGenericIds.MODE_CREWED] 完全一致。
  * - 舰船无关：未显式注册专属双模式配置的 ASTD 舰在激活载人模式时统一挂它（permaMod），
  *   由脚本 ASTDCrewedModeHullMod 提供拆即切与可选系统互换。
- * - 与 zw_001 的专属模式行一致：对玩家可见（展示当前模式），但不可在选择器中手动拆装。
+ * - hidden + hiddenEverywhere：纯状态标记，不进选择器也不显示在已装船插列表；
+ *   当前模式由切换器 tooltip 动态说明承担展示职责。
  */
 object HullMod_astd_mode_crewed : HullModEntry() {
     override val id: String = "astd_mode_crewed"
@@ -74,6 +77,8 @@ object HullMod_astd_mode_crewed : HullModEntry() {
     override val rarity: Int = 0
     override val tech: String = ""
     override val tags: String = ""
+    override val hidden: Boolean = true
+    override val hiddenEverywhere: Boolean = true
     override val script: String = "cn.kasuminova.astd.combat.hullmods.base.ASTDCrewedModeHullMod"
     override val desc: String = SsI18n.t("hullmod.$id.desc")
     override val short: String = SsI18n.t("hullmod.$id.short")
@@ -88,6 +93,8 @@ object HullMod_astd_mode_automated : HullModEntry() {
     override val rarity: Int = 0
     override val tech: String = ""
     override val tags: String = ""
+    override val hidden: Boolean = true
+    override val hiddenEverywhere: Boolean = true
     override val script: String = "cn.kasuminova.astd.combat.hullmods.base.ASTDAutomatedModeHullMod"
     override val desc: String = SsI18n.t("hullmod.$id.desc")
     override val short: String = SsI18n.t("hullmod.$id.short")
