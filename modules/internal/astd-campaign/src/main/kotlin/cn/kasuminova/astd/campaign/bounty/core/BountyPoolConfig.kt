@@ -134,8 +134,8 @@ data class BountyPoolConfig(
             "astd_ai_core_g" to 3f,
             "sms_gamma_pseudocore" to 3f,
             "sms_fractured_gamma_core" to 3f,
-            "sms_warped_pseudocore" to 1f,
-            "sms_crystalline_pseudocore" to 1f,
+            "sms_warped_pseudocore" to 2f,
+            "sms_crystalline_pseudocore" to 2f,
         )
 
         /**

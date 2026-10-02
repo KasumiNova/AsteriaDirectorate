@@ -22,16 +22,7 @@
       "mount": "HARDPOINT",
       "arc": 15,
       "angle": 0,
-      "locations": [15.5, 11.5]
-    },
-    {
-      "id": "WS 002",
-      "size": "SMALL",
-      "type": "MISSILE",
-      "mount": "HARDPOINT",
-      "arc": 15,
-      "angle": 0,
-      "locations": [15.5, -11.5]
+      "locations": [16, -0]
     },
     {
       "id": "WS BLOOM",

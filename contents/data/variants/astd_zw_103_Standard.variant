@@ -51,8 +51,5 @@
             }
         }
     ],
-    "wings": [
-        "astd_zw_103_wing",
-        "astd_zw_103_wing"
-    ]
+    "wings": []
 }
