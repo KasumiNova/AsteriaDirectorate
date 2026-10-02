@@ -1007,6 +1007,8 @@ class GravityPhaseCloakAITest {
         assertFalse(
             GravityPhaseCloakAI.isTacticalVent(s.copy(fluxLevel = 0f, hardFluxLevel = 0f, softFluxLevel = 0f)),
         )
+        // 攻击系统激活中不 vent（停火会作废磁暴充能/复制窗口，与下潜链封锁闸同口径）
+        assertFalse(GravityPhaseCloakAI.isTacticalVent(s.copy(systemActive = true)))
     }
 
     @Test

@@ -123,8 +123,10 @@ import org.lwjgl.util.vector.Vector2f
  *   按住续潜无过载风险（canNotCauseOverload），漂出重叠后上浮自然放行。
  *
  * 威胁评估口径：直射弹体按弹道外推 + 横向偏差判定；制导导弹（含龙炎 DEM 等跟踪武器）
- * 跳过横向偏差检查并以极速一半兜底接近速度；fade（熄火惯性飞行）弹体不过滤——
- * 惯性段仍可全额命中，漏计会低估威胁；光束瞬时命中无弹体，扫描正在开火且射界/射程
+ * 跳过横向偏差检查并以极速一半兜底接近速度；fade 段弹体不过滤——原版 isFading 指
+ * 过射程尾迹消散段（实弹）/ fizzle 末端窗口（导弹），引擎伤害判定只看 isExpired，
+ * fade 段仍可全额命中，过滤会低估威胁（已解除武装的 fizzle 导弹轻微高估，保守方向可接受）；
+ * 光束瞬时命中无弹体，扫描正在开火且射界/射程
  * 覆盖本舰的敌方光束武器折算威胁（持续光束 DPS × [CONT_BEAM_THREAT_WINDOW_SEC] 进 near，
  * 爆发光束爆发总伤 × [BURST_BEAM_THREAT_WEIGHT] 进 soon）。payload 导弹（behaviorSpec 带
  * payloadWeaponId：双子星 DEM、原版龙炎 DEM 及任何同行为模组弹体）不撞舰结算——抵近
@@ -766,10 +768,12 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
          * 软辐占比较高时不走本口径：相位耗散（[isSoftFluxDumpDive]）才是软辐的去处，
          * 两链路辐能口径互斥（本口径要求总辐能低且硬辐占比高，耗软辐要求软辐占比 ≥ 0.35）。
          * 辐能归零时不 vent（fluxLevel > 0.01 闸）：空 vent 纯属自缚僵直。
+         * 攻击系统激活中（systemActive）不 vent：vent 停火会作废磁暴充能/复制窗口
+         * （与 decide 下潜链的 systemActive 封锁闸同口径）。
          * advance 在 decide 返回 NONE 时出手。
          */
         internal fun isTacticalVent(s: PhaseSituation): Boolean =
-            !s.phased && s.engagedEnemyNear && !s.retreating && !s.venting &&
+            !s.phased && s.engagedEnemyNear && !s.retreating && !s.venting && !s.systemActive &&
                     s.fluxLevel > 0.01f &&
                     s.fluxLevel <= TACTICAL_VENT_FLUX_CAP * s.ventRateMult &&
                     s.hardFluxLevel >= s.fluxLevel * TACTICAL_VENT_HARD_FRAC &&
@@ -854,6 +858,9 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
 
     /** 强制上浮被落点安全闸按住的累计时长（s）：随决策节拍累计，未触发/落点安全即清零。 */
     private var forcedSurfaceHoldSec = 0f
+
+    /** fluxTracker 空值告警闩：异常留痕一次，不每拍刷屏。 */
+    private var nullFluxTrackerWarned = false
 
     override fun init(ship: ShipAPI, system: ShipSystemAPI, flags: ShipwideAIFlags, engine: CombatEngineAPI) {
         this.ship = ship
@@ -1049,6 +1056,12 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
             ).toFloat()
         }
         val attackSystem = ship.system?.takeIf { it !== cloak }
+        val fluxTracker = ship.fluxTracker
+        if (fluxTracker == null && !nullFluxTrackerWarned) {
+            // 战斗舰船正常必有 fluxTracker；空值属异常，留痕后关闭战术耗散通道（不刷屏，每实例一次）
+            nullFluxTrackerWarned = true
+            log.warn("[GravityPhaseAI] ${ship.name} fluxTracker 为空，战术强制耗散通道关闭（ventTimeSec 置 MAX_VALUE）")
+        }
         return PhaseSituation(
             phased = phased,
             phaseActiveTime = phaseActiveTime,
@@ -1094,9 +1107,9 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
             // 暂缓时长由 advance 在采样后按节拍累计并 copy 覆写，采样恒置 0
             forcedSurfaceHoldSec = 0f,
             incomingFriendlySoonDamage = friendlyIncoming[0],
-            ventTimeSec = ship.fluxTracker?.timeToVent ?: Float.MAX_VALUE,
+            ventTimeSec = fluxTracker?.timeToVent ?: Float.MAX_VALUE,
             ventRateMult = ship.mutableStats.ventRateMult.modifiedValue,
-            venting = ship.fluxTracker?.isVenting == true,
+            venting = fluxTracker?.isVenting == true,
             friendlyScreenAhead = hasFriendlyScreenAhead(engine, ship, threat),
             travelDestDistance = travelDestDistance(ship),
         )
@@ -1258,7 +1271,8 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
         val shipLoc = ship.location
         var catch = 0f
         for (proj in projectiles) {
-            // fade（熄火惯性飞行）弹体不过滤：惯性段仍可全额命中，穿透误伤同样成立
+            // fade 段弹体不过滤：isFading 是过射程消散段/fizzle 末端窗口，伤害判定只看 isExpired，
+            // fade 段仍可全额命中——穿透误伤同样成立
             if (proj.owner == ship.owner || proj.isExpired) continue
             // 制导导弹脱靶后自行改瞄，穿透误伤口径不覆盖
             if (proj is MissileAPI && proj.isGuided) continue
@@ -1381,7 +1395,8 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
         val shipLoc = ship.location
         val radius = ship.collisionRadius
         for (proj in projectiles) {
-            // fade（熄火惯性飞行）弹体不过滤：惯性段仍可全额命中，不计入才会漏判威胁
+            // fade 段弹体不过滤：isFading 是过射程消散段/fizzle 末端窗口，伤害判定只看 isExpired，
+            // fade 段仍可全额命中，过滤会低估威胁（已解除武装的 fizzle 导弹轻微高估，保守方向）
             if ((proj.owner == ship.owner) != collectFriendly || proj.isExpired) continue
             val guided = proj is MissileAPI && proj.isGuided
             val dx = shipLoc.x - proj.location.x
