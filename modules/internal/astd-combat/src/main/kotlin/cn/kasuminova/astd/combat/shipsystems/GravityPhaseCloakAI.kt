@@ -674,8 +674,9 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
          * 窗口）。宽限有界：斗篷就绪即下潜（decide 与完整闸门单一口径），环境转差/辐能逼近
          * 上限时闸门失效 vent 自然放行兜底。
          * 与 decide 下潜链的封锁闸同口径：攻击系统激活中（systemActive）/友军接盘风险
-         * （friendlyCatchDamage 达 [FRIENDLY_CATCH_DAMAGE_MIN]）时 decide 绝不下潜，
-         * 压制 vent 会构成真实的「压了 vent 却不下潜」窗口，必须先行放行。
+         * （friendlyCatchDamage 达 [FRIENDLY_CATCH_DAMAGE_MIN]）时下潜链（除紧急下潜外）
+         * 不会出手，NONE 路径压制 vent 会构成真实的「压了 vent 却不下潜」窗口，必须先行放行；
+         * decide 返回 DIVE 的情形（含紧急下潜越过封锁闸）由 advance 直接压制，不经本口径。
          */
         internal fun isSoftFluxDumpVentHold(s: PhaseSituation): Boolean {
             if (s.systemActive || s.friendlyCatchDamage >= FRIENDLY_CATCH_DAMAGE_MIN) return false
@@ -801,12 +802,14 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
 
         val order = decide(situation)
 
-        // 相位耗散优先于强制耗散：命中耗软辐 vent 压制口径 [isSoftFluxDumpVentHold] 即压
-        // DO_NOT_VENT 拦 VentModule——含斗篷冷却尾声宽限（冷却窗口内不压，VentModule 必抢先
-        // vent 且 vent 启动即不可取消，相位耗散永远抢不到窗口）；宽限有界，斗篷就绪即由
-        // decide 下潜接手（与完整闸门 [isSoftFluxDumpDive] 单一口径），环境转差/辐能逼近
-        // 上限时闸门失效 vent 自然放行兜底（决策优先级：紧急避险 > 相位耗软辐 > 强制耗散）
-        if (isSoftFluxDumpVentHold(situation)) {
+        // vent 压制口径：decide 返回 DIVE（一切下潜指令，含紧急下潜越过 systemActive/
+        // friendlyRisk 封锁闸的情形）一律压 DO_NOT_VENT——下潜指令已发出时 vent 纯属浪费
+        // （vent 启动即不可取消，且相位中本就不排气）；NONE 时退到耗软辐宽限口径
+        // [isSoftFluxDumpVentHold]（含斗篷冷却尾声宽限：冷却窗口内不压，VentModule 必抢先
+        // vent，相位耗散永远抢不到窗口；宽限有界且与下潜链封锁闸同口径，斗篷就绪即由
+        // decide 下潜接手，环境转差/辐能逼近上限时闸门失效 vent 自然放行兜底）
+        // （决策优先级：紧急避险 > 相位耗软辐 > 强制耗散）
+        if (order == PhaseOrder.DIVE || isSoftFluxDumpVentHold(situation)) {
             ship.aiFlags.setFlag(ShipwideAIFlags.AIFlags.DO_NOT_VENT, VENT_SUPPRESS_FLAG_SEC)
         }
 
