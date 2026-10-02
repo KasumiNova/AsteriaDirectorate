@@ -1,6 +1,5 @@
 package cn.kasuminova.astd.combat.shipsystems
 
-import cn.kasuminova.astd.combat.effect.arc.geminidem.GeminiDemSalvoOnFireEffect
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.DamagingProjectileAPI
@@ -116,9 +115,11 @@ import org.lwjgl.util.vector.Vector2f
  * 爆发光束爆发总伤 × [BURST_BEAM_THREAT_WEIGHT] 进 soon）。payload 导弹（behaviorSpec 带
  * payloadWeaponId：双子星 DEM、原版龙炎 DEM 及任何同行为模组弹体）不撞舰结算——抵近
  * 悬停距离锁定后由 payload 结算主伤害，按 [payloadProfileOf] 推导的悬停距离/爆发伤害
- * 折算，进入悬停距离即按 soon 窗口计全额威胁，给下潜充能留提前量；本模组 DEM 弹头
- * 由脚本 spawn、不在 engine.missiles 里（实机判例），另走出生登记簿独立通道
- * （[estimateDemWarheadThreat]），折算口径与通用分支共用。友军接盘只评估非制导弹药
+ * 折算，进入悬停距离即按 soon 窗口计全额威胁（只计 payload 爆发；弹体本体在悬停点
+ * 自爆，爆心半径数十 su，对本舰不构成伤害），给下潜充能留提前量。脚本 spawn 的
+ * 弹头同样在 engine.missiles 里（obf 核实：ProjectileFactory.spawnMissile 末尾无条件
+ * addObject，早先「不在 missiles 里」的判例是同帧采样未 flush 所致），单通道覆盖。
+ * 友军接盘只评估非制导弹药
  * （制导导弹脱靶后自行改瞄，穿透误伤口径不覆盖），穿透线段从预计命中本舰点起算。
  *
  * 上浮僵直保护：强制上浮后挂 [ShipwideAIFlags.AIFlags.BACK_OFF]（2s）让舰船后撤度过
@@ -671,9 +672,13 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
          * 或仅差斗篷就绪且冷却剩余 ≤ [SOFT_FLUX_VENT_HOLD_COOLDOWN_SEC]（冷却尾声提前压
          * vent——否则 VentModule 必在冷却窗口内抢先启动，vent 不可取消，相位耗散永远抢不到
          * 窗口）。宽限有界：斗篷就绪即下潜（decide 与完整闸门单一口径），环境转差/辐能逼近
-         * 上限时闸门失效 vent 自然放行兜底，不构成「压了 vent 却不下潜」的卡死窗口。
+         * 上限时闸门失效 vent 自然放行兜底。
+         * 与 decide 下潜链的封锁闸同口径：攻击系统激活中（systemActive）/友军接盘风险
+         * （friendlyCatchDamage 达 [FRIENDLY_CATCH_DAMAGE_MIN]）时 decide 绝不下潜，
+         * 压制 vent 会构成真实的「压了 vent 却不下潜」窗口，必须先行放行。
          */
         internal fun isSoftFluxDumpVentHold(s: PhaseSituation): Boolean {
+            if (s.systemActive || s.friendlyCatchDamage >= FRIENDLY_CATCH_DAMAGE_MIN) return false
             if (isSoftFluxDumpDive(s)) return true
             if (s.phased || s.cloakReady ||
                 s.cloakCooldownRemaining > SOFT_FLUX_VENT_HOLD_COOLDOWN_SEC
@@ -891,7 +896,6 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
         estimateIncoming(engine.projectiles, ship, incoming, collectFriendly = false)
         estimateIncoming(engine.missiles, ship, incoming, collectFriendly = false)
         estimateBeamThreat(engine, ship, incoming, collectFriendly = false)
-        estimateDemWarheadThreat(engine, ship, incoming)
 
         // 友军火力只计 soon 窗口（防御性下潜输入）：同口径采样取 owner == 本舰一侧
         val friendlyIncoming = FloatArray(3)
@@ -1190,7 +1194,8 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
      * payload 导弹（behaviorSpec 带 payloadWeaponId：双子星 DEM、原版龙炎 DEM 及任何
      * 同行为模组弹体）走 [payloadProfileOf] 口径：弹体不撞舰结算，抵近悬停距离锁定后
      * 才由 payload 结算主伤害，弹道 ETA 口径低估威胁；进入悬停距离即按 soon 窗口计
-     * 全额威胁（弹体 + payload 爆发），给下潜充能留提前量。只处理敌方弹体
+     * 全额威胁（只计 payload 爆发；弹体本体在悬停点自爆，对本舰不构成伤害），
+     * 给下潜充能留提前量。只处理敌方弹体
      * （payload 指向敌方目标，友方 payload 导弹不构成对本舰的指向威胁）。
      */
     private fun estimateIncoming(
@@ -1209,12 +1214,14 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
             val dist = kotlin.math.sqrt(dx * dx + dy * dy)
             if (dist > PROJECTILE_SCAN_RANGE || dist < 1e-3f) continue
 
-            // payload 导弹分支（先于接近速度闸：悬停锁定段弹体低速/悬停，常规口径会漏）
+            // payload 导弹分支（先于接近速度闸：悬停锁定段弹体低速/悬停，常规口径会漏）；
+            // 只计 payload 爆发——弹体本体在悬停点 bombPumped 自爆（爆心半径数十 su），
+            // 对悬停距离外的本舰不构成伤害，计入 damageAmount 属虚增
             if (!collectFriendly && proj is MissileAPI) {
                 val profile = payloadProfileOf(proj)
                 if (profile != null) {
                     if (dist <= profile.standoffDist) {
-                        out[0] += proj.damageAmount + profile.burstDamage
+                        out[0] += profile.burstDamage
                     }
                     continue
                 }
@@ -1294,27 +1301,6 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
         return engines.count { it.isDisabled }.toFloat() / engines.size
     }
 
-    /**
-     * 脚本 spawn 弹头威胁采样（折算累加进 [out]：[0]=soon）：
-     * 双子星 DEM 弹头由脚本 spawn、不在 engine.missiles 里（实机判例，走
-     * [GeminiDemSalvoOnFireEffect] 出生登记簿），[estimateIncoming] 的通用 payload
-     * 导弹分支覆盖不到，补这条独立通道；折算口径与 [payloadProfileOf] 共用。
-     * 只采敌方弹头：payload 指向敌方目标、MISSILE_NO_FF 无友伤碰撞，友方弹头不构成威胁。
-     */
-    private fun estimateDemWarheadThreat(engine: CombatEngineAPI, ship: ShipAPI, out: FloatArray) {
-        for (ref in GeminiDemSalvoOnFireEffect.warheadsOf(engine)) {
-            val missile = ref.missile
-            if (missile.isExpired || missile.isFading || missile.owner == ship.owner) continue
-            val profile = payloadProfileOf(missile) ?: continue
-            if (distanceSq(ship.location, missile.location) >
-                profile.standoffDist * profile.standoffDist
-            ) {
-                continue
-            }
-            out[0] += missile.damageAmount + profile.burstDamage
-        }
-    }
-
     /** payload 导弹档案：悬停打击距离（su）与 payload 爆发伤害（按弹体 spec id 缓存推导结果）。 */
     private data class PayloadProfile(val standoffDist: Float, val burstDamage: Float)
 
@@ -1327,6 +1313,10 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
      * 弹体）不撞舰结算——抵近 triggerDistance 悬停锁定后发射 payload 结算主伤害，
      * 弹体命中口径低估威胁；悬停距离取 triggerDistance 上限，payload 伤害取 payload
      * 武器面板爆发伤害（爆发光束/鱼雷均为 burstDamage 口径）。
+     * 弹体本体伤害（damageAmount）不计入：payload 行为弹体在悬停点 bombPumped 自爆
+     * （爆心半径数十 su），对悬停距离外的目标不构成伤害。
+     * 推导失败（payload 武器缺失/面板爆发为 0/triggerDistance 缺失）记 WARN 并缓存 null，
+     * 该 spec 的威胁通道不生效——不静默兜底。
      */
     private fun payloadProfileOf(proj: DamagingProjectileAPI): PayloadProfile? {
         val specId = proj.projectileSpecId ?: return null
@@ -1343,7 +1333,15 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
             } else {
                 params.optDouble("triggerDistance", 0.0).toFloat()
             }
-            if (burst > 0f && standoff > 0f) profile = PayloadProfile(standoff, burst)
+            if (burst > 0f && standoff > 0f) {
+                profile = PayloadProfile(standoff, burst)
+            } else {
+                log.warn(
+                    "[GravityPhaseAI] payload 导弹档案推导失败：projSpec=$specId " +
+                            "payloadWeaponId=$payloadId burst=$burst standoff=$standoff，" +
+                            "该弹体的 payload 威胁通道不生效",
+                )
+            }
         }
         payloadProfileCache[specId] = profile
         return profile

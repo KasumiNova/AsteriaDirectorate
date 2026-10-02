@@ -554,6 +554,33 @@ class GravityPhaseCloakAITest {
     }
 
     @Test
+    fun `耗软辐 vent 压制与下潜链封锁闸同口径`() {
+        // 冷却尾声宽限期内，攻击系统激活中：decide 绝不下潜，vent 压制必须放行——
+        // 否则构成「压了 vent 却不下潜」的真实窗口（审查判例）
+        val cooling = unphasedSituation().copy(
+            softFluxLevel = 0.4f,
+            fluxLevel = 0.55f,
+            cloakReady = false,
+            cloakCooldownRemaining = 1f,
+        )
+        assertTrue(GravityPhaseCloakAI.isSoftFluxDumpVentHold(cooling))
+        assertFalse(GravityPhaseCloakAI.isSoftFluxDumpVentHold(cooling.copy(systemActive = true)))
+
+        // 友军接盘风险达闸：同样放行 vent（穿透误伤优先于耗散节奏）
+        assertFalse(
+            GravityPhaseCloakAI.isSoftFluxDumpVentHold(
+                cooling.copy(friendlyCatchDamage = GravityPhaseCloakAI.FRIENDLY_CATCH_DAMAGE_MIN),
+            ),
+        )
+
+        // 斗篷就绪且完整闸门成立时：封锁闸同样生效（decide 在封锁闸后才会查耗软辐闸门）
+        val ready = unphasedSituation().copy(softFluxLevel = 0.4f, fluxLevel = 0.55f)
+        assertFalse(
+            GravityPhaseCloakAI.isSoftFluxDumpVentHold(ready.copy(systemActive = true)),
+        )
+    }
+
+    @Test
     fun `武器或引擎下线过半触发修复下潜`() {
         // 相位 3x 时间倍率随舰时钟加速组件修复，下线过半时优先相位窗口
         val weaponsDown = unphasedSituation().copy(
