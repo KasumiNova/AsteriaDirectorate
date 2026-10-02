@@ -58,11 +58,24 @@ import org.lwjgl.util.vector.Vector2f
  *   （原版口径：快进舰每帧额外 advance，ComponentHealthTracker 随舰时钟走），
  *   相位无敌同时兜底修复窗口的生存；
  * - 撤退下潜：撤退中且硬辐能 < [RETREAT_DIVE_HARD_FLUX]（相位赶路）；
+ * - 相位赶路：有赶路目标点（[ShipwideAIFlags.AIFlags.MOVEMENT_DEST] 旗标，原版
+ *   OrderResponseModule 设置、燃驱 AI 同款用法）且距离 ≥ [TRAVEL_PHASE_MIN_DIST]、脱战、
+ *   非撤退、辐能低时下潜赶路（相位 3x 时间倍率随舰时钟加速位移），闸门收敛在
+ *   [isTravelDive]；相位途中辐能 < [TRAVEL_HOLD_FLUX_MAX] 时拦截「无威胁上浮」保持相位
+ *   （[isTravelPhaseHold]），超标放行上浮耗散，维持低辐赶路循环——交战与空闲状态下无效；
+ * - 前方承火放宽：主威胁方向 ±[SCREEN_AHEAD_HALF_ARC]° 锥内有比本舰更靠近敌舰的友军
+ *   承火（[SCREEN_SCAN_DIST] 内）时，紧急/威胁下潜阈值 ×[SCREENED_DIVE_THRESHOLD_MULT]——
+ *   有人扛线时减少规避无效伤害的反复潜水（只放宽规避类下潜闸，不动上浮与战术链路）；
  * - 友军接盘闸：若此刻入相位，穿透本舰的直射弹药在 [FRIENDLY_CATCH_WINDOW_SEC] 内将误伤
  *   友军的估计伤害 ≥ [FRIENDLY_CATCH_DAMAGE_MIN] 时，压制一切下潜（自身濒危——致命来袭，
  *   含友军火力烧身——除外：与接盘博弈时自身生存优先）；
  * - 错峰闸：除紧急下潜与耗软辐下潜外，距上次上浮不足 [MIN_UNPHASE_TIME_SEC] 不下潜；
  *   攻击系统激活中（isOn）不主动下潜（防止自断磁暴充能/复制窗口）。
+ * - 战术强制耗散（advance 层，decide 返回 NONE 时出手，口径 [isTacticalVent]）：交战但
+ *   环境安全、总辐能 ≤ [TACTICAL_VENT_FLUX_CAP] × ventRateMult（随强制耗散属性提升阈值）、
+ *   硬辐能占比 ≥ [TACTICAL_VENT_HARD_FRAC]、预计耗散 ≤ [TACTICAL_VENT_MAX_SEC]s 时主动
+ *   vent 清硬辐——硬辐能压低相位内航速与下潜余量，低辐窗口主动清掉比攒高了被动后撤
+ *   耗散更保全输出位；软辐占比较高时走相位耗散链路而非本口径（辐能口径互斥）；
  *
  * 上浮（相位中时）：
  * - 辐能强制上浮：硬辐能 ≥ [SURFACE_HARD_FLUX]（继续潜只会涨辐能减速被围死）；
@@ -110,7 +123,8 @@ import org.lwjgl.util.vector.Vector2f
  *   按住续潜无过载风险（canNotCauseOverload），漂出重叠后上浮自然放行。
  *
  * 威胁评估口径：直射弹体按弹道外推 + 横向偏差判定；制导导弹（含龙炎 DEM 等跟踪武器）
- * 跳过横向偏差检查并以极速一半兜底接近速度；光束瞬时命中无弹体，扫描正在开火且射界/射程
+ * 跳过横向偏差检查并以极速一半兜底接近速度；fade（熄火惯性飞行）弹体不过滤——
+ * 惯性段仍可全额命中，漏计会低估威胁；光束瞬时命中无弹体，扫描正在开火且射界/射程
  * 覆盖本舰的敌方光束武器折算威胁（持续光束 DPS × [CONT_BEAM_THREAT_WINDOW_SEC] 进 near，
  * 爆发光束爆发总伤 × [BURST_BEAM_THREAT_WEIGHT] 进 soon）。payload 导弹（behaviorSpec 带
  * payloadWeaponId：双子星 DEM、原版龙炎 DEM 及任何同行为模组弹体）不撞舰结算——抵近
@@ -326,6 +340,39 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
         /** 爆发光束威胁折算权重：照射中的爆发光束按爆发总伤 × 本值折算 soon 窗口伤害。 */
         internal const val BURST_BEAM_THREAT_WEIGHT = 0.5f
 
+        /** 战术强制耗散的总辐能上限（基础值；实际闸值 × ventRateMult，随强制耗散属性提升）。 */
+        internal const val TACTICAL_VENT_FLUX_CAP = 0.15f
+
+        /** 战术强制耗散的硬辐能占比下限：辐能几乎全为硬辐才值得 vent（软辐走相位耗散链路）。 */
+        internal const val TACTICAL_VENT_HARD_FRAC = 0.85f
+
+        /** 战术强制耗散的预计耗散时长上限（s）：耗散窗口超过本值不值得主动 vent。 */
+        internal const val TACTICAL_VENT_MAX_SEC = 1.5f
+
+        /** 战术强制耗散的环境安全口径：near 来袭低于威胁阈值 × 本值。 */
+        internal const val TACTICAL_VENT_SAFE_NEAR_FRAC = 0.5f
+
+        /** 友军承火筛查距离（su）：只评估本舰周围本距离内的友军舰船。 */
+        internal const val SCREEN_SCAN_DIST = 800f
+
+        /** 友军承火方向锥半角（°）：友军位于本舰→主威胁方向 ±本值锥内且更靠近敌舰才算「在前承火」。 */
+        internal const val SCREEN_AHEAD_HALF_ARC = 60f
+
+        /** 前方友军承火时下潜阈值的放宽倍数：有人扛线时减少规避无效伤害的反复潜水。 */
+        internal const val SCREENED_DIVE_THRESHOLD_MULT = 2f
+
+        /** 相位赶路的最小目标距离（su）：低于本值开关僵直大于赶路收益，不下潜。 */
+        internal const val TRAVEL_PHASE_MIN_DIST = 2000f
+
+        /** 相位赶路下潜的总辐能上限：辐能过高时下潜只会加速累积硬辐。 */
+        internal const val TRAVEL_DIVE_FLUX_MAX = 0.30f
+
+        /** 相位赶路下潜的硬辐能上限。 */
+        internal const val TRAVEL_DIVE_HARD_FLUX_MAX = 0.25f
+
+        /** 相位赶路途中保持相位的总辐能上限：超过本值放行上浮耗散，维持低辐赶路循环。 */
+        internal const val TRAVEL_HOLD_FLUX_MAX = 0.35f
+
         /** 纯角度差（0~180°），不依赖 Misc 便于单测。 */
         internal fun angleDiffAbs(a: Float, b: Float): Float {
             var d = (a - b) % 360f
@@ -464,6 +511,16 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
             val forcedSurfaceHoldSec: Float,
             /** 友军火力在 soon 窗口内命中本舰的估计伤害（友伤规避只触发防御性下潜）。 */
             val incomingFriendlySoonDamage: Float,
+            /** 预计强制耗散时长（s；无法估计时为 [Float.MAX_VALUE]），战术强制耗散采样。 */
+            val ventTimeSec: Float,
+            /** 强制耗散速率倍率（stats 修正值），战术强制耗散阈值随其提升。 */
+            val ventRateMult: Float,
+            /** 是否正在强制耗散中。 */
+            val venting: Boolean,
+            /** 主威胁方向前方是否有友军承火（[SCREEN_SCAN_DIST] 内、方向锥 ±[SCREEN_AHEAD_HALF_ARC]°、比本舰更靠近敌舰）。 */
+            val friendlyScreenAhead: Boolean,
+            /** 赶路目标点（MOVEMENT_DEST 旗标）距离（su；无目标点时为 [Float.MAX_VALUE]）。 */
+            val travelDestDistance: Float,
         )
 
         /** 相位指令：NONE 保持 / DIVE 下潜 / SURFACE 上浮。 */
@@ -491,6 +548,9 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
             // 防御性来袭口径：敌方与友军火力合并——被友军高伤火力命中同样是生存威胁，
             // 相位可以规避友伤；友军火力只走这条防御链路，不参与绕后/耗软辐等战术下潜
             val defensiveSoon = s.incomingSoonDamage + s.incomingFriendlySoonDamage
+            // 前方友军承火时放宽下潜阈值：有人扛线时本舰受到的直瞄火力显著减少，
+            // 减少规避无效伤害的反复潜水（只放宽规避类下潜闸，不动上浮与战术链路）
+            val screenMult = if (s.friendlyScreenAhead) SCREENED_DIVE_THRESHOLD_MULT else 1f
             if (s.phased) {
                 // 致命豁免：即将吃到致命伤害且辐能有余量时，强制上浮推迟到这一下过去之后
                 val holdForLethal = isHoldForLethal(s)
@@ -530,8 +590,11 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
                     return PhaseOrder.NONE
                 }
                 if (!s.engagedEnemyNear && s.incomingNearDamage < diveNearThreshold(s.maxHull) * 0.5f) {
-                    // 撤退赶路且硬辐能有余量时保持相位
-                    if (!(s.retreating && s.hardFluxLevel < RETREAT_STAY_HARD_FLUX)) {
+                    // 撤退赶路且硬辐能有余量时保持相位；相位赶路途中辐能未超标同样保持
+                    // （[isTravelPhaseHold]，辐能积累超标后放行上浮耗散，维持低辐赶路循环）
+                    if (!(s.retreating && s.hardFluxLevel < RETREAT_STAY_HARD_FLUX) &&
+                        !isTravelPhaseHold(s)
+                    ) {
                         return PhaseOrder.SURFACE
                     }
                 }
@@ -557,8 +620,9 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
             // 误伤量达闸后只允许自身濒危（致命来袭，含友军火力烧身）时下潜——自身生存优先
             val selfCritical = defensiveSoon >= s.maxHull * LETHAL_SOON_HULL_FRACTION
             val friendlyRisk = s.friendlyCatchDamage >= FRIENDLY_CATCH_DAMAGE_MIN
-            // 紧急下潜绕过错峰与系统激活闸：保命优先（但受友军接盘闸约束，濒危除外）
-            if (defensiveSoon >= diveSoonThreshold(s.maxHull) &&
+            // 紧急下潜绕过错峰与系统激活闸：保命优先（但受友军接盘闸约束，濒危除外）；
+            // 前方友军承火时阈值放宽（screenMult），有人扛线时不为擦伤火力反复潜水
+            if (defensiveSoon >= diveSoonThreshold(s.maxHull) * screenMult &&
                 (!friendlyRisk || selfCritical)
             ) {
                 return PhaseOrder.DIVE
@@ -576,6 +640,9 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
             }
             if (s.timeSinceUnphase < MIN_UNPHASE_TIME_SEC) return PhaseOrder.NONE
 
+            // 相位赶路（先于一刀切下潜规则判定）：赶路目标点足够远且脱战低辐时下潜赶路；
+            // 与撤退下潜互斥（isTravelDive 排除撤退态），与交战类下潜互斥（要求脱战）
+            if (isTravelDive(s)) return PhaseOrder.DIVE
             if (s.retreating && s.hardFluxLevel < RETREAT_DIVE_HARD_FLUX) return PhaseOrder.DIVE
             if (s.fluxLevel >= DIVE_FLUX_LEVEL && s.hardFluxLevel < DIVE_HARD_FLUX_MAX &&
                 s.engagedEnemyNear
@@ -586,7 +653,8 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
             if (isFlankDive(s)) {
                 return PhaseOrder.DIVE
             }
-            if (s.incomingNearDamage >= diveNearThreshold(s.maxHull)) return PhaseOrder.DIVE
+            // 威胁下潜：前方友军承火时阈值同样放宽（screenMult）
+            if (s.incomingNearDamage >= diveNearThreshold(s.maxHull) * screenMult) return PhaseOrder.DIVE
             if (s.weaponsReadyFrac <= RECHARGE_DIVE_WEAPONS_FRAC && s.engagedEnemyNear &&
                 s.hardFluxLevel < RECHARGE_DIVE_HARD_FLUX_MAX
             ) {
@@ -688,6 +756,53 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
             }
             return isSoftFluxDumpDive(s.copy(cloakReady = true))
         }
+
+        /**
+         * 战术强制耗散口径（纯函数）：交战但环境安全（soon/near 来袭均低于下潜阈值）、
+         * 总辐能低（≤ [TACTICAL_VENT_FLUX_CAP] × ventRateMult——强制耗散属性提升耗散速度，
+         * 阈值随之上浮）、辐能几乎全为硬辐（≥ [TACTICAL_VENT_HARD_FRAC]）且预计耗散窗口短
+         * （≤ [TACTICAL_VENT_MAX_SEC]）时主动 vent 清硬辐——硬辐能压低相位内航速与下潜余量，
+         * 低辐窗口主动清掉比攒高了再被动后撤耗散更保全输出位。
+         * 软辐占比较高时不走本口径：相位耗散（[isSoftFluxDumpDive]）才是软辐的去处，
+         * 两链路辐能口径互斥（本口径要求总辐能低且硬辐占比高，耗软辐要求软辐占比 ≥ 0.35）。
+         * 辐能归零时不 vent（fluxLevel > 0.01 闸）：空 vent 纯属自缚僵直。
+         * advance 在 decide 返回 NONE 时出手。
+         */
+        internal fun isTacticalVent(s: PhaseSituation): Boolean =
+            !s.phased && s.engagedEnemyNear && !s.retreating && !s.venting &&
+                    s.fluxLevel > 0.01f &&
+                    s.fluxLevel <= TACTICAL_VENT_FLUX_CAP * s.ventRateMult &&
+                    s.hardFluxLevel >= s.fluxLevel * TACTICAL_VENT_HARD_FRAC &&
+                    s.ventTimeSec <= TACTICAL_VENT_MAX_SEC &&
+                    s.incomingSoonDamage + s.incomingFriendlySoonDamage < diveSoonThreshold(s.maxHull) &&
+                    s.incomingNearDamage < diveNearThreshold(s.maxHull) * TACTICAL_VENT_SAFE_NEAR_FRAC
+
+        /**
+         * 相位赶路下潜口径（纯函数）：有赶路目标点（[ShipwideAIFlags.AIFlags.MOVEMENT_DEST]
+         * 旗标，原版 OrderResponseModule 设置、燃驱 AI 同款用法）且距离 ≥ [TRAVEL_PHASE_MIN_DIST]、
+         * 脱战、非撤退、辐能低时下潜——相位 3x 时间倍率随舰时钟加速赶路。
+         * 交战（有交战对象时辐能与生存管理优先于赶路）与空闲（无目标点）状态下无效。
+         * 注意哨兵口径：无目标点采样为 [Float.MAX_VALUE]，必须显式排除——
+         * 「无目标点」若直接过 ≥ 闸会被误判成「无限远目标点」。
+         */
+        internal fun isTravelDive(s: PhaseSituation): Boolean =
+            !s.phased && s.cloakReady && !s.engagedEnemyNear && !s.retreating &&
+                    s.travelDestDistance >= TRAVEL_PHASE_MIN_DIST &&
+                    s.travelDestDistance < Float.MAX_VALUE &&
+                    s.fluxLevel <= TRAVEL_DIVE_FLUX_MAX &&
+                    s.hardFluxLevel <= TRAVEL_DIVE_HARD_FLUX_MAX
+
+        /**
+         * 相位赶路途中保持口径（纯函数）：赶路相位中、辐能未积累到 [TRAVEL_HOLD_FLUX_MAX] 时
+         * 拦截「无威胁上浮」保持相位赶路；辐能积累超标后放行上浮耗散，维持低辐能赶路循环
+         * （相位维持涨辐能减速，低辐相位航速才有赶路收益）。
+         * 哨兵口径同 [isTravelDive]：无目标点的 [Float.MAX_VALUE] 必须显式排除。
+         */
+        internal fun isTravelPhaseHold(s: PhaseSituation): Boolean =
+            s.phased && !s.engagedEnemyNear && !s.retreating &&
+                    s.travelDestDistance >= TRAVEL_PHASE_MIN_DIST &&
+                    s.travelDestDistance < Float.MAX_VALUE &&
+                    s.fluxLevel < TRAVEL_HOLD_FLUX_MAX
 
         /**
          * 绕后下潜完整闸门（纯函数）：目标低机动、本舰未在其侧后薄弱区、武器过半可输出、
@@ -811,6 +926,13 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
         // （决策优先级：紧急避险 > 相位耗软辐 > 强制耗散）
         if (order == PhaseOrder.DIVE || isSoftFluxDumpVentHold(situation)) {
             ship.aiFlags.setFlag(ShipwideAIFlags.AIFlags.DO_NOT_VENT, VENT_SUPPRESS_FLAG_SEC)
+        }
+
+        // 战术强制耗散：交战但环境安全、低辐能且几乎全为硬辐、预计耗散窗口短时主动 vent
+        // 清硬辐（维持相位航速与下潜余量）；只在本拍无下潜/上浮指令时出手。
+        // 与耗软辐链路互斥（辐能口径相反，见 [isTacticalVent]），不会顶掉相位耗散窗口
+        if (order == PhaseOrder.NONE && isTacticalVent(situation)) {
+            ship.giveCommand(ShipCommand.VENT_FLUX, null, 0)
         }
 
         // 强制上浮落点暂缓期间主动后撤：相位高机动拉开与主威胁间距，自己创造安全落点，
@@ -972,7 +1094,55 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
             // 暂缓时长由 advance 在采样后按节拍累计并 copy 覆写，采样恒置 0
             forcedSurfaceHoldSec = 0f,
             incomingFriendlySoonDamage = friendlyIncoming[0],
+            ventTimeSec = ship.fluxTracker?.timeToVent ?: Float.MAX_VALUE,
+            ventRateMult = ship.mutableStats.ventRateMult.modifiedValue,
+            venting = ship.fluxTracker?.isVenting == true,
+            friendlyScreenAhead = hasFriendlyScreenAhead(engine, ship, threat),
+            travelDestDistance = travelDestDistance(ship),
         )
+    }
+
+    /**
+     * 前方友军承火筛查：主威胁存在时，本舰周围 [SCREEN_SCAN_DIST] 内的友军舰船位于
+     * 「本舰→主威胁」方向 ±[SCREEN_AHEAD_HALF_ARC]° 锥内、且比本舰更靠近主威胁才算
+     * 「在前承火」——有人扛线时本舰受到的直瞄火力显著减少，规避类下潜阈值随之放宽
+     * （[SCREENED_DIVE_THRESHOLD_MULT]，见 decideOrder 的 screenMult）。
+     */
+    private fun hasFriendlyScreenAhead(engine: CombatEngineAPI, ship: ShipAPI, threat: ShipAPI?): Boolean {
+        if (threat == null) return false
+        val toThreatX = threat.location.x - ship.location.x
+        val toThreatY = threat.location.y - ship.location.y
+        val threatDistSq = toThreatX * toThreatX + toThreatY * toThreatY
+        if (threatDistSq < 1e-6f) return false
+        val threatBearing =
+            Math.toDegrees(kotlin.math.atan2(toThreatY.toDouble(), toThreatX.toDouble())).toFloat()
+        for (other in engine.ships) {
+            if (other === ship || other.owner != ship.owner || !other.isAlive ||
+                other.isHulk || other.isFighter
+            ) {
+                continue
+            }
+            val dx = other.location.x - ship.location.x
+            val dy = other.location.y - ship.location.y
+            val distSq = dx * dx + dy * dy
+            if (distSq > SCREEN_SCAN_DIST * SCREEN_SCAN_DIST || distSq < 1e-6f) continue
+            val bearing = Math.toDegrees(kotlin.math.atan2(dy.toDouble(), dx.toDouble())).toFloat()
+            if (angleDiffAbs(bearing, threatBearing) > SCREEN_AHEAD_HALF_ARC) continue
+            // 比本舰更靠近主威胁才算「在前」
+            if (distanceSq(other.location, threat.location) < threatDistSq) return true
+        }
+        return false
+    }
+
+    /**
+     * 赶路目标点距离（su）：原版 OrderResponseModule 设置的
+     * [ShipwideAIFlags.AIFlags.MOVEMENT_DEST] 自定义旗标（Vector2f，燃驱 AI 同款赶路口径）；
+     * 无目标点时为 [Float.MAX_VALUE]（相位赶路闸门随之失效）。
+     */
+    private fun travelDestDistance(ship: ShipAPI): Float {
+        val dest = ship.aiFlags.getCustom(ShipwideAIFlags.AIFlags.MOVEMENT_DEST) as? Vector2f
+            ?: return Float.MAX_VALUE
+        return kotlin.math.sqrt(distanceSq(ship.location, dest))
     }
 
     /**
@@ -1088,7 +1258,8 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
         val shipLoc = ship.location
         var catch = 0f
         for (proj in projectiles) {
-            if (proj.owner == ship.owner || proj.isFading || proj.isExpired) continue
+            // fade（熄火惯性飞行）弹体不过滤：惯性段仍可全额命中，穿透误伤同样成立
+            if (proj.owner == ship.owner || proj.isExpired) continue
             // 制导导弹脱靶后自行改瞄，穿透误伤口径不覆盖
             if (proj is MissileAPI && proj.isGuided) continue
             val dx = shipLoc.x - proj.location.x
@@ -1210,7 +1381,8 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
         val shipLoc = ship.location
         val radius = ship.collisionRadius
         for (proj in projectiles) {
-            if ((proj.owner == ship.owner) != collectFriendly || proj.isFading || proj.isExpired) continue
+            // fade（熄火惯性飞行）弹体不过滤：惯性段仍可全额命中，不计入才会漏判威胁
+            if ((proj.owner == ship.owner) != collectFriendly || proj.isExpired) continue
             val guided = proj is MissileAPI && proj.isGuided
             val dx = shipLoc.x - proj.location.x
             val dy = shipLoc.y - proj.location.y

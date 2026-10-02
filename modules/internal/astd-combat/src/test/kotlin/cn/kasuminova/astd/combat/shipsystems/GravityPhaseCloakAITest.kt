@@ -48,6 +48,11 @@ class GravityPhaseCloakAITest {
         rearSurfaceDistanceSafe = true,
         forcedSurfaceHoldSec = 0f,
         incomingFriendlySoonDamage = 0f,
+        ventTimeSec = 10f,
+        ventRateMult = 1f,
+        venting = false,
+        friendlyScreenAhead = false,
+        travelDestDistance = Float.MAX_VALUE,
     )
 
     /** 基准快照：未相位、斗篷就绪、错峰已过、无来袭、有交战对象、武器全就绪。 */
@@ -84,6 +89,11 @@ class GravityPhaseCloakAITest {
         rearSurfaceDistanceSafe = true,
         forcedSurfaceHoldSec = 0f,
         incomingFriendlySoonDamage = 0f,
+        ventTimeSec = 10f,
+        ventRateMult = 1f,
+        venting = false,
+        friendlyScreenAhead = false,
+        travelDestDistance = Float.MAX_VALUE,
     )
 
     @Test
@@ -961,5 +971,119 @@ class GravityPhaseCloakAITest {
             incomingFriendlySoonDamage = 5000f * GravityPhaseCloakAI.LETHAL_SOON_HULL_FRACTION,
         )
         assertEquals(PhaseOrder.NONE, GravityPhaseCloakAI.decide(s))
+    }
+
+    @Test
+    fun `战术强制耗散闸门 低辐高硬辐占比且耗散窗口短时成立`() {
+        // 基准：交战、无来袭、总辐能 0.10、硬辐 0.09（占比 0.9）、预计耗散 1s
+        val s = unphasedSituation().copy(
+            fluxLevel = 0.10f,
+            hardFluxLevel = 0.09f,
+            softFluxLevel = 0.01f,
+            ventTimeSec = 1f,
+        )
+        assertTrue(GravityPhaseCloakAI.isTacticalVent(s))
+        // 总辐能超闸不成立
+        assertFalse(GravityPhaseCloakAI.isTacticalVent(s.copy(fluxLevel = 0.20f)))
+        // 硬辐占比不足（软辐为主走相位耗散链路）不成立
+        assertFalse(
+            GravityPhaseCloakAI.isTacticalVent(s.copy(hardFluxLevel = 0.05f, softFluxLevel = 0.05f)),
+        )
+        // 预计耗散窗口过长不成立
+        assertFalse(GravityPhaseCloakAI.isTacticalVent(s.copy(ventTimeSec = 2f)))
+        // near 来袭达安全口径上限不成立
+        assertFalse(
+            GravityPhaseCloakAI.isTacticalVent(
+                s.copy(
+                    incomingNearDamage =
+                        GravityPhaseCloakAI.diveNearThreshold(5000f) *
+                                GravityPhaseCloakAI.TACTICAL_VENT_SAFE_NEAR_FRAC,
+                ),
+            ),
+        )
+        // 已在耗散中/撤退中/辐能归零不成立
+        assertFalse(GravityPhaseCloakAI.isTacticalVent(s.copy(venting = true)))
+        assertFalse(GravityPhaseCloakAI.isTacticalVent(s.copy(retreating = true)))
+        assertFalse(
+            GravityPhaseCloakAI.isTacticalVent(s.copy(fluxLevel = 0f, hardFluxLevel = 0f, softFluxLevel = 0f)),
+        )
+    }
+
+    @Test
+    fun `战术强制耗散阈值随强制耗散属性提升`() {
+        // ventRateMult=2 时阈值上浮到 0.30：0.20 的总辐能从超闸变为入闸
+        val s = unphasedSituation().copy(
+            fluxLevel = 0.20f,
+            hardFluxLevel = 0.18f,
+            softFluxLevel = 0.02f,
+            ventTimeSec = 1f,
+            ventRateMult = 2f,
+        )
+        assertTrue(GravityPhaseCloakAI.isTacticalVent(s))
+        assertFalse(GravityPhaseCloakAI.isTacticalVent(s.copy(ventRateMult = 1f)))
+    }
+
+    @Test
+    fun `前方友军承火时紧急与威胁下潜阈值放宽`() {
+        // 紧急链路：soon=450 达阈值（300）未达放宽后阈值（600）——承火时不潜水，否则紧急下潜
+        val emergency = unphasedSituation().copy(incomingSoonDamage = 450f)
+        assertEquals(PhaseOrder.DIVE, GravityPhaseCloakAI.decide(emergency))
+        assertEquals(
+            PhaseOrder.NONE,
+            GravityPhaseCloakAI.decide(emergency.copy(friendlyScreenAhead = true)),
+        )
+        // 威胁链路：near=900 达阈值（600）未达放宽后阈值（1200）——承火时不潜水，否则威胁下潜
+        val threat = unphasedSituation().copy(incomingNearDamage = 900f)
+        assertEquals(PhaseOrder.DIVE, GravityPhaseCloakAI.decide(threat))
+        assertEquals(
+            PhaseOrder.NONE,
+            GravityPhaseCloakAI.decide(threat.copy(friendlyScreenAhead = true)),
+        )
+    }
+
+    @Test
+    fun `相位赶路下潜 远目标点脱战低辐时下潜`() {
+        // 基准：脱战、赶路目标 3000su、辐能低——下潜赶路
+        val s = unphasedSituation().copy(
+            engagedEnemyNear = false,
+            travelDestDistance = 3000f,
+        )
+        assertEquals(PhaseOrder.DIVE, GravityPhaseCloakAI.decide(s))
+        // 无赶路目标点（空闲）不下潜
+        assertEquals(
+            PhaseOrder.NONE,
+            GravityPhaseCloakAI.decide(s.copy(travelDestDistance = Float.MAX_VALUE)),
+        )
+        // 交战状态下赶路下潜无效
+        assertEquals(
+            PhaseOrder.NONE,
+            GravityPhaseCloakAI.decide(s.copy(engagedEnemyNear = true)),
+        )
+        // 撤退态由撤退下潜链路处理，赶路下潜不重复出手
+        assertEquals(
+            PhaseOrder.NONE,
+            GravityPhaseCloakAI.decide(s.copy(retreating = true, hardFluxLevel = 0.5f)),
+        )
+        // 辐能过高/目标过近不下潜
+        assertEquals(PhaseOrder.NONE, GravityPhaseCloakAI.decide(s.copy(fluxLevel = 0.5f)))
+        assertEquals(PhaseOrder.NONE, GravityPhaseCloakAI.decide(s.copy(travelDestDistance = 1500f)))
+    }
+
+    @Test
+    fun `相位赶路途中保持 辐能未超标拦截无威胁上浮`() {
+        // 赶路相位中、辐能 0.2 < 0.35：拦截无威胁上浮保持相位赶路
+        val s = phasedSituation().copy(
+            engagedEnemyNear = false,
+            travelDestDistance = 3000f,
+            fluxLevel = 0.2f,
+        )
+        assertEquals(PhaseOrder.NONE, GravityPhaseCloakAI.decide(s))
+        // 辐能积累超标（≥0.35）：放行上浮耗散，维持低辐赶路循环
+        assertEquals(PhaseOrder.SURFACE, GravityPhaseCloakAI.decide(s.copy(fluxLevel = 0.4f)))
+        // 无赶路目标点：拦截失效，无威胁上浮正常触发
+        assertEquals(
+            PhaseOrder.SURFACE,
+            GravityPhaseCloakAI.decide(s.copy(travelDestDistance = Float.MAX_VALUE)),
+        )
     }
 }
