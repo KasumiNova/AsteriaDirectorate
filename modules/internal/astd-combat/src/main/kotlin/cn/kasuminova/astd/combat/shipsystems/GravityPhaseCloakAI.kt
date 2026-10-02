@@ -1,5 +1,7 @@
 package cn.kasuminova.astd.combat.shipsystems
 
+import cn.kasuminova.astd.combat.effect.arc.geminidem.GeminiDemDifficulty
+import cn.kasuminova.astd.combat.effect.arc.geminidem.GeminiDemSalvoOnFireEffect
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.DamagingProjectileAPI
 import com.fs.starfarer.api.combat.MissileAPI
@@ -31,9 +33,16 @@ import org.lwjgl.util.vector.Vector2f
  * - 辐能压力下潜：辐能水平 ≥ [DIVE_FLUX_LEVEL] 且硬辐能 < [DIVE_HARD_FLUX_MAX] 且有交战对象
  *   （硬辐能过高时下潜只会加速憋死，故设上限）；
  * - 耗软辐下潜：软辐能占比 ≥ [SOFT_FLUX_DIVE_MIN]、总辐能 < [SOFT_FLUX_DIVE_MAX_FLUX_LEVEL]
- *   且环境安全（near 来袭低于威胁阈值 × [SOFT_FLUX_DIVE_SAFE_NEAR_FRAC]）时下潜耗散软辐
- *   （耗散优先级：紧急避险 > 相位耗软辐 > 强制耗散——闸门收敛在 [isSoftFluxDumpDive]，
- *   advance 只在 decide 返回 DIVE 且命中该闸门时压 DO_NOT_VENT 拦 VentModule）；
+ *   且环境安全时下潜耗散软辐（耗散优先级：紧急避险 > 相位耗软辐 > 强制耗散——
+ *   闸门收敛在 [isSoftFluxDumpDive]）。本链路不受错峰闸约束：相位耗散是本系统的核心循环，
+ *   被 [MIN_UNPHASE_TIME_SEC] 拦住时 VentModule 必在窗口内抢先 vent（vent 启动即不可取消，
+ *   绕后输出窗口随之报废）；环境安全口径为 near 来袭低于威胁阈值 ×
+ *   [SOFT_FLUX_DIVE_SAFE_NEAR_FRAC]，侧后占位（已入主威胁射界薄弱区且覆盖不超
+ *   [SURFACE_COVERAGE_MAX]）放宽到 ×[SOFT_FLUX_DIVE_SAFE_NEAR_FRAC_REAR]——
+ *   主威胁覆盖不了侧后，near 来袭多来自次要方向，原地耗散比后撤 vent 保全输出位；
+ *   advance 的 DO_NOT_VENT 压制走 [isSoftFluxDumpVentHold] 宽限口径（斗篷冷却尾声
+ *   [SOFT_FLUX_VENT_HOLD_COOLDOWN_SEC] 内提前压 vent，就绪即下潜），防止冷却窗口内
+ *   VentModule 抢先启动后撤耗散；
  * - 绕后下潜：主威胁目标为低机动舰（[isLowMobilityTarget] 代理指标）且本舰尚未进入其侧后
  *   薄弱区、武器过半可输出、硬辐能 < [FLANK_DIVE_HARD_FLUX_MAX] 时，借相位穿透占位
  *   （闸门收敛在 [isFlankDive]，decide 与 advance 的意图布防共用）；下潜后开启
@@ -45,11 +54,15 @@ import org.lwjgl.util.vector.Vector2f
  *   [flankDriveHoldSpot] 口径，避免走位层保持、决策层等拉开的两层打架）；
  * - 威胁下潜：[NEAR_WINDOW_SEC] 内预计命中伤害达 [diveNearThreshold]；
  * - 装填下潜：可输出武器占比 ≤ [RECHARGE_DIVE_WEAPONS_FRAC] 且硬辐能 < [RECHARGE_DIVE_HARD_FLUX_MAX]；
+ * - 修复下潜：武器或引擎下线占比 ≥ [REPAIR_DIVE_DISABLED_FRAC] 且有交战对象、
+ *   硬辐能 < [REPAIR_DIVE_HARD_FLUX_MAX] 时下潜——相位 3x 时间倍率随舰时钟加速组件修复
+ *   （原版口径：快进舰每帧额外 advance，ComponentHealthTracker 随舰时钟走），
+ *   相位无敌同时兜底修复窗口的生存；
  * - 撤退下潜：撤退中且硬辐能 < [RETREAT_DIVE_HARD_FLUX]（相位赶路）；
  * - 友军接盘闸：若此刻入相位，穿透本舰的直射弹药在 [FRIENDLY_CATCH_WINDOW_SEC] 内将误伤
  *   友军的估计伤害 ≥ [FRIENDLY_CATCH_DAMAGE_MIN] 时，压制一切下潜（自身濒危——致命来袭，
  *   含友军火力烧身——除外：与接盘博弈时自身生存优先）；
- * - 错峰闸：除紧急下潜外，距上次上浮不足 [MIN_UNPHASE_TIME_SEC] 不下潜；
+ * - 错峰闸：除紧急下潜与耗软辐下潜外，距上次上浮不足 [MIN_UNPHASE_TIME_SEC] 不下潜；
  *   攻击系统激活中（isOn）不主动下潜（防止自断磁暴充能/复制窗口）。
  *
  * 上浮（相位中时）：
@@ -100,7 +113,12 @@ import org.lwjgl.util.vector.Vector2f
  * 威胁评估口径：直射弹体按弹道外推 + 横向偏差判定；制导导弹（含龙炎 DEM 等跟踪武器）
  * 跳过横向偏差检查并以极速一半兜底接近速度；光束瞬时命中无弹体，扫描正在开火且射界/射程
  * 覆盖本舰的敌方光束武器折算威胁（持续光束 DPS × [CONT_BEAM_THREAT_WINDOW_SEC] 进 near，
- * 爆发光束爆发总伤 × [BURST_BEAM_THREAT_WEIGHT] 进 soon）。友军接盘只评估非制导弹药
+ * 爆发光束爆发总伤 × [BURST_BEAM_THREAT_WEIGHT] 进 soon）。双子星 DEM 弹头走独立采样通道
+ * （[estimateDemWarheadThreat]）：脚本 spawn 的弹头不在 engine.missiles 里（出生登记簿
+ * 口径），且弹头不撞舰——抵近悬停距离（[GeminiDemDifficulty.WARHEAD_STANDOFF_DIST]）锁定后
+ * 由 FX drone（战机实体，光束扫描排除）发射 payload 光束结算主伤害，两条通用口径都看不到
+ * 这条伤害链；锁定完成的 hitscan 光束机动无法规避，弹头进入悬停距离即按 soon 窗口计
+ * 全额威胁（弹体 + payload 折算），给下潜充能留提前量。友军接盘只评估非制导弹药
  * （制导导弹脱靶后自行改瞄，穿透误伤口径不覆盖），穿透线段从预计命中本舰点起算。
  *
  * 上浮僵直保护：强制上浮后挂 [ShipwideAIFlags.AIFlags.BACK_OFF]（2s）让舰船后撤度过
@@ -223,6 +241,26 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
 
         /** 耗软辐下潜的环境安全口径：near 窗口来袭低于威胁阈值 × 本值。 */
         internal const val SOFT_FLUX_DIVE_SAFE_NEAR_FRAC = 0.25f
+
+        /**
+         * 耗软辐下潜的侧后占位安全口径：已在主威胁射界薄弱区且覆盖不超 [SURFACE_COVERAGE_MAX] 时
+         * 放宽到威胁阈值 × 本值——主威胁覆盖不了侧后，near 来袭多来自次要方向，
+         * 原地相位耗散（上浮仍在输出位）比后撤 vent 更保全绕后输出窗口。
+         */
+        internal const val SOFT_FLUX_DIVE_SAFE_NEAR_FRAC_REAR = 0.5f
+
+        /**
+         * 耗软辐 vent 压制的斗篷冷却宽限（s）：冷却尾声提前压 DO_NOT_VENT——
+         * 否则 VentModule 必在冷却窗口内抢先 vent（vent 启动即不可取消），相位耗散永远抢不到窗口；
+         * 宽限有界：斗篷就绪即下潜，环境转差/辐能逼近上限时闸门失效 vent 自然放行兜底。
+         */
+        internal const val SOFT_FLUX_VENT_HOLD_COOLDOWN_SEC = 4f
+
+        /** 修复下潜闸：武器或引擎下线占比达本值时优先相位窗口（3x 时间倍率加速组件修复）。 */
+        internal const val REPAIR_DIVE_DISABLED_FRAC = 0.5f
+
+        /** 修复下潜的硬辐能上限：硬辐能过高时下潜只会加速憋死。 */
+        internal const val REPAIR_DIVE_HARD_FLUX_MAX = 0.5f
 
         /** 低机动代理指标：极速不高于本值（su/s）直接判低机动。 */
         internal const val LOW_MOBILITY_MAX_SPEED = 70f
@@ -389,8 +427,14 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
             val retreating: Boolean,
             /** 相位斗篷是否可激活（空闲、冷却完毕、未被禁用）。 */
             val cloakReady: Boolean,
+            /** 相位斗篷剩余冷却（s；就绪时为 0，供 vent 压制冷却宽限口径使用）。 */
+            val cloakCooldownRemaining: Float,
             /** 软辐能占比（fluxLevel - hardFluxLevel）。 */
             val softFluxLevel: Float,
+            /** 下线武器占比（0~1；非装饰非系统槽武器中被禁用的比例，无武器时为 0）。 */
+            val weaponsDisabledFrac: Float,
+            /** 下线引擎占比（0~1；整舰熄火视为全部下线，无引擎时为 0）。 */
+            val enginesDisabledFrac: Float,
             /** 主威胁目标是否为低机动舰（代理指标判定，见 [isLowMobilityTarget]）。 */
             val targetLowMobility: Boolean,
             /** 本舰是否已位于主威胁目标的侧后射界薄弱区。 */
@@ -520,19 +564,21 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
             }
             // 攻击系统激活中不主动下潜（防自断磁暴充能/复制窗口）
             if (s.systemActive) return PhaseOrder.NONE
-            if (s.timeSinceUnphase < MIN_UNPHASE_TIME_SEC) return PhaseOrder.NONE
             // 友军接盘闸：非紧急下潜一律压制
             if (friendlyRisk) return PhaseOrder.NONE
+            // 相位耗软辐能（先于一刀切错峰闸判定）：闸门收敛到 [isSoftFluxDumpDive] 单一口径。
+            // 不受错峰闸约束——相位耗散是本系统的核心循环，错峰窗口内不压 vent 时
+            // VentModule 必抢先 vent（vent 启动即不可取消），绕后/侧后输出窗口随之报废；
+            // 闸门内含 cloakReady，通风口只在相位耗散确定接手时被压制
+            if (isSoftFluxDumpDive(s)) {
+                return PhaseOrder.DIVE
+            }
+            if (s.timeSinceUnphase < MIN_UNPHASE_TIME_SEC) return PhaseOrder.NONE
 
             if (s.retreating && s.hardFluxLevel < RETREAT_DIVE_HARD_FLUX) return PhaseOrder.DIVE
             if (s.fluxLevel >= DIVE_FLUX_LEVEL && s.hardFluxLevel < DIVE_HARD_FLUX_MAX &&
                 s.engagedEnemyNear
             ) {
-                return PhaseOrder.DIVE
-            }
-            // 相位耗软辐能：闸门收敛到 [isSoftFluxDumpDive] 单一口径（decide 与
-            // advance 的 DO_NOT_VENT 压制共用，防止「压了 vent 却不下潜」的卡死窗口）
-            if (isSoftFluxDumpDive(s)) {
                 return PhaseOrder.DIVE
             }
             // 绕后下潜：闸门收敛到 [isFlankDive] 单一口径（decide 与 advance 的意图布防共用）
@@ -542,6 +588,15 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
             if (s.incomingNearDamage >= diveNearThreshold(s.maxHull)) return PhaseOrder.DIVE
             if (s.weaponsReadyFrac <= RECHARGE_DIVE_WEAPONS_FRAC && s.engagedEnemyNear &&
                 s.hardFluxLevel < RECHARGE_DIVE_HARD_FLUX_MAX
+            ) {
+                return PhaseOrder.DIVE
+            }
+            // 修复下潜：武器/引擎下线过半时优先相位窗口——相位 3x 时间倍率随舰时钟加速
+            // 组件修复（原版口径：快进舰每帧额外 advance，ComponentHealthTracker 随舰时钟走），
+            // 相位无敌兜底修复窗口的生存；硬辐能过高时下潜只会加速憋死，设上限
+            if (s.engagedEnemyNear && s.hardFluxLevel < REPAIR_DIVE_HARD_FLUX_MAX &&
+                (s.weaponsDisabledFrac >= REPAIR_DIVE_DISABLED_FRAC ||
+                        s.enginesDisabledFrac >= REPAIR_DIVE_DISABLED_FRAC)
             ) {
                 return PhaseOrder.DIVE
             }
@@ -590,16 +645,43 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
             }
 
         /**
-         * 耗软辐下潜完整闸门（纯函数）：软辐可观、总辐能离过载有距离、环境安全、有交战对象。
-         * decide 的下潜规则与 advance 的 DO_NOT_VENT 压制共用本口径——压 vent 只在
-         * 相位耗散确定会接手时发生，避免「既不能 vent 也不下潜」的高软辐卡死。
+         * 耗软辐下潜完整闸门（纯函数）：斗篷就绪、软辐可观、总辐能离过载有距离、环境安全、
+         * 有交战对象。环境安全口径：near 来袭低于威胁阈值 × [SOFT_FLUX_DIVE_SAFE_NEAR_FRAC]；
+         * 侧后占位（已入主威胁射界薄弱区且覆盖不超 [SURFACE_COVERAGE_MAX]）放宽到
+         * ×[SOFT_FLUX_DIVE_SAFE_NEAR_FRAC_REAR]——主威胁覆盖不了侧后，原地相位耗散
+         * （上浮仍在输出位）比后撤 vent 更保全绕后输出窗口。
+         * decide 的下潜规则专用；advance 的 DO_NOT_VENT 压制走 [isSoftFluxDumpVentHold] 宽限口径。
          */
-        internal fun isSoftFluxDumpDive(s: PhaseSituation): Boolean =
-            !s.phased && s.cloakReady &&
-                    s.softFluxLevel >= SOFT_FLUX_DIVE_MIN &&
-                    s.fluxLevel < SOFT_FLUX_DIVE_MAX_FLUX_LEVEL &&
-                    s.incomingNearDamage < diveNearThreshold(s.maxHull) * SOFT_FLUX_DIVE_SAFE_NEAR_FRAC &&
-                    s.engagedEnemyNear
+        internal fun isSoftFluxDumpDive(s: PhaseSituation): Boolean {
+            if (s.phased || !s.cloakReady || !s.engagedEnemyNear) return false
+            if (s.softFluxLevel < SOFT_FLUX_DIVE_MIN || s.fluxLevel >= SOFT_FLUX_DIVE_MAX_FLUX_LEVEL) {
+                return false
+            }
+            val safeFrac =
+                if (s.inTargetRearArc && s.weaponCoverage <= SURFACE_COVERAGE_MAX) {
+                    SOFT_FLUX_DIVE_SAFE_NEAR_FRAC_REAR
+                } else {
+                    SOFT_FLUX_DIVE_SAFE_NEAR_FRAC
+                }
+            return s.incomingNearDamage < diveNearThreshold(s.maxHull) * safeFrac
+        }
+
+        /**
+         * 耗软辐 vent 压制口径（纯函数）：完整闸门 [isSoftFluxDumpDive] 成立，
+         * 或仅差斗篷就绪且冷却剩余 ≤ [SOFT_FLUX_VENT_HOLD_COOLDOWN_SEC]（冷却尾声提前压
+         * vent——否则 VentModule 必在冷却窗口内抢先启动，vent 不可取消，相位耗散永远抢不到
+         * 窗口）。宽限有界：斗篷就绪即下潜（decide 与完整闸门单一口径），环境转差/辐能逼近
+         * 上限时闸门失效 vent 自然放行兜底，不构成「压了 vent 却不下潜」的卡死窗口。
+         */
+        internal fun isSoftFluxDumpVentHold(s: PhaseSituation): Boolean {
+            if (isSoftFluxDumpDive(s)) return true
+            if (s.phased || s.cloakReady ||
+                s.cloakCooldownRemaining > SOFT_FLUX_VENT_HOLD_COOLDOWN_SEC
+            ) {
+                return false
+            }
+            return isSoftFluxDumpDive(s.copy(cloakReady = true))
+        }
 
         /**
          * 绕后下潜完整闸门（纯函数）：目标低机动、本舰未在其侧后薄弱区、武器过半可输出、
@@ -714,11 +796,12 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
 
         val order = decide(situation)
 
-        // 相位耗散优先于强制耗散：只在耗软辐下潜确定接手（decide 返回 DIVE 且命中
-        // 耗软辐完整闸门 [isSoftFluxDumpDive]）时压 DO_NOT_VENT 拦 VentModule，
-        // 与下潜闸门单一口径对齐——脱战/来袭偏高时闸门不成立，vent 不被压制
-        // （决策优先级：紧急避险 > 相位耗软辐 > 强制耗散）
-        if (order == PhaseOrder.DIVE && isSoftFluxDumpDive(situation)) {
+        // 相位耗散优先于强制耗散：命中耗软辐 vent 压制口径 [isSoftFluxDumpVentHold] 即压
+        // DO_NOT_VENT 拦 VentModule——含斗篷冷却尾声宽限（冷却窗口内不压，VentModule 必抢先
+        // vent 且 vent 启动即不可取消，相位耗散永远抢不到窗口）；宽限有界，斗篷就绪即由
+        // decide 下潜接手（与完整闸门 [isSoftFluxDumpDive] 单一口径），环境转差/辐能逼近
+        // 上限时闸门失效 vent 自然放行兜底（决策优先级：紧急避险 > 相位耗软辐 > 强制耗散）
+        if (isSoftFluxDumpVentHold(situation)) {
             ship.aiFlags.setFlag(ShipwideAIFlags.AIFlags.DO_NOT_VENT, VENT_SUPPRESS_FLAG_SEC)
         }
 
@@ -808,6 +891,7 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
         estimateIncoming(engine.projectiles, ship, incoming, collectFriendly = false)
         estimateIncoming(engine.missiles, ship, incoming, collectFriendly = false)
         estimateBeamThreat(engine, ship, incoming, collectFriendly = false)
+        estimateDemWarheadThreat(engine, ship, incoming)
 
         // 友军火力只计 soon 窗口（防御性下潜输入）：同口径采样取 owner == 本舰一侧
         val friendlyIncoming = FloatArray(3)
@@ -854,7 +938,10 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
             retreating = ship.isRetreating,
             cloakReady = cloak.state == ShipSystemAPI.SystemState.IDLE &&
                     cloak.cooldownRemaining <= 0f && cloak.canBeActivated(),
+            cloakCooldownRemaining = cloak.cooldownRemaining,
             softFluxLevel = ship.fluxLevel - ship.hardFluxLevel,
+            weaponsDisabledFrac = weaponsDisabledFrac(ship),
+            enginesDisabledFrac = enginesDisabledFrac(ship),
             targetLowMobility = lowMobility,
             inTargetRearArc = threat != null &&
                     angleDiffAbs(threat.facing, threatToUsBearing!!) >= REAR_ARC_MIN_DIFF,
@@ -1167,6 +1254,51 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
             }
         }
         return if (total == 0) 1f else ready.toFloat() / total
+    }
+
+    /** 下线武器占比：非装饰、非系统槽武器中被禁用的比例（无武器时为 0），修复下潜采样。 */
+    private fun weaponsDisabledFrac(ship: ShipAPI): Float {
+        var total = 0
+        var disabled = 0
+        for (weapon in ship.allWeapons) {
+            if (weapon.isDecorative || weapon.slot?.isSystemSlot != false) continue
+            total++
+            if (weapon.isDisabled) disabled++
+        }
+        return if (total == 0) 0f else disabled.toFloat() / total
+    }
+
+    /** 下线引擎占比：整舰熄火（flameout）视为全部下线（无引擎时为 0），修复下潜采样。 */
+    private fun enginesDisabledFrac(ship: ShipAPI): Float {
+        val controller = ship.engineController
+        if (controller.isFlamedOut) return 1f
+        val engines = controller.shipEngines
+        if (engines.isEmpty()) return 0f
+        return engines.count { it.isDisabled }.toFloat() / engines.size
+    }
+
+    /**
+     * 双子星 DEM 弹头威胁采样（折算累加进 [out]：[0]=soon）：
+     * 脚本 spawn 的弹头不在 engine.missiles 里（实机判例，走 [GeminiDemSalvoOnFireEffect]
+     * 出生登记簿），且弹头不撞舰——抵近悬停距离（[GeminiDemDifficulty.WARHEAD_STANDOFF_DIST]）
+     * 锁定后由 FX drone（战机实体，[estimateBeamThreat] 排除）发射 payload 光束结算主伤害，
+     * 通用弹体/光束口径都看不到这条伤害链。锁定完成的 hitscan 光束机动无法规避，
+     * 弹头进入悬停距离即按 soon 窗口计全额威胁（弹体 + payload 折算），给下潜充能留提前量。
+     * 只采敌方弹头：payload 指向敌方目标、MISSILE_NO_FF 无友伤碰撞，友方弹头不构成威胁。
+     */
+    private fun estimateDemWarheadThreat(engine: CombatEngineAPI, ship: ShipAPI, out: FloatArray) {
+        for (ref in GeminiDemSalvoOnFireEffect.warheadsOf(engine)) {
+            val missile = ref.missile
+            if (missile.isExpired || missile.isFading || missile.owner == ship.owner) continue
+            val payloadBurst = GeminiDemDifficulty.payloadBurstForSpec(missile.projectileSpecId)
+            if (payloadBurst <= 0f) continue
+            if (distanceSq(ship.location, missile.location) >
+                GeminiDemDifficulty.WARHEAD_STANDOFF_DIST * GeminiDemDifficulty.WARHEAD_STANDOFF_DIST
+            ) {
+                continue
+            }
+            out[0] += missile.damageAmount + payloadBurst
+        }
     }
 
     private fun distanceSq(a: Vector2f, b: Vector2f): Float {

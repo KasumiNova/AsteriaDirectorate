@@ -30,7 +30,10 @@ class GravityPhaseCloakAITest {
         weaponsReadyFrac = 0.5f,
         retreating = false,
         cloakReady = false,
+        cloakCooldownRemaining = 0f,
         softFluxLevel = 0.1f,
+        weaponsDisabledFrac = 0f,
+        enginesDisabledFrac = 0f,
         targetLowMobility = false,
         inTargetRearArc = false,
         weaponCoverage = 2,
@@ -63,7 +66,10 @@ class GravityPhaseCloakAITest {
         weaponsReadyFrac = 1f,
         retreating = false,
         cloakReady = true,
+        cloakCooldownRemaining = 0f,
         softFluxLevel = 0.1f,
+        weaponsDisabledFrac = 0f,
+        enginesDisabledFrac = 0f,
         targetLowMobility = false,
         inTargetRearArc = false,
         weaponCoverage = 2,
@@ -457,15 +463,17 @@ class GravityPhaseCloakAITest {
     }
 
     @Test
-    fun `耗软辐闸门单一口径 decide 与 vent 压制共用`() {
+    fun `耗软辐闸门单一口径 decide 下潜与 vent 压制宽限共用`() {
         // 完整闸门成立：软辐可观、辐能有余量、环境安全、有交战对象
         val gateOpen = unphasedSituation().copy(softFluxLevel = 0.4f, fluxLevel = 0.55f)
         assertTrue(GravityPhaseCloakAI.isSoftFluxDumpDive(gateOpen))
+        assertTrue(GravityPhaseCloakAI.isSoftFluxDumpVentHold(gateOpen))
         assertEquals(PhaseOrder.DIVE, GravityPhaseCloakAI.decide(gateOpen))
 
         // 脱战（无交战对象）：闸门不成立——vent 不应被压制，decide 也不下潜
         val disengaged = gateOpen.copy(engagedEnemyNear = false)
         assertFalse(GravityPhaseCloakAI.isSoftFluxDumpDive(disengaged))
+        assertFalse(GravityPhaseCloakAI.isSoftFluxDumpVentHold(disengaged))
         assertEquals(PhaseOrder.NONE, GravityPhaseCloakAI.decide(disengaged))
 
         // 来袭偏高：闸门不成立，两侧同样都不动作
@@ -474,12 +482,146 @@ class GravityPhaseCloakAITest {
                     GravityPhaseCloakAI.SOFT_FLUX_DIVE_SAFE_NEAR_FRAC,
         )
         assertFalse(GravityPhaseCloakAI.isSoftFluxDumpDive(unsafe))
+        assertFalse(GravityPhaseCloakAI.isSoftFluxDumpVentHold(unsafe))
         // 注意：该来袭量低于威胁下潜阈值，decide 整体也不下潜
         assertEquals(PhaseOrder.NONE, GravityPhaseCloakAI.decide(unsafe))
+    }
 
-        // 斗篷未就绪（冷却中）：闸门不成立，vent 放行兜底
-        val cloakCooling = gateOpen.copy(cloakReady = false)
-        assertFalse(GravityPhaseCloakAI.isSoftFluxDumpDive(cloakCooling))
+    @Test
+    fun `耗软辐下潜不受错峰闸约束`() {
+        // 上浮后错峰期内软辐已可观：相位耗散优先于错峰（否则 VentModule 必在错峰窗口抢先 vent）
+        val s = unphasedSituation().copy(
+            timeSinceUnphase = GravityPhaseCloakAI.MIN_UNPHASE_TIME_SEC - 0.1f,
+            softFluxLevel = 0.4f,
+            fluxLevel = 0.55f,
+        )
+        assertEquals(PhaseOrder.DIVE, GravityPhaseCloakAI.decide(s))
+    }
+
+    @Test
+    fun `耗软辐下潜侧后占位放宽环境安全口径`() {
+        // near 来袭超过常规安全口径（0.25×）但低于侧后放宽口径（0.5×）：
+        // 侧后占位且覆盖不超闸时仍下潜耗散（原地相位，上浮仍在输出位）
+        val near = GravityPhaseCloakAI.diveNearThreshold(5000f) * 0.4f
+        val rear = unphasedSituation().copy(
+            softFluxLevel = 0.4f,
+            fluxLevel = 0.55f,
+            incomingNearDamage = near,
+            inTargetRearArc = true,
+            weaponCoverage = GravityPhaseCloakAI.SURFACE_COVERAGE_MAX,
+        )
+        assertTrue(GravityPhaseCloakAI.isSoftFluxDumpDive(rear))
+        assertEquals(PhaseOrder.DIVE, GravityPhaseCloakAI.decide(rear))
+
+        // 非侧后占位：同来袭量闸门不成立
+        val front = rear.copy(inTargetRearArc = false)
+        assertFalse(GravityPhaseCloakAI.isSoftFluxDumpDive(front))
+
+        // 侧后但覆盖超闸（被咬住）：不放宽
+        val pinned = rear.copy(weaponCoverage = GravityPhaseCloakAI.SURFACE_COVERAGE_MAX + 1)
+        assertFalse(GravityPhaseCloakAI.isSoftFluxDumpDive(pinned))
+    }
+
+    @Test
+    fun `耗软辐 vent 压制覆盖斗篷冷却尾声`() {
+        val gateOpen = unphasedSituation().copy(softFluxLevel = 0.4f, fluxLevel = 0.55f)
+
+        // 冷却尾声（≤ 宽限）：下潜闸门不成立（斗篷未就绪），但 vent 压制提前接手——
+        // 否则 VentModule 必在冷却窗口内抢先 vent（vent 启动即不可取消）
+        val cooling = gateOpen.copy(
+            cloakReady = false,
+            cloakCooldownRemaining = GravityPhaseCloakAI.SOFT_FLUX_VENT_HOLD_COOLDOWN_SEC,
+        )
+        assertFalse(GravityPhaseCloakAI.isSoftFluxDumpDive(cooling))
+        assertTrue(GravityPhaseCloakAI.isSoftFluxDumpVentHold(cooling))
+        assertEquals(PhaseOrder.NONE, GravityPhaseCloakAI.decide(cooling))
+
+        // 冷却前段（> 宽限）：压制不成立，vent 放行兜底
+        val longCooling = cooling.copy(
+            cloakCooldownRemaining = GravityPhaseCloakAI.SOFT_FLUX_VENT_HOLD_COOLDOWN_SEC + 0.1f,
+        )
+        assertFalse(GravityPhaseCloakAI.isSoftFluxDumpVentHold(longCooling))
+
+        // 冷却尾声但环境转差：闸门失效，vent 放行兜底（不构成「压了 vent 却不下潜」的卡死）
+        val coolingUnsafe = cooling.copy(
+            incomingNearDamage = GravityPhaseCloakAI.diveNearThreshold(5000f) *
+                    GravityPhaseCloakAI.SOFT_FLUX_DIVE_SAFE_NEAR_FRAC,
+        )
+        assertFalse(GravityPhaseCloakAI.isSoftFluxDumpVentHold(coolingUnsafe))
+
+        // 相位中：压制口径不适用（相位中本就不排气）
+        assertFalse(GravityPhaseCloakAI.isSoftFluxDumpVentHold(gateOpen.copy(phased = true)))
+    }
+
+    @Test
+    fun `武器或引擎下线过半触发修复下潜`() {
+        // 相位 3x 时间倍率随舰时钟加速组件修复，下线过半时优先相位窗口
+        val weaponsDown = unphasedSituation().copy(
+            weaponsDisabledFrac = GravityPhaseCloakAI.REPAIR_DIVE_DISABLED_FRAC,
+        )
+        assertEquals(PhaseOrder.DIVE, GravityPhaseCloakAI.decide(weaponsDown))
+
+        val enginesDown = unphasedSituation().copy(
+            enginesDisabledFrac = GravityPhaseCloakAI.REPAIR_DIVE_DISABLED_FRAC,
+        )
+        assertEquals(PhaseOrder.DIVE, GravityPhaseCloakAI.decide(enginesDown))
+
+        // 未达闸：照常作战
+        assertEquals(
+            PhaseOrder.NONE,
+            GravityPhaseCloakAI.decide(
+                unphasedSituation().copy(
+                    weaponsDisabledFrac = GravityPhaseCloakAI.REPAIR_DIVE_DISABLED_FRAC - 0.1f,
+                ),
+            ),
+        )
+
+        // 硬辐能过高：下潜只会加速憋死，不触发
+        assertEquals(
+            PhaseOrder.NONE,
+            GravityPhaseCloakAI.decide(
+                weaponsDown.copy(hardFluxLevel = GravityPhaseCloakAI.REPAIR_DIVE_HARD_FLUX_MAX),
+            ),
+        )
+
+        // 脱战：无生存压力，常规时钟修复即可
+        assertEquals(
+            PhaseOrder.NONE,
+            GravityPhaseCloakAI.decide(weaponsDown.copy(engagedEnemyNear = false)),
+        )
+    }
+
+    @Test
+    fun `DEM 弹头 payload 折算口径`() {
+        // 舰装版：动能 1000 / 高爆 1500（面板倍率）
+        assertEquals(
+            1000f,
+            cn.kasuminova.astd.combat.effect.arc.geminidem.GeminiDemDifficulty.payloadBurstForSpec(
+                cn.kasuminova.astd.combat.effect.arc.geminidem.GeminiDemDifficulty.KINETIC_PROJ_ID,
+            ),
+            1e-4f,
+        )
+        assertEquals(
+            1500f,
+            cn.kasuminova.astd.combat.effect.arc.geminidem.GeminiDemDifficulty.payloadBurstForSpec(
+                cn.kasuminova.astd.combat.effect.arc.geminidem.GeminiDemDifficulty.HE_PROJ_ID,
+            ),
+            1e-4f,
+        )
+        // 战机版：舰装版 × 0.75
+        assertEquals(
+            750f,
+            cn.kasuminova.astd.combat.effect.arc.geminidem.GeminiDemDifficulty.payloadBurstForSpec(
+                cn.kasuminova.astd.combat.effect.arc.geminidem.GeminiDemDifficulty.KINETIC_FIGHTER_PROJ_ID,
+            ),
+            1e-4f,
+        )
+        // 非 DEM 弹体：0（不走折算通道）
+        assertEquals(
+            0f,
+            cn.kasuminova.astd.combat.effect.arc.geminidem.GeminiDemDifficulty.payloadBurstForSpec("tachyon_lance"),
+            1e-4f,
+        )
     }
 
     @Test
