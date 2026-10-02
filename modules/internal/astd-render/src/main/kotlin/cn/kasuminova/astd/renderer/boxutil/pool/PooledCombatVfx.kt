@@ -295,7 +295,9 @@ object PooledCombatVfx {
             try {
                 e.setStateVanilla(Vector2f(location), BoxUtilCombatVfx.normalizeFacingDeg(facingDeg))
                 // 节点序对齐 createTaperedBeamTrail：node[0]=+length 端（尾），node[1]=原点（头）。
-                e.setNodes(listOf(Vector2f(length, 0f), Vector2f(ZERO)))
+                // 必须传可变 ArrayList：TrailEntity 持有引用且 _deleteExc/resetNodes 会 clear()，
+                // Kotlin listOf 的定长 list 会在实体回收时抛 UnsupportedOperationException
+                e.setNodes(arrayListOf(Vector2f(length, 0f), Vector2f(ZERO)))
                 e.submitNodes()
                 e.startWidth = tailWidth
                 e.endWidth = headWidth

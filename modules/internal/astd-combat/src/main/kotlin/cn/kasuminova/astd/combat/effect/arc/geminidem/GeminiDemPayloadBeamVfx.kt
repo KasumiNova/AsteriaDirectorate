@@ -72,8 +72,10 @@ class GeminiDemPayloadBeamVfx : EveryFrameWeaponEffectPlugin {
 
         // 可复用节点表：TrailEntity.setNodes 持有引用且 _deleteExc/resetNodes 会 clear()，
         // 必须传可变的 java.util.ArrayList（Kotlin listOf 产出的定长 list 会在 delete 时抛
-        // UnsupportedOperationException）；逐帧原地改写元素避免每帧分配
-        val nodes = arrayListOf(Vector2f(0f, 0f), Vector2f(0f, 0f))
+        // UnsupportedOperationException）；逐帧原地改写元素避免每帧分配。
+        // 注意：一个实体独占一份节点表——beam 轮换/实体失效时必须换新表（见 advance），
+        // 否则退休实体被 BoxUtil 自动回收时会清空新实体在用的同一份表（IndexOutOfBounds 崩溃来源）
+        var nodes = freshNodes()
     }
 
     override fun advance(amount: Float, engine: CombatEngineAPI, weapon: WeaponAPI) {
@@ -101,6 +103,8 @@ class GeminiDemPayloadBeamVfx : EveryFrameWeaponEffectPlugin {
                 retireEntity(state.entity)
                 retireFlares(state)
                 state.entity = null
+                // 旧实体仍持有 nodes 引用，被 BoxUtil 自动回收时会 clear() 它：新实体必须换新表
+                state.nodes = freshNodes()
                 state.beam = beam
                 state.activeElapsed = 0f
                 state.fading = false
@@ -128,6 +132,12 @@ class GeminiDemPayloadBeamVfx : EveryFrameWeaponEffectPlugin {
             val fringe = lerpColor(kind.fringe, SYNC_FRINGE, state.syncBlend)
 
             val ramp = (state.activeElapsed / RAMP_IN).coerceIn(0f, 1f)
+            // 探活：实体可能已被 BoxUtil 定时器等外部路径回收（暂停期超时等），
+            // 回收时 nodeList 已被清空——弃引用、换新表、重建实体
+            if (state.entity != null && !state.entity!!.isValid) {
+                state.entity = null
+                state.nodes = freshNodes()
+            }
             val entity = state.entity ?: createEntity(engine, kind, from, facing, length).also { state.entity = it }
             if (entity != null) {
                 updateEntity(entity, state.nodes, from, facing, length, core, fringe, alphaMul = ramp, widthMul = ramp)
@@ -165,6 +175,11 @@ class GeminiDemPayloadBeamVfx : EveryFrameWeaponEffectPlugin {
         state.fadeElapsed += amount
         val t = (state.fadeElapsed / FADE_OUT).coerceIn(0f, 1f)
         val entity = state.entity
+        // 探活：淡出途中实体被外部回收（nodeList 已清空）时直接收尾，不再触碰节点表
+        if (entity != null && !entity.isValid) {
+            states.remove(weapon)
+            return
+        }
         val from = state.lastFrom
         if (entity != null && from != null) {
             updateEntity(
@@ -452,6 +467,9 @@ class GeminiDemPayloadBeamVfx : EveryFrameWeaponEffectPlugin {
         private const val STATES_KEY = "astd_gemini_dem_payload_vfx_states"
 
         private val ZERO = Vector2f(0f, 0f)
+
+        /** 新一份两点节点表（起点原点 + 终点 x=length，由 updateEntity 逐帧改写）。 */
+        private fun freshNodes(): ArrayList<Vector2f> = arrayListOf(Vector2f(0f, 0f), Vector2f(0f, 0f))
 
         private val kineticSprite: SpriteAPI by lazy { Global.getSettings().getSprite(TEX_ZAPPY) }
         private val heSprite: SpriteAPI by lazy { Global.getSettings().getSprite(TEX_FLOW) }
