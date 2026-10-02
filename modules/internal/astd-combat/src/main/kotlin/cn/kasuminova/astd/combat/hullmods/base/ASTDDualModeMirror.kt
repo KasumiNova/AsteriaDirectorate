@@ -55,16 +55,17 @@ object ASTDDualModeMirror {
     /** 由镜像脚本每帧调用：把登记的模式位落到成员当前真实 variant 上。 */
     fun drain() {
         if (pending.isEmpty()) return
-        val it = pending.entries.iterator()
-        while (it.hasNext()) {
-            val entry = it.next()
-            it.remove()
-            val variant = entry.key.variant ?: continue
+        // 先快照再清空：IdentityHashMap 迭代条目在 it.remove() 后即失效（再读 key 抛
+        // "Entry was removed"）；快照式排空同时保证 drain 期间的新登记留到下一帧处理
+        val batch = pending.map { it.key to it.value }
+        pending.clear()
+        for ((member, modeId) in batch) {
+            val variant = member.variant ?: continue
             val config = ASTDDualModeRegistry.configForVariant(variant) ?: continue
-            if (ASTDAutofitPlugin.activeDualModeId(variant, config) == entry.value) continue
+            if (ASTDAutofitPlugin.activeDualModeId(variant, config) == modeId) continue
             // stats=null：不触发舰长清理与镜像再登记（镜像只写模式位，幂等收敛）
-            variant.activateDualMode(config, entry.value, null)
-            log.info("[ASTD] 双模式镜像：${entry.key.id} 真实 variant 模式位已镜像为 ${entry.value}")
+            variant.activateDualMode(config, modeId, null)
+            log.info("[ASTD] 双模式镜像：${member.id} 真实 variant 模式位已镜像为 $modeId")
         }
     }
 }
