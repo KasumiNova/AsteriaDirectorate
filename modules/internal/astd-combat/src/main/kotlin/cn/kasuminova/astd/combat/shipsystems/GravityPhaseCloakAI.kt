@@ -1,7 +1,7 @@
 package cn.kasuminova.astd.combat.shipsystems
 
-import cn.kasuminova.astd.combat.effect.arc.geminidem.GeminiDemDifficulty
 import cn.kasuminova.astd.combat.effect.arc.geminidem.GeminiDemSalvoOnFireEffect
+import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.DamagingProjectileAPI
 import com.fs.starfarer.api.combat.MissileAPI
@@ -113,12 +113,12 @@ import org.lwjgl.util.vector.Vector2f
  * 威胁评估口径：直射弹体按弹道外推 + 横向偏差判定；制导导弹（含龙炎 DEM 等跟踪武器）
  * 跳过横向偏差检查并以极速一半兜底接近速度；光束瞬时命中无弹体，扫描正在开火且射界/射程
  * 覆盖本舰的敌方光束武器折算威胁（持续光束 DPS × [CONT_BEAM_THREAT_WINDOW_SEC] 进 near，
- * 爆发光束爆发总伤 × [BURST_BEAM_THREAT_WEIGHT] 进 soon）。双子星 DEM 弹头走独立采样通道
- * （[estimateDemWarheadThreat]）：脚本 spawn 的弹头不在 engine.missiles 里（出生登记簿
- * 口径），且弹头不撞舰——抵近悬停距离（[GeminiDemDifficulty.WARHEAD_STANDOFF_DIST]）锁定后
- * 由 FX drone（战机实体，光束扫描排除）发射 payload 光束结算主伤害，两条通用口径都看不到
- * 这条伤害链；锁定完成的 hitscan 光束机动无法规避，弹头进入悬停距离即按 soon 窗口计
- * 全额威胁（弹体 + payload 折算），给下潜充能留提前量。友军接盘只评估非制导弹药
+ * 爆发光束爆发总伤 × [BURST_BEAM_THREAT_WEIGHT] 进 soon）。payload 导弹（behaviorSpec 带
+ * payloadWeaponId：双子星 DEM、原版龙炎 DEM 及任何同行为模组弹体）不撞舰结算——抵近
+ * 悬停距离锁定后由 payload 结算主伤害，按 [payloadProfileOf] 推导的悬停距离/爆发伤害
+ * 折算，进入悬停距离即按 soon 窗口计全额威胁，给下潜充能留提前量；本模组 DEM 弹头
+ * 由脚本 spawn、不在 engine.missiles 里（实机判例），另走出生登记簿独立通道
+ * （[estimateDemWarheadThreat]），折算口径与通用分支共用。友军接盘只评估非制导弹药
  * （制导导弹脱靶后自行改瞄，穿透误伤口径不覆盖），穿透线段从预计命中本舰点起算。
  *
  * 上浮僵直保护：强制上浮后挂 [ShipwideAIFlags.AIFlags.BACK_OFF]（2s）让舰船后撤度过
@@ -1186,6 +1186,12 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
      *
      * collectFriendly=true 时改采友方弹药（owner 与本舰相同）：友军火力只计 soon 窗口
      * （防御性下潜输入），eta 超出 soon 窗口的友方弹药不计入。
+     *
+     * payload 导弹（behaviorSpec 带 payloadWeaponId：双子星 DEM、原版龙炎 DEM 及任何
+     * 同行为模组弹体）走 [payloadProfileOf] 口径：弹体不撞舰结算，抵近悬停距离锁定后
+     * 才由 payload 结算主伤害，弹道 ETA 口径低估威胁；进入悬停距离即按 soon 窗口计
+     * 全额威胁（弹体 + payload 爆发），给下潜充能留提前量。只处理敌方弹体
+     * （payload 指向敌方目标，友方 payload 导弹不构成对本舰的指向威胁）。
      */
     private fun estimateIncoming(
         projectiles: List<DamagingProjectileAPI>,
@@ -1202,6 +1208,17 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
             val dy = shipLoc.y - proj.location.y
             val dist = kotlin.math.sqrt(dx * dx + dy * dy)
             if (dist > PROJECTILE_SCAN_RANGE || dist < 1e-3f) continue
+
+            // payload 导弹分支（先于接近速度闸：悬停锁定段弹体低速/悬停，常规口径会漏）
+            if (!collectFriendly && proj is MissileAPI) {
+                val profile = payloadProfileOf(proj)
+                if (profile != null) {
+                    if (dist <= profile.standoffDist) {
+                        out[0] += proj.damageAmount + profile.burstDamage
+                    }
+                    continue
+                }
+            }
 
             val vel = proj.velocity
             var approach = (vel.x * dx + vel.y * dy) / dist
@@ -1278,27 +1295,58 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
     }
 
     /**
-     * 双子星 DEM 弹头威胁采样（折算累加进 [out]：[0]=soon）：
-     * 脚本 spawn 的弹头不在 engine.missiles 里（实机判例，走 [GeminiDemSalvoOnFireEffect]
-     * 出生登记簿），且弹头不撞舰——抵近悬停距离（[GeminiDemDifficulty.WARHEAD_STANDOFF_DIST]）
-     * 锁定后由 FX drone（战机实体，[estimateBeamThreat] 排除）发射 payload 光束结算主伤害，
-     * 通用弹体/光束口径都看不到这条伤害链。锁定完成的 hitscan 光束机动无法规避，
-     * 弹头进入悬停距离即按 soon 窗口计全额威胁（弹体 + payload 折算），给下潜充能留提前量。
+     * 脚本 spawn 弹头威胁采样（折算累加进 [out]：[0]=soon）：
+     * 双子星 DEM 弹头由脚本 spawn、不在 engine.missiles 里（实机判例，走
+     * [GeminiDemSalvoOnFireEffect] 出生登记簿），[estimateIncoming] 的通用 payload
+     * 导弹分支覆盖不到，补这条独立通道；折算口径与 [payloadProfileOf] 共用。
      * 只采敌方弹头：payload 指向敌方目标、MISSILE_NO_FF 无友伤碰撞，友方弹头不构成威胁。
      */
     private fun estimateDemWarheadThreat(engine: CombatEngineAPI, ship: ShipAPI, out: FloatArray) {
         for (ref in GeminiDemSalvoOnFireEffect.warheadsOf(engine)) {
             val missile = ref.missile
             if (missile.isExpired || missile.isFading || missile.owner == ship.owner) continue
-            val payloadBurst = GeminiDemDifficulty.payloadBurstForSpec(missile.projectileSpecId)
-            if (payloadBurst <= 0f) continue
+            val profile = payloadProfileOf(missile) ?: continue
             if (distanceSq(ship.location, missile.location) >
-                GeminiDemDifficulty.WARHEAD_STANDOFF_DIST * GeminiDemDifficulty.WARHEAD_STANDOFF_DIST
+                profile.standoffDist * profile.standoffDist
             ) {
                 continue
             }
-            out[0] += missile.damageAmount + payloadBurst
+            out[0] += missile.damageAmount + profile.burstDamage
         }
+    }
+
+    /** payload 导弹档案：悬停打击距离（su）与 payload 爆发伤害（按弹体 spec id 缓存推导结果）。 */
+    private data class PayloadProfile(val standoffDist: Float, val burstDamage: Float)
+
+    /** payload 档案缓存：spec id → 档案（非 payload 弹体为 null，同样缓存避免重复解析 JSON）。 */
+    private val payloadProfileCache = HashMap<String, PayloadProfile?>()
+
+    /**
+     * payload 导弹档案推导（结果按 spec id 缓存；非 payload 弹体为 null）：
+     * behaviorSpec 带 payloadWeaponId 的弹体（双子星 DEM、原版龙炎 DEM 及任何同行为模组
+     * 弹体）不撞舰结算——抵近 triggerDistance 悬停锁定后发射 payload 结算主伤害，
+     * 弹体命中口径低估威胁；悬停距离取 triggerDistance 上限，payload 伤害取 payload
+     * 武器面板爆发伤害（爆发光束/鱼雷均为 burstDamage 口径）。
+     */
+    private fun payloadProfileOf(proj: DamagingProjectileAPI): PayloadProfile? {
+        val specId = proj.projectileSpecId ?: return null
+        if (payloadProfileCache.containsKey(specId)) return payloadProfileCache[specId]
+        var profile: PayloadProfile? = null
+        val params = proj.projectileSpec?.behaviorSpec?.params
+        val payloadId = params?.optString("payloadWeaponId", "") ?: ""
+        if (params != null && payloadId.isNotEmpty()) {
+            val burst =
+                Global.getSettings().getWeaponSpec(payloadId)?.derivedStats?.burstDamage ?: 0f
+            val trigger = params.optJSONArray("triggerDistance")
+            val standoff = if (trigger != null && trigger.length() > 0) {
+                (0 until trigger.length()).maxOf { trigger.optDouble(it, 0.0) }.toFloat()
+            } else {
+                params.optDouble("triggerDistance", 0.0).toFloat()
+            }
+            if (burst > 0f && standoff > 0f) profile = PayloadProfile(standoff, burst)
+        }
+        payloadProfileCache[specId] = profile
+        return profile
     }
 
     private fun distanceSq(a: Vector2f, b: Vector2f): Float {

@@ -592,39 +592,6 @@ class GravityPhaseCloakAITest {
     }
 
     @Test
-    fun `DEM 弹头 payload 折算口径`() {
-        // 舰装版：动能 1000 / 高爆 1500（面板倍率）
-        assertEquals(
-            1000f,
-            cn.kasuminova.astd.combat.effect.arc.geminidem.GeminiDemDifficulty.payloadBurstForSpec(
-                cn.kasuminova.astd.combat.effect.arc.geminidem.GeminiDemDifficulty.KINETIC_PROJ_ID,
-            ),
-            1e-4f,
-        )
-        assertEquals(
-            1500f,
-            cn.kasuminova.astd.combat.effect.arc.geminidem.GeminiDemDifficulty.payloadBurstForSpec(
-                cn.kasuminova.astd.combat.effect.arc.geminidem.GeminiDemDifficulty.HE_PROJ_ID,
-            ),
-            1e-4f,
-        )
-        // 战机版：舰装版 × 0.75
-        assertEquals(
-            750f,
-            cn.kasuminova.astd.combat.effect.arc.geminidem.GeminiDemDifficulty.payloadBurstForSpec(
-                cn.kasuminova.astd.combat.effect.arc.geminidem.GeminiDemDifficulty.KINETIC_FIGHTER_PROJ_ID,
-            ),
-            1e-4f,
-        )
-        // 非 DEM 弹体：0（不走折算通道）
-        assertEquals(
-            0f,
-            cn.kasuminova.astd.combat.effect.arc.geminidem.GeminiDemDifficulty.payloadBurstForSpec("tachyon_lance"),
-            1e-4f,
-        )
-    }
-
-    @Test
     fun `光束威胁折算口径`() {
         // 持续光束：DPS × 窗口秒计入 near
         assertEquals(

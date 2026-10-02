@@ -93,37 +93,6 @@ object GeminiDemDifficulty {
      */
     const val FIGHTER_DAMAGE_MULT = 0.75f
 
-    /**
-     * 弹头悬停打击距离（su）：镜像 catalog `geminiDemWarheadProjSpec` behaviorSpec 的
-     * triggerDistance 上限（700~750）。弹头不撞舰——抵近本距离后进入锁定段，
-     * 由 FX drone 发 payload 光束结算主伤害；相位 AI 的威胁采样以此为「伤害即将落地」口径。
-     */
-    const val WARHEAD_STANDOFF_DIST = 750f
-
-    /** 弹头锁定段时长（s）：镜像 catalog behaviorSpec targetingTime，锁定完成后 payload 光束开火。 */
-    const val WARHEAD_TARGETING_SEC = 2f
-
-    /** payload 光束单发折算伤害（dps × burstSize 1s 照射）：舰装版动能。 */
-    const val PAYLOAD_BURST_KINETIC = 1000f
-
-    /** payload 光束单发折算伤害：舰装版高爆（150% 面板）。 */
-    const val PAYLOAD_BURST_HE = 1500f
-
-    /** payload 光束单发折算伤害：战机版动能（[FIGHTER_DAMAGE_MULT] × 舰装版）。 */
-    const val PAYLOAD_BURST_KINETIC_FIGHTER = 750f
-
-    /** payload 光束单发折算伤害：战机版高爆。 */
-    const val PAYLOAD_BURST_HE_FIGHTER = 1125f
-
-    /** 弹头弹体 spec id → payload 光束折算伤害（非 DEM 弹头为 0，相位 AI 威胁采样用）。 */
-    fun payloadBurstForSpec(specId: String): Float = when (specId) {
-        KINETIC_PROJ_ID -> PAYLOAD_BURST_KINETIC
-        HE_PROJ_ID -> PAYLOAD_BURST_HE
-        KINETIC_FIGHTER_PROJ_ID -> PAYLOAD_BURST_KINETIC_FIGHTER
-        HE_FIGHTER_PROJ_ID -> PAYLOAD_BURST_HE_FIGHTER
-        else -> 0f
-    }
-
     /** 同步共振紫色光束视觉的持续时长（秒，自触发时刻起算；略长于 payload 光束 1s 照射）。 */
     const val SYNC_VISUAL_DURATION = 1.2f
 
