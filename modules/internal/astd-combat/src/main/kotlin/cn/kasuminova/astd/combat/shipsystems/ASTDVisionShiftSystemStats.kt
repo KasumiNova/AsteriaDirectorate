@@ -145,8 +145,10 @@ class ASTDVisionShiftSystemStats : BaseShipSystemScript() {
         if (system.state != ShipSystemAPI.SystemState.IDLE) return null
         val engine = Global.getCombatEngine() ?: return null
         if (pickTarget(ship, engine) != null) return null
-        // 有锁定目标但不可用（超射程等）→ 超出射程；完全无可锁定目标 → 无目标
-        return if (isValidTarget(ship, ship.shipTarget, engine)) {
+        // 存在合法目标但均在射程外（含锁定目标超射程）→ 超出射程；完全无合法目标 → 无目标
+        val anyValidTarget = isValidTarget(ship, ship.shipTarget, engine) ||
+            engine.ships.any { isValidTarget(ship, it, engine) }
+        return if (anyValidTarget) {
             I18n[I18n.Categories.MOD, "ui.vision_shift.info.out_of_range"]
         } else {
             I18n[I18n.Categories.MOD, "ui.vision_shift.info.no_target"]

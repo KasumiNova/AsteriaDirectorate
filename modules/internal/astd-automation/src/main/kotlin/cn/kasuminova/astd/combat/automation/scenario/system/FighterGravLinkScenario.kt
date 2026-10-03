@@ -133,7 +133,7 @@ class FighterGravLinkScenario : AbstractAutomationScenario() {
      * （航母联队出库/补员链路依赖 AI 存活，SM 秃鹰航母判例同款）。
      * 母舰辐能绝不重置——断言点 D（软辐能累积）与 F（软→硬转化）依赖真实辐能读数；
      * [forceShield] 于系统激活期强制开盾：护盾维持耗散（640/s）压低净耗散，
-     * 令 1120/s 软辐能产出转为母舰 currFlux 净上涨（口径见 FGL_EXPECT_FLUX_RISE）。
+     * 令 800/s 软辐能产出（16000×5%，原版 CSV 结算）转为母舰 currFlux 净上涨（口径见 FGL_EXPECT_FLUX_RISE）。
      */
     private fun stabilizeFglShips(engine: CombatEngineAPI, forceShield: Boolean) {
         val player = findFglPlayer(engine)
@@ -302,8 +302,8 @@ class FighterGravLinkScenario : AbstractAutomationScenario() {
                 // toggle 主动关闭路径验证：玩家再次按键同路径补发 useSystem()（ACTIVE → OUT →
                 // 召回结算）。不用 system.deactivate()——其等价 forceDeactivate，直接跳
                 // COOLDOWN、跳过 OUT 窗口，召回结算不会触发。
-                // 关闭时机等 currFlux ≥ FGL_MANUAL_CANCEL_MIN_FLUX：断言点 F（软硬转化 ≥1000）
-                // 需要转化前有足够软辐能存量（净涨 ~360/s，约 ACTIVE 4s 后达成，远早于 15s 上限）。
+                // 关闭时机等 currFlux ≥ FGL_MANUAL_CANCEL_MIN_FLUX：断言点 F（软硬转化 ≥300）
+                // 需要转化前有足够软辐能存量（净涨 ~40/s，约 ACTIVE 10s 后达成，早于 15s 上限）。
                 // 未检测到召回前按节流补发（单次 useSystem() 可能被原版闸门吞掉，同 ACTIVATE）。
                 if (player != null && system != null &&
                     system.state == ShipSystemAPI.SystemState.ACTIVE &&
@@ -512,31 +512,31 @@ class FighterGravLinkScenario : AbstractAutomationScenario() {
         private const val FGL_ACTIVATE_TIMEOUT = 10f
 
         // OBSERVE_ACTIVE（断言点 B/C/D）：玩家恒 v2 → 时流 ×2.5（界 2.4）、四承伤 ×0.5（界 0.51）；
-        // 软辐能 1120/s（基础最大辐能 16000×7%）对冲盾开净耗散 760/s（耗散 1400 − 护盾维持 640）
-        // 后净涨 ≈360/s。断言点 D 基线在相位进入（开盾生效）后 settle 0.5s 采样：护盾维持 640/s
+        // 软辐能 800/s（基础最大辐能 16000×5%，原版 CSV 结算）对冲盾开净耗散 760/s（耗散 1400 − 护盾维持 640）
+        // 后净涨 ≈40/s。断言点 D 基线在相位进入（开盾生效）后 settle 0.5s 采样：护盾维持 640/s
         // 恒定贯穿整个观测窗，净涨只能来自系统产出（无系统时净 -760/s，判别力成立），
-        // 基线后约 2.5s 达成 +800，观测窗 2~5s 收口。
+        // 基线后约 2.5s 达成 +100，观测窗 2~5s 收口（上限净涨 ≈180）。
         private const val FGL_OBSERVE_MIN_SECONDS = 2f
         private const val FGL_OBSERVE_TIMEOUT = 5f
         private const val FGL_OBSERVE_BASELINE_SETTLE_SECONDS = 0.5f
         private const val FGL_EXPECT_TIME_MULT_MIN = 2.4f
         private const val FGL_EXPECT_DAMAGE_TAKEN_MAX = 0.51f
-        private const val FGL_EXPECT_FLUX_RISE = 800f
+        private const val FGL_EXPECT_FLUX_RISE = 100f
 
         // WAIT_RECALL（断言点 E/F）：currFlux ≥ FGL_MANUAL_CANCEL_MIN_FLUX 时补发 useSystem()
         // 验证 toggle 主动关闭路径（玩家再次按键同路径；不用 deactivate()——其直接跳 COOLDOWN、
         // 跳过 OUT 窗口）；召回检测后 settle 1.5s 采样硬辐能峰值与 identity 清点——OUT 召回
         // 特效窗为 1.0s（CSV down），land 在窗口末（effectLevel ≤0.05，约 0.95s）执行，settle 需覆盖。
-        // 关闭前的最低辐能门槛：断言点 F 阈值显式 ≥1000——敌方仅秃鹰双阔剑联队，settle 窗内
+        // 关闭前的最低辐能门槛：断言点 F 阈值显式 ≥300——敌方仅秃鹰双阔剑联队，settle 窗内
         // 战机火力对护盾的硬辐能贡献在数十量级，外部来源不可能满足，上升只能归因 OUT 首帧
-        // setHardFlux(currFlux) 转化；ACTIVE 期净涨 ~360/s，1500 约 4s 达成（远早于 15s 上限）。
-        private const val FGL_MANUAL_CANCEL_MIN_FLUX = 1500f
+        // setHardFlux(currFlux) 转化；ACTIVE 期净涨 ~40/s，400 约 10s 达成（早于 15s 上限）。
+        private const val FGL_MANUAL_CANCEL_MIN_FLUX = 400f
 
         // toggle 主动关闭的补发节流（秒）：单次 useSystem() 可能被原版闸门吞掉（同 ACTIVATE），
         // 未检测到召回前按该间隔重发，确保「主动取消」路径被真实验证而非静默落到 15s 上限收口。
         private const val FGL_MANUAL_CANCEL_RETRY_SECONDS = 0.5f
         private const val FGL_RECALL_SETTLE_SECONDS = 1.5f
-        private const val FGL_EXPECT_HARD_FLUX_RISE = 1000f
+        private const val FGL_EXPECT_HARD_FLUX_RISE = 300f
 
         // RELAUNCH（断言点 G）：召回后 15s 内必须出现新 identity 战机（快速整备 0.3~0.8s/架）。
         private const val FGL_RELAUNCH_TIMEOUT = 15f

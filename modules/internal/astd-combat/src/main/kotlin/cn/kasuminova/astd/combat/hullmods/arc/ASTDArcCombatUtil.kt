@@ -1,16 +1,25 @@
 package cn.kasuminova.astd.combat.hullmods.arc
 
+import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.combat.WeaponAPI
 import java.util.WeakHashMap
 
 internal object ASTDArcCombatUtil {
     private val baseRefireDelayByWeapon: WeakHashMap<WeaponAPI, Float> = WeakHashMap()
+    private val log = Global.getLogger(ASTDArcCombatUtil::class.java)
+
+    /** effectiveSystemRange 异常告警的一次性闩（防逐帧刷屏；异常本身极罕见——mutableStats 战斗内恒可达）。 */
+    private var systemRangeWarned = false
 
     fun effectiveSystemRange(ship: ShipAPI, baseRange: Float): Float =
         try {
             ship.mutableStats.systemRangeBonus.computeEffective(baseRange)
-        } catch (_: Throwable) {
+        } catch (t: Throwable) {
+            if (!systemRangeWarned) {
+                systemRangeWarned = true
+                log.warn("[ASTD] effectiveSystemRange 读取 systemRangeBonus 失败，回退基础射程 $baseRange（ship=${ship.id}）", t)
+            }
             baseRange
         }
 

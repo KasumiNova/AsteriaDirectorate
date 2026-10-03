@@ -298,7 +298,7 @@ class GeminiDemScenario : AbstractAutomationScenario() {
                         .firstOrNull { id ->
                             Global.getSettings().getWeaponSpec(id)?.aiHints?.contains(WeaponAPI.AIHints.SYSTEM) != true
                         }
-                    // 战机型发射武器 spec（射程削弱 2500→2000 的实机核对面）
+                    // 战机型发射武器 spec（射程削弱 2000→1500 的实机核对面）
                     val fighterRange = Global.getSettings().getWeaponSpec(GeminiDemDifficulty.FIGHTER_WEAPON_ID)?.maxRange ?: -1f
                     when {
                         launcherSlot != GD_PLAYER_SLOT_LAUNCHER || podSlot != GD_PLAYER_SLOT_POD -> {
@@ -629,9 +629,9 @@ class GeminiDemScenario : AbstractAutomationScenario() {
         private const val GD_CAMERA_VISIBLE_HEIGHT = 1500f
         private const val GD_MOUNT_SETTLE_SECONDS = 0.6f
 
-        // MOUNT 相位校验：射程断言基线 2500（无射程向 hullmod 干扰）；战机型 spec 射程 2000（削弱口径）。
-        private const val GD_EXPECT_RANGE = 2500f
-        private const val GD_FIGHTER_EXPECT_RANGE = 2000f
+        // MOUNT 相位校验：射程断言基线 2000（无射程向 hullmod 干扰）；战机型 spec 射程 1500（削弱口径）。
+        private const val GD_EXPECT_RANGE = 2000f
+        private const val GD_FIGHTER_EXPECT_RANGE = 1500f
         private const val GD_RANGE_TOLERANCE = 5f
         private const val GD_LAUNCHER_AMMO = 4
         private const val GD_POD_AMMO = 8

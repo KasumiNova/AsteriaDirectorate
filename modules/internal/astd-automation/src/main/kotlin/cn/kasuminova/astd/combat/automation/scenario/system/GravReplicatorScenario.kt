@@ -293,7 +293,8 @@ class GravReplicatorScenario : AbstractAutomationScenario() {
                                 ctx.elapsed - gsrActivatedAt >= GSR_EVAL_GRACE_SECONDS
                             ) {
                                 val capacity = player.mutableStats.fluxCapacity.baseValue
-                                val expectedActivation = capacity * GravReplicatorTuning.ACTIVATION_FLUX_FRACTION
+                                // 镜像 CSV entry `f/u (base cap)` = 0.1（激活软辐能已迁移原版结算，tuning 常量已删）
+                                val expectedActivation = capacity * GSR_ACTIVATION_FLUX_FRACTION_OF_CAP
                                 val fluxPerShot = replicaWeapon.fluxCostToFire
                                 val halfSpikes = gsrFluxSpikes.count {
                                     it >= fluxPerShot * GSR_SPIKE_HALF_MIN && it <= fluxPerShot * GSR_SPIKE_HALF_MAX
@@ -606,6 +607,9 @@ class GravReplicatorScenario : AbstractAutomationScenario() {
         // （界 [0.8, 1.2]×f）、每发复制 ≈0.5×单发辐能（界 [0.3, 0.7]×f），尖峰起判 20
         // （远高于逐帧耗散 300/s × 帧间隔 ≈ 5 的底噪）；复制体伤害界 [0.45, 0.55]×原弹。
         private const val GSR_ACTIVATE_TIMEOUT = 10f
+
+        /** 激活软辐能占基础辐能容量比例：镜像 CSV entry `f/u (base cap)` = 0.1（原版结算，tuning 常量已删）。 */
+        private const val GSR_ACTIVATION_FLUX_FRACTION_OF_CAP = 0.1f
         private const val GSR_ACTIVATION_FLUX_TOLERANCE = 0.25f
         private const val GSR_FIRE_DELAY_SECONDS = 0.3f
 

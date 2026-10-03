@@ -21,8 +21,9 @@ import java.awt.Color
  *    相位所有权由 [LinkState.phasedByThis] 标记——只对「本插件相位过」的战机执行 setPhased(false)，
  *    绝不误清其他来源的相位状态（与视差甲板同一配对纪律）。
  *    「战机不会产生相位维持辐能」：战机本身无相位线圈，联动相位不产生任何辐能开销，
- *    无需额外抵消逻辑。母舰相位期间战机战术系统同步禁用（每帧对非 IDLE/COOLDOWN 态
- *    deactivate 压回冷却；原版无 disableSystem API，此为标准等效做法）。
+ *    无需额外抵消逻辑。母舰相位期间战机战术系统同步禁用（非冷却态先 deactivate，
+ *    再逐帧把剩余冷却钉在小余量 [SYSTEM_LOCK_COOLDOWN_REMAINING]，原版 ChargeTracker
+ *    在 COOLDOWN 态不响应激活请求——磁暴相位锁定同款口径；退出相位后即刻恢复可用）。
  * 2. **辐能返还**：逐帧统计每架战机的辐能净增量（开火产出的软/硬辐能），按难度系数
  *    比例（[GravPhaseDeckTuning.FLUX_RETURN_RATIO]）从战机扣除并以软辐能形式加到母舰；
  *    母舰辐能水平高于 [GravPhaseDeckTuning.MOTHERSHIP_FLUX_LEVEL_DISABLE] 时失效。
@@ -86,14 +87,20 @@ class ASTDGravPhaseDeckHullMod : BaseHullMod() {
                         fighter.extraAlphaMult = LINKED_PHASE_ALPHA
                         state.phasedByThis += fighter
                     }
-                    // 母舰相位期间战机战术系统禁用：原版无 disableSystem API，对充能/激活/
-                    // 消退态每帧 deactivate 压回冷却（等效禁止；母舰退出相位后自动恢复可用）。
+                    // 母舰相位期间战机战术系统禁用：充能/激活/消退态先 deactivate 压回冷却
+                    // （原版无 disableSystem API），再逐帧把剩余冷却钉在小余量——COOLDOWN 态下
+                    // 原版 ChargeTracker 对激活请求仅置失败标记不再激活（磁暴相位锁定同款口径），
+                    // 战机 AI 无法在相位期间重新点亮系统；母舰退出相位后冷却仅余小余量，即刻恢复可用。
                     val system = fighter.system
-                    if (system != null &&
-                        system.state != ShipSystemAPI.SystemState.IDLE &&
-                        system.state != ShipSystemAPI.SystemState.COOLDOWN
-                    ) {
-                        system.deactivate()
+                    if (system != null) {
+                        if (system.state != ShipSystemAPI.SystemState.IDLE &&
+                            system.state != ShipSystemAPI.SystemState.COOLDOWN
+                        ) {
+                            system.deactivate()
+                        }
+                        if (system.cooldownRemaining < SYSTEM_LOCK_COOLDOWN_REMAINING) {
+                            system.cooldownRemaining = SYSTEM_LOCK_COOLDOWN_REMAINING
+                        }
                     }
                 } else if (state.phasedByThis.remove(fighter)) {
                     if (fighter.isPhased) fighter.isPhased = false
@@ -149,6 +156,9 @@ class ASTDGravPhaseDeckHullMod : BaseHullMod() {
     companion object {
         /** 联动相位时战机的额外透明度（对齐原版相位态 25% 不透明度观感的折中取值）。 */
         private const val LINKED_PHASE_ALPHA = 0.5f
+
+        /** 母舰相位期间战机战术系统的冷却钉住余量（秒）：逐帧钉住防 AI 再激活，退出相位后即刻恢复。 */
+        private const val SYSTEM_LOCK_COOLDOWN_REMAINING = 0.5f
 
         /** 逐舰联动状态挂载键（ShipAPI.customData，战斗内随实体生命周期）。 */
         private const val STATE_KEY = "astd_grav_phase_deck_link_state"

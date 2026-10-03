@@ -36,7 +36,7 @@ class ElectricDriveScenario : AbstractAutomationScenario() {
     private var edaEnemyExtraBaseline = -1
     private var edaMinPlayerAmmo = Int.MAX_VALUE
 
-    // 每触发弹数分组：spawn 间隔 > EDA_BURST_GROUP_GAP 视为新一轮触发（burst delay 0.1s，组内 2 弹）。
+    // 每触发弹数分组：spawn 间隔 > EDA_BURST_GROUP_GAP 视为新一轮触发（burst delay 0.15s，组内 2 弹）。
     private var edaCurrentBurstCount = 0
     private var edaLastSpawnAt = -1f
     private var edaMaxTriggerProjectiles = 0
@@ -140,7 +140,7 @@ class ElectricDriveScenario : AbstractAutomationScenario() {
         ship.fluxTracker.hardFlux = 0f
     }
 
-    /** 每触发弹数分组：新弹 spawn 间隔 > [EDA_BURST_GROUP_GAP] 视为新一轮触发（burst delay 0.1s）。 */
+    /** 每触发弹数分组：新弹 spawn 间隔 > [EDA_BURST_GROUP_GAP] 视为新一轮触发（burst delay 0.15s）。 */
     private fun trackEdaTriggerGroups(engine: CombatEngineAPI, player: ShipAPI?) {
         player ?: return
         for (projectile in engine.projectiles) {
@@ -390,7 +390,7 @@ class ElectricDriveScenario : AbstractAutomationScenario() {
         private const val EDA_HIGH_FLUX_LEVEL = 0.5f
         private const val EDA_RANGE_SETTLE_SECONDS = 0.6f
 
-        // 每触发 2 弹（双管交替 × burst 2）；轮间隔 = chargedown 0.3s，间隔 >0.2s 判定新一轮触发。
+        // 每触发 2 弹（双管交替 × burstSize 4 引擎口径，断言是分组后每轮弹数）；轮间隔 = chargedown 0.3s，间隔 >0.2s 判定新一轮触发。
         private const val EDA_EXPECT_TRIGGER_PROJECTILES = 2
         private const val EDA_BURST_GROUP_GAP = 0.2f
 

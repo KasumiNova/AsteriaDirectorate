@@ -59,7 +59,8 @@ object GravStormTuning {
     /** 系统冷却（秒，文档口径；实际生效值以 ship_systems.csv 为准）。 */
     const val COOLDOWN_SECONDS = 24f
 
-    /** 激活代价：舰船基础最大辐能容量（hullSpec.fluxCapacity）的该比例，以软辐能计入。 */
+    /** 激活代价比例（镜像 CSV entry `f/u (base cap)` = 0.2，实际结算由原版 ChargeTracker
+     *  在 IDLE→IN 瞬间以软辐能一次性计入）；本常量仅供 [GravStormSystemAI] 辐能余量估算。 */
     const val ACTIVATION_FLUX_FRACTION = 0.2f
 
     /** 每多锁定一个目标的总电弧数衰减与上限（-10%/个，最多 -50%）。 */
