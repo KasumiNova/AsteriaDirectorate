@@ -5,10 +5,13 @@ import cn.kasuminova.astd.impl.render.BeamSprites
 import cn.kasuminova.astd.impl.render.ConeImpactVfx
 import cn.kasuminova.astd.impl.render.ConeImpactVfxSpec
 import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
+import cn.kasuminova.astd.renderer.boxutil.pool.PooledCombatVfx
+import cn.kasuminova.astd.renderer.boxutil.pool.TrailLeaseEnvelope
+import cn.kasuminova.astd.renderer.boxutil.pool.TrailLeaseKey
+import cn.kasuminova.astd.renderer.boxutil.pool.TrailLeaseSpec
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEngineLayers
-import com.fs.starfarer.api.graphics.SpriteAPI
 import org.boxutil.units.standard.entity.DistortionEntity
 import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
@@ -66,8 +69,17 @@ object PiercingLanceVfx {
     /** 静止速度矢量（顶点闪光/扭曲用，避免逐次分配）。 */
     private val ZERO_VEL = Vector2f(0f, 0f)
 
-    /** (core, fringe) 束体贴图对（惰性加载一次；加载失败时光柱降级、锥面组件内部已自备降级）。 */
-    private var sprites: Pair<SpriteAPI, SpriteAPI>? = null
+    /**
+     * 大光柱池化租约键（容量 = 峰值并发估算：单发 1 条 × 存续 0.25s 内并发命中 16 次取 16，
+     * 低频事件级武器余量充足）。池满拒发 + 节流 WARN。
+     */
+    private val PILLAR_POOL_KEY = TrailLeaseKey(
+        layer = CombatEngineLayers.ABOVE_SHIPS_AND_MISSILES_LAYER,
+        coreSpritePath = BeamSprites.CORE_PATH,
+        fringeSpritePath = BeamSprites.FRINGE_PATH,
+        mixPower = 3.0f,
+        capacity = 16,
+    )
 
     /**
      * 触发一次命中特效三层：顶点大闪光（+ 扭曲）→ 大光柱 → 锥状冲击锥面（同帧）。
@@ -158,42 +170,37 @@ object PiercingLanceVfx {
     }
 
     /**
-     * 大光柱：沿命中矢量的短寿命 BoxUtil 渐变拖尾（emissive 增益并入 bloom 管线）。
-     * 全局定时器自管理生命周期（full 0.05s + 淡出 0.2s），无需 RenderEntity 树逐帧推进。
+     * 大光柱：沿命中矢量的短寿命池化渐变拖尾（emissive 增益并入 bloom 管线）。
+     * 池一次性包络（full 0.05s + 淡出 0.2s）驱动生命周期，与旧 globalTimer 线性淡出逐帧等价，
+     * 到期自动泊车归还，无需 RenderEntity 树逐帧推进。
      */
     private fun spawnPillar(engine: CombatEngineAPI, spec: ConeImpactSpec, facingDeg: Float) {
-        BoxUtilCombatVfx.ensureReady(engine)
-        val spritePair = sprites ?: BeamSprites.load()?.also { sprites = it } ?: run {
-            log.warn("贯星之矛大光柱贴图加载失败，本次跳过光柱（锥面特效不受影响）")
+        val lease = PooledCombatVfx.checkoutTrail(
+            engine, PILLAR_POOL_KEY,
+            TrailLeaseSpec(
+                location = Vector2f(spec.origin),
+                facingDeg = facingDeg,
+                // 节点序对齐 createBeamVisual：node[0]=+length 端为尾，START_* 作用于尾
+                nodes = listOf(Vector2f(spec.range * PILLAR_LENGTH_RATIO, 0f), Vector2f(0f, 0f)),
+                startWidth = PILLAR_TAIL_WIDTH,
+                endWidth = PILLAR_HEAD_WIDTH,
+                coreColor = PILLAR_CORE_COLOR,
+                fringeColor = PILLAR_FRINGE_COLOR,
+                startAlpha = 0.25f,
+                endAlpha = 0.95f,
+                startEmissiveAlpha = 0.8f,
+                endEmissiveAlpha = 2.2f,
+                fillStartAlpha = 0f,
+                fillStartFactor = 0.25f,
+                fillEndAlpha = 0f,
+                fillEndFactor = 0.9f,
+                envelope = TrailLeaseEnvelope(0f, PILLAR_FULL_SECONDS, PILLAR_FADE_OUT_SECONDS),
+            ),
+        )
+        if (lease == null) {
+            log.warn("贯星之矛大光柱池化检出失败（池不可用或池满），本次跳过光柱")
             return
         }
-        val entity = BoxUtilCombatVfx.createAndAddTaperedBeamTrail(
-            engine = engine,
-            location = Vector2f(spec.origin),
-            facing = facingDeg,
-            length = spec.range * PILLAR_LENGTH_RATIO,
-            tailWidth = PILLAR_TAIL_WIDTH,
-            headWidth = PILLAR_HEAD_WIDTH,
-            coreColor = PILLAR_CORE_COLOR,
-            fringeColor = PILLAR_FRINGE_COLOR,
-            coreSprite = spritePair.first,
-            fringeSprite = spritePair.second,
-            layer = CombatEngineLayers.ABOVE_SHIPS_AND_MISSILES_LAYER,
-            full = PILLAR_FULL_SECONDS,
-            tailAlphaMul = 0.25f,
-            headAlphaMul = 0.95f,
-            tailEmissiveAlphaMul = 0.8f,
-            headEmissiveAlphaMul = 2.2f,
-            mixPower = 3.0f,
-        ) ?: run {
-            log.warn("贯星之矛大光柱建实体失败（BoxUtil addEntity 未就绪），本次跳过光柱")
-            return
-        }
-        entity.fillStartAlpha = 0f
-        entity.fillStartFactor = 0.25f
-        entity.fillEndAlpha = 0f
-        entity.fillEndFactor = 0.9f
-        entity.setGlobalTimer(0f, PILLAR_FULL_SECONDS, PILLAR_FADE_OUT_SECONDS)
         bumpTelemetry(engine, TELEMETRY_PILLAR)
     }
 

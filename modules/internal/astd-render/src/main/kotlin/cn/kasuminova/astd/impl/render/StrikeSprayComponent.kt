@@ -3,6 +3,11 @@ package cn.kasuminova.astd.impl.render
 import cn.kasuminova.astd.api.render.RenderContext
 import cn.kasuminova.astd.impl.render.StrikeSprayComponent.Companion.RAMP_MIN_RAYS
 import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
+import cn.kasuminova.astd.renderer.boxutil.pool.PooledCombatVfx
+import cn.kasuminova.astd.renderer.boxutil.pool.TrailLease
+import cn.kasuminova.astd.renderer.boxutil.pool.TrailLeaseEnvelope
+import cn.kasuminova.astd.renderer.boxutil.pool.TrailLeaseKey
+import cn.kasuminova.astd.renderer.boxutil.pool.TrailLeaseSpec
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEngineLayers
@@ -30,8 +35,9 @@ import kotlin.math.roundToInt
  *
  * 错峰渐现为 v2.2 三段分批逐字移植：针数 ≥ [RAMP_MIN_RAYS] 且 introRamp > 0 时按二次曲线
  * 权重 1/9 : 3/9 : 5/9 分三段，段间隔 (introRamp/3).coerceIn(0.010, 0.060)，段尺寸
- * 0.35+0.65×smoothstep((step+1)/3)（第一段立即激活）。针寿命由实体 globalTimer 自管理
- * （满亮+淡出自灭）；树 detach 时整批 delete。
+ * 0.35+0.65×smoothstep((step+1)/3)（第一段立即激活）。针实体走 PooledCombatVfx 池化租约
+ * （防 renderEntityMap 滞留泄漏）：寿命由池一次性包络（满亮+淡出）驱动、到期泊车归还，
+ * 与旧 globalTimer 线性淡出逐帧等价；树 detach 时整批 release 立即泊车。
  */
 class StrikeSprayComponent(
     id: String,
@@ -80,7 +86,12 @@ class StrikeSprayComponent(
             needle.pos.x += needle.vel.x * dt
             needle.pos.y += needle.vel.y * dt
             val entity = needle.entity ?: continue
-            if (entity.hasDelete() || entity.isGlobalTimerOver) continue
+            if (entity.hasDelete()) {
+                // 池实体被外部路径回收（战斗切换 purge 等）：弃租约，参数积分照常推进
+                needle.entity = null
+                needle.lease = null
+                continue
+            }
             try {
                 entity.setStateVanilla(needle.pos, needle.facing)
             } catch (t: Throwable) {
@@ -94,7 +105,9 @@ class StrikeSprayComponent(
 
     override fun onDetachSelf() {
         for (needle in needles) {
-            needle.entity?.delete()
+            // 池化租约：立即泊车归还（alpha 归零），不走 delete（实体常驻池内复用）
+            needle.lease?.release()
+            needle.lease = null
             needle.entity = null
         }
     }
@@ -167,44 +180,49 @@ class StrikeSprayComponent(
         }
     }
 
-    /** 激活一根针：建 TrailEntity + 针尖补光粒子（贴图/addEntity 失败记 WARN 缺席视觉，参数积分照常）。 */
+    /**
+     * 激活一根针：从池化租约池检出 TrailEntity + 针尖补光粒子（贴图/检出失败记 WARN 缺席视觉，
+     * 参数积分照常）。几何/宽度/颜色/fill/错峰与 v2.2 逐字一致；寿命由池一次性包络
+     * （fadeIn=0/full/fadeOut）驱动——与旧 globalTimer(0, full, fadeOut) 线性淡出逐帧等价，
+     * 到期自动泊车归还，不再每场战斗新建实体。
+     */
     private fun activateNeedle(engine: CombatEngineAPI, needle: Needle) {
         needle.activated = true
-        val pair = loadSprites() ?: return
-        val entity = BoxUtilCombatVfx.createAndAddTaperedBeamTrail(
-            engine = engine,
-            location = needle.pos,
-            facing = needle.facing,
-            length = needle.visualLength,
-            tailWidth = needle.tipWidth,
-            headWidth = needle.baseWidth,
-            coreColor = spec.coreColor,
-            fringeColor = spec.fringeColor,
-            coreSprite = pair.first,
-            fringeSprite = pair.second,
-            layer = CombatEngineLayers.ABOVE_SHIPS_AND_MISSILES_LAYER,
-            full = needle.full,
-            // 尖端更淡、基部更亮，强化「针尖」观感（v2.2 针参数逐字）。
-            tailAlphaMul = TRAIL_TAIL_ALPHA_MUL,
-            headAlphaMul = TRAIL_HEAD_ALPHA_MUL,
-            tailEmissiveAlphaMul = TRAIL_TAIL_EMISSIVE_MUL,
-            headEmissiveAlphaMul = TRAIL_HEAD_EMISSIVE_MUL,
-            mixPower = TRAIL_MIX_POWER,
+        // 组件级贴图门保留：失败 WARN 语义与预载职责不变（池侧加载命中同一缓存）
+        loadSprites() ?: return
+        val lease = PooledCombatVfx.checkoutTrail(
+            engine, POOL_KEY,
+            TrailLeaseSpec(
+                location = needle.pos,
+                facingDeg = needle.facing,
+                // 节点序对齐 createBeamVisual：node[0]=+length 端为尾，START_* 作用于尾
+                nodes = listOf(Vector2f(needle.visualLength, 0f), Vector2f(0f, 0f)),
+                startWidth = needle.tipWidth,
+                endWidth = needle.baseWidth,
+                coreColor = spec.coreColor,
+                fringeColor = spec.fringeColor,
+                // 尖端更淡、基部更亮，强化「针尖」观感（v2.2 针参数逐字）
+                startAlpha = TRAIL_TAIL_ALPHA_MUL,
+                endAlpha = TRAIL_HEAD_ALPHA_MUL,
+                startEmissiveAlpha = TRAIL_TAIL_EMISSIVE_MUL,
+                endEmissiveAlpha = TRAIL_HEAD_EMISSIVE_MUL,
+                // 端点羽化（v2.2 针参数逐字）
+                fillStartAlpha = 0f,
+                fillStartFactor = FILL_START_FACTOR,
+                fillEndAlpha = 0f,
+                fillEndFactor = FILL_END_FACTOR,
+                envelope = TrailLeaseEnvelope(0f, needle.full, needle.fadeOut),
+            ),
         )
-        if (entity == null) {
+        if (lease == null) {
             if (!addEntityWarned) {
                 addEntityWarned = true
-                log.warn("刺束针 TrailEntity 注册失败（id=$id），本组件针视觉缺席（参数积分仍推进，组件级去重）")
+                log.warn("刺束针池化实体检出失败（id=$id），本组件针视觉缺席（参数积分仍推进，组件级去重）")
             }
             return
         }
-        // createBeamVisual 默认 fadeOut=0：手动补淡出 + 端点羽化（v2.2 针参数逐字）。
-        entity.setGlobalTimer(0f, needle.full, needle.fadeOut)
-        entity.fillStartAlpha = 0f
-        entity.fillStartFactor = FILL_START_FACTOR
-        entity.fillEndAlpha = 0f
-        entity.fillEndFactor = FILL_END_FACTOR
-        needle.entity = entity
+        needle.lease = lease
+        needle.entity = lease.entity
         // 针尖补光（v2.2 主路径同款：尖端小亮点强化「尖」，随针同速 1/4 漂移）。
         engine.addSmoothParticle(
             needle.tipGlowPos,
@@ -228,7 +246,7 @@ class StrikeSprayComponent(
         return sprites
     }
 
-    /** 一根喷散针：世界系位置/速度（vel ∥ facing）、寿命、针形尺寸、激活错峰、针尖补光参数与后端实体句柄。 */
+    /** 一根喷散针：世界系位置/速度（vel ∥ facing）、寿命、针形尺寸、激活错峰、针尖补光参数与池化租约/实体句柄。 */
     internal class Needle(
         val pos: Vector2f,
         val vel: Vector2f,
@@ -247,6 +265,7 @@ class StrikeSprayComponent(
         var driveAge: Float = 0f,
         var activated: Boolean = false,
         var expired: Boolean = false,
+        var lease: TrailLease? = null,
         var entity: TrailEntity? = null,
     )
 
@@ -291,6 +310,18 @@ class StrikeSprayComponent(
         const val TRAIL_TAIL_EMISSIVE_MUL = 0.55f
         const val TRAIL_HEAD_EMISSIVE_MUL = 2.05f
         const val TRAIL_MIX_POWER = 3.0f
+
+        /**
+         * 刺束针池化租约键（全组件实例共用，容量 = 峰值并发估算：单锥 ≤40 针 × 寿命 ≤0.62s
+         * 内约 6 场并发锥面冲击，取 256）。池满拒发新租约 + 节流 WARN（不抢占在租针）。
+         */
+        internal val POOL_KEY = TrailLeaseKey(
+            layer = CombatEngineLayers.ABOVE_SHIPS_AND_MISSILES_LAYER,
+            coreSpritePath = BeamSprites.CORE_PATH,
+            fringeSpritePath = BeamSprites.FRINGE_PATH,
+            mixPower = TRAIL_MIX_POWER,
+            capacity = 256,
+        )
 
         /** 端点羽化（fill 因子：沿 U 向两端渐隐，治钝头钝尾）。 */
         const val FILL_START_FACTOR = 0.62f

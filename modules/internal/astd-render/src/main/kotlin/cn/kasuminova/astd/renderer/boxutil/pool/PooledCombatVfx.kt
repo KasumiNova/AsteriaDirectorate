@@ -26,8 +26,9 @@ import java.awt.Color
  * - **sprite 粒子池**（[SpritePoolKey]）：每 key 一个常驻 SpriteEntity + 固定容量
  *   Instance2Data 槽位，CPU 侧积分位置/自转并逐帧写实例数据（速度/自转不再交给
  *   BoxUtil 实例自管理，避免双重积分；暂停时包络冻结）；
- * - **光束段池**（[TrailPoolKey]）：每 key 固定容量个常驻双节点 TrailEntity，spawn 时
- *   认领槽位并重写节点/宽度/材质色，逐帧按 CPU 侧包络写 START/END alpha，到期泊车
+ * - **光束段池**（[TrailPoolKey]/[TrailLeaseKey]）：每 key 固定容量个常驻 TrailEntity。
+ *   [spawnTrail] 为一次性双节点段（内部走租约池的一次性包络检出）；[checkoutTrail] 为
+ *   通用租约——多节点、逐帧驱动、手动 alpha + 心跳看门狗，检出全量重置，到期/释放泊车
  *   （alpha 归零）而非 delete。
  *
  * 池实体随 BoxUtil 战斗切换清理一并回收；单场战斗内实体总数 = Σ key 容量，有界。
@@ -111,12 +112,40 @@ object PooledCombatVfx {
         fadeIn: Float, full: Float, fadeOut: Float,
     ): Boolean {
         if (length < 1f) return false
-        val binding = manager(engine).trailPools.getOrPut(key) { TrailPoolBinding(engine, key) }
-        return binding.spawn(
-            location, facingDeg, length, tailWidth, headWidth, coreColor, fringeColor,
-            tailAlphaMul, headAlphaMul, tailEmissiveAlphaMul, headEmissiveAlphaMul,
-            fadeIn, full, fadeOut,
-        )
+        // 一次性双节点段 = 租约池的一次性包络检出（节点序尾→头：node[0]=+length 端为尾）
+        return checkoutTrail(
+            engine,
+            TrailLeaseKey(key.layer, key.coreSpritePath, key.fringeSpritePath, key.mixPower, key.capacity),
+            TrailLeaseSpec(
+                location = location,
+                facingDeg = facingDeg,
+                nodes = listOf(Vector2f(length, 0f), Vector2f(0f, 0f)),
+                startWidth = tailWidth,
+                endWidth = headWidth,
+                coreColor = coreColor,
+                fringeColor = fringeColor,
+                startAlpha = tailAlphaMul,
+                endAlpha = headAlphaMul,
+                startEmissiveAlpha = tailEmissiveAlphaMul,
+                endEmissiveAlpha = headEmissiveAlphaMul,
+                envelope = TrailLeaseEnvelope(fadeIn, full, fadeOut),
+            ),
+        ) != null
+    }
+
+    /**
+     * 检出一个池化 TrailEntity 租约（多节点/逐帧驱动/心跳看门狗的统一入口，防 renderEntityMap
+     * 滞留泄漏）。检出即全量重置实体状态；租约期间调用方逐帧驱动 [TrailLease.entity]；
+     * 消亡口径见 [TrailLeaseSpec]（一次性包络 / 看门狗 / 显式 release），泊车 = alpha 归零常驻复用。
+     *
+     * @return null = 池不可用或池满拒发（均已记 WARN），本次视觉缺席
+     */
+    fun checkoutTrail(engine: CombatEngineAPI, key: TrailLeaseKey, spec: TrailLeaseSpec): TrailLease? {
+        if (spec.nodes.size < 2) {
+            log.warn("池化光束租约检出拒绝：节点数 ${spec.nodes.size} < 2（layer=${key.layer}，core=${key.coreSpritePath}）——调用方编程错误，本次视觉缺席")
+            return null
+        }
+        return manager(engine).trailLeasePools.getOrPut(key) { TrailLeaseBinding(engine, key) }.checkout(spec)
     }
 
     private fun manager(engine: CombatEngineAPI): Manager {
@@ -135,12 +164,12 @@ object PooledCombatVfx {
     /** 池推进插件：暂停时冻结（包络/积分全部停走），与 vanilla 粒子暂停语义一致。 */
     private class Manager(private val engine: CombatEngineAPI) : BaseEveryFrameCombatPlugin() {
         val spritePools = LinkedHashMap<SpritePoolKey, SpritePoolBinding>()
-        val trailPools = LinkedHashMap<TrailPoolKey, TrailPoolBinding>()
+        val trailLeasePools = LinkedHashMap<TrailLeaseKey, TrailLeaseBinding>()
 
         override fun advance(amount: Float, events: MutableList<InputEventAPI>?) {
             if (engine.isPaused) return
             for (pool in spritePools.values) pool.advance(amount)
-            for (pool in trailPools.values) pool.advance(amount)
+            for (pool in trailLeasePools.values) pool.advance(amount)
         }
     }
 
@@ -253,145 +282,6 @@ object PooledCombatVfx {
                 e.setInstanceDataRefreshSize(write)
                 e.submitInstance()
             }
-        }
-    }
-
-    /** 光束段池绑定：固定容量个常驻双节点 TrailEntity，spawn 认领槽位重写几何/颜色。 */
-    private class TrailPoolBinding(
-        private val engine: CombatEngineAPI,
-        private val key: TrailPoolKey,
-    ) {
-        private val log = Global.getLogger(TrailPoolBinding::class.java)
-
-        val slots = TrailSlots(key.capacity)
-
-        private val entities = ArrayList<TrailEntity?>(key.capacity)
-        private var coreSprite: SpriteAPI? = null
-        private var fringeSprite: SpriteAPI? = null
-        private var spritesAttempted = false
-        private var broken = false
-
-        fun spawn(
-            location: Vector2f,
-            facingDeg: Float,
-            length: Float,
-            tailWidth: Float,
-            headWidth: Float,
-            coreColor: Color,
-            fringeColor: Color,
-            tailAlphaMul: Float,
-            headAlphaMul: Float,
-            tailEmissiveAlphaMul: Float,
-            headEmissiveAlphaMul: Float,
-            fadeIn: Float, full: Float, fadeOut: Float,
-        ): Boolean {
-            if (broken) return false
-            if (!ensureSprites()) return false
-            val index = slots.claim(
-                fadeIn, full, fadeOut,
-                tailAlphaMul, headAlphaMul, tailEmissiveAlphaMul, headEmissiveAlphaMul,
-            )
-            val e = getOrCreateEntity(index) ?: return false
-            try {
-                e.setStateVanilla(Vector2f(location), BoxUtilCombatVfx.normalizeFacingDeg(facingDeg))
-                // 节点序对齐 createTaperedBeamTrail：node[0]=+length 端（尾），node[1]=原点（头）。
-                // 必须传可变 ArrayList：TrailEntity 持有引用且 _deleteExc/resetNodes 会 clear()，
-                // Kotlin listOf 的定长 list 会在实体回收时抛 UnsupportedOperationException
-                e.setNodes(arrayListOf(Vector2f(length, 0f), Vector2f(ZERO)))
-                e.submitNodes()
-                e.startWidth = tailWidth
-                e.endWidth = headWidth
-                e.materialData.setColor(coreColor)
-                e.materialData.setEmissiveColor(fringeColor)
-            } catch (t: Throwable) {
-                log.warn("池化光束段配置失败（layer=${key.layer}），本段视觉缺席", t)
-                return false
-            }
-            applyAlpha(index)
-            return true
-        }
-
-        private fun ensureSprites(): Boolean {
-            if (spritesAttempted) return coreSprite != null && fringeSprite != null
-            spritesAttempted = true
-            return try {
-                BoxUtilCombatVfx.ensureReady(engine)
-                val settings = Global.getSettings()
-                settings.loadTexture(key.coreSpritePath)
-                settings.loadTexture(key.fringeSpritePath)
-                coreSprite = settings.getSprite(key.coreSpritePath)
-                fringeSprite = settings.getSprite(key.fringeSpritePath)
-                true
-            } catch (t: Throwable) {
-                broken = true
-                log.warn("池化光束段贴图加载失败（core=${key.coreSpritePath}），该池视觉缺席", t)
-                false
-            }
-        }
-
-        private fun getOrCreateEntity(index: Int): TrailEntity? {
-            while (entities.size <= index) entities += null
-            entities[index]?.let { return it }
-            return try {
-                val e = TrailEntity()
-                e.setAdditiveBlend()
-                e.setLayer(key.layer)
-                // 常驻：消亡由槽位包络泊车（alpha 归零），不走 delete（引用本就会滞留）。
-                e.setGlobalTimer(0f, 1e7f, 0f)
-                e.mixFactor = key.mixPower
-                val mat = e.materialData
-                mat.alphaToEmissive = 0f
-                mat.isColorToEmissive = 0f
-                mat.glowPower = 1f
-                mat.setDiffuse(coreSprite)
-                mat.setEmissive(fringeSprite)
-                parkEntity(e)
-
-                val state = BoxUtilCombatVfx.addEntity(engine, e)
-                if (state != 0) {
-                    e.delete()
-                    broken = true
-                    log.warn("池化光束段实体注册失败（addEntity 返回 $state，layer=${key.layer}），该池视觉缺席")
-                    return null
-                }
-                entities[index] = e
-                e
-            } catch (t: Throwable) {
-                broken = true
-                log.warn("池化光束段实体创建失败（layer=${key.layer}），该池视觉缺席", t)
-                null
-            }
-        }
-
-        fun advance(amount: Float) {
-            slots.advance(amount)
-            for (i in entities.indices) {
-                val e = entities[i] ?: continue
-                val s = slots.slots[i]
-                if (!s.active) {
-                    parkEntity(e)
-                    continue
-                }
-                applyAlpha(i)
-            }
-        }
-
-        /** 按槽位包络把基准 alpha 乘数写进 START/END 色（START=尾，END=头）。 */
-        private fun applyAlpha(index: Int) {
-            val e = entities[index] ?: return
-            val s = slots.slots[index]
-            val env = slots.alphaAt(index)
-            e.setStartColor(1f, 1f, 1f, s.tailAlpha * env)
-            e.setEndColor(1f, 1f, 1f, s.headAlpha * env)
-            e.setStartEmissive(1f, 1f, 1f, s.tailEmissiveAlpha * env)
-            e.setEndEmissive(1f, 1f, 1f, s.headEmissiveAlpha * env)
-        }
-
-        private fun parkEntity(e: TrailEntity) {
-            e.setStartColor(1f, 1f, 1f, 0f)
-            e.setEndColor(1f, 1f, 1f, 0f)
-            e.setStartEmissive(1f, 1f, 1f, 0f)
-            e.setEndEmissive(1f, 1f, 1f, 0f)
         }
     }
 

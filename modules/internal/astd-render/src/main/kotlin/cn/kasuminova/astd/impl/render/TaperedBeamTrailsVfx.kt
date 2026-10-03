@@ -1,23 +1,32 @@
 package cn.kasuminova.astd.impl.render
 
-import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
+import cn.kasuminova.astd.renderer.boxutil.pool.PooledCombatVfx
+import cn.kasuminova.astd.renderer.boxutil.pool.TrailLeaseEnvelope
+import cn.kasuminova.astd.renderer.boxutil.pool.TrailLeaseKey
+import cn.kasuminova.astd.renderer.boxutil.pool.TrailLeaseSpec
 import cn.kasuminova.astd.renderer.effect.projectile.beam.BeamLineUtil
-import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEngineLayers
+import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
 
 /**
- * 复用组件：用 BoxUtil 的 TrailEntity 画“带 taper 的光束”（core + glow，可选 mirrored-U 叠加）。
+ * 复用组件：用池化 TrailEntity 画“带 taper 的光束”（core + glow，可选 mirrored-U 叠加）。
  *
  * 说明：
  * - 适用于 ship system / combat plugin 等“没有 BeamAPI”的场景；
- * - 也可作为短寿命 beam 的构建块（调用方用 interval 周期性刷新即可）。
+ * - 也可作为短寿命 beam 的构建块（调用方用 interval 周期性刷新即可）；
+ * - 实体走 PooledCombatVfx 池化租约的一次性包络检出（防 renderEntityMap 滞留泄漏：
+ *   引力坍缩微束 12 条/0.03s 是历史最大泄漏源）；几何/颜色/alpha/包络与旧逐次新建实体逐字一致，
+ *   包络到期自动泊车归还。池不可用/池满拒发时本段视觉缺席（池侧已记 WARN）。
  */
 internal object TaperedBeamTrailsVfx {
 
     private const val CORE_SPRITE = "graphics/fx/beamcoreb.png"
     private const val FRINGE_SPRITE = "graphics/fx/beamfringeb.png"
+
+    /** 单 mixPower 层的池容量（微束峰值：6 条/层/0.03s × 寿命 0.1s ≈ 20 条/束，并发 4 束取 96）。 */
+    private const val POOL_CAPACITY = 96
 
     data class LayerParams(
         val coreColor: Color,
@@ -42,8 +51,8 @@ internal object TaperedBeamTrailsVfx {
 
     fun spawn(
         engine: CombatEngineAPI,
-        from: org.lwjgl.util.vector.Vector2f,
-        to: org.lwjgl.util.vector.Vector2f,
+        from: Vector2f,
+        to: Vector2f,
         coreBaseWidth: Float,
         coreTipWidth: Float,
         glowBaseWidth: Float,
@@ -51,79 +60,52 @@ internal object TaperedBeamTrailsVfx {
         params: BeamParams,
     ) {
         val line = BeamLineUtil.fromPoints(from, to) ?: return
-
-        val coreSprite = try {
-            Global.getSettings().getSprite(CORE_SPRITE)
-        } catch (_: Throwable) {
-            return
-        }
-        val fringeSprite = try {
-            Global.getSettings().getSprite(FRINGE_SPRITE)
-        } catch (_: Throwable) {
-            return
-        }
-
-        // 确保 BoxUtil ready
-        try {
-            BoxUtilCombatVfx.ensureReady(engine)
-        } catch (_: Throwable) {
-        }
+        val envelope = TrailLeaseEnvelope(
+            params.fadeIn.coerceAtLeast(0f),
+            params.full.coerceAtLeast(0.01f),
+            params.fadeOut.coerceAtLeast(0f),
+        )
 
         fun spawnLayer(p: LayerParams, baseW: Float, tipW: Float) {
-            val main = BoxUtilCombatVfx.createAndAddTaperedBeamTrailFromCenter(
-                engine = engine,
-                location = line.from,
-                facing = line.facing,
-                length = line.length,
-                baseWidth = baseW,
-                tipWidth = tipW,
-                coreColor = p.coreColor,
-                fringeColor = p.fringeColor,
-                coreSprite = coreSprite,
-                fringeSprite = fringeSprite,
-                layer = params.layer,
-                full = 9999f,
-                baseAlphaMul = p.baseAlphaMul,
-                tipAlphaMul = p.tipAlphaMul,
-                baseEmissiveAlphaMul = p.baseEmissiveAlphaMul,
-                tipEmissiveAlphaMul = p.tipEmissiveAlphaMul,
-                mixPower = p.mixPower,
-            )
-
-            val mirrored = if (p.mirroredUMul > 0.001f) {
-                BoxUtilCombatVfx.createAndAddTaperedBeamTrailFromCenterReversedU(
-                    engine = engine,
+            val key = TrailLeaseKey(params.layer, CORE_SPRITE, FRINGE_SPRITE, p.mixPower, POOL_CAPACITY)
+            // 节点序对齐 FromCenter：node[0]=基部，START_* 作用于基部
+            PooledCombatVfx.checkoutTrail(
+                engine, key,
+                TrailLeaseSpec(
                     location = line.from,
-                    facing = line.facing,
-                    length = line.length,
-                    baseWidth = baseW,
-                    tipWidth = tipW,
+                    facingDeg = line.facing,
+                    nodes = listOf(Vector2f(0f, 0f), Vector2f(line.length, 0f)),
+                    startWidth = baseW,
+                    endWidth = tipW,
                     coreColor = p.coreColor,
                     fringeColor = p.fringeColor,
-                    coreSprite = coreSprite,
-                    fringeSprite = fringeSprite,
-                    layer = params.layer,
-                    full = 9999f,
-                    baseAlphaMul = p.baseAlphaMul * p.mirroredUMul,
-                    tipAlphaMul = p.tipAlphaMul * p.mirroredUMul,
-                    baseEmissiveAlphaMul = p.baseEmissiveAlphaMul * p.mirroredUMul,
-                    tipEmissiveAlphaMul = p.tipEmissiveAlphaMul * p.mirroredUMul,
-                    mixPower = p.mixPower,
-                )
-            } else {
-                null
-            }
+                    startAlpha = p.baseAlphaMul,
+                    endAlpha = p.tipAlphaMul,
+                    startEmissiveAlpha = p.baseEmissiveAlphaMul,
+                    endEmissiveAlpha = p.tipEmissiveAlphaMul,
+                    envelope = envelope,
+                ),
+            )
 
-            listOf(main, mirrored).forEach { e ->
-                if (e == null) return@forEach
-                try {
-                    e.setGlobalTimer(
-                        params.fadeIn.coerceAtLeast(0f),
-                        params.full.coerceAtLeast(0.01f),
-                        params.fadeOut.coerceAtLeast(0f)
-                    )
-                } catch (_: Throwable) {
-                }
+            if (p.mirroredUMul > 0.001f) {
+                // U 镜像片：节点反转（node[0]=尖端），宽度/渐变参数随端反转（对齐 ReversedU 逐字）
+                PooledCombatVfx.checkoutTrail(
+                    engine, key,
+                    TrailLeaseSpec(
+                        location = line.from,
+                        facingDeg = line.facing,
+                        nodes = listOf(Vector2f(line.length, 0f), Vector2f(0f, 0f)),
+                        startWidth = tipW,
+                        endWidth = baseW,
+                        coreColor = p.coreColor,
+                        fringeColor = p.fringeColor,
+                        startAlpha = p.tipAlphaMul * p.mirroredUMul,
+                        endAlpha = p.baseAlphaMul * p.mirroredUMul,
+                        startEmissiveAlpha = p.tipEmissiveAlphaMul * p.mirroredUMul,
+                        endEmissiveAlpha = p.baseEmissiveAlphaMul * p.mirroredUMul,
+                        envelope = envelope,
+                    ),
+                )
             }
         }
 

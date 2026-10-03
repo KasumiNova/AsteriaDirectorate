@@ -233,9 +233,16 @@ description: "BoxUtil 使用指南（API 速览、调试建议、避坑点），
 （astd-render）：
 - `spawnSprite`：sprite 粒子池（每 key 一个常驻 SpriteEntity + 固定容量实例槽，CPU 侧积分
   位置/自转 + 三段包络驱动 alpha；参考实现 TriShardComponent、ASTDXc002Vfx 尘埃粒子）；
-- `spawnTrail`：双节点光束段池（每 key 固定容量常驻 TrailEntity，spawn 认领槽位重写
-  几何/颜色，到期 alpha 归零泊车；参考实现 ASTDXc002Vfx 尘埃拖尾）。
-- 池满按游标覆盖最旧粒子（视觉等同提前寿终）；池实体随战斗切换清簿 delete（见下），数量有界。
+- `spawnTrail` / `checkoutTrail`：TrailEntity 租约池（每 key 固定容量常驻 TrailEntity，检出
+  即全量重置节点表/宽度/颜色/fill/纹理流动/变换/定时器）。`spawnTrail` 是双节点一次性段的
+  便捷包装（内部走租约一次性包络检出）；`checkoutTrail` 是通用租约——多节点、逐帧驱动、
+  手动 alpha + 心跳看门狗（对齐逐帧重钉 globalTimer 的保活/停更自收口径；参考实现
+  BeamCoreComponent 束体 4 件套、GeminiDemPayloadBeamVfx、ConeArcComponent 多节点弧）。
+- 消亡口径三选一：一次性包络（fire-and-forget，到期自动泊车）、看门狗（每帧 touch，
+  停更超 heartbeat 即快照淡出后泊车）、显式 release（可带快照淡出）。泊车 = alpha 归零常驻
+  复用，不走 delete；池实体随战斗切换清簿 delete（见下），数量有界。
+- **池满口径：拒发新租约 + 节流 WARN**（不抢占在租槽位——抢占会半路杀死存活视觉）；
+  容量按各生产者峰值并发估算，WARN 出现即应上调容量。
 - 注意 CPU 侧积分后实例 `velocity`/`turnRate` 必须清零，避免与 BoxUtil 实例自管理双重积分。
 - **例外**：星云类粒子（原版 `addNebulaParticle` 系语义）不走 PooledCombatVfx——Box 内置星云控制器
   本身就是「单常驻 SpriteEntity + 实例池」结构，统一走 `BoxUtilCombatVfx.addNebulaParticle` 即可。

@@ -9,6 +9,11 @@ import cn.kasuminova.astd.impl.render.ConeArcComponent.Companion.NODE_COUNT
 import cn.kasuminova.astd.impl.render.ConeArcComponent.Companion.SWEEP_DEG
 import cn.kasuminova.astd.impl.render.ConeArcComponent.Companion.VIEW_MULT_PX_PER_SU
 import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
+import cn.kasuminova.astd.renderer.boxutil.pool.PooledCombatVfx
+import cn.kasuminova.astd.renderer.boxutil.pool.TrailLease
+import cn.kasuminova.astd.renderer.boxutil.pool.TrailLeaseEnvelope
+import cn.kasuminova.astd.renderer.boxutil.pool.TrailLeaseKey
+import cn.kasuminova.astd.renderer.boxutil.pool.TrailLeaseSpec
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEngineLayers
@@ -47,7 +52,9 @@ import kotlin.math.tan
  * emissive 增益 [ARC_EMISSIVE_GAIN]=1.0 为目检调档闸门（v2.2 GL 线弧不吃 bloom，1.0 起步留给
  * 实机目检对比后调档；**不继承** v3 的 1.35）。
  *
- * 失败语义：贴图加载/addEntity 失败记 WARN，本道弧视觉缺席（对齐扭曲层先例，无兜底）。
+ * 失败语义：贴图加载/池化检出失败记 WARN，本道弧视觉缺席（对齐扭曲层先例，无兜底）。
+ * 曲梁实体走 PooledCombatVfx 池化租约（防 renderEntityMap 滞留泄漏）：多节点支持由检出规格
+ * 承载，逐帧外扩节点重写节奏不变，时间包络由池一次性包络驱动（与旧 globalTimer 逐字等价）。
  */
 class ConeArcComponent(
     id: String,
@@ -71,6 +78,7 @@ class ConeArcComponent(
 
     private var sprites: Pair<SpriteAPI, SpriteAPI>? = null
     private var spritesAttempted = false
+    private var addEntityWarned = false
     private var driveWarned = false
 
     init {
@@ -101,9 +109,14 @@ class ConeArcComponent(
                 activateArc(engine, arc)
             }
             val entity = arc.entity ?: continue
-            if (entity.hasDelete() || entity.isGlobalTimerOver) continue
+            if (entity.hasDelete()) {
+                // 池实体被外部路径回收（战斗切换 purge 等）：弃租约，本道弧视觉缺席
+                arc.entity = null
+                arc.lease = null
+                continue
+            }
             val driveAge = arc.elapsed - arc.delay
-            // 实体 globalTimer 全程线性淡出、duration 到点自灭，到期停止节点推送。
+            // 池一次性包络全程线性淡出、duration 到点自动泊车，到期停止节点推送（与旧 globalTimer 等价）。
             if (driveAge >= arc.duration) continue
             try {
                 rewriteNodes(arc, entity, driveAge)
@@ -118,7 +131,9 @@ class ConeArcComponent(
 
     override fun onDetachSelf() {
         for (arc in arcs) {
-            arc.entity?.delete()
+            // 池化租约：立即泊车归还（alpha 归零），不走 delete（实体常驻池内复用）
+            arc.lease?.release()
+            arc.lease = null
             arc.entity = null
         }
     }
@@ -140,50 +155,49 @@ class ConeArcComponent(
         entity.submitNodes()
     }
 
-    /** 激活一道弧：建多节点 TrailEntity 曲梁（贴图/addEntity 失败记 WARN，本道视觉缺席）。 */
+    /**
+     * 激活一道弧：从池化租约池检出多节点 TrailEntity 曲梁（贴图/检出失败记 WARN，本道视觉缺席）。
+     * 几何/宽度/亮度/fill 羽化/恒等变换与旧直接建实体逐字一致；时间包络 v2.2 alpha×(1−t)
+     * 由池一次性包络（fadeIn=0/full=0/fadeOut=duration）驱动——与旧 globalTimer(0,0,duration)
+     * 线性淡出逐帧等价，到期自动泊车归还。
+     */
     private fun activateArc(engine: CombatEngineAPI, arc: Arc) {
         arc.activated = true
-        val pair = loadSprites() ?: return
-        try {
-            val entity = TrailEntity()
-            for (u in UNIT_NODES) entity.addNode(Vector2f(arc.bAlong0 * u.x, arc.aSide0 * u.y))
-            entity.submitNodes()
-            entity.setLayer(CombatEngineLayers.ABOVE_SHIPS_AND_MISSILES_LAYER)
-            entity.setAdditiveBlend()
-            // v2.2 时间包络 alpha×(1−t)：fadeIn/full 为 0 时 BoxUtil 直接进线性淡出相，逐字等价。
-            entity.setGlobalTimer(0f, 0f, arc.duration)
-            entity.startWidth = arc.widthSu
-            entity.endWidth = arc.widthSu
-            entity.mixFactor = ARC_MIX_FACTOR
-            entity.setStartColor(1f, 1f, 1f, arc.alphaNorm)
-            entity.setEndColor(1f, 1f, 1f, arc.alphaNorm)
-            entity.setStartEmissive(1f, 1f, 1f, arc.alphaNorm * ARC_EMISSIVE_GAIN)
-            entity.setEndEmissive(1f, 1f, 1f, arc.alphaNorm * ARC_EMISSIVE_GAIN)
-            val mat = entity.materialData
-            mat.alphaToEmissive = 0f
-            mat.isColorToEmissive = 0f
-            mat.glowPower = 1f
-            mat.setColor(fringeColor)
-            mat.setEmissiveColor(fringeColor)
-            mat.setDiffuse(pair.first)
-            mat.setEmissive(pair.second)
-            // 逐顶点 alpha 包络的 fill 复刻（恒等映射见类文档）：两端归零、峰值偏前 0.65。
-            entity.fillStartAlpha = 0f
-            entity.fillStartFactor = FILL_START_FACTOR
-            entity.fillEndAlpha = 0f
-            entity.fillEndFactor = FILL_END_FACTOR
-            // 实体变换恒等（锚弧心、朝弹道、缩放 1）：扩张靠逐帧节点重写，梁宽不随矩阵放大。
-            entity.setStateVanilla(arc.center, facingDeg, UNIT_SCALE)
-            val state = BoxUtilCombatVfx.addEntity(engine, entity)
-            if (state != 0) {
-                log.warn("锥面弧曲梁注册失败（addEntity 返回 $state，id=$id），本道弧视觉缺席")
-                entity.delete()
-                return
+        // 组件级贴图门保留：失败 WARN 语义与预载职责不变（池侧加载命中同一缓存）
+        loadSprites() ?: return
+        val lease = PooledCombatVfx.checkoutTrail(
+            engine, POOL_KEY,
+            TrailLeaseSpec(
+                location = arc.center,
+                facingDeg = facingDeg,
+                nodes = UNIT_NODES.map { Vector2f(arc.bAlong0 * it.x, arc.aSide0 * it.y) },
+                startWidth = arc.widthSu,
+                endWidth = arc.widthSu,
+                coreColor = fringeColor,
+                fringeColor = fringeColor,
+                startAlpha = arc.alphaNorm,
+                endAlpha = arc.alphaNorm,
+                startEmissiveAlpha = arc.alphaNorm * ARC_EMISSIVE_GAIN,
+                endEmissiveAlpha = arc.alphaNorm * ARC_EMISSIVE_GAIN,
+                // 逐顶点 alpha 包络的 fill 复刻（恒等映射见类文档）：两端归零、峰值偏前 0.65
+                fillStartAlpha = 0f,
+                fillStartFactor = FILL_START_FACTOR,
+                fillEndAlpha = 0f,
+                fillEndFactor = FILL_END_FACTOR,
+                // 实体变换恒等（锚弧心、朝弹道、缩放 1）：扩张靠逐帧节点重写，梁宽不随矩阵放大
+                scale = UNIT_SCALE,
+                envelope = TrailLeaseEnvelope(0f, 0f, arc.duration),
+            ),
+        )
+        if (lease == null) {
+            if (!addEntityWarned) {
+                addEntityWarned = true
+                log.warn("锥面弧曲梁池化实体检出失败（id=$id），本组件弧视觉缺席（组件级去重）")
             }
-            arc.entity = entity
-        } catch (t: Throwable) {
-            log.warn("锥面弧曲梁生成异常（id=$id），本道弧视觉缺席", t)
+            return
         }
+        arc.lease = lease
+        arc.entity = lease.entity
     }
 
     /** 贴图对（core/fringe）懒加载：失败记 WARN 一次，本组件弧视觉缺席。 */
@@ -198,7 +212,7 @@ class ConeArcComponent(
         return sprites
     }
 
-    /** 一道弧：v2.2 几何（弧心/两侧半轴初值/绝对外扩速度/恒宽/亮度档）、错峰时刻与后端曲梁句柄。 */
+    /** 一道弧：v2.2 几何（弧心/两侧半轴初值/绝对外扩速度/恒宽/亮度档）、错峰时刻与池化租约/曲梁句柄。 */
     internal class Arc(
         val delay: Float,
         val duration: Float,
@@ -210,6 +224,7 @@ class ConeArcComponent(
         val alphaNorm: Float,
         var elapsed: Float = 0f,
         var activated: Boolean = false,
+        var lease: TrailLease? = null,
         var entity: TrailEntity? = null,
     )
 
@@ -265,6 +280,18 @@ class ConeArcComponent(
 
         /** 曲梁 mixFactor（中性：start==end 同色同宽，混合幂不影响插值）。 */
         private const val ARC_MIX_FACTOR = 1.0f
+
+        /**
+         * 弧曲梁池化租约键（全组件实例共用，容量 = 峰值并发估算：4 道/锥 × 存续 ≤0.22s
+         * 内约 12 场并发锥面冲击，取 48）。池满拒发新租约 + 节流 WARN（不抢占在租弧）。
+         */
+        internal val POOL_KEY = TrailLeaseKey(
+            layer = CombatEngineLayers.ABOVE_SHIPS_AND_MISSILES_LAYER,
+            coreSpritePath = BeamSprites.CORE_PATH,
+            fringeSpritePath = BeamSprites.FRINGE_PATH,
+            mixPower = ARC_MIX_FACTOR,
+            capacity = 48,
+        )
 
         /** 实体恒等缩放（扩张走节点重写，不走矩阵缩放，保梁宽恒定）。 */
         private val UNIT_SCALE = Vector2f(1f, 1f)

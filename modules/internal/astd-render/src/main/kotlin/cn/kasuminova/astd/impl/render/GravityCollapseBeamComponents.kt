@@ -3,6 +3,11 @@ package cn.kasuminova.astd.impl.render
 import cn.kasuminova.astd.api.render.FrameState
 import cn.kasuminova.astd.api.render.RenderContext
 import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
+import cn.kasuminova.astd.renderer.boxutil.pool.PooledCombatVfx
+import cn.kasuminova.astd.renderer.boxutil.pool.TrailLease
+import cn.kasuminova.astd.renderer.boxutil.pool.TrailLeaseEnvelope
+import cn.kasuminova.astd.renderer.boxutil.pool.TrailLeaseKey
+import cn.kasuminova.astd.renderer.boxutil.pool.TrailLeaseSpec
 import cn.kasuminova.astd.renderer.effect.projectile.beam.AttachedBeamSpriteRingRenderer
 import cn.kasuminova.astd.renderer.effect.projectile.beam.BeamLineUtil
 import com.fs.starfarer.api.Global
@@ -10,7 +15,6 @@ import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEngineLayers
 import com.fs.starfarer.api.graphics.SpriteAPI
 import com.fs.starfarer.api.util.IntervalUtil
-import org.boxutil.units.standard.entity.TrailEntity
 import org.lazywizard.lazylib.MathUtils
 import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
@@ -204,7 +208,7 @@ class BeamMuzzleComponent(
 ) : RenderEntityImpl(id, CombatEngineLayers.ABOVE_SHIPS_AND_MISSILES_LAYER, RENDER_ORDER) {
 
     private data class GrowingCone(
-        val entity: TrailEntity, val facing: Float, val createdAt: Float, val growDuration: Float,
+        val lease: TrailLease, val facing: Float, val createdAt: Float, val growDuration: Float,
         val targetLength: Float, val targetBaseWidth: Float, val targetTipWidth: Float,
         val baseAlpha: Float, val tipAlpha: Float, val baseEmissive: Float, val tipEmissive: Float,
     )
@@ -247,7 +251,8 @@ class BeamMuzzleComponent(
     }
 
     override fun onDetachSelf() {
-        growingCones.forEach { it.entity.delete() }
+        // 池化租约：立即泊车归还（alpha 归零），不走 delete（实体常驻池内复用）
+        growingCones.forEach { it.lease.release() }
         growingCones.clear()
     }
 
@@ -280,7 +285,8 @@ class BeamMuzzleComponent(
     private fun spawnMuzzleConeBurst(engine: CombatEngineAPI, center: Vector2f, facing: Float, level: Float) {
         val t = level.coerceIn(0f, 1f)
         val s = scale.coerceIn(0.35f, 2.25f)
-        val sprite = sprites(engine) ?: return
+        // 组件级贴图门保留：失败 WARN 语义与预载职责不变（池侧加载命中同一缓存）
+        sprites(engine) ?: return
 
         val count = GcBeam.lerpF(MUZZLE_CONE_COUNT_MIN.toFloat(), MUZZLE_CONE_COUNT_MAX.toFloat(), t).toInt()
             .coerceIn(MUZZLE_CONE_COUNT_MIN, MUZZLE_CONE_COUNT_MAX)
@@ -292,14 +298,26 @@ class BeamMuzzleComponent(
             val len = GcBeam.lerpF(MUZZLE_CONE_LEN_MIN, MUZZLE_CONE_LEN_MAX, Math.random().toFloat()) * (0.85f + 0.35f * t) * s * MUZZLE_CONE_GEOM_MUL
             val baseW = GcBeam.lerpF(70f, 125f, t) * 0.90f * 0.60f * s * MUZZLE_CONE_GEOM_MUL
             val tipW = (baseW * 0.08f).coerceAtLeast(1.2f * s * MUZZLE_CONE_GEOM_MUL)
-            val e = BoxUtilCombatVfx.createAndAddTaperedBeamTrailFromCenter(
-                engine = engine, location = center, facing = ang, length = len, baseWidth = baseW, tipWidth = tipW,
-                coreColor = GcBeam.HOT_COLOR, fringeColor = GcBeam.CORE_COLOR, coreSprite = sprite.first, fringeSprite = sprite.second,
-                layer = CombatEngineLayers.ABOVE_SHIPS_AND_MISSILES_LAYER, full = MUZZLE_CONE_FULL,
-                baseAlphaMul = 0.22f * GcBeam.BRIGHTNESS_MUL, tipAlphaMul = 0.04f * GcBeam.BRIGHTNESS_MUL,
-                baseEmissiveAlphaMul = 2.45f * GcBeam.BRIGHTNESS_MUL, tipEmissiveAlphaMul = 0.55f * GcBeam.BRIGHTNESS_MUL, mixPower = 3.25f,
+            // 池化一次性包络检出：几何/颜色/alpha 逐字一致，包络(0, FULL, FADE_OUT) 与旧
+            // setGlobalTimer(0, MUZZLE_CONE_FULL, MUZZLE_CONE_FADE_OUT) 线性淡出逐帧等价，到期自动泊车
+            PooledCombatVfx.checkoutTrail(
+                engine, BURST_POOL_KEY,
+                TrailLeaseSpec(
+                    location = center,
+                    facingDeg = ang,
+                    // 节点序对齐 FromCenter：node[0]=炮口基部，START_* 作用于基部
+                    nodes = listOf(Vector2f(0f, 0f), Vector2f(len, 0f)),
+                    startWidth = baseW,
+                    endWidth = tipW,
+                    coreColor = GcBeam.HOT_COLOR,
+                    fringeColor = GcBeam.CORE_COLOR,
+                    startAlpha = 0.22f * GcBeam.BRIGHTNESS_MUL,
+                    endAlpha = 0.04f * GcBeam.BRIGHTNESS_MUL,
+                    startEmissiveAlpha = 2.45f * GcBeam.BRIGHTNESS_MUL,
+                    endEmissiveAlpha = 0.55f * GcBeam.BRIGHTNESS_MUL,
+                    envelope = TrailLeaseEnvelope(0f, MUZZLE_CONE_FULL, MUZZLE_CONE_FADE_OUT),
+                ),
             )
-            e?.setGlobalTimer(0f, MUZZLE_CONE_FULL, MUZZLE_CONE_FADE_OUT)
         }
     }
 
@@ -307,7 +325,8 @@ class BeamMuzzleComponent(
         val t = (level * fade).coerceIn(0f, 1f)
         if (t <= 0.001f) return
         val s = scale.coerceIn(0.35f, 2.25f)
-        val sprite = sprites(engine) ?: return
+        // 组件级贴图门保留：失败 WARN 语义与预载职责不变（池侧加载命中同一缓存）
+        sprites(engine) ?: return
 
         val count = 2
         val halfArc = MUZZLE_CONE_ARC_DEG * 0.5f
@@ -319,17 +338,32 @@ class BeamMuzzleComponent(
             val len = GcBeam.lerpF(120f, 210f, MathUtils.getRandomNumberInRange(0f, 1f)) * (0.85f + 0.35f * t) * s * sizeMul * MUZZLE_CONE_GEOM_MUL
             val baseW = GcBeam.lerpF(55f, 95f, t) * 0.60f * s * sizeMul * MUZZLE_CONE_GEOM_MUL
             val tipW = (baseW * 0.10f).coerceAtLeast(1.2f * s * MUZZLE_CONE_GEOM_MUL)
-            val e = BoxUtilCombatVfx.createAndAddTaperedBeamTrailFromCenter(
-                engine = engine, location = center, facing = ang, length = 1f, baseWidth = 1f, tipWidth = 1f,
-                coreColor = GcBeam.HOT_COLOR, fringeColor = GcBeam.CORE_COLOR, coreSprite = sprite.first, fringeSprite = sprite.second,
-                layer = CombatEngineLayers.ABOVE_SHIPS_AND_MISSILES_LAYER, full = 9999f,
-                baseAlphaMul = 0.12f * GcBeam.BRIGHTNESS_MUL, tipAlphaMul = 0.03f * GcBeam.BRIGHTNESS_MUL,
-                baseEmissiveAlphaMul = 1.75f * GcBeam.BRIGHTNESS_MUL, tipEmissiveAlphaMul = 0.45f * GcBeam.BRIGHTNESS_MUL, mixPower = 3.10f,
+            // 池化手动租约：渐长/淡出 alpha 由 advanceGrowingCones 逐帧驱动（与旧 manual alpha ×
+            // globalTimer(0, 0.22, 0.33) 逐帧等价），淡出走完显式 release 归还
+            val lease = PooledCombatVfx.checkoutTrail(
+                engine, SPRAY_POOL_KEY,
+                TrailLeaseSpec(
+                    location = center,
+                    facingDeg = ang,
+                    nodes = listOf(Vector2f(0f, 0f), Vector2f(1f, 0f)),
+                    startWidth = 1f,
+                    endWidth = 1f,
+                    coreColor = GcBeam.HOT_COLOR,
+                    fringeColor = GcBeam.CORE_COLOR,
+                    startAlpha = 0.12f * GcBeam.BRIGHTNESS_MUL,
+                    endAlpha = 0.03f * GcBeam.BRIGHTNESS_MUL,
+                    startEmissiveAlpha = 1.75f * GcBeam.BRIGHTNESS_MUL,
+                    endEmissiveAlpha = 0.45f * GcBeam.BRIGHTNESS_MUL,
+                    // 看门狗兜底：正常由 advanceGrowingCones 逐帧驱动并触活；宿主停更未 detach 时
+                    // heartbeat 秒后快照当前 alpha 经 SPRAY_CONE_FADE_OUT 线性淡出自动泊车，
+                    // 防锥体滞留与槽位永久占用（与 GeminiDem/BeamCore 同口径）
+                    watchdogHeartbeat = SPRAY_WATCHDOG_HEARTBEAT,
+                    watchdogFadeOut = SPRAY_CONE_FADE_OUT,
+                ),
             ) ?: return@repeat
-            e.setGlobalTimer(0f, 0.22f, 0.33f)
             growingCones.add(
                 GrowingCone(
-                    entity = e, facing = ang, createdAt = now, growDuration = 0.22f,
+                    lease = lease, facing = ang, createdAt = now, growDuration = 0.22f,
                     targetLength = len, targetBaseWidth = baseW, targetTipWidth = tipW,
                     baseAlpha = 0.12f * GcBeam.BRIGHTNESS_MUL, tipAlpha = 0.03f * GcBeam.BRIGHTNESS_MUL,
                     baseEmissive = 1.75f * GcBeam.BRIGHTNESS_MUL, tipEmissive = 0.45f * GcBeam.BRIGHTNESS_MUL,
@@ -343,20 +377,35 @@ class BeamMuzzleComponent(
         val it = growingCones.iterator()
         while (it.hasNext()) {
             val c = it.next()
-            val e = c.entity
+            if (!c.lease.active) {
+                it.remove(); continue
+            }
+            val e = c.lease.entity
             if (e.hasDelete()) {
+                // 池实体被外部路径回收（战斗切换 purge 等）：弃租约摘表
                 it.remove(); continue
             }
 
-            val t0 = ((now - c.createdAt) / c.growDuration).coerceIn(0f, 1f)
+            val age = now - c.createdAt
+            // 旧 globalTimer(0, 0.22, 0.33) 语义的手动复刻：渐长期 alpha 走 smoothstep t，
+            // 渐长完成后 0.33s 线性淡出，走完归还租约（旧为定时器到点自删）
+            val fadeOutMul = if (age <= c.growDuration) 1f else {
+                (1f - (age - c.growDuration) / SPRAY_CONE_FADE_OUT).coerceIn(0f, 1f)
+            }
+            if (fadeOutMul <= 0f && age > c.growDuration) {
+                c.lease.release()
+                it.remove(); continue
+            }
+
+            val t0 = (age / c.growDuration).coerceIn(0f, 1f)
             val t = (t0 * t0 * (3f - 2f * t0)).coerceIn(0f, 1f)
             val curLen = (1f + (c.targetLength - 1f) * t).coerceAtLeast(1f)
             val curBaseW = (1f + (c.targetBaseWidth - 1f) * t).coerceAtLeast(1f)
             val curTipW = (1f + (c.targetTipWidth - 1f) * t).coerceAtLeast(1f)
-            val aBase = (c.baseAlpha * t).coerceIn(0f, 1f)
-            val aTip = (c.tipAlpha * t).coerceIn(0f, 1f)
-            val eBase = (c.baseEmissive * t).coerceIn(0f, 10f)
-            val eTip = (c.tipEmissive * t).coerceIn(0f, 10f)
+            val aBase = (c.baseAlpha * t * fadeOutMul).coerceIn(0f, 1f)
+            val aTip = (c.tipAlpha * t * fadeOutMul).coerceIn(0f, 1f)
+            val eBase = (c.baseEmissive * t * fadeOutMul).coerceIn(0f, 10f)
+            val eTip = (c.tipEmissive * t * fadeOutMul).coerceIn(0f, 10f)
 
             val nodes = e.nodes
             if (nodes == null || nodes.size < 2) {
@@ -378,6 +427,8 @@ class BeamMuzzleComponent(
             e.startEmissiveAlpha = eBase
             e.endEmissiveAlpha = eTip
             e.setStateVanilla(muzzle, BoxUtilCombatVfx.normalizeFacingDeg(c.facing))
+            // 看门狗触活：本帧仍在驱动即归零停更计时（淡出途中触活复活回手动，对齐重钉 timer 语义）
+            c.lease.touch()
         }
     }
 
@@ -401,6 +452,39 @@ class BeamMuzzleComponent(
         private const val MUZZLE_CONE_FULL = 0.08f
         private const val MUZZLE_CONE_FADE_OUT = 0.42f
         private const val MUZZLE_CONE_GEOM_MUL = 0.60f
+
+        /** spray 锥渐长后的线性淡出（旧 globalTimer fadeOut=0.33 逐字）。 */
+        private const val SPRAY_CONE_FADE_OUT = 0.33f
+
+        /**
+         * spray 租约看门狗心跳：正常推进节奏为每帧（advanceGrowingCones 逐帧驱动并触活），
+         * 0.15s ≈ 9 帧余量（与 GeminiDem KEEPALIVE 同口径）；宿主停更未 detach 时触发快照淡出泊车。
+         */
+        private const val SPRAY_WATCHDOG_HEARTBEAT = 0.15f
+
+        /**
+         * 起手 burst 锥池化租约键（容量 = 峰值并发估算：5~10 条/次开火 × 寿命 0.5s 内并发开火
+         * 约 3 艘，取 32）。池满拒发新租约 + 节流 WARN。
+         */
+        private val BURST_POOL_KEY = TrailLeaseKey(
+            layer = CombatEngineLayers.ABOVE_SHIPS_AND_MISSILES_LAYER,
+            coreSpritePath = BeamSprites.CORE_PATH,
+            fringeSpritePath = BeamSprites.FRINGE_PATH,
+            mixPower = 3.25f,
+            capacity = 32,
+        )
+
+        /**
+         * 持续 spray 渐长锥池化租约键（容量 = 峰值并发估算：2 条/0.333s × 寿命 0.55s ≈ 4 条/束，
+         * 并发 4 束取 16）。池满拒发新租约 + 节流 WARN。
+         */
+        private val SPRAY_POOL_KEY = TrailLeaseKey(
+            layer = CombatEngineLayers.ABOVE_SHIPS_AND_MISSILES_LAYER,
+            coreSpritePath = BeamSprites.CORE_PATH,
+            fringeSpritePath = BeamSprites.FRINGE_PATH,
+            mixPower = 3.10f,
+            capacity = 16,
+        )
     }
 }
 

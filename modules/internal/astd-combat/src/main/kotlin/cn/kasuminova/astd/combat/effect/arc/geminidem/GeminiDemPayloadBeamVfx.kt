@@ -1,6 +1,10 @@
 package cn.kasuminova.astd.combat.effect.arc.geminidem
 
 import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
+import cn.kasuminova.astd.renderer.boxutil.pool.PooledCombatVfx
+import cn.kasuminova.astd.renderer.boxutil.pool.TrailLease
+import cn.kasuminova.astd.renderer.boxutil.pool.TrailLeaseKey
+import cn.kasuminova.astd.renderer.boxutil.pool.TrailLeaseSpec
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BeamAPI
 import com.fs.starfarer.api.combat.CombatEngineAPI
@@ -8,7 +12,6 @@ import com.fs.starfarer.api.combat.CombatEngineLayers
 import com.fs.starfarer.api.combat.EmpArcEntityAPI
 import com.fs.starfarer.api.combat.EveryFrameWeaponEffectPlugin
 import com.fs.starfarer.api.combat.WeaponAPI
-import com.fs.starfarer.api.graphics.SpriteAPI
 import com.fs.starfarer.api.util.IntervalUtil
 import com.fs.starfarer.api.util.Misc
 import org.boxutil.units.standard.entity.FlareEntity
@@ -23,14 +26,15 @@ import java.util.IdentityHashMap
  *
  * 原版束体渲染由 [GeminiDemPayloadBeamEffect] 隐藏（保留伤害结算），本效果按 beam 几何每帧驱动一条
  * tapered beam trail：动能用 astd_trails_zappy（冷蓝白）、高爆用 astd_trails_flow（共振红）。
+ * 束体实体走 PooledCombatVfx 池化租约（防 renderEntityMap 滞留泄漏），逐帧驱动节奏不变。
  *
  * 生命周期：
  * - 出现：RAMP_IN 秒内宽度/透明度 0 → 全额；发射瞬间在发射点（beam.from）炸开 10 个同色星云粒子；
  * - 存续：每帧跟随 beam.from → beam.to（长度/朝向同步），发射点常驻双光斑（SMOOTH 圆斑 +
  *   SHARP_DISC 垂直光柱），束体周围节律性冒出同色星云；动能光束头尾附加同色装饰电弧；
- * - 消散：beam 停火后 FADE_OUT 秒内透明度 → 0、宽度 → 30%，结束 delete；
- * - 兜底：firing 期间逐帧重钉实体 globalTimer 的 FULL 段（KEEPALIVE 秒）——advance 停更
- *   （导弹命中/被击毁）时定时器自然走完 KEEPALIVE + FADE_OUT 自动淡出回收，
+ * - 消散：beam 停火后 FADE_OUT 秒内透明度 → 0、宽度 → 30%，结束 release 泊车归还（对齐旧 delete）；
+ * - 兜底：firing 期间逐帧 touch 租约看门狗（KEEPALIVE 秒）——advance 停更（导弹命中/被击毁）时
+ *   看门狗按 KEEPALIVE + FADE_OUT 自动快照淡出泊车（对齐旧逐帧重钉 globalTimer 语义），
  *   不得恢复创建期长 full 兜底（full=10 曾致弹头命中后光束滞留 10s+）。
  *
  * 同步共振视觉：[GeminiDemSyncHandler] 触发时按导弹实体 id 写入视觉状态表，
@@ -40,15 +44,20 @@ import java.util.IdentityHashMap
  */
 class GeminiDemPayloadBeamVfx : EveryFrameWeaponEffectPlugin {
 
+    /** 检出失败 WARN 节流计数（首次 + 每 64 次，与池绑定层口径一致；计数器非单武器状态，spec 级共享可用）。 */
+    private var checkoutFailCount = 0
+
     private enum class Kind(val texturePath: String, val core: Color, val fringe: Color) {
         KINETIC(TEX_ZAPPY, Color(220, 240, 255), Color(140, 190, 255)),
         HE(TEX_FLOW, Color(255, 150, 150), Color(255, 40, 60)),
     }
 
-    /** 单条 payload 光束的视觉状态（一武器一条；beam 实例轮换时旧实体立即退休淡出）。 */
+    /** 单条 payload 光束的视觉状态（一武器一条；beam 实例轮换时旧租约快照淡出归还、新 beam 重新检出）。 */
     private class BeamVisualState {
         var beam: BeamAPI? = null
-        var entity: TrailEntity? = null
+
+        /** 束体池化租约（PooledCombatVfx 看门狗模式：advance 停更时自动淡出泊车，防实体滞留）。 */
+        var lease: TrailLease? = null
 
         /** 发射点常驻光斑：SMOOTH 圆斑 + SHARP_DISC 垂直光柱。 */
         var glowFlare: FlareEntity? = null
@@ -69,13 +78,6 @@ class GeminiDemPayloadBeamVfx : EveryFrameWeaponEffectPlugin {
         // 节律特效计时器
         val ambientNebulaInterval = IntervalUtil(AMBIENT_NEBULA_INTERVAL, AMBIENT_NEBULA_INTERVAL)
         val decorArcInterval = IntervalUtil(DECOR_ARC_INTERVAL, DECOR_ARC_INTERVAL)
-
-        // 可复用节点表：TrailEntity.setNodes 持有引用且 _deleteExc/resetNodes 会 clear()，
-        // 必须传可变的 java.util.ArrayList（Kotlin listOf 产出的定长 list 会在 delete 时抛
-        // UnsupportedOperationException）；逐帧原地改写元素避免每帧分配。
-        // 注意：一个实体独占一份节点表——beam 轮换/实体失效时必须换新表（见 advance），
-        // 否则退休实体被 BoxUtil 自动回收时会清空新实体在用的同一份表（IndexOutOfBounds 崩溃来源）
-        var nodes = freshNodes()
     }
 
     override fun advance(amount: Float, engine: CombatEngineAPI, weapon: WeaponAPI) {
@@ -99,12 +101,10 @@ class GeminiDemPayloadBeamVfx : EveryFrameWeaponEffectPlugin {
                 states[weapon] = state
                 newBurst = true
             } else if (state.beam !== beam) {
-                // beam 实例轮换（新一轮打击）：旧实体退休为定时器淡出，新 beam 重建新实体
-                retireEntity(state.entity)
+                // beam 实例轮换（新一轮打击）：旧租约快照淡出归还（对齐旧退休定时器淡出），新 beam 重新检出
+                state.lease?.release(FADE_OUT)
+                state.lease = null
                 retireFlares(state)
-                state.entity = null
-                // 旧实体仍持有 nodes 引用，被 BoxUtil 自动回收时会 clear() 它：新实体必须换新表
-                state.nodes = freshNodes()
                 state.beam = beam
                 state.activeElapsed = 0f
                 state.fading = false
@@ -132,19 +132,18 @@ class GeminiDemPayloadBeamVfx : EveryFrameWeaponEffectPlugin {
             val fringe = lerpColor(kind.fringe, SYNC_FRINGE, state.syncBlend)
 
             val ramp = (state.activeElapsed / RAMP_IN).coerceIn(0f, 1f)
-            // 探活：实体可能已被 BoxUtil 定时器等外部路径回收（暂停期超时等），
-            // 回收时 nodeList 已被清空——弃引用、换新表、重建实体
-            if (state.entity != null && !state.entity!!.isValid) {
-                state.entity = null
-                state.nodes = freshNodes()
+            // 探活：租约被池收回（看门狗淡出走完）或实体被外部路径 delete（战斗切换 purge 等）时重新检出
+            val held = state.lease
+            if (held != null && (!held.active || held.entity.hasDelete() || !held.entity.isValid)) {
+                log.warn("双子星 DEM payload 束体租约异常失效（active=${held.active}），本帧重新检出")
+                state.lease = null
             }
-            val entity = state.entity ?: createEntity(engine, kind, from, facing, length).also { state.entity = it }
-            if (entity != null) {
-                updateEntity(entity, state.nodes, from, facing, length, core, fringe, alphaMul = ramp, widthMul = ramp)
-                // 存活保活钉：setGlobalTimer 每次调用重置计时，firing 期间逐帧钉住 FULL 段；
-                // advance 停更（导弹命中销毁等）时定时器自然走完 KEEPALIVE + FADE_OUT 自动淡出回收，
-                // 不再依赖创建期长兜底（full=10 曾导致弹头命中后光束滞留 10s+）
-                entity.setGlobalTimer(0f, KEEPALIVE, FADE_OUT)
+            val lease = state.lease ?: checkoutLease(engine, kind, from, facing, length).also { state.lease = it }
+            if (lease != null) {
+                updateEntity(lease.entity, from, facing, length, core, fringe, alphaMul = ramp, widthMul = ramp)
+                // 看门狗触活：对齐旧逐帧重钉 setGlobalTimer(0, KEEPALIVE, FADE_OUT)——
+                // advance 停更（导弹命中销毁等）时看门狗按 KEEPALIVE + FADE_OUT 自动快照淡出泊车
+                lease.touch()
             }
             if (newBurst) {
                 spawnLaunchBurst(engine, from, fringe)
@@ -160,7 +159,7 @@ class GeminiDemPayloadBeamVfx : EveryFrameWeaponEffectPlugin {
         }
 
         // 停火/无 beam：进入或推进消散
-        if (state == null || state.entity == null) {
+        if (state == null || state.lease == null) {
             if (state != null) retireFlares(state)
             states.remove(weapon)
             return
@@ -168,64 +167,74 @@ class GeminiDemPayloadBeamVfx : EveryFrameWeaponEffectPlugin {
         if (!state.fading) {
             state.fading = true
             state.fadeElapsed = 0f
-            // 兜底定时器：advance 停更（导弹被击毁等）时由 BoxUtil 自动淡出回收
-            state.entity?.setGlobalTimer(0f, FADE_OUT + 0.1f, 0.1f)
             retireFlares(state)
         }
         state.fadeElapsed += amount
         val t = (state.fadeElapsed / FADE_OUT).coerceIn(0f, 1f)
-        val entity = state.entity
-        // 探活：淡出途中实体被外部回收（nodeList 已清空）时直接收尾，不再触碰节点表
-        if (entity != null && !entity.isValid) {
+        val lease = state.lease
+        // 探活：淡出途中租约被池收回或实体被外部回收时直接收尾
+        if (lease == null || !lease.active || lease.entity.hasDelete() || !lease.entity.isValid) {
             states.remove(weapon)
             return
         }
         val from = state.lastFrom
-        if (entity != null && from != null) {
+        if (from != null) {
             updateEntity(
-                entity, state.nodes, from, state.lastFacing, state.lastLength,
+                lease.entity, from, state.lastFacing, state.lastLength,
                 core = null, fringe = null,
                 alphaMul = 1f - t, widthMul = lerp(1f, FADE_WIDTH_END_MUL, t),
             )
+            // 手动淡出期间仍在驱动：触活防止看门狗叠加二次淡出
+            lease.touch()
         }
         if (t >= 1f) {
-            entity?.delete()
+            // alpha 已到 0：立即泊车归还（对齐旧 delete，视觉等价）
+            lease.release()
             states.remove(weapon)
         }
     }
 
-    private fun createEntity(
+    /**
+     * 检出束体池化租约：看门狗模式（KEEPALIVE 秒未触活 → 快照当前 alpha 经 FADE_OUT 秒线性淡出
+     * 自动泊车），语义与旧「创建定时器 full=KEEPALIVE + firing 逐帧重钉」逐字一致；
+     * 几何/宽度/颜色/纹理流动参数逐字平移。
+     */
+    private fun checkoutLease(
         engine: CombatEngineAPI,
         kind: Kind,
         from: Vector2f,
         facing: Float,
         length: Float,
-    ): TrailEntity? {
-        BoxUtilCombatVfx.ensureReady(engine)
-        return BoxUtilCombatVfx.createAndAddTaperedBeamTrailFromCenter(
-            engine = engine,
-            location = from,
-            facing = facing,
-            length = length,
-            baseWidth = BASE_WIDTH,
-            tipWidth = TIP_WIDTH,
-            coreColor = kind.core,
-            fringeColor = kind.fringe,
-            coreSprite = spriteOf(kind),
-            fringeSprite = spriteOf(kind),
-            layer = CombatEngineLayers.ABOVE_SHIPS_AND_MISSILES_LAYER,
-            // 初始定时器即保活口径：firing 分支逐帧重钉（见 advance），停帧后 KEEPALIVE + FADE_OUT 内自动淡出
-            full = KEEPALIVE,
-            baseAlphaMul = BASE_ALPHA,
-            tipAlphaMul = TIP_ALPHA,
-            baseEmissiveAlphaMul = BASE_EMISSIVE_ALPHA,
-            tipEmissiveAlphaMul = TIP_EMISSIVE_ALPHA,
-            mixPower = 0.5f,
-        )?.also { entity ->
-            entity.texturePixels = TEX_PIXELS
-            entity.textureSpeed = TEX_SPEED
-            entity.isFlowWhenPaused = false
+    ): TrailLease? {
+        val lease = PooledCombatVfx.checkoutTrail(
+            engine, poolKey(kind),
+            TrailLeaseSpec(
+                location = from,
+                facingDeg = facing,
+                // 节点序对齐 FromCenter：node[0]=发射点基部
+                nodes = listOf(Vector2f(0f, 0f), Vector2f(length, 0f)),
+                startWidth = BASE_WIDTH,
+                endWidth = TIP_WIDTH,
+                coreColor = kind.core,
+                fringeColor = kind.fringe,
+                startAlpha = BASE_ALPHA,
+                endAlpha = TIP_ALPHA,
+                startEmissiveAlpha = BASE_EMISSIVE_ALPHA,
+                endEmissiveAlpha = TIP_EMISSIVE_ALPHA,
+                texturePixels = TEX_PIXELS,
+                textureSpeed = TEX_SPEED,
+                watchdogHeartbeat = KEEPALIVE,
+                watchdogFadeOut = FADE_OUT,
+            ),
+        )
+        if (lease == null) {
+            // 节流 WARN：firing 分支每帧重试，池满/池不可用期间首次 + 每 64 次记一条（与池绑定层口径一致）
+            checkoutFailCount++
+            if (checkoutFailCount == 1 || checkoutFailCount % CHECKOUT_WARN_STRIDE == 0) {
+                log.warn("双子星 DEM payload 束体池化检出失败（kind=$kind，池不可用或池满，累计 $checkoutFailCount 次），本层缺失其余特效照常")
+            }
         }
+        return lease
     }
 
     /**
@@ -233,10 +242,10 @@ class GeminiDemPayloadBeamVfx : EveryFrameWeaponEffectPlugin {
      *
      * 节点刷新坑（BoxUtil TrailEntity 语义）：submitNodes 只上传 [TrailEntity.setNodeRefreshAllFromCurrentIndex]
      * 圈定的区间，同尺寸再提交默认刷新计数为 0（静默跳过，曾导致光束长度冻结在创建帧）——每帧必须显式圈全区。
+     * 节点表为池实体自有缓冲（检出时 resetNodes 重建），原地改写末端节点避免每帧分配。
      */
     private fun updateEntity(
         entity: TrailEntity,
-        nodes: ArrayList<Vector2f>,
         from: Vector2f,
         facing: Float,
         length: Float,
@@ -245,10 +254,13 @@ class GeminiDemPayloadBeamVfx : EveryFrameWeaponEffectPlugin {
         alphaMul: Float,
         widthMul: Float,
     ) {
-        nodes[1].x = length
-        entity.setNodes(nodes)
-        entity.setNodeRefreshAllFromCurrentIndex()
-        entity.submitNodes()
+        val nodes = entity.nodes
+        if (nodes != null && nodes.size >= 2) {
+            nodes[1].x = length
+            entity.setNodeRefreshIndex(0)
+            entity.setNodeRefreshAllFromCurrentIndex()
+            entity.submitNodes()
+        }
         entity.setStateVanilla(from, BoxUtilCombatVfx.normalizeFacingDeg(facing))
 
         entity.startWidth = BASE_WIDTH * widthMul
@@ -264,11 +276,6 @@ class GeminiDemPayloadBeamVfx : EveryFrameWeaponEffectPlugin {
             mat.setColor(core)
             mat.setEmissiveColor(fringe)
         }
-    }
-
-    /** 退休实体：不再跟踪，改由全局定时器做一次短淡出后自动回收。 */
-    private fun retireEntity(entity: TrailEntity?) {
-        entity?.setGlobalTimer(0f, 0.01f, FADE_OUT)
     }
 
     /** 发射点双光斑：firing 期间每帧同步位置/颜色并重钉保活定时器；首次调用惰性创建。 */
@@ -394,13 +401,20 @@ class GeminiDemPayloadBeamVfx : EveryFrameWeaponEffectPlugin {
     private fun offset(origin: Vector2f, dir: Vector2f, dist: Float): Vector2f =
         Vector2f(origin.x + dir.x * dist, origin.y + dir.y * dist)
 
-    private fun spriteOf(kind: Kind): SpriteAPI = when (kind) {
-        Kind.KINETIC -> kineticSprite
-        Kind.HE -> heSprite
+    /**
+     * 束体池化租约键：按 kind 键控（动能 zappy / 高爆 flow，core/fringe 同贴图），mixPower 0.5。
+     * 容量 8 = 同 kind  payload 光束峰值并发（4 件 payload 武器实例 × 轮换余量）。
+     */
+    private fun poolKey(kind: Kind): TrailLeaseKey = when (kind) {
+        Kind.KINETIC -> KINETIC_POOL_KEY
+        Kind.HE -> HE_POOL_KEY
     }
 
     companion object {
         private val log = Global.getLogger(GeminiDemPayloadBeamVfx::class.java)
+
+        /** 检出失败 WARN 节流步长（首次必记，与池绑定层 OVERFLOW_WARN_STRIDE 口径一致）。 */
+        private const val CHECKOUT_WARN_STRIDE = 64
 
         private const val TEX_ZAPPY = "graphics/fx/astd_trails_zappy.png"
         private const val TEX_FLOW = "graphics/fx/astd_trails_flow.png"
@@ -468,11 +482,21 @@ class GeminiDemPayloadBeamVfx : EveryFrameWeaponEffectPlugin {
 
         private val ZERO = Vector2f(0f, 0f)
 
-        /** 新一份两点节点表（起点原点 + 终点 x=length，由 updateEntity 逐帧改写）。 */
-        private fun freshNodes(): ArrayList<Vector2f> = arrayListOf(Vector2f(0f, 0f), Vector2f(0f, 0f))
-
-        private val kineticSprite: SpriteAPI by lazy { Global.getSettings().getSprite(TEX_ZAPPY) }
-        private val heSprite: SpriteAPI by lazy { Global.getSettings().getSprite(TEX_FLOW) }
+        /** 束体池化租约键（容量口径见 [GeminiDemPayloadBeamVfx.poolKey]）。 */
+        private val KINETIC_POOL_KEY = TrailLeaseKey(
+            layer = CombatEngineLayers.ABOVE_SHIPS_AND_MISSILES_LAYER,
+            coreSpritePath = TEX_ZAPPY,
+            fringeSpritePath = TEX_ZAPPY,
+            mixPower = 0.5f,
+            capacity = 8,
+        )
+        private val HE_POOL_KEY = TrailLeaseKey(
+            layer = CombatEngineLayers.ABOVE_SHIPS_AND_MISSILES_LAYER,
+            coreSpritePath = TEX_FLOW,
+            fringeSpritePath = TEX_FLOW,
+            mixPower = 0.5f,
+            capacity = 8,
+        )
 
         @Suppress("UNCHECKED_CAST")
         private fun statesOf(engine: CombatEngineAPI): IdentityHashMap<WeaponAPI, BeamVisualState> =

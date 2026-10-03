@@ -4,11 +4,14 @@ import cn.kasuminova.astd.api.render.BeamHost
 import cn.kasuminova.astd.api.render.FadeReason
 import cn.kasuminova.astd.api.render.RenderContext
 import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
+import cn.kasuminova.astd.renderer.boxutil.pool.PooledCombatVfx
+import cn.kasuminova.astd.renderer.boxutil.pool.TrailLease
+import cn.kasuminova.astd.renderer.boxutil.pool.TrailLeaseKey
+import cn.kasuminova.astd.renderer.boxutil.pool.TrailLeaseSpec
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEngineLayers
 import com.fs.starfarer.api.graphics.SpriteAPI
-import org.boxutil.units.standard.entity.TrailEntity
 import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
 
@@ -82,7 +85,12 @@ data class BeamCoreSpec(
     val lerpColorPerFrame: Boolean = true,
     /** true 时每帧施加填充端淡化（fillStart/End，Psi）；false 时不施加（GravityCollapse）。 */
     val applyEndFade: Boolean = true,
-    /** 心跳定时器：active 每帧刷新令束体常驻；停火即不刷新 → 按 fadeOut 淡出并自删。 */
+    /**
+     * 看门狗心跳：firing 每帧触活保活；停火不触活 → heartbeat 秒后快照当前 alpha 经 fadeOut 秒
+     * 线性淡出自动泊车归还（池化口径，实体不 delete）。注意与旧实现的行为差异：旧版「组件挂载
+     * 但 active=false」期间仍每帧重钉定时器导致束体满亮常显（属旧实现缺陷）；本口径停火期淡出
+     * 泊车，复火时由 [BeamCoreComponent.ensurePieces] 自愈重建（租约失效/实体被 purge 均重新检出）。
+     */
     val heartbeat: Float = 0.35f,
     val fadeOut: Float = 0.16f,
     val texturePixels: Float = 512f,
@@ -154,8 +162,13 @@ data class BeamCoreSpec(
  * 公共束体节点：两个光束共用的常驻直束 4 件套（迁移计划 §3.3，本次收益最大的共享资产）。
  *
  * 生命周期：读 [RenderContext.frame] 的 origin/facing/length 作束几何、intensity 作 strength、fadeMul 作淡出包络、
- * active 作 firing；firing 时每帧刷新心跳令束体常驻，停火时不刷新令 BoxUtil 按 fadeOut 淡出并自删（复火再传
- * active=true 时于本帧重建，无需宿主参与）。基宽走 [BeamHost.baseWidth]。
+ * active 作 firing；束体走 PooledCombatVfx 池化租约（防 renderEntityMap 滞留泄漏）的心跳看门狗模式——
+ * firing 时每帧 touch 保活（对齐旧逐帧重钉 globalTimer 语义），停火即不触活，看门狗按 heartbeat 秒
+ * 全亮 + fadeOut 秒线性淡出后自动泊车归还（复火时 touch 打断淡出复活，或重新检出）。基宽走 [BeamHost.baseWidth]。
+ *
+ * 与旧实现的行为差异（已裁定接受）：旧版「组件挂载但 active=false」期间仍每帧重钉定时器，束体满亮
+ * 常显（属旧实现缺陷）；本口径停火期看门狗淡出泊车，复火时由 [ensurePieces] 自愈重建——租约失效、
+ * 实体被外部 purge（hasDelete）均触发重新检出。
  */
 class BeamCoreComponent(
     id: String,
@@ -166,7 +179,10 @@ class BeamCoreComponent(
 
     private val log = Global.getLogger(BeamCoreComponent::class.java)
     private var sprites: Pair<SpriteAPI, SpriteAPI>? = null
-    private var pieces: List<TrailEntity> = emptyList()
+    private var pieces: List<TrailLease> = emptyList()
+
+    /** 检出失败 WARN 节流计数（首次 + 每 64 次，与池绑定层口径一致）。 */
+    private var checkoutFailCount = 0
 
     override fun onAttachSelf(ctx: RenderContext): Boolean {
         val engine = ctx.engine ?: return false
@@ -179,60 +195,89 @@ class BeamCoreComponent(
         val host = ctx.host as BeamHost
         if (ctx.frame.active) {
             ensurePieces(engine, ctx)
-            pieces.forEachIndexed { index, entity -> updatePiece(entity, ctx, host, spec.pieces[index]) }
-        } else {
-            pieces.forEach { if (!it.hasDelete()) it.setGlobalTimer(0f, 0f, spec.fadeOut) }
+            pieces.forEachIndexed { index, lease ->
+                updatePiece(lease, ctx, host, spec.pieces[index])
+                // 心跳触活：看门狗计时归零（淡出途中触活即复活回满亮，对齐重钉 timer 打断淡出）
+                lease.touch()
+            }
         }
+        // 停火分支无需动作：看门狗在 heartbeat 秒未触活后快照当前 alpha 线性淡出并自动泊车
     }
 
     override fun beginFadeOutSelf(reason: FadeReason, seconds: Float) {
-        pieces.forEach { if (!it.hasDelete()) it.setGlobalTimer(0f, 0f, spec.fadeOut) }
+        // 立即进入快照淡出（对齐旧 setGlobalTimer(0,0,fadeOut)：跳过 full 段直接线性淡出）
+        pieces.forEach { it.release(spec.fadeOut) }
     }
 
     override fun onDetachSelf() {
-        pieces.forEach { it.delete() }
+        pieces.forEach { it.release() }
         pieces = emptyList()
     }
 
     private fun ensurePieces(engine: CombatEngineAPI, ctx: RenderContext) {
-        if (pieces.size == spec.pieces.size && pieces.none { it.hasDelete() }) return
-        pieces.forEach { it.delete() }
+        if (pieces.size == spec.pieces.size && pieces.all { it.active && !it.entity.hasDelete() }) return
+        pieces.forEach { it.release() }
         pieces = emptyList()
 
         BoxUtilCombatVfx.ensureReady(engine)
-        val sprite = sprites ?: BeamSprites.load(spec.corePath, spec.fringePath)?.also { sprites = it } ?: return
+        // 组件级贴图门保留：失败 WARN 语义与预载职责不变（池侧加载命中同一缓存）
+        sprites ?: BeamSprites.load(spec.corePath, spec.fringePath)?.also { sprites = it } ?: return
         val host = ctx.host as BeamHost
         val ramp = ctx.frame.intensity.coerceIn(0f, 1f)
         val coreW = coreWidth(host, ramp)
         val glowW = glowWidth(coreW, ramp)
 
-        val built = ArrayList<TrailEntity>(spec.pieces.size)
+        val built = ArrayList<TrailLease>(spec.pieces.size)
         for (piece in spec.pieces) {
             val width = if (piece.useGlowWidth) glowW else coreW
-            val create = if (piece.reversedU) {
-                BoxUtilCombatVfx::createAndAddTaperedBeamTrailFromCenterReversedU
-            } else {
-                BoxUtilCombatVfx::createAndAddTaperedBeamTrailFromCenter
-            }
-            val entity = create(
-                engine, Vector2f(0f, 0f), 0f, ctx.frame.length, width, (width * spec.tipWidthMul).coerceAtLeast(1f),
-                piece.createDiffuse, piece.createFringe, sprite.first, sprite.second, layer, spec.heartbeat,
-                piece.baseAlpha, piece.baseAlpha, piece.emissiveAlpha, piece.emissiveAlpha, piece.mixPower,
+            val lease = PooledCombatVfx.checkoutTrail(
+                engine, poolKey(piece),
+                TrailLeaseSpec(
+                    location = Vector2f(0f, 0f),
+                    facingDeg = 0f,
+                    // 节点序对齐 FromCenter（node[0]=基部）：镜像片反转节点做 UV 对称叠加
+                    nodes = if (piece.reversedU) {
+                        listOf(Vector2f(ctx.frame.length, 0f), Vector2f(0f, 0f))
+                    } else {
+                        listOf(Vector2f(0f, 0f), Vector2f(ctx.frame.length, 0f))
+                    },
+                    startWidth = if (piece.reversedU) (width * spec.tipWidthMul).coerceAtLeast(1f) else width,
+                    endWidth = if (piece.reversedU) width else (width * spec.tipWidthMul).coerceAtLeast(1f),
+                    coreColor = piece.createDiffuse,
+                    fringeColor = piece.createFringe,
+                    startAlpha = piece.baseAlpha,
+                    endAlpha = piece.baseAlpha,
+                    startEmissiveAlpha = piece.emissiveAlpha,
+                    endEmissiveAlpha = piece.emissiveAlpha,
+                    fillStartAlpha = if (spec.applyEndFade) spec.startFadeAlpha else 1f,
+                    fillStartFactor = if (spec.applyEndFade) spec.startFadeFactor else 1f,
+                    fillEndAlpha = if (spec.applyEndFade) spec.endFadeAlpha else 1f,
+                    fillEndFactor = if (spec.applyEndFade) spec.endFadeFactor else 1f,
+                    texturePixels = spec.texturePixels,
+                    textureSpeed = piece.texSpeed,
+                    uvOffset = (Math.random().toFloat() * 2f) - 1f,
+                    jitterPower = spec.jitterPower,
+                    // 心跳看门狗：对齐旧逐帧重钉 globalTimer(0, heartbeat, fadeOut) 的保活/淡出/自收口径
+                    watchdogHeartbeat = spec.heartbeat,
+                    watchdogFadeOut = spec.fadeOut,
+                ),
             )
-            if (entity == null) {
-                built.forEach { it.delete() }
-                log.warn("光束核心束体 4 件套建实体失败：id=$id piece=$piece（BoxUtil addEntity 返回非 0）")
+            if (lease == null) {
+                built.forEach { it.release() }
+                // 节流 WARN：active 期间每帧重试，池满/池不可用期间首次 + 每 64 次记一条（与池绑定层口径一致）
+                checkoutFailCount++
+                if (checkoutFailCount == 1 || checkoutFailCount % CHECKOUT_WARN_STRIDE == 0) {
+                    log.warn("光束核心束体 4 件套池化检出失败：id=$id piece=$piece（池不可用或池满，累计 $checkoutFailCount 次）")
+                }
                 return
             }
-            initFlowParams(entity, piece.texSpeed)
-            if (spec.applyEndFade) initEndFade(entity)
-            entity.setGlobalTimer(0f, spec.heartbeat, spec.fadeOut)
-            built += entity
+            built += lease
         }
         pieces = built
     }
 
-    private fun updatePiece(entity: TrailEntity, ctx: RenderContext, host: BeamHost, piece: BeamCorePieceSpec) {
+    private fun updatePiece(lease: TrailLease, ctx: RenderContext, host: BeamHost, piece: BeamCorePieceSpec) {
+        val entity = lease.entity
         if (entity.hasDelete()) return
         val frame = ctx.frame
         val ramp = frame.intensity.coerceIn(0f, 1f)
@@ -253,7 +298,6 @@ class BeamCoreComponent(
             entity.submitNodes()
         }
 
-        entity.texturePixels = spec.texturePixels
         var bodyW = (width * (spec.bodyWidthBase + spec.bodyWidthRamp * ramp))
         if (spec.fadeMulScalesWidth) bodyW *= fade
         bodyW = bodyW.coerceAtLeast(2f)
@@ -277,8 +321,6 @@ class BeamCoreComponent(
         entity.setStartEmissive(1f, 1f, 1f, ea)
         entity.setEndEmissive(1f, 1f, 1f, ea)
 
-        if (spec.applyEndFade) initEndFade(entity)
-
         if (spec.lerpColorPerFrame) {
             val coreColor = BeamMath.colorLerp(spec.coreColor0, spec.coreColor1, ramp)
             val glowColor = BeamMath.colorLerp(spec.glowColor0, spec.glowColor1, ramp)
@@ -294,7 +336,6 @@ class BeamCoreComponent(
         }
 
         entity.setStateVanilla(frame.origin, frame.facing)
-        entity.setGlobalTimer(0f, spec.heartbeat, spec.fadeOut)
     }
 
     private fun coreWidth(host: BeamHost, ramp: Float): Float =
@@ -304,25 +345,26 @@ class BeamCoreComponent(
         return (coreW * (spec.glowWidthMul + spec.glowWidthRamp * ramp)).coerceAtLeast(spec.glowWidthMin)
     }
 
-    private fun initFlowParams(e: TrailEntity, textureSpeed: Float) {
-        e.texturePixels = spec.texturePixels
-        e.textureSpeed = textureSpeed
-        e.isFlowWhenPaused = false
-        e.uvOffset = (Math.random().toFloat() * 2f) - 1f
-        e.jitterPower = spec.jitterPower
-        e.isFlick = false
-        e.isSyncFlick = false
-    }
-
-    private fun initEndFade(e: TrailEntity) {
-        e.fillStartAlpha = spec.startFadeAlpha
-        e.fillStartFactor = spec.startFadeFactor
-        e.fillEndAlpha = spec.endFadeAlpha
-        e.fillEndFactor = spec.endFadeFactor
-    }
+    /**
+     * 束体片池化租约键：按渲染层/贴图对/片 mixPower 键控（GC 束体 4 件套塌缩为 2 池）。
+     * 容量 8 = 同 mixPower 片的峰值并发束数（GC/PSI 均为单装重型束，余量充足；池满拒发 + 节流 WARN）。
+     */
+    private fun poolKey(piece: BeamCorePieceSpec) = TrailLeaseKey(
+        layer = layer,
+        coreSpritePath = spec.corePath,
+        fringeSpritePath = spec.fringePath,
+        mixPower = piece.mixPower,
+        capacity = PIECE_POOL_CAPACITY,
+    )
 
     companion object {
         /** 束体在树内的次级绘制序：置于 detail（螺旋/环）之下。 */
         const val RENDER_ORDER = 100
+
+        /** 单 mixPower 片的池容量（同规格束体的峰值并发数）。 */
+        private const val PIECE_POOL_CAPACITY = 8
+
+        /** 检出失败 WARN 节流步长（首次必记，与池绑定层 OVERFLOW_WARN_STRIDE 口径一致）。 */
+        private const val CHECKOUT_WARN_STRIDE = 64
     }
 }
