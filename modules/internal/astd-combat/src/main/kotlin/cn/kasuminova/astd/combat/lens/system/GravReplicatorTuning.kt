@@ -7,16 +7,13 @@ import cn.kasuminova.astd.api.difficulty.ScalingEntry
  * 引力空间复制器（舜华级 ZW-101 舰船系统）的机制数值声明与纯函数。
  *
  * 动机：复制体伤害比例、复制辐能比例的三锚点查值，以及复制调度时序（发射后 0.5s
- * 复制第一发、再过 0.5s 复制第二发）、激活辐能（基础最大辐能容量 10%）的结算口径
- * 集中在此声明，供系统脚本每帧实时解析（LunaLib 设置变更即时生效），
- * 并由单元测试直接驱动。
+ * 复制第一发、再过 0.5s 复制第二发）集中在此声明，供系统脚本每帧实时解析
+ * （LunaLib 设置变更即时生效），并由单元测试直接驱动。
+ * 激活辐能（基础最大辐能容量 10%）走原版 CSV 结算（`f/u (base cap)`），不在此声明。
  *
  * 玩家来源（owner == 0）按我方档位取值（默认砺刃 v2，见 DifficultyTuning.valueFor）。
  */
 object GravReplicatorTuning {
-
-    /** 激活时产生的软辐能占舰船基础最大辐能容量的比例（固定 10%，设计案无锚点）。 */
-    const val ACTIVATION_FLUX_FRACTION = 0.10f
 
     /** 每发实弹的复制体数量（共两发复制体）。 */
     const val COPY_COUNT = 2
@@ -55,7 +52,4 @@ object GravReplicatorTuning {
 
     /** 单发复制附加软辐能（纯函数）：武器单发辐能 × 复制辐能比例。 */
     fun replicaFlux(fluxPerShot: Float, ratio: Float): Float = fluxPerShot * ratio
-
-    /** 激活软辐能（纯函数）：舰船基础最大辐能容量 × [ACTIVATION_FLUX_FRACTION]。 */
-    fun activationFlux(maxFluxBase: Float): Float = maxFluxBase * ACTIVATION_FLUX_FRACTION
 }

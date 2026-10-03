@@ -520,9 +520,6 @@ object Wpn_astd_stellar_mrm_pod : WeaponDataEntry(), SsProjMissileOutputs {
 
 /**
  * 离子脉冲（战机型）：茑萝级内置战机「牵丝」武备（purple/20-production.md §2）。
- *
- * 原版离子脉冲（ionpulser）的战机化调参：burst 2 发、单发 90 能量 + 200 EMP，
- * 单发辐能 50（战机 900/150 辐能池可持续）；hints SYSTEM 不进常规配装列表。
  */
 object Wpn_astd_ion_pulse_fighter : WeaponDataEntry(), SsProjProjectileOutputs {
     override val id: String = "astd_ion_pulse_fighter"
@@ -531,7 +528,7 @@ object Wpn_astd_ion_pulse_fighter : WeaponDataEntry(), SsProjProjectileOutputs {
     override val baseValue: Int = 0
     override val range: Int = 500
     override val damagePerShot: Int = 90
-    override val emp: Int = 200
+    override val emp: Int = 600
     override val turnRate: Int = 40
     override val ops: Int = 0
     override val type: String = "ENERGY"
@@ -925,7 +922,7 @@ object Wpn_astd_ice_shard_sub : WeaponDataEntry(), SsProjMissileOutputs {
  * 双子星 DEM（战机型）：双子座轰炸联队武备（purple/30-fighters.md §双子座 v1 定案）。
  *
  * 备弹 2（burst=2 一次触发即 -2，= 1 次双弹齐射）、不可恢复（ammoPerSec/reloadSize 0）、发射不产辐能；
- * 面板 750x2（舰装版 1000 ×0.75 削弱）、射程 2000；弹体复用舰装版 dummy spec（astd_gemini_dem_dummy），
+ * 面板 750x2（舰装版 1000 ×0.75 削弱）、射程 1500；弹体复用舰装版 dummy spec（astd_gemini_dem_dummy），
  * 齐射/追踪/同步冲击机制全部由 GeminiDemSalvoOnFireEffect 沿用（按本 id 打标 ×0.75），不复制第二份实现。.wpn 为手写全隐资源。
  */
 object Wpn_astd_gemini_dem_fighter : WeaponDataEntry() {
@@ -933,7 +930,7 @@ object Wpn_astd_gemini_dem_fighter : WeaponDataEntry() {
     override val name: String = weaponName(id)
     override val tier: Int = 2
     override val baseValue: Int = 0
-    override val range: Int = 2000
+    override val range: Int = 1500
     override val damagePerSecond: Int = 0
     override val damagePerShot: Int = 750
     override val emp: Int = 750

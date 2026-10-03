@@ -27,8 +27,10 @@ import java.awt.Color
  *    （canBeDeactivated 默认 true）；机群失去全部存活战力（被摧毁且无返航/整备排产，
  *    宽限 1s 后）由本脚本计时补发 useSystem() 提前结束。收口必须走 fire 路径——`ShipSystemAPI.deactivate()` 等价
  *    forceDeactivate，直接跳 COOLDOWN、跳过 OUT 窗口，召回结算不会触发。
- * 2. **代价（IN/ACTIVE）**：每秒产出舰船**基础**最大辐能 7% 的软辐能（按 effectLevel 折算）；
- *    进入 OUT 瞬间将全部当前辐能直接置为硬辐能（`setHardFlux(currFlux)`：软辐能等量硬化）。
+ * 2. **代价（IN/ACTIVE）**：持续软辐能产出走原版 CSV 结算——`f/s (base cap)` = 5%，
+ *    原版 ChargeTracker 在 IN+ACTIVE 态按基础最大辐能 × 5%/s 全额产出软辐能（图鉴
+ *    统一可见，脚本不再自行 increaseFlux）；进入 OUT 瞬间将全部当前辐能直接置为硬辐能
+ *    （`setHardFlux(currFlux)`：软辐能等量硬化）。
  *    不用 `increaseFlux(x, true)`——其在散辐/过载状态下被原版闸门静默吞掉（返回 false 且
  *    不记日志），会导致软辐能扣了却没转化；`setHardFlux` 无闸门。注意 `setHardFlux` 只做赋值，
  *    转化本身不会触发过载判定；真实代价是辐能全量定格为硬辐能后，下一次任意硬辐能来源
@@ -63,7 +65,6 @@ class FighterGravLinkSystemStats : BaseShipSystemScript() {
         when (state) {
             ShipSystemStatsScript.State.IN, ShipSystemStatsScript.State.ACTIVE -> {
                 applyFighterBuffs(ship, effectLevel)
-                generateSoftFlux(engine, ship, effectLevel)
                 if (state == ShipSystemStatsScript.State.ACTIVE) {
                     cancelWhenNoFighters(engine, ship)
                 }
@@ -129,15 +130,6 @@ class FighterGravLinkSystemStats : BaseShipSystemScript() {
                 stats.empDamageTakenMult.unmodifyMult(BUFF_MOD_ID)
             }
         }
-    }
-
-    /** 持续软辐能产出（IN/ACTIVE 每帧）：基础最大辐能 × 7%/s × effectLevel。 */
-    private fun generateSoftFlux(engine: CombatEngineAPI, ship: ShipAPI, effectLevel: Float) {
-        val amount = engine.elapsedInLastFrame
-        if (amount <= 0f) return
-        val baseMaxFlux = ship.hullSpec.fluxCapacity
-        val flux = FighterGravLinkTuning.softFluxPerSecond(baseMaxFlux) * effectLevel * amount
-        if (flux > 0f) ship.fluxTracker.increaseFlux(flux, false)
     }
 
     /**

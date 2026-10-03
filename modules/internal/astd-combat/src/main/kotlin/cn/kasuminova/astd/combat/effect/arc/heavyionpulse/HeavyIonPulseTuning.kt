@@ -18,8 +18,8 @@ import cn.kasuminova.astd.api.difficulty.ScalingTable
  */
 object HeavyIonPulseTuning {
 
-    /** 泄放电弧触发概率（五档查表：k1 20% / k2 30% / k3 40% / k4 50% / k5 60%）。 */
-    val DISCHARGE_CHANCE = ScalingTable(0.20f, 0.30f, 0.40f, 0.50f, 0.60f)
+    /** 泄放电弧触发概率（五档查表：k1 25% / k2 50% / k5 100%；k3/k4 按 L2→L5 线性插值）。 */
+    val DISCHARGE_CHANCE = ScalingTable(0.25f, 0.50f, 0.667f, 0.833f, 1.00f)
 
     /** 泄放 EMP 倍率（五档查表：k1 75% / k2 100% / k3 125% / k4 150% / k5 200%）。 */
     val DISCHARGE_EMP_MULT = ScalingTable(0.75f, 1.00f, 1.25f, 1.50f, 2.00f)

@@ -97,6 +97,10 @@ object Sys_astd_fighter_grav_link : ShipSystemWithSystemFileEntry() {
     override val down: Double = 1.0
     override val cooldown: Double = 25.0
 
+    // 持续软辐能产出走原版 CSV 结算（IN+ACTIVE 全额 5%/s 基础容量软辐），
+    // 图鉴可见统一数据；脚本不再自行 increaseFlux。
+    override val fluxPerSecondBaseCap: Double = 0.05
+
     override val icon: String = "graphics/icons/hullsys/recall_device.png"
 }
 
@@ -232,6 +236,10 @@ object Sys_astd_grav_storm : ShipSystemWithSystemFileEntry() {
     override val down: Double = 1.5
     override val cooldown: Double = 24.0
 
+    // 激活代价走原版 CSV 结算（`f/u (base cap)` = 20% 基础辐能容量软辐能，
+    // IDLE→IN 激活瞬间一次性产出，图鉴可见统一数据）；脚本不再自行 increaseFlux。
+    override val fluxUseBaseCap: Double = 0.2
+
     override val icon: String = "graphics/icons/hullsys/quantum_disruptor.png"
     override val useSound: String = "system_quantumdisruptor"
 }
@@ -260,6 +268,11 @@ object Sys_astd_grav_replicator : ShipSystemWithSystemFileEntry() {
     override val active: Double = 2.0
     override val down: Double = 0.0
     override val cooldown: Double = 12.0
+
+    // 激活代价走原版 CSV 结算（`f/u (base cap)` = 10% 基础辐能容量软辐能，
+    // IDLE→IN 激活瞬间一次性产出，图鉴可见统一数据）；每发复制体的折算软辐能
+    // 是动态值，仍由脚本 increaseFlux 产出。
+    override val fluxUseBaseCap: Double = 0.1
 
     override val icon: String = "graphics/icons/hullsys/entropy_amplifier.png"
     override val useSound: String = "system_entropy"

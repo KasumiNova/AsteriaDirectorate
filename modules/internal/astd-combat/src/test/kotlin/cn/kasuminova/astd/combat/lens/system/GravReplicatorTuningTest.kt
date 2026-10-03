@@ -62,9 +62,4 @@ class GravReplicatorTuningTest {
         assertEquals(30f, GravReplicatorTuning.replicaFlux(60f, 0.5f), 1e-3f)
         assertEquals(12f, GravReplicatorTuning.replicaFlux(60f, 0.2f), 1e-3f)
     }
-
-    @Test
-    fun `激活辐能为基础最大辐能容量的十分之一`() {
-        assertEquals(600f, GravReplicatorTuning.activationFlux(6000f), 1e-3f)
-    }
 }

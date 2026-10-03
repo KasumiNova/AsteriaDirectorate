@@ -7,7 +7,8 @@ import kotlin.test.assertEquals
 
 /**
  * 战机引力联结器数值规格（purple/20-production.md §1）：时流 +100%~200%、减伤 25%~75%
- * 三锚点折算（玩家固定 v2）、软辐能产出 = 基础最大辐能 × 7%/s、软→硬转化的当前软辐能折算。
+ * 三锚点折算（玩家固定 v2）、软→硬转化的当前软辐能折算。持续软辐能产出已迁移至原版
+ * CSV 结算（`f/s (base cap)` = 5%），不再由脚本/纯函数产出。
  * 经 [DifficultyTuningImpl.installScaleForTests] 走完整映射链路（对齐 ChargeNeedleTuningTest 先例）。
  */
 class FighterGravLinkTuningTest {
@@ -48,13 +49,6 @@ class FighterGravLinkTuningTest {
             assertEquals(2.5f, v.timeMult, 1e-6f)
             assertEquals(0.5f, v.damageTakenMult, 1e-6f)
         }
-    }
-
-    @Test
-    fun `软辐能产出速率 飞蓬 16000 基线`() {
-        // 飞蓬基础最大辐能 16000 × 7% = 1120 su/s。
-        assertEquals(1120f, FighterGravLinkTuning.softFluxPerSecond(16000f), 1e-6f)
-        assertEquals(0f, FighterGravLinkTuning.softFluxPerSecond(0f), 1e-6f)
     }
 
     @Test

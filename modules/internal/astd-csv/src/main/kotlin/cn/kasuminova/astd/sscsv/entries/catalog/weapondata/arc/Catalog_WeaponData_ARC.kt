@@ -528,23 +528,23 @@ object Wpn_astd_electric_drive_accelerator : WeaponDataEntry(), SsProjProjectile
     override val baseValue: Int = 11000
     override val range: Int = 750
 
-    override val damagePerShot: Int = 100
+    override val damagePerShot: Int = 120
     override val impact: Int = 4
     override val turnRate: Int = 30
     override val ops: Int = 15
 
-    // 发射冷却 0.3s + 连发 2（连射间隔 0.1s；双管交替走 .wpn ALTERNATING）
+    // 发射冷却 0.3s + 连发 2（连射间隔 0.15s；双管交替走 .wpn ALTERNATING）
     override val chargedown: Double = 0.3
     override val burstSize: Int = 4
-    override val burstDelay: Double = 0.1
+    override val burstDelay: Double = 0.15
 
-    // 弹匣三列：24 发弹匣，2 发/s 回复（重装 4s/+8），每次装填 8 发
-    override val ammo: Int = 24
-    override val ammoPerSec: Double = 2.0
+    // 弹匣三列：20 发弹匣，1.6 发/s 回复（重装 5s/+8），每次装填 8 发
+    override val ammo: Int = 20
+    override val ammoPerSec: Double = 1.6
     override val reloadSize: Int = 8
     override val type: String = "KINETIC"
 
-    override val energyPerShot: Int = 120
+    override val energyPerShot: Int = 150
     override val projSpeed: Int = 1000
 
     override val minSpread: Double = 4.0
@@ -777,7 +777,7 @@ object Wpn_astd_gemini_dem_launcher : WeaponDataEntry(), SsProjMissileOutputs {
     override val tier: Int = 2
     override val rarity: Int = 1
     override val baseValue: Int = 6000
-    override val range: Int = 2500
+    override val range: Int = 2000
 
     // 非持续武器：damage/second 留 0（原版约定 beam 行才填 dps）
     override val damagePerSecond: Int = 0
@@ -802,7 +802,7 @@ object Wpn_astd_gemini_dem_launcher : WeaponDataEntry(), SsProjMissileOutputs {
     override val burstDelay: Double = 0.1
     override val projSpeed: Int = 225
 
-    // 2500su ÷ 225 ≈ 11.1s 上浮（烟测校正面）
+    // 2000su ÷ 225 ≈ 8.9s 上浮（烟测校正面；弹速不变，飞行时长保持 14s）
     override val flightTime: Double = 14.0
     override val projHitpoints: Int = 600
 
@@ -845,7 +845,7 @@ object Wpn_astd_gemini_dem_pod : WeaponDataEntry() {
     override val tier: Int = 2
     override val rarity: Int = 1
     override val baseValue: Int = 14000
-    override val range: Int = 2500
+    override val range: Int = 2000
     override val damagePerSecond: Int = 0
     override val damagePerShot: Int = 1000
     override val energyPerShot: Int = 500
@@ -881,7 +881,7 @@ object Wpn_astd_gemini_dem_kinetic : WeaponDataEntry(), SsProjMissileOutputs {
     override val name: String = weaponName(id)
     override val tier: Int = 2
     override val baseValue: Int = 0
-    override val range: Int = 2500
+    override val range: Int = 2000
 
     // 展示口径；真实伤害由 payload 行结算（dps × burstSize 1s）
     override val damagePerShot: Int = 1000
@@ -914,7 +914,7 @@ object Wpn_astd_gemini_dem_he : WeaponDataEntry(), SsProjMissileOutputs {
     override val name: String = weaponName(id)
     override val tier: Int = 2
     override val baseValue: Int = 0
-    override val range: Int = 2500
+    override val range: Int = 2000
     override val damagePerShot: Int = 1000
     override val emp: Int = 0
     override val turnRate: Int = 30
@@ -1079,7 +1079,7 @@ object Wpn_astd_gemini_dem_kinetic_fighter : WeaponDataEntry(), SsProjMissileOut
     override val name: String = weaponName(id)
     override val tier: Int = 2
     override val baseValue: Int = 0
-    override val range: Int = 2000
+    override val range: Int = 1500
 
     // 撞碰面板（战机版实值）；真实打击伤害由战机版 payload 行结算（dps × burstSize 1s）
     override val damagePerShot: Int = 750
@@ -1112,7 +1112,7 @@ object Wpn_astd_gemini_dem_he_fighter : WeaponDataEntry(), SsProjMissileOutputs 
     override val name: String = weaponName(id)
     override val tier: Int = 2
     override val baseValue: Int = 0
-    override val range: Int = 2000
+    override val range: Int = 1500
     override val damagePerShot: Int = 750
     override val emp: Int = 0
     override val turnRate: Int = 30

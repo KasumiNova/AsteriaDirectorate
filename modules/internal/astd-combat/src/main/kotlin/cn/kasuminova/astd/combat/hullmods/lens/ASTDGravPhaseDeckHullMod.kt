@@ -6,6 +6,7 @@ import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseHullMod
 import com.fs.starfarer.api.combat.ShipAPI
+import com.fs.starfarer.api.combat.ShipSystemAPI
 import com.fs.starfarer.api.ui.TooltipMakerAPI
 import java.awt.Color
 
@@ -20,7 +21,8 @@ import java.awt.Color
  *    相位所有权由 [LinkState.phasedByThis] 标记——只对「本插件相位过」的战机执行 setPhased(false)，
  *    绝不误清其他来源的相位状态（与视差甲板同一配对纪律）。
  *    「战机不会产生相位维持辐能」：战机本身无相位线圈，联动相位不产生任何辐能开销，
- *    无需额外抵消逻辑。
+ *    无需额外抵消逻辑。母舰相位期间战机战术系统同步禁用（每帧对非 IDLE/COOLDOWN 态
+ *    deactivate 压回冷却；原版无 disableSystem API，此为标准等效做法）。
  * 2. **辐能返还**：逐帧统计每架战机的辐能净增量（开火产出的软/硬辐能），按难度系数
  *    比例（[GravPhaseDeckTuning.FLUX_RETURN_RATIO]）从战机扣除并以软辐能形式加到母舰；
  *    母舰辐能水平高于 [GravPhaseDeckTuning.MOTHERSHIP_FLUX_LEVEL_DISABLE] 时失效。
@@ -83,6 +85,15 @@ class ASTDGravPhaseDeckHullMod : BaseHullMod() {
                         fighter.isPhased = true
                         fighter.extraAlphaMult = LINKED_PHASE_ALPHA
                         state.phasedByThis += fighter
+                    }
+                    // 母舰相位期间战机战术系统禁用：原版无 disableSystem API，对充能/激活/
+                    // 消退态每帧 deactivate 压回冷却（等效禁止；母舰退出相位后自动恢复可用）。
+                    val system = fighter.system
+                    if (system != null &&
+                        system.state != ShipSystemAPI.SystemState.IDLE &&
+                        system.state != ShipSystemAPI.SystemState.COOLDOWN
+                    ) {
+                        system.deactivate()
                     }
                 } else if (state.phasedByThis.remove(fighter)) {
                     if (fighter.isPhased) fighter.isPhased = false

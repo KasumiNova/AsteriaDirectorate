@@ -272,6 +272,8 @@
 		"ui.lens.status.stacks": "%stacks% 层",
 		"ui.grav_rift.info.no_target": "无目标",
 		"ui.grav_rift.info.out_of_range": "超出射程",
+		"ui.vision_shift.info.no_target": "无目标",
+		"ui.vision_shift.info.out_of_range": "超出射程",
 		"ui.grav_storm.info.phased": "相位中无法释放",
 		"ui.grav_storm.overload_floaty": "引力磁暴！",
 

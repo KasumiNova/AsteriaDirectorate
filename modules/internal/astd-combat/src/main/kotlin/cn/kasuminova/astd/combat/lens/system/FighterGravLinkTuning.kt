@@ -2,7 +2,6 @@ package cn.kasuminova.astd.combat.lens.system
 
 import cn.kasuminova.astd.api.difficulty.DifficultyTuning
 import cn.kasuminova.astd.api.difficulty.ScalingEntry
-import cn.kasuminova.astd.combat.lens.system.FighterGravLinkTuning.SOFT_FLUX_RATIO_OF_BASE_CAP
 
 /**
  * 战机引力联结器（Fighter Gravity Link）的机制数值声明与纯函数
@@ -10,8 +9,9 @@ import cn.kasuminova.astd.combat.lens.system.FighterGravLinkTuning.SOFT_FLUX_RAT
  *
  * 动机：飞蓬级（ZW-102）舰船系统——以原版召回装置为基线的增强：持续期间强化机群
  * （时流 + 减伤），结束时进入 1s 召回窗口（快照机群相位渐隐、窗口末 land 回收并快速
- * 重新出击）；代价为持续软辐能产出与结束时的软→硬辐能转化。三锚点查值与辐能折算
- * 集中在此声明，供系统脚本调用并由单元测试直接驱动。
+ * 重新出击）；代价为持续软辐能产出（原版 CSV `f/s (base cap)` = 5%，引擎结算）与结束
+ * 时的软→硬辐能转化。三锚点查值与辐能折算集中在此声明，供系统脚本调用并由单元测试
+ * 直接驱动。
  *
  * 玩家来源（owner == 0）按我方档位取值（默认砺刃 v2，见 DifficultyTuning.valueFor）。
  */
@@ -22,9 +22,6 @@ object FighterGravLinkTuning {
 
     /** 战机受到所有伤害减免（v1 25% / v2 50% / v5 75%，三锚点 LINEAR）。 */
     val DAMAGE_TAKEN_REDUCTION = ScalingEntry(0.25f, 0.5f, 0.75f)
-
-    /** 激活期间软辐能产出速率：每秒产出舰船**基础**最大辐能的该比例（固定 7%，不随难度变化）。 */
-    const val SOFT_FLUX_RATIO_OF_BASE_CAP = 0.07f
 
     /** 机群战力归零提前终止的宽限期（秒）：ACTIVE 开始该时长后才允许「无存活战力」提前结束。 */
     const val NO_FIGHTER_CANCEL_GRACE_SECONDS = 1f
@@ -45,9 +42,6 @@ object FighterGravLinkTuning {
         timeMult = 1f + tuning.valueFor(TIME_MULT_BONUS, isPlayer),
         damageTakenMult = 1f - tuning.valueFor(DAMAGE_TAKEN_REDUCTION, isPlayer),
     )
-
-    /** 软辐能产出速率（纯函数）：基础最大辐能 × [SOFT_FLUX_RATIO_OF_BASE_CAP]（su/s）。 */
-    fun softFluxPerSecond(baseMaxFlux: Float): Float = baseMaxFlux * SOFT_FLUX_RATIO_OF_BASE_CAP
 
     /**
      * 当前软辐能量（纯函数）：当前辐能 − 硬辐能，下限 0（硬辐能恒 ≤ 当前辐能，

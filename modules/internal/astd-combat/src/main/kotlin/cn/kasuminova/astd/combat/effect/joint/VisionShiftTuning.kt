@@ -18,6 +18,13 @@ import com.fs.starfarer.api.combat.ShipAPI
  */
 object VisionShiftTuning {
 
+    /**
+     * 系统射程（su）：目标锁定与激活门禁的有效距离，受 systemRangeBonus 加成
+     * （结算走 ASTDArcCombatUtil.effectiveSystemRange，与引力裂隙同口径）；
+     * 激活窗口内不复核射程（激活期间目标超出射程不影响系统持续）。
+     */
+    const val SYSTEM_RANGE = 750f
+
     /** 自身时流加成（v1 +50% / v2 +75% / v5 +100%；最终 timeMult = 1 + 本值）。 */
     val SELF_TIME_BONUS = ScalingEntry(0.50f, 0.75f, 1.0f)
 

@@ -30,9 +30,8 @@ import kotlin.math.sqrt
  *
  * 持续 2s、冷却 12s（CSV 口径由注册侧填写）。机制：
  *
- * 1. **激活辐能**：激活首帧（IN/ACTIVE 首个 apply 帧，覆盖 chargeUp=0 无 IN 帧的口径）
- *    产生舰船基础最大辐能容量 [GravReplicatorTuning.ACTIVATION_FLUX_FRACTION] 的软辐能
- *    （engine.customData 闩，unapply 清除，保证下次激活可再触发）。
+ * 1. **激活辐能**：走原版 CSV 结算（`f/u (base cap)` = 10% 基础辐能容量软辐能，
+ *    IDLE→IN 激活瞬间一次性产出，图鉴可见统一数据）；脚本不再自行 increaseFlux。
  * 2. **弹道复制**：系统开启期间（IN/ACTIVE/OUT，apply 被调用的全部窗口）扫描
  *    engine.projectiles，本舰发射的能量武器实弹（武器 type=ENERGY、非光束、非装饰；
  *    导弹与实弹武器天然排除）逐发登记一条复制单（[ReplicaOrder]，记原射弹实体引用、
@@ -70,8 +69,6 @@ class GravReplicatorSystemStats : BaseShipSystemScript() {
         val ship = stats.entity as? ShipAPI ?: return
         if (ship.isHulk) return
         val engine = Global.getCombatEngine() ?: return
-
-        applyActivationFluxOnce(engine, ship, stats)
         if (engine.isPaused) return
 
         renderJitter(ship, id, effectLevel)
@@ -81,16 +78,6 @@ class GravReplicatorSystemStats : BaseShipSystemScript() {
     override fun unapply(stats: MutableShipStatsAPI, id: String) {
         val ship = stats.entity as? ShipAPI ?: return
         ship.isJitterShields = false
-        val engine = Global.getCombatEngine() ?: return
-        engine.customData.remove(ACTIVATION_LATCH_KEY_PREFIX + ship.id)
-    }
-
-    /** 激活辐能（一次性闩）：基础最大辐能容量 × [GravReplicatorTuning.ACTIVATION_FLUX_FRACTION] 软辐能。 */
-    private fun applyActivationFluxOnce(engine: CombatEngineAPI, ship: ShipAPI, stats: MutableShipStatsAPI) {
-        val key = ACTIVATION_LATCH_KEY_PREFIX + ship.id
-        if (engine.customData[key] == true) return
-        engine.customData[key] = true
-        ship.fluxTracker.increaseFlux(GravReplicatorTuning.activationFlux(stats.fluxCapacity.baseValue), false)
     }
 
     /** 紫色 jitter（激活期间；IN/OUT 以 effectLevel 过渡，ACTIVE 满额）。 */
@@ -479,9 +466,6 @@ class GravReplicatorSystemStats : BaseShipSystemScript() {
             val remaining = remainingSeconds.coerceAtLeast(0f)
             return Vector2f(location.x + velocity.x * remaining, location.y + velocity.y * remaining)
         }
-
-        /** 激活辐能闩键前缀（engine.customData，键用 ship.id；unapply 清除）。 */
-        private const val ACTIVATION_LATCH_KEY_PREFIX = "astd_grav_replicator_activated:"
 
         /** 弹体扫描标记键（弹体实体 customData，随实体回收；复制体出生即携带防二次复制）。 */
         private const val SCAN_MARK_KEY = "astd_grav_replicator_scanned"

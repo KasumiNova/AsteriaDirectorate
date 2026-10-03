@@ -177,6 +177,11 @@ object Sys_astd_suppression_mode : ShipSystemWithSystemFileEntry() {
     override val down: Double = 1.0
     override val cooldown: Double = 10.0
 
+    // 持续硬辐能基线 2%/s 走原版 CSV 结算（IN+ACTIVE 全额产出，图鉴可见）；
+    // 第 4 秒起爬坡至 6%/s 的增量部分由脚本 settleHardFlux 补差（曲线无法用 CSV 表达）。
+    override val fluxPerSecondBaseCap: Double = 0.02
+    override val hardFlux: Boolean = true
+
     override val icon: String = "graphics/icons/hullsys/ammo_feeder.png"
     override val useSound: String = "system_ammo_feeder"
 }

@@ -25,8 +25,9 @@ import kotlin.test.assertEquals
  * - apply 在 ACTIVE 满额时把五项难度缩放效果与恒定射速加成写入对应乘区
  *   （真实 MutableStat/StatBonus 对象 + 砺刃 v2 口径）；
  * - effectLevel 渐入半额缩放与 unapply 完全还原；
- * - settleHardFlux 硬辐能结算：基础最大辐能 × 当前每秒比例 × 帧时长 × 渐入系数，
- *   恰为 increaseFlux(amount, hardFlux=true)；零帧长/零渐入不写辐能。
+ * - settleHardFlux 硬辐能结算：基础最大辐能 ×（当前每秒比例 − CSV 基线 2%）× 帧时长 × 渐入系数
+ *   （CSV 基线由原版结算，脚本只补爬坡增量），恰为 increaseFlux(amount, hardFlux=true)；
+ *   零帧长/零渐入/比例未超基线不写辐能。
  */
 class ASTDSuppressionModeSystemStatsTest {
 
@@ -145,7 +146,7 @@ class ASTDSuppressionModeSystemStatsTest {
     }
 
     @Test
-    fun `硬辐能结算 产出量等于基础最大辐能乘当前比例乘帧时长乘渐入系数`() {
+    fun `硬辐能结算 只补超出 CSV 基线 2% 的爬坡增量`() {
         val tracker = mock(FluxTrackerAPI::class.java)
         val ship = mock(ShipAPI::class.java)
         `when`(ship.fluxTracker).thenReturn(tracker)
@@ -155,14 +156,13 @@ class ASTDSuppressionModeSystemStatsTest {
         stats.settleHardFlux(ship, 7000f, 2f, 0.5f, 0.5f)
 
         val captor = ArgumentCaptor.forClass(Float::class.java)
-        verify(tracker, times(3)).increaseFlux(captor.capture(), eq(true))
+        verify(tracker, times(2)).increaseFlux(captor.capture(), eq(true))
         val amounts = captor.allValues.map { it.toFloat() }
-        // 第 4 秒满比例 6%：7000 × 0.06 × 1s × 满额 = 420 硬辐能
-        assertEquals(420f, amounts[0], 1e-2f)
-        // 激活首秒比例 2%：7000 × 0.02 × 1s = 140
-        assertEquals(140f, amounts[1], 1e-2f)
-        // 爬坡中点 4% + 渐入半额减半：7000 × 0.04 × 0.5s × 0.5 = 70
-        assertEquals(70f, amounts[2], 1e-2f)
+        // 第 4 秒满比例 6%，超出基线 2% 的增量：7000 × 0.04 × 1s × 满额 = 280 硬辐能
+        assertEquals(280f, amounts[0], 1e-2f)
+        // 激活首秒比例 2% 与基线持平，差值截 0 不产出（不计入调用次数）
+        // 爬坡中点 4% 超出基线 2% + 渐入半额减半：7000 × 0.02 × 0.5s × 0.5 = 35
+        assertEquals(35f, amounts[1], 1e-2f)
     }
 
     @Test

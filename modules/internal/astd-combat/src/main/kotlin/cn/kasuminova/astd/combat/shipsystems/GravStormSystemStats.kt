@@ -30,8 +30,9 @@ import kotlin.math.sin
  * 原版「量子干扰」（acausaldisruptor / [com.fs.starfarer.api.impl.combat.AcausalDisruptorStats]）的增强基线。
  *
  * 状态机（.system 建议口径：toggle=true + in 4s / out 1.5s / cooldown 24s，见装配侧接线说明）：
- * - **IN（充能，≤[GravStormTuning.MAX_CHARGE_SECONDS]s）**：首帧计入舰船基础最大辐能容量
- *   [GravStormTuning.ACTIVATION_FLUX_FRACTION] 的软辐能代价；充能期间紫色 jitter（幅度随充能进度）
+ * - **IN（充能，≤[GravStormTuning.MAX_CHARGE_SECONDS]s）**：激活代价由原版 CSV 结算
+ *   （`f/u (base cap)` = 20% 基础辐能容量软辐能，IDLE→IN 瞬间一次性产出，图鉴可见）；
+ *   首帧闩建立充能态（描边选框 attach）；充能期间紫色 jitter（幅度随充能进度）
  *   + 锥状射程描边选框（[GravStormConeIndicator]）+ 全类型伤害减免
  *   + 装饰性电弧（纯视觉，每波数量 2→8、间隔 0.5s→0.1s 随充能进度渐变，
  *   与空放装饰电弧同一生成逻辑）+ 充能进度写入 ship.customData [CHARGE_PROGRESS_KEY]
@@ -106,7 +107,7 @@ class GravStormSystemStats : BaseShipSystemScript() {
         stats.empDamageTakenMult.modifyMult(id, damageTakenMult)
 
         when (state) {
-            ShipSystemStatsScript.State.IN -> chargeTick(stats, engine, ship, system, id, effectLevel)
+            ShipSystemStatsScript.State.IN -> chargeTick(engine, ship, system, id, effectLevel)
             ShipSystemStatsScript.State.ACTIVE -> onActiveEntered(engine, ship, system)
             ShipSystemStatsScript.State.OUT -> releaseTick(engine, ship, system)
             else -> Unit
@@ -145,13 +146,12 @@ class GravStormSystemStats : BaseShipSystemScript() {
     }
 
     /**
-     * IN 每帧：首帧闩建立充能态（软辐能代价 + 描边选框 attach）；充能不足
-     * [GravStormTuning.PHASE_LOCKOUT_SECONDS] 期间锁定相位系统（每帧把相位 cloak
+     * IN 每帧：首帧闩建立充能态（描边选框 attach；激活软辐能代价由原版 CSV 结算）；
+     * 充能不足 [GravStormTuning.PHASE_LOCKOUT_SECONDS] 期间锁定相位系统（每帧把相位 cloak
      * 压入 COOLDOWN 并钉住小余量，玩家按键无效）；锁定解除后进入相位则打断充能进冷却；
      * jitter 与描边选框随充能进度增强。
      */
     private fun chargeTick(
-        stats: MutableShipStatsAPI,
         engine: CombatEngineAPI,
         ship: ShipAPI,
         system: ShipSystemAPI,
@@ -161,7 +161,6 @@ class GravStormSystemStats : BaseShipSystemScript() {
         val key = chargeKey(ship)
         var charge = engine.customData[key] as? ChargeState
         if (charge == null) {
-            applyActivationFluxCost(stats, ship)
             charge = ChargeState(GravStormConeIndicator.attach(engine, ship))
             engine.customData[key] = charge
         }
@@ -443,11 +442,6 @@ class GravStormSystemStats : BaseShipSystemScript() {
             log.warn("[ASTD] 引力磁暴释放扭曲注册失败（addEntity 返回 $addState，ship=${ship.id}），本次扭曲视觉缺席")
             distortion.delete()
         }
-    }
-
-    /** 激活代价：基础最大辐能容量 [GravStormTuning.ACTIVATION_FLUX_FRACTION] 的软辐能。 */
-    private fun applyActivationFluxCost(stats: MutableShipStatsAPI, ship: ShipAPI) {
-        ship.fluxTracker.increaseFlux(stats.fluxCapacity.baseValue * GravStormTuning.ACTIVATION_FLUX_FRACTION, false)
     }
 
     /** 充能态收口：描边选框 dispose + 移除首帧闩与充能进度共享键（释放/取消/相位打断/unapply 共用）。 */

@@ -1,6 +1,7 @@
 package cn.kasuminova.astd.combat.shipsystems
 
 import cn.kasuminova.astd.combat.effect.joint.VisionShiftTuning
+import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcCombatUtil
 import cn.kasuminova.astd.combat.shipsystems.ASTDVisionShiftSystemStats.Companion.targetStatId
 import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import cn.kasuminova.astd.internal.i18n.I18n
@@ -18,6 +19,7 @@ import com.fs.starfarer.api.combat.listeners.AdvanceableListener
 import com.fs.starfarer.api.combat.listeners.DamageTakenModifier
 import com.fs.starfarer.api.impl.combat.BaseShipSystemScript
 import com.fs.starfarer.api.plugins.ShipSystemStatsScript
+import com.fs.starfarer.api.util.Misc
 import org.lazywizard.lazylib.MathUtils
 import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
@@ -41,8 +43,11 @@ import java.awt.Color
  * 激活窗口内目标失效即 deactivate 提前结束系统）、
  * 本舰死亡（listener 心跳校验 mark.source 存活，系统脚本随舰终止不再刷写后标记即收）、
  * 激活期目标切换不追随（锁定口径：施放瞬间定格，不重选）。
- * 激活门禁：[isUsable] 仅在存在有效目标候选（锁定目标/鼠标附近/最近敌舰）时放行，
- * 无有效目标时系统不可激活（HUD 灰置，AI 侧由 ASTDVisionShiftSystemAI 自行门禁）。
+ * 激活门禁：[isUsable] 仅在存在有效目标候选（锁定目标/鼠标附近/最近敌舰）且处于系统射程
+ * （[VisionShiftTuning.SYSTEM_RANGE]，受 systemRangeBonus 加成，碰撞半径外推）内时放行，
+ * 无有效目标时系统不可激活（HUD 灰置并提示 无目标/超出射程，AI 侧由
+ * ASTDVisionShiftSystemAI 按同射程自行门禁）；激活窗口内不复核射程，
+ * 目标在窗口内超出射程不影响系统持续。
  * 数值三锚点见 [VisionShiftTuning]；与奇点稳定器交互：目标舰的时间流速下限钳制
  * 在 hullmod advanceInCombat 中每帧执行，天然免疫本压制（设计预期）。
  */
@@ -136,6 +141,18 @@ class ASTDVisionShiftSystemStats : BaseShipSystemScript() {
         return pickTarget(ship, engine) != null
     }
 
+    override fun getInfoText(system: ShipSystemAPI, ship: ShipAPI): String? {
+        if (system.state != ShipSystemAPI.SystemState.IDLE) return null
+        val engine = Global.getCombatEngine() ?: return null
+        if (pickTarget(ship, engine) != null) return null
+        // 有锁定目标但不可用（超射程等）→ 超出射程；完全无可锁定目标 → 无目标
+        return if (isValidTarget(ship, ship.shipTarget, engine)) {
+            I18n[I18n.Categories.MOD, "ui.vision_shift.info.out_of_range"]
+        } else {
+            I18n[I18n.Categories.MOD, "ui.vision_shift.info.no_target"]
+        }
+    }
+
     override fun getStatusData(
         index: Int,
         state: ShipSystemStatsScript.State,
@@ -219,7 +236,7 @@ class ASTDVisionShiftSystemStats : BaseShipSystemScript() {
 
     private fun pickTarget(ship: ShipAPI, engine: CombatEngineAPI): ShipAPI? {
         val locked = ship.shipTarget
-        if (isValidTarget(ship, locked, engine)) return locked
+        if (isValidTarget(ship, locked, engine) && withinSystemRange(ship, locked!!)) return locked
         if (ship === engine.playerShip) {
             // mouseTarget 是鼠标位置（Vector2f）：取鼠标附近的有效敌舰作为玩家意图目标
             val mouse = ship.mouseTarget
@@ -227,6 +244,7 @@ class ASTDVisionShiftSystemStats : BaseShipSystemScript() {
                 val nearMouse = engine.ships
                     .asSequence()
                     .filter { isValidTarget(ship, it, engine) }
+                    .filter { withinSystemRange(ship, it) }
                     .filter { MathUtils.getDistance(mouse, it.location) <= it.collisionRadius + MOUSE_PICK_TOLERANCE }
                     .minByOrNull { MathUtils.getDistance(mouse, it.location) }
                 if (nearMouse != null) return nearMouse
@@ -235,7 +253,20 @@ class ASTDVisionShiftSystemStats : BaseShipSystemScript() {
         return engine.ships
             .asSequence()
             .filter { isValidTarget(ship, it, engine) }
+            .filter { withinSystemRange(ship, it) }
             .minByOrNull { MathUtils.getDistance(ship.location, it.location) }
+    }
+
+    /**
+     * 系统射程闸（仅激活取目标时校验）：基础 [VisionShiftTuning.SYSTEM_RANGE] 受
+     * systemRangeBonus 加成，距离按双方碰撞半径和外推（与引力裂隙 findTarget 同口径）。
+     * 激活窗口内不复核——[obtainMark] 的存续校验走 [isValidTarget]（无射程项），
+     * 目标在窗口内超出射程不影响系统持续。
+     */
+    private fun withinSystemRange(ship: ShipAPI, target: ShipAPI): Boolean {
+        val range = ASTDArcCombatUtil.effectiveSystemRange(ship, VisionShiftTuning.SYSTEM_RANGE)
+        val dist = Misc.getDistance(ship.location, target.location)
+        return dist <= range + ship.collisionRadius + target.collisionRadius
     }
 
     private fun isValidTarget(ship: ShipAPI, target: ShipAPI?, engine: CombatEngineAPI): Boolean {
