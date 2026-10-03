@@ -811,7 +811,7 @@ object Wpn_astd_ice_shard_mirv : WeaponDataEntry(), SsProjMissileOutputs {
     override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
     override val customPrimary: String = SsI18n.t("weapon.$id.tooltip.customPrimary")
     override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
-    // 面板 DPS 与每秒辐能产出隐藏（原版 noDPSInTooltip 同闸覆盖两行；分裂机制伤害由脚本分配不进面板）
+    // 物品 tooltip 的 DPS 与每秒辐能产出隐藏（noDPSInTooltip 仅作用于物品 tooltip，同闸覆盖两行；图鉴面板不读该标志仍显示；分裂机制伤害由脚本分配不进面板）
     override val noDpsInTooltip: Boolean = true
     // AI 行为与发射舱统一（同弹体两槽位 hints 必须一致，原 GUIDED_POOR 与舱 DO_NOT_AIM,STRIKE 矛盾）：
     // 追踪普通对齐原版飓风 MIRV 不瞄准口径，定位为打击武器
@@ -863,7 +863,7 @@ object Wpn_astd_ice_shard_mirv_pod : WeaponDataEntry() {
     override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
     override val customPrimary: String = SsI18n.t("weapon.$id.tooltip.customPrimary")
     override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
-    // 面板 DPS 与每秒辐能产出隐藏（与发射器同口径）
+    // 物品 tooltip 的 DPS 与每秒辐能产出隐藏（与发射器同口径；仅作用于物品 tooltip，图鉴面板不读该标志仍显示）
     override val noDpsInTooltip: Boolean = true
     // AI 行为对齐原版龙炎
     override val aiHints: Set<AiHint> = setOf(AiHint.DO_NOT_AIM, AiHint.STRIKE)
@@ -956,7 +956,7 @@ object Wpn_astd_gemini_dem_fighter : WeaponDataEntry() {
     // 跨线武备：LENS 投送平台 × ARC 制式弹药，设计方沿用舰装版星坠口径
     override val tech: String = "菀星设计局-星坠"
     override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
-    // 面板 DPS 与每秒辐能产出隐藏（与舰装版同口径）
+    // 物品 tooltip 的 DPS 与每秒辐能产出隐藏（与舰装版同口径；仅作用于物品 tooltip，图鉴面板不读该标志仍显示）
     override val noDpsInTooltip: Boolean = true
     override val number: Int = 9246
 }
