@@ -132,8 +132,8 @@ class GravStormScenario : AbstractAutomationScenario() {
      * （密蒙舰载机联队不需要出库，无 AI 即不出击；系统施放时机由插件独占，
      * [blockSystem] 在 ACTIVATE 之前逐帧封锁 USE_SYSTEM 防系统 AI 路径抢跑）。
      * 玩家舰默认逐帧封锁相位斗篷（[blockPhase]）：充能锁定窗（断言点 GS-B2）需要放开
-     * 封锁并反向施压相位键，其余阶段封锁——锁定解除后充能中进相位会 deactivate
-     * 取消释放（机制口径），本场景主线验证完整释放链路。
+     * 封锁并反向施压相位键，其余阶段封锁——锁定解除后充能中进相位会立即结束充能并
+     * 提前释放（机制口径），本场景主线验证充满 4s 的完整释放链路，故须压住相位键。
      * [healEnemy] 在 RELEASE 起关闭：电弧结算需要真实 hitpoints 读数（靶舰装甲已在
      * 进 ACTIVATE 时剥零，范式同 GRG 的 RIFT_FIRE 前剥甲）。
      */

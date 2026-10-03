@@ -41,7 +41,8 @@ object GravStormTuning {
      * [PHASE_LOCKOUT_COOLDOWN_REMAINING]；原版 ChargeTracker 实证 COOLDOWN 态按键不激活，
      * 且相位脚本 unapply 即撤 phased——forceState(IDLE) 口径下 Ship.advance 同帧
      * system→cloak 顺序会让「IDLE+按键→IN」在同帧复活，压不住，已弃用）；
-     * 达到该时长后恢复「充能期间进相位 → 中止充能进冷却」的既有行为。
+     * 达到该时长后进入相位则结束充能并立即按当前充能进度释放（锁定口径等同最小充能，
+     * 相位路径恒满足 [MIN_CHARGE_SECONDS] 释放下限，故相位结束充能必为释放而非取消）。
      */
     const val PHASE_LOCKOUT_SECONDS = MIN_CHARGE_SECONDS
 

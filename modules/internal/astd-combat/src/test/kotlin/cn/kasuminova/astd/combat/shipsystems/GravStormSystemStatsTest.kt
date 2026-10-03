@@ -1,5 +1,6 @@
 package cn.kasuminova.astd.combat.shipsystems
 
+import cn.kasuminova.astd.combat.lens.system.GravStormTuning
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.FluxTrackerAPI
 import com.fs.starfarer.api.combat.ShipAPI
@@ -13,7 +14,7 @@ import org.mockito.Mockito.times
 import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
 import kotlin.test.Test
-import kotlin.test.assertTrue
+import kotlin.test.assertEquals
 
 /**
  * 引力磁暴发生器硬辐能→软辐能转化的记账钉测：被转化的是**释放舰船自身**的硬辐能，
@@ -99,13 +100,13 @@ class GravStormSystemStatsTest {
     }
 
     /**
-     * 断言点：ACTIVE 首帧相位取消闸——IN 末帧进入相位与充满同帧竞态时（原版同一帧内
-     * ChargeTracker.advance 先于脚本 apply，chargeTick 的相位取消分支来不及拦截），
-     * 已相位一律按取消处理：deactivate 进冷却、收口充能进度共享键、不写释放闩、
-     * 不归位释放窗口（不得进入释放/强制过载）。
+     * 断言点：ACTIVE 首帧相位态按「相位结束充能」口径处理——IN 末帧进入相位与充满同帧竞态时
+     * （原版同一帧内 ChargeTracker.advance 先于脚本 apply，chargeTick 的相位分支来不及拦截），
+     * 按满充能立即释放（releaseFn 收到 [GravStormTuning.MAX_CHARGE_SECONDS]）并 deactivate
+     * 进冷却，不归位释放窗口。release 内含音效/扭曲等运行时静态调用，无头环境注入桩替代。
      */
     @Test
-    fun `ACTIVE 首帧相位态视为取消 不进入释放与强制过载`() {
+    fun `ACTIVE 首帧相位态按满充能立即释放并进冷却`() {
         val engine = mock(CombatEngineAPI::class.java)
         val customData = HashMap<String, Any>()
         `when`(engine.customData).thenReturn(customData)
@@ -114,11 +115,32 @@ class GravStormSystemStatsTest {
         `when`(ship.isPhased).thenReturn(true)
         val system = mock(ShipSystemAPI::class.java)
 
-        GravStormSystemStats().onActiveEntered(engine, ship, system)
+        val releasedCharges = ArrayList<Float>()
+        GravStormSystemStats().onActiveEntered(engine, ship, system) { _, _, chargeSeconds ->
+            releasedCharges += chargeSeconds
+        }
 
+        assertEquals(listOf(GravStormTuning.MAX_CHARGE_SECONDS), releasedCharges, "相位结束充能必须按满充能立即释放")
         verify(system).deactivate()
         verify(system, never()).forceState(any(), anyFloat())
-        verify(ship).removeCustomData(GravStormSystemStats.CHARGE_PROGRESS_KEY)
-        assertTrue(customData.isEmpty(), "取消路径不得写入释放闩")
+    }
+
+    /**
+     * 断言点：充能期间进入相位的统一口径（chargeTick 相位分支唯一出口）——
+     * 立即按当前充能进度释放并进冷却，不得按取消处理（不释放直接进冷却的旧口径已作废）。
+     */
+    @Test
+    fun `相位结束充能 按当前充能进度释放并进冷却`() {
+        val engine = mock(CombatEngineAPI::class.java)
+        val ship = mock(ShipAPI::class.java)
+        val system = mock(ShipSystemAPI::class.java)
+
+        val releasedCharges = ArrayList<Float>()
+        GravStormSystemStats().endChargeByPhase(engine, ship, system, 3f) { _, _, chargeSeconds ->
+            releasedCharges += chargeSeconds
+        }
+
+        assertEquals(listOf(3f), releasedCharges, "相位结束充能必须按当前充能进度原样释放")
+        verify(system).deactivate()
     }
 }

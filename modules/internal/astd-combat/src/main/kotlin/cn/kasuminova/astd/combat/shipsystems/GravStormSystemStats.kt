@@ -39,12 +39,13 @@ import kotlin.math.sin
  *   （引力电磁力场读取后波形光斑反向聚集加速）。
  *   - 充能不足 [GravStormTuning.PHASE_LOCKOUT_SECONDS] 期间相位系统锁定：每帧把相位 cloak
  *     压入 COOLDOWN 并钉住小余量（原版 ChargeTracker 实证该态按键不激活），玩家按相位键无效；
- *   - 锁定解除后充能期间进入相位 → [ShipSystemAPI.deactivate] 直接进冷却（不释放电弧）；
+ *   - 锁定解除后充能期间进入相位 → 结束充能并立即按当前充能进度释放（电弧 + 强制过载，
+ *     锁定口径等同最小充能故恒达释放下限），随后 [ShipSystemAPI.deactivate] 进冷却；
  *   - 玩家再次按键（toggle 系统原版路径：IN 再按 → OUT，OUT 计时按充能进度折算）→ 提前结束：
  *     充能 ≥ [GravStormTuning.MIN_CHARGE_SECONDS] 释放，不足则视为取消（deactivate 进冷却）；
  *   - 充满 4s 自然进入 ACTIVE，首帧释放并 [ShipSystemAPI.forceState] 归位完整释放窗口；
  *     ACTIVE 首帧若已相位（IN 末帧进相位与充满同帧竞态：原版同一帧内 ChargeTracker.advance
- *     先于脚本 apply 执行，chargeTick 的取消分支来不及拦截）则视为取消进冷却，不释放。
+ *     先于脚本 apply 执行，chargeTick 的相位分支来不及拦截）同样按相位口径满充能立即释放。
  * - **OUT（释放窗口 [GravStormTuning.RELEASE_WINDOW_SECONDS]s）**：锁定充能结束时前方 60° 锥
  *   （射程 [GravStormTuning.BASE_RANGE] 经 systemRangeBonus 折算）内全部敌对舰船（含相位单位
  *   与战机——战机按护卫舰档结算电弧数与过载、单发伤害经 [GravStormTuning.FIGHTER_DAMAGE_MULT]
@@ -129,14 +130,18 @@ class GravStormSystemStats : BaseShipSystemScript() {
     /**
      * ACTIVE 首帧处理（internal 供单元测试直接驱动）：充满 4s 自然落入 ACTIVE（toggle 口径下
      * active 段无限长），立即满充能释放并归位释放窗口；activation 闩防 ACTIVE 段多帧重复触发。
-     * 已相位一律视为取消（收口充能态 + deactivate 进冷却），不得进入释放/强制过载——
-     * 原版同一帧内 ChargeTracker.advance 先于脚本 apply 执行，IN 末帧进入相位（取消路径）
-     * 来不及走 [chargeTick] 的相位取消分支就会被状态机直接顶进 ACTIVE，此处是取消的末道闸。
+     * 已相位按「相位结束充能」口径满充能立即释放并进冷却——原版同一帧内 ChargeTracker.advance
+     * 先于脚本 apply 执行，IN 末帧进入相位来不及走 [chargeTick] 的相位分支就会被状态机直接
+     * 顶进 ACTIVE，此处是该口径的末道闸。[releaseFn] 仅测试注入（见 [endChargeByPhase]）。
      */
-    internal fun onActiveEntered(engine: CombatEngineAPI, ship: ShipAPI, system: ShipSystemAPI) {
+    internal fun onActiveEntered(
+        engine: CombatEngineAPI,
+        ship: ShipAPI,
+        system: ShipSystemAPI,
+        releaseFn: (CombatEngineAPI, ShipAPI, Float) -> Unit = ::release,
+    ) {
         if (ship.isPhased) {
-            disposeCharge(engine, ship)
-            system.deactivate()
+            endChargeByPhase(engine, ship, system, GravStormTuning.MAX_CHARGE_SECONDS, releaseFn)
             return
         }
         if (engine.customData[activationKey(ship)] == null) {
@@ -146,9 +151,28 @@ class GravStormSystemStats : BaseShipSystemScript() {
     }
 
     /**
+     * 相位结束充能（internal 供单元测试直接驱动）：充能期间进入相位的统一口径——
+     * 立即按当前充能进度释放（电弧 + 强制过载全额结算，设计案「期间舰船进入相位也会结束
+     * 充能」），随后 deactivate 进冷却。相位锁定口径等同最小充能
+     * （[GravStormTuning.PHASE_LOCKOUT_SECONDS]），进入相位时充能必已达释放下限。
+     * [releaseFn] 仅测试注入（release 内含音效/扭曲等运行时静态调用，无头测试以桩替代），
+     * 游戏内恒走 [release]。
+     */
+    internal fun endChargeByPhase(
+        engine: CombatEngineAPI,
+        ship: ShipAPI,
+        system: ShipSystemAPI,
+        chargeSeconds: Float,
+        releaseFn: (CombatEngineAPI, ShipAPI, Float) -> Unit = ::release,
+    ) {
+        releaseFn(engine, ship, chargeSeconds)
+        system.deactivate()
+    }
+
+    /**
      * IN 每帧：首帧闩建立充能态（描边选框 attach；激活软辐能代价由原版 CSV 结算）；
      * 充能不足 [GravStormTuning.PHASE_LOCKOUT_SECONDS] 期间锁定相位系统（每帧把相位 cloak
-     * 压入 COOLDOWN 并钉住小余量，玩家按键无效）；锁定解除后进入相位则打断充能进冷却；
+     * 压入 COOLDOWN 并钉住小余量，玩家按键无效）；锁定解除后进入相位则结束充能并立即释放；
      * jitter 与描边选框随充能进度增强。
      */
     private fun chargeTick(
@@ -171,9 +195,9 @@ class GravStormSystemStats : BaseShipSystemScript() {
             // 充能前段相位锁定：相位 cloak 不可激活（每帧归位 IDLE），玩家按键无效
             suppressPhaseCloak(ship)
         } else if (ship.isPhased) {
-            // 锁定解除后充能期间进入相位：充能结束、不释放电弧、直接进冷却（deactivate → forceDeactivate → COOLDOWN）
-            disposeCharge(engine, ship)
-            system.deactivate()
+            // 锁定解除后充能期间进入相位：结束充能并立即按当前充能进度释放（锁定口径等同
+            // 最小充能，走到此分支充能必已达 MIN，恒为释放而非取消），随后进冷却
+            endChargeByPhase(engine, ship, system, chargeSeconds)
             return
         }
 

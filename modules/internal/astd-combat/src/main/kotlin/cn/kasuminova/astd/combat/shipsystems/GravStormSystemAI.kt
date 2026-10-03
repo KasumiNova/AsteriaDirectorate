@@ -19,12 +19,12 @@ import org.lwjgl.util.vector.Vector2f
  * 2. 本舰未相位（相位中不可释放，与 [GravStormSystemStats.isUsable] 同口径）、未过载/排气；
  * 3. 辐能余量：当前辐能水平 + 激活代价（[GravStormTuning.ACTIVATION_FLUX_FRACTION]）不超过
  *    [MAX_FLUX_LEVEL_AFTER_USE]（对齐原版量子干扰 AI 的 0.85 辐能闸）；
- * 4. 交战分：前方 60° 锥、有效射程 × [ENGAGE_RANGE_FRAC] 内的敌对舰船按舰级计分
- *    （护卫 1 / 驱逐 2 / 巡洋 3 / 主力 4，[threatScore]），总分 ≥ [ENGAGE_SCORE_THRESHOLD] 才施放
- *    （单艘护卫舰不值得一发 24s 冷却的磁暴）。
+ * 4. 目标存在性：前方 60° 锥、有效射程 × [ENGAGE_RANGE_FRAC] 内存在任意可锁定的敌对舰船
+ *    （非战机，与 stats 侧锁定同口径）即施放——对单环境同样施放（裁定：磁暴的对单
+ *    强制过载本身就是核心战术价值，不再按舰级计分设门槛）。
  *
  * AI 不主动提前结束充能：施放后充满 4s 自然释放（stats 侧 ACTIVE 首帧接管），
- * 相位打断/取消由 stats 侧统一处理。
+ * 相位结束充能/取消由 stats 侧统一处理。
  */
 class GravStormSystemAI : ShipSystemAIScript {
 
@@ -37,18 +37,6 @@ class GravStormSystemAI : ShipSystemAIScript {
 
         /** 施放后的辐能水平上限（对齐原版量子干扰 AI 的 0.85 口径）。 */
         private const val MAX_FLUX_LEVEL_AFTER_USE = 0.85f
-
-        /** 交战分阈值：锥内敌舰舰级分总和达到该值才施放。 */
-        private const val ENGAGE_SCORE_THRESHOLD = 3f
-
-        /** 舰级交战分（纯函数，单测可驱动）。 */
-        internal fun threatScore(hullSize: ShipAPI.HullSize?): Float = when (hullSize) {
-            ShipAPI.HullSize.FRIGATE -> 1f
-            ShipAPI.HullSize.DESTROYER -> 2f
-            ShipAPI.HullSize.CRUISER -> 3f
-            ShipAPI.HullSize.CAPITAL_SHIP -> 4f
-            else -> 0f
-        }
     }
 
     private var ship: ShipAPI? = null
@@ -83,21 +71,16 @@ class GravStormSystemAI : ShipSystemAIScript {
         if (ship.fluxTracker.fluxLevel + GravStormTuning.ACTIVATION_FLUX_FRACTION > MAX_FLUX_LEVEL_AFTER_USE) return
 
         val range = ASTDArcCombatUtil.effectiveSystemRange(ship, GravStormTuning.BASE_RANGE) * ENGAGE_RANGE_FRAC
-        var score = 0f
         for (candidate in engine.ships) {
             if (candidate == null || candidate === ship) continue
             if (candidate.owner == ship.owner || candidate.isFighter || candidate.isHulk || !candidate.isAlive) continue
-            val candidateScore = threatScore(candidate.hullSize)
-            if (candidateScore <= 0f) continue
+            if (GravStormTuning.arcBaseCountRange(candidate.hullSize) == null) continue
             val dist = Misc.getDistance(ship.location, candidate.location) - candidate.collisionRadius
             if (dist > range) continue
             val angleDiff = Misc.getAngleDiff(ship.facing, Misc.getAngleInDegrees(ship.location, candidate.location))
             if (!GravStormTuning.isInCone(angleDiff)) continue
-            score += candidateScore
-            if (score >= ENGAGE_SCORE_THRESHOLD) {
-                ship.useSystem()
-                return
-            }
+            ship.useSystem()
+            return
         }
     }
 }
