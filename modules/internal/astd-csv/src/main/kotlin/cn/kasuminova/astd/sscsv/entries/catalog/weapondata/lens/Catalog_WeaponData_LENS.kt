@@ -714,13 +714,13 @@ private fun iceShardMirvProjSpec(): MissileProjSpec = MissileProjSpec(
     missileType = "MIRV",
     onFireEffect = "cn.kasuminova.astd.combat.effect.lens.iceshard.IceShardMirvOnFireEffect",
     // 母弹无 onHitEffect：直击命中仅面板伤害（分裂逻辑由发射时每弹一注册的引信脚本承担）
-    // 贴图用自制冰晶导弹（同图承担挂点 RENDER_LOADED_MISSILES 渲染与飞行本体渲染）
+    // 贴图用自制冰晶导弹（同图承担挂点 RENDER_LOADED_MISSILES 渲染与飞行本体渲染；底部 3 行透明边已裁除）
     sprite = "graphics/weapons/astd_ice_shard_missile.png",
-    size = Vec2i(15, 30),
-    center = Vec2(7.5, 15),
+    size = Vec2i(15, 27),
+    center = Vec2(7.5, 13.5),
     collisionRadius = 16,
     collisionClass = "MISSILE_NO_FF",
-    explosionColor = Rgba(170, 110, 255, 160),
+    explosionColor = Rgba(170, 225, 255, 160),
     explosionRadius = 100,
     armingTime = 0.25,
     flameoutTime = 0.5,
@@ -760,7 +760,7 @@ private fun iceShardMirvProjSpec(): MissileProjSpec = MissileProjSpec(
             "blowbackDuration" to 0,
             "blowbackLength" to 0,
             "blowbackSpread" to 0,
-            "particleColor" to listOf(190, 140, 255, 200),
+            "particleColor" to listOf(175, 215, 255, 200),
         ),
     ),
 )
@@ -909,7 +909,7 @@ object Wpn_astd_ice_shard_sub : WeaponDataEntry(), SsProjMissileOutputs {
         center = Vec2(10, 10),
         collisionRadius = 8,
         collisionClass = "MISSILE_NO_FF",
-        explosionColor = Rgba(190, 140, 255, 160),
+        explosionColor = Rgba(170, 225, 255, 160),
         explosionRadius = 25,
         flameoutTime = 0.5,
         noEngineGlowTime = 999.0,

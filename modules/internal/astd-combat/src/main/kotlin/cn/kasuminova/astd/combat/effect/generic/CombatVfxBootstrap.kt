@@ -4,6 +4,7 @@ import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
 import cn.kasuminova.astd.renderer.effect.system.ASTDAfterimageEffect
 import cn.kasuminova.astd.renderer.effect.system.ASTDEngineShardSprayEffect
 import cn.kasuminova.astd.renderer.effect.system.ASTDVectorThrustEngineManager
+import cn.kasuminova.astd.renderer.effect.system.LoadedMissileGlowLayer
 import cn.kasuminova.astd.renderer.effect.system.ShipGlowRenderer
 import cn.kasuminova.astd.renderer.effect.system.WeaponGlowLayer
 import cn.kasuminova.astd.renderer.effect.system.Xc002GhostWingsEffect
@@ -58,6 +59,13 @@ internal object CombatVfxBootstrap {
             WeaponGlowLayer.ensureInstalled(engine)
         } catch (ex: Throwable) {
             log.warn("[ASTD] WeaponGlowLayer.ensureInstalled failed", ex)
+        }
+
+        // 挂载弹体光效层：补足原版 RENDER_LOADED_MISSILES 装填弹体没有发光槽位的空缺。
+        try {
+            LoadedMissileGlowLayer.ensureInstalled(engine)
+        } catch (ex: Throwable) {
+            log.warn("[ASTD] LoadedMissileGlowLayer.ensureInstalled failed", ex)
         }
 
         // 舰船覆盖发光层（bloom/装饰灯）：战斗内 BoxUtil 实体代替原版装饰武器渲染。

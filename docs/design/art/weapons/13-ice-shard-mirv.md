@@ -11,27 +11,31 @@
 
 ## 2. 现状
 
-- 小/中发射架分别占位原版 `missile_rack_open_m_3x_*`（40×40）/ `launcher_m4_2x_*`（44×44）
-- 母弹占位原版 `missile_MIRV.png`（14×30），无低温/集束语义
+- 小/中发射架已交付独立贴图（`astd_ice_shard_mirv_base.png` 28×26 / `astd_ice_shard_mirv_pod_base.png` 34×27，底部透明边已裁除），配 `WeaponGlowLayer` 常驻微光层（`_glow_ambient` / `_hp_glow_ambient`，冰蓝 RGB(140,217,255) 族）
+- 母弹已用自绘 `astd_ice_shard_missile.png`（15×27，底部透明边已裁除），同图承担挂点装填渲染与飞行本体渲染；配冰蓝挂载光效层 `astd_ice_shard_missile_glow.png`（`LoadedMissileGlowLayer` 加法叠加，透明度跟随装填 brightness）
 - 子冰晶射弹已有 v1 贴图 `contents/graphics/fx/astd_ice_shard.png`（菱形冰晶），走 spriteBody 渲染路径（BoxUtil SpriteEntity），**尖端朝右**——与原版弹体渲染的朝上约定相差 90°，精修时必须保持朝右
-- 弹体 VFX 已实装：母弹冰蓝白拖尾 + 弹头光斑；分裂冰蓝闪光与星云（音效沿用原版飓风 MIRV）；子冰晶短拖尾；附着后每 1s 在命中点渲染淡蓝星云。全部代码管线，不需要特效贴图
+- 弹体 VFX 已实装冰蓝族（色族独立为冰蓝，不套 LENS 紫）：母弹冰蓝白拖尾 + 弹头光斑；分裂冰蓝闪光与星云（音效沿用原版飓风 MIRV）；子冰晶短拖尾；附着后每 1s 在命中点渲染淡蓝星云。全部代码管线，不需要特效贴图
 
-## 3. 资产需求清单
+## 3. 资产清单
+
+已交付：
+
+| 资产 | 文件命名 | 画布 | 说明 |
+|---|---|---|---|
+| 小型发射架底图 | `astd_ice_shard_mirv_base.png` | 28×26 | 炮塔/挂点共用，兼作图标 |
+| 小型发射架常驻微光 | `astd_ice_shard_mirv_glow_ambient.png` / `astd_ice_shard_mirv_hp_glow_ambient.png` | 28×26 | WeaponGlowLayer AMBIENT 档（冰蓝） |
+| 中型发射舱底图 | `astd_ice_shard_mirv_pod_base.png` | 34×27 | 炮塔/挂点共用，兼作图标；双联弹位（burst 2） |
+| 中型发射舱常驻微光 | `astd_ice_shard_mirv_pod_glow_ambient.png` / `astd_ice_shard_mirv_pod_hp_glow_ambient.png` | 34×27 | WeaponGlowLayer AMBIENT 档（冰蓝） |
+| 母弹弹体 | `astd_ice_shard_missile.png` | 15×27 | 两槽位共用母弹，弹头朝上；同图承担挂点装填渲染 |
+| 母弹挂载光效层 | `astd_ice_shard_missile_glow.png` | 15×27 | LoadedMissileGlowLayer（冰蓝，加法混合） |
+
+待补（可选精修）：
 
 | 资产 | 文件命名 | 画布基准 | 说明 |
 |---|---|---|---|
-| 小型发射架炮塔 | `astd_ice_shard_mirv_base.png` | 28×28 | 兼作图标 |
-| 小型发射架炮塔发光层 | `astd_ice_shard_mirv_glow.png` | 28×28 | 开火/工作发光层（加法混合） |
-| 小型发射架挂点 | `astd_ice_shard_mirv_hp.png` | 28×28 纵向可拉长 | |
-| 小型发射架挂点发光层 | `astd_ice_shard_mirv_hp_glow.png` | 28×28 纵向可拉长 | 开火/工作发光层（加法混合） |
-| 中型发射舱炮塔 | `astd_ice_shard_mirv_pod_base.png` | 40×40 | 兼作图标；双联弹位（burst 2） |
-| 中型发射舱炮塔发光层 | `astd_ice_shard_mirv_pod_glow.png` | 40×40 | 开火/工作发光层（加法混合） |
-| 中型发射舱挂点 | `astd_ice_shard_mirv_pod_hp.png` | 40×40 纵向可拉长 | |
-| 中型发射舱挂点发光层 | `astd_ice_shard_mirv_pod_hp_glow.png` | 40×40 纵向可拉长 | 开火/工作发光层（加法混合） |
-| 母弹弹体 | `contents/graphics/missiles/astd_ice_shard_mirv.png` | 14×28 竖构图 | 两槽位共用母弹，弹头朝上 |
 | 子冰晶精修（可选） | `contents/graphics/fx/astd_ice_shard.png` | 256×256 超采样 | **尖端朝右**（spriteBody 约定），保持菱形轮廓不变 |
 
-发射架路径 `contents/graphics/weapons/`；发射架炮口与母弹弹头朝上，子冰晶朝右（渲染路径不同，勿混淆）。
+发射架与母弹路径 `contents/graphics/weapons/`；发射架炮口与母弹弹头朝上，子冰晶朝右（渲染路径不同，勿混淆）。
 
 ## 4. 视觉设计需求
 

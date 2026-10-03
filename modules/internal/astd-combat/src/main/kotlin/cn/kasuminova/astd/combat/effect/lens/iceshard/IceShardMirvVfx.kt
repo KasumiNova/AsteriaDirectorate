@@ -7,21 +7,21 @@ import kotlin.random.Random
 
 /**
  * 源生冰晶 MIRV 特效触发层（purple/30-superlative.md §特效）：
- * 分裂爆发（爆炸闪光 + 少量紫色星云）与附着期星云（每个伤害周期 3 个 50px ±25% 淡紫星云，存续 2s）。
+ * 分裂爆发（爆炸闪光 + 少量冰蓝星云）与附着期星云（每个伤害周期 3 个 50px ±25% 淡蓝星云，存续 2s）。
  * 冰晶射体本体走 `.proj` 原版贴图渲染 + ProjectileVfxSpecs 贴图拖尾层，不在本类职责内。
  */
 object IceShardMirvVfx {
 
-    /** 冰晶主色（紫）。 */
-    private val ICE_COLOR = Color(190, 140, 255, 120)
+    /** 冰晶主色（冰蓝，13 号美术需求 RGB(170,225,255) 族）。 */
+    private val ICE_COLOR = Color(170, 225, 255, 120)
 
-    /** 附着星云色（淡紫，alpha 由 addNebulaParticle 亮度参数调制）。 */
-    private val ATTACH_NEBULA_COLOR = Color(170, 115, 255, 110)
+    /** 附着星云色（淡蓝，alpha 由 addNebulaParticle 亮度参数调制）。 */
+    private val ATTACH_NEBULA_COLOR = Color(150, 205, 255, 110)
 
     /** 静止速度矢量（爆炸闪光用，避免逐次分配）。 */
     private val ZERO_VEL = Vector2f(0f, 0f)
 
-    /** 分裂爆发：小型紫色爆炸闪光 + 6 颗四散星云（分裂帧母弹位置的视觉锚）。 */
+    /** 分裂爆发：小型冰蓝爆炸闪光 + 6 颗四散星云（分裂帧母弹位置的视觉锚）。 */
     fun spawnSplitBurst(engine: CombatEngineAPI, origin: Vector2f, random: Random) {
         engine.spawnExplosion(origin, ZERO_VEL, ICE_COLOR, SPLIT_FLASH_SIZE, SPLIT_FLASH_DURATION)
         repeat(SPLIT_NEBULA_COUNT) {
@@ -39,7 +39,7 @@ object IceShardMirvVfx {
         bumpTelemetry(engine, TELEMETRY_SPLIT_VFX)
     }
 
-    /** 附着期星云节奏批（由附着脚本按伤害周期节奏触发：3 个 50px、25% 大小浮动、淡紫色、存续 2s）。 */
+    /** 附着期星云节奏批（由附着脚本按伤害周期节奏触发：3 个 50px、25% 大小浮动、淡蓝色、存续 2s）。 */
     fun spawnAttachNebula(engine: CombatEngineAPI, point: Vector2f, random: Random) {
         repeat(ATTACH_NEBULA_COUNT) {
             val size = ATTACH_NEBULA_SIZE * (0.75f + random.nextFloat() * 0.5f)

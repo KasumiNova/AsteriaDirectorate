@@ -163,7 +163,7 @@ object ProjectileVfxSpecs {
         // 摧锋鱼雷（blue/30-superlative.md §特效）：ARC 冷蓝白，trail 长 = 射程×50%、recede 0（带体亮头直抵弹头），
         // 弹头处 SMOOTH 光斑补鱼雷本体贴图之外的辉光（辉星同款口径）。
         "astd_cuifeng_torpedo_shot" to { range -> cuifengTorpedoShot("astd_cuifeng_torpedo_shot", range) },
-        // 源生冰晶 MIRV 母弹（purple/30-superlative.md §特效）：LENS 紫族（同爆炸/炮口焰重构口径），trail 长 = 射程×50%、recede 0。
+        // 源生冰晶 MIRV 母弹（purple/30-superlative.md §特效 + 13 号美术需求）：色族独立为冰蓝（不套 LENS 紫），trail 长 = 射程×50%、recede 0。
         "astd_ice_shard_mirv_shot" to { range -> iceShardMirvShot("astd_ice_shard_mirv_shot", range) },
         // 双子星 DEM 双弹头（规格 10 §特效）：脚本 spawn 弹体不触发 onFireEffect，由 GeminiDemSalvoOnFireEffect
         // 显式 ProjectileVfxDriverPlugin.track 接入。动能冷蓝白（同引擎焰色 140,190,255）/ 高爆共振红
@@ -186,7 +186,7 @@ object ProjectileVfxSpecs {
         // 源生冰晶子射弹：15 枚小冰晶成群，弹体本体由 spriteBody 接管（BoxUtil SpriteEntity 逐帧跟随，normal alpha 对齐原版
         // 导弹贴图语义），原版贴图渲染由 .proj 的 sprite=BUtil_NONE.png 屏蔽，bolt 显式关闭（本体贴图取代螺栓）。
         "astd_ice_shard_sub_msl" to {
-            simpleProjectileVfx("astd_ice_shard_sub_msl", violet(), width = 6f, length = 120f, decorTrail = false, recede = -10f) {
+            simpleProjectileVfx("astd_ice_shard_sub_msl", iceBlue(), width = 6f, length = 120f, decorTrail = false, recede = -10f) {
                 bolt { off() }
                 spriteBody("graphics/fx/astd_ice_shard_crystal.png", width = 40f, height = 20f) {
                     glow(0.5f)
@@ -560,11 +560,11 @@ object ProjectileVfxSpecs {
         }
     }
 
-    // 源生冰晶 MIRV 母弹：simpleProjectileVfx 四层惯例（同辉星/摧锋口径），LENS 紫族调色（violet 主色 ≈170,110,255，
-    // 同 1f9c6e3 爆炸/烟尾/炮口焰紫化口径）；弹头光斑高光留近白淡紫。
+    // 源生冰晶 MIRV 母弹：simpleProjectileVfx 四层惯例（同辉星/摧锋口径），冰蓝族调色（iceBlue 主色 ≈170,225,255，
+    // 13 号美术需求色族独立为冰蓝、不套 LENS 紫，同批爆炸/烟尾/炮口焰已同步冰蓝化）；弹头光斑高光留近白冰蓝。
     private fun iceShardMirvShot(id: String, range: Float?): ProjectileVfx = simpleProjectileVfx(
         id,
-        violet(),
+        iceBlue(),
         width = 8f,
         length = 420f,
         range = range,
@@ -573,7 +573,7 @@ object ProjectileVfxSpecs {
     ) {
         boxFlare("light") {
             style(BoxFlareStyle.SMOOTH)
-            colors(ASTDColor(0xEFE2FFFF).a(0.5f).hex(), ASTDColor(0xBE8CFFc1).a(0.5f).hex())
+            colors(ASTDColor(0xEAF6FFFF).a(0.5f).hex(), ASTDColor(0x9BD8FFc1).a(0.5f).hex())
             size(30f, 30f)
             glow(0.1f, 4f)
             noise(0.1f)
@@ -605,6 +605,9 @@ object ProjectileVfxSpecs {
 
     // 调色板：颜色沿用旧管线数值（视觉已目检回归，不宜再动）。
     private fun violet() = ASTDColor(0.66f, 0.42f, 1f, 1f)
+
+    // 源生冰晶族：冰蓝主色（13 号美术需求 RGB(170,225,255)，色族独立为冰蓝、不套 LENS 紫），组内内联。
+    private fun iceBlue() = ASTDColor(0.67f, 0.88f, 1f, 1f)
 
     // 重型离子脉冲：ARC 冷蓝白（全局美术约定，与电荷针刺同色系）。新共享调色板只允许收口人添加（00 §3），本组内联私有函数。
     private fun heavyIonPulseColor() = ASTDColor(0.55f, 0.78f, 1f, 1f)

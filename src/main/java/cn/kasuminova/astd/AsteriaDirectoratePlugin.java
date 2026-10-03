@@ -17,6 +17,7 @@ import cn.kasuminova.astd.impl.difficulty.LunaLibSupport;
 import cn.kasuminova.astd.renderer.effect.system.WeaponGlowLayer;
 import cn.kasuminova.astd.renderer.effect.system.GeminiDemRackVisuals;
 import cn.kasuminova.astd.renderer.effect.system.GravityPhaseVisualEffect;
+import cn.kasuminova.astd.renderer.effect.system.LoadedMissileGlowLayer;
 import cn.kasuminova.astd.renderer.effect.system.ShipGlowRenderer;
 import cn.kasuminova.astd.renderer.effect.system.Xc002GhostWingsEffect;
 import com.fs.starfarer.api.BaseModPlugin;
@@ -71,6 +72,8 @@ public final class AsteriaDirectoratePlugin extends BaseModPlugin {
         }
         // 预加载武器补档发光贴图（常驻 + 蓄能；同上原因，未被 .wpn 引用的贴图不会上传 GL）。
         WeaponGlowLayer.INSTANCE.preloadTextures();
+        // 预加载挂载弹体光效贴图（同上原因）。
+        LoadedMissileGlowLayer.INSTANCE.preloadTextures();
         // 预加载双子星 DEM 导轨弹体光效贴图（同上原因）。
         GeminiDemRackVisuals.INSTANCE.preloadTextures();
         // 预加载舰船覆盖发光层（bloom/装饰灯）贴图与引力相位红色变体（同上原因）。
