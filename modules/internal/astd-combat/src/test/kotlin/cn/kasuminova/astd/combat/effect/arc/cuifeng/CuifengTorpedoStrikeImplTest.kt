@@ -131,11 +131,13 @@ class CuifengTorpedoStrikeImplTest {
         isFighter: Boolean = false,
         parentStation: ShipAPI? = null,
         shield: ShieldAPI? = null,
+        collisionRadius: Float = 60f,
     ): ShipAPI {
         val s = mock(ShipAPI::class.java)
         val member = stubMember(dp)
         `when`(s.owner).thenReturn(owner)
         `when`(s.location).thenReturn(Vector2f(x, 0f))
+        `when`(s.collisionRadius).thenReturn(collisionRadius)
         `when`(s.isFighter).thenReturn(isFighter)
         `when`(s.isHulk).thenReturn(false)
         `when`(s.isPhased).thenReturn(false)
@@ -167,7 +169,7 @@ class CuifengTorpedoStrikeImplTest {
     }
 
     @Test
-    fun `巡洋舰直击：辐能自适应加舰体自适应合并一笔 ENERGY，无盾 bypass 落舰心`() {
+    fun `巡洋舰直击：辐能自适应加舰体自适应合并一笔 ENERGY，无盾 bypass 落点即爆心`() {
         val world = StubEngineWorld()
         // 辐能 65%（系数 0.5）、部署点 20 = 巡洋基准（差值 0）；玩家 owner=0 恒 v2：x=0.5、档位 40%
         val target = stubShip(500f, flux = StubFlux().config(6500f, 10000f)).also { world.inPlay += it }
@@ -178,8 +180,8 @@ class CuifengTorpedoStrikeImplTest {
         assertEquals(target, bonus.target)
         assertEquals(975f, bonus.amount, 1e-3f)
         assertEquals(DamageType.ENERGY, bonus.type)
-        assertTrue(bonus.bypass, "目标无盾 → bypassShields=true（七星/辉星判例口径）")
-        assertEquals(500f, bonus.point?.x, "无盾落点 = 舰心")
+        assertTrue(bonus.bypass, "目标无盾 → bypassShields=true（统一入口口径）")
+        assertEquals(500f, bonus.point?.x, "爆心在压点界限内（舰心处）→ 落点即爆心")
         assertEquals(1, world.customData[CuifengTorpedoStrikeImpl.TELE_ADAPTIVE_HITS])
         assertEquals(
             975f,
@@ -234,7 +236,7 @@ class CuifengTorpedoStrikeImplTest {
         assertEquals(1500f, aoe.amount, 1e-3f, "AOE 全额面板（不缩放）")
         assertEquals(DamageType.ENERGY, aoe.type)
         assertTrue(aoe.bypass, "波及舰无盾 → bypassShields=true")
-        assertEquals(560f, aoe.point?.x, "无盾落点 = 波及舰舰心")
+        assertEquals(506f, aoe.point?.x ?: Float.NaN, 1e-3f, "无盾落点 = 命中侧压点（距舰心 560 截断到 0.9×60=54 的靠爆心侧）")
         assertEquals(1, world.customData[CuifengTorpedoStrikeImpl.TELE_AOE_HITS])
         assertEquals(1, world.customData[CuifengTorpedoStrikeImpl.TELE_AOE_SHIP_HITS])
     }
@@ -285,7 +287,7 @@ class CuifengTorpedoStrikeImplTest {
         val bonus = world.damages[0]
         assertTrue(!bonus.bypass, "盾覆盖 → bypassShields=false（尊重护盾）")
         val expected = MathUtils.getPointOnCircumference(Vector2f(500f, 0f), 100f, 0f)
-        assertEquals(expected.x, bonus.point?.x ?: Float.NaN, 1e-3f, "落点 = 盾面（七星/辉星判例口径）")
+        assertEquals(expected.x, bonus.point?.x ?: Float.NaN, 1e-3f, "落点 = 盾面点（统一入口口径）")
         assertEquals(expected.y, bonus.point?.y ?: Float.NaN, 1e-3f)
     }
 

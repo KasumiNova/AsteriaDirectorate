@@ -84,7 +84,7 @@ object StarfallEchoTuning {
     /**
      * 第 5 发直击补伤（纯函数）：面板 × [FINAL_STACK_DAMAGE_BONUS]×层数。
      * 直击面板已由引擎原生结算，本函数只给「提升部分」，由脚本 applyDamage 补给直击目标
-     * （shieldCovers/resolveShipDamagePoint 同款判例口径；直击目标仍豁免 AOE）。
+     * （落点与 bypass 走统一入口 ExplosionStrikeImpl 口径；直击目标仍豁免 AOE）。
      */
     fun finalShotBonusDamage(finalDamage: Float, stacks: Int): Float =
         finalDamage * FINAL_STACK_DAMAGE_BONUS * stacks.coerceAtLeast(0)

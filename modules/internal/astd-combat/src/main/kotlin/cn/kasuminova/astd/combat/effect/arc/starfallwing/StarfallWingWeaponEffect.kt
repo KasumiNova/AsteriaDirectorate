@@ -364,8 +364,9 @@ class StarfallWingWeaponEffect : EveryFrameWeaponEffectPlugin {
     }
 
     /**
-     * 舰船护盾伤害落点（坠星残响 resolveShipDamagePoint 同型注记）：
-     * 盾面落点 = 舰心沿命中方向外推盾半径；落点仅影响装甲格选择与浮字位置，不影响伤害量。
+     * 舰船护盾伤害落点（统一爆炸入口 [cn.kasuminova.astd.api.combat.ExplosionStrike]
+     * 盾面点同款算法注记）：盾面落点 = 舰心沿命中方向外推盾半径；落点仅影响装甲格
+     * 选择与浮字位置，不影响伤害量。本函数为扫掠接触语境专用，不走统一入口。
      */
     private fun shieldSurfacePoint(ship: ShipAPI, contactPoint: Vector2f): Vector2f {
         val shield = ship.shield ?: return Vector2f(ship.location)

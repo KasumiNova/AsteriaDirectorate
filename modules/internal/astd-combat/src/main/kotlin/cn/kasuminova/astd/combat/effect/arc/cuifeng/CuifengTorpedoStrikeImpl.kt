@@ -1,6 +1,8 @@
 package cn.kasuminova.astd.combat.effect.arc.cuifeng
 
 import cn.kasuminova.astd.api.combat.CuifengTorpedoStrike
+import cn.kasuminova.astd.impl.combat.ExplosionStrikeImpl
+import cn.kasuminova.astd.impl.combat.FullExplosionFalloffImpl
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEntityAPI
@@ -8,7 +10,6 @@ import com.fs.starfarer.api.combat.DamageType
 import com.fs.starfarer.api.combat.DamagingProjectileAPI
 import com.fs.starfarer.api.combat.MissileAPI
 import com.fs.starfarer.api.combat.ShipAPI
-import org.lazywizard.lazylib.MathUtils
 import org.lazywizard.lazylib.combat.CombatUtils
 import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
@@ -18,15 +19,15 @@ import java.awt.Color
  * 直击自适应增伤 → 硬辐推进 → 全额面板 AOE → 特效（恒执行）的一次性结算执行体。
  * 数值全部经 [CuifengTorpedoMath] 与 [CuifengTorpedoDifficulty]。
  *
- * 玩家可见反馈（机制可视化铁律）：自适应增伤并入 `showDamageFloaty=true` 浮字；
- * 硬辐推进为紫色浮字（设计案「显示为紫色值」）；AOE 逐目标浮字；特效见
- * [CuifengTorpedoVfx]（十字辉星 + 星云，恒执行）。
+ * 玩家可见反馈（机制可视化铁律）：自适应增伤逐目标浮字（applyDamage 末参为 playSound——
+ * 播放命中音效，伤害浮字随结算自动弹出、位置由落点决定）；硬辐推进为紫色浮字
+ * （设计案「显示为紫色值」）；AOE 逐目标浮字；特效见 [CuifengTorpedoVfx]（十字辉星 + 星云，恒执行）。
  *
- * 脚本 `applyDamage` 落点与 bypassShields 走七星/辉星实机判例同款口径（盾覆盖 → 盾面落点 +
- * bypass=false；未覆盖 → 舰心落点 + bypass=true，否则盾关闭的带盾舰船全额无伤害、
- * 界内边缘点恒 0）。
+ * 落点与 bypassShields 全库统一走 [ExplosionStrikeImpl]（盾覆盖爆心 → 盾面点 + bypass=false；
+ * 未覆盖 → 命中侧压点 + bypass=true），不再使用历史「退回舰心」口径。
  *
- * AOE 口径裁定（设计案「打中造成的伤害本身即为范围伤害，全额面板作用于爆炸范围内所有目标」）：
+ * AOE 口径裁定（设计案「打中造成的伤害本身即为范围伤害，全额面板作用于爆炸范围内所有目标」；
+ * 用户裁定：摧锋 AOE 固定全额 100%、无距离衰减）：
  * 存活的直击目标豁免 AOE——直击面板已由引擎原生结算，重复计入会让直击目标实吃两倍面板；
  * 直击目标本帧已死（被直击面板击毁）时不再豁免（残骸不参与结算）。
  */
@@ -97,10 +98,9 @@ object CuifengTorpedoStrikeImpl : CuifengTorpedoStrike {
 
             val totalBonus = fluxBonus + hullBonus
             if (totalBonus > 0f) {
-                val covered = shieldCovers(target, point)
-                val dmgPoint = resolveShipDamagePoint(target, point)
+                val covered = ExplosionStrikeImpl.shieldCovers(target, point)
                 engine.applyDamage(
-                    target, dmgPoint, totalBonus,
+                    target, ExplosionStrikeImpl.resolveDamagePoint(target, point), totalBonus,
                     DamageType.ENERGY, 0f, !covered, false, source, true,
                 )
                 bump(engine, TELE_ADAPTIVE_HITS)
@@ -121,21 +121,19 @@ object CuifengTorpedoStrikeImpl : CuifengTorpedoStrike {
         }
 
         // ---- 步骤 3：全额面板 AOE（150su；存活直击目标豁免，见类头裁定）----
-        for (victim in coarseQuery(point, CuifengTorpedoDifficulty.AOE_RADIUS)) {
-            if (victim === projectile) continue
-            if (victim.owner == owner) continue
-            if (victim !is ShipAPI && victim !is MissileAPI) continue
-            if (victim is ShipAPI && (victim.isHulk || victim.isPhased)) continue
-            if (victim is MissileAPI && victim.isExpired) continue
-            if (victim === target && engine.isEntityInPlay(victim)) continue
-
-            val covered = (victim as? ShipAPI)?.let { shieldCovers(it, point) } == true
-            val dmgPoint = (victim as? ShipAPI)?.let { resolveShipDamagePoint(it, point) } ?: Vector2f(point)
-            engine.applyDamage(
-                victim, dmgPoint, panel,
-                DamageType.ENERGY, 0f,
-                victim is ShipAPI && !covered, false, source, true,
-            )
+        // 统一结算入口：内置过滤（同 owner/类型/hulk/相位/过期）后由 victimFilter 终判
+        // 弹体自身与存活直击目标豁免；全额模式（用户裁定固定 100%，无距离衰减）。
+        val aoeVictims = ExplosionStrikeImpl.strike(
+            engine, point, CuifengTorpedoDifficulty.AOE_RADIUS, panel, DamageType.ENERGY,
+            emp = 0f, source, owner,
+            FullExplosionFalloffImpl,
+            victimFilter = { victim ->
+                victim !== projectile && !(victim === target && engine.isEntityInPlay(victim))
+            },
+            playSound = true,
+            coarseQuery = coarseQuery,
+        )
+        for (victim in aoeVictims) {
             bump(engine, TELE_AOE_HITS)
             if (victim is ShipAPI && !victim.isFighter) bump(engine, TELE_AOE_SHIP_HITS)
             // 受害目标身份遥测（实机场景定位 AOE 误伤/豁免口径用）：类名@规格或舰体 id
@@ -164,40 +162,6 @@ object CuifengTorpedoStrikeImpl : CuifengTorpedoStrike {
         ShipAPI.HullSize.CRUISER -> CuifengTorpedoDifficulty.DP_BASELINE_CRUISER
         ShipAPI.HullSize.CAPITAL_SHIP -> CuifengTorpedoDifficulty.DP_BASELINE_CAPITAL
         else -> 0f
-    }
-
-    /**
-     * 盾覆盖判定（七星/辉星同名实现同型注记）：盾开启且 [explosionPoint] 在盾弧内。
-     * 覆盖时 bypassShields=false（尊重护盾）；未覆盖时必须 true（实机判例：盾关闭的
-     * 带盾舰船 bypass=false 全额无伤害）。
-     */
-    private fun shieldCovers(ship: ShipAPI, explosionPoint: Vector2f): Boolean {
-        val shield = ship.shield ?: return false
-        return shield.isOn && shield.isWithinArc(explosionPoint)
-    }
-
-    /**
-     * 舰船伤害落点（七星/辉星同名实现同型注记）：盾覆盖 → 盾面落点；未覆盖 → 恒舰心
-     * （实机判例：脚本 applyDamage 的界内边缘点恒 0 伤害，舰心点正常；落点仅影响
-     * 装甲格选择与浮字位置，不影响伤害量）。
-     */
-    private fun resolveShipDamagePoint(ship: ShipAPI, explosionPoint: Vector2f): Vector2f {
-        val shield = ship.shield
-        if (shield != null && shield.isOn && shield.isWithinArc(explosionPoint)) {
-            val shieldLoc = shield.location ?: return Vector2f(ship.location)
-            val radius = shield.radius
-            if (radius <= 0f) return Vector2f(ship.location)
-            // 不取 Misc.getAngleInDegrees：Misc 类初始化依赖游戏运行时（无头/单测直接
-            // ExceptionInInitializerError），此处语义等价于 atan2 直出角度，就地计算
-            val angle = Math.toDegrees(
-                kotlin.math.atan2(
-                    (explosionPoint.y - shieldLoc.y).toDouble(),
-                    (explosionPoint.x - shieldLoc.x).toDouble(),
-                ),
-            ).toFloat()
-            return MathUtils.getPointOnCircumference(shieldLoc, radius, angle)
-        }
-        return Vector2f(ship.location)
     }
 
     // ---- dev 自动化烟测遥测键（engine.customData 证据计数，辉星同型惯例） ----

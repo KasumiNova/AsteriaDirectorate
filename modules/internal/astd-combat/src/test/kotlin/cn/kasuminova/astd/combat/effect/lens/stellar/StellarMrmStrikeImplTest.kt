@@ -127,10 +127,11 @@ class StellarMrmStrikeImplTest {
         return w
     }
 
-    private fun stubFighter(x: Float, weapons: List<WeaponAPI>): ShipAPI {
+    private fun stubFighter(x: Float, weapons: List<WeaponAPI>, collisionRadius: Float = 10f): ShipAPI {
         val s = mock(ShipAPI::class.java)
         `when`(s.owner).thenReturn(1)
         `when`(s.location).thenReturn(Vector2f(x, 0f))
+        `when`(s.collisionRadius).thenReturn(collisionRadius)
         `when`(s.isFighter).thenReturn(true)
         `when`(s.isHulk).thenReturn(false)
         `when`(s.isPhased).thenReturn(false)
@@ -140,10 +141,11 @@ class StellarMrmStrikeImplTest {
         return s
     }
 
-    private fun stubShip(x: Float): ShipAPI {
+    private fun stubShip(x: Float, collisionRadius: Float = 60f): ShipAPI {
         val s = mock(ShipAPI::class.java)
         `when`(s.owner).thenReturn(1)
         `when`(s.location).thenReturn(Vector2f(x, 0f))
+        `when`(s.collisionRadius).thenReturn(collisionRadius)
         `when`(s.isFighter).thenReturn(false)
         `when`(s.isHulk).thenReturn(false)
         `when`(s.isPhased).thenReturn(false)
@@ -211,12 +213,14 @@ class StellarMrmStrikeImplTest {
         val bonus = world.damages[0]
         assertEquals(fighter, bonus.target); assertEquals(100f, bonus.amount)
         assertEquals(DamageType.ENERGY, bonus.type); assertEquals(0f, bonus.emp)
-        assertEquals(500f, bonus.point?.x, "增伤落点 = 舰心（七星判例口径）")
+        // 命中点 (505,8) 距舰心 √89 ≈ 9.43 > 0.9×10 = 9 → 命中侧压点（不再是舰心）
+        assertEquals(504.77f, bonus.point?.x ?: Float.NaN, 1e-2f, "增伤落点 = 命中侧压点（统一入口口径）")
+        assertEquals(7.63f, bonus.point?.y ?: Float.NaN, 1e-2f)
         val aoeDirect = world.damages[1]
         assertEquals(fighter, aoeDirect.target); assertEquals(100f, aoeDirect.amount)
         val aoeBystander = world.damages[2]
         assertEquals(bystander, aoeBystander.target); assertEquals(100f, aoeBystander.amount)
-        assertTrue(world.damages.all { it.bypass }, "目标无盾 → bypassShields=true（七星实机判例口径）")
+        assertTrue(world.damages.all { it.bypass }, "目标无盾 → bypassShields=true（统一入口口径）")
 
         // 全部武器 EMP：存活武器各扣 400（300 上限扣至 0 触发原版熄火），已瘫痪武器跳过。
         assertEquals(0f, w1.currHealth, "w1 存活武器 300-400 扣至 0（原版组件熄火阈值）")

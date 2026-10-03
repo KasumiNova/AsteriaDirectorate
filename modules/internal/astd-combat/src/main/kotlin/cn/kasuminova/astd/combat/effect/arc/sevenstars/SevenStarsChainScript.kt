@@ -220,7 +220,7 @@ class SevenStarsChainScript(
         if (!tuning.multiSegmentTerminal) {
             // 单段（玩家恒此）：折跃至舰缘，50% 面板一段，无 EMP（设计案按字面解读）。
             // 落点走碰撞箱贴边取点（RiftCascade 同款走位，见 sampleRiftCascadePoints 注）；
-            // bypassShields 口径见 SevenStarsDamageHandler 实机判例。
+            // 伤害落点与 bypassShields 口径见 SevenStarsDamageHandler（统一入口 ExplosionStrikeImpl）。
             val strikePoint = SevenStarsDamageHandler.sampleRiftCascadePoints(ship, 1, anchor).first()
             SevenStarsVfx.teleport(engine, anchor, strikePoint, source, ship)
             bumpTelemetry(engine, TELEMETRY_TELEPORT_ARC)

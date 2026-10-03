@@ -17,6 +17,7 @@ import org.apache.log4j.Level
 import org.apache.log4j.Logger
 import org.apache.log4j.spi.LoggingEvent
 import org.lwjgl.util.vector.Vector2f
+import org.mockito.ArgumentCaptor
 import org.mockito.ArgumentMatchers.any
 import org.mockito.ArgumentMatchers.anyBoolean
 import org.mockito.ArgumentMatchers.anyFloat
@@ -359,11 +360,12 @@ class AnnihilationVortexAbsorbTest {
  */
 class AnnihilationVortexCollapseTest {
 
-    private fun ship(owner: Int, hulk: Boolean = false, at: Vector2f = Vector2f(50f, 0f)): ShipAPI {
+    private fun ship(owner: Int, hulk: Boolean = false, at: Vector2f = Vector2f(50f, 0f), radius: Float = 30f): ShipAPI {
         val s = mock(ShipAPI::class.java)
         `when`(s.owner).thenReturn(owner)
         `when`(s.isHulk).thenReturn(hulk)
         `when`(s.location).thenReturn(at)
+        `when`(s.collisionRadius).thenReturn(radius)
         return s
     }
 
@@ -389,10 +391,14 @@ class AnnihilationVortexCollapseTest {
         )
 
         assertEquals(2, hits, "仅敌方活舰 + 敌方导弹命中")
+        // 舰船落点统一入口口径：无盾 → 命中侧压点（距舰心 50 截断到 0.9×30=27 的靠爆心侧）+ bypassShields=true
+        val pointCaptor = ArgumentCaptor.forClass(Vector2f::class.java)
         verify(engine, times(1)).applyDamage(
-            eq(enemyShip), any(Vector2f::class.java), eq(500f), eq(DamageType.ENERGY),
-            eq(0f), eq(false), eq(false), eq(source), eq(true),
+            eq(enemyShip), pointCaptor.capture(), eq(500f), eq(DamageType.ENERGY),
+            eq(0f), eq(true), eq(false), eq(source), eq(true),
         )
+        assertEquals(23f, pointCaptor.value.x, 1e-3f, "落点 = 命中侧压点，不再是舰心")
+        assertEquals(0f, pointCaptor.value.y, 1e-3f)
         verify(engine, times(1)).applyDamage(
             eq(enemyMissile), any(Vector2f::class.java), eq(500f), eq(DamageType.ENERGY),
             eq(0f), eq(false), eq(false), eq(source), eq(true),

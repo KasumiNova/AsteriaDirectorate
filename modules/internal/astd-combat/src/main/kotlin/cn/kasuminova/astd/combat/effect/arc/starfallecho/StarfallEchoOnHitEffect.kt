@@ -2,6 +2,7 @@ package cn.kasuminova.astd.combat.effect.arc.starfallecho
 
 import cn.kasuminova.astd.api.buff.buffHost
 import cn.kasuminova.astd.combat.effect.arc.starfallecho.StarfallEchoOnFireEffect.Companion.FINAL_SHOT_MARK_KEY
+import cn.kasuminova.astd.impl.combat.ExplosionStrikeImpl
 import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEntityAPI
@@ -28,11 +29,12 @@ import org.lwjgl.util.vector.Vector2f
  *   直击目标），后消耗全部层数，
  *   最后播放爆炸特效（[StarfallEchoVfx.explosion]，十字辉星跟随「目标舰心 → 命中点」方位交叉）。
  *
- * AOE 口径（摧锋同款裁定）：存活直击目标豁免 AOE（直击面板已由引擎原生结算，重复计入会双倍）；
+ * AOE 口径（摧锋同款裁定；用户裁定：残响 AOE 固定全额 100%、无距离衰减）：存活直击目标豁免
+ * AOE（直击面板已由引擎原生结算，重复计入会双倍）；
  * 同阵营目标豁免；舰船遮挡豁免——爆心到目标舰心的视线被其他存活舰船（含被直击船、不分阵营，
  * 不含残骸与相位单位）的碰撞圆截断时该目标不受波及（完全遮挡即免伤，见 [isOccluded]）。
- * 脚本 `applyDamage` 落点与 bypassShields 走七星/辉星/摧锋实机判例同款口径
- * （盾覆盖 → 盾面落点 + bypass=false；未覆盖 → 舰心落点 + bypass=true）。
+ * 落点与 bypassShields 全库统一走 [ExplosionStrikeImpl]（盾覆盖爆心 → 盾面点 + bypass=false；
+ * 未覆盖 → 命中侧压点 + bypass=true），不再使用历史「退回舰心」口径。
  *
  * 难度取值每次命中调用 [StarfallEchoTuning.resolve] 一次（不缓存）。
  */
@@ -106,19 +108,19 @@ class StarfallEchoOnHitEffect : OnHitEffectPlugin {
         val owner = source?.owner ?: 0
 
         // 直击补伤：每层被消耗的谐振使第 5 发伤害 +50%，提升部分由脚本补给直击目标
-        // （盾覆盖 → 盾面落点 + bypass=false；未覆盖 → 舰心落点 + bypass=true，与 AOE 同判例口径）；
-        // 仅存活舰船直击目标可补（非舰目标无谐振层，恒 0 不进入此分支）
+        // （落点与 bypass 走统一入口：盾覆盖爆心 → 盾面点 + bypass=false；未覆盖 → 命中侧压点
+        // + bypass=true，与 AOE 同口径）；仅存活舰船直击目标可补（非舰目标无谐振层，恒 0 不进入此分支）
         val bonus = StarfallEchoTuning.finalShotBonusDamage(panel, stacks)
         if (ship != null && bonus > 0f && engine.isEntityInPlay(ship)) {
-            val covered = shieldCovers(ship, hitPoint)
+            val covered = ExplosionStrikeImpl.shieldCovers(ship, hitPoint)
             engine.applyDamage(
-                ship, resolveShipDamagePoint(ship, hitPoint), bonus,
+                ship, ExplosionStrikeImpl.resolveDamagePoint(ship, hitPoint), bonus,
                 DamageType.ENERGY, 0f,
                 !covered, false, source, true,
             )
         }
 
-        // 范围能量结算（存活直击目标与同阵营豁免，摧锋同款裁定）。
+        // 范围能量结算全额 100%（用户裁定，无距离衰减；存活直击目标与同阵营豁免，摧锋同款裁定）。
         // 模块舰（空间站）按站去重选举一名代表结算——逐模块全额叠加会把空间站按模块数倍数
         // 击穿（实机判例：750su 半径全覆盖模块群，总伤害 = 单发 × 模块数 + 主舰体）。
         // 舰船遮挡豁免：爆心 → 目标舰心的视线被其他存活舰船碰撞圆截断的目标不受波及。
@@ -139,8 +141,8 @@ class StarfallEchoOnHitEffect : OnHitEffectPlugin {
             for (victim in plan.regular + plan.stationRepresentatives) {
                 val victimLoc = victim.location ?: continue
                 if (isOccluded(hitPoint, victimLoc, blockerCircles(blockers, victim))) continue
-                val covered = (victim as? ShipAPI)?.let { shieldCovers(it, hitPoint) } == true
-                val dmgPoint = (victim as? ShipAPI)?.let { resolveShipDamagePoint(it, hitPoint) } ?: Vector2f(hitPoint)
+                val covered = (victim as? ShipAPI)?.let { ExplosionStrikeImpl.shieldCovers(it, hitPoint) } == true
+                val dmgPoint = (victim as? ShipAPI)?.let { ExplosionStrikeImpl.resolveDamagePoint(it, hitPoint) } ?: Vector2f(hitPoint)
                 engine.applyDamage(
                     victim, dmgPoint, damage,
                     DamageType.ENERGY, 0f,
@@ -169,40 +171,6 @@ class StarfallEchoOnHitEffect : OnHitEffectPlugin {
                 (hitPoint.x - origin.x).toDouble(),
             ),
         ).toFloat()
-    }
-
-    /**
-     * 盾覆盖判定（七星/辉星/摧锋同名实现同型注记）：盾开启且爆心在盾弧内。
-     * 覆盖时 bypassShields=false（尊重护盾）；未覆盖时必须 true（实机判例：盾关闭的
-     * 带盾舰船 bypass=false 全额无伤害）。
-     */
-    private fun shieldCovers(ship: ShipAPI, explosionPoint: Vector2f): Boolean {
-        val shield = ship.shield ?: return false
-        return shield.isOn && shield.isWithinArc(explosionPoint)
-    }
-
-    /**
-     * 舰船伤害落点（七星/辉星/摧锋同名实现同型注记）：盾覆盖 → 盾面落点；未覆盖 → 恒舰心
-     * （实机判例：脚本 applyDamage 的界内边缘点恒 0 伤害，舰心点正常；落点仅影响
-     * 装甲格选择与浮字位置，不影响伤害量）。
-     */
-    private fun resolveShipDamagePoint(ship: ShipAPI, explosionPoint: Vector2f): Vector2f {
-        val shield = ship.shield
-        if (shield != null && shield.isOn && shield.isWithinArc(explosionPoint)) {
-            val shieldLoc = shield.location ?: return Vector2f(ship.location)
-            val radius = shield.radius
-            if (radius <= 0f) return Vector2f(ship.location)
-            // 不取 Misc.getAngleInDegrees：Misc 类初始化依赖游戏运行时（无头/单测直接
-            // ExceptionInInitializerError），此处语义等价于 atan2 直出角度，就地计算
-            val angle = Math.toDegrees(
-                kotlin.math.atan2(
-                    (explosionPoint.y - shieldLoc.y).toDouble(),
-                    (explosionPoint.x - shieldLoc.x).toDouble(),
-                ),
-            ).toFloat()
-            return MathUtils.getPointOnCircumference(shieldLoc, radius, angle)
-        }
-        return Vector2f(ship.location)
     }
 
     /** AOE 目标分配结果：[regular] 逐个全额结算；[stationRepresentatives] 每座空间站一名代表。 */

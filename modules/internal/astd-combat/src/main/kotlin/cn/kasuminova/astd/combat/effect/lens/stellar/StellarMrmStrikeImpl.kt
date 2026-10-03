@@ -2,6 +2,8 @@ package cn.kasuminova.astd.combat.effect.lens.stellar
 
 import cn.kasuminova.astd.api.combat.StellarMrmStrike
 import cn.kasuminova.astd.combat.effect.lens.stellar.StellarMrmStrikeImpl.LAZYLIB_COARSE_QUERY
+import cn.kasuminova.astd.impl.combat.ExplosionStrikeImpl
+import cn.kasuminova.astd.impl.combat.FullExplosionFalloffImpl
 import cn.kasuminova.astd.renderer.effect.explosion.RiftExplosionVfx
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
@@ -10,8 +12,6 @@ import com.fs.starfarer.api.combat.DamageType
 import com.fs.starfarer.api.combat.DamagingProjectileAPI
 import com.fs.starfarer.api.combat.MissileAPI
 import com.fs.starfarer.api.combat.ShipAPI
-import com.fs.starfarer.api.util.Misc
-import org.lazywizard.lazylib.MathUtils
 import org.lazywizard.lazylib.combat.CombatUtils
 import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
@@ -20,16 +20,15 @@ import java.awt.Color
  * [StellarMrmStrike] 的无状态实现（规格 08 §2.2）：撞线者死 → 猎机本能 → 辉星爆炸
  * （爆炸恒执行）的一次性结算执行体。数值全部经 [StellarMrmStrikeMath] 与 [StellarMrmDifficulty]。
  *
- * 玩家可见反馈（规格 08 §2.3 机制可视化铁律）：增伤/EMP/AOE 均 `showDamageFloaty=true` 浮字；
+ * 玩家可见反馈（规格 08 §2.3 机制可视化铁律）：增伤/EMP/AOE 逐目标伤害浮字（applyDamage
+ * 末参为 playSound——播放命中音效，伤害浮字随结算自动弹出、位置由落点决定）；
  * 战机全部武器 EMP 逐武器一道紫色电弧（`spawnEmpArcVisual`，Vector2f 端点重载——WeaponAPI
  * 非 CombatEntityAPI 不能作电弧锚点实体，规格 §0 已核实）；辉星爆炸为模组通用裂隙爆炸
  * [RiftExplosionVfx]（需求定案：与七星同款裂隙洪流发射极式裂隙爆炸，60% 相对缩放
  * 保持辉星较小观感）。
  *
- * 脚本 `applyDamage` 落点与 bypassShields 走七星实机判例同款口径
- * （[cn.kasuminova.astd.combat.effect.arc.sevenstars.SevenStarsDamageHandler] 注记：盾覆盖 → 盾面落点 +
- * bypass=false；未覆盖 → 舰心落点 + bypass=true，否则盾关闭的带盾舰船全额无伤害、
- * 界内边缘点恒 0）——规格字面调用参数与该判例冲突，按设计意图「爆炸恒有范围伤害」落判例口径。
+ * 落点与 bypassShields 全库统一走 [ExplosionStrikeImpl]（盾覆盖爆心 → 盾面点 + bypass=false；
+ * 未覆盖 → 命中侧压点 + bypass=true），不再使用历史「退回舰心」口径。
  * 战机 EMP 不走引擎伤害通路：三轮烟测 + 探针实证 0.98 的 emp-only applyDamage 与
  * spawnEmpArc 对战机武器组件均无法送达，改走逐武器 setCurrHealth 直接结算
  * （原版组件熄火/自修终态一致，见步骤 2b 注记）。
@@ -115,11 +114,10 @@ object StellarMrmStrikeImpl : StellarMrmStrike {
 
         // ---- 步骤 2：猎机本能（战机机体命中：增伤 + 全部武器 EMP）----
         if (target is ShipAPI && target.isFighter && !shieldHit && !target.isHulk) {
-            val covered = shieldCovers(target, point)
-            val dmgPoint = resolveShipDamagePoint(target, point)
-            // a. 增伤：能量伤害浮字（showDamageFloaty=true，玩家可见数字自然变大）
+            val covered = ExplosionStrikeImpl.shieldCovers(target, point)
+            // a. 增伤：能量伤害逐目标浮字（玩家可见数字自然变大）
             engine.applyDamage(
-                target, dmgPoint,
+                target, ExplosionStrikeImpl.resolveDamagePoint(target, point),
                 StellarMrmStrikeMath.fighterBonusDamage(panel, fBonus),
                 DamageType.ENERGY, 0f, !covered, false, source, true,
             )
@@ -149,24 +147,21 @@ object StellarMrmStrikeImpl : StellarMrmStrike {
         }
 
         // ---- 步骤 3：辉星爆炸（任意撞击恒触发；无有效受害目标时仅 VFX，合法）----
+        // 统一结算入口（全额模式，现役站点一律 100% 无距离衰减）：内置过滤后由
+        // victimFilter 终判弹体自身与已死直击目标豁免——存活直击目标与区域内目标同额
+        // （对齐七星「直击与区域同额」裁定口径）。
         val expDamage = StellarMrmStrikeMath.explosionDamage(panel, expMult)
-        for (victim in coarseQuery(point, StellarMrmDifficulty.EXPLOSION_RADIUS)) {
-            if (victim === projectile) continue
-            if (victim.owner == owner) continue
-            if (victim !is ShipAPI && victim !is MissileAPI) continue
-            if (victim is ShipAPI && (victim.isHulk || victim.isPhased)) continue
-            if (victim is MissileAPI && victim.isExpired) continue
-            // 直接命中目标仅在已死（撞线移除/本帧击毁）时豁免 AOE；存活时与区域内目标同额
-            // （对齐七星「直击与区域同额」裁定口径）。
-            if (victim === target && !engine.isEntityInPlay(victim)) continue
-
-            val covered = (victim as? ShipAPI)?.let { shieldCovers(it, point) } == true
-            val dmgPoint = (victim as? ShipAPI)?.let { resolveShipDamagePoint(it, point) } ?: Vector2f(point)
-            engine.applyDamage(
-                victim, dmgPoint, expDamage,
-                DamageType.ENERGY, 0f,
-                victim is ShipAPI && !covered, false, source, true,
-            )
+        val aoeVictims = ExplosionStrikeImpl.strike(
+            engine, point, StellarMrmDifficulty.EXPLOSION_RADIUS, expDamage, DamageType.ENERGY,
+            emp = 0f, source, owner,
+            FullExplosionFalloffImpl,
+            victimFilter = { victim ->
+                victim !== projectile && !(victim === target && !engine.isEntityInPlay(victim))
+            },
+            playSound = true,
+            coarseQuery = coarseQuery,
+        )
+        for (victim in aoeVictims) {
             bump(engine, TELE_AOE_HITS)
             if (victim is ShipAPI && !victim.isFighter) bump(engine, TELE_AOE_SHIP_HITS)
         }
@@ -174,33 +169,6 @@ object StellarMrmStrikeImpl : StellarMrmStrike {
         // VFX 恒执行：裂隙爆炸（模组通用组件，蓝色族，60% 相对缩放）。
         RiftExplosionVfx.riftExplosion(engine, point, radius = RiftExplosionVfx.DEFAULT_RADIUS * RIFT_RADIUS_SCALE)
         bump(engine, TELE_EXPLOSIONS)
-    }
-
-    /**
-     * 盾覆盖判定（七星同名实现同型注记）：盾开启且 [explosionPoint] 在盾弧内。
-     * 覆盖时 bypassShields=false（尊重护盾）；未覆盖时必须 true（实机判例：盾关闭的
-     * 带盾舰船 bypass=false 全额无伤害）。
-     */
-    private fun shieldCovers(ship: ShipAPI, explosionPoint: Vector2f): Boolean {
-        val shield = ship.shield ?: return false
-        return shield.isOn && shield.isWithinArc(explosionPoint)
-    }
-
-    /**
-     * 舰船伤害落点（七星同名实现同型注记）：盾覆盖 → 盾面落点；未覆盖 → 恒舰心
-     * （实机判例：脚本 applyDamage 的界内边缘点恒 0 伤害，舰心点正常；落点仅影响
-     * 装甲格选择与浮字位置，不影响伤害量）。
-     */
-    private fun resolveShipDamagePoint(ship: ShipAPI, explosionPoint: Vector2f): Vector2f {
-        val shield = ship.shield
-        if (shield != null && shield.isOn && shield.isWithinArc(explosionPoint)) {
-            val shieldLoc = shield.location ?: return Vector2f(ship.location)
-            val radius = shield.radius
-            if (radius <= 0f) return Vector2f(ship.location)
-            val angle = Misc.getAngleInDegrees(shieldLoc, explosionPoint)
-            return MathUtils.getPointOnCircumference(shieldLoc, radius, angle)
-        }
-        return Vector2f(ship.location)
     }
 
     // ---- dev 自动化烟测遥测键（engine.customData 证据计数，HeavyIonPulseVfx 同型惯例） ----
