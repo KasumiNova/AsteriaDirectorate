@@ -13,7 +13,7 @@
 
 - 小型（`astd_cuifeng_torpedo`）已实装**无发射架**形态：炮塔/挂点 sprite 均为 BoxUtil 空白贴图 `graphics/textures/BUtil_NONE.png`，保留 `RENDER_LOADED_MISSILES` 只渲染待发弹体本体；物品图标由原版 WeaponIconRenderer 渲染弹体本体，不需要独立图标贴图
 - 中型发射架（`astd_cuifeng_launcher`）已交付独立贴图：36×44 底图（炮塔/挂点共用，兼作图标）+ `WeaponGlowLayer` 派生常驻微光层（`_glow_ambient` / `_hp_glow_ambient`）
-- 弹体仍占位原版 `torpedo_guided2.png`（10×21），纤细制导体态与重锤定位不符，待补
+- 弹体已用自制 `graphics/weapons/astd_cuifeng_missile.png`（13×35），同图承担挂点待发弹体（RENDER_LOADED_MISSILES）与飞行本体（.proj sprite）渲染；粗壮度仍待美术重画，重画后替换同一路径即可
 - 弹体 VFX 已实装：ARC 冷蓝白拖尾（带长 = 射程 50%，亮头直抵弹头）+ 弹头 SMOOTH 光斑 + 命中双叠十字辉星与蓝白爆炸星云，不需要特效贴图
 - 弹体走原版渲染路径（`.proj` sprite），弹头朝上
 
@@ -30,7 +30,7 @@
 
 | 资产 | 文件命名 | 画布基准 | 说明 |
 |---|---|---|---|
-| 鱼雷弹体 | `contents/graphics/missiles/astd_cuifeng_torpedo.png` | 14×24 竖构图 | 两槽位共用弹体；比原版鱼雷更粗短 |
+| 鱼雷弹体重画 | 替换现有 `graphics/weapons/astd_cuifeng_missile.png`（13×35） | 竖构图 | 两槽位共用弹体；比原版鱼雷更粗短，重画后同路径替换 |
 
 小型（`astd_cuifeng_torpedo`）按裁定为无发射架形态：sprite 用空白贴图，只渲染弹体本体，图标渲染弹体，不需要任何发射架贴图。
 
