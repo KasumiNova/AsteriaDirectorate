@@ -407,8 +407,16 @@ internal class TrailLeaseBinding(
     fun touch(index: Int, generation: Int) = slots.touch(index, generation)
 
     fun release(index: Int, generation: Int, fadeOut: Float) {
+        // 立即归还（fadeOut=0）也必须泊车：slots.release 直接 free 不产生 Parked 事件，
+        // 不泊车实体会以最后驱动的 alpha/节点永久残留渲染（槽位 FREE 后无人再驱动）。
+        // 先记持有状态再释放——过期句柄（槽位已被新租约认领）不得泊车新租约的实体。
+        val wasHeld = slots.isHeld(index, generation)
         val needSnapshot = slots.release(index, generation, fadeOut)
-        if (needSnapshot) snapshotCurrentAlphas(index)
+        if (needSnapshot) {
+            snapshotCurrentAlphas(index)
+            return
+        }
+        if (wasHeld) entities.getOrNull(index)?.let { parkEntity(it) }
     }
 
     /** 池推进：包络/看门狗/释放淡出的 alpha 写盘与到期泊车。 */
