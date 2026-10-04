@@ -219,9 +219,6 @@ object ProjectileVfxSpecs {
         return ProjectileVfxRegistry.build(projectileSpecId, weaponRangeSu)
     }
 
-    /** 炮口锥面节流的最近触发时间 customData 键前缀（按 舰船id|槽位id 分键，见 [simpleProjectileVfx]）。 */
-    private const val MUZZLE_BURST_LAST_PREFIX = "astd_muzzle_burst_last:"
-
     /**
      * 炮口锥面冲击规格（[simpleProjectileVfx] 的 muzzleBurst 参数）。
      * 默认值为中大型舰炮口径（穷距轨道炮/彗星冲击波同款）；小槽武器缩小，旗舰级武器放大。
@@ -230,12 +227,6 @@ object ProjectileVfxSpecs {
         val length: Float = 120f,
         val halfAngleDeg: Float = 20f,
         val duration: Float = 0.35f,
-        /**
-         * 同武器最小触发间隔（秒）：null = 取 [duration]（锥面存续期内同一武器不叠第二发——
-         * 电驱加速炮 0.15s/发、正电子冲击波 PD 这类高射速武器每发都放会把 trail 租约池打到
-         * 拒发，而存续 0.35s+ 的锥面本就相互重叠，跳发无观感差异）；0 = 不节流每发都放。
-         */
-        val minIntervalSeconds: Float? = null,
     )
 
     /**
@@ -330,18 +321,6 @@ object ProjectileVfxSpecs {
         }
         if (muzzleBurst != null) {
             onFire { engine, projectile ->
-                // 同武器节流：间隔不足跳过本次锥面（默认间隔 = duration，见 MuzzleBurst 文档）。
-                // 按 舰船+槽位 分键（engine.customData），weapon/source 缺失时无法分键则不节流
-                val weapon = projectile.weapon
-                val source = projectile.source
-                val minInterval = muzzleBurst.minIntervalSeconds ?: muzzleBurst.duration
-                if (weapon != null && source != null && minInterval > 0f) {
-                    val now = engine.getTotalElapsedTime(false)
-                    val throttleKey = MUZZLE_BURST_LAST_PREFIX + source.id + "|" + weapon.slot.id
-                    val last = engine.customData[throttleKey] as? Float ?: Float.NEGATIVE_INFINITY
-                    if (now - last < minInterval) return@onFire
-                    engine.customData[throttleKey] = now
-                }
                 ConeImpactVfx.spawn(
                     engine,
                     ConeImpactVfxSpec(

@@ -309,10 +309,9 @@ class StrikeSprayComponent(
         const val TRAIL_MIX_POWER = 3.0f
 
         /**
-         * 刺束针池化租约键（全组件实例共用，初始容量 = 典型峰值估算：炮口锥面经同武器节流后
-         * 存续期内 ≤1 发/武器，极端舰队战约 30 并发锥 × 平均 ~12 针，取 384；泊车实体零节点
-         * 被 BoxUtil 渲染循环直接跳过，容量不构成常驻底噪）。池满按需扩容，触及硬上限
-         * （默认 8× 初始容量）才拒发 + 节流 WARN（不抢占在租针）。
+         * 刺束针池化租约键（全组件实例共用，初始容量 = 典型峰值估算：约 30 并发锥 × 平均 ~12 针，
+         * 取 384；泊车实体零节点被 BoxUtil 渲染循环直接跳过，容量不构成常驻底噪）。
+         * 池满按需扩容，触及硬上限（默认 8× 初始容量）才拒发 + 节流 WARN（不抢占在租针）。
          */
         internal val POOL_KEY = TrailLeaseKey(
             layer = CombatEngineLayers.ABOVE_SHIPS_AND_MISSILES_LAYER,
