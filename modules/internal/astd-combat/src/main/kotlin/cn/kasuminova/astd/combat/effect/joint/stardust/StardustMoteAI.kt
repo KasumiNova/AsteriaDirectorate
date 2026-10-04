@@ -7,6 +7,7 @@ import com.fs.starfarer.api.combat.MissileAPI
 import com.fs.starfarer.api.impl.combat.MoteAIScript
 import com.fs.starfarer.api.impl.combat.MoteControlScript
 import org.lazywizard.lazylib.MathUtils
+import org.lazywizard.lazylib.combat.CombatUtils
 
 /**
  * 星尘光尘 AI：继承原版 [MoteAIScript] 白拿 600su 环绕 flocking（源舰引力/斥力/切向漂移），
@@ -53,18 +54,18 @@ class StardustMoteAI(missile: MissileAPI) : MoteAIScript(missile) {
         if (source.isHulk) target = null
     }
 
-    /** 最近敌导弹（含鱼雷；排除 owner 100 的中全体）。 */
+    /** 最近敌导弹（含鱼雷；排除 owner 100 的中全体）。空间网格粗筛后再按原口径精判。 */
     private fun pickMissile(engine: CombatEngineAPI): CombatEntityAPI? =
-        engine.missiles
+        CombatUtils.getMissilesWithinRange(missile.location, resolveEngageRange())
             .asSequence()
             .filter { it.owner != missile.owner && it.owner != 100 }
             .filter { isInEngageRange(it) }
             .filter { getNumMotesTargeting(it) < StardustMoteTuning.MAX_MOTES_PER_TARGET }
             .minByOrNull { MathUtils.getDistance(missile.location, it.location) }
 
-    /** 最近敌战机/舰船（fighters=true 取战机档，false 取舰船档；排除 hulk/相位/不可选）。 */
+    /** 最近敌战机/舰船（fighters=true 取战机档，false 取舰船档；排除 hulk/相位/不可选）。空间网格粗筛后再按原口径精判。 */
     private fun pickShip(engine: CombatEngineAPI, fighters: Boolean): CombatEntityAPI? =
-        engine.ships
+        CombatUtils.getShipsWithinRange(missile.location, resolveEngageRange())
             .asSequence()
             .filter { it.owner != missile.owner && it.owner != 100 }
             .filter { if (fighters) it.isFighter else !it.isFighter }
@@ -77,6 +78,19 @@ class StardustMoteAI(missile: MissileAPI) : MoteAIScript(missile) {
     private fun isInEngageRange(entity: CombatEntityAPI): Boolean {
         // 源舰消亡后光尘不再接敌（孤儿弹体只环绕游荡至自然熄灭）
         if (missile.source == null) return false
+        return MathUtils.getDistance(missile.location, entity.location) <= resolveEngageRange()
+    }
+
+    /**
+     * 接敌半径解析（带缓存）：武器面板射程在光尘存续期（秒级）内视为不变——
+     * WeaponAPI.getRange 每次调用都全量重算舰船统计（射程乘区/基础射程/平值加算），
+     * 逐候选调用是实锤的 profiler 热点，故首次解析后缓存复用；武器实例恒缺失时
+     * 一次性 WARN 并缓存缺省值（[StardustMoteTuning.DEFAULT_ENGAGE_RANGE]）。
+     */
+    private var cachedEngageRange: Float = -1f
+
+    private fun resolveEngageRange(): Float {
+        if (cachedEngageRange > 0f) return cachedEngageRange
         val weapon = missile.weapon
         if (weapon == null) {
             StardustMoteTuning.warnOnce("missingWeapon") {
@@ -84,6 +98,7 @@ class StardustMoteAI(missile: MissileAPI) : MoteAIScript(missile) {
             }
         }
         val range = weapon?.range ?: StardustMoteTuning.DEFAULT_ENGAGE_RANGE
-        return MathUtils.getDistance(missile.location, entity.location) <= range
+        cachedEngageRange = range
+        return range
     }
 }
