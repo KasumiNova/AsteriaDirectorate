@@ -26,12 +26,14 @@ import java.awt.Color
  * - **sprite 粒子池**（[SpritePoolKey]）：每 key 一个常驻 SpriteEntity + 固定容量
  *   Instance2Data 槽位，CPU 侧积分位置/自转并逐帧写实例数据（速度/自转不再交给
  *   BoxUtil 实例自管理，避免双重积分；暂停时包络冻结）；
- * - **光束段池**（[TrailPoolKey]/[TrailLeaseKey]）：每 key 固定容量个常驻 TrailEntity。
+ * - **光束段池**（[TrailPoolKey]/[TrailLeaseKey]）：每 key 初始容量个常驻 TrailEntity，
+ *   池满按需扩容（步长 max(8, 当前容量/2)，硬上限 [TrailLeaseKey.maxCapacity] 默认 8×——
+ *   它是租约泄漏探测器，触及才拒发 + 节流 WARN）。
  *   [spawnTrail] 为一次性双节点段（内部走租约池的一次性包络检出）；[checkoutTrail] 为
  *   通用租约——多节点、逐帧驱动、手动 alpha + 心跳看门狗，检出全量重置，到期/释放泊车
- *   （alpha 归零）而非 delete。
+ *   （alpha 归零 + 清空节点）而非 delete。
  *
- * 池实体随 BoxUtil 战斗切换清理一并回收；单场战斗内实体总数 = Σ key 容量，有界。
+ * 池实体随 BoxUtil 战斗切换清理一并回收；单场战斗内实体总数 = Σ key maxCapacity，有界。
  * 低频事件级特效（每次命中数个）不必走本设施，直接新建实体即可。
  */
 object PooledCombatVfx {
@@ -53,7 +55,8 @@ object PooledCombatVfx {
     )
 
     /**
-     * 光束段池键：同池共享渲染层/核心与 fringe 贴图/mixFactor。
+     * 光束段池键：同池共享渲染层/核心与 fringe 贴图/mixFactor。[capacity] 为初始容量
+     * （内部转 [TrailLeaseKey]，池满按需扩容，硬上限默认 8×）。
      * 其余逐段属性（位置/朝向/长度/宽度/颜色/alpha 乘数/寿命）均为 spawn 参数。
      */
     data class TrailPoolKey(

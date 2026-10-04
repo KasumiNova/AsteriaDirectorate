@@ -25,7 +25,7 @@ internal object TaperedBeamTrailsVfx {
     private const val CORE_SPRITE = "graphics/fx/beamcoreb.png"
     private const val FRINGE_SPRITE = "graphics/fx/beamfringeb.png"
 
-    /** 单 mixPower 层的池容量（微束峰值：6 条/层/0.03s × 寿命 0.1s ≈ 20 条/束，并发 4 束取 96）。 */
+    /** 单 mixPower 层的池初始容量（微束典型峰值：6 条/层/0.03s × 寿命 0.1s ≈ 20 条/束，并发 4 束取 96；池满按需扩容，硬上限默认 8×）。 */
     private const val POOL_CAPACITY = 96
 
     data class LayerParams(

@@ -70,8 +70,8 @@ object PiercingLanceVfx {
     private val ZERO_VEL = Vector2f(0f, 0f)
 
     /**
-     * 大光柱池化租约键（容量 = 峰值并发估算：单发 1 条 × 存续 0.25s 内并发命中 16 次取 16，
-     * 低频事件级武器余量充足）。池满拒发 + 节流 WARN。
+     * 大光柱池化租约键（初始容量 = 典型峰值估算：单发 1 条 × 存续 0.25s 内并发命中 16 次取 16，
+     * 低频事件级武器余量充足）。池满按需扩容，触及硬上限（默认 8× 初始容量）才拒发 + 节流 WARN。
      */
     private val PILLAR_POOL_KEY = TrailLeaseKey(
         layer = CombatEngineLayers.ABOVE_SHIPS_AND_MISSILES_LAYER,

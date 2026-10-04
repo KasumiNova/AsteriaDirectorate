@@ -347,7 +347,8 @@ class BeamCoreComponent(
 
     /**
      * 束体片池化租约键：按渲染层/贴图对/片 mixPower 键控（GC 束体 4 件套塌缩为 2 池）。
-     * 容量 8 = 同 mixPower 片的峰值并发束数（GC/PSI 均为单装重型束，余量充足；池满拒发 + 节流 WARN）。
+     * 初始容量 8 = 同 mixPower 片的典型峰值并发束数（GC/PSI 均为单装重型束；池满按需扩容，
+     * 硬上限默认 8×，触及才拒发 + 节流 WARN）。
      */
     private fun poolKey(piece: BeamCorePieceSpec) = TrailLeaseKey(
         layer = layer,
@@ -361,7 +362,7 @@ class BeamCoreComponent(
         /** 束体在树内的次级绘制序：置于 detail（螺旋/环）之下。 */
         const val RENDER_ORDER = 100
 
-        /** 单 mixPower 片的池容量（同规格束体的峰值并发数）。 */
+        /** 单 mixPower 片的池初始容量（同规格束体的典型峰值并发数；池满按需扩容）。 */
         private const val PIECE_POOL_CAPACITY = 8
 
         /** 检出失败 WARN 节流步长（首次必记，与池绑定层 OVERFLOW_WARN_STRIDE 口径一致）。 */

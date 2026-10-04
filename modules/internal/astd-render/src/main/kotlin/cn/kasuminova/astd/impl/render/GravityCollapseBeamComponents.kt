@@ -463,8 +463,8 @@ class BeamMuzzleComponent(
         private const val SPRAY_WATCHDOG_HEARTBEAT = 0.15f
 
         /**
-         * 起手 burst 锥池化租约键（容量 = 峰值并发估算：5~10 条/次开火 × 寿命 0.5s 内并发开火
-         * 约 3 艘，取 32）。池满拒发新租约 + 节流 WARN。
+         * 起手 burst 锥池化租约键（初始容量 = 典型峰值估算：5~10 条/次开火 × 寿命 0.5s 内并发开火
+         * 约 3 艘，取 32）。池满按需扩容，触及硬上限（默认 8× 初始容量）才拒发 + 节流 WARN。
          */
         private val BURST_POOL_KEY = TrailLeaseKey(
             layer = CombatEngineLayers.ABOVE_SHIPS_AND_MISSILES_LAYER,
@@ -475,8 +475,8 @@ class BeamMuzzleComponent(
         )
 
         /**
-         * 持续 spray 渐长锥池化租约键（容量 = 峰值并发估算：2 条/0.333s × 寿命 0.55s ≈ 4 条/束，
-         * 并发 4 束取 16）。池满拒发新租约 + 节流 WARN。
+         * 持续 spray 渐长锥池化租约键（初始容量 = 典型峰值估算：2 条/0.333s × 寿命 0.55s ≈ 4 条/束，
+         * 并发 4 束取 16）。池满按需扩容，触及硬上限（默认 8× 初始容量）才拒发 + 节流 WARN。
          */
         private val SPRAY_POOL_KEY = TrailLeaseKey(
             layer = CombatEngineLayers.ABOVE_SHIPS_AND_MISSILES_LAYER,

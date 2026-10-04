@@ -10,7 +10,7 @@ import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
 
 /**
- * 池化 TrailEntity 租约键：同池共享渲染层/核心与 fringe 贴图/mixFactor/容量。
+ * 池化 TrailEntity 租约键：同池共享渲染层/核心与 fringe 贴图/mixFactor/容量口径。
  * 其余逐租约属性（节点表/宽度/颜色/alpha/fill/纹理流动/寿命口径）均为检出参数。
  */
 data class TrailLeaseKey(
@@ -18,8 +18,20 @@ data class TrailLeaseKey(
     val coreSpritePath: String,
     val fringeSpritePath: String,
     val mixPower: Float,
+    /** 初始容量：槽位结构起始大小，按真实典型峰值估算（实体仍惰性创建，不预热实体）。 */
     val capacity: Int,
-)
+    /**
+     * 硬上限（默认 [DEFAULT_MAX_CAPACITY_MUL]× 初始容量）：池满按需扩容的上界。定位是
+     * **租约泄漏探测器**而非容量规划——所有租约都有自动归还路径（包络到期/看门狗/release/
+     * forceFree），池持续增长只可能来自真实并发峰值或泄漏 bug，触及上限即拒发 + 节流 WARN。
+     */
+    val maxCapacity: Int = capacity * DEFAULT_MAX_CAPACITY_MUL,
+) {
+    companion object {
+        /** [maxCapacity] 默认倍数：初始容量按典型峰值估算，8 倍覆盖极端峰值量级，超出按泄漏对待。 */
+        const val DEFAULT_MAX_CAPACITY_MUL = 8
+    }
+}
 
 /** 一次性包络寿命口径（fadeIn → full → fadeOut 线性）：池逐帧驱动 alpha，到期自动泊车归还。 */
 data class TrailLeaseEnvelope(val fadeIn: Float, val full: Float, val fadeOut: Float)
@@ -92,19 +104,28 @@ class TrailLease internal constructor(
 }
 
 /**
- * 池化 TrailEntity 租约槽位表（纯逻辑，单测可完整验证）：固定容量、租约-槽位一一绑定。
+ * 池化 TrailEntity 租约槽位表（纯逻辑，单测可完整验证）：初始容量 + 按需扩容，租约-槽位一一绑定。
  *
- * 与一次性包络段（PooledCombatVfx.spawnTrail）的关键差异：租约期间槽位被调用方逐帧驱动，
- * **池满不得抢占在租槽位**
- * （抢占会半路杀死存活视觉），口径为拒发新租约 + 累计 [overflowCount]（绑定层据此节流 WARN）。
+ * 扩容模型：[capacity] 为当前槽位数（起始 = 初始容量）；claim 无空闲槽且未达 [maxCapacity] 时
+ * 按 max([GROW_STEP_MIN], 当前容量/2) 步长在尾部追加空槽——小池 8 起步避免连扩刷 WARN，大池
+ * 1.5× 几何增长摊销并天然限制扩容次数。扩容只扩槽位结构，实体由绑定层惰性创建（禁止预热）。
+ *
+ * [maxCapacity] 是**租约泄漏探测器**而非容量规划：所有租约都有自动归还路径（包络到期/看门狗/
+ * release/forceFree），池持续增长只可能来自真实并发峰值或泄漏 bug——触及上限才拒发 + 累计
+ * [overflowCount]（绑定层据此节流 WARN），不抢占在租槽位（抢占会半路杀死存活视觉）。
  *
  * 槽位状态机：FREE → LEASED（envelope / manual+watchdog / 纯手动）→ RELEASING（快照淡出）→ FREE。
- * 每槽带 [Slot.generation] 代数：归还/再认领后旧句柄操作全部失效。
+ * 每槽带 [Slot.generation] 代数：归还/再认领后旧句柄操作全部失效；扩容只在尾部追加空槽，
+ * 不影响在租槽位的代数与归属。
  */
-internal class TrailLeaseSlots(val capacity: Int) {
+internal class TrailLeaseSlots(
+    initialCapacity: Int,
+    val maxCapacity: Int = initialCapacity * TrailLeaseKey.DEFAULT_MAX_CAPACITY_MUL,
+) {
 
     init {
-        require(capacity >= 1) { "capacity 必须 >= 1" }
+        require(initialCapacity >= 1) { "初始容量必须 >= 1" }
+        require(maxCapacity >= initialCapacity) { "maxCapacity 必须 >= 初始容量" }
     }
 
     internal enum class Mode { FREE, ENVELOPE, MANUAL, RELEASING }
@@ -127,17 +148,21 @@ internal class TrailLeaseSlots(val capacity: Int) {
         var endEmissiveAlpha = 0f
     }
 
-    internal val slots = Array(capacity) { Slot() }
+    internal val slots = ArrayList<Slot>(initialCapacity).also { list -> repeat(initialCapacity) { list += Slot() } }
+
+    /** 当前槽位数（扩容单调递增，上界 [maxCapacity]）。 */
+    var capacity: Int = initialCapacity
+        private set
 
     var leasedCount = 0
         private set
 
-    /** 池满拒发累计（绑定层节流 WARN 的数据源）。 */
+    /** 达到 [maxCapacity] 后的拒发累计（绑定层节流 WARN 的数据源）。 */
     var overflowCount = 0
         private set
 
     /**
-     * 认领空闲槽；池满返回 -1 并累计拒发（不抢占在租槽位）。
+     * 认领空闲槽；无空闲槽先按需扩容，已达 [maxCapacity] 才返回 -1 并累计拒发（不抢占在租槽位）。
      * alpha 基准仅包络模式使用（池逐帧乘包络写实体）；手动模式由调用方全权。
      */
     fun claim(
@@ -147,7 +172,8 @@ internal class TrailLeaseSlots(val capacity: Int) {
         startAlpha: Float, endAlpha: Float,
         startEmissiveAlpha: Float, endEmissiveAlpha: Float,
     ): Int {
-        val index = slots.indexOfFirst { it.mode == Mode.FREE }
+        var index = slots.indexOfFirst { it.mode == Mode.FREE }
+        if (index < 0) index = tryGrow()
         if (index < 0) {
             overflowCount++
             return -1
@@ -168,6 +194,22 @@ internal class TrailLeaseSlots(val capacity: Int) {
         s.endEmissiveAlpha = endEmissiveAlpha
         leasedCount++
         return index
+    }
+
+    /** 池满按需扩容：尾部追加空槽并返回首个新槽下标；已达 [maxCapacity] 返回 -1。 */
+    private fun tryGrow(): Int {
+        if (capacity >= maxCapacity) return -1
+        val step = (capacity / 2).coerceAtLeast(GROW_STEP_MIN)
+        val newCapacity = (capacity + step).coerceAtMost(maxCapacity)
+        repeat(newCapacity - capacity) { slots += Slot() }
+        val firstNew = capacity
+        capacity = newCapacity
+        return firstNew
+    }
+
+    private companion object {
+        /** 扩容步长下限：小池 8 起步，避免小池逐级连扩刷 WARN。 */
+        const val GROW_STEP_MIN = 8
     }
 
     /** 句柄是否仍持有该槽（LEASED/RELEASING 且代数一致）。 */
@@ -298,11 +340,15 @@ internal sealed interface TrailLeaseEvent {
 }
 
 /**
- * 池化 TrailEntity 租约绑定：固定容量常驻实体 + 槽位状态机。
+ * 池化 TrailEntity 租约绑定：初始容量常驻实体 + 按需扩容槽位 + 槽位状态机。
  *
  * 检出即全量重置（节点表/宽度/颜色/alpha/fill/纹理流动/变换/定时器重钉），归还/到期泊车
- * （alpha 归零）而非 delete——实体常驻战斗域，随 BoxUtil 战斗切换清簿 delete（实体经
+ * （alpha 归零 + 清空节点——BoxUtil 对零节点实体直接跳过渲染）而非 delete——实体常驻战斗域，
+ * 随 BoxUtil 战斗切换清簿 delete（实体经
  * [BoxUtilCombatVfx.addEntity] 入登记簿，engine 实例切换 purge 兜底）。
+ *
+ * 扩容只扩槽位结构，实体保持惰性创建（检出到该槽才建，禁止预热）；每次扩容记一条遥测 WARN
+ * （几何增长步长天然限制扩容次数，不另设节流）。触及 [TrailLeaseKey.maxCapacity] 才拒发。
  */
 internal class TrailLeaseBinding(
     private val engine: CombatEngineAPI,
@@ -310,7 +356,7 @@ internal class TrailLeaseBinding(
 ) {
     private val log = Global.getLogger(TrailLeaseBinding::class.java)
 
-    val slots = TrailLeaseSlots(key.capacity)
+    val slots = TrailLeaseSlots(key.capacity, key.maxCapacity)
 
     private val entities = ArrayList<TrailEntity?>(key.capacity)
     private var coreSprite: SpriteAPI? = null
@@ -321,17 +367,24 @@ internal class TrailLeaseBinding(
     fun checkout(spec: TrailLeaseSpec): TrailLease? {
         if (broken) return null
         if (!ensureSprites()) return null
+        val capacityBefore = slots.capacity
         val index = slots.claim(
             spec.envelope, spec.watchdogHeartbeat, spec.watchdogFadeOut,
             spec.startAlpha, spec.endAlpha, spec.startEmissiveAlpha, spec.endEmissiveAlpha,
         )
         if (index < 0) {
-            // 拒发口径：不抢占在租槽位；首次与每 64 次拒发记 WARN（节流可诊断，禁止静默）
+            // 触及硬上限才拒发：不抢占在租槽位；首次与每 64 次拒发记 WARN（节流可诊断，禁止静默）。
+            // maxCapacity 是租约泄漏探测器——所有租约均有自动归还路径（包络到期/看门狗/release/
+            // forceFree），持续增长只可能来自真实并发峰值或租约泄漏 bug，WARN 必须能定位持有方
             val count = slots.overflowCount
             if (count == 1 || count % OVERFLOW_WARN_STRIDE == 0) {
-                log.warn("池化光束租约池满（capacity=${key.capacity}，layer=${key.layer}，累计拒发 $count 次），本次视觉缺席——容量需按峰值并发上调")
+                log.warn("池化光束租约触及硬上限拒发（maxCapacity=${key.maxCapacity}，layer=${key.layer}，core=${key.coreSpritePath}，累计拒发 $count 次），本次视觉缺席——需排查租约泄漏或重估峰值")
             }
             return null
+        }
+        if (slots.capacity != capacityBefore) {
+            // 按需扩容遥测：初始容量预估偏低是有价值的信号，非故障
+            log.warn("池化光束租约池按需扩容（layer=${key.layer}，core=${key.coreSpritePath}，容量 $capacityBefore → ${slots.capacity}）——初始容量低于真实峰值，遥测提示")
         }
         val entity = getOrCreateEntity(index)
         if (entity == null) {
@@ -504,10 +557,13 @@ internal class TrailLeaseBinding(
         e.setEndColor(1f, 1f, 1f, 0f)
         e.setStartEmissive(1f, 1f, 1f, 0f)
         e.setEndEmissive(1f, 1f, 1f, 0f)
+        // 清空节点：BoxUtil 渲染循环对 isHaveValidNodeCount()==false 的实体直接 continue
+        // （BUtil_EntityImpl.processTrailEntity），泊车实体逐帧渲染开销归零，容量不再构成常驻底噪
+        e.resetNodes()
     }
 
     companion object {
-        /** 池满拒发 WARN 节流步长（首次必记）。 */
+        /** 触及硬上限拒发 WARN 节流步长（首次必记）。 */
         private const val OVERFLOW_WARN_STRIDE = 64
     }
 }

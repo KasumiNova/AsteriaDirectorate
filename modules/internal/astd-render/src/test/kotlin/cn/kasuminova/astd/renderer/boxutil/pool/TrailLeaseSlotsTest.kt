@@ -6,8 +6,8 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
- * TrailLeaseSlots 纯逻辑测试：租约认领/代数失效、池满拒发不抢占、一次性包络到期泊车、
- * 显式释放快照淡出、看门狗停更触发淡出与触活复活。
+ * TrailLeaseSlots 纯逻辑测试：租约认领/代数失效、按需扩容与 maxCapacity 拒发不抢占、
+ * 一次性包络到期泊车、显式释放快照淡出、看门狗停更触发淡出与触活复活。
  */
 class TrailLeaseSlotsTest {
 
@@ -40,14 +40,14 @@ class TrailLeaseSlotsTest {
 
     @Test
     fun `full pool rejects new lease without preempting leased slots`() {
-        val slots = TrailLeaseSlots(2)
+        val slots = TrailLeaseSlots(2, maxCapacity = 2)
         val a = claimEnvelope(slots)
         val b = claimEnvelope(slots)
         val genA = slots.slots[a].generation
         val genB = slots.slots[b].generation
 
         val c = claimEnvelope(slots)
-        assertEquals(-1, c, "池满必须拒发新租约")
+        assertEquals(-1, c, "触及 maxCapacity 必须拒发新租约")
         assertEquals(1, slots.overflowCount, "拒发必须累计（绑定层节流 WARN 数据源）")
         assertEquals(2, slots.leasedCount, "拒发不得改变在租数")
         // 在租槽位不被抢占：代数与归属保持不变
@@ -55,6 +55,54 @@ class TrailLeaseSlotsTest {
         assertEquals(genB, slots.slots[b].generation)
         assertTrue(slots.isHeld(a, genA))
         assertTrue(slots.isHeld(b, genB))
+    }
+
+    @Test
+    fun `full pool grows on demand and new claim succeeds`() {
+        val slots = TrailLeaseSlots(1) // maxCapacity 默认 8×
+        val a = claimEnvelope(slots)
+        assertEquals(1, slots.capacity)
+
+        val b = claimManual(slots)
+        assertTrue(b >= 0, "初始容量满必须自动扩容而非拒发")
+        assertTrue(slots.capacity > 1, "扩容后槽位数必须增长")
+        assertEquals(0, slots.overflowCount, "扩容路径不得计入拒发")
+        assertEquals(2, slots.leasedCount)
+        // 新租约落在扩容出的尾部槽位，旧租约不受影响
+        assertEquals(a + 1, b)
+        assertTrue(slots.isHeld(b, slots.slots[b].generation))
+    }
+
+    @Test
+    fun `growth does not disturb held lease generation and lifecycle`() {
+        val slots = TrailLeaseSlots(1)
+        val a = claimManual(slots, heartbeat = 0.35f, fadeOut = 0.16f)
+        val genA = slots.slots[a].generation
+
+        claimEnvelope(slots) // 触发扩容
+        assertTrue(slots.isHeld(a, genA), "扩容不得影响在租槽位的代数与归属")
+        assertEquals(genA, slots.slots[a].generation, "扩容不得重置在租槽位代数")
+
+        // 在租租约生命周期语义不变：逐帧触活后停更仍按看门狗触发
+        slots.touch(a, genA)
+        assertTrue(slots.advance(0.02f).isEmpty())
+        val events = slots.advance(0.36f)
+        assertTrue(events.any { it is TrailLeaseEvent.BeginReleaseFade && it.index == a }, "扩容后看门狗必须照常触发")
+    }
+
+    @Test
+    fun `claim rejected only after growth reaches max capacity`() {
+        val slots = TrailLeaseSlots(1, maxCapacity = 2)
+        claimEnvelope(slots)
+        val b = claimEnvelope(slots)
+        assertTrue(b >= 0, "未达 maxCapacity 必须扩容放行")
+        assertEquals(2, slots.capacity, "扩容不得超过 maxCapacity")
+
+        val c = claimEnvelope(slots)
+        assertEquals(-1, c, "触及 maxCapacity 必须拒发")
+        assertEquals(1, slots.overflowCount)
+        assertEquals(2, slots.leasedCount, "拒发不得改变在租数")
+        assertEquals(2, slots.capacity, "拒发不得再扩容")
     }
 
     @Test

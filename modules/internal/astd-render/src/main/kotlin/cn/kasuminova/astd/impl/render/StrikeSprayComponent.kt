@@ -29,7 +29,9 @@ import kotlin.math.roundToInt
  *   `pos += vel×dt` 并 `setStateVanilla(pos, facing)`，vel ∥ facing 由构造保证（同一 ang
  *   派生 dir 与 vel，数学上无侧向分量），单测以侧向分量 < 1e-3 做回归断言；
  * - **兜底链退役**：旧三级退化（TrailEntity→SpriteEntity→vanilla 粒子）整体删除，只留
- *   TrailEntity 主路径；贴图/addEntity 失败记 WARN（组件级去重）缺席视觉，参数积分照常；
+ *   TrailEntity 主路径；贴图加载失败记 WARN 缺席视觉；池满拒发诊断由池绑定层节流 WARN
+ *   （首次+每 64 次、含累计拒发数）统一承担，组件级不再逐实例记日志（锥面高频场景
+ *   每实例一条会刷屏），参数积分照常；
  * - **intensityMult 折叠**：唯一真实调用方（锥面）恒传 1f，vis 派生（sizeScale、
  *   速度/内缩/烟雾系数）全部按 1 化简；随之恒不触发的高倍率尺寸封顶一并省略。
  *
@@ -51,7 +53,6 @@ class StrikeSprayComponent(
 
     private var sprites: Pair<SpriteAPI, SpriteAPI>? = null
     private var spritesAttempted = false
-    private var addEntityWarned = false
     private var driveWarned = false
 
     init {
@@ -214,13 +215,9 @@ class StrikeSprayComponent(
                 envelope = TrailLeaseEnvelope(0f, needle.full, needle.fadeOut),
             ),
         )
-        if (lease == null) {
-            if (!addEntityWarned) {
-                addEntityWarned = true
-                log.warn("刺束针池化实体检出失败（id=$id），本组件针视觉缺席（参数积分仍推进，组件级去重）")
-            }
-            return
-        }
+        // 池满拒发：诊断由池绑定层节流 WARN（首次+每 64 次、含累计拒发数）统一承担，
+        // 组件级不再逐实例记日志；视觉缺席但参数积分照常推进
+        if (lease == null) return
         needle.lease = lease
         needle.entity = lease.entity
         // 针尖补光（v2.2 主路径同款：尖端小亮点强化「尖」，随针同速 1/4 漂移）。
@@ -312,15 +309,17 @@ class StrikeSprayComponent(
         const val TRAIL_MIX_POWER = 3.0f
 
         /**
-         * 刺束针池化租约键（全组件实例共用，容量 = 峰值并发估算：单锥 ≤40 针 × 寿命 ≤0.62s
-         * 内约 6 场并发锥面冲击，取 256）。池满拒发新租约 + 节流 WARN（不抢占在租针）。
+         * 刺束针池化租约键（全组件实例共用，初始容量 = 典型峰值估算：炮口锥面经同武器节流后
+         * 存续期内 ≤1 发/武器，极端舰队战约 30 并发锥 × 平均 ~12 针，取 384；泊车实体零节点
+         * 被 BoxUtil 渲染循环直接跳过，容量不构成常驻底噪）。池满按需扩容，触及硬上限
+         * （默认 8× 初始容量）才拒发 + 节流 WARN（不抢占在租针）。
          */
         internal val POOL_KEY = TrailLeaseKey(
             layer = CombatEngineLayers.ABOVE_SHIPS_AND_MISSILES_LAYER,
             coreSpritePath = BeamSprites.CORE_PATH,
             fringeSpritePath = BeamSprites.FRINGE_PATH,
             mixPower = TRAIL_MIX_POWER,
-            capacity = 256,
+            capacity = 384,
         )
 
         /** 端点羽化（fill 因子：沿 U 向两端渐隐，治钝头钝尾）。 */

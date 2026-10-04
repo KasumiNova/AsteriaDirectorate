@@ -52,7 +52,8 @@ import kotlin.math.tan
  * emissive 增益 [ARC_EMISSIVE_GAIN]=1.0 为目检调档闸门（v2.2 GL 线弧不吃 bloom，1.0 起步留给
  * 实机目检对比后调档；**不继承** v3 的 1.35）。
  *
- * 失败语义：贴图加载/池化检出失败记 WARN，本道弧视觉缺席（对齐扭曲层先例，无兜底）。
+ * 失败语义：贴图加载失败记 WARN，本道弧视觉缺席（对齐扭曲层先例，无兜底）；
+ * 池满拒发诊断由池绑定层统一承担（见 POOL_KEY 注释），组件级不逐实例记日志。
  * 曲梁实体走 PooledCombatVfx 池化租约（防 renderEntityMap 滞留泄漏）：多节点支持由检出规格
  * 承载，逐帧外扩节点重写节奏不变，时间包络由池一次性包络驱动（与旧 globalTimer 逐字等价）。
  */
@@ -78,7 +79,6 @@ class ConeArcComponent(
 
     private var sprites: Pair<SpriteAPI, SpriteAPI>? = null
     private var spritesAttempted = false
-    private var addEntityWarned = false
     private var driveWarned = false
 
     init {
@@ -189,13 +189,7 @@ class ConeArcComponent(
                 envelope = TrailLeaseEnvelope(0f, 0f, arc.duration),
             ),
         )
-        if (lease == null) {
-            if (!addEntityWarned) {
-                addEntityWarned = true
-                log.warn("锥面弧曲梁池化实体检出失败（id=$id），本组件弧视觉缺席（组件级去重）")
-            }
-            return
-        }
+        if (lease == null) return // 池满拒发：诊断由池绑定层统一承担（见 POOL_KEY 注释），本道弧视觉缺席
         arc.lease = lease
         arc.entity = lease.entity
     }
@@ -282,8 +276,9 @@ class ConeArcComponent(
         private const val ARC_MIX_FACTOR = 1.0f
 
         /**
-         * 弧曲梁池化租约键（全组件实例共用，容量 = 峰值并发估算：4 道/锥 × 存续 ≤0.22s
-         * 内约 12 场并发锥面冲击，取 48）。池满拒发新租约 + 节流 WARN（不抢占在租弧）。
+         * 弧曲梁池化租约键（全组件实例共用，初始容量 = 典型峰值估算：4 道/锥 × 存续 ≤0.22s
+         * 内约 12 场并发锥面冲击，取 48）。池满按需扩容，触及硬上限（默认 8× 初始容量）
+         * 才拒发 + 节流 WARN（不抢占在租弧）。
          */
         internal val POOL_KEY = TrailLeaseKey(
             layer = CombatEngineLayers.ABOVE_SHIPS_AND_MISSILES_LAYER,

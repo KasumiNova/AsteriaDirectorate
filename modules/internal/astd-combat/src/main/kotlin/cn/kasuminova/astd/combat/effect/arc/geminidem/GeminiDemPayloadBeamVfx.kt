@@ -403,7 +403,8 @@ class GeminiDemPayloadBeamVfx : EveryFrameWeaponEffectPlugin {
 
     /**
      * 束体池化租约键：按 kind 键控（动能 zappy / 高爆 flow，core/fringe 同贴图），mixPower 0.5。
-     * 容量 8 = 同 kind  payload 光束峰值并发（4 件 payload 武器实例 × 轮换余量）。
+     * 初始容量 8 = 同 kind payload 光束典型峰值并发（4 件 payload 武器实例 × 轮换余量；
+     * 池满按需扩容，硬上限默认 8×）。
      */
     private fun poolKey(kind: Kind): TrailLeaseKey = when (kind) {
         Kind.KINETIC -> KINETIC_POOL_KEY
