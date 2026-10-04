@@ -219,7 +219,7 @@ object Ship_astd_xc_103 : ShipDataEntry() {
     override val deceleration: Int = 42
     override val maxTurnRate: Int = 30
     override val turnAcceleration: Int = 60
-    override val mass: Int = 8000
+    override val mass: Int = 1500
     override val shieldType: String = "OMNI"
     override val shieldArc: Int = 200
 

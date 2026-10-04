@@ -119,7 +119,7 @@ object Ship_astd_zw_102 : ShipDataEntry() {
     override val fleetPts: Int = 35
     override val hitpoints: Int = 12000
     override val armorRating: Int = 1200
-    override val maxFlux: Int = 16000
+    override val maxFlux: Int = 18000
     override val fluxDissipation: Int = 1200
     override val ordnancePoints: Int = 340
     override val fighterBays: Int = 3
@@ -133,9 +133,9 @@ object Ship_astd_zw_102 : ShipDataEntry() {
     override val shieldType: String = "OMNI"
     override val shieldArc: Int = 240
 
-    // 护盾维持 640 = 耗散 1100 × 0.5818。
-    override val shieldUpkeep: Double = 0.5818
-    override val shieldEfficiency: Double = 0.5333
+    // 护盾维持 640 = 耗散 1200 * 0.5333
+    override val shieldUpkeep: Double = 0.5333
+    override val shieldEfficiency: Double = 0.6
 
     // 对齐原版军团级（Legion，航空战列舰）hints 判例 "CARRIER, COMBAT, NO_AUTO_ESCORT"：
     // - CARRIER：图鉴「航母」分类的判定 hint（原版 ShipBlueprintRow 按 hints 分类），
