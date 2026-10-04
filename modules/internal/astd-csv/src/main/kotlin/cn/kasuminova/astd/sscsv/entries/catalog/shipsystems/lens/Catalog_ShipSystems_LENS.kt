@@ -240,6 +240,15 @@ object Sys_astd_grav_storm : ShipSystemWithSystemFileEntry() {
     // IDLE→IN 激活瞬间一次性产出，图鉴可见统一数据）；脚本不再自行 increaseFlux。
     override val fluxUseBaseCap: Double = 0.2
 
+    // canUseWhileRightClickSystemOn=true 是「充能期间进相位立即释放」生效的前提：
+    // 原版 PhaseCloakSystem.advanceImpl 每帧把相位中处于激活态的 toggle 主系统
+    // forceDeactivate 直压 COOLDOWN（先于本系统脚本 apply 执行，脚本永远看不到
+    // 相位中的 IN 态），本 flag 跳过该压制；相位中误激活由
+    // GravStormSystemStats.isUsable（!ship.isPhased）在激活闸拦截。
+    override val extraSystemRawFields: Map<String, String> = linkedMapOf(
+        "canUseWhileRightClickSystemOn" to "true",
+    )
+
     override val icon: String = "graphics/icons/hullsys/quantum_disruptor.png"
     override val useSound: String = "system_quantumdisruptor"
 }

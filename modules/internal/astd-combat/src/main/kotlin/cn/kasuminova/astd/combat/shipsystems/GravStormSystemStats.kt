@@ -40,7 +40,11 @@ import kotlin.math.sin
  *   - 充能不足 [GravStormTuning.PHASE_LOCKOUT_SECONDS] 期间相位系统锁定：每帧把相位 cloak
  *     压入 COOLDOWN 并钉住小余量（原版 ChargeTracker 实证该态按键不激活），玩家按相位键无效；
  *   - 锁定解除后充能期间进入相位 → 结束充能并立即按当前充能进度释放（电弧 + 强制过载，
- *     锁定口径等同最小充能故恒达释放下限），随后 [ShipSystemAPI.deactivate] 进冷却；
+ *     锁定口径等同最小充能故恒达释放下限），随后 [ShipSystemAPI.deactivate] 进冷却。
+ *     该路径依赖 .system 的 `canUseWhileRightClickSystemOn=true`：原版 PhaseCloakSystem
+ *     每帧把相位中处于激活态的 toggle 主系统 forceDeactivate 直压 COOLDOWN（先于本脚本
+ *     apply 执行，无此 flag 时脚本永远看不到相位中的 IN 态，释放不会触发）；相位中的
+ *     误激活由 [isUsable]（!isPhased，经 ShipSystemStatsScriptAdvanced 激活闸）拦截；
  *   - 玩家再次按键（toggle 系统原版路径：IN 再按 → OUT，OUT 计时按充能进度折算）→ 提前结束：
  *     充能 ≥ [GravStormTuning.MIN_CHARGE_SECONDS] 释放，不足则视为取消（deactivate 进冷却）；
  *   - 充满 4s 自然进入 ACTIVE，首帧释放并 [ShipSystemAPI.forceState] 归位完整释放窗口；
