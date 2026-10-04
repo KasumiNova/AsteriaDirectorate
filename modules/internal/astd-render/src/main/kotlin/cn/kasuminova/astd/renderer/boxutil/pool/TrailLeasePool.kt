@@ -28,8 +28,8 @@ data class TrailLeaseKey(
     val maxCapacity: Int = capacity * DEFAULT_MAX_CAPACITY_MUL,
 ) {
     companion object {
-        /** [maxCapacity] 默认倍数：初始容量按典型峰值估算，8 倍覆盖极端峰值量级，超出按泄漏对待。 */
-        const val DEFAULT_MAX_CAPACITY_MUL = 8
+        /** [maxCapacity] 默认倍数。 */
+        const val DEFAULT_MAX_CAPACITY_MUL = 256
     }
 }
 
