@@ -340,7 +340,8 @@ internal sealed interface TrailLeaseEvent {
 }
 
 /**
- * 池化 TrailEntity 租约绑定：初始容量常驻实体 + 按需扩容槽位 + 槽位状态机。
+ * 池化 TrailEntity 租约绑定：初始容量槽位表 + 按需扩容 + 槽位状态机（实体惰性创建，
+ * 检出到该槽才建，禁止预热）。
  *
  * 检出即全量重置（节点表/宽度/颜色/alpha/fill/纹理流动/变换/定时器重钉），归还/到期泊车
  * （alpha 归零 + 清空节点——BoxUtil 对零节点实体直接跳过渲染）而非 delete——实体常驻战斗域，

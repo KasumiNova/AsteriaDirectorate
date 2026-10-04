@@ -3,17 +3,21 @@ package cn.kasuminova.astd.impl.render
 import cn.kasuminova.astd.api.render.ProjectileHost
 import cn.kasuminova.astd.api.render.RenderContext
 import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
-import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx.addEntity
+import cn.kasuminova.astd.renderer.boxutil.pool.PooledCombatVfx
+import cn.kasuminova.astd.renderer.boxutil.pool.SpriteLease
+import cn.kasuminova.astd.renderer.boxutil.pool.SpriteLeaseKey
+import cn.kasuminova.astd.renderer.boxutil.pool.SpriteLeaseSpec
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineLayers
 import com.fs.starfarer.api.combat.DamagingProjectileAPI
 import com.fs.starfarer.api.combat.MissileAPI
-import org.boxutil.units.standard.entity.SpriteEntity
 import org.lwjgl.util.vector.Vector2f
+import java.awt.Color
 
 /**
- * 弹体本体贴图组件（RenderEntity 叶子）：BoxUtil SpriteEntity 逐帧跟随弹体渲染本体，
- * 取代原版弹体贴图渲染路径（原版视觉由 .proj 的 `sprite=BUtil_NONE.png` 屏蔽）。
+ * 弹体本体贴图组件（RenderEntity 叶子）：池化 BoxUtil SpriteEntity（[PooledCombatVfx.checkoutSprite]
+ * 租约）逐帧跟随弹体渲染本体，取代原版弹体贴图渲染路径（原版视觉由 .proj 的
+ * `sprite=BUtil_NONE.png` 屏蔽）。
  *
  * 渲染语义对齐原版 Missile.render 的弹体贴图：
  * - normal alpha 混合（实体贴图非加色），层位 ABOVE_SHIPS（原版导弹同层）；
@@ -23,7 +27,8 @@ import org.lwjgl.util.vector.Vector2f
  *   `spriteAlphaOverride >= 0` 时优先；非导弹弹体取 `getBrightness()`；
  * - 贴图约定同 SpriteEntity：文件右（+u）= 飞行正向。
  *
- * 弹体移出引擎即删除实体。BoxUtil 未就绪/贴图不可读/建实体失败时 WARN 一次并禁用自身
+ * 租约口径：手动 alpha + 心跳看门狗（0.5s 未触活即泊车兜底）；弹体移出引擎/组件 detach
+ * 即 release(0f) 归还。BoxUtil 未就绪/贴图不可读/检出失败时 WARN 一次并禁用自身
  * （不重试风暴），弹体其余特效层不受影响。
  */
 class SpriteBodyRenderComponent(
@@ -32,7 +37,7 @@ class SpriteBodyRenderComponent(
 ) : RenderEntityImpl(id, CombatEngineLayers.ABOVE_SHIPS_LAYER, RENDER_ORDER_SPRITE_BODY) {
 
     private val log = Global.getLogger(SpriteBodyRenderComponent::class.java)
-    private var sprite: SpriteEntity? = null
+    private var spriteLease: SpriteLease? = null
     private var disabled = false
 
     override fun onAttachSelf(ctx: RenderContext): Boolean {
@@ -46,69 +51,82 @@ class SpriteBodyRenderComponent(
             return true
         }
 
-        val entity = SpriteEntity(spec.texturePath)
-        entity.setLayer(CombatEngineLayers.ABOVE_SHIPS_LAYER)
-        entity.setNormalBlend()
-        entity.setBaseSizePerTiles(spec.width / 2f, spec.height / 2f)
-        entity.materialData.setColor(1f, 1f, 1f, 1f)
-        if (spec.glowPower > 0f) {
-            entity.materialData.emissive = entity.materialData.diffuse
-            entity.materialData.setEmissiveColor(1f, 1f, 1f, 1f)
-            entity.materialData.glowPower = spec.glowPower
-        }
-        // 常驻：消亡由组件按弹体状态显式 delete，不走全局计时器
-        entity.setGlobalTimer(0f, BODY_FULL_SECONDS, 0f)
-        BoxUtilCombatVfx.ensureReady(engine)
-        val state = addEntity(engine, entity)
-        if (state != 0) {
-            log.warn("ASTD sprite body 注册失败（addEntity 返回 $state）：id=$id，本弹体本体层缺失，其余特效层照常")
-            entity.delete()
+        // 材质口径对齐出厂 new SpriteEntity(path)：alphaToEmissive=1（emissive alpha 跟随
+        // 逐帧 colorAlpha）、additionEmissive / ignoreIllumination=true
+        val lease = PooledCombatVfx.checkoutSprite(
+            engine,
+            SpriteLeaseKey(
+                layer = CombatEngineLayers.ABOVE_SHIPS_LAYER,
+                textureKey = spec.texturePath,
+                additive = false,
+                instanced = false,
+                capacity = 64,
+            ),
+            SpriteLeaseSpec(
+                location = Vector2f(projectile.location),
+                facingDeg = BoxUtilCombatVfx.normalizeFacingDeg(projectile.facing),
+                spritePath = spec.texturePath,
+                bindEmissive = spec.glowPower > 0f,
+                baseSizeHalfWidth = spec.width / 2f,
+                baseSizeHalfHeight = spec.height / 2f,
+                color = Color.WHITE,
+                emissiveColor = Color.WHITE,
+                glowPower = spec.glowPower,
+                alphaToEmissive = 1f,
+                isAdditionEmissive = true,
+                isIgnoreIllumination = true,
+                watchdogHeartbeat = WATCHDOG_HEARTBEAT_SECONDS,
+                watchdogFadeOut = 0f,
+            ),
+        )
+        if (lease == null) {
             disabled = true
             return true
         }
-        sprite = entity
-        syncBody(projectile)
+        spriteLease = lease
+        syncBody(lease, projectile)
         return true
     }
 
     override fun advanceSelf(ctx: RenderContext, amount: Float) {
-        val entity = sprite ?: return
+        val lease = spriteLease ?: return
         if (disabled) return
         val engine = ctx.engine ?: return
         val projectile = (ctx.host as? ProjectileHost)?.projectile ?: return
         if (!engine.isEntityInPlay(projectile)) {
-            entity.delete()
-            sprite = null
+            lease.release(0f)
+            spriteLease = null
             disabled = true
             return
         }
-        syncBody(projectile)
+        syncBody(lease, projectile)
     }
 
     /** 逐帧同步：位置/朝向取弹体真值；alpha 对齐原版 Missile.render 的弹体贴图淡出语义。 */
-    private fun syncBody(projectile: DamagingProjectileAPI) {
-        val entity = sprite ?: return
+    private fun syncBody(lease: SpriteLease, projectile: DamagingProjectileAPI) {
         val alpha = bodyAlpha(projectile)
         if (!alpha.isFinite()) return
+        val entity = lease.entity
         entity.setStateVanilla(
             projectile.location,
             BoxUtilCombatVfx.normalizeFacingDeg(projectile.facing),
             UNIT_SCALE,
         )
         entity.materialData.colorAlpha = alpha
+        lease.touch()
     }
 
     override fun onDetachSelf() {
-        sprite?.delete()
-        sprite = null
+        spriteLease?.release(0f)
+        spriteLease = null
     }
 
     companion object {
         /** 本体绘制序：原版导弹同层（ABOVE_SHIPS）；绘制序压在螺栓（200）之下，弹体本体先于弹头光效铺底。 */
         const val RENDER_ORDER_SPRITE_BODY = 190
 
-        /** 本体常驻时长（秒）：生命周期由弹体状态显式驱动，这里给一个永不自然到期的值。 */
-        private const val BODY_FULL_SECONDS = 1e7f
+        /** 看门狗心跳（秒）：弹体宿主停更超此时长即自动泊车归还（实体不滞留兜底）。 */
+        private const val WATCHDOG_HEARTBEAT_SECONDS = 0.5f
 
         /** 单位缩放（本体贴图无出生伸入，对齐原版导弹贴图恒定尺寸）。 */
         private val UNIT_SCALE = Vector2f(1f, 1f)

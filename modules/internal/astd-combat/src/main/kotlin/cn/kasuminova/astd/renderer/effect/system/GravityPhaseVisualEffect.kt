@@ -2,6 +2,10 @@ package cn.kasuminova.astd.renderer.effect.system
 
 import cn.kasuminova.astd.api.AstdLog
 import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
+import cn.kasuminova.astd.renderer.boxutil.pool.PooledCombatVfx
+import cn.kasuminova.astd.renderer.boxutil.pool.SpriteLease
+import cn.kasuminova.astd.renderer.boxutil.pool.SpriteLeaseKey
+import cn.kasuminova.astd.renderer.boxutil.pool.SpriteLeaseSpec
 import cn.kasuminova.astd.renderer.effect.system.GravityPhaseVisualEffect.getOrCreate
 import cn.kasuminova.astd.renderer.effect.system.GravityPhaseVisualEffect.track
 import com.fs.starfarer.api.Global
@@ -13,7 +17,6 @@ import com.fs.starfarer.api.input.InputEventAPI
 import org.boxutil.BoxUtilModPlugin
 import org.boxutil.manager.ShaderCore
 import org.boxutil.manager.TextureManager
-import org.boxutil.units.standard.entity.SpriteEntity
 import org.boxutil.util.ShaderUtil
 import org.lwjgl.opengl.GL11
 import org.lwjgl.util.vector.Vector2f
@@ -26,7 +29,8 @@ import kotlin.math.sin
 /**
  * 「引力相位」（astd_gravity_phase）相位激活态视觉：
  * - 描边红色辉光：运行期以 BoxUtil [ShaderUtil.genSDF]（GPU compute）从舰体贴图
- *   alpha 动态生成 SDF，CPU 阈值化为外环描边纹理后由 [SpriteEntity] 红色发光渲染
+ *   alpha 动态生成 SDF，CPU 阈值化为外环描边纹理后由池化 SpriteEntity
+ *   （[PooledCombatVfx.checkoutSprite] 租约）红色发光渲染
  *   （不再使用预生成贴图）；
  * - bloom 层红化：复用 [ShipGlowRenderer.setRecolor]，按相位等级把覆盖发光层
  *   交叉淡入到预生成的红色变体；
@@ -56,9 +60,6 @@ internal object GravityPhaseVisualEffect {
 
     /** 残影颜色（70％ 不透明度红）。 */
     private val AFTERIMAGE_COLOR = Color(255, 60, 60)
-
-    /** 常驻实体时长（秒）：生命周期由舰船状态显式驱动，不自然到期。 */
-    private const val GLOW_FULL_SECONDS = 1e7f
 
     /** 描边外扩像素（SDF 边界宽度，同时是描边衰减长度）。 */
     private const val OUTLINE_BORDER = 16
@@ -253,10 +254,10 @@ internal object GravityPhaseVisualEffect {
         }
     }
 
-    /** 舰船的相位视觉实体组：SDF 描边辉光（缺失即不建）。 */
+    /** 舰船的相位视觉实体组：SDF 描边辉光租约（缺失即不建）。 */
     private class Attachment(
         val ship: ShipAPI,
-        val outline: SpriteEntity,
+        val outline: SpriteLease,
         /** 舰体贴图中心补偿（世界偏移由朝向旋转后叠加）：sprite 中心相对几何中心的偏移量。 */
         val centerOffsetX: Float,
         val centerOffsetY: Float,
@@ -292,7 +293,7 @@ internal object GravityPhaseVisualEffect {
             val hullId = ship.hullSpec?.hullId ?: return null
             val outlineTex = outlineTextures[hullId] ?: return null
 
-            val outline = createOutlineEntity(ship, sprite, outlineTex) ?: return null
+            val outline = createOutlineEntity(ship, outlineTex) ?: return null
             return Attachment(
                 ship = ship,
                 outline = outline,
@@ -301,50 +302,45 @@ internal object GravityPhaseVisualEffect {
             )
         }
 
+        /**
+         * 检出租约：raw texId 绑定（diffuse+emissive 同纹理，TriShard/Bolt 已验证路径）+
+         * UV 按 NPOT 实际像素端点、glowPower=0.1、双 alpha 初始 0（相位未激活不可见）。
+         * 纯手动模式（无看门狗）：alpha 由 updateGlow 逐帧驱动，舰船 hulk/移除即 release。
+         * 非实例化直绘：QuadObject.glDraw 对无实例数据按 max(count,1) 画单 quad，
+         * 位置/朝向/尺寸由实体本体承载；FIXED_2D 单实例灌数据路径在本环境实测零像素，已弃用。
+         * 材质其余口径对齐出厂 new SpriteEntity()：alphaToEmissive=1、additionEmissive / ignoreIllumination=true。
+         */
         private fun createOutlineEntity(
             ship: ShipAPI,
-            sprite: com.fs.starfarer.api.graphics.SpriteAPI,
             tex: OutlineTex,
-        ): SpriteEntity? {
-            val glow = try {
-                SpriteEntity()
-            } catch (t: Throwable) {
-                log.warn("[ASTD] 引力相位辉光：SpriteEntity 创建失败（ship=${ship.hullSpec?.hullId}）", t)
-                return null
-            }
-            try {
-                glow.setLayer(CombatEngineLayers.ABOVE_SHIPS_LAYER)
-                glow.setAdditiveBlend()
-                glow.setBaseSizePerTiles(tex.width / 2f, tex.height / 2f)
-                glow.setUVStart(0f, 0f)
-                glow.setUVEnd(tex.width.toFloat() / tex.potWidth, tex.height.toFloat() / tex.potHeight)
-                // diffuse+emissive 同纹理（TriShard/Bolt 已验证路径）：原始 GL 纹理 id 直挂
-                glow.materialData.setDiffuse(tex.textureId)
-                glow.materialData.setEmissive(tex.textureId)
-                glow.materialData.setColor(OUTLINE_COLOR)
-                glow.materialData.setEmissiveColor(OUTLINE_COLOR)
-                glow.materialData.glowPower = 0.1f
-                glow.materialData.colorAlpha = 0f
-                glow.materialData.emissiveColorAlpha = 0f
-                // 常驻：全局计时器缺省值会在首个逻辑帧被判 TIMER_INVALID 直接 delete，
-                // 必须显式钉一个超长 full（消亡由舰船状态驱动 delete）
-                glow.setGlobalTimer(0f, GLOW_FULL_SECONDS, 0f)
-                // 非实例化直绘：QuadObject.glDraw 对无实例数据按 max(count,1) 画单 quad，
-                // 位置/朝向/尺寸由实体本体承载（updateGlow 每帧 setStateVanilla）；
-                // FIXED_2D 单实例灌数据路径在本环境实测零像素（SSBO 数据未生效），已弃用
-            } catch (t: Throwable) {
-                log.warn("[ASTD] 引力相位辉光：实体配置失败（ship=${ship.hullSpec?.hullId}）", t)
-                glow.delete()
-                return null
-            }
-
-            val state = BoxUtilCombatVfx.addEntity(engine, glow)
-            if (state != 0) {
-                log.warn("[ASTD] 引力相位辉光：addEntity 失败（state=$state，ship=${ship.hullSpec?.hullId}）")
-                glow.delete()
-                return null
-            }
-            return glow
+        ): SpriteLease? {
+            val hullId = ship.hullSpec?.hullId ?: return null
+            return PooledCombatVfx.checkoutSprite(
+                engine,
+                SpriteLeaseKey(
+                    layer = CombatEngineLayers.ABOVE_SHIPS_LAYER,
+                    textureKey = "outline:$hullId",
+                    additive = true,
+                    instanced = false,
+                    capacity = 8,
+                ),
+                SpriteLeaseSpec(
+                    location = Vector2f(ship.location),
+                    facingDeg = BoxUtilCombatVfx.normalizeFacingDeg(ship.facing - 90f),
+                    texId = tex.textureId,
+                    uvEndX = tex.width.toFloat() / tex.potWidth,
+                    uvEndY = tex.height.toFloat() / tex.potHeight,
+                    bindEmissive = true,
+                    baseSizeHalfWidth = tex.width / 2f,
+                    baseSizeHalfHeight = tex.height / 2f,
+                    color = Color(OUTLINE_COLOR.red, OUTLINE_COLOR.green, OUTLINE_COLOR.blue, 0),
+                    emissiveColor = Color(OUTLINE_COLOR.red, OUTLINE_COLOR.green, OUTLINE_COLOR.blue, 0),
+                    glowPower = 0.1f,
+                    alphaToEmissive = 1f,
+                    isAdditionEmissive = true,
+                    isIgnoreIllumination = true,
+                ),
+            )
         }
 
         override fun advance(amount: Float, events: MutableList<InputEventAPI>?) {
@@ -355,7 +351,7 @@ internal object GravityPhaseVisualEffect {
                 val att = it.next().value
                 val ship = att.ship
                 if (ship.isHulk || !engine.isEntityInPlay(ship)) {
-                    att.outline.delete()
+                    att.outline.release(0f)
                     it.remove()
                     continue
                 }
@@ -388,9 +384,9 @@ internal object GravityPhaseVisualEffect {
                 ship.location.y + (att.centerOffsetX * sin(theta) + att.centerOffsetY * cos(theta)).toFloat(),
             )
             val alpha = level.coerceIn(0f, 1f) * 0.4f
-            att.outline.setStateVanilla(loc, facing)
-            att.outline.materialData.colorAlpha = alpha
-            att.outline.materialData.emissiveColorAlpha = alpha
+            att.outline.entity.setStateVanilla(loc, facing)
+            att.outline.entity.materialData.colorAlpha = alpha
+            att.outline.entity.materialData.emissiveColorAlpha = alpha
         }
 
         private fun spawnAfterimage(ship: ShipAPI) {

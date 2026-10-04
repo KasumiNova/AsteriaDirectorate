@@ -2,6 +2,10 @@ package cn.kasuminova.astd.renderer.effect.system
 
 import cn.kasuminova.astd.api.AstdLog
 import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
+import cn.kasuminova.astd.renderer.boxutil.pool.PooledCombatVfx
+import cn.kasuminova.astd.renderer.boxutil.pool.SpriteLease
+import cn.kasuminova.astd.renderer.boxutil.pool.SpriteLeaseKey
+import cn.kasuminova.astd.renderer.boxutil.pool.SpriteLeaseSpec
 import com.fs.starfarer.api.EveryFrameScript
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseEveryFrameCombatPlugin
@@ -12,7 +16,6 @@ import com.fs.starfarer.api.combat.WeaponAPI
 import com.fs.starfarer.api.graphics.SpriteAPI
 import com.fs.starfarer.api.input.InputEventAPI
 import org.boxutil.manager.TextureManager
-import org.boxutil.units.standard.entity.SpriteEntity
 import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
 import java.util.IdentityHashMap
@@ -20,9 +23,9 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 /**
- * ASTD 舰船覆盖发光层（bloom / 装饰灯）渲染器：战斗内以 BoxUtil [SpriteEntity]
- * （additive）完全代替原版装饰武器渲染（原版侧由 [ASTDShipGlowEffect] 把装饰武器
- * alpha 压 0），装配界面仍走原版渲染。
+ * ASTD 舰船覆盖发光层（bloom / 装饰灯）渲染器：战斗内以池化 BoxUtil SpriteEntity
+ * （[PooledCombatVfx.checkoutSprite] 租约，additive）完全代替原版装饰武器渲染
+ * （原版侧由 [ASTDShipGlowEffect] 把装饰武器 alpha 压 0），装配界面仍走原版渲染。
  *
  * 动机：原版装饰武器渲染无法做发光外扩（bloom 泛光）与运行期换色；
  * 统一走 BoxUtil 实体后，引力相位等系统可经 [setRecolor] 把发光层实时切换为
@@ -46,9 +49,6 @@ object ShipGlowRenderer {
 
     /** Sector memory key：贴图恢复脚本注册去重。 */
     private const val MEMORY_RESTORE_SCRIPT_ADDED = "\$astd_ship_glow_restore_script_added"
-
-    /** 常驻实体实例满亮相时长（秒）：生命周期由舰船状态显式驱动，不自然到期。 */
-    private const val FULL_SECONDS = 1e7f
 
     /** 覆盖层贴图路径前缀（ASTD 舰体覆盖层约定放在 ships 目录）。 */
     private const val OVERLAY_SPRITE_PREFIX = "graphics/ships/"
@@ -193,12 +193,12 @@ object ShipGlowRenderer {
         }
     }
 
-    /** 舰船的覆盖层实体组：原色层 + 换色层（换色层按需创建）。 */
+    /** 舰船的覆盖层实体组：原色层租约 + 换色层租约（换色层按需检出）。 */
     private class Attachment(
         val ship: ShipAPI,
         val weaponId: String,
-        val base: SpriteEntity,
-        var recolor: SpriteEntity?,
+        val base: SpriteLease,
+        var recolor: SpriteLease?,
         var recolorBlend: Float = 0f,
         var baseColor: Color = Color.WHITE,
         /** 舰体贴图中心补偿（覆盖层与舰体 sprite 同画布）。 */
@@ -261,46 +261,42 @@ object ShipGlowRenderer {
             )
         }
 
-        private fun createEntity(ship: ShipAPI, path: String): SpriteEntity? {
+        /**
+         * 检出租约：raw texId 绑定 + UV 按 POT 画布端点、glowPower=0.05、ignoreIllumination。
+         * 纯手动模式（无看门狗）：alpha 由 updateAttachment 逐帧驱动，舰船 hulk/移除即 release。
+         * 材质其余口径对齐出厂 new SpriteEntity()：alphaToEmissive=1、additionEmissive=true。
+         */
+        private fun createEntity(ship: ShipAPI, path: String): SpriteLease? {
             val tex = textures[path] ?: return null
             val shipSprite = ship.spriteAPI ?: return null
-            val entity = try {
-                SpriteEntity()
-            } catch (t: Throwable) {
-                log.warn("[ASTD] 舰船覆盖发光层渲染器：实体创建失败 $path（ship=${ship.hullSpec?.hullId}）", t)
-                return null
-            }
-            try {
-                entity.setLayer(CombatEngineLayers.ABOVE_SHIPS_LAYER)
-                entity.setAdditiveBlend()
-                entity.setBaseSizePerTiles(shipSprite.width / 2f, shipSprite.height / 2f)
-                entity.setUVStart(0f, 0f)
-                entity.setUVEnd(tex.uEnd, tex.vEnd)
-                entity.materialData.setDiffuse(tex.texId)
-                entity.materialData.setEmissive(tex.texId)
-                entity.materialData.setColor(1f, 1f, 1f, 0f)
-                entity.materialData.setEmissiveColor(0.6f, 0.6f, 0.6f, 0f)
-                entity.materialData.glowPower = 0.05f
-                entity.materialData.isIgnoreIllumination = true
-                // 常驻：全局计时器缺省值会在首个逻辑帧被判 TIMER_INVALID 直接 delete，
-                // 必须显式钉一个超长 full（消亡由舰船状态驱动 delete）
-                entity.setGlobalTimer(0f, FULL_SECONDS, 0f)
-
-                // 非实例化直绘（同 BoltRenderComponent 已验证路径）：顶点着色器 p_noneData
-                // 分支直接用实体模型矩阵，QuadObject.glDraw 对 0 实例按 max(count,1) 画单 quad；
-                // FIXED_2D 单实例路径在本环境实测零像素（SSBO 数据未生效，根因待查），故不用。
-                val state = BoxUtilCombatVfx.addEntity(engine, entity)
-                if (state != 0) {
-                    log.warn("[ASTD] 舰船覆盖发光层渲染器：addEntity 失败（state=$state，ship=${ship.hullSpec?.hullId}）")
-                    entity.delete()
-                    return null
-                }
-            } catch (t: Throwable) {
-                log.warn("[ASTD] 舰船覆盖发光层渲染器：实体配置失败 $path（ship=${ship.hullSpec?.hullId}）", t)
-                entity.delete()
-                return null
-            }
-            return entity
+            // 非实例化直绘（同 BoltRenderComponent 已验证路径）：顶点着色器 p_noneData
+            // 分支直接用实体模型矩阵；FIXED_2D 单实例路径在本环境实测零像素（SSBO 数据未生效），故不用。
+            return PooledCombatVfx.checkoutSprite(
+                engine,
+                SpriteLeaseKey(
+                    layer = CombatEngineLayers.ABOVE_SHIPS_LAYER,
+                    textureKey = "tex:$path",
+                    additive = true,
+                    instanced = false,
+                    capacity = 8,
+                ),
+                SpriteLeaseSpec(
+                    location = Vector2f(ship.location),
+                    facingDeg = BoxUtilCombatVfx.normalizeFacingDeg(ship.facing - 90f),
+                    texId = tex.texId,
+                    uvEndX = tex.uEnd,
+                    uvEndY = tex.vEnd,
+                    bindEmissive = true,
+                    baseSizeHalfWidth = shipSprite.width / 2f,
+                    baseSizeHalfHeight = shipSprite.height / 2f,
+                    color = Color(1f, 1f, 1f, 0f),
+                    emissiveColor = Color(0.6f, 0.6f, 0.6f, 0f),
+                    glowPower = 0.05f,
+                    alphaToEmissive = 1f,
+                    isAdditionEmissive = true,
+                    isIgnoreIllumination = true,
+                ),
+            )
         }
 
         override fun advance(amount: Float, events: MutableList<InputEventAPI>?) {
@@ -311,8 +307,8 @@ object ShipGlowRenderer {
                 val att = it.next().value
                 val ship = att.ship
                 if (ship.isHulk || !engine.isEntityInPlay(ship)) {
-                    att.base.delete()
-                    att.recolor?.delete()
+                    att.base.release(0f)
+                    att.recolor?.release(0f)
                     it.remove()
                     continue
                 }
@@ -343,15 +339,15 @@ object ShipGlowRenderer {
             }
 
             val baseAlpha = 1f - blend
-            att.base.setStateVanilla(loc, facing)
-            att.base.materialData.setColor(att.baseColor)
-            att.base.materialData.setColorAlpha(baseAlpha)
-            att.base.materialData.setEmissiveColorAlpha(baseAlpha)
+            att.base.entity.setStateVanilla(loc, facing)
+            att.base.entity.materialData.setColor(att.baseColor)
+            att.base.entity.materialData.setColorAlpha(baseAlpha)
+            att.base.entity.materialData.setEmissiveColorAlpha(baseAlpha)
 
             att.recolor?.let {
-                it.setStateVanilla(loc, facing)
-                it.materialData.setColorAlpha(blend)
-                it.materialData.setEmissiveColorAlpha(blend)
+                it.entity.setStateVanilla(loc, facing)
+                it.entity.materialData.setColorAlpha(blend)
+                it.entity.materialData.setEmissiveColorAlpha(blend)
             }
         }
     }

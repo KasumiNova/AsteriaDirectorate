@@ -3,13 +3,15 @@ package cn.kasuminova.astd.impl.render
 import cn.kasuminova.astd.api.render.ProjectileHost
 import cn.kasuminova.astd.api.render.RenderContext
 import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
-import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx.addEntity
+import cn.kasuminova.astd.renderer.boxutil.pool.PooledCombatVfx
+import cn.kasuminova.astd.renderer.boxutil.pool.SpriteLease
+import cn.kasuminova.astd.renderer.boxutil.pool.SpriteLeaseKey
+import cn.kasuminova.astd.renderer.boxutil.pool.SpriteLeaseSpec
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEngineLayers
 import com.fs.starfarer.api.combat.DamagingProjectileAPI
 import com.fs.starfarer.api.combat.MissileAPI
-import org.boxutil.units.standard.entity.SpriteEntity
 import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
 import kotlin.math.sqrt
@@ -22,13 +24,15 @@ import kotlin.math.sqrt
  * 观感对齐原版 built-in 螺栓（ProjectileRenderer.render 的 var47==null 路径）：
  * - 贴图 [BoltSpec.texturePath]：彗形 + 纵向渐隐（头全亮→尾透明）+ 收窄（头全宽→尾半宽）
  *   已烘焙进 alpha（原版靠逐顶点色与梯形几何实现，SpriteEntity 单 quad 无此能力，故烘焙）；
- * - 两颗相同 SpriteEntity 双趟叠加（= 原版 body 双 pass），统一染 [BoltSpec.color]
+ * - 单颗池化 SpriteEntity（[PooledCombatVfx.checkoutSprite] 租约）additive 叠加，
+ *   统一染 [BoltSpec.color]
  *   （原版弹头只用 coreColor；fringeColor 的 projtrail 外带语义由 Static Trail 接替）；
  * - 每帧从弹体 API 实时同步：`boltFrame`（贴图跨 [tailEnd → 弹体位置]），
  *   alpha = brightness² × 染色 alpha（原版 body 两趟均吃平方亮度）；
  * - 出生伸入：X 向缩放随 |头−尾|/spec.length 从 0 拉满（原版 TrailExtender distanceRatio 同语义）。
  *
- * 弹体移出引擎即删除实体；命中时补发一次命中光晕（原版用 .proj 的 fringeColor 画 hit glow，
+ * 租约口径：手动 alpha + 心跳看门狗（0.5s 未触活即泊车兜底）；弹体移出引擎/组件 detach
+ * 即 release(0f) 归还。命中时补发一次命中光晕（原版用 .proj 的 fringeColor 画 hit glow，
  * 屏蔽后 alpha=0 不可见，这里用 DSL 染色补回）。
  *
  * 导弹（MissileAPI）默认不接管：原版导弹贴图渲染保留，组件 attach 时直接禁用自身；
@@ -44,7 +48,7 @@ class BoltRenderComponent(
 ) : RenderEntityImpl(id, CombatEngineLayers.ABOVE_SHIPS_LAYER, RENDER_ORDER_BOLT) {
 
     private val log = Global.getLogger(BoltRenderComponent::class.java)
-    private val passes = ArrayList<SpriteEntity>(BOLT_PASSES)
+    private var boltLease: SpriteLease? = null
     private var disabled = false
     private var hitGlowSpawned = false
 
@@ -89,14 +93,12 @@ class BoltRenderComponent(
             return true
         }
 
-        repeat(BOLT_PASSES) {
-            val sprite = createBoltSprite(engine) ?: run {
-                deleteAll()
-                disabled = true
-                return true
-            }
-            passes += sprite
+        val lease = checkoutBolt(engine, projectile)
+        if (lease == null) {
+            disabled = true
+            return true
         }
+        boltLease = lease
         syncBolt(ctx, projectile)
         return true
     }
@@ -106,7 +108,7 @@ class BoltRenderComponent(
         val engine = ctx.engine ?: return
         val projectile = (ctx.host as? ProjectileHost)?.projectile ?: return
         if (!engine.isEntityInPlay(projectile)) {
-            deleteAll()
+            releaseBolt()
             disabled = true
             return
         }
@@ -117,25 +119,37 @@ class BoltRenderComponent(
         }
     }
 
-    private fun createBoltSprite(engine: CombatEngineAPI): SpriteEntity? {
-        val entity = SpriteEntity(spec.texturePath)
-        entity.setLayer(CombatEngineLayers.ABOVE_SHIPS_LAYER)
-        entity.setAdditiveBlend()
-        entity.setBaseSizePerTiles(specLength / 2f, specWidth / 2f)
-        entity.materialData.setColor(spec.color.red, spec.color.green, spec.color.blue, spec.color.alpha)
-        entity.materialData.emissive = entity.materialData.diffuse
-        entity.materialData.setEmissiveColor(spec.color.red, spec.color.green, spec.color.blue, spec.color.alpha)
-        entity.materialData.glowPower = 0.5f
-        // 常驻：消亡由组件按弹体状态显式 delete，不走全局计时器
-        entity.setGlobalTimer(0f, BOLT_FULL_SECONDS, 0f)
-        BoxUtilCombatVfx.ensureReady(engine)
-        val state = addEntity(engine, entity)
-        if (state != 0) {
-            log.warn("ASTD box bolt 注册失败（addEntity 返回 $state）：id=$id，本弹体螺栓层缺失，其余特效层照常")
-            entity.delete()
-            return null
-        }
-        return entity
+    /** 检出租约：additive、glowPower=0.5、diffuse/emissive 同贴图染 spec.color；手动 alpha + 看门狗兜底。 */
+    private fun checkoutBolt(engine: CombatEngineAPI, projectile: DamagingProjectileAPI): SpriteLease? {
+        val tint = spec.color.toAwtColor()
+        // 材质口径对齐出厂 new SpriteEntity(path)：alphaToEmissive=1（emissive alpha 跟随
+        // 逐帧 colorAlpha）、additionEmissive / ignoreIllumination=true
+        return PooledCombatVfx.checkoutSprite(
+            engine,
+            SpriteLeaseKey(
+                layer = CombatEngineLayers.ABOVE_SHIPS_LAYER,
+                textureKey = spec.texturePath,
+                additive = true,
+                instanced = false,
+                capacity = 64,
+            ),
+            SpriteLeaseSpec(
+                location = Vector2f(projectile.location),
+                facingDeg = BoxUtilCombatVfx.normalizeFacingDeg(projectile.facing),
+                spritePath = spec.texturePath,
+                bindEmissive = true,
+                baseSizeHalfWidth = specLength / 2f,
+                baseSizeHalfHeight = specWidth / 2f,
+                color = tint,
+                emissiveColor = tint,
+                glowPower = 0.5f,
+                alphaToEmissive = 1f,
+                isAdditionEmissive = true,
+                isIgnoreIllumination = true,
+                watchdogHeartbeat = WATCHDOG_HEARTBEAT_SECONDS,
+                watchdogFadeOut = 0f,
+            ),
+        )
     }
 
     private fun syncBolt(ctx: RenderContext, projectile: DamagingProjectileAPI) {
@@ -153,10 +167,10 @@ class BoltRenderComponent(
         )
         val alpha = brightness * brightness * spec.color.alpha
         val scale = Vector2f(frame.scaleX, 1f)
-        passes.forEach {
-            it.setStateVanilla(frame.center, frame.facingDeg, scale)
-            it.materialData.colorAlpha = alpha
-        }
+        val lease = boltLease ?: return
+        lease.entity.setStateVanilla(frame.center, frame.facingDeg, scale)
+        lease.entity.materialData.colorAlpha = alpha
+        lease.touch()
     }
 
     /**
@@ -176,26 +190,31 @@ class BoltRenderComponent(
         engine.addHitParticle(at, zero, hitGlowRadius * 0.5f * scale, 1f, 0.8f, Color.WHITE)
     }
 
-    private fun deleteAll() {
-        passes.forEach { it.delete() }
-        passes.clear()
+    private fun releaseBolt() {
+        boltLease?.release(0f)
+        boltLease = null
     }
 
     override fun onDetachSelf() {
-        deleteAll()
+        releaseBolt()
     }
 
     companion object {
         /** 螺栓绘制序：原版弹体同层（ABOVE_SHIPS），拖尾/光斑在其上的 ABOVE_PARTICLES 层。 */
         const val RENDER_ORDER_BOLT = 200
 
-        /** 双趟叠加（= 原版 ProjectileRenderer body 双 pass，加色下提升头部饱和）。 */
-        const val BOLT_PASSES = 1
-
-        /** 螺栓常驻时长（秒）：生命周期由弹体状态显式驱动，这里给一个永不自然到期的值。 */
-        private const val BOLT_FULL_SECONDS = 1e7f
+        /** 看门狗心跳（秒）：弹体宿主停更超此时长即自动泊车归还（实体不滞留兜底）。 */
+        private const val WATCHDOG_HEARTBEAT_SECONDS = 0.5f
     }
 }
+
+/** DSL 染色（0..1 浮点分量）转 AWT Color（0..255，池 spec 统一走 AWT）。 */
+private fun ASTDColor.toAwtColor(): Color = Color(
+    (red.coerceIn(0f, 1f) * 255f).toInt(),
+    (green.coerceIn(0f, 1f) * 255f).toInt(),
+    (blue.coerceIn(0f, 1f) * 255f).toInt(),
+    (alpha.coerceIn(0f, 1f) * 255f).toInt(),
+)
 
 /** 螺栓帧几何输出：世界中心、归一化朝向（度）、X 向伸入缩放（0..1，出生拉长）。 */
 internal data class BoltFrame(val center: Vector2f, val facingDeg: Float, val scaleX: Float)

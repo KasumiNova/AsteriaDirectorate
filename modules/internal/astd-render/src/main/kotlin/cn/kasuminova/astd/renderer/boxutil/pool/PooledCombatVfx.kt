@@ -32,6 +32,13 @@ import java.awt.Color
  *   [spawnTrail] 为一次性双节点段（内部走租约池的一次性包络检出）；[checkoutTrail] 为
  *   通用租约——多节点、逐帧驱动、手动 alpha + 心跳看门狗，检出全量重置，到期/释放泊车
  *   （alpha 归零 + 清空节点）而非 delete。
+ * - **sprite 租约池**（[SpriteLeaseKey]）：每 key 初始容量个常驻 SpriteEntity（惰性创建，
+ *   扩容步长/硬上限口径同光束租约池）。[checkoutSprite] 检出即全量重置（纹理三态绑定/UV/
+ *   尺寸/颜色/材质参数/变换/实例表），租约期间调用方逐帧驱动 [SpriteLease.entity]（实例化池
+ *   另有 [SpriteLease.instances]）；消亡口径同 trail（一次性包络 / 心跳看门狗 / 显式 release），
+ *   泊车 = 双 alpha 归零 + controlCanRenderNow 渲染循环级跳过（实例化实体 additionally
+ *   renderingCount=0）而非 delete。适用 per-projectile / per-ship 常驻 sprite
+ *   （弹体本体/螺栓/舰船覆盖发光/相位描边/光束环）。
  *
  * 池实体随 BoxUtil 战斗切换清理一并回收；单场战斗内实体总数 = Σ key maxCapacity，有界。
  * 低频事件级特效（每次命中数个）不必走本设施，直接新建实体即可。
@@ -151,6 +158,30 @@ object PooledCombatVfx {
         return manager(engine).trailLeasePools.getOrPut(key) { TrailLeaseBinding(engine, key) }.checkout(spec)
     }
 
+    /**
+     * 检出一个池化 SpriteEntity 租约（per-projectile / per-ship 常驻 sprite 的统一入口，防
+     * renderEntityMap 滞留泄漏）。检出即全量重置实体状态；租约期间调用方逐帧驱动
+     * [SpriteLease.entity]（实例化池逐帧驱动 [SpriteLease.instances]）；消亡口径见
+     * [SpriteLeaseSpec]（一次性包络 / 看门狗 / 显式 release），泊车 = alpha 归零 +
+     * controlCanRenderNow 渲染循环级跳过，常驻复用。
+     *
+     * @return null = 池不可用或池满拒发（均已记 WARN），本次视觉缺席
+     */
+    fun checkoutSprite(engine: CombatEngineAPI, key: SpriteLeaseKey, spec: SpriteLeaseSpec): SpriteLease? {
+        val textureBindings = (if (spec.spritePath != null) 1 else 0) +
+            (if (spec.sprite != null) 1 else 0) +
+            (if (spec.texId != null) 1 else 0)
+        if (textureBindings != 1) {
+            log.warn("池化 sprite 租约检出拒绝：纹理绑定必须三选一（实际 $textureBindings 个，layer=${key.layer}，texture=${key.textureKey}）——调用方编程错误，本次视觉缺席")
+            return null
+        }
+        if (key.instanced && spec.maxInstances <= 0) {
+            log.warn("池化 sprite 租约检出拒绝：实例化池 maxInstances 必须 > 0（实际 ${spec.maxInstances}，layer=${key.layer}，texture=${key.textureKey}）——调用方编程错误，本次视觉缺席")
+            return null
+        }
+        return manager(engine).spriteLeasePools.getOrPut(key) { SpriteLeaseBinding(engine, key) }.checkout(spec)
+    }
+
     private fun manager(engine: CombatEngineAPI): Manager {
         val existing = engine.customData[MANAGER_KEY] as? Manager
         if (existing != null) return existing
@@ -168,11 +199,13 @@ object PooledCombatVfx {
     private class Manager(private val engine: CombatEngineAPI) : BaseEveryFrameCombatPlugin() {
         val spritePools = LinkedHashMap<SpritePoolKey, SpritePoolBinding>()
         val trailLeasePools = LinkedHashMap<TrailLeaseKey, TrailLeaseBinding>()
+        val spriteLeasePools = LinkedHashMap<SpriteLeaseKey, SpriteLeaseBinding>()
 
         override fun advance(amount: Float, events: MutableList<InputEventAPI>?) {
             if (engine.isPaused) return
             for (pool in spritePools.values) pool.advance(amount)
             for (pool in trailLeasePools.values) pool.advance(amount)
+            for (pool in spriteLeasePools.values) pool.advance(amount)
         }
     }
 

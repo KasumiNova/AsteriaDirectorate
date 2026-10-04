@@ -1,6 +1,9 @@
 package cn.kasuminova.astd.renderer.effect.projectile.beam
 
-import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
+import cn.kasuminova.astd.renderer.boxutil.pool.PooledCombatVfx
+import cn.kasuminova.astd.renderer.boxutil.pool.SpriteLease
+import cn.kasuminova.astd.renderer.boxutil.pool.SpriteLeaseKey
+import cn.kasuminova.astd.renderer.boxutil.pool.SpriteLeaseSpec
 
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
@@ -9,13 +12,13 @@ import com.fs.starfarer.api.combat.CombatEntityAPI
 import com.fs.starfarer.api.combat.CombatLayeredRenderingPlugin
 import com.fs.starfarer.api.combat.ViewportAPI
 import com.fs.starfarer.api.graphics.SpriteAPI
-import org.boxutil.base.api.InstanceDataAPI
 import org.boxutil.define.BoxDatabase
 import org.boxutil.define.BoxEnum
 import org.boxutil.define.InstanceType
 import org.boxutil.units.standard.attribute.Instance2Data
 import org.boxutil.units.standard.entity.SpriteEntity
 import org.lazywizard.lazylib.MathUtils
+import org.lwjgl.util.vector.Vector3f
 import java.awt.Color
 import java.util.ArrayDeque
 import java.util.EnumSet
@@ -23,16 +26,23 @@ import kotlin.math.max
 import kotlin.math.pow
 
 /**
- * “跟随光束的永久环”（SpriteEntity 版）：
+ * “跟随光束的永久环”（池化 SpriteEntity 版）：
  * - 用一张“空心圆环”贴图（白色 + alpha）作为 diffuse/emissive，避免 FlareEntity 的“圆盘感”；
+ * - 实体走 [PooledCombatVfx.checkoutSprite] 实例化租约池（capacity=8，maxInstances 随 spec），
+ *   消亡 release(0f) 归还而非 delete；
  * - 仍用 fixed instance data 做批量渲染与渐隐。
  */
 internal object AttachedBeamSpriteRingRenderer {
 
     private const val ENGINE_KEY = "astd_attached_beam_sprite_ring_renderer"
-    private const val KEY_LOG_ADD_SPRITE_FAIL_ONCE = "astd_attached_beam_sprite_ring_add_fail_once"
+
+    /** 租约池贴图身份（运行期生成环贴图，见 [GeneratedRingSprite]）。 */
+    private const val RING_TEXTURE_KEY = "astd_generated_ring"
 
     private val log = Global.getLogger(AttachedBeamSpriteRingRenderer::class.java)
+
+    /** 生成环贴图获取异常 WARN 去重标记（getOrCreateSprite 内部对真实加载失败另有 WARN）。 */
+    private var warnedRingSpriteFail = false
 
     enum class Mode {
         /** 按距离采样的“永久环”：整条束上持续存在，可沿束方向滚动。 */
@@ -118,6 +128,7 @@ internal object AttachedBeamSpriteRingRenderer {
         var lastUpdated: Float,
         var fadeStartedAt: Float?,
         var fadeMul: Float,
+        val lease: SpriteLease,
         val sprite: SpriteEntity,
         val instances: MutableList<Instance2Data>,
         val particles: ArrayDeque<Particle>,
@@ -129,7 +140,7 @@ internal object AttachedBeamSpriteRingRenderer {
 
         val existing = r.map[key]
         if (existing == null) {
-            val att = createAttachment(engine, line, spec)
+            val att = createAttachment(engine, line, spec) ?: return
             att.lastUpdated = now
             r.map[key] = att
             try {
@@ -159,10 +170,7 @@ internal object AttachedBeamSpriteRingRenderer {
     fun remove(engine: CombatEngineAPI, key: String) {
         val r = engine.customData[ENGINE_KEY] as? Renderer ?: return
         val att = r.map.remove(key) ?: return
-        try {
-            att.sprite.delete()
-        } catch (_: Throwable) {
-        }
+        att.lease.release(0f)
     }
 
     private fun getOrCreate(engine: CombatEngineAPI): Renderer {
@@ -184,68 +192,56 @@ internal object AttachedBeamSpriteRingRenderer {
         }
     }
 
-    private fun createAttachment(engine: CombatEngineAPI, line: BeamLineUtil.BeamLine, spec: Spec): Attachment {
-        BoxUtilCombatVfx.ensureReady(engine)
-
-        // 先创建实体，再由 applySpecToSprite() 尝试绑定“空心圆环”贴图；生成失败会自然退化到白贴图（方块），但不会崩。
-        val spriteEntity = SpriteEntity()
-        applySpecToSprite(spriteEntity, spec)
-
-        // 关键：必须初始化实体的变换矩阵（否则可能全零矩阵导致完全不可见）。
-        // 这里用“本地坐标系”：entity 负责从(from,facing)建立坐标，instance 只写 (dist,0) 的局部位置。
-        try {
-            spriteEntity.setStateVanilla(line.from, line.facing)
-        } catch (_: Throwable) {
-        }
-
-        val list = ArrayList<Instance2Data>(spec.maxInstances)
-        repeat(spec.maxInstances) {
-            val d = Instance2Data()
-            // 参照 BoxUtil mission / 本模组成功用法：用 Instance2Data 的标准 setColor/setEmissiveColor。
-            // 颜色具体由 materialData 的 emissiveColor 控制；这里主要保证 alpha 非 0、不会被 discard。
-            d.setColor(255, 255, 255, 255)
-            d.setEmissiveColor(255, 255, 255, 255)
-            // timer 给一个极长的 FULL，避免 instance 侧 timer 异常导致被清理。
-            d.setTimer(0f, 99999f, 0f)
-            list.add(d)
-        }
-        @Suppress("UNCHECKED_CAST")
-        val apiList = list as MutableList<InstanceDataAPI>
-        // 参照成功案例：setInstanceData + submitInstanceData + alwaysRefresh
-        spriteEntity.setInstanceData(apiList, 0f, 99999f, 0f)
-        spriteEntity.setInstanceDataRefreshIndex(0)
-        spriteEntity.setInstanceDataRefreshAllFromCurrentIndex()
-        try {
-            submitDynamicInstanceData(spriteEntity, apiList.size)
-        } catch (_: Throwable) {
-        }
-        spriteEntity.setRenderingCount(0)
-        spriteEntity.isAlwaysRefreshInstanceData = true
-
-        // 我们用 instanceTimerOverride 来统一控制 alpha（避免依赖 instance timer 细节/版本差异）。
-        try {
-            spriteEntity.setInstanceTimerOverride(1f, BoxEnum.TIMER_FULL)
-        } catch (_: Throwable) {
-        }
-        // 常驻：全局计时器缺省值会在首个逻辑帧被判 TIMER_INVALID 直接 delete，必须钉超长 full
-        // （消亡由 remove() 按光束生命周期显式 delete）
-        spriteEntity.setGlobalTimer(0f, 1e7f, 0f)
-
-        val addState = try {
-            BoxUtilCombatVfx.addEntity(engine, spriteEntity)
+    /**
+     * 检出实例化租约：材质口径与 [applySpecToSprite] 一致（生成环贴图失败兜底 BUtil_ONE、
+     * color(0,0,0,255)、emissive=rgb、emissiveState(0,0,glowPower)、additionEmissive /
+     * ignoreIllumination=true、baseSizePerTiles(1,1)）；实例表由池按 spec.maxInstances 建/重置。
+     * 检出失败（池不可用/池满，均已 WARN）返回 null，本次环视觉缺席，下一拍 upsert 重试。
+     */
+    private fun createAttachment(engine: CombatEngineAPI, line: BeamLineUtil.BeamLine, spec: Spec): Attachment? {
+        val ringSprite = try {
+            GeneratedRingSprite.getOrCreateSprite()
         } catch (t: Throwable) {
-            if (engine.customData[KEY_LOG_ADD_SPRITE_FAIL_ONCE] != true) {
-                engine.customData[KEY_LOG_ADD_SPRITE_FAIL_ONCE] = true
-                log.warn("BoxUtil addEntity threw exception (target=${BoxEnum.ENTITY_SPRITE})", t)
+            if (!warnedRingSpriteFail) {
+                warnedRingSpriteFail = true
+                log.warn("BoxUtil sprite ring 生成环贴图获取异常，兜底使用 BUtil_ONE（去重后仅记一次）", t)
             }
-            -1
+            null
         }
-
-        if (addState != 0 && engine.customData[KEY_LOG_ADD_SPRITE_FAIL_ONCE] != true) {
-            engine.customData[KEY_LOG_ADD_SPRITE_FAIL_ONCE] = true
-            log.warn("BoxUtil addEntity failed (state=$addState, target=${BoxEnum.ENTITY_SPRITE}). Rings may be invisible until CRM is ready.")
+        // 兜底：至少让它“能画出来”，方便定位资源问题。
+        val diffuse = ringSprite ?: BoxDatabase.BUtil_ONE
+        val rgb = Color(spec.color.red, spec.color.green, spec.color.blue, 255)
+        val lease = PooledCombatVfx.checkoutSprite(
+            engine,
+            SpriteLeaseKey(
+                layer = spec.layer,
+                textureKey = RING_TEXTURE_KEY,
+                additive = true,
+                instanced = true,
+                capacity = 8,
+            ),
+            SpriteLeaseSpec(
+                location = line.from,
+                facingDeg = line.facing,
+                sprite = diffuse,
+                bindEmissive = true,
+                baseSizeHalfWidth = 1f,
+                baseSizeHalfHeight = 1f,
+                color = Color(0, 0, 0, 255),
+                emissiveColor = rgb,
+                emissiveState = Vector3f(0f, 0f, max(0f, spec.glowPower)),
+                isAdditionEmissive = true,
+                isIgnoreIllumination = true,
+                maxInstances = spec.maxInstances,
+            ),
+        ) ?: return null
+        val instances = lease.instances
+        if (instances == null) {
+            // 实例化池检出必须带实例表；缺失即池实现缺陷，立即归还并缺席（禁止静默）
+            lease.release(0f)
+            log.warn("BoxUtil sprite ring 租约缺失实例表（layer=${spec.layer}，maxInstances=${spec.maxInstances}），本次环视觉缺席")
+            return null
         }
-
         return Attachment(
             line = line,
             spec = spec,
@@ -254,16 +250,16 @@ internal object AttachedBeamSpriteRingRenderer {
             lastUpdated = safeTime(engine),
             fadeStartedAt = null,
             fadeMul = 1f,
-            sprite = spriteEntity,
-            instances = list,
+            lease = lease,
+            sprite = lease.entity,
+            instances = instances,
             particles = ArrayDeque(),
         )
     }
 
     private fun applySpecToSprite(sprite: SpriteEntity, spec: Spec) {
-        sprite.setLayer(spec.layer)
-        sprite.setAdditiveBlend()
-
+        // 层位/混合模式是池租约键级属性（检出创建时定死、重置面不覆盖）：
+        // upsert 路径改写会污染池实体串租约，这里只允许重涂材质与贴图。
         val s = try {
             GeneratedRingSprite.getOrCreateSprite()
         } catch (_: Throwable) {
@@ -310,12 +306,7 @@ internal object AttachedBeamSpriteRingRenderer {
         }
 
         override fun cleanup() {
-            map.values.forEach {
-                try {
-                    it.sprite.delete()
-                } catch (_: Throwable) {
-                }
-            }
+            map.values.forEach { it.lease.release(0f) }
             map.clear()
             expired = true
             engine = null
@@ -412,10 +403,7 @@ internal object AttachedBeamSpriteRingRenderer {
                     val f = (1f - fadeT).coerceIn(0f, 1f)
                     att.fadeMul = (f * f * f).coerceIn(0f, 1f)
                     if (att.fadeMul <= 0.001f) {
-                        try {
-                            att.sprite.delete()
-                        } catch (_: Throwable) {
-                        }
+                        att.lease.release(0f)
                         it.remove()
                         continue
                     }
