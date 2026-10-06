@@ -14,7 +14,7 @@ import cn.kasuminova.astd.sscsv.outputs.proj.Vec2
 import cn.kasuminova.astd.sscsv.outputs.proj.Vec2i
 
 /**
- * 联制线（LH）武器：星尘发射器（飞星两线各内置 x2，机制设计见 `docs/design/ships/20-joint.md` §武器）。
+ * 联制线（LH）武器：星尘发射器（衔星两线各内置 x2，机制设计见 `docs/design/ships/20-joint.md` §武器）。
  *
  * 光尘机制：弹体为 MOTE 型导弹（环绕源舰 600su 半径 flocking、主动撞击射程内敌目标，
  * 优先级 导弹 > 战机 > 舰船），AI 经 `ModPlugin.pickMissileAI` 钩子指派
@@ -22,7 +22,7 @@ import cn.kasuminova.astd.sscsv.outputs.proj.Vec2i
  * 双线仅配色差异（ARC 蓝 / LENS 紫），面板与机制完全一致。
  */
 
-/** 飞星 (ARC)：整船 bloom 描边层（装配界面/战斗 decorative outline）。 */
+/** 衔星 (ARC)：整船 bloom 描边层（装配界面/战斗 decorative outline）。 */
 object Wpn_astd_lh_001_bloom : WeaponDataEntry() {
     override val id: String = "astd_lh_001_bloom"
     override val name: String = weaponName(id)
@@ -39,7 +39,7 @@ object Wpn_astd_lh_001_bloom : WeaponDataEntry() {
     override val number: Int = 9133
 }
 
-/** 飞星 (LENS)：整船 bloom 描边层（装配界面/战斗 decorative outline）。 */
+/** 衔星 (LENS)：整船 bloom 描边层（装配界面/战斗 decorative outline）。 */
 object Wpn_astd_lh_002_bloom : WeaponDataEntry() {
     override val id: String = "astd_lh_002_bloom"
     override val name: String = weaponName(id)

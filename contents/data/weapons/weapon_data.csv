@@ -33,8 +33,8 @@ name,id,tier,rarity,base value,range,damage/second,damage/shot,emp,impact,turn r
 源生冰晶 MIRV 发射舱,astd_ice_shard_mirv_pod,3,1,24000,2500,0,400,0,0,30,12,6,0.05,2,FRAGMENTATION,500,0,0,12,2,0.5,0,0,0,0,0,300,100,9,600,0,0,"DO_NOT_AIM,STRIKE","missile12, strike9, no_drop, no_drop_salvage, restricted, codex_unlockable",astd,菀星设计局-紫菀,,压制,普通,普通,,,母弹接近目标后分裂为 {%s} 枚冰晶射弹。命中舰体的冰晶将附着 5 秒并持续造成能量伤害，命中点周围的目标受到的伤害提高 {%s}。效果受到{%s}影响。,15 | 25% | 难度系数,,,FALSE,9233
 冰晶射弹（隐藏）,astd_ice_shard_sub,3,1,0,1000,0,400,0,0,30,0,,,,FRAGMENTATION,0,0,0,0,0,0,0,0,0,0,0,1000,0,1,100,0,0,SYSTEM,"no_drop, no_drop_salvage",,菀星设计局-紫菀,,,,,,,,,,,TRUE,9234
 离子脉冲（战机型）,astd_ion_pulse_fighter,3,1,0,500,0,90,200,0,40,0,15,1.5,3,ENERGY,100,0,0.05,0.05,3,0.1,3,12,1,4,0,1000,0,0,0,0,0,SYSTEM,"energy8, show_in_codex",,菀星设计局-紫菀,,瘫痪 （战机型）,,,,,,,,,FALSE,9242
-飞星 (ARC) Bloom 描边层 (隐藏),astd_lh_001_bloom,5,1,0,0,0,0,0,0,0,0,,,,OTHER,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,SYSTEM,"no_drop, no_drop_salvage",,菀星设计局-星坠,,,,,,,,,,,TRUE,9133
-飞星 (LENS) Bloom 描边层 (隐藏),astd_lh_002_bloom,5,1,0,0,0,0,0,0,0,0,,,,OTHER,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,SYSTEM,"no_drop, no_drop_salvage",,菀星设计局-紫菀,,,,,,,,,,,TRUE,9134
+衔星 (ARC) Bloom 描边层 (隐藏),astd_lh_001_bloom,5,1,0,0,0,0,0,0,0,0,,,,OTHER,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,SYSTEM,"no_drop, no_drop_salvage",,菀星设计局-星坠,,,,,,,,,,,TRUE,9133
+衔星 (LENS) Bloom 描边层 (隐藏),astd_lh_002_bloom,5,1,0,0,0,0,0,0,0,0,,,,OTHER,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,SYSTEM,"no_drop, no_drop_salvage",,菀星设计局-紫菀,,,,,,,,,,,TRUE,9134
 星尘发射器,astd_lh_stardust_launcher_arc,5,1,0,800,0,400,400,0,30,0,8,0.25,2,ENERGY,200,0,0,1,1,0,30,30,0,0,0,450,200,60,400,0,0,NO_MANUAL_FIRE,"no_drop, no_drop_salvage",,联制,,点防御，反舰,,,,,,,,,FALSE,9240
 星尘发射器,astd_lh_stardust_launcher_lens,5,1,0,800,0,400,400,0,30,0,8,0.25,2,ENERGY,200,0,0,1,1,0,30,30,0,0,0,450,200,60,400,0,0,NO_MANUAL_FIRE,"no_drop, no_drop_salvage",,联制,,点防御，反舰,,,,,,,,,FALSE,9241
 相位长矛（战机型）,astd_phase_lance_fighter,3,1,0,550,800,,0,0,40,0,,,,ENERGY,,733,0.25,0.5,1,3,0,0,0,0,3200,0,0,0,0,0,0,SYSTEM,"beam10, show_in_codex",,菀星设计局-紫菀,,通用 （战机型）,,,,,,,,,FALSE,9243

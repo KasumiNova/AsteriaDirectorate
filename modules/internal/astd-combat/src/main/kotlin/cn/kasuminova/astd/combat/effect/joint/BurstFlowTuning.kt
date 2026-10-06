@@ -4,7 +4,7 @@ import cn.kasuminova.astd.api.difficulty.DifficultyTuning
 import cn.kasuminova.astd.api.difficulty.ScalingEntry
 
 /**
- * 落叶飞花（飞星 (ARC) 舰船系统）的机制数值声明（设计案 20-joint.md §战术系统-坠星）。
+ * 落叶飞花（衔星 (ARC) 舰船系统）的机制数值声明（设计案 20-joint.md §战术系统-坠星）。
  *
  * 动机：瞬时爆发（不随时间线性增长/减弱，恒定口径）的时流/加减速/备弹恢复/辐能耗散/
  * 冲刺动量五合一系统（激活期间转向锁死，无转向加成数值），三锚点数值集中在此声明，

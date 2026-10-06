@@ -10,7 +10,7 @@ import cn.kasuminova.astd.sscsv.entries.catalog.shipsystems.systemName
  * CSV 侧时长/冷却/充能参数按设计案落定。
  */
 
-/** 飞星 (ARC)（LH-001）：「落叶飞花」——1s 瞬时爆发时流/机动/备弹恢复 + 冲刺动量，3 充能、6s 充能间隔。 */
+/** 衔星 (ARC)（LH-001）：「落叶飞花」——1s 瞬时爆发时流/机动/备弹恢复 + 冲刺动量，3 充能、6s 充能间隔。 */
 object Sys_astd_lh_001_burst_flow : ShipSystemWithSystemFileEntry() {
     override val id: String = "astd_lh_001_burst_flow"
     override val name: String = systemName(id)
@@ -32,7 +32,7 @@ object Sys_astd_lh_001_burst_flow : ShipSystemWithSystemFileEntry() {
     override val useSound: String = "system_temporalshell"
 }
 
-/** 飞星 (LENS)（LH-002）：「视界变速」——自身时流提升 + 单目标时流压制与伤害转嫁，14s 持续、15s 冷却。 */
+/** 衔星 (LENS)（LH-002）：「视界变速」——自身时流提升 + 单目标时流压制与伤害转嫁，14s 持续、15s 冷却。 */
 object Sys_astd_lh_002_vision_shift : ShipSystemWithSystemFileEntry() {
     override val id: String = "astd_lh_002_vision_shift"
     override val name: String = systemName(id)

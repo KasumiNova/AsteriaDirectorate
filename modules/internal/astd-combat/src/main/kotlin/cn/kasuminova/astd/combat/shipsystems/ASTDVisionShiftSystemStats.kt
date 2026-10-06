@@ -25,7 +25,7 @@ import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
 
 /**
- * 视界变速（飞星 (LENS) / astd_lh_002_vision_shift）：自身时流提升 + 单目标时流压制与承伤转嫁。
+ * 视界变速（衔星 (LENS) / astd_lh_002_vision_shift）：自身时流提升 + 单目标时流压制与承伤转嫁。
  *
  * 设计案 20-joint.md §战术系统-紫菀：激活时锁定一艘敌对舰船（玩家取 shipTarget/鼠标位置附近敌舰，
  * AI 取 shipTarget/最近敌舰），14s 窗口内：
@@ -34,7 +34,7 @@ import java.awt.Color
  * - 目标承伤方向修正由挂目标舰的 [VisionShiftDamageListener] 结算
  *   （先例：AffixAggressiveSwarmNetworkHullMod.MarkedTargetListener）。
  *
- * 多源共存：同一目标被多艘飞星 (LENS) 锁定时，时流压制与承伤修正均按
+ * 多源共存：同一目标被多艘衔星 (LENS) 锁定时，时流压制与承伤修正均按
  * per-source stat id（[targetStatId]）各自写入、各自清理，互不覆盖；
  * listener 每标记一份实例（创建 mark 时挂接，标记消失/目标死亡/源舰死亡时自移除）。
  *

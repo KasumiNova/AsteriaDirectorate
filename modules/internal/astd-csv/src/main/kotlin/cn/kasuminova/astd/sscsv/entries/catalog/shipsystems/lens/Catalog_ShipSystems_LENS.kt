@@ -290,7 +290,7 @@ object Sys_astd_grav_replicator : ShipSystemWithSystemFileEntry() {
 /**
  * 落叶飞花（战机型）：茑萝级内置战机「牵丝」的战术系统（purple/20-production.md §2）。
  *
- * 机制与飞星 (ARC) 的落叶飞花一致（复用 [ASTDBurstFlowSystemStats] / [ASTDBurstFlowSystemAI]），
+ * 机制与衔星 (ARC) 的落叶飞花一致（复用 [ASTDBurstFlowSystemStats] / [ASTDBurstFlowSystemAI]），
  * 仅节奏调整：回充时间 10s（regen 0.1）、最大充能 2。
  */
 object Sys_astd_burst_flow_fighter : ShipSystemWithSystemFileEntry() {

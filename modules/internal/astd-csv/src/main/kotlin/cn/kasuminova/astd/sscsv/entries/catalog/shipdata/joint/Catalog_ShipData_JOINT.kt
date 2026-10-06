@@ -6,10 +6,10 @@ import cn.kasuminova.astd.sscsv.entries.catalog.shipdata.shipName
 /**
  * 联制线（LH，星坠 × 紫菀联合设计品）舰船数据，规格来源 `docs/design/ships/20-joint.md`。
  *
- * 双线共用飞星级骨架；两舰在 design type、战术系统、视觉风格上分化，2026-09 起辐能/航速
+ * 双线共用衔星级骨架；两舰在 design type、战术系统、视觉风格上分化，2026-09 起辐能/航速
  * 亦按定位分化（ARC 低容高耗高航速、LENS 高容低耗低航速）：
  * - 锻萼（LH-001）：星坠侧表达，系统「落叶飞花」；
- * - 飞星（LH-002）：紫菀侧表达，系统「视界变速」。
+ * - 衔星（LH-002）：紫菀侧表达，系统「视界变速」。
  *
  * 表外字段（机动/后勤/CR 系）doc 未给，按原版超级护卫舰（亥伯龙档）补齐。
  * 代价三件套落地：supplies/rec+mo 18（部署点口径，护卫舰档极高位）、fleet pts 15
@@ -60,7 +60,7 @@ object Ship_astd_lh_001 : ShipDataEntry() {
     override val number: Int = 9119
 }
 
-/** 飞星（LH-002）：紫菀侧表达；骨架与锻萼共用，辐能/航速按定位分化（高容低耗低航速）。 */
+/** 衔星（LH-002）：紫菀侧表达；骨架与锻萼共用，辐能/航速按定位分化（高容低耗低航速）。 */
 object Ship_astd_lh_002 : ShipDataEntry() {
     override val id: String = "astd_lh_002"
     override val name: String = shipName(id)

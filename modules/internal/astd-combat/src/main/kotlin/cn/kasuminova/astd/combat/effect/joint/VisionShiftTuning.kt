@@ -5,7 +5,7 @@ import cn.kasuminova.astd.api.difficulty.ScalingEntry
 import com.fs.starfarer.api.combat.ShipAPI
 
 /**
- * 视界变速（飞星 (LENS) 舰船系统）的机制数值声明（设计案 20-joint.md §战术系统-紫菀）。
+ * 视界变速（衔星 (LENS) 舰船系统）的机制数值声明（设计案 20-joint.md §战术系统-紫菀）。
  *
  * 动机：自身时流提升 + 单目标时流压制（按体型四档）+ 目标承伤方向修正（来自本舰增伤、
  * 来自他单位减伤）。三锚点数值集中在此声明，激活时一次性解析（持续 14s 窗口内不随
