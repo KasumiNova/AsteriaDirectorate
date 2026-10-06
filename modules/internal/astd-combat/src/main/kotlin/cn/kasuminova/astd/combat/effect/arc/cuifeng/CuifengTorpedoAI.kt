@@ -13,9 +13,12 @@ import org.lwjgl.util.vector.Vector2f
 import kotlin.math.abs
 
 /**
- * 摧锋鱼雷的自定义追踪 AI（blue/30-superlative.md §机制）：目标有效性校验 → 0.25s 节流重选
- * （反舰口径：仅舰船入选，战机/导弹永不入选）→ 领先瞄准 → giveCommand 转向加速，外加
- * 二段式速度调速器（发射时 50% 航速，航程 25%→50% 间线性升至满速）。
+ * 摧锋鱼雷的自定义追踪 AI（blue/30-superlative.md §机制）：发射舰锁定目标（shipTarget）优先 →
+ * 目标有效性校验 → 0.25s 节流重选（反舰口径：仅舰船入选，战机/导弹永不入选）→ 领先瞄准 →
+ * giveCommand 转向加速，外加二段式速度调速器（发射时 50% 航速，航程 25%→50% 间线性升至满速）。
+ *
+ * 锁定遵循语义对齐原版 GuidedMissileAI：发射舰存在有效锁定目标时每轮重选直接切到锁定目标
+ * （不受捕获射程限制，但仍受反舰口径过滤）；无锁定或锁定失效时退化为就近捕获。
  *
  * 形态对齐 [StellarMrmMissileAI][cn.kasuminova.astd.combat.effect.lens.stellar.StellarMrmMissileAI]
  * 先例；挂载点：由 [CuifengTorpedoOnFireEffect] 经 `missile.setMissileAI(...)` 安装。
@@ -40,24 +43,28 @@ class CuifengTorpedoAI(
         if (engine.isPaused) return
         if (missile.isFading || missile.isExpired) return
 
-        // ---- 目标维护（0.25s 节流：有效保留，失效重选；反舰口径仅舰船入选）----
+        // ---- 目标维护（0.25s 节流：锁定目标优先切换，其次有效保留，失效重选）----
         reselectTimer -= amount
         if (reselectTimer <= 0f) {
             reselectTimer = CuifengTorpedoDifficulty.RETARGET_INTERVAL
             val current = target
-            if (current == null || !isValidTarget(engine, current)) {
-                val picked = selectTarget(engine)
-                if (picked !== current) {
-                    target = picked
-                    if (picked != null) {
-                        bump(engine, TELE_TARGET_SELECTED)
-                        log.info(
-                            "[摧锋] 鱼雷选定目标：hull=${picked.hullSpec?.hullId} " +
-                                    "dist=${MathUtils.getDistance(missile.location, picked.location).toInt()}",
-                        )
-                    } else {
-                        log.info("[摧锋] 鱼雷无可选目标（候选全空/全越射程），直飞")
-                    }
+            val locked = lockedTarget(engine)
+            val picked = when {
+                locked != null -> locked
+                current == null || !isValidTarget(engine, current) -> selectTarget(engine)
+                else -> current
+            }
+            if (picked !== current) {
+                target = picked
+                if (picked != null) {
+                    bump(engine, TELE_TARGET_SELECTED)
+                    log.info(
+                        "[摧锋] 鱼雷选定目标：hull=${picked.hullSpec?.hullId} " +
+                                "dist=${MathUtils.getDistance(missile.location, picked.location).toInt()}" +
+                                if (picked === locked) "（遵循发射舰锁定）" else "",
+                    )
+                } else {
+                    log.info("[摧锋] 鱼雷无可选目标（候选全空/全越射程），直飞")
                 }
             }
         }
@@ -88,6 +95,16 @@ class CuifengTorpedoAI(
             bump(engine, TELE_GOVERNED_FRAMES)
         }
         engine.customData[TELE_LAST_SPEED_FACTOR] = factor
+    }
+
+    /**
+     * 发射舰锁定目标：存在且有效（反舰口径内）时返回之，供重选优先切换。
+     * 不做捕获射程限制——锁定语义是"指哪打哪"，射程约束只作用于就近捕获兜底。
+     */
+    private fun lockedTarget(engine: CombatEngineAPI): ShipAPI? {
+        val locked = missile.source?.shipTarget ?: return null
+        if (locked.isFighter || locked.isDrone) return null
+        return if (isValidTarget(engine, locked)) locked else null
     }
 
     /** 反舰目标筛选：捕获射程内最近的敌方存活舰船（战机/无人机/导弹不入选）。 */
