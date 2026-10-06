@@ -141,8 +141,8 @@ object CuifengTorpedoStrikeImpl : CuifengTorpedoStrike {
                 "${victim.javaClass.simpleName}@${(victim as? ShipAPI)?.hullSpec?.hullId ?: (victim as? MissileAPI)?.projectileSpecId}"
         }
 
-        // ---- 步骤 4：特效恒执行（十字辉星 ×2 + 爆炸星云 ×10）----
-        CuifengTorpedoVfx.spawnImpact(engine, point)
+        // ---- 步骤 4：特效恒执行（十字辉星 ×2 随弹体命中朝向旋转 + 爆炸星云 ×10）----
+        CuifengTorpedoVfx.spawnImpact(engine, point, projectile.facing)
         bump(engine, TELE_IMPACT_VFX)
     }
 

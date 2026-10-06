@@ -13,8 +13,8 @@ import kotlin.random.Random
 
 /**
  * 摧锋鱼雷命中特效触发层（blue/30-superlative.md §特效）：
- * 十字辉星 ×2（[BloomFlareVfx] 绽放辉星，SMOOTH_DISC 90° 交叉，0.5s 内长轴扩散并渐隐，
- * 短轴固定不收窄）+ 爆炸星云（ARC 蓝白主色）。
+ * 十字辉星 ×2（[BloomFlareVfx] 绽放辉星，SMOOTH_DISC 随导弹命中朝向 90° 交叉，
+ * 0.5s 内长轴扩散并渐隐，短轴固定不收窄）+ 爆炸星云（ARC 蓝白主色）。
  */
 object CuifengTorpedoVfx {
 
@@ -44,24 +44,25 @@ object CuifengTorpedoVfx {
     /** 静止速度矢量（闪光/星云用，避免逐次分配）。 */
     private val ZERO_VEL = Vector2f(0f, 0f)
 
-    /** 触发一次命中特效：顶点闪光 → 十字辉星 ×2 → 爆炸星云 ×10（同帧）。 */
-    fun spawnImpact(engine: CombatEngineAPI, point: Vector2f) = spawnImpact(engine, point, Random.Default)
+    /** 触发一次命中特效：顶点闪光 → 十字辉星 ×2（随 [hitAngleDeg] 旋转）→ 爆炸星云 ×10（同帧）。 */
+    fun spawnImpact(engine: CombatEngineAPI, point: Vector2f, hitAngleDeg: Float) =
+        spawnImpact(engine, point, hitAngleDeg, Random.Default)
 
     /** 可注入随机源的入口（单元测试与运行共用同一路径）。 */
-    fun spawnImpact(engine: CombatEngineAPI, point: Vector2f, random: Random) {
+    fun spawnImpact(engine: CombatEngineAPI, point: Vector2f, hitAngleDeg: Float, random: Random) {
 //        engine.addHitParticle(point, ZERO_VEL, FLASH_SIZE, 1.1f, 0.12f, FLARE_CORE_COLOR)
 //        engine.addSmoothParticle(point, ZERO_VEL, FLASH_SIZE * 1.6f, 0.8f, 0.2f, FLASH_COLOR)
-        spawnCrossFlare(engine, point)
+        spawnCrossFlare(engine, point, hitAngleDeg)
         spawnNebulaBurst(engine, point, random)
     }
 
-    /** 十字辉星：两枚 SMOOTH_DISC 光斑 90° 交叉同位叠放，由绽放辉星 API 推进扩散消散。 */
-    private fun spawnCrossFlare(engine: CombatEngineAPI, point: Vector2f) {
+    /** 十字辉星：两枚 SMOOTH_DISC 光斑随命中角 90° 交叉同位叠放，由绽放辉星 API 推进扩散消散。 */
+    private fun spawnCrossFlare(engine: CombatEngineAPI, point: Vector2f, hitAngleDeg: Float) {
         val spawned = bloomFlare.spawn(
             engine, point, CROSS_FLARE_DURATION,
             listOf(
-                crossFlareSpec(0f),
-                crossFlareSpec(90f),
+                crossFlareSpec(hitAngleDeg),
+                crossFlareSpec(hitAngleDeg + 90f),
             ),
         )
         if (spawned > 0) bumpTelemetry(engine, TELEMETRY_CROSS_FLARE)
