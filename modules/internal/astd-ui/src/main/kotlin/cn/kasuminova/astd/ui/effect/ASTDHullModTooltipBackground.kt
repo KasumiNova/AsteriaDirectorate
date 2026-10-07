@@ -1,5 +1,6 @@
 package cn.kasuminova.astd.ui.effect
 
+import cn.kasuminova.astd.impl.ui.HullmodBackgroundStyleConfig
 import cn.kasuminova.astd.ui.render.ASTDStencilRenderer
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.campaign.BaseCustomUIPanelPlugin
@@ -13,10 +14,10 @@ import java.awt.Color
  * ASTD 船插 Tooltip 统一全息背景。
  *
  * 视觉规格（原型竞标终版，见 temp/fx-bakeoff/refine/）：
- * - 主风格 [STYLE_CORNER_PULSE]（k3-01 角标脉冲）：四角三层嵌套三角描边 + 能量核 +
+ * - 主风格 [HullmodBackgroundStyleConfig.STYLE_CORNER_PULSE]（k3-01 角标脉冲）：四角三层嵌套三角描边 + 能量核 +
  *   L 形角标呼吸，底层三角晶格 + 竖直扫描带 + 漂浮微三角粒子铺满全面板，
  *   CRT 细扫描线与暗角收边，整体为暗色全息面板质感；
- * - 备选风格 [STYLE_PRISM_LATTICE]（deepseek-02 棱镜栅格）：面板结构边框 + 棱镜刻度 +
+ * - 备选风格 [HullmodBackgroundStyleConfig.STYLE_PRISM_LATTICE]（deepseek-02 棱镜栅格）：面板结构边框 + 棱镜刻度 +
  *   边框爬行光点，四角楔形线框 + 错落光锥，角部全息晶格，
  *   发光元素严格收敛于四角与边缘、中央文字区近黑静默；
  * - 颜色单点收口：全部发光元素跟随船插主题色（[accentColor] 随 Theme 传入）。
@@ -25,8 +26,8 @@ import java.awt.Color
  * rAF 回调无限注册泄漏，每分钟每帧多渲染上千次，可将 GPU 打满）：
  * - Tooltip 面板渲染面积小（通常 < 600x400），时间由 [advance] 驱动、随游戏主循环推进，
  *   无任何自启动定时器；
- * - corner-pulse 角部装饰限制在角点 95px 半径内（continue 早退），
- *   prism-lattice 的 lattice/角部结构按权重早退，中央区域零循环开销。
+ * - corner-pulse 角部装饰限制在角点 95 归一单位半径内（continue 早退，归一系定义见
+ *   [FRAGMENT_CORNER_PULSE] 注释），prism-lattice 的 lattice/角部结构按权重早退，中央区域零循环开销。
  *
  * 渲染通道评估：BoxUtil 的渲染实体（SpriteEntity/TrailEntity 等）面向战斗/星图世界层，
  * 不提供 UI 面板内绘制工具；Tooltip 背景必须落在 UI stencil 裁剪区内嵌 GL 绘制，
@@ -100,25 +101,23 @@ class ASTDHullModTooltipBackground private constructor(
     }
 
     companion object {
-        /** 主风格：k3-01 角标脉冲。 */
-        private const val STYLE_CORNER_PULSE: Int = 0
-
-        /** 备选风格：deepseek-02 棱镜栅格。 */
-        private const val STYLE_PRISM_LATTICE: Int = 1
-
-        /** 可选风格数量（shaderProgramIds 缓存容量）。 */
-        private const val STYLE_COUNT: Int = 2
-
-        /** 当前启用风格（切换备选时改此常量）。 */
-        private const val STYLE: Int = STYLE_CORNER_PULSE
-
         private const val SHADER_ID = "astd-hullmod-bg"
 
-        /** 两套风格各自的 program 缓存（按需编译，0 值表示未编译）。 */
-        private val shaderProgramIds = IntArray(STYLE_COUNT)
+        /** 各风格的 program 缓存（按需编译，0 值表示未编译）。 */
+        private val shaderProgramIds = IntArray(HullmodBackgroundStyleConfig.STYLE_COUNT)
 
+        /**
+         * 顶点着色器：以 varying 传递顶点的 CPU 侧逻辑坐标。
+         *
+         * 注意：禁止使用 gl_FragCoord 换算面板局部坐标——它是物理 framebuffer 像素，
+         * 与 SS UI 逻辑坐标（u_origin）在显示缩放/高分屏下存在比例差，会导致
+         * 角部早退全部命中、背景完全消失。gl_Vertex 与 u_origin 同属逻辑坐标空间，
+         * 差值插值后与物理像素解耦，任何缩放下自洽。
+         */
         private const val VERTEX_SHADER_SOURCE = """
+            varying vec2 v_pos;
             void main() {
+              v_pos = gl_Vertex.xy;
               gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
             }
         """
@@ -126,9 +125,12 @@ class ASTDHullModTooltipBackground private constructor(
         /**
          * k3-01 角标脉冲 fragment shader（GLSL 110 兼容）。
          *
-         * 坐标系：像素空间（gl_FragCoord - u_origin），y 向上，与原型 WebGL 一致；
-         * 与原型差异：uRes→u_resolution、ACCENT→u_accentColor.rgb、原型按 dpr 渲染而游戏内 1:1、
-         * 输出 alpha 0.92*u_alphaMult（与旧版面板一致）、角部循环 95px 半径早退。
+         * 坐标系：面板局部逻辑坐标（v_pos - u_origin）除以 uiScale 后的归一空间，y 向上；
+         * 面板宽度归一：以编辑器 580px 为基准（uiScale = clamp(u_resolution.x / 580, 0.6, 1.0)），
+         * frag/res/uv 及全部像素尺寸元素（角标/晶格/粒子/扫描带/角部早退半径）均定义在归一空间，
+         * 窄面板上等比缩小、占比与基准一致；编辑器镜像以 gl_FragCoord / uiScale 等价代入；
+         * 与原型差异：uRes→u_resolution、ACCENT→u_accentColor.rgb、
+         * 输出 alpha 0.92*u_alphaMult（与旧版面板一致）、角部循环 95 归一单位半径早退。
          */
         private const val FRAGMENT_CORNER_PULSE = """
             uniform float u_time;
@@ -136,6 +138,8 @@ class ASTDHullModTooltipBackground private constructor(
             uniform vec2 u_resolution;
             uniform vec4 u_accentColor;
             uniform float u_alphaMult;
+
+            varying vec2 v_pos;
 
             const vec3 BG = vec3(0.015, 0.025, 0.0425);
             const float PI = 3.14159265359;
@@ -183,8 +187,13 @@ class ASTDHullModTooltipBackground private constructor(
             }
 
             void main() {
-              vec2 frag = gl_FragCoord.xy - u_origin;
-              vec2 uv = frag / u_resolution;
+              // normalize to the 580px editor baseline: pixel-sized elements (corner
+              // ornaments, lattice, particles) keep the same panel proportion on
+              // narrower tooltips instead of dominating it
+              float uiScale = clamp(u_resolution.x / 580.0, 0.6, 1.0);
+              vec2 frag = (v_pos - u_origin) / uiScale;
+              vec2 res = u_resolution / uiScale;
+              vec2 uv = frag / res;
               vec3 accent = u_accentColor.rgb;
               vec3 col = BG;
 
@@ -196,7 +205,7 @@ class ASTDHullModTooltipBackground private constructor(
               col += accent * gridLine * 0.050;
 
               // ---- vertical sweep band ----
-              float sweepY = mod(u_time * 54.0, u_resolution.y + 240.0) - 120.0;
+              float sweepY = mod(u_time * 54.0, res.y + 240.0) - 120.0;
               float band = exp(-pow((frag.y - sweepY) / 46.0, 2.0));
               col += accent * gridLine * band * 0.11;
               col += accent * band * 0.012;
@@ -220,12 +229,13 @@ class ASTDHullModTooltipBackground private constructor(
               for (int i = 0; i < 4; i++) {
                 vec2 corner; float theta;
                 if (i == 0) { corner = vec2(10.0, 10.0); theta = PI * 0.25; }
-                else if (i == 1) { corner = vec2(u_resolution.x - 10.0, 10.0); theta = PI * 0.75; }
-                else if (i == 2) { corner = vec2(u_resolution.x - 10.0, u_resolution.y - 10.0); theta = -PI * 0.75; }
-                else { corner = vec2(10.0, u_resolution.y - 10.0); theta = -PI * 0.25; }
+                else if (i == 1) { corner = vec2(res.x - 10.0, 10.0); theta = PI * 0.75; }
+                else if (i == 2) { corner = vec2(res.x - 10.0, res.y - 10.0); theta = -PI * 0.75; }
+                else { corner = vec2(10.0, res.y - 10.0); theta = -PI * 0.25; }
 
-                // early-out: ornament body within 90px (triangle apex ~68px + glow ~20px);
-                // residual beyond 95px <= 0.4% accent, buried by dither, invisible
+                // early-out: ornament body within 90 units (triangle apex ~68 + glow ~20),
+                // in the normalized 580px-baseline space; residual beyond 95 <= 0.4% accent,
+                // buried by dither, invisible
                 if (distance(frag, corner) > 95.0) continue;
 
                 float phase = float(i) * 1.7;
@@ -258,8 +268,8 @@ class ASTDHullModTooltipBackground private constructor(
                 col += accent * exp(-max(dc, 0.0) * 0.25) * 0.25 * breathe2;
 
                 // L-shaped bracket
-                vec2 ex = (corner.x < u_resolution.x * 0.5) ? vec2(1.0, 0.0) : vec2(-1.0, 0.0);
-                vec2 ey = (corner.y < u_resolution.y * 0.5) ? vec2(0.0, 1.0) : vec2(0.0, -1.0);
+                vec2 ex = (corner.x < res.x * 0.5) ? vec2(1.0, 0.0) : vec2(-1.0, 0.0);
+                vec2 ey = (corner.y < res.y * 0.5) ? vec2(0.0, 1.0) : vec2(0.0, -1.0);
                 float bl = min(sdSeg(frag, corner, corner + ex * 50.4),
                                sdSeg(frag, corner, corner + ey * 50.4));
                 col += accent * (1.0 - smoothstep(0.5, 1.5, bl)) * 0.75 * breathe;
@@ -271,11 +281,11 @@ class ASTDHullModTooltipBackground private constructor(
               }
 
               // ---- thin border ----
-              float bd = min(min(frag.x, u_resolution.x - frag.x), min(frag.y, u_resolution.y - frag.y));
+              float bd = min(min(frag.x, res.x - frag.x), min(frag.y, res.y - frag.y));
               col += accent * (1.0 - smoothstep(0.0, 1.0, bd)) * 0.10;
 
-              // ---- CRT scanlines ----
-              col *= 0.96 + 0.04 * sin(frag.y * PI);
+              // ---- CRT scanlines (period locked to logical px, avoids sub-pixel moire) ----
+              col *= 0.96 + 0.04 * sin(frag.y * uiScale * PI);
 
               // ---- vignette ----
               vec2 q = uv - 0.5;
@@ -294,7 +304,8 @@ class ASTDHullModTooltipBackground private constructor(
         /**
          * deepseek-02 棱镜栅格 fragment shader（GLSL 110 兼容，备选风格）。
          *
-         * 坐标系：以面板中心为原点、短边归一（p = (2px - res) / res.y），与原型一致；
+         * 坐标系：面板局部逻辑像素（v_pos - u_origin）换算为以面板中心为原点、
+         * 短边归一（p = (2px - res) / res.y），与原型一致；
          * 与原型差异：u_res→u_resolution、u_acc→u_accentColor.rgb、移除未使用的 u_deep/PI/TAU、
          * 输出 alpha 0.92*u_alphaMult；扩散三角环与旋转三角主轴已按需求移除，
          * lattice 与角部结构按权重早退；角根核心由原型的独立 col+= 并入 acc3
@@ -307,6 +318,8 @@ class ASTDHullModTooltipBackground private constructor(
             uniform vec2 u_resolution;
             uniform vec4 u_accentColor;
             uniform float u_alphaMult;
+
+            varying vec2 v_pos;
 
             const vec2  PANEL = vec2(0.955, 0.915);
 
@@ -362,7 +375,7 @@ class ASTDHullModTooltipBackground private constructor(
             }
 
             void main() {
-              vec2 px = gl_FragCoord.xy - u_origin;
+              vec2 px = v_pos - u_origin;
               float aspect = u_resolution.x / u_resolution.y;
               vec2 p = (2.0 * px - u_resolution) / u_resolution.y;
               float R = length(p);
@@ -483,19 +496,21 @@ class ASTDHullModTooltipBackground private constructor(
         """
 
         private fun shaderProgram(): Int {
-            val cached = shaderProgramIds[STYLE]
+            val style = HullmodBackgroundStyleConfig.activeStyle
+            val cached = shaderProgramIds[style]
             if (cached != 0) return cached
 
-            val fragmentSource = when (STYLE) {
-                STYLE_PRISM_LATTICE -> FRAGMENT_PRISM_LATTICE
-                else -> FRAGMENT_CORNER_PULSE
+            val fragmentSource = when (style) {
+                HullmodBackgroundStyleConfig.STYLE_CORNER_PULSE -> FRAGMENT_CORNER_PULSE
+                HullmodBackgroundStyleConfig.STYLE_PRISM_LATTICE -> FRAGMENT_PRISM_LATTICE
+                else -> throw IllegalStateException("Unknown hullmod background style: $style")
             }
             // 编译失败时统一清理已创建的 shader 对象后重抛，避免按帧泄漏 GL 对象
             var vertexShader = 0
             var fragmentShader = 0
             try {
-                vertexShader = compileShader(GL20.GL_VERTEX_SHADER, VERTEX_SHADER_SOURCE)
-                fragmentShader = compileShader(GL20.GL_FRAGMENT_SHADER, fragmentSource)
+                vertexShader = compileShader(GL20.GL_VERTEX_SHADER, VERTEX_SHADER_SOURCE, style)
+                fragmentShader = compileShader(GL20.GL_FRAGMENT_SHADER, fragmentSource, style)
             } catch (e: Exception) {
                 if (vertexShader != 0) GL20.glDeleteShader(vertexShader)
                 if (fragmentShader != 0) GL20.glDeleteShader(fragmentShader)
@@ -511,21 +526,21 @@ class ASTDHullModTooltipBackground private constructor(
             if (GL20.glGetProgrami(program, GL20.GL_LINK_STATUS) == GL11.GL_FALSE) {
                 val message = GL20.glGetProgramInfoLog(program, 4096)
                 GL20.glDeleteProgram(program)
-                throw IllegalStateException("Failed to link tooltip background shader $SHADER_ID style=$STYLE: $message")
+                throw IllegalStateException("Failed to link tooltip background shader $SHADER_ID style=$style: $message")
             }
 
-            shaderProgramIds[STYLE] = program
+            shaderProgramIds[style] = program
             return program
         }
 
-        private fun compileShader(type: Int, source: String): Int {
+        private fun compileShader(type: Int, source: String, style: Int): Int {
             val shader = GL20.glCreateShader(type)
             GL20.glShaderSource(shader, source)
             GL20.glCompileShader(shader)
             if (GL20.glGetShaderi(shader, GL20.GL_COMPILE_STATUS) == GL11.GL_FALSE) {
                 val message = GL20.glGetShaderInfoLog(shader, 4096)
                 GL20.glDeleteShader(shader)
-                throw IllegalStateException("Failed to compile tooltip background shader $SHADER_ID style=$STYLE: $message")
+                throw IllegalStateException("Failed to compile tooltip background shader $SHADER_ID style=$style: $message")
             }
             return shader
         }

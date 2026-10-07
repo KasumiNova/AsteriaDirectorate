@@ -91,7 +91,8 @@ class TooltipBuilder(val tooltip: TooltipMakerAPI) {
     }
 
     /**
-     * 使用 ASTD 船插统一全息背景渲染内容（主风格：四角嵌套三角角标脉冲 + 三角晶格 + 扫描带）。
+     * 使用 ASTD 船插统一全息背景渲染内容（风格由 LunaLib 设置切换：角标脉冲 / 棱镜栅格，
+     * 见 [ASTDHullModTooltipBackground]）。
      *
      * 背景高度由实际内容精确决定，不使用预估值，不会溢出 Tooltip 范围。
      */

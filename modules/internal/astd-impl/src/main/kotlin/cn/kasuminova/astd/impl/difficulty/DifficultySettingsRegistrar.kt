@@ -2,6 +2,7 @@ package cn.kasuminova.astd.impl.difficulty
 
 import cn.kasuminova.astd.api.AstdLog
 import cn.kasuminova.astd.impl.combat.DualModeSettingsImpl
+import cn.kasuminova.astd.impl.ui.HullmodBackgroundStyleConfig
 import cn.kasuminova.astd.internal.i18n.I18n
 import lunalib.lunaSettings.LunaSettings
 import lunalib.lunaSettings.LunaSettingsListener
@@ -15,6 +16,7 @@ import lunalib.lunaSettings.LunaSettingsListener
  * - 敌方自定义系数滑条：1.0~5.0 步进 0.1，仅在选中「自定义」档时生效；
  * - 我方（玩家阵营）档位 radio：四个预设档（无自定义档），默认砺刃(2.0) → [DifficultyTuningImpl.playerFixedScale]；
  * - 「双模式切换器自动模式免自动化点数」开关（默认开启）→ [DualModeSettingsImpl]；
+ * - 「船插背景渲染风格」radio：角标脉冲（默认）/ 棱镜栅格 → [HullmodBackgroundStyleConfig]；
  * - 四段档位描述文本（套 A 定稿文案）。
  *
  * 在 `AsteriaDirectoratePlugin.onApplicationLoad` 经 [LunaLibSupport.isAvailable] 门控后调用 [register]
@@ -72,6 +74,15 @@ object DifficultySettingsRegistrar {
             DualModeSettingsImpl.DEFAULT_FREE_AUTO_POINTS,
             "",
         )
+        LunaSettings.SettingsCreator.addRadio(
+            keys.MOD_ID,
+            HullmodBackgroundStyleConfig.FIELD_STYLE,
+            I18n[category, "settings.hullmod_bg.style.fieldName"],
+            I18n[category, "settings.hullmod_bg.style.tooltip"],
+            HullmodBackgroundStyleConfig.defaultDisplayName(),
+            HullmodBackgroundStyleConfig.styleDisplayNames().joinToString(","),
+            "",
+        )
         listOf("dusk", "blade", "expedition", "dawn").forEach { tier ->
             LunaSettings.SettingsCreator.addText(
                 keys.MOD_ID,
@@ -118,5 +129,10 @@ object DifficultySettingsRegistrar {
         val freeAutoPoints = LunaSettings.getBoolean(keys.MOD_ID, DualModeSettingsImpl.FIELD_FREE_AUTO_POINTS)
             ?: DualModeSettingsImpl.DEFAULT_FREE_AUTO_POINTS
         DualModeSettingsImpl.applyResolvedExempt(freeAutoPoints)
+
+        val bgStyleSelected = LunaSettings.getString(keys.MOD_ID, HullmodBackgroundStyleConfig.FIELD_STYLE).orEmpty()
+        if (!HullmodBackgroundStyleConfig.applySelectedName(bgStyleSelected) && bgStyleSelected.isNotEmpty()) {
+            AstdLog.logger.warn("[ASTD] 船插背景风格显示名未命中：'$bgStyleSelected'，回退默认风格（角标脉冲）")
+        }
     }
 }

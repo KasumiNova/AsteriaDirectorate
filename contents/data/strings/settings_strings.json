@@ -17,6 +17,10 @@
 		"settings.difficulty.player_tier.fieldName": "我方强度档位",
 		"settings.difficulty.player_tier.tooltip": "决定我方舰船使用模组机制时的数值强度（船插 / 舰船系统 / 武器）。默认：砺刃（设计基准，与不调整时的体验一致）。",
 		"settings.dualmode.free_auto_points.fieldName": "双模式切换器：自动模式免自动化点数",
-		"settings.dualmode.free_auto_points.tooltip": "开启后，装有双模式切换器且处于自动模式的我方舰船不计入自动化舰船点数，同时不受自动化舰船的最大战斗准备惩罚（原版「无自动化惩罚」口径）。默认：开启。"
+		"settings.dualmode.free_auto_points.tooltip": "开启后，装有双模式切换器且处于自动模式的我方舰船不计入自动化舰船点数，同时不受自动化舰船的最大战斗准备惩罚（原版「无自动化惩罚」口径）。默认：开启。",
+		"settings.hullmod_bg.style.fieldName": "船插背景：渲染风格",
+		"settings.hullmod_bg.style.tooltip": "切换船插 Tooltip 的全息背景渲染风格，保存后即时生效。默认：角标脉冲。",
+		"settings.hullmod_bg.style.option.corner_pulse": "角标脉冲",
+		"settings.hullmod_bg.style.option.prism_lattice": "棱镜栅格"
 	}
 }

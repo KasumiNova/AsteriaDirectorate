@@ -118,8 +118,10 @@ float triGrid(vec2 p, float s) {
 }
 
 void main() {
-  vec2 frag = gl_FragCoord.xy;
-  vec2 uv = frag / u_resolution;
+  float uiScale = clamp(u_resolution.x / 580.0, 0.6, 1.0);
+  vec2 frag = gl_FragCoord.xy / uiScale;
+  vec2 res = u_resolution / uiScale;
+  vec2 uv = frag / res;
   vec3 accent = u_accentColor.rgb;
   vec3 col = BG;
 
@@ -129,7 +131,7 @@ void main() {
   float gridLine = 1.0 - smoothstep(0.0, 1.2, g);
   col += accent * gridLine * 0.050;
 
-  float sweepY = mod(u_time * 54.0, u_resolution.y + 240.0) - 120.0;
+  float sweepY = mod(u_time * 54.0, res.y + 240.0) - 120.0;
   float band = exp(-pow((frag.y - sweepY) / 46.0, 2.0));
   col += accent * gridLine * band * 0.11;
   col += accent * band * 0.012;
@@ -151,9 +153,9 @@ void main() {
   for (int i = 0; i < 4; i++) {
     vec2 corner; float theta;
     if (i == 0) { corner = vec2(10.0, 10.0); theta = PI * 0.25; }
-    else if (i == 1) { corner = vec2(u_resolution.x - 10.0, 10.0); theta = PI * 0.75; }
-    else if (i == 2) { corner = vec2(u_resolution.x - 10.0, u_resolution.y - 10.0); theta = -PI * 0.75; }
-    else { corner = vec2(10.0, u_resolution.y - 10.0); theta = -PI * 0.25; }
+    else if (i == 1) { corner = vec2(res.x - 10.0, 10.0); theta = PI * 0.75; }
+    else if (i == 2) { corner = vec2(res.x - 10.0, res.y - 10.0); theta = -PI * 0.75; }
+    else { corner = vec2(10.0, res.y - 10.0); theta = -PI * 0.25; }
 
     if (distance(frag, corner) > 95.0) continue;
 
@@ -183,8 +185,8 @@ void main() {
     col += mix(accent, vec3(0.85, 0.95, 1.0), 0.25) * coreFill * 0.72 * (0.8 + 0.2 * breathe2);
     col += accent * exp(-max(dc, 0.0) * 0.25) * 0.25 * breathe2;
 
-    vec2 ex = (corner.x < u_resolution.x * 0.5) ? vec2(1.0, 0.0) : vec2(-1.0, 0.0);
-    vec2 ey = (corner.y < u_resolution.y * 0.5) ? vec2(0.0, 1.0) : vec2(0.0, -1.0);
+    vec2 ex = (corner.x < res.x * 0.5) ? vec2(1.0, 0.0) : vec2(-1.0, 0.0);
+    vec2 ey = (corner.y < res.y * 0.5) ? vec2(0.0, 1.0) : vec2(0.0, -1.0);
     float bl = min(sdSeg(frag, corner, corner + ex * 50.4),
                    sdSeg(frag, corner, corner + ey * 50.4));
     col += accent * (1.0 - smoothstep(0.5, 1.5, bl)) * 0.75 * breathe;
@@ -195,7 +197,7 @@ void main() {
     col += accent * (1.0 - smoothstep(0.5, 1.5, bl2)) * 0.38;
   }
 
-  float bd = min(min(frag.x, u_resolution.x - frag.x), min(frag.y, u_resolution.y - frag.y));
+  float bd = min(min(frag.x, res.x - frag.x), min(frag.y, res.y - frag.y));
   col += accent * (1.0 - smoothstep(0.0, 1.0, bd)) * 0.10;
 
   col *= 0.96 + 0.04 * sin(frag.y * PI);
