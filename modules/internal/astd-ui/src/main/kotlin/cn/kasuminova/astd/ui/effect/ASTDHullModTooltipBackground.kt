@@ -151,7 +151,7 @@ class ASTDHullModTooltipBackground private constructor(
               return vec2(c * p.x - s * p.y, s * p.x + c * p.y);
             }
 
-            // 等边三角形 SDF（顶点朝 +y，r 为外接半径量级）
+            // equilateral triangle SDF (apex toward +y, r ~ circumradius)
             float sdTri(vec2 p, float r) {
               const float k = 1.7320508;
               p.x = abs(p.x) - r;
@@ -170,7 +170,7 @@ class ASTDHullModTooltipBackground private constructor(
             float stroke(float d, float w, float aa) { return 1.0 - smoothstep(w - aa, w + aa, abs(d)); }
             float sfill(float d, float aa) { return 1.0 - smoothstep(-aa, aa, d); }
 
-            // 三角晶格线（三组 60 度平行线）
+            // triangular lattice lines (three sets of 60-degree parallels)
             float triGrid(vec2 p, float s) {
               float d = 1e5;
               for (int i = 0; i < 3; i++) {
@@ -190,18 +190,18 @@ class ASTDHullModTooltipBackground private constructor(
 
               col += vec3(0.005, 0.010, 0.01875) * (1.0 - uv.y);
 
-              // ---- 底层三角晶格 ----
+              // ---- base triangular lattice ----
               float g = triGrid(frag, 56.0);
               float gridLine = 1.0 - smoothstep(0.0, 1.2, g);
               col += accent * gridLine * 0.050;
 
-              // ---- 竖直扫描带 ----
+              // ---- vertical sweep band ----
               float sweepY = mod(u_time * 54.0, u_resolution.y + 240.0) - 120.0;
               float band = exp(-pow((frag.y - sweepY) / 46.0, 2.0));
               col += accent * gridLine * band * 0.11;
               col += accent * band * 0.012;
 
-              // ---- 漂浮微三角粒子 ----
+              // ---- drifting micro-triangle particles ----
               {
                 float cell = 90.0;
                 vec2 gp = frag + vec2(0.0, u_time * 7.0);
@@ -216,7 +216,7 @@ class ASTDHullModTooltipBackground private constructor(
                 col += accent * a;
               }
 
-              // ---- 四角装饰：嵌套三角 + 能量核 + L 形角标 ----
+              // ---- corner ornaments: nested triangles + energy core + L brackets ----
               for (int i = 0; i < 4; i++) {
                 vec2 corner; float theta;
                 if (i == 0) { corner = vec2(10.0, 10.0); theta = PI * 0.25; }
@@ -224,18 +224,18 @@ class ASTDHullModTooltipBackground private constructor(
                 else if (i == 2) { corner = vec2(u_resolution.x - 10.0, u_resolution.y - 10.0); theta = -PI * 0.75; }
                 else { corner = vec2(10.0, u_resolution.y - 10.0); theta = -PI * 0.25; }
 
-                // 早退：角部装饰主体在 90px 内（三角顶点 ~68px + 辉光 ~20px），
-                // 95px 外残余亮度 <= 0.4% 强调色，被抖动淹没、视觉不可见
+                // early-out: ornament body within 90px (triangle apex ~68px + glow ~20px);
+                // residual beyond 95px <= 0.4% accent, buried by dither, invisible
                 if (distance(frag, corner) > 95.0) continue;
 
                 float phase = float(i) * 1.7;
                 vec2 lp = frag - corner;
-                vec2 tp = rot(lp, PI * 0.5 - theta); // +y 轴对准面板中心方向
+                vec2 tp = rot(lp, PI * 0.5 - theta); // +y axis aimed at panel center
 
                 float breathe  = 0.62 + 0.38 * sin(u_time * 1.5 + phase);
                 float breathe2 = 0.5 + 0.5 * sin(u_time * 1.5 + phase + 1.2);
 
-                // 三层嵌套三角描边
+                // three nested triangle strokes
                 for (int j = 0; j < 3; j++) {
                   float fj = float(j);
                   float r = 58.8 - fj * 18.2;
@@ -245,19 +245,19 @@ class ASTDHullModTooltipBackground private constructor(
                   col += accent * exp(-abs(d) * 0.14) * 0.18 * breathe;
                 }
 
-                // 外层三角顶点亮点
+                // outer triangle apex light
                 float apexD = length(tp - vec2(0.0, 58.8));
                 float apexLight = (1.0 - smoothstep(1.0, 2.5, apexD)) * (0.45 + 0.40 * breathe);
                 col += mix(accent, vec3(0.85, 0.95, 1.0), 0.35) * apexLight * 0.65;
 
-                // 能量核（实心小三角）
+                // energy core (solid small triangle)
                 float coreR = 4.2 + 2.1 * breathe2;
                 float dc = sdTri(tp - vec2(0.0, 22.4), coreR);
                 float coreFill = sfill(dc, 0.8);
                 col += mix(accent, vec3(0.85, 0.95, 1.0), 0.25) * coreFill * 0.72 * (0.8 + 0.2 * breathe2);
                 col += accent * exp(-max(dc, 0.0) * 0.25) * 0.25 * breathe2;
 
-                // L 形角标
+                // L-shaped bracket
                 vec2 ex = (corner.x < u_resolution.x * 0.5) ? vec2(1.0, 0.0) : vec2(-1.0, 0.0);
                 vec2 ey = (corner.y < u_resolution.y * 0.5) ? vec2(0.0, 1.0) : vec2(0.0, -1.0);
                 float bl = min(sdSeg(frag, corner, corner + ex * 50.4),
@@ -270,21 +270,21 @@ class ASTDHullModTooltipBackground private constructor(
                 col += accent * (1.0 - smoothstep(0.5, 1.5, bl2)) * 0.38;
               }
 
-              // ---- 细边框 ----
+              // ---- thin border ----
               float bd = min(min(frag.x, u_resolution.x - frag.x), min(frag.y, u_resolution.y - frag.y));
               col += accent * (1.0 - smoothstep(0.0, 1.0, bd)) * 0.10;
 
-              // ---- CRT 细扫描线 ----
+              // ---- CRT scanlines ----
               col *= 0.96 + 0.04 * sin(frag.y * PI);
 
-              // ---- 暗角 ----
+              // ---- vignette ----
               vec2 q = uv - 0.5;
               col *= 1.0 - 0.32 * dot(q, q);
 
-              // ---- 抖动去色带 ----
+              // ---- dither against banding ----
               col += (hash12(frag + fract(u_time) * 13.7) - 0.5) * 0.008;
 
-              // 柔和压高光，确保亮部有节制，无硬切过曝
+              // soft highlight rolloff, no hard clipping
               col = col / (1.0 + col * 0.12);
 
               gl_FragColor = vec4(col, 0.92 * u_alphaMult);
@@ -349,7 +349,7 @@ class ASTDHullModTooltipBackground private constructor(
               if (d3 < d) { d = d3; arc = 2.0 * per + we + t3 * we; }
             }
 
-            // 三向细线光栅：叠加成三角晶格
+            // three-way line raster forming triangular lattice
             float lattice(vec2 p, float t) {
               float s = 0.0;
               for (int i = 0; i < 3; i++) {
@@ -371,12 +371,12 @@ class ASTDHullModTooltipBackground private constructor(
 
               vec2 hp = vec2(PANEL.x * aspect, PANEL.y);
               vec2 a  = abs(p);
-              vec2 cu = vec2(hp.x - a.x, hp.y - a.y);       // 角局部坐标（向内为正）
-              float cornerId = step(0.0, p.x) + step(0.0, p.y) * 2.0; // 四角独立索引 0..3
+              vec2 cu = vec2(hp.x - a.x, hp.y - a.y);       // corner-local coords (positive inward)
+              float cornerId = step(0.0, p.x) + step(0.0, p.y) * 2.0; // per-corner index 0..3
 
               vec3 col = vec3(0.0);
 
-              // ---- 全息晶格：角部权重早退，中部完全熄灭 ----
+              // ---- holo lattice: weight-gated early-out, center fully dark ----
               float cw = exp(-mix(length(cu), max(cu.x, cu.y), 0.68) * 6.0);
               if (cw > 0.004) {
                 vec2 dir = normalize(p + 1e-5);
@@ -391,7 +391,7 @@ class ASTDHullModTooltipBackground private constructor(
                 float latBase = 0.085 * cw;
                 col += acc * latPow * latBase * (0.80 + 0.40 * lat);
 
-                // 稀疏亮点：仅在角部区域微弱闪烁
+                // sparse nodes: faint flicker near corners only
                 vec2 gid = floor(p * 22.0);
                 float cell = hash21(gid);
                 vec2 gc = (gid + 0.5) / 22.0;
@@ -400,7 +400,7 @@ class ASTDHullModTooltipBackground private constructor(
                        (0.35 + 0.65 * max(0.0, sin(t * 1.6 + cell * 40.0))) * 0.30;
               }
 
-              // ---- 面板边框：清晰纤细的战术结构线 ----
+              // ---- panel border: crisp tactical structure line ----
               float bd, barc;
               rectOutline(p, hp, bd, barc);
               float perim = 4.0 * (hp.x + hp.y);
@@ -408,12 +408,12 @@ class ASTDHullModTooltipBackground private constructor(
               col += acc * (1.0 - smoothstep(0.0, 0.0028, bd)) * 0.32;
               col += acc * (1.0 - smoothstep(0.0, 0.010, bd)) * 0.045;
 
-              // 边框内侧的切刻标记（棱镜刻度）
+              // tick marks inside border (prism scale)
               float marks = smoothstep(0.60, 0.95, hash11(floor(uPer * 150.0) + 3.0));
               float markMask = (1.0 - smoothstep(0.004, 0.012, bd)) * (1.0 - smoothstep(0.035, 0.040, bd));
               col += acc * marks * markMask * (0.16 + 0.10 * sin(t * 1.4 + uPer * 40.0));
 
-              // 沿边框爬行的折射光点
+              // refractive glints crawling along border
               float pos = fract(t / 13.0);
               float d1 = abs(fract(uPer - pos + 0.5) - 0.5);
               float d2 = abs(fract(uPer - fract(pos + 0.5) + 0.5) - 0.5);
@@ -421,7 +421,7 @@ class ASTDHullModTooltipBackground private constructor(
               col += acc * exp(-d1 * 140.0) * edge * 0.45;
               col += acc * exp(-d2 * 110.0) * edge * 0.25;
 
-              // ---- 角部：棱镜结构（扩散三角环与旋转主轴已按需求移除） ----
+              // ---- corners: prism structure (expanding rings / rotating axes removed per spec) ----
               float C = 0.56;
               float cmask = 1.0 - smoothstep(C * 0.70, C * 1.20, length(cu));
               float clip  = smoothstep(-0.004, 0.0015, cu.x) * smoothstep(-0.004, 0.0015, cu.y);
@@ -430,13 +430,13 @@ class ASTDHullModTooltipBackground private constructor(
               vec3 acc3 = vec3(0.0);
 
               if (cmask > 0.002) {
-                // 角根实心楔形：弱化填充，强化线框
+                // root solid wedge: weak fill, strong wireframe
                 float wedge = triSDF(cu - vec2(0.085, 0.085), 0.108);
                 float wedgeFill = 1.0 - smoothstep(0.0, 0.020, wedge);
                 acc3 += acc * wedgeFill * 0.04 * breathe;
                 acc3 += acc * (1.0 - smoothstep(0.0, 0.0035, abs(wedge))) * (0.45 + 0.35 * breathe);
 
-                // 向外扩散的光锥（扇形光束）：各角角度随机/错落分布
+                // outward light cones (fan beams): staggered random angle per corner
                 for (int i = 0; i < 3; i++) {
                   float fi = float(i);
                   float angleShift = (hash11(cornerId * 13.71 + fi * 7.39) - 0.5) * 0.65;
@@ -450,27 +450,27 @@ class ASTDHullModTooltipBackground private constructor(
                   acc3 += acc * bandW * smoothstep(0.0, 0.18, ph) * (1.0 - smoothstep(0.52, 1.0, ph)) * 0.22;
                 }
 
-                // 角部轻微微光：纯净线框，杜绝内部漫射堆积
+                // faint corner glimmer: clean wireframe, no diffuse buildup
                 float tg = abs(triSDF(cu - vec2(0.115, 0.115), 0.135));
                 acc3 += acc * (1.0 - smoothstep(0.0, 0.0028, tg)) * 0.22;
 
-                // 角根核心：精致微核
+                // corner root micro core
                 acc3 += acc * exp(-length(cu) * 42.0) * 0.40 * (0.7 + 0.3 * sin(t * 2.3));
               }
 
               col += acc3 * cmask * clip;
 
-              // ---- 内切三角辅助定位线 ----
+              // ---- inscribed guide lines ----
               vec2 c0 = hp - vec2(0.060, 0.060);
               float d00 = min(min(min(abs(p.x - c0.x), abs(p.x + c0.x)),
                                   abs(p.y - c0.y)), abs(p.y + c0.y));
               float line00 = 1.0 - smoothstep(0.0, 0.0022, d00);
               col += acc * (line00 * 0.16 + exp(-d00 * 120.0) * 0.04) * (0.5 + 0.5 * sin(t * 1.55));
 
-              // ---- 氛围与色调映射 ----
+              // ---- atmosphere & tonemap ----
               col *= 0.98 + 0.02 * hash21(px * 0.7 + fract(t) * 53.1);
 
-              // 中央区域深度暗化，确保中央近黑
+              // deepen center darkness, keep center near-black
               float centerDark = smoothstep(0.20, 0.85, R);
               col *= mix(0.85, 1.0, centerDark);
 
