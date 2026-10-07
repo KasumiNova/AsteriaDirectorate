@@ -3,7 +3,7 @@
   "hullId": "astd_xc_104",
   "hullSize": "FRIGATE",
   "spriteName": "graphics/ships/astd_xc_104.png",
-  "style": "ASTD_HIGH_TECH",
+  "style": "ASTD_ARC",
   "height": 86,
   "width": 78,
   "center": [39, 43.5],

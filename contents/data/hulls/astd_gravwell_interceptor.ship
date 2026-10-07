@@ -3,7 +3,7 @@
   "hullId": "astd_gravwell_interceptor",
   "hullSize": "FIGHTER",
   "spriteName": "graphics/ships/astd_gravwell_interceptor.png",
-  "style": "ASTD_HIGH_TECH",
+  "style": "ASTD_LENS",
   "height": 46,
   "width": 40,
   "center": [20, 23],

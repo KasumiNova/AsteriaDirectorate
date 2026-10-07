@@ -3,7 +3,7 @@
   "hullId": "astd_lh_002",
   "hullSize": "FRIGATE",
   "spriteName": "graphics/ships/astd_ast_101.png",
-  "style": "ASTD_HIGH_TECH",
+  "style": "ASTD_LENS",
   "height": 92,
   "width": 127,
   "center": [63.5, 46],

@@ -3,7 +3,7 @@
   "hullId": "astd_xc_103",
   "hullSize": "DESTROYER",
   "spriteName": "graphics/ships/astd_xc_103.png",
-  "style": "ASTD_HIGH_TECH",
+  "style": "ASTD_ARC",
   "height": 205,
   "width": 154,
   "center": [77, 102.5],

@@ -3,7 +3,7 @@
   "hullId": "astd_zw_101",
   "hullSize": "DESTROYER",
   "spriteName": "graphics/ships/astd_zw_101.png",
-  "style": "ASTD_HIGH_TECH",
+  "style": "ASTD_LENS",
   "height": 195,
   "width": 116,
   "center": [58.5, 95],

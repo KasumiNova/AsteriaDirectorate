@@ -3,7 +3,7 @@
   "hullId": "astd_zw_002",
   "hullSize": "CRUISER",
   "spriteName": "graphics/ships/astd_zw_002.png",
-  "style": "ASTD_HIGH_TECH",
+  "style": "ASTD_LENS",
   "height": 279,
   "width": 279,
   "center": [142, 137],

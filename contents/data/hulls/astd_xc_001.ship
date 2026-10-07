@@ -3,7 +3,7 @@
   "hullId": "astd_xc_001",
   "hullSize": "CAPITAL_SHIP",
   "spriteName": "graphics/ships/astd_xc_001.png",
-  "style": "ASTD_HIGH_TECH",
+  "style": "ASTD_ARC",
   "height": 483,
   "width": 374,
   "center": [187, 237.5],

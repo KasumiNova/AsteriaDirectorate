@@ -3,7 +3,7 @@
   "hullId": "astd_zw_103_fighter",
   "hullSize": "FIGHTER",
   "spriteName": "graphics/ships/astd_zw_103_fighter.png",
-  "style": "ASTD_HIGH_TECH",
+  "style": "ASTD_LENS",
   "height": 55,
   "width": 58,
   "center": [29, 28],

@@ -3,7 +3,7 @@
   "hullId": "astd_xc_101",
   "hullSize": "CRUISER",
   "spriteName": "graphics/ships/astd_xc_101.png",
-  "style": "ASTD_HIGH_TECH",
+  "style": "ASTD_ARC",
   "height": 173,
   "width": 284,
   "center": [142.5, 77.5],

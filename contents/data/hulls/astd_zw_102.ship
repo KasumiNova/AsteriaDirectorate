@@ -3,7 +3,7 @@
   "hullId": "astd_zw_102",
   "hullSize": "CAPITAL_SHIP",
   "spriteName": "graphics/ships/astd_zw_102.png",
-  "style": "ASTD_HIGH_TECH",
+  "style": "ASTD_LENS",
   "height": 310,
   "width": 395,
   "center": [198, 154.5],
