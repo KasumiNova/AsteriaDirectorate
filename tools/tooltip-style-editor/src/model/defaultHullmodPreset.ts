@@ -121,7 +121,7 @@ void main() {
 
   float g = triGrid(frag, 56.0);
   float gridLine = 1.0 - smoothstep(0.0, 1.2, g);
-  col += accent * gridLine * 0.0625;
+  col += accent * gridLine * 0.1;
 
   float sweepY = mod(u_time * 81.0, res.y + 240.0) - 120.0;
   float band = exp(-pow((frag.y - sweepY) / 46.0, 2.0));
@@ -138,7 +138,7 @@ void main() {
     float sz = 3.0 + 5.0 * hash12(id + 11.3);
     float tw = 0.5 + 0.5 * sin(u_time * (0.8 + rnd * 1.6) + rnd * 6.2832);
     float d = sdTri(lv - ctr, sz);
-    float a = (1.0 - smoothstep(0.0, 1.0, abs(d))) * 0.175 * tw * step(0.55, rnd);
+    float a = (1.0 - smoothstep(0.0, 1.0, abs(d))) * 0.2 * tw * step(0.55, rnd);
     col += accent * a;
   }
 

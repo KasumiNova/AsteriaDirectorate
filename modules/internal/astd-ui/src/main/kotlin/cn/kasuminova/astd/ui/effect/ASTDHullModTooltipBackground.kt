@@ -6,6 +6,7 @@ import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.campaign.BaseCustomUIPanelPlugin
 import com.fs.starfarer.api.ui.PositionAPI
 import com.fs.starfarer.api.ui.TooltipMakerAPI
+import com.fs.starfarer.api.ui.UIComponentAPI
 import org.lwjgl.opengl.GL11
 import org.lwjgl.opengl.GL20
 import java.awt.Color
@@ -33,11 +34,18 @@ import java.awt.Color
  * 不提供 UI 面板内绘制工具；Tooltip 背景必须落在 UI stencil 裁剪区内嵌 GL 绘制，
  * 故沿用 GLSL 全屏四边形路径（本仓库唯一可用通道，与原版字体渲染同一固定管线）。
  *
+ * 排版对齐（0.98 原版源码核验，详见 [renderBelow]）：addCustom 组件位于 tooltip
+ * 内容流（x = 内容面板 + 5），addPostDescriptionSection 传入的 width 为内容流宽，
+ * 直接按该几何绘制会比船插背景左右各窄约 12px（refit，总宽 = 流宽 + 24）或
+ * 15/5px（图鉴，外层 box = 流宽 + 20）。渲染时读取 tooltip 自身位置（实现类即
+ * UIComponent）按宿主类型换算 chrome 区域，使背景铺满船插背景的内侧区域。
+ *
  * 编辑器镜像预设：`tools/tooltip-style-editor/src/model/defaultHullmodPreset.ts`
  * （shader id `corner-pulse` / `prism-lattice`，u_origin 在编辑器内以 (0,0) 全画布代入）。
  */
 class ASTDHullModTooltipBackground private constructor(
-    private val panelWidth: Float,
+    private val tooltip: TooltipMakerAPI,
+    private val flowWidth: Float,
     private val accentColor: Color,
 ) : BaseCustomUIPanelPlugin() {
 
@@ -58,7 +66,25 @@ class ASTDHullModTooltipBackground private constructor(
         val h = contentHeight
         if (h <= 0f) return
         val p = pos ?: return
-        val x = p.x
+
+        // 原版排版机制（0.98 源码核验）：addCustom 的组件落在内容流上
+        // （x = 内容面板 + 5），而传入的 width 是内容流宽，直接按 (p.x, flowWidth)
+        // 绘制会比船插背景左右各窄一截。两种宿主的几何：
+        // - refit 等带边框 tooltip（StandardTooltipV2Expandable）：总宽 = 内容流宽 + 24
+        //   （内容面板 +10、左右各 7px 边框垫区），背景铺满内容面板区域、避开边框纹理；
+        // - 图鉴（CodexDetailPanel）：mainText 无边框，宽度即内容流宽，外层 box 按
+        //   wrapTooltipWithBox 常量外扩 10px 并带 1px 深色描边，背景铺满 box 描边内侧。
+        // 两种宿主以「chrome 宽 - 内容流宽」是否大于 20 区分（24 vs 0）。
+        val chrome = (tooltip as UIComponentAPI).position
+        val quadX: Float
+        val quadWidth: Float
+        if (chrome.width - flowWidth > 20f) {
+            quadX = chrome.x + 7f
+            quadWidth = chrome.width - 14f
+        } else {
+            quadX = chrome.x - 9f
+            quadWidth = chrome.width + 18f
+        }
         val y = p.y - h
 
         GL11.glPushAttrib(GL11.GL_ENABLE_BIT or GL11.GL_COLOR_BUFFER_BIT)
@@ -66,8 +92,8 @@ class ASTDHullModTooltipBackground private constructor(
         GL11.glEnable(GL11.GL_BLEND)
         GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA)
 
-        ASTDStencilRenderer.withStencilMask(x, y, panelWidth, h) {
-            renderShaderQuad(x, y, panelWidth, h, alphaMult)
+        ASTDStencilRenderer.withStencilMask(quadX, y, quadWidth, h) {
+            renderShaderQuad(quadX, y, quadWidth, h, alphaMult)
         }
 
         GL11.glPopMatrix()
@@ -194,7 +220,7 @@ class ASTDHullModTooltipBackground private constructor(
               // ---- base triangular lattice ----
               float g = triGrid(frag, 56.0);
               float gridLine = 1.0 - smoothstep(0.0, 1.2, g);
-              col += accent * gridLine * 0.0625;
+              col += accent * gridLine * 0.1;
 
               // ---- vertical sweep band ----
               float sweepY = mod(u_time * 81.0, res.y + 240.0) - 120.0;
@@ -213,7 +239,7 @@ class ASTDHullModTooltipBackground private constructor(
                 float sz = 3.0 + 5.0 * hash12(id + 11.3);
                 float tw = 0.5 + 0.5 * sin(u_time * (0.8 + rnd * 1.6) + rnd * 6.2832);
                 float d = sdTri(lv - ctr, sz);
-                float a = (1.0 - smoothstep(0.0, 1.0, abs(d))) * 0.175 * tw * step(0.55, rnd);
+                float a = (1.0 - smoothstep(0.0, 1.0, abs(d))) * 0.2 * tw * step(0.55, rnd);
                 col += accent * a;
               }
 
@@ -520,7 +546,7 @@ class ASTDHullModTooltipBackground private constructor(
             width: Float,
             accentColor: Color,
         ): ASTDHullModTooltipBackground {
-            val plugin = ASTDHullModTooltipBackground(width, accentColor)
+            val plugin = ASTDHullModTooltipBackground(tooltip, width, accentColor)
             val panel = Global.getSettings().createCustom(0f, 0f, plugin)
             tooltip.addCustom(panel, 0f)
             return plugin
