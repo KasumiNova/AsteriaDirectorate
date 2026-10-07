@@ -65,28 +65,30 @@ void main() {
   gl_FragColor = vec4(vec3(0.0, 0.008, 0.01) + u_primaryColor.rgb * vignette * 0.22 + band, 1.0);
 }
 `.trim(),
-  // 游戏内 ASTDHullModTooltipBackground（astd-hullmod-cluster）的编辑器镜像：
-  // u_origin 以 (0,0) 全画布代入，u_variant 用 float uniform（0 呼吸 / 1 流光 / 2 六边形）。
-  prismCluster: `
-precision mediump float;
+  // 游戏内 ASTDHullModTooltipBackground 主风格（corner-pulse，k3-01 角标脉冲）的编辑器镜像：
+  // u_origin 以 (0,0) 全画布代入，输出 alpha 固定 0.92。
+  cornerPulse: `
+precision highp float;
 
 uniform float u_time;
 uniform vec2 u_resolution;
 uniform vec4 u_accentColor;
-uniform float u_seed;
-uniform float u_variant;
 
-float hash11(float n) {
-  return fract(sin(n) * 43758.5453123);
+const vec3 BG = vec3(0.015, 0.025, 0.0425);
+const float PI = 3.14159265359;
+
+float hash12(vec2 p) {
+  vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+  p3 += dot(p3, p3.yzx + 33.33);
+  return fract((p3.x + p3.y) * p3.z);
 }
 
-vec2 rot2(vec2 p, float a) {
-  float c = cos(a);
-  float s = sin(a);
+vec2 rot(vec2 p, float a) {
+  float c = cos(a), s = sin(a);
   return vec2(c * p.x - s * p.y, s * p.x + c * p.y);
 }
 
-float sdTriangle(vec2 p, float r) {
+float sdTri(vec2 p, float r) {
   const float k = 1.7320508;
   p.x = abs(p.x) - r;
   p.y = p.y + r / k;
@@ -95,99 +97,285 @@ float sdTriangle(vec2 p, float r) {
   return -length(p) * sign(p.y);
 }
 
-float sdHexagon(vec2 p, float r) {
-  const vec3 k = vec3(-0.866025404, 0.5, 0.577350269);
-  p = abs(p);
-  p -= 2.0 * min(dot(k.xy, p), 0.0) * k.xy;
-  p -= vec2(clamp(p.x, -k.z * r, k.z * r), r);
-  return length(p) * sign(p.y);
+float sdSeg(vec2 p, vec2 a, vec2 b) {
+  vec2 pa = p - a, ba = b - a;
+  float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+  return length(pa - ba * h);
+}
+
+float stroke(float d, float w, float aa) { return 1.0 - smoothstep(w - aa, w + aa, abs(d)); }
+float sfill(float d, float aa) { return 1.0 - smoothstep(-aa, aa, d); }
+
+float triGrid(vec2 p, float s) {
+  float d = 1e5;
+  for (int i = 0; i < 3; i++) {
+    float a = float(i) * PI / 3.0;
+    vec2 n = vec2(cos(a), sin(a));
+    float v = abs(fract(dot(p, n) / s + 0.5) - 0.5) * s;
+    d = min(d, v);
+  }
+  return d;
+}
+
+void main() {
+  vec2 frag = gl_FragCoord.xy;
+  vec2 uv = frag / u_resolution;
+  vec3 accent = u_accentColor.rgb;
+  vec3 col = BG;
+
+  col += vec3(0.005, 0.010, 0.01875) * (1.0 - uv.y);
+
+  float g = triGrid(frag, 56.0);
+  float gridLine = 1.0 - smoothstep(0.0, 1.2, g);
+  col += accent * gridLine * 0.050;
+
+  float sweepY = mod(u_time * 54.0, u_resolution.y + 240.0) - 120.0;
+  float band = exp(-pow((frag.y - sweepY) / 46.0, 2.0));
+  col += accent * gridLine * band * 0.11;
+  col += accent * band * 0.012;
+
+  {
+    float cell = 90.0;
+    vec2 gp = frag + vec2(0.0, u_time * 7.0);
+    vec2 id = floor(gp / cell);
+    vec2 lv = fract(gp / cell) * cell;
+    float rnd = hash12(id);
+    vec2 ctr = vec2(hash12(id + 7.1), hash12(id + 3.7)) * cell;
+    float sz = 3.0 + 5.0 * hash12(id + 11.3);
+    float tw = 0.5 + 0.5 * sin(u_time * (0.8 + rnd * 1.6) + rnd * 6.2832);
+    float d = sdTri(lv - ctr, sz);
+    float a = (1.0 - smoothstep(0.0, 1.0, abs(d))) * 0.14 * tw * step(0.55, rnd);
+    col += accent * a;
+  }
+
+  for (int i = 0; i < 4; i++) {
+    vec2 corner; float theta;
+    if (i == 0) { corner = vec2(10.0, 10.0); theta = PI * 0.25; }
+    else if (i == 1) { corner = vec2(u_resolution.x - 10.0, 10.0); theta = PI * 0.75; }
+    else if (i == 2) { corner = vec2(u_resolution.x - 10.0, u_resolution.y - 10.0); theta = -PI * 0.75; }
+    else { corner = vec2(10.0, u_resolution.y - 10.0); theta = -PI * 0.25; }
+
+    if (distance(frag, corner) > 95.0) continue;
+
+    float phase = float(i) * 1.7;
+    vec2 lp = frag - corner;
+    vec2 tp = rot(lp, PI * 0.5 - theta);
+
+    float breathe  = 0.62 + 0.38 * sin(u_time * 1.5 + phase);
+    float breathe2 = 0.5 + 0.5 * sin(u_time * 1.5 + phase + 1.2);
+
+    for (int j = 0; j < 3; j++) {
+      float fj = float(j);
+      float r = 58.8 - fj * 18.2;
+      float d = sdTri(tp, r);
+      float w = 1.4 - fj * 0.20;
+      col += accent * stroke(d, w, 0.75) * (0.82 - fj * 0.14) * mix(0.75, 1.0, breathe);
+      col += accent * exp(-abs(d) * 0.14) * 0.18 * breathe;
+    }
+
+    float apexD = length(tp - vec2(0.0, 58.8));
+    float apexLight = (1.0 - smoothstep(1.0, 2.5, apexD)) * (0.45 + 0.40 * breathe);
+    col += mix(accent, vec3(0.85, 0.95, 1.0), 0.35) * apexLight * 0.65;
+
+    float coreR = 4.2 + 2.1 * breathe2;
+    float dc = sdTri(tp - vec2(0.0, 22.4), coreR);
+    float coreFill = sfill(dc, 0.8);
+    col += mix(accent, vec3(0.85, 0.95, 1.0), 0.25) * coreFill * 0.72 * (0.8 + 0.2 * breathe2);
+    col += accent * exp(-max(dc, 0.0) * 0.25) * 0.25 * breathe2;
+
+    vec2 ex = (corner.x < u_resolution.x * 0.5) ? vec2(1.0, 0.0) : vec2(-1.0, 0.0);
+    vec2 ey = (corner.y < u_resolution.y * 0.5) ? vec2(0.0, 1.0) : vec2(0.0, -1.0);
+    float bl = min(sdSeg(frag, corner, corner + ex * 50.4),
+                   sdSeg(frag, corner, corner + ey * 50.4));
+    col += accent * (1.0 - smoothstep(0.5, 1.5, bl)) * 0.75 * breathe;
+    col += accent * exp(-bl * 0.25) * 0.08 * breathe;
+    vec2 corner2 = corner - (ex + ey) * 4.2;
+    float bl2 = min(sdSeg(frag, corner2, corner2 + ex * 29.4),
+                    sdSeg(frag, corner2, corner2 + ey * 29.4));
+    col += accent * (1.0 - smoothstep(0.5, 1.5, bl2)) * 0.38;
+  }
+
+  float bd = min(min(frag.x, u_resolution.x - frag.x), min(frag.y, u_resolution.y - frag.y));
+  col += accent * (1.0 - smoothstep(0.0, 1.0, bd)) * 0.10;
+
+  col *= 0.96 + 0.04 * sin(frag.y * PI);
+
+  vec2 q = uv - 0.5;
+  col *= 1.0 - 0.32 * dot(q, q);
+
+  col += (hash12(frag + fract(u_time) * 13.7) - 0.5) * 0.008;
+
+  col = col / (1.0 + col * 0.12);
+
+  gl_FragColor = vec4(col, 0.92);
+}
+`.trim(),
+  // 游戏内 ASTDHullModTooltipBackground 备选风格（prism-lattice，deepseek-02 棱镜栅格）镜像：
+  // u_origin 以 (0,0) 代入，输出 alpha 固定 0.92；扩散三角环与旋转主轴已移除。
+  prismLattice: `
+precision highp float;
+
+uniform float u_time;
+uniform vec2 u_resolution;
+uniform vec4 u_accentColor;
+
+const vec2 PANEL = vec2(0.955, 0.915);
+
+float hash21(vec2 p) {
+  p = fract(p * vec2(123.34, 456.21));
+  p += dot(p, p + 45.32);
+  return fract(p.x * p.y);
+}
+float hash11(float x) { return fract(sin(x * 127.1) * 43758.5453); }
+
+float triSDF(vec2 p, float r) {
+  const float k = 1.7320508;
+  p.x = abs(p.x) - r;
+  p.y = p.y + r / k;
+  if (p.x + k * p.y > 0.0) p = vec2(p.x - k * p.y, -k * p.x - p.y) / 2.0;
+  p.x -= clamp(p.x, -2.0 * r, 0.0);
+  return -length(p) * sign(p.y);
+}
+
+float segDist(vec2 p, vec2 a, vec2 b, out float t) {
+  vec2 pa = p - a, ba = b - a;
+  t = clamp(dot(pa, ba) / max(dot(ba, ba), 1e-6), 0.0, 1.0);
+  return length(pa - ba * t);
+}
+
+void rectOutline(vec2 p, vec2 h, out float d, out float arc) {
+  vec2 a0 = vec2(-h.x, -h.y), a1 = vec2(h.x, -h.y);
+  vec2 b0 = vec2( h.x, -h.y), b1 = vec2(h.x,  h.y);
+  vec2 c0 = vec2( h.x,  h.y), c1 = vec2(-h.x, h.y);
+  vec2 e0 = vec2(-h.x,  h.y), e1 = vec2(-h.x, -h.y);
+  float t0, t1, t2, t3;
+  float d0 = segDist(p, a0, a1, t0);
+  float d1 = segDist(p, b0, b1, t1);
+  float d2 = segDist(p, c0, c1, t2);
+  float d3 = segDist(p, e0, e1, t3);
+  float per = 2.0 * h.x, we = 2.0 * h.y;
+  d = d0; arc = t0 * per;
+  if (d1 < d) { d = d1; arc = per + t1 * we; }
+  if (d2 < d) { d = d2; arc = per + we + t2 * per; }
+  if (d3 < d) { d = d3; arc = 2.0 * per + we + t3 * we; }
+}
+
+float lattice(vec2 p, float t) {
+  float s = 0.0;
+  for (int i = 0; i < 3; i++) {
+    float a = float(i) * 2.0943951 + 0.15 * sin(t * 0.21);
+    vec2  d = vec2(cos(a), sin(a));
+    float ph = dot(p, d) * 26.0 + t * (0.35 + 0.12 * float(i));
+    s += exp(-abs(sin(ph)) * 14.0);
+  }
+  return s;
 }
 
 void main() {
   vec2 px = gl_FragCoord.xy;
-  float w = u_resolution.x;
-  float h = u_resolution.y;
-  vec3 base = vec3(0.0, 0.01, 0.012);
+  float aspect = u_resolution.x / u_resolution.y;
+  vec2 p = (2.0 * px - u_resolution) / u_resolution.y;
+  float R = length(p);
+  float t = u_time;
+  vec3 acc = u_accentColor.rgb;
 
-  float minD = min(
-    min(distance(px, vec2(0.0, 0.0)), distance(px, vec2(w, 0.0))),
-    min(distance(px, vec2(w, h)), distance(px, vec2(0.0, h))));
-  if (minD > 175.0) {
-    gl_FragColor = vec4(base, 0.92);
-    return;
+  vec2 hp = vec2(PANEL.x * aspect, PANEL.y);
+  vec2 a  = abs(p);
+  vec2 cu = vec2(hp.x - a.x, hp.y - a.y);
+  float cornerId = step(0.0, p.x) + step(0.0, p.y) * 2.0;
+
+  vec3 col = vec3(0.0);
+
+  float cw = exp(-mix(length(cu), max(cu.x, cu.y), 0.68) * 6.0);
+  if (cw > 0.004) {
+    vec2 dir = normalize(p + 1e-5);
+    float off = 0.0030;
+    vec3 lat = vec3(
+      lattice(p + dir * off * 2.0, t),
+      lattice(p, t),
+      lattice(p - dir * off * 2.0, t)
+    );
+    float latMono = (lat.r + lat.g + lat.b) / 3.0;
+    float latPow = smoothstep(0.35, 0.95, latMono);
+    float latBase = 0.085 * cw;
+    col += acc * latPow * latBase * (0.80 + 0.40 * lat);
+
+    vec2 gid = floor(p * 22.0);
+    float cell = hash21(gid);
+    vec2 gc = (gid + 0.5) / 22.0;
+    float node = 1.0 - smoothstep(0.0, 0.008, length(p - gc));
+    col += acc * node * step(0.97, cell) * cw *
+           (0.35 + 0.65 * max(0.0, sin(t * 1.6 + cell * 40.0))) * 0.30;
   }
 
-  float litSide = floor(hash11(u_seed * 91.7) * 4.0);
-  float breathSpeed = u_variant > 1.5 ? 0.20 : 0.30;
+  float bd, barc;
+  rectOutline(p, hp, bd, barc);
+  float perim = 4.0 * (hp.x + hp.y);
+  float uPer  = barc / perim;
+  col += acc * (1.0 - smoothstep(0.0, 0.0028, bd)) * 0.32;
+  col += acc * (1.0 - smoothstep(0.0, 0.010, bd)) * 0.045;
 
-  float acc = 0.0;
-  for (int c = 0; c < 4; c++) {
-    vec2 cPos;
-    float angDeg;
-    if (c == 0) { cPos = vec2(0.0, 0.0); angDeg = 45.0; }
-    else if (c == 1) { cPos = vec2(w, 0.0); angDeg = 135.0; }
-    else if (c == 2) { cPos = vec2(w, h); angDeg = 225.0; }
-    else { cPos = vec2(0.0, h); angDeg = 315.0; }
+  float marks = smoothstep(0.60, 0.95, hash11(floor(uPer * 150.0) + 3.0));
+  float markMask = (1.0 - smoothstep(0.004, 0.012, bd)) * (1.0 - smoothstep(0.035, 0.040, bd));
+  col += acc * marks * markMask * (0.16 + 0.10 * sin(t * 1.4 + uPer * 40.0));
 
-    float ang = radians(angDeg);
-    vec2 dir = vec2(cos(ang), sin(ang));
-    vec2 perp = vec2(-dir.y, dir.x);
+  float pos = fract(t / 13.0);
+  float d1 = abs(fract(uPer - pos + 0.5) - 0.5);
+  float d2 = abs(fract(uPer - fract(pos + 0.5) + 0.5) - 0.5);
+  float edge = 1.0 - smoothstep(0.0, 0.008, bd);
+  col += acc * exp(-d1 * 140.0) * edge * 0.45;
+  col += acc * exp(-d2 * 110.0) * edge * 0.25;
 
-    bool lit =
-      (litSide < 0.5 && (c == 0 || c == 3)) ||
-      (litSide >= 0.5 && litSide < 1.5 && (c == 1 || c == 2)) ||
-      (litSide >= 1.5 && litSide < 2.5 && (c == 2 || c == 3)) ||
-      (litSide >= 2.5 && (c == 0 || c == 1));
+  float C = 0.56;
+  float cmask = 1.0 - smoothstep(C * 0.70, C * 1.20, length(cu));
+  float clip  = smoothstep(-0.004, 0.0015, cu.x) * smoothstep(-0.004, 0.0015, cu.y);
+  float breathe = 0.65 + 0.35 * sin(t * 1.05);
 
-    float phase = hash11(u_seed * 131.7 + float(c) * 7.31);
-    float sideSign = hash11(u_seed * 557.3 + float(c) * 3.17) < 0.5 ? -1.0 : 1.0;
+  vec3 acc3 = vec3(0.0);
 
-    for (int k = 0; k < 4; k++) {
-      float size;
-      vec2 off;
-      if (k == 0)      { size = 18.0; off = vec2(32.0, 0.0); }
-      else if (k == 1) { size = 12.0; off = vec2(72.0, 0.0); }
-      else if (k == 2) { size = 9.0;  off = vec2(66.0, 26.0); }
-      else             { size = 7.0;  off = vec2(100.0, -6.0); }
-      if (u_variant > 1.5) size *= 0.9;
+  if (cmask > 0.002) {
+    float wedge = triSDF(cu - vec2(0.085, 0.085), 0.108);
+    float wedgeFill = 1.0 - smoothstep(0.0, 0.020, wedge);
+    acc3 += acc * wedgeFill * 0.04 * breathe;
+    acc3 += acc * (1.0 - smoothstep(0.0, 0.0035, abs(wedge))) * (0.45 + 0.35 * breathe);
 
-      float jx = (hash11(u_seed * 371.3 + float(c * 17 + k * 7)) - 0.5) * 5.0;
-      float jy = (hash11(u_seed * 733.1 + float(c * 11 + k * 5)) - 0.5) * 5.0;
-      vec2 center = cPos + dir * (off.x + jx) + perp * (off.y * sideSign + jy);
-      vec2 lp = rot2(px - center, radians(90.0) - ang);
-
-      float sd = u_variant > 1.5 ? sdHexagon(lp, size) : sdTriangle(lp, size);
-
-      bool filled = hash11(u_seed * 917.1 + float(c * 31 + k * 13)) < 0.30;
-      float shape;
-      if (filled) {
-        shape = 1.0 - smoothstep(-0.75, 0.75, sd);
-      } else {
-        shape = 1.0 - smoothstep(1.0, 1.8, abs(sd));
-      }
-
-      float anim;
-      if (u_variant > 0.5 && u_variant < 1.5) {
-        float proj = (px.x + px.y) / (w + h);
-        float band = fract(u_time * 0.16);
-        float dd = abs(fract(proj - band + 0.5) - 0.5);
-        anim = 0.15 + 0.85 * smoothstep(0.16, 0.02, dd);
-      } else {
-        float br = 0.5 - 0.5 * cos(6.2831853 * fract(u_time * breathSpeed + phase));
-        br = br * br * (3.0 - 2.0 * br);
-        anim = br * (lit ? 1.0 : 0.35);
-      }
-
-      float alphaK;
-      if (k == 0) alphaK = 0.50;
-      else if (k == 1) alphaK = 0.42;
-      else if (k == 2) alphaK = 0.34;
-      else alphaK = 0.26;
-      acc = max(acc, shape * alphaK * anim);
+    for (int i = 0; i < 3; i++) {
+      float fi = float(i);
+      float angleShift = (hash11(cornerId * 13.71 + fi * 7.39) - 0.5) * 0.65;
+      float ang = 0.62 + fi * 0.72 + angleShift;
+      vec2  dv = vec2(cos(ang), sin(ang));
+      vec2  nv = vec2(-dv.y, dv.x);
+      float along  = dot(cu, dv);
+      float across = dot(cu, nv);
+      float ph = fract(along * 0.85 - t * (0.42 + 0.22 * fi));
+      float bandW = exp(-abs(across) * (200.0 - 20.0 * fi));
+      acc3 += acc * bandW * smoothstep(0.0, 0.18, ph) * (1.0 - smoothstep(0.52, 1.0, ph)) * 0.22;
     }
+
+    float tg = abs(triSDF(cu - vec2(0.115, 0.115), 0.135));
+    acc3 += acc * (1.0 - smoothstep(0.0, 0.0028, tg)) * 0.22;
+
+    acc3 += acc * exp(-length(cu) * 42.0) * 0.40 * (0.7 + 0.3 * sin(t * 2.3));
   }
 
-  gl_FragColor = vec4(base + u_accentColor.rgb * acc, 0.92);
+  col += acc3 * cmask * clip;
+
+  vec2 c0 = hp - vec2(0.060, 0.060);
+  float d00 = min(min(min(abs(p.x - c0.x), abs(p.x + c0.x)),
+                      abs(p.y - c0.y)), abs(p.y + c0.y));
+  float line00 = 1.0 - smoothstep(0.0, 0.0022, d00);
+  col += acc * (line00 * 0.16 + exp(-d00 * 120.0) * 0.04) * (0.5 + 0.5 * sin(t * 1.55));
+
+  col *= 0.98 + 0.02 * hash21(px * 0.7 + fract(t) * 53.1);
+
+  float centerDark = smoothstep(0.20, 0.85, R);
+  col *= mix(0.85, 1.0, centerDark);
+
+  col = max(col, vec3(0.0));
+  col = 1.0 - exp(-col * 1.15);
+  col = pow(col, vec3(0.55));
+
+  gl_FragColor = vec4(col, 0.92);
 }
 `.trim(),
 };
@@ -293,22 +481,14 @@ export const TOOLTIP_BACKGROUND_SHADER_PRESETS: Array<{
     fragmentShader: shaderPresets.lattice,
   },
   {
-    id: 'prism-cluster',
-    name: 'Prism Cluster · 呼吸',
-    fragmentShader: shaderPresets.prismCluster,
-    uniforms: { u_variant: 0 },
+    id: 'corner-pulse',
+    name: 'Corner Pulse · 角标脉冲（游戏内主风格）',
+    fragmentShader: shaderPresets.cornerPulse,
   },
   {
-    id: 'prism-cluster-flow',
-    name: 'Prism Cluster · 流光',
-    fragmentShader: shaderPresets.prismCluster,
-    uniforms: { u_variant: 1 },
-  },
-  {
-    id: 'prism-cluster-hex',
-    name: 'Prism Cluster · 晶巢',
-    fragmentShader: shaderPresets.prismCluster,
-    uniforms: { u_variant: 2 },
+    id: 'prism-lattice',
+    name: 'Prism Lattice · 棱镜栅格（游戏内备选）',
+    fragmentShader: shaderPresets.prismLattice,
   },
   {
     id: 'soft-vignette',
