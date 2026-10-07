@@ -14,11 +14,11 @@ import java.awt.Color
  * ASTD 船插 Tooltip 统一全息背景。
  *
  * 视觉规格（原型竞标终版，见 temp/fx-bakeoff/refine/）：
- * - 主风格 [HullmodBackgroundStyleConfig.STYLE_CORNER_PULSE]（k3-01 角标脉冲）：四角三层嵌套三角描边 + 能量核 +
- *   L 形角标呼吸，底层三角晶格 + 竖直扫描带 + 漂浮微三角粒子铺满全面板，
- *   CRT 细扫描线与暗角收边，整体为暗色全息面板质感；
- * - 备选风格 [HullmodBackgroundStyleConfig.STYLE_PRISM_LATTICE]（deepseek-02 棱镜栅格）：面板结构边框 + 棱镜刻度 +
- *   边框爬行光点，四角楔形线框 + 错落光锥，角部全息晶格，
+ * - 主风格 [HullmodBackgroundStyleConfig.STYLE_CORNER_PULSE]（k3-01 角标脉冲）：四角 L 形角标呼吸
+ *   （嵌套三角描边/顶点光/能量核装饰按需求暂时移除），底层三角晶格 + 竖直扫描带 +
+ *   漂浮微三角粒子铺满全面板，CRT 细扫描线与暗角收边，整体为暗色全息面板质感；
+ * - 备选风格 [HullmodBackgroundStyleConfig.STYLE_PRISM_LATTICE]（deepseek-02 棱镜栅格）：紧贴边缘的面板
+ *   结构边框 + 棱镜刻度 + 边框爬行光点，四角楔形线框 + 错落光锥，角部全息晶格，
  *   发光元素严格收敛于四角与边缘、中央文字区近黑静默；
  * - 颜色单点收口：全部发光元素跟随船插主题色（[accentColor] 随 Theme 传入）。
  *
@@ -150,11 +150,6 @@ class ASTDHullModTooltipBackground private constructor(
               return fract((p3.x + p3.y) * p3.z);
             }
 
-            vec2 rot(vec2 p, float a) {
-              float c = cos(a), s = sin(a);
-              return vec2(c * p.x - s * p.y, s * p.x + c * p.y);
-            }
-
             // equilateral triangle SDF (apex toward +y, r ~ circumradius)
             float sdTri(vec2 p, float r) {
               const float k = 1.7320508;
@@ -170,9 +165,6 @@ class ASTDHullModTooltipBackground private constructor(
               float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
               return length(pa - ba * h);
             }
-
-            float stroke(float d, float w, float aa) { return 1.0 - smoothstep(w - aa, w + aa, abs(d)); }
-            float sfill(float d, float aa) { return 1.0 - smoothstep(-aa, aa, d); }
 
             // triangular lattice lines (three sets of 60-degree parallels)
             float triGrid(vec2 p, float s) {
@@ -202,10 +194,10 @@ class ASTDHullModTooltipBackground private constructor(
               // ---- base triangular lattice ----
               float g = triGrid(frag, 56.0);
               float gridLine = 1.0 - smoothstep(0.0, 1.2, g);
-              col += accent * gridLine * 0.050;
+              col += accent * gridLine * 0.0625;
 
               // ---- vertical sweep band ----
-              float sweepY = mod(u_time * 54.0, res.y + 240.0) - 120.0;
+              float sweepY = mod(u_time * 81.0, res.y + 240.0) - 120.0;
               float band = exp(-pow((frag.y - sweepY) / 46.0, 2.0));
               col += accent * gridLine * band * 0.11;
               col += accent * band * 0.012;
@@ -221,51 +213,25 @@ class ASTDHullModTooltipBackground private constructor(
                 float sz = 3.0 + 5.0 * hash12(id + 11.3);
                 float tw = 0.5 + 0.5 * sin(u_time * (0.8 + rnd * 1.6) + rnd * 6.2832);
                 float d = sdTri(lv - ctr, sz);
-                float a = (1.0 - smoothstep(0.0, 1.0, abs(d))) * 0.14 * tw * step(0.55, rnd);
+                float a = (1.0 - smoothstep(0.0, 1.0, abs(d))) * 0.175 * tw * step(0.55, rnd);
                 col += accent * a;
               }
 
-              // ---- corner ornaments: nested triangles + energy core + L brackets ----
+              // ---- corner ornaments: L-shaped brackets ----
+              // (nested triangle strokes / apex light / energy core temporarily removed per spec)
               for (int i = 0; i < 4; i++) {
-                vec2 corner; float theta;
-                if (i == 0) { corner = vec2(10.0, 10.0); theta = PI * 0.25; }
-                else if (i == 1) { corner = vec2(res.x - 10.0, 10.0); theta = PI * 0.75; }
-                else if (i == 2) { corner = vec2(res.x - 10.0, res.y - 10.0); theta = -PI * 0.75; }
-                else { corner = vec2(10.0, res.y - 10.0); theta = -PI * 0.25; }
+                vec2 corner;
+                if (i == 0) { corner = vec2(10.0, 10.0); }
+                else if (i == 1) { corner = vec2(res.x - 10.0, 10.0); }
+                else if (i == 2) { corner = vec2(res.x - 10.0, res.y - 10.0); }
+                else { corner = vec2(10.0, res.y - 10.0); }
 
-                // early-out: ornament body within 90 units (triangle apex ~68 + glow ~20),
-                // in the normalized 580px-baseline space; residual beyond 95 <= 0.4% accent,
-                // buried by dither, invisible
+                // early-out: bracket arm reach 50.4 units + glow ~20, in the normalized
+                // 580px-baseline space; residual beyond 95 <= 0.001% accent, invisible
                 if (distance(frag, corner) > 95.0) continue;
 
                 float phase = float(i) * 1.7;
-                vec2 lp = frag - corner;
-                vec2 tp = rot(lp, PI * 0.5 - theta); // +y axis aimed at panel center
-
                 float breathe  = 0.62 + 0.38 * sin(u_time * 1.5 + phase);
-                float breathe2 = 0.5 + 0.5 * sin(u_time * 1.5 + phase + 1.2);
-
-                // three nested triangle strokes
-                for (int j = 0; j < 3; j++) {
-                  float fj = float(j);
-                  float r = 58.8 - fj * 18.2;
-                  float d = sdTri(tp, r);
-                  float w = 1.4 - fj * 0.20;
-                  col += accent * stroke(d, w, 0.75) * (0.82 - fj * 0.14) * mix(0.75, 1.0, breathe);
-                  col += accent * exp(-abs(d) * 0.14) * 0.18 * breathe;
-                }
-
-                // outer triangle apex light
-                float apexD = length(tp - vec2(0.0, 58.8));
-                float apexLight = (1.0 - smoothstep(1.0, 2.5, apexD)) * (0.45 + 0.40 * breathe);
-                col += mix(accent, vec3(0.85, 0.95, 1.0), 0.35) * apexLight * 0.65;
-
-                // energy core (solid small triangle)
-                float coreR = 4.2 + 2.1 * breathe2;
-                float dc = sdTri(tp - vec2(0.0, 22.4), coreR);
-                float coreFill = sfill(dc, 0.8);
-                col += mix(accent, vec3(0.85, 0.95, 1.0), 0.25) * coreFill * 0.72 * (0.8 + 0.2 * breathe2);
-                col += accent * exp(-max(dc, 0.0) * 0.25) * 0.25 * breathe2;
 
                 // L-shaped bracket
                 vec2 ex = (corner.x < res.x * 0.5) ? vec2(1.0, 0.0) : vec2(-1.0, 0.0);
@@ -308,9 +274,10 @@ class ASTDHullModTooltipBackground private constructor(
          * 短边归一（p = (2px - res) / res.y），与原型一致；
          * 与原型差异：u_res→u_resolution、u_acc→u_accentColor.rgb、移除未使用的 u_deep/PI/TAU、
          * 输出 alpha 0.92*u_alphaMult；扩散三角环与旋转三角主轴已按需求移除，
-         * lattice 与角部结构按权重早退；角根核心由原型的独立 col+= 并入 acc3
-         * （改按 cmask*clip 缩放：核心 e 折半径 ~3.9px，有效区内两因子恒为 1，
-         * 仅四角最外侧至多 1px 行/列被压暗，视觉可忽略）。
+         * lattice 与角部结构按权重早退；PANEL 由 (0.955, 0.915) 改为 (1.0, 1.0)，
+         * 描边/刻度/角部结构紧贴面板边缘（外侧衰减由 UI stencil 裁剪）；
+         * 角根核心由原型的独立 col+= 并入 acc3（改按 cmask*clip 缩放：核心 e 折半径
+         * ~3.9px，贴边后角点外侧部分随 stencil 一并裁剪，视觉可忽略）。
          */
         private const val FRAGMENT_PRISM_LATTICE = """
             uniform float u_time;
@@ -321,7 +288,9 @@ class ASTDHullModTooltipBackground private constructor(
 
             varying vec2 v_pos;
 
-            const vec2  PANEL = vec2(0.955, 0.915);
+            // panel half-extents in p units: border flush with the panel edge,
+            // outer stroke falloff clipped by the UI stencil
+            const vec2  PANEL = vec2(1.0, 1.0);
 
             float hash21(vec2 p) {
               p = fract(p * vec2(123.34, 456.21));

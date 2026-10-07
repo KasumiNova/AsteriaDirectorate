@@ -83,11 +83,6 @@ float hash12(vec2 p) {
   return fract((p3.x + p3.y) * p3.z);
 }
 
-vec2 rot(vec2 p, float a) {
-  float c = cos(a), s = sin(a);
-  return vec2(c * p.x - s * p.y, s * p.x + c * p.y);
-}
-
 float sdTri(vec2 p, float r) {
   const float k = 1.7320508;
   p.x = abs(p.x) - r;
@@ -102,9 +97,6 @@ float sdSeg(vec2 p, vec2 a, vec2 b) {
   float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
   return length(pa - ba * h);
 }
-
-float stroke(float d, float w, float aa) { return 1.0 - smoothstep(w - aa, w + aa, abs(d)); }
-float sfill(float d, float aa) { return 1.0 - smoothstep(-aa, aa, d); }
 
 float triGrid(vec2 p, float s) {
   float d = 1e5;
@@ -129,9 +121,9 @@ void main() {
 
   float g = triGrid(frag, 56.0);
   float gridLine = 1.0 - smoothstep(0.0, 1.2, g);
-  col += accent * gridLine * 0.050;
+  col += accent * gridLine * 0.0625;
 
-  float sweepY = mod(u_time * 54.0, res.y + 240.0) - 120.0;
+  float sweepY = mod(u_time * 81.0, res.y + 240.0) - 120.0;
   float band = exp(-pow((frag.y - sweepY) / 46.0, 2.0));
   col += accent * gridLine * band * 0.11;
   col += accent * band * 0.012;
@@ -146,44 +138,24 @@ void main() {
     float sz = 3.0 + 5.0 * hash12(id + 11.3);
     float tw = 0.5 + 0.5 * sin(u_time * (0.8 + rnd * 1.6) + rnd * 6.2832);
     float d = sdTri(lv - ctr, sz);
-    float a = (1.0 - smoothstep(0.0, 1.0, abs(d))) * 0.14 * tw * step(0.55, rnd);
+    float a = (1.0 - smoothstep(0.0, 1.0, abs(d))) * 0.175 * tw * step(0.55, rnd);
     col += accent * a;
   }
 
+  // corner ornaments: L-shaped brackets
+  // (nested triangle strokes / apex light / energy core temporarily removed per spec)
   for (int i = 0; i < 4; i++) {
-    vec2 corner; float theta;
-    if (i == 0) { corner = vec2(10.0, 10.0); theta = PI * 0.25; }
-    else if (i == 1) { corner = vec2(res.x - 10.0, 10.0); theta = PI * 0.75; }
-    else if (i == 2) { corner = vec2(res.x - 10.0, res.y - 10.0); theta = -PI * 0.75; }
-    else { corner = vec2(10.0, res.y - 10.0); theta = -PI * 0.25; }
+    vec2 corner;
+    if (i == 0) { corner = vec2(10.0, 10.0); }
+    else if (i == 1) { corner = vec2(res.x - 10.0, 10.0); }
+    else if (i == 2) { corner = vec2(res.x - 10.0, res.y - 10.0); }
+    else { corner = vec2(10.0, res.y - 10.0); }
 
+    // early-out: bracket arm reach 50.4 units + glow ~20, normalized 580px-baseline space
     if (distance(frag, corner) > 95.0) continue;
 
     float phase = float(i) * 1.7;
-    vec2 lp = frag - corner;
-    vec2 tp = rot(lp, PI * 0.5 - theta);
-
     float breathe  = 0.62 + 0.38 * sin(u_time * 1.5 + phase);
-    float breathe2 = 0.5 + 0.5 * sin(u_time * 1.5 + phase + 1.2);
-
-    for (int j = 0; j < 3; j++) {
-      float fj = float(j);
-      float r = 58.8 - fj * 18.2;
-      float d = sdTri(tp, r);
-      float w = 1.4 - fj * 0.20;
-      col += accent * stroke(d, w, 0.75) * (0.82 - fj * 0.14) * mix(0.75, 1.0, breathe);
-      col += accent * exp(-abs(d) * 0.14) * 0.18 * breathe;
-    }
-
-    float apexD = length(tp - vec2(0.0, 58.8));
-    float apexLight = (1.0 - smoothstep(1.0, 2.5, apexD)) * (0.45 + 0.40 * breathe);
-    col += mix(accent, vec3(0.85, 0.95, 1.0), 0.35) * apexLight * 0.65;
-
-    float coreR = 4.2 + 2.1 * breathe2;
-    float dc = sdTri(tp - vec2(0.0, 22.4), coreR);
-    float coreFill = sfill(dc, 0.8);
-    col += mix(accent, vec3(0.85, 0.95, 1.0), 0.25) * coreFill * 0.72 * (0.8 + 0.2 * breathe2);
-    col += accent * exp(-max(dc, 0.0) * 0.25) * 0.25 * breathe2;
 
     vec2 ex = (corner.x < res.x * 0.5) ? vec2(1.0, 0.0) : vec2(-1.0, 0.0);
     vec2 ey = (corner.y < res.y * 0.5) ? vec2(0.0, 1.0) : vec2(0.0, -1.0);
@@ -221,7 +193,8 @@ uniform float u_time;
 uniform vec2 u_resolution;
 uniform vec4 u_accentColor;
 
-const vec2 PANEL = vec2(0.955, 0.915);
+// panel half-extents in p units: border flush with the panel edge
+const vec2 PANEL = vec2(1.0, 1.0);
 
 float hash21(vec2 p) {
   p = fract(p * vec2(123.34, 456.21));
