@@ -65,6 +65,131 @@ void main() {
   gl_FragColor = vec4(vec3(0.0, 0.008, 0.01) + u_primaryColor.rgb * vignette * 0.22 + band, 1.0);
 }
 `.trim(),
+  // 游戏内 ASTDHullModTooltipBackground（astd-hullmod-cluster）的编辑器镜像：
+  // u_origin 以 (0,0) 全画布代入，u_variant 用 float uniform（0 呼吸 / 1 流光 / 2 六边形）。
+  prismCluster: `
+precision mediump float;
+
+uniform float u_time;
+uniform vec2 u_resolution;
+uniform vec4 u_accentColor;
+uniform float u_seed;
+uniform float u_variant;
+
+float hash11(float n) {
+  return fract(sin(n) * 43758.5453123);
+}
+
+vec2 rot2(vec2 p, float a) {
+  float c = cos(a);
+  float s = sin(a);
+  return vec2(c * p.x - s * p.y, s * p.x + c * p.y);
+}
+
+float sdTriangle(vec2 p, float r) {
+  const float k = 1.7320508;
+  p.x = abs(p.x) - r;
+  p.y = p.y + r / k;
+  if (p.x + k * p.y > 0.0) p = vec2(p.x - k * p.y, -k * p.x - p.y) / 2.0;
+  p.x -= clamp(p.x, -2.0 * r, 0.0);
+  return -length(p) * sign(p.y);
+}
+
+float sdHexagon(vec2 p, float r) {
+  const vec3 k = vec3(-0.866025404, 0.5, 0.577350269);
+  p = abs(p);
+  p -= 2.0 * min(dot(k.xy, p), 0.0) * k.xy;
+  p -= vec2(clamp(p.x, -k.z * r, k.z * r), r);
+  return length(p) * sign(p.y);
+}
+
+void main() {
+  vec2 px = gl_FragCoord.xy;
+  float w = u_resolution.x;
+  float h = u_resolution.y;
+  vec3 base = vec3(0.0, 0.01, 0.012);
+
+  float minD = min(
+    min(distance(px, vec2(0.0, 0.0)), distance(px, vec2(w, 0.0))),
+    min(distance(px, vec2(w, h)), distance(px, vec2(0.0, h))));
+  if (minD > 175.0) {
+    gl_FragColor = vec4(base, 0.92);
+    return;
+  }
+
+  float litSide = floor(hash11(u_seed * 91.7) * 4.0);
+  float breathSpeed = u_variant > 1.5 ? 0.20 : 0.30;
+
+  float acc = 0.0;
+  for (int c = 0; c < 4; c++) {
+    vec2 cPos;
+    float angDeg;
+    if (c == 0) { cPos = vec2(0.0, 0.0); angDeg = 45.0; }
+    else if (c == 1) { cPos = vec2(w, 0.0); angDeg = 135.0; }
+    else if (c == 2) { cPos = vec2(w, h); angDeg = 225.0; }
+    else { cPos = vec2(0.0, h); angDeg = 315.0; }
+
+    float ang = radians(angDeg);
+    vec2 dir = vec2(cos(ang), sin(ang));
+    vec2 perp = vec2(-dir.y, dir.x);
+
+    bool lit =
+      (litSide < 0.5 && (c == 0 || c == 3)) ||
+      (litSide >= 0.5 && litSide < 1.5 && (c == 1 || c == 2)) ||
+      (litSide >= 1.5 && litSide < 2.5 && (c == 2 || c == 3)) ||
+      (litSide >= 2.5 && (c == 0 || c == 1));
+
+    float phase = hash11(u_seed * 131.7 + float(c) * 7.31);
+    float sideSign = hash11(u_seed * 557.3 + float(c) * 3.17) < 0.5 ? -1.0 : 1.0;
+
+    for (int k = 0; k < 4; k++) {
+      float size;
+      vec2 off;
+      if (k == 0)      { size = 18.0; off = vec2(32.0, 0.0); }
+      else if (k == 1) { size = 12.0; off = vec2(72.0, 0.0); }
+      else if (k == 2) { size = 9.0;  off = vec2(66.0, 26.0); }
+      else             { size = 7.0;  off = vec2(100.0, -6.0); }
+      if (u_variant > 1.5) size *= 0.9;
+
+      float jx = (hash11(u_seed * 371.3 + float(c * 17 + k * 7)) - 0.5) * 5.0;
+      float jy = (hash11(u_seed * 733.1 + float(c * 11 + k * 5)) - 0.5) * 5.0;
+      vec2 center = cPos + dir * (off.x + jx) + perp * (off.y * sideSign + jy);
+      vec2 lp = rot2(px - center, radians(90.0) - ang);
+
+      float sd = u_variant > 1.5 ? sdHexagon(lp, size) : sdTriangle(lp, size);
+
+      bool filled = hash11(u_seed * 917.1 + float(c * 31 + k * 13)) < 0.30;
+      float shape;
+      if (filled) {
+        shape = 1.0 - smoothstep(-0.75, 0.75, sd);
+      } else {
+        shape = 1.0 - smoothstep(1.0, 1.8, abs(sd));
+      }
+
+      float anim;
+      if (u_variant > 0.5 && u_variant < 1.5) {
+        float proj = (px.x + px.y) / (w + h);
+        float band = fract(u_time * 0.16);
+        float dd = abs(fract(proj - band + 0.5) - 0.5);
+        anim = 0.15 + 0.85 * smoothstep(0.16, 0.02, dd);
+      } else {
+        float br = 0.5 - 0.5 * cos(6.2831853 * fract(u_time * breathSpeed + phase));
+        br = br * br * (3.0 - 2.0 * br);
+        anim = br * (lit ? 1.0 : 0.35);
+      }
+
+      float alphaK;
+      if (k == 0) alphaK = 0.50;
+      else if (k == 1) alphaK = 0.42;
+      else if (k == 2) alphaK = 0.34;
+      else alphaK = 0.26;
+      acc = max(acc, shape * alphaK * anim);
+    }
+  }
+
+  gl_FragColor = vec4(base + u_accentColor.rgb * acc, 0.92);
+}
+`.trim(),
 };
 
 export const createDefaultHullmodTooltipPreset = (): TooltipPreset => ({
@@ -145,7 +270,13 @@ export const createDefaultHullmodTooltipPreset = (): TooltipPreset => ({
   ],
 });
 
-export const TOOLTIP_BACKGROUND_SHADER_PRESETS = [
+export const TOOLTIP_BACKGROUND_SHADER_PRESETS: Array<{
+  id: string;
+  name: string;
+  fragmentShader: string;
+  /** 选中该预设时合入 background.uniforms 的数值 uniform（如动画变体编号）。 */
+  uniforms?: Record<string, number>;
+}> = [
   {
     id: 'scanline-grid',
     name: 'Scanline Grid',
@@ -160,6 +291,24 @@ export const TOOLTIP_BACKGROUND_SHADER_PRESETS = [
     id: 'lattice-pulse',
     name: 'Lattice Pulse',
     fragmentShader: shaderPresets.lattice,
+  },
+  {
+    id: 'prism-cluster',
+    name: 'Prism Cluster · 呼吸',
+    fragmentShader: shaderPresets.prismCluster,
+    uniforms: { u_variant: 0 },
+  },
+  {
+    id: 'prism-cluster-flow',
+    name: 'Prism Cluster · 流光',
+    fragmentShader: shaderPresets.prismCluster,
+    uniforms: { u_variant: 1 },
+  },
+  {
+    id: 'prism-cluster-hex',
+    name: 'Prism Cluster · 晶巢',
+    fragmentShader: shaderPresets.prismCluster,
+    uniforms: { u_variant: 2 },
   },
   {
     id: 'soft-vignette',

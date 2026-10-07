@@ -91,6 +91,10 @@ export const ShaderEditor = ({ preset, onPresetChange }: ShaderEditorProps) => {
       ...preset.background,
       shaderId: shader.id,
       fragmentShader: shader.fragmentShader,
+      uniforms: {
+        ...preset.background.uniforms,
+        ...(shader.uniforms ?? {}),
+      },
     });
   };
 

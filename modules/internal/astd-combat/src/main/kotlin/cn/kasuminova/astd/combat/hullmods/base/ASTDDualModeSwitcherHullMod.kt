@@ -89,7 +89,7 @@ class ASTDDualModeSwitcherHullMod : BaseHullMod() {
 
         tooltip.buildWith {
             spacer(6f)
-            withLatticePulseBackground(accentColor = THEME.accentColor, width = width) {
+            withHullmodBackground(accentColor = THEME.accentColor, width = width) {
                 heading(title, THEME.nameColor, THEME.headerBackground, 6f)
                 spacer(2f)
                 para(
@@ -100,7 +100,7 @@ class ASTDDualModeSwitcherHullMod : BaseHullMod() {
                 )
 
                 // 降级：无 config（非已注册的双模式舰，或在 modSpec 预览语境下拿不到具体舰）→ 仅通用说明。
-                if (config == null) return@withLatticePulseBackground
+                if (config == null) return@withHullmodBackground
 
                 val automated = isAutomatedMode(ship, config)
                 val currentModeName = modeName(automated)

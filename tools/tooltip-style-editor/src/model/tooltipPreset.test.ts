@@ -51,7 +51,7 @@ describe('tooltip preset model', () => {
     expect(JSON.stringify(preset)).toContain('10 / 20 / 30 / 50');
     expect(JSON.stringify(preset)).toContain('"colorRole":"warning"');
     expect(JSON.stringify(preset)).not.toContain('数据百科');
-    expect(TOOLTIP_BACKGROUND_SHADER_PRESETS).toHaveLength(4);
+    expect(TOOLTIP_BACKGROUND_SHADER_PRESETS).toHaveLength(7);
     expect(TOOLTIP_BACKGROUND_SHADER_PRESETS.every((shader) => shader.fragmentShader.includes('gl_FragColor'))).toBe(true);
   });
 

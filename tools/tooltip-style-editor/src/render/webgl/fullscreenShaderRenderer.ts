@@ -6,6 +6,10 @@ export type ShaderRenderParams = {
   primaryColor: [number, number, number, number];
   accentColor: [number, number, number, number];
   intensity: number;
+  /** 实例随机种子（prism-cluster 等按 seed 随机布局的 shader 用；缺省 0）。 */
+  seed?: number;
+  /** 动画变体编号（prism-cluster：0 呼吸 / 1 流光 / 2 六边形；缺省 0）。 */
+  variant?: number;
 };
 
 type ShaderUniformLocations = {
@@ -14,6 +18,8 @@ type ShaderUniformLocations = {
   primaryColor: WebGLUniformLocation | null;
   accentColor: WebGLUniformLocation | null;
   intensity: WebGLUniformLocation | null;
+  seed: WebGLUniformLocation | null;
+  variant: WebGLUniformLocation | null;
 };
 
 export class FullscreenShaderRenderer {
@@ -26,6 +32,8 @@ export class FullscreenShaderRenderer {
     primaryColor: null,
     accentColor: null,
     intensity: null,
+    seed: null,
+    variant: null,
   };
 
   constructor(private readonly canvas: HTMLCanvasElement) {
@@ -69,6 +77,8 @@ export class FullscreenShaderRenderer {
         primaryColor: this.gl.getUniformLocation(nextProgram, 'u_primaryColor'),
         accentColor: this.gl.getUniformLocation(nextProgram, 'u_accentColor'),
         intensity: this.gl.getUniformLocation(nextProgram, 'u_intensity'),
+        seed: this.gl.getUniformLocation(nextProgram, 'u_seed'),
+        variant: this.gl.getUniformLocation(nextProgram, 'u_variant'),
       };
 
       return { ok: true };
@@ -115,6 +125,14 @@ export class FullscreenShaderRenderer {
 
     if (this.uniforms.intensity) {
       gl.uniform1f(this.uniforms.intensity, params.intensity);
+    }
+
+    if (this.uniforms.seed) {
+      gl.uniform1f(this.uniforms.seed, params.seed ?? 0);
+    }
+
+    if (this.uniforms.variant) {
+      gl.uniform1f(this.uniforms.variant, params.variant ?? 0);
     }
 
     gl.drawArrays(gl.TRIANGLES, 0, 3);

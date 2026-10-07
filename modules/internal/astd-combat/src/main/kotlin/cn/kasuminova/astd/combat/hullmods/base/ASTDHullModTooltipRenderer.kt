@@ -92,7 +92,7 @@ object ASTDHullModTooltipRenderer {
     ) {
         tooltip.buildWith {
             spacer(6f)
-            withLatticePulseBackground(
+            withHullmodBackground(
                 accentColor = theme.accentColor,
                 width = width,
             ) {
@@ -125,7 +125,7 @@ object ASTDHullModTooltipRenderer {
     ) {
         tooltip.buildWith {
             spacer(6f)
-            withLatticePulseBackground(
+            withHullmodBackground(
                 accentColor = theme.accentColor,
                 width = width,
             ) {

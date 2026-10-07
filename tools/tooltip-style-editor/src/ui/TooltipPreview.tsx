@@ -31,7 +31,7 @@ const uniformRgba = (
 
 const uniformNumber = (
   uniforms: TooltipPreset['background']['uniforms'],
-  key: 'u_intensity',
+  key: 'u_intensity' | 'u_seed' | 'u_variant',
   fallback: number,
 ): number => {
   const value = uniforms[key];
@@ -145,6 +145,12 @@ export const TooltipPreview = ({ preset }: TooltipPreviewProps) => {
     [preset.background.uniforms, preset.theme.section.textColor],
   );
   const intensity = uniformNumber(preset.background.uniforms, 'u_intensity', 1);
+  // seed 缺省随机（对齐游戏内每实例随机；uniforms 变更等同重开 tooltip，重新掷 seed）
+  const seed = useMemo(
+    () => uniformNumber(preset.background.uniforms, 'u_seed', Math.random()),
+    [preset.background.uniforms],
+  );
+  const variant = uniformNumber(preset.background.uniforms, 'u_variant', 0);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -207,6 +213,8 @@ export const TooltipPreview = ({ preset }: TooltipPreviewProps) => {
         primaryColor: rgbaToUniform(primaryColor),
         accentColor: rgbaToUniform(accentColor),
         intensity,
+        seed,
+        variant,
       });
 
       animationFrame = window.requestAnimationFrame(renderFrame);
@@ -215,7 +223,7 @@ export const TooltipPreview = ({ preset }: TooltipPreviewProps) => {
     animationFrame = window.requestAnimationFrame(renderFrame);
 
     return () => window.cancelAnimationFrame(animationFrame);
-  }, [accentColor, intensity, primaryColor, shaderError]);
+  }, [accentColor, intensity, primaryColor, seed, variant, shaderError]);
 
   return (
     <section

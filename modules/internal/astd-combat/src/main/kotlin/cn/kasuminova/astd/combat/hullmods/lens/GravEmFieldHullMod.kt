@@ -273,7 +273,7 @@ class GravEmFieldHullMod : BaseHullMod() {
         val values = GravEmFieldTuning.resolve(DifficultyTuningImpl, ship == null || ship.owner == 0)
         tooltip.buildWith {
             spacer(6f)
-            withLatticePulseBackground(accentColor = THEME.accentColor, width = width) {
+            withHullmodBackground(accentColor = THEME.accentColor, width = width) {
                 heading(spec?.displayName ?: "", THEME.nameColor, THEME.headerBackground, 6f)
                 spacer(2f)
                 para(I18n.Categories.MOD, "ui.hullmod.grav_em_field.summary", Misc.getTextColor(), 4f)
