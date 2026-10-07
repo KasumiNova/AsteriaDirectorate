@@ -38,7 +38,8 @@ import java.awt.Color
  * 内容流（x = 内容面板 + 5），addPostDescriptionSection 传入的 width 为内容流宽，
  * 直接按该几何绘制会比船插背景左右各窄约 12px（refit，总宽 = 流宽 + 24）或
  * 15/5px（图鉴，外层 box = 流宽 + 20）。渲染时读取 tooltip 自身位置（实现类即
- * UIComponent）按宿主类型换算 chrome 区域，使背景铺满船插背景的内侧区域。
+ * UIComponent）按宿主类型换算 chrome 区域，使背景铺满船插背景的内侧区域；
+ * 底部另按 [BOTTOM_EXTEND] 向下扩展，补偿内容流底部过小的内边距。
  *
  * 编辑器镜像预设：`tools/tooltip-style-editor/src/model/defaultHullmodPreset.ts`
  * （shader id `corner-pulse` / `prism-lattice`，u_origin 在编辑器内以 (0,0) 全画布代入）。
@@ -85,15 +86,16 @@ class ASTDHullModTooltipBackground private constructor(
             quadX = chrome.x - 9f
             quadWidth = chrome.width + 18f
         }
-        val y = p.y - h
+        val y = p.y - h - BOTTOM_EXTEND
+        val quadHeight = h + BOTTOM_EXTEND
 
         GL11.glPushAttrib(GL11.GL_ENABLE_BIT or GL11.GL_COLOR_BUFFER_BIT)
         GL11.glPushMatrix()
         GL11.glEnable(GL11.GL_BLEND)
         GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA)
 
-        ASTDStencilRenderer.withStencilMask(quadX, y, quadWidth, h) {
-            renderShaderQuad(quadX, y, quadWidth, h, alphaMult)
+        ASTDStencilRenderer.withStencilMask(quadX, y, quadWidth, quadHeight) {
+            renderShaderQuad(quadX, y, quadWidth, quadHeight, alphaMult)
         }
 
         GL11.glPopMatrix()
@@ -128,6 +130,14 @@ class ASTDHullModTooltipBackground private constructor(
 
     companion object {
         private const val SHADER_ID = "astd-hullmod-bg"
+
+        /**
+         * 底部向下扩展量（逻辑像素）。内容流底部紧贴末行文本（末组件 pad 仅 2f），
+         * 底部内边距明显小于左右两侧；且图鉴 box 下边距（13）大于左右（10+1）。
+         * 取 6f：扩展后 tooltip 场景不触及下方的内置说明文本（净距 ~7px），
+         * 图鉴场景不触及 box 下描边（净距 ~2px）。
+         */
+        private const val BOTTOM_EXTEND = 6f
 
         /** 各风格的 program 缓存（按需编译，0 值表示未编译）。 */
         private val shaderProgramIds = IntArray(HullmodBackgroundStyleConfig.STYLE_COUNT)
