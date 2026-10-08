@@ -3,9 +3,12 @@ package cn.kasuminova.astd.combat.hullmods.base
 import cn.kasuminova.astd.combat.hullmods.HullmodIncompatibility
 import cn.kasuminova.astd.combat.hullmods.base.ASTDSingularityStabilizerHullMod.Companion.UNITY_EPSILON
 import cn.kasuminova.astd.combat.hullmods.base.ASTDSingularityStabilizerHullMod.Companion.resolveTimeAnchor
+import cn.kasuminova.astd.ui.dsl.HullmodThemes
+import cn.kasuminova.astd.ui.dsl.hullmodCard
 import com.fs.starfarer.api.combat.BaseHullMod
 import com.fs.starfarer.api.combat.MutableShipStatsAPI
 import com.fs.starfarer.api.combat.ShipAPI
+import com.fs.starfarer.api.ui.TooltipMakerAPI
 
 /**
  * 奇点稳定器（联制线两舰内置）：时流锚定船插（机制见 `docs/design/ships/20-joint.md` §舰船插件）。
@@ -98,5 +101,17 @@ class ASTDSingularityStabilizerHullMod : BaseHullMod() {
         // ShipAPI 无 getTimeDeployed()，等值读取口为 getTimeDeployedForCRReduction()（经原版实现核实），
         // 写入侧无对应 getter 故用显式 setter 调用（Kotlin 属性语法要求读写成对）
         ship.setTimeDeployed(ship.timeDeployedForCRReduction - amount * (1f - anchor))
+    }
+
+    override fun addPostDescriptionSection(
+        tooltip: TooltipMakerAPI,
+        hullSize: ShipAPI.HullSize,
+        ship: ShipAPI?,
+        width: Float,
+        isForModSpec: Boolean,
+    ) {
+        tooltip.hullmodCard(width, HullmodThemes.ARC, spec?.displayName) {
+            para("ui.hullmod.singularity_stabilizer.desc")
+        }
     }
 }

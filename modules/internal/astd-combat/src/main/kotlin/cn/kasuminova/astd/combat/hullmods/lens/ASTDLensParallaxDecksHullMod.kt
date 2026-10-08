@@ -184,6 +184,7 @@ class ASTDLensParallaxDecksHullMod : BaseHullMod() {
         isForModSpec: Boolean,
     ) {
         tooltip.hullmodCard(width, THEME, spec?.displayName) {
+            para("ui.hullmod.lens_parallax_decks.desc")
             para("ui.hullmod.lens_parallax_decks.summary")
             para("ui.hullmod.lens_parallax_decks.line.1")
             para("ui.hullmod.lens_parallax_decks.line.2")

@@ -114,6 +114,7 @@ class ASTDDimensionalFoldingDeckHullMod : BaseHullMod() {
         isForModSpec: Boolean,
     ) {
         tooltip.hullmodCard(width, THEME, spec?.displayName) {
+            para("ui.hullmod.dimensional_folding_deck.desc")
             para("ui.hullmod.dimensional_folding_deck.summary")
             para("ui.hullmod.dimensional_folding_deck.line.1")
             para("ui.hullmod.dimensional_folding_deck.line.2")

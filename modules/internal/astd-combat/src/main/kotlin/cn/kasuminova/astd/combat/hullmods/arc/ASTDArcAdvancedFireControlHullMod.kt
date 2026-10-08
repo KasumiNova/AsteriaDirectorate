@@ -116,6 +116,7 @@ class ASTDArcAdvancedFireControlHullMod : BaseHullMod() {
         isForModSpec: Boolean
     ) {
         tooltip.hullmodCard(width, THEME, spec?.displayName) {
+            para("ui.hullmod.arc_advanced_fire_control.desc")
             para("ui.hullmod.arc_advanced_fire_control.summary")
             heading("ui.hullmod.export.section.effect")
             table {

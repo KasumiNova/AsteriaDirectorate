@@ -273,6 +273,7 @@ class GravEmFieldHullMod : BaseHullMod() {
         val values = GravEmFieldTuning.resolve(DifficultyTuningImpl, ship == null || ship.owner == 0)
         tooltip.hullmodCard(width, THEME, spec?.displayName) {
             spacer(2f)
+            para("ui.hullmod.grav_em_field.desc", 4f)
             para("ui.hullmod.grav_em_field.summary", 4f)
             para(
                 "ui.hullmod.grav_em_field.line.field", LINE_COLOR, 2f,

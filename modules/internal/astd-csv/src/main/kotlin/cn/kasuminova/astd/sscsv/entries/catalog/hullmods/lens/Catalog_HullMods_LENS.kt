@@ -1,7 +1,6 @@
 package cn.kasuminova.astd.sscsv.entries.catalog.hullmods.lens
 
 import cn.kasuminova.astd.sscsv.entries.HullModEntry
-import cn.kasuminova.astd.sscsv.entries.catalog.hullmods.PLACEHOLDER_DESC
 import cn.kasuminova.astd.sscsv.entries.catalog.hullmods.PLACEHOLDER_SCRIPT
 import cn.kasuminova.astd.sscsv.entries.catalog.hullmods.PLACEHOLDER_SHORT
 import cn.kasuminova.astd.sscsv.entries.catalog.hullmods.TAGS_BUILTIN
@@ -22,7 +21,6 @@ object HullMod_astd_lens_singularity_power : HullModEntry() {
     override val tech: String = "菀星设计局-紫菀"
     override val tags: String = TAGS_BUILTIN
     override val script: String = "cn.kasuminova.astd.combat.hullmods.base.ASTDSingularityPowerHullMod"
-    override val desc: String = SsI18n.t("hullmod.$id.desc")
     override val short: String = SsI18n.t("hullmod.$id.short")
     override val sprite: String = "graphics/hullmods/astd_lens_singularity_power.png"
 }
@@ -35,7 +33,6 @@ object HullMod_astd_lens_array_core : HullModEntry() {
     override val tech: String = "菀星设计局-紫菀"
     override val tags: String = TAGS_BUILTIN
     override val script: String = "cn.kasuminova.astd.combat.hullmods.lens.ASTDLensArrayCoreHullMod"
-    override val desc: String = SsI18n.t("hullmod.$id.desc")
     override val short: String = SsI18n.t("hullmod.$id.short")
     override val sprite: String = "graphics/hullmods/astd_lens_array_core.png"
 }
@@ -48,7 +45,6 @@ object HullMod_astd_lens_parallax_decks : HullModEntry() {
     override val tech: String = "菀星设计局-紫菀"
     override val tags: String = TAGS_BUILTIN
     override val script: String = "cn.kasuminova.astd.combat.hullmods.lens.ASTDLensParallaxDecksHullMod"
-    override val desc: String = SsI18n.t("hullmod.$id.desc")
     override val short: String = SsI18n.t("hullmod.$id.short")
     override val sprite: String = "graphics/hullmods/astd_lens_array_core.png"
 }
@@ -61,7 +57,6 @@ object HullMod_astd_lens_permeating_tide : HullModEntry() {
     override val tech: String = "菀星设计局-紫菀"
     override val tags: String = TAGS_BUILTIN
     override val script: String = "cn.kasuminova.astd.combat.hullmods.lens.ASTDLensPermeatingTideHullMod"
-    override val desc: String = SsI18n.t("hullmod.$id.desc")
     override val short: String = SsI18n.t("hullmod.$id.short")
     override val sprite: String = "graphics/hullmods/astd_lens_array_core.png"
 }
@@ -78,7 +73,6 @@ object HullMod_astd_zw_001_mode_crewed : HullModEntry() {
     override val tags: String = TAGS_BUILTIN
     override val hiddenEverywhere: Boolean = true
     override val script: String = "cn.kasuminova.astd.combat.hullmods.lens.ASTDLensCrewedModeHullMod"
-    override val desc: String = PLACEHOLDER_DESC
     override val short: String = SsI18n.t("hullmod.$id.short")
     override val sprite: String = "graphics/hullmods/astd_lens_array_core.png"
 }
@@ -92,7 +86,6 @@ object HullMod_astd_zw_001_mode_automated : HullModEntry() {
     override val tags: String = TAGS_BUILTIN
     override val hiddenEverywhere: Boolean = true
     override val script: String = "cn.kasuminova.astd.combat.hullmods.lens.ASTDLensAutomatedModeHullMod"
-    override val desc: String = PLACEHOLDER_DESC
     override val short: String = SsI18n.t("hullmod.$id.short")
     override val sprite: String = "graphics/hullmods/astd_lens_array_core.png"
 }
@@ -106,7 +99,6 @@ object HullMod_astd_zw_001_mode_next_crewed : HullModEntry() {
     override val hidden: Boolean = true
     override val hiddenEverywhere: Boolean = true
     override val script: String = PLACEHOLDER_SCRIPT
-    override val desc: String = PLACEHOLDER_DESC
     override val short: String = PLACEHOLDER_SHORT
     override val sprite: String = "graphics/hullmods/astd_lens_array_core.png"
 }
@@ -120,7 +112,6 @@ object HullMod_astd_zw_001_mode_next_automated : HullModEntry() {
     override val hidden: Boolean = true
     override val hiddenEverywhere: Boolean = true
     override val script: String = PLACEHOLDER_SCRIPT
-    override val desc: String = PLACEHOLDER_DESC
     override val short: String = PLACEHOLDER_SHORT
     override val sprite: String = "graphics/hullmods/astd_lens_array_core.png"
 }
@@ -133,7 +124,6 @@ object HullMod_astd_dimensional_folding_deck : HullModEntry() {
     override val tech: String = "菀星设计局-紫菀"
     override val tags: String = TAGS_BUILTIN
     override val script: String = "cn.kasuminova.astd.combat.hullmods.lens.ASTDDimensionalFoldingDeckHullMod"
-    override val desc: String = SsI18n.t("hullmod.$id.desc")
     override val short: String = SsI18n.t("hullmod.$id.short")
     override val sprite: String = "graphics/hullmods/astd_dimensional_folding_deck.png"
 }
@@ -153,7 +143,6 @@ object HullMod_astd_grav_em_field : HullModEntry() {
     override val tech: String = "菀星设计局-紫菀"
     override val tags: String = TAGS_BUILTIN
     override val script: String = "cn.kasuminova.astd.combat.hullmods.lens.GravEmFieldHullMod"
-    override val desc: String = SsI18n.t("hullmod.$id.desc")
     override val short: String = SsI18n.t("hullmod.$id.short")
     override val sprite: String = "graphics/hullmods/astd_lens_array_core.png"
 }
@@ -174,7 +163,6 @@ object HullMod_astd_grav_space_fold : HullModEntry() {
     override val tech: String = "菀星设计局-紫菀"
     override val tags: String = TAGS_BUILTIN
     override val script: String = "cn.kasuminova.astd.combat.hullmods.lens.GravSpaceFoldHullMod"
-    override val desc: String = SsI18n.t("hullmod.$id.desc")
     override val short: String = SsI18n.t("hullmod.$id.short")
     override val sprite: String = "graphics/hullmods/astd_lens_array_core.png"
 }
@@ -187,7 +175,6 @@ object HullMod_astd_grav_phase_deck : HullModEntry() {
     override val tech: String = "菀星设计局-紫菀"
     override val tags: String = TAGS_BUILTIN
     override val script: String = "cn.kasuminova.astd.combat.hullmods.lens.ASTDGravPhaseDeckHullMod"
-    override val desc: String = SsI18n.t("hullmod.$id.desc")
     override val short: String = SsI18n.t("hullmod.$id.short")
     override val sprite: String = "graphics/hullmods/astd_grav_phase_deck.png"
 }

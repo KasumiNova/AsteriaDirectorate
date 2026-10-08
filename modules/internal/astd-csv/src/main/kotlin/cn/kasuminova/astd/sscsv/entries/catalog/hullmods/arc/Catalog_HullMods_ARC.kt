@@ -19,7 +19,6 @@ object HullMod_astd_arc_singularity_power : HullModEntry() {
     override val tech: String = "菀星设计局-星坠"
     override val tags: String = TAGS_BUILTIN
     override val script: String = "cn.kasuminova.astd.combat.hullmods.base.ASTDSingularityPowerHullMod"
-    override val desc: String = SsI18n.t("hullmod.$id.desc")
     override val short: String = SsI18n.t("hullmod.$id.short")
     override val sprite: String = "graphics/hullmods/astd_arc_singularity_power.png"
 }
@@ -36,9 +35,8 @@ object HullMod_astd_arc_advanced_energy_integration : HullModEntry() {
     override val tech: String = "菀星设计局-星坠"
     override val tags: String = TAGS_BUILTIN
     override val script: String = "cn.kasuminova.astd.combat.hullmods.arc.ASTDAdvancedEnergyIntegrationHullMod"
-    override val desc: String = SsI18n.t("hullmod.$id.desc")
     override val short: String = SsI18n.t("hullmod.$id.short")
-    override val sprite: String = "graphics/hullmods/astd_arc_loop_interface.png"
+    override val sprite: String = "graphics/hullmods/astd_arc_advanced_energy_integration.png"
 }
 
 /**
@@ -54,9 +52,8 @@ object HullMod_astd_imaginary_wings : HullModEntry() {
     override val tech: String = "菀星设计局-星坠"
     override val tags: String = TAGS_BUILTIN
     override val script: String = "cn.kasuminova.astd.combat.hullmods.arc.ASTDImaginaryWingsHullMod"
-    override val desc: String = SsI18n.t("hullmod.$id.desc")
     override val short: String = SsI18n.t("hullmod.$id.short")
-    override val sprite: String = "graphics/hullmods/astd_vectorized_jet_array.png"
+    override val sprite: String = "graphics/hullmods/astd_imaginary_wings.png"
 }
 
 object HullMod_astd_arc_advanced_fire_control : HullModEntry() {
@@ -67,9 +64,8 @@ object HullMod_astd_arc_advanced_fire_control : HullModEntry() {
     override val tech: String = "菀星设计局-星坠"
     override val tags: String = TAGS_BUILTIN
     override val script: String = "cn.kasuminova.astd.combat.hullmods.arc.ASTDArcAdvancedFireControlHullMod"
-    override val desc: String = SsI18n.t("hullmod.$id.desc")
     override val short: String = SsI18n.t("hullmod.$id.short")
-    override val sprite: String = "graphics/hullmods/astd_arc_loop_interface.png"
+    override val sprite: String = "graphics/hullmods/astd_arc_advanced_fire_control.png"
 }
 
 object HullMod_astd_arc_shared_tactical_network : HullModEntry() {
@@ -80,7 +76,6 @@ object HullMod_astd_arc_shared_tactical_network : HullModEntry() {
     override val tech: String = "菀星设计局-星坠"
     override val tags: String = TAGS_BUILTIN
     override val script: String = "cn.kasuminova.astd.combat.hullmods.arc.ASTDArcSharedTacticalNetworkHullMod"
-    override val desc: String = SsI18n.t("hullmod.$id.desc")
     override val short: String = SsI18n.t("hullmod.$id.short")
     override val sprite: String = "graphics/hullmods/astd_arc_loop_interface.png"
 }
@@ -93,7 +88,6 @@ object HullMod_astd_plasma_armor_shield : HullModEntry() {
     override val tech: String = "菀星设计局-星坠"
     override val tags: String = TAGS_BUILTIN
     override val script: String = "cn.kasuminova.astd.combat.hullmods.arc.ASTDPlasmaArmorShieldHullMod"
-    override val desc: String = SsI18n.t("hullmod.$id.desc")
     override val short: String = SsI18n.t("hullmod.$id.short")
     override val sprite: String = "graphics/hullmods/astd_plasma_armor_shield.png"
 }
@@ -106,7 +100,6 @@ object HullMod_astd_ionized_recoil_accumulator : HullModEntry() {
     override val tech: String = "菀星设计局-星坠"
     override val tags: String = TAGS_BUILTIN
     override val script: String = "cn.kasuminova.astd.combat.hullmods.arc.ASTDIonizedRecoilAccumulatorHullMod"
-    override val desc: String = SsI18n.t("hullmod.$id.desc")
     override val short: String = SsI18n.t("hullmod.$id.short")
     override val sprite: String = "graphics/hullmods/astd_ionized_recoil_accumulator.png"
 }
@@ -119,7 +112,6 @@ object HullMod_astd_arc_advanced_targeting_system : HullModEntry() {
     override val tech: String = "菀星设计局-星坠"
     override val tags: String = TAGS_BUILTIN
     override val script: String = "cn.kasuminova.astd.combat.hullmods.arc.ASTDArcAdvancedTargetingSystemHullMod"
-    override val desc: String = SsI18n.t("hullmod.$id.desc")
     override val short: String = SsI18n.t("hullmod.$id.short")
-    override val sprite: String = "graphics/hullmods/astd_arc_loop_interface.png"
+    override val sprite: String = "graphics/hullmods/astd_arc_advanced_targeting_system.png"
 }

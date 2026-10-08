@@ -193,6 +193,7 @@ class GravSpaceFoldHullMod : BaseHullMod() {
         val values = GravSpaceFoldTuning.resolve(DifficultyTuningImpl, ship == null || ship.owner == 0)
         tooltip.hullmodCard(width, THEME, spec?.displayName) {
             spacer(2f)
+            para("ui.hullmod.grav_space_fold.desc", 4f)
             para("ui.hullmod.grav_space_fold.summary", 4f)
             para(
                 "ui.hullmod.grav_space_fold.line.fold", LINE_COLOR, 2f,

@@ -158,6 +158,7 @@ class ASTDArcSharedTacticalNetworkHullMod : BaseHullMod() {
         isForModSpec: Boolean
     ) {
         tooltip.hullmodCard(width, THEME, spec?.displayName) {
+            para("ui.hullmod.arc_shared_tactical_network.desc")
             para("ui.hullmod.arc_shared_tactical_network.summary")
             heading("ui.hullmod.export.section.effect")
             table {

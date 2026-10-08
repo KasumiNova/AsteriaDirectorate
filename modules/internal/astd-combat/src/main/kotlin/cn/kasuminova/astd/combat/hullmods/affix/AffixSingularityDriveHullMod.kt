@@ -6,12 +6,15 @@ import cn.kasuminova.astd.combat.hullmods.affix.AffixSingularityDriveHullMod.Sin
 import cn.kasuminova.astd.combat.hullmods.affix.AffixSingularityDriveHullMod.SingularityBurstSubsystem.Companion.ENGAGE_RANGE_MULT
 import cn.kasuminova.astd.combat.hullmods.affix.AffixSingularityDriveHullMod.SingularityBurstSubsystem.Companion.FLUX_TRIGGER_LEVEL
 import cn.kasuminova.astd.internal.i18n.I18n
+import cn.kasuminova.astd.ui.dsl.HullmodThemes
+import cn.kasuminova.astd.ui.dsl.hullmodCard
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseHullMod
 import com.fs.starfarer.api.combat.DamagingProjectileAPI
 import com.fs.starfarer.api.combat.MutableShipStatsAPI
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.combat.WeaponAPI
+import com.fs.starfarer.api.ui.TooltipMakerAPI
 import com.fs.starfarer.api.util.IntervalUtil
 import org.lazywizard.lazylib.MathUtils
 import org.magiclib.subsystems.MagicSubsystem
@@ -65,6 +68,18 @@ class AffixSingularityDriveHullMod : BaseHullMod() {
                 stats.peakCRDuration.modifyMult(ENV_CANCEL_ID, base / effectiveWithoutOurs)
             }
             stats.peakCRDuration.modifyMult(PEAK_BONUS_ID, AffixShared.tuning.value(PEAK_DURATION))
+        }
+    }
+
+    override fun addPostDescriptionSection(
+        tooltip: TooltipMakerAPI,
+        hullSize: ShipAPI.HullSize,
+        ship: ShipAPI?,
+        width: Float,
+        isForModSpec: Boolean,
+    ) {
+        tooltip.hullmodCard(width, HullmodThemes.ARC, spec?.displayName) {
+            para("ui.hullmod.affix_singularity_drive.desc")
         }
     }
 

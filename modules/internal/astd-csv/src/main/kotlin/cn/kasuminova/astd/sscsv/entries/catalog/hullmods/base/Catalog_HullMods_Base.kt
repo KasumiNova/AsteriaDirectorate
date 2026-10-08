@@ -36,7 +36,6 @@ object HullMod_astd_dual_mode_switcher : HullModEntry() {
     override val unlocked: Boolean = false
     override val hidden: Boolean = true
     override val script: String = "cn.kasuminova.astd.combat.hullmods.base.ASTDDualModeSwitcherHullMod"
-    override val desc: String = SsI18n.t("hullmod.$id.desc")
     override val short: String = SsI18n.t("hullmod.$id.short")
     override val sprite: String = "graphics/hullmods/astd_lens_array_core.png"
 }
@@ -56,7 +55,6 @@ object HullMod_astd_nano_restoration_protocol : HullModEntry() {
     override val tech: String = ""
     override val tags: String = TAGS_BUILTIN
     override val script: String = "cn.kasuminova.astd.combat.hullmods.base.ASTDNanoRestorationProtocolHullMod"
-    override val desc: String = SsI18n.t("hullmod.$id.desc")
     override val short: String = SsI18n.t("hullmod.$id.short")
     override val sprite: String = "graphics/hullmods/astd_nano_restoration_protocol.png"
 }
@@ -80,7 +78,6 @@ object HullMod_astd_mode_crewed : HullModEntry() {
     override val hidden: Boolean = true
     override val hiddenEverywhere: Boolean = true
     override val script: String = "cn.kasuminova.astd.combat.hullmods.base.ASTDCrewedModeHullMod"
-    override val desc: String = SsI18n.t("hullmod.$id.desc")
     override val short: String = SsI18n.t("hullmod.$id.short")
     override val sprite: String = "graphics/hullmods/astd_nano_restoration_protocol.png"
 }
@@ -96,7 +93,6 @@ object HullMod_astd_mode_automated : HullModEntry() {
     override val hidden: Boolean = true
     override val hiddenEverywhere: Boolean = true
     override val script: String = "cn.kasuminova.astd.combat.hullmods.base.ASTDAutomatedModeHullMod"
-    override val desc: String = SsI18n.t("hullmod.$id.desc")
     override val short: String = SsI18n.t("hullmod.$id.short")
     override val sprite: String = "graphics/hullmods/astd_vectorized_jet_array.png"
 }
@@ -112,7 +108,6 @@ object HullMod_astd_mode_next_crewed : HullModEntry() {
     override val hidden: Boolean = true
     override val hiddenEverywhere: Boolean = true
     override val script: String = PLACEHOLDER_SCRIPT
-    override val desc: String = SsI18n.t("hullmod.$id.desc")
     override val short: String = SsI18n.t("hullmod.$id.short")
     override val sprite: String = "graphics/hullmods/astd_arc_loop_interface.png"
 }
@@ -128,7 +123,6 @@ object HullMod_astd_mode_next_automated : HullModEntry() {
     override val hidden: Boolean = true
     override val hiddenEverywhere: Boolean = true
     override val script: String = PLACEHOLDER_SCRIPT
-    override val desc: String = SsI18n.t("hullmod.$id.desc")
     override val short: String = SsI18n.t("hullmod.$id.short")
     override val sprite: String = "graphics/hullmods/astd_arc_loop_interface.png"
 }

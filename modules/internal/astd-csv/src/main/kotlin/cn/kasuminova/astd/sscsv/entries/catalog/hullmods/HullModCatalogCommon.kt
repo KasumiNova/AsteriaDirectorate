@@ -12,9 +12,6 @@ internal const val TAGS_BUILTIN: String = "astd_builtin"
 /** 占位 HullMod 脚本类名（调试用）。 */
 internal const val PLACEHOLDER_SCRIPT: String = "cn.kasuminova.astd.combat.hullmods.PlaceholderHullMod"
 
-/** 占位 HullMod 描述（从 i18n 获取，避免在 entries 中硬编码中文）。 */
-internal val PLACEHOLDER_DESC: String get() = SsI18n.t("hullmod._placeholder.desc")
-
 /** 占位 HullMod 简短描述（从 i18n 获取）。 */
 internal val PLACEHOLDER_SHORT: String get() = SsI18n.t("hullmod._placeholder.short")
 

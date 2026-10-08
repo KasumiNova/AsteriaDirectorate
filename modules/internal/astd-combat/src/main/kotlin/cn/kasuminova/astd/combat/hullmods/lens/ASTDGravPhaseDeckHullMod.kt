@@ -134,6 +134,7 @@ class ASTDGravPhaseDeckHullMod : BaseHullMod() {
         isForModSpec: Boolean,
     ) {
         tooltip.hullmodCard(width, THEME, spec?.displayName) {
+            para("ui.hullmod.grav_phase_deck.desc")
             para("ui.hullmod.grav_phase_deck.summary")
             para("ui.hullmod.grav_phase_deck.line.1")
             para("ui.hullmod.grav_phase_deck.line.2")

@@ -88,6 +88,7 @@ class ASTDIonizedRecoilAccumulatorHullMod : BaseHullMod() {
         isForModSpec: Boolean
     ) {
         tooltip.hullmodCard(width, THEME, null) {
+            para("ui.hullmod.ionized_recoil_accumulator.desc")
             heading("ui.hullmod.ionized_recoil_accumulator.section.effect")
             para("ui.hullmod.ionized_recoil_accumulator.line.proc_intro")
             table(

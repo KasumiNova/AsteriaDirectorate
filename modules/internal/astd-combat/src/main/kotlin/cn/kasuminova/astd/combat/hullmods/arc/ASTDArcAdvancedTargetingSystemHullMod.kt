@@ -127,6 +127,7 @@ class ASTDArcAdvancedTargetingSystemHullMod : BaseHullMod() {
         isForModSpec: Boolean
     ) {
         tooltip.hullmodCard(width, THEME, spec?.displayName) {
+            para("ui.hullmod.arc_advanced_targeting_system.desc")
             para("ui.hullmod.arc_advanced_targeting_system.summary")
             heading("ui.hullmod.export.section.effect")
             table {

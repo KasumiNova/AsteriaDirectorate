@@ -4,6 +4,8 @@ import cn.kasuminova.astd.api.difficulty.DifficultyTuning
 import cn.kasuminova.astd.api.difficulty.ScalingEntry
 import cn.kasuminova.astd.combat.affix.AffixRegistry
 import cn.kasuminova.astd.combat.hullmods.arc.ASTDArmorDamageReduction
+import cn.kasuminova.astd.ui.dsl.HullmodThemes
+import cn.kasuminova.astd.ui.dsl.hullmodCard
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseHullMod
 import com.fs.starfarer.api.combat.BeamAPI
@@ -12,6 +14,7 @@ import com.fs.starfarer.api.combat.DamageAPI
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.combat.listeners.AdvanceableListener
 import com.fs.starfarer.api.combat.listeners.DamageTakenModifier
+import com.fs.starfarer.api.ui.TooltipMakerAPI
 import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
 
@@ -36,6 +39,18 @@ class AffixPlasmaArmorShieldHullMod : BaseHullMod() {
     override fun applyEffectsAfterShipCreation(ship: ShipAPI, id: String) {
         if (!ship.hasListenerOfClass(ShieldArmorListener::class.java)) {
             ship.addListener(ShieldArmorListener(ship, armorFraction(AffixShared.tuning)))
+        }
+    }
+
+    override fun addPostDescriptionSection(
+        tooltip: TooltipMakerAPI,
+        hullSize: ShipAPI.HullSize,
+        ship: ShipAPI?,
+        width: Float,
+        isForModSpec: Boolean,
+    ) {
+        tooltip.hullmodCard(width, HullmodThemes.ARC, spec?.displayName) {
+            para("ui.hullmod.affix_plasma_armor_shield.desc")
         }
     }
 

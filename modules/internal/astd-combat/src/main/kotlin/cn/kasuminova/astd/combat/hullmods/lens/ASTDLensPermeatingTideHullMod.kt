@@ -178,6 +178,7 @@ class ASTDLensPermeatingTideHullMod : BaseHullMod() {
         isForModSpec: Boolean,
     ) {
         tooltip.hullmodCard(width, THEME, spec?.displayName) {
+            para("ui.hullmod.lens_permeating_tide.desc")
             para("ui.hullmod.lens_permeating_tide.summary")
             para("ui.hullmod.lens_permeating_tide.line.1")
             para("ui.hullmod.lens_permeating_tide.line.2")

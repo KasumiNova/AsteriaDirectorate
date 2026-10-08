@@ -42,6 +42,7 @@ class ASTDSingularityPowerHullMod : BaseHullMod() {
         isForModSpec: Boolean,
     ) {
         tooltip.hullmodCard(width, theme(), spec?.displayName) {
+            para(descKey())
             heading("ui.hullmod.export.section.effect")
             table {
                 row(
@@ -72,6 +73,9 @@ class ASTDSingularityPowerHullMod : BaseHullMod() {
 
     private fun theme(): HullmodTheme =
         if (spec?.id == ID_LENS) THEME_LENS else THEME_ARC
+
+    private fun descKey(): String =
+        if (spec?.id == ID_LENS) "ui.hullmod.lens_singularity_power.desc" else "ui.hullmod.arc_singularity_power.desc"
 
     companion object {
         /** 蓝变体 id（菀星设计局-星坠，装配 astd_xc_* 与 astd_lh_001）。 */

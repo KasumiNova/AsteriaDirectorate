@@ -2,12 +2,15 @@ package cn.kasuminova.astd.combat.hullmods.affix
 
 import cn.kasuminova.astd.api.difficulty.ScalingEntry
 import cn.kasuminova.astd.combat.affix.AffixRegistry
+import cn.kasuminova.astd.ui.dsl.HullmodThemes
+import cn.kasuminova.astd.ui.dsl.hullmodCard
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseHullMod
 import com.fs.starfarer.api.combat.MutableShipStatsAPI
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.combat.ShipCommand
 import com.fs.starfarer.api.combat.listeners.AdvanceableListener
+import com.fs.starfarer.api.ui.TooltipMakerAPI
 import org.lazywizard.lazylib.MathUtils
 
 /**
@@ -77,6 +80,18 @@ class AffixGridDeepeningHullMod : BaseHullMod() {
     private fun ensureVentAssist(ship: ShipAPI) {
         if (!ship.hasListenerOfClass(VentAssistListener::class.java)) {
             ship.addListener(VentAssistListener(ship))
+        }
+    }
+
+    override fun addPostDescriptionSection(
+        tooltip: TooltipMakerAPI,
+        hullSize: ShipAPI.HullSize,
+        ship: ShipAPI?,
+        width: Float,
+        isForModSpec: Boolean,
+    ) {
+        tooltip.hullmodCard(width, HullmodThemes.ARC, spec?.displayName) {
+            para("ui.hullmod.affix_grid_deepening.desc")
         }
     }
 

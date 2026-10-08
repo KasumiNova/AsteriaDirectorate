@@ -415,6 +415,7 @@ class ASTDLensArrayCoreHullMod : BaseHullMod() {
         isForModSpec: Boolean,
     ) {
         tooltip.hullmodCard(width, THEME, spec?.displayName) {
+            para("ui.hullmod.lens_array_core.desc")
             para("ui.hullmod.lens_core.summary")
             para("ui.hullmod.lens_core.line.1")
             para("ui.hullmod.lens_core.line.2")

@@ -158,6 +158,7 @@ class ASTDPlasmaArmorShieldHullMod : BaseHullMod() {
         isForModSpec: Boolean
     ) {
         tooltip.hullmodCard(width, THEME, null) {
+            para("ui.hullmod.plasma_armor_shield.desc")
             heading("ui.hullmod.plasma_armor_shield.section.directional_armor")
             para("ui.hullmod.plasma_armor_shield.line.directional_armor")
             table(

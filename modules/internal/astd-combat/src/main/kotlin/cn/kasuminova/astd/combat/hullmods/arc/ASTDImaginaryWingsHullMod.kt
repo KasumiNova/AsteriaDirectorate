@@ -96,6 +96,7 @@ class ASTDImaginaryWingsHullMod : BaseHullMod() {
         isForModSpec: Boolean,
     ) {
         tooltip.hullmodCard(width, THEME, spec?.displayName) {
+            para("ui.hullmod.imaginary_wings.desc")
             para("ui.hullmod.imaginary_wings.summary")
             heading("ui.hullmod.export.section.effect")
             para("ui.hullmod.imaginary_wings.line.1", 4f)

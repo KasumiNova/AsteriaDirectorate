@@ -3,9 +3,12 @@ package cn.kasuminova.astd.combat.hullmods.affix
 import cn.kasuminova.astd.api.difficulty.DifficultyTuning
 import cn.kasuminova.astd.api.difficulty.ScalingEntry
 import cn.kasuminova.astd.combat.affix.AffixRegistry
+import cn.kasuminova.astd.ui.dsl.HullmodThemes
+import cn.kasuminova.astd.ui.dsl.hullmodCard
 import com.fs.starfarer.api.combat.BaseHullMod
 import com.fs.starfarer.api.combat.MutableShipStatsAPI
 import com.fs.starfarer.api.combat.ShipAPI
+import com.fs.starfarer.api.ui.TooltipMakerAPI
 
 /**
  * 词缀 S-03：极限辐能线圈扩容（[AffixRegistry.ID_FLUX_COIL_EXPANSION]）。
@@ -33,5 +36,17 @@ class AffixFluxCoilExpansionHullMod : BaseHullMod() {
         val b = bonuses(AffixShared.tuning)
         stats.fluxCapacity.modifyMult(id, b.capacityMult)
         stats.fluxDissipation.modifyMult(id, DISSIPATION_MULT)
+    }
+
+    override fun addPostDescriptionSection(
+        tooltip: TooltipMakerAPI,
+        hullSize: ShipAPI.HullSize,
+        ship: ShipAPI?,
+        width: Float,
+        isForModSpec: Boolean,
+    ) {
+        tooltip.hullmodCard(width, HullmodThemes.ARC, spec?.displayName) {
+            para("ui.hullmod.affix_flux_coil_expansion.desc")
+        }
     }
 }

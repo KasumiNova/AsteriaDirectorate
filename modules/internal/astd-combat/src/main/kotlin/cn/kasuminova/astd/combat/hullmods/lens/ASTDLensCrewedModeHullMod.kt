@@ -1,9 +1,12 @@
 package cn.kasuminova.astd.combat.hullmods.lens
 
 import cn.kasuminova.astd.combat.hullmods.base.activateDualMode
+import cn.kasuminova.astd.ui.dsl.HullmodThemes
+import cn.kasuminova.astd.ui.dsl.hullmodCard
 import com.fs.starfarer.api.combat.BaseHullMod
 import com.fs.starfarer.api.combat.MutableShipStatsAPI
 import com.fs.starfarer.api.combat.ShipAPI
+import com.fs.starfarer.api.ui.TooltipMakerAPI
 
 /**
  * 透镜阵列核心·载人模式（宏观锚定态，spec §3.1）。
@@ -30,4 +33,16 @@ class ASTDLensCrewedModeHullMod : BaseHullMod() {
 
     override fun isApplicableToShip(ship: ShipAPI): Boolean = ship.isZw001Ship()
     override fun showInRefitScreenModPickerFor(ship: ShipAPI): Boolean = false
+
+    override fun addPostDescriptionSection(
+        tooltip: TooltipMakerAPI,
+        hullSize: ShipAPI.HullSize,
+        ship: ShipAPI?,
+        width: Float,
+        isForModSpec: Boolean,
+    ) {
+        tooltip.hullmodCard(width, HullmodThemes.CREWED, spec?.displayName) {
+            para("ui.hullmod.zw_001_mode_crewed.desc")
+        }
+    }
 }
