@@ -1,8 +1,9 @@
 package cn.kasuminova.astd.combat.hullmods.arc
 
 import cn.kasuminova.astd.combat.hullmods.HullmodIncompatibility
-import cn.kasuminova.astd.combat.hullmods.base.ASTDHullModTooltipRenderer
 import cn.kasuminova.astd.internal.i18n.I18n
+import cn.kasuminova.astd.ui.dsl.HullmodThemes
+import cn.kasuminova.astd.ui.dsl.hullmodCard
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseHullMod
 import com.fs.starfarer.api.combat.BeamAPI
@@ -50,13 +51,7 @@ class ASTDPlasmaArmorShieldHullMod : BaseHullMod() {
         private val PREVENTED_DAMAGE_BLUE = Color(104, 212, 255, 235)
         private val PREVENTED_DAMAGE_PURPLE = Color(176, 112, 255, 238)
 
-        private val THEME = ASTDHullModTooltipRenderer.Theme(
-            nameColor = Color(150, 232, 255),
-            borderColor = Color(160, 110, 255),
-            headerBackground = Color(20, 52, 82, 190),
-            sectionBackground = Color(14, 36, 58, 135),
-            accentColor = Color(88, 190, 255),
-        )
+        private val THEME = HullmodThemes.ARC_PRISM
 
         internal fun boostLevel(ship: ShipAPI): Float =
             (ship.customData[ASTDArcProductionShipIds.DATA_PLASMA_SHIELD_BOOST_LEVEL] as? Float ?: 0f).coerceIn(0f, 1f)
@@ -161,14 +156,7 @@ class ASTDPlasmaArmorShieldHullMod : BaseHullMod() {
         width: Float,
         isForModSpec: Boolean
     ) {
-        ASTDHullModTooltipRenderer.renderBlocks(
-            tooltip = tooltip,
-            width = width,
-            title = spec?.displayName ?: "",
-            theme = THEME,
-            blocks = ASTDArcProductionTooltipContracts.plasmaArmorShield.blocks,
-            showTitle = false,
-        )
+        tooltip.hullmodCard(width, THEME, spec?.displayName, ASTDArcProductionTooltipContracts.plasmaArmorShield.card)
     }
 
     override fun getBorderColor(): Color = THEME.borderColor

@@ -1,11 +1,11 @@
 package cn.kasuminova.astd.combat.hullmods.lens
 
-import cn.kasuminova.astd.combat.hullmods.base.ASTDHullModTooltipRenderer
 import cn.kasuminova.astd.combat.hullmods.lens.GravEmFieldHullMod.Companion.isZw002Ship
 import cn.kasuminova.astd.combat.shipsystems.GravStormSystemStats
 import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import cn.kasuminova.astd.internal.i18n.I18n
-import cn.kasuminova.astd.ui.dsl.buildWith
+import cn.kasuminova.astd.ui.dsl.HullmodThemes
+import cn.kasuminova.astd.ui.dsl.hullmodCard
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseEveryFrameCombatPlugin
 import com.fs.starfarer.api.combat.BaseHullMod
@@ -271,26 +271,22 @@ class GravEmFieldHullMod : BaseHullMod() {
     ) {
         // tooltip 展示口径：无舰上下文（装配面板）按玩家档 v2 展示
         val values = GravEmFieldTuning.resolve(DifficultyTuningImpl, ship == null || ship.owner == 0)
-        tooltip.buildWith {
-            spacer(6f)
-            withHullmodBackground(accentColor = THEME.accentColor, width = width) {
-                heading(spec?.displayName ?: "", THEME.nameColor, THEME.headerBackground, 6f)
-                spacer(2f)
-                para(I18n.Categories.MOD, "ui.hullmod.grav_em_field.summary", Misc.getTextColor(), 4f)
-                para(
-                    I18n.Categories.MOD, "ui.hullmod.grav_em_field.line.field", LINE_COLOR, 2f,
-                    "range" to values.range.toInt(),
-                    "empPct" to percent(values.empResistReduction),
-                    "statPct" to percent(values.statPenalty),
-                    "fluxPct" to percent(values.statPenalty),
-                )
-                para(
-                    I18n.Categories.MOD, "ui.hullmod.grav_em_field.line.falloff", LINE_COLOR, 2f,
-                    "fullRange" to (values.range * GravEmFieldTuning.FULL_EFFECT_FRACTION).toInt(),
-                    "edgePct" to percent(GravEmFieldTuning.EDGE_SCALE),
-                )
-                para(I18n.Categories.MOD, "ui.hullmod.grav_em_field.line.cooldown", LINE_COLOR, 2f)
-            }
+        tooltip.hullmodCard(width, THEME, spec?.displayName) {
+            spacer(2f)
+            para("ui.hullmod.grav_em_field.summary", 4f)
+            para(
+                "ui.hullmod.grav_em_field.line.field", LINE_COLOR, 2f,
+                v("range", values.range.toInt()),
+                v("empPct", percent(values.empResistReduction)),
+                v("statPct", percent(values.statPenalty)),
+                v("fluxPct", percent(values.statPenalty)),
+            )
+            para(
+                "ui.hullmod.grav_em_field.line.falloff", LINE_COLOR, 2f,
+                v("fullRange", (values.range * GravEmFieldTuning.FULL_EFFECT_FRACTION).toInt()),
+                v("edgePct", percent(GravEmFieldTuning.EDGE_SCALE)),
+            )
+            para("ui.hullmod.grav_em_field.line.cooldown", LINE_COLOR, 2f)
         }
     }
 
@@ -321,14 +317,8 @@ class GravEmFieldHullMod : BaseHullMod() {
 
         private val LINE_COLOR = Color(200, 200, 210)
 
-        /** 紫主题（与 [ASTDGravPhaseDeckHullMod] 一致，透镜协议视觉统一）。 */
-        private val THEME = ASTDHullModTooltipRenderer.Theme(
-            nameColor = Color(200, 160, 255),
-            borderColor = Color(160, 110, 255),
-            headerBackground = Color(40, 18, 70, 185),
-            sectionBackground = Color(28, 12, 52, 120),
-            accentColor = Color(150, 90, 230),
-        )
+        /** 透镜线紫主题预设（与 [ASTDGravPhaseDeckHullMod] 一致，透镜协议视觉统一）。 */
+        private val THEME = HullmodThemes.LENS
 
         private fun percent(value: Float): String = "${(value * 100f).toInt()}%"
 

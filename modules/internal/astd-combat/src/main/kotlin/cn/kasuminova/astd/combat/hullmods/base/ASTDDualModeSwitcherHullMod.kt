@@ -1,12 +1,12 @@
 package cn.kasuminova.astd.combat.hullmods.base
 
 import cn.kasuminova.astd.internal.i18n.I18n
-import cn.kasuminova.astd.ui.dsl.buildWith
+import cn.kasuminova.astd.ui.dsl.HullmodThemes
+import cn.kasuminova.astd.ui.dsl.hullmodCard
 import com.fs.starfarer.api.combat.BaseHullMod
 import com.fs.starfarer.api.combat.MutableShipStatsAPI
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.ui.TooltipMakerAPI
-import com.fs.starfarer.api.util.Misc
 import java.awt.Color
 
 /**
@@ -30,9 +30,8 @@ import java.awt.Color
  *   + 渲染动态说明 + 可装判定。反查不到 config（非注册双模式舰）则跳过自举，仅作展示。
  * - 本类的具体接入（.ship builtInMods / variant hullMods）由 arc / lens 各自完成。
  *
- * tooltip 动态文案实现：渲染器 [ASTDHullModTooltipRenderer] 仅支持静态 i18n key（无参数替换），
- * 无法表达「当前模式名」这类运行期才知道的内容。故本类不走 renderBlocks，而是直接用 [buildWith] DSL 的
- * `para(category, key, color, pad, vararg vars)` ——它支持 `%mode%` / `%target%` 命名占位替换，
+ * tooltip 动态文案实现：「当前模式名」是运行期才知道的内容，经 hullmodCard DSL 的
+ * `para(key, padTop, v("mode", ...))` 运行期变量注入——支持 `%mode%` / `%target%` 命名占位替换，
  * 并通过 `<param:#RRGGBB:key>` 标记高亮替换后的模式名（见 strings.json）。
  */
 class ASTDDualModeSwitcherHullMod : BaseHullMod() {
@@ -42,13 +41,7 @@ class ASTDDualModeSwitcherHullMod : BaseHullMod() {
          * 通用中性主题：不偏 arc（橙）也不偏特定舰，使用中性蓝灰。
          * accentColor 与 strings.json 中 `<param:#8FB6FF:...>` 的高亮色一致，视觉统一。
          */
-        private val THEME = ASTDHullModTooltipRenderer.Theme(
-            nameColor = Color(168, 190, 230),
-            borderColor = Color(120, 150, 200),
-            headerBackground = Color(24, 34, 56, 185),
-            sectionBackground = Color(20, 28, 46, 120),
-            accentColor = Color(143, 182, 255),
-        )
+        private val THEME = HullmodThemes.CREWED
     }
 
     /**
@@ -85,42 +78,20 @@ class ASTDDualModeSwitcherHullMod : BaseHullMod() {
         isForModSpec: Boolean,
     ) {
         val config = ASTDDualModeRegistry.configForShip(ship)
-        val title = spec?.displayName ?: ""
 
-        tooltip.buildWith {
-            spacer(6f)
-            withHullmodBackground(accentColor = THEME.accentColor, width = width) {
-                heading(title, THEME.nameColor, THEME.headerBackground, 6f)
-                spacer(2f)
-                para(
-                    I18n.Categories.MOD,
-                    "ui.hullmod.dual_mode_switcher.summary",
-                    Misc.getTextColor(),
-                    4f,
-                )
+        tooltip.hullmodCard(width, THEME, spec?.displayName) {
+            spacer(2f)
+            para("ui.hullmod.dual_mode_switcher.summary", 4f)
 
-                // 降级：无 config（非已注册的双模式舰，或在 modSpec 预览语境下拿不到具体舰）→ 仅通用说明。
-                if (config == null) return@withHullmodBackground
-
+            // 降级：无 config（非已注册的双模式舰，或在 modSpec 预览语境下拿不到具体舰）→ 仅通用说明。
+            if (config != null) {
                 val automated = isAutomatedMode(ship, config)
                 val currentModeName = modeName(automated)
                 val targetModeName = modeName(!automated)
 
                 spacer(4f)
-                para(
-                    I18n.Categories.MOD,
-                    "ui.hullmod.dual_mode_switcher.current",
-                    Misc.getTextColor(),
-                    2f,
-                    "mode" to currentModeName,
-                )
-                para(
-                    I18n.Categories.MOD,
-                    "ui.hullmod.dual_mode_switcher.hint",
-                    Misc.getTextColor(),
-                    2f,
-                    "target" to targetModeName,
-                )
+                para("ui.hullmod.dual_mode_switcher.current", 2f, v("mode", currentModeName))
+                para("ui.hullmod.dual_mode_switcher.hint", 2f, v("target", targetModeName))
             }
         }
     }

@@ -1,7 +1,8 @@
 package cn.kasuminova.astd.combat.hullmods.lens
 
-import cn.kasuminova.astd.combat.hullmods.base.ASTDHullModTooltipRenderer
 import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
+import cn.kasuminova.astd.ui.dsl.HullmodThemes
+import cn.kasuminova.astd.ui.dsl.hullmodCard
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseHullMod
 import com.fs.starfarer.api.combat.FighterLaunchBayAPI
@@ -112,17 +113,11 @@ class ASTDDimensionalFoldingDeckHullMod : BaseHullMod() {
         width: Float,
         isForModSpec: Boolean,
     ) {
-        ASTDHullModTooltipRenderer.renderBlocks(
-            tooltip = tooltip,
-            width = width,
-            title = spec?.displayName ?: "",
-            theme = THEME,
-            blocks = listOf(
-                ASTDHullModTooltipRenderer.paragraph("ui.hullmod.dimensional_folding_deck.summary"),
-                ASTDHullModTooltipRenderer.paragraph("ui.hullmod.dimensional_folding_deck.line.1"),
-                ASTDHullModTooltipRenderer.paragraph("ui.hullmod.dimensional_folding_deck.line.2"),
-            ),
-        )
+        tooltip.hullmodCard(width, THEME, spec?.displayName) {
+            para("ui.hullmod.dimensional_folding_deck.summary")
+            para("ui.hullmod.dimensional_folding_deck.line.1")
+            para("ui.hullmod.dimensional_folding_deck.line.2")
+        }
     }
 
     override fun isApplicableToShip(ship: ShipAPI): Boolean = ship.isZw102Ship()
@@ -146,14 +141,8 @@ class ASTDDimensionalFoldingDeckHullMod : BaseHullMod() {
         private fun initialFillKey(ship: ShipAPI, bay: FighterLaunchBayAPI): String =
             "astd_dfd_initial_fill:${ship.id}:${bay.weaponSlot?.id}"
 
-        /** 紫主题（与透镜阵列核心一致，透镜协议视觉统一）。 */
-        private val THEME = ASTDHullModTooltipRenderer.Theme(
-            nameColor = Color(200, 160, 255),
-            borderColor = Color(160, 110, 255),
-            headerBackground = Color(40, 18, 70, 185),
-            sectionBackground = Color(28, 12, 52, 120),
-            accentColor = Color(150, 90, 230),
-        )
+        /** 透镜线紫主题预设（与透镜阵列核心一致，透镜协议视觉统一）。 */
+        private val THEME = HullmodThemes.LENS
     }
 }
 

@@ -1,11 +1,12 @@
 package cn.kasuminova.astd.combat.hullmods.arc
 
 import cn.kasuminova.astd.api.combat.CombatFeedback
-import cn.kasuminova.astd.combat.hullmods.base.ASTDHullModTooltipRenderer
 import cn.kasuminova.astd.impl.combat.CombatFeedbackImpl
 import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import cn.kasuminova.astd.internal.i18n.I18n
 import cn.kasuminova.astd.renderer.effect.system.Xc002GhostWingsEffect
+import cn.kasuminova.astd.ui.dsl.HullmodThemes
+import cn.kasuminova.astd.ui.dsl.hullmodCard
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseHullMod
 import com.fs.starfarer.api.combat.ShipAPI
@@ -94,19 +95,13 @@ class ASTDImaginaryWingsHullMod : BaseHullMod() {
         width: Float,
         isForModSpec: Boolean,
     ) {
-        ASTDHullModTooltipRenderer.renderBlocks(
-            tooltip = tooltip,
-            width = width,
-            title = spec?.displayName ?: "",
-            theme = THEME,
-            blocks = listOf(
-                ASTDHullModTooltipRenderer.paragraph("ui.hullmod.imaginary_wings.summary"),
-                ASTDHullModTooltipRenderer.heading("ui.hullmod.export.section.effect"),
-                ASTDHullModTooltipRenderer.paragraph("ui.hullmod.imaginary_wings.line.1", padTop = 4f),
-                ASTDHullModTooltipRenderer.paragraph("ui.hullmod.imaginary_wings.line.2", padTop = 2f),
-                ASTDHullModTooltipRenderer.paragraph("ui.hullmod.imaginary_wings.line.3", padTop = 2f),
-            ),
-        )
+        tooltip.hullmodCard(width, THEME, spec?.displayName) {
+            para("ui.hullmod.imaginary_wings.summary")
+            heading("ui.hullmod.export.section.effect")
+            para("ui.hullmod.imaginary_wings.line.1", 4f)
+            para("ui.hullmod.imaginary_wings.line.2", 2f)
+            para("ui.hullmod.imaginary_wings.line.3", 2f)
+        }
     }
 
     override fun showInRefitScreenModPickerFor(ship: ShipAPI): Boolean = false
@@ -138,13 +133,7 @@ class ASTDImaginaryWingsHullMod : BaseHullMod() {
 
         private val feedback: CombatFeedback = CombatFeedbackImpl
 
-        private val THEME = ASTDHullModTooltipRenderer.Theme(
-            nameColor = Color(216, 178, 255),
-            borderColor = Color(170, 110, 255),
-            headerBackground = Color(46, 24, 82, 180),
-            sectionBackground = Color(32, 16, 58, 120),
-            accentColor = Color(130, 80, 220),
-        )
+        private val THEME = HullmodThemes.IMAGINARY
 
         /** 百分比显示格式：整数去小数点（如 100 / 12.5）；[signed] 时附带正负号。 */
         private fun formatPercent(value: Float, signed: Boolean = false): String {

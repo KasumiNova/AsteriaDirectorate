@@ -1,11 +1,12 @@
 package cn.kasuminova.astd.combat.hullmods.arc
 
-import cn.kasuminova.astd.combat.hullmods.base.ASTDHullModTooltipRenderer
 import cn.kasuminova.astd.api.render.BloomFlareVfx
 import cn.kasuminova.astd.impl.render.ASTDColor
 import cn.kasuminova.astd.impl.render.BloomFlareSpec
 import cn.kasuminova.astd.impl.render.BoxFlareStyle
 import cn.kasuminova.astd.renderer.effect.explosion.BloomFlareVfxImpl
+import cn.kasuminova.astd.ui.dsl.HullmodThemes
+import cn.kasuminova.astd.ui.dsl.hullmodCard
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseHullMod
 import com.fs.starfarer.api.combat.BeamAPI
@@ -62,13 +63,7 @@ class ASTDIonizedRecoilAccumulatorHullMod : BaseHullMod() {
         private val ENDPOINT_FLARE_CORE = ASTDColor(0xF0F5FCFF)
         private val ENDPOINT_FLARE_FRINGE = ASTDColor(0xDC5AD2FF)
 
-        private val THEME = ASTDHullModTooltipRenderer.Theme(
-            nameColor = Color(160, 236, 255),
-            borderColor = Color(160, 110, 255),
-            headerBackground = Color(20, 52, 82, 190),
-            sectionBackground = Color(14, 36, 58, 135),
-            accentColor = Color(88, 190, 255),
-        )
+        private val THEME = HullmodThemes.ARC_PRISM
     }
 
     override fun advanceInCombat(ship: ShipAPI, amount: Float) {
@@ -91,14 +86,7 @@ class ASTDIonizedRecoilAccumulatorHullMod : BaseHullMod() {
         width: Float,
         isForModSpec: Boolean
     ) {
-        ASTDHullModTooltipRenderer.renderBlocks(
-            tooltip = tooltip,
-            width = width,
-            title = spec?.displayName ?: "",
-            theme = THEME,
-            blocks = ASTDArcProductionTooltipContracts.ionizedRecoilAccumulator.blocks,
-            showTitle = false,
-        )
+        tooltip.hullmodCard(width, THEME, spec?.displayName, ASTDArcProductionTooltipContracts.ionizedRecoilAccumulator.card)
     }
 
     override fun getBorderColor(): Color = THEME.borderColor

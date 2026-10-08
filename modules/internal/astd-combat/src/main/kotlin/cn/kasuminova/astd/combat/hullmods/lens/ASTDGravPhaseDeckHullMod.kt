@@ -1,8 +1,9 @@
 package cn.kasuminova.astd.combat.hullmods.lens
 
-import cn.kasuminova.astd.combat.hullmods.base.ASTDHullModTooltipRenderer
 import cn.kasuminova.astd.combat.hullmods.lens.ASTDGravPhaseDeckHullMod.Companion.isZw103Ship
 import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
+import cn.kasuminova.astd.ui.dsl.HullmodThemes
+import cn.kasuminova.astd.ui.dsl.hullmodCard
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseHullMod
 import com.fs.starfarer.api.combat.ShipAPI
@@ -132,17 +133,11 @@ class ASTDGravPhaseDeckHullMod : BaseHullMod() {
         width: Float,
         isForModSpec: Boolean,
     ) {
-        ASTDHullModTooltipRenderer.renderBlocks(
-            tooltip = tooltip,
-            width = width,
-            title = spec?.displayName ?: "",
-            theme = THEME,
-            blocks = listOf(
-                ASTDHullModTooltipRenderer.paragraph("ui.hullmod.grav_phase_deck.summary"),
-                ASTDHullModTooltipRenderer.paragraph("ui.hullmod.grav_phase_deck.line.1"),
-                ASTDHullModTooltipRenderer.paragraph("ui.hullmod.grav_phase_deck.line.2"),
-            ),
-        )
+        tooltip.hullmodCard(width, THEME, spec?.displayName) {
+            para("ui.hullmod.grav_phase_deck.summary")
+            para("ui.hullmod.grav_phase_deck.line.1")
+            para("ui.hullmod.grav_phase_deck.line.2")
+        }
     }
 
     override fun isApplicableToShip(ship: ShipAPI): Boolean = ship.isZw103Ship()
@@ -165,14 +160,8 @@ class ASTDGravPhaseDeckHullMod : BaseHullMod() {
 
         private const val HULL_ID = "astd_zw_103"
 
-        /** 紫主题（与 [ASTDLensParallaxDecksHullMod] 一致，透镜协议视觉统一）。 */
-        private val THEME = ASTDHullModTooltipRenderer.Theme(
-            nameColor = Color(200, 160, 255),
-            borderColor = Color(160, 110, 255),
-            headerBackground = Color(40, 18, 70, 185),
-            sectionBackground = Color(28, 12, 52, 120),
-            accentColor = Color(150, 90, 230),
-        )
+        /** 透镜线紫主题预设（与 [ASTDLensParallaxDecksHullMod] 一致，透镜协议视觉统一）。 */
+        private val THEME = HullmodThemes.LENS
 
         private fun ShipAPI?.isZw103Ship(): Boolean {
             val s = this ?: return false

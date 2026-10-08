@@ -1,13 +1,14 @@
 package cn.kasuminova.astd.combat.hullmods.lens
 
 import cn.kasuminova.astd.combat.hullmods.affix.AffixUtil
-import cn.kasuminova.astd.combat.hullmods.base.ASTDHullModTooltipRenderer
 import cn.kasuminova.astd.combat.hullmods.lens.ASTDLensPermeatingTideHullMod.Companion.TIDE_EBB_SECONDS
 import cn.kasuminova.astd.combat.hullmods.lens.ASTDLensPermeatingTideHullMod.Companion.TIDE_RISE_SECONDS
 import cn.kasuminova.astd.combat.lens.marks.LensMarks
 import cn.kasuminova.astd.renderer.effect.lens.LensVfxTelemetry
 import cn.kasuminova.astd.renderer.effect.lens.PermeatingTideFieldEffect
 import cn.kasuminova.astd.renderer.shader.runtime.CombatShaderRuntime
+import cn.kasuminova.astd.ui.dsl.HullmodThemes
+import cn.kasuminova.astd.ui.dsl.hullmodCard
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseHullMod
 import com.fs.starfarer.api.combat.CombatEngineAPI
@@ -176,18 +177,12 @@ class ASTDLensPermeatingTideHullMod : BaseHullMod() {
         width: Float,
         isForModSpec: Boolean,
     ) {
-        ASTDHullModTooltipRenderer.renderBlocks(
-            tooltip = tooltip,
-            width = width,
-            title = spec?.displayName ?: "",
-            theme = THEME,
-            blocks = listOf(
-                ASTDHullModTooltipRenderer.paragraph("ui.hullmod.lens_permeating_tide.summary"),
-                ASTDHullModTooltipRenderer.paragraph("ui.hullmod.lens_permeating_tide.line.1"),
-                ASTDHullModTooltipRenderer.paragraph("ui.hullmod.lens_permeating_tide.line.2"),
-                ASTDHullModTooltipRenderer.paragraph("ui.hullmod.lens_permeating_tide.line.3"),
-            ),
-        )
+        tooltip.hullmodCard(width, THEME, spec?.displayName) {
+            para("ui.hullmod.lens_permeating_tide.summary")
+            para("ui.hullmod.lens_permeating_tide.line.1")
+            para("ui.hullmod.lens_permeating_tide.line.2")
+            para("ui.hullmod.lens_permeating_tide.line.3")
+        }
     }
 
     override fun isApplicableToShip(ship: ShipAPI): Boolean = ship.isZw001Ship()
@@ -205,13 +200,7 @@ class ASTDLensPermeatingTideHullMod : BaseHullMod() {
         /** 退潮：过载时潮位从 1 退到 0 的耗时（s，比涨潮快——表现「水迅速退去」的破局窗口）。 */
         private const val TIDE_EBB_SECONDS = 1.2f
 
-        /** 紫主题（与 [ASTDLensArrayCoreHullMod] / [ASTDLensParallaxDecksHullMod] 一致，透镜协议视觉统一）。 */
-        private val THEME = ASTDHullModTooltipRenderer.Theme(
-            nameColor = Color(200, 160, 255),
-            borderColor = Color(160, 110, 255),
-            headerBackground = Color(40, 18, 70, 185),
-            sectionBackground = Color(28, 12, 52, 120),
-            accentColor = Color(150, 90, 230),
-        )
+        /** 透镜线紫主题预设（与 [ASTDLensArrayCoreHullMod] / [ASTDLensParallaxDecksHullMod] 一致，透镜协议视觉统一）。 */
+        private val THEME = HullmodThemes.LENS
     }
 }

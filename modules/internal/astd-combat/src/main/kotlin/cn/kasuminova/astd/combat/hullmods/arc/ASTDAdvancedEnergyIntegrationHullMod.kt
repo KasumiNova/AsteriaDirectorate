@@ -1,6 +1,7 @@
 package cn.kasuminova.astd.combat.hullmods.arc
 
-import cn.kasuminova.astd.combat.hullmods.base.ASTDHullModTooltipRenderer
+import cn.kasuminova.astd.ui.dsl.HullmodThemes
+import cn.kasuminova.astd.ui.dsl.hullmodCard
 import com.fs.starfarer.api.combat.BaseHullMod
 import com.fs.starfarer.api.combat.MutableShipStatsAPI
 import com.fs.starfarer.api.combat.ShipAPI
@@ -30,13 +31,7 @@ class ASTDAdvancedEnergyIntegrationHullMod : BaseHullMod() {
         private const val MEDIUM_OP_DISCOUNT = -4f
         private const val LARGE_OP_DISCOUNT = -8f
 
-        private val THEME = ASTDHullModTooltipRenderer.Theme(
-            nameColor = Color(150, 232, 255),
-            borderColor = Color(90, 180, 255),
-            headerBackground = Color(20, 52, 82, 180),
-            sectionBackground = Color(14, 36, 58, 120),
-            accentColor = Color(60, 140, 220),
-        )
+        private val THEME = HullmodThemes.ARC
     }
 
     override fun applyEffectsBeforeShipCreation(hullSize: ShipAPI.HullSize, stats: MutableShipStatsAPI, id: String) {
@@ -63,24 +58,16 @@ class ASTDAdvancedEnergyIntegrationHullMod : BaseHullMod() {
         width: Float,
         isForModSpec: Boolean
     ) {
-        ASTDHullModTooltipRenderer.renderBlocks(
-            tooltip = tooltip,
-            width = width,
-            title = spec?.displayName ?: "",
-            theme = THEME,
-            blocks = listOf(
-                ASTDHullModTooltipRenderer.paragraph("ui.hullmod.aei.summary"),
-                ASTDHullModTooltipRenderer.heading("ui.hullmod.export.section.effect"),
-                ASTDHullModTooltipRenderer.table(
-                    rows = arrayOf(
-                        ASTDHullModTooltipRenderer.row("ui.hullmod.aei.attr.op", "ui.hullmod.aei.value.op"),
-                        ASTDHullModTooltipRenderer.row("ui.hullmod.aei.attr.flux", "ui.hullmod.aei.value.flux"),
-                        ASTDHullModTooltipRenderer.row("ui.hullmod.aei.attr.projectile_speed", "ui.hullmod.aei.value.projectile_speed"),
-                        ASTDHullModTooltipRenderer.row("ui.hullmod.aei.attr.turn_rate", "ui.hullmod.aei.value.turn_rate"),
-                    ),
-                ),
-            ),
-        )
+        tooltip.hullmodCard(width, THEME, spec?.displayName) {
+            para("ui.hullmod.aei.summary")
+            heading("ui.hullmod.export.section.effect")
+            table {
+                row("ui.hullmod.aei.attr.op", "ui.hullmod.aei.value.op")
+                row("ui.hullmod.aei.attr.flux", "ui.hullmod.aei.value.flux")
+                row("ui.hullmod.aei.attr.projectile_speed", "ui.hullmod.aei.value.projectile_speed")
+                row("ui.hullmod.aei.attr.turn_rate", "ui.hullmod.aei.value.turn_rate")
+            }
+        }
     }
 
     override fun showInRefitScreenModPickerFor(ship: ShipAPI): Boolean = false

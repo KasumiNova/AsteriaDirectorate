@@ -1,5 +1,8 @@
 package cn.kasuminova.astd.combat.hullmods.base
 
+import cn.kasuminova.astd.ui.dsl.HullmodTheme
+import cn.kasuminova.astd.ui.dsl.HullmodThemes
+import cn.kasuminova.astd.ui.dsl.hullmodCard
 import com.fs.starfarer.api.combat.BaseHullMod
 import com.fs.starfarer.api.combat.MutableShipStatsAPI
 import com.fs.starfarer.api.combat.ShipAPI
@@ -38,35 +41,27 @@ class ASTDSingularityPowerHullMod : BaseHullMod() {
         width: Float,
         isForModSpec: Boolean,
     ) {
-        ASTDHullModTooltipRenderer.renderBlocks(
-            tooltip = tooltip,
-            width = width,
-            title = spec?.displayName ?: "",
-            theme = theme(),
-            blocks = listOf(
-                ASTDHullModTooltipRenderer.heading("ui.hullmod.export.section.effect"),
-                ASTDHullModTooltipRenderer.table(
-                    rows = arrayOf(
-                        ASTDHullModTooltipRenderer.row(
-                            "ui.hullmod.singularity_power.attr.vent_rate",
-                            "ui.hullmod.singularity_power.value.vent_rate",
-                        ),
-                        ASTDHullModTooltipRenderer.row(
-                            "ui.hullmod.singularity_power.attr.overload",
-                            "ui.hullmod.singularity_power.value.overload",
-                        ),
-                        ASTDHullModTooltipRenderer.row(
-                            "ui.hullmod.singularity_power.attr.environment",
-                            "ui.hullmod.singularity_power.value.environment",
-                        ),
-                        ASTDHullModTooltipRenderer.row(
-                            "ui.hullmod.singularity_power.attr.weapon_flux",
-                            "ui.hullmod.singularity_power.value.weapon_flux",
-                        ),
-                    ),
-                ),
-            ),
-        )
+        tooltip.hullmodCard(width, theme(), spec?.displayName) {
+            heading("ui.hullmod.export.section.effect")
+            table {
+                row(
+                    "ui.hullmod.singularity_power.attr.vent_rate",
+                    "ui.hullmod.singularity_power.value.vent_rate",
+                )
+                row(
+                    "ui.hullmod.singularity_power.attr.overload",
+                    "ui.hullmod.singularity_power.value.overload",
+                )
+                row(
+                    "ui.hullmod.singularity_power.attr.environment",
+                    "ui.hullmod.singularity_power.value.environment",
+                )
+                row(
+                    "ui.hullmod.singularity_power.attr.weapon_flux",
+                    "ui.hullmod.singularity_power.value.weapon_flux",
+                )
+            }
+        }
     }
 
     override fun showInRefitScreenModPickerFor(ship: ShipAPI): Boolean = false
@@ -75,7 +70,7 @@ class ASTDSingularityPowerHullMod : BaseHullMod() {
 
     override fun getNameColor(): Color = theme().nameColor
 
-    private fun theme(): ASTDHullModTooltipRenderer.Theme =
+    private fun theme(): HullmodTheme =
         if (spec?.id == ID_LENS) THEME_LENS else THEME_ARC
 
     companion object {
@@ -90,20 +85,8 @@ class ASTDSingularityPowerHullMod : BaseHullMod() {
         const val ENVIRONMENT_EFFECT_MULT: Float = 0f
         const val WEAPON_FLUX_COST_MULT: Float = 0.9f
 
-        private val THEME_ARC = ASTDHullModTooltipRenderer.Theme(
-            nameColor = Color(150, 232, 255),
-            borderColor = Color(90, 180, 255),
-            headerBackground = Color(20, 52, 82, 180),
-            sectionBackground = Color(14, 36, 58, 120),
-            accentColor = Color(60, 140, 220),
-        )
+        private val THEME_ARC = HullmodThemes.ARC
 
-        private val THEME_LENS = ASTDHullModTooltipRenderer.Theme(
-            nameColor = Color(200, 160, 255),
-            borderColor = Color(160, 110, 255),
-            headerBackground = Color(40, 18, 70, 185),
-            sectionBackground = Color(28, 12, 52, 120),
-            accentColor = Color(150, 90, 230),
-        )
+        private val THEME_LENS = HullmodThemes.LENS
     }
 }

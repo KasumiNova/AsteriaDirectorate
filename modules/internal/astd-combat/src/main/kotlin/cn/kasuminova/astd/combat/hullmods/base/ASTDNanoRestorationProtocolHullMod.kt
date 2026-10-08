@@ -1,5 +1,7 @@
 package cn.kasuminova.astd.combat.hullmods.base
 
+import cn.kasuminova.astd.ui.dsl.HullmodThemes
+import cn.kasuminova.astd.ui.dsl.hullmodCard
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseHullMod
 import com.fs.starfarer.api.combat.ShipAPI
@@ -47,13 +49,7 @@ class ASTDNanoRestorationProtocolHullMod : BaseHullMod() {
         private const val BOOST_KEY = "astd_nano_restoration_boost"
         private const val INTERVAL_KEY = "astd_nano_restoration_interval"
 
-        private val THEME = ASTDHullModTooltipRenderer.Theme(
-            nameColor = Color(170, 255, 196),
-            borderColor = Color(88, 212, 140),
-            headerBackground = Color(18, 68, 44, 180),
-            sectionBackground = Color(12, 46, 30, 120),
-            accentColor = Color(60, 180, 100),
-        )
+        private val THEME = HullmodThemes.NANO
     }
 
     override fun advanceInCombat(ship: ShipAPI, amount: Float) {
@@ -189,21 +185,15 @@ class ASTDNanoRestorationProtocolHullMod : BaseHullMod() {
         width: Float,
         isForModSpec: Boolean
     ) {
-        ASTDHullModTooltipRenderer.renderBlocks(
-            tooltip = tooltip,
-            width = width,
-            title = spec?.displayName ?: "",
-            theme = THEME,
-            blocks = listOf(
-                ASTDHullModTooltipRenderer.paragraph("ui.hullmod.nano.summary"),
-                ASTDHullModTooltipRenderer.heading("ui.hullmod.export.section.note"),
-                ASTDHullModTooltipRenderer.paragraph("ui.hullmod.nano.line.1"),
-                ASTDHullModTooltipRenderer.paragraph("ui.hullmod.nano.line.2"),
-                ASTDHullModTooltipRenderer.paragraph("ui.hullmod.nano.line.3"),
-                ASTDHullModTooltipRenderer.paragraph("ui.hullmod.nano.line.4"),
-                ASTDHullModTooltipRenderer.paragraph("ui.hullmod.nano.line.5"),
-            ),
-        )
+        tooltip.hullmodCard(width, THEME, spec?.displayName) {
+            para("ui.hullmod.nano.summary")
+            heading("ui.hullmod.export.section.note")
+            para("ui.hullmod.nano.line.1")
+            para("ui.hullmod.nano.line.2")
+            para("ui.hullmod.nano.line.3")
+            para("ui.hullmod.nano.line.4")
+            para("ui.hullmod.nano.line.5")
+        }
     }
 
     override fun showInRefitScreenModPickerFor(ship: ShipAPI): Boolean = false

@@ -1,7 +1,8 @@
 package cn.kasuminova.astd.combat.hullmods.lens
 
-import cn.kasuminova.astd.combat.hullmods.base.ASTDHullModTooltipRenderer
 import cn.kasuminova.astd.combat.lens.marks.LensMarks
+import cn.kasuminova.astd.ui.dsl.HullmodThemes
+import cn.kasuminova.astd.ui.dsl.hullmodCard
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseHullMod
 import com.fs.starfarer.api.combat.CombatEntityAPI
@@ -182,18 +183,12 @@ class ASTDLensParallaxDecksHullMod : BaseHullMod() {
         width: Float,
         isForModSpec: Boolean,
     ) {
-        ASTDHullModTooltipRenderer.renderBlocks(
-            tooltip = tooltip,
-            width = width,
-            title = spec?.displayName ?: "",
-            theme = THEME,
-            blocks = listOf(
-                ASTDHullModTooltipRenderer.paragraph("ui.hullmod.lens_parallax_decks.summary"),
-                ASTDHullModTooltipRenderer.paragraph("ui.hullmod.lens_parallax_decks.line.1"),
-                ASTDHullModTooltipRenderer.paragraph("ui.hullmod.lens_parallax_decks.line.2"),
-                ASTDHullModTooltipRenderer.paragraph("ui.hullmod.lens_parallax_decks.line.3"),
-            ),
-        )
+        tooltip.hullmodCard(width, THEME, spec?.displayName) {
+            para("ui.hullmod.lens_parallax_decks.summary")
+            para("ui.hullmod.lens_parallax_decks.line.1")
+            para("ui.hullmod.lens_parallax_decks.line.2")
+            para("ui.hullmod.lens_parallax_decks.line.3")
+        }
     }
 
     override fun isApplicableToShip(ship: ShipAPI): Boolean = ship.isZw001Ship()
@@ -211,13 +206,7 @@ class ASTDLensParallaxDecksHullMod : BaseHullMod() {
         /** 回收重构承伤减免修饰句柄（fighter hull/armorDamageTakenMult 上的稳定 id）。 */
         private const val RECOVERY_MOD_ID = "astd_lens_parallax_recovery"
 
-        /** 紫主题（与 [ASTDLensArrayCoreHullMod] 一致，透镜协议视觉统一）。 */
-        private val THEME = ASTDHullModTooltipRenderer.Theme(
-            nameColor = Color(200, 160, 255),
-            borderColor = Color(160, 110, 255),
-            headerBackground = Color(40, 18, 70, 185),
-            sectionBackground = Color(28, 12, 52, 120),
-            accentColor = Color(150, 90, 230),
-        )
+        /** 透镜线紫主题预设（与 [ASTDLensArrayCoreHullMod] 一致，透镜协议视觉统一）。 */
+        private val THEME = HullmodThemes.LENS
     }
 }

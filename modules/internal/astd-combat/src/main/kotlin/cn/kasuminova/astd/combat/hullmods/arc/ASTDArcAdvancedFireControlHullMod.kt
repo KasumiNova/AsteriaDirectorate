@@ -1,6 +1,7 @@
 package cn.kasuminova.astd.combat.hullmods.arc
 
-import cn.kasuminova.astd.combat.hullmods.base.ASTDHullModTooltipRenderer
+import cn.kasuminova.astd.ui.dsl.HullmodThemes
+import cn.kasuminova.astd.ui.dsl.hullmodCard
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseHullMod
 import com.fs.starfarer.api.combat.MutableShipStatsAPI
@@ -20,13 +21,7 @@ class ASTDArcAdvancedFireControlHullMod : BaseHullMod() {
         private const val BASELINE_STAT_ID = "astd_arc_advanced_fire_control_baseline"
         private const val RAMP_KEY = "astd_arc_advanced_fire_control_ramp:"
 
-        private val THEME = ASTDHullModTooltipRenderer.Theme(
-            nameColor = Color(150, 232, 255),
-            borderColor = Color(90, 180, 255),
-            headerBackground = Color(20, 52, 82, 180),
-            sectionBackground = Color(14, 36, 58, 120),
-            accentColor = Color(60, 140, 220),
-        )
+        private val THEME = HullmodThemes.ARC
     }
 
     override fun applyEffectsBeforeShipCreation(hullSize: ShipAPI.HullSize, stats: MutableShipStatsAPI, id: String) {
@@ -120,13 +115,7 @@ class ASTDArcAdvancedFireControlHullMod : BaseHullMod() {
         width: Float,
         isForModSpec: Boolean
     ) {
-        ASTDHullModTooltipRenderer.renderBlocks(
-            tooltip = tooltip,
-            width = width,
-            title = spec?.displayName ?: "",
-            theme = THEME,
-            blocks = ASTDArcProductionTooltipContracts.arcAdvancedFireControl.blocks,
-        )
+        tooltip.hullmodCard(width, THEME, spec?.displayName, ASTDArcProductionTooltipContracts.arcAdvancedFireControl.card)
     }
 
     override fun showInRefitScreenModPickerFor(ship: ShipAPI): Boolean = false

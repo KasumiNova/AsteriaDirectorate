@@ -1,11 +1,11 @@
 package cn.kasuminova.astd.combat.hullmods.lens
 
-import cn.kasuminova.astd.combat.hullmods.base.ASTDHullModTooltipRenderer
 import cn.kasuminova.astd.combat.hullmods.lens.GravSpaceFoldHullMod.Companion.isZw101Ship
 import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import cn.kasuminova.astd.internal.i18n.I18n
 import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
-import cn.kasuminova.astd.ui.dsl.buildWith
+import cn.kasuminova.astd.ui.dsl.HullmodThemes
+import cn.kasuminova.astd.ui.dsl.hullmodCard
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseHullMod
 import com.fs.starfarer.api.combat.CombatEngineAPI
@@ -191,24 +191,20 @@ class GravSpaceFoldHullMod : BaseHullMod() {
     ) {
         // tooltip 展示口径：无舰上下文（装配面板）按我方档位展示（默认砺刃 v2）
         val values = GravSpaceFoldTuning.resolve(DifficultyTuningImpl, ship == null || ship.owner == 0)
-        tooltip.buildWith {
-            spacer(6f)
-            withHullmodBackground(accentColor = THEME.accentColor, width = width) {
-                heading(spec?.displayName ?: "", THEME.nameColor, THEME.headerBackground, 6f)
-                spacer(2f)
-                para(I18n.Categories.MOD, "ui.hullmod.grav_space_fold.summary", Misc.getTextColor(), 4f)
-                para(
-                    I18n.Categories.MOD, "ui.hullmod.grav_space_fold.line.fold", LINE_COLOR, 2f,
-                    "range" to GravSpaceFoldTuning.FOLD_RANGE_BONUS.toInt(),
-                    "basePct" to percent(values.foldChanceBase),
-                    "capPct" to percent(values.foldChanceCap),
-                )
-                para(
-                    I18n.Categories.MOD, "ui.hullmod.grav_space_fold.line.beam", LINE_COLOR, 2f,
-                    "beamPct" to percent(1f - values.beamDamageTakenMult),
-                )
-                para(I18n.Categories.MOD, "ui.hullmod.grav_space_fold.line.fail", LINE_COLOR, 2f)
-            }
+        tooltip.hullmodCard(width, THEME, spec?.displayName) {
+            spacer(2f)
+            para("ui.hullmod.grav_space_fold.summary", 4f)
+            para(
+                "ui.hullmod.grav_space_fold.line.fold", LINE_COLOR, 2f,
+                v("range", GravSpaceFoldTuning.FOLD_RANGE_BONUS.toInt()),
+                v("basePct", percent(values.foldChanceBase)),
+                v("capPct", percent(values.foldChanceCap)),
+            )
+            para(
+                "ui.hullmod.grav_space_fold.line.beam", LINE_COLOR, 2f,
+                v("beamPct", percent(1f - values.beamDamageTakenMult)),
+            )
+            para("ui.hullmod.grav_space_fold.line.fail", LINE_COLOR, 2f)
         }
     }
 
@@ -246,14 +242,8 @@ class GravSpaceFoldHullMod : BaseHullMod() {
 
         private val ZERO = Vector2f(0f, 0f)
 
-        /** 紫主题（与 [ASTDGravPhaseDeckHullMod] 一致，透镜协议视觉统一）。 */
-        private val THEME = ASTDHullModTooltipRenderer.Theme(
-            nameColor = Color(200, 160, 255),
-            borderColor = Color(160, 110, 255),
-            headerBackground = Color(40, 18, 70, 185),
-            sectionBackground = Color(28, 12, 52, 120),
-            accentColor = Color(150, 90, 230),
-        )
+        /** 透镜线紫主题预设（与 [ASTDGravPhaseDeckHullMod] 一致，透镜协议视觉统一）。 */
+        private val THEME = HullmodThemes.LENS
 
         private fun percent(value: Float): String = "${(value * 100f).toInt()}%"
 

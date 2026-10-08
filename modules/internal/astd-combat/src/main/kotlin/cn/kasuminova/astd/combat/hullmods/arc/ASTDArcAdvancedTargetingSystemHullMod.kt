@@ -1,9 +1,10 @@
 package cn.kasuminova.astd.combat.hullmods.arc
 
 import cn.kasuminova.astd.combat.hullmods.HullmodIncompatibility
-import cn.kasuminova.astd.combat.hullmods.base.ASTDHullModTooltipRenderer
 import cn.kasuminova.astd.combat.hullmods.base.IncompatibleHullmodStripper
 import cn.kasuminova.astd.internal.i18n.I18n
+import cn.kasuminova.astd.ui.dsl.HullmodThemes
+import cn.kasuminova.astd.ui.dsl.hullmodCard
 import com.fs.starfarer.api.combat.BaseHullMod
 import com.fs.starfarer.api.combat.MutableShipStatsAPI
 import com.fs.starfarer.api.combat.ShipAPI
@@ -54,13 +55,7 @@ class ASTDArcAdvancedTargetingSystemHullMod : BaseHullMod() {
         internal val INCOMPATIBLE_TARGETING_HULLMODS: Set<String> =
             HullmodIncompatibility.forbiddenByController(ASTDArcProductionShipIds.HULLMOD_ARC_ADVANCED_TARGETING_SYSTEM)
 
-        private val THEME = ASTDHullModTooltipRenderer.Theme(
-            nameColor = Color(150, 232, 255),
-            borderColor = Color(90, 180, 255),
-            headerBackground = Color(20, 52, 82, 180),
-            sectionBackground = Color(14, 36, 58, 120),
-            accentColor = Color(60, 150, 230),
-        )
+        private val THEME = HullmodThemes.ARC
 
         /**
          * 短射程武器基础射程补偿（纯函数）：基础射程 < [SHORT_RANGE_THRESHOLD] 时补偿
@@ -131,13 +126,7 @@ class ASTDArcAdvancedTargetingSystemHullMod : BaseHullMod() {
         width: Float,
         isForModSpec: Boolean
     ) {
-        ASTDHullModTooltipRenderer.renderBlocks(
-            tooltip = tooltip,
-            width = width,
-            title = spec?.displayName ?: "",
-            theme = THEME,
-            blocks = ASTDArcProductionTooltipContracts.arcAdvancedTargetingSystem.blocks,
-        )
+        tooltip.hullmodCard(width, THEME, spec?.displayName, ASTDArcProductionTooltipContracts.arcAdvancedTargetingSystem.card)
     }
 
     override fun affectsOPCosts(): Boolean = true

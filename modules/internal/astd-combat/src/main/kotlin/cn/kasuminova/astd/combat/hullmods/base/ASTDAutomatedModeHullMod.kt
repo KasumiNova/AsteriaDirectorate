@@ -1,5 +1,7 @@
 package cn.kasuminova.astd.combat.hullmods.base
 
+import cn.kasuminova.astd.ui.dsl.HullmodThemes
+import cn.kasuminova.astd.ui.dsl.hullmodCard
 import com.fs.starfarer.api.combat.BaseHullMod
 import com.fs.starfarer.api.combat.MutableShipStatsAPI
 import com.fs.starfarer.api.combat.ShipAPI
@@ -22,13 +24,7 @@ import java.awt.Color
 class ASTDAutomatedModeHullMod : BaseHullMod() {
 
     companion object {
-        private val THEME = ASTDHullModTooltipRenderer.Theme(
-            nameColor = Color(255, 196, 150),
-            borderColor = Color(220, 150, 90),
-            headerBackground = Color(66, 40, 18, 185),
-            sectionBackground = Color(48, 28, 14, 120),
-            accentColor = Color(230, 170, 100),
-        )
+        private val THEME = HullmodThemes.AUTOMATED
     }
 
     override fun applyEffectsBeforeShipCreation(hullSize: ShipAPI.HullSize, stats: MutableShipStatsAPI, id: String) {
@@ -60,17 +56,11 @@ class ASTDAutomatedModeHullMod : BaseHullMod() {
         width: Float,
         isForModSpec: Boolean
     ) {
-        ASTDHullModTooltipRenderer.renderBlocks(
-            tooltip = tooltip,
-            width = width,
-            title = spec?.displayName ?: "",
-            theme = THEME,
-            blocks = listOf(
-                ASTDHullModTooltipRenderer.paragraph("ui.hullmod.mode_automated.summary"),
-                ASTDHullModTooltipRenderer.heading("ui.hullmod.export.section.mode"),
-                ASTDHullModTooltipRenderer.paragraph("ui.hullmod.mode_automated.hint"),
-            ),
-        )
+        tooltip.hullmodCard(width, THEME, spec?.displayName) {
+            para("ui.hullmod.mode_automated.summary")
+            heading("ui.hullmod.export.section.mode")
+            para("ui.hullmod.mode_automated.hint")
+        }
     }
 
     override fun getBorderColor(): Color = THEME.borderColor

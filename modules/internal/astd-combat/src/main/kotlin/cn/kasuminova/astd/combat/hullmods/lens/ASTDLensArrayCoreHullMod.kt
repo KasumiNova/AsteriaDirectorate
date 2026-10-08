@@ -1,6 +1,5 @@
 package cn.kasuminova.astd.combat.hullmods.lens
 
-import cn.kasuminova.astd.combat.hullmods.base.ASTDHullModTooltipRenderer
 import cn.kasuminova.astd.combat.hullmods.lens.ASTDLensArrayCoreHullMod.Companion.DIFFICULTY_FACTOR
 import cn.kasuminova.astd.combat.hullmods.lens.ASTDLensArrayCoreHullMod.Companion.FLAMEOUT_CHANCE
 import cn.kasuminova.astd.combat.hullmods.lens.ASTDLensArrayCoreHullMod.Companion.MARK_PULSE_PERIOD
@@ -13,6 +12,8 @@ import cn.kasuminova.astd.renderer.effect.lens.DriftMarkVisualEffect
 import cn.kasuminova.astd.renderer.effect.lens.GhostSignalWaveEffect
 import cn.kasuminova.astd.renderer.effect.lens.LensVfxTelemetry
 import cn.kasuminova.astd.renderer.shader.runtime.CombatShaderRuntime
+import cn.kasuminova.astd.ui.dsl.HullmodThemes
+import cn.kasuminova.astd.ui.dsl.hullmodCard
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseHullMod
 import com.fs.starfarer.api.combat.CombatEngineAPI
@@ -162,13 +163,7 @@ class ASTDLensArrayCoreHullMod : BaseHullMod() {
          */
         private const val MARK_PULSE_PERIOD = 1.2f
 
-        private val THEME = ASTDHullModTooltipRenderer.Theme(
-            nameColor = Color(200, 160, 255),
-            borderColor = Color(160, 110, 255),
-            headerBackground = Color(40, 18, 70, 185),
-            sectionBackground = Color(28, 12, 52, 120),
-            accentColor = Color(150, 90, 230),
-        )
+        private val THEME = HullmodThemes.LENS
     }
 
     override fun advanceInCombat(ship: ShipAPI, amount: Float) {
@@ -419,21 +414,15 @@ class ASTDLensArrayCoreHullMod : BaseHullMod() {
         width: Float,
         isForModSpec: Boolean,
     ) {
-        ASTDHullModTooltipRenderer.renderBlocks(
-            tooltip = tooltip,
-            width = width,
-            title = spec?.displayName ?: "",
-            theme = THEME,
-            blocks = listOf(
-                ASTDHullModTooltipRenderer.paragraph("ui.hullmod.lens_core.summary"),
-                ASTDHullModTooltipRenderer.paragraph("ui.hullmod.lens_core.line.1"),
-                ASTDHullModTooltipRenderer.paragraph("ui.hullmod.lens_core.line.2"),
-                ASTDHullModTooltipRenderer.paragraph("ui.hullmod.lens_core.line.3"),
-                ASTDHullModTooltipRenderer.paragraph("ui.hullmod.lens_core.line.4"),
-                ASTDHullModTooltipRenderer.paragraph("ui.hullmod.lens_core.line.5"),
-                ASTDHullModTooltipRenderer.paragraph("ui.hullmod.lens_core.line.6"),
-            ),
-        )
+        tooltip.hullmodCard(width, THEME, spec?.displayName) {
+            para("ui.hullmod.lens_core.summary")
+            para("ui.hullmod.lens_core.line.1")
+            para("ui.hullmod.lens_core.line.2")
+            para("ui.hullmod.lens_core.line.3")
+            para("ui.hullmod.lens_core.line.4")
+            para("ui.hullmod.lens_core.line.5")
+            para("ui.hullmod.lens_core.line.6")
+        }
     }
 
     override fun isApplicableToShip(ship: ShipAPI): Boolean = ship.isZw001Ship()
