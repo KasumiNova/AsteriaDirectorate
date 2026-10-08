@@ -14,10 +14,13 @@ import java.awt.Color
  * （[HullmodTooltipSpec]，可静态枚举文本键供自动化证据核对），再由统一渲染器落地到
  * [TooltipMakerAPI]；骨架（顶部间距 + 全息背景 + 标题）只存在于 [hullmodCard] 一处。
  *
- * 用法示例：
+ * 主推荐形态（静态卡片）：在所属 hullmod 类的 companion object 中把卡片声明为
+ * `TOOLTIP` 常量，`addPostDescriptionSection` 只保留一行渲染调用：
  * ```kotlin
- * override fun addPostDescriptionSection(tooltip: TooltipMakerAPI, hullSize: ShipAPI.HullSize?, ship: ShipAPI?, width: Float, isForModSpec: Boolean) {
- *     tooltip.hullmodCard(width, HullmodThemes.ARC, spec?.displayName) {
+ * companion object {
+ *     private val THEME = HullmodThemes.ARC
+ *
+ *     private val TOOLTIP: HullmodTooltipSpec = hullmodTooltip {
  *         para("ui.hullmod.example.summary")
  *         heading("ui.hullmod.export.section.effect")
  *         table {
@@ -25,16 +28,22 @@ import java.awt.Color
  *             row("ui.hullmod.example.attr.penalty", "ui.hullmod.example.value.penalty", tone = HullmodTone.WARNING)
  *         }
  *         para("ui.hullmod.example.note", hl("50%", HullmodTone.WARNING))
- *         para("ui.hullmod.example.runtime", v("range", range), v("pct", percent(ratio)))
  *     }
  * }
- * ```
  *
- * 需要静态复用/枚举文本键时（如 ARC 量产契约，自动化场景按 key 核对文案解析），
- * 用 [hullmodTooltip] 先声明 spec，再交给 [hullmodCard] 渲染：
+ * override fun addPostDescriptionSection(tooltip: TooltipMakerAPI, hullSize: ShipAPI.HullSize?, ship: ShipAPI?, width: Float, isForModSpec: Boolean) {
+ *     tooltip.hullmodCard(width, THEME, spec?.displayName, TOOLTIP)
+ * }
+ * ```
+ * 若卡片需经契约绑定（如 ARC 量产契约，自动化场景按 key 核对文案解析），把 `TOOLTIP`
+ * 声明为 public 并在契约对象中引用（见 `ASTDArcProductionTooltipContracts`）。
+ *
+ * 仅当卡片内容依赖运行期数值（[HullmodCardBuilder.v] 注入的值需现场计算）时，才在
+ * `addPostDescriptionSection` 内联 lambda 声明：
  * ```kotlin
- * val contract = hullmodTooltip { para("...") ; table { row("...", "...") } }
- * tooltip.hullmodCard(width, HullmodThemes.ARC, spec?.displayName, contract)
+ * tooltip.hullmodCard(width, HullmodThemes.ARC, spec?.displayName) {
+ *     para("ui.hullmod.example.runtime", v("range", range), v("pct", percent(ratio)))
+ * }
  * ```
  */
 

@@ -2,7 +2,9 @@ package cn.kasuminova.astd.combat.hullmods.base
 
 import cn.kasuminova.astd.ui.dsl.HullmodTheme
 import cn.kasuminova.astd.ui.dsl.HullmodThemes
+import cn.kasuminova.astd.ui.dsl.HullmodTooltipSpec
 import cn.kasuminova.astd.ui.dsl.hullmodCard
+import cn.kasuminova.astd.ui.dsl.hullmodTooltip
 import com.fs.starfarer.api.combat.BaseHullMod
 import com.fs.starfarer.api.combat.MutableShipStatsAPI
 import com.fs.starfarer.api.combat.ShipAPI
@@ -41,27 +43,7 @@ class ASTDSingularityPowerHullMod : BaseHullMod() {
         width: Float,
         isForModSpec: Boolean,
     ) {
-        tooltip.hullmodCard(width, theme(), spec?.displayName) {
-            heading("ui.hullmod.export.section.effect")
-            table {
-                row(
-                    "ui.hullmod.singularity_power.attr.vent_rate",
-                    "ui.hullmod.singularity_power.value.vent_rate",
-                )
-                row(
-                    "ui.hullmod.singularity_power.attr.overload",
-                    "ui.hullmod.singularity_power.value.overload",
-                )
-                row(
-                    "ui.hullmod.singularity_power.attr.environment",
-                    "ui.hullmod.singularity_power.value.environment",
-                )
-                row(
-                    "ui.hullmod.singularity_power.attr.weapon_flux",
-                    "ui.hullmod.singularity_power.value.weapon_flux",
-                )
-            }
-        }
+        tooltip.hullmodCard(width, theme(), spec?.displayName, TOOLTIP)
     }
 
     override fun showInRefitScreenModPickerFor(ship: ShipAPI): Boolean = false
@@ -88,5 +70,28 @@ class ASTDSingularityPowerHullMod : BaseHullMod() {
         private val THEME_ARC = HullmodThemes.ARC
 
         private val THEME_LENS = HullmodThemes.LENS
+
+        /** tooltip 卡片声明（静态内容；主题由渲染时 [theme] 动态选择）。 */
+        private val TOOLTIP: HullmodTooltipSpec = hullmodTooltip {
+            heading("ui.hullmod.export.section.effect")
+            table {
+                row(
+                    "ui.hullmod.singularity_power.attr.vent_rate",
+                    "ui.hullmod.singularity_power.value.vent_rate",
+                )
+                row(
+                    "ui.hullmod.singularity_power.attr.overload",
+                    "ui.hullmod.singularity_power.value.overload",
+                )
+                row(
+                    "ui.hullmod.singularity_power.attr.environment",
+                    "ui.hullmod.singularity_power.value.environment",
+                )
+                row(
+                    "ui.hullmod.singularity_power.attr.weapon_flux",
+                    "ui.hullmod.singularity_power.value.weapon_flux",
+                )
+            }
+        }
     }
 }

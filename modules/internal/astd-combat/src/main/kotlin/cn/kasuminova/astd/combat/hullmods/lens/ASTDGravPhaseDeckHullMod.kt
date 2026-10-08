@@ -3,7 +3,9 @@ package cn.kasuminova.astd.combat.hullmods.lens
 import cn.kasuminova.astd.combat.hullmods.lens.ASTDGravPhaseDeckHullMod.Companion.isZw103Ship
 import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import cn.kasuminova.astd.ui.dsl.HullmodThemes
+import cn.kasuminova.astd.ui.dsl.HullmodTooltipSpec
 import cn.kasuminova.astd.ui.dsl.hullmodCard
+import cn.kasuminova.astd.ui.dsl.hullmodTooltip
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseHullMod
 import com.fs.starfarer.api.combat.ShipAPI
@@ -133,11 +135,7 @@ class ASTDGravPhaseDeckHullMod : BaseHullMod() {
         width: Float,
         isForModSpec: Boolean,
     ) {
-        tooltip.hullmodCard(width, THEME, spec?.displayName) {
-            para("ui.hullmod.grav_phase_deck.summary")
-            para("ui.hullmod.grav_phase_deck.line.1")
-            para("ui.hullmod.grav_phase_deck.line.2")
-        }
+        tooltip.hullmodCard(width, THEME, spec?.displayName, TOOLTIP)
     }
 
     override fun isApplicableToShip(ship: ShipAPI): Boolean = ship.isZw103Ship()
@@ -162,6 +160,13 @@ class ASTDGravPhaseDeckHullMod : BaseHullMod() {
 
         /** 透镜线紫主题预设（与 [ASTDLensParallaxDecksHullMod] 一致，透镜协议视觉统一）。 */
         private val THEME = HullmodThemes.LENS
+
+        /** tooltip 卡片声明（静态内容）。 */
+        private val TOOLTIP: HullmodTooltipSpec = hullmodTooltip {
+            para("ui.hullmod.grav_phase_deck.summary")
+            para("ui.hullmod.grav_phase_deck.line.1")
+            para("ui.hullmod.grav_phase_deck.line.2")
+        }
 
         private fun ShipAPI?.isZw103Ship(): Boolean {
             val s = this ?: return false

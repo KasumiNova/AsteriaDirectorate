@@ -13,7 +13,9 @@ import cn.kasuminova.astd.renderer.effect.lens.GhostSignalWaveEffect
 import cn.kasuminova.astd.renderer.effect.lens.LensVfxTelemetry
 import cn.kasuminova.astd.renderer.shader.runtime.CombatShaderRuntime
 import cn.kasuminova.astd.ui.dsl.HullmodThemes
+import cn.kasuminova.astd.ui.dsl.HullmodTooltipSpec
 import cn.kasuminova.astd.ui.dsl.hullmodCard
+import cn.kasuminova.astd.ui.dsl.hullmodTooltip
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseHullMod
 import com.fs.starfarer.api.combat.CombatEngineAPI
@@ -164,6 +166,17 @@ class ASTDLensArrayCoreHullMod : BaseHullMod() {
         private const val MARK_PULSE_PERIOD = 1.2f
 
         private val THEME = HullmodThemes.LENS
+
+        /** tooltip 卡片声明（静态内容）。 */
+        private val TOOLTIP: HullmodTooltipSpec = hullmodTooltip {
+            para("ui.hullmod.lens_core.summary")
+            para("ui.hullmod.lens_core.line.1")
+            para("ui.hullmod.lens_core.line.2")
+            para("ui.hullmod.lens_core.line.3")
+            para("ui.hullmod.lens_core.line.4")
+            para("ui.hullmod.lens_core.line.5")
+            para("ui.hullmod.lens_core.line.6")
+        }
     }
 
     override fun advanceInCombat(ship: ShipAPI, amount: Float) {
@@ -414,15 +427,7 @@ class ASTDLensArrayCoreHullMod : BaseHullMod() {
         width: Float,
         isForModSpec: Boolean,
     ) {
-        tooltip.hullmodCard(width, THEME, spec?.displayName) {
-            para("ui.hullmod.lens_core.summary")
-            para("ui.hullmod.lens_core.line.1")
-            para("ui.hullmod.lens_core.line.2")
-            para("ui.hullmod.lens_core.line.3")
-            para("ui.hullmod.lens_core.line.4")
-            para("ui.hullmod.lens_core.line.5")
-            para("ui.hullmod.lens_core.line.6")
-        }
+        tooltip.hullmodCard(width, THEME, spec?.displayName, TOOLTIP)
     }
 
     override fun isApplicableToShip(ship: ShipAPI): Boolean = ship.isZw001Ship()

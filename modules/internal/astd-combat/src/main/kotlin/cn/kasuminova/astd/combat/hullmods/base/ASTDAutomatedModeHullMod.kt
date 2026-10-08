@@ -1,7 +1,9 @@
 package cn.kasuminova.astd.combat.hullmods.base
 
 import cn.kasuminova.astd.ui.dsl.HullmodThemes
+import cn.kasuminova.astd.ui.dsl.HullmodTooltipSpec
 import cn.kasuminova.astd.ui.dsl.hullmodCard
+import cn.kasuminova.astd.ui.dsl.hullmodTooltip
 import com.fs.starfarer.api.combat.BaseHullMod
 import com.fs.starfarer.api.combat.MutableShipStatsAPI
 import com.fs.starfarer.api.combat.ShipAPI
@@ -25,6 +27,13 @@ class ASTDAutomatedModeHullMod : BaseHullMod() {
 
     companion object {
         private val THEME = HullmodThemes.AUTOMATED
+
+        /** tooltip 卡片声明（静态内容）。 */
+        private val TOOLTIP: HullmodTooltipSpec = hullmodTooltip {
+            para("ui.hullmod.mode_automated.summary")
+            heading("ui.hullmod.export.section.mode")
+            para("ui.hullmod.mode_automated.hint")
+        }
     }
 
     override fun applyEffectsBeforeShipCreation(hullSize: ShipAPI.HullSize, stats: MutableShipStatsAPI, id: String) {
@@ -56,11 +65,7 @@ class ASTDAutomatedModeHullMod : BaseHullMod() {
         width: Float,
         isForModSpec: Boolean
     ) {
-        tooltip.hullmodCard(width, THEME, spec?.displayName) {
-            para("ui.hullmod.mode_automated.summary")
-            heading("ui.hullmod.export.section.mode")
-            para("ui.hullmod.mode_automated.hint")
-        }
+        tooltip.hullmodCard(width, THEME, spec?.displayName, TOOLTIP)
     }
 
     override fun getBorderColor(): Color = THEME.borderColor

@@ -4,7 +4,9 @@ import cn.kasuminova.astd.combat.hullmods.HullmodIncompatibility
 import cn.kasuminova.astd.combat.hullmods.base.IncompatibleHullmodStripper
 import cn.kasuminova.astd.internal.i18n.I18n
 import cn.kasuminova.astd.ui.dsl.HullmodThemes
+import cn.kasuminova.astd.ui.dsl.HullmodTooltipSpec
 import cn.kasuminova.astd.ui.dsl.hullmodCard
+import cn.kasuminova.astd.ui.dsl.hullmodTooltip
 import com.fs.starfarer.api.combat.BaseHullMod
 import com.fs.starfarer.api.combat.MutableShipStatsAPI
 import com.fs.starfarer.api.combat.ShipAPI
@@ -56,6 +58,40 @@ class ASTDArcAdvancedTargetingSystemHullMod : BaseHullMod() {
             HullmodIncompatibility.forbiddenByController(ASTDArcProductionShipIds.HULLMOD_ARC_ADVANCED_TARGETING_SYSTEM)
 
         private val THEME = HullmodThemes.ARC
+
+        /** tooltip 卡片声明：渲染源，同时经 ASTDArcProductionTooltipContracts 绑定供自动化文案核对。 */
+        val TOOLTIP: HullmodTooltipSpec = hullmodTooltip {
+            para("ui.hullmod.arc_advanced_targeting_system.summary")
+            heading("ui.hullmod.export.section.effect")
+            table {
+                row(
+                    "ui.hullmod.arc_advanced_targeting_system.attr.range",
+                    "ui.hullmod.arc_advanced_targeting_system.value.range",
+                )
+                row(
+                    "ui.hullmod.arc_advanced_targeting_system.attr.projectile_speed",
+                    "ui.hullmod.arc_advanced_targeting_system.value.projectile_speed",
+                )
+                row(
+                    "ui.hullmod.arc_advanced_targeting_system.attr.weapon_flux",
+                    "ui.hullmod.arc_advanced_targeting_system.value.weapon_flux",
+                )
+                row(
+                    "ui.hullmod.arc_advanced_targeting_system.attr.short_range",
+                    "ui.hullmod.arc_advanced_targeting_system.value.short_range",
+                )
+                row(
+                    "ui.hullmod.arc_advanced_targeting_system.attr.op_small",
+                    "ui.hullmod.arc_advanced_targeting_system.value.op_small",
+                )
+                row(
+                    "ui.hullmod.arc_advanced_targeting_system.attr.op_medium",
+                    "ui.hullmod.arc_advanced_targeting_system.value.op_medium",
+                )
+            }
+            heading("ui.hullmod.export.section.note")
+            para("ui.hullmod.arc_advanced_targeting_system.note")
+        }
 
         /**
          * 短射程武器基础射程补偿（纯函数）：基础射程 < [SHORT_RANGE_THRESHOLD] 时补偿
@@ -126,7 +162,7 @@ class ASTDArcAdvancedTargetingSystemHullMod : BaseHullMod() {
         width: Float,
         isForModSpec: Boolean
     ) {
-        tooltip.hullmodCard(width, THEME, spec?.displayName, ASTDArcProductionTooltipContracts.arcAdvancedTargetingSystem.card)
+        tooltip.hullmodCard(width, THEME, spec?.displayName, TOOLTIP)
     }
 
     override fun affectsOPCosts(): Boolean = true

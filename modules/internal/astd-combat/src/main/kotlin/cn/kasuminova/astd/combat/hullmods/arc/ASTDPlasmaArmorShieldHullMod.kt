@@ -3,7 +3,10 @@ package cn.kasuminova.astd.combat.hullmods.arc
 import cn.kasuminova.astd.combat.hullmods.HullmodIncompatibility
 import cn.kasuminova.astd.internal.i18n.I18n
 import cn.kasuminova.astd.ui.dsl.HullmodThemes
+import cn.kasuminova.astd.ui.dsl.HullmodTone
+import cn.kasuminova.astd.ui.dsl.HullmodTooltipSpec
 import cn.kasuminova.astd.ui.dsl.hullmodCard
+import cn.kasuminova.astd.ui.dsl.hullmodTooltip
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseHullMod
 import com.fs.starfarer.api.combat.BeamAPI
@@ -52,6 +55,67 @@ class ASTDPlasmaArmorShieldHullMod : BaseHullMod() {
         private val PREVENTED_DAMAGE_PURPLE = Color(176, 112, 255, 238)
 
         private val THEME = HullmodThemes.ARC_PRISM
+
+        /** tooltip 卡片声明：渲染源，同时经 ASTDArcProductionTooltipContracts 绑定供自动化文案核对。 */
+        val TOOLTIP: HullmodTooltipSpec = hullmodTooltip(showTitle = false) {
+            heading("ui.hullmod.plasma_armor_shield.section.directional_armor")
+            para("ui.hullmod.plasma_armor_shield.line.directional_armor")
+            table(
+                headerAKey = "ui.hullmod.plasma_armor_shield.table.direction.header_a",
+                headerBKey = "ui.hullmod.plasma_armor_shield.table.direction.header_b",
+            ) {
+                row(
+                    "ui.hullmod.plasma_armor_shield.table.direction.row_0.label",
+                    "ui.hullmod.plasma_armor_shield.table.direction.row_0.value",
+                    tone = HullmodTone.WARNING,
+                )
+                row(
+                    "ui.hullmod.plasma_armor_shield.table.direction.row_1.label",
+                    "ui.hullmod.plasma_armor_shield.table.direction.row_1.value",
+                    tone = HullmodTone.WARNING,
+                )
+                row(
+                    "ui.hullmod.plasma_armor_shield.table.direction.row_2.label",
+                    "ui.hullmod.plasma_armor_shield.table.direction.row_2.value",
+                    tone = HullmodTone.WARNING,
+                )
+            }
+            heading("ui.hullmod.plasma_armor_shield.section.effect")
+            para("ui.hullmod.plasma_armor_shield.line.shield_damage_type")
+            table(
+                headerAKey = "ui.hullmod.plasma_armor_shield.table.shield_damage.header_a",
+                headerBKey = "ui.hullmod.plasma_armor_shield.table.shield_damage.header_b",
+            ) {
+                row(
+                    "ui.hullmod.plasma_armor_shield.table.shield_damage.row_0.label",
+                    "ui.hullmod.plasma_armor_shield.table.shield_damage.row_0.value",
+                    tone = HullmodTone.WARNING,
+                )
+                row(
+                    "ui.hullmod.plasma_armor_shield.table.shield_damage.row_1.label",
+                    "ui.hullmod.plasma_armor_shield.table.shield_damage.row_1.value",
+                    tone = HullmodTone.WARNING,
+                )
+                row(
+                    "ui.hullmod.plasma_armor_shield.table.shield_damage.row_2.label",
+                    "ui.hullmod.plasma_armor_shield.table.shield_damage.row_2.value",
+                    tone = HullmodTone.WARNING,
+                )
+                row(
+                    "ui.hullmod.plasma_armor_shield.table.shield_damage.row_3.label",
+                    "ui.hullmod.plasma_armor_shield.table.shield_damage.row_3.value",
+                    tone = HullmodTone.WARNING,
+                )
+            }
+            heading("ui.hullmod.plasma_armor_shield.section.limits")
+            para("ui.hullmod.plasma_armor_shield.line.limits")
+            para("ui.hullmod.plasma_armor_shield.line.limit_hardened_shields")
+            para("ui.hullmod.plasma_armor_shield.line.limit_shield_shunt")
+            para(
+                "ui.hullmod.plasma_armor_shield.line.max_armor_penalty",
+                hl("50%", HullmodTone.WARNING),
+            )
+        }
 
         internal fun boostLevel(ship: ShipAPI): Float =
             (ship.customData[ASTDArcProductionShipIds.DATA_PLASMA_SHIELD_BOOST_LEVEL] as? Float ?: 0f).coerceIn(0f, 1f)
@@ -156,7 +220,7 @@ class ASTDPlasmaArmorShieldHullMod : BaseHullMod() {
         width: Float,
         isForModSpec: Boolean
     ) {
-        tooltip.hullmodCard(width, THEME, spec?.displayName, ASTDArcProductionTooltipContracts.plasmaArmorShield.card)
+        tooltip.hullmodCard(width, THEME, spec?.displayName, TOOLTIP)
     }
 
     override fun getBorderColor(): Color = THEME.borderColor

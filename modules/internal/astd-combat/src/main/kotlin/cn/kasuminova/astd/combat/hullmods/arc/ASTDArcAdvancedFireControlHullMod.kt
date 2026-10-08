@@ -1,7 +1,9 @@
 package cn.kasuminova.astd.combat.hullmods.arc
 
 import cn.kasuminova.astd.ui.dsl.HullmodThemes
+import cn.kasuminova.astd.ui.dsl.HullmodTooltipSpec
 import cn.kasuminova.astd.ui.dsl.hullmodCard
+import cn.kasuminova.astd.ui.dsl.hullmodTooltip
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseHullMod
 import com.fs.starfarer.api.combat.MutableShipStatsAPI
@@ -22,6 +24,27 @@ class ASTDArcAdvancedFireControlHullMod : BaseHullMod() {
         private const val RAMP_KEY = "astd_arc_advanced_fire_control_ramp:"
 
         private val THEME = HullmodThemes.ARC
+
+        /** tooltip 卡片声明：渲染源，同时经 ASTDArcProductionTooltipContracts 绑定供自动化文案核对。 */
+        val TOOLTIP: HullmodTooltipSpec = hullmodTooltip {
+            para("ui.hullmod.arc_advanced_fire_control.summary")
+            heading("ui.hullmod.export.section.effect")
+            table {
+                row(
+                    "ui.hullmod.arc_advanced_fire_control.attr.weapon_flux",
+                    "ui.hullmod.arc_advanced_fire_control.value.weapon_flux",
+                )
+                row(
+                    "ui.hullmod.arc_advanced_fire_control.attr.weapon_rate",
+                    "ui.hullmod.arc_advanced_fire_control.value.weapon_rate",
+                )
+                row(
+                    "ui.hullmod.arc_advanced_fire_control.attr.ramp",
+                    "ui.hullmod.arc_advanced_fire_control.value.ramp",
+                )
+            }
+            para("ui.hullmod.arc_advanced_fire_control.note")
+        }
     }
 
     override fun applyEffectsBeforeShipCreation(hullSize: ShipAPI.HullSize, stats: MutableShipStatsAPI, id: String) {
@@ -115,7 +138,7 @@ class ASTDArcAdvancedFireControlHullMod : BaseHullMod() {
         width: Float,
         isForModSpec: Boolean
     ) {
-        tooltip.hullmodCard(width, THEME, spec?.displayName, ASTDArcProductionTooltipContracts.arcAdvancedFireControl.card)
+        tooltip.hullmodCard(width, THEME, spec?.displayName, TOOLTIP)
     }
 
     override fun showInRefitScreenModPickerFor(ship: ShipAPI): Boolean = false

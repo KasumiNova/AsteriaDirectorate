@@ -6,7 +6,10 @@ import cn.kasuminova.astd.impl.render.BloomFlareSpec
 import cn.kasuminova.astd.impl.render.BoxFlareStyle
 import cn.kasuminova.astd.renderer.effect.explosion.BloomFlareVfxImpl
 import cn.kasuminova.astd.ui.dsl.HullmodThemes
+import cn.kasuminova.astd.ui.dsl.HullmodTone
+import cn.kasuminova.astd.ui.dsl.HullmodTooltipSpec
 import cn.kasuminova.astd.ui.dsl.hullmodCard
+import cn.kasuminova.astd.ui.dsl.hullmodTooltip
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseHullMod
 import com.fs.starfarer.api.combat.BeamAPI
@@ -64,6 +67,57 @@ class ASTDIonizedRecoilAccumulatorHullMod : BaseHullMod() {
         private val ENDPOINT_FLARE_FRINGE = ASTDColor(0xDC5AD2FF)
 
         private val THEME = HullmodThemes.ARC_PRISM
+
+        /** tooltip 卡片声明：渲染源，同时经 ASTDArcProductionTooltipContracts 绑定供自动化文案核对。 */
+        val TOOLTIP: HullmodTooltipSpec = hullmodTooltip(showTitle = false) {
+            heading("ui.hullmod.ionized_recoil_accumulator.section.effect")
+            para("ui.hullmod.ionized_recoil_accumulator.line.proc_intro")
+            table(
+                headerAKey = "ui.hullmod.ionized_recoil_accumulator.table.flux.header_a",
+                headerBKey = "ui.hullmod.ionized_recoil_accumulator.table.flux.header_b",
+            ) {
+                row(
+                    "ui.hullmod.ionized_recoil_accumulator.table.flux.row_0.label",
+                    "ui.hullmod.ionized_recoil_accumulator.table.flux.row_0.value",
+                    tone = HullmodTone.WARNING,
+                )
+                row(
+                    "ui.hullmod.ionized_recoil_accumulator.table.flux.row_1.label",
+                    "ui.hullmod.ionized_recoil_accumulator.table.flux.row_1.value",
+                    tone = HullmodTone.WARNING,
+                )
+                row(
+                    "ui.hullmod.ionized_recoil_accumulator.table.flux.row_2.label",
+                    "ui.hullmod.ionized_recoil_accumulator.table.flux.row_2.value",
+                    tone = HullmodTone.WARNING,
+                )
+            }
+            para(
+                "ui.hullmod.ionized_recoil_accumulator.line.beam_proc",
+                hl("90%", HullmodTone.WARNING),
+            )
+            para("ui.hullmod.ionized_recoil_accumulator.line.damage_proc")
+            heading("ui.hullmod.ionized_recoil_accumulator.section.flux_damage")
+            para(
+                "ui.hullmod.ionized_recoil_accumulator.line.flux_conversion",
+                // 高亮声明序必须与文本序一致（I18nUi 前向 indexOf 匹配），否则丢色
+                hl("3%", HullmodTone.WARNING),
+                hl("等额", HullmodTone.WARNING),
+                hl("800su", HullmodTone.WARNING),
+                hl("能量武器射程", HullmodTone.WARNING),
+                hl("能量伤害", HullmodTone.WARNING),
+            )
+            para(
+                "ui.hullmod.ionized_recoil_accumulator.line.damage",
+                hl("100%", HullmodTone.WARNING),
+                hl("200%", HullmodTone.WARNING),
+            )
+            para("ui.hullmod.ionized_recoil_accumulator.line.targeting")
+            para(
+                "ui.hullmod.ionized_recoil_accumulator.line.cooldown",
+                hl("1s", HullmodTone.WARNING),
+            )
+        }
     }
 
     override fun advanceInCombat(ship: ShipAPI, amount: Float) {
@@ -86,7 +140,7 @@ class ASTDIonizedRecoilAccumulatorHullMod : BaseHullMod() {
         width: Float,
         isForModSpec: Boolean
     ) {
-        tooltip.hullmodCard(width, THEME, spec?.displayName, ASTDArcProductionTooltipContracts.ionizedRecoilAccumulator.card)
+        tooltip.hullmodCard(width, THEME, spec?.displayName, TOOLTIP)
     }
 
     override fun getBorderColor(): Color = THEME.borderColor
