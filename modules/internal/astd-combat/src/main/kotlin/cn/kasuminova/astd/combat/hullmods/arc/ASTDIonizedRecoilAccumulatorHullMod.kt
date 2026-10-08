@@ -7,9 +7,7 @@ import cn.kasuminova.astd.impl.render.BoxFlareStyle
 import cn.kasuminova.astd.renderer.effect.explosion.BloomFlareVfxImpl
 import cn.kasuminova.astd.ui.dsl.HullmodThemes
 import cn.kasuminova.astd.ui.dsl.HullmodTone
-import cn.kasuminova.astd.ui.dsl.HullmodTooltipSpec
 import cn.kasuminova.astd.ui.dsl.hullmodCard
-import cn.kasuminova.astd.ui.dsl.hullmodTooltip
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseHullMod
 import com.fs.starfarer.api.combat.BeamAPI
@@ -67,9 +65,29 @@ class ASTDIonizedRecoilAccumulatorHullMod : BaseHullMod() {
         private val ENDPOINT_FLARE_FRINGE = ASTDColor(0xDC5AD2FF)
 
         private val THEME = HullmodThemes.ARC_PRISM
+    }
 
-        /** tooltip 卡片声明：渲染源，同时经 ASTDArcProductionTooltipContracts 绑定供自动化文案核对。 */
-        val TOOLTIP: HullmodTooltipSpec = hullmodTooltip(showTitle = false) {
+    override fun advanceInCombat(ship: ShipAPI, amount: Float) {
+        if (ship.isHulk || !ship.isAlive) return
+        if (!ASTDArcAuraUtil.isArcProductionHull(ship, ASTDArcProductionShipIds.HULL_XC_101)) return
+        if (!ship.hasListenerOfClass(IonizedRecoilListener::class.java)) {
+            ship.addListener(IonizedRecoilListener(ship))
+        }
+    }
+
+    override fun isApplicableToShip(ship: ShipAPI): Boolean =
+        ASTDArcAuraUtil.isArcProductionHull(ship, ASTDArcProductionShipIds.HULL_XC_101)
+
+    override fun showInRefitScreenModPickerFor(ship: ShipAPI): Boolean = false
+
+    override fun addPostDescriptionSection(
+        tooltip: TooltipMakerAPI,
+        hullSize: ShipAPI.HullSize,
+        ship: ShipAPI?,
+        width: Float,
+        isForModSpec: Boolean
+    ) {
+        tooltip.hullmodCard(width, THEME, null) {
             heading("ui.hullmod.ionized_recoil_accumulator.section.effect")
             para("ui.hullmod.ionized_recoil_accumulator.line.proc_intro")
             table(
@@ -118,29 +136,6 @@ class ASTDIonizedRecoilAccumulatorHullMod : BaseHullMod() {
                 hl("1s", HullmodTone.WARNING),
             )
         }
-    }
-
-    override fun advanceInCombat(ship: ShipAPI, amount: Float) {
-        if (ship.isHulk || !ship.isAlive) return
-        if (!ASTDArcAuraUtil.isArcProductionHull(ship, ASTDArcProductionShipIds.HULL_XC_101)) return
-        if (!ship.hasListenerOfClass(IonizedRecoilListener::class.java)) {
-            ship.addListener(IonizedRecoilListener(ship))
-        }
-    }
-
-    override fun isApplicableToShip(ship: ShipAPI): Boolean =
-        ASTDArcAuraUtil.isArcProductionHull(ship, ASTDArcProductionShipIds.HULL_XC_101)
-
-    override fun showInRefitScreenModPickerFor(ship: ShipAPI): Boolean = false
-
-    override fun addPostDescriptionSection(
-        tooltip: TooltipMakerAPI,
-        hullSize: ShipAPI.HullSize,
-        ship: ShipAPI?,
-        width: Float,
-        isForModSpec: Boolean
-    ) {
-        tooltip.hullmodCard(width, THEME, spec?.displayName, TOOLTIP)
     }
 
     override fun getBorderColor(): Color = THEME.borderColor

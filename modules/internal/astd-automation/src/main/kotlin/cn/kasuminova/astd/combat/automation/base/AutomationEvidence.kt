@@ -1,7 +1,5 @@
 package cn.kasuminova.astd.combat.automation.base
 
-import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcProductionTooltipContracts
-import cn.kasuminova.astd.internal.i18n.I18n
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.combat.ShipCommand
@@ -89,34 +87,12 @@ object AutomationEvidence {
         lockCameraAt(engine, ARC_PRODUCTION_CAMERA_CENTER, ARC_PRODUCTION_CAMERA_VISIBLE_HEIGHT)
     }
 
-    /** tooltip 契约核对：舰体已挂载契约 hullmod 且全部文本键已解析。 */
-    fun tooltipBlocksResolved(engine: CombatEngineAPI, hullId: String, contracts: List<ASTDArcProductionTooltipContracts.Contract>): Boolean {
-        val ship = findShipByHull(engine, hullId) ?: return false
-        return contracts.all { contract ->
-            hasHullmod(ship, contract.hullmodId) && contract.textKeys.all { key -> isResolvedTextKey(key) }
-        }
-    }
-
-    /** tooltip 契约已解析文本键计数（仅统计已挂载 hullmod 的契约）。 */
-    fun tooltipResolvedKeyCount(engine: CombatEngineAPI, hullId: String, contracts: List<ASTDArcProductionTooltipContracts.Contract>): Int {
-        val ship = findShipByHull(engine, hullId) ?: return 0
-        return contracts
-            .filter { hasHullmod(ship, it.hullmodId) }
-            .sumOf { contract -> contract.textKeys.count { key -> isResolvedTextKey(key) } }
-    }
-
     fun hasHullmod(ship: ShipAPI, hullmodId: String): Boolean =
         try {
             ship.variant?.hasHullMod(hullmodId) == true
         } catch (_: Throwable) {
             false
         }
-
-    /** 文本键已在 MOD 分类下解析（非空且不等于「分类:键」的未解析回退串）。 */
-    fun isResolvedTextKey(key: String): Boolean {
-        val text = I18n[I18n.Categories.MOD, key]
-        return text.isNotBlank() && text != "${I18n.Categories.MOD.id}:$key"
-    }
 
     fun jsonString(value: String?): String = value?.let { "\"${escapeJson(it)}\"" } ?: "null"
 

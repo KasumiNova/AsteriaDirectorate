@@ -132,12 +132,6 @@ class LensPhase1Scenario : AbstractAutomationScenario() {
         }
     }
 
-    private fun lensCoreTooltipKeyCount(engine: CombatEngineAPI): Int {
-        val ship = findShipByHull(engine, LensArrayCoreHullModIds.HULL_ID) ?: return 0
-        if (!hasHullmod(ship, LensArrayCoreHullModIds.CORE)) return 0
-        return LENS_CORE_TOOLTIP_KEYS.count { key -> isResolvedTextKey(key) }
-    }
-
     override fun renderCapture(ctx: AutomationCombatContext) {
         renderCompletedFrames(0.18f, { findShipByHull(ctx.engine, LensArrayCoreHullModIds.HULL_ID) }) {
             lockArcProductionCamera(ctx.engine)
@@ -187,7 +181,6 @@ class LensPhase1Scenario : AbstractAutomationScenario() {
                 }
             },"
         )
-        json.appendLine("  \"lensCoreTooltipKeys\": ${lensCoreTooltipKeyCount(engine)},")
         json.appendLine("  \"lensSelfDriftStacks\": ${lens?.let { LensMarks.driftStacks(it) } ?: 0},")
         json.appendLine("  \"lensSelfDeepWaterStacks\": ${lens?.let { LensMarks.deepWaterStacks(it) } ?: 0},")
         json.appendLine(
@@ -206,15 +199,5 @@ class LensPhase1Scenario : AbstractAutomationScenario() {
     private companion object {
         // 决明级自标记验收层数（spec：误差/深水各叠 3 层）。
         private const val LENS_SELF_MARK_STACKS = 3
-        // 透镜阵列核心 hullmod tooltip 文本 key（与 ASTDLensArrayCoreHullMod.addPostDescriptionSection 一致，共 7 个）。
-        private val LENS_CORE_TOOLTIP_KEYS = listOf(
-            "ui.hullmod.lens_core.summary",
-            "ui.hullmod.lens_core.line.1",
-            "ui.hullmod.lens_core.line.2",
-            "ui.hullmod.lens_core.line.3",
-            "ui.hullmod.lens_core.line.4",
-            "ui.hullmod.lens_core.line.5",
-            "ui.hullmod.lens_core.line.6",
-        )
     }
 }

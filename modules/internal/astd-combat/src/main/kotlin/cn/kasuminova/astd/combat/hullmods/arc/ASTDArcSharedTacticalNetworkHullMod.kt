@@ -1,9 +1,7 @@
 package cn.kasuminova.astd.combat.hullmods.arc
 
 import cn.kasuminova.astd.ui.dsl.HullmodThemes
-import cn.kasuminova.astd.ui.dsl.HullmodTooltipSpec
 import cn.kasuminova.astd.ui.dsl.hullmodCard
-import cn.kasuminova.astd.ui.dsl.hullmodTooltip
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseHullMod
 import com.fs.starfarer.api.combat.CombatEngineAPI
@@ -30,35 +28,6 @@ class ASTDArcSharedTacticalNetworkHullMod : BaseHullMod() {
         )
 
         private val THEME = HullmodThemes.ARC
-
-        /** tooltip 卡片声明：渲染源，同时经 ASTDArcProductionTooltipContracts 绑定供自动化文案核对。 */
-        val TOOLTIP: HullmodTooltipSpec = hullmodTooltip {
-            para("ui.hullmod.arc_shared_tactical_network.summary")
-            heading("ui.hullmod.export.section.effect")
-            table {
-                row(
-                    "ui.hullmod.arc_shared_tactical_network.attr.network",
-                    "ui.hullmod.arc_shared_tactical_network.value.network",
-                )
-                row(
-                    "ui.hullmod.arc_shared_tactical_network.attr.command",
-                    "ui.hullmod.arc_shared_tactical_network.value.command",
-                )
-                row(
-                    "ui.hullmod.arc_shared_tactical_network.attr.frigate",
-                    "ui.hullmod.arc_shared_tactical_network.value.frigate",
-                )
-                row(
-                    "ui.hullmod.arc_shared_tactical_network.attr.destroyer",
-                    "ui.hullmod.arc_shared_tactical_network.value.destroyer",
-                )
-                row(
-                    "ui.hullmod.arc_shared_tactical_network.attr.cruiser",
-                    "ui.hullmod.arc_shared_tactical_network.value.cruiser",
-                )
-            }
-            para("ui.hullmod.arc_shared_tactical_network.note")
-        }
     }
 
     override fun applyEffectsBeforeShipCreation(hullSize: ShipAPI.HullSize, stats: MutableShipStatsAPI, id: String) {
@@ -188,7 +157,33 @@ class ASTDArcSharedTacticalNetworkHullMod : BaseHullMod() {
         width: Float,
         isForModSpec: Boolean
     ) {
-        tooltip.hullmodCard(width, THEME, spec?.displayName, TOOLTIP)
+        tooltip.hullmodCard(width, THEME, spec?.displayName) {
+            para("ui.hullmod.arc_shared_tactical_network.summary")
+            heading("ui.hullmod.export.section.effect")
+            table {
+                row(
+                    "ui.hullmod.arc_shared_tactical_network.attr.network",
+                    "ui.hullmod.arc_shared_tactical_network.value.network",
+                )
+                row(
+                    "ui.hullmod.arc_shared_tactical_network.attr.command",
+                    "ui.hullmod.arc_shared_tactical_network.value.command",
+                )
+                row(
+                    "ui.hullmod.arc_shared_tactical_network.attr.frigate",
+                    "ui.hullmod.arc_shared_tactical_network.value.frigate",
+                )
+                row(
+                    "ui.hullmod.arc_shared_tactical_network.attr.destroyer",
+                    "ui.hullmod.arc_shared_tactical_network.value.destroyer",
+                )
+                row(
+                    "ui.hullmod.arc_shared_tactical_network.attr.cruiser",
+                    "ui.hullmod.arc_shared_tactical_network.value.cruiser",
+                )
+            }
+            para("ui.hullmod.arc_shared_tactical_network.note")
+        }
     }
 
     override fun showInRefitScreenModPickerFor(ship: ShipAPI): Boolean = false

@@ -8,9 +8,7 @@ import cn.kasuminova.astd.renderer.effect.lens.LensVfxTelemetry
 import cn.kasuminova.astd.renderer.effect.lens.PermeatingTideFieldEffect
 import cn.kasuminova.astd.renderer.shader.runtime.CombatShaderRuntime
 import cn.kasuminova.astd.ui.dsl.HullmodThemes
-import cn.kasuminova.astd.ui.dsl.HullmodTooltipSpec
 import cn.kasuminova.astd.ui.dsl.hullmodCard
-import cn.kasuminova.astd.ui.dsl.hullmodTooltip
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseHullMod
 import com.fs.starfarer.api.combat.CombatEngineAPI
@@ -179,7 +177,12 @@ class ASTDLensPermeatingTideHullMod : BaseHullMod() {
         width: Float,
         isForModSpec: Boolean,
     ) {
-        tooltip.hullmodCard(width, THEME, spec?.displayName, TOOLTIP)
+        tooltip.hullmodCard(width, THEME, spec?.displayName) {
+            para("ui.hullmod.lens_permeating_tide.summary")
+            para("ui.hullmod.lens_permeating_tide.line.1")
+            para("ui.hullmod.lens_permeating_tide.line.2")
+            para("ui.hullmod.lens_permeating_tide.line.3")
+        }
     }
 
     override fun isApplicableToShip(ship: ShipAPI): Boolean = ship.isZw001Ship()
@@ -199,13 +202,5 @@ class ASTDLensPermeatingTideHullMod : BaseHullMod() {
 
         /** 透镜线紫主题预设（与 [ASTDLensArrayCoreHullMod] / [ASTDLensParallaxDecksHullMod] 一致，透镜协议视觉统一）。 */
         private val THEME = HullmodThemes.LENS
-
-        /** tooltip 卡片声明（静态内容）。 */
-        private val TOOLTIP: HullmodTooltipSpec = hullmodTooltip {
-            para("ui.hullmod.lens_permeating_tide.summary")
-            para("ui.hullmod.lens_permeating_tide.line.1")
-            para("ui.hullmod.lens_permeating_tide.line.2")
-            para("ui.hullmod.lens_permeating_tide.line.3")
-        }
     }
 }

@@ -2,9 +2,7 @@ package cn.kasuminova.astd.combat.hullmods.lens
 
 import cn.kasuminova.astd.combat.lens.marks.LensMarks
 import cn.kasuminova.astd.ui.dsl.HullmodThemes
-import cn.kasuminova.astd.ui.dsl.HullmodTooltipSpec
 import cn.kasuminova.astd.ui.dsl.hullmodCard
-import cn.kasuminova.astd.ui.dsl.hullmodTooltip
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseHullMod
 import com.fs.starfarer.api.combat.CombatEntityAPI
@@ -185,7 +183,12 @@ class ASTDLensParallaxDecksHullMod : BaseHullMod() {
         width: Float,
         isForModSpec: Boolean,
     ) {
-        tooltip.hullmodCard(width, THEME, spec?.displayName, TOOLTIP)
+        tooltip.hullmodCard(width, THEME, spec?.displayName) {
+            para("ui.hullmod.lens_parallax_decks.summary")
+            para("ui.hullmod.lens_parallax_decks.line.1")
+            para("ui.hullmod.lens_parallax_decks.line.2")
+            para("ui.hullmod.lens_parallax_decks.line.3")
+        }
     }
 
     override fun isApplicableToShip(ship: ShipAPI): Boolean = ship.isZw001Ship()
@@ -205,13 +208,5 @@ class ASTDLensParallaxDecksHullMod : BaseHullMod() {
 
         /** 透镜线紫主题预设（与 [ASTDLensArrayCoreHullMod] 一致，透镜协议视觉统一）。 */
         private val THEME = HullmodThemes.LENS
-
-        /** tooltip 卡片声明（静态内容）。 */
-        private val TOOLTIP: HullmodTooltipSpec = hullmodTooltip {
-            para("ui.hullmod.lens_parallax_decks.summary")
-            para("ui.hullmod.lens_parallax_decks.line.1")
-            para("ui.hullmod.lens_parallax_decks.line.2")
-            para("ui.hullmod.lens_parallax_decks.line.3")
-        }
     }
 }

@@ -6,9 +6,7 @@ import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import cn.kasuminova.astd.internal.i18n.I18n
 import cn.kasuminova.astd.renderer.effect.system.Xc002GhostWingsEffect
 import cn.kasuminova.astd.ui.dsl.HullmodThemes
-import cn.kasuminova.astd.ui.dsl.HullmodTooltipSpec
 import cn.kasuminova.astd.ui.dsl.hullmodCard
-import cn.kasuminova.astd.ui.dsl.hullmodTooltip
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseHullMod
 import com.fs.starfarer.api.combat.ShipAPI
@@ -97,7 +95,13 @@ class ASTDImaginaryWingsHullMod : BaseHullMod() {
         width: Float,
         isForModSpec: Boolean,
     ) {
-        tooltip.hullmodCard(width, THEME, spec?.displayName, TOOLTIP)
+        tooltip.hullmodCard(width, THEME, spec?.displayName) {
+            para("ui.hullmod.imaginary_wings.summary")
+            heading("ui.hullmod.export.section.effect")
+            para("ui.hullmod.imaginary_wings.line.1", 4f)
+            para("ui.hullmod.imaginary_wings.line.2", 2f)
+            para("ui.hullmod.imaginary_wings.line.3", 2f)
+        }
     }
 
     override fun showInRefitScreenModPickerFor(ship: ShipAPI): Boolean = false
@@ -130,15 +134,6 @@ class ASTDImaginaryWingsHullMod : BaseHullMod() {
         private val feedback: CombatFeedback = CombatFeedbackImpl
 
         private val THEME = HullmodThemes.IMAGINARY
-
-        /** tooltip 卡片声明（静态内容）。 */
-        private val TOOLTIP: HullmodTooltipSpec = hullmodTooltip {
-            para("ui.hullmod.imaginary_wings.summary")
-            heading("ui.hullmod.export.section.effect")
-            para("ui.hullmod.imaginary_wings.line.1", 4f)
-            para("ui.hullmod.imaginary_wings.line.2", 2f)
-            para("ui.hullmod.imaginary_wings.line.3", 2f)
-        }
 
         /** 百分比显示格式：整数去小数点（如 100 / 12.5）；[signed] 时附带正负号。 */
         private fun formatPercent(value: Float, signed: Boolean = false): String {

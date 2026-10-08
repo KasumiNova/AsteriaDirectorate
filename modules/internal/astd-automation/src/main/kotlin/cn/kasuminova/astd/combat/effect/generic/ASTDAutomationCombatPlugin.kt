@@ -8,8 +8,6 @@ import cn.kasuminova.astd.combat.automation.api.PausePolicy
 import cn.kasuminova.astd.combat.automation.api.StarfallEchoStageAccess
 import cn.kasuminova.astd.combat.automation.base.AutomationEvidence
 import cn.kasuminova.astd.combat.automation.base.StarfallEchoStage
-import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcProductionShipIds
-import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcProductionTooltipContracts
 import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcProductionVfx
 import cn.kasuminova.astd.internal.debug.ASTDInGameAutomationScenario
 import cn.kasuminova.astd.renderer.projectile.driver.ProjectileVfxDriverPlugin
@@ -224,47 +222,11 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin(), AutomationComba
                     )
                 },"
             )
-            val xc102TooltipKeys = tooltipResolvedKeyCount(ASTDArcProductionShipIds.HULL_XC_102, ASTDArcProductionTooltipContracts.xc102Contracts)
-            val xc101TooltipKeys = tooltipResolvedKeyCount(ASTDArcProductionShipIds.HULL_XC_101, ASTDArcProductionTooltipContracts.xc101Contracts)
-            val xc103TooltipKeys = tooltipResolvedKeyCount(ASTDArcProductionShipIds.HULL_XC_103, ASTDArcProductionTooltipContracts.xc103Contracts)
-            appendLine(
-                "  \"xc102Tooltip\": ${
-                    tooltipBlocksResolved(
-                        ASTDArcProductionShipIds.HULL_XC_102,
-                        ASTDArcProductionTooltipContracts.xc102Contracts
-                    )
-                },"
-            )
-            appendLine(
-                "  \"xc101Tooltip\": ${
-                    tooltipBlocksResolved(
-                        ASTDArcProductionShipIds.HULL_XC_101,
-                        ASTDArcProductionTooltipContracts.xc101Contracts
-                    )
-                },"
-            )
-            appendLine(
-                "  \"xc103Tooltip\": ${
-                    tooltipBlocksResolved(
-                        ASTDArcProductionShipIds.HULL_XC_103,
-                        ASTDArcProductionTooltipContracts.xc103Contracts
-                    )
-                },"
-            )
-            appendLine("  \"xc102TooltipKeys\": $xc102TooltipKeys,")
-            appendLine("  \"xc101TooltipKeys\": $xc101TooltipKeys,")
-            appendLine("  \"xc103TooltipKeys\": $xc103TooltipKeys,")
             appendLine("  \"elapsedSeconds\": ${"%.3f".format(java.util.Locale.ROOT, elapsed)}")
             appendLine("}")
         }
         log.info("[ASTD-Automation] diagnostics state=$state json=${json.lines().joinToString(" ")}")
     }
-
-    private fun tooltipBlocksResolved(hullId: String, contracts: List<ASTDArcProductionTooltipContracts.Contract>): Boolean =
-        AutomationEvidence.tooltipBlocksResolved(engine, hullId, contracts)
-
-    private fun tooltipResolvedKeyCount(hullId: String, contracts: List<ASTDArcProductionTooltipContracts.Contract>): Int =
-        AutomationEvidence.tooltipResolvedKeyCount(engine, hullId, contracts)
 
     private fun jsonString(value: String?): String = AutomationEvidence.jsonString(value)
 

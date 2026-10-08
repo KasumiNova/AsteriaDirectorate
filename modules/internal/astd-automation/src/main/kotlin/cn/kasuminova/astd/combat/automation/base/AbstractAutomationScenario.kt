@@ -2,7 +2,6 @@ package cn.kasuminova.astd.combat.automation.base
 
 import cn.kasuminova.astd.combat.automation.api.AutomationCombatContext
 import cn.kasuminova.astd.combat.automation.api.AutomationScenario
-import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcProductionTooltipContracts
 import cn.kasuminova.astd.renderer.projectile.driver.ProjectileVfxTelemetrySnapshot
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.ShipAPI
@@ -57,9 +56,6 @@ abstract class AbstractAutomationScenario : AutomationScenario {
     protected fun hasHullmod(ship: ShipAPI, hullmodId: String): Boolean =
         AutomationEvidence.hasHullmod(ship, hullmodId)
 
-    protected fun isResolvedTextKey(key: String): Boolean =
-        AutomationEvidence.isResolvedTextKey(key)
-
     protected fun formatFloat(value: Float): String = AutomationEvidence.formatFloat(value)
 
     protected fun jsonString(value: String?): String = AutomationEvidence.jsonString(value)
@@ -79,10 +75,4 @@ abstract class AbstractAutomationScenario : AutomationScenario {
         json.appendLine("  \"runtimeTrackedCount\": ${vfxTelemetry.trackedCount},")
         json.appendLine("  \"runtimeLastProjectileSpecId\": ${jsonString(vfxTelemetry.lastProjectileSpecId)},")
     }
-
-    protected fun tooltipBlocksResolved(hullId: String, contracts: List<ASTDArcProductionTooltipContracts.Contract>): Boolean =
-        AutomationEvidence.tooltipBlocksResolved(ctx.engine, hullId, contracts)
-
-    protected fun tooltipResolvedKeyCount(hullId: String, contracts: List<ASTDArcProductionTooltipContracts.Contract>): Int =
-        AutomationEvidence.tooltipResolvedKeyCount(ctx.engine, hullId, contracts)
 }

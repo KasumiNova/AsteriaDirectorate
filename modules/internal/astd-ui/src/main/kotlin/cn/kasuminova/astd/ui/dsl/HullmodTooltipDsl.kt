@@ -10,17 +10,15 @@ import java.awt.Color
 /**
  * Hullmod Tooltip 卡片 DSL——本模组全部船插 tooltip 的统一渲染风格与路径。
  *
- * 设计同构于 Dialog DSL（`dialogGraph { node(...) }`）：DSL 块先构建出**数据声明**
- * （[HullmodTooltipSpec]，可静态枚举文本键供自动化证据核对），再由统一渲染器落地到
- * [TooltipMakerAPI]；骨架（顶部间距 + 全息背景 + 标题）只存在于 [hullmodCard] 一处。
+ * 设计同构于 Dialog DSL（`dialogGraph { node(...) }`）：DSL 块先构建出数据声明
+ * （[HullmodTooltipSpec]），再由统一渲染器落地到 [TooltipMakerAPI]；
+ * 骨架（顶部间距 + 全息背景 + 标题）只存在于 [hullmodCard] 一处。
  *
- * 主推荐形态（静态卡片）：在所属 hullmod 类的 companion object 中把卡片声明为
- * `TOOLTIP` 常量，`addPostDescriptionSection` 只保留一行渲染调用：
+ * 用法：`addPostDescriptionSection` 内联声明卡片，**每次调用现场构建**——
+ * 刻意的每帧构建便于热重载调整后即时观察文案内容：
  * ```kotlin
- * companion object {
- *     private val THEME = HullmodThemes.ARC
- *
- *     private val TOOLTIP: HullmodTooltipSpec = hullmodTooltip {
+ * override fun addPostDescriptionSection(tooltip: TooltipMakerAPI, hullSize: ShipAPI.HullSize?, ship: ShipAPI?, width: Float, isForModSpec: Boolean) {
+ *     tooltip.hullmodCard(width, HullmodThemes.ARC, spec?.displayName) {
  *         para("ui.hullmod.example.summary")
  *         heading("ui.hullmod.export.section.effect")
  *         table {
@@ -28,23 +26,11 @@ import java.awt.Color
  *             row("ui.hullmod.example.attr.penalty", "ui.hullmod.example.value.penalty", tone = HullmodTone.WARNING)
  *         }
  *         para("ui.hullmod.example.note", hl("50%", HullmodTone.WARNING))
+ *         para("ui.hullmod.example.runtime", v("range", range), v("pct", percent(ratio)))
  *     }
  * }
- *
- * override fun addPostDescriptionSection(tooltip: TooltipMakerAPI, hullSize: ShipAPI.HullSize?, ship: ShipAPI?, width: Float, isForModSpec: Boolean) {
- *     tooltip.hullmodCard(width, THEME, spec?.displayName, TOOLTIP)
- * }
  * ```
- * 若卡片需经契约绑定（如 ARC 量产契约，自动化场景按 key 核对文案解析），把 `TOOLTIP`
- * 声明为 public 并在契约对象中引用（见 `ASTDArcProductionTooltipContracts`）。
- *
- * 仅当卡片内容依赖运行期数值（[HullmodCardBuilder.v] 注入的值需现场计算）时，才在
- * `addPostDescriptionSection` 内联 lambda 声明：
- * ```kotlin
- * tooltip.hullmodCard(width, HullmodThemes.ARC, spec?.displayName) {
- *     para("ui.hullmod.example.runtime", v("range", range), v("pct", percent(ratio)))
- * }
- * ```
+ * 标题栏由原版描述承接时（不渲染卡片标题），title 传 `null`。
  */
 
 // ========== 主题 ==========
@@ -168,40 +154,34 @@ sealed interface ParaArg
  * 静态高亮：把 i18n 文本中已烘焙的 [value] 片段着色。
  * 颜色二选一：显式 [color]，或按 [tone] 由主题解析；两者都缺省时按 WARNING 色处理。
  */
-class StaticHighlight(
+internal class StaticHighlight(
     val value: String,
     val color: Color?,
     val tone: HullmodTone,
 ) : ParaArg
 
 /** 运行期命名变量：对应 i18n 文本中的 `%name%` / `<param:#RRGGBB:name>` 标记（见 [I18n.tr]）。 */
-class RuntimeVar(val name: String, val value: Any?) : ParaArg
+internal class RuntimeVar(val name: String, val value: Any?) : ParaArg
 
-/** 卡片内容块：DSL 构建的数据节点，携带本块引用的全部 i18n 文本键（自动化证据枚举依赖）。 */
-sealed interface HullmodBlock {
-    val textKeys: List<String>
-}
+/** 卡片内容块：DSL 构建的数据节点（仅 [HullmodCardRenderer] 消费）。 */
+internal sealed interface HullmodBlock
 
 /** 段落块：i18n key + 行内参数（静态高亮/运行期变量）；[baseColor] 缺省为 `Misc.getTextColor()`。 */
-class ParaBlock(
+internal class ParaBlock(
     val key: String,
     val padTop: Float,
     val args: List<ParaArg>,
     val baseColor: Color? = null,
-) : HullmodBlock {
-    override val textKeys: List<String> get() = listOf(key)
-}
+) : HullmodBlock
 
 /** 分节标题块（i18n key，主题 sectionBackground 底色的通栏标题）。 */
-class HeadingBlock(
+internal class HeadingBlock(
     val key: String,
     val padTop: Float,
-) : HullmodBlock {
-    override val textKeys: List<String> get() = listOf(key)
-}
+) : HullmodBlock
 
 /** 双列表格行（i18n key；[labelTone]/[valueTone] 语义配色）。 */
-class TableRow(
+internal class TableRow(
     val labelKey: String,
     val valueKey: String,
     val labelTone: HullmodTone = HullmodTone.DEFAULT,
@@ -209,34 +189,24 @@ class TableRow(
 )
 
 /** 双列表格块（62/38 分栏、行高 24f、表头默认 属性/效果）。 */
-class TableBlock(
+internal class TableBlock(
     val headerAKey: String,
     val headerBKey: String,
     val rows: List<TableRow>,
     val padTop: Float,
-) : HullmodBlock {
-    override val textKeys: List<String>
-        get() = listOf(headerAKey, headerBKey) + rows.flatMap { listOf(it.labelKey, it.valueKey) }
-}
+) : HullmodBlock
 
 /** 垂直间距块（仅特殊排版需要；常规段落间距走各块 padTop）。 */
-class SpacerBlock(val height: Float) : HullmodBlock {
-    override val textKeys: List<String> get() = emptyList()
-}
+internal class SpacerBlock(val height: Float) : HullmodBlock
 
 /**
  * 一张 hullmod tooltip 卡片的完整声明（DSL 构建产物，纯数据）。
  *
- * @property showTitle 是否渲染卡片标题栏（标题文本取自渲染调用的 title 参数）。
- * @property textKeys 全部内容块引用的 i18n 文本键（自动化证据核对用，保持声明序去重）。
+ * @property blocks 卡片内容块（声明序即渲染序）。
  */
-class HullmodTooltipSpec(
-    val showTitle: Boolean,
-    /** 卡片内容块（声明序即渲染序）。 */
+internal class HullmodTooltipSpec(
     val blocks: List<HullmodBlock>,
-) {
-    val textKeys: Set<String> = blocks.flatMapTo(LinkedHashSet()) { it.textKeys }
-}
+)
 
 // ========== DSL 构建器 ==========
 
@@ -316,36 +286,26 @@ class HullmodTableBuilder {
     }
 }
 
-/** 声明式构建一张 hullmod tooltip 卡片（数据可复用、可枚举文本键）。 */
-fun hullmodTooltip(showTitle: Boolean = true, block: HullmodCardBuilder.() -> Unit): HullmodTooltipSpec {
+/** 构建一张 hullmod tooltip 卡片的数据声明（[hullmodCard] 的内部中间产物）。 */
+internal fun hullmodTooltip(block: HullmodCardBuilder.() -> Unit): HullmodTooltipSpec {
     val builder = HullmodCardBuilder()
     builder.block()
-    return HullmodTooltipSpec(showTitle, builder.blocks.toList())
+    return HullmodTooltipSpec(builder.blocks.toList())
 }
 
 // ========== 渲染入口 ==========
 
 /**
- * 渲染一张声明好的 hullmod 卡片：统一骨架（顶部间距 + 全息背景 + 可选标题栏）。
- * [title] 一般传 `spec?.displayName`；为空时跳过标题栏。
+ * 声明并渲染一张 hullmod 卡片：统一骨架（顶部间距 + 全息背景 + 可选标题栏）。
+ * [title] 一般传 `spec?.displayName`；为空时跳过标题栏（标题由原版描述承接的卡片传 `null`）。
  */
-fun TooltipMakerAPI.hullmodCard(
-    width: Float,
-    theme: HullmodTheme,
-    title: String?,
-    spec: HullmodTooltipSpec,
-) {
-    HullmodCardRenderer.render(this, width, title, theme, spec)
-}
-
-/** 内联声明并渲染一张 hullmod 卡片（等价于先 [hullmodTooltip] 再渲染）。 */
 fun TooltipMakerAPI.hullmodCard(
     width: Float,
     theme: HullmodTheme,
     title: String?,
     block: HullmodCardBuilder.() -> Unit,
 ) {
-    hullmodCard(width, theme, title, hullmodTooltip(block = block))
+    HullmodCardRenderer.render(this, width, title, theme, hullmodTooltip(block))
 }
 
 // ========== 渲染器（唯一落地路径） ==========
@@ -369,7 +329,7 @@ internal object HullmodCardRenderer {
         tooltip.buildWith {
             spacer(6f)
             withHullmodBackground(accentColor = theme.accentColor, width = width) {
-                if (spec.showTitle && !title.isNullOrEmpty()) {
+                if (!title.isNullOrEmpty()) {
                     heading(title, theme.nameColor, theme.headerBackground, 6f)
                 }
                 for (block in spec.blocks) {

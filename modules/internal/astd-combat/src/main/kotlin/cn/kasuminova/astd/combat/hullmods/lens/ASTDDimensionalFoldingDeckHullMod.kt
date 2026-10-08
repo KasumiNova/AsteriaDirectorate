@@ -2,9 +2,7 @@ package cn.kasuminova.astd.combat.hullmods.lens
 
 import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import cn.kasuminova.astd.ui.dsl.HullmodThemes
-import cn.kasuminova.astd.ui.dsl.HullmodTooltipSpec
 import cn.kasuminova.astd.ui.dsl.hullmodCard
-import cn.kasuminova.astd.ui.dsl.hullmodTooltip
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseHullMod
 import com.fs.starfarer.api.combat.FighterLaunchBayAPI
@@ -115,7 +113,11 @@ class ASTDDimensionalFoldingDeckHullMod : BaseHullMod() {
         width: Float,
         isForModSpec: Boolean,
     ) {
-        tooltip.hullmodCard(width, THEME, spec?.displayName, TOOLTIP)
+        tooltip.hullmodCard(width, THEME, spec?.displayName) {
+            para("ui.hullmod.dimensional_folding_deck.summary")
+            para("ui.hullmod.dimensional_folding_deck.line.1")
+            para("ui.hullmod.dimensional_folding_deck.line.2")
+        }
     }
 
     override fun isApplicableToShip(ship: ShipAPI): Boolean = ship.isZw102Ship()
@@ -141,13 +143,6 @@ class ASTDDimensionalFoldingDeckHullMod : BaseHullMod() {
 
         /** 透镜线紫主题预设（与透镜阵列核心一致，透镜协议视觉统一）。 */
         private val THEME = HullmodThemes.LENS
-
-        /** tooltip 卡片声明（静态内容）。 */
-        private val TOOLTIP: HullmodTooltipSpec = hullmodTooltip {
-            para("ui.hullmod.dimensional_folding_deck.summary")
-            para("ui.hullmod.dimensional_folding_deck.line.1")
-            para("ui.hullmod.dimensional_folding_deck.line.2")
-        }
     }
 }
 

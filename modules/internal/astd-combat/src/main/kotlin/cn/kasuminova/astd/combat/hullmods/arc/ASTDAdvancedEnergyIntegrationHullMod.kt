@@ -1,9 +1,7 @@
 package cn.kasuminova.astd.combat.hullmods.arc
 
 import cn.kasuminova.astd.ui.dsl.HullmodThemes
-import cn.kasuminova.astd.ui.dsl.HullmodTooltipSpec
 import cn.kasuminova.astd.ui.dsl.hullmodCard
-import cn.kasuminova.astd.ui.dsl.hullmodTooltip
 import com.fs.starfarer.api.combat.BaseHullMod
 import com.fs.starfarer.api.combat.MutableShipStatsAPI
 import com.fs.starfarer.api.combat.ShipAPI
@@ -34,18 +32,6 @@ class ASTDAdvancedEnergyIntegrationHullMod : BaseHullMod() {
         private const val LARGE_OP_DISCOUNT = -8f
 
         private val THEME = HullmodThemes.ARC
-
-        /** tooltip 卡片声明（静态内容）。 */
-        private val TOOLTIP: HullmodTooltipSpec = hullmodTooltip {
-            para("ui.hullmod.aei.summary")
-            heading("ui.hullmod.export.section.effect")
-            table {
-                row("ui.hullmod.aei.attr.op", "ui.hullmod.aei.value.op")
-                row("ui.hullmod.aei.attr.flux", "ui.hullmod.aei.value.flux")
-                row("ui.hullmod.aei.attr.projectile_speed", "ui.hullmod.aei.value.projectile_speed")
-                row("ui.hullmod.aei.attr.turn_rate", "ui.hullmod.aei.value.turn_rate")
-            }
-        }
     }
 
     override fun applyEffectsBeforeShipCreation(hullSize: ShipAPI.HullSize, stats: MutableShipStatsAPI, id: String) {
@@ -72,7 +58,16 @@ class ASTDAdvancedEnergyIntegrationHullMod : BaseHullMod() {
         width: Float,
         isForModSpec: Boolean
     ) {
-        tooltip.hullmodCard(width, THEME, spec?.displayName, TOOLTIP)
+        tooltip.hullmodCard(width, THEME, spec?.displayName) {
+            para("ui.hullmod.aei.summary")
+            heading("ui.hullmod.export.section.effect")
+            table {
+                row("ui.hullmod.aei.attr.op", "ui.hullmod.aei.value.op")
+                row("ui.hullmod.aei.attr.flux", "ui.hullmod.aei.value.flux")
+                row("ui.hullmod.aei.attr.projectile_speed", "ui.hullmod.aei.value.projectile_speed")
+                row("ui.hullmod.aei.attr.turn_rate", "ui.hullmod.aei.value.turn_rate")
+            }
+        }
     }
 
     override fun showInRefitScreenModPickerFor(ship: ShipAPI): Boolean = false
