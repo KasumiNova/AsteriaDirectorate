@@ -10,9 +10,9 @@ import org.lwjgl.util.vector.Vector2f
 
 /**
  * 正电子冲击波 `.proj` 侧发射回调（规格 06 §2.1）：先委托 [ProjectileSpecOnFireDispatcher]
- * 完成弹体 VFX 追踪登记，再一次性结算难度三锚点并为每发弹体注册 [PositronShockwaveFuseScript] 引信脚本。
+ * 完成弹体 VFX 追踪登记，再一次性结算难度锚点并为每发弹体注册 [PositronShockwaveFuseScript] 引信脚本。
  *
- * 动机：难度取值调用点唯一——同一发弹体的锥角/锥长/伤害在其生命周期内恒定，
+ * 动机：难度取值调用点唯一——同一发弹体的锥角/锥长/伤害/密度增伤在其生命周期内恒定，
  * 不受战斗中调整 LunaLib 设置影响；下一发重新取值（与全局口径一致）。
  *
  * 挂载分工：`.proj` 的 onFireEffect 只挂本类（组合 VFX 分发 + 引信注册）。

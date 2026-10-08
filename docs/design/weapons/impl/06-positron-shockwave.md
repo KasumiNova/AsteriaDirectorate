@@ -33,16 +33,16 @@
 | `baseValue` | `2500` | 提案（小型 PD 量产件量级，目检经济后可调） |
 | `range` | `600` | 设计案面板 |
 | `damagePerSecond` | `133` | 200 ÷ 1.5s 折算 tooltip 统计 |
-| `damagePerShot` | `200` | 设计案面板（破片） |
+| `damagePerShot` | `150` | 2026-10 修订：200 → 150 |
 | `emp` / `impact` | `0` | 无 |
 | `turnRate` | `45` | 提案（PD 快速跟踪档位，目检调整） |
 | `ops` | `6` | 设计案面板 |
 | `ammo` / `ammoPerSec` / `reloadSize` | 默认（空列） | 无限弹药 |
-| `type` | `FRAGMENTATION` | 设计案：200 破片 |
-| `energyPerShot` | `100` | 设计案面板 |
-| `energyPerSecond` | `67` | 100 ÷ 1.5s 折算 |
+| `type` | `FRAGMENTATION` | 设计案：150 破片（2026-10 修订） |
+| `energyPerShot` | `75` | 2026-10 修订：100 → 75 |
+| `energyPerSecond` | `75` | 75 ÷ 1s 折算（2026-10 修订） |
 | `chargeup` | `0.0` | 无蓄力 |
-| `chargedown` | `1.5` | 发射间隔 1.5s（非 Beam 用 chargedown 描述射速，避免 tooltip 除 0） |
+| `chargedown` | `1.0` | 2026-10 修订：发射间隔 1.5s → 1s |
 | `burstSize` / `burstDelay` | `1` / `0.0` | 单发 |
 | `projSpeed` | `900` | 提案（设计案未给弹速；600su ÷ 900 ≈ 0.667s 飞行，目检调整） |
 | `flightTime` | `0.667` | = range ÷ projSpeed，弹体原版寿命恰覆盖射程；引信自爆先于此触发 |
@@ -52,7 +52,7 @@
 | `groupTag` | `astd` | 同线惯例 |
 | `tech` | `弧光阵列` | ARC 线 |
 | `primaryRoleStr` | `SsI18n.t("weapon.$id.primaryRoleStr")` | 点防御 |
-| `customPrimary` / `customPrimaryHL` | `SsI18n.t("weapon.$id.tooltip.customPrimary")` / 同 HL | 对照 gcp12 接线方式；2026-09 修订：tip 增至 3 个 `{%s}`（近炸距离占比 40% / 破片伤害 125% / 难度系数） |
+| `customPrimary` / `customPrimaryHL` | `SsI18n.t("weapon.$id.tooltip.customPrimary")` / 同 HL | 对照 gcp12 接线方式；2026-09 修订：tip 增至 3 个 `{%s}`；2026-10 修订：增至 4 个（近炸占比 40% / 破片伤害 100% / 密度增伤 20% / 难度系数） |
 | `noDpsInTooltip` | `false`（默认） | 正常显示 DPS |
 | `number` | **`9215`** | 合并协议预分配段（正电子 9215） |
 
@@ -112,8 +112,8 @@ override val projSpec: ProjectileProjSpec = ProjectileProjSpec(
 | 键 | 值 | 来源 |
 |---|---|---|
 | `weapon.astd_positron_shockwave.name` | `正电子冲击波` | 设计案定名 |
-| `weapon.astd_positron_shockwave.tooltip.customPrimary` | `射弹接近导弹或战机至锥状射程的 {%s} 处，或直接撞上舰船时自动引爆，沿飞行方向产生锥状冲击，对范围内所有目标造成 {%s} 的破片伤害。效果受到{%s}影响。` | 设计案「玩家可见机制文本」裁定原文 + v2 数值插入（2026-07-29 字段分工铁律，审批通过）；2026-09 修订：新增近炸触发圈占比（40%）与撞舰引爆，占位由 2 段增至 3 段 |
-| `weapon.astd_positron_shockwave.tooltip.customPrimaryHL` | `40% | 125% | 难度系数` | 字段分工铁律：高亮数值与"难度系数"；2026-09 修订：新增 40% 段 |
+| `weapon.astd_positron_shockwave.tooltip.customPrimary` | `射弹接近导弹或战机至锥状射程的 {%s} 处，或直接撞上舰船时自动引爆，沿飞行方向产生锥状冲击，对范围内所有目标造成 {%s} 的破片伤害；范围内每多一个导弹或战机目标，伤害再提升 {%s}。效果受到{%s}影响。` | 设计案「玩家可见机制文本」裁定原文 + v2 数值插入；2026-09 修订：3 段；2026-10 修订：新增密度增伤段，占位增至 4 段 |
+| `weapon.astd_positron_shockwave.tooltip.customPrimaryHL` | `40% | 100% | 20% | 难度系数` | 字段分工铁律：高亮数值与"难度系数"；2026-10 修订：125% → 100%，新增密度增伤 20% 段 |
 | `weapon.astd_positron_shockwave.primaryRoleStr` | `点防御` | 提案（原版 PD 角色词惯例） |
 | `desc.astd_positron_shockwave.text1` | `弧光科研部的点防御近炸弹。射弹附近存在目标时，会引爆内部的正电子装药，将锥形破片雨泼向来袭的导弹与战机。对敌方的蜂群式导弹效果极佳。` | 设计案「文案」用户优化后裁定原文 |
 | `desc.astd_positron_shockwave.text2~text5`、`desc.astd_positron_shockwave.notes` | **不添加** | 设计案只裁定一段描述；`LocalizedDescription` 的 `desc()` 带空串 fallback，缺键输出空列，无需占位 |
@@ -171,16 +171,25 @@ object Desc_astd_positron_shockwave : LocalizedDescription("astd_positron_shockw
 ```kotlin
 val CONE_ANGLE = ScalingEntry(45f, 56.25f, 90f)        // 锥角（面板全角，非半角）
 val CONE_RANGE = ScalingEntry(200f, 250f, 400f)        // 锥长 = 近炸距离（同一参数，裁定）
-val DAMAGE_MULT = ScalingEntry(1f, 1.25f, 2f)          // 面板 200 破片的倍率
+val DAMAGE_MULT = ScalingEntry(0.75f, 1f, 1.75f)       // 面板 150 破片的倍率（2026-10 修订：原 1/1.25/2 × 200）
+val DENSITY_BONUS = ScalingEntry(0.1f, 0.2f, 0.5f)     // 2026-10 新增：锥内每个导弹/战机目标的增伤比例
 
-data class Resolved(val halfAngleDeg: Float, val range: Float, val damage: Float)
+data class Resolved(val halfAngleDeg: Float, val range: Float, val damage: Float, val densityBonus: Float)
 
 /** 玩家（owner == 0）固定 v2；敌方/友军 AI 走 DifficultyTuningImpl.value。对照 ASTDVirtualParticleLatticeWebHullMod:252 既有口径。 */
 fun resolve(source: ShipAPI?): Resolved {
     fun pick(e: ScalingEntry) = if (source?.owner == 0) e.v2 else DifficultyTuningImpl.value(e)
-    return Resolved(pick(CONE_ANGLE) / 2f, pick(CONE_RANGE), 200f * pick(DAMAGE_MULT))
+    return Resolved(pick(CONE_ANGLE) / 2f, pick(CONE_RANGE), 150f * pick(DAMAGE_MULT), pick(DENSITY_BONUS))
 }
 ```
+
+**密度增伤（2026-10 裁定）**：锥状冲击范围内每有一个导弹/战机/无人机目标，本次结算对单个目标的
+伤害再提升 `densityBonus`（v2 = 20%）；经基建 `ConeImpactSpec.damageAdjust` 钩子按命中清单覆写结算伤害。
+
+**自动开火寻敌（2026-10 裁定，`PositronShockwaveAutofireAI`，`pickWeaponAutofireAI` 钩子接管）**：
+同舰同类武器经 engine.customData 认领表协同——导弹优先于战机；候选按「密度 + 耐久威胁 − 距离 −
+射界偏差」评分；导弹认领上限 ceil(当前耐久 ÷ 150)（500 耐久 → 4 管、750 → 5 管多管齐射），
+战机恒 1；认领 0.5s 未刷新即失效。
 
 **状态机**（FuseScript，两状态 `FLYING → DONE`，无定时器族）：
 

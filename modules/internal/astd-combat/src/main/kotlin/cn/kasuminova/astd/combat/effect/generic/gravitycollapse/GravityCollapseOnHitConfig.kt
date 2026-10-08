@@ -34,6 +34,8 @@ internal data class GravityCollapseOnHitConfig(
 
     /** 范围高爆伤害比例（相对面板总伤害的 tick 折算值）三锚点。 */
     val aoeDamageRatio: ScalingEntry,
+    /** 目标最大船体值附加伤害比例三锚点（每次坍缩 tick 追加，与脉冲合并为同一结算实例）。 */
+    val hullDamageRatio: ScalingEntry,
     /** 最大航速与机动性降低比例三锚点（命中装甲/船体时施加）。 */
     val mobilityReduction: ScalingEntry,
     /** 机动抑制持续时间（秒）三锚点。 */

@@ -26,6 +26,7 @@ import kotlin.math.sqrt
  * 2. 类型与归属筛：hitShips/hitFighters/hitMissiles + owner 剔除 + hulk 剔除；
  * 3. 角度精筛：目标矢量与中轴夹角 ≤ 半角 + atan(半径/距离) 放宽（避免擦边大目标漏判）；
  * 4. 结算：逐目标 [CombatEngineAPI.applyDamage]（不触发 onHitEffect，无二次回环）；
+ *    登记了 [cn.kasuminova.astd.api.combat.ConeDamageAdjust] 时，结算伤害由钩子按命中清单覆写；
  * 5. 命中清单返回调用方，由其触发各自 VFX（锥面原型见 impl/render 的 ConeImpactVfx）。
  *
  * 0 值防线（全部记 WARN，不静默）：direction 非单位矢量归一化、零长度方向不结算、
@@ -116,12 +117,25 @@ object ConeImpactHandler {
         }
 
         // ---- 4. 结算 ----
-        if (damage > 0f || emp > 0f) {
+        // 伤害调整钩子（正电子密度增伤）：命中清单确定后覆写逐目标统一伤害；非法值 clamp 到 0。
+        val settledDamage = when (val adjust = spec.damageAdjust) {
+            null -> damage
+            else -> {
+                val adjusted = adjust.adjust(hits)
+                if (adjusted.isNaN() || adjusted < 0f) {
+                    log.warn("锥状冲击 damageAdjust 返回非法值（$adjusted），属配置错误，clamp 到 0")
+                    0f
+                } else {
+                    adjusted
+                }
+            }
+        }
+        if (settledDamage > 0f || emp > 0f) {
             for (target in hits) {
                 engine.applyDamage(
                     target,
                     surfacePoint(spec.origin, target.location, target.collisionRadius),
-                    damage,
+                    settledDamage,
                     spec.damageType,
                     emp,
                     false,

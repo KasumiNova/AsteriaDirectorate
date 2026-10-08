@@ -645,19 +645,18 @@ object Wpn_astd_positron_shockwave : WeaponDataEntry(), SsProjProjectileOutputs 
     override val baseValue: Int = 2500
     override val range: Int = 600
 
-    override val damagePerShot: Int = 200
+    override val damagePerShot: Int = 150
     override val turnRate: Int = 45
     override val ops: Int = 6
 
-    // 发射间隔 1.5s（非 Beam 用 chargedown 描述射速，避免 tooltip 统计除 0）
-    override val chargedown: Double = 1.5
+    // 发射间隔 1s（非 Beam 用 chargedown 描述射速，避免 tooltip 统计除 0）
+    override val chargedown: Double = 1.0
     override val burstSize: Int = 1
     override val burstDelay: Double = 0.0
 
     override val type: String = "FRAGMENTATION"
-    override val energyPerShot: Int = 100
+    override val energyPerShot: Int = 75
 
-    // 100 ÷ 1.5s 折算
     override val projSpeed: Int = 900
 
     // 弹体原版寿命：原版会将其钳制为 range ÷ projSpeed（≈0.667s），故取值 ≥ 该值即可（0.75 留余量）。

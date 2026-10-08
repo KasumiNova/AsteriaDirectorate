@@ -37,7 +37,8 @@ class PositronShockwaveDifficultyTest {
         val v = PositronShockwaveDifficulty.resolve(stubShip(owner = 0))
         assertEquals(28.125f, v.halfAngleDeg, 1e-3f, "玩家锥半角应为 v2 56.25/2")
         assertEquals(250f, v.range, 1e-3f, "玩家锥长应为 v2 250")
-        assertEquals(250f, v.damage, 1e-3f, "玩家伤害应为 200 × v2 1.25")
+        assertEquals(150f, v.damage, 1e-3f, "玩家伤害应为 150 × v2 1.00")
+        assertEquals(0.2f, v.densityBonus, 1e-3f, "玩家密度增伤应为 v2 20%")
     }
 
     @Test
@@ -46,7 +47,8 @@ class PositronShockwaveDifficultyTest {
         val v = PositronShockwaveDifficulty.resolve(stubShip(owner = 1))
         assertEquals(22.5f, v.halfAngleDeg, 1e-3f)
         assertEquals(200f, v.range, 1e-3f)
-        assertEquals(200f, v.damage, 1e-3f)
+        assertEquals(112.5f, v.damage, 1e-3f, "迟暮伤害应为 150 × v1 0.75")
+        assertEquals(0.1f, v.densityBonus, 1e-3f)
     }
 
     @Test
@@ -55,7 +57,8 @@ class PositronShockwaveDifficultyTest {
         val v = PositronShockwaveDifficulty.resolve(stubShip(owner = 1))
         assertEquals(45f, v.halfAngleDeg, 1e-3f)
         assertEquals(400f, v.range, 1e-3f)
-        assertEquals(400f, v.damage, 1e-3f)
+        assertEquals(262.5f, v.damage, 1e-3f, "破晓伤害应为 150 × v5 1.75")
+        assertEquals(0.5f, v.densityBonus, 1e-3f)
     }
 
     @Test
@@ -72,7 +75,8 @@ class PositronShockwaveDifficultyTest {
 
         assertEquals(28.125f, v.halfAngleDeg, 1e-3f, "无主弹体按敌方口径：k_s=2 应为 v2 等值")
         assertEquals(250f, v.range, 1e-3f)
-        assertEquals(250f, v.damage, 1e-3f)
+        assertEquals(150f, v.damage, 1e-3f)
+        assertEquals(0.2f, v.densityBonus, 1e-3f)
         assertEquals(1, baseline, "首次 resolve(null) 应输出恰好一条 WARN")
         assertEquals(baseline, capture.events.size, "后续 resolve(null) 不应重复 WARN（once 守卫）")
     }

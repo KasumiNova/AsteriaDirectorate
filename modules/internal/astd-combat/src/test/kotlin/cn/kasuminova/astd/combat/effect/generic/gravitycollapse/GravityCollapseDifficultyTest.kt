@@ -62,11 +62,20 @@ class GravityCollapseDifficultyTest {
     }
 
     @Test
+    fun `目标最大船体值附加伤害比例锚点（大中小PD，2026-10 裁定）`() {
+        assertAnchor(spec("astd_gcp12").hullDamageRatio, 0.015f, 0.03f, 0.045f, 0.075f)
+        assertAnchor(spec("astd_gcp8").hullDamageRatio, 0.01f, 0.02f, 0.03f, 0.05f)
+        assertAnchor(spec("astd_gcp4").hullDamageRatio, 0.005f, 0.01f, 0.015f, 0.025f)
+        assertAnchor(spec("astd_gcp2").hullDamageRatio, 0.005f, 0.01f, 0.015f, 0.025f)
+    }
+
+    @Test
     fun `取值分支——玩家来源固定 v2 设计基准（不随 k_s 变化）`() {
         val config = cfg("astd_gcp12")
         DifficultyTuningImpl.installScaleForTests(5f)
         val values = GravityCollapseDifficulty.resolve(DifficultyTuningImpl, 0, config, "astd_gcp12")
         assertEquals(0.25f, values.aoeDamageRatio, 1e-4f)
+        assertEquals(0.03f, values.hullDamageRatio, 1e-4f)
         assertEquals(0.5625f, values.mobilityReduction, 1e-4f)
         assertEquals(2.5f, values.mobilityDuration, 1e-4f)
     }
@@ -77,6 +86,7 @@ class GravityCollapseDifficultyTest {
         DifficultyTuningImpl.installScaleForTests(3f)
         val values = GravityCollapseDifficulty.resolve(DifficultyTuningImpl, 1, config, "astd_gcp8")
         assertEquals(0.375f, values.aoeDamageRatio, 1e-4f)
+        assertEquals(0.03f, values.hullDamageRatio, 1e-4f)
         assertEquals(0.50f, values.mobilityReduction, 1e-4f)
         assertEquals(3f, values.mobilityDuration, 1e-4f)
     }
@@ -88,17 +98,19 @@ class GravityCollapseDifficultyTest {
         val first = GravityCollapseDifficulty.resolve(DifficultyTuningImpl, null, config, "astd_gcp4")
         val second = GravityCollapseDifficulty.resolve(DifficultyTuningImpl, null, config, "astd_gcp4")
         assertEquals(0.4125f, first.aoeDamageRatio, 1e-4f)
+        assertEquals(0.01f, first.hullDamageRatio, 1e-4f)
         assertEquals(first.aoeDamageRatio, second.aoeDamageRatio, 1e-4f)
     }
 
     private fun spec(weaponId: String) =
         GravityCollapseWeaponSpecs.forWeaponId(weaponId) ?: error("缺少坍缩炮配置：$weaponId")
 
-    /** 难度解析只消费三条锚点，其余字段取默认。 */
+    /** 难度解析只消费四条锚点，其余字段取默认。 */
     private fun cfg(weaponId: String): GravityCollapseOnHitConfig {
         val s = spec(weaponId)
         return GravityCollapseOnHitConfig(
             aoeDamageRatio = s.aoeDamageRatio,
+            hullDamageRatio = s.hullDamageRatio,
             mobilityReduction = s.mobilityReduction,
             mobilityDuration = s.mobilityDuration,
         )

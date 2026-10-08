@@ -27,7 +27,8 @@ import kotlin.random.Random.Default.nextFloat
  *
  * 机制口径（weapon_data tooltip 文案双向绑定）：
  * - 每 [GravityCollapseOnHitConfig.tickInterval] 秒在光束终点位置的一定半径造成
- *   “面板总伤害 × tick 间隔 × 难度缩放比例”的范围高爆伤害（半径内全额，无边缘衰减）；
+ *   “面板总伤害 × tick 间隔 × 难度缩放比例 + 目标最大船体值 × 难度缩放比例”的范围高爆伤害
+ *   （半径内全额，无边缘衰减；船体值附加部分与脉冲合并为同一结算实例）；
  * - 命中装甲或船体的目标：穿甲伤害生效——计算装甲减伤的伤害值固定取全额面板总伤害
  *   （不随难度缩放），穿透差额以追加伤害形式结算（走原版伤害结算链路，
  *   计入装甲/船体伤害计算而非直扣船体），并施加“引力抑制”——最大航速与机动性降低，持续数秒；
@@ -172,6 +173,9 @@ internal class GravityCollapseOnHitHandler(
      * 对单个范围内实体结算一次 tick：
      * 护盾覆盖 → 只结算护盾伤害；命中装甲/船体 → 追加穿甲伤害与机动抑制。
      *
+     * 每次 tick 的结算伤害 = 面板折算脉冲 + 目标最大船体值 × [GravityCollapseOnHitConfig.hullDamageRatio]
+     * （2026-10 裁定，附加部分与脉冲合并为同一结算实例，护盾命中同样结算）。
+     *
      * @param panelDamage 全额面板总伤害（穿甲伤害的打击强度口径，见 [applyArmorPiercing]）
      */
     private fun applyTickToEntity(
@@ -193,10 +197,12 @@ internal class GravityCollapseOnHitHandler(
             point
         }
 
+        val totalDamage = damage + other.maxHitpoints.coerceAtLeast(0f) * values.hullDamageRatio
+
         engine.applyDamage(
             other,
             applyPoint,
-            damage,
+            totalDamage,
             DamageType.HIGH_EXPLOSIVE,
             0f,
             false,
@@ -208,7 +214,8 @@ internal class GravityCollapseOnHitHandler(
         if (ship == null || ship.isHulk || shieldCovered) return
 
         // 命中装甲/船体：穿甲伤害结算（计算装甲减伤的伤害值固定取全额面板总伤害，穿透差额追加）。
-        applyArmorPiercing(engine, source, ship, point, damage, panelDamage)
+        // 基准伤害取合并后的 tick 实例（与引擎侧实际结算的装甲减伤口径一致）。
+        applyArmorPiercing(engine, source, ship, point, totalDamage, panelDamage)
 
         // 命中装甲/船体：施加机动/航速抑制（刷新持续）。
         GravityCollapseMobilityDebuff.apply(

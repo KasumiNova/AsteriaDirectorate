@@ -12,7 +12,7 @@ import com.fs.starfarer.api.combat.ShipAPI
 /**
  * 正电子冲击波的机制数值锚点与判定纯函数（规格 06 §2.2）。
  *
- * 动机：锥角/锥长/破片伤害三锚点与「近炸目标类型」「满射程引爆」两条判定集中在一处——
+ * 动机：锥角/锥长/破片伤害/密度增伤四组锚点与「近炸目标类型」「满射程引爆」两条判定集中在一处——
  * 难度取值在发射时由 [PositronShockwaveOnFireEffect] 一次性 [resolve] 并随引信脚本持有
  * （同一发弹体生命周期内恒定，下一发重新取值），引信脚本与单元测试直接驱动本对象，
  * 插件内不留重复逻辑。
@@ -24,7 +24,7 @@ object PositronShockwaveDifficulty {
     private val log = Global.getLogger(PositronShockwaveDifficulty::class.java)
 
     /** 面板基准破片伤害（design 定案，不缩放；结算量 = 面板 × [DAMAGE_MULT]）。 */
-    const val PANEL_DAMAGE = 200f
+    const val PANEL_DAMAGE = 150f
 
     /** 锥角（度，面板全角）：迟暮 45 / 砺刃 56.25 / 破晓 90（设计案显式锚点）。 */
     val CONE_ANGLE = ScalingEntry(45f, 56.25f, 90f)
@@ -32,8 +32,14 @@ object PositronShockwaveDifficulty {
     /** 锥长 = 近炸距离（su，同一参数，裁定）：迟暮 200 / 砺刃 250 / 破晓 400。 */
     val CONE_RANGE = ScalingEntry(200f, 250f, 400f)
 
-    /** 面板 200 破片的伤害倍率：迟暮 100% / 砺刃 125% / 破晓 200%。 */
-    val DAMAGE_MULT = ScalingEntry(1f, 1.25f, 2f)
+    /** 面板 150 破片的伤害倍率：迟暮 75% / 砺刃 100% / 破晓 175%。 */
+    val DAMAGE_MULT = ScalingEntry(0.75f, 1f, 1.75f)
+
+    /**
+     * 密度增伤（2026-10 裁定）：锥状冲击范围内每有一个导弹/战机目标，
+     * 本次结算对单个目标的伤害再提升的比例——迟暮 10% / 砺刃 20% / 破晓 50%。
+     */
+    val DENSITY_BONUS = ScalingEntry(0.1f, 0.2f, 0.5f)
 
     /**
      * 近炸引信触发距离占锥长比例（2026-09 用户裁定：敌对战机/导弹进入锥状射程约 40% 处才引爆，
@@ -46,13 +52,14 @@ object PositronShockwaveDifficulty {
     private var nullSourceWarned = false
 
     /**
-     * 发射时一次性结算的三项难度取值（同一发弹体生命周期内恒定）。
+     * 发射时一次性结算的难度取值（同一发弹体生命周期内恒定）。
      *
      * @property halfAngleDeg 锥半角（度）= 面板全角 / 2。
      * @property range 锥长 = 近炸距离（su）。
      * @property damage 结算伤害 = 面板 × 倍率。
+     * @property densityBonus 密度增伤比例：锥内每有一个导弹/战机目标，结算伤害再提升该比例。
      */
-    data class Resolved(val halfAngleDeg: Float, val range: Float, val damage: Float)
+    data class Resolved(val halfAngleDeg: Float, val range: Float, val damage: Float, val densityBonus: Float)
 
     /**
      * 按来源结算三锚点：玩家（owner == 0）按我方档位系数映射；敌方/友军 AI 走 [DifficultyTuningImpl] 的 k_s 映射；
@@ -68,6 +75,7 @@ object PositronShockwaveDifficulty {
             DifficultyTuningImpl.valueFor(CONE_ANGLE, isPlayer) / 2f,
             DifficultyTuningImpl.valueFor(CONE_RANGE, isPlayer),
             PANEL_DAMAGE * DifficultyTuningImpl.valueFor(DAMAGE_MULT, isPlayer),
+            DifficultyTuningImpl.valueFor(DENSITY_BONUS, isPlayer),
         )
     }
 

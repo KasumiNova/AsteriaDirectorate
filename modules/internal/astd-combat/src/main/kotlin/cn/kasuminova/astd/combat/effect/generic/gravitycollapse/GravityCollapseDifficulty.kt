@@ -21,6 +21,7 @@ internal object GravityCollapseDifficulty {
     /** 一次开火周期所需的全部难度解析结果。 */
     class ResolvedValues(
         val aoeDamageRatio: Float,
+        val hullDamageRatio: Float,
         val mobilityReduction: Float,
         val mobilityDuration: Float,
     )
@@ -42,6 +43,7 @@ internal object GravityCollapseDifficulty {
         val isPlayer = sourceOwner == null || sourceOwner == 0
         return ResolvedValues(
             aoeDamageRatio = tuning.valueFor(config.aoeDamageRatio, isPlayer),
+            hullDamageRatio = tuning.valueFor(config.hullDamageRatio, isPlayer),
             mobilityReduction = tuning.valueFor(config.mobilityReduction, isPlayer),
             mobilityDuration = tuning.valueFor(config.mobilityDuration, isPlayer),
         )

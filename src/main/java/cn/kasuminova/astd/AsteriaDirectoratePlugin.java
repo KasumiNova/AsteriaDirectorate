@@ -3,6 +3,7 @@ package cn.kasuminova.astd;
 import cn.kasuminova.astd.campaign.AsteriaTestCampaignBootstrap;
 import cn.kasuminova.astd.campaign.bounty.StandardCores;
 import cn.kasuminova.astd.campaign.world.StoryWorldBootstrap;
+import cn.kasuminova.astd.combat.effect.arc.positronshockwave.PositronShockwaveAutofireAiPicker;
 import cn.kasuminova.astd.combat.effect.joint.stardust.StardustLauncherAutofireAiPicker;
 import cn.kasuminova.astd.combat.effect.joint.stardust.StardustMoteAiPicker;
 import cn.kasuminova.astd.combat.hullmods.base.ASTDCampaignPlugin;
@@ -133,7 +134,11 @@ public final class AsteriaDirectoratePlugin extends BaseModPlugin {
     public PluginPick<AutofireAIPlugin> pickWeaponAutofireAI(WeaponAPI weapon) {
         // 星尘发射器（舰尾 arc 0 内置）：原版自动开火要求目标入射界，舰尾武器永不开火，
         // 经本钩子接管为「弹药充足且存活光尘未达上限即无条件开火」。
-        return StardustLauncherAutofireAiPicker.INSTANCE.pick(weapon);
+        PluginPick<AutofireAIPlugin> stardust = StardustLauncherAutofireAiPicker.INSTANCE.pick(weapon);
+        if (stardust != null) return stardust;
+        // 正电子冲击波（2026-10 裁定）：同舰同类武器协同索敌——导弹优先、射界/密度评分、
+        // 按目标耐久饱和分配（高耐久导弹多管齐射），避免原版 PD 扎堆同一目标。
+        return PositronShockwaveAutofireAiPicker.INSTANCE.pick(weapon);
     }
 
     public Logger logger() {

@@ -54,6 +54,12 @@ data class ConeImpactSpec(
 
     /** 是否结算导弹（默认 true）；非导弹的普通弹体永不纳入。 */
     val hitMissiles: Boolean = true,
+
+    /**
+     * 结算伤害调整钩子（可空）：命中清单确定后调用一次，返回逐目标统一结算的实际伤害；
+     * null 时按 [damage] 原样结算。用于「伤害取决于命中构成」的机制（正电子密度增伤）。
+     */
+    val damageAdjust: ConeDamageAdjust? = null,
 )
 
 /**
@@ -65,4 +71,16 @@ data class ConeImpactSpec(
 fun interface ConeTargetFilter {
     /** 粗筛与几何精筛后逐目标终判；返回 true 纳入结算。 */
     fun accept(target: CombatEntityAPI): Boolean
+}
+
+/**
+ * 锥状冲击结算伤害调整钩子。
+ *
+ * 动机：正电子冲击波的密度增伤（2026-10 裁定）要求「范围内每多一个导弹/战机目标，
+ * 结算伤害按比例提升」——伤害值依赖最终命中清单，无法在结算前声明为固定面板值；
+ * 本钩子把「清单确定 → 实际伤害」的一步交给各案，结算器仍承担几何筛选与 applyDamage。
+ */
+fun interface ConeDamageAdjust {
+    /** 命中清单确定后调用一次，返回逐目标统一结算的实际伤害；负值/NaN 由结算器 clamp 到 0 并记 WARN。 */
+    fun adjust(hits: List<CombatEntityAPI>): Float
 }

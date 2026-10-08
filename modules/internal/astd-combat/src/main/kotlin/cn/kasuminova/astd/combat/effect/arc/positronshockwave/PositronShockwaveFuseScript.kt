@@ -1,5 +1,6 @@
 package cn.kasuminova.astd.combat.effect.arc.positronshockwave
 
+import cn.kasuminova.astd.api.combat.ConeDamageAdjust
 import cn.kasuminova.astd.api.combat.ConeImpactSpec
 import cn.kasuminova.astd.api.combat.ConeTargetFilter
 import cn.kasuminova.astd.combat.effect.arc.positronshockwave.PositronShockwaveFuseScript.Companion.detonate
@@ -174,6 +175,14 @@ class PositronShockwaveFuseScript(
                     hitShips = true,
                     hitFighters = true,
                     hitMissiles = true,
+                    // 密度增伤（2026-10 裁定）：锥内每有一个导弹/战机/无人机目标，
+                    // 本次结算对单个目标的伤害再提升 spec.densityBonus（难度缩放）。
+                    damageAdjust = ConeDamageAdjust { hits ->
+                        val swarm = hits.count { e ->
+                            e is MissileAPI || (e as? ShipAPI)?.let { it.isFighter || it.isDrone } == true
+                        }
+                        spec.damage * (1f + swarm * spec.densityBonus)
+                    },
                 ),
             )
             bumpTelemetry(engine, detonateTelemetryKey)
