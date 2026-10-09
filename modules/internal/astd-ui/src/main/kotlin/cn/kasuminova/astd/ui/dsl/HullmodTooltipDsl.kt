@@ -80,8 +80,7 @@ data class HullmodTheme(
 ) {
     /** 把语义角色解析为主题色；[HullmodTone.DEFAULT] 回退 [fallback]。 */
     fun colorFor(tone: HullmodTone, fallback: Color): Color = when (tone) {
-        HullmodTone.DEFAULT -> fallback
-        HullmodTone.WARNING -> warningColor
+        HullmodTone.DEFAULT, HullmodTone.WARNING -> Misc.getHighlightColor()
         HullmodTone.POSITIVE -> positiveColor
         HullmodTone.ORANGE -> orangeColor
         HullmodTone.RED -> redColor ?: Misc.getNegativeHighlightColor()
@@ -187,6 +186,8 @@ internal class ParaBlock(
  * 直写段落块：与 [ParaBlock] 的唯一区别是不读取 I18n 键，[text] 即最终模板文本，
  * 直接对内联模板做变量/高亮格式化（`%name%` / `<param:#RRGGBB:name>` / `%%`），
  * 便于游戏内热重载调整文案。
+ *
+ * 仅开发阶段临时使用：发布场景禁止出现，定稿文案必须迁回 strings.json 并改用 [ParaBlock]。
  */
 internal class PlainTextBlock(
     val text: String,
@@ -199,22 +200,29 @@ internal class PlainTextBlock(
 internal class HeadingBlock(
     val key: String,
     val padTop: Float,
+    /** true 时 [key] 按内联文本直写（开发调文案用），false 时按 i18n key 查表。 */
+    val plain: Boolean = false,
 ) : HullmodBlock
 
-/** 双列表格行（i18n key；[labelTone]/[valueTone] 语义配色）。 */
+/**
+ * 双列表格行（i18n key；[labelTone]/[valueTone] 语义配色）。
+ * [plain] 为 true 时 label/value 按内联文本直写（开发调文案用）。
+ */
 internal class TableRow(
     val labelKey: String,
     val valueKey: String,
     val labelTone: HullmodTone = HullmodTone.DEFAULT,
     val valueTone: HullmodTone = HullmodTone.DEFAULT,
+    val plain: Boolean = false,
 )
 
-/** 双列表格块（62/38 分栏、行高 24f、表头默认 属性/效果）。 */
+/** 双列表格块（62/38 分栏、行高 24f、表头默认 属性/效果；[plain] 语义同 [HeadingBlock.plain]，仅作用于表头）。 */
 internal class TableBlock(
     val headerAKey: String,
     val headerBKey: String,
     val rows: List<TableRow>,
     val padTop: Float,
+    val plain: Boolean = false,
 ) : HullmodBlock
 
 /** 垂直间距块（仅特殊排版需要；常规段落间距走各块 padTop）。 */
@@ -251,17 +259,29 @@ class HullmodCardBuilder {
         blocks += ParaBlock(key, padTop, args.toList(), color)
     }
 
-    /** 直写段落（不读 I18n 键，文本内联便于热重载调文案；可混排静态高亮 [hl] 与运行期变量 [v]）。 */
+    /**
+     * 直写段落（不读 I18n 键，文本内联便于热重载调文案；可混排静态高亮 [hl] 与运行期变量 [v]）。
+     *
+     * 仅开发阶段临时使用：发布场景禁止调用，定稿文案必须迁回 strings.json 并改用 [para]。
+     */
     fun plainText(text: String, padTop: Float = 8f, vararg args: ParaArg) {
         blocks += PlainTextBlock(text, padTop, args.toList())
     }
 
-    /** 直写段落（默认间距、仅行内参数版本）。 */
+    /**
+     * 直写段落（默认间距、仅行内参数版本）。
+     *
+     * 仅开发阶段临时使用：发布场景禁止调用，定稿文案必须迁回 strings.json 并改用 [para]。
+     */
     fun plainText(text: String, vararg args: ParaArg) {
         blocks += PlainTextBlock(text, 8f, args.toList())
     }
 
-    /** 直写段落（显式正文色版本）。 */
+    /**
+     * 直写段落（显式正文色版本）。
+     *
+     * 仅开发阶段临时使用：发布场景禁止调用，定稿文案必须迁回 strings.json 并改用 [para]。
+     */
     fun plainText(text: String, color: Color, padTop: Float = 8f, vararg args: ParaArg) {
         blocks += PlainTextBlock(text, padTop, args.toList(), color)
     }
@@ -269,6 +289,15 @@ class HullmodCardBuilder {
     /** 分节标题（i18n key）。 */
     fun heading(key: String, padTop: Float = 12f) {
         blocks += HeadingBlock(key, padTop)
+    }
+
+    /**
+     * 直写分节标题（不读 I18n 键，文本内联）。
+     *
+     * 仅开发阶段临时使用：发布场景禁止调用，定稿文案必须迁回 strings.json 并改用 [heading]。
+     */
+    fun headingPlain(text: String, padTop: Float = 12f) {
+        blocks += HeadingBlock(text, padTop, plain = true)
     }
 
     /** 双列表格（i18n key 行；表头默认 `ui.hullmod.table.attribute` / `ui.hullmod.table.effect`）。 */
@@ -281,6 +310,22 @@ class HullmodCardBuilder {
         val builder = HullmodTableBuilder()
         builder.block()
         blocks += TableBlock(headerAKey, headerBKey, builder.rows.toList(), padTop)
+    }
+
+    /**
+     * 直写双列表格（表头不读 I18n 键；行内文本用 [HullmodTableBuilder.rowPlain]）。
+     *
+     * 仅开发阶段临时使用：发布场景禁止调用，定稿文案必须迁回 strings.json 并改用 [table]。
+     */
+    fun tablePlain(
+        headerA: String,
+        headerB: String,
+        padTop: Float = 8f,
+        block: HullmodTableBuilder.() -> Unit,
+    ) {
+        val builder = HullmodTableBuilder()
+        builder.block()
+        blocks += TableBlock(headerA, headerB, builder.rows.toList(), padTop, plain = true)
     }
 
     /** 垂直间距（仅特殊排版需要；常规段落间距走各块 padTop）。 */
@@ -319,6 +364,24 @@ class HullmodTableBuilder {
     /** 一行（标签列与值列分别指定语义色）。 */
     fun row(labelKey: String, valueKey: String, labelTone: HullmodTone, valueTone: HullmodTone) {
         rows += TableRow(labelKey, valueKey, labelTone, valueTone)
+    }
+
+    /**
+     * 直写一行（标签/值不读 I18n 键，文本内联；标签列 + 值列同一语义色）。
+     *
+     * 仅开发阶段临时使用：发布场景禁止调用，定稿文案必须迁回 strings.json 并改用 [row]。
+     */
+    fun rowPlain(label: String, value: String, tone: HullmodTone = HullmodTone.DEFAULT) {
+        rows += TableRow(label, value, tone, tone, plain = true)
+    }
+
+    /**
+     * 直写一行（标签列与值列分别指定语义色）。
+     *
+     * 仅开发阶段临时使用：发布场景禁止调用，定稿文案必须迁回 strings.json 并改用 [row]。
+     */
+    fun rowPlain(label: String, value: String, labelTone: HullmodTone, valueTone: HullmodTone) {
+        rows += TableRow(label, value, labelTone, valueTone, plain = true)
     }
 }
 
@@ -374,7 +437,7 @@ internal object HullmodCardRenderer {
                         is ParaBlock -> renderPara(block, theme)
                         is PlainTextBlock -> renderPlainText(block, theme)
                         is HeadingBlock -> heading(
-                            I18n[I18n.Categories.MOD, block.key],
+                            if (block.plain) block.key else I18n[I18n.Categories.MOD, block.key],
                             theme.nameColor,
                             theme.sectionBackground,
                             block.padTop,
@@ -454,19 +517,19 @@ internal object HullmodCardRenderer {
             TABLE_ROW_HEIGHT,
             true,
             true,
-            I18n[I18n.Categories.MOD, table.headerAKey],
+            if (table.plain) table.headerAKey else I18n[I18n.Categories.MOD, table.headerAKey],
             labelWidth,
-            I18n[I18n.Categories.MOD, table.headerBKey],
+            if (table.plain) table.headerBKey else I18n[I18n.Categories.MOD, table.headerBKey],
             valueWidth,
         )
         for (row in table.rows) {
             tooltip.addRow(
                 Alignment.MID,
                 theme.colorFor(row.labelTone, Misc.getTextColor()),
-                I18n[I18n.Categories.MOD, row.labelKey],
+                if (row.plain) row.labelKey else I18n[I18n.Categories.MOD, row.labelKey],
                 Alignment.MID,
                 theme.colorFor(row.valueTone, theme.nameColor),
-                I18n[I18n.Categories.MOD, row.valueKey],
+                if (row.plain) row.valueKey else I18n[I18n.Categories.MOD, row.valueKey],
             )
         }
         tooltip.addTable("", 0, table.padTop)
