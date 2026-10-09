@@ -113,6 +113,12 @@ object I18n {
     fun tr(category: String?, key: String, vararg vars: Pair<String, Any?>): Rendered =
         renderRich(tryGet(category, key), vars)
 
+    /**
+     * 直接格式化内联模板（不查字符串表），变量/高亮语法与 [tr] 相同。
+     * 供游戏内热重载调文案等需要文本内联的场景使用（如 hullmod tooltip DSL 的 plainText）。
+     */
+    fun format(template: String, vararg vars: Pair<String, Any?>): Rendered = renderRich(template, vars)
+
     private fun tryGet(category: String?, key: String): String {
         if (!category.isNullOrBlank()) {
             val table = extraStringTablesByCategory[category]

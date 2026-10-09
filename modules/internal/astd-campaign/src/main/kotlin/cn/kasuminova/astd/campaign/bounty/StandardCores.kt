@@ -73,30 +73,30 @@ object StandardCores {
     ) {
         G(
             "astd_ai_core_g", "graphics/portraits/astd_portrait_core_g.png", 4,
-            listOf("helmsmanship", "impact_mitigation", "combat_endurance", COMBAT_INTEL_SKILL_ID), 2f, true,
+            listOf(COMBAT_INTEL_SKILL_ID, "helmsmanship", "impact_mitigation", "combat_endurance"), 2f, true,
         ),
         B(
             "astd_ai_core_b", "graphics/portraits/astd_portrait_core_b.png", 6,
             listOf(
-                "helmsmanship", "target_analysis", "impact_mitigation", "gunnery_implants",
-                "combat_endurance", COMBAT_INTEL_SKILL_ID,
+                COMBAT_INTEL_SKILL_ID, "helmsmanship", "target_analysis", "impact_mitigation",
+                "gunnery_implants", "combat_endurance",
             ),
             3f, true,
         ),
         A(
             "astd_ai_core_a", "graphics/portraits/astd_portrait_core_a.png", 8,
             listOf(
-                "helmsmanship", "target_analysis", "impact_mitigation", "field_modulation",
-                "gunnery_implants", "combat_endurance", "damage_control", COMBAT_INTEL_SKILL_ID,
+                COMBAT_INTEL_SKILL_ID, "helmsmanship", "target_analysis", "impact_mitigation",
+                "field_modulation", "gunnery_implants", "combat_endurance", "damage_control",
             ),
             4f, true,
         ),
         O(
             "astd_ai_core_o", "graphics/portraits/astd_portrait_core_o.png", 11,
             listOf(
-                "helmsmanship", "target_analysis", "impact_mitigation", "field_modulation",
-                "gunnery_implants", "combat_endurance", "damage_control", "point_defense",
-                "energy_weapon_mastery", "omega_ecm", COMBAT_INTEL_SKILL_ID,
+                COMBAT_INTEL_SKILL_ID, "helmsmanship", "target_analysis", "impact_mitigation",
+                "field_modulation", "gunnery_implants", "combat_endurance", "damage_control",
+                "point_defense", "energy_weapon_mastery", "omega_ecm",
             ),
             5f, false,
         ),

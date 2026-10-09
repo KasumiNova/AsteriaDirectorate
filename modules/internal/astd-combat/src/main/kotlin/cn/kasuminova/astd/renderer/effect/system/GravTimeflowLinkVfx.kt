@@ -7,23 +7,32 @@ import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEngineLayers
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.util.Misc
-import org.boxutil.define.BoxDatabase
 import org.boxutil.units.standard.attribute.NodeData
 import org.boxutil.units.standard.entity.CurveEntity
 import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
 import kotlin.math.PI
 import kotlin.math.abs
+import kotlin.math.min
 import kotlin.math.sin
 
 /**
- * 引力时流干涉器：自身与目标舰之间的多层时流弧线（BoxUtil [CurveEntity] 线条实体）。
+ * 引力时流干涉器：自身与目标舰之间的时流弧线（BoxUtil [CurveEntity] 线条实体）。
  *
- * 结构：[ARC_STRANDS] 条弧股，每股拆 BODY（宽而淡的主体）+ GLOW（窄而亮的高光）两层；
- * 节点定义在局部空间（+X 为源舰 → 目标舰方向），带横向扰动形成电弧感，
- * 亮度脉冲沿弧向目标舰流动（[FLOW_SPEED]）。节点朝向进入 BoxUtil 变换前过
- * [BoxUtilCombatVfx.normalizeFacingDeg]。层 [CombatEngineLayers.BELOW_SHIPS_LAYER]——
+ * 结构（2026-10 实机反馈重做，主次分明）：
+ * - **主线条 1 条**：粗、直，仅保留一道大尺度缓弧（无高频抖动）；
+ *   贴图 [TEX_MAIN]（astd_trails_surge，白底 alpha 载形，节点色染紫）；
+ * - **细线条 [FILAMENT_COUNT] 条**：细装饰丝，在主线条周围低幅度、低频率扭转
+ *   （扰动幅度为主线条宽度的 1~2 倍量级，无锯齿乱抖）；贴图 [TEX_FILAMENT]。
+ * 节点定义在局部空间（+X 为源舰 → 目标舰方向），进入 BoxUtil 变换前过
+ * [BoxUtilCombatVfx.normalizeFacingDeg]；层 [CombatEngineLayers.BELOW_SHIPS_LAYER]——
  * 弧线被舰船盖住，不盖在舰船上（规格：purple/10-unique.md §1）。
+ * 流动观感：贴图 UV 滚动（textureSpeed，对照 PsiHelixComponent 口径）+
+ * 收敛的亮度脉动（向目标流动，亮度区间 0.8~1.0，不产生「整条线在抖」观感）。
+ *
+ * 贴图预载：[preloadTextures]（onApplicationLoad；SSOptimizer 延迟加载下
+ * 未被数据文件引用的贴图不上传 GL，裸 getSprite 拿到 textureID=0 空壳），
+ * 预载失败的路径有 WARN 日志且 attach 直接缺席（机制照常）。
  *
  * 生命周期：激活首帧 [attach]，持续期间每帧 [update] 跟随双舰位置重建节点并按
  * effectLevel 驱动整体 alpha（OUT 窗口自然淡出），持续结束/目标消亡/离场即 [dispose]
@@ -33,26 +42,17 @@ import kotlin.math.sin
 class GravTimeflowLinkVfx private constructor(
     private val source: ShipAPI,
     private val target: ShipAPI,
-    private val arcs: List<ArcLayer>,
+    private val mainArc: CurveEntity,
+    private val filaments: List<CurveEntity>,
 ) {
-
-    /** 单条弧股的双层实体与相位参数。 */
-    private class ArcLayer(
-        val body: CurveEntity,
-        val glow: CurveEntity,
-        /** 弧股相位偏移（横向扰动与流动脉冲错峰）。 */
-        val phase: Float,
-        /** 弧股随机种子（高频抖动错位）。 */
-        val seed: Float,
-    )
 
     private var time = 0f
     private var dead = false
 
     /**
-     * 每帧驱动：跟随双舰位置重建全部弧股节点（局部 +X 指向目标），
-     * 横向扰动 + 向目标流动的亮度脉冲；[effectLevel] 作为整体 alpha 包络
-     * （IN 渐入 / ACTIVE 满值 / OUT 渐出）。
+     * 每帧驱动：跟随双舰位置重建全部线条节点（局部 +X 指向目标），
+     * 主线大尺度缓弧 + 细丝低频扭转 + 向目标流动的收敛亮度脉动；
+     * [effectLevel] 作为整体 alpha 包络（IN 渐入 / ACTIVE 满值 / OUT 渐出）。
      */
     fun update(elapsed: Float, effectLevel: Float) {
         if (dead) return
@@ -62,69 +62,87 @@ class GravTimeflowLinkVfx private constructor(
         val to = target.location
         val dist = Misc.getDistance(from, to)
         val facing = BoxUtilCombatVfx.normalizeFacingDeg(Misc.getAngleInDegrees(from, to))
-        val amp = (dist * LATERAL_AMP_DIST_FRACTION).coerceAtMost(LATERAL_AMP_MAX)
         val alphaEnv = effectLevel.coerceIn(0f, 1f)
 
-        for (arc in arcs) {
-            updateArc(arc.body, facing, dist, amp, alphaEnv, arc.phase, arc.seed, ArcStyle.BODY)
-            updateArc(arc.glow, facing, dist, amp, alphaEnv, arc.phase, arc.seed, ArcStyle.GLOW)
+        updateMain(facing, dist, alphaEnv)
+        for (i in filaments.indices) {
+            updateFilament(filaments[i], i, facing, dist, alphaEnv)
         }
     }
 
-    /** 收口：全部弧股快速淡出（实体定时器自收，dispose 幂等）。 */
+    /** 收口：全部线条快速淡出（实体定时器自收，dispose 幂等）。 */
     fun dispose() {
         if (dead) return
         dead = true
-        for (arc in arcs) {
-            if (!arc.body.hasDelete()) arc.body.setGlobalTimer(0f, 0f, FADE_OUT_SECONDS)
-            if (!arc.glow.hasDelete()) arc.glow.setGlobalTimer(0f, 0f, FADE_OUT_SECONDS)
+        if (!mainArc.hasDelete()) mainArc.setGlobalTimer(0f, 0f, FADE_OUT_SECONDS)
+        for (filament in filaments) {
+            if (!filament.hasDelete()) filament.setGlobalTimer(0f, 0f, FADE_OUT_SECONDS)
         }
     }
 
-    private enum class ArcStyle { BODY, GLOW }
+    /** 亮度脉动（收敛）：向目标（t=1）流动，输出 0.8~1.0 的亮度系数。 */
+    private fun flowBrightness(t: Float, phase: Float): Float {
+        val flowHead = frac(time * FLOW_SPEED + phase)
+        var pulseDist = abs(t - flowHead)
+        if (pulseDist > 0.5f) pulseDist = 1f - pulseDist
+        val pulse = (1f - pulseDist / PULSE_WIDTH).coerceIn(0f, 1f)
+        return 0.8f + 0.2f * pulse
+    }
 
-    /** 单条弧股逐帧重建：位置/朝向、节点横向扰动、流向目标的亮度脉冲。 */
-    private fun updateArc(
-        entity: CurveEntity,
-        facing: Float,
-        dist: Float,
-        amp: Float,
-        alphaEnv: Float,
-        phase: Float,
-        seed: Float,
-        style: ArcStyle,
-    ) {
+    /** 弧两端收敛系数（t 接近 0/1 时线性收到 0）。 */
+    private fun tipEnv(t: Float): Float =
+        (t / TIP_FRACTION).coerceIn(0f, 1f) * ((1f - t) / TIP_FRACTION).coerceIn(0f, 1f)
+
+    /** 主线条：一道大尺度缓弧（单波正弦包络，幅度随链长收敛），粗直无高频抖动。 */
+    private fun updateMain(facing: Float, dist: Float, alphaEnv: Float) {
+        if (mainArc.hasDelete()) return
+        mainArc.setStateVanilla(Vector2f(source.location), facing)
+        val nodes = mainArc.nodes ?: return
+        val lastIdx = nodes.size - 1
+        if (lastIdx <= 0) return
+
+        val amp = min(dist * MAIN_ARC_DIST_FRACTION, MAIN_ARC_MAX)
+        // 缓弧呼吸：幅度随时间缓慢收放，避免完全静止的贴线观感
+        val breathe = 0.85f + 0.15f * sin(time * MAIN_BREATHE_SPEED)
+        for (i in 0..lastIdx) {
+            val t = i.toFloat() / lastIdx.toFloat()
+            val lateral = sin(PI.toFloat() * t) * amp * breathe
+            val tip = tipEnv(t)
+            val node = nodes[i]
+            node.setLocation(t * dist, lateral)
+            node.width = MAIN_WIDTH * (0.5f + 0.5f * tip)
+            val alpha = MAIN_ALPHA * alphaEnv * tip
+            node.setColor(lerpColor(MAIN_DIM, MAIN_BRIGHT, flowBrightness(t, 0f), alpha))
+            node.setEmissiveColor(lerpColor(MAIN_EMISSIVE_DIM, MAIN_EMISSIVE_BRIGHT, flowBrightness(t, 0f), alpha))
+        }
+        mainArc.setNodeRefreshAllFromCurrentIndex()
+        mainArc.submitNodes()
+    }
+
+    /** 细装饰丝：低频双正弦扭转（主波 + 低幅二次谐波），扰动幅度收敛在主线宽度 1~2 倍量级。 */
+    private fun updateFilament(entity: CurveEntity, index: Int, facing: Float, dist: Float, alphaEnv: Float) {
         if (entity.hasDelete()) return
         entity.setStateVanilla(Vector2f(source.location), facing)
-
         val nodes = entity.nodes ?: return
         val lastIdx = nodes.size - 1
         if (lastIdx <= 0) return
 
-        val flowHead = frac(time * FLOW_SPEED + phase)
+        val phase = index.toFloat() / FILAMENT_COUNT
+        val seed = index * 5.77f
+        val amp = min(FILAMENT_AMP, dist * FILAMENT_AMP_DIST_FRACTION)
         for (i in 0..lastIdx) {
             val t = i.toFloat() / lastIdx.toFloat()
             val envelope = sin(PI.toFloat() * t)
-            val sway = sin(2f * PI.toFloat() * (t * SWAY_WAVES + time * SWAY_SPEED + phase)) * amp
-            val chatter = sin(t * 43.7f + time * CHATTER_SPEED + seed * 17.3f) * amp * CHATTER_AMP_FRACTION
-            val lateral = envelope * (sway + chatter)
-
-            // 亮度脉冲沿 t 向目标（t=1）流动；环绕距离保证脉冲从末端绕回起点时不跳变
-            var pulseDist = abs(t - flowHead)
-            if (pulseDist > 0.5f) pulseDist = 1f - pulseDist
-            val pulse = (1f - pulseDist / PULSE_WIDTH).coerceIn(0f, 1f)
-
-            // 弧两端收细收敛，中段满宽
-            val tipEnv = (t / TIP_FRACTION).coerceIn(0f, 1f) * ((1f - t) / TIP_FRACTION).coerceIn(0f, 1f)
+            val sway = sin(2f * PI.toFloat() * (t * FILAMENT_WAVES + time * FILAMENT_SWAY_SPEED + phase)) * amp
+            val wobble = sin(2f * PI.toFloat() * (t * FILAMENT_WOBBLE_WAVES + time * FILAMENT_WOBBLE_SPEED + seed)) * amp * FILAMENT_WOBBLE_FRACTION
+            val lateral = envelope * (sway + wobble)
+            val tip = tipEnv(t)
             val node = nodes[i]
             node.setLocation(t * dist, lateral)
-            node.width = (if (style == ArcStyle.BODY) BODY_WIDTH else GLOW_WIDTH) * (0.35f + 0.65f * tipEnv)
-
-            val brightness = 0.45f + 0.55f * pulse
-            val baseAlpha = (if (style == ArcStyle.BODY) BODY_ALPHA else GLOW_ALPHA) * alphaEnv * tipEnv
-            node.setColor(lerpColor(COLOR_DIM, COLOR_BRIGHT, brightness, baseAlpha))
-            val emissiveAlpha = baseAlpha * (if (style == ArcStyle.GLOW) 1f else EMISSIVE_ALPHA_BODY_FRACTION)
-            node.setEmissiveColor(lerpColor(COLOR_EMISSIVE_DIM, COLOR_EMISSIVE_BRIGHT, brightness, emissiveAlpha))
+            node.width = FILAMENT_WIDTH * (0.5f + 0.5f * tip)
+            val alpha = FILAMENT_ALPHA * alphaEnv * tip
+            node.setColor(lerpColor(FILAMENT_DIM, FILAMENT_BRIGHT, flowBrightness(t, phase), alpha))
+            node.setEmissiveColor(lerpColor(FILAMENT_DIM, FILAMENT_BRIGHT, flowBrightness(t, phase), alpha))
         }
         entity.setNodeRefreshAllFromCurrentIndex()
         entity.submitNodes()
@@ -133,10 +151,19 @@ class GravTimeflowLinkVfx private constructor(
     companion object {
         private val log = Global.getLogger(GravTimeflowLinkVfx::class.java)
 
-        /** 弧股条数（每股 BODY + GLOW 两层）。 */
-        private const val ARC_STRANDS = 3
+        /** 主线条贴图（astd_trails_surge：白底 alpha 载形，节点色染紫）。 */
+        private const val TEX_MAIN = "graphics/fx/astd_trails_surge.png"
 
-        /** 每股节点数。 */
+        /** 细线条贴图（laser_282_i6_r13c3 复制入 contents 的约定路径，白底 alpha 载形）。 */
+        private const val TEX_FILAMENT = "graphics/fx/astd_timeflow_filament.png"
+
+        /** preloadTextures 加载成功的贴图路径集合；attach 只使用此集合内的贴图。 */
+        private val loadedPaths = HashSet<String>()
+
+        /** 细装饰丝条数。 */
+        private const val FILAMENT_COUNT = 3
+
+        /** 每条线节点数。 */
         private const val NODE_COUNT = 24
 
         /** 常驻实体时长（秒）：生命周期由系统脚本显式驱动 dispose，不自然到期。 */
@@ -145,65 +172,107 @@ class GravTimeflowLinkVfx private constructor(
         /** dispose 快速淡出（秒）。 */
         private const val FADE_OUT_SECONDS = 0.4f
 
-        /** 横向扰动：主波幅上限（su）与随链路距离的比例。 */
-        private const val LATERAL_AMP_MAX = 45f
-        private const val LATERAL_AMP_DIST_FRACTION = 0.12f
+        /** 主线条：宽度（su）、基准 alpha、缓弧幅度上限（su）与随链长比例、呼吸速度（弧度/秒）。 */
+        private const val MAIN_WIDTH = 16f
+        private const val MAIN_ALPHA = 0.55f
+        private const val MAIN_ARC_MAX = 24f
+        private const val MAIN_ARC_DIST_FRACTION = 0.05f
+        private const val MAIN_BREATHE_SPEED = 0.5f
 
-        /** 横向扰动：主波数（沿弧）与推进速度（周/秒）、高频抖动幅度占比与速度（弧度/秒）。 */
-        private const val SWAY_WAVES = 1.5f
-        private const val SWAY_SPEED = 0.9f
-        private const val CHATTER_AMP_FRACTION = 0.35f
-        private const val CHATTER_SPEED = 11f
+        /** 细线条：宽度（su）、基准 alpha、扰动幅度（主线宽度 1~2 倍量级）与随链长比例、波形参数（低频）。 */
+        private const val FILAMENT_WIDTH = 3.5f
+        private const val FILAMENT_ALPHA = 0.5f
+        private const val FILAMENT_AMP = 24f
+        private const val FILAMENT_AMP_DIST_FRACTION = 0.12f
+        private const val FILAMENT_WAVES = 1.5f
+        private const val FILAMENT_SWAY_SPEED = 0.35f
+        private const val FILAMENT_WOBBLE_WAVES = 3f
+        private const val FILAMENT_WOBBLE_SPEED = 0.22f
+        private const val FILAMENT_WOBBLE_FRACTION = 0.35f
 
-        /** 亮度脉冲流向目标的速度（全弧/秒）与脉冲宽度（占弧长比例）。 */
+        /** 亮度脉动流向目标的速度（全弧/秒）与脉冲宽度（占弧长比例）。 */
         private const val FLOW_SPEED = 0.8f
         private const val PULSE_WIDTH = 0.3f
+
+        /** 贴图 UV 滚动（su/s，负值对照 PsiHelixComponent 口径：流向弧末端 = 目标舰）与平铺周期（世界单位）。 */
+        private const val TEX_SPEED_MAIN = -220f
+        private const val TEX_SPEED_FILAMENT = -160f
+        private const val TEX_PIXELS_MAIN = 192f
+        private const val TEX_PIXELS_FILAMENT = 140f
 
         /** 弧两端收敛区（占弧长比例）。 */
         private const val TIP_FRACTION = 0.12f
 
-        /** 线宽（su）与基准 alpha。 */
-        private const val BODY_WIDTH = 7f
-        private const val GLOW_WIDTH = 3f
-        private const val BODY_ALPHA = 0.30f
-        private const val GLOW_ALPHA = 0.65f
-        private const val EMISSIVE_ALPHA_BODY_FRACTION = 0.5f
-
         /** 配色（透镜协议紫，对照 GravStormSystemStats 电弧/jitter 用色）。 */
-        private val COLOR_DIM = Color(120, 70, 200)
-        private val COLOR_BRIGHT = Color(205, 150, 255)
-        private val COLOR_EMISSIVE_DIM = Color(150, 100, 230)
-        private val COLOR_EMISSIVE_BRIGHT = Color(240, 220, 255)
+        private val MAIN_DIM = Color(150, 100, 230)
+        private val MAIN_BRIGHT = Color(215, 170, 255)
+        private val MAIN_EMISSIVE_DIM = Color(170, 120, 240)
+        private val MAIN_EMISSIVE_BRIGHT = Color(240, 220, 255)
+        private val FILAMENT_DIM = Color(160, 110, 235)
+        private val FILAMENT_BRIGHT = Color(230, 205, 255)
 
         /** 一次性 WARN 闩键（engine.customData，随战斗清理）。 */
+        private const val LOG_ONCE_TEXTURE = "astd_grav_timeflow_link_log_texture_once"
         private const val LOG_ONCE_CREATE = "astd_grav_timeflow_link_log_create_once"
         private const val LOG_ONCE_INVALID = "astd_grav_timeflow_link_log_invalid_once"
         private const val LOG_ONCE_ADD = "astd_grav_timeflow_link_log_add_once"
 
-        /** 创建并注册全部弧股实体；实体无效或注册失败记 WARN（每场战斗每类一次）并返回 null，本次弧线视觉缺席但系统机制照常。 */
-        fun attach(engine: CombatEngineAPI, source: ShipAPI, target: ShipAPI): GravTimeflowLinkVfx? {
-            BoxUtilCombatVfx.ensureReady(engine)
-
-            val arcs = ArrayList<ArcLayer>(ARC_STRANDS)
-            for (i in 0 until ARC_STRANDS) {
-                val body = createArc(engine, additive = false, glowPower = 0.25f)
-                val glow = createArc(engine, additive = true, glowPower = 0.6f)
-                if (body == null || glow == null) {
-                    body?.delete()
-                    glow?.delete()
-                    for (arc in arcs) {
-                        arc.body.delete()
-                        arc.glow.delete()
-                    }
-                    return null
+        /**
+         * 预加载弧线贴图（onApplicationLoad 调用）：SSOptimizer 延迟加载下，
+         * 未被数据文件引用的贴图不会上传 GL，裸 getSprite 拿到 textureID=0 空壳。
+         * 失败逐路径 WARN（禁止空 catch），attach 只使用加载成功的贴图。
+         */
+        @JvmStatic
+        fun preloadTextures() {
+            for (path in listOf(TEX_MAIN, TEX_FILAMENT)) {
+                try {
+                    Global.getSettings().loadTexture(path)
+                    loadedPaths += path
+                } catch (t: Throwable) {
+                    log.warn("[ASTD] ${GravTimeflowTuning.SYSTEM_ID} 时流弧线贴图预载失败: $path", t)
                 }
-                arcs += ArcLayer(body, glow, phase = i.toFloat() / ARC_STRANDS, seed = i * 7.13f)
             }
-            return GravTimeflowLinkVfx(source, target, arcs)
         }
 
-        /** 单条弧实体：纯色线条（BUtil_ONE 白底贴图，颜色全部由节点色驱动，对照 GravStormConeIndicator 口径）。 */
-        private fun createArc(engine: CombatEngineAPI, additive: Boolean, glowPower: Float): CurveEntity? {
+        /** 创建并注册全部线条实体；贴图未预载成功、实体无效或注册失败记 WARN（每场战斗每类一次）并返回 null，本次弧线视觉缺席但系统机制照常。 */
+        fun attach(engine: CombatEngineAPI, source: ShipAPI, target: ShipAPI): GravTimeflowLinkVfx? {
+            if (TEX_MAIN !in loadedPaths || TEX_FILAMENT !in loadedPaths) {
+                warnOnce(
+                    engine, LOG_ONCE_TEXTURE,
+                    "[ASTD] ${GravTimeflowTuning.SYSTEM_ID} 时流弧线贴图未成功预载" +
+                            "（main=${TEX_MAIN in loadedPaths}，filament=${TEX_FILAMENT in loadedPaths}），弧线视觉缺席",
+                )
+                return null
+            }
+            BoxUtilCombatVfx.ensureReady(engine)
+
+            val created = ArrayList<CurveEntity>(1 + FILAMENT_COUNT)
+            val main = createArc(engine, TEX_MAIN, TEX_PIXELS_MAIN, TEX_SPEED_MAIN, glowPower = 0.4f)
+            if (main == null) {
+                return null
+            }
+            created += main
+            val filaments = ArrayList<CurveEntity>(FILAMENT_COUNT)
+            repeat(FILAMENT_COUNT) {
+                val filament = createArc(engine, TEX_FILAMENT, TEX_PIXELS_FILAMENT, TEX_SPEED_FILAMENT, glowPower = 0.9f)
+                if (filament == null) {
+                    for (entity in created) entity.delete()
+                    return null
+                }
+                created += filament
+                filaments += filament
+            }
+            return GravTimeflowLinkVfx(source, target, main, filaments)
+        }
+
+        /** 单条线实体：贴图载形 + 节点色染紫（对照 PsiHelixComponent 的 CurveEntity 配置口径）。 */
+        private fun createArc(
+            engine: CombatEngineAPI,
+            texturePath: String,
+            texturePixels: Float,
+            textureSpeed: Float,
+            glowPower: Float,
+        ): CurveEntity? {
             val entity = try {
                 CurveEntity()
             } catch (t: Throwable) {
@@ -215,22 +284,26 @@ class GravTimeflowLinkVfx private constructor(
                 entity.delete()
                 return null
             }
+            entity.isGlobalUV = true
             entity.setLayer(CombatEngineLayers.BELOW_SHIPS_LAYER)
-            if (additive) entity.setAdditiveBlend() else entity.setNormalBlend()
-            entity.materialData.setDiffuse(BoxDatabase.BUtil_ONE)
-            entity.materialData.setEmissive(BoxDatabase.BUtil_ONE)
+            entity.setAdditiveBlend()
+            val sprite = Global.getSettings().getSprite(texturePath)
+            entity.materialData.setDiffuse(sprite)
+            entity.materialData.setEmissive(sprite)
             entity.materialData.alphaToEmissive = 0f
             entity.materialData.isColorToEmissive = 0f
             entity.materialData.glowPower = glowPower
             entity.materialData.isIgnoreIllumination = true
+            entity.texturePixels = texturePixels
+            entity.textureSpeed = textureSpeed
             entity.setGlobalTimer(0f, FULL_SECONDS, 0f)
 
             val nodes = ArrayList<NodeData>(NODE_COUNT)
             repeat(NODE_COUNT) {
                 val node = NodeData(Vector2f(0f, 0f))
-                node.setWidth(BODY_WIDTH)
-                node.setColor(COLOR_DIM)
-                node.setEmissiveColor(COLOR_EMISSIVE_DIM)
+                node.setWidth(MAIN_WIDTH)
+                node.setColor(MAIN_DIM)
+                node.setEmissiveColor(MAIN_EMISSIVE_DIM)
                 nodes += node
             }
             entity.nodes = nodes

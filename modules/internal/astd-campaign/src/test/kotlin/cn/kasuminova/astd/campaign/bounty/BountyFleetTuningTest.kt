@@ -66,11 +66,12 @@ class BountyFleetTuningTest {
 
     @Test
     fun `固有技能菀星战斗智能仅随 ASTD 制式核心发放`() {
-        // 制式核心分档：技能表末尾固定 astd_combat_intel，且技能数与军官等级一致（技能位 = 等级口径）
+        // 制式核心分档：技能表首位固定 astd_combat_intel（与 skill_data.csv order = 5 的最左排序口径一致），
+        // 且技能数与军官等级一致（技能位 = 等级口径）
         StandardCores.Tier.entries.forEach { tier ->
             assertEquals(
-                StandardCores.COMBAT_INTEL_SKILL_ID, tier.officerSkills.last(),
-                "${tier.commodityId} 技能表末尾应为固有技能",
+                StandardCores.COMBAT_INTEL_SKILL_ID, tier.officerSkills.first(),
+                "${tier.commodityId} 技能表首位应为固有技能",
             )
             assertEquals(
                 tier.officerLevel, tier.officerSkills.size,
@@ -82,7 +83,7 @@ class BountyFleetTuningTest {
         val table = BountyOfficerSkills.forVariant("astd_xc_002_Standard")!!
         StandardCores.Tier.entries.forEach { tier ->
             val resolved = BountyFleetTunerImpl.resolveCoreOfficerSkills(table, tier.officerLevel, astdCore = true)
-            assertEquals(StandardCores.COMBAT_INTEL_SKILL_ID, resolved.last(), "${tier.commodityId} 赏金路径应带固有技能")
+            assertEquals(StandardCores.COMBAT_INTEL_SKILL_ID, resolved.first(), "${tier.commodityId} 赏金路径固有技能应在首位")
             assertEquals(
                 minOf(tier.officerLevel - 1, table.size) + 1, resolved.size,
                 "${tier.commodityId} 赏金路径技能数应为 min(等级-1, 表长)+1",

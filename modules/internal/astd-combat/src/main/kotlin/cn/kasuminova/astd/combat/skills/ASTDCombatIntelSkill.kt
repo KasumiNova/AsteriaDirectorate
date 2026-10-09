@@ -18,6 +18,7 @@ import com.fs.starfarer.api.combat.listeners.AdvanceableListener
 import com.fs.starfarer.api.combat.listeners.DamageTakenModifier
 import com.fs.starfarer.api.combat.listeners.WeaponBaseRangeModifier
 import org.lwjgl.util.vector.Vector2f
+import kotlin.math.roundToInt
 
 /**
  * 菀星战斗智能（astd_combat_intel）——本模组全部制式 AI 核心的固有技能
@@ -45,18 +46,21 @@ import org.lwjgl.util.vector.Vector2f
 class ASTDCombatIntelSkill {
 
     class Level1 : ShipSkillEffect {
-        override fun apply(stats: MutableShipStatsAPI, hullSize: ShipAPI.HullSize, id: String, level: Float) {
+        override fun apply(stats: MutableShipStatsAPI, hullSize: ShipAPI.HullSize?, id: String, level: Float) {
             if (!isPhaseShip(stats)) return
             val values = ASTDCombatIntelTuning.resolve(DifficultyTuningImpl, isPlayerShip(stats))
             stats.peakCRDuration.modifyMult(id, 1f + values.peakCrBonus)
         }
 
-        override fun unapply(stats: MutableShipStatsAPI, hullSize: ShipAPI.HullSize, id: String) {
+        override fun unapply(stats: MutableShipStatsAPI, hullSize: ShipAPI.HullSize?, id: String) {
             stats.peakCRDuration.unmodifyMult(id)
         }
 
         override fun getEffectDescription(level: Float): String =
-            I18n[I18n.Categories.MOD, "ui.skill.astd_combat_intel.effect.peak_cr"]
+            I18n.t(
+                I18n.Categories.MOD, "ui.skill.astd_combat_intel.effect.peak_cr",
+                "pct" to formatPercent(displayValues().peakCrBonus),
+            )
 
         override fun getEffectPerLevelDescription(): String? = null
 
@@ -65,19 +69,28 @@ class ASTDCombatIntelSkill {
     }
 
     class Level2 : ShipSkillEffect {
-        override fun apply(stats: MutableShipStatsAPI, hullSize: ShipAPI.HullSize, id: String, level: Float) {
+        override fun apply(stats: MutableShipStatsAPI, hullSize: ShipAPI.HullSize?, id: String, level: Float) {
             if (!isPhaseShip(stats)) return
             val ship = stats.entity as? ShipAPI ?: return
             ensureShipListener(ship, DATA_SURFACE_ARMOR_LISTENER) { PhaseSurfaceArmorListener(ship) }
         }
 
-        override fun unapply(stats: MutableShipStatsAPI, hullSize: ShipAPI.HullSize, id: String) {
+        override fun unapply(stats: MutableShipStatsAPI, hullSize: ShipAPI.HullSize?, id: String) {
             val ship = stats.entity as? ShipAPI ?: return
             discardShipListener(ship, DATA_SURFACE_ARMOR_LISTENER)
         }
 
-        override fun getEffectDescription(level: Float): String =
-            I18n[I18n.Categories.MOD, "ui.skill.astd_combat_intel.effect.surface_armor"]
+        override fun getEffectDescription(level: Float): String {
+            val values = displayValues()
+            return I18n.t(
+                I18n.Categories.MOD, "ui.skill.astd_combat_intel.effect.surface_armor",
+                "frigate" to formatNumber(values.surfaceArmorFrigate),
+                "destroyer" to formatNumber(values.surfaceArmorDestroyer),
+                "cruiser" to formatNumber(values.surfaceArmorCruiser),
+                "capital" to formatNumber(values.surfaceArmorCapital),
+                "decay" to formatNumber(values.surfaceArmorDecay),
+            )
+        }
 
         override fun getEffectPerLevelDescription(): String? = null
 
@@ -86,7 +99,7 @@ class ASTDCombatIntelSkill {
     }
 
     class Level3 : ShipSkillEffect {
-        override fun apply(stats: MutableShipStatsAPI, hullSize: ShipAPI.HullSize, id: String, level: Float) {
+        override fun apply(stats: MutableShipStatsAPI, hullSize: ShipAPI.HullSize?, id: String, level: Float) {
             if (!isPhaseShip(stats)) return
             if (stats.variant?.hullSpec?.shipSystemId != ASTDCombatIntelTuning.GRAV_PHASE_SYSTEM_ID) return
             val hasCoils = stats.variant?.hasHullMod(ASTDCombatIntelTuning.ADAPTIVE_COILS_HULLMOD_ID) == true
@@ -98,7 +111,7 @@ class ASTDCombatIntelSkill {
                 .modifyMult(id, ASTDCombatIntelTuning.PHASE_TIME_FLOW_MULT)
         }
 
-        override fun unapply(stats: MutableShipStatsAPI, hullSize: ShipAPI.HullSize, id: String) {
+        override fun unapply(stats: MutableShipStatsAPI, hullSize: ShipAPI.HullSize?, id: String) {
             stats.dynamic.getMod(ASTDCombatIntelTuning.FLUX_THRESHOLD_MOD).unmodifyPercent(id)
             stats.dynamic.getStat(ASTDCombatIntelTuning.PHASE_TIME_MULT_MOD).unmodifyMult(id)
         }
@@ -116,19 +129,22 @@ class ASTDCombatIntelSkill {
         // 与 Level5 共用 DATA_FLAT_REDUCTION_LISTENER 挂同一个 FlatHitReductionListener：
         // unapply 无引用计数，任一侧 unapply 即摘除——因此 Level4/Level5 必须永远同组出现，
         // 拆分进不同 effectGroup 会造成互摘（stat 刷新期间护盾/装甲减免短时丢失）
-        override fun apply(stats: MutableShipStatsAPI, hullSize: ShipAPI.HullSize, id: String, level: Float) {
+        override fun apply(stats: MutableShipStatsAPI, hullSize: ShipAPI.HullSize?, id: String, level: Float) {
             if (isPhaseShip(stats)) return
             val ship = stats.entity as? ShipAPI ?: return
             ensureShipListener(ship, DATA_FLAT_REDUCTION_LISTENER) { FlatHitReductionListener(ship) }
         }
 
-        override fun unapply(stats: MutableShipStatsAPI, hullSize: ShipAPI.HullSize, id: String) {
+        override fun unapply(stats: MutableShipStatsAPI, hullSize: ShipAPI.HullSize?, id: String) {
             val ship = stats.entity as? ShipAPI ?: return
             discardShipListener(ship, DATA_FLAT_REDUCTION_LISTENER)
         }
 
         override fun getEffectDescription(level: Float): String =
-            I18n[I18n.Categories.MOD, "ui.skill.astd_combat_intel.effect.shield"]
+            I18n.t(
+                I18n.Categories.MOD, "ui.skill.astd_combat_intel.effect.shield",
+                "reduction" to formatNumber(displayValues().shieldFlatReduction),
+            )
 
         override fun getEffectPerLevelDescription(): String? = null
 
@@ -137,19 +153,22 @@ class ASTDCombatIntelSkill {
     }
 
     class Level5 : ShipSkillEffect {
-        override fun apply(stats: MutableShipStatsAPI, hullSize: ShipAPI.HullSize, id: String, level: Float) {
+        override fun apply(stats: MutableShipStatsAPI, hullSize: ShipAPI.HullSize?, id: String, level: Float) {
             if (isPhaseShip(stats)) return
             val ship = stats.entity as? ShipAPI ?: return
             ensureShipListener(ship, DATA_FLAT_REDUCTION_LISTENER) { FlatHitReductionListener(ship) }
         }
 
-        override fun unapply(stats: MutableShipStatsAPI, hullSize: ShipAPI.HullSize, id: String) {
+        override fun unapply(stats: MutableShipStatsAPI, hullSize: ShipAPI.HullSize?, id: String) {
             val ship = stats.entity as? ShipAPI ?: return
             discardShipListener(ship, DATA_FLAT_REDUCTION_LISTENER)
         }
 
         override fun getEffectDescription(level: Float): String =
-            I18n[I18n.Categories.MOD, "ui.skill.astd_combat_intel.effect.armor"]
+            I18n.t(
+                I18n.Categories.MOD, "ui.skill.astd_combat_intel.effect.armor",
+                "reduction" to formatNumber(displayValues().armorFlatReduction),
+            )
 
         override fun getEffectPerLevelDescription(): String? = null
 
@@ -158,18 +177,24 @@ class ASTDCombatIntelSkill {
     }
 
     class Level6 : ShipSkillEffect {
-        override fun apply(stats: MutableShipStatsAPI, hullSize: ShipAPI.HullSize, id: String, level: Float) {
+        override fun apply(stats: MutableShipStatsAPI, hullSize: ShipAPI.HullSize?, id: String, level: Float) {
             val ship = stats.entity as? ShipAPI ?: return
             ensureShipListener(ship, DATA_ELITE_RANGE_LISTENER) { EliteEnergyRangeListener() }
         }
 
-        override fun unapply(stats: MutableShipStatsAPI, hullSize: ShipAPI.HullSize, id: String) {
+        override fun unapply(stats: MutableShipStatsAPI, hullSize: ShipAPI.HullSize?, id: String) {
             val ship = stats.entity as? ShipAPI ?: return
             discardShipListener(ship, DATA_ELITE_RANGE_LISTENER)
         }
 
-        override fun getEffectDescription(level: Float): String =
-            I18n[I18n.Categories.MOD, "ui.skill.astd_combat_intel.effect.elite_range"]
+        override fun getEffectDescription(level: Float): String {
+            val values = displayValues()
+            return I18n.t(
+                I18n.Categories.MOD, "ui.skill.astd_combat_intel.effect.elite_range",
+                "threshold" to formatNumber(values.eliteRangeThreshold),
+                "bonus" to formatNumber(values.eliteRangeBonus),
+            )
+        }
 
         override fun getEffectPerLevelDescription(): String? = null
 
@@ -178,17 +203,20 @@ class ASTDCombatIntelSkill {
     }
 
     class Level7 : ShipSkillEffect {
-        override fun apply(stats: MutableShipStatsAPI, hullSize: ShipAPI.HullSize, id: String, level: Float) {
+        override fun apply(stats: MutableShipStatsAPI, hullSize: ShipAPI.HullSize?, id: String, level: Float) {
             val values = ASTDCombatIntelTuning.resolve(DifficultyTuningImpl, isPlayerShip(stats))
             stats.energyWeaponFluxCostMod.modifyMult(id, 1f - values.eliteFluxReduction)
         }
 
-        override fun unapply(stats: MutableShipStatsAPI, hullSize: ShipAPI.HullSize, id: String) {
+        override fun unapply(stats: MutableShipStatsAPI, hullSize: ShipAPI.HullSize?, id: String) {
             stats.energyWeaponFluxCostMod.unmodifyMult(id)
         }
 
         override fun getEffectDescription(level: Float): String =
-            I18n[I18n.Categories.MOD, "ui.skill.astd_combat_intel.effect.elite_flux"]
+            I18n.t(
+                I18n.Categories.MOD, "ui.skill.astd_combat_intel.effect.elite_flux",
+                "pct" to formatPercent(displayValues().eliteFluxReduction),
+            )
 
         override fun getEffectPerLevelDescription(): String? = null
 
@@ -329,6 +357,20 @@ class ASTDCombatIntelSkill {
 
         private fun isPlayerShip(stats: MutableShipStatsAPI): Boolean =
             (stats.entity as? ShipAPI)?.owner == 0
+
+        /**
+         * 技能 tooltip 展示数值：getEffectDescription 拿不到 stats/ship 上下文，
+         * 统一按我方档位解析（技能描述面向玩家，随 LunaLib 难度设置即时变化）。
+         */
+        private fun displayValues(): ASTDCombatIntelTuning.Values =
+            ASTDCombatIntelTuning.resolve(DifficultyTuningImpl, true)
+
+        /** 展示用数字格式：整数值不带小数点（800 而非 800.0），小数值原样（衰减 1.5 秒）。 */
+        private fun formatNumber(value: Float): String =
+            if (value == value.toLong().toFloat()) value.toLong().toString() else value.toString()
+
+        /** 展示用百分比格式：0.2 → "20%"（模板只放 %pct% 占位符，百分号由值携带）。 */
+        private fun formatPercent(fraction: Float): String = "${(fraction * 100f).roundToInt()}%"
 
         /**
          * 监听器幂等挂载：技能 apply 在每次 stat 刷新都会触发，customData 记录既有实例避免重复挂。

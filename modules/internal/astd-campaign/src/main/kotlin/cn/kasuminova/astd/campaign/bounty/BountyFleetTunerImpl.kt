@@ -717,12 +717,14 @@ class BountyFleetTunerImpl(
          * 核心军官最终技能组成（纯函数，单测直调）：变体技能表取舍结果之上，
          * ASTD 制式核心（astdCore = true）以 1 个技能位换固有技能 astd_combat_intel
          * （技能数 = min(等级 - 1, 表长) + 1；表长足够时与 StandardCores.createPerson 的
-         * 「技能数 = 等级」出厂口径一致，表长不足时按既有截断口径不越出等级）；
-         * 非 ASTD 核心（原版/余晖/SMS 等）不追加，保持设计稿「本模组 AI 核心」范围。
+         * 「技能数 = 等级」出厂口径一致，表长不足时按既有截断口径不越出等级）。
+         * 固有技能固定返回列表首位，与 skill_data.csv 中 order = 5（先于全部原版技能）
+         * 的「固有技能排最左」口径一致；非 ASTD 核心（原版/余晖/SMS 等）不追加，
+         * 保持设计稿「本模组 AI 核心」范围。
          */
         fun resolveCoreOfficerSkills(tableSkills: List<String>?, level: Int, astdCore: Boolean): List<String> {
             val picks = resolveOfficerSkills(tableSkills, if (astdCore) level - 1 else level)
-            return if (astdCore) picks + StandardCores.COMBAT_INTEL_SKILL_ID else picks
+            return if (astdCore) listOf(StandardCores.COMBAT_INTEL_SKILL_ID) + picks else picks
         }
 
         /** SMS 拟核特殊技能 id 前缀（软联动识别口径：保留模组特殊技能，其余原版技能等量替换）。 */

@@ -8,16 +8,16 @@ import cn.kasuminova.astd.sscsv.entries.catalog.shipdata.shipName
 object Ship_astd_zw_001 : ShipDataEntry() {
     override val id: String = "astd_zw_001"
     override val name: String = shipName(id)
-    override val designation: String = "巡洋舰"
+    override val designation: String = "指挥巡洋舰"
     override val tech: String = "菀星设计局-紫菀"
     override val systemId: String = "astd_grav_timeflow_interference"
 
     override val fleetPts: Int = 30
     override val hitpoints: Int = 8000
     override val armorRating: Int = 1000
-    override val maxFlux: Int = 14000
-    override val fluxDissipation: Int = 900
-    override val ordnancePoints: Int = 195
+    override val maxFlux: Int = 12000
+    override val fluxDissipation: Int = 800
+    override val ordnancePoints: Int = 210
     override val maxSpeed: Int = 60
     override val acceleration: Int = 30
     override val deceleration: Int = 30
@@ -25,7 +25,7 @@ object Ship_astd_zw_001 : ShipDataEntry() {
     override val turnAcceleration: Int = 60
     override val mass: Int = 2250
 
-    override val fighterBays: Int = 4
+    override val fighterBays: Int = 3
 
     // 对齐原版航空战列舰（Legion）与本舰 zw_102 判例 hints "CARRIER, COMBAT, NO_AUTO_ESCORT"：
     // 决明为 4 甲板母舰 + 半巡洋平台（purple/10-unique.md §1 定位「锚点控场型指挥舰 / 4 甲板母舰」），

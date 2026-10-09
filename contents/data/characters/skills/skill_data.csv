@@ -1,3 +1,3 @@
 id,name,order,tier,reqPoints,reqPointsPerExtraSkill,description,author,combat officer,admiral,admin,tags,icon
 aptitude_astd_generic,,0,,,,,,,,,,graphics/icons/skills/astd_skill_combat_intel.png
-astd_combat_intel,菀星战斗智能,10010,0,0,,它不犹豫，不恐惧，不知疲倦。它唯一做的，就是把每一次交锋都变成已知的解。,菀星设计局《制式核心作战条令》序言,TRUE,,,"npc_only, ai_core_only",graphics/icons/skills/astd_skill_combat_intel.png
+astd_combat_intel,菀星战斗智能,5,0,0,,从不犹豫，从不恐惧，不知疲倦。它唯一做的就是把每一次交战都变成已知的解。,菀星设计局《核心作战条令》序言,TRUE,,,"npc_only, ai_core_only",graphics/icons/skills/astd_skill_combat_intel.png

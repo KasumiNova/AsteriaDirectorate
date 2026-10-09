@@ -48,6 +48,8 @@ enum class HullmodTone {
 
     /** 强调橙：次级警示/特殊机制。 */
     ORANGE,
+
+    RED,
 }
 
 /**
@@ -69,6 +71,12 @@ data class HullmodTheme(
     val warningColor: Color = Color(255, 224, 36),
     val positiveColor: Color = Color(96, 224, 126),
     val orangeColor: Color = Color(255, 148, 42),
+    /**
+     * 警示红：负面效果/惩罚条目。缺省 `null` 表示在使用处动态解析
+     * `Misc.getNegativeHighlightColor()`（追随原版色盲模式与玩家色配；
+     * 不能在构造期求值，否则单测环境无 `Global.getSettings()` 会 NPE）。
+     */
+    val redColor: Color? = null,
 ) {
     /** 把语义角色解析为主题色；[HullmodTone.DEFAULT] 回退 [fallback]。 */
     fun colorFor(tone: HullmodTone, fallback: Color): Color = when (tone) {
@@ -76,6 +84,7 @@ data class HullmodTheme(
         HullmodTone.WARNING -> warningColor
         HullmodTone.POSITIVE -> positiveColor
         HullmodTone.ORANGE -> orangeColor
+        HullmodTone.RED -> redColor ?: Misc.getNegativeHighlightColor()
     }
 }
 
@@ -174,6 +183,18 @@ internal class ParaBlock(
     val baseColor: Color? = null,
 ) : HullmodBlock
 
+/**
+ * 直写段落块：与 [ParaBlock] 的唯一区别是不读取 I18n 键，[text] 即最终模板文本，
+ * 直接对内联模板做变量/高亮格式化（`%name%` / `<param:#RRGGBB:name>` / `%%`），
+ * 便于游戏内热重载调整文案。
+ */
+internal class PlainTextBlock(
+    val text: String,
+    val padTop: Float,
+    val args: List<ParaArg>,
+    val baseColor: Color? = null,
+) : HullmodBlock
+
 /** 分节标题块（i18n key，主题 sectionBackground 底色的通栏标题）。 */
 internal class HeadingBlock(
     val key: String,
@@ -228,6 +249,21 @@ class HullmodCardBuilder {
     /** 段落（显式正文色版本；仅既有排版需要非默认正文色时使用）。 */
     fun para(key: String, color: Color, padTop: Float = 8f, vararg args: ParaArg) {
         blocks += ParaBlock(key, padTop, args.toList(), color)
+    }
+
+    /** 直写段落（不读 I18n 键，文本内联便于热重载调文案；可混排静态高亮 [hl] 与运行期变量 [v]）。 */
+    fun plainText(text: String, padTop: Float = 8f, vararg args: ParaArg) {
+        blocks += PlainTextBlock(text, padTop, args.toList())
+    }
+
+    /** 直写段落（默认间距、仅行内参数版本）。 */
+    fun plainText(text: String, vararg args: ParaArg) {
+        blocks += PlainTextBlock(text, 8f, args.toList())
+    }
+
+    /** 直写段落（显式正文色版本）。 */
+    fun plainText(text: String, color: Color, padTop: Float = 8f, vararg args: ParaArg) {
+        blocks += PlainTextBlock(text, padTop, args.toList(), color)
     }
 
     /** 分节标题（i18n key）。 */
@@ -327,14 +363,16 @@ internal object HullmodCardRenderer {
         spec: HullmodTooltipSpec,
     ) {
         tooltip.buildWith {
-            spacer(6f)
+            spacer(-20f) // 填充 Hullmod Tooltip 顶部空隙
             withHullmodBackground(accentColor = theme.accentColor, width = width) {
+                spacer(6f) // 拉开空隙用于展示背景特效
                 if (!title.isNullOrEmpty()) {
                     heading(title, theme.nameColor, theme.headerBackground, 6f)
                 }
                 for (block in spec.blocks) {
                     when (block) {
                         is ParaBlock -> renderPara(block, theme)
+                        is PlainTextBlock -> renderPlainText(block, theme)
                         is HeadingBlock -> heading(
                             I18n[I18n.Categories.MOD, block.key],
                             theme.nameColor,
@@ -346,6 +384,7 @@ internal object HullmodCardRenderer {
                         is SpacerBlock -> spacer(block.height)
                     }
                 }
+                spacer(6f) // 拉开空隙用于展示背景特效
             }
         }
     }
@@ -363,6 +402,27 @@ internal object HullmodCardRenderer {
             block.key,
             *vars.map { it.name to it.value }.toTypedArray(),
         )
+        addMergedPara(rendered, statics, theme, block.padTop, baseColor)
+    }
+
+    private fun TooltipBuilder.renderPlainText(block: PlainTextBlock, theme: HullmodTheme) {
+        val baseColor = block.baseColor ?: Misc.getTextColor()
+        val vars = block.args.filterIsInstance<RuntimeVar>()
+        val statics = block.args.filterIsInstance<StaticHighlight>()
+        val rendered = I18n.format(
+            block.text,
+            *vars.map { it.name to it.value }.toTypedArray(),
+        )
+        addMergedPara(rendered, statics, theme, block.padTop, baseColor)
+    }
+
+    private fun TooltipBuilder.addMergedPara(
+        rendered: I18n.Rendered,
+        statics: List<StaticHighlight>,
+        theme: HullmodTheme,
+        padTop: Float,
+        baseColor: Color,
+    ) {
         val staticHighlights = statics.map {
             I18n.Highlight(it.value, it.color ?: theme.colorFor(it.tone, theme.warningColor))
         }
@@ -373,7 +433,7 @@ internal object HullmodCardRenderer {
         I18nUi.addParaRendered(
             tooltip,
             I18n.Rendered(rendered.text, merged),
-            block.padTop,
+            padTop,
             baseColor,
         )
     }

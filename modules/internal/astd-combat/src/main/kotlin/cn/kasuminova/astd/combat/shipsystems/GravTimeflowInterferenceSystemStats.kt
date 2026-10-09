@@ -150,19 +150,22 @@ class GravTimeflowInterferenceSystemStats : BaseShipSystemScript() {
                 fighter.mutableStats.timeMult.modifyMult(TIMEFLOW_MOD_ID, timeMult)
                 fighter.setJitter(
                     JITTER_KEY, FIGHTER_JITTER_COLOR, effectLevel, FIGHTER_JITTER_COPIES,
-                    0f, 3f + fighter.collisionRadius * 0.3f,
+                    0f, 2f + fighter.collisionRadius * 0.2f,
                 )
             }
         }
 
-        ship.setJitter(JITTER_KEY, SELF_JITTER_COLOR, effectLevel * SELF_JITTER_LEVEL, SELF_JITTER_COPIES, 0f, 2f)
+        ship.setJitter(
+            JITTER_KEY, SELF_JITTER_COLOR, effectLevel * SELF_JITTER_LEVEL, SELF_JITTER_COPIES,
+            0f, 3f + ship.collisionRadius * 0.15f,
+        )
         target.setJitter(
             JITTER_KEY, TARGET_JITTER_COLOR, effectLevel, TARGET_JITTER_COPIES,
-            0f, 5f + target.collisionRadius * 0.5f,
+            0f, 3f + target.collisionRadius * 0.3f,
         )
         target.setJitterUnder(
             JITTER_KEY, TARGET_JITTER_UNDER_COLOR, effectLevel, TARGET_JITTER_UNDER_COPIES,
-            0f, 4f + target.collisionRadius * 0.5f,
+            0f, 3f + target.collisionRadius * 0.3f,
         )
 
         activation.link?.update(engine.elapsedInLastFrame, effectLevel)
@@ -273,19 +276,19 @@ class GravTimeflowInterferenceSystemStats : BaseShipSystemScript() {
         /** jitter 源句柄（自身/目标/战机共用同一 source，覆盖式刷新；结束停止刷新自然消退）。 */
         private val JITTER_KEY = Any()
 
-        /** 自身 jitter（淡）：低强度、小副本数。 */
-        private val SELF_JITTER_COLOR = Color(190, 140, 255, 55)
-        private const val SELF_JITTER_LEVEL = 0.5f
+        /** 自身 jitter（淡但可见：实机反馈 alpha 55 + range 2f 完全不可见；保持弱于目标的相对关系）。 */
+        private val SELF_JITTER_COLOR = Color(190, 140, 255, 70)
+        private const val SELF_JITTER_LEVEL = 0.6f
         private const val SELF_JITTER_COPIES = 3
 
-        /** 目标 jitter（明显，规格：目标舰船的 Jitter 效果更明显）。 */
-        private val TARGET_JITTER_COLOR = Color(195, 140, 255, 90)
-        private val TARGET_JITTER_UNDER_COLOR = Color(190, 130, 255, 140)
-        private const val TARGET_JITTER_COPIES = 6
-        private const val TARGET_JITTER_UNDER_COPIES = 15
+        /** 目标 jitter（比自身明显但整体收敛：实机反馈原参数幅度过大）。 */
+        private val TARGET_JITTER_COLOR = Color(195, 140, 255, 80)
+        private val TARGET_JITTER_UNDER_COLOR = Color(190, 130, 255, 105)
+        private const val TARGET_JITTER_COPIES = 4
+        private const val TARGET_JITTER_UNDER_COPIES = 8
 
         /** 目标所属战机 jitter（轻微）。 */
-        private val FIGHTER_JITTER_COLOR = Color(200, 160, 255, 60)
+        private val FIGHTER_JITTER_COLOR = Color(200, 160, 255, 50)
         private const val FIGHTER_JITTER_COPIES = 2
 
         private fun activationKey(ship: ShipAPI): String = "$ACTIVATION_KEY${ship.id}"

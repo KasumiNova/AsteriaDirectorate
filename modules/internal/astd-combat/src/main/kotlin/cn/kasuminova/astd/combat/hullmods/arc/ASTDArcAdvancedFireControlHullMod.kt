@@ -1,6 +1,8 @@
 package cn.kasuminova.astd.combat.hullmods.arc
 
 import cn.kasuminova.astd.ui.dsl.HullmodThemes
+import cn.kasuminova.astd.ui.dsl.HullmodTone
+import cn.kasuminova.astd.ui.dsl.ParaArg
 import cn.kasuminova.astd.ui.dsl.hullmodCard
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseHullMod
@@ -116,24 +118,10 @@ class ASTDArcAdvancedFireControlHullMod : BaseHullMod() {
         isForModSpec: Boolean
     ) {
         tooltip.hullmodCard(width, THEME, spec?.displayName) {
-            para("ui.hullmod.arc_advanced_fire_control.desc")
-            para("ui.hullmod.arc_advanced_fire_control.summary")
+            plainText("内建于 烽燧-级 的高级火控系统，在牺牲一定射程优势的同时，强调持续火力投射的能力。")
             heading("ui.hullmod.export.section.effect")
-            table {
-                row(
-                    "ui.hullmod.arc_advanced_fire_control.attr.weapon_flux",
-                    "ui.hullmod.arc_advanced_fire_control.value.weapon_flux",
-                )
-                row(
-                    "ui.hullmod.arc_advanced_fire_control.attr.weapon_rate",
-                    "ui.hullmod.arc_advanced_fire_control.value.weapon_rate",
-                )
-                row(
-                    "ui.hullmod.arc_advanced_fire_control.attr.ramp",
-                    "ui.hullmod.arc_advanced_fire_control.value.ramp",
-                )
-            }
-            para("ui.hullmod.arc_advanced_fire_control.note")
+            plainText("# 舰船武器射程 -20%", hl("#", HullmodTone.RED), hl("-20%", HullmodTone.RED))
+            plainText("# 武器辐能产出 +20%", hl("#", HullmodTone.RED), hl("+20%", HullmodTone.RED))
         }
     }
 

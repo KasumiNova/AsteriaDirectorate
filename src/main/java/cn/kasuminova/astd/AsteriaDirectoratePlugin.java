@@ -20,6 +20,7 @@ import cn.kasuminova.astd.renderer.effect.system.GravityPhaseVisualEffect;
 import cn.kasuminova.astd.renderer.effect.system.LoadedMissileGlowLayer;
 import cn.kasuminova.astd.renderer.effect.system.ShipGlowRenderer;
 import cn.kasuminova.astd.renderer.effect.system.Xc002GhostWingsEffect;
+import cn.kasuminova.astd.renderer.effect.system.GravTimeflowLinkVfx;
 import com.fs.starfarer.api.BaseModPlugin;
 import com.fs.starfarer.api.Global;
 import com.fs.starfarer.api.PluginPick;
@@ -79,6 +80,8 @@ public final class AsteriaDirectoratePlugin extends BaseModPlugin {
         GravityPhaseVisualEffect.INSTANCE.preloadTextures();
         // 预加载 XC-002 虚数之翼光翼贴图（同上原因）。
         Xc002GhostWingsEffect.INSTANCE.preloadTextures();
+        // 预加载引力时流干涉器链路弧线贴图（同上原因）。
+        GravTimeflowLinkVfx.preloadTextures();
         // 预加载制式核心军官头像贴图（同上原因；核心指派界面为裸 getSprite 路径）。
         StandardCores.INSTANCE.preloadPortraits();
     }
