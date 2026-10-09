@@ -28,9 +28,6 @@ P空间深潜器（词缀·隐藏）,astd_affix_pspace_diver,1,1,astd_hidden,,,0
 引力空间折跃器,astd_grav_space_fold,3,1,菀星设计局-紫菀,astd_builtin,,0,FALSE,TRUE,FALSE,0,0,0,0,cn.kasuminova.astd.combat.hullmods.lens.GravSpaceFoldHullMod,,近域弹体概率折跃至舰体另一端，光束减伤,,graphics/hullmods/astd_lens_array_core.png
 虚数之翼,astd_imaginary_wings,3,1,菀星设计局-星坠,astd_builtin,,0,FALSE,TRUE,FALSE,0,0,0,0,cn.kasuminova.astd.combat.hullmods.arc.ASTDImaginaryWingsHullMod,,系统激活后短暂机动爆发，武器伤害随航速比例缩放,,graphics/hullmods/astd_imaginary_wings.png
 离子化反冲蓄能器,astd_ionized_recoil_accumulator,2,1,菀星设计局-星坠,astd_builtin,,0,FALSE,TRUE,FALSE,0,0,0,0,cn.kasuminova.astd.combat.hullmods.arc.ASTDIonizedRecoilAccumulatorHullMod,,受击回收与反冲电弧,,graphics/hullmods/astd_ionized_recoil_accumulator.png
-透镜阵列核心,astd_lens_array_core,3,1,菀星设计局-紫菀,astd_builtin,,0,FALSE,TRUE,FALSE,0,0,0,0,cn.kasuminova.astd.combat.hullmods.lens.ASTDLensArrayCoreHullMod,,透镜协议旗舰指挥中枢,,graphics/hullmods/astd_lens_array_core.png
-视差甲板,astd_lens_parallax_decks,3,1,菀星设计局-紫菀,astd_builtin,,0,FALSE,TRUE,FALSE,0,0,0,0,cn.kasuminova.astd.combat.hullmods.lens.ASTDLensParallaxDecksHullMod,,机群铺标记载具：错位部署 / 链路回响 / 回收重构,,graphics/hullmods/astd_lens_array_core.png
-渗透潮汐,astd_lens_permeating_tide,3,1,菀星设计局-紫菀,astd_builtin,,0,FALSE,TRUE,FALSE,0,0,0,0,cn.kasuminova.astd.combat.hullmods.lens.ASTDLensPermeatingTideHullMod,,电战潮汐场：涨潮叠深水标记 / 过载退潮清场,,graphics/hullmods/astd_lens_array_core.png
 奇点能源,astd_lens_singularity_power,3,1,菀星设计局-紫菀,astd_builtin,,0,FALSE,TRUE,FALSE,0,0,0,0,cn.kasuminova.astd.combat.hullmods.base.ASTDSingularityPowerHullMod,,全舰供能：排辐、过载、环境抗性与武器辐耗优化,,graphics/hullmods/astd_lens_singularity_power.png
 无人模式,astd_mode_automated,3,0,,,,0,FALSE,TRUE,TRUE,0,0,0,0,cn.kasuminova.astd.combat.hullmods.base.ASTDAutomatedModeHullMod,,由 AI 核心接管舰桥的无人作战模式,,graphics/hullmods/astd_vectorized_jet_array.png
 载人模式,astd_mode_crewed,3,0,,,,0,FALSE,TRUE,TRUE,0,0,0,0,cn.kasuminova.astd.combat.hullmods.base.ASTDCrewedModeHullMod,,由乘员直接驾驶的标准作战模式,,graphics/hullmods/astd_nano_restoration_protocol.png
@@ -40,7 +37,3 @@ P空间深潜器（词缀·隐藏）,astd_affix_pspace_diver,1,1,astd_hidden,,,0
 等离子装甲护盾,astd_plasma_armor_shield,2,1,菀星设计局-星坠,astd_builtin,,0,FALSE,TRUE,FALSE,0,0,0,0,cn.kasuminova.astd.combat.hullmods.arc.ASTDPlasmaArmorShieldHullMod,,装甲-护盾承压耦合,,graphics/hullmods/astd_plasma_armor_shield.png
 奇点稳定器,astd_singularity_stabilizer,1,1,联制,astd_builtin,,0,FALSE,TRUE,FALSE,0,0,0,0,cn.kasuminova.astd.combat.hullmods.base.ASTDSingularityStabilizerHullMod,,时流锚定，免疫时流减益,,graphics/hullmods/astd_arch_stabilizer.png
 测试：护盾覆盖率（隐藏）,astd_test_shield_coverage,1,1,astd_hidden,,,0,TRUE,TRUE,TRUE,0,0,0,0,cn.kasuminova.astd.combat.hullmods.AsteriaTestShieldCoverageHullMod,,护盾覆盖（测试）,,graphics/hullmods/astd_zero_point_compute_core.png
-透镜阵列核心 - 无人模式,astd_zw_001_mode_automated,3,1,菀星设计局-紫菀,astd_builtin,,0,FALSE,TRUE,TRUE,0,0,0,0,cn.kasuminova.astd.combat.hullmods.lens.ASTDLensAutomatedModeHullMod,,全域拓扑态：蜂群与幽灵信号,,graphics/hullmods/astd_lens_array_core.png
-透镜阵列核心 - 载人模式,astd_zw_001_mode_crewed,3,1,菀星设计局-紫菀,astd_builtin,,0,FALSE,TRUE,TRUE,0,0,0,0,cn.kasuminova.astd.combat.hullmods.lens.ASTDLensCrewedModeHullMod,,宏观锚定态：情报中枢与战术链路,,graphics/hullmods/astd_lens_array_core.png
-内部：下次切换到无人(透镜),astd_zw_001_mode_next_automated,0,0,astd_hidden,,,0,FALSE,TRUE,TRUE,0,0,0,0,cn.kasuminova.astd.combat.hullmods.PlaceholderHullMod,,占位 (调试),,graphics/hullmods/astd_lens_array_core.png
-内部：下次切换到载人(透镜),astd_zw_001_mode_next_crewed,0,0,astd_hidden,,,0,FALSE,TRUE,TRUE,0,0,0,0,cn.kasuminova.astd.combat.hullmods.PlaceholderHullMod,,占位 (调试),,graphics/hullmods/astd_lens_array_core.png

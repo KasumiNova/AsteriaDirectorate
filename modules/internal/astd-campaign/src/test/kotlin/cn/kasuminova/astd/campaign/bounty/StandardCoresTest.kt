@@ -6,18 +6,19 @@ import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 
 /**
- * 制式核心（量产级 G/B/A/O）：分档表原版对齐、舰队核心配置分档映射与确定性、
- * 核心打捞区间与旗舰保底。
+ * 制式核心（量产级 G/B/A/O）：分档表（00-ai-cores.md 等级锚点 + 固有技能）、
+ * 舰队核心配置分档映射与确定性、核心打捞区间与旗舰保底。
  */
 class StandardCoresTest {
 
     @Test
-    fun `分档表与原版同档核心逐项对齐`() {
+    fun `分档表等级与技能数符合设计锚点且技能表无重复`() {
+        // docs/design/skills/00-ai-cores.md：G=4 / B=6 / A=8 / O=11，技能数 = 等级（含固有技能）
         val expect = mapOf(
-            StandardCores.Tier.G to Triple("astd_ai_core_g", 3, 3),
-            StandardCores.Tier.B to Triple("astd_ai_core_b", 5, 5),
-            StandardCores.Tier.A to Triple("astd_ai_core_a", 7, 7),
-            StandardCores.Tier.O to Triple("astd_ai_core_o", 9, 10),
+            StandardCores.Tier.G to Triple("astd_ai_core_g", 4, 4),
+            StandardCores.Tier.B to Triple("astd_ai_core_b", 6, 6),
+            StandardCores.Tier.A to Triple("astd_ai_core_a", 8, 8),
+            StandardCores.Tier.O to Triple("astd_ai_core_o", 11, 11),
         )
         for ((tier, e) in expect) {
             assertEquals(e.first, tier.commodityId, "$tier commodity id")

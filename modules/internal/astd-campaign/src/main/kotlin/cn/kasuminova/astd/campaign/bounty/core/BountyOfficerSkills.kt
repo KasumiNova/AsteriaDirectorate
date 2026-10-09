@@ -8,6 +8,8 @@ package cn.kasuminova.astd.campaign.bounty.core
  * 技能全 2 级照用，军官等级不随表——按实际装舰核心档定（BountyFleetTunerImpl.assignCrew）。
  * 核心档位技能位 N 小于表长时，由全局技能优先级表提供取舍顺序
  * （BountyFleetTunerImpl.resolveOfficerSkills）；未登记变体（余晖等）退回全局优先级表取前 N。
+ * 固有技能 astd_combat_intel 不写入本表：仅 ASTD 制式核心持有，
+ * 由 BountyFleetTunerImpl.applyOfficerSkills 按 aiCoreId 追加（见 resolveCoreOfficerSkills）。
  */
 object BountyOfficerSkills {
 

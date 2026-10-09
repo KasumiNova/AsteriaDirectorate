@@ -58,10 +58,55 @@ class BountyFleetTuningTest {
         assertEquals(emptyList(), BountyFleetTunerImpl.bountyOfficerSkills(0))
         assertEquals(emptyList(), BountyFleetTunerImpl.bountyOfficerSkills(-3))
         assertEquals(priority, BountyFleetTunerImpl.bountyOfficerSkills(priority.size + 10))
-        // 既有核心档位等级（G3/B5/A7/O9 与余晖 4/5/6）都在表长覆盖内
+        // 既有核心档位等级（G4/B6/A8/O11 与余晖 4/5/6）都在表长覆盖内
         (StandardCores.Tier.entries.map { it.officerLevel } + BountyFleetTunerImpl.AI_CORE_LEVELS.values).forEach {
             assertTrue(it <= priority.size, "核心档等级 $it 超出技能优先级表覆盖")
         }
+    }
+
+    @Test
+    fun `固有技能菀星战斗智能仅随 ASTD 制式核心发放`() {
+        // 制式核心分档：技能表末尾固定 astd_combat_intel，且技能数与军官等级一致（技能位 = 等级口径）
+        StandardCores.Tier.entries.forEach { tier ->
+            assertEquals(
+                StandardCores.COMBAT_INTEL_SKILL_ID, tier.officerSkills.last(),
+                "${tier.commodityId} 技能表末尾应为固有技能",
+            )
+            assertEquals(
+                tier.officerLevel, tier.officerSkills.size,
+                "${tier.commodityId} 技能数应与军官等级一致",
+            )
+        }
+        // 赏金路径（resolveCoreOfficerSkills）：ASTD 核心以 1 个技能位换固有技能；
+        // 技能数 = min(等级 - 1, 变体表长) + 1（表长不足时按既有口径截断，不越出等级）
+        val table = BountyOfficerSkills.forVariant("astd_xc_002_Standard")!!
+        StandardCores.Tier.entries.forEach { tier ->
+            val resolved = BountyFleetTunerImpl.resolveCoreOfficerSkills(table, tier.officerLevel, astdCore = true)
+            assertEquals(StandardCores.COMBAT_INTEL_SKILL_ID, resolved.last(), "${tier.commodityId} 赏金路径应带固有技能")
+            assertEquals(
+                minOf(tier.officerLevel - 1, table.size) + 1, resolved.size,
+                "${tier.commodityId} 赏金路径技能数应为 min(等级-1, 表长)+1",
+            )
+            assertTrue(resolved.size <= tier.officerLevel, "${tier.commodityId} 技能数不得越出军官等级")
+        }
+        // 非 ASTD 核心（原版/余晖）：不追加固有技能
+        val vanillaResolved = BountyFleetTunerImpl.resolveCoreOfficerSkills(table, 7, astdCore = false)
+        assertTrue(StandardCores.COMBAT_INTEL_SKILL_ID !in vanillaResolved, "非 ASTD 核心不得带固有技能")
+        assertEquals(
+            BountyFleetTunerImpl.resolveOfficerSkills(table, 7), vanillaResolved,
+            "非 ASTD 核心技能组成应与裸取舍一致",
+        )
+        // 全局优先级表与变体技能表均不含固有技能（SMS 拟核 planModuleCoreSkills 等共用路径天然不带）
+        assertTrue(StandardCores.COMBAT_INTEL_SKILL_ID !in BountyFleetTunerImpl.BOUNTY_OFFICER_SKILL_PRIORITY)
+        BountyOfficerSkills.TABLES.forEach { (variantId, skills) ->
+            assertTrue(StandardCores.COMBAT_INTEL_SKILL_ID !in skills, "$variantId 技能表不应登记固有技能")
+        }
+        assertTrue(
+            StandardCores.COMBAT_INTEL_SKILL_ID !in BountyFleetTunerImpl.planModuleCoreSkills(
+                listOf("sms_shared_knowledge", "helmsmanship", "target_analysis"), table,
+            ),
+            "SMS 拟核不得带固有技能",
+        )
     }
 
     @Test

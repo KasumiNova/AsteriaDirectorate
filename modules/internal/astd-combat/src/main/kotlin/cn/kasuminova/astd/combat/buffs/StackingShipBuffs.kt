@@ -61,8 +61,8 @@ object StackingShipBuffs {
     /**
      * 立即清除某船的指定 buff：先 unapply 其 stat 修改（若该 buff 已注册 applier），再清 customData 状态。
      *
-     * 动机：渗透潮汐「过载退潮」需即时移除标记效果，不能等下一帧插件自然到期清理，
-     * 否则 stat modifier 会残留至少一帧（甚至更久），与「退潮瞬间归零」的语义不符。
+     * 动机：部分机制需即时移除标记效果，不能等下一帧插件自然到期清理，
+     * 否则 stat modifier 会残留至少一帧（甚至更久），与「触发瞬间归零」的语义不符。
      *
      * 若该 buffId 尚未注册过 applier（从未施加过），则不存在可 unapply 的 stat 修改，
      * 此时仅清 customData 即可——属正常情况，无需日志。

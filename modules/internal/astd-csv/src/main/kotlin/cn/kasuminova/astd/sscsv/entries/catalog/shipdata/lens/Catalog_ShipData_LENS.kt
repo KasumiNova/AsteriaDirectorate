@@ -10,14 +10,14 @@ object Ship_astd_zw_001 : ShipDataEntry() {
     override val name: String = shipName(id)
     override val designation: String = "巡洋舰"
     override val tech: String = "菀星设计局-紫菀"
-    override val systemId: String = "astd_jamming_swarm"
+    override val systemId: String = "astd_grav_timeflow_interference"
 
     override val fleetPts: Int = 30
     override val hitpoints: Int = 8000
     override val armorRating: Int = 1000
     override val maxFlux: Int = 14000
     override val fluxDissipation: Int = 900
-    override val ordnancePoints: Int = 180
+    override val ordnancePoints: Int = 195
     override val maxSpeed: Int = 60
     override val acceleration: Int = 30
     override val deceleration: Int = 30

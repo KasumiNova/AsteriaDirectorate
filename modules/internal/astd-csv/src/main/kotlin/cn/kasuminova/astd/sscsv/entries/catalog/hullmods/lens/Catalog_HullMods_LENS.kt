@@ -1,8 +1,6 @@
 package cn.kasuminova.astd.sscsv.entries.catalog.hullmods.lens
 
 import cn.kasuminova.astd.sscsv.entries.HullModEntry
-import cn.kasuminova.astd.sscsv.entries.catalog.hullmods.PLACEHOLDER_SCRIPT
-import cn.kasuminova.astd.sscsv.entries.catalog.hullmods.PLACEHOLDER_SHORT
 import cn.kasuminova.astd.sscsv.entries.catalog.hullmods.TAGS_BUILTIN
 import cn.kasuminova.astd.sscsv.entries.catalog.hullmods.hullmodName
 import cn.kasuminova.astd.sscsv.i18n.SsI18n
@@ -23,97 +21,6 @@ object HullMod_astd_lens_singularity_power : HullModEntry() {
     override val script: String = "cn.kasuminova.astd.combat.hullmods.base.ASTDSingularityPowerHullMod"
     override val short: String = SsI18n.t("hullmod.$id.short")
     override val sprite: String = "graphics/hullmods/astd_lens_singularity_power.png"
-}
-
-object HullMod_astd_lens_array_core : HullModEntry() {
-    override val id: String = "astd_lens_array_core"
-    override val name: String = hullmodName(id)
-    override val tier: Int = 3
-    override val rarity: Int = 1
-    override val tech: String = "菀星设计局-紫菀"
-    override val tags: String = TAGS_BUILTIN
-    override val script: String = "cn.kasuminova.astd.combat.hullmods.lens.ASTDLensArrayCoreHullMod"
-    override val short: String = SsI18n.t("hullmod.$id.short")
-    override val sprite: String = "graphics/hullmods/astd_lens_array_core.png"
-}
-
-object HullMod_astd_lens_parallax_decks : HullModEntry() {
-    override val id: String = "astd_lens_parallax_decks"
-    override val name: String = hullmodName(id)
-    override val tier: Int = 3
-    override val rarity: Int = 1
-    override val tech: String = "菀星设计局-紫菀"
-    override val tags: String = TAGS_BUILTIN
-    override val script: String = "cn.kasuminova.astd.combat.hullmods.lens.ASTDLensParallaxDecksHullMod"
-    override val short: String = SsI18n.t("hullmod.$id.short")
-    override val sprite: String = "graphics/hullmods/astd_lens_array_core.png"
-}
-
-object HullMod_astd_lens_permeating_tide : HullModEntry() {
-    override val id: String = "astd_lens_permeating_tide"
-    override val name: String = hullmodName(id)
-    override val tier: Int = 3
-    override val rarity: Int = 1
-    override val tech: String = "菀星设计局-紫菀"
-    override val tags: String = TAGS_BUILTIN
-    override val script: String = "cn.kasuminova.astd.combat.hullmods.lens.ASTDLensPermeatingTideHullMod"
-    override val short: String = SsI18n.t("hullmod.$id.short")
-    override val sprite: String = "graphics/hullmods/astd_lens_array_core.png"
-}
-
-// 注：lens 自造切换器 astd_zw_001_mode_switcher 已废弃，改用通用切换器 astd_dual_mode_switcher
-// （见 entries/catalog/hullmods/base/Catalog_HullMods_Base.kt）。原条目已移除。
-
-object HullMod_astd_zw_001_mode_crewed : HullModEntry() {
-    override val id: String = "astd_zw_001_mode_crewed"
-    override val name: String = hullmodName(id)
-    override val tier: Int = 3
-    override val rarity: Int = 1
-    override val tech: String = "菀星设计局-紫菀"
-    override val tags: String = TAGS_BUILTIN
-    override val hiddenEverywhere: Boolean = true
-    override val script: String = "cn.kasuminova.astd.combat.hullmods.lens.ASTDLensCrewedModeHullMod"
-    override val short: String = SsI18n.t("hullmod.$id.short")
-    override val sprite: String = "graphics/hullmods/astd_lens_array_core.png"
-}
-
-object HullMod_astd_zw_001_mode_automated : HullModEntry() {
-    override val id: String = "astd_zw_001_mode_automated"
-    override val name: String = hullmodName(id)
-    override val tier: Int = 3
-    override val rarity: Int = 1
-    override val tech: String = "菀星设计局-紫菀"
-    override val tags: String = TAGS_BUILTIN
-    override val hiddenEverywhere: Boolean = true
-    override val script: String = "cn.kasuminova.astd.combat.hullmods.lens.ASTDLensAutomatedModeHullMod"
-    override val short: String = SsI18n.t("hullmod.$id.short")
-    override val sprite: String = "graphics/hullmods/astd_lens_array_core.png"
-}
-
-object HullMod_astd_zw_001_mode_next_crewed : HullModEntry() {
-    override val id: String = "astd_zw_001_mode_next_crewed"
-    override val name: String = hullmodName(id)
-    override val tier: Int = 0
-    override val rarity: Int = 0
-    override val tech: String = "astd_hidden"
-    override val hidden: Boolean = true
-    override val hiddenEverywhere: Boolean = true
-    override val script: String = PLACEHOLDER_SCRIPT
-    override val short: String = PLACEHOLDER_SHORT
-    override val sprite: String = "graphics/hullmods/astd_lens_array_core.png"
-}
-
-object HullMod_astd_zw_001_mode_next_automated : HullModEntry() {
-    override val id: String = "astd_zw_001_mode_next_automated"
-    override val name: String = hullmodName(id)
-    override val tier: Int = 0
-    override val rarity: Int = 0
-    override val tech: String = "astd_hidden"
-    override val hidden: Boolean = true
-    override val hiddenEverywhere: Boolean = true
-    override val script: String = PLACEHOLDER_SCRIPT
-    override val short: String = PLACEHOLDER_SHORT
-    override val sprite: String = "graphics/hullmods/astd_lens_array_core.png"
 }
 
 object HullMod_astd_dimensional_folding_deck : HullModEntry() {
@@ -177,4 +84,41 @@ object HullMod_astd_grav_phase_deck : HullModEntry() {
     override val script: String = "cn.kasuminova.astd.combat.hullmods.lens.ASTDGravPhaseDeckHullMod"
     override val short: String = SsI18n.t("hullmod.$id.short")
     override val sprite: String = "graphics/hullmods/astd_grav_phase_deck.png"
+}
+
+/**
+ * 决明级内置船插「先进电子对抗网络」（purple/10-unique.md §1）。
+ *
+ * 机制脚本 [AdvancedEcmNetworkHullMod]：自身 5/10/25% ECM + 每个存活友军按舰级 2~4/3~6/4~8/5~10% ECM
+ * （写本舰 electronic_warfare_flat），并将每艘存活敌舰的 ECM 贡献 clamp 到 4/8/12/16% 舰级上限。
+ */
+object HullMod_astd_advanced_ecm_network : HullModEntry() {
+    override val id: String = "astd_advanced_ecm_network"
+    override val name: String = hullmodName(id)
+    override val tier: Int = 3
+    override val rarity: Int = 1
+    override val tech: String = "菀星设计局-紫菀"
+    override val tags: String = TAGS_BUILTIN
+    override val script: String = "cn.kasuminova.astd.combat.hullmods.lens.AdvancedEcmNetworkHullMod"
+    override val short: String = SsI18n.t("hullmod.$id.short")
+    override val sprite: String = "graphics/hullmods/astd_lens_array_core.png"
+}
+
+/**
+ * 决明级内置船插「引力电子干扰力场」（purple/10-unique.md §1）。
+ *
+ * 机制脚本 [GravEwFieldHullMod]：我方电子战最大效果强度 +50%/+100%/+250%（10% → 15%/20%/35%，
+ * 写本侧指挥官 electronic_warfare_max），并在 EW 压制生效时按 实际/最大 效果比例对全部敌舰
+ * 施加最高 10% 的 EMP 抗性/护盾效率/航速机动降低与系统冷却/充能时间提升。
+ */
+object HullMod_astd_grav_ew_field : HullModEntry() {
+    override val id: String = "astd_grav_ew_field"
+    override val name: String = hullmodName(id)
+    override val tier: Int = 3
+    override val rarity: Int = 1
+    override val tech: String = "菀星设计局-紫菀"
+    override val tags: String = TAGS_BUILTIN
+    override val script: String = "cn.kasuminova.astd.combat.hullmods.lens.GravEwFieldHullMod"
+    override val short: String = SsI18n.t("hullmod.$id.short")
+    override val sprite: String = "graphics/hullmods/astd_lens_singularity_power.png"
 }

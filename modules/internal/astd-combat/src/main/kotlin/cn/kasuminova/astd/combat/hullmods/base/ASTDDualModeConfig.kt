@@ -318,7 +318,7 @@ fun ShipVariantAPI.syncDualModeAutoPenaltyTag(config: ASTDDualModeConfig) {
  * 安装「免自动化点数」选项的热重载钩子：LunaLib 设置变更时立即对玩家舰队全部双模式舰
  * 同步 [NO_AUTO_PENALTY_TAG] 标签并刷新成员 stats（满足「改后即时生效」，免等下次 stats 重建）。
  *
- * 由 AsteriaDirectoratePlugin.onApplicationLoad 调用（与 registerLensDualModeConfig 同批）；
+ * 由 AsteriaDirectoratePlugin.onApplicationLoad 调用；
  * 重复调用等价于重装同一钩子，幂等。
  */
 fun installDualModeAutoPointsHook() {

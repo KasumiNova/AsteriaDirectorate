@@ -142,7 +142,7 @@ class ASTDDimensionalFoldingDeckHullMod : BaseHullMod() {
         private fun initialFillKey(ship: ShipAPI, bay: FighterLaunchBayAPI): String =
             "astd_dfd_initial_fill:${ship.id}:${bay.weaponSlot?.id}"
 
-        /** 透镜线紫主题预设（与透镜阵列核心一致，透镜协议视觉统一）。 */
+        /** 透镜线紫主题预设（与 [ASTDGravPhaseDeckHullMod] 一致，透镜协议视觉统一）。 */
         private val THEME = HullmodThemes.LENS
     }
 }

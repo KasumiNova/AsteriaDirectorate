@@ -3,6 +3,7 @@ package cn.kasuminova.astd.combat.hullmods.affix
 import cn.kasuminova.astd.api.difficulty.DifficultyTuning
 import cn.kasuminova.astd.api.difficulty.ScalingEntry
 import cn.kasuminova.astd.combat.affix.AffixRegistry
+import cn.kasuminova.astd.combat.hullmods.base.isPhaseShip
 import cn.kasuminova.astd.ui.dsl.HullmodThemes
 import cn.kasuminova.astd.ui.dsl.hullmodCard
 import com.fs.starfarer.api.combat.BaseHullMod
@@ -44,9 +45,10 @@ class AffixPhaseCoilTuningHullMod : BaseHullMod() {
     }
 
     override fun applyEffectsBeforeShipCreation(hullSize: ShipAPI.HullSize, stats: MutableShipStatsAPI, id: String) {
-        if (!AffixShared.isPhaseShip(stats)) return
+        if (!isPhaseShip(stats)) return
         val b = bonuses(AffixShared.tuning)
-        stats.dynamic.getMod(PHASE_TIME_MULT_MOD).modifyMult(id, b.phaseTimeMultMod)
+        // phase_time_mult 的消费点（PhaseCloakStats.getMaxTimeMult）用单参 getValue 读 stats map，必须写 getStat
+        stats.dynamic.getStat(PHASE_TIME_MULT_MOD).modifyMult(id, b.phaseTimeMultMod)
         stats.peakCRDuration.modifyMult(id, b.peakDurationMult)
         stats.crLossPerSecondPercent.modifyMult(id, b.crLossMult)
     }

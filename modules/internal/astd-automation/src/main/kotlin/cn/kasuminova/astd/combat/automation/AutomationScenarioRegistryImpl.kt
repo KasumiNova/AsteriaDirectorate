@@ -15,8 +15,6 @@ import cn.kasuminova.astd.combat.automation.scenario.lens.IceShardMirvScenario
 import cn.kasuminova.astd.combat.automation.scenario.lens.PiercingLanceScenario
 import cn.kasuminova.astd.combat.automation.scenario.lens.StellarMrmScenario
 import cn.kasuminova.astd.combat.automation.scenario.production.ArcProductionScenario
-import cn.kasuminova.astd.combat.automation.scenario.production.LensPhase1Scenario
-import cn.kasuminova.astd.combat.automation.scenario.production.LensPhase2Scenario
 import cn.kasuminova.astd.combat.automation.scenario.system.FighterGravLinkScenario
 import cn.kasuminova.astd.combat.automation.scenario.system.GravReplicatorScenario
 import cn.kasuminova.astd.combat.automation.scenario.system.GravRiftScenario
@@ -68,8 +66,6 @@ class AutomationScenarioRegistryImpl : AutomationScenarioRegistry {
         AnnihilationVortexScenario(),
         ElectricDriveScenario(),
         ChargeNeedleScenario(),
-        LensPhase2Scenario(),
-        LensPhase1Scenario(),
         ArcProductionScenario(),
         defaultHandler,
     )

@@ -39,54 +39,6 @@
       ]
     },
     {
-      "id": "lens_phase1_foundation",
-      "missionId": "lens_phase1_foundation",
-      "shipIds": [
-        "astd_zw_001"
-      ],
-      "variantIds": [
-        "astd_zw_001_Standard"
-      ],
-      "requiredEvidence": [
-        "lensDeployedShipIds",
-        "lensCoreHullmod",
-        "lensNanoHullmod",
-        "lensSwitcherHullmod",
-        "lensCrewedModeHullmod",
-        "lensShieldOn",
-        "lensShieldArc",
-        "lensFighterBays",
-        "lensCoreTooltipKeys",
-        "lensSelfDriftStacks",
-        "lensSelfDeepWaterStacks",
-        "lensSelfHullDamageTakenMult"
-      ]
-    },
-    {
-      "id": "lens_phase2_mechanisms",
-      "missionId": "lens_phase2_mechanisms",
-      "shipIds": [
-        "astd_zw_001"
-      ],
-      "variantIds": [
-        "astd_zw_001_Standard",
-        "astd_zw_001_Automated"
-      ],
-      "requiredEvidence": [
-        "echoFixationFieldActive",
-        "echoFixationCognitiveTearApplied",
-        "echoFixationAfterimageFrames",
-        "tideDeepWaterStacksOnEnemy",
-        "permeatingTideHullmod",
-        "parallaxDecksHullmod",
-        "echoFixationFieldVisualFrames",
-        "driftMarkVisualFrames",
-        "deepWaterMarkVisualFrames",
-        "ghostSignalWaveFrames",
-        "tideFieldVisualFrames"
-      ]
-    },
-    {
       "id": "charge_needle_basic",
       "missionId": "charge_needle_basic",
       "shipIds": [

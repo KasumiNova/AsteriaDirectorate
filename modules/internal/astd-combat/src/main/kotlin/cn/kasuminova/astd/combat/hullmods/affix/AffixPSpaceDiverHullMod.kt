@@ -3,6 +3,7 @@ package cn.kasuminova.astd.combat.hullmods.affix
 import cn.kasuminova.astd.api.difficulty.DifficultyTuning
 import cn.kasuminova.astd.api.difficulty.ScalingEntry
 import cn.kasuminova.astd.combat.affix.AffixRegistry
+import cn.kasuminova.astd.combat.hullmods.base.isPhaseShip
 import cn.kasuminova.astd.ui.dsl.HullmodThemes
 import cn.kasuminova.astd.ui.dsl.hullmodCard
 import com.fs.starfarer.api.combat.BaseHullMod
@@ -38,7 +39,7 @@ class AffixPSpaceDiverHullMod : BaseHullMod() {
     }
 
     override fun applyEffectsBeforeShipCreation(hullSize: ShipAPI.HullSize, stats: MutableShipStatsAPI, id: String) {
-        if (!AffixShared.isPhaseShip(stats)) return
+        if (!isPhaseShip(stats)) return
         stats.dynamic.getMod(FLUX_LEVEL_FOR_MIN_SPEED_MOD).modifyMult(id, thresholdMult(AffixShared.tuning))
     }
 

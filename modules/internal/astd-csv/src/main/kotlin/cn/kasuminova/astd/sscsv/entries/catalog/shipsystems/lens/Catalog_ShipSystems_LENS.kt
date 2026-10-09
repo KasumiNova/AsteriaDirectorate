@@ -6,61 +6,31 @@ import cn.kasuminova.astd.sscsv.entries.catalog.shipsystems.systemName
 /** LENS 系舰船系统（ship_systems.csv + 对应 .system 文件）。 */
 
 /**
- * 决明级·载人版“回声定影”系统（Task 5 真实实现）。
+ * 决明级舰船系统「引力时流干涉器」（purple/10-unique.md §1，2026-10 实装，替换占位 astd_jamming_swarm）。
  *
- * 动机：双模式 hullmod（ASTDLensCrewedModeHullMod）在建船时调用
- * setShipSystemId(astd_echo_fixation_crewed)，故该系统 id 必须在 ship_systems.csv +
- * .system 中存在，否则决明级无法在战斗内实例化（"System with id ... not found"）。
- *
- * statsScript = [EchoFixationCrewedSystemStats]：IN 首帧在落点建定影场（spec §2）；
- * aiScript = [EchoFixationSystemAI]：敌群密集处自动施放并写落点坐标供 stats 读取。
- * active 6s 涵盖定影 4s（spec §2.3）+ 收尾余量。
+ * 选取一名锁定的友军舰船（玩家取 shipTarget，AI 评分选靶写 TARGET_FOR_SHIP_SYSTEM 旗标），
+ * 持续 10s 令目标与其所属舰载机的时间流速提升（v1 150% / v2 200% / v5 350%），
+ * 并在激活瞬间立即缩减目标舰船系统 50%/60%/90% 的剩余冷却时间；
+ * 选择范围 2000su（受系统射程加成影响），自身时流不变，持续期间目标超出射程不中断。
+ * 冷却 30s。stats/AI 见 [GravTimeflowInterferenceSystemStats] / [GravTimeflowInterferenceSystemAI]。
  */
-object Sys_astd_echo_fixation_crewed : ShipSystemWithSystemFileEntry() {
-    override val id: String = "astd_echo_fixation_crewed"
+object Sys_astd_grav_timeflow_interference : ShipSystemWithSystemFileEntry() {
+    override val id: String = "astd_grav_timeflow_interference"
     override val name: String = systemName(id)
 
     override val statsScript: String =
-        "cn.kasuminova.astd.combat.shipsystems.EchoFixationCrewedSystemStats"
+        "cn.kasuminova.astd.combat.shipsystems.GravTimeflowInterferenceSystemStats"
+    override val aiType: String = "CUSTOM"
     override val aiScript: String =
-        "cn.kasuminova.astd.combat.shipsystems.EchoFixationSystemAI"
-
-    override val chargeUp: Double = 0.5
-    override val active: Double = 6.0
-    override val down: Double = 0.5
-    override val cooldown: Double = 14.0
-
-    override val icon: String = "graphics/icons/hullsys/damper_field.png"
-}
-
-/** 决明级·无人版“回声定影”系统（Task 5 真实实现，动机同 [Sys_astd_echo_fixation_crewed]）。 */
-object Sys_astd_echo_fixation_automated : ShipSystemWithSystemFileEntry() {
-    override val id: String = "astd_echo_fixation_automated"
-    override val name: String = systemName(id)
-
-    override val statsScript: String =
-        "cn.kasuminova.astd.combat.shipsystems.EchoFixationAutomatedSystemStats"
-    override val aiScript: String =
-        "cn.kasuminova.astd.combat.shipsystems.EchoFixationSystemAI"
-
-    override val chargeUp: Double = 0.5
-    override val active: Double = 6.0
-    override val down: Double = 0.5
-    override val cooldown: Double = 14.0
-
-    override val icon: String = "graphics/icons/hullsys/damper_field.png"
-}
-
-object Sys_astd_jamming_swarm : ShipSystemWithSystemFileEntry() {
-    override val id: String = "astd_jamming_swarm"
-    override val name: String = systemName(id)
+        "cn.kasuminova.astd.combat.shipsystems.GravTimeflowInterferenceSystemAI"
+    override val useSound: String = "system_temporalshell"
 
     override val chargeUp: Double = 0.5
     override val active: Double = 10.0
     override val down: Double = 0.5
-    override val cooldown: Double = 16.0
+    override val cooldown: Double = 30.0
 
-    override val icon: String = "graphics/icons/hullsys/drone_pd_high.png"
+    override val icon: String = "graphics/icons/hullsys/temporal_shell.png"
 }
 
 /**

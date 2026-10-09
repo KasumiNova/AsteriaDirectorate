@@ -11,7 +11,6 @@ import cn.kasuminova.astd.combat.hullmods.base.ASTDDualModeConfigKt;
 import cn.kasuminova.astd.combat.hullmods.base.ASTDDualModeMirror;
 import cn.kasuminova.astd.combat.hullmods.base.ASTDDualModeMirrorScript;
 import cn.kasuminova.astd.combat.hullmods.base.ASTDDualModeRefitListener;
-import cn.kasuminova.astd.combat.hullmods.lens.LensArrayCoreModeUtilKt;
 import cn.kasuminova.astd.impl.buff.BuffInstall;
 import cn.kasuminova.astd.impl.difficulty.DifficultySettingsRegistrar;
 import cn.kasuminova.astd.impl.difficulty.LunaLibSupport;
@@ -53,9 +52,6 @@ public final class AsteriaDirectoratePlugin extends BaseModPlugin {
     @Override
     public void onApplicationLoad() {
         logger.info("[ASTD] Asteria Directorate loaded on Java " + System.getProperty("java.version"));
-        // 注册 lens 双模式配置到通用注册表（ASTDDualModeRegistry），保证通用切换器 tooltip
-        // 在任何 refit 渲染前就能 configForShip 反查到对应舰的模式 id 集合。幂等，可多实例多次调用。
-        LensArrayCoreModeUtilKt.registerLensDualModeConfig();
         // 注册 Buff 系统后端到 api 侧 BuffBackends（api 不反向依赖 impl，桥接口在此注入）。
         BuffInstall.INSTANCE.install();
         // 安装「双模式切换器自动模式免自动化点数」的热重载钩子（须在 LunaLib 设置注册前装好，

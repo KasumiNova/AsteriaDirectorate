@@ -44,7 +44,7 @@ internal class ASTDVariantExporterTest {
     val tempFolder = TemporaryFolder()
 
     private fun mockHullSpec(
-        hullId: String = "astd_zw_001",
+        hullId: String = "astd_zw_002",
         builtInMods: Set<String> = emptySet(),
         builtInWingCount: Int = 0,
     ): ShipHullSpecAPI {
@@ -60,8 +60,8 @@ internal class ASTDVariantExporterTest {
     }
 
     private fun mockVariant(
-        variantId: String = "astd_zw_001_Automated",
-        displayName: String = "Automated",
+        variantId: String = "astd_zw_002_Omega",
+        displayName: String = "Omega",
         hullSpec: ShipHullSpecAPI = mockHullSpec(),
         vents: Int = 20,
         caps: Int = 20,
@@ -116,14 +116,14 @@ internal class ASTDVariantExporterTest {
         val variant = mockVariant(
             weaponGroups = listOf(group(WeaponGroupType.LINKED, false, "WS0001", "WS0003", "WS0009")),
             weaponsBySlot = mapOf("WS0001" to "hammer", "WS0003" to "pdlaser", "WS0009" to "pdlaser"),
-            permaMods = setOf("astd_zw_001_mode_automated", "astd_zw_001_mode_next_automated", "automated"),
+            permaMods = setOf("astd_mode_automated", "astd_mode_next_automated", "automated"),
         )
 
         val json = ASTDVariantExporter.toJson(variant)
 
-        assertEquals("Automated", json.getString("displayName"))
-        assertEquals("astd_zw_001", json.getString("hullId"))
-        assertEquals("astd_zw_001_Automated", json.getString("variantId"))
+        assertEquals("Omega", json.getString("displayName"))
+        assertEquals("astd_zw_002", json.getString("hullId"))
+        assertEquals("astd_zw_002_Omega", json.getString("variantId"))
         assertEquals(20, json.getInt("fluxVents"))
         assertEquals(20, json.getInt("fluxCapacitors"))
         assertEquals(1.0, json.getDouble("quality"))
@@ -141,7 +141,7 @@ internal class ASTDVariantExporterTest {
 
         assertEquals(0, json.getJSONArray("hullMods").length())
         assertEquals(
-            listOf("astd_zw_001_mode_automated", "astd_zw_001_mode_next_automated", "automated"),
+            listOf("astd_mode_automated", "astd_mode_next_automated", "automated"),
             json.getJSONArray("permaMods").toStringList(),
         )
         assertEquals(0, json.getJSONArray("sMods").length())
@@ -175,11 +175,29 @@ internal class ASTDVariantExporterTest {
 
     @Test
     fun `exported field structure covers the equivalent stock variant`() {
-        val stock = JSONObject(File("contents/data/variants/astd_zw_001_Automated.variant").readText())
+        val stock = JSONObject(File("contents/data/variants/astd_zw_002_Omega.variant").readText())
         val variant = mockVariant(
-            weaponGroups = listOf(group(WeaponGroupType.LINKED, false, "WS0001", "WS0003", "WS0009")),
-            weaponsBySlot = mapOf("WS0001" to "hammer", "WS0003" to "pdlaser", "WS0009" to "pdlaser"),
-            permaMods = setOf("astd_zw_001_mode_automated", "astd_zw_001_mode_next_automated", "automated"),
+            vents = 0,
+            caps = 26,
+            weaponGroups = listOf(
+                group(WeaponGroupType.LINKED, true, "WS0002", "WS0003"),
+                group(WeaponGroupType.LINKED, false, "WS0001", "WS0005", "WS0006", "WS0007", "WS0008"),
+            ),
+            weaponsBySlot = mapOf(
+                "WS0001" to "rifttorpedo",
+                "WS0002" to "astd_heavy_charge_needle",
+                "WS0003" to "astd_heavy_charge_needle",
+                "WS0005" to "astd_cuifeng_torpedo",
+                "WS0006" to "astd_cuifeng_torpedo",
+                "WS0007" to "astd_cuifeng_torpedo",
+                "WS0008" to "astd_cuifeng_torpedo",
+            ),
+            hullMods = listOf(
+                "targetingunit", "phase_anchor", "astd_mode_automated",
+                "automated", "astd_dual_mode_switcher", "astd_mode_next_automated",
+            ),
+            permaMods = setOf("astd_mode_automated", "automated", "astd_mode_next_automated"),
+            tags = setOf("no_auto_penalty"),
         )
 
         val exported = ASTDVariantExporter.toJson(variant)
@@ -228,20 +246,20 @@ internal class ASTDVariantExporterTest {
         val hullSpec = mockHullSpec(builtInMods = setOf("astd_builtin_mod"))
         val variant = mockVariant(
             hullSpec = hullSpec,
-            hullMods = listOf("astd_builtin_mod", "astd_zw_001_mode_automated", "hardened_shields"),
-            permaMods = setOf("astd_zw_001_mode_automated"),
-            sMods = setOf("astd_zw_001_mode_automated"),
+            hullMods = listOf("astd_builtin_mod", "astd_mode_automated", "hardened_shields"),
+            permaMods = setOf("astd_mode_automated"),
+            sMods = setOf("astd_mode_automated"),
             sModdedBuiltIns = setOf("astd_builtin_mod"),
         )
 
         val json = ASTDVariantExporter.toJson(variant)
 
         assertEquals(
-            listOf("astd_zw_001_mode_automated", "hardened_shields"),
+            listOf("astd_mode_automated", "hardened_shields"),
             json.getJSONArray("hullMods").toStringList(),
         )
-        assertEquals(listOf("astd_zw_001_mode_automated"), json.getJSONArray("permaMods").toStringList())
-        assertEquals(listOf("astd_zw_001_mode_automated"), json.getJSONArray("sMods").toStringList())
+        assertEquals(listOf("astd_mode_automated"), json.getJSONArray("permaMods").toStringList())
+        assertEquals(listOf("astd_mode_automated"), json.getJSONArray("sMods").toStringList())
         assertEquals(listOf("astd_builtin_mod"), json.getJSONArray("sModdedBuiltIns").toStringList())
     }
 
@@ -264,11 +282,11 @@ internal class ASTDVariantExporterTest {
         val second = ASTDVariantExporter.exportVariant(variant, outputDir = outputDir)
 
         assertNotEquals(first.name, second.name)
-        assertTrue(first.name.startsWith("astd_zw_001_Automated_"))
+        assertTrue(first.name.startsWith("astd_zw_002_Omega_"))
         assertTrue(first.name.endsWith(".variant"))
         val parsed = JSONObject(first.readText())
         assertTrue(parsed.keysSet().containsAll(LOADER_REQUIRED_KEYS))
-        assertEquals("astd_zw_001_Automated", parsed.getString("variantId"))
+        assertEquals("astd_zw_002_Omega", parsed.getString("variantId"))
     }
 
     @Test

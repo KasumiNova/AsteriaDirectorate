@@ -247,11 +247,11 @@ class AnnihilationVortexVortexComponent(
 }
 
 /**
- * 湮灭涡旋命中端的旋转深红涡旋 shader（结构镜像 [cn.kasuminova.astd.renderer.effect.lens.PermeatingTideFieldEffect]）。
+ * 湮灭涡旋命中端的旋转深红涡旋 shader。
  *
  * GL 程序、layer 插件、生命周期全部委托共享 shader runtime；本对象只持有效果参数与「半径/fade/脉冲 → shader 提交」
  * 的转换。keyed upsert 按组件实例区分（多武器同时开火互不覆盖），停提交 [STALE_AFTER_SECONDS] 后自然退休。
- * 混合模式 Additive：能量场辉光口径，与潮汐场/定影场同系 BelowParticles 统一。
+ * 混合模式 Additive：能量场辉光口径，BelowParticles 层统一。
  */
 private object AvVortexShader {
 

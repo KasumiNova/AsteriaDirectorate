@@ -1,0 +1,30 @@
+{
+	"id":"astd_combat_intel",
+	"governingAptitude":"astd_generic",
+	"compressHullmods":false,
+	"elite":true,
+	"permanent":true,
+	"scope":"PILOTED_SHIP",
+	"effectGroups":[
+		{
+			"requiredSkillLevel":1,
+			"effectBasedOnLevel":false,
+			"effects":[
+				{"type":"SHIP", "script":"cn.kasuminova.astd.combat.skills.ASTDCombatIntelSkill$Level1"},
+				{"type":"SHIP", "script":"cn.kasuminova.astd.combat.skills.ASTDCombatIntelSkill$Level2"},
+				{"type":"SHIP", "script":"cn.kasuminova.astd.combat.skills.ASTDCombatIntelSkill$Level3"},
+				{"type":"SHIP", "script":"cn.kasuminova.astd.combat.skills.ASTDCombatIntelSkill$Level4"},
+				{"type":"SHIP", "script":"cn.kasuminova.astd.combat.skills.ASTDCombatIntelSkill$Level5"}
+			]
+		},
+		{
+			"name":"精英",
+			"requiredSkillLevel":2,
+			"effectBasedOnLevel":false,
+			"effects":[
+				{"type":"SHIP", "script":"cn.kasuminova.astd.combat.skills.ASTDCombatIntelSkill$Level6"},
+				{"type":"SHIP", "script":"cn.kasuminova.astd.combat.skills.ASTDCombatIntelSkill$Level7"}
+			]
+		}
+	]
+}

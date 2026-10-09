@@ -1,5 +1,6 @@
 package cn.kasuminova.astd.combat.effect.generic
 
+import cn.kasuminova.astd.combat.hullmods.lens.purgeGravEwFieldCommanderBoosts
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseEveryFrameCombatPlugin
 import com.fs.starfarer.api.combat.CombatEngineAPI
@@ -19,6 +20,9 @@ class ASTDGlobalCombatPlugin : BaseEveryFrameCombatPlugin() {
     override fun init(engine: CombatEngineAPI) {
         try {
             CombatVfxBootstrap.ensureInstalled(engine)
+            // 引力电子干扰力场跨战斗残留安全网：指挥官 PersonAPI stat 跨战斗/跨存档存活，
+            // 每场战斗 init 时清理上一场可能漏收口的增幅修饰（详见该函数 KDoc）
+            purgeGravEwFieldCommanderBoosts(engine)
         } catch (t: Throwable) {
             Global.getLogger(ASTDGlobalCombatPlugin::class.java)
                 .warn("[ASTD] ASTDGlobalCombatPlugin init failed", t)

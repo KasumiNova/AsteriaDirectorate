@@ -350,12 +350,16 @@ class BountyFleetTunerImpl(
     }
 
     /**
-     * 赏金舰队 AI 核心军官技能应用：清空插件默认技能后按 resolveOfficerSkills 的
+     * 赏金舰队 AI 核心军官技能应用：清空插件默认技能后按 [resolveCoreOfficerSkills] 的
      * 取舍结果全 2 级套用——命中变体技能表以表为准（N 不足时按全局优先级截取），
-     * 未命中变体（余晖等）退回全局优先级表顺序取前 N。
+     * 未命中变体（余晖等）退回全局优先级表顺序取前 N；ASTD 制式核心额外追加固有技能。
      */
     private fun applyOfficerSkills(person: PersonAPI, variantId: String?) {
-        val skills = resolveOfficerSkills(BountyOfficerSkills.forVariant(variantId), person.stats.level)
+        val skills = resolveCoreOfficerSkills(
+            BountyOfficerSkills.forVariant(variantId),
+            person.stats.level,
+            astdCore = StandardCores.byCommodity(person.aiCoreId) != null,
+        )
         person.stats.skillsCopy.forEach { person.stats.setSkillLevel(it.skill.id, 0f) }
         skills.forEach { person.stats.setSkillLevel(it, 2f) }
     }
@@ -665,6 +669,8 @@ class BountyFleetTunerImpl(
          * 操舵技术 > 相场调制 > 系统专长 > 导弹特化 > 极化装甲 > 损伤管制 > 冲击缓解 >
          * 火控植入 > 能量精通 > 军械专长 > 目标解析 > 实弹精通 > 战斗耐力。
          * 角色：变体技能表技能位不足时的取舍顺序，以及未登记变体军官的 fallback 组成。
+         * 固有技能 astd_combat_intel 不在本表：仅 ASTD 制式核心持有，
+         * 由 [resolveCoreOfficerSkills] 按 aiCoreId 单独追加。
          */
         val BOUNTY_OFFICER_SKILL_PRIORITY: List<String> = listOf(
             "helmsmanship",
@@ -705,6 +711,18 @@ class BountyFleetTunerImpl(
                 .sortedWith(compareBy({ priorityIndex[it.value] ?: Int.MAX_VALUE }, { it.index }))
                 .map { it.value }
                 .take(level.coerceAtLeast(0))
+        }
+
+        /**
+         * 核心军官最终技能组成（纯函数，单测直调）：变体技能表取舍结果之上，
+         * ASTD 制式核心（astdCore = true）以 1 个技能位换固有技能 astd_combat_intel
+         * （技能数 = min(等级 - 1, 表长) + 1；表长足够时与 StandardCores.createPerson 的
+         * 「技能数 = 等级」出厂口径一致，表长不足时按既有截断口径不越出等级）；
+         * 非 ASTD 核心（原版/余晖/SMS 等）不追加，保持设计稿「本模组 AI 核心」范围。
+         */
+        fun resolveCoreOfficerSkills(tableSkills: List<String>?, level: Int, astdCore: Boolean): List<String> {
+            val picks = resolveOfficerSkills(tableSkills, if (astdCore) level - 1 else level)
+            return if (astdCore) picks + StandardCores.COMBAT_INTEL_SKILL_ID else picks
         }
 
         /** SMS 拟核特殊技能 id 前缀（软联动识别口径：保留模组特殊技能，其余原版技能等量替换）。 */

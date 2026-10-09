@@ -1,0 +1,2 @@
+id,name,color,description,order,effect_skill_id,sound1,sound2,sound3,sound4,sound5,sound_story,elite_overlay,elite_overlay_medium,elite_overlay_small
+astd_generic,菀星智能,"160,150,235,255",菀星设计局制式 AI 核心的固有作战智能。,10,aptitude_astd_generic,combat1,combat2,combat3,combat4,combat5,ui_char_spent_story_point_combat,graphics/icons/skills/elite_astd_generic_80.png,graphics/icons/skills/elite_astd_generic.png,graphics/icons/skills/elite_astd_generic_32.png

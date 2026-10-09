@@ -1,6 +1,7 @@
 package cn.kasuminova.astd.combat.hullmods.arc
 
 import cn.kasuminova.astd.combat.hullmods.HullmodIncompatibility
+import cn.kasuminova.astd.combat.hullmods.base.directionalArmorFraction
 import cn.kasuminova.astd.internal.i18n.I18n
 import cn.kasuminova.astd.ui.dsl.HullmodThemes
 import cn.kasuminova.astd.ui.dsl.HullmodTone
@@ -21,7 +22,6 @@ import com.fs.starfarer.api.util.Misc
 import org.lazywizard.lazylib.MathUtils
 import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
-import kotlin.math.abs
 
 class ASTDPlasmaArmorShieldHullMod : BaseHullMod() {
 
@@ -32,12 +32,6 @@ class ASTDPlasmaArmorShieldHullMod : BaseHullMod() {
         private const val MAX_ARMOR_PENALTY_FRACTION = 0.50f
         private const val SPIKE_THRESHOLD_MAX_FLUX_FRACTION = 0.05f
         private const val SPIKE_EXCESS_DAMAGE_MULT = 0.50f
-
-        private const val FRONT_ARMOR_FRACTION = 0.30f
-        private const val SIDE_ARMOR_FRACTION_MIN = 0.20f
-        private const val SIDE_ARMOR_FRACTION_MAX = 0.30f
-        private const val REAR_ARMOR_FRACTION_MIN = 0.10f
-        private const val REAR_ARMOR_FRACTION_MAX = 0.20f
 
         private const val ENERGY_SHIELD_MULT = 0.85f
         private const val KINETIC_SHIELD_MULT = 0.67f
@@ -57,21 +51,8 @@ class ASTDPlasmaArmorShieldHullMod : BaseHullMod() {
         internal fun boostLevel(ship: ShipAPI): Float =
             (ship.customData[ASTDArcProductionShipIds.DATA_PLASMA_SHIELD_BOOST_LEVEL] as? Float ?: 0f).coerceIn(0f, 1f)
 
-        private fun directionalArmorFraction(ship: ShipAPI, hitPoint: Vector2f): Float {
-            val hitAngle = Misc.getAngleInDegrees(ship.location, hitPoint)
-            val relative = (((hitAngle - ship.facing) % 360f) + 540f) % 360f - 180f
-            val offFront = abs(relative)
-            return when {
-                offFront <= 30f -> FRONT_ARMOR_FRACTION
-                offFront <= 90f -> lerp(SIDE_ARMOR_FRACTION_MAX, SIDE_ARMOR_FRACTION_MIN, (offFront - 30f) / 60f)
-                else -> lerp(REAR_ARMOR_FRACTION_MAX, REAR_ARMOR_FRACTION_MIN, (offFront - 90f) / 90f)
-            }
-        }
-
         private fun preventedDamageColor(ship: ShipAPI): Color =
             if (boostLevel(ship) > 0.05f) PREVENTED_DAMAGE_PURPLE else PREVENTED_DAMAGE_BLUE
-
-        private fun lerp(a: Float, b: Float, t: Float): Float = a + (b - a) * t.coerceIn(0f, 1f)
 
         private fun recordShieldArcBias(ship: ShipAPI, hitPoint: Vector2f) {
             val hitAngle = Misc.getAngleInDegrees(ship.location, hitPoint)

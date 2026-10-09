@@ -55,7 +55,7 @@ class ChargeNeedleScenario : AbstractAutomationScenario() {
         lockCameraAt(engine, CHARGE_NEEDLE_CAMERA_CENTER, 760f)
     }
 
-    /** 强制部署 mission reserves（敌方伯劳鸟非旗舰，必须手动出场；范式同 deployLensPhase1Side）。 */
+    /** 强制部署 mission reserves（敌方伯劳鸟非旗舰，必须手动出场）。 */
     private fun deployChargeNeedleReserveShips(engine: CombatEngineAPI) {
         engine.setDoNotEndCombat(true)
         for (side in listOf(FleetSide.PLAYER, FleetSide.ENEMY)) {

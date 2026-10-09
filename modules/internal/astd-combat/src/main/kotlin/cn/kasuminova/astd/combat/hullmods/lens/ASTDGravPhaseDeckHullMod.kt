@@ -20,7 +20,7 @@ import java.awt.Color
  * 1. **引力联结（相位联动）**：母舰进入相位状态（[ShipAPI.isPhased]）时，全部在外战机
  *    同步进入相位状态（[ShipAPI.setPhased] + 半透明），母舰退出相位后严格配对恢复。
  *    相位所有权由 [LinkState.phasedByThis] 标记——只对「本插件相位过」的战机执行 setPhased(false)，
- *    绝不误清其他来源的相位状态（与视差甲板同一配对纪律）。
+ *    绝不误清其他来源的相位状态。
  *    「战机不会产生相位维持辐能」：战机本身无相位线圈，联动相位不产生任何辐能开销，
  *    无需额外抵消逻辑。母舰相位期间战机战术系统同步禁用（非冷却态先 deactivate，
  *    再逐帧把剩余冷却钉在小余量 [SYSTEM_LOCK_COOLDOWN_REMAINING]，原版 ChargeTracker
@@ -161,7 +161,7 @@ class ASTDGravPhaseDeckHullMod : BaseHullMod() {
 
         private const val HULL_ID = "astd_zw_103"
 
-        /** 透镜线紫主题预设（与 [ASTDLensParallaxDecksHullMod] 一致，透镜协议视觉统一）。 */
+        /** 透镜线紫主题预设（透镜协议视觉统一）。 */
         private val THEME = HullmodThemes.LENS
 
         private fun ShipAPI?.isZw103Ship(): Boolean {

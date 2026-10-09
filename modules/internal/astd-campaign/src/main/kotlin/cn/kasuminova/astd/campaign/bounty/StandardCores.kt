@@ -16,7 +16,8 @@ import java.util.Random
  * ASTD 量产级（制式）AI 核心：G/B/A 三级可打捞，O 级仅作设定标尺。
  *
  * 职责：
- * - 分档表 [Tier]：军官等级/技能/自动点数倍率与原版同档核心逐项对齐
+ * - 分档表 [Tier]：军官等级按设计稿锚点（docs/design/skills/00-ai-cores.md：G=4/B=6/A=8/O=11），
+ *   技能集与自动点数倍率同原版同档核心对齐，技能表末尾固定固有技能 astd_combat_intel
  *   （对照 dev-resources/sources 的 AICoreOfficerPluginImpl.createPerson）；
  * - 舰队核心配置方案 [planFleetCores]：难度档 → 旗舰/僚舰核心档位，种子确定性；
  * - 核心打捞表 [rollCoreLoot]：按舰队实际装舰核心滚动掉落（MagicBounty job_item_reward 语义）；
@@ -55,8 +56,10 @@ object StandardCores {
      *
      * @property commodityId commodities.csv 物品 id（打捞/安装/军官 aiCoreId 载体）
      * @property portrait 军官头像（contents/graphics/portraits/）
-     * @property officerLevel 军官等级（原版同档对齐：G=3 / B=5 / A=7 / O=9）
-     * @property officerSkills 军官技能表（全 2 级；原版同档技能集逐项对齐，O 档含 omega_ecm）
+     * @property officerLevel 军官等级（docs/design/skills/00-ai-cores.md：G=4 / B=6 / A=8 / O=11，
+     *   较原版同档各 +1/+1/+1/+2，多出的技能位由固有技能 astd_combat_intel 填充）
+     * @property officerSkills 军官技能表（全 2 级；原版同档技能集逐项对齐，O 档含 omega_ecm；
+     *   末尾固定追加固有技能 astd_combat_intel，精英生效）
      * @property autoPointsMult 自动船点数倍率（原版 GAMMA/BETA/ALPHA/OMEGA_MULT：2/3/4/5）
      * @property droppable 是否可打捞（O 档不可获取）
      */
@@ -69,32 +72,38 @@ object StandardCores {
         val droppable: Boolean,
     ) {
         G(
-            "astd_ai_core_g", "graphics/portraits/astd_portrait_core_g.png", 3,
-            listOf("helmsmanship", "impact_mitigation", "combat_endurance"), 2f, true,
+            "astd_ai_core_g", "graphics/portraits/astd_portrait_core_g.png", 4,
+            listOf("helmsmanship", "impact_mitigation", "combat_endurance", COMBAT_INTEL_SKILL_ID), 2f, true,
         ),
         B(
-            "astd_ai_core_b", "graphics/portraits/astd_portrait_core_b.png", 5,
-            listOf("helmsmanship", "target_analysis", "impact_mitigation", "gunnery_implants", "combat_endurance"),
+            "astd_ai_core_b", "graphics/portraits/astd_portrait_core_b.png", 6,
+            listOf(
+                "helmsmanship", "target_analysis", "impact_mitigation", "gunnery_implants",
+                "combat_endurance", COMBAT_INTEL_SKILL_ID,
+            ),
             3f, true,
         ),
         A(
-            "astd_ai_core_a", "graphics/portraits/astd_portrait_core_a.png", 7,
+            "astd_ai_core_a", "graphics/portraits/astd_portrait_core_a.png", 8,
             listOf(
                 "helmsmanship", "target_analysis", "impact_mitigation", "field_modulation",
-                "gunnery_implants", "combat_endurance", "damage_control",
+                "gunnery_implants", "combat_endurance", "damage_control", COMBAT_INTEL_SKILL_ID,
             ),
             4f, true,
         ),
         O(
-            "astd_ai_core_o", "graphics/portraits/astd_portrait_core_o.png", 9,
+            "astd_ai_core_o", "graphics/portraits/astd_portrait_core_o.png", 11,
             listOf(
                 "helmsmanship", "target_analysis", "impact_mitigation", "field_modulation",
                 "gunnery_implants", "combat_endurance", "damage_control", "point_defense",
-                "energy_weapon_mastery", "omega_ecm",
+                "energy_weapon_mastery", "omega_ecm", COMBAT_INTEL_SKILL_ID,
             ),
             5f, false,
         ),
     }
+
+    /** 制式核心固有技能 id（菀星战斗智能，docs/design/skills/00-ai-cores.md）。 */
+    const val COMBAT_INTEL_SKILL_ID: String = "astd_combat_intel"
 
     /**
      * 预加载全部档位军官头像贴图。

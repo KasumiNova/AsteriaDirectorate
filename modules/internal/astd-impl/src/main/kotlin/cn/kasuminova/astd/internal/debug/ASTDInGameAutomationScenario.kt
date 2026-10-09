@@ -1,7 +1,5 @@
 package cn.kasuminova.astd.internal.debug
 
-import cn.kasuminova.astd.internal.debug.ASTDInGameAutomationScenario.LENS_PHASE1_SCENARIO_ID
-import cn.kasuminova.astd.internal.debug.ASTDInGameAutomationScenario.LENS_PHASE2_SCENARIO_ID
 import cn.kasuminova.astd.internal.debug.ASTDInGameAutomationScenario.isArcProductionEnabled
 import cn.kasuminova.astd.internal.debug.ASTDInGameAutomationScenario.isAvEnabled
 import cn.kasuminova.astd.internal.debug.ASTDInGameAutomationScenario.isChargeNeedleEnabled
@@ -9,7 +7,6 @@ import cn.kasuminova.astd.internal.debug.ASTDInGameAutomationScenario.isEdaEnabl
 import cn.kasuminova.astd.internal.debug.ASTDInGameAutomationScenario.isGdEnabled
 import cn.kasuminova.astd.internal.debug.ASTDInGameAutomationScenario.isGravRiftScenarioEnabled
 import cn.kasuminova.astd.internal.debug.ASTDInGameAutomationScenario.isHipEnabled
-import cn.kasuminova.astd.internal.debug.ASTDInGameAutomationScenario.isLensPhase1Enabled
 import cn.kasuminova.astd.internal.debug.ASTDInGameAutomationScenario.isPlEnabled
 import cn.kasuminova.astd.internal.debug.ASTDInGameAutomationScenario.isPsEnabled
 import cn.kasuminova.astd.internal.debug.ASTDInGameAutomationScenario.isQjEnabled
@@ -24,8 +21,6 @@ import java.nio.file.Path
 object ASTDInGameAutomationScenario {
     const val SCENARIO_ID: String = "xc_001_starfall_echo_basic"
     const val ARC_PRODUCTION_SCENARIO_ID: String = "arc_production_ships_vfx_tooltip"
-    const val LENS_PHASE1_SCENARIO_ID: String = "lens_phase1_foundation"
-    const val LENS_PHASE2_SCENARIO_ID: String = "lens_phase2_mechanisms"
     const val CHARGE_NEEDLE_SCENARIO_ID: String = "charge_needle_basic"
     const val CHARGE_NEEDLE_WEAPON_ID: String = "astd_charge_needle"
     const val CHARGE_NEEDLE_HEAVY_WEAPON_ID: String = "astd_heavy_charge_needle"
@@ -148,28 +143,7 @@ object ASTDInGameAutomationScenario {
     }
 
     /**
-     * 阶段一决明级实机场景开关：镜像 [isArcProductionEnabled]。
-     * 仅当 automation 启用且场景属性显式为 [LENS_PHASE1_SCENARIO_ID] 时为 true。
-     */
-    fun isLensPhase1Enabled(): Boolean {
-        val enabled = System.getProperty(ENABLED_PROPERTY)?.equals("true", ignoreCase = true) == true
-        val scenario = System.getProperty(SCENARIO_PROPERTY, SCENARIO_ID)
-        return enabled && scenario == LENS_PHASE1_SCENARIO_ID
-    }
-
-    /**
-     * 阶段二决明级实机场景开关：镜像 [isLensPhase1Enabled]。
-     * 仅当 automation 启用且场景属性显式为 [LENS_PHASE2_SCENARIO_ID] 时为 true。
-     * 阶段二验证机制证据（定影场 / 认知撕裂 / 残影 / 深水标记 / 插件挂载）+ shader 提交计数。
-     */
-    fun isLensPhase2Enabled(): Boolean {
-        val enabled = System.getProperty(ENABLED_PROPERTY)?.equals("true", ignoreCase = true) == true
-        val scenario = System.getProperty(SCENARIO_PROPERTY, SCENARIO_ID)
-        return enabled && scenario == LENS_PHASE2_SCENARIO_ID
-    }
-
-    /**
-     * 电荷针刺实机场景开关：镜像 [isLensPhase1Enabled]。
+     * 电荷针刺实机场景开关：镜像 [isArcProductionEnabled]。
      * 验证淤积叠层（层数/维持乘区/安全闸/衰减）、船体泄放电弧计数、弹匣节奏、双槽弹体 VFX 与 HUD 反馈。
      */
     fun isChargeNeedleEnabled(): Boolean {

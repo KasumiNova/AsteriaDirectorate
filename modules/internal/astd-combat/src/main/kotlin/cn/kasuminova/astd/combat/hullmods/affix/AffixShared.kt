@@ -9,16 +9,13 @@ import com.fs.starfarer.api.combat.ShipAPI
 /**
  * 词缀 HullMod 共用辅助：
  * - 轨一数值读取面（机制数值统一走 [DifficultyTuningImpl]，禁止读取舰队 memory 中的 k_p）；
- * - 相位舰判定、舰船大小分档（护卫舰/驱逐舰/巡洋舰/主力舰）、友军舰船枚举。
+ * - 舰船大小分档（护卫舰/驱逐舰/巡洋舰/主力舰）、友军舰船枚举。
+ * 相位舰判定统一走 hullmods.base.isPhaseShip。
  */
 internal object AffixShared {
 
     /** 轨一固有缩放系数读取面（单例实现）。 */
     val tuning: DifficultyTuning get() = DifficultyTuningImpl
-
-    /** 相位舰船判定（相位限定词缀的效果层生效条件）。 */
-    fun isPhaseShip(stats: com.fs.starfarer.api.combat.MutableShipStatsAPI): Boolean =
-        stats.variant?.hullSpec?.isPhase == true
 
     /**
      * 按舰船大小选择分档 entry。
