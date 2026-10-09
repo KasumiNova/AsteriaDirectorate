@@ -118,10 +118,27 @@ class ASTDArcAdvancedFireControlHullMod : BaseHullMod() {
         isForModSpec: Boolean
     ) {
         tooltip.hullmodCard(width, THEME, spec?.displayName) {
-            plainText("内建于 烽燧-级 的高级火控系统，在牺牲一定射程优势的同时，强调持续火力投射的能力。")
-            heading("ui.hullmod.export.section.effect")
-            plainText("# 舰船武器射程 -20%", hl("#", HullmodTone.RED), hl("-20%", HullmodTone.RED))
-            plainText("# 武器辐能产出 +20%", hl("#", HullmodTone.RED), hl("+20%", HullmodTone.RED))
+            plainText("内建于 烽燧-级 的适应性火控系统，以牺牲一定的射程优势为代价的同时，提升持续火力投射的能力。")
+            headingPlain("效果")
+            tablePlain("属性", "影响") {
+                rowPlain("舰船武器射程", "-20%", HullmodTone.DEFAULT, HullmodTone.RED)
+                rowPlain("武器辐能产出", "+20%", HullmodTone.DEFAULT, HullmodTone.RED)
+            }
+            headingPlain("持续加速")
+            plainText("当舰船的 大型非点防御武器 持续开火时，舰船会持续获得多项进攻性增益，在 6 秒内达到以下最大效果：",
+                hl("大型非点防御武器", HullmodTone.DEFAULT), hl("6", HullmodTone.DEFAULT)
+            )
+            tablePlain("属性", "影响") {
+                rowPlain("武器辐能消耗降低", "-40%", HullmodTone.DEFAULT, HullmodTone.POSITIVE)
+                rowPlain("非导弹武器射速", "+20%", HullmodTone.DEFAULT, HullmodTone.POSITIVE)
+                rowPlain("非导弹武器伤害", "+20%", HullmodTone.DEFAULT, HullmodTone.POSITIVE)
+                rowPlain("射弹速度", "+20%", HullmodTone.DEFAULT, HullmodTone.POSITIVE)
+            }
+            plainText("加成会在 6 秒内无任何 大型非点防御武器 开火时开始逐渐减弱。",
+                hl("大型非点防御武器", HullmodTone.DEFAULT), hl("6", HullmodTone.DEFAULT)
+            )
+            spacer(6f)
+            plainText("以上效果受到 难度系数 影响。", hl("难度系数", HullmodTone.DEFAULT))
         }
     }
 

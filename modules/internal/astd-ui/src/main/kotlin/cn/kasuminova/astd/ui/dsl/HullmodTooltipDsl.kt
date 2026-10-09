@@ -92,7 +92,7 @@ object HullmodThemes {
     /** 弧光线标准蓝（烽燧/缙云等 ARC 量产内置）。 */
     val ARC = HullmodTheme(
         nameColor = Color(150, 232, 255),
-        borderColor = Color(90, 180, 255),
+        borderColor = Color(90, 180, 255, 150),
         headerBackground = Color(20, 52, 82, 180),
         sectionBackground = Color(14, 36, 58, 120),
         accentColor = Color(60, 140, 220),
@@ -101,7 +101,7 @@ object HullmodThemes {
     /** 弧光线亮蓝（XC-101 内置船插：等离子装甲护盾/离子化反冲蓄能器）。 */
     val ARC_PRISM = HullmodTheme(
         nameColor = Color(160, 236, 255),
-        borderColor = Color(160, 110, 255),
+        borderColor = Color(160, 110, 255, 150),
         headerBackground = Color(20, 52, 82, 190),
         sectionBackground = Color(14, 36, 58, 135),
         accentColor = Color(88, 190, 255),
@@ -110,7 +110,7 @@ object HullmodThemes {
     /** 透镜线紫（LENS 量产与透镜协议旗舰内置）。 */
     val LENS = HullmodTheme(
         nameColor = Color(200, 160, 255),
-        borderColor = Color(160, 110, 255),
+        borderColor = Color(160, 110, 255, 150),
         headerBackground = Color(40, 18, 70, 185),
         sectionBackground = Color(28, 12, 52, 120),
         accentColor = Color(150, 90, 230),
@@ -119,7 +119,7 @@ object HullmodThemes {
     /** 有人模式淡蓝（双模式切换器/有人模式）。 */
     val CREWED = HullmodTheme(
         nameColor = Color(168, 190, 230),
-        borderColor = Color(120, 150, 200),
+        borderColor = Color(120, 150, 200, 150),
         headerBackground = Color(24, 34, 56, 185),
         sectionBackground = Color(20, 28, 46, 120),
         accentColor = Color(143, 182, 255),
@@ -128,7 +128,7 @@ object HullmodThemes {
     /** 自动模式橙。 */
     val AUTOMATED = HullmodTheme(
         nameColor = Color(255, 196, 150),
-        borderColor = Color(220, 150, 90),
+        borderColor = Color(220, 150, 90, 150),
         headerBackground = Color(66, 40, 18, 185),
         sectionBackground = Color(48, 28, 14, 120),
         accentColor = Color(230, 170, 100),
@@ -137,7 +137,7 @@ object HullmodThemes {
     /** 纳米重构协议绿。 */
     val NANO = HullmodTheme(
         nameColor = Color(170, 255, 196),
-        borderColor = Color(88, 212, 140),
+        borderColor = Color(88, 212, 140, 150),
         headerBackground = Color(18, 68, 44, 180),
         sectionBackground = Color(12, 46, 30, 120),
         accentColor = Color(60, 180, 100),
@@ -146,7 +146,7 @@ object HullmodThemes {
     /** 虚数之翼紫罗兰（XC-002 星翼内置）。 */
     val IMAGINARY = HullmodTheme(
         nameColor = Color(216, 178, 255),
-        borderColor = Color(170, 110, 255),
+        borderColor = Color(170, 110, 255, 150),
         headerBackground = Color(46, 24, 82, 180),
         sectionBackground = Color(32, 16, 58, 120),
         accentColor = Color(130, 80, 220),

@@ -4,6 +4,7 @@ import cn.kasuminova.astd.combat.hullmods.HullmodIncompatibility
 import cn.kasuminova.astd.combat.hullmods.base.IncompatibleHullmodStripper
 import cn.kasuminova.astd.internal.i18n.I18n
 import cn.kasuminova.astd.ui.dsl.HullmodThemes
+import cn.kasuminova.astd.ui.dsl.HullmodTone
 import cn.kasuminova.astd.ui.dsl.hullmodCard
 import com.fs.starfarer.api.combat.BaseHullMod
 import com.fs.starfarer.api.combat.MutableShipStatsAPI
@@ -12,6 +13,7 @@ import com.fs.starfarer.api.combat.WeaponAPI
 import com.fs.starfarer.api.combat.listeners.WeaponBaseRangeModifier
 import com.fs.starfarer.api.combat.listeners.WeaponOPCostModifier
 import com.fs.starfarer.api.ui.TooltipMakerAPI
+import org.magiclib.kotlin.scaleAlpha
 import java.awt.Color
 import kotlin.math.roundToInt
 
@@ -127,37 +129,25 @@ class ASTDArcAdvancedTargetingSystemHullMod : BaseHullMod() {
         isForModSpec: Boolean
     ) {
         tooltip.hullmodCard(width, THEME, spec?.displayName) {
-            para("ui.hullmod.arc_advanced_targeting_system.desc")
-            para("ui.hullmod.arc_advanced_targeting_system.summary")
+            plainText("一种直连于 列星-级 的目标定位系统与武器管线集成的特殊设计，能够大幅提升各类武器的适配性。")
             heading("ui.hullmod.export.section.effect")
-            table {
-                row(
-                    "ui.hullmod.arc_advanced_targeting_system.attr.range",
-                    "ui.hullmod.arc_advanced_targeting_system.value.range",
-                )
-                row(
-                    "ui.hullmod.arc_advanced_targeting_system.attr.projectile_speed",
-                    "ui.hullmod.arc_advanced_targeting_system.value.projectile_speed",
-                )
-                row(
-                    "ui.hullmod.arc_advanced_targeting_system.attr.weapon_flux",
-                    "ui.hullmod.arc_advanced_targeting_system.value.weapon_flux",
-                )
-                row(
-                    "ui.hullmod.arc_advanced_targeting_system.attr.short_range",
-                    "ui.hullmod.arc_advanced_targeting_system.value.short_range",
-                )
-                row(
-                    "ui.hullmod.arc_advanced_targeting_system.attr.op_small",
-                    "ui.hullmod.arc_advanced_targeting_system.value.op_small",
-                )
-                row(
-                    "ui.hullmod.arc_advanced_targeting_system.attr.op_medium",
-                    "ui.hullmod.arc_advanced_targeting_system.value.op_medium",
-                )
+            tablePlain("属性", "影响") {
+                rowPlain("非导弹武器射程", "+20%", HullmodTone.DEFAULT, HullmodTone.POSITIVE)
+                rowPlain("射弹飞行速度", "+20%", HullmodTone.DEFAULT, HullmodTone.POSITIVE)
+                rowPlain("武器辐能产出", "-20%", HullmodTone.DEFAULT, HullmodTone.POSITIVE)
+                rowPlain("小型武器装配点", "-1", HullmodTone.DEFAULT, HullmodTone.POSITIVE)
+                rowPlain("小型武器装配点", "-20%", HullmodTone.DEFAULT, HullmodTone.POSITIVE)
+                rowPlain("中型武器装配点", "-2", HullmodTone.DEFAULT, HullmodTone.POSITIVE)
+                rowPlain("中型武器装配点", "-20%", HullmodTone.DEFAULT, HullmodTone.POSITIVE)
             }
-            heading("ui.hullmod.export.section.note")
-            para("ui.hullmod.arc_advanced_targeting_system.note")
+            plainText(
+                "如果非导弹武器的基础射程小于 700, 则额外还能够获得 200 的额外基础射程。",
+                hl("700", HullmodTone.DEFAULT), hl("200", HullmodTone.POSITIVE)
+            )
+            headingPlain("限制")
+            plainText("# 无法安装 目标定位系统", hl("#", HullmodTone.RED), hl("目标定位系统", HullmodTone.RED))
+            spacer(6f)
+            plainText("以上效果受到 难度系数 影响。", hl("难度系数", HullmodTone.DEFAULT))
         }
     }
 
