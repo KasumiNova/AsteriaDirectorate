@@ -23,9 +23,9 @@ import java.awt.Color
  *         heading("ui.hullmod.export.section.effect")
  *         table {
  *             row("ui.hullmod.example.attr.rate", "ui.hullmod.example.value.rate")
- *             row("ui.hullmod.example.attr.penalty", "ui.hullmod.example.value.penalty", tone = HullmodTone.WARNING)
+ *             row("ui.hullmod.example.attr.penalty", "ui.hullmod.example.value.penalty", tone = HullmodTone.RED)
  *         }
- *         para("ui.hullmod.example.note", hl("50%", HullmodTone.WARNING))
+ *         para("ui.hullmod.example.note", hl("50%", HullmodTone.HIGHLIGHT))
  *         para("ui.hullmod.example.runtime", v("range", range), v("pct", percent(ratio)))
  *     }
  * }
@@ -40,8 +40,8 @@ enum class HullmodTone {
     /** 默认色（段落正文 / 表格标签列 / 标题列各自的后备色）。 */
     DEFAULT,
 
-    /** 警示黄：惩罚项、限制项。 */
-    WARNING,
+    /** 高亮色：注意点/特殊数值。 */
+    HIGHLIGHT,
 
     /** 增益绿：正面收益。 */
     POSITIVE,
@@ -80,8 +80,9 @@ data class HullmodTheme(
 ) {
     /** 把语义角色解析为主题色；[HullmodTone.DEFAULT] 回退 [fallback]。 */
     fun colorFor(tone: HullmodTone, fallback: Color): Color = when (tone) {
-        HullmodTone.DEFAULT, HullmodTone.WARNING -> Misc.getHighlightColor()
-        HullmodTone.POSITIVE -> positiveColor
+        HullmodTone.DEFAULT -> fallback
+        HullmodTone.HIGHLIGHT -> Misc.getHighlightColor()
+        HullmodTone.POSITIVE -> Misc.getPositiveHighlightColor()
         HullmodTone.ORANGE -> orangeColor
         HullmodTone.RED -> redColor ?: Misc.getNegativeHighlightColor()
     }
@@ -160,7 +161,7 @@ sealed interface ParaArg
 
 /**
  * 静态高亮：把 i18n 文本中已烘焙的 [value] 片段着色。
- * 颜色二选一：显式 [color]，或按 [tone] 由主题解析；两者都缺省时按 WARNING 色处理。
+ * 颜色二选一：显式 [color]，或按 [tone] 由主题解析；两者都缺省时按 HIGHLIGHT 色处理。
  */
 internal class StaticHighlight(
     val value: String,
@@ -511,7 +512,7 @@ internal object HullmodCardRenderer {
         val labelWidth = tableWidth * 0.62f
         val valueWidth = tableWidth - labelWidth
         tooltip.beginTable(
-            Misc.getBasePlayerColor(),
+            theme.nameColor,
             Misc.getDarkPlayerColor(),
             Misc.getBrightPlayerColor(),
             TABLE_ROW_HEIGHT,
@@ -525,7 +526,7 @@ internal object HullmodCardRenderer {
         for (row in table.rows) {
             tooltip.addRow(
                 Alignment.MID,
-                theme.colorFor(row.labelTone, Misc.getTextColor()),
+                theme.colorFor(row.labelTone, theme.nameColor),
                 if (row.plain) row.labelKey else I18n[I18n.Categories.MOD, row.labelKey],
                 Alignment.MID,
                 theme.colorFor(row.valueTone, theme.nameColor),

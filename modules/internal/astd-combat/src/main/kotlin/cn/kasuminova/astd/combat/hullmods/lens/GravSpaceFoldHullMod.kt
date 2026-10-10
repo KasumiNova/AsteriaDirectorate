@@ -191,16 +191,24 @@ class GravSpaceFoldHullMod : BaseHullMod() {
         width: Float,
         isForModSpec: Boolean,
     ) {
+        // tooltip 展示口径：无舰上下文（装配面板）按我方档位展示（默认砺刃 v2）
+        val values = GravSpaceFoldTuning.resolve(DifficultyTuningImpl, ship == null || ship.owner == 0)
         tooltip.hullmodCard(width, THEME, spec?.displayName) {
             para("ui.hullmod.grav_space_fold.desc", hl("奇点核心", HullmodThemes.LENS.nameColor))
             heading("ui.hullmod.grav_space_fold.section.fold")
             para(
                 "ui.hullmod.grav_space_fold.line.fold_field",
-                hl("50%", HullmodTone.HIGHLIGHT), hl("75%", HullmodTone.HIGHLIGHT)
+                v("basePct", percent(values.foldChanceBase)), v("capPct", percent(values.foldChanceCap)),
+                hl(percent(values.foldChanceBase), HullmodTone.HIGHLIGHT),
+                hl(percent(values.foldChanceCap), HullmodTone.HIGHLIGHT),
             )
             para("ui.hullmod.grav_space_fold.line.fold_cooldown", hl("短暂失效", HullmodTone.RED))
             heading("ui.hullmod.grav_space_fold.section.beam")
-            para("ui.hullmod.grav_space_fold.line.beam_dr", hl("25%", HullmodTone.POSITIVE))
+            para(
+                "ui.hullmod.grav_space_fold.line.beam_dr",
+                v("beamPct", percent(1f - values.beamDamageTakenMult)),
+                hl(percent(1f - values.beamDamageTakenMult), HullmodTone.POSITIVE),
+            )
             spacer(6f)
             para("ui.hullmod.export.difficulty_note", hl("难度系数", HullmodTone.DEFAULT))
         }

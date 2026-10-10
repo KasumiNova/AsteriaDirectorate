@@ -458,7 +458,6 @@ class ASTDCombatIntelSkill {
                     hl(formatNumber(values.surfaceArmorDestroyer), HullmodTone.HIGHLIGHT),
                     hl(formatNumber(values.surfaceArmorCruiser), HullmodTone.HIGHLIGHT),
                     hl(formatNumber(values.surfaceArmorCapital), HullmodTone.HIGHLIGHT),
-                    hl(formatNumber(values.surfaceArmorDecay), HullmodTone.HIGHLIGHT),
                 )
                 para(
                     "ui.skill.astd_combat_intel.line.grav_phase",
