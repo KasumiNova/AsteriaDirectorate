@@ -14,6 +14,7 @@ import org.lazywizard.lazylib.MathUtils
 import org.lazywizard.lazylib.combat.CombatUtils
 import org.lwjgl.util.vector.Vector2f
 import kotlin.math.abs
+import kotlin.math.atan
 import kotlin.math.ceil
 
 /**
@@ -29,6 +30,12 @@ import kotlin.math.ceil
  *   借此自然形成对重型导弹的多管齐射；
  * - 协同状态经 engine.customData 按武器逐帧发布认领，超时
  *   [PositronShockwaveFireControl.CLAIM_STALE_AFTER] 秒未刷新即失效（武器被毁/停火不残留脏认领）。
+ *
+ * 开火闸门（2026-10 实机修正）：`shouldFire()=true` 在原版语义下即立刻击发，瞄准是 AI 自身职责，
+ * 故目标选定后仍须满足两条才开火——提前量命中点在射界内、且炮口实际指向与命中点夹角
+ * 不超过命中容差（目标碰撞半径 + 余量在距离上张开的半角，见 [hitToleranceDeg]）；
+ * 未对齐期间保持认领但不开火，炮塔转向期间不再空枪。目标选择带迟滞
+ * （新候选总分须领先当前目标 [TARGET_SWITCH_HYSTERESIS] 才切换），避免帧间抖动致炮口反复甩动。
  */
 class PositronShockwaveAutofireAI(
     private val weapon: WeaponAPI,
@@ -82,6 +89,9 @@ class PositronShockwaveAutofireAI(
         var bestScore = Float.NEGATIVE_INFINITY
         var bestFresh: CombatEntityAPI? = null
         var bestFreshScore = Float.NEGATIVE_INFINITY
+        var prevScore = Float.NEGATIVE_INFINITY
+        var prevFresh = false
+        val prev = target
         for (candidate in pool) {
             val score = score(candidate, weaponLoc, owner, inRange)
             if (score > bestScore) {
@@ -93,20 +103,51 @@ class PositronShockwaveAutofireAI(
                 hitpoints = candidate.hitpoints,
             )
             val claimed = PositronShockwaveFireControl.freshClaimCount(claims, candidate, ship, weapon, now)
-            if (claimed < needed && score > bestFreshScore) {
+            val fresh = claimed < needed
+            if (candidate === prev) {
+                prevScore = score
+                prevFresh = fresh
+            }
+            if (fresh && score > bestFreshScore) {
                 bestFreshScore = score
                 bestFresh = candidate
             }
         }
-        val chosen = bestFresh ?: best ?: run {
+
+        // 目标迟滞：旧目标仍在池内且未被显著超越时保留。饱和分配优先于迟滞——
+        // 旧目标已饱和且存在未饱和候选时让位；全体饱和或未饱和时按迟滞与对应候选集比较。
+        val chosen = if (prev != null && prevScore > Float.NEGATIVE_INFINITY) {
+            if (!prevFresh && bestFresh != null) {
+                bestFresh
+            } else {
+                val challengerScore = if (prevFresh) bestFreshScore else bestScore
+                if (challengerScore <= prevScore + TARGET_SWITCH_HYSTERESIS) prev else bestFresh ?: best
+            }
+        } else {
+            bestFresh ?: best
+        } ?: run {
             disengage(engine)
             return
         }
 
         claims[weapon] = PositronShockwaveFireControl.Claim(chosen, now)
         target = chosen
-        shouldFire = true
         updateAimPoint(chosen, ship, weaponLoc)
+        shouldFire = isAligned(chosen, weaponLoc)
+    }
+
+    /**
+     * 开火对齐闸门：提前量命中点须在射界内，且炮口实际指向与命中点方向的夹角
+     * 不超过 [hitToleranceDeg] 给出的命中容差。未对齐时保持认领但不开火，待炮塔转到位。
+     * 命中点压在炮口（距离为 0，方向无定义）时视为已对齐。
+     */
+    private fun isAligned(targetEntity: CombatEntityAPI, weaponLoc: Vector2f): Boolean {
+        if (weapon.distanceFromArc(aimPoint) > ARC_EPS) return false
+        val dist = MathUtils.getDistance(weaponLoc, aimPoint)
+        if (dist <= 0f) return true
+        val aimAngle = Misc.getAngleInDegrees(weaponLoc, aimPoint)
+        val diff = Misc.getAngleDiff(weapon.currAngle, aimAngle)
+        return diff <= hitToleranceDeg(targetEntity.collisionRadius, dist)
     }
 
     /**
@@ -175,7 +216,11 @@ class PositronShockwaveAutofireAI(
         shouldFire = false
     }
 
-    override fun getTarget(): Vector2f = Vector2f(aimPoint)
+    override fun getTarget(): Vector2f {
+        // 无交战目标时沿炮口当前指向取点，避免把炮塔拽向过期的提前量缓存点。
+        val t = target ?: return MathUtils.getPointOnCircumference(weapon.location, TARGET_POINT_DISTANCE, weapon.currAngle)
+        return Vector2f(aimPoint)
+    }
 
     override fun getTargetShip(): ShipAPI? = target as? ShipAPI
 
@@ -201,6 +246,31 @@ class PositronShockwaveAutofireAI(
         private const val HP_WEIGHT = 50f
         private const val DIST_WEIGHT = 1f
         private const val ARC_WEIGHT = 2f
+
+        /** 目标切换迟滞（分）：新候选总分须领先当前目标该分值才切换（≈ 多 0.75 个邻近目标的密度差）。 */
+        private const val TARGET_SWITCH_HYSTERESIS = 75f
+
+        /** 命中容差夹紧下限（度）：超远距离/大型目标也不放宽到明显打不中。 */
+        internal const val MIN_HIT_TOLERANCE_DEG = 1.5f
+
+        /** 命中容差夹紧上限（度）：贴脸距离也不苛刻到等不到开火窗口。 */
+        internal const val MAX_HIT_TOLERANCE_DEG = 6f
+
+        /** 命中容差余量（su）：目标碰撞半径外的放宽量，覆盖交汇前的机动余地。 */
+        internal const val HIT_MARGIN_SU = 10f
+
+        /** getTarget 无目标占位点的延伸距离（su，仅语义占位，不参与弹道结算）。 */
+        private const val TARGET_POINT_DISTANCE = 100f
+
+        /**
+         * 命中容差（度）：目标碰撞半径 + [HIT_MARGIN_SU] 在 [dist] 处张开的半角，
+         * 夹紧在 [[MIN_HIT_TOLERANCE_DEG], [MAX_HIT_TOLERANCE_DEG]] 内。
+         */
+        internal fun hitToleranceDeg(collisionRadius: Float, dist: Float): Float {
+            if (dist <= 0f) return MAX_HIT_TOLERANCE_DEG
+            val deg = Math.toDegrees(atan((collisionRadius + HIT_MARGIN_SU) / dist).toDouble()).toFloat()
+            return deg.coerceIn(MIN_HIT_TOLERANCE_DEG, MAX_HIT_TOLERANCE_DEG)
+        }
     }
 }
 
