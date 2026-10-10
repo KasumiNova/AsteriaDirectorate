@@ -140,15 +140,30 @@ class ASTDPlasmaArmorShieldHullMod : BaseHullMod() {
     ) {
         tooltip.hullmodCard(width, THEME, null) {
             para("ui.hullmod.plasma_armor_shield.desc")
-            headingPlain("护盾影响")
-            plainText("舰船护盾受击时，会按受击方位最接近的一块装甲板参与装甲减伤计算。该数值使用最大装甲值的最终值，而非基础装甲值，并使用与原版装甲减伤相同的算法。")
+            heading("ui.hullmod.plasma_armor_shield.section.shield_impact")
+            para("ui.hullmod.plasma_armor_shield.line.directional_armor")
             table(
                 headerAKey = "ui.hullmod.plasma_armor_shield.table.direction.header_a",
                 headerBKey = "ui.hullmod.plasma_armor_shield.table.direction.header_b",
             ) {
-                rowPlain("正前方 60°", "30%")
-                rowPlain("左右侧前方 60°", "20~30%")
-                rowPlain("后方 180°", "10%~20%")
+                row(
+                    "ui.hullmod.plasma_armor_shield.table.direction.row_0.label",
+                    "ui.hullmod.plasma_armor_shield.table.direction.row_0.value",
+                    labelTone = HullmodTone.DEFAULT,
+                    valueTone = HullmodTone.HIGHLIGHT,
+                )
+                row(
+                    "ui.hullmod.plasma_armor_shield.table.direction.row_1.label",
+                    "ui.hullmod.plasma_armor_shield.table.direction.row_1.value",
+                    labelTone = HullmodTone.DEFAULT,
+                    valueTone = HullmodTone.HIGHLIGHT,
+                )
+                row(
+                    "ui.hullmod.plasma_armor_shield.table.direction.row_2.label",
+                    "ui.hullmod.plasma_armor_shield.table.direction.row_2.value",
+                    labelTone = HullmodTone.DEFAULT,
+                    valueTone = HullmodTone.HIGHLIGHT,
+                )
             }
             para("ui.hullmod.plasma_armor_shield.line.shield_damage_type")
             table(
@@ -159,13 +174,13 @@ class ASTDPlasmaArmorShieldHullMod : BaseHullMod() {
                     "ui.hullmod.plasma_armor_shield.table.shield_damage.row_0.label",
                     "ui.hullmod.plasma_armor_shield.table.shield_damage.row_0.value",
                     labelTone = HullmodTone.DEFAULT,
-                    valueTone = HullmodTone.POSITIVE,
+                    valueTone = HullmodTone.HIGHLIGHT,
                 )
                 row(
                     "ui.hullmod.plasma_armor_shield.table.shield_damage.row_1.label",
                     "ui.hullmod.plasma_armor_shield.table.shield_damage.row_1.value",
                     labelTone = HullmodTone.DEFAULT,
-                    valueTone = HullmodTone.POSITIVE,
+                    valueTone = HullmodTone.HIGHLIGHT,
                 )
                 row(
                     "ui.hullmod.plasma_armor_shield.table.shield_damage.row_2.label",
@@ -180,19 +195,22 @@ class ASTDPlasmaArmorShieldHullMod : BaseHullMod() {
                     valueTone = HullmodTone.RED,
                 )
             }
-            headingPlain("装甲影响")
-            plainText("装甲受到的伤害会受到完整的护盾效率伤害减免。")
+            heading("ui.hullmod.plasma_armor_shield.section.armor_impact")
+            para("ui.hullmod.plasma_armor_shield.line.armor_shield_efficiency")
             ship?.mutableStats?.shieldDamageTakenMult?.let {
-                val effectNum = String.format("%.1f", (1 - it.modifiedValue) * 100) + "%"
-                plainText("当前伤害减免: $effectNum", hl(effectNum, HullmodTone.POSITIVE))
+                val effectNum = String.format("%.0f", it.modifiedValue * 100) + "%"
+                para(
+                    "ui.hullmod.plasma_armor_shield.line.current_armor_mult",
+                    v("effect", effectNum), hl(effectNum, HullmodTone.HIGHLIGHT),
+                )
             }
             heading("ui.hullmod.plasma_armor_shield.section.limits")
-            plainText("由于独特的护盾构造，该舰具有以下限制：")
-            plainText("# 无法安装 强化护盾", hl("#", HullmodTone.RED), hl("强化护盾", HullmodTone.RED))
-            plainText("# 无法安装 护盾分流", hl("#", HullmodTone.RED), hl("护盾分流", HullmodTone.RED))
-            plainText("# 最大装甲值降低 50%", hl("#", HullmodTone.RED), hl("50%", HullmodTone.RED))
+            para("ui.hullmod.plasma_armor_shield.line.limits")
+            para("ui.hullmod.plasma_armor_shield.line.limit_hardened_shields", hl("#", HullmodTone.RED), hl("强化护盾", HullmodTone.RED))
+            para("ui.hullmod.plasma_armor_shield.line.limit_shield_shunt", hl("#", HullmodTone.RED), hl("护盾分流", HullmodTone.RED))
+            para("ui.hullmod.plasma_armor_shield.line.max_armor_penalty", hl("#", HullmodTone.RED), hl("50%", HullmodTone.RED))
             spacer(6f)
-            plainText("以上效果受到 难度系数 影响。", hl("难度系数", HullmodTone.DEFAULT))
+            para("ui.hullmod.export.difficulty_note", hl("难度系数", HullmodTone.DEFAULT))
         }
     }
 

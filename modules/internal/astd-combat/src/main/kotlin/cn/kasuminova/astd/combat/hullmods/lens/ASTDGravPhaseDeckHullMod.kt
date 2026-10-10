@@ -1,8 +1,10 @@
 package cn.kasuminova.astd.combat.hullmods.lens
 
+import cn.kasuminova.astd.combat.hullmods.lens.ASTDGravPhaseDeckHullMod.Companion.SYSTEM_LOCK_COOLDOWN_REMAINING
 import cn.kasuminova.astd.combat.hullmods.lens.ASTDGravPhaseDeckHullMod.Companion.isZw103Ship
 import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import cn.kasuminova.astd.ui.dsl.HullmodThemes
+import cn.kasuminova.astd.ui.dsl.HullmodTone
 import cn.kasuminova.astd.ui.dsl.hullmodCard
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseHullMod
@@ -134,10 +136,19 @@ class ASTDGravPhaseDeckHullMod : BaseHullMod() {
         isForModSpec: Boolean,
     ) {
         tooltip.hullmodCard(width, THEME, spec?.displayName) {
-            para("ui.hullmod.grav_phase_deck.desc")
-            para("ui.hullmod.grav_phase_deck.summary")
-            para("ui.hullmod.grav_phase_deck.line.1")
-            para("ui.hullmod.grav_phase_deck.line.2")
+            para("ui.hullmod.grav_phase_deck.desc", hl("维度折叠甲板", HullmodThemes.LENS.nameColor))
+            heading("ui.hullmod.grav_phase_deck.section.phase_link")
+            para(
+                "ui.hullmod.grav_phase_deck.line.phase_link",
+                hl("引力相位", HullmodTone.HIGHLIGHT),
+            )
+            heading("ui.hullmod.grav_phase_deck.section.flux_return")
+            para(
+                "ui.hullmod.grav_phase_deck.line.flux_return",
+                hl("60%", HullmodTone.HIGHLIGHT), hl("一视同仁", HullmodTone.HIGHLIGHT), hl("80%", HullmodTone.HIGHLIGHT)
+            )
+            spacer(6f)
+            para("ui.hullmod.export.difficulty_note", hl("难度系数", HullmodTone.DEFAULT))
         }
     }
 

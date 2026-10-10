@@ -1,6 +1,7 @@
 package cn.kasuminova.astd.combat.hullmods.arc
 
 import cn.kasuminova.astd.ui.dsl.HullmodThemes
+import cn.kasuminova.astd.ui.dsl.HullmodTone
 import cn.kasuminova.astd.ui.dsl.hullmodCard
 import com.fs.starfarer.api.combat.BaseHullMod
 import com.fs.starfarer.api.combat.MutableShipStatsAPI
@@ -62,11 +63,13 @@ class ASTDAdvancedEnergyIntegrationHullMod : BaseHullMod() {
             para("ui.hullmod.aei.summary")
             heading("ui.hullmod.export.section.effect")
             table {
-                row("ui.hullmod.aei.attr.op", "ui.hullmod.aei.value.op")
-                row("ui.hullmod.aei.attr.flux", "ui.hullmod.aei.value.flux")
-                row("ui.hullmod.aei.attr.projectile_speed", "ui.hullmod.aei.value.projectile_speed")
-                row("ui.hullmod.aei.attr.turn_rate", "ui.hullmod.aei.value.turn_rate")
+                row("ui.hullmod.aei.attr.op", "ui.hullmod.aei.value.op", HullmodTone.DEFAULT, HullmodTone.HIGHLIGHT)
+                row("ui.hullmod.aei.attr.flux", "ui.hullmod.aei.value.flux", HullmodTone.DEFAULT, HullmodTone.HIGHLIGHT)
+                row("ui.hullmod.aei.attr.projectile_speed", "ui.hullmod.aei.value.projectile_speed", HullmodTone.DEFAULT, HullmodTone.HIGHLIGHT)
+                row("ui.hullmod.aei.attr.turn_rate", "ui.hullmod.aei.value.turn_rate", HullmodTone.DEFAULT, HullmodTone.HIGHLIGHT)
             }
+            spacer(6f)
+            para("ui.hullmod.export.difficulty_note", hl("难度系数", HullmodTone.DEFAULT))
         }
     }
 

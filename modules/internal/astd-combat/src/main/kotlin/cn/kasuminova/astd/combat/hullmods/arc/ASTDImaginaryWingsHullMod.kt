@@ -6,6 +6,7 @@ import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import cn.kasuminova.astd.internal.i18n.I18n
 import cn.kasuminova.astd.renderer.effect.system.Xc002GhostWingsEffect
 import cn.kasuminova.astd.ui.dsl.HullmodThemes
+import cn.kasuminova.astd.ui.dsl.HullmodTone
 import cn.kasuminova.astd.ui.dsl.hullmodCard
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseHullMod
@@ -96,12 +97,23 @@ class ASTDImaginaryWingsHullMod : BaseHullMod() {
         isForModSpec: Boolean,
     ) {
         tooltip.hullmodCard(width, THEME, spec?.displayName) {
-            para("ui.hullmod.imaginary_wings.desc")
-            para("ui.hullmod.imaginary_wings.summary")
-            heading("ui.hullmod.export.section.effect")
-            para("ui.hullmod.imaginary_wings.line.1", 4f)
-            para("ui.hullmod.imaginary_wings.line.2", 2f)
-            para("ui.hullmod.imaginary_wings.line.3", 2f)
+            para("ui.hullmod.imaginary_wings.desc", hl("\"灵能\"", Color(219, 40, 40, 255)))
+            heading("ui.hullmod.imaginary_wings.section.overload")
+            para(
+                "ui.hullmod.imaginary_wings.line.overload",
+                hl("3", HullmodTone.HIGHLIGHT), hl("100%", HullmodTone.POSITIVE)
+            )
+            heading("ui.hullmod.imaginary_wings.section.glide")
+            para(
+                "ui.hullmod.imaginary_wings.line.glide",
+                hl("25%", HullmodTone.RED), hl("50%", HullmodTone.POSITIVE)
+            )
+            para(
+                "ui.hullmod.imaginary_wings.line.glide_overcap",
+                hl("1%", HullmodTone.HIGHLIGHT), hl("2%", HullmodTone.POSITIVE)
+            )
+            spacer(6f)
+            para("ui.hullmod.export.difficulty_note", hl("难度系数", HullmodTone.DEFAULT))
         }
     }
 

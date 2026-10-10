@@ -6,8 +6,14 @@ import cn.kasuminova.astd.combat.hullmods.base.directionalArmorFraction
 import cn.kasuminova.astd.combat.skills.ASTDCombatIntelTuning.DefenseBranch
 import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import cn.kasuminova.astd.internal.i18n.I18n
+import cn.kasuminova.astd.ui.dsl.HullmodThemes
+import cn.kasuminova.astd.ui.dsl.HullmodTone
+import cn.kasuminova.astd.ui.dsl.hullmodCard
+import com.fs.starfarer.api.characters.CustomSkillDescription
 import com.fs.starfarer.api.characters.LevelBasedEffect
+import com.fs.starfarer.api.characters.MutableCharacterStatsAPI
 import com.fs.starfarer.api.characters.ShipSkillEffect
+import com.fs.starfarer.api.characters.SkillSpecAPI
 import com.fs.starfarer.api.combat.BeamAPI
 import com.fs.starfarer.api.combat.CombatEntityAPI
 import com.fs.starfarer.api.combat.DamageAPI
@@ -17,6 +23,7 @@ import com.fs.starfarer.api.combat.WeaponAPI
 import com.fs.starfarer.api.combat.listeners.AdvanceableListener
 import com.fs.starfarer.api.combat.listeners.DamageTakenModifier
 import com.fs.starfarer.api.combat.listeners.WeaponBaseRangeModifier
+import com.fs.starfarer.api.ui.TooltipMakerAPI
 import org.lwjgl.util.vector.Vector2f
 import kotlin.math.roundToInt
 
@@ -42,10 +49,32 @@ import kotlin.math.roundToInt
  *
  * 监听器经 [ensureShipListener] 挂到座舰（stats.entity 为 ShipAPI 时，即战斗中）；
  * 难度数值在监听器内逐帧/逐命中实时解析，LunaLib 设置变更即时生效。
+ *
+ * 技能描述：全部 Level 实现 [CustomSkillDescription] 抑制原版默认描述行
+ * （原版 tooltip 对 hasCustomDescription=true 的 effect 跳过 getEffectDescription 渲染），
+ * 统一由 [Level1]（普通效果）与 [Level6]（精英效果）渲染多行卡片，
+ * 数值经 `v()` 按当前难度档位变量注入（与船插 tooltip 同一口径）。
  */
 class ASTDCombatIntelSkill {
 
-    class Level1 : ShipSkillEffect {
+    /**
+     * 抑制原版默认描述行的基类：技能 tooltip 逐 effect 检查 [CustomSkillDescription]，
+     * hasCustomDescription=true 时以 createCustomDescription 取代默认行（原版 VanillaSkillTooltip 判例），
+     * 空实现即「该 Level 的描述已由卡片承接」。
+     */
+    abstract class CardOnlyDescription : ShipSkillEffect, CustomSkillDescription {
+        final override fun hasCustomDescription(): Boolean = true
+
+        override fun createCustomDescription(
+            stats: MutableCharacterStatsAPI,
+            skill: SkillSpecAPI,
+            tooltip: TooltipMakerAPI,
+            width: Float,
+        ) {
+        }
+    }
+
+    class Level1 : CardOnlyDescription() {
         override fun apply(stats: MutableShipStatsAPI, hullSize: ShipAPI.HullSize?, id: String, level: Float) {
             if (!isPhaseShip(stats)) return
             val values = ASTDCombatIntelTuning.resolve(DifficultyTuningImpl, isPlayerShip(stats))
@@ -66,9 +95,17 @@ class ASTDCombatIntelSkill {
 
         override fun getScopeDescription(): LevelBasedEffect.ScopeDescription =
             LevelBasedEffect.ScopeDescription.PILOTED_SHIP
+
+        /** 普通效果描述卡片（效果组 0 首位 effect，见 .skill effectGroups）。 */
+        override fun createCustomDescription(
+            stats: MutableCharacterStatsAPI,
+            skill: SkillSpecAPI,
+            tooltip: TooltipMakerAPI,
+            width: Float,
+        ) = renderDescriptionCard(tooltip, width, elite = false)
     }
 
-    class Level2 : ShipSkillEffect {
+    class Level2 : CardOnlyDescription() {
         override fun apply(stats: MutableShipStatsAPI, hullSize: ShipAPI.HullSize?, id: String, level: Float) {
             if (!isPhaseShip(stats)) return
             val ship = stats.entity as? ShipAPI ?: return
@@ -98,7 +135,7 @@ class ASTDCombatIntelSkill {
             LevelBasedEffect.ScopeDescription.PILOTED_SHIP
     }
 
-    class Level3 : ShipSkillEffect {
+    class Level3 : CardOnlyDescription() {
         override fun apply(stats: MutableShipStatsAPI, hullSize: ShipAPI.HullSize?, id: String, level: Float) {
             if (!isPhaseShip(stats)) return
             if (stats.variant?.hullSpec?.shipSystemId != ASTDCombatIntelTuning.GRAV_PHASE_SYSTEM_ID) return
@@ -125,7 +162,7 @@ class ASTDCombatIntelSkill {
             LevelBasedEffect.ScopeDescription.PILOTED_SHIP
     }
 
-    class Level4 : ShipSkillEffect {
+    class Level4 : CardOnlyDescription() {
         // 与 Level5 共用 DATA_FLAT_REDUCTION_LISTENER 挂同一个 FlatHitReductionListener：
         // unapply 无引用计数，任一侧 unapply 即摘除——因此 Level4/Level5 必须永远同组出现，
         // 拆分进不同 effectGroup 会造成互摘（stat 刷新期间护盾/装甲减免短时丢失）
@@ -152,7 +189,7 @@ class ASTDCombatIntelSkill {
             LevelBasedEffect.ScopeDescription.PILOTED_SHIP
     }
 
-    class Level5 : ShipSkillEffect {
+    class Level5 : CardOnlyDescription() {
         override fun apply(stats: MutableShipStatsAPI, hullSize: ShipAPI.HullSize?, id: String, level: Float) {
             if (isPhaseShip(stats)) return
             val ship = stats.entity as? ShipAPI ?: return
@@ -176,7 +213,7 @@ class ASTDCombatIntelSkill {
             LevelBasedEffect.ScopeDescription.PILOTED_SHIP
     }
 
-    class Level6 : ShipSkillEffect {
+    class Level6 : CardOnlyDescription() {
         override fun apply(stats: MutableShipStatsAPI, hullSize: ShipAPI.HullSize?, id: String, level: Float) {
             val ship = stats.entity as? ShipAPI ?: return
             ensureShipListener(ship, DATA_ELITE_RANGE_LISTENER) { EliteEnergyRangeListener() }
@@ -200,9 +237,17 @@ class ASTDCombatIntelSkill {
 
         override fun getScopeDescription(): LevelBasedEffect.ScopeDescription =
             LevelBasedEffect.ScopeDescription.PILOTED_SHIP
+
+        /** 精英效果描述卡片（效果组 1 首位 effect，见 .skill effectGroups）。 */
+        override fun createCustomDescription(
+            stats: MutableCharacterStatsAPI,
+            skill: SkillSpecAPI,
+            tooltip: TooltipMakerAPI,
+            width: Float,
+        ) = renderDescriptionCard(tooltip, width, elite = true)
     }
 
-    class Level7 : ShipSkillEffect {
+    class Level7 : CardOnlyDescription() {
         override fun apply(stats: MutableShipStatsAPI, hullSize: ShipAPI.HullSize?, id: String, level: Float) {
             val values = ASTDCombatIntelTuning.resolve(DifficultyTuningImpl, isPlayerShip(stats))
             stats.energyWeaponFluxCostMod.modifyMult(id, 1f - values.eliteFluxReduction)
@@ -371,6 +416,70 @@ class ASTDCombatIntelSkill {
 
         /** 展示用百分比格式：0.2 → "20%"（模板只放 %pct% 占位符，百分号由值携带）。 */
         private fun formatPercent(fraction: Float): String = "${(fraction * 100f).roundToInt()}%"
+
+        /**
+         * 技能 tooltip 的多行详细描述卡片（[CustomSkillDescription] 落地处）：
+         * 普通效果由 Level1 渲染（相位/非相位双分支），精英效果由 Level6 渲染；
+         * 数值按我方难度档位解析并经 `v()` 变量注入，与船插 tooltip 同一展示口径。
+         */
+        private fun renderDescriptionCard(tooltip: TooltipMakerAPI, width: Float, elite: Boolean) {
+            val values = displayValues()
+            tooltip.hullmodCard(width, HullmodThemes.ARC, null) {
+                if (elite) {
+                    para(
+                        "ui.skill.astd_combat_intel.line.elite_range",
+                        v("threshold", formatNumber(values.eliteRangeThreshold)),
+                        v("bonus", formatNumber(values.eliteRangeBonus)),
+                        hl(formatNumber(values.eliteRangeThreshold), HullmodTone.HIGHLIGHT),
+                        hl(formatNumber(values.eliteRangeBonus), HullmodTone.HIGHLIGHT),
+                    )
+                    para(
+                        "ui.skill.astd_combat_intel.line.elite_flux",
+                        v("pct", formatPercent(values.eliteFluxReduction)),
+                        hl(formatPercent(values.eliteFluxReduction), HullmodTone.HIGHLIGHT),
+                    )
+                    return@hullmodCard
+                }
+                para("ui.skill.astd_combat_intel.desc.intro")
+                heading("ui.skill.astd_combat_intel.section.phase")
+                para(
+                    "ui.skill.astd_combat_intel.line.peak_cr",
+                    v("pct", formatPercent(values.peakCrBonus)),
+                    hl(formatPercent(values.peakCrBonus), HullmodTone.HIGHLIGHT),
+                )
+                para(
+                    "ui.skill.astd_combat_intel.line.surface_armor",
+                    v("frigate", formatNumber(values.surfaceArmorFrigate)),
+                    v("destroyer", formatNumber(values.surfaceArmorDestroyer)),
+                    v("cruiser", formatNumber(values.surfaceArmorCruiser)),
+                    v("capital", formatNumber(values.surfaceArmorCapital)),
+                    v("decay", formatNumber(values.surfaceArmorDecay)),
+                    hl(formatNumber(values.surfaceArmorFrigate), HullmodTone.HIGHLIGHT),
+                    hl(formatNumber(values.surfaceArmorDestroyer), HullmodTone.HIGHLIGHT),
+                    hl(formatNumber(values.surfaceArmorCruiser), HullmodTone.HIGHLIGHT),
+                    hl(formatNumber(values.surfaceArmorCapital), HullmodTone.HIGHLIGHT),
+                    hl(formatNumber(values.surfaceArmorDecay), HullmodTone.HIGHLIGHT),
+                )
+                para(
+                    "ui.skill.astd_combat_intel.line.grav_phase",
+                    hl("75%", HullmodTone.HIGHLIGHT), hl("90%", HullmodTone.HIGHLIGHT),
+                    hl("-25%", HullmodTone.HIGHLIGHT),
+                )
+                heading("ui.skill.astd_combat_intel.section.non_phase")
+                para(
+                    "ui.skill.astd_combat_intel.line.shield",
+                    v("reduction", formatNumber(values.shieldFlatReduction)),
+                    hl(formatNumber(values.shieldFlatReduction), HullmodTone.HIGHLIGHT),
+                )
+                para(
+                    "ui.skill.astd_combat_intel.line.armor",
+                    v("reduction", formatNumber(values.armorFlatReduction)),
+                    hl(formatNumber(values.armorFlatReduction), HullmodTone.HIGHLIGHT),
+                )
+                spacer(6f)
+                para("ui.hullmod.export.difficulty_note", hl("难度系数", HullmodTone.DEFAULT))
+            }
+        }
 
         /**
          * 监听器幂等挂载：技能 apply 在每次 stat 刷新都会触发，customData 记录既有实例避免重复挂。

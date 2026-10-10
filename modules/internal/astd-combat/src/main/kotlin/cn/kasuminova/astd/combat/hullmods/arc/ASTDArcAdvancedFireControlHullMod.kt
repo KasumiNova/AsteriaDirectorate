@@ -2,7 +2,6 @@ package cn.kasuminova.astd.combat.hullmods.arc
 
 import cn.kasuminova.astd.ui.dsl.HullmodThemes
 import cn.kasuminova.astd.ui.dsl.HullmodTone
-import cn.kasuminova.astd.ui.dsl.ParaArg
 import cn.kasuminova.astd.ui.dsl.hullmodCard
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseHullMod
@@ -118,27 +117,53 @@ class ASTDArcAdvancedFireControlHullMod : BaseHullMod() {
         isForModSpec: Boolean
     ) {
         tooltip.hullmodCard(width, THEME, spec?.displayName) {
-            plainText("内建于 烽燧-级 的适应性火控系统，以牺牲一定的射程优势为代价的同时，提升持续火力投射的能力。")
-            headingPlain("效果")
-            tablePlain("属性", "影响") {
-                rowPlain("舰船武器射程", "-20%", HullmodTone.DEFAULT, HullmodTone.RED)
-                rowPlain("武器辐能产出", "+20%", HullmodTone.DEFAULT, HullmodTone.RED)
+            para("ui.hullmod.arc_advanced_fire_control.desc")
+            heading("ui.hullmod.export.section.effect")
+            table {
+                row(
+                    "ui.hullmod.arc_advanced_fire_control.table.base.row_0.label",
+                    "ui.hullmod.arc_advanced_fire_control.table.base.row_0.value",
+                    HullmodTone.DEFAULT, HullmodTone.RED,
+                )
+                row(
+                    "ui.hullmod.arc_advanced_fire_control.table.base.row_1.label",
+                    "ui.hullmod.arc_advanced_fire_control.table.base.row_1.value",
+                    HullmodTone.DEFAULT, HullmodTone.RED,
+                )
             }
-            headingPlain("持续加速")
-            plainText("当舰船的 大型非点防御武器 持续开火时，舰船会持续获得多项进攻性增益，在 6 秒内达到以下最大效果：",
+            heading("ui.hullmod.arc_advanced_fire_control.section.ramp")
+            para(
+                "ui.hullmod.arc_advanced_fire_control.line.ramp_intro",
                 hl("大型非点防御武器", HullmodTone.DEFAULT), hl("6", HullmodTone.DEFAULT)
             )
-            tablePlain("属性", "影响") {
-                rowPlain("武器辐能消耗降低", "-40%", HullmodTone.DEFAULT, HullmodTone.POSITIVE)
-                rowPlain("非导弹武器射速", "+20%", HullmodTone.DEFAULT, HullmodTone.POSITIVE)
-                rowPlain("非导弹武器伤害", "+20%", HullmodTone.DEFAULT, HullmodTone.POSITIVE)
-                rowPlain("射弹速度", "+20%", HullmodTone.DEFAULT, HullmodTone.POSITIVE)
+            table {
+                row(
+                    "ui.hullmod.arc_advanced_fire_control.table.ramp.row_0.label",
+                    "ui.hullmod.arc_advanced_fire_control.table.ramp.row_0.value",
+                    HullmodTone.DEFAULT, HullmodTone.HIGHLIGHT,
+                )
+                row(
+                    "ui.hullmod.arc_advanced_fire_control.table.ramp.row_1.label",
+                    "ui.hullmod.arc_advanced_fire_control.table.ramp.row_1.value",
+                    HullmodTone.DEFAULT, HullmodTone.HIGHLIGHT,
+                )
+                row(
+                    "ui.hullmod.arc_advanced_fire_control.table.ramp.row_2.label",
+                    "ui.hullmod.arc_advanced_fire_control.table.ramp.row_2.value",
+                    HullmodTone.DEFAULT, HullmodTone.HIGHLIGHT,
+                )
+                row(
+                    "ui.hullmod.arc_advanced_fire_control.table.ramp.row_3.label",
+                    "ui.hullmod.arc_advanced_fire_control.table.ramp.row_3.value",
+                    HullmodTone.DEFAULT, HullmodTone.HIGHLIGHT,
+                )
             }
-            plainText("加成会在 6 秒内无任何 大型非点防御武器 开火时开始逐渐减弱。",
+            para(
+                "ui.hullmod.arc_advanced_fire_control.line.ramp_decay",
                 hl("大型非点防御武器", HullmodTone.DEFAULT), hl("6", HullmodTone.DEFAULT)
             )
             spacer(6f)
-            plainText("以上效果受到 难度系数 影响。", hl("难度系数", HullmodTone.DEFAULT))
+            para("ui.hullmod.export.difficulty_note", hl("难度系数", HullmodTone.DEFAULT))
         }
     }
 

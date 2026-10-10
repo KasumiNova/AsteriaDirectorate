@@ -1,10 +1,12 @@
 package cn.kasuminova.astd.combat.hullmods.lens
 
+import cn.kasuminova.astd.combat.hullmods.lens.GravSpaceFoldHullMod.Companion.FOLD_MARK_KEY
 import cn.kasuminova.astd.combat.hullmods.lens.GravSpaceFoldHullMod.Companion.isZw101Ship
 import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import cn.kasuminova.astd.internal.i18n.I18n
 import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
 import cn.kasuminova.astd.ui.dsl.HullmodThemes
+import cn.kasuminova.astd.ui.dsl.HullmodTone
 import cn.kasuminova.astd.ui.dsl.hullmodCard
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseHullMod
@@ -189,23 +191,18 @@ class GravSpaceFoldHullMod : BaseHullMod() {
         width: Float,
         isForModSpec: Boolean,
     ) {
-        // tooltip 展示口径：无舰上下文（装配面板）按我方档位展示（默认砺刃 v2）
-        val values = GravSpaceFoldTuning.resolve(DifficultyTuningImpl, ship == null || ship.owner == 0)
         tooltip.hullmodCard(width, THEME, spec?.displayName) {
-            spacer(2f)
-            para("ui.hullmod.grav_space_fold.desc", 4f)
-            para("ui.hullmod.grav_space_fold.summary", 4f)
+            para("ui.hullmod.grav_space_fold.desc", hl("奇点核心", HullmodThemes.LENS.nameColor))
+            heading("ui.hullmod.grav_space_fold.section.fold")
             para(
-                "ui.hullmod.grav_space_fold.line.fold", LINE_COLOR, 2f,
-                v("range", GravSpaceFoldTuning.FOLD_RANGE_BONUS.toInt()),
-                v("basePct", percent(values.foldChanceBase)),
-                v("capPct", percent(values.foldChanceCap)),
+                "ui.hullmod.grav_space_fold.line.fold_field",
+                hl("50%", HullmodTone.HIGHLIGHT), hl("75%", HullmodTone.HIGHLIGHT)
             )
-            para(
-                "ui.hullmod.grav_space_fold.line.beam", LINE_COLOR, 2f,
-                v("beamPct", percent(1f - values.beamDamageTakenMult)),
-            )
-            para("ui.hullmod.grav_space_fold.line.fail", LINE_COLOR, 2f)
+            para("ui.hullmod.grav_space_fold.line.fold_cooldown", hl("短暂失效", HullmodTone.RED))
+            heading("ui.hullmod.grav_space_fold.section.beam")
+            para("ui.hullmod.grav_space_fold.line.beam_dr", hl("25%", HullmodTone.POSITIVE))
+            spacer(6f)
+            para("ui.hullmod.export.difficulty_note", hl("难度系数", HullmodTone.DEFAULT))
         }
     }
 
@@ -238,8 +235,6 @@ class GravSpaceFoldHullMod : BaseHullMod() {
         private const val FOLD_NEBULA_SIZE_MIN = 40f
         private const val FOLD_NEBULA_SIZE_MAX = 80f
         private val FOLD_NEBULA_COLOR = Color(215, 45, 60, 160)
-
-        private val LINE_COLOR = Color(200, 200, 210)
 
         private val ZERO = Vector2f(0f, 0f)
 

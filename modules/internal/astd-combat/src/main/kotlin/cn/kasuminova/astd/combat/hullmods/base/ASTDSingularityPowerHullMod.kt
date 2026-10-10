@@ -2,6 +2,7 @@ package cn.kasuminova.astd.combat.hullmods.base
 
 import cn.kasuminova.astd.ui.dsl.HullmodTheme
 import cn.kasuminova.astd.ui.dsl.HullmodThemes
+import cn.kasuminova.astd.ui.dsl.HullmodTone
 import cn.kasuminova.astd.ui.dsl.hullmodCard
 import com.fs.starfarer.api.combat.BaseHullMod
 import com.fs.starfarer.api.combat.MutableShipStatsAPI
@@ -48,20 +49,30 @@ class ASTDSingularityPowerHullMod : BaseHullMod() {
                 row(
                     "ui.hullmod.singularity_power.attr.vent_rate",
                     "ui.hullmod.singularity_power.value.vent_rate",
+                    labelTone = HullmodTone.DEFAULT,
+                    valueTone = HullmodTone.HIGHLIGHT,
                 )
                 row(
                     "ui.hullmod.singularity_power.attr.overload",
                     "ui.hullmod.singularity_power.value.overload",
+                    labelTone = HullmodTone.DEFAULT,
+                    valueTone = HullmodTone.HIGHLIGHT,
                 )
                 row(
                     "ui.hullmod.singularity_power.attr.environment",
                     "ui.hullmod.singularity_power.value.environment",
+                    labelTone = HullmodTone.DEFAULT,
+                    valueTone = HullmodTone.HIGHLIGHT,
                 )
                 row(
                     "ui.hullmod.singularity_power.attr.weapon_flux",
                     "ui.hullmod.singularity_power.value.weapon_flux",
+                    labelTone = HullmodTone.DEFAULT,
+                    valueTone = HullmodTone.HIGHLIGHT,
                 )
             }
+            spacer(6f)
+            para("ui.hullmod.export.difficulty_note", hl("难度系数", HullmodTone.DEFAULT))
         }
     }
 

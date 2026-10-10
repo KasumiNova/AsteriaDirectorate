@@ -98,44 +98,46 @@ class ASTDIonizedRecoilAccumulatorHullMod : BaseHullMod() {
                 row(
                     "ui.hullmod.ionized_recoil_accumulator.table.flux.row_0.label",
                     "ui.hullmod.ionized_recoil_accumulator.table.flux.row_0.value",
-                    tone = HullmodTone.WARNING,
+                    tone = HullmodTone.HIGHLIGHT,
                 )
                 row(
                     "ui.hullmod.ionized_recoil_accumulator.table.flux.row_1.label",
                     "ui.hullmod.ionized_recoil_accumulator.table.flux.row_1.value",
-                    tone = HullmodTone.WARNING,
+                    tone = HullmodTone.HIGHLIGHT,
                 )
                 row(
                     "ui.hullmod.ionized_recoil_accumulator.table.flux.row_2.label",
                     "ui.hullmod.ionized_recoil_accumulator.table.flux.row_2.value",
-                    tone = HullmodTone.WARNING,
+                    tone = HullmodTone.HIGHLIGHT,
                 )
             }
             para(
                 "ui.hullmod.ionized_recoil_accumulator.line.beam_proc",
-                hl("90%", HullmodTone.WARNING),
+                hl("90%", HullmodTone.HIGHLIGHT),
             )
             para("ui.hullmod.ionized_recoil_accumulator.line.damage_proc")
             heading("ui.hullmod.ionized_recoil_accumulator.section.flux_damage")
             para(
                 "ui.hullmod.ionized_recoil_accumulator.line.flux_conversion",
                 // 高亮声明序必须与文本序一致（I18nUi 前向 indexOf 匹配），否则丢色
-                hl("3%", HullmodTone.WARNING),
-                hl("等额", HullmodTone.WARNING),
-                hl("800su", HullmodTone.WARNING),
-                hl("能量武器射程", HullmodTone.WARNING),
-                hl("能量伤害", HullmodTone.WARNING),
+                hl("3%", HullmodTone.HIGHLIGHT),
+                hl("等额", HullmodTone.HIGHLIGHT),
+                hl("800su", HullmodTone.HIGHLIGHT),
+                hl("能量武器射程", HullmodTone.HIGHLIGHT),
+                hl("能量伤害", HullmodTone.HIGHLIGHT),
             )
             para(
                 "ui.hullmod.ionized_recoil_accumulator.line.damage",
-                hl("100%", HullmodTone.WARNING),
-                hl("200%", HullmodTone.WARNING),
+                hl("100%", HullmodTone.HIGHLIGHT),
+                hl("200%", HullmodTone.HIGHLIGHT),
             )
             para("ui.hullmod.ionized_recoil_accumulator.line.targeting")
             para(
                 "ui.hullmod.ionized_recoil_accumulator.line.cooldown",
-                hl("1s", HullmodTone.WARNING),
+                hl("1s", HullmodTone.HIGHLIGHT),
             )
+            spacer(6f)
+            para("ui.hullmod.export.difficulty_note", hl("难度系数", HullmodTone.DEFAULT))
         }
     }
 

@@ -13,7 +13,6 @@ import com.fs.starfarer.api.combat.WeaponAPI
 import com.fs.starfarer.api.combat.listeners.WeaponBaseRangeModifier
 import com.fs.starfarer.api.combat.listeners.WeaponOPCostModifier
 import com.fs.starfarer.api.ui.TooltipMakerAPI
-import org.magiclib.kotlin.scaleAlpha
 import java.awt.Color
 import kotlin.math.roundToInt
 
@@ -129,25 +128,56 @@ class ASTDArcAdvancedTargetingSystemHullMod : BaseHullMod() {
         isForModSpec: Boolean
     ) {
         tooltip.hullmodCard(width, THEME, spec?.displayName) {
-            plainText("一种直连于 列星-级 的目标定位系统与武器管线集成的特殊设计，能够大幅提升各类武器的适配性。")
+            para("ui.hullmod.arc_advanced_targeting_system.desc")
             heading("ui.hullmod.export.section.effect")
-            tablePlain("属性", "影响") {
-                rowPlain("非导弹武器射程", "+20%", HullmodTone.DEFAULT, HullmodTone.POSITIVE)
-                rowPlain("射弹飞行速度", "+20%", HullmodTone.DEFAULT, HullmodTone.POSITIVE)
-                rowPlain("武器辐能产出", "-20%", HullmodTone.DEFAULT, HullmodTone.POSITIVE)
-                rowPlain("小型武器装配点", "-1", HullmodTone.DEFAULT, HullmodTone.POSITIVE)
-                rowPlain("小型武器装配点", "-20%", HullmodTone.DEFAULT, HullmodTone.POSITIVE)
-                rowPlain("中型武器装配点", "-2", HullmodTone.DEFAULT, HullmodTone.POSITIVE)
-                rowPlain("中型武器装配点", "-20%", HullmodTone.DEFAULT, HullmodTone.POSITIVE)
+            table {
+                row(
+                    "ui.hullmod.arc_advanced_targeting_system.table.main.row_0.label",
+                    "ui.hullmod.arc_advanced_targeting_system.table.main.row_0.value",
+                    HullmodTone.DEFAULT, HullmodTone.HIGHLIGHT,
+                )
+                row(
+                    "ui.hullmod.arc_advanced_targeting_system.table.main.row_1.label",
+                    "ui.hullmod.arc_advanced_targeting_system.table.main.row_1.value",
+                    HullmodTone.DEFAULT, HullmodTone.HIGHLIGHT,
+                )
+                row(
+                    "ui.hullmod.arc_advanced_targeting_system.table.main.row_2.label",
+                    "ui.hullmod.arc_advanced_targeting_system.table.main.row_2.value",
+                    HullmodTone.DEFAULT, HullmodTone.HIGHLIGHT,
+                )
+                row(
+                    "ui.hullmod.arc_advanced_targeting_system.table.main.row_3.label",
+                    "ui.hullmod.arc_advanced_targeting_system.table.main.row_3.value",
+                    HullmodTone.DEFAULT, HullmodTone.HIGHLIGHT,
+                )
+                row(
+                    "ui.hullmod.arc_advanced_targeting_system.table.main.row_4.label",
+                    "ui.hullmod.arc_advanced_targeting_system.table.main.row_4.value",
+                    HullmodTone.DEFAULT, HullmodTone.HIGHLIGHT,
+                )
+                row(
+                    "ui.hullmod.arc_advanced_targeting_system.table.main.row_5.label",
+                    "ui.hullmod.arc_advanced_targeting_system.table.main.row_5.value",
+                    HullmodTone.DEFAULT, HullmodTone.HIGHLIGHT,
+                )
+                row(
+                    "ui.hullmod.arc_advanced_targeting_system.table.main.row_6.label",
+                    "ui.hullmod.arc_advanced_targeting_system.table.main.row_6.value",
+                    HullmodTone.DEFAULT, HullmodTone.HIGHLIGHT,
+                )
             }
-            plainText(
-                "如果非导弹武器的基础射程小于 700, 则额外还能够获得 200 的额外基础射程。",
-                hl("700", HullmodTone.DEFAULT), hl("200", HullmodTone.POSITIVE)
+            para(
+                "ui.hullmod.arc_advanced_targeting_system.line.short_range",
+                hl("700", HullmodTone.DEFAULT), hl("200", HullmodTone.HIGHLIGHT)
             )
-            headingPlain("限制")
-            plainText("# 无法安装 目标定位系统", hl("#", HullmodTone.RED), hl("目标定位系统", HullmodTone.RED))
+            heading("ui.hullmod.arc_advanced_targeting_system.section.limits")
+            para(
+                "ui.hullmod.arc_advanced_targeting_system.line.limit_targeting",
+                hl("#", HullmodTone.RED), hl("目标定位系统", HullmodTone.RED)
+            )
             spacer(6f)
-            plainText("以上效果受到 难度系数 影响。", hl("难度系数", HullmodTone.DEFAULT))
+            para("ui.hullmod.export.difficulty_note", hl("难度系数", HullmodTone.DEFAULT))
         }
     }
 
