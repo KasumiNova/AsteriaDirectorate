@@ -3,6 +3,7 @@ package cn.kasuminova.astd.combat.hullmods
 import cn.kasuminova.astd.combat.hullmods.arc.ASTDAdvancedEnergyIntegrationHullMod
 import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcProductionShipIds
 import cn.kasuminova.astd.combat.hullmods.base.ASTDSingularityStabilizerHullMod
+import cn.kasuminova.astd.combat.hullmods.lens.AdvancedEcmNetworkTuning
 import com.fs.starfarer.api.impl.campaign.ids.HullMods
 
 /**
@@ -39,6 +40,11 @@ object HullmodIncompatibility {
         ),
         // 奇点稳定器（联制线 lh_001/lh_002 内置）：安全协议超驰
         ASTDSingularityStabilizerHullMod.MOD_ID to setOf(HullMods.SAFETYOVERRIDES),
+        // 先进电子对抗网络（决明 zw_001 内置）：电子对抗组件与电子反对抗组件
+        AdvancedEcmNetworkTuning.HULLMOD_ID to setOf(
+            HullMods.ECM,
+            HullMods.ECCM,
+        ),
     )
 
     /** 单个控制方船插的禁装集合（未登记返回空集）。 */

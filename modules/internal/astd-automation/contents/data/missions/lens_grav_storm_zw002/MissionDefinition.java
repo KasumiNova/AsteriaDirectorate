@@ -12,7 +12,7 @@ import com.fs.starfarer.api.mission.MissionDefinitionPlugin;
 /**
  * Dev-only mission surface for gravity storm generator (ZW-002) in-game automation.
  * <p>
- * 玩家密蒙级（清空全部非内置武器槽，内置船插引力电磁力场/纳米修复协议不动）；
+ * 玩家密蒙级（清空全部非内置武器槽，内置船插引力电子干扰力场/纳米修复协议不动）；
  * 敌方统治者级突击型（清空武器槽，皮实巡洋舰做力场压制/电弧/强制过载靶舰，
  * 靠插件 stabilize 钉在母舰正前方 600su 锥内满效区）。全走 reserves 由插件手动
  * spawn（玩家单舰走 vanilla 静默 deployAll，插件判重跳过），玩家舰身份由插件

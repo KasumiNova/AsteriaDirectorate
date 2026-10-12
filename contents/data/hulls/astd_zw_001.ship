@@ -14,8 +14,7 @@
   "builtInMods": [
     "astd_lens_singularity_power",
     "astd_nano_restoration_protocol",
-    "astd_advanced_ecm_network",
-    "astd_grav_ew_field"
+    "astd_advanced_ecm_network"
   ],
   "builtInWeapons": {
     "WS0002": "astd_zw_001_bloom"

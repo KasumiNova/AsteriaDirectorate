@@ -24,14 +24,14 @@ object GravSpaceFoldTuning {
     /** 伤害加计区间上限：弹体伤害 ≥ 本值时触及概率上限。 */
     const val DAMAGE_FULL_BONUS_AT = 500f
 
-    /** 折跃基础概率（v1 40% / v2 50% / v5 75%，三锚点 LINEAR）。 */
-    val FOLD_CHANCE_BASE = ScalingEntry(0.40f, 0.50f, 0.75f)
+    /** 折跃基础概率（v1 40% / v2 50% / v5 80%，三锚点 LINEAR）。 */
+    val FOLD_CHANCE_BASE = ScalingEntry(0.40f, 0.50f, 0.80f)
 
-    /** 折跃概率上限（v1 65% / v2 75% / v5 95%，三锚点 LINEAR；伤害加计触及的封顶值）。 */
-    val FOLD_CHANCE_CAP = ScalingEntry(0.65f, 0.75f, 0.95f)
+    /** 折跃概率上限（v1 65% / v2 75% / v5 100%，三锚点 LINEAR；伤害加计触及的封顶值）。 */
+    val FOLD_CHANCE_CAP = ScalingEntry(0.65f, 0.75f, 1.00f)
 
-    /** 光束承伤减免（v1 15% / v2 25% / v5 50%；最终乘区 = 1 - 本值）。 */
-    val BEAM_DAMAGE_TAKEN_REDUCTION = ScalingEntry(0.15f, 0.25f, 0.50f)
+    /** 光束承伤减免（v1 40% / v2 50% / v5 80%；最终乘区 = 1 - 本值）。 */
+    val BEAM_DAMAGE_TAKEN_REDUCTION = ScalingEntry(0.40f, 0.50f, 0.80f)
 
     /** 一次判定所需的全部机制数值（难度解析结果；beamDamageTakenMult 为最终乘区口径，直接可用）。 */
     data class Values(

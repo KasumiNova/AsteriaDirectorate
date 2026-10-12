@@ -15,7 +15,7 @@ object AutomationTelemetryKeys {
     /** 引力磁暴激活闩锁键前缀（键 = 本前缀 + 母舰 id；gs 断言点 GS-C 释放闩对账）。 */
     const val GS_STORM_ACTIVATION_KEY: String = "astd_grav_storm_activation:"
 
-    /** 引力电磁力场 MutableStats 修饰键前缀（gs 断言点 GS-E 力场收口对账）。 */
+    /** 引力电子干扰力场 MutableStats 修饰键前缀（gs 断言点 GS-E 力场收口对账）。 */
     const val GS_FIELD_MOD_ID_PREFIX: String = "astd_grav_em_field:"
 
     /** 引力空间折跃弹体三态标记键（弹体 customData；gsr 断言点 GSR-E/F folded/no_fold 统计）。 */

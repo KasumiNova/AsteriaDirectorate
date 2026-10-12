@@ -8,10 +8,15 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * 先进电子对抗网络数值规格：自身 + 友军分档贡献求和（[AdvancedEcmNetworkTuning.totalOwnEcm]）、
- * 敌方每舰贡献上限的舰级映射与 clamp 修正量（[AdvancedEcmNetworkTuning.enemyCapFor] /
- * [AdvancedEcmNetworkTuning.clampDelta]），以及难度解析链路（经
- * [DifficultyTuningImpl.installScaleForTests] 走完整映射）。
+ * 先进电子对抗网络数值规格：
+ * - 演算核心：自身 + 友军分档贡献求和（[AdvancedEcmNetworkTuning.totalOwnEcm]）、
+ *   敌方每舰贡献上限的舰级映射与 clamp 修正量（[AdvancedEcmNetworkTuning.enemyCapFor] /
+ *   [AdvancedEcmNetworkTuning.clampDelta]）；
+ * - 战术反制（合并原引力电子干扰力场）：指挥官增幅加计（[AdvancedEcmNetworkTuning.commanderBoost]）、
+ *   原版电子战实际效果复算（[AdvancedEcmNetworkTuning.penaltyDealt]，含上限截断、双方对抗折扣
+ *   与原版取整口径）、减益幅度换算（[AdvancedEcmNetworkTuning.debuffMagnitude]）、
+ *   跨战斗残留识别（[AdvancedEcmNetworkTuning.fieldModSources]，含旧力场前缀）；
+ * - 难度解析链路（经 [DifficultyTuningImpl.installScaleForTests] 走完整映射）。
  */
 class AdvancedEcmNetworkTuningTest {
 
@@ -20,13 +25,16 @@ class AdvancedEcmNetworkTuningTest {
         DifficultyTuningImpl.installScaleForTests(null)
     }
 
-    /** 合成一组互不相同的分档值，验证求和的组合逻辑而非具体数值。 */
+    /** 合成一组互不相同的分档值，验证求和/加计的组合逻辑而非具体数值。 */
     private fun syntheticValues() = AdvancedEcmNetworkTuning.Values(
         selfEcm = 10f,
         allyEcmFrigate = 1f,
         allyEcmDestroyer = 2f,
         allyEcmCruiser = 3f,
         allyEcmCapital = 4f,
+        maxEffectBoost = 1f,
+        pointMaxBoost = 0.3f,
+        captureRateMult = 3f,
     )
 
     @Test
@@ -104,6 +112,95 @@ class AdvancedEcmNetworkTuningTest {
     }
 
     @Test
+    fun `指挥官增幅 基础提升加占领点加计`() {
+        val values = syntheticValues()
+        // 无占领点：10 × 1.0 = 10
+        assertEquals(10f, AdvancedEcmNetworkTuning.commanderBoost(values, 0), 1e-6f)
+        // 2 个占领点：10 × (1.0 + 2×0.3) = 16
+        assertEquals(16f, AdvancedEcmNetworkTuning.commanderBoost(values, 2), 1e-6f)
+        // 计数负值按 0 处理
+        assertEquals(10f, AdvancedEcmNetworkTuning.commanderBoost(values, -3), 1e-6f)
+    }
+
+    @Test
+    fun `实际效果复算 总额取整 上限截断 对抗折扣 半进位取整`() {
+        // 总额低于上限：效果 = 总额
+        assertEquals(8, AdvancedEcmNetworkTuning.penaltyDealt(ownTotal = 8f, ownMax = 10f, enemyTotal = 0f))
+        // 总额高于上限：效果 = 上限
+        assertEquals(10, AdvancedEcmNetworkTuning.penaltyDealt(ownTotal = 25f, ownMax = 10f, enemyTotal = 0f))
+        assertEquals(20, AdvancedEcmNetworkTuning.penaltyDealt(ownTotal = 25f, ownMax = 20f, enemyTotal = 0f))
+        // 对抗折扣：30/(30+10) = 0.75 → 22.5 → 半进位 23
+        assertEquals(23, AdvancedEcmNetworkTuning.penaltyDealt(ownTotal = 30f, ownMax = 35f, enemyTotal = 10f))
+        // 对抗折扣：10/(10+30) = 0.25 → 2.5 → 半进位 3
+        assertEquals(3, AdvancedEcmNetworkTuning.penaltyDealt(ownTotal = 10f, ownMax = 35f, enemyTotal = 30f))
+        // 原版 int 截断口径：30.7 → 30，折扣后 22.5 → 23
+        assertEquals(23, AdvancedEcmNetworkTuning.penaltyDealt(ownTotal = 30.7f, ownMax = 35f, enemyTotal = 10f))
+        // 上限 20.9 → int 截断 20
+        assertEquals(20, AdvancedEcmNetworkTuning.penaltyDealt(ownTotal = 25f, ownMax = 20.9f, enemyTotal = 0f))
+        // 边界：总额或上限为 0 时效果为 0
+        assertEquals(0, AdvancedEcmNetworkTuning.penaltyDealt(ownTotal = 0f, ownMax = 10f, enemyTotal = 5f))
+        assertEquals(0, AdvancedEcmNetworkTuning.penaltyDealt(ownTotal = 10f, ownMax = 0f, enemyTotal = 0f))
+    }
+
+    @Test
+    fun `减益幅度 实际效果百分数直接作比例`() {
+        assertEquals(0.10f, AdvancedEcmNetworkTuning.debuffMagnitude(10), 1e-6f)
+        assertEquals(0.20f, AdvancedEcmNetworkTuning.debuffMagnitude(20), 1e-6f)
+        assertEquals(0f, AdvancedEcmNetworkTuning.debuffMagnitude(0), 1e-6f)
+    }
+
+    @Test
+    fun `残留识别 新旧前缀均命中 无关来源不命中`() {
+        val sources = listOf(
+            "astd_advanced_ecm_network:ship_a",
+            "astd_grav_ew_field:ship_b",
+            "astd_grav_em_field:ship_c",
+            "other_mod:x",
+        )
+        assertEquals(
+            listOf("astd_advanced_ecm_network:ship_a", "astd_grav_ew_field:ship_b"),
+            AdvancedEcmNetworkTuning.fieldModSources(sources),
+        )
+        assertTrue(AdvancedEcmNetworkTuning.fieldModSources(emptyList()).isEmpty())
+    }
+
+    @Test
+    fun `三锚点精确取档 k_s 1 2 5`() {
+        DifficultyTuningImpl.installScaleForTests(1f)
+        val v1 = AdvancedEcmNetworkTuning.resolve(DifficultyTuningImpl, isPlayer = false)
+        assertEquals(15f, v1.selfEcm, 1e-6f)
+        assertEquals(2f, v1.allyEcmFrigate, 1e-6f)
+        assertEquals(4f, v1.allyEcmDestroyer, 1e-6f)
+        assertEquals(6f, v1.allyEcmCruiser, 1e-6f)
+        assertEquals(8f, v1.allyEcmCapital, 1e-6f)
+        assertEquals(0.5f, v1.maxEffectBoost, 1e-6f)
+        assertEquals(0.2f, v1.pointMaxBoost, 1e-6f)
+        assertEquals(2f, v1.captureRateMult, 1e-6f)
+
+        DifficultyTuningImpl.installScaleForTests(2f)
+        val v2 = AdvancedEcmNetworkTuning.resolve(DifficultyTuningImpl, isPlayer = false)
+        assertEquals(20f, v2.selfEcm, 1e-6f)
+        assertEquals(4f, v2.allyEcmFrigate, 1e-6f)
+        assertEquals(8f, v2.allyEcmDestroyer, 1e-6f)
+        assertEquals(12f, v2.allyEcmCruiser, 1e-6f)
+        assertEquals(16f, v2.allyEcmCapital, 1e-6f)
+        assertEquals(1.0f, v2.maxEffectBoost, 1e-6f)
+        assertEquals(0.3f, v2.pointMaxBoost, 1e-6f)
+        assertEquals(3f, v2.captureRateMult, 1e-6f)
+
+        DifficultyTuningImpl.installScaleForTests(5f)
+        val v5 = AdvancedEcmNetworkTuning.resolve(DifficultyTuningImpl, isPlayer = false)
+        assertEquals(35f, v5.selfEcm, 1e-6f)
+        assertEquals(8f, v5.allyEcmFrigate, 1e-6f)
+        assertEquals(16f, v5.allyEcmDestroyer, 1e-6f)
+        assertEquals(24f, v5.allyEcmCruiser, 1e-6f)
+        assertEquals(32f, v5.allyEcmCapital, 1e-6f)
+        assertEquals(2.5f, v5.maxEffectBoost, 1e-6f)
+        assertEquals(0.6f, v5.pointMaxBoost, 1e-6f)
+        assertEquals(6f, v5.captureRateMult, 1e-6f)
+    }
+
+    @Test
     fun `难度解析 敌方随 k_s 单调不减 玩家固定我方档位`() {
         DifficultyTuningImpl.installScaleForTests(1f)
         val v1 = AdvancedEcmNetworkTuning.resolve(DifficultyTuningImpl, isPlayer = false)
@@ -112,6 +209,7 @@ class AdvancedEcmNetworkTuningTest {
         assertTrue(v1.selfEcm < v5.selfEcm)
         assertTrue(v1.allyEcmFrigate < v5.allyEcmFrigate)
         assertTrue(v1.allyEcmCapital < v5.allyEcmCapital)
+        assertTrue(v1.captureRateMult < v5.captureRateMult)
 
         // 玩家口径与敌方 k_s 无关
         val playerAt1 = AdvancedEcmNetworkTuning.resolve(DifficultyTuningImpl, isPlayer = true)

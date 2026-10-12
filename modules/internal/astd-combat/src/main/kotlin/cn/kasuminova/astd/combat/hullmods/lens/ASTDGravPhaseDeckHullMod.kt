@@ -7,6 +7,7 @@ import cn.kasuminova.astd.ui.dsl.HullmodThemes
 import cn.kasuminova.astd.ui.dsl.HullmodTone
 import cn.kasuminova.astd.ui.dsl.hl
 import cn.kasuminova.astd.ui.dsl.hullmodCard
+import cn.kasuminova.astd.ui.dsl.v
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseHullMod
 import com.fs.starfarer.api.combat.ShipAPI
@@ -136,6 +137,10 @@ class ASTDGravPhaseDeckHullMod : BaseHullMod() {
         width: Float,
         isForModSpec: Boolean,
     ) {
+        // tooltip 展示口径：无舰上下文（装配面板）按我方档位展示（默认砺刃 v2）
+        val returnRatio = GravPhaseDeckTuning.resolveReturnRatio(DifficultyTuningImpl, ship == null || ship.owner == 0)
+        val ratioText = "${(returnRatio * 100f).toInt()}%"
+        val blockText = "${(GravPhaseDeckTuning.MOTHERSHIP_FLUX_LEVEL_DISABLE * 100f).toInt()}%"
         tooltip.hullmodCard(width, THEME, spec?.displayName) {
             para("ui.hullmod.grav_phase_deck.desc", hl("维度折叠甲板", HullmodThemes.LENS.nameColor))
             heading("ui.hullmod.grav_phase_deck.section.phase_link")
@@ -146,7 +151,8 @@ class ASTDGravPhaseDeckHullMod : BaseHullMod() {
             heading("ui.hullmod.grav_phase_deck.section.flux_return")
             para(
                 "ui.hullmod.grav_phase_deck.line.flux_return",
-                hl("60%", HullmodTone.HIGHLIGHT), hl("一视同仁", HullmodTone.HIGHLIGHT), hl("80%", HullmodTone.HIGHLIGHT)
+                v("ratio", ratioText), v("blockPct", blockText),
+                hl(ratioText, HullmodTone.HIGHLIGHT), hl("一视同仁", HullmodTone.HIGHLIGHT), hl(blockText, HullmodTone.HIGHLIGHT)
             )
             spacer(6f)
             para("ui.hullmod.export.difficulty_note", hl("难度系数", HullmodTone.DEFAULT))

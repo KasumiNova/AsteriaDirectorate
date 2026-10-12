@@ -7,8 +7,9 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 /**
- * 引力空间折跃器数值规格：折跃概率三锚点折算（v1 40%/65% / v2 50%/75% / v5 75%/95%，
- * 玩家固定 v2）、概率合成（伤害 ≤50 取基础值、≥500 触及上限、中间线性加计）、
+ * 引力空间折跃器数值规格：折跃概率三锚点折算（v1 40%/65% / v2 50%/75% / v5 80%/100%，
+ * 玩家固定 v2）、光束承伤乘区（1 - 减免比例：v1 0.60 / v2 0.50 / v5 0.20）、
+ * 概率合成（伤害 ≤50 取基础值、≥500 触及上限、中间线性加计）、
  * 镜像折跃落点（newPos = 2 × 舰船中心 − 弹体位置）。
  * 经 [DifficultyTuningImpl.installScaleForTests] 走完整映射链路（对齐 GravPhaseDeckTuningTest 先例）。
  */
@@ -29,17 +30,17 @@ class GravSpaceFoldTuningTest {
         val v1 = resolveAt(1f)
         assertEquals(0.40f, v1.foldChanceBase, 1e-6f)
         assertEquals(0.65f, v1.foldChanceCap, 1e-6f)
-        assertEquals(0.85f, v1.beamDamageTakenMult, 1e-6f)
+        assertEquals(0.60f, v1.beamDamageTakenMult, 1e-6f)
 
         val v2 = resolveAt(2f)
         assertEquals(0.50f, v2.foldChanceBase, 1e-6f)
         assertEquals(0.75f, v2.foldChanceCap, 1e-6f)
-        assertEquals(0.75f, v2.beamDamageTakenMult, 1e-6f)
+        assertEquals(0.50f, v2.beamDamageTakenMult, 1e-6f)
 
         val v5 = resolveAt(5f)
-        assertEquals(0.75f, v5.foldChanceBase, 1e-6f)
-        assertEquals(0.95f, v5.foldChanceCap, 1e-6f)
-        assertEquals(0.50f, v5.beamDamageTakenMult, 1e-6f)
+        assertEquals(0.80f, v5.foldChanceBase, 1e-6f)
+        assertEquals(1.00f, v5.foldChanceCap, 1e-6f)
+        assertEquals(0.20f, v5.beamDamageTakenMult, 1e-6f)
     }
 
     @Test
@@ -47,7 +48,7 @@ class GravSpaceFoldTuningTest {
         val v = resolveAt(5f, isPlayer = true)
         assertEquals(0.50f, v.foldChanceBase, 1e-6f)
         assertEquals(0.75f, v.foldChanceCap, 1e-6f)
-        assertEquals(0.75f, v.beamDamageTakenMult, 1e-6f)
+        assertEquals(0.50f, v.beamDamageTakenMult, 1e-6f)
     }
 
     @Test

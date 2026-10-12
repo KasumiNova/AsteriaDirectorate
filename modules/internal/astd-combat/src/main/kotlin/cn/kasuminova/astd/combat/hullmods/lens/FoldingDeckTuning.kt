@@ -7,9 +7,9 @@ import kotlin.math.roundToInt
 /**
  * 维度折叠甲板（Dimensional Folding Deck）的机制数值声明与纯函数（purple/20-production.md §1，2026-09 重构）。
  *
- * 动机：飞蓬级（ZW-102）内置船插——以 +50% 战机 LPC 装配点为代价，按难度系数扩大每个
- * 飞行甲板的联队战机数量。三锚点查值与联队规模折算集中在此声明，供 HullMod 调用并由
- * 单元测试直接驱动。
+ * 动机：飞蓬级（ZW-102）内置船插——以 +100% 战机 LPC 装配点为代价，按难度系数扩大每个
+ * 飞行甲板的联队战机数量并提升战机补充速率。三锚点查值与联队规模折算集中在此声明，
+ * 供 HullMod 调用并由单元测试直接驱动。
  *
  * 联队规模实现路径（原版源码调研结论）：引擎不存在「单舰联队规模」的 stat/dynamic 钩子
  * （`FighterWingSpec.numFighters` 为全局共享 spec，不可按舰修改），唯一按甲板生效的扩容
@@ -21,21 +21,26 @@ import kotlin.math.roundToInt
  */
 object FoldingDeckTuning {
 
-    /** 战机 LPC 装配点乘区（固定 +50%，不随难度系数变化，设计案原文）。 */
-    const val OP_COST_MULT = 1.5f
+    /** 战机 LPC 装配点乘区（固定 +100%，不随难度系数变化，2026-10 裁定）。 */
+    const val OP_COST_MULT = 2.0f
 
-    /** 每甲板联队战机数量加成（v1 +50% / v2 +150% / v5 +250%，三锚点 LINEAR）。 */
-    val WING_SIZE_BONUS = ScalingEntry(0.5f, 1.5f, 2.5f)
+    /** 每甲板联队战机数量加成（v1 +100% / v2 +150% / v5 +300%，三锚点 LINEAR）。 */
+    val WING_SIZE_BONUS = ScalingEntry(1.0f, 1.5f, 3.0f)
+
+    /** 战机补充速率加成（v1 +20% / v2 +40% / v5 +100%，三锚点 LINEAR；写 stat 时换算为整备时长乘区 1/(1+x)）。 */
+    val REFIT_RATE_BONUS = ScalingEntry(0.2f, 0.4f, 1.0f)
 
     /** 额外编制战机的整备倒计时（与原生战机默认值 1e7 一致，≈ 永久在场）。 */
     const val EXTRA_FIGHTER_DURATION = 1e7f
 
-    /**
-     * 难度取值唯一入口：玩家阵营按我方档位（默认砺刃 v2）映射，其余阵营按轨一 k_s 映射。
-     * 每次 advance 调用（不缓存），保证 LunaLib 设置变更即时生效。
-     */
+    /** 难度取值唯一入口：玩家阵营按我方档位（默认砺刃 v2）映射，其余阵营按轨一 k_s 映射。
+     * 每次 advance 调用（不缓存），保证 LunaLib 设置变更即时生效。 */
     fun resolveWingSizeMult(tuning: DifficultyTuning, isPlayer: Boolean): Float =
         tuning.valueFor(WING_SIZE_BONUS, isPlayer)
+
+    /** 战机整备时长乘区（纯函数）：补充速率 +x% → 整备时长 × 1/(1+x)。 */
+    fun refitTimeMult(tuning: DifficultyTuning, isPlayer: Boolean): Float =
+        1f / (1f + tuning.valueFor(REFIT_RATE_BONUS, isPlayer))
 
     /**
      * 联队规模上限折算（纯函数）：基础编制 × (1 + 加成) 四舍五入；加成失效（≤ 0）时

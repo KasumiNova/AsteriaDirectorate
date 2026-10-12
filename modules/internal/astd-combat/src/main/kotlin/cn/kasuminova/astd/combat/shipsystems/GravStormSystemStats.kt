@@ -36,7 +36,7 @@ import kotlin.math.sin
  *   + 锥状射程描边选框（[GravStormConeIndicator]）+ 全类型伤害减免
  *   + 装饰性电弧（纯视觉，每波数量 2→8、间隔 0.5s→0.1s 随充能进度渐变，
  *   与空放装饰电弧同一生成逻辑）+ 充能进度写入 ship.customData [CHARGE_PROGRESS_KEY]
- *   （引力电磁力场读取后波形光斑反向聚集加速）。
+ *   （引力电子干扰力场读取后波形光斑反向聚集加速）。
  *   - 充能不足 [GravStormTuning.PHASE_LOCKOUT_SECONDS] 期间相位系统锁定：每帧把相位 cloak
  *     压入 COOLDOWN 并钉住小余量（原版 ChargeTracker 实证该态按键不激活），玩家按相位键无效；
  *   - 锁定解除后充能期间进入相位 → 结束充能并立即按当前充能进度释放（电弧 + 强制过载，
@@ -206,7 +206,7 @@ class GravStormSystemStats : BaseShipSystemScript() {
         }
 
         charge.chargeProgress = progress
-        // 充能进度共享给引力电磁力场（波形光斑反向聚集加速）；释放/取消时随充能态一并清除
+        // 充能进度共享给引力电子干扰力场（波形光斑反向聚集加速）；释放/取消时随充能态一并清除
         ship.setCustomData(CHARGE_PROGRESS_KEY, progress)
         val range = ASTDArcCombatUtil.effectiveSystemRange(ship, GravStormTuning.BASE_RANGE)
         charge.indicator?.update(range, CONE_ALPHA_BASE + CONE_ALPHA_SPAN * progress)
@@ -603,7 +603,7 @@ class GravStormSystemStats : BaseShipSystemScript() {
 
         /**
          * 充能进度共享键（ship.customData，IN 每帧写入 0-1，释放/取消/unapply 随充能态清除）：
-         * 引力电磁力场（GravEmFieldHullMod）读取后驱动波形光斑反向聚集加速。
+         * 引力电子干扰力场（GravEmFieldHullMod）读取后驱动波形光斑反向聚集加速。
          */
         internal const val CHARGE_PROGRESS_KEY = "astd_grav_storm_charge_progress"
 

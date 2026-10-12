@@ -5,6 +5,8 @@ import cn.kasuminova.astd.combat.shipsystems.GravStormSystemStats
 import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import cn.kasuminova.astd.internal.i18n.I18n
 import cn.kasuminova.astd.ui.dsl.HullmodThemes
+import cn.kasuminova.astd.ui.dsl.HullmodTone
+import cn.kasuminova.astd.ui.dsl.hl
 import cn.kasuminova.astd.ui.dsl.hullmodCard
 import cn.kasuminova.astd.ui.dsl.v
 import com.fs.starfarer.api.Global
@@ -19,7 +21,7 @@ import com.fs.starfarer.api.util.Misc
 import java.awt.Color
 
 /**
- * 引力电磁力场（Gravity Electromagnetic Field，hullmod id：astd_grav_em_field）——密蒙级（ZW-002）内置插件。
+ * 引力电子干扰力场（Gravity Electromagnetic Field，hullmod id：astd_grav_em_field）——密蒙级（ZW-002）内置插件。
  *
  * 仅对密蒙级生效（[isApplicableToShip] / advanceInCombat 入口 [isZw002Ship] guard）。
  * advanceInCombat 每帧驱动：
@@ -27,8 +29,8 @@ import java.awt.Color
  * 1. **力场压制**：以本舰为心、[GravEmFieldTuning.RANGE]（难度三锚点）为半径内的所有敌对舰船
  *    （不含战机/残骸）受到最终乘区（modifyMult）压制：EMP 抗性绝对位移降低（`empDamageTakenMult`
  *    乘区反向换算，同 HeavyIonPulseEmpResistStacks 口径）、最大航速/机动性/三类武器射程削减、
- *    三类武器开火辐能增加。效果随距离衰减：[GravEmFieldTuning.effectScale]
- *    （≤半射程满效，边缘线性衰减到 [GravEmFieldTuning.EDGE_SCALE]）。
+ *    武器精度削减（`autofireAimAccuracy` 乘区）。效果随距离衰减：[GravEmFieldTuning.effectScale]
+ *    （≤半射程满效，边缘线性衰减到难度解析的 edgeScale）。
  *    受影响目标集合逐帧对账：新离场/失效目标立即 unmodify 全套修饰，不留 stat 残留。
  * 2. **力场视觉**（[GravEmFieldVfx]）：力场生效期间每隔 [GravEmFieldTuning.WAVE_INTERVAL]s
  *    从舰体碰撞箱边缘向随机外方向发射一波波形光斑（FlareEntity 组合：SMOOTH 圆斑 +
@@ -88,7 +90,7 @@ class GravEmFieldHullMod : BaseHullMod() {
                 ship.removeCustomData(STATE_KEY)
             }
             GravEmFieldVfx.disposeWavePools(engine)
-            log.info("[ASTD] 引力电磁力场：舰船离场（ship=${ship.id}），中心光斑/波形池/压制修饰已收口")
+            log.info("[ASTD] 引力电子干扰力场：舰船离场（ship=${ship.id}），中心光斑/波形池/压制修饰已收口")
             engine.removePlugin(this)
         }
     }
@@ -150,7 +152,7 @@ class GravEmFieldHullMod : BaseHullMod() {
             if (target == null || target === ship) continue
             if (target.owner == ship.owner || target.isFighter || target.isHulk || !target.isAlive) continue
             val dist = Misc.getDistance(ship.location, target.location)
-            val scale = GravEmFieldTuning.effectScale(dist, values.range)
+            val scale = GravEmFieldTuning.effectScale(dist, values.range, values.edgeScale)
             if (scale <= 0f) continue
             applyDebuff(target, modId, scale, values)
             seenThisFrame += target
@@ -174,7 +176,7 @@ class GravEmFieldHullMod : BaseHullMod() {
         }
     }
 
-    /** 力场压制写入（全部最终乘区）：EMP 抗性位移 + 机动/射程削减 + 开火辐能增加。 */
+    /** 力场压制写入（全部最终乘区）：EMP 抗性位移 + 机动/射程削减 + 武器精度削减。 */
     private fun applyDebuff(target: ShipAPI, modId: String, scale: Float, values: GravEmFieldTuning.Values) {
         val stats = target.mutableStats
 
@@ -198,10 +200,7 @@ class GravEmFieldHullMod : BaseHullMod() {
         stats.energyWeaponRangeBonus.modifyMult(modId, reductionMult)
         stats.missileWeaponRangeBonus.modifyMult(modId, reductionMult)
 
-        val fluxCostMult = 1f + values.statPenalty * scale
-        stats.ballisticWeaponFluxCostMod.modifyMult(modId, fluxCostMult)
-        stats.energyWeaponFluxCostMod.modifyMult(modId, fluxCostMult)
-        stats.missileWeaponFluxCostMod.modifyMult(modId, fluxCostMult)
+        stats.autofireAimAccuracy.modifyMult(modId, 1f - values.accuracyPenalty * scale)
     }
 
     /** 力场收口：解除本力场在目标上的全部修饰（与 [applyDebuff] 写入面严格一一对应）。 */
@@ -216,9 +215,7 @@ class GravEmFieldHullMod : BaseHullMod() {
         stats.ballisticWeaponRangeBonus.unmodifyMult(modId)
         stats.energyWeaponRangeBonus.unmodifyMult(modId)
         stats.missileWeaponRangeBonus.unmodifyMult(modId)
-        stats.ballisticWeaponFluxCostMod.unmodifyMult(modId)
-        stats.energyWeaponFluxCostMod.unmodifyMult(modId)
-        stats.missileWeaponFluxCostMod.unmodifyMult(modId)
+        stats.autofireAimAccuracy.unmodifyMult(modId)
     }
 
     /**
@@ -258,6 +255,7 @@ class GravEmFieldHullMod : BaseHullMod() {
                 "range" to values.range.toInt(),
                 "empPct" to percent(values.empResistReduction),
                 "statPct" to percent(values.statPenalty),
+                "accPct" to percent(values.accuracyPenalty),
             ),
             false,
         )
@@ -273,22 +271,39 @@ class GravEmFieldHullMod : BaseHullMod() {
         // tooltip 展示口径：无舰上下文（装配面板）按玩家档 v2 展示
         val values = GravEmFieldTuning.resolve(DifficultyTuningImpl, ship == null || ship.owner == 0)
         tooltip.hullmodCard(width, THEME, spec?.displayName) {
-            spacer(2f)
-            para("ui.hullmod.grav_em_field.desc", 4f)
-            para("ui.hullmod.grav_em_field.summary", 4f)
+            para("ui.hullmod.grav_em_field.desc", hl("奇点核心", HullmodThemes.LENS.nameColor))
+            heading("ui.hullmod.grav_em_field.section.field")
             para(
-                "ui.hullmod.grav_em_field.line.field", LINE_COLOR, 2f,
+                "ui.hullmod.grav_em_field.line.field",
                 v("range", values.range.toInt()),
-                v("empPct", percent(values.empResistReduction)),
-                v("statPct", percent(values.statPenalty)),
-                v("fluxPct", percent(values.statPenalty)),
+                v("edgePct", percent(values.edgeScale)),
+                hl("${values.range.toInt()}su", HullmodTone.HIGHLIGHT),
+                hl(percent(values.edgeScale), HullmodTone.HIGHLIGHT),
             )
-            para(
-                "ui.hullmod.grav_em_field.line.falloff", LINE_COLOR, 2f,
-                v("fullRange", (values.range * GravEmFieldTuning.FULL_EFFECT_FRACTION).toInt()),
-                v("edgePct", percent(GravEmFieldTuning.EDGE_SCALE)),
-            )
-            para("ui.hullmod.grav_em_field.line.cooldown", LINE_COLOR, 2f)
+            table {
+                row(
+                    "ui.hullmod.grav_em_field.attr.emp",
+                    "ui.hullmod.grav_em_field.value.emp",
+                    HullmodTone.DEFAULT, HullmodTone.HIGHLIGHT,
+                    v("pct", percent(values.empResistReduction)),
+                )
+                row(
+                    "ui.hullmod.grav_em_field.attr.stat",
+                    "ui.hullmod.grav_em_field.value.stat",
+                    HullmodTone.DEFAULT, HullmodTone.HIGHLIGHT,
+                    v("pct", percent(values.statPenalty)),
+                )
+                row(
+                    "ui.hullmod.grav_em_field.attr.accuracy",
+                    "ui.hullmod.grav_em_field.value.accuracy",
+                    HullmodTone.DEFAULT, HullmodTone.HIGHLIGHT,
+                    v("pct", percent(values.accuracyPenalty)),
+                )
+            }
+            para("ui.hullmod.grav_em_field.line.final", hl("最终值减益", HullmodTone.HIGHLIGHT))
+            para("ui.hullmod.grav_em_field.line.cooldown")
+            spacer(6f)
+            para("ui.hullmod.export.difficulty_note", hl("难度系数", HullmodTone.DEFAULT))
         }
     }
 
@@ -316,8 +331,6 @@ class GravEmFieldHullMod : BaseHullMod() {
 
         /** 玩家船状态行键。 */
         private const val STATUS_KEY = "astd_grav_em_field_status"
-
-        private val LINE_COLOR = Color(200, 200, 210)
 
         /** 透镜线紫主题预设（与 [ASTDGravPhaseDeckHullMod] 一致，透镜协议视觉统一）。 */
         private val THEME = HullmodThemes.LENS

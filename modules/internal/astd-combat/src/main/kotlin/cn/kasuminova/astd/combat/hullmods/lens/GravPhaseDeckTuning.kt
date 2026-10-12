@@ -14,8 +14,8 @@ import cn.kasuminova.astd.api.difficulty.ScalingEntry
  */
 object GravPhaseDeckTuning {
 
-    /** 战机产生辐能返还母舰的比例（v1 50% / v2 60% / v5 90%，三锚点 LINEAR）。 */
-    val FLUX_RETURN_RATIO = ScalingEntry(0.5f, 0.6f, 0.9f)
+    /** 战机产生辐能返还母舰的比例（v1 40% / v2 50% / v5 80%，三锚点 LINEAR）。 */
+    val FLUX_RETURN_RATIO = ScalingEntry(0.4f, 0.5f, 0.8f)
 
     /** 母舰辐能水平（当前/最大）高于该值时返还失效。 */
     const val MOTHERSHIP_FLUX_LEVEL_DISABLE = 0.8f

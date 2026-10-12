@@ -2,7 +2,10 @@ package cn.kasuminova.astd.combat.hullmods.lens
 
 import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import cn.kasuminova.astd.ui.dsl.HullmodThemes
+import cn.kasuminova.astd.ui.dsl.HullmodTone
+import cn.kasuminova.astd.ui.dsl.hl
 import cn.kasuminova.astd.ui.dsl.hullmodCard
+import cn.kasuminova.astd.ui.dsl.v
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseHullMod
 import com.fs.starfarer.api.combat.FighterLaunchBayAPI
@@ -59,6 +62,10 @@ class ASTDDimensionalFoldingDeckHullMod : BaseHullMod() {
         if (!ship.isZw102Ship()) return
 
         val bonusMult = FoldingDeckTuning.resolveWingSizeMult(DifficultyTuningImpl, ship.owner == 0)
+        // 战机补充速率：整备时长乘区逐帧写入（同 id 覆盖，幂等）
+        ship.mutableStats.fighterRefitTimeMult.modifyMult(
+            MOD_ID, FoldingDeckTuning.refitTimeMult(DifficultyTuningImpl, ship.owner == 0),
+        )
         // 补员闸门：与原版常规补员口径对齐（canRequestReplacement 仅判过载/散辐/CR>0，
         // 不判 isPullBackFighters——回收战机是玩家指令语义，且原版 FighterLaunchBay 的
         // 空闲分支也不判此项，故此处同样放行）。闸门只拦截「额外编制补足」，
@@ -113,11 +120,34 @@ class ASTDDimensionalFoldingDeckHullMod : BaseHullMod() {
         width: Float,
         isForModSpec: Boolean,
     ) {
+        // tooltip 展示口径：无舰上下文（装配面板）按我方档位展示（默认砺刃 v2）
+        val isPlayer = ship == null || ship.owner == 0
+        val wingSizePct = "+${(FoldingDeckTuning.resolveWingSizeMult(DifficultyTuningImpl, isPlayer) * 100f).toInt()}%"
+        val refitPct = "+${(DifficultyTuningImpl.valueFor(FoldingDeckTuning.REFIT_RATE_BONUS, isPlayer) * 100f).toInt()}%"
         tooltip.hullmodCard(width, THEME, spec?.displayName) {
             para("ui.hullmod.dimensional_folding_deck.desc")
-            para("ui.hullmod.dimensional_folding_deck.summary")
-            para("ui.hullmod.dimensional_folding_deck.line.1")
-            para("ui.hullmod.dimensional_folding_deck.line.2")
+            heading("ui.hullmod.export.section.effect")
+            table {
+                row(
+                    "ui.hullmod.dimensional_folding_deck.attr.op_cost",
+                    "ui.hullmod.dimensional_folding_deck.value.op_cost",
+                    HullmodTone.DEFAULT, HullmodTone.RED,
+                )
+                row(
+                    "ui.hullmod.dimensional_folding_deck.attr.wing_size",
+                    "ui.hullmod.dimensional_folding_deck.value.wing_size",
+                    HullmodTone.DEFAULT, HullmodTone.HIGHLIGHT,
+                    v("pct", wingSizePct),
+                )
+                row(
+                    "ui.hullmod.dimensional_folding_deck.attr.refit_rate",
+                    "ui.hullmod.dimensional_folding_deck.value.refit_rate",
+                    HullmodTone.DEFAULT, HullmodTone.HIGHLIGHT,
+                    v("pct", refitPct),
+                )
+            }
+            spacer(6f)
+            para("ui.hullmod.export.difficulty_note", hl("难度系数", HullmodTone.DEFAULT))
         }
     }
 
@@ -130,6 +160,9 @@ class ASTDDimensionalFoldingDeckHullMod : BaseHullMod() {
     override fun getNameColor(): Color = THEME.nameColor
 
     companion object {
+        /** Hullmod 注册 id（战斗内 stat 修饰句柄）。 */
+        const val MOD_ID: String = "astd_dimensional_folding_deck"
+
         /** 飞蓬级舰体 id（guard 与适用性判定共用）。 */
         const val HULL_ID: String = "astd_zw_102"
 

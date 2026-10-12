@@ -16,7 +16,7 @@ import kotlin.math.roundToInt
 import kotlin.math.sin
 
 /**
- * 引力电磁力场（密蒙级 ZW-002 内置 hullmod）的 BoxUtil 视觉层，由 [GravEmFieldHullMod] 驱动。
+ * 引力电子干扰力场（密蒙级 ZW-002 内置 hullmod）的 BoxUtil 视觉层，由 [GravEmFieldHullMod] 驱动。
  *
  * - **波形光斑**（[spawnWave]）：每波从舰体真实碰撞箱随机边缘向随机外方向发射若干
  *   FlareEntity 组合——SMOOTH 圆形光斑 + SMOOTH_DISC 柔和光柱，粒子速度取
@@ -182,7 +182,7 @@ internal object GravEmFieldVfx {
         val entity = try {
             FlareEntity()
         } catch (t: Throwable) {
-            warnOnce(engine, CENTER_DISABLED_KEY, "[ASTD] 引力电磁力场中心光斑建实体失败（${t.javaClass.simpleName}），力场中心光斑视觉本场缺席", t)
+            warnOnce(engine, CENTER_DISABLED_KEY, "[ASTD] 引力电子干扰力场中心光斑建实体失败（${t.javaClass.simpleName}），力场中心光斑视觉本场缺席", t)
             return null
         }
         entity.setLayer(CombatEngineLayers.BELOW_SHIPS_LAYER)
@@ -198,7 +198,7 @@ internal object GravEmFieldVfx {
         entity.setStateVanilla(Vector2f(ship.location), 0f)
         val state = BoxUtilCombatVfx.addEntity(engine, entity)
         if (state != 0) {
-            warnOnce(engine, CENTER_DISABLED_KEY, "[ASTD] 引力电磁力场中心光斑注册失败（addEntity 返回 $state，ship=${ship.id}），力场中心光斑视觉本场缺席")
+            warnOnce(engine, CENTER_DISABLED_KEY, "[ASTD] 引力电子干扰力场中心光斑注册失败（addEntity 返回 $state，ship=${ship.id}），力场中心光斑视觉本场缺席")
             entity.delete()
             return null
         }
@@ -226,7 +226,7 @@ internal object GravEmFieldVfx {
         val entity = try {
             FlareEntity()
         } catch (t: Throwable) {
-            warnOnce(engine, key, "[ASTD] 引力电磁力场波形光斑池建实体失败（${t.javaClass.simpleName}，smooth=$smooth），本池视觉本场缺席", t)
+            warnOnce(engine, key, "[ASTD] 引力电子干扰力场波形光斑池建实体失败（${t.javaClass.simpleName}，smooth=$smooth），本池视觉本场缺席", t)
             return null
         }
         entity.setLayer(CombatEngineLayers.ABOVE_SHIPS_AND_MISSILES_LAYER)
@@ -253,7 +253,7 @@ internal object GravEmFieldVfx {
 
         val state = BoxUtilCombatVfx.addEntity(engine, entity)
         if (state != 0) {
-            warnOnce(engine, key, "[ASTD] 引力电磁力场波形光斑池注册失败（addEntity 返回 $state，smooth=$smooth），本池视觉本场缺席")
+            warnOnce(engine, key, "[ASTD] 引力电子干扰力场波形光斑池注册失败（addEntity 返回 $state，smooth=$smooth），本池视觉本场缺席")
             entity.delete()
             return null
         }

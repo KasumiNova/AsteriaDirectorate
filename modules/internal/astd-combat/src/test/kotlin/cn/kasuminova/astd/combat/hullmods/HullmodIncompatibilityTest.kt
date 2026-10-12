@@ -4,18 +4,19 @@ import cn.kasuminova.astd.combat.hullmods.arc.ASTDAdvancedEnergyIntegrationHullM
 import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcAdvancedTargetingSystemHullMod
 import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcProductionShipIds
 import cn.kasuminova.astd.combat.hullmods.base.ASTDSingularityStabilizerHullMod
+import cn.kasuminova.astd.combat.hullmods.lens.AdvancedEcmNetworkTuning
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * 船插互斥注册表校验：四路控制方映射、候选并集解析，
+ * 船插互斥注册表校验：五路控制方映射、候选并集解析，
  * 以及控制方船插的 strip 列表与注册表同源（集中定义回归防线）。
  */
 class HullmodIncompatibilityTest {
 
     @Test
-    fun `四路控制方船插映射齐备`() {
+    fun `五路控制方船插映射齐备`() {
         val arcTargeting = HullmodIncompatibility.forbiddenByController(
             ASTDArcProductionShipIds.HULLMOD_ARC_ADVANCED_TARGETING_SYSTEM,
         )
@@ -37,6 +38,12 @@ class HullmodIncompatibilityTest {
         )
         assertTrue("armoredweapons" in energyIntegration, "先进能量集成须禁装炮塔装甲")
         assertTrue("turretgyros" in energyIntegration, "先进能量集成须禁装高级炮塔陀螺仪")
+
+        val ecmNetwork = HullmodIncompatibility.forbiddenByController(
+            AdvancedEcmNetworkTuning.HULLMOD_ID,
+        )
+        assertTrue("ecm" in ecmNetwork, "先进电子对抗网络须禁装电子对抗组件")
+        assertTrue("eccm" in ecmNetwork, "先进电子对抗网络须禁装电子反对抗组件")
 
         assertTrue(HullmodIncompatibility.forbiddenByController("unknown_hullmod").isEmpty())
     }
