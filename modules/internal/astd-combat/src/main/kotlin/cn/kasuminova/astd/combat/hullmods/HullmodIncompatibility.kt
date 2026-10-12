@@ -1,5 +1,6 @@
 package cn.kasuminova.astd.combat.hullmods
 
+import cn.kasuminova.astd.combat.hullmods.arc.ASTDAdvancedEnergyIntegrationHullMod
 import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcProductionShipIds
 import cn.kasuminova.astd.combat.hullmods.base.ASTDSingularityStabilizerHullMod
 import com.fs.starfarer.api.impl.campaign.ids.HullMods
@@ -30,6 +31,11 @@ object HullmodIncompatibility {
         ASTDArcProductionShipIds.HULLMOD_PLASMA_ARMOR_SHIELD to setOf(
             HullMods.SHIELD_SHUNT,
             HullMods.HARDENED_SHIELDS,
+        ),
+        // 先进能量集成（星坠 xc_001 内置）：炮塔装甲与高级炮塔陀螺仪
+        ASTDAdvancedEnergyIntegrationHullMod.MOD_ID to setOf(
+            HullMods.ARMOREDWEAPONS,
+            HullMods.TURRETGYROS,
         ),
         // 奇点稳定器（联制线 lh_001/lh_002 内置）：安全协议超驰
         ASTDSingularityStabilizerHullMod.MOD_ID to setOf(HullMods.SAFETYOVERRIDES),

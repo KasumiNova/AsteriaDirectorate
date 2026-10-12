@@ -38,7 +38,7 @@ class RiftShiftScenario : AbstractAutomationScenario() {
 
     // WINGS_OBSERVE（断言点 XC2-A）：静止（0% 航速）伤害乘区谷值与静止 maxSpeed（含零幅能加速等常驻修正，
     // 作为 XC2-C 速度窗口乘区的同口径分母——窗口峰值 +100% 是百分比乘区，与零幅能 flat 叠乘后绝对比值不是 2.0）。
-    private var xc2RestDamageMultMin = Float.MAX_VALUE
+    private var xc2RestSustainMultMin = Float.MAX_VALUE
     private var xc2RestMaxSpeed = -1f
 
     // SHIFT（断言点 XC2-B/C/D）：激活锚/重试计数、折跃位移峰值、速度窗口 maxSpeed 乘区峰值、接触期靶舰 HP 谷值。
@@ -253,9 +253,9 @@ class RiftShiftScenario : AbstractAutomationScenario() {
                     blockSystem = true, healEnemy = true, allowFire = false,
                 )
                 if (player != null && !player.isHulk) {
-                    xc2RestDamageMultMin = minOf(
-                        xc2RestDamageMultMin,
-                        player.mutableStats.energyWeaponDamageMult.modifiedValue,
+                    xc2RestSustainMultMin = minOf(
+                        xc2RestSustainMultMin,
+                        player.mutableStats.ballisticAmmoRegenMult.modifiedValue,
                     )
                     xc2RestMaxSpeed = player.mutableStats.maxSpeed.modifiedValue
                 }
@@ -276,15 +276,15 @@ class RiftShiftScenario : AbstractAutomationScenario() {
                             transitionXc2Phase(XC2_PHASE_FAILED)
                         }
 
-                        xc2RestDamageMultMin !in XC2_REST_DAMAGE_MULT_MIN..XC2_REST_DAMAGE_MULT_MAX -> {
-                            ctx.failureReason = "xc2 rest damageMult=${"%.3f".format(xc2RestDamageMultMin)}" +
-                                    " ∉ [$XC2_REST_DAMAGE_MULT_MIN, $XC2_REST_DAMAGE_MULT_MAX]（断言点 XC2-A：虚数之翼 0% 航速 −25%）"
+                        xc2RestSustainMultMin !in XC2_REST_SUSTAIN_MULT_MIN..XC2_REST_SUSTAIN_MULT_MAX -> {
+                            ctx.failureReason = "xc2 rest sustainMult=${"%.3f".format(xc2RestSustainMultMin)}" +
+                                    " ∉ [$XC2_REST_SUSTAIN_MULT_MIN, $XC2_REST_SUSTAIN_MULT_MAX]（断言点 XC2-A：虚数之翼静止备弹/射速 −25%）"
                             transitionXc2Phase(XC2_PHASE_FAILED)
                         }
 
                         else -> {
                             ctx.log.info(
-                                "[ASTD-Automation] xc2 wings evidence: restDamageMultMin=${"%.3f".format(xc2RestDamageMultMin)}（断言点 XC2-A）",
+                                "[ASTD-Automation] xc2 wings evidence: restSustainMultMin=${"%.3f".format(xc2RestSustainMultMin)}（断言点 XC2-A）",
                             )
                             enemy.armorGrid?.grid?.forEach { row -> row.fill(0f) }
                             xc2EnemyHpAtShiftStart = enemy.hitpoints
@@ -579,7 +579,7 @@ class RiftShiftScenario : AbstractAutomationScenario() {
         json.appendLine("  \"xc2SystemId\": ${jsonString(xc2System?.id)},")
         json.appendLine("  \"xc2SystemState\": ${jsonString(xc2System?.state?.name)},")
         json.appendLine("  \"xc2SystemCooldownRemaining\": ${formatFloat(xc2System?.cooldownRemaining ?: -1f)},")
-        json.appendLine("  \"xc2RestDamageMultMin\": ${formatFloat(if (xc2RestDamageMultMin == Float.MAX_VALUE) -1f else xc2RestDamageMultMin)},")
+        json.appendLine("  \"xc2RestSustainMultMin\": ${formatFloat(if (xc2RestSustainMultMin == Float.MAX_VALUE) -1f else xc2RestSustainMultMin)},")
         json.appendLine("  \"xc2ActivateAttempts\": $xc2ActivateAttempts,")
         json.appendLine("  \"xc2ShiftDisplacementMax\": ${formatFloat(xc2ShiftDisplacementMax)},")
         json.appendLine("  \"xc2SpeedMultMax\": ${formatFloat(xc2SpeedMultMax)},")
@@ -647,8 +647,8 @@ class RiftShiftScenario : AbstractAutomationScenario() {
 
         // WINGS_OBSERVE（断言点 XC2-A）：静止伤害乘区砺刃档 0.75（界 [0.70, 0.80] 容忍帧量化）。
         private const val XC2_WINGS_OBSERVE_SECONDS = 1.2f
-        private const val XC2_REST_DAMAGE_MULT_MIN = 0.70f
-        private const val XC2_REST_DAMAGE_MULT_MAX = 0.80f
+        private const val XC2_REST_SUSTAIN_MULT_MIN = 0.70f
+        private const val XC2_REST_SUSTAIN_MULT_MAX = 0.80f
 
         // SHIFT（断言点 XC2-B/C/D）：折跃位移界从 RiftShiftTuning.SHIFT_DISTANCE 常量 ±100su 派生
         // （容忍钉位恢复帧；与 XC2_PLAYER_ARRIVAL 同源，改折跃距离无需双处同步）；折跃窗 1.2s

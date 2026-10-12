@@ -1,10 +1,16 @@
 package cn.kasuminova.astd.combat.hullmods.arc
 
+import cn.kasuminova.astd.api.difficulty.ScalingEntry
 import cn.kasuminova.astd.combat.hullmods.HullmodIncompatibility
 import cn.kasuminova.astd.combat.hullmods.base.directionalArmorFraction
+import cn.kasuminova.astd.combat.hullmods.base.signedPercentOf
+import cn.kasuminova.astd.combat.hullmods.base.unsignedPercentOf
+import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import cn.kasuminova.astd.internal.i18n.I18n
 import cn.kasuminova.astd.ui.dsl.HullmodThemes
 import cn.kasuminova.astd.ui.dsl.HullmodTone
+import cn.kasuminova.astd.ui.dsl.v
+import cn.kasuminova.astd.ui.dsl.hl
 import cn.kasuminova.astd.ui.dsl.hullmodCard
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseHullMod
@@ -29,24 +35,82 @@ class ASTDPlasmaArmorShieldHullMod : BaseHullMod() {
         /** 禁装船插列表：真相来源 [HullmodIncompatibility]。 */
         private val FORBIDDEN_HULLMOD_IDS: Set<String> =
             HullmodIncompatibility.forbiddenByController(ASTDArcProductionShipIds.HULLMOD_PLASMA_ARMOR_SHIELD)
-        private const val MAX_ARMOR_PENALTY_FRACTION = 0.50f
+
+        /** 最大装甲值削减比例（三锚点 -60%/-50%/-20%，削减量口径）。 */
+        val MAX_ARMOR_PENALTY = ScalingEntry(0.60f, 0.50f, 0.20f)
+
+        /** 正前方（±30°）装甲计算值比例（三锚点 25%/30%/45%）。与 [ARMOR_SIDE_MAX] 同值以保证 30° 分段连续，勿单独改动。 */
+        val ARMOR_FRONT = ScalingEntry(0.25f, 0.30f, 0.45f)
+
+        /** 侧前方装甲计算值比例近端（30° 处，三锚点 25%/30%/45%）。与 [ARMOR_FRONT] 同值以保证分段连续，勿单独改动。 */
+        val ARMOR_SIDE_MAX = ScalingEntry(0.25f, 0.30f, 0.45f)
+
+        /** 侧前方装甲计算值比例远端（90° 处，三锚点 15%/20%/35%）。与 [ARMOR_REAR_MAX] 同值以保证 90° 分段连续，勿单独改动。 */
+        val ARMOR_SIDE_MIN = ScalingEntry(0.15f, 0.20f, 0.35f)
+
+        /** 后方装甲计算值比例近端（90° 处，三锚点 15%/20%/35%）。与 [ARMOR_SIDE_MIN] 同值以保证分段连续，勿单独改动。 */
+        val ARMOR_REAR_MAX = ScalingEntry(0.15f, 0.20f, 0.35f)
+
+        /** 后方装甲计算值比例远端（180° 处，三锚点 5%/10%/25%）。 */
+        val ARMOR_REAR_MIN = ScalingEntry(0.05f, 0.10f, 0.25f)
+
+        /** 护盾能量承伤乘区（三锚点 -10%/-15%/-30%）。 */
+        val ENERGY_SHIELD_MULT = ScalingEntry(0.90f, 0.85f, 0.70f)
+
+        /** 护盾动能承伤乘区（三锚点 -22%/-33%/-66%）。 */
+        val KINETIC_SHIELD_MULT = ScalingEntry(0.78f, 0.67f, 0.34f)
+
+        /** 护盾高爆承伤乘区（三锚点 +44%/+33%/+0%）。 */
+        val HE_SHIELD_MULT = ScalingEntry(1.44f, 1.33f, 1.00f)
+
+        /** 护盾破片承伤乘区（三锚点 +75%/+50%/+0%）。 */
+        val FRAG_SHIELD_MULT = ScalingEntry(1.75f, 1.50f, 1.00f)
+
         private const val SPIKE_THRESHOLD_MAX_FLUX_FRACTION = 0.05f
         private const val SPIKE_EXCESS_DAMAGE_MULT = 0.50f
 
-        private const val ENERGY_SHIELD_MULT = 0.85f
-        private const val KINETIC_SHIELD_MULT = 0.67f
-        private const val HE_SHIELD_MULT = 1.33f
-        private const val FRAG_SHIELD_MULT = 1.20f
         private const val PLASMA_SHIELD_VISUAL_GRACE_SECONDS = 0.18f
         private const val SHIELD_ARC_BIAS_WEIGHT_DECAY = 0.90f
         private const val SHIELD_ARC_BIAS_MIN_WEIGHT = 0.08f
         private const val SHIELD_ARC_BIAS_ANGLE_KEY = "astd_plasma_shield_arc_bias_angle"
         private const val SHIELD_ARC_BIAS_WEIGHT_KEY = "astd_plasma_shield_arc_bias_weight"
 
+        /** 本帧难度结算值缓存（advanceInCombat 写入，承伤监听器读取）。 */
+        private const val VALUES_CACHE_KEY = "astd_plasma_shield_values"
+
         private val PREVENTED_DAMAGE_BLUE = Color(104, 212, 255, 235)
         private val PREVENTED_DAMAGE_PURPLE = Color(176, 112, 255, 238)
 
         private val THEME = HullmodThemes.ARC_PRISM
+
+        /** 难度结算值（三锚点映射后；护盾乘区为承伤倍率，装甲为计算值比例，armorPenalty 为削减量）。 */
+        internal data class Values(
+            val energyShieldMult: Float,
+            val kineticShieldMult: Float,
+            val heShieldMult: Float,
+            val fragShieldMult: Float,
+            val armorPenalty: Float,
+            val armorFront: Float,
+            val armorSideMin: Float,
+            val armorSideMax: Float,
+            val armorRearMin: Float,
+            val armorRearMax: Float,
+        ) {
+            companion object {
+                fun resolve(isPlayer: Boolean): Values = Values(
+                    energyShieldMult = DifficultyTuningImpl.valueFor(ENERGY_SHIELD_MULT, isPlayer),
+                    kineticShieldMult = DifficultyTuningImpl.valueFor(KINETIC_SHIELD_MULT, isPlayer),
+                    heShieldMult = DifficultyTuningImpl.valueFor(HE_SHIELD_MULT, isPlayer),
+                    fragShieldMult = DifficultyTuningImpl.valueFor(FRAG_SHIELD_MULT, isPlayer),
+                    armorPenalty = DifficultyTuningImpl.valueFor(MAX_ARMOR_PENALTY, isPlayer),
+                    armorFront = DifficultyTuningImpl.valueFor(ARMOR_FRONT, isPlayer),
+                    armorSideMin = DifficultyTuningImpl.valueFor(ARMOR_SIDE_MIN, isPlayer),
+                    armorSideMax = DifficultyTuningImpl.valueFor(ARMOR_SIDE_MAX, isPlayer),
+                    armorRearMin = DifficultyTuningImpl.valueFor(ARMOR_REAR_MIN, isPlayer),
+                    armorRearMax = DifficultyTuningImpl.valueFor(ARMOR_REAR_MAX, isPlayer),
+                )
+            }
+        }
 
         internal fun boostLevel(ship: ShipAPI): Float =
             (ship.customData[ASTDArcProductionShipIds.DATA_PLASMA_SHIELD_BOOST_LEVEL] as? Float ?: 0f).coerceIn(0f, 1f)
@@ -82,12 +146,6 @@ class ASTDPlasmaArmorShieldHullMod : BaseHullMod() {
 
     override fun applyEffectsBeforeShipCreation(hullSize: ShipAPI.HullSize, stats: MutableShipStatsAPI, id: String) {
         stripForbiddenHullMods(stats.variant)
-        stats.energyShieldDamageTakenMult.modifyMult(id, ENERGY_SHIELD_MULT)
-        stats.kineticShieldDamageTakenMult.modifyMult(id, KINETIC_SHIELD_MULT)
-        stats.highExplosiveShieldDamageTakenMult.modifyMult(id, HE_SHIELD_MULT)
-        stats.fragmentationShieldDamageTakenMult.modifyMult(id, FRAG_SHIELD_MULT)
-        val baseArmor = stats.variant?.hullSpec?.armorRating ?: return
-        applyFixedMaxArmorPenalty(stats, baseArmor, id)
     }
 
     override fun applyEffectsAfterShipCreation(ship: ShipAPI, id: String) {
@@ -100,6 +158,18 @@ class ASTDPlasmaArmorShieldHullMod : BaseHullMod() {
         maintainShieldVisualsEvenWhenPaused(ship, engine)
         if (engine.isPaused || ship.isHulk || !ship.isAlive) return
 
+        // 难度缩放乘区逐帧写入（同 id 覆盖，幂等）：护盾四系承伤 + 最大装甲值削减
+        val values = Values.resolve(ship.owner == 0)
+        // 缓存本帧结算值供承伤监听器复用，避免每次命中重复做 10 路难度取值
+        ship.setCustomData(VALUES_CACHE_KEY, values)
+        val stats = ship.mutableStats
+        val id = ASTDArcProductionShipIds.HULLMOD_PLASMA_ARMOR_SHIELD
+        stats.energyShieldDamageTakenMult.modifyMult(id, values.energyShieldMult)
+        stats.kineticShieldDamageTakenMult.modifyMult(id, values.kineticShieldMult)
+        stats.highExplosiveShieldDamageTakenMult.modifyMult(id, values.heShieldMult)
+        stats.fragmentationShieldDamageTakenMult.modifyMult(id, values.fragShieldMult)
+        stats.armorBonus.modifyMult(id, 1f - values.armorPenalty)
+
         val shield = ship.shield
         if (shield?.isOn == true) {
             ASTDArcProductionVfx.setCounter(engine, ASTDArcProductionVfx.TELEMETRY_XC_101_SHIELD_OPEN, 1)
@@ -109,11 +179,6 @@ class ASTDPlasmaArmorShieldHullMod : BaseHullMod() {
             ship.addListener(PlasmaArmorShieldListener(ship))
         }
 
-        applyFixedMaxArmorPenalty(
-            ship.mutableStats,
-            ship.armorGrid.armorRating,
-            ASTDArcProductionShipIds.HULLMOD_PLASMA_ARMOR_SHIELD,
-        )
         renderOpenShieldArcs(ship, engine, amount, visualBoostLevel(ship))
     }
 
@@ -138,6 +203,8 @@ class ASTDPlasmaArmorShieldHullMod : BaseHullMod() {
         width: Float,
         isForModSpec: Boolean
     ) {
+        // tooltip 展示口径：无舰上下文（装配面板）按我方档位展示（默认砺刃 v2）
+        val values = Values.resolve(ship == null || ship.owner == 0)
         tooltip.hullmodCard(width, THEME, null) {
             para("ui.hullmod.plasma_armor_shield.desc")
             heading("ui.hullmod.plasma_armor_shield.section.shield_impact")
@@ -151,18 +218,21 @@ class ASTDPlasmaArmorShieldHullMod : BaseHullMod() {
                     "ui.hullmod.plasma_armor_shield.table.direction.row_0.value",
                     labelTone = HullmodTone.DEFAULT,
                     valueTone = HullmodTone.HIGHLIGHT,
+                    v("pct", unsignedPercentOf(values.armorFront)),
                 )
                 row(
                     "ui.hullmod.plasma_armor_shield.table.direction.row_1.label",
                     "ui.hullmod.plasma_armor_shield.table.direction.row_1.value",
                     labelTone = HullmodTone.DEFAULT,
                     valueTone = HullmodTone.HIGHLIGHT,
+                    v("pct", "${unsignedPercentOf(values.armorSideMin)}~${unsignedPercentOf(values.armorSideMax)}"),
                 )
                 row(
                     "ui.hullmod.plasma_armor_shield.table.direction.row_2.label",
                     "ui.hullmod.plasma_armor_shield.table.direction.row_2.value",
                     labelTone = HullmodTone.DEFAULT,
                     valueTone = HullmodTone.HIGHLIGHT,
+                    v("pct", "${unsignedPercentOf(values.armorRearMin)}~${unsignedPercentOf(values.armorRearMax)}"),
                 )
             }
             para("ui.hullmod.plasma_armor_shield.line.shield_damage_type")
@@ -175,24 +245,28 @@ class ASTDPlasmaArmorShieldHullMod : BaseHullMod() {
                     "ui.hullmod.plasma_armor_shield.table.shield_damage.row_0.value",
                     labelTone = HullmodTone.DEFAULT,
                     valueTone = HullmodTone.HIGHLIGHT,
+                    v("pct", signedPercentOf(values.energyShieldMult - 1f)),
                 )
                 row(
                     "ui.hullmod.plasma_armor_shield.table.shield_damage.row_1.label",
                     "ui.hullmod.plasma_armor_shield.table.shield_damage.row_1.value",
                     labelTone = HullmodTone.DEFAULT,
                     valueTone = HullmodTone.HIGHLIGHT,
+                    v("pct", signedPercentOf(values.kineticShieldMult - 1f)),
                 )
                 row(
                     "ui.hullmod.plasma_armor_shield.table.shield_damage.row_2.label",
                     "ui.hullmod.plasma_armor_shield.table.shield_damage.row_2.value",
                     labelTone = HullmodTone.DEFAULT,
                     valueTone = HullmodTone.RED,
+                    v("pct", signedPercentOf(values.heShieldMult - 1f)),
                 )
                 row(
                     "ui.hullmod.plasma_armor_shield.table.shield_damage.row_3.label",
                     "ui.hullmod.plasma_armor_shield.table.shield_damage.row_3.value",
                     labelTone = HullmodTone.DEFAULT,
                     valueTone = HullmodTone.RED,
+                    v("pct", signedPercentOf(values.fragShieldMult - 1f)),
                 )
             }
             heading("ui.hullmod.plasma_armor_shield.section.armor_impact")
@@ -208,7 +282,11 @@ class ASTDPlasmaArmorShieldHullMod : BaseHullMod() {
             para("ui.hullmod.plasma_armor_shield.line.limits")
             para("ui.hullmod.plasma_armor_shield.line.limit_hardened_shields", hl("#", HullmodTone.RED), hl("强化护盾", HullmodTone.RED))
             para("ui.hullmod.plasma_armor_shield.line.limit_shield_shunt", hl("#", HullmodTone.RED), hl("护盾分流", HullmodTone.RED))
-            para("ui.hullmod.plasma_armor_shield.line.max_armor_penalty", hl("#", HullmodTone.RED), hl("50%", HullmodTone.RED))
+            para(
+                "ui.hullmod.plasma_armor_shield.line.max_armor_penalty",
+                v("pct", unsignedPercentOf(values.armorPenalty)),
+                hl("#", HullmodTone.RED), hl(unsignedPercentOf(values.armorPenalty), HullmodTone.RED),
+            )
             spacer(6f)
             para("ui.hullmod.export.difficulty_note", hl("难度系数", HullmodTone.DEFAULT))
         }
@@ -235,10 +313,6 @@ class ASTDPlasmaArmorShieldHullMod : BaseHullMod() {
             variant.sModdedBuiltIns.remove(forbiddenId)
             variant.removeSuppressedMod(forbiddenId)
         }
-    }
-
-    private fun applyFixedMaxArmorPenalty(stats: MutableShipStatsAPI, baseArmor: Float, id: String) {
-        stats.armorBonus.modifyMult(id, 1f - MAX_ARMOR_PENALTY_FRACTION)
     }
 
     private fun visualBoostLevel(ship: ShipAPI): Float {
@@ -292,7 +366,13 @@ class ASTDPlasmaArmorShieldHullMod : BaseHullMod() {
 
             val finalMaxArmor = ship.mutableStats.armorBonus.computeEffective(ship.armorGrid.armorRating).coerceAtLeast(1f)
             val boostMult = 1f + boostLevel(ship)
-            val armor = finalMaxArmor * directionalArmorFraction(ship, hitPoint) * boostMult
+            val values = ship.customData[VALUES_CACHE_KEY] as? Values ?: Values.resolve(ship.owner == 0)
+            val armor = finalMaxArmor * directionalArmorFraction(
+                ship, hitPoint,
+                values.armorFront,
+                values.armorSideMin, values.armorSideMax,
+                values.armorRearMin, values.armorRearMax,
+            ) * boostMult
             val incomingBeforeSpikeReduction = effectiveDamageAmount(param, dmg).coerceAtLeast(0f)
             val incoming = applyBoostedShieldSpikeReduction(dmg, incomingBeforeSpikeReduction, shieldHit)
             val reduction = ASTDArmorDamageReduction.compute(

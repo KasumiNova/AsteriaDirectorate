@@ -80,9 +80,6 @@ class ASTDArcAuraUtilTest {
 
     @Test
     fun `named profiles match arc production design ranges`() {
-        assertEquals(1f, ASTDArcAuraUtil.xc102PassiveFalloff(1000f))
-        assertEquals(0.25f, ASTDArcAuraUtil.xc102PassiveFalloff(2000f))
-
         assertEquals(1f, ASTDArcAuraUtil.xc102SystemFalloff(750f))
         assertEquals(0.25f, ASTDArcAuraUtil.xc102SystemFalloff(1500f))
 

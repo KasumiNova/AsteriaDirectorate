@@ -208,6 +208,8 @@ internal class HeadingBlock(
 /**
  * 双列表格行（i18n key；[labelTone]/[valueTone] 语义配色）。
  * [plain] 为 true 时 label/value 按内联文本直写（开发调文案用）。
+ * [args] 为运行期命名变量（对应单元格文本的 `%name%` 标记），标签列与值列共用同一组变量替换；
+ * 表格单元格不做行内多色高亮，变量代入后的单元格仍整体按各自列 tone 着色。
  */
 internal class TableRow(
     val labelKey: String,
@@ -215,6 +217,7 @@ internal class TableRow(
     val labelTone: HullmodTone = HullmodTone.DEFAULT,
     val valueTone: HullmodTone = HullmodTone.DEFAULT,
     val plain: Boolean = false,
+    val args: List<RuntimeVar> = emptyList(),
 )
 
 /** 双列表格块（62/38 分栏、行高 24f、表头默认 属性/效果；[plain] 语义同 [HeadingBlock.plain]，仅作用于表头）。 */
@@ -334,15 +337,6 @@ class HullmodCardBuilder {
         blocks += SpacerBlock(height)
     }
 
-    /** 静态高亮（按语义角色取主题色）。 */
-    fun hl(value: String, tone: HullmodTone): ParaArg = StaticHighlight(value, null, tone)
-
-    /** 静态高亮（显式颜色）。 */
-    fun hl(value: String, color: Color): ParaArg = StaticHighlight(value, color, HullmodTone.DEFAULT)
-
-    /** 运行期命名变量（对应 i18n 文本的 `%name%` / `<param:...>` 标记）。 */
-    fun v(name: String, value: Any?): ParaArg = RuntimeVar(name, value)
-
     companion object {
         /** 表格默认表头（左列：属性）。 */
         const val HEADER_A_KEY = "ui.hullmod.table.attribute"
@@ -352,19 +346,28 @@ class HullmodCardBuilder {
     }
 }
 
+/** 静态高亮（按语义角色取主题色）。在卡片与表格 DSL 作用域内均可调用。 */
+fun hl(value: String, tone: HullmodTone): ParaArg = StaticHighlight(value, null, tone)
+
+/** 静态高亮（显式颜色）。在卡片与表格 DSL 作用域内均可调用。 */
+fun hl(value: String, color: Color): ParaArg = StaticHighlight(value, color, HullmodTone.DEFAULT)
+
+/** 运行期命名变量（对应 i18n 文本的 `%name%` / `<param:...>` 标记）。在卡片与表格 DSL 作用域内均可调用。 */
+fun v(name: String, value: Any?): ParaArg = RuntimeVar(name, value)
+
 /** 表格行构建器（见 [HullmodCardBuilder.table]）。 */
 @TooltipDsl
 class HullmodTableBuilder {
     internal val rows = mutableListOf<TableRow>()
 
-    /** 一行（标签列 + 值列同一语义色）。 */
-    fun row(labelKey: String, valueKey: String, tone: HullmodTone = HullmodTone.DEFAULT) {
-        rows += TableRow(labelKey, valueKey, tone, tone)
+    /** 一行（标签列 + 值列同一语义色；可带运行期变量 [v]，标签列与值列共用替换）。 */
+    fun row(labelKey: String, valueKey: String, tone: HullmodTone = HullmodTone.DEFAULT, vararg args: ParaArg) {
+        rows += TableRow(labelKey, valueKey, tone, tone, args = args.filterIsInstance<RuntimeVar>())
     }
 
-    /** 一行（标签列与值列分别指定语义色）。 */
-    fun row(labelKey: String, valueKey: String, labelTone: HullmodTone, valueTone: HullmodTone) {
-        rows += TableRow(labelKey, valueKey, labelTone, valueTone)
+    /** 一行（标签列与值列分别指定语义色；可带运行期变量 [v]，标签列与值列共用替换）。 */
+    fun row(labelKey: String, valueKey: String, labelTone: HullmodTone, valueTone: HullmodTone, vararg args: ParaArg) {
+        rows += TableRow(labelKey, valueKey, labelTone, valueTone, args = args.filterIsInstance<RuntimeVar>())
     }
 
     /**
@@ -524,13 +527,14 @@ internal object HullmodCardRenderer {
             valueWidth,
         )
         for (row in table.rows) {
+            val pairs = row.args.map { it.name to it.value }.toTypedArray()
             tooltip.addRow(
                 Alignment.MID,
                 theme.colorFor(row.labelTone, theme.nameColor),
-                if (row.plain) row.labelKey else I18n[I18n.Categories.MOD, row.labelKey],
+                if (row.plain) I18n.format(row.labelKey, *pairs).text else I18n.tr(I18n.Categories.MOD, row.labelKey, *pairs).text,
                 Alignment.MID,
                 theme.colorFor(row.valueTone, theme.nameColor),
-                if (row.plain) row.valueKey else I18n[I18n.Categories.MOD, row.valueKey],
+                if (row.plain) I18n.format(row.valueKey, *pairs).text else I18n.tr(I18n.Categories.MOD, row.valueKey, *pairs).text,
             )
         }
         tooltip.addTable("", 0, table.padTop)

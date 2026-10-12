@@ -68,18 +68,6 @@ object HullMod_astd_arc_advanced_fire_control : HullModEntry() {
     override val sprite: String = "graphics/hullmods/astd_arc_advanced_fire_control.png"
 }
 
-object HullMod_astd_arc_shared_tactical_network : HullModEntry() {
-    override val id: String = "astd_arc_shared_tactical_network"
-    override val name: String = hullmodName(id)
-    override val tier: Int = 2
-    override val rarity: Int = 1
-    override val tech: String = "菀星设计局-星坠"
-    override val tags: String = TAGS_BUILTIN
-    override val script: String = "cn.kasuminova.astd.combat.hullmods.arc.ASTDArcSharedTacticalNetworkHullMod"
-    override val short: String = SsI18n.t("hullmod.$id.short")
-    override val sprite: String = "graphics/hullmods/astd_arc_loop_interface.png"
-}
-
 object HullMod_astd_plasma_armor_shield : HullModEntry() {
     override val id: String = "astd_plasma_armor_shield"
     override val name: String = hullmodName(id)

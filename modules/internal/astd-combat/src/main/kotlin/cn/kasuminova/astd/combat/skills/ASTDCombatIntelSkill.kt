@@ -8,6 +8,8 @@ import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import cn.kasuminova.astd.internal.i18n.I18n
 import cn.kasuminova.astd.ui.dsl.HullmodThemes
 import cn.kasuminova.astd.ui.dsl.HullmodTone
+import cn.kasuminova.astd.ui.dsl.v
+import cn.kasuminova.astd.ui.dsl.hl
 import cn.kasuminova.astd.ui.dsl.hullmodCard
 import com.fs.starfarer.api.characters.CustomSkillDescription
 import com.fs.starfarer.api.characters.LevelBasedEffect

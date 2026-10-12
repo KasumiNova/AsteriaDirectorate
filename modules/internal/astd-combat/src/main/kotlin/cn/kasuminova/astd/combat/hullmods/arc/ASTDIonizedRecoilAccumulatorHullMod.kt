@@ -7,6 +7,7 @@ import cn.kasuminova.astd.impl.render.BoxFlareStyle
 import cn.kasuminova.astd.renderer.effect.explosion.BloomFlareVfxImpl
 import cn.kasuminova.astd.ui.dsl.HullmodThemes
 import cn.kasuminova.astd.ui.dsl.HullmodTone
+import cn.kasuminova.astd.ui.dsl.hl
 import cn.kasuminova.astd.ui.dsl.hullmodCard
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseHullMod

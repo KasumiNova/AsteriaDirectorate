@@ -5,7 +5,6 @@
     "goalVariant": true,
     "hullId": "astd_xc_102",
     "hullMods": [
-        "astd_arc_shared_tactical_network",
         "frontemitter",
         "stabilizedshieldemitter",
         "astd_mode_automated",

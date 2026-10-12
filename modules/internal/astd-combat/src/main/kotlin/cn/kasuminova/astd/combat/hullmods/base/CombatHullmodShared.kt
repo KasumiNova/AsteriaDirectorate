@@ -42,6 +42,25 @@ fun ShipAPI?.hasHullId(hullId: String): Boolean {
     return s.hullSpec?.hullId == hullId || s.hullSpec?.baseHullId == hullId
 }
 
+/**
+ * 乘区偏移量 → 带符号百分数读数（0.2 → "+20%"；-0.1 → "-10%"），整值去小数、保留一位小数。
+ * hullmod tooltip 难度变量注入的统一格式化（奇点能源/先进火控集成等共用）。
+ */
+fun signedPercentOf(delta: Float): String {
+    val pct = delta * 100f
+    val rounded = Math.round(pct * 10f) / 10f
+    val body = if (rounded == Math.floor(rounded.toDouble()).toFloat()) {
+        rounded.toInt().toString()
+    } else {
+        rounded.toString()
+    }
+    return if (pct > 0f) "+$body%" else "$body%"
+}
+
+/** 比例 → 无符号百分数读数（0.3 → "30%"），整值去小数、保留一位小数。 */
+fun unsignedPercentOf(fraction: Float): String =
+    signedPercentOf(fraction).removePrefix("+")
+
 /** 相位舰船判定（相位限定效果的统一生效条件，按变体 hullSpec 判定；affix 与军官技能共用）。 */
 fun isPhaseShip(stats: MutableShipStatsAPI): Boolean =
     stats.variant?.hullSpec?.isPhase == true
@@ -53,18 +72,38 @@ private const val REAR_ARMOR_FRACTION_MIN = 0.10f
 private const val REAR_ARMOR_FRACTION_MAX = 0.20f
 
 /**
- * 着弹方位装甲比例：以舰船朝向为基准，正面 ±30° 取满额比例，向两侧/正后线性衰减。
- * 用于把「最大装甲值」折算为着弹方向的等效装甲（ASTDPlasmaArmorShieldHullMod 与
- * 菀星战斗智能的相位上浮减伤共用同一口径）。
+ * 着弹方位装甲比例（默认档位口径，砺刃 v2 锚点值）：以舰船朝向为基准，正面 ±30° 取满额比例，
+ * 向两侧/正后线性衰减。菀星战斗智能的相位上浮减伤使用本默认口径；
+ * 等离子装甲护盾走参数化重载（难度缩放值随舰结算）。
  */
-fun directionalArmorFraction(ship: ShipAPI, hitPoint: Vector2f): Float {
+fun directionalArmorFraction(ship: ShipAPI, hitPoint: Vector2f): Float =
+    directionalArmorFraction(
+        ship, hitPoint,
+        FRONT_ARMOR_FRACTION,
+        SIDE_ARMOR_FRACTION_MIN, SIDE_ARMOR_FRACTION_MAX,
+        REAR_ARMOR_FRACTION_MIN, REAR_ARMOR_FRACTION_MAX,
+    )
+
+/**
+ * 着弹方位装甲比例（参数化）：正面 ±30° 取 [front]；侧前 30°~90° 由 [sideMax] 线性衰减至
+ * [sideMin]；后方 90°~180° 由 [rearMax] 线性衰减至 [rearMin]。
+ */
+fun directionalArmorFraction(
+    ship: ShipAPI,
+    hitPoint: Vector2f,
+    front: Float,
+    sideMin: Float,
+    sideMax: Float,
+    rearMin: Float,
+    rearMax: Float,
+): Float {
     val hitAngle = Misc.getAngleInDegrees(ship.location, hitPoint)
     val relative = (((hitAngle - ship.facing) % 360f) + 540f) % 360f - 180f
     val offFront = abs(relative)
     return when {
-        offFront <= 30f -> FRONT_ARMOR_FRACTION
-        offFront <= 90f -> lerpArmor(SIDE_ARMOR_FRACTION_MAX, SIDE_ARMOR_FRACTION_MIN, (offFront - 30f) / 60f)
-        else -> lerpArmor(REAR_ARMOR_FRACTION_MAX, REAR_ARMOR_FRACTION_MIN, (offFront - 90f) / 90f)
+        offFront <= 30f -> front
+        offFront <= 90f -> lerpArmor(sideMax, sideMin, (offFront - 30f) / 60f)
+        else -> lerpArmor(rearMax, rearMin, (offFront - 90f) / 90f)
     }
 }
 

@@ -1,33 +1,59 @@
 package cn.kasuminova.astd.combat.hullmods.arc
 
+import cn.kasuminova.astd.api.difficulty.ScalingEntry
+import cn.kasuminova.astd.combat.hullmods.HullmodIncompatibility
+import cn.kasuminova.astd.combat.hullmods.base.IncompatibleHullmodStripper
+import cn.kasuminova.astd.combat.hullmods.base.signedPercentOf
+import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
+import cn.kasuminova.astd.internal.i18n.I18n
 import cn.kasuminova.astd.ui.dsl.HullmodThemes
 import cn.kasuminova.astd.ui.dsl.HullmodTone
+import cn.kasuminova.astd.ui.dsl.v
+import cn.kasuminova.astd.ui.dsl.hl
 import cn.kasuminova.astd.ui.dsl.hullmodCard
 import com.fs.starfarer.api.combat.BaseHullMod
 import com.fs.starfarer.api.combat.MutableShipStatsAPI
 import com.fs.starfarer.api.combat.ShipAPI
+import com.fs.starfarer.api.combat.ShipVariantAPI
 import com.fs.starfarer.api.ui.TooltipMakerAPI
 import java.awt.Color
 
 /**
- * 先进能量集成（XC-001 星坠内置船插）：能量武装的深度集成与装配优化。
+ * 先进能量集成（XC-001 星坠内置船插）：武器线路与辐能管理系统的深度集成与装配优化。
  *
- * 效果（规格 blue/10-unique.md XC-001 节）：
- * - 能量射弹飞行速度 +20%；
- * - 能量武器辐能产生 −15%；
- * - 武器转向速度 +30%；
- * - 非导弹武器装配点消耗 −2 / −4 / −8（小/中/大槽，实弹+能量）。
+ * 效果（2026-10 裁定，随难度系数）：
+ * - 武器辐能产生 -10%/-15%/-30%（不再局限于能量武器：实弹/能量/光束/导弹四条辐耗乘区）；
+ * - 射弹飞行速度 +15%/+20%/+35%（实弹+能量，不再局限于能量射弹）；
+ * - 炮塔转向速度 +25%/+50%/+125%。
  *
- * 纯装配期效果（applyEffectsBeforeShipCreation），无战斗中动态通道。
+ * 固定效果（装配期写入，不随难度）：
+ * - 非导弹武器装配点消耗 −2/−4/−8（小/中/大槽，实弹+能量）；
+ * - 无法安装炮塔装甲、高级炮塔陀螺仪——互斥走 [IncompatibleHullmodStripper] 延迟清理
+ *   （真相来源 [HullmodIncompatibility]，SKILL: hullmod-incompatibility-guidelines）。
+ *
+ * 难度取值：advanceInCombat 逐帧按 owner 结算（玩家侧我方档位，默认砺刃 v2；
+ * 敌方/友军 AI 轨一 k_s 映射），tooltip 无舰上下文按我方档位展示。
  */
 class ASTDAdvancedEnergyIntegrationHullMod : BaseHullMod() {
 
     companion object {
-        private const val ENERGY_PROJ_SPEED_MULT = 1.20f   // +20%
-        private const val ENERGY_FLUX_MULT = 0.85f          // -15%
-        private const val WEAPON_TURN_MULT = 1.30f          // +30%
+        /** Hullmod 注册 id（互斥表控制方键）。 */
+        const val MOD_ID = "astd_arc_advanced_energy_integration"
 
-        // 非导弹武器 OP 折扣：小 -2, 中 -4, 大 -8
+        /** 禁装船插列表：真相来源 [HullmodIncompatibility]。 */
+        private val FORBIDDEN_HULLMOD_IDS: Set<String> =
+            HullmodIncompatibility.forbiddenByController(MOD_ID)
+
+        /** 武器辐能产生乘区（三锚点 -10%/-15%/-30%）。 */
+        val WEAPON_FLUX = ScalingEntry(0.90f, 0.85f, 0.70f)
+
+        /** 射弹飞行速度乘区（三锚点 +15%/+20%/+35%）。 */
+        val PROJ_SPEED = ScalingEntry(1.15f, 1.20f, 1.35f)
+
+        /** 炮塔转向速度乘区（三锚点 +25%/+50%/+125%）。 */
+        val TURN_RATE = ScalingEntry(1.25f, 1.50f, 2.25f)
+
+        // 非导弹武器 OP 折扣：小 -2, 中 -4, 大 -8（固定，不随难度）
         private const val SMALL_OP_DISCOUNT = -2f
         private const val MEDIUM_OP_DISCOUNT = -4f
         private const val LARGE_OP_DISCOUNT = -8f
@@ -35,21 +61,56 @@ class ASTDAdvancedEnergyIntegrationHullMod : BaseHullMod() {
         private val THEME = HullmodThemes.ARC
     }
 
+    /** 难度结算值（三锚点映射后）。 */
+    internal data class Values(
+        val weaponFluxMult: Float,
+        val projSpeedMult: Float,
+        val turnRateMult: Float,
+    ) {
+        companion object {
+            fun resolve(isPlayer: Boolean): Values = Values(
+                weaponFluxMult = DifficultyTuningImpl.valueFor(WEAPON_FLUX, isPlayer),
+                projSpeedMult = DifficultyTuningImpl.valueFor(PROJ_SPEED, isPlayer),
+                turnRateMult = DifficultyTuningImpl.valueFor(TURN_RATE, isPlayer),
+            )
+        }
+    }
+
     override fun applyEffectsBeforeShipCreation(hullSize: ShipAPI.HullSize, stats: MutableShipStatsAPI, id: String) {
         val variant = stats.variant ?: return
         if (!variant.isASTDXc001Variant()) return
 
-        stats.energyProjectileSpeedMult.modifyMult(id, ENERGY_PROJ_SPEED_MULT)
-        stats.energyWeaponFluxCostMod.modifyMult(id, ENERGY_FLUX_MULT)
-        stats.weaponTurnRateBonus.modifyMult(id, WEAPON_TURN_MULT)
+        // 只检测入队：本回调可能在原版 OP 结算的 hullMods 实时迭代内触发，结构性移除会抛 CME
+        IncompatibleHullmodStripper.requestStrip(variant, FORBIDDEN_HULLMOD_IDS, MOD_ID)
 
-        // 非导弹武器 OP 折扣
+        // 非导弹武器 OP 折扣（固定）
         stats.dynamic.getMod("small_ballistic_mod").modifyFlat(id, SMALL_OP_DISCOUNT)
         stats.dynamic.getMod("small_energy_mod").modifyFlat(id, SMALL_OP_DISCOUNT)
         stats.dynamic.getMod("medium_ballistic_mod").modifyFlat(id, MEDIUM_OP_DISCOUNT)
         stats.dynamic.getMod("medium_energy_mod").modifyFlat(id, MEDIUM_OP_DISCOUNT)
         stats.dynamic.getMod("large_ballistic_mod").modifyFlat(id, LARGE_OP_DISCOUNT)
         stats.dynamic.getMod("large_energy_mod").modifyFlat(id, LARGE_OP_DISCOUNT)
+    }
+
+    override fun applyEffectsAfterShipCreation(ship: ShipAPI, id: String) {
+        // ShipFactory 迭代 getAllMods() 快照，此处入队并立即清理是安全的
+        IncompatibleHullmodStripper.requestStrip(ship.variant, FORBIDDEN_HULLMOD_IDS, MOD_ID)
+        IncompatibleHullmodStripper.drainPending()
+    }
+
+    override fun advanceInCombat(ship: ShipAPI, amount: Float) {
+        IncompatibleHullmodStripper.drainPending()
+        if (!ship.isASTDXc001Ship() || ship.isHulk) return
+
+        val values = Values.resolve(ship.owner == 0)
+        val stats = ship.mutableStats
+        stats.ballisticWeaponFluxCostMod.modifyMult(MOD_ID, values.weaponFluxMult)
+        stats.energyWeaponFluxCostMod.modifyMult(MOD_ID, values.weaponFluxMult)
+        stats.beamWeaponFluxCostMult.modifyMult(MOD_ID, values.weaponFluxMult)
+        stats.missileWeaponFluxCostMod.modifyMult(MOD_ID, values.weaponFluxMult)
+        stats.ballisticProjectileSpeedMult.modifyMult(MOD_ID, values.projSpeedMult)
+        stats.energyProjectileSpeedMult.modifyMult(MOD_ID, values.projSpeedMult)
+        stats.weaponTurnRateBonus.modifyMult(MOD_ID, values.turnRateMult)
     }
 
     override fun addPostDescriptionSection(
@@ -59,15 +120,33 @@ class ASTDAdvancedEnergyIntegrationHullMod : BaseHullMod() {
         width: Float,
         isForModSpec: Boolean
     ) {
+        // tooltip 展示口径：无舰上下文（装配面板）按我方档位展示（默认砺刃 v2）
+        val values = Values.resolve(ship == null || ship.owner == 0)
         tooltip.hullmodCard(width, THEME, spec?.displayName) {
             para("ui.hullmod.aei.summary")
             heading("ui.hullmod.export.section.effect")
             table {
                 row("ui.hullmod.aei.attr.op", "ui.hullmod.aei.value.op", HullmodTone.DEFAULT, HullmodTone.HIGHLIGHT)
-                row("ui.hullmod.aei.attr.flux", "ui.hullmod.aei.value.flux", HullmodTone.DEFAULT, HullmodTone.HIGHLIGHT)
-                row("ui.hullmod.aei.attr.projectile_speed", "ui.hullmod.aei.value.projectile_speed", HullmodTone.DEFAULT, HullmodTone.HIGHLIGHT)
-                row("ui.hullmod.aei.attr.turn_rate", "ui.hullmod.aei.value.turn_rate", HullmodTone.DEFAULT, HullmodTone.HIGHLIGHT)
+                row(
+                    "ui.hullmod.aei.attr.flux", "ui.hullmod.aei.value.flux",
+                    HullmodTone.DEFAULT, HullmodTone.HIGHLIGHT,
+                    v("pct", signedPercentOf(values.weaponFluxMult - 1f)),
+                )
+                row(
+                    "ui.hullmod.aei.attr.projectile_speed", "ui.hullmod.aei.value.projectile_speed",
+                    HullmodTone.DEFAULT, HullmodTone.HIGHLIGHT,
+                    v("pct", signedPercentOf(values.projSpeedMult - 1f)),
+                )
+                row(
+                    "ui.hullmod.aei.attr.turn_rate", "ui.hullmod.aei.value.turn_rate",
+                    HullmodTone.DEFAULT, HullmodTone.HIGHLIGHT,
+                    v("pct", signedPercentOf(values.turnRateMult - 1f)),
+                )
             }
+            heading("ui.hullmod.aei.section.limits")
+            para("ui.hullmod.aei.line.limits")
+            para("ui.hullmod.aei.line.limit_armoredweapons", hl("#", HullmodTone.RED), hl("炮塔装甲", HullmodTone.RED))
+            para("ui.hullmod.aei.line.limit_turretgyros", hl("#", HullmodTone.RED), hl("高级炮塔陀螺仪", HullmodTone.RED))
             spacer(6f)
             para("ui.hullmod.export.difficulty_note", hl("难度系数", HullmodTone.DEFAULT))
         }
@@ -77,9 +156,28 @@ class ASTDAdvancedEnergyIntegrationHullMod : BaseHullMod() {
 
     override fun affectsOPCosts(): Boolean = true
 
-    override fun isApplicableToShip(ship: ShipAPI): Boolean = ship.isASTDXc001Ship()
+    override fun isApplicableToShip(ship: ShipAPI): Boolean {
+        if (ship.variant?.let(::hasForbiddenHullMod) == true) return false
+        return ship.isASTDXc001Ship()
+    }
+
+    override fun getUnapplicableReason(ship: ShipAPI): String? {
+        if (ship.variant?.let(::hasForbiddenHullMod) == true) {
+            return I18n[I18n.Categories.MOD, "ui.hullmod.aei.unapplicable.turret_mods"]
+        }
+        return null
+    }
 
     override fun getBorderColor(): Color = THEME.borderColor
 
     override fun getNameColor(): Color = THEME.nameColor
+
+    private fun hasForbiddenHullMod(variant: ShipVariantAPI): Boolean =
+        FORBIDDEN_HULLMOD_IDS.any { forbiddenId ->
+            variant.hasHullMod(forbiddenId) ||
+                    variant.permaMods.contains(forbiddenId) ||
+                    variant.sMods.contains(forbiddenId) ||
+                    variant.sModdedBuiltIns.contains(forbiddenId) ||
+                    variant.suppressedMods.contains(forbiddenId)
+        }
 }

@@ -1,6 +1,7 @@
 package cn.kasuminova.astd.combat.hullmods.arc
 
 import cn.kasuminova.astd.combat.hullmods.base.IncompatibleHullmodStripper
+import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import com.fs.starfarer.api.combat.MutableShipStatsAPI
 import com.fs.starfarer.api.combat.MutableStat
 import com.fs.starfarer.api.combat.ShipAPI
@@ -22,9 +23,10 @@ import kotlin.test.assertTrue
 
 /**
  * 高级舰装集成（[ASTDArcAdvancedTargetingSystemHullMod]）行为验证：
- * - applyEffectsBeforeShipCreation 的射程/弹速/武器辐能乘区写入与 WeaponOPCostModifier 注册；
+ * - 难度缩放乘区走战斗内逐帧通道（advanceInCombat 按 owner 结算，玩家侧默认砺刃 v2、敌方按 k_s 映射），
+ *   装配期不写入缩放值；创建前仅入队互斥清理并注册 WeaponOPCostModifier；
  * - OP 减免纯函数（小型 -1 再 -20%、中型 -2 再 -20%、下限 0、大型不动）；
- * - 短射程补偿纯函数（基础射程 <700 至多 +200）；
+ * - 短射程补偿纯函数（阈值|增益三档 600|150 / 700|200 / 1000|350）；
  * - 目标定位系统互斥：创建前只检测入队（[IncompatibleHullmodStripper]，OP 结算实时迭代 CME 防线）、
  *   drain/创建后安全点五路清理（普通/permaMod/S-mod/S-modded built-in/suppressed）
  *   与 isApplicableToShip 软提示；禁止列表集中定义断言。
@@ -32,6 +34,11 @@ import kotlin.test.assertTrue
 class ASTDArcAdvancedTargetingSystemHullModTest {
 
     private val hullmod = ASTDArcAdvancedTargetingSystemHullMod()
+
+    @kotlin.test.AfterTest
+    fun tearDown() {
+        DifficultyTuningImpl.installScaleForTests(null)
+    }
 
     /** 挂满真实乘区对象的 stats 桩：variant 为 [variant]，其余乘区为真实 StatBonus/MutableStat。 */
     private fun stubStats(variant: ShipVariantAPI): Pair<MutableShipStatsAPI, StatMap> {
@@ -45,6 +52,8 @@ class ASTDArcAdvancedTargetingSystemHullModTest {
         `when`(stats.energyProjectileSpeedMult).thenReturn(map.energyProjSpeed)
         `when`(stats.ballisticWeaponFluxCostMod).thenReturn(map.ballisticFluxCost)
         `when`(stats.energyWeaponFluxCostMod).thenReturn(map.energyFluxCost)
+        `when`(stats.beamWeaponFluxCostMult).thenReturn(map.beamFluxCost)
+        `when`(stats.missileWeaponFluxCostMod).thenReturn(map.missileFluxCost)
         return stats to map
     }
 
@@ -56,6 +65,8 @@ class ASTDArcAdvancedTargetingSystemHullModTest {
         val energyProjSpeed = MutableStat(100f)
         val ballisticFluxCost = StatBonus()
         val energyFluxCost = StatBonus()
+        val beamFluxCost = MutableStat(100f)
+        val missileFluxCost = StatBonus()
     }
 
     private fun cleanVariant(): ShipVariantAPI {
@@ -67,21 +78,15 @@ class ASTDArcAdvancedTargetingSystemHullModTest {
     }
 
     @Test
-    fun `创建前效果写入 射程弹速武器辐能乘区并注册OP减免监听器`() {
+    fun `创建前不写入难度缩放乘区 仅注册OP减免监听器`() {
         val (stats, map) = stubStats(cleanVariant())
 
         hullmod.applyEffectsBeforeShipCreation(ShipAPI.HullSize.DESTROYER, stats, "test")
 
-        // 舰船武器射程 +20%（弹道/能量/光束三通道）
-        assertEquals(1200f, map.ballisticRange.computeEffective(1000f), 1e-3f)
-        assertEquals(1200f, map.energyRange.computeEffective(1000f), 1e-3f)
-        assertEquals(1200f, map.beamRange.computeEffective(1000f), 1e-3f)
-        // 实弹与能量武器射弹飞行速度 +20%
-        assertEquals(120f, map.ballisticProjSpeed.modifiedValue, 1e-3f)
-        assertEquals(120f, map.energyProjSpeed.modifiedValue, 1e-3f)
-        // 实弹与能量武器辐能产出 -20%
-        assertEquals(80f, map.ballisticFluxCost.computeEffective(100f), 1e-3f)
-        assertEquals(80f, map.energyFluxCost.computeEffective(100f), 1e-3f)
+        // 难度缩放项（射程/弹速/武器辐能）走战斗内逐帧通道，装配期不写入
+        assertEquals(1000f, map.ballisticRange.computeEffective(1000f), 1e-3f)
+        assertEquals(100f, map.ballisticProjSpeed.modifiedValue, 1e-3f)
+        assertEquals(100f, map.ballisticFluxCost.computeEffective(100f), 1e-3f)
 
         // OP 减免经 WeaponOPCostModifier 监听器接入装配结算
         val captor = ArgumentCaptor.forClass(Any::class.java)
@@ -99,6 +104,44 @@ class ASTDArcAdvancedTargetingSystemHullModTest {
     }
 
     @Test
+    fun `战斗内按 owner 结算难度缩放乘区 玩家侧默认砺刃 v2`() {
+        DifficultyTuningImpl.installScaleForTests(5f)
+        val (stats, map) = stubStats(cleanVariant())
+        val ship = mock(ShipAPI::class.java)
+        `when`(ship.owner).thenReturn(0)
+        `when`(ship.isHulk).thenReturn(false)
+        `when`(ship.mutableStats).thenReturn(stats)
+
+        hullmod.advanceInCombat(ship, 0.016f)
+
+        // 砺刃 v2 锚点：射程 +20% / 弹速 +20% / 武器辐能 -20%
+        assertEquals(1200f, map.ballisticRange.computeEffective(1000f), 1e-3f)
+        assertEquals(1200f, map.energyRange.computeEffective(1000f), 1e-3f)
+        assertEquals(1200f, map.beamRange.computeEffective(1000f), 1e-3f)
+        assertEquals(120f, map.ballisticProjSpeed.modifiedValue, 1e-3f)
+        assertEquals(120f, map.energyProjSpeed.modifiedValue, 1e-3f)
+        assertEquals(80f, map.ballisticFluxCost.computeEffective(100f), 1e-3f)
+        assertEquals(80f, map.energyFluxCost.computeEffective(100f), 1e-3f)
+    }
+
+    @Test
+    fun `战斗内敌方按 k_s 映射 迟暮 v1 锚点`() {
+        DifficultyTuningImpl.installScaleForTests(1f)
+        val (stats, map) = stubStats(cleanVariant())
+        val ship = mock(ShipAPI::class.java)
+        `when`(ship.owner).thenReturn(1)
+        `when`(ship.isHulk).thenReturn(false)
+        `when`(ship.mutableStats).thenReturn(stats)
+
+        hullmod.advanceInCombat(ship, 0.016f)
+
+        // 迟暮 v1 锚点：射程 +15% / 弹速 +15% / 武器辐能 -15%
+        assertEquals(1150f, map.ballisticRange.computeEffective(1000f), 1e-3f)
+        assertEquals(115f, map.ballisticProjSpeed.modifiedValue, 1e-3f)
+        assertEquals(85f, map.ballisticFluxCost.computeEffective(100f), 1e-3f)
+    }
+
+    @Test
     fun `OP减免纯函数 小型减1再八折 中型减2再八折 下限0 大型与未知槽位不动`() {
         assertEquals(4, ASTDArcAdvancedTargetingSystemHullMod.weaponOpCost(WeaponAPI.WeaponSize.SMALL, 6))
         assertEquals(0, ASTDArcAdvancedTargetingSystemHullMod.weaponOpCost(WeaponAPI.WeaponSize.SMALL, 1), "1 OP 小型减 1 后归零不负数")
@@ -109,13 +152,20 @@ class ASTDArcAdvancedTargetingSystemHullModTest {
     }
 
     @Test
-    fun `短射程补偿 基础射程低于700的非导弹武器至多补200`() {
-        assertEquals(200f, ASTDArcAdvancedTargetingSystemHullMod.shortRangeFlatBonus(300f), "补偿 capped 在 +200")
-        assertEquals(200f, ASTDArcAdvancedTargetingSystemHullMod.shortRangeFlatBonus(500f), "700-500=200 恰好封顶")
-        assertEquals(50f, ASTDArcAdvancedTargetingSystemHullMod.shortRangeFlatBonus(650f), "700-650=50 按差额补")
-        assertEquals(0f, ASTDArcAdvancedTargetingSystemHullMod.shortRangeFlatBonus(700f), "达到阈值不补")
-        assertEquals(0f, ASTDArcAdvancedTargetingSystemHullMod.shortRangeFlatBonus(900f), "超阈值不补")
-        assertEquals(0f, ASTDArcAdvancedTargetingSystemHullMod.shortRangeFlatBonus(0f), "零/负基础射程防线")
+    fun `短射程补偿 按档位阈值与增益上限结算`() {
+        // 砺刃 v2 档位：阈值 700、至多 +200
+        assertEquals(200f, ASTDArcAdvancedTargetingSystemHullMod.shortRangeFlatBonus(300f, 700f, 200f), "补偿 capped 在 +200")
+        assertEquals(200f, ASTDArcAdvancedTargetingSystemHullMod.shortRangeFlatBonus(500f, 700f, 200f), "700-500=200 恰好封顶")
+        assertEquals(50f, ASTDArcAdvancedTargetingSystemHullMod.shortRangeFlatBonus(650f, 700f, 200f), "700-650=50 按差额补")
+        assertEquals(0f, ASTDArcAdvancedTargetingSystemHullMod.shortRangeFlatBonus(700f, 700f, 200f), "达到阈值不补")
+        assertEquals(0f, ASTDArcAdvancedTargetingSystemHullMod.shortRangeFlatBonus(900f, 700f, 200f), "超阈值不补")
+        assertEquals(0f, ASTDArcAdvancedTargetingSystemHullMod.shortRangeFlatBonus(0f, 700f, 200f), "零/负基础射程防线")
+        // 迟暮 v1 档位：阈值 600、至多 +150
+        assertEquals(150f, ASTDArcAdvancedTargetingSystemHullMod.shortRangeFlatBonus(300f, 600f, 150f))
+        assertEquals(0f, ASTDArcAdvancedTargetingSystemHullMod.shortRangeFlatBonus(650f, 600f, 150f), "v1 阈值 600，650 不补")
+        // 破晓 v5 档位：阈值 1000、至多 +350
+        assertEquals(350f, ASTDArcAdvancedTargetingSystemHullMod.shortRangeFlatBonus(500f, 1000f, 350f))
+        assertEquals(150f, ASTDArcAdvancedTargetingSystemHullMod.shortRangeFlatBonus(850f, 1000f, 350f), "1000-850=150 按差额补")
     }
 
     @Test

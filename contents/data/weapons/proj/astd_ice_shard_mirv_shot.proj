@@ -30,16 +30,16 @@
             "blowbackDuration": 0,
             "blowbackLength": 0,
             "blowbackSpread": 0,
-            "particleColor": [190, 140, 255, 200]
+            "particleColor": [175, 215, 255, 200]
         }
     },
     "onFireEffect": "cn.kasuminova.astd.combat.effect.lens.iceshard.IceShardMirvOnFireEffect",
     "sprite": "graphics/weapons/astd_ice_shard_missile.png",
-    "size": [15, 30],
-    "center": [7.5, 15],
+    "size": [15, 27],
+    "center": [7.5, 13.5],
     "collisionRadius": 16,
     "collisionClass": "MISSILE_NO_FF",
-    "explosionColor": [170, 110, 255, 160],
+    "explosionColor": [170, 225, 255, 160],
     "explosionRadius": 100,
     "armingTime": 0.25,
     "flameoutTime": 0.5,

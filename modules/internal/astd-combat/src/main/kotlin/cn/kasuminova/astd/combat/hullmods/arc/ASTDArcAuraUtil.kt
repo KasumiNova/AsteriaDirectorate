@@ -5,8 +5,6 @@ import org.lazywizard.lazylib.MathUtils
 import org.lwjgl.util.vector.Vector2f
 
 internal object ASTDArcAuraUtil {
-    const val XC_102_PASSIVE_FULL_RANGE = 1000f
-    const val XC_102_PASSIVE_MAX_RANGE = 2000f
     const val XC_102_SYSTEM_FULL_RANGE = 750f
     const val XC_102_SYSTEM_MAX_RANGE = 1500f
     const val XC_103_NETWORK_RANGE = 1200f
@@ -58,9 +56,6 @@ internal object ASTDArcAuraUtil {
         val t = ((distance - fullRange) / span).coerceIn(0f, 1f)
         return 1f + (edgeScale.coerceIn(0f, 1f) - 1f) * t
     }
-
-    fun xc102PassiveFalloff(distance: Float): Float =
-        distanceFalloff(distance, XC_102_PASSIVE_FULL_RANGE, XC_102_PASSIVE_MAX_RANGE, EDGE_SCALE)
 
     fun xc102SystemFalloff(distance: Float): Float =
         distanceFalloff(distance, XC_102_SYSTEM_FULL_RANGE, XC_102_SYSTEM_MAX_RANGE, EDGE_SCALE)
