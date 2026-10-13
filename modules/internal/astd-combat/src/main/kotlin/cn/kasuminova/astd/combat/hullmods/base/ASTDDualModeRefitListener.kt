@@ -4,7 +4,6 @@ import com.fs.starfarer.api.GameState
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.campaign.econ.MarketAPI
 import com.fs.starfarer.api.campaign.listeners.RefitScreenListener
-import com.fs.starfarer.api.combat.ShipVariantAPI
 import com.fs.starfarer.api.fleet.FleetMemberAPI
 
 /**
@@ -15,8 +14,9 @@ import com.fs.starfarer.api.fleet.FleetMemberAPI
  *    提交的 variant 缺切换器 = 玩家拆切换器触发的「拆即切」尚未经 stats 刷新结算
  *    （例如拆完立刻关界面），此处按 mode hullmod 的同语义补翻转并把切换器加回；
  *    切换器在场则走 [ensureASTDDualModeState] 幂等自举。正常情况下提交内容已收敛，两个分支都不做事。
- *    从未参与双模式的 ASTD 量产舰（无切换器且无模式状态，如 astd_xc_104）不在此收敛范围，
- *    否则会被误强加无人模式与切换器。
+ *    从未参与双模式的舰（无切换器且无模式状态，如战机与无内置奇点能源的舰体）不在此收敛范围；
+ *    非战机舰的「漏声明切换器」场景由奇点能源内置船插在 stats 重建时自动补装
+ *    （见 [ensureDualModeSwitcherPresent]），无需在提交时重复处理。
  * 2. **舰长兼容清理**（仅玩家舰队成员）：无人模式不得有人类舰长、载人模式不得有 AI 核心
  *    （核心退还玩家货舱）。覆盖「自动装配确认但未勾选清空装配」等不经 strip 中途翻转、
  *    因而绕过 [activateDualMode] 身份门清理的路径。
@@ -34,7 +34,7 @@ class ASTDDualModeRefitListener : RefitScreenListener {
 
         if (variant.hasHullMod(config.switcherId)) {
             variant.ensureASTDDualModeState(config, null)
-        } else if (hasDualModeState(variant, config)) {
+        } else if (variant.hasASTDDualModeState(config)) {
             // 拆即切：提交时切换器缺席且该舰已参与双模式 → 翻到对侧模式并加回切换器
             // （与 mode hullmod 同语义）；stats=null：舰长清理由下方兼容清理按最终模式统一处理
             val target = if (variant.hasASTDDualModeAutomated(config)) config.crewedModeId else config.automatedModeId
@@ -48,11 +48,4 @@ class ASTDDualModeRefitListener : RefitScreenListener {
             clearIncompatibleDualModeCaptain(member, config)
         }
     }
-
-    /** 该 variant 是否已参与双模式（带任一模式 permaMod 或 next marker）。 */
-    private fun hasDualModeState(variant: ShipVariantAPI, config: ASTDDualModeConfig): Boolean =
-        variant.permaMods.contains(config.crewedModeId) ||
-            variant.permaMods.contains(config.automatedModeId) ||
-            variant.permaMods.contains(config.nextCrewedMarker) ||
-            variant.permaMods.contains(config.nextAutomatedMarker)
 }

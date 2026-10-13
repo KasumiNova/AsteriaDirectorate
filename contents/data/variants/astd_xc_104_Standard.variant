@@ -4,7 +4,21 @@
     "fluxVents": 0,
     "goalVariant": true,
     "hullId": "astd_xc_104",
+    "hullMods": [
+        "astd_mode_automated",
+        "automated",
+        "astd_dual_mode_switcher",
+        "astd_mode_next_automated"
+    ],
+    "permaMods": [
+        "astd_mode_automated",
+        "automated",
+        "astd_mode_next_automated"
+    ],
     "quality": 0.0,
+    "tags": [
+        "no_auto_penalty"
+    ],
     "variantId": "astd_xc_104_Standard",
     "weaponGroups": []
 }

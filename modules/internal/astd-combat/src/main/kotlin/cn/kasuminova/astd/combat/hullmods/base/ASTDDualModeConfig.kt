@@ -208,6 +208,51 @@ internal fun ShipAPI?.isASTDShip(): Boolean {
 }
 
 /**
+ * 该 variant 是否已参与双模式（带任一模式 permaMod 或 next marker）。
+ *
+ * 注意「有模式状态但切换器缺席」即拆即切在途（或装配提交前的待结算态）：
+ * 翻转与切换器加回由 mode hullmod / [ASTDDualModeRefitListener] 按拆即切语义处理，
+ * 其它路径（如 [ensureDualModeSwitcherPresent]）不得抢先补装切换器，否则翻转永不触发。
+ */
+fun ShipVariantAPI.hasASTDDualModeState(config: ASTDDualModeConfig): Boolean =
+    permaMods.contains(config.crewedModeId) ||
+        permaMods.contains(config.automatedModeId) ||
+        permaMods.contains(config.nextCrewedMarker) ||
+        permaMods.contains(config.nextAutomatedMarker)
+
+/**
+ * 切换器缺失自动补装：本模组舰的 variant 既无切换器也从未参与双模式时，补装切换器并
+ * 当场自举到缺省（载人）模式，保证任何 ASTD 舰都不会落入「无切换器可拆、无法切换模式」的死态
+ * （曾经的 astd_zw_001_Standard / astd_xc_104_Standard 漏声明场景）。
+ *
+ * 调用点：[ASTDSingularityPowerHullMod.applyEffectsBeforeShipCreation]——奇点能源是全 ASTD
+ * 非战机舰唯一必装的内置船插，每次 stats 重建必经，覆盖面与时机都合适；战机无内置船插、
+ * 不参与装配界面换插，天然不在补装范围。
+ *
+ * 守护语义（防回归，勿改）：
+ * - 已装切换器 → 不动。
+ * - 有模式状态但缺切换器（拆即切在途）→ 不动：此处补装会抢在 mode hullmod 的翻转判定之前
+ *   把切换器加回去，导致拆即切永不触发。
+ * - 补装自举到的是状态机缺省（载人）模式，与语料库静态声明的无人默认是**有意差异**：
+ *   静态声明永远优先（声明了的舰根本走不到补装），补装只兜「无法切换模式」底，
+ *   载入缺省与状态机自举口径（[ASTDDualModeSwitcherHullMod] 的引导路径）保持一致。
+ * - stats 固定不传（走 [ensureASTDDualModeState] 的 stats=null 路径），两个理由：
+ *   1. 镜像规避：stats 非空且身份门命中时模式位会被镜像预提交写入真实 variant，而真实
+ *      variant 上没有切换器，下次重算会被 mode hullmod 误判为拆即切而误翻转到无人模式；
+ *   2. 无需舰长清理：原版仅全自动舰船（挂 automated 船插）可分配 AI 核心舰长，缺模式态的
+ *      舰不可能持有 AI 核心舰长，而自举到的载人模式与人类/默认舰长天然兼容。
+ *
+ * @return 本次是否执行了补装（生产侧忽略，供测试断言）。
+ */
+fun ShipVariantAPI.ensureDualModeSwitcherPresent(config: ASTDDualModeConfig): Boolean {
+    if (hasHullMod(config.switcherId)) return false
+    if (hasASTDDualModeState(config)) return false
+    addMod(config.switcherId)
+    ensureASTDDualModeState(config)
+    return true
+}
+
+/**
  * 通用：确保 variant 的双模式状态自洽（泛化自 arc 的 ensureASTDXc001ModeState，参数化全部 id）。
  *
  * 状态机不变量（与 arc 原实现一致）：

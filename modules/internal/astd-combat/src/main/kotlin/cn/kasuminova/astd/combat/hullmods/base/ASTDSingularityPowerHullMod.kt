@@ -34,11 +34,22 @@ import java.awt.Color
  * （默认砺刃=v2），敌方/友军 AI 按轨一 k_s 映射。战斗内 stat 走 advanceInCombat 逐帧
  * modifyMult（同 id 覆盖，幂等，无需 unmodify），装配期无法感知 owner 故不在
  * applyEffectsBeforeShipCreation 写入缩放值；tooltip 按「无舰上下文=我方档位」展示。
+ *
+ * 附带职责：本船插是全 ASTD 非战机舰唯一必装的内置船插，因此兼作双模式切换器缺失的
+ * 自动补装引导点（见 [ensureDualModeSwitcherPresent]）——任何 ASTD 舰的 variant 即便漏声明
+ * 切换器，首次 stats 重建即补装并自举到缺省载人模式，不会落入无法切换模式的死态。
  */
 class ASTDSingularityPowerHullMod : BaseHullMod() {
 
     override fun applyEffectsBeforeShipCreation(hullSize: ShipAPI.HullSize, stats: MutableShipStatsAPI, id: String) {
         stats.dynamic.getStat(Stats.CORONA_EFFECT_MULT).modifyMult(id, ENVIRONMENT_EFFECT_MULT)
+        // 双模式切换器缺失自动补装：本船插是全 ASTD 非战机舰唯一必装的内置船插，
+        // 兼作补装引导点（守护语义见 ensureDualModeSwitcherPresent，拆即切在途不会被抢先补装）
+        val variant = stats.variant
+        if (variant != null) {
+            val config = ASTDDualModeRegistry.configForVariant(variant)
+            if (config != null) variant.ensureDualModeSwitcherPresent(config)
+        }
     }
 
     override fun advanceInCombat(ship: ShipAPI, amount: Float) {

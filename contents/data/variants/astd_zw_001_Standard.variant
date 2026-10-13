@@ -4,8 +4,21 @@
     "fluxVents": 20,
     "goalVariant": true,
     "hullId": "astd_zw_001",
-    "hullMods": [],
+    "hullMods": [
+        "astd_mode_automated",
+        "automated",
+        "astd_dual_mode_switcher",
+        "astd_mode_next_automated"
+    ],
+    "permaMods": [
+        "astd_mode_automated",
+        "automated",
+        "astd_mode_next_automated"
+    ],
     "quality": 1.0,
+    "tags": [
+        "no_auto_penalty"
+    ],
     "variantId": "astd_zw_001_Standard",
     "weaponGroups": [
         {
