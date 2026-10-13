@@ -5,24 +5,19 @@
     "goalVariant": true,
     "hullId": "astd_zw_002",
     "hullMods": [
-        "astd_mode_automated",
-        "automated",
-        "astd_dual_mode_switcher",
         "adaptive_coils",
         "heavyarmor",
         "targetingunit",
-        "astd_mode_next_automated"
+        "astd_mode_crewed",
+        "astd_dual_mode_switcher",
+        "astd_mode_next_crewed"
     ],
     "permaMods": [
-        "astd_mode_automated",
-        "automated",
-        "astd_mode_next_automated"
+        "astd_mode_crewed",
+        "astd_mode_next_crewed"
     ],
     "quality": 1,
     "sMods": [],
-    "tags": [
-        "no_auto_penalty"
-    ],
     "variantId": "astd_zw_002_Standard",
     "weaponGroups": [
         {

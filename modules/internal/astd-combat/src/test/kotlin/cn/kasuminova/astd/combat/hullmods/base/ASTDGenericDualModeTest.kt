@@ -5,6 +5,7 @@ import com.fs.starfarer.api.combat.MutableShipStatsAPI
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.combat.ShipHullSpecAPI
 import com.fs.starfarer.api.combat.ShipVariantAPI
+import com.fs.starfarer.api.fleet.FleetMemberAPI
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.`when`
 import kotlin.test.AfterTest
@@ -188,6 +189,56 @@ class ASTDGenericDualModeTest {
     @AfterTest
     fun clearExemptOverride() {
         DualModeSettingsImpl.installExemptForTests(null)
+        ASTDDualModeMirror.clear()
+    }
+
+    @Test
+    fun `preview flip records pending mirror for real member`() {
+        // refit 预览路径：翻转作用于工作克隆（stats.variant），member.variant 是另一个实例（真实 variant）
+        val clone = FakeGenericVariant(astdHullSpec())
+        clone.addPermaMod(ASTDDualModeGenericIds.MODE_CREWED)
+        clone.addPermaMod(ASTDDualModeGenericIds.NEXT_CREWED)
+        val realVariant = FakeGenericVariant(astdHullSpec())
+        val member = mock(FleetMemberAPI::class.java)
+        `when`(member.variant).thenReturn(realVariant)
+        val stats = statsOf(clone)
+        `when`(stats.fleetMember).thenReturn(member)
+
+        // 拆即切：克隆上无切换器 → 翻转到无人模式；身份门不命中，由 mode hullmod 显式登记镜像
+        ASTDCrewedModeHullMod().applyEffectsBeforeShipCreation(
+            ShipAPI.HullSize.CRUISER, stats, GENERIC_DUAL_MODE_CONFIG.crewedModeId,
+        )
+        assertTrue(clone.hasASTDDualModeAutomated(GENERIC_DUAL_MODE_CONFIG), "前置：克隆应翻转到无人模式")
+        assertTrue(
+            ASTDDualModeMirror.isPending(member),
+            "预览路径翻转后应登记待镜像（否则军官选择界面读真实 variant 停留在旧模式）",
+        )
+    }
+
+    @Test
+    fun `flip inside autofit suppression window is not mirrored`() {
+        val clone = FakeGenericVariant(astdHullSpec())
+        clone.addPermaMod(ASTDDualModeGenericIds.MODE_CREWED)
+        clone.addPermaMod(ASTDDualModeGenericIds.NEXT_CREWED)
+        val realVariant = FakeGenericVariant(astdHullSpec())
+        val member = mock(FleetMemberAPI::class.java)
+        `when`(member.variant).thenReturn(realVariant)
+        val stats = statsOf(clone)
+        `when`(stats.fleetMember).thenReturn(member)
+
+        ASTDDualModeMirror.beginAutofitSuppression()
+        try {
+            ASTDCrewedModeHullMod().applyEffectsBeforeShipCreation(
+                ShipAPI.HullSize.CRUISER, stats, GENERIC_DUAL_MODE_CONFIG.crewedModeId,
+            )
+        } finally {
+            ASTDDualModeMirror.endAutofitSuppression()
+        }
+        assertTrue(clone.hasASTDDualModeAutomated(GENERIC_DUAL_MODE_CONFIG), "前置：克隆仍应正常翻转")
+        assertFalse(
+            ASTDDualModeMirror.isPending(member),
+            "自动装配抑制窗口内的翻转不得登记镜像（预览不得污染真实 variant）",
+        )
     }
 
     @Test

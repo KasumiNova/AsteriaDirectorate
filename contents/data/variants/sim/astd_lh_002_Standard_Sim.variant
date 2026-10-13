@@ -4,24 +4,21 @@
     "fluxVents": 7,
     "hullId": "astd_lh_002",
     "hullMods": [
-        "astd_mode_automated",
-        "astd_dual_mode_switcher",
         "frontemitter",
         "hardenedshieldemitter",
         "stabilizedshieldemitter",
         "fluxbreakers",
         "targetingunit",
-        "astd_mode_next_automated"
+        "astd_mode_crewed",
+        "astd_dual_mode_switcher",
+        "astd_mode_next_crewed"
     ],
     "permaMods": [
-        "astd_mode_automated",
-        "astd_mode_next_automated"
+        "astd_mode_crewed",
+        "astd_mode_next_crewed"
     ],
     "quality": 1,
     "sMods": [],
-    "tags": [
-        "no_auto_penalty"
-    ],
     "variantId": "astd_lh_002_Standard_Sim",
     "weaponGroups": [
         {

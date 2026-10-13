@@ -1,29 +1,22 @@
 {
     "displayName": "Fighter",
-    "fluxCapacitors": 24,
-    "fluxVents": 23,
-    "goalVariant": true,
+    "fluxCapacitors": 30,
+    "fluxVents": 21,
     "hullId": "astd_zw_102",
     "hullMods": [
-        "astd_mode_automated",
-        "automated",
-        "astd_dual_mode_switcher",
         "frontemitter",
-        "hardenedshieldemitter",
         "stabilizedshieldemitter",
         "targetingunit",
-        "astd_mode_next_automated"
+        "astd_mode_crewed",
+        "astd_dual_mode_switcher",
+        "astd_mode_next_crewed"
     ],
     "permaMods": [
-        "astd_mode_automated",
-        "automated",
-        "astd_mode_next_automated"
+        "astd_mode_crewed",
+        "astd_mode_next_crewed"
     ],
     "quality": 1,
     "sMods": [],
-    "tags": [
-        "no_auto_penalty"
-    ],
     "variantId": "astd_zw_102_Fighter",
     "weaponGroups": [
         {
@@ -46,12 +39,12 @@
             "autofire": true,
             "mode": "LINKED",
             "weapons": {
-                "WS0004": "astd_positron_shockwave",
+                "WS0004": "astd_gcp2",
                 "WS0005": "astd_positron_shockwave",
                 "WS0007": "astd_positron_shockwave",
-                "WS0008": "astd_positron_shockwave",
+                "WS0008": "astd_gcp2",
                 "WS0009": "astd_positron_shockwave",
-                "WS0010": "astd_positron_shockwave"
+                "WS0010": "astd_gcp2"
             }
         }
     ],
@@ -59,5 +52,6 @@
         "astd_surge_fighter_wing",
         "astd_surge_fighter_wing",
         "astd_surge_fighter_wing"
-    ]
+    ],
+    "goalVariant": true
 }

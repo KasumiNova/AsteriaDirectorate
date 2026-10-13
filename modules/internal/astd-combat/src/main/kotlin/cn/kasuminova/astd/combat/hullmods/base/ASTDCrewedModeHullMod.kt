@@ -37,6 +37,10 @@ class ASTDCrewedModeHullMod : BaseHullMod() {
         if (!variant.hasHullMod(config.switcherId)) {
             variant.activateDualMode(config, config.automatedModeId, stats)
             variant.addMod(config.switcherId)
+            // 镜像登记必须在此显式进行：refit 的翻转发生在预览 Ship 的 stats 上
+            // （stats.variant = 工作克隆，member.variant 仍是真实 variant），activateDualMode
+            // 的身份门永不命中；不登记则军官选择界面（构造期读真实 variant）停留在旧模式
+            stats?.fleetMember?.let { ASTDDualModeMirror.record(it, config.automatedModeId) }
             return
         }
 

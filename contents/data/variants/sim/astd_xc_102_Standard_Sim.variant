@@ -6,21 +6,18 @@
     "hullMods": [
         "frontemitter",
         "stabilizedshieldemitter",
-        "astd_mode_automated",
-        "astd_dual_mode_switcher",
         "magazines",
         "fluxbreakers",
-        "astd_mode_next_automated"
+        "astd_mode_crewed",
+        "astd_dual_mode_switcher",
+        "astd_mode_next_crewed"
     ],
     "permaMods": [
-        "astd_mode_automated",
-        "astd_mode_next_automated"
+        "astd_mode_crewed",
+        "astd_mode_next_crewed"
     ],
     "quality": 1,
     "sMods": [],
-    "tags": [
-        "no_auto_penalty"
-    ],
     "variantId": "astd_xc_102_Standard_Sim",
     "weaponGroups": [
         {

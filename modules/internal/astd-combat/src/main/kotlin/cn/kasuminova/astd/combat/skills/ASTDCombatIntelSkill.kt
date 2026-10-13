@@ -426,7 +426,7 @@ class ASTDCombatIntelSkill {
          */
         private fun renderDescriptionCard(tooltip: TooltipMakerAPI, width: Float, elite: Boolean) {
             val values = displayValues()
-            tooltip.hullmodCard(width, HullmodThemes.ARC, null) {
+            tooltip.hullmodCard(width, HullmodThemes.ARC, null, topGapFill = 0f) {
                 if (elite) {
                     para(
                         "ui.skill.astd_combat_intel.line.elite_range",

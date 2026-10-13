@@ -6,6 +6,8 @@ import cn.kasuminova.astd.campaign.bounty.core.BountyOfficerSkills
 import cn.kasuminova.astd.campaign.bounty.core.BountyPoolConfig
 import cn.kasuminova.astd.campaign.bounty.core.PoolSide
 import cn.kasuminova.astd.combat.hullmods.HullmodIncompatibility
+import cn.kasuminova.astd.combat.hullmods.base.ASTDDualModeRegistry
+import cn.kasuminova.astd.combat.hullmods.base.activateDualMode
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.campaign.CampaignFleetAPI
 import com.fs.starfarer.api.characters.MutableCharacterStatsAPI
@@ -271,6 +273,13 @@ class BountyFleetTunerImpl(
     private fun assignCrew(fleet: CampaignFleetAPI, bountyKey: String?) {
         val astdMembers = fleet.fleetData.membersListCopy
             .filter { !it.isFighterWing && it.hullId.startsWith(ASTD_HULL_PREFIX) }
+        // 装配语料统一为载人模式后，赏金舰队的无人形态改由代码显式激活：
+        // 分配 AI 核心军官前把 ASTD 成员翻转到无人模式（同步原版 automated 船插），
+        // 否则核心舰长挂在载人舰上，与原版「AI 核心仅可指挥全自动舰船」的口径相悖
+        for (member in astdMembers) {
+            val config = ASTDDualModeRegistry.configForVariant(member.variant) ?: continue
+            member.variant.activateDualMode(config, config.automatedModeId, null)
+        }
         val flagship = astdMembers.firstOrNull { it.isFlagship }
         if (bountyKey == null || flagship == null) {
             log.error("[ASTD] 赏金舰队 ${fleet.name} 缺少 bounty key 或旗舰，跳过核心军官分配")

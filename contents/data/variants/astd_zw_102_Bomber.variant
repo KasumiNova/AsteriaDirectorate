@@ -1,40 +1,33 @@
 {
     "displayName": "Bomber",
-    "fluxCapacitors": 27,
-    "fluxVents": 27,
+    "fluxCapacitors": 19,
+    "fluxVents": 19,
     "hullId": "astd_zw_102",
     "hullMods": [
-        "astd_mode_automated",
-        "automated",
-        "astd_dual_mode_switcher",
-        "frontemitter",
-        "stabilizedshieldemitter",
         "targetingunit",
-        "astd_mode_next_automated"
+        "stabilizedshieldemitter",
+        "astd_mode_crewed",
+        "astd_dual_mode_switcher",
+        "astd_mode_next_crewed"
     ],
     "permaMods": [
-        "astd_mode_automated",
-        "automated",
-        "astd_mode_next_automated"
+        "astd_mode_crewed",
+        "astd_mode_next_crewed"
     ],
     "quality": 1,
     "sMods": [],
-    "tags": [
-        "no_auto_penalty"
-    ],
     "variantId": "astd_zw_102_Bomber",
     "weaponGroups": [
         {
             "autofire": true,
             "mode": "LINKED",
             "weapons": {
-                "WS0001": "astd_gcp12",
-                "WS0002": "astd_gcp12"
+                "WS0001": "astd_gcp12"
             }
         },
         {
             "autofire": false,
-            "mode": "LINKED",
+            "mode": "ALTERNATING",
             "weapons": {
                 "WS0003": "astd_gemini_dem_pod",
                 "WS0013": "astd_gemini_dem_pod"
@@ -44,12 +37,19 @@
             "autofire": true,
             "mode": "LINKED",
             "weapons": {
-                "WS0004": "astd_positron_shockwave",
+                "WS0002": "astd_heavy_ion_pulse"
+            }
+        },
+        {
+            "autofire": true,
+            "mode": "LINKED",
+            "weapons": {
+                "WS0004": "astd_gcp2",
                 "WS0005": "astd_positron_shockwave",
                 "WS0007": "astd_positron_shockwave",
-                "WS0008": "astd_positron_shockwave",
+                "WS0008": "astd_gcp2",
                 "WS0009": "astd_positron_shockwave",
-                "WS0010": "astd_positron_shockwave"
+                "WS0010": "astd_gcp2"
             }
         }
     ],
@@ -57,5 +57,6 @@
         "astd_gemini_bomber_wing",
         "astd_gemini_bomber_wing",
         "astd_gemini_bomber_wing"
-    ]
+    ],
+    "goalVariant": true
 }

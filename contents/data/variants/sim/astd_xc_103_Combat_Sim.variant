@@ -1,0 +1,65 @@
+{
+    "displayName": "Combat",
+    "fluxCapacitors": 20,
+    "fluxVents": 12,
+    "hullId": "astd_xc_103",
+    "hullMods": [
+        "converted_hangar",
+        "frontemitter",
+        "hardenedshieldemitter",
+        "stabilizedshieldemitter",
+        "astd_mode_crewed",
+        "astd_dual_mode_switcher",
+        "astd_mode_next_crewed"
+    ],
+    "permaMods": [
+        "astd_mode_crewed",
+        "astd_mode_next_crewed"
+    ],
+    "quality": 1,
+    "sMods": [],
+    "variantId": "astd_xc_103_Combat_Sim",
+    "weaponGroups": [
+        {
+            "autofire": true,
+            "mode": "LINKED",
+            "weapons": {
+                "WS0002": "astd_heavy_charge_needle",
+                "WS0003": "astd_heavy_charge_needle"
+            }
+        },
+        {
+            "autofire": false,
+            "mode": "LINKED",
+            "weapons": {
+                "WS0007": "astd_cuifeng_launcher",
+                "WS0008": "astd_cuifeng_launcher"
+            }
+        },
+        {
+            "autofire": true,
+            "mode": "LINKED",
+            "weapons": {
+                "WS0001": "astd_gcp4"
+            }
+        },
+        {
+            "autofire": true,
+            "mode": "LINKED",
+            "weapons": {
+                "WS0004": "railgun",
+                "WS0005": "railgun"
+            }
+        },
+        {
+            "autofire": true,
+            "mode": "LINKED",
+            "weapons": {
+                "WS0006": "astd_gcp2"
+            }
+        }
+    ],
+    "wings": [
+        "astd_gravwell_interceptor_wing"
+    ]
+}

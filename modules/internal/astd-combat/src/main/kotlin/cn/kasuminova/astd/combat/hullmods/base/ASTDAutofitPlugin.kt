@@ -41,7 +41,14 @@ class ASTDAutofitPlugin(fleetCommander: PersonAPI?) : CoreAutofitPlugin(fleetCom
         // 先快照舰长，净模式未变时在恢复阶段还原（见下方 restoreCaptainIfModeUnchanged）
         val member = delegate.fleetMember
         val preFitCaptain = if (preFitMode != null) member?.captain else null
-        super.doFit(current, target, maxSMods, delegate)
+        // 装配全程抑制镜像登记：strip 中途翻转作用于装配克隆，预览路径不得污染真实 variant；
+        // 确认路径的真实 variant 由 saveCurrentVariant 整体提交，无需镜像（见 ASTDDualModeMirror）
+        ASTDDualModeMirror.beginAutofitSuppression()
+        try {
+            super.doFit(current, target, maxSMods, delegate)
+        } finally {
+            ASTDDualModeMirror.endAutofitSuppression()
+        }
         if (config == null) return
 
         // 切换器常驻兜底：无论翻转是否在装配期发生（部分委派上下文的 stats 重算是延迟的），
@@ -57,15 +64,6 @@ class ASTDAutofitPlugin(fleetCommander: PersonAPI?) : CoreAutofitPlugin(fleetCom
         }
         val postFitMode = activeDualModeId(current, config)
         restoreCaptainIfModeUnchanged(member, preFitCaptain, preFitMode, postFitMode)
-        // 确认路径的 strip 中途翻转已登记过待镜像（身份门命中），此处把镜像目标改写为装配最终模式，
-        // 避免真实 variant 停在 strip 中间态；预览路径的翻转作用于克隆（身份门不命中，无登记），
-        // isPending 为 false 时跳过——预览不污染真实 variant 的模式与舰长。
-        // 依赖链路：CoreAutofitPlugin STRIP → delegate.syncUIWithVariant → RefitScreen
-        // .syncWithCurrentVariant 的临时 swap（member.variant = 工作克隆）令身份门命中；
-        // 若原版该链路变化（stats 重算不再 swap），isPending 恒 false，此覆写静默跳过。
-        if (member != null && postFitMode != null && ASTDDualModeMirror.isPending(member)) {
-            ASTDDualModeMirror.record(member, postFitMode)
-        }
     }
 
     /**

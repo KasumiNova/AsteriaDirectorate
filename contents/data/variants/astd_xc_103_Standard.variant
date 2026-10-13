@@ -1,30 +1,23 @@
 {
     "displayName": "Standard",
     "fluxCapacitors": 20,
-    "fluxVents": 12,
-    "goalVariant": true,
+    "fluxVents": 13,
     "hullId": "astd_xc_103",
     "hullMods": [
         "converted_hangar",
-        "astd_mode_automated",
-        "automated",
-        "astd_dual_mode_switcher",
         "frontemitter",
         "stabilizedshieldemitter",
         "hardenedshieldemitter",
-        "magazines",
-        "astd_mode_next_automated"
+        "astd_mode_crewed",
+        "astd_dual_mode_switcher",
+        "astd_mode_next_crewed"
     ],
     "permaMods": [
-        "astd_mode_automated",
-        "automated",
-        "astd_mode_next_automated"
+        "astd_mode_crewed",
+        "astd_mode_next_crewed"
     ],
     "quality": 1,
     "sMods": [],
-    "tags": [
-        "no_auto_penalty"
-    ],
     "variantId": "astd_xc_103_Standard",
     "weaponGroups": [
         {
@@ -37,7 +30,7 @@
         },
         {
             "autofire": false,
-            "mode": "ALTERNATING",
+            "mode": "LINKED",
             "weapons": {
                 "WS0007": "astd_gemini_dem_launcher",
                 "WS0008": "astd_gemini_dem_launcher"
@@ -47,12 +40,20 @@
             "autofire": true,
             "mode": "LINKED",
             "weapons": {
-                "WS0004": "railgun",
-                "WS0005": "railgun"
+                "WS0004": "astd_gcp4",
+                "WS0005": "astd_gcp4"
+            }
+        },
+        {
+            "autofire": true,
+            "mode": "LINKED",
+            "weapons": {
+                "WS0001": "astd_positron_shockwave"
             }
         }
     ],
     "wings": [
         "astd_gemini_bomber_wing"
-    ]
+    ],
+    "goalVariant": true
 }

@@ -1,0 +1,60 @@
+{
+    "displayName": "Combat",
+    "fluxCapacitors": 30,
+    "fluxVents": 1,
+    "hullId": "astd_zw_001",
+    "hullMods": [
+        "targetingunit",
+        "stabilizedshieldemitter",
+        "frontemitter",
+        "astd_mode_crewed",
+        "astd_dual_mode_switcher",
+        "astd_mode_next_crewed"
+    ],
+    "permaMods": [
+        "astd_mode_crewed",
+        "astd_mode_next_crewed"
+    ],
+    "quality": 1,
+    "sMods": [],
+    "variantId": "astd_zw_001_Combat",
+    "weaponGroups": [
+        {
+            "autofire": false,
+            "mode": "LINKED",
+            "weapons": {
+                "WS0001": "astd_gemini_dem_pod"
+            }
+        },
+        {
+            "autofire": false,
+            "mode": "LINKED",
+            "weapons": {
+                "WS0004": "astd_cuifeng_launcher",
+                "WS0008": "astd_cuifeng_launcher"
+            }
+        },
+        {
+            "autofire": true,
+            "mode": "LINKED",
+            "weapons": {
+                "WS0005": "astd_charge_needle",
+                "WS0010": "astd_charge_needle"
+            }
+        },
+        {
+            "autofire": true,
+            "mode": "LINKED",
+            "weapons": {
+                "WS0006": "astd_gcp8",
+                "WS0007": "astd_gcp8"
+            }
+        }
+    ],
+    "wings": [
+        "astd_gravwell_interceptor_wing",
+        "astd_gravwell_interceptor_wing",
+        "astd_gravwell_interceptor_wing"
+    ],
+    "goalVariant": true
+}

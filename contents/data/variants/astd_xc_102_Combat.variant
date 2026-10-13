@@ -7,22 +7,17 @@
         "hardenedshieldemitter",
         "stabilizedshieldemitter",
         "magazines",
-        "astd_mode_automated",
-        "automated",
-        "astd_dual_mode_switcher",
         "fluxbreakers",
-        "astd_mode_next_automated"
+        "astd_mode_crewed",
+        "astd_dual_mode_switcher",
+        "astd_mode_next_crewed"
     ],
     "permaMods": [
-        "astd_mode_automated",
-        "automated",
-        "astd_mode_next_automated"
+        "astd_mode_crewed",
+        "astd_mode_next_crewed"
     ],
     "quality": 1,
     "sMods": [],
-    "tags": [
-        "no_auto_penalty"
-    ],
     "variantId": "astd_xc_102_Combat",
     "weaponGroups": [
         {
@@ -65,5 +60,6 @@
                 "WS0014": "astd_positron_shockwave"
             }
         }
-    ]
+    ],
+    "goalVariant": true
 }

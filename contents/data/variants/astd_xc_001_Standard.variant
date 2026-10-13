@@ -1,7 +1,7 @@
 {
     "displayName": "Standard",
     "fluxCapacitors": 50,
-    "fluxVents": 50,
+    "fluxVents": 45,
     "goalVariant": true,
     "hullId": "astd_xc_001",
     "hullMods": [
@@ -10,21 +10,16 @@
         "stabilizedshieldemitter",
         "hardenedshieldemitter",
         "magazines",
-        "astd_mode_automated",
-        "automated",
+        "astd_mode_crewed",
         "astd_dual_mode_switcher",
-        "astd_mode_next_automated"
+        "astd_mode_next_crewed"
     ],
     "permaMods": [
-        "astd_mode_automated",
-        "automated",
-        "astd_mode_next_automated"
+        "astd_mode_crewed",
+        "astd_mode_next_crewed"
     ],
     "quality": 1,
     "sMods": [],
-    "tags": [
-        "no_auto_penalty"
-    ],
     "variantId": "astd_xc_001_Standard",
     "weaponGroups": [
         {
@@ -38,8 +33,8 @@
             "autofire": false,
             "mode": "LINKED",
             "weapons": {
-                "WS 005": "astd_gemini_dem_launcher",
-                "WS 006": "astd_gemini_dem_launcher"
+                "WS 005": "astd_cuifeng_launcher",
+                "WS 006": "astd_cuifeng_launcher"
             }
         },
         {
@@ -62,12 +57,14 @@
             "autofire": true,
             "mode": "LINKED",
             "weapons": {
-                "WS 009": "astd_positron_shockwave",
-                "WS 010": "astd_positron_shockwave",
+                "WS 007": "astd_gcp2",
+                "WS 008": "astd_gcp2",
+                "WS 009": "astd_gcp2",
+                "WS 010": "astd_gcp2",
                 "WS 011": "astd_positron_shockwave",
                 "WS 012": "astd_positron_shockwave",
-                "WS 013": "astd_positron_shockwave",
-                "WS 014": "astd_positron_shockwave"
+                "WS 013": "astd_gcp2",
+                "WS 014": "astd_gcp2"
             }
         }
     ]

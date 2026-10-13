@@ -1,0 +1,50 @@
+{
+    "displayName": "Combat",
+    "fluxCapacitors": 20,
+    "fluxVents": 4,
+    "hullId": "astd_zw_103",
+    "hullMods": [
+        "targetingunit",
+        "heavyarmor",
+        "adaptive_coils",
+        "fluxbreakers",
+        "astd_mode_crewed",
+        "astd_dual_mode_switcher",
+        "astd_mode_next_crewed"
+    ],
+    "permaMods": [
+        "astd_mode_crewed",
+        "astd_mode_next_crewed"
+    ],
+    "quality": 1,
+    "sMods": [],
+    "variantId": "astd_zw_103_Combat",
+    "weaponGroups": [
+        {
+            "autofire": false,
+            "mode": "LINKED",
+            "weapons": {
+                "WS0003": "astd_gcp2",
+                "WS0004": "astd_gcp2"
+            }
+        },
+        {
+            "autofire": false,
+            "mode": "ALTERNATING",
+            "weapons": {
+                "WS0005": "astd_cuifeng_torpedo",
+                "WS0006": "astd_cuifeng_torpedo"
+            }
+        },
+        {
+            "autofire": true,
+            "mode": "LINKED",
+            "weapons": {
+                "WS0001": "astd_gcp8",
+                "WS0002": "astd_gcp8"
+            }
+        }
+    ],
+    "wings": [],
+    "goalVariant": true
+}

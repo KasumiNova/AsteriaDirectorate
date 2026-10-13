@@ -5,20 +5,15 @@
     "goalVariant": true,
     "hullId": "astd_xc_104",
     "hullMods": [
-        "astd_mode_automated",
-        "automated",
+        "astd_mode_crewed",
         "astd_dual_mode_switcher",
-        "astd_mode_next_automated"
+        "astd_mode_next_crewed"
     ],
     "permaMods": [
-        "astd_mode_automated",
-        "automated",
-        "astd_mode_next_automated"
+        "astd_mode_crewed",
+        "astd_mode_next_crewed"
     ],
     "quality": 0.0,
-    "tags": [
-        "no_auto_penalty"
-    ],
     "variantId": "astd_xc_104_Standard",
     "weaponGroups": []
 }

@@ -193,11 +193,10 @@ internal class ASTDVariantExporterTest {
                 "WS0008" to "astd_cuifeng_torpedo",
             ),
             hullMods = listOf(
-                "targetingunit", "phase_anchor", "astd_mode_automated",
-                "automated", "astd_dual_mode_switcher", "astd_mode_next_automated",
+                "targetingunit", "phase_anchor", "astd_mode_crewed",
+                "astd_dual_mode_switcher", "astd_mode_next_crewed",
             ),
-            permaMods = setOf("astd_mode_automated", "automated", "astd_mode_next_automated"),
-            tags = setOf("no_auto_penalty"),
+            permaMods = setOf("astd_mode_crewed", "astd_mode_next_crewed"),
         )
 
         val exported = ASTDVariantExporter.toJson(variant)

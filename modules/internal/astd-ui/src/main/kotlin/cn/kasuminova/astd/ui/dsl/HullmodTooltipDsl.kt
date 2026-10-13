@@ -401,14 +401,18 @@ internal fun hullmodTooltip(block: HullmodCardBuilder.() -> Unit): HullmodToolti
 /**
  * 声明并渲染一张 hullmod 卡片：统一骨架（顶部间距 + 全息背景 + 可选标题栏）。
  * [title] 一般传 `spec?.displayName`；为空时跳过标题栏（标题由原版描述承接的卡片传 `null`）。
+ * [topGapFill] 为卡片顶部负间距：船插 tooltip 在 addPostDescriptionSection 前预留约 20px 空隙，
+ * 默认 -20f 把卡片提上去吃掉该空隙；技能 tooltip 等无预留空隙的宿主必须传 0f，
+ * 否则卡片内容上移盖住原版流式布局的既有文本（scope 行 / 效果组标签）。
  */
 fun TooltipMakerAPI.hullmodCard(
     width: Float,
     theme: HullmodTheme,
     title: String?,
+    topGapFill: Float = -20f,
     block: HullmodCardBuilder.() -> Unit,
 ) {
-    HullmodCardRenderer.render(this, width, title, theme, hullmodTooltip(block))
+    HullmodCardRenderer.render(this, width, title, theme, hullmodTooltip(block), topGapFill)
 }
 
 // ========== 渲染器（唯一落地路径） ==========
@@ -428,9 +432,10 @@ internal object HullmodCardRenderer {
         title: String?,
         theme: HullmodTheme,
         spec: HullmodTooltipSpec,
+        topGapFill: Float,
     ) {
         tooltip.buildWith {
-            spacer(-20f) // 填充 Hullmod Tooltip 顶部空隙
+            spacer(topGapFill) // 填充 Hullmod Tooltip 顶部空隙（无预留空隙的宿主传 0）
             withHullmodBackground(accentColor = theme.accentColor, width = width) {
                 spacer(6f) // 拉开空隙用于展示背景特效
                 if (!title.isNullOrEmpty()) {
