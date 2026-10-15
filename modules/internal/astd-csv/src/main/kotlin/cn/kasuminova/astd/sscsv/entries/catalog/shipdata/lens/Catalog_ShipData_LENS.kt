@@ -244,7 +244,7 @@ object Ship_astd_zw_103 : ShipDataEntry() {
     override val deceleration: Int = 80
     override val maxTurnRate: Int = 60
     override val turnAcceleration: Int = 80
-    override val mass: Int = 8000
+    override val mass: Int = 1750
 
     // PHASE：自定义相位系统 id 不走原版 isPhase() 的 "phasecloak" 分支，必须显式声明
     // （见 [Ship_astd_zw_002] 注释）。CARRIER：护航航母定位（2 内置机库），对齐原版纯航母
@@ -294,7 +294,7 @@ object Ship_astd_zw_103_fighter : ShipDataEntry() {
     override val deceleration: Int = 350
     override val maxTurnRate: Int = 90
     override val turnAcceleration: Int = 180
-    override val mass: Int = 30
+    override val mass: Int = 100
     override val shieldType: String = "FRONT"
     override val shieldArc: Int = 270
     override val shieldUpkeep: Double = 0.3
@@ -321,7 +321,7 @@ object Ship_astd_gemini_bomber : ShipDataEntry() {
     override val deceleration: Int = 250
     override val maxTurnRate: Int = 60
     override val turnAcceleration: Int = 120
-    override val mass: Int = 40
+    override val mass: Int = 80
     override val shieldType: String = "FRONT"
     override val shieldArc: Int = 240
     override val shieldUpkeep: Double = 0.3
@@ -349,7 +349,7 @@ object Ship_astd_surge_fighter : ShipDataEntry() {
     override val deceleration: Int = 400
     override val maxTurnRate: Int = 100
     override val turnAcceleration: Int = 180
-    override val mass: Int = 25
+    override val mass: Int = 40
     override val shieldType: String = "FRONT"
     override val shieldArc: Int = 270
     override val shieldUpkeep: Double = 0.3
@@ -381,7 +381,7 @@ object Ship_astd_gravwell_interceptor : ShipDataEntry() {
     override val deceleration: Int = 250
     override val maxTurnRate: Int = 60
     override val turnAcceleration: Int = 120
-    override val mass: Int = 35
+    override val mass: Int = 50
     override val shieldType: String = "OMNI"
     override val shieldArc: Int = 180
     override val shieldUpkeep: Double = 0.3

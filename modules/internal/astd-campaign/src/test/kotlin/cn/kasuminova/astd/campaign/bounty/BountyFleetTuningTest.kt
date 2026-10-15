@@ -33,9 +33,8 @@ class BountyFleetTuningTest {
         assertTrue(BountyFleetTunerImpl.isEscortExcludedHull("astd_xc_002", astdUnique = true))
         assertTrue(BountyFleetTunerImpl.isEscortExcludedHull("astd_zw_001", astdUnique = true))
         assertTrue(BountyFleetTunerImpl.isEscortExcludedHull("astd_zw_002", astdUnique = true))
-        // 逐电与决明在显式排除清单内：即使 astd_unique tag 漏标（false）也硬排除
+        // 逐电在显式排除清单内：即使 astd_unique tag 漏标（false）也硬排除
         assertTrue(BountyFleetTunerImpl.isEscortExcludedHull("astd_xc_104", astdUnique = false))
-        assertTrue(BountyFleetTunerImpl.isEscortExcludedHull("astd_zw_001", astdUnique = false))
         // 量产舰正常放行
         assertFalse(BountyFleetTunerImpl.isEscortExcludedHull("astd_xc_101", astdUnique = false))
         assertFalse(BountyFleetTunerImpl.isEscortExcludedHull("astd_xc_102", astdUnique = false))
@@ -313,8 +312,14 @@ class BountyFleetTuningTest {
             assertTrue(BountyOfficerSkills.forVariant(variantId) != null, "混编池变体 $variantId 缺少技能表登记")
         }
         // 发布范围外舰体与唯一舰不得进入随机池（唯一舰导入装配仅作旗舰引用）
-        assertTrue(poolIds.none { it.startsWith("astd_zw_001") || it.startsWith("astd_xc_104") }, "发布范围外舰体混入随机池")
-        assertTrue(poolIds.none { it.startsWith("astd_xc_001_") || it.startsWith("astd_xc_002_") || it.startsWith("astd_zw_002_") }, "唯一舰装配混入随机池")
+        assertTrue(poolIds.none { it.startsWith("astd_xc_104") }, "发布范围外舰体混入随机池")
+        assertTrue(
+            poolIds.none {
+                it.startsWith("astd_xc_001_") || it.startsWith("astd_xc_002_") ||
+                    it.startsWith("astd_zw_001_") || it.startsWith("astd_zw_002_")
+            },
+            "唯一舰装配混入随机池",
+        )
     }
 
     @Test
@@ -344,7 +349,7 @@ class BountyFleetTuningTest {
         val chain = listOf(
             "astd_bounty_rogue_1", "astd_bounty_rogue_2", "astd_bounty_rogue_3",
             "astd_bounty_rogue_4", "astd_bounty_rogue_5", "astd_bounty_rogue_6",
-            "astd_bounty_xc_002", "astd_bounty_zw_002", "astd_bounty_xc_001",
+            "astd_bounty_xc_002", "astd_bounty_zw_002", "astd_bounty_zw_001", "astd_bounty_xc_001",
         )
         chain.forEach { key ->
             assertTrue(BountyPoolConfig.THREAT_TIERS.containsKey(key), "赏金 $key 缺少难度档登记")

@@ -30,7 +30,7 @@ data class BountyPoolConfig(
         /**
          * ASTD 混编池：按舰级分组的正式 stock variant（contents/data/variants/）。
          * 显式变体池取代 doctrine 抽取：发布范围外舰体与唯一舰天然不入池。
-         * 唯一舰（astd_xc_001/xc_002/zw_002）的装配仅作旗舰引用，不入随机池。
+         * 唯一舰（astd_xc_001/xc_002/zw_001/zw_002）的装配仅作旗舰引用，不入随机池。
          */
         val ASTD_POOLS: Map<ShipAPI.HullSize, List<String>> = mapOf(
             ShipAPI.HullSize.CAPITAL_SHIP to listOf(
@@ -86,7 +86,7 @@ data class BountyPoolConfig(
 
         /**
          * 各赏金的难度档（StandardCores.planFleetCores 的 threatTier 入参）。
-         * 仅三个唯一舰赏金消费该映射（rogue 系核心池见 [ROGUE_ESCORT_CORE_POOL]）；
+         * 仅四个唯一舰赏金消费该映射（rogue 系核心池见 [ROGUE_ESCORT_CORE_POOL]）；
          * T≥5 僚舰封顶 B50/A50。
          */
         val THREAT_TIERS: Map<String, Int> = mapOf(
@@ -98,6 +98,7 @@ data class BountyPoolConfig(
             "astd_bounty_rogue_6" to 5,
             "astd_bounty_xc_002" to 5,
             "astd_bounty_zw_002" to 5,
+            "astd_bounty_zw_001" to 5,
             "astd_bounty_xc_001" to 5,
         )
 
@@ -111,6 +112,7 @@ data class BountyPoolConfig(
         val UNIQUE_FLAGSHIP_BOUNTIES: Set<String> = setOf(
             "astd_bounty_xc_001",
             "astd_bounty_xc_002",
+            "astd_bounty_zw_001",
             "astd_bounty_zw_002",
         )
 

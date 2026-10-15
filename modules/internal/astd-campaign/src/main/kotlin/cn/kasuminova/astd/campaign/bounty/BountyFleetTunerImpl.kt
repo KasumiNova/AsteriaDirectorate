@@ -263,7 +263,7 @@ class BountyFleetTunerImpl(
 
     /**
      * 军官分配：ASTD 成员（含旗舰）全部换装核心军官。
-     * 三个唯一舰赏金走 StandardCores.planFleetCores 难度档（旗舰 astd O 档）；
+     * 四个唯一舰赏金走 StandardCores.planFleetCores 难度档（旗舰 astd O 档）；
      * rogue 系旗舰固定原版 Alpha 核心，僚舰走核心池（原版/astd/SMS 加权，软联动过滤）。
      * 军官统一经原版插件分发链创建，等级按核心档覆盖；技能以变体技能表为准
      * （技能位不足时按全局优先级取舍），未登记变体退回全局优先级表取前 N。
@@ -635,7 +635,7 @@ class BountyFleetTunerImpl(
             originalVariant ?: hullVariantId
 
         /** 发布范围外舰体的显式排除清单（与 astd_unique tag 并用的双保险：tag 漏标时仍然生效）。 */
-        val EXCLUDED_HULL_IDS: Set<String> = setOf("astd_zw_001", "astd_xc_104")
+        val EXCLUDED_HULL_IDS: Set<String> = setOf("astd_xc_104")
 
         /** 余晖 doctrine 发现时跳过的舰体 hint：空间站与其模块不入作战混编池。 */
         val EXCLUDED_DOCTRINE_HULL_HINTS: Set<ShipHullSpecAPI.ShipTypeHints> = setOf(
@@ -771,8 +771,8 @@ class BountyFleetTunerImpl(
 
         /**
          * 护航排除判定，对所有注入路径（MagicLib 生成清退、随机补抽、纠偏补抽）统一生效：
-         * 全部独特舰（astd_unique tag 标于 ship_data.csv，含发布范围外的决明与当期唯一舰旗舰同型舰）
-         * 以及显式清单内的发布范围外舰体（决明 zw_001 / 逐电 xc_104）不得出现在赏金舰队护航位。
+         * 全部独特舰（astd_unique tag 标于 ship_data.csv，含当期唯一舰旗舰同型舰）
+         * 以及显式清单内的发布范围外舰体（逐电 xc_104）不得出现在赏金舰队护航位。
          */
         fun isEscortExcludedHull(hullId: String, astdUnique: Boolean): Boolean =
             astdUnique || hullId in EXCLUDED_HULL_IDS
