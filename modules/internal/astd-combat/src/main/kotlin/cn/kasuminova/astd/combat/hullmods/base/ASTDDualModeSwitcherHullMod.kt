@@ -56,6 +56,8 @@ class ASTDDualModeSwitcherHullMod : BaseHullMod() {
         val variant = stats.variant ?: return
         val config = ASTDDualModeRegistry.configForVariant(variant) ?: return
         variant.ensureASTDDualModeState(config, stats)
+        // 形态图标：内部模式船插 hiddenEverywhere 不展示，切换器图标随当前模式换 crew/auto 变体
+        ASTDHullmodSprites.swap(spec, ASTDHullmodSprites.switcherSpriteFor(variant, config))
     }
 
     /** 可装判定：仅 ASTD 舰可装本通用切换器。 */

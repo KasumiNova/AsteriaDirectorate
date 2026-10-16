@@ -4,6 +4,7 @@ import cn.kasuminova.astd.ui.dsl.HullmodThemes
 import cn.kasuminova.astd.ui.dsl.hullmodCard
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseHullMod
+import com.fs.starfarer.api.combat.MutableShipStatsAPI
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.ui.TooltipMakerAPI
 import com.fs.starfarer.api.util.IntervalUtil
@@ -50,6 +51,15 @@ class ASTDNanoRestorationProtocolHullMod : BaseHullMod() {
         private const val INTERVAL_KEY = "astd_nano_restoration_interval"
 
         private val THEME = HullmodThemes.NANO
+    }
+
+    override fun applyEffectsBeforeShipCreation(hullSize: ShipAPI.HullSize, stats: MutableShipStatsAPI, id: String) {
+        // 谱系图标：同一船插在 ARC / LENS 舰上分别显示 arc / lens 变体
+        val variant = stats.variant ?: return
+        ASTDHullmodSprites.swap(
+            spec,
+            ASTDHullmodSprites.lineageSpriteFor(variant, ASTDHullmodSprites.NANO_ARC, ASTDHullmodSprites.NANO_LENS),
+        )
     }
 
     override fun advanceInCombat(ship: ShipAPI, amount: Float) {

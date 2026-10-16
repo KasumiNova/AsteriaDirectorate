@@ -69,6 +69,13 @@ class ASTDSingularityStabilizerHullMod : BaseHullMod() {
     override fun applyEffectsBeforeShipCreation(hullSize: ShipAPI.HullSize, stats: MutableShipStatsAPI, id: String) {
         // 只检测入队：本回调可能在原版 OP 结算的 hullMods 实时迭代内触发，结构性移除会抛 CME
         IncompatibleHullmodStripper.requestStrip(stats.variant, FORBIDDEN_HULLMOD_IDS, MOD_ID)
+        // 谱系图标：联制两舰分属 ARC（lh_001）/ LENS（lh_002）侧，分别显示 arc / lens 变体
+        stats.variant?.let {
+            ASTDHullmodSprites.swap(
+                spec,
+                ASTDHullmodSprites.lineageSpriteFor(it, ASTDHullmodSprites.STABILIZER_ARC, ASTDHullmodSprites.STABILIZER_LENS),
+            )
+        }
     }
 
     override fun applyEffectsAfterShipCreation(ship: ShipAPI, id: String) {
