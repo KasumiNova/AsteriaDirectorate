@@ -23,6 +23,22 @@ object HullMod_astd_lens_singularity_power : HullModEntry() {
     override val sprite: String = "graphics/hullmods/astd_lens_singularity_power.png"
 }
 
+/**
+ * 纳米重构协议·紫变体（紫菀系舰内置）：与蓝变体共用效果脚本
+ * [cn.kasuminova.astd.combat.hullmods.base.ASTDNanoRestorationProtocolHullMod]，仅贴图与设计类型不同。
+ */
+object HullMod_astd_lens_nano_restoration_protocol : HullModEntry() {
+    override val id: String = "astd_lens_nano_restoration_protocol"
+    override val name: String = hullmodName(id)
+    override val tier: Int = 2
+    override val rarity: Int = 1
+    override val tech: String = "菀星设计局-紫菀"
+    override val tags: String = TAGS_BUILTIN
+    override val script: String = "cn.kasuminova.astd.combat.hullmods.base.ASTDNanoRestorationProtocolHullMod"
+    override val short: String = SsI18n.t("hullmod.$id.short")
+    override val sprite: String = "graphics/hullmods/astd_nano_restoration_protocol_lens.png"
+}
+
 object HullMod_astd_dimensional_folding_deck : HullModEntry() {
     override val id: String = "astd_dimensional_folding_deck"
     override val name: String = hullmodName(id)

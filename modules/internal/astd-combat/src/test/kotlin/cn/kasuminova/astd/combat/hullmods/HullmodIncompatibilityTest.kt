@@ -28,10 +28,11 @@ class HullmodIncompatibilityTest {
         assertTrue("hardenedshieldemitter" in plasmaShield, "熔壁等离子装甲护盾须禁装强化护盾")
         assertTrue("shield_shunt" in plasmaShield, "熔壁等离子装甲护盾须禁装护盾分流器")
 
-        val singularity = HullmodIncompatibility.forbiddenByController(
-            ASTDSingularityStabilizerHullMod.MOD_ID,
-        )
-        assertTrue("safetyoverrides" in singularity, "奇点稳定器须禁装安全协议超驰")
+        // 奇点稳定器蓝/紫双变体登记同一禁装集合
+        for (stabilizerId in listOf(ASTDSingularityStabilizerHullMod.ID_ARC, ASTDSingularityStabilizerHullMod.ID_LENS)) {
+            val singularity = HullmodIncompatibility.forbiddenByController(stabilizerId)
+            assertTrue("safetyoverrides" in singularity, "奇点稳定器（$stabilizerId）须禁装安全协议超驰")
+        }
 
         val energyIntegration = HullmodIncompatibility.forbiddenByController(
             ASTDAdvancedEnergyIntegrationHullMod.MOD_ID,

@@ -38,8 +38,9 @@ object HullmodIncompatibility {
             HullMods.ARMOREDWEAPONS,
             HullMods.TURRETGYROS,
         ),
-        // 奇点稳定器（联制线 lh_001/lh_002 内置）：安全协议超驰
-        ASTDSingularityStabilizerHullMod.MOD_ID to setOf(HullMods.SAFETYOVERRIDES),
+        // 奇点稳定器（联制线 lh_001/lh_002 内置，蓝/紫双变体同一禁装集合）：安全协议超驰
+        ASTDSingularityStabilizerHullMod.ID_ARC to setOf(HullMods.SAFETYOVERRIDES),
+        ASTDSingularityStabilizerHullMod.ID_LENS to setOf(HullMods.SAFETYOVERRIDES),
         // 先进电子对抗网络（决明 zw_001 内置）：电子对抗组件与电子反对抗组件
         AdvancedEcmNetworkTuning.HULLMOD_ID to setOf(
             HullMods.ECM,

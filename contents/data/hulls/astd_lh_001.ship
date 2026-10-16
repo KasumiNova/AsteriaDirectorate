@@ -13,7 +13,7 @@
   "viewOffset": 0,
   "builtInMods": [
     "astd_arc_singularity_power",
-    "astd_singularity_stabilizer"
+    "astd_arc_singularity_stabilizer"
   ],
   "builtInWeapons": {
     "WS0003": "astd_lh_stardust_launcher_arc",

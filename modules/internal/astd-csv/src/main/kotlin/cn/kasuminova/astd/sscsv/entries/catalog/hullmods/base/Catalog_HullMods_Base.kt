@@ -41,25 +41,6 @@ object HullMod_astd_dual_mode_switcher : HullModEntry() {
 }
 
 /**
- * 纳米重构协议（舰船无关的通用内置船插）。
- *
- * - 原注册于 ARC catalog（tech=ARC），通用化后迁至 base：所有独特舰默认内置（.ship builtInMods），
- *   脚本实现迁至 cn.kasuminova.astd.combat.hullmods.base.ASTDNanoRestorationProtocolHullMod。
- * - 保留 astd_builtin：仅内置分发（自动 hidden + 不可解锁），玩家不可在 refit 选择器安装。
- */
-object HullMod_astd_nano_restoration_protocol : HullModEntry() {
-    override val id: String = "astd_nano_restoration_protocol"
-    override val name: String = hullmodName(id)
-    override val tier: Int = 2
-    override val rarity: Int = 1
-    override val tech: String = ""
-    override val tags: String = TAGS_BUILTIN
-    override val script: String = "cn.kasuminova.astd.combat.hullmods.base.ASTDNanoRestorationProtocolHullMod"
-    override val short: String = SsI18n.t("hullmod.$id.short")
-    override val sprite: String = "graphics/hullmods/astd_nano_restoration_protocol_arc.png"
-}
-
-/**
  * 通用双模式·载人模式（舰船无关）。
  *
  * - id 必须与 [cn.kasuminova.astd.combat.hullmods.base.ASTDDualModeGenericIds.MODE_CREWED] 完全一致。

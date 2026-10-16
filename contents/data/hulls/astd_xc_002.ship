@@ -13,7 +13,7 @@
   "viewOffset": 0,
   "builtInMods": [
     "astd_arc_singularity_power",
-    "astd_nano_restoration_protocol",
+    "astd_arc_nano_restoration_protocol",
     "astd_imaginary_wings"
   ],
   "builtInWeapons": {

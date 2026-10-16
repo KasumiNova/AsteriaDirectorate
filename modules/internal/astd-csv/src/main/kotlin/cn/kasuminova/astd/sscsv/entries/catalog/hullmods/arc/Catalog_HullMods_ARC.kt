@@ -24,6 +24,22 @@ object HullMod_astd_arc_singularity_power : HullModEntry() {
 }
 
 /**
+ * 纳米重构协议·蓝变体（星坠系舰内置）：与紫变体共用效果脚本
+ * [cn.kasuminova.astd.combat.hullmods.base.ASTDNanoRestorationProtocolHullMod]，仅贴图与设计类型不同。
+ */
+object HullMod_astd_arc_nano_restoration_protocol : HullModEntry() {
+    override val id: String = "astd_arc_nano_restoration_protocol"
+    override val name: String = hullmodName(id)
+    override val tier: Int = 2
+    override val rarity: Int = 1
+    override val tech: String = "菀星设计局-星坠"
+    override val tags: String = TAGS_BUILTIN
+    override val script: String = "cn.kasuminova.astd.combat.hullmods.base.ASTDNanoRestorationProtocolHullMod"
+    override val short: String = SsI18n.t("hullmod.$id.short")
+    override val sprite: String = "graphics/hullmods/astd_nano_restoration_protocol_arc.png"
+}
+
+/**
  * 先进能量集成（XC-001 星坠内置船插，规格 10-unique §1）：
  * 能量射弹速度 +20%、能量武器辐能消耗 −15%、武器转向速率 +30%、非导弹武器 OP 折扣 −2/−4/−8。
  */

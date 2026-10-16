@@ -10,17 +10,15 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 /**
- * 内置船插动态图标（[ASTDHullmodSprites]）验证：
+ * 双模式切换器动态图标（[ASTDHullmodSprites]）验证：
  * 1. 换贴守卫——目标与当前 sprite 相同不写 spec，不同才写（stats 重算频繁，避免无意义赋值）。
- * 2. 切换器形态判定——variant 模式 permaMod 决定 crew/auto 变体；缺模式态按载人（状态机缺省）。
- * 3. 谱系判定——以 lens 奇点能源为 LENS 谱系标记，未携带按 ARC（含 lh_001 等 ARC 侧联制舰）。
+ * 2. 形态判定——variant 模式 permaMod 决定 crew/auto 变体；缺模式态按载人（状态机缺省）。
  */
 class ASTDHullmodSpritesTest {
 
-    private fun variantWith(permaMods: Set<String>, hullMods: Set<String> = emptySet()): ShipVariantAPI {
+    private fun variantWith(permaMods: Set<String>): ShipVariantAPI {
         val variant = mock(ShipVariantAPI::class.java)
         `when`(variant.permaMods).thenReturn(permaMods.toMutableSet())
-        `when`(variant.hasHullMod(org.mockito.ArgumentMatchers.anyString())).thenAnswer { it.arguments[0] in hullMods || it.arguments[0] in permaMods }
         return variant
     }
 
@@ -54,28 +52,6 @@ class ASTDHullmodSpritesTest {
             ASTDHullmodSprites.SWITCHER_CREW,
             ASTDHullmodSprites.switcherSpriteFor(variantWith(emptySet()), config),
             "缺模式态应按载人缺省",
-        )
-    }
-
-    @Test
-    fun `lineage sprite follows lens singularity power marker`() {
-        assertEquals(
-            ASTDHullmodSprites.NANO_LENS,
-            ASTDHullmodSprites.lineageSpriteFor(
-                variantWith(emptySet(), setOf("astd_lens_singularity_power")),
-                ASTDHullmodSprites.NANO_ARC,
-                ASTDHullmodSprites.NANO_LENS,
-            ),
-            "LENS 谱系（内置 lens 奇点能源）应显示 lens 变体",
-        )
-        assertEquals(
-            ASTDHullmodSprites.STABILIZER_ARC,
-            ASTDHullmodSprites.lineageSpriteFor(
-                variantWith(emptySet(), setOf("astd_arc_singularity_power")),
-                ASTDHullmodSprites.STABILIZER_ARC,
-                ASTDHullmodSprites.STABILIZER_LENS,
-            ),
-            "ARC 谱系应显示 arc 变体",
         )
     }
 }

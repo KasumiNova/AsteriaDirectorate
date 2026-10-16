@@ -1,10 +1,10 @@
 package cn.kasuminova.astd.combat.hullmods.base
 
+import cn.kasuminova.astd.ui.dsl.HullmodTheme
 import cn.kasuminova.astd.ui.dsl.HullmodThemes
 import cn.kasuminova.astd.ui.dsl.hullmodCard
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseHullMod
-import com.fs.starfarer.api.combat.MutableShipStatsAPI
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.ui.TooltipMakerAPI
 import com.fs.starfarer.api.util.IntervalUtil
@@ -12,14 +12,21 @@ import java.awt.Color
 import kotlin.math.min
 
 /**
- * 纳米重构协议（舰船无关的通用内置船插）：战斗内持续修复装甲与结构，修复产生辐能压力。
+ * 纳米重构协议（蓝 [ID_ARC] / 紫 [ID_LENS] 双变体共用本效果类，仅 spec 贴图与设计类型不同）：
+ * 战斗内持续修复装甲与结构，修复产生辐能压力。
  *
  * 动机：原实现位于 arc 包且文案写死星坠，实为全 ASTD 通用机制——所有独特舰默认内置
- * （.ship builtInMods），applicable 判定为全 ASTD 舰（[isASTDShip]）。
+ * （.ship builtInMods，星坠系挂蓝变体、紫菀系挂紫变体），applicable 判定为全 ASTD 舰（[isASTDShip]）。
  */
 class ASTDNanoRestorationProtocolHullMod : BaseHullMod() {
 
     companion object {
+        /** 蓝变体 id（菀星设计局-星坠，装配 astd_xc_*）。 */
+        const val ID_ARC: String = "astd_arc_nano_restoration_protocol"
+
+        /** 紫变体 id（菀星设计局-紫菀，装配 astd_zw_*）。 */
+        const val ID_LENS: String = "astd_lens_nano_restoration_protocol"
+
         // 基础修复速率：
         // - 结构：按最大结构百分比
         // - 装甲：按最受损装甲格最大装甲百分比
@@ -50,16 +57,9 @@ class ASTDNanoRestorationProtocolHullMod : BaseHullMod() {
         private const val BOOST_KEY = "astd_nano_restoration_boost"
         private const val INTERVAL_KEY = "astd_nano_restoration_interval"
 
-        private val THEME = HullmodThemes.NANO
-    }
+        private val THEME_ARC = HullmodThemes.ARC
 
-    override fun applyEffectsBeforeShipCreation(hullSize: ShipAPI.HullSize, stats: MutableShipStatsAPI, id: String) {
-        // 谱系图标：同一船插在 ARC / LENS 舰上分别显示 arc / lens 变体
-        val variant = stats.variant ?: return
-        ASTDHullmodSprites.swap(
-            spec,
-            ASTDHullmodSprites.lineageSpriteFor(variant, ASTDHullmodSprites.NANO_ARC, ASTDHullmodSprites.NANO_LENS),
-        )
+        private val THEME_LENS = HullmodThemes.LENS
     }
 
     override fun advanceInCombat(ship: ShipAPI, amount: Float) {
@@ -195,7 +195,7 @@ class ASTDNanoRestorationProtocolHullMod : BaseHullMod() {
         width: Float,
         isForModSpec: Boolean
     ) {
-        tooltip.hullmodCard(width, THEME, spec?.displayName) {
+        tooltip.hullmodCard(width, theme(), spec?.displayName) {
             para("ui.hullmod.nano.summary")
             heading("ui.hullmod.export.section.note")
             para("ui.hullmod.nano.line.1")
@@ -210,7 +210,10 @@ class ASTDNanoRestorationProtocolHullMod : BaseHullMod() {
 
     override fun isApplicableToShip(ship: ShipAPI): Boolean = ship.isASTDShip()
 
-    override fun getBorderColor(): Color = THEME.borderColor
+    override fun getBorderColor(): Color = theme().borderColor
 
-    override fun getNameColor(): Color = THEME.nameColor
+    override fun getNameColor(): Color = theme().nameColor
+
+    private fun theme(): HullmodTheme =
+        if (spec?.id == ID_LENS) THEME_LENS else THEME_ARC
 }

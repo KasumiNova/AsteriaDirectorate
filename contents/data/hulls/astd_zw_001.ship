@@ -13,7 +13,7 @@
   "viewOffset": 0,
   "builtInMods": [
     "astd_lens_singularity_power",
-    "astd_nano_restoration_protocol",
+    "astd_lens_nano_restoration_protocol",
     "astd_advanced_ecm_network"
   ],
   "builtInWeapons": {

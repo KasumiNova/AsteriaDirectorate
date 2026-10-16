@@ -14,7 +14,7 @@
   "builtInMods": [
     "astd_arc_singularity_power",
     "astd_arc_advanced_energy_integration",
-    "astd_nano_restoration_protocol"
+    "astd_arc_nano_restoration_protocol"
   ],
   "builtInWeapons": {
     "WS BLOOM": "astd_xc_001_lights_bloom",
