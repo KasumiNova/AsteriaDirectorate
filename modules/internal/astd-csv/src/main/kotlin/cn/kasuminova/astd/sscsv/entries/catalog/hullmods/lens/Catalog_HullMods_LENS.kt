@@ -52,7 +52,7 @@ object HullMod_astd_grav_em_field : HullModEntry() {
     override val tags: String = TAGS_BUILTIN
     override val script: String = "cn.kasuminova.astd.combat.hullmods.lens.GravEmFieldHullMod"
     override val short: String = SsI18n.t("hullmod.$id.short")
-    override val sprite: String = "graphics/hullmods/astd_lens_array_core.png"
+    override val sprite: String = "graphics/hullmods/astd_grav_em_field.png"
 }
 
 /**
@@ -72,7 +72,7 @@ object HullMod_astd_grav_space_fold : HullModEntry() {
     override val tags: String = TAGS_BUILTIN
     override val script: String = "cn.kasuminova.astd.combat.hullmods.lens.GravSpaceFoldHullMod"
     override val short: String = SsI18n.t("hullmod.$id.short")
-    override val sprite: String = "graphics/hullmods/astd_lens_array_core.png"
+    override val sprite: String = "graphics/hullmods/astd_grav_space_fold.png"
 }
 
 object HullMod_astd_grav_phase_deck : HullModEntry() {
@@ -106,5 +106,5 @@ object HullMod_astd_advanced_ecm_network : HullModEntry() {
     override val tags: String = TAGS_BUILTIN
     override val script: String = "cn.kasuminova.astd.combat.hullmods.lens.AdvancedEcmNetworkHullMod"
     override val short: String = SsI18n.t("hullmod.$id.short")
-    override val sprite: String = "graphics/hullmods/astd_lens_array_core.png"
+    override val sprite: String = "graphics/hullmods/astd_advanced_ecm_network.png"
 }

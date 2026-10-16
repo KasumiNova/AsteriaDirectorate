@@ -37,7 +37,7 @@ object HullMod_astd_dual_mode_switcher : HullModEntry() {
     override val hidden: Boolean = true
     override val script: String = "cn.kasuminova.astd.combat.hullmods.base.ASTDDualModeSwitcherHullMod"
     override val short: String = SsI18n.t("hullmod.$id.short")
-    override val sprite: String = "graphics/hullmods/astd_lens_array_core.png"
+    override val sprite: String = "graphics/hullmods/astd_dual_mode_switcher_crew.png"
 }
 
 /**
@@ -56,7 +56,7 @@ object HullMod_astd_nano_restoration_protocol : HullModEntry() {
     override val tags: String = TAGS_BUILTIN
     override val script: String = "cn.kasuminova.astd.combat.hullmods.base.ASTDNanoRestorationProtocolHullMod"
     override val short: String = SsI18n.t("hullmod.$id.short")
-    override val sprite: String = "graphics/hullmods/astd_nano_restoration_protocol.png"
+    override val sprite: String = "graphics/hullmods/astd_nano_restoration_protocol_arc.png"
 }
 
 /**
@@ -79,7 +79,7 @@ object HullMod_astd_mode_crewed : HullModEntry() {
     override val hiddenEverywhere: Boolean = true
     override val script: String = "cn.kasuminova.astd.combat.hullmods.base.ASTDCrewedModeHullMod"
     override val short: String = SsI18n.t("hullmod.$id.short")
-    override val sprite: String = "graphics/hullmods/astd_nano_restoration_protocol.png"
+    override val sprite: String = "graphics/hullmods/astd_dual_mode_switcher_crew.png"
 }
 
 /** 通用双模式·无人模式（舰船无关），见 [HullMod_astd_mode_crewed]。 */
@@ -94,7 +94,7 @@ object HullMod_astd_mode_automated : HullModEntry() {
     override val hiddenEverywhere: Boolean = true
     override val script: String = "cn.kasuminova.astd.combat.hullmods.base.ASTDAutomatedModeHullMod"
     override val short: String = SsI18n.t("hullmod.$id.short")
-    override val sprite: String = "graphics/hullmods/astd_vectorized_jet_array.png"
+    override val sprite: String = "graphics/hullmods/astd_dual_mode_switcher_auto.png"
 }
 
 /** 通用「下次激活载人」内部标记（舰船无关），镜像各舰专属 marker 行。 */
@@ -109,7 +109,7 @@ object HullMod_astd_mode_next_crewed : HullModEntry() {
     override val hiddenEverywhere: Boolean = true
     override val script: String = PLACEHOLDER_SCRIPT
     override val short: String = SsI18n.t("hullmod.$id.short")
-    override val sprite: String = "graphics/hullmods/astd_arc_loop_interface.png"
+    override val sprite: String = "graphics/hullmods/astd_dual_mode_switcher_crew.png"
 }
 
 /** 通用「下次激活无人」内部标记（舰船无关），镜像各舰专属 marker 行。 */
@@ -124,5 +124,5 @@ object HullMod_astd_mode_next_automated : HullModEntry() {
     override val hiddenEverywhere: Boolean = true
     override val script: String = PLACEHOLDER_SCRIPT
     override val short: String = SsI18n.t("hullmod.$id.short")
-    override val sprite: String = "graphics/hullmods/astd_arc_loop_interface.png"
+    override val sprite: String = "graphics/hullmods/astd_dual_mode_switcher_auto.png"
 }
