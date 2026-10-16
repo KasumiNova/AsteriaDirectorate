@@ -170,7 +170,7 @@ class ASTDImaginaryWingsHullMod : BaseHullMod() {
         private const val KEY_WINDOW_START = "astd_imaginary_wings_window_start"
 
         private const val HUD_KEY = "astd_imaginary_wings_status"
-        private const val HUD_ICON = "graphics/hullmods/astd_vectorized_jet_array.png"
+        private const val HUD_ICON = "graphics/hullmods/astd_imaginary_wings.png"
 
         private val feedback: CombatFeedback = CombatFeedbackImpl
 

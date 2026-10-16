@@ -174,7 +174,7 @@ class ChargeNeedleStacks(
         private const val HUD_VICTIM_KEY = "astd_charge_needle_stacks_victim_status"
 
         /** HUD 图标（ARC 回路接口船插图，复用现成美术）。 */
-        private const val HUD_ICON = "graphics/hullmods/astd_arc_loop_interface.png"
+        private const val HUD_ICON = "graphics/hullmods/astd_arc_singularity_power.png"
 
         /** HUD/浮字反馈通道（机制可视化铁律的统一落点）。 */
         private val feedback: CombatFeedback = CombatFeedbackImpl

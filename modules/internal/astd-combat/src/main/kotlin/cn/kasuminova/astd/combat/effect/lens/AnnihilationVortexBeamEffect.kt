@@ -282,7 +282,7 @@ class AnnihilationVortexBeamEffect : EveryFrameWeaponEffectPlugin {
         private const val HUD_KEY = "astd_annihilation_vortex_pool"
 
         /** HUD 图标（LENS 阵列核心船插图，复用现成美术；美术件到位后替换）。 */
-        private const val HUD_ICON = "graphics/hullmods/astd_lens_array_core.png"
+        private const val HUD_ICON = "graphics/hullmods/astd_lens_singularity_power.png"
 
         /** 单次吸收入池浮字色（LENS 深红）。 */
         private val ABSORB_FLOATY_COLOR = Color(255, 60, 70)

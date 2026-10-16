@@ -125,7 +125,7 @@ class StarfallEchoResonanceStacks(
         private const val HUD_VICTIM_KEY = "astd_starfall_echo_resonance_victim_status"
 
         /** HUD 图标（复用现成美术，对齐彗星冲击波口径）。 */
-        private const val HUD_ICON = "graphics/hullmods/astd_arc_loop_interface.png"
+        private const val HUD_ICON = "graphics/hullmods/astd_arc_singularity_power.png"
 
         /** HUD/浮字反馈通道（机制可视化铁律的统一落点）。 */
         private val feedback: CombatFeedback = CombatFeedbackImpl

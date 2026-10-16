@@ -156,7 +156,7 @@ class QiongjueCalcStacks(
         private const val HUD_KEY = "astd_qiongjue_status"
 
         /** HUD 图标（ARC 回路接口船插图，复用现成美术；武器贴图到位后替换为 graphics/weapons/astd_qiongjue_base.png）。 */
-        private const val HUD_ICON = "graphics/hullmods/astd_arc_loop_interface.png"
+        private const val HUD_ICON = "graphics/hullmods/astd_arc_singularity_power.png"
 
         /** 开火周期起点判定阈值（冷却读数上跳超过该值视为新周期；烟测实证 cooldownRemaining 含充能段，
          * 2.5s 全周期下跳沿约 +2.5，见 acceptance-log qjRefireMinAtFull=1.2376s ≈ 2/1.625 旧口径证据）。 */
