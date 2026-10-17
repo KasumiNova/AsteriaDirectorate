@@ -25,7 +25,7 @@ import java.awt.Color
  * - 玩家操控取 shipTarget（锁定的友军舰船）；AI 取
  *   [ShipwideAIFlags.AIFlags.TARGET_FOR_SHIP_SYSTEM]（由 [GravTimeflowInterferenceSystemAI]
  *   评分选靶后写入）；
- * - 目标须为友军（owner 相同）、非战机/无人机、非舰船模块、存活非残骸，且在有效射程
+ * - 目标须为友军（owner 相同）、非战机/无人机、非空间站（含模块）、存活非残骸，且在有效射程
  *   （[GravTimeflowTuning.BASE_RANGE] 经 systemRangeBonus 折算）内；
  *   不满足时系统不可激活（[isUsable] = false），HUD 提示「无有效目标」/「超出射程」。
  *
@@ -158,9 +158,11 @@ class GravTimeflowInterferenceSystemStats : BaseShipSystemScript() {
             for (fighter in wing.wingMembers) {
                 if (fighter.isHulk) continue
                 fighter.mutableStats.timeMult.modifyMult(TIMEFLOW_MOD_ID, timeMult)
+                // 战机体型小、数量多，用 setJitter（2 拷贝幽灵拷贝）而非 under 边缘抖动，
+                // 强度与发起舰同档（SELF_JITTER_MULT = 目标舰一半，观感「轻微」）
                 fighter.setJitter(
                     JITTER_KEY, JITTER_COLOR, selfJitterLevel, FIGHTER_JITTER_COPIES,
-                    0f, 0f + selfRangeBonus,
+                    0f, selfRangeBonus,
                 )
             }
         }
@@ -197,10 +199,9 @@ class GravTimeflowInterferenceSystemStats : BaseShipSystemScript() {
         var rangeBonus = 0f
         when (state) {
             ShipSystemStatsScript.State.IN -> {
+                // 对齐原版：effectLevel / (1f / chargeUpDur)，chargeUpDur 为 0 时结果为 0
                 val chargeUpDur = ship.system?.chargeUpDur ?: 0f
-                if (chargeUpDur > 0f) {
-                    rawLevel = (clampedEffect * chargeUpDur).coerceIn(0f, 1f)
-                }
+                rawLevel = (clampedEffect * chargeUpDur).coerceIn(0f, 1f)
                 rangeBonus = rawLevel * MAX_JITTER_RANGE_BONUS
             }
 
@@ -213,7 +214,10 @@ class GravTimeflowInterferenceSystemStats : BaseShipSystemScript() {
                 rangeBonus = clampedEffect * MAX_JITTER_RANGE_BONUS
             }
 
-            else -> Unit
+            // driveInterference 只对 IN/ACTIVE/OUT 调用，COOLDOWN/IDLE 仅为穷尽性兜底
+            ShipSystemStatsScript.State.COOLDOWN,
+            ShipSystemStatsScript.State.IDLE,
+            -> Unit
         }
         return JitterParams(kotlin.math.sqrt(rawLevel), rangeBonus)
     }
@@ -250,8 +254,9 @@ class GravTimeflowInterferenceSystemStats : BaseShipSystemScript() {
     private fun isValidTarget(ship: ShipAPI, target: ShipAPI?): Boolean =
         target != null && target !== ship && target.owner == ship.owner &&
                 !target.isFighter && !target.isDrone && !target.isHulk && target.isAlive &&
-                // 舰船模块不可选（2026-10 实机：增益不应落在空间站的模块实体上）
-                target.parentStation == null
+                // 空间站（含模块）不可选（2026-10 实机：增益不应落在空间站实体上；
+                // 注意 isStation 仅覆盖站体本体，模块需另行排除）
+                !target.isStation && !target.isStationModule
 
     override fun isUsable(system: ShipSystemAPI, ship: ShipAPI): Boolean =
         findTarget(ship) != null
@@ -325,7 +330,7 @@ class GravTimeflowInterferenceSystemStats : BaseShipSystemScript() {
         /** jitter 源句柄（自身/目标/战机共用同一 source，覆盖式刷新；结束停止刷新自然消退）。 */
         private val JITTER_KEY = Any()
 
-        /** jitter 配色（透镜紫，alpha 55 / 155 对齐原版“时流之壳” TemporalShellStats）。 */
+        /** jitter 配色（透镜紫；alpha 55 / 155 对齐原版“时流之壳” TemporalShellStats，原版配色为蓝）。 */
         private val JITTER_COLOR = Color(165, 80, 255, 55)
         private val JITTER_UNDER_COLOR = Color(165, 80, 255, 155)
 
@@ -336,7 +341,7 @@ class GravTimeflowInterferenceSystemStats : BaseShipSystemScript() {
         private const val TARGET_JITTER_UNDER_COPIES = 25
         private const val TARGET_JITTER_UNDER_BASE_RANGE = 7f
 
-        /** 发起舰边缘 jitter 参数：目标舰的一半效果（level/range ×0.5，under 拷贝数减半）。 */
+        /** 次级 jitter 强度乘区（目标舰的一半效果）：发起舰边缘 jitter 与目标所属战机 jitter 共用。 */
         private const val SELF_JITTER_MULT = 0.5f
         private const val SELF_JITTER_UNDER_COPIES = 12
         private const val SELF_JITTER_UNDER_BASE_RANGE = 3.5f

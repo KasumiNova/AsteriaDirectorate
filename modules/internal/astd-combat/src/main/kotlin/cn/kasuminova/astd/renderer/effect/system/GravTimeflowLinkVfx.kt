@@ -308,10 +308,11 @@ class GravTimeflowLinkVfx private constructor(
         private const val SHARD_RATE_PER_SEC = 18f
         private const val SHARD_SPEED = 350f
 
-        /** 星云粒子：稳态空间密度（px/颗，取 10~15 中值）、单颗平均寿命（折算补充速率用，与 DURATION_LO~HI 均值一致）、
+        /** 星云粒子：稳态空间密度（px/颗，取 10~15 中值）、单颗平均寿命（折算补充速率用，
+         * 实际单颗寿命 = fadeIn + full + fadeOut 包络 ≈ 1.65~2.05s，取均值 1.85）、
          * 尺寸域（px）、alpha 域、横向散布（su）、末端尺寸倍率与寿命包络比例（原版 addNebulaParticle 口径）、总时长域（秒）。 */
         private const val NEBULA_SPACING = 12.5f
-        private const val NEBULA_LIFE_SECONDS = 1.7f
+        private const val NEBULA_LIFE_SECONDS = 1.85f
         private const val NEBULA_SIZE_MIN = 20f
         private const val NEBULA_SIZE_MAX = 40f
         private const val NEBULA_ALPHA_LO = 30f

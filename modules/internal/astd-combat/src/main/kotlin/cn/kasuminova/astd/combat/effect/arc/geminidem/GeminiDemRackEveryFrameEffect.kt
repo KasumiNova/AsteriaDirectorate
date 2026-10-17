@@ -26,6 +26,8 @@ class GeminiDemRackEveryFrameEffect : EveryFrameWeaponEffectPlugin {
 
         /**
          * 锁扳机用的冷却垫（秒）：弹药回充到够齐射后最多再等这么一拍即可开火，玩家几乎无感。
+         * 取值须小于 weapon_data 的 burst delay（0.1s）：垫的冷却若越过连发窗口，
+         * 会在 burst 间隙把武器重新压住，干扰下一轮连发的起射节奏。
          */
         private const val FIRE_LOCK_COOLDOWN = 0.05f
 
