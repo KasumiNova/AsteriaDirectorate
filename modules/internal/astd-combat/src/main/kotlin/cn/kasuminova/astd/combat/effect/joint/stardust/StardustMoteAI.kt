@@ -56,12 +56,16 @@ class StardustMoteAI(missile: MissileAPI) : MoteAIScript(missile) {
      *
      * 保留的力（参数与原版逐字一致）：
      * - 硬避障：舰船/陨石斥力（父类 advance 以 0.05~0.1s 节拍刷新 [hardAvoidList]）；
-     * - 同伴排斥：[MoteAIScript.AVOID_RANGE] 随全局相位 ±25% 波动——聚集的对立面，防叠成一团；
+     * - 同伴排斥：[MoteAIScript.AVOID_RANGE] 随光尘自身 [elapsed] ±25% 波动——聚集的对立面，防叠成一团；
+     *   波动时基用每枚光尘自增的 elapsed（父类 advance 逐帧累加），而非原版的 SharedMoteAIData.elapsed——
+     *   后者由原版 MoteControlScript 驱动，ASTD 链路不运行该脚本（恒不增长），且全局同相位的波动
+     *   会让所有光尘同步胀缩排斥圈；各自 elapsed 让波动相位错开，符合「各自环绕」裁定；
      * - 源舰三力：太远重聚（半径+200）、太近排斥（半径+50）、随行聚合（半径+600 且源舰速度>20）；
      * - 无合力时绕源舰切向漂移（原版兜底，保证环绕而非悬停）。
      *
-     * 原版 attractor 拉力分支不保留：ASTD 链路无 mote 系统脚本写入
-     * attractorTarget/attractorLock（恒 null），该分支在本模组为恒死代码。
+     * 原版 attractor 拉力分支不保留：当前成立的前提是 ASTD 星尘发射器为内置 no_drop 武器、
+     * 源舰不运行原版 mote 系统脚本，attractorTarget/attractorLock 不会被写入（恒 null）；
+     * 未来若接入带原版 mote 系统的舰船（attractor 可能非 null），需重审本覆写是否保留该分支。
      */
     override fun doFlocking() {
         val source = missile.source ?: return
@@ -70,7 +74,7 @@ class StardustMoteAI(missile: MissileAPI) : MoteAIScript(missile) {
         val sourceRejoin = source.collisionRadius + 200f
         val sourceRepel = source.collisionRadius + 50f
         val sourceCohesion = source.collisionRadius + 600f
-        val avoidRange = MoteAIScript.AVOID_RANGE * (1f + sin(data.elapsed) * 0.25f)
+        val avoidRange = MoteAIScript.AVOID_RANGE * (1f + sin(elapsed) * 0.25f)
 
         val total = Vector2f()
 
@@ -138,7 +142,7 @@ class StardustMoteAI(missile: MissileAPI) : MoteAIScript(missile) {
         target = pickMissile(engine)
             ?: pickShip(engine, fighters = true)
                     ?: pickShip(engine, fighters = false)
-        // 环绕基准跟随源舰（不使用原版 attractor 机制，data.attractorLock 恒 null）
+        // 环绕基准跟随源舰（不使用原版 attractor 机制；data.attractorLock 恒 null 的前提见 doFlocking 注释）
         if (source.isHulk) target = null
     }
 

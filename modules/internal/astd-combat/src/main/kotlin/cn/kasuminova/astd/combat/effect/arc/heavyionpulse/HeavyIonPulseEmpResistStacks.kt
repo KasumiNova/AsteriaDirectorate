@@ -16,7 +16,7 @@ import kotlin.math.round
 /**
  * 单艘目标舰的 EMP 抗性削减层数（彗星冲击波船体/装甲命中机制的状态承载，规格 02 §2.3 修订）。
  *
- * 动机：每次船体/装甲命中叠 1 层，每层按难度查表绝对降低目标 EMP 抗性
+ * 动机：每次船体/装甲命中叠 1 层，每层削减量按难度三锚点 ScalingEntry 分段线性插值
  * （`empDamageTakenMult` 绝对位移 +stacks × perStack）；最多 [HeavyIonPulseTuning.RESIST_MAX_STACKS] 层，
  * 每秒消散 [HeavyIonPulseTuning.RESIST_DECAY_PER_SECOND] 层（固定不缩放）。
  *

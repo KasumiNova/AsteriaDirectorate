@@ -13,7 +13,10 @@ import kotlin.math.sqrt
  *
  * 本模块把「打击强度」替换为 单次结算伤害 × 穿甲倍率（武器档位 5/4/3/2），
  * 并反解出应传给 CombatEngineAPI.applyDamage 的输入伤害值，
- * 使引擎单次结算的装甲/船体伤害恰好等于目标口径——避免两次 applyDamage 导致装甲减伤被结算两次。
+ * 使引擎单次结算的装甲/船体伤害命中目标口径——避免两次 applyDamage 导致装甲减伤被结算两次。
+ *
+ * 精度口径（有意简化）：有效装甲取命中点**单格**装甲值（含最低装甲下限与 effectiveArmorBonus 倍率），
+ * 不复制原版引擎的命中点 5×5 邻域加权装甲模型——反解结果在该加权口径下为近似值。
  */
 internal object GravityCollapseArmorPiercing {
 
@@ -39,7 +42,8 @@ internal object GravityCollapseArmorPiercing {
      * - 触顶分支（减伤率达到上限）：X × f = T，X = T / f。
      * 吞吐函数关于 X 单调递增且两分支在边界连续，先求未触顶根并按成立条件择支，解唯一。
      *
-     * 调用前置条件：[damage] > 0 且 [effectiveArmor] > 0（装甲耗尽时无需反解，直接结算）。
+     * 调用前置条件：[damage] > 0 且 [effectiveArmor] > 0；[effectiveArmor] ≤ 0（含最低装甲下限为 0
+     * 且命中格装甲耗尽）时无减伤可反解，直接返回 [damage]。
      */
     fun solvePiercedInputDamage(
         damage: Float,

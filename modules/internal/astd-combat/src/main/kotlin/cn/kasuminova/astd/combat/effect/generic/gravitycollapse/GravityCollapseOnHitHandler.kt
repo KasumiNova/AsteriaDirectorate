@@ -23,7 +23,7 @@ import kotlin.random.Random.Default.nextDouble
 import kotlin.random.Random.Default.nextFloat
 
 /**
- * 引力坍缩炮：命中持续效果（坍缩扭曲 + 周期性范围高爆伤害 + 装甲减伤无视 + 机动抑制）。
+ * 引力坍缩炮：命中持续效果（坍缩扭曲 + 周期性范围高爆伤害 + 穿甲合并结算 + 机动抑制）。
  *
  * 机制口径（weapon_data tooltip 文案双向绑定）：
  * - 每 [GravityCollapseOnHitConfig.tickInterval] 秒在光束终点位置（可能被相位舰截断，见
@@ -58,9 +58,6 @@ internal class GravityCollapseOnHitHandler(
 
         /** 对战机的结算伤害倍率（2026-10 裁定：对战机伤害翻倍）。 */
         private const val FIGHTER_DAMAGE_MULT = 2f
-
-        /** 装甲耗尽判定阈值：命中格装甲低于该值视为无装甲，直接单次结算（无穿甲反解）。 */
-        private const val ARMOR_DEPLETED_EPS = 0.01f
     }
 
     private val hitCollapseInterval = IntervalUtil(config.tickInterval, config.tickInterval)
@@ -195,7 +192,8 @@ internal class GravityCollapseOnHitHandler(
      * - 护盾覆盖 → 只结算护盾伤害（不触发穿甲与机动抑制）；
      * - 命中装甲 → 以「单次结算伤害 × 穿甲倍率 × HE 对装甲倍率」为打击强度反解输入伤害
      *   （[GravityCollapseArmorPiercing.solvePiercedInputDamage]），一次调用完成穿甲结算；
-     * - 装甲耗尽 / 命中结构 / 非舰船目标 → 无需反解，直接单次结算。
+     * - 命中结构 / 非舰船目标 → 无需反解，直接单次结算；装甲耗尽格仍按原版最低装甲下限
+     *   （armorRating × minArmorFraction）反解——原版引擎对耗尽格同样保留下限减伤。
      *
      * 每次 tick 的结算伤害 = 面板折算脉冲 + 目标最大船体值 × [GravityCollapseOnHitConfig.hullDamageRatio]
      * （2026-10 裁定，附加部分与脉冲合并为同一结算实例，护盾命中同样结算）；
@@ -223,7 +221,8 @@ internal class GravityCollapseOnHitHandler(
         // 对战机伤害翻倍（2026-10 裁定）；穿甲打击强度同样基于翻倍后的单次结算伤害。
         if (ship != null && ship.isFighter) totalDamage *= FIGHTER_DAMAGE_MULT
 
-        // 命中装甲/船体且装甲未耗尽：反解输入伤害，把穿甲与主结算合并为一次 applyDamage。
+        // 命中装甲/船体：反解输入伤害，把穿甲与主结算合并为一次 applyDamage
+        // （装甲耗尽格按原版最低装甲下限反解，不跳过）。
         val inputDamage = if (ship != null && !ship.isHulk && !shieldCovered) {
             resolvePiercedInputDamage(ship, point, totalDamage)
         } else {
@@ -258,7 +257,9 @@ internal class GravityCollapseOnHitHandler(
 
     /**
      * 反解合并穿甲后的 applyDamage 输入伤害（口径见 [GravityCollapseArmorPiercing]）。
-     * 命中点装甲耗尽或不在装甲格内时无需反解，直接返回原结算伤害。
+     * 命中点不在装甲格内时无需反解，直接返回原结算伤害；装甲耗尽格不跳过反解——
+     * 原版引擎的有效装甲恒有下限 `max(格装甲, armorRating × minArmorFraction)`，
+     * 耗尽格按该下限反解（[GravityCollapseArmorPiercing.effectiveArmor] 的 max 语义）。
      */
     private fun resolvePiercedInputDamage(target: ShipAPI, point: Vector2f, totalDamage: Float): Float {
         if (totalDamage <= 0f) return totalDamage
@@ -267,7 +268,6 @@ internal class GravityCollapseOnHitHandler(
         val cell = grid.getCellAtLocation(point) ?: return totalDamage
         if (cell.size < 2) return totalDamage
         val armor = grid.getArmorValue(cell[0], cell[1]).coerceAtLeast(0f)
-        if (armor <= ARMOR_DEPLETED_EPS) return totalDamage
 
         val stats = target.mutableStats
         val effectiveArmor = GravityCollapseArmorPiercing.effectiveArmor(

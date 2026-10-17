@@ -43,8 +43,9 @@ import kotlin.random.Random
  * 舰船（含残骸 hulk，主要撞击风险源）与陨石；障碍列表走 aiGrid 空间网格周期刷新
  * （[SCAN_INTERVAL_MIN]~[SCAN_INTERVAL_MAX]s 节拍，[geminiDemScanObstacles]），不逐帧全表扫描。
  * 规避向量（[avoidanceVector]，MoteAI 式加权斥力）与「目标 + weave」瞄准方向合成期望朝向
- * （[desiredHeadingAngle]），转向指令跟随合成方向——规避是偏转而非覆盖，不丢失追踪；
- * 极端避不开时允许撞上（合成方向被斥力压过即撞线，无额外保命逻辑）。
+ * （[desiredHeadingAngle]），合成方向相对基准瞄准方向的偏转角钳制在 ±[MAX_AVOID_DEFLECT_DEG] 内——
+ * 规避是偏转而非覆盖：斥力再强也只偏转不掉头，不丢失追踪；
+ * 极端避不开时允许撞上（偏转到上限仍撞线即撞，无额外保命逻辑）。
  * 战机/其他导弹不纳入障碍：体量小、相对速度大，规避无意义且徒增转向噪声。
  * 打击段（DEMScript 接管后）不带本规避。
  *
@@ -61,7 +62,7 @@ class GeminiDemTrackAI internal constructor(
     private val engineProvider: () -> CombatEngineAPI = { Global.getCombatEngine() },
     private val retarget: (CombatEngineAPI, MissileAPI) -> ShipAPI? = ::geminiDemFindNearestEnemyShip,
     random: Random = Random.Default,
-    private val obstacleScan: (CombatEngineAPI, Vector2f, CombatEntityAPI?) -> List<GeminiDemObstacle> = ::geminiDemScanObstacles,
+    private val obstacleScan: (CombatEngineAPI, Vector2f, CombatEntityAPI?, Float) -> List<GeminiDemObstacle> = ::geminiDemScanObstacles,
 ) : MissileAIPlugin, GuidedMissileAI {
 
     @Volatile
@@ -79,6 +80,9 @@ class GeminiDemTrackAI internal constructor(
     private var obstacles: List<GeminiDemObstacle> = emptyList()
     private var scanInitialized = false
 
+    /** 已扫到的最大障碍碰撞半径（su）：扫描窗口自适应（[resolveScanRange]）的输入，逐次扫描刷新。 */
+    private var maxObstacleRadiusSeen = 0f
+
     override fun advance(amount: Float) {
         val engine = engineProvider()
         if (engine.isPaused) return
@@ -90,10 +94,12 @@ class GeminiDemTrackAI internal constructor(
             target = retarget(engine, missile)
         }
 
-        // 障碍列表周期刷新：当前追踪目标本人豁免（它就是要撞的）
+        // 障碍列表周期刷新：当前追踪目标本人豁免（它就是要撞的）；
+        // 扫描窗口自适应（[resolveScanRange]）：已扫到的大型障碍按其碰撞半径扩展窗口，避免大目标贴脸才进列表。
         scanTracker.advance(amount)
         if (!scanInitialized || scanTracker.intervalElapsed()) {
-            obstacles = obstacleScan(engine, missile.location, target)
+            obstacles = obstacleScan(engine, missile.location, target, resolveScanRange(maxObstacleRadiusSeen))
+            maxObstacleRadiusSeen = obstacles.maxOfOrNull { it.collisionRadius } ?: 0f
             scanInitialized = true
         }
         val avoid = avoidanceVector(missile.location, obstacles, AVOID_MARGIN)
@@ -110,7 +116,7 @@ class GeminiDemTrackAI internal constructor(
             } else {
                 t.location
             }
-            // 规避向量与瞄准方向合成期望朝向：近距斥力可压过追踪方向（尽力规避），远距几乎无扰动
+            // 规避向量与瞄准方向合成期望朝向：偏转角钳制在 ±MAX_AVOID_DEFLECT_DEG（尽力规避但不掉头），远距几乎无扰动
             val desired = desiredHeadingAngle(VectorUtils.getAngle(missile.location, aim), avoid)
             val diff = MathUtils.getShortestRotation(missile.facing, desired)
             if (abs(diff) > TURN_DEADZONE_DEG) {
@@ -157,10 +163,15 @@ class GeminiDemTrackAI internal constructor(
         private const val SCAN_INTERVAL_MAX = 0.1f
 
         /**
-         * 障碍网格查询半边长（su）：覆盖主力舰级碰撞半径（~200）+ 规避余量；
+         * 障碍网格查询基础半边长（su）：覆盖主力舰级碰撞半径（~200）+ 规避余量；
          * 弹速 225su/s 下 0.1s 刷新周期内弹体位移 ~22su，500su 窗口不会漏障。
+         * 实际扫描窗口由 [resolveScanRange] 自适应扩展：已扫到的大型障碍按其碰撞半径放大窗口，
+         * 避免「collisionRadius + [AVOID_MARGIN] 生效距离 > 窗口」的大目标（空间站等）贴脸才进列表。
          */
         internal const val SCAN_RANGE = 500f
+
+        /** 扫描窗口自适应余量（su）：覆盖 0.1s 刷新周期内弹体位移（225su/s × 0.1s ≈ 22su，取 30）。 */
+        private const val SCAN_ADAPTIVE_SLACK = 30f
 
         /**
          * 规避生效余量（su）：障碍距离 < 碰撞半径 + 本值时产生斥力。
@@ -169,10 +180,17 @@ class GeminiDemTrackAI internal constructor(
         internal const val AVOID_MARGIN = 180f
 
         /**
-         * 斥力权重：单个贴脸障碍的斥力模长上限（与模长 1 的瞄准单位向量合成，
-         * 近距规避方向可压过追踪方向；多个障碍线性累加）。
+         * 斥力权重：单个贴脸障碍的斥力模长上限（与模长 1 的瞄准单位向量合成，多个障碍线性累加）。
+         * 合成方向相对基准的偏转角由 [MAX_AVOID_DEFLECT_DEG] 钳制——斥力再强也只偏转不掉头。
          */
         internal const val AVOID_WEIGHT = 3f
+
+        /**
+         * 规避偏转角上限（度）：合成期望朝向相对基准瞄准方向的最大偏转。
+         * 取值对齐弹头转向能力 75°/s——1s 内可修正一个上限幅度的偏转；
+         * 规避语义是偏转而非覆盖，斥力再强也只把期望朝向压到该上限，不掉头。
+         */
+        internal const val MAX_AVOID_DEFLECT_DEG = 75f
 
         /** 规避向量有效阈值（模长平方）：低于该值视为无规避需求，不干扰原瞄准/直飞。 */
         private const val AVOID_EPS = 1e-4f
@@ -214,8 +232,11 @@ class GeminiDemTrackAI internal constructor(
 
         /**
          * 期望朝向合成（纯函数）：基准方向 [baseAngleDeg]（瞄准或当前朝向，模长 1）
-         * 与规避斥力 [avoidance] 矢量相加，取合成方向角；斥力恰与基准完全抵消（罕见极端）
-         * 时保持基准方向。返回角度制朝向（0~360）。
+         * 与规避斥力 [avoidance] 矢量相加，取合成方向角，再把相对基准的偏转角钳制在
+         * ±[MAX_AVOID_DEFLECT_DEG] 内——规避是偏转而非覆盖，斥力再强（近共线时模长可压过瞄准向量）
+         * 也只偏转不掉头，保留「尽力规避、极端情况允许撞上」语义；
+         * 斥力恰与基准完全抵消（罕见极端）时保持基准方向；完全反向（偏转恰 ±180°）时确定性取左转侧。
+         * 返回角度制朝向（0~360）。
          */
         internal fun desiredHeadingAngle(baseAngleDeg: Float, avoidance: Vector2f): Float {
             if (avoidance.lengthSquared() <= AVOID_EPS) return baseAngleDeg
@@ -225,8 +246,22 @@ class GeminiDemTrackAI internal constructor(
             if (sumX * sumX + sumY * sumY <= AVOID_EPS) return baseAngleDeg
             var angle = Math.toDegrees(atan2(sumY.toDouble(), sumX.toDouble())).toFloat()
             if (angle < 0f) angle += 360f
-            return angle
+            var rotation = MathUtils.getShortestRotation(baseAngleDeg, angle)
+            // getShortestRotation 值域 [-180, 180)：完全反向返回 -180，归一到 +180 使钳制后确定性落左转侧
+            if (rotation <= -180f) rotation += 360f
+            val clamped = rotation.coerceIn(-MAX_AVOID_DEFLECT_DEG, MAX_AVOID_DEFLECT_DEG)
+            var result = (baseAngleDeg + clamped) % 360f
+            if (result < 0f) result += 360f
+            return result
         }
+
+        /**
+         * 扫描窗口自适应（纯函数）：基础窗口 [SCAN_RANGE] 与「已扫到的最大障碍半径 + 规避生效余量
+         * + 刷新周期位移余量」取大，保证大型障碍（空间站等碰撞半径可超 320su）进入其避障生效距离前
+         * 已在障碍列表内；首次发现仍受基础窗口限制（此前无从得知其半径），扫到过一次后窗口即扩展。
+         */
+        internal fun resolveScanRange(maxObstacleRadius: Float): Float =
+            maxOf(SCAN_RANGE, maxObstacleRadius.coerceAtLeast(0f) + AVOID_MARGIN + SCAN_ADAPTIVE_SLACK)
 
         private fun lerp(a: Float, b: Float, t: Float): Float = a + (b - a) * t
 

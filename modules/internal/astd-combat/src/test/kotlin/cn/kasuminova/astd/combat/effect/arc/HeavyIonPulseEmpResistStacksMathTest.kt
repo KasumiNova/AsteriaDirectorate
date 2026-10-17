@@ -87,6 +87,15 @@ class HeavyIonPulseEmpResistStacksMathTest {
     }
 
     @Test
+    fun `消散速率钉死 0_5 层每秒 10 层推进 2 秒降至 9 层`() {
+        val f = newFixture()
+        f.stacks.addStacks(10)
+        f.stacks.advance(2f)
+        // 0.5 层/s × 2s = 恰好消散 1 层（旧 1 层/s 口径下此处为 8 层，本用例钉住速率本身）。
+        assertEquals(9, f.stacks.stacks)
+    }
+
+    @Test
     fun `消散归零经 host 移除 onRemove 无残留`() {
         val f = newFixture()
         f.stacks.addStacks(3)

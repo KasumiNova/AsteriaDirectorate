@@ -43,7 +43,7 @@ class QiongjueRailgunScenario : AbstractAutomationScenario() {
     private var qjStackFps = -1f
 
     // DUAL（2026-09 修订：共享证据）：w1 独建满层后 w2 补射，首发同享满层乘区（读 qjW2DealtMult 遥测）。
-    // SWITCH：异目标折算证据（floor(10×0.3125)+1=4）。
+    // SWITCH：异目标折算证据（floor(10×0.5)+1=6）。
     private var qjSwitchW1Stacks = -1
 
     // DECAY：停火窗口衰减证据（3s 窗口 + 1.75 层/s 归零耗时）。
@@ -54,7 +54,7 @@ class QiongjueRailgunScenario : AbstractAutomationScenario() {
     private var qjStacksAfterKillHit = -1
     private var qjKillRetargeted = false
 
-    // ENEMY_SCALE：敌版三档逐命中伤害乘区证据（v1 2%/v2 4%/v5 10% × 4~5 层）；采样前停火 settle 防层数续爬。
+    // ENEMY_SCALE：敌版三档逐命中伤害乘区证据（v1 2.5%/v2 5%/v5 12.5% × 4~5 层）；采样前停火 settle 防层数续爬。
     private var qjScaleStep = 0
     private var qjScaleSampling = false
     private var qjScaleSampleAt = -1f
@@ -216,7 +216,7 @@ class QiongjueRailgunScenario : AbstractAutomationScenario() {
         }
     }
 
-    /** 满层射速间隔追踪：w1 新弹 spawn 间隔（w1 满层窗口内取最小值，期望 2.5s 全周期/1.4≈1.79s 的 spike 证据）。 */
+    /** 满层射速间隔追踪：w1 新弹 spawn 间隔（w1 满层窗口内取最小值，期望 2.5s 全周期/1.5≈1.67s 的 spike 证据）。 */
     private fun trackQjRefire(engine: CombatEngineAPI, w1: WeaponAPI?, w1Stacks: Int) {
         w1 ?: return
         for (p in engine.projectiles) {
@@ -301,13 +301,13 @@ class QiongjueRailgunScenario : AbstractAutomationScenario() {
                     val cone = QiongjuePhaseRailgunOnHitEffect.telemetryCount(engine, QiongjuePhaseRailgunOnHitEffect.TELEMETRY_CONE_VFX)
                     when {
                         kotlin.math.abs(qjDmgMultAtFull - QJ_EXPECT_FULL_DMG_MULT) > QJ_DMG_MULT_TOLERANCE -> {
-                            ctx.failureReason = "qj full dmg mult=$qjDmgMultAtFull, expect≈$QJ_EXPECT_FULL_DMG_MULT（10 层 × v2 4%）"
+                            ctx.failureReason = "qj full dmg mult=$qjDmgMultAtFull, expect≈$QJ_EXPECT_FULL_DMG_MULT（10 层 × v2 5%）"
                             transitionQjPhase(QJ_PHASE_FAILED)
                         }
 
                         qjRefireMinAtFull < QJ_REFIRE_MIN || qjRefireMinAtFull > QJ_REFIRE_MAX -> {
                             ctx.failureReason =
-                                "qj full refire min=$qjRefireMinAtFull, expect [$QJ_REFIRE_MIN, $QJ_REFIRE_MAX]（2.5s 全周期/1.4≈1.79s spike，cooldownRemaining 含充能段）"
+                                "qj full refire min=$qjRefireMinAtFull, expect [$QJ_REFIRE_MIN, $QJ_REFIRE_MAX]（2.5s 全周期/1.5≈1.67s spike，cooldownRemaining 含充能段）"
                             transitionQjPhase(QJ_PHASE_FAILED)
                         }
 
@@ -382,7 +382,7 @@ class QiongjueRailgunScenario : AbstractAutomationScenario() {
                         transitionQjPhase(QJ_PHASE_DECAY)
                     } else {
                         ctx.failureReason =
-                            "qj switch stacks=$qjSwitchW1Stacks(expect $QJ_SWITCH_MIN_STACKS~$QJ_SWITCH_MAX_STACKS: floor(10×0.3125)+1=4) transfer=$transfer(expect>=1)"
+                            "qj switch stacks=$qjSwitchW1Stacks(expect $QJ_SWITCH_MIN_STACKS~$QJ_SWITCH_MAX_STACKS: floor(10×0.5)+1=6) transfer=$transfer(expect>=1)"
                         transitionQjPhase(QJ_PHASE_FAILED)
                     }
                 }
@@ -481,7 +481,7 @@ class QiongjueRailgunScenario : AbstractAutomationScenario() {
                             transitionQjPhase(QJ_PHASE_COMPLETED)
                         } else {
                             ctx.failureReason =
-                                "qj enemy dealt mult 三档=$qjEnemyMult1/$qjEnemyMult2/$qjEnemyMult5, expect [1.07,1.11]/[1.15,1.21]/[1.39,1.51]（v1 2%/v2 4%/v5 10% × 4~5 层逐命中乘区）"
+                                "qj enemy dealt mult 三档=$qjEnemyMult1/$qjEnemyMult2/$qjEnemyMult5, expect [1.09,1.14]/[1.19,1.26]/[1.49,1.64]（v1 2.5%/v2 5%/v5 12.5% × 4~5 层逐命中乘区）"
                             transitionQjPhase(QJ_PHASE_FAILED)
                         }
                     }
@@ -688,9 +688,9 @@ class QiongjueRailgunScenario : AbstractAutomationScenario() {
         private const val QJ_EXPECT_RANGE = 1100f
         private const val QJ_RANGE_TOLERANCE = 5f
 
-        // 满层证据期望：v2 每层 4% × 10 → 伤害乘区 1.4（600→840）；
-        // 射速 spike 压缩全周期（烟测实证 cooldownRemaining 含充能段）：2.5s/1.4≈1.79s。
-        private const val QJ_EXPECT_FULL_DMG_MULT = 1.4f
+        // 满层证据期望：v2 每层 5% × 10 → 伤害乘区 1.5（640→960）；
+        // 射速 spike 压缩全周期（烟测实证 cooldownRemaining 含充能段）：2.5s/1.5≈1.67s。
+        private const val QJ_EXPECT_FULL_DMG_MULT = 1.5f
         private const val QJ_DMG_MULT_TOLERANCE = 0.02f
         private const val QJ_REFIRE_MIN = 1.6f
         private const val QJ_REFIRE_MAX = 2.0f
@@ -701,11 +701,11 @@ class QiongjueRailgunScenario : AbstractAutomationScenario() {
         private const val QJ_DUAL_W2_FIRE_AFTER = 4f
         private const val QJ_DUAL_SECONDS = 7f
 
-        // SWITCH：w1 10 层折算 floor(10×0.3125)+1=4（采样帧可能已再叠 1 层，容差到 5）。
-        private const val QJ_SWITCH_MIN_STACKS = 4
-        private const val QJ_SWITCH_MAX_STACKS = 5
+        // SWITCH：w1 10 层折算 floor(10×0.5)+1=6（采样帧可能已再叠 1 层，容差到 7）。
+        private const val QJ_SWITCH_MIN_STACKS = 6
+        private const val QJ_SWITCH_MAX_STACKS = 7
 
-        // DECAY：停火至归零期望 ≈ 3s 窗口 + 4 层/1.75 ≈ 5.3s。
+        // DECAY：停火至归零期望 ≈ 3s 窗口 + 6 层/1.75 ≈ 6.4s。
         private const val QJ_DECAY_MIN_SECONDS = 4f
         private const val QJ_DECAY_MAX_SECONDS = 8f
 
@@ -716,14 +716,14 @@ class QiongjueRailgunScenario : AbstractAutomationScenario() {
         private const val QJ_SCALE_SETTLE_SECONDS = 0.3f
         private const val QJ_ENEMY_SCALE_TARGET_STACKS = 5
 
-        // 敌版三档逐命中乘区期望：1 + 4~5 × v1 2% / v2 4% / v5 10% = 1.08~1.10 / 1.16~1.20 / 1.40~1.50；
+        // 敌版三档逐命中乘区期望：1 + 4~5 × v1 2.5% / v2 5% / v5 12.5% = 1.10~1.125 / 1.20~1.25 / 1.50~1.625；
         // 监听器按命中前层数结算（天然滞后一层），采样窗口内容忍 4~5 层两值，三档区间互不重叠。
-        private const val QJ_ENEMY_MULT_1_MIN = 1.07f
-        private const val QJ_ENEMY_MULT_1_MAX = 1.11f
-        private const val QJ_ENEMY_MULT_2_MIN = 1.15f
-        private const val QJ_ENEMY_MULT_2_MAX = 1.21f
-        private const val QJ_ENEMY_MULT_5_MIN = 1.39f
-        private const val QJ_ENEMY_MULT_5_MAX = 1.51f
+        private const val QJ_ENEMY_MULT_1_MIN = 1.09f
+        private const val QJ_ENEMY_MULT_1_MAX = 1.14f
+        private const val QJ_ENEMY_MULT_2_MIN = 1.19f
+        private const val QJ_ENEMY_MULT_2_MAX = 1.26f
+        private const val QJ_ENEMY_MULT_5_MIN = 1.49f
+        private const val QJ_ENEMY_MULT_5_MAX = 1.64f
         private const val QJ_PHASE_TIMEOUT = 90f
     }
 }
