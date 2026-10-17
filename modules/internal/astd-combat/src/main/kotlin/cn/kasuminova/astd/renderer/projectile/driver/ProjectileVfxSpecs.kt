@@ -122,9 +122,9 @@ object ProjectileVfxSpecs {
                 decorTrail = false
             ) {
                 machRing("ring") {
-                    cadence(0.2f, 30f)
+                    cadence(0.1f, 30f)
                     color(0x8CC7FFFF, alpha = 1f)
-                    shape(flatten = 0.45f, growthStart = 0.5f, growthEnd = 2.5f, fadeIn = 0.05f, full = 0.05f, fadeOut = 0.3f)
+                    shape(flatten = 0.5f, growthStart = 0.5f, growthEnd = 2.5f, fadeIn = 0.05f, full = 0.05f, fadeOut = 0.5f)
                     momentum(900f)
                 }
             }
@@ -395,7 +395,7 @@ object ProjectileVfxSpecs {
         machRing("ring") {
             cadence(0.2f, 30f)
             color(0x78BEFFFF, alpha = 1f)
-            shape(flatten = 0.45f, growthStart = 0.5f, growthEnd = 2.5f, fadeIn = 0.05f, full = 0.05f, fadeOut = 0.3f)
+            shape(flatten = 0.5f, growthStart = 0.5f, growthEnd = 2.5f, fadeIn = 0.05f, full = 0.05f, fadeOut = 0.3f)
             momentum(800f, 1000f)
         }
     }
@@ -454,7 +454,7 @@ object ProjectileVfxSpecs {
         machRing("ring") {
             cadence(0.15f, 50f)
             color(0xFF5A3CFF, alpha = 1f)
-            shape(flatten = 0.45f, growthStart = 0.5f, growthEnd = 2.5f, fadeIn = 0.05f, full = 0.05f, fadeOut = 0.4f)
+            shape(flatten = 0.5f, growthStart = 0.5f, growthEnd = 2.5f, fadeIn = 0.05f, full = 0.05f, fadeOut = 0.4f)
             momentum(800f, 1000f)
         }
     }
@@ -492,7 +492,7 @@ object ProjectileVfxSpecs {
         machRing("ring") {
             cadence(0.2f, 35f)
             color(0xAA6EFFFF, alpha = 1f)
-            shape(flatten = 0.45f, growthStart = 0.7f, growthEnd = 3f, fadeIn = 0.05f, full = 0.05f, fadeOut = 0.5f)
+            shape(flatten = 0.5f, growthStart = 0.7f, growthEnd = 3f, fadeIn = 0.05f, full = 0.05f, fadeOut = 0.5f)
             momentum(200f, 400f)
         }
     }
