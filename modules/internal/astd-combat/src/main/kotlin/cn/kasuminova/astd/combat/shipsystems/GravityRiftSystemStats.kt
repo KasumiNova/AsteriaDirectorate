@@ -332,35 +332,38 @@ class GravityRiftSystemStats : BaseShipSystemScript() {
         }
 
         /**
-         * 起点双光斑：SMOOTH + SMOOTH_DISC 混合风格，红色系对齐裂隙光束颜色。
+         * 起点双光斑：SMOOTH + SMOOTH_DISC 混合风格，红色系对齐裂隙光束颜色，随机闪烁。
          * 生命周期 [GravityRiftTuning.BEAM_DURATION] + [FLARE_FADE_TAIL_SECONDS]
          * （覆盖光束强火窗口 + chargedown 0.3s 淡出），到期自动清理；
-         * 位置/朝向每帧经 FlareFollow 跟随旋涡锚点与 [lastFacing]（复用控制器瞄准结果）。
+         * 位置/朝向每帧经 FlareFollow 跟随旋涡锚点与 [lastFacing]（复用控制器瞄准结果），
+         * 朝向额外 +90°（光斑长轴与光束走向垂直铺开）。
          */
         private fun spawnAnchorFlares() {
             val follow = BloomFlareVfx.FlareFollow { out ->
                 out.set(vortex.currentAnchor())
-                lastFacing
+                lastFacing + 90f
             }
             val flare1 = BloomFlareSpec(
                 style = BoxFlareStyle.SMOOTH,
                 sizeStart = 20f, sizeEnd = 20f,
                 heightStart = 20f, heightEnd = 20f,
-                facingDeg = lastFacing,
+                facingDeg = lastFacing + 90f,
                 coreColor = ASTDColor(colorToLong(FLARE_CORE_COLOR)),
                 fringeColor = ASTDColor(colorToLong(FLARE_FRINGE_COLOR)),
                 glowPower = 0.3f,
                 noisePower = 0f,
+                flicker = true,
             )
             val flare2 = BloomFlareSpec(
                 style = BoxFlareStyle.SMOOTH_DISC,
                 sizeStart = 200f, sizeEnd = 200f,
                 heightStart = 20f, heightEnd = 20f,
-                facingDeg = lastFacing,
+                facingDeg = lastFacing + 90f,
                 coreColor = ASTDColor(colorToLong(FLARE_CORE_COLOR)),
                 fringeColor = ASTDColor(colorToLong(FLARE_FRINGE_COLOR)),
                 glowPower = 0.2f,
                 noisePower = 0f,
+                flicker = true,
             )
             BloomFlareVfxImpl.spawn(
                 engine, vortex.currentAnchor(),

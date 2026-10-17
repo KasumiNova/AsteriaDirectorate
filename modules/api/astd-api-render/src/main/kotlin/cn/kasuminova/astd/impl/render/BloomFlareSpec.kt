@@ -28,6 +28,8 @@ data class BloomFlareSpec(
     val glowPower: Float = 1f,
     /** 边缘 fbm 噪点强度（0 = 关闭）。 */
     val noisePower: Float = 0f,
+    /** 随机闪烁（BoxUtil FlareEntity 内建闪烁，同步码按实体实例区分即逐枚随机）。 */
+    val flicker: Boolean = false,
     /** BoxUtil 实体渲染层。 */
     val layer: CombatEngineLayers = CombatEngineLayers.ABOVE_PARTICLES,
 ) {
@@ -44,10 +46,11 @@ data class BloomFlareSpec(
         fringeColor: ASTDColor,
         glowPower: Float = 1f,
         noisePower: Float = 0f,
+        flicker: Boolean = false,
         layer: CombatEngineLayers = CombatEngineLayers.ABOVE_PARTICLES,
     ) : this(
         style, sizeStart, sizeEnd,
         sizeStart * aspect, sizeEnd * aspect,
-        facingDeg, coreColor, fringeColor, glowPower, noisePower, layer,
+        facingDeg, coreColor, fringeColor, glowPower, noisePower, flicker, layer,
     )
 }

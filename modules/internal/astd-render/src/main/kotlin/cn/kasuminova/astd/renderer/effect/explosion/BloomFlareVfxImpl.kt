@@ -80,7 +80,7 @@ object BloomFlareVfxImpl : BloomFlareVfx {
             BoxFlareStyle.SMOOTH_DISC -> entity.setSmoothDisc()
             BoxFlareStyle.SHARP_DISC -> entity.setSharpDisc()
         }
-        entity.isFlick = false
+        entity.isFlick = spec.flicker
         entity.isSyncFlick = false
         entity.glowPower = spec.glowPower
         entity.noisePower = spec.noisePower
