@@ -4,7 +4,8 @@
 > 状态：规划文档，不改动 `src/` 与 `ss-csv/`。
 > API 核查时间：2026-07-29，对照 `starfarer.api.jar`（0.98）javap 签名与现有 `src/` 代码逐条核实（`OnHitEffectPlugin`、`CombatEngineAPI.spawnEmpArc(...)/applyDamage(...)/addFloatingDamageText(...)/spawnEmpArcVisual(...)`、`MutableShipStatsAPI.getEmpDamageTakenMult()` + `MutableStat.getModifiedValue()`、`DamagingProjectileAPI.getEmpAmount()`、`CombatEntityAPI.getOwner()`、`DifficultyTuningImpl.installScaleForTests`、ss-csv `WeaponDataEntry`/`ProjectileProjSpec` 字段、`I18n.t` 均存在；音效 `ion_pulser_fire` 已在原版 `sounds.json` 核实）。
 > 复用承诺：泄放概率结算随机走共享 `CombatRandom`；Weapon 级 callIndex 走共享 Buff API 复合键标记 Buff；反馈通道走 00 §4.2；OnHit 模式对齐 `01-charge-needle.md`（90 计划 §2.6「复用电荷针刺 OnHit 模式」）。**2026-09 修订**：本件新增目标侧叠层状态（EMP 抗性削减，Ship 级 `StackableBuff`，`HeavyIonPulseEmpResistStacks`），原「无叠层机制、不使用 StackableBuff」口径作废。
-> **2026-09 机制修订摘要**：更名「彗星冲击波」（id 不变）；面板改 800 射程 / 250 伤害 / 500 EMP / OP 28 / 弹匣 24 / 4 连发 0.1s + 冷却 0.4s；泄放概率与 EMP 倍率改五档精确查表；新增船体/装甲命中必叠 EMP 抗性削减（40 层上限、1 层/s 消散、隐藏的易伤转化）；电弧基准 EMP 改为弹体面板值；EMP 贯穿（破晓敌版）机制不变。
+> **2026-09 机制修订摘要**：更名「彗星冲击波」（id 不变）；面板改 800 射程 / 250 伤害 / 500 EMP / OP 28 / 弹匣 24 / 4 连发 0.1s + 冷却 0.4s；泄放概率与 EMP 倍率改五档精确查表；新增船体/装甲命中必叠 EMP 抗性削减（2026-10 修订：20 层上限、每 2 秒消散 1 层即 0.5 层/s 连续消散、隐藏的易伤转化）；电弧基准 EMP 改为弹体面板值；EMP 贯穿（破晓敌版）机制不变。
+> **2026-10 数值修订**：每层 EMP 抗性削减由五档查表（1%/2%/3%/4%/5%）改为三锚点 `ScalingEntry(0.04f, 0.08f, 0.20f)`（v1 4% / v2 8% / v5 20%，中间档分段线性插值，与穷距等同级武器三锚点风格统一）；层数上限 40 → 20；消散 1 层/s → 0.5 层/s（每 2 秒消散 1 层，连续模式浮点累加器天然支持分数层速率）。
 
 ---
 
@@ -103,9 +104,9 @@ object Desc_astd_heavy_ion_pulse : LocalizedDescription("astd_heavy_ion_pulse", 
 # Weapon 名称（2026-09 更名：重型离子脉冲 → 彗星冲击波）
 weapon.astd_heavy_ion_pulse.name=彗星冲击波
 
-# Weapon tooltip 自定义字段（数值以 v2 为准：抗性削减 2%/层、至多 40 层、1 层/s 消散；泄放概率 30%、EMP 100%；高亮字一律 {%s} 占位，原文只在 HL）
-weapon.astd_heavy_ion_pulse.tooltip.customPrimary=命中船体或装甲时降低目标 {%s} 的 EMP 抗性，至多叠加 {%s} 层、每秒消散 {%s} 层；同时有 {%s} 的概率产生打击武器与引擎的电弧，造成该武器命中目标时 {%s} 的额外伤害。效果受到{%s}影响。
-weapon.astd_heavy_ion_pulse.tooltip.customPrimaryHL=2% | 40 | 1 | 30% | 100% | 难度系数
+# Weapon tooltip 自定义字段（数值以 v2 为准：抗性削减 8%/层、至多 20 层、每 2 秒消散 1 层；泄放概率 50%、EMP 100%；高亮字一律 {%s} 占位，原文只在 HL）
+weapon.astd_heavy_ion_pulse.tooltip.customPrimary=命中船体或装甲时降低目标 {%s} 的 EMP 抗性，至多叠加 {%s} 层、每 {%s} 秒消散 1 层；同时有 {%s} 的概率产生打击武器与引擎的电弧，造成该武器命中目标时 {%s} 的额外伤害。效果受到{%s}影响。
+weapon.astd_heavy_ion_pulse.tooltip.customPrimaryHL=8% | 20 | 2 | 50% | 100% | 难度系数
 
 # Weapon 定位（2026-07-29 审批修正：与原版 ionpulser 同用「瘫痪」）
 weapon.astd_heavy_ion_pulse.primaryRoleStr=瘫痪
@@ -141,7 +142,7 @@ desc.astd_heavy_ion_pulse.notes=
 | 类名 | 接口/实现 | 职责 | 挂载点 | 文件路径 |
 |---|---|---|---|---|
 | `HeavyIonPulseOnHitEffect` | 实现 `OnHitEffectPlugin` | 命中路由：船体/装甲命中 → 必叠 1 层 EMP 抗性削减 + 概率泄放 EMP 电弧 +（v5）EMP 贯穿补伤；护盾命中直接返回 | `.proj` 的 `onHitEffect` | `src/main/kotlin/cn/kasuminova/astd/combat/effect/arc/HeavyIonPulseOnHitEffect.kt` |
-| `HeavyIonPulseEmpResistStacks` | 实现共享 `StackableBuff`（CONTINUOUS 衰减） | **目标侧状态（2026-09 新增）**：EMP 抗性削减层数（浮点累加器、上限 40、1 层/s 消散）、`empDamageTakenMult` 绝对位移幂等刷新、HUD 维护、层数归零自移除 | 经 `ShipAPI.buffHost()` 注册（Ship 级，id `astd_heavy_ion_pulse_emp_resist`） | 同包 `HeavyIonPulseEmpResistStacks.kt` |
+| `HeavyIonPulseEmpResistStacks` | 实现共享 `StackableBuff`（CONTINUOUS 衰减） | **目标侧状态（2026-09 新增）**：EMP 抗性削减层数（浮点累加器、上限 20、每 2 秒消散 1 层即 0.5 层/s 连续消散）、`empDamageTakenMult` 绝对位移幂等刷新、HUD 维护、层数归零自移除 | 经 `ShipAPI.buffHost()` 注册（Ship 级，id `astd_heavy_ion_pulse_emp_resist`） | 同包 `HeavyIonPulseEmpResistStacks.kt` |
 | `HeavyIonPulseShots` | 实现共享 `Buff`（非叠层，纯标记） | 记录泄放概率结算随机的 `callIndex`（00 §4.1 口径：Weapon 级复合键，seed 派生 `source.id*31 + slot.id`） | Weapon 级 Buff，id `astd_heavy_ion_pulse_shots` | 同包 `HeavyIonPulseShots.kt` |
 | `HeavyIonPulseTuning` | object（数值声明，对齐 `DifficultyTuningImpl` object 先例） | 查表 `ScalingTable` / 三锚点 `ScalingEntry` 常量 + `resolve(tuning, isPlayer)` 取值 + 纯函数 `empPierceExtra(...)` / `empPierceApplied(...)` / `shouldDischarge(...)` | 被 OnHit 调用 | 同包 `HeavyIonPulseTuning.kt` |
 | `HeavyIonPulseVfx` | object（视觉静态入口，对齐 `ImpactStrikeFx` 惯例） | 泄放电弧落点选取与 `spawnEmpArc` 调用、贯穿补伤浮字与火花 | 被 OnHit 调用 | 同包 `HeavyIonPulseVfx.kt` |
@@ -150,17 +151,17 @@ desc.astd_heavy_ion_pulse.notes=
 
 ### 2.2 难度锚点与取值调用点
 
-`HeavyIonPulseTuning`（2026-09 修订：泄放概率 / EMP 倍率 / 抗性削减改为五档精确查表 `ScalingTable`，逐档不插值）：
+`HeavyIonPulseTuning`（2026-09 修订：泄放概率 / EMP 倍率改五档精确查表 `ScalingTable`，逐档不插值；2026-10 修订：每层抗性削减改回三锚点 `ScalingEntry`，分段线性插值）：
 
 | 常量 | k1 | k2（v2 / 玩家固定档） | k3 | k4 | k5 |
 |---|---|---|---|---|---|
-| `DISCHARGE_CHANCE`（泄放电弧触发概率） | 20% | 30% | 40% | 50% | 60% |
+| `DISCHARGE_CHANCE`（泄放电弧触发概率） | 25% | 50% | 66.7% | 83.3% | 100% |
 | `DISCHARGE_EMP_MULT`（泄放 EMP 倍率） | 75% | 100% | 125% | 150% | 200% |
-| `EMP_RESIST_PER_STACK`（每层 EMP 抗性削减） | 1% | 2% | 3% | 4% | 5% |
+| `EMP_RESIST_PER_STACK`（每层 EMP 抗性削减，三锚点 v1/v2/v5，中间档插值） | 4% | 8% | 12% | 16% | 20% |
 
-固定不缩放：EMP 抗性削减层数上限 `RESIST_MAX_STACKS = 40`、消散速率 `RESIST_DECAY_PER_SECOND = 1` 层/s、EMP 贯穿减免下限 `PIERCE_FLOOR = 0.1`。
+固定不缩放：EMP 抗性削减层数上限 `RESIST_MAX_STACKS = 20`、消散速率 `RESIST_DECAY_PER_SECOND = 0.5` 层/s（每 2 秒消散 1 层）、EMP 贯穿减免下限 `PIERCE_FLOOR = 0.1`。
 **电弧基准 EMP 直取弹体面板值**（`projectile.empAmount`，2026-09 修订：旧常量 `BASE_DISCHARGE_EMP = 600` 已删除）。
-初始化锚点历史：旧三锚点 `DISCHARGE_CHANCE = (0.25, 0.3125, 0.50)` / `DISCHARGE_EMP_MULT = (1.00, 1.25, 2.00)` 作废。
+初始化锚点历史：旧三锚点 `DISCHARGE_CHANCE = (0.25, 0.3125, 0.50)` / `DISCHARGE_EMP_MULT = (1.00, 1.25, 2.00)` 作废；2026-09 版五档抗性削减表（1%/2%/3%/4%/5%）2026-10 作废。
 **EMP 贯穿为逐项映射式解锁**：不入查表——激活条件为 `DifficultyTuningImpl.fixedScale >= 5f`（破晓档），玩家版本 `owner == 0` 固定 v2 口径天然排除（设计案：玩家永远不会获得此特效）。
 
 调用点：`HeavyIonPulseOnHitEffect.onHit` 内每次船体/装甲命中调用一次
@@ -266,7 +267,7 @@ empPierceApplied(extra, mult): Float =                    // A9 裁定方案 a�
 - `mult` 恰等于 0.1：不补（`<` 口径，与 §2.5 测试用例钉死）。
 - `baseEmp = projectile.empAmount ≤ 0`（配置错误：emp 列被清/被其他 mod 清零）：泄放与贯穿全部跳过并**记 WARN 一次/武器 id**——面板 EMP 是本件存在意义，归零属配置异常，不静默。
 - ~~**贯穿追加量是否被目标 `empDamageTakenMult` 二次减免**~~ **已证实并修复（2026-07-29，A9）**：烟测证实 `applyDamage(empDamage)` 被目标 mult 二次折算（mult≈0 目标实际结算≈0、浮字却显示全额）。审批裁定**方案 a 折算补偿**：施加量 `extra / max(mult, 0.01f)`，引擎二次乘算后实际结算回补到 extra，浮字显示 extra（显示值 = 实际结算量）；mult ≤ 0 完全免疫时整体跳过。纯函数 `empPierceApplied` 已钉死（单测用例 9~12），烟测相位机加 applied 遥测硬断言。
-- **EMP 抗性削减叠层（2026-09 新增）的 0 值防线**：目标 `empDamageTakenMult ≤ 0`（完全 EMP 免疫，0 乘区无法被乘算突破）时机制不产生效果——层数照常累积/消散但不写 stat（与贯穿 mult ≤ 0 整体跳过同一口径，已文档化）；`current ≤ 0` 分支已先 `unmodifyMult` 自身 modifier，无残留。层数上限 40、1 层/s 消散、`onRemove` 恰一次 unmodify。
+- **EMP 抗性削减叠层（2026-09 新增）的 0 值防线**：目标 `empDamageTakenMult ≤ 0`（完全 EMP 免疫，0 乘区无法被乘算突破）时机制不产生效果——层数照常累积/消散但不写 stat（与贯穿 mult ≤ 0 整体跳过同一口径，已文档化）；`current ≤ 0` 分支已先 `unmodifyMult` 自身 modifier，无残留。层数上限 20、每 2 秒消散 1 层（0.5 层/s 连续消散）、`onRemove` 恰一次 unmodify。
 - `projectile.source == null`（脚本生成的游离弹）：按非玩家口径取值（`source?.owner == 0` 为 false）；泄放/贯穿的 source 形参传 null 由原版兜底（原版 API 允许 null source——若实机异常则以 `projectile.weapon?.ship` 再兜底并记 WARN，不做静默吞异常）。
 - 目标 hulk 化/相位态：命中路由直接 return；目标侧抗性削减状态为 HOST_BOUND Buff，随宿主 hulk/死亡由心跳回收并 unmodify（2026-09 修订：原「本件不挂任何目标侧 stat 修改、天然无回收负担」的口径作废）。
 - 敌版泄放随机序列：`HeavyIonPulseShots` 为 Weapon 级 Buff，宿主换装/死亡由共享 BuffTickPlugin 心跳回收（HOST_BOUND），callIndex 无泄漏。
@@ -315,7 +316,7 @@ empPierceApplied(extra, mult): Float =                    // A9 裁定方案 a�
 `HeavyIonPulseEmpResistStacksMathTest`（2026-09 新增，`MutableStat` 真对象 + mock Ship/引擎）：
 
 9. **绝对位移幂等**：注入他源 modifier 后连调 `advance` → `empDamageTakenMult.modifiedValue` 恒为 `他源终值 + 层数 × perStack`（不叠乘、不累加）；`onRemove` 后回他源终值。
-10. **层数上限与消散**：40 层 clamp；`advance(0.5f)` 恰 -0.5 层；归零经 host 移除且无 stat 残留。
+10. **层数上限与消散**：20 层 clamp；`advance(1f)` 恰 -0.5 层；归零经 host 移除且无 stat 残留。
 11. **0 乘区防线**：他源终值 ≤ 0（完全 EMP 免疫）时不写 stat，层数照常累积/消散。
 
 `HeavyIonPulseDischargeTest`：
@@ -330,8 +331,8 @@ empPierceApplied(extra, mult): Float =                    // A9 裁定方案 a�
 
 1. dev 仓储出现武器 + 蓝图；学习蓝图后 refit 大能量槽可装配；名称/tip/定位字符串全中文无键名泄漏。
 2. 弹匣节奏（90 计划 §2.5 指定项）：满匣 24 发可持续倾泻约 4.2s（4 连发 0.1s/发 + 射击冷却 0.4s，约 5.7 发/s）；双炮管交替出膛（muzzle flash 左右交替）。
-3. 命中船体：可见冷蓝白 EMP 电弧连向武器/引擎部位、武器瘫痪火花；v2 档触发频率符合 30% 体感；命中护盾无电弧（EMP 对盾无效）。
-4. 难度隔离：LunaLib k_s=5 下玩家持有仍 30%/100%；敌版 60%/200%（2026-09 修订：五档查表，旧 31.25%/125% 与 50%/200% 作废）。
+3. 命中船体：可见冷蓝白 EMP 电弧连向武器/引擎部位、武器瘫痪火花；v2 档触发频率符合 50% 体感；命中护盾无电弧（EMP 对盾无效）。
+4. 难度隔离：LunaLib k_s=5 下玩家持有仍 50%/100%；敌版 100%/200%（2026-09 修订：五档查表，旧 31.25%/125% 与 50%/200% 三锚点作废）。
 5. EMP 贯穿：k_s=5 下对高 EMP 抗性敌舰（dev 手段造 mult < 0.1 目标）命中出现补伤浮字与火花；k_s=2 下同目标无浮字；玩家受击时（敌版破晓武器打玩家高抗性舰）浮字可见。
 6. **待验证项现场核对**：对 mult ≈ 0 目标观察补伤浮字数值是否被二次减免（§2.5 待验证项结论记录）。
 7. 弹体 VFX：冷蓝白 texTrail 弹体 + zappy 电弧副带，无原版弹体残留、无拖尾错位；泄放电弧冷蓝白。
@@ -384,7 +385,7 @@ empPierceApplied(extra, mult): Float =                    // A9 裁定方案 a�
 - [ ] 泄放随机走 `CombatRandom`，同帧不二次取值；callIndex 走 Weapon 级复合键标记 Buff，未自建 customData 状态表。
 - [ ] 玩家固定 v2 取值在 OnHit 每次命中处调用（非缓存）；EMP 贯穿激活条件为 `fixedScale >= 5f && !isPlayer`，v1/v2 无此特效。
 - [ ] 贯穿补伤走 `applyDamage`（无二次 onHit 回环）+ `addFloatingDamageText`（反馈铁律落点）；`empPierceExtra` 三档与 mult=0 防线落地。
-- [ ] `baseEmp ≤ 0` 配置异常 WARN 一次/武器 id；抗性削减走 Ship 级 `StackableBuff`（幂等绝对位移、上限 40、1 层/s 消散、`onRemove` unmodify、完全 EMP 免疫时跳过写 stat）。
+- [ ] `baseEmp ≤ 0` 配置异常 WARN 一次/武器 id；抗性削减走 Ship 级 `StackableBuff`（幂等绝对位移、上限 20、每 2 秒消散 1 层、`onRemove` unmodify、完全 EMP 免疫时跳过写 stat）。
 - [ ] 玩家固定 v2：查表项取 `v2`、`ScaleEntry` 项走 `tuning.value(entry)`；`hullSize` 分档只在减针族使用（本件不涉及）。
 
 **特效面**

@@ -31,17 +31,17 @@ class QiongjueStackMathTest {
         var stacks = 0
         val expected = listOf(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 10)
         expected.forEachIndexed { index, want ->
-            stacks = QiongjueStackMath.stacksAfterHit(stacks, oldTargetValid = true, sameTarget = true, retainPct = 0.3125f)
+            stacks = QiongjueStackMath.stacksAfterHit(stacks, oldTargetValid = true, sameTarget = true, retainPct = 0.5f)
             assertEquals(want, stacks, "第 ${index + 1} 次同目标命中层数")
         }
     }
 
     @Test
     fun `用例2 异目标折算三档`() {
-        // stacks=10 切换：v1 → floor(10×0.25)+1=3；v2 → floor(3.125)+1=4；v5 → floor(5)+1=6。
+        // stacks=10 切换：v1 → floor(10×0.25)+1=3；v2 → floor(10×0.5)+1=6；v5 → floor(10×1.0)+1=11 clamp 至上限 10。
         assertEquals(3, QiongjueStackMath.stacksAfterHit(10, oldTargetValid = true, sameTarget = false, retainPct = 0.25f))
-        assertEquals(4, QiongjueStackMath.stacksAfterHit(10, oldTargetValid = true, sameTarget = false, retainPct = 0.3125f))
         assertEquals(6, QiongjueStackMath.stacksAfterHit(10, oldTargetValid = true, sameTarget = false, retainPct = 0.50f))
+        assertEquals(10, QiongjueStackMath.stacksAfterHit(10, oldTargetValid = true, sameTarget = false, retainPct = 1.0f))
     }
 
     @Test
@@ -100,9 +100,10 @@ class QiongjueStackMathTest {
 
     @Test
     fun `用例7 倍率正算`() {
-        assertEquals(1.0f, QiongjueStackMath.mult(0, 0.0625f), 1e-6f)
-        assertEquals(1.625f, QiongjueStackMath.mult(10, 0.0625f), 1e-6f)
-        assertEquals(2.0f, QiongjueStackMath.mult(10, 0.10f), 1e-6f)
+        // 锚点口径：v2 每层 5%（stacks=10 → 1.5）、v5 每层 12.5%（stacks=10 → 2.25）。
+        assertEquals(1.0f, QiongjueStackMath.mult(0, 0.05f), 1e-6f)
+        assertEquals(1.5f, QiongjueStackMath.mult(10, 0.05f), 1e-6f)
+        assertEquals(2.25f, QiongjueStackMath.mult(10, 0.125f), 1e-6f)
     }
 
     @Test

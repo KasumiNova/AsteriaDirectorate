@@ -50,7 +50,7 @@ class HeavyIonPulseEmpResistStacksMathTest {
         val f = newFixture()
         f.stacks.addStacks(10)
         f.stacks.advance(0.01f)
-        // 消散 1 层/s × 0.01s → 9.99，floor = 9；位移 1.0 + 9×0.02 = 1.18。
+        // 消散 0.5 层/s × 0.01s → 9.995，floor = 9；位移 1.0 + 9×0.02 = 1.18。
         assertEquals(9, f.stacks.stacks)
         assertEquals(1.18f, f.empStat.modifiedValue, 1e-6f)
 
@@ -68,13 +68,13 @@ class HeavyIonPulseEmpResistStacksMathTest {
         f.stacks.advance(0.01f)
         assertEquals(0.68f, f.empStat.modifiedValue, 1e-6f, "他源 0.5 + 0.18 位移 = 0.68")
 
-        // 易伤转化（隐藏机制）：位移越过他源终值 → mult 破 1（0.5 + 40×0.05 = 2.5）。
+        // 易伤转化（隐藏机制）：位移越过他源终值 → mult 破 1（上限 20 层 clamp，0.5 + 19×0.05 = 1.45）。
         val g = newFixture(perStack = 0.05f)
         g.empStat.modifyMult("other_mod", 0.5f)
         g.stacks.addStacks(40)
         g.stacks.advance(0.001f)
-        assertEquals(39, g.stacks.stacks)
-        assertEquals(0.5f + 39 * 0.05f, g.empStat.modifiedValue, 1e-6f, "位移越界自然转易伤 2.45")
+        assertEquals(19, g.stacks.stacks)
+        assertEquals(0.5f + 19 * 0.05f, g.empStat.modifiedValue, 1e-6f, "位移越界自然转易伤 1.45")
     }
 
     @Test

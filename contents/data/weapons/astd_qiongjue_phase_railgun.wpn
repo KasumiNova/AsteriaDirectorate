@@ -38,7 +38,7 @@
     },
     "projectileSpecId": "astd_qiongjue_phase_railgun_shot",
     "everyFrameEffect": "cn.kasuminova.astd.combat.effect.generic.CombatVfxBootstrapEveryFrameEffect",
-    "fireSoundTwo": "gauss_fire",
+    "fireSoundTwo": "gauss_cannon_fire",
     "turretGlowSprite": "graphics/weapons/astd_qiongjue_glow.png",
     "hardpointGlowSprite": "graphics/weapons/astd_qiongjue_hp_glow.png",
     "glowColor": [

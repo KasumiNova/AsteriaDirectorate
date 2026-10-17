@@ -1,6 +1,7 @@
 package cn.kasuminova.astd.combat.effect.arc.heavyionpulse
 
 import cn.kasuminova.astd.api.difficulty.DifficultyTuning
+import cn.kasuminova.astd.api.difficulty.ScalingEntry
 import cn.kasuminova.astd.api.difficulty.ScalingTable
 
 /**
@@ -10,8 +11,9 @@ import cn.kasuminova.astd.api.difficulty.ScalingTable
  * 与 EMP 贯穿补伤（破晓敌版逐项解锁）的数值集中在一处声明；泄放判定与贯穿补伤量均为纯函数，
  * 供 OnHit 调用并由单元测试直接驱动。
  *
- * 数值缩放口径（2026-09 修订）：泄放概率 / EMP 倍率 / 抗性削减改为五档精确查表
- * （[ScalingTable]，逐档语义不做线性插值）；玩家来源（owner == 0）按我方档位取值
+ * 数值缩放口径（2026-10 修订）：泄放概率 / EMP 倍率为五档精确查表
+ * （[ScalingTable]，逐档语义不做线性插值）；每层 EMP 抗性削减为三锚点 [ScalingEntry]
+ * （与穷距等同级武器的三锚点风格统一，中间档分段线性插值）；玩家来源（owner == 0）按我方档位取值
  * （默认砺刃 v2，见 DifficultyTuning.valueFor）。
  * EMP 贯穿不入查表——激活条件为 `fixedScale >= 5f && !isPlayer`（破晓敌版限定，
  * 玩家版本天然排除：玩家永远不会获得此特效）。
@@ -24,14 +26,18 @@ object HeavyIonPulseTuning {
     /** 泄放 EMP 倍率（五档查表：k1 75% / k2 100% / k3 125% / k4 150% / k5 200%）。 */
     val DISCHARGE_EMP_MULT = ScalingTable(0.75f, 1.00f, 1.25f, 1.50f, 2.00f)
 
-    /** 每层 EMP 抗性削减（五档查表：k1 1% / k2 2% / k3 3% / k4 4% / k5 5%）。 */
-    val EMP_RESIST_PER_STACK = ScalingTable(0.01f, 0.02f, 0.03f, 0.04f, 0.05f)
+    /** 每层 EMP 抗性削减（三锚点：v1 4% / v2 8% / v5 20%，中间档分段线性插值）。 */
+    val EMP_RESIST_PER_STACK = ScalingEntry(0.04f, 0.08f, 0.20f)
 
     /** EMP 抗性削减层数上限（固定不缩放）。 */
-    const val RESIST_MAX_STACKS = 40
+    const val RESIST_MAX_STACKS = 20
 
-    /** EMP 抗性削减消散速率（层/s，固定不缩放）。 */
-    const val RESIST_DECAY_PER_SECOND = 1f
+    /**
+     * EMP 抗性削减消散速率（层/s，固定不缩放）：0.5 层/s 即每 2 秒消散 1 层。
+     * 连续模式（[cn.kasuminova.astd.api.buff.StackDecayMode.CONTINUOUS]）下浮点累加器
+     * 天然支持分数层速率——层数视图取 floor，每 2s 整层读数减 1，无需间隔模式。
+     */
+    const val RESIST_DECAY_PER_SECOND = 0.5f
 
     /** EMP 贯穿减免下限：目标 EMP 减免超过 90%（mult < 0.1）时触发补伤（固定不缩放）。 */
     const val PIERCE_FLOOR = 0.1f
@@ -55,7 +61,8 @@ object HeavyIonPulseTuning {
     )
 
     /**
-     * 难度取值唯一入口：玩家阵营按我方档位（默认砺刃 v2）五档查表，其余阵营按轨一 k_s 查表。
+     * 难度取值唯一入口：玩家阵营按我方档位（默认砺刃 v2）取值，其余阵营按轨一 k_s 取值
+     * （查表项逐档取档、三锚点项分段线性插值，由 [DifficultyTuning.valueFor] 重载分流）。
      * 每次命中调用一次（不缓存），保证 LunaLib 设置变更即时生效。
      */
     fun resolve(tuning: DifficultyTuning, isPlayer: Boolean): Values = Values(

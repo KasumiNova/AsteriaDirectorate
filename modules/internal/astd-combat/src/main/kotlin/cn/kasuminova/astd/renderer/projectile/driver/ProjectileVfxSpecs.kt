@@ -103,7 +103,9 @@ object ProjectileVfxSpecs {
             )
         },
         // 穷距相位轨道炮：ARC 冷蓝白弹体 + 长距离明亮拖尾（蓝→淡绿渐变尾），trail 长 = 射程×50%、宽 −35%、
-        // 装饰层关闭（大弹体主角光环留给外带/核心）；弹头补 SMOOTH 光斑强化弹体发光，开火附带炮口锥面碎片。
+        // 装饰层关闭（大弹体主角光环留给外带/核心）；弹头补 SMOOTH 光斑强化弹体发光，开火附带炮口锥面碎片；
+        // 马赫环发射器 0.2s 一枚（环半径 30 对齐 16su 宽弹体观感，前飞动量 = 弹速 1800×0.5 = 900su/s，
+        // 颜色跟随 qiongjueBlue 调色板 140,199,255）。
         "astd_qiongjue_phase_railgun_shot" to { range ->
             simpleProjectileVfx(
                 "astd_qiongjue_phase_railgun_shot",
@@ -118,7 +120,14 @@ object ProjectileVfxSpecs {
                 boltFlare = 48f,
                 muzzleBurst = MuzzleBurst(),
                 decorTrail = false
-            )
+            ) {
+                machRing("ring") {
+                    cadence(0.2f, 30f)
+                    color(0x8CC7FFFF, alpha = 1f)
+                    shape(flatten = 0.45f, growthStart = 0.5f, growthEnd = 2.5f, fadeIn = 0.05f, full = 0.05f, fadeOut = 0.3f)
+                    momentum(900f)
+                }
+            }
         },
         // 正电子冲击波：小型 PD 弹体克制处理（width 5 / length 90 短拖尾，不抢主炮视觉——设计案特效节）；
         // 开火火光为小槽规格锥面冲击。
@@ -131,7 +140,8 @@ object ProjectileVfxSpecs {
                 muzzleBurst = MuzzleBurst(length = 55f, halfAngleDeg = 24f, duration = 0.25f),
             )
         },
-        // 重型离子脉冲：trail 长 = 射程×25%、宽 −25%；弹头光斑强化弹体发光，开火附带炮口锥面碎片。
+        // 重型离子脉冲：trail 长 = 射程×25%、宽 −25%；弹头光斑强化弹体发光，开火附带炮口锥面碎片；
+        // 航迹三角碎片发射器（0.02s×1 片，配色跟随 heavyIonPulseColor 调色板：主色 140,199,255、核心近白）。
         "astd_heavy_ion_pulse_shot" to { range ->
             simpleProjectileVfx(
                 "astd_heavy_ion_pulse_shot",
@@ -144,7 +154,20 @@ object ProjectileVfxSpecs {
                 trailGlow = 0.7f,
                 boltFlare = 36f,
                 muzzleBurst = MuzzleBurst()
-            )
+            ) {
+                shardWake("wake") {
+                    cadence(0.02f, 1)
+                    emission(scatterRadius = 8f, speedMin = 100f, speedMax = 150f, spreadDeg = 8f)
+                    shardLength(34f)
+                    colors(core = 0xF0F8FFFF, fringe = 0x8CC7FFFF)
+                    shard(
+                        sizeMul = 0.2f, sizeMin = 4f, sizeMax = 9f,
+                        spinMin = 90f, spinMax = 360f,
+                        alphaLo = 120, alphaHi = 180,
+                        timerFullLo = 0.15f, timerFullHi = 0.3f, timerFadeOut = 0.3f,
+                    )
+                }
+            }
         },
         // 辉星 MRM（规格 08 §3.1）：LENS 紫辉星弹体/拖尾（爆炸为裂隙组件蓝色族），trail 长 = 射程×50%、recede 0；
         // width=10 表达 1.5× 弹体体量（介于 spc3 中型 6 与穷距大型 12 之间）。两 spec 值完全一致属刻意（同一弹头两种发射器）。

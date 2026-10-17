@@ -98,13 +98,13 @@ override val projSpec: ProjectileProjSpec = ProjectileProjSpec(
     "animationType": "MUZZLE_FLASH",
     "projectileSpecId": "astd_qiongjue_phase_railgun_shot",
     "everyFrameEffect": "cn.kasuminova.astd.combat.effect.generic.CombatVfxBootstrapEveryFrameEffect",
-    "fireSoundTwo": "gauss_fire"
+    "fireSoundTwo": "gauss_cannon_fire"
 }
 ```
 
 - 插件挂载点：`everyFrameEffect` = 现成 VFX 安全网（机制逻辑不在这里，见 §0）；`onHitEffect` / `onFireEffect` 在 `.proj`（由 ss-csv 生成）。
 - **美术资产待补**：`graphics/weapons/astd_qiongjue_base.png` / `astd_qiongjue_gun.png`（命名对齐 `astd_ftb_omega_base.png` 现有惯例）。机制分支阶段允许先填 `graphics/fx/empty.png` 跑烟测，但**本武器在贴图到位前不算完工**（列入验收目检项）。
-- `fireSoundTwo = gauss_fire`：提案（1100 射程动能主炮定位对齐高斯听觉），耳检可换。
+- `fireSoundTwo = gauss_cannon_fire`：已实装（1100 射程动能主炮定位对齐高斯听觉；音效 id 已在原版 `data/config/sounds.json` 核实存在，原版 `gauss.wpn` 同款。2026-10 修订：旧提案 `gauss_fire` 经核实不存在，已更正）。
 - `turretOffsets`/`visualRecoil` 数值为提案，随贴图到位后按实尺寸校正。
 
 ### 1.3 i18n 键清单（`ss-csv/src/main/resources/i18n/zh-cn.properties`，集中追加文件末尾）
@@ -113,7 +113,7 @@ override val projSpec: ProjectileProjSpec = ProjectileProjSpec(
 |---|---|---|
 | `weapon.astd_qiongjue_phase_railgun.name` | `"穷距" 相位轨道炮` | 定案名（「」为原版字体无效符号，禁用）；2026-09 修订：`“穷距”相位轨道炮`（弯引号、无空格）→ `"穷距" 相位轨道炮`（ASCII 引号 + 空格，`.properties`/CSV 转义口径统一） |
 | `weapon.astd_qiongjue_phase_railgun.tooltip.customPrimary` | `全舰同型武器连续命中同一目标会逐步提高这些武器的伤害与射速（每层 {%s}，至多 {%s} 层）；切换目标会损失大部分加成，长时间未命中也会逐渐衰减。效果受到{%s}影响。` | 设计案 tip 原文 + v2 数值插入（2026-07-29 字段分工铁律，审批通过）；2026-09 修订：叠层升级为全舰同型武器共享，文案由「本武器」改为「全舰同型武器…这些武器」 |
-| `weapon.astd_qiongjue_phase_railgun.tooltip.customPrimaryHL` | `4% | 10 | 难度系数` | 字段分工铁律：高亮数值与"难度系数"；2026-09 修订：6.25% → 4% |
+| `weapon.astd_qiongjue_phase_railgun.tooltip.customPrimaryHL` | `5% | 10 | 难度系数` | 字段分工铁律：高亮数值与"难度系数"；2026-10 修订：对齐代码 `PER_STACK_BONUS` v2 = 5%（旧 6.25% → 4% 口径作废） |
 | `weapon.astd_qiongjue_phase_railgun.primaryRoleStr` | `压制` | 2026-07-29 审批修正（弃「远程压制,持续打击」提案） |
 | `desc.astd_qiongjue_phase_railgun.text1` | `弧光科研部的长程动能主炮。使用独特的相位弹头来干扰敌方护盾稳定性，持续施加动能压力，并在击中后持续校准武器自身的相位谐波。` | 设计案文案原文（2026-07-29 用户换稿） |
 | `desc.astd_qiongjue_phase_railgun.notes` | **不添加** | 设计案未提供 notes；可选字段留空，禁止自创（字段分工铁律） |
@@ -159,8 +159,8 @@ object Desc_astd_qiongjue_phase_railgun : LocalizedDescription("astd_qiongjue_ph
 难度三锚点（`ScalingEntry`，LINEAR 即可，无超线性收益）：
 
 ```kotlin
-val PER_STACK_BONUS = ScalingEntry(0.02f, 0.04f, 0.10f)     // 每层伤害/射速加成（2026-09 修订：五档 2/4/6/8/10% 恰与 LINEAR 三锚点 2/4/10 逐档重合，沿用 ScalingEntry；旧 0.05/0.0625/0.10 作废）
-val SWITCH_RETAIN   = ScalingEntry(0.25f, 0.3125f, 0.50f)   // 切换目标保留比例
+val PER_STACK_BONUS = ScalingEntry(0.025f, 0.05f, 0.125f)   // 每层伤害/射速加成（2026-10 对齐代码现状：v1 2.5% / v2 5% / v5 12.5%；旧五档 2/4/6/8/10% 与旧三锚点 0.05/0.0625/0.10 均作废）
+val SWITCH_RETAIN   = ScalingEntry(0.25f, 0.5f, 1f)         // 切换目标保留比例（2026-10 对齐代码现状：v1 25% / v2 50% / v5 100%；旧 v2 31.25% / v5 50% 作废）
 val DECAY_RATE      = ScalingEntry(2f, 1.75f, 1f)           // 衰减速率（层/s；v1>v5 属反向语义，LINEAR 插值天然支持）
 const val MAX_STACKS = 10
 const val DECAY_WINDOW_SECONDS = 3f
@@ -269,7 +269,7 @@ fun resolve(entry: ScalingEntry, owner: Int): Float =
 
 **射速修正方案已 spike 收口（2026-07-29，91 §4.3 C2 消缺）**：Starsector 无 per-weapon RoF API。初版候选 `ship.mutableStats.ballisticRoFMult` 全舰乘区会污染同舰其他实弹武器，**已弃用**；实装采用 **`weapon.setRemainingCooldownTo(cooldown / mult)` 开火周期起点一次性扣减**——跳沿判定（`cooldownRemaining - lastCooldown > 0.5f`）保证每周期只写一次，规避 01 判例的每帧重置问题；烟测遥测（`astd_qiongjue_spike_applied` 计数）+ 目检确认冷却压缩生效且不抖动。
 
-**2026-09 修订（压缩口径实证）**：`cooldownRemaining` 含充能段——开火周期起点读数上跳的是**整个周期**（1s 充能 + 1.5s 冷却 = 2.5s），故 spike 压缩的是全周期而非仅冷却段。烟测实证：满层（v2 每层 4% → mult 1.4）射速间隔 ≈ 2.5 / 1.4 ≈ **1.79s**（旧配置 2s 周期 / 1.625 实测 1.2376s，同一口径）。
+**2026-09 修订（压缩口径实证）**：`cooldownRemaining` 含充能段——开火周期起点读数上跳的是**整个周期**（1s 充能 + 1.5s 冷却 = 2.5s），故 spike 压缩的是全周期而非仅冷却段。烟测实证：满层（v2 每层 5% → mult 1.5）射速间隔 ≈ 2.5 / 1.5 ≈ **1.67s**（2026-10 对齐代码每层加成口径；旧配置 2s 周期 / 1.625 实测 1.2376s，同一口径）。
 
 ### 2.5 测试面
 
@@ -278,19 +278,19 @@ fun resolve(entry: ScalingEntry, owner: Int): Float =
 | # | 用例名 | 断言点 |
 |---|---|---|
 | 1 | 同目标连续命中叠至上限 | `hit(cur, same=true)` 连调 12 次 → 1,2,…,10,10,10（clamp） |
-| 2 | 异目标折算三档 | stacks=10 切换：v1 → `floor(10*0.25)+1=3`；v2 → `floor(3.125)+1=4`；v5 → `floor(5)+1=6` |
+| 2 | 异目标折算三档 | stacks=10 切换：v1 → `floor(10*0.25)+1=3`；v2 → `floor(10*0.5)+1=6`；v5 → `floor(10*1.0)+1=11` clamp 至上限 10 |
 | 3 | 折算归零边界 | stacks=1，v1 retain=25% → `floor(0.25)+1=1` |
 | 4 | 衰减窗口边界 | `lastHit` 起恰 3.0s 不衰减；3s+ε 后按速率扣（v2 1.75/s：0.5714s 后 -1 层；v1 2/s：0.5s；v5 1/s：1s） |
 | 5 | 衰减清零即止 | stacks=2 持续 advance → 扣到 0 后不再扣，`pendingDecay` 被 clamp 不溢出 |
 | 6 | 难度取值玩家固定 v2 | `resolve(entry, owner=0)=v2`；owner=1 走 `DifficultyTuningImpl.value`（用 `testOverride` 固定 k_s 断言三档） |
-| 7 | 倍率正算 | `mult(stacks, perStack)`：stacks=0 → 1.0；stacks=10 v2 → 1.625；v5 → 2.0 |
+| 7 | 倍率正算 | `mult(stacks, perStack)`：stacks=0 → 1.0；stacks=10 v2 → 1.5；v5 → 2.25 |
 | 8 | 目标失效不折算 | `resolveHit(oldTarget=hulk, …)` → 视为无旧目标，stacks+1 不走 retain |
 | 9 | decayRate=0 防线 | `advance` 不衰减且触发恰好一次 WARN（捕获 logger 断言） |
 
 烟测检查点（`deployMod` + `launchSmokeTestGame`，到达终态即退出）：
 
 1. 装配界面：1100 射程、28 OP、tooltip 名称（`"穷距" 相位轨道炮`）/tip/角色文案正确、非常慢转向手感。
-2. 连续命中同一目标：HUD 层数递增、伤害浮字增大、射速加快可感知（2.5s → 满层约 1.79s；`cooldownRemaining` 含充能段，spike 压缩全周期）。
+2. 连续命中同一目标：HUD 层数递增、伤害浮字增大、射速加快可感知（2.5s → 满层约 1.67s；`cooldownRemaining` 含充能段，spike 压缩全周期）。
 3. 切换目标：浮字「演算转移」+ 层数折算下降。
 4. 停火 3s 后：层数按速率流失，HUD 同步。
 5. 打死目标后转火新目标：不折算（裁定项，目检确认）。
@@ -372,7 +372,7 @@ fun resolve(entry: ScalingEntry, owner: Int): Float =
 
 **数据面**
 
-- [ ] `Catalog_WeaponData_ARC.kt`：`Wpn_astd_qiongjue_phase_railgun` 列值与 §1.1 一致（重点：number=9214、ops=28、range=1100、chargeup=1.0 + chargedown=1.5、type=KINETIC、customPrimaryHL 已覆写为 `4% | 10 | 难度系数`）
+- [ ] `Catalog_WeaponData_ARC.kt`：`Wpn_astd_qiongjue_phase_railgun` 列值与 §1.1 一致（重点：number=9214、ops=28、range=1100、chargeup=1.0 + chargedown=1.5、type=KINETIC、customPrimaryHL 已覆写为 `5% | 10 | 难度系数`）
 - [ ] `.proj` 生成物：隐藏四件套齐全（length/width=2、双色 alpha=0、BUtil_NONE、fadeTime=0.2）、`onHitEffect`/`onFireEffect` 类名字符串与 §1.1 一致
 - [ ] `.wpn`：插件挂载点齐全（everyFrameEffect=CombatVfxBootstrap、projectileSpecId 正确）；美术贴图到位（empty.png 状态视为未完工）
 - [ ] zh-cn.properties 五键齐全且值与设计案原文一致（name 为 `"穷距" 相位轨道炮`、tip/文案原文）
@@ -402,7 +402,7 @@ fun resolve(entry: ScalingEntry, owner: Int): Float =
 
 **目检**
 
-- [ ] 满层 v2 伤害 840（600 × 1.4）/ 间隔 ≈1.79s → DPS ≈470 可感知
+- [ ] 满层 v2 伤害 960（640 × 1.5）/ 间隔 ≈1.67s → DPS ≈576 可感知
 - [ ] 切换目标浮字 + 层数下降；停火 3s 衰减开始；HUD 层数/百分比与日志一致
 - [ ] 同舰双穷距共享同一份层数（w2 首发即享满层乘区）；敌版 AI 正常使用（无「追不上目标不开火」僵持，90-计划风险项）
 - [ ] 目标死亡转火不折算（规格裁定项，用户确认）

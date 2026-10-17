@@ -9,8 +9,9 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
- * 规格 02 §4.1 用例 1~3（2026-09 机制修订）：五档查表精确取档、玩家固定 v2、
- * 非整数 k_s 就近取档（查表项不插值）；贯穿激活条件钉死。
+ * 规格 02 §4.1 用例 1~3（2026-10 数值修订）：泄放概率/EMP 倍率五档查表精确取档、
+ * 每层抗性削减三锚点分段线性插值（v1 4% / v2 8% / v5 20%）、玩家固定 v2、
+ * 非整数 k_s 查表项就近取档（不插值）、三锚点项插值；贯穿激活条件钉死。
  * 经 [DifficultyTuningImpl.installScaleForTests] 走完整映射链路（installScaleForTests 先例链路）。
  */
 class HeavyIonPulseTuningTest {
@@ -26,21 +27,21 @@ class HeavyIonPulseTuningTest {
     }
 
     @Test
-    fun `用例1 五档精确取档 k_s 1 2 5`() {
+    fun `用例1 锚点取档 k_s 1 2 5`() {
         resolveAt(1f).let { v ->
             assertEquals(0.25f, v.dischargeChance, 1e-6f)
             assertEquals(0.75f, v.dischargeEmpMult, 1e-6f)
-            assertEquals(0.01f, v.empResistPerStack, 1e-6f)
+            assertEquals(0.04f, v.empResistPerStack, 1e-6f)
         }
         resolveAt(2f).let { v ->
             assertEquals(0.50f, v.dischargeChance, 1e-6f)
             assertEquals(1.00f, v.dischargeEmpMult, 1e-6f)
-            assertEquals(0.02f, v.empResistPerStack, 1e-6f)
+            assertEquals(0.08f, v.empResistPerStack, 1e-6f)
         }
         resolveAt(5f).let { v ->
             assertEquals(1.00f, v.dischargeChance, 1e-6f)
             assertEquals(2.00f, v.dischargeEmpMult, 1e-6f)
-            assertEquals(0.05f, v.empResistPerStack, 1e-6f)
+            assertEquals(0.20f, v.empResistPerStack, 1e-6f)
         }
     }
 
@@ -49,28 +50,28 @@ class HeavyIonPulseTuningTest {
         resolveAt(1f, isPlayer = true).let { v ->
             assertEquals(0.50f, v.dischargeChance, 1e-6f)
             assertEquals(1.00f, v.dischargeEmpMult, 1e-6f)
-            assertEquals(0.02f, v.empResistPerStack, 1e-6f)
+            assertEquals(0.08f, v.empResistPerStack, 1e-6f)
         }
         resolveAt(5f, isPlayer = true).let { v ->
             assertEquals(0.50f, v.dischargeChance, 1e-6f)
             assertEquals(1.00f, v.dischargeEmpMult, 1e-6f)
-            assertEquals(0.02f, v.empResistPerStack, 1e-6f)
+            assertEquals(0.08f, v.empResistPerStack, 1e-6f)
         }
     }
 
     @Test
-    fun `用例3 非整数 k_s 就近取档不插值`() {
-        // k_s=3.4 → 就近 v3。
+    fun `用例3 非整数 k_s 查表项就近取档 三锚点项插值`() {
+        // k_s=3.4 → 查表项就近 v3；三锚点项分段线性：0.08 + (0.20-0.08)×(1.4/3) = 0.136。
         resolveAt(3.4f).let { v ->
             assertEquals(0.667f, v.dischargeChance, 1e-3f)
             assertEquals(1.25f, v.dischargeEmpMult, 1e-6f)
-            assertEquals(0.03f, v.empResistPerStack, 1e-6f)
+            assertEquals(0.136f, v.empResistPerStack, 1e-6f)
         }
-        // k_s=3.5 → half-up 进位取 v4。
+        // k_s=3.5 → 查表项 half-up 进位取 v4；三锚点项 0.08 + 0.12×0.5 = 0.14。
         resolveAt(3.5f).let { v ->
             assertEquals(0.833f, v.dischargeChance, 1e-3f)
             assertEquals(1.50f, v.dischargeEmpMult, 1e-6f)
-            assertEquals(0.04f, v.empResistPerStack, 1e-6f)
+            assertEquals(0.14f, v.empResistPerStack, 1e-6f)
         }
     }
 

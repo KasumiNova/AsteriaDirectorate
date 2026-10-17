@@ -18,8 +18,8 @@ import org.lwjgl.util.vector.Vector2f
  * 重型离子脉冲的命中路由（规格 02 §2.3，结构对照 01 电荷针刺）：挂 `.proj` 的 `onHitEffect`。
  *
  * - 护盾命中 → 直接返回（EMP 对盾无效，面板 EMP 亦不产生贯穿话题）；
- * - 船体/装甲命中 → 必叠 1 层 EMP 抗性削减（[HeavyIonPulseEmpResistStacks]，最多 40 层、1 层/s 消散，
- *   超出目标抗性的削减量转化为 EMP 易伤——隐藏机制不入描述）
+ * - 船体/装甲命中 → 必叠 1 层 EMP 抗性削减（[HeavyIonPulseEmpResistStacks]，最多 20 层、
+ *   每 2 秒消散 1 层——0.5 层/s 连续消散，超出目标抗性的削减量转化为 EMP 易伤——隐藏机制不入描述）
  *   + 按难度五档查表概率泄放 EMP 电弧（[HeavyIonPulseVfx.discharge]，真实 `spawnEmpArc` 结算，
  *   基准 EMP = 弹体面板值）
  *   +（破晓敌版限定）EMP 贯穿补伤（[HeavyIonPulseVfx.pierce]，面板命中 EMP 与本次电弧 EMP 一起补）。
