@@ -199,7 +199,8 @@ class GravityRiftSystemStats : BaseShipSystemScript() {
 
     /**
      * 起点双光斑：SMOOTH + SMOOTH_DISC 混合风格，红色系，带闪烁，尺寸约 200px。
-     * 返回光斑 ID 列表供后续淡出管理。
+     * 生命周期随光束（2s），光束结束时光斑同步消失；旋涡 OUT 阶段（2~3s）独自淡出。
+     * 返回光斑 ID 列表供后续淡出管理（实际 BloomFlareVfx 无显式淡出接口，到期自灭）。
      */
     private fun spawnAnchorFlares(engine: CombatEngineAPI, anchor: Vector2f): List<Int> {
         val flare1 = BloomFlareSpec(
@@ -226,7 +227,7 @@ class GravityRiftSystemStats : BaseShipSystemScript() {
         return if (spawned > 0) listOf(0, 1) else emptyList()
     }
 
-    /** 淡出起点光斑（unapply 路径）。 */
+    /** 淡出起点光斑（unapply 路径）：BloomFlareVfx 无显式淡出接口，光斑到期自动清理。 */
     private fun fadeOutFlares(flareIds: List<Int>) {
     }
 
