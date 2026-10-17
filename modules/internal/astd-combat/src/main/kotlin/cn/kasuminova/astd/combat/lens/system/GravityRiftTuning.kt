@@ -3,6 +3,7 @@ package cn.kasuminova.astd.combat.lens.system
 import cn.kasuminova.astd.api.difficulty.DifficultyTuning
 import cn.kasuminova.astd.api.difficulty.ScalingEntry
 import cn.kasuminova.astd.combat.lens.system.GravityRiftTuning.MINE_BASE_DAMAGE
+import cn.kasuminova.astd.combat.lens.system.GravityRiftTuning.PHASE_SUPPRESS_COOLDOWN_REMAINING
 import cn.kasuminova.astd.combat.lens.system.GravityRiftTuning.VORTEX_DURATION
 import cn.kasuminova.astd.combat.lens.system.GravityRiftTuning.VORTEX_FADE_IN
 import cn.kasuminova.astd.combat.lens.system.GravityRiftTuning.VORTEX_FADE_OUT
@@ -15,7 +16,8 @@ import cn.kasuminova.astd.combat.lens.system.GravityRiftTuning.VORTEX_FADE_OUT
  * 动机：系统需锁定目标激活，在目标舰随机位置（优先无护盾覆盖区域）产生贴图旋涡，
  * 1s 后自旋涡中心向目标发射**真实光束**（隐藏光束武器挂 FX drone，机制与攻击间隔
  * 直接复用原版裂隙洪流发射极 riftcascade：光束命中目标期间每 0.1s 沿目标周边弧线
- * 布一枚裂隙雷，(射程 − 命中长度)/200 + 1、上限 5）。数值集中在此声明，
+ * 布一枚裂隙雷，(射程 − 命中长度)/200 + 1、上限 5）。系统持续期间舰船获得全类型固定减伤
+ * 并压制相位斗篷（2026-10 细化）。数值集中在此声明，
  * 供系统脚本每帧实时解析（LunaLib 设置变更即时生效），并由单元测试直接驱动。
  *
  * 玩家来源（owner == 0）按我方档位取值（默认砺刃 v2，见 DifficultyTuning.valueFor）。
@@ -62,11 +64,14 @@ object GravityRiftTuning {
     /** 裂隙基础伤害（与 weapon_data 中 astd_grav_rift_minelayer 的 damage/shot 对齐）。 */
     const val MINE_BASE_DAMAGE = 1000f
 
-    /** 单裂隙伤害区间下限（v1 600 / v2 800 / v5 1200，三锚点 LINEAR）。 */
-    val RIFT_DAMAGE_MIN = ScalingEntry(600f, 800f, 1200f)
+    /** 单裂隙伤害区间下限（v1 750 / v2 1000 / v5 1750，三锚点 LINEAR）。 */
+    val RIFT_DAMAGE_MIN = ScalingEntry(750f, 1000f, 1750f)
 
-    /** 单裂隙伤害区间上限（v1 1000 / v2 1400 / v5 2000，三锚点 LINEAR）。 */
-    val RIFT_DAMAGE_MAX = ScalingEntry(1000f, 1400f, 2000f)
+    /** 单裂隙伤害区间上限（v1 1250 / v2 1500 / v5 2250，三锚点 LINEAR）。 */
+    val RIFT_DAMAGE_MAX = ScalingEntry(1250f, 1500f, 2250f)
+
+    /** 系统持续期间（IN + ACTIVE + OUT）舰船全类型固定减伤比例（v1 50% / v2 60% / v5 90%，三锚点 LINEAR）。 */
+    val DAMAGE_TAKEN_REDUCTION = ScalingEntry(0.50f, 0.60f, 0.90f)
 
     /** 一次激活所需的全部机制数值（难度解析结果）。 */
     data class Values(
@@ -74,13 +79,30 @@ object GravityRiftTuning {
         val damageMin: Float,
         /** 单裂隙伤害区间上限（末枚裂隙）。 */
         val damageMax: Float,
+        /** 系统持续期间全类型减伤比例（写 stat 时经 [damageTakenMult] 换算）。 */
+        val damageTakenReduction: Float,
     )
 
     /** 难度取值唯一入口：玩家阵营按我方档位（默认砺刃 v2）映射，其余阵营按轨一 k_s 映射。 */
     fun resolve(tuning: DifficultyTuning, isPlayer: Boolean): Values = Values(
         damageMin = tuning.valueFor(RIFT_DAMAGE_MIN, isPlayer),
         damageMax = tuning.valueFor(RIFT_DAMAGE_MAX, isPlayer),
+        damageTakenReduction = tuning.valueFor(DAMAGE_TAKEN_REDUCTION, isPlayer),
     )
+
+    /** 减伤比例换算为承伤乘区（纯函数）：1 − 减伤，钳制到 [0, 1]。 */
+    fun damageTakenMult(reduction: Float): Float = (1f - reduction).coerceIn(0f, 1f)
+
+    /**
+     * 系统期间相位斗篷压制的目标剩余冷却（纯函数）：斗篷剩余冷却不足 [PHASE_SUPPRESS_COOLDOWN_REMAINING]
+     * 时返回该值（需改写），已有更长的自然冷却时返回 null（不缩短既有冷却）。
+     */
+    fun phaseSuppressCooldown(cooldownRemaining: Float, inCooldown: Boolean): Float? =
+        if (inCooldown && cooldownRemaining >= PHASE_SUPPRESS_COOLDOWN_REMAINING) null
+        else PHASE_SUPPRESS_COOLDOWN_REMAINING
+
+    /** 系统期间相位斗篷每帧钉住的剩余冷却（秒）：系统结束后斗篷在该余量内恢复可用。 */
+    const val PHASE_SUPPRESS_COOLDOWN_REMAINING = 0.1f
 
     /**
      * 裂隙数量（纯函数）：(光束射程 − 光束当前命中长度) / 200 + 1，钳制到 [1, MAX_RIFTS]

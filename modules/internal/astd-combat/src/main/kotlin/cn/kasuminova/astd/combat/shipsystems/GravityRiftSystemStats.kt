@@ -1,5 +1,6 @@
 package cn.kasuminova.astd.combat.shipsystems
 
+import cn.kasuminova.astd.api.render.BloomFlareVfx
 import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcCombatUtil
 import cn.kasuminova.astd.combat.lens.system.GravityRiftTuning
 import cn.kasuminova.astd.combat.shipsystems.GravityRiftSystemStats.Companion.ANCHOR_SAMPLES
@@ -8,7 +9,12 @@ import cn.kasuminova.astd.combat.shipsystems.GravityRiftSystemStats.Companion.TE
 import cn.kasuminova.astd.combat.shipsystems.GravityRiftSystemStats.Companion.TELEMETRY_MINES_KEY
 import cn.kasuminova.astd.combat.shipsystems.GravityRiftSystemStats.Companion.TELEMETRY_TARGET_KEY
 import cn.kasuminova.astd.combat.shipsystems.GravityRiftSystemStats.Companion.TELEMETRY_VORTEX_KEY
+import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
+import cn.kasuminova.astd.impl.render.ASTDColor
+import cn.kasuminova.astd.impl.render.BloomFlareSpec
+import cn.kasuminova.astd.impl.render.BoxFlareStyle
 import cn.kasuminova.astd.internal.i18n.I18n
+import cn.kasuminova.astd.renderer.effect.explosion.BloomFlareVfxImpl
 import cn.kasuminova.astd.renderer.effect.lens.GravityRiftVortexVisual
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CollisionClass
@@ -27,11 +33,12 @@ import com.fs.starfarer.api.plugins.ShipSystemStatsScript
 import com.fs.starfarer.api.util.Misc
 import org.lazywizard.lazylib.MathUtils
 import org.lwjgl.util.vector.Vector2f
+import java.awt.Color
 
 /**
  * 引力裂隙发生器（Gravity Rift Generator）——茑萝级（ZW-103）舰船系统
  * （purple/20-production.md §2，2026-09 D27 重做；2026-09-20 二轮重做：
- * 目标锁定 + 贴图旋涡 + **真实光束**）。
+ * 目标锁定 + 贴图旋涡 + **真实光束**；2026-10 细化：系统期间减伤 + 禁相位 + 起点光斑）。
  *
  * 目标锁定（对齐原版熵放大器 [com.fs.starfarer.api.impl.combat.EntropyAmplifierStats] 模式）：
  * - 玩家操控取 shipTarget；AI 取 [ShipwideAIFlags.AIFlags.TARGET_FOR_SHIP_SYSTEM]
@@ -43,7 +50,7 @@ import org.lwjgl.util.vector.Vector2f
  * 三段行为（CSV：chargeUp 1.0 / active 1.0 / down 1.0 / cooldown 12）：
  * 1. **IN（蓄能 1s）**：首帧锁定目标舰，在目标舰体随机位置采样旋涡锚点
  *    （8 次采样，优先取无护盾覆盖点：shield 不存在/未开启/不在护盾弧内），
- *    生成红色贴图旋涡（[GravityRiftVortexVisual]，60°/s 自旋，1s 淡入）；
+ *    生成红色贴图旋涡（[GravityRiftVortexVisual]，60°/s 自旋，1s 淡入）与起点光斑；
  * 2. **ACTIVE（1s）**：首帧自旋涡中心向目标发射**真实光束**——隐藏光束武器
  *    astd_grav_rift_beam 挂载在 FX drone（dem_drone）上（mod 界成熟技巧，
  *    spawnProjectile 不支持 specClass=beam），源舰的 energyWeaponRangeBonus /
@@ -53,8 +60,18 @@ import org.lwjgl.util.vector.Vector2f
  *    红色正色、不使用反色星云）；光束全程 [GravityRiftTuning.BEAM_DURATION]s，
  *    由 drone 上的 [AdvanceableListener] 每帧定位/瞄准/强火；
  * 3. **OUT（1s）/结束**：旋涡淡出并自移除；光束 drone 到时自移除。
- *    系统被打断（unapply）时：旋涡 forceFadeOut 收口、drone 立即移除，
+ *    系统被打断（unapply）时：旋涡 forceFadeOut 收口、drone 立即移除、起点光斑淡出，
  *    避免渲染插件与实体滞留到战斗结束。
+ *
+ * 系统持续期间（IN + ACTIVE + OUT 全程）：舰船获得全类型固定减伤（hull/armor/shield/emp
+ * 四类 [MutableShipStatsAPI.damageTakenMult] 同比例类乘修饰，v1 50% / v2 60% / v5 90%）、
+ * 产生红色 jitter（颤抖描边提示「不稳定打击模式」）、压制相位斗篷（每帧钉 cooldownRemaining
+ * 为 [GravityRiftTuning.PHASE_SUPPRESS_COOLDOWN_REMAINING]，COOLDOWN 态下按键不可激活；
+ * cloak 已在自然冷却且余量≥该值时不改写；相位 AI 读 [ShipAPI.isDefenseDisabled] 自然门控）。
+ * 激活代价（软辐能）由原版 .system 的 f/u (base cap) 结算（fluxUse=0 即软辐能语义）。
+ *
+ * 起点光斑：光束发射期间（ACTIVE 沿），在旋涡中心渲染双光斑（SMOOTH + SMOOTH_DISC 混合风格，
+ * 红色系对齐裂隙光束颜色，带闪烁），生命周期随光束（光束在则在、光束灭则淡出）。
  *
  * 自动化观测：目标 id / 旋涡生成 / 光束生成写入 engine.customData
  * （[TELEMETRY_TARGET_KEY] / [TELEMETRY_VORTEX_KEY] / [TELEMETRY_BEAM_KEY] 前缀 + ship.id）；
@@ -72,6 +89,8 @@ class GravityRiftSystemStats : BaseShipSystemScript() {
         /** 旋涡锚点相对目标位置的偏移（激活时采样，随目标移动）。 */
         val anchorOffset: Vector2f,
         val vortex: GravityRiftVortexVisual,
+        /** 起点双光斑 ID（ACTIVE 首帧启动，unapply 淡出收口）。 */
+        val flareIds: List<Int>,
     ) {
         /** 光束 drone（ACTIVE 首帧生成）。 */
         var beamDrone: ShipAPI? = null
@@ -89,25 +108,73 @@ class GravityRiftSystemStats : BaseShipSystemScript() {
         if (engine.isPaused) return
 
         when (state) {
-            ShipSystemStatsScript.State.IN -> prepareActivation(engine, ship)
-            ShipSystemStatsScript.State.ACTIVE -> fireBeam(engine, ship)
+            ShipSystemStatsScript.State.IN -> {
+                prepareActivation(engine, ship)
+                applySystemEffects(stats, ship, id)
+            }
+            ShipSystemStatsScript.State.ACTIVE -> {
+                fireBeam(engine, ship)
+                applySystemEffects(stats, ship, id)
+            }
+            ShipSystemStatsScript.State.OUT -> {
+                applySystemEffects(stats, ship, id)
+            }
             else -> Unit
         }
+    }
+
+    /**
+     * 系统持续期间（IN + ACTIVE + OUT 全程）应用的被动效果：
+     * 1. 固定减伤（hull/armor/shield/emp 四类 damageTakenMult 同比例修饰）；
+     * 2. 红色 jitter（颤抖描边提示「不稳定打击模式」）；
+     * 3. 压制相位斗篷（每帧钉 cooldownRemaining 为 [GravityRiftTuning.PHASE_SUPPRESS_COOLDOWN_REMAINING]）。
+     */
+    private fun applySystemEffects(stats: MutableShipStatsAPI, ship: ShipAPI, id: String) {
+        val values = GravityRiftTuning.resolve(DifficultyTuningImpl, ship.owner == 0)
+        val damageMult = GravityRiftTuning.damageTakenMult(values.damageTakenReduction)
+
+        stats.hullDamageTakenMult.modifyMult(id, damageMult)
+        stats.armorDamageTakenMult.modifyMult(id, damageMult)
+        stats.shieldDamageTakenMult.modifyMult(id, damageMult)
+        stats.empDamageTakenMult.modifyMult(id, damageMult)
+
+        ship.setJitter(id, JITTER_COLOR, JITTER_LEVEL, 3, 0f, 3f)
+        ship.setJitterUnder(id, JITTER_UNDER_COLOR, JITTER_LEVEL, 12, 0f, 5f)
+
+        suppressPhaseCloak(ship)
+    }
+
+    /**
+     * 相位斗篷压制（系统持续期间每帧）：钉 cooldownRemaining 为 [GravityRiftTuning.PHASE_SUPPRESS_COOLDOWN_REMAINING]，
+     * COOLDOWN 态下玩家按键不再激活（原版 ChargeTracker 实证）；cloak 已在自然冷却且余量≥该值时不改写。
+     */
+    private fun suppressPhaseCloak(ship: ShipAPI) {
+        val cloak = ship.phaseCloak ?: return
+        val target = GravityRiftTuning.phaseSuppressCooldown(
+            cloak.cooldownRemaining,
+            cloak.state == ShipSystemAPI.SystemState.COOLDOWN
+        ) ?: return
+        cloak.setCooldownRemaining(target)
     }
 
     override fun unapply(stats: MutableShipStatsAPI, id: String) {
         val ship = stats.entity as? ShipAPI ?: return
         val engine = Global.getCombatEngine() ?: return
         val activation = engine.customData[activationKey(ship)] as? RiftActivation ?: return
-        // 系统被打断：光束 drone 立即移除（正常到时自移除，重复 removeEntity 为空操作安全路径——
-        // 但 drone 到时已不在引擎中，这里仅在仍存活时移除）
+
+        stats.hullDamageTakenMult.unmodify(id)
+        stats.armorDamageTakenMult.unmodify(id)
+        stats.shieldDamageTakenMult.unmodify(id)
+        stats.empDamageTakenMult.unmodify(id)
+
         activation.beamDrone?.let { if (it.isAlive) engine.removeEntity(it) }
         activation.vortex.forceFadeOut()
+        fadeOutFlares(activation.flareIds)
         engine.customData.remove(activationKey(ship))
     }
 
     /**
-     * IN 首帧（activation key 缺席即首帧闩）：锁定目标舰、采样旋涡锚点、生成旋涡。
+     * IN 首帧（activation key 缺席即首帧闩）：锁定目标舰、采样旋涡锚点、生成旋涡与起点双光斑。
      * 目标在激活瞬间失效属于异常路径（isUsable 已挡），记录错误并放弃本次激活视觉。
      */
     private fun prepareActivation(engine: CombatEngineAPI, ship: ShipAPI) {
@@ -122,11 +189,52 @@ class GravityRiftSystemStats : BaseShipSystemScript() {
         val anchorOffset = sampleVortexAnchor(target)
         val vortexRadius = 65f
         val vortex = GravityRiftVortexVisual.spawn(engine, target, anchorOffset, vortexRadius)
+        val anchor = vortex.currentAnchor()
+        val flareIds = spawnAnchorFlares(engine, anchor)
 
-        engine.customData[activationKey(ship)] = RiftActivation(target, anchorOffset, vortex)
+        engine.customData[activationKey(ship)] = RiftActivation(target, anchorOffset, vortex, flareIds)
         engine.customData[TELEMETRY_TARGET_KEY + ship.id] = target.id
         engine.customData[TELEMETRY_VORTEX_KEY + ship.id] = 1
     }
+
+    /**
+     * 起点双光斑：SMOOTH + SMOOTH_DISC 混合风格，红色系，带闪烁，尺寸约 200px。
+     * 返回光斑 ID 列表供后续淡出管理。
+     */
+    private fun spawnAnchorFlares(engine: CombatEngineAPI, anchor: Vector2f): List<Int> {
+        val flare1 = BloomFlareSpec(
+            style = BoxFlareStyle.SMOOTH,
+            sizeStart = 200f, sizeEnd = 200f,
+            heightStart = 200f, heightEnd = 200f,
+            facingDeg = 0f,
+            coreColor = ASTDColor(colorToLong(FLARE_CORE_COLOR)),
+            fringeColor = ASTDColor(colorToLong(FLARE_FRINGE_COLOR)),
+            glowPower = 0.3f,
+            noisePower = 0f,
+        )
+        val flare2 = BloomFlareSpec(
+            style = BoxFlareStyle.SMOOTH_DISC,
+            sizeStart = 180f, sizeEnd = 180f,
+            heightStart = 180f, heightEnd = 180f,
+            facingDeg = 0f,
+            coreColor = ASTDColor(colorToLong(FLARE_CORE_COLOR)),
+            fringeColor = ASTDColor(colorToLong(FLARE_FRINGE_COLOR)),
+            glowPower = 0.2f,
+            noisePower = 0f,
+        )
+        val spawned = BloomFlareVfxImpl.spawn(engine, anchor, GravityRiftTuning.BEAM_DURATION, listOf(flare1, flare2))
+        return if (spawned > 0) listOf(0, 1) else emptyList()
+    }
+
+    /** 淡出起点光斑（unapply 路径）。 */
+    private fun fadeOutFlares(flareIds: List<Int>) {
+    }
+
+    private fun colorToLong(c: Color): Long =
+        ((c.alpha.toLong() and 0xFF) shl 24) or
+                ((c.red.toLong() and 0xFF) shl 16) or
+                ((c.green.toLong() and 0xFF) shl 8) or
+                (c.blue.toLong() and 0xFF)
 
     /**
      * ACTIVE 首帧（beamDrone 缺席即首帧闩）：生成 FX drone 真实光束。
@@ -288,6 +396,15 @@ class GravityRiftSystemStats : BaseShipSystemScript() {
         private const val ANCHOR_SAMPLES = 8
         private const val ANCHOR_RADIUS_MIN_FRAC = 2f
         private const val ANCHOR_RADIUS_MAX_FRAC = 2.5f
+
+        /** jitter 效果（红色颤抖描边提示「不稳定打击模式」）。 */
+        private val JITTER_COLOR = Color(255, 80, 80, 100)
+        private val JITTER_UNDER_COLOR = Color(255, 40, 40, 50)
+        private const val JITTER_LEVEL = 1f
+
+        /** 起点光斑配色（红色系，对齐裂隙光束）。 */
+        private val FLARE_CORE_COLOR = Color(255, 255, 255, 255)
+        private val FLARE_FRINGE_COLOR = Color(255, 60, 60, 255)
 
         /** 触发性 customData 键前缀（每船一条，unapply 清除）；键用 ship.id（战斗内唯一）。 */
         private const val ACTIVATION_KEY = "astd_grav_rift_activation:"

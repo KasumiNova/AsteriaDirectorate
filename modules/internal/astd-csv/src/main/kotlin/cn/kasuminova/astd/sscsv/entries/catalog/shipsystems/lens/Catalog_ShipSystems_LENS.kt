@@ -147,14 +147,17 @@ object Sys_astd_gravity_phase : ShipSystemWithSystemFileEntry() {
 
 /**
  * 茑萝级舰船系统「引力裂隙发生器」（purple/20-production.md §2，2026-09 D27 重做；
- * 2026-09-20 二轮重做：目标锁定 + 贴图旋涡 + 真实光束）。
+ * 2026-09-20 二轮重做：目标锁定 + 贴图旋涡 + 真实光束；2026-10 细化：系统期间减伤 + 禁相位 + 起点光斑）。
  *
  * 需锁定目标舰激活（玩家取 shipTarget，无目标时系统不可用并提示「无目标」）：
  * 激活时在目标舰随机位置（优先无护盾覆盖区域）产生贴图旋涡（60°/s 自旋，1s 淡入 /
- * 1s 淡出，共 3s），1s 后旋涡中心向目标发射**真实光束**（隐藏光束武器挂 FX drone，
- * 机制与布雷间隔直接复用原版裂隙洪流发射极 riftcascade，仅改红色正色、不用反色星云）。
- * 光束命中目标期间每 0.1s 沿目标周边弧线布一枚裂隙（上限 5 枚），裂隙对附近目标造成
- * 能量伤害（随裂隙序位递增、按难度系数三锚点缩放）。
+ * 1s 淡出，共 3s）与起点双光斑（红色，带闪烁），1s 后旋涡中心向目标发射**真实光束**
+ * （隐藏光束武器挂 FX drone，机制与布雷间隔直接复用原版裂隙洪流发射极 riftcascade，
+ * 仅改红色正色、不用反色星云）。光束命中目标期间每 0.1s 沿目标周边弧线布一枚裂隙
+ * （上限 5 枚），裂隙对附近目标造成能量伤害（随裂隙序位递增、按难度系数三锚点缩放）。
+ * 系统持续期间（IN + ACTIVE + OUT 全程）获得全类型固定减伤（v1 50% / v2 60% / v5 90%），
+ * 红色 jitter（颤抖描边提示「不稳定打击模式」），并压制相位斗篷（无法进入相位）。
+ * 激活代价：舰船基础最大辐能容量 10% 的软辐能（由 .system 的 f/u (base cap) 原版结算）。
  * 时序：chargeUp 1s（旋涡淡入）→ active 1s（光束发射）→ down 1s（旋涡淡出），
  * 光束全程 2s，冷却 12s。stats/AI 见 [GravityRiftSystemStats] / [GravityRiftSystemAI]。
  */
@@ -167,6 +170,8 @@ object Sys_astd_grav_rift_generator : ShipSystemWithSystemFileEntry() {
     override val aiType: String = "CUSTOM"
     override val aiScript: String =
         "cn.kasuminova.astd.combat.shipsystems.GravityRiftSystemAI"
+
+    override val fluxUseBaseCap: Double = 0.1
 
     override val chargeUp: Double = 1.0
     override val active: Double = 1.0

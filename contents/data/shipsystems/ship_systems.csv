@@ -4,7 +4,7 @@ name,id,flux/second,f/s (base rate),f/s (base cap),flux/use,f/u (base rate),f/u 
 战机引力联结器,astd_fighter_grav_link,0,0,0.05,0,0,0,0,,,0.5,15,1,25,TRUE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,,graphics/icons/hullsys/recall_device.png
 火力引导阵列,astd_fire_control_array,0,0,0,0,0,0,0,,,0.5,10,0.5,16,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,,graphics/icons/hullsys/ammo_feeder.png
 引力空间复制器,astd_grav_replicator,0,0,0,0,0,0.1,0,,,0,2,0,12,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,,graphics/icons/hullsys/entropy_amplifier.png
-引力裂隙发生器,astd_grav_rift_generator,0,0,0,0,0,0,0,,,1,1,1,12,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,,graphics/icons/hullsys/mine_strike.png
+引力裂隙发生器,astd_grav_rift_generator,0,0,0,0,0,0.1,0,,,1,1,1,12,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,,graphics/icons/hullsys/mine_strike.png
 引力磁暴发生器,astd_grav_storm,0,0,0,0,0,0.2,0,,,4,0.5,1.5,24,TRUE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,,graphics/icons/hullsys/quantum_disruptor.png
 引力时流干涉器,astd_grav_timeflow_interference,0,0,0,0,0,0,0,,,0.5,10,0.5,30,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,,graphics/icons/hullsys/temporal_shell.png
 引力相位,astd_gravity_phase,0,0,0,0,0,0,0,,,0.5,,0.5,2,TRUE,FALSE,TRUE,TRUE,TRUE,FALSE,FALSE,FALSE,TRUE,FALSE,TRUE,defensive,graphics/icons/hullsys/phase_cloak.png
