@@ -4,7 +4,6 @@ import cn.kasuminova.astd.combat.lens.system.GravTimeflowTuning
 import cn.kasuminova.astd.impl.render.TriShardComponent
 import cn.kasuminova.astd.impl.render.TriShardSpec
 import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
-import cn.kasuminova.astd.renderer.boxutil.pool.PooledCombatVfx
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEngineLayers
@@ -33,9 +32,9 @@ import kotlin.math.sin
  * - **流动三角碎片**：沿光束路径持续喷散 [TriShardComponent] 三角碎片，
  *   速度方向与光束方向对齐（源舰 → 目标舰），走统一粒子池（树外持续发射用法，
  *   对照 ASTDEngineShardSprayEffect）；
- * - **星云粒子**：沿光束路径按约每 [NEBULA_SPACING]px 一颗的密度持续补充
- *   原版 nebula_colorless 贴图紫色软粒子（固定无移动向量，20~40px 随机尺寸），
- *   粒子寿终即补位，星云带随光束移动；走统一粒子池。
+ * - **星云粒子**：沿光束路径按约每 [NEBULA_SPACING]px 一颗的密度持续补充紫色星云
+ *   （[BoxUtilCombatVfx.addNebulaParticle] 标准入口——原版 nebula_particles 4x4 图集随机 tile，
+ *   固定无移动向量，20~40px 随机尺寸），粒子寿终即补位，星云带随光束移动。
  *
  * 节点定义在局部空间（+X 为源舰 → 目标舰方向），进入 BoxUtil 变换前过
  * [BoxUtilCombatVfx.normalizeFacingDeg]；层 [CombatEngineLayers.BELOW_SHIPS_LAYER]——
@@ -47,14 +46,14 @@ import kotlin.math.sin
  * 贴图预载：[preloadTextures]（onApplicationLoad；SSOptimizer 延迟加载下
  * 未被数据文件引用的贴图不上传 GL，裸 getSprite 拿到 textureID=0 空壳），
  * 预载失败的路径有 WARN 日志且 attach 直接缺席（机制照常）。
- * 粒子贴图（三角碎片/星云）由统一粒子池创建时自行 loadTexture，无需在此预载。
+ * 粒子贴图（三角碎片/星云）由统一粒子池/BoxUtil 星云控制器自行加载，无需在此预载。
  *
  * 生命周期：激活首帧 [attach]，持续期间每帧 [update] 跟随双舰位置重建节点并按
  * effectLevel 驱动整体 alpha 与粒子喷散速率（OUT 窗口自然淡出），
  * 持续结束/目标消亡/离场即 [dispose]（线条快速淡出后由实体定时器自收；
  * 已喷出的池化粒子按自身寿命包络自然消亡）。
  * 线条为低频事件级实体（每次激活 1 组，冷却 30s），不走实例池；
- * 碎片/星云为高频粒子，走 [PooledCombatVfx] 统一池。
+ * 碎片为高频粒子走 [PooledCombatVfx] 统一池，星云走 BoxUtil 内置星云控制器。
  */
 class GravTimeflowLinkVfx private constructor(
     private val engine: CombatEngineAPI,
@@ -224,31 +223,28 @@ class GravTimeflowLinkVfx private constructor(
         // 星云：稳态密度 = dist / SPACING 颗，按寿命折算补充速率
         val nebulaRate = dist / NEBULA_SPACING / NEBULA_LIFE_SECONDS
         nebulaEmitAcc += nebulaRate * alphaEnv * elapsed
+        if (nebulaEmitAcc >= 1f) {
+            // 星云控制器闲置缺陷旁路（每次连续喷放的首颗前调一次，详见 resetNebulaControllerIfIdle 文档）
+            BoxUtilCombatVfx.resetNebulaControllerIfIdle(engine)
+        }
         while (nebulaEmitAcc >= 1f) {
             nebulaEmitAcc -= 1f
             val t = MathUtils.getRandomNumberInRange(0.03f, 0.97f)
             val localX = t * dist
             val localY = mainLateral(t, mainAmp, breathe) +
                     MathUtils.getRandomNumberInRange(-NEBULA_LATERAL_SPREAD, NEBULA_LATERAL_SPREAD)
-            val halfSize = MathUtils.getRandomNumberInRange(NEBULA_SIZE_MIN, NEBULA_SIZE_MAX) * 0.5f
             val alpha = (MathUtils.getRandomNumberInRange(NEBULA_ALPHA_LO, NEBULA_ALPHA_HI) * alphaEnv)
                 .toInt().coerceIn(0, 255)
-            PooledCombatVfx.spawnSprite(
-                engine = engine,
-                key = NEBULA_POOL_KEY,
-                x = from.x + dirX * localX - dirY * localY,
-                y = from.y + dirY * localX + dirX * localY,
-                velX = 0f,
-                velY = 0f,
-                facingDeg = MathUtils.getRandomNumberInRange(0f, 360f),
-                turnRateDeg = MathUtils.getRandomNumberInRange(-NEBULA_SPIN, NEBULA_SPIN),
-                scaleX = halfSize,
-                scaleY = halfSize,
-                color = Color(NEBULA_COLOR.red, NEBULA_COLOR.green, NEBULA_COLOR.blue, alpha),
-                emissiveColor = Color(NEBULA_COLOR.red, NEBULA_COLOR.green, NEBULA_COLOR.blue, alpha / 2),
-                fadeIn = NEBULA_FADE_IN,
-                full = MathUtils.getRandomNumberInRange(NEBULA_FULL_LO, NEBULA_FULL_HI),
-                fadeOut = NEBULA_FADE_OUT,
+            BoxUtilCombatVfx.addNebulaParticle(
+                engine,
+                Vector2f(from.x + dirX * localX - dirY * localY, from.y + dirY * localX + dirX * localY),
+                ZERO_VEL,
+                MathUtils.getRandomNumberInRange(NEBULA_SIZE_MIN, NEBULA_SIZE_MAX),
+                NEBULA_END_SIZE_MULT,
+                NEBULA_RAMP_UP,
+                NEBULA_FULL,
+                MathUtils.getRandomNumberInRange(NEBULA_DURATION_LO, NEBULA_DURATION_HI),
+                Color(NEBULA_COLOR.red, NEBULA_COLOR.green, NEBULA_COLOR.blue, alpha),
             )
         }
     }
@@ -261,9 +257,6 @@ class GravTimeflowLinkVfx private constructor(
 
         /** 细线条贴图（laser_282_i6_r13c3 复制入 contents 的约定路径，白底 alpha 载形）。 */
         private const val TEX_FILAMENT = "graphics/fx/astd_timeflow_filament.png"
-
-        /** 星云粒子贴图（原版无色星云，着色由实例 color/emissive 承担；粒子池创建时自行 loadTexture）。 */
-        private const val TEX_NEBULA = "graphics/fx/nebula_colorless.png"
 
         /** preloadTextures 加载成功的贴图路径集合；attach 只使用此集合内的贴图。 */
         private val loadedPaths = HashSet<String>()
@@ -315,7 +308,8 @@ class GravTimeflowLinkVfx private constructor(
         private const val SHARD_RATE_PER_SEC = 18f
         private const val SHARD_SPEED = 350f
 
-        /** 星云粒子：稳态空间密度（px/颗，取 10~15 中值）、单颗寿命估算（折算补充速率用）、尺寸域（px 直径）、alpha 域、横向散布（su）、自旋域（度/秒）、寿命包络（秒）。 */
+        /** 星云粒子：稳态空间密度（px/颗，取 10~15 中值）、单颗平均寿命（折算补充速率用，与 DURATION_LO~HI 均值一致）、
+         * 尺寸域（px）、alpha 域、横向散布（su）、末端尺寸倍率与寿命包络比例（原版 addNebulaParticle 口径）、总时长域（秒）。 */
         private const val NEBULA_SPACING = 12.5f
         private const val NEBULA_LIFE_SECONDS = 1.7f
         private const val NEBULA_SIZE_MIN = 20f
@@ -323,18 +317,14 @@ class GravTimeflowLinkVfx private constructor(
         private const val NEBULA_ALPHA_LO = 30f
         private const val NEBULA_ALPHA_HI = 55f
         private const val NEBULA_LATERAL_SPREAD = 12f
-        private const val NEBULA_SPIN = 6f
-        private const val NEBULA_FADE_IN = 0.35f
-        private const val NEBULA_FULL_LO = 0.6f
-        private const val NEBULA_FULL_HI = 1.0f
-        private const val NEBULA_FADE_OUT = 0.7f
+        private const val NEBULA_END_SIZE_MULT = 1.25f
+        private const val NEBULA_RAMP_UP = 0.2f
+        private const val NEBULA_FULL = 0.35f
+        private const val NEBULA_DURATION_LO = 1.4f
+        private const val NEBULA_DURATION_HI = 2.0f
 
-        /** 星云粒子池键（同池共享贴图/层/材质；glowPower 收敛避免柔云过曝）。 */
-        private val NEBULA_POOL_KEY = PooledCombatVfx.SpritePoolKey(
-            spritePath = TEX_NEBULA,
-            layer = CombatEngineLayers.BELOW_SHIPS_LAYER,
-            glowPower = 0.6f,
-        )
+        /** 静止速度矢量（星云粒子用，避免逐颗分配）。 */
+        private val ZERO_VEL = Vector2f(0f, 0f)
 
         /** 配色（透镜协议紫；二轮实机反馈加深饱和，弃淡紫）。 */
         private val MAIN_DIM = Color(120, 50, 220)
