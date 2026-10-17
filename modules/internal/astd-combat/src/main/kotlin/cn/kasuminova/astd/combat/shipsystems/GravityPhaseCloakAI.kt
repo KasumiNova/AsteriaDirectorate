@@ -1,9 +1,8 @@
 package cn.kasuminova.astd.combat.shipsystems
 
-import com.fs.starfarer.api.Global
+import cn.kasuminova.astd.combat.shipsystems.base.PhaseDecisionContext
+import cn.kasuminova.astd.combat.shipsystems.base.PhaseOrder
 import com.fs.starfarer.api.combat.CombatEngineAPI
-import com.fs.starfarer.api.combat.DamagingProjectileAPI
-import com.fs.starfarer.api.combat.MissileAPI
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.combat.ShipCommand
 import com.fs.starfarer.api.combat.ShipSystemAIScript
@@ -22,121 +21,21 @@ import org.lwjgl.util.vector.Vector2f
  * 相位维持辐能持续累积硬辐能（noHardDissipation + hardFlux），硬辐能越高相位内航速越低，
  * 最终被压制类舰船堵在相位里憋死，攻击系统全程空转。
  *
- * 决策核心为纯函数 [decide]（单测直接驱动），本类只负责态势采样与指令执行。
- * 决策口径（每 [SCAN_INTERVAL_SEC] 评估一次）：
+ * 本类为多决策树架构的协调器薄壳，决策逻辑全部外迁：
+ * - 态势采样：[GravityPhaseSituationSampler]（一拍 [cn.kasuminova.astd.combat.shipsystems.base.PhaseSituation] 快照）；
+ * - Mutex A 斗篷开关：[PhaseToggleTree]（DIVE/SURFACE/NONE，23 条规则按优先级评估）；
+ * - Mutex B 绕后走位：[FlankAttackTree]（DRIVE/HOLD_SPOT/BACKOFF 旗标组）；
+ * - Mutex C vent 链路：[FluxVentTree]（SUPPRESS/VENT/NONE）。
  *
- * 下潜（未相位、斗篷就绪时）：
- * - 紧急下潜：[SOON_WINDOW_SEC] 内预计命中伤害达 [diveSoonThreshold]——绕过错峰闸直接下潜；
- *   来袭口径为敌方与友军火力合并（被友军高伤火力命中同样是生存威胁，相位可以规避友伤），
- *   友军火力只走这条防御链路，不参与绕后/耗软辐等战术下潜；
- * - 辐能压力下潜：辐能水平 ≥ [DIVE_FLUX_LEVEL] 且硬辐能 < [DIVE_HARD_FLUX_MAX] 且有交战对象
- *   （硬辐能过高时下潜只会加速憋死，故设上限）；
- * - 耗软辐下潜：软辐能占比 ≥ [SOFT_FLUX_DIVE_MIN]、总辐能 < [SOFT_FLUX_DIVE_MAX_FLUX_LEVEL]
- *   且环境安全时下潜耗散软辐（耗散优先级：紧急避险 > 相位耗软辐 > 强制耗散——
- *   闸门收敛在 [isSoftFluxDumpDive]）。本链路不受错峰闸约束：相位耗散是本系统的核心循环，
- *   被 [MIN_UNPHASE_TIME_SEC] 拦住时 VentModule 必在窗口内抢先 vent（vent 启动即不可取消，
- *   绕后输出窗口随之报废）；环境安全口径为 near 来袭低于威胁阈值 ×
- *   [SOFT_FLUX_DIVE_SAFE_NEAR_FRAC]，侧后占位（已入主威胁射界薄弱区且覆盖不超
- *   [SURFACE_COVERAGE_MAX]）放宽到 ×[SOFT_FLUX_DIVE_SAFE_NEAR_FRAC_REAR]——
- *   主威胁覆盖不了侧后，near 来袭多来自次要方向，原地耗散比后撤 vent 保全输出位；
- *   advance 的 DO_NOT_VENT 压制走 [isSoftFluxDumpVentHold] 宽限口径（斗篷冷却尾声
- *   [SOFT_FLUX_VENT_HOLD_COOLDOWN_SEC] 内提前压 vent，就绪即下潜），防止冷却窗口内
- *   VentModule 抢先启动后撤耗散；
- * - 绕后下潜：主威胁目标为低机动舰（[isLowMobilityTarget] 代理指标）且本舰尚未进入其侧后
- *   薄弱区、武器过半可输出、硬辐能 < [FLANK_DIVE_HARD_FLUX_MAX] 时，借相位穿透占位
- *   （闸门收敛在 [isFlankDive]，decide 与 advance 的意图布防共用）；下潜后开启
- *   绕后意图窗口（[flankIntentWindowSec] 按布防距离缩放基准值 [FLANK_INTENT_SEC]），
- *   相位中挂 PHASE_ATTACK_RUN 旗标驱动原版走位
- *   把舰船带往目标背后（原版相位 AI 被替换后该旗标无人管理，正面硬点装配的舰船
- *   下潜后会原地罚站），进入侧后且脱间距满足改挂 PHASE_ATTACK_RUN_IN_GOOD_SPOT 就地保持，
- *   脱间距不足（侧后但贴脸）继续穿透把间距拉开（与 decide 的脱间距闸共用
- *   [flankDriveHoldSpot] 口径，避免走位层保持、决策层等拉开的两层打架）；
- * - 威胁下潜：[NEAR_WINDOW_SEC] 内预计命中伤害达 [diveNearThreshold]；
- * - 装填下潜：可输出武器占比 ≤ [RECHARGE_DIVE_WEAPONS_FRAC] 且硬辐能 < [RECHARGE_DIVE_HARD_FLUX_MAX]；
- * - 修复下潜：武器或引擎下线占比 ≥ [REPAIR_DIVE_DISABLED_FRAC] 且有交战对象、
- *   硬辐能 < [REPAIR_DIVE_HARD_FLUX_MAX] 时下潜——相位 3x 时间倍率随舰时钟加速组件修复
- *   （原版口径：快进舰每帧额外 advance，ComponentHealthTracker 随舰时钟走），
- *   相位无敌同时兜底修复窗口的生存；
- * - 撤退下潜：撤退中且硬辐能 < [RETREAT_DIVE_HARD_FLUX]（相位赶路）；
- * - 相位赶路：有赶路目标点（[ShipwideAIFlags.AIFlags.MOVEMENT_DEST] 旗标，原版
- *   OrderResponseModule 设置、燃驱 AI 同款用法）且距离 ≥ [TRAVEL_PHASE_MIN_DIST]、脱战、
- *   非撤退、辐能低时下潜赶路（相位 3x 时间倍率随舰时钟加速位移），闸门收敛在
- *   [isTravelDive]；相位途中辐能 < [TRAVEL_HOLD_FLUX_MAX] 时拦截「无威胁上浮」保持相位
- *   （[isTravelPhaseHold]），超标放行上浮耗散，维持低辐赶路循环——交战与空闲状态下无效；
- * - 前方承火放宽：主威胁方向 ±[SCREEN_AHEAD_HALF_ARC]° 锥内有比本舰更靠近敌舰的友军
- *   承火（[SCREEN_SCAN_DIST] 内）时，紧急/威胁下潜阈值 ×[SCREENED_DIVE_THRESHOLD_MULT]——
- *   有人扛线时减少规避无效伤害的反复潜水（只放宽规避类下潜闸，不动上浮与战术链路）；
- * - 友军接盘闸：若此刻入相位，穿透本舰的直射弹药在 [FRIENDLY_CATCH_WINDOW_SEC] 内将误伤
- *   友军的估计伤害 ≥ [FRIENDLY_CATCH_DAMAGE_MIN] 时，压制一切下潜（自身濒危——致命来袭，
- *   含友军火力烧身——除外：与接盘博弈时自身生存优先）；
- * - 错峰闸：除紧急下潜与耗软辐下潜外，距上次上浮不足 [MIN_UNPHASE_TIME_SEC] 不下潜；
- *   攻击系统激活中（isOn）不主动下潜（防止自断磁暴充能/复制窗口）。
- * - 战术强制耗散（advance 层，decide 返回 NONE 时出手，口径 [isTacticalVent]）：交战但
- *   环境安全、总辐能 ≤ [TACTICAL_VENT_FLUX_CAP] × ventRateMult（随强制耗散属性提升阈值）、
- *   硬辐能占比 ≥ [TACTICAL_VENT_HARD_FRAC]、预计耗散 ≤ [TACTICAL_VENT_MAX_SEC]s 时主动
- *   vent 清硬辐——硬辐能压低相位内航速与下潜余量，低辐窗口主动清掉比攒高了被动后撤
- *   耗散更保全输出位；软辐占比较高时走相位耗散链路而非本口径（辐能口径互斥）；
+ * 本类只负责：状态时钟推进（phaseActiveTime/timeSinceUnphase/toggleGuard/flankIntent/
+ * forcedSurfaceHold 节拍）、无条件旗标维护（相位中 DO_NOT_VENT、冷却期残损 BACK_OFF）、
+ * 依次评估 A→B→C、执行开关/旗标/vent 指令与决策留痕日志。
  *
- * 上浮（相位中时）：
- * - 辐能强制上浮：硬辐能 ≥ [SURFACE_HARD_FLUX]（继续潜只会涨辐能减速被围死）；
- * - 时长强制上浮：连续相位 ≥ [MAX_PHASE_TIME_SEC]（错峰节奏，强制回到战场）；
- *   绕后意图生效期间上限放宽到武装窗口 + [FLANK_PHASE_CAP_MARGIN_SEC]（穿透机动
- *   需要位移时间，辐能闸不受放宽）；
- * - 强制上浮落点安全闸：强制上浮同样要求落点相对安全（[isSurfaceSafe]），不安全时
- *   有界暂缓（[FORCED_SURFACE_HOLD_MAX_SEC]，advance 按决策节拍累计，口径
- *   [nextForcedSurfaceHoldSec]，致命豁免期预算暂停），暂缓期间挂
- *   BACK_OFF 主动后撤——相位高机动自己拉开间距创造安全落点，而非干等（绕后穿透
- *   驱动让位，见 [flankDriveActive]）；超时兜底放行
- *   防永久相位幽灵船——贴脸强制上浮正是实机「贴盾上浮/上浮即吃鱼雷」入口；
- * - 致命豁免：上述强制上浮触发时，若 [SOON_WINDOW_SEC] 内有致命来袭（≥ 舰体 20%，
- *   含友军火力烧身）且硬辐能 < [HOLD_MAX_HARD_FLUX]，等这一下过去再上浮（口径
- *   [isHoldForLethal]）；豁免期暂缓预算暂停——豁免是等这一下过去而非等安全落点，
- *   不该烧兜底预算；
- * - 即将受击闸：全部主动上浮路径统一要求 [SOON_WINDOW_SEC] 窗口来袭低于 [diveSoonThreshold]
- *   （先于一刀切上浮规则判定——交战圈外发射的高速弹不在无威胁上浮的 near 窗口口径内，
- *   但同样会在 soon 窗口落地，不能漏拦；友军火力并入同一口径，持续照射本舰时按住不上浮）；
- * - 上浮安全闸：主动上浮统一要求落点相对安全（[isSurfaceSafe]，强制上浮不受约束）——
- *   与最近敌舰间距 < 双方碰撞半径和 × [SURFACE_PROXIMITY_FRAC]（贴脸上浮必吃点射与撞击）、
- *   [SURFACE_WINDOW_SEC] 弹幕窗口来袭合计 ≥ [surfaceDangerThreshold]（上浮僵直期承伤窗口
- *   比 soon 更长，已在途的鱼雷/齐射在命中前即按住）、或位于主威胁正脸火力轴
- *   （±[SURFACE_FRONT_AXIS_HALF_ARC]° 且 [SURFACE_FRONT_AXIS_MAX_DIST]su 内，优先侧后上浮）
- *   时按住不上浮，保持相位机动等时机；
- * - 无威胁上浮：威胁圈无交战对象且来袭轻微（撤退赶路且硬辐能有余量时保持相位）；
- * - 死角上浮：已机动到主威胁目标侧后射界薄弱区（[REAR_ARC_MIN_DIFF] 口径）、能瞄准本舰的
- *   武器 ≤ [REAR_SURFACE_MAX_COVERAGE] 且脱间距满足时立即上浮输出；
- * - 绕后意图拦截（先于无威胁/死角上浮判定）：意图途中（未入侧后）一切主动上浮按住，
- *   保持相位机动穿透——就位点在目标背后远点，途中短暂掉出交战圈不等于脱战，
- *   掉圈提前上浮即布防早夭；意图达成（已入侧后）时覆盖闸放宽到 [SURFACE_COVERAGE_MAX]
- *   即上浮输出；
- * - 绕后脱间距闸：死角/意图达成的上浮额外要求与主威胁间距（含 [SURFACE_WINDOW_SEC]
- *   相对速度外推最近接近）≥（本舰碰撞半径 + 敌舰有效半径）× [REAR_SURFACE_SEPARATION_FRAC]，
- *   敌舰护盾开启时有效半径取护盾半径——贴脸闸只拦字面重叠，拦不住贴护盾外缘上浮；
- *   间距不足时按住保持相位穿出拉开，强制上浮不受此闸约束；
- * - 覆盖闸：主威胁目标能瞄准本舰的武器数 > [SURFACE_COVERAGE_MAX] 时，战术/输出窗口上浮
- *   继续相位机动等死角（强制上浮不受此闸约束）；
- * - 战术上浮：攻击系统就绪且有交战对象——上浮施放磁暴/复制器；
- * - 输出窗口上浮：可输出武器占比 ≥ [WEAPONS_READY_SURFACE_FRAC] 且来袭可控；
- * - 反闪烁：相位不足 [MIN_PHASE_TIME_SEC] 不主动上浮（强制上浮不受限）；
- * - 落点安全闸：本舰与任一非战机舰船深度重叠（间距 < 双方碰撞半径和 ×
- *   [UNPHASE_UNSAFE_OVERLAP_FRAC]，与原版斗篷 canBeDeactivated 的 locationSafe 口径一致）时，
- *   一切上浮指令按住（含强制上浮）——此时 toggle 会被原版拒绝，白耗开关守卫；
- *   按住续潜无过载风险（canNotCauseOverload），漂出重叠后上浮自然放行。
- *
- * 威胁评估口径：直射弹体按弹道外推 + 横向偏差判定；制导导弹（含龙炎 DEM 等跟踪武器）
- * 跳过横向偏差检查并以极速一半兜底接近速度；fade 段弹体不过滤——原版 isFading 指
- * 过射程尾迹消散段（实弹）/ fizzle 末端窗口（导弹），引擎伤害判定只看 isExpired，
- * fade 段仍可全额命中，过滤会低估威胁（已解除武装的 fizzle 导弹轻微高估，保守方向可接受）；
- * 光束瞬时命中无弹体，扫描正在开火且射界/射程
- * 覆盖本舰的敌方光束武器折算威胁（持续光束 DPS × [CONT_BEAM_THREAT_WINDOW_SEC] 进 near，
- * 爆发光束爆发总伤 × [BURST_BEAM_THREAT_WEIGHT] 进 soon）。payload 导弹（behaviorSpec 带
- * payloadWeaponId：双子星 DEM、原版龙炎 DEM 及任何同行为模组弹体）不撞舰结算——抵近
- * 悬停距离锁定后由 payload 结算主伤害，按 [payloadProfileOf] 推导的悬停距离/爆发伤害
- * 折算，进入悬停距离即按 soon 窗口计全额威胁（只计 payload 爆发；弹体本体在悬停点
- * 自爆，爆心半径数十 su，对本舰不构成伤害），给下潜充能留提前量。脚本 spawn 的
- * 弹头同样在 engine.missiles 里（obf 核实：ProjectileFactory.spawnMissile 末尾无条件
- * addObject，早先「不在 missiles 里」的判例是同帧采样未 flush 所致），单通道覆盖。
- * 友军接盘只评估非制导弹药
- * （制导导弹脱靶后自行改瞄，穿透误伤口径不覆盖），穿透线段从预计命中本舰点起算。
+ * 互斥收敛规则（原实现隐式耦合的显式化）：
+ * - A=DIVE → C 由 [DiveOrderedSuppressRule] 自然压制（树间互斥入规则）；
+ * - A 非 NONE → C 的 VENT 不出手（[TacticalVentRule] 要求 cloakOrder==NONE）；
+ * - B 的 DRIVE/HOLD_SPOT 仅在 forcedSurfaceHoldSec <= 0 生效
+ *   （内嵌于 [FlankAttackTree.flankDriveActive]，暂缓期间由 [ForcedHoldBackoffRule] 接管后撤）。
  *
  * 上浮僵直保护：强制上浮后挂 [ShipwideAIFlags.AIFlags.BACK_OFF]（2s）让舰船后撤度过
  * 斗篷冷却窗口；斗篷冷却中且硬辐能过半/舰体残损时持续刷新 BACK_OFF。
@@ -145,98 +44,6 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
 
     companion object {
         private val log = LogManager.getLogger(GravityPhaseCloakAI::class.java)
-
-        /** 评估间隔（s）。 */
-        private const val SCAN_INTERVAL_SEC = 0.2f
-
-        /** 紧急窗口（s）：窗口内预计命中伤害计入「即将受击」。 */
-        internal const val SOON_WINDOW_SEC = 0.6f
-
-        /** 威胁窗口（s）：窗口内预计命中伤害计入「来袭威胁」。 */
-        internal const val NEAR_WINDOW_SEC = 1.2f
-
-        /** 弹体扫描半径（su），覆盖 NEAR_WINDOW 内高速弹体。 */
-        private const val PROJECTILE_SCAN_RANGE = 1500f
-
-        /** 弹体命中判定的横向余量（su，加在碰撞半径上）。 */
-        private const val MISS_MARGIN = 50f
-
-        /** 弹体朝向本舰的分速度下限（su/s），低于此值视为非来袭。 */
-        private const val APPROACH_SPEED_MIN = 50f
-
-        /** 交战判定半径（su）：圈内存在有效敌舰即视为有交战对象。 */
-        internal const val ENGAGE_SCAN_RANGE = 1600f
-
-        /** 紧急下潜伤害阈值：max(本值, 舰体上限 × 比例)。 */
-        internal fun diveSoonThreshold(maxHull: Float): Float =
-            maxOf(300f, maxHull * 0.05f)
-
-        /** 威胁下潜伤害阈值：max(本值, 舰体上限 × 比例)。 */
-        internal fun diveNearThreshold(maxHull: Float): Float =
-            maxOf(600f, maxHull * 0.10f)
-
-        /** 致命来袭占舰体上限比例（强制上浮豁免闸）。 */
-        internal const val LETHAL_SOON_HULL_FRACTION = 0.20f
-
-        /** 致命豁免的硬辐能上限：超过后不再为躲伤害续潜（辐能本身已更危险）。 */
-        internal const val HOLD_MAX_HARD_FLUX = 0.75f
-
-        /** 辐能强制上浮闸：硬辐能到达本值必须上浮。 */
-        internal const val SURFACE_HARD_FLUX = 0.55f
-
-        /**
-         * 强制上浮落点安全暂缓上限（s）：强制上浮（辐能/时长闸）同样要求落点相对安全
-         * （[isSurfaceSafe]），不安全时按住有界暂缓——贴脸强制上浮正是实机「贴盾上浮/
-         * 上浮即吃鱼雷」入口（zw103 vs 辉煌实测五次上浮全为强制、多次 sepSafe=false、
-         * 最低 188su）；超过本值兜底放行，防永久相位幽灵船。
-         */
-        internal const val FORCED_SURFACE_HOLD_MAX_SEC = 6f
-
-        /** 相位时长上限（s）：连续相位超过本值强制上浮。 */
-        internal const val MAX_PHASE_TIME_SEC = 8f
-
-        /** 反闪烁最短相位时长（s），主动上浮的下限。 */
-        internal const val MIN_PHASE_TIME_SEC = 1.0f
-
-        /** 上浮弹幕窗口（s）：窗口内预计命中伤害计入上浮安全评估（上浮僵直期承伤窗口比 soon 更长，鱼雷/齐射在途中即按住）。 */
-        internal const val SURFACE_WINDOW_SEC = 2.0f
-
-        /** 上浮弹幕伤害阈值：max(本值, 舰体上限 × 比例)。 */
-        internal fun surfaceDangerThreshold(maxHull: Float): Float =
-            maxOf(600f, maxHull * 0.10f)
-
-        /** 上浮贴脸判定系数：与最近敌舰间距 < 双方碰撞半径和 × 本值时不上浮（大于原版拒退重叠口径 0.35，留出漂离余量）。 */
-        internal const val SURFACE_PROXIMITY_FRAC = 0.9f
-
-        /** 正脸火力轴判定半角（°）：主威胁朝向与本舰相对方位差 ≤ 本值且距离够近时不上浮。 */
-        internal const val SURFACE_FRONT_AXIS_HALF_ARC = 60f
-
-        /** 正脸火力轴判定距离（su）：超出本距离敌舰正脸火力不构成贴脸上浮风险。 */
-        internal const val SURFACE_FRONT_AXIS_MAX_DIST = 1000f
-
-        /** 下潜错峰（s）：上浮后间隔不足本值不做常规下潜。 */
-        internal const val MIN_UNPHASE_TIME_SEC = 2.5f
-
-        /** 辐能压力下潜闸：辐能水平达到本值才允许避险下潜。 */
-        internal const val DIVE_FLUX_LEVEL = 0.90f
-
-        /** 辐能压力下潜的硬辐能上限：硬辐能已高时下潜无意义。 */
-        internal const val DIVE_HARD_FLUX_MAX = 0.50f
-
-        /** 装填下潜闸：可输出武器占比不高于本值才允许装填下潜。 */
-        internal const val RECHARGE_DIVE_WEAPONS_FRAC = 0.35f
-
-        /** 装填下潜的硬辐能上限。 */
-        internal const val RECHARGE_DIVE_HARD_FLUX_MAX = 0.35f
-
-        /** 输出窗口上浮闸：可输出武器占比达到本值且来袭可控时上浮开打。 */
-        internal const val WEAPONS_READY_SURFACE_FRAC = 0.6f
-
-        /** 撤退下潜的硬辐能上限。 */
-        internal const val RETREAT_DIVE_HARD_FLUX = 0.25f
-
-        /** 撤退途中保持相位的硬辐能上限。 */
-        internal const val RETREAT_STAY_HARD_FLUX = 0.35f
 
         /** 连续两次斗篷开关指令的最小间隔（s），对齐原版 0.5s 口径。 */
         private const val TOGGLE_GUARD_SEC = 0.5f
@@ -250,602 +57,26 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
         /** 斗篷冷却期后撤保护的舰体闸。 */
         private const val BACKOFF_HULL_LEVEL = 0.3f
 
-        /** 相位耗软辐能闸：软辐能占比（fluxLevel - hardFluxLevel）达此值值得下潜耗散。 */
-        internal const val SOFT_FLUX_DIVE_MIN = 0.35f
-
-        /** 相位耗软辐能的总辐能上限：超过此值离过载太近，下潜耗散反而可能上浮即过载。 */
-        internal const val SOFT_FLUX_DIVE_MAX_FLUX_LEVEL = 0.75f
-
-        /** 耗软辐下潜的环境安全口径：near 窗口来袭低于威胁阈值 × 本值。 */
-        internal const val SOFT_FLUX_DIVE_SAFE_NEAR_FRAC = 0.25f
-
-        /**
-         * 耗软辐下潜的侧后占位安全口径：已在主威胁射界薄弱区且覆盖不超 [SURFACE_COVERAGE_MAX] 时
-         * 放宽到威胁阈值 × 本值——主威胁覆盖不了侧后，near 来袭多来自次要方向，
-         * 原地相位耗散（上浮仍在输出位）比后撤 vent 更保全绕后输出窗口。
-         */
-        internal const val SOFT_FLUX_DIVE_SAFE_NEAR_FRAC_REAR = 0.5f
-
-        /**
-         * 耗软辐 vent 压制的斗篷冷却宽限（s）：冷却尾声提前压 DO_NOT_VENT——
-         * 否则 VentModule 必在冷却窗口内抢先 vent（vent 启动即不可取消），相位耗散永远抢不到窗口；
-         * 宽限有界：斗篷就绪即下潜，环境转差/辐能逼近上限时闸门失效 vent 自然放行兜底。
-         */
-        internal const val SOFT_FLUX_VENT_HOLD_COOLDOWN_SEC = 4f
-
-        /** 修复下潜闸：武器或引擎下线占比达本值时优先相位窗口（3x 时间倍率加速组件修复）。 */
-        internal const val REPAIR_DIVE_DISABLED_FRAC = 0.5f
-
-        /** 修复下潜的硬辐能上限：硬辐能过高时下潜只会加速憋死。 */
-        internal const val REPAIR_DIVE_HARD_FLUX_MAX = 0.5f
-
-        /** 低机动代理指标：极速不高于本值（su/s）直接判低机动。 */
-        internal const val LOW_MOBILITY_MAX_SPEED = 70f
-
-        /** 低机动代理指标：转向速率（°/s）与加速度（su/s²）双双低于本值判低机动。 */
-        internal const val LOW_MOBILITY_TURN_RATE = 25f
-        internal const val LOW_MOBILITY_ACCEL = 50f
-
-        /** 侧后射界薄弱区口径：目标朝向与「目标→本舰」方位角差达到本值（目标背后 ±60° 锥）。 */
-        internal const val REAR_ARC_MIN_DIFF = 120f
-
-        /** 绕后下潜闸：可输出武器占比下限。 */
-        internal const val FLANK_DIVE_WEAPONS_FRAC = 0.5f
-
-        /** 绕后下潜的硬辐能上限。 */
-        internal const val FLANK_DIVE_HARD_FLUX_MAX = 0.4f
-
-        /** 绕后意图基准时长（s）：绕后下潜后保持相位机动穿透的时间窗（按布防距离缩放，见 [flankIntentWindowSec]）。 */
-        internal const val FLANK_INTENT_SEC = 12f
-
-        /** 绕后窗口参考距离（su）：布防距离不超过本值时窗口保持基准时长。 */
-        internal const val FLANK_INTENT_REF_DIST = 1200f
-
-        /** 绕后意图窗口上限（s）：慢速舰远处布防需要更长的穿透位移时间。 */
-        internal const val FLANK_INTENT_MAX_SEC = 24f
-
-        /** 绕后意图期间相位时长上限相对意图窗口的富余（s）。 */
-        internal const val FLANK_PHASE_CAP_MARGIN_SEC = 2f
-
-        /** 上浮落点重叠判定系数：与他舰间距 < （双方碰撞半径和）× 本值时退相位被原版拒绝（对齐原版 locationSafe 口径）。 */
-        internal const val UNPHASE_UNSAFE_OVERLAP_FRAC = 0.35f
-
-        /** 死角上浮允许的最大武器覆盖数（目标侧后射界内能瞄准本舰的武器 ≤ 本值立即上浮）。 */
-        internal const val REAR_SURFACE_MAX_COVERAGE = 1
-
-        /**
-         * 绕后达成上浮的最小脱间距系数：上浮点（含 [SURFACE_WINDOW_SEC] 相对速度外推的
-         * 最近接近）与主威胁间距须 ≥（本舰碰撞半径 + 敌舰有效半径）× 本值；敌舰护盾开启时
-         * 有效半径取护盾半径——贴脸上浮闸（[SURFACE_PROXIMITY_FRAC]）只拦字面重叠，
-         * 拦不住贴着敌舰护盾外缘上浮（实机 zw101 绕后 132su 贴脸上浮撞护盾）。
-         */
-        internal const val REAR_SURFACE_SEPARATION_FRAC = 1.5f
-
-        /** 主动上浮覆盖闸：主威胁目标能瞄准本舰的武器数超过本值时，继续相位机动等死角。 */
-        internal const val SURFACE_COVERAGE_MAX = 3
-
-        /** 武器射界判定余量（°，加在半射界角上）。 */
-        private const val COVERAGE_ARC_MARGIN = 10f
-
-        /** 友军接盘评估窗口（s）：入相位后穿透弹药沿原弹道继续飞的评估时长。 */
-        internal const val FRIENDLY_CATCH_WINDOW_SEC = 1.5f
-
-        /** 友军接盘误伤闸（伤害量）：达此值压制一切非濒危下潜。 */
-        internal const val FRIENDLY_CATCH_DAMAGE_MIN = 300f
-
         /** 压制强制耗散的旗帜时长（s），按评估节奏刷新。 */
         private const val VENT_SUPPRESS_FLAG_SEC = 0.5f
-
-        /** 持续光束威胁折算窗口（s）：照射中的持续光束按 DPS × 本值折算 near 窗口伤害。 */
-        internal const val CONT_BEAM_THREAT_WINDOW_SEC = 1.5f
-
-        /** 爆发光束威胁折算权重：照射中的爆发光束按爆发总伤 × 本值折算 soon 窗口伤害。 */
-        internal const val BURST_BEAM_THREAT_WEIGHT = 0.5f
-
-        /** 战术强制耗散的总辐能上限（基础值；实际闸值 × ventRateMult，随强制耗散属性提升）。 */
-        internal const val TACTICAL_VENT_FLUX_CAP = 0.15f
-
-        /** 战术强制耗散的硬辐能占比下限：辐能几乎全为硬辐才值得 vent（软辐走相位耗散链路）。 */
-        internal const val TACTICAL_VENT_HARD_FRAC = 0.85f
-
-        /** 战术强制耗散的预计耗散时长上限（s）：耗散窗口超过本值不值得主动 vent。 */
-        internal const val TACTICAL_VENT_MAX_SEC = 1.5f
-
-        /** 战术强制耗散的环境安全口径：near 来袭低于威胁阈值 × 本值。 */
-        internal const val TACTICAL_VENT_SAFE_NEAR_FRAC = 0.5f
-
-        /** 友军承火筛查距离（su）：只评估本舰周围本距离内的友军舰船。 */
-        internal const val SCREEN_SCAN_DIST = 800f
-
-        /** 友军承火方向锥半角（°）：友军位于本舰→主威胁方向 ±本值锥内且更靠近敌舰才算「在前承火」。 */
-        internal const val SCREEN_AHEAD_HALF_ARC = 60f
-
-        /** 前方友军承火时下潜阈值的放宽倍数：有人扛线时减少规避无效伤害的反复潜水。 */
-        internal const val SCREENED_DIVE_THRESHOLD_MULT = 2f
-
-        /** 相位赶路的最小目标距离（su）：低于本值开关僵直大于赶路收益，不下潜。 */
-        internal const val TRAVEL_PHASE_MIN_DIST = 2000f
-
-        /** 相位赶路下潜的总辐能上限：辐能过高时下潜只会加速累积硬辐。 */
-        internal const val TRAVEL_DIVE_FLUX_MAX = 0.30f
-
-        /** 相位赶路下潜的硬辐能上限。 */
-        internal const val TRAVEL_DIVE_HARD_FLUX_MAX = 0.25f
-
-        /** 相位赶路途中保持相位的总辐能上限：超过本值放行上浮耗散，维持低辐赶路循环。 */
-        internal const val TRAVEL_HOLD_FLUX_MAX = 0.35f
-
-        /** 纯角度差（0~180°），不依赖 Misc 便于单测。 */
-        internal fun angleDiffAbs(a: Float, b: Float): Float {
-            var d = (a - b) % 360f
-            if (d > 180f) d -= 360f
-            if (d < -180f) d += 360f
-            return kotlin.math.abs(d)
-        }
-
-        /** 低机动目标判定（简化代理指标：极速 或 转向+加速度 双低）。 */
-        internal fun isLowMobilityTarget(maxSpeed: Float, acceleration: Float, maxTurnRate: Float): Boolean =
-            maxSpeed <= LOW_MOBILITY_MAX_SPEED ||
-                    (maxTurnRate <= LOW_MOBILITY_TURN_RATE && acceleration <= LOW_MOBILITY_ACCEL)
-
-        /** 绕后达成上浮的最小脱间距（纯函数）：本舰碰撞半径与敌舰有效半径之和的 [REAR_SURFACE_SEPARATION_FRAC] 倍。 */
-        internal fun rearSurfaceMinSeparation(shipRadius: Float, enemyRadius: Float): Float =
-            (shipRadius + enemyRadius) * REAR_SURFACE_SEPARATION_FRAC
-
-        /**
-         * 绕后走位是否就地保持（纯函数）：进入侧后薄弱区、落点可退相位且脱间距满足时
-         * 挂 PHASE_ATTACK_RUN_IN_GOOD_SPOT 就地保持，否则继续 PHASE_ATTACK_RUN 穿透——
-         * 脱间距不足时就地保持没有任何一层在创造间距（对静止/慢速目标几何可能永不打开，
-         * 最终憋到强制上浮在同一个贴脸点收尾），必须继续穿透把间距拉开。
-         */
-        internal fun flankDriveHoldSpot(s: PhaseSituation): Boolean =
-            s.inTargetRearArc && !s.unphaseUnsafe && s.rearSurfaceDistanceSafe
-
-        /**
-         * 绕后走位驱动是否生效（纯函数）：意图途中且未进入强制上浮落点暂缓——
-         * 暂缓意味着本次相位必须收尾，保命后撤拉开优先于穿透就位，
-         * 防止 DO_NOT_BACK_OFF 与后撤旗标并挂互相打架。advance 的走位驱动专用口径。
-         */
-        internal fun flankDriveActive(s: PhaseSituation): Boolean =
-            s.phased && s.flankIntentActive && s.forcedSurfaceHoldSec <= 0f
-
-        /**
-         * 相对运动最近接近距离（纯函数）：相对位置 (px,py)、相对速度 (vx,vy)，
-         * 取 [0, windowSec] 内的最近间距；相对静止或相互远离时即当前间距。
-         */
-        internal fun closestApproachDistance(
-            px: Float, py: Float, vx: Float, vy: Float, windowSec: Float,
-        ): Float {
-            val vv = vx * vx + vy * vy
-            var t = 0f
-            if (vv > 1e-6f) {
-                t = -(px * vx + py * vy) / vv
-                if (t < 0f) t = 0f
-                if (t > windowSec) t = windowSec
-            }
-            val cx = px + vx * t
-            val cy = py + vy * t
-            return kotlin.math.sqrt(cx * cx + cy * cy)
-        }
-
-        /**
-         * 射线段-圆相交（纯函数）：弹体从 (px,py) 出发、窗口内位移 (dx,dy)，
-         * 判定线段是否穿过以 (cx,cy) 为心、radius 为半径的圆。
-         */
-        internal fun segmentHitsCircle(
-            px: Float, py: Float, dx: Float, dy: Float,
-            cx: Float, cy: Float, radius: Float,
-        ): Boolean {
-            val lenSq = dx * dx + dy * dy
-            if (lenSq < 1e-6f) return false
-            // 圆心在线段方向上的投影参数 t（截断到线段内）
-            var t = ((cx - px) * dx + (cy - py) * dy) / lenSq
-            if (t < 0f) t = 0f
-            if (t > 1f) t = 1f
-            val nearX = px + dx * t - cx
-            val nearY = py + dy * t - cy
-            return nearX * nearX + nearY * nearY <= radius * radius
-        }
-
-        /** 相位决策快照（纯数据，[decide] 的输入，单测直接构造）。 */
-        internal data class PhaseSituation(
-            /** 是否处于相位（含 charge up；charge down 视为上浮中，不算相位）。 */
-            val phased: Boolean,
-            /** 已连续相位时长（s）。 */
-            val phaseActiveTime: Float,
-            /** 距上次完全上浮的时长（s）。 */
-            val timeSinceUnphase: Float,
-            /** 硬辐能水平（0~1）。 */
-            val hardFluxLevel: Float,
-            /** 总辐能水平（0~1）。 */
-            val fluxLevel: Float,
-            /** 紧急窗口内预计命中伤害。 */
-            val incomingSoonDamage: Float,
-            /** 威胁窗口内预计命中伤害（不含紧急窗口部分）。 */
-            val incomingNearDamage: Float,
-            /** 舰体上限。 */
-            val maxHull: Float,
-            /** 威胁圈内是否存在有效敌舰。 */
-            val engagedEnemyNear: Boolean,
-            /** 攻击系统是否就绪（空闲且冷却完毕）。 */
-            val systemReady: Boolean,
-            /** 攻击系统是否激活中（isOn；相位系统本身不算）。 */
-            val systemActive: Boolean,
-            /** 可输出武器占比（0~1；无武器时为 1）。 */
-            val weaponsReadyFrac: Float,
-            /** 是否撤退中。 */
-            val retreating: Boolean,
-            /** 相位斗篷是否可激活（空闲、冷却完毕、未被禁用）。 */
-            val cloakReady: Boolean,
-            /** 相位斗篷剩余冷却（s；就绪时为 0，供 vent 压制冷却宽限口径使用）。 */
-            val cloakCooldownRemaining: Float,
-            /** 软辐能占比（fluxLevel - hardFluxLevel）。 */
-            val softFluxLevel: Float,
-            /** 下线武器占比（0~1；非装饰非系统槽武器中被禁用的比例，无武器时为 0）。 */
-            val weaponsDisabledFrac: Float,
-            /** 下线引擎占比（0~1；整舰熄火视为全部下线，无引擎时为 0）。 */
-            val enginesDisabledFrac: Float,
-            /** 主威胁目标是否为低机动舰（代理指标判定，见 [isLowMobilityTarget]）。 */
-            val targetLowMobility: Boolean,
-            /** 本舰是否已位于主威胁目标的侧后射界薄弱区。 */
-            val inTargetRearArc: Boolean,
-            /** 主威胁目标当前能瞄准本舰的武器数量。 */
-            val weaponCoverage: Int,
-            /** 若此刻入相位，穿透本舰的直射火力在 [FRIENDLY_CATCH_WINDOW_SEC] 内将误伤友军的估计伤害。 */
-            val friendlyCatchDamage: Float,
-            /** 绕后意图是否生效中（绕后下潜后保持相位机动穿透的窗口期）。 */
-            val flankIntentActive: Boolean,
-            /** 布防时武装的绕后意图窗口长度（s）；意图未生效时取值不影响判定。 */
-            val flankIntentWindowSec: Float,
-            /** 主威胁目标距离（su；无威胁时为 [Float.MAX_VALUE]）。 */
-            val threatDistance: Float,
-            /** 上浮落点是否不安全：本舰碰撞圈与他舰深度重叠（原版斗篷此时拒绝退相位）。 */
-            val unphaseUnsafe: Boolean,
-            /** 上浮贴脸：最近敌舰间距进入双方碰撞半径和的 [SURFACE_PROXIMITY_FRAC] 倍内。 */
-            val surfaceTooClose: Boolean,
-            /** 上浮弹幕窗口（[SURFACE_WINDOW_SEC]）内预计命中本舰的伤害合计（敌方三窗口 + 友方 soon）。 */
-            val incomingSurfaceDamage: Float,
-            /** 正脸火力轴：位于主威胁舰艏 ±[SURFACE_FRONT_AXIS_HALF_ARC]° 锥内且距离在 [SURFACE_FRONT_AXIS_MAX_DIST] 内。 */
-            val threatFrontAxisClose: Boolean,
-            /** 绕后达成上浮的脱间距是否满足：与主威胁间距（含 [SURFACE_WINDOW_SEC] 相对速度外推最近接近）≥ [rearSurfaceMinSeparation]。 */
-            val rearSurfaceDistanceSafe: Boolean,
-            /** 强制上浮被落点安全闸按住的累计时长（s；达 [FORCED_SURFACE_HOLD_MAX_SEC] 兜底放行）。 */
-            val forcedSurfaceHoldSec: Float,
-            /** 友军火力在 soon 窗口内命中本舰的估计伤害（友伤规避只触发防御性下潜）。 */
-            val incomingFriendlySoonDamage: Float,
-            /** 预计强制耗散时长（s；无法估计时为 [Float.MAX_VALUE]），战术强制耗散采样。 */
-            val ventTimeSec: Float,
-            /** 强制耗散速率倍率（stats 修正值），战术强制耗散阈值随其提升。 */
-            val ventRateMult: Float,
-            /** 是否正在强制耗散中。 */
-            val venting: Boolean,
-            /** 主威胁方向前方是否有友军承火（[SCREEN_SCAN_DIST] 内、方向锥 ±[SCREEN_AHEAD_HALF_ARC]°、比本舰更靠近敌舰）。 */
-            val friendlyScreenAhead: Boolean,
-            /** 赶路目标点（MOVEMENT_DEST 旗标）距离（su；无目标点时为 [Float.MAX_VALUE]）。 */
-            val travelDestDistance: Float,
-        )
-
-        /** 相位指令：NONE 保持 / DIVE 下潜 / SURFACE 上浮。 */
-        internal enum class PhaseOrder { NONE, DIVE, SURFACE }
-
-        /**
-         * 上浮安全评估（纯函数）：贴脸、弹幕窗口来袭达闸、正脸火力轴任一不安全即按住。
-         * 只约束主动上浮——强制上浮（辐能/时长闸）在 decideOrder 中先行返回，不经本闸。
-         */
-        internal fun isSurfaceSafe(s: PhaseSituation): Boolean =
-            !s.surfaceTooClose && !s.threatFrontAxisClose &&
-                    s.incomingSurfaceDamage < surfaceDangerThreshold(s.maxHull)
-
-        /** 相位决策核心（纯函数）：口径见类 KDoc 规则清单。 */
-        internal fun decide(s: PhaseSituation): PhaseOrder {
-            val order = decideOrder(s)
-            // 上浮落点安全闸：与他舰深度重叠时原版斗篷拒绝退相位（canBeDeactivated=false，
-            // toggle 空发），按住一切上浮指令直到漂出重叠——否则实机会出现「指令三连发、
-            // 舰船卡相位」的拒退循环（本系统 canNotCauseOverload，续潜无过载风险）
-            if (order == PhaseOrder.SURFACE && s.phased && s.unphaseUnsafe) return PhaseOrder.NONE
-            return order
-        }
-
-        private fun decideOrder(s: PhaseSituation): PhaseOrder {
-            // 防御性来袭口径：敌方与友军火力合并——被友军高伤火力命中同样是生存威胁，
-            // 相位可以规避友伤；友军火力只走这条防御链路，不参与绕后/耗软辐等战术下潜
-            val defensiveSoon = s.incomingSoonDamage + s.incomingFriendlySoonDamage
-            // 前方友军承火时放宽下潜阈值：有人扛线时本舰受到的直瞄火力显著减少，
-            // 减少规避无效伤害的反复潜水（只放宽规避类下潜闸，不动上浮与战术链路）
-            val screenMult = if (s.friendlyScreenAhead) SCREENED_DIVE_THRESHOLD_MULT else 1f
-            if (s.phased) {
-                // 致命豁免：即将吃到致命伤害且辐能有余量时，强制上浮推迟到这一下过去之后
-                val holdForLethal = isHoldForLethal(s)
-
-                // 强制上浮（辐能/时长闸，时长闸在绕后意图期间放宽到武装窗口 + 富余）：
-                // 落点同样要求相对安全——贴脸强制上浮正是实机「贴盾上浮/上浮即吃鱼雷」入口，
-                // 不安全时有界暂缓（[FORCED_SURFACE_HOLD_MAX_SEC]），超时兜底放行防永久相位
-                if (isForcedSurfaceTrigger(s) && !holdForLethal) {
-                    if (isSurfaceSafe(s) || s.forcedSurfaceHoldSec >= FORCED_SURFACE_HOLD_MAX_SEC) {
-                        return PhaseOrder.SURFACE
-                    }
-                    return PhaseOrder.NONE
-                }
-                if (s.phaseActiveTime < MIN_PHASE_TIME_SEC) return PhaseOrder.NONE
-
-                // 上浮安全闸：贴脸/弹幕窗口/正脸火力轴任一不安全时一切主动上浮按住，
-                // 保持相位机动等时机（强制上浮已先行返回，不受此闸约束）
-                if (!isSurfaceSafe(s)) return PhaseOrder.NONE
-
-                // 即将受击不主动上浮（先于一刀切主动上浮规则判定：交战圈外发射的高速弹
-                // 不在无威胁上浮的 near 窗口口径内，但同样会在 soon 窗口落地；
-                // 友军火力持续照射本舰时同样按住不上浮——上浮即被烧）
-                if (defensiveSoon >= diveSoonThreshold(s.maxHull)) return PhaseOrder.NONE
-                // 绕后意图拦截（先于无威胁/死角上浮）：意图途中一切主动上浮按住——
-                // 穿透机动的就位点在目标背后远点，途中短暂掉出交战圈不等于脱战，
-                // 掉圈提前上浮即布防早夭（实测 zw101 多次 intent=true engaged=false
-                // 途中上浮，绕后扫描幅度被压掉）
-                if (s.flankIntentActive) {
-                    // 绕后意图达成：已进入侧后薄弱区、覆盖闸放宽到常规上限、脱间距满足即上浮输出；
-                    // 脱间距不足（贴着敌舰护盾/碰撞箱）按住，保持相位穿出拉开——
-                    // 贴脸上浮必吃撞击与近防（实机 zw101 绕后 132su 贴脸上浮）
-                    if (s.inTargetRearArc && s.weaponCoverage <= SURFACE_COVERAGE_MAX &&
-                        s.rearSurfaceDistanceSafe
-                    ) {
-                        return PhaseOrder.SURFACE
-                    }
-                    return PhaseOrder.NONE
-                }
-                if (!s.engagedEnemyNear && s.incomingNearDamage < diveNearThreshold(s.maxHull) * 0.5f) {
-                    // 撤退赶路且硬辐能有余量时保持相位；相位赶路途中辐能未超标同样保持
-                    // （[isTravelPhaseHold]，辐能积累超标后放行上浮耗散，维持低辐赶路循环）
-                    if (!(s.retreating && s.hardFluxLevel < RETREAT_STAY_HARD_FLUX) &&
-                        !isTravelPhaseHold(s)
-                    ) {
-                        return PhaseOrder.SURFACE
-                    }
-                }
-                // 死角上浮：已机动到目标侧后射界薄弱区、覆盖武器稀少且脱间距满足，立即上浮输出
-                if (s.engagedEnemyNear && s.inTargetRearArc &&
-                    s.weaponCoverage <= REAR_SURFACE_MAX_COVERAGE && s.rearSurfaceDistanceSafe
-                ) {
-                    return PhaseOrder.SURFACE
-                }
-                // 覆盖闸：主威胁能瞄准本舰的武器过多时，继续相位机动等死角（强制上浮不受此闸约束）
-                if (s.weaponCoverage > SURFACE_COVERAGE_MAX) return PhaseOrder.NONE
-                if (s.systemReady && s.engagedEnemyNear) return PhaseOrder.SURFACE
-                if (s.weaponsReadyFrac >= WEAPONS_READY_SURFACE_FRAC &&
-                    s.incomingNearDamage < diveNearThreshold(s.maxHull)
-                ) {
-                    return PhaseOrder.SURFACE
-                }
-                return PhaseOrder.NONE
-            }
-
-            if (!s.cloakReady) return PhaseOrder.NONE
-            // 友军接盘评估：入相位后原本命中本舰的直射弹药会穿透继续飞，弹道上友军会接盘；
-            // 误伤量达闸后只允许自身濒危（致命来袭，含友军火力烧身）时下潜——自身生存优先
-            val selfCritical = defensiveSoon >= s.maxHull * LETHAL_SOON_HULL_FRACTION
-            val friendlyRisk = s.friendlyCatchDamage >= FRIENDLY_CATCH_DAMAGE_MIN
-            // 紧急下潜绕过错峰与系统激活闸：保命优先（但受友军接盘闸约束，濒危除外）；
-            // 前方友军承火时阈值放宽（screenMult），有人扛线时不为擦伤火力反复潜水
-            if (defensiveSoon >= diveSoonThreshold(s.maxHull) * screenMult &&
-                (!friendlyRisk || selfCritical)
-            ) {
-                return PhaseOrder.DIVE
-            }
-            // 攻击系统激活中不主动下潜（防自断磁暴充能/复制窗口）
-            if (s.systemActive) return PhaseOrder.NONE
-            // 友军接盘闸：非紧急下潜一律压制
-            if (friendlyRisk) return PhaseOrder.NONE
-            // 相位耗软辐能（先于一刀切错峰闸判定）：闸门收敛到 [isSoftFluxDumpDive] 单一口径。
-            // 不受错峰闸约束——相位耗散是本系统的核心循环，错峰窗口内不压 vent 时
-            // VentModule 必抢先 vent（vent 启动即不可取消），绕后/侧后输出窗口随之报废；
-            // 闸门内含 cloakReady，通风口只在相位耗散确定接手时被压制
-            if (isSoftFluxDumpDive(s)) {
-                return PhaseOrder.DIVE
-            }
-            if (s.timeSinceUnphase < MIN_UNPHASE_TIME_SEC) return PhaseOrder.NONE
-
-            // 相位赶路（先于一刀切下潜规则判定）：赶路目标点足够远且脱战低辐时下潜赶路；
-            // 与撤退下潜互斥（isTravelDive 排除撤退态），与交战类下潜互斥（要求脱战）
-            if (isTravelDive(s)) return PhaseOrder.DIVE
-            if (s.retreating && s.hardFluxLevel < RETREAT_DIVE_HARD_FLUX) return PhaseOrder.DIVE
-            if (s.fluxLevel >= DIVE_FLUX_LEVEL && s.hardFluxLevel < DIVE_HARD_FLUX_MAX &&
-                s.engagedEnemyNear
-            ) {
-                return PhaseOrder.DIVE
-            }
-            // 绕后下潜：闸门收敛到 [isFlankDive] 单一口径（decide 与 advance 的意图布防共用）
-            if (isFlankDive(s)) {
-                return PhaseOrder.DIVE
-            }
-            // 威胁下潜：前方友军承火时阈值同样放宽（screenMult）
-            if (s.incomingNearDamage >= diveNearThreshold(s.maxHull) * screenMult) return PhaseOrder.DIVE
-            if (s.weaponsReadyFrac <= RECHARGE_DIVE_WEAPONS_FRAC && s.engagedEnemyNear &&
-                s.hardFluxLevel < RECHARGE_DIVE_HARD_FLUX_MAX
-            ) {
-                return PhaseOrder.DIVE
-            }
-            // 修复下潜：武器/引擎下线过半时优先相位窗口——相位 3x 时间倍率随舰时钟加速
-            // 组件修复（原版口径：快进舰每帧额外 advance，ComponentHealthTracker 随舰时钟走），
-            // 相位无敌兜底修复窗口的生存；硬辐能过高时下潜只会加速憋死，设上限
-            if (s.engagedEnemyNear && s.hardFluxLevel < REPAIR_DIVE_HARD_FLUX_MAX &&
-                (s.weaponsDisabledFrac >= REPAIR_DIVE_DISABLED_FRAC ||
-                        s.enginesDisabledFrac >= REPAIR_DIVE_DISABLED_FRAC)
-            ) {
-                return PhaseOrder.DIVE
-            }
-            return PhaseOrder.NONE
-        }
-
-        /** 是否为强制上浮（辐能闸/时长闸触发；用于上浮僵直保护挂后撤）。 */
-        internal fun isForcedSurface(s: PhaseSituation): Boolean =
-            s.phased && (s.hardFluxLevel >= SURFACE_HARD_FLUX || s.phaseActiveTime >= MAX_PHASE_TIME_SEC)
-
-        /**
-         * 强制上浮触发口径（纯函数）：辐能闸或时长闸（绕后意图期间时长上限放宽到
-         * 武装窗口 + 富余，辐能闸不受放宽）。decide 的强制上浮块与 advance 的
-         * 落点安全暂缓时长累计共用本口径。
-         */
-        internal fun isForcedSurfaceTrigger(s: PhaseSituation): Boolean {
-            if (!s.phased) return false
-            val maxPhaseTime =
-                if (s.flankIntentActive) s.flankIntentWindowSec + FLANK_PHASE_CAP_MARGIN_SEC
-                else MAX_PHASE_TIME_SEC
-            return s.hardFluxLevel >= SURFACE_HARD_FLUX || s.phaseActiveTime >= maxPhaseTime
-        }
-
-        /**
-         * 致命豁免口径（纯函数）：[SOON_WINDOW_SEC] 内有致命来袭（≥ 舰体
-         * [LETHAL_SOON_HULL_FRACTION]，含友军火力烧身）且硬辐能有余量
-         * （< [HOLD_MAX_HARD_FLUX]）时，强制上浮推迟到这一下过去之后。
-         * decide 的强制上浮块与 advance 的暂缓预算节拍共用本口径。
-         */
-        internal fun isHoldForLethal(s: PhaseSituation): Boolean =
-            s.incomingSoonDamage + s.incomingFriendlySoonDamage >=
-                    s.maxHull * LETHAL_SOON_HULL_FRACTION &&
-                    s.hardFluxLevel < HOLD_MAX_HARD_FLUX
-
-        /**
-         * 强制上浮落点暂缓预算节拍（纯函数）：触发（[isForcedSurfaceTrigger]）且落点不安全时
-         * 随决策节拍累计；致命豁免（[isHoldForLethal]）期暂停——豁免是等这一下过去而非等安全
-         * 落点，不该烧兜底预算（否则豁免结束预算已被同步耗尽，于不安全落点立即兜底放行）；
-         * 未触发/落点安全即清零。advance 的预算时钟专用口径。
-         */
-        internal fun nextForcedSurfaceHoldSec(s: PhaseSituation, currentSec: Float): Float =
-            when {
-                !isForcedSurfaceTrigger(s) || isSurfaceSafe(s) -> 0f
-                isHoldForLethal(s) -> currentSec
-                else -> currentSec + SCAN_INTERVAL_SEC
-            }
-
-        /**
-         * 耗软辐下潜完整闸门（纯函数）：斗篷就绪、软辐可观、总辐能离过载有距离、环境安全、
-         * 有交战对象。环境安全口径：near 来袭低于威胁阈值 × [SOFT_FLUX_DIVE_SAFE_NEAR_FRAC]；
-         * 侧后占位（已入主威胁射界薄弱区且覆盖不超 [SURFACE_COVERAGE_MAX]）放宽到
-         * ×[SOFT_FLUX_DIVE_SAFE_NEAR_FRAC_REAR]——主威胁覆盖不了侧后，原地相位耗散
-         * （上浮仍在输出位）比后撤 vent 更保全绕后输出窗口。
-         * decide 的下潜规则专用；advance 的 DO_NOT_VENT 压制走 [isSoftFluxDumpVentHold] 宽限口径。
-         */
-        internal fun isSoftFluxDumpDive(s: PhaseSituation): Boolean {
-            if (s.phased || !s.cloakReady || !s.engagedEnemyNear) return false
-            if (s.softFluxLevel < SOFT_FLUX_DIVE_MIN || s.fluxLevel >= SOFT_FLUX_DIVE_MAX_FLUX_LEVEL) {
-                return false
-            }
-            val safeFrac =
-                if (s.inTargetRearArc && s.weaponCoverage <= SURFACE_COVERAGE_MAX) {
-                    SOFT_FLUX_DIVE_SAFE_NEAR_FRAC_REAR
-                } else {
-                    SOFT_FLUX_DIVE_SAFE_NEAR_FRAC
-                }
-            return s.incomingNearDamage < diveNearThreshold(s.maxHull) * safeFrac
-        }
-
-        /**
-         * 耗软辐 vent 压制口径（纯函数）：完整闸门 [isSoftFluxDumpDive] 成立，
-         * 或仅差斗篷就绪且冷却剩余 ≤ [SOFT_FLUX_VENT_HOLD_COOLDOWN_SEC]（冷却尾声提前压
-         * vent——否则 VentModule 必在冷却窗口内抢先启动，vent 不可取消，相位耗散永远抢不到
-         * 窗口）。宽限有界：斗篷就绪即下潜（decide 与完整闸门单一口径），环境转差/辐能逼近
-         * 上限时闸门失效 vent 自然放行兜底。
-         * 与 decide 下潜链的封锁闸同口径：攻击系统激活中（systemActive）/友军接盘风险
-         * （friendlyCatchDamage 达 [FRIENDLY_CATCH_DAMAGE_MIN]）时下潜链（除紧急下潜外）
-         * 不会出手，NONE 路径压制 vent 会构成真实的「压了 vent 却不下潜」窗口，必须先行放行；
-         * decide 返回 DIVE 的情形（含紧急下潜越过封锁闸）由 advance 直接压制，不经本口径。
-         */
-        internal fun isSoftFluxDumpVentHold(s: PhaseSituation): Boolean {
-            if (s.systemActive || s.friendlyCatchDamage >= FRIENDLY_CATCH_DAMAGE_MIN) return false
-            if (isSoftFluxDumpDive(s)) return true
-            if (s.phased || s.cloakReady ||
-                s.cloakCooldownRemaining > SOFT_FLUX_VENT_HOLD_COOLDOWN_SEC
-            ) {
-                return false
-            }
-            return isSoftFluxDumpDive(s.copy(cloakReady = true))
-        }
-
-        /**
-         * 战术强制耗散口径（纯函数）：交战但环境安全（soon/near 来袭均低于下潜阈值）、
-         * 总辐能低（≤ [TACTICAL_VENT_FLUX_CAP] × ventRateMult——强制耗散属性提升耗散速度，
-         * 阈值随之上浮）、辐能几乎全为硬辐（≥ [TACTICAL_VENT_HARD_FRAC]）且预计耗散窗口短
-         * （≤ [TACTICAL_VENT_MAX_SEC]）时主动 vent 清硬辐——硬辐能压低相位内航速与下潜余量，
-         * 低辐窗口主动清掉比攒高了再被动后撤耗散更保全输出位。
-         * 软辐占比较高时不走本口径：相位耗散（[isSoftFluxDumpDive]）才是软辐的去处，
-         * 两链路辐能口径互斥（本口径要求总辐能低且硬辐占比高，耗软辐要求软辐占比 ≥ 0.35）。
-         * 辐能归零时不 vent（fluxLevel > 0.01 闸）：空 vent 纯属自缚僵直。
-         * 攻击系统激活中（systemActive）不 vent：vent 停火会作废磁暴充能/复制窗口
-         * （与 decide 下潜链的 systemActive 封锁闸同口径）。
-         * advance 在 decide 返回 NONE 时出手。
-         */
-        internal fun isTacticalVent(s: PhaseSituation): Boolean =
-            !s.phased && s.engagedEnemyNear && !s.retreating && !s.venting && !s.systemActive &&
-                    s.fluxLevel > 0.01f &&
-                    s.fluxLevel <= TACTICAL_VENT_FLUX_CAP * s.ventRateMult &&
-                    s.hardFluxLevel >= s.fluxLevel * TACTICAL_VENT_HARD_FRAC &&
-                    s.ventTimeSec <= TACTICAL_VENT_MAX_SEC &&
-                    s.incomingSoonDamage + s.incomingFriendlySoonDamage < diveSoonThreshold(s.maxHull) &&
-                    s.incomingNearDamage < diveNearThreshold(s.maxHull) * TACTICAL_VENT_SAFE_NEAR_FRAC
-
-        /**
-         * 相位赶路下潜口径（纯函数）：有赶路目标点（[ShipwideAIFlags.AIFlags.MOVEMENT_DEST]
-         * 旗标，原版 OrderResponseModule 设置、燃驱 AI 同款用法）且距离 ≥ [TRAVEL_PHASE_MIN_DIST]、
-         * 脱战、非撤退、辐能低时下潜——相位 3x 时间倍率随舰时钟加速赶路。
-         * 交战（有交战对象时辐能与生存管理优先于赶路）与空闲（无目标点）状态下无效。
-         * 注意哨兵口径：无目标点采样为 [Float.MAX_VALUE]，必须显式排除——
-         * 「无目标点」若直接过 ≥ 闸会被误判成「无限远目标点」。
-         */
-        internal fun isTravelDive(s: PhaseSituation): Boolean =
-            !s.phased && s.cloakReady && !s.engagedEnemyNear && !s.retreating &&
-                    s.travelDestDistance >= TRAVEL_PHASE_MIN_DIST &&
-                    s.travelDestDistance < Float.MAX_VALUE &&
-                    s.fluxLevel <= TRAVEL_DIVE_FLUX_MAX &&
-                    s.hardFluxLevel <= TRAVEL_DIVE_HARD_FLUX_MAX
-
-        /**
-         * 相位赶路途中保持口径（纯函数）：赶路相位中、辐能未积累到 [TRAVEL_HOLD_FLUX_MAX] 时
-         * 拦截「无威胁上浮」保持相位赶路；辐能积累超标后放行上浮耗散，维持低辐能赶路循环
-         * （相位维持涨辐能减速，低辐相位航速才有赶路收益）。
-         * 哨兵口径同 [isTravelDive]：无目标点的 [Float.MAX_VALUE] 必须显式排除。
-         */
-        internal fun isTravelPhaseHold(s: PhaseSituation): Boolean =
-            s.phased && !s.engagedEnemyNear && !s.retreating &&
-                    s.travelDestDistance >= TRAVEL_PHASE_MIN_DIST &&
-                    s.travelDestDistance < Float.MAX_VALUE &&
-                    s.fluxLevel < TRAVEL_HOLD_FLUX_MAX
-
-        /**
-         * 绕后下潜完整闸门（纯函数）：目标低机动、本舰未在其侧后薄弱区、武器过半可输出、
-         * 硬辐能有余量、near 来袭未达威胁阈值。decide 的下潜规则与 advance 的意图布防共用本口径。
-         */
-        internal fun isFlankDive(s: PhaseSituation): Boolean =
-            !s.phased && s.cloakReady && s.targetLowMobility && !s.inTargetRearArc &&
-                    s.engagedEnemyNear &&
-                    s.weaponsReadyFrac >= FLANK_DIVE_WEAPONS_FRAC &&
-                    s.hardFluxLevel < FLANK_DIVE_HARD_FLUX_MAX &&
-                    s.incomingNearDamage < diveNearThreshold(s.maxHull)
-
-        /**
-         * 绕后意图窗口（纯函数）：按布防时距主威胁目标的距离相对 [FLANK_INTENT_REF_DIST]
-         * 线性缩放基准窗口 [FLANK_INTENT_SEC]——穿透机动的时间预算就是位移预算，慢速舰
-         * 远处下潜时固定窗口会在抵达目标背后前过期，导致意图作废、正面上浮白潜一趟；
-         * 下限基准值（近距离布防行为不变），上限 [FLANK_INTENT_MAX_SEC]。
-         */
-        internal fun flankIntentWindowSec(threatDistance: Float): Float =
-            (FLANK_INTENT_SEC * threatDistance / FLANK_INTENT_REF_DIST)
-                .coerceIn(FLANK_INTENT_SEC, FLANK_INTENT_MAX_SEC)
-
-        /** 光束威胁折算（纯函数）：持续光束按 DPS × [CONT_BEAM_THREAT_WINDOW_SEC] 计入 near 窗口。 */
-        internal fun beamThreatNear(dps: Float): Float = dps * CONT_BEAM_THREAT_WINDOW_SEC
-
-        /** 光束威胁折算（纯函数）：爆发光束按爆发总伤 × [BURST_BEAM_THREAT_WEIGHT] 计入 soon 窗口（爆发窗口即伤害落地窗口）。 */
-        internal fun beamThreatSoon(burstDamage: Float): Float = burstDamage * BURST_BEAM_THREAT_WEIGHT
     }
 
     private var ship: ShipAPI? = null
     private var engine: CombatEngineAPI? = null
 
-    private val scanInterval = IntervalUtil(SCAN_INTERVAL_SEC, SCAN_INTERVAL_SEC)
+    private val sampler = GravityPhaseSituationSampler()
+    private val toggleTree = PhaseToggleTree()
+    private val flankTree = FlankAttackTree()
+    private val ventTree = FluxVentTree()
+
+    private val scanInterval =
+        IntervalUtil(PhaseToggleTree.SCAN_INTERVAL_SEC, PhaseToggleTree.SCAN_INTERVAL_SEC)
 
     /** 已连续相位时长（s），相位外清零。 */
     private var phaseActiveTime = 0f
 
     /** 距上次完全上浮的时长（s）。 */
-    private var timeSinceUnphase = MIN_UNPHASE_TIME_SEC
+    private var timeSinceUnphase = PhaseToggleTree.MIN_UNPHASE_TIME_SEC
 
     /** 距上次斗篷开关指令的时长（s）。 */
     private var toggleGuardElapsed = TOGGLE_GUARD_SEC
@@ -854,13 +85,10 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
     private var flankIntentRemaining = 0f
 
     /** 布防时武装的绕后意图窗口长度（s）：随 [flankIntentRemaining] 一同布防，供相位时长上限推导。 */
-    private var flankIntentWindowArmed = FLANK_INTENT_SEC
+    private var flankIntentWindowArmed = FlankAttackTree.FLANK_INTENT_SEC
 
     /** 强制上浮被落点安全闸按住的累计时长（s）：随决策节拍累计，未触发/落点安全即清零。 */
     private var forcedSurfaceHoldSec = 0f
-
-    /** fluxTracker 空值告警闩：异常留痕一次，不每拍刷屏。 */
-    private var nullFluxTrackerWarned = false
 
     override fun init(ship: ShipAPI, system: ShipSystemAPI, flags: ShipwideAIFlags, engine: CombatEngineAPI) {
         this.ship = ship
@@ -888,7 +116,7 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
         if (phased) {
             phaseActiveTime += amount
             timeSinceUnphase = 0f
-            // 对齐原版口径：相位中不排气
+            // 对齐原版口径：相位中不排气（无条件旗标维护，不进决策树）
             ship.aiFlags.setFlag(ShipwideAIFlags.AIFlags.DO_NOT_VENT, 0.3f)
         } else {
             timeSinceUnphase += amount
@@ -906,15 +134,19 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
         scanInterval.advance(amount)
         if (!scanInterval.intervalElapsed()) return
 
-        val sampled = sampleSituation(engine, ship, cloak, phased, target)
+        val sampled = sampler.sample(
+            engine, ship, cloak, phased, target,
+            phaseActiveTime, timeSinceUnphase, flankIntentRemaining, flankIntentWindowArmed,
+        )
         // 强制上浮落点安全暂缓预算节拍：触发且落点不安全时随决策节拍累计，
         // 致命豁免期暂停（豁免是等这一下过去而非等安全落点，不该烧兜底预算），
-        // 未触发/落点安全即清零；与 decide 的强制上浮块共用
-        // [isForcedSurfaceTrigger]/[isHoldForLethal] 单一口径
-        forcedSurfaceHoldSec = nextForcedSurfaceHoldSec(sampled, forcedSurfaceHoldSec)
+        // 未触发/落点安全即清零；与 A 树的强制上浮规则共用
+        // [PhaseToggleTree.isForcedSurfaceTrigger]/[PhaseToggleTree.isHoldForLethal] 单一口径
+        forcedSurfaceHoldSec = PhaseToggleTree.nextForcedSurfaceHoldSec(sampled, forcedSurfaceHoldSec)
         val situation = sampled.copy(forcedSurfaceHoldSec = forcedSurfaceHoldSec)
 
         // 上浮僵直保护：斗篷冷却窗口内硬辐能过半或舰体残损且有交战对象时持续后撤
+        // （无条件旗标维护，不进决策树）
         if (!phased && cloak.state == ShipSystemAPI.SystemState.COOLDOWN &&
             (ship.hardFluxLevel >= BACKOFF_HARD_FLUX || ship.hullLevel < BACKOFF_HULL_LEVEL) &&
             situation.engagedEnemyNear
@@ -922,61 +154,64 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
             ship.aiFlags.setFlag(ShipwideAIFlags.AIFlags.BACK_OFF, 0.5f)
         }
 
-        val order = decide(situation)
+        // 依次评估 A（斗篷开关）→ B（绕后走位）→ C（vent 链路）；A 结论经上下文传入 B/C
+        // 作树间互斥判据（见类 KDoc 互斥收敛规则）
+        val cloakOrder = toggleTree.decide(PhaseDecisionContext(situation))
+        val flankOrder = flankTree.decide(PhaseDecisionContext(situation, cloakOrder))
+        val ventOrder = ventTree.decide(PhaseDecisionContext(situation, cloakOrder))
 
-        // vent 压制口径：decide 返回 DIVE（一切下潜指令，含紧急下潜越过 systemActive/
-        // friendlyRisk 封锁闸的情形）一律压 DO_NOT_VENT——下潜指令已发出时 vent 纯属浪费
-        // （vent 启动即不可取消，且相位中本就不排气）；NONE 时退到耗软辐宽限口径
-        // [isSoftFluxDumpVentHold]（含斗篷冷却尾声宽限：冷却窗口内不压，VentModule 必抢先
-        // vent，相位耗散永远抢不到窗口；宽限有界且与下潜链封锁闸同口径，斗篷就绪即由
-        // decide 下潜接手，环境转差/辐能逼近上限时闸门失效 vent 自然放行兜底）
-        // （决策优先级：紧急避险 > 相位耗软辐 > 强制耗散）
-        if (order == PhaseOrder.DIVE || isSoftFluxDumpVentHold(situation)) {
-            ship.aiFlags.setFlag(ShipwideAIFlags.AIFlags.DO_NOT_VENT, VENT_SUPPRESS_FLAG_SEC)
+        // C 树执行：vent 压制/主动耗散（决策优先级：紧急避险 > 相位耗软辐 > 强制耗散）
+        when (ventOrder) {
+            VentOrder.SUPPRESS ->
+                ship.aiFlags.setFlag(ShipwideAIFlags.AIFlags.DO_NOT_VENT, VENT_SUPPRESS_FLAG_SEC)
+
+            VentOrder.VENT -> ship.giveCommand(ShipCommand.VENT_FLUX, null, 0)
+            VentOrder.NONE -> Unit
         }
 
-        // 战术强制耗散：交战但环境安全、低辐能且几乎全为硬辐、预计耗散窗口短时主动 vent
-        // 清硬辐（维持相位航速与下潜余量）；只在本拍无下潜/上浮指令时出手。
-        // 与耗软辐链路互斥（辐能口径相反，见 [isTacticalVent]），不会顶掉相位耗散窗口
-        if (order == PhaseOrder.NONE && isTacticalVent(situation)) {
-            ship.giveCommand(ShipCommand.VENT_FLUX, null, 0)
-        }
+        // B 树执行：绕后走位旗标组/落点暂缓后撤；两旗标短时效滚动刷新，
+        // 意图结束/上浮后自然过期，无需手动 unset
+        when (flankOrder) {
+            FlankOrder.BACKOFF ->
+                ship.aiFlags.setFlag(ShipwideAIFlags.AIFlags.BACK_OFF, 0.5f)
 
-        // 强制上浮落点暂缓期间主动后撤：相位高机动拉开与主威胁间距，自己创造安全落点，
-        // 不干等兜底放行撞上贴脸（实机 brilliant 场景暂缓 6s 兜底放行 146su 贴盾上浮）；
-        // 绕后穿透驱动此时让位（[flankDriveActive]），DO_NOT_BACK_OFF 不再续挂
-        if (phased && forcedSurfaceHoldSec > 0f) {
-            ship.aiFlags.setFlag(ShipwideAIFlags.AIFlags.BACK_OFF, 0.5f)
-        }
-
-        // 绕后走位驱动：原版相位 AI 被替换后 PHASE_ATTACK_RUN 无人管理——
-        // 意图途中挂 PHASE_ATTACK_RUN（StrafeTargetManeuverV2 会把相位舰带往目标背后 5000su 点），
-        // 进入侧后薄弱区改挂 PHASE_ATTACK_RUN_IN_GOOD_SPOT（走位模块就地保持攻击距离）；
-        // 两旗标短时效滚动刷新，意图结束/上浮后自然过期，无需手动 unset。
-        // 同挂 DO_NOT_BACK_OFF：走位模块的穿透分支要求非后撤/非规避状态（var52/var58），
-        // 相位累积辐能推高 fluxLevel 后会命中「辐能高于目标」规避判定把穿透驱动掐掉，
-        // 意图期间由本 AI 的辐能闸（SURFACE_HARD_FLUX）兜底生存，走位层不再自行后撤；
-        // 落点重叠时原版斗篷拒绝退相位，不就地保持，继续穿透驱动直到漂出重叠；
-        // 脱间距不足（侧后但贴脸）同样继续穿透——就地保持没有任何一层在创造间距，
-        // 与 decide 层的脱间距闸共用 [flankDriveHoldSpot] 单一口径，避免两层决策打架
-        if (flankDriveActive(situation)) {
-            ship.aiFlags.setFlag(ShipwideAIFlags.AIFlags.DO_NOT_BACK_OFF, 0.5f)
-            if (flankDriveHoldSpot(situation)) {
-                ship.aiFlags.setFlag(ShipwideAIFlags.AIFlags.PHASE_ATTACK_RUN_IN_GOOD_SPOT, 0.5f)
-            } else {
+            FlankOrder.DRIVE -> {
+                ship.aiFlags.setFlag(ShipwideAIFlags.AIFlags.DO_NOT_BACK_OFF, 0.5f)
                 ship.aiFlags.setFlag(ShipwideAIFlags.AIFlags.PHASE_ATTACK_RUN, 0.5f)
             }
+
+            FlankOrder.HOLD_SPOT -> {
+                ship.aiFlags.setFlag(ShipwideAIFlags.AIFlags.DO_NOT_BACK_OFF, 0.5f)
+                ship.aiFlags.setFlag(ShipwideAIFlags.AIFlags.PHASE_ATTACK_RUN_IN_GOOD_SPOT, 0.5f)
+            }
+
+            FlankOrder.NONE -> Unit
         }
 
+        // A 树执行：斗篷开关（受开关守卫约束；旗标维护不受守卫约束，已在上面完成）
         if (toggleGuardElapsed < TOGGLE_GUARD_SEC) return
-        when (order) {
+        when (cloakOrder) {
             PhaseOrder.DIVE -> {
+                // 下潜决策留痕：与上浮留痕同口径记录命中规则，便于实机回放定位
+                val diveDistText =
+                    if (situation.threatDistance == Float.MAX_VALUE) "none"
+                    else "%.0f".format(situation.threatDistance)
+                log.info(
+                    "[GravityPhaseAI] ${ship.name} 下潜：rule=${toggleTree.lastFiredRuleId} " +
+                            "hardFlux=${"%.2f".format(situation.hardFluxLevel)} " +
+                            "flux=${"%.2f".format(situation.fluxLevel)} " +
+                            "near=${"%.0f".format(situation.incomingNearDamage)} " +
+                            "soon=${"%.0f".format(situation.incomingSoonDamage)} " +
+                            "engaged=${situation.engagedEnemyNear} dist=$diveDistText",
+                )
                 toggleCloak(ship)
                 // 绕后意图布防：绕后下潜命中完整闸门且开关指令真正发出时才开启意图窗口
-                // （闸门与 decide 共用 [isFlankDive]；开关被守卫拦住时不空布防）
-                if (isFlankDive(situation)) {
+                // （闸门与 A 树的 FlankDiveRule 共用 [FlankAttackTree.isFlankDive]；
+                // 开关被守卫拦住时不空布防）
+                if (flankTree.shouldArmIntent(situation)) {
                     // 窗口按布防距离缩放：穿透机动的时间预算就是位移预算（见 flankIntentWindowSec）
-                    flankIntentRemaining = flankIntentWindowSec(situation.threatDistance)
+                    flankIntentRemaining =
+                        FlankAttackTree.flankIntentWindowSec(situation.threatDistance)
                     flankIntentWindowArmed = flankIntentRemaining
                     log.info(
                         "[GravityPhaseAI] ${ship.name} 绕后意图布防：目标低机动，" +
@@ -992,7 +227,8 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
                     if (situation.threatDistance == Float.MAX_VALUE) "none"
                     else "%.0f".format(situation.threatDistance)
                 log.info(
-                    "[GravityPhaseAI] ${ship.name} 上浮：phaseTime=${"%.1f".format(situation.phaseActiveTime)}s " +
+                    "[GravityPhaseAI] ${ship.name} 上浮：rule=${toggleTree.lastFiredRuleId} " +
+                            "phaseTime=${"%.1f".format(situation.phaseActiveTime)}s " +
                             "hardFlux=${"%.2f".format(situation.hardFluxLevel)} engaged=${situation.engagedEnemyNear} " +
                             "near=${"%.0f".format(situation.incomingNearDamage)} soon=${"%.0f".format(situation.incomingSoonDamage)} " +
                             "coverage=${situation.weaponCoverage} rearArc=${situation.inTargetRearArc} " +
@@ -1001,7 +237,7 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
                             "dist=$distText sepSafe=${situation.rearSurfaceDistanceSafe}",
                 )
                 toggleCloak(ship)
-                if (isForcedSurface(situation)) {
+                if (PhaseToggleTree.isForcedSurface(situation)) {
                     ship.aiFlags.setFlag(ShipwideAIFlags.AIFlags.BACK_OFF, SURFACE_BACKOFF_SEC)
                 }
             }
@@ -1014,532 +250,5 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
     private fun toggleCloak(ship: ShipAPI) {
         toggleGuardElapsed = 0f
         ship.giveCommand(ShipCommand.TOGGLE_SHIELD_OR_PHASE_CLOAK, null, 0)
-    }
-
-    /** 态势采样：来袭伤害两窗口、交战圈、攻击系统状态、武器可输出占比、目标机动/射界、友军接盘。 */
-    private fun sampleSituation(
-        engine: CombatEngineAPI,
-        ship: ShipAPI,
-        cloak: ShipSystemAPI,
-        phased: Boolean,
-        target: ShipAPI?,
-    ): PhaseSituation {
-        val incoming = FloatArray(3)
-        estimateIncoming(engine.projectiles, ship, incoming, collectFriendly = false)
-        estimateIncoming(engine.missiles, ship, incoming, collectFriendly = false)
-        estimateBeamThreat(engine, ship, incoming, collectFriendly = false)
-
-        // 友军火力只计 soon 窗口（防御性下潜输入）：同口径采样取 owner == 本舰一侧
-        val friendlyIncoming = FloatArray(3)
-        estimateIncoming(engine.projectiles, ship, friendlyIncoming, collectFriendly = true)
-        estimateIncoming(engine.missiles, ship, friendlyIncoming, collectFriendly = true)
-        estimateBeamThreat(engine, ship, friendlyIncoming, collectFriendly = true)
-
-        val threat = pickThreat(engine, ship, target)
-        // 机动性取基础值：modifiedValue 会被零辐能加速/燃驱等瞬时增益污染——敌舰停火
-        // （相位中的本舰不可被瞄准）后零辐能加速生效，modified 口径会把低机动目标误判成高机动
-        val lowMobility = threat != null &&
-                isLowMobilityTarget(
-                    threat.mutableStats.maxSpeed.baseValue,
-                    threat.mutableStats.acceleration.baseValue,
-                    threat.mutableStats.maxTurnRate.baseValue,
-                )
-        val threatDist = if (threat == null) Float.MAX_VALUE
-        else kotlin.math.sqrt(distanceSq(ship.location, threat.location))
-        // 主威胁看向本舰的绝对方位：侧后薄弱区与正脸火力轴共用同一 bearing
-        val threatToUsBearing = threat?.let {
-            Math.toDegrees(
-                kotlin.math.atan2(
-                    (ship.location.y - it.location.y).toDouble(),
-                    (ship.location.x - it.location.x).toDouble(),
-                )
-            ).toFloat()
-        }
-        val attackSystem = ship.system?.takeIf { it !== cloak }
-        val fluxTracker = ship.fluxTracker
-        if (fluxTracker == null && !nullFluxTrackerWarned) {
-            // 战斗舰船正常必有 fluxTracker；空值属异常，留痕后关闭战术耗散通道（不刷屏，每实例一次）
-            nullFluxTrackerWarned = true
-            log.warn("[GravityPhaseAI] ${ship.name} fluxTracker 为空，战术强制耗散通道关闭（ventTimeSec 置 MAX_VALUE）")
-        }
-        return PhaseSituation(
-            phased = phased,
-            phaseActiveTime = phaseActiveTime,
-            timeSinceUnphase = timeSinceUnphase,
-            hardFluxLevel = ship.hardFluxLevel,
-            fluxLevel = ship.fluxLevel,
-            incomingSoonDamage = incoming[0],
-            incomingNearDamage = incoming[1],
-            maxHull = ship.maxHitpoints,
-            engagedEnemyNear = hasEngagedEnemy(engine, ship),
-            systemReady = attackSystem != null &&
-                    attackSystem.state == ShipSystemAPI.SystemState.IDLE &&
-                    attackSystem.cooldownRemaining <= 0f,
-            systemActive = attackSystem?.isOn == true,
-            weaponsReadyFrac = weaponsReadyFrac(ship),
-            retreating = ship.isRetreating,
-            cloakReady = cloak.state == ShipSystemAPI.SystemState.IDLE &&
-                    cloak.cooldownRemaining <= 0f && cloak.canBeActivated(),
-            cloakCooldownRemaining = cloak.cooldownRemaining,
-            softFluxLevel = ship.fluxLevel - ship.hardFluxLevel,
-            weaponsDisabledFrac = weaponsDisabledFrac(ship),
-            enginesDisabledFrac = enginesDisabledFrac(ship),
-            targetLowMobility = lowMobility,
-            inTargetRearArc = threat != null &&
-                    angleDiffAbs(threat.facing, threatToUsBearing!!) >= REAR_ARC_MIN_DIFF,
-            weaponCoverage = if (threat == null) 0 else weaponCoverageOn(ship, threat),
-            friendlyCatchDamage = estimateFriendlyCatch(engine, ship),
-            // 绕后意图生效口径：窗口未过期、相位中、且主威胁未明确换成高机动舰。
-            // 威胁短暂掉出交战圈（threat == null）不取消意图——布防闸在 isFlankDive
-            // 一次性把关，途中抖动取消会让布防早夭（实测 zw101 四次布防三次以
-            // 上浮时 engaged=false 夭折，相位白潜）
-            flankIntentActive = flankIntentRemaining > 0f && phased && (threat == null || lowMobility),
-            flankIntentWindowSec = flankIntentWindowArmed,
-            threatDistance = threatDist,
-            unphaseUnsafe = isUnphaseUnsafe(engine, ship),
-            surfaceTooClose = isSurfaceTooClose(engine, ship),
-            // 上浮弹幕口径：敌方 soon+near+弹幕窗口三段合并，叠加友方 soon——
-            // 上浮僵直期撞上任何一侧的已在途火力都是承伤
-            incomingSurfaceDamage = incoming[0] + incoming[1] + incoming[2] + friendlyIncoming[0],
-            threatFrontAxisClose = threat != null && threatDist <= SURFACE_FRONT_AXIS_MAX_DIST &&
-                    angleDiffAbs(threat.facing, threatToUsBearing!!) <= SURFACE_FRONT_AXIS_HALF_ARC,
-            rearSurfaceDistanceSafe = isRearSurfaceDistanceSafe(ship, threat),
-            // 暂缓时长由 advance 在采样后按节拍累计并 copy 覆写，采样恒置 0
-            forcedSurfaceHoldSec = 0f,
-            incomingFriendlySoonDamage = friendlyIncoming[0],
-            ventTimeSec = fluxTracker?.timeToVent ?: Float.MAX_VALUE,
-            ventRateMult = ship.mutableStats.ventRateMult.modifiedValue,
-            venting = fluxTracker?.isVenting == true,
-            friendlyScreenAhead = hasFriendlyScreenAhead(engine, ship, threat),
-            travelDestDistance = travelDestDistance(ship),
-        )
-    }
-
-    /**
-     * 前方友军承火筛查：主威胁存在时，本舰周围 [SCREEN_SCAN_DIST] 内的友军舰船位于
-     * 「本舰→主威胁」方向 ±[SCREEN_AHEAD_HALF_ARC]° 锥内、且比本舰更靠近主威胁才算
-     * 「在前承火」——有人扛线时本舰受到的直瞄火力显著减少，规避类下潜阈值随之放宽
-     * （[SCREENED_DIVE_THRESHOLD_MULT]，见 decideOrder 的 screenMult）。
-     */
-    private fun hasFriendlyScreenAhead(engine: CombatEngineAPI, ship: ShipAPI, threat: ShipAPI?): Boolean {
-        if (threat == null) return false
-        val toThreatX = threat.location.x - ship.location.x
-        val toThreatY = threat.location.y - ship.location.y
-        val threatDistSq = toThreatX * toThreatX + toThreatY * toThreatY
-        if (threatDistSq < 1e-6f) return false
-        val threatBearing =
-            Math.toDegrees(kotlin.math.atan2(toThreatY.toDouble(), toThreatX.toDouble())).toFloat()
-        for (other in engine.ships) {
-            if (other === ship || other.owner != ship.owner || !other.isAlive ||
-                other.isHulk || other.isFighter
-            ) {
-                continue
-            }
-            val dx = other.location.x - ship.location.x
-            val dy = other.location.y - ship.location.y
-            val distSq = dx * dx + dy * dy
-            if (distSq > SCREEN_SCAN_DIST * SCREEN_SCAN_DIST || distSq < 1e-6f) continue
-            val bearing = Math.toDegrees(kotlin.math.atan2(dy.toDouble(), dx.toDouble())).toFloat()
-            if (angleDiffAbs(bearing, threatBearing) > SCREEN_AHEAD_HALF_ARC) continue
-            // 比本舰更靠近主威胁才算「在前」
-            if (distanceSq(other.location, threat.location) < threatDistSq) return true
-        }
-        return false
-    }
-
-    /**
-     * 赶路目标点距离（su）：原版 OrderResponseModule 设置的
-     * [ShipwideAIFlags.AIFlags.MOVEMENT_DEST] 自定义旗标（Vector2f，燃驱 AI 同款赶路口径）；
-     * 无目标点时为 [Float.MAX_VALUE]（相位赶路闸门随之失效）。
-     */
-    private fun travelDestDistance(ship: ShipAPI): Float {
-        val dest = ship.aiFlags.getCustom(ShipwideAIFlags.AIFlags.MOVEMENT_DEST) as? Vector2f
-            ?: return Float.MAX_VALUE
-        return kotlin.math.sqrt(distanceSq(ship.location, dest))
-    }
-
-    /**
-     * 绕后达成上浮的脱间距采样：与主威胁的当前间距及 [SURFACE_WINDOW_SEC] 相对速度外推
-     * 最近接近均须 ≥ 最小脱间距（[rearSurfaceMinSeparation]）。敌舰护盾开启时有效半径取
-     * 护盾半径——贴着护盾外缘上浮同样贴脸；相位穿透带速度，上浮僵直期相对速度会继续
-     * 把船送进碰撞箱，故取外推窗口内的最近接近而非当前间距。
-     */
-    private fun isRearSurfaceDistanceSafe(ship: ShipAPI, threat: ShipAPI?): Boolean {
-        if (threat == null) return true
-        val shield = threat.shield
-        val enemyRadius =
-            if (shield != null && shield.isOn) {
-                maxOf(threat.collisionRadius, shield.radius)
-            } else {
-                threat.collisionRadius
-            }
-        val minSep = rearSurfaceMinSeparation(ship.collisionRadius, enemyRadius)
-        val relX = ship.location.x - threat.location.x
-        val relY = ship.location.y - threat.location.y
-        if (relX * relX + relY * relY < minSep * minSep) return false
-        val approach = closestApproachDistance(
-            relX, relY,
-            ship.velocity.x - threat.velocity.x,
-            ship.velocity.y - threat.velocity.y,
-            SURFACE_WINDOW_SEC,
-        )
-        return approach >= minSep
-    }
-
-    /** 上浮贴脸采样：最近敌舰间距进入双方碰撞半径和的 [SURFACE_PROXIMITY_FRAC] 倍内（只计有效敌舰，残骸不构成火力威胁）。 */
-    private fun isSurfaceTooClose(engine: CombatEngineAPI, ship: ShipAPI): Boolean {
-        for (other in engine.ships) {
-            if (!isValidEnemyShip(ship, other)) continue
-            val limit = (other.collisionRadius + ship.collisionRadius) * SURFACE_PROXIMITY_FRAC
-            if (distanceSq(ship.location, other.location) < limit * limit) return true
-        }
-        return false
-    }
-
-    /**
-     * 上浮落点重叠判定：本舰碰撞圈与任一非战机舰船深度重叠时，原版斗篷拒绝退相位
-     * （canBeDeactivated 的 locationSafe 口径：间距 < 双方碰撞半径和 × [UNPHASE_UNSAFE_OVERLAP_FRAC]）。
-     * 小行星不查：原版对环带小行星豁免而公开 API 无法区分环带归属，实测唯一触发源是舰船重叠；
-     * hulk 不排除——残骸物理上同样占据落点。
-     */
-    private fun isUnphaseUnsafe(engine: CombatEngineAPI, ship: ShipAPI): Boolean {
-        for (other in engine.ships) {
-            if (other === ship || other.isFighter) continue
-            if (other.parentStation === ship) continue
-            val limit = (other.collisionRadius + ship.collisionRadius) * UNPHASE_UNSAFE_OVERLAP_FRAC
-            if (distanceSq(ship.location, other.location) < limit * limit) return true
-        }
-        return false
-    }
-
-    /** 主威胁目标：当前目标有效则用之，否则取交战圈内最近敌舰（无则 null；回退同样限交战圈）。 */
-    private fun pickThreat(engine: CombatEngineAPI, ship: ShipAPI, target: ShipAPI?): ShipAPI? {
-        if (target != null && isValidEnemyShip(ship, target) &&
-            distanceSq(ship.location, target.location) <= ENGAGE_SCAN_RANGE * ENGAGE_SCAN_RANGE
-        ) {
-            return target
-        }
-        var best: ShipAPI? = null
-        var bestDist = ENGAGE_SCAN_RANGE * ENGAGE_SCAN_RANGE
-        for (other in engine.ships) {
-            if (!isValidEnemyShip(ship, other)) continue
-            val dist = distanceSq(ship.location, other.location)
-            if (dist < bestDist) {
-                bestDist = dist
-                best = other
-            }
-        }
-        return best
-    }
-
-    /** 武器覆盖数：主威胁目标上未禁用、有余弹、射程够得着、且射界当前覆盖本舰的非装饰武器数量。 */
-    private fun weaponCoverageOn(ship: ShipAPI, threat: ShipAPI): Int {
-        var count = 0
-        for (weapon in threat.allWeapons) {
-            if (weapon.isDecorative || weapon.isDisabled) continue
-            // 无弹药武器不构成覆盖（弹尽后无法开火）
-            if (weapon.usesAmmo() && weapon.ammo <= 0) continue
-            val dx = ship.location.x - weapon.location.x
-            val dy = ship.location.y - weapon.location.y
-            val dist = kotlin.math.sqrt(dx * dx + dy * dy)
-            if (dist > weapon.range + ship.collisionRadius) continue
-            val angleToUs = Math.toDegrees(kotlin.math.atan2(dy.toDouble(), dx.toDouble())).toFloat()
-            if (angleDiffAbs(weapon.currAngle, angleToUs) <= weapon.arc / 2f + COVERAGE_ARC_MARGIN) {
-                count++
-            }
-        }
-        return count
-    }
-
-    /**
-     * 友军接盘评估：当前朝本舰飞来的直射弹药（制导导弹会自行改瞄，不计），
-     * 若本舰此刻入相位，弹药沿原弹道在 [FRIENDLY_CATCH_WINDOW_SEC] 窗口内
-     * 穿过友军碰撞圈的累计伤害。压制非濒危下潜使用。
-     */
-    private fun estimateFriendlyCatch(engine: CombatEngineAPI, ship: ShipAPI): Float {
-        var catch = 0f
-        catch += friendlyCatchFrom(engine.projectiles, engine, ship)
-        catch += friendlyCatchFrom(engine.missiles, engine, ship)
-        return catch
-    }
-
-    private fun friendlyCatchFrom(
-        projectiles: List<DamagingProjectileAPI>,
-        engine: CombatEngineAPI,
-        ship: ShipAPI,
-    ): Float {
-        val shipLoc = ship.location
-        var catch = 0f
-        for (proj in projectiles) {
-            // fade 段弹体不过滤：isFading 是过射程消散段/fizzle 末端窗口，伤害判定只看 isExpired，
-            // fade 段仍可全额命中——穿透误伤同样成立
-            if (proj.owner == ship.owner || proj.isExpired) continue
-            // 制导导弹脱靶后自行改瞄，穿透误伤口径不覆盖
-            if (proj is MissileAPI && proj.isGuided) continue
-            val dx = shipLoc.x - proj.location.x
-            val dy = shipLoc.y - proj.location.y
-            val dist = kotlin.math.sqrt(dx * dx + dy * dy)
-            if (dist > PROJECTILE_SCAN_RANGE || dist < 1e-3f) continue
-
-            val vel = proj.velocity
-            val approach = (vel.x * dx + vel.y * dy) / dist
-            if (approach <= APPROACH_SPEED_MIN) continue
-            // 只有本来会命中本舰的弹药才有「穿透」一说
-            val eta = (dist - ship.collisionRadius) / approach
-            if (eta < 0f || eta > NEAR_WINDOW_SEC) continue
-            val hitX = proj.location.x + vel.x * eta - shipLoc.x
-            val hitY = proj.location.y + vel.y * eta - shipLoc.y
-            val hitR = ship.collisionRadius + MISS_MARGIN
-            if (hitX * hitX + hitY * hitY > hitR * hitR) continue
-
-            // 穿透后的飞行窗口：从预计命中本舰点起算（抵达本舰之前的航段不评估——
-            // 弹体与本舰之间隔着友军时会先撞友军，不构成穿透误伤），窗口扣除已飞的 eta
-            val startX = proj.location.x + vel.x * eta
-            val startY = proj.location.y + vel.y * eta
-            val remaining = FRIENDLY_CATCH_WINDOW_SEC - eta
-            if (remaining <= 0f) continue
-            val flyX = vel.x * remaining
-            val flyY = vel.y * remaining
-            for (friendly in engine.ships) {
-                if (friendly === ship || friendly.owner != ship.owner ||
-                    !friendly.isAlive || friendly.isHulk || friendly.isFighter
-                ) {
-                    continue
-                }
-                if (segmentHitsCircle(
-                        startX, startY, flyX, flyY,
-                        friendly.location.x, friendly.location.y, friendly.collisionRadius,
-                    )
-                ) {
-                    catch += proj.damageAmount
-                    break
-                }
-            }
-        }
-        return catch
-    }
-
-    /** 有效敌舰口径（非战机、非残骸、非中立 owner 100），交战圈与威胁目标共用。 */
-    private fun isValidEnemyShip(ship: ShipAPI, other: ShipAPI): Boolean =
-        other !== ship && other.isAlive && !other.isHulk && !other.isFighter &&
-                other.owner != ship.owner && other.owner != 100
-
-    /**
-     * 光束威胁采样（折算累加进 [out]：[0]=soon，[1]=near）：
-     * 光束瞬时命中、无弹体实体可被 [estimateIncoming] 采样，改为扫描敌舰武器——
-     * 正在开火（isFiring，爆发光束含充能窗口）、射界与射程覆盖本舰的光束计入威胁：
-     * 持续光束按 [beamThreatNear] 折算（DPS × 窗口秒）进 near；
-     * 爆发光束（速子长矛级）按 [beamThreatSoon] 折算（爆发总伤 × 权重）进 soon——
-     * 爆发窗口即伤害落地窗口，计入 soon 使紧急下潜直接响应高伤光束照射
-     * （相位断照射是相位舰对高伤光束的标准生存手段）。
-     *
-     * collectFriendly=true 时改采友军舰船（不含自舰）光束：光束伤害即时落地，
-     * 持续/爆发光束统一折算进 soon 窗口，仅供防御性下潜使用，不参与输出窗口判断。
-     */
-    private fun estimateBeamThreat(engine: CombatEngineAPI, ship: ShipAPI, out: FloatArray, collectFriendly: Boolean) {
-        for (source in engine.ships) {
-            val isThreatSource = if (collectFriendly) {
-                source !== ship && source.owner == ship.owner &&
-                        source.isAlive && !source.isHulk && !source.isFighter
-            } else {
-                isValidEnemyShip(ship, source)
-            }
-            if (!isThreatSource) continue
-            for (weapon in source.allWeapons) {
-                if (weapon.isDecorative || weapon.isDisabled || !weapon.isFiring) continue
-                // isBurstBeam 是 isBeam 的子集，先过滤非光束
-                if (!weapon.isBeam) continue
-                if (weapon.usesAmmo() && weapon.ammo <= 0) continue
-                val dx = ship.location.x - weapon.location.x
-                val dy = ship.location.y - weapon.location.y
-                val dist = kotlin.math.sqrt(dx * dx + dy * dy)
-                if (dist > weapon.range + ship.collisionRadius) continue
-                val angleToUs = Math.toDegrees(kotlin.math.atan2(dy.toDouble(), dx.toDouble())).toFloat()
-                if (angleDiffAbs(weapon.currAngle, angleToUs) > weapon.arc / 2f + COVERAGE_ARC_MARGIN) {
-                    continue
-                }
-                if (weapon.isBurstBeam) {
-                    out[0] += beamThreatSoon(weapon.derivedStats.burstDamage)
-                } else if (collectFriendly) {
-                    out[0] += beamThreatNear(weapon.derivedStats.dps)
-                } else {
-                    out[1] += beamThreatNear(weapon.derivedStats.dps)
-                }
-            }
-        }
-    }
-
-    /**
-     * 来袭伤害估计（三窗口累加进 [out]：[0]=紧急窗口，[1]=威胁窗口，[2]=上浮弹幕窗口）：
-     * 弹体朝本舰的分速度超阈值、按当前弹道在窗口内到达且横向偏差落在碰撞圈余量内才计入；
-     * 忽略本舰机动，窗口短（≤2.0s）口径足够。
-     * 制导导弹（含龙炎 DEM 等跟踪武器）放宽口径：会自行修正弹道，跳过横向偏差检查，
-     * 接近速度取其极速的一半兜底（当前速度不代表命中时刻速度）。
-     *
-     * collectFriendly=true 时改采友方弹药（owner 与本舰相同）：友军火力只计 soon 窗口
-     * （防御性下潜输入），eta 超出 soon 窗口的友方弹药不计入。
-     *
-     * payload 导弹（behaviorSpec 带 payloadWeaponId：双子星 DEM、原版龙炎 DEM 及任何
-     * 同行为模组弹体）走 [payloadProfileOf] 口径：弹体不撞舰结算，抵近悬停距离锁定后
-     * 才由 payload 结算主伤害，弹道 ETA 口径低估威胁；进入悬停距离即按 soon 窗口计
-     * 全额威胁（只计 payload 爆发；弹体本体在悬停点自爆，对本舰不构成伤害），
-     * 给下潜充能留提前量。只处理敌方弹体
-     * （payload 指向敌方目标，友方 payload 导弹不构成对本舰的指向威胁）。
-     */
-    private fun estimateIncoming(
-        projectiles: List<DamagingProjectileAPI>,
-        ship: ShipAPI,
-        out: FloatArray,
-        collectFriendly: Boolean,
-    ) {
-        val shipLoc = ship.location
-        val radius = ship.collisionRadius
-        for (proj in projectiles) {
-            // fade 段弹体不过滤：isFading 是过射程消散段/fizzle 末端窗口，伤害判定只看 isExpired，
-            // fade 段仍可全额命中，过滤会低估威胁（已解除武装的 fizzle 导弹轻微高估，保守方向）
-            if ((proj.owner == ship.owner) != collectFriendly || proj.isExpired) continue
-            val guided = proj is MissileAPI && proj.isGuided
-            val dx = shipLoc.x - proj.location.x
-            val dy = shipLoc.y - proj.location.y
-            val dist = kotlin.math.sqrt(dx * dx + dy * dy)
-            if (dist > PROJECTILE_SCAN_RANGE || dist < 1e-3f) continue
-
-            // payload 导弹分支（先于接近速度闸：悬停锁定段弹体低速/悬停，常规口径会漏）；
-            // 只计 payload 爆发——弹体本体在悬停点 bombPumped 自爆（爆心半径数十 su），
-            // 对悬停距离外的本舰不构成伤害，计入 damageAmount 属虚增
-            if (!collectFriendly && proj is MissileAPI) {
-                val profile = payloadProfileOf(proj)
-                if (profile != null) {
-                    if (dist <= profile.standoffDist) {
-                        out[0] += profile.burstDamage
-                    }
-                    continue
-                }
-            }
-
-            val vel = proj.velocity
-            var approach = (vel.x * dx + vel.y * dy) / dist
-            if (guided) {
-                val missileSpeed = (proj as MissileAPI).maxSpeed * 0.5f
-                if (approach < missileSpeed) approach = missileSpeed
-            }
-            if (approach <= APPROACH_SPEED_MIN) continue
-
-            val eta = (dist - radius) / approach
-            if (eta < 0f || eta > SURFACE_WINDOW_SEC) continue
-
-            if (!guided) {
-                // 命中时刻弹体位置与本舰中心的横向偏差：落在碰撞圈余量内才算会命中
-                val hitX = proj.location.x + vel.x * eta - shipLoc.x
-                val hitY = proj.location.y + vel.y * eta - shipLoc.y
-                if (hitX * hitX + hitY * hitY > (radius + MISS_MARGIN) * (radius + MISS_MARGIN)) continue
-            }
-
-            if (eta <= SOON_WINDOW_SEC) {
-                out[0] += proj.damageAmount
-            } else if (!collectFriendly) {
-                if (eta <= NEAR_WINDOW_SEC) {
-                    out[1] += proj.damageAmount
-                } else {
-                    out[2] += proj.damageAmount
-                }
-            }
-        }
-    }
-
-    /** 交战判定：威胁圈内存在有效敌舰。 */
-    private fun hasEngagedEnemy(engine: CombatEngineAPI, ship: ShipAPI): Boolean =
-        engine.ships.any { other ->
-            isValidEnemyShip(ship, other) &&
-                    distanceSq(ship.location, other.location) <= ENGAGE_SCAN_RANGE * ENGAGE_SCAN_RANGE
-        }
-
-    /** 可输出武器占比：非装饰、非系统槽武器中未禁用、装填完毕、有余弹的比例（无武器时为 1）。 */
-    private fun weaponsReadyFrac(ship: ShipAPI): Float {
-        var total = 0
-        var ready = 0
-        for (weapon in ship.allWeapons) {
-            if (weapon.isDecorative || weapon.slot?.isSystemSlot != false) continue
-            total++
-            if (!weapon.isDisabled && weapon.cooldownRemaining < 0.3f &&
-                (!weapon.usesAmmo() || weapon.ammo > 0)
-            ) {
-                ready++
-            }
-        }
-        return if (total == 0) 1f else ready.toFloat() / total
-    }
-
-    /** 下线武器占比：非装饰、非系统槽武器中被禁用的比例（无武器时为 0），修复下潜采样。 */
-    private fun weaponsDisabledFrac(ship: ShipAPI): Float {
-        var total = 0
-        var disabled = 0
-        for (weapon in ship.allWeapons) {
-            if (weapon.isDecorative || weapon.slot?.isSystemSlot != false) continue
-            total++
-            if (weapon.isDisabled) disabled++
-        }
-        return if (total == 0) 0f else disabled.toFloat() / total
-    }
-
-    /** 下线引擎占比：整舰熄火（flameout）视为全部下线（无引擎时为 0），修复下潜采样。 */
-    private fun enginesDisabledFrac(ship: ShipAPI): Float {
-        val controller = ship.engineController
-        if (controller.isFlamedOut) return 1f
-        val engines = controller.shipEngines
-        if (engines.isEmpty()) return 0f
-        return engines.count { it.isDisabled }.toFloat() / engines.size
-    }
-
-    /** payload 导弹档案：悬停打击距离（su）与 payload 爆发伤害（按弹体 spec id 缓存推导结果）。 */
-    private data class PayloadProfile(val standoffDist: Float, val burstDamage: Float)
-
-    /** payload 档案缓存：spec id → 档案（非 payload 弹体为 null，同样缓存避免重复解析 JSON）。 */
-    private val payloadProfileCache = HashMap<String, PayloadProfile?>()
-
-    /**
-     * payload 导弹档案推导（结果按 spec id 缓存；非 payload 弹体为 null）：
-     * behaviorSpec 带 payloadWeaponId 的弹体（双子星 DEM、原版龙炎 DEM 及任何同行为模组
-     * 弹体）不撞舰结算——抵近 triggerDistance 悬停锁定后发射 payload 结算主伤害，
-     * 弹体命中口径低估威胁；悬停距离取 triggerDistance 上限，payload 伤害取 payload
-     * 武器面板爆发伤害（爆发光束/鱼雷均为 burstDamage 口径）。
-     * 弹体本体伤害（damageAmount）不计入：payload 行为弹体在悬停点 bombPumped 自爆
-     * （爆心半径数十 su），对悬停距离外的目标不构成伤害。
-     * 推导失败（payload 武器缺失/面板爆发为 0/triggerDistance 缺失）记 WARN 并缓存 null，
-     * 该 spec 的威胁通道不生效——不静默兜底。
-     */
-    private fun payloadProfileOf(proj: DamagingProjectileAPI): PayloadProfile? {
-        val specId = proj.projectileSpecId ?: return null
-        if (payloadProfileCache.containsKey(specId)) return payloadProfileCache[specId]
-        var profile: PayloadProfile? = null
-        val params = proj.projectileSpec?.behaviorSpec?.params
-        val payloadId = params?.optString("payloadWeaponId", "") ?: ""
-        if (params != null && payloadId.isNotEmpty()) {
-            val burst =
-                Global.getSettings().getWeaponSpec(payloadId)?.derivedStats?.burstDamage ?: 0f
-            val trigger = params.optJSONArray("triggerDistance")
-            val standoff = if (trigger != null && trigger.length() > 0) {
-                (0 until trigger.length()).maxOf { trigger.optDouble(it, 0.0) }.toFloat()
-            } else {
-                params.optDouble("triggerDistance", 0.0).toFloat()
-            }
-            if (burst > 0f && standoff > 0f) {
-                profile = PayloadProfile(standoff, burst)
-            } else {
-                log.warn(
-                    "[GravityPhaseAI] payload 导弹档案推导失败：projSpec=$specId " +
-                            "payloadWeaponId=$payloadId burst=$burst standoff=$standoff，" +
-                            "该弹体的 payload 威胁通道不生效",
-                )
-            }
-        }
-        payloadProfileCache[specId] = profile
-        return profile
-    }
-
-    private fun distanceSq(a: Vector2f, b: Vector2f): Float {
-        val dx = a.x - b.x
-        val dy = a.y - b.y
-        return dx * dx + dy * dy
     }
 }
