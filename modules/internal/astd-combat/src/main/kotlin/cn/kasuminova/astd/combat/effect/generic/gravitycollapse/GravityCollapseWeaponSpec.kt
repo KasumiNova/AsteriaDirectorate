@@ -13,7 +13,8 @@ import cn.kasuminova.astd.api.difficulty.ScalingMap
  * - 难度缩放数值（[aoeDamageRatio] / [mobilityReduction] / [mobilityDuration]）
  *
  * 难度锚点口径（线性数值，k_s=1 取下限 / k_s=5 取上限，v2 锚点落在两点线性插值上）：
- * 范围高爆伤害比例（大/中/小/PD）20％/25％/33％/50％ ~ 40％/50％/66％/100％；
+ * 范围高爆伤害比例（大/中/小/PD，v2 基准 20％/25％/33％/50％，
+ * 锚点大 15％~35％、中 20％~30％、小 22％~66％、PD 40％~80％）；
  * 航速机动性降低 50％/40％/30％/20％ ~ 75％/60％/45％/30％，持续 2s ~ 4s；
  * 目标最大船体值附加伤害比例（大/中/小+PD）4％/3％/2％（v2 基准，
  * 锚点大 2％~10％、中 1.5％~7.5％、小+PD 1％~5％）；
@@ -69,7 +70,7 @@ internal object GravityCollapseWeaponSpecs {
         aoeAffectNonShips = true,
         aoeAffectHulks = true,
         armorPierceDamageMult = 2f,
-        aoeDamageRatio = ScalingEntry(0.50f, 0.625f, 1.00f, ScalingMap.LINEAR),
+        aoeDamageRatio = ScalingEntry(0.40f, 0.50f, 0.80f, ScalingMap.LINEAR),
         hullDamageRatio = HULL_RATIO_SMALL,
         mobilityReduction = ScalingEntry(0.20f, 0.225f, 0.30f, ScalingMap.LINEAR),
         mobilityDuration = MOBILITY_DURATION,
@@ -87,7 +88,7 @@ internal object GravityCollapseWeaponSpecs {
             aoeAffectNonShips = true,
             aoeAffectHulks = true,
             armorPierceDamageMult = 5f,
-            aoeDamageRatio = ScalingEntry(0.20f, 0.25f, 0.40f, ScalingMap.LINEAR),
+            aoeDamageRatio = ScalingEntry(0.15f, 0.20f, 0.35f, ScalingMap.LINEAR),
             hullDamageRatio = HULL_RATIO_LARGE,
             mobilityReduction = ScalingEntry(0.50f, 0.5625f, 0.75f, ScalingMap.LINEAR),
             mobilityDuration = MOBILITY_DURATION,
@@ -101,7 +102,7 @@ internal object GravityCollapseWeaponSpecs {
             aoeAffectNonShips = true,
             aoeAffectHulks = true,
             armorPierceDamageMult = 4f,
-            aoeDamageRatio = ScalingEntry(0.25f, 0.3125f, 0.50f, ScalingMap.LINEAR),
+            aoeDamageRatio = ScalingEntry(0.20f, 0.25f, 0.30f, ScalingMap.LINEAR),
             hullDamageRatio = HULL_RATIO_MEDIUM,
             mobilityReduction = ScalingEntry(0.40f, 0.45f, 0.60f, ScalingMap.LINEAR),
             mobilityDuration = MOBILITY_DURATION,
@@ -115,7 +116,7 @@ internal object GravityCollapseWeaponSpecs {
             aoeAffectNonShips = true,
             aoeAffectHulks = true,
             armorPierceDamageMult = 3f,
-            aoeDamageRatio = ScalingEntry(0.33f, 0.4125f, 0.66f, ScalingMap.LINEAR),
+            aoeDamageRatio = ScalingEntry(0.22f, 0.33f, 0.66f, ScalingMap.LINEAR),
             hullDamageRatio = HULL_RATIO_SMALL,
             mobilityReduction = ScalingEntry(0.30f, 0.3375f, 0.45f, ScalingMap.LINEAR),
             mobilityDuration = MOBILITY_DURATION,

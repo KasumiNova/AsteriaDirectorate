@@ -40,10 +40,10 @@ class GravityCollapseDifficultyTest {
 
     @Test
     fun `范围高爆伤害比例锚点（大中小PD）`() {
-        assertAnchor(spec("astd_gcp12").aoeDamageRatio, 0.20f, 0.25f, 0.30f, 0.40f)
-        assertAnchor(spec("astd_gcp8").aoeDamageRatio, 0.25f, 0.3125f, 0.375f, 0.50f)
-        assertAnchor(spec("astd_gcp4").aoeDamageRatio, 0.33f, 0.4125f, 0.495f, 0.66f)
-        assertAnchor(spec("astd_gcp2").aoeDamageRatio, 0.50f, 0.625f, 0.75f, 1.00f)
+        assertAnchor(spec("astd_gcp12").aoeDamageRatio, 0.15f, 0.20f, 0.25f, 0.35f)
+        assertAnchor(spec("astd_gcp8").aoeDamageRatio, 0.20f, 0.25f, 0.2667f, 0.30f)
+        assertAnchor(spec("astd_gcp4").aoeDamageRatio, 0.22f, 0.33f, 0.44f, 0.66f)
+        assertAnchor(spec("astd_gcp2").aoeDamageRatio, 0.40f, 0.50f, 0.60f, 0.80f)
     }
 
     @Test
@@ -74,7 +74,7 @@ class GravityCollapseDifficultyTest {
         val config = cfg("astd_gcp12")
         DifficultyTuningImpl.installScaleForTests(5f)
         val values = GravityCollapseDifficulty.resolve(DifficultyTuningImpl, 0, config, "astd_gcp12")
-        assertEquals(0.25f, values.aoeDamageRatio, 1e-4f)
+        assertEquals(0.20f, values.aoeDamageRatio, 1e-4f)
         assertEquals(0.04f, values.hullDamageRatio, 1e-4f)
         assertEquals(0.5625f, values.mobilityReduction, 1e-4f)
         assertEquals(2.5f, values.mobilityDuration, 1e-4f)
@@ -85,7 +85,7 @@ class GravityCollapseDifficultyTest {
         val config = cfg("astd_gcp8")
         DifficultyTuningImpl.installScaleForTests(3f)
         val values = GravityCollapseDifficulty.resolve(DifficultyTuningImpl, 1, config, "astd_gcp8")
-        assertEquals(0.375f, values.aoeDamageRatio, 1e-4f)
+        assertEquals(0.2667f, values.aoeDamageRatio, 1e-4f)
         assertEquals(0.045f, values.hullDamageRatio, 1e-4f)
         assertEquals(0.50f, values.mobilityReduction, 1e-4f)
         assertEquals(3f, values.mobilityDuration, 1e-4f)
@@ -97,7 +97,7 @@ class GravityCollapseDifficultyTest {
         DifficultyTuningImpl.installScaleForTests(5f)
         val first = GravityCollapseDifficulty.resolve(DifficultyTuningImpl, null, config, "astd_gcp4")
         val second = GravityCollapseDifficulty.resolve(DifficultyTuningImpl, null, config, "astd_gcp4")
-        assertEquals(0.4125f, first.aoeDamageRatio, 1e-4f)
+        assertEquals(0.33f, first.aoeDamageRatio, 1e-4f)
         assertEquals(0.02f, first.hullDamageRatio, 1e-4f)
         assertEquals(first.aoeDamageRatio, second.aoeDamageRatio, 1e-4f)
     }
