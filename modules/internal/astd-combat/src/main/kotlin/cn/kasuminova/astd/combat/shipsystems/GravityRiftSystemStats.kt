@@ -161,7 +161,7 @@ class GravityRiftSystemStats : BaseShipSystemScript() {
         val (jitterLevel, rangeBonus) = GravityRiftTuning.jitterLevelAndRange(
             state, effectLevel, ship.system.chargeUpDur,
         )
-        ship.setJitter(id, JITTER_COLOR, jitterLevel, 3, 0f, 0f + rangeBonus)
+        ship.setJitter(id, JITTER_COLOR, jitterLevel, 3, 0f, rangeBonus)
         ship.setJitterUnder(id, JITTER_UNDER_COLOR, jitterLevel, 25, 0f, 7f + rangeBonus)
     }
 
@@ -237,10 +237,10 @@ class GravityRiftSystemStats : BaseShipSystemScript() {
                     false,
                 )
             }
-            // 相位禁用仅 IN/ACTIVE 显示，OUT 返回 null 让该项消失
+            // 相位禁用仅 IN/ACTIVE 显示，OUT 返回 null 让该项消失；对玩家是负面效果，按 debuff 显示
             1 -> if (state == ShipSystemStatsScript.State.OUT) null else ShipSystemStatsScript.StatusData(
                 I18n[I18n.Categories.MOD, "ui.grav_rift.status.phase_disabled"],
-                false,
+                true,
             )
             else -> null
         }

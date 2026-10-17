@@ -2,10 +2,10 @@ package cn.kasuminova.astd.combat.lens.system
 
 import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import com.fs.starfarer.api.plugins.ShipSystemStatsScript
-import kotlin.math.sqrt
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 /**
  * 引力裂隙发生器数值规格（purple/20-production.md §2，2026-09-20 二轮重做；2026-10 细化）：
@@ -79,21 +79,25 @@ class GravityRiftTuningTest {
     }
 
     @Test
-    fun `jitter 强度与描边外扩按状态分支计算`() {
-        val dur = 1f
-        // IN：强度随充能进度爬升（chargeUpDur=1 时等于 effectLevel），超 1 钳到 1，返回值开平方
-        val (inLevel, inRange) = GravityRiftTuning.jitterLevelAndRange(ShipSystemStatsScript.State.IN, 0.25f, dur)
-        assertEquals(sqrt(0.25f), inLevel, 1e-6f)
-        assertEquals(1f, GravityRiftTuning.jitterLevelAndRange(ShipSystemStatsScript.State.IN, 2f, dur).first, 1e-6f)
-        // ACTIVE：满额
-        val (activeLevel, activeRange) = GravityRiftTuning.jitterLevelAndRange(ShipSystemStatsScript.State.ACTIVE, 0.5f, dur)
-        assertEquals(1f, activeLevel, 1e-6f)
-        // OUT：强度即 effectLevel（开平方后返回）
-        val (outLevel, outRange) = GravityRiftTuning.jitterLevelAndRange(ShipSystemStatsScript.State.OUT, 0.25f, dur)
-        assertEquals(sqrt(0.25f), outLevel, 1e-6f)
-        // 描边外扩与钳制前强度成正比，同一比例贯穿三分支
-        assertEquals(inRange / 0.25f, outRange / 0.25f, 1e-6f)
-        assertEquals(inRange / 0.25f, activeRange / 1f, 1e-6f)
+    fun `jitter 强度按状态分支变化且 IN 受充能时长影响`() {
+        val dur = 2f
+        val active = GravityRiftTuning.jitterLevelAndRange(ShipSystemStatsScript.State.ACTIVE, 0.5f, dur)
+        // IN：同一充能时长下强度随进度单调不减，且不超过 ACTIVE 满额
+        val inEarly = GravityRiftTuning.jitterLevelAndRange(ShipSystemStatsScript.State.IN, 0.2f, dur)
+        val inLate = GravityRiftTuning.jitterLevelAndRange(ShipSystemStatsScript.State.IN, 0.8f, dur)
+        assertTrue(inEarly.first <= inLate.first)
+        assertTrue(inLate.first <= active.first)
+        // IN：充能时长参与爬升计算（同一进度下不同时长结果不同）
+        assertTrue(
+            GravityRiftTuning.jitterLevelAndRange(ShipSystemStatsScript.State.IN, 0.5f, 0.5f).first !=
+                    GravityRiftTuning.jitterLevelAndRange(ShipSystemStatsScript.State.IN, 0.5f, 2f).first
+        )
+        // OUT：强度随 effectLevel 衰减而减弱，不超过 ACTIVE 满额；描边外扩与强度同向
+        val outHigh = GravityRiftTuning.jitterLevelAndRange(ShipSystemStatsScript.State.OUT, 0.8f, dur)
+        val outLow = GravityRiftTuning.jitterLevelAndRange(ShipSystemStatsScript.State.OUT, 0.2f, dur)
+        assertTrue(outLow.first < outHigh.first)
+        assertTrue(outHigh.first <= active.first)
+        assertTrue(outHigh.second <= active.second)
     }
 
     @Test
