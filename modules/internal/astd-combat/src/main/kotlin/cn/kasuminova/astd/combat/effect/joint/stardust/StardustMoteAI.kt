@@ -4,23 +4,30 @@ import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEntityAPI
 import com.fs.starfarer.api.combat.MissileAPI
+import com.fs.starfarer.api.combat.ShipCommand
 import com.fs.starfarer.api.impl.combat.MoteAIScript
 import com.fs.starfarer.api.impl.combat.MoteControlScript
+import com.fs.starfarer.api.util.Misc
 import org.lazywizard.lazylib.MathUtils
 import org.lazywizard.lazylib.combat.CombatUtils
+import org.lwjgl.util.vector.Vector2f
+import kotlin.math.sin
 
 /**
- * 星尘光尘 AI：继承原版 [MoteAIScript] 白拿 600su 环绕 flocking（源舰引力/斥力/切向漂移），
- * 覆写 [acquireNewTargetIfNeeded] 实现设计案索敌——优先级 导弹 > 战机 > 舰船，
- * 接敌范围 = 以光尘自身位置为圆心、半径取武器面板射程（武器实例缺失时缺省
- * [StardustMoteTuning.DEFAULT_ENGAGE_RANGE]）。
+ * 星尘光尘 AI：继承原版 [MoteAIScript]，覆写 [acquireNewTargetIfNeeded] 实现设计案索敌——
+ * 优先级 导弹 > 战机 > 舰船，接敌范围 = 以光尘自身位置为圆心、半径取武器面板射程
+ * （武器实例缺失时缺省 [StardustMoteTuning.DEFAULT_ENGAGE_RANGE]）。
+ *
+ * 环绕行为（2026-10-17 实机裁定）：覆写 [doFlocking] 移除原版同伴聚合（cohesion）力——
+ * 光尘各自环绕源舰航行，不允许自发聚集成团；保留源舰中心三力（太近排斥/太远重聚/随行聚合）、
+ * 同伴间适度排斥与硬避障，见覆写实现注释。
  *
  * 与原版差异（原版仅 PD 向导弹/战机，由系统脚本生成）：本弹体由真实导弹武器发射
  * （弹药/恢复走 weapon_data.csv），AI 经 `ModPlugin.pickMissileAI` 覆盖钩子指派
  * （原版引擎不为 MOTE 型弹体自动指派 AI，见 ProjectileFactory 的 pickMissileAIOverride 分支）。
  *
  * 原版 [MoteControlScript.SharedMoteAIData.motes] 的注册/清理由本类承担
- * （本舰没有 mote 系统脚本代为修剪）：构造时入群（flocking 聚集/单目标堆叠上限的依据），
+ * （本舰没有 mote 系统脚本代为修剪）：构造时入群（flocking 排斥/单目标堆叠上限的依据），
  * 每次索敌扫描时顺带修剪死弹。
  */
 class StardustMoteAI(missile: MissileAPI) : MoteAIScript(missile) {
@@ -38,6 +45,87 @@ class StardustMoteAI(missile: MissileAPI) : MoteAIScript(missile) {
         val current = target
         if (current != null && !isInEngageRange(current)) {
             target = null
+        }
+    }
+
+    /**
+     * 环绕力合成（覆写原版 [MoteAIScript.doFlocking]）：各自环绕源舰，**不含同伴聚合**。
+     *
+     * 相对原版移除的力：同伴 cohesion（[MoteAIScript.COHESION_RANGE] 100su 内沿同伴速度方向吸引）——
+     * 该力让光尘自发聚集成群，与「各自环绕」裁定相悖。
+     *
+     * 保留的力（参数与原版逐字一致）：
+     * - 硬避障：舰船/陨石斥力（父类 advance 以 0.05~0.1s 节拍刷新 [hardAvoidList]）；
+     * - 同伴排斥：[MoteAIScript.AVOID_RANGE] 随全局相位 ±25% 波动——聚集的对立面，防叠成一团；
+     * - 源舰三力：太远重聚（半径+200）、太近排斥（半径+50）、随行聚合（半径+600 且源舰速度>20）；
+     * - 无合力时绕源舰切向漂移（原版兜底，保证环绕而非悬停）。
+     *
+     * 原版 attractor 拉力分支不保留：ASTD 链路无 mote 系统脚本写入
+     * attractorTarget/attractorLock（恒 null），该分支在本模组为恒死代码。
+     */
+    override fun doFlocking() {
+        val source = missile.source ?: return
+        val engine = Global.getCombatEngine() ?: return
+
+        val sourceRejoin = source.collisionRadius + 200f
+        val sourceRepel = source.collisionRadius + 50f
+        val sourceCohesion = source.collisionRadius + 600f
+        val avoidRange = MoteAIScript.AVOID_RANGE * (1f + sin(data.elapsed) * 0.25f)
+
+        val total = Vector2f()
+
+        var hardAvoiding = false
+        for (other in hardAvoidList) {
+            val dist = MathUtils.getDistance(missile.location, other.location)
+            val hardAvoidRange = other.collisionRadius + avoidRange + 50f
+            if (dist < hardAvoidRange) {
+                val dir = Misc.getUnitVectorAtDegreeAngle(Misc.getAngleInDegrees(other.location, missile.location))
+                val f = 1f - dist / hardAvoidRange
+                dir.scale(f * 5f)
+                Vector2f.add(total, dir, total)
+                hardAvoiding = f > 0.5f
+            }
+        }
+
+        // 同伴间仅保留适度排斥（原版的 cohesion 聚合分支已移除）
+        for (otherMote in data.motes) {
+            if (otherMote === missile) continue
+            val dist = MathUtils.getDistance(missile.location, otherMote.location)
+            if (dist < avoidRange && !hardAvoiding) {
+                val dir = Misc.getUnitVectorAtDegreeAngle(Misc.getAngleInDegrees(otherMote.location, missile.location))
+                dir.scale(1f - dist / avoidRange)
+                Vector2f.add(total, dir, total)
+            }
+        }
+
+        val distSource = MathUtils.getDistance(missile.location, source.location)
+        if (distSource > sourceRejoin) {
+            val dir = Misc.getUnitVectorAtDegreeAngle(Misc.getAngleInDegrees(missile.location, source.location))
+            dir.scale((distSource / (sourceRejoin + 400f) - 1f) * 0.5f)
+            Vector2f.add(total, dir, total)
+        }
+        if (distSource < sourceRepel) {
+            val dir = Misc.getUnitVectorAtDegreeAngle(Misc.getAngleInDegrees(source.location, missile.location))
+            dir.scale((1f - distSource / sourceRepel) * 5f)
+            Vector2f.add(total, dir, total)
+        }
+        if (distSource < sourceCohesion && source.velocity.length() > 20f) {
+            val dir = Vector2f(source.velocity)
+            Misc.normalise(dir)
+            dir.scale(1f - distSource / sourceCohesion)
+            Vector2f.add(total, dir, total)
+        }
+
+        if (total.length() <= 0.05f) {
+            val offset = if (r > 0.5f) 90f else -90f
+            val dir = Misc.getUnitVectorAtDegreeAngle(Misc.getAngleInDegrees(missile.location, source.location) + offset)
+            Vector2f.add(total, dir, total)
+        }
+
+        if (total.length() > 0f) {
+            engine.headInDirectionWithoutTurning(missile, Misc.getAngleInDegrees(total), 10000f)
+            missile.giveCommand(if (r > 0.5f) ShipCommand.TURN_LEFT else ShipCommand.TURN_RIGHT)
+            missile.engineController.forceShowAccelerating()
         }
     }
 

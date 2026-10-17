@@ -184,15 +184,16 @@ object ProjectileVfxSpecs {
         // 贯星之矛（规格 09 §3.1）：width=36 大圆形弹体 + glowScale 4.0 放大带宽（公式派生）。
         "astd_piercing_lance_shot" to ::piercingLanceShot,
         // 摧锋鱼雷（blue/30-superlative.md §特效）：ARC 冷蓝白，trail 长 = 射程×50%、recede 0（带体亮头直抵弹头），
-        // 弹头处 SMOOTH 光斑补鱼雷本体贴图之外的辉光（辉星同款口径）。
+        // 弹头处 SMOOTH 光斑 + .proj glowSprite 弹体形状发光层（原版链路，美术预染色贴图）共同承担鱼雷辉光。
         "astd_cuifeng_torpedo_shot" to { range -> cuifengTorpedoShot("astd_cuifeng_torpedo_shot", range) },
         // 源生冰晶 MIRV 母弹（purple/30-superlative.md §特效 + 13 号美术需求）：色族独立为冰蓝（不套 LENS 紫），trail 长 = 射程×50%、recede 0。
         "astd_ice_shard_mirv_shot" to { range -> iceShardMirvShot("astd_ice_shard_mirv_shot", range) },
         // 双子星 DEM 双弹头（规格 10 §特效）：脚本 spawn 弹体不触发 onFireEffect，由 GeminiDemSalvoOnFireEffect
         // 显式 ProjectileVfxDriverPlugin.track 接入。动能冷蓝白（同引擎焰色 140,190,255）/ 高爆共振红
-        // （255,40,60，与 payload 光束/爆炸三色同族），width 5 小型导弹（12×25 贴图），带长固定 250
+        // （255,40,60，与 payload 光束/爆炸三色同族），width 5 小型导弹（12×25 贴图），带长固定 400
         // （追踪段摆动弹道在带上可读），recede 0（带体亮头直抵弹头，同摧锋/辉星导弹口径）；
-        // bolt 组件对 MissileAPI 自动禁用，本体贴图走原版渲染；弹头 SMOOTH 光斑补导弹辉光（辉星同款口径）。
+        // bolt 组件对 MissileAPI 自动禁用，本体贴图走原版渲染；飞行发光层走 .proj 原版 glowSprite 链路
+        // （美术预染色红/蓝贴图，glowColor 白），不再叠 SMOOTH 光斑（双层辉光叠加会过曝）。
         "astd_gemini_dem_kinetic_msl" to {
             simpleProjectileVfx("astd_gemini_dem_kinetic_msl", geminiKineticBlue(), width = 5f, length = 400f, recede = 0f, decorTrail = false)
         },
@@ -564,7 +565,7 @@ object ProjectileVfxSpecs {
     }
 
     // 摧锋鱼雷：simpleProjectileVfx 四层惯例 + 带长 = 射程 ×50% + recede 0（带体亮头直抵弹头）+
-    // 弹头处 SMOOTH 光斑（light：柔边球光，补鱼雷本体贴图之外的辉光，ARC 冷蓝白调色）。
+    // 弹头处 SMOOTH 光斑（light：柔边球光，补 .proj glowSprite 弹体形状发光层之外的弥散辉光，ARC 冷蓝白调色）。
     private fun cuifengTorpedoShot(id: String, range: Float?): ProjectileVfx = simpleProjectileVfx(
         id,
         qiongjueBlue(),

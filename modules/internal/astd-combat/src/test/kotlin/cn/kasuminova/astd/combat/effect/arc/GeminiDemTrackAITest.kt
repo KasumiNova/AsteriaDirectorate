@@ -1,11 +1,14 @@
 package cn.kasuminova.astd.combat.effect.arc
 
 import cn.kasuminova.astd.combat.effect.arc.geminidem.GeminiDemTrackAI
+import com.fs.starfarer.api.combat.CollisionGridAPI
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.MissileAPI
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.combat.ShipCommand
 import org.lwjgl.util.vector.Vector2f
+import org.mockito.ArgumentMatchers.any
+import org.mockito.ArgumentMatchers.anyFloat
 import org.mockito.Mockito.inOrder
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.never
@@ -21,13 +24,27 @@ import kotlin.test.assertTrue
  * 规格 10 §4.1 用例 11：TrackAI 追踪段——偏角 >1° 发正确转向指令 + ACCELERATE；
  * 目标失效下一帧重搜索被调用；仍无目标仅 ACCELERATE（直飞定义行为）。
  * 注入引擎/重搜索桩驱动真实 advance 状态机。
+ * 避障改造（2026-10-17）后引擎桩默认挂空 aiGrid（无障碍，行为与改造前一致）。
  */
 class GeminiDemTrackAITest {
 
     private fun stubEngine(): CombatEngineAPI {
         val engine = mock(CombatEngineAPI::class.java)
         `when`(engine.isPaused).thenReturn(false)
+        // 先建好网格桩再挂引擎（thenReturn 参数内嵌套打桩会触发 UnfinishedStubbingException）
+        val shipGrid = stubGrid(emptyList())
+        val asteroidGrid = stubGrid(emptyList())
+        `when`(engine.aiGridShips).thenReturn(shipGrid)
+        `when`(engine.aiGridAsteroids).thenReturn(asteroidGrid)
         return engine
+    }
+
+    /** 空间网格桩：getCheckIterator 每次返回新迭代器（迭代器一次性消费）。 */
+    private fun stubGrid(entries: List<Any>): CollisionGridAPI {
+        val grid = mock(CollisionGridAPI::class.java)
+        `when`(grid.getCheckIterator(any(Vector2f::class.java), anyFloat(), anyFloat()))
+            .thenAnswer { entries.iterator() }
+        return grid
     }
 
     private fun stubMissile(x: Float, y: Float, facing: Float, owner: Int = 0): MissileAPI {

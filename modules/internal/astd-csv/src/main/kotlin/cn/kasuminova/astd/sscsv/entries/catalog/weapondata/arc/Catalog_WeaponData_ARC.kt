@@ -908,6 +908,7 @@ object Wpn_astd_gemini_dem_kinetic : WeaponDataEntry(), SsProjMissileOutputs {
         explosionColor = Rgba(140, 190, 255, 180),
         engineColor = Rgba(140, 190, 255, 255),
         contrailColor = Rgba(120, 170, 255, 75),
+        glowSprite = "graphics/weapons/astd_gemini_dem_missile_glow_blue.png",
     )
 }
 
@@ -939,11 +940,14 @@ object Wpn_astd_gemini_dem_he : WeaponDataEntry(), SsProjMissileOutputs {
         explosionColor = Rgba(255, 60, 70, 180),
         engineColor = Rgba(255, 90, 100, 255),
         contrailColor = Rgba(255, 60, 70, 75),
+        glowSprite = "graphics/weapons/astd_gemini_dem_missile_glow_red.png",
     )
 }
 
 /**
- * 双弹头 .proj 公共骨架（规格 10 §1.3）：两 spec 结构相同，差异在 payloadWeaponId 与三色配色。
+ * 双弹头 .proj 公共骨架（规格 10 §1.3）：两 spec 结构相同，差异在 payloadWeaponId、三色配色与
+ * 异色辉光贴图（[glowSprite]：动能蓝 / 高爆红，美术已按弹体形状预染色，故 glowColor 取白不再二次染色；
+ * 与 GeminiDemRackVisuals 装填渲染同套贴图、同白底叠加口径）。
  * behaviorSpec 键名含原版拼写（`destroyMissleWhenDoneFiring`），逐字照抄。
  * 引擎参数 = 龙炎 ×1.5；targetingTime 2s（提案收紧，烟测目检面）。
  */
@@ -954,6 +958,7 @@ private fun geminiDemWarheadProjSpec(
     explosionColor: Rgba,
     engineColor: Rgba,
     contrailColor: Rgba,
+    glowSprite: String,
 ): MissileProjSpec = MissileProjSpec(
     id = id,
     missileType = "MISSILE",
@@ -961,6 +966,8 @@ private fun geminiDemWarheadProjSpec(
     onFireEffect = null,
     // 贴图沿用 ASTD 双子星导弹本体（与 dummy 装填渲染一致；异色区分由引擎喷流/爆炸色/payload 光束承担）
     sprite = "graphics/weapons/astd_gemini_dem_missile.png",
+    glowSprite = glowSprite,
+    glowColor = Rgba(255, 255, 255, 255),
     size = Vec2i(12, 25),
     center = Vec2(6, 12.5),
     collisionRadius = 7,
@@ -1106,6 +1113,7 @@ object Wpn_astd_gemini_dem_kinetic_fighter : WeaponDataEntry(), SsProjMissileOut
         explosionColor = Rgba(140, 190, 255, 180),
         engineColor = Rgba(140, 190, 255, 255),
         contrailColor = Rgba(120, 170, 255, 75),
+        glowSprite = "graphics/weapons/astd_gemini_dem_missile_glow_blue.png",
     )
 }
 
@@ -1137,6 +1145,7 @@ object Wpn_astd_gemini_dem_he_fighter : WeaponDataEntry(), SsProjMissileOutputs 
         explosionColor = Rgba(255, 60, 70, 180),
         engineColor = Rgba(255, 90, 100, 255),
         contrailColor = Rgba(255, 60, 70, 75),
+        glowSprite = "graphics/weapons/astd_gemini_dem_missile_glow_red.png",
     )
 }
 
@@ -1357,6 +1366,10 @@ private fun cuifengTorpedoProjSpec(): MissileProjSpec = MissileProjSpec(
     // 贴图用自制摧峰导弹（同图承担挂点 RENDER_LOADED_MISSILES 渲染与飞行本体渲染）；引擎辉光/尾焰隐藏，
     // 拖尾由 ProjectileVfxSpecs 贴图拖尾层承担（辉星同款口径）。
     sprite = "graphics/weapons/astd_cuifeng_missile.png",
+    // 飞行发光层：原版 glowSprite 链路（美术按弹体形状预染色，glowColor 取白不二次染色；
+    // 与 LoadedMissileGlowLayer 装填渲染同套贴图）
+    glowSprite = "graphics/weapons/astd_cuifeng_missile_glow.png",
+    glowColor = Rgba(255, 255, 255, 255),
     size = Vec2i(13, 35),
     center = Vec2(6.5, 17.5),
     collisionRadius = 15,

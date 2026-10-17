@@ -5,6 +5,8 @@
     "onFireEffect": "cn.kasuminova.astd.combat.effect.arc.cuifeng.CuifengTorpedoOnFireEffect",
     "onHitEffect": "cn.kasuminova.astd.combat.effect.arc.cuifeng.CuifengTorpedoOnHitEffect",
     "sprite": "graphics/weapons/astd_cuifeng_missile.png",
+    "glowSprite": "graphics/weapons/astd_cuifeng_missile_glow.png",
+    "glowColor": [255, 255, 255, 255],
     "size": [13, 35],
     "center": [6.5, 17.5],
     "collisionRadius": 15,

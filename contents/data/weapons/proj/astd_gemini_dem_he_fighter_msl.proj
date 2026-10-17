@@ -22,6 +22,8 @@
         "snapFacingToTargetIfCloseEnough": false
     },
     "sprite": "graphics/weapons/astd_gemini_dem_missile.png",
+    "glowSprite": "graphics/weapons/astd_gemini_dem_missile_glow_red.png",
+    "glowColor": [255, 255, 255, 255],
     "size": [12, 25],
     "center": [6, 12.5],
     "collisionRadius": 7,
