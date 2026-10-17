@@ -1,6 +1,5 @@
 package cn.kasuminova.astd.combat.shipsystems
 
-import cn.kasuminova.astd.api.render.BloomFlareVfx
 import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcCombatUtil
 import cn.kasuminova.astd.combat.lens.system.GravityRiftTuning
 import cn.kasuminova.astd.combat.shipsystems.GravityRiftSystemStats.Companion.ANCHOR_SAMPLES
@@ -89,8 +88,6 @@ class GravityRiftSystemStats : BaseShipSystemScript() {
         /** 旋涡锚点相对目标位置的偏移（激活时采样，随目标移动）。 */
         val anchorOffset: Vector2f,
         val vortex: GravityRiftVortexVisual,
-        /** 起点双光斑 ID（ACTIVE 首帧启动，unapply 淡出收口）。 */
-        val flareIds: List<Int>,
     ) {
         /** 光束 drone（ACTIVE 首帧生成）。 */
         var beamDrone: ShipAPI? = null
@@ -159,17 +156,17 @@ class GravityRiftSystemStats : BaseShipSystemScript() {
 
     override fun unapply(stats: MutableShipStatsAPI, id: String) {
         val ship = stats.entity as? ShipAPI ?: return
-        val engine = Global.getCombatEngine() ?: return
-        val activation = engine.customData[activationKey(ship)] as? RiftActivation ?: return
 
         stats.hullDamageTakenMult.unmodify(id)
         stats.armorDamageTakenMult.unmodify(id)
         stats.shieldDamageTakenMult.unmodify(id)
         stats.empDamageTakenMult.unmodify(id)
 
+        val engine = Global.getCombatEngine() ?: return
+        val activation = engine.customData[activationKey(ship)] as? RiftActivation ?: return
+
         activation.beamDrone?.let { if (it.isAlive) engine.removeEntity(it) }
         activation.vortex.forceFadeOut()
-        fadeOutFlares(activation.flareIds)
         engine.customData.remove(activationKey(ship))
     }
 
@@ -190,19 +187,19 @@ class GravityRiftSystemStats : BaseShipSystemScript() {
         val vortexRadius = 65f
         val vortex = GravityRiftVortexVisual.spawn(engine, target, anchorOffset, vortexRadius)
         val anchor = vortex.currentAnchor()
-        val flareIds = spawnAnchorFlares(engine, anchor)
+        spawnAnchorFlares(engine, anchor)
 
-        engine.customData[activationKey(ship)] = RiftActivation(target, anchorOffset, vortex, flareIds)
+        engine.customData[activationKey(ship)] = RiftActivation(target, anchorOffset, vortex)
         engine.customData[TELEMETRY_TARGET_KEY + ship.id] = target.id
         engine.customData[TELEMETRY_VORTEX_KEY + ship.id] = 1
     }
 
     /**
-     * 起点双光斑：SMOOTH + SMOOTH_DISC 混合风格，红色系，带闪烁，尺寸约 200px。
-     * 生命周期随光束（2s），光束结束时光斑同步消失；旋涡 OUT 阶段（2~3s）独自淡出。
-     * 返回光斑 ID 列表供后续淡出管理（实际 BloomFlareVfx 无显式淡出接口，到期自灭）。
+     * 起点双光斑：SMOOTH + SMOOTH_DISC 混合风格，红色系，尺寸约 200px。
+     * 生命周期 BEAM_DELAY + BEAM_DURATION（3s），覆盖光束窗口（t=1~3s）但在 IN 首帧（t=0）生成。
+     * BloomFlareVfx 无显式淡出接口，到期自动清理；当前也无跟随锚点接口，目标移动后光斑与光束起点会分离。
      */
-    private fun spawnAnchorFlares(engine: CombatEngineAPI, anchor: Vector2f): List<Int> {
+    private fun spawnAnchorFlares(engine: CombatEngineAPI, anchor: Vector2f) {
         val flare1 = BloomFlareSpec(
             style = BoxFlareStyle.SMOOTH,
             sizeStart = 200f, sizeEnd = 200f,
@@ -223,12 +220,11 @@ class GravityRiftSystemStats : BaseShipSystemScript() {
             glowPower = 0.2f,
             noisePower = 0f,
         )
-        val spawned = BloomFlareVfxImpl.spawn(engine, anchor, GravityRiftTuning.BEAM_DURATION, listOf(flare1, flare2))
-        return if (spawned > 0) listOf(0, 1) else emptyList()
-    }
-
-    /** 淡出起点光斑（unapply 路径）：BloomFlareVfx 无显式淡出接口，光斑到期自动清理。 */
-    private fun fadeOutFlares(flareIds: List<Int>) {
+        BloomFlareVfxImpl.spawn(
+            engine, anchor,
+            GravityRiftTuning.BEAM_DELAY + GravityRiftTuning.BEAM_DURATION,
+            listOf(flare1, flare2)
+        )
     }
 
     private fun colorToLong(c: Color): Long =
