@@ -345,23 +345,23 @@ class GravityRiftSystemStats : BaseShipSystemScript() {
             }
             val flare1 = BloomFlareSpec(
                 style = BoxFlareStyle.SMOOTH,
-                sizeStart = 20f, sizeEnd = 20f,
-                heightStart = 20f, heightEnd = 20f,
+                sizeStart = 50f, sizeEnd = 50f,
+                heightStart = 50f, heightEnd = 50f,
                 facingDeg = lastFacing + 90f,
                 coreColor = ASTDColor(colorToLong(FLARE_CORE_COLOR)),
                 fringeColor = ASTDColor(colorToLong(FLARE_FRINGE_COLOR)),
-                glowPower = 0.3f,
+                glowPower = 0.7f,
                 noisePower = 0f,
                 flicker = true,
             )
             val flare2 = BloomFlareSpec(
                 style = BoxFlareStyle.SMOOTH_DISC,
-                sizeStart = 200f, sizeEnd = 200f,
-                heightStart = 20f, heightEnd = 20f,
+                sizeStart = 240f, sizeEnd = 240f,
+                heightStart = 25f, heightEnd = 25f,
                 facingDeg = lastFacing + 90f,
                 coreColor = ASTDColor(colorToLong(FLARE_CORE_COLOR)),
                 fringeColor = ASTDColor(colorToLong(FLARE_FRINGE_COLOR)),
-                glowPower = 0.2f,
+                glowPower = 1f,
                 noisePower = 0f,
                 flicker = true,
             )
