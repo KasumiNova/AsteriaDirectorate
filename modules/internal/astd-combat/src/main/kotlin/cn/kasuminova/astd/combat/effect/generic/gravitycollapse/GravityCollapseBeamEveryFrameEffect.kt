@@ -10,6 +10,7 @@ import cn.kasuminova.astd.renderer.effect.projectile.beam.BeamLineUtil
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.EveryFrameWeaponEffectPlugin
 import com.fs.starfarer.api.combat.WeaponAPI
+import org.lazywizard.lazylib.MathUtils
 import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
 
@@ -77,12 +78,13 @@ class GravityCollapseBeamEveryFrameEffect : EveryFrameWeaponEffectPlugin {
         onHit = GravityCollapseOnHitHandler(
             config = GravityCollapseOnHitConfig(
                 tickInterval = 0.5f,
-                aoeRadiusBase = s.aoeRadiusBase,
+                aoeRadius = s.aoeRadius,
                 requireDamageTarget = s.aoeRequireDamageTarget,
                 affectAlliesAndNeutral = s.aoeAffectAlliesAndNeutral,
                 affectNonShips = s.aoeAffectNonShips,
                 affectHulks = s.aoeAffectHulks,
                 vfxScale = s.beamScale,
+                armorPierceDamageMult = s.armorPierceDamageMult,
                 aoeDamageRatio = s.aoeDamageRatio,
                 hullDamageRatio = s.hullDamageRatio,
                 mobilityReduction = s.mobilityReduction,
@@ -185,7 +187,22 @@ class GravityCollapseBeamEveryFrameEffect : EveryFrameWeaponEffectPlugin {
             restoreVanillaDamageIfNeeded(weapon)
             val line = BeamLineUtil.fromBeamOrWeapon(weapon, beam)
             if (line != null) {
-                lastLine = line
+                // 相位舰遮挡（2026-10 裁定）：相位中的舰船会挡住 GCP 光束——取最近的相位遮挡交点
+                // 作为本帧实际生效终点，AOE 落点与自绘束体都截断到该点。
+                // 口径限制：BeamAPI 没有 setLength/setTo 等截断手段，原版 beam 本体的直接命中伤害
+                // 仍会穿过相位舰结算；这里截断的是 GCP 的 AOE 落点与自绘束体。
+                val blockedTo = GravityCollapsePhaseBeamBlocker.findNearestBlockPoint(
+                    engine, line.from, line.to, weapon.ship,
+                )
+                val effectiveLine = if (blockedTo != null) {
+                    line.copy(
+                        to = blockedTo,
+                        length = MathUtils.getDistance(line.from, blockedTo),
+                    )
+                } else {
+                    line
+                }
+                lastLine = effectiveLine
 
                 if (!beamStarted) {
                     beamStarted = true
@@ -200,7 +217,7 @@ class GravityCollapseBeamEveryFrameEffect : EveryFrameWeaponEffectPlugin {
 
                 // 视觉：统一用 level=1（武器面板差异由 weapon_data 的 DPS/射程体现）；前 BEAM_GROW_TIME 秒束长渐长。
                 val reach = beamStartedAt?.let { ((now - it) / BEAM_GROW_TIME).coerceIn(0f, 1f) } ?: 1f
-                driveBeam(engine, line, amount, reach = reach, fadeMul = 1f)
+                driveBeam(engine, effectiveLine, amount, reach = reach, fadeMul = 1f)
 
                 // 命中机制：折算基准为「面板总伤害」（burstDamage 口径，已含加成），而非面板每秒伤害。
                 // 原版 burstDamage = dps × ((chargeup + chargedown) × 0.333 + burstDuration)
@@ -217,7 +234,7 @@ class GravityCollapseBeamEveryFrameEffect : EveryFrameWeaponEffectPlugin {
                     warnOnce("weapon.damage", t)
                     0f
                 }
-                hit.advance(engine, amount, weapon, beam, 1f, panelDamage)
+                hit.advance(engine, amount, weapon, beam, effectiveLine.to, panelDamage)
             }
             lastChargeLevel = chargeLevel
             return

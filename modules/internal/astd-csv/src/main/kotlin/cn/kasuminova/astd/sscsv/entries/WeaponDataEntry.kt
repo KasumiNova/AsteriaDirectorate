@@ -31,8 +31,8 @@ abstract class WeaponDataEntry : SsCsvEntry {
     /** 射程（range）。 */
     open val range: Int = 0
 
-    /** 每秒伤害（damage/second；用于 tooltip 统计）。 */
-    open val damagePerSecond: Int = 0
+    /** 每秒伤害（damage/second；用于 tooltip 统计）。允许小数（如 367.5），生成器会去尾零输出。 */
+    open val damagePerSecond: Number = 0
 
     /** 单发伤害（damage/shot）。 */
     open val damagePerShot: Int = 0

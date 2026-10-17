@@ -7,6 +7,7 @@ import com.fs.starfarer.api.combat.BeamAPI
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEntityAPI
 import com.fs.starfarer.api.combat.DamageType
+import com.fs.starfarer.api.combat.DamagingProjectileAPI
 import com.fs.starfarer.api.combat.MissileAPI
 import com.fs.starfarer.api.combat.ShieldAPI
 import com.fs.starfarer.api.combat.ShipAPI
@@ -18,7 +19,6 @@ import org.lazywizard.lazylib.MathUtils
 import org.lazywizard.lazylib.combat.CombatUtils
 import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
-import kotlin.math.min
 import kotlin.random.Random.Default.nextDouble
 import kotlin.random.Random.Default.nextFloat
 
@@ -26,16 +26,22 @@ import kotlin.random.Random.Default.nextFloat
  * 引力坍缩炮：命中持续效果（坍缩扭曲 + 周期性范围高爆伤害 + 装甲减伤无视 + 机动抑制）。
  *
  * 机制口径（weapon_data tooltip 文案双向绑定）：
- * - 每 [GravityCollapseOnHitConfig.tickInterval] 秒在光束终点位置的一定半径造成
+ * - 每 [GravityCollapseOnHitConfig.tickInterval] 秒在光束终点位置（可能被相位舰截断，见
+ *   [GravityCollapsePhaseBeamBlocker]）的固定半径 [GravityCollapseOnHitConfig.aoeRadius] 内造成
  *   “面板总伤害 × tick 间隔 × 难度缩放比例 + 目标最大船体值 × 难度缩放比例”的范围高爆伤害
  *   （半径内全额，无边缘衰减；船体值附加部分与脉冲合并为同一结算实例）；
- * - 命中装甲或船体的目标：穿甲伤害生效——计算装甲减伤的伤害值固定取全额面板总伤害
- *   （不随难度缩放），穿透差额以追加伤害形式结算（走原版伤害结算链路，
- *   计入装甲/船体伤害计算而非直扣船体），并施加“引力抑制”——最大航速与机动性降低，持续数秒；
- * - 命中护盾的目标只结算护盾伤害，不触发穿甲伤害与机动抑制；
- * - 伤害比例/抑制数值受难度系数线性缩放（玩家来源按我方档位系数映射，默认砺刃 v2），穿甲伤害不缩放；
+ * - 对战机的结算伤害翻倍（2026-10 裁定；穿甲打击强度同样基于翻倍后的单次结算伤害）；
+ * - 命中装甲或船体的目标：穿甲生效——打击强度 = 单次结算伤害 × 档位穿甲倍率
+ *   （大/中/小/PD = 5/4/3/2，固定口径不随难度缩放），按原版装甲公式反解输入伤害后
+ *   与主结算合并为单次 applyDamage（装甲减伤只结算一次，战斗日志只跳一次数字），
+ *   并施加“引力抑制”——最大航速与机动性降低，持续数秒；
+ * - 命中护盾的目标只结算护盾伤害，不触发穿甲与机动抑制；
+ * - 相位中的舰船（isPhased）处于相位无敌，不承受 AOE/穿甲伤害，但作为遮挡物截断光束；
+ * - 伤害比例/抑制数值受难度系数线性缩放（玩家来源按我方档位系数映射，默认砺刃 v2），穿甲倍率不缩放；
  * - 友方豁免（2026-09-26 裁定）：AOE 波及友军大舰属机制设计（affectAlliesAndNeutral=true），
- *   但**友方战机与导弹一律豁免**（体量小、价值密，被波及不符合预期），与友军开关无关。
+ *   但**友方战机与导弹一律豁免**（体量小、价值密，被波及不符合预期），与友军开关无关；
+ * - 非导弹射弹（DamagingProjectileAPI 且非 MissileAPI）不参与 AOE 结算——对飞行中的弹道射弹
+ *   applyDamage 会触发其 onHit 链路（实机曾因此触发其他模组 NPE），且普通射弹本就不应被伤害。
  */
 internal class GravityCollapseOnHitHandler(
     private val config: GravityCollapseOnHitConfig,
@@ -47,8 +53,14 @@ internal class GravityCollapseOnHitHandler(
         // 盾面吸附容差：点略微在盾外也认为被盾覆盖（避免浮点/采样误差导致“看起来打到盾但实际扣船体”）。
         private const val SHIELD_SNAP_EPS = 12f
 
-        /** 高爆伤害对装甲的克制倍率（结算装甲减伤无视时与原版口径一致）。 */
+        /** 高爆伤害对装甲的克制倍率（与原版口径一致）。 */
         private const val HE_VS_ARMOR_MULT = 2f
+
+        /** 对战机的结算伤害倍率（2026-10 裁定：对战机伤害翻倍）。 */
+        private const val FIGHTER_DAMAGE_MULT = 2f
+
+        /** 装甲耗尽判定阈值：命中格装甲低于该值视为无装甲，直接单次结算（无穿甲反解）。 */
+        private const val ARMOR_DEPLETED_EPS = 0.01f
     }
 
     private val hitCollapseInterval = IntervalUtil(config.tickInterval, config.tickInterval)
@@ -70,7 +82,11 @@ internal class GravityCollapseOnHitHandler(
         amount: Float,
         weapon: WeaponAPI,
         beam: BeamAPI?,
-        intensity: Float,
+        /**
+         * 本帧光束实际生效终点（AOE 落点与坍缩扭曲位置）。
+         * 调用方负责做相位舰截断（[GravityCollapsePhaseBeamBlocker]），通常为 beam.to 或最近的相位遮挡交点。
+         */
+        aoePoint: Vector2f,
         /**
          * 面板总伤害（burstDamage 口径，用于换算 tick 伤害，特效秒伤 = 面板总伤害 × 伤害比例）。
          * 通常传：weapon.damage.damage × ((chargeup + chargedown) × 0.333 + burstDuration)（已包含技能/改装等加成）。
@@ -99,13 +115,12 @@ internal class GravityCollapseOnHitHandler(
         }
         wasHittingLastFrame = true
 
-        val t = intensity.coerceIn(0f, 1f)
-        val point = Vector2f(beam.to)
+        val point = Vector2f(aoePoint)
 
         // 1) 命中点持续坍缩扭曲
         hitCollapseInterval.advance(amount)
         if (hitCollapseInterval.intervalElapsed()) {
-            spawnSustainedHitCollapseDistortion(engine, point, t)
+            spawnSustainedHitCollapseDistortion(engine, point)
         }
 
         // 2) 周期性范围高爆伤害：每 tick 一次
@@ -119,15 +134,17 @@ internal class GravityCollapseOnHitHandler(
 
         val source = weapon.ship
         val owner = source?.owner
-
-        val radiusMul = lerp(config.aoeRadiusIntensityMinMul, config.aoeRadiusIntensityMaxMul, t)
-        val radius = (config.aoeRadiusBase * radiusMul).coerceAtLeast(1f)
+        val radius = config.aoeRadius.coerceAtLeast(1f)
 
         if (config.affectNonShips) {
             val entities = CombatUtils.getEntitiesWithinRange(point, radius)
             for (other in entities) {
                 if (other == null) continue
                 if (source != null && other === source) continue
+
+                // 普通弹道射弹不可被伤害：对飞行中的 DamagingProjectileAPI（非导弹）applyDamage 会触发
+                // 其 onHit 链路（实机曾因此触发其他模组 onHit NPE），直接跳过；导弹保留——AOE 杀伤敌方导弹是预期行为。
+                if (other is DamagingProjectileAPI && other !is MissileAPI) continue
 
                 if (!config.affectAlliesAndNeutral && owner != null) {
                     val otherOwner = other.owner
@@ -142,6 +159,8 @@ internal class GravityCollapseOnHitHandler(
 
                 val ship = other as? ShipAPI
                 if (ship != null && ship.isHulk && !config.affectHulks) continue
+                // 相位中的舰船处于相位无敌：不承受 AOE/穿甲伤害（它只作为光束遮挡物存在）。
+                if (ship != null && ship.isPhased) continue
 
                 val loc = other.location
                 val cr = other.collisionRadius
@@ -150,33 +169,37 @@ internal class GravityCollapseOnHitHandler(
                 val distToSurface = (MathUtils.getDistance(point, loc) - cr).coerceAtLeast(0f)
                 if (distToSurface > radius) continue
 
-                applyTickToEntity(engine, source, other, point, tickDamageBase, panelDamage.coerceAtLeast(0f), values)
+                applyTickToEntity(engine, source, other, point, tickDamageBase, values)
             }
         } else {
             for (other in engine.ships) {
                 if (source != null && other === source) continue
                 if (!config.affectAlliesAndNeutral && owner != null && other.owner == owner) continue
                 if (other.isHulk && !config.affectHulks) continue
+                // 相位中的舰船处于相位无敌：不承受 AOE/穿甲伤害。
+                if (other.isPhased) continue
 
                 // 用“到外壳的最短距离”做范围判定，避免大型舰被误判为离得很远
                 val distToHull = (MathUtils.getDistance(point, other.location) - other.collisionRadius).coerceAtLeast(0f)
                 if (distToHull > radius) continue
 
-                applyTickToEntity(engine, source, other, point, tickDamageBase, panelDamage.coerceAtLeast(0f), values)
+                applyTickToEntity(engine, source, other, point, tickDamageBase, values)
             }
         }
 
-        spawnExtraHitTickFx(engine, point, t)
+        spawnExtraHitTickFx(engine, point)
     }
 
     /**
-     * 对单个范围内实体结算一次 tick：
-     * 护盾覆盖 → 只结算护盾伤害；命中装甲/船体 → 追加穿甲伤害与机动抑制。
+     * 对单个范围内实体结算一次 tick，全程只有一次 applyDamage：
+     * - 护盾覆盖 → 只结算护盾伤害（不触发穿甲与机动抑制）；
+     * - 命中装甲 → 以「单次结算伤害 × 穿甲倍率 × HE 对装甲倍率」为打击强度反解输入伤害
+     *   （[GravityCollapseArmorPiercing.solvePiercedInputDamage]），一次调用完成穿甲结算；
+     * - 装甲耗尽 / 命中结构 / 非舰船目标 → 无需反解，直接单次结算。
      *
      * 每次 tick 的结算伤害 = 面板折算脉冲 + 目标最大船体值 × [GravityCollapseOnHitConfig.hullDamageRatio]
-     * （2026-10 裁定，附加部分与脉冲合并为同一结算实例，护盾命中同样结算）。
-     *
-     * @param panelDamage 全额面板总伤害（穿甲伤害的打击强度口径，见 [applyArmorPiercing]）
+     * （2026-10 裁定，附加部分与脉冲合并为同一结算实例，护盾命中同样结算）；
+     * 目标为战机时结算伤害翻倍（穿甲打击强度基于翻倍后的值）。
      */
     private fun applyTickToEntity(
         engine: CombatEngineAPI,
@@ -184,7 +207,6 @@ internal class GravityCollapseOnHitHandler(
         other: CombatEntityAPI,
         point: Vector2f,
         damage: Float,
-        panelDamage: Float,
         values: GravityCollapseDifficulty.ResolvedValues,
     ) {
         val ship = other as? ShipAPI
@@ -197,25 +219,32 @@ internal class GravityCollapseOnHitHandler(
             point
         }
 
-        val totalDamage = damage + other.maxHitpoints.coerceAtLeast(0f) * values.hullDamageRatio
+        var totalDamage = damage + other.maxHitpoints.coerceAtLeast(0f) * values.hullDamageRatio
+        // 对战机伤害翻倍（2026-10 裁定）；穿甲打击强度同样基于翻倍后的单次结算伤害。
+        if (ship != null && ship.isFighter) totalDamage *= FIGHTER_DAMAGE_MULT
 
-        engine.applyDamage(
-            other,
-            applyPoint,
-            totalDamage,
-            DamageType.HIGH_EXPLOSIVE,
-            0f,
-            false,
-            false,
-            source,
-            true,
-        )
+        // 命中装甲/船体且装甲未耗尽：反解输入伤害，把穿甲与主结算合并为一次 applyDamage。
+        val inputDamage = if (ship != null && !ship.isHulk && !shieldCovered) {
+            resolvePiercedInputDamage(ship, point, totalDamage)
+        } else {
+            totalDamage
+        }
+
+        if (inputDamage > 0f) {
+            engine.applyDamage(
+                other,
+                applyPoint,
+                inputDamage,
+                DamageType.HIGH_EXPLOSIVE,
+                0f,
+                false,
+                false,
+                source,
+                true,
+            )
+        }
 
         if (ship == null || ship.isHulk || shieldCovered) return
-
-        // 命中装甲/船体：穿甲伤害结算（计算装甲减伤的伤害值固定取全额面板总伤害，穿透差额追加）。
-        // 基准伤害取合并后的 tick 实例（与引擎侧实际结算的装甲减伤口径一致）。
-        applyArmorPiercing(engine, source, ship, point, totalDamage, panelDamage)
 
         // 命中装甲/船体：施加机动/航速抑制（刷新持续）。
         GravityCollapseMobilityDebuff.apply(
@@ -227,54 +256,39 @@ internal class GravityCollapseOnHitHandler(
         )
     }
 
+    /**
+     * 反解合并穿甲后的 applyDamage 输入伤害（口径见 [GravityCollapseArmorPiercing]）。
+     * 命中点装甲耗尽或不在装甲格内时无需反解，直接返回原结算伤害。
+     */
+    private fun resolvePiercedInputDamage(target: ShipAPI, point: Vector2f, totalDamage: Float): Float {
+        if (totalDamage <= 0f) return totalDamage
+
+        val grid = target.armorGrid ?: return totalDamage
+        val cell = grid.getCellAtLocation(point) ?: return totalDamage
+        if (cell.size < 2) return totalDamage
+        val armor = grid.getArmorValue(cell[0], cell[1]).coerceAtLeast(0f)
+        if (armor <= ARMOR_DEPLETED_EPS) return totalDamage
+
+        val stats = target.mutableStats
+        val effectiveArmor = GravityCollapseArmorPiercing.effectiveArmor(
+            cellArmor = armor,
+            minArmor = grid.armorRating * stats.minArmorFraction.modifiedValue,
+            effectiveArmorMult = stats.effectiveArmorBonus.mult,
+        )
+        val maxReduction = stats.maxArmorDamageReduction.modifiedValue
+
+        return GravityCollapseArmorPiercing.solvePiercedInputDamage(
+            damage = totalDamage,
+            pierceMult = config.armorPierceDamageMult,
+            effectiveArmor = effectiveArmor,
+            maxReduction = maxReduction,
+            typeMultVsArmor = HE_VS_ARMOR_MULT,
+        )
+    }
+
     /** 难度解析（委托 [GravityCollapseDifficulty] 唯一入口；结果缓存至 reset）。 */
     private fun resolveDifficulty(weapon: WeaponAPI): GravityCollapseDifficulty.ResolvedValues =
         GravityCollapseDifficulty.resolve(DifficultyTuningImpl, weapon.ship?.owner, config, weapon.id)
-
-    /**
-     * 穿甲伤害结算：原版最终伤害倍率为 `1 - min(h / (h + armor), maxArmorDamageReduction)`，
-     * 其中打击强度 h = 伤害 × 类型倍率（高爆对装甲 ×2）。本效果把打击强度替换为
-     * **全额面板总伤害**（固定口径，不随难度缩放；2026-09-26 裁定弃用难度倍率机制），
-     * 两口径的伤害差值 `dmg_eff × (multPierced - multNormal)` 以追加高爆伤害
-     * 形式结算（走原版 applyDamage 链路，计入装甲/船体伤害计算而非直扣船体值）；
-     * 命中点装甲已耗尽时不存在减伤，无追加。
-     */
-    private fun applyArmorPiercing(
-        engine: CombatEngineAPI,
-        source: ShipAPI?,
-        target: ShipAPI,
-        point: Vector2f,
-        baseDamage: Float,
-        panelDamage: Float,
-    ) {
-        if (baseDamage <= 0f || panelDamage <= 0f) return
-
-        val grid = target.armorGrid ?: return
-        val cell = grid.getCellAtLocation(point) ?: return
-        if (cell.size < 2) return
-        val armor = grid.getArmorValue(cell[0], cell[1]).coerceAtLeast(0f)
-        if (armor <= 0.01f) return
-
-        val effectiveDamage = baseDamage * HE_VS_ARMOR_MULT
-        val maxReduction = target.mutableStats.maxArmorDamageReduction.modifiedValue.coerceIn(0f, 1f)
-        val multNormal = 1f - min(effectiveDamage / (effectiveDamage + armor), maxReduction)
-        val hitPierced = panelDamage * HE_VS_ARMOR_MULT
-        val multPierced = 1f - min(hitPierced / (hitPierced + armor), maxReduction)
-        val extra = effectiveDamage * (multPierced - multNormal)
-        if (extra <= 0f) return
-
-        engine.applyDamage(
-            target,
-            point,
-            extra,
-            DamageType.HIGH_EXPLOSIVE,
-            0f,
-            false,
-            false,
-            source,
-            true,
-        )
-    }
 
     /** 判定 [point] 是否被 [ship] 的护盾覆盖（与盾面吸附使用同一容差）。 */
     private fun shieldCovers(ship: ShipAPI, point: Vector2f): Boolean {
@@ -310,7 +324,7 @@ internal class GravityCollapseOnHitHandler(
         return MathUtils.getPointOnCircumference(sl, r, ang)
     }
 
-    private fun spawnSustainedHitCollapseDistortion(engine: CombatEngineAPI, point: Vector2f, intensity: Float) {
+    private fun spawnSustainedHitCollapseDistortion(engine: CombatEngineAPI, point: Vector2f) {
         BoxUtilCombatVfx.ensureReady(engine)
 
         DistortionEntity().apply {
@@ -324,14 +338,12 @@ internal class GravityCollapseOnHitHandler(
             ringHardness = 0.70f
 
             val vfxS = config.vfxScale.coerceIn(0.35f, 2.25f)
-            val aoeScale = lerp(config.aoeRadiusIntensityMinMul, config.aoeRadiusIntensityMaxMul, intensity.coerceIn(0f, 1f))
-            val scale = aoeScale * vfxS
-            setSizeIn(config.aoeRadiusBase * 0.35f * scale, config.aoeRadiusBase * 0.35f * scale)
-            setSizeFull(config.aoeRadiusBase * 0.7f * scale, config.aoeRadiusBase * 0.7f * scale)
-            setSizeOut(config.aoeRadiusBase * scale, config.aoeRadiusBase * scale)
+            setSizeIn(config.aoeRadius * 0.35f * vfxS, config.aoeRadius * 0.35f * vfxS)
+            setSizeFull(config.aoeRadius * 0.7f * vfxS, config.aoeRadius * 0.7f * vfxS)
+            setSizeOut(config.aoeRadius * vfxS, config.aoeRadius * vfxS)
 
-            powerIn = lerp(0.2f, 0.4f, intensity)
-            powerFull = lerp(0.4f, 0.8f, intensity)
+            powerIn = 0.4f
+            powerFull = 0.8f
             powerOut = 0f
 
             setLocation(point)
@@ -344,9 +356,8 @@ internal class GravityCollapseOnHitHandler(
         }
     }
 
-    private fun spawnExtraHitTickFx(engine: CombatEngineAPI, point: Vector2f, intensity: Float) {
+    private fun spawnExtraHitTickFx(engine: CombatEngineAPI, point: Vector2f) {
         // 小范围红色爆炸烟雾 + 红色闪光（每 tick 一次）
-        val t = intensity.coerceIn(0f, 1f)
         val vis = 1.5f
         val vfxS = config.vfxScale.coerceIn(0.35f, 2.25f)
 
@@ -355,7 +366,7 @@ internal class GravityCollapseOnHitHandler(
             engine.addNebulaParticle(
                 point,
                 Vector2f(nextDouble(-10.0, 10.0).toFloat(), nextDouble(-10.0, 10.0).toFloat()),
-                lerp(85f, 135f, t) * vis * vfxS,
+                135f * vis * vfxS,
                 3f * nextFloat(),
                 0.1f,
                 0.2f,
@@ -365,7 +376,5 @@ internal class GravityCollapseOnHitHandler(
             )
         }
     }
-
-    private fun lerp(a: Float, b: Float, t: Float): Float = a + (b - a) * t
 
 }

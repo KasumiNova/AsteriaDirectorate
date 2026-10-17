@@ -8,23 +8,24 @@ import cn.kasuminova.astd.api.difficulty.ScalingMap
  *
  * 系列差异收敛在：
  * - 光束/环尺寸（[beamScale]）
- * - 持续命中额外 AOE 的半径（[aoeRadiusBase]）
+ * - 持续命中额外 AOE 的半径（[aoeRadius]，最终生效值，不做强度插值）
+ * - 穿甲倍率（[armorPierceDamageMult]，打击强度 = 单次结算伤害 × 该倍率 × HE 对装甲 ×2）
  * - 难度缩放数值（[aoeDamageRatio] / [mobilityReduction] / [mobilityDuration]）
  *
  * 难度锚点口径（线性数值，k_s=1 取下限 / k_s=5 取上限，v2 锚点落在两点线性插值上）：
  * 范围高爆伤害比例（大/中/小/PD）20％/25％/33％/50％ ~ 40％/50％/66％/100％；
  * 航速机动性降低 50％/40％/30％/20％ ~ 75％/60％/45％/30％，持续 2s ~ 4s；
- * 目标最大船体值附加伤害比例（大/中/小+PD）3％/2％/1％（v2 基准，
- * 锚点大 1.5％~7.5％、中 1％~5％、小+PD 0.5％~2.5％）；
- * 穿甲伤害固定为全额面板总伤害（2026-09-26 裁定弃用难度倍率机制，不缩放）。
+ * 目标最大船体值附加伤害比例（大/中/小+PD）4％/3％/2％（v2 基准，
+ * 锚点大 2％~10％、中 1.5％~7.5％、小+PD 1％~5％）；
+ * 穿甲打击强度固定为单次结算伤害 × 档位倍率（2026-10 裁定，不随难度缩放）。
  */
 internal data class GravityCollapseWeaponSpec(
     /** 视觉缩放：影响束宽、环尺寸、炮口爆发等的“整体尺寸感”。 */
     val beamScale: Float = 1f,
     /** 仅影响“主束宽度感”的倍率（不缩放环等附件）。 */
     val beamWidthMul: Float = 1f,
-    /** 额外 AOE 的基础半径（su）；会再乘上 intensity 相关的系数。 */
-    val aoeRadiusBase: Float = 190f,
+    /** 额外 AOE 的最终生效半径（su）。 */
+    val aoeRadius: Float = 200f,
 
     /** 是否要求 beam 命中（damageTarget != null）才触发 AOE。 */
     val aoeRequireDamageTarget: Boolean = true,
@@ -34,6 +35,9 @@ internal data class GravityCollapseWeaponSpec(
     val aoeAffectNonShips: Boolean = false,
     /** AOE 是否影响残骸（ShipAPI.isHulk）。 */
     val aoeAffectHulks: Boolean = false,
+
+    /** 穿甲打击强度倍率：打击强度 = 单次结算伤害 × 该倍率（HE 对装甲 ×2 的类型倍率在此基础上与原版口径一致）。 */
+    val armorPierceDamageMult: Float = 2f,
 
     /** 范围高爆伤害比例（相对面板总伤害的 tick 折算值）三锚点。 */
     val aoeDamageRatio: ScalingEntry,
@@ -50,20 +54,21 @@ internal object GravityCollapseWeaponSpecs {
     /** 全系列共用的机动抑制时长锚点：2s（迟暮）~ 4s（破晓）。 */
     private val MOBILITY_DURATION = ScalingEntry(2f, 2.5f, 4f, ScalingMap.LINEAR)
 
-    /** 目标最大船体值附加伤害比例锚点（2026-10 裁定）：大 3% / 中 2% / 小+PD 1%（v2 基准）。 */
-    private val HULL_RATIO_LARGE = ScalingEntry(0.015f, 0.03f, 0.075f, ScalingMap.LINEAR)
-    private val HULL_RATIO_MEDIUM = ScalingEntry(0.01f, 0.02f, 0.05f, ScalingMap.LINEAR)
-    private val HULL_RATIO_SMALL = ScalingEntry(0.005f, 0.01f, 0.025f, ScalingMap.LINEAR)
+    /** 目标最大船体值附加伤害比例锚点（2026-10 裁定）：大 4% / 中 3% / 小+PD 2%（v2 基准）。 */
+    private val HULL_RATIO_LARGE = ScalingEntry(0.02f, 0.04f, 0.10f, ScalingMap.LINEAR)
+    private val HULL_RATIO_MEDIUM = ScalingEntry(0.015f, 0.03f, 0.075f, ScalingMap.LINEAR)
+    private val HULL_RATIO_SMALL = ScalingEntry(0.01f, 0.02f, 0.05f, ScalingMap.LINEAR)
 
-    /** PD 规格（astd_gcp2 / 战机版 astd_gcp_fighter 共用：战机版数据全量复用舰装版）。 */
+    /** PD 规格（astd_gcp2 / 战机版 astd_gcp_fighter 共用：战机版机制数值全量复用舰装版）。 */
     private val GCP_PD_SPEC = GravityCollapseWeaponSpec(
         beamScale = 0.55f,
         beamWidthMul = 0.455f,
-        aoeRadiusBase = 110f * 1.5f,
+        aoeRadius = 200f,
         aoeRequireDamageTarget = false,
         aoeAffectAlliesAndNeutral = true,
         aoeAffectNonShips = true,
         aoeAffectHulks = true,
+        armorPierceDamageMult = 2f,
         aoeDamageRatio = ScalingEntry(0.50f, 0.625f, 1.00f, ScalingMap.LINEAR),
         hullDamageRatio = HULL_RATIO_SMALL,
         mobilityReduction = ScalingEntry(0.20f, 0.225f, 0.30f, ScalingMap.LINEAR),
@@ -76,11 +81,12 @@ internal object GravityCollapseWeaponSpecs {
         "astd_gcp12" to GravityCollapseWeaponSpec(
             beamScale = 1.0f,
             beamWidthMul = 0.80f,
-            aoeRadiusBase = 225f * 1.5f,
+            aoeRadius = 400f,
             aoeRequireDamageTarget = false,
             aoeAffectAlliesAndNeutral = true,
             aoeAffectNonShips = true,
             aoeAffectHulks = true,
+            armorPierceDamageMult = 5f,
             aoeDamageRatio = ScalingEntry(0.20f, 0.25f, 0.40f, ScalingMap.LINEAR),
             hullDamageRatio = HULL_RATIO_LARGE,
             mobilityReduction = ScalingEntry(0.50f, 0.5625f, 0.75f, ScalingMap.LINEAR),
@@ -89,11 +95,12 @@ internal object GravityCollapseWeaponSpecs {
         "astd_gcp8" to GravityCollapseWeaponSpec(
             beamScale = 0.85f,
             beamWidthMul = 0.49f,
-            aoeRadiusBase = 185f * 1.5f,
+            aoeRadius = 300f,
             aoeRequireDamageTarget = false,
             aoeAffectAlliesAndNeutral = true,
             aoeAffectNonShips = true,
             aoeAffectHulks = true,
+            armorPierceDamageMult = 4f,
             aoeDamageRatio = ScalingEntry(0.25f, 0.3125f, 0.50f, ScalingMap.LINEAR),
             hullDamageRatio = HULL_RATIO_MEDIUM,
             mobilityReduction = ScalingEntry(0.40f, 0.45f, 0.60f, ScalingMap.LINEAR),
@@ -102,18 +109,19 @@ internal object GravityCollapseWeaponSpecs {
         "astd_gcp4" to GravityCollapseWeaponSpec(
             beamScale = 0.70f,
             beamWidthMul = 0.49f,
-            aoeRadiusBase = 145f * 1.5f,
+            aoeRadius = 200f,
             aoeRequireDamageTarget = false,
             aoeAffectAlliesAndNeutral = true,
             aoeAffectNonShips = true,
             aoeAffectHulks = true,
+            armorPierceDamageMult = 3f,
             aoeDamageRatio = ScalingEntry(0.33f, 0.4125f, 0.66f, ScalingMap.LINEAR),
             hullDamageRatio = HULL_RATIO_SMALL,
             mobilityReduction = ScalingEntry(0.30f, 0.3375f, 0.45f, ScalingMap.LINEAR),
             mobilityDuration = MOBILITY_DURATION,
         ),
         "astd_gcp2" to GCP_PD_SPEC,
-        // 战机版引力坍缩炮 PD：数据与特效全量复用舰装版 astd_gcp2（仅不渲染武器贴图）
+        // 战机版引力坍缩炮 PD：机制数值与特效全量复用舰装版 astd_gcp2（仅不渲染武器贴图）
         "astd_gcp_fighter" to GCP_PD_SPEC,
     )
 

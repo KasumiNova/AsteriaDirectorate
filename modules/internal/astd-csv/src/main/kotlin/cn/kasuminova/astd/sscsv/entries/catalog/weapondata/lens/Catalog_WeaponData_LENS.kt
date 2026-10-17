@@ -177,7 +177,7 @@ object Wpn_astd_gcp12 : WeaponDataEntry() {
     override val range: Int = 1000
 
     // 光束每秒伤害
-    override val damagePerSecond: Int = 1120
+    override val damagePerSecond: Int = 840
     override val damagePerShot: Int = 0
     override val emp: Int = 0
     override val impact: Int = 0
@@ -217,7 +217,7 @@ object Wpn_astd_gcp8 : WeaponDataEntry() {
     override val baseValue: Int = 12000
     override val range: Int = 800
 
-    override val damagePerSecond: Int = 700
+    override val damagePerSecond: Int = 525
     override val damagePerShot: Int = 0
     override val emp: Int = 0
     override val impact: Int = 0
@@ -253,7 +253,7 @@ object Wpn_astd_gcp4 : WeaponDataEntry() {
     override val baseValue: Int = 6000
     override val range: Int = 600
 
-    override val damagePerSecond: Int = 490
+    override val damagePerSecond: Double = 367.5
     override val damagePerShot: Int = 0
     override val emp: Int = 0
     override val impact: Int = 0
@@ -289,7 +289,7 @@ object Wpn_astd_gcp2 : WeaponDataEntry() {
     override val baseValue: Int = 5000
     override val range: Int = 600
 
-    override val damagePerSecond: Int = 420
+    override val damagePerSecond: Int = 315
     override val damagePerShot: Int = 0
     override val emp: Int = 0
     override val impact: Int = 0
@@ -1013,9 +1013,10 @@ object Wpn_astd_charge_needle_fighter : WeaponDataEntry() {
 /**
  * 引力坍缩炮 PD（战机型）：引力井截击联队武备（purple/30-fighters.md §引力井 v1 定案）。
  *
- * 数据全量复用舰装版 astd_gcp2（射程 600 / 束内 DPS 300 / 辐能 300/s / 充能-爆发-冷却周期一致），
- * 唯一差异是不渲染武器贴图（.wpn 全隐资源）；光束渲染与引力坍缩机制复用
- * HiddenBeamRenderEffect + GravityCollapseBeamEveryFrameEffect（.wpn 接线同源）。
+ * 射程与充能-爆发-冷却周期沿用舰装版 astd_gcp2（射程 600 / chargeup 0.5 / burst 1.0 / 冷却 1.25），
+ * DPS 与辐能为战机独立口径（束内 DPS 300 / 辐能 200/s），不随舰装版数值联动；
+ * 战斗特效与引力坍缩机制复用 HiddenBeamRenderEffect + GravityCollapseBeamEveryFrameEffect
+ * （.wpn 接线同源，特效配置与 astd_gcp2 共享 GCP_PD_SPEC）。
  */
 object Wpn_astd_gcp_fighter : WeaponDataEntry() {
     override val id: String = "astd_gcp_fighter"
