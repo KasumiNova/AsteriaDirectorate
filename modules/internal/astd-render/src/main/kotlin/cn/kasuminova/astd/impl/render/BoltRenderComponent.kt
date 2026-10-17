@@ -27,7 +27,8 @@ import kotlin.math.sqrt
  * - 单颗池化 SpriteEntity（[PooledCombatVfx.checkoutSprite] 租约）additive 叠加，
  *   统一染 [BoltSpec.color]
  *   （原版弹头只用 coreColor；fringeColor 的 projtrail 外带语义由 Static Trail 接替）；
- * - 每帧从弹体 API 实时同步：`boltFrame`（贴图跨 [tailEnd → 弹体位置]），
+ * - 每帧从弹体 API 实时同步：`boltFrame`（贴图跨 [合成尾点 → 弹体位置]——尾点距离取原版
+ *   tailEnd 真值、方向沿位移朝向重构，见 syncBolt），朝向跟位移方向（与拖尾/真实弹道一致）；
  *   alpha = brightness² × 染色 alpha（原版 body 两趟均吃平方亮度）；
  * - 出生伸入：X 向缩放随 |头−尾|/spec.length 从 0 拉满（原版 TrailExtender distanceRatio 同语义）。
  *
@@ -99,7 +100,7 @@ class BoltRenderComponent(
             return true
         }
         boltLease = lease
-        syncBolt(projectile)
+        syncBolt(ctx, projectile)
         return true
     }
 
@@ -112,7 +113,7 @@ class BoltRenderComponent(
             disabled = true
             return
         }
-        syncBolt(projectile)
+        syncBolt(ctx, projectile)
         if (!hitGlowSpawned && projectile.didDamage()) {
             hitGlowSpawned = true
             spawnHitGlow(engine, projectile)
@@ -152,16 +153,27 @@ class BoltRenderComponent(
         )
     }
 
-    private fun syncBolt(projectile: DamagingProjectileAPI) {
+    private fun syncBolt(ctx: RenderContext, projectile: DamagingProjectileAPI) {
         val brightness = projectile.brightness
         if (!brightness.isFinite()) return
-        // 朝向取弹体 facing 真值而非 frame 位移朝向：原版 TrailExtender 尾点即沿 facing 重构
-        // （setFacing → unitVectorAtAngle），螺栓视觉朝向恒等于 facing；发射舰高速移动时弹体
-        // 继承舰船速度、位移方向偏离 facing，若贴图跟位移方向会被斜向旋转——视觉上的超额漂移。
-        val facing = BoxUtilCombatVfx.normalizeFacingDeg(projectile.facing)
-        // 导弹无 TrailExtender 尾迹真值（getTailEnd 恒 null）：沿朝向反推 specLength 合成全长尾点，
-        // 螺栓按全长渲染（无出生伸入）；实弹仍消费原版 tailEnd 真值。
-        val tail = projectile.tailEnd ?: if (missileMode) missileBoltTail(projectile.location, facing, specLength) else null
+        // 朝向跟 frame 位移方向（与拖尾/真实弹道一致）。弹体继承发射舰速度时位移方向偏离
+        // projectile.facing：若贴图跟 facing 会与拖尾出现角偏差（飞行角度漂移）。
+        val facing = BoxUtilCombatVfx.normalizeFacingDeg(ctx.frame.facing)
+        // 尾点不直接用 tailEnd：原版 TrailExtender 把尾点沿 projectile.facing 摆放，位移方向偏离
+        // facing 时直接取用会把螺栓中心拽离真实弹道（位置漂移）。但 |头−尾| 距离是有效真值
+        // （编码出生伸入/淡出收缩，上限 spec.length）——取距离、沿位移朝向重构尾点，两者兼顾。
+        val tailTruth = projectile.tailEnd
+        val tail = when {
+            tailTruth != null -> {
+                val dx = projectile.location.x - tailTruth.x
+                val dy = projectile.location.y - tailTruth.y
+                boltTailBehindHead(projectile.location, facing, sqrt(dx * dx + dy * dy))
+            }
+            // 导弹无 TrailExtender 尾迹真值（getTailEnd 恒 null）：沿朝向反推 specLength 合成全长
+            // 尾点，螺栓按全长渲染（无出生伸入）。
+            missileMode -> boltTailBehindHead(projectile.location, facing, specLength)
+            else -> null
+        }
         val frame = boltFrame(
             head = projectile.location,
             tail = tail,
@@ -273,14 +285,15 @@ internal fun hitGlowScale(damageAmount: Float): Float =
     (sqrt((damageAmount.coerceAtLeast(0f)) / 250f)).coerceIn(0.8f, 2.5f)
 
 /**
- * 导弹螺栓尾点（纯函数）：MissileAPI.getTailEnd 恒 null（无 TrailExtender），
- * 沿朝向反推 specLength 合成全长尾点——喂给 [boltFrame] 后 scaleX=1（全长螺栓）、
- * 中心 = 头沿朝向退半程。
+ * 螺栓尾点合成（纯函数）：从头点沿朝向反推 [tailDistance] 得尾点。
+ * 两个用途：实弹取 |头−tailEnd| 距离沿位移朝向重构（tailEnd 本身沿 projectile.facing 摆放，
+ * 位移偏离时不可直接取用）；导弹 getTailEnd 恒 null，反推 specLength 全长（无出生伸入）。
+ * 喂给 [boltFrame]（同朝向）后 scaleX = tailDistance/specLength，中心 = 头沿朝向退半程。
  */
-internal fun missileBoltTail(head: Vector2f, facingDeg: Float, specLength: Float): Vector2f {
+internal fun boltTailBehindHead(head: Vector2f, facingDeg: Float, tailDistance: Float): Vector2f {
     val rad = Math.toRadians(facingDeg.toDouble())
     return Vector2f(
-        head.x - (kotlin.math.cos(rad) * specLength).toFloat(),
-        head.y - (kotlin.math.sin(rad) * specLength).toFloat(),
+        head.x - (kotlin.math.cos(rad) * tailDistance).toFloat(),
+        head.y - (kotlin.math.sin(rad) * tailDistance).toFloat(),
     )
 }

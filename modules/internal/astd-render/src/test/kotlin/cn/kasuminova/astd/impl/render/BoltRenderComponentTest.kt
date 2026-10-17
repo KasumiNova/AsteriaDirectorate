@@ -81,7 +81,7 @@ class BoltRenderComponentTest {
     @Test
     fun `导弹合成尾点：沿朝向反推全长 喂 boltFrame 后拉满且中心退半程`() {
         // 0° 朝向：尾 = 头 − (specLength, 0)
-        val tail = missileBoltTail(Vector2f(100f, 20f), 0f, 28f)
+        val tail = boltTailBehindHead(Vector2f(100f, 20f), 0f, 28f)
         assertEquals(72f, tail.x, 1e-3f)
         assertEquals(20f, tail.y, 1e-3f)
         val frame = boltFrame(Vector2f(100f, 20f), tail, 0f, 28f)
@@ -92,12 +92,31 @@ class BoltRenderComponentTest {
 
     @Test
     fun `导弹合成尾点任意朝向几何一致（90 度）`() {
-        val tail = missileBoltTail(Vector2f(50f, 50f), 90f, 28f)
+        val tail = boltTailBehindHead(Vector2f(50f, 50f), 90f, 28f)
         assertEquals(50f, tail.x, 1e-3f)
         assertEquals(22f, tail.y, 1e-3f)
         val frame = boltFrame(Vector2f(50f, 50f), tail, 90f, 28f)
         assertEquals(1f, frame.scaleX, 1e-3f)
         assertEquals(36f, frame.center.y, 1e-3f)
+    }
+
+    @Test
+    fun `实弹尾点重构：距离取 tailEnd 真值 方向沿位移朝向`() {
+        // 发射舰高速侧移判例：位移朝向 0°，tailEnd 沿 projectile.facing（上偏）摆在 (60, 30)，
+        // 距离真值 50；重构尾点必须落在位移朝向上 (50, 0) 而非照搬 tailEnd——
+        // 照搬会把螺栓中心拽离真实弹道（位置漂移），只跟 facing 定向则与拖尾角偏差（角度漂移）。
+        val head = Vector2f(100f, 0f)
+        val tailTruth = Vector2f(60f, 30f)
+        val dist = sqrt((100f - 60f) * (100f - 60f) + 30f * 30f)
+        val tail = boltTailBehindHead(head, 0f, dist)
+        assertEquals(50f, tail.x, 1e-3f)
+        assertEquals(0f, tail.y, 1e-3f, "尾点必须沿位移朝向，不受 tailEnd 侧偏影响")
+        val frame = boltFrame(head, tail, 0f, 100f)
+        assertEquals(0.5f, frame.scaleX, 1e-3f, "距离真值 50/100 驱动出生伸入缩放")
+        assertEquals(75f, frame.center.x, 1e-3f)
+        assertEquals(0f, frame.center.y, 1e-3f)
+        // 参照组：照搬 tailTruth 的旧行为，中心会被拽到 y=15（侧偏的一半）——回归断言
+        assertEquals(15f, (head.y + tailTruth.y) / 2f, 1e-3f)
     }
 
     @Test
