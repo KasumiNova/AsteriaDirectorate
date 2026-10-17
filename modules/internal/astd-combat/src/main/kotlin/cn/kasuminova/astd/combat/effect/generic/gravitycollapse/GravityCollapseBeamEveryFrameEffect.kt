@@ -89,6 +89,7 @@ class GravityCollapseBeamEveryFrameEffect : EveryFrameWeaponEffectPlugin {
                 hullDamageRatio = s.hullDamageRatio,
                 mobilityReduction = s.mobilityReduction,
                 mobilityDuration = s.mobilityDuration,
+                phasedDamageRatio = s.phasedDamageRatio,
             )
         )
 

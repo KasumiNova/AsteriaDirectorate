@@ -24,6 +24,7 @@ internal object GravityCollapseDifficulty {
         val hullDamageRatio: Float,
         val mobilityReduction: Float,
         val mobilityDuration: Float,
+        val phasedDamageRatio: Float,
     )
 
     /**
@@ -46,6 +47,7 @@ internal object GravityCollapseDifficulty {
             hullDamageRatio = tuning.valueFor(config.hullDamageRatio, isPlayer),
             mobilityReduction = tuning.valueFor(config.mobilityReduction, isPlayer),
             mobilityDuration = tuning.valueFor(config.mobilityDuration, isPlayer),
+            phasedDamageRatio = tuning.valueFor(config.phasedDamageRatio, isPlayer),
         )
     }
 

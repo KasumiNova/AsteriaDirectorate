@@ -15,9 +15,11 @@ import cn.kasuminova.astd.api.difficulty.ScalingMap
  * 难度锚点口径（线性数值，k_s=1 取下限 / k_s=5 取上限，v2 锚点落在两点线性插值上）：
  * 范围高爆伤害比例（大/中/小/PD，v2 基准 20％/25％/33％/50％，
  * 锚点大 15％~35％、中 20％~30％、小 22％~66％、PD 40％~80％）；
- * 航速机动性降低 50％/40％/30％/20％ ~ 75％/60％/45％/30％，持续 2s ~ 4s；
- * 目标最大船体值附加伤害比例（大/中/小+PD）4％/3％/2％（v2 基准，
+ * 航速机动性降低（大/中/小+PD，v2 基准 50％/40％/30％，
+ * 锚点大 45％~65％、中 35％~55％、小+PD 25％~45％），持续 2s ~ 4s；
+ * 目标当前船体值附加伤害比例（大/中/小+PD）4％/3％/2％（v2 基准，
  * 锚点大 2％~10％、中 1.5％~7.5％、小+PD 1％~5％）；
+ * 对相位中舰船的伤害折算比例 10％~50％（v2 基准 20％，全系列共用）；
  * 穿甲打击强度固定为单次结算伤害 × 档位倍率（2026-10 裁定，不随难度缩放）。
  */
 internal data class GravityCollapseWeaponSpec(
@@ -40,25 +42,36 @@ internal data class GravityCollapseWeaponSpec(
     /** 穿甲打击强度倍率：打击强度 = 单次结算伤害 × 该倍率（HE 对装甲 ×2 的类型倍率在此基础上与原版口径一致）。 */
     val armorPierceDamageMult: Float = 2f,
 
+    /** 对相位中舰船的伤害折算比例三锚点（全系列共用默认值；相位舰仍截断光束，但按比例承受伤害）。 */
+    val phasedDamageRatio: ScalingEntry = DEFAULT_PHASED_DAMAGE_RATIO,
+
     /** 范围高爆伤害比例（相对面板总伤害的 tick 折算值）三锚点。 */
     val aoeDamageRatio: ScalingEntry,
-    /** 目标最大船体值附加伤害比例三锚点（每次坍缩 tick 追加，与脉冲合并为同一结算实例）。 */
+    /** 目标当前船体值附加伤害比例三锚点（每次坍缩 tick 追加，与脉冲合并为同一结算实例）。 */
     val hullDamageRatio: ScalingEntry,
     /** 最大航速与机动性降低比例三锚点。 */
     val mobilityReduction: ScalingEntry,
     /** 机动抑制持续时间（秒）三锚点。 */
     val mobilityDuration: ScalingEntry,
-)
+) {
+    companion object {
+        /** 对相位中舰船的伤害折算比例（2026-10 裁定）：v1 10% / v2 20% / v5 50%，全系列共用。 */
+        val DEFAULT_PHASED_DAMAGE_RATIO = ScalingEntry(0.10f, 0.20f, 0.50f, ScalingMap.LINEAR)
+    }
+}
 
 internal object GravityCollapseWeaponSpecs {
 
     /** 全系列共用的机动抑制时长锚点：2s（迟暮）~ 4s（破晓）。 */
     private val MOBILITY_DURATION = ScalingEntry(2f, 2.5f, 4f, ScalingMap.LINEAR)
 
-    /** 目标最大船体值附加伤害比例锚点（2026-10 裁定）：大 4% / 中 3% / 小+PD 2%（v2 基准）。 */
+    /** 目标当前船体值附加伤害比例锚点（2026-10 裁定）：大 4% / 中 3% / 小+PD 2%（v2 基准）。 */
     private val HULL_RATIO_LARGE = ScalingEntry(0.02f, 0.04f, 0.10f, ScalingMap.LINEAR)
     private val HULL_RATIO_MEDIUM = ScalingEntry(0.015f, 0.03f, 0.075f, ScalingMap.LINEAR)
     private val HULL_RATIO_SMALL = ScalingEntry(0.01f, 0.02f, 0.05f, ScalingMap.LINEAR)
+
+    /** 小型/PD 共用的机动抑制锚点（2026-10 裁定）：25% ~ 45%（v2 基准 30%）。 */
+    private val MOBILITY_SMALL_PD = ScalingEntry(0.25f, 0.30f, 0.45f, ScalingMap.LINEAR)
 
     /** PD 规格（astd_gcp2 / 战机版 astd_gcp_fighter 共用：战机版机制数值全量复用舰装版）。 */
     private val GCP_PD_SPEC = GravityCollapseWeaponSpec(
@@ -72,7 +85,7 @@ internal object GravityCollapseWeaponSpecs {
         armorPierceDamageMult = 2f,
         aoeDamageRatio = ScalingEntry(0.40f, 0.50f, 0.80f, ScalingMap.LINEAR),
         hullDamageRatio = HULL_RATIO_SMALL,
-        mobilityReduction = ScalingEntry(0.20f, 0.225f, 0.30f, ScalingMap.LINEAR),
+        mobilityReduction = MOBILITY_SMALL_PD,
         mobilityDuration = MOBILITY_DURATION,
     )
 
@@ -90,7 +103,7 @@ internal object GravityCollapseWeaponSpecs {
             armorPierceDamageMult = 5f,
             aoeDamageRatio = ScalingEntry(0.15f, 0.20f, 0.35f, ScalingMap.LINEAR),
             hullDamageRatio = HULL_RATIO_LARGE,
-            mobilityReduction = ScalingEntry(0.50f, 0.5625f, 0.75f, ScalingMap.LINEAR),
+            mobilityReduction = ScalingEntry(0.45f, 0.50f, 0.65f, ScalingMap.LINEAR),
             mobilityDuration = MOBILITY_DURATION,
         ),
         "astd_gcp8" to GravityCollapseWeaponSpec(
@@ -104,7 +117,7 @@ internal object GravityCollapseWeaponSpecs {
             armorPierceDamageMult = 4f,
             aoeDamageRatio = ScalingEntry(0.20f, 0.25f, 0.30f, ScalingMap.LINEAR),
             hullDamageRatio = HULL_RATIO_MEDIUM,
-            mobilityReduction = ScalingEntry(0.40f, 0.45f, 0.60f, ScalingMap.LINEAR),
+            mobilityReduction = ScalingEntry(0.35f, 0.40f, 0.55f, ScalingMap.LINEAR),
             mobilityDuration = MOBILITY_DURATION,
         ),
         "astd_gcp4" to GravityCollapseWeaponSpec(
@@ -118,7 +131,7 @@ internal object GravityCollapseWeaponSpecs {
             armorPierceDamageMult = 3f,
             aoeDamageRatio = ScalingEntry(0.22f, 0.33f, 0.66f, ScalingMap.LINEAR),
             hullDamageRatio = HULL_RATIO_SMALL,
-            mobilityReduction = ScalingEntry(0.30f, 0.3375f, 0.45f, ScalingMap.LINEAR),
+            mobilityReduction = MOBILITY_SMALL_PD,
             mobilityDuration = MOBILITY_DURATION,
         ),
         "astd_gcp2" to GCP_PD_SPEC,

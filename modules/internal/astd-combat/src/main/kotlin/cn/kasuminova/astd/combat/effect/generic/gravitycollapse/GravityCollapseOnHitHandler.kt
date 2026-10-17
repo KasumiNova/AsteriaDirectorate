@@ -28,7 +28,7 @@ import kotlin.random.Random.Default.nextFloat
  * 机制口径（weapon_data tooltip 文案双向绑定）：
  * - 每 [GravityCollapseOnHitConfig.tickInterval] 秒在光束终点位置（可能被相位舰截断，见
  *   [GravityCollapsePhaseBeamBlocker]）的固定半径 [GravityCollapseOnHitConfig.aoeRadius] 内造成
- *   “面板总伤害 × tick 间隔 × 难度缩放比例 + 目标最大船体值 × 难度缩放比例”的范围高爆伤害
+ *   “面板总伤害 × tick 间隔 × 难度缩放比例 + 目标当前船体值 × 难度缩放比例”的范围高爆伤害
  *   （半径内全额，无边缘衰减；船体值附加部分与脉冲合并为同一结算实例）；
  * - 对战机的结算伤害翻倍（2026-10 裁定；穿甲打击强度同样基于翻倍后的单次结算伤害）；
  * - 命中装甲或船体的目标：穿甲生效——打击强度 = 单次结算伤害 × 档位穿甲倍率
@@ -36,7 +36,9 @@ import kotlin.random.Random.Default.nextFloat
  *   与主结算合并为单次 applyDamage（装甲减伤只结算一次，战斗日志只跳一次数字），
  *   并施加“引力抑制”——最大航速与机动性降低，持续数秒；
  * - 命中护盾的目标只结算护盾伤害，不触发穿甲与机动抑制；
- * - 相位中的舰船（isPhased）处于相位无敌，不承受 AOE/穿甲伤害，但作为遮挡物截断光束；
+ * - 相位中的舰船（isPhased）既截断光束也承受伤害：结算伤害按
+ *   [GravityCollapseOnHitConfig.phasedDamageRatio] 折算（2026-10 裁定；原版 applyDamage
+ *   不检查相位状态，相位免疫仅为碰撞层行为，程序化结算可正常生效）；
  * - 伤害比例/抑制数值受难度系数线性缩放（玩家来源按我方档位系数映射，默认砺刃 v2），穿甲倍率不缩放；
  * - 友方豁免（2026-09-26 裁定）：AOE 波及友军大舰属机制设计（affectAlliesAndNeutral=true），
  *   但**友方战机与导弹一律豁免**（体量小、价值密，被波及不符合预期），与友军开关无关；
@@ -156,8 +158,6 @@ internal class GravityCollapseOnHitHandler(
 
                 val ship = other as? ShipAPI
                 if (ship != null && ship.isHulk && !config.affectHulks) continue
-                // 相位中的舰船处于相位无敌：不承受 AOE/穿甲伤害（它只作为光束遮挡物存在）。
-                if (ship != null && ship.isPhased) continue
 
                 val loc = other.location
                 val cr = other.collisionRadius
@@ -173,8 +173,6 @@ internal class GravityCollapseOnHitHandler(
                 if (source != null && other === source) continue
                 if (!config.affectAlliesAndNeutral && owner != null && other.owner == owner) continue
                 if (other.isHulk && !config.affectHulks) continue
-                // 相位中的舰船处于相位无敌：不承受 AOE/穿甲伤害。
-                if (other.isPhased) continue
 
                 // 用“到外壳的最短距离”做范围判定，避免大型舰被误判为离得很远
                 val distToHull = (MathUtils.getDistance(point, other.location) - other.collisionRadius).coerceAtLeast(0f)
@@ -195,9 +193,11 @@ internal class GravityCollapseOnHitHandler(
      * - 命中结构 / 非舰船目标 → 无需反解，直接单次结算；装甲耗尽格仍按原版最低装甲下限
      *   （armorRating × minArmorFraction）反解——原版引擎对耗尽格同样保留下限减伤。
      *
-     * 每次 tick 的结算伤害 = 面板折算脉冲 + 目标最大船体值 × [GravityCollapseOnHitConfig.hullDamageRatio]
+     * 每次 tick 的结算伤害 = 面板折算脉冲 + 目标当前船体值 × [GravityCollapseOnHitConfig.hullDamageRatio]
      * （2026-10 裁定，附加部分与脉冲合并为同一结算实例，护盾命中同样结算）；
-     * 目标为战机时结算伤害翻倍（穿甲打击强度基于翻倍后的值）。
+     * 目标为战机时结算伤害翻倍（穿甲打击强度基于翻倍后的值）；
+     * 目标处于相位中时结算伤害按 [GravityCollapseDifficulty.ResolvedValues.phasedDamageRatio] 折算
+     * （相位舰同时承担光束遮挡与按比例承伤两个角色）。
      */
     private fun applyTickToEntity(
         engine: CombatEngineAPI,
@@ -217,9 +217,12 @@ internal class GravityCollapseOnHitHandler(
             point
         }
 
-        var totalDamage = damage + other.maxHitpoints.coerceAtLeast(0f) * values.hullDamageRatio
+        var totalDamage = damage + other.hitpoints.coerceAtLeast(0f) * values.hullDamageRatio
         // 对战机伤害翻倍（2026-10 裁定）；穿甲打击强度同样基于翻倍后的单次结算伤害。
         if (ship != null && ship.isFighter) totalDamage *= FIGHTER_DAMAGE_MULT
+        // 相位中的舰船按比例折算承伤（2026-10 裁定）：原版相位免疫仅为碰撞层行为，
+        // applyDamage 不检查相位状态，程序化结算可正常生效。
+        if (ship != null && ship.isPhased) totalDamage *= values.phasedDamageRatio
 
         // 命中装甲/船体：反解输入伤害，把穿甲与主结算合并为一次 applyDamage
         // （装甲耗尽格按原版最低装甲下限反解，不跳过）。

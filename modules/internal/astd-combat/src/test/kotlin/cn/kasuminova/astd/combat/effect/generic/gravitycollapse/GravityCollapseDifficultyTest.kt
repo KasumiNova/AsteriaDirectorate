@@ -48,10 +48,17 @@ class GravityCollapseDifficultyTest {
 
     @Test
     fun `机动性降低锚点（大中小PD）`() {
-        assertAnchor(spec("astd_gcp12").mobilityReduction, 0.50f, 0.5625f, 0.625f, 0.75f)
-        assertAnchor(spec("astd_gcp8").mobilityReduction, 0.40f, 0.45f, 0.50f, 0.60f)
-        assertAnchor(spec("astd_gcp4").mobilityReduction, 0.30f, 0.3375f, 0.375f, 0.45f)
-        assertAnchor(spec("astd_gcp2").mobilityReduction, 0.20f, 0.225f, 0.25f, 0.30f)
+        assertAnchor(spec("astd_gcp12").mobilityReduction, 0.45f, 0.50f, 0.55f, 0.65f)
+        assertAnchor(spec("astd_gcp8").mobilityReduction, 0.35f, 0.40f, 0.45f, 0.55f)
+        assertAnchor(spec("astd_gcp4").mobilityReduction, 0.25f, 0.30f, 0.35f, 0.45f)
+        assertAnchor(spec("astd_gcp2").mobilityReduction, 0.25f, 0.30f, 0.35f, 0.45f)
+    }
+
+    @Test
+    fun `相位舰伤害折算比例锚点（全系列共用，2026-10 裁定）`() {
+        for (id in listOf("astd_gcp12", "astd_gcp8", "astd_gcp4", "astd_gcp2")) {
+            assertAnchor(spec(id).phasedDamageRatio, 0.10f, 0.20f, 0.30f, 0.50f)
+        }
     }
 
     @Test
@@ -76,8 +83,9 @@ class GravityCollapseDifficultyTest {
         val values = GravityCollapseDifficulty.resolve(DifficultyTuningImpl, 0, config, "astd_gcp12")
         assertEquals(0.20f, values.aoeDamageRatio, 1e-4f)
         assertEquals(0.04f, values.hullDamageRatio, 1e-4f)
-        assertEquals(0.5625f, values.mobilityReduction, 1e-4f)
+        assertEquals(0.50f, values.mobilityReduction, 1e-4f)
         assertEquals(2.5f, values.mobilityDuration, 1e-4f)
+        assertEquals(0.20f, values.phasedDamageRatio, 1e-4f)
     }
 
     @Test
@@ -87,8 +95,9 @@ class GravityCollapseDifficultyTest {
         val values = GravityCollapseDifficulty.resolve(DifficultyTuningImpl, 1, config, "astd_gcp8")
         assertEquals(0.2667f, values.aoeDamageRatio, 1e-4f)
         assertEquals(0.045f, values.hullDamageRatio, 1e-4f)
-        assertEquals(0.50f, values.mobilityReduction, 1e-4f)
+        assertEquals(0.45f, values.mobilityReduction, 1e-4f)
         assertEquals(3f, values.mobilityDuration, 1e-4f)
+        assertEquals(0.30f, values.phasedDamageRatio, 1e-4f)
     }
 
     @Test
@@ -105,7 +114,7 @@ class GravityCollapseDifficultyTest {
     private fun spec(weaponId: String) =
         GravityCollapseWeaponSpecs.forWeaponId(weaponId) ?: error("缺少坍缩炮配置：$weaponId")
 
-    /** 难度解析只消费四条锚点，其余字段取默认。 */
+    /** 难度解析只消费五条锚点，其余字段取默认。 */
     private fun cfg(weaponId: String): GravityCollapseOnHitConfig {
         val s = spec(weaponId)
         return GravityCollapseOnHitConfig(
@@ -113,6 +122,7 @@ class GravityCollapseDifficultyTest {
             hullDamageRatio = s.hullDamageRatio,
             mobilityReduction = s.mobilityReduction,
             mobilityDuration = s.mobilityDuration,
+            phasedDamageRatio = s.phasedDamageRatio,
         )
     }
 }
