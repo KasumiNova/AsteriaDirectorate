@@ -46,7 +46,7 @@ object Ship_astd_zw_001 : ShipDataEntry() {
     override val fuelPerLy: Int = 3
     override val range: Int = 33
     override val maxBurn: Int = 8
-    override val baseValue: Int = 100000
+    override val baseValue: Int = 600_000
     override val crPercentPerDay: Double = 3.0
     override val crToDeploy: Double = 12.0
     override val peakCrSec: Int = 720
@@ -97,7 +97,7 @@ object Ship_astd_zw_101 : ShipDataEntry() {
     override val fuelPerLy: Int = 2
     override val range: Int = 40
     override val maxBurn: Int = 9
-    override val baseValue: Int = 100000
+    override val baseValue: Int = 160_000
     override val crPercentPerDay: Double = 5.0
     override val crToDeploy: Double = 20.0
     override val peakCrSec: Int = 420
@@ -152,7 +152,7 @@ object Ship_astd_zw_102 : ShipDataEntry() {
     override val fuelPerLy: Int = 10
     override val range: Int = 30
     override val maxBurn: Int = 7
-    override val baseValue: Int = 100000
+    override val baseValue: Int = 500_000
     override val crPercentPerDay: Double = 4.0
     override val crToDeploy: Double = 20.0
     override val peakCrSec: Int = 920
@@ -204,7 +204,7 @@ object Ship_astd_zw_002 : ShipDataEntry() {
     override val fuelPerLy: Int = 3
     override val range: Int = 33
     override val maxBurn: Int = 8
-    override val baseValue: Int = 100000
+    override val baseValue: Int = 800_000
     override val crPercentPerDay: Double = 3.0
     override val crToDeploy: Double = 12.0
     override val peakCrSec: Int = 720
@@ -264,7 +264,7 @@ object Ship_astd_zw_103 : ShipDataEntry() {
     override val fuelPerLy: Int = 2
     override val range: Int = 40
     override val maxBurn: Int = 9
-    override val baseValue: Int = 100000
+    override val baseValue: Int = 180_000
     override val crPercentPerDay: Double = 5.0
     override val crToDeploy: Double = 15.0
     override val peakCrSec: Int = 480

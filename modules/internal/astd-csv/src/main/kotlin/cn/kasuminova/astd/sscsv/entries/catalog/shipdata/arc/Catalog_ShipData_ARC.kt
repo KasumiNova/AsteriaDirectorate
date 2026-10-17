@@ -36,7 +36,7 @@ object Ship_astd_xc_001 : ShipDataEntry() {
     override val fuelPerLy: Int = 10
     override val range: Int = 30
     override val maxBurn: Int = 7
-    override val baseValue: Int = 500000
+    override val baseValue: Int = 1_000_000
     override val crPercentPerDay: Double = 4.0
     override val crToDeploy: Double = 20.0
     override val peakCrSec: Int = 840
@@ -79,7 +79,7 @@ object Ship_astd_xc_002 : ShipDataEntry() {
     override val fuelPerLy: Int = 2
     override val range: Int = 40
     override val maxBurn: Int = 9
-    override val baseValue: Int = 100000
+    override val baseValue: Int = 300_000
     override val crPercentPerDay: Double = 5.0
     override val crToDeploy: Double = 20.0
     override val peakCrSec: Int = 560
@@ -144,7 +144,7 @@ object Ship_astd_xc_102 : ShipDataEntry() {
     override val fuelPerLy: Int = 10
     override val range: Int = 30
     override val maxBurn: Int = 8
-    override val baseValue: Int = 300000
+    override val baseValue: Int = 500_000
     override val crPercentPerDay: Double = 3.0
     override val crToDeploy: Double = 15.0
     override val peakCrSec: Int = 720
@@ -188,7 +188,7 @@ object Ship_astd_xc_101 : ShipDataEntry() {
     override val fuelPerLy: Int = 3
     override val range: Int = 33
     override val maxBurn: Int = 8
-    override val baseValue: Int = 100000
+    override val baseValue: Int = 200000
     override val crPercentPerDay: Double = 3.0
     override val crToDeploy: Double = 12.0
     override val peakCrSec: Int = 600
@@ -233,7 +233,7 @@ object Ship_astd_xc_103 : ShipDataEntry() {
     override val fuelPerLy: Int = 2
     override val range: Int = 25
     override val maxBurn: Int = 9
-    override val baseValue: Int = 45000
+    override val baseValue: Int = 100_000
     override val crPercentPerDay: Double = 5.0
     override val crToDeploy: Double = 15.0
     override val peakCrSec: Int = 420
@@ -273,7 +273,7 @@ object Ship_astd_xc_104 : ShipDataEntry() {
     override val fuel: Int = 15
     override val fuelPerLy: Int = 1
     override val maxBurn: Int = 10
-    override val baseValue: Int = 12000
+    override val baseValue: Int = 20_000
     override val crPercentPerDay: Double = 10.0
     override val crToDeploy: Double = 20.0
     override val peakCrSec: Int = 120

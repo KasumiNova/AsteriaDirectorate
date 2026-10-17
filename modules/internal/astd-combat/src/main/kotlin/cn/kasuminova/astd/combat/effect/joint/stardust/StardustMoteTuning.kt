@@ -33,7 +33,7 @@ object StardustMoteTuning {
     const val MAX_MOTES_PER_TARGET = 4
 
     /** 单武器同时存活的光尘上限（自动开火 AI 达上限即停火，见 StardustLauncherAutofireAI）。 */
-    const val MAX_ALIVE_MOTES_PER_WEAPON = 8
+    const val MAX_ALIVE_MOTES_PER_WEAPON = 4
 
     /** ARC 线光尘色（蓝）：jitter/EMP 电弧/引擎辉光共用色相。 */
     val ARC_COLOR = Color(100, 165, 255, 255)
