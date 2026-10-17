@@ -262,10 +262,10 @@ class GravTimeflowLinkVfx private constructor(
         private val loadedPaths = HashSet<String>()
 
         /** 细装饰丝条数。 */
-        private const val FILAMENT_COUNT = 3
+        private const val FILAMENT_COUNT = 6
 
         /** 每条线节点数。 */
-        private const val NODE_COUNT = 24
+        private const val NODE_COUNT = 64
 
         /** 常驻实体时长（秒）：生命周期由系统脚本显式驱动 dispose，不自然到期。 */
         private const val FULL_SECONDS = 1e7f
@@ -305,7 +305,7 @@ class GravTimeflowLinkVfx private constructor(
         private const val TIP_FRACTION = 0.12f
 
         /** 流动三角碎片：每秒喷散基准速率、飞行速度（su/s，方向与光束对齐流向目标）。 */
-        private const val SHARD_RATE_PER_SEC = 18f
+        private const val SHARD_RATE_PER_SEC = 80f
         private const val SHARD_SPEED = 350f
 
         /** 星云粒子：稳态空间密度（px/颗，取 10~15 中值）、单颗平均寿命（折算补充速率用，
@@ -315,8 +315,8 @@ class GravTimeflowLinkVfx private constructor(
         private const val NEBULA_LIFE_SECONDS = 1.85f
         private const val NEBULA_SIZE_MIN = 20f
         private const val NEBULA_SIZE_MAX = 40f
-        private const val NEBULA_ALPHA_LO = 30f
-        private const val NEBULA_ALPHA_HI = 55f
+        private const val NEBULA_ALPHA_LO = 100f
+        private const val NEBULA_ALPHA_HI = 200f
         private const val NEBULA_LATERAL_SPREAD = 12f
         private const val NEBULA_END_SIZE_MULT = 1.25f
         private const val NEBULA_RAMP_UP = 0.2f
@@ -378,14 +378,14 @@ class GravTimeflowLinkVfx private constructor(
             BoxUtilCombatVfx.ensureReady(engine)
 
             val created = ArrayList<CurveEntity>(1 + FILAMENT_COUNT)
-            val main = createArc(engine, TEX_MAIN, TEX_PIXELS_MAIN, TEX_SPEED_MAIN, glowPower = 0.4f)
+            val main = createArc(engine, TEX_MAIN, TEX_PIXELS_MAIN, TEX_SPEED_MAIN, glowPower = 0.8f)
             if (main == null) {
                 return null
             }
             created += main
             val filaments = ArrayList<CurveEntity>(FILAMENT_COUNT)
             repeat(FILAMENT_COUNT) {
-                val filament = createArc(engine, TEX_FILAMENT, TEX_PIXELS_FILAMENT, TEX_SPEED_FILAMENT, glowPower = 0.9f)
+                val filament = createArc(engine, TEX_FILAMENT, TEX_PIXELS_FILAMENT, TEX_SPEED_FILAMENT, glowPower = 1.4f)
                 if (filament == null) {
                     for (entity in created) entity.delete()
                     return null
