@@ -32,8 +32,8 @@
 | `tier` | `2`（提案） | aod7/spc3 signature 为 3；量产大主炮提案 2，收口人对齐量产件口径 |
 | `baseValue` | `25000`（提案） | 低于 signature 件（50000），收口人统一 |
 | `range` | `1100` | 定案固定值（2026-09 修订：1200 → 1100） |
-| `damagePerSecond` | `300` | 600 / 2.5s（2026-09 修订：分母随开火间隔改为 2.5s，DPS 不变） |
-| `damagePerShot` | `600` | 定案 |
+| `damagePerSecond` | 默认 `0` 不覆写（充能武器 tooltip DPS 由 damage/shot ÷ 周期派生；旧显式 300 口径作废） | 2026-10 对齐代码现状 |
+| `damagePerShot` | `640` | 2026-10 对齐代码现状（旧 600 作废） |
 | `chargeup` | `1.0` | 1s 开火充能（2026-09 起显式登记，机制上参与周期总时长） |
 | `chargedown` | `1.5` | 定案 2.5s 总开火间隔 = 1s 充能 + 1.5s 冷却（2026-09 修订：2.0 → 1.5；非 beam 必须走 chargedown/burst，避免 tooltip 除 0） |
 | `burstSize` | `1`；`burstDelay` | `0.0` |
@@ -43,10 +43,10 @@
 | `autofireAccBonus` | `1` | 完美精度（对齐原版高斯炮口径） |
 | `minSpread` / `maxSpread` / `spreadPerShot` / `spreadDecayPerSec` | 默认 `0` 不覆写 | 完美精度 |
 | `type` | `"KINETIC"` | 定案动能 |
-| `energyPerShot` | `900` | 定案（辐伤比 1.5） |
-| `energyPerSecond` | `450` | 900 / 2s |
-| `projSpeed` | `1200`（2026-07-29 审批裁定，弃 1500 提案） | 与高斯炮同速 |
-| `ops` | `27` | 定案 |
+| `energyPerShot` | `960` | 2026-10 对齐代码现状（辐伤比 1.5；旧 900 作废） |
+| `energyPerSecond` | 默认 `0` 不覆写 | 充能武器该列会被 ChargeFireTracker 在充能期按秒真实扣辐，留空；tooltip 持续辐能由派生公式算回 450/s（旧显式 450 作废） |
+| `projSpeed` | `1800` | 2026-10 对齐代码现状（旧 1200 裁定作废） |
+| `ops` | `28` | 2026-10 对齐代码现状（旧 27 作废） |
 | `ammo` / `ammoPerSec` / `reloadSize` | 默认 `0` 不覆写（无限弹药） | 定案无弹匣 |
 | `aiHints` | 默认空（不覆写） | 非 PD |
 | `tags` | `"astd_production"` | 量产 |
@@ -166,7 +166,7 @@ const val MAX_STACKS = 10
 const val DECAY_WINDOW_SECONDS = 3f
 ```
 
-常量字段（不缩放）：层数上限 10、衰减窗口 3s、射程 1100、面板 600。
+常量字段（不缩放）：层数上限 10、衰减窗口 3s、射程 1100、面板 640。
 
 ### 2.2 核心逻辑伪代码
 
@@ -304,22 +304,38 @@ fun resolve(entry: ScalingEntry, owner: Int): Float =
 
 ### 3.1 `ProjectileVfxSpecs.kt` 登记（builders map 末尾追加）
 
+2026-10 对齐代码现状（`ProjectileVfxSpecs.kt` builders 内现行条目；旧「冷白 VfxPalette 内联字面量、width 12」草案作废）：
+
 ```kotlin
-"astd_qiongjue_phase_railgun_shot" to {
+"astd_qiongjue_phase_railgun_shot" to { range ->
     simpleProjectileVfx(
         "astd_qiongjue_phase_railgun_shot",
-        // 冷白主色内联字面量（合并协议：新调色板只允许收口人沉淀，分支内不新增 white() 函数）
-        VfxPalette(ASTDColor(0.92f, 0.95f, 1f, 1f), TEX_SMOOTH, TEX_ZAPPY),
-        width = 12f,
+        qiongjueBlue(),
+        width = 16f,
         length = 300f,
-    )
+        range = range,
+        rangeRatio = 0.5f,
+        trailWidthScale = 0.65f,
+        trailGlow = 0.8f,
+        tailColor = paleGreenTail(),
+        boltFlare = 48f,
+        muzzleBurst = MuzzleBurst(),
+        decorTrail = false
+    ) {
+        machRing("ring") {
+            cadence(0.2f, 30f)
+            color(0x8CC7FFFF, alpha = 1f)
+            shape(flatten = 0.45f, growthStart = 0.5f, growthEnd = 2.5f, fadeIn = 0.05f, full = 0.05f, fadeOut = 0.3f)
+            momentum(900f)
+        }
+    }
 },
 ```
 
-- 形态对齐 spc3 lambda 内联先例；5 高层旋钮足够表达「高亮白色细长射弹 + 长距离明亮拖尾」（`simpleProjectileVfx` 已含 texTrail 主带 + bloom 网格弹头恒在 + fade 三件套，无需独立构建函数）。
-- width=12/length=300：大型主炮体量（对照 spc3 中型 6/135、电荷针刺规划 9/165；length=300 表达「长距离明亮拖尾」，目检微调）。
-- ribbon=false：单带细长光矛观感，不上电弧副带（克制，不抢贯星大光柱）。
-- 主色：美术主色口径「穷距用白色弹体与明亮拖尾」（90-计划全局约定），ASTDColor(0.92, 0.95, 1.0) 为微冷白。
+- 主色调色板 `qiongjueBlue()` = ASTDColor(0.55, 0.78, 1.0)（140,199,255，ARC 冷蓝白），拖尾渐变为 `paleGreenTail()`（蓝→淡绿）。
+- width=16 / length=300：大型主炮体量；trail 长 = 射程 × 50%（rangeRatio 0.5）、宽 −35%（trailWidthScale 0.65）、trailGlow 0.8 强化发光；装饰层关闭（decorTrail=false，大弹体主角光环留给外带/核心）。
+- 弹头补 `boltFlare = 48f` SMOOTH 光斑强化弹体发光；开火附带 `MuzzleBurst()` 炮口锥面碎片。
+- `machRing` 马赫环发射器：0.2s 一枚、环半径 30（对齐 16su 宽弹体观感），前飞动量 = 弹速 1800 × 0.5 = 900su/s，颜色跟随 qiongjueBlue 调色板。
 
 ### 3.2 命中特效
 
