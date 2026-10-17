@@ -99,7 +99,7 @@ class BoltRenderComponent(
             return true
         }
         boltLease = lease
-        syncBolt(ctx, projectile)
+        syncBolt(projectile)
         return true
     }
 
@@ -112,7 +112,7 @@ class BoltRenderComponent(
             disabled = true
             return
         }
-        syncBolt(ctx, projectile)
+        syncBolt(projectile)
         if (!hitGlowSpawned && projectile.didDamage()) {
             hitGlowSpawned = true
             spawnHitGlow(engine, projectile)
@@ -152,10 +152,13 @@ class BoltRenderComponent(
         )
     }
 
-    private fun syncBolt(ctx: RenderContext, projectile: DamagingProjectileAPI) {
+    private fun syncBolt(projectile: DamagingProjectileAPI) {
         val brightness = projectile.brightness
         if (!brightness.isFinite()) return
-        val facing = BoxUtilCombatVfx.normalizeFacingDeg(ctx.frame.facing)
+        // 朝向取弹体 facing 真值而非 frame 位移朝向：原版 TrailExtender 尾点即沿 facing 重构
+        // （setFacing → unitVectorAtAngle），螺栓视觉朝向恒等于 facing；发射舰高速移动时弹体
+        // 继承舰船速度、位移方向偏离 facing，若贴图跟位移方向会被斜向旋转——视觉上的超额漂移。
+        val facing = BoxUtilCombatVfx.normalizeFacingDeg(projectile.facing)
         // 导弹无 TrailExtender 尾迹真值（getTailEnd 恒 null）：沿朝向反推 specLength 合成全长尾点，
         // 螺栓按全长渲染（无出生伸入）；实弹仍消费原版 tailEnd 真值。
         val tail = projectile.tailEnd ?: if (missileMode) missileBoltTail(projectile.location, facing, specLength) else null
