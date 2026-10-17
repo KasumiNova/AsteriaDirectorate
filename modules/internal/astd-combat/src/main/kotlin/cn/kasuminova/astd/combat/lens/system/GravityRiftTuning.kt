@@ -7,6 +7,8 @@ import cn.kasuminova.astd.combat.lens.system.GravityRiftTuning.PHASE_SUPPRESS_CO
 import cn.kasuminova.astd.combat.lens.system.GravityRiftTuning.VORTEX_DURATION
 import cn.kasuminova.astd.combat.lens.system.GravityRiftTuning.VORTEX_FADE_IN
 import cn.kasuminova.astd.combat.lens.system.GravityRiftTuning.VORTEX_FADE_OUT
+import com.fs.starfarer.api.plugins.ShipSystemStatsScript
+import kotlin.math.sqrt
 
 /**
  * 引力裂隙发生器（茑萝级舰船系统）的机制数值声明与纯函数
@@ -16,8 +18,9 @@ import cn.kasuminova.astd.combat.lens.system.GravityRiftTuning.VORTEX_FADE_OUT
  * 动机：系统需锁定目标激活，在目标舰随机位置（优先无护盾覆盖区域）产生贴图旋涡，
  * 1s 后自旋涡中心向目标发射**真实光束**（隐藏光束武器挂 FX drone，机制与攻击间隔
  * 直接复用原版裂隙洪流发射极 riftcascade：光束命中目标期间每 0.1s 沿目标周边弧线
- * 布一枚裂隙雷，(射程 − 命中长度)/200 + 1、上限 5）。系统持续期间舰船获得全类型固定减伤
- * 并压制相位斗篷（2026-10 细化）。数值集中在此声明，
+ * 布一枚裂隙雷，(射程 − 命中长度)/200 + 1、上限 5）。系统持续期间（IN + ACTIVE + OUT）
+ * 舰船获得全类型固定减伤，红色 jitter 结构对齐原版时流之壳；相位斗篷压制仅 IN/ACTIVE
+ * 生效（OUT 解除，2026-10 细化）。数值集中在此声明，
  * 供系统脚本每帧实时解析（LunaLib 设置变更即时生效），并由单元测试直接驱动。
  *
  * 玩家来源（owner == 0）按我方档位取值（默认砺刃 v2，见 DifficultyTuning.valueFor）。
@@ -103,6 +106,36 @@ object GravityRiftTuning {
 
     /** 系统期间相位斗篷每帧钉住的剩余冷却（秒）：系统结束后斗篷在该余量内恢复可用。 */
     const val PHASE_SUPPRESS_COOLDOWN_REMAINING = 0.1f
+
+    /**
+     * 系统期间红色 jitter 的强度与描边外扩距离（纯函数，结构对齐原版时流之壳
+     * [com.fs.starfarer.api.impl.combat.TemporalShellStats]）：
+     * IN 按充能进度爬升并钳到 1，ACTIVE 满额，OUT 即 effectLevel 线性衰减；
+     * 强度开平方（低段更亮），描边外扩 = 衰减前强度 × 10。
+     * 返回 (jitterLevel, rangeBonus)。
+     */
+    fun jitterLevelAndRange(
+        state: ShipSystemStatsScript.State,
+        effectLevel: Float,
+        chargeUpDur: Float,
+    ): Pair<Float, Float> {
+        var jitterLevel = effectLevel
+        val rangeBonus: Float
+        when (state) {
+            ShipSystemStatsScript.State.IN -> {
+                jitterLevel = (effectLevel / (1f / chargeUpDur)).coerceAtMost(1f)
+                rangeBonus = jitterLevel * 10f
+            }
+            ShipSystemStatsScript.State.ACTIVE -> {
+                jitterLevel = 1f
+                rangeBonus = 10f
+            }
+            else -> {
+                rangeBonus = effectLevel * 10f
+            }
+        }
+        return sqrt(jitterLevel) to rangeBonus
+    }
 
     /**
      * 裂隙数量（纯函数）：(光束射程 − 光束当前命中长度) / 200 + 1，钳制到 [1, MAX_RIFTS]

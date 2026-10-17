@@ -1,6 +1,8 @@
 package cn.kasuminova.astd.combat.lens.system
 
 import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
+import com.fs.starfarer.api.plugins.ShipSystemStatsScript
+import kotlin.math.sqrt
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -10,7 +12,7 @@ import kotlin.test.assertEquals
  * 裂隙数量随光束未用射程递增（unusedRange / 200 + 1，钳制 [1, 5]，对齐原版裂隙洪流发射极）、
  * 单裂隙伤害按难度三锚点区间随序位线性插值（仅 1 个时取上限）、伤害→地雷乘区换算（/ 1000）、
  * 旋涡 alpha 包络（1s 淡入 + 全亮 + 1s 淡出，forceFadeOut 提前收口）、
- * 系统期间固定减伤与相位压制逻辑。
+ * 系统期间固定减伤与相位压制逻辑、jitter 强度/描边外扩的状态分支（对齐原版时流之壳结构）。
  * 经 [DifficultyTuningImpl.installScaleForTests] 走完整映射链路（对齐 FighterGravLinkTuningTest 先例）。
  */
 class GravityRiftTuningTest {
@@ -74,6 +76,24 @@ class GravityRiftTuningTest {
         assertEquals(threshold, GravityRiftTuning.phaseSuppressCooldown(0.05f, inCooldown = true))
         assertEquals(null, GravityRiftTuning.phaseSuppressCooldown(0.2f, inCooldown = true))
         assertEquals(threshold, GravityRiftTuning.phaseSuppressCooldown(5f, inCooldown = false))
+    }
+
+    @Test
+    fun `jitter 强度与描边外扩按状态分支计算`() {
+        val dur = 1f
+        // IN：强度随充能进度爬升（chargeUpDur=1 时等于 effectLevel），超 1 钳到 1，返回值开平方
+        val (inLevel, inRange) = GravityRiftTuning.jitterLevelAndRange(ShipSystemStatsScript.State.IN, 0.25f, dur)
+        assertEquals(sqrt(0.25f), inLevel, 1e-6f)
+        assertEquals(1f, GravityRiftTuning.jitterLevelAndRange(ShipSystemStatsScript.State.IN, 2f, dur).first, 1e-6f)
+        // ACTIVE：满额
+        val (activeLevel, activeRange) = GravityRiftTuning.jitterLevelAndRange(ShipSystemStatsScript.State.ACTIVE, 0.5f, dur)
+        assertEquals(1f, activeLevel, 1e-6f)
+        // OUT：强度即 effectLevel（开平方后返回）
+        val (outLevel, outRange) = GravityRiftTuning.jitterLevelAndRange(ShipSystemStatsScript.State.OUT, 0.25f, dur)
+        assertEquals(sqrt(0.25f), outLevel, 1e-6f)
+        // 描边外扩与钳制前强度成正比，同一比例贯穿三分支
+        assertEquals(inRange / 0.25f, outRange / 0.25f, 1e-6f)
+        assertEquals(inRange / 0.25f, activeRange / 1f, 1e-6f)
     }
 
     @Test

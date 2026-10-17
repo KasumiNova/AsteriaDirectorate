@@ -33,6 +33,7 @@ object BloomFlareVfxImpl : BloomFlareVfx {
         timerFadeIn: Float,
         timerFull: Float,
         timerFadeOut: Float,
+        follow: BloomFlareVfx.FlareFollow?,
     ): Int {
         BoxUtilCombatVfx.ensureReady(engine)
         val created = ArrayList<FlareEntity>(flares.size)
@@ -49,6 +50,7 @@ object BloomFlareVfxImpl : BloomFlareVfx {
                 engine,
                 durationSeconds,
                 flares.zip(created).map { (spec, entity) -> FlareTrack(entity, spec) },
+                follow,
             )
         )
         return created.size
@@ -112,15 +114,23 @@ object BloomFlareVfxImpl : BloomFlareVfx {
         private val engine: CombatEngineAPI,
         private val durationSeconds: Float,
         private val tracks: List<FlareTrack>,
+        private val follow: BloomFlareVfx.FlareFollow?,
     ) : BaseEveryFrameCombatPlugin() {
         private var elapsed = 0f
+
+        /** 跟随锚点回调的复用向量（每帧填入当前世界坐标）。 */
+        private val followVec = Vector2f()
 
         override fun advance(amount: Float, events: MutableList<InputEventAPI>?) {
             if (engine.isPaused) return
             elapsed += amount
             val t = (elapsed / durationSeconds).coerceIn(0f, 1f)
             val alpha = 1f - t
+            val followFacing = follow?.locate(followVec)
             for (track in tracks) {
+                if (followFacing != null) {
+                    track.entity.setStateVanilla(followVec, BoxUtilCombatVfx.normalizeFacingDeg(followFacing))
+                }
                 val size = track.sizeStart + (track.sizeEnd - track.sizeStart) * t
                 val height = track.heightStart + (track.heightEnd - track.heightStart) * t
                 track.entity.setSize(size, height)
