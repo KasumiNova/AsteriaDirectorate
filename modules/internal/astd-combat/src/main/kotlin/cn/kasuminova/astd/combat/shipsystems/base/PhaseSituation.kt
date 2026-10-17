@@ -5,7 +5,9 @@ package cn.kasuminova.astd.combat.shipsystems.base
  * [cn.kasuminova.astd.combat.shipsystems.GravityPhaseSituationSampler] 采样填充，
  * 决策树（[PriorityPhaseTree]）只读消费，单测直接构造。
  *
- * 字段语义与原 GravityPhaseCloakAI 内联实现一致，逐字段平移未改口径。
+ * 字段语义：既有字段与原 GravityPhaseCloakAI 内联实现一致，逐字段平移未改口径；
+ * 迫近意图字段（targetDistance/effectiveWeaponRange/pressIntentActive）为后续新增，
+ * 口径见各字段注释。
  */
 internal data class PhaseSituation(
     /** 是否处于相位（含 charge up；charge down 视为上浮中，不算相位）。 */
@@ -54,8 +56,14 @@ internal data class PhaseSituation(
     val friendlyCatchDamage: Float,
     /** 绕后意图是否生效中（绕后下潜后保持相位机动穿透的窗口期）。 */
     val flankIntentActive: Boolean,
-    /** 布防时武装的绕后意图窗口长度（s）；意图未生效时取值不影响判定。 */
+    /** 布防时武装的机动意图窗口长度（s；绕后/迫近意图共用，供强制上浮时长闸放宽推导）；意图未生效时取值不影响判定。 */
     val flankIntentWindowSec: Float,
+    /** 当前攻击目标（ship.shipTarget 经有效性校验）的距离（su；无有效目标为 [Float.MAX_VALUE]。与限 1600su 交战圈的 threatDistance 不同，不限距离）。 */
+    val targetDistance: Float,
+    /** 有效武器射程（su）：非导弹、非装饰、非系统槽、未禁用且有弹药武器的最大射程（无此类武器为 0——纯导弹舰无迫近收益）。 */
+    val effectiveWeaponRange: Float,
+    /** 迫近意图是否生效中（迫近下潜后保持相位机动逼近目标有效射程的窗口期；到位/目标丢失/武器打光即由采样端收口失效，口径见 FlankAttackTree.pressIntentActive）。 */
+    val pressIntentActive: Boolean,
     /** 主威胁目标距离（su；无威胁时为 [Float.MAX_VALUE]）。 */
     val threatDistance: Float,
     /** 上浮落点是否不安全：本舰碰撞圈与他舰深度重叠（原版斗篷此时拒绝退相位）。 */

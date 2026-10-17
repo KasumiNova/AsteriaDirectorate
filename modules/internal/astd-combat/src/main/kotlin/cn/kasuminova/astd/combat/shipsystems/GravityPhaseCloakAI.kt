@@ -23,19 +23,20 @@ import org.lwjgl.util.vector.Vector2f
  *
  * 本类为多决策树架构的协调器薄壳，决策逻辑全部外迁：
  * - 态势采样：[GravityPhaseSituationSampler]（一拍 [cn.kasuminova.astd.combat.shipsystems.base.PhaseSituation] 快照）；
- * - Mutex A 斗篷开关：[PhaseToggleTree]（DIVE/SURFACE/NONE，23 条规则按优先级评估）；
- * - Mutex B 绕后走位：[FlankAttackTree]（DRIVE/HOLD_SPOT/BACKOFF 旗标组）；
+ * - Mutex A 斗篷开关：[PhaseToggleTree]（DIVE/SURFACE/NONE，25 条规则按优先级评估）；
+ * - Mutex B 机动走位：[FlankAttackTree]（DRIVE/HOLD_SPOT/BACKOFF 旗标组；绕后/迫近意图
+ *   共用穿透驱动，迫近到位由 A 树上浮输出、不做就地保持）；
  * - Mutex C vent 链路：[FluxVentTree]（SUPPRESS/VENT/NONE）。
  *
  * 本类只负责：状态时钟推进（phaseActiveTime/timeSinceUnphase/toggleGuard/flankIntent/
- * forcedSurfaceHold 节拍）、无条件旗标维护（相位中 DO_NOT_VENT、冷却期残损 BACK_OFF）、
- * 依次评估 A→B→C、执行开关/旗标/vent 指令与决策留痕日志。
+ * pressIntent/forcedSurfaceHold 节拍）、无条件旗标维护（相位中 DO_NOT_VENT、冷却期残损
+ * BACK_OFF）、依次评估 A→B→C、执行开关/旗标/vent 指令与决策留痕日志。
  *
  * 互斥收敛规则（原实现隐式耦合的显式化）：
  * - A=DIVE → C 由 [DiveOrderedSuppressRule] 自然压制（树间互斥入规则）；
  * - A 非 NONE → C 的 VENT 不出手（[TacticalVentRule] 要求 cloakOrder==NONE）；
  * - B 的 DRIVE/HOLD_SPOT 仅在 forcedSurfaceHoldSec <= 0 生效
- *   （内嵌于 [FlankAttackTree.flankDriveActive]，暂缓期间由 [ForcedHoldBackoffRule] 接管后撤）。
+ *   （内嵌于 [FlankAttackTree.maneuverDriveActive]，暂缓期间由 [ForcedHoldBackoffRule] 接管后撤）。
  *
  * 上浮僵直保护：强制上浮后挂 [ShipwideAIFlags.AIFlags.BACK_OFF]（2s）让舰船后撤度过
  * 斗篷冷却窗口；斗篷冷却中且硬辐能过半/舰体残损时持续刷新 BACK_OFF。
@@ -84,8 +85,11 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
     /** 绕后意图剩余时长（s）：绕后下潜布防后递减，上浮即清零。 */
     private var flankIntentRemaining = 0f
 
-    /** 布防时武装的绕后意图窗口长度（s）：随 [flankIntentRemaining] 一同布防，供相位时长上限推导。 */
+    /** 布防时武装的机动意图窗口长度（s；绕后/迫近共用）：随意图布防写入，供相位时长上限放宽推导。 */
     private var flankIntentWindowArmed = FlankAttackTree.FLANK_INTENT_SEC
+
+    /** 迫近意图剩余时长（s）：迫近下潜布防后递减，上浮即清零。 */
+    private var pressIntentRemaining = 0f
 
     /** 强制上浮被落点安全闸按住的累计时长（s）：随决策节拍累计，未触发/落点安全即清零。 */
     private var forcedSurfaceHoldSec = 0f
@@ -125,11 +129,13 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
             ) {
                 phaseActiveTime = 0f
             }
-            // 上浮即结束绕后意图（达成或中止都回到常规节奏）
+            // 上浮即结束绕后/迫近意图（达成或中止都回到常规节奏）
             flankIntentRemaining = 0f
+            pressIntentRemaining = 0f
         }
         toggleGuardElapsed += amount
         flankIntentRemaining = (flankIntentRemaining - amount).coerceAtLeast(0f)
+        pressIntentRemaining = (pressIntentRemaining - amount).coerceAtLeast(0f)
 
         scanInterval.advance(amount)
         if (!scanInterval.intervalElapsed()) return
@@ -137,6 +143,7 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
         val sampled = sampler.sample(
             engine, ship, cloak, phased, target,
             phaseActiveTime, timeSinceUnphase, flankIntentRemaining, flankIntentWindowArmed,
+            pressIntentRemaining,
         )
         // 强制上浮落点安全暂缓预算节拍：触发且落点不安全时随决策节拍累计，
         // 致命豁免期暂停（豁免是等这一下过去而非等安全落点，不该烧兜底预算），
@@ -218,6 +225,22 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
                                 "PHASE_ATTACK_RUN 驱动穿透窗口 ${"%.1f".format(flankIntentRemaining)}s" +
                                 "（距离 ${"%.0f".format(situation.threatDistance)}su）",
                     )
+                } else if (PhaseToggleTree.isPressApproachDive(situation)) {
+                    // 迫近意图布防：迫近下潜命中完整闸门且开关指令真正发出时才开启意图窗口
+                    // （窗口按目标距离缩放，与绕后布防同口径；flankIntentWindowArmed 同步武装，
+                    // 供强制上浮时长闸放宽推导）。
+                    // 布防分支取舍：A 树中 PressApproach 先于 FlankDive，交集窗口（目标
+                    // 1500~1600su 且低机动）内 DIVE 由迫近规则触发，但此处优先武装绕后意图——
+                    // 绕后（穿透占位 + 侧后输出）是更丰富的行为；日志中 rule 与布防类型分列，
+                    // 如实反映这一分叉
+                    pressIntentRemaining =
+                        FlankAttackTree.flankIntentWindowSec(situation.targetDistance)
+                    flankIntentWindowArmed = pressIntentRemaining
+                    log.info(
+                        "[GravityPhaseAI] ${ship.name} 迫近意图布防：目标超出有效射程，" +
+                                "PHASE_ATTACK_RUN 驱动迫近窗口 ${"%.1f".format(pressIntentRemaining)}s" +
+                                "（距离 ${"%.0f".format(situation.targetDistance)}su）",
+                    )
                 }
             }
 
@@ -232,7 +255,8 @@ class GravityPhaseCloakAI : ShipSystemAIScript {
                             "hardFlux=${"%.2f".format(situation.hardFluxLevel)} engaged=${situation.engagedEnemyNear} " +
                             "near=${"%.0f".format(situation.incomingNearDamage)} soon=${"%.0f".format(situation.incomingSoonDamage)} " +
                             "coverage=${situation.weaponCoverage} rearArc=${situation.inTargetRearArc} " +
-                            "intent=${situation.flankIntentActive} systemReady=${situation.systemReady} " +
+                            "intent=${situation.flankIntentActive} press=${situation.pressIntentActive} " +
+                            "systemReady=${situation.systemReady} " +
                             "weaponsReady=${"%.2f".format(situation.weaponsReadyFrac)} " +
                             "dist=$distText sepSafe=${situation.rearSurfaceDistanceSafe}",
                 )

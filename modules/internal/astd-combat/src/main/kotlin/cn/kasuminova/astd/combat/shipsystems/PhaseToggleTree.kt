@@ -35,6 +35,11 @@ import cn.kasuminova.astd.combat.shipsystems.base.PriorityPhaseTree
  *   威胁阈值 ×[SOFT_FLUX_DIVE_SAFE_NEAR_FRAC]，侧后占位放宽到 ×[SOFT_FLUX_DIVE_SAFE_NEAR_FRAC_REAR]；
  * - [StaggerGateRule]：错峰闸——除紧急下潜与耗软辐下潜外，距上次上浮不足
  *   [MIN_UNPHASE_TIME_SEC] 不下潜；
+ * - [PressApproachDiveRule]：迫近下潜——当前攻击目标超出有效射程（距离 ≥
+ *   [PRESS_APPROACH_MIN_DIST] 且超射程 ×[PRESS_APPROACH_RANGE_MULT] 裕量）、有非导弹非点防
+ *   武器可输出、硬辐能与来袭有余量时下潜，借相位 3x 时间倍率快速迫近（闸门收敛在
+ *   [isPressApproachDive]；与 [TravelDiveRule] 可同真，靠规则表顺序让迫近优先——
+ *   迫近有明确攻击目标）；
  * - [TravelDiveRule]：相位赶路——有赶路目标点（MOVEMENT_DEST 旗标）且距离 ≥
  *   [TRAVEL_PHASE_MIN_DIST]、脱战、非撤退、辐能低时下潜赶路（相位 3x 时间倍率随舰时钟加速
  *   位移），闸门收敛在 [isTravelDive]；
@@ -55,7 +60,7 @@ import cn.kasuminova.astd.combat.shipsystems.base.PriorityPhaseTree
  *
  * 上浮规则（相位分支，按优先级）：
  * - [ForcedSurfaceRule]：强制上浮——辐能闸（硬辐能 ≥ [SURFACE_HARD_FLUX]，继续潜只会涨辐能
- *   减速被围死）/时长闸（连续相位 ≥ [MAX_PHASE_TIME_SEC]，错峰节奏强制回到战场；绕后意图
+ *   减速被围死）/时长闸（连续相位 ≥ [MAX_PHASE_TIME_SEC]，错峰节奏强制回到战场；绕后/迫近意图
  *   生效期间上限放宽到武装窗口 + [FLANK_PHASE_CAP_MARGIN_SEC]，辐能闸不受放宽）；
  *   落点同样要求相对安全（[isSurfaceSafe]），不安全时有界暂缓
  *   （[FORCED_SURFACE_HOLD_MAX_SEC]，协调器按决策节拍累计，口径 [nextForcedSurfaceHoldSec]，
@@ -73,6 +78,10 @@ import cn.kasuminova.astd.combat.shipsystems.base.PriorityPhaseTree
  *   主动上浮按住，保持相位机动穿透（就位点在目标背后远点，途中短暂掉出交战圈不等于脱战，
  *   掉圈提前上浮即布防早夭）；意图达成（已入侧后）时覆盖闸放宽到 [SURFACE_COVERAGE_MAX]
  *   即上浮输出，脱间距不足（贴着敌舰护盾/碰撞箱）按住保持相位穿出拉开；
+ * - [PressIntentRule]：迫近意图拦截（先于无威胁上浮判定）——意图生效期间一切主动上浮按住，
+ *   保持相位机动迫近（目标在交战圈外时无威胁上浮会立刻把船拉出水面，必须拦截，与绕后意图的
+ *   掉圈早夭判例同构）；意图生效口径（窗口/目标有效/未到位/武器未打光）收口到采样端
+ *   （[FlankAttackTree.pressIntentActive]），到位即意图失效、规则弃权，放行后续战术/输出窗口上浮；
  * - [NoThreatSurfaceRule]：无威胁上浮——威胁圈无交战对象且来袭轻微（撤退赶路且硬辐能有
  *   余量时保持相位；相位赶路途中辐能 < [TRAVEL_HOLD_FLUX_MAX] 时同样拦截保持相位，
  *   口径 [isTravelPhaseHold]，超标放行上浮耗散，维持低辐赶路循环）；
@@ -94,6 +103,7 @@ internal class PhaseToggleTree : PriorityPhaseTree<PhaseOrder>(
         SurfaceSafetyGateRule,
         SoonHitGateRule,
         FlankIntentRule,
+        PressIntentRule,
         NoThreatSurfaceRule,
         RearSurfaceRule,
         CoverageGateRule,
@@ -106,6 +116,7 @@ internal class PhaseToggleTree : PriorityPhaseTree<PhaseOrder>(
         FriendlyCatchGateRule,
         SoftFluxDumpDiveRule,
         StaggerGateRule,
+        PressApproachDiveRule,
         TravelDiveRule,
         RetreatDiveRule,
         FluxPressureDiveRule,
@@ -237,6 +248,21 @@ internal class PhaseToggleTree : PriorityPhaseTree<PhaseOrder>(
         /** 相位赶路途中保持相位的总辐能上限：超过本值放行上浮耗散，维持低辐赶路循环。 */
         internal const val TRAVEL_HOLD_FLUX_MAX = 0.35f
 
+        /** 迫近下潜的最小目标距离（su）：低于本值开关僵直大于迫近收益，不下潜。 */
+        internal const val PRESS_APPROACH_MIN_DIST = 1500f
+
+        /** 迫近下潜的触发裕量：目标距离超出有效射程的倍数达本值才触发（贴射程边缘抖动不反复下潜）。 */
+        internal const val PRESS_APPROACH_RANGE_MULT = 1.15f
+
+        /** 迫近到位放行系数：目标距离进入有效射程 × 本值即视为到位（留贴近余量）。 */
+        internal const val PRESS_SURFACE_RANGE_FRAC = 0.9f
+
+        /** 迫近下潜的武器就绪下限（口径对齐绕后下潜 [FlankAttackTree.FLANK_DIVE_WEAPONS_FRAC]：到位后要有东西可打）。 */
+        internal const val PRESS_APPROACH_WEAPONS_FRAC = 0.5f
+
+        /** 迫近下潜的硬辐能上限（口径对齐相位赶路 [TRAVEL_DIVE_HARD_FLUX_MAX]：相位维持持续涨硬辐，远距迫近需留余量）。 */
+        internal const val PRESS_APPROACH_HARD_FLUX_MAX = 0.25f
+
         /** 绕后意图期间相位时长上限相对意图窗口的富余（s）。 */
         internal const val FLANK_PHASE_CAP_MARGIN_SEC = 2f
 
@@ -253,15 +279,18 @@ internal class PhaseToggleTree : PriorityPhaseTree<PhaseOrder>(
             s.phased && (s.hardFluxLevel >= SURFACE_HARD_FLUX || s.phaseActiveTime >= MAX_PHASE_TIME_SEC)
 
         /**
-         * 强制上浮触发口径（纯函数）：辐能闸或时长闸（绕后意图期间时长上限放宽到
+         * 强制上浮触发口径（纯函数）：辐能闸或时长闸（绕后/迫近意图期间时长上限放宽到
          * 武装窗口 + 富余，辐能闸不受放宽）。[ForcedSurfaceRule] 与协调器的
          * 落点安全暂缓时长累计共用本口径。
          */
         internal fun isForcedSurfaceTrigger(s: PhaseSituation): Boolean {
             if (!s.phased) return false
             val maxPhaseTime =
-                if (s.flankIntentActive) s.flankIntentWindowSec + FLANK_PHASE_CAP_MARGIN_SEC
-                else MAX_PHASE_TIME_SEC
+                if (s.flankIntentActive || s.pressIntentActive) {
+                    s.flankIntentWindowSec + FLANK_PHASE_CAP_MARGIN_SEC
+                } else {
+                    MAX_PHASE_TIME_SEC
+                }
             return s.hardFluxLevel >= SURFACE_HARD_FLUX || s.phaseActiveTime >= maxPhaseTime
         }
 
@@ -338,11 +367,33 @@ internal class PhaseToggleTree : PriorityPhaseTree<PhaseOrder>(
                     s.travelDestDistance >= TRAVEL_PHASE_MIN_DIST &&
                     s.travelDestDistance < Float.MAX_VALUE &&
                     s.fluxLevel < TRAVEL_HOLD_FLUX_MAX
+
+        /**
+         * 迫近下潜完整闸门（纯函数）：当前攻击目标在有效射程外（距离 ≥
+         * [PRESS_APPROACH_MIN_DIST] 且超出射程 × [PRESS_APPROACH_RANGE_MULT] 裕量）、
+         * 本舰有非导弹非点防武器可输出（纯导弹舰挂在导弹射程 poke 无迫近收益）、武器就绪
+         * ≥ [PRESS_APPROACH_WEAPONS_FRAC]（到位后要有东西可打）、硬辐能 <
+         * [PRESS_APPROACH_HARD_FLUX_MAX]（相位维持持续涨硬辐，远距迫近需留余量）、
+         * 无重火力压制时下潜——借相位 3x 时间倍率快速拉近到有效射程。
+         * 不要求 engagedEnemyNear：迫近针对的正是交战圈外的锁定目标。
+         * 与相位赶路（[isTravelDive]）可同真（脱战、目标在射程外且有赶路目标点时两闸均成立），
+         * 靠规则表顺序让迫近优先——迫近有明确攻击目标。
+         * [PressApproachDiveRule] 与协调器的迫近意图布防共用本口径。
+         */
+        internal fun isPressApproachDive(s: PhaseSituation): Boolean =
+            !s.phased && s.cloakReady && !s.retreating &&
+                    s.effectiveWeaponRange > 0f &&
+                    s.targetDistance < Float.MAX_VALUE &&
+                    s.targetDistance >= PRESS_APPROACH_MIN_DIST &&
+                    s.targetDistance > s.effectiveWeaponRange * PRESS_APPROACH_RANGE_MULT &&
+                    s.weaponsReadyFrac >= PRESS_APPROACH_WEAPONS_FRAC &&
+                    s.hardFluxLevel < PRESS_APPROACH_HARD_FLUX_MAX &&
+                    s.incomingNearDamage < diveNearThreshold(s.maxHull)
     }
 }
 
 /**
- * 强制上浮（辐能/时长闸，时长闸在绕后意图期间放宽到武装窗口 + 富余）：
+ * 强制上浮（辐能/时长闸，时长闸在绕后/迫近意图期间放宽到武装窗口 + 富余）：
  * 落点同样要求相对安全——贴脸强制上浮正是实机「贴盾上浮/上浮即吃鱼雷」入口，
  * 不安全时有界暂缓（[PhaseToggleTree.FORCED_SURFACE_HOLD_MAX_SEC]），超时兜底放行防永久相位。
  */
@@ -437,6 +488,23 @@ internal object FlankIntentRule : PhaseRule<PhaseOrder> {
             return PhaseOrder.NONE
         }
         return null
+    }
+}
+
+/**
+ * 迫近意图拦截（先于无威胁上浮判定）：意图生效期间按住一切主动上浮，保持相位机动迫近——
+ * 目标在交战圈外时 [NoThreatSurfaceRule] 会立刻把船拉出水面，必须拦截
+ * （与 [FlankIntentRule] 的「掉圈早夭」判例同构）。意图生效口径（窗口未过期、目标有效、
+ * 未到位、武器未打光）已收口到采样端（[FlankAttackTree.pressIntentActive]）：
+ * 到位即意图失效、本规则弃权，放行后续战术上浮/输出窗口规则。
+ */
+internal object PressIntentRule : PhaseRule<PhaseOrder> {
+    override val id = "PressIntent"
+
+    override fun evaluate(ctx: PhaseDecisionContext): PhaseOrder? {
+        val s = ctx.situation
+        if (!s.phased || !s.pressIntentActive) return null
+        return PhaseOrder.NONE
     }
 }
 
@@ -608,6 +676,23 @@ internal object StaggerGateRule : PhaseRule<PhaseOrder> {
         val s = ctx.situation
         if (s.phased) return null
         if (s.timeSinceUnphase < PhaseToggleTree.MIN_UNPHASE_TIME_SEC) return PhaseOrder.NONE
+        return null
+    }
+}
+
+/**
+ * 迫近下潜（先于相位赶路判定）：攻击目标超出有效射程时下潜，借相位 3x 时间倍率机动迫近；
+ * 闸门收敛到 [PhaseToggleTree.isPressApproachDive] 单一口径（与协调器的迫近意图布防共用）。
+ * 与 [TravelDiveRule] 可同真（脱战、目标在射程外且有赶路目标点时两闸均成立），
+ * 靠规则表顺序让迫近优先——迫近有明确攻击目标。
+ */
+internal object PressApproachDiveRule : PhaseRule<PhaseOrder> {
+    override val id = "PressApproach"
+
+    override fun evaluate(ctx: PhaseDecisionContext): PhaseOrder? {
+        val s = ctx.situation
+        if (s.phased) return null
+        if (PhaseToggleTree.isPressApproachDive(s)) return PhaseOrder.DIVE
         return null
     }
 }

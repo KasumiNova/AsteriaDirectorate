@@ -13,8 +13,8 @@ import kotlin.test.assertTrue
 
 /**
  * 引力相位 AI 多决策树的规则覆盖：
- * A 树 [PhaseToggleTree]（强制上浮/致命豁免/主动上浮/下潜全链路）、
- * B 树 [FlankAttackTree]（绕后意图与走位口径）、C 树 [FluxVentTree]（vent 压制与战术耗散），
+ * A 树 [PhaseToggleTree]（强制上浮/致命豁免/主动上浮/迫近与下潜全链路）、
+ * B 树 [FlankAttackTree]（绕后/迫近意图与走位口径）、C 树 [FluxVentTree]（vent 压制与战术耗散），
  * 以及树级行为（优先级截断、全弃权回落、树间互斥）。
  */
 class GravityPhaseCloakAITest {
@@ -52,6 +52,9 @@ class GravityPhaseCloakAITest {
         friendlyCatchDamage = 0f,
         flankIntentActive = false,
         flankIntentWindowSec = FlankAttackTree.FLANK_INTENT_SEC,
+        targetDistance = Float.MAX_VALUE,
+        effectiveWeaponRange = 0f,
+        pressIntentActive = false,
         threatDistance = 1000f,
         unphaseUnsafe = false,
         surfaceTooClose = false,
@@ -93,6 +96,9 @@ class GravityPhaseCloakAITest {
         friendlyCatchDamage = 0f,
         flankIntentActive = false,
         flankIntentWindowSec = FlankAttackTree.FLANK_INTENT_SEC,
+        targetDistance = Float.MAX_VALUE,
+        effectiveWeaponRange = 0f,
+        pressIntentActive = false,
         threatDistance = 1000f,
         unphaseUnsafe = false,
         surfaceTooClose = false,
@@ -833,15 +839,15 @@ class GravityPhaseCloakAITest {
     fun `强制上浮落点暂缓期间绕后走位驱动让位`() {
         // 意图途中且未暂缓：穿透驱动照常（DO_NOT_BACK_OFF + PHASE_ATTACK_RUN 系旗标）
         val intentRun = phasedSituation().copy(flankIntentActive = true)
-        assertTrue(FlankAttackTree.flankDriveActive(intentRun))
+        assertTrue(FlankAttackTree.maneuverDriveActive(intentRun))
 
         // 落点暂缓中：穿透驱动让位给保命后撤，防止 DO_NOT_BACK_OFF 与后撤旗标并挂打架
         assertFalse(
-            FlankAttackTree.flankDriveActive(intentRun.copy(forcedSurfaceHoldSec = 0.2f)),
+            FlankAttackTree.maneuverDriveActive(intentRun.copy(forcedSurfaceHoldSec = 0.2f)),
         )
 
         // 非意图期本就不驱动
-        assertFalse(FlankAttackTree.flankDriveActive(phasedSituation()))
+        assertFalse(FlankAttackTree.maneuverDriveActive(phasedSituation()))
     }
 
     @Test
@@ -1119,6 +1125,183 @@ class GravityPhaseCloakAITest {
             PhaseOrder.SURFACE,
             decide(s.copy(travelDestDistance = Float.MAX_VALUE)),
         )
+    }
+
+    // ---------- 迫近意图 ----------
+
+    @Test
+    fun `迫近下潜闸门逐项翻转`() {
+        // 基准：非相位、斗篷就绪、攻击目标 3000su、有效射程 1000su、武器全就绪、硬辐能低、无来袭
+        val base = unphasedSituation().copy(
+            targetDistance = 3000f,
+            effectiveWeaponRange = 1000f,
+        )
+        assertTrue(PhaseToggleTree.isPressApproachDive(base))
+        assertFalse(PhaseToggleTree.isPressApproachDive(base.copy(phased = true)))
+        assertFalse(PhaseToggleTree.isPressApproachDive(base.copy(cloakReady = false)))
+        assertFalse(PhaseToggleTree.isPressApproachDive(base.copy(retreating = true)))
+        // 纯导弹舰（无非导弹武器射程）无迫近收益
+        assertFalse(PhaseToggleTree.isPressApproachDive(base.copy(effectiveWeaponRange = 0f)))
+        // 无有效攻击目标
+        assertFalse(PhaseToggleTree.isPressApproachDive(base.copy(targetDistance = Float.MAX_VALUE)))
+        // 距离低于最小迫近距离（开关僵直大于迫近收益）
+        assertFalse(
+            PhaseToggleTree.isPressApproachDive(
+                base.copy(targetDistance = PhaseToggleTree.PRESS_APPROACH_MIN_DIST - 1f),
+            ),
+        )
+        // 距离未超射程裕量（其余闸门均满足的隔离口径）
+        assertFalse(
+            PhaseToggleTree.isPressApproachDive(
+                base.copy(
+                    effectiveWeaponRange = 2000f,
+                    targetDistance = 2000f * PhaseToggleTree.PRESS_APPROACH_RANGE_MULT,
+                ),
+            ),
+        )
+        // 武器就绪不足（到位后没有东西可打）
+        assertFalse(
+            PhaseToggleTree.isPressApproachDive(
+                base.copy(weaponsReadyFrac = PhaseToggleTree.PRESS_APPROACH_WEAPONS_FRAC - 0.1f),
+            ),
+        )
+        // 硬辐能超标（相位维持持续涨硬辐，远距迫近需留余量）
+        assertFalse(
+            PhaseToggleTree.isPressApproachDive(
+                base.copy(hardFluxLevel = PhaseToggleTree.PRESS_APPROACH_HARD_FLUX_MAX),
+            ),
+        )
+        // 来袭达威胁阈值（重火力压制下不迫近）
+        assertFalse(
+            PhaseToggleTree.isPressApproachDive(
+                base.copy(incomingNearDamage = PhaseToggleTree.diveNearThreshold(5000f)),
+            ),
+        )
+    }
+
+    @Test
+    fun `迫近意图生效纯函数逐项口径`() {
+        val range = 1000f
+        val onRouteDist = range * PhaseToggleTree.PRESS_SURFACE_RANGE_FRAC + 1f
+        // 途中：窗口未过期、相位中、目标有效且未到位、有效射程非零 → 意图生效
+        assertTrue(FlankAttackTree.pressIntentActive(5f, true, onRouteDist, range))
+        // 窗口过期
+        assertFalse(FlankAttackTree.pressIntentActive(0f, true, onRouteDist, range))
+        // 未相位
+        assertFalse(FlankAttackTree.pressIntentActive(5f, false, onRouteDist, range))
+        // 无有效攻击目标
+        assertFalse(FlankAttackTree.pressIntentActive(5f, true, Float.MAX_VALUE, range))
+        // 武器途中打光/禁用（有效射程为零）：意图失效，防白潜
+        assertFalse(FlankAttackTree.pressIntentActive(5f, true, onRouteDist, 0f))
+        // 到位（≤ 射程 × 放行系数）：意图失效，时长闸放宽与走位驱动同拍停止
+        assertFalse(
+            FlankAttackTree.pressIntentActive(
+                5f, true, range * PhaseToggleTree.PRESS_SURFACE_RANGE_FRAC, range,
+            ),
+        )
+    }
+
+    @Test
+    fun `迫近意图生效期间拦截一切主动上浮`() {
+        // 生效口径已收口到采样端纯函数：规则只看 pressIntentActive，生效即按住
+        val active = phasedSituation().copy(pressIntentActive = true, engagedEnemyNear = false)
+        assertEquals(PhaseOrder.NONE, PressIntentRule.evaluate(PhaseDecisionContext(active)))
+        // 未相位/意图失效（含到位收口）：弃权放行
+        assertNull(PressIntentRule.evaluate(PhaseDecisionContext(active.copy(phased = false))))
+        assertNull(
+            PressIntentRule.evaluate(PhaseDecisionContext(active.copy(pressIntentActive = false))),
+        )
+    }
+
+    @Test
+    fun `迫近到位后输出窗口上浮`() {
+        // 到位后意图已由采样端收口失效（pressIntentActive=false），目标在射程内且交战、
+        // 武器就绪达闸、其余上浮闸门安全：输出窗口规则接管，上浮开打
+        val s = phasedSituation().copy(
+            pressIntentActive = false,
+            engagedEnemyNear = true,
+            targetDistance = 800f,
+            effectiveWeaponRange = 1000f,
+            weaponsReadyFrac = PhaseToggleTree.WEAPONS_READY_SURFACE_FRAC,
+        )
+        assertEquals(PhaseOrder.SURFACE, decide(s))
+        assertEquals("WeaponsReadySurface", toggleTree.lastFiredRuleId)
+    }
+
+    @Test
+    fun `迫近下潜优先于相位赶路`() {
+        // 同时满足迫近（攻击目标 3000su 超出射程）与赶路（赶路目标点 3000su 且脱战）：
+        // 迫近有明确攻击目标，先于无目标赶路触发
+        val s = unphasedSituation().copy(
+            engagedEnemyNear = false,
+            travelDestDistance = 3000f,
+            targetDistance = 3000f,
+            effectiveWeaponRange = 1000f,
+        )
+        assertTrue(PhaseToggleTree.isPressApproachDive(s))
+        assertTrue(PhaseToggleTree.isTravelDive(s))
+        assertEquals(PhaseOrder.DIVE, decide(s))
+        assertEquals("PressApproach", toggleTree.lastFiredRuleId)
+    }
+
+    @Test
+    fun `迫近意图途中目标在交战圈外拦截无威胁上浮`() {
+        // 来袭轻微且交战圈无敌舰：无威胁上浮本会把船拉出水面，迫近意图途中必须按住
+        val s = phasedSituation().copy(
+            pressIntentActive = true,
+            engagedEnemyNear = false,
+            incomingNearDamage = 0f,
+            targetDistance = 3000f,
+            effectiveWeaponRange = 1000f,
+        )
+        assertEquals(PhaseOrder.NONE, decide(s))
+        assertEquals("PressIntent", toggleTree.lastFiredRuleId)
+        // 无意图时同参数走无威胁上浮
+        assertEquals(PhaseOrder.SURFACE, decide(s.copy(pressIntentActive = false)))
+    }
+
+    @Test
+    fun `迫近意图生效时走位穿透驱动 不做就地保持`() {
+        val tree = FlankAttackTree()
+        // 迫近意图（无绕后意图）且已入目标侧后、脱间距满足：仍穿透驱动——
+        // 迫近到位由 A 树放行上浮输出，不挂 PHASE_ATTACK_RUN_IN_GOOD_SPOT 罚站
+        val s = phasedSituation().copy(
+            pressIntentActive = true,
+            flankIntentActive = false,
+            inTargetRearArc = true,
+            rearSurfaceDistanceSafe = true,
+        )
+        assertTrue(FlankAttackTree.maneuverDriveActive(s))
+        assertNull(FlankHoldSpotRule.evaluate(PhaseDecisionContext(s)))
+        assertEquals(FlankOrder.DRIVE, tree.decide(PhaseDecisionContext(s)))
+        assertEquals("FlankDrive", tree.lastFiredRuleId)
+        // 未相位/暂缓中：驱动不生效
+        assertFalse(FlankAttackTree.maneuverDriveActive(s.copy(phased = false)))
+        assertFalse(FlankAttackTree.maneuverDriveActive(s.copy(forcedSurfaceHoldSec = 0.2f)))
+    }
+
+    @Test
+    fun `迫近意图期间放宽相位时长上限`() {
+        // 常规上限（8s）到意图上限（武装窗口 12s + 2s 富余）之间：迫近意图生效时不强制上浮
+        // （硬辐能维持低位，避开不受放宽的辐能闸）
+        val s = phasedSituation().copy(
+            pressIntentActive = true,
+            engagedEnemyNear = false,
+            targetDistance = 3000f,
+            effectiveWeaponRange = 1000f,
+            phaseActiveTime = PhaseToggleTree.MAX_PHASE_TIME_SEC + 1f,
+        )
+        assertEquals(PhaseOrder.NONE, decide(s))
+
+        // 无意图时同一时长早已触发强制上浮
+        assertEquals(PhaseOrder.SURFACE, decide(s.copy(pressIntentActive = false)))
+
+        // 意图放宽上限（武装窗口 + 富余）到达后同样强制上浮
+        val overtime = s.copy(
+            phaseActiveTime = FlankAttackTree.FLANK_INTENT_SEC +
+                    PhaseToggleTree.FLANK_PHASE_CAP_MARGIN_SEC,
+        )
+        assertEquals(PhaseOrder.SURFACE, decide(overtime))
     }
 
     // ---------- 树级行为 ----------

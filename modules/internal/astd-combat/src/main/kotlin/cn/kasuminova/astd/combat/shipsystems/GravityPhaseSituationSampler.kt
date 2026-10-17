@@ -7,6 +7,7 @@ import com.fs.starfarer.api.combat.MissileAPI
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.combat.ShipSystemAPI
 import com.fs.starfarer.api.combat.ShipwideAIFlags
+import com.fs.starfarer.api.combat.WeaponAPI
 import cn.kasuminova.astd.combat.shipsystems.base.PhaseSituation
 import org.apache.logging.log4j.LogManager
 import org.lwjgl.util.vector.Vector2f
@@ -177,9 +178,10 @@ internal class GravityPhaseSituationSampler {
     private val payloadProfileCache = HashMap<String, PayloadProfile?>()
 
     /**
-     * 态势采样：来袭伤害两窗口、交战圈、攻击系统状态、武器可输出占比、目标机动/射界、友军接盘。
+     * 态势采样：来袭伤害两窗口、交战圈、攻击系统状态、武器可输出占比、目标机动/射界、友军接盘、
+     * 攻击目标距离与有效武器射程（迫近意图输入）。
      *
-     * 决策时钟（已连续相位时长/距上次上浮时长/绕后意图剩余与武装窗口）由协调器持有，
+     * 决策时钟（已连续相位时长/距上次上浮时长/绕后与迫近意图剩余、机动意图武装窗口）由协调器持有，
      * 采样时按形参透传进快照；返回快照的 forcedSurfaceHoldSec 恒置 0，
      * 由协调器在采样后按节拍累计并 copy 覆写。
      */
@@ -193,6 +195,7 @@ internal class GravityPhaseSituationSampler {
         timeSinceUnphase: Float,
         flankIntentRemaining: Float,
         flankIntentWindowArmed: Float,
+        pressIntentRemaining: Float,
     ): PhaseSituation {
         val incoming = FloatArray(3)
         estimateIncoming(engine.projectiles, ship, incoming, collectFriendly = false)
@@ -216,6 +219,15 @@ internal class GravityPhaseSituationSampler {
                 )
         val threatDist = if (threat == null) Float.MAX_VALUE
         else kotlin.math.sqrt(distanceSq(ship.location, threat.location))
+        // 当前攻击目标距离：不限交战圈（迫近意图针对的正是交战圈外的锁定目标），
+        // 目标失效/丢失时取哨兵值，迫近意图随之取消
+        val shipTarget = ship.shipTarget
+        val targetDist =
+            if (shipTarget != null && isValidEnemyShip(ship, shipTarget)) {
+                kotlin.math.sqrt(distanceSq(ship.location, shipTarget.location))
+            } else {
+                Float.MAX_VALUE
+            }
         // 主威胁看向本舰的绝对方位：侧后薄弱区与正脸火力轴共用同一 bearing
         val threatToUsBearing = threat?.let {
             Math.toDegrees(
@@ -226,6 +238,8 @@ internal class GravityPhaseSituationSampler {
             ).toFloat()
         }
         val attackSystem = ship.system?.takeIf { it !== cloak }
+        // 有效武器射程先行采样：迫近意图生效口径（武器打光/禁用即失效）依赖该值
+        val weaponRange = effectiveWeaponRange(ship)
         val fluxTracker = ship.fluxTracker
         if (fluxTracker == null && !nullFluxTrackerWarned) {
             // 战斗舰船正常必有 fluxTracker；空值属异常，留痕后关闭战术耗散通道（不刷屏，每实例一次）
@@ -265,6 +279,14 @@ internal class GravityPhaseSituationSampler {
             // 上浮时 engaged=false 夭折，相位白潜）
             flankIntentActive = flankIntentRemaining > 0f && phased && (threat == null || lowMobility),
             flankIntentWindowSec = flankIntentWindowArmed,
+            targetDistance = targetDist,
+            effectiveWeaponRange = weaponRange,
+            // 迫近意图生效口径收敛到 FlankAttackTree.pressIntentActive 纯函数：
+            // 窗口未过期、相位中、目标有效且未到位、武器未打光才生效
+            // （到位即失效，NoThreatSurface 等规则可正常上浮）
+            pressIntentActive = FlankAttackTree.pressIntentActive(
+                pressIntentRemaining, phased, targetDist, weaponRange,
+            ),
             threatDistance = threatDist,
             unphaseUnsafe = isUnphaseUnsafe(engine, ship),
             surfaceTooClose = isSurfaceTooClose(engine, ship),
@@ -638,6 +660,34 @@ internal class GravityPhaseSituationSampler {
             }
         }
         return if (total == 0) 1f else ready.toFloat() / total
+    }
+
+    /**
+     * 有效武器射程（su）：非导弹（MISSILE）、非机库（LAUNCH_BAY）、非系统类型（SYSTEM）、
+     * 非点防用途（AIHints 含 PD/PD_ONLY；PD_ALSO 双用途保留计程）、非装饰、非系统槽、
+     * 未禁用且有弹药武器的最大射程（无此类武器为 0——纯导弹舰挂在导弹最远射程 poke、
+     * 或只剩点防/机库时均不构成迫近收益，迫近闸门随之失效）。
+     * 点防武器不计程：不应把迫近目标距离压到贴脸；茑萝为相位护航航母，机库槽非系统槽、
+     * range 非 0，不排除 LAUNCH_BAY 会虚高有效射程。
+     */
+    private fun effectiveWeaponRange(ship: ShipAPI): Float {
+        var maxRange = 0f
+        for (weapon in ship.allWeapons) {
+            if (weapon.isDecorative || weapon.slot?.isSystemSlot != false || weapon.isDisabled) continue
+            if (weapon.type == WeaponAPI.WeaponType.MISSILE ||
+                weapon.type == WeaponAPI.WeaponType.LAUNCH_BAY ||
+                weapon.type == WeaponAPI.WeaponType.SYSTEM
+            ) {
+                continue
+            }
+            val hints = weapon.spec.aiHints
+            if (hints.contains(WeaponAPI.AIHints.PD) || hints.contains(WeaponAPI.AIHints.PD_ONLY)) {
+                continue
+            }
+            if (weapon.usesAmmo() && weapon.ammo <= 0) continue
+            if (weapon.range > maxRange) maxRange = weapon.range
+        }
+        return maxRange
     }
 
     /** 下线武器占比：非装饰、非系统槽武器中被禁用的比例（无武器时为 0），修复下潜采样。 */
