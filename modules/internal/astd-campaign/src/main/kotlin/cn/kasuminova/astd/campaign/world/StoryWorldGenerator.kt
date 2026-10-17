@@ -12,8 +12,10 @@ import com.fs.starfarer.api.campaign.SectorEntityToken
 import com.fs.starfarer.api.campaign.StarSystemAPI
 import com.fs.starfarer.api.campaign.econ.MarketAPI
 import com.fs.starfarer.api.impl.campaign.ids.Entities
+import com.fs.starfarer.api.impl.campaign.ids.Submarkets
 import com.fs.starfarer.api.impl.campaign.ids.Terrain
 import com.fs.starfarer.api.impl.campaign.procgen.StarGenDataSpec
+import com.fs.starfarer.api.impl.campaign.submarkets.StoragePlugin
 import com.fs.starfarer.api.impl.campaign.terrain.StarCoronaTerrainPlugin
 import com.fs.starfarer.api.util.Misc
 import org.apache.log4j.Logger
@@ -55,6 +57,7 @@ object StoryWorldGenerator {
             log.error("[ASTD] 遗址星系生成失败", t)
         }
         ensureMarketIndustries(sector)
+        ensureMarketStorageSubmarkets(sector)
         ensureStationEntityTypes(sector)
         ensureColonizedPlanetConditions(sector)
     }
@@ -167,6 +170,36 @@ object StoryWorldGenerator {
                 }
             }
         }
+    }
+
+    /**
+     * 既有存档热修复：FULL 市场补齐原版标配的仓储子市场（幂等）。
+     *
+     * 旧版本生成的第七分局空间站/拾光市场没有任何子市场；Boggled TASC 等 mod 遍历市场时
+     * 直接解引用 `getSubmarket(Submarkets.SUBMARKET_STORAGE)`（原版 FULL 市场必有仓储），
+     * 空指针即崩。星系已完整的存档不会走重建路径，需在读档时单独补齐。
+     */
+    private fun ensureMarketStorageSubmarkets(sector: SectorAPI) {
+        val specs = listOf(
+            StorySystemSpecs.mainSystemSpec(sectorSeed(sector, SEED_SALT_MAIN)),
+            StorySystemSpecs.starfallSystemSpec(sectorSeed(sector, SEED_SALT_CH2)),
+            StorySystemSpecs.asterSystemSpec(sectorSeed(sector, SEED_SALT_CH2)),
+        )
+        for (spec in specs) {
+            for (marketSpec in spec.planets.mapNotNull { it.market } + spec.entities.mapNotNull { it.market }) {
+                if (marketSpec.conditionOnly) continue
+                val market = sector.economy.getMarket(marketSpec.marketId) ?: continue
+                if (market.hasSubmarket(Submarkets.SUBMARKET_STORAGE)) continue
+                addStorageSubmarket(market)
+                log.info("[ASTD] 市场 ${marketSpec.marketId} 补齐缺失的仓储子市场（旧档热修复）")
+            }
+        }
+    }
+
+    /** 挂载仓储子市场并按原版 NPC 市场口径置为付费解锁。 */
+    private fun addStorageSubmarket(market: MarketAPI) {
+        market.addSubmarket(Submarkets.SUBMARKET_STORAGE)
+        (market.getSubmarket(Submarkets.SUBMARKET_STORAGE)?.plugin as? StoragePlugin)?.setPlayerPaidToUnlock(true)
     }
 
     /**
@@ -454,6 +487,9 @@ object StoryWorldGenerator {
             if (!market.hasIndustry(industryId)) {
                 market.addIndustry(industryId)
             }
+        }
+        if (!spec.conditionOnly) {
+            addStorageSubmarket(market)
         }
         market.reapplyConditions()
         if (spec.inEconomy && !market.isInEconomy) {
