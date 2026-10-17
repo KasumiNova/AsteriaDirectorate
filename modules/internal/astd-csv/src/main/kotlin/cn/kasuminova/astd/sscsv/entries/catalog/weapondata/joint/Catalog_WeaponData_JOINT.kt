@@ -104,6 +104,8 @@ object Wpn_astd_lh_stardust_launcher_arc : WeaponDataEntry(), SsProjMissileOutpu
     // 由 StardustLauncherAutofireAI 无条件接管（手动开火对本武器无意义，光尘全向自寻的）。
     override val aiHints: Set<AiHint> = setOf(AiHint.NO_MANUAL_FIRE)
     override val primaryRoleStr: String = SsI18n.t("weapon.astd_lh_stardust_launcher.primaryRoleStr")
+    override val customPrimary: String = SsI18n.t("weapon.$id.tooltip.customPrimary")
+    override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
     override val number: Int = 9240
 
     override val projSpec: MissileProjSpec = stardustMoteProj(
@@ -146,6 +148,8 @@ object Wpn_astd_lh_stardust_launcher_lens : WeaponDataEntry(), SsProjMissileOutp
     // NO_MANUAL_FIRE：同 ARC 线（AutofireManagerV2 弹药 ≤20 判不可用问题，AI 开火无条件接管）
     override val aiHints: Set<AiHint> = setOf(AiHint.NO_MANUAL_FIRE)
     override val primaryRoleStr: String = SsI18n.t("weapon.astd_lh_stardust_launcher.primaryRoleStr")
+    override val customPrimary: String = SsI18n.t("weapon.$id.tooltip.customPrimary")
+    override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
     override val number: Int = 9241
 
     override val projSpec: MissileProjSpec = stardustMoteProj(
