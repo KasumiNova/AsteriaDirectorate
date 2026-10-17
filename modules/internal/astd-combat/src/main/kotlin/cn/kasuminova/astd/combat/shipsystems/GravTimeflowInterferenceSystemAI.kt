@@ -19,7 +19,7 @@ import com.fs.starfarer.api.util.Misc
  * 决策口径（每 [SCAN_INTERVAL_SEC] 评估一次，全部满足才施放）：
  * 1. 系统空闲（未激活、冷却完毕、canBeActivated）；
  * 2. 有效射程（[GravTimeflowTuning.BASE_RANGE] 经 systemRangeBonus 折算）× [ENGAGE_RANGE_FRAC]
- *    内存在可干涉的友军舰船（非自身、非战机/无人机、存活非残骸）；
+ *    内存在可干涉的友军舰船（非自身、非战机/无人机、非舰船模块、存活非残骸）；
  * 3. 按设计案优先级对候选评分（纯函数 [scoreCandidate]，输入快照 [CandidateSnapshot]），
  *    取最高分者施放：
  *    - 规格较大或部署点较高优先（[tierBaseDp] 与部署点 1:1 相加，基准 5/10/20/40 对应
@@ -186,10 +186,12 @@ class GravTimeflowInterferenceSystemAI : ShipSystemAIScript {
         ship.useSystem()
     }
 
-    /** 可干涉的友军舰船：owner 相同、非自身、非战机/无人机、存活非残骸。 */
+    /** 可干涉的友军舰船：owner 相同、非自身、非战机/无人机、非舰船模块、存活非残骸。 */
     private fun isValidAlly(ship: ShipAPI, candidate: ShipAPI): Boolean =
         candidate !== ship && candidate.owner == ship.owner &&
-                !candidate.isFighter && !candidate.isDrone && !candidate.isHulk && candidate.isAlive
+                !candidate.isFighter && !candidate.isDrone && !candidate.isHulk && candidate.isAlive &&
+                // 舰船模块不可选（2026-10 实机：增益不应落在空间站的模块实体上）
+                candidate.parentStation == null
 
     /** 从 ShipAPI 提取评分快照（评分逻辑见 [scoreCandidate] 纯函数）。 */
     private fun snapshotOf(engine: CombatEngineAPI, candidate: ShipAPI): CandidateSnapshot {

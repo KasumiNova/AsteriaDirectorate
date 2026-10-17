@@ -25,7 +25,7 @@ import java.awt.Color
  * - 玩家操控取 shipTarget（锁定的友军舰船）；AI 取
  *   [ShipwideAIFlags.AIFlags.TARGET_FOR_SHIP_SYSTEM]（由 [GravTimeflowInterferenceSystemAI]
  *   评分选靶后写入）；
- * - 目标须为友军（owner 相同）、非战机/无人机、存活非残骸，且在有效射程
+ * - 目标须为友军（owner 相同）、非战机/无人机、非舰船模块、存活非残骸，且在有效射程
  *   （[GravTimeflowTuning.BASE_RANGE] 经 systemRangeBonus 折算）内；
  *   不满足时系统不可激活（[isUsable] = false），HUD 提示「无有效目标」/「超出射程」。
  *
@@ -43,8 +43,9 @@ import java.awt.Color
  * - **收口**：[teardown] 为唯一收口路径（移除激活闩、淡出弧线、解除目标侧全部时流修饰），
  *   unapply 与源舰残骸化（isHulk）分支共用——残骸化后引擎不保证回调 unapply，
  *   缺该分支会让友军目标舰整场保持时流修饰；
- * - **jitter（透镜紫）**：持续期间自身淡 jitter、目标明显 jitter、目标所属战机轻微 jitter，
- *   每帧刷新；结束后停止刷新，由原版 jitter 衰减机制自然消退（仓库既有口径，
+ * - **jitter（透镜紫）**：持续期间自身与目标做边缘抖动（仅 setJitterUnder，
+ *   偏移拷贝在船体之下仅轮廓外缘可见；2026-10 实机反馈弃全舰幽灵拷贝），
+ *   目标所属战机轻微 jitter，每帧刷新；结束后停止刷新，由原版 jitter 衰减机制自然消退（仓库既有口径，
  *   对照 GravStormSystemStats / FighterGravLinkSystemStats，原版 API 无显式清除路径）。
  *
  * 自身特效弧线在双舰之间渲染（BELOW_SHIPS_LAYER，被舰船盖住），流向目标舰。
@@ -84,7 +85,7 @@ class GravTimeflowInterferenceSystemStats : BaseShipSystemScript() {
             ShipSystemStatsScript.State.IN,
             ShipSystemStatsScript.State.ACTIVE,
             ShipSystemStatsScript.State.OUT,
-            -> driveInterference(engine, ship, effectLevel)
+            -> driveInterference(engine, ship, state, effectLevel)
 
             else -> Unit
         }
@@ -132,7 +133,12 @@ class GravTimeflowInterferenceSystemStats : BaseShipSystemScript() {
      * 时流弧线。目标消亡/离场：收弧线、停止对目标的时流写入与 jitter（系统窗口照常走完，
      * 不强制关闭系统）；持续期间不做射程检查（规格：目标超出射程不会强制关闭系统）。
      */
-    private fun driveInterference(engine: CombatEngineAPI, ship: ShipAPI, effectLevel: Float) {
+    private fun driveInterference(
+        engine: CombatEngineAPI,
+        ship: ShipAPI,
+        state: ShipSystemStatsScript.State,
+        effectLevel: Float,
+    ) {
         val activation = engine.customData[activationKey(ship)] as? TimeflowActivation ?: return
         val target = activation.target
         if (!engine.isEntityInPlay(target) || !target.isAlive || target.isHulk) {
@@ -143,32 +149,73 @@ class GravTimeflowInterferenceSystemStats : BaseShipSystemScript() {
         val values = GravTimeflowTuning.resolve(DifficultyTuningImpl, ship.owner == 0)
         val timeMult = 1f + (values.timeMult - 1f) * effectLevel.coerceIn(0f, 1f)
 
+        val jitter = computeJitterParams(ship, state, effectLevel)
+        val selfJitterLevel = jitter.level * SELF_JITTER_MULT
+        val selfRangeBonus = jitter.rangeBonus * SELF_JITTER_MULT
+
         target.mutableStats.timeMult.modifyMult(TIMEFLOW_MOD_ID, timeMult)
         for (wing in target.allWings) {
             for (fighter in wing.wingMembers) {
                 if (fighter.isHulk) continue
                 fighter.mutableStats.timeMult.modifyMult(TIMEFLOW_MOD_ID, timeMult)
                 fighter.setJitter(
-                    JITTER_KEY, FIGHTER_JITTER_COLOR, effectLevel, FIGHTER_JITTER_COPIES,
-                    0f, 2f + fighter.collisionRadius * 0.2f,
+                    JITTER_KEY, JITTER_COLOR, selfJitterLevel, FIGHTER_JITTER_COPIES,
+                    0f, 0f + selfRangeBonus,
                 )
             }
         }
 
-        ship.setJitter(
-            JITTER_KEY, SELF_JITTER_COLOR, effectLevel * SELF_JITTER_LEVEL, SELF_JITTER_COPIES,
-            0f, 3f + ship.collisionRadius * 0.15f,
-        )
-        target.setJitter(
-            JITTER_KEY, TARGET_JITTER_COLOR, effectLevel, TARGET_JITTER_COPIES,
-            0f, 3f + target.collisionRadius * 0.3f,
+        // 发起舰/目标舰 jitter：只保留 setJitterUnder 边缘抖动（偏移拷贝渲染在船体之下，
+        // 仅轮廓外缘可见）——2026-10 实机反馈：setJitter 的全舰幽灵拷贝观感过重；
+        // 基准参数对齐原版“时流之壳” TemporalShellStats（目标满额、发起舰一半）
+        ship.setJitterUnder(
+            JITTER_KEY, JITTER_UNDER_COLOR, selfJitterLevel, SELF_JITTER_UNDER_COPIES,
+            0f, SELF_JITTER_UNDER_BASE_RANGE + selfRangeBonus,
         )
         target.setJitterUnder(
-            JITTER_KEY, TARGET_JITTER_UNDER_COLOR, effectLevel, TARGET_JITTER_UNDER_COPIES,
-            0f, 3f + target.collisionRadius * 0.3f,
+            JITTER_KEY, JITTER_UNDER_COLOR, jitter.level, TARGET_JITTER_UNDER_COPIES,
+            0f, TARGET_JITTER_UNDER_BASE_RANGE + jitter.rangeBonus,
         )
 
         activation.link?.update(engine.elapsedInLastFrame, effectLevel)
+    }
+
+    private data class JitterParams(val level: Float, val rangeBonus: Float)
+
+    /**
+     * 对齐原版“时流之壳”（[com.fs.starfarer.api.impl.combat.TemporalShellStats]）的 jitter 包络计算：
+     * IN 段按充能时长折算并拉升 rangeBonus，ACTIVE 段满额（maxRangeBonus = 10f），
+     * OUT 段按 effectLevel 衰减，最终 level 取平方根。
+     */
+    private fun computeJitterParams(
+        ship: ShipAPI,
+        state: ShipSystemStatsScript.State,
+        effectLevel: Float,
+    ): JitterParams {
+        val clampedEffect = effectLevel.coerceIn(0f, 1f)
+        var rawLevel = clampedEffect
+        var rangeBonus = 0f
+        when (state) {
+            ShipSystemStatsScript.State.IN -> {
+                val chargeUpDur = ship.system?.chargeUpDur ?: 0f
+                if (chargeUpDur > 0f) {
+                    rawLevel = (clampedEffect * chargeUpDur).coerceIn(0f, 1f)
+                }
+                rangeBonus = rawLevel * MAX_JITTER_RANGE_BONUS
+            }
+
+            ShipSystemStatsScript.State.ACTIVE -> {
+                rawLevel = 1f
+                rangeBonus = MAX_JITTER_RANGE_BONUS
+            }
+
+            ShipSystemStatsScript.State.OUT -> {
+                rangeBonus = clampedEffect * MAX_JITTER_RANGE_BONUS
+            }
+
+            else -> Unit
+        }
+        return JitterParams(kotlin.math.sqrt(rawLevel), rangeBonus)
     }
 
     /** 目标侧时流修饰配对解除（unapply 调用；对已消亡战机为无副作用的空 unmodify）。 */
@@ -202,7 +249,9 @@ class GravTimeflowInterferenceSystemStats : BaseShipSystemScript() {
 
     private fun isValidTarget(ship: ShipAPI, target: ShipAPI?): Boolean =
         target != null && target !== ship && target.owner == ship.owner &&
-                !target.isFighter && !target.isDrone && !target.isHulk && target.isAlive
+                !target.isFighter && !target.isDrone && !target.isHulk && target.isAlive &&
+                // 舰船模块不可选（2026-10 实机：增益不应落在空间站的模块实体上）
+                target.parentStation == null
 
     override fun isUsable(system: ShipSystemAPI, ship: ShipAPI): Boolean =
         findTarget(ship) != null
@@ -276,19 +325,23 @@ class GravTimeflowInterferenceSystemStats : BaseShipSystemScript() {
         /** jitter 源句柄（自身/目标/战机共用同一 source，覆盖式刷新；结束停止刷新自然消退）。 */
         private val JITTER_KEY = Any()
 
-        /** 自身 jitter（淡但可见：实机反馈 alpha 55 + range 2f 完全不可见；保持弱于目标的相对关系）。 */
-        private val SELF_JITTER_COLOR = Color(190, 140, 255, 70)
-        private const val SELF_JITTER_LEVEL = 0.6f
-        private const val SELF_JITTER_COPIES = 3
+        /** jitter 配色（透镜紫，alpha 55 / 155 对齐原版“时流之壳” TemporalShellStats）。 */
+        private val JITTER_COLOR = Color(165, 80, 255, 55)
+        private val JITTER_UNDER_COLOR = Color(165, 80, 255, 155)
 
-        /** 目标 jitter（比自身明显但整体收敛：实机反馈原参数幅度过大）。 */
-        private val TARGET_JITTER_COLOR = Color(195, 140, 255, 80)
-        private val TARGET_JITTER_UNDER_COLOR = Color(190, 130, 255, 105)
-        private const val TARGET_JITTER_COPIES = 4
-        private const val TARGET_JITTER_UNDER_COPIES = 8
+        /** 原版 TemporalShellStats 的最大 jitter 扩散加成（su）。 */
+        private const val MAX_JITTER_RANGE_BONUS = 10f
 
-        /** 目标所属战机 jitter（轻微）。 */
-        private val FIGHTER_JITTER_COLOR = Color(200, 160, 255, 50)
+        /** 目标舰边缘 jitter 参数（under 拷贝数/基础半径对齐原版 TemporalShellStats 的 under 口径）。 */
+        private const val TARGET_JITTER_UNDER_COPIES = 25
+        private const val TARGET_JITTER_UNDER_BASE_RANGE = 7f
+
+        /** 发起舰边缘 jitter 参数：目标舰的一半效果（level/range ×0.5，under 拷贝数减半）。 */
+        private const val SELF_JITTER_MULT = 0.5f
+        private const val SELF_JITTER_UNDER_COPIES = 12
+        private const val SELF_JITTER_UNDER_BASE_RANGE = 3.5f
+
+        /** 目标所属战机 jitter 拷贝数。 */
         private const val FIGHTER_JITTER_COPIES = 2
 
         private fun activationKey(ship: ShipAPI): String = "$ACTIVATION_KEY${ship.id}"

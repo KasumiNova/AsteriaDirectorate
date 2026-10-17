@@ -25,16 +25,21 @@ class GeminiDemRackEveryFrameEffect : EveryFrameWeaponEffectPlugin {
         private const val SALVO_AMMO_COST = 2
 
         /**
-         * 锁扳机用的冷却垫：必须小于 weapon_data 的 burst delay（0.1s），
-         * 否则会把进行中合法连发的第二发一并掐掉（连发第一发 dummy 击发后弹药即短暂低于 [SALVO_AMMO_COST]）。
+         * 锁扳机用的冷却垫（秒）：弹药回充到够齐射后最多再等这么一拍即可开火，玩家几乎无感。
          */
         private const val FIRE_LOCK_COOLDOWN = 0.05f
 
         /**
-         * 剩余弹药不足一次完整齐射时压住扳机（每帧把冷却垫到 [FIRE_LOCK_COOLDOWN]）：
-         * 弹药回充到够齐射后最多 0.05s 即可开火，玩家几乎无感。
+         * 剩余弹药不足一次完整齐射时压住扳机（每帧把冷却垫到 [FIRE_LOCK_COOLDOWN]）。
+         *
+         * 连发进行中必须让行（[WeaponAPI.isInBurst] 守卫，2026-10 实机判例）：
+         * 首发 dummy 击发后弹药即短暂低于 [SALVO_AMMO_COST]，若此时垫冷却，
+         * 原版 `setRemainingCooldownTo` 在非 CHARGING_DOWN 态（burst 窗口恰处于 ACTIVE 态）
+         * 会直接 reset BurstFireTracker 掐掉第二发 dummy——实机表现为
+         * 「2 备弹打一轮齐射只扣 1 发、双弹头照常生成」。
          */
         private fun lockTriggerWhenSalvoIncomplete(weapon: WeaponAPI) {
+            if (weapon.isInBurst) return
             if (weapon.ammo >= SALVO_AMMO_COST) return
             if (weapon.cooldownRemaining >= FIRE_LOCK_COOLDOWN) return
             weapon.setRemainingCooldownTo(FIRE_LOCK_COOLDOWN)
