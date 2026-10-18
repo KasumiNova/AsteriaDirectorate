@@ -236,6 +236,7 @@ internal class SpacerBlock(val height: Float) : HullmodBlock
  * 直渲染块：持有对 [TooltipMakerAPI] 的直接渲染回调，由渲染器在卡片内按声明序执行。
  * 仅供不走 I18n 键/块模型的既有渲染辅助接入（如 SIC 风格行着色）；
  * para/heading/table 表达得了的内容禁止用本块绕过块模型。
+ * 配合 hullmodCard contentInset 使用时每个 custom 块只应添加一个元素（内缩按最后添加的元素生效）。
  */
 internal class CustomBlock(val render: (TooltipMakerAPI) -> Unit) : HullmodBlock
 
@@ -419,15 +420,20 @@ internal fun hullmodTooltip(block: HullmodCardBuilder.() -> Unit): HullmodToolti
  * [topGapFill] 为卡片顶部负间距：船插 tooltip 在 addPostDescriptionSection 前预留约 20px 空隙，
  * 默认 -20f 把卡片提上去吃掉该空隙；技能 tooltip 等无预留空隙的宿主必须传 0f，
  * 否则卡片内容上移盖住原版流式布局的既有文本（scope 行 / 效果组标签）。
+ * [contentInset] 为卡片内容的水平内边距：原版船插 tooltip 宿主的内容流自带约 10px 内缩
+ * （内容面板 +10 / 文本流再 +5，见 ASTDHullModTooltipBackground 排版注释），传 0 维持现状；
+ * SIC / LunaLib 等无内缩宿主传正值（如 10f），DSL 将文本换行宽收窄 2×inset 并把
+ * 各内容元素右移 inset，使文本不再压着背景边框特效。背景四边形几何不受影响。
  */
 fun TooltipMakerAPI.hullmodCard(
     width: Float,
     theme: HullmodTheme,
     title: String?,
     topGapFill: Float = -20f,
+    contentInset: Float = 0f,
     block: HullmodCardBuilder.() -> Unit,
 ) {
-    HullmodCardRenderer.render(this, width, title, theme, hullmodTooltip(block), topGapFill)
+    HullmodCardRenderer.render(this, width, title, theme, hullmodTooltip(block), topGapFill, contentInset)
 }
 
 // ========== 渲染器（唯一落地路径） ==========
@@ -448,32 +454,77 @@ internal object HullmodCardRenderer {
         theme: HullmodTheme,
         spec: HullmodTooltipSpec,
         topGapFill: Float,
+        contentInset: Float,
     ) {
         tooltip.buildWith {
             spacer(topGapFill) // 填充 Hullmod Tooltip 顶部空隙（无预留空隙的宿主传 0）
             withHullmodBackground(accentColor = theme.accentColor, width = width) {
+                // 无内缩宿主：文本换行宽收窄 2×inset（元素右移见 shiftPrev），卡片结束后恢复原值
+                val prevWidthOverride = tooltip.textWidthOverride
+                if (contentInset > 0f) {
+                    tooltip.setTextWidthOverride(width - 2f * contentInset)
+                }
+
                 spacer(6f) // 拉开空隙用于展示背景特效
                 if (!title.isNullOrEmpty()) {
                     heading(title, theme.nameColor, theme.headerBackground, 6f)
+                    shiftPrev(tooltip, contentInset, shrinkWidth = true)
                 }
                 for (block in spec.blocks) {
                     when (block) {
-                        is ParaBlock -> renderPara(block, theme)
-                        is PlainTextBlock -> renderPlainText(block, theme)
-                        is HeadingBlock -> heading(
-                            if (block.plain) block.key else I18n[I18n.Categories.MOD, block.key],
-                            theme.nameColor,
-                            theme.sectionBackground,
-                            block.padTop,
-                        )
+                        is ParaBlock -> {
+                            renderPara(block, theme)
+                            shiftPrev(tooltip, contentInset)
+                        }
 
-                        is TableBlock -> renderTable(tooltip, block, theme, width)
+                        is PlainTextBlock -> {
+                            renderPlainText(block, theme)
+                            shiftPrev(tooltip, contentInset)
+                        }
+
+                        is HeadingBlock -> {
+                            heading(
+                                if (block.plain) block.key else I18n[I18n.Categories.MOD, block.key],
+                                theme.nameColor,
+                                theme.sectionBackground,
+                                block.padTop,
+                            )
+                            shiftPrev(tooltip, contentInset, shrinkWidth = true)
+                        }
+
+                        is TableBlock -> {
+                            renderTable(tooltip, block, theme, width - 2f * contentInset)
+                            shiftPrev(tooltip, contentInset)
+                        }
+
                         is SpacerBlock -> spacer(block.height)
-                        is CustomBlock -> block.render(tooltip)
+                        is CustomBlock -> {
+                            block.render(tooltip)
+                            shiftPrev(tooltip, contentInset)
+                        }
                     }
                 }
                 spacer(6f) // 拉开空隙用于展示背景特效
+
+                if (contentInset > 0f) {
+                    tooltip.setTextWidthOverride(prevWidthOverride)
+                }
             }
+        }
+    }
+
+    /**
+     * 内容水平内缩：把刚添加的元素右移 [inset]（[TooltipMakerAPI.getPrev] + X 对齐偏移，
+     * 与 SIC SCBarDelegatePanel 挪组件同一 API）；[shrinkWidth] 用于通栏组件（分节标题条）
+     * 同步收窄 2×inset，文本标签的宽度已由 textWidthOverride 收窄、无需再缩。
+     * inset ≤ 0（原版船插宿主）时不做任何事。
+     */
+    private fun shiftPrev(tooltip: TooltipMakerAPI, inset: Float, shrinkWidth: Boolean = false) {
+        if (inset <= 0f) return
+        val pos = tooltip.prev.position
+        pos.setXAlignOffset(inset)
+        if (shrinkWidth) {
+            pos.setSize(pos.width - 2f * inset, pos.height)
         }
     }
 

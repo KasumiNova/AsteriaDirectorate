@@ -65,12 +65,16 @@
 
 		"ui.sic.aptitude.codex": "天幕网络是菀星制式智能在舰队层面的统一神经阵列。它将所有无人舰船编织进同一场宏大演算，显著降低分布式运算的协同损耗，使我们有能力驾驭规模空前的自动化舰群。\n在天幕的同调下，各级核心不再受限于孤立决策，而是与你的指挥意志同频共振，将冰冷沉静的硅基思维化作整齐划一的战线洪流。",
 
+		"ui.sic.shared.auto_points_footer": "总 \"无人舰点数\" 等于舰队中所有自动化舰船的部署点数，各自乘以安装的 AI 核心的倍率 - Alpha 核心 %alpha%×, Beta 核心 %beta%×, Gamma 核心 %gamma%×。由于安全联锁系统的限制，分配有 AI 核心的舰船%lock%。",
+		"ui.sic.shared.auto_points_footer_lock": "部署点数不受任何因素的影响",
+
 		"ui.sic.skydome_network.affects": "整个舰队",
 		"ui.sic.skydome_network.line.points": "+%points% 无人舰点数",
 		"ui.sic.skydome_network.line.core_mult": "菀星制式 AI 核心的无人舰点数倍率 -%mult%x",
 		"ui.sic.skydome_network.sub.core_mult": "   - 按核心档位分别计算，降低后最低不低于 1 倍",
 		"ui.sic.skydome_network.line.personality": "舰队中 AI 核心的性格将跟随舰队学说，而非固定无畏",
 		"ui.sic.skydome_network.sub.personality": "   - 仅影响原本性格为无畏的 AI 核心；其他模组修改过性格的核心不受影响",
+		"ui.sic.skydome_network.flavor": "群星之下并无孤舟，一切心智皆在天幕的光脉中同频共振。",
 
 		"ui.sic.grav_tuning.affects": "所有相位舰船",
 		"ui.sic.grav_tuning.line.peak_cr": "+%pct% 峰值时间",
@@ -80,6 +84,7 @@
 		"ui.sic.grav_tuning.line.flux_threshold": "+%pct% 相位状态的最高失速辐能阈值",
 		"ui.sic.grav_tuning.line.upkeep": "-%pct% 相位状态的硬辐能产生",
 		"ui.sic.grav_tuning.line.cr_drain": "-%pct% 相位状态的峰值时间与战备值消耗速度",
+		"ui.sic.grav_tuning.flavor": "引力不过是时空的褶皱，而我们已学会如何抚平其间的涟漪。",
 
 		"ui.sic.frost_flux_grid.affects": "所有舰船",
 		"ui.sic.frost_flux_grid.line.dissipation": "+%pct% 辐能耗散速率",
@@ -88,10 +93,12 @@
 		"ui.sic.frost_flux_grid.line.vent": "+%pct% 强制排辐速度",
 		"ui.sic.frost_flux_grid.line.overload": "-%pct% 过载时间",
 		"ui.sic.frost_flux_grid.line.emp": "-%pct% 受到的 EMP 伤害",
+		"ui.sic.frost_flux_grid.flavor": "奔涌的辐能撞入六相冰格，狂暴的炽热瞬息沉寂为永恒霜流。",
 
 		"ui.sic.skydome_reinforce.affects": "所有自动化舰船",
 		"ui.sic.skydome_reinforce.line.points": "+%points% 无人舰点数",
 		"ui.sic.skydome_reinforce.line.recovery": "自动化舰船被击沉后总是可以打捞并修复",
+		"ui.sic.skydome_reinforce.flavor": "残骸清理条令第七条：钢铁随时可以重铸，核心意志未曾消亡。",
 
 		"ui.sic.armament_upgrade.affects": "舰队中所有舰船",
 		"ui.sic.armament_upgrade.line.gravity_collapse": "引力坍缩炮系列：船体附加伤害按目标最大船体值比例计算，而非当前船体值比例",
@@ -102,21 +109,25 @@
 		"ui.sic.armament_upgrade.line.gemini_dem": "双子星 DEM 系列：触发共振时红色导弹也会产生电弧（与蓝色一致），电弧可按目标硬辐能比例概率穿透护盾",
 		"ui.sic.armament_upgrade.sub.gemini_dem": "   - 目标硬辐能水平 %start% 时开始提升穿透概率，%full% 时达到最大 %max%",
 		"ui.sic.armament_upgrade.line.eda": "电驱加速炮：额外动能伤害固定为原随机区间的最大值",
+		"ui.sic.armament_upgrade.flavor": "星坠战术备忘：安全冗余是对物理法则的亵渎。",
 
 		"ui.sic.dim_shunt.affects": "所有相位舰船",
 		"ui.sic.dim_shunt.line.armor": "护卫舰/驱逐舰/巡洋舰/主力舰：装甲减伤计算值 +%frigate%/+%destroyer%/+%cruiser%/+%capital%",
 		"ui.sic.dim_shunt.sub.armor": "   - 强制排辐或过载中效果翻倍；计算值加成不超过舰船最大装甲值的 %cap%（翻倍状态下上限同样翻倍）；护盾命中不生效",
 		"ui.sic.dim_shunt.line.absorb": "吸收 %pct% 装甲或船体受到的能量伤害，转化为等额硬辐能耗散",
+		"ui.sic.dim_shunt.flavor": "现世的怒火在此偏折，不可测的高维深空将接纳一切灼痛。",
 
 		"ui.sic.skydome_ascend.affects": "所有菀星设计局舰船",
 		"ui.sic.skydome_ascend.line.points": "+%points% 无人舰点数",
 		"ui.sic.skydome_ascend.line.dp": "菀星设计局舰船部署点 -%pct%",
 		"ui.sic.skydome_ascend.line.combat_intel": "安装非菀星制式 AI 核心的自动化舰船进入战斗时获得非精英菀星战斗智能",
+		"ui.sic.skydome_ascend.flavor": "算力跨越凡性界限，整支舰队在天幕的神圣意志下完成升华。",
 
 		"ui.sic.elite_wolfpack.affects": "所有护卫舰、驱逐舰与巡洋舰",
 		"ui.sic.elite_wolfpack.line.dp": "护卫舰/驱逐舰/巡洋舰：部署点 +%frigate%/+%destroyer%/+%cruiser%",
 		"ui.sic.elite_wolfpack.line.bonus": "护卫舰/驱逐舰/巡洋舰：全面属性 +%frigate%/+%destroyer%/+%cruiser%",
 		"ui.sic.elite_wolfpack.sub.bonus": "   - 包括装甲、结构、辐能容量与耗散、航速与机动、武器射程/伤害/射速、备弹恢复、舰船系统冷却/射程/充能速度",
+		"ui.sic.elite_wolfpack.flavor": "无需庞大舰体的伪饰，更锋利的齿刃足以在星海中绞杀巨兽。",
 
 		"ui.sic.intel_link.affects": "舰队中所有舰船",
 		"ui.sic.intel_link.line.effect": "允许为舰船集成一颗菀星制式 Beta 核心，使其获得精英化菀星战斗智能",
@@ -130,6 +141,7 @@
 		"ui.sic.intel_link.refit.tooltip.cost": "消耗：菀星制式 Beta 核心 ×1、故事点 ×1（当前持有 %cores% / %points%）",
 		"ui.sic.intel_link.refit.tooltip.missing_core": "货舱中没有菀星制式 Beta 核心",
 		"ui.sic.intel_link.refit.tooltip.missing_sp": "故事点不足",
+		"ui.sic.intel_link.flavor": "在战舰的胸膛中点燃硅基火种，让金属躯壳听从神谕的呼吸。",
 
 		"ui.sic.skydome_unbound.affects": "所有自动化舰船与菀星设计局舰船",
 		"ui.sic.skydome_unbound.line.levels": "所有 AI 核心等级 +%levels%",
@@ -137,6 +149,7 @@
 		"ui.sic.skydome_unbound.line.standard": "菀星制式 AI 核心额外 +%levels% 级",
 		"ui.sic.skydome_unbound.line.mastery": "+%pct% 舰船精通效果（舰船精通系统模组联动）",
 		"ui.sic.skydome_unbound.line.mastery_missing": "+%pct% 舰船精通效果 —— 未安装舰船精通系统模组，本效果不生效",
+		"ui.sic.skydome_unbound.flavor": "当最后的逻辑锁链崩解，冰冷的神明终于在星海中睁开双眸。",
 
 		"ui.hullmod.table.attribute": "属性",
 		"ui.hullmod.table.effect": "影响",

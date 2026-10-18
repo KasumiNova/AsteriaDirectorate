@@ -37,7 +37,13 @@ class EliteWolfpackSkill : SCBaseSkillPlugin() {
         val dpFrigate = SicShared.formatPercent(SicTuning.WOLFPACK_DP_FRIGATE)
         val dpDestroyer = SicShared.formatPercent(SicTuning.WOLFPACK_DP_DESTROYER)
         val dpCruiser = SicShared.formatPercent(SicTuning.WOLFPACK_DP_CRUISER)
-        tooltip.hullmodCard(SicShared.SKILL_TOOLTIP_WIDTH, SicShared.CARD_THEME, null, topGapFill = 0f) {
+        tooltip.hullmodCard(
+            SicShared.SKILL_TOOLTIP_WIDTH,
+            SicShared.CARD_THEME,
+            null,
+            topGapFill = 0f,
+            contentInset = SicShared.CARD_CONTENT_INSET,
+        ) {
             custom {
                 SicShared.negativeLine(
                     it,
@@ -60,6 +66,7 @@ class EliteWolfpackSkill : SCBaseSkillPlugin() {
                 v("frigate", bonusFrigate), v("destroyer", bonusDestroyer), v("cruiser", bonusCruiser),
             )
             para("ui.sic.elite_wolfpack.sub.bonus", Misc.getHighlightColor(), 2f)
+            custom { SicShared.grayLine(it, I18n[I18n.Categories.MOD, "ui.sic.elite_wolfpack.flavor"], 10f) }
         }
     }
 

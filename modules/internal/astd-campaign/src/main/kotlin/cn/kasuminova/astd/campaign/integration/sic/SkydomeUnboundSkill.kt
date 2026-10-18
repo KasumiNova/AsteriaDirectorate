@@ -47,7 +47,13 @@ class SkydomeUnboundSkill : SCBaseSkillPlugin() {
         val base = DifficultyTuningImpl.valueFor(SicTuning.UNBOUND_LEVEL_BONUS, true).roundToInt()
         val extra = DifficultyTuningImpl.valueFor(SicTuning.UNBOUND_STANDARD_CORE_EXTRA, true).roundToInt()
         val masteryPct = "${DifficultyTuningImpl.valueFor(SicTuning.UNBOUND_MASTERY_PERCENT, true).roundToInt()}%"
-        tooltip.hullmodCard(SicShared.SKILL_TOOLTIP_WIDTH, SicShared.CARD_THEME, null, topGapFill = 0f) {
+        tooltip.hullmodCard(
+            SicShared.SKILL_TOOLTIP_WIDTH,
+            SicShared.CARD_THEME,
+            null,
+            topGapFill = 0f,
+            contentInset = SicShared.CARD_CONTENT_INSET,
+        ) {
             para(
                 "ui.sic.skydome_unbound.line.levels",
                 Misc.getHighlightColor(),
@@ -80,6 +86,7 @@ class SkydomeUnboundSkill : SCBaseSkillPlugin() {
                     )
                 }
             }
+            custom { SicShared.grayLine(it, I18n[I18n.Categories.MOD, "ui.sic.skydome_unbound.flavor"], 10f) }
         }
     }
 

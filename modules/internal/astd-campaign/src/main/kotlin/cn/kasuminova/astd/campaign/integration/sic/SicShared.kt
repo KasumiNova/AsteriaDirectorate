@@ -2,9 +2,11 @@ package cn.kasuminova.astd.campaign.integration.sic
 
 import cn.kasuminova.astd.api.difficulty.ScalingEntry
 import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
+import cn.kasuminova.astd.internal.i18n.I18n
 import cn.kasuminova.astd.ui.dsl.HullmodTheme
 import cn.kasuminova.astd.ui.dsl.HullmodThemes
 import com.fs.starfarer.api.Global
+import com.fs.starfarer.api.impl.campaign.AICoreOfficerPluginImpl
 import com.fs.starfarer.api.ui.LabelAPI
 import com.fs.starfarer.api.ui.TooltipMakerAPI
 import com.fs.starfarer.api.util.Misc
@@ -29,6 +31,9 @@ internal object SicShared {
 
     /** 智能联结改造按钮 tooltip 卡宽（LunaLib BaseRefitButton.getToolipWidth 默认 300f）。 */
     const val REFIT_TOOLTIP_WIDTH = 300f
+
+    /** SIC/LunaLib 宿主卡片内容水平内边距（宿主内容流无内缩，对齐原版船插 tooltip 约 10px 量级内边距）。 */
+    const val CARD_CONTENT_INSET = 10f
 
     // ─── 无人舰点数（SIC sc_auto_dp 契约，见 SicTuning） ───
 
@@ -79,6 +84,27 @@ internal object SicShared {
             label.setHighlight(*highlights)
             label.setHighlightColors(*Array(highlights.size) { Misc.getNegativeHighlightColor() })
         }
+    }
+
+    /** 无人舰点数机制固定段（SIC 自动化系技能 tooltip 统一规范，SCBaseAutoPointsSkillPlugin 口径）：灰底 + 三档核心倍率子串高亮黄 + 安全联锁子串负色红。倍率运行时读取，禁止写死。 */
+    fun autoPointsFooter(tooltip: TooltipMakerAPI, padTop: Float) {
+        val alpha = AICoreOfficerPluginImpl.ALPHA_MULT.roundToInt()
+        val beta = AICoreOfficerPluginImpl.BETA_MULT.roundToInt()
+        val gamma = AICoreOfficerPluginImpl.GAMMA_MULT.roundToInt()
+        val lock = I18n[I18n.Categories.MOD, "ui.sic.shared.auto_points_footer_lock"]
+        val label: LabelAPI = tooltip.addPara(
+            I18n.t(
+                I18n.Categories.MOD, "ui.sic.shared.auto_points_footer",
+                "alpha" to alpha, "beta" to beta, "gamma" to gamma, "lock" to lock,
+            ),
+            Misc.getGrayColor(),
+            padTop,
+        )
+        label.setHighlight("${alpha}×", "${beta}×", "${gamma}×", lock)
+        label.setHighlightColors(
+            Misc.getHighlightColor(), Misc.getHighlightColor(), Misc.getHighlightColor(),
+            Misc.getNegativeHighlightColor(),
+        )
     }
 
     // ─── 展示格式化（与 ASTDCombatIntelSkill 同一口径） ───

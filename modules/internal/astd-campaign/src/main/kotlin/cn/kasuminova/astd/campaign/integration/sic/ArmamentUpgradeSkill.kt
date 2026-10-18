@@ -38,7 +38,13 @@ class ArmamentUpgradeSkill : SCBaseSkillPlugin() {
         I18n[I18n.Categories.MOD, "ui.sic.armament_upgrade.affects"]
 
     override fun addTooltip(data: SCData, tooltip: TooltipMakerAPI) {
-        tooltip.hullmodCard(SicShared.SKILL_TOOLTIP_WIDTH, SicShared.CARD_THEME, null, topGapFill = 0f) {
+        tooltip.hullmodCard(
+            SicShared.SKILL_TOOLTIP_WIDTH,
+            SicShared.CARD_THEME,
+            null,
+            topGapFill = 0f,
+            contentInset = SicShared.CARD_CONTENT_INSET,
+        ) {
             para("ui.sic.armament_upgrade.line.gravity_collapse", Misc.getHighlightColor())
             para("ui.sic.armament_upgrade.line.charge_needle", Misc.getHighlightColor())
             para(
@@ -69,6 +75,7 @@ class ArmamentUpgradeSkill : SCBaseSkillPlugin() {
                 v("max", SicShared.formatPercent(GeminiDemDifficulty.ARC_PIERCE_MAX_CHANCE)),
             )
             para("ui.sic.armament_upgrade.line.eda", Misc.getHighlightColor())
+            custom { SicShared.grayLine(it, I18n[I18n.Categories.MOD, "ui.sic.armament_upgrade.flavor"], 10f) }
         }
     }
 

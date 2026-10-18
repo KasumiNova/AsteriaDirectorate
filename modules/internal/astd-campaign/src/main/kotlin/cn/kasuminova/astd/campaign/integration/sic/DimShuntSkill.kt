@@ -51,7 +51,13 @@ class DimShuntSkill : SCBaseSkillPlugin() {
         val destroyer = SicShared.formatNumber(DifficultyTuningImpl.valueFor(SicTuning.DIM_ARMOR_DESTROYER, true))
         val cruiser = SicShared.formatNumber(DifficultyTuningImpl.valueFor(SicTuning.DIM_ARMOR_CRUISER, true))
         val capital = SicShared.formatNumber(DifficultyTuningImpl.valueFor(SicTuning.DIM_ARMOR_CAPITAL, true))
-        tooltip.hullmodCard(SicShared.SKILL_TOOLTIP_WIDTH, SicShared.CARD_THEME, null, topGapFill = 0f) {
+        tooltip.hullmodCard(
+            SicShared.SKILL_TOOLTIP_WIDTH,
+            SicShared.CARD_THEME,
+            null,
+            topGapFill = 0f,
+            contentInset = SicShared.CARD_CONTENT_INSET,
+        ) {
             para(
                 "ui.sic.dim_shunt.line.armor",
                 Misc.getHighlightColor(),
@@ -75,6 +81,7 @@ class DimShuntSkill : SCBaseSkillPlugin() {
                 8f,
                 v("pct", SicShared.formatPercent(DifficultyTuningImpl.valueFor(SicTuning.DIM_ENERGY_ABSORB, true))),
             )
+            custom { SicShared.grayLine(it, I18n[I18n.Categories.MOD, "ui.sic.dim_shunt.flavor"], 10f) }
         }
     }
 

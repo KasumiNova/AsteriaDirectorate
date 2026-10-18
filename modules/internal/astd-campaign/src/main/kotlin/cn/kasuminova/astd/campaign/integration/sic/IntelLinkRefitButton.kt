@@ -73,6 +73,7 @@ class IntelLinkRefitButton : BaseRefitButton() {
             SicShared.CARD_THEME,
             I18n[I18n.Categories.MOD, "ui.sic.intel_link.refit.button"],
             topGapFill = 0f,
+            contentInset = SicShared.CARD_CONTENT_INSET,
         ) {
             para("ui.sic.intel_link.refit.tooltip.effect", Misc.getHighlightColor())
 

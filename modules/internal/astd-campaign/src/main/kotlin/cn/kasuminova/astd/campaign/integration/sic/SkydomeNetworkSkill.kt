@@ -43,7 +43,13 @@ class SkydomeNetworkSkill : SCBaseSkillPlugin() {
         val points = SicShared.autoPointsFor(SicTuning.SKYDOME_NETWORK_AUTO_POINTS, isPlayer = true)
         val reduction = DifficultyTuningImpl.valueFor(SicTuning.SKYDOME_NETWORK_CORE_MULT_REDUCTION, true)
 
-        tooltip.hullmodCard(SicShared.SKILL_TOOLTIP_WIDTH, SicShared.CARD_THEME, null, topGapFill = 0f) {
+        tooltip.hullmodCard(
+            SicShared.SKILL_TOOLTIP_WIDTH,
+            SicShared.CARD_THEME,
+            null,
+            topGapFill = 0f,
+            contentInset = SicShared.CARD_CONTENT_INSET,
+        ) {
             para(
                 "ui.sic.skydome_network.line.points",
                 Misc.getHighlightColor(),
@@ -59,6 +65,8 @@ class SkydomeNetworkSkill : SCBaseSkillPlugin() {
             para("ui.sic.skydome_network.sub.core_mult", Misc.getHighlightColor(), 2f)
             para("ui.sic.skydome_network.line.personality", Misc.getHighlightColor())
             para("ui.sic.skydome_network.sub.personality", Misc.getHighlightColor(), 2f)
+            custom { SicShared.autoPointsFooter(it, 10f) }
+            custom { SicShared.grayLine(it, I18n[I18n.Categories.MOD, "ui.sic.skydome_network.flavor"], 10f) }
         }
     }
 

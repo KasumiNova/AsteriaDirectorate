@@ -39,7 +39,13 @@ class SkydomeAscendSkill : SCBaseSkillPlugin() {
 
     override fun addTooltip(data: SCData, tooltip: TooltipMakerAPI) {
         val points = SicShared.autoPointsFor(SicTuning.ASCEND_AUTO_POINTS, isPlayer = true)
-        tooltip.hullmodCard(SicShared.SKILL_TOOLTIP_WIDTH, SicShared.CARD_THEME, null, topGapFill = 0f) {
+        tooltip.hullmodCard(
+            SicShared.SKILL_TOOLTIP_WIDTH,
+            SicShared.CARD_THEME,
+            null,
+            topGapFill = 0f,
+            contentInset = SicShared.CARD_CONTENT_INSET,
+        ) {
             para(
                 "ui.sic.skydome_ascend.line.points",
                 Misc.getHighlightColor(),
@@ -53,6 +59,8 @@ class SkydomeAscendSkill : SCBaseSkillPlugin() {
                 v("pct", SicShared.formatPercent(DifficultyTuningImpl.valueFor(SicTuning.ASCEND_DP_REDUCTION, true))),
             )
             para("ui.sic.skydome_ascend.line.combat_intel", Misc.getHighlightColor())
+            custom { SicShared.autoPointsFooter(it, 10f) }
+            custom { SicShared.grayLine(it, I18n[I18n.Categories.MOD, "ui.sic.skydome_ascend.flavor"], 10f) }
         }
     }
 

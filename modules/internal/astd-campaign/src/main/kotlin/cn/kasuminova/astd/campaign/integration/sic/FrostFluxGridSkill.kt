@@ -32,7 +32,13 @@ class FrostFluxGridSkill : SCBaseSkillPlugin() {
         I18n[I18n.Categories.MOD, "ui.sic.frost_flux_grid.affects"]
 
     override fun addTooltip(data: SCData, tooltip: TooltipMakerAPI) {
-        tooltip.hullmodCard(SicShared.SKILL_TOOLTIP_WIDTH, SicShared.CARD_THEME, null, topGapFill = 0f) {
+        tooltip.hullmodCard(
+            SicShared.SKILL_TOOLTIP_WIDTH,
+            SicShared.CARD_THEME,
+            null,
+            topGapFill = 0f,
+            contentInset = SicShared.CARD_CONTENT_INSET,
+        ) {
             para(
                 "ui.sic.frost_flux_grid.line.dissipation",
                 Misc.getHighlightColor(),
@@ -76,6 +82,7 @@ class FrostFluxGridSkill : SCBaseSkillPlugin() {
                 8f,
                 v("pct", SicShared.formatPercent(DifficultyTuningImpl.valueFor(SicTuning.FROST_EMP_REDUCTION, true))),
             )
+            custom { SicShared.grayLine(it, I18n[I18n.Categories.MOD, "ui.sic.frost_flux_grid.flavor"], 10f) }
         }
     }
 

@@ -54,7 +54,13 @@ class GravTuningSkill : SCBaseSkillPlugin() {
         val timeFlow = SicShared.formatPercent(
             DifficultyTuningImpl.valueFor(SicTuning.GRAV_PHASE_TIME_FLOW_TABLE, true) * SicTuning.GRAV_PHASE_TIME_FLOW_BASE,
         )
-        tooltip.hullmodCard(SicShared.SKILL_TOOLTIP_WIDTH, SicShared.CARD_THEME, null, topGapFill = 0f) {
+        tooltip.hullmodCard(
+            SicShared.SKILL_TOOLTIP_WIDTH,
+            SicShared.CARD_THEME,
+            null,
+            topGapFill = 0f,
+            contentInset = SicShared.CARD_CONTENT_INSET,
+        ) {
             if (deepDive) {
                 custom {
                     SicShared.grayLine(
@@ -95,6 +101,7 @@ class GravTuningSkill : SCBaseSkillPlugin() {
                 8f,
                 v("pct", SicShared.formatPercent(DifficultyTuningImpl.valueFor(SicTuning.GRAV_PHASE_CR_REDUCTION, true))),
             )
+            custom { SicShared.grayLine(it, I18n[I18n.Categories.MOD, "ui.sic.grav_tuning.flavor"], 10f) }
         }
     }
 
