@@ -4,11 +4,14 @@ import cn.kasuminova.astd.campaign.bounty.StandardCores
 import cn.kasuminova.astd.combat.skills.ASTDCombatIntelSkill
 import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import cn.kasuminova.astd.internal.i18n.I18n
+import cn.kasuminova.astd.ui.dsl.hullmodCard
+import cn.kasuminova.astd.ui.dsl.v
 import com.fs.starfarer.api.combat.MutableShipStatsAPI
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.combat.ShipVariantAPI
 import com.fs.starfarer.api.impl.campaign.ids.Stats
 import com.fs.starfarer.api.ui.TooltipMakerAPI
+import com.fs.starfarer.api.util.Misc
 import second_in_command.SCData
 import second_in_command.specs.SCBaseSkillPlugin
 
@@ -36,21 +39,21 @@ class SkydomeAscendSkill : SCBaseSkillPlugin() {
 
     override fun addTooltip(data: SCData, tooltip: TooltipMakerAPI) {
         val points = SicShared.autoPointsFor(SicTuning.ASCEND_AUTO_POINTS, isPlayer = true)
-        SicShared.highlightLine(
-            tooltip,
-            I18n.t(I18n.Categories.MOD, "ui.sic.skydome_ascend.line.points", "points" to points),
-        )
-        SicShared.highlightLine(
-            tooltip,
-            I18n.t(
-                I18n.Categories.MOD, "ui.sic.skydome_ascend.line.dp",
-                "pct" to SicShared.formatPercent(DifficultyTuningImpl.valueFor(SicTuning.ASCEND_DP_REDUCTION, true)),
-            ),
-        )
-        SicShared.highlightLine(
-            tooltip,
-            I18n[I18n.Categories.MOD, "ui.sic.skydome_ascend.line.combat_intel"],
-        )
+        tooltip.hullmodCard(SicShared.SKILL_TOOLTIP_WIDTH, SicShared.CARD_THEME, null, topGapFill = 0f) {
+            para(
+                "ui.sic.skydome_ascend.line.points",
+                Misc.getHighlightColor(),
+                8f,
+                v("points", points),
+            )
+            para(
+                "ui.sic.skydome_ascend.line.dp",
+                Misc.getHighlightColor(),
+                8f,
+                v("pct", SicShared.formatPercent(DifficultyTuningImpl.valueFor(SicTuning.ASCEND_DP_REDUCTION, true))),
+            )
+            para("ui.sic.skydome_ascend.line.combat_intel", Misc.getHighlightColor())
+        }
     }
 
     override fun applyEffectsBeforeShipCreation(

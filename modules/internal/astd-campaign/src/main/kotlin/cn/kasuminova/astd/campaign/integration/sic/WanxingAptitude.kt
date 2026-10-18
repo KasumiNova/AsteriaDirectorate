@@ -69,6 +69,7 @@ class WanxingAptitude : SCBaseAptitudePlugin() {
         spec.spawnWeight * CRYOPOD_WEIGHT_MULT
 
     override fun addCodexDescription(tooltip: TooltipMakerAPI) {
+        // 用户指令：codex 天赋文案不使用卡片背景，默认白色字（sic 包"禁白字"口径对此处专门豁免）
         tooltip.addPara(I18n[I18n.Categories.MOD, "ui.sic.aptitude.codex"], Misc.getTextColor(), 0f)
     }
 

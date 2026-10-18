@@ -5,6 +5,8 @@ import cn.kasuminova.astd.combat.hullmods.base.directionalArmorFraction
 import cn.kasuminova.astd.combat.skills.ASTDCombatIntelTuning
 import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import cn.kasuminova.astd.internal.i18n.I18n
+import cn.kasuminova.astd.ui.dsl.hullmodCard
+import cn.kasuminova.astd.ui.dsl.v
 import com.fs.starfarer.api.combat.BeamAPI
 import com.fs.starfarer.api.combat.CombatEntityAPI
 import com.fs.starfarer.api.combat.DamageAPI
@@ -14,6 +16,7 @@ import com.fs.starfarer.api.combat.ShipVariantAPI
 import com.fs.starfarer.api.combat.listeners.AdvanceableListener
 import com.fs.starfarer.api.combat.listeners.DamageTakenModifier
 import com.fs.starfarer.api.ui.TooltipMakerAPI
+import com.fs.starfarer.api.util.Misc
 import org.lwjgl.util.vector.Vector2f
 import second_in_command.SCData
 import second_in_command.specs.SCBaseSkillPlugin
@@ -48,28 +51,31 @@ class DimShuntSkill : SCBaseSkillPlugin() {
         val destroyer = SicShared.formatNumber(DifficultyTuningImpl.valueFor(SicTuning.DIM_ARMOR_DESTROYER, true))
         val cruiser = SicShared.formatNumber(DifficultyTuningImpl.valueFor(SicTuning.DIM_ARMOR_CRUISER, true))
         val capital = SicShared.formatNumber(DifficultyTuningImpl.valueFor(SicTuning.DIM_ARMOR_CAPITAL, true))
-        SicShared.highlightLine(
-            tooltip,
-            I18n.t(
-                I18n.Categories.MOD, "ui.sic.dim_shunt.line.armor",
-                "frigate" to frigate, "destroyer" to destroyer, "cruiser" to cruiser, "capital" to capital,
-            ),
-        )
-        SicShared.subLine(
-            tooltip,
-            I18n.t(
-                I18n.Categories.MOD, "ui.sic.dim_shunt.sub.armor",
-                "cap" to SicShared.formatPercent(SicTuning.DIM_ARMOR_CAP_FRACTION),
-            ),
-            SicShared.formatPercent(SicTuning.DIM_ARMOR_CAP_FRACTION),
-        )
-        SicShared.highlightLine(
-            tooltip,
-            I18n.t(
-                I18n.Categories.MOD, "ui.sic.dim_shunt.line.absorb",
-                "pct" to SicShared.formatPercent(DifficultyTuningImpl.valueFor(SicTuning.DIM_ENERGY_ABSORB, true)),
-            ),
-        )
+        tooltip.hullmodCard(SicShared.SKILL_TOOLTIP_WIDTH, SicShared.CARD_THEME, null, topGapFill = 0f) {
+            para(
+                "ui.sic.dim_shunt.line.armor",
+                Misc.getHighlightColor(),
+                8f,
+                v("frigate", frigate), v("destroyer", destroyer), v("cruiser", cruiser), v("capital", capital),
+            )
+            custom {
+                SicShared.subLine(
+                    it,
+                    I18n.t(
+                        I18n.Categories.MOD, "ui.sic.dim_shunt.sub.armor",
+                        "cap" to SicShared.formatPercent(SicTuning.DIM_ARMOR_CAP_FRACTION),
+                    ),
+                    2f,
+                    SicShared.formatPercent(SicTuning.DIM_ARMOR_CAP_FRACTION),
+                )
+            }
+            para(
+                "ui.sic.dim_shunt.line.absorb",
+                Misc.getHighlightColor(),
+                8f,
+                v("pct", SicShared.formatPercent(DifficultyTuningImpl.valueFor(SicTuning.DIM_ENERGY_ABSORB, true))),
+            )
+        }
     }
 
     override fun applyEffectsAfterShipCreation(data: SCData, ship: ShipAPI, variant: ShipVariantAPI, id: String) {

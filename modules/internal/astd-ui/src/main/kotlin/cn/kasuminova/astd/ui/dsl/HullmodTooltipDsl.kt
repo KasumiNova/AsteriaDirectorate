@@ -233,6 +233,13 @@ internal class TableBlock(
 internal class SpacerBlock(val height: Float) : HullmodBlock
 
 /**
+ * 直渲染块：持有对 [TooltipMakerAPI] 的直接渲染回调，由渲染器在卡片内按声明序执行。
+ * 仅供不走 I18n 键/块模型的既有渲染辅助接入（如 SIC 风格行着色）；
+ * para/heading/table 表达得了的内容禁止用本块绕过块模型。
+ */
+internal class CustomBlock(val render: (TooltipMakerAPI) -> Unit) : HullmodBlock
+
+/**
  * 一张 hullmod tooltip 卡片的完整声明（DSL 构建产物，纯数据）。
  *
  * @property blocks 卡片内容块（声明序即渲染序）。
@@ -335,6 +342,14 @@ class HullmodCardBuilder {
     /** 垂直间距（仅特殊排版需要；常规段落间距走各块 padTop）。 */
     fun spacer(height: Float) {
         blocks += SpacerBlock(height)
+    }
+
+    /**
+     * 直渲染块（回调在卡片内按声明序拿到 [TooltipMakerAPI] 直接渲染）。
+     * 仅供既有渲染辅助接入（如 SIC 风格行着色）；para/heading/table 表达得了的内容禁止调用。
+     */
+    fun custom(render: (TooltipMakerAPI) -> Unit) {
+        blocks += CustomBlock(render)
     }
 
     companion object {
@@ -454,6 +469,7 @@ internal object HullmodCardRenderer {
 
                         is TableBlock -> renderTable(tooltip, block, theme, width)
                         is SpacerBlock -> spacer(block.height)
+                        is CustomBlock -> block.render(tooltip)
                     }
                 }
                 spacer(6f) // 拉开空隙用于展示背景特效

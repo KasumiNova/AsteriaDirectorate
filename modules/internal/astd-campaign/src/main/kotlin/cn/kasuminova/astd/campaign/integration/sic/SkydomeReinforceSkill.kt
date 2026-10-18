@@ -1,6 +1,8 @@
 package cn.kasuminova.astd.campaign.integration.sic
 
 import cn.kasuminova.astd.internal.i18n.I18n
+import cn.kasuminova.astd.ui.dsl.hullmodCard
+import cn.kasuminova.astd.ui.dsl.v
 import com.fs.starfarer.api.combat.MutableShipStatsAPI
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.combat.ShipVariantAPI
@@ -34,14 +36,15 @@ class SkydomeReinforceSkill : SCBaseSkillPlugin() {
 
     override fun addTooltip(data: SCData, tooltip: TooltipMakerAPI) {
         val points = SicShared.autoPointsFor(SicTuning.REINFORCE_AUTO_POINTS, isPlayer = true)
-        SicShared.highlightLine(
-            tooltip,
-            I18n.t(I18n.Categories.MOD, "ui.sic.skydome_reinforce.line.points", "points" to points),
-        )
-        SicShared.highlightLine(
-            tooltip,
-            I18n[I18n.Categories.MOD, "ui.sic.skydome_reinforce.line.recovery"],
-        )
+        tooltip.hullmodCard(SicShared.SKILL_TOOLTIP_WIDTH, SicShared.CARD_THEME, null, topGapFill = 0f) {
+            para(
+                "ui.sic.skydome_reinforce.line.points",
+                Misc.getHighlightColor(),
+                8f,
+                v("points", points),
+            )
+            para("ui.sic.skydome_reinforce.line.recovery", Misc.getHighlightColor())
+        }
     }
 
     override fun applyEffectsBeforeShipCreation(

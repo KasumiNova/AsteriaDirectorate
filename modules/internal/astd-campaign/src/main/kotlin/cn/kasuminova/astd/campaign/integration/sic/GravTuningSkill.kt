@@ -2,12 +2,15 @@ package cn.kasuminova.astd.campaign.integration.sic
 
 import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import cn.kasuminova.astd.internal.i18n.I18n
+import cn.kasuminova.astd.ui.dsl.hullmodCard
+import cn.kasuminova.astd.ui.dsl.v
 import com.fs.starfarer.api.combat.MutableShipStatsAPI
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.combat.ShipVariantAPI
 import com.fs.starfarer.api.combat.listeners.AdvanceableListener
 import com.fs.starfarer.api.impl.campaign.ids.Stats
 import com.fs.starfarer.api.ui.TooltipMakerAPI
+import com.fs.starfarer.api.util.Misc
 import second_in_command.SCData
 import second_in_command.specs.SCBaseSkillPlugin
 
@@ -51,49 +54,48 @@ class GravTuningSkill : SCBaseSkillPlugin() {
         val timeFlow = SicShared.formatPercent(
             DifficultyTuningImpl.valueFor(SicTuning.GRAV_PHASE_TIME_FLOW_TABLE, true) * SicTuning.GRAV_PHASE_TIME_FLOW_BASE,
         )
-        if (deepDive) {
-            SicShared.grayLine(
-                tooltip,
-                I18n.t(I18n.Categories.MOD, "ui.sic.grav_tuning.line.peak_cr_suppressed", "pct" to peakCr),
-                peakCr,
+        tooltip.hullmodCard(SicShared.SKILL_TOOLTIP_WIDTH, SicShared.CARD_THEME, null, topGapFill = 0f) {
+            if (deepDive) {
+                custom {
+                    SicShared.grayLine(
+                        it,
+                        I18n.t(I18n.Categories.MOD, "ui.sic.grav_tuning.line.peak_cr_suppressed", "pct" to peakCr),
+                        8f,
+                        peakCr,
+                    )
+                }
+                custom {
+                    SicShared.grayLine(
+                        it,
+                        I18n.t(I18n.Categories.MOD, "ui.sic.grav_tuning.line.time_flow_suppressed", "pct" to timeFlow),
+                        8f,
+                        timeFlow,
+                    )
+                }
+            } else {
+                para("ui.sic.grav_tuning.line.peak_cr", Misc.getHighlightColor(), 8f, v("pct", peakCr))
+                para("ui.sic.grav_tuning.line.time_flow", Misc.getHighlightColor(), 8f, v("pct", timeFlow))
+            }
+
+            para(
+                "ui.sic.grav_tuning.line.flux_threshold",
+                Misc.getHighlightColor(),
+                8f,
+                v("pct", SicShared.formatPercent(DifficultyTuningImpl.valueFor(SicTuning.GRAV_FLUX_THRESHOLD_PERCENT, true) / 100f)),
             )
-            SicShared.grayLine(
-                tooltip,
-                I18n.t(I18n.Categories.MOD, "ui.sic.grav_tuning.line.time_flow_suppressed", "pct" to timeFlow),
-                timeFlow,
+            para(
+                "ui.sic.grav_tuning.line.upkeep",
+                Misc.getHighlightColor(),
+                8f,
+                v("pct", SicShared.formatPercent(DifficultyTuningImpl.valueFor(SicTuning.GRAV_PHASE_UPKEEP_REDUCTION, true))),
             )
-        } else {
-            SicShared.highlightLine(
-                tooltip,
-                I18n.t(I18n.Categories.MOD, "ui.sic.grav_tuning.line.peak_cr", "pct" to peakCr),
-            )
-            SicShared.highlightLine(
-                tooltip,
-                I18n.t(I18n.Categories.MOD, "ui.sic.grav_tuning.line.time_flow", "pct" to timeFlow),
+            para(
+                "ui.sic.grav_tuning.line.cr_drain",
+                Misc.getHighlightColor(),
+                8f,
+                v("pct", SicShared.formatPercent(DifficultyTuningImpl.valueFor(SicTuning.GRAV_PHASE_CR_REDUCTION, true))),
             )
         }
-
-        SicShared.highlightLine(
-            tooltip,
-            I18n.t(
-                I18n.Categories.MOD, "ui.sic.grav_tuning.line.flux_threshold",
-                "pct" to SicShared.formatPercent(DifficultyTuningImpl.valueFor(SicTuning.GRAV_FLUX_THRESHOLD_PERCENT, true) / 100f),
-            ),
-        )
-        SicShared.highlightLine(
-            tooltip,
-            I18n.t(
-                I18n.Categories.MOD, "ui.sic.grav_tuning.line.upkeep",
-                "pct" to SicShared.formatPercent(DifficultyTuningImpl.valueFor(SicTuning.GRAV_PHASE_UPKEEP_REDUCTION, true)),
-            ),
-        )
-        SicShared.highlightLine(
-            tooltip,
-            I18n.t(
-                I18n.Categories.MOD, "ui.sic.grav_tuning.line.cr_drain",
-                "pct" to SicShared.formatPercent(DifficultyTuningImpl.valueFor(SicTuning.GRAV_PHASE_CR_REDUCTION, true)),
-            ),
-        )
     }
 
     override fun applyEffectsBeforeShipCreation(

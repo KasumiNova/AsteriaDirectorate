@@ -3,9 +3,12 @@ package cn.kasuminova.astd.campaign.integration.sic
 import cn.kasuminova.astd.campaign.bounty.StandardCores
 import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import cn.kasuminova.astd.internal.i18n.I18n
+import cn.kasuminova.astd.ui.dsl.hullmodCard
+import cn.kasuminova.astd.ui.dsl.v
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.plugins.OfficerLevelupPlugin
 import com.fs.starfarer.api.ui.TooltipMakerAPI
+import com.fs.starfarer.api.util.Misc
 import java.util.Random
 import kotlin.math.roundToInt
 import org.apache.log4j.Logger
@@ -42,33 +45,41 @@ class SkydomeUnboundSkill : SCBaseSkillPlugin() {
 
     override fun addTooltip(data: SCData, tooltip: TooltipMakerAPI) {
         val base = DifficultyTuningImpl.valueFor(SicTuning.UNBOUND_LEVEL_BONUS, true).roundToInt()
-        SicShared.highlightLine(
-            tooltip,
-            I18n.t(I18n.Categories.MOD, "ui.sic.skydome_unbound.line.levels", "levels" to base),
-        )
-        SicShared.subLine(
-            tooltip,
-            I18n[I18n.Categories.MOD, "ui.sic.skydome_unbound.sub.levels"],
-        )
-
         val extra = DifficultyTuningImpl.valueFor(SicTuning.UNBOUND_STANDARD_CORE_EXTRA, true).roundToInt()
-        SicShared.highlightLine(
-            tooltip,
-            I18n.t(I18n.Categories.MOD, "ui.sic.skydome_unbound.line.standard", "levels" to extra),
-        )
-
         val masteryPct = "${DifficultyTuningImpl.valueFor(SicTuning.UNBOUND_MASTERY_PERCENT, true).roundToInt()}%"
-        if (isSmsEnabled()) {
-            SicShared.highlightLine(
-                tooltip,
-                I18n.t(I18n.Categories.MOD, "ui.sic.skydome_unbound.line.mastery", "pct" to masteryPct),
+        tooltip.hullmodCard(SicShared.SKILL_TOOLTIP_WIDTH, SicShared.CARD_THEME, null, topGapFill = 0f) {
+            para(
+                "ui.sic.skydome_unbound.line.levels",
+                Misc.getHighlightColor(),
+                8f,
+                v("levels", base),
             )
-        } else {
-            SicShared.grayLine(
-                tooltip,
-                I18n.t(I18n.Categories.MOD, "ui.sic.skydome_unbound.line.mastery_missing", "pct" to masteryPct),
-                masteryPct,
+            para("ui.sic.skydome_unbound.sub.levels", Misc.getHighlightColor(), 2f)
+
+            para(
+                "ui.sic.skydome_unbound.line.standard",
+                Misc.getHighlightColor(),
+                8f,
+                v("levels", extra),
             )
+
+            if (isSmsEnabled()) {
+                para(
+                    "ui.sic.skydome_unbound.line.mastery",
+                    Misc.getHighlightColor(),
+                    8f,
+                    v("pct", masteryPct),
+                )
+            } else {
+                custom {
+                    SicShared.grayLine(
+                        it,
+                        I18n.t(I18n.Categories.MOD, "ui.sic.skydome_unbound.line.mastery_missing", "pct" to masteryPct),
+                        8f,
+                        masteryPct,
+                    )
+                }
+            }
         }
     }
 
