@@ -96,6 +96,24 @@ object GeminiDemDifficulty {
     /** 同步共振紫色光束视觉的持续时长（秒，自触发时刻起算；略长于 payload 光束 1s 照射）。 */
     const val SYNC_VISUAL_DURATION = 1.2f
 
+    /**
+     * SIC「武备升级」电弧穿盾斜坡（docs/design/skills/10-sic-skills.md 阶段二，固定不缩放）：
+     * 目标硬辐能水平占比 [ARC_PIERCE_RAMP_START] 起线性提升，[ARC_PIERCE_RAMP_FULL] 达最大
+     * 穿透概率 [ARC_PIERCE_MAX_CHANCE]。
+     */
+    const val ARC_PIERCE_RAMP_START = 0.25f
+    const val ARC_PIERCE_RAMP_FULL = 0.90f
+    const val ARC_PIERCE_MAX_CHANCE = 0.5f
+
+    /** 电弧穿盾概率（纯函数）：斜坡起点以下为 0、满载点以上为 [ARC_PIERCE_MAX_CHANCE]、区间线性。 */
+    fun arcShieldPierceChance(hardFluxFraction: Float): Float =
+        ((hardFluxFraction - ARC_PIERCE_RAMP_START) / (ARC_PIERCE_RAMP_FULL - ARC_PIERCE_RAMP_START))
+            .coerceIn(0f, 1f) * ARC_PIERCE_MAX_CHANCE
+
+    /** 目标硬辐能水平占比（防 0 除：maxFlux 非正按 0 处理）。 */
+    fun hardFluxFraction(hardFlux: Float, maxFlux: Float): Float =
+        if (maxFlux > 0f) (hardFlux / maxFlux).coerceIn(0f, 1f) else 0f
+
     /** 追踪段目标搜索半径（su）：shipTarget 为空时的最近敌舰兜底搜索范围。 */
     const val TRACK_TARGET_RANGE = 2500f
 
@@ -113,6 +131,12 @@ object GeminiDemDifficulty {
 
     /** engine.customData 键：同步登记表（目标 id → 首击记录）。 */
     const val SYNC_REGISTRY_KEY = "astd_gemini_sync_registry"
+
+    /**
+     * engine.customData 键：已触发共振的目标表（目标 id → 触发时刻，战斗总秒；战斗结束随表自然销毁）。
+     * SIC「武备升级」的红色导弹电弧以「本目标已触发共振」为发射前提（GeminiDemPayloadBeamEffect 消费）。
+     */
+    const val SYNC_RESONATED_KEY = "astd_gemini_sync_resonated"
 
     /** 弹头 demDrone 实体 customData 键：紫色共振视觉到期时刻（战斗总秒）。键在实体自身表上，规避引擎级表按 id 碰撞（FX drone id 为空串）。 */
     const val SYNC_VISUAL_KEY = "astd_gemini_dem_sync_visual"

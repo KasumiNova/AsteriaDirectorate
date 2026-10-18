@@ -100,6 +100,8 @@ object GeminiDemSyncHandler {
             markSyncVisual(prev.source, now)
             markSyncVisual(source, now)
             registry.remove(target.id)
+            // 共振触发登记：SIC「武备升级」的红色导弹电弧以本表为发射前提
+            resonatedOf(engine)[target.id] = now
             engine.spawnExplosion(point, ZERO, SYNC_FLASH_COLOR, SYNC_FLASH_SIZE, SYNC_FLASH_DURATION)
             engine.customData[TELEMETRY_SYNC_TRIGGER] = syncTriggerCount(engine) + 1
             engine.customData[TELEMETRY_SYNC_LAST_MULT] = mult
@@ -136,6 +138,16 @@ object GeminiDemSyncHandler {
     fun registryOf(engine: CombatEngineAPI): MutableMap<String, SyncRecord> =
         engine.customData.getOrPut(GeminiDemDifficulty.SYNC_REGISTRY_KEY) { mutableMapOf<String, SyncRecord>() }
                 as MutableMap<String, SyncRecord>
+
+    /** 本场战斗已触发共振的目标表（engine.customData 惰性创建，战斗结束自然销毁）。 */
+    @Suppress("UNCHECKED_CAST")
+    fun resonatedOf(engine: CombatEngineAPI): MutableMap<String, Float> =
+        engine.customData.getOrPut(GeminiDemDifficulty.SYNC_RESONATED_KEY) { mutableMapOf<String, Float>() }
+                as MutableMap<String, Float>
+
+    /** 目标是否已触发过同步共振（SIC「武备升级」红色导弹电弧的发射前提判定）。 */
+    fun wasResonated(engine: CombatEngineAPI, target: ShipAPI): Boolean =
+        resonatedOf(engine).containsKey(target.id)
 
     fun syncTriggerCount(engine: CombatEngineAPI): Int = engine.customData[TELEMETRY_SYNC_TRIGGER] as? Int ?: 0
     fun hitRegisteredCount(engine: CombatEngineAPI): Int = engine.customData[TELEMETRY_HIT_REGISTERED] as? Int ?: 0

@@ -7,6 +7,7 @@ import cn.kasuminova.astd.api.buff.StackableBuff
 import cn.kasuminova.astd.api.buff.getBuff
 import cn.kasuminova.astd.api.combat.CombatFeedback
 import cn.kasuminova.astd.api.difficulty.ScalingEntry
+import cn.kasuminova.astd.combat.effect.base.SicWeaponUpgradeFlags
 import cn.kasuminova.astd.impl.combat.CombatFeedbackImpl
 import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import cn.kasuminova.astd.internal.i18n.I18n
@@ -17,7 +18,8 @@ import com.fs.starfarer.api.combat.ShipAPI
 /**
  * 全舰“穷距”相位轨道炮共享的持续演算叠层状态（规格 05 §2.1，2026-09 修订：Weapon 级 → Ship 级共享）。
  *
- * 动机：连续命中同一目标每层 +x% 伤害与射速（上限 10 层），异目标命中按保留比例折算，
+ * 动机：连续命中同一目标每层 +x% 伤害与射速（上限 10 层；SIC「武备升级」激活时 15 层，
+ * 见 [QiongjueStackMath.maxStacks]），异目标命中按保留比例折算，
  * 3s 未命中后按 z 层/s 流失。层数/目标全舰同型武器共享一份（多门穷距共同积累、共同受益）；
  * 状态挂 Ship 级 [BuffLifetime.HOST_BOUND]，由基建 `BuffTickPlugin` 心跳驱动 [advance]。
  *
@@ -71,7 +73,9 @@ class QiongjueCalcStacks(
     override val lifetime: BuffLifetime get() = BuffLifetime.HOST_BOUND
     override val decayMode: StackDecayMode get() = StackDecayMode.WINDOWED
     override val stacks: Int get() = stacksField
-    override val maxStacks: Int get() = QiongjuePhaseRailgunDifficulty.MAX_STACKS
+    /** 层数上限：SIC「武备升级」激活（载具舰 customData 标记）时提升至 15 层（QiongjueStackMath.maxStacks）。 */
+    override val maxStacks: Int get() =
+        QiongjueStackMath.maxStacks(SicWeaponUpgradeFlags.isArmamentUpgradeActive(ship))
 
     override fun addStacks(n: Int): Int {
         val before = stacksField
@@ -135,6 +139,7 @@ class QiongjueCalcStacks(
                     I18n.Categories.MOD,
                     "ui.qiongjue.status.stacks",
                     "stacks" to stacks,
+                    "max" to maxStacks,
                     "dmg" to pct,
                     "rof" to pct,
                 ),

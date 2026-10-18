@@ -1,5 +1,6 @@
 package cn.kasuminova.astd.combat.effect.generic.gravitycollapse
 
+import cn.kasuminova.astd.combat.effect.base.SicWeaponUpgradeFlags
 import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
 import com.fs.starfarer.api.Global
@@ -195,6 +196,7 @@ internal class GravityCollapseOnHitHandler(
      *
      * 每次 tick 的结算伤害 = 面板折算脉冲 + 目标当前船体值 × [GravityCollapseOnHitConfig.hullDamageRatio]
      * （2026-10 裁定，附加部分与脉冲合并为同一结算实例，护盾命中同样结算）；
+     * SIC「武备升级」激活时附加部分改按目标最大船体值计（[GravityCollapseDifficulty.hullDamageBasis]）；
      * 目标为战机时结算伤害翻倍（穿甲打击强度基于翻倍后的值）；
      * 目标处于相位中时结算伤害按 [GravityCollapseDifficulty.ResolvedValues.phasedDamageRatio] 折算
      * （相位舰同时承担光束遮挡与按比例承伤两个角色）。
@@ -217,7 +219,12 @@ internal class GravityCollapseOnHitHandler(
             point
         }
 
-        var totalDamage = damage + other.hitpoints.coerceAtLeast(0f) * values.hullDamageRatio
+        // 船体附加伤害基准：SIC「武备升级」激活时取目标最大船体值，否则取当前船体值
+        //（GravityCollapseDifficulty.hullDamageBasis；标记由 astd-campaign 技能写入来源舰 customData）。
+        val armamentUpgrade = SicWeaponUpgradeFlags.isArmamentUpgradeActive(source)
+        var totalDamage = damage +
+                GravityCollapseDifficulty.hullDamageBasis(other.hitpoints, other.maxHitpoints, armamentUpgrade) *
+                values.hullDamageRatio
         // 对战机伤害翻倍（2026-10 裁定）；穿甲打击强度同样基于翻倍后的单次结算伤害。
         if (ship != null && ship.isFighter) totalDamage *= FIGHTER_DAMAGE_MULT
         // 相位中的舰船按比例折算承伤（2026-10 裁定）：原版相位免疫仅为碰撞层行为，

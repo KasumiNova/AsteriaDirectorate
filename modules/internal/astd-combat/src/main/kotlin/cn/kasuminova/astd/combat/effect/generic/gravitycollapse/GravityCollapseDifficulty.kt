@@ -51,6 +51,13 @@ internal object GravityCollapseDifficulty {
         )
     }
 
+    /**
+     * 船体附加伤害的基准船体值（SIC「武备升级」分支，docs/design/skills/10-sic-skills.md 阶段二）：
+     * 未激活按目标当前船体值（现状逐字保留）；激活按目标最大船体值。负值一律钳到 0。
+     */
+    fun hullDamageBasis(currentHitpoints: Float, maxHitpoints: Float, armamentUpgrade: Boolean): Float =
+        (if (armamentUpgrade) maxHitpoints else currentHitpoints).coerceAtLeast(0f)
+
     /** 测试复位 WARN-once 状态；游戏运行路径不应调用。 */
     fun resetWarnStateForTests() {
         nullSourceWarned = false

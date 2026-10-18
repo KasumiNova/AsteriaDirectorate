@@ -1,11 +1,13 @@
 package cn.kasuminova.astd.combat.effect.arc.geminidem
 
+import cn.kasuminova.astd.combat.effect.base.SicWeaponUpgradeFlags
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BeamAPI
 import com.fs.starfarer.api.combat.BeamEffectPlugin
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.DamageType
 import com.fs.starfarer.api.combat.ShipAPI
+import com.fs.starfarer.api.util.Misc
 import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
 import java.util.IdentityHashMap
@@ -16,7 +18,8 @@ import java.util.IdentityHashMap
  * 首伤帧一次性（防照射期重复登记）：
  * - 向 [GeminiDemSyncHandler] 登记命中（同步窗口判定入口）。
  *
- * 照射期持续（仅动能光束）：
+ * 照射期持续（仅动能光束；SIC「武备升级」激活且目标已触发共振时高爆光束同等参与——
+ * 红色导弹电弧与蓝色一致，且全部电弧按目标硬辐能比例概率穿透护盾，见 advance 内分支）：
  * - 首道电弧随首伤帧立即打出，其后每 [GeminiDemDifficulty.EMP_ARC_INTERVAL] 秒一道
  *   （末次命中点 → 目标，`spawnEmpArc` 原版行为自动索敌武器/引擎模块——规格 §0.1 事实 #15），
  *   每轮打击（自 beam 首伤帧起）预算固定 [GeminiDemDifficulty.EMP_ARC_COUNT] 道，打满即止；
@@ -60,6 +63,9 @@ class GeminiDemPayloadBeamEffect : BeamEffectPlugin {
 
         /** 单道 EMP 伤害（首道电弧前按来源难度与战机标记结算一次，轮内不变）。 */
         var empPerArc = Float.NaN
+
+        /** 目标已触发同步共振（SIC「武备升级」红色导弹电弧的发射前提；首伤帧登记时定格）。 */
+        var syncResonated = false
     }
 
     private val beamStates = IdentityHashMap<BeamAPI, BeamState>()
@@ -101,17 +107,25 @@ class GeminiDemPayloadBeamEffect : BeamEffectPlugin {
             state.sinceLastDamage = 0f
             if (!state.firstHitDone) {
                 state.firstHitDone = true
-                onFirstHit(engine, beam, kind, target)
+                onFirstHit(engine, beam, state, kind, target)
                 state.eligible = !target.isHulk && !target.isFighter
             }
         } else {
             state.sinceLastDamage += amount
         }
 
+        // SIC「武备升级」（归属方粒度：payload 光束挂在 DEMScript 新建 FX drone 上，
+        // 发射舰标记经 owner 等价判定，见 SicWeaponUpgradeFlags KDoc）：
+        // - 红色（高爆）导弹在目标已触发共振后同样产生电弧（与蓝色一致）；
+        // - 电弧按目标硬辐能比例概率穿透护盾（25% 起、90% 满载 50%）。
+        val arcOwner = beam.source?.owner ?: beam.weapon?.ship?.owner
+        val upgradeActive = arcOwner != null && SicWeaponUpgradeFlags.isArmamentUpgradeActiveForOwner(engine, arcOwner)
+
         // EMP 节律：照射期内每帧累积（原版伤害按 ≈4Hz tick 落账，不能按伤害帧累积），
         // 末次伤害帧起 EMP_GRACE_SECONDS 宽限内视为仍在命中；目标变 hulk/离场即断；
         // 首道随首伤帧立即打出，其后每 EMP_ARC_INTERVAL 一道，预算 EMP_ARC_COUNT 道打满即止
-        if (kind != GeminiDemSyncHandler.WarheadKind.KINETIC || !state.eligible) return
+        val heArcs = kind == GeminiDemSyncHandler.WarheadKind.HE && upgradeActive && state.syncResonated
+        if ((kind != GeminiDemSyncHandler.WarheadKind.KINETIC && !heArcs) || !state.eligible) return
         val empTarget = state.lastTarget ?: return
         if (state.sinceLastDamage > EMP_GRACE_SECONDS) return
         if (state.arcsFired >= GeminiDemDifficulty.EMP_ARC_COUNT) return
@@ -124,22 +138,36 @@ class GeminiDemPayloadBeamEffect : BeamEffectPlugin {
         if (state.empPerArc.isNaN()) {
             state.empPerArc = resolveEmpPerArc(beam, fighterPayload)
         }
-        engine.spawnEmpArc(
-            beam.source,
-            Vector2f(state.lastPoint),
-            empTarget,
-            empTarget,
-            DamageType.ENERGY,
-            0f,
-            state.empPerArc,
-            EMP_ARC_MAX_RANGE,
-            EMP_ARC_SOUND_ID,
-            EMP_ARC_THICKNESS,
-            ARC_FRINGE,
-            ARC_CORE,
-        )
+        val from = Vector2f(state.lastPoint)
+        if (rollShieldPierce(empTarget, upgradeActive)) {
+            engine.spawnEmpArcPierceShields(
+                beam.source, from, empTarget, empTarget,
+                DamageType.ENERGY, 0f, state.empPerArc, EMP_ARC_MAX_RANGE,
+                EMP_ARC_SOUND_ID, EMP_ARC_THICKNESS, ARC_FRINGE, ARC_CORE,
+            )
+            engine.customData[TELEMETRY_PIERCE_ARCS] = pierceArcCount(engine) + 1
+        } else {
+            engine.spawnEmpArc(
+                beam.source, from, empTarget, empTarget,
+                DamageType.ENERGY, 0f, state.empPerArc, EMP_ARC_MAX_RANGE,
+                EMP_ARC_SOUND_ID, EMP_ARC_THICKNESS, ARC_FRINGE, ARC_CORE,
+            )
+        }
         state.arcsFired++
         engine.customData[TELEMETRY_EMP_ARCS] = empArcCount(engine) + 1
+    }
+
+    /**
+     * 电弧穿盾判定（SIC「武备升级」）：未激活恒 false（现状逐字保留）；激活按目标硬辐能占比
+     * 经 [GeminiDemDifficulty.arcShieldPierceChance] 概率掷签（Misc.random 一次性 proc，
+     * 不进确定性序列——电弧节律本身由照射窗口驱动，无重放一致性需求）。
+     */
+    private fun rollShieldPierce(empTarget: ShipAPI, upgradeActive: Boolean): Boolean {
+        if (!upgradeActive) return false
+        val chance = GeminiDemDifficulty.arcShieldPierceChance(
+            GeminiDemDifficulty.hardFluxFraction(empTarget.fluxTracker.hardFlux, empTarget.fluxTracker.maxFlux),
+        )
+        return chance > 0f && Misc.random.nextFloat() < chance
     }
 
     /**
@@ -159,8 +187,14 @@ class GeminiDemPayloadBeamEffect : BeamEffectPlugin {
         return GeminiDemDifficulty.WARHEAD_PANEL_DAMAGE * fraction * GeminiDemDifficulty.EMP_ARC_SHARE_OF_TOTAL * fighterMult
     }
 
-    /** 首伤帧一次性：目标过滤（hulk/战机记 DEBUG 跳过）+ 遥测 + 同步登记。 */
-    private fun onFirstHit(engine: CombatEngineAPI, beam: BeamAPI, kind: GeminiDemSyncHandler.WarheadKind, target: ShipAPI) {
+    /** 首伤帧一次性：目标过滤（hulk/战机记 DEBUG 跳过）+ 遥测 + 同步登记（共振触发状态定格给红色电弧门控）。 */
+    private fun onFirstHit(
+        engine: CombatEngineAPI,
+        beam: BeamAPI,
+        state: BeamState,
+        kind: GeminiDemSyncHandler.WarheadKind,
+        target: ShipAPI,
+    ) {
         if (target.isHulk) {
             log.debug("双子星 DEM payload：目标为残骸（${target.id}），不登记不触发同步（光束伤害照常）")
             return
@@ -183,7 +217,10 @@ class GeminiDemPayloadBeamEffect : BeamEffectPlugin {
                 engine.customData[TELEMETRY_HE_HIT] = heHitCount(engine) + 1
         }
 
-        GeminiDemSyncHandler.recordHit(engine, target, kind, beam.to, beam.source)
+        // 登记后即读共振表：本次命中触发（recordHit 返回 true）或此前已由异种弹头触发均视为已共振
+        state.syncResonated =
+            GeminiDemSyncHandler.recordHit(engine, target, kind, beam.to, beam.source) ||
+                    GeminiDemSyncHandler.wasResonated(engine, target)
     }
 
     companion object {
@@ -209,11 +246,15 @@ class GeminiDemPayloadBeamEffect : BeamEffectPlugin {
         /** 遥测键：动能光束 EMP 电弧累计道数（≈ 动能命中轮数 × [GeminiDemDifficulty.EMP_ARC_COUNT]）。 */
         const val TELEMETRY_EMP_ARCS = "astd_gemini_dem_emp_arc_count"
 
+        /** 遥测键：SIC「武备升级」穿盾电弧累计道数（含红/蓝两色）。 */
+        const val TELEMETRY_PIERCE_ARCS = "astd_gemini_dem_emp_arc_pierce_count"
+
         /** 遥测键：动能/高爆 payload 光束首伤帧命中次数（同步配对观测面）。 */
         const val TELEMETRY_KINETIC_HIT = "astd_gemini_dem_kinetic_hit_count"
         const val TELEMETRY_HE_HIT = "astd_gemini_dem_he_hit_count"
 
         fun empArcCount(engine: CombatEngineAPI): Int = engine.customData[TELEMETRY_EMP_ARCS] as? Int ?: 0
+        fun pierceArcCount(engine: CombatEngineAPI): Int = engine.customData[TELEMETRY_PIERCE_ARCS] as? Int ?: 0
         fun kineticHitCount(engine: CombatEngineAPI): Int = engine.customData[TELEMETRY_KINETIC_HIT] as? Int ?: 0
         fun heHitCount(engine: CombatEngineAPI): Int = engine.customData[TELEMETRY_HE_HIT] as? Int ?: 0
     }

@@ -5,6 +5,7 @@ import cn.kasuminova.astd.campaign.bounty.core.BountyFleetTuner
 import cn.kasuminova.astd.campaign.bounty.core.BountyOfficerSkills
 import cn.kasuminova.astd.campaign.bounty.core.BountyPoolConfig
 import cn.kasuminova.astd.campaign.bounty.core.PoolSide
+import cn.kasuminova.astd.campaign.integration.sic.SicIntegration
 import cn.kasuminova.astd.combat.hullmods.HullmodIncompatibility
 import cn.kasuminova.astd.combat.hullmods.base.ASTDDualModeRegistry
 import cn.kasuminova.astd.combat.hullmods.base.activateDualMode
@@ -53,6 +54,9 @@ class BountyFleetTunerImpl(
         reorderFleet(fleet)
         assignCrew(fleet, bountyKey)
         installExtraFittings(fleet)
+        // SIC 联动（软依赖门控在 SicIntegration 内部）：固定挂载菀星智能副官。
+        // 放在 assignCrew 完成后：副官技能入场回调依赖最终军官/装配状态。
+        SicIntegration.attachBountyOfficerIfEnabled(fleet)
 
         fleet.fleetData.setSyncNeeded()
         fleet.fleetData.syncIfNeeded()

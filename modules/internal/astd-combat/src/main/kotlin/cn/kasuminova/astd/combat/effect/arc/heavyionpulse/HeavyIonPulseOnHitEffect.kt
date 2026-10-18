@@ -2,6 +2,7 @@ package cn.kasuminova.astd.combat.effect.arc.heavyionpulse
 
 import cn.kasuminova.astd.api.buff.buffHost
 import cn.kasuminova.astd.api.buff.getOrCreateBuffByWeapon
+import cn.kasuminova.astd.combat.effect.base.SicWeaponUpgradeFlags
 import cn.kasuminova.astd.impl.combat.CombatRandom
 import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import com.fs.starfarer.api.Global
@@ -79,6 +80,9 @@ class HeavyIonPulseOnHitEffect : OnHitEffectPlugin {
         val resistBuff = host.find(HeavyIonPulseEmpResistStacks.BUFF_ID) as? HeavyIonPulseEmpResistStacks
             ?: HeavyIonPulseEmpResistStacks(ship, engine, host).also { host.register(it) }
         resistBuff.perStack = values.empResistPerStack
+        // SIC「武备升级」：来源舰带标记时超 100% 的 EMP 抗性削弱转为能量易伤（同 perStack 覆盖口径）
+        resistBuff.armamentUpgrade =
+            SicWeaponUpgradeFlags.isArmamentUpgradeActive(projectile.source ?: projectile.weapon?.ship)
         resistBuff.addStacks(1)
         if (projectile.source != null && projectile.source == engine.playerShip) resistBuff.showOnPlayerHud = true
 

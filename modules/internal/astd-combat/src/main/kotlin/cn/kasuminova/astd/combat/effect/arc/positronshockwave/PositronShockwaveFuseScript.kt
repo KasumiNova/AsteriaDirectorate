@@ -4,6 +4,7 @@ import cn.kasuminova.astd.api.combat.ConeDamageAdjust
 import cn.kasuminova.astd.api.combat.ConeImpactSpec
 import cn.kasuminova.astd.api.combat.ConeTargetFilter
 import cn.kasuminova.astd.combat.effect.arc.positronshockwave.PositronShockwaveFuseScript.Companion.detonate
+import cn.kasuminova.astd.combat.effect.base.SicWeaponUpgradeFlags
 import cn.kasuminova.astd.impl.combat.ConeImpactHandler
 import cn.kasuminova.astd.impl.render.ConeImpactVfx
 import cn.kasuminova.astd.impl.render.ConeImpactVfxSpec
@@ -158,6 +159,8 @@ class PositronShockwaveFuseScript(
             val claimKey = TELEMETRY_DETONATE_CLAIM_PREFIX + System.identityHashCode(projectile)
             if (engine.customData[claimKey] == true) return
             engine.customData[claimKey] = true
+            // 锥面单次结算伤害（damageAdjust 回调结果）：SIC「武备升级」对战机追加高爆的基准
+            var dealtDamage = spec.damage
             val targets = ConeImpactHandler.resolve(
                 engine,
                 ConeImpactSpec(
@@ -181,10 +184,22 @@ class PositronShockwaveFuseScript(
                         val swarm = hits.count { e ->
                             e is MissileAPI || (e as? ShipAPI)?.let { it.isFighter || it.isDrone } == true
                         }
-                        spec.damage * (1f + swarm * spec.densityBonus)
+                        (spec.damage * (1f + swarm * spec.densityBonus)).also { dealtDamage = it }
                     },
                 ),
             )
+            // SIC「武备升级」：对战机追加等量高爆伤害（标记由 astd-campaign 技能写入来源舰 customData）
+            val fighterExtraHe = PositronShockwaveDifficulty.fighterExtraHeDamage(
+                dealtDamage, SicWeaponUpgradeFlags.isArmamentUpgradeActive(source),
+            )
+            if (fighterExtraHe > 0f) {
+                for (target in targets) {
+                    if (target !is ShipAPI || !target.isFighter || target.isHulk) continue
+                    engine.applyDamage(
+                        target, loc, fighterExtraHe, DamageType.HIGH_EXPLOSIVE, 0f, true, false, source, true,
+                    )
+                }
+            }
             bumpTelemetry(engine, detonateTelemetryKey)
             if (spawnLoc != null) {
                 engine.customData[TELEMETRY_LAST_DETONATE_DIST] = Misc.getDistance(spawnLoc, loc)

@@ -78,6 +78,14 @@ object ElectricDriveAcceleratorDifficulty {
     /** 装药额外伤害 = 命中当发实际伤害 × rollPct/100（以面板为基准、随修正自然缩放）。 */
     fun extraDamage(baseDamage: Float, rollPct: Float): Float = baseDamage * rollPct / 100f
 
+    /**
+     * 装药百分比取值（SIC「武备升级」分支，docs/design/skills/10-sic-skills.md 阶段二）：
+     * 未激活走 [roll] 随机（现状：[0, maxPct] 均匀随机，共享 CombatRandom 确定性序列）；
+     * 激活为固定伤害——2026-10 裁定：固定取原随机区间的上限值（[maxPct]），不消耗随机序列。
+     */
+    fun chargeRollPct(maxPct: Float, armamentUpgrade: Boolean, roll: () -> Float): Float =
+        if (armamentUpgrade) maxPct else roll()
+
     /** 追加伤害触发判定：extra ≥ [EXTRA_APPLY_THRESHOLD] 才 applyDamage 与飘浮字。 */
     fun shouldApplyExtra(extra: Float): Boolean = extra >= EXTRA_APPLY_THRESHOLD
 

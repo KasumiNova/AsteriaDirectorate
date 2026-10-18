@@ -24,7 +24,8 @@ import kotlin.math.round
  * 动机：命中护盾后在目标舰累积淤积层，每层产出两份护盾维持压力——
  * 1. 乘区：`shieldUpkeepMult` 最终乘区 +stacks × perStack（难度查表 1%~5%）；
  * 2. 固定软辐能：按目标舰体型与难度查表（0.5/1/1.5/2 ~ 2.5/5/7.5/10 su/s 每层），
- *    **仅在目标护盾开启期间**逐帧 `increaseFlux(soft)` 直写（关盾不产出）；
+ *    **仅在目标护盾开启期间**逐帧 `increaseFlux(soft)` 直写（关盾不产出；
+ *    SIC「武备升级」激活时不限护盾状态，见 [fluxRegardlessOfShield]）；
  * 两项之和按 [ChargeNeedleTuning.dissipationCapFactor] 折算，最高不超过目标最终耗散的 200%（不受难度影响）。
  *
  * 消散：连续流失，速率 = 当前层数 × 4%/s（护盾关闭时翻倍 8%/s）、下限 2 层/s（固定不缩放，不受难度影响）。
@@ -51,6 +52,12 @@ class ChargeNeedleStacks(
 
     /** 每层固定软辐能（su/s）：由 OnHit 按目标体型 + 难度覆写（同 perStack 覆盖口径）。 */
     var flatPerStack: Float = ChargeNeedleTuning.FLAT_FLUX_FRIGATE.v2
+
+    /**
+     * SIC「武备升级」标记（由 OnHit 每次命中按来源舰覆写，同 perStack 覆盖口径）：
+     * true 时固定软辐能无论目标护盾是否开启均产出（[ChargeNeedleTuning.flatFluxPerSec]）。
+     */
+    var fluxRegardlessOfShield: Boolean = false
 
     /** 攻击方为玩家船时置 true：在玩家 HUD 显示目标淤积状态。 */
     var showOnPlayerHud: Boolean = false
@@ -99,7 +106,7 @@ class ChargeNeedleStacks(
         val dissipation = ship.mutableStats.fluxDissipation.modifiedValue
         val baseUpkeep = ship.hullSpec.shieldSpec?.upkeepCost ?: 0f
         val upkeepExtra = baseUpkeep * stacks * perStack
-        val flatPerSec = if (shieldOn) stacks * flatPerStack else 0f
+        val flatPerSec = ChargeNeedleTuning.flatFluxPerSec(stacks, flatPerStack, shieldOn, fluxRegardlessOfShield)
         val factor = ChargeNeedleTuning.dissipationCapFactor(dissipation, upkeepExtra, flatPerSec)
         lastFactor = factor
         lastFlatPerSec = flatPerSec

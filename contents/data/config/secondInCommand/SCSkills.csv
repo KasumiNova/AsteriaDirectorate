@@ -1,0 +1,11 @@
+id,name,iconPath,npcSpawnWeight,plugin
+astd_sc_skydome_network,天幕网络,graphics/icons/skills/astd_skill_combat_intel.png,1,cn.kasuminova.astd.campaign.integration.sic.SkydomeNetworkSkill
+astd_sc_armament_upgrade,武备升级,graphics/icons/skills/astd_skill_energy_red.png,1,cn.kasuminova.astd.campaign.integration.sic.ArmamentUpgradeSkill
+astd_sc_grav_tuning,引力调谐,graphics/icons/skills/astd_skill_phase_red.png,1,cn.kasuminova.astd.campaign.integration.sic.GravTuningSkill
+astd_sc_frost_flux_grid,六相冰辐能网络,graphics/icons/skills/astd_skill_energy_red.png,1,cn.kasuminova.astd.campaign.integration.sic.FrostFluxGridSkill
+astd_sc_skydome_reinforce,天幕强化,graphics/icons/skills/astd_skill_combat_intel.png,1,cn.kasuminova.astd.campaign.integration.sic.SkydomeReinforceSkill
+astd_sc_dim_shunt,维度分流,graphics/icons/skills/astd_skill_phase_red.png,1,cn.kasuminova.astd.campaign.integration.sic.DimShuntSkill
+astd_sc_elite_wolfpack,精英狼群,graphics/icons/skills/astd_skill_energy_red.png,1,cn.kasuminova.astd.campaign.integration.sic.EliteWolfpackSkill
+astd_sc_skydome_ascend,天幕升格,graphics/icons/skills/astd_skill_combat_intel.png,1,cn.kasuminova.astd.campaign.integration.sic.SkydomeAscendSkill
+astd_sc_intel_link,智能联结,graphics/icons/skills/astd_skill_combat_intel.png,,cn.kasuminova.astd.campaign.integration.sic.IntelLinkSkill
+astd_sc_skydome_unbound,天幕解限,graphics/icons/skills/astd_skill_combat_intel.png,1,cn.kasuminova.astd.campaign.integration.sic.SkydomeUnboundSkill

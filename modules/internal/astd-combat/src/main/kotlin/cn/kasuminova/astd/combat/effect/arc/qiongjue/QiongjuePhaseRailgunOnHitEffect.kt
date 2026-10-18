@@ -2,6 +2,7 @@ package cn.kasuminova.astd.combat.effect.arc.qiongjue
 
 import cn.kasuminova.astd.api.buff.buffHost
 import cn.kasuminova.astd.api.combat.CombatFeedback
+import cn.kasuminova.astd.combat.effect.base.SicWeaponUpgradeFlags
 import cn.kasuminova.astd.impl.combat.CombatFeedbackImpl
 import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import cn.kasuminova.astd.impl.render.ConeImpactVfx
@@ -67,7 +68,11 @@ class QiongjuePhaseRailgunOnHitEffect : OnHitEffectPlugin {
         val retainPct = QiongjueStackMath.resolve(DifficultyTuningImpl, QiongjuePhaseRailgunDifficulty.SWITCH_RETAIN, ship.owner)
         val oldTargetValid = buff.isTargetAlive()
         val sameTarget = oldTargetValid && buff.target === targetShip
-        val stacksAfter = QiongjueStackMath.stacksAfterHit(buff.stacks, oldTargetValid, sameTarget, retainPct)
+        val stacksAfter = QiongjueStackMath.stacksAfterHit(
+            buff.stacks, oldTargetValid, sameTarget, retainPct,
+            // SIC「武备升级」：上限提升由标记分支统一解析（与 Buff maxStacks 同一入口）
+            maxStacks = QiongjueStackMath.maxStacks(SicWeaponUpgradeFlags.isArmamentUpgradeActive(ship)),
+        )
         buff.target = targetShip
         buff.addStacks(stacksAfter - buff.stacks)
         buff.lastHitTime = engine.getTotalElapsedTime(false)

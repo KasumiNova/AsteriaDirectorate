@@ -23,6 +23,8 @@ import kotlin.math.round
  * 隐藏机制（不在武器描述展示）：抗性降低值超出目标当前抗性部分自然转化为 EMP 易伤——
  * 位移语义下 `empDamageTakenMult` 可越过 1.0（如目标抗性 50% 即 mult 0.5，削减 100% 即 +1.0 位移，
  * 终值 1.5 = +50% EMP 承伤），无需特判分支。
+ * SIC「武备升级」激活时该隐藏机制被分流取代：EMP 位移封顶 100%，超出部分按 5%:1%
+ * 转为 `energyDamageTakenMult` 能量易伤（[armamentUpgrade]，docs/design/skills/10-sic-skills.md 阶段二）。
  *
  * 0 值防线：目标 `empDamageTakenMult` ≤ 0（完全 EMP 免疫，0 乘区无法被乘算突破）时
  * 本机制不产生效果——层数照常累积/消散但不写 stat（与 EMP 贯穿 mult ≤ 0 整体跳过同一口径，文档化）。
@@ -45,6 +47,13 @@ class HeavyIonPulseEmpResistStacks(
 
     /** 每层 EMP 抗性削减：由 OnHit 每次命中按难度覆写（多攻击者时后命中者口径覆盖，对齐 01 已文档化口径）。 */
     var perStack: Float = HeavyIonPulseTuning.EMP_RESIST_PER_STACK.v2
+
+    /**
+     * SIC「武备升级」标记（由 OnHit 每次命中按来源舰覆写，同 perStack 覆盖口径）：
+     * true 时 EMP 抗性位移封顶 100%，超出部分按 5%:1% 转换为目标能量易伤
+     * （[HeavyIonPulseTuning.splitEmpShift]）。
+     */
+    var armamentUpgrade: Boolean = false
 
     /** 攻击方为玩家船时置 true：在玩家 HUD 显示目标削减状态。 */
     var showOnPlayerHud: Boolean = false
@@ -80,19 +89,32 @@ class HeavyIonPulseEmpResistStacks(
 
     override fun onRemove() {
         ship.mutableStats.empDamageTakenMult.unmodifyMult(BUFF_ID)
+        ship.mutableStats.energyDamageTakenMult.unmodifyMult(BUFF_ID)
     }
 
     /**
      * EMP 抗性绝对位移幂等刷新：先 unmodify 读他源终值，再按 `+stacks × perStack` 反推乘区系数写回。
      * modifierId 固定，每帧重写不叠乘；他源终值 ≤ 0（完全免疫）时不写入（0 乘区不可突破）。
+     *
+     * SIC「武备升级」（[armamentUpgrade]）：位移经 [HeavyIonPulseTuning.splitEmpShift] 分流——
+     * EMP 位移封顶 100%，超出部分转为 `energyDamageTakenMult` 乘区（同帧幂等重写，0 易伤不挂 modifier）。
      */
     private fun refreshEmpResist() {
+        val (empShift, energyVuln) = HeavyIonPulseTuning.splitEmpShift(stacks * perStack, armamentUpgrade)
+
         val stat = ship.mutableStats.empDamageTakenMult
         stat.unmodifyMult(BUFF_ID)
         val current = stat.modifiedValue
-        if (current <= 0f) return
-        val shifted = current + stacks * perStack
-        stat.modifyMult(BUFF_ID, shifted / current)
+        if (current > 0f) {
+            val shifted = current + empShift
+            stat.modifyMult(BUFF_ID, shifted / current)
+        }
+
+        val energyStat = ship.mutableStats.energyDamageTakenMult
+        energyStat.unmodifyMult(BUFF_ID)
+        if (energyVuln > 0f) {
+            energyStat.modifyMult(BUFF_ID, 1f + energyVuln)
+        }
     }
 
     /** HUD 双向维护：攻击方=玩家显示目标层数；受击方=玩家显示本舰被削减的抗性。 */

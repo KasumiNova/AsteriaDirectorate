@@ -107,3 +107,28 @@ object HullMod_astd_mode_next_automated : HullModEntry() {
     override val short: String = SsI18n.t("hullmod.$id.short")
     override val sprite: String = "graphics/hullmods/astd_dual_mode_switcher_auto.png"
 }
+
+/**
+ * 智能联结标记船插（SIC 联动「智能联结」天赋改造的永久标记，
+ * docs/design/skills/10-sic-skills.md 阶段四）。
+ *
+ * - id 必须与 cn.kasuminova.astd.campaign.integration.sic.SicTuning.INTEL_LINK_HULLMOD_ID
+ *   完全一致（改造按钮 addPermaMod 与技能入场判定共用）；
+ * - hidden + 不可解锁 + 不掉落：只经改造按钮代码分发（addPermaMod），不进 refit 选择器、
+ *   不掉蓝图/战利品；已装时仍显示在已装列表（hiddenEverywhere=false），玩家可见标记；
+ * - 纯标记：脚本只渲染描述（说明「需要舰队副官天赋【智能联结】生效」与效果内容），
+ *   效果由 SIC 技能 IntelLinkSkill 驱动。
+ */
+object HullMod_astd_sc_intel_link : HullModEntry() {
+    override val id: String = "astd_sc_intel_link"
+    override val name: String = hullmodName(id)
+    override val tier: Int = 3
+    override val rarity: Int = 0
+    override val tech: String = ""
+    override val tags: String = "no_drop, no_drop_salvage"
+    override val unlocked: Boolean = false
+    override val hidden: Boolean = true
+    override val script: String = "cn.kasuminova.astd.combat.hullmods.ASTDIntelLinkHullMod"
+    override val short: String = SsI18n.t("hullmod.$id.short")
+    override val sprite: String = "graphics/icons/skills/astd_skill_combat_intel.png"
+}

@@ -20,7 +20,8 @@ import kotlin.math.min
  *
  * 数值缩放口径（2026-09 修订二）：泄放概率 / EMP 倍率为五档精确查表（[ScalingTable]）；
  * 每层维持加成 1%~5% 与体型固定软辐能（0.5/1/1.5/2 ~ 2.5/5/7.5/10）保持三锚点 LINEAR（逐档恰重合）；
- * 固定软辐能仅在目标**护盾开启期间**产出（Stacks 逐帧按 shield.isOn 门控）；
+ * 固定软辐能仅在目标**护盾开启期间**产出（Stacks 逐帧按 shield.isOn 门控；
+ * SIC「武备升级」激活时不限护盾状态，见 [flatFluxPerSec]）；
  * 消散速率（当前层数 4%/s、护盾关闭时翻倍 8%/s、下限 2 层/s）与 200% 耗散上限**不受难度系数影响**（用户裁定）。
  * 玩家来源（owner == 0）按我方档位取值（默认砺刃 v2，见 DifficultyTuning.valueFor）。
  */
@@ -115,6 +116,14 @@ object ChargeNeedleTuning {
         }
         return tuning.valueFor(entry, isPlayer)
     }
+
+    /**
+     * 本帧固定软辐能产出（纯函数）：正常仅目标护盾开启期间产出（[shieldOn] 门控，规格 01 §2.2）；
+     * SIC「武备升级」激活（[fluxRegardlessOfShield]）时无论护盾是否开启均产出
+     * （docs/design/skills/10-sic-skills.md 阶段二）。层数 ≤ 0 恒 0。
+     */
+    fun flatFluxPerSec(stacks: Int, flatPerStack: Float, shieldOn: Boolean, fluxRegardlessOfShield: Boolean): Float =
+        if (shieldOn || fluxRegardlessOfShield) stacks.coerceAtLeast(0) * flatPerStack else 0f
 
     /**
      * 连续消散速率（纯函数）：当前层数 × [DECAY_RATIO_PER_SECOND]（护盾关闭时 ×[DECAY_SHIELD_OFF_MULT]），

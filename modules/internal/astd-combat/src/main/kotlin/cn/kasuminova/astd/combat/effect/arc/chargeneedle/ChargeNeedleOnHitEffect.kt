@@ -2,6 +2,7 @@ package cn.kasuminova.astd.combat.effect.arc.chargeneedle
 
 import cn.kasuminova.astd.api.buff.buffHost
 import cn.kasuminova.astd.api.buff.getOrCreateBuffByWeapon
+import cn.kasuminova.astd.combat.effect.base.SicWeaponUpgradeFlags
 import cn.kasuminova.astd.impl.combat.CombatRandom
 import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import com.fs.starfarer.api.Global
@@ -84,6 +85,9 @@ class ChargeNeedleOnHitEffect : OnHitEffectPlugin {
             ?: ChargeNeedleStacks(ship, engine, host).also { host.register(it) }
         buff.perStack = values.perStack
         buff.flatPerStack = values.flatFluxPerStack
+        // SIC「武备升级」：来源舰带标记时淤积的固定软辐能不再受目标护盾状态门控（同 perStack 覆盖口径）
+        buff.fluxRegardlessOfShield =
+            SicWeaponUpgradeFlags.isArmamentUpgradeActive(projectile.source ?: projectile.weapon?.ship)
         buff.addStacks(1)
         if (projectile.source != null && projectile.source == engine.playerShip) buff.showOnPlayerHud = true
 

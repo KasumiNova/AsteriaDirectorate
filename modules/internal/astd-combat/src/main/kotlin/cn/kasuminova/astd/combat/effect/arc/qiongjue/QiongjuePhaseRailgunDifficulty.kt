@@ -23,6 +23,9 @@ object QiongjuePhaseRailgunDifficulty {
     /** 层数上限（固定不缩放）。 */
     const val MAX_STACKS = 10
 
+    /** SIC「武备升级」激活时的层数上限（docs/design/skills/10-sic-skills.md 阶段二，固定不缩放）。 */
+    const val SIC_UPGRADE_MAX_STACKS = 15
+
     /** 衰减窗口：最近一次命中起静默该时长后层数开始流失（固定不缩放）。 */
     const val DECAY_WINDOW_SECONDS = 3f
 

@@ -20,6 +20,14 @@ object QiongjueStackMath {
     internal const val STACK_EPS = 1e-4f
 
     /**
+     * 层数上限（SIC「武备升级」分支）：未激活恒 [QiongjuePhaseRailgunDifficulty.MAX_STACKS]（现状），
+     * 激活提升为 [QiongjuePhaseRailgunDifficulty.SIC_UPGRADE_MAX_STACKS]。
+     */
+    fun maxStacks(armamentUpgrade: Boolean): Int =
+        if (armamentUpgrade) QiongjuePhaseRailgunDifficulty.SIC_UPGRADE_MAX_STACKS
+        else QiongjuePhaseRailgunDifficulty.MAX_STACKS
+
+    /**
      * 难度取值唯一入口：玩家来源（owner == 0）按我方档位（默认砺刃 v2）取值，否则按轨一 k_s 三锚点映射。
      * 每次命中/每帧调用（不缓存），LunaLib 设置变更即时生效。
      */

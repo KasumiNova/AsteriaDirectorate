@@ -42,10 +42,22 @@ object PositronShockwaveDifficulty {
     val DENSITY_BONUS = ScalingEntry(0.1f, 0.2f, 0.5f)
 
     /**
-     * 近炸引信触发距离占锥长比例（2026-09 用户裁定：敌对战机/导弹进入锥状射程约 40% 处才引爆，
-     * 不再进入锥缘立刻引爆）；几何与结算锥同源，仅引信触发圈收窄。
+     * 近炸引信触发距离占锥长比例（2026-09 用户裁定：敌对战机/导弹进入锥状射程约 40% 处才引爆，     * 不再进入锥缘立刻引爆）；几何与结算锥同源，仅引信触发圈收窄。
      */
     const val FUSE_RANGE_RATIO = 0.4f
+
+    /**
+     * SIC「武备升级」：对战机追加高爆伤害的倍率（docs/design/skills/10-sic-skills.md 阶段二，
+     * +100% 即按锥面单次结算伤害等额追加一发 HIGH_EXPLOSIVE，固定不缩放）。
+     */
+    const val SIC_FIGHTER_EXTRA_HE_MULT = 1f
+
+    /**
+     * 对战机追加高爆伤害量（纯函数，SIC「武备升级」分支）：未激活恒 0（不结算）；
+     * 激活按锥面单次结算伤害 [dealtDamage] × [SIC_FIGHTER_EXTRA_HE_MULT] 追加。负值钳到 0。
+     */
+    fun fighterExtraHeDamage(dealtDamage: Float, armamentUpgrade: Boolean): Float =
+        if (armamentUpgrade) dealtDamage.coerceAtLeast(0f) * SIC_FIGHTER_EXTRA_HE_MULT else 0f
 
     /** 无主弹体 WARN 的 once 守卫（罕见路径，不刷屏）。 */
     @Volatile

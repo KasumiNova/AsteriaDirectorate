@@ -1,0 +1,2 @@
+id,name,categories,spawnWeight,color,tags,order,plugin
+astd_sc_wanxing,菀星智能,sc_cat_automated,1.0,"160,150,235,255",,950,cn.kasuminova.astd.campaign.integration.sic.WanxingAptitude

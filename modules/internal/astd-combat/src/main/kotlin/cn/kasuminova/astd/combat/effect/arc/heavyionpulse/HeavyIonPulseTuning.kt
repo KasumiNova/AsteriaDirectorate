@@ -33,6 +33,26 @@ object HeavyIonPulseTuning {
     const val RESIST_MAX_STACKS = 20
 
     /**
+     * SIC「武备升级」的能量易伤转换比例（docs/design/skills/10-sic-skills.md 阶段二）：
+     * 超出 100% 的 EMP 抗性削弱按 5% : 1% 转换为目标能量易伤（除以本系数）。
+     */
+    const val ENERGY_VULN_DIVISOR = 5f
+
+    /**
+     * EMP 抗性削弱量的分流（纯函数，SIC「武备升级」分支）：
+     * 未激活——全部作用于 EMP 抗性位移（现状：超出目标抗性的部分经位移自然转为 EMP 易伤）；
+     * 激活——EMP 位移封顶 100%（1.0），超出部分按 [ENERGY_VULN_DIVISOR] 转换为能量易伤比例
+     * （返回 second，写入目标 `energyDamageTakenMult` 乘区）。负位移一律钳到 0。
+     */
+    fun splitEmpShift(shift: Float, armamentUpgrade: Boolean): Pair<Float, Float> {
+        val s = shift.coerceAtLeast(0f)
+        if (!armamentUpgrade) return s to 0f
+        val empShift = minOf(s, 1f)
+        val energyVuln = (s - 1f).coerceAtLeast(0f) / ENERGY_VULN_DIVISOR
+        return empShift to energyVuln
+    }
+
+    /**
      * EMP 抗性削减消散速率（层/s，固定不缩放）：0.5 层/s 即每 2 秒消散 1 层。
      * 连续模式（[cn.kasuminova.astd.api.buff.StackDecayMode.CONTINUOUS]）下浮点累加器
      * 天然支持分数层速率——层数视图取 floor，每 2s 整层读数减 1，无需间隔模式。

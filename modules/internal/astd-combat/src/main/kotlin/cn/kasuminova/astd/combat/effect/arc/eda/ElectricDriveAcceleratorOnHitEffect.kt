@@ -1,6 +1,7 @@
 package cn.kasuminova.astd.combat.effect.arc.eda
 
 import cn.kasuminova.astd.api.buff.getOrCreateBuffByWeapon
+import cn.kasuminova.astd.combat.effect.base.SicWeaponUpgradeFlags
 import cn.kasuminova.astd.impl.combat.CombatRandom
 import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import com.fs.starfarer.api.Global
@@ -20,7 +21,8 @@ import java.awt.Color
  * 电驱加速炮的不稳定装药命中结算（规格 03 §2.3）：挂 `.proj` 的 `onHitEffect`。
  *
  * 命中时按三锚点上限 [0, maxPct] 均匀随机追加一次 [DamageType.KINETIC] 伤害
- * （以命中当发实际伤害为基准，随修正自然缩放），同帧触发玩家可见反馈：
+ * （SIC「武备升级」激活时固定取上限值，见 [ElectricDriveAcceleratorDifficulty.chargeRollPct]；
+ * 以命中当发实际伤害为基准，随修正自然缩放），同帧触发玩家可见反馈：
  * 弹着点小型能量闪（中心亮粒 + 径向散射粒，克制不抢 500su 拖尾主视觉）。
  * 追加伤害不再单独飘浮字——同帧 applyDamage 的数值会随主伤害数字一并叠加显示，
  * 额外补字只会叠字（2026-09 实机观测裁定）。
@@ -82,15 +84,22 @@ class ElectricDriveAcceleratorOnHitEffect : OnHitEffectPlugin {
             return
         }
 
-        // 4. 确定性随机：BuffHost Weapon 级状态取 callIndex；连发每发是各自独立的取值事件（00 §4.1）。
-        val state = source.getOrCreateBuffByWeapon(ElectricDriveChargeState.BUFF_ID, weapon) {
-            ElectricDriveChargeState(
-                source,
-                weapon,
-                ElectricDriveAcceleratorDifficulty.seedOf(source.id, weapon.slot.id),
-            )
-        } as ElectricDriveChargeState
-        val rollPct = CombatRandom.nextFloatIn(state.seed, state.nextCallIndex(), 0f..maxPct)
+        // 4. 装药百分比：SIC「武备升级」激活时固定取随机区间上限（不消耗随机序列）；
+        //    未激活走共享 CombatRandom 确定性序列（BuffHost Weapon 级状态取 callIndex；
+        //    连发每发是各自独立的取值事件，00 §4.1）。
+        val rollPct = ElectricDriveAcceleratorDifficulty.chargeRollPct(
+            maxPct,
+            SicWeaponUpgradeFlags.isArmamentUpgradeActive(source),
+        ) {
+            val state = source.getOrCreateBuffByWeapon(ElectricDriveChargeState.BUFF_ID, weapon) {
+                ElectricDriveChargeState(
+                    source,
+                    weapon,
+                    ElectricDriveAcceleratorDifficulty.seedOf(source.id, weapon.slot.id),
+                )
+            } as ElectricDriveChargeState
+            CombatRandom.nextFloatIn(state.seed, state.nextCallIndex(), 0f..maxPct)
+        }
 
         // 5. 结算：以命中当发实际伤害为基准；低于阈值不产生事件、不飘浮字（显式判定，非静默吞掉）。
         val extra = ElectricDriveAcceleratorDifficulty.extraDamage(projectile.damageAmount, rollPct)
