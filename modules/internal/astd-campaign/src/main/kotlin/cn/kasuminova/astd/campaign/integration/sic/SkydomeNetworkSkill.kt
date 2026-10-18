@@ -50,6 +50,7 @@ class SkydomeNetworkSkill : SCBaseSkillPlugin() {
             topGapFill = 0f,
             contentInset = SicShared.CARD_CONTENT_INSET,
         ) {
+            custom { SicShared.autoPointsHeader(it, 8f) }
             para(
                 "ui.sic.skydome_network.line.points",
                 Misc.getHighlightColor(),

@@ -1,6 +1,6 @@
 {
 	"id":"astd_combat_intel",
-	"governingAptitude":"combat",
+	"governingAptitude":"astd_generic",
 	"compressHullmods":false,
 	"elite":true,
 	"permanent":true,

@@ -67,6 +67,8 @@
 
 		"ui.sic.shared.auto_points_footer": "总 \"无人舰点数\" 等于舰队中所有自动化舰船的部署点数，各自乘以安装的 AI 核心的倍率 - Alpha 核心 %alpha%×, Beta 核心 %beta%×, Gamma 核心 %gamma%×。由于安全联锁系统的限制，分配有 AI 核心的舰船%lock%。",
 		"ui.sic.shared.auto_points_footer_lock": "部署点数不受任何因素的影响",
+		"ui.sic.shared.auto_points_header_recovery": "如果空余无人舰点数大于零，就可以恢复自动化舰船",
+		"ui.sic.shared.auto_points_header_ai_core": "自动化舰船只能由 AI 核心操控",
 
 		"ui.sic.skydome_network.affects": "整个舰队",
 		"ui.sic.skydome_network.line.points": "+%points% 无人舰点数",

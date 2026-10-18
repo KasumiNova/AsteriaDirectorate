@@ -236,7 +236,8 @@ internal class SpacerBlock(val height: Float) : HullmodBlock
  * 直渲染块：持有对 [TooltipMakerAPI] 的直接渲染回调，由渲染器在卡片内按声明序执行。
  * 仅供不走 I18n 键/块模型的既有渲染辅助接入（如 SIC 风格行着色）；
  * para/heading/table 表达得了的内容禁止用本块绕过块模型。
- * 配合 hullmodCard contentInset 使用时每个 custom 块只应添加一个元素（内缩按最后添加的元素生效）。
+ * 配合 hullmodCard contentInset 使用时 custom 块无需任何特殊处理（内缩的 X 偏移由
+ * belowLeft 约束链自链首继承），可添加多个元素。
  */
 internal class CustomBlock(val render: (TooltipMakerAPI) -> Unit) : HullmodBlock
 
@@ -422,8 +423,9 @@ internal fun hullmodTooltip(block: HullmodCardBuilder.() -> Unit): HullmodToolti
  * 否则卡片内容上移盖住原版流式布局的既有文本（scope 行 / 效果组标签）。
  * [contentInset] 为卡片内容的水平内边距：原版船插 tooltip 宿主的内容流自带约 10px 内缩
  * （内容面板 +10 / 文本流再 +5，见 ASTDHullModTooltipBackground 排版注释），传 0 维持现状；
- * SIC / LunaLib 等无内缩宿主传正值（如 10f），DSL 将文本换行宽收窄 2×inset 并把
- * 各内容元素右移 inset，使文本不再压着背景边框特效。背景四边形几何不受影响。
+ * SIC / LunaLib 等无内缩宿主传正值（如 10f），DSL 将文本换行宽收窄 2×inset，并对链首
+ * 元素设置一次 X 对齐偏移（belowLeft 约束链逐环继承，全链均匀右移 inset），
+ * 使文本不再压着背景边框特效。背景四边形几何不受影响。
  */
 fun TooltipMakerAPI.hullmodCard(
     width: Float,
@@ -459,28 +461,28 @@ internal object HullmodCardRenderer {
         tooltip.buildWith {
             spacer(topGapFill) // 填充 Hullmod Tooltip 顶部空隙（无预留空隙的宿主传 0）
             withHullmodBackground(accentColor = theme.accentColor, width = width) {
-                // 无内缩宿主：文本换行宽收窄 2×inset（元素右移见 shiftPrev），卡片结束后恢复原值
+                // 无内缩宿主：文本换行宽收窄 2×inset（元素右移见 shiftChainRootX），卡片结束后恢复原值
                 val prevWidthOverride = tooltip.textWidthOverride
                 if (contentInset > 0f) {
                     tooltip.setTextWidthOverride(width - 2f * contentInset)
                 }
 
                 spacer(6f) // 拉开空隙用于展示背景特效
+                // 内缩左偏移：只把链首元素右移 inset。内容流是 belowLeft 约束链，
+                // 后续元素的 x 以链首 x 为基准自动继承；若逐元素设置 X 对齐偏移，
+                // 每个元素的基准已含前序偏移，偏移量按块序累加形成阶梯（真实
+                // PositionImpl 语义仿真验证），且对约束图的逐元素事后改写正是
+                // 行距异常的来源。
+                shiftChainRootX(tooltip, contentInset)
                 if (!title.isNullOrEmpty()) {
                     heading(title, theme.nameColor, theme.headerBackground, 6f)
-                    shiftPrev(tooltip, contentInset, shrinkWidth = true)
+                    shrinkPrevWidth(tooltip, contentInset)
                 }
                 for (block in spec.blocks) {
                     when (block) {
-                        is ParaBlock -> {
-                            renderPara(block, theme)
-                            shiftPrev(tooltip, contentInset)
-                        }
+                        is ParaBlock -> renderPara(block, theme)
 
-                        is PlainTextBlock -> {
-                            renderPlainText(block, theme)
-                            shiftPrev(tooltip, contentInset)
-                        }
+                        is PlainTextBlock -> renderPlainText(block, theme)
 
                         is HeadingBlock -> {
                             heading(
@@ -489,19 +491,13 @@ internal object HullmodCardRenderer {
                                 theme.sectionBackground,
                                 block.padTop,
                             )
-                            shiftPrev(tooltip, contentInset, shrinkWidth = true)
+                            shrinkPrevWidth(tooltip, contentInset)
                         }
 
-                        is TableBlock -> {
-                            renderTable(tooltip, block, theme, width - 2f * contentInset)
-                            shiftPrev(tooltip, contentInset)
-                        }
+                        is TableBlock -> renderTable(tooltip, block, theme, width - 2f * contentInset)
 
                         is SpacerBlock -> spacer(block.height)
-                        is CustomBlock -> {
-                            block.render(tooltip)
-                            shiftPrev(tooltip, contentInset)
-                        }
+                        is CustomBlock -> block.render(tooltip)
                     }
                 }
                 spacer(6f) // 拉开空隙用于展示背景特效
@@ -514,18 +510,26 @@ internal object HullmodCardRenderer {
     }
 
     /**
-     * 内容水平内缩：把刚添加的元素右移 [inset]（[TooltipMakerAPI.getPrev] + X 对齐偏移，
-     * 与 SIC SCBarDelegatePanel 挪组件同一 API）；[shrinkWidth] 用于通栏组件（分节标题条）
-     * 同步收窄 2×inset，文本标签的宽度已由 textWidthOverride 收窄、无需再缩。
+     * 内容水平内缩的 X 偏移落地：对链首元素（卡片首个占位 spacer）设置一次 X 对齐偏移
+     * （[TooltipMakerAPI.getPrev] + [com.fs.starfarer.api.ui.PositionAPI.setXAlignOffset]）。
+     * 内容流是 belowLeft 约束链，后续元素的 x 以链首 x 为基准逐环继承，全链均匀右移
+     * [inset]；禁止逐元素设置——基准 x 已含前序偏移，会按块序累加成阶梯。
      * inset ≤ 0（原版船插宿主）时不做任何事。
      */
-    private fun shiftPrev(tooltip: TooltipMakerAPI, inset: Float, shrinkWidth: Boolean = false) {
+    private fun shiftChainRootX(tooltip: TooltipMakerAPI, inset: Float) {
+        if (inset <= 0f) return
+        tooltip.prev.position.setXAlignOffset(inset)
+    }
+
+    /**
+     * 通栏组件（分节标题条）的宽度内缩：收窄 2×inset 使右缘与文本内容区对齐；
+     * X 位置由 belowLeft 链自链首继承，无需逐元素右移（见 [shiftChainRootX]）。
+     * inset ≤ 0（原版船插宿主）时不做任何事。
+     */
+    private fun shrinkPrevWidth(tooltip: TooltipMakerAPI, inset: Float) {
         if (inset <= 0f) return
         val pos = tooltip.prev.position
-        pos.setXAlignOffset(inset)
-        if (shrinkWidth) {
-            pos.setSize(pos.width - 2f * inset, pos.height)
-        }
+        pos.setSize(pos.width - 2f * inset, pos.height)
     }
 
     private fun TooltipBuilder.renderPara(block: ParaBlock, theme: HullmodTheme) {

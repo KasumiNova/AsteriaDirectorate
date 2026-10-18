@@ -26,11 +26,20 @@ internal object SicShared {
     /** SIC 联动 tooltip 卡片主题：透镜线紫（内置主题色板中最接近菀星紫 (160,150,235) 者）。 */
     val CARD_THEME: HullmodTheme = HullmodThemes.LENS
 
-    /** SIC 技能 tooltip 卡宽（SIC SCSkillTooltipCreator.getTooltipWidth 固定 700f）。 */
-    const val SKILL_TOOLTIP_WIDTH = 700f
+    /**
+     * SIC 技能 tooltip 卡片的内容流宽。SIC SCSkillTooltipCreator.getTooltipWidth 固定 700f，
+     * 但 BaseTooltipCreator 系 tooltip 的 700f 是含边框总宽，内容流宽 = 700 - 24（边框），
+     * 与原版船插宿主及 ASTDHullModTooltipBackground「总宽 = 流宽 + 24」的分支判定同一契约。
+     * 此前误传总宽 700：背景走了无边框分支（卡片相对 tooltip 边框外扩），文本换行宽
+     * 700-2×inset 超出实际卡片右缘，长段落（无人舰点数固定段）顶穿卡片右边框。
+     */
+    const val SKILL_TOOLTIP_WIDTH = 676f
 
-    /** 智能联结改造按钮 tooltip 卡宽（LunaLib BaseRefitButton.getToolipWidth 默认 300f）。 */
-    const val REFIT_TOOLTIP_WIDTH = 300f
+    /**
+     * 智能联结改造按钮 tooltip 卡片的内容流宽（LunaLib BaseRefitButton.getToolipWidth 默认
+     * 300f 为含边框总宽，内容流宽 = 300 - 24，契约同 [SKILL_TOOLTIP_WIDTH]）。
+     */
+    const val REFIT_TOOLTIP_WIDTH = 276f
 
     /** SIC/LunaLib 宿主卡片内容水平内边距（宿主内容流无内缩，对齐原版船插 tooltip 约 10px 量级内边距）。 */
     const val CARD_CONTENT_INSET = 10f
@@ -84,6 +93,24 @@ internal object SicShared {
             label.setHighlight(*highlights)
             label.setHighlightColors(*Array(highlights.size) { Misc.getNegativeHighlightColor() })
         }
+    }
+
+    /**
+     * 自动化标准块顶部两行（SIC SCBaseAutoPointsSkillPlugin.kt:39-40 原文原样式：
+     * 整行 Misc.getHighlightColor() 高亮黄，与效果行同色；SIC 源码中位于主效果行之后，
+     * 本项目按用户指令置于卡片内容最前）。
+     */
+    fun autoPointsHeader(tooltip: TooltipMakerAPI, padTop: Float) {
+        tooltip.addPara(
+            I18n[I18n.Categories.MOD, "ui.sic.shared.auto_points_header_recovery"],
+            Misc.getHighlightColor(),
+            padTop,
+        )
+        tooltip.addPara(
+            I18n[I18n.Categories.MOD, "ui.sic.shared.auto_points_header_ai_core"],
+            Misc.getHighlightColor(),
+            0f,
+        )
     }
 
     /** 无人舰点数机制固定段（SIC 自动化系技能 tooltip 统一规范，SCBaseAutoPointsSkillPlugin 口径）：灰底 + 三档核心倍率子串高亮黄 + 安全联锁子串负色红。倍率运行时读取，禁止写死。 */
