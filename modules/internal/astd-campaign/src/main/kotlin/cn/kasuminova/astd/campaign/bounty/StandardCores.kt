@@ -48,6 +48,12 @@ object StandardCores {
 
     private val log: Logger = Global.getLogger(StandardCores::class.java)
 
+    /**
+     * Combat Chatter 联动角色 id（data/config/chatter/characters/astd_wanxing_core.json）。
+     * 通过军官 memory 键 `$chatterChar` 精确绑定，CC 缺席时该键惰性无害。
+     */
+    const val CHATTER_CHARACTER_ID: String = "astd_wanxing_core"
+
     /** 旗舰核心保底之外，僚舰核心的单枚掉落概率。 */
     const val ESCORT_DROP_CHANCE: Float = 0.5f
 
@@ -202,6 +208,7 @@ object StandardCores {
             person.stats.setSkillLevel(skill, 2f)
         }
         person.memoryWithoutUpdate.set("\$autoPointsMult", tier.autoPointsMult)
+        person.memoryWithoutUpdate.set("\$chatterChar", CHATTER_CHARACTER_ID)
         person.setPersonality("reckless")
         person.rankId = Ranks.SPACE_CAPTAIN
         person.postId = null
