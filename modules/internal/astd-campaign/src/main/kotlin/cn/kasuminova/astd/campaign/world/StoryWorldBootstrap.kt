@@ -3,6 +3,7 @@ package cn.kasuminova.astd.campaign.world
 import cn.kasuminova.astd.campaign.bounty.BountyCoreLootScript
 import cn.kasuminova.astd.campaign.bounty.BountyFleetTuneScript
 import cn.kasuminova.astd.campaign.bounty.StandardCoreCampaignPlugin
+import cn.kasuminova.astd.campaign.bounty.StandardCores
 import cn.kasuminova.astd.campaign.world.StoryWorldBootstrap.onGameLoad
 import cn.kasuminova.astd.campaign.world.StoryWorldBootstrap.onNewGameAfterEconomyLoad
 import com.fs.starfarer.api.Global
@@ -46,6 +47,9 @@ object StoryWorldBootstrap {
             sector.registerPlugin(StandardCoreCampaignPlugin())
             sector.memoryWithoutUpdate.set(StandardCoreCampaignPlugin.MEMORY_PLUGIN_ADDED, true)
         }
+
+        // 存量核心军官补齐 chatter 人格绑定（幂等，含新档：工厂路径已绑定时全部跳过）
+        StandardCores.patchChatterBinding(sector)
 
         if (newGame) return
 

@@ -5,6 +5,7 @@ import com.fs.starfarer.api.PluginPick
 import com.fs.starfarer.api.campaign.AICoreAdminPlugin
 import com.fs.starfarer.api.campaign.AICoreOfficerPlugin
 import com.fs.starfarer.api.campaign.CampaignPlugin
+import com.fs.starfarer.api.campaign.SectorAPI
 import com.fs.starfarer.api.characters.FullName
 import com.fs.starfarer.api.characters.PersonAPI
 import com.fs.starfarer.api.impl.campaign.BaseAICoreOfficerPluginImpl
@@ -194,6 +195,25 @@ object StandardCores {
             firstDroppableId?.let { loot[it] = 1 }
         }
         return loot
+    }
+
+    /**
+     * 存量核心军官 chatter 人格热修复（每次读档调用，幂等）。
+     *
+     * 绑定逻辑上线前创建的制式核心军官 memory 无 `$chatterChar`，
+     * Combat Chatter 会为其随机分配默认角色；此处从 ASTD 人格池随机补绑一版。
+     * 仅处理玩家舰队成员舰长：赏金侧军官随舰队即时生成，天然走新绑定路径。
+     */
+    fun patchChatterBinding(sector: SectorAPI) {
+        val fleet = sector.playerFleet ?: return
+        for (member in fleet.fleetData.membersListCopy) {
+            val captain = member.captain ?: continue
+            if (!captain.isAICore) continue
+            if (byCommodity(captain.aiCoreId) == null) continue
+            if (captain.memoryWithoutUpdate.contains("\$chatterChar")) continue
+            captain.memoryWithoutUpdate.set("\$chatterChar", CHATTER_CHARACTER_IDS.random())
+            log.info("[ASTD] 存量核心军官 chatter 人格补绑：${captain.nameString}")
+        }
     }
 
     /**
