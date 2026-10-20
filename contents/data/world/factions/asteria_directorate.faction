@@ -10,9 +10,9 @@
 	# 原版英文 is/are 助词位：中文模板（如 MagicLib 赏金报酬文本）直接拼接该值，置空避免混入英文
 	"displayNameIsOrAre":"",
 
-	# 纹章与徽标正式素材未产出，暂用原版中立贴图占位；素材落地后替换为 graphics/factions/ 下自有贴图
-	"logo":"graphics/factions/neutral.png",
-	"crest":"graphics/factions/crest_neutral.png",
+	# 势力旗帜与方形纹章（纹章为旗帜中心裁切变体，构图对齐原版 410x256 / 256x256 规格）
+	"logo":"graphics/factions/astd_faction.png",
+	"crest":"graphics/factions/astd_faction_crest.png",
 
 	# 主题色沿用模组文本口径 #FF9600
 	"color":[255,150,0,255],
