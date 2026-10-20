@@ -14,9 +14,9 @@
 	"logo":"graphics/factions/astd_faction.png",
 	"crest":"graphics/factions/astd_faction_crest.png",
 
-	# 主题色沿用模组文本口径 #FF9600
-	"color":[255,150,0,255],
-	"baseUIColor":[255,150,0,255],
+	# 主题色取旗帜淡紫，与 SIC 技能精英边框渐变同族（elite_astd_generic 采样 #8677FB）
+	"color":[134,119,251,255],
+	"baseUIColor":[134,119,251,255],
 	"showInIntelTab":false,
 
 	"names":{},
