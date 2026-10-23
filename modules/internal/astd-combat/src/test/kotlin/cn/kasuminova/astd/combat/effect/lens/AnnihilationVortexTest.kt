@@ -32,7 +32,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-/** log4j 1.x 事件捕获器（级别可配；WarnCapture 仅 WARN，本组还要断言 INFO，故就地一份）。 */
 private class LogCapture(loggerClass: Class<*>, level: Level) {
     private val logger: Logger = Logger.getLogger(loggerClass)
     private val previousLevel: Level? = logger.level
@@ -60,9 +59,6 @@ private class LogCapture(loggerClass: Class<*>, level: Level) {
     }
 }
 
-/**
- * 规格 04 §4.1 用例 1：三条三锚点在 k_s=1/2/5 精确命中 + 玩家固定 v2（轨一映射链路与 owner==0 旁路）。
- */
 class AnnihilationVortexTuningTest {
 
     @AfterTest
@@ -107,20 +103,14 @@ class AnnihilationVortexTuningTest {
 
     @Test
     fun `坍缩与吸收半径派生公式`() {
-        // 吸收半径 = max(30, radius×0.25)。
         assertEquals(46.875f, AnnihilationVortexDifficulty.absorbRadiusFor(187.5f), 1e-3f)
         assertEquals(75f, AnnihilationVortexDifficulty.absorbRadiusFor(300f), 1e-3f)
         assertEquals(30f, AnnihilationVortexDifficulty.absorbRadiusFor(10f), "半径过小吃下限")
         assertEquals(30f, AnnihilationVortexDifficulty.absorbRadiusFor(0f), "0 半径吃下限不除零")
-        // 坍缩半径 = 涡旋半径 × 150%。
         assertEquals(281.25f, AnnihilationVortexDifficulty.collapseRadiusFor(187.5f), 1e-3f)
     }
 }
 
-/**
- * 规格 04 §4.1 用例 2/3/7/8：池记账（类型转换比/软上限分段/保底）、0 值防线（INFO/WARN 捕获）、
- * SELF_MANAGED 生命周期（宿主失效 host.remove 恰好一次 + 两条回收路径的日志分流）。
- */
 class AnnihilationVortexPoolTest {
 
     private data class PoolFixture(val pool: AnnihilationVortexPoolImpl, val host: BuffHost, val weapon: com.fs.starfarer.api.combat.WeaponAPI)
@@ -149,10 +139,8 @@ class AnnihilationVortexPoolTest {
     fun `软上限分段折算 阈值内全额超出部分四分之一`() {
         val (pool, _) = newPool(threshold = 1000f)
         assertEquals(800f, pool.addAbsorbed(DamageType.ENERGY, 800f), 1e-4f, "阈值内全额")
-        // room=200，inRoom=200，excess=200×0.25=50。
         assertEquals(250f, pool.addAbsorbed(DamageType.ENERGY, 400f), 1e-4f, "超出段部分折算")
         assertEquals(1050f, pool.convertedTotal, 1e-3f)
-        // 池满后 room=0，全部走超额折算。
         assertEquals(25f, pool.addAbsorbed(DamageType.ENERGY, 100f), 1e-4f)
         assertEquals(1075f, pool.convertedTotal, 1e-3f)
     }
@@ -245,9 +233,6 @@ class AnnihilationVortexPoolTest {
     }
 }
 
-/**
- * 规格 04 §4.1 用例 5/6：牵引纯函数边界 + 注入粗筛的完整吸收/牵引结算驱动（infra2 同款注入处置）。
- */
 class AnnihilationVortexAbsorbTest {
 
     private fun projectile(
@@ -305,7 +290,6 @@ class AnnihilationVortexAbsorbTest {
     @Test
     fun `吸收半径外弹体被向心牵引 速度改写且计数`() {
         val engine = mock(CombatEngineAPI::class.java)
-        // 中心原点，弹体在 +x 150su（半径 187.5 内、吸收半径 46.875 外），初速 +x 100。
         val velocity = Vector2f(100f, 0f)
         val outside = projectile(owner = 1, at = Vector2f(150f, 0f), velocity = velocity)
 
@@ -355,9 +339,6 @@ class AnnihilationVortexAbsorbTest {
     }
 }
 
-/**
- * 规格 04 §4.1 坍缩结算：敌我过滤 + hulk 剔除 + applyDamage 九参通道 + 命中计数 + 0 值防线。
- */
 class AnnihilationVortexCollapseTest {
 
     private fun ship(owner: Int, hulk: Boolean = false, at: Vector2f = Vector2f(50f, 0f), radius: Float = 30f): ShipAPI {
@@ -391,7 +372,6 @@ class AnnihilationVortexCollapseTest {
         )
 
         assertEquals(2, hits, "仅敌方活舰 + 敌方导弹命中")
-        // 舰船落点统一入口口径：无盾 → 命中侧压点（距舰心 50 截断到 0.9×30=27 的靠爆心侧）+ bypassShields=true
         val pointCaptor = ArgumentCaptor.forClass(Vector2f::class.java)
         verify(engine, times(1)).applyDamage(
             eq(enemyShip), pointCaptor.capture(), eq(500f), eq(DamageType.ENERGY),

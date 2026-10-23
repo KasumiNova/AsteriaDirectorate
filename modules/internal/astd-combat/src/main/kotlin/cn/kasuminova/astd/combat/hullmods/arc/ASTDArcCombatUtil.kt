@@ -9,7 +9,6 @@ internal object ASTDArcCombatUtil {
     private val baseRefireDelayByWeapon: WeakHashMap<WeaponAPI, Float> = WeakHashMap()
     private val log = Global.getLogger(ASTDArcCombatUtil::class.java)
 
-    /** effectiveSystemRange 异常告警的一次性闩（防逐帧刷屏；异常本身极罕见——mutableStats 战斗内恒可达）。 */
     private var systemRangeWarned = false
 
     fun effectiveSystemRange(ship: ShipAPI, baseRange: Float): Float =

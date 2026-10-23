@@ -8,7 +8,7 @@ import cn.kasuminova.astd.renderer.projectile.driver.ProjectileVfxTelemetrySnaps
 
 /**
  * trail_pause_probe 暂停对照探针：与 xc_001 共用坠星残响舞台，但刻意不 unpause、不做取景曲线对齐，
- * 验证暂停期 VFX 驱动状态与恢复后 cadence（拆分前枢纽的 tpp 分支，行为原样迁移）。
+ * 验证暂停期 VFX 驱动状态与恢复后 cadence。
  */
 class TrailPauseProbeScenario : AbstractAutomationScenario() {
 
@@ -44,9 +44,9 @@ class TrailPauseProbeScenario : AbstractAutomationScenario() {
      * → 飞行 [TPP_POST_RESUME_FLIGHT_SECONDS] → 抓 AfterResume → 第 4 次 "Completed" 写出终态触发早退。
      * 与默认坠星残响场景的差异：不调用 alignStarfallEchoProjectilesForEvidence（该取景驱动按 elapsed 改写弹体位置，
      * 暂停期 elapsed 继续推进会污染对照实验），弹体全程自由飞行。
-     * 注意必须用全速 spawn（弹体 moveSpeed 直出），不能用取景曲线 spawn——
+     * 注意必须用全速 spawn（弹体 moveSpeed 直出），不能用取景曲线 spawn：
      * 后者的一次性取景曲线对齐会把弹速压到 ~340su/s，30Hz 节点间距从 96su 缩到 11su，
-     * 恰好把要观测的「螺栓头 vs 拖尾头 cadence 滞后」藏没（2026-09 首轮探针教训）。
+     * 恰好把要观测的「螺栓头 vs 拖尾头 cadence 滞后」藏没（低速 spawn 下观测不到滞后）。
      */
     override fun advance(ctx: AutomationCombatContext, amount: Float) {
         val engine = ctx.engine
@@ -130,7 +130,7 @@ class TrailPauseProbeScenario : AbstractAutomationScenario() {
 
     override fun renderCapture(ctx: AutomationCombatContext) {
         // 截图只能在渲染帧内取 framebuffer（helper 仅对 "Completed" 状态抓帧，最多 3 帧）：
-        // 相位机把捕获点写成 pending 标签，这里消费并各抓一帧 BeforePause/DuringPause/AfterResume。
+        // 相位机把捕获点写成 pending 标签，本方法消费并各抓一帧 BeforePause/DuringPause/AfterResume。
         val label = tppCapturePending ?: return
         tppCapturePending = null
         val ship = ctx.starfallEcho.findStageShip(ctx.engine)

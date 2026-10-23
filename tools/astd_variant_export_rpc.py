@@ -3,7 +3,7 @@
 
 经 SSOptimizer 游戏内调试服务（127.0.0.1:8471）动态编译并执行
 cn.kasuminova.astd.campaign.ASTDVariantExporter 导出调用，
-产物落在游戏进程工作目录 saves/astd_variant_export/。
+输出目录为游戏进程工作目录下的 saves/astd_variant_export/。
 
 前置：
 - 游戏经 ./gradlew runGame 启动（默认已注入 -Dssoptimizer.debug.enabled=true），

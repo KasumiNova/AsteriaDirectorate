@@ -6,15 +6,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
-/**
- * 自动装配双模式恢复决策（[ASTDAutofitPlugin.resolveAutofitGoalMode]）验证：
- * 1. 目标方案声明了模式 → 遵守方案模式（即使与装配前不同）；
- * 2. 目标方案未携带模式 → 保持装配前模式（装配不得翻转模式）；
- * 3. 非双模式舰 / 无配置 → 不干预（null）。
- *
- * 测试驱动方式与 ASTDGenericDualModeTest 相同：最小 FakeVariant 承载 permaMods 集合，
- * 未触达方法抛出（Fail Fast），不使用反射 / mock 框架。
- */
 class ASTDAutofitGoalModeTest {
 
     private val config = GENERIC_DUAL_MODE_CONFIG
@@ -61,16 +52,11 @@ class ASTDAutofitGoalModeTest {
         assertNull(ASTDAutofitPlugin.activeDualModeId(variant, config), "无模式 permaMod 时应为 null")
         variant.addPermaMod(config.crewedModeId)
         assertEquals(config.crewedModeId, ASTDAutofitPlugin.activeDualModeId(variant, config))
-        // 普通 hullMod 形式的模式标记不应被当作激活模式（稳定态以 permaMod 为准）
         val legacy = FakeAutofitVariant().apply { addMod(config.automatedModeId) }
         assertNull(ASTDAutofitPlugin.activeDualModeId(legacy, config), "非 permaMod 的模式标记不应计入")
     }
 }
 
-/**
- * 最小 ShipVariantAPI 假实现：仅承载恢复决策触达的 permaMods / hullMods 集合。
- * 其余方法抛 [notUsed]（Fail Fast），不使用反射 / mock 框架。
- */
 private class FakeAutofitVariant : ShipVariantAPI {
 
     private val perma = linkedSetOf<String>()

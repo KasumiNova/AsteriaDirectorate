@@ -25,33 +25,21 @@ import java.util.EnumSet
 import kotlin.math.max
 import kotlin.math.pow
 
-/**
- * “跟随光束的永久环”（池化 SpriteEntity 版）：
- * - 用一张“空心圆环”贴图（白色 + alpha）作为 diffuse/emissive，避免 FlareEntity 的“圆盘感”；
- * - 实体走 [PooledCombatVfx.checkoutSprite] 实例化租约池（capacity=8，maxInstances 随 spec），
- *   消亡 release(0f) 归还而非 delete；
- * - 仍用 fixed instance data 做批量渲染与渐隐。
- */
 internal object AttachedBeamSpriteRingRenderer {
 
     private const val ENGINE_KEY = "astd_attached_beam_sprite_ring_renderer"
 
-    /** 租约池贴图身份（运行期生成环贴图，见 [GeneratedRingSprite]）。 */
     private const val RING_TEXTURE_KEY = "astd_generated_ring"
 
     private val log = Global.getLogger(AttachedBeamSpriteRingRenderer::class.java)
 
-    /** 生成环贴图获取异常 WARN 去重标记（getOrCreateSprite 内部对真实加载失败另有 WARN）。 */
     private var warnedRingSpriteFail = false
 
     enum class Mode {
-        /** 按距离采样的“永久环”：整条束上持续存在，可沿束方向滚动。 */
         PERMANENT,
 
-        /** 只在束根部生成的“散发环”：不沿束推进，生成后按寿命淡出。 */
         MUZZLE_EMIT,
 
-        /** 炮口单圈“脉冲环”：同一时间仅存在一个环，快速从小变大（类音爆圈），并按寿命淡出。 */
         MUZZLE_PULSE,
     }
 
@@ -61,50 +49,30 @@ internal object AttachedBeamSpriteRingRenderer {
         val travelSpeed: Float,
         val aSideHalf: Float,
         val bAlongHalf: Float,
-        /** 沿束方向的距离偏移（su）。用于让子光圈相对主光圈做固定 offset。 */
         val distanceOffset: Float = 0f,
-        /**
-         * 束尾提前淡出距离（su）。
-         * 目的：环接近光束命中点（束尾）时开始淡出，而不是“越过命中点后”才淡出/消失。
-         * 0 表示自动：按 spacing 推导。
-         */
         val endFadeDistance: Float = 0f,
-        /** 仅使用 RGB；alpha 会转为 instance alpha（避免与材质 alpha 叠乘造成难控）。 */
         val color: Color,
-        /** 束根部 scale。 */
         val headScale: Float = 1.00f,
-        /** 束尾 scale（例如 2.0 表示尾部 200%）。 */
         val tailScale: Float = 1.20f,
-        /** 缩放插值指数（>1 表示前段变化更慢）。 */
         val scaleExponent: Float = 1.65f,
-        /** 束根部额外放大（乘在 headScale~tailScale 之上），用于实现 300%~400% 的“炮口光圈”。 */
         val muzzleExtraScaleMin: Float = 1.50f,
         val muzzleExtraScaleMax: Float = 2.00f,
-        /** 束根部额外放大衰减距离（su）。0 表示自动（按 spacing 推导）。 */
         val muzzleExtraDistance: Float = 0f,
-        /** 出生淡入距离（su）。0 表示自动（约为 spacing 的一小段）。 */
         val spawnFadeInDistance: Float = 0f,
 
-        /** MUZZLE_EMIT：每秒生成数量。<=0 则自动用 travelSpeed/spacing 推导。 */
         val emitRatePerSec: Float = 0f,
 
-        /** MUZZLE_EMIT：每个环的寿命（秒）。<=0 则自动。 */
         val emitLifetime: Float = 0f,
 
-        /** MUZZLE_EMIT：沿束方向的散布距离（su），在 [0, spread] 之间随机；0 表示固定在束根。 */
         val muzzleSpreadDistance: Float = 0f,
 
-        /** MUZZLE_PULSE：脉冲环寿命（秒）。<=0 则自动。 */
         val pulseLifetime: Float = 0f,
 
-        /** MUZZLE_PULSE：尺寸从 start -> end（乘在常规 head/tail + muzzleExtra 之后）。 */
         val pulseStartScale: Float = 0.40f,
         val pulseEndScale: Float = 2.40f,
 
-        /** MUZZLE_PULSE：缩放曲线指数（<1 代表更“快速变大”）。 */
         val pulseScaleExponent: Float = 0.40f,
 
-        /** Sprite shader 的 glowPower（可 > 1.0） */
         val glowPower: Float = 1.0f,
         val layer: CombatEngineLayers = CombatEngineLayers.ABOVE_PARTICLES,
         val maxInstances: Int = 96,
@@ -120,10 +88,8 @@ internal object AttachedBeamSpriteRingRenderer {
     private data class Attachment(
         var line: BeamLineUtil.BeamLine,
         var spec: Spec,
-        // PERMANENT：滚动偏移（su）。
         var scroll: Float,
 
-        // MUZZLE_EMIT：生成累积器（按“个”累计）。
         var emitAcc: Float,
         var lastUpdated: Float,
         var fadeStartedAt: Float?,
@@ -149,7 +115,6 @@ internal object AttachedBeamSpriteRingRenderer {
             }
         } else {
             existing.line = line
-            // 若模式切换，清掉对应缓存（避免从“永久环”切到“散发环”后出现残留）
             val oldMode = existing.spec.mode
             existing.spec = spec
             existing.lastUpdated = now
@@ -192,12 +157,6 @@ internal object AttachedBeamSpriteRingRenderer {
         }
     }
 
-    /**
-     * 检出实例化租约：材质口径与 [applySpecToSprite] 一致（生成环贴图失败兜底 BUtil_ONE、
-     * color(0,0,0,255)、emissive=rgb、emissiveState(0,0,glowPower)、additionEmissive /
-     * ignoreIllumination=true、baseSizePerTiles(1,1)）；实例表由池按 spec.maxInstances 建/重置。
-     * 检出失败（池不可用/池满，均已 WARN）返回 null，本次环视觉缺席，下一拍 upsert 重试。
-     */
     private fun createAttachment(engine: CombatEngineAPI, line: BeamLineUtil.BeamLine, spec: Spec): Attachment? {
         val ringSprite = try {
             GeneratedRingSprite.getOrCreateSprite()
@@ -208,7 +167,6 @@ internal object AttachedBeamSpriteRingRenderer {
             }
             null
         }
-        // 兜底：至少让它“能画出来”，方便定位资源问题。
         val diffuse = ringSprite ?: BoxDatabase.BUtil_ONE
         val rgb = Color(spec.color.red, spec.color.green, spec.color.blue, 255)
         val lease = PooledCombatVfx.checkoutSprite(
@@ -237,7 +195,6 @@ internal object AttachedBeamSpriteRingRenderer {
         ) ?: return null
         val instances = lease.instances
         if (instances == null) {
-            // 实例化池检出必须带实例表；缺失即池实现缺陷，立即归还并缺席（禁止静默）
             lease.release(0f)
             log.warn("BoxUtil sprite ring 租约缺失实例表（layer=${spec.layer}，maxInstances=${spec.maxInstances}），本次环视觉缺席")
             return null
@@ -258,8 +215,7 @@ internal object AttachedBeamSpriteRingRenderer {
     }
 
     private fun applySpecToSprite(sprite: SpriteEntity, spec: Spec) {
-        // 层位/混合模式是池租约键级属性（检出创建时定死、重置面不覆盖）：
-        // upsert 路径改写会污染池实体串租约，这里只允许重涂材质与贴图。
+        // 层位/混合模式由租约键在检出时固定，检出后只允许重涂材质与贴图，改写会污染池内其他租约
         val s = try {
             GeneratedRingSprite.getOrCreateSprite()
         } catch (_: Throwable) {
@@ -269,21 +225,15 @@ internal object AttachedBeamSpriteRingRenderer {
             sprite.setDiffuseSprite(s)
             sprite.setEmissiveSprite(s)
         } else {
-            // 兜底：至少让它“能画出来”，方便定位资源问题。
             sprite.materialData.setDiffuse(BoxDatabase.BUtil_ONE)
             sprite.materialData.setEmissive(BoxDatabase.BUtil_ONE)
         }
 
-        // 让输出主要走 emissive（更像光圈，不像“贴片实体”）
         val rgb = Color(spec.color.red, spec.color.green, spec.color.blue, 255)
-        // BoxUtil 的 sprite shader 在某些路径下会把 entityColor alpha 当作全局 alpha/early-cull。
-        // 如果这里为 0，可能导致 emissive 完全不可见（哪怕 alphaToEmissive=0）。
-        // 维持 RGB=0（不输出底色），但让 alpha=255，确保 emissive 一定能参与混合。
+        // BoxUtil sprite shader 会把 entityColor alpha 当全局 alpha 早退，为 0 会导致 emissive 不可见，必须维持 255
         sprite.materialData.setColor(Color(0, 0, 0, 255))
         sprite.materialData.setEmissiveColor(rgb)
-        // BoxUtil SpriteShader：emissiveState.x=alphaMix, y=colorMix。
-        // 之前 alphaMix=1 且 entityColor alpha=0，会导致 emissive alpha 被乘成 0 然后直接 discard。
-        // 这里用 alphaMix=0，确保 emissive alpha 不依赖 diffuse/entityColor alpha。
+        // alphaMix=1 时 emissive alpha 会被乘上 diffuse/entityColor alpha 后 discard，必须为 0
         sprite.materialData.setEmissiveState(0f, 0f, max(0f, spec.glowPower))
         sprite.materialData.isAdditionEmissive = true
         sprite.materialData.isIgnoreIllumination = true
@@ -338,7 +288,6 @@ internal object AttachedBeamSpriteRingRenderer {
                         val autoLife = (if (rate > 0.01f) (1.25f / rate) else 0.40f).coerceIn(0.18f, 0.75f)
                         val life = (if (att.spec.emitLifetime > 0.01f) att.spec.emitLifetime else autoLife).coerceIn(0.10f, 1.25f)
 
-                        // 年龄推进 + 过期清理
                         run {
                             val pit = att.particles.iterator()
                             while (pit.hasNext()) {
@@ -348,7 +297,6 @@ internal object AttachedBeamSpriteRingRenderer {
                             }
                         }
 
-                        // 生成新粒子：不推进，只在束根附近散发
                         att.emitAcc += rate * amount
                         val spawn = att.emitAcc.toInt().coerceAtMost(12)
                         if (spawn > 0) att.emitAcc -= spawn
@@ -367,7 +315,6 @@ internal object AttachedBeamSpriteRingRenderer {
                     }
 
                     Mode.MUZZLE_PULSE -> {
-                        // 年龄推进 + 过期清理
                         run {
                             val pit = att.particles.iterator()
                             while (pit.hasNext()) {
@@ -377,7 +324,6 @@ internal object AttachedBeamSpriteRingRenderer {
                             }
                         }
 
-                        // 同一时间只保留一个环；若已空则立刻生成下一个
                         if (att.particles.isEmpty()) {
                             val autoLife = 0.22f
                             val life = (if (att.spec.pulseLifetime > 0.01f) att.spec.pulseLifetime else autoLife).coerceIn(0.10f, 0.85f)
@@ -388,7 +334,6 @@ internal object AttachedBeamSpriteRingRenderer {
                             val extra = MathUtils.getRandomNumberInRange(att.spec.muzzleExtraScaleMin, att.spec.muzzleExtraScaleMax)
                             att.particles.addLast(Particle(dist = dist, age = 0f, life = life, muzzleExtraScale = extra))
                         } else {
-                            // 防御：若外部误配置 maxInstances>1 或残留，强制裁成 1
                             while (att.particles.size > 1) {
                                 att.particles.removeFirst()
                             }
@@ -421,7 +366,6 @@ internal object AttachedBeamSpriteRingRenderer {
 
         fun updateAttachment(att: Attachment, amount: Float, now: Float) {
             engine ?: return
-            // 确保 modelMatrix 正确（防止“从未 setStateVanilla 导致矩阵为默认值/不可见”）。
             try {
                 att.sprite.setStateVanilla(att.line.from, att.line.facing)
             } catch (_: Throwable) {
@@ -448,7 +392,7 @@ internal object AttachedBeamSpriteRingRenderer {
                 return
             }
 
-            // 用 override 控制所有 instance 的 alpha（shader 会把 20+alpha 解码成 alpha）。
+            // BoxUtil shader 把 instanceTimerOverride 的 20+alpha 解码为实例 alpha，用它统一控制实例透明度
             try {
                 att.sprite.setInstanceTimerOverride(alphaMul, BoxEnum.TIMER_FULL)
             } catch (_: Throwable) {
@@ -517,7 +461,6 @@ internal object AttachedBeamSpriteRingRenderer {
                         val outT = ((1f - lifeT) / 0.55f).coerceIn(0f, 1f)
                         val lifeFade = (inT * outT).coerceIn(0f, 1f)
 
-                        // 出生淡入：按时间即可（因为不推进）
                         val spawnFade = (p.age / (0.10f + (spawnFadeInDist / 300f))).coerceIn(0f, 1f)
 
                         val t0 = (p.dist / len).coerceIn(0f, 1f)
@@ -566,12 +509,10 @@ internal object AttachedBeamSpriteRingRenderer {
 
                     val lifeT = if (p.life > 0.01f) (p.age / p.life).coerceIn(0f, 1f) else 1f
 
-                    // alpha：快速出现，随后淡出
                     val inT = (lifeT / 0.05f).coerceIn(0f, 1f)
                     val outT = (1f - lifeT).coerceIn(0f, 1f)
                     val lifeFade = (inT * outT).coerceIn(0f, 1f)
 
-                    // scale：快速从小变大（指数 < 1）
                     val e = spec.pulseScaleExponent.coerceIn(0.05f, 2.5f)
                     val scaleT = try {
                         lifeT.toDouble().pow(e.toDouble()).toFloat().coerceIn(0f, 1f)
@@ -616,7 +557,6 @@ internal object AttachedBeamSpriteRingRenderer {
             att.sprite.setInstanceDataRefreshSize(write)
             if (write > 0) {
                 try {
-                    // 参照 BoxUtil 成功用法：每帧提交变更到 TBO，然后由 alwaysRefresh 驱动 compute 更新最终矩阵。
                     submitDynamicInstanceData(att.sprite, write)
                 } catch (_: Throwable) {
                 }
@@ -624,7 +564,6 @@ internal object AttachedBeamSpriteRingRenderer {
         }
 
         override fun render(layer: CombatEngineLayers, viewport: ViewportAPI) {
-            // SpriteEntity 自身由 BoxUtil 渲染；这里无需额外绘制。
         }
 
         override fun getActiveLayers(): EnumSet<CombatEngineLayers> {
@@ -661,10 +600,6 @@ internal object AttachedBeamSpriteRingRenderer {
     }
 }
 
-/**
- * 运行时生成“空心圆环”贴图，并通过 SettingsAPI 作为 Sprite 加载。
- * 目标：避免 FlareEntity 的 disc 风格导致的“像圆盘/像矩形贴片”问题。
- */
 internal object GeneratedRingSprite {
     private const val REL_PATH = "graphics/fx/astd_generated_ring.png"
 
@@ -675,8 +610,7 @@ internal object GeneratedRingSprite {
     fun getOrCreateSprite(): SpriteAPI? {
         cached?.let { return it }
         val s = try {
-            // 直接 getSprite 对本次运行新加入/未被 Settings 扫描的贴图会静默返回空精灵（texId=0，不报错不写日志），
-            // 须先 loadTexture 进缓存；本对象缓存 Sprite，loadTexture 全局只跑一次
+            // 未被 Settings 扫描的贴图直接 getSprite 会静默返回 texId=0 的空精灵，必须先 loadTexture
             Global.getSettings().apply { loadTexture(REL_PATH) }.getSprite(REL_PATH)
         } catch (t: Throwable) {
             Global.getLogger(GeneratedRingSprite::class.java)

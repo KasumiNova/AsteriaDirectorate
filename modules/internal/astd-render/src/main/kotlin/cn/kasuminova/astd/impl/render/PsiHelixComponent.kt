@@ -15,13 +15,6 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
 
-/**
- * PSI-Ω 的双螺旋扰动丝带（迁移计划 §3.4，detail 后端之一：CurveEntity 双螺旋）。
- *
- * 每条螺旋拆两层：BODY（normal blend 光带主体）+ GLOW（additive 内发光高光），共 4 条 [CurveEntity]。
- * 螺旋节点位置/切线/颜色的数学从旧 `PsiOmegaBeamVfx.updateWisp` 原样移植，几何源改读 [RenderContext.frame]。
- * 淡出与束体同法（心跳定时器：active 刷新常驻，停火不刷新自淡）。
- */
 class PsiHelixComponent(
     id: String,
     layer: CombatEngineLayers = CombatEngineLayers.ABOVE_SHIPS_AND_MISSILES_LAYER,
@@ -330,7 +323,6 @@ class PsiHelixComponent(
     }
 
     companion object {
-        /** 螺旋在树内的次级绘制序：置于束体（100）之上。 */
         const val RENDER_ORDER = 200
 
         private const val HEARTBEAT = 0.35f

@@ -1,8 +1,6 @@
 package cn.kasuminova.astd.campaign.dialog.core
 
-/**
- * 轻量 DSL：让模板里写 node/option 更顺手。
- */
+/** node/option 构建 DSL。 */
 object DialogDsl {
 
     fun goto(nodeId: String): DialogAction = DialogAction.Goto(nodeId)
@@ -51,9 +49,7 @@ object DialogDsl {
         options = options,
     )
 
-    /**
-     * “逐条延迟输出”node：当文本队列未输出完时，锁定选项并提供“跳过”。
-     */
+    /** 延迟逐条输出节点：文本队列未输出完时锁定选项并提供跳过。 */
     fun timedNode(
         onEnter: (DialogContext) -> Unit = {},
         onLeave: (DialogContext) -> Unit = {},

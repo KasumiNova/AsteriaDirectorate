@@ -5,41 +5,26 @@ import com.fs.starfarer.api.campaign.MessageDisplayAPI
 import java.awt.Color
 
 /**
- * 战役/战斗 UI 右侧“消息栏”的 DSL 入口。
- *
- * 说明：
- * - 战役侧：通过 [com.fs.starfarer.api.campaign.CampaignUIAPI.getMessageDisplay] 投递消息。
- * - 该消息栏本身带有原版淡入淡出与堆叠逻辑；API 不暴露自定义 fade 时长。
+ * 战役右侧消息栏入口。
+ * 消息栏自带原版淡入淡出与堆叠逻辑，API 不暴露自定义 fade 时长。
  */
 object HudMessages {
 
-    /**
-     * 战役右侧消息栏：纯文本。
-     */
     @JvmStatic
     fun campaign(text: String) {
         messageDisplayOrNull()?.addMessage(text)
     }
 
-    /**
-     * 战役右侧消息栏：纯文本 + 颜色。
-     */
     @JvmStatic
     fun campaign(text: String, color: Color) {
         messageDisplayOrNull()?.addMessage(text, color)
     }
 
-    /**
-     * 战役右侧消息栏：基础色 + 高亮一段文本。
-     */
     @JvmStatic
     fun campaign(text: String, baseColor: Color, highlightText: String, highlightColor: Color) {
         messageDisplayOrNull()?.addMessage(text, baseColor, highlightText, highlightColor)
     }
 
-    /**
-     * 战役右侧消息栏：基础色 + 高亮两段文本。
-     */
     @JvmStatic
     fun campaign(
         text: String,

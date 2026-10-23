@@ -3,11 +3,9 @@ package cn.kasuminova.astd.impl.render
 import com.fs.starfarer.api.combat.CombatEngineLayers
 
 /**
- * 「绽放辉星」单枚光斑的规格（纯数据蓝图）：一枚钉住生命周期的 BoxUtil FlareEntity，
- * 由 [cn.kasuminova.astd.api.render.BloomFlareVfx] 建实体并推进「扩散 + 渐隐 + 到期销毁」动画。
+ * 一枚 BoxUtil 光斑的尺寸、颜色与渲染参数。
  *
- * 尺寸语义：[sizeStart]/[sizeEnd] 为长轴（沿朝向）起止，[heightStart]/[heightEnd] 为短轴起止；
- * 短轴随长轴等比的场景用次构造的 aspect 口径，短轴固定（只长轴扩散）的场景直接给相等起止值。
+ * 长轴沿 [facingDeg] 方向，短轴垂直于该方向。
  */
 data class BloomFlareSpec(
     /** 光斑形态（柔/锐 × streak/盘）。 */
@@ -33,9 +31,7 @@ data class BloomFlareSpec(
     /** BoxUtil 实体渲染层。 */
     val layer: CombatEngineLayers = CombatEngineLayers.ABOVE_PARTICLES,
 ) {
-    /**
-     * 短轴随长轴等比的便捷构造：短轴 = 长轴 × [aspect]（十字光柱类观感的主用口径）。
-     */
+    /** 按 [aspect] 与长轴尺寸的乘积设置短轴起止尺寸。 */
     constructor(
         style: BoxFlareStyle,
         sizeStart: Float,

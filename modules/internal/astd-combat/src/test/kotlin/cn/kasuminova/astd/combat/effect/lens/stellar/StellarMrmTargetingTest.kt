@@ -10,10 +10,6 @@ import kotlin.test.Test
 import kotlin.test.assertNull
 import kotlin.test.assertSame
 
-/**
- * 规格 08 §4.1 用例 7~10：目标选择矩阵——战机优先 / 无战机兜底（含无人机）/
- * 排除友军-hulk-不在场-导弹 / 射程门——全部真实调用 [StellarMrmTargetingImpl.select]。
- */
 class StellarMrmTargetingTest {
 
     private val origin = Vector2f(0f, 0f)

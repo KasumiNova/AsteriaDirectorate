@@ -30,10 +30,8 @@ import cn.kasuminova.astd.combat.automation.scenario.xc.StarfallEchoScenario
 import cn.kasuminova.astd.combat.automation.scenario.xc.TrailPauseProbeScenario
 
 /**
- * [AutomationScenarioRegistry] 实现：登记全部战斗自动化场景处理器。
- *
- * 登记顺序与拆分前枢纽 init/advance/render 三条 if-else 链一致（谓词互斥，顺序本不影响命中，
- * 保持原序便于对账）；坠星残响为默认场景，登记在末尾兼作 [defaultHandler]。
+ * [AutomationScenarioRegistry] 实现：登记全部战斗自动化场景处理器；
+ * 坠星残响为默认场景，登记在末尾兼作 [defaultHandler]。
  *
  * 新场景接入：新增 [AutomationScenario] 实现类后在 [handlers] 末尾（默认场景之前）登记一行。
  */

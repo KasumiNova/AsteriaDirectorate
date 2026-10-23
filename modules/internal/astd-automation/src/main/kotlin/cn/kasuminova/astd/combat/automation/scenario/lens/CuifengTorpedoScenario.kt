@@ -19,11 +19,8 @@ import org.lwjgl.util.vector.Vector2f
 
 /**
  * 摧锋鱼雷场景（玩家版基础验证）。
- *
- * 拆分自 ASTDAutomationCombatPlugin 的同名 if-else 分支，相位机/断言/证据写出口径原样迁移。
  */
 class CuifengTorpedoScenario : AbstractAutomationScenario() {
-    // ==== 摧锋鱼雷场景状态（相位机 MOUNT → STRIKE → COMPLETED；玩家版基础验证，无敌版三档） ====
     private var cuifengPhase = CUIFENG_PHASE_MOUNT
     private var cuifengPhaseStartedAt = 0f
 
@@ -41,8 +38,8 @@ class CuifengTorpedoScenario : AbstractAutomationScenario() {
         val engine = ctx.engine
         engine.setDoNotEndCombat(true)
         lockCuifengCamera(engine)
-        // 硬辐推进/自适应增伤浮字仅 devMode 渲染（2026-07-29 审批裁定先例）：本场景为 dev-only 舞台，
-        // 开启 devMode 以目检命中浮字（进程被早退杀掉，设置不落盘）。
+        // 硬辐推进/自适应增伤浮字仅 devMode 渲染：本场景为 dev-only 舞台，
+        // 开启 devMode 以目检命中浮字（进程被早退杀掉，设置不会保存到磁盘）。
         Global.getSettings().isDevMode = true
         ctx.writeDiagnostics("CombatReady")
         ctx.writeTelemetry("CombatReady", findCuifengPlayer(engine), null)
@@ -97,8 +94,8 @@ class CuifengTorpedoScenario : AbstractAutomationScenario() {
     }
 
     /**
-     * 舞台保活与站位（范式同 stabilizeSmShips）：三舰逐帧奶 + 辐能清零 + 钉死锚点 +
-     * force fire 独占驱动（autofire 关闭）。玩家武器瞄准敌方巡洋舰（反舰口径最近目标，
+     * 舞台保活与站位（范式同 stabilizeSmShips）：三舰逐帧回血 + 辐能清零 + 钉死锚点 +
+     * force fire 独占驱动（autofire 关闭）。玩家武器瞄准敌方巡洋舰（反舰优先的最近目标，
      * 鱼雷 AI 自选目标与发射指向一致）；巡洋舰盾常开（护盾命中硬辐推进观测面），
      * 猎犬级护卫舰无盾贴身摆放（150su 全额面板 AOE 连带观测面）。
      */
@@ -251,7 +248,7 @@ class CuifengTorpedoScenario : AbstractAutomationScenario() {
 
             CUIFENG_PHASE_STRIKE -> {
                 stabilizeCuifengShips(engine, playerFire = true)
-                // 携弹续航（dev 舞台）：2+5 携弹耗尽即补满，令弹流持续到证据齐备（辉星撞线相位同款口径）。
+                // 携弹续航（dev 舞台）：2+5 携弹耗尽即补满，令弹流持续到证据齐备（与辉星撞线相位做法相同）。
                 torpedo?.let { if (it.ammo <= 0) it.resetAmmo() }
                 launcher?.let { if (it.ammo <= 0) it.resetAmmo() }
                 if (targetSelected >= 1 && adaptiveHits >= 1 && impactVfx >= 1 && hardFluxPushes >= 1) {
@@ -328,7 +325,7 @@ class CuifengTorpedoScenario : AbstractAutomationScenario() {
         json.appendLine("  \"runtimeElapsedSeconds\": 0,")
         json.appendLine("  \"runtimeTrackedCount\": ${vfxTelemetry.trackedCount},")
         json.appendLine("  \"runtimeLastProjectileSpecId\": ${jsonString(vfxTelemetry.lastProjectileSpecId)},")
-        // ---- 机制证据（摧锋鱼雷烟测检查点：装配 / 反舰目标选择+调速器 / 自适应增伤+硬辐推进+AOE+特效）----
+        // 机制证据：装配 / 反舰目标选择+调速器 / 自适应增伤+硬辐推进+AOE+特效
         json.appendLine("  \"cuifengPhase\": \"$cuifengPhase\",")
         json.appendLine("  \"cuifengTorpedoSlotId\": ${jsonString(cuifengTorpedo?.slot?.id)},")
         json.appendLine("  \"cuifengLauncherSlotId\": ${jsonString(cuifengLauncher?.slot?.id)},")
@@ -374,7 +371,7 @@ class CuifengTorpedoScenario : AbstractAutomationScenario() {
         private const val CUIFENG_CAMERA_VISIBLE_HEIGHT = 1700f
         private const val CUIFENG_MOUNT_SETTLE_SECONDS = 0.6f
 
-        // MOUNT 相位校验：射程 1600 / ammo 2/5 / OP 8/16 / no_drop 两件套（weapon_data.csv 口径）。
+        // MOUNT 相位校验：射程 1600 / ammo 2/5 / OP 8/16 / no_drop 两件套（weapon_data.csv 数值）。
         private const val CUIFENG_EXPECT_RANGE = 1600f
         private const val CUIFENG_RANGE_TOLERANCE = 5f
         private const val CUIFENG_TORPEDO_AMMO = 2
@@ -383,7 +380,7 @@ class CuifengTorpedoScenario : AbstractAutomationScenario() {
         private const val CUIFENG_LAUNCHER_OP = 16f
         private val CUIFENG_REQUIRED_TAGS = setOf("no_drop", "no_drop_salvage")
 
-        // COMPLETED 截图门控：命中特效近 2.5s 内发生才上报（十字辉星/星云/拖尾入帧）；保底舞台超时。
+        // COMPLETED 截图门控：命中特效近 2.5s 内发生才上报（十字辉星/星云/拖尾入帧）；舞台超时作为保险。
         private const val CUIFENG_COMPLETED_EVENT_WINDOW = 2.5f
         private const val CUIFENG_COMPLETED_STAGE_TIMEOUT = 30f
         private const val CUIFENG_PHASE_TIMEOUT = 90f

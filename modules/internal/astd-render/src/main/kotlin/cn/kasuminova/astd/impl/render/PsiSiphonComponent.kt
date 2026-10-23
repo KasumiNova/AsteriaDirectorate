@@ -10,14 +10,6 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
 
-/**
- * PSI-Ω 命中端的「灵魂虹吸」回流特效（迁移计划 §3.4 impact 节点，Psi 专属）：
- * 从命中点沿束回流至炮口的紫色发光粒子（带小拖尾、随机转向）+ 周期性烟雾涟漪环。
- *
- * 无常驻 BoxUtil 句柄——纯每帧向引擎抛射短寿命粒子（`addSmoothParticle`/`addNebulaParticle`），
- * 故仅在 firing（[RenderContext.frame].active）时抛射；停火即停，已抛出的引擎粒子自行消散。
- * 数学从旧 `PsiOmegaBeamVfx.updateHitFx`/`spawnSmokeRipples` 原样移植，几何源改读 [RenderContext.frame]。
- */
 class PsiSiphonComponent(
     id: String,
     layer: CombatEngineLayers = CombatEngineLayers.ABOVE_SHIPS_AND_MISSILES_LAYER,
@@ -240,7 +232,6 @@ class PsiSiphonComponent(
     }
 
     companion object {
-        /** 命中回流在树内的次级绘制序（其粒子实际由引擎独立绘制，此值仅定树内推进/绘制次序）。 */
         const val RENDER_ORDER = 300
 
         private const val HIT_RETURN_SPAWN_PER_SEC_MIN = 2.0f

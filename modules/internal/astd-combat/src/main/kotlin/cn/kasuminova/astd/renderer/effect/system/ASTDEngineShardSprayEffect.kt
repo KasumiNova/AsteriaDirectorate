@@ -17,46 +17,25 @@ import java.awt.Color
 import kotlin.math.cos
 import kotlin.math.sin
 
-/**
- * ASTD 全系引擎常驻三角碎片喷散：按引擎当前火焰 level 动态喷散三角碎片——
- * 数量（喷散频率）、速度、尺寸随出力（level）线性放大，颜色/基准尺寸取自引擎自身。
- *
- * 渲染复用 astd-render 的 [TriShardComponent] 树外持续发射用法：每舰每引擎一个组件
- * （单批 spec），逐帧按 level 累积碎片，按 [FLUSH_INTERVAL] 节拍灌入统一粒子池
- * （2026-09 池化迁移：不再每节拍新建 SpriteEntity，renderEntityMap 滞留根因修复）。
- *
- * level 来源：[ASTDVectorThrustEngineManager] 每帧发布到
- * ship.customData[ASTDVectorThrustEngineManager.ENGINE_LEVELS_KEY]；缺失
- * （管理器未 attach 该舰）时该舰不喷散。熄火引擎 level 发布为 0，自然停喷。
- *
- * 生效范围与安装入口同矢量推进管理器（isASTDShip + CombatVfxBootstrap 每场战斗安装）。
- */
 internal object ASTDEngineShardSprayEffect {
 
     private const val PLUGIN_KEY = "astd_engine_shard_spray_effect"
     private const val SCAN_INTERVAL = 0.5f
 
-    /** 碎片灌批节拍（秒）：每节拍把各引擎累积的碎片灌成一个实例化批。 */
     private const val FLUSH_INTERVAL = 0.1f
 
-    /** 每引擎每秒喷散数量域（按火焰 level 线性插值）。 */
     private const val RATE_MIN = 1f
     private const val RATE_MAX = 12f
 
-    /** 碎片喷射初速域（su/s，按 level 插值；方向沿喷口喷射方向）。 */
     private const val SPEED_MIN = 15f
     private const val SPEED_MAX = 180f
 
-    /** 低于该 level 不喷散（熄火/近零出力）。 */
     private const val LEVEL_EPSILON = 0.05f
 
-    /** 喷散锥半角（度）：绕喷射方向的随机散布。 */
     private const val SPREAD_DEG = 10f
 
-    /** 继承船体速度比例（1.0=碎片与舰体同速基准，喷散仅体现引擎相对喷射速度）。 */
     private const val SHIP_VEL_INHERIT = 1f
 
-    /** 核心色提亮倍率（引擎色的提亮副本，碎片按 coreRatio 概率取用）。 */
     private const val CORE_BRIGHTEN = 1.4f
 
     private val log = Global.getLogger(ASTDEngineShardSprayEffect::class.java)
@@ -73,7 +52,6 @@ internal object ASTDEngineShardSprayEffect {
         }
     }
 
-    /** 单引擎喷散口：引擎句柄、碎片组件（颜色/尺寸随引擎）与发射累积器。 */
     private class EngineSpray(
         val engine: ShipEngineAPI,
         val angleDeg: Float,
@@ -162,7 +140,6 @@ internal object ASTDEngineShardSprayEffect {
                 }
                 val core = brighten(engineColor)
 
-                // 尺寸基准取喷口宽度：碎片边长 ≈ 宽度×0.16（clamp 4~8）×抖动，随 level 再乘 sizeScale。
                 val spec = TriShardSpec(
                     batchCount = 1,
                     layer = CombatEngineLayers.BELOW_SHIPS_LAYER,
@@ -226,7 +203,6 @@ internal object ASTDEngineShardSprayEffect {
                     spray.emitAcc = 0f
                     continue
                 }
-                // 喷射世界方向：船体朝向 + 喷口本地角。速度/尺寸逐颗抖动，破同帧碎片的机械一致感。
                 val baseAngle = shipFacing + spray.angleDeg
 
                 while (spray.emitAcc >= 1f) {

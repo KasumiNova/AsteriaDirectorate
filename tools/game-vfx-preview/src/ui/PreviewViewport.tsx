@@ -4,24 +4,15 @@ import { createEffectRenderer, type EffectRenderer } from '../render/webgl/effec
 import { previewBackingSize } from './previewBackingSize';
 
 interface PreviewViewportProps {
-  /** 当前要渲染的特效定义。 */
   effect: EffectDefinition;
-  /** 当前参数值。 */
   parameters: EffectParameters;
-  /** 动画时间（秒）。 */
   elapsedSeconds: number;
-  /** WebGL 初始化失败时的回调。 */
   onError?: (message: string) => void;
 }
 
-/**
- * 预览视口：在一个 canvas 上用通用特效渲染器持续绘制当前特效。
- *
- * 通过 ref 把最新的特效、参数与时间传入渲染循环，避免每次状态变化都重建
- * WebGL 上下文；渲染器内部会按特效 id 缓存已编译的 program。
- */
 export function PreviewViewport({ effect, parameters, elapsedSeconds, onError }: PreviewViewportProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  // 渲染循环通过 ref 读取最新状态，避免状态变化时重建 WebGL 上下文。
   const effectRef = useRef(effect);
   const parametersRef = useRef(parameters);
   const elapsedRef = useRef(elapsedSeconds);

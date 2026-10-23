@@ -4,12 +4,6 @@ import cn.kasuminova.astd.renderer.shader.base.ShaderProgramSpec
 import org.lwjgl.opengl.GL11
 import org.lwjgl.opengl.GL20
 
-/**
- * OpenGL program cache keyed by shader program id.
- *
- * Compilation and linking fail fast with program id and shader stage so bad
- * shader specs are diagnosable during automation and development.
- */
 class ShaderProgramCache {
     private val programs = LinkedHashMap<String, Int>()
 

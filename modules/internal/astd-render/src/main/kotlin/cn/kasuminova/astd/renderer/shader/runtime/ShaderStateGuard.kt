@@ -3,9 +3,6 @@ package cn.kasuminova.astd.renderer.shader.runtime
 import org.lwjgl.opengl.GL11
 import org.lwjgl.opengl.GL20
 
-/**
- * Centralized OpenGL state save/restore for shader VFX rendering.
- */
 object ShaderStateGuard {
     fun withSavedState(block: () -> Unit) {
         val previousProgram = GL11.glGetInteger(GL20.GL_CURRENT_PROGRAM)

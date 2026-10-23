@@ -7,10 +7,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import org.lwjgl.util.vector.Vector2f
 
-/**
- * [IceShardMirvMath] 纯计算面全量驱动：冰晶伤害分配的不变量（各枚落区间、
- * 合计恒定、同种子确定性）、伤害相关弹速映射、冻结周期伤害量、分裂门控与附着点换算。
- */
 class IceShardMirvMathTest {
 
     @Test
@@ -71,13 +67,10 @@ class IceShardMirvMathTest {
     fun `分裂门控：豁免期内不分裂，豁免期后进入分裂距离才分裂`() {
         val immunity = IceShardMirvDifficulty.SPLIT_IMMUNITY_SECONDS
         val range = IceShardMirvDifficulty.SPLIT_RANGE
-        // 豁免期内：即使已贴脸（dist=0）也不分裂
         assertFalse(IceShardMirvMath.canSplit(0f, 0f))
         assertFalse(IceShardMirvMath.canSplit(immunity - 0.01f, 0f))
-        // 豁免期满：分裂距离边界含本数
         assertTrue(IceShardMirvMath.canSplit(immunity, range))
         assertTrue(IceShardMirvMath.canSplit(immunity + 2f, range - 1f))
-        // 豁免期满但超程：不分裂
         assertFalse(IceShardMirvMath.canSplit(immunity + 2f, range + 0.01f))
     }
 
@@ -85,7 +78,6 @@ class IceShardMirvMathTest {
     fun `附着点换算：任意朝向正反算恒还原命中点`() {
         val shipLoc = Vector2f(1000f, -500f)
         val hitPoint = Vector2f(1080f, -460f)
-        // 覆盖正/负/大角度朝向：局部偏移 → 同朝向回算世界坐标必须逐分量还原命中点
         listOf(0f, 45f, 90f, 180f, 270f, 359.9f).forEach { facing ->
             val local = IceShardMirvMath.attachLocalOffset(shipLoc, facing, hitPoint)
             val world = IceShardMirvMath.attachWorldPoint(shipLoc, facing, local)
@@ -98,13 +90,10 @@ class IceShardMirvMathTest {
     fun `附着点换算：舰船转向后附着点随舰体系同步旋转`() {
         val shipLoc = Vector2f(0f, 0f)
         val hitPoint = Vector2f(100f, 0f)
-        // 附着时刻舰艏 180°（实机镜像 bug 场景）：局部偏移快照于 180° 基准
         val local = IceShardMirvMath.attachLocalOffset(shipLoc, 180f, hitPoint)
-        // 附着瞬间（当前朝向 = 基准朝向）：世界点必须就是命中点，不得镜像到舰体另一侧
         val atAttach = IceShardMirvMath.attachWorldPoint(shipLoc, 180f, local)
         assertEquals(100f, atAttach.x, 1e-3f)
         assertEquals(0f, atAttach.y, 1e-3f)
-        // 舰船转向 180°→270°（CCW +90°）：附着点（舰尾方向）随舰体系旋到 (0, +100)
         val afterTurn = IceShardMirvMath.attachWorldPoint(shipLoc, 270f, local)
         assertEquals(0f, afterTurn.x, 1e-3f)
         assertEquals(100f, afterTurn.y, 1e-3f)

@@ -1,14 +1,7 @@
 package cn.kasuminova.astd.sscsv
 
-/**
- * A minimal mapping from Starsector CSV targets to:
- * - output path under a mod root (usually contents/)
- * - header schema file under tools/_schema_headers
- */
 enum class CsvTarget(
-    /** Relative path under mod root dir (e.g. contents/) */
     val outputPath: String,
-    /** Header schema file name under tools/_schema_headers */
     val headerSchemaFile: String,
 ) {
     WEAPON_DATA("data/weapons/weapon_data.csv", "weapon_data.header.csv"),

@@ -16,12 +16,6 @@ import org.mockito.Mockito.`when`
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-/**
- * 引力磁暴发生器硬辐能→软辐能转化的记账钉测：被转化的是**释放舰船自身**的硬辐能，
- * 所有被过载目标的「过载秒数 × 舰级档位」累加为总比例后**一次性**结算
- * （setHardFlux 不动 currFlux，软辐能 = currFlux − hardFlux 自动等额 +x，总辐能守恒），
- * 全程不得调 increaseFlux（其 hardFlux=true 分支会反向加硬辐能并抬总辐能）。
- */
 class GravStormSystemStatsTest {
 
     @Test
@@ -31,7 +25,6 @@ class GravStormSystemStatsTest {
         val ship = mock(ShipAPI::class.java)
         `when`(ship.fluxTracker).thenReturn(tracker)
 
-        // 巡洋舰 5s（0.15）+ 驱逐舰 4s（0.08）累加总比例 0.23 → 转化量 2000 × 0.23 = 460
         GravStormSystemStats().convertHardToSoft(ship, 0.23f)
 
         verify(tracker, times(1)).hardFlux = 1540f
@@ -66,7 +59,6 @@ class GravStormSystemStatsTest {
         val cruiser = mockOverloadTarget(ShipAPI.HullSize.CRUISER, cruiserTracker)
         val destroyerTracker = mock(FluxTrackerAPI::class.java)
         val destroyer = mockOverloadTarget(ShipAPI.HullSize.DESTROYER, destroyerTracker)
-        // 已过载目标跳过：既不重复过载也不贡献转化比例
         val ventingTracker = mock(FluxTrackerAPI::class.java)
         `when`(ventingTracker.isOverloadedOrVenting).thenReturn(true)
         val venting = mockOverloadTarget(ShipAPI.HullSize.CAPITAL_SHIP, ventingTracker)
@@ -82,11 +74,9 @@ class GravStormSystemStatsTest {
         verify(destroyerTracker).beginOverloadWithTotalBaseDuration(4f)
         verify(ventingTracker, never()).beginOverloadWithTotalBaseDuration(anyFloat())
 
-        // 总比例 = 巡洋 3%×5s + 驱逐 2%×4s = 0.23（主力舰目标已过载不计）→ 2000 × 0.23 = 460
         verify(selfTracker, times(1)).hardFlux = 1540f
         verify(selfTracker, never()).increaseFlux(anyFloat(), anyBoolean())
         verify(selfTracker, never()).currFlux = anyFloat()
-        // 目标自身辐能不被转化结算触碰
         verify(cruiserTracker, never()).hardFlux = anyFloat()
         verify(destroyerTracker, never()).hardFlux = anyFloat()
     }
@@ -99,12 +89,6 @@ class GravStormSystemStatsTest {
         return target
     }
 
-    /**
-     * 断言点：ACTIVE 首帧相位态按「相位结束充能」口径处理——IN 末帧进入相位与充满同帧竞态时
-     * （原版同一帧内 ChargeTracker.advance 先于脚本 apply，chargeTick 的相位分支来不及拦截），
-     * 按满充能立即释放（releaseFn 收到 [GravStormTuning.MAX_CHARGE_SECONDS]）并 deactivate
-     * 进冷却，不归位释放窗口。release 内含音效/扭曲等运行时静态调用，无头环境注入桩替代。
-     */
     @Test
     fun `ACTIVE 首帧相位态按满充能立即释放并进冷却`() {
         val engine = mock(CombatEngineAPI::class.java)
@@ -125,10 +109,6 @@ class GravStormSystemStatsTest {
         verify(system, never()).forceState(any(), anyFloat())
     }
 
-    /**
-     * 断言点：充能期间进入相位的统一口径（chargeTick 相位分支唯一出口）——
-     * 立即按当前充能进度释放并进冷却，不得按取消处理（不释放直接进冷却的旧口径已作废）。
-     */
     @Test
     fun `相位结束充能 按当前充能进度释放并进冷却`() {
         val engine = mock(CombatEngineAPI::class.java)

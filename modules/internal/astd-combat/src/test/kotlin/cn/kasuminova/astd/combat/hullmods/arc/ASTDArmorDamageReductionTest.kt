@@ -17,8 +17,6 @@ class ASTDArmorDamageReductionTest {
             maxArmorDamageReduction = 0.85f,
         )
 
-        // Vanilla-style armor damage reduction uses hitStrength / (hitStrength + effectiveArmor).
-        // With 300 hit strength into 900 effective armor, the final damage multiplier is 0.25.
         assertApprox(0.25f, result.damageMultiplier)
         assertApprox(75f, result.damageAfterArmor)
         assertApprox(225f, result.preventedDamage)
@@ -35,7 +33,6 @@ class ASTDArmorDamageReductionTest {
             maxArmorDamageReduction = 0.85f,
         )
 
-        // 300 / (300 + 9900) would be about 2.94%, but vanilla caps armor mitigation at 85%.
         assertApprox(0.15f, result.damageMultiplier)
         assertApprox(45f, result.damageAfterArmor)
         assertApprox(255f, result.preventedDamage)
@@ -76,11 +73,9 @@ class ASTDArmorDamageReductionTest {
             maxArmorDamageReduction = 0.85f,
         )
 
-        // Kinetic uses 50% armor effectiveness: damage amount and hit strength are both scaled to 150.
         assertApprox(0.15f, kinetic.damageMultiplier)
         assertApprox(22.5f, kinetic.damageAfterArmor)
 
-        // High explosive uses 200% armor effectiveness: damage amount and hit strength are both scaled to 600.
         assertApprox(0.40f, highExplosive.damageMultiplier)
         assertApprox(240f, highExplosive.damageAfterArmor)
     }

@@ -14,7 +14,7 @@ description: SSOptimizer 游戏内热重载工作流（sso-debug）。需要不�
 
 ## L1：脚本重载
 
-见 workflow-ssoptimizer-script-debug——重编译同 scriptId 即可，`version` 递增，
+见 workflow-ssoptimizer-script-debug，重编译同 scriptId 即可，`version` 递增，
 旧实例无持久状态迁移（脚本应保持无状态或自行容忍状态丢失）。
 
 ## L2：hotswap RPC
@@ -23,8 +23,8 @@ description: SSOptimizer 游戏内热重载工作流（sso-debug）。需要不�
 
 - 调试服务启用（`-Dssoptimizer.debug.enabled=true`）；
 - **必须**携带 `-Djdk.attach.allowAttachSelf=true`（JDK 25 在启动期读取该属性，
-  运行期 setProperty 无效——已实测）。缺失时 hotswap RPC 返回明确错误；
-- 目标类**必须已被加载**（hotswap 是重定义，不是首次加载；未加载返回
+  运行期 setProperty 无效，已实测）。缺失时 hotswap RPC 返回明确错误；
+- 目标类**必须已被加载**（hotswap 仅重定义已加载类；未加载返回
   `target class not loaded`）。
 
 smoke 通道完整示例：
@@ -56,7 +56,7 @@ curl -s -X POST -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/
 - 源码中的内部类/辅助类**不会**被重定义（仅重定义 className 指定的主类）；
 - 已建实例的字段值与布局不变；静态初始化块不会重跑；
 - 对「正在高频执行的目标方法」重定义是安全的（JVM 在安全点完成切换），
-  但被 SSOptimizer Mixin/ASM 改写过的方法，hotswap 会丢掉改写层——
+  但被 SSOptimizer Mixin/ASM 改写过的方法，hotswap 会丢掉改写层，
   **不要 hotswap 已被织入的游戏热路径方法**（渲染/战斗循环），除非明确知道
   该方法无织入。
 

@@ -22,13 +22,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
-/**
- * [AnchorArcComponent] 行为测试：桩引擎记录 spawnEmpArcVisual 调用——
- * 锚点在 attach 时捕获并固定、首次 advance 生成唯一一道弧（弹体侧绑弹体中心零偏移 +
- * 逐帧重算）、后续不再生成、非 Active 相位不生成。
- */
 class AnchorArcComponentTest {
-
     private data class ArcRecord(
         val from: Vector2f,
         val to: Vector2f,
@@ -49,13 +43,11 @@ class AnchorArcComponentTest {
         doReturn(Vector2f(400f, 260f)).`when`(it).location
     }
 
-    /** 弹体宿主桩：暴露 projectile 供 toAnchor 绑定。 */
     private inner class StubProjectileHost : ProjectileHost {
         override val hostId = "test"
         override val projectile: DamagingProjectileAPI = this@AnchorArcComponentTest.projectile
     }
 
-    /** 记录型桩引擎：登记电弧调用并返回 mock 电弧实体。 */
     private class StubEngine {
         val arcs = mutableListOf<ArcRecord>()
         val engine: CombatEngineAPI = mock(CombatEngineAPI::class.java).also { engine ->
@@ -115,16 +107,13 @@ class AnchorArcComponentTest {
 
         assertEquals(1, stub.arcs.size)
         val arc = stub.arcs.single()
-        // 锚点 = attach 时的 origin（发射点侧），不随后续帧移动
         assertEquals(100f, arc.from.x, 1e-4f)
         assertEquals(200f, arc.from.y, 1e-4f)
-        // 跟随端 = 弹体中心（零偏移烘焙，免疫首帧 facing 不一致导致的末端反转）
         assertEquals(400f, arc.to.x, 1e-4f)
         assertEquals(260f, arc.to.y, 1e-4f)
         assertEquals(10f, arc.thickness, 1e-4f)
         assertEquals(Color(119, 191, 255, 191), arc.fringe)
         assertEquals(Color(239, 247, 255, 239), arc.core)
-        // 弹体侧绑弹体为锚实体 + 开启逐帧重算：弧存活期内实时拉伸
         assertSame(projectile, arc.toAnchor)
         verify(arc.arc).setUpdateFromOffsetEveryFrame(true)
     }

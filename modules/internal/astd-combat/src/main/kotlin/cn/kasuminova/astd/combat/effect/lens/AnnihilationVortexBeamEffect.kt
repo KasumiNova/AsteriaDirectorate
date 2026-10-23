@@ -20,16 +20,6 @@ import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
 import kotlin.math.roundToInt
 
-/**
- * 湮灭涡旋 everyFrameEffect（规格 04 §2.2）：全部机制（涡旋牵引/吸收/吞噬池/坍缩 + 自绘 VFX）的唯一入口。
- *
- * 状态机（对照 GCP 三段式裁剪充能段——本武器 chargeup=0）：
- * `IDLE ─(beam != null && brightness > 0.05)→ FIRING ─(beam 消失/熄灭)→ 坍缩恰好一次 → FADING → IDLE`。
- *
- * 结算顺序铁律：每帧内 束体驱动 → 牵引/吸收 → 池记账 → HUD；
- * 停火帧 坍缩结算 → 坍缩 VFX → 池移除。坍缩只在停火首帧恰好一次（[beamStarted] 标志位保证）。
- * 宿主失效（船 hulk/换装）：池走 SELF_MANAGED 自回收 + INFO，本插件不再被调用，**不触发坍缩**（机制明确行为）。
- */
 class AnnihilationVortexBeamEffect : EveryFrameWeaponEffectPlugin {
 
     private val absorb = AnnihilationVortexAbsorbImpl()
@@ -44,7 +34,6 @@ class AnnihilationVortexBeamEffect : EveryFrameWeaponEffectPlugin {
     private var fadeStartedAt = -1f
     private var lastLine: BeamLineUtil.BeamLine? = null
 
-    /** 本开火周期缓存的难度取值（开火起点一次性解析，规格 04 §2.2）。 */
     private var radius = 0f
     private var aoeMult = 1f
 
@@ -72,7 +61,6 @@ class AnnihilationVortexBeamEffect : EveryFrameWeaponEffectPlugin {
         if (firing) {
             fadeStartedAt = -1f
             if (!beamStarted) {
-                // ====== 进入 FIRING（开火起点，每周期一次）：难度缓存 → 池就位 → 建 VFX 树 ======
                 beamStarted = true
                 beamStartedAt = now
                 radius = AnnihilationVortexDifficulty.resolve(AnnihilationVortexDifficulty.RADIUS, ship.owner)
@@ -97,8 +85,6 @@ class AnnihilationVortexBeamEffect : EveryFrameWeaponEffectPlugin {
                     vortex = null
                 } else {
                     vortex = tree.children.firstOrNull { it.id == VORTEX_NODE_ID } as? AnnihilationVortexVortexComponent
-                    // 涡旋半径档位经树参数传入（规格 04 §3 二选一裁定：构建函数无参，
-                    // 由 BeamEffect 在建树后直写组件属性；闭包捕获不可行——builders 为无参注册表）。
                     vortex?.vortexRadius = radius
                     beamDriver = BeamVfxDriverImpl(BeamHostImpl("avortex@" + System.identityHashCode(this), BASE_WIDTH), tree)
                 }
@@ -107,11 +93,9 @@ class AnnihilationVortexBeamEffect : EveryFrameWeaponEffectPlugin {
             val line = BeamLineUtil.fromBeamOrWeapon(weapon, beam) ?: return
             lastLine = line
 
-            // 1) 束体驱动（前 BEAM_GROW_TIME 视觉渐长，仅视觉）。
             val reach = ((now - beamStartedAt) / BEAM_GROW_TIME).coerceIn(0f, 1f)
             driveBeam(engine, line, amount, reach, fadeMul = 1f)
 
-            // 2) 牵引/吸收（中心 = 光束终点 beam.to）。
             val endpoint = line.to
             val outcome = absorb.advance(
                 engine = engine,
@@ -123,7 +107,6 @@ class AnnihilationVortexBeamEffect : EveryFrameWeaponEffectPlugin {
                 onAbsorbedFx = { loc -> vortex?.onAbsorbed(loc) },
             )
 
-            // 3) 池记账 + 单次吸收浮字（玩家船携带时，原生合并浮字通道）。
             val p = pool
             if (p != null && outcome.absorbed.isNotEmpty()) {
                 telemetryInc(engine, if (ship.owner == 0) TELEMETRY_ABSORBED_PLAYER else TELEMETRY_ABSORBED_ENEMY, outcome.absorbed.size)
@@ -136,7 +119,6 @@ class AnnihilationVortexBeamEffect : EveryFrameWeaponEffectPlugin {
                 }
             }
 
-            // 4) HUD 吞噬池（仅玩家船；池移除即停刷新，状态栏自然消失）。
             if (p != null && ship === engine.playerShip) {
                 feedback.maintainPlayerStatus(
                     engine,
@@ -157,15 +139,12 @@ class AnnihilationVortexBeamEffect : EveryFrameWeaponEffectPlugin {
         }
 
         if (beamStarted) {
-            // ====== 停火首帧：坍缩恰好一次（坍缩结算 → 坍缩 VFX → 池移除） ======
             beamStarted = false
             fadeStartedAt = now
             val p = pool
             pool = null
             if (p != null) {
-                // 宿主失效防线（第二轮烟测实证）：船被击毁后本插件仍会被调用一帧（束已灭），
-                // 此时不得坍缩——宿主死亡涡旋哑火是机制明确行为；池不标记消费，
-                // 移除时走 SELF_MANAGED 回收语义（onRemove 记「丢弃」INFO + 遥测）。
+                // 宿主死亡后本插件仍会被调用一帧（束已灭），此时不得触发坍缩。
                 val hostAlive = !ship.isHulk && ship.isAlive
                 val center = lastLine?.to ?: beam?.let { Vector2f(it.from) }
                 if (!hostAlive) {
@@ -211,7 +190,6 @@ class AnnihilationVortexBeamEffect : EveryFrameWeaponEffectPlugin {
             return
         }
 
-        // ====== 坍缩后淡出：束体按 fadeMul 收束到消失后释放驱动 ======
         val fs = fadeStartedAt
         val line = lastLine
         if (fs >= 0f && line != null) {
@@ -228,7 +206,6 @@ class AnnihilationVortexBeamEffect : EveryFrameWeaponEffectPlugin {
         }
     }
 
-    /** 把束几何折成 [BeamFrame] 喂驱动：strength=1（无充能 ramp），fadeMul 控淡出收束。 */
     private fun driveBeam(engine: CombatEngineAPI, line: BeamLineUtil.BeamLine, amount: Float, reach: Float, fadeMul: Float) {
         val driver = beamDriver ?: return
         val visLen = line.length * reach.coerceIn(0f, 1f)
@@ -241,19 +218,14 @@ class AnnihilationVortexBeamEffect : EveryFrameWeaponEffectPlugin {
     }
 
     companion object {
-        /** BeamVfxSpecs 注册键（与 `.wpn` id 一致）。 */
         const val VFX_SPEC_ID = "astd_annihilation_vortex"
 
-        /** 吞噬池 Buff id（BuffHost 武器级复合键段）。 */
         const val POOL_BUFF_ID = "astd_annihilation_vortex_pool"
 
-        /** 涡旋节点 id（树参数写入与吸收 flare 回调的定位键）。 */
         const val VORTEX_NODE_ID = "astd_annihilation_vortex_vortex"
 
-        /** BeamHost 基宽（对应 `.wpn` width 14 的观感放大，目检可调）。 */
         const val BASE_WIDTH = 18f
 
-        // ---- 自动化遥测键（engine.customData；玩家/敌方分列，烟测检查点证据） ----
         const val TELEMETRY_ABSORBED_PLAYER = "astd_av_absorbed_player"
         const val TELEMETRY_ABSORBED_ENEMY = "astd_av_absorbed_enemy"
         const val TELEMETRY_COLLAPSE_COUNT = "astd_av_collapse_count"
@@ -269,43 +241,33 @@ class AnnihilationVortexBeamEffect : EveryFrameWeaponEffectPlugin {
         const val TELEMETRY_LAST_AOEMULT_ENEMY = "astd_av_last_aoemult_enemy"
         const val TELEMETRY_POOL_RECYCLED = "astd_av_pool_recycled"
 
-        /** HUD 状态条目刷新帧数（HUD 可见性证据：仅玩家船携带且池在时逐帧 +1）。 */
         const val TELEMETRY_HUD_FRAMES = "astd_av_hud_frames"
 
-        /** 吸收入池浮字次数（单次吸收浮字证据）。 */
         const val TELEMETRY_FLOATY_COUNT = "astd_av_floaty_count"
 
         private const val BEAM_GROW_TIME = 0.08f
         private const val END_FADE_TIME = 0.35f
 
-        /** HUD 状态条目键。 */
         private const val HUD_KEY = "astd_annihilation_vortex_pool"
 
-        /** HUD 图标（LENS 阵列核心船插图，复用现成美术；美术件到位后替换）。 */
         private const val HUD_ICON = "graphics/hullmods/astd_lens_singularity_power.png"
 
-        /** 单次吸收入池浮字色（LENS 深红）。 */
         private val ABSORB_FLOATY_COLOR = Color(255, 60, 70)
 
-        /** HUD/浮字反馈通道（机制可视化铁律的统一落点）。 */
         private val feedback: CombatFeedback = CombatFeedbackImpl
 
         private val log = Global.getLogger(AnnihilationVortexBeamEffect::class.java)
 
-        /** 遥测计数 +[delta]（无引擎场景静默跳过——计数仅服务烟测证据，非机制路径）。 */
         fun telemetryInc(engine: CombatEngineAPI, key: String, delta: Int = 1) {
             engine.customData[key] = counter(engine, key) + delta
         }
 
-        /** 遥测读数（Int）。 */
         fun counter(engine: CombatEngineAPI, key: String): Int = (engine.customData[key] as? Number)?.toInt() ?: 0
 
-        /** 遥测记录（Float 直写）。 */
         fun telemetryRecord(engine: CombatEngineAPI, key: String, value: Float) {
             engine.customData[key] = value
         }
 
-        /** 遥测读数（Float）。 */
         fun telemetryFloat(engine: CombatEngineAPI, key: String): Float = (engine.customData[key] as? Number)?.toFloat() ?: 0f
     }
 }

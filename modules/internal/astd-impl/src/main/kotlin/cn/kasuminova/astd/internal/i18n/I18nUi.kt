@@ -4,17 +4,9 @@ import com.fs.starfarer.api.ui.LabelAPI
 import com.fs.starfarer.api.ui.TooltipMakerAPI
 import java.awt.Color
 
-/**
- * I18n + Tooltip 高亮的便捷封装。
- *
- * 使用 Starsector 原生 `%s` 格式化机制实现多色高亮，
- * 避免 setHighlight + setHighlightColors 对含 `%` 字符的高亮文本匹配失败。
- */
+/** 必须使用 Starsector `%s` 格式化高亮文本，否则含 `%` 的文本会匹配失败。 */
 object I18nUi {
 
-    /**
-     * 添加一行文本，并对 `<param:#RRGGBB:key>` 标记的变量进行高亮（支持多色）。
-     */
     fun addPara(
         tooltip: TooltipMakerAPI,
         category: I18n.Categories,
@@ -27,9 +19,6 @@ object I18nUi {
         return addParaRendered(tooltip, rendered, pad, baseColor)
     }
 
-    /**
-     * 添加一行文本（string category 版本）。
-     */
     fun addPara(
         tooltip: TooltipMakerAPI,
         category: String?,
@@ -42,9 +31,6 @@ object I18nUi {
         return addParaRendered(tooltip, rendered, pad, baseColor)
     }
 
-    /**
-     * 使用已渲染的 [I18n.Rendered] 结果添加段落，自动处理高亮。
-     */
     fun addParaRendered(
         tooltip: TooltipMakerAPI,
         rendered: I18n.Rendered,
@@ -58,12 +44,6 @@ object I18nUi {
         return addParaWithFormatHighlights(tooltip, rendered.text, highlights, pad, baseColor)
     }
 
-    /**
-     * 使用 Starsector 原生 `addPara(format, pad, Color, values...)` 机制构建带多色高亮的段落。
-     *
-     * 原理：把高亮文本的位置替换为 `%s` 占位符，非高亮部分的 `%` 转义为 `%%`，
-     * 让 Starsector 内部的格式化机制安全地处理含 `%` 字符的高亮值。
-     */
     private fun addParaWithFormatHighlights(
         tooltip: TooltipMakerAPI,
         text: String,

@@ -8,8 +8,8 @@ import cn.kasuminova.astd.internal.debug.ASTDInGameAutomationScenario
  *
  * 验证 GravityPhaseCloakAI 对低机动目标的绕后意图：满装配舜华（AI 驾驶）对
  * 满装配统治者级（AI 驾驶），统计下潜次数、相位中绕敌舰的方位角扫描幅度与
- * 每次上浮时相对敌舰舰艏的方位差——修复前（PHASE_ATTACK_RUN 无人管理）舜华
- * 下潜后原地罚站，上浮方位差恒小。
+ * 每次上浮时相对敌舰舰艏的方位差；PHASE_ATTACK_RUN 无人管理时舜华下潜后
+ * 原地不动，上浮方位差恒小。
  */
 class PhaseFlankScenario : AbstractPhaseFlankScenario() {
     override val scenarioId: String = ASTDInGameAutomationScenario.PF_SCENARIO_ID

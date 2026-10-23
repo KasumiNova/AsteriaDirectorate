@@ -13,58 +13,44 @@ import cn.kasuminova.astd.impl.render.TrailDriftRange
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.DamagingProjectileAPI
 
-/** 弹体发射瞬间的附加动作钩子（如发射点扭曲特效）；由分发器在登记弹体成功后调用一次。 */
+/** 弹体登记成功后执行一次的发射动作。仅在战斗主线程调用。 */
 fun interface ProjectileVfxOnFireHook {
     fun onFire(engine: CombatEngineAPI, projectile: DamagingProjectileAPI)
 }
 
 /**
- * 弹体特效场景树**蓝图**：DSL 产出的纯数据（各层 spec 列表），不含任何渲染组件。
- * 由渲染实现侧（astd-render 的 `ProjectileVfxTreeAssembler`）组装为 RenderEntity 场景树。
+ * 弹体特效树的数据蓝图。渲染实现根据这些参数创建实体树。
  */
 class ProjectileVfxTreeSpec(
     val id: String,
-    /** Static Trail 拖尾主体层（名称 → spec），按声明顺序叠层；由 BoxUtil Static Trail 系统托管渲染。 */
+    /** Static Trail 拖尾层，保留声明顺序。 */
     val staticTrails: List<Pair<String, StaticTrailSpec>>,
-    /**
-     * Box 螺栓弹头层（取代原版 ProjectileRenderer 螺栓渲染）；null = 不渲染（`bolt { off() }`，
-     * 如导弹等由原版弹体贴图承担的弹体）。
-     */
+    /** 能量螺栓弹头层；null 表示不渲染。 */
     val bolt: BoltSpec?,
-    /**
-     * 弹体本体贴图层（BoxUtil SpriteEntity 逐帧跟随，normal alpha，取代原版弹体贴图渲染）；
-     * null = 不渲染（默认）。用于有实体贴图的弹体（如冰晶碎片），.proj 侧须以 `BUtil_NONE.png` 屏蔽原版贴图。
-     */
+    /** 弹体本体贴图层；null 表示不渲染。 */
     val spriteBody: SpriteBodySpec?,
-    /** BoxUtil 光斑层（名称 → spec）。 */
+    /** BoxUtil 光斑层。 */
     val boxFlares: List<Pair<String, BoxFlareSpec>>,
-    /** 锚点电弧层（名称 → spec）。 */
+    /** 锚点电弧层。 */
     val anchorArcs: List<Pair<String, AnchorArcSpec>>,
-    /** 三角碎片航迹发射器层（名称 → spec）：持续型，弹体 Active 期间按节拍喷碎片。 */
+    /** 三角碎片发射器层。 */
     val shardWakes: List<Pair<String, ShardWakeSpec>> = emptyList(),
-    /** 马赫环航迹发射器层（名称 → spec）：持续型，弹体 Active 期间按节拍留环。 */
+    /** 马赫环发射器层。 */
     val machRings: List<Pair<String, MachRingSpec>> = emptyList(),
 )
 
 /**
- * 弹体特效的**唯一作者面**：手写 DSL 直接产出场景树蓝图 + 驱动策略。
- * 一个 [projectileVfx] 块内：`bolt` 定制 Box 螺栓弹头（默认开启，取代原版螺栓渲染），
- * `staticTrail` 声明 Static Trail 拖尾主体层（可多条叠层，BoxUtil 托管），
- * `boxFlare`/`anchorArc`/`onFire` 声明附加层，`shardWake`/`machRing` 声明持续发射器层
- * （三角碎片航迹/马赫环，统一粒子池渲染），`lifecycle`/`fade` 声明驱动策略。
+ * 弹体特效蓝图与驱动策略，由 [projectileVfx] 构建。
  *
- * 本 DSL 只负责把作者旋钮折成渲染器所需的层 spec（[ProjectileVfxTreeSpec] 纯数据蓝图）；
- * 场景树组装在渲染实现侧（astd-render 的 `ProjectileVfxTreeAssembler`）。
- * 每次生成弹体都重新调用构建函数（不缓存），以支持调试期字面量热交换（见设计 §7）。
+ * 构建过程只收集参数，不创建渲染实体。
  */
 class ProjectileVfx(
     val tree: ProjectileVfxTreeSpec,
     val policy: ProjectileVfxDriverPolicy,
-    /** 发射瞬间附加动作列表（如炮口锥面冲击、发射点扭曲特效），按登记序执行；空则无事发生。 */
+    /** 发射动作，按登记顺序执行。 */
     val onFire: List<ProjectileVfxOnFireHook> = emptyList(),
 )
 
-/** 颜色字面量：0xRRGGBBAA。 */
 internal fun rgba(hex: Long): ASTDColor = ASTDColor(
     ((hex shr 24) and 0xFF) / 255f,
     ((hex shr 16) and 0xFF) / 255f,
@@ -75,14 +61,15 @@ internal fun rgba(hex: Long): ASTDColor = ASTDColor(
 @DslMarker
 annotation class ProjectileVfxDslMarker
 
+/**
+ * 构建弹体特效蓝图。至少声明一个特效层，否则抛出 [IllegalStateException]。
+ * 构建过程不创建渲染实体。
+ */
 @ProjectileVfxDslMarker
 fun projectileVfx(id: String, block: ProjectileVfxScope.() -> Unit): ProjectileVfx =
     ProjectileVfxScope(id).apply(block).build()
 
-/**
- * DSL 作用域：收集 Static Trail 拖尾层、附加层与策略，[build] 时组装成 [ProjectileVfx]。
- * 节点组装推迟到 [build]，故组件块的书写先后无关。
- */
+/** 收集弹体特效层与驱动策略。 */
 @ProjectileVfxDslMarker
 class ProjectileVfxScope(private val id: String) {
 
@@ -93,74 +80,65 @@ class ProjectileVfxScope(private val id: String) {
     private val machRings = ArrayList<Pair<String, MachRingSpec>>()
     private val onFireHooks = ArrayList<ProjectileVfxOnFireHook>()
 
-    /** Box 螺栓弹头：默认开启（取代原版螺栓渲染）；`bolt { off() }` 关闭（如导弹弹体）。 */
     private var bolt: BoltBuilder? = BoltBuilder()
-
-    /** 弹体本体贴图层（默认不渲染；`spriteBody(...)` 开启，取代原版弹体贴图渲染）。 */
     private var spriteBody: SpriteBodyBuilder? = null
 
     private val lifecycle = LifecycleBuilder()
     private val fade = FadeBuilder()
 
-    /**
-     * 叠加一条 Static Trail 拖尾主体层（BoxUtil 1.6.0 托管：GPU 实例化带体 + 环形 vRAM 池 +
-     * 三段时长生命），可多次调用按 [StaticTrailBuilder.layer] 叠层。
-     */
+    /** 添加 Static Trail 拖尾层，可多次调用。 */
     fun staticTrail(name: String, texturePath: String, block: StaticTrailBuilder.() -> Unit) {
         staticTrails += name to StaticTrailBuilder(texturePath).apply(block).build()
     }
 
-    /**
-     * 定制 Box 螺栓弹头层（SpriteEntity 双趟 additive，取代原版螺栓渲染；默认即开启）。
-     * 不调用本方法 = 默认近白螺栓；`bolt { off() }` 关闭（导弹等原版贴图弹体）。
-     */
+    /** 配置能量螺栓弹头；弹头默认启用，可在 [block] 中调用 [BoltBuilder.off] 关闭。 */
     fun bolt(block: BoltBuilder.() -> Unit) {
         val builder = bolt ?: BoltBuilder()
         builder.apply(block)
         bolt = if (builder.isOff) null else builder
     }
 
-    /** 挂一枚 BoxUtil 光斑（跟随弹体视觉头部；offsetX 负值可锚回弹体中心）。 */
+    /** 添加跟随弹体头部的 BoxUtil 光斑。 */
     fun boxFlare(name: String, block: BoxFlareBuilder.() -> Unit) {
         boxFlares += name to BoxFlareBuilder().apply(block).build()
     }
 
     /**
-     * 弹体本体贴图层（BoxUtil SpriteEntity 逐帧跟随弹体 location/facing，normal alpha，
-     * 对齐原版 Missile.render 弹体贴图语义含熄火淡出）：用于有实体贴图的弹体（如冰晶碎片），
-     * .proj 侧须以 `sprite=BUtil_NONE.png` 屏蔽原版贴图渲染。贴图约定：文件右（+u）= 飞行正向。
+     * 使用 BoxUtil SpriteEntity 渲染弹体本体。调用方必须屏蔽原版贴图并预加载 [texturePath]。
      *
-     * @param width 世界全宽（su，沿飞行向长度，对齐 .proj size[0]）。
-     * @param height 世界全高（su，横向宽度，对齐 .proj size[1]）。
+     * @param width 沿飞行方向的全长，单位为 su
+     * @param height 横向全宽，单位为 su
      */
     fun spriteBody(texturePath: String, width: Float, height: Float, block: SpriteBodyBuilder.() -> Unit = {}) {
         spriteBody = SpriteBodyBuilder(texturePath, width, height).apply(block)
     }
 
-    /** 拉一条原版 EMP 锚点电弧：发射点（attach 时捕获的固定位置）→ 弹体头部（每帧跟随），随弹体生命周期存续。 */
+    /** 添加从发射位置延伸到弹体的 EMP 电弧。 */
     fun anchorArc(name: String, block: AnchorArcBuilder.() -> Unit) {
         anchorArcs += name to AnchorArcBuilder().apply(block).build()
     }
 
-    /** 三角碎片航迹发射器：弹体飞行中按节拍喷一撮同色三角碎片（统一粒子池渲染），弹体消亡即停喷。 */
+    /** 添加在弹体活动期间生成三角碎片的发射器。 */
     fun shardWake(name: String, block: ShardWakeBuilder.() -> Unit) {
         shardWakes += name to ShardWakeBuilder().apply(block).build()
     }
 
-    /** 马赫环航迹发射器：弹体飞行中按节拍在弹体当前位置留一枚拍扁椭圆环（统一粒子池渲染），环不跟弹、自然寿终。 */
+    /** 添加在弹体活动期间留下椭圆环的发射器。 */
     fun machRing(name: String, block: MachRingBuilder.() -> Unit) {
         machRings += name to MachRingBuilder().apply(block).build()
     }
 
-    /** 发射瞬间附加动作（如炮口锥面冲击、发射点扭曲特效）：登记弹体成功后由分发器各调用一次，可登记多个。 */
+    /** 登记弹体注册成功后执行一次的动作。 */
     fun onFire(hook: ProjectileVfxOnFireHook) {
         onFireHooks += hook
     }
 
+    /** 配置锚点位置。 */
     fun lifecycle(block: LifecycleBuilder.() -> Unit) {
         lifecycle.apply(block)
     }
 
+    /** 配置不同终止原因的淡出时长。 */
     fun fade(block: FadeBuilder.() -> Unit) {
         fade.apply(block)
     }
@@ -177,7 +155,6 @@ class ProjectileVfxScope(private val id: String) {
         val headLead = lifecycle.headLeadWorld
         val treeSpec = ProjectileVfxTreeSpec(
             id = id,
-            // headLead 统一盖印到每条拖尾层：tracker 锚点与树原点（光斑锚）保持一致
             staticTrails = staticTrails.map { (name, spec) -> name to spec.copy(headLeadWorld = headLead) },
             bolt = boltSpec,
             spriteBody = spriteBodySpec,
@@ -198,8 +175,7 @@ class ProjectileVfxScope(private val id: String) {
 }
 
 /**
- * Static Trail 拖尾层（BoxUtil 托管）：GPU 实例化带体 + 平铺滚动贴图图案。
- * 贴图约定同 astd_trails_*：X=带长向（REPEAT 平铺）、Y=横向，形在 alpha 通道、RGB 近白。
+ * 配置 Static Trail 拖尾层。贴图 X 轴为带长方向并使用 REPEAT 平铺，alpha 描述形状，RGB 使用近白色。
  */
 @ProjectileVfxDslMarker
 class StaticTrailBuilder(private val texturePath: String) {
@@ -218,62 +194,62 @@ class StaticTrailBuilder(private val texturePath: String) {
     private var velocityInRange: TrailDriftRange? = null
     private var velocityOutRange: TrailDriftRange? = null
 
-    /** 叠层序号：同弹体多条拖尾的组织序（1 垫底、2 其上；additive 混合下不参与绘制排序）。 */
+    /** 设置同一弹体多条拖尾的组织序号。 */
     fun layer(v: Int) {
         layer = v
     }
 
-    /** 拖尾头部全宽（世界单位）；尾部宽度 = 本值 × [tailWidthRatio]，随生命线性收细。 */
+    /** 设置拖尾头部全宽，尾部宽度为该值乘以尾宽比。 */
     fun width(v: Float) {
         width = v
     }
 
-    /** 尾宽比（0..1）。 */
+    /** 设置尾宽比，输入会限制在 0 至 1。 */
     fun tailWidth(v: Float) {
         tailWidthRatio = v.coerceIn(0f, 1f)
     }
 
-    /** 头尾颜色（0xRRGGBBAA）：头部亮端 → 尾部暗端，随节点生命两段渐变。 */
+    /** 设置头部与尾部颜色，格式为 0xRRGGBBAA。 */
     fun colors(head: Long, tail: Long) {
         headColor = rgba(head); tailColor = rgba(tail)
     }
 
-    /** 预期带长（世界单位）：节点总寿命 = 带长 / 弹体速度，三段时长（淡入/全亮/消散）按比例切分。 */
+    /** 设置预期带长，节点总寿命由带长除以弹体速度得到。 */
     fun length(v: Float) {
         bandLength = v
     }
 
-    /** 图案平铺周期（世界单位）与滚动速度（世界单位/秒，0 不滚动）。 */
+    /** 设置图案平铺周期和滚动速度，单位分别为 su 和 su/s。 */
     fun tile(length: Float, scroll: Float) {
         tileLength = length; scrollSpeed = scroll
     }
 
-    /** 带体整体向后退的距离（世界单位）：带体头部亮端退到螺栓弹头之后，让弹头尖在带体前露出。不调用 = 自动取弹体长度 ×0.75（运行期解析）。 */
+    /** 设置带体向后偏移的距离；不调用时由渲染实现根据弹体长度计算。 */
     fun recede(v: Float) {
         recede = v
     }
 
-    /** bloom 发光强度（0..1；进 BoxUtil emissive → bloom G-buffer）。不调用即不发光（原版螺栓无辉光）。 */
+    /** 设置 bloom 强度，输入会限制在 0 至 1。 */
     fun glow(power: Float) {
         glowPower = power.coerceIn(0f, 1f)
     }
 
-    /** 头部（最新节点）每节点随机自旋角速度范围（度/秒，绕节点锚点）。默认 ±15 的轻扭转。 */
+    /** 设置最新节点的随机自旋角速度范围；必须同时调用 [velocityIn] 才会生效。 */
     fun angularIn(min: Float = -15f, max: Float = 15f) {
         angularInRange = min..max
     }
 
-    /** 尾部（最老节点）每节点随机自旋角速度范围（度/秒）：带尾随存活时间扭转出弧度，默认 ±45 可见卷曲。 */
+    /** 设置最旧节点的随机自旋角速度范围；必须同时调用 [velocityOut] 才会生效。 */
     fun angularOut(min: Float = -45f, max: Float = 45f) {
         angularOutRange = min..max
     }
 
-    /** 头部（最新节点）每节点随机漂移速度范围（世界单位/秒，基于带体朝向）。 */
+    /** 设置最新节点的随机漂移速度范围，单位为 su/s。 */
     fun velocityIn(minX: Float, minY: Float, maxX: Float, maxY: Float) {
         velocityInRange = TrailDriftRange(minX, minY, maxX, maxY)
     }
 
-    /** 尾部（最老节点）每节点随机漂移速度范围（世界单位/秒）：带尾随存活时间漂离原航迹。 */
+    /** 设置最旧节点的随机漂移速度范围，单位为 su/s。 */
     fun velocityOut(minX: Float, minY: Float, maxX: Float, maxY: Float) {
         velocityOutRange = TrailDriftRange(minX, minY, maxX, maxY)
     }
@@ -297,7 +273,7 @@ class StaticTrailBuilder(private val texturePath: String) {
     )
 }
 
-/** Box 螺栓弹头层（SpriteEntity 双趟 additive，烘焙版彗形贴图）：贴图/染色/关闭。 */
+/** 配置 BoxUtil 能量螺栓弹头。 */
 @ProjectileVfxDslMarker
 class BoltBuilder {
     internal var isOff = false; private set
@@ -307,31 +283,29 @@ class BoltBuilder {
     private var lengthOverride: Float? = null
     private var widthOverride: Float? = null
 
-    /** 关闭 Box 螺栓弹头（弹体视觉由其它路径承担，如原版导弹贴图）。 */
+    /** 关闭能量螺栓弹头。 */
     fun off() {
         isOff = true
     }
 
-    /** 弹头贴图路径（彗形白图，渐隐/收窄已烘焙进 alpha；X=飞行向，头在贴图左侧）。 */
+    /** 设置弹头贴图，头端必须位于贴图右侧。 */
     fun texture(path: String) {
         texturePath = path
     }
 
-    /** 弹头染色（0xRRGGBBAA，原版 coreColor 语义，通常近白；alpha 参与亮度乘算）。 */
+    /** 设置弹头颜色，格式为 0xRRGGBBAA。 */
     fun color(color: Long) {
         this.color = rgba(color)
     }
 
     /**
-     * 接管导弹弹体（默认关闭：MissileAPI 保留原版贴图渲染，组件 attach 时自禁用）。
-     * 开启时原版贴图须另行屏蔽，且必须用 [size] 显式给尺寸（导弹 spec 无 length/width 键）；
-     * 导弹无 TrailExtender 尾迹真值，螺栓按全长渲染、无出生伸入。
+     * 为导弹启用能量螺栓弹头。调用方必须屏蔽原版导弹贴图并通过 [size] 提供尺寸。
      */
     fun onMissile() {
         allowMissile = true
     }
 
-    /** 螺栓尺寸显式覆盖（su）：length=全长（飞行向），width=全宽（横向）；省略 = 读弹体 spec 的 length/width。 */
+    /** 设置螺栓全长与全宽；不调用时读取弹体规格。 */
     fun size(length: Float, width: Float) {
         lengthOverride = length
         widthOverride = width
@@ -346,40 +320,41 @@ class BoltBuilder {
     )
 }
 
-/** 生命周期策略：拖尾锚点前移（其余运行期生命周期已由 Static Trail 系统接管）。 */
+/** 配置弹体特效锚点。 */
 @ProjectileVfxDslMarker
 class LifecycleBuilder {
     var headLeadWorld: Float? = null; private set
 
-    /** 拖尾锚点前移量（世界单位）：不调用 = 0（弹体前端 location 即螺栓视觉头部，无需再前移）；正值继续向前探。 */
+    /** 设置锚点沿弹体朝向前移的距离；不调用表示不偏移。 */
     fun headLead(v: Float) {
         headLeadWorld = v
     }
 }
 
-/** 淡出策略：默认淡出秒数 + 命中/过期各自秒数（省略则同默认）；作用于树内附加层（光斑等）。 */
+/** 配置附加特效层的淡出时长，单位为秒。 */
 @ProjectileVfxDslMarker
 class FadeBuilder {
     var outSeconds = 0.15f; private set
     var hitSeconds: Float? = null; private set
     var expireSeconds: Float? = null; private set
 
+    /** 设置默认淡出时长。 */
     fun out(v: Float) {
         outSeconds = v
     }
 
+    /** 设置命中后的淡出时长；不调用时使用默认值。 */
     fun hit(v: Float) {
         hitSeconds = v
     }
 
+    /** 设置自然过期后的淡出时长；不调用时使用默认值。 */
     fun expire(v: Float) {
         expireSeconds = v
     }
 }
 
-/**
- * 弹体本体贴图层构建器（DSL `spriteBody(...)`）：贴图/尺寸为构造参数，这里只有 bloom 发光一个旋钮。
- */
+/** 配置弹体本体贴图层。 */
 @ProjectileVfxDslMarker
 class SpriteBodyBuilder(
     private val texturePath: String,
@@ -388,7 +363,7 @@ class SpriteBodyBuilder(
 ) {
     private var glowPower = 0f
 
-    /** bloom 发光强度（0 = 不发光；>0 时 emissive 复用本体 diffuse 贴图原色发光，进 bloom G-buffer）。 */
+    /** 设置 bloom 强度，负数按 0 处理。 */
     fun glow(power: Float) {
         glowPower = power.coerceAtLeast(0f)
     }
@@ -401,7 +376,7 @@ class SpriteBodyBuilder(
     )
 }
 
-/** BoxUtil 光斑（lens-flare）：尺寸/双色/形态/朝向偏移/闪烁速度/锚点偏移。 */
+/** 配置 BoxUtil 光斑。 */
 @ProjectileVfxDslMarker
 class BoxFlareBuilder {
     private var width = 120f
@@ -418,47 +393,47 @@ class BoxFlareBuilder {
     private var fixedFacingDeg: Float? = null
     private var offsetX = 0f
 
-    /** 光斑全尺寸（世界单位）：w 沿朝向、h 横向；w >> h 即水平光条。 */
+    /** 设置光斑全长与全宽，单位为 su。 */
     fun size(w: Float, h: Float) {
         width = w; height = h
     }
 
-    /** 核心/边缘色（0xRRGGBBAA）。 */
+    /** 设置核心色与边缘色，格式为 0xRRGGBBAA。 */
     fun colors(core: Long, fringe: Long) {
         coreColor = rgba(core); fringeColor = rgba(fringe)
     }
 
-    /** bloom 强度（0..1+）与盘厚（越大越薄）。 */
+    /** 设置 bloom 强度与盘厚比例，盘厚比例越大则光斑越薄。 */
     fun glow(power: Float, discRatio: Float = 4f) {
         glowPower = power; this.discRatio = discRatio
     }
 
-    /** 开启闪烁（宽度脉动 + 明灭同步，默认速度倍率 1.2）；不调用即不闪烁。 */
+    /** 开启闪烁。 */
     fun flicker() {
         flick = true
     }
 
-    /** 开启闪烁并设速度倍率（1 = BoxUtil 默认；0/负值不合法，取 >0）。 */
+    /** 开启闪烁并设置速度倍率，最小值为 0.05。 */
     fun flicker(rate: Float) {
         flick = true; flickerRate = rate.coerceAtLeast(0.05f)
     }
 
-    /** 边缘噪点强度（0 = 关闭）。 */
+    /** 设置边缘噪点强度，0 表示关闭，负数按 0 处理。 */
     fun noise(power: Float) {
         noisePower = power.coerceAtLeast(0f)
     }
 
-    /** 光斑形态（如 [BoxFlareStyle.SHARP] 锐边 streak）与朝向偏移（度；90 = 垂直于飞行方向的横向亮条）。 */
+    /** 设置光斑形态与相对宿主朝向的角度偏移。 */
     fun style(s: BoxFlareStyle, facingOffsetDeg: Float = 0f) {
         style = s; this.facingOffsetDeg = facingOffsetDeg
     }
 
-    /** 固定世界朝向（度；设置后忽略宿主 facing 与朝向偏移，0 = 恒水平）。 */
+    /** 设置固定世界朝向，设置后忽略宿主朝向与角度偏移。 */
     fun fixedFacing(deg: Float) {
         fixedFacingDeg = deg
     }
 
-    /** 局部 x 偏移（负 = 向尾）：光斑相对树锚点（弹体前端提前 headLead 处）的偏移。 */
+    /** 设置光斑相对树锚点的纵向偏移，负值向弹尾移动。 */
     fun offset(v: Float) {
         offsetX = v
     }
@@ -480,19 +455,19 @@ class BoxFlareBuilder {
     )
 }
 
-/** 锚点电弧（原版 EMP 一次性电弧：发射点固定锚 → 弹体中心实时拉伸，只生成一次）：粗细/边缘色/核心色。 */
+/** 配置从固定发射位置延伸到弹体的 EMP 电弧。 */
 @ProjectileVfxDslMarker
 class AnchorArcBuilder {
     private var thickness = 10f
     private var fringeColor = rgba(0x78BEFFC0L)
     private var coreColor = rgba(0xF0F8FFF0L)
 
-    /** 电弧粗细（世界单位，spawnEmpArcVisual thickness）。 */
+    /** 设置电弧粗细，最小值为 0.1 su。 */
     fun thickness(v: Float) {
         thickness = v.coerceAtLeast(0.1f)
     }
 
-    /** 边缘色 / 核心色（0xRRGGBBAA）。 */
+    /** 设置边缘色与核心色，格式为 0xRRGGBBAA。 */
     fun colors(fringe: Long, core: Long) {
         fringeColor = rgba(fringe); coreColor = rgba(core)
     }
@@ -504,8 +479,7 @@ class AnchorArcBuilder {
     )
 }
 
-
-/** 三角碎片航迹发射器构建器（DSL `shardWake(name){}`）：节拍/散布/速度域/张角 + 碎片外观旋钮。 */
+/** 配置三角碎片发射器。 */
 @ProjectileVfxDslMarker
 class ShardWakeBuilder {
     private var interval = 0.05f
@@ -528,12 +502,12 @@ class ShardWakeBuilder {
     private var timerFullHi = 0.3f
     private var timerFadeOut = 0.3f
 
-    /** 发射节拍（秒）与每节拍颗数。 */
+    /** 设置发射间隔与每次发射数量。 */
     fun cadence(intervalSeconds: Float, count: Int) {
         interval = intervalSeconds; perTick = count
     }
 
-    /** 发射行为：散布半径 / 初速域 / 飞行方向张角（±度）。 */
+    /** 设置散布半径、初速范围与方向随机张角。 */
     fun emission(scatterRadius: Float, speedMin: Float, speedMax: Float, spreadDeg: Float) {
         this.scatterRadius = scatterRadius
         this.speedMin = speedMin
@@ -541,17 +515,17 @@ class ShardWakeBuilder {
         this.spreadDeg = spreadDeg
     }
 
-    /** 尺寸基准长度（世界单位）：碎片边长 = clamp(本值×sizeMul, sizeMin, sizeMax) × 抖动。 */
+    /** 设置用于计算碎片边长的基准长度。 */
     fun shardLength(v: Float) {
         shardLength = v
     }
 
-    /** 提亮色 / 底色（0xRRGGBBAA）。 */
+    /** 设置提亮色与底色，格式为 0xRRGGBBAA。 */
     fun colors(core: Long, fringe: Long) {
         coreColor = rgba(core); fringeColor = rgba(fringe)
     }
 
-    /** 碎片外观微调（尺寸域/自旋域/alpha 域/寿命域），默认值即坠星残响航迹观感。 */
+    /** 设置碎片尺寸、自旋、透明度与寿命范围。 */
     fun shard(
         sizeMul: Float = this.sizeMul, sizeMin: Float = this.sizeMin, sizeMax: Float = this.sizeMax,
         spinMin: Float = this.spinMin, spinMax: Float = this.spinMax,
@@ -588,7 +562,7 @@ class ShardWakeBuilder {
     )
 }
 
-/** 马赫环航迹发射器构建器（DSL `machRing(name){}`）：节拍/半径/染色 + 形态包络旋钮。 */
+/** 配置马赫环发射器。 */
 @ProjectileVfxDslMarker
 class MachRingBuilder {
     private var interval = 0.5f
@@ -605,22 +579,22 @@ class MachRingBuilder {
     private var speedMin = 0f
     private var speedMax = 0f
 
-    /** 发射节拍（秒）与环基准半径（世界半尺寸）。 */
+    /** 设置发射间隔与环的基准半径。 */
     fun cadence(intervalSeconds: Float, halfSize: Float) {
         interval = intervalSeconds; this.halfSize = halfSize
     }
 
-    /** 环染色（0xRRGGBBAA）与基准透明度 0..1。 */
+    /** 设置颜色与基准透明度，透明度会限制在 0 至 1。 */
     fun color(hex: Long, alpha: Float = this.alpha) {
         color = rgba(hex); this.alpha = alpha.coerceIn(0f, 1f)
     }
 
-    /** 环贴图路径（256×256 旋转对称圆环，形在 alpha）。 */
+    /** 设置环贴图，贴图必须使用 alpha 描述旋转对称的环形。 */
     fun texture(path: String) {
         texturePath = path
     }
 
-    /** 形态与寿命包络：横向拍扁比 / 出生→寿终尺寸倍率 / 三段时长（秒）。 */
+    /** 设置横向压扁比例、起止尺寸倍率与三段寿命时长。 */
     fun shape(
         flatten: Float = this.flatten,
         growthStart: Float = this.growthStart, growthEnd: Float = this.growthEnd,
@@ -631,7 +605,7 @@ class MachRingBuilder {
         this.fadeIn = fadeIn; this.full = full; this.fadeOut = fadeOut
     }
 
-    /** 前飞动量（世界单位/秒，方向 = 发射瞬间弹体 facing，逐枚在 [speedMin, speedMax] 随机）；不传 = 锚在原地。 */
+    /** 设置环沿发射方向的速度范围，不调用时环保持在生成位置。 */
     fun momentum(speedMin: Float, speedMax: Float = speedMin) {
         this.speedMin = speedMin; this.speedMax = speedMax
     }

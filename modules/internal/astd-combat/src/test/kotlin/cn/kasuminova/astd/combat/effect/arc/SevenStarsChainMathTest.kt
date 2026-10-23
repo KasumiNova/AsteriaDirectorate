@@ -11,12 +11,6 @@ import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-/**
- * 规格 07 §4.1 用例 1/4/5/6：flashMult 三锚点链、terminalDamageFractions 段表、
- * jumpRange 折跃范围（含 0 值 WARN 防线）、nextChainStep 推进判定（固定 7 跳定案：
- * 无击杀门槛，仅达上限/无候选进终结）——全部驱动
- * [cn.kasuminova.astd.combat.effect.arc.sevenstars.SevenStarsChainMath] / [cn.kasuminova.astd.combat.effect.arc.sevenstars.SevenStarsDifficulty.snapshot] 真实逻辑断言输出。
- */
 class SevenStarsChainMathTest {
     private var warnCapture: WarnCapture? = null
 

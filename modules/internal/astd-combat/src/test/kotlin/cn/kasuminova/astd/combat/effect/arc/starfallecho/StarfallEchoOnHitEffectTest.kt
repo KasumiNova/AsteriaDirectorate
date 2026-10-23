@@ -11,14 +11,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/**
- * 坠星残响 AOE 模块舰选举（[StarfallEchoOnHitEffect.planStationElection]）的真实逻辑验证：
- * 同一空间站（模块 parentStation 组 + 主舰体）只结算一名距爆心最近的代表；
- * 成员中心距超半径剔除（粗筛把碰撞半径计入判定，巨模块会虚扩判定圈）；
- * 非模块舰目标与导弹原样直通。
- * 附舰船遮挡判定（[StarfallEchoOnHitEffect.isOccluded] 线段-碰撞圆纯几何）与
- * 同站成员识别（[StarfallEchoOnHitEffect.isSameStationGroup]）用例。
- */
 class StarfallEchoOnHitEffectTest {
 
     private val effect = StarfallEchoOnHitEffect()
@@ -69,7 +61,6 @@ class StarfallEchoOnHitEffectTest {
     @Test
     fun `模块中心距超半径剔除 碰撞半径粗筛不作数`() {
         val root = ship(Vector2f(1200f, 0f), withModules = true)
-        // 粗筛口径下 1200 ≤ 750 + 模块碰撞半径会被误收，中心距复判必须剔除
         val outModule = ship(Vector2f(1200f, 0f), parent = root)
         val inModule = ship(Vector2f(700f, 0f), parent = root)
 
@@ -99,11 +90,8 @@ class StarfallEchoOnHitEffectTest {
         assertTrue(plan.stationRepresentatives.isEmpty())
     }
 
-    // ==== 舰船遮挡判定（isOccluded / segmentIntersectsCircle 纯几何） ====
-
     @Test
     fun `爆心正后方的目标被中间大船遮挡`() {
-        // 大船（碰撞圆半径 300）横在爆心与目标舰心之间
         val blockers = listOf(StarfallEchoOnHitEffect.BlockerCircle(Vector2f(400f, 0f), 300f))
 
         assertTrue(effect.isOccluded(hitPoint, Vector2f(700f, 0f), blockers), "线段穿过碰撞圆内部：完全遮挡免伤")
@@ -127,7 +115,6 @@ class StarfallEchoOnHitEffectTest {
 
     @Test
     fun `直击船自身遮挡正后方目标 近侧擦线目标不误判`() {
-        // 爆心压在被直击船碰撞圆表面（半径 300，圆心 (300,0)，爆心原点）
         val directHit = listOf(StarfallEchoOnHitEffect.BlockerCircle(Vector2f(300f, 0f), 300f))
 
         assertTrue(
@@ -142,7 +129,6 @@ class StarfallEchoOnHitEffectTest {
 
     @Test
     fun `遮挡圆收敛系数生效 擦边接触不遮挡`() {
-        // 圆心到线段距离 = 整半径（相切）：收敛到 0.9 倍后相离，不遮挡
         val tangent = listOf(StarfallEchoOnHitEffect.BlockerCircle(Vector2f(400f, 300f), 300f))
 
         assertFalse(effect.isOccluded(hitPoint, Vector2f(800f, 0f), tangent), "线段与整半径圆相切：擦边不算遮挡")
@@ -150,22 +136,18 @@ class StarfallEchoOnHitEffectTest {
 
     @Test
     fun `爆心深入直击船圆内时该船不构成遮挡`() {
-        // 宽扁舰体侧向船体命中：爆心深入直击船收敛圆内部（圆心 (200,0)，半径 300，爆心原点距圆心 200 < 270）
         val directHit = listOf(StarfallEchoOnHitEffect.BlockerCircle(Vector2f(200f, 0f), 300f))
 
         assertFalse(
             effect.isOccluded(hitPoint, Vector2f(700f, 0f), directHit),
             "爆心位于直击船收敛圆内部：该船不遮挡，避免全半径目标被静默免伤",
         )
-        // 同场景下其他正常遮挡船仍然生效
         val withBlocker = directHit + StarfallEchoOnHitEffect.BlockerCircle(Vector2f(400f, 0f), 100f)
         assertTrue(
             effect.isOccluded(hitPoint, Vector2f(700f, 0f), withBlocker),
             "爆心外部的中间船仍正常遮挡",
         )
     }
-
-    // ==== 同站成员识别（isSameStationGroup：同一座模块舰不互相遮挡） ====
 
     @Test
     fun `同站成员与主舰体互为同组 异舰不同组`() {

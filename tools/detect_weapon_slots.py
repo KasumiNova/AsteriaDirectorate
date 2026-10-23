@@ -1,16 +1,10 @@
 #!/usr/bin/env python3
 """Detect likely weapon slot decals on a ship sprite using template matching.
 
-用途：
-- 读取 `tools/weapon_slots.png` 中的槽位模板组件
-- 对目标舰船贴图做多尺度模板匹配
-- 按分数、去重、左右对称关系筛出候选点
-- 输出预览图与 JSON，作为“自动定位 weaponSlots”的初始候选
-
-说明：
-- 这不是最终的 `.ship` weaponSlots 自动写回器，而是定位辅助器
-- 对直接使用/轻度改色原版槽位 decal 的贴图效果最好
-- 对重绘严重、缩放很大、旋转明显的资源，误报会增多
+读取 `tools/weapon_slots.png` 中的槽位模板，输出候选点预览图与 JSON。
+本脚本只是定位辅助器，不会把结果自动写回 `.ship` 的 weaponSlots。
+对直接使用或轻度改色原版槽位 decal 的贴图效果最好；重绘严重、缩放很大或
+旋转明显的资源会产生更多误报。
 """
 
 from __future__ import annotations

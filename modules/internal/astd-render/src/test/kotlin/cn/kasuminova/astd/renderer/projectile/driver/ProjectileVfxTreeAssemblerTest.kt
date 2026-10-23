@@ -18,10 +18,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
-/**
- * [ProjectileVfxTreeAssembler] 组装自检：蓝图（[ProjectileVfxTreeSpec]）→ RenderEntity 场景树的
- * 组件类型 / 节点 id / renderOrder 排序（螺栓 200 < 拖尾 360+layer < 光斑 368）。
- */
 class ProjectileVfxTreeAssemblerTest {
 
     private fun treeSpec(): ProjectileVfxTreeSpec = ProjectileVfxTreeSpec(
@@ -150,7 +146,6 @@ class ProjectileVfxTreeAssemblerTest {
         assertIs<MachRingComponent>(ring)
         assertEquals(35f, (ring as MachRingComponent).spec.halfSize)
         assertEquals("graphics/fx/astd_generated_ring.png", ring.spec.texturePath)
-        // 碎片发射器带一个 TriShardComponent 子节点喂共享池。
         assertEquals(1, wake.children.size, "ShardWakeComponent 须挂 TriShardComponent 子节点")
         assertIs<TriShardComponent>(wake.children.first())
     }

@@ -3,17 +3,6 @@ package cn.kasuminova.astd.sscsv.entries.catalog.shipsystems.lens
 import cn.kasuminova.astd.sscsv.entries.ShipSystemWithSystemFileEntry
 import cn.kasuminova.astd.sscsv.entries.catalog.shipsystems.systemName
 
-/** LENS 系舰船系统（ship_systems.csv + 对应 .system 文件）。 */
-
-/**
- * 决明级舰船系统「引力时流干涉器」（purple/10-unique.md §1，2026-10 实装，替换占位 astd_jamming_swarm）。
- *
- * 选取一名锁定的友军舰船（玩家取 shipTarget，AI 评分选靶写 TARGET_FOR_SHIP_SYSTEM 旗标），
- * 持续 10s 令目标与其所属舰载机的时间流速提升（v1 150% / v2 200% / v5 350%），
- * 并在激活瞬间立即缩减目标舰船系统 50%/60%/90% 的剩余冷却时间；
- * 选择范围 2000su（受系统射程加成影响），自身时流不变，持续期间目标超出射程不中断。
- * 冷却 30s。stats/AI 见 [GravTimeflowInterferenceSystemStats] / [GravTimeflowInterferenceSystemAI]。
- */
 object Sys_astd_grav_timeflow_interference : ShipSystemWithSystemFileEntry() {
     override val id: String = "astd_grav_timeflow_interference"
     override val name: String = systemName(id)
@@ -33,23 +22,6 @@ object Sys_astd_grav_timeflow_interference : ShipSystemWithSystemFileEntry() {
     override val icon: String = "graphics/icons/hullsys/temporal_shell.png"
 }
 
-/**
- * 飞蓬级舰船系统「战机引力联结器」（purple/20-production.md §1，2026-09 重构；
- * 2026-09 二轮：toggle 化 + CUSTOM AI）。
- *
- * 以原版召回装置为基线的增强：持续至多 15s 强化机群（时流/减伤），结束时进入 1s 召回
- * 窗口（快照机群相位渐隐、窗口末 land 回收并快速重新出击）；代价为持续软辐能产出与
- * 结束时的软→硬转化。
- *
- * - toggle=true + active=15s：原版 ChargeTracker 对「toggle 且 active>0」的系统在 ACTIVE 期间
- *   按 15s 上限推进系统条（玩家可见剩余时间）并在到期时自动转 OUT；ACTIVE 期间再次按键
- *   仍可提前关闭（canBeDeactivated 默认 true）；机群全灭提前结束由 stats 脚本计时补发
- *   useSystem() 收口（`ShipSystemAPI.deactivate()` 等价 forceDeactivate——直接跳 COOLDOWN、
- *   跳过 OUT 充能消退窗，召回结算不会触发，故全链路统一走 fire 路径）。
- * - down=1.0s：召回特效窗（快照机群相位态 + 渐隐，窗口结束 land 回收，对齐原版召回装置视觉）。
- * - aiType=CUSTOM + aiScript=[FighterGravLinkSystemAI]：原 RECALL_DEVICE 按「需整备战机占比」
- *   决策，与召回语义匹配但几乎不为强化效果主动激活；CUSTOM AI 按「在外战机规模 + 威胁距离」决策。
- */
 object Sys_astd_fighter_grav_link : ShipSystemWithSystemFileEntry() {
     override val id: String = "astd_fighter_grav_link"
     override val name: String = systemName(id)
@@ -67,29 +39,12 @@ object Sys_astd_fighter_grav_link : ShipSystemWithSystemFileEntry() {
     override val down: Double = 1.0
     override val cooldown: Double = 25.0
 
-    // 持续软辐能产出走原版 CSV 结算（IN+ACTIVE 全额 5%/s 基础容量软辐），
-    // 图鉴可见统一数据；脚本不再自行 increaseFlux。
+    // 持续软辐能产出走原版 CSV 结算；脚本不得再自行 increaseFlux。
     override val fluxPerSecondBaseCap: Double = 0.05
 
     override val icon: String = "graphics/icons/hullsys/recall_device.png"
 }
 
-/**
- * 密蒙级防御系统「引力相位」（相位舰船化改造，2026-09）。
- *
- * 数值与 stats 行为与原版相位线圈（phasecloak / PhaseCloakStats）一致；独立系统 id 的意义：
- * - 防御名从原版「相位线圈」独立为「引力相位」（ship_data.csv defense id 指向本系统）；
- * - statsScript 指向 [GravityPhaseCloakStats]（PhaseCloakStats 子类）——后续引力相位专属特效
- *   的接入点，舰船侧无需再改。
- *
- * 数值对齐原版 phasecloak 行（toggle/noHardDissipation/hardFlux/noFiring/noShield/isPhaseCloak）；
- * 相位激活/维持辐能消耗在 ship_data.csv 的 phase cost/upkeep（按辐能容量比例）配置。
- *
- * aiType=CUSTOM + aiScript=[GravityPhaseCloakAI]：原版 PHASE_CLOAK AI 面向纯相位舰，
- * 本系舰船相位外还携带需非相位施放的攻击系统，原版续潜链路会长时间潜水憋死；
- * 自定义 AI 以防憋死口径决策相位进出（辐能/时长强制上浮、下潜错峰、战术上浮），
- * 决策细节见 [GravityPhaseCloakAI] KDoc。
- */
 object Sys_astd_gravity_phase : ShipSystemWithSystemFileEntry() {
     override val id: String = "astd_gravity_phase"
     override val name: String = systemName(id)
@@ -121,7 +76,7 @@ object Sys_astd_gravity_phase : ShipSystemWithSystemFileEntry() {
     override val deactivateSound: String = "system_phase_cloak_deactivate"
     override val outOfUsesSound: String = "system_phase_cloak_collision"
 
-    // 相位披风 .system 必备字段（对齐原版 phasecloak.system；特效色取紫菀引力系紫色调）。
+    // 相位披风 .system 必备字段（对齐原版 phasecloak.system）。
     override val extraSystemRawFields: Map<String, String> = linkedMapOf(
         "runScriptWhilePaused" to "true",
         "runScriptWhileIdle" to "true",
@@ -145,22 +100,6 @@ object Sys_astd_gravity_phase : ShipSystemWithSystemFileEntry() {
     )
 }
 
-/**
- * 茑萝级舰船系统「引力裂隙发生器」（purple/20-production.md §2，2026-09 D27 重做；
- * 2026-09-20 二轮重做：目标锁定 + 贴图旋涡 + 真实光束；2026-10 细化：系统期间减伤 + 禁相位 + 起点光斑）。
- *
- * 需锁定目标舰激活（玩家取 shipTarget，无目标时系统不可用并提示「无目标」）：
- * 激活时在目标舰随机位置（优先无护盾覆盖区域）产生贴图旋涡（60°/s 自旋，1s 淡入 /
- * 1s 淡出，共 3s）与起点双光斑（红色，带闪烁），1s 后旋涡中心向目标发射**真实光束**
- * （隐藏光束武器挂 FX drone，机制与布雷间隔直接复用原版裂隙洪流发射极 riftcascade，
- * 仅改红色正色、不用反色星云）。光束命中目标期间每 0.1s 沿目标周边弧线布一枚裂隙
- * （上限 5 枚），裂隙对附近目标造成能量伤害（随裂隙序位递增、按难度系数三锚点缩放）。
- * 系统持续期间（IN + ACTIVE + OUT 全程）获得全类型固定减伤（v1 50% / v2 60% / v5 90%），
- * 红色 jitter（颤抖描边提示「不稳定打击模式」），并压制相位斗篷（无法进入相位）。
- * 激活代价：舰船基础最大辐能容量 10% 的软辐能（由 .system 的 f/u (base cap) 原版结算）。
- * 时序：chargeUp 1s（旋涡淡入）→ active 1s（光束发射）→ down 1s（旋涡淡出），
- * 光束全程 2s，冷却 12s。stats/AI 见 [GravityRiftSystemStats] / [GravityRiftSystemAI]。
- */
 object Sys_astd_grav_rift_generator : ShipSystemWithSystemFileEntry() {
     override val id: String = "astd_grav_rift_generator"
     override val name: String = systemName(id)
@@ -182,15 +121,6 @@ object Sys_astd_grav_rift_generator : ShipSystemWithSystemFileEntry() {
     override val useSound: String = "riftcascade_windup"
 }
 
-/**
- * 密蒙级舰船系统「引力磁暴发生器」（purple/10-unique.md §2，2026-09 D27 全重做）。
- *
- * 以原版量子干扰为基线的增强：充能最多 4s（充能前 2s 相位系统锁定，满 2s 可提前释放，
- * 锁定解除后充能期间进相位中止），随后对前方 60° 锥、1200su（受系统射程加成）内全部
- * 敌对目标（含相位单位）的武器与引擎一次性打出 EMP 电弧并施加强制过载（锥内无目标时
- * 改为装饰性电弧齐射）；释放期间全类型减伤。代价 20% 基础辐能容量软辐能，
- * 冷却 24s。stats/AI 见 [GravStormSystemStats] / [GravStormSystemAI]。
- */
 object Sys_astd_grav_storm : ShipSystemWithSystemFileEntry() {
     override val id: String = "astd_grav_storm"
     override val name: String = systemName(id)
@@ -201,25 +131,17 @@ object Sys_astd_grav_storm : ShipSystemWithSystemFileEntry() {
     override val aiScript: String =
         "cn.kasuminova.astd.combat.shipsystems.GravStormSystemAI"
 
-    // toggle=true：IN 充能期间再次按键经原版 ChargeTracker 转 OUT 提前释放
-    // （effectLevel=释放时充能进度，脚本侧据此折算电弧/过载强度）；
-    // active 在 toggle 下被忽略，填 0.5 占位；down=1.5 为释放窗口（电弧在释放瞬间一次性打出，
-    // 窗口存续期即系统期间伤害减免的存续期）。
     override val toggle: Boolean = true
     override val chargeUp: Double = 4.0
     override val active: Double = 0.5
     override val down: Double = 1.5
     override val cooldown: Double = 24.0
 
-    // 激活代价走原版 CSV 结算（`f/u (base cap)` = 20% 基础辐能容量软辐能，
-    // IDLE→IN 激活瞬间一次性产出，图鉴可见统一数据）；脚本不再自行 increaseFlux。
+    // 激活代价走原版 CSV 结算；脚本不得再自行 increaseFlux。
     override val fluxUseBaseCap: Double = 0.2
 
-    // canUseWhileRightClickSystemOn=true 是「充能期间进相位立即释放」生效的前提：
-    // 原版 PhaseCloakSystem.advanceImpl 每帧把相位中处于激活态的 toggle 主系统
-    // forceDeactivate 直压 COOLDOWN（先于本系统脚本 apply 执行，脚本永远看不到
-    // 相位中的 IN 态），本 flag 跳过该压制；相位中误激活由
-    // GravStormSystemStats.isUsable（!ship.isPhased）在激活闸拦截。
+    // canUseWhileRightClickSystemOn 必须为 true：原版 PhaseCloakSystem.advanceImpl 每帧把相位中
+    // 处于激活态的 toggle 主系统 forceDeactivate 直压 COOLDOWN，本 flag 跳过该压制。
     override val extraSystemRawFields: Map<String, String> = linkedMapOf(
         "canUseWhileRightClickSystemOn" to "true",
     )
@@ -228,16 +150,6 @@ object Sys_astd_grav_storm : ShipSystemWithSystemFileEntry() {
     override val useSound: String = "system_quantumdisruptor"
 }
 
-/**
- * 舜华级舰船系统「引力空间复制器」（purple/20-production.md §3，2026-09 D27 全重做）。
- *
- * 激活 2s 内本舰发射的能量武器射弹（不含实弹/光束/导弹）在登记 0.5s 后于舰船周界
- * 环带随机点复制两次（间隔 0.5s，射向收敛到主射弹预期命中点：弹道段——原射弹存活按其
- * 当前位置与剩余飞行时间外推、消亡用登记时刻快照——与敌舰碰撞圆求交取最近命中点，
- * 无命中保持射程终点），复制体伤害与
- * 辐能产出按难度锚点折算。代价 10% 基础辐能容量软辐能，冷却 12s。
- * stats/AI 见 [GravReplicatorSystemStats] / [GravReplicatorSystemAI]。
- */
 object Sys_astd_grav_replicator : ShipSystemWithSystemFileEntry() {
     override val id: String = "astd_grav_replicator"
     override val name: String = systemName(id)
@@ -253,21 +165,13 @@ object Sys_astd_grav_replicator : ShipSystemWithSystemFileEntry() {
     override val down: Double = 0.0
     override val cooldown: Double = 12.0
 
-    // 激活代价走原版 CSV 结算（`f/u (base cap)` = 10% 基础辐能容量软辐能，
-    // IDLE→IN 激活瞬间一次性产出，图鉴可见统一数据）；每发复制体的折算软辐能
-    // 是动态值，仍由脚本 increaseFlux 产出。
+    // 激活代价走原版 CSV 结算；每发复制体的折算软辐能是动态值，仍由脚本 increaseFlux 产出。
     override val fluxUseBaseCap: Double = 0.1
 
     override val icon: String = "graphics/icons/hullsys/entropy_amplifier.png"
     override val useSound: String = "system_entropy"
 }
 
-/**
- * 落叶飞花（战机型）：茑萝级内置战机「牵丝」的战术系统（purple/20-production.md §2）。
- *
- * 机制与衔星 (ARC) 的落叶飞花一致（复用 [ASTDBurstFlowSystemStats] / [ASTDBurstFlowSystemAI]），
- * 仅节奏调整：回充时间 10s（regen 0.1）、最大充能 2。
- */
 object Sys_astd_burst_flow_fighter : ShipSystemWithSystemFileEntry() {
     override val id: String = "astd_burst_flow_fighter"
     override val name: String = systemName(id)

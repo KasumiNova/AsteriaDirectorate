@@ -1,5 +1,5 @@
 ---
-name: "00-skill-index"
+name: 00-skill-index
 description: "Skill 索引：按领域汇总本仓库可用的所有技能与路径。"
 ---
 
@@ -35,7 +35,7 @@ description: "Skill 索引：按领域汇总本仓库可用的所有技能与路
 
 - **ss-csv 使用规范与 CSV 编辑规范**
   - 路径：`.agents/skills/ss-csv-guidelines/SKILL.md`
-  - 适用：entries 规则、schema header 真相来源、生成/写回流程。
+  - 适用：entries 规则、schema header 定义、生成/写回流程。
 
 - **CSV 文本编辑规范（换行 / 变量替换）**
   - 路径：`.agents/skills/csv-text-guidelines/SKILL.md`

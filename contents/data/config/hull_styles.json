@@ -1,15 +1,8 @@
 {
-	# ASTD 专用船体风格：与 vanilla HIGH_TECH 完全一致，
-	# 仅把空武器槽的盖板（slotCover*）替换为透明图，
-	# 使没有装备武器的槽位在战斗中不再渲染原版高科插座
-	# （舰船贴图自带槽位美术）。
-	# Starsector 会把各 mod 的 hull_styles.json 合并进同一张表，
-	# 这里新增一个 key，不会污染 vanilla HIGH_TECH。
-	#
-	# 护盾取色（与 engine_styles.json 双线引擎色对齐）：
-	#   ASTD_ARC  ：星坠侧，淡蓝（电青蓝引擎 110,185,240 的浅化）。
-	#   ASTD_LENS ：紫菀侧，淡紫（紫罗兰引擎 185,90,255 的浅化）。
-	# ASTD_HIGH_TECH 保留为未归线舰体（如共轭终端）的默认样式。
+	# slotCover* 使用透明图，避免空武器槽渲染原版高科插座；舰船贴图已包含槽位美术。
+	# Starsector 会合并各 mod 的 hull_styles.json，此处仅新增 key。
+	# 护盾色与 engine_styles.json 引擎色对齐：ASTD_ARC 为电青蓝引擎 (110,185,240) 的浅化淡蓝，
+	# ASTD_LENS 为紫罗兰引擎 (185,90,255) 的浅化淡紫。
 	"ASTD_HIGH_TECH":{
 		"hyperspaceJitterColor":[100,165,255,200],
 		"baseCampaignExplosionColor":[100,165,255,255],
@@ -48,7 +41,6 @@
 		"dHullOverlayHeavy":"graphics/damage/dmod_overlay_hightech_heavy.png",
 	},
 
-	# 星坠（ARC 线）：在 ASTD_HIGH_TECH 基础上仅换护盾色为淡蓝。
 	"ASTD_ARC":{
 		"hyperspaceJitterColor":[100,165,255,200],
 		"baseCampaignExplosionColor":[100,165,255,255],
@@ -87,7 +79,6 @@
 		"dHullOverlayHeavy":"graphics/damage/dmod_overlay_hightech_heavy.png",
 	},
 
-	# 紫菀（LENS 线）：在 ASTD_HIGH_TECH 基础上仅换护盾色为淡紫。
 	"ASTD_LENS":{
 		"hyperspaceJitterColor":[100,165,255,200],
 		"baseCampaignExplosionColor":[100,165,255,255],

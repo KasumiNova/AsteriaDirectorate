@@ -9,10 +9,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
-/**
- * 剧情星系生成规格校验：种子确定性、实体清单/计数、轨道参数合法性、
- * id 唯一性、剧情状况注册一致性（对真实 market_conditions.csv）。
- */
 class StorySystemSpecsTest {
 
     private val main = StorySystemSpecs.mainSystemSpec(42L)
@@ -36,8 +32,6 @@ class StorySystemSpecsTest {
 
     @Test
     fun `非 conditionOnly 市场必须声明人口产业`() {
-        // Nexerelin 地面战情报初始化对零产业市场越界崩溃（GroundBattleIntel.init 兜底取首个产业），
-        // FULL 市场必须至少带人口产业。
         for (spec in listOf(main, starfall, aster)) {
             for (market in spec.planets.mapNotNull { it.market } + spec.entities.mapNotNull { it.market }) {
                 if (market.conditionOnly) continue
@@ -59,7 +53,6 @@ class StorySystemSpecsTest {
                 assertTrue(planet.orbit.radius < 30000f, "${planet.id} 轨道半径越界")
                 assertTrue(planet.orbit.periodDays > 0f)
                 assertTrue(planet.radius > 0f)
-                // 行星轨道不与恒星重叠（含黑洞事件视界 ~1200su 安全余量）
                 if (spec.blackHole) {
                     assertTrue(planet.orbit.radius > 1400f, "紫菀行星须位于事件视界之外：${planet.id}")
                 }
@@ -78,13 +71,10 @@ class StorySystemSpecsTest {
 
     @Test
     fun `环恒星轨道间距安全无碰撞`() {
-        // 碰撞半径契约由规格层统一持有（与布局避障共用同一份真相）
         val entityCollisionRadius = StorySystemSpecs.ENTITY_COLLISION_RADIUS
-        // 相邻天体表面最小净空（su）：紧凑布局下仍须保证任何两颗天体不重叠
         val minClearance = 100f
 
         for (spec in listOf(main, starfall, aster)) {
-            // 环恒星轨道体：轨道半径 + 碰撞半径 + id（绕行星的本体轨道不参与）
             val orbiters = mutableListOf<Triple<Float, Float, String>>()
             for (planet in spec.planets.filter { it.orbit.focusId == spec.starId }) {
                 orbiters += Triple(planet.orbit.radius, planet.radius, planet.id)
@@ -103,7 +93,6 @@ class StorySystemSpecsTest {
                     val (r2, c2, id2) = orbiters[j]
                     val gap = kotlin.math.abs(r1 - r2)
                     if (gap >= c1 + c2 + minClearance) continue
-                    // 同环共轨（如三处功能设施）：按角距换算弦长判定
                     val a1 = orbitAngleOf(spec, id1)
                     val a2 = orbitAngleOf(spec, id2)
                     val angleDiff = kotlin.math.abs(a1 - a2) % 360f
@@ -115,7 +104,6 @@ class StorySystemSpecsTest {
                 }
             }
 
-            // 小行星带/环带内外缘与任意环恒星天体保持净空
             for (belt in spec.belts.filter { it.focusId == spec.starId }) {
                 val inner = belt.orbitRadius - belt.bandWidth / 2f
                 val outer = belt.orbitRadius + belt.bandWidth / 2f
@@ -130,7 +118,6 @@ class StorySystemSpecsTest {
                 }
             }
 
-            // 小行星带之间同样保持净空（外环避障外推的正确性兜底）
             val starBelts = spec.belts.filter { it.focusId == spec.starId }
             for (i in starBelts.indices) {
                 for (j in i + 1 until starBelts.size) {
@@ -152,7 +139,6 @@ class StorySystemSpecsTest {
 
     @Test
     fun `主星系实体清单符合规格`() {
-        // 蓝巨星 + 兰台（宜居链 + 菀星行政部遗址 + 恒星镜）+ 洪炉/淬池（固定荒芜特征链）
         assertEquals("star_blue_giant", main.starType)
         val lantai = main.planets.first { it.id == StoryWorldIds.MAIN_PLANET_LANTAI }
         assertEquals(
@@ -185,12 +171,10 @@ class StorySystemSpecsTest {
             cuichi.market?.conditionIds,
             "淬池特征链不完整",
         )
-        // 随机荒芜 2~4 + 气态巨 1~2（随机行星无固定命名，nameKey == null）
         val randomBarren = main.planets.count { it.nameKey == null && it.typeId != "gas_giant" && it.typeId != "ice_giant" }
         assertTrue(randomBarren in 2..4, "随机荒芜行星数量 $randomBarren 越界")
         val gasGiants = main.planets.count { it.typeId == "gas_giant" || it.typeId == "ice_giant" }
         assertTrue(gasGiants in 1..2, "气态巨行星数量 $gasGiants 越界")
-        // 空间站 ×3 + 稳定点功能设施 ×3 + 休眠星门 + 小行星带
         assertTrue(main.entities.any { it.id == StoryWorldIds.MAIN_STATION_BRANCH && it.market?.size == 4 && it.market.inEconomy })
         assertTrue(main.entities.any { it.id == StoryWorldIds.MAIN_STATION_RESERVE_A && it.market == null })
         assertTrue(main.entities.any { it.id == StoryWorldIds.MAIN_STATION_RESERVE_B && it.market == null })
@@ -198,7 +182,6 @@ class StorySystemSpecsTest {
         assertTrue(main.entities.any { it.entityType == "sensor_array" })
         assertTrue(main.entities.any { it.entityType == "nav_buoy" })
         assertTrue(main.entities.any { it.entityType == "inactive_gate" })
-        // 一环 + 外环 ×2（避障外推），标签唯一用于幂等去重
         assertEquals(3, main.belts.size)
         assertEquals(
             listOf("astd_belt_main_1", "astd_belt_main_2", "astd_belt_main_3"),
@@ -206,7 +189,6 @@ class StorySystemSpecsTest {
         )
         assertTrue(main.belts[1].orbitRadius >= 3900f * 1.6f, "外环 2 半径不足")
         assertTrue(main.belts[2].orbitRadius >= 3900f * 2.2f, "外环 3 半径不足")
-        // 气态巨行星须从挥发物/重力/气候组各择一（去重后可能少于 3 项与基础特征重叠）
         for (gas in main.planets.filter { it.nameKey == null && (it.typeId == "gas_giant" || it.typeId == "ice_giant") }) {
             val conditions = gas.market!!.conditionIds
             assertTrue(
@@ -240,7 +222,6 @@ class StorySystemSpecsTest {
             ),
             "锻原缺少肥沃耕地/敌意生物圈",
         )
-        // 星坠气态巨行星：挥发物/重力/气候组各择一
         for (gas in starfall.planets.filter { it.nameKey == null && (it.typeId == "gas_giant" || it.typeId == "ice_giant") }) {
             val conditions = gas.market!!.conditionIds
             assertTrue(
@@ -248,7 +229,6 @@ class StorySystemSpecsTest {
                 "${gas.id} 缺少挥发物组状况",
             )
         }
-        // 空间站 ×3 + 随机荒芜 1~3 + 气态巨 1~2 + 带 ×1 + 设施 ×4
         assertTrue(starfall.entities.any { it.id == StoryWorldIds.STARFALL_STATION_MAIN })
         assertTrue(starfall.entities.any { it.id == StoryWorldIds.STARFALL_STATION_DOCKYARD })
         assertTrue(starfall.entities.any { it.id == StoryWorldIds.STARFALL_STATION_RESERVE && it.market == null })
@@ -261,7 +241,6 @@ class StorySystemSpecsTest {
     fun `紫菀星系实体清单符合规格`() {
         assertEquals("black_hole", aster.starType)
         assertTrue(aster.blackHole)
-        // 拾光：FULL size 4 + 宜居 + 两剧情状况
         val shiguang = aster.entities.first { it.id == StoryWorldIds.ASTER_STATION_SHIGUANG }
         val shiguangMarket = shiguang.market!!
         assertEquals(4, shiguangMarket.size)
@@ -275,14 +254,11 @@ class StorySystemSpecsTest {
                 )
             ),
         )
-        // 拾光须在事件视界（~1200su）之外
         assertTrue(shiguang.orbit.radius > 1400f, "拾光须位于事件视界之外")
-        // 冰封 2~4（固定极寒+黑暗）、荒芜 1~2、气态巨 2~4（固定黑暗）、带 ×2、占位站 ×2
         val frozen = aster.planets.filter { it.market!!.conditionIds.containsAll(listOf(Conditions.VERY_COLD, Conditions.DARK)) }
         assertTrue(frozen.size in 2..4, "冰封行星数量 ${frozen.size} 越界")
         val darkGas = aster.planets.filter { (it.typeId == "gas_giant" || it.typeId == "ice_giant") && Conditions.DARK in it.market!!.conditionIds }
         assertTrue(darkGas.size in 2..4, "气态巨行星数量 ${darkGas.size} 越界")
-        // 紫菀气态巨行星：仅挥发物组择一
         for (gas in darkGas) {
             assertTrue(
                 gas.market!!.conditionIds.any { it in listOf(Conditions.VOLATILES_ABUNDANT, Conditions.VOLATILES_PLENTIFUL) },
@@ -294,13 +270,10 @@ class StorySystemSpecsTest {
 
     @Test
     fun `受管状况池覆盖规格引用与历史档位`() {
-        // 迁移的 syncPlanetConditions 只在受管池内增删：规格当前引用的全部行星状况 +
-        // 历史版本曾写入的旧档位必须在池内，否则旧档状况无法被摘除/补挂且不会有测试报警
         val specIds = listOf(main, starfall, aster)
             .flatMap { s -> s.planets.mapNotNull { it.market } }
             .flatMap { it.conditionIds }
             .toSet()
-        // 历史档位：兰台 organics_trace（现 organics_abundant）、洪炉/淬池 ore/rare_ore_abundant（现提档）
         val legacyIds = setOf(
             Conditions.ORGANICS_TRACE, Conditions.ORE_ABUNDANT, Conditions.RARE_ORE_ABUNDANT,
         )
@@ -329,7 +302,6 @@ class StorySystemSpecsTest {
             assertTrue(order in 700..703, "$id order=$order 须在 700~703 段")
         }
 
-        // 规格中引用的全部 astd_ 前缀状况必须已注册
         val allConditionIds = (listOf(main, starfall, aster).flatMap { it.planets.mapNotNull { p -> p.market } } +
                 listOf(main, starfall, aster).flatMap { s -> s.entities.mapNotNull { it.market } })
             .flatMap { it.conditionIds }

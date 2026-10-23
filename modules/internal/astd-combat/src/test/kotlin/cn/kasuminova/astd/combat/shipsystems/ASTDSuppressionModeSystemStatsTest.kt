@@ -20,15 +20,6 @@ import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-/**
- * 压制模式 Stats（[ASTDSuppressionModeSystemStats]）行为验证：
- * - apply 在 ACTIVE 满额时把五项难度缩放效果与恒定射速加成写入对应乘区
- *   （真实 MutableStat/StatBonus 对象 + 砺刃 v2 口径）；
- * - effectLevel 渐入半额缩放与 unapply 完全还原；
- * - settleHardFlux 硬辐能结算：基础最大辐能 ×（当前每秒比例 − CSV 基线 2%）× 帧时长 × 渐入系数
- *   （CSV 基线由原版结算，脚本只补爬坡增量），恰为 increaseFlux(amount, hardFlux=true)；
- *   零帧长/零渐入/比例未超基线不写辐能。
- */
 class ASTDSuppressionModeSystemStatsTest {
 
     private val stats = ASTDSuppressionModeSystemStats()
@@ -38,7 +29,6 @@ class ASTDSuppressionModeSystemStatsTest {
         DifficultyTuningImpl.installScaleForTests(null)
     }
 
-    /** 挂满真实乘区对象的 ship stats 桩（砺刃 v2 口径：敌方 k_s = 2）。 */
     private class StatFixture {
         val maxSpeed = MutableStat(100f)
         val acceleration = MutableStat(100f)
@@ -88,24 +78,19 @@ class ASTDSuppressionModeSystemStatsTest {
 
         stats.apply(fixture.stats, "test", ShipSystemStatsScript.State.ACTIVE, 1f)
 
-        // 航速与机动性 -50%
         assertEquals(50f, fixture.maxSpeed.modifiedValue, 1e-3f)
         assertEquals(50f, fixture.acceleration.modifiedValue, 1e-3f)
         assertEquals(50f, fixture.deceleration.modifiedValue, 1e-3f)
         assertEquals(15f, fixture.maxTurnRate.modifiedValue, 1e-3f)
         assertEquals(30f, fixture.turnAcceleration.modifiedValue, 1e-3f)
-        // 武器辐能产出 -50%（弹道/能量/导弹三通道）
         assertEquals(50f, fixture.ballisticFluxCost.computeEffective(100f), 1e-3f)
         assertEquals(50f, fixture.energyFluxCost.computeEffective(100f), 1e-3f)
         assertEquals(50f, fixture.missileFluxCost.computeEffective(100f), 1e-3f)
-        // 武器射程 +30%（四通道）
         assertEquals(1300f, fixture.ballisticRange.computeEffective(1000f), 1e-3f)
         assertEquals(1300f, fixture.energyRange.computeEffective(1000f), 1e-3f)
         assertEquals(1300f, fixture.beamRange.computeEffective(1000f), 1e-3f)
         assertEquals(1300f, fixture.missileRange.computeEffective(1000f), 1e-3f)
-        // 护盾承伤 -30%
         assertEquals(0.7f, fixture.shieldDamageTaken.modifiedValue, 1e-6f)
-        // 武器射速 +30%（三通道）
         assertEquals(130f, fixture.ballisticRoF.modifiedValue, 1e-3f)
         assertEquals(130f, fixture.energyRoF.modifiedValue, 1e-3f)
         assertEquals(130f, fixture.missileRoF.modifiedValue, 1e-3f)
@@ -158,10 +143,7 @@ class ASTDSuppressionModeSystemStatsTest {
         val captor = ArgumentCaptor.forClass(Float::class.java)
         verify(tracker, times(2)).increaseFlux(captor.capture(), eq(true))
         val amounts = captor.allValues.map { it.toFloat() }
-        // 第 4 秒满比例 6%，超出基线 2% 的增量：7000 × 0.04 × 1s × 满额 = 280 硬辐能
         assertEquals(280f, amounts[0], 1e-2f)
-        // 激活首秒比例 2% 与基线持平，差值截 0 不产出（不计入调用次数）
-        // 爬坡中点 4% 超出基线 2% + 渐入半额减半：7000 × 0.02 × 0.5s × 0.5 = 35
         assertEquals(35f, amounts[1], 1e-2f)
     }
 

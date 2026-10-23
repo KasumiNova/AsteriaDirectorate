@@ -7,16 +7,6 @@ import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.DamageType
 import com.fs.starfarer.api.combat.WeaponAPI
 
-/**
- * [AnnihilationVortexPool] 实现：吞噬池记账（规格 04 §2.2）。
- *
- * 职责：类型转换比表、软上限分段折算（阈值内全额、超出部分 ×[AnnihilationVortexDifficulty.EXCESS_RATIO]）、
- * 宿主失效自回收（advance 内判定 + [BuffHost.remove] + INFO 日志）。
- *
- * 生命周期（SELF_MANAGED）：正常路径由 BeamEffect 在停火坍缩后 [markConsumed] 并移除；
- * 宿主失效（船 hulk/换装/武器被拆）时由自身 advance 或 BuffHost 心跳回收，
- * 两条回收路径在 [onRemove] 汇合，未消费的池记一条 INFO「丢弃 X」——宿主死亡涡旋哑火，不触发坍缩。
- */
 class AnnihilationVortexPoolImpl(
     threshold: Float,
     private val host: BuffHost,
@@ -35,16 +25,12 @@ class AnnihilationVortexPoolImpl(
     override var absorbedCount: Int = 0
         private set
 
-    /** 正常消费标记：停火坍缩后 BeamEffect 置位再移除，[onRemove] 据此区分「消费完毕」与「宿主失效丢弃」。 */
     private var consumed = false
 
-    /** 回收幂等闸：advance 自移除与心跳回收只走一次。 */
     private var removed = false
 
-    /** 0 伤害弹体 INFO 节流：每弹种每池只记一条（规格 04 §2.4「同弹种同帧只记一条」的更严实现）。 */
     private val zeroDamageLoggedTypes = HashSet<DamageType>()
 
-    /** 未登记伤害类型 WARN 节流：每类型每池一条。 */
     private val unknownTypeWarnedTypes = HashSet<DamageType>()
 
     init {
@@ -76,7 +62,6 @@ class AnnihilationVortexPoolImpl(
         return effective
     }
 
-    /** 标记本池已被停火坍缩正常消费（消费后移除不记「宿主失效丢弃」INFO）。 */
     fun markConsumed() {
         consumed = true
     }

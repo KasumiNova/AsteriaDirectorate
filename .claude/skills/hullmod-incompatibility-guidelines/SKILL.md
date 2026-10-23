@@ -1,5 +1,5 @@
 ---
-name: "hullmod-incompatibility-guidelines"
+name: hullmod-incompatibility-guidelines
 description: "船插互斥/禁装实现规范：当内置船插或特殊舰体需要禁止、清理或提示不兼容船插时使用。"
 ---
 
@@ -53,7 +53,7 @@ private fun stripForbiddenHullMods(variant: ShipVariantAPI?) {
 ## 要求 UI 直接阻止安装时
 
 - 如果候选船插由本项目实现：在候选船插中实现 `isApplicableToShip()` / `getUnapplicableReason()` / 必要时 `canBeAddedOrRemovedNow()`。
-- 如果候选船插是原版或第三方：不要假装控制方内置船插能让它灰掉；需要 agent/AccessTransformer 包装候选 effect，或接受“安装后立即清理”的产品行为。
+- 如果候选船插是原版或第三方：控制方内置船插无法使其灰掉；需要 agent/AccessTransformer 包装候选 effect，或接受“安装后立即清理”的产品行为。
 
 ## 测试约束
 

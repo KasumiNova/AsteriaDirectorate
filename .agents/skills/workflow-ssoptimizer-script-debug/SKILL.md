@@ -30,13 +30,13 @@ curl -s -X POST -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/
 | 方法 | params | 返回 |
 | --- | --- | --- |
 | `ping` / `version` | - | 存活性 / 版本信息 |
-| `debug_stats` | - | `{drainCount, scripts}` — drainCount 持续增长说明游戏主循环在跑 |
+| `debug_stats` | - | `{drainCount, scripts}`：`drainCount` 持续增长说明游戏主循环在跑 |
 | `script_compile` | `scriptId, className, source` | `{scriptId, className, version, compiledAt}` |
 | `script_invoke` | `scriptId, args?, threadMode?` | 脚本返回值（JSON） |
 | `script_list` | - | 已注册脚本句柄列表 |
 | `hotswap` | `className, source` | L2 方法体热替换（见 workflow-ssoptimizer-hotreload） |
 
-## 脚本契约
+## 脚本接口要求
 
 - `className` 是源码中主类全限定名（公开类，决定源文件名，必须与实际类名一致）；
 - 主类必须 `implements github.kasuminova.ssoptimizer.api.debug.DebugScript` 且有公开无参构造；
@@ -83,6 +83,6 @@ public class GameStateProbe implements github.kasuminova.ssoptimizer.api.debug.D
 
 ## 约束
 
-- 服务只绑回环地址 + token 鉴权，但脚本可执行任意代码——仅限本地调试，勿在生产分发开启；
+- 服务只绑回环地址 + token 鉴权，但脚本可执行任意代码，仅限本地调试，勿在生产分发开启；
 - 脚本内禁止自行起线程操作 GL；脚本引擎不做沙箱；
 - Kotlin 脚本为后续能力（编译器 jar 按需加载），初版仅 Java。

@@ -10,9 +10,6 @@ import cn.kasuminova.astd.impl.render.SpriteBodyRenderComponent
 import cn.kasuminova.astd.impl.render.StaticTrailComponent
 import cn.kasuminova.astd.impl.render.renderEntity
 
-/**
- * 把 [ProjectileVfxTreeSpec] 蓝图组装为 RenderEntity 场景树（渲染实现侧的唯一组装点）。
- */
 object ProjectileVfxTreeAssembler {
 
     fun assemble(tree: ProjectileVfxTreeSpec): RenderEntity = renderEntity(tree.id) {

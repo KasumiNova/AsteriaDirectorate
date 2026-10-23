@@ -11,18 +11,7 @@ import com.fs.starfarer.api.combat.WeaponAPI
 import com.fs.starfarer.api.combat.listeners.DamageDealtModifier
 import org.lwjgl.util.vector.Vector2f
 
-/**
- * “穷距”相位轨道炮叠层伤害乘区的逐命中落地通道（规格 05 §2.1 每层 +x% 伤害）。
- *
- * 动机：初版直接写 `weapon.damage.modifier`，烟测实证（05 验收第三轮，qjDmgStatShared=true）
- * **同舰同 spec 武器的 `WeaponAPI.damage.modifier` 是同一个底层 MutableStat**——
- * 逐武器写入会互相乘算污染。因此伤害乘区走 [DamageDealtModifier]：每次命中回调拿到的是
- * **该发弹体独立的 DamageAPI**，读取 Ship 级共享演算 Buff 层数（2026-09 修订：全舰同型共享），
- * 按 weaponId 过滤逐命中写入本发伤害乘区——只加成穷距弹体，天然不波及其他武器。
- *
- * 每舰至多登记一个实例（[ensure] 幂等）；无 Buff / 层数为 0 / 非穷距弹体时返回 null 零开销放行。
- * 难度取值每次命中调用 [QiongjueStackMath.resolve] 一次（不缓存，玩家按我方档位系数）。
- */
+// 同舰同 spec 武器共享 WeaponAPI.damage.modifier，逐发伤害必须写入回调提供的独立 DamageAPI。
 class QiongjueDamageDealtModifier : DamageDealtModifier {
 
     override fun modifyDamageDealt(
@@ -43,7 +32,6 @@ class QiongjueDamageDealtModifier : DamageDealtModifier {
         val mult = QiongjueStackMath.mult(buff.stacks, perStack)
         damage?.modifier?.modifyMult(MOD_ID, mult)
 
-        // dev 自动化烟测证据：每命中记录该武器最近一次伤害乘区（键带 ship.id + slotId，双穷距与敌版互不覆盖）。
         val engine = Global.getCombatEngine()
         if (engine != null) {
             engine.customData[telemetryKey(ship, weapon)] = mult
@@ -52,27 +40,21 @@ class QiongjueDamageDealtModifier : DamageDealtModifier {
     }
 
     companion object {
-        /** 伤害乘区写入 id 与监听器返回的 stat 来源 id（逐命中 DamageAPI 实例内唯一即可）。 */
         const val MOD_ID = "astd_qiongjue_dealt"
 
-        /** 逐武器最近伤害乘区遥测键前缀（dev 自动化烟测读取；全键 = 前缀 + ship.id + ":" + slotId）。 */
         const val TELEMETRY_DEALT_MULT_PREFIX = "astd_qiongjue_dealt_mult:"
 
-        /** 难度取值入口（生产固定 DifficultyTuningImpl；与 Buff/OnHit 同源）。 */
         private val DifficultyTuningRef = cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 
-        /** 该舰的穷距伤害监听器幂等登记（无则补；监听器本体无状态，实例级即可）。 */
         fun ensure(ship: ShipAPI) {
             if (!ship.hasListenerOfClass(QiongjueDamageDealtModifier::class.java)) {
                 ship.addListener(QiongjueDamageDealtModifier())
             }
         }
 
-        /** 逐武器最近伤害乘区遥测键（ship.id 区分玩家/敌版，slotId 区分同舰双穷距；Buff 登记已保证武器带槽位）。 */
         fun telemetryKey(ship: ShipAPI, weapon: WeaponAPI): String =
             "$TELEMETRY_DEALT_MULT_PREFIX${ship.id}:${weapon.slot?.id ?: "unknown"}"
 
-        /** dev 自动化烟测读取：该武器最近一次命中的伤害乘区（无记录返回 -1）。 */
         fun dealtMult(engine: CombatEngineAPI, ship: ShipAPI, weapon: WeaponAPI): Float =
             engine.customData[telemetryKey(ship, weapon)] as? Float ?: -1f
     }

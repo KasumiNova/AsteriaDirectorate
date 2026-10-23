@@ -23,12 +23,9 @@ import com.fs.starfarer.api.util.Misc
 import org.lwjgl.util.vector.Vector2f
 
 /**
- * 穷距相位轨道炮场景（规格 05 §2.5 烟测检查点）。
- *
- * 拆分自 ASTDAutomationCombatPlugin 的同名 if-else 分支，相位机/断言/证据写出口径原样迁移。
+ * 穷距相位轨道炮场景。
  */
 class QiongjueRailgunScenario : AbstractAutomationScenario() {
-    // ==== qiongjue phase railgun 场景状态（相位机 MOUNT → STACK → DUAL → SWITCH → DECAY → KILL → ENEMY_SCALE → COMPLETED） ====
     private var qjPhase = QJ_PHASE_MOUNT
     private var qjPhaseStartedAt = 0f
 
@@ -42,7 +39,7 @@ class QiongjueRailgunScenario : AbstractAutomationScenario() {
     private var qjStackFpsWallStartNanos = 0L
     private var qjStackFps = -1f
 
-    // DUAL（2026-09 修订：共享证据）：w1 独建满层后 w2 补射，首发同享满层乘区（读 qjW2DealtMult 遥测）。
+    // DUAL（共享证据）：w1 独建满层后 w2 补射，首发同享满层乘区（读 qjW2DealtMult 遥测）。
     // SWITCH：异目标折算证据（floor(10×0.5)+1=6）。
     private var qjSwitchW1Stacks = -1
 
@@ -72,8 +69,8 @@ class QiongjueRailgunScenario : AbstractAutomationScenario() {
         val engine = ctx.engine
         engine.setDoNotEndCombat(true)
         lockQjCamera(engine)
-        // HUD 状态条目仅 devMode 渲染（2026-07-29 审批裁定）：本场景为 dev-only 舞台，
-        // 开启 devMode 以目检「持续演算」状态条目与敌版三档（进程被早退杀掉，设置不落盘）。
+        // HUD 状态条目仅 devMode 渲染：本场景为 dev-only 舞台，
+        // 开启 devMode 以目检「持续演算」状态条目与敌版三档（进程被早退杀掉，设置不会保存到磁盘）。
         Global.getSettings().isDevMode = true
         // 与其他场景一致：reserves 部署放到 advance()，init 阶段渲染器未就绪。
         ctx.writeDiagnostics("CombatReady")
@@ -139,8 +136,8 @@ class QiongjueRailgunScenario : AbstractAutomationScenario() {
 
     /**
      * 舞台保活与站位（范式同 stabilizeEdaShips）：保留舰 AI + 逐帧 currAngle 对准 + setForceFireOneFrame
-     * 绕 AutofireAI 死锁（01/03 实证路径）。双穷距分开火独立控制（DUAL 相位单停 w2）；
-     * 玩家/敌版辐能逐帧清零——双穷距 900 辐能/发远超统治者耗散，不清零会在 STACK 相位中途过载卡死
+     * 绕 AutofireAI 死锁。双穷距分开火独立控制（DUAL 相位单停 w2）；
+     * 玩家/敌版辐能逐帧清零，双穷距 900 辐能/发远超统治者耗散，不清零会在 STACK 相位中途过载卡死
      * （辐能不是本机制观测对象）。警戒靶舰盾舞台性常关（KILL 相位需快速击沉 B）。
      */
     private fun stabilizeQjShips(
@@ -161,7 +158,7 @@ class QiongjueRailgunScenario : AbstractAutomationScenario() {
             player.shipTarget = playerTarget
             player.hitpoints = player.maxHitpoints
             player.fluxTracker.currFlux = 0f
-            // 变体武器组自带 autofire（第四轮实证：w2 停火相位 AutofireAI 继续开火，层数不衰减），
+            // 变体武器组自带 autofire（w2 停火相位 AutofireAI 继续开火，层数不衰减），
             // 双穷距一律改由 force fire 独占驱动（开/停逐槽位精确）。
             setQjAutofire(player, false)
             stageQjFireControl(player, playerTarget, fireW1, fireW2)
@@ -255,7 +252,7 @@ class QiongjueRailgunScenario : AbstractAutomationScenario() {
         val w1 = findQjWeapon(player, QJ_PLAYER_SLOT_W1)
         val w2 = findQjWeapon(player, QJ_PLAYER_SLOT_W2)
         val enemyW = enemy?.allWeapons?.firstOrNull { it.id == ASTDInGameAutomationScenario.QJ_WEAPON_ID }
-        // 2026-09 修订：叠层 Buff 为 Ship 级全舰同型共享——w1/w2/敌舰各至多一份，按舰直取。
+        // 叠层 Buff 为 Ship 级全舰同型共享，w1/w2/敌舰各至多一份，按舰直取。
         val shipBuff = player?.qiongjueCalcStacks()
         val enemyBuff = enemy?.qiongjueCalcStacks()
 
@@ -344,7 +341,7 @@ class QiongjueRailgunScenario : AbstractAutomationScenario() {
             }
 
             QJ_PHASE_DUAL -> {
-                // 共享验证（2026-09 修订）：w1 独打保持满层，w2 停火 4s 后补射——
+                // 共享验证：w1 独打保持满层，w2 停火 4s 后补射，
                 // w2 首发命中同样享受全舰共享满层乘区（Ship 级 Buff 证据）。
                 stabilizeQjShips(
                     engine,
@@ -403,7 +400,7 @@ class QiongjueRailgunScenario : AbstractAutomationScenario() {
 
             QJ_PHASE_KILL -> {
                 val armed = (shipBuff?.stacks ?: 0) >= QJ_KILL_ARM_STACKS
-                // 叠到 ≥3 层后停奶 B（盾已舞台性常关）让其被击沉；击沉瞬间转火 C 并清一次冷却，抢在 3s 窗口内命中。
+                // 叠到 ≥3 层后停止给 B 回血（盾已舞台性常关）让其被击沉；击沉瞬间转火 C 并清一次冷却，抢在 3s 窗口内命中。
                 stabilizeQjShips(
                     engine,
                     playerTarget = if (qjKillRetargeted) kill else switch,
@@ -493,7 +490,7 @@ class QiongjueRailgunScenario : AbstractAutomationScenario() {
             }
         }
 
-        // 切换靶舰 B 在 KILL 相位被击沉（观测对象本身）且 hulk 残骸可能被清出场——转火后不再要求其在场。
+        // 切换靶舰 B 在 KILL 相位被击沉（观测对象本身）且 hulk 残骸可能被清出场，转火后不再要求其在场。
         val switchOk = (switch != null && !switch.isHulk) || qjKillRetargeted
         val state = when {
             player == null || enemy == null || !switchOk || kill == null -> {
@@ -514,8 +511,8 @@ class QiongjueRailgunScenario : AbstractAutomationScenario() {
             }
 
             qjPhase == QJ_PHASE_COMPLETED -> {
-                // 截图门控：叠层回升到可见水位才上报 Completed——SSOptimizer 在上报时刻连拍三帧，
-                // 令「持续演算」HUD 条目与白色拖尾/命中锥面入帧（对齐 AV 中段门控先例）；保底超时防舞台卡死。
+                // 截图门控：叠层回升到可见水位才上报 Completed，SSOptimizer 在上报时刻连拍三帧，
+                // 令「持续演算」HUD 条目与白色拖尾/命中锥面入帧（对齐 AV 中段门控先例）；舞台超时作为保险防止卡死。
                 val stackedForShot = (shipBuff?.stacks ?: 0) >= QJ_COMPLETED_STACKS_FOR_SHOT
                 if (stackedForShot || ctx.elapsed - qjPhaseStartedAt >= QJ_COMPLETED_STAGE_TIMEOUT) "Completed" else "CombatReady"
             }
@@ -557,12 +554,12 @@ class QiongjueRailgunScenario : AbstractAutomationScenario() {
         json.appendLine("  \"runtimeElapsedSeconds\": 0,")
         json.appendLine("  \"runtimeTrackedCount\": ${vfxTelemetry.trackedCount},")
         json.appendLine("  \"runtimeLastProjectileSpecId\": ${jsonString(vfxTelemetry.lastProjectileSpecId)},")
-        // ---- 机制证据（规格 05 §2.5 烟测检查点）----
+        // 机制证据
         json.appendLine("  \"qjPhase\": \"$qjPhase\",")
         json.appendLine("  \"qjW1SlotId\": ${jsonString(qjW1?.slot?.id)},")
         json.appendLine("  \"qjW2SlotId\": ${jsonString(qjW2?.slot?.id)},")
         json.appendLine("  \"qjWeaponRange\": ${formatFloat(qjW1?.range ?: -1f)},")
-        // 2026-09 修订：Ship 级共享 Buff，w1/w2 层数同一份读数（保留双键便于报告对照）。
+        // Ship 级共享 Buff，w1/w2 层数同一份读数（保留双键便于报告对照）。
         json.appendLine("  \"qjW1Stacks\": ${qjPlayer?.qiongjueCalcStacks()?.stacks ?: -1},")
         json.appendLine("  \"qjW2Stacks\": ${qjPlayer?.qiongjueCalcStacks()?.stacks ?: -1},")
         json.appendLine("  \"qjEnemyStacks\": ${qjEnemy?.qiongjueCalcStacks()?.stacks ?: -1},")
@@ -600,7 +597,7 @@ class QiongjueRailgunScenario : AbstractAutomationScenario() {
                 )
             },"
         )
-        // 同舰双穷距伤害 stat 同一性探针（第三轮烟测实证 true：同 spec 武器共享底层 MutableStat）。
+        // 同舰双穷距伤害 stat 同一性探针（Starsector 0.98 中同 spec 武器共享底层 MutableStat）。
         json.appendLine("  \"qjDmgStatShared\": ${qjW1 != null && qjW2 != null && qjW1.damage?.modifier === qjW2.damage?.modifier},")
         json.appendLine("  \"qjDmgMultAtFull\": ${formatFloat(qjDmgMultAtFull)},")
         json.appendLine("  \"qjRefireMinAtFull\": ${formatFloat(if (qjRefireMinAtFull == Float.MAX_VALUE) -1f else qjRefireMinAtFull)},")
@@ -658,7 +655,7 @@ class QiongjueRailgunScenario : AbstractAutomationScenario() {
     }
 
     private companion object {
-        // 穷距相位轨道炮场景：相位机、锚点与期望证据（规格 05 §2.5 烟测检查点）。
+        // 穷距相位轨道炮场景：相位机、锚点与期望证据。
         private const val QJ_PHASE_MOUNT = "MOUNT"
         private const val QJ_PHASE_STACK = "STACK"
         private const val QJ_PHASE_DUAL = "DUAL"
@@ -669,7 +666,7 @@ class QiongjueRailgunScenario : AbstractAutomationScenario() {
         private const val QJ_PHASE_COMPLETED = "COMPLETED"
         private const val QJ_PHASE_FAILED = "FAILED"
 
-        // COMPLETED 相位截图门控：叠层回升到该层数才上报（HUD/拖尾/锥面入帧），超时保底防舞台卡死。
+        // COMPLETED 相位截图门控：叠层回升到该层数才上报（HUD/拖尾/锥面入帧），舞台超时作为保险防止卡死。
         private const val QJ_COMPLETED_STACKS_FOR_SHOT = 3
         private const val QJ_COMPLETED_STAGE_TIMEOUT = 25f
         private const val QJ_PLAYER_HULL = "dominator"
@@ -684,12 +681,12 @@ class QiongjueRailgunScenario : AbstractAutomationScenario() {
         private const val QJ_CAMERA_VISIBLE_HEIGHT = 1250f
         private const val QJ_MOUNT_SETTLE_SECONDS = 0.6f
 
-        // MOUNT 相位校验：dedicated_targeting_core 已在 MissionDefinition 摘除，射程断言基线 1100（2026-09 修订）。
+        // MOUNT 相位校验：dedicated_targeting_core 已在 MissionDefinition 摘除，射程断言基线 1100。
         private const val QJ_EXPECT_RANGE = 1100f
         private const val QJ_RANGE_TOLERANCE = 5f
 
         // 满层证据期望：v2 每层 5% × 10 → 伤害乘区 1.5（640→960）；
-        // 射速 spike 压缩全周期（烟测实证 cooldownRemaining 含充能段）：2.5s/1.5≈1.67s。
+        // 射速 spike 压缩全周期（Starsector 0.98 中 cooldownRemaining 含充能段）：2.5s/1.5≈1.67s。
         private const val QJ_EXPECT_FULL_DMG_MULT = 1.5f
         private const val QJ_DMG_MULT_TOLERANCE = 0.02f
         private const val QJ_REFIRE_MIN = 1.6f
@@ -709,7 +706,7 @@ class QiongjueRailgunScenario : AbstractAutomationScenario() {
         private const val QJ_DECAY_MIN_SECONDS = 4f
         private const val QJ_DECAY_MAX_SECONDS = 8f
 
-        // KILL：叠到 ≥3 层后停奶切换靶舰让其被击沉，转火 C 首中 = 旧值+1（不折算）。
+        // KILL：叠到 ≥3 层后停止给切换靶舰回血让其被击沉，转火 C 首中 = 旧值+1（不折算）。
         private const val QJ_KILL_ARM_STACKS = 3
 
         // ENEMY_SCALE：换档采样前停火 settle；目标 5 层（第 5 发命中的监听器按 4 层结算 → 逐命中乘区恰为 4 层值）。

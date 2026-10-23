@@ -8,9 +8,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/**
- * 规格 §1.4-3/5/7：addStacks clamp、CONTINUOUS/WINDOWED/EXPIRE_ALL 衰减语义、0 值防线。
- */
 class StackableBuffDecayTest {
     private val captures = mutableListOf<WarnCapture>()
 
@@ -45,7 +42,6 @@ class StackableBuffDecayTest {
         val buff = ReferenceStackableBuff(decayMode = StackDecayMode.CONTINUOUS, maxStacks = 10, stacksPerSecond = 10f)
         buff.addStacks(10)
 
-        // 小数累积：两帧 0.05s 合计 0.1s * 10/s = 1 层。
         buff.advance(0.05f)
         assertEquals(10, buff.stacks)
         buff.advance(0.05f)
@@ -54,7 +50,6 @@ class StackableBuffDecayTest {
         buff.advance(0.1f)
         assertEquals(8, buff.stacks)
 
-        // 流失到底即停，不产生负层。
         repeat(20) { buff.advance(0.1f) }
         assertEquals(0, buff.stacks)
     }
@@ -69,15 +64,12 @@ class StackableBuffDecayTest {
         )
         buff.addStacks(20)
 
-        // 恰 3s（三帧 1s）：窗口边界上不衰减。
         repeat(3) { buff.advance(1f) }
         assertEquals(20, buff.stacks, "恰在窗口边界不得衰减")
 
-        // 3s+0.1s：只计超出窗口的 0.1s，衰减 10/s * 0.1s = 1 层。
         buff.advance(0.1f)
         assertEquals(19, buff.stacks)
 
-        // 窗口外整帧衰减：1s * 10/s = 10 层。
         buff.advance(1f)
         assertEquals(9, buff.stacks)
     }
@@ -93,7 +85,6 @@ class StackableBuffDecayTest {
         buff.addStacks(20)
 
         repeat(2) { buff.advance(1f) }
-        // 第 3 秒前命中刷新：窗口重新计时。
         buff.addStacks(1)
         repeat(3) { buff.advance(1f) }
         assertEquals(20, buff.stacks, "刷新后恰 3s 内不得衰减")
@@ -121,7 +112,6 @@ class StackableBuffDecayTest {
         assertFalse(buff.expired, "到期前不得移除")
         assertEquals(5, buff.stacks)
 
-        // 恰满 3s：整 Buff 经 host.remove 移除（层数不做逐层流失）。
         buff.advance(0.1f)
         assertTrue(buff.expired)
         assertEquals(1, buff.removeCalls, "onRemove 恰好一次")

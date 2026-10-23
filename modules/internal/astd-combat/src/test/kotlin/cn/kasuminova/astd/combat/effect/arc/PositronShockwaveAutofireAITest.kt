@@ -6,11 +6,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-/**
- * 正电子冲击波自动开火命中容差（2026-10 实机修正：未对齐不开火闸门）的纯逻辑验证：
- * - 容差 = 目标碰撞半径 + 余量在距离上张开的半角，随距离单调收窄；
- * - 极近距离夹紧在上限（不至于等不到开火窗口），超远距离夹紧在下限（不至于放宽到明显脱靶）。
- */
 class PositronShockwaveAutofireAITest {
 
     @Test

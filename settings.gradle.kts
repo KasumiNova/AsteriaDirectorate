@@ -1,9 +1,5 @@
-//plugins {
-//    id("org.gradle.toolchains.foojay-resolver-convention") version "0.8.0"
-//}
 pluginManagement {
     repositories {
-        // SDG 插件自 mavenLocal 消费（io.github.nanoforged:sdg）
         mavenLocal()
         gradlePluginPortal()
         maven {
@@ -15,8 +11,6 @@ pluginManagement {
 
 rootProject.name = "AsteriaDirectorate"
 
-// 多模块布局：api 模块在 modules/api，实现模块在 modules/internal。
-// 根工程保留为模组装配/打包工程（SDG mod 插件、contents、agent、mod 插件入口类）。
 include(":astd-api")
 project(":astd-api").projectDir = file("modules/api/astd-api")
 include(":astd-api-render")

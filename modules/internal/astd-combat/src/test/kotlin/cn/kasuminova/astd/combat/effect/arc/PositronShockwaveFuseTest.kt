@@ -13,10 +13,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/**
- * 规格 06 §4.1 用例 5~7：满射程引爆判定（边界含等号 / 弹速为 0 立即引爆并报 ERROR）
- * 与近炸目标类型六宫格（真实调用 [cn.kasuminova.astd.combat.effect.arc.positronshockwave.PositronShockwaveDifficulty] 纯函数）。
- */
 class PositronShockwaveFuseTest {
     private var warnCapture: WarnCapture? = null
 
@@ -52,17 +48,11 @@ class PositronShockwaveFuseTest {
 
     @Test
     fun `用例7 isFuseTarget 目标类型六宫格矩阵`() {
-        // 敌对导弹 → true
         assertTrue(PositronShockwaveDifficulty.isFuseTarget(stubMissile(owner = 1), owner = 0))
-        // 敌对战机 → true
         assertTrue(PositronShockwaveDifficulty.isFuseTarget(stubShip(owner = 1, fighter = true), owner = 0))
-        // 敌对无人机 → true
         assertTrue(PositronShockwaveDifficulty.isFuseTarget(stubShip(owner = 1, drone = true), owner = 0))
-        // 敌对普通舰船 → false（裁定：舰船不触发近炸）
         assertFalse(PositronShockwaveDifficulty.isFuseTarget(stubShip(owner = 1), owner = 0))
-        // 同方导弹 → false
         assertFalse(PositronShockwaveDifficulty.isFuseTarget(stubMissile(owner = 0), owner = 0))
-        // 敌对 hulk 战机 → false
         assertFalse(PositronShockwaveDifficulty.isFuseTarget(stubShip(owner = 1, fighter = true, hulk = true), owner = 0))
     }
 

@@ -20,18 +20,11 @@ import kotlin.test.assertNull
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
-/**
- * 规格 10 §4.1 用例 11：TrackAI 追踪段——偏角 >1° 发正确转向指令 + ACCELERATE；
- * 目标失效下一帧重搜索被调用；仍无目标仅 ACCELERATE（直飞定义行为）。
- * 注入引擎/重搜索桩驱动真实 advance 状态机。
- * 避障改造（2026-10-17）后引擎桩默认挂空 aiGrid（无障碍，行为与改造前一致）。
- */
 class GeminiDemTrackAITest {
 
     private fun stubEngine(): CombatEngineAPI {
         val engine = mock(CombatEngineAPI::class.java)
         `when`(engine.isPaused).thenReturn(false)
-        // 先建好网格桩再挂引擎（thenReturn 参数内嵌套打桩会触发 UnfinishedStubbingException）
         val shipGrid = stubGrid(emptyList())
         val asteroidGrid = stubGrid(emptyList())
         `when`(engine.aiGridShips).thenReturn(shipGrid)
@@ -39,7 +32,6 @@ class GeminiDemTrackAITest {
         return engine
     }
 
-    /** 空间网格桩：getCheckIterator 每次返回新迭代器（迭代器一次性消费）。 */
     private fun stubGrid(entries: List<Any>): CollisionGridAPI {
         val grid = mock(CollisionGridAPI::class.java)
         `when`(grid.getCheckIterator(any(Vector2f::class.java), anyFloat(), anyFloat()))
@@ -69,7 +61,6 @@ class GeminiDemTrackAITest {
     @Test
     fun `用例11a 有目标且偏角大于1度：正确转向指令加ACCELERATE，getTarget 供出目标`() {
         val engine = stubEngine()
-        // 弹体朝 0°（+x），目标在正上方（90°）→ 应 TURN_LEFT
         val missile = stubMissile(0f, 0f, 0f)
         val target = stubShip("T1", 0f, 100f)
         `when`(engine.isEntityInPlay(target)).thenReturn(true)
@@ -89,7 +80,6 @@ class GeminiDemTrackAITest {
         assertSame(target, ai.target, "GuidedMissileAI.getTarget 供 DEMScript WAIT 段读取")
         assertTrue(retargetCalls == 0, "目标有效不重搜索")
 
-        // 目标在正右方（-90°/270°）→ 应 TURN_RIGHT
         val missile2 = stubMissile(0f, 0f, 0f)
         val target2 = stubShip("T2", 0f, -100f)
         `when`(engine.isEntityInPlay(target2)).thenReturn(true)
@@ -135,13 +125,10 @@ class GeminiDemTrackAITest {
 
     @Test
     fun `用例11d 摆动飞行：纯函数波形锚定 + 远距离追踪段转向指令左右交替`() {
-        // 纯函数锚定：weaveOffset = sin(elapsed×2π×freq + phase) × amp
         assertEquals(0f, GeminiDemTrackAI.weaveOffset(0f, 0f, 1f, 120f), 1e-4f)
         assertEquals(120f, GeminiDemTrackAI.weaveOffset(0.25f, 0f, 1f, 120f), 1e-4f)
         assertEquals(-120f, GeminiDemTrackAI.weaveOffset(0.75f, 0f, 1f, 120f), 1e-4f)
 
-        // 定值种子驱动真实 advance：目标正前方 2000su（proximity 全额），4 秒内正弦偏移多次过零，
-        // 瞄准点左右交替 → 转向指令必须同时出现过 LEFT 与 RIGHT（直线追尾只会单边或死区静默）
         val engine = stubEngine()
         val missile = stubMissile(0f, 0f, 0f)
         val target = stubShip("T1", 2000f, 0f)

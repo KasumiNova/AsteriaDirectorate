@@ -11,23 +11,15 @@ import com.fs.starfarer.api.combat.MutableShipStatsAPI
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.ui.TooltipMakerAPI
 
-/**
- * 词缀 S-08：相位线圈降频（[AffixRegistry.ID_PHASE_COIL_DETUNING]）。
- * 按难度系数：降低 25%~50% 相位状态下的时间流速（最终乘区）；
- * 降低 25%~50% 相位状态下的辐能产出；降低 25%~50% 相位线圈冷却时间。
- * 仅相位舰船可搭载；与相位线圈调谐互斥（抽取时强制）。
- */
 class AffixPhaseCoilDetuningHullMod : BaseHullMod() {
 
     data class Bonuses(
-        /** 相位时间流速动态修正（phase_time_mult）倍率。 */
         val phaseTimeMultMod: Float,
         val upkeepMult: Float,
         val cooldownMult: Float,
     )
 
     companion object {
-        /** 相位时间流速降幅：25%~50%（dynamic mod 乘 1 - 1.5x，见调谐侧公式说明）。 */
         val PHASE_TIME_REDUCTION = ScalingEntry(v1 = 0.25f, v2 = 0.375f, v5 = 0.50f)
         val UPKEEP = ScalingEntry(v1 = 0.75f, v2 = 0.625f, v5 = 0.50f)
         val COOLDOWN = ScalingEntry(v1 = 0.75f, v2 = 0.625f, v5 = 0.50f)

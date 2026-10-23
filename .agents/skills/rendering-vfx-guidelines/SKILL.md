@@ -1,5 +1,5 @@
 ---
-name: "rendering-vfx-guidelines"
+name: rendering-vfx-guidelines
 description: "渲染/特效规范：优先使用 BoxUtil 的高性能实现，统一接入本项目 VFX 管线，避免滥用原版渲染 API。"
 ---
 
@@ -34,7 +34,7 @@ description: "渲染/特效规范：优先使用 BoxUtil 的高性能实现，�
 
 > 目的：避免 `.wpn` 与 `.proj` 双挂导致重复触发、以及扫描式插件造成噪音与性能浪费。
 
-## “优先 BoxUtil”的落地建议
+## BoxUtil 使用规则
 
 ### 1) 大量粒子/曳光：实例化优先 + 高频必须池化
 
@@ -42,13 +42,13 @@ description: "渲染/特效规范：优先使用 BoxUtil 的高性能实现，�
   - 优先 `InstanceRenderAPI` 或 `SimpleParticleControlData`
   - 避免每次 `engine.addHitParticle/addNebulaParticle` 创建大量短寿命对象
 - **每帧/每节拍级的高频 spawn 禁止「新建实体 + 定时器自删」**：BoxUtil `renderEntityMap`
-  战斗内只增不删，实体引用滞留至战斗切换（实机实锤 99 万实例 / 1 GB）。
+  战斗内只增不删，实体引用滞留至战斗切换（实机观测到 99 万实例 / 1 GB）。
   若粒子间仅 `location`/`scale|size`/`rotate|facing`/`velocity`/`scaleRate`/`turnRate|rotateRate`/
   `color`/`emissive`/`lifetime` 不同，必须共用同一个 Entity 作为子粒子池（实例属性继承池 Entity）。
   统一入口：`PooledCombatVfx.spawnSprite/spawnTrail`（详见 boxutil-guidelines 的实体池化规范）。
 - **星云粒子（`engine.addNebulaParticle` 系）一律改走 `BoxUtilCombatVfx.addNebulaParticle`**：
   Box 内置星云控制器本身就是「单常驻 SpriteEntity + 8192 实例池」（原版 nebula_particles 图集），
-  参数语义与原版完全对齐、视野外自动剔除，无需也不应再自池化或调用原版 API。
+  参数语义与原版完全对齐、视野外自动剔除，禁止另行池化或调用原版 API。
 
 ### 2) 束体/拖尾：TrailEntity 优先
 
@@ -60,11 +60,11 @@ description: "渲染/特效规范：优先使用 BoxUtil 的高性能实现，�
 
 - 扭曲属于后处理实体：
   - 频率要控（节流/合并脉冲），避免蜂群刷屏
-  - 注意 layer：**最高层不会应用后处理（Bloom/AA）**，不要无脑塞到最高层
+  - 注意 layer：**最高层不会应用后处理（Bloom/AA）**，不要默认使用最高层
 
 ### 4) 不做降级：BoxUtil 有问题就及时报告
 
-本项目渲染/VFX 的默认立场是：**BoxUtil 优先且为唯一实现路径**。
+本项目渲染/VFX 必须使用 BoxUtil，禁止额外维护原版渲染实现。
 
 - 不要为了“兼容性探测/偶发失败”额外编写原版渲染降级分支（会带来双倍代码与长期维护成本）。
 - 当 BoxUtil 未初始化/不支持/添加实体失败时：
@@ -73,7 +73,7 @@ description: "渲染/特效规范：优先使用 BoxUtil 的高性能实现，�
 
 ## 管线规范：弹体 VFX（projectileSpecId）
 
-### 1) 配置优先于代码散落
+### 1) 集中维护配置
 
 - 优先把“哪个 projectileSpecId 用哪个 preset”写进：
   - `contents/data/config/astd_projectile_vfx.json`
@@ -84,7 +84,7 @@ description: "渲染/特效规范：优先使用 BoxUtil 的高性能实现，�
 `ProjectileVfxRegistry` 的原则是：
 
 - 未配置的弹体默认 **不附加任何 VFX**
-- 配置缺失/损坏时才会回退到一小份内置 defaults（避免“完全不可见”）
+- 配置缺失/损坏时才会回退到一小份内置 defaults，避免所有弹体均无 VFX
 
 目的：避免扫描式“给所有弹体加曳光”造成噪音与性能浪费。
 
@@ -102,10 +102,10 @@ description: "渲染/特效规范：优先使用 BoxUtil 的高性能实现，�
   - 对“脉冲类效果”务必加最小间隔（例如 `minInterval`）
   - 参考：`SingularityRetargetPulseVisual` 对 retarget 脉冲的节流逻辑
 
-## 常见坑
+## 常见错误
 
 - 同时在 `.wpn` 与 `.proj` 挂脚本 → 重复触发、双倍粒子
-- 对所有弹体默认加曳光 → 噪音 + 性能灾难
+- 对所有弹体默认加曳光 → 增加无谓的渲染开销
 - Distortion 高频刷屏 → 画面“糊”且 GPU 压力大
 - 未检查 addEntity 返回码 → 隐性泄漏/空对象残留
 

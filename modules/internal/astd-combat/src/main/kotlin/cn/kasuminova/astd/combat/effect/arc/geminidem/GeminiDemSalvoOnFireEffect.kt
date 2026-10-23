@@ -14,30 +14,6 @@ import org.lazywizard.lazylib.MathUtils
 import org.lwjgl.util.vector.Vector2f
 import java.util.IdentityHashMap
 
-/**
- * 双子星 DEM 齐射发射回调（规格 10 §2.2，主武器 dummy .proj 的 `onFireEffect`，唯一插件入口）。
- *
- * 结算顺序固定：
- * 1. 移除 dummy（同帧）；
- * 2. 定目标：`ship.shipTarget`（存活/非残骸/敌对）→ 空则 2500su 内最近敌舰 → 仍空则双弹直飞（定义行为）；
- * 3. `spawnProjectile` ×2（动能 + 高爆，±12su 垂直错位、±2° 朝向散布）；
- * 4. 每枚弹头：source=发射舰、`setArmingTime(0.3)`、`setMissileAI(GeminiDemTrackAI)`、
- *    写齐射批次号（仅日志/调试关联）、`addPlugin(DEMScript)`——等价原版 DEMEffect 全部逻辑
- *    （规格 §0.1 事实 #3/#4：DEMScript 行为参数全部读自弹头 .proj 的 behaviorSpec）。
- *
- * 0 值与边界（规格 §2.4）：
- * - `weapon.ship == null`：记 WARN 放行 dummy 正常飞行（只兜异常调用，不改变 vanilla 路径外行为）；
- * - `spawnProjectile` 返回非 [MissileAPI]：记 ERROR 跳过该枚，另一枚不受影响（理论不可达）。
- *
- * 弹药口径（2026-09-26 第二次裁定）：主武器 weapon_data 行 `burst size=2 / burst delay=0.1`
- * （原版 squall/locust 先例：burst 列驱动 tooltip「1000 x2」面板显示；burst delay 必须为
- * 非 0 才真实连发——0 会被引擎当无 burst 处理，实机判例），一次触发引擎
- * 连发 2 发 dummy 并各扣 1 弹药（合计 -2，与「一轮齐射两枚弹头」语义对齐）。
- * 两发 dummy 各回调一次 onFire：首发生成完整双弹齐射，次发（回声发）只移除 dummy 不再生成；
- * 回声判定 = 同一武器 0.5s 窗口内已有齐射记录（chargedown 12s 下合法齐射不可能落进窗口）。
- *
- * @param demPluginFactory DEM 打击段插件装配（默认真实 DEMScript；测试注入记录桩断言装配发生）
- */
 class GeminiDemSalvoOnFireEffect(
     private val demPluginFactory: (MissileAPI, ShipAPI, WeaponAPI) -> EveryFrameCombatPlugin = { missile, ship, weapon ->
         DEMScript(missile, ship, weapon)
@@ -51,10 +27,9 @@ class GeminiDemSalvoOnFireEffect(
             return
         }
 
-        // dummy 同帧移除（规格 §2.2 第 2 步；回声发同样移除，dummy 永不留场）
         engine.removeEntity(projectile)
 
-        // burst=2 回声发去重：引擎一次触发连发 2 发 dummy 各回调一次，仅首发生成齐射
+        // burst=2 时引擎对两发 dummy 各回调一次 onFire，仅首发生成齐射。
         val now = engine.getTotalElapsedTime(false)
         val lastSalvos = lastSalvoOf(engine)
         val lastAt = lastSalvos[weapon]
@@ -76,7 +51,6 @@ class GeminiDemSalvoOnFireEffect(
         val salvoId = "astd_gemini_salvo:${ship.id}:${engine.getTotalElapsedTime(false)}"
         val facing = projectile.facing
         val baseLoc = projectile.location
-        // 战机型发射切换战机版弹头编成（数据驱动 ×0.75 削弱：独立弹头/payload spec，见 GeminiDemDifficulty 战机链注释）
         val warheads = if (weapon.spec?.weaponId == GeminiDemDifficulty.FIGHTER_WEAPON_ID) {
             WARHEADS_FIGHTER
         } else {
@@ -84,7 +58,6 @@ class GeminiDemSalvoOnFireEffect(
         }
 
         for ((weaponId, projId, lateralSign) in warheads) {
-            // 垂直错位：沿 facing 垂直方向偏移 lateralSign × 12su（规格 §2.2 第 5 步）
             val loc = MathUtils.getPointOnCircumference(
                 Vector2f(baseLoc),
                 GeminiDemDifficulty.SALVO_LATERAL_OFFSET * lateralSign,
@@ -98,21 +71,17 @@ class GeminiDemSalvoOnFireEffect(
                 log.error("双子星 DEM 齐射：spawnProjectile($weaponId) 返回非 MissileAPI（$spawned），跳过本枚（理论不可达）")
                 continue
             }
-            // 拖尾接入（规格 10 §特效）：脚本 spawn 弹体不触发 onFireEffect，显式登记进 Static Trail 管线
-            // （冰晶分裂/附着脚本先例）；bolt 组件对 MissileAPI 自动禁用，弹体本体仍走原版导弹贴图渲染
+            // 脚本 spawn 的弹体不触发 onFireEffect，拖尾必须显式登记。
             ProjectileVfxDriverPlugin.track(engine, missile, projId)
             missile.source = ship
             missile.armingTime = GeminiDemDifficulty.WARHEAD_ARMING_TIME
             missile.missileAI = GeminiDemTrackAI(missile, target)
-            // 供给侧 R1 证据（规格 §4.2 检查点 3）：TrackAI 装配即 GuidedMissileAI 供目标；
-            // 实机判例：API 侧包装弹头的 getAI 读回是引擎包装对象，读回路径不可作观测面。
             engine.customData[TELEMETRY_TRACK_AI_CREATED] = trackAiCreated(engine) + 1
             if (target != null) {
                 engine.customData[TELEMETRY_TRACK_AI_TARGET_NONNULL] = trackAiTargetNonNull(engine) + 1
             }
             missile.setCustomData(GeminiDemDifficulty.SALVO_KEY, salvoId)
             engine.addPlugin(demPluginFactory(missile, ship, weapon))
-            // 出生登记（实机判例：engine.getMissiles() 不含脚本 spawn 的弹头，场景观测只能走出生登记簿）
             warheadsOf(engine) += WarheadRef(salvoId, weaponId, missile, engine.getTotalElapsedTime(false))
             engine.customData[TELEMETRY_WARHEADS_SPAWNED] = warheadsSpawned(engine) + 1
         }
@@ -124,40 +93,30 @@ class GeminiDemSalvoOnFireEffect(
     companion object {
         private val log = Global.getLogger(GeminiDemSalvoOnFireEffect::class.java)
 
-        /** 齐射编成（舰装）：动能 -1 舷 / 高爆 +1 舷（三元组：弹头武器 id、弹体 spec id、舷侧符号）。 */
         private val WARHEADS_SHIP = listOf(
             Triple(GeminiDemDifficulty.KINETIC_WEAPON_ID, GeminiDemDifficulty.KINETIC_PROJ_ID, -1f),
             Triple(GeminiDemDifficulty.HE_WEAPON_ID, GeminiDemDifficulty.HE_PROJ_ID, 1f),
         )
 
-        /** 齐射编成（战机型）：战机版弹头链（面板 750、payload 指向战机版光束），舷侧口径同舰装。 */
         private val WARHEADS_FIGHTER = listOf(
             Triple(GeminiDemDifficulty.KINETIC_FIGHTER_WEAPON_ID, GeminiDemDifficulty.KINETIC_FIGHTER_PROJ_ID, -1f),
             Triple(GeminiDemDifficulty.HE_FIGHTER_WEAPON_ID, GeminiDemDifficulty.HE_FIGHTER_PROJ_ID, 1f),
         )
 
-        /** 遥测键：齐射次数（automation 场景观测面，对齐既有组遥测先例）。 */
         const val TELEMETRY_SALVO = "astd_gemini_dem_salvo_count"
 
-        /** 遥测键：已生成弹头总数（应为齐射次数 ×2；非 ×2 即有生成失败）。 */
         const val TELEMETRY_WARHEADS_SPAWNED = "astd_gemini_dem_warheads_spawned"
 
-        /** 遥测键：最近一次齐射批次号（日志关联）。 */
         const val TELEMETRY_LAST_SALVO_ID = "astd_gemini_dem_last_salvo_id"
 
-        /** 遥测键：已装配 TrackAI 的弹头数（供给侧 R1：应为齐射次数 ×2）。 */
         const val TELEMETRY_TRACK_AI_CREATED = "astd_gemini_dem_track_ai_created"
 
-        /** 遥测键：装配时目标非空的 TrackAI 弹头数（DEMScript WAIT 段触发前提的供给侧证据）。 */
         const val TELEMETRY_TRACK_AI_TARGET_NONNULL = "astd_gemini_dem_track_ai_target_nonnull"
 
-        /** customData 键：弹头出生登记簿（脚本 spawn 弹头的唯一可靠观测面，见 warheadsOf 注释）。 */
         const val TELEMETRY_WARHEAD_REGISTRY = "astd_gemini_dem_warhead_registry"
 
-        /** customData 键：各武器最近一次齐射时刻表（burst=2 回声发去重窗口判定）。 */
         const val TELEMETRY_LAST_SALVO_AT = "astd_gemini_dem_last_salvo_at"
 
-        /** 回声发去重窗口（秒）：远小于 chargedown 12s，合法齐射不可能落进窗口。 */
         const val SALVO_DEDUP_WINDOW_SECONDS = 0.5f
 
         fun salvoCount(engine: CombatEngineAPI): Int = engine.customData[TELEMETRY_SALVO] as? Int ?: 0
@@ -166,20 +125,14 @@ class GeminiDemSalvoOnFireEffect(
         fun trackAiTargetNonNull(engine: CombatEngineAPI): Int =
             engine.customData[TELEMETRY_TRACK_AI_TARGET_NONNULL] as? Int ?: 0
 
-        /** 弹头出生登记条目：齐射批次号、弹头武器 id、导弹引用（配置完成态）、出生时刻。 */
         data class WarheadRef(val salvoId: String, val weaponId: String, val missile: MissileAPI, val spawnedAt: Float)
 
-        /**
-         * 本场战斗弹头出生登记簿（engine.customData 惰性创建，战斗结束自然销毁）。
-         * 动机（实机判例）：`engine.getMissiles()` 不含脚本 spawn 的弹头，customData/weaponSpec
-         * 扫描观测面全部落空；场景与诊断改用出生时的原始引用。
-         */
+        // 脚本 spawn 的弹头经 addObject 入队，引擎 flush 后进入 engine.getMissiles()；登记簿保存原始引用供直接读取。
         @Suppress("UNCHECKED_CAST")
         fun warheadsOf(engine: CombatEngineAPI): MutableList<WarheadRef> =
             engine.customData.getOrPut(TELEMETRY_WARHEAD_REGISTRY) { mutableListOf<WarheadRef>() }
                     as MutableList<WarheadRef>
 
-        /** 各武器最近一次齐射时刻表（engine.customData 惰性创建，战斗结束自然销毁）。 */
         @Suppress("UNCHECKED_CAST")
         private fun lastSalvoOf(engine: CombatEngineAPI): IdentityHashMap<WeaponAPI, Float> =
             engine.customData.getOrPut(TELEMETRY_LAST_SALVO_AT) { IdentityHashMap<WeaponAPI, Float>() }

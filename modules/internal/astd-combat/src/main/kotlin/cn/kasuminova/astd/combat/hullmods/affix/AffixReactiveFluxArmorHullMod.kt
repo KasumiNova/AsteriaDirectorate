@@ -15,19 +15,11 @@ import com.fs.starfarer.api.combat.listeners.DamageTakenModifier
 import com.fs.starfarer.api.ui.TooltipMakerAPI
 import org.lwjgl.util.vector.Vector2f
 
-/**
- * 词缀 M-10：反应式辐能装甲（[AffixRegistry.ID_REACTIVE_FLUX_ARMOR]）。
- * 按难度系数：降低 75%~90% 强制排辐期间受到的装甲与船体伤害（最终乘区）；
- * 强制排辐速率降低 35%（固定值）。
- *
- * 排辐状态判定 + 伤害修正由 [VentGuardListener] 承担；电网深化升级复用同一监听器。
- */
 class AffixReactiveFluxArmorHullMod : BaseHullMod() {
 
     companion object {
         val REDUCTION = ScalingEntry(v1 = 0.75f, v2 = 0.825f, v5 = 0.90f)
 
-        /** 排辐速率惩罚（固定 -35%）。 */
         const val VENT_RATE_MULT = 0.65f
 
         fun damageTakenMult(tuning: DifficultyTuning): Float = 1f - tuning.value(REDUCTION)
@@ -55,11 +47,6 @@ class AffixReactiveFluxArmorHullMod : BaseHullMod() {
         }
     }
 
-    /**
-     * 排辐减伤监听器：仅在强制排辐期间、且非护盾命中时削减伤害。
-     *
-     * @property damageTakenMult 伤害乘区（1 - 减免比例），由安装时按难度系数定值
-     */
     class VentGuardListener(
         private val ship: ShipAPI,
         private val damageTakenMult: Float,

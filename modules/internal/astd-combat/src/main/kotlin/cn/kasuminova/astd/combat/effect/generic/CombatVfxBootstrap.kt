@@ -13,21 +13,15 @@ import cn.kasuminova.astd.renderer.projectile.driver.ProjectileVfxSpecs
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
 
-/**
- * 战斗内 VFX 启动器：战斗开始后尽早把弹体 VFX 驱动插件与各舰体视觉插件装入引擎。
- */
 internal object CombatVfxBootstrap {
 
     private val log = Global.getLogger(CombatVfxBootstrap::class.java)
 
     fun ensureInstalled(engine: CombatEngineAPI) {
-        // 武器特效构建函数注册（幂等；渲染驱动按 projectileSpecId 查 ProjectileVfxRegistry）。
         ProjectileVfxSpecs.install()
 
-        // 弹体 VFX 的每帧驱动插件（RenderEntity 管线，见 ProjectileVfxDriverPlugin / ProjectileVfxSpecs）。
         ProjectileVfxDriverPlugin.ensureInstalled(engine)
 
-        // 顺手尝试让 BoxUtil 进入 ready。
         try {
             BoxUtilCombatVfx.ensureReady(engine)
         } catch (ex: Throwable) {
@@ -40,42 +34,36 @@ internal object CombatVfxBootstrap {
             log.warn("[ASTD] ASTDAfterimageEffect.ensureInstalled failed", ex)
         }
 
-        // ASTD 全系类矢量推进：按引擎贡献逐引擎调火焰强度。
         try {
             ASTDVectorThrustEngineManager.ensureInstalled(engine)
         } catch (ex: Throwable) {
             log.warn("[ASTD] ASTDVectorThrustEngineManager.ensureInstalled failed", ex)
         }
 
-        // ASTD 全系引擎常驻三角碎片喷散：按矢量管理器发布的火焰 level 驱动。
         try {
             ASTDEngineShardSprayEffect.ensureInstalled(engine)
         } catch (ex: Throwable) {
             log.warn("[ASTD] ASTDEngineShardSprayEffect.ensureInstalled failed", ex)
         }
 
-        // 武器补档发光层（常驻 + 蓄能）：补足原版 .wpn 只有开火发光、没有常亮/充能进度槽位的空缺。
         try {
             WeaponGlowLayer.ensureInstalled(engine)
         } catch (ex: Throwable) {
             log.warn("[ASTD] WeaponGlowLayer.ensureInstalled failed", ex)
         }
 
-        // 挂载弹体光效层：补足原版 RENDER_LOADED_MISSILES 装填弹体没有发光槽位的空缺。
         try {
             LoadedMissileGlowLayer.ensureInstalled(engine)
         } catch (ex: Throwable) {
             log.warn("[ASTD] LoadedMissileGlowLayer.ensureInstalled failed", ex)
         }
 
-        // 舰船覆盖发光层（bloom/装饰灯）：战斗内 BoxUtil 实体代替原版装饰武器渲染。
         try {
             ShipGlowRenderer.ensureInstalled(engine)
         } catch (ex: Throwable) {
             log.warn("[ASTD] ShipGlowRenderer.ensureInstalled failed", ex)
         }
 
-        // XC-002 虚数之翼光翼渲染（呼吸 + 残影 + 系统激活染紫）。
         try {
             Xc002GhostWingsEffect.ensureInstalled(engine)
         } catch (ex: Throwable) {

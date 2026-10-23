@@ -9,18 +9,18 @@ import org.lwjgl.util.vector.Vector2f
 /**
  * 自动化舞台的通用基础设施（纯函数集合，无战斗状态）。
  *
- * 职责：诊断 JSON 的格式化/转义、舰船钉位与武器组自动开火开关、取景相机锁定、
- * hullmod/文本键解析判定与 tooltip 契约核对。全部为拆分前枢纽私有工具函数的原样迁移，
- * 供抽象基类委派与各处理器直接调用（枢纽诊断尾部亦经此处读 tooltip 证据）。
+ * 诊断 JSON 的格式化与转义、舰船钉位与武器组自动开火开关、取景相机锁定、
+ * hullmod 与文本键解析判定及 tooltip 核对，供抽象基类委派与各处理器直接调用
+ * （枢纽诊断尾部亦经此处读 tooltip 证据）。
  */
 object AutomationEvidence {
 
     /**
-     * 武器组自动开火开关（历史名 setChargeNeedleAutofire，实际按 weaponIds 泛用于各场景）：
-     * `setForceFireOneFrame` 对无舰 AI 的舞台舰不生效（实机 90s 零发射验证），
-     * 改用原版武器组 autofire 管线——toggleOn 后组内武器 AutofireAI 自行瞄准 shipTarget 开火。
-     * 注意：不得每帧 `setRemainingCooldownTo(0f)`——实机验证它会把武器开火周期反复重置导致零弹体
-     * （坠星残响场景同款写法即因此依赖 spawnProjectile 兜底）。
+     * 武器组自动开火开关（按 weaponIds 泛用于各场景）：
+     * Starsector 0.98 中 `setForceFireOneFrame` 对无舰 AI 的舞台舰不生效，
+     * 改用原版武器组 autofire 管线：toggleOn 后组内武器 AutofireAI 自行瞄准 shipTarget 开火。
+     * 注意：不得每帧 `setRemainingCooldownTo(0f)`：该调用会把武器开火周期反复重置导致零弹体
+     * （坠星残响场景因此依赖 spawnProjectile 产出备用弹体）。
      */
     fun setWeaponGroupAutofire(ship: ShipAPI?, enabled: Boolean, weaponIds: Set<String>) {
         ship ?: return
@@ -118,9 +118,9 @@ object AutomationEvidence {
         .replace("\\", "\\\\")
         .replace("\"", "\\\"")
 
-    /** ARC production 共享相机中心（历史内联字面量 -40/-20 的命名化）。 */
+    /** ARC production 共享相机中心。 */
     val ARC_PRODUCTION_CAMERA_CENTER: Vector2f = Vector2f(-40f, -20f)
 
-    /** ARC production 共享相机视高（历史内联字面量 980 的命名化）。 */
+    /** ARC production 共享相机视高。 */
     const val ARC_PRODUCTION_CAMERA_VISIBLE_HEIGHT: Float = 980f
 }

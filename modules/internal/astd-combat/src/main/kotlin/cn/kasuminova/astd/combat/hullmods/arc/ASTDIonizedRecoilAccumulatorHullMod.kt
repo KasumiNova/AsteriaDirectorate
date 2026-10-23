@@ -52,7 +52,6 @@ class ASTDIonizedRecoilAccumulatorHullMod : BaseHullMod() {
         private const val RECOIL_LENS_FLARE_SPACING = 150f
         private const val RECOIL_LENS_FLARE_RANDOM_OFFSET = 50f
 
-        /** 电弧终点十字辉星：两枚光柱 90° 交叉，长轴 75su 扩散至 150su，短轴随长轴等比。 */
         private const val ENDPOINT_FLARE_DURATION = 0.6f
         private const val ENDPOINT_CROSS_LEN_START = 75f
         private const val ENDPOINT_CROSS_LEN_END = 150f
@@ -61,7 +60,6 @@ class ASTDIonizedRecoilAccumulatorHullMod : BaseHullMod() {
         private val ARC_FRINGE = Color(90, 210, 255, 220)
         private val ARC_CORE = Color(245, 252, 255, 240)
 
-        /** 终点辉星配色（与电弧同族，AARRGGBB）。 */
         private val ENDPOINT_FLARE_CORE = ASTDColor(0xF0F5FCFF)
         private val ENDPOINT_FLARE_FRINGE = ASTDColor(0xDC5AD2FF)
 
@@ -149,7 +147,6 @@ class ASTDIonizedRecoilAccumulatorHullMod : BaseHullMod() {
     private class IonizedRecoilListener(private val ship: ShipAPI) : DamageTakenModifier, AdvanceableListener {
         private var cooldown = 0f
 
-        /** 绽放辉星通用 API（接口持有实现，AGENTS.md 面向接口口径）。 */
         private val bloomFlare: BloomFlareVfx = BloomFlareVfxImpl
 
         override fun advance(amount: Float) {
@@ -214,7 +211,6 @@ class ASTDIonizedRecoilAccumulatorHullMod : BaseHullMod() {
 
             if (target != null) {
                 val to = targetPoint(target)
-                // 常规电弧（不再穿盾）：命中即按路径正常结算护盾/装甲伤害
                 val arc = engine.spawnEmpArc(
                     ship,
                     from,
@@ -245,7 +241,6 @@ class ASTDIonizedRecoilAccumulatorHullMod : BaseHullMod() {
             }
         }
 
-        /** 电弧终点十字辉星：两枚光柱沿电弧路径方向 90° 交叉，75su 扩散至 150su 并渐隐。 */
         private fun emitEndpointCrossFlare(engine: CombatEngineAPI, from: Vector2f, to: Vector2f) {
             val facingDeg = Math.toDegrees(kotlin.math.atan2((to.y - from.y).toDouble(), (to.x - from.x).toDouble())).toFloat()
             bloomFlare.spawn(

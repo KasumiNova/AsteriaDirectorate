@@ -16,33 +16,6 @@ import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
 import kotlin.math.sqrt
 
-/**
- * Box 螺栓弹头组件（RenderEntity 叶子）：取代原版 ProjectileRenderer 的螺栓渲染路径
- * （原版视觉由 .proj 的 `bulletSprite=BUtil_NONE.png` + 双色 alpha=0 屏蔽，见 ss-csv 侧
- * `ProjectileProjSpec.boxBolt`）。
- *
- * 观感对齐原版 built-in 螺栓（ProjectileRenderer.render 的 var47==null 路径）：
- * - 贴图 [BoltSpec.texturePath]：彗形 + 纵向渐隐（头全亮→尾透明）+ 收窄（头全宽→尾半宽）
- *   已烘焙进 alpha（原版靠逐顶点色与梯形几何实现，SpriteEntity 单 quad 无此能力，故烘焙）；
- * - 单颗池化 SpriteEntity（[PooledCombatVfx.checkoutSprite] 租约）additive 叠加，
- *   统一染 [BoltSpec.color]
- *   （原版弹头只用 coreColor；fringeColor 的 projtrail 外带语义由 Static Trail 接替）；
- * - 每帧从弹体 API 实时同步：`boltFrame`（贴图跨 [合成尾点 → 弹体位置]——尾点距离取原版
- *   tailEnd 真值、方向沿位移朝向重构，见 syncBolt），朝向跟位移方向（与拖尾/真实弹道一致）；
- *   alpha = brightness² × 染色 alpha（原版 body 两趟均吃平方亮度）；
- * - 出生伸入：X 向缩放随 |头−尾|/spec.length 从 0 拉满（原版 TrailExtender distanceRatio 同语义）。
- *
- * 租约口径：手动 alpha + 心跳看门狗（0.5s 未触活即泊车兜底）；弹体移出引擎/组件 detach
- * 即 release(0f) 归还。命中时补发一次命中光晕（原版用 .proj 的 fringeColor 画 hit glow，
- * 屏蔽后 alpha=0 不可见，这里用 DSL 染色补回）。
- *
- * 导弹（MissileAPI）默认不接管：原版导弹贴图渲染保留，组件 attach 时直接禁用自身；
- * [BoltSpec.allowMissile] 开启时接管（原版贴图须另行屏蔽，尺寸取 [BoltSpec.lengthOverride]/
- * [BoltSpec.widthOverride]——导弹 spec 无 length/width 键；导弹 getTailEnd 恒 null，
- * 螺栓尾点沿朝向反推全长合成，无出生伸入）。显式接管路径（override 尺寸齐全）不读
- * projectileSpec——脚本 spawnProjectile 产出的 MissileAPI 该值为 null（[resolveBoltDimensions]）。
- * BoxUtil 未就绪/建实体失败时 WARN 一次并禁用自身（不重试风暴），弹体其余特效层不受影响。
- */
 class BoltRenderComponent(
     id: String,
     internal val spec: BoltSpec,
@@ -66,9 +39,7 @@ class BoltRenderComponent(
             return true
         }
         missileMode = projectile is MissileAPI
-        // 显式接管路径（override 尺寸齐全）不依赖 projectileSpec：脚本 spawnProjectile 产出的
-        // MissileAPI 其 projectileSpec 为 null（实机判例：astd_starfall_wing_mote 螺栓层曾因此自禁用）；
-        // 只有缺 override 时才需要 spec 读 length/width。WARN 弹体级一次性（onAttachSelf 每实例只跑一次）。
+        // 脚本生成的 MissileAPI 可能没有 projectileSpec，显式尺寸必须能独立完成判定。
         val dims = resolveBoltDimensions(
             spec.lengthOverride, spec.widthOverride,
             projectile.projectileSpec?.length, projectile.projectileSpec?.width,
@@ -120,10 +91,9 @@ class BoltRenderComponent(
         }
     }
 
-    /** 检出租约：additive、glowPower=0.5、diffuse/emissive 同贴图染 spec.color；手动 alpha + 看门狗兜底。 */
     private fun checkoutBolt(engine: CombatEngineAPI, projectile: DamagingProjectileAPI): SpriteLease? {
         val tint = spec.color.toAwtColor()
-        // 材质口径对齐出厂 new SpriteEntity(path)：alphaToEmissive=1（emissive alpha 跟随
+        // 材质参数对齐 new SpriteEntity(path) 默认值：alphaToEmissive=1（emissive alpha 跟随
         // 逐帧 colorAlpha）、additionEmissive / ignoreIllumination=true
         return PooledCombatVfx.checkoutSprite(
             engine,
@@ -156,12 +126,10 @@ class BoltRenderComponent(
     private fun syncBolt(ctx: RenderContext, projectile: DamagingProjectileAPI) {
         val brightness = projectile.brightness
         if (!brightness.isFinite()) return
-        // 朝向跟 frame 位移方向（与拖尾/真实弹道一致）。弹体继承发射舰速度时位移方向偏离
-        // projectile.facing：若贴图跟 facing 会与拖尾出现角偏差（飞行角度漂移）。
+        // 朝向取 frame 位移方向：弹体继承发射舰速度时位移方向偏离 projectile.facing，贴图跟 facing 会与拖尾产生角偏差
         val facing = BoxUtilCombatVfx.normalizeFacingDeg(ctx.frame.facing)
-        // 尾点不直接用 tailEnd：原版 TrailExtender 把尾点沿 projectile.facing 摆放，位移方向偏离
-        // facing 时直接取用会把螺栓中心拽离真实弹道（位置漂移）。但 |头−尾| 距离是有效真值
-        // （编码出生伸入/淡出收缩，上限 spec.length）——取距离、沿位移朝向重构尾点，两者兼顾。
+        // 原版 TrailExtender 把尾点沿 projectile.facing 摆放，位移方向偏离 facing 时直接取用会把螺栓中心
+        // 拽离真实弹道；|头−尾| 距离有效（上限 spec.length），取距离沿位移朝向重构尾点
         val tailTruth = projectile.tailEnd
         val tail = when {
             tailTruth != null -> {
@@ -169,8 +137,7 @@ class BoltRenderComponent(
                 val dy = projectile.location.y - tailTruth.y
                 boltTailBehindHead(projectile.location, facing, sqrt(dx * dx + dy * dy))
             }
-            // 导弹无 TrailExtender 尾迹真值（getTailEnd 恒 null）：沿朝向反推 specLength 合成全长
-            // 尾点，螺栓按全长渲染（无出生伸入）。
+            // 导弹无 TrailExtender，getTailEnd 恒 null：沿朝向反推 specLength 合成尾点，螺栓按全长渲染
             missileMode -> boltTailBehindHead(projectile.location, facing, specLength)
             else -> null
         }
@@ -188,10 +155,7 @@ class BoltRenderComponent(
         lease.touch()
     }
 
-    /**
-     * 命中光晕补偿：原版屏蔽后 fringeColor alpha=0，引擎自发的 hit particle 不可见。
-     * 外缘大光斑（hitGlowRadius×3×伤害缩放）+ 白色小内芯，尺寸/寿命对齐原版 spawnHitParticlesLarge 口径。
-     */
+    // 原版屏蔽后 fringeColor alpha=0，引擎自发 hit particle 不可见，需手动补偿命中光晕
     private fun spawnHitGlow(engine: CombatEngineAPI, projectile: DamagingProjectileAPI) {
         val scale = hitGlowScale(projectile.damageAmount)
         val tint = Color(
@@ -215,15 +179,12 @@ class BoltRenderComponent(
     }
 
     companion object {
-        /** 螺栓绘制序：原版弹体同层（ABOVE_SHIPS），拖尾/光斑在其上的 ABOVE_PARTICLES 层。 */
         const val RENDER_ORDER_BOLT = 200
 
-        /** 看门狗心跳（秒）：弹体宿主停更超此时长即自动泊车归还（实体不滞留兜底）。 */
         private const val WATCHDOG_HEARTBEAT_SECONDS = 0.5f
     }
 }
 
-/** DSL 染色（0..1 浮点分量）转 AWT Color（0..255，池 spec 统一走 AWT）。 */
 private fun ASTDColor.toAwtColor(): Color = Color(
     (red.coerceIn(0f, 1f) * 255f).toInt(),
     (green.coerceIn(0f, 1f) * 255f).toInt(),
@@ -231,18 +192,10 @@ private fun ASTDColor.toAwtColor(): Color = Color(
     (alpha.coerceIn(0f, 1f) * 255f).toInt(),
 )
 
-/** 螺栓帧几何输出：世界中心、归一化朝向（度）、X 向伸入缩放（0..1，出生拉长）。 */
 internal data class BoltFrame(val center: Vector2f, val facingDeg: Float, val scaleX: Float)
 
-/** 螺栓尺寸裁定输出：全长/全宽（su）与命中光晕半径。 */
 internal data class BoltDimensions(val length: Float, val width: Float, val hitGlowRadius: Float)
 
-/**
- * 螺栓尺寸裁定（纯函数）：override 优先，缺省读弹体 spec 值；spec 缺失（脚本 spawnProjectile
- * 产出的 MissileAPI 其 projectileSpec 为 null，实机判例）但 override 齐全时直接裁定——
- * 显式接管路径不依赖 spec。命中光晕半径无 spec 时退化为螺栓全宽（最保守视觉量级）。
- * 长度/宽度任一无法裁定或 ≤0 → null（调用方 WARN + 禁用本层）。
- */
 internal fun resolveBoltDimensions(
     lengthOverride: Float?,
     widthOverride: Float?,
@@ -256,11 +209,6 @@ internal fun resolveBoltDimensions(
     return BoltDimensions(length, width, specHitGlowRadius ?: width)
 }
 
-/**
- * 螺栓帧几何：贴图跨 [tail → head]（原版 body 带体区间），sprite 基准全长 = specLength，
- * X 向缩放 = 当前覆盖长 / specLength（出生时 tail≈head，螺栓从炮口一点拉成全长——
- * 原版 TrailExtender distanceRatio 同语义）。
- */
 internal fun boltFrame(
     head: Vector2f,
     tail: Vector2f?,
@@ -280,16 +228,9 @@ internal fun boltFrame(
     return BoltFrame(center, facingDeg, scaleX)
 }
 
-/** 命中光晕伤害缩放：sqrt(damage/250) 钳 [0.8, 2.5]，对齐原版按伤害放大的观感量级。 */
 internal fun hitGlowScale(damageAmount: Float): Float =
     (sqrt((damageAmount.coerceAtLeast(0f)) / 250f)).coerceIn(0.8f, 2.5f)
 
-/**
- * 螺栓尾点合成（纯函数）：从头点沿朝向反推 [tailDistance] 得尾点。
- * 两个用途：实弹取 |头−tailEnd| 距离沿位移朝向重构（tailEnd 本身沿 projectile.facing 摆放，
- * 位移偏离时不可直接取用）；导弹 getTailEnd 恒 null，反推 specLength 全长（无出生伸入）。
- * 喂给 [boltFrame]（同朝向）后 scaleX = tailDistance/specLength，中心 = 头沿朝向退半程。
- */
 internal fun boltTailBehindHead(head: Vector2f, facingDeg: Float, tailDistance: Float): Vector2f {
     val rad = Math.toRadians(facingDeg.toDouble())
     return Vector2f(

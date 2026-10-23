@@ -3,13 +3,9 @@ package cn.kasuminova.astd.internal.debug
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
 
-/**
- * 轻量 VFX 调试开关：通过 JVM system property 启用。
- *
- * 在 launch-config.json 里添加：-Dastd.debugVfx=true
- */
 object VfxDebug {
 
+    /** 通过 `-Dastd.debugVfx=true` 启用。 */
     private const val PROP_DEBUG_VFX = "astd.debugVfx"
 
     fun enabled(): Boolean {
@@ -33,7 +29,8 @@ object VfxDebug {
         engine.customData[k] = now
         try {
             Global.getLogger(VfxDebug::class.java).info(message())
-        } catch (_: Throwable) {
+        } catch (t: Throwable) {
+            System.err.println("VfxDebug: log failed: ${t.message}")
         }
     }
 }

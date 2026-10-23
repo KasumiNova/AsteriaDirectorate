@@ -24,37 +24,9 @@ import org.lazywizard.lazylib.MathUtils
 import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
 
-/**
- * 视界变速（衔星 (LENS) / astd_lh_002_vision_shift）：自身时流提升 + 单目标时流压制与承伤转嫁。
- *
- * 设计案 20-joint.md §战术系统-紫菀：激活时锁定一艘敌对舰船（玩家取 shipTarget/鼠标位置附近敌舰，
- * AI 取 shipTarget/最近敌舰），14s 窗口内：
- * - 自身 timeMult 提升（玩家船经 engine.timeMult 反补偿，口径同落叶飞花）；
- * - 目标 timeMult 按体型分档压制（每帧 unmodify+modify 幂等刷写，窗口结束/目标失效即清理）；
- * - 目标承伤方向修正由挂目标舰的 [VisionShiftDamageListener] 结算
- *   （先例：AffixAggressiveSwarmNetworkHullMod.MarkedTargetListener）。
- *
- * 多源共存：同一目标被多艘衔星 (LENS) 锁定时，时流压制与承伤修正均按
- * per-source stat id（[targetStatId]）各自写入、各自清理，互不覆盖；
- * listener 每标记一份实例（创建 mark 时挂接，标记消失/目标死亡/源舰死亡时自移除）。
- *
- * 目标失效清理路径：系统离开 ACTIVE 态（OUT/COOLDOWN/IDLE）首帧即解除目标时流压制、
- * 目标死亡/hulk/退场（每帧校验 + listener 心跳，
- * 激活窗口内目标失效即 deactivate 提前结束系统）、
- * 本舰死亡（listener 心跳校验 mark.source 存活，系统脚本随舰终止不再刷写后标记即收）、
- * 激活期目标切换不追随（锁定口径：施放瞬间定格，不重选）。
- * 激活门禁：[isUsable] 仅在存在有效目标候选（锁定目标/鼠标附近/最近敌舰）且处于系统射程
- * （[VisionShiftTuning.SYSTEM_RANGE]，受 systemRangeBonus 加成，碰撞半径外推）内时放行，
- * 无有效目标时系统不可激活（HUD 灰置并提示 无目标/超出射程，AI 侧由
- * ASTDVisionShiftSystemAI 按同射程自行门禁）；激活窗口内不复核射程，
- * 目标在窗口内超出射程不影响系统持续。
- * 数值三锚点见 [VisionShiftTuning]；与奇点稳定器交互：目标舰的时间流速下限钳制
- * 在 hullmod advanceInCombat 中每帧执行，天然免疫本压制（设计预期）。
- */
 class ASTDVisionShiftSystemStats : BaseShipSystemScript() {
 
     companion object {
-        /** stat 源 id 前缀：目标时流压制与目标承伤修正（实际 id 带源舰身份后缀，见 [targetStatId]）。 */
         const val MOD_ID = "astd_vision_shift"
 
         private const val MARK_KEY_PREFIX = "astd_vision_shift_mark:"
@@ -70,18 +42,15 @@ class ASTDVisionShiftSystemStats : BaseShipSystemScript() {
 
         internal fun markKey(ship: ShipAPI): String = MARK_KEY_PREFIX + System.identityHashCode(ship)
 
-        /** 目标侧 per-source stat id（多源共存时各自写入/清理，互不覆盖）。 */
         internal fun targetStatId(source: ShipAPI): String = "$MOD_ID:${System.identityHashCode(source)}"
     }
 
-    /** 激活窗口的锁定状态（施放瞬间定格；存 engine.customData）。 */
     class VisionMark(
         val source: ShipAPI,
         val target: ShipAPI,
         val values: VisionShiftTuning.Values,
     )
 
-    /** 本脚本实例所属舰（stats 脚本 per-ship 实例化；getStatusData 无 stats 形参，经此缓存反查）。 */
     private var ownerShip: ShipAPI? = null
 
     override fun apply(stats: MutableShipStatsAPI, id: String, state: ShipSystemStatsScript.State, effectLevel: Float) {
@@ -96,16 +65,13 @@ class ASTDVisionShiftSystemStats : BaseShipSystemScript() {
             renderSelfStreak(ship, id, state, engine)
         }
         if (state != ShipSystemStatsScript.State.ACTIVE) {
-            // 离开 ACTIVE 即解除目标时流压制（OUT/COOLDOWN/IDLE 均清理；IN 态无标记时为 no-op）
             clearMark(ship, engine)
             unapply(stats, id)
             return
         }
 
-        // 窗口内首次 apply：锁定目标并解析数值（施放瞬间定格）
         val mark = obtainMark(ship, engine)
         if (mark == null && !engine.isPaused) {
-            // 锁定目标失效（被摧毁/停机/退场）或施放瞬间已无有效目标：系统提前结束进入冷却
             ship.system?.deactivate()
         }
         val isPlayer = ship.owner == 0
@@ -135,7 +101,6 @@ class ASTDVisionShiftSystemStats : BaseShipSystemScript() {
         engine?.customData?.remove(SELF_AFTERIMAGE_KEY_PREFIX + System.identityHashCode(ship))
     }
 
-    /** 激活门禁：仅当存在有效目标候选时放行（判定口径与施放时 [pickTarget] 一致，无副作用）。 */
     override fun isUsable(system: ShipSystemAPI, ship: ShipAPI): Boolean {
         val engine = Global.getCombatEngine() ?: return false
         return pickTarget(ship, engine) != null
@@ -145,7 +110,6 @@ class ASTDVisionShiftSystemStats : BaseShipSystemScript() {
         if (system.state != ShipSystemAPI.SystemState.IDLE) return null
         val engine = Global.getCombatEngine() ?: return null
         if (pickTarget(ship, engine) != null) return null
-        // 存在合法目标但均在射程外（含锁定目标超射程）→ 超出射程；完全无合法目标 → 无目标
         val anyValidTarget = isValidTarget(ship, ship.shipTarget, engine) ||
             engine.ships.any { isValidTarget(ship, it, engine) }
         return if (anyValidTarget) {
@@ -183,7 +147,6 @@ class ASTDVisionShiftSystemStats : BaseShipSystemScript() {
         }
     }
 
-    /** 取当前锁定标记；无则尝试锁定（目标失效返回 null 且不留标记）。 */
     private fun obtainMark(ship: ShipAPI, engine: CombatEngineAPI): VisionMark? {
         val key = markKey(ship)
         val existing = engine.customData[key] as? VisionMark
@@ -197,7 +160,6 @@ class ASTDVisionShiftSystemStats : BaseShipSystemScript() {
         val values = VisionShiftTuning.resolve(DifficultyTuningImpl, isPlayer = ship.owner == 0, target.hullSize)
         val mark = VisionMark(ship, target, values)
         engine.customData[key] = mark
-        // 每标记一份 listener 实例（多源共存各自结算；标记消失后由 listener 心跳自移除）
         target.addListener(VisionShiftDamageListener(target, key, targetStatId(ship)))
         return mark
     }
@@ -209,7 +171,6 @@ class ASTDVisionShiftSystemStats : BaseShipSystemScript() {
         engine.customData.remove(key)
     }
 
-    /** 解除目标侧本源的时流修正与残影计时键（承伤 listener 由标记消失后自行移除）。 */
     private fun releaseTarget(mark: VisionMark) {
         mark.target.mutableStats.timeMult.unmodifyMult(targetStatId(mark.source))
         Global.getCombatEngine()?.customData?.remove(TARGET_AFTERIMAGE_KEY_PREFIX + System.identityHashCode(mark.target))
@@ -240,7 +201,7 @@ class ASTDVisionShiftSystemStats : BaseShipSystemScript() {
         val locked = ship.shipTarget
         if (isValidTarget(ship, locked, engine) && withinSystemRange(ship, locked!!)) return locked
         if (ship === engine.playerShip) {
-            // mouseTarget 是鼠标位置（Vector2f）：取鼠标附近的有效敌舰作为玩家意图目标
+            // mouseTarget 是鼠标位置（Vector2f）而非目标舰，取鼠标附近有效敌舰作为玩家意图目标
             val mouse = ship.mouseTarget
             if (mouse != null) {
                 val nearMouse = engine.ships
@@ -259,12 +220,6 @@ class ASTDVisionShiftSystemStats : BaseShipSystemScript() {
             .minByOrNull { MathUtils.getDistance(ship.location, it.location) }
     }
 
-    /**
-     * 系统射程闸（仅激活取目标时校验）：基础 [VisionShiftTuning.SYSTEM_RANGE] 受
-     * systemRangeBonus 加成，距离按双方碰撞半径和外推（与引力裂隙 findTarget 同口径）。
-     * 激活窗口内不复核——[obtainMark] 的存续校验走 [isValidTarget]（无射程项），
-     * 目标在窗口内超出射程不影响系统持续。
-     */
     private fun withinSystemRange(ship: ShipAPI, target: ShipAPI): Boolean {
         val range = ASTDArcCombatUtil.effectiveSystemRange(ship, VisionShiftTuning.SYSTEM_RANGE)
         val dist = Misc.getDistance(ship.location, target.location)
@@ -325,11 +280,6 @@ class ASTDVisionShiftSystemStats : BaseShipSystemScript() {
         return if (rounded == kotlin.math.floor(rounded)) rounded.toInt().toString() else rounded.toString()
     }
 
-    /**
-     * 目标侧承伤修正监听器：窗口内目标受到来自本舰的伤害提高、来自他单位的伤害降低（最终乘区）。
-     * 每标记一份实例（多源共存各自结算，stat id 带源舰身份后缀）；
-     * 标记消失 / 目标死亡 / 源舰死亡任一路径触发即自移除并清理本源时流修正。
-     */
     class VisionShiftDamageListener(
         private val host: ShipAPI,
         private val markKey: String,

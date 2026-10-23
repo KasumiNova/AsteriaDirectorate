@@ -2,14 +2,6 @@ package cn.kasuminova.astd.sscsv.entries.catalog.hullmods.internal
 
 import cn.kasuminova.astd.sscsv.entries.HullModEntry
 
-/**
- * 内部/隐藏 HullMods：词缀系统（v3 定稿，17 条）。
- *
- * 注意：这些 HullMod 不会在 UI 中显示（hiddenEverywhere），由词缀体系装上敌舰。
- * 词缀编目与抽取规则见 `cn.kasuminova.astd.combat.affix.AffixRegistry`（docs/design/affixes.md）。
- */
-// —— S 型词缀（S-01 ~ S-08） ——
-
 object Hm_astd_affix_ironclad_plating : HullModEntry() {
     override val id: String = "astd_affix_ironclad_plating"
     override val name: String = "铁甲重装（词缀·隐藏）"
@@ -122,8 +114,6 @@ object Hm_astd_affix_phase_coil_detuning : HullModEntry() {
     override val sprite: String = "graphics/hullmods/astd_arc_singularity_power.png"
 }
 
-// —— M 型词缀（M-09 ~ M-14） ——
-
 object Hm_astd_affix_recursive_targeting : HullModEntry() {
     override val id: String = "astd_affix_recursive_targeting"
     override val name: String = "递归式目标定位系统（词缀·隐藏）"
@@ -208,8 +198,6 @@ object Hm_astd_affix_plasma_armor_shield : HullModEntry() {
     override val sprite: String = "graphics/hullmods/astd_arc_singularity_power.png"
 }
 
-// —— R 型词缀（R-15 ~ R-17） ——
-
 object Hm_astd_affix_grid_deepening : HullModEntry() {
     override val id: String = "astd_affix_grid_deepening"
     override val name: String = "电网深化升级（词缀·隐藏）"
@@ -251,8 +239,6 @@ object Hm_astd_affix_singularity_drive : HullModEntry() {
     override val short: String = "奇点驱动（隐藏）"
     override val sprite: String = "graphics/hullmods/astd_arc_singularity_power.png"
 }
-
-// —— 测试用途 ——
 
 object Hm_astd_test_shield_coverage : HullModEntry() {
     override val id: String = "astd_test_shield_coverage"

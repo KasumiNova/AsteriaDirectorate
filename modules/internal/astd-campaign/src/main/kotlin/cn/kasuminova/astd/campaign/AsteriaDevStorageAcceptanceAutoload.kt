@@ -2,14 +2,6 @@ package cn.kasuminova.astd.campaign
 
 import org.apache.log4j.Logger
 
-/**
- * Dev-only campaign acceptance launcher.
- *
- * Campaign acceptance smoke tests use a small javaagent to trigger the real campaign
- * load from the title screen. Keeping this class script-safe prevents accidental
- * reintroduction of save loading during ResourceLoaderState.init, which is too early
- * for BoxUtil campaign rendering state.
- */
 object AsteriaDevStorageAcceptanceAutoload {
 
     private const val ENABLED_PROPERTY = "astd.devStorageAcceptance"

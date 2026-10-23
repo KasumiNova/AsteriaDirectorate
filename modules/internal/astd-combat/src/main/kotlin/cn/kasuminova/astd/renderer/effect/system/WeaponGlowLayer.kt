@@ -12,42 +12,20 @@ import org.lwjgl.opengl.GL11
 import java.awt.Color
 import java.util.EnumSet
 
-/**
- * 武器补档发光层（常驻 + 蓄能两档合一）。
- *
- * 原版 `.wpn` 只有 `turretGlowSprite`/`hardpointGlowSprite`（由开火瞬间驱动），缺少两档发光槽位：
- * - **常驻档（AMBIENT）**：常亮发光贴图，透明度跟随视口淡入淡出；
- * - **蓄能档（CHARGE）**：带 `chargeup` 的武器在充能条推进期间的进度反馈，亮度取
- *   `WeaponAPI.getChargeLevel()`（开火瞬间由 .wpn 开火发光层接管、冷却期间不显示，本档仅在充能推进时显示）。
- * 两档均为加法混合叠在武器之上，共用同一扫描/渲染管线（2026-09 审查裁定合并，此前两份逐行同构）。
- *
- * 贴图约定（炮塔/挂点各一，与武器底图同画布同朝向，只含发光部位）：
- * - 常驻：`graphics/weapons/astd_<短名>_glow_ambient.png` / `astd_<短名>_hp_glow_ambient.png`
- * - 蓄能：`graphics/weapons/astd_<短名>_charge.png` / `astd_<短名>_hp_charge.png`
- *
- * 贴图缺失防线：[preloadTextures] 逐路径登记加载结果，只有加载成功的路径才会被扫描挂载
- * （SSOptimizer 延迟加载下裸 getSprite 是 textureID=0 空壳）；渲染循环因此无失败路径可兜底。
- *
- * 渲染锚点与引擎一致（WeaponSpriteRenderer.setSpriteCenter）：挂点武器锚在画布底部 1/4 高度处，
- * 炮塔武器锚在画布中心；锚点对准 weapon.location，贴图绕锚点旋转。
- */
 internal object WeaponGlowLayer {
 
     private const val ENGINE_KEY = "astd_weapon_glow_layer"
     private const val SCAN_INTERVAL = 0.5f
 
-    /** 蓄能档显示下限：低于此值视作未开始充能（上限不设——充满未开火帧保持满亮度，不留空档）。 */
     private const val CHARGE_MIN = 0.001f
 
     private val log = Global.getLogger(WeaponGlowLayer::class.java)
 
-    /** 发光档位：贴图后缀（炮塔/挂点）。 */
     private enum class GlowSlot(val turretSuffix: String, val hardpointSuffix: String) {
         AMBIENT("_glow_ambient", "_hp_glow_ambient"),
         CHARGE("_charge", "_hp_charge"),
     }
 
-    /** 登记常驻发光的武器 id；贴图路径按命名约定派生。 */
     private val AMBIENT_WEAPON_IDS = setOf(
         "astd_charge_needle",
         "astd_heavy_charge_needle",
@@ -67,23 +45,15 @@ internal object WeaponGlowLayer {
         "astd_stellar_mrm_pod",
         "astd_ice_shard_mirv",
         "astd_ice_shard_mirv_pod",
-        // 摧锋鱼雷：小型无导弹架（只渲染弹体），常驻发光挂中型发射舱
         "astd_cuifeng_launcher",
     )
 
-    /** 登记蓄能发光的武器 id；贴图路径按命名约定派生。 */
     private val CHARGE_WEAPON_IDS = setOf(
         "astd_piercing_lance",
     )
 
-    /** preloadTextures 加载成功的贴图路径集合；扫描只挂载此集合内的路径。 */
     private val loadedPaths = HashSet<String>()
 
-    /**
-     * 预加载全部登记贴图并登记加载结果。
-     * SSOptimizer 延迟加载下，未被任何地方引用的贴图不会上传 GL，
-     * 裸 getSprite 拿到的是 textureID=0 的空壳，渲染不出任何内容。
-     */
     fun preloadTextures() {
         for ((ids, slot) in listOf(AMBIENT_WEAPON_IDS to GlowSlot.AMBIENT, CHARGE_WEAPON_IDS to GlowSlot.CHARGE)) {
             for (weaponId in ids) {
@@ -153,7 +123,6 @@ internal object WeaponGlowLayer {
             for (ship in engine.ships) {
                 if (ship.isHulk) continue
                 for (weapon in ship.allWeapons) {
-                    // 隐藏槽位（系统/内建伪装槽）不参与发光渲染
                     if (weapon.slot?.isHidden == true) continue
                     val weaponId = weapon.id ?: continue
                     for (slot in slotsFor(weaponId)) {
@@ -175,7 +144,6 @@ internal object WeaponGlowLayer {
             }
         }
 
-        /** 只挂载 preload 成功的路径（缺失贴图在 preload 已 WARN，此处直接跳过）。 */
         private fun loadGlowSprite(weapon: WeaponAPI, weaponId: String, slot: GlowSlot): Attachment? {
             val path = if (weapon.slot?.isHardpoint == true) {
                 "graphics/weapons/${weaponId}${slot.hardpointSuffix}.png"
@@ -204,13 +172,10 @@ internal object WeaponGlowLayer {
                     val weapon = att.weapon
                     val ship = weapon.ship ?: continue
                     if (ship.isHulk) continue
-                    // 武器底图被外部置零尺寸（如隐形挂载类船插 setSize(0,0) 隐藏武器）时跳过发光，
-                    // 否则发光贴图按自身尺寸画在武器坐标上，形成浮空光块
                     val baseSprite = weapon.sprite
                     if (baseSprite == null || baseSprite.width <= 0.01f || baseSprite.height <= 0.01f) continue
                     val alpha = when (att.slot) {
                         GlowSlot.AMBIENT -> viewport.alphaMult
-                        // 蓄能中＝充能条在推进且尚未开火；未开始/正在开火/冷却三态不显示蓄能层
                         GlowSlot.CHARGE -> {
                             if (weapon.isFiring || weapon.cooldownRemaining > 0.01f) continue
                             if (weapon.chargeLevel <= CHARGE_MIN) continue
@@ -218,13 +183,12 @@ internal object WeaponGlowLayer {
                         }
                     }
 
-                    // SpriteAPI 为全局共享缓存实例，尺寸/混合/锚点状态可能被其他渲染方改写，须逐帧重取并重置
+                    // getSprite 返回共享实例，其他渲染方可能修改其状态，必须逐帧重取并重置。
                     val sprite = Global.getSettings().getSprite(att.spritePath)
                     sprite.setAdditiveBlend()
                     sprite.color = Color(255, 255, 255, 255)
                     sprite.alphaMult = alpha
                     sprite.setSize(att.width, att.height)
-                    // 与引擎武器底图锚点对齐：挂点锚在底部 1/4 高度，炮塔锚在中心
                     if (weapon.slot?.isHardpoint == true) {
                         sprite.setCenter(att.width / 2f, att.height / 4f)
                     } else {

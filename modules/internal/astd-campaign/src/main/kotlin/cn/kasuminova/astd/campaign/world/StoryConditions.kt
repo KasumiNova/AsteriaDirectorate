@@ -16,61 +16,32 @@ import com.fs.starfarer.api.impl.campaign.population.PopulationComposition
 import com.fs.starfarer.api.ui.TooltipMakerAPI
 import com.fs.starfarer.api.util.Misc
 
-/**
- * 4 个剧情市场状况的数值规格（纯函数层，难度系数缩放三锚点就地登记，可直接单测）。
- *
- * 锚点口径：v1 = k_s=1 时的克制下限、v5 = k_s=5 时的放开上限、
- * v2 = k_s=2 设计基准 = 区间在 k_s=2 处的线性中点。全部走默认分段线性映射
- * （均为平坦加成/线性属性，无超线性收益类型）。
- *
- * 效果集合：
- * - 菀星行政部遗址（兰台）：流通 +10~50%、收入 +5~20%、稳定 +1~4、舰队规模 +25~100%；
- * - 星坠工程部遗址（锻原）：流通 +5~25%、重工业产量 +2~6、舰队规模 +50~200%、
- *   地面防御 +200~800%、最大工业设施 +1~3；
- * - 视界动力（拾光）：最大工业设施 +2~4、建筑维护费 -15~75%、危险度 -10~50%
- *   （1500su 事件视界免疫由 [EventHorizonShieldScript] 生涯层脚本承担，两套机制独立）；
- * - 紫菀科研部遗址（拾光）：流通 +10~50%、舰队规模 +25~100%、移民权重 +5~20。
- */
 object StoryConditionEffects {
 
-    /** 菀星行政部遗址（兰台）的效果集合。 */
     data class WanxingAdmin(
-        /** 流通性加成（0.10 = +10%）。 */
         val accessibility: Float,
-        /** 星球收入系数加成（0.05 = +5%）。 */
         val income: Float,
-        /** 稳定性加成。 */
         val stability: Float,
-        /** 舰队规模加成（0.25 = +25%）。 */
         val fleetSize: Float,
     )
 
-    /** 星坠工程部遗址（锻原）的效果集合。 */
     data class StarfallEngineering(
         val accessibility: Float,
-        /** 重工业产量加成（固定值，单位：产量点）。 */
         val heavyIndustryOutput: Float,
         val fleetSize: Float,
-        /** 地面防御加成（2.0 = +200%）。 */
         val groundDefenses: Float,
-        /** 最大工业设施数量加成。 */
         val maxIndustries: Float,
     )
 
-    /** 视界动力（拾光）的效果集合。 */
     data class EventHorizonPower(
         val maxIndustries: Float,
-        /** 建筑维护费减免（0.15 = -15%）。 */
         val upkeepReduction: Float,
-        /** 危险度减免（0.10 = -10%）。 */
         val hazardReduction: Float,
     )
 
-    /** 紫菀科研部遗址（拾光）的效果集合。 */
     data class AsterResearch(
         val accessibility: Float,
         val fleetSize: Float,
-        /** 移民权重加成（固定值）。 */
         val immigrationWeight: Float,
     )
 
@@ -101,21 +72,16 @@ object StoryConditionEffects {
         immigrationWeight = tuning.value(ScalingEntry(5f, 8.75f, 20f)),
     )
 
-    /** 百分比格式化（+30% / -25%）。 */
     fun formatPercent(value: Float): String = "%+.0f%%".format(value * 100f)
 
-    /** 固定值格式化（+2.5 / +4）。 */
     fun formatFlat(value: Float): String =
         if (value == value.toLong().toFloat()) "%+d".format(value.toLong()) else "%+.1f".format(value)
 }
 
-/** 剧情状况基类：统一 tooltip 渲染（CSV 描述 + 效果行 i18n 高亮）。 */
 abstract class BaseStoryCondition : BaseMarketConditionPlugin() {
 
-    /** 效果行（key → 参数），由子类在当前难度系数下求值。 */
     protected abstract fun effectLines(tuning: DifficultyTuning): List<Pair<String, List<Pair<String, Any?>>>>
 
-    /** 效果行是否默认显示（true = 不经 F1 展开即渲染效果，且 tooltip 不可展开）。 */
     protected open val showEffectsByDefault: Boolean = false
 
     override fun createTooltip(tooltip: TooltipMakerAPI, expanded: Boolean) {
@@ -130,21 +96,8 @@ abstract class BaseStoryCondition : BaseMarketConditionPlugin() {
     override fun isTooltipExpandable(): Boolean = !showEffectsByDefault
 }
 
-/**
- * 菀星行政部遗址（兰台）。
- *
- * 承载市场：兰台为 condition-only 市场（[StorySystemSpecs.MarketSpec.conditionOnly]，读档后转
- * [com.fs.starfarer.api.impl.campaign.econ.PlanetConditionMarket] 的只读代理）。生效条件：
- * - [com.fs.starfarer.api.impl.campaign.econ.PlanetConditionMarket.getStats]/[getAccessibilityMod] 等
- *   在代理上均为可变的局部对象（stats 为持久字段、accessibilityMod 每次新建），`modify*` 调用合法、无副作用；
- * - 但代理不承载工业/经济，**流通/收入/稳定修正不会被任何经济消费方读取**，舰队规模动态模仅被
- *   「该市场出兵」读取——兰台无兵可出。即本状况在兰台当前形态下**叙事效果为主**；
- * - 若未来兰台转为可殖民（condition-only 关闭），状况随 `reapplyConditions` 在结构变化时重放、
- *   上述修正即在完整市场上真实生效。
- */
 class WanxingAdminRuinsCondition : BaseStoryCondition() {
 
-    /** 行政遗址的加成为常驻卖点，默认显示不经 F1 展开。 */
     override val showEffectsByDefault: Boolean = true
 
     override fun effectLines(tuning: DifficultyTuning): List<Pair<String, List<Pair<String, Any?>>>> {
@@ -176,20 +129,6 @@ class WanxingAdminRuinsCondition : BaseStoryCondition() {
     }
 }
 
-/**
- * 星坠工程部遗址（锻原）。
- *
- * 承载市场：锻原为 condition-only 市场（不可殖民、无 industry，读档后转 PlanetConditionMarket 只读代理）。
- * **重工业产量加成的生效边界（「市场一旦拥有重工业即生效」）：**
- * - 原版 [com.fs.starfarer.api.impl.campaign.econ.Market.reapplyConditions] 随市场结构变化重放
- *   （读档 addCondition 全量应用；稳定度变化触发 `advance` 内 reapply；每经济周期全体市场 reapply），
- *   因此「市场已有重工业时状况生效、结构变化时重新应用」在原版机制下本就成立；
- * - 锻原 condition-only 无 industry，`market.getIndustry(HEAVYINDUSTRY/ORBITALWORKS)` 恒为 null，
- *   加成**永不生效**——锻原定稿为不可殖民，此效果保持「叙事效果为主」的现状即为正确口径；
- *   若未来锻原转为可殖民市场，同 [WanxingAdminRuinsCondition] 理由，状况在重放时对真实重工业生效；
- * - 其余 stat 修正（流通/舰队规模/地面防御/设施上限）同菀星：在代理上调用合法，但
- *   流通/出兵类不被读取、设施上限仅在完整市场被殖民地 UI 消费，叙事效果为主。
- */
 class StarfallEngineeringRuinsCondition : BaseStoryCondition() {
 
     override fun effectLines(tuning: DifficultyTuning): List<Pair<String, List<Pair<String, Any?>>>> {
@@ -240,17 +179,6 @@ class StarfallEngineeringRuinsCondition : BaseStoryCondition() {
     }
 }
 
-/**
- * 视界动力（拾光）。
- *
- * 承载市场：拾光为 FULL 空间站市场（[StorySystemSpecs.MarketSpec.inEconomy]，非 condition-only），
- * 效果**真实生效**：MAX_INDUSTRIES 设施上限 / upkeepMult 维护费 / hazard 危险度均由完整市场
- * 的殖民地 UI 与 `PopulationAndInfrastructure` 消费；状况随市场结构变化（含读档）重放、稳定度变化
- * 触发 reapply，数值随时刷新。
- *
- * 注意：1500su 事件视界免疫不在此处（市场状况无法逐帧追踪舰队），
- * 由生涯层脚本 [EventHorizonShieldScript] 承担。
- */
 class EventHorizonPowerCondition : BaseStoryCondition() {
 
     override fun effectLines(tuning: DifficultyTuning): List<Pair<String, List<Pair<String, Any?>>>> {
@@ -282,13 +210,6 @@ class EventHorizonPowerCondition : BaseStoryCondition() {
     }
 }
 
-/**
- * 紫菀科研部遗址（拾光）。
- *
- * 承载市场：拾光为 FULL 空间站市场（见 [EventHorizonPowerCondition]），效果**真实生效**：
- * 流通由经济系统按航路/连接读取（需空间站进经济）、舰队规模由市场守军/远征读取、
- * 移民权重以 [MarketImmigrationModifier] 挂接被人口增长消费。
- */
 class AsterResearchRuinsCondition : BaseStoryCondition(), MarketImmigrationModifier {
 
     override fun effectLines(tuning: DifficultyTuning): List<Pair<String, List<Pair<String, Any?>>>> {

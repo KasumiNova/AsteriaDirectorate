@@ -2,7 +2,7 @@
 
 > 依据：`docs/design/weapons/impl/00-共享基建.md`（合并协议 / HUD 通道 / 特效检查表）、`docs/design/weapons/90-首批实装计划.md` v6 §8、`docs/design/weapons/purple/30-superlative.md`「辉星 MRM 发射器 / 辉星 MRM 发射舱」（定案 v1.0，2026-07-28）。
 > 状态：规划文档，不改动 `src/` 与 `ss-csv/`。
-> 代码核查时间：2026-07-29。全部落点已对照 `starfarer.api.jar`（/mnt/store/Games/Starsector098-linux）与现有 `src/`、`ss-csv/` 代码逐条核实。
+> 代码核查时间：2026-07-29。全部 API 调用位置已对照 `starfarer.api.jar`（/mnt/store/Games/Starsector098-linux）与现有 `src/`、`ss-csv/` 代码逐条核实。
 > 武器 id：`astd_stellar_mrm_launcher`（小型）/ `astd_stellar_mrm_pod`（中型），90-计划 ID 表已定。
 > **本武器无叠层机制，不依赖 Buff API**；不使用 `ConeImpactHandler`（爆炸为球形 50su，非锥面）。
 
@@ -12,8 +12,8 @@
 
 | 90-计划条目 | 本规格落位 | 原因 |
 |---|---|---|
-| `StellarMrmMissileAI` 挂载「弹头 `.proj` 的 `onFireEffect` 通过 `missile.setMissileAI(...)`」 | 确认可行，但 `.proj` 的 onFireEffect 同时要做 VFX 登记：新增 `StellarMrmOnFireEffect`，内部先委托现成 `ProjectileSpecOnFireDispatcher`（实例化持有并调用），再 `setMissileAI` | 单一 onFireEffect 挂载点，VFX 与 AI 两件事一次办完；组合而非复制 dispatcher 逻辑 |
-| `StellarMrmDamageHandler`「对战机全部武器 EMP：`engine.spawnEmpArc` 或 `applyDamage`」 | `spawnEmpArc` 的 `targetTo` 参数类型是 `CombatEntityAPI`，而 `WeaponAPI` **不是** `CombatEntityAPI`（jar 已核实）——电弧无法锚到单个武器实体。落位：**EMP 伤害**走一次 `engine.applyDamage(fighter, point, 0, ENERGY, empTotal, ...)`；**逐武器视觉**走 `spawnEmpArcVisual(point, fighter, weapon.location, fighter, ...)`（该重载端点为 `Vector2f`，可锚到每个武器槽位，jar 已核实）。`ShipAPI.getAllWeapons()` 与 `WeaponAPI.getLocation()` jar 已核实存在，90-计划风险 #3 的 fallback 路径不需要 | 消除 90-计划待验证项「对战机全部武器 EMP 的 API 路径」 |
+| `StellarMrmMissileAI` 挂载「弹头 `.proj` 的 `onFireEffect` 通过 `missile.setMissileAI(...)`」 | 确认可行，但 `.proj` 的 onFireEffect 同时要做 VFX 登记：新增 `StellarMrmOnFireEffect`，内部先委托现成 `ProjectileSpecOnFireDispatcher`（实例化持有并调用），再 `setMissileAI` | 单一 onFireEffect 挂载点，VFX 与 AI 两件事一次办完；组合复用 dispatcher，不复制其逻辑 |
+| `StellarMrmDamageHandler`「对战机全部武器 EMP：`engine.spawnEmpArc` 或 `applyDamage`」 | `spawnEmpArc` 的 `targetTo` 参数类型是 `CombatEntityAPI`，而 `WeaponAPI` **不是** `CombatEntityAPI`（jar 已核实），电弧无法锚到单个武器实体。落位：**EMP 伤害**走一次 `engine.applyDamage(fighter, point, 0, ENERGY, empTotal, ...)`；**逐武器视觉**走 `spawnEmpArcVisual(point, fighter, weapon.location, fighter, ...)`（该重载端点为 `Vector2f`，可锚到每个武器槽位，jar 已核实）。`ShipAPI.getAllWeapons()` 与 `WeaponAPI.getLocation()` jar 已核实存在，90-计划风险 #3 的 fallback 路径不需要 | 消除 90-计划待验证项「对战机全部武器 EMP 的 API 路径」 |
 | `StellarMrmVfx` | 弹体走 `ProjectileVfxSpecs` builders（复用现有 `violet()` 调色板 + `ribbon=true` 双带）；裂隙爆炸依赖七星组件（§3.3，含 07 未合并时的分支内应急方案） | 对齐 P2 观感翻译后的 texTrail 管线 |
 | 类全挂 `combat.effect.lens` 直下 | 子包 `combat.effect.lens.stellar`（对齐 05 穷距 `arc.qiongjue` 子包先例）；接口落 `api/combat/StellarMrm.kt`（对齐 04 湮灭涡旋接口落 `api/combat/` 先例） | 避免 lens 包被十组武器塞爆 |
 
@@ -23,7 +23,7 @@
 
 ### 1.1 ss-csv catalog 条目（`Catalog_WeaponData_LENS.kt`，LENS 线）
 
-新增两个 `object : WeaponDataEntry(), SsProjMissileOutputs`，追加在**文件末尾**（收口人按 number 升序归位）。参照样板：`Wpn_astd_virtual_particle_mote_launcher`（ARC catalog 唯一的 SsProjMissileOutputs 先例）+ GCP 族的 LENS 列值惯例。
+新增两个 `object : WeaponDataEntry(), SsProjMissileOutputs`，追加在**文件末尾**（合并负责人按 number 升序归位）。参照样板：`Wpn_astd_virtual_particle_mote_launcher`（ARC catalog 唯一的 SsProjMissileOutputs 先例）+ GCP 族的 LENS 列值惯例。
 
 **`Wpn_astd_stellar_mrm_launcher`** 逐列取值：
 
@@ -31,8 +31,8 @@
 |---|---|---|
 | `id` | `"astd_stellar_mrm_launcher"` | 90-计划 ID 表 |
 | `name` | `weaponName(id)` | 走 i18n |
-| `tier` | `3`（提案） | 稀有掉落对齐 GCP-12 / amsrm（tier 3）；收口人对齐稀有件口径 |
-| `baseValue` | `15000`（提案） | 小型稀有导弹（amsrm 40000 为超规格原型，本件为逆向降级版）；收口人统一 |
+| `tier` | `3`（提案） | 稀有掉落对齐 GCP-12 / amsrm（tier 3）；合并负责人对齐稀有件规则 |
+| `baseValue` | `15000`（提案） | 小型稀有导弹（amsrm 40000 为超规格原型，本件为逆向降级版）；合并负责人统一 |
 | `range` | `2500` | 定案 |
 | `damagePerSecond` | `0`（不覆写） | 导弹武器 DPS 列留空（对照 amsrm csv 行 damage/second 空） |
 | `damagePerShot` | `100` | 定案直击 100 能量 |
@@ -51,12 +51,12 @@
 | `projHitpoints` | `200` | 定案弹体结构值 200 |
 | `trackingStr` | `"优秀"` | 定案追踪优秀（amsrm csv 同文案） |
 | `speedStr` | `"快"`（提案） | amsrm 为「极快」，75% 航速降一档 |
-| `aiHints` / `hints` | `PD, ANTI_FTR, DO_NOT_AIM` | 2026-09-26 用户裁定推翻原案：明确要求「无须瞄准即可射击 + 战机点防御行为」，对齐原版蜂群/蝗虫系 PD 导弹口径；「诱导 AI 拦导弹」风险实机观察后再调 |
-| `tags` | `"no_drop, no_drop_salvage"` | P6 前口径（90-计划 §14）；P6 后改稀有赏金掉落，另立任务 |
+| `aiHints` / `hints` | `PD, ANTI_FTR, DO_NOT_AIM` | 2026-09-26 用户确认推翻原案：明确要求「无须瞄准即可射击 + 战机点防御行为」，对齐原版蜂群/蝗虫系 PD 导弹规则；「诱导 AI 拦导弹」风险实机观察后再调 |
+| `tags` | `"no_drop, no_drop_salvage"` | P6 前规则（90-计划 §14）；P6 后改稀有赏金掉落，另立任务 |
 | `groupTag` | `"astd"`；`tech` | `"透镜矩阵"` | LENS 族惯例 |
 | `primaryRoleStr` | `SsI18n.t("weapon.$id.primaryRoleStr")` | §1.3 |
 | `customPrimary` | `SsI18n.t("weapon.$id.tooltip.customPrimary")` | §1.3（机制文案 + v2 数值） |
-| `customPrimaryHL` | `SsI18n.t("weapon.$id.tooltip.customPrimaryHL")` | §1.3（高亮数值与"难度系数"；缺 key 会落键名进 CSV——04 已踩点确认） |
+| `customPrimaryHL` | `SsI18n.t("weapon.$id.tooltip.customPrimaryHL")` | §1.3（高亮数值与"难度系数"；缺 key 会落键名进 CSV，04 已踩点确认） |
 | `number` | **`9217`** | 00-共享基建 §3 预分配段（辉星 9217/9218） |
 
 **`Wpn_astd_stellar_mrm_pod`** 差异列（其余与发射器完全相同）：
@@ -71,7 +71,7 @@
 | `energyPerSecond` | `120` | 60 × 2 发 / 1s |
 | `number` | **`9218`** | 预分配段 |
 
-**`projSpec`（两 entry 各一份，仅 id 不同，其余值完全一致）**：`MissileProjSpec`（`SsProjMissileOutputs`；字段表见 `ss-csv/outputs/proj/ProjMissileSpec.kt`，已核实含 `onFireEffect`/`onHitEffect` 可空字段）。两件武器不共享同一 proj id——`SsProjMissileOutputs` 每个 entry 生成一个 `.proj` 文件，同 id 会在生成链路撞名，故拆两个：
+**`projSpec`（两 entry 各一份，仅 id 不同，其余值完全一致）**：`MissileProjSpec`（`SsProjMissileOutputs`；字段表见 `ss-csv/outputs/proj/ProjMissileSpec.kt`，已核实含 `onFireEffect`/`onHitEffect` 可空字段）。两件武器不共享同一 proj id，`SsProjMissileOutputs` 每个 entry 生成一个 `.proj` 文件，同 id 会在生成链路撞名，故拆两个：
 
 ```kotlin
 override val projSpec: MissileProjSpec = MissileProjSpec(
@@ -79,7 +79,7 @@ override val projSpec: MissileProjSpec = MissileProjSpec(
     missileType = "MISSILE",
     onFireEffect = "cn.kasuminova.astd.combat.effect.lens.stellar.StellarMrmOnFireEffect",
     onHitEffect = "cn.kasuminova.astd.combat.effect.lens.stellar.StellarMrmOnHitEffect",
-    sprite = "graphics/textures/BUtil_NONE.png",   // 原版弹体隐藏（mote 先例）；视觉由 ProjectileVfxSpecs 接管
+    sprite = "graphics/textures/BUtil_NONE.png",   // 原版弹体隐藏（mote 先例）；视觉由 ProjectileVfxSpecs 承担
     size = Vec2i(20, 26),                          // amsrm(13,17) × 1.5，sprite 隐藏下仅作记录
     center = Vec2(10, 14),
     collisionRadius = 12,                          // 定案 1.5×：amsrm 8 × 1.5
@@ -127,10 +127,10 @@ override val projSpec: MissileProjSpec = MissileProjSpec(
 
 `contents/data/weapons/astd_stellar_mrm_pod.wpn`：`id`/`size: "MEDIUM"`/`projectileSpecId: "astd_stellar_mrm_pod_shot"` 三处不同，其余相同。
 
-- 插件挂载点：`everyFrameEffect` = 现成 VFX 安全网（aod7 同款，onFire 未触发时兜底装 dispatcher）；`onFireEffect`/`onHitEffect` 在 `.proj`（ss-csv 生成）。
+- 插件挂载点：`everyFrameEffect` 挂现成的 `CombatVfxBootstrapEveryFrameEffect`（aod7 同款，onFire 未触发时补装 dispatcher）；`onFireEffect`/`onHitEffect` 在 `.proj`（ss-csv 生成）。
 - **美术资产待补**：发射架贴图 `graphics/weapons/astd_stellar_mrm_base.png`（命名对齐 aod7 惯例）。机制分支阶段允许先填 `graphics/fx/empty.png` 跑烟测（aod7 现役同款状态），**贴图到位前不算完工**（列入验收目检项）。挂架贴图到位后按实尺寸校正 offsets。
-- `fireSoundTwo = amsrm_fire`：2026-07-29 审批裁定（弃 harpoon_fire 提案，用反物质 SRM 发射音效；音效 id 已在原版 `amsrm.wpn` 核实）。
-- 不挂 `renderHints: [RENDER_LOADED_MISSILES]`（harpoon 先例）——弹体 sprite 已隐藏，挂载渲染无意义。
+- `fireSoundTwo = amsrm_fire`：2026-07-29 审批确认（弃 harpoon_fire 提案，用反物质 SRM 发射音效；音效 id 已在原版 `amsrm.wpn` 核实）。
+- 不挂 `renderHints: [RENDER_LOADED_MISSILES]`（harpoon 先例），弹体 sprite 已隐藏，挂载渲染无意义。
 
 ### 1.3 i18n 键清单（`ss-csv/src/main/resources/i18n/zh-cn.properties`，集中追加文件末尾）
 
@@ -141,25 +141,25 @@ weapon.astd_stellar_mrm_launcher.name=辉星 MRM 发射器
 weapon.astd_stellar_mrm_launcher.tooltip.customPrimary=优先追猎战机的高速导弹。命中战机机体时对其全部武器释放 {%s} 的 EMP；无论撞上什么，撞击处都会绽放十字辉星，造成 {%s} 的范围能量伤害。效果受到{%s}影响。
 weapon.astd_stellar_mrm_launcher.tooltip.customPrimaryHL=400% | 100% | 难度系数
 weapon.astd_stellar_mrm_launcher.primaryRoleStr=反战机,区域防空
-desc.astd_stellar_mrm_launcher.text1=上古遗产「反物质 SRM」的逆向工程产物。原物的装药原理至今无法解析，工程组转而复现它的飞行性能与猎杀逻辑，以常规能量装药补上最后一块拼图——紫色辉星掠过之处，战机联队的武器系统将集体沉默。
-desc.astd_stellar_mrm_launcher.notes=逆向工程记录："拆解报告第 41 版，结论与第 1 版相同：不可分析。我们甚至无法确定装药舱里是不是反物质。"工程组最终放弃了理解原物，转而复现它的飞行——三十二架无人靶机在三秒内接连熄火，像被同一根手指依次捻灭的蜡烛。评审委员会沉默了很久，然后在量产许可上签了字。
+desc.astd_stellar_mrm_launcher.text1=上古遗产「反物质 SRM」的逆向工程产物。原物的装药原理至今无法解析，工程组转而复现它的飞行性能与猎杀逻辑，以常规能量装药补上最后一块拼图，紫色辉星掠过之处，战机联队的武器系统将集体沉默。
+desc.astd_stellar_mrm_launcher.notes=逆向工程记录："拆解报告第 41 版，结论与第 1 版相同：不可分析。我们甚至无法确定装药舱里是不是反物质。"工程组最终放弃了理解原物，转而复现它的飞行，三十二架无人靶机在三秒内接连熄火，像被同一根手指依次捻灭的蜡烛。评审委员会沉默了很久，然后在量产许可上签了字。
 
 weapon.astd_stellar_mrm_pod.name=辉星 MRM 发射舱
 weapon.astd_stellar_mrm_pod.tooltip.customPrimary=优先追猎战机的高速导弹。命中战机机体时对其全部武器释放 {%s} 的 EMP；无论撞上什么，撞击处都会绽放十字辉星，造成 {%s} 的范围能量伤害。效果受到{%s}影响。
 weapon.astd_stellar_mrm_pod.tooltip.customPrimaryHL=400% | 100% | 难度系数
 weapon.astd_stellar_mrm_pod.primaryRoleStr=反战机,区域防空
-desc.astd_stellar_mrm_pod.text1=上古遗产「反物质 SRM」的逆向工程产物。原物的装药原理至今无法解析，工程组转而复现它的飞行性能与猎杀逻辑，以常规能量装药补上最后一块拼图——紫色辉星掠过之处，战机联队的武器系统将集体沉默。
+desc.astd_stellar_mrm_pod.text1=上古遗产「反物质 SRM」的逆向工程产物。原物的装药原理至今无法解析，工程组转而复现它的飞行性能与猎杀逻辑，以常规能量装药补上最后一块拼图，紫色辉星掠过之处，战机联队的武器系统将集体沉默。
 ```
 
-- `customPrimary` 为设计案定稿原文 + v2 数值插入（EMP 400%、辉星爆炸 100%；2026-07-29 字段分工铁律，审批通过：显示值统一以 v2 为准，取代设计案"tip 不展示数值"旧口径）；`customPrimaryHL` 高亮数值与"难度系数"（缺 key 会把键名写进 CSV）。
+- `customPrimary` 为设计案定稿原文 + v2 数值插入（EMP 400%、辉星爆炸 100%；2026-07-29 字段分工规则，审批通过：显示值统一以 v2 为准，取代设计案"tip 不展示数值"旧规则）；`customPrimaryHL` 高亮数值与"难度系数"（缺 key 会把键名写进 CSV）。
 - `primaryRoleStr = 反战机,区域防空`：gcp 先例逗号分隔双角色，评审保留。
 - `desc.text2~text5` 不提供（`LocalizedDescription` 读不到键 fallback 空串）。
-- 逆向工程记录段落入 `notes` 列（04 同口径）；「深灰斜体」样式由 UI 层既有规则处理，文本内不夹带样式标记。
+- 逆向工程记录段落入 `notes` 列（04 同规则）；「深灰斜体」样式由 UI 层既有规则处理，文本内不夹带样式标记。
 - pod 的 `notes` **不登记**：`Catalog_Descriptions` 用 `notesId` 共享（GCP 族先例，见下）。
-- 撞线者死为隐性机制，**不进任何文案**（设计案裁定）。
+- 撞线者死为隐性机制，**不进任何文案**（设计案确认）。
 - 逻辑代码零硬编码文本；本武器无常驻 HUD/浮字文案（§2.3），无需运行时 I18n 键。
 
-`Catalog_Descriptions.kt` 追加（**WEAPON 分组尾部**，`Desc_astd_psi_omega` 之后；收口人按 id 字典序重排）：
+`Catalog_Descriptions.kt` 追加（**WEAPON 分组尾部**，`Desc_astd_psi_omega` 之后；合并负责人按 id 字典序重排）：
 
 ```kotlin
 object Desc_astd_stellar_mrm_launcher : LocalizedDescription("astd_stellar_mrm_launcher", "WEAPON")
@@ -168,7 +168,7 @@ object Desc_astd_stellar_mrm_pod : LocalizedDescription("astd_stellar_mrm_pod", 
 
 ### 1.4 `contents/data/campaign/special_items.csv` 条目
 
-**不新增**。辉星两件为稀有掉落：P6 前 `no_drop, no_drop_salvage`，仅经 dev 仓储/控制台测试（90-计划 §14，与 04 湮灭涡旋同口径）；P6 后接 T3~T4 支线赏金掉落，另立任务。本文件零改动，验收时核对无 diff。
+**不新增**。辉星两件为稀有掉落：P6 前 `no_drop, no_drop_salvage`，仅经 dev 仓储/控制台测试（90-计划 §14，与 04 湮灭涡旋同规则）；P6 后接 T3~T4 支线赏金掉落，另立任务。本文件零改动，验收时核对无 diff。
 
 ---
 
@@ -182,13 +182,13 @@ object Desc_astd_stellar_mrm_pod : LocalizedDescription("astd_stellar_mrm_pod", 
 |---|---|---|---|---|
 | `StellarMrmTargeting` | 接口（fun interface） | 导弹目标选择策略：输入候选目标清单与弹体位置，输出选中目标（战机优先、排除导弹）。注释含：类简介「辉星导弹的猎杀目标筛选策略」、动机「把目标权重规则从 AI 转向循环中剥离供单测」、成员作用 | 被 `StellarMrmMissileAI` 持有 | `src/main/kotlin/cn/kasuminova/astd/api/combat/StellarMrm.kt` |
 | `StellarMrmStrike` | 接口 | 命中结算总入口：撞线者死判定、战机增伤 + 全部武器 EMP、裂隙爆炸 AOE。注释含：类简介「辉星命中三大机制的一次性结算」、动机「OnHitEffect 保持薄入口，结算可注入测试桩引擎驱动」、每个方法作用与单位 | 被 `StellarMrmOnHitEffect` 持有 | 同文件 `StellarMrm.kt` |
-| `StellarMrmTargetingImpl` | 实现（object，无状态） | 战机优先/最近舰兜底/排除友军-hulk-导弹的筛选 | — | `src/main/kotlin/cn/kasuminova/astd/combat/effect/lens/stellar/StellarMrmTargetingImpl.kt` |
+| `StellarMrmTargetingImpl` | 实现（object，无状态） | 战机优先，无战机时选择最近舰船，排除友军、hulk 与导弹的筛选 | — | `src/main/kotlin/cn/kasuminova/astd/combat/effect/lens/stellar/StellarMrmTargetingImpl.kt` |
 | `StellarMrmStrikeImpl` | 实现（object，无状态） | §2.2 结算顺序的执行体；数值全部经 `StellarMrmStrikeMath` 与 `StellarMrmDifficulty` | — | 同包 `StellarMrmStrikeImpl.kt` |
 | `StellarMrmOnFireEffect` | 实现（`OnFireEffectPlugin`） | 持有 `ProjectileSpecOnFireDispatcher` 实例先委托 VFX 登记，再对 `projectile as? MissileAPI` 调 `setMissileAI(StellarMrmMissileAI(missile))` | `.proj` 的 `onFireEffect` | 同包 `StellarMrmOnFireEffect.kt` |
 | `StellarMrmMissileAI` | 实现（`MissileAIPlugin`，jar 签名已核实仅 `advance(float)`） | 目标有效性校验 → 定期重选（0.25s 节流）→ 领先瞄准 → `giveCommand(TURN_LEFT/RIGHT + ACCELERATE)` 转向加速 | 由 `StellarMrmOnFireEffect` 经 `missile.setMissileAI(...)` 挂载 | 同包 `StellarMrmMissileAI.kt` |
 | `StellarMrmOnHitEffect` | 实现（`OnHitEffectPlugin`，jar 签名已核实） | 薄入口：基础校验（面板值 sanitize、source/owner 提取）→ 难度取值 → 调 `StellarMrmStrike` | `.proj` 的 `onHitEffect` | 同包 `StellarMrmOnHitEffect.kt` |
 | `StellarMrmStrikeMath` | 纯函数 object（不依赖 Starsector API） | 战机增伤/武器 EMP/爆炸伤害/撞线阈值/领先瞄准点的纯计算，供单测完整驱动 | 被 Strike/AI 调用 | 同包 `StellarMrmStrikeMath.kt` |
-| `StellarMrmDifficulty` | object（纯声明） | 四条 `ScalingEntry` 常量 + 玩家固定 v2 取值入口 `resolve(entry, owner)`（`owner == 0 → entry.v2`，否则 `DifficultyTuningImpl.value(entry)`；对齐 04/05 就地实现口径） | 被 Strike/AI 调用 | 同包 `StellarMrmDifficulty.kt` |
+| `StellarMrmDifficulty` | object（纯声明） | 四条 `ScalingEntry` 常量 + 玩家固定 v2 取值入口 `resolve(entry, owner)`（`owner == 0 → entry.v2`，否则 `DifficultyTuningImpl.value(entry)`；对齐 04/05 就地实现规则） | 被 Strike/AI 调用 | 同包 `StellarMrmDifficulty.kt` |
 
 难度四锚点（`ScalingEntry`，均 LINEAR）：
 
@@ -214,7 +214,7 @@ const val RETARGET_INTERVAL = 0.25f                    // AI 重选节流（提�
 3. missile.setMissileAI(StellarMrmMissileAI(missile, StellarMrmTargetingImpl))
 ```
 
-**导弹 AI（`StellarMrmMissileAI.advance(amount)`）**——形态对齐 `ASTDPursuitVirtualParticleAI` 先例（`ASTDVirtualParticleLatticeWebHullMod.kt` L434，已核实 `giveCommand`/`TURN_LEFT/RIGHT/ACCELERATE` 可用）：
+**导弹 AI（`StellarMrmMissileAI.advance(amount)`）**，形态对齐 `ASTDPursuitVirtualParticleAI` 先例（`ASTDVirtualParticleLatticeWebHullMod.kt` L434，已核实 `giveCommand`/`TURN_LEFT/RIGHT/ACCELERATE` 可用）：
 
 ```
 1. engine = Global.getCombatEngine() ?: return；engine.isPaused → return
@@ -223,7 +223,7 @@ const val RETARGET_INTERVAL = 0.25f                    // AI 重选节流（提�
    - 当前目标仍有效（inPlay && isAlive && !isHulk && 敌方）→ 保留
    - 否则 candidates = engine.getShips()（jar+先例已核实该列表含战机，先例 L425 在同表上按 isFighter 过滤）
      target = targeting.select(candidates, missile.location, missile.owner, ACQUIRE_RANGE=2500f)
-     select 语义：最近敌方战机优先；无战机时最近敌方舰船（含无人机？——裁定：isDrone 舰船同普通舰船纳入兜底）；永不返回 MissileAPI
+     select 语义：最近敌方战机优先；无战机时最近敌方舰船（含无人机？，确认：isDrone 舰船同普通舰船纳入舰船选择）；永不返回 MissileAPI
 3. 转向（有目标时）：
    lead = StrikeMath.leadPoint(target.location, target.velocity, dist, missile.maxSpeed)
    angleTo = VectorUtils.getAngle(missile.location, lead)
@@ -232,11 +232,11 @@ const val RETARGET_INTERVAL = 0.25f                    // AI 重选节流（提�
    giveCommand(ACCELERATE)   // 每帧
 ```
 
-**命中结算（`StellarMrmOnHitEffect.onHit` → `StellarMrmStrikeImpl.strike`）**——结算顺序（撞线者死 → 猎机本能 → 辉星爆炸，爆炸恒执行）：
+**命中结算（`StellarMrmOnHitEffect.onHit` → `StellarMrmStrikeImpl.strike`）**，结算顺序（撞线者死 → 猎机本能 → 辉星爆炸，爆炸恒执行）：
 
 ```
 0. panel = projectile.damageAmount
-   !panel.isFinite() || panel <= 0 → log WARN（面板值异常）+ return（直击已由引擎原生结算，附加机制全部跳过，不静默）
+   !panel.isFinite() || panel <= 0 → log WARN（面板值异常）+ return（直击已由引擎原生结算，附加机制全部跳过）
    source = projectile.source（可为 null，归功允许 null）；owner = projectile.owner
    fBonus / wEmp / expMult / h = StellarMrmDifficulty.resolve(entry, owner)  // 玩家 owner==0 恒 v2
 1. 【撞线者死】target is MissileAPI && target.owner != owner：
@@ -253,7 +253,7 @@ const val RETARGET_INTERVAL = 0.25f                    // AI 重选节流（提�
         panel × wEmp, false, false, source, true)
    c. 逐武器电弧视觉：for (w in target.allWeapons) { if (w.isDisabled) continue
         engine.spawnEmpArcVisual(point, target, w.location, target, 6f, 紫色fringe, 白色core) }
-      （WeaponAPI 非 CombatEntityAPI 不能作电弧锚点实体，用 Vector2f 端点重载——§0 已核实）
+      （WeaponAPI 非 CombatEntityAPI 不能作电弧锚点实体，用 Vector2f 端点重载，§0 已核实）
 3. 【辉星爆炸】任意撞击恒触发（战机/舰船/导弹/残骸/护盾命中均含）：
    victims = CombatUtils.getEntitiesWithinRange(point, EXPLOSION_RADIUS)
        .filter { it.owner != owner && !isHulkOrPhased(it) && it !== projectile && it !== target 已死体 }
@@ -262,7 +262,7 @@ const val RETARGET_INTERVAL = 0.25f                    // AI 重选节流（提�
    VFX：裂隙爆炸组件（§3.3，radius = DEFAULT_RADIUS × 0.6f、蓝色族默认 palette）
 ```
 
-**难度取值调用点**：仅 `StellarMrmDifficulty.resolve(entry, owner)` 一个入口，命中时取值（LunaLib 热变更对后续命中即时生效，与 04「开火起点缓存」口径差异属刻意：本武器无开火态状态机，命中回调是唯一结算点）。
+**难度取值调用点**：仅 `StellarMrmDifficulty.resolve(entry, owner)` 一个入口，命中时取值（LunaLib 热变更对后续命中即时生效，与 04「开火起点缓存」规则差异属刻意：本武器无开火态状态机，命中回调是唯一结算点）。
 
 ### 2.3 玩家可见反馈（对照实现注意事项 2）
 
@@ -271,9 +271,9 @@ const val RETARGET_INTERVAL = 0.25f                    // AI 重选节流（提�
 | 对战机额外伤害 | 原版伤害浮字（`showDamageFloaty=true`） | 数字自然变大，不额外加浮字防噪音 |
 | 战机全部武器 EMP | `spawnEmpArcVisual` 逐武器一道紫色电弧（视觉锚点=武器槽位）+ 原版武器熄火表现 | 电弧为玩家可见核心反馈；EMP 伤害数字同帧浮出 |
 | 辉星爆炸 AOE | 裂隙爆炸 VFX（§3.3，蓝色族、半径 ×0.6）+ AOE 浮字 | 任意撞击恒触发，50su 范围可读 |
-| 撞线者死 | 敌方导弹消失 + 同帧裂隙爆炸（隐性机制不进文案，视觉即爆炸本身；设计案裁定） | 无额外浮字 |
+| 撞线者死 | 敌方导弹消失 + 同帧裂隙爆炸（隐性机制不进文案，视觉即爆炸本身；设计案确认） | 无额外浮字 |
 | 弹体飞行 | 紫色十字辉星本体 + 长 twin trail 双拖尾（texTrail 双带，§3.1） | LENS 紫主色 |
-| 常驻 HUD / 自定义浮字 | **不需要**（无叠层/无状态数值机制，机制全部在一次命中内自解释） | 对齐 04 湮灭涡旋「无常驻机制不挂状态栏」口径 |
+| 常驻 HUD / 自定义浮字 | **不需要**（无叠层/无状态数值机制，机制全部在一次命中内自解释） | 对齐 04 湮灭涡旋「无常驻机制不挂状态栏」规则 |
 
 ### 2.4 0 值与边界处理（对照实现注意事项 3）
 
@@ -282,7 +282,7 @@ const val RETARGET_INTERVAL = 0.25f                    // AI 重选节流（提�
 | `projectile.maxHitpoints <= 0` | `lineCrossThreshold` 返回 0 → 撞线者死恒不触发；**每引擎 WARN 一次**（`engine.customData` 去重键），机制失效必须可见 |
 | 撞线判定严格小于 | `target.hitpoints < threshold`：hp=600 / 阈值 600（v2）→ **不**触发；hp=599 → 触发。边界列入单测 |
 | 敌导弹已 hulk/移除 | `removeEntity` 幂等；命中已死体时步骤 1 跳过（`!engine.isEntityInPlay(target)` 前置） |
-| `panel <= 0` 或 NaN | WARN + return（§2.2 步骤 0）；禁止静默产出恒零附加伤害 |
+| `panel <= 0` 或 NaN | WARN + return（§2.2 步骤 0）；禁止无日志产出恒零附加伤害 |
 | `fighter.allWeapons` 为空 | EMP 伤害照结算，电弧循环零次；合法场景不 WARN |
 | 爆炸半径内无有效目标 | 仅 VFX，无伤害循环；合法 |
 | AOE 目标与命中点重合（dist=0） | `applyDamage` 的 point 直接复用命中点，无几何除零点 |
@@ -306,16 +306,16 @@ const val RETARGET_INTERVAL = 0.25f                    // AI 重选节流（提�
 },
 ```
 
-- 形态对齐 spc3 lambda 内联先例；5 高层旋钮足够表达「紫色十字辉星本体 + 很长 twin trail 双拖尾」：`ribbon=true` 启用双带（主带垫底 alpha 0.8 + 电弧副带，P2 观感翻译已内建 twin 观感），弹头由 `head{}` 网格恒在承担「十字辉星本体」的近球亮核，目检确认是否需加大弹头表达「十字」锐度（如需，走 `glowScale` 旋钮，不新增调色板函数）。
+- 形态对齐 spc3 lambda 内联先例；5 高层旋钮足够表达「紫色十字辉星本体 + 很长 twin trail 双拖尾」：`ribbon=true` 启用双带（主带在底层 alpha 0.8 + 电弧副带，P2 观感翻译已内建 twin 观感），弹头由 `head{}` 网格恒在承担「十字辉星本体」的近球亮核，目检确认是否需加大弹头表达「十字」锐度（如需，走 `glowScale` 旋钮，不新增调色板函数）。
 - `violet()`：现有调色板（ASTDColor(0.66, 0.42, 1.0, 0.9)，TEX_SMOOTH + TEX_ZAPPY），LENS 紫主色直接复用；合并协议禁止分支内新增调色板函数。
 - width=10：1.5× 弹体体量（对照 spc3 中型 6、穷距大型 12）；length=420：定案「很长的双拖尾」（对齐 aod7 hero 420，2500 射程长航迹），目检微调。
 - 两 spec 值完全一致属刻意（同一弹头两种发射器）；若目检要求中型体量更大，仅调 pod 行 width。
 
 ### 3.2 裂隙爆炸（依赖七星组件）
 
-- 2026-08 裂隙改版：原 90-计划 §11「十字闪光爆炸组件**七星首发，辉星按 60% 缩放复用**」裁定已由 `RiftExplosionVfx` 裂隙爆炸组件替代——七星首发，辉星复用同一组件（蓝色族默认 palette），半径 = `DEFAULT_RADIUS × 0.6f`（`StellarMrmStrikeImpl.RIFT_RADIUS_SCALE = 0.6f`，保持原「辉星 60% 缩放」相对观感）；§12 顺序辉星（8）在七星（7）之后不变。
+- 2026-08 裂隙改版：原 90-计划 §11「十字闪光爆炸组件**七星首发，辉星按 60% 缩放复用**」确认已由 `RiftExplosionVfx` 裂隙爆炸组件替代，七星首发，辉星复用同一组件（蓝色族默认 palette），半径 = `DEFAULT_RADIUS × 0.6f`（`StellarMrmStrikeImpl.RIFT_RADIUS_SCALE = 0.6f`，保持原「辉星 60% 缩放」相对观感）；§12 顺序辉星（8）在七星（7）之后不变。
 - **硬依赖**：七星交付的裂隙爆炸组件（`RiftExplosionVfx`，见 07 规格 §3.3）。本武器调用：`riftExplosion(engine, at, radius = DEFAULT_RADIUS * 0.6f, fadeOut = 1.0f, palette = BLUE)`。
-- **应急方案**（07 未合 main 时本分支开工）：分支内实现 `StellarMrmRiftExplosion`（object，同族裂隙爆炸，`spawn(radius, palette)` 单入口）落地于 `combat/effect/lens/stellar/`，PR 描述显式标记「收口人去重：与 07 裂隙爆炸组件合并」；禁止静默双份共存进 main。
+- **应急方案**（07 未合 main 时本分支开工）：分支内实现 `StellarMrmRiftExplosion`（object，同族裂隙爆炸，`spawn(radius, palette)` 单入口）实现于 `combat/effect/lens/stellar/`，PR 描述显式标记「合并负责人去重：与 07 裂隙爆炸组件合并」；禁止双份共存未登记就进 main。
 
 ---
 
@@ -323,7 +323,7 @@ const val RETARGET_INTERVAL = 0.25f                    // AI 重选节流（提�
 
 ### 4.1 单元测试清单
 
-`src/test/kotlin/cn/kasuminova/astd/combat/effect/lens/stellar/`，全部驱动 `StellarMrmStrikeMath` 纯函数 / `StellarMrmTargetingImpl.select` / `StellarMrmDifficulty.resolve` 真实逻辑，**禁止纯源码 contain 测试**。Starsector API 类型按项目 `testutil` 惯例以测试桩实现接口（09 同口径）。
+`src/test/kotlin/cn/kasuminova/astd/combat/effect/lens/stellar/`，全部驱动 `StellarMrmStrikeMath` 纯函数 / `StellarMrmTargetingImpl.select` / `StellarMrmDifficulty.resolve` 真实逻辑，**禁止纯源码 contain 测试**。Starsector API 类型按项目 `testutil` 惯例以测试桩实现接口（09 同规则）。
 
 | # | 用例名 | 断言点 |
 |---|---|---|
@@ -334,13 +334,13 @@ const val RETARGET_INTERVAL = 0.25f                    // AI 重选节流（提�
 | 5 | 武器 EMP 三档 | panel=100：v1 → 200；v2 → 400；v5 → 1000 |
 | 6 | 爆炸倍率与固定半径 | panel=100 v2 → 100；`EXPLOSION_RADIUS == 50f`（常量守护） |
 | 7 | 目标选择：战机优先 | 近处舰船 + 远处战机同场 → 选中战机 |
-| 8 | 目标选择：无战机兜底 | 仅舰船 → 最近舰船；含无人机（isDrone）→ 纳入兜底 |
+| 8 | 目标选择：无战机时选择舰船 | 仅舰船 → 最近舰船；含无人机（isDrone）→ 纳入舰船候选 |
 | 9 | 目标选择：排除项 | 友军/hulk/不在场目标被排除；输入含 MissileAPI → 永不入选；全空 → null |
-| 10 | 目标选择：射程门 | 战机在 2500 外 → 不入选（落空或兜底近舰） |
+| 10 | 目标选择：射程门 | 战机在 2500 外 → 不入选（落空或选择近处舰船） |
 | 11 | 领先瞄准点 | `leadPoint(loc, vel, dist, maxSpeed)`：vel≠0 → loc + vel × (dist/maxSpeed)；maxSpeed=0 → 退 loc + 一次 WARN |
 | 12 | 玩家固定 v2 | `resolve(entry, owner=0) == entry.v2`；owner=1 走 `DifficultyTuningImpl`（testOverride 固定 k_s 断言 v1/v2/v5 三档） |
 
-爆炸 AOE 逐目标结算与 `spawnEmpArcVisual` 循环：以测试桩引擎注入 `StellarMrmStrikeImpl.strike` 完整驱动——断言 applyDamage 调用次数/数值/伤害类型/EMP 量（用例 13：战机命中机体 → 增伤 1 次 + EMP 1 次 + 电弧 N=存活武器数；用例 14：命中导弹低于阈值 → removeEntity 被调用 + 爆炸照常；用例 15：护盾命中战机 → 猎机本能不触发、爆炸触发）。
+爆炸 AOE 逐目标结算与 `spawnEmpArcVisual` 循环：以测试桩引擎注入 `StellarMrmStrikeImpl.strike` 完整驱动，断言 applyDamage 调用次数/数值/伤害类型/EMP 量（用例 13：战机命中机体 → 增伤 1 次 + EMP 1 次 + 电弧 N=存活武器数；用例 14：命中导弹低于阈值 → removeEntity 被调用 + 爆炸照常；用例 15：护盾命中战机 → 猎机本能不触发、爆炸触发）。
 
 ### 4.2 烟测检查点（`deployMod` + `launchSmokeTestGame`，到达终态即退出）
 
@@ -363,8 +363,8 @@ const val RETARGET_INTERVAL = 0.25f                    // AI 重选节流（提�
 
 | 共享文件 | 本分支动作 | 键名空间/位置约定 |
 |---|---|---|
-| `ss-csv/.../weapondata/lens/Catalog_WeaponData_LENS.kt` | 追加 `Wpn_astd_stellar_mrm_launcher` / `Wpn_astd_stellar_mrm_pod` | **number=9217/9218**（预分配段）；object 追加文件末尾，收口人按 number 升序归位 |
-| `ss-csv/.../strings/Catalog_Descriptions.kt` | 追加两行 Desc | WEAPON 分组尾部（`Desc_astd_psi_omega` 之后），收口人按 id 字典序重排 |
+| `ss-csv/.../weapondata/lens/Catalog_WeaponData_LENS.kt` | 追加 `Wpn_astd_stellar_mrm_launcher` / `Wpn_astd_stellar_mrm_pod` | **number=9217/9218**（预分配段）；object 追加文件末尾，合并负责人按 number 升序归位 |
+| `ss-csv/.../strings/Catalog_Descriptions.kt` | 追加两行 Desc | WEAPON 分组尾部（`Desc_astd_psi_omega` 之后），合并负责人按 id 字典序重排 |
 | `ss-csv/.../i18n/zh-cn.properties` | 追加 §1.3 十一个键 | `weapon.astd_stellar_mrm_*.*` / `desc.astd_stellar_mrm_*.*`，集中插文件末尾 |
 | `src/.../renderer/projectile/driver/ProjectileVfxSpecs.kt` | builders map 末尾追加两条（§3.1） | 复用现有 `violet()`，**不新增调色板函数** |
 | `contents/data/weapons/astd_stellar_mrm_launcher.wpn` / `astd_stellar_mrm_pod.wpn` | 新文件 | 无冲突 |
@@ -377,13 +377,13 @@ const val RETARGET_INTERVAL = 0.25f                    // AI 重选节流（提�
 
 | 依赖 | 状态 | 阻塞关系 |
 |---|---|---|
-| `ProjectileVfxSpecs` / `ProjectileSpecOnFireDispatcher` / `CombatVfxBootstrapEveryFrameEffect` | 已落地 main | 就绪 |
-| `DifficultyTuning` / `ScalingEntry`（`DifficultyTuningImpl`） | 已落地 main | 就绪 |
+| `ProjectileVfxSpecs` / `ProjectileSpecOnFireDispatcher` / `CombatVfxBootstrapEveryFrameEffect` | 已合入 main | 就绪 |
+| `DifficultyTuning` / `ScalingEntry`（`DifficultyTuningImpl`） | 已合入 main | 就绪 |
 | LazyLib `CombatUtils.getEntitiesWithinRange` | 依赖已在（GCP/湮灭涡旋路径在用） | 就绪 |
-| 自定义导弹 AI 先例（`ASTDPursuitVirtualParticleAI`） | 已落地 main（形态参照，非代码依赖） | 就绪 |
+| 自定义导弹 AI 先例（`ASTDPursuitVirtualParticleAI`） | 已合入 main（形态参照，非代码依赖） | 就绪 |
 | Buff API | 基建 PR #1 | **不依赖**（无叠层机制） |
-| `ConeImpactHandler` | 正电子组落地 | **不依赖**（球形爆炸非锥面） |
-| **七星裂隙爆炸组件（RiftExplosionVfx）** | 07 组交付（90-计划 §12 第 7 位；2026-08 裂隙改版替代原十字爆炸裁定） | **软阻塞**：七星先合 main 则直接复用；否则走 §3.3 应急方案并在 PR 标记收口人去重 |
+| `ConeImpactHandler` | 正电子组实现 | **不依赖**（球形爆炸非锥面） |
+| **七星裂隙爆炸组件（RiftExplosionVfx）** | 07 组交付（90-计划 §12 第 7 位；2026-08 裂隙改版替代原十字爆炸确认） | **软阻塞**：七星先合 main 则直接复用；否则走 §3.3 应急方案并在 PR 标记合并负责人去重 |
 
 ### 5.3 实现顺序内位置
 
@@ -391,9 +391,9 @@ const val RETARGET_INTERVAL = 0.25f                    // AI 重选节流（提�
 
 1. `StellarMrmStrikeMath` + `StellarMrmTargetingImpl` + 单测（纯逻辑先行，TDD）。
 2. `StellarMrmDifficulty` + `StellarMrmStrikeImpl` + 桩引擎结算单测（用例 13~15）。
-3. `StellarMrmMissileAI` + `StellarMrmOnFireEffect` + `StellarMrmOnHitEffect` 胶水层。
+3. `StellarMrmMissileAI` + `StellarMrmOnFireEffect` + `StellarMrmOnHitEffect` 衔接代码。
 4. 数据面（catalog ×2 / .wpn ×2 / i18n / Desc）→ `generateSsCsv` → 烟测最小 AI 原型（只追战机 + 直线结算，验证 `setMissileAI` 生效与目标选择）。
-5. VFX 登记（texTrail 双带）+ 裂隙爆炸（07 组件或应急实现）+ 目检收口。
+5. VFX 登记（texTrail 双带）+ 裂隙爆炸（07 组件或应急实现）+ 完成目检。
 
 ---
 
@@ -412,22 +412,22 @@ const val RETARGET_INTERVAL = 0.25f                    // AI 重选节流（提�
 
 - [ ] 类清单一一对应 §2.1，包路径 `combat/effect/lens/stellar/` + `api/combat/StellarMrm.kt`
 - [ ] 两接口注释含类简介/动机/成员作用；实现命名无 Service/Manager/Controller/Runtime；零反射
-- [ ] AI 目标选择：战机优先、舰船兜底、导弹永不入选；重选节流 0.25s；`setMissileAI` 在 onFire 内且 VFX dispatcher 先委托
+- [ ] AI 目标选择：战机优先、无战机时选择舰船、导弹永不入选；重选节流 0.25s；`setMissileAI` 在 onFire 内且 VFX dispatcher 先委托
 - [ ] 结算顺序：撞线者死 → 猎机本能 → 爆炸恒触发；EMP 伤害一次 `applyDamage`（emp 参数）+ 逐武器 `spawnEmpArcVisual`（Vector2f 端点重载，未误用 spawnEmpArc 锚 WeaponAPI）
 - [ ] 玩家固定 v2：`resolve(entry, owner)` 唯一入口；无散落取值
 - [ ] 0 值防线：maxHitpoints=0 与 maxSpeed=0 各有一次性 WARN；panel 异常 WARN + return；无空 catch
-- [ ] 玩家可见反馈按 §2.3 全部接入（机制可视化铁律，缺一项视为未完工）
+- [ ] 玩家可见反馈按 §2.3 全部接入（机制可视化规则，缺一项视为未完工）
 - [ ] 撞线者死目检项结论已记录（穿透存活则补 `projectile.hitpoints = 0f` 并在 PR 写明）
 
 **特效面**
 
 - [ ] builders 两条追加在 map 末尾、复用 `violet()`（未新增调色板函数）
 - [ ] 弹体观感：紫色辉星本体 + 很长双拖尾；撞击裂隙为七星 `RiftExplosionVfx` 蓝色族、半径 ×0.6 版
-- [ ] 裂隙爆炸：07 组件复用或应急实现已按 §3.2 口径标记收口人去重（无双份静默共存）
+- [ ] 裂隙爆炸：07 组件复用或应急实现已按 §3.2 规则标记合并负责人去重（无双份未登记共存）
 
 **测试面**
 
-- [ ] §4.1 用例 1~15 全绿，全部驱动真实逻辑（无 contain 测试）
+- [ ] §4.1 用例 1~15 全部通过，全部驱动真实逻辑（无 contain 测试）
 - [ ] 烟测十个检查点过录屏/截图；automation 到终态即退出（无干等超时）
 
 **目检**

@@ -16,32 +16,8 @@ import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
 
 /**
- * 统一池化战斗 VFX 入口（防 BoxUtil renderEntityMap 滞留泄漏）。
- *
- * 背景：BoxUtil 的 renderEntityMap 在单场战斗内只增不删——实体定时器到期或 delete()
- * 仅停止渲染，引用滞留至战斗切换才清理。因此「每次 spawn 新建实体 + 定时器自删」的
- * 高频粒子（每帧/每节拍级）会在一场长战斗中累积百万级实例（2026-09 实机堆转储实锤
- * 99.2 万 SpriteEntity / 1 GB）。本设施把这类粒子统一收敛为池化常驻实体：
- *
- * - **sprite 粒子池**（[SpritePoolKey]）：每 key 一个常驻 SpriteEntity + 固定容量
- *   Instance2Data 槽位，CPU 侧积分位置/自转并逐帧写实例数据（速度/自转不再交给
- *   BoxUtil 实例自管理，避免双重积分；暂停时包络冻结）；
- * - **光束段池**（[TrailPoolKey]/[TrailLeaseKey]）：每 key 初始容量个常驻 TrailEntity，
- *   池满按需扩容（步长 max(8, 当前容量/2)，硬上限 [TrailLeaseKey.maxCapacity] 默认 8×——
- *   它是租约泄漏探测器，触及才拒发 + 节流 WARN）。
- *   [spawnTrail] 为一次性双节点段（内部走租约池的一次性包络检出）；[checkoutTrail] 为
- *   通用租约——多节点、逐帧驱动、手动 alpha + 心跳看门狗，检出全量重置，到期/释放泊车
- *   （alpha 归零 + 清空节点）而非 delete。
- * - **sprite 租约池**（[SpriteLeaseKey]）：每 key 初始容量个常驻 SpriteEntity（惰性创建，
- *   扩容步长/硬上限口径同光束租约池）。[checkoutSprite] 检出即全量重置（纹理三态绑定/UV/
- *   尺寸/颜色/材质参数/变换/实例表），租约期间调用方逐帧驱动 [SpriteLease.entity]（实例化池
- *   另有 [SpriteLease.instances]）；消亡口径同 trail（一次性包络 / 心跳看门狗 / 显式 release），
- *   泊车 = 双 alpha 归零 + controlCanRenderNow 渲染循环级跳过（实例化实体 additionally
- *   renderingCount=0）而非 delete。适用 per-projectile / per-ship 常驻 sprite
- *   （弹体本体/螺栓/舰船覆盖发光/相位描边/光束环）。
- *
- * 池实体随 BoxUtil 战斗切换清理一并回收；单场战斗内实体总数 = Σ key maxCapacity，有界。
- * 低频事件级特效（每次命中数个）不必走本设施，直接新建实体即可。
+ * 池化战斗 VFX 入口。BoxUtil 的 renderEntityMap 在单场战斗内只增不删，实体 delete 后引用
+ * 滞留至战斗切换才清理，高频新建实体的粒子会不断累积，必须统一改为池化常驻实体复用。
  */
 object PooledCombatVfx {
 
@@ -49,10 +25,6 @@ object PooledCombatVfx {
 
     private val log = Global.getLogger(PooledCombatVfx::class.java)
 
-    /**
-     * sprite 粒子池键：同池共享贴图/渲染层/材质参数（glowPower、alphaToEmissive）。
-     * 其余逐粒子属性（位置/尺寸/朝向/速度/自转/颜色/emissive/寿命）均为 spawn 参数。
-     */
     data class SpritePoolKey(
         val spritePath: String,
         val layer: CombatEngineLayers,
@@ -61,11 +33,6 @@ object PooledCombatVfx {
         val capacity: Int = 1024,
     )
 
-    /**
-     * 光束段池键：同池共享渲染层/核心与 fringe 贴图/mixFactor。[capacity] 为初始容量
-     * （内部转 [TrailLeaseKey]，池满按需扩容，硬上限默认 8×）。
-     * 其余逐段属性（位置/朝向/长度/宽度/颜色/alpha 乘数/寿命）均为 spawn 参数。
-     */
     data class TrailPoolKey(
         val layer: CombatEngineLayers,
         val coreSpritePath: String,
@@ -74,13 +41,6 @@ object PooledCombatVfx {
         val capacity: Int = 128,
     )
 
-    /**
-     * 喷一颗池化 sprite 粒子。[scaleX]/[scaleY] 为世界半尺寸（对齐 Instance2Data scale 语义）；
-     * [scaleRateX]/[scaleRateY] 为半尺寸每秒增量（0 = 尺寸恒定，如马赫环的缓慢扩大）；
-     * [color]/[emissiveColor] 的 alpha 为基准值，逐帧再乘包络。
-     *
-     * @return false = 池不可用（BoxUtil 未就绪/实体注册失败），本颗视觉缺席（已记 WARN）
-     */
     fun spawnSprite(
         engine: CombatEngineAPI,
         key: SpritePoolKey,
@@ -99,12 +59,6 @@ object PooledCombatVfx {
         )
     }
 
-    /**
-     * 喷一段池化光束（尾→头 taper，节点序对齐 BoxUtilCombatVfx.createTaperedBeamTrail：
-     * node[0] 在 +length 端为尾，START_* 作用于尾）。长度 < 1f 直接缺席。
-     *
-     * @return false = 池不可用，本段视觉缺席（已记 WARN）
-     */
     fun spawnTrail(
         engine: CombatEngineAPI,
         key: TrailPoolKey,
@@ -122,7 +76,6 @@ object PooledCombatVfx {
         fadeIn: Float, full: Float, fadeOut: Float,
     ): Boolean {
         if (length < 1f) return false
-        // 一次性双节点段 = 租约池的一次性包络检出（节点序尾→头：node[0]=+length 端为尾）
         return checkoutTrail(
             engine,
             TrailLeaseKey(key.layer, key.coreSpritePath, key.fringeSpritePath, key.mixPower, key.capacity),
@@ -143,13 +96,6 @@ object PooledCombatVfx {
         ) != null
     }
 
-    /**
-     * 检出一个池化 TrailEntity 租约（多节点/逐帧驱动/心跳看门狗的统一入口，防 renderEntityMap
-     * 滞留泄漏）。检出即全量重置实体状态；租约期间调用方逐帧驱动 [TrailLease.entity]；
-     * 消亡口径见 [TrailLeaseSpec]（一次性包络 / 看门狗 / 显式 release），泊车 = alpha 归零常驻复用。
-     *
-     * @return null = 池不可用或池满拒发（均已记 WARN），本次视觉缺席
-     */
     fun checkoutTrail(engine: CombatEngineAPI, key: TrailLeaseKey, spec: TrailLeaseSpec): TrailLease? {
         if (spec.nodes.size < 2) {
             log.warn("池化光束租约检出拒绝：节点数 ${spec.nodes.size} < 2（layer=${key.layer}，core=${key.coreSpritePath}）——调用方编程错误，本次视觉缺席")
@@ -158,15 +104,6 @@ object PooledCombatVfx {
         return manager(engine).trailLeasePools.getOrPut(key) { TrailLeaseBinding(engine, key) }.checkout(spec)
     }
 
-    /**
-     * 检出一个池化 SpriteEntity 租约（per-projectile / per-ship 常驻 sprite 的统一入口，防
-     * renderEntityMap 滞留泄漏）。检出即全量重置实体状态；租约期间调用方逐帧驱动
-     * [SpriteLease.entity]（实例化池逐帧驱动 [SpriteLease.instances]）；消亡口径见
-     * [SpriteLeaseSpec]（一次性包络 / 看门狗 / 显式 release），泊车 = alpha 归零 +
-     * controlCanRenderNow 渲染循环级跳过，常驻复用。
-     *
-     * @return null = 池不可用或池满拒发（均已记 WARN），本次视觉缺席
-     */
     fun checkoutSprite(engine: CombatEngineAPI, key: SpriteLeaseKey, spec: SpriteLeaseSpec): SpriteLease? {
         val textureBindings = (if (spec.spritePath != null) 1 else 0) +
             (if (spec.sprite != null) 1 else 0) +
@@ -195,7 +132,6 @@ object PooledCombatVfx {
         return manager
     }
 
-    /** 池推进插件：暂停时冻结（包络/积分全部停走），与 vanilla 粒子暂停语义一致。 */
     private class Manager(private val engine: CombatEngineAPI) : BaseEveryFrameCombatPlugin() {
         val spritePools = LinkedHashMap<SpritePoolKey, SpritePoolBinding>()
         val trailLeasePools = LinkedHashMap<TrailLeaseKey, TrailLeaseBinding>()
@@ -209,7 +145,6 @@ object PooledCombatVfx {
         }
     }
 
-    /** sprite 粒子池绑定：一个常驻 SpriteEntity + 环形复用实例槽。 */
     private class SpritePoolBinding(
         private val engine: CombatEngineAPI,
         private val key: SpritePoolKey,
@@ -245,7 +180,7 @@ object PooledCombatVfx {
         private fun createEntity(): SpriteEntity? {
             return try {
                 BoxUtilCombatVfx.ensureReady(engine)
-                // 须先 loadTexture 进缓存，裸 getSprite 会拿到 textureID=0 的壳（TriShard 实锤教训）。
+                // 必须先 loadTexture 再 getSprite，裸 getSprite 返回 textureID=0 的空壳
                 val sprite = Global.getSettings().apply { loadTexture(key.spritePath) }.getSprite(key.spritePath)
                 val e = SpriteEntity()
                 e.setAdditiveBlend()
@@ -254,17 +189,15 @@ object PooledCombatVfx {
                 e.materialData.alphaToEmissive = key.alphaToEmissive
                 e.materialData.isColorToEmissive = 0f
                 e.materialData.glowPower = key.glowPower
-                // 实例坐标即世界坐标：实体锚原点、零朝向。
                 e.setStateVanilla(ZERO, 0f)
                 e.setLayer(key.layer)
 
                 val list = ArrayList<Instance2Data>(key.capacity)
                 repeat(key.capacity) {
                     val d = Instance2Data()
-                    // 位置/自转由池 CPU 侧积分，实例侧必须清零，否则与 BoxUtil 自管理双重积分。
+                    // 位置/自转由池 CPU 侧积分，实例侧必须清零，否则与 BoxUtil 实例自管理双重积分
                     d.setVelocity(0f, 0f)
                     d.setTurnRate(0f)
-                    // 实例定时器钉死：寿命包络由池 CPU 侧驱动 alpha。
                     d.setTimer(0f, 1e7f, 0f)
                     d.setColor(0, 0, 0, 0)
                     d.setEmissiveColor(0, 0, 0, 0)
@@ -279,7 +212,7 @@ object PooledCombatVfx {
                 e.submitInstance()
                 e.setRenderingCount(0)
                 e.isAlwaysRefreshInstanceData = true
-                // 常驻：全局计时器缺省值会被首个逻辑帧判 TIMER_INVALID 直接 delete。
+                // BoxUtil 全局计时器缺省值会被首个逻辑帧判 TIMER_INVALID 直接 delete，必须钉常驻值
                 e.setGlobalTimer(0f, 1e7f, 0f)
 
                 val state = BoxUtilCombatVfx.addEntity(engine, e)

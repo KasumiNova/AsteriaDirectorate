@@ -5,12 +5,6 @@ import cn.kasuminova.astd.renderer.shader.base.ShaderHandle
 import cn.kasuminova.astd.renderer.shader.base.ShaderUniformSet
 import org.lwjgl.util.vector.Vector2f
 
-/**
- * Developer-facing submission entry point for shader VFX.
- *
- * Domain adapters use this sink to emit one-shot effects, upsert persistent
- * keyed effects, and remove keyed instances without touching renderer internals.
- */
 class ShaderSink internal constructor(private val queue: ShaderRenderQueue) {
     fun emit(
         spec: ShaderEffectSpec,

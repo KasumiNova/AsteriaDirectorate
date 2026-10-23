@@ -1,16 +1,9 @@
 package cn.kasuminova.astd.api.difficulty
 
 /**
- * 难度系数的统一读取面（机制数值缩放，D13 轨一 + 我方档位）。
+ * 提供当前难度系数，并将数值声明映射为最终值。
  *
- * 动机：机制数值（船插 / 舰船系统 / 武器 / 词缀内部数值）按来源阵营分两套系数：
- * - [fixedScale]：敌方（及友军 AI）单位的固有缩放系数 k_s，由 LunaLib「敌方强度档位」选定；
- * - [playerFixedScale]：玩家阵营（owner == 0）单位的系数，由 LunaLib「我方强度档位」选定，
- *   默认砺刃 2.0（即早期「玩家侧固定 v2」口径）。
- * 全部机制数值统一经 [value] / [valueFor] 派生，禁止各处自行读取设置或缓存系数。
- *
- * 实现：[cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl]（object 单例）。
- * 调用侧字段一律声明为本接口类型。
+ * 玩家阵营使用 [playerFixedScale]，其他阵营使用 [fixedScale]。调用方不得缓存系数。
  */
 interface DifficultyTuning {
 
@@ -56,7 +49,7 @@ interface DifficultyTuning {
         if (isPlayer) table.at(playerFixedScale) else value(table)
 
     companion object {
-        /** 玩家侧系数默认值：砺刃档 2.0（设计基准；与早期「玩家侧固定 v2」口径等价）。 */
+        /** 玩家阵营未设置难度系数时使用的默认值。 */
         const val PLAYER_SCALE_DESIGN_BASELINE: Float = 2.0f
     }
 }

@@ -16,28 +16,6 @@ import org.lazywizard.lazylib.MathUtils
 import org.lazywizard.lazylib.combat.CombatUtils
 import org.lwjgl.util.vector.Vector2f
 
-/**
- * 坠星残响的命中路由（挂普通弹 `.proj` 的 `onHitEffect`；第 5 发与普通弹同 spec，
- * 由 [FINAL_SHOT_MARK_KEY] 标记区分）：
- *
- * - 普通弹：命中舰船（护盾/船体均可，设计案未区分）叠 1 层「结构谐振」
- *   （[StarfallEchoResonanceStacks]，至多 4 层，不随时间消散）；
- * - 第 5 发：命中任意目标恒爆炸（舰船、残骸、陨石等均可；谐振层只取自存活舰船目标，
- *   其余按 0 层）——半径 150su×(层数+1)（0 层 150su、4 层封顶 750su），爆炸规模只影响范围、
- *   不影响伤害；范围结算等额能量伤害（伤害 = 第 5 发总伤 × 难度倍率 = 面板 ×（1 + 50%×层数）
- *   × 难度倍率，谐振层数加成 50%→200% 与直击同口径，直击提升部分由脚本 applyDamage 补给
- *   直击目标），后消耗全部层数，
- *   最后播放爆炸特效（[StarfallEchoVfx.explosion]，十字辉星跟随「目标舰心 → 命中点」方位交叉）。
- *
- * AOE 口径（摧锋同款裁定；用户裁定：残响 AOE 固定全额 100%、无距离衰减）：存活直击目标豁免
- * AOE（直击面板已由引擎原生结算，重复计入会双倍）；
- * 同阵营目标豁免；舰船遮挡豁免——爆心到目标舰心的视线被其他存活舰船（含被直击船、不分阵营，
- * 不含残骸与相位单位）的碰撞圆截断时该目标不受波及（完全遮挡即免伤，见 [isOccluded]）。
- * 落点与 bypassShields 全库统一走 [ExplosionStrikeImpl]（盾覆盖爆心 → 盾面点 + bypass=false；
- * 未覆盖 → 命中侧压点 + bypass=true），不再使用历史「退回舰心」口径。
- *
- * 难度取值每次命中调用 [StarfallEchoTuning.resolve] 一次（不缓存）。
- */
 class StarfallEchoOnHitEffect : OnHitEffectPlugin {
 
     override fun onHit(
@@ -50,12 +28,11 @@ class StarfallEchoOnHitEffect : OnHitEffectPlugin {
     ) {
         if (engine.isPaused) return
 
+        // 命中回调的 point 可能为 null，回退到弹体当前位置。
         val hitPoint = point ?: projectile.location ?: return
         val values = StarfallEchoTuning.resolve(DifficultyTuningImpl, isPlayer = projectile.source?.owner == 0)
 
         if (projectile.customData[FINAL_SHOT_MARK_KEY] == true) {
-            // 第 5 发命中任意目标恒爆炸（含舰船残骸、陨石等非舰目标）；
-            // 谐振层只取自存活舰船目标（其余按 0 层结算）
             val ship = (target as? ShipAPI)?.takeUnless { it.isHulk || it.isPhased }
             onFinalHit(projectile, ship, hitPoint, values, engine)
             return
@@ -66,10 +43,6 @@ class StarfallEchoOnHitEffect : OnHitEffectPlugin {
         onNormalHit(projectile, ship, values, engine)
     }
 
-    /**
-     * 普通弹命中：叠 1 层结构谐振（上限 4），每层易伤按难度查表。
-     * 同阵营目标不叠层（与第 5 发 AOE 的同阵营豁免同口径；source 缺失时按 0 处理）。
-     */
     private fun onNormalHit(
         projectile: DamagingProjectileAPI,
         ship: ShipAPI,
@@ -85,10 +58,6 @@ class StarfallEchoOnHitEffect : OnHitEffectPlugin {
         if (projectile.source != null && projectile.source == engine.playerShip) buff.showOnPlayerHud = true
     }
 
-    /**
-     * 第 5 发命中：恒爆炸（无论目标有无谐振层）——直击补伤 → AOE（层数 0 即 0，跳过）→
-     * 消层 → 特效。十字辉星跟随「目标舰心 → 命中点」方位交叉。
-     */
     private fun onFinalHit(
         projectile: DamagingProjectileAPI,
         ship: ShipAPI?,
@@ -107,9 +76,7 @@ class StarfallEchoOnHitEffect : OnHitEffectPlugin {
         val source = projectile.source
         val owner = source?.owner ?: 0
 
-        // 直击补伤：每层被消耗的谐振使第 5 发伤害 +50%，提升部分由脚本补给直击目标
-        // （落点与 bypass 走统一入口：盾覆盖爆心 → 盾面点 + bypass=false；未覆盖 → 命中侧压点
-        // + bypass=true，与 AOE 同口径）；仅存活舰船直击目标可补（非舰目标无谐振层，恒 0 不进入此分支）
+        // 直击面板已由引擎结算，谐振加成的差额由脚本补给直击目标。
         val bonus = StarfallEchoTuning.finalShotBonusDamage(panel, stacks)
         if (ship != null && bonus > 0f && engine.isEntityInPlay(ship)) {
             val covered = ExplosionStrikeImpl.shieldCovers(ship, hitPoint)
@@ -120,10 +87,7 @@ class StarfallEchoOnHitEffect : OnHitEffectPlugin {
             )
         }
 
-        // 范围能量结算全额 100%（用户裁定，无距离衰减；存活直击目标与同阵营豁免，摧锋同款裁定）。
-        // 模块舰（空间站）按站去重选举一名代表结算——逐模块全额叠加会把空间站按模块数倍数
-        // 击穿（实机判例：750su 半径全覆盖模块群，总伤害 = 单发 × 模块数 + 主舰体）。
-        // 舰船遮挡豁免：爆心 → 目标舰心的视线被其他存活舰船碰撞圆截断的目标不受波及。
+        // 直击目标豁免 AOE 避免重复结算；模块舰（空间站）逐模块全额结算会按模块数倍数击穿，按站选举一名代表。
         if (damage > 0f) {
             val victims = CombatUtils.getEntitiesWithinRange(hitPoint, radius).filter { victim ->
                 when {
@@ -151,18 +115,12 @@ class StarfallEchoOnHitEffect : OnHitEffectPlugin {
             }
         }
 
-        // 后消层
         buff?.consume()
 
-        // 特效恒执行（十字辉星跟随受击点方位 + 星云 + 三角碎片 + 径向电弧）
         StarfallEchoVfx.explosion(engine, hitPoint, stacks, radius, hitFacingDeg(ship, hitPoint))
     }
 
-    /**
-     * 受击点方位角（度）：目标舰心 → 命中点。不取 Misc.getAngleInDegrees：Misc 类初始化依赖
-     * 游戏运行时（无头/单测直接 ExceptionInInitializerError），LazyLib MathUtils 无等价函数，
-     * 此处语义等价于 atan2 直出角度。允许负值（绽放辉星实现侧归一化到 [0,360)）。
-     */
+    // Misc 的静态初始化依赖游戏运行时（单测直接 ExceptionInInitializerError），角度用 atan2 直算。
     private fun hitFacingDeg(ship: ShipAPI?, hitPoint: Vector2f): Float {
         val origin = ship?.location ?: return 0f
         return Math.toDegrees(
@@ -173,19 +131,11 @@ class StarfallEchoOnHitEffect : OnHitEffectPlugin {
         ).toFloat()
     }
 
-    /** AOE 目标分配结果：[regular] 逐个全额结算；[stationRepresentatives] 每座空间站一名代表。 */
     internal data class AoEVictimPlan(
         val regular: List<CombatEntityAPI>,
         val stationRepresentatives: List<ShipAPI>,
     )
 
-    /**
-     * 模块舰（空间站）按站选举（纯逻辑，供单元测试直接驱动）：
-     * 同一站（模块的 parentStation 组 + 模块舰主舰体自身）只保留距爆心最近的成员作为
-     * 结算代表；成员中心距必须 ≤ [radius]——CombatUtils.getEntitiesWithinRange 的粗筛
-     * 把碰撞半径计入判定，空间站巨模块会把判定圈虚扩近一倍，此处按中心距复判。
-     * 非模块舰目标与导弹原样进 [AoEVictimPlan.regular]。
-     */
     internal fun planStationElection(
         victims: List<CombatEntityAPI>,
         hitPoint: Vector2f,
@@ -213,14 +163,9 @@ class StarfallEchoOnHitEffect : OnHitEffectPlugin {
         return AoEVictimPlan(regular, elect.values.map { it.first })
     }
 
-    /**
-     * AOE 遮挡船收集：存活、非残骸、非相位的舰船（含被直击船、不分阵营——
-     * 爆炸的视线遮挡是物理判定，同阵营船体一样挡爆炸）。
-     */
     private fun collectOcclusionBlockers(engine: CombatEngineAPI): List<ShipAPI> =
         engine.ships.filter { it != null && it.isAlive && !it.isHulk && !it.isPhased }
 
-    /** 单个目标的遮挡圆面：剔除目标自身与同站成员（同一座模块舰互为整体，不互相遮挡）。 */
     private fun blockerCircles(blockers: List<ShipAPI>, victim: CombatEntityAPI): List<BlockerCircle> {
         val victimShip = victim as? ShipAPI
         val circles = ArrayList<BlockerCircle>(blockers.size)
@@ -232,7 +177,6 @@ class StarfallEchoOnHitEffect : OnHitEffectPlugin {
         return circles
     }
 
-    /** 两船是否同属一座模块舰（模块 parentStation 组 + 主舰体自身；同站成员不互相遮挡）。 */
     internal fun isSameStationGroup(a: ShipAPI, b: ShipAPI): Boolean {
         if (a === b) return true
         val rootA = a.parentStation ?: if (a.isShipWithModules) a else null
@@ -240,17 +184,8 @@ class StarfallEchoOnHitEffect : OnHitEffectPlugin {
         return rootA != null && rootA === rootB
     }
 
-    /** 遮挡圆（爆心 → 目标舰心线段与舰船碰撞圆的纯几何判定输入）。 */
     internal data class BlockerCircle(val center: Vector2f, val radius: Float)
 
-    /**
-     * 舰船遮挡判定（纯函数，供单元测试直接驱动）：爆心 [from] 到目标舰心 [to] 的线段被任一
-     * 遮挡圆截断即视为被船体遮挡（完全遮挡免伤）。碰撞圆按 [OCCLUSION_RADIUS_FRACTION] 收敛：
-     * 碰撞半径本身含视觉余量，且护盾命中时爆心恒在直击船碰撞圆表面——不收敛时近侧目标的
-     * 线段端点恰压圆面（圆心到线段的最短距离恒为整半径）会被误判遮挡。
-     * 爆心落在某遮挡船收敛圆内部时（船体命中的直击船自身，宽扁舰体侧向命中爆心可深入圆内），
-     * 该船不构成遮挡——否则端点钳制会让半径内所有目标被静默免伤。
-     */
     internal fun isOccluded(from: Vector2f, to: Vector2f, blockers: List<BlockerCircle>): Boolean =
         blockers.any { blocker ->
             val radius = blocker.radius * OCCLUSION_RADIUS_FRACTION
@@ -260,7 +195,6 @@ class StarfallEchoOnHitEffect : OnHitEffectPlugin {
             segmentIntersectsCircle(from, to, blocker.center, radius)
         }
 
-    /** 线段-圆相交（纯函数）：圆心到线段（端点钳制）的最短距离平方 ≤ 半径平方即相交。 */
     internal fun segmentIntersectsCircle(from: Vector2f, to: Vector2f, center: Vector2f, radius: Float): Boolean {
         val dx = to.x - from.x
         val dy = to.y - from.y
@@ -276,7 +210,6 @@ class StarfallEchoOnHitEffect : OnHitEffectPlugin {
     }
 
     private companion object {
-        /** 遮挡判定碰撞圆收敛系数（消除爆心压圆面的近侧误判，见 [isOccluded]）。 */
         private const val OCCLUSION_RADIUS_FRACTION = 0.9f
     }
 }

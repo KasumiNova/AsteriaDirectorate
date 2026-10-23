@@ -16,11 +16,8 @@ import org.lwjgl.util.vector.Vector2f
 
 /**
  * 电荷针刺场景（stacking / discharge / magazine / HUD evidence）。
- *
- * 拆分自 ASTDAutomationCombatPlugin 的同名 if-else 分支，相位机/断言/证据写出口径原样迁移。
  */
 class ChargeNeedleScenario : AbstractAutomationScenario() {
-    // ==== charge needle 场景状态（相位机 SHIELD → HULL → CEASE → COMPLETED） ====
     private var chargeNeedlePhase = CHARGE_NEEDLE_PHASE_SHIELD
     private var chargeNeedlePhaseStartedAt = 0f
     private var chargeNeedlePeakStacks = 0
@@ -39,7 +36,7 @@ class ChargeNeedleScenario : AbstractAutomationScenario() {
         val engine = ctx.engine
         engine.setDoNotEndCombat(true)
         lockChargeNeedleCamera(engine)
-        // 与其他场景一致：reserves 部署放到 advance()，init 阶段渲染器未就绪。
+        // reserves 部署放到 advance()，init 阶段渲染器未就绪。
         ctx.writeDiagnostics("CombatReady")
         ctx.writeTelemetry("CombatReady", findChargeNeedlePlayer(engine), null)
         ctx.log.info("[ASTD-Automation] scenario=${ASTDInGameAutomationScenario.CHARGE_NEEDLE_SCENARIO_ID} combat plugin initialized")
@@ -87,21 +84,21 @@ class ChargeNeedleScenario : AbstractAutomationScenario() {
         val enemy = findChargeNeedleEnemy(engine)
         if (player != null) {
             engine.setPlayerShipExternal(player)
-            // 双舰逐帧钉死（位置/朝向/速度归零）但保留舰 AI（preserveAI=true）：实机验证 AI 置空后
-            // OMNI 盾失去威胁追踪、停在一个朝向，弹体全部走船体路线导致淤积恒 0（第十四轮 AI 存活时叠层正常）；
-            // 且敌方 AutofireAI 拒射。AI 存活 + 命令封锁 + 钉死即可兼顾稳定与机制行为。
-            // 注：真正阻断开火的是每帧 setRemainingCooldownTo(0f)（已移除），而非 AI 置空与否。
+            // 双舰逐帧钉死（位置/朝向/速度归零）但保留舰 AI（preserveAI=true）：Starsector 0.98 中 AI 置空后
+            // OMNI 盾失去威胁追踪、停在一个朝向，弹体全部走船体路线导致淤积恒 0，且敌方 AutofireAI 拒射。
+            // AI 存活 + 命令封锁 + 钉死即可兼顾稳定与机制行为。
+            // 注：每帧 setRemainingCooldownTo(0f) 会真正阻断开火，不得使用；AI 置空与否不影响开火。
             stabilizeShip(player, CHARGE_NEEDLE_PLAYER_ANCHOR, 0f, allowFire = chargeNeedlePhase != CHARGE_NEEDLE_PHASE_CEASE, preserveAI = true)
             player.shipTarget = enemy
             // 玩家盾常开：敌方针刺命中玩家护盾触发受击方淤积（victim HUD 证据）。
             player.shield?.let { if (!it.isOn) it.toggleOn() }
-            // 舞台保活：场景内双方血量/辐能顶格，避免过载/击沉打断相位机（纯 staging，非机制兜底）。
+            // 舞台保活：场景内双方血量/辐能顶格，避免过载/击沉打断相位机（纯舞台布置，与机制无关）。
             player.hitpoints = player.maxHitpoints
             player.fluxTracker.currFlux = 0f
             player.fluxTracker.hardFlux = 0f
             setWeaponGroupAutofire(player, chargeNeedlePhase != CHARGE_NEEDLE_PHASE_CEASE, CHARGE_NEEDLE_PLAYER_WEAPON_IDS)
             // 窄射界槽位（野狼 WS 004 仅 5° 弧）AutofireAI 目标采纳存在死锁：currAngle 停在弧缘 → 目标判出弧置空
-            // → 无人修正 currAngle（实机判别：同槽挂小型针刺同样 aiTarget=null 拒射，与重型 spec 无关，
+            // → 无人修正 currAngle（Starsector 0.98 中同槽挂小型针刺同样 aiTarget=null 拒射，与重型 spec 无关，
             // extraArcForAI=25 也不解）。舞台逐帧把针刺武器 currAngle 对准敌舰解除死锁。
             if (enemy != null) {
                 for (w in player.allWeapons) {
@@ -111,7 +108,7 @@ class ChargeNeedleScenario : AbstractAutomationScenario() {
                 }
             }
             // WS 004 重型的 AutofireAI 在本舞台目标采纳恒 null（同槽挂小型判别一致，currAngle 对准敌舰亦不解，
-            // 与重型 spec 无关——槽位/组级 AI 行为）。重型直接逐帧 setForceFireOneFrame 绕过 AI 判定直控开火
+            // 与重型 spec 无关，属槽位/组级 AI 行为）。重型直接逐帧 setForceFireOneFrame 绕过 AI 判定直控开火
             // （纯舞台手段；重型与小型机制完全同码路，此处只为取弹匣节奏与拖尾目检证据）。
             for (w in player.allWeapons) {
                 if (w.id == ASTDInGameAutomationScenario.CHARGE_NEEDLE_HEAVY_WEAPON_ID) {
@@ -243,7 +240,7 @@ class ChargeNeedleScenario : AbstractAutomationScenario() {
             it.shipTarget = enemy
             it.shield?.let { shield -> if (!shield.isOn) shield.toggleOn() }
             setWeaponGroupAutofire(it, true, CHARGE_NEEDLE_PLAYER_WEAPON_IDS)
-            // 与相位机同款窄射界 currAngle 死锁解除 + 重型直控开火（详见 advanceChargeNeedleScenario 注释）。
+            // 与 advance 相位机同款窄射界 currAngle 死锁解除 + 重型直控开火。
             if (enemy != null) {
                 for (w in it.allWeapons) {
                     if (w.id in CHARGE_NEEDLE_PLAYER_WEAPON_IDS) {
@@ -279,7 +276,7 @@ class ChargeNeedleScenario : AbstractAutomationScenario() {
         json.appendLine("  \"runtimeElapsedSeconds\": 0,")
         json.appendLine("  \"runtimeTrackedCount\": ${vfxTelemetry.trackedCount},")
         json.appendLine("  \"runtimeLastProjectileSpecId\": ${jsonString(vfxTelemetry.lastProjectileSpecId)},")
-        // ---- 机制证据（规格 §4.2 验收要点）----
+        // 机制证据
         json.appendLine("  \"chargeNeedlePhase\": \"$chargeNeedlePhase\",")
         json.appendLine("  \"chargeNeedleTargetStacks\": ${enemyStacks?.stacks ?: 0},")
         json.appendLine("  \"chargeNeedleTargetMaxStacks\": ${enemyStacks?.maxStacks ?: 0},")
@@ -326,8 +323,8 @@ class ChargeNeedleScenario : AbstractAutomationScenario() {
         json.appendLine("  \"chargeNeedleVfxLastSpecId\": ${jsonString(vfxTelemetry.lastProjectileSpecId)},")
         json.appendLine("  \"chargeNeedleDecayVerified\": $chargeNeedleDecayVerified,")
         json.appendLine("  \"chargeNeedleOwnProjectiles\": ${engine.projectiles.count { it.projectileSpecId in CHARGE_NEEDLE_PROJECTILE_SPEC_IDS }},")
-        // ---- 舞台排障：三武器组/自动开火/AI 判定状态 ----
-        // WS 004 判别轮该槽挂的是小型针刺：heavyNeedleW 按槽位取（不拘 id），区分槽位阻断与规格阻断。
+        // 舞台排障：三武器组/自动开火/AI 判定状态
+        // heavyNeedleW 按槽位取（不拘 id），区分槽位阻断与规格阻断。
         val smallNeedleW =
             player?.allWeapons?.firstOrNull { it.id == ASTDInGameAutomationScenario.CHARGE_NEEDLE_WEAPON_ID && it.slot?.id == "WS 001" }
                 ?: player?.allWeapons?.firstOrNull { it.id == ASTDInGameAutomationScenario.CHARGE_NEEDLE_WEAPON_ID }

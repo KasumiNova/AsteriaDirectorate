@@ -18,11 +18,8 @@ import org.lwjgl.util.vector.Vector2f
 
 /**
  * 电驱加速炮场景。
- *
- * 拆分自 ASTDAutomationCombatPlugin 的同名 if-else 分支，相位机/断言/证据写出口径原样迁移。
  */
 class ElectricDriveScenario : AbstractAutomationScenario() {
-    // ==== electric drive accelerator 场景状态（相位机 RANGE_ZERO → RANGE_MID → RANGE_HIGH → FIRE → ENEMY_SCALE → COMPLETED） ====
     private var edaPhase = EDA_PHASE_RANGE_ZERO
     private var edaPhaseStartedAt = 0f
     private var edaRangeZeroFlux = -1f
@@ -53,8 +50,8 @@ class ElectricDriveScenario : AbstractAutomationScenario() {
         val engine = ctx.engine
         engine.setDoNotEndCombat(true)
         lockEdaCamera(engine)
-        // HUD 状态条目仅 devMode 渲染（2026-07-29 审批裁定）：本场景为 dev-only 舞台，
-        // 开启 devMode 以目检 HUD 条目与敌版三档（进程被早退杀掉，设置不落盘）。
+        // HUD 状态条目仅 devMode 渲染：本场景为 dev-only 舞台，
+        // 开启 devMode 以目检 HUD 条目与敌版三档（进程被早退杀掉，设置不会保存到磁盘）。
         Global.getSettings().isDevMode = true
         // 与其他场景一致：reserves 部署放到 advance()，init 阶段渲染器未就绪。
         ctx.writeDiagnostics("CombatReady")
@@ -96,7 +93,7 @@ class ElectricDriveScenario : AbstractAutomationScenario() {
         edaPhaseStartedAt = ctx.elapsed
     }
 
-    /** 舞台保活与站位：双舰逐帧钉死（保留舰 AI 以维持盾威胁追踪与 AutofireAI，charge needle 场景实证必要）。 */
+    /** 舞台保活与站位：双舰逐帧钉死（保留舰 AI 以维持盾威胁追踪与 AutofireAI，必要性同 charge needle 场景）。 */
     private fun stabilizeEdaShips(engine: CombatEngineAPI, playerFire: Boolean, enemyFire: Boolean) {
         val player = findEdaPlayer(engine)
         val enemy = findEdaEnemy(engine)
@@ -119,9 +116,9 @@ class ElectricDriveScenario : AbstractAutomationScenario() {
     }
 
     /**
-     * 舞台直控开火：首轮实机验证锤头级 WS 001 挂电驱加速炮时武器组 AutofireAI 目标采纳恒 null
+     * 舞台直控开火：Starsector 0.98 中锤头级 WS 001 挂电驱加速炮时武器组 AutofireAI 目标采纳恒 null
      * （autofire toggle 90s 零发射，弹药恒 30），与电荷针刺 WS 004 同款槽位/组级 AI 行为。
-     * 按针刺重型实证路径逐帧 currAngle 对准 + setForceFireOneFrame 绕过 AI 判定
+     * 按针刺重型同款路径逐帧 currAngle 对准 + setForceFireOneFrame 绕过 AI 判定
      * （纯舞台手段；开火周期/弹药/散射由武器机制自身决定，正是要观测的对象）。
      */
     private fun stageEdaFireControl(ship: ShipAPI, target: ShipAPI?, fire: Boolean) {
@@ -153,7 +150,7 @@ class ElectricDriveScenario : AbstractAutomationScenario() {
             edaCurrentBurstCount++
             edaLastSpawnAt = ctx.elapsed
         }
-        // 无新弹时同样按间隔收口悬挂分组（burst 尾部）。
+        // 无新弹时同样按间隔结束悬挂分组（burst 尾部）。
         if (edaCurrentBurstCount > 0 && edaLastSpawnAt >= 0f && ctx.elapsed - edaLastSpawnAt > EDA_BURST_GROUP_GAP) {
             closeEdaBurstGroup()
         }
@@ -343,7 +340,7 @@ class ElectricDriveScenario : AbstractAutomationScenario() {
         json.appendLine("  \"runtimeElapsedSeconds\": 0,")
         json.appendLine("  \"runtimeTrackedCount\": ${vfxTelemetry.trackedCount},")
         json.appendLine("  \"runtimeLastProjectileSpecId\": ${jsonString(vfxTelemetry.lastProjectileSpecId)},")
-        // ---- 机制证据（规格 03 §4.2 烟测检查点）----
+        // 机制证据
         json.appendLine("  \"edaPhase\": \"$edaPhase\",")
         json.appendLine("  \"edaRangeZeroFlux\": ${formatFloat(edaRangeZeroFlux)},")
         json.appendLine("  \"edaRangeMidFlux\": ${formatFloat(edaRangeMidFlux)},")
@@ -390,7 +387,7 @@ class ElectricDriveScenario : AbstractAutomationScenario() {
         private const val EDA_HIGH_FLUX_LEVEL = 0.5f
         private const val EDA_RANGE_SETTLE_SECONDS = 0.6f
 
-        // 每触发 2 弹（双管交替 × burstSize 4 引擎口径，断言是分组后每轮弹数）；轮间隔 = chargedown 0.3s，间隔 >0.2s 判定新一轮触发。
+        // 每触发 2 弹（双管交替 × burstSize 4 引擎行为，断言是分组后每轮弹数）；轮间隔 = chargedown 0.3s，间隔 >0.2s 判定新一轮触发。
         private const val EDA_EXPECT_TRIGGER_PROJECTILES = 2
         private const val EDA_BURST_GROUP_GAP = 0.2f
 

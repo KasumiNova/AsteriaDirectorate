@@ -1,13 +1,6 @@
 package cn.kasuminova.astd.sscsv
 
-/**
- * Small CSV helpers for Starsector-style CSV.
- *
- * - Header parsing supports quoted cells.
- * - Row writing uses RFC4180-ish escaping.
- */
 object CsvCodec {
-    /** Minimal RFC4180-ish line parser (quotes supported). */
     fun parseCsvLine(line: String): List<String> {
         val out = ArrayList<String>()
         val sb = StringBuilder()

@@ -5,12 +5,6 @@ import cn.kasuminova.astd.renderer.shader.base.ShaderHandle
 import cn.kasuminova.astd.renderer.shader.base.ShaderUniformSet
 import org.lwjgl.util.vector.Vector2f
 
-/**
- * Immutable world-space point captured by a shader submission.
- *
- * Starsector and LWJGL vectors are mutable, so runtime queues copy submitted
- * positions into this value object before storing them.
- */
 data class ShaderWorldPoint(val x: Float, val y: Float) {
     init {
         require(x.isFinite() && y.isFinite()) { "Shader world point must use finite coordinates: x=$x, y=$y" }
@@ -23,13 +17,6 @@ data class ShaderWorldPoint(val x: Float, val y: Float) {
     }
 }
 
-/**
- * Complete render snapshot submitted to the shader runtime.
- *
- * The snapshot is detached from mutable caller state. One-shot submissions
- * have no [handle]; keyed submissions carry a [ShaderHandle] so callers can
- * update or remove the same live effect instance.
- */
 data class ShaderSubmission(
     val spec: ShaderEffectSpec,
     val handle: ShaderHandle?,

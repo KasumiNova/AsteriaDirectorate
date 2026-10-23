@@ -5,11 +5,6 @@ import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-/**
- * 引力相位甲板数值规格（purple/20-production.md §2）：战机辐能返还比例三锚点折算
- * （v1 40% / v2 50% / v5 80%，玩家固定 v2）、单帧返还量 = 战机辐能净增量 × 比例（下限 0）。
- * 经 [DifficultyTuningImpl.installScaleForTests] 走完整映射链路（对齐 FighterGravLinkTuningTest 先例）。
- */
 class GravPhaseDeckTuningTest {
 
     @AfterTest
@@ -37,10 +32,8 @@ class GravPhaseDeckTuningTest {
 
     @Test
     fun `单帧返还量为净增量乘比例且负增量归零`() {
-        // 容差 1e-3：float 乘法存在末位抖动（100f × 0.5f = 50.000004 级别）。
         assertEquals(50f, GravPhaseDeckTuning.returnAmount(100f, 0.5f), 1e-3f)
         assertEquals(0f, GravPhaseDeckTuning.returnAmount(0f, 0.5f), 1e-6f)
-        // 净耗散/净下降帧不返还。
         assertEquals(0f, GravPhaseDeckTuning.returnAmount(-50f, 0.5f), 1e-6f)
     }
 }

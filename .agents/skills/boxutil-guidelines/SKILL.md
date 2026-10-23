@@ -1,6 +1,6 @@
 ---
-name: "boxutil-guidelines"
-description: "BoxUtil 使用指南（API 速览、调试建议、避坑点），并结合本项目的封装与落地实践。"
+name: boxutil-guidelines
+description: "BoxUtil 使用指南（API 速览、调试建议、避坑点），以及本项目的封装与使用方式。"
 ---
 
 # Skill：BoxUtil 使用指南（API / 调试 / 避坑点）
@@ -37,7 +37,7 @@ description: "BoxUtil 使用指南（API 速览、调试建议、避坑点），
 - 在**首个** `BaseEveryFrameCombatPlugin / BaseCombatLayeredRenderingPlugin` 中调用：`BoxUtilModPlugin.initLater()`（确保 OpenGL 上下文可用）
 - 依赖 BoxUtil 状态的资源，建议在 `initLater()` 之后再初始化
 - BoxUtil 会校验游戏主版本（0.98），版本不匹配会抛异常
-- 本项目封装：`BoxUtilCombatVfx.ensureReady(engine)`（调用前兜底）
+- 本项目封装：`BoxUtilCombatVfx.ensureReady(engine)`（调用前检查初始化状态）
 
 ### 2) RenderDataAPI（通用渲染控制）
 
@@ -121,8 +121,8 @@ description: "BoxUtil 使用指南（API 速览、调试建议、避坑点），
   - 处理 CombatRenderingManager 未就绪的重试
   - 创建常用 “tapered beam trail”
   - 星云粒子入口 `addNebulaParticle(engine, ...)`：封装 `RenderingUtil.VanillaFX.addNebulaParticle`，
-    战斗域专用，失败（shader 未启用/实例池满）每场战斗告警一次；**模组内星云粒子一律走此入口**，
-    不再调用原版 `engine.addNebulaParticle`（试点：GeminiDemPayloadBeamVfx 发射爆发/节律星云）。
+    战斗域专用，失败（shader 未启用/实例池满）每场战斗告警一次；**模组内星云粒子一律使用此入口**，
+    不再调用原版 `engine.addNebulaParticle`（参考实现：GeminiDemPayloadBeamVfx 发射爆发/节律星云）。
 - 可直接调用：
   - `createAndAddTaperedBeamTrail(...)`
   - `createAndAddTaperedBeamTrailFromCenter(...)`
@@ -133,7 +133,7 @@ description: "BoxUtil 使用指南（API 速览、调试建议、避坑点），
 
 - 负责：
   - DSL 声明（`ProjectileVfxSpecs.kt` 的 `staticTrail{}`）→ `StaticTrailDataFactory` 翻译/缓存 `StaticTrailData`
-  - `ASTDProjectileTrailTracker` 上报弹体锚点（headLead 前移 + recede 退距），消亡 destroy 自然播完
+  - `ASTDProjectileTrailTracker` 上报弹体锚点（headLead 前移 + recede 退距），destroy 后自然播完
   - `StaticTrailComponent` 挂在 RenderEntity 树上，attach 时校验贴图并注册
   - DSL 声明（`bolt{}`）→ `BoltRenderComponent` 挂树渲染 Box 螺栓弹头（SpriteEntity 双层 projbody，逐帧消费 `getBrightness()`/`getTailEnd()` 真值）
 - 详细参数面与调参见 projectile-trail-guidelines。
@@ -165,7 +165,7 @@ description: "BoxUtil 使用指南（API 速览、调试建议、避坑点），
   - 可用 `RenderingUtil.getHighestCombatLayer()` / `getLowestCombatLayer()` 参考
 
 - **调试可见性**：
-  - Static Trail 层注册失败时 `StaticTrailComponent` 会 WARN（贴图路径/BoxUtil 未 ready），日志先行定位
+  - Static Trail 层注册失败时 `StaticTrailComponent` 会 WARN（贴图路径/BoxUtil 未 ready），根据日志定位
   - `RenderingUtil.debugText(...)` 仅限开发期，发布版避免调用
 
 ## 性能与规模化渲染建议
@@ -179,14 +179,14 @@ description: "BoxUtil 使用指南（API 速览、调试建议、避坑点），
 - BoxUtil 提供后台线程插件接口（`BaseBackgroundEveryFramePlugin`），适合做不依赖主线程的视觉/逻辑更新。
 - 建议配合 `TemporaryCleanupPlugin`，在战斗结束时做清理，避免资源泄漏。
 
-## 避坑点清单（来自本项目经验）
+## 常见错误（来自本项目经验）
 
 1) **未初始化导致 addEntity 失败**
    - 先 `BoxUtilCombatVfx.ensureReady(engine)`，再创建/添加实体。
 
-1.5) **传入负角度朝向会镜像反转（实锤 BUG）**
+1.5) **传入负角度朝向会镜像反转**
    - BoxUtil `TrigUtil.sinFormCosF` 从 cos(半角) 反推 sin(半角) 时只做 `angle > 180` 的符号修正，
-     负角度（如 `atan2` 直出的 -90°）会拿到错误符号的 sin——等价于绕 x 轴镜像，
+     负角度（如 `atan2` 直出的 -90°）会拿到错误符号的 sin，等价于绕 x 轴镜像，
      实体朝向与侧向偏移整体反转（朝下开火时锥形/弧凸向翻转）。
    - 规范：所有进入 BoxUtil 实体变换（`setStateVanilla` / `createModelMatrixVanilla` /
      `createBeamVisual`）的朝向必须先过 `BoxUtilCombatVfx.normalizeFacingDeg`（归一化到 [0,360)）。
@@ -217,52 +217,53 @@ description: "BoxUtil 使用指南（API 速览、调试建议、避坑点），
 
 ## 实体池化规范（强制，防 renderEntityMap 滞留泄漏）
 
-**背景**：BoxUtil 的 `renderEntityMap` 在单场战斗内**只增不删**——实体定时器到期或 `delete()`
-仅停止渲染，引用仍滞留列表，直至战斗切换的 `cleanupAllQueue()` 才清理（2026-09 实机堆转储实锤：
+**背景**：BoxUtil 的 `renderEntityMap` 在单场战斗内**只增不删**，实体定时器到期或 `delete()`
+仅停止渲染，引用仍滞留列表，直至战斗切换的 `cleanupAllQueue()` 才清理（2026-09 实机堆转储观测：
 高频 spawn 一场长战斗累积 99.2 万 SpriteEntity / 1 GB）。因此「每次 spawn 新建实体 +
 定时器自删」只允许用于低频事件级特效（每次命中数个）；每帧/每节拍级的高频粒子**必须池化**。
 
-**池化判定准则**：若一组粒子仅有以下属性不同——
+**池化判定准则**：若一组粒子仅有以下属性不同，
 `location` / `scale|size` / `rotate|facing` / `velocity` / `scaleRate` / `turnRate|rotateRate` /
-`color` / `emissive` / `lifetime`——则这些同种 Entity 可共用**同一个 Entity 作为子粒子池**：
+`color` / `emissive` / `lifetime`，则这些同种 Entity 可共用**同一个 Entity 作为子粒子池**：
 上述属性逐实例写在实例数据（Instance2Data）或槽位上，其余属性（贴图/渲染层/混合/材质参数）
-由池 Entity 统一持有。**每个实例与 Entity 的属性是继承的**——实例只覆写上述可逐实例化的属性，
+由池 Entity 统一持有。**实例属性继承 Entity 属性**，实例只覆写上述可逐实例化的属性，
 未覆写的属性继承池 Entity 的当前值。
 
-**本项目落地**：统一走 `cn.kasuminova.astd.renderer.boxutil.pool.PooledCombatVfx`
+**本项目实现**：统一使用 `cn.kasuminova.astd.renderer.boxutil.pool.PooledCombatVfx`
 （astd-render）：
 - `spawnSprite`：sprite 粒子池（每 key 一个常驻 SpriteEntity + 固定容量实例槽，CPU 侧积分
   位置/自转 + 三段包络驱动 alpha；参考实现 TriShardComponent、ASTDXc002Vfx 尘埃粒子）；
 - `spawnTrail` / `checkoutTrail`：TrailEntity 租约池（每 key 初始容量常驻 TrailEntity + 池满
   按需扩容，检出即全量重置节点表/宽度/颜色/fill/纹理流动/变换/定时器）。`spawnTrail` 是双节点
-  一次性段的便捷包装（内部走租约一次性包络检出）；`checkoutTrail` 是通用租约——多节点、逐帧驱动、
-  手动 alpha + 心跳看门狗（对齐逐帧重钉 globalTimer 的保活/停更自收口径；参考实现
+  一次性段的便捷包装（内部走租约一次性包络检出）；`checkoutTrail` 是通用租约，多节点、逐帧驱动、
+  手动 alpha + 心跳看门狗（用于逐帧重置 globalTimer 保活，停止更新时按规则自动归还；参考实现
   BeamCoreComponent 束体 4 件套、GeminiDemPayloadBeamVfx、ConeArcComponent 多节点弧）。
-- 消亡口径三选一：一次性包络（fire-and-forget，到期自动泊车）、看门狗（每帧 touch，
-  停更超 heartbeat 即快照淡出后泊车）、显式 release（可带快照淡出）。泊车 = alpha 归零 +
-  清空节点（BoxUtil 渲染循环直接跳过零节点实体，常驻开销归零）；池实体随战斗切换清簿
-  delete（见下），数量有界（Σ maxCapacity）。
-- **池满口径：按需扩容**（步长 max(8, 当前容量/2)，每次扩容记一条遥测 WARN——初始容量预估
+- 归还方式三选一：一次性包络（fire-and-forget，到期自动归还池中）、看门狗（每帧 touch，
+  停更超 heartbeat 即快照淡出后归还池中）、显式 release（可带快照淡出）。归还池中会将 alpha 归零并
+  清空节点（BoxUtil 渲染循环直接跳过零节点实体，常驻开销归零）；池实体随战斗切换删除并清理注册表
+  （见下），数量有界（Σ maxCapacity）。
+- **池满处理：按需扩容**（步长 max(8, 当前容量/2)，每次扩容记一条遥测 WARN，初始容量预估
   偏低是有价值的信号）。`capacity` 为初始容量（按各生产者典型峰值估算）；`maxCapacity`
-  （默认 8× 初始容量）是硬上限，定位是**租约泄漏探测器**而非容量规划——所有租约都有自动归还
-  路径，触及上限才拒发 + 节流 WARN（不抢占在租槽位，抢占会半路杀死存活视觉），出现即应排查
+  （默认 8× 初始容量）是硬上限，用于检测租约泄漏，不用于容量规划。所有租约都有自动归还
+  路径，触及上限才拒绝检出 + 节流 WARN（不抢占已检出槽位，否则会中断仍在显示的视觉效果），出现即应排查
   租约泄漏或重估峰值。
 - 注意 CPU 侧积分后实例 `velocity`/`turnRate` 必须清零，避免与 BoxUtil 实例自管理双重积分。
-- **例外**：星云类粒子（原版 `addNebulaParticle` 系语义）不走 PooledCombatVfx——Box 内置星云控制器
-  本身就是「单常驻 SpriteEntity + 实例池」结构，统一走 `BoxUtilCombatVfx.addNebulaParticle` 即可。
+- **例外**：星云类粒子（原版 `addNebulaParticle` 系语义）不使用 PooledCombatVfx，Box 内置星云控制器
+  本身就是「单常驻 SpriteEntity + 实例池」结构，统一使用 `BoxUtilCombatVfx.addNebulaParticle` 即可。
 
 ## 跨战斗实体清理（战斗域实体登记簿）
 
 BoxUtil 对 renderEntityMap 的跨战斗清理（`cleanupAllQueue`）在生涯追击/多轮接战路径上不可靠，
 且其清理钩子集是一次性语义（回调后清空）。`BoxUtilCombatVfx` 内置战斗域实体登记簿
-（`CombatEntityRegistry`，astd-render）兜底：
+（`CombatEntityRegistry`，astd-render）提供补充清理机制：
 
-- `addEntity` 注册成功的实体全部入簿；`cleanupCombatOnce`（钩子自我重新登记）与
-  engine 实例切换探测双路径触发 purge（delete 全簿并打 INFO 日志，含 delete 数量）。
-- 常驻实体显式收尸走 `BoxUtilCombatVfx.removeEntity(entity)`（delete + 簿内摘除）；
-  直接 `entity.delete()` 的调用点由注册越阈顺手清理与 purge 兜底，登记簿自身不滞留。
+- `addEntity` 注册成功的实体全部加入登记簿；`cleanupCombatOnce`（钩子自我重新登记）与
+  engine 实例切换探测双路径触发 purge（delete 登记簿中的全部实体并输出 INFO 日志，日志包含 delete 数量）。
+- 常驻实体显式清理使用 `BoxUtilCombatVfx.removeEntity(entity)`（delete 并从登记簿移除）；
+  直接调用 `entity.delete()` 的调用点会在注册数量超过阈值时清理无效记录，purge 会删除登记簿中的
+  剩余实体，登记簿自身不滞留引用。
 - 舰船离场（retreat 等非残骸化移除）时 advanceInCombat 不再被调用，常驻实体需在
-  EveryFrameCombatPlugin 里用 `engine.isEntityInPlay(ship)` 探活收口（先例：GravEmFieldHullMod
+  EveryFrameCombatPlugin 里用 `engine.isEntityInPlay(ship)` 检查舰船是否存活并清理实体（先例：GravEmFieldHullMod
   的 DepartedCleanupWatcher）。
 
 ## 参考资料

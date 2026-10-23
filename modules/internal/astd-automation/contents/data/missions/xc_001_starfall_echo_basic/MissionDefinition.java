@@ -8,9 +8,6 @@ import com.fs.starfarer.api.mission.FleetSide;
 import com.fs.starfarer.api.mission.MissionDefinitionAPI;
 import com.fs.starfarer.api.mission.MissionDefinitionPlugin;
 
-/**
- * Dev-only mission surface for 坠星残响 in-game VFX automation.
- */
 public final class MissionDefinition implements MissionDefinitionPlugin {
     @Override
     public void defineMission(final MissionDefinitionAPI api) {

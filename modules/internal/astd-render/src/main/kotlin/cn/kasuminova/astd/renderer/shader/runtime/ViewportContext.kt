@@ -2,9 +2,6 @@ package cn.kasuminova.astd.renderer.shader.runtime
 
 import org.lwjgl.util.vector.Vector2f
 
-/**
- * Render-time viewport data available for shader host uniforms.
- */
 data class ViewportContext(
     val center: Vector2f,
     val visibleWidth: Float,

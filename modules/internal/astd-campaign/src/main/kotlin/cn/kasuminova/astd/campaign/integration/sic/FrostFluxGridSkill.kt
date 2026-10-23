@@ -12,20 +12,6 @@ import com.fs.starfarer.api.util.Misc
 import second_in_command.SCData
 import second_in_command.specs.SCBaseSkillPlugin
 
-/**
- * 六相冰辐能网络（astd_sc_frost_flux_grid）——影响舰队中所有舰船
- * （docs/design/skills/10-sic-skills.md 阶段二；数值声明见 [SicTuning]）。
- *
- * 机制落点：
- * - applyEffectsBeforeShipCreation（stats 每次刷新重建，无需 unapply）：
- *   辐能耗散 `fluxDissipation.modifyPercent`；强制排辐 `ventRateMult.modifyPercent`；
- *   过载时间 `overloadTimeMod.modifyMult(1 - x)`；受 EMP 伤害 `empDamageTakenMult.modifyMult(1 - x)`。
- * - 硬辐能耗散（随辐能水平斜坡）：advanceInCombat 逐帧——硬辐能占比经
- *   [SicTuning.hardFluxFraction]（防 0 除）与 [SicTuning.hardFluxRampT]（30% 起、85% 满载）
- *   求斜坡进度，先 `hardFluxDissipationFraction.unmodifyMult(spec.id)` 再 t > 0 时
- *   `modifyMult(spec.id, 1 + bonus)`（逐帧 unmodify/modify 为 SIC SafeRecovery 既有范式，
- *   防止 stat 修改跨帧残留）。
- */
 class FrostFluxGridSkill : SCBaseSkillPlugin() {
 
     override fun getAffectsString(): String =

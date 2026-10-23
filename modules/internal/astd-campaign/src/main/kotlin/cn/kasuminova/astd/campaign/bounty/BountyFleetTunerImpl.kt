@@ -54,13 +54,10 @@ class BountyFleetTunerImpl(
         reorderFleet(fleet)
         assignCrew(fleet, bountyKey)
         installExtraFittings(fleet)
-        // SIC 联动（软依赖门控在 SicIntegration 内部）：固定挂载菀星智能副官。
-        // 放在 assignCrew 完成后：副官技能入场回调依赖最终军官/装配状态。
         SicIntegration.attachBountyOfficerIfEnabled(fleet)
 
         fleet.fleetData.setSyncNeeded()
         fleet.fleetData.syncIfNeeded()
-        // 全部步骤成功后再落标记，中途异常可由下轮扫描重试补齐。
         memory.set(TUNED_MEMKEY, true)
         log.info("[ASTD] 赏金舰队 ${fleet.name} 后处理完成，最终规模 ${fleet.fleetData.membersListCopy.size} 艘 / ${fleet.fleetPoints} FP")
     }
@@ -76,10 +73,6 @@ class BountyFleetTunerImpl(
         }
     }
 
-    /**
-     * 随机混编补齐：ASTD 与余晖 1:1 交替，舰级按舰队当前 ASTD 成员（preset 编成主体）
-     * 的计数分布加权抽取，使补齐跟随该赏金 preset 的构成比例。
-     */
     private fun fillToMaxFleetSize(fleet: CampaignFleetAPI, config: BountyPoolConfig) {
         val cap = maxFleetSizeSetting()
         var addedAstd = 0
@@ -111,7 +104,6 @@ class BountyFleetTunerImpl(
         if (pool.isEmpty()) return false
 
         if (config.destroyerBestOf > 1 && size == ShipAPI.HullSize.DESTROYER) {
-            // best-of-K：实例化 K 个候选，保留部署点最高者，移除其余
             val candidates = mutableListOf<FleetMemberAPI>()
             repeat(config.destroyerBestOf) {
                 createMemberIntoFleet(fleet, pool[random.nextInt(pool.size)])?.let(candidates::add)
@@ -133,7 +125,6 @@ class BountyFleetTunerImpl(
         if (pool.isEmpty()) return false
 
         if (config.destroyerBestOf > 1 && size == ShipAPI.HullSize.DESTROYER) {
-            // best-of-K：实例化 K 个候选，保留部署点最高者，移除其余（与 ASTD 侧同语义）
             val candidates = mutableListOf<FleetMemberAPI>()
             repeat(config.destroyerBestOf) {
                 createMemberIntoFleet(fleet, pool[random.nextInt(pool.size)])?.let(candidates::add)
@@ -149,7 +140,6 @@ class BountyFleetTunerImpl(
         return true
     }
 
-    /** 余晖 doctrine 发现结果（首次混编时构建一次）。 */
     private val discoveredRemnantPools: Map<ShipAPI.HullSize, List<String>> by lazy { discoverRemnantPools() }
 
     private fun remnantPoolFor(size: ShipAPI.HullSize): List<String> {
@@ -160,11 +150,6 @@ class BountyFleetTunerImpl(
         return resolveRemnantPool(discoveredRemnantPools, size)
     }
 
-    /**
-     * 余晖混编池动态发现：以 remnant 势力 doctrine 已知舰体（knownShips）为真相来源，
-     * 逐舰体解析可用 stock variant（goal variant 优先，过滤 restricted/no_sim tag 与空装配），
-     * 按舰级分组建池。其他模组挂进余晖 doctrine 的舰体由此自然入池。
-     */
     private fun discoverRemnantPools(): Map<ShipAPI.HullSize, List<String>> {
         val settings = Global.getSettings()
         val faction = Global.getSector().getFaction(Factions.REMNANTS)
@@ -173,7 +158,6 @@ class BountyFleetTunerImpl(
             return emptyMap()
         }
 
-        // 全量 stock variant 按舰体归组（一次性索引，避免逐舰体扫描 variant 表）
         val stockByHull = mutableMapOf<String, MutableList<ShipVariantAPI>>()
         for (variantId in settings.allVariantIds) {
             val variant = settings.getVariant(variantId)
@@ -203,7 +187,6 @@ class BountyFleetTunerImpl(
             val candidates = stockByHull[hullId].orEmpty()
                 .filterNot { it.hasTag("restricted") || it.hasTag("no_sim") }
                 .filter { variant ->
-                    // 模组带入的异常变体不静默：空装配记日志并跳过
                     val emptyFit = variant.fittedWeaponSlots.isEmpty() && variant.wings.isEmpty()
                     if (emptyFit) {
                         log.warn("[ASTD] 余晖 doctrine 变体为空装配，跳过：${variant.hullVariantId}")
@@ -219,7 +202,6 @@ class BountyFleetTunerImpl(
         return pools
     }
 
-    /** 按显式变体池实例化成员入队（stock variant 为共享实例，克隆防污染），CR 拉满与赏金舰队初始状态对齐。 */
     private fun createMemberIntoFleet(fleet: CampaignFleetAPI, variantId: String): FleetMemberAPI? {
         val variant = Global.getSettings().getVariant(variantId)
         if (variant == null) {
@@ -227,8 +209,6 @@ class BountyFleetTunerImpl(
             return null
         }
         val cloned = variant.clone()
-        // refreshVariants 只覆盖当时在场成员，补齐阶段新增成员在此打标：
-        // 任何后续重新充气路径（读档重建 inflater、第三方显式调用）都不能把这批成员空池重洗
         cloned.addTag(Tags.TAG_NO_AUTOFIT)
         val member = Global.getFactory().createFleetMember(FleetMemberType.SHIP, cloned)
         fleet.fleetData.addFleetMember(member)
@@ -236,7 +216,6 @@ class BountyFleetTunerImpl(
         return member
     }
 
-    /** ASTD 占比兜底：低于一半时移除一艘非旗舰余晖并补抽一艘 ASTD，直至达标。 */
     private fun enforceHalfAstd(fleet: CampaignFleetAPI, config: BountyPoolConfig) {
         var guard = MAX_PICK_ATTEMPTS
         while (guard-- > 0) {
@@ -251,7 +230,6 @@ class BountyFleetTunerImpl(
         }
     }
 
-    /** 舰队成员重排：旗舰永远首位，其余按舰级降序（主力→巡洋→驱逐→护卫），同舰级内 ASTD 在前余晖在后。 */
     private fun reorderFleet(fleet: CampaignFleetAPI) {
         val members = fleet.fleetData.membersListCopy
         val ships = members.filter { !it.isFighterWing }
@@ -265,21 +243,10 @@ class BountyFleetTunerImpl(
         fleet.fleetData.sortToMatchOrder(sorted + members.filter { it.isFighterWing })
     }
 
-    /**
-     * 军官分配：ASTD 成员（含旗舰）全部换装核心军官。
-     * 四个唯一舰赏金走 StandardCores.planFleetCores 难度档（旗舰 astd O 档）；
-     * rogue 系旗舰固定原版 Alpha 核心，僚舰走核心池（原版/astd/SMS 加权，软联动过滤）。
-     * 军官统一经原版插件分发链创建，等级按核心档覆盖；技能以变体技能表为准
-     * （技能位不足时按全局优先级取舍），未登记变体退回全局优先级表取前 N。
-     * 装舰核心表写入 sector memory 供赏金成功后的核心打捞发放读取。
-     * 余晖成员维持原版核心军官（正常路径在入队时已分配，此处兜底补漏）。
-     */
     private fun assignCrew(fleet: CampaignFleetAPI, bountyKey: String?) {
         val astdMembers = fleet.fleetData.membersListCopy
             .filter { !it.isFighterWing && it.hullId.startsWith(ASTD_HULL_PREFIX) }
-        // 装配语料统一为载人模式后，赏金舰队的无人形态改由代码显式激活：
-        // 分配 AI 核心军官前把 ASTD 成员翻转到无人模式（同步原版 automated 船插），
-        // 否则核心舰长挂在载人舰上，与原版「AI 核心仅可指挥全自动舰船」的口径相悖
+        // 原版限制 AI 核心只能指挥全自动舰船，分配核心军官前必须先把 ASTD 成员翻转到无人模式
         for (member in astdMembers) {
             val config = ASTDDualModeRegistry.configForVariant(member.variant) ?: continue
             member.variant.activateDualMode(config, config.automatedModeId, null)
@@ -303,7 +270,6 @@ class BountyFleetTunerImpl(
                     val officer = createCoreOfficer(coreId, member)
                     if (officer != null) member.captain = officer
                 }
-                // 装舰表供 BountyCoreLootScript 在赏金成功后滚动打捞；舰队实体消亡后仍可读取。
                 Global.getSector().memoryWithoutUpdate.set(CORES_MEMKEY_PREFIX + bountyKey, ArrayList(plan))
             }
         }
@@ -316,7 +282,6 @@ class BountyFleetTunerImpl(
         }
     }
 
-    /** rogue 僚舰核心池软联动过滤：未安装的模组核心（SMS）条目自然消失。 */
     private fun availableRogueCorePool(): List<Pair<String, Float>> {
         val pool = BountyPoolConfig.ROGUE_ESCORT_CORE_POOL.filter { (id, _) ->
             Global.getSettings().getCommoditySpec(id) != null
@@ -327,7 +292,6 @@ class BountyFleetTunerImpl(
         return pool
     }
 
-    /** 核心军官工厂：原版插件分发链创建（原版/astd/SMS 核心各自插件），登记档核心按档覆盖等级并套用变体技能表取舍，模组核心做技能适配（planModuleCoreSkills）。 */
     private fun createCoreOfficer(coreId: String, member: FleetMemberAPI): PersonAPI? {
         val plugin = Misc.getAICoreOfficerPlugin(coreId)
         if (plugin == null) {
@@ -346,8 +310,6 @@ class BountyFleetTunerImpl(
             person.stats.level = level
             applyOfficerSkills(person, member.variant.hullVariantId)
         } else {
-            // 模组核心（SMS 拟核等）：等级沿用插件默认；技能适配——保留模组特殊技能（sms_ 前缀），
-            // 其余原版技能移除并按变体技能表等量替换（数量与插件原始组成一致，不额外扩位）
             val original = person.stats.skillsCopy.filter { it.level > 0f }.map { it.skill.id }
             val planned = planModuleCoreSkills(original, BountyOfficerSkills.forVariant(member.variant.hullVariantId))
             person.stats.skillsCopy.forEach { person.stats.setSkillLevel(it.skill.id, 0f) }
@@ -362,11 +324,6 @@ class BountyFleetTunerImpl(
         return person
     }
 
-    /**
-     * 赏金舰队 AI 核心军官技能应用：清空插件默认技能后按 [resolveCoreOfficerSkills] 的
-     * 取舍结果全 2 级套用——命中变体技能表以表为准（N 不足时按全局优先级截取），
-     * 未命中变体（余晖等）退回全局优先级表顺序取前 N；ASTD 制式核心额外追加固有技能。
-     */
     private fun applyOfficerSkills(person: PersonAPI, variantId: String?) {
         val skills = resolveCoreOfficerSkills(
             BountyOfficerSkills.forVariant(variantId),
@@ -377,7 +334,6 @@ class BountyFleetTunerImpl(
         skills.forEach { person.stats.setSkillLevel(it, 2f) }
     }
 
-    /** 余晖 AI 核心军官：核心按 gamma 50 / beta 35 / alpha 15 加权，对应等级 3/5/7（对齐原版 AICoreOfficerPluginImpl），性格统一 reckless（原版核心军官同款）。 */
     private fun createAiCoreCaptain(size: ShipAPI.HullSize, variantId: String?): PersonAPI {
         val corePicker = WeightedRandomPicker<String>(random)
         AI_CORE_WEIGHTS.forEach { (core, weight) -> corePicker.add(core, weight) }
@@ -402,18 +358,7 @@ class BountyFleetTunerImpl(
         return officer
     }
 
-    /**
-     * 变体修复与防护（全舰队最先执行）。
-     * 赏金舰队的 inflater 复制自增援舰队，其势力 knownWeapons/knownFighters 为空：
-     * 创建时充气（DefaultFleetInflater 空池 doFit + DModManager.setDHull）会把全舰武器/舰载机
-     * 重洗为空壳并附加 D 插，且充气早于本后处理（情报面板在暂停期创建舰队，扫描未及运行），
-     * 原「克隆现状 + no_autofit」只能防二次损伤、无法修复已发生的重洗。
-     * 此处统一以 stock 变体（originalVariant 优先、退化 hullVariantId）重新克隆装配，修复充气损伤，
-     * 打 no_autofit 并摘除舰队 inflater，阻断后续 inflate/deflate 周期的二次损伤。
-     * 现状变体的运行时 tag 全量随克隆保留：MagicLib 会为全体成员打
-     * [Tags.VARIANT_ALWAYS_RETAIN_SMODS_ON_SALVAGE]（缺此 tag 打捞结算时原版清空全部 SMod）、
-     * 为旗舰打 [Tags.VARIANT_ALWAYS_RECOVERABLE]，stock 克隆均不含这些运行时 tag。
-     */
+    /** 赏金舰队的 inflater 势力 knownWeapons/knownFighters 为空，充气会把全舰重洗成空壳：以 stock 变体重新克隆修复并摘除 inflater；现状 tag 全量随克隆保留（MagicLib 的 SMod 打捞保留与旗舰可恢复标记只打在运行时变体上，stock 克隆不含）。 */
     private fun refreshVariants(fleet: CampaignFleetAPI) {
         for (member in fleet.fleetData.membersListCopy) {
             val current = member.variant
@@ -425,20 +370,13 @@ class BountyFleetTunerImpl(
             val cloned = (stock ?: current).clone()
             current.tags.forEach { cloned.addTag(it) }
             cloned.addTag(Tags.TAG_NO_AUTOFIT)
-            // stock 文件自带 originalVariant 时避免二次刷新误回溯
             cloned.setOriginalVariant(null)
             member.setVariant(cloned, false, false)
         }
-        // 全部成员已装配合格且带 no_autofit，inflater 只会制造空池重洗与 D 插，直接摘除
         fleet.setInflater(null)
     }
 
-    /**
-     * 额外装配：每艘非民用舰船成员依次处理 SHU 软联动加权安装、SMod 内插（统一优先级）、
-     * 余 OP 普通船插填充（不足时按舰级预算拆辐能寄存器/耗散通道回收 OP）。
-     * SHU 先于 SMod：避免 SMod 内插的强化护盾被等离子充能护盾拆掉而名额不回填。
-     * 战斗机联队显式跳过：SHU/SMod/填充均为舰船船插件，不适用于联队变体。
-     */
+    /** SHU 必须先于 SMod 安装：SMod 装上的护盾系船插会被等离子充能护盾的互斥拆除，名额不回填。 */
     private fun installExtraFittings(fleet: CampaignFleetAPI) {
         val neutralStats = Global.getFactory().createPerson().stats
         val shuAvailable = fitRules.shuHullmodIds().any { Global.getSettings().getHullModSpec(it) != null }
@@ -449,7 +387,6 @@ class BountyFleetTunerImpl(
         for (member in fleet.fleetData.membersListCopy) {
             if (member.isCivilian || member.isFighterWing) continue
             val hull = member.hullSpec
-            // refreshVariants 已完成克隆与 no_autofit，可直接内插
             val variant = member.variant
             val phase = hull.isPhase
             val hasShield = hull.shieldType != ShieldAPI.ShieldType.NONE
@@ -465,11 +402,7 @@ class BountyFleetTunerImpl(
         }
     }
 
-    /**
-     * SMod 统一优先级内插：不适用及与已装 SHU 冲突的条目跳过取下一个，直到 SMod 上限或候选耗尽。
-     * 不设 OP 门槛：0.98 起 permaMod（含 sMod）不计 OP 成本
-     * （HullVariantSpec.computeHullModOPCost 跳过 permaMods），addPermaMod(id, true) 装的 SMod 免费。
-     */
+    /** 0.98 起 permaMod（含 SMod）不计 OP 成本（HullVariantSpec.computeHullModOPCost 跳过 permaMods），addPermaMod(id, true) 安装的 SMod 免费。 */
     private fun installPrioritySmods(
         variant: ShipVariantAPI,
         member: FleetMemberAPI,
@@ -480,12 +413,8 @@ class BountyFleetTunerImpl(
         installedShu: String?,
     ) {
         val hull = member.hullSpec
-        // 本模组控制方船插（内置）禁装的候选过滤：与 IncompatibleHullmodStripper 同一真相来源，
-        // 避免装上即被剥离而浪费 SMod 名额（实机案例：xc_103 目标定位系统、xc_101 强化护盾）
         val bannedByController = HullmodIncompatibility.forbiddenCandidates(hull.builtInMods + variant.hullMods)
-        // 名额口径对齐原版装配 UI：Misc.getCurrSpecialMods 只计 永久+增强（perma∩sMod）的
-        // 非内建/非隐藏/非 D 插船插，每个增强内置只计一次。sMod ⊆ permaMod，
-        // 此前 max - sMods.size - permaMods.size 双重扣减使名额恒 ≤0，永不内插
+        // 名额与原版装配 UI 一致：Misc.getCurrSpecialMods 只计 perma∩sMod 的非内建/非隐藏/非 D 插船插
         val initial = Misc.getMaxPermanentMods(member, neutralStats) - Misc.getCurrSpecialMods(variant)
         if (initial <= 0) {
             log.warn(
@@ -511,12 +440,6 @@ class BountyFleetTunerImpl(
         }
     }
 
-    /**
-     * SHU 软联动加权安装：每舰至多一件特殊升级（SHU 脚本自身互斥口径），返回安装的船插 id。
-     * 权重全 0 或无适用项时不安装；SHU 走 addMod 普通装配（计 OP），候选 OP 装不下记日志跳过（与填充同一 OP 口径）。
-     * 非等离子候选按存在互斥件则跳过；等离子充能护盾发生器选中后先拆除其互斥护盾系船插
-     * （sMods/permaMods/hullMods 三路），OP 随移除自然回收并在后续阶段再利用。
-     */
     private fun installShuHullmod(
         variant: ShipVariantAPI,
         hull: ShipHullSpecAPI,
@@ -548,18 +471,12 @@ class BountyFleetTunerImpl(
         return pick
     }
 
-    /** SHU 候选适用性等效判定：等离子充能护盾须有护盾（互斥件安装时拆除）；其余候选存在互斥件则跳过。 */
     private fun isShuApplicable(hullmodId: String, variant: ShipVariantAPI, hull: ShipHullSpecAPI): Boolean =
         when (hullmodId) {
             BountyFitRules.SHU_PLASMA_DYNAMO -> hull.shieldType != ShieldAPI.ShieldType.NONE
             else -> fitRules.shuConflicts(hullmodId).none { variant.hullMods.contains(it) }
         }
 
-    /**
-     * 余 OP 普通船插填充：按统一优先级能装就装、装不下取下一个；OP 不足时先按
-     * 舰级预算拆辐能寄存器/耗散通道回收。已装 SHU 船插的互斥件与本模组控制方船插
-     * 禁装件（IncompatibleHullmodStripper 同一真相来源）跳过，避免冲突与装上即剥离。
-     */
     private fun fillExtraMods(variant: ShipVariantAPI, hull: ShipHullSpecAPI, neutralStats: MutableCharacterStatsAPI) {
         val installedShu = variant.hullMods.firstOrNull { it.startsWith(BountyFitRules.SHU_ID_PREFIX) }
         val shuConflicts = fitRules.shuConflicts(installedShu)
@@ -584,12 +501,7 @@ class BountyFleetTunerImpl(
         }
     }
 
-    /**
-     * 拆辐能寄存器/耗散通道回收 OP：先探测实测单点回收量并还原，
-     * 实际拆除统一由 BountyFitRules.planOpReclaim 按缺口 [neededOp] 与预算规划（回收总量不超预算）。
-     * 前提：寄存器与耗散通道单点 OP 同价（原版口径一致）；若未来版本两侧定价漂移，
-     * 探测只测了被拆侧单价，另一侧按同价估算会产生偏差。返回实际回收 OP。
-     */
+    /** 先探测实测单点回收量并还原，实际拆除由 BountyFitRules.planOpReclaim 规划；前提是寄存器与耗散通道单点 OP 同价（原版一致），定价漂移时另一侧按同价估算会偏差。 */
     private fun reclaimOp(
         variant: ShipVariantAPI,
         neutralStats: MutableCharacterStatsAPI,
@@ -604,7 +516,6 @@ class BountyFleetTunerImpl(
         val before = variant.getUnusedOP(neutralStats)
         if (probeCap) variant.numFluxCapacitors = caps - 1 else variant.numFluxVents = vents - 1
         val opPerUnit = variant.getUnusedOP(neutralStats) - before
-        // 探测拆除一律还原，实际拆除由 planOpReclaim 统一规划
         if (probeCap) variant.numFluxCapacitors = caps else variant.numFluxVents = vents
         if (opPerUnit <= 0) {
             log.warn("[ASTD] OP 回收探测异常：拆除辐能改装后可用 OP 未增加（差值 $opPerUnit），放弃本次回收")
@@ -623,42 +534,29 @@ class BountyFleetTunerImpl(
         const val ASTD_FACTION_ID: String = "asteria_directorate"
         const val ASTD_HULL_PREFIX: String = "astd_"
 
-        /** 单次后处理中随机抽取的最大尝试次数（排除舰重抽与规模补齐共用，防止抽取失败死循环）。 */
         const val MAX_PICK_ATTEMPTS: Int = 200
 
-        /** 装舰核心表的 sector memory 键前缀（完整键 = 前缀 + bountyKey），供 BountyCoreLootScript 读取。 */
         const val CORES_MEMKEY_PREFIX: String = "\$astd_bounty_cores_"
 
         const val UNIQUE_HULL_TAG: String = "astd_unique"
 
-        /**
-         * 成员的 stock 变体 id 解析：充气重洗后的 REFIT 变体 id 是 fleet 派生临时 id，
-         * 真实 stock id 在 originalVariant；未重洗变体 originalVariant 为空，直接用 hullVariantId。
-         */
         fun stockVariantIdOf(originalVariant: String?, hullVariantId: String): String =
             originalVariant ?: hullVariantId
 
-        /** 发布范围外舰体的显式排除清单（与 astd_unique tag 并用的双保险：tag 漏标时仍然生效）。 */
         val EXCLUDED_HULL_IDS: Set<String> = setOf("astd_xc_104")
 
-        /** 余晖 doctrine 发现时跳过的舰体 hint：空间站与其模块不入作战混编池。 */
         val EXCLUDED_DOCTRINE_HULL_HINTS: Set<ShipHullSpecAPI.ShipTypeHints> = setOf(
             ShipHullSpecAPI.ShipTypeHints.STATION,
             ShipHullSpecAPI.ShipTypeHints.SHIP_WITH_MODULES,
             ShipHullSpecAPI.ShipTypeHints.MODULE,
         )
 
-        /**
-         * 余晖混编池解析：发现结果在该舰级非空时以 doctrine 为准，
-         * 否则退回 BountyPoolConfig.REMNANT_POOLS 硬编码兜底清单。
-         * 纯函数（单测直调）；兜底分支的 warn 由调用点负责。
-         */
         fun resolveRemnantPool(
             discovered: Map<ShipAPI.HullSize, List<String>>,
             size: ShipAPI.HullSize,
         ): List<String> = discovered[size].orEmpty().ifEmpty { BountyPoolConfig.REMNANT_POOLS[size].orEmpty() }
 
-        /** 余晖 AI 核心加权与对应军官等级（对齐原版 AICoreOfficerPluginImpl：gamma 3 / beta 5 / alpha 7）。 */
+        /** 权重、等级与头像对齐原版 AICoreOfficerPluginImpl。 */
         val AI_CORE_WEIGHTS: List<Pair<String, Float>> = listOf(
             "gamma_core" to 50f,
             "beta_core" to 35f,
@@ -670,21 +568,12 @@ class BountyFleetTunerImpl(
             "alpha_core" to 7,
         )
 
-        /** 核心对应原版头像（对齐原版 AICoreOfficerPluginImpl 的 portrait 映射）。 */
         val AI_CORE_PORTRAITS: Map<String, String> = mapOf(
             "gamma_core" to "graphics/portraits/portrait_ai1b.png",
             "beta_core" to "graphics/portraits/portrait_ai3b.png",
             "alpha_core" to "graphics/portraits/portrait_ai2b.png",
         )
 
-        /**
-         * 赏金舰队 AI 核心军官技能全局优先级（高 → 低）：
-         * 操舵技术 > 相场调制 > 系统专长 > 导弹特化 > 极化装甲 > 损伤管制 > 冲击缓解 >
-         * 火控植入 > 能量精通 > 军械专长 > 目标解析 > 实弹精通 > 战斗耐力。
-         * 角色：变体技能表技能位不足时的取舍顺序，以及未登记变体军官的 fallback 组成。
-         * 固有技能 astd_combat_intel 不在本表：仅 ASTD 制式核心持有，
-         * 由 [resolveCoreOfficerSkills] 按 aiCoreId 单独追加。
-         */
         val BOUNTY_OFFICER_SKILL_PRIORITY: List<String> = listOf(
             "helmsmanship",
             "field_modulation",
@@ -701,21 +590,9 @@ class BountyFleetTunerImpl(
             "combat_endurance",
         )
 
-        /**
-         * 按军官等级从全局优先级表顺序取前 N 个技能（超出表长按表长截断）。
-         * 技能位 = 军官等级：StandardCores 档位等级即技能位数的裁定
-         * （原版 AICoreOfficerPluginImpl 的 gamma 3 / beta 5 / alpha 7 即按等级配等数技能，astd G/B/A/O 同口径对齐）。
-         */
         fun bountyOfficerSkills(level: Int): List<String> =
             BOUNTY_OFFICER_SKILL_PRIORITY.take(level.coerceIn(0, BOUNTY_OFFICER_SKILL_PRIORITY.size))
 
-        /**
-         * 军官技能组成解析：变体技能表为真相来源，全局优先级表提供取舍顺序。
-         * 技能位 N = 军官等级（口径依据见 [bountyOfficerSkills]）。
-         * 命中变体表：N 不小于表长则装满全表；N 不足时表内技能按全局优先级排序
-         * （不在优先级表中的技能排在后面、保持原相对顺序），取前 N 个。
-         * 未命中（null）：退回全局优先级表顺序取前 N。
-         */
         fun resolveOfficerSkills(tableSkills: List<String>?, level: Int): List<String> {
             if (tableSkills == null) return bountyOfficerSkills(level)
             if (level >= tableSkills.size) return tableSkills
@@ -726,30 +603,13 @@ class BountyFleetTunerImpl(
                 .take(level.coerceAtLeast(0))
         }
 
-        /**
-         * 核心军官最终技能组成（纯函数，单测直调）：变体技能表取舍结果之上，
-         * ASTD 制式核心（astdCore = true）以 1 个技能位换固有技能 astd_combat_intel
-         * （技能数 = min(等级 - 1, 表长) + 1；表长足够时与 StandardCores.createPerson 的
-         * 「技能数 = 等级」出厂口径一致，表长不足时按既有截断口径不越出等级）。
-         * 固有技能固定返回列表首位，与 skill_data.csv 中 order = 5（先于全部原版技能）
-         * 的「固有技能排最左」口径一致；非 ASTD 核心（原版/余晖/SMS 等）不追加，
-         * 保持设计稿「本模组 AI 核心」范围。
-         */
         fun resolveCoreOfficerSkills(tableSkills: List<String>?, level: Int, astdCore: Boolean): List<String> {
             val picks = resolveOfficerSkills(tableSkills, if (astdCore) level - 1 else level)
             return if (astdCore) listOf(StandardCores.COMBAT_INTEL_SKILL_ID) + picks else picks
         }
 
-        /** SMS 拟核特殊技能 id 前缀（软联动识别口径：保留模组特殊技能，其余原版技能等量替换）。 */
         const val SMS_SPECIAL_SKILL_PREFIX: String = "sms_"
 
-        /**
-         * 模组核心（SMS 拟核等）技能适配方案，纯函数（单测直调）：
-         * 保留模组特殊技能（[SMS_SPECIAL_SKILL_PREFIX] 前缀，SMS 模组为核心添加的标志性技能，
-         * 如 sms_shared_knowledge / sms_warped_knowledge / sms_dimensional_tether），
-         * 其余原版技能按变体技能表等量替换（技能位 = 原技能数 - 特殊技能数，不额外扩位）；
-         * 变体表技能数不足或变体未登记时由全局优先级表补齐。返回最终技能表（特殊技能在前）。
-         */
         fun planModuleCoreSkills(originalSkillIds: List<String>, tableSkills: List<String>?): List<String> {
             val special = originalSkillIds.filter { it.startsWith(SMS_SPECIAL_SKILL_PREFIX) }
             val slots = originalSkillIds.size - special.size
@@ -764,7 +624,6 @@ class BountyFleetTunerImpl(
             return special + picked
         }
 
-        /** 具备导弹搭载能力的武器槽类型（扩展弹舱适用性等效判定）。 */
         val MISSILE_CAPABLE_SLOT_TYPES: Set<WeaponAPI.WeaponType> = setOf(
             WeaponAPI.WeaponType.MISSILE,
             WeaponAPI.WeaponType.HYBRID,
@@ -773,15 +632,9 @@ class BountyFleetTunerImpl(
             WeaponAPI.WeaponType.SYNERGY,
         )
 
-        /**
-         * 护航排除判定，对所有注入路径（MagicLib 生成清退、随机补抽、纠偏补抽）统一生效：
-         * 全部独特舰（astd_unique tag 标于 ship_data.csv，含当期唯一舰旗舰同型舰）
-         * 以及显式清单内的发布范围外舰体（逐电 xc_104）不得出现在赏金舰队护航位。
-         */
         fun isEscortExcludedHull(hullId: String, astdUnique: Boolean): Boolean =
             astdUnique || hullId in EXCLUDED_HULL_IDS
 
-        /** 原版 settings.json 的 AI 舰队最大舰船数（0.98 无 FP 口径的舰队上限配置）。 */
         fun maxFleetSizeSetting(): Int {
             val aiCap = Global.getSettings().getInt("maxShipsInAIFleet")
             return if (aiCap > 0) aiCap else Global.getSettings().getInt("maxShipsInFleet")
@@ -794,7 +647,6 @@ class BountyFleetTunerImpl(
             else -> spec.frigateCost
         }
 
-        /** 舰级排序档位（主力 0 → 护卫 3，升序即舰级降序）。 */
         fun sizeRank(size: ShipAPI.HullSize): Int = when (size) {
             ShipAPI.HullSize.CAPITAL_SHIP -> 0
             ShipAPI.HullSize.CRUISER -> 1
@@ -802,11 +654,6 @@ class BountyFleetTunerImpl(
             else -> 3
         }
 
-        /**
-         * 唯一舰赏金装舰核心表（索引 0 = 旗舰），在 StandardCores.planFleetCores 基础上做
-         * 旗舰 O 档特判：仅唯一舰赏金（BountyPoolConfig.UNIQUE_FLAGSHIP_BOUNTIES）的旗舰
-         * 允许 astd O 档。rogue 系赏金不走此路径（见 planRogueCores）。
-         */
         fun planBountyCores(bountyKey: String?, shipCount: Int, seed: Long): List<String> {
             val plan = StandardCores.planFleetCores(shipCount, BountyPoolConfig.threatTierOf(bountyKey), seed)
                 .toMutableList()
@@ -819,10 +666,6 @@ class BountyFleetTunerImpl(
             return plan
         }
 
-        /**
-         * rogue 系赏金装舰核心表（索引 0 = 旗舰，固定原版 Alpha 核心）；
-         * 僚舰从软过滤后的核心池加权抽取。池为空（数据异常）返回空表，由调用方记日志跳过。
-         */
         fun planRogueCores(shipCount: Int, pool: List<Pair<String, Float>>, random: Random): List<String> {
             if (shipCount <= 0 || pool.isEmpty()) return emptyList()
             val picker = WeightedRandomPicker<String>(random)

@@ -7,17 +7,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-/**
- * 先进电子对抗网络数值规格：
- * - 演算核心：自身 + 友军分档贡献求和（[AdvancedEcmNetworkTuning.totalOwnEcm]）、
- *   敌方每舰贡献上限的舰级映射与 clamp 修正量（[AdvancedEcmNetworkTuning.enemyCapFor] /
- *   [AdvancedEcmNetworkTuning.clampDelta]）；
- * - 战术反制（合并原引力电子干扰力场）：指挥官增幅加计（[AdvancedEcmNetworkTuning.commanderBoost]）、
- *   原版电子战实际效果复算（[AdvancedEcmNetworkTuning.penaltyDealt]，含上限截断、双方对抗折扣
- *   与原版取整口径）、减益幅度换算（[AdvancedEcmNetworkTuning.debuffMagnitude]）、
- *   跨战斗残留识别（[AdvancedEcmNetworkTuning.fieldModSources]，含旧力场前缀）；
- * - 难度解析链路（经 [DifficultyTuningImpl.installScaleForTests] 走完整映射）。
- */
 class AdvancedEcmNetworkTuningTest {
 
     @AfterTest
@@ -25,7 +14,6 @@ class AdvancedEcmNetworkTuningTest {
         DifficultyTuningImpl.installScaleForTests(null)
     }
 
-    /** 合成一组互不相同的分档值，验证求和/加计的组合逻辑而非具体数值。 */
     private fun syntheticValues() = AdvancedEcmNetworkTuning.Values(
         selfEcm = 10f,
         allyEcmFrigate = 1f,
@@ -40,7 +28,6 @@ class AdvancedEcmNetworkTuningTest {
     @Test
     fun `友军分档贡献求和 自身加各档数量乘档值`() {
         val values = syntheticValues()
-        // 2 护卫 + 1 驱逐 + 3 巡洋 + 1 主力：10 + 2×1 + 1×2 + 3×3 + 1×4 = 27
         assertEquals(
             27f,
             AdvancedEcmNetworkTuning.totalOwnEcm(values, frigates = 2, destroyers = 1, cruisers = 3, capitals = 1),
@@ -70,7 +57,6 @@ class AdvancedEcmNetworkTuningTest {
 
     @Test
     fun `敌方贡献上限舰级映射 未知档与护卫舰同档 档位随舰级递增`() {
-        // 映射等价：非标准档位（DEFAULT / null / 战机）回落到护卫舰档
         assertEquals(
             AdvancedEcmNetworkTuning.enemyCapFor(ShipAPI.HullSize.FRIGATE),
             AdvancedEcmNetworkTuning.enemyCapFor(ShipAPI.HullSize.DEFAULT),
@@ -83,7 +69,6 @@ class AdvancedEcmNetworkTuningTest {
             AdvancedEcmNetworkTuning.enemyCapFor(ShipAPI.HullSize.FRIGATE),
             AdvancedEcmNetworkTuning.enemyCapFor(ShipAPI.HullSize.FIGHTER),
         )
-        // 设计性质：上限随舰级严格递增
         assertTrue(
             AdvancedEcmNetworkTuning.enemyCapFor(ShipAPI.HullSize.FRIGATE) <
                 AdvancedEcmNetworkTuning.enemyCapFor(ShipAPI.HullSize.DESTROYER),
@@ -101,11 +86,9 @@ class AdvancedEcmNetworkTuningTest {
     @Test
     fun `clamp 修正量 超上限截到上限 未超不写入`() {
         val cap = 8f
-        // 超限：修正量恰好把当前值拉回上限
         val current = 20f
         val delta = AdvancedEcmNetworkTuning.clampDelta(current, cap)
         assertEquals(cap, current + delta, 1e-6f)
-        // 等于/低于上限：不写入
         assertEquals(0f, AdvancedEcmNetworkTuning.clampDelta(cap, cap), 1e-6f)
         assertEquals(0f, AdvancedEcmNetworkTuning.clampDelta(3f, cap), 1e-6f)
         assertEquals(0f, AdvancedEcmNetworkTuning.clampDelta(0f, cap), 1e-6f)
@@ -114,30 +97,20 @@ class AdvancedEcmNetworkTuningTest {
     @Test
     fun `指挥官增幅 基础提升加占领点加计`() {
         val values = syntheticValues()
-        // 无占领点：10 × 1.0 = 10
         assertEquals(10f, AdvancedEcmNetworkTuning.commanderBoost(values, 0), 1e-6f)
-        // 2 个占领点：10 × (1.0 + 2×0.3) = 16
         assertEquals(16f, AdvancedEcmNetworkTuning.commanderBoost(values, 2), 1e-6f)
-        // 计数负值按 0 处理
         assertEquals(10f, AdvancedEcmNetworkTuning.commanderBoost(values, -3), 1e-6f)
     }
 
     @Test
     fun `实际效果复算 总额取整 上限截断 对抗折扣 半进位取整`() {
-        // 总额低于上限：效果 = 总额
         assertEquals(8, AdvancedEcmNetworkTuning.penaltyDealt(ownTotal = 8f, ownMax = 10f, enemyTotal = 0f))
-        // 总额高于上限：效果 = 上限
         assertEquals(10, AdvancedEcmNetworkTuning.penaltyDealt(ownTotal = 25f, ownMax = 10f, enemyTotal = 0f))
         assertEquals(20, AdvancedEcmNetworkTuning.penaltyDealt(ownTotal = 25f, ownMax = 20f, enemyTotal = 0f))
-        // 对抗折扣：30/(30+10) = 0.75 → 22.5 → 半进位 23
         assertEquals(23, AdvancedEcmNetworkTuning.penaltyDealt(ownTotal = 30f, ownMax = 35f, enemyTotal = 10f))
-        // 对抗折扣：10/(10+30) = 0.25 → 2.5 → 半进位 3
         assertEquals(3, AdvancedEcmNetworkTuning.penaltyDealt(ownTotal = 10f, ownMax = 35f, enemyTotal = 30f))
-        // 原版 int 截断口径：30.7 → 30，折扣后 22.5 → 23
         assertEquals(23, AdvancedEcmNetworkTuning.penaltyDealt(ownTotal = 30.7f, ownMax = 35f, enemyTotal = 10f))
-        // 上限 20.9 → int 截断 20
         assertEquals(20, AdvancedEcmNetworkTuning.penaltyDealt(ownTotal = 25f, ownMax = 20.9f, enemyTotal = 0f))
-        // 边界：总额或上限为 0 时效果为 0
         assertEquals(0, AdvancedEcmNetworkTuning.penaltyDealt(ownTotal = 0f, ownMax = 10f, enemyTotal = 5f))
         assertEquals(0, AdvancedEcmNetworkTuning.penaltyDealt(ownTotal = 10f, ownMax = 0f, enemyTotal = 0f))
     }
@@ -211,7 +184,6 @@ class AdvancedEcmNetworkTuningTest {
         assertTrue(v1.allyEcmCapital < v5.allyEcmCapital)
         assertTrue(v1.captureRateMult < v5.captureRateMult)
 
-        // 玩家口径与敌方 k_s 无关
         val playerAt1 = AdvancedEcmNetworkTuning.resolve(DifficultyTuningImpl, isPlayer = true)
         DifficultyTuningImpl.installScaleForTests(5f)
         val playerAt5 = AdvancedEcmNetworkTuning.resolve(DifficultyTuningImpl, isPlayer = true)

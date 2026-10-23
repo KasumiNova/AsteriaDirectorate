@@ -6,7 +6,7 @@ import cn.kasuminova.astd.internal.debug.ASTDInGameAutomationScenario
 /**
  * 相位绕后矩阵·茑萝航母场景（HEALTH 模式，敌舰同为统治者）。
  *
- * 航母走位天然绕行，验证相位节奏健康（观测窗内下潜/上浮各 ≥2，不憋死不卡潜）
+ * 航母走位天然绕行，验证相位节奏健康（观测窗内下潜/上浮各 ≥2，相位循环不中断）
  * 而非绕后幅度。
  */
 class PhaseFlankZw103Scenario : AbstractPhaseFlankScenario() {

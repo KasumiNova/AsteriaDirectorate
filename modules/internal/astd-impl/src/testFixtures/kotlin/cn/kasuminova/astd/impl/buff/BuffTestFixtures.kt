@@ -107,15 +107,6 @@ open class StubBuff(
     }
 }
 
-/**
- * 三模式衰减参考实现（规格 §1.4-5/7 的测试桩，同时是后续武器实现的对照语义）：
- * - 层数增减统一走 [addStacks] 的 clamp 路径；
- * - CONTINUOUS：按 stacksPerSecond 连续扣减（小数累积，整层结算）；
- * - WINDOWED：距最近刷新静默 [windowSeconds] 后按 stacksPerSecond 扣减，恰在窗口边界不衰减，
- *   越过边界的帧只计超出部分；
- * - EXPIRE_ALL：距最近刷新满 [durationSeconds] 后整 Buff 经 [BuffHost.remove] 移除；
- * - 0 值防线：maxStacks <= 0 记 WARN 并 clamp 到 1；stacksPerSecond <= 0（衰减模式需要时）记 WARN 并关停衰减。
- */
 class ReferenceStackableBuff(
     override val decayMode: StackDecayMode,
     maxStacks: Int,

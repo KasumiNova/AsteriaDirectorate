@@ -3,12 +3,6 @@ package cn.kasuminova.astd.renderer.shader.runtime
 import cn.kasuminova.astd.renderer.shader.base.ShaderEffectLayer
 import cn.kasuminova.astd.renderer.shader.base.ShaderHandle
 
-/**
- * Runtime-owned collection of live shader submissions.
- *
- * The queue separates keyed persistent effects from one-shot effects and owns
- * lifetime/stale cleanup. Renderers consume immutable per-layer snapshots.
- */
 class ShaderRenderQueue {
     private val oneShots = ArrayList<ShaderSubmission>()
     private val keyed = LinkedHashMap<ShaderHandle, ShaderSubmission>()

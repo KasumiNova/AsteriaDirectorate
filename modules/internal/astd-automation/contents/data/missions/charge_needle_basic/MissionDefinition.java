@@ -9,13 +9,6 @@ import com.fs.starfarer.api.mission.FleetSide;
 import com.fs.starfarer.api.mission.MissionDefinitionAPI;
 import com.fs.starfarer.api.mission.MissionDefinitionPlugin;
 
-/**
- * Dev-only mission surface for charge needle in-game automation.
- * <p>
- * 玩家旗舰野狼（清空全部槽位后装小型 + 重型电荷针刺）对敌方伯劳鸟（小型电荷针刺）：
- * 护盾相位验证淤积叠层/维持乘区/安全闸，船体相位验证 EMP 泄放电弧与弹匣节奏，
- * 敌方针刺反向命中玩家验证受击方 negative HUD。
- */
 public final class MissionDefinition implements MissionDefinitionPlugin {
     private static void clearAllWeaponSlots(final FleetMemberAPI member) {
         for (final String slotId : member.getVariant().getFittedWeaponSlots()) {
@@ -38,9 +31,6 @@ public final class MissionDefinition implements MissionDefinitionPlugin {
 
         final FleetMemberAPI enemy = api.addToFleet(FleetSide.ENEMY, "shrike_Attack", FleetMemberType.SHIP, false);
         clearAllWeaponSlots(enemy);
-        // 本环境 shrike_Attack 被 VariantAcknowledged 覆盖为 safetyoverrides + converted_hangar：
-        // SO 射程压制公式 450+(700-450)*0.25=513 < 舞台间距 637，敌方 AutofireAI 判超程拒射（实机诊断证实）；
-        // converted_hangar 放出的战机会污染舞台。烟测舞台移除两者。
         enemy.getVariant().removeMod("safetyoverrides");
         enemy.getVariant().removeMod("converted_hangar");
         enemy.getVariant().addWeapon("WS 000", ASTDInGameAutomationScenario.CHARGE_NEEDLE_WEAPON_ID);

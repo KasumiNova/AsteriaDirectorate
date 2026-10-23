@@ -1,5 +1,5 @@
 {
-	# ASTD 剧情占位站：预留单位（后续内容扩展），仅提供描述文本，不可停靠、无市场。
+	# 预留站：不可停靠、无市场，仅提供描述文本。
 	"astd_reserved_station":{
 		"defaultName":"未启用的轨道设施",
 		"defaultRadius":45,
@@ -24,15 +24,13 @@
 		"layers":[STATIONS],
 	},
 
-	# ASTD 剧情遗迹站（研究站观感）：继承原版研究站外观与交互插画，但去掉 salvageable 标记——
-	# 剧情站点不允许打捞（原版打捞流程结束后会把实体转换为碎片区/移除，站点会消失）。
+	# 不带 salvageable 标记，避免原版打捞流程结束后将站点转换为碎片区或删除。
 	"astd_station_research_remnant":{
 		"baseId":"station_research",
 		"customDescriptionId":"astd_station_research_remnant",
 		"tags":["has_interaction_dialog", "neutrino"],
 	},
 
-	# ASTD 剧情遗迹站（船坞/采矿站观感）：同上，去掉 salvageable 标记。
 	"astd_station_mining_remnant":{
 		"baseId":"station_mining",
 		"customDescriptionId":"astd_station_mining_remnant",

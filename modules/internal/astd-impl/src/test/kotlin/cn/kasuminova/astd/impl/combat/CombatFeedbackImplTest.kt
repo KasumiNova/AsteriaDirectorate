@@ -13,9 +13,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-/**
- * 规格 §4.2：反馈通道直通与 0 值/空串防线。
- */
 class CombatFeedbackImplTest {
     private val captures = mutableListOf<WarnCapture>()
 

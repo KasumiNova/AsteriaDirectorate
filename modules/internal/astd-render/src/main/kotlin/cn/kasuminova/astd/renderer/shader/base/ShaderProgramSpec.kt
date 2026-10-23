@@ -1,12 +1,5 @@
 package cn.kasuminova.astd.renderer.shader.base
 
-/**
- * Source contract for a shader program used by a VFX effect.
- *
- * The [id] names the program within renderer diagnostics and caches. The
- * [vertexSource] and [fragmentSource] fields carry the GLSL source that a
- * runtime compiler will consume.
- */
 data class ShaderProgramSpec(
     val id: String,
     val vertexSource: String,

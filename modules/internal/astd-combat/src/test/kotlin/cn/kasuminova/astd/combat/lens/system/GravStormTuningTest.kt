@@ -9,13 +9,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/**
- * 引力磁暴发生器数值规格：按舰级电弧数量区间（战机/护卫 2~4 / 驱逐 4~8 / 巡洋 8~16 / 主力 12~24）、
- * 多目标总电弧衰减（每多一个 -10%、最多 -50%）、充能占比插值（2s→0 / 4s→1）、
- * 强制过载时长（锚点 × (0.5 + 0.5·占比)，战机对齐护卫舰档）、硬辐能→软辐能转化分档、
- * 充能装饰电弧渐变、电弧伤害与伤害减免三锚点（玩家固定 v2）。
- * 经 [DifficultyTuningImpl.installScaleForTests] 走完整映射链路（对齐 GravPhaseDeckTuningTest 先例）。
- */
 class GravStormTuningTest {
 
     @AfterTest
@@ -44,9 +37,7 @@ class GravStormTuningTest {
         assertEquals(0.9f, GravStormTuning.targetCountMultiplier(2), 1e-6f)
         assertEquals(0.8f, GravStormTuning.targetCountMultiplier(3), 1e-6f)
         assertEquals(0.5f, GravStormTuning.targetCountMultiplier(6), 1e-6f)
-        // 超过 6 个目标仍封顶 -50%
         assertEquals(0.5f, GravStormTuning.targetCountMultiplier(11), 1e-6f)
-        // 0 个目标（防御口径）不衰减
         assertEquals(1f, GravStormTuning.targetCountMultiplier(0), 1e-6f)
     }
 
@@ -55,7 +46,6 @@ class GravStormTuningTest {
         assertEquals(10, GravStormTuning.finalArcCount(10, 1))
         assertEquals(9, GravStormTuning.finalArcCount(10, 2))
         assertEquals(5, GravStormTuning.finalArcCount(10, 6))
-        // 衰减后不足一道仍保一道
         assertEquals(1, GravStormTuning.finalArcCount(2, 11))
     }
 
@@ -95,7 +85,6 @@ class GravStormTuningTest {
         assertEquals(3f, GravStormTuning.overloadAnchor(v5, ShipAPI.HullSize.CRUISER)!!, 1e-6f)
         assertEquals(6f, GravStormTuning.overloadAnchor(v5, ShipAPI.HullSize.CAPITAL_SHIP)!!, 1e-6f)
 
-        // 战机对齐护卫舰档
         assertEquals(1f, GravStormTuning.overloadAnchor(v2, ShipAPI.HullSize.FIGHTER)!!, 1e-6f)
         assertNull(GravStormTuning.overloadAnchor(v2, null))
     }
@@ -109,10 +98,8 @@ class GravStormTuningTest {
         assertEquals(0.04f, GravStormTuning.hardToSoftPerSecond(ShipAPI.HullSize.CAPITAL_SHIP), 1e-7f)
         assertEquals(0f, GravStormTuning.hardToSoftPerSecond(null), 1e-7f)
 
-        // 单目标比例贡献 = 每秒比例 × 过载时长（巡洋舰 3% × 2s 过载 = 贡献总比例 6%）
         assertEquals(0.06f, GravStormTuning.hardToSoftRatio(ShipAPI.HullSize.CRUISER, 2f), 1e-7f)
         assertEquals(0.0025f, GravStormTuning.hardToSoftRatio(ShipAPI.HullSize.FIGHTER, 1f), 1e-7f)
-        // 未列舰级/零过载时长不贡献比例
         assertEquals(0f, GravStormTuning.hardToSoftRatio(null, 2f), 1e-7f)
         assertEquals(0f, GravStormTuning.hardToSoftRatio(ShipAPI.HullSize.CRUISER, 0f), 1e-7f)
     }
@@ -125,7 +112,6 @@ class GravStormTuningTest {
         assertEquals(0.5f, GravStormTuning.chargeArcInterval(0f), 1e-6f)
         assertEquals(0.1f, GravStormTuning.chargeArcInterval(1f), 1e-6f)
         assertEquals(0.3f, GravStormTuning.chargeArcInterval(0.5f), 1e-6f)
-        // 越界钳制
         assertEquals(2, GravStormTuning.chargeArcCount(-1f))
         assertEquals(0.1f, GravStormTuning.chargeArcInterval(2f), 1e-6f)
     }

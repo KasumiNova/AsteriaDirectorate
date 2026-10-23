@@ -21,16 +21,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/**
- * 高级舰装集成（[ASTDArcAdvancedTargetingSystemHullMod]）行为验证：
- * - 难度缩放乘区走战斗内逐帧通道（advanceInCombat 按 owner 结算，玩家侧默认砺刃 v2、敌方按 k_s 映射），
- *   装配期不写入缩放值；创建前仅入队互斥清理并注册 WeaponOPCostModifier；
- * - OP 减免纯函数（小型 -1 再 -20%、中型 -2 再 -20%、下限 0、大型不动）；
- * - 短射程补偿纯函数（阈值|增益三档 600|150 / 700|200 / 1000|350）；
- * - 目标定位系统互斥：创建前只检测入队（[IncompatibleHullmodStripper]，OP 结算实时迭代 CME 防线）、
- *   drain/创建后安全点五路清理（普通/permaMod/S-mod/S-modded built-in/suppressed）
- *   与 isApplicableToShip 软提示；禁止列表集中定义断言。
- */
 class ASTDArcAdvancedTargetingSystemHullModTest {
 
     private val hullmod = ASTDArcAdvancedTargetingSystemHullMod()
@@ -40,7 +30,6 @@ class ASTDArcAdvancedTargetingSystemHullModTest {
         DifficultyTuningImpl.installScaleForTests(null)
     }
 
-    /** 挂满真实乘区对象的 stats 桩：variant 为 [variant]，其余乘区为真实 StatBonus/MutableStat。 */
     private fun stubStats(variant: ShipVariantAPI): Pair<MutableShipStatsAPI, StatMap> {
         val stats = mock(MutableShipStatsAPI::class.java)
         val map = StatMap()
@@ -83,12 +72,10 @@ class ASTDArcAdvancedTargetingSystemHullModTest {
 
         hullmod.applyEffectsBeforeShipCreation(ShipAPI.HullSize.DESTROYER, stats, "test")
 
-        // 难度缩放项（射程/弹速/武器辐能）走战斗内逐帧通道，装配期不写入
         assertEquals(1000f, map.ballisticRange.computeEffective(1000f), 1e-3f)
         assertEquals(100f, map.ballisticProjSpeed.modifiedValue, 1e-3f)
         assertEquals(100f, map.ballisticFluxCost.computeEffective(100f), 1e-3f)
 
-        // OP 减免经 WeaponOPCostModifier 监听器接入装配结算
         val captor = ArgumentCaptor.forClass(Any::class.java)
         verify(stats).addListener(captor.capture())
         val listener = captor.value as WeaponOPCostModifier
@@ -114,7 +101,6 @@ class ASTDArcAdvancedTargetingSystemHullModTest {
 
         hullmod.advanceInCombat(ship, 0.016f)
 
-        // 砺刃 v2 锚点：射程 +20% / 弹速 +20% / 武器辐能 -20%
         assertEquals(1200f, map.ballisticRange.computeEffective(1000f), 1e-3f)
         assertEquals(1200f, map.energyRange.computeEffective(1000f), 1e-3f)
         assertEquals(1200f, map.beamRange.computeEffective(1000f), 1e-3f)
@@ -135,7 +121,6 @@ class ASTDArcAdvancedTargetingSystemHullModTest {
 
         hullmod.advanceInCombat(ship, 0.016f)
 
-        // 迟暮 v1 锚点：射程 +15% / 弹速 +15% / 武器辐能 -15%
         assertEquals(1150f, map.ballisticRange.computeEffective(1000f), 1e-3f)
         assertEquals(115f, map.ballisticProjSpeed.modifiedValue, 1e-3f)
         assertEquals(85f, map.ballisticFluxCost.computeEffective(100f), 1e-3f)
@@ -153,17 +138,14 @@ class ASTDArcAdvancedTargetingSystemHullModTest {
 
     @Test
     fun `短射程补偿 按档位阈值与增益上限结算`() {
-        // 砺刃 v2 档位：阈值 700、至多 +200
         assertEquals(200f, ASTDArcAdvancedTargetingSystemHullMod.shortRangeFlatBonus(300f, 700f, 200f), "补偿 capped 在 +200")
         assertEquals(200f, ASTDArcAdvancedTargetingSystemHullMod.shortRangeFlatBonus(500f, 700f, 200f), "700-500=200 恰好封顶")
         assertEquals(50f, ASTDArcAdvancedTargetingSystemHullMod.shortRangeFlatBonus(650f, 700f, 200f), "700-650=50 按差额补")
         assertEquals(0f, ASTDArcAdvancedTargetingSystemHullMod.shortRangeFlatBonus(700f, 700f, 200f), "达到阈值不补")
         assertEquals(0f, ASTDArcAdvancedTargetingSystemHullMod.shortRangeFlatBonus(900f, 700f, 200f), "超阈值不补")
         assertEquals(0f, ASTDArcAdvancedTargetingSystemHullMod.shortRangeFlatBonus(0f, 700f, 200f), "零/负基础射程防线")
-        // 迟暮 v1 档位：阈值 600、至多 +150
         assertEquals(150f, ASTDArcAdvancedTargetingSystemHullMod.shortRangeFlatBonus(300f, 600f, 150f))
         assertEquals(0f, ASTDArcAdvancedTargetingSystemHullMod.shortRangeFlatBonus(650f, 600f, 150f), "v1 阈值 600，650 不补")
-        // 破晓 v5 档位：阈值 1000、至多 +350
         assertEquals(350f, ASTDArcAdvancedTargetingSystemHullMod.shortRangeFlatBonus(500f, 1000f, 350f))
         assertEquals(150f, ASTDArcAdvancedTargetingSystemHullMod.shortRangeFlatBonus(850f, 1000f, 350f), "1000-850=150 按差额补")
     }
@@ -183,8 +165,6 @@ class ASTDArcAdvancedTargetingSystemHullModTest {
 
         hullmod.applyEffectsBeforeShipCreation(ShipAPI.HullSize.DESTROYER, stats, "test")
 
-        // 创建前回调不得做任何结构性移除：原版 updateStatsForOpCosts 实时迭代 hullMods
-        // 期间回调本方法，removeMod 会抛 ConcurrentModificationException（自动装配实机判例）
         ASTDArcAdvancedTargetingSystemHullMod.INCOMPATIBLE_TARGETING_HULLMODS.forEach { forbiddenId ->
             verify(variant, never()).removeMod(forbiddenId)
             verify(variant, never()).removePermaMod(forbiddenId)
@@ -193,7 +173,6 @@ class ASTDArcAdvancedTargetingSystemHullModTest {
 
         IncompatibleHullmodStripper.drainPending()
 
-        // drain 后五路全清：普通 + permaMod + suppressed 走 variant 移除调用，S-mod 与 S-modded built-in 走集合移除
         ASTDArcAdvancedTargetingSystemHullMod.INCOMPATIBLE_TARGETING_HULLMODS.forEach { forbiddenId ->
             verify(variant).removeMod(forbiddenId)
             verify(variant).removePermaMod(forbiddenId)
@@ -214,7 +193,6 @@ class ASTDArcAdvancedTargetingSystemHullModTest {
 
         hullmod.applyEffectsAfterShipCreation(ship, "test")
 
-        // AfterCreation 走 ShipFactory 快照迭代，安全点内立即完成清理
         ASTDArcAdvancedTargetingSystemHullMod.INCOMPATIBLE_TARGETING_HULLMODS.forEach { forbiddenId ->
             verify(variant).removeMod(forbiddenId)
             verify(variant).removePermaMod(forbiddenId)

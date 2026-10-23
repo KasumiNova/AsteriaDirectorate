@@ -2,7 +2,7 @@
 
 > 状态：设计评审中（2026-07-26）
 > 背景：RenderEntity+DSL 迁移与旧管线删除（P5）已完成，逐顶点 parity 复刻的使命结束。
-> 当前网格层（body/glow/head/ribbon/sideWisp/shadow）用「逐顶点着色三角网格」手搓模糊与渐变，
+> 当前网格层（body/glow/head/ribbon/sideWisp/shadow）用「逐顶点着色三角网格」手写模糊与渐变，
 > 表现天花板低（只能线性插值）、顶点量大。转向「程序化烘焙贴图 + BoxUtil 原语 + shader 附加」，
 > 目标是**更好的视觉效果**，性能改善是附带收益。
 
@@ -11,14 +11,14 @@
 1. **表现第一**：追求更自然的发光体（任意衰减曲线、噪声颗粒、流动感、色散），不再以 TS 预览逐顶点对齐为目标。
 2. **能用 BoxUtil 原语就不自绘几何**：原语吃 BoxUtil 的 VBO/实例化/辉光管线，消灭自研网格烘焙。
 3. **目检建立新基线**：每阶段进游戏对比验收，不保留 golden/parity 式逐位断言（几何数学测试随被删层一并退役）。
-4. **作者面收敛**：DSL 块向「视觉语义」合并（见 §6），不再暴露实现层的层数/模糊带参数。
+4. **作者面合并**：DSL 块向「视觉语义」合并（见 §6），不再暴露实现层的层数/模糊带参数。
 
 ## 2. BoxUtil 能力调研结论（2026-07-26，javap 实测）
 
 | 原语 | 能力面 | 对本设计的意义 |
 |---|---|---|
 | `CurveEntity` | 节点曲线带（VBO），**逐节点位置/切线/颜色+emissive**（NodeData），贴图（texturePixels/textureSpeed），插值模式，`initLineStrip/initSmoothLine` 等 | **关键发现**：glow 的逐段渐变 → 逐节点颜色；软边模糊 → 带宽方向的软边贴图。glow/ribbon/sideWisp 可整体迁移，**免切片、免接缝** |
-| `SpriteEntity` + `Instance2Data` | 实例化 quad，逐实例位置/朝向/缩放/多组颜色 | 弹头贴图单实例；切片方案兜底；mist 已在用 |
+| `SpriteEntity` + `Instance2Data` | 实例化 quad，逐实例位置/朝向/缩放/多组颜色 | 弹头贴图单实例；切片方案备用；mist 已在用 |
 | `FlareEntity` | 径向辉光（smooth/sharp disc、noisePower、flick/syncFlick） | 弹头点辉光、命中闪光，原生「引擎味」光效 |
 | `DistortionEntity` | 热扭曲 | 弹芯周围空气扰动，shader 附加期的低成本选项 |
 | `TrailEntity`（现用） | 双色线带 | 保持，或换烘焙贴图提升质感 |
@@ -35,7 +35,7 @@
 | `coreStrip` | 横向：头亮尾暗的渐变（任意衰减曲线）；纵向：芯亮边软的径向衰减（含原 glow/shadow 外晕） | body+glow+shadow 合并后的 CurveEntity 带 |
 | `headShell` | 尖头光壳（肩部曲线、尖端高光、外晕烘进 alpha） | head |
 | `ribbon` | 软边细带 + 噪声颗粒 | ribbon/sideWisp |
-| `glowDot` | 径向软光斑 | 备用（切片兜底/点缀） |
+| `glowDot` | 径向软光斑 | 备用（切片备用方案/点缀） |
 
 - 烘焙参数化：以调色板主色 + 少数旋钮（衰减指数、噪声强度、头尾比）为键缓存；24 个 spec 共享同一批烘焙器，只是参数不同。
 - 噪声/颗粒烘进贴图即可得到「非线性插值」的质感，这是纯顶点叠加给不了的第一层提升。
@@ -59,16 +59,16 @@
 
 ## 5. 关键方案细节
 
-### 5.1 弯曲轨迹：CurveEntity 而非切片
+### 5.1 弯曲轨迹：CurveEntity 替代切片
 
-调研前预设「切片 SpriteEntity 拼曲线」，CurveEntity 的逐节点颜色+贴图能力使其降级为兜底方案：
+调研前预设「切片 SpriteEntity 拼曲线」，CurveEntity 的逐节点颜色+贴图能力使其降级为备用方案：
 - CurveEntity 直接吃中线节点序列（现 `ASTDProjectileHistory` 采样不变），GPU 侧插值成带，无接缝问题；
 - 逐节点颜色表达「头亮尾暗 + gradient stop」，贴图表达「带宽方向软边模糊」，二者相乘 = 原 body+glow+shadow 三层效果；
 - 若实测 CurveEntity 的纹理/色彩语义不符（风险 §8-1），退回切片 SpriteEntity（沿中线 N 实例，重叠+软边防接缝）。
 
 ### 5.2 长度与生命周期策略
 
-沿用现 DSL policy（visibleLength / viewportTailCap / 存活不溶解 / 消亡后 fade 接管），节点每帧从 history 采样刷新——与现管线一致，只是写入对象从「网格顶点缓冲」换成「CurveEntity 节点」。
+沿用现 DSL policy（visibleLength / viewportTailCap / 存活不溶解 / 消亡后 fade 接管），节点每帧从 history 采样刷新，与现管线一致，只是写入对象从「网格顶点缓冲」换成「CurveEntity 节点」。
 
 ### 5.3 弹体头部
 
@@ -83,7 +83,7 @@ head 壳贴图 + FlareEntity 的组合替代现在的尖头网格：FlareEntity 
 
 ## 6. DSL 作者面变化
 
-实现层合并后，作者面向视觉语义收敛（示例）：
+实现层合并后，作者面向视觉语义合并（示例）：
 
 ```kotlin
 projectileVfx("astd_aod7_shot") {
@@ -109,8 +109,8 @@ projectileVfx("astd_aod7_shot") {
 
 ## 8. 风险与开放问题
 
-1. **CurveEntity 语义未验证**：texturePixels 的贴图方向（沿长/沿宽）、逐节点色与贴图的相乘关系、急弯自交表现——P0 阶段先用一个最小 PoC 在 aod7 上验证。
-2. **贴图缓存键**：调色板 × 旋钮组合的缓存粒度，避免为每个 spec 各烘一张大图；倾向「共享灰度衰减图 × 实例着色」，烘焙只产灰度包络，颜色由节点/实例颜色承载——这样 24 个 spec 共享 1~2 张贴图。
+1. **CurveEntity 语义未验证**：texturePixels 的贴图方向（沿长/沿宽）、逐节点色与贴图的相乘关系、急弯自交表现，P0 阶段先用一个最小 PoC 在 aod7 上验证。
+2. **贴图缓存键**：调色板 × 旋钮组合的缓存粒度，避免为每个 spec 各烘一张大图；倾向「共享灰度衰减图 × 实例着色」，烘焙只产灰度包络，颜色由节点/实例颜色承载，这样 24 个 spec 共享 1~2 张贴图。
 3. **目检基线重建**：parity 参照物废弃后，验收标准是「比现状更好看且风格一致」，需要逐阶段截图对比。
 4. **Beam 管线**：三个光束已迁 RenderEntity，本设计只覆盖弹体；光束是否跟进贴图化，弹体验证后再议。
 
@@ -124,7 +124,7 @@ projectileVfx("astd_aod7_shot") {
 | P3 | mist/trail 贴图质感升级 + FlareEntity/DistortionEntity 点缀 | 目检 |
 | P4+ | shader 条带立项评估（§7） | 单独立项 |
 
-## 10. 附：参考案例——Galactic_Constellate「驱雷」（gr_Hyades_Executioner）拆解
+## 10. 附：参考案例，Galactic_Constellate「驱雷」（gr_Hyades_Executioner）拆解
 
 用户指认的观感标杆（红色光束 + 沿束周期圆环）。2026-07-26 静态拆解结论：
 
@@ -134,13 +134,13 @@ projectileVfx("astd_aod7_shot") {
   `textureType: ROUGH`（原版 128px 噪声贴图）+ `textureScrollSpeed: 0`。
   高速连发下短弹丸段首尾相接成连续光束；**周期"圆环"来自贴图按段平铺的周期纹理与弹丸 fringe 端帽的叠加**，非自定义几何。
 - `.wpn` 的 `EveryFrameEffect.onFire`：muzzle 处 `spawnExplosion` 红雾 + GraphicsLib `RippleDistortion` 涟漪扭曲
-  + 100 粒 muzzle flash——炮口感官冲击主要来源。
+  + 100 粒 muzzle flash，炮口感官冲击主要来源。
 - 遗志：`.proj` 内有被注释的 `"textureType":["graphics/weapons/gr_circleproj.png",...]`（自定义圆环贴图），
   贴图文件未打进发布包，是死实验。
 
 **对本设计的启示**：
 
-1. 原版 `.proj` 的 `textureType` 支持**自定义贴图数组 + `textureScrollSpeed` 滚动**——烘焙一张圆环条纹贴图挂上去，
+1. 原版 `.proj` 的 `textureType` 支持**自定义贴图数组 + `textureScrollSpeed` 滚动**，烘焙一张圆环条纹贴图挂上去，
    vanilla 渲染器零代码画出滚动圆环光束。这是一条"数据面先行"的低成本增强路径，可纳入 P3（弹丸本体贴图）。
 2. 该案例证明「贴图 + 原生渲染」已足够撑起优秀观感；我们的烘焙管线（任意衰减/噪声/滚动）严格强于其静态贴图。
 3. GraphicsLib `RippleDistortion` 是低成本炮口强化件，与我方 §7 的 `DistortionEntity` 方案同类，可择一。
@@ -157,18 +157,18 @@ projectileVfx("astd_aod7_shot") {
 - **弹头并入 bloom 管线**：`head{}` 在有 texTrail 的 spec 上自动路由到 `headBloomComponent`
   （网格烘成世界系三角顶点流、绑 1×1 白贴图走同一着色器），与带体同一提取/模糊/合成。
   接缝色差的根因是「直绘弹头不进 bloom，能量天然低于双带叠加+bloom 的带体」，只能同源消除，调色抹不平。
-- **GL 状态契约（bloom 冻结事故教训）**：FBO 段不得依赖入场全局状态——段首显式 `glColorMask(true)` +
+- **GL 状态约定（bloom 冻结事故教训）**：FBO 段不得依赖入场全局状态，段首显式 `glColorMask(true)` +
   禁 alpha/模板测试，FBO draw buffer 显式钉 `COLOR_ATTACHMENT0`（回屏恢复入场值），每帧
   `glCheckFramebufferStatus` 不完整即 warn 重建。脏入场状态会让整段 FBO 写入（含 clear）零 GL 错误静默失效，
   离屏内容冻结成屏幕空间贴图，相机移动时表现为「bloom 漂移」。
 - **绘制顺序用引擎层定序**：同层注册定序实证无效；texTrail 插件位于 `ABOVE_PARTICLES_LOWER`，
-  网格层（body/head）在 `ABOVE_PARTICLES`，恒「拖尾垫底、弹头盖上」。
+  网格层（body/head）在 `ABOVE_PARTICLES`，恒「拖尾绘于底层、弹头覆盖其上」。
 - **弹头露出用 recede 不用 forward 偏移**：VFX 锚点 = projectile.location = 命中点，任何 forward 偏移
   都会在击中时穿模（实证）；`TexTrailSpec.recede` 把带体亮端整体后移让弹头尖露出，远离目标方向永不穿模。
-- **贴图自管上传**：不进游戏贴图系统——SSOptimizer LazyTextureManager 会把 ≥64KiB 的 `graphics/` 贴图
+- **贴图自管上传**：不进游戏贴图系统，SSOptimizer LazyTextureManager 会把 ≥64KiB 的 `graphics/` 贴图
   做成「有 texId、无内容」的延迟对象，裸 `glBindTexture` 绕过其补丁采到空纹理。
 
-## 12. P2 收口记录（2026-07-27）
+## 12. P2 完成记录（2026-07-27）
 
 23 个简单 spec 全部 texTrail 化 + 退役网格渲染栈删除完成（检查点 `4922f52`）。要点：
 
@@ -176,7 +176,7 @@ projectileVfx("astd_aod7_shot") {
   `bandW=round05(max(0.35w, 3.15g))`；三段色 midAt=0.25（头 mix 白 **0.45**@a×0.78、中主色@a×**0.55**、
   尾 rgb×0.16@0.07）；主带 tile=L/2.4、scroll=L/6，副带 0.8×宽、tile=L/2、scroll=L/4.5；
   nodes=clamp(L/16,16,24)；recede=round5(L×0.08) 恒施；弹头 length=L×0.33、width=round05(bandW×1.77)、
-  alpha=0.7、shell 三色与带体头色同族派生。双带（ribbon）主带 alpha×0.8 垫底。
+  alpha=0.7、shell 三色与带体头色同族派生。双带（ribbon）主带 alpha×0.8 绘于底层。
   色系→贴图：violet→smooth、amber→twin、omega→lightning、blue→zappy、teal→clean、
   rose/stellar→contrail、singularity→circle；arc 副带 omega=lightning、其余 zappy。
 - **两轮目检迭代**：① 弹头恒在（无弹头射弹头部观感过平，工厂删 head 旋钮）；
@@ -184,9 +184,9 @@ projectileVfx("astd_aod7_shot") {
   bandMidColor alpha 0.47→0.55，用户确认定版。
 - **退役删除**（−4711 行）：glow/body/ribbon 网格渲染栈（GlowRenderer/RibbonRenderer/
   BodyRenderManager/TrailRenderer/Centerline/ASTDProjectileVfxLayer/TrailEntities）连同 11 个测试文件；
-  DSL 删 glow{}/body()/ribbon{} 块与 BoxUtil 直线拖尾兜底，`head{}` 恒走 bloom 管线；
+  DSL 删 glow{}/body()/ribbon{} 块与 BoxUtil 直线拖尾备用实现，`head{}` 恒走 bloom 管线；
   `ASTDTrailLayerSpec` 裁为 startWidth/length/startColor/startEmissive/endColor 五字段，
-  `Mesh` 裁为 vertices/triangles/renderOrder，RenderContext 瘦身四字段。
+  `Mesh` 裁为 vertices/triangles/renderOrder，RenderContext 裁减至四字段。
 - **遗留**：`SpriteLoads.loadAndGetSprite` 内联进 GeneratedRingSprite（光束圆环贴图唯一调用点）后删文件；
   tools/projectile-vfx-preview 的 kotlinExport.ts 旧 Preset 模板只标记不动（独立清理任务）。
 - 全量测试 301 用例零失败（退役测试随功能同 commit 删除，故总数自 386 降）。

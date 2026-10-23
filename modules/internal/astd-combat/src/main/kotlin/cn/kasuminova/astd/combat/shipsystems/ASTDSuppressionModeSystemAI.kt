@@ -10,17 +10,6 @@ import com.fs.starfarer.api.util.IntervalUtil
 import org.lazywizard.lazylib.MathUtils
 import org.lwjgl.util.vector.Vector2f
 
-/**
- * 压制模式系统 AI：权衡射程/射速收益与机动惩罚+硬辐能自伤，只在"站桩输出窗口"开启。
- *
- * 开启条件（全部满足）：
- * - 自身辐能水平低于 [MAX_FLUX_LEVEL_TO_ACTIVATE]（系统持续产硬辐能，高辐能开启等于自压）；
- * - 无来袭导弹/碰撞威胁（机动惩罚期躲不开威胁）；
- * - 无近距敌舰逼近/缠斗（最近敌舰距离低于 [CLOSE_THREAT_RANGE_FRACTION] 倍最长射程且以本舰
- *   为目标时视为被追击/近战，机动惩罚致命）；
- * - 存在有效目标且进入交战带：距离 ≤ 最长射程 × [ENGAGE_RANGE_MULT]（压制模式射程加成后
- *   能实际覆盖）；目标过载/排气/高辐能（输出窗口）时放宽到 [PUNISH_RANGE_MULT]。
- */
 class ASTDSuppressionModeSystemAI : ShipSystemAIScript {
 
     companion object {
@@ -63,7 +52,6 @@ class ASTDSuppressionModeSystemAI : ShipSystemAIScript {
         if (tracker.isOverloadedOrVenting) return
         if (tracker.fluxLevel >= MAX_FLUX_LEVEL_TO_ACTIVATE) return
 
-        // 机动惩罚期内无法规避威胁：来袭导弹/碰撞告警直接不开
         if (missileDangerDir != null && missileDangerDir.lengthSquared() > 0.01f) return
         if (collisionDangerDir != null && collisionDangerDir.lengthSquared() > 0.01f) return
 
@@ -72,7 +60,6 @@ class ASTDSuppressionModeSystemAI : ShipSystemAIScript {
 
         val range = longestNonMissileWeaponRange(ship).coerceAtLeast(MIN_WEAPON_RANGE_FALLBACK)
 
-        // 近距敌舰以本舰为目标（被追击/近战缠斗）时不开：机动惩罚会被直接惩罚
         val nearest = nearestEnemy(ship, engine) ?: return
         val nearestDist = MathUtils.getDistance(ship.location, nearest.location)
         if (nearestDist <= range * CLOSE_THREAT_RANGE_FRACTION && nearest.shipTarget === ship) return

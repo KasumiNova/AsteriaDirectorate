@@ -568,11 +568,7 @@ function drawTrailRibbonDecorations(
   ctx.restore();
 }
 
-/**
- * 从位置历史中按目标距离（从弹头向后）插值得到世界坐标。
- * history[0] = 当前弹头，history[n] = n 帧前的位置。
- * histPixelsPerEntry：每两个相邻历史条目之间的近似像素距离。
- */
+/** history[0] 为当前弹头，后续条目按帧倒序排列。 */
 function sampleHistoryAt(history: Vec2[], targetDist: number, histPixelsPerEntry: number): Vec2 {
   if (history.length === 0) {
     return [0, 0];
@@ -580,7 +576,6 @@ function sampleHistoryAt(history: Vec2[], targetDist: number, histPixelsPerEntry
   if (targetDist <= 0 || history.length === 1) {
     return history[0];
   }
-  // 将距离转换为历史索引（浮点数）
   const rawIdx = targetDist / Math.max(histPixelsPerEntry, 0.1);
   const idx0 = Math.floor(rawIdx);
   const idx1 = idx0 + 1;
@@ -617,8 +612,6 @@ function drawRibbonDecoration(
   ctx.lineCap = 'butt';
   ctx.lineJoin = 'round';
 
-  // 估算历史条目之间的像素间距（用于从位置历史插值）
-  // 以最近几帧的平均运动速度为基准
   let histPixelsPerEntry = 4;
   if (posHistory.length >= 2) {
     let totalDist = 0;
@@ -638,23 +631,20 @@ function drawRibbonDecoration(
     const lengthProgress = ribbon.renderMode === 'byLength' ? t : t * ribbon.lengthScale;
     const distFromHead = track.visibleLength * clamp(lengthProgress, 0, 1) + ribbon.startOffset;
 
-    // 从历史得到该点的世界坐标（弯曲轨迹支持）
     const nodeWorld = sampleHistoryAt(posHistory, distFromHead, histPixelsPerEntry);
     const wx0 = nodeWorld[0];
     const wy0 = nodeWorld[1];
 
-    // 计算该点的切线方向（用于垂直偏移）
     const nextDist = distFromHead + track.visibleLength / sampleCount;
     const prevNode = sampleHistoryAt(posHistory, distFromHead - track.visibleLength / sampleCount, histPixelsPerEntry);
     const nextNode = sampleHistoryAt(posHistory, nextDist, histPixelsPerEntry);
     const tanX = prevNode[0] - nextNode[0];
     const tanY = prevNode[1] - nextNode[1];
     const tanLen = Math.sqrt(tanX * tanX + tanY * tanY) || 1;
-    // 法向量（垂直于切线，指向"上"方）
     const perpX = -tanY / tanLen;
     const perpY = tanX / tanLen;
 
-    // 噪声/波形使用世界 X 作为空间坐标，实现"原地动画"效果
+    // 波形以世界 X 为空间坐标，避免图案随历史节点滑动。
     const worldX = wx0;
     const worldTimePhase = timeSeconds * ribbon.waveSpeed * 0.18 + trail.flickerSyncCode * 0.05;
     const smokeEnvelope = smoothstep(0.08, 0.28, t) * (1 - smoothstep(0.7, 0.96, t));
@@ -671,12 +661,10 @@ function drawRibbonDecoration(
         : -smoothstep(0, 1, -zigzagRaw);
       wave = easedZigzag * ribbon.waveAmplitude * ribbonWaveSoftening * lerp(0.68, 1, smokeEnvelope);
     } else {
-      // sine
       const sinePhase = worldX * ribbon.waveFrequency * 0.01 + timeSeconds * ribbon.waveSpeed;
       wave = Math.sin(sinePhase * Math.PI * 2 + trail.flickerSyncCode * 0.05) * ribbon.waveAmplitude * ribbonWaveSoftening * lerp(0.72, 1, smokeEnvelope);
     }
 
-    // 将垂直偏移（endOffset + wave）沿法线方向施加
     const perpOffset = (ribbon.endOffset + wave * widthBase) * lerp(0.72, 1, smokeEnvelope);
     const wx = wx0 + perpX * perpOffset;
     const wy = wy0 + perpY * perpOffset;

@@ -8,9 +8,7 @@ import java.awt.Color
 import java.util.ArrayDeque
 
 /**
- * 用于实现“打开对话后，文案不会一次性弹出，而是按延迟逐条自动输出”。
- *
- * 设计：每条 [Entry] 的 [delay] 表示“距离上一条输出”的延迟（秒）。
+ * 延迟逐条输出文本的队列；每条 [Entry] 的 [Entry.delay] 为相对上一条输出的延迟（秒）。
  */
 class TimedTextQueue(private val textPanel: TextPanelAPI) {
 
@@ -50,8 +48,7 @@ class TimedTextQueue(private val textPanel: TextPanelAPI) {
     fun clear() {
         queue.clear()
         acc = 0f
-        // 在播动画段落必须终态化而非遗弃：fadeIn 起步的标签停在 opacity=0，
-        // 若不推至终态，段落将永远全透明（实机表现：跳转节点清空队列后文本面板整段空白）。
+        // 在播动画段落必须推至终态：fadeIn 起步的标签停在 opacity=0，不处理会永远全透明。
         for (a in actives) {
             a.label.opacity = if (a.fadeOut > 0f) 0f else a.maxOpacity
         }
@@ -125,9 +122,7 @@ class TimedTextQueue(private val textPanel: TextPanelAPI) {
         )
     }
 
-    /**
-     * 推进队列；返回本次实际输出了多少条。
-     */
+    /** 推进队列；返回实际输出的条数。 */
     fun advance(amount: Float): Int {
         if (amount <= 0f) return 0
 
@@ -151,14 +146,11 @@ class TimedTextQueue(private val textPanel: TextPanelAPI) {
         return emitted
     }
 
-    /**
-     * 立刻输出所有剩余文本（用于“跳过/快进”）。
-     */
+    /** 立刻输出所有剩余文本（跳过/快进）。 */
     fun flush(): Int {
         var emitted = 0
         while (queue.isNotEmpty()) {
             val e = queue.removeFirst()
-            // flush = 快进：不做淡入淡出，直接满透明度显示。
             emit(e.copy(delay = 0f), immediate = true)
             emitted++
         }
@@ -183,7 +175,6 @@ class TimedTextQueue(private val textPanel: TextPanelAPI) {
 
         val hasFade = (e.fadeIn > 0f) || (e.fadeOut > 0f) || (e.hold > 0f)
 
-        // 仅调整最大透明度，但不需要随时间变化：直接设定并结束。
         if (!hasFade) {
             if (e.maxOpacity < 1f) {
                 label.opacity = e.maxOpacity
@@ -191,7 +182,6 @@ class TimedTextQueue(private val textPanel: TextPanelAPI) {
             return
         }
 
-        // 初始透明度：有 fadeIn 则从 0 开始，否则直接到 maxOpacity。
         val start = if (e.fadeIn > 0f) 0f else e.maxOpacity
         label.opacity = start
         actives.add(
@@ -224,7 +214,7 @@ class TimedTextQueue(private val textPanel: TextPanelAPI) {
                     val u = (t - fadeIn - hold) / fadeOut
                     (1f - u.coerceIn(0f, 1f)) * max
                 }
-                // 有淡出：播完归为 0；无淡出（纯淡入/停留）：播完停留在 max，段落不消失。
+                // 有淡出时播完归为 0；无淡出时播完停留在 max，段落不消失。
                 fadeOut > 0f -> 0f
                 else -> max
             }

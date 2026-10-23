@@ -21,13 +21,6 @@ import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.ShipAPI
 import org.lwjgl.util.vector.Vector2f
 
-/**
- * Arc Jet ship-system shockwave ring shader effect.
- *
- * The object owns only effect parameters and domain-to-shader submission. All
- * GL program, layer plugin, lifecycle, and state management is delegated to the
- * shared shader runtime.
- */
 internal object Xc102ShockwaveRingEffect : ShipSystemShaderEffect {
     const val STALE_AFTER_SECONDS = 0.18f
     private const val MIN_COLLISION_RADIUS = 80f

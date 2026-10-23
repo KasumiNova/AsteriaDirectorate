@@ -20,12 +20,9 @@ import org.lazywizard.lazylib.MathUtils
 import org.lwjgl.util.vector.Vector2f
 
 /**
- * 辉星 MRM 场景（规格 08 §4.2 烟测检查点）。
- *
- * 拆分自 ASTDAutomationCombatPlugin 的同名 if-else 分支，相位机/断言/证据写出口径原样迁移。
+ * 辉星 MRM 场景。
  */
 class StellarMrmScenario : AbstractAutomationScenario() {
-    // ==== stellar mrm 场景状态（相位机 MOUNT → PRIORITY → FIGHTER_HIT → SHIP_HIT → LINE_CROSS → ENEMY_SCALE → COMPLETED） ====
     private var smPhase = SM_PHASE_MOUNT
     private var smPhaseStartedAt = 0f
 
@@ -47,7 +44,7 @@ class StellarMrmScenario : AbstractAutomationScenario() {
     // FIGHTER_HIT：敌战机被瘫痪武器数峰值（战机武器熄火观测面）。
     private var smMaxFighterDisabled = 0
 
-    // 战机武器/船体探针（第三轮烟测后追加）：EMP 结算 30 次熄火恒 0，需判定脚本伤害是否落到组件——
+    // 战机武器/船体探针：EMP 结算 30 次熄火恒 0，需判定脚本伤害是否落到组件，
     // 武器血量比 <1 证明组件承伤通道可达；船体血量比 <1 证明脚本伤害整体可达。
     private var smMinWeaponHealthRatio = 1f
     private var smMaxDisabledDuration = 0f
@@ -84,8 +81,8 @@ class StellarMrmScenario : AbstractAutomationScenario() {
         val engine = ctx.engine
         engine.setDoNotEndCombat(true)
         lockSmCamera(engine)
-        // 增伤/AOE 浮字仅 devMode 渲染（2026-07-29 审批裁定先例）：本场景为 dev-only 舞台，
-        // 开启 devMode 以目检命中浮字与敌版三档（进程被早退杀掉，设置不落盘）。
+        // 增伤/AOE 浮字仅 devMode 渲染：本场景为 dev-only 舞台，
+        // 开启 devMode 以目检命中浮字与敌版三档（进程被早退杀掉，设置不会保存到磁盘）。
         Global.getSettings().isDevMode = true
         ctx.writeDiagnostics("CombatReady")
         ctx.writeTelemetry("CombatReady", findSmPlayer(engine), null)
@@ -143,12 +140,12 @@ class StellarMrmScenario : AbstractAutomationScenario() {
     }
 
     /**
-     * 舞台保活与站位（范式同 stabilizeHipShips）：双狮鹫逐帧奶 + 辐能清零 + 钉死锚点 +
+     * 舞台保活与站位（范式同 stabilizeHipShips）：双狮鹫逐帧回血 + 辐能清零 + 钉死锚点 +
      * force fire 独占驱动（autofire 关闭）；秃鹰航母保留 AI 放联队（猎机目标源）。
      * 玩家武器瞄准取最近敌战机、无战机取敌方狮鹫（与猎杀优先级同序，保证弹道指向被选中目标）。
-     * [aimOverride]：相位特例瞄准点（撞线相位指向最近敌导弹令弹道与投喂 lane 对头相交——
+     * [aimOverride]：相位特例瞄准点（撞线相位指向最近敌导弹令弹道与投喂 lane 对头相交，
      * 只改发射指向，目标选择遥测仍仅战机/舰船两型，不破坏「不主动拦导弹」证据）。
-     * 敌方开火带部署免疫闸（GD/SS/HIP 实机判例：reserves 手动 spawn 舰船部署后数秒内脚本
+     * 敌方开火带部署免疫闸（Starsector 0.98 中 reserves 手动 spawn 舰船部署后数秒内脚本
      * applyDamage 可能全额无效）。
      */
     private fun stabilizeSmShips(engine: CombatEngineAPI, playerFire: Boolean, enemyFire: Boolean, aimOverride: CombatEntityAPI? = null) {
@@ -188,7 +185,7 @@ class StellarMrmScenario : AbstractAutomationScenario() {
                 it.setForceFireOneFrame(gated)
             }
         }
-        // 航母：保留 AI 放阔剑联队；自身无武器（mission 已清槽），仅钉锚点奶血。
+        // 航母：保留 AI 放阔剑联队；自身无武器（mission 已清槽），仅钉锚点回血。
         val carrier = findSmCarrier(engine)
         if (carrier != null && !carrier.isHulk) {
             stabilizeShip(carrier, SM_CARRIER_ANCHOR, 180f, allowFire = false, preserveAI = true)
@@ -214,7 +211,7 @@ class StellarMrmScenario : AbstractAutomationScenario() {
     /**
      * 撞线投喂（范式同 feedSsMissiles）：敌侧中场生成敌属导弹直线飞向玩家，与玩家导弹流对头相撞。
      * stage 0 喂低结构 atropos（hp=300 < v2 阈值 600，撞线者死）；stage 1 喂增压 2000HP harpoon
-     * （> 阈值且连击安全余量，仅爆炸不移除——首次被命中时存活 + 撞线计数不增）。
+     * （> 阈值且连击安全余量，仅爆炸不移除，首次被命中时存活 + 撞线计数不增）。
      */
     private fun feedSmMissile(engine: CombatEngineAPI) {
         if (ctx.elapsed < smFeedAt) return
@@ -222,7 +219,7 @@ class StellarMrmScenario : AbstractAutomationScenario() {
         smFeedLane = (smFeedLane + 1) % SM_FEED_LANES
         val source = findSmEnemy(engine) ?: findSmPlayer(engine) ?: return
         val lowStage = smLineCrossStage == 0
-        // stage 1 投喂点改在敌舰处（第七轮烟测实证：中场 lane 与导弹流交汇面太薄，80+ 投喂零命中；
+        // stage 1 投喂点设在敌舰处（中场 lane 与导弹流交汇面太薄无法命中；
         // 弹流全程指向敌舰，自敌舰迎面飞向玩家的投喂弹与弹流全程对头，相撞必然）。
         val spawn = if (lowStage) {
             val laneY = (smFeedLane - (SM_FEED_LANES - 1) * 0.5f) * SM_FEED_LANE_GAP
@@ -453,7 +450,7 @@ class StellarMrmScenario : AbstractAutomationScenario() {
                 }
                 stabilizeSmShips(engine, playerFire = true, enemyFire = false, aimOverride = nearestFed)
                 // 撞线相位弹药续航（dev 舞台）：前序相位已耗尽 8+20 携弹，弹流中断则投喂弹
-                // 无对头相撞机会（第五轮烟测实证 stage 1 弹尽超时）。
+                // 无对头相撞机会。
                 launcher?.let { if (it.ammo <= 0) it.resetAmmo() }
                 pod?.let { if (it.ammo <= 0) it.resetAmmo() }
                 feedSmMissile(engine)
@@ -587,7 +584,7 @@ class StellarMrmScenario : AbstractAutomationScenario() {
         json.appendLine("  \"runtimeElapsedSeconds\": 0,")
         json.appendLine("  \"runtimeTrackedCount\": ${vfxTelemetry.trackedCount},")
         json.appendLine("  \"runtimeLastProjectileSpecId\": ${jsonString(vfxTelemetry.lastProjectileSpecId)},")
-        // ---- 机制证据（规格 08 §4.2 烟测检查点）----
+        // 机制证据
         json.appendLine("  \"smPhase\": \"$smPhase\",")
         json.appendLine("  \"smLauncherSlotId\": ${jsonString(smLauncher?.slot?.id)},")
         json.appendLine("  \"smPodSlotId\": ${jsonString(smPod?.slot?.id)},")
@@ -627,7 +624,7 @@ class StellarMrmScenario : AbstractAutomationScenario() {
     }
 
     private companion object {
-        // 辉星 MRM 场景：相位机、锚点与期望证据（规格 08 §4.2 烟测检查点）。
+        // 辉星 MRM 场景：相位机、锚点与期望证据。
         private const val SM_PHASE_MOUNT = "MOUNT"
         private const val SM_PHASE_PRIORITY = "PRIORITY"
         private const val SM_PHASE_FIGHTER_HIT = "FIGHTER_HIT"
@@ -648,7 +645,7 @@ class StellarMrmScenario : AbstractAutomationScenario() {
         private const val SM_CAMERA_VISIBLE_HEIGHT = 1500f
         private const val SM_MOUNT_SETTLE_SECONDS = 0.6f
 
-        // MOUNT 相位校验：射程 2500 / ammo 8/20 / 发射舱 burst 2 / OP 4/10 / no_drop 两件套（weapon_data.csv 口径）。
+        // MOUNT 相位校验：射程 2500 / ammo 8/20 / 发射舱 burst 2 / OP 4/10 / no_drop 两件套（weapon_data.csv 数值）。
         private const val SM_EXPECT_RANGE = 2500f
         private const val SM_RANGE_TOLERANCE = 5f
         private const val SM_LAUNCHER_AMMO = 8
@@ -669,10 +666,10 @@ class StellarMrmScenario : AbstractAutomationScenario() {
         private const val SM_FEED_MISSILE_LOW_ID = "atropos"
         private const val SM_FEED_MISSILE_HIGH_ID = "harpoon"
 
-        // 高结构增压值：阈值 600 之上必须不可达——stage 1 投喂点在敌舰处堆叠生成，弹流在
-        // 敌舰附近命中的爆炸 AOE（半径 50、面板 100）会持续削低扎堆投喂弹血量；2000 口径
+        // 高结构增压值：阈值 600 之上必须不可达，stage 1 投喂点在敌舰处堆叠生成，弹流在
+        // 敌舰附近命中的爆炸 AOE（半径 50、面板 100）会持续削低扎堆投喂弹血量；2000 取值
         // 被 AOE 削进 <600 撞线区间后遭流弹移除（被移除弹体不计入命中确认，同帧其它被波及
-        // 弹体却满足确认），造成确定性伪失败（第八轮烟测实证）。20000 在阶段时长内需 ~97 次
+        // 弹体却满足确认），造成确定性伪失败。20000 在阶段时长内需 ~97 次
         // AOE 削血才触及阈值，事实上不可达；确认采样仍在首次命中后下一帧完成。
         private const val SM_HIGH_HP_BOOST = 20000f
         private const val SM_FEED_INTERVAL = 0.6f
@@ -687,10 +684,10 @@ class StellarMrmScenario : AbstractAutomationScenario() {
         private const val SM_SCALE_TOLERANCE = 0.001f
         private const val SM_SCALE_STEP_TIMEOUT = 30f
 
-        // 敌方开火部署免疫闸（GD/SS/HIP 实机判例同款）。
+        // 敌方开火部署免疫闸（同 GD/SS/HIP 场景）。
         private const val SM_ENEMY_SETTLE_SECONDS = 4.0f
 
-        // COMPLETED 截图门控：爆炸事件近 2.5s 内发生才上报（裂隙爆炸/双拖尾入帧）；保底舞台超时。
+        // COMPLETED 截图门控：爆炸事件近 2.5s 内发生才上报（裂隙爆炸/双拖尾入帧）；舞台超时作为保险。
         private const val SM_COMPLETED_EVENT_WINDOW = 2.5f
         private const val SM_COMPLETED_STAGE_TIMEOUT = 30f
         private const val SM_PHASE_TIMEOUT = 90f

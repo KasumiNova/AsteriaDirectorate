@@ -11,11 +11,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/**
- * 规格 07 §4.1 用例 2/3：玩家固定 v2（与难度档无关、恒单段终结）与
- * 多段终结解锁口径（破晓敌版限定：owner != 0 且 fixedScale >= 5）。
- * 经 [DifficultyTuningImpl.installScaleForTests] 走完整映射链路（对齐 PositronShockwaveDifficultyTest 先例）。
- */
 class SevenStarsDifficultyTest {
 
     @AfterTest

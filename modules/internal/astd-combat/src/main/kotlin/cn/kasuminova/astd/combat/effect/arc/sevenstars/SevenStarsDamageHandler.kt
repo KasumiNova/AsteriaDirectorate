@@ -14,49 +14,19 @@ import org.lazywizard.lazylib.MathUtils
 import org.lazywizard.lazylib.combat.CombatUtils
 import org.lwjgl.util.vector.Vector2f
 
-/**
- * “七星”折跃发射器的伤害结算薄层（规格 07 §2.2）：
- * 一次闪光爆炸的圆形区域结算（粗筛 → 逐目标 applyDamage → 摧毁统计）；
- * 对舰终结单段/多段的 applyDamage + 沿舰体取点。
- *
- * 动机：所有 `applyDamage` 均为一次性调用——弹体本体 collisionClass = NONE 无第二伤害源，
- * 脚本结算不触发 onHitEffect，无回环（规格 §2.2 结算顺序总表）。
- * 直击目标与区域内目标同额（规格 §0-3「hit 爆炸」整体缩放裁定）。
- *
- * 落点与 bypassShields 全库统一走 [ExplosionStrikeImpl]（盾覆盖爆心 → 盾面点 + bypass=false；
- * 未覆盖 → 命中侧压点 + bypass=true），历史「界内边缘点恒 0 → 退回舰心」口径作废。
- */
 object SevenStarsDamageHandler {
 
-    /** 终结落点周向间距（su）：原版裂隙洪流 SPAWN_SPACING 175 × 裂隙组件尺寸倍率 0.7。 */
     private const val TERMINAL_SPACING = 175f * 0.7f
 
-    /** 盾开启时的间距折减（原版口径：hitShield 时 perSpawn ×0.67）。 */
     private const val SHIELD_SPACING_MULT = 0.67f
 
-    /** 贴碰撞箱后的外扩抖动下限/幅度（su，原版口径 30 + 50×rand）。 */
     private const val TARGETING_RADIUS_PAD_MIN = 30f
     private const val TARGETING_RADIUS_PAD_SPAN = 50f
 
-    /** 吸附顶点后回拉基准（su，原版 mine explosionSpec coreRadius 50）。 */
     private const val TERMINAL_CORE_RADIUS = 50f
 
-    /** 顶点回拉比例（原版口径 ×0.9）。 */
     private const val BOUNDS_PULLBACK_RATIO = 0.9f
 
-    /**
-     * 一次闪光十字爆炸的区域结算（规格 §2.2）：
-     * 1. 粗筛：LazyLib 空间网格 [CombatUtils.getEntitiesWithinRange]（GCP 已验证路径）；
-     * 2. 逐目标：剔除同方、hulk、过期导弹与伤害来源自身；[direct] 直击目标强制纳入
-     *    （与区域内目标同额，规格 §0-3）；
-     * 3. 结算：`applyDamage(面板 × 倍率, ENERGY, emp=0)`——舰船落点与 bypassShields 走
-     *    统一入口 [ExplosionStrikeImpl]（盾覆盖爆心 → 盾面点 + bypass=false 尊重护盾；
-     *    未覆盖 → 命中侧压点 + bypass=true，绕开「盾关闭时 bypass=false 全额无伤害」的
-     *    引擎行为）。现役站点一律全额模式（无距离衰减）；
-     * 4. 摧毁统计：applyDamage 为同步结算，结算后同帧判定 hulk/不在役/过期，kills 本帧内准确。
-     *
-     * @return 本轮摧毁数（连跳续段判定的唯一依据）。
-     */
     fun flashExplosion(
         engine: CombatEngineAPI,
         at: Vector2f,
@@ -80,8 +50,7 @@ object SevenStarsDamageHandler {
             if (target is MissileAPI && target.isExpired) continue
             if (target !is ShipAPI && target !is MissileAPI) continue
 
-            // 舰船：盾覆盖爆心 → 盾面落点 + bypass=false（盾吸收，尊重护盾）；否则 → 命中侧
-            // 压点 + bypass=true（绕开「盾关闭时 bypass=false 全额无伤害」的引擎行为）。导弹无盾，取爆心点。
+            // 盾关闭时 bypassShields=false 会被引擎结算为无伤害，爆心未被盾覆盖必须 bypass=true 压点。
             val shieldCovers = (target as? ShipAPI)?.let { ExplosionStrikeImpl.shieldCovers(it, at) } == true
             val point = (target as? ShipAPI)?.let { ExplosionStrikeImpl.resolveDamagePoint(it, at) } ?: Vector2f(at)
             engine.applyDamage(
@@ -105,14 +74,6 @@ object SevenStarsDamageHandler {
         return kills
     }
 
-    /**
-     * 对舰终结的一段结算（单段终结与 v5 多段逐段共用）：
-     * `applyDamage(面板 × 段倍率, ENERGY, emp)`——玩家单段 emp=0（设计案按字面解读：单段不附带 EMP）；
-     * v5 多段每段 emp = 面板等值（设计案 v5 终结栏）。
-     * 落点与 bypassShields 走统一入口 [ExplosionStrikeImpl]（盾覆盖爆心 → 盾面点 + bypass=false；
-     * 未覆盖 → 命中侧压点 + bypass=true）；[at] 为沿舰体取点的爆炸心
-     * （[sampleRiftCascadePoints] 序列），压点机制保证界外取点被截回舰体命中侧。
-     */
     fun terminalStrike(
         engine: CombatEngineAPI,
         ship: ShipAPI,
@@ -134,22 +95,7 @@ object SevenStarsDamageHandler {
         )
     }
 
-    /**
-     * 对舰终结落点取点（需求定案：直接抄原版裂隙洪流发射极 RiftCascadeEffect.getNextArcLoc
-     * 的碰撞箱贴边走位，替代原射线二分取点）：
-     * 1. 首点：舰心→[anchor]（来向）方向的碰撞圆周点；
-     * 2. 走位方向 spawnDir = 来向视角下「首点方位角 → 舰心方位角」的最近转向（原版口径，
-     *    恒 0 时取 +1）；
-     * 3. 逐点：绕舰心角步进 360°×[TERMINAL_SPACING]/(2π×碰撞半径)（cap 90°，盾开启时
-     *    间距 ×0.67），落点先取 `getTargetingRadius`（吃精确碰撞箱/盾面半径）再外扩
-     *    30~80su 抖动；盾未开启且精确碰撞箱可用时吸附最近顶点并沿顶点→落点方向回拉
-     *    [TERMINAL_CORE_RADIUS]×0.9（让爆炸心悬在舰缘外侧、爆风盖住舰缘——原版地雷
-     *    同款处理）。
-     *
-     * 与原版差异：原版从 beam 读来向与目标，本实现显式传 [ship]/[anchor]；尺寸倍率
-     * 恒 1（原版随已生成数递减的 sizeMult 与七星段表语义无关，不引入）。
-     * 返回点沿舰体周向依走位方向次第排布，天然满足「多段沿舰体次第绽开」。
-     */
+    // 走位取点沿用原版 RiftCascadeEffect.getNextArcLoc 的碰撞箱贴边算法。
     fun sampleRiftCascadePoints(ship: ShipAPI, count: Int, anchor: Vector2f): List<Vector2f> {
         if (count <= 0) return emptyList()
         val center = Vector2f(ship.location)
@@ -158,7 +104,6 @@ object SevenStarsDamageHandler {
         val spacing = if (shieldOn) TERMINAL_SPACING * SHIELD_SPACING_MULT else TERMINAL_SPACING
         val anglePerSegment = (360f * spacing / (2f * Math.PI.toFloat() * targetRadius)).coerceAtMost(90f)
 
-        // 走位方向（原版 spawnDir 口径）：来向锚点视角下首点方位 → 舰心方位的最近转向。
         val startAngle = Misc.getAngleInDegrees(center, anchor)
         val firstCircle = MathUtils.getPointOnCircumference(center, targetRadius, startAngle)
         val spawnDir = Misc.getClosestTurnDirection(

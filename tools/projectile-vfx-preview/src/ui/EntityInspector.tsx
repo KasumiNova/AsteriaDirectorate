@@ -224,7 +224,6 @@ export function EntityInspector({ preset, onPresetChange }: EntityInspectorProps
       </div>
 
       <div className="inspector-tab-content">
-        {/* TAB 1: BASE TRAIL */}
         <div className={`tab-pane ${activeTab === 'trail' ? 'active' : ''}`}>
           <ParamGroup
             title="TrailEntity"
@@ -291,7 +290,6 @@ export function EntityInspector({ preset, onPresetChange }: EntityInspectorProps
           </ParamGroup>
         </div>
 
-        {/* TAB 2: COLOR & GLOW */}
         <div className={`tab-pane ${activeTab === 'colors' ? 'active' : ''}`}>
           <ParamGroup
             title="Color Settings"
@@ -313,7 +311,6 @@ export function EntityInspector({ preset, onPresetChange }: EntityInspectorProps
           </ParamGroup>
         </div>
 
-        {/* TAB 3: RIBBON DECORATIONS */}
         <div className={`tab-pane ${activeTab === 'ribbons' ? 'active' : ''}`}>
           <section className="param-group">
             <header className="param-group-head">
@@ -584,7 +581,6 @@ export function EntityInspector({ preset, onPresetChange }: EntityInspectorProps
           </section>
         </div>
 
-        {/* TAB 4: SIMULATION */}
         <div className={`tab-pane ${activeTab === 'simulation' ? 'active' : ''}`}>
           <ParamGroup
             title="Simulation"

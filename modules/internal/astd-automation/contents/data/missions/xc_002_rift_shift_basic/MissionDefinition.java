@@ -9,21 +9,9 @@ import com.fs.starfarer.api.mission.FleetSide;
 import com.fs.starfarer.api.mission.MissionDefinitionAPI;
 import com.fs.starfarer.api.mission.MissionDefinitionPlugin;
 
-/**
- * Dev-only mission surface for XC-002 星翼 (rift shift / imaginary wings / starfall wing) in-game automation.
- * <p>
- * 玩家星翼级（清空全部非内置武器槽，内置船插虚数之翼/纳米修复协议与内置主炮坠星残翼不动）；
- * 敌方统治者级突击型（清空武器槽，皮实巡洋舰做裂隙掠过/驻留/闭合扫掠/主炮穿透靶舰，
- * 靠插件 stabilize 钉在折跃路径第 5 点位正中）。全走 reserves 由插件手动 spawn
- * （范式同 lens_grav_storm_zw002），玩家舰身份由插件 setPlayerShipExternal 赋予。
- * 相位机验证：SPAWN → WINGS_OBSERVE（静止伤害乘区 −25%）→ SHIFT（SYSTEM_TARGET_COORDS
- * 注入到达锚点 / 变距满 1000su 位移 / 速度窗口峰值 / 掠过与驻留掉血）→
- * CLOSURE（闭合同向扫掠掉血）→ WEAPON（主弹/子射弹供给登记 + 目标振频适应叠层 + 穿透掉血）。
- */
 public final class MissionDefinition implements MissionDefinitionPlugin {
     private static void clearNonBuiltInWeaponSlots(final FleetMemberAPI member) {
         for (final String slotId : member.getVariant().getFittedWeaponSlots()) {
-            // 内置武器槽不可清空，仅清装配槽（范式同 lens_grav_storm_zw002）。
             if (member.getHullSpec().getBuiltInWeapons().containsKey(slotId)) {
                 continue;
             }
@@ -42,7 +30,6 @@ public final class MissionDefinition implements MissionDefinitionPlugin {
         final FleetMemberAPI player = api.addToFleet(FleetSide.PLAYER, ASTDInGameAutomationScenario.XC002_VARIANT_ID, FleetMemberType.SHIP, false);
         clearNonBuiltInWeaponSlots(player);
 
-        // 裂隙/主炮靶舰：统治者级突击型（清空武器槽保留舰体，范式同 lens_grav_storm_zw002 的统治者）。
         final FleetMemberAPI target = api.addToFleet(FleetSide.ENEMY, "dominator_Assault", FleetMemberType.SHIP, false);
         clearNonBuiltInWeaponSlots(target);
 

@@ -12,7 +12,6 @@ import java.awt.Color
 import kotlin.math.cos
 import kotlin.math.sin
 
-/** 把样式位应用到 BoxUtil 实体（纯派发，无对应 setter 的枚举值不存在）。 */
 internal fun FlareEntity.applyFlareStyle(style: BoxFlareStyle) {
     when (style) {
         BoxFlareStyle.SMOOTH -> setSmooth()
@@ -22,11 +21,6 @@ internal fun FlareEntity.applyFlareStyle(style: BoxFlareStyle) {
     }
 }
 
-/**
- * BoxUtil 光斑组件：见 [BoxFlareSpec] 头部文档。
- *
- * BoxUtil 未就绪/建实体失败时 WARN 一次并禁用自身（不重试风暴），弹体其余特效层不受影响。
- */
 class BoxFlareComponent(
     id: String,
     internal val spec: BoxFlareSpec,
@@ -86,7 +80,6 @@ class BoxFlareComponent(
         }
         val fadeMul = if (fadeStartElapsed < 0f) 1f
         else (1f - (frame.elapsed - fadeStartElapsed) / fadeSeconds).coerceIn(0f, 1f)
-        // 锚点 + 局部 x 偏移（沿朝向；负值锚回弹体中心）
         val rad = Math.toRadians(frame.facing.toDouble())
         val pos = Vector2f(
             frame.origin.x + (cos(rad) * spec.offsetX).toFloat(),
@@ -107,15 +100,12 @@ class BoxFlareComponent(
     }
 
     companion object {
-        /** 光斑绘制序：贴图拖尾绘制序基线之上的层位（与拖尾叠层同族）。 */
         const val RENDER_ORDER_FLARE = StaticTrailComponent.RENDER_ORDER_BASE + 8
 
-        /** 光斑常驻时长（秒）：生命周期由树 fade/detach 接管，这里给一个永不自然到期的值。 */
         private const val FLARE_FULL_SECONDS = 1e7f
     }
 }
 
-/** ASTDColor（0..1 浮点）→ awt Color（0..255）。 */
 private fun ASTDColor.toAwt(): Color = Color(
     (red.coerceIn(0f, 1f) * 255f).toInt(),
     (green.coerceIn(0f, 1f) * 255f).toInt(),

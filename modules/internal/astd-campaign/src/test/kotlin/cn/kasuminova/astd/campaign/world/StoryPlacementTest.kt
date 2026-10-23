@@ -5,9 +5,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-/**
- * 剧情星系落位算法校验：距离/边缘半径/角距约束与种子确定性。
- */
 class StoryPlacementTest {
 
     @Test
@@ -51,7 +48,6 @@ class StoryPlacementTest {
         for (seed in 0L..20L) {
             val loc = StoryPlacement.placeMainSystem(seed, existing)
             assertTrue(loc.length() <= StoryPlacement.MAIN_MAX_RADIUS)
-            // 多数种子下应直接满足间距约束（极端拥挤时允许兜底，此处构造不拥挤）
             assertTrue(
                 existing.all { it.minus(loc).length() >= StoryPlacement.MAIN_MIN_CLEARANCE },
                 "主星系落位与既有星系过近：seed=$seed loc=$loc",

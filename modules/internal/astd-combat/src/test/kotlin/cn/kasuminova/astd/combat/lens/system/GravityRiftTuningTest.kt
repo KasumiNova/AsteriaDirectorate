@@ -7,14 +7,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-/**
- * 引力裂隙发生器数值规格（purple/20-production.md §2，2026-09-20 二轮重做；2026-10 细化）：
- * 裂隙数量随光束未用射程递增（unusedRange / 200 + 1，钳制 [1, 5]，对齐原版裂隙洪流发射极）、
- * 单裂隙伤害按难度三锚点区间随序位线性插值（仅 1 个时取上限）、伤害→地雷乘区换算（/ 1000）、
- * 旋涡 alpha 包络（1s 淡入 + 全亮 + 1s 淡出，forceFadeOut 提前收口）、
- * 系统期间固定减伤与相位压制逻辑、jitter 强度/描边外扩的状态分支（对齐原版时流之壳结构）。
- * 经 [DifficultyTuningImpl.installScaleForTests] 走完整映射链路（对齐 FighterGravLinkTuningTest 先例）。
- */
 class GravityRiftTuningTest {
 
     @AfterTest
@@ -82,17 +74,14 @@ class GravityRiftTuningTest {
     fun `jitter 强度按状态分支变化且 IN 受充能时长影响`() {
         val dur = 2f
         val active = GravityRiftTuning.jitterLevelAndRange(ShipSystemStatsScript.State.ACTIVE, 0.5f, dur)
-        // IN：同一充能时长下强度随进度单调不减，且不超过 ACTIVE 满额
         val inEarly = GravityRiftTuning.jitterLevelAndRange(ShipSystemStatsScript.State.IN, 0.2f, dur)
         val inLate = GravityRiftTuning.jitterLevelAndRange(ShipSystemStatsScript.State.IN, 0.8f, dur)
         assertTrue(inEarly.first <= inLate.first)
         assertTrue(inLate.first <= active.first)
-        // IN：充能时长参与爬升计算（同一进度下不同时长结果不同）
         assertTrue(
             GravityRiftTuning.jitterLevelAndRange(ShipSystemStatsScript.State.IN, 0.5f, 0.5f).first !=
                     GravityRiftTuning.jitterLevelAndRange(ShipSystemStatsScript.State.IN, 0.5f, 2f).first
         )
-        // OUT：强度随 effectLevel 衰减而减弱，不超过 ACTIVE 满额；描边外扩与强度同向
         val outHigh = GravityRiftTuning.jitterLevelAndRange(ShipSystemStatsScript.State.OUT, 0.8f, dur)
         val outLow = GravityRiftTuning.jitterLevelAndRange(ShipSystemStatsScript.State.OUT, 0.2f, dur)
         assertTrue(outLow.first < outHigh.first)

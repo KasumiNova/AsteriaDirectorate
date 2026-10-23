@@ -28,16 +28,13 @@ import org.lwjgl.util.vector.Vector2f
 
 /**
  * XC-002 星翼场景（裂隙折跃/虚数之翼/坠星残翼，断言点 XC2-A~XC2-G）。
- *
- * 拆分自 ASTDAutomationCombatPlugin 的同名 if-else 分支，相位机/断言/证据写出口径原样迁移。
  */
 class RiftShiftScenario : AbstractAutomationScenario() {
-    // ==== XC-002 星翼场景状态（相位机 SPAWN → WINGS_OBSERVE → SHIFT → CLOSURE → WEAPON_SHIELD → WEAPON_HULL → COMPLETED） ====
     private var xc2Phase = XC2_PHASE_SPAWN
     private var xc2PhaseStartedAt = 0f
 
     // WINGS_OBSERVE（断言点 XC2-A）：静止（0% 航速）伤害乘区谷值与静止 maxSpeed（含零幅能加速等常驻修正，
-    // 作为 XC2-C 速度窗口乘区的同口径分母——窗口峰值 +100% 是百分比乘区，与零幅能 flat 叠乘后绝对比值不是 2.0）。
+    // 作为 XC2-C 速度窗口乘区的同基准分母，窗口峰值 +100% 是百分比乘区，与零幅能 flat 叠乘后绝对比值不是 2.0）。
     private var xc2RestSustainMultMin = Float.MAX_VALUE
     private var xc2RestMaxSpeed = -1f
 
@@ -50,7 +47,7 @@ class RiftShiftScenario : AbstractAutomationScenario() {
     private var xc2EnemyHpAtShiftStart = -1f
     private var xc2EnemyHpMinBeforeClosure = Float.MAX_VALUE
 
-    // CLOSURE（断言点 XC2-E）：闭合窗前后靶舰 HP 对账。
+    // CLOSURE（断言点 XC2-E）：闭合窗前后靶舰 HP 核对。
     private var xc2EnemyHpAtClosureStart = -1f
     private var xc2EnemyHpMinAfterClosure = Float.MAX_VALUE
 
@@ -62,7 +59,7 @@ class RiftShiftScenario : AbstractAutomationScenario() {
     private var xc2AdaptationStacksMax = 0f
 
     // 武器相位掉血证据：穿透结算（单点 20% 面板/0.1s 拍）累计伤害超统治者级原始结构值，改为「舞台结构冗余 +
-    // 逐帧奶回 + 逐帧差额累加」口径——不掉成 hulk（实体蒸发会让 findXc2Enemy 判失联），证据不冻结。
+    // 逐帧回血 + 逐帧差额累加」方式，不掉成 hulk（实体蒸发会让 findXc2Enemy 判失联），证据不冻结。
     private var xc2WeaponDamageAccum = 0f
     private var xc2EnemyHpPrevFrame = -1f
     private var xc2WeaponStageBuffed = false
@@ -126,7 +123,7 @@ class RiftShiftScenario : AbstractAutomationScenario() {
      * 舞台保活与站位（范式同 stabilizeGsShips）：双方逐帧钉死锚点 + 舰 AI 置空。
      * [pinPlayerAt] 为 null 时不钉玩家舰位（折跃窗内裂隙插件逐帧改写 location，钉位会与其互搏），
      * 其余封锁照旧；玩家舰恒封锁相位键（裂隙折跃即相位斗篷，IN/ACTIVE 期再按会提前退出）、
-     * 恒奶血清零辐能（舞台干净化）。靶舰护盾默认压下（接触/爆炸/穿透结算落船体），
+     * 恒回血清零辐能（舞台干净化）。靶舰护盾默认压下（接触/爆炸/穿透结算落船体），
      * [enemyShieldUp] 仅在 WEAPON_SHIELD 相位放开（振频适应叠层只在护盾命中路径产生）。
      */
     private fun stabilizeXc2Ships(
@@ -145,8 +142,8 @@ class RiftShiftScenario : AbstractAutomationScenario() {
         if (player != null && !player.isHulk) {
             engine.setPlayerShipExternal(player)
             if (pinPlayerAt != null) {
-                // 武器观测相位必须保留舰 AI：setForceFireOneFrame 对无舰 AI 的舞台舰不生效
-                // （电荷针刺场景实机 90s 零发射判例）；站位仍逐帧钉死，移动/系统/护盾命令照封。
+                // 武器观测相位必须保留舰 AI：Starsector 0.98 中 setForceFireOneFrame 对无舰 AI 的舞台舰不生效；
+                // 站位仍逐帧钉死，移动/系统/护盾命令照封。
                 if (preservePlayerAI && player.shipAI == null) {
                     // 预备役出库的舰不带 AI，需补默认舰 AI（config 必须空实例，传 null 会让
                     // BasicShipAI.pickManeuver NPE，范式同 stabilizeGrgShips）。
@@ -191,7 +188,7 @@ class RiftShiftScenario : AbstractAutomationScenario() {
     }
 
     /**
-     * WEAPON 相位供给登记对账（范式同 pollGdWarheads 的登记簿口径）：主弹走 onFireEffect
+     * WEAPON 相位供给登记核对（范式同 pollGdWarheads 的登记簿做法）：主弹走 onFireEffect
      * 登记表 ever-seen identity；子射弹已回归原版碰撞（不登记脚本状态表），改按
      * engine.missiles 扫描 projectileSpecId 计数。
      */
@@ -210,9 +207,9 @@ class RiftShiftScenario : AbstractAutomationScenario() {
     }
 
     /**
-     * 武器相位掉血证据累计：逐帧差额累加后立即奶回满结构（配合 CLOSURE 转段时垫的
-     * [XC2_STAGE_ENEMY_HULL_BUFFER] 结构冗余）——全格穿透单拍伤害远超原始结构值，
-     * 不奶回会掉成 hulk 甚至实体蒸发（findXc2Enemy 判失联），证据也会随 hulk 冻结。
+     * 武器相位掉血证据累计：逐帧差额累加后立即回满结构（配合 CLOSURE 转段时垫的
+     * [XC2_STAGE_ENEMY_HULL_BUFFER] 结构冗余），全格穿透单拍伤害远超原始结构值，
+     * 不回血会掉成 hulk 甚至实体蒸发（findXc2Enemy 判失联），证据也会随 hulk 冻结。
      */
     private fun accumulateXc2WeaponDamage(enemy: ShipAPI) {
         if (!xc2WeaponStageBuffed || enemy.isHulk) return
@@ -317,7 +314,7 @@ class RiftShiftScenario : AbstractAutomationScenario() {
                     if (xc2ActivatedAt < 0f && systemState == ShipSystemAPI.SystemState.IDLE && system.cooldownRemaining <= 0f) {
                         // 按帧重试 useSystem()（单次调用可能被原版闸门吞掉，范式同 GS ACTIVATE）；
                         // 变距折跃目标点经 AI 决策通道 SYSTEM_TARGET_COORDS 注入到达锚点
-                        // （原版 MineStrikeStats 同款口径；舞台舰无鼠标，确定性满距 1000su）
+                        // （原版 MineStrikeStats 同款做法；舞台舰无鼠标，确定性满距 1000su）
                         xc2ActivateAttempts++
                         player.aiFlags.setFlag(
                             ShipwideAIFlags.AIFlags.SYSTEM_TARGET_COORDS, 1f, Vector2f(XC2_PLAYER_ARRIVAL),
@@ -347,8 +344,8 @@ class RiftShiftScenario : AbstractAutomationScenario() {
                             }
                         }
                         if (xc2Phase == XC2_PHASE_SHIFT && sinceActivate >= XC2_SHIFT_WINDOW_SECONDS) {
-                            // 期望峰值按统计合成式实算：maxSpeed = (base × (1+窗口峰值%) + 常驻 flat 增量) / 静止值——
-                            // 原版零幅能加速 flat 不吃百分比乘区（实机判例：115×2+50=280），硬编码绝对区间会误判。
+                            // 期望峰值按统计合成式实算：maxSpeed = (base × (1+窗口峰值%) + 常驻 flat 增量) / 静止值，
+                            // 原版零幅能加速 flat 不吃百分比乘区（115×2+50=280），硬编码绝对区间会误判。
                             val baseSpeed = player.mutableStats.maxSpeed.baseValue
                             val flatDelta = (xc2RestMaxSpeed - baseSpeed).coerceAtLeast(0f)
                             val peakPercent = DifficultyTuningImpl.valueFor(ImaginaryWingsTuning.SPEED_BOOST_PERCENT, true)
@@ -416,7 +413,7 @@ class RiftShiftScenario : AbstractAutomationScenario() {
                                             "closureDrop=${"%.0f".format(closureDrop)}（断言点 XC2-D/E）",
                                 )
                                 // 舞台结构冗余：全格穿透单拍即可打穿统治者级原始结构值，
-                                // 先垫结构池（xc2 武器相位逐帧奶回 + 差额累加掉血证据）
+                                // 先垫结构池（xc2 武器相位逐帧回血 + 差额累加掉血证据）
                                 enemy.mutableStats.hullBonus.modifyFlat(XC2_STAGE_MOD_ID, XC2_STAGE_ENEMY_HULL_BUFFER)
                                 enemy.hitpoints = enemy.maxHitpoints
                                 xc2EnemyHpPrevFrame = enemy.hitpoints
@@ -441,8 +438,8 @@ class RiftShiftScenario : AbstractAutomationScenario() {
                     accumulateXc2WeaponDamage(enemy)
                     player.shipTarget = enemy
                     weapon.currAngle = Misc.getAngleInDegrees(weapon.location, enemy.location)
-                    // 不得逐帧 setRemainingCooldownTo(0f)：实机验证会把武器开火周期反复重置导致
-                    // 零弹体（范式同电荷针刺场景注释）。
+                    // 不得逐帧 setRemainingCooldownTo(0f)：该调用会把武器开火周期反复重置导致
+                    // 零弹体（同电荷针刺场景注释）。
                     weapon.setForceFireOneFrame(true)
                     if (!xc2WeaponDiagLogged) {
                         xc2WeaponDiagLogged = true
@@ -476,7 +473,7 @@ class RiftShiftScenario : AbstractAutomationScenario() {
             }
 
             XC2_PHASE_WEAPON_HULL -> {
-                // 体相观测：靶舰压盾，穿透掉血 + 供给登记计数兜底评估
+                // 体相观测：靶舰压盾，穿透掉血 + 供给登记计数辅助评估
                 stabilizeXc2Ships(
                     engine, pinPlayerAt = XC2_WEAPON_PLAYER_ANCHOR, playerFacing = 0f,
                     blockSystem = true, healEnemy = false, allowFire = true,
@@ -574,7 +571,7 @@ class RiftShiftScenario : AbstractAutomationScenario() {
         json.appendLine("  \"runtimeElapsedSeconds\": 0,")
         json.appendLine("  \"runtimeTrackedCount\": ${vfxTelemetry.trackedCount},")
         json.appendLine("  \"runtimeLastProjectileSpecId\": ${jsonString(vfxTelemetry.lastProjectileSpecId)},")
-        // ---- 机制证据（断言点 XC2-A~XC2-G）----
+        // 机制证据（断言点 XC2-A~XC2-G）
         json.appendLine("  \"xc2Phase\": \"$xc2Phase\",")
         json.appendLine("  \"xc2SystemId\": ${jsonString(xc2System?.id)},")
         json.appendLine("  \"xc2SystemState\": ${jsonString(xc2System?.state?.name)},")
@@ -629,11 +626,11 @@ class RiftShiftScenario : AbstractAutomationScenario() {
         private const val XC2_WEAPON_ID = "astd_starfall_wing"
         private const val XC2_HULLMOD_ID = "astd_imaginary_wings"
 
-        // 折跃舞台锚点：玩家舰静止朝 +X 激活（速度近零回退朝向，断言点 XC2-B 定向口径），
+        // 折跃舞台锚点：玩家舰静止朝 +X 激活（速度近零回退朝向，断言点 XC2-B 定向判定），
         // 变距折跃目标点经 SYSTEM_TARGET_COORDS 注入到达锚点（= 起点 +X 推进 RiftShiftTuning.SHIFT_DISTANCE，
-        // 恰为满距——到达锚点同源派生，位移断言界亦由该常量派生，改折跃距离无需双处同步）；
+        // 恰为满距，到达锚点同源派生，位移断言界亦由该常量派生，改折跃距离无需双处同步）；
         // 伤害点位/虚空锚雷沿路径步进 100su（anchorPoints 按路径实长展开），靶舰钉在路径中段
-        // 第 5 点位正中（断言点 XC2-D/E 口径：全程吃成形掠过/驻留/闭合扫掠三类结算）。
+        // 第 5 点位正中（断言点 XC2-D/E 判定：全程吃成形掠过/驻留/闭合扫掠三类结算）。
         private val XC2_PLAYER_ANCHOR = Vector2f(-800f, -100f)
         private val XC2_ENEMY_ANCHOR = Vector2f(-300f, -100f)
         private val XC2_PLAYER_ARRIVAL = Vector2f(XC2_PLAYER_ANCHOR.x + RiftShiftTuning.SHIFT_DISTANCE, XC2_PLAYER_ANCHOR.y)
@@ -653,7 +650,7 @@ class RiftShiftScenario : AbstractAutomationScenario() {
         // SHIFT（断言点 XC2-B/C/D）：折跃位移界从 RiftShiftTuning.SHIFT_DISTANCE 常量 ±100su 派生
         // （容忍钉位恢复帧；与 XC2_PLAYER_ARRIVAL 同源，改折跃距离无需双处同步）；折跃窗 1.2s
         // 内不钉舰位（裂隙插件逐帧改写 location，钉位互搏会掩盖位移证据）；速度窗口 maxSpeed 峰值
-        // 砺刃 +100%（期望峰值按 (base×(1+峰值%)+常驻 flat)/静止值 实算——零幅能加速 flat 不吃百分比
+        // 砺刃 +100%（期望峰值按 (base×(1+峰值%)+常驻 flat)/静止值 实算，零幅能加速 flat 不吃百分比
         // 乘区，容差 ±0.1 覆盖帧量化）；5.0s 转入 CLOSURE（须在闭合扫掠前快照靶舰 HP：裂隙时钟为
         // 舰船时间，满距闭合起点 = 1s 拉开 + 5s 驻留，相位时流折算世界钟 ≈激活 +5.3~5.6s）。
         private const val XC2_ACTIVATE_TIMEOUT = 10f
@@ -666,9 +663,9 @@ class RiftShiftScenario : AbstractAutomationScenario() {
         private const val XC2_SHIFT_WINDOW_SECONDS = 5.0f
 
         // CLOSURE（断言点 XC2-D/E 评估）：接触掉血下界由常量派生（装甲已在 XC2-A 剥光，固定值结算：
-        // 靶舰钉在第 5 点位正中——成形后段 ≈5 拍×400 + 快照前驻留 ≈23 拍×200 ≈6600 名义，
-        // 保守口径取 3 拍掠过 + 10 拍驻留）；闭合掉血下界 = 一拍掠过（快照后残余驻留拍 +
-        // 扫掠头抵达第 5 点位前的驻留拍 + 扫过时刻即席结算一拍 400，保守口径只取即席一拍）；
+        // 靶舰钉在第 5 点位正中，成形后段 ≈5 拍×400 + 快照前驻留 ≈23 拍×200 ≈6600 名义，
+        // 保守估计取 3 拍掠过 + 10 拍驻留）；闭合掉血下界 = 一拍掠过（快照后残余驻留拍 +
+        // 扫掠头抵达第 5 点位前的驻留拍 + 扫过时刻即席结算一拍 400，保守估计只取即席一拍）；
         // +7.3s 评估（闭合扫掠 ≈6.3~6.6s 完毕后余量充足）。
         private const val XC2_CLOSURE_EVAL_SECONDS = 7.3f
         private const val XC2_EXPECT_CONTACT_HP_DROP = RiftShiftTuning.GRAZE_DAMAGE * 3 + RiftShiftTuning.CONTACT_DAMAGE * 10
@@ -676,8 +673,8 @@ class RiftShiftScenario : AbstractAutomationScenario() {
 
         // WEAPON_SHIELD/HULL（断言点 XC2-F/G）：盾相 5s 评估叠层峰值 ≥0.5（主弹穿盾首触 +1/子射弹
         // 撞盾 +0.5）；体相 6s 评估穿透掉血 ≥300（穿透单点 面板×穿透比例 × 穿透节拍 + 子射弹撞船体全额，
-        // 靶舰垫舞台结构冗余并逐帧奶回、掉血按逐帧差额累加——装甲已在 XC2-A 后剥光，主弹穿越期 ≥2 拍/发
-        // （内部点口径：采样点在碰撞箱多边形内即接触，中段不再漏拍），实机 8 发 2947，300 为保守口径）、
+        // 靶舰垫舞台结构冗余并逐帧回血、掉血按逐帧差额累加，装甲已在 XC2-A 后剥光，主弹穿越期 ≥2 拍/发
+        // （内部点判定：采样点在碰撞箱多边形内即接触，中段不再漏拍），300 为保守取值）、
         // 供给登记主弹 ≥3（固定 1.5s/发 × 11s 两相 ≈7 发）、子射弹 ≥1（0.2s 散发节拍）。
         private const val XC2_WEAPON_SHIELD_EVAL_SECONDS = 5f
         private const val XC2_WEAPON_HULL_EVAL_SECONDS = 6f

@@ -1,78 +1,61 @@
 # Tooltip Style Editor
 
-Web tool for prototyping ASTD hullmod tooltip content, theme colors, layout, and GLSL background shaders. The editor exports a JSON style payload plus a Kotlin scaffold for later game-side wiring.
+用于编辑和预览 ASTD 船插 tooltip 的内容、主题颜色、布局与 GLSL 背景，并导出 JSON 和 Kotlin 示例代码。
 
-## Install
+## 安装
 
 ```bash
+cd tools/tooltip-style-editor
 npm install
 ```
 
-## Development
+## 开发
 
 ```bash
 npm run dev
 ```
 
-Vite prints the local URL. The app stores the current preset in browser local storage under `astd-tooltip-style-editor-preset`.
+Vite 会输出本地访问地址。当前预设保存在浏览器 localStorage 的 `astd-tooltip-style-editor-preset` 键中。
 
-## Build
+## 构建
 
 ```bash
 npm run build
 ```
 
-The production bundle is emitted by Vite after TypeScript compilation.
+构建命令先执行 TypeScript 编译，再由 Vite 生成生产文件。
 
-## Test
+## 测试
 
 ```bash
 npm test
 npm run test:run
 ```
 
-Focused export pipeline test:
+单独运行导出测试：
 
 ```bash
 npm test -- src/export/gameTooltipExport.test.ts
 ```
 
-## Scope
+## 编辑与导出
 
-This tool edits and previews a hullmod tooltip preset in the browser. It supports:
+编辑器支持段落、章节标题、间隔和提示行，提供主题颜色、面板宽度、fragment shader 与 uniform 编辑，以及 WebGL 预览。
 
-- content blocks for paragraphs, section headings, spacers, and hint lines
-- theme color and panel width controls
-- editable fragment shader source and uniforms
-- WebGL preview rendering
-- JSON export for data handoff
-- Kotlin scaffold export for implementation guidance
+`src/export/gameTooltipExport.ts` 导出包含 `schemaVersion`、`kind`、`hullmod`、`theme`、`background` 和 `blocks` 的 JSON。
 
-It does not implement the final in-game Kotlin renderer. The Kotlin export is intentionally a scaffold showing expected `TooltipMakerAPI` calls and where an `ASTDShaderTooltipBackground` integration should be wired later.
+`src/export/kotlinTooltipExport.ts` 生成 `TooltipMakerAPI` 示例代码。背景着色器需要在游戏端通过 `ASTDShaderTooltipBackground` 接入。
 
-## WebGL And GLSL Constraints
+## WebGL 与 GLSL 限制
 
-The preview renderer targets browser WebGL with GLSL ES 1.00 fragment shaders. Shader source should keep these constraints in mind:
+预览使用 WebGL 和 GLSL ES 1.00 fragment shader：
 
-- include a precision declaration such as `precision mediump float;`
-- use `gl_FragCoord` and `gl_FragColor`, not modern GLSL output variables
-- avoid desktop-only GLSL features, geometry stages, and compute features
-- keep uniform names aligned with the editor-provided values
-- treat the browser preview as an approximation of the final Starsector renderer
+- 声明精度，例如 `precision mediump float;`。
+- 使用 `gl_FragCoord` 和 `gl_FragColor`。
+- 不使用桌面 GLSL 特性、几何着色器或计算着色器。
+- uniform 名称必须与编辑器提供的名称一致。
+- 浏览器预览用于调整效果，游戏内效果以 Starsector 渲染结果为准。
 
-## Export Pipeline
+## 与 projectile-vfx-preview 的边界
 
-`src/export/gameTooltipExport.ts` produces the game-facing JSON payload:
-
-- `schemaVersion`
-- `kind`
-- `hullmod`
-- `theme`
-- `background`
-- `blocks`
-
-`src/export/kotlinTooltipExport.ts` produces a readable scaffold string. It is meant to be copied into implementation notes or used as a starting point when the game-side renderer exists.
-
-## Relationship To `projectile-vfx-preview`
-
-`tools/projectile-vfx-preview/` is a separate VFX preview tool for projectile effects. This tooltip editor reuses the same general browser-tool approach, but it owns a different domain: tooltip layout, text styling, and shader-backed panel backgrounds. Changes here should stay inside `tools/tooltip-style-editor/` unless a broader tool-platform refactor is explicitly planned.
+`tools/projectile-vfx-preview/` 是独立的弹体特效预览工具。两个工具共用浏览器预览的技术路线，但负责不同领域：本工具处理 tooltip 布局、文本样式与着色器面板背景。改动应限制在 `tools/tooltip-style-editor/` 内，除非有计划中的跨工具重构。

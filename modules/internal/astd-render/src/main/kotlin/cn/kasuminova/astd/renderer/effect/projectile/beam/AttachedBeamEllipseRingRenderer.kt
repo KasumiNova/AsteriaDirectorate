@@ -14,12 +14,6 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 
-/**
- * “跟随光束的永久环”渲染器：
- * - 不再按时间生成短寿命 ring 实体，而是在 render() 时基于当前光束线段实时计算环位置并绘制；
- * - 环按固定间距（spacing）分布，并通过 scrollOffset 实现沿束方向缓慢前进；
- * - 调用方需要每帧 upsert(...) 更新 line（从/to/朝向等）。
- */
 internal object AttachedBeamEllipseRingRenderer {
 
     private const val ENGINE_KEY = "astd_attached_beam_ellipse_ring_renderer"
@@ -29,15 +23,11 @@ internal object AttachedBeamEllipseRingRenderer {
         val travelSpeed: Float,
         val aSideHalf: Float,
         val bAlongHalf: Float,
-        /** 沿束方向的距离偏移（su）。用于让子光圈相对主光圈做固定 offset，而不是另起一套间距节奏。 */
         val distanceOffset: Float = 0f,
         val color: Color,
-        /** 目标“粗细”（像素）。渲染时会自动拆成多条较细的 loop 叠加，避免大线宽导致的缺口/伪影。 */
         val lineWidthPx: Float,
         val segments: Int,
-        /** 束根部 scale。 */
         val headScale: Float = 1.00f,
-        /** 束尾 scale（例如 2.0 表示尾部 200%）。 */
         val tailScale: Float = 1.20f,
     )
 
@@ -66,7 +56,6 @@ internal object AttachedBeamEllipseRingRenderer {
         } else {
             existing.line = line
             existing.lastUpdated = now
-            // 重新开始更新：取消渐隐
             existing.fadeStartedAt = null
             existing.fadeMul = 1f
         }
@@ -130,16 +119,13 @@ internal object AttachedBeamEllipseRingRenderer {
             while (it.hasNext()) {
                 val e = it.next().value
 
-                // 沿束前进
                 val spd = e.spec.travelSpeed
                 if (spd > 0.01f) e.scroll += spd * amount
 
-                // 若调用方停止更新（beam 结束/武器失活），不要立刻移除；先渐隐，避免“到点直接消失”。
                 val idle = now - e.lastUpdated
                 if (idle > 0.05f) {
                     if (e.fadeStartedAt == null) e.fadeStartedAt = now
                     val fadeT = ((now - (e.fadeStartedAt ?: now)) / 0.65f).coerceIn(0f, 1f)
-                    // 用三次方让初期淡化更快（约 +50% 初始斜率），避免“看不出变化直到消失”。
                     val f = (1f - fadeT).coerceIn(0f, 1f)
                     e.fadeMul = (f * f * f).coerceIn(0f, 1f)
                     if (e.fadeMul <= 0.001f) {
@@ -154,9 +140,6 @@ internal object AttachedBeamEllipseRingRenderer {
 
         override fun render(layer: CombatEngineLayers, viewport: ViewportAPI) {
             if (expired) return
-            // 层次效果：
-            // - 后半圈：在较低层渲染（让主束覆盖它）
-            // - 前半圈：在更高层渲染（压在主束之上）
             val drawFront = when (layer) {
                 CombatEngineLayers.ABOVE_PARTICLES -> true
                 CombatEngineLayers.ABOVE_SHIPS_AND_MISSILES_LAYER -> false
@@ -190,8 +173,7 @@ internal object AttachedBeamEllipseRingRenderer {
 
                     val spacing = att.spec.spacing.coerceAtLeast(1f)
                     val offset = if (spacing > 0.01f) (att.scroll % spacing) else 0f
-                    // 关键修复：不要把 dist % len 再 wrap 回束根部，否则会出现“间距乱/多一个环跳回起点”的错觉。
-                    // 对于 len < spacing 的短束场景：startDist 用 offset % len，保证至少能绘制一个环。
+                    // dist 不能再 wrap 回束根部（否则间距错乱、环跳回起点）；len < spacing 时 startDist 用 offset % len 保证至少绘制一环
                     val startDist = if (len > 0.01f) (offset % len) else 0f
                     val count = (((len - startDist) / spacing).toInt().coerceAtLeast(0) + 2).coerceAtLeast(1)
 
@@ -205,20 +187,18 @@ internal object AttachedBeamEllipseRingRenderer {
                     val aa = ((c.alpha / 255f) * att.fadeMul).coerceIn(0f, 1f)
                     if (aa <= 0.001f) continue
 
-                    // 重要：不要直接用超大 glLineWidth（某些驱动会出现矩形缺口/断裂）。
-                    // 用多条较细的 loop 叠加 + 轻微半轴偏移来模拟厚度。
+                    // 禁止直接用超大 glLineWidth（部分驱动出现矩形缺口/断裂），用多条细 loop 叠加加半轴偏移模拟厚度
                     val target = att.spec.lineWidthPx.coerceAtLeast(0.25f)
                     val baseWidth = kotlin.math.min(1.85f, target)
                     val layers = kotlin.math.ceil((target / baseWidth).toDouble()).toInt().coerceIn(1, 10)
                     val centerIdx = (layers - 1) * 0.5f
-                    val delta = kotlin.math.max(0.10f, target * 0.20f) // 厚度分层的半轴偏移幅度
+                    val delta = kotlin.math.max(0.10f, target * 0.20f)
 
                     for (i in 0 until count) {
                         val dist = startDist + i * spacing + att.spec.distanceOffset
                         if (dist < 0f) continue
                         if (dist > len) break
 
-                        // 新需求：越接近束尾光圈越大（而不是随时间变大）
                         val t = if (len > 0.01f) (dist / len).coerceIn(0f, 1f) else 0f
                         val scale = (att.spec.headScale + (att.spec.tailScale - att.spec.headScale) * t).coerceAtLeast(0.01f)
                         val a = (aBase * scale).coerceAtLeast(1f)
@@ -300,11 +280,8 @@ internal object AttachedBeamEllipseRingRenderer {
             GL11.glLineWidth(lineWidthPx.coerceAtLeast(0.25f))
             GL11.glColor4f(r, g, bCol, aCol.coerceIn(0f, 1f))
 
-            // 用“半圈”在不同 layer 渲染，模拟圈绕着光束有前后遮挡。
-            // 这里用 ca 的正负划分前/后半圈（相当于 ellipse 在 perp 轴上的左右半圈），足够产生层次。
             val step = (2f * PI).toFloat() / segments.toFloat().coerceAtLeast(1f)
             var drawing = false
-            // i <= segments：让曲线在边界处闭合得更自然（但我们是 strip，需手动分段）
             for (i in 0..segments) {
                 val ang = phase + step * (i % segments)
                 val ca = cos(ang.toDouble()).toFloat()

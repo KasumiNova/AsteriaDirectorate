@@ -219,6 +219,5 @@ function setStorageItem(key: string, value: string): void {
   try {
     storage.setItem(key, value);
   } catch {
-    // ignore storage failures
   }
 }

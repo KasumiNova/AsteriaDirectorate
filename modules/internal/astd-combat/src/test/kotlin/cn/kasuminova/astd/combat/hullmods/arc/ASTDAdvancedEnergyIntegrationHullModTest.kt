@@ -20,13 +20,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/**
- * 先进能量集成（[ASTDAdvancedEnergyIntegrationHullMod]）行为验证：
- * - 难度缩放乘区走战斗内逐帧通道（advanceInCombat 按 owner 结算，玩家侧默认砺刃 v2、敌方按 k_s 映射）；
- * - 炮塔装甲/高级炮塔陀螺仪互斥：创建前只检测入队（[IncompatibleHullmodStripper]，OP 结算实时迭代 CME 防线），
- *   drain 后五路清理（普通/permaMod/S-mod/S-modded built-in/suppressed）；
- * - 非 xc_001 舰体完全不生效（不入队、不写乘区）。
- */
 class ASTDAdvancedEnergyIntegrationHullModTest {
 
     private val hullmod = ASTDAdvancedEnergyIntegrationHullMod()
@@ -88,7 +81,6 @@ class ASTDAdvancedEnergyIntegrationHullModTest {
 
         hullmod.advanceInCombat(ship, 0.016f)
 
-        // 砺刃 v2 锚点：武器辐能 -15% / 射弹速度 +20% / 炮塔转向 +50%
         assertEquals(85f, map.ballisticFluxCost.computeEffective(100f), 1e-3f)
         assertEquals(85f, map.energyFluxCost.computeEffective(100f), 1e-3f)
         assertEquals(85f, map.beamFluxCost.modifiedValue, 1e-3f)
@@ -106,7 +98,6 @@ class ASTDAdvancedEnergyIntegrationHullModTest {
 
         hullmod.advanceInCombat(ship, 0.016f)
 
-        // 迟暮 v1 锚点：武器辐能 -10% / 射弹速度 +15% / 炮塔转向 +25%
         assertEquals(90f, map.ballisticFluxCost.computeEffective(100f), 1e-3f)
         assertEquals(115f, map.ballisticProjSpeed.modifiedValue, 1e-3f)
         assertEquals(125f, map.weaponTurnRate.computeEffective(100f), 1e-3f)
@@ -129,7 +120,6 @@ class ASTDAdvancedEnergyIntegrationHullModTest {
 
         hullmod.applyEffectsBeforeShipCreation(ShipAPI.HullSize.CRUISER, stats, "test")
 
-        // 创建前回调不得结构性移除（原版 OP 结算实时迭代 hullMods 期间回调，removeMod 必抛 CME）
         verify(variant, never()).removeMod(anyString())
         assertTrue(sMods.contains(HullMods.TURRETGYROS))
 

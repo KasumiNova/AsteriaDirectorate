@@ -3,8 +3,6 @@ package cn.kasuminova.astd.sscsv.entries.catalog.shipdata.arc
 import cn.kasuminova.astd.sscsv.entries.ShipDataEntry
 import cn.kasuminova.astd.sscsv.entries.catalog.shipdata.shipName
 
-/** ARC 设计系舰体数据（ship_data.csv）。 */
-
 object Ship_astd_xc_001 : ShipDataEntry() {
     override val id: String = "astd_xc_001"
     override val name: String = shipName(id)
@@ -12,7 +10,6 @@ object Ship_astd_xc_001 : ShipDataEntry() {
     override val tech: String = "菀星设计局-星坠"
     override val systemId: String = "astd_lh_001_burst_flow"
 
-    // 自动战斗分数对齐原版主力战列舰（典范 fp=30）；部署点 65 由 supplies/rec 承担。
     override val fleetPts: Int = 30
     override val hitpoints: Int = 20000
     override val armorRating: Int = 1500
@@ -118,7 +115,6 @@ object Ship_astd_xc_102 : ShipDataEntry() {
     override val tech: String = "菀星设计局-星坠"
     override val systemId: String = "astd_arc_shared_flux_network"
 
-    // 自动战斗分数对齐原版量产战列舰（攻势 fp=28）；部署点 60 由 supplies/rec 承担。
     override val fleetPts: Int = 28
     override val hitpoints: Int = 20000
     override val armorRating: Int = 1800
@@ -134,7 +130,6 @@ object Ship_astd_xc_102 : ShipDataEntry() {
     override val shieldType: String = "OMNI"
     override val shieldArc: Int = 240
 
-    // 护盾维持 750 = 耗散 1400 × 0.5357。
     override val shieldUpkeep: Double = 0.5357
     override val shieldEfficiency: Double = 0.70
     override val minCrew: Int = 400
@@ -178,7 +173,6 @@ object Ship_astd_xc_101 : ShipDataEntry() {
     override val shieldType: String = "FRONT"
     override val shieldArc: Int = 360
 
-    // 护盾维持 420 = 耗散 750 × 0.56。
     override val shieldUpkeep: Double = 0.56
     override val shieldEfficiency: Double = 1.00
     override val minCrew: Int = 150
@@ -207,7 +201,6 @@ object Ship_astd_xc_103 : ShipDataEntry() {
     override val tech: String = "菀星设计局-星坠"
     override val systemId: String = "astd_suppression_mode"
 
-    // 设计规格 blue/20-production.md §列星级（XC-103）：fp/部署点 14 由 supplies/rec 承担。
     override val fleetPts: Int = 14
     override val hitpoints: Int = 6000
     override val armorRating: Int = 600
@@ -223,7 +216,6 @@ object Ship_astd_xc_103 : ShipDataEntry() {
     override val shieldType: String = "OMNI"
     override val shieldArc: Int = 200
 
-    // 护盾维持 240 = 耗散 500 × 0.48。
     override val shieldUpkeep: Double = 0.48
     override val shieldEfficiency: Double = 0.70
     override val minCrew: Int = 50

@@ -8,22 +8,8 @@ import org.boxutil.units.standard.entity.FlareEntity
 import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
 
-/**
- * 坠星残翼的一次性光斑特效（规格 10-signature 坠星残翼节特效段）：
- *
- * - 子射弹分裂：主弹两侧散发子射弹时在分裂点放一枚小型 SMOOTH 光斑
- *   （尺寸/寿命为 [MOTE_FLARE_SIZE_START] 等可调常量），标记分裂位置。
- *
- * 观感裁定（实机白团收敛）：光斑不喂 bloom（glowPower=0——additive 光斑叠 bloom
- * 会过曝扩散成盖住整舰的白团），核心/边缘 alpha 减半让紫色边缘主导而非白色核心。
- *
- * 实现口径：FlareEntity 的 globalTimer 只驱动 alpha 包络，
- * 尺寸动画由本类的每帧推进承担（[advance] 由 StarfallWingWeaponEffect 逐帧调用）；
- * 到期显式 delete（一次性实体不托管给 BoxUtil 注册簿的常驻清理）。
- */
 object StarfallWingVfx {
 
-    /** 子射弹分裂光斑：起止尺寸（su）与寿命（秒），实机可调。 */
     private const val MOTE_FLARE_SIZE_START = 14f
     private const val MOTE_FLARE_SIZE_END = 30f
     private const val MOTE_FLARE_LIFETIME = 0.22f
@@ -31,13 +17,11 @@ object StarfallWingVfx {
     private const val MOTE_FLARE_FULL = 0.06f
     private const val MOTE_FLARE_FADE_OUT = 0.14f
 
-    /** 配色与主弹同族（紫：fringe 170,110,255 / core 240,225,255），alpha 减半收敛白团观感。 */
     private val CORE = Color(240, 225, 255, 130)
     private val FRINGE = Color(170, 110, 255, 170)
 
     private val log = AstdLog.logger
 
-    /** 活跃光斑（实体 + 尺寸插值区间 + 寿命）。 */
     private class ActiveFlare(
         val entity: FlareEntity,
         val startSize: Float,
@@ -46,10 +30,8 @@ object StarfallWingVfx {
         var age: Float = 0f,
     )
 
-    /** engine key → 活跃光斑列表。 */
     private const val KEY_FLARES = "astd_starfall_wing_split_flares"
 
-    /** 子射弹分裂点在 [loc] 放一枚小型 SMOOTH 光斑（分裂位置可见性标记）。 */
     fun spawnMoteSplitFlare(engine: CombatEngineAPI, loc: Vector2f) {
         spawnFlare(
             engine, loc,
@@ -59,7 +41,7 @@ object StarfallWingVfx {
         )
     }
 
-    /** 每帧推进（StarfallWingWeaponEffect.advance 调用）：尺寸插值 + 到期回收。 */
+    // FlareEntity 的 globalTimer 只驱动 alpha 包络，尺寸插值必须自行逐帧推进。
     fun advance(engine: CombatEngineAPI, amount: Float) {
         val flares = engine.customData[KEY_FLARES] as? MutableList<ActiveFlare> ?: return
         val it = flares.iterator()
@@ -99,9 +81,9 @@ object StarfallWingVfx {
         entity.setAdditiveBlend()
         entity.setSmooth()
         entity.isFlick = false
-        // 不喂 bloom：additive 光斑 glow 叠 bloom 会过曝成盖住整舰的白团（实机判例）
+        // 不喂 bloom：additive 光斑 glow 叠 bloom 会过曝成盖住整舰的白团。
         entity.glowPower = 0f
-        // BoxFlareComponent 注记：setCoreColor(float,…) 重载有误写 fringe 槽的上游 bug，必须用 Color 重载。
+        // BoxUtil 的 setCoreColor(float,float,float,float) 有误写 fringe 槽位的 bug，必须用 Color 重载。
         entity.setCoreColor(CORE)
         entity.setFringeColor(FRINGE)
         entity.setSize(startSize, startSize)

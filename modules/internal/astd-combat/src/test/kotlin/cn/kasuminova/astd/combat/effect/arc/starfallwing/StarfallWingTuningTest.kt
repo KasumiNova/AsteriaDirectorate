@@ -6,22 +6,13 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import org.lwjgl.util.vector.Vector2f
 
-/**
- * 坠星残翼机制数值（blue/10-signature.md 坠星残翼节）的契约测试：
- * 振频适应承伤比映射的削弱/封顶/免伤口径、子射弹追踪延迟闸门（1s 惯性直飞后开追踪）、
- * 穿透扫掠用的点到线段距离与最近点（投影内/外/退化段）、碰撞箱多边形内部点判定。
- */
 class StarfallWingTuningTest {
 
     @Test
     fun `承伤比映射 层数线性抬升承伤比且封顶 1`() {
-        // base 0.7（XC-002 护盾效率口径）：5 层 → min(0.7+0.5, 1.0)/0.7 = 1/0.7
         assertEquals(1f / 0.7f, StarfallWingTuning.adaptationShieldMult(0.7f, 5f), 1e-6f)
-        // 3 层恰好把 0.7 抬到 1.0（封顶边沿）
         assertEquals(1f / 0.7f, StarfallWingTuning.adaptationShieldMult(0.7f, 3f), 1e-6f)
-        // 1 层未封顶：0.8/0.7
         assertEquals(0.8f / 0.7f, StarfallWingTuning.adaptationShieldMult(0.7f, 1f), 1e-6f)
-        // 0 层不改动承伤比
         assertEquals(1f, StarfallWingTuning.adaptationShieldMult(0.7f, 0f), 1e-6f)
     }
 
@@ -51,7 +42,6 @@ class StarfallWingTuningTest {
 
     @Test
     fun `多边形内部点判定 内部真 外部假 空段集假`() {
-        // 正方形碰撞箱 [0,100]×[0,100]
         val square = listOf(
             Vector2f(0f, 0f) to Vector2f(100f, 0f),
             Vector2f(100f, 0f) to Vector2f(100f, 100f),

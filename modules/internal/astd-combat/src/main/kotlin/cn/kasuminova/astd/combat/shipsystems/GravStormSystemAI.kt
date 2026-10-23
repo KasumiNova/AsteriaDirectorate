@@ -11,31 +11,13 @@ import com.fs.starfarer.api.util.IntervalUtil
 import com.fs.starfarer.api.util.Misc
 import org.lwjgl.util.vector.Vector2f
 
-/**
- * 引力磁暴发生器系统 AI（密蒙级 ZW-002；原版「量子干扰」增强基线）。
- *
- * 决策口径（每 [SCAN_INTERVAL_SEC] 评估一次，全部满足才施放）：
- * 1. 系统空闲（未激活、冷却完毕、canBeActivated）；
- * 2. 本舰未相位（相位中不可释放，与 [GravStormSystemStats.isUsable] 同口径）、未过载/排气；
- * 3. 辐能余量：当前辐能水平 + 激活代价（[GravStormTuning.ACTIVATION_FLUX_FRACTION]）不超过
- *    [MAX_FLUX_LEVEL_AFTER_USE]（对齐原版量子干扰 AI 的 0.85 辐能闸）；
- * 4. 目标存在性：前方 60° 锥、有效射程 × [ENGAGE_RANGE_FRAC] 内存在任意可锁定的敌对舰船
- *    （非战机，与 stats 侧锁定同口径）即施放——对单环境同样施放（裁定：磁暴的对单
- *    强制过载本身就是核心战术价值，不再按舰级计分设门槛）。
- *
- * AI 不主动提前结束充能：施放后充满 4s 自然释放（stats 侧 ACTIVE 首帧接管），
- * 相位结束充能/取消由 stats 侧统一处理。
- */
 class GravStormSystemAI : ShipSystemAIScript {
 
     companion object {
-        /** 评估间隔（s）。 */
         private const val SCAN_INTERVAL_SEC = 0.5f
 
-        /** 交战距离占有效射程的比例（留出余量覆盖 stats 侧的目标碰撞半径口径）。 */
         private const val ENGAGE_RANGE_FRAC = 0.9f
 
-        /** 施放后的辐能水平上限（对齐原版量子干扰 AI 的 0.85 口径）。 */
         private const val MAX_FLUX_LEVEL_AFTER_USE = 0.85f
     }
 

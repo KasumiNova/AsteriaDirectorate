@@ -3,22 +3,11 @@ package cn.kasuminova.astd.sscsv.entries
 import cn.kasuminova.astd.sscsv.CsvTarget
 import cn.kasuminova.astd.sscsv.SsCsvEntry
 
-/**
- * Starsector `data/strings/descriptions.csv` 的标准条目基类。
- *
- * 说明：
- * - `id` 同时作为 CSV 的 key。
- * - `text1..text4` 通常会在武器/系统/舰船的详情面板顶部作为“描述段落”显示。
- * - `text5` 对舰船系统常用于额外数值说明；为空时会按 CSV 默认留空。
- * - 描述文本由游戏按字面渲染（`{%s}` 高亮替换不走 String.format），百分号一律使用半角 `%`，不使用全角。
- */
 abstract class DescriptionEntry : SsCsvEntry {
     final override val target: CsvTarget = CsvTarget.DESCRIPTIONS
 
-    /** 描述条目 id（同时作为 key）。通常与 weapon/system id 一致。 */
     abstract val id: String
 
-    /** 描述类型（descriptions.csv 的 type 列），如：WEAPON / SHIP_SYSTEM。 */
     abstract val type: String
 
     open val text1: String = ""

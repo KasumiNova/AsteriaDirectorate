@@ -9,68 +9,30 @@ import org.lazywizard.lazylib.MathUtils
 import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
 
-/**
- * 「三角碎片」渲染参数集：批次数/贴图/尺寸域/两边比/自旋域/核心色占比/alpha 域/
- * emissive 降权/寿命域/渲染层。默认值即锥面冲击特效的既有观感（§10.9 v4.2.2），
- * 引擎碎片喷散等新场景按需覆盖（如单批、更小尺寸、更低 alpha、更短寿命、BELOW_SHIPS 层）。
- */
 data class TriShardSpec(
-    /** 批次数：锥面冲击为 3（顶点/锥内/锥缘错峰灌批）；持续发射器一般用 1。 */
     val batchCount: Int = 3,
-    /** 碎片贴图（默认 64×64 硬边白三角、形在 alpha、无预模糊；着色由实例 color/emissiveColor 承担）。 */
     val spritePath: String = "graphics/fx/astd_shard_tri.png",
-    /** 边长 = clamp(length×sizeMul, sizeMin, sizeMax) × 随机(sizeJitterLo~sizeJitterHi)（实例 scale 为半尺寸）。 */
     val sizeMul: Float = 0.03f,
     val sizeMin: Float = 6f,
     val sizeMax: Float = 16f,
     val sizeJitterLo: Float = 0.7f,
     val sizeJitterHi: Float = 1.3f,
-    /** 两边比随机区间（非均匀 scale，破完美等边的机械感）。 */
     val skewLo: Float = 0.7f,
     val skewHi: Float = 1.3f,
-    /** 自旋角速度幅度区间（度/秒，方向 ± 随机）。 */
     val spinMin: Float = 180f,
     val spinMax: Float = 540f,
-    /** coreColor 提亮碎片的占比（其余用 fringeColor）。 */
     val coreRatio: Float = 0.25f,
     val alphaLo: Int = 140,
     val alphaHi: Int = 200,
-    /**
-     * emissive alpha 降权系数（v3 光斑化教训）：Sprite frag 合成 `diffuse + emissive×emissive.w`
-     * 且 fragEmissive 全强度进 bloom 缓冲——全 alpha 的 emissive 会让三角区域双倍亮过曝、
-     * 并把小三角经高斯扩散糊成圆光斑；降权后 bloom 只留一圈淡辉，形状主体由硬边 diffuse 保住。
-     */
+    // Sprite frag 合成 diffuse + emissive×emissive.w 且 fragEmissive 全强度进 bloom，全 alpha 会过曝糊形，故降权
     val emissiveAlphaMul: Float = 0.4f,
-    /** 实例寿命包络（秒）：fadeIn/fadeOut 定值，full 随机域。默认总寿命 0.52~0.67s。 */
     val timerFadeIn: Float = 0.02f,
     val timerFadeOut: Float = 0.32f,
     val timerFullLo: Float = 0.18f,
     val timerFullHi: Float = 0.32f,
-    /** 渲染层：锥面冲击在 ABOVE_SHIPS；引擎喷散等“船尾”特效用 BELOW_SHIPS。 */
     val layer: CombatEngineLayers = CombatEngineLayers.ABOVE_SHIPS_AND_MISSILES_LAYER,
 )
 
-/**
- * 「三角碎片」渲染组件（原 ConeShardComponent，通用化改名）：一簇随机旋转的三角形碎片，
- * 渲染后端为**统一粒子池**（[PooledCombatVfx] 的 SpriteEntity 实例化池）——
- * 贴图 [TriShardSpec.spritePath] + additive + emissive 同色降权（[TriShardSpec.emissiveAlphaMul]）接原生泛光。
- *
- * v4.3 池化迁移（2026-09 实机堆转储实锤 renderEntityMap 战斗内只增不删、99 万实例滞留 1 GB）：
- * 不再「每批新建 SpriteEntity 靠定时器自删」——该模式下实体引用全部滞留至战斗切换，
- * 持续发射器一场长战斗可灌出十万级实例。池化后本组件只做参数累积与灌批分发，
- * 实例位置/速度/自转/包络由池 CPU 侧驱动（暂停冻结），实体总数 = 池 key 容量，有界。
- *
- * 两类用法：
- * - 树内一次性爆发（锥面冲击特效 [ConeImpactVfxComponent]）：根组件按错峰阈值灌批，
- *   advanceSelf 自动把有实例的批灌入粒子池；
- * - 树外持续发射（引擎碎片喷散 ASTDEngineShardSprayEffect）：持有方直接 [addShard] 累积，
- *   按节拍调 [activatePendingBatches] 灌批。
- *
- * 灌批即消费：批内实例喷入粒子池后清空，可反复灌批；池满时按游标覆盖最旧粒子
- * （视觉等同最旧碎片提前寿终）。
- *
- * 失败语义：池不可用（BoxUtil 未就绪/实体注册失败）记 WARN，该批视觉缺席（对齐扭曲层先例，无兜底）。
- */
 class TriShardComponent(
     id: String,
     private val length: Float,
@@ -81,10 +43,8 @@ class TriShardComponent(
 
     private val log = Global.getLogger(TriShardComponent::class.java)
 
-    /** 粒子池键（贴图/层/材质默认参数；容量默认 1024 覆盖舰队级喷散规模）。 */
     private val poolKey = PooledCombatVfx.SpritePoolKey(spec.spritePath, spec.layer)
 
-    /** 各批待发射实例参数（internal 供单测断言批次错峰/实例总数/参数域）。 */
     internal val batches = List(spec.batchCount) { Batch() }
 
     override fun advanceSelf(ctx: RenderContext, amount: Float) {
@@ -92,17 +52,12 @@ class TriShardComponent(
         activatePendingBatches(engine)
     }
 
-    /** 立即把所有含待发射实例的批灌入粒子池（树内由 advanceSelf 调；树外持续发射器按自有节拍调）。 */
     fun activatePendingBatches(engine: CombatEngineAPI) {
         for (batch in batches) {
             if (batch.instances.isNotEmpty()) activateBatch(engine, batch)
         }
     }
 
-    /**
-     * 加一颗碎片到 [batchIndex] 批：位置/速度由调用方给定；[sizeScale] 在 spec 尺寸域基础上
-     * 再乘算（持续发射器按出力动态调尺寸用）。尺寸/自旋/颜色提亮/alpha/寿命逐颗错参，域见 [spec]。
-     */
     fun addShard(batchIndex: Int, pos: Vector2f, vel: Vector2f, sizeScale: Float = 1f) {
         val side = (length * spec.sizeMul).coerceIn(spec.sizeMin, spec.sizeMax) *
                 MathUtils.getRandomNumberInRange(spec.sizeJitterLo, spec.sizeJitterHi) * sizeScale
@@ -121,13 +76,11 @@ class TriShardComponent(
             scaleX = side * 0.5f,
             scaleY = side * 0.5f * sideRatio,
             color = Color(base.red, base.green, base.blue, alpha),
-            // emissive 降权（alpha × emissiveAlphaMul）：淡辉接原生泛光但不糊形状。
             emissiveAlpha = (alpha * spec.emissiveAlphaMul).toInt().coerceIn(0, 255),
             timerFull = MathUtils.getRandomNumberInRange(spec.timerFullLo, spec.timerFullHi),
         )
     }
 
-    /** 灌一批：把全部待发射实例喷入统一粒子池（池不可用记 WARN，本批视觉缺席；无论成败批即消费清空）。 */
     private fun activateBatch(engine: CombatEngineAPI, batch: Batch) {
         val pending = ArrayList(batch.instances)
         batch.instances.clear()
@@ -157,12 +110,10 @@ class TriShardComponent(
         }
     }
 
-    /** 一批碎片：待发射实例参数表（世界系）。灌批即清空，可反复灌批。 */
     internal class Batch {
         val instances = ArrayList<ShardInstance>()
     }
 
-    /** 一颗碎片实例：世界系位置/速度、自旋角与角速度、半尺寸两边比、颜色与 emissive 降权 alpha、满亮相时长。 */
     internal class ShardInstance(
         val pos: Vector2f,
         val vel: Vector2f,

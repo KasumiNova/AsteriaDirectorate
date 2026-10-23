@@ -14,27 +14,10 @@ import com.fs.starfarer.api.plugins.ShipSystemStatsScript
 import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
 
-/**
- * 压制模式（列星级 XC-103 舰船系统）：以机动为代价换取全面火力强化（规格
- * blue/20-production.md §驱逐舰-舰船系统）。
- *
- * 效果（满额口径，IN/OUT 按 effectLevel 渐入渐出，数值三锚点见 [SuppressionModeTuning]）：
- * - 最大航速与机动性削减 / 武器辐能产出减免 / 武器射程加成 / 护盾承伤减免（难度缩放）；
- * - 武器射速 +30%（恒定）；
- * - 系统开启期间持续产出硬辐能：基线 2%/s 由原版 CSV 结算（`f/s (base cap)` + hardFlux，
- *   IN+ACTIVE 全额产出，图鉴可见）；第 4 秒爬坡至 6% 的增量由 [settleHardFlux] 补差
- *   （曲线纯函数 [SuppressionModeTuning.hardFluxFractionPerSecond]）。
- *   OUT 窗口原版不再产出基线，与原版辐能结算口径一致（设计差异已确认接受）。
- *
- * 时序由 .system 承担：渐入 1s（chargeUp）→ 持续 8s（active）→ 淡出 1s（down），冷却 10s。
- *
- * 视觉：蓝色 jitter + 每 0.1s 残影（沿用列星主题）；残影生成同步递增
- * [ASTDArcProductionVfx.TELEMETRY_XC_103_SYSTEM_AFTERIMAGES] 自动化证据计数。
- */
 class ASTDSuppressionModeSystemStats : BaseShipSystemScript() {
 
     companion object {
-        /** CSV 原版结算的硬辐能基线比例（`f/s (base cap)`，与 entry 配置保持一致）。 */
+        // 硬辐能基线 2%/s 由原版 CSV 结算（f/s (base cap) + hardFlux），脚本只补爬坡超出基线的增量
         private const val CSV_BASELINE_FLUX_FRACTION = 0.02f
         private const val AFTERIMAGE_INTERVAL = 0.1f
         private const val ACTIVE_ELAPSED_KEY_PREFIX = ASTDArcProductionShipIds.STAT_SUPPRESSION_MODE + "_active_elapsed:"
@@ -116,19 +99,6 @@ class ASTDSuppressionModeSystemStats : BaseShipSystemScript() {
         engine?.customData?.remove(AFTERIMAGE_TIMER_KEY_PREFIX + System.identityHashCode(ship))
     }
 
-    /**
-     * 硬辐能结算（单测直接驱动）：本帧产出 = 基础最大辐能 × 当前每秒比例超出 CSV 基线
-     * 的差值 × 帧时长 × 渐入系数。
-     *
-     * 基线 2%/s 由原版 CSV 结算（`f/s (base cap)` = 2% + hardFlux，IN+ACTIVE 全额产出，
-     * 图鉴可见统一数据）；本函数只补「第 4 秒爬坡至 6%/s」超出 2% 基线的增量部分
-     * （爬坡曲线无法用 CSV 表达）。差值为负（曲线尚未爬过基线）时截 0，不重复产出。
-     *
-     * @param baseMaxFlux 舰船基础最大辐能（fluxCapacity 基准值，不含船插加成）
-     * @param activeSeconds 本次激活已累计时长（产出比例由其经 [SuppressionModeTuning.hardFluxFractionPerSecond] 派生）
-     * @param elapsed 本帧时长（秒）
-     * @param level 渐入渐出系数（0~1）
-     */
     fun settleHardFlux(ship: ShipAPI, baseMaxFlux: Float, activeSeconds: Float, elapsed: Float, level: Float) {
         if (elapsed <= 0f || level <= 0f || baseMaxFlux <= 0f) return
         val tracker = ship.fluxTracker ?: return
@@ -157,7 +127,6 @@ class ASTDSuppressionModeSystemStats : BaseShipSystemScript() {
         )
     }
 
-    /** 蓝色 jitter + 每 0.1s 残影（IN/OUT 以半强度过渡，ACTIVE 满额；残影同步递增自动化证据计数）。 */
     private fun renderSuppressionStreak(ship: ShipAPI, engine: CombatEngineAPI, id: String, state: ShipSystemStatsScript.State) {
         val timerKey = AFTERIMAGE_TIMER_KEY_PREFIX + System.identityHashCode(ship)
         val level = when (state) {

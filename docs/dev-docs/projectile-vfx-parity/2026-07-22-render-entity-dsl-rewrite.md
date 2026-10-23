@@ -22,12 +22,12 @@
    （`flickerSyncCode` / `stripLineMode` / `uvOffset` / `fillStartFactor` …），是 BoxUtil
    `TrailEntity` 旋钮的 1:1 镜像。作者要在一堆管线内务里找那几个有意义的旋钮。
 4. **两套作者风格并存且不一致。** `aod7Shot()` 全手写（~160 行、每字段显式），其余 23 个走
-   `preset(id, color, width, length, glowScale, ribbon, head)` 工厂。同一个仓库两种心智模型。
+   `preset(id, color, width, length, glowScale, ribbon, head)` 工厂。同一个仓库存在两种编写方式。
 5. **组合与叠加顺序是隐式的。** 层序藏在 `ASTDProjectileVfxComponentRegistry.layersFor` 的
    列表顺序里，不显式、不可声明。
 
 结论：观感对，组织错。要保留**渲染语义**（轨迹采样、朝向、淡出、BoxUtil/自定义 GL 桥接），
-把**作者面与组合方式**换成一套可声明、可组合、可扩展的模型 —— 即 `api/render` 里已起草的
+把**作者面与组合方式**换成一套可声明、可组合、可扩展的模型，即 `api/render` 里已起草的
 `RenderEntity` + DSL。
 
 ## 2. 目标与非目标
@@ -37,7 +37,7 @@
 - **一处声明一个特效。** 每个 `projectileSpecId` 对应一个 DSL 构建函数，树即全部结构与参数。
 - **组合式可扩展。** 新增一类组件 = 加一个 `RenderEntity` 子类 + 一个 DSL 构建器函数，**不**牵动
   注册表 / sealed 类 / 五处接线。
-- **作者面只暴露要紧旋钮。** 30 字段收敛成命名 setter（`segments(4)` / `color(RED)` / `width(12f)`），
+- **作者面只暴露要紧旋钮。** 30 字段合并为命名 setter（`segments(4)` / `color(RED)` / `width(12f)`），
   其余走默认。低层管线内务从作者面消失。
 - **稳定唯一的弹体数据源。** 顶层每帧提供一份稳定、唯一的取数入口（弹体已存在时间、坐标、生命周期状态），
   全体节点从此读取，不各自向 `projectile` 取数或重算（见 D2）。
@@ -51,7 +51,7 @@
 
 - **外部数据（JSON/CSV）驱动 + 文件热重载。** 已决定用 DSL（编译期），不做数据前端。
   `ASTDProjectileVfxHotReloadManager/Source` 这套空接缝随旧管线一并删除。
-- **WebUI 预览一致性。** 选 DSL 即意味着源真相在 JVM 侧；若日后要预览，走 JVM/LWJGL 程序调同一 DSL，
+- **WebUI 预览一致性。** 选 DSL 即意味着定义源在 JVM 侧；若日后要预览，走 JVM/LWJGL 程序调同一 DSL，
   另立文档。
 - **弃用 BoxUtil。** BoxUtil 是游戏运行时的必然绑定，继续作为主要后端。
 - **大特效结构热重载。** 加删组件、改类结构一律接受重启；仅小参数走调试热交换。真出现大功能重载需求再议。
@@ -135,10 +135,10 @@ interface RenderEntity {
 flightProgress / dissolve / visibleLength / beamAlpha / historyNodes / worldUnitsPerPixel`。
 新 `RenderContext` 目前只有 `engine / projectile / stack`，缺这份。
 
-决策：**由驱动每帧计算一次 `FrameState` 塞进 `RenderContext`，作为全体节点唯一、稳定的取数入口**——
+决策：**由驱动每帧计算一次 `FrameState` 塞进 `RenderContext`，作为全体节点唯一、稳定的取数入口**，
 节点一律从 `ctx.frame` 读弹体的时间/坐标/生命周期，**不得**各自去调 `projectile.getElapsed()` /
-`getLocation()` 或自行重算。这样"弹体已存在时间、当前坐标、当前生命周期状态"只有一个真相源，
-也是 §2 目标里"稳定唯一数据源"的落点。轨迹采样 / 朝向 / dissolve 这些逻辑保留在驱动侧
+`getLocation()` 或自行重算。这样"弹体已存在时间、当前坐标、当前生命周期状态"只有一份唯一数据来源，
+也是 §2 目标里"稳定唯一数据源"的实现位置。轨迹采样 / 朝向 / dissolve 这些逻辑保留在驱动侧
 （复用现有 `ASTDProjectileHistory` 等）。
 
 ```kotlin
@@ -160,11 +160,11 @@ interface RenderContext {
   （head-first 归一化折线，按弧长/比例取点、切线/法线、直线判定 `isEffectivelyStraight`、body 半宽剖面）。
   这是拖尾类节点（trail/glow/sideWisp/mist/body/ribbon）唯一的动态几何输入。探查证实：旧实现里**每个 renderer
   各自重复调 `Centerline.build`**，无共享无缓存。新架构**由驱动每帧算一次中线、全体节点共享**（复用现有
-  `ASTDProjectileVfxCenterline`/`Math`），正是 §2 目标"稳定唯一数据源"的落点。trail/head 是直线/本地几何，
+  `ASTDProjectileVfxCenterline`/`Math`），正是 §2 目标"稳定唯一数据源"的实现位置。trail/head 是直线/本地几何，
   只用 `length`+`facing`，不碰中线。
-- **连续信号**：`active`（弹体飞行中 / 光束 firing）、`intensity`（0..1；弹体 alpha / 光束 strength）——
+- **连续信号**：`active`（弹体飞行中 / 光束 firing）、`intensity`（0..1；弹体 alpha / 光束 strength），
   节点据此做连续淡入淡出，天然覆盖光束"停火淡出、复火拉回"。
-- **终止**：`phase`（`Active` / `FadingOut` / `Removed`）、`flightProgress`、`dissolve`、`fadeReason?`——
+- **终止**：`phase`（`Active` / `FadingOut` / `Removed`）、`flightProgress`、`dissolve`、`fadeReason?`，
   仅用于一次性终止（弹体命中/过期、光束所属武器/舰体消失）。淡出期间**冻结几何快照**（沿用现有 Runtime：
   死亡前最后一帧的 `historyNodes/origin/length` 定格，只推进 fade alpha、不再采样），节点 `beginFadeOut`
   后据此收束。这条行为必须保留，否则命中瞬间拖尾会抽搐。
@@ -184,13 +184,13 @@ interface RenderContext {
 - **同层内的跨节点次序用 `renderOrder`**（探查修正）：探查证实，自定义 GL 那批（glow/body/sideWisp/head/ribbon）
   在**同一** `CombatEngineLayers`（现全在 `ABOVE_PARTICLES`）内的像素叠放，靠 `ASTDProjectileVfxBodyRenderManager`
   按固定 `renderOrder` 常量排序：`GLOW 100 < BODY_SHADOW 180 < BODY 200 < SIDE_WISP 240 < HEAD_SHADOW 280 <
-  HEAD 300 < RIBBON 360`。故仅靠 `CombatEngineLayers` 不足以复刻叠加序——节点除 `layer` 外须携带 `renderOrder`，
+  HEAD 300 < RIBBON 360`。故仅靠 `CombatEngineLayers` 不足以复刻叠加序，节点除 `layer` 外须携带 `renderOrder`，
   `children` 排序细化为 `(layer.ordinal, renderOrder)`。BoxUtil 实体（trail/mist）走 BoxUtil 自己的绘制通道，
   不参与这套 renderOrder 排序（它们与自定义 GL 分属两条渲染管线，这是既有事实，保留）。
 
 ### D4 · child 作为动态管理容器（root component）
 
-`child {}` 不是投机深度，而是**特效分组与动态生命周期管理**的一等机制。真实用例：
+`child {}` 是**特效分组与动态生命周期管理**的基础机制。真实用例：
 
 - **AOD7 动态马赫环**：随弹体飞行距离**动态产生/移除**新环组件。用一个 root component
   （如 `MachRingRoot`）在自己的 `advance` 里按距离 `addChild` 新环、按寿命 `removeChild` 旧环。
@@ -229,11 +229,11 @@ internal fun aod7Shot(): RenderEntity = renderEntity("aod7_shot") {
 
 ### D6 · 宿主中立：兼容光束（beam）
 
-问题：`RenderContext` 一旦把宿主钉成 `projectile: DamagingProjectileAPI`，光束就无法接入——光束没有
+问题：`RenderContext` 一旦把宿主钉成 `projectile: DamagingProjectileAPI`，光束就无法接入，光束没有
 projectile，它是 `BeamAPI`（from/to/weapon/brightness），或如 Stellar Jet 由 ship+weapon 算出
 start/facing/length/contact。而本模组现有大量光束特效（`StellarJetBeamVfx` / `GravityCollapseBeamVfx` /
-`PsiOmegaBeamVfx` 等）**就是手搓的同款模式**：常驻 `TrailEntity`（core/glow/wisp）创建一次、逐帧更新、
-firing 时喷 muzzle/impact/ambient 粒子、停火淡出、复火拉回。所以光束天然适配 RenderEntity 模型——
+`PsiOmegaBeamVfx` 等）**就是手写的同款模式**：常驻 `TrailEntity`（core/glow/wisp）创建一次、逐帧更新、
+firing 时喷 muzzle/impact/ambient 粒子、停火淡出、复火拉回。所以光束天然适配 RenderEntity 模型，
 只要不把宿主钉死。
 
 决策：
@@ -253,7 +253,7 @@ firing 时喷 muzzle/impact/ambient 粒子、停火淡出、复火拉回。所�
 
 ## 5. DSL 设计
 
-DSL 是**唯一构建入口**，也是作者面。它把 30 字段折叠为"命名 setter + 默认值"——这正是
+DSL 是**唯一构建入口**，也是作者面。它把 30 字段折叠为"命名 setter + 默认值"，这正是
 `preset(color, width, length, glowScale, ribbon, head)` 工厂早已证明的：24 个里 23 个只需约 6 个高层旋钮。
 
 ```kotlin
@@ -275,7 +275,7 @@ internal fun aod7Shot(): RenderEntity = renderEntity("aod7_shot") {
 要点：
 
 - 每个组件构建器（`trail`/`glow`/…）**必须把节点挂到父**（当前草稿 `trail()` 漏了 `add()`，
-  只有 `head()` 有 —— 见 §8 待修）。
+  只有 `head()` 有，见 §8 待修）。
 - 每个 setter 有默认，省略即默认。低层旋钮（`texture`/`fill`/`strip`/`flick`）作为二级 setter，
   常规特效不碰。
 - `采样/淡出/生命周期`（`samplingPolicy` / `fadePolicy` / `lifecycle`）作为 `renderEntity {}` 顶层的
@@ -302,13 +302,13 @@ internal fun aod7Shot(): RenderEntity = renderEntity("aod7_shot") {
 
 ## 7. 调试热交换（免重启的边界）
 
-机制：**每次生成弹体都重新调用 DSL 构建函数**生成新树（而非缓存单例树）。因此：
+机制：**每次生成弹体都重新调用 DSL 构建函数**生成新树，不缓存单例树。因此：
 
 - **小参数改动免重启**：在 SSOptimizer 调试环境改 DSL 里的字面量（`segments(4)`→`6`、`color(RED)`、
   `width(40f)`→`44f`），靠 JVM 方法体热交换（HotSwap / DCEVM / 调试器 redefine）替换构建函数字节码，
   **下一发弹**就用新树。无需重启。
 - **结构改动仍重启**：加/删组件、改类层次、改方法签名，超出 HotSwap 能力，接受重启。
-- 不引入任何文件监听/数据解析/脚本宿主 —— 与"非目标"一致。
+- 不引入任何文件监听/数据解析/脚本宿主，与"非目标"一致。
 
 前提：构建函数必须**无状态、每次调用产出全新树**，不得缓存。驱动侧按 projectile 持有各自的树实例。
 
@@ -345,7 +345,7 @@ internal fun aod7Shot(): RenderEntity = renderEntity("aod7_shot") {
 - **P6 · verify。** 进游戏跑试验场，逐 spec 目检 + parity 回归 + 调试热交换验证（改一个字面量、重刷、
   确认下一发生效、无需重启）。
 - **P7 · 光束迁移（后续阶段，非本次范围）。** 增加 `BeamHost`，把 `StellarJetBeamVfx` /
-  `GravityCollapseBeamVfx` / `PsiOmegaBeamVfx` 等手搓光束特效迁到同一套 RenderEntity 轨道
+  `GravityCollapseBeamVfx` / `PsiOmegaBeamVfx` 等手写光束特效迁到同一套 RenderEntity 轨道
   （core/glow/wisp 为 `trail`/`glow` 节点，muzzle/impact 为 root component 的动态 child，
   伤害/命中留在 `BeamEffectPlugin`）。P0–P2 的宿主中立保证这一步无需再改核心。
 
@@ -374,7 +374,7 @@ internal fun aod7Shot(): RenderEntity = renderEntity("aod7_shot") {
 
 - **spc3（`astd_spc3_shot`）** 已迁：Glow + Body（有 Body → BoxUtil 直线拖尾丢弃，对齐 hasBodyForTrail）。
   原版弹丸 core/fringe 置透明屏蔽亮头；facing 归一化到 [0,360) 修复右下开火拖尾歪斜。
-- **aod7（`astd_aod7_shot`）** 已迁：七层齐活——Mist(50) / Glow(100) / Body(200) / SideWisp(240) /
+- **aod7（`astd_aod7_shot`）** 已迁：七层齐备，Mist(50) / Glow(100) / Body(200) / SideWisp(240) /
   Head(300) / Ribbon(360)（括号为节点 renderOrder；Body 存在 → 无 BoxUtil 直线拖尾）。
 - **节点实现**：Glow/Body/SideWisp/Head/Ribbon 塌缩为单个 `MeshComponent(produce)` + 5 个工厂函数
   （`impl/render/MeshRenderComponents.kt`），`produce` 逐帧调旧渲染器 `*ForTests` 纯数学产网格，
@@ -386,8 +386,8 @@ internal fun aod7Shot(): RenderEntity = renderEntity("aod7_shot") {
   `aod7Shot()`/`spc3Shot()` 手写于 `driver/ProjectileVfxSpecs.kt`，逐字段对齐旧 preset（颜色用 `rgba(0xRRGGBBAA)`）。
   旧的 `sliceTree(preset)`/`policyFrom(preset)` 已删除，新管线**不再触碰 Preset/ComponentRegistry**。
 - **路由**：`ProjectileVfxDriverPlugin.isMigrated(projId) = ProjectileVfxSpecs.has(projId)`，命中即
-  `track(engine, projectile, projId)` 现构建新树；否则回落旧 Runtime。路由键是 **projectileSpecId**
-  （`astd_<name>_shot`）而非 preset id（`<name>_shot`）。加一个 spec 只需在 `ProjectileVfxSpecs.builders` 加一行。
+  `track(engine, projectile, projId)` 现构建新树；否则回落旧 Runtime。路由键使用 **projectileSpecId**
+  （`astd_<name>_shot`），不再使用 preset id（`<name>_shot`）。加一个 spec 只需在 `ProjectileVfxSpecs.builders` 加一行。
 - **尺寸调整**：目检反馈弹体相对舰体偏小。head 宽 24→34、headScale 1.5→1.9；body/glow/mist/sideWisp 横截宽都吃
   `widthBase = max(startWidth*0.075, 3.5)`，故 startWidth 40→96 使 widthBase 3.5→7.2（约 2×），令核心/辉光随胖弹头等比放大
   （首次只调到 56 → widthBase 4.2，几乎无变化，因 0.075 系数不敏感 + 40 时被 3.5 地板夹住）。

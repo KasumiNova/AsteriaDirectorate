@@ -31,7 +31,7 @@ cn.kasuminova.astd.campaign.ASTDVariantExporter.exportMember(member, 1.0f);
 com.fs.starfarer.api.combat.ShipVariantAPI variant = member.getVariant();
 cn.kasuminova.astd.campaign.ASTDVariantExporter.exportVariant(variant, 1.0f, new java.io.File("saves/astd_variant_export"));
 
-// 只拿 JSON 不落盘
+// 只获取 JSON，不写入文件
 cn.kasuminova.astd.campaign.ASTDVariantExporter.toJson(variant, 1.0f).toString(4);
 ```
 

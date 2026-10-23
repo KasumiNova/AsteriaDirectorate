@@ -1,14 +1,8 @@
 #!/usr/bin/env python3
 """Scan for hardcoded (non-ASCII) string literals in game code.
 
-Purpose
-- Help migrate UI/dialog/HUD text out of code into data/strings/*.json
-  to avoid localization pain later.
-
-Heuristics
-- Looks for string literals that contain CJK characters.
-- Skips obvious comment-only matches.
-- Not a full parser; it is intentionally conservative.
+Finds CJK characters in single-line Kotlin/Java string literals and skips comment-only lines.
+This is a conservative heuristic, not a full parser.
 
 Usage
   python3 tools/scan_hardcoded_text.py
@@ -28,7 +22,6 @@ import sys
 CJK_RE = re.compile(r"[\u4e00-\u9fff]")
 # Kotlin/Java string literal (single line, not raw/multiline): "..."
 STR_RE = re.compile(r"\"([^\"\\]|\\.)*\"")
-# Very rough comment detection
 LINE_COMMENT_RE = re.compile(r"^\s*//")
 
 

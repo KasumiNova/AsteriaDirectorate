@@ -12,17 +12,9 @@ import org.apache.log4j.Logger
 import org.json.JSONArray
 import org.json.JSONObject
 
-/**
- * 开发者用舰船装配（.variant）导出器。
- *
- * 把游戏内配好的 [ShipVariantAPI] 序列化为与原版加载器（HullVariantSpec 的 JSONObject 构造器）
- * 兼容的标准 .variant JSON，并写入游戏根目录下 [EXPORT_DIR]。产物可直接移入
- * `contents/data/variants/` 作为 stock variant 被游戏加载。通常经 SSOptimizer runcode 调用，
- * 字段集与原版 `HullVariantSpec.toJSONObject()` 对齐。
- */
+/** 把 [ShipVariantAPI] 序列化为与原版 `HullVariantSpec.toJSONObject()` 字段对齐的 .variant JSON，写入 [EXPORT_DIR]。 */
 object ASTDVariantExporter {
 
-    /** 相对游戏根目录（进程工作目录）的导出目录。 */
     const val EXPORT_DIR = "saves/astd_variant_export"
 
     private val log: Logger = Logger.getLogger(ASTDVariantExporter::class.java)
@@ -30,12 +22,6 @@ object ASTDVariantExporter {
     private val fileNameTime: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss")
     private val unsafeFileNameChars = Regex("[^A-Za-z0-9._-]")
 
-    /**
-     * 序列化为标准 .variant JSON。字段对齐原版 `HullVariantSpec.toJSONObject()`：
-     * 必需字段 displayName/hullId/variantId/fluxVents/fluxCapacitors/weaponGroups 始终写出；
-     * goalVariant 仅在为 true 时写出；wings/modules/tags/sModdedBuiltIns 仅在非空时写出；
-     * quality 为原版加载器忽略但 stock variant 惯例保留的元数据字段。
-     */
     @JvmStatic
     @JvmOverloads
     fun toJson(variant: ShipVariantAPI, quality: Float = 1.0f): JSONObject {
@@ -132,10 +118,6 @@ object ASTDVariantExporter {
         return json
     }
 
-    /**
-     * 导出单个装配到 [outputDir]，返回写出的文件。
-     * 存在未分组装武器的装配会先克隆并自动分组，不改动传入的装配对象。
-     */
     @JvmStatic
     @JvmOverloads
     fun exportVariant(
@@ -152,7 +134,6 @@ object ASTDVariantExporter {
         return writeVariantFile(json, prepared.hullVariantId, outputDir)
     }
 
-    /** 导出舰队成员的当前装配。战斗机成员没有可导出的舰船装配，调用方需自行过滤。 */
     @JvmStatic
     @JvmOverloads
     fun exportMember(
@@ -166,7 +147,6 @@ object ASTDVariantExporter {
         return exportVariant(variant, quality, outputDir)
     }
 
-    /** 导出整支舰队的全部舰船成员（不含舰载机联队），返回写出的文件列表。 */
     @JvmStatic
     @JvmOverloads
     fun exportFleet(
@@ -179,20 +159,17 @@ object ASTDVariantExporter {
             .map { exportMember(it, quality, outputDir) }
     }
 
-    /** runcode 便捷入口：导出玩家舰队旗舰。 */
     @JvmStatic
     fun exportPlayerFlagship(): File {
         val flagship = requireNotNull(playerFleet().flagship) { "player fleet has no flagship" }
         return exportMember(flagship)
     }
 
-    /** runcode 便捷入口：导出玩家舰队全部舰船成员。 */
     @JvmStatic
     fun exportPlayerFleet(): List<File> {
         return exportFleet(playerFleet())
     }
 
-    /** runcode 便捷入口：按舰体 id 过滤导出玩家舰队成员。 */
     @JvmStatic
     fun exportPlayerFleetByHullId(hullId: String): List<File> {
         return playerFleet().fleetData.membersListCopy

@@ -1,10 +1,9 @@
 {
-  # Asteria Directorate 赏金：第七分局"封存序列验收"主题赏金链
-  # 结构：6 个前置赏金（astd_bounty_rogue_1..6，汉唐军制测试群与封存特遣群）逐级解锁 -> 4 个唯一原型舰终局核销
-  # 解锁：ActiveBounty 完成时向全局记忆写入 $<bountyId>_succeeded，trigger_memKeys_all 做严格前置
-  # 舰队：fleet_preset_ships 保证最小 ASTD 编成，min_FP 与 preset 总 FP 相等以避免 MagicLib 随机补强；
-  #       随机混编（含余晖舰 1:1 混入）与舰队上限补强由 BountyFleetTunerImpl 代码侧完成
-  # 头像：target_portrait 指向模组 AI 头像池 contents/graphics/portraits/astd_portrait_core_*.png
+  # 6 个前置赏金（astd_bounty_rogue_1..6）逐级解锁 4 个唯一原型舰终局目标。
+  # ActiveBounty 完成时向全局记忆写入 $<bountyId>_succeeded，trigger_memKeys_all 检查前置条件。
+  # fleet_preset_ships 与 min_FP 相等时，MagicLib 不会随机补强；
+  # 随机混编与舰队上限补强由 BountyFleetTunerImpl 完成。
+  # target_portrait 指向模组 AI 头像池 contents/graphics/portraits/astd_portrait_core_*.png。
   "astd_bounty_rogue_1":{
     "trigger_market_id":["astd_story_market_main_station","astd_story_market_shiguang"],
     "trigger_marketFaction_any":["independent","derelict"],

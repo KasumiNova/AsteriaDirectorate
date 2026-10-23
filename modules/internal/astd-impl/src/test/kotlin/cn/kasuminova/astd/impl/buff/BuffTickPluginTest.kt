@@ -11,14 +11,10 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertSame
 
-/**
- * 规格 §1.4-6 与 §6 风险表：心跳回收（宿主失效/换装/hulk）、暂停跳过、advance 透传。
- */
 class BuffTickPluginTest {
 
     @BeforeTest
     fun installBuffBackend() {
-        // api 扩展函数族走 BuffBackends 桥：本模块测试装真后端（引擎为 null 时跳过心跳登记）。
         BuffInstall.install()
     }
 
@@ -48,7 +44,6 @@ class BuffTickPluginTest {
         assertEquals(1, buff.advanceCalls, "回收帧不再 advance")
         assertNull(ship.buffHost().find("astd_test_buff"))
 
-        // 再次 tick：已移除的 Buff 不得二次回收。
         plugin.tick(engine, 0.1f)
         assertEquals(1, buff.removeCalls)
     }
@@ -141,7 +136,6 @@ class BuffTickPluginTest {
         val plugin = BuffTickPlugin()
         val engine = stubEngine(listOf(ship))
 
-        // 未调用 buffHost()：customData 无 host 条目，tick 直接跳过（不抛错、不创建）。
         plugin.tick(engine, 0.1f)
         assertNull(ship.customData[BuffHostImpl.HOST_KEY])
     }

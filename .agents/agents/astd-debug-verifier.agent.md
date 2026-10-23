@@ -103,9 +103,9 @@ recommendedNextStep:
 - VFX 优先使用 BoxUtil 与 ASTD 弹体 VFX 管线；`.proj` 的 `onFireEffect` 优先接入 `ProjectileSpecOnFireDispatcher`，配置优先通过 `ProjectileVfxRegistry` 与 `contents/data/config/astd_projectile_vfx.json` 验证。
 - 玩家可见文本修改后必须调用 `@copy-review`，并在最终证据中引用审查结果。
 
-## 首版游戏内自动化验收标准
+## 游戏内自动化验收标准
 
-视觉、VFX、preview/runtime parity、自动化战斗类任务的验证 subAgent 需要覆盖以下首版游戏内自动化标准：
+视觉、VFX、preview/runtime parity、自动化战斗类任务的验证 subAgent 需要覆盖以下游戏内自动化标准：
 
 - 能看到 `xc_001` 舰船位于模拟战或等价自动化战斗场景中。
 - 能操控 `aod7` 开火。

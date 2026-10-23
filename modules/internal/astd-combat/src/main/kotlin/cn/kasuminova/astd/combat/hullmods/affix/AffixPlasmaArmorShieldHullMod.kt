@@ -18,17 +18,9 @@ import com.fs.starfarer.api.ui.TooltipMakerAPI
 import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
 
-/**
- * 词缀 M-14：等离子装甲护盾（[AffixRegistry.ID_PLASMA_ARMOR_SHIELD]）。
- * 按难度系数：舰船护盾获得 20%~40% 的装甲计算值减免——护盾命中按装甲减伤公式折算，
- * 折算所用装甲值 = 舰船最终最大装甲 × 减免比例。机制复用同名船插
- * [cn.kasuminova.astd.combat.hullmods.arc.ASTDPlasmaArmorShieldHullMod] 的装甲减免链路
- * （[ASTDArmorDamageReduction]）。
- */
 class AffixPlasmaArmorShieldHullMod : BaseHullMod() {
 
     companion object {
-        /** 护盾折算装甲值占最终最大装甲的比例：20%~40%。 */
         val ARMOR_FRACTION = ScalingEntry(v1 = 0.20f, v2 = 0.30f, v5 = 0.40f)
 
         private val PREVENTED_DAMAGE_COLOR = Color(150, 220, 255, 220)
@@ -54,11 +46,6 @@ class AffixPlasmaArmorShieldHullMod : BaseHullMod() {
         }
     }
 
-    /**
-     * 护盾装甲减免监听器：护盾命中时按装甲公式折算减免。
-     *
-     * @property armorFraction 折算装甲值占最终最大装甲的比例（安装时按难度系数定值）
-     */
     class ShieldArmorListener(
         private val ship: ShipAPI,
         private val armorFraction: Float,

@@ -1,5 +1,5 @@
 ---
-name: "package-structure-guidelines"
+name: package-structure-guidelines
 description: "ASTD 包结构规范：多模块布局、根包、internal、renderer、combat 及各领域 base 包约定。"
 ---
 
@@ -7,7 +7,7 @@ description: "ASTD 包结构规范：多模块布局、根包、internal、rende
 
 ## 模块布局（Gradle 多模块）
 
-模块化拆分后源码按模块分布；**模块是物理边界，包名是逻辑边界——拆分不改 FQN**（`contents/` 与 ss-csv 的类字符串引用不受影响）。
+源码按模块分布，模块划分不得修改 FQN（`contents/` 与 ss-csv 的类字符串引用不受影响）。
 
 - `modules/api/astd-api`：对外/模块内交互 API（buff、difficulty 等），包 `cn.kasuminova.astd.api.*`。
 - `modules/api/astd-api-render`：渲染专用 API（api 超集）：RenderEntity 树接口、staticTrail/flare/arc spec 蓝图、弹体/光束 VFX DSL，包 `cn.kasuminova.astd.api.render` / `cn.kasuminova.astd.impl.render`（spec 纯数据）/ `cn.kasuminova.astd.renderer.*.driver`（DSL 与策略）。

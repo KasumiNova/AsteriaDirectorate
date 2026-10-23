@@ -1,5 +1,5 @@
 ---
-name: "ship-system-description-guidelines"
+name: ship-system-description-guidelines
 description: "Use when editing Starsector SHIP_SYSTEM rows in descriptions.csv or ss-csv description i18n, especially text1/text2/text3/text4/text5 field placement, multiline effect text, and refit/codex tooltip behavior."
 ---
 
@@ -22,8 +22,6 @@ description: "Use when editing Starsector SHIP_SYSTEM rows in descriptions.csv o
 - `text3` 为装配界面的舰船信息文本，通常需要和 text1 一致。
 - `text4` 暂时作用不明；没有确认用途前保持为空，避免文本显示在未知位置。
 - `text5` 为效果文本，用于说明系统实际作用。
-
-关键词：text1 为图鉴界面的首行描述文本；text2 为类型短词；text3 为装配界面的舰船信息文本；text4 暂时作用不明；text5 为效果文本；text1 / text5 支持原生换行。
 
 ## 换行规则
 

@@ -26,14 +26,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-/**
- * 桩引擎完整驱动 [CuifengTorpedoStrikeImpl.strike]：直击自适应增伤（辐能 + 舰体，
- * 玩家 owner=0 恒取 v2）、护盾命中硬辐推进（紫色浮字）、全额面板 AOE（存活直击目标豁免）、
- * 模块舰减半口径与面板异常防线。
- *
- * VFX 步骤在桩引擎下安全空转：粒子 API 走 Mockito 默认桩，十字辉星在无 GL 环境
- * 由 try/catch 降级跳过（不影响结算断言）。
- */
 class CuifengTorpedoStrikeImplTest {
     private var warnCapture: WarnCapture? = null
 
@@ -53,7 +45,6 @@ class CuifengTorpedoStrikeImplTest {
 
     private data class FloatyRecord(val text: String, val color: Color, val attachedTo: CombatEntityAPI?)
 
-    /** 记录型桩引擎：customData 真实 map、inPlay 动态集合、applyDamage/浮字全记录。 */
     private class StubEngineWorld {
         val customData = HashMap<String, Any?>()
         val inPlay = mutableSetOf<CombatEntityAPI>()
@@ -101,7 +92,6 @@ class CuifengTorpedoStrikeImplTest {
         return p
     }
 
-    /** 辐能追踪器桩：maxFlux/currFlux 固定返回值，increaseFlux 全记录。 */
     private class StubFlux(val increases: MutableList<Pair<Float, Boolean>> = mutableListOf()) {
         val tracker: FluxTrackerAPI = mock(FluxTrackerAPI::class.java)
 
@@ -171,7 +161,6 @@ class CuifengTorpedoStrikeImplTest {
     @Test
     fun `巡洋舰直击：辐能自适应加舰体自适应合并一笔 ENERGY，无盾 bypass 落点即爆心`() {
         val world = StubEngineWorld()
-        // 辐能 65%（系数 0.5）、部署点 20 = 巡洋基准（差值 0）；玩家 owner=0 恒 v2：x=0.5、档位 40%
         val target = stubShip(500f, flux = StubFlux().config(6500f, 10000f)).also { world.inPlay += it }
         strike(world, stubProjectile(), target, shieldHit = false, victims = emptyList())
 
@@ -194,7 +183,6 @@ class CuifengTorpedoStrikeImplTest {
     @Test
     fun `护盾命中战机：硬辐推进最大辐能 4% 并紫色浮字，无自适应增伤`() {
         val world = StubEngineWorld()
-        // 战机跳过舰体自适应；辐能 0 → 辐能自适应 0 → 步骤 1 整笔不发生
         val flux = StubFlux().config(0f, 10000f)
         val fighter = stubShip(500f, flux = flux, isFighter = true).also { world.inPlay += it }
         strike(world, stubProjectile(), fighter, shieldHit = true, victims = emptyList())
@@ -244,7 +232,7 @@ class CuifengTorpedoStrikeImplTest {
     @Test
     fun `AOE：直击目标本帧已死不再豁免，残骸外照常结算`() {
         val world = StubEngineWorld()
-        val target = stubMissile(500f) // 不在 inPlay：本帧已被直击面板击毁
+        val target = stubMissile(500f)
         val bystander = stubShip(560f).also { world.inPlay += it }
 
         strike(world, stubProjectile(), target, shieldHit = false, victims = listOf(target, bystander))
@@ -257,7 +245,6 @@ class CuifengTorpedoStrikeImplTest {
     @Test
     fun `模块舰：舰体自适应取主舰体部署点并减半`() {
         val world = StubEngineWorld()
-        // 主舰体巡洋、部署点 30（超基准 10 点）：1500 × (0.4 + 10×0.04) = 1200，模块减半 → 600
         val parent = stubShip(480f, hullSize = ShipAPI.HullSize.CRUISER, dp = 30f)
         val module = stubShip(500f, hullSize = ShipAPI.HullSize.FRIGATE, parentStation = parent)
             .also { world.inPlay += it }

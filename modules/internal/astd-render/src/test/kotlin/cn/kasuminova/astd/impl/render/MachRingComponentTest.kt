@@ -10,12 +10,6 @@ import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-/**
- * 马赫环航迹发射器组件测试（持续发射器的树内化语义）：
- * - 节拍：满 [MachRingSpec.interval] 才留环、喷后累积器清零；
- * - 相位闸：仅 Active 期间累积与发射；
- * - 失败语义：单测无头环境池不可用 → 一次性 WARN（闸不刷屏），发射流程本身不炸。
- */
 class MachRingComponentTest {
 
     private val captures = mutableListOf<WarnCapture>()
@@ -62,18 +56,15 @@ class MachRingComponentTest {
         val host = PointHost("h", Vector2f(0f, 0f), 90f)
         val comp = MachRingComponent("r", spec)
 
-        // 0.04 + 0.04 = 0.08 < 0.1：两帧不留环（无 WARN 即未走发射流程）。
         comp.advance(ctx(engine, host, RenderPhase.Active, 0.04f), 0.04f)
         comp.advance(ctx(engine, host, RenderPhase.Active, 0.04f), 0.04f)
         assertEquals(0.08f, comp.accumulator, 1e-4f)
         assertEquals(0, capture.messages().size, "未满节拍不得发射: ${capture.messages()}")
 
-        // 第三帧 0.08+0.04=0.12 >= 0.1：留环（无头环境池不可用 → 一次 WARN），累积器清零。
         comp.advance(ctx(engine, host, RenderPhase.Active, 0.04f), 0.04f)
         assertEquals(0f, comp.accumulator, 1e-4f, "留环后累积器清零（reset-to-0）")
         assertEquals(1, capture.messages().size, "发射失败记一次 WARN: ${capture.messages()}")
 
-        // 后续节拍失败不再重复告警（一次性闸）。
         repeat(6) { comp.advance(ctx(engine, host, RenderPhase.Active, 0.04f), 0.04f) }
         assertEquals(1, capture.messages().size, "同类失败不得刷屏: ${capture.messages()}")
     }

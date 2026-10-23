@@ -5,10 +5,6 @@ import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-/**
- * 规格 08 §4.1 用例 12：玩家固定 v2（owner==0 恒设计基准）；
- * 敌版经 `DifficultyTuningImpl` 轨一 k_s 映射（testOverride 固定三档断言）。
- */
 class StellarMrmDifficultyTest {
 
     @AfterTest

@@ -5,15 +5,9 @@ import com.fs.starfarer.api.combat.BeamEffectPlugin
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import java.awt.Color
 
-/**
- * 通用：隐藏原版 beam 渲染（保留伤害/命中结算），
- * 由 everyFrameEffect（自绘 BoxUtil trail + 环特效）接管视觉表现。
- *
- * 原 stasisfield 包的通用工具，视界线随 D1 拆除后由 GCP 系列光束沿用。
- */
 open class HiddenBeamRenderEffect : BeamEffectPlugin {
     override fun advance(amount: Float, engine: CombatEngineAPI, beam: BeamAPI) {
-        // 注意：不要改 beam.from/to（那会影响碰撞/伤害）；只改“怎么画”。
+        // 修改 beam.from/to 会同时改变碰撞与伤害。
         try {
             beam.coreColor = Color(0, 0, 0, 0)
         } catch (_: Throwable) {

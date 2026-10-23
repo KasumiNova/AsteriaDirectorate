@@ -4,14 +4,10 @@ import cn.kasuminova.astd.api.buff.Buff
 import com.fs.starfarer.api.combat.DamageType
 
 /**
- * 湮灭涡旋吞噬池：单武器一次开火周期的吞噬累计载体（规格 04 §2.1）。
+ * 累计单个武器在一次开火周期内吸收的弹体伤害。
  *
- * 动机：湮灭涡旋光束持续期间吸收的敌方射弹/导弹，按类型转换比折算后累计入池，
- * 停火时一次性消费（坍缩爆炸伤害基数）；池生命周期不随宿主（[cn.kasuminova.astd.api.buff.BuffLifetime.SELF_MANAGED]），
- * 宿主失效时自回收且不触发坍缩（宿主死亡涡旋哑火是机制明确行为）。
- *
- * 挂载：经 `ShipAPI.getOrCreateBuffByWeapon("astd_annihilation_vortex_pool", weapon, ...)` 挂 BuffHost
- * 武器级复合键；每个开火周期由 BeamEffect 在停火坍缩后移除，下周期重建。
+ * 伤害按类型和软上限折算。宿主失效时移除自身且不触发坍缩；停火结算后由调用方移除。
+ * 所有方法仅在战斗主线程调用。
  */
 interface AnnihilationVortexPool : Buff {
 
@@ -30,11 +26,6 @@ interface AnnihilationVortexPool : Buff {
      */
     val threshold: Float
 
-    /**
-     * 记录一次吸收：[type] 伤害类型决定转换比，[baseDamage] 为弹体面板伤害（getBaseDamageAmount 口径）。
-     * 内部完成类型转换 + 软上限分段折算后累计入池。
-     *
-     * @return 实际入池量（折算后；供玩家可见浮字与遥测）
-     */
+    /** 按伤害类型与软上限累计 [baseDamage]，返回实际计入池中的数值。 */
     fun addAbsorbed(type: DamageType, baseDamage: Float): Float
 }

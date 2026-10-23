@@ -35,75 +35,16 @@ import org.lazywizard.lazylib.MathUtils
 import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
 
-/**
- * 引力裂隙发生器（Gravity Rift Generator）——茑萝级（ZW-103）舰船系统
- * （purple/20-production.md §2，2026-09 D27 重做；2026-09-20 二轮重做：
- * 目标锁定 + 贴图旋涡 + **真实光束**；2026-10 细化：系统期间减伤 + 禁相位 + 起点光斑）。
- *
- * 目标锁定（对齐原版熵放大器 [com.fs.starfarer.api.impl.combat.EntropyAmplifierStats] 模式）：
- * - 玩家操控取 shipTarget；AI 取 [ShipwideAIFlags.AIFlags.TARGET_FOR_SHIP_SYSTEM]
- *   （由 [GravityRiftSystemAI] 决策后写入）；
- * - 无有效目标时系统不可激活（[isUsable] = false），HUD 提示「无目标」；
- *   已锁定但超出系统射程（[GravityRiftTuning.SYSTEM_RANGE] 经 systemRangeBonus 折算）时
- *   提示「超出射程」。
- *
- * 三段行为（CSV：chargeUp 1.0 / active 1.0 / down 1.0 / cooldown 12）：
- * 1. **IN（蓄能 1s）**：首帧锁定目标舰，在目标舰体随机位置采样旋涡锚点
- *    （8 次采样，优先取无护盾覆盖点：shield 不存在/未开启/不在护盾弧内），
- *    生成红色贴图旋涡（[GravityRiftVortexVisual]，60°/s 自旋，1s 淡入）；
- * 2. **ACTIVE（1s）**：首帧自旋涡中心向目标发射**真实光束**——隐藏光束武器
- *    astd_grav_rift_beam 挂载在 FX drone（dem_drone）上（mod 界成熟技巧，
- *    spawnProjectile 不支持 specClass=beam），源舰的 energyWeaponRangeBonus /
- *    beamWeaponRangeBonus / energyWeaponDamageMult / beamWeaponDamageMult 折算到
- *    drone；光束机制与布雷间隔直接复用原版裂隙洪流发射极
- *    （beamEffect = [cn.kasuminova.astd.combat.effect.lens.GravityRiftBeamEffect]，
- *    红色正色、不使用反色星云）；光束全程 [GravityRiftTuning.BEAM_DURATION]s，
- *    由 drone 上的 [AdvanceableListener] 每帧定位/瞄准/强火；
- *    光束出现同时在旋涡中心生成起点双光斑（SMOOTH + SMOOTH_DISC，红色系，
- *    每帧跟随旋涡锚点位置与光束发射角度）；
- * 3. **OUT（1s）/结束**：旋涡淡出并自移除；光束 drone 到时自移除。
- *    系统被打断（unapply）时：旋涡 forceFadeOut 收口、drone 立即移除，
- *    避免渲染插件与实体滞留到战斗结束。
- *
- * 系统持续期间（IN + ACTIVE + OUT 全程）：舰船获得全类型固定减伤（hull/armor/shield/emp
- * 四类 [MutableShipStatsAPI.damageTakenMult] 同比例类乘修饰，v1 50% / v2 60% / v5 90%）、
- * 产生红色 jitter（颤抖描边提示「不稳定打击模式」，强度爬升/满额/衰减与描边外扩
- * 结构对齐原版时流之壳 [com.fs.starfarer.api.impl.combat.TemporalShellStats]）；
- * 相位斗篷压制仅 IN/ACTIVE 生效（每帧钉 cooldownRemaining 为
- * [GravityRiftTuning.PHASE_SUPPRESS_COOLDOWN_REMAINING]，COOLDOWN 态下按键不可激活；
- * cloak 已在自然冷却且余量≥该值时不改写；相位 AI 读 [ShipAPI.isDefenseDisabled] 自然门控），
- * OUT 阶段解除。激活代价（软辐能）由原版 .system 的 f/u (base cap) 结算（fluxUse=0 即软辐能语义）。
- *
- * HUD 状态（[getStatusData]）：index 0 全程显示固定减伤百分比（难度解析结果缓存于
- * 脚本实例字段，脚本按船创建）；index 1 仅 IN/ACTIVE 显示相位禁用。
- *
- * 起点光斑：生命周期 [GravityRiftTuning.BEAM_DURATION] + 0.3s（覆盖光束强火窗口 +
- * chargedown 0.3s 淡出），由 [BeamDroneController] 首个 advance 帧生成，
- * 位置/朝向每帧经 [cn.kasuminova.astd.api.render.BloomFlareVfx.FlareFollow] 跟随
- * 旋涡锚点与控制器瞄准角度（目标消亡后保持最后角度）。
- *
- * 自动化观测：目标 id / 旋涡生成 / 光束生成写入 engine.customData
- * （[TELEMETRY_TARGET_KEY] / [TELEMETRY_VORTEX_KEY] / [TELEMETRY_BEAM_KEY] 前缀 + ship.id）；
- * 裂隙计数由 GravityRiftBeamEffect 按母舰 id 写入 [TELEMETRY_MINES_KEY] 前缀。
- * 这些键**不**在 unapply 清除（战斗级生命周期），供 ASTDAutomationCombatPlugin 轮询断言。
- *
- * Fail Fast：战斗内 engine/weapon API 均为安全访问，全程不包 try；
- * drone 缺失母舰旗标、目标在激活瞬间失效等异常路径均有日志。
- */
 class GravityRiftSystemStats : BaseShipSystemScript() {
 
-    /** 一次激活的触发闩（IN 首帧建立，unapply 清除）。 */
     private class RiftActivation(
         val target: ShipAPI,
-        /** 旋涡锚点相对目标位置的偏移（激活时采样，随目标移动）。 */
         val anchorOffset: Vector2f,
         val vortex: GravityRiftVortexVisual,
     ) {
-        /** 光束 drone（ACTIVE 首帧生成）。 */
         var beamDrone: ShipAPI? = null
     }
 
-    /** 难度解析出的减伤比例缓存（脚本实例按船创建），供 [getStatusData] 显示 HUD 百分比。 */
     private var cachedDamageReduction: Float? = null
 
     override fun apply(
@@ -135,13 +76,6 @@ class GravityRiftSystemStats : BaseShipSystemScript() {
         }
     }
 
-    /**
-     * 系统持续期间（IN + ACTIVE + OUT 全程）应用的效果：
-     * 1. 固定减伤（hull/armor/shield/emp 四类 damageTakenMult 同比例修饰，
-     *    解析结果缓存到 [cachedDamageReduction] 供 HUD 状态读取）；
-     * 2. 红色 jitter（颤抖描边提示「不稳定打击模式」，强度与外扩由
-     *    [GravityRiftTuning.jitterLevelAndRange] 按状态/进度计算，结构对齐原版时流之壳）。
-     */
     private fun applySustainEffects(
         stats: MutableShipStatsAPI,
         ship: ShipAPI,
@@ -165,10 +99,7 @@ class GravityRiftSystemStats : BaseShipSystemScript() {
         ship.setJitterUnder(id, JITTER_UNDER_COLOR, jitterLevel, 25, 0f, 7f + rangeBonus)
     }
 
-    /**
-     * 相位斗篷压制（IN/ACTIVE 期间每帧，OUT 解除）：钉 cooldownRemaining 为 [GravityRiftTuning.PHASE_SUPPRESS_COOLDOWN_REMAINING]，
-     * COOLDOWN 态下玩家按键不再激活（原版 ChargeTracker 实证）；cloak 已在自然冷却且余量≥该值时不改写。
-     */
+    // 钉 cooldownRemaining 使 COOLDOWN 态下按键不可激活（原版 ChargeTracker 行为）
     private fun suppressPhaseCloak(ship: ShipAPI) {
         val cloak = ship.phaseCloak ?: return
         val target = GravityRiftTuning.phaseSuppressCooldown(
@@ -194,10 +125,6 @@ class GravityRiftSystemStats : BaseShipSystemScript() {
         engine.customData.remove(activationKey(ship))
     }
 
-    /**
-     * IN 首帧（activation key 缺席即首帧闩）：锁定目标舰、采样旋涡锚点、生成旋涡。
-     * 目标在激活瞬间失效属于异常路径（isUsable 已挡），记录错误并放弃本次激活视觉。
-     */
     private fun prepareActivation(engine: CombatEngineAPI, ship: ShipAPI) {
         if (engine.customData[activationKey(ship)] != null) return
 
@@ -226,7 +153,6 @@ class GravityRiftSystemStats : BaseShipSystemScript() {
             state != ShipSystemStatsScript.State.OUT
         ) return null
         return when (index) {
-            // 固定减伤全程显示；缓存未写入（apply 尚未跑过）时该项不显示
             0 -> cachedDamageReduction?.let {
                 ShipSystemStatsScript.StatusData(
                     I18n.t(
@@ -237,7 +163,6 @@ class GravityRiftSystemStats : BaseShipSystemScript() {
                     false,
                 )
             }
-            // 相位禁用仅 IN/ACTIVE 显示，OUT 返回 null 让该项消失；对玩家是负面效果，按 debuff 显示
             1 -> if (state == ShipSystemStatsScript.State.OUT) null else ShipSystemStatsScript.StatusData(
                 I18n[I18n.Categories.MOD, "ui.grav_rift.status.phase_disabled"],
                 true,
@@ -246,10 +171,7 @@ class GravityRiftSystemStats : BaseShipSystemScript() {
         }
     }
 
-    /**
-     * ACTIVE 首帧（beamDrone 缺席即首帧闩）：生成 FX drone 真实光束。
-     * drone 定位/瞄准/强火由其上的 [BeamDroneController] 每帧驱动，到时自移除。
-     */
+    // spawnProjectile 不支持 specClass=beam，真实光束经隐藏武器挂载在 FX drone（dem_drone）上
     private fun fireBeam(engine: CombatEngineAPI, ship: ShipAPI) {
         val activation = engine.customData[activationKey(ship)] as? RiftActivation ?: return
         if (activation.beamDrone != null) return
@@ -263,7 +185,6 @@ class GravityRiftSystemStats : BaseShipSystemScript() {
 
         val drone = engine.createFXDrone(variant)
         drone.mutableStats.hullDamageTakenMult.modifyMult(FX_DRONE_MOD_ID, 0f)
-        // 射程/伤害加成继承：光束基础射程 1000 受能量武器+光束武器射程影响（规格 §2）
         drone.mutableStats.energyWeaponRangeBonus.applyMods(ship.mutableStats.energyWeaponRangeBonus)
         drone.mutableStats.beamWeaponRangeBonus.applyMods(ship.mutableStats.beamWeaponRangeBonus)
         drone.mutableStats.energyWeaponDamageMult.applyMods(ship.mutableStats.energyWeaponDamageMult)
@@ -290,13 +211,6 @@ class GravityRiftSystemStats : BaseShipSystemScript() {
         engine.customData[TELEMETRY_BEAM_KEY + ship.id] = 1
     }
 
-    /**
-     * 光束 drone 每帧驱动：定位到旋涡中心、瞄准目标（目标消亡后保持最后朝向直射）、
-     * 强火一帧并刷新光束端点；到 [GravityRiftTuning.BEAM_DURATION] 停止强火，
-     * 再等 [DRONE_LINGER_SECONDS]（光束 chargedown 0.3s 淡出 + 余量）后自移除，
-     * 避免光束末端硬切。首个 advance 帧同时生成起点双光斑（随光束出现），
-     * 光斑位置/朝向每帧跟随本控制器的锚点与瞄准角度。
-     */
     private class BeamDroneController(
         private val engine: CombatEngineAPI,
         private val drone: ShipAPI,
@@ -331,13 +245,6 @@ class GravityRiftSystemStats : BaseShipSystemScript() {
             weapon.updateBeamFromPoints()
         }
 
-        /**
-         * 起点双光斑：SMOOTH + SMOOTH_DISC 混合风格，红色系对齐裂隙光束颜色，随机闪烁。
-         * 生命周期 [GravityRiftTuning.BEAM_DURATION] + [FLARE_FADE_TAIL_SECONDS]
-         * （覆盖光束强火窗口 + chargedown 0.3s 淡出），到期自动清理；
-         * 位置/朝向每帧经 FlareFollow 跟随旋涡锚点与 [lastFacing]（复用控制器瞄准结果），
-         * 朝向额外 +90°（光斑长轴与光束走向垂直铺开）。
-         */
         private fun spawnAnchorFlares() {
             val follow = BloomFlareVfx.FlareFollow { out ->
                 out.set(vortex.currentAnchor())
@@ -374,11 +281,6 @@ class GravityRiftSystemStats : BaseShipSystemScript() {
         }
     }
 
-    /**
-     * 旋涡锚点采样（[ANCHOR_SAMPLES] 次）：在目标碰撞半径 [ANCHOR_RADIUS_MIN_FRAC, ANCHOR_RADIUS_MAX_FRAC]
-     * 倍处随机取点，优先返回无护盾覆盖点（shield 不存在/未开启/不在护盾弧内）；
-     * 全部被护盾覆盖时取首个采样点（护盾上撕开旋涡同样成立）。
-     */
     private fun sampleVortexAnchor(target: ShipAPI): Vector2f {
         var first: Vector2f? = null
         repeat(ANCHOR_SAMPLES) {
@@ -396,10 +298,6 @@ class GravityRiftSystemStats : BaseShipSystemScript() {
         return first ?: Vector2f(0f, 0f)
     }
 
-    /**
-     * 目标解析（熵放大器模式）：AI 旗标 [ShipwideAIFlags.AIFlags.TARGET_FOR_SHIP_SYSTEM] 优先，
-     * 否则取 shipTarget（玩家锁定目标）；校验敌我/战机/残骸/相位/存活与系统射程。
-     */
     private fun findTarget(ship: ShipAPI): ShipAPI? {
         var target: ShipAPI? = null
         if (ship.shipAI != null && ship.aiFlags.hasFlag(ShipwideAIFlags.AIFlags.TARGET_FOR_SHIP_SYSTEM)) {
@@ -425,7 +323,6 @@ class GravityRiftSystemStats : BaseShipSystemScript() {
         if (system.isOutOfAmmo) return null
         if (system.state != ShipSystemAPI.SystemState.IDLE) return null
         if (findTarget(ship) != null) return null
-        // 有锁定目标但不可用（超射程/相位等）→ 超出射程；完全无锁定 → 无目标
         val raw = ship.shipTarget
         return if (raw != null && raw !== ship && raw.owner != ship.owner && raw.isAlive && !raw.isHulk && !raw.isFighter) {
             I18n[I18n.Categories.MOD, "ui.grav_rift.info.out_of_range"]
@@ -437,33 +334,25 @@ class GravityRiftSystemStats : BaseShipSystemScript() {
     companion object {
         private val log = Global.getLogger(GravityRiftSystemStats::class.java)
 
-        /** 隐藏光束武器（真实光束载体，挂载在 FX drone 上）。 */
         private const val BEAM_WEAPON_ID = "astd_grav_rift_beam"
 
-        /** FX drone 舰体（原版 dem_drone：不可见、collisionRadius 2、自带 WS 001 槽）。 */
         private const val FX_DRONE_HULL_ID = "dem_drone"
         private const val FX_DRONE_SLOT_ID = "WS 001"
 
-        /** drone 免伤修饰句柄（FX drone 不应被击毁）。 */
         private const val FX_DRONE_MOD_ID = "astd_grav_rift_fx"
 
-        /** 停止强火后 drone 滞留时长（秒）：覆盖光束 chargedown 0.3s 淡出 + 余量。 */
         private const val DRONE_LINGER_SECONDS = 0.5f
 
-        /** 旋涡锚点采样：次数与半径比例区间（相对目标碰撞半径）。 */
         private const val ANCHOR_SAMPLES = 8
         private const val ANCHOR_RADIUS_MIN_FRAC = 2f
         private const val ANCHOR_RADIUS_MAX_FRAC = 2.5f
 
-        /** jitter 效果（红色颤抖描边提示「不稳定打击模式」，色相红色，alpha 对齐原版时流之壳 55/155）。 */
         private val JITTER_COLOR = Color(255, 80, 80, 55)
         private val JITTER_UNDER_COLOR = Color(255, 40, 40, 155)
 
-        /** 起点光斑配色（红色系，对齐裂隙光束）。 */
         private val FLARE_CORE_COLOR = Color(255, 255, 255, 255)
         private val FLARE_FRINGE_COLOR = Color(255, 60, 60, 255)
 
-        /** 起点光斑在光束强火窗口后的存续余量（秒）：覆盖 chargedown 0.3s 淡出。 */
         private const val FLARE_FADE_TAIL_SECONDS = 0.3f
 
         private fun colorToLong(c: Color): Long =
@@ -472,10 +361,8 @@ class GravityRiftSystemStats : BaseShipSystemScript() {
                     ((c.green.toLong() and 0xFF) shl 8) or
                     (c.blue.toLong() and 0xFF)
 
-        /** 触发性 customData 键前缀（每船一条，unapply 清除）；键用 ship.id（战斗内唯一）。 */
         private const val ACTIVATION_KEY = "astd_grav_rift_activation:"
 
-        /** 自动化观测键前缀（战斗级生命周期，不在 unapply 清除）。 */
         const val TELEMETRY_TARGET_KEY = "astd_grav_rift_telemetry_target:"
         const val TELEMETRY_VORTEX_KEY = "astd_grav_rift_telemetry_vortex:"
         const val TELEMETRY_BEAM_KEY = "astd_grav_rift_telemetry_beam:"

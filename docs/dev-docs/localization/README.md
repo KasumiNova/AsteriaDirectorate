@@ -26,7 +26,7 @@
 - `python3 tools/scan_hardcoded_text.py`
 - `python3 tools/scan_hardcoded_text.py --max 500`
 
-> 这是启发式扫描，不是完整语法解析器：可能漏报/误报，但对“先把大头迁掉”很好用。
+> 这是启发式扫描，未实现完整语法解析，可能漏报或误报，适合优先迁移数量较多的文本。
 
 ---
 

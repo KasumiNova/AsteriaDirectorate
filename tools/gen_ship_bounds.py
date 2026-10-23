@@ -1,19 +1,11 @@
 #!/usr/bin/env python3
 """Generate Starsector ship bounds from sprite alpha.
 
-思路：
-1. 读取 `.ship` 文件中的 `spriteName` 与 `center`
-2. 基于 alpha 阈值提取实体像素，并可选按中心轴强制左右对称
-3. 从真实外轮廓中拆出“右半边路径”（top -> bottom），而不是扫描线取最外包络
-4. 先用高精度路径保留真实 silhouette，再按 RDP + 小角度裁剪删掉冗余点
-5. 删点时检查“新连线是否穿过过多透明像素”，避免直接跨过侧翼/凹口
-6. 对局部 x 极值（侧翼尖端/凹口）设锚点保护，避免被错误合并
-6. 镜像生成左侧轮廓，输出 Starsector `bounds`
-7. 生成预览图：原始高精度轮廓 vs 优化后轮廓
+从 `.ship` 文件读取 `spriteName` 与 `center`，按 alpha 阈值从贴图提取右半外轮廓，
+使用 RDP 简化并保护局部 x 极值。删点时检查新连线经过的透明像素，避免跨过侧翼和凹口，
+最后镜像生成左侧轮廓。输出优化后的 `bounds` 及原始轮廓与优化轮廓的对比预览。
 
-适用前提：
-- 舰船大致沿竖直方向摆正
-- 对称舰建议开启 `--symmetric`
+舰船需大致沿竖直方向摆正；对称舰建议开启 `--symmetric`。
 """
 
 from __future__ import annotations

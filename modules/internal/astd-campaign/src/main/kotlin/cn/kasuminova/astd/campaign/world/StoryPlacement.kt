@@ -12,17 +12,8 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
 
-/**
- * 剧情星系落位算法（纯函数层，不触碰 Global，可直接单测）。
- *
- * 约束：
- * - 双遗址星系距剧情主星系约 [CH2_DISTANCE_FROM_MAIN] su；
- * - 固定位于边缘星区：距星区中心（原点）≥ [EDGE_MIN_RADIUS] su；
- * - 与既有剧情星系的最小角距 [MIN_ANGULAR_SEPARATION_DEG]°（以星区中心为顶点的夹角）。
- */
 object StoryPlacement {
 
-    /** 简易二维向量（纯数据，避免测试环境加载 lwjgl Vector2f）。 */
     data class Vec(val x: Float, val y: Float) {
         fun length(): Float = sqrt(x * x + y * y)
         fun minus(o: Vec): Vec = Vec(x - o.x, y - o.y)
@@ -33,34 +24,23 @@ object StoryPlacement {
         }
     }
 
-    /** 第二章星系与主星系的标称距离（su，约 30 光年）。 */
     const val CH2_DISTANCE_FROM_MAIN: Float = 60000f
 
-    /** 第二章星系与主星系的距离容差（±）。 */
     const val CH2_DISTANCE_TOLERANCE: Float = 8000f
 
-    /** 边缘星区最小半径（距原点，su）。 */
     const val EDGE_MIN_RADIUS: Float = 40000f
 
-    /**
-     * 地图可玩边界（su，原版 sectorWidth/Height 164000×104000 减半再留 10000su 余量）。
-     * 候选点超出该矩形即拒绝——紫菀曾以「边缘半径无上限」飞出超空间地图可视范围。
-     */
     const val MAP_MAX_X: Float = 72000f
     const val MAP_MAX_Y: Float = 42000f
 
-    /** 剧情星系间最小角距（以原点为顶点，度）。 */
     const val MIN_ANGULAR_SEPARATION_DEG: Float = 35f
 
-    /** 主星系与既有原版星系的最小间距（su），避免压进核心星区。 */
     const val MAIN_MIN_CLEARANCE: Float = 8000f
 
-    /** 主星系候选点半径上限（su，核心星区外缘一圈）。 */
     const val MAIN_MAX_RADIUS: Float = 20000f
 
     private const val MAX_TRIES = 64
 
-    /** 两向量（相对原点）的夹角（度）；任一向量退化（零长度，无方向）时角距约束无效，返回 180。 */
     fun angleBetweenDeg(a: Vec, b: Vec): Float {
         val la = a.length()
         val lb = b.length()
@@ -69,10 +49,6 @@ object StoryPlacement {
         return Math.toDegrees(Math.acos(cosv.toDouble())).toFloat()
     }
 
-    /**
-     * 主星系落位：在半径 [0, [MAIN_MAX_RADIUS]] 内取种子随机点，
-     * 与全部既有星系保持 [MAIN_MIN_CLEARANCE] 以上间距；超限尝试后取最后一个候选（调用侧记日志）。
-     */
     fun placeMainSystem(seed: Long, existingSystemLocs: List<Vec>): Vec {
         val rnd = Random(seed)
         var candidate = Vec.ZERO
@@ -87,15 +63,6 @@ object StoryPlacement {
         return candidate
     }
 
-    /**
-     * 第二章双星系落位：以主星系为基点取 [CH2_DISTANCE_FROM_MAIN]±容差的方向随机点，
-     * 双星系均满足边缘半径约束，且与主星系/彼此相对原点的角距 ≥ [MIN_ANGULAR_SEPARATION_DEG]。
-     *
-     * 确定性：同一种子输出相同；[MAX_TRIES] 内未命中时抛 [IllegalStateException]
-     * （几何上主星系在核心区时几乎不会失败，失败即视为数据异常，由调用侧记日志）。
-     *
-     * @return 星坠 / 紫菀 两星系的落位（顺序固定）
-     */
     fun placeChapter2Systems(mainLoc: Vec, seed: Long): Pair<Vec, Vec> {
         val rnd = Random(seed)
         val first = pickChapter2Candidate(mainLoc, rnd, existing = listOf(mainLoc))
@@ -118,10 +85,6 @@ object StoryPlacement {
         return null
     }
 
-    /**
-     * 越界星系坐标钳制（旧档迁移用）：保持原方向、按比例缩进地图矩形边界内。
-     * 落点位于边界内侧（[MAP_MAX_X]/[MAP_MAX_Y]），天然满足 [EDGE_MIN_RADIUS] 下限。
-     */
     fun clampToMapBounds(loc: Vec): Vec {
         val factor = minOf(
             if (kotlin.math.abs(loc.x) > MAP_MAX_X) MAP_MAX_X / kotlin.math.abs(loc.x) else 1f,
@@ -130,11 +93,9 @@ object StoryPlacement {
         return if (factor >= 1f) loc else Vec(loc.x * factor, loc.y * factor)
     }
 
-    /** 坐标是否在地图可玩边界内（迁移判定用）。 */
     fun isWithinMapBounds(loc: Vec): Boolean =
         kotlin.math.abs(loc.x) <= MAP_MAX_X && kotlin.math.abs(loc.y) <= MAP_MAX_Y
 
-    /** 距离约束校验（测试与调试断言用）。 */
     fun chapter2ConstraintsSatisfied(mainLoc: Vec, starfall: Vec, aster: Vec): Boolean {
         val distOk = { v: Vec -> abs(v.minus(mainLoc).length() - CH2_DISTANCE_FROM_MAIN) <= CH2_DISTANCE_TOLERANCE }
         if (!distOk(starfall) || !distOk(aster)) return false

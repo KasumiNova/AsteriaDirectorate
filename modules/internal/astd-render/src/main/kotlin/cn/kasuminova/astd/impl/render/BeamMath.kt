@@ -5,7 +5,6 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
 
-/** 光束节点共用的标量/向量小工具（螺旋、回流粒子、环流等都用得到）。纯函数，无状态。 */
 internal object BeamMath {
 
     fun rand01(): Float = Math.random().toFloat()

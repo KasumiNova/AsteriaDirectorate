@@ -5,15 +5,15 @@
 > 落地进度：
 > - **P7.1 ✅** 基座 + Psi：`BeamHost`/`BeamVfxDriver`(+Impl)/`BeamFrame`/`BeamCoreComponent`/`PsiHelixComponent`/`PsiSiphonComponent`；`PsiSunderBeamEffect` 改喂 `BeamFrame`；删 `PsiOmegaBeamVfx`。
 > - **P7.2 ✅** GravityCollapse：`BeamCoreComponent` 泛化（`fadeMul` 收束/固定色/无端淡等 flag）+ 5 节点（`BeamRingComponent`/`BeamMuzzleComponent`/`BeamAmbientComponent`/`BeamMicroBeamComponent`/`BeamHelixParticleComponent`）；两宿主改喂 `BeamFrame`；清空 40+ 空 catch；删 `GravityCollapseBeamVfx`。
-> - **P7.3 ✅** StellarJet：`BeamCoreComponent` 再泛化（`glowWidthRelativeToCore`/alpha·emissive ramp）+ 4 节点（`BeamHelixTrailComponent`/`StellarJetAmbientComponent`/`StellarJetMuzzleComponent`/`StellarJetImpactComponent`）；`FrameState` 加 `hitTarget`/`isShieldHit`（与 `endpoint` 同列，替代计划原定的 `BeamHost` 位置）；EMP `applyDamage`+raycast+能量弹+辐能后坐力留宿主；muzzle 短束自毁 plugin→节点内保留收缩列表；charge-up `DistortionEntity` 直用（删 nebula 兜底 + 空 catch）；删 `StellarJetBeamVfx`。
-> - **P7.4 ✅（代码）** 三手搓类均删；无 beam 侧孤儿类；复用件（`BeamLineUtil`/`AttachedBeamSpriteRingRenderer`/`TaperedBeamTrailsVfx`）仍有调用方；`BeamVfxSpecsTest` 覆盖 Psi/GC/StellarJet 三树拓扑。`ProjectileVfxPresets` 属旧弹体管线**显式保留内部**（`ProjectileVfxOldPathRemovalTest` allowlist），非 beam 死代码。
+> - **P7.3 ✅** StellarJet：`BeamCoreComponent` 再泛化（`glowWidthRelativeToCore`/alpha·emissive ramp）+ 4 节点（`BeamHelixTrailComponent`/`StellarJetAmbientComponent`/`StellarJetMuzzleComponent`/`StellarJetImpactComponent`）；`FrameState` 加 `hitTarget`/`isShieldHit`（与 `endpoint` 同列，替代计划原定的 `BeamHost` 位置）；EMP `applyDamage`+raycast+能量弹+辐能后坐力留宿主；muzzle 短束自毁 plugin→节点内保留收缩列表；charge-up `DistortionEntity` 直用（删 nebula 备用实现 + 空 catch）；删 `StellarJetBeamVfx`。
+> - **P7.4 ✅（代码）** 三个手写类均删；无 beam 侧孤儿类；复用件（`BeamLineUtil`/`AttachedBeamSpriteRingRenderer`/`TaperedBeamTrailsVfx`）仍有调用方；`BeamVfxSpecsTest` 覆盖 Psi/GC/StellarJet 三树拓扑。`ProjectileVfxPresets` 属旧弹体管线**显式保留内部**（`ProjectileVfxOldPathRemovalTest` allowlist），非 beam 死代码。
 > - **待办**：进游戏逐光束目检 firing/停火/复火/命中回归（无引擎环境无法自动验证像素级观感）。
 >
 > 原状态：设计定稿待评审 · 日期：2026-07-22
 > 前置：[2026-07-22-render-entity-dsl-rewrite.md](./2026-07-22-render-entity-dsl-rewrite.md)（§2 目标"宿主中立、兼容光束"、D6、§9 P7）
 > 背景：24/24 弹体已全迁至 `RenderEntity` + DSL 新管线；核心 `api/render`（`RenderEntity`/`RenderContext`/
 > `FrameState`/`RenderHost`）从落地起就是宿主中立的（`RenderContext.host: RenderHost` 未钉死弹体，
-> `FrameState` 每字段带弹体/光束双语义）。本文规划把三个手搓大型光束特效迁到同一轨道。
+> `FrameState` 每字段带弹体/光束双语义）。本文规划把三个手写大型光束特效迁到同一轨道。
 
 ## 1. 现状：三个光束特效的形态
 
@@ -37,16 +37,16 @@
 
 ### 1.2 需要参数化/策略化的差异（迁移必须抽象的维度）
 
-1. **几何来源**：真实 `BeamAPI` / ship+weapon 自算 raycast / from-to 点对 —— 三种。
+1. **几何来源**：真实 `BeamAPI` / ship+weapon 自算 raycast / from-to 点对，三种。
 2. **驱动宿主**：`BeamEffectPlugin`（挂 beam，生命周期随 beam）vs `EveryFrameWeaponEffectPlugin`（挂 weapon，含系统状态机 + gameplay）。
-3. **detail 后端**：`CurveEntity` 双螺旋（Psi）/ 多节点 `TrailEntity` 螺旋（StellarJet）/ `SpriteEntity` 环 + 粒子（GravityCollapse）—— 三种后端。
+3. **detail 后端**：`CurveEntity` 双螺旋（Psi）/ 多节点 `TrailEntity` 螺旋（StellarJet）/ `SpriteEntity` 环 + 粒子（GravityCollapse），三种后端。
 4. **附加语义**：Psi 虹吸回流；StellarJet charge-up + **EMP 真实伤害**；GravityCollapse 光圈环 + 渐长炮口锥 + AOE（AOE 已外置在 `GravityCollapseOnHitHandler`）。
 5. **淡出实现**：心跳/长定时器 + 复火重置定时器拉回（Psi/StellarJet）vs `reset()`+`fadeMul` 删除重建（GravityCollapse）。**统一采纳前者**（无重建、复火平滑），淘汰后者。
 
 ## 2. 目标与非目标
 
 ### 目标
-- 三个光束共用一套 `RenderEntity` 树 / DSL / 生命周期，与弹体同轨；束体 4 件套收敛为一个公共节点。
+- 三个光束共用一套 `RenderEntity` 树 / DSL / 生命周期，与弹体同轨；束体 4 件套合并为一个公共节点。
 - 每个概念独立的视觉效果 = 一个自管状态的 `RenderEntity` 节点；`GravityCollapseBeamVfx` 的 7 类混杂效果拆成 6 个节点 + 1 个无状态起手函数（见 §5）。
 - 几何/firing/strength/fadeMul 由宿主插件算好喂进 `FrameState`，节点只读 `ctx.frame`，不各自读 `BeamAPI`/`weapon`。
 - **gameplay 不进树**：EMP `applyDamage`、命中判定、firing 门控、raycast 留在宿主插件；树只拥有视觉节点。
@@ -71,7 +71,7 @@ interface BeamHost : RenderHost {
     val isShieldHit: Boolean
 }
 ```
-`BeamHostImpl` 包裹宿主每帧算出的接触信息。几何本身（start/facing/length/endpoint）走 `FrameState`，**不**放 host —— 与弹体一致，节点 95% 只读 `ctx.frame`。
+`BeamHostImpl` 包裹宿主每帧算出的接触信息。几何本身（start/facing/length/endpoint）走 `FrameState`，**不**放 host，与弹体一致，节点 95% 只读 `ctx.frame`。
 
 ### 3.2 `BeamVfxDriver`（renderer/beam/driver，接口 + Impl）
 弹体驱动从 `projectile.location` **自己算**几何；光束几何却由宿主插件（含 raycast/平滑/BeamAPI 读取 + gameplay）**算好传入**。故光束驱动比弹体驱动更薄：不持有 `ASTDProjectileHistory`，每帧接收一个几何+状态输入，产出 `FrameState`、推进树生命周期。
@@ -93,10 +93,10 @@ interface BeamVfxDriver {
 - 与弹体一样按宿主身份去重、`state==Removed` 回收。Psi 一条 beam 一个 driver；StellarJet/GravityCollapse 一把 weapon 一个 driver。
 
 ### 3.3 束体公共节点 `BeamCoreComponent`（impl/render）
-把三处逐行重复的 4 件套收敛成一个节点：持 `core/coreU/glow/glowU` 四个 tapered `TrailEntity`，`onAttachSelf` 经 `BoxUtilCombatVfx` 工厂建、`advanceSelf` 每帧改 node/宽度/emissive + `setStateVanilla(frame.origin, frame.facing)`、`beginFadeOutSelf` 走既有 `ASTDProjectileVfxLayerFadeState`。作者面参数：核心/辉光的色、宽、mixPower、endFade。**这是本次收益最大的公共资产**——三个光束的束体从此一份实现。
+把三处逐行重复的 4 件套合并成一个节点：持 `core/coreU/glow/glowU` 四个 tapered `TrailEntity`，`onAttachSelf` 经 `BoxUtilCombatVfx` 工厂建、`advanceSelf` 每帧改 node/宽度/emissive + `setStateVanilla(frame.origin, frame.facing)`、`beginFadeOutSelf` 走既有 `ASTDProjectileVfxLayerFadeState`。作者面参数：核心/辉光的色、宽、mixPower、endFade。**这是本次收益最大的公共资产**，三个光束的束体从此一份实现。
 
 ### 3.4 detail / muzzle / impact / ambient 节点（impl/render）
-- detail 三后端各一个节点（都是 root component 形态，读 `ctx.frame` 的 origin/facing/length 构中线）：`BeamHelixCurveComponent`（Psi，`CurveEntity`）、`BeamHelixTrailComponent`（StellarJet，多节点 `TrailEntity`）、`BeamRingComponent`（GravityCollapse，复用 `AttachedBeamSpriteRingRenderer`）。三者不强求合并——后端不同、语义不同，各自独立节点即可（符合"一节点一效果"）。
+- detail 三后端各一个节点（都是 root component 形态，读 `ctx.frame` 的 origin/facing/length 构中线）：`BeamHelixCurveComponent`（Psi，`CurveEntity`）、`BeamHelixTrailComponent`（StellarJet，多节点 `TrailEntity`）、`BeamRingComponent`（GravityCollapse，复用 `AttachedBeamSpriteRingRenderer`）。三者不强求合并，后端不同、语义不同，各自独立节点即可（符合"一节点一效果"）。
 - `BeamAmbientComponent`：沿束 smooth 粒子 + nebula，每帧按 `length/50` 累积器抛射。StellarJet 与 GravityCollapse 的 ambient 是复制粘贴关系（后者注释明写"复用 StellarJet 策略"）→ **合并为一个可配置节点**。
 - `BeamMuzzleComponent`：炮口锥/粒子，动态 spawn。
 - `BeamImpactComponent`：命中点粒子/弧，读 `frame.endpoint` + `host.hitTarget`。
@@ -111,7 +111,7 @@ interface BeamVfxDriver {
 - **空 catch 清零**：`GravityCollapseBeamVfx` 有 40+ 个 `catch (_: Throwable) {}` 静默吞异常（违反规范：出问题必须日志）。迁移**不得平移**这些空 catch；BoxUtil `addEntity` 失败等须 `log.warn` + 释放句柄（沿用 `TrailComponent`/`MistComponent` 既有约定：`state!=0 → delete + warn + return false`）。
 - **不留兼容/死路径**：`GravityCollapseBeamVfx.reset()` 里清理 `AttachedBeamEllipseRingRenderer` 与 `sub130` 等换后端后的残留 key（防御性垃圾），迁移时不带走。
 - **接口先行**：`BeamHost`/`BeamVfxDriver` 进 api/接口层，Impl 内部使用；节点对外只暴露 DSL setter。
-- **测试**：真实逻辑验证——`BeamVfxSpecsTest`（DSL→树拓扑/策略字段）、`BeamVfxDriverTest`（喂 `BeamFrame` 序列，断言 `FrameState` 映射 + firing→fade→detach 生命周期，用 headless 安全的 engine=null 路径）。不做源码 contain、不做"验证未迁移"。
+- **测试**：真实逻辑验证，`BeamVfxSpecsTest`（DSL→树拓扑/策略字段）、`BeamVfxDriverTest`（喂 `BeamFrame` 序列，断言 `FrameState` 映射 + firing→fade→detach 生命周期，用 headless 安全的 engine=null 路径）。不做源码 contain、不做"验证未迁移"。
 
 ## 5. GravityCollapseBeamVfx 拆解（重点）
 
@@ -131,10 +131,10 @@ interface BeamVfxDriver {
 
 ## 6. 迁移阶段（每阶段完成即完成，不留半成品）
 
-- **P7.1 · 基座 + 迁 Psi（最简，端到端验证模板）。** 落地 `BeamHost`/`BeamVfxDriver`(+Impl)/`BeamFrame`/`beamVfx` DSL/`BeamCoreComponent` + `BeamHelixCurveComponent` + `BeamImpactComponent`（虹吸回流）。`PsiSunderBeamEffect` 保留几何/伤害，改为算 `BeamFrame` 喂 driver。Psi 无 muzzle/ambient/charge-up、几何来自真实 BeamAPI、生命周期挂 beam，是验证公共模板的最小闭环。自检：`BeamVfxDriverTest` 断言 firing→停火→复火拉回不重建。
+- **P7.1 · 基座 + 迁 Psi（最简，端到端验证模板）。** 落地 `BeamHost`/`BeamVfxDriver`(+Impl)/`BeamFrame`/`beamVfx` DSL/`BeamCoreComponent` + `BeamHelixCurveComponent` + `BeamImpactComponent`（虹吸回流）。`PsiSunderBeamEffect` 保留几何/伤害，改为算 `BeamFrame` 喂 driver。Psi 无 muzzle/ambient/charge-up、几何来自真实 BeamAPI、生命周期挂 beam，是验证公共模板的最小端到端路径。自检：`BeamVfxDriverTest` 断言 firing→停火→复火拉回不重建。
 - **P7.2 · 迁 GravityCollapse（readability 主战场）。** 按 §5 拆成 6 节点 + 起手函数，两个宿主（真实 beam / 系统侧）都改为喂 `BeamFrame`（`level` 分别恒 1 / 传 intensity）。复用 `AttachedBeamSpriteRingRenderer`/`TaperedBeamTrailsVfx`。清空 40+ 空 catch。
-- **P7.3 · 迁 StellarJet（最难）。** 束体+wisp+ambient+muzzle+impact 迁节点；**EMP `applyDamage` 与 raycast 留在 `StellarJetEmitterEveryFrameEffect`**（gameplay 不进树），只把算好的 `BeamFrame`+contact 喂 driver。muzzle 短束的自毁 plugin 改为节点内保留列表（与 GrowingCone 同法）。charge-up：`StellarJetChargeUpVfx`（含 `DistortionEntity`）作为独立相位效果——系统 `IN` 相位单独驱动，可暂不进 `RenderEntity` 树（`DistortionEntity` 非本后端），或作为 P7.3 尾声单独节点化。原版 beam 仍由 `StellarJetBeamEffect` 画透明（保留）。
-- **P7.4 · 删除 + verify。** 删 `PsiOmegaBeamVfx`/`GravityCollapseBeamVfx`/`StellarJetBeamVfx` 三个手搓类及其死代码（如无调用方的 `ProjectileVfxPresets.StellarJetBolt`）。进游戏逐光束目检 + firing/停火/复火/命中回归。
+- **P7.3 · 迁 StellarJet（最难）。** 束体+wisp+ambient+muzzle+impact 迁节点；**EMP `applyDamage` 与 raycast 留在 `StellarJetEmitterEveryFrameEffect`**（gameplay 不进树），只把算好的 `BeamFrame`+contact 喂 driver。muzzle 短束的自毁 plugin 改为节点内保留列表（与 GrowingCone 同法）。charge-up：`StellarJetChargeUpVfx`（含 `DistortionEntity`）作为独立相位效果，系统 `IN` 相位单独驱动，可暂不进 `RenderEntity` 树（`DistortionEntity` 非本后端），或作为 P7.3 尾声单独节点化。原版 beam 仍由 `StellarJetBeamEffect` 画透明（保留）。
+- **P7.4 · 删除 + verify。** 删 `PsiOmegaBeamVfx`/`GravityCollapseBeamVfx`/`StellarJetBeamVfx` 三个手写类及其死代码（如无调用方的 `ProjectileVfxPresets.StellarJetBolt`）。进游戏逐光束目检 + firing/停火/复火/命中回归。
 
 ## 7. 风险
 

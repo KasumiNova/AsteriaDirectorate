@@ -2,14 +2,6 @@ package cn.kasuminova.astd.sscsv.json
 
 import java.math.BigDecimal
 
-/**
- * Minimal JSON pretty writer for ss-csv extra outputs.
- *
- * Goals:
- * - no external deps
- * - stable formatting
- * - supports: null/boolean/number/string/map/list/array
- */
 internal object JsonWriter {
 
     fun pretty(value: Any?, indent: String = "    "): String {
@@ -62,7 +54,6 @@ internal object JsonWriter {
     private fun renderArray(list: List<*>, level: Int, indent: String): String {
         if (list.isEmpty()) return "[]"
 
-        // Small primitive arrays stay in one line for readability (e.g. [6, 16], [255, 170, 230, 255])
         val allPrimitive = list.all { it == null || it is Number || it is Boolean || it is String }
         if (allPrimitive && list.size <= 8) {
             return "[" + list.joinToString(", ") { render(it, level + 1, indent) } + "]"

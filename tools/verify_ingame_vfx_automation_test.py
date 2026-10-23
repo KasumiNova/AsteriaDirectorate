@@ -218,8 +218,6 @@ class ProjectileStructureMetricsTest(unittest.TestCase):
 
 
 class DefaultScenarioLogFallbackTest(unittest.TestCase):
-    """默认场景（EXPECTED）在 SSOptimizer 独立助手遥测身份字段过期时，回落 starsector.log 重建证据。"""
-
     def _write_default_scenario_log(self, path: Path) -> None:
         diagnostics = {
             "source": "ASTD",
@@ -253,11 +251,9 @@ class DefaultScenarioLogFallbackTest(unittest.TestCase):
         width, height = 2560, 1440
         rgb = np.zeros((height, width, 3), dtype=np.uint8)
         rgb[:, :] = [8, 10, 14]
-        # 舰船区域亮块（满足 ship visible pixels 检查；右缘压在弹体 ROI 左缘 0.36 之内，避免粘连）
         left, top = int(width * 0.06), int(height * 0.30)
         right, bottom = int(width * 0.34), int(height * 0.75)
         rgb[top:bottom, left:right] = [120, 130, 140]
-        # 弹体区域长亮条（满足弹体结构检查）
         pl, pt = int(width * 0.45), int(height * 0.46)
         pr, pb = int(width * 0.80), int(height * 0.50)
         rgb[pt:pb, pl:pr] = [140, 180, 255]

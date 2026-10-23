@@ -4,10 +4,6 @@ import kotlin.test.Test
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/**
- * 坠星残翼「单次穿越」结算闩锁（[PiercePassTracker]）的完整逻辑验证：
- * 非舰船目标一次性标记、脱离接触一帧后新穿越重置、首触判定、主弹振频适应全局闩锁。
- */
 class PiercePassTrackerTest {
 
     @Test
@@ -38,7 +34,6 @@ class PiercePassTrackerTest {
         val tracker = PiercePassTracker()
         assertTrue(tracker.tryLatchAdaptation(), "首次附加放行")
         assertFalse(tracker.tryLatchAdaptation(), "闩锁后不再附加")
-        // 目标脱离接触（新穿越）不重置全局闩锁
         tracker.retainContacts(emptySet())
         assertFalse(tracker.tryLatchAdaptation(), "穿越重置不得影响振频适应闩锁")
     }

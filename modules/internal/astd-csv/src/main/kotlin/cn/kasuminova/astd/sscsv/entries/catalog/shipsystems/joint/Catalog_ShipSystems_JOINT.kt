@@ -3,14 +3,6 @@ package cn.kasuminova.astd.sscsv.entries.catalog.shipsystems.joint
 import cn.kasuminova.astd.sscsv.entries.ShipSystemWithSystemFileEntry
 import cn.kasuminova.astd.sscsv.entries.catalog.shipsystems.systemName
 
-/**
- * 联制线（LH）舰船系统，机制设计见 `docs/design/ships/20-joint.md`。
- *
- * statsScript/aiScript 已指向正式实现（ASTDBurstFlowSystemStats / ASTDVisionShiftSystemStats）；
- * CSV 侧时长/冷却/充能参数按设计案落定。
- */
-
-/** 衔星 (ARC)（LH-001）：「落叶飞花」——1s 瞬时爆发时流/机动/备弹恢复 + 冲刺动量，3 充能、6s 充能间隔。 */
 object Sys_astd_lh_001_burst_flow : ShipSystemWithSystemFileEntry() {
     override val id: String = "astd_lh_001_burst_flow"
     override val name: String = systemName(id)
@@ -28,11 +20,9 @@ object Sys_astd_lh_001_burst_flow : ShipSystemWithSystemFileEntry() {
 
     override val icon: String = "graphics/icons/hullsys/temporal_shell.png"
 
-    // 音效 id 以 data/config/sounds.json 为准（无第二个下划线）
     override val useSound: String = "system_temporalshell"
 }
 
-/** 衔星 (LENS)（LH-002）：「视界变速」——自身时流提升 + 单目标时流压制与伤害转嫁，14s 持续、15s 冷却。 */
 object Sys_astd_lh_002_vision_shift : ShipSystemWithSystemFileEntry() {
     override val id: String = "astd_lh_002_vision_shift"
     override val name: String = systemName(id)
@@ -48,7 +38,6 @@ object Sys_astd_lh_002_vision_shift : ShipSystemWithSystemFileEntry() {
 
     override val icon: String = "graphics/icons/hullsys/quantum_disruptor.png"
 
-    // 音效对齐原版熵放大器（entropyamplifier.system 三件套）。
     override val useSound: String = "system_entropy"
     override val loopSound: String = "system_entropy_loop"
     override val deactivateSound: String = "system_entropy_off"

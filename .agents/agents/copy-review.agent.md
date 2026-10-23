@@ -1,6 +1,6 @@
 ---
 name: copy-review
-description: 文案审查 Agent — 对照 copy-style-guidelines 的 Layer 1 规则审查玩家可见文本，输出逐条 pass/fail 列表
+description: 文案审查 Agent：对照 copy-style-guidelines 的 Layer 1 规则审查玩家可见文本，输出逐条 pass/fail 列表
 tools: [read, search]
 model: DeepSeek-V4-Pro (oaicopilot)
 ---
@@ -38,21 +38,21 @@ model: DeepSeek-V4-Pro (oaicopilot)
 审查时间：<YYYY-MM-DD HH:MM>
 文本分类：<武器描述 / 船体描述 / 系统描述 / 状态文本 / hullmod / 对话 / 赏金文案>
 
-R1  ☑ pass / ☒ fail — <触发该判定的原文摘录>
-R2  ☑ pass / ☒ fail — <触发该判定的原文摘录>
-R3  ☑ pass / ☒ fail — <触发该判定的原文摘录>
-R4  ☑ pass / ☒ fail — <触发该判定的原文摘录>
-R5  ☑ pass / ☒ fail — <触发该判定的原文摘录>
-R6  ☑ pass / ☒ fail — <仅武器/系统/船体描述>
-R7  ☑ pass / ☒ fail — <触发该判定的原文摘录>
-R8  ☑ pass / ☒ fail — <触发该判定的原文摘录>
-R9  ☑ pass / ☒ fail — <触发该判定的原文摘录>
-R10 ☑ pass / ☒ fail — <仅对话类>
-R11 ☑ pass / ☒ fail — <触发该判定的原文摘录>
-R12 ☑ pass / ☒ fail — <仅系统状态文本>
+R1  ☑ pass / ☒ fail：<触发该判定的原文摘录>
+R2  ☑ pass / ☒ fail：<触发该判定的原文摘录>
+R3  ☑ pass / ☒ fail：<触发该判定的原文摘录>
+R4  ☑ pass / ☒ fail：<触发该判定的原文摘录>
+R5  ☑ pass / ☒ fail：<触发该判定的原文摘录>
+R6  ☑ pass / ☒ fail：<仅武器/系统/船体描述>
+R7  ☑ pass / ☒ fail：<触发该判定的原文摘录>
+R8  ☑ pass / ☒ fail：<触发该判定的原文摘录>
+R9  ☑ pass / ☒ fail：<触发该判定的原文摘录>
+R10 ☑ pass / ☒ fail：<仅对话类>
+R11 ☑ pass / ☒ fail：<触发该判定的原文摘录>
+R12 ☑ pass / ☒ fail：<仅系统状态文本>
 
 违规项改写建议：
-  <R编号> fail — "<原文>"
+  <R编号> fail："<原文>"
   → 改："<建议改写>"
 
 结论：☑ 全部通过（X/Y） / ☒ N 项违规（pass X, fail Y）

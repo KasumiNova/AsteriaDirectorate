@@ -2,11 +2,6 @@ package cn.kasuminova.astd.combat.hullmods.arc
 
 import com.fs.starfarer.api.combat.DamageType
 
-/**
- * 原版装甲减伤公式的唯一实现（hitStrength 换算 + 伤害系数结算）。
- * public 可见性：astd-campaign 的 SIC 技能「维度分流」按 task 口径直引复用
- * （[hitStrength] 与 [compute]），不在 campaign 侧复写装甲公式。
- */
 object ASTDArmorDamageReduction {
 
     fun compute(

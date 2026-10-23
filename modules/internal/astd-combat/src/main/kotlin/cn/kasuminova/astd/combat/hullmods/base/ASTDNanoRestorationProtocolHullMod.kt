@@ -11,47 +11,29 @@ import com.fs.starfarer.api.util.IntervalUtil
 import java.awt.Color
 import kotlin.math.min
 
-/**
- * 纳米重构协议（蓝 [ID_ARC] / 紫 [ID_LENS] 双变体共用本效果类，仅 spec 贴图与设计类型不同）：
- * 战斗内持续修复装甲与结构，修复产生辐能压力。
- *
- * 动机：原实现位于 arc 包且文案写死星坠，实为全 ASTD 通用机制——所有独特舰默认内置
- * （.ship builtInMods，星坠系挂蓝变体、紫菀系挂紫变体），applicable 判定为全 ASTD 舰（[isASTDShip]）。
- */
 class ASTDNanoRestorationProtocolHullMod : BaseHullMod() {
 
     companion object {
-        /** 蓝变体 id（菀星设计局-星坠，装配 astd_xc_*）。 */
         const val ID_ARC: String = "astd_arc_nano_restoration_protocol"
 
-        /** 紫变体 id（菀星设计局-紫菀，装配 astd_zw_*）。 */
         const val ID_LENS: String = "astd_lens_nano_restoration_protocol"
 
-        // 基础修复速率：
-        // - 结构：按最大结构百分比
-        // - 装甲：按最受损装甲格最大装甲百分比
-        private const val BASE_REPAIR_RATIO = 0.005f            // 0.5%/s
+        private const val BASE_REPAIR_RATIO = 0.005f
 
-        // 低结构阈值以下的修复速率
         private const val LOW_HULL_THRESHOLD = 0.50f
-        private const val LOW_HULL_REPAIR_RATIO = 0.01f          // 1.0%/s（总计）
+        private const val LOW_HULL_REPAIR_RATIO = 0.01f
 
-        // 装甲/结构分配比
         private const val ARMOR_REPAIR_RATIO = 0.20f
         private const val HULL_REPAIR_RATIO = 0.80f
 
-        // 装甲修复总量上限（每秒最多修复结构值的此比例）
-        private const val ARMOR_TOTAL_CAP_RATIO = 0.005f  // 0.5%
+        private const val ARMOR_TOTAL_CAP_RATIO = 0.005f
 
-        // 过载/散热后增幅
         private const val BOOST_DURATION_SEC = 5f
         private const val BOOST_MULT = 2.5f
 
-        // 辐能压力：每修复 1 结构产生 3 辐能，每修复 1 装甲产生 6 辐能
         private const val FLUX_PER_HULL = 3f
         private const val FLUX_PER_ARMOR = 6f
 
-        // 更新间隔（避免每帧跑逻辑）
         private const val TICK_INTERVAL = 0.2f
 
         private const val BOOST_KEY = "astd_nano_restoration_boost"
@@ -71,19 +53,16 @@ class ASTDNanoRestorationProtocolHullMod : BaseHullMod() {
         val boostTimerKey = "$BOOST_KEY:$shipId"
         var boostTimer = (engine.customData[boostTimerKey] as? Float) ?: 0f
 
-        // 过载/散热中：累计增幅计时器，不修复
         if (flux.isOverloaded || flux.isVenting) {
             engine.customData[boostTimerKey] = BOOST_DURATION_SEC
             return
         }
 
-        // 增幅计时器递减
         if (boostTimer > 0f) {
             boostTimer = (boostTimer - amount).coerceAtLeast(0f)
             engine.customData[boostTimerKey] = boostTimer
         }
 
-        // 间隔控制
         val intervalKey = "$INTERVAL_KEY:$shipId"
         var interval = engine.customData[intervalKey] as? IntervalUtil
         if (interval == null) {
@@ -99,7 +78,6 @@ class ASTDNanoRestorationProtocolHullMod : BaseHullMod() {
         val maxHull = ship.maxHitpoints.coerceAtLeast(1f)
         val maxArmorInCell = armorGrid?.maxArmorInCell?.coerceAtLeast(1f) ?: 0f
 
-        // 确定修复速率
         var repairRatio = BASE_REPAIR_RATIO
         if (ship.hitpoints / maxHull < LOW_HULL_THRESHOLD) {
             repairRatio = LOW_HULL_REPAIR_RATIO
@@ -108,7 +86,6 @@ class ASTDNanoRestorationProtocolHullMod : BaseHullMod() {
             repairRatio *= BOOST_MULT
         }
 
-        // 检测装甲与结构是否受损
         val grid = armorGrid?.grid
         val hasArmorDamage = grid != null && maxArmorInCell > 0f && hasAnyArmorDamage(grid, maxArmorInCell)
         val hasHullDamage = ship.hitpoints < maxHull - 1f
@@ -132,14 +109,12 @@ class ASTDNanoRestorationProtocolHullMod : BaseHullMod() {
             hullBudget = fullHullBudget
         }
 
-        // 修复装甲（所有受损格，单格速率不变，总量有上限）
         var armorRepaired = 0f
         if (armorBudget > 0f && armorGrid != null && grid != null && maxArmorInCell > 0f) {
             val armorCapPerTick = maxHull * ARMOR_TOTAL_CAP_RATIO * repairRatio / BASE_REPAIR_RATIO * dt
             armorRepaired = repairAllDamagedArmor(armorGrid, grid, maxArmorInCell, armorBudget, armorCapPerTick)
         }
 
-        // 修复结构
         var hullRepaired = 0f
         if (hullBudget > 0f && hasHullDamage) {
             val missingHull = (maxHull - ship.hitpoints).coerceAtLeast(0f)
@@ -147,7 +122,6 @@ class ASTDNanoRestorationProtocolHullMod : BaseHullMod() {
             ship.hitpoints = (ship.hitpoints + hullRepaired).coerceAtMost(maxHull)
         }
 
-        // 辐能压力
         val fluxFromHull = hullRepaired * FLUX_PER_HULL
         val fluxFromArmor = armorRepaired * FLUX_PER_ARMOR
         val totalFlux = fluxFromHull + fluxFromArmor

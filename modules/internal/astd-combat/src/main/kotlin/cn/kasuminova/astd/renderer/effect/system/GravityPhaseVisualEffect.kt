@@ -26,53 +26,30 @@ import kotlin.math.cos
 import kotlin.math.roundToInt
 import kotlin.math.sin
 
-/**
- * 「引力相位」（astd_gravity_phase）相位激活态视觉：
- * - 描边红色辉光：运行期以 BoxUtil [ShaderUtil.genSDF]（GPU compute）从舰体贴图
- *   alpha 动态生成 SDF，CPU 阈值化为外环描边纹理后由池化 SpriteEntity
- *   （[PooledCombatVfx.checkoutSprite] 租约）红色发光渲染
- *   （不再使用预生成贴图）；
- * - bloom 层红化：复用 [ShipGlowRenderer.setRecolor]，按相位等级把覆盖发光层
- *   交叉淡入到预生成的红色变体；
- * - 相位残影：相位期间每 0.5s 经 [ASTDAfterimageEffect] 生成一次 70％ 不透明度红色残影（平方淡出）。
- *
- * 接入点：[cn.kasuminova.astd.combat.shipsystems.GravityPhaseCloakStats] 每帧 apply 时调用 [track] 登记舰船；
- * 相位等级由本插件逐帧读 `ship.phaseCloak.effectLevel`（数据源唯一，不依赖 stats 调用时序）。
- */
 internal object GravityPhaseVisualEffect {
 
     private const val ENGINE_KEY = "astd_gravity_phase_visuals"
 
-    /** 残影生成间隔（秒）。 */
     private const val AFTERIMAGE_INTERVAL = 0.5f
 
-    /** 残影起始不透明度（70％）。 */
     private const val AFTERIMAGE_ALPHA = 0.7f
 
-    /** 残影淡出时长（秒）。 */
     private const val AFTERIMAGE_DURATION = 0.7f
 
-    /** 相位等级低于该值视为未激活（辉光归零、不产残影、换色层淡出至原色）。 */
     private const val ACTIVE_LEVEL_MIN = 0.05f
 
-    /** 描边辉光颜色（纯红，bloom 外扩成红色光晕）。 */
     private val OUTLINE_COLOR = Color(255, 28, 28, 255)
 
-    /** 残影颜色（70％ 不透明度红）。 */
     private val AFTERIMAGE_COLOR = Color(255, 60, 60)
 
-    /** 描边外扩像素（SDF 边界宽度，同时是描边衰减长度）。 */
     private const val OUTLINE_BORDER = 16
 
-    /** SDF alpha 阈值：低于该 alpha 的像素视为舰体外部（抗锯齿边缘算作内部，描边贴紧轮廓）。 */
     private const val OUTSIDE_THRESHOLD = 0.1f
 
     private val log = AstdLog.logger
 
-    /** 引力相位系统 id（相位斗篷 spec id 过滤用）。 */
     const val SYSTEM_ID = "astd_gravity_phase"
 
-    /** 舰体 id → 动态生成的描边纹理。 */
     private class OutlineTex(
         val textureId: Int,
         val width: Int,
@@ -83,21 +60,10 @@ internal object GravityPhaseVisualEffect {
 
     private val outlineTextures = HashMap<String, OutlineTex>()
 
-    /** 描边纹理是否已生成（仅成功生成后置位；失败保持 false，下个入口重试）。 */
     @Volatile
     private var texturesInitialized = false
 
-    /**
-     * 生成所有引力相位舰船的描边纹理（onApplicationLoad 与首次战斗接入各调一次，幂等）。
-     * 经 BoxUtil [TextureManager] 真 GL 上传舰体贴图后由 [ShaderUtil.genSDF]
-     * （GPU compute shader）从 alpha 生成 SDF，再读回 CPU 阈值化并上传为描边纹理。
-     *
-     * genSDF 依赖 ShaderCore 的 compute program，其初始化由 BoxUtil 自身在
-     * onGameLoad 完成；ASTD 的 onApplicationLoad 先于它执行，故此处静默推迟，
-     * 战斗期 [getOrCreate] 再次调用本方法完成生成。
-     * 绝不可在此代调 BoxUtilModPlugin.initLater——globalInitLater 先置 globalInit
-     * 再在 GLState 未建时抛 NPE，会永久毒化 BoxUtil 全局初始化（已实证）。
-     */
+    // BoxUtil 的 SDF compute program 在 onGameLoad 才初始化；onApplicationLoad 阶段禁止调用 initLater，否则全局初始化失败后无法重试。
     fun preloadTextures() {
         if (texturesInitialized) return
         if (!BoxUtilModPlugin.isGlobalInitialized()) {
@@ -122,19 +88,6 @@ internal object GravityPhaseVisualEffect {
         log.info("[ASTD] 引力相位视觉描边纹理生成完成：${outlineTextures.size} 张")
     }
 
-    /**
-     * 单舰描边纹理生成：舰体贴图 alpha → genSDF（GPU compute shader，R8 结果）→
-     * 读回 CPU 阈值化为「外环二次衰减」的 RGBA 描边纹理（白色 RGB，alpha 承载形状）。
-     *
-     * 源贴图走 BoxUtil [TextureManager] 真 GL 上传（vanilla getSprite 的懒加载
-     * textureId 在本环境未真实上传，与 bloom 贴图根因同源）；genSDF 结果为
-     * R8 NPOT 纹理（[0,1]，0.5 为轮廓边界），GL_RED 读回后阈值化，
-     * 最终描边纹理同为 NPOT（UV 端点即 1.0）。
-     *
-     * 备注：genSDF 的 compute 管线曾在本机 Mesa 环境失效（pass 间屏障缺
-     * GL_TEXTURE_FETCH_BARRIER_BIT，imageStore 写入对 texelFetch 不可见），
-     * 已在 BoxUtil 侧修复；genLegacySDF 为备选 CPU 路径。
-     */
     private fun generateOutline(hullId: String, spriteName: String): OutlineTex? {
         val src = TextureManager.loadTexture(spriteName)
         if (src[0] <= 0) {
@@ -157,8 +110,6 @@ internal object GravityPhaseVisualEffect {
         val outH = sdf[2]
 
         try {
-            // 读回 R8 单通道（NPOT）：行宽非 4 倍数时默认 PACK_ALIGNMENT=4 会错位溢出，
-            // 读取期间临时压 1，读完恢复
             val sdfBuf = ByteBuffer.allocateDirect(outW * outH)
             GL11.glBindTexture(GL11.GL_TEXTURE_2D, sdf[0])
             GL11.glPixelStorei(GL11.GL_PACK_ALIGNMENT, 1)
@@ -166,8 +117,6 @@ internal object GravityPhaseVisualEffect {
             GL11.glPixelStorei(GL11.GL_PACK_ALIGNMENT, 4)
             GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0)
 
-            // 阈值化：仅 hull 外侧成环，alpha 按 (1-d/BORDER)² 衰减；内侧（sdfValue<0.5）
-            // 必须为 0，否则整舰被填成实心剪影
             var litPixels = 0
             val outBuf = ByteBuffer.allocateDirect(outW * outH * 4)
             for (i in 0 until outW * outH) {
@@ -185,7 +134,6 @@ internal object GravityPhaseVisualEffect {
                 outBuf.put(alpha.toByte())
             }
             outBuf.flip()
-            // 覆盖率为 0 即描边静默缺席（源 alpha 全零或 SDF 读回全零），必须显式告警
             if (litPixels <= 0) {
                 log.warn("[ASTD] 引力相位视觉：描边纹理覆盖率为 0（hull=$hullId，源贴图 alpha 或 SDF 读回异常），跳过描边生成")
                 return null
@@ -221,16 +169,12 @@ internal object GravityPhaseVisualEffect {
         }
     }
 
-    /**
-     * 相位等级：引力相位斗篷的 effectLevel；非本系统（或无斗篷）恒 0。
-     */
     fun phaseLevelOf(ship: ShipAPI): Float {
         val cloak = ship.phaseCloak ?: return 0f
         if (cloak.specAPI?.id != SYSTEM_ID) return 0f
         return cloak.effectLevel.coerceIn(0f, 1f)
     }
 
-    /** 每帧由 [cn.kasuminova.astd.combat.shipsystems.GravityPhaseCloakStats] 驱动：登记舰船并确保插件安装。 */
     fun track(engine: CombatEngineAPI, ship: ShipAPI) {
         if (ship.isHulk) return
         val plugin = getOrCreate(engine) ?: return
@@ -241,7 +185,6 @@ internal object GravityPhaseVisualEffect {
         engine.customData[ENGINE_KEY]?.let { return it as? Plugin }
         return try {
             BoxUtilCombatVfx.ensureReady(engine)
-            // 战斗期 BoxUtil 已完成全局初始化，补做 app-load 阶段被推迟的描边纹理生成
             preloadTextures()
             val plugin = Plugin(engine)
             engine.addPlugin(plugin)
@@ -254,11 +197,9 @@ internal object GravityPhaseVisualEffect {
         }
     }
 
-    /** 舰船的相位视觉实体组：SDF 描边辉光租约（缺失即不建）。 */
     private class Attachment(
         val ship: ShipAPI,
         val outline: SpriteLease,
-        /** 舰体贴图中心补偿（世界偏移由朝向旋转后叠加）：sprite 中心相对几何中心的偏移量。 */
         val centerOffsetX: Float,
         val centerOffsetY: Float,
         var afterimageAcc: Float = 0f,
@@ -268,7 +209,6 @@ internal object GravityPhaseVisualEffect {
 
         private val attachments = LinkedHashMap<Int, Attachment>()
 
-        /** 实体创建失败的舰船（不再重试，避免每帧重建实体与刷屏告警）。 */
         private val failedShips = HashSet<Int>()
 
         fun track(ship: ShipAPI) {
@@ -302,19 +242,12 @@ internal object GravityPhaseVisualEffect {
             )
         }
 
-        /**
-         * 检出租约：raw texId 绑定（diffuse+emissive 同纹理，TriShard/Bolt 已验证路径）+
-         * UV 按 NPOT 实际像素端点、glowPower=0.1、双 alpha 初始 0（相位未激活不可见）。
-         * 纯手动模式（无看门狗）：alpha 由 updateGlow 逐帧驱动，舰船 hulk/移除即 release。
-         * 非实例化直绘：QuadObject.glDraw 对无实例数据按 max(count,1) 画单 quad，
-         * 位置/朝向/尺寸由实体本体承载；FIXED_2D 单实例灌数据路径在本环境实测零像素，已弃用。
-         * 材质其余口径对齐出厂 new SpriteEntity()：alphaToEmissive=1、additionEmissive / ignoreIllumination=true。
-         */
         private fun createOutlineEntity(
             ship: ShipAPI,
             tex: OutlineTex,
         ): SpriteLease? {
             val hullId = ship.hullSpec?.hullId ?: return null
+            // FIXED_2D 单实例路径在当前 BoxUtil/SSOptimizer 环境不产生像素，必须使用实体本体变换的非实例化渲染。
             return PooledCombatVfx.checkoutSprite(
                 engine,
                 SpriteLeaseKey(
@@ -358,16 +291,10 @@ internal object GravityPhaseVisualEffect {
 
                 val level = phaseLevelOf(ship)
                 updateGlow(att, level)
-                // bloom 层红化：经 ShipGlowRenderer 交叉淡入红色变体
                 ShipGlowRenderer.setRecolor(ship, level)
 
                 if (engine.isPaused) continue
                 if (level > ACTIVE_LEVEL_MIN) {
-//                    att.afterimageAcc += amount
-//                    if (att.afterimageAcc >= AFTERIMAGE_INTERVAL) {
-//                        att.afterimageAcc -= AFTERIMAGE_INTERVAL
-//                        spawnAfterimage(ship)
-//                    }
                 } else {
                     att.afterimageAcc = 0f
                 }
@@ -377,7 +304,6 @@ internal object GravityPhaseVisualEffect {
         private fun updateGlow(att: Attachment, level: Float) {
             val ship = att.ship
             val facing = BoxUtilCombatVfx.normalizeFacingDeg(ship.facing - 90f)
-            // 舰体贴图中心补偿：原版按 sprite.center 对齐舰体坐标，BoxUtil quad 以几何中心为原点
             val theta = Math.toRadians(facing.toDouble())
             val loc = Vector2f(
                 ship.location.x + (att.centerOffsetX * cos(theta) - att.centerOffsetY * sin(theta)).toFloat(),

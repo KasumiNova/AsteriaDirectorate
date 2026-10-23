@@ -8,11 +8,6 @@ import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-/**
- * 规格 01 §4.1 用例 1~3（2026-09 机制修订二）：五档查表精确取档、玩家固定 v2、
- * 非整数 k_s 就近取档（查表项不插值）与体型固定软辐能分档（0.5/1/1.5/2 ~ 2.5/5/7.5/10）。
- * 经 [DifficultyTuningImpl.installScaleForTests] 走完整映射链路（installScaleForTests 先例链路）。
- */
 class ChargeNeedleTuningTest {
 
     @AfterTest
@@ -69,13 +64,11 @@ class ChargeNeedleTuningTest {
 
     @Test
     fun `用例3 查表项非整数 k_s 就近取档不插值`() {
-        // k_s=3.4 → 就近 v3：泄放概率/EMP 倍率精确取档；perStack 为 ScalingEntry 仍走 LINEAR 插值。
         resolveAt(3.4f).let { v ->
             assertEquals(0.40f, v.dischargeChance, 1e-6f)
             assertEquals(2.00f, v.dischargeEmpMult, 1e-6f)
             assertEquals(ScalingMap.LINEAR.value(3.4f, 0.01f, 0.02f, 0.05f), v.perStack, 1e-6f)
         }
-        // k_s=3.5 → half-up 进位取 v4。
         resolveAt(3.5f).let { v ->
             assertEquals(0.50f, v.dischargeChance, 1e-6f)
             assertEquals(2.50f, v.dischargeEmpMult, 1e-6f)
@@ -88,20 +81,15 @@ class ChargeNeedleTuningTest {
         assertEquals(3f, resolveAt(2f, hullSize = ShipAPI.HullSize.DESTROYER).flatFluxPerStack, 1e-6f)
         assertEquals(4.5f, resolveAt(2f, hullSize = ShipAPI.HullSize.CRUISER).flatFluxPerStack, 1e-6f)
         assertEquals(6f, resolveAt(2f, hullSize = ShipAPI.HullSize.CAPITAL_SHIP).flatFluxPerStack, 1e-6f)
-        // null 体型（配置异常上游遗漏）按护卫舰档兜底。
         assertEquals(1.5f, resolveAt(2f, hullSize = null).flatFluxPerStack, 1e-6f)
     }
 
     @Test
     fun `消散速率 当前层数百分之四 关盾翻倍 下限 2 层每秒`() {
-        // 开盾：100 层 × 4% = 4 层/s。
         assertEquals(4f, ChargeNeedleTuning.decayPerSecond(100f, shieldOn = true), 1e-6f)
-        // 关盾翻倍：100 层 × 8% = 8 层/s。
         assertEquals(8f, ChargeNeedleTuning.decayPerSecond(100f, shieldOn = false), 1e-6f)
-        // 下限 2 层/s（开盾 40 层 × 4% = 1.6 → 钳 2；关盾 20 层 × 8% = 1.6 → 钳 2）。
         assertEquals(2f, ChargeNeedleTuning.decayPerSecond(40f, shieldOn = true), 1e-6f)
         assertEquals(2f, ChargeNeedleTuning.decayPerSecond(20f, shieldOn = false), 1e-6f)
-        // 无层可散恒 0。
         assertEquals(0f, ChargeNeedleTuning.decayPerSecond(0f, shieldOn = true), 1e-6f)
         assertEquals(0f, ChargeNeedleTuning.decayPerSecond(0f, shieldOn = false), 1e-6f)
     }

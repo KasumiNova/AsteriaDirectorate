@@ -1,12 +1,7 @@
-/* ============================================================
-   菀星设计总局 · 模组总 UI 预览原型 — 交互与动效逻辑
-   动效清单：终端开机 / 逐行打印 / 落戳 / 回执打印 / 闪现 glitch / 待机呼吸
-   ============================================================ */
 "use strict";
 
-/* ---------------- 模拟数据 ---------------- */
+/* 模拟数据 */
 
-// 状态：pending 待接取 / active 执行中 / done 已核销
 const STATUS_LABEL = { pending: "待接取", active: "执行中", done: "已核销" };
 
 const CLAUSE_NOTE =
@@ -202,7 +197,7 @@ const CONTRACTOR = {
   note: "登记档案里两百年来的第一行新签名。",
 };
 
-/* ---------------- 工具 ---------------- */
+/* 工具函数 */
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -217,7 +212,6 @@ function fmtNum(n) {
   return n.toLocaleString("en-US");
 }
 
-/* 简易打印音（WebAudio 合成，无外部素材） */
 let audioCtx = null;
 function beep(freq = 1900, dur = 0.015, gain = 0.02) {
   try {
@@ -232,10 +226,9 @@ function beep(freq = 1900, dur = 0.015, gain = 0.02) {
     o.connect(g).connect(audioCtx.destination);
     o.start();
     o.stop(audioCtx.currentTime + dur);
-  } catch (e) { /* 无声环境忽略 */ }
+  } catch (e) { /* 浏览器禁用音频时忽略播放失败。 */ }
 }
 
-/* 逐行打印：将 lineSpecs 逐行、行内逐字打出 */
 let printToken = 0;
 function printLines(container, lineSpecs, onDone) {
   const token = ++printToken;
@@ -251,12 +244,11 @@ function printLines(container, lineSpecs, onDone) {
     const spec = lineSpecs[li++];
     const line = el("div", "doc-line" + (spec.cls ? " " + spec.cls : "") + (spec.anno ? " doc-anno" : ""));
     container.appendChild(line);
-    // 触发打印音
     beep(1700 + Math.random() * 600, 0.012, 0.015);
 
     const text = spec.t;
     let ci = 0;
-    const step = Math.max(1, Math.floor(text.length / 40)); // 长行加速
+    const step = Math.max(1, Math.floor(text.length / 40));
     function typeChar() {
       if (token !== printToken) return;
       ci = Math.min(text.length, ci + step);
@@ -272,14 +264,14 @@ function printLines(container, lineSpecs, onDone) {
   nextLine();
 }
 
-/* ---------------- 状态 ---------------- */
+/* 状态 */
 
 let currentTab = "orders";
 let selectedOrder = ORDERS[0].items[0];
 let selectedArchive = ARCHIVES[0];
 let glitchBusy = false;
 
-/* ---------------- Tab 切换 ---------------- */
+/* 标签页切换 */
 
 const TAB_LIST_TITLE = {
   orders: "工单列表 · 按批次分组",
@@ -298,7 +290,7 @@ function switchTab(tab) {
   else renderAccount();
 }
 
-/* ---------------- Tab 1：工单终端 ---------------- */
+/* 工单终端 */
 
 function batchProgress(batch) {
   const done = batch.items.filter((o) => o.status === "done").length;
@@ -348,7 +340,6 @@ function renderOrderDetail() {
   seal.innerHTML = "电子签章<br>英七分局";
   card.appendChild(seal);
 
-  // 状态对应的常驻印戳（落戳动效结束后由它保持观感）
   if (o.status !== "pending") {
     const staticStamp = el("div", "stamp ink", o.status === "done" ? "已核销" : "已受理");
     staticStamp.style.right = "36px";
@@ -360,7 +351,6 @@ function renderOrderDetail() {
   const linesBox = el("div");
   card.appendChild(linesBox);
 
-  // 报酬行（橙黄数值色）
   const docLines = o.doc.concat([
     { t: "报酬：星币 " + fmtNum(o.reward) + "（核销交割后一次性支付，附明细单）" },
     { t: o.urgent ? "——本件为加急文书。【加急】戳记见右上角签章旁。" : "——本文书由分局行政系统自动生成，无需回复。", cls: "dim" },
@@ -392,13 +382,12 @@ function renderOrderActions() {
   }
 }
 
-/* 落戳动效：电子印戳砸在文书角上 + 屏幕震动 + 光晕扩散 */
+/* 印戳动效 */
 function slamStamp(text, after) {
   const card = $("#holo-card");
   if (!card) return;
   beep(120, 0.08, 0.06);
 
-  // 先移除旧状态戳，避免与新戳叠影
   card.querySelectorAll(".stamp").forEach((s) => s.remove());
 
   const stamp = el("div", "stamp ink", text);
@@ -416,14 +405,12 @@ function slamStamp(text, after) {
   splash.style.opacity = "0";
   card.appendChild(splash);
 
-  // 砸落
   requestAnimationFrame(() => {
     stamp.style.transition = "transform 0.12s cubic-bezier(.6,0,1,.6), opacity 0.1s";
     stamp.style.transform = "rotate(-14deg) scale(1)";
     stamp.style.opacity = "0.92";
   });
 
-  // 震动 + 光晕扩散
   setTimeout(() => {
     const stage = $("#stage");
     stage.classList.remove("shake");
@@ -457,7 +444,7 @@ function settleOrder(o) {
   });
 }
 
-/* ---------------- 回执打印 ---------------- */
+/* 回执打印 */
 
 function showReceipt(o) {
   const layer = $("#receipt-layer");
@@ -483,7 +470,6 @@ function showReceipt(o) {
     body.appendChild(line);
     beep(1700 + Math.random() * 500, 0.012, 0.015);
     if (spec.amount != null) {
-      // 金额数字滚动到位
       line.textContent = spec.t;
       const num = el("span", "num", "0");
       line.appendChild(num);
@@ -517,7 +503,7 @@ $("#receipt-close").addEventListener("click", () => {
   setTimeout(() => $("#receipt-layer").classList.add("hidden"), 350);
 });
 
-/* ---------------- Tab 2：档案室 ---------------- */
+/* 档案室 */
 
 function renderArchive() {
   const list = $("#list-body");
@@ -571,14 +557,13 @@ function renderArchiveDetail() {
   printLines(content, a.body.split("\n").map((t) => ({ t: t || "  " })));
 }
 
-/* ---------------- Tab 3：承包商账户 ---------------- */
+/* 承包商账户 */
 
 function renderAccount() {
   $("#detail-title").textContent = "账户明细 · " + CONTRACTOR.id;
   const list = $("#list-body");
   list.innerHTML = "";
 
-  // 左栏放流水条目索引
   const head = el("div", "batch-head");
   head.appendChild(el("span", null, "本审计周期 · 流水"));
   head.appendChild(el("span", "batch-progress", LEDGER.length + " 笔"));
@@ -591,7 +576,6 @@ function renderAccount() {
     list.appendChild(row);
   });
 
-  // 右栏：账户头 + 账本
   const body = $("#detail-body");
   body.innerHTML = "";
 
@@ -639,14 +623,13 @@ function renderAccount() {
   $("#action-area").innerHTML = "";
 }
 
-/* ---------------- 闪现 glitch ---------------- */
+/* 闪现 glitch */
 
 function demoGlitch() {
   if (glitchBusy) return;
   glitchBusy = true;
   beep(70, 0.12, 0.05);
 
-  // 找到当前选中工单在列表里的状态栏
   const row = document.querySelector('.list-row[data-order-id="' + selectedOrder.id + '"] .row-status');
   $("#glitch-noise").classList.remove("hidden");
   if (row) {
@@ -654,12 +637,10 @@ function demoGlitch() {
     row.textContent = "目标状态：现役？";
     row.classList.add("glitching");
   }
-  // 文书备注行同步撕裂
   const card = $("#holo-card");
   if (card) card.classList.add("glitching");
 
   setTimeout(() => {
-    // 自愈，系统不解释
     if (row) {
       row.textContent = row.dataset.orig;
       row.classList.remove("glitching");
@@ -672,7 +653,7 @@ function demoGlitch() {
 
 $("#glitch-demo-btn").addEventListener("click", demoGlitch);
 
-/* ---------------- 终端开机 ---------------- */
+/* 终端开机 */
 
 let booted = false;
 function playBoot() {
@@ -701,17 +682,14 @@ function playBoot() {
   }
   layer.onclick = finish;
 
-  // 0.05s：扫描线自上而下点亮（0.55s）
   skipTimer.push(setTimeout(() => {
     sweep.classList.add("sweeping");
     beep(300, 0.2, 0.02);
   }, 50));
-  // 0.6s：总局徽记淡入
   skipTimer.push(setTimeout(() => {
     emblem.classList.add("shown");
     beep(900, 0.1, 0.02);
   }, 600));
-  // 0.9s：tab 栏逐字打出
   skipTimer.push(setTimeout(() => {
     tabs.forEach((t, i) => {
       const txt = tabTexts[i];
@@ -725,11 +703,10 @@ function playBoot() {
       })();
     });
   }, 900));
-  // 约 1.2s+打字余量：自动进入
   skipTimer.push(setTimeout(finish, 1500));
 }
 
-/* ---------------- 关闭终端 ---------------- */
+/* 关闭终端 */
 
 function closeTerminal() {
   beep(500, 0.08, 0.03);
@@ -746,7 +723,7 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
-/* ---------------- 启动 ---------------- */
+/* 启动 */
 
 document.querySelectorAll(".tab").forEach((b) => b.addEventListener("click", () => switchTab(b.dataset.tab)));
 playBoot();

@@ -5,7 +5,6 @@ object ASTDArcProductionShipIds {
     const val HULL_XC_101 = "astd_xc_101"
     const val HULL_XC_103 = "astd_xc_103"
 
-    /** 烽燧（XC-102）舰船系统冲击波环的 shader 效果 id / program id（渲染层与测试共用）。 */
     const val EFFECT_XC_102_SHOCKWAVE_RING = "astd_xc_102_shockwave_ring"
     const val PROGRAM_XC_102_SHOCKWAVE_RING = "astd_xc_102_shockwave_ring_program"
 

@@ -13,37 +13,6 @@ import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
 import kotlin.math.roundToInt
 
-/**
- * 共用锥面冲击特效组件（计划 00-锥面冲击特效重做计划 §10 v2 修订 → §10.7 v2.2）：一次性 RenderEntity 树的根节点。
- *
- * v2 定案（2026-07-31 实机评审）：锥面主体为 AOD7 开火特效配方（多道椭圆弧 + 扭曲 + 烟雾 + 闪光）
- * 的锥化变体。v2.1（同日二次反馈）补上 AOD7 **命中**配方的招牌层——spray 刺束簇。
- * v2.2（同日三次反馈）：弧环加粗到 10px+ 并上逐顶点 alpha 包络（两端渐隐，治硬边收尾）；
- * 星云烟雾整体换成随机旋转的三角碎片（[TriShardComponent] 子节点）。
- * v4.1（§10.9 架构层，零观感改动）：刺束簇自 `ImpactStrikeFx` 吞并为子节点 [StrikeSprayComponent]
- * （参数逐值平移 v2.2），针位置改组件内显式积分治「概率侧飞」。
- * v4.3（§10.9，用户：「弧环需要真正的柔边」）：四道弧自 OglEllipseRingRenderer 的 GL_LINE_STRIP
- * 硬边线迁为子节点 [ConeArcComponent] 的 TrailEntity 曲梁（参数逐值平移 v2.2），进原生 bloom 管线。
- * v4.4（§10.9，用户：「光锥改成根据弧度和特效大小的动态数量机制，不允许动任何渲染细节」）：
- * 刺束针数自固定域 9+4 改由张角推导（每 10° 2~3 根，clamp [3,40]），仅数量，其余一行不动。
- * v4.5（2026-09，用户：扭曲时序/大小与碎片数量参数化）：DistortionEntity 三段时序/尺寸/强度
- * 与三批碎片颗数自 companion 常量迁入 [DistortionSpec]/[ShardCountSpec]（默认值 = 原常量），
- * 各案可按体量覆写，渲染细节不变。
- * 分层（全部由 coreColor/fringeColor/flashColor 派生，色温统一；各层错峰起止，破同亮同灭）：
- * - t=0：顶点闪光（收敛版 2 颗 vanilla 粒子）+ DistortionEntity 扭曲（可配，见 [DistortionSpec]）
- *   + 锥化刺束簇 + 碎片顶点批（[ShardCountSpec.vertex]）；
- * - t=+0.03/0.07/0.11/0.15：四道朝前弧段环（轴上 0.3/0.5/0.7/0.9L，0.04s 接力，多层锥状壳体读感；
- *   错峰与几何由子节点 [ConeArcComponent] 承载）；
- * - t=+0.05：碎片锥内批（[ShardCountSpec.cone]，轴向 0.2~0.7L、角向 ±halfAngle×0.7 内随机，扇形覆盖读感）；
- * - t=+0.10：碎片锥缘批（[ShardCountSpec.edge]，0.8~1.0L）。
- *
- * 根自身无后端常驻句柄：闪光/扭曲为 vanilla 粒子与 BoxUtil 自管理实体、
- * 碎片（[TriShardComponent]，v4.2 起 SpriteEntity 实例化）灌批后亦由 BoxUtil 自管理；
- * 仅刺束针（[StrikeSprayComponent]）与弧（[ConeArcComponent]，v4.3 起树内驱动）由子节点持有并
- * 逐帧推进（树寿命因此不得短于这两层的最长期，见 ConeImpactVfx.spawn 的 TTL 下限）。
- * 根的几何常量创建期定死，每帧只读 [RenderContext.frame] 的 elapsed 按阈值表恰好触发一次
- * （布尔标记位，幂等）。
- */
 class ConeImpactVfxComponent(
     id: String,
     private val origin: Vector2f,
@@ -59,10 +28,8 @@ class ConeImpactVfxComponent(
 
     private val log = Global.getLogger(ConeImpactVfxComponent::class.java)
 
-    /** 刺束张角（贴合锥角扇形：halfAngle×2×0.8，封顶 65°；贯星 25° 半角 → 40°，敌版 80° 半角 → 顶到 65°）。 */
     private val sprayArcDeg = (halfAngleDeg * 2f * SPRAY_ARC_MUL).coerceAtMost(SPRAY_ARC_MAX)
 
-    /** 刺束针簇子节点（v4.1 吞并：v2.2 参数逐值平移 + 侧飞修复显式积分；internal 供单测断言针参数域）。 */
     internal val sprayComponent = StrikeSprayComponent(
         "$id/spray",
         StrikeSprayVfx.StrikeSpraySpec(
@@ -85,19 +52,15 @@ class ConeImpactVfxComponent(
                 speedMax = SPRAY_SPEED_MAX,
                 impactScale = SPRAY_IMPACT_SCALE,
                 introRampSeconds = SPRAY_INTRO_RAMP_SECONDS,
-                // v4.4 数量动态化（仅数量，渲染细节零改动）：针数由张角推导。
                 exactRays = dynamicSprayRays(sprayArcDeg),
             ),
         ),
     )
 
-    /** 三角碎片子节点（attach 时随树挂上；internal 供单测断言三批累计颗数）。 */
     internal val shardComponent = TriShardComponent("$id/shards", length, coreColor, fringeColor)
 
-    /** 扩张弧子节点（v4.3 吞并：v2.2 弧几何/错峰/宽度/包络逐值平移；internal 供单测断言四道弧激活）。 */
     internal val arcComponent = ConeArcComponent("$id/arcs", origin, facingDeg, halfAngleDeg, length, fringeColor)
 
-    /** 碎片锥内/锥缘批错峰触发的标记位，保证每批恰好灌入一次。 */
     private var shardBatch2Fired = false
     private var shardBatch3Fired = false
 
@@ -111,7 +74,6 @@ class ConeImpactVfxComponent(
         val engine = ctx.engine ?: return false
         spawnVertexFlash(engine)
         distortion?.let { spawnDistortion(engine, it) }
-        // 碎片顶点批（t=0）：顶点 10su 圆内喷出，补顶点体积感。
         spawnVertexShards(shardCounts.vertex)
         return true
     }
@@ -120,17 +82,14 @@ class ConeImpactVfxComponent(
         val t = ctx.frame.elapsed
         if (!shardBatch2Fired && t >= SHARD_BATCH2_DELAY) {
             shardBatch2Fired = true
-            // 碎片锥内批（t=+0.05）：轴向 0.2~0.7L 随机、角向 ±halfAngle×0.7 内随机，扇形覆盖读感。
             spawnConeShards(BATCH_INDEX_CONE, shardCounts.cone, SHARD_BATCH2_AXIS_LO, SHARD_BATCH2_AXIS_HI)
         }
         if (!shardBatch3Fired && t >= SHARD_BATCH3_DELAY) {
             shardBatch3Fired = true
-            // 碎片锥缘批（t=+0.10）：0.8~1.0L，补锥缘体积。
             spawnConeShards(BATCH_INDEX_EDGE, shardCounts.edge, SHARD_BATCH3_AXIS_LO, SHARD_BATCH3_AXIS_HI)
         }
     }
 
-    /** 顶点闪光（v2 收敛版）：尺寸 0.30→0.22、亮度与核心 alpha 下调，治「太曝」。 */
     private fun spawnVertexFlash(engine: CombatEngineAPI) {
         val flashSize = (length * FLASH_SIZE_MUL).coerceIn(FLASH_SIZE_MIN, FLASH_SIZE_MAX)
         engine.addSmoothParticle(origin, ZERO_VEL, flashSize, FLASH_BRIGHTNESS, FLASH_DURATION, flashColor)
@@ -141,11 +100,6 @@ class ConeImpactVfxComponent(
         engine.addSmoothParticle(origin, ZERO_VEL, flashSize * FLASH_CORE_SIZE_MUL, FLASH_CORE_BRIGHTNESS, FLASH_CORE_DURATION, core)
     }
 
-    /**
-     * 顶点扭曲环（时序/尺寸/强度由 [spec] 提供，默认值 = aod7 参数族：0.03/0.05/0.18 定时器、
-     * size 16/52/96、powerFull 0.34）。
-     * 失败只缺席本层（闪光/碎片/弧照常），WARN 带异常/返回码——非静默兜底。
-     */
     private fun spawnDistortion(engine: CombatEngineAPI, spec: DistortionSpec) {
         try {
             BoxUtilCombatVfx.ensureReady(engine)
@@ -170,7 +124,6 @@ class ConeImpactVfxComponent(
         }
     }
 
-    /** 碎片顶点批：位置取顶点 10su 圆内随机点。 */
     private fun spawnVertexShards(count: Int) {
         repeat(count) {
             shardComponent.addShard(
@@ -181,7 +134,6 @@ class ConeImpactVfxComponent(
         }
     }
 
-    /** 碎片锥内/锥缘批：轴向 [axisFracLo, axisFracHi]×length 随机、角向 ±halfAngle×0.7 内随机。 */
     private fun spawnConeShards(batchIndex: Int, count: Int, axisFracLo: Float, axisFracHi: Float) {
         repeat(count) {
             val dist = length * MathUtils.getRandomNumberInRange(axisFracLo, axisFracHi)
@@ -194,7 +146,6 @@ class ConeImpactVfxComponent(
         }
     }
 
-    /** 碎片初速（沿用 v2 烟雾模型）：方向 = facing ± halfAngle×0.8 随机、速率 = length×0.35 ±40%。 */
     private fun shardVelocity(): Vector2f {
         val velAng = facingDeg + MathUtils.getRandomNumberInRange(-halfAngleDeg * SHARD_VEL_SPREAD_MUL, halfAngleDeg * SHARD_VEL_SPREAD_MUL)
         val speed = length * SHARD_SPEED_MUL * MathUtils.getRandomNumberInRange(SHARD_SPEED_JITTER_LO, SHARD_SPEED_JITTER_HI)
@@ -202,10 +153,7 @@ class ConeImpactVfxComponent(
     }
 
     companion object {
-        /** 顶点闪光粒子速度（静止）。 */
         private val ZERO_VEL = Vector2f(0f, 0f)
-
-        // ---- 顶点闪光（v2 收敛版）----
 
         private const val FLASH_SIZE_MUL = 0.22f
         private const val FLASH_SIZE_MIN = 24f
@@ -217,24 +165,14 @@ class ConeImpactVfxComponent(
         private const val FLASH_CORE_ALPHA_MUL = 0.8f
         private const val FLASH_CORE_DURATION = 0.11f
 
-        // ---- 锥化刺束簇（v2.1 参数档，v4.1 起由子节点 StrikeSprayComponent 消费；逐值平移 v2.2 不改一个数字）----
-
-        /**
-         * 针数动态化（§10.9 v4.4，用户：「光锥改成根据弧度和特效大小的动态数量机制，不允许动任何
-         * 渲染细节」；用户 v3 点③机制：每 10° 张角 2~3 根，60° → 随机 12~18 根）：
-         * rays = round(arcDeg/10 × rand([SPRAY_RAYS_PER_10DEG_MIN], [SPRAY_RAYS_PER_10DEG_MAX]))，
-         * clamp [SPRAY_RAYS_CLAMP_MIN, SPRAY_RAYS_CLAMP_MAX]。仅数量，其余渲染参数一行不动。
-         */
         private const val SPRAY_RAYS_PER_10DEG_MIN = 2f
         private const val SPRAY_RAYS_PER_10DEG_MAX = 3f
         private const val SPRAY_RAYS_CLAMP_MIN = 3
         private const val SPRAY_RAYS_CLAMP_MAX = 40
 
-        /** 刺束张角 = halfAngle×2×本值，封顶 [SPRAY_ARC_MAX]（贴合锥角扇形）。 */
         private const val SPRAY_ARC_MUL = 0.8f
         private const val SPRAY_ARC_MAX = 65f
 
-        /** 刺长占锥长比例区间（锥内放射，不越界太多）。 */
         private const val SPRAY_LENGTH_MIN_MUL = 0.30f
         private const val SPRAY_LENGTH_MAX_MUL = 0.70f
         private const val SPRAY_WIDTH_MIN = 7.5f
@@ -248,11 +186,6 @@ class ConeImpactVfxComponent(
         private const val SPRAY_IMPACT_SCALE = 0.85f
         private const val SPRAY_INTRO_RAMP_SECONDS = 0.05f
 
-        // ---- 扩张弧 ×4（v4.3 起由子节点 ConeArcComponent 承载：v2.2 几何/错峰/宽度/包络逐值平移）----
-
-        // ---- 三角碎片（三批错峰与散布模型不变：t=0 / +0.05 / +0.10；v4.2 起批索引对应 SpriteEntity 三批）----
-
-        /** 碎片批次索引：顶点批 / 锥内批 / 锥缘批。 */
         private const val BATCH_INDEX_VERTEX = 0
         private const val BATCH_INDEX_CONE = 1
         private const val BATCH_INDEX_EDGE = 2
@@ -265,18 +198,12 @@ class ConeImpactVfxComponent(
         private const val SHARD_BATCH3_AXIS_HI = 1.0f
         private const val SHARD_VERTEX_SCATTER_RADIUS = 10f
 
-        /** 位置角向散布（±halfAngle×本值）；速度方向散布（±halfAngle×本值）。 */
         private const val SHARD_CONE_SPREAD_MUL = 0.7f
         private const val SHARD_VEL_SPREAD_MUL = 0.8f
         private const val SHARD_SPEED_MUL = 0.35f
         private const val SHARD_SPEED_JITTER_LO = 0.6f
         private const val SHARD_SPEED_JITTER_HI = 1.4f
 
-        /**
-         * 张角推导针数（纯函数，internal 供单测锚定公式与 clamp 域）：
-         * rays = round(arcDeg/10 × rand(2, 3))，clamp [3, 40]——
-         * 40° → 8~12 根、60° → 12~18 根、65°（锥面封顶）→ 13~20 根。
-         */
         internal fun dynamicSprayRays(arcDeg: Float): Int =
             (arcDeg / 10f * MathUtils.getRandomNumberInRange(SPRAY_RAYS_PER_10DEG_MIN, SPRAY_RAYS_PER_10DEG_MAX))
                 .roundToInt()

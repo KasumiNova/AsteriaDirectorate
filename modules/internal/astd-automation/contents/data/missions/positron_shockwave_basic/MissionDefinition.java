@@ -9,16 +9,6 @@ import com.fs.starfarer.api.mission.FleetSide;
 import com.fs.starfarer.api.mission.MissionDefinitionAPI;
 import com.fs.starfarer.api.mission.MissionDefinitionPlugin;
 
-/**
- * Dev-only mission surface for positron shockwave in-game automation.
- * <p>
- * 玩家野狼（清空全部槽位后 WS 001 小型能量槽装正电子冲击波）对一艘无武装警戒级靶舰：
- * 穿舰相位靶舰置 400su 弹道上（无触碰体积证据），波及相位移至 700su（满射程自爆锥面波及证据），
- * 近炸相位由插件投喂鱼叉导弹群（近炸引爆成片清除证据）。
- * 两舰均走 reserves + 插件手动 spawn（部署时机确定）；玩家舰身份由插件 setPlayerShipExternal 赋予。
- * 相位机：MOUNT → PASS_THROUGH（穿舰不爆 + 满射程自爆 ≈600）→ SPLASH（舰船蹭波及不触发近炸）
- * → FUSE（近炸成片清除 + devMode 浮字 + 锥面 VFX）→ COMPLETED。
- */
 public final class MissionDefinition implements MissionDefinitionPlugin {
     private static void clearAllWeaponSlots(final FleetMemberAPI member) {
         for (final String slotId : member.getVariant().getFittedWeaponSlots()) {

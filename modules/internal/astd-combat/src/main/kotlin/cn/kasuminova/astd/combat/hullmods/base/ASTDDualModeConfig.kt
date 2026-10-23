@@ -14,60 +14,21 @@ import com.fs.starfarer.api.combat.ShipVariantAPI
 import com.fs.starfarer.api.fleet.FleetMemberAPI
 import com.fs.starfarer.api.impl.campaign.ids.Tags
 
-/**
- * ASTD 通用双模式（载人/无人）配置：一艘双模式舰船的全部 hullmod / 系统 id 集合。
- *
- * 动机：xc_001 与 zw_001 共用同一套「拆切换器即轮换模式」交互，
- * 早期实现让每艘舰各自硬编码一套状态机（[cn.kasuminova.astd.combat.hullmods.arc.ASTDXc001HullModUtil]），
- * 重复且易漂移。此配置把「双模式舰需要的全部 id」收敛为单一数据对象，配合本文件的通用状态机
- * 扩展函数（[ensureASTDDualModeState] / [activateDualMode]）让一套逻辑驱动任意双模式舰。
- *
- * 每个字段都对应原 arc 状态机里的一个硬编码常量，泛化后由各舰在自己的 ids util 处构造一份本配置并注册到
- * [ASTDDualModeRegistry]。
- */
 data class ASTDDualModeConfig(
-    /**
-     * 通用切换器 hullmod id（所有双模式舰共用同一个，见后续 ASTDDualModeSwitcherHullMod）。
-     * 作用：mode hullmod 在 refit 检测「切换器是否被玩家拆下」时比对此 id，从而触发拆即切。
-     */
     val switcherId: String,
-    /** 载人模式 hullmod id；存在于 permaMods 表示当前为载人模式。 */
     val crewedModeId: String,
-    /** 无人模式 hullmod id；存在于 permaMods 表示当前为无人模式（同时挂原版 "automated"）。 */
     val automatedModeId: String,
-    /** 「下次激活载人」标记 hullmod id；无模式 permaMod 时按此标记激活载人模式。 */
     val nextCrewedMarker: String,
-    /** 「下次激活无人」标记 hullmod id；无模式 permaMod 时按此标记激活无人模式。 */
     val nextAutomatedMarker: String,
-    /** 载人版舰船系统 id（载人 mode hullmod 激活时 setShipSystemId）；null 表示该舰无模式分版系统、切换时不互换。 */
     val crewedSystemId: String?,
-    /** 无人版舰船系统 id（无人 mode hullmod 激活时 setShipSystemId）；null 表示该舰无模式分版系统、切换时不互换。 */
     val automatedSystemId: String?,
 )
 
-/**
- * 通用双模式切换器的固定 id 常量。
- *
- * 动机：arc / lens 等所有双模式舰共用同一个切换器 hullmod（[ASTDDualModeSwitcherHullMod]），
- * 因此切换器 hullmod id 是全局唯一常量，而非各舰各自一份。各舰在构造自己的
- * [ASTDDualModeConfig] 时将 [SWITCHER_ID] 赋给 [ASTDDualModeConfig.switcherId]，
- * mode hullmod（Task 4/5）据此检测「切换器是否被玩家在 refit 拆下」。
- *
- * 说明：此 id 必须与 hull_mods.csv 中注册通用切换器的行 id 完全一致。
- */
 object ASTDDualModeSwitcherIds {
-    /** 通用双模式切换器 hullmod id。 */
+    /** 必须与 hull_mods.csv 中注册通用切换器的行 id 完全一致。 */
     const val SWITCHER_ID: String = "astd_dual_mode_switcher"
 }
 
-/**
- * 通用双模式（舰船无关）的 mode / marker hullmod id 集合。
- *
- * 动机：未显式注册专属双模式配置的 ASTD 舰（即除 xc_001 / zw_001 外的全部 astd_ 舰船）
- * 共用这一组通用 id 完成「拆切换器即轮换模式」；通用模式不互换舰船系统
- * （[ASTDDualModeConfig.crewedSystemId] / [ASTDDualModeConfig.automatedSystemId] 为 null）。
- * 这些 id 必须在 hull_mods.csv 注册（见 astd-csv 的 Catalog_HullMods_Base）。
- */
 object ASTDDualModeGenericIds {
     const val MODE_CREWED: String = "astd_mode_crewed"
     const val MODE_AUTOMATED: String = "astd_mode_automated"
@@ -75,7 +36,6 @@ object ASTDDualModeGenericIds {
     const val NEXT_AUTOMATED: String = "astd_mode_next_automated"
 }
 
-/** 通用双模式配置：任意 ASTD 舰的兜底配置（无系统互换，纯 载人 ⇄ 无人 轮换）。 */
 val GENERIC_DUAL_MODE_CONFIG = ASTDDualModeConfig(
     switcherId = SWITCHER_ID,
     crewedModeId = ASTDDualModeGenericIds.MODE_CREWED,
@@ -86,49 +46,18 @@ val GENERIC_DUAL_MODE_CONFIG = ASTDDualModeConfig(
     automatedSystemId = null,
 )
 
-/**
- * 双模式配置注册表：hull id → [ASTDDualModeConfig]。
- *
- * 动机：通用切换器 hullmod（后续任务）需根据当前舰船反查其模式配置以渲染动态 tooltip，
- * 而切换器本身不知道具体舰的 ids。arc / lens 各自在静态初始化处 [register] 自己的 config，
- * 切换器用 [configFor] 反查。
- */
 object ASTDDualModeRegistry {
-    /**
-     * hull id → config。用 LinkedHashMap 保证注册顺序稳定（便于调试遍历）。
-     * key 同时容纳「具体 variant hull id」与「baseHullId」两种可能：
-     * 注册方应以舰船的基底 hull id（即 .ship 文件 id）注册，[configFor] 查询时会同时尝试传入 id 与其 baseHullId。
-     */
     private val byHullId = LinkedHashMap<String, ASTDDualModeConfig>()
 
-    /**
-     * 注册一艘双模式舰的配置。
-     * @param hullId 该舰的基底 hull id（.ship 文件 id，例如 "astd_xc_001"）。
-     * @param config 该舰的双模式配置。
-     */
     fun register(hullId: String, config: ASTDDualModeConfig) {
         byHullId[hullId] = config
     }
 
-    /**
-     * 按 hull id 反查配置；找不到返回 null。
-     * 调用方通常传 variant.hullSpec.hullId，但变体可能带后缀，故由 [configForVariant] / [configForShip]
-     * 同时尝试 hullId 与 baseHullId。
-     */
     fun configFor(hullId: String?): ASTDDualModeConfig? = hullId?.let { byHullId[it] }
 
-    /**
-     * 通用兜底：任意 ASTD 舰（hull id 以 "astd_" 开头）即使未显式注册专属配置，
-     * 也返回 [GENERIC_DUAL_MODE_CONFIG]，使通用切换器对全 ASTD 舰船可装、可切换。
-     * 纯函数（只读 hullId 前缀），供 [configForVariant] / [configForShip] 兜底与单元测试直接验证。
-     */
     fun genericConfigFor(hullId: String?): ASTDDualModeConfig? =
         if (hullId != null && hullId.startsWith("astd_")) GENERIC_DUAL_MODE_CONFIG else null
 
-    /**
-     * 从 variant 反查配置：先试 hullId，再试 baseHullId（变体的基底），最后走 [genericConfigFor] 兜底。
-     * 动机：注册以基底 id 进行，而切换器拿到的是具体 variant，其 hullId 可能等于或派生自基底。
-     */
     fun configForVariant(variant: ShipVariantAPI?): ASTDDualModeConfig? {
         val v = variant ?: return null
         val hullId = try {
@@ -145,10 +74,6 @@ object ASTDDualModeRegistry {
         ?: genericConfigFor(hullId) ?: genericConfigFor(baseHullId)
     }
 
-    /**
-     * 从 ship 反查配置：先试 hullId，再试 baseHullId，最后走 [genericConfigFor] 兜底。
-     * 与 [configForVariant] 同理，供切换器 tooltip 直接拿到 ShipAPI 时使用。
-     */
     fun configForShip(ship: ShipAPI?): ASTDDualModeConfig? {
         val s = ship ?: return null
         val hullId = try {
@@ -166,13 +91,6 @@ object ASTDDualModeRegistry {
     }
 }
 
-/**
- * 判断 variant 所属舰船是否为模组全局舰船（hull id 以 "astd_" 开头）。
- *
- * 动机：双模式状态机仅应作用于本模组舰船，避免误改其它 mod / 原版舰的 permaMods。
- * 说明：本扩展为全模组唯一实现——arc/lens 接入通用框架后其各自的同名 internal 扩展已删除，
- * 统一从 base 包引用。
- */
 internal fun ShipVariantAPI?.isASTDShipVariant(): Boolean {
     val variant = this ?: return false
     val hullId = try {
@@ -188,10 +106,6 @@ internal fun ShipVariantAPI?.isASTDShipVariant(): Boolean {
     return (hullId ?: "").startsWith("astd_") || (baseHullId ?: "").startsWith("astd_")
 }
 
-/**
- * 判断 ship 是否为模组全局舰船（hull id 以 "astd_" 开头）。
- * 动机同 [isASTDShipVariant]，供 base 包内以 ShipAPI 判定时使用。
- */
 internal fun ShipAPI?.isASTDShip(): Boolean {
     val ship = this ?: return false
     val hullId = try {
@@ -207,68 +121,26 @@ internal fun ShipAPI?.isASTDShip(): Boolean {
     return (hullId ?: "").startsWith("astd_") || (baseHullId ?: "").startsWith("astd_")
 }
 
-/**
- * 该 variant 是否已参与双模式（带任一模式 permaMod 或 next marker）。
- *
- * 注意「有模式状态但切换器缺席」即拆即切在途（或装配提交前的待结算态）：
- * 翻转与切换器加回由 mode hullmod / [ASTDDualModeRefitListener] 按拆即切语义处理，
- * 其它路径（如 [ensureDualModeSwitcherPresent]）不得抢先补装切换器，否则翻转永不触发。
- */
 fun ShipVariantAPI.hasASTDDualModeState(config: ASTDDualModeConfig): Boolean =
     permaMods.contains(config.crewedModeId) ||
         permaMods.contains(config.automatedModeId) ||
         permaMods.contains(config.nextCrewedMarker) ||
         permaMods.contains(config.nextAutomatedMarker)
 
-/**
- * 切换器缺失自动补装：本模组舰的 variant 既无切换器也从未参与双模式时，补装切换器并
- * 当场自举到缺省（载人）模式，保证任何 ASTD 舰都不会落入「无切换器可拆、无法切换模式」的死态
- * （曾经的 astd_zw_001_Standard / astd_xc_104_Standard 漏声明场景）。
- *
- * 调用点：[ASTDSingularityPowerHullMod.applyEffectsBeforeShipCreation]——奇点能源是全 ASTD
- * 非战机舰唯一必装的内置船插，每次 stats 重建必经，覆盖面与时机都合适；战机无内置船插、
- * 不参与装配界面换插，天然不在补装范围。
- *
- * 守护语义（防回归，勿改）：
- * - 已装切换器 → 不动。
- * - 有模式状态但缺切换器（拆即切在途）→ 不动：此处补装会抢在 mode hullmod 的翻转判定之前
- *   把切换器加回去，导致拆即切永不触发。
- * - 补装自举到的是状态机缺省（载人）模式，与语料库静态声明的无人默认是**有意差异**：
- *   静态声明永远优先（声明了的舰根本走不到补装），补装只兜「无法切换模式」底，
- *   载入缺省与状态机自举口径（[ASTDDualModeSwitcherHullMod] 的引导路径）保持一致。
- * - stats 固定不传（走 [ensureASTDDualModeState] 的 stats=null 路径），两个理由：
- *   1. 镜像规避：stats 非空且身份门命中时模式位会被镜像预提交写入真实 variant，而真实
- *      variant 上没有切换器，下次重算会被 mode hullmod 误判为拆即切而误翻转到无人模式；
- *   2. 无需舰长清理：原版仅全自动舰船（挂 automated 船插）可分配 AI 核心舰长，缺模式态的
- *      舰不可能持有 AI 核心舰长，而自举到的载人模式与人类/默认舰长天然兼容。
- *
- * @return 本次是否执行了补装（生产侧忽略，供测试断言）。
- */
 fun ShipVariantAPI.ensureDualModeSwitcherPresent(config: ASTDDualModeConfig): Boolean {
     if (hasHullMod(config.switcherId)) return false
+    // 有模式状态但缺切换器说明拆即切尚未完成，此处补装会抢在翻转判定之前，导致拆即切永不触发
     if (hasASTDDualModeState(config)) return false
     addMod(config.switcherId)
+    // 补装初始化必须保持 stats=null，避免预览 variant 的翻转被镜像写入真实成员
     ensureASTDDualModeState(config)
     return true
 }
 
-/**
- * 通用：确保 variant 的双模式状态自洽（泛化自 arc 的 ensureASTDXc001ModeState，参数化全部 id）。
- *
- * 状态机不变量（与 arc 原实现一致）：
- * - 至多存在一个模式 permaMod（crewed 或 automated），且存在与当前模式同向的 next marker。
- * - 异常态「同时存在两模式」→ 收敛到 crewed（移除 automated + 原版 automated，标记下次载人）。
- * - 无模式 permaMod → 按已有 next marker 激活对应模式，缺省载人。
- *
- * @param config 本舰的双模式配置。
- * @param stats 战役上下文舰船 stats（用于切模式时清理不兼容舰长/AI 核心）；纯 refit 校验可传 null。
- */
 fun ShipVariantAPI.ensureASTDDualModeState(config: ASTDDualModeConfig, stats: MutableShipStatsAPI? = null) {
     if (!isASTDShipVariant()) return
 
     migrateLegacyDualModeState(config)
-    // 稳定态/异常态收敛前同步一次免惩罚标签：选项热重载后无需切模式即可在下次 stats 刷新收敛
-    // （切模式路径由 activateDualMode 内部再同步一次，幂等）。
     syncDualModeAutoPenaltyTag(config)
 
     val hasCrewed = permaMods.contains(config.crewedModeId)
@@ -278,54 +150,32 @@ fun ShipVariantAPI.ensureASTDDualModeState(config: ASTDDualModeConfig, stats: Mu
         removePermaMod(config.automatedModeId)
         removePermaMod("automated")
         setDualModeNextMarker(config, config.nextCrewedMarker)
-        // 收敛到载人后再同步一次免惩罚标签：上面的前置同步发生在移除无人模式之前，
-        // 不补这一次会留下「已载人但仍挂 no_auto_penalty」的短暂错位窗口
         syncDualModeAutoPenaltyTag(config)
         return
     }
 
     when {
-        // 稳定态：当前模式 + 同向 next marker → 无需切换
         hasCrewed -> setDualModeNextMarker(config, config.nextCrewedMarker)
         hasAutomated -> setDualModeNextMarker(config, config.nextAutomatedMarker)
-        // 无模式时：按 next marker 激活
         permaMods.contains(config.nextAutomatedMarker) -> activateDualMode(config, config.automatedModeId, stats)
         permaMods.contains(config.nextCrewedMarker) -> activateDualMode(config, config.crewedModeId, stats)
         else -> activateDualMode(config, config.crewedModeId, stats)
     }
 }
 
-/**
- * 通用：激活某模式（泛化自 arc activateMode，参数化全部 id）。
- *
- * 行为：清掉两个模式 permaMod → 挂上目标模式 → 设同向 next marker → 同步原版 "automated" 船插 →
- * 战役上下文且被翻转 variant 是成员当前生效 variant 时（身份门 `member.variant === this`）：
- * 清理不兼容舰长 + 登记待镜像模式（[ASTDDualModeMirror]）。对克隆 variant（装配预览等）的翻转
- * 不做任何战役侧写入。
- *
- * @param config 本舰的双模式配置。
- * @param modeId 目标模式 hullmod id（应为 config.crewedModeId 或 config.automatedModeId）。
- * @param stats 战役上下文 stats（用于定位 fleetMember 做身份判定、清理不兼容舰长）。
- */
 fun ShipVariantAPI.activateDualMode(config: ASTDDualModeConfig, modeId: String, stats: MutableShipStatsAPI? = null) {
     removePermaMod(config.crewedModeId)
     removePermaMod(config.automatedModeId)
     addPermaMod(modeId)
-    // 稳定态：next marker = 与当前模式同向
     val nextMarker = if (modeId == config.automatedModeId) config.nextAutomatedMarker else config.nextCrewedMarker
     setDualModeNextMarker(config, nextMarker)
-    // 同步原版 'automated' 船插（全自动舰船）
     if (modeId == config.automatedModeId) {
         if (!permaMods.contains("automated")) addPermaMod("automated")
     } else {
         removePermaMod("automated")
     }
-    // 同步原版 no_auto_penalty 标签（「免自动化点数」选项开启时的无人模式豁免）
     syncDualModeAutoPenaltyTag(config)
-    // 战役上下文：切换模式时自动卸下不兼容的舰长/AI 核心，并登记模式镜像（见 ASTDDualModeMirror）。
-    // 身份门：仅当被翻转的 variant 就是成员当前生效的 variant（refit 提交前临时 swap 窗口、
-    // 战役实时 stats 刷新）才清理+登记；自动装配预览等对克隆 variant 的翻转
-    // （member.variant !== this）不得触碰真实舰长、不得污染真实 variant 的模式。
+    // 仅当前生效 variant 才允许清理舰长并登记镜像；克隆 variant（装配预览）禁止触碰真实成员
     val member = stats?.fleetMember
     if (member != null && member.variant === this) {
         clearIncompatibleDualModeCaptain(member, config)
@@ -333,47 +183,21 @@ fun ShipVariantAPI.activateDualMode(config: ASTDDualModeConfig, modeId: String, 
     }
 }
 
-/**
- * 通用：判断 variant 当前是否处于无人模式（泛化自 arc hasASTDXc001AutomatedMode）。
- * 同时检查 permaMods 与已挂 hullMods，覆盖 refit 临时态与稳定态。
- */
 fun ShipVariantAPI.hasASTDDualModeAutomated(config: ASTDDualModeConfig): Boolean =
     permaMods.contains(config.automatedModeId) || hasHullMod(config.automatedModeId)
 
-/** 原版「无自动化惩罚」variant 标签：挂上后不计入自动化舰船点数，且不受 Automated 船插的最大 CR 惩罚。 */
 const val NO_AUTO_PENALTY_TAG: String = Tags.TAG_AUTOMATED_NO_PENALTY
 
-/**
- * 同步原版 [NO_AUTO_PENALTY_TAG] 标签（「双模式切换器自动模式免自动化点数」选项的落点）。
- *
- * 口径：无人模式且选项开启 → 挂标签（不计自动化点数、不受 Automated 船插 CR 惩罚，原版
- * `no_auto_penalty` 把这两件事捆绑为同一「无自动化惩罚」语义，见 impl 侧 DualModeSettingsImpl）；
- * 其余情况（载人模式 / 选项关闭）→ 移除标签。
- *
- * 调用点：[ensureASTDDualModeState] 与 [activateDualMode]（每次 stats 刷新必经，幂等——
- * 标签状态与目标一致时不做任何写操作）。
- */
 fun ShipVariantAPI.syncDualModeAutoPenaltyTag(config: ASTDDualModeConfig) {
     val exempt = hasASTDDualModeAutomated(config) && DualModeSettingsImpl.automatedModeExemptFromAutoPoints
     if (exempt == hasTag(NO_AUTO_PENALTY_TAG)) return
     if (exempt) addTag(NO_AUTO_PENALTY_TAG) else removeTag(NO_AUTO_PENALTY_TAG)
 }
 
-/**
- * 安装「免自动化点数」选项的热重载钩子：LunaLib 设置变更时立即对玩家舰队全部双模式舰
- * 同步 [NO_AUTO_PENALTY_TAG] 标签并刷新成员 stats（满足「改后即时生效」，免等下次 stats 重建）。
- *
- * 由 AsteriaDirectoratePlugin.onApplicationLoad 调用；
- * 重复调用等价于重装同一钩子，幂等。
- */
 fun installDualModeAutoPointsHook() {
     DualModeSettingsImpl.exemptChangedHook = { syncPlayerFleetAutoPenaltyTags() }
 }
 
-/**
- * 对玩家舰队全部已注册双模式舰同步免惩罚标签并刷新 stats。
- * 无战役上下文（主菜单等）时无事可做——标签由 stats 刷新路径（[ensureASTDDualModeState]）兜底收敛。
- */
 private fun syncPlayerFleetAutoPenaltyTags() {
     val fleet = Global.getSector()?.playerFleet ?: return
     fleet.fleetData.membersListCopy.forEach { member ->
@@ -386,10 +210,6 @@ private fun syncPlayerFleetAutoPenaltyTags() {
     }
 }
 
-/**
- * 私有：把历史存档里以普通 hullMod 形式存在的模式/标记迁移为 permaMod（泛化自 arc migrateLegacyModeState）。
- * 动机：早期版本可能用 addMod 而非 addPermaMod 写入状态，迁移以保证状态机读 permaMods 时一致。
- */
 private fun ShipVariantAPI.migrateLegacyDualModeState(config: ASTDDualModeConfig) {
     val stateIds = listOf(
         config.crewedModeId,
@@ -405,28 +225,12 @@ private fun ShipVariantAPI.migrateLegacyDualModeState(config: ASTDDualModeConfig
     }
 }
 
-/**
- * 私有：设置 next marker 为指定标记，并清掉另一向标记（泛化自 arc setNextMarker）。
- */
 private fun ShipVariantAPI.setDualModeNextMarker(config: ASTDDualModeConfig, markerId: String) {
     removePermaMod(config.nextCrewedMarker)
     removePermaMod(config.nextAutomatedMarker)
     addPermaMod(markerId)
 }
 
-/**
- * 内部共用：按成员当前 variant 的双模式精确清理不兼容舰长/AI 核心。
- *
- * 口径：无人模式不得有人类舰长（卸下，人类军官回到未分配列表）；载人模式不得有 AI 核心
- * （核心先退还玩家货舱再卸下，避免丢失）；默认舰长（无名）与兼容组合不动。
- * 跨模式翻转后旧舰长必然不兼容（人类舰长不能开无人船、AI 核心不能开载人船），
- * 因此翻转场景下与旧版无条件清理等价；装配提交收敛场景下不误卸兼容舰长。
- *
- * 调用点：[activateDualMode] 身份门路径、[ASTDDualModeRefitListener] 提交收敛。
- *
- * 这是战役上下文核心防崩例外（全局规范允许）：fleetMember / captain / sector 在 refit 之外的上下文
- * 可能不可用，此处吞错而非崩溃，但每个 catch 都不是空操作（要么有归还逻辑，要么是无害的 best-effort 卸载）。
- */
 internal fun clearIncompatibleDualModeCaptain(member: FleetMemberAPI?, config: ASTDDualModeConfig) {
     if (member == null) return
     val captain = try {
@@ -449,18 +253,15 @@ internal fun clearIncompatibleDualModeCaptain(member: FleetMemberAPI?, config: A
     val incompatible = if (automated) aiCoreId == null else aiCoreId != null
     if (!incompatible) return
     if (aiCoreId != null) {
-        // AI 核心：先归还到玩家货舱，再移除舰长，避免核心丢失
         try {
             Global.getSector()?.playerFleet?.cargo?.addCommodity(aiCoreId, 1f)
         } catch (_: Throwable) {
-            // 归还货舱失败则接受 AI 核心丢失：refit 外/无玩家舰队上下文不可达，
-            // 不能因此崩溃影响整个战役层（核心逻辑防崩例外，有意静默）。
+            // refit 外上下文可能无玩家舰队，归还失败接受核心丢失，不得因此崩溃
         }
     }
     try {
         member.captain = null
     } catch (_: Throwable) {
-        // 卸载舰长失败为 best-effort：refit 外/无 fleetMember 上下文不可达，
-        // 不应因此崩溃影响整个战役层（核心逻辑防崩例外，有意静默）。
+        // refit 外上下文卸载可能失败，不得因此崩溃
     }
 }

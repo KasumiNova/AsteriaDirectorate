@@ -11,11 +11,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
-/**
- * 联制线（20-joint.md）三处难度数值声明的契约测试：
- * 落叶飞花 / 视界变速 / 星尘光尘的三锚点解析与体型分档、玩家固定 v2 口径。
- * 通过 [DifficultyTuningImpl.installScaleForTests] 注入系数走完整映射链路（installScaleForTests 先例链路）。
- */
 class JointTuningTest {
 
     @AfterTest
@@ -23,13 +18,10 @@ class JointTuningTest {
         DifficultyTuningImpl.installScaleForTests(null)
     }
 
-    /** 注入难度系数并返回单例读取面（测后经 [clearOverride] 复位）。 */
     private fun tuning(scale: Float): DifficultyTuningImpl {
         DifficultyTuningImpl.installScaleForTests(scale)
         return DifficultyTuningImpl
     }
-
-    // —— 落叶飞花（v1 +200%/+100%/+100%/+50%/150%，v2 +250%/+150%/+200%/+100%/200%，v5 +400%/+250%/+500%/+250%/300%）——
 
     @Test
     fun `落叶飞花 玩家固定 v2 砺刃档`() {
@@ -58,15 +50,12 @@ class JointTuningTest {
         assertEquals(3.0f, v5.momentumMult, 1e-6f)
     }
 
-    // —— 视界变速（自身 +50%~100%；目标压制按体型四档；承伤修正双向）——
-
     @Test
     fun `视界变速 体型分档四档映射`() {
         assertSame(VisionShiftTuning.TARGET_TIME_REDUCTION_FRIGATE, VisionShiftTuning.reductionForSize(ShipAPI.HullSize.FRIGATE))
         assertSame(VisionShiftTuning.TARGET_TIME_REDUCTION_DESTROYER, VisionShiftTuning.reductionForSize(ShipAPI.HullSize.DESTROYER))
         assertSame(VisionShiftTuning.TARGET_TIME_REDUCTION_CRUISER, VisionShiftTuning.reductionForSize(ShipAPI.HullSize.CRUISER))
         assertSame(VisionShiftTuning.TARGET_TIME_REDUCTION_CAPITAL, VisionShiftTuning.reductionForSize(ShipAPI.HullSize.CAPITAL_SHIP))
-        // 战机/DEFAULT/null 按护卫舰档兜底
         assertSame(VisionShiftTuning.TARGET_TIME_REDUCTION_FRIGATE, VisionShiftTuning.reductionForSize(ShipAPI.HullSize.FIGHTER))
         assertSame(VisionShiftTuning.TARGET_TIME_REDUCTION_FRIGATE, VisionShiftTuning.reductionForSize(null))
     }
@@ -86,8 +75,6 @@ class JointTuningTest {
         assertEquals(0.6f, v.targetTimeMult, 1e-6f)
         assertEquals(1.25f, v.damageFromSelfMult, 1e-6f)
     }
-
-    // —— 星尘光尘（导弹 +50%~250% / 战机 +100%~500% / EMP 100%~500%）——
 
     @Test
     fun `星尘光尘 玩家固定 v2 与敌方锚点`() {

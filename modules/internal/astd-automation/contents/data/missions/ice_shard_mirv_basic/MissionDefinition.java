@@ -9,15 +9,6 @@ import com.fs.starfarer.api.mission.FleetSide;
 import com.fs.starfarer.api.mission.MissionDefinitionAPI;
 import com.fs.starfarer.api.mission.MissionDefinitionPlugin;
 
-/**
- * Dev-only mission surface for ice shard MIRV in-game automation.
- * <p>
- * 玩家狮鹫级（清空全部槽位后中型导弹槽 WS 008 装源生冰晶 MIRV 发射舱、小型导弹槽 WS 010
- * 装源生冰晶 MIRV）；敌方统治者级攻击型（清空全部槽位，盾常关：子冰晶命中舰体附着观测面）。
- * 子冰晶武器 astd_ice_shard_sub 为隐藏内部武器，无需装配。
- * 全走 reserves 由插件手动 spawn，玩家舰身份由插件 setPlayerShipExternal 赋予。
- * 相位机验证：装配 → 分裂（母弹引信注册 + 600su 分裂 15 枚子冰晶）→ 附着（5s 存续 0.5s 周期伤害）。
- */
 public final class MissionDefinition implements MissionDefinitionPlugin {
     private static void clearAllWeaponSlots(final FleetMemberAPI member) {
         for (final String slotId : member.getVariant().getFittedWeaponSlots()) {
@@ -38,7 +29,6 @@ public final class MissionDefinition implements MissionDefinitionPlugin {
         player.getVariant().addWeapon("WS 008", ASTDInGameAutomationScenario.ICE_SHARD_POD_WEAPON_ID);
         player.getVariant().addWeapon("WS 010", ASTDInGameAutomationScenario.ICE_SHARD_MIRV_WEAPON_ID);
 
-        // 附着观测面：巡洋舰靶舰（插件盾常关，子冰晶命中舰体才附着）。
         final FleetMemberAPI target = api.addToFleet(FleetSide.ENEMY, "dominator_Assault", FleetMemberType.SHIP, false);
         clearAllWeaponSlots(target);
 

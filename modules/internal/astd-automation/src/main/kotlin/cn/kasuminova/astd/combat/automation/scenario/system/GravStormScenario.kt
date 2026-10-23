@@ -17,11 +17,8 @@ import org.lwjgl.util.vector.Vector2f
 
 /**
  * 密蒙引力磁暴发生器场景（断言点 GS-A~GS-E）。
- *
- * 拆分自 ASTDAutomationCombatPlugin 的同名 if-else 分支，相位机/断言/证据写出口径原样迁移。
  */
 class GravStormScenario : AbstractAutomationScenario() {
-    // ==== 密蒙引力磁暴发生器场景状态（相位机 SPAWN → FIELD_OBSERVE → ACTIVATE → RELEASE → COOLDOWN_FIELD_OFF → COMPLETED） ====
     private var gsPhase = GS_PHASE_SPAWN
     private var gsPhaseStartedAt = 0f
 
@@ -36,15 +33,15 @@ class GravStormScenario : AbstractAutomationScenario() {
     private var gsActivationFluxDeltaMax = 0f
     private var gsChargeDamageTakenMultMin = Float.MAX_VALUE
 
-    // ACTIVATE 锁定窗（断言点 GS-B2）：充能前段相位锁定取证——窗内逐帧对玩家舰发
+    // ACTIVATE 锁定窗（断言点 GS-B2）：充能前段相位锁定取证：窗内逐帧对玩家舰发
     // TOGGLE_SHIELD_OR_PHASE_CLOAK（真实按键路径），统计施压帧数、isPhased 成立帧数
     // （必须为 0）与 cloak 被压入 COOLDOWN 的帧数。
     private var gsPhaseLockoutPressFrames = 0
     private var gsPhaseLockoutPhasedFrames = 0
     private var gsPhaseLockoutCloakPinnedFrames = 0
 
-    // RELEASE（断言点 GS-C/D）：释放闩、系统激活期力场修饰键在场对账、靶舰过载时长与电弧结算掉血。
-    // 注意：电弧 EMP 会熄火敌舰引擎把 maxSpeed 打到 0，力场存续判定只能对账修饰键，不能读值。
+    // RELEASE（断言点 GS-C/D）：释放闩、系统激活期力场修饰键在场核对、靶舰过载时长与电弧结算掉血。
+    // 注意：电弧 EMP 会熄火敌舰引擎把 maxSpeed 打到 0，力场存续判定只能核对修饰键，不能读值。
     private var gsStormActivationLatched = false
     private var gsFieldMultMinDuringRelease = Float.MAX_VALUE
     private var gsFieldModifierLostEarly = false
@@ -54,7 +51,7 @@ class GravStormScenario : AbstractAutomationScenario() {
     private var gsEnemyHpBeforeRelease = -1f
     private var gsEnemyHpMinAfterRelease = Float.MAX_VALUE
 
-    // COOLDOWN_FIELD_OFF（断言点 GS-E）：系统冷却后力场收口，靶舰力场修饰键移除且 EMP 承伤复原。
+    // COOLDOWN_FIELD_OFF（断言点 GS-E）：系统冷却后力场关闭，靶舰力场修饰键移除且 EMP 承伤复原。
     private var gsFieldModifierCleared = false
     private var gsFieldRestoredEmpMult = -1f
 
@@ -68,7 +65,7 @@ class GravStormScenario : AbstractAutomationScenario() {
         val engine = ctx.engine
         engine.setDoNotEndCombat(true)
         lockGsCamera(engine)
-        // 与其他场景一致：reserves 部署放到 advance()，init 阶段渲染器未就绪。
+        // reserves 部署放到 advance()，init 阶段渲染器未就绪。
         ctx.writeDiagnostics("CombatReady")
         ctx.writeTelemetry("CombatReady", findGsPlayer(engine), null)
         ctx.log.info("[ASTD-Automation] scenario=${ASTDInGameAutomationScenario.GS_SCENARIO_ID} combat plugin initialized")
@@ -81,8 +78,8 @@ class GravStormScenario : AbstractAutomationScenario() {
         engine.ships.firstOrNull { ship -> ship.owner != 0 && ship.hullSpec?.hullId == GS_ENEMY_HULL && !ship.isFighter }
 
     /**
-     * 力场修饰键在场对账：电弧 EMP 熄火会把目标 maxSpeed 值打到 0（力场复原断言的值层面读数不可信），
-     * 直接查目标 maxSpeed 乘区修饰表中的力场键。键前缀口径同 GravEmFieldHullMod.MOD_ID_PREFIX
+     * 力场修饰键在场核对：电弧 EMP 熄火会把目标 maxSpeed 值打到 0（力场复原断言的值层面读数不可信），
+     * 直接查目标 maxSpeed 乘区修饰表中的力场键。键前缀与 GravEmFieldHullMod.MOD_ID_PREFIX 相同
      * （其 private 不便开放，此处字面值镜像，改动 hullmod 键名时需同步）。
      */
     private fun hasGsFieldModifier(ship: ShipAPI): Boolean =
@@ -132,8 +129,8 @@ class GravStormScenario : AbstractAutomationScenario() {
      * （密蒙舰载机联队不需要出库，无 AI 即不出击；系统施放时机由插件独占，
      * [blockSystem] 在 ACTIVATE 之前逐帧封锁 USE_SYSTEM 防系统 AI 路径抢跑）。
      * 玩家舰默认逐帧封锁相位斗篷（[blockPhase]）：充能锁定窗（断言点 GS-B2）需要放开
-     * 封锁并反向施压相位键，其余阶段封锁——锁定解除后充能中进相位会立即结束充能并
-     * 提前释放（机制口径），本场景主线验证充满 4s 的完整释放链路，故须压住相位键。
+     * 封锁并反向施压相位键，其余阶段封锁；锁定解除后充能中进相位会立即结束充能并
+     * 提前释放（机制行为），本场景主线验证充满 4s 的完整释放链路，故须压住相位键。
      * [healEnemy] 在 RELEASE 起关闭：电弧结算需要真实 hitpoints 读数（靶舰装甲已在
      * 进 ACTIVATE 时剥零，范式同 GRG 的 RIFT_FIRE 前剥甲）。
      */
@@ -276,7 +273,7 @@ class GravStormScenario : AbstractAutomationScenario() {
                             // 断言点 GS-E 前置观测：系统激活期力场修饰键必须在场（失效条件仅 COOLDOWN/残骸化）。
                             trackGsFieldModifier(enemy, player)
                         }
-                        // 释放闩逐帧对账（release() 写入后 OUT 窗口 1.5s 内均可读，不受 isOn 口径影响）。
+                        // 释放闩逐帧核对（release() 写入后 OUT 窗口 1.5s 内均可读，不受 isOn 观测影响）。
                         if (engine.customData[GS_STORM_ACTIVATION_KEY + player.id] != null) gsStormActivationLatched = true
                         if (gsStormActivationLatched || systemState == ShipSystemAPI.SystemState.OUT) {
                             when {
@@ -336,14 +333,14 @@ class GravStormScenario : AbstractAutomationScenario() {
             }
 
             GS_PHASE_RELEASE -> {
-                // 靶舰停奶：电弧结算需要真实 hitpoints 读数；玩家侧继续奶血保活。
+                // 靶舰停止回血：电弧结算需要真实 hitpoints 读数；玩家侧继续回血保活。
                 stabilizeGsShips(engine, healEnemy = false, zeroPlayerFlux = false, blockSystem = false)
                 if (player != null && enemy != null && system != null && gsActivatedAt >= 0f) {
                     if (engine.customData[GS_STORM_ACTIVATION_KEY + player.id] != null) gsStormActivationLatched = true
                     if (!enemy.isHulk) {
-                        // 断言点 GS-E 前置观测：系统激活期力场修饰键必须在场（值层面被电弧熄火污染，只对账键）。
-                        // COOLDOWN 一起即停对账：冷却关场是机制口径（断言点 GS-E 验的就是这个收口），
-                        //  hullmod 在状态翻转帧即 unmodify，纳入对账会把正常收口误判为提前失效。
+                        // 断言点 GS-E 前置观测：系统激活期力场修饰键必须在场（值层面被电弧熄火污染，只核对键）。
+                        // COOLDOWN 一起即停核对：冷却关场是机制行为（断言点 GS-E 验的正是这个关闭），
+                        // hullmod 在状态翻转帧即 unmodify，继续核对会把正常关闭误判为提前失效。
                         gsFieldMultMinDuringRelease = minOf(
                             gsFieldMultMinDuringRelease,
                             enemy.mutableStats.maxSpeed.modifiedValue / enemy.mutableStats.maxSpeed.baseValue,
@@ -413,7 +410,7 @@ class GravStormScenario : AbstractAutomationScenario() {
             GS_PHASE_COOLDOWN_FIELD_OFF -> {
                 stabilizeGsShips(engine, healEnemy = false, zeroPlayerFlux = false, blockSystem = true)
                 if (enemy != null && !enemy.isHulk && ctx.elapsed - gsPhaseStartedAt >= GS_FIELD_RESTORE_SETTLE_SECONDS) {
-                    // 断言点 GS-E：系统冷却期力场消失——修饰键从靶舰乘区表移除（hullmod 逐帧对账口径），
+                    // 断言点 GS-E：系统冷却期力场消失：修饰键从靶舰乘区表移除（hullmod 逐帧核对移除），
                     // 且 EMP 承伤乘区复原 1.0。不读 maxSpeed 值：电弧 EMP 熄火会把航速值打到 0，与力场无关。
                     val modifierCleared = !hasGsFieldModifier(enemy)
                     val empMult = enemy.mutableStats.empDamageTakenMult.modifiedValue
@@ -485,7 +482,7 @@ class GravStormScenario : AbstractAutomationScenario() {
         json.appendLine("  \"runtimeElapsedSeconds\": 0,")
         json.appendLine("  \"runtimeTrackedCount\": ${vfxTelemetry.trackedCount},")
         json.appendLine("  \"runtimeLastProjectileSpecId\": ${jsonString(vfxTelemetry.lastProjectileSpecId)},")
-        // ---- 机制证据（断言点 GS-A~GS-E）----
+        // 机制证据（断言点 GS-A~GS-E）
         json.appendLine("  \"gsPhase\": \"$gsPhase\",")
         json.appendLine("  \"gsSystemId\": ${jsonString(gsSystem?.id)},")
         json.appendLine("  \"gsSystemState\": ${jsonString(gsSystem?.state?.name)},")
@@ -532,7 +529,7 @@ class GravStormScenario : AbstractAutomationScenario() {
         private const val GS_SYSTEM_ID = "astd_grav_storm"
 
         // 靶舰锚点在母舰正前方 600su：锥内（±30°）且在系统射程 1200su 内，
-        // 同时 ≤ 力场半射程 750su 满效区（断言点 GS-A 满效口径）。
+        // 同时 ≤ 力场半射程 750su 满效区（断言点 GS-A 满效判定）。
         private val GS_PLAYER_ANCHOR = Vector2f(-700f, 0f)
         private val GS_ENEMY_ANCHOR = Vector2f(-100f, 0f)
         private val GS_CAMERA_CENTER = Vector2f(-400f, 0f)
@@ -550,29 +547,29 @@ class GravStormScenario : AbstractAutomationScenario() {
 
         // ACTIVATE（断言点 GS-B）：激活软辐能 = 基础容量 ×20%（zw_002 12000 → ≈2400；
         // 界 [2000, 2800] 容忍逐帧耗散 900/s 的帧量化）；充能期全承伤 ×0.5（界 0.51）。
-        // useSystem 按帧重试（同 FGL），10s 超时兜底。
+        // useSystem 按帧重试（同 FGL），10s 超时判失败。
         private const val GS_ACTIVATE_TIMEOUT = 10f
         private const val GS_EXPECT_ACTIVATION_FLUX_MIN = 2000f
         private const val GS_EXPECT_ACTIVATION_FLUX_MAX = 2800f
         private const val GS_EXPECT_DAMAGE_TAKEN_MAX = 0.51f
 
         // ACTIVATE 锁定窗（断言点 GS-B2）：相位锁定时长 2s（GravStormTuning.PHASE_LOCKOUT_SECONDS
-        // 口径，其声明不在本模块可见面，此处字面值镜像，改动锁定时长需同步）；施压窗口留 0.2s
+        // 的声明不在本模块可见范围，此处字面值镜像，改动锁定时长需同步）；施压窗口留 0.2s
         // 余量（防止锁定解除瞬间的相位键真激活把充能打断）；窗内施压帧数下限容忍帧率抖动。
         private const val GS_PHASE_LOCKOUT_PRESS_SECONDS = 1.8f
         private const val GS_PHASE_LOCKOUT_MIN_PRESS_FRAMES = 30
 
         // RELEASE（断言点 GS-C/D + GS-E 前置）：充能 4s + 释放窗 1.5s + 过载收尾余量；
         // 巡洋舰 v2 满充能强制过载锚点 2s（界 [1.5, 2.5]，帧粒度宽松）；
-        // 电弧 8~16 道 × 300 能量对剥甲靶舰（dominator 14000 HP）结算，下界 1500 取保守口径；
-        // 系统激活期（IN/ACTIVE/OUT）力场不失效——对账敌舰乘区表中的力场修饰键在场
+        // 电弧 8~16 道 × 300 能量对剥甲靶舰（dominator 14000 HP）结算，下界 1500 取保守值；
+        // 系统激活期（IN/ACTIVE/OUT）力场不失效：核对敌舰乘区表中的力场修饰键在场
         // （键前缀同 GravEmFieldHullMod.MOD_ID_PREFIX；电弧 EMP 熄火会把 maxSpeed 值打 0，值层面不可信）。
         private const val GS_RELEASE_TIMEOUT = 12f
         private const val GS_OVERLOAD_SECONDS_MIN = 1.5f
         private const val GS_OVERLOAD_SECONDS_MAX = 2.5f
         private const val GS_EXPECT_ENEMY_HP_DROP = 1500f
 
-        // COOLDOWN_FIELD_OFF（断言点 GS-E）：冷却首帧 hullmod 逐帧对账 unmodify，
+        // COOLDOWN_FIELD_OFF（断言点 GS-E）：冷却首帧 hullmod 逐帧核对 unmodify，
         // settle 0.6s 后力场修饰键必须离场且 EMP 承伤乘区回 1.0（±0.03）。
         private const val GS_FIELD_RESTORE_SETTLE_SECONDS = 0.6f
         private const val GS_FIELD_RESTORE_TOLERANCE = 0.03f

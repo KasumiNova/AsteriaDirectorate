@@ -1,15 +1,5 @@
 package cn.kasuminova.astd.renderer.boxutil.pool
 
-/**
- * 池化 sprite 粒子的纯逻辑槽位表：固定容量环形复用，不触碰任何 BoxUtil/GL 类型，
- * 供单测直接驱动；渲染侧（PooledCombatVfx.SpritePoolBinding）每帧把活跃槽位灌进实例数据。
- *
- * 语义：
- * - [spawn] 认领一个空闲槽位；无空闲时按游标覆盖最旧槽位（视觉等同最旧粒子提前寿终）；
- * - [advance] 推进年龄并按速度/自转/尺寸增速做 CPU 侧积分（实例侧 velocity/turnRate 恒 0，
- *   避免与 BoxUtil 实例自管理双重积分）；
- * - alpha 包络由 [poolEnvelopeAlpha] 逐帧派生，定时器不再交给 BoxUtil。
- */
 internal class SpriteParticleSlots(val capacity: Int) {
 
     init {
@@ -44,13 +34,11 @@ internal class SpriteParticleSlots(val capacity: Int) {
 
     internal val slots = Array(capacity) { Slot() }
 
-    /** 复用游标：无空闲槽时从此处覆盖最旧槽位。 */
     private var cursor = 0
 
     var activeCount = 0
         private set
 
-    /** 认领并初始化一个槽位，返回槽位索引（供测试断言复用行为）。[scaleRateX]/[scaleRateY] 为半尺寸每秒增量（0 = 尺寸恒定）。 */
     fun spawn(
         posX: Float, posY: Float,
         velX: Float, velY: Float,
@@ -90,7 +78,6 @@ internal class SpriteParticleSlots(val capacity: Int) {
         return index
     }
 
-    /** 推进全部活跃槽位：积分位置/自转，包络走完则回收。 */
     fun advance(amount: Float) {
         for (s in slots) {
             if (!s.active) continue
@@ -108,7 +95,6 @@ internal class SpriteParticleSlots(val capacity: Int) {
         }
     }
 
-    /** 遍历活跃槽位（紧凑写实例数据用）；[alphaMul] 为当前包络 alpha 乘数。 */
     fun forEachActive(block: (slot: Slot, alphaMul: Float) -> Unit) {
         for (s in slots) {
             if (!s.active) continue

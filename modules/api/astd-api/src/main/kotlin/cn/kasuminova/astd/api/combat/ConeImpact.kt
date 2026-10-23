@@ -6,14 +6,7 @@ import com.fs.starfarer.api.combat.ShipAPI
 import org.lwjgl.util.vector.Vector2f
 
 /**
- * 锥状冲击的一次性结算声明（规格 00-共享基建 §2.2）。
- *
- * 动机：正电子冲击波（自爆波及）、贯星之矛（OnHit 锥面）、摧锋（后续）三案共享同一套
- * 「输入一次引爆/命中事件 → 范围内目标清单 + 逐目标伤害结算」的几何与结算语义，
- * 参数表格化后由 `ConeImpactHandler` 统一执行，各案只声明差异（锥角/锥长/伤害类型/过滤策略）。
- *
- * 本对象只描述一次结算的输入，不含每帧近炸检测（调用方弹体脚本职责），也不含 VFX 树构建
- * （结算器返回命中清单后由调用方触发各自特效，锥面原型见 impl/render 的 ConeImpactVfx）。
+ * 一次锥状范围伤害结算的输入。几何筛选和伤害结算由结算器执行，命中检测与特效由调用方负责。
  */
 data class ConeImpactSpec(
     /** 锥顶点（世界坐标，su）：命中点/引爆点。 */
@@ -25,7 +18,7 @@ data class ConeImpactSpec(
     /** 锥半角（度）：面板锥角/2，由难度锚点换算后传入；合法域 [0, 180]，越界 clamp 并记 WARN。 */
     val halfAngleDeg: Float,
 
-    /** 锥长（su）：自顶点沿中轴的波及距离；非正属配置错误，记 WARN 且本次不结算。 */
+    /** 锥长（su）：自顶点沿中轴的波及距离；非正属配置错误，记 WARN 且跳过结算。 */
     val range: Float,
 
     /** 面板倍率折算后的基准伤害；负值/NaN 属配置错误，clamp 到 0 并记 WARN。 */
@@ -56,31 +49,20 @@ data class ConeImpactSpec(
     val hitMissiles: Boolean = true,
 
     /**
-     * 结算伤害调整钩子（可空）：命中清单确定后调用一次，返回逐目标统一结算的实际伤害；
-     * null 时按 [damage] 原样结算。用于「伤害取决于命中构成」的机制（正电子密度增伤）。
+     * 命中目标确定后调整实际伤害；null 时使用 [damage]。
+     * 回调对每个目标返回相同的伤害值。
      */
     val damageAdjust: ConeDamageAdjust? = null,
 )
 
-/**
- * 锥状冲击目标过滤策略。
- *
- * 动机：三案对「谁该吃锥面伤害」的终判各不相同（正电子引爆判定严格排除舰船、贯星豁免命中本体），
- * 而类型/归属/hulk 等共性过滤已由结算器承担；本接口只承载各案的特异终判。
- */
+/** 判断通过类型、归属与几何筛选的目标是否接受伤害。 */
 fun interface ConeTargetFilter {
-    /** 粗筛与几何精筛后逐目标终判；返回 true 纳入结算。 */
+    /** 返回 true 时纳入结算。 */
     fun accept(target: CombatEntityAPI): Boolean
 }
 
-/**
- * 锥状冲击结算伤害调整钩子。
- *
- * 动机：正电子冲击波的密度增伤（2026-10 裁定）要求「范围内每多一个导弹/战机目标，
- * 结算伤害按比例提升」——伤害值依赖最终命中清单，无法在结算前声明为固定面板值；
- * 本钩子把「清单确定 → 实际伤害」的一步交给各案，结算器仍承担几何筛选与 applyDamage。
- */
+/** 根据最终命中目标列表调整每个目标受到的伤害。 */
 fun interface ConeDamageAdjust {
-    /** 命中清单确定后调用一次，返回逐目标统一结算的实际伤害；负值/NaN 由结算器 clamp 到 0 并记 WARN。 */
+    /** 返回实际伤害；负数或 NaN 由结算器按 0 处理并记录 WARN。 */
     fun adjust(hits: List<CombatEntityAPI>): Float
 }

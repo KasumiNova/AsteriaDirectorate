@@ -11,20 +11,6 @@ import org.lazywizard.lazylib.VectorUtils
 import org.lwjgl.util.vector.Vector2f
 import kotlin.math.abs
 
-/**
- * 坠星残翼追踪子射弹的自定义导弹 AI（规格 10-signature 坠星残翼节：子射弹具有追踪效果）。
- *
- * 追踪延迟：射出后前 [StarfallWingTuning.MOTE_TRACK_DELAY_SECONDS] 秒不追踪——惯性直飞
- * （不下任何机动指令，引擎不推力，速度保持散发初速），满 1s 后才索敌/转向
- * （[StarfallWingTuning.moteTrackingActive] 闸门）。
- *
- * 形态对齐仓库既有自定义追踪导弹 AI 先例：目标失效即重选最近敌舰
- * （`engine.getShips()` 上按 owner/isFighter 过滤）、TURN_LEFT/RIGHT + ACCELERATE 驱动、
- * 速度 lerp 朝目标向 900su/s（子射弹弹速）收拢；原版弹体贴图/尾焰/引擎辉光全屏蔽
- * （本体由弹体 VFX 管线接管）。
- *
- * 挂载点：由 [StarfallWingWeaponEffect] 散发子射弹时经 `missile.missileAI = ...` 安装。
- */
 class StarfallWingMoteAi(
     private val missile: MissileAPI,
     initialTarget: ShipAPI?,
@@ -38,7 +24,6 @@ class StarfallWingMoteAi(
         missile.interruptContrail()
         missile.spriteAlphaOverride = 0f
         missile.glowRadius = 0f
-        // 追踪延迟窗：惯性直飞，不索敌、不转向、不推力（直线弹道随散发初速）
         if (!StarfallWingTuning.moteTrackingActive(missile.flightTime)) return
         val source = missile.source ?: return
         if (!isValidTarget(engine, target, source)) {
@@ -72,13 +57,10 @@ class StarfallWingMoteAi(
     }
 
     companion object {
-        /** 追踪收拢速度（su/s，子射弹弹速口径）。 */
         private const val PURSUIT_SPEED = 900f
 
-        /** 目标重选搜索半径（su）。 */
         private const val TARGET_REFRESH_RANGE = 1400f
 
-        /** 最近敌舰（ships 表扫描，排除战机/无人机/残骸/同阵营）。 */
         fun nearestEnemyShip(engine: CombatEngineAPI, source: ShipAPI, near: Vector2f, range: Float): ShipAPI? {
             var best: ShipAPI? = null
             var bestDistance = range

@@ -19,14 +19,7 @@ import com.fs.starfarer.api.impl.campaign.submarkets.LocalResourcesSubmarketPlug
 import com.fs.starfarer.api.impl.campaign.submarkets.StoragePlugin
 import org.apache.log4j.Logger
 
-/**
- * 仅用于开发测试的战役注入：
- * - 在 devMode 新开档后生成一个测试星系与市场
- * - 在市场的 storage 里放入当前启用模组环境中可正常获取的舰船、武器与货物
- * - 将玩家舰队传送到测试星系补给站附近
- *
- * 说明：不依赖 Console Commands，尽量做到开箱即测。
- */
+/** 开发测试用战役注入：devMode 下生成测试星系与市场，投放当前环境可获取的模组物资并传送玩家舰队。 */
 object AsteriaTestCampaignBootstrap {
 
     private const val TEST_SYSTEM_NAME = "Asteria Test Range"
@@ -37,7 +30,6 @@ object AsteriaTestCampaignBootstrap {
     private const val TEST_MARKET_ID = "market_asteria_test_depot"
     private const val PLAYER_FLEET_OFFSET = 450f
 
-    /** Dev/test-only: increase shield coverage on all injected test ships. */
     private const val TEST_SHIELD_COVERAGE_HULLMOD_ID = "astd_test_shield_coverage"
     private const val STORAGE_ACCEPTANCE_PROPERTY = "astd.devStorageAcceptance"
     private const val MAX_SKIPPED_VARIANT_LOGS = 40
@@ -46,7 +38,6 @@ object AsteriaTestCampaignBootstrap {
 
     private val log: Logger = Global.getLogger(AsteriaTestCampaignBootstrap::class.java)
 
-    /** 入口：仅在 devMode 下执行。 */
     @JvmStatic
     fun runIfEnabled() {
         try {
@@ -72,12 +63,10 @@ object AsteriaTestCampaignBootstrap {
                 attemptTeleport(sector, testTarget.planet, markDoneOnSuccess = false, queueOnFailure = false)
             }
         } catch (t: Throwable) {
-            // 不要让测试注入把整个新开档搞崩
             log.warn("[AsteriaTestCampaignBootstrap] Failed to inject test campaign content: ${t.message}", t)
         }
     }
 
-    /** 新开档时间推进完成后再做一次最终传送，避免原版/dev 起始流程把玩家放回超空间。 */
     @JvmStatic
     fun finalizeNewGameTeleportIfEnabled() {
         try {
@@ -96,7 +85,6 @@ object AsteriaTestCampaignBootstrap {
         }
     }
 
-    /** 入口：读档后只恢复已经创建过的测试星系传送，不给普通 dev 存档注入新仓库。 */
     @JvmStatic
     fun resumePendingTeleportIfEnabled() {
         try {
@@ -111,7 +99,6 @@ object AsteriaTestCampaignBootstrap {
         }
     }
 
-    /** 入口：普通读档时修复已经存在的测试仓库，尤其是旧版本塞入的危险特殊物品。 */
     @JvmStatic
     fun repairExistingTestStorageIfEnabled() {
         try {
@@ -127,7 +114,6 @@ object AsteriaTestCampaignBootstrap {
         }
     }
 
-    /** Explicit campaign-load acceptance hook for dev storage smoke tests. */
     @JvmStatic
     fun runStorageAcceptanceIfRequested() {
         if (!java.lang.Boolean.getBoolean(STORAGE_ACCEPTANCE_PROPERTY)) return
@@ -150,7 +136,6 @@ object AsteriaTestCampaignBootstrap {
         }
 
         val system = sector.createStarSystem(TEST_SYSTEM_NAME)
-        // 放在核心区附近，方便在大地图里快速找到
         system.location.set(1500f, 5500f)
         system.backgroundTextureFilename = "graphics/backgrounds/background2.jpg"
 
@@ -180,7 +165,6 @@ object AsteriaTestCampaignBootstrap {
         market.memoryWithoutUpdate["\$core_noDeciv"] = true
         planet.setFaction(Factions.PLAYER)
 
-        // 让它像一个正常市场一样可交互
         if (!market.hasCondition(Conditions.POPULATION_5)) {
             market.addCondition(Conditions.POPULATION_5)
         }
@@ -481,7 +465,6 @@ object AsteriaTestCampaignBootstrap {
         cargo.addSupplies(5_000f)
         cargo.addFuel(5_000f)
 
-        // 1) 给玩家阵营解锁"已知蓝图"（方便 UI/装配等）
         var knownShipCount = 0
         var knownWeaponCount = 0
         var knownFighterCount = 0
@@ -516,11 +499,9 @@ object AsteriaTestCampaignBootstrap {
                 }
             }
         } catch (t: Throwable) {
-            // 解锁失败也不影响把实体塞进仓储
             log.warn("[AsteriaTestCampaignBootstrap] Failed to add known content: ${t.message}", t)
         }
 
-        // 2) 把当前启用环境中可实例化、非模块/站点的舰船变体放入仓储（mothballed ships）
         val hullById = Global.getSettings().allShipHullSpecs
             .filterNotNull()
             .associateBy { it.hullId }
@@ -546,11 +527,10 @@ object AsteriaTestCampaignBootstrap {
 
                 val member = Global.getFactory().createFleetMember(FleetMemberType.SHIP, vid)
 
-                // Add dev-only shield coverage boost so test hulls are easier to fly/inspect.
                 try {
                     member.variant?.addPermaMod(TEST_SHIELD_COVERAGE_HULLMOD_ID)
-                } catch (_: Throwable) {
-                    // If VariantAPI signature changes, simply skip the debug mod.
+                } catch (t: Throwable) {
+                    log.warn("[AsteriaTestCampaignBootstrap] Failed to add perma-mod to dev storage variant $vid: ${t.message}")
                 }
 
                 cargo.mothballedShips.addFleetMember(member)
@@ -569,7 +549,6 @@ object AsteriaTestCampaignBootstrap {
             )
         }
 
-        // 3) 把当前启用环境中可正常装配的武器/战机/货物放入仓储
         var weaponCount = 0
         for (spec in Global.getSettings().actuallyAllWeaponSpecs) {
             if (!ASTDDevContentSelector.isDevStorageWeapon(spec)) continue

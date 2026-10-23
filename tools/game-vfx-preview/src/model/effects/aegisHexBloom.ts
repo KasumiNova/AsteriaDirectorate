@@ -1,12 +1,5 @@
-/**
- * 六边形护盾绽放特效。
- *
- * 一个通用防护 / 命中反馈效果：圆形护盾边界、内部六向能量格、局部命中光斑与向外扩散的柔和辉光。
- * 可用于护盾命中、屏障展开、修复场或区域增益提示。
- */
 import type { EffectDefinition } from '../effectDefinition';
 
-/** 六边形护盾绽放的 fragment shader（不含公共头）。 */
 export const AEGIS_HEX_BLOOM_FRAGMENT_SHADER = `
 uniform float u_radius;
 uniform float u_thickness;
@@ -59,7 +52,6 @@ void main() {
 }
 `;
 
-/** 青色六边形护盾绽放特效定义。 */
 export const AEGIS_HEX_BLOOM: EffectDefinition = {
   id: 'aegis-hex-bloom',
   name: 'Aegis Hex Bloom',

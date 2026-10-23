@@ -36,7 +36,7 @@ number 段位按 00-共享基建 §3 预分配：电荷针刺 **9210**、重型�
 | tags | `astd_production` | |
 | groupTag / tech | `astd` / `弧光阵列` | |
 | primaryRoleStr | `SsI18n.t("weapon.$id.primaryRoleStr")` | |
-| customPrimary | `SsI18n.t("weapon.$id.tooltip.customPrimary")` | 5 个 `{%s}` 占位与 HL 五段一一对应（2026-07-29 字段分工铁律 + 占位规则；2026-09 修订：新增软辐能与 200% 耗散上限两项，4 段 → 5 段） |
+| customPrimary | `SsI18n.t("weapon.$id.tooltip.customPrimary")` | 5 个 `{%s}` 占位与 HL 五段一一对应（2026-07-29 字段分工规则 + 占位规则；2026-09 修订：新增软辐能与 200% 耗散上限两项，4 段 → 5 段） |
 | number | 9210 | |
 | projSpec | 见下 | |
 
@@ -101,7 +101,7 @@ object Desc_astd_heavy_charge_needle : LocalizedDescription("astd_heavy_charge_n
 
 ### 1.4 i18n 键清单（`ss-csv/src/main/resources/i18n/zh-cn.properties` 文件末尾集中追加）
 
-机制文案含 v2 写死数值（2026-07-29 字段分工铁律；01/02 块经用户亲自修正，数值已按用户裁定统一为 v2 显示值）：
+机制文案含 v2 写死数值（2026-07-29 字段分工规则；01/02 块经用户亲自修正，数值已按用户确认统一为 v2 显示值）：
 
 ```properties
 # Weapon 名称
@@ -129,16 +129,16 @@ HUD 文本不进 properties，走 `contents/data/strings/strings.json`（MOD 类
 
 ### 1.5 `special_items.csv` 条目（`contents/data/campaign/special_items.csv` 文件末尾追加，order 段位 9200/9201）
 
-**order 列口径（2026-07-29 实机发现，取代"留空待收口"旧口径）**：原版 CSV 解析强制 order 为数字，留空启动即 `JSONException`；各组按合并协议预分配段位直填，不再留空。
+**order 列规则（2026-07-29 实机发现，取代"留空待合并"旧规则）**：原版 CSV 解析强制 order 为数字，留空启动即 `JSONException`；各组按合并协议预分配段位直填，不再留空。
 
-量产件 P2 走单件蓝图（90 计划 §14），plugin params 用**裸武器 id**（2026-07-29 主代理裁决：反编译 `WeaponBlueprintItemPlugin.init` 证实 params 直接传 `getWeaponSpec(data)`，`weapon:` 前缀会导致 spec 为 null；原写 `weapon:<id>` 系误引蓝图包格式，已更正）；带 `single_bp` 标签时 params 必填（`ASTDDevContentSelector.SPECIAL_ITEM_PARAM_REQUIRED_TAGS/IDS` 核实），dev 仓储会自动投放：
+量产件 P2 走单件蓝图（90 计划 §14），plugin params 用**裸武器 id**（2026-07-29 主代理确认：反编译 `WeaponBlueprintItemPlugin.init` 证实 params 直接传 `getWeaponSpec(data)`，`weapon:` 前缀会导致 spec 为 null；原写 `weapon:<id>` 系误引蓝图包格式，已更正）；带 `single_bp` 标签时 params 必填（`ASTDDevContentSelector.SPECIAL_ITEM_PARAM_REQUIRED_TAGS/IDS` 核实），dev 仓储会自动投放：
 
 ```csv
 电荷针刺蓝图,astd_charge_needle_bp,"weapon_bp, single_bp, no_drop, no_drop_salvage",菀星设计局-星坠,,8000,1,0,,graphics/icons/cargo/blueprint_weapons.png,ui_chip_pickup,ui_weapon_bp_drop,com.fs.starfarer.api.campaign.impl.items.WeaponBlueprintItemPlugin,astd_charge_needle,使重工业设施能够制造“电荷针刺”。,9200
 重型电荷针刺蓝图,astd_heavy_charge_needle_bp,"weapon_bp, single_bp, no_drop, no_drop_salvage",菀星设计局-星坠,,15000,1,0,,graphics/icons/cargo/blueprint_weapons.png,ui_chip_pickup,ui_weapon_bp_drop,com.fs.starfarer.api.campaign.impl.items.WeaponBlueprintItemPlugin,astd_heavy_charge_needle,使重工业设施能够制造“重型电荷针刺”。,9201
 ```
 
-`no_drop, no_drop_salvage` 为 P6 前口径（P6 接入量产蓝图投放时摘除）。
+`no_drop, no_drop_salvage` 为 P6 前规则（P6 接入量产蓝图投放时摘除）。
 
 ---
 
@@ -152,11 +152,11 @@ HUD 文本不进 properties，走 `contents/data/strings/strings.json`（MOD 类
 |---|---|---|---|---|
 | `ChargeNeedleOnHitEffect` | 实现 `OnHitEffectPlugin` | 命中路由：护盾命中 → 淤积叠层 + 轻粒子；船体/装甲命中 → 概率泄放 EMP 电弧 | 两个 `.proj` 的 `onHitEffect` | `src/main/kotlin/cn/kasuminova/astd/combat/effect/arc/ChargeNeedleOnHitEffect.kt` |
 | `ChargeNeedleStacks` | 实现共享 `StackableBuff`（api/buff） | 目标舰淤积层数（浮点累加器）、`shieldUpkeepMult` 幂等刷新（乘区额外量 × 本帧折算系数）、按体型固定软辐能逐帧直写（**仅护盾开启期间产出**）、200% 耗散上限折算、HUD 维护、CONTINUOUS 衰减（当前层数 × 4%/s、关盾翻倍 8%/s、下限 2 层/s） | 经 `ShipAPI.buffHost()` 注册（Ship 级，id `astd_charge_needle_stacks`） | 同包 `ChargeNeedleStacks.kt` |
-| `ChargeNeedleShots` | 实现共享 `Buff`（非叠层，纯标记） | 记录泄放概率结算随机的 `callIndex`（00 §4.1 口径：Weapon 级复合键，seed 派生 `source.id*31 + slot.id`） | Weapon 级 Buff，id `astd_charge_needle_shots` | 同包 `ChargeNeedleStacks.kt` 内附属类 |
+| `ChargeNeedleShots` | 实现共享 `Buff`（非叠层，纯标记） | 记录泄放概率结算随机的 `callIndex`（00 §4.1 规则：Weapon 级复合键，seed 派生 `source.id*31 + slot.id`） | Weapon 级 Buff，id `astd_charge_needle_shots` | 同包 `ChargeNeedleStacks.kt` 内附属类 |
 | `ChargeNeedleTuning` | object（数值声明，对齐 `DifficultyTuningImpl` object 先例） | 五档查表 `ScalingTable` + 三锚点 `ScalingEntry` 常量 + `resolve(tuning, isPlayer, hullSize)` 取值 + 纯函数 `dissipationCapFactor(...)` / `decayPerSecond(...)` / `flatFluxForSize(...)` | 被 OnHit / Stacks 调用 | 同包 `ChargeNeedleTuning.kt` |
-| `ChargeNeedleVfx` | object（视觉静态入口，对齐 `ImpactStrikeFx` 惯例） | 护盾命中粒子、泄放电弧落点选取与 `spawnEmpArc` 调用 | 被 OnHit 调用 | 同包 `ChargeNeedleVfx.kt` |
+| `ChargeNeedleVfx` | object（视觉静态入口，对齐 `ImpactStrikeFx` 惯例） | 护盾命中粒子、泄放电弧目标位置选取与 `spawnEmpArc` 调用 | 被 OnHit 调用 | 同包 `ChargeNeedleVfx.kt` |
 
-便捷扩展（一行，放 `ChargeNeedleStacks.kt` 底部，不沉淀进公共 API——00 §1.3 约定）：
+便捷扩展（一行，放 `ChargeNeedleStacks.kt` 底部，不沉淀进公共 API，00 §1.3 约定）：
 
 ```kotlin
 fun ShipAPI.chargeNeedleStacks(): ChargeNeedleStacks? = getBuff(ChargeNeedleStacks.BUFF_ID) as? ChargeNeedleStacks
@@ -179,7 +179,7 @@ fun ShipAPI.chargeNeedleStacks(): ChargeNeedleStacks? = getBuff(ChargeNeedleStac
 （体型软辐能行为三锚点 LINEAR，k3/k4 由插值给出，故表中不列；`PER_STACK` 三锚点 1/2/5% 与五档 1~5% 逐档重合。）
 
 固定不缩放：层数绝对上限 200、消散速率（当前层数 × 4%/s、关盾翻倍 8%/s、下限 2 层/s）、产出上限倍率 200%、泄放基准 EMP 100。
-初始化锚点历史：旧三锚点 `DISCHARGE_CHANCE = (0.25, 0.40, 1.00)` / `DISCHARGE_EMP_MULT = (1.00, 1.75, 4.00)` 与旧「安全闸 50% / 衰减 10 层/s」口径作废。
+初始化锚点历史：旧三锚点 `DISCHARGE_CHANCE = (0.25, 0.40, 1.00)` / `DISCHARGE_EMP_MULT = (1.00, 1.75, 4.00)` 与旧「安全闸 50% / 衰减 10 层/s」规则作废。
 
 调用点：`ChargeNeedleOnHitEffect.onHit` 内每次命中调用一次
 
@@ -187,7 +187,7 @@ fun ShipAPI.chargeNeedleStacks(): ChargeNeedleStacks? = getBuff(ChargeNeedleStac
 val values = ChargeNeedleTuning.resolve(DifficultyTuningImpl, isPlayer = projectile.source?.owner == 0, ship.hullSize)
 ```
 
-`resolve`：玩家（owner == 0，`CombatEntityAPI.getOwner()` 已核实）固定取 `v2`；否则 `tuning.value(...)`（查表项五档精确取档、锚点项 LINEAR 插值）。`hullSize` 只影响固定软辐能分档（战机/DEFAULT 按护卫舰档，null 兜底并 WARN 一次）。
+`resolve`：玩家（owner == 0，`CombatEntityAPI.getOwner()` 已核实）固定取 `v2`；否则 `tuning.value(...)`（查表项五档精确取档、锚点项 LINEAR 插值）。`hullSize` 只影响固定软辐能分档（战机/DEFAULT 按护卫舰档，null 默认处理并 WARN 一次）。
 
 ### 2.3 核心逻辑伪代码
 
@@ -206,7 +206,7 @@ if (shieldHit) {
     host = ship.buffHost()                          // 共享 BuffAccess 扩展，惰性注册 BuffTickPlugin
     buff = host.find(BUFF_ID) as? ChargeNeedleStacks
         ?: ChargeNeedleStacks(ship, engine, host).also { host.register(it) }
-    buff.perStack = values.perStack                 // 多攻击者时后命中者口径覆盖（已文档化）
+    buff.perStack = values.perStack                 // 多攻击者时后命中者规则覆盖（已文档化）
     buff.flatPerStack = values.flatFluxPerStack     // 同上，按目标体型 + 难度查表
     buff.addStacks(1)                               // 内部走绝对上限 200 的 clamp（见下）
     if (projectile.source == engine.playerShip) buff.showOnPlayerHud = true
@@ -222,11 +222,11 @@ if (shieldHit) {
 }
 ```
 
-**淤积 Buff（ChargeNeedleStacks，StackableBuff 契约）**：
+**淤积 Buff（ChargeNeedleStacks，StackableBuff 行为约束）**：
 
 ```
 成员：ship / engine / host 引用（创建时捕获）、stacksFloat: Float、perStack: Float、flatPerStack: Float、
-      showOnPlayerHud: Boolean、lastFactor: Float（本帧折算系数，HUD 读数同口径）
+      showOnPlayerHud: Boolean、lastFactor: Float（本帧折算系数，HUD 读数同规则）
 id = "astd_charge_needle_stacks"；lifetime = HOST_BOUND；decayMode = CONTINUOUS
 stacks = floor(stacksFloat)；maxStacks = 200   // 绝对上限（2026-09：取消耗散安全闸动态 clamp）
 
@@ -242,7 +242,7 @@ advance(amount):
     factor = dissipationCapFactor(耗散终值, upkeepExtra, flatPerSec)   // min(1, 2 × 耗散 / 两者之和)
     stat.modifyMult(MOD_ID, 1 + stacks * perStack * factor)  // 幂等，modifierId 固定
     if (flatPerSec * factor > 0f) ship.fluxTracker.increaseFlux(flatPerSec * factor * amount, false)  // 软辐能
-    HUD：% 与软辐能读数均乘本帧 factor（与实际产出同口径）
+    HUD：% 与软辐能读数均乘本帧 factor（与实际产出同规则）
       if (showOnPlayerHud && engine.playerShip != null)
          maintainPlayerStatus(HUD_KEY, ICON, 标题, "目标 N 层，护盾维持 +X％、软辐能 +F/s", negative = false)
       if (ship == engine.playerShip)
@@ -255,7 +255,7 @@ onRemove(): ship.mutableStats.shieldUpkeepMult.unmodifyMult(MOD_ID)          // 
 **泄放（ChargeNeedleVfx.discharge）**：
 
 ```
-落点 = ship.allWeapons 中随机一件非装饰武器的位置（Misc.random——纯视觉选取，00 §4.1 允许）；
+目标位置 = ship.allWeapons 中随机一件非装饰武器的位置（Misc.random，纯视觉选取，00 §4.1 允许）；
        无武器时退 ship.location
 engine.spawnEmpArc(source, from, ship, anchorEntity, DamageType.ENERGY,
                    dam = 0f, emp = emp, maxRange = 1000f, soundId = null,
@@ -270,8 +270,8 @@ engine.spawnEmpArc(source, from, ship, anchorEntity, DamageType.ENERGY,
 
 | 机制 | 通道 | 说明 |
 |---|---|---|
-| 淤积层数（攻击方=玩家） | 左侧状态栏 `maintainStatusForPlayerShip`，negative=false，icon `graphics/hullmods/astd_arc_loop_interface.png` | 层数、维持 +% 与软辐能 +F/s 实时刷新（两项读数均已乘本帧 200% 折算系数，与实际产出同口径）；目标舰不可见时不显示 |
-| 淤积层数（受击方=玩家） | 同上，独立 key，negative=true | 玩家被敌版电针命中时感知自身护盾维持与软辐能被抬升 |
+| 淤积层数（攻击方=玩家） | 左侧状态栏 `maintainStatusForPlayerShip`，negative=false，icon `graphics/hullmods/astd_arc_loop_interface.png` | 层数、维持 +% 与软辐能 +F/s 实时刷新（两项读数均已乘本帧 200% 折算系数，与实际产出同规则）；目标舰不可见时不显示 |
+| 淤积层数（受击方=玩家） | 同上，独立 key，negative=true | 玩家被敌版电针命中时察觉自身护盾维持与软辐能被抬升 |
 | 护盾命中 | 冷蓝白 hitParticle（`addHitParticle`/`addSmoothParticle`，量级对齐 HighFluxShieldPressure 克制档） | 每发最多 2 粒，20 发/s 不糊屏 |
 | 电荷泄放 | `spawnEmpArc` 真实电弧（视觉+结算一体） | **不加浮字**：v2 30% × 20 发/s ≈ 6 次/s，浮字必然糊屏；电弧本身即最强反馈。此取舍在此登记 |
 
@@ -280,14 +280,14 @@ engine.spawnEmpArc(source, from, ship, anchorEntity, DamageType.ENERGY,
 `ChargeNeedleTuning.dissipationCapFactor(dissipation, upkeepExtra, flatExtra): Float`（纯函数，产出上限唯一入口）：
 
 - 语义：维持乘区额外量 + 固定软辐能之和 ≤ `DISSIPATION_CAP_MULT (2f)` × 目标最终耗散 → `min(1, 2 × dissipation / (upkeepExtra + flatExtra))`，两项按同一 factor 同步压缩；不超上限恒 1.0。
-- `dissipation ≤ 0`（耗散被特殊机制压没的异常态）：返回 0——产出整体压没（乘区回 1、软辐能不写），**WARN 一次/船**（由 `ChargeNeedleStacks.warnOnAbnormalBranches` 承担）；禁止静默恒零无日志。
-- 两项之和 ≤ 0（层数为 0 或配置全零）：返回 1——无产出无需压缩。
+- `dissipation ≤ 0`（耗散被特殊机制压没的异常态）：返回 0，产出整体压没（乘区回 1、软辐能不写），**WARN 一次/船**（由 `ChargeNeedleStacks.warnOnAbnormalBranches` 承担）；禁止无日志恒零。
+- 两项之和 ≤ 0（层数为 0 或配置全零）：返回 1，无产出无需压缩。
 - 恰等上限边界（`2 × 800 = 1200 + 400`）按 `min(1, 1) = 1` 含端。
 - 层数上限为绝对上限 `ABSOLUTE_MAX_STACKS = 200`：超上限部分在 `addStacks` 处 clamp，不再按层数裁闸（2026-09 修订取代旧「耗散 50% 安全闸 clamp」）。
-- `perStack ≤ 0`：**记 ERROR 一次/船**——难度配置错误，机制不退化（乘区退化为 1+0）。
+- `perStack ≤ 0`：**记 ERROR 一次/船**，难度配置错误，机制不退化（乘区退化为 1+0）。
 - `decayPerSecond(stacks, shieldOn)`：当前层数 × 4%/s（护盾关闭时翻倍 8%/s）、下限 2 层/s；`stacks ≤ 0` 恒 0（无层可散），无除零路径。
-- `flatFluxForSize(hullSize)`：护卫/驱逐/巡洋/主力四档；战机/DEFAULT 按护卫舰档（辐能池体量相当，设计裁定）；`null` 体型属配置异常的上游遗漏——按护卫舰档兜底并 **WARN 一次**（不静默）。
-- `projectile.source == null`（脚本生成的游离弹）：按非玩家口径取值（`source?.owner == 0` 为 false），泄放 `spawnEmpArc` 的 source 形参传 null 由原版兜底（原版 API 允许 null source——若实机异常则以 `projectile.weapon?.ship` 再兜底并记 WARN，不做静默吞异常）。
+- `flatFluxForSize(hullSize)`：护卫/驱逐/巡洋/主力四档；战机/DEFAULT 按护卫舰档（辐能池体量相当，设计确认）；`null` 体型属配置异常的上游遗漏，按护卫舰档默认处理并 **WARN 一次**。
+- `projectile.source == null`（脚本生成的游离弹）：按非玩家规则取值（`source?.owner == 0` 为 false），泄放 `spawnEmpArc` 的 source 形参传 null 由原版默认处理（原版 API 允许 null source，若实机异常则以 `projectile.weapon?.ship` 再默认处理并记 WARN，异常必须记 WARN）。
 - Buff 宿主换装/死亡：HOST_BOUND + `isHostValid` 心跳回收（共享 BuffTickPlugin），`onRemove` 恰一次 unmodify，无 stat 残留（固定软辐能为逐帧直写，无持久状态）。
 
 ---
@@ -301,7 +301,7 @@ engine.spawnEmpArc(source, from, ship, anchorEntity, DamageType.ENERGY,
 "astd_heavy_charge_needle_shot" to { simpleProjectileVfx("astd_heavy_charge_needle_shot", chargeNeedlePalette(), width = 9f, length = 165f) },
 ```
 
-- 主色：ARC 冷蓝白（全局美术约定）。按 00 §3 合并协议，**新共享调色板只允许收口人添加**——本组分支内内联私有函数：
+- 主色：ARC 冷蓝白（全局美术约定）。按 00 §3 合并协议，**新共享调色板只允许合并负责人添加**，本组分支内内联私有函数：
   `private fun chargeNeedlePalette() = VfxPalette(ASTDColor(0.55f, 0.78f, 1f, 0.9f), TEX_SMOOTH, TEX_ZAPPY)`
 - 尺寸：小型 width≈6 / length≈135（对齐 spc3 现有档），中型 width≈9 / length≈165（90 计划 §1.4）。
 - 拖尾主体走 texTrail（smooth 主带），弹头 bloom 网格恒在，ribbon=false（密集箭弹不挂电弧副带，避免 20 发/s 下副带噪声）。
@@ -321,27 +321,27 @@ engine.spawnEmpArc(source, from, ship, anchorEntity, DamageType.ENERGY,
 
 1. **五档精确取档**：k_s=1/2/5 下 resolve（非玩家）→ perStack = 0.01/0.02/0.05、flatFluxPerStack（护卫舰）= 0.5/1.5/2.5、chance = 0.20/0.30/0.60、empMult = 1.00/1.50/3.00（±1e-6）。
 2. **玩家固定 v2**：k_s=1 与 k_s=5 下 resolve(isPlayer=true) → 四项恒为 v2。
-3. **非整数 k_s 就近取档 + 体型分档**：k_s=3.4 → 查表项取 v3（不插值），k_s=3.5 → half-up 取 v4；perStack 仍走 `ScalingMap.LINEAR` 插值；驱逐/巡洋/主力档 v2 = 3/4.5/6，`null` 体型按护卫舰档兜底并 WARN 一次。
+3. **非整数 k_s 就近取档 + 体型分档**：k_s=3.4 → 查表项取 v3（不插值），k_s=3.5 → half-up 取 v4；perStack 仍走 `ScalingMap.LINEAR` 插值；驱逐/巡洋/主力档 v2 = 3/4.5/6，`null` 体型按护卫舰档默认处理并 WARN 一次。
 
 `ChargeNeedleCapTest`（纯函数 `dissipationCapFactor`）：
 
 4. **总和不超上限原样放行**：dissipation=800（上限 1600）、upkeepExtra=72、flatExtra=27 → 1.0。
 5. **超上限两项按比例同步压缩**：dissipation=800、2400+800=3200 → 0.5。
 6. **两项之和为零**（无产出）→ 1.0。
-7. **dissipation=0 → 0**（异常压没分支，不静默恒零——返回值断言 + 日志路径由调用侧 WARN 承担）。
+7. **dissipation=0 → 0**（异常压没分支，恒零有日志，返回值断言 + 日志路径由调用侧 WARN 承担）。
 8. **恰等上限含端**：dissipation=800、1200+400=1600 → `min(1, 1) = 1`。
 9. **负产出输入** → 按无产出放行（1.0）。
 
-`ChargeNeedleStacksMathTest`（浮点累加器 + `MutableStat` 真对象——`MutableStat` 为具体类，直接 `MutableStat(1f)` 构造，无反射无 fake）：
+`ChargeNeedleStacksMathTest`（浮点累加器 + `MutableStat` 真对象，`MutableStat` 为具体类，直接 `MutableStat(1f)` 构造，无反射无 fake）：
 
-10. **叠层 clamp**：连续 addStacks 超上限 200 后返回值 = 实际增量（00 Buff API 契约语义在本件的具体化）。
-11. **CONTINUOUS 衰减**：`decayPerSecond` = max(层数×4%（关盾 8%）, 2) 层/s——9 层时 `advance(0.1f)` 恰 -0.2 层、`advance(0.05f)×3` 累计 -0.3 → 层数视图 floor 序列 [8, 8, 8]；100 层开盾时 `advance(0.5f)` 恰 -2 层、关盾时恰 -4 层；衰减不穿 0 并经 host 移除。
+10. **叠层 clamp**：连续 addStacks 超上限 200 后返回值 = 实际增量（00 Buff API 行为约束语义在本件的具体化）。
+11. **CONTINUOUS 衰减**：`decayPerSecond` = max(层数×4%（关盾 8%）, 2) 层/s，9 层时 `advance(0.1f)` 恰 -0.2 层、`advance(0.05f)×3` 累计 -0.3 → 层数视图 floor 序列 [8, 8, 8]；100 层开盾时 `advance(0.5f)` 恰 -2 层、关盾时恰 -4 层；衰减不穿 0 并经 host 移除。
 12. **维持乘区 + 固定软辐能逐帧直写与回收**：`advance` 后 `shieldUpkeepMult.modifiedValue = 1 + 层数 × perStack`（不超闸 factor=1）；`fluxTracker.increaseFlux(stacks × flatPerStack × factor × amount, false)` 按帧直写软辐能；`onRemove` unmodify 后回 1.0 无残留。
 13. **超上限压缩与耗散为零**：dissipation=10 时两项同因子（20/99）压缩（乘区与软辐能同步）；dissipation=0 时乘区回 1、`increaseFlux` 完全不被调用。
 
 `ChargeNeedleDischargeTest`：
 
-14. **泄放判定边界**：`shouldDischarge(roll, chance)`——chance=0 恒 false；chance=1 时 roll=0.999 true；roll == chance 边界 false（`<` 口径）；roll 由固定 seed 的 `CombatRandom` 序列喂入（共享基建件，此处只断言映射，不重复测基建）。
+14. **泄放判定边界**：`shouldDischarge(roll, chance)`，chance=0 恒 false；chance=1 时 roll=0.999 true；roll == chance 边界 false（`<` 规则）；roll 由固定 seed 的 `CombatRandom` 序列喂入（共享基建件，此处只断言映射，不重复测基建）。
 
 `ChargeNeedleVfxRegistrationTest`（真实调用管线入口）：
 
@@ -371,22 +371,22 @@ engine.spawnEmpArc(source, from, ship, anchorEntity, DamageType.ENERGY,
 | `ss-csv/.../i18n/zh-cn.properties` | `weapon.astd_charge_needle.*`、`weapon.astd_heavy_charge_needle.*`、`desc.astd_charge_needle.*`、`desc.astd_heavy_charge_needle.*`；全部集中在文件末尾，不插中间、不动其他武器键 |
 | `ss-csv/.../strings/Catalog_Descriptions.kt` | WEAPON 分组尾部（`Desc_astd_psi_omega` 之后）两行 |
 | `ss-csv/.../weapondata/arc/Catalog_WeaponData_ARC.kt` | 文件末尾两个 object；number 段位 **9210/9211**（预分配，不与他组冲突） |
-| `contents/data/campaign/special_items.csv` | 文件末尾两行；`order` 段位 **9200/9201**（原版强制数字，§1.5 口径） |
+| `contents/data/campaign/special_items.csv` | 文件末尾两行；`order` 段位 **9200/9201**（原版强制数字，§1.5 规则） |
 | `src/.../renderer/projectile/driver/ProjectileVfxSpecs.kt` | builders map 末尾两条；`chargeNeedlePalette()` 内联字面量（不新增共享调色板）；构建函数追加在调色板函数前 |
-| `contents/data/strings/strings.json` | **00 协议未覆盖，本组补充登记**：HUD 键 `ui.charge_needle.status.*`（title/desc/victim_title/victim_desc 四键），MOD 类对象内末尾追加；收口人按 ui.<武器> 字典序归位。建议在 00 §3 表格补行 |
+| `contents/data/strings/strings.json` | **00 协议未覆盖，本组补充登记**：HUD 键 `ui.charge_needle.status.*`（title/desc/victim_title/victim_desc 四键），MOD 类对象内末尾追加；合并负责人按 ui.<武器> 字典序归位。建议在 00 §3 表格补行 |
 
 新增无冲突文件：`contents/data/weapons/astd_charge_needle.wpn`、`astd_heavy_charge_needle.wpn`；`src/.../combat/effect/arc/ChargeNeedle*.kt` ×4；测试目录同包。
 
 ### 5.2 对共享基建的依赖（只依赖、不改签名）
 
-- **Buff API**（00 §1）：`Buff` / `StackableBuff` / `BuffHost` / `BuffAccess` / `BuffTickPlugin`——硬阻塞，必须先进 main。
-- **CombatRandom**（00 §4.1）：泄放概率结算随机——量小，随 Buff API 同 PR 落地即可。
+- **Buff API**（00 §1）：`Buff` / `StackableBuff` / `BuffHost` / `BuffAccess` / `BuffTickPlugin`，硬阻塞，必须先进 main。
+- **CombatRandom**（00 §4.1）：泄放概率结算随机，量小，随 Buff API 同 PR 实现即可。
 - **HUD 通道**（00 §4.2）：`maintainStatusForPlayerShip` 样板参照 `LensMarkStatusBar`，无代码依赖。
 - 不需要 ConeImpactHandler。
 
 ### 5.3 实现顺序内的位置
 
-90 计划 §12 第 1 位（建立 OnHitEffect + 目标舰 Buff + shieldUpkeepMult 链路，为重型离子脉冲提供 OnHit 模式样板）；但受 Buff API 基建 PR 阻塞——**基建合入 main 后第一个开工的武器组**。组内顺序：Tuning/纯函数 + 单测 → Stacks + OnHit + Vfx → 数据面（ss-csv 生成 + .wpn + i18n + 蓝图）→ VfxSpec 登记 → 烟测。
+90 计划 §12 第 1 位（建立 OnHitEffect + 目标舰 Buff + shieldUpkeepMult 链路，为重型离子脉冲提供 OnHit 模式样板）；但受 Buff API 基建 PR 阻塞，**基建合入 main 后第一个开工的武器组**。组内顺序：Tuning/纯函数 + 单测 → Stacks + OnHit + Vfx → 数据面（ss-csv 生成 + .wpn + i18n + 蓝图）→ VfxSpec 登记 → 烟测。
 
 ---
 
@@ -398,15 +398,15 @@ engine.spawnEmpArc(source, from, ship, anchorEntity, DamageType.ENERGY,
 - [ ] 两个 `.proj`：`onHitEffect` 指向 `ChargeNeedleOnHitEffect`，`onFireEffect` 指向 dispatcher，原版弹体隐藏四件套齐全（length/width=2、双色 alpha=0、BUtil_NONE、fadeTime=0.2）。
 - [ ] 两个 `.wpn`：size SMALL/MEDIUM、projectileSpecId 正确、双 onFire/everyFrame 挂载、sound `needler_fire`。
 - [ ] zh-cn.properties 键齐全且 tip 为设计案定稿原文；desc.text1/notes 已评审确认；重型 notes 复用小型。
-- [ ] special_items.csv 两行 params = 裸武器 id（§1.5 裁决口径），order = 9200/9201。
+- [ ] special_items.csv 两行 params = 裸武器 id（§1.5 确认规则），order = 9200/9201。
 
 **代码面**
 
 - [ ] 无 `XxxService/Manager/Controller/Runtime` 类名；无反射；无空 catch；无占位实现。
 - [ ] 叠层走 `StackableBuff` 接口与 `ShipAPI.buffHost()`，未自建 customData 状态表；Weapon 级 callIndex 走复合键 Buff。
 - [ ] 玩家固定 v2 取值在 OnHit 每次命中处调用（非缓存，含目标 `hullSize` 分档）；泄放随机走 `CombatRandom`，同帧不二次取值。
-- [ ] `dissipationCapFactor` 分支（不超上限放行/超限同步压缩/两项为零/`dissipation ≤ 0`/恰等上限）与 WARN·ERROR 日志落地；层数上限为绝对上限 200。
-- [ ] 固定软辐能按体型分档（护卫/驱逐/巡洋/主力）、仅护盾开启期间逐帧 `increaseFlux(soft)` 直写（关盾停产且消散翻倍）；HUD 读数与实际产出同口径（乘本帧折算系数）。
+- [ ] `dissipationCapFactor` 分支（不超上限放行/超限同步压缩/两项为零/`dissipation ≤ 0`/恰等上限）与 WARN·ERROR 日志实现；层数上限为绝对上限 200。
+- [ ] 固定软辐能按体型分档（护卫/驱逐/巡洋/主力）、仅护盾开启期间逐帧 `increaseFlux(soft)` 直写（关盾停产且消散翻倍）；HUD 读数与实际产出同规则（乘本帧折算系数）。
 - [ ] `onRemove` unmodify 与心跳回收链路完整；HUD 双向（攻击方/受击方）维护。
 
 **特效面**

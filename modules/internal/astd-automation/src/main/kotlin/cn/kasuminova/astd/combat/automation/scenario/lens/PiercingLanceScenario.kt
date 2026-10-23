@@ -21,12 +21,9 @@ import org.lwjgl.opengl.Display
 import org.lwjgl.util.vector.Vector2f
 
 /**
- * 贯星之矛场景（规格 09 §4.2 烟测检查点）。
- *
- * 拆分自 ASTDAutomationCombatPlugin 的同名 if-else 分支，相位机/断言/证据写出口径原样迁移。
+ * 贯星之矛场景。
  */
 class PiercingLanceScenario : AbstractAutomationScenario() {
-    // ==== piercing lance 场景状态（相位机 MOUNT → CYCLE → CLUSTER → ENEMY_SCALE → COMPLETED） ====
     private var plPhase = PL_PHASE_MOUNT
     private var plPhaseStartedAt = 0f
 
@@ -76,8 +73,8 @@ class PiercingLanceScenario : AbstractAutomationScenario() {
         val engine = ctx.engine
         engine.setDoNotEndCombat(true)
         lockPlCamera(engine)
-        // 锥面破片浮字与敌版三档仅 devMode 渲染（2026-07-29 审批裁定先例）：本场景为 dev-only 舞台，
-        // 开启 devMode 以目检命中浮字/大光柱/锥面特效（进程被早退杀掉，设置不落盘）。
+        // 锥面破片浮字与敌版三档仅 devMode 渲染：本场景为 dev-only 舞台，
+        // 开启 devMode 以目检命中浮字/大光柱/锥面特效（进程被早退杀掉，设置不会保存到磁盘）。
         Global.getSettings().isDevMode = true
         ctx.writeDiagnostics("CombatReady")
         ctx.writeTelemetry("CombatReady", findPlShipA(engine), null)
@@ -122,7 +119,7 @@ class PiercingLanceScenario : AbstractAutomationScenario() {
         }
         val displayAspect = displayWidth.toFloat() / displayHeight.toFloat()
         val visibleWidth = PL_CAMERA_VISIBLE_HEIGHT * displayAspect
-        // 敌版三档相位起镜头切到东侧敌版舞台（x≈2500），此前锁定西侧主舞台。
+        // 敌版三档相位起镜头切到东侧敌版舞台（x≈2500），其余相位锁定西侧主舞台。
         val center = if (plPhase == PL_PHASE_ENEMY_SCALE || plPhase == PL_PHASE_COMPLETED) {
             PL_CAMERA_CENTER_ENEMY
         } else {
@@ -178,10 +175,10 @@ class PiercingLanceScenario : AbstractAutomationScenario() {
     }
 
     /**
-     * 舞台保活与站位（范式同 stabilizeSmShips）：八舰逐帧奶 + 辐能清零 + 钉死锚点 +
+     * 舞台保活与站位（范式同 stabilizeSmShips）：八舰逐帧回血 + 辐能清零 + 钉死锚点 +
      * force fire 独占驱动（autofire 关闭）。E2/E3 与 D1/D2 锚点随相位切换（CYCLE 集群靶停远场，
      * CLUSTER 起并入弹道线；ENEMY_SCALE 起僚舰并入敌版弹道线）。
-     * 敌方开火带部署免疫闸（GD/SS/HIP/SM 实机判例：reserves 手动 spawn 舰船部署后数秒内脚本
+     * 敌方开火带部署免疫闸（Starsector 0.98 中 reserves 手动 spawn 舰船部署后数秒内脚本
      * applyDamage 可能全额无效）。
      */
     private fun stabilizePlShips(engine: CombatEngineAPI, playerFire: Boolean, enemyFire: Boolean) {
@@ -208,7 +205,7 @@ class PiercingLanceScenario : AbstractAutomationScenario() {
                 weapon.setForceFireOneFrame(playerFire)
             }
         }
-        // B：能量槽装配证明件，全程不开火（autofire 关闭 + 不 force fire），仅钉锚点奶血。
+        // B：能量槽装配证明件，全程不开火（autofire 关闭 + 不 force fire），仅钉锚点回血。
         if (shipB != null && !shipB.isHulk) {
             stabilizeShip(shipB, PL_B_ANCHOR, 0f, allowFire = false, preserveAI = true)
             shipB.hitpoints = shipB.maxHitpoints
@@ -261,8 +258,8 @@ class PiercingLanceScenario : AbstractAutomationScenario() {
     }
 
     /**
-     * 贯星舞台外来实体清扫：第三方 mod 会向 mission 战斗注入中立战机/导弹（实机判例：中立 sarissa
-     * 战机群 owner=100 + 归属不明导弹 owner=1 游荡进弹道线，2026-07-29 两次实机各 9/5 个锥面连带）。
+     * 贯星舞台外来实体清扫：第三方 mod 会向 mission 战斗注入中立战机/导弹（如中立 sarissa
+     * 战机群 owner=100 与归属不明导弹 owner=1 游荡进弹道线造成锥面连带）。
      * 本场景全部自有舰船仅为 onslaught/champion/enforcer 三舰体、无任何战机与导弹武器，
      * 故每帧移除此三舰体以外的舰船（含战机）与全部导弹，保证 CYCLE「锥内零连带」舞台语义确定性。
      */
@@ -575,7 +572,7 @@ class PiercingLanceScenario : AbstractAutomationScenario() {
                             plScaleFpsWallStartNanos = System.nanoTime()
                         }
                     } else {
-                        // 破晓档：僚舰必须被锥面波及（80°/600su 放大证据）+ 帧率采样收口。
+                        // 破晓档：僚舰必须被锥面波及（80°/600su 放大证据）+ 帧率采样结束。
                         val wallSeconds = (System.nanoTime() - plScaleFpsWallStartNanos) / 1_000_000_000f
                         if (wallSeconds > 0f) plScaleFps = plScaleFpsTicks / wallSeconds
                         when {
@@ -670,7 +667,7 @@ class PiercingLanceScenario : AbstractAutomationScenario() {
         json.appendLine("  \"runtimeElapsedSeconds\": 0,")
         json.appendLine("  \"runtimeTrackedCount\": ${vfxTelemetry.trackedCount},")
         json.appendLine("  \"runtimeLastProjectileSpecId\": ${jsonString(vfxTelemetry.lastProjectileSpecId)},")
-        // ---- 机制证据（规格 09 §4.2 烟测检查点）----
+        // 机制证据
         json.appendLine("  \"plPhase\": \"$plPhase\",")
         json.appendLine("  \"plLanceASlotId\": ${jsonString(plLanceA?.slot?.id)},")
         json.appendLine("  \"plLanceASlotType\": ${jsonString(plLanceA?.slot?.weaponType?.name)},")
@@ -706,7 +703,7 @@ class PiercingLanceScenario : AbstractAutomationScenario() {
     }
 
     private companion object {
-        // 贯星之矛场景：相位机、锚点与期望证据（规格 09 §4.2 烟测检查点）。
+        // 贯星之矛场景：相位机、锚点与期望证据。
         private const val PL_PHASE_MOUNT = "MOUNT"
         private const val PL_PHASE_CYCLE = "CYCLE"
         private const val PL_PHASE_CLUSTER = "CLUSTER"
@@ -750,7 +747,7 @@ class PiercingLanceScenario : AbstractAutomationScenario() {
         private val PL_CAMERA_CENTER_ENEMY = Vector2f(2500f, 100f)
         private const val PL_CAMERA_VISIBLE_HEIGHT = 1500f
 
-        // MOUNT 相位校验：射程 1000 / 冷却 5s / OP 30 / no_drop 两件套（weapon_data.csv 口径）。
+        // MOUNT 相位校验：射程 1000 / 冷却 5s / OP 30 / no_drop 两件套（weapon_data.csv 数值）。
         private const val PL_MOUNT_SETTLE_SECONDS = 1.0f
         private const val PL_EXPECT_RANGE = 1000f
         private const val PL_RANGE_TOLERANCE = 1f
@@ -771,7 +768,7 @@ class PiercingLanceScenario : AbstractAutomationScenario() {
         private const val PL_CYCLE_INTERVAL_MIN = 6.0f
         private const val PL_CYCLE_INTERVAL_MAX = 8.5f
 
-        // CLUSTER：单次锥面结算命中 ≥2（E2+E3 并入弹道线）+ 破片浮字 ≥2 + 本体豁免契约零破坏。
+        // CLUSTER：单次锥面结算命中 ≥2（E2+E3 并入弹道线）+ 破片浮字 ≥2 + 本体豁免规则零破坏。
         private const val PL_CLUSTER_MIN_CONE_HITS = 2
 
         // ENEMY_SCALE：敌版三档逐档（installScaleForTests 1/2/5 → 半角 20/25/40、锥长 300/375/600、伤害 2500/3125/5000）。
@@ -781,11 +778,11 @@ class PiercingLanceScenario : AbstractAutomationScenario() {
         private val PL_SCALE_EXPECTED_DAMAGE = floatArrayOf(2500f, 3125f, 5000f)
         private const val PL_SCALE_TOLERANCE = 0.01f
 
-        // 敌方开火部署免疫闸（GD/SS/HIP/SM 实机判例同款）。
+        // 敌方开火部署免疫闸（同 GD/SS/HIP/SM 场景）。
         private const val PL_ENEMY_SETTLE_SECONDS = 2.0f
         private const val PL_MIN_FPS = 45f
 
-        // COMPLETED 截图门控：锥面结算事件近 2.5s 内发生才上报（大光柱/锥面/浮字入帧）；保底舞台超时。
+        // COMPLETED 截图门控：锥面结算事件近 2.5s 内发生才上报（大光柱/锥面/浮字入帧）；舞台超时作为保险。
         private const val PL_COMPLETED_EVENT_WINDOW = 2.5f
         private const val PL_COMPLETED_STAGE_TIMEOUT = 30f
         private const val PL_PHASE_TIMEOUT = 60f

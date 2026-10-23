@@ -21,15 +21,6 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/**
- * 共用锥面 VFX 的入参防线、错峰调度与驱动生命周期测试（§10.9 v4.1：刺束吞并为子节点）：
- * - spawn 入参防线：非法 length/duration 记 WARN 且不注册插件；合法注册一次性驱动；
- * - 扩张弧调度：advance 跨过阈值后每道恰好生成一次、不重复；
- * - t=0 层：闪光 2 颗 vanilla 粒子、刺束子节点 v2.2 档针数域与零延迟段激活
- *   （兜底链退役后 headless 实体缺席不再落 vanilla 粒子）；
- * - 碎片三批（v4.2 SpriteEntity 实例化）：跨阈值累计 6+8+4=18 实例且幂等、灌批当帧激活；
- * - OneShotVfxPlugin：暂停不推进、到期 detach + removePlugin 恰好一次。
- */
 class ConeImpactVfxTest {
     private val captures = mutableListOf<WarnCapture>()
 
@@ -60,8 +51,6 @@ class ConeImpactVfxTest {
         expandSeconds = expandSeconds,
         fadeOutSeconds = fadeOutSeconds,
     )
-
-    // ---- spawn 入参防线与驱动注册 ----
 
     @Test
     fun `spawn registers a one shot driver for valid spec`() {
@@ -107,8 +96,6 @@ class ConeImpactVfxTest {
         assertTrue(capture.messages().any { it.contains("fadeOutSeconds 越界") }, "必须记 WARN: ${capture.messages()}")
     }
 
-    // ---- 扩张弧调度（v4.3 起由子节点 ConeArcComponent 承载）----
-
     @Test
     fun `advance fires each arc exactly once across thresholds`() {
         val engine = mock(CombatEngineAPI::class.java)
@@ -128,8 +115,6 @@ class ConeImpactVfxTest {
         root.onAttach(frameCtx(engine, host, 0f, 0.02f))
         assertEquals(4, root.arcComponent.arcs.size, "弧子节点必须持有四道弧")
 
-        // 逐帧推进跨过全部弧阈值（子节点内部错峰 t=+0.03/0.07/0.11/0.15），四道弧各恰好激活一次
-        // （headless 实体缺席记 WARN，activated 置位）。
         root.advance(frameCtx(engine, host, 0.06f, 0.06f), 0.06f)
         assertEquals(1, root.arcComponent.arcs.count { it.activated }, "跨 0.03 恰好激活第 1 道")
         root.advance(frameCtx(engine, host, 0.12f, 0.06f), 0.06f)
@@ -137,14 +122,10 @@ class ConeImpactVfxTest {
         root.advance(frameCtx(engine, host, 0.20f, 0.08f), 0.08f)
         assertEquals(4, root.arcComponent.arcs.count { it.activated }, "跨 0.15 四道全部激活")
 
-        // 继续推进不得重复激活（布尔标记位幂等）；树寿命内持续验证。
         root.advance(frameCtx(engine, host, 0.30f, 0.10f), 0.10f)
         assertEquals(4, root.arcComponent.arcs.count { it.activated }, "跨阈值后弧不得重复触发")
     }
 
-    // ---- t=0 层（闪光 / 刺束簇）与三角碎片 ----
-
-    /** 构造一帧渲染上下文（驱动错峰阈值用：elapsed 为树已存活秒数）。 */
     private fun frameCtx(engine: CombatEngineAPI, host: PointHost, elapsed: Float, amount: Float) = RenderContextImpl(
         engine = engine,
         host = host,
@@ -184,20 +165,14 @@ class ConeImpactVfxTest {
 
         root.onAttach(frameCtx(engine, host, 0f, 0.02f))
 
-        // 刺束子节点（v4.1 吞并）：v4.4 起针数由张角推导——halfAngle=40° → arc=64° →
-        // round(6.4 × rand(2,3)) = 13~19；零延迟段 attach 即激活
-        // （headless 实体缺席记 WARN，activated 置位、参数照常；兜底链退役后不再落 vanilla 粒子）。
         assertTrue(
             root.sprayComponent.needles.size in 13..19,
             "v4.4 动态针数域（arc=64° → 13~19）: ${root.sprayComponent.needles.size}",
         )
         assertTrue(root.sprayComponent.needles.count { it.activated } >= 1, "attach 必须激活零延迟针")
 
-        // 闪光恰好 2 颗 vanilla 粒子（刺束实体缺席不再有加法：无兜底链、针尖补光随实体缺席）。
         verify(engine, times(2)).addSmoothParticle(any(), any(), anyFloat(), anyFloat(), anyFloat(), any())
     }
-
-    // ---- v4.4 光锥数量动态化（仅数量）----
 
     @Test
     fun `spray ray count derives from arc degrees with user formula`() {
@@ -205,7 +180,6 @@ class ConeImpactVfxTest {
         `when`(engine.customData).thenReturn(HashMap())
         val host = PointHost("t", origin, 90f)
 
-        // arc=40°（halfAngle=25°）→ round(4 × rand(2,3)) = 8~12 根。
         val root25 = ConeImpactVfxComponent("t25", origin, 90f, 25f, 600f, core, fringe, core)
         root25.onAttach(frameCtx(engine, host, 0f, 0.02f))
         assertTrue(
@@ -213,7 +187,6 @@ class ConeImpactVfxTest {
             "arc=40° 针数域 8~12: ${root25.sprayComponent.needles.size}",
         )
 
-        // arc=60°（halfAngle=37.5°）→ round(6 × rand(2,3)) = 12~18 根（用户 v3 点③原话样本）。
         val root37 = ConeImpactVfxComponent("t37", origin, 90f, 37.5f, 600f, core, fringe, core)
         root37.onAttach(frameCtx(engine, host, 0f, 0.02f))
         assertTrue(
@@ -224,15 +197,12 @@ class ConeImpactVfxTest {
 
     @Test
     fun `dynamic spray rays formula clamps to 3 and 40`() {
-        // 小arc钳制：arc=10° → round(1 × rand(2,3)) = 2~3 → clamp 后恒 3。
         repeat(50) {
             assertEquals(3, ConeImpactVfxComponent.dynamicSprayRays(10f), "arc=10° 必须 clamp 到 3")
         }
-        // 大arc钳制：arc=400° → round(40 × rand(2,3)) = 80~120 → clamp 后恒 40。
         repeat(50) {
             assertEquals(40, ConeImpactVfxComponent.dynamicSprayRays(400f), "arc=400° 必须 clamp 到 40")
         }
-        // 公式域：arc=40° → 8~12、arc=60° → 12~18（多次采样不越域）。
         repeat(50) {
             assertTrue(ConeImpactVfxComponent.dynamicSprayRays(40f) in 8..12, "arc=40° 域 8~12")
             assertTrue(ConeImpactVfxComponent.dynamicSprayRays(60f) in 12..18, "arc=60° 域 12~18")
@@ -256,12 +226,10 @@ class ConeImpactVfxTest {
             flashColor = core,
         )
 
-        // 顶点批（attach 灌入 6 颗，未推进不激活）。
         root.onAttach(frameCtx(engine, host, 0.02f, 0.02f))
         assertEquals(6, root.shardComponent.batches[0].instances.size, "attach 顶点批必须恰好 6 颗")
         assertTrue(capture.messages().isEmpty(), "attach 当帧不得激活: ${capture.messages()}")
 
-        // 锥内批（t=+0.05）：顶点批与锥内批同帧激活消费（headless 实体缺席记 WARN，一批一条）。
         root.advance(frameCtx(engine, host, 0.06f, 0.04f), 0.04f)
         assertEquals(2, capture.messages().size, "顶点批+锥内批必须各激活一次: ${capture.messages()}")
         assertTrue(
@@ -269,18 +237,14 @@ class ConeImpactVfxTest {
             "激活即消费：已激活批次实例必须清空",
         )
 
-        // 锥缘批（t=+0.10）：再激活一次。
         root.advance(frameCtx(engine, host, 0.11f, 0.05f), 0.05f)
         assertEquals(3, capture.messages().size, "锥缘批必须激活: ${capture.messages()}")
 
-        // 幂等：跨过全部阈值后继续推进不得重复灌批/激活。
         root.advance(frameCtx(engine, host, 0.20f, 0.09f), 0.09f)
         assertEquals(3, capture.messages().size, "批次跨阈值后不得重复触发: ${capture.messages()}")
     }
 
-    // ---- OneShotVfxPlugin 生命周期 ----
-
-    /** 记录调用的 RenderEntity 桩（Kotlin 接口不走 mockito：非空形参的 matcher 传 null 会触发空指针）。 */
+    /** Kotlin 接口不走 mockito：非空形参的 matcher 传 null 会触发空指针。 */
     private class RecordingTree : RenderEntity {
         override val id: String = "recording_tree"
         override val layer = com.fs.starfarer.api.combat.CombatEngineLayers.ABOVE_SHIPS_AND_MISSILES_LAYER
@@ -333,7 +297,6 @@ class ConeImpactVfxTest {
         assertEquals(2, tree.advanceCalls, "到期帧只收尾不再 advance")
         verify(engine, times(1)).removePlugin(plugin)
 
-        // 完成后再 advance 为空操作（防引擎摘插件前多跑一帧）。
         plugin.advance(0.1f, null)
         assertEquals(1, tree.detachCalls)
         verify(engine, times(1)).removePlugin(plugin)

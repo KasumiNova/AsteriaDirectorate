@@ -15,23 +15,6 @@ import com.fs.starfarer.api.util.Misc
 import second_in_command.SCData
 import second_in_command.specs.SCBaseSkillPlugin
 
-/**
- * 天幕升格（astd_sc_skydome_ascend）——影响菀星设计局舰船
- * （docs/design/skills/10-sic-skills.md 阶段三；数值声明见 [SicTuning]）。
- *
- * 机制落点：
- * - +无人舰点数：与天幕强化同一机制（[SicShared.applyAutoPoints]，advance/onActivation 写、
- *   onDeactivation 收，NPC 舰队跳过）；数值与天幕强化同值但技能 id 不同，两者独立叠加（设计如此）；
- * - 菀星设计局舰船部署点降低：applyEffectsBeforeShipCreation 按
- *   variant 基础/改造舰体 spec 的 manufacturer 判定（[SicTuning.isWanxingManufacturer]，
- *   ship_data.csv tech/manufacturer 列的「菀星设计局-星坠」/「菀星设计局-紫菀」二值），
- *   命中则 `dynamic.getMod(Stats.DEPLOYMENT_POINTS_MOD).modifyMult(id, 1 - x)`；
- * - 非制式核心的自动化舰船进入战斗获得非精英「菀星战斗智能」：applyEffectsAfterShipCreation
- *   判定 `ship.captain` 为 AI 核心且非本模组制式核心（[StandardCores.byCommodity] 查无），
- *   直接实例化 [ASTDCombatIntelSkill] 的 Level1~Level5 逐个 apply（Level2/4/5 内部经
- *   ensureShipListener 幂等挂监听器，重复 apply 安全）。经 SIC 控制器船插随 stats 刷新重放，
- *   技能撤下后下一场战斗自然失效（监听器随舰船实体生灭，无跨战斗残留）。
- */
 class SkydomeAscendSkill : SCBaseSkillPlugin() {
 
     override fun getAffectsString(): String =
@@ -82,7 +65,6 @@ class SkydomeAscendSkill : SCBaseSkillPlugin() {
         val captain = ship.captain ?: return
         if (!captain.isAICore) return
         val coreId = captain.aiCoreId ?: return
-        // 制式核心已固有精英化菀星战斗智能，跳过（非制式核心才补发非精英版）
         if (StandardCores.byCommodity(coreId) != null) return
 
         val stats = ship.mutableStats

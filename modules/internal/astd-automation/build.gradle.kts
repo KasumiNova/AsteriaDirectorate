@@ -11,14 +11,11 @@ dependencies {
     implementation(project(":astd-impl"))
     implementation(project(":astd-render"))
     implementation(project(":astd-combat"))
-    // 生涯自动化消费 campaign/ui 的桥接层与终端后端（MainBountyBridge/BranchStationBackendImpl 等）。
     implementation(project(":astd-campaign"))
     implementation(project(":astd-ui"))
 }
 
-// 装配：向根工程 mod 主 jar 贡献本模块产物。
-// 自动化测试模块不随 release 打包：release 模式（-Pastd.release=true）默认排除，
-// 与根工程 copyContents 同步门控共用 -Pastd.includeAutomation 显式覆盖。
+// 自动化模块不随 release 打包（-Pastd.release=true 时默认排除），可用 -Pastd.includeAutomation 显式覆盖
 val astdIncludeAutomation: Boolean =
     providers.gradleProperty("astd.includeAutomation").map(String::toBooleanStrict)
         .orElse(providers.gradleProperty("astd.release").map { release -> !release.toBooleanStrict() })

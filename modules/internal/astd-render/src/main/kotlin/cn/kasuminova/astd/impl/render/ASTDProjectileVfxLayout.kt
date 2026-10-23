@@ -6,13 +6,6 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
 
-/**
- * 弹体 VFX 布局/预览数学。
- *
- * Static Trail 迁移（2026-09）后运行期不再消费本对象（拖尾几何由 BoxUtil 托管）；
- * 保留的 preview 函数族仅供自动化取证（ASTDAutomationCombatPlugin 的 AOD-7 曲线截图场景）
- * 与 astd-impl 场景测试共用。head 网格几何已随代码弹头渲染栈删除。
- */
 object ASTDProjectileVfxLayout {
     private const val EDITOR_CAPTURE_WIDTH = 1280f
     const val REFERENCE_MAX_ZOOM_VISIBLE_HEIGHT = 600f

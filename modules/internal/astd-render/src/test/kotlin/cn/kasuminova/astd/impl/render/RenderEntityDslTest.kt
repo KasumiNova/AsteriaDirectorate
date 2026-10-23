@@ -8,10 +8,6 @@ import com.fs.starfarer.api.combat.CombatEngineLayers
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-/**
- * P0 自检：直接调 DSL 构建树，验证结构挂载、按层定序、运行时增删的 onDetach 配对。
- * 不做源码 contain 测试，不依赖引擎。
- */
 class RenderEntityDslTest {
 
     private fun sample(): RenderEntity = renderEntity("business") {
@@ -33,7 +29,6 @@ class RenderEntityDslTest {
     @Test
     fun `children 按 layer 升序，同层保持插入序`() {
         val root = RenderEntityImpl("root")
-        // 乱序挂入：高层先、低层后；两个同层节点验证层内插入序
         root.addChild(RenderEntityImpl("top", CombatEngineLayers.JUST_BELOW_WIDGETS))
         root.addChild(RenderEntityImpl("mid-a", CombatEngineLayers.ABOVE_SHIPS_LAYER))
         root.addChild(RenderEntityImpl("bottom", CombatEngineLayers.BELOW_SHIPS_LAYER))
@@ -48,7 +43,6 @@ class RenderEntityDslTest {
     @Test
     fun `同层内按 renderOrder 升序，相同 renderOrder 保持插入序`() {
         val root = RenderEntityImpl("root")
-        // 同为 ABOVE_PARTICLES，仅 renderOrder 不同；两个 0 值节点验证同序内的插入序稳定。
         root.addChild(RenderEntityImpl("body", CombatEngineLayers.ABOVE_PARTICLES, 200))
         root.addChild(RenderEntityImpl("glow", CombatEngineLayers.ABOVE_PARTICLES, 100))
         root.addChild(RenderEntityImpl("trail-a", CombatEngineLayers.ABOVE_PARTICLES, 0))
@@ -81,11 +75,10 @@ class RenderEntityDslTest {
         root.addChild(second)
 
         assertEquals(1, root.children.size)
-        assertEquals(1, first.detachCount)  // 被顶替 → onDetach
+        assertEquals(1, first.detachCount)
         assertEquals(0, second.detachCount)
     }
 
-    /** 最小 RenderEntity，用于无条件计数 onDetach 调用（不经 RenderEntityImpl 的附着态守卫）。 */
     private class DetachCountingEntity(override val id: String) : RenderEntity {
         override val layer: RenderLayer = CombatEngineLayers.ABOVE_PARTICLES
         override val children: List<RenderEntity> = emptyList()

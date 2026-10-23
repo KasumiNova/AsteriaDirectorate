@@ -19,13 +19,6 @@ import kotlin.test.assertNull
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
-/**
- * 规格 09 §4.1 用例 1~10：贯星之矛锥状冲击组装（[PiercingLanceConeStrike.buildConeSpec] 纯函数）
- * 与难度登记（[PiercingLanceDifficulty.valueFor]）的真实逻辑验证。
- *
- * 锥形几何边界（锥内/锥外/半角/锥长/大目标擦边/归属矩阵）由基建 ConeImpactHandler 测试覆盖，此处不重复。
- * 难度档经 [DifficultyTuningImpl.installScaleForTests] 走完整映射链路（对齐 PositronShockwaveDifficultyTest 先例）。
- */
 class PiercingLanceConeStrikeTest {
     private var warnCapture: WarnCapture? = null
 
@@ -36,8 +29,6 @@ class PiercingLanceConeStrikeTest {
         warnCapture = null
     }
 
-    // ---- 测试桩 ----
-
     private fun stubShip(owner: Int, location: Vector2f = Vector2f(0f, 0f)): ShipAPI {
         val ship = mock(ShipAPI::class.java)
         `when`(ship.owner).thenReturn(owner)
@@ -45,10 +36,6 @@ class PiercingLanceConeStrikeTest {
         return ship
     }
 
-    /**
-     * 造一发弹体 mock：[velocity] 弹体速度（null 表示引擎未给出）；[ship] 来源船（null = 无武器来源）；
-     * [owner] 弹体归属方（source 缺失时 spec.owner 的回退值）。
-     */
     private fun stubProjectile(
         velocity: Vector2f?,
         ship: ShipAPI?,
@@ -65,11 +52,8 @@ class PiercingLanceConeStrikeTest {
         return projectile
     }
 
-    // ---- 用例 ----
-
     @Test
     fun `用例1 buildConeSpec 半角与锥长按难度档正确换算`() {
-        // v2 档：玩家来源（owner == 0）固定 v2，与难度档无关
         DifficultyTuningImpl.installScaleForTests(5f)
         val playerSpec = PiercingLanceConeStrike.buildConeSpec(
             stubProjectile(Vector2f(3000f, 0f), stubShip(owner = 0)),
@@ -80,7 +64,6 @@ class PiercingLanceConeStrikeTest {
         assertEquals(25f, playerSpec.halfAngleDeg, 1e-3f, "v2 锥半角应为 50/2")
         assertEquals(375f, playerSpec.range, 1e-3f, "v2 锥长应为 375")
 
-        // v5 档：敌方来源 + k_s = 5 → 破晓锚点
         DifficultyTuningImpl.installScaleForTests(5f)
         val enemySpec = PiercingLanceConeStrike.buildConeSpec(
             stubProjectile(Vector2f(3000f, 0f), stubShip(owner = 1)),
@@ -94,7 +77,6 @@ class PiercingLanceConeStrikeTest {
 
     @Test
     fun `用例2 buildConeSpec 破片与EMP同锚`() {
-        // v2：2500 × 1.25 = 3125
         val v2 = assertNotNull(
             PiercingLanceConeStrike.buildConeSpec(
                 stubProjectile(Vector2f(3000f, 0f), stubShip(owner = 0)),
@@ -106,7 +88,6 @@ class PiercingLanceConeStrikeTest {
         assertEquals(DamageType.FRAGMENTATION, v2.damageType)
         assertEquals(3125f, v2.empDamage, 1e-3f)
 
-        // v5：2500 × 2.00 = 5000
         DifficultyTuningImpl.installScaleForTests(5f)
         val v5 = assertNotNull(
             PiercingLanceConeStrike.buildConeSpec(
@@ -118,7 +99,6 @@ class PiercingLanceConeStrikeTest {
         assertEquals(5000f, v5.damage, 1e-3f)
         assertEquals(5000f, v5.empDamage, 1e-3f)
 
-        // v1：2500 × 1.00 = 2500
         DifficultyTuningImpl.installScaleForTests(1f)
         val v1 = assertNotNull(
             PiercingLanceConeStrike.buildConeSpec(
@@ -207,7 +187,6 @@ class PiercingLanceConeStrikeTest {
         val capture = WarnCapture(PiercingLanceConeStrike::class.java)
         warnCapture = capture
 
-        // 速度零向量 + 无来源船（weapon 为 null）→ 两条路径均不可得
         val spec = PiercingLanceConeStrike.buildConeSpec(
             stubProjectile(Vector2f(0f, 0f), ship = null),
             directTarget = null,

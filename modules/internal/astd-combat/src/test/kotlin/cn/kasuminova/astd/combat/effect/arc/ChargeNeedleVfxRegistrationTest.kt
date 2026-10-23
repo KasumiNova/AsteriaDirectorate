@@ -5,9 +5,6 @@ import kotlin.test.Test
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
-/**
- * 规格 01 §4.1 用例 14：弹体 VFX 登记——真实调用管线入口，build 执行 DSL 不抛异常。
- */
 class ChargeNeedleVfxRegistrationTest {
 
     @Test

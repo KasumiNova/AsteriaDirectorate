@@ -4,19 +4,8 @@ import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.combat.WeaponAPI
 
 /**
- * ShipAPI 的 Buff 便捷入口扩展函数族。
- *
- * 动机：把「customData 取 host、惰性创建、心跳插件登记」收敛为调用侧一行；
- * 具体武器的强类型入口（如 `ShipAPI.chargeNeedleBuff()`）不沉淀进公共 API，
- * 由各武器在自己包内基于本族扩展一行实现，避免公共包反向依赖武器包。
- *
- * 宿主创建与心跳登记的具体实现由 impl 侧（`impl.buff`）经 [BuffBackends] 注入，
- * api 不直接引用实现类。
- */
-
-/**
- * Buff 宿主访问后端：api 扩展函数族与 impl 实现之间的桥。
- * 由 impl 侧在模组加载早期（mod 插件 onApplicationLoad）注册。
+ * 提供舰船 Buff 宿主。实现必须在 ModPlugin.onApplicationLoad 中通过 [BuffBackends.install] 注册。
+ * 公共 API 只保留宿主访问；武器强类型入口禁止进入 api 包，api 不得反向依赖 impl。
  */
 interface BuffBackend {
     /**
@@ -27,7 +16,7 @@ interface BuffBackend {
     fun hostFor(ship: ShipAPI): BuffHost
 }
 
-/** [BuffBackend] 持有者。未注册时访问抛错（模组加载顺序问题，不应静默兜底）。 */
+/** 保存已注册的 [BuffBackend]。未注册时 [get] 抛出 [IllegalStateException]。 */
 object BuffBackends {
     @Volatile
     private var current: BuffBackend? = null
@@ -40,33 +29,22 @@ object BuffBackends {
         current ?: throw IllegalStateException("BuffBackend 未注册：mod 插件 onApplicationLoad 应调用 impl 侧的 BuffInstall.install()")
 }
 
-/**
- * 取该船的 [BuffHost]；语义见 [BuffBackend.hostFor]。
- */
+/** 返回该船的 [BuffHost]，行为与异常同 [BuffBackend.hostFor]。 */
 fun ShipAPI.buffHost(): BuffHost = BuffBackends.get().hostFor(this)
 
-/**
- * 按 id 查该船的 Ship 级 Buff；不存在返回 null。
- */
+/** 返回该船的舰船级 Buff，不存在时返回 null。 */
 fun ShipAPI.getBuff(id: String): Buff? = buffHost().find(id)
 
-/**
- * 查该船的 Ship 级 Buff，不存在时用 [creator] 创建并注册；幂等，[creator] 至多执行一次。
- */
+/** 返回该船的舰船级 Buff，不存在时调用 [creator] 创建并注册。 */
 fun ShipAPI.getOrCreateBuff(id: String, creator: () -> Buff): Buff {
     val host = buffHost()
     return host.find(id) ?: creator().also { host.register(it) }
 }
 
-/**
- * Weapon 级：按 id 查指定武器的 Buff；内部走复合键（WeaponAPI 无 customData，已核实 jar）。
- * 槽位换装后旧 Buff 视为不存在（登记 weaponId 与当前武器不符）。
- */
+/** 返回关联指定武器的 Buff；不存在或槽位已换装时返回 null。 */
 fun ShipAPI.getBuffByWeapon(id: String, weapon: WeaponAPI): Buff? = buffHost().findByWeapon(id, weapon)
 
-/**
- * Weapon 级：查指定武器的 Buff，不存在时用 [creator] 创建并注册到复合键。
- */
+/** 返回关联指定武器的 Buff，不存在时调用 [creator] 创建并注册。 */
 fun ShipAPI.getOrCreateBuffByWeapon(id: String, weapon: WeaponAPI, creator: () -> Buff): Buff {
     val host = buffHost()
     return host.findByWeapon(id, weapon) ?: creator().also { host.register(it, weapon) }

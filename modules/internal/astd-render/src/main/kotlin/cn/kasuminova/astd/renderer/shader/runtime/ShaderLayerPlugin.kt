@@ -11,12 +11,6 @@ import org.lwjgl.opengl.GL11
 import org.lwjgl.opengl.GL20
 import java.util.EnumSet
 
-/**
- * Starsector layered rendering adapter for queued shader submissions.
- *
- * The plugin owns no effect-specific state. It reads layer snapshots from the
- * queue and delegates program/state work to dedicated runtime helpers.
- */
 class ShaderLayerPlugin(private val queue: ShaderRenderQueue) : BaseCombatLayeredRenderingPlugin(CombatEngineLayers.ABOVE_PARTICLES) {
     private var expired = false
     private val programCache = ShaderProgramCache()

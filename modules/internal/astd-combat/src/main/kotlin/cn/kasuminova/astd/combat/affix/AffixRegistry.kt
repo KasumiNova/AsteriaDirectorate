@@ -7,36 +7,12 @@ import cn.kasuminova.astd.internal.i18n.I18n
 import java.util.Random
 import kotlin.math.floor
 
-/**
- * 词缀注册表（v3 定稿，对应 docs/design/affixes.md）。
- *
- * 词缀 = 菀星设计总局通用改装标准（改装件），17 条：
- * S 型×8（编目号 S-01~S-08）、M 型×6（M-09~M-14）、R 型×3（R-15~R-17）。
- *
- * 职责边界：
- * - 本注册表只维护词缀的静态编目数据与“按难度系数抽取”的纯逻辑；
- *   具体战斗效果由各词缀对应的隐藏 HullMod 实现（数值走轨一 [cn.kasuminova.astd.api.difficulty.DifficultyTuning]）。
- * - 抽取数量完全由难度系数搭配表决定（D20 定案）：S 2~4 + M 1~2 常驻；R 1~2 由调用方显式开关（allowR）。
- * - 互斥表 3 对与相位舰船约束 3 条在抽取时强制（见 [pickAffixes]）。
- */
 object AffixRegistry {
 
-    /**
-     * 词缀类型（层级即稀有度：R >> M > S）。
-     */
     enum class AffixType {
         S, M, R
     }
 
-    /**
-     * 单条词缀的编目定义。
-     *
-     * @property id 词缀 id（即规格书 ID，与隐藏 HullMod id 一致）
-     * @property catalogNo 编目号（S-01 等；总局改装标准的条款编号）
-     * @property type 词缀类型（层级/稀有度）
-     * @property hullModId 对应的隐藏 HullMod id（与 [id] 一致，单独保留以便 CSV/面板按 hullmod 反查）
-     * @property phaseOnly 仅相位舰船可搭载（抽取时按舰队相位能力过滤，HullMod 侧再按舰体判定生效）
-     */
     data class AffixDef(
         val id: String,
         val catalogNo: String,
@@ -44,16 +20,12 @@ object AffixRegistry {
         val hullModId: String,
         val phaseOnly: Boolean = false,
     ) {
-        /** 词缀展示名（i18n，category 沿用 asteria_directorate_bounty）。 */
         fun displayName(): String = I18n[CATEGORY, "affix.$id.name"]
 
-        /** 词缀效果简述（i18n）。 */
         fun description(): String = I18n[CATEGORY, "affix.$id.desc"]
     }
 
     const val CATEGORY: String = "asteria_directorate_bounty"
-
-    // ─── S 型词缀（S-01 ~ S-08） ───
 
     const val ID_IRONCLAD_PLATING: String = "astd_affix_ironclad_plating"
     const val ID_CRYO_FLUX_NETWORK: String = "astd_affix_cryo_flux_network"
@@ -64,8 +36,6 @@ object AffixRegistry {
     const val ID_PHASE_COIL_TUNING: String = "astd_affix_phase_coil_tuning"
     const val ID_PHASE_COIL_DETUNING: String = "astd_affix_phase_coil_detuning"
 
-    // ─── M 型词缀（M-09 ~ M-14） ───
-
     const val ID_RECURSIVE_TARGETING: String = "astd_affix_recursive_targeting"
     const val ID_REACTIVE_FLUX_ARMOR: String = "astd_affix_reactive_flux_armor"
     const val ID_PSPACE_DIVER: String = "astd_affix_pspace_diver"
@@ -73,13 +43,10 @@ object AffixRegistry {
     const val ID_SWARM_COORDINATION: String = "astd_affix_swarm_coordination"
     const val ID_PLASMA_ARMOR_SHIELD: String = "astd_affix_plasma_armor_shield"
 
-    // ─── R 型词缀（R-15 ~ R-17） ───
-
     const val ID_GRID_DEEPENING: String = "astd_affix_grid_deepening"
     const val ID_AGGRESSIVE_SWARM_NETWORK: String = "astd_affix_aggressive_swarm_network"
     const val ID_SINGULARITY_DRIVE: String = "astd_affix_singularity_drive"
 
-    /** 全部词缀编目（按编目号排序）。 */
     val all: List<AffixDef> = listOf(
         AffixDef(ID_IRONCLAD_PLATING, "S-01", AffixType.S, ID_IRONCLAD_PLATING),
         AffixDef(ID_CRYO_FLUX_NETWORK, "S-02", AffixType.S, ID_CRYO_FLUX_NETWORK),
@@ -100,43 +67,18 @@ object AffixRegistry {
         AffixDef(ID_SINGULARITY_DRIVE, "R-17", AffixType.R, ID_SINGULARITY_DRIVE),
     )
 
-    /**
-     * 互斥表（3 对，affixes.md 组合约束）：
-     * - 六相冰辐能网络 ↔ 极限辐能线圈扩容；
-     * - 相位线圈调谐 ↔ 相位线圈降频；
-     * - 电网深化升级（捆绑六相冰效果）↔ 极限辐能线圈扩容。
-     */
     val EXCLUSIVE_PAIRS: List<Set<String>> = listOf(
         setOf(ID_CRYO_FLUX_NETWORK, ID_FLUX_COIL_EXPANSION),
         setOf(ID_PHASE_COIL_TUNING, ID_PHASE_COIL_DETUNING),
         setOf(ID_GRID_DEEPENING, ID_FLUX_COIL_EXPANSION),
     )
 
-    /**
-     * 一次抽取的槽位数量（数量搭配表，D20 定案）。
-     *
-     * 数量完全由难度系数 k_s 决定：k_s=1 取区间下限、k_s=5 取上限、中间分段线性（半值进位）。
-     *
-     * @property sCount S 型数量，2~4，常驻
-     * @property mCount M 型数量，1~2，常驻
-     * @property rSlots R 型槽位数，1~2；仅在 allowR 时出现（槽位不代表必出，见 [pickAffixes] 的低权重落空）
-     */
     data class AffixSlots(val sCount: Int, val mCount: Int, val rSlots: Int)
 
     fun getById(id: String): AffixDef? = all.firstOrNull { it.id == id }
 
     fun getByHullModId(hullModId: String): AffixDef? = all.firstOrNull { it.hullModId == hullModId }
 
-    /**
-     * 校验固定词缀表（主线工单按文书追加条款具名编目号声明的固定搭配，见 MainBounties.Stage.fixedAffixIds）。
-     *
-     * 固定表与随机抽取走同一套合法性规则：
-     * - id 必须已编目且不重复；
-     * - 不得违反互斥表 [EXCLUSIVE_PAIRS]；
-     * - 不得包含相位限定词缀（固定表作用于整支编队，编成随缩放变化，无法保证相位舰在场）。
-     *
-     * @return 违规描述列表；空列表 = 合法。纯逻辑，不触碰 Global，可直接单测。
-     */
     fun validateFixedTable(ids: List<String>): List<String> {
         val violations = ArrayList<String>(4)
         val seen = HashSet<String>(ids.size)
@@ -162,12 +104,6 @@ object AffixRegistry {
         return violations
     }
 
-    /**
-     * 计算数量搭配表。
-     *
-     * @param kS 难度系数（轨一固有缩放系数，1.0~5.0；越界自动收敛）
-     * @param allowR 是否允许 R 型出现（由调用方显式开关）
-     */
     fun slotCounts(kS: Float, allowR: Boolean): AffixSlots {
         val t = normalizeKS(kS)
         return AffixSlots(
@@ -177,21 +113,6 @@ object AffixRegistry {
         )
     }
 
-    /**
-     * 按难度系数抽取词缀（纯逻辑，不触碰 Global，可直接单测）。
-     *
-     * 规则：
-     * - 数量由 [slotCounts] 决定；同 ID 不叠加；互斥表 3 对在抽取时强制（后抽者跳过冲突项）；
-     * - [allowPhase] 为 false 时，相位限定词缀（调谐/降频/P空间深潜器）从池剔除；
-     * - R 型在允许出现时仍按高稀有度走低权重：每个 R 槽位只有
-     *   `0.35 + 0.65 * t` 的概率被填充（k_s=1 时约三分之一，k_s=5 时必然填充）。
-     *
-     * @param kS 难度系数（1.0~5.0）
-     * @param allowR R 型开关（调用方显式传入）
-     * @param allowPhase 舰队是否具备相位舰船（相位限定词缀的总开关）
-     * @param seed 随机种子（同种子结果确定）
-     * @return 抽中的词缀，顺序为 S → M → R
-     */
     fun pickAffixes(kS: Float, allowR: Boolean, allowPhase: Boolean, seed: Long): List<AffixDef> {
         val t = normalizeKS(kS)
         val slots = slotCounts(kS, allowR)
@@ -205,14 +126,6 @@ object AffixRegistry {
         return picked
     }
 
-    /**
-     * R 全谱系口径的抽取（R 型开放是明示条款，非稀有度抽奖）。
-     *
-     * 与 [pickAffixes] 的差异：R 型数量由调用方按危险等级显式给定（0→2 条），
-     * 且必定填满——不走 allowR 槽位的低权重落空；S/M 数量仍由难度系数搭配表决定。
-     *
-     * @param rCount R 型条数（收敛到 0~2）
-     */
     fun pickAffixes(kS: Float, rCount: Int, allowPhase: Boolean, seed: Long): List<AffixDef> {
         val slots = slotCounts(kS, allowR = false)
         val rnd = Random(seed)
@@ -225,7 +138,6 @@ object AffixRegistry {
         return picked
     }
 
-    /** k_s → [0,1] 归一化插值参数（1.0 取下限、5.0 取上限）。 */
     fun normalizeKS(kS: Float): Float = (kS.coerceIn(1f, 5f) - 1f) / 4f
 
     private fun draw(

@@ -8,12 +8,6 @@ import com.fs.starfarer.api.mission.FleetSide;
 import com.fs.starfarer.api.mission.MissionDefinitionAPI;
 import com.fs.starfarer.api.mission.MissionDefinitionPlugin;
 
-/**
- * Dev-only mission surface for gravity phase cloak AI health check (ZW-103) in-game automation.
- * <p>
- * 矩阵扩展场景：茑萝级航母（astd_zw_103）走位天然绕行，绕后幅度判据不适用——
- * 改走 HEALTH 判定（90s 观测窗内下潜 ≥2 且上浮 ≥2），验证航母相位节奏健康。
- */
 public final class MissionDefinition implements MissionDefinitionPlugin {
     @Override
     public void defineMission(final MissionDefinitionAPI api) {

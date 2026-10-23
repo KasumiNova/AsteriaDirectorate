@@ -5,9 +5,6 @@ import kotlin.test.Test
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
-/**
- * 规格 02 §4.1 用例 10：弹体 VFX 登记——真实调用管线入口，build 执行 DSL 不抛异常。
- */
 class HeavyIonPulseVfxRegistrationTest {
 
     @Test

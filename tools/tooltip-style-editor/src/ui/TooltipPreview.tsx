@@ -145,7 +145,7 @@ export const TooltipPreview = ({ preset }: TooltipPreviewProps) => {
     [preset.background.uniforms, preset.theme.section.textColor],
   );
   const intensity = uniformNumber(preset.background.uniforms, 'u_intensity', 1);
-  // seed 缺省随机（对齐游戏内每实例随机；uniforms 变更等同重开 tooltip，重新掷 seed）
+  // 未指定 u_seed 时按实例随机；uniforms 变化会生成新种子。
   const seed = useMemo(
     () => uniformNumber(preset.background.uniforms, 'u_seed', Math.random()),
     [preset.background.uniforms],

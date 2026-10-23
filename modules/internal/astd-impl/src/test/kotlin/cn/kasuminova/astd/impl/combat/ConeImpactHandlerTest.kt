@@ -21,15 +21,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/**
- * 规格 §2.4 单元测试清单：
- * 1. 几何：锥内/锥外/恰在半角边界/恰在锥长边界；顶点重叠纳入。
- * 2. 大目标擦边：碰撞半径放宽修正生效。
- * 3. 归属与类型过滤矩阵（敌/我/中立 × 舰/机/弹）。
- * 4. 粗筛结果与全表扫结果一致性（随机布点 1000 次对照）。
- * 5. direction 非单位矢量 WARN + 归一化；零长度方向 WARN + 不结算。
- * 另覆盖：伤害落点取目标朝爆点表面点、applyDamage 参数透传、filter 终判豁免、0 值防线。
- */
 class ConeImpactHandlerTest {
     private val captures = mutableListOf<WarnCapture>()
 
@@ -38,8 +29,6 @@ class ConeImpactHandlerTest {
         captures.forEach { it.detach() }
         captures.clear()
     }
-
-    // ---- 桩 ----
 
     private class DamageCall(
         val target: CombatEntityAPI,
@@ -74,7 +63,6 @@ class ConeImpactHandlerTest {
                     damage = inv.getArgument(2),
                     damageType = inv.getArgument(3),
                     emp = inv.getArgument(4),
-                    // applyDamage 形参序：entity/point/amount/type/emp/bypassShields/dealsSoftFlux/source/showFloaty。
                     source = inv.getArgument(7),
                     showFloaty = inv.getArgument(8),
                 )
@@ -109,7 +97,6 @@ class ConeImpactHandlerTest {
         return missile
     }
 
-    /** 以 [origin] 为顶点、[axisDeg] 为中轴，在偏角 [offsetDeg]、距离 [dist] 处取目标点。 */
     private fun polar(origin: Vector2f, axisDeg: Float, offsetDeg: Float, dist: Float): Vector2f {
         val rad = Math.toRadians((axisDeg + offsetDeg).toDouble())
         return Vector2f((origin.x + cos(rad) * dist).toFloat(), (origin.y + sin(rad) * dist).toFloat())
@@ -142,8 +129,6 @@ class ConeImpactHandlerTest {
         hitFighters = hitFighters,
         hitMissiles = hitMissiles,
     )
-
-    // ---- §2.4-1 几何边界（纯函数直驱）----
 
     @Test
     fun `geometry - inside cone on axis is accepted`() {
@@ -189,7 +174,6 @@ class ConeImpactHandlerTest {
 
     @Test
     fun `geometry - vertex overlap is accepted without angle or range judgement`() {
-        // 目标中心与顶点完全重叠：方向任意、即使范围极小也纳入（0 值防线，不除零）。
         assertTrue(
             ConeImpactHandler.isInsideCone(Vector2f(100f, 100f), 0f, 1f, 10f, 50f, Vector2f(100f, 100f), 30f),
         )
@@ -198,11 +182,8 @@ class ConeImpactHandlerTest {
         )
     }
 
-    // ---- §2.4-2 大目标擦边：碰撞半径放宽 ----
-
     @Test
     fun `geometry - large target grazing edge is accepted by radius allowance`() {
-        // 中心偏轴 50°（超出 40° 半角 10°），dist=100、radius=20 → 放宽 atan(20/100)≈11.3°，应纳入。
         val loc = polar(Vector2f(0f, 0f), 0f, 50f, 100f)
         assertTrue(
             ConeImpactHandler.isInsideCone(Vector2f(0f, 0f), 1f, 0f, 40f, 600f, loc, 20f),
@@ -212,13 +193,10 @@ class ConeImpactHandlerTest {
 
     @Test
     fun `geometry - large target beyond range by center is accepted when surface within range`() {
-        // 中心距 620 > range 600，但 radius=30 → 表面距 590 ≤ 600，与 LazyLib 粗筛「表面进入半径」语义一致。
         assertTrue(
             ConeImpactHandler.isInsideCone(Vector2f(0f, 0f), 1f, 0f, 40f, 600f, Vector2f(620f, 0f), 30f),
         )
     }
-
-    // ---- §2.4-3 归属与类型过滤矩阵 ----
 
     @Test
     fun `filter matrix - enemy ship fighter missile accepted, friendly excluded, hulk excluded, neutral included`() {
@@ -272,8 +250,6 @@ class ConeImpactHandlerTest {
         assertEquals(1, stub.calls.size)
     }
 
-    // ---- §2.4-4 粗筛与全表扫一致性（1000 次随机布点对照）----
-
     @Test
     fun `coarse query result matches full scan over 1000 random layouts`() {
         val rng = Random(20260729L)
@@ -301,11 +277,9 @@ class ConeImpactHandlerTest {
 
             val spec = specOf(origin = origin, direction = direction, halfAngleDeg = halfAngle, range = range, owner = owner)
 
-            // 全表扫：候选 = 全部实体。
             val stubFull = EngineStub()
             val fullScan = ConeImpactHandler.resolve(stubFull.engine, spec) { _, _ -> entities }
-            // 粗筛语义复刻（LazyLib getEntitiesWithinRange 的网格判定：dist ≤ 半径 + 目标碰撞半径，
-            // 对齐结算器含边界的 RANGE_EPS 容忍）。
+            // 粗筛语义复刻 LazyLib getEntitiesWithinRange：dist ≤ 半径 + 目标碰撞半径（含 RANGE_EPS 容忍）。
             val stubCoarse = EngineStub()
             val coarse = ConeImpactHandler.resolve(stubCoarse.engine, spec) { p, r ->
                 entities.filter { e ->
@@ -322,8 +296,6 @@ class ConeImpactHandlerTest {
             )
         }
     }
-
-    // ---- §2.4-5 direction 非单位矢量 ----
 
     @Test
     fun `non unit direction warns and normalizes to identical result`() {
@@ -353,8 +325,6 @@ class ConeImpactHandlerTest {
         assertTrue(capture.messages().any { it.contains("零长度") }, "必须记 WARN: ${capture.messages()}")
     }
 
-    // ---- 结算细节 ----
-
     @Test
     fun `applyDamage passes damage type emp source and floaty through, point on surface facing blast`() {
         val source = stubShip(Vector2f(-500f, 0f), 30f, owner = 0)
@@ -373,7 +343,6 @@ class ConeImpactHandlerTest {
         assertEquals(120f, call.emp)
         assertEquals(source, call.source)
         assertTrue(call.showFloaty, "伤害浮字必须开启（锥状冲击波及的玩家可见反馈）")
-        // 落点 = 顶点沿目标方向推进 dist - radius = 300 - 20 = 280。
         assertEquals(280f, call.point.x, 1e-3f)
         assertEquals(0f, call.point.y, 1e-3f)
     }

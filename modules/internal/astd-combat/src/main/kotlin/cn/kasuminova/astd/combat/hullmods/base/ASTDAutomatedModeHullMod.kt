@@ -8,19 +8,6 @@ import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.ui.TooltipMakerAPI
 import java.awt.Color
 
-/**
- * 通用双模式·无人模式 hullmod（舰船无关）。
- *
- * 动机：除 xc_001 / zw_001 等显式注册专属双模式配置的舰船外，所有 ASTD 舰共用
- * [ASTDDualModeGenericIds.MODE_AUTOMATED] 这一通用无人模式标记，使「双模式切换器」对全 ASTD 舰船可用。
- *
- * 职责：
- * - 拆即切：玩家在改装界面拆下切换器 → 立即切到载人模式并把切换器加回（切换器常驻）。
- * - 系统互换：仅当本舰配置声明了 [ASTDDualModeConfig.automatedSystemId] 时才 setShipSystemId
- *   （通用配置为 null，不互换）。
- * - 无人化行为（无人点数、AI 核心需求等）由通用状态机同步的原版 "automated" 船插承担
- *   （见 [activateDualMode]），本类不重复实现。
- */
 class ASTDAutomatedModeHullMod : BaseHullMod() {
 
     companion object {
@@ -31,21 +18,15 @@ class ASTDAutomatedModeHullMod : BaseHullMod() {
         val variant = stats.variant ?: return
         if (!variant.isASTDShipVariant()) return
         val config = ASTDDualModeRegistry.configForVariant(variant) ?: return
-        // 本 hullmod 不是该舰配置的无人模式（异常组合）→ 不干预，避免与专属 mode hullmod 重复处理
         if (id != config.automatedModeId) return
 
-        // 拆即切：切换器被玩家移除 → 立即切换到载人模式并恢复切换器（常驻）
         if (!variant.hasHullMod(config.switcherId)) {
             variant.activateDualMode(config, config.crewedModeId, stats)
             variant.addMod(config.switcherId)
-            // 镜像登记必须在此显式进行：refit 的翻转发生在预览 Ship 的 stats 上
-            // （stats.variant = 工作克隆，member.variant 仍是真实 variant），activateDualMode
-            // 的身份门永不命中；不登记则军官选择界面（构造期读真实 variant）停留在旧模式
             stats?.fleetMember?.let { ASTDDualModeMirror.record(it, config.crewedModeId) }
             return
         }
 
-        // 系统互换：仅显式声明了无人版系统 id 的舰（通用配置为 null → 不互换）
         config.automatedSystemId?.let { variant.hullSpec?.shipSystemId = it }
     }
 

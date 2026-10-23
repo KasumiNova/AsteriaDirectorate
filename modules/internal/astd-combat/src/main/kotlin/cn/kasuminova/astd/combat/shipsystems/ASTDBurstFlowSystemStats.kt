@@ -14,21 +14,6 @@ import org.lazywizard.lazylib.MathUtils
 import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
 
-/**
- * 落叶飞花（衔星 (ARC) / astd_lh_001_burst_flow）：1s 瞬时爆发时流 + 加减速 + 武器备弹恢复 +
- * 辐能耗散加成 + 冲刺动量。
- *
- * 设计案 20-joint.md §战术系统-坠星：爆发不随时间线性增长/减弱——恒定口径
- * （仅 ACTIVE 态满额生效，IN/OUT 不渐变）。数值三锚点见 [BurstFlowTuning]。
- *
- * 冲刺动量（2026-09 调整）：ACTIVE 首帧按舰船当前速度方向附加难度倍率（150%/200%/300%）
- * 最大航速的动量（速度近零时以舰船朝向为方向），表现为向当前向量极速位移的观感；
- * 激活期间锁定舰船朝向控制（转向乘 0，burn drive 式禁用姿态控制），并按难度系数提升
- * 辐能耗散速率（50%/100%/250%）；系统不再提升最大航速，只保留加减速乘区，
- * 附加速度由舰船既有阻力自然消退。
- *
- * 玩家船反补偿：激活期间对 `engine.timeMult` 乘 `1/timeMult`，避免玩家视角整体加速。
- */
 class ASTDBurstFlowSystemStats : BaseShipSystemScript() {
 
     companion object {
@@ -37,7 +22,6 @@ class ASTDBurstFlowSystemStats : BaseShipSystemScript() {
         private const val AFTERIMAGE_TIMER_KEY_PREFIX = "astd_burst_flow_afterimage:"
         private const val MOMENTUM_LATCH_KEY_PREFIX = "astd_burst_flow_momentum:"
 
-        /** 冲刺动量取当前速度方向的速度下限（su/s；低于此值以舰船朝向为方向）。 */
         private const val MIN_SPEED_FOR_DIRECTION = 5f
         private val AFTERIMAGE_COLOR = Color(105, 210, 255, 96)
         private val JITTER_UNDER = Color(90, 165, 255, 155)
@@ -60,11 +44,9 @@ class ASTDBurstFlowSystemStats : BaseShipSystemScript() {
         stats.timeMult.modifyMult(id, values.timeMult)
         stats.acceleration.modifyMult(id, values.speedManeuverMult)
         stats.deceleration.modifyMult(id, values.speedManeuverMult)
-        // 激活期间锁定舰船朝向控制（转向乘 0，burn drive 式禁用姿态控制）
         stats.maxTurnRate.modifyMult(id, 0f)
         stats.turnAcceleration.modifyMult(id, 0f)
         stats.fluxDissipation.modifyMult(id, values.fluxDissipationMult)
-        // 弹道/能耗/导弹三条备弹恢复通道同一乘区
         stats.ballisticAmmoRegenMult.modifyMult(id, values.ammoRegenMult)
         stats.energyAmmoRegenMult.modifyMult(id, values.ammoRegenMult)
         stats.missileAmmoRegenMult.modifyMult(id, values.ammoRegenMult)
@@ -101,11 +83,6 @@ class ASTDBurstFlowSystemStats : BaseShipSystemScript() {
         engine?.customData?.remove(MOMENTUM_LATCH_KEY_PREFIX + ship.id)
     }
 
-    /**
-     * 冲刺动量（ACTIVE 首帧一次性，customData 闩）：按舰船当前速度方向附加
-     * [BurstFlowTuning.Values.momentumMult] 倍最大航速的动量（速度近零时以舰船朝向为方向）。
-     * 闩在 unapply 清除，保证下次激活可用。
-     */
     private fun applyMomentumOnce(
         engine: CombatEngineAPI,
         ship: ShipAPI,
@@ -143,7 +120,6 @@ class ASTDBurstFlowSystemStats : BaseShipSystemScript() {
         )
     }
 
-    /** 蓝色 jitter + 每 0.1s 残影（设计案特效口径；IN/OUT 以半强度过渡，ACTIVE 满额）。 */
     private fun renderBurstStreak(ship: ShipAPI, id: String, state: ShipSystemStatsScript.State) {
         val engine = Global.getCombatEngine() ?: return
         val timerKey = AFTERIMAGE_TIMER_KEY_PREFIX + System.identityHashCode(ship)

@@ -3,13 +3,6 @@ package cn.kasuminova.astd.sscsv.entries.catalog.strings
 import cn.kasuminova.astd.sscsv.entries.DescriptionEntry
 import cn.kasuminova.astd.sscsv.i18n.SsI18n
 
-/**
- * `data/strings/descriptions.csv`：武器/系统等“顶部描述文本”。
- *
- * 约定：
- * - 这些文本会直接进入 UI；百分号一律使用半角 `%`，不使用全角。
- */
-
 private fun desc(id: String, key: String, fallback: String = ""): String =
     SsI18n.t("desc.$id.$key", fallback)
 
@@ -87,7 +80,6 @@ object Desc_astd_reserved_station : LocalizedDescription("astd_reserved_station"
 object Desc_astd_station_research_remnant : LocalizedDescription("astd_station_research_remnant", "CUSTOM")
 object Desc_astd_station_mining_remnant : LocalizedDescription("astd_station_mining_remnant", "CUSTOM")
 
-// 制式（量产）AI 核心物品描述
 object Desc_astd_ai_core_g : LocalizedDescription("astd_ai_core_g", "RESOURCE")
 object Desc_astd_ai_core_b : LocalizedDescription("astd_ai_core_b", "RESOURCE")
 object Desc_astd_ai_core_a : LocalizedDescription("astd_ai_core_a", "RESOURCE")

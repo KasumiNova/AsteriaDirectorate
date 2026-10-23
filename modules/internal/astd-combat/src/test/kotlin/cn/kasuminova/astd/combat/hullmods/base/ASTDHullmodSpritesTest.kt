@@ -9,11 +9,6 @@ import org.mockito.Mockito.`when`
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-/**
- * 双模式切换器动态图标（[ASTDHullmodSprites]）验证：
- * 1. 换贴守卫——目标与当前 sprite 相同不写 spec，不同才写（stats 重算频繁，避免无意义赋值）。
- * 2. 形态判定——variant 模式 permaMod 决定 crew/auto 变体；缺模式态按载人（状态机缺省）。
- */
 class ASTDHullmodSpritesTest {
 
     private fun variantWith(permaMods: Set<String>): ShipVariantAPI {

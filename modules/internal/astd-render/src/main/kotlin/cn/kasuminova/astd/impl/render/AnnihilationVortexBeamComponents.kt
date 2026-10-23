@@ -28,25 +28,12 @@ import java.awt.Color
 import kotlin.math.cos
 import kotlin.math.sin
 
-/**
- * 湮灭涡旋（Annihilation Vortex）光束的节点族：深红束体调色 + 命中端涡旋节点（规格 04 §3）。
- *
- * 与 GCP 的区分要点（验收：深红与 GCP 暗红可区分）：GCP 核心为**白芯+粉边**，AV 核心直接上
- * **深红芯+亮红缘**，辉光用更暗的血红；涡旋端为旋转深红涡旋面（GCP 是静态坍缩点）。
- */
-
-/** 湮灭涡旋共用调色（LENS 深红族）。 */
 object AvBeam {
     val CORE_DEEP = Color(255, 60, 70, 240)
     val CORE_FRINGE = Color(255, 130, 120, 200)
     val GLOW_DEEP = Color(180, 20, 40, 220)
     val HOT = Color(255, 80, 80, 220)
 
-    /**
-     * 湮灭涡旋束体给公共 [BeamCoreComponent] 的规格：深红芯+亮红缘核心、血红辉光、tip 0.80 taper、
-     * 淡出由 fadeMul 整体收束（变细+变淡）、固定色（不逐帧 lerp，本武器无充能 ramp）、不施加填充淡化。
-     * 宽度：coreW = baseWidth×1.15（强度恒 1 无 ramp）；glowW = coreW×2.0。
-     */
     fun coreSpec(): BeamCoreSpec {
         val baseAlphaCore = 0.55f
         val baseEmCore = 2.40f
@@ -78,37 +65,24 @@ object AvBeam {
     }
 }
 
-/**
- * 命中端涡旋节点（规格 04 §3，涡旋 Shader 优先裁定）：
- * - **涡旋面**：旋转深红涡旋 shader（WorldQuad keyed upsert，每帧提交、[STALE_AFTER_SECONDS] 自然退休，无常驻句柄）；
- * - **低频内收扭曲点缀**：DistortionEntity 间隔 ~1s 一枚，微弱引力透镜感；
- * - **环布火花**：少量向心旋进火花（纯引擎粒子，无常驻句柄）；
- * - **吸收迁移 flare**：[onAbsorbed] 登记一枚迁移光点，沿直线收束到涡旋心后爆闪并推高 shader 脉冲。
- *
- * 半径档位经 [vortexRadius] 由 BeamEffect 建树后写入（builders 为无参注册表，参数走树节点属性注入）。
- */
 class AnnihilationVortexVortexComponent(
     id: String,
     layer: CombatEngineLayers = CombatEngineLayers.ABOVE_PARTICLES,
     renderOrder: Int = RENDER_ORDER,
 ) : RenderEntityImpl(id, layer, renderOrder) {
 
-    /** 涡旋半径（世界 su）。默认玩家 v2 档 187.5；BeamEffect 开火起点按难度档位覆写。 */
     var vortexRadius: Float = 187.5f
 
-    /** 迁移中的吸收 flare。 */
     private data class AbsorbFlare(val from: Vector2f, val pos: Vector2f, var life: Float)
 
     private val flares = ArrayList<AbsorbFlare>()
     private val distortionInterval = IntervalUtil(DISTORTION_INTERVAL_MIN, DISTORTION_INTERVAL_MAX)
     private var sparkAcc = 0f
 
-    /** shader 脉冲 0..1：吸收抵达时推高、随时间衰减，驱动涡旋心亮度（吸收可见反馈的一环）。 */
     private var pulse = 0f
     private var warnedDistortion = false
     private val zeroVel = Vector2f(0f, 0f)
 
-    /** 吸收反馈入口：BeamEffect 经 AbsorbImpl 回调逐发调用（弹体被移除的世界坐标）。 */
     fun onAbsorbed(location: Vector2f) {
         if (flares.size >= FLARE_MAX) flares.removeAt(0)
         flares += AbsorbFlare(Vector2f(location), Vector2f(location), 0f)
@@ -120,7 +94,6 @@ class AnnihilationVortexVortexComponent(
         val fade = ctx.frame.fadeMul.coerceIn(0f, 1f)
         val radius = vortexRadius.coerceAtLeast(30f)
 
-        // 1) 涡旋 shader 面：keyed 每帧 upsert；fadeMul 收 alphaMult，停提交后 stale 自然退休。
         if (fade > 0.001f) {
             AvVortexShader.submitFrame(
                 sink = CombatShaderRuntime.ensure(engine).sink,
@@ -131,18 +104,15 @@ class AnnihilationVortexVortexComponent(
         }
 
         if (ctx.frame.active) {
-            // 2) 低频内收扭曲点缀（微弱，避免与坍缩大扭曲抢戏）。
             distortionInterval.advance(amount)
             if (distortionInterval.intervalElapsed()) spawnAccentDistortion(engine, center, radius)
 
-            // 3) 环布向心火花。
             sparkAcc += SPARK_RATE * amount
             val sparkCount = sparkAcc.toInt().coerceAtMost(SPARK_MAX_PER_FRAME)
             if (sparkCount > 0) sparkAcc -= sparkCount
             repeat(sparkCount) { spawnRingSpark(engine, center, radius) }
         }
 
-        // 4) 吸收迁移 flare（停火淡出期继续收束，不打断反馈）。
         advanceFlares(engine, center, amount)
 
         pulse = (pulse - amount / PULSE_DECAY_SECONDS).coerceAtLeast(0f)
@@ -182,7 +152,6 @@ class AnnihilationVortexVortexComponent(
         val ux = cos(rad).toFloat()
         val uy = sin(rad).toFloat()
         val loc = Vector2f(center.x + ux * dist, center.y + uy * dist)
-        // 速度 = 切向旋进 + 向心收束（向心分量略强，保证火花 visibly 被卷入）。
         val tangent = MathUtils.getRandomNumberInRange(60f, 140f)
         val inward = MathUtils.getRandomNumberInRange(90f, 180f)
         val sign = if (Math.random() < 0.5f) 1f else -1f
@@ -202,7 +171,6 @@ class AnnihilationVortexVortexComponent(
             val f = it.next()
             f.life += amount
             val t = (f.life / FLARE_TRAVEL_SECONDS).coerceIn(0f, 1f)
-            // 直线收束到涡旋心（ease-in：末段加速，观感「被吸入」）。
             val k = t * t
             f.pos.set(f.from.x + (center.x - f.from.x) * k, f.from.y + (center.y - f.from.y) * k)
 
@@ -217,7 +185,6 @@ class AnnihilationVortexVortexComponent(
             )
 
             if (t >= 1f) {
-                // 抵达涡旋心：爆闪 + 推高 shader 脉冲。
                 engine.addSmoothParticle(
                     center, zeroVel, 30f, 1.8f, 0.14f,
                     Color(AvBeam.HOT.red, AvBeam.HOT.green, AvBeam.HOT.blue, 235),
@@ -231,7 +198,6 @@ class AnnihilationVortexVortexComponent(
     private val instanceId = "avortex:" + System.identityHashCode(this)
 
     companion object {
-        /** 涡旋节点在树内的次级绘制序（束体 100 之上、GCP 系虹吸 300 之下）。 */
         const val RENDER_ORDER = 200
 
         private const val DISTORTION_INTERVAL_MIN = 0.85f
@@ -246,19 +212,11 @@ class AnnihilationVortexVortexComponent(
     }
 }
 
-/**
- * 湮灭涡旋命中端的旋转深红涡旋 shader。
- *
- * GL 程序、layer 插件、生命周期全部委托共享 shader runtime；本对象只持有效果参数与「半径/fade/脉冲 → shader 提交」
- * 的转换。keyed upsert 按组件实例区分（多武器同时开火互不覆盖），停提交 [STALE_AFTER_SECONDS] 后自然退休。
- * 混合模式 Additive：能量场辉光口径，BelowParticles 层统一。
- */
 private object AvVortexShader {
 
-    /** 提交后超过此秒数无更新即判定过期（开火期每帧推进，远快于此）。 */
     const val STALE_AFTER_SECONDS = 0.18f
 
-    /** 渲染 quad 须比涡旋半径略大，给外缘羽化留空间，避免被 quad 硬切。与 GLSL 内 1.15 字面量保持同步。 */
+    /** quad 半径余量，与 GLSL 内 1.15 字面量必须保持同步（GLSL 无法引用 Kotlin 常量）。 */
     private const val FEATHER_MARGIN_MULT = 1.15f
 
     private const val EFFECT_ID = "astd_annihilation_vortex_field"
@@ -272,11 +230,8 @@ private object AvVortexShader {
                 required = false,
                 defaultValue = ShaderUniformValue.Vec2(1f, 1f),
             ),
-            // 整体不透明度（fadeMul 收束包络 × 基础亮度）。
             ShaderUniformDefinition("alphaMult", ShaderUniformType.Float),
-            // 吸收脉冲 0→1：涡旋心亮度瞬时推高后衰减（吸收反馈）。
             ShaderUniformDefinition("pulse", ShaderUniformType.Float),
-            // 归一域半径：v_uv∈[0,1] → 中心化坐标半径范围（涡旋缘落在 domain 内）。
             ShaderUniformDefinition("domainRadius", ShaderUniformType.Float),
         ),
     )
@@ -297,7 +252,6 @@ private object AvVortexShader {
         renderRadius = quadHalfExtentFor(187.5f),
     )
 
-    /** 单帧涡旋渲染参数（纯几何/亮度，便于单测）。 */
     data class Frame(
         val quadHalfExtentWorld: Float,
         val alphaMult: Float,
@@ -306,17 +260,12 @@ private object AvVortexShader {
 
     fun quadHalfExtentFor(radius: Float): Float = radius.coerceAtLeast(30f) * FEATHER_MARGIN_MULT
 
-    /**
-     * 计算单帧涡旋参数。alphaMult = fade × 基础 0.42（涡旋是主角之一，比潮汐场 0.26 略亮）；
-     * 逐帧旋转/湍流由 FRAGMENT 内 u_time 完成，此处不含时间项。
-     */
     fun frame(radius: Float, fade: Float, pulse: Float): Frame = Frame(
         quadHalfExtentWorld = quadHalfExtentFor(radius),
         alphaMult = fade.coerceIn(0f, 1f) * 0.42f,
         pulse = pulse.coerceIn(0f, 1f),
     )
 
-    /** 提交/更新一个涡旋实例（keyed upsert）。 */
     fun submitFrame(sink: ShaderSink, instanceId: String, center: Vector2f, frame: Frame) {
         if (frame.alphaMult <= 0.001f) return
         sink.upsert(
@@ -397,9 +346,7 @@ private object AvVortexShader {
           float r = length(p);
           float ang = atan(p.y, p.x);
 
-          // Vortex edge in normalized domain: quad half-extent = radius * feather mult,
-          // so the edge sits at 1 / feather mult. This 1.15 MUST stay in sync with the
-          // Kotlin-side FEATHER_MARGIN_MULT (GLSL cannot reference a Kotlin const).
+          // This 1.15 MUST stay in sync with the Kotlin-side FEATHER_MARGIN_MULT.
           float vortexEdge = 1.0 / 1.15;
           if (r > vortexEdge) {
             gl_FragColor = vec4(0.0);
@@ -407,19 +354,16 @@ private object AvVortexShader {
           }
           float rn = r / vortexEdge;
 
-          // ---- Spiral: angle winds tighter toward center, whole pattern rotates over time ----
           float wound = ang + rn * 5.5 - u_time * 2.2;
           float arms = 0.5 + 0.5 * sin(wound * 3.0);
           float turbulence = fbm(vec2(rn * 4.5 - u_time * 0.35, wound * 0.8));
           float swirl = mix(arms, turbulence, 0.45);
 
-          // ---- Radial profile: dark eye, bright mid ring, feathered edge ----
           float eye = smoothstep(0.02, 0.22, rn);
           float midRing = 1.0 - smoothstep(0.25, 1.0, rn);
           float edge = 1.0 - smoothstep(vortexEdge - 0.16, vortexEdge, r);
 
           float body = eye * midRing * (0.35 + 0.65 * swirl) * edge;
-          // Absorption pulse: brightens the eye ring and inner region briefly.
           float pulseGlow = u_pulse * (1.0 - smoothstep(0.0, 0.55, rn));
 
           vec3 deepRed = vec3(0.71, 0.08, 0.16);

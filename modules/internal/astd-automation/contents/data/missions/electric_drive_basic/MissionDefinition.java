@@ -9,14 +9,6 @@ import com.fs.starfarer.api.mission.FleetSide;
 import com.fs.starfarer.api.mission.MissionDefinitionAPI;
 import com.fs.starfarer.api.mission.MissionDefinitionPlugin;
 
-/**
- * Dev-only mission surface for electric drive accelerator in-game automation.
- * <p>
- * 玩家旗舰锤头级（清空全部槽位后中型实弹槽 WS 001 装电驱加速炮）对敌方锤头级（同款单装）：
- * 射程相位验证净空加速随辐能伸缩（0/30%/50% 三档读 weapon.range），
- * 开火相位验证每触发 2 弹（双管交替 × burst 2）与装药追加伤害遥测，
- * 难度相位经 installScaleForTests 切 k_s 验证敌版三档射程与追加伤害幅度。
- */
 public final class MissionDefinition implements MissionDefinitionPlugin {
     private static void clearAllWeaponSlots(final FleetMemberAPI member) {
         for (final String slotId : member.getVariant().getFittedWeaponSlots()) {
@@ -34,7 +26,6 @@ public final class MissionDefinition implements MissionDefinitionPlugin {
 
         final FleetMemberAPI player = api.addToFleet(FleetSide.PLAYER, "hammerhead_Balanced", FleetMemberType.SHIP, true);
         clearAllWeaponSlots(player);
-        // 摘除目标定位系统（ITU）：其射程加成会抬升射程基线，破坏净空加速 800/900/1000 的期望读数。
         player.getVariant().removeMod("targetingunit");
         player.getVariant().addWeapon("WS 001", ASTDInGameAutomationScenario.EDA_WEAPON_ID);
 

@@ -7,13 +7,6 @@ import com.fs.starfarer.api.combat.CombatEntityAPI
 import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
 
-/**
- * [CombatFeedback] 的引擎直通实现：统一做 0 值/空串防线后转发 `CombatEngineAPI` 已核实入口。
- *
- * 动机：把「特殊数值必须配玩家可见表现」的铁律落到单一通道——数值异常（浮字 amount<=0/NaN、
- * 空白文本）在此处记 WARN 并拦截，调用方无需各自防御；状态栏直通
- * `maintainStatusForPlayerShip`（调用方负责每帧刷新与 i18n）。
- */
 object CombatFeedbackImpl : CombatFeedback {
     private val log = Global.getLogger(CombatFeedbackImpl::class.java)
 

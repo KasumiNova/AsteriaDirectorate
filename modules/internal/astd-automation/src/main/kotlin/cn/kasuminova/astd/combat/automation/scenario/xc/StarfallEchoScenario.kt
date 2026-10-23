@@ -7,15 +7,15 @@ import cn.kasuminova.astd.internal.debug.ASTDInGameAutomationScenario
 import cn.kasuminova.astd.renderer.projectile.driver.ProjectileVfxTelemetrySnapshot
 
 /**
- * xc_001 坠星残响默认场景：未命中任何具体场景时主干按本场景运转（拆分前 if-else 链的 else 分支）。
+ * xc_001 坠星残响默认场景：未命中任何具体场景时主干按本场景运转。
  *
- * 舞台状态（锚点/兜底弹体/取景曲线）由 [cn.kasuminova.astd.combat.automation.base.StarfallEchoStage]
- * 托管并经 [AutomationCombatContext.starfallEcho] 开放——trail_pause_probe 探针与诊断 JSON 尾部
+ * 舞台状态（锚点/备用弹体/取景曲线）由 [cn.kasuminova.astd.combat.automation.base.StarfallEchoStage]
+ * 托管并经 [AutomationCombatContext.starfallEcho] 开放，trail_pause_probe 探针与诊断 JSON 尾部
  * 共享同一舞台，本类只持有相位机外的流程逻辑与 fireMechanism 记录。
  */
 class StarfallEchoScenario : AbstractAutomationScenario() {
 
-    /** 开火机制记录（setForceFireOneFrame / spawnProjectileFallback），拆分前枢纽字段，仅赋值供排障阅读。 */
+    /** 开火机制记录（setForceFireOneFrame / spawnProjectileFallback），仅赋值供排障阅读。 */
     private var fireMechanism: String? = null
 
     override val scenarioId: String = ASTDInGameAutomationScenario.SCENARIO_ID

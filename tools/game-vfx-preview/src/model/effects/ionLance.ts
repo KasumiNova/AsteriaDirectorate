@@ -1,12 +1,5 @@
-/**
- * 离子长枪扫射特效。
- *
- * 一道高速推进的斜向准直能量束：细亮核心、轻薄青蓝外晕、连续推进端与细碎电离火花。
- * 适合表现光矛、轨道炮、穿刺型舰船系统或高能武器预览。
- */
 import type { EffectDefinition } from '../effectDefinition';
 
-/** 离子长枪扫射的 fragment shader（不含公共头）。 */
 export const ION_LANCE_FRAGMENT_SHADER = `
 uniform float u_beamWidth;
 uniform float u_sweepSpeed;
@@ -30,7 +23,6 @@ void main() {
   float phase = fract(u_time * u_sweepSpeed);
   float head = mix(-1.35, 1.35, phase);
 
-  // 光矛从左侧生成并向右推进；端部用柔性渐隐，而不是大体积等离子弹头。
   float launchMask = smoothstep(-1.25, -0.92, along);
   float beamEnd = 1.0 - smoothstep(head + 0.02, head + 0.26, along);
   float bodyMask = launchMask * beamEnd;
@@ -38,7 +30,6 @@ void main() {
   float tailFade = 1.0 - smoothstep(1.35, 1.85, behind);
   float chargePulse = 0.8 + u_charge * (0.12 + 0.06 * sin(u_time * TAU * 3.0));
 
-  // 准直束体：细核心 + 中层束体 + 轻薄外晕。核心不再铺成宽白条，避免等离子炮观感。
   float nearHead = smoothstep(head - 0.40, head + 0.02, along) * beamEnd;
   float coreTaper = 1.0 - smoothstep(head + 0.00, head + 0.24, along);
   float needleWidth = u_beamWidth * 0.58;
@@ -48,14 +39,12 @@ void main() {
   float beamBody = exp(-pow(across / max(beamWidth, 1e-4), 2.0)) * bodyMask * tailFade * (0.72 + nearHead * 0.18);
   float sheath = exp(-pow(across / max(haloWidth, 1e-4), 2.0)) * bodyMask * tailFade * (0.38 + nearHead * 0.18);
 
-  // 低体积的连续推进端：只给束体前端一点收束亮度，不形成独立圆头。
   float ahead = max(along - head, 0.0);
   float trail = max(head - along, 0.0);
   float noseWidth = u_beamWidth * 2.7;
   float noseAxis = exp(-pow(ahead / 0.16 + trail / 0.48, 2.0));
   float headGlow = noseAxis * exp(-pow(across / max(noseWidth, 1e-4), 2.0)) * launchMask * beamEnd * 0.72;
 
-  // 沿光束附近生成稀疏电离火花，不使用 Canvas 描线语义。
   float sparkNoise = fbm(vec2(along * 18.0 + u_time * 5.0, across * 95.0));
   float sparkSharpness = mix(14.0, 5.0, clamp(u_sparkDensity, 0.0, 1.0));
   float sparks = pow(sparkNoise, sparkSharpness)
@@ -78,7 +67,6 @@ void main() {
 }
 `;
 
-/** 青白离子长枪扫射特效定义。 */
 export const ION_LANCE_SWEEP: EffectDefinition = {
   id: 'ion-lance-sweep',
   name: 'Ion Lance Sweep',

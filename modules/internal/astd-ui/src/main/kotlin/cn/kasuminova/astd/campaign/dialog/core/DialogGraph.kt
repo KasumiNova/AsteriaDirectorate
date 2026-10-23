@@ -1,10 +1,8 @@
 package cn.kasuminova.astd.campaign.dialog.core
 
 /**
- * “对话图”：nodeId -> node。
- *
- * 注意：node 本身可以是 object/singleton，但如果 node 内部持有可变状态，
- * 你需要把状态放到 [DialogContext.sessionState] / MemoryAPI，而不是放在 node 字段里。
+ * nodeId 到节点的映射。
+ * 节点可以是单例，但可变状态必须放在 [DialogContext.sessionState] 或 MemoryAPI，禁止放在节点字段。
  */
 data class DialogGraph(
     val startNodeId: String,

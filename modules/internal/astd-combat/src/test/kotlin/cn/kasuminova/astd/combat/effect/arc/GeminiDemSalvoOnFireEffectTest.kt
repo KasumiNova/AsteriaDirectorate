@@ -28,11 +28,6 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
-/**
- * 规格 10 §4.1 用例 12~13：齐射流程——dummy 同帧移除、双弹 weaponId/批次号/TrackAI +
- * DEMScript 装配；生成失败路径——非 MissileAPI 记 ERROR 且另一枚不受影响。
- * fake 引擎记录 spawnProjectile 调用，demPluginFactory 注入记录桩断言装配。
- */
 class GeminiDemSalvoOnFireEffectTest {
 
     private fun stubEngine(): CombatEngineAPI {
@@ -70,8 +65,6 @@ class GeminiDemSalvoOnFireEffectTest {
     private fun stubWarheadMissile(): MissileAPI {
         val missile = mock(MissileAPI::class.java)
         `when`(missile.customData).thenReturn(mutableMapOf())
-        // 实体级 customData 真实契约：字段惰性为 null，setCustomData 才初始化并写入
-        // （CollisionEntityImpl 实证）；mock 侧让 setCustomData 落进同一张表。
         org.mockito.Mockito.doAnswer { inv ->
             missile.customData[inv.getArgument(0)] = inv.getArgument(1)
             null
@@ -90,7 +83,6 @@ class GeminiDemSalvoOnFireEffectTest {
         val weapon = mock(WeaponAPI::class.java)
         `when`(weapon.ship).thenReturn(ship)
         `when`(weapon.id).thenReturn("astd_gemini_dem_launcher")
-        // burst=2 口径：弹药由引擎按连发次数自扣（每发 dummy 1 枚），onFire 不再触碰 weapon.ammo
         val projectile = stubProjectile()
 
         val kineticMissile = stubWarheadMissile()
@@ -119,16 +111,13 @@ class GeminiDemSalvoOnFireEffectTest {
                 BaseEveryFrameCombatPlugin()
             },
         )
-        // 拖尾管线构建函数注册表（实机由 CombatVfxBootstrap 装配，测试侧显式装一次以对齐实机前提）
         ProjectileVfxSpecs.install()
         effect.onFire(projectile, weapon, engine)
 
         verify(engine).removeEntity(projectile)
 
-        // 弹药由引擎 burst=2 自扣（每发 dummy 1 枚），onFire 不得再触碰 ammo
         verify(weapon, times(0)).ammo = org.mockito.ArgumentMatchers.anyInt()
 
-        // 双弹装配：source / armingTime / TrackAI / 批次号 / DEMScript 插件
         for ((missile, expectTarget) in listOf(kineticMissile to target, heMissile to target)) {
             verify(missile).source = ship
             verify(missile).armingTime = GeminiDemDifficulty.WARHEAD_ARMING_TIME
@@ -143,7 +132,6 @@ class GeminiDemSalvoOnFireEffectTest {
         assertNotNull(salvoK)
         assertEquals(salvoK, salvoH, "双弹写入同一齐射批次号")
         assertTrue(salvoK.startsWith("astd_gemini_salvo:P1:"))
-        // 舰装编成：出生登记簿武器 id 为舰装弹头（观测面按 weaponId 过滤，如 KILL_ONE 相位）
         assertEquals(
             listOf(GeminiDemDifficulty.KINETIC_WEAPON_ID, GeminiDemDifficulty.HE_WEAPON_ID),
             GeminiDemSalvoOnFireEffect.warheadsOf(engine).map { it.weaponId },
@@ -152,7 +140,6 @@ class GeminiDemSalvoOnFireEffectTest {
         assertEquals(2, demAttached.size, "两枚弹头均装配 DEMScript 插件")
         assertSame(kineticMissile, demAttached[0])
         assertSame(heMissile, demAttached[1])
-        // addPlugin 共 3 次：DEMScript ×2 + 拖尾管线 ProjectileVfxDriverPlugin 安装 ×1（track → ensureInstalled）
         verify(engine, times(3)).addPlugin(org.mockito.ArgumentMatchers.any(EveryFrameCombatPlugin::class.java))
 
         assertEquals(1, GeminiDemSalvoOnFireEffect.salvoCount(engine))
@@ -185,14 +172,12 @@ class GeminiDemSalvoOnFireEffectTest {
         effect.onFire(first, weapon, engine)
         assertEquals(1, GeminiDemSalvoOnFireEffect.salvoCount(engine))
 
-        // 回声发（burst 第 2 发，同一帧 12.5s）：dummy 仍被移除，但不产生第二轮齐射
         val echo = stubProjectile()
         effect.onFire(echo, weapon, engine)
         verify(engine).removeEntity(echo)
         assertEquals(1, GeminiDemSalvoOnFireEffect.salvoCount(engine), "回声发不得产生新齐射")
         assertEquals(2, GeminiDemSalvoOnFireEffect.warheadsSpawned(engine), "回声发不得生成新弹头")
 
-        // 窗口过后（12s 装填后的下一轮）可再次正常齐射
         `when`(engine.getTotalElapsedTime(false)).thenReturn(25.0f)
         effect.onFire(stubProjectile(), weapon, engine)
         assertEquals(2, GeminiDemSalvoOnFireEffect.salvoCount(engine))
@@ -238,7 +223,6 @@ class GeminiDemSalvoOnFireEffectTest {
             capture.messages().any { it.contains("非 MissileAPI") },
             "ERROR 日志含生成失败说明（实际：${capture.messages()}）",
         )
-        // 另一枚照常装配
         verify(heMissile).armingTime = GeminiDemDifficulty.WARHEAD_ARMING_TIME
         verify(heMissile).missileAI = org.mockito.ArgumentMatchers.any(GeminiDemTrackAI::class.java)
         assertEquals(1, GeminiDemSalvoOnFireEffect.warheadsSpawned(engine), "失败枚不计入生成遥测")
@@ -280,7 +264,6 @@ class GeminiDemSalvoOnFireEffectTest {
         ProjectileVfxSpecs.install()
         GeminiDemSalvoOnFireEffect { _, _, _ -> BaseEveryFrameCombatPlugin() }.onFire(stubProjectile(), weapon, engine)
 
-        // 数据驱动削弱链：撞碰 750 与 payload dps 750/1125 由战机版 spec 承担，脚本只负责选对编成
         assertSame(kineticMissile, GeminiDemSalvoOnFireEffect.warheadsOf(engine)[0].missile)
         assertSame(heMissile, GeminiDemSalvoOnFireEffect.warheadsOf(engine)[1].missile)
         assertEquals(

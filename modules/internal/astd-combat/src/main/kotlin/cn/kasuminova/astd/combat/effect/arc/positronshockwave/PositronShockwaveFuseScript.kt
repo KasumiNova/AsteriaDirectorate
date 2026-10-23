@@ -22,23 +22,6 @@ import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
 import kotlin.math.atan2
 
-/**
- * 正电子冲击波弹体引信脚本（规格 06 §2.2 状态机 FLYING → DONE，无定时器族）：
- * 每发弹体一个实例，由 [PositronShockwaveOnFireEffect] 在发射时注册。
- *
- * 每帧判定（优先级）：
- * 1. 近炸——以弹体为顶点、飞行方向为轴的锥状攻击范围内存在敌方导弹/战机/无人机 → 立即引爆；
- * 2. 满射程——弹体已飞距离达武器面板射程 → 无条件引爆（裁定：不会静默消散）。
- *
- * 引爆编排顺序固定：几何结算（基建 [ConeImpactHandler]）→ VFX/音效/浮字 → 移除弹体
- * （先结算后移除，保证引爆帧弹体仍是合法伤害来源上下文）。
- *
- * 0 值防线（规格 §2.4，全部有日志、不自爆不静默）：
- * - 弹体速度近零（生成首帧/外部减速）：本帧跳过引信判定并 WARN（每弹体一次）——方向矢量无意义时
- *   禁止产出错误锥形；
- * - moveSpeed <= 0：[PositronShockwaveDifficulty.reachedMaxRange] 记 ERROR 并立即引爆；
- * - 弹体在飞行中被移除（战斗结束/异常）：静默回收（非引爆路径，不产 VFX）。
- */
 class PositronShockwaveFuseScript(
     private val projectile: DamagingProjectileAPI,
     private val source: ShipAPI?,
@@ -55,10 +38,8 @@ class PositronShockwaveFuseScript(
             done = true
             return
         }
-        // 引擎暂停时本不回调，显式防线双保险
         if (engine.isPaused) return
         if (!engine.isEntityInPlay(projectile)) {
-            // 弹体在飞行中被移除（战斗结束/异常）：静默回收，非引爆路径
             done = true
             return
         }
@@ -76,7 +57,6 @@ class PositronShockwaveFuseScript(
         dir.normalise()
         val fuseOwner = source?.owner ?: projectile.owner
 
-        // 首帧心跳（每场战斗一次）：证实引信脚本 advance 真实运行并暴露弹体运行参数
         if (engine.customData[TELEMETRY_FIRST_FRAME_LOGGED] != true) {
             engine.customData[TELEMETRY_FIRST_FRAME_LOGGED] = true
             log.info(
@@ -86,8 +66,6 @@ class PositronShockwaveFuseScript(
             )
         }
 
-        // 条件 1（优先）：近炸——锥内 40% 射程内存在敌方导弹/战机/无人机才引爆
-        // （2026-09 用户裁定：进入锥缘不再立刻引爆，几何与结算同源，走基建锥筛纯函数）。
         val fuseRange = spec.range * PositronShockwaveDifficulty.FUSE_RANGE_RATIO
         var detonate = CombatUtils.getEntitiesWithinRange(loc, fuseRange).any { e ->
             e !== projectile &&
@@ -95,8 +73,7 @@ class PositronShockwaveFuseScript(
                     ConeImpactHandler.isInsideCone(loc, dir.x, dir.y, spec.halfAngleDeg, fuseRange, e.location, e.collisionRadius)
         }
 
-        // 条件 2：抵达最大射程——无条件自爆（裁定：不会静默消散）。
-        // 原版弹体寿命被钳制为 range/projSpeed，淡出与满射程同帧发生；本判定须先于淡出兜底执行。
+        // 原版弹体寿命钳制为 range/projSpeed，淡出与满射程同帧发生，满射程判定必须先执行。
         var maxRangeDetonate = false
         if (!detonate) {
             maxRangeDetonate = PositronShockwaveDifficulty.reachedMaxRange(
@@ -107,8 +84,6 @@ class PositronShockwaveFuseScript(
             detonate = maxRangeDetonate
         }
 
-        // 淡出兜底（裁定「不会静默消散」）：原版淡出先于上述引信触发属于异常时序
-        // （浮点边界/数据面寿命配置失误等），记 WARN 并按满射程路径就地引爆
         if (!detonate && projectile.isFading) {
             log.warn(
                 "正电子冲击波弹体淡出先于引信触发（elapsed=${projectile.elapsed}, " +
@@ -121,7 +96,6 @@ class PositronShockwaveFuseScript(
         if (detonate) detonateAndFinish(engine, loc, dir, fuseOwner, fuse = !maxRangeDetonate)
     }
 
-    /** 引爆编排：结算 → VFX/音效/浮字 → 移除弹体。 */
     private fun detonateAndFinish(
         engine: CombatEngineAPI,
         loc: Vector2f,
@@ -140,10 +114,6 @@ class PositronShockwaveFuseScript(
     companion object {
         private val log = Global.getLogger(PositronShockwaveFuseScript::class.java)
 
-        /**
-         * 引爆共享实现（引信脚本与撞舰 OnHit 同源）：锥面几何结算 → 锥面 VFX/蓝闪/音效 → 移除弹体。
-         * [spawnLoc] 仅引信脚本路径持有（满射程遥测）；OnHit 路径传 null 跳过距离遥测。
-         */
         fun detonate(
             engine: CombatEngineAPI,
             projectile: DamagingProjectileAPI,
@@ -155,11 +125,10 @@ class PositronShockwaveFuseScript(
             detonateTelemetryKey: String,
             spawnLoc: Vector2f? = null,
         ) {
-            // 一次性声明：引信脚本与撞舰 OnHit 两条路径同帧竞态时只爆一次（先 claim 者胜出）。
+            // 引信脚本与撞舰 OnHit 可能同帧竞态，按弹体一次性 claim 只爆一次。
             val claimKey = TELEMETRY_DETONATE_CLAIM_PREFIX + System.identityHashCode(projectile)
             if (engine.customData[claimKey] == true) return
             engine.customData[claimKey] = true
-            // 锥面单次结算伤害（damageAdjust 回调结果）：SIC「武备升级」对战机追加高爆的基准
             var dealtDamage = spec.damage
             val targets = ConeImpactHandler.resolve(
                 engine,
@@ -173,13 +142,10 @@ class PositronShockwaveFuseScript(
                     empDamage = 0f,
                     source = source,
                     owner = fuseOwner,
-                    // 结算波及全部敌对目标（含舰船，裁定「自爆波及」）
                     filter = ConeTargetFilter { e -> e.owner != fuseOwner },
                     hitShips = true,
                     hitFighters = true,
                     hitMissiles = true,
-                    // 密度增伤（2026-10 裁定）：锥内每有一个导弹/战机/无人机目标，
-                    // 本次结算对单个目标的伤害再提升 spec.densityBonus（难度缩放）。
                     damageAdjust = ConeDamageAdjust { hits ->
                         val swarm = hits.count { e ->
                             e is MissileAPI || (e as? ShipAPI)?.let { it.isFighter || it.isDrone } == true
@@ -188,7 +154,6 @@ class PositronShockwaveFuseScript(
                     },
                 ),
             )
-            // SIC「武备升级」：对战机追加等量高爆伤害（标记由 astd-campaign 技能写入来源舰 customData）
             val fighterExtraHe = PositronShockwaveDifficulty.fighterExtraHeDamage(
                 dealtDamage, SicWeaponUpgradeFlags.isArmamentUpgradeActive(source),
             )
@@ -212,7 +177,6 @@ class PositronShockwaveFuseScript(
                 }
             }
 
-            // 锥面冲击 VFX（基建共用组件，蓝色调缩小版，规模随 spec.range 参数化）+ 小型蓝闪 + 音效
             ConeImpactVfx.spawn(
                 engine,
                 ConeImpactVfxSpec(
@@ -228,7 +192,6 @@ class PositronShockwaveFuseScript(
             engine.spawnExplosion(loc, ZERO, FLASH_COLOR, spec.range * 0.25f, 0.15f)
             Global.getSoundPlayer().playSound("explosion_flak", 1f, 0.9f, loc, ZERO)
 
-            // 引爆计数浮字：仅 devMode + 玩家侧且有命中（2026-07-29 审批裁定：正常玩家只看锥面特效）
             if (Global.getSettings().isDevMode && source?.owner == 0 && targets.isNotEmpty()) {
                 engine.addFloatingText(loc, "近炸命中 ×${targets.size}", 16f, FLOATY_COLOR, source, 0f, 0f)
                 bumpTelemetry(engine, TELEMETRY_FLOATY)
@@ -237,33 +200,24 @@ class PositronShockwaveFuseScript(
             engine.removeEntity(projectile)
         }
 
-        /** 引爆一次性声明键前缀（engine.customData，全键 = 前缀 + 弹体 identityHashCode）。 */
         private const val TELEMETRY_DETONATE_CLAIM_PREFIX = "astd_positron_detonate_claim:"
 
-        /** 遥测自增（伴生内共享，供 [detonate] 使用）。 */
         private fun bumpTelemetry(engine: CombatEngineAPI, key: String) {
             engine.customData[key] = (engine.customData[key] as? Int ?: 0) + 1
         }
 
-        /** 速度近零判定阈值（lengthSquared）：低于此值方向矢量无意义。 */
         private const val ZERO_VELOCITY_THRESHOLD = 1e-3f
 
-        /** 零速度矢量（爆炸/音效用，避免逐次分配）。 */
         private val ZERO = Vector2f()
 
-        /** 引爆锥面核心色（蓝色调缩小版，对照贯星族调色）。 */
         private val CONE_CORE_COLOR = Color(165, 210, 255)
 
-        /** 引爆锥面辉光色。 */
         private val CONE_FRINGE_COLOR = Color(70, 130, 255)
 
-        /** 引爆点小型蓝闪（规格 §2.2）。 */
         private val FLASH_COLOR = Color(140, 200, 255, 90)
 
-        /** devMode 引爆计数浮字色。 */
         private val FLOATY_COLOR = Color(180, 220, 255)
 
-        // ---- dev 自动化烟测遥测键（engine.customData）----
         const val TELEMETRY_DETONATE_FUSE = "astd_positron_detonate_fuse"
         const val TELEMETRY_DETONATE_MAX_RANGE = "astd_positron_detonate_max_range"
         const val TELEMETRY_DETONATE_IMPACT = "astd_positron_detonate_impact"
@@ -276,10 +230,8 @@ class PositronShockwaveFuseScript(
         const val TELEMETRY_FIRST_FRAME_LOGGED = "astd_positron_first_frame_logged"
         const val TELEMETRY_ONFIRE_LOGGED = "astd_positron_onfire_logged"
 
-        /** 读整数遥测计数（无记录为 0）。 */
         fun telemetryCount(engine: CombatEngineAPI, key: String): Int = engine.customData[key] as? Int ?: 0
 
-        /** 读浮点遥测值（无记录为 -1）。 */
         fun telemetryFloat(engine: CombatEngineAPI, key: String): Float = engine.customData[key] as? Float ?: -1f
     }
 }

@@ -1,6 +1,6 @@
 ---
-name: "boxutil-guidelines"
-description: "BoxUtil 使用指南（API 速览、调试建议、避坑点），并结合本项目的封装与落地实践。"
+name: boxutil-guidelines
+description: "BoxUtil 使用指南（API 速览、调试建议、避坑点），以及本项目的封装与使用方式。"
 ---
 
 # Skill：BoxUtil 使用指南（API / 调试 / 避坑点）
@@ -37,7 +37,7 @@ description: "BoxUtil 使用指南（API 速览、调试建议、避坑点），
 - 在**首个** `BaseEveryFrameCombatPlugin / BaseCombatLayeredRenderingPlugin` 中调用：`BoxUtilModPlugin.initLater()`（确保 OpenGL 上下文可用）
 - 依赖 BoxUtil 状态的资源，建议在 `initLater()` 之后再初始化
 - BoxUtil 会校验游戏主版本（0.98），版本不匹配会抛异常
-- 本项目封装：`BoxUtilCombatVfx.ensureReady(engine)`（调用前兜底）
+- 本项目封装：`BoxUtilCombatVfx.ensureReady(engine)`（调用前检查初始化状态）
 
 ### 2) RenderDataAPI（通用渲染控制）
 
@@ -169,14 +169,14 @@ description: "BoxUtil 使用指南（API 速览、调试建议、避坑点），
 - BoxUtil 提供后台线程插件接口（`BaseBackgroundEveryFramePlugin`），适合做不依赖主线程的视觉/逻辑更新。
 - 建议配合 `TemporaryCleanupPlugin`，在战斗结束时做清理，避免资源泄漏。
 
-## 避坑点清单（来自本项目经验）
+## 常见错误
 
 1) **未初始化导致 addEntity 失败**
    - 先 `BoxUtilCombatVfx.ensureReady(engine)`，再创建/添加实体。
 
-1.5) **传入负角度朝向会镜像反转（实锤 BUG）**
+1.5) **传入负角度朝向会镜像反转**
    - BoxUtil `TrigUtil.sinFormCosF` 从 cos(半角) 反推 sin(半角) 时只做 `angle > 180` 的符号修正，
-     负角度（如 `atan2` 直出的 -90°）会拿到错误符号的 sin——等价于绕 x 轴镜像，
+     负角度（如 `atan2` 直出的 -90°）会拿到错误符号的 sin，等价于绕 x 轴镜像，
      实体朝向与侧向偏移整体反转（朝下开火时锥形/弧凸向翻转）。
    - 规范：所有进入 BoxUtil 实体变换（`setStateVanilla` / `createModelMatrixVanilla` /
      `createBeamVisual`）的朝向必须先过 `BoxUtilCombatVfx.normalizeFacingDeg`（归一化到 [0,360)）。

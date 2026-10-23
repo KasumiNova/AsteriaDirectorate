@@ -7,18 +7,13 @@ import com.fs.starfarer.api.combat.DamagingProjectileAPI
 import com.fs.starfarer.api.input.InputEventAPI
 import java.util.IdentityHashMap
 
-/**
- * 新 RenderEntity 管线的战斗每帧插件：持有各弹体的 [ProjectileVfxDriver]，逐帧推进、剔除已结束者。
- */
 class ProjectileVfxDriverPlugin : BaseEveryFrameCombatPlugin() {
 
-    /** 一枚已登记弹体：驱动 + 其 projectileSpecId（遥测归因用）。 */
     private class TrackedVfx(val specId: String, val driver: ProjectileVfxDriver)
 
     private val trackedByProjectile = IdentityHashMap<DamagingProjectileAPI, TrackedVfx>()
     private var engine: CombatEngineAPI? = null
 
-    /** 最近一帧推进过帧的弹体 specId 与其遥测（自动化取证用）。 */
     private var lastSpecId: String? = null
     private var lastTelemetry: ProjectileVfxDriverTelemetry? = null
 
@@ -55,11 +50,6 @@ class ProjectileVfxDriverPlugin : BaseEveryFrameCombatPlugin() {
             }
         }
 
-        /**
-         * 按 projectileSpecId 的手写 DSL 现构建一棵新树 + 策略，登记一枚弹体到新管线。
-         * 已登记或该 spec 未迁移则忽略。
-         * @return 是否新登记成功。
-         */
         fun track(engine: CombatEngineAPI, projectile: DamagingProjectileAPI, projectileSpecId: String): Boolean {
             ensureInstalled(engine)
             val plugin = engine.customData[ENGINE_KEY] as? ProjectileVfxDriverPlugin ?: return false
@@ -78,7 +68,6 @@ class ProjectileVfxDriverPlugin : BaseEveryFrameCombatPlugin() {
             return true
         }
 
-        /** 插件级遥测快照（自动化取证用）。插件未安装或尚无帧时各字段为空/零。 */
         fun telemetrySnapshot(engine: CombatEngineAPI): ProjectileVfxTelemetrySnapshot {
             val plugin = engine.customData[ENGINE_KEY] as? ProjectileVfxDriverPlugin
                 ?: return ProjectileVfxTelemetrySnapshot(0, null, 0f)
@@ -90,19 +79,11 @@ class ProjectileVfxDriverPlugin : BaseEveryFrameCombatPlugin() {
             )
         }
 
-        /** 测试入口（跨模块测试可达，故 public）：该引擎当前登记到新管线的弹体驱动数。 */
         fun trackedCountForTests(engine: CombatEngineAPI): Int =
             (engine.customData[ENGINE_KEY] as? ProjectileVfxDriverPlugin)?.trackedByProjectile?.size ?: 0
     }
 }
 
-/**
- * 弹体 VFX 管线的插件级遥测快照（自动化取证用，见 ASTDAutomationCombatPlugin）。
- *
- * @param trackedCount 当前在册驱动数。
- * @param lastProjectileSpecId 最近一帧推进过帧的弹体 specId；无则为 null。
- * @param lastElapsed 该驱动的累计推进秒数。
- */
 data class ProjectileVfxTelemetrySnapshot(
     val trackedCount: Int,
     val lastProjectileSpecId: String?,

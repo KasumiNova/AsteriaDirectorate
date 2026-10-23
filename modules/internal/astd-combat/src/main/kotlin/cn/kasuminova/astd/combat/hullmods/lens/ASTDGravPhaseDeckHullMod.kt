@@ -15,39 +15,8 @@ import com.fs.starfarer.api.combat.ShipSystemAPI
 import com.fs.starfarer.api.ui.TooltipMakerAPI
 import java.awt.Color
 
-/**
- * 引力相位甲板（Gravity Phase Deck，purple/20-production.md §2，2026-09 D27 重做）——茑萝级内置插件。
- *
- * 仅对茑萝级生效（[isApplicableToShip] / advanceInCombat 入口 [isZw103Ship] guard）。
- * advanceInCombat 每帧驱动两效果：
- *
- * 1. **引力联结（相位联动）**：母舰进入相位状态（[ShipAPI.isPhased]）时，全部在外战机
- *    同步进入相位状态（[ShipAPI.setPhased] + 半透明），母舰退出相位后严格配对恢复。
- *    相位所有权由 [LinkState.phasedByThis] 标记——只对「本插件相位过」的战机执行 setPhased(false)，
- *    绝不误清其他来源的相位状态。
- *    「战机不会产生相位维持辐能」：战机本身无相位线圈，联动相位不产生任何辐能开销，
- *    无需额外抵消逻辑。母舰相位期间战机战术系统同步禁用（非冷却态先 deactivate，
- *    再逐帧把剩余冷却钉在小余量 [SYSTEM_LOCK_COOLDOWN_REMAINING]，原版 ChargeTracker
- *    在 COOLDOWN 态不响应激活请求——磁暴相位锁定同款口径；退出相位后即刻恢复可用）。
- * 2. **辐能返还**：逐帧统计每架战机的辐能净增量（开火产出的软/硬辐能），按难度系数
- *    比例（[GravPhaseDeckTuning.FLUX_RETURN_RATIO]）从战机扣除并以软辐能形式加到母舰；
- *    母舰辐能水平高于 [GravPhaseDeckTuning.MOTHERSHIP_FLUX_LEVEL_DISABLE] 时失效。
- *    基线表 [LinkState.lastFluxByFighter] 按战机引用维护，战机消失时清理。
- *
- * 状态隔离：HullModEffect 实例按 hullmod 规格全局共享（同场多艘茑萝共用一个实例），
- * 全部逐舰状态挂 [ShipAPI.getCustomData]（战斗内随实体生命周期），按舰天然隔离、
- * 战斗结束随实体回收，不泄漏（2026-09 审查裁定，对照透潮/共享战术网络同款口径）。
- * 注意原版实体级 customData 的写入契约：字段惰性为 null，此时 getCustomData() 返回
- * 一次性空表，直接 put 会写入虚空（逐帧丢失）；首写必须走 [ShipAPI.setCustomData]
- * （2026-09-20 断言C排查实证：茑萝在自动化场景内无任何 setCustomData 调用方，
- * getOrPut 写入的 LinkState 每帧重建，配对恢复永远不执行）。
- *
- * 母舰被击毁：茑萝变残骸瞬间即对 [LinkState.phasedByThis] 中仍在场的战机执行配对释放
- * （setPhased(false) + 透明度复原），不留「母舰已毁、战机永久相位」的悬挂态。
- */
 class ASTDGravPhaseDeckHullMod : BaseHullMod() {
 
-    /** 单舰联动状态：由本插件相位过的战机集合 + 战机辐能基线表（逐帧净增量口径）。 */
     private class LinkState {
         val phasedByThis = HashSet<ShipAPI>()
         val lastFluxByFighter = HashMap<ShipAPI, Float>()
@@ -58,7 +27,6 @@ class ASTDGravPhaseDeckHullMod : BaseHullMod() {
         if (engine.isPaused || amount <= 0f) return
         if (!ship.isZw103Ship()) return
 
-        // 母舰残骸化：配对释放在外联动战机后移除本舰状态（hulk 的 allWings 不再可信，按引用直接释放）
         if (ship.isHulk) {
             val state = ship.customData[STATE_KEY] as? LinkState ?: return
             for (fighter in state.phasedByThis) {
@@ -69,7 +37,7 @@ class ASTDGravPhaseDeckHullMod : BaseHullMod() {
             return
         }
 
-        // 首写走 setCustomData（见类注释 customData 写入契约）
+        // customData 首次写入必须调用 setCustomData；getCustomData 返回的空表不持久。
         val state = (ship.customData[STATE_KEY] as? LinkState)
             ?: LinkState().also { ship.setCustomData(STATE_KEY, it) }
         val returnRatio = GravPhaseDeckTuning.resolveReturnRatio(DifficultyTuningImpl, ship.owner == 0)
@@ -85,17 +53,13 @@ class ASTDGravPhaseDeckHullMod : BaseHullMod() {
                 if (fighter == null || fighter.isHulk) continue
                 seenThisFrame += fighter
 
-                // ---- 引力联结：母舰相位 ↔ 战机相位 ----
                 if (mothershipPhased) {
                     if (!fighter.isPhased) {
                         fighter.isPhased = true
                         fighter.extraAlphaMult = LINKED_PHASE_ALPHA
                         state.phasedByThis += fighter
                     }
-                    // 母舰相位期间战机战术系统禁用：充能/激活/消退态先 deactivate 压回冷却
-                    // （原版无 disableSystem API），再逐帧把剩余冷却钉在小余量——COOLDOWN 态下
-                    // 原版 ChargeTracker 对激活请求仅置失败标记不再激活（磁暴相位锁定同款口径），
-                    // 战机 AI 无法在相位期间重新点亮系统；母舰退出相位后冷却仅余小余量，即刻恢复可用。
+                    // 原版无禁用战术系统 API，必须用 deactivate 与冷却余量阻止相位期间重新激活。
                     val system = fighter.system
                     if (system != null) {
                         if (system.state != ShipSystemAPI.SystemState.IDLE &&
@@ -112,7 +76,6 @@ class ASTDGravPhaseDeckHullMod : BaseHullMod() {
                     fighter.extraAlphaMult = 1f
                 }
 
-                // ---- 辐能返还：战机净产出 × 比例 → 母舰软辐能 ----
                 val currFlux = fighter.fluxTracker.currFlux
                 val lastFlux = state.lastFluxByFighter.put(fighter, currFlux) ?: currFlux
                 if (!mothershipBlocked) {
@@ -125,7 +88,6 @@ class ASTDGravPhaseDeckHullMod : BaseHullMod() {
             }
         }
 
-        // 回收已消失（本帧未见）的战机条目；战机实体回收后其相位状态随实体一并消失，无需显式恢复。
         state.phasedByThis.retainAll(seenThisFrame)
         state.lastFluxByFighter.keys.retainAll(seenThisFrame)
     }
@@ -137,7 +99,6 @@ class ASTDGravPhaseDeckHullMod : BaseHullMod() {
         width: Float,
         isForModSpec: Boolean,
     ) {
-        // tooltip 展示口径：无舰上下文（装配面板）按我方档位展示（默认砺刃 v2）
         val returnRatio = GravPhaseDeckTuning.resolveReturnRatio(DifficultyTuningImpl, ship == null || ship.owner == 0)
         val ratioText = "${(returnRatio * 100f).toInt()}%"
         val blockText = "${(GravPhaseDeckTuning.MOTHERSHIP_FLUX_LEVEL_DISABLE * 100f).toInt()}%"
@@ -168,18 +129,14 @@ class ASTDGravPhaseDeckHullMod : BaseHullMod() {
     override fun getNameColor(): Color = THEME.nameColor
 
     companion object {
-        /** 联动相位时战机的额外透明度（对齐原版相位态 25% 不透明度观感的折中取值）。 */
         private const val LINKED_PHASE_ALPHA = 0.5f
 
-        /** 母舰相位期间战机战术系统的冷却钉住余量（秒）：逐帧钉住防 AI 再激活，退出相位后即刻恢复。 */
         private const val SYSTEM_LOCK_COOLDOWN_REMAINING = 0.5f
 
-        /** 逐舰联动状态挂载键（ShipAPI.customData，战斗内随实体生命周期）。 */
         private const val STATE_KEY = "astd_grav_phase_deck_link_state"
 
         private const val HULL_ID = "astd_zw_103"
 
-        /** 透镜线紫主题预设（透镜协议视觉统一）。 */
         private val THEME = HullmodThemes.LENS
 
         private fun ShipAPI?.isZw103Ship(): Boolean {

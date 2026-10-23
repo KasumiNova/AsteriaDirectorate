@@ -1,12 +1,5 @@
-/**
- * 冲击波环特效。
- *
- * 命中 / 爆炸常见的能量冲击波：从中心向外扩散的多重高亮圆环，边缘带湍流扰动，
- * 中心伴随一次闪光。环随时间循环扩散并逐渐淡出，便于在游戏中表现范围冲击。
- */
 import type { EffectDefinition } from '../effectDefinition';
 
-/** 冲击波环的 fragment shader（不含公共头）。 */
 export const SHOCKWAVE_FRAGMENT_SHADER = `
 uniform float u_speed;
 uniform float u_thickness;
@@ -28,7 +21,6 @@ void main() {
   float wobble = (fbm(dir * 3.0 + vec2(u_time * 0.5, 0.0)) - 0.5) * u_distortion;
   float rr = r + wobble * 0.08;
 
-  // 最多 4 重环，由 u_ringCount 控制实际数量；各环相位错开扩散。
   float energy = 0.0;
   for (int i = 0; i < 4; i++) {
     if (float(i) >= u_ringCount) {
@@ -41,7 +33,6 @@ void main() {
     energy += ring * fade;
   }
 
-  // 中心闪光。
   float flash = exp(-rr * rr * 8.0) * 0.6;
   energy = (energy * u_glow + flash) * u_exposure;
 
@@ -55,7 +46,6 @@ void main() {
 }
 `;
 
-/** 青色冲击波环特效定义。 */
 export const SHOCKWAVE_RING: EffectDefinition = {
   id: 'shockwave-ring',
   name: 'Shockwave Ring',

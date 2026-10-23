@@ -16,46 +16,8 @@ import com.fs.starfarer.api.plugins.ShipSystemStatsScript
 import com.fs.starfarer.api.util.Misc
 import java.awt.Color
 
-/**
- * 引力时流干涉器（Gravity Timeflow Interference，系统 id：astd_grav_timeflow_interference）
- * ——决明级（ZW-001）舰船系统（purple/10-unique.md §1）。
- *
- * 目标锁定（对齐原版熵放大器 [com.fs.starfarer.api.impl.combat.EntropyAmplifierStats] 模式，
- * 与引力裂隙发生器同款约定）：
- * - 玩家操控取 shipTarget（锁定的友军舰船）；AI 取
- *   [ShipwideAIFlags.AIFlags.TARGET_FOR_SHIP_SYSTEM]（由 [GravTimeflowInterferenceSystemAI]
- *   评分选靶后写入）；
- * - 目标须为友军（owner 相同）、非战机/无人机、非空间站（含模块）、存活非残骸，且在有效射程
- *   （[GravTimeflowTuning.BASE_RANGE] 经 systemRangeBonus 折算）内；
- *   不满足时系统不可激活（[isUsable] = false），HUD 提示「无有效目标」/「超出射程」。
- *
- * 三段行为（CSV：chargeUp 0.5 / active 10 / down 0.5 / cooldown 30）：
- * - **IN 首帧（activation 闩建立）**：锁定目标、建立时流弧线特效（[GravTimeflowLinkVfx]）、
- *   激活瞬间立即缩减目标舰船系统剩余冷却（[GravTimeflowTuning.SYSTEM_COOLDOWN_REDUCTION]
- *   三锚点比例；目标系统未处于冷却时该部分无效果，不写兜底）；
- * - **IN/ACTIVE/OUT 每帧**：目标与其全部在外舰载机的时间流速按
- *   [GravTimeflowTuning.TIME_MULT] 三锚点乘区随 effectLevel 渐入/渐出
- *   （1 + (乘区 − 1) × effectLevel；modifier 打在目标与战机自身 mutableStats 上，
- *   unapply 严格配对 unmodify；中途新起飞战机自然被下帧覆盖，被击毁战机随实体消失）；
- *   自身时间流速不变（不给自身 timeMult）；**持续期间不做射程检查**——目标驶出射程
- *   不中断干涉（规格原文）；目标消亡/离场（[CombatEngineAPI.isEntityInPlay] 探活）
- *   仅提前收弧线与 jitter，系统照常走完窗口；
- * - **收口**：[teardown] 为唯一收口路径（移除激活闩、淡出弧线、解除目标侧全部时流修饰），
- *   unapply 与源舰残骸化（isHulk）分支共用——残骸化后引擎不保证回调 unapply，
- *   缺该分支会让友军目标舰整场保持时流修饰；
- * - **jitter（透镜紫）**：持续期间自身与目标做边缘抖动（仅 setJitterUnder，
- *   偏移拷贝在船体之下仅轮廓外缘可见；2026-10 实机反馈弃全舰幽灵拷贝），
- *   目标所属战机轻微 jitter，每帧刷新；结束后停止刷新，由原版 jitter 衰减机制自然消退（仓库既有口径，
- *   对照 GravStormSystemStats / FighterGravLinkSystemStats，原版 API 无显式清除路径）。
- *
- * 自身特效弧线在双舰之间渲染（BELOW_SHIPS_LAYER，被舰船盖住），流向目标舰。
- *
- * Fail Fast：战斗内 engine/ship API 均为安全访问，全程不包 try；
- * BoxUtil 弧线实体注册失败有 WARN 日志（视觉缺席，机制照常）。
- */
 class GravTimeflowInterferenceSystemStats : BaseShipSystemScript() {
 
-    /** 一次激活的触发闩（IN 首帧建立，unapply 清除）。 */
     private class TimeflowActivation(
         val target: ShipAPI,
         val link: GravTimeflowLinkVfx?,
@@ -71,8 +33,7 @@ class GravTimeflowInterferenceSystemStats : BaseShipSystemScript() {
         val engine = Global.getCombatEngine() ?: return
         if (engine.isPaused) return
         if (ship.isHulk) {
-            // 源舰残骸化：引擎不保证后续回调 unapply，主动走同一收口路径，
-            // 否则友军目标舰会整场保持时流修饰
+            // 源舰残骸化后引擎不保证回调 unapply，必须主动清理，否则友军目标舰整场保持时流修饰
             teardown(engine, ship)
             return
         }
@@ -97,18 +58,12 @@ class GravTimeflowInterferenceSystemStats : BaseShipSystemScript() {
         teardown(engine, ship)
     }
 
-    /** 收口唯一路径（unapply 与 hulk 分支共用）：移除激活闩、淡出弧线、解除目标侧全部时流修饰。 */
     private fun teardown(engine: CombatEngineAPI, ship: ShipAPI) {
         val activation = engine.customData.remove(activationKey(ship)) as? TimeflowActivation ?: return
         activation.link?.dispose()
         removeTargetTimeflow(activation.target)
     }
 
-    /**
-     * IN 首帧（activation key 缺席即首帧闩）：锁定目标舰、建立时流弧线、
-     * 立即缩减目标舰船系统剩余冷却（未在冷却中则无效果）。目标在激活瞬间失效属于
-     * 异常路径（isUsable 已挡），记录错误并放弃本次激活。
-     */
     private fun activateOnce(engine: CombatEngineAPI, ship: ShipAPI) {
         if (engine.customData[activationKey(ship)] != null) return
 
@@ -128,11 +83,6 @@ class GravTimeflowInterferenceSystemStats : BaseShipSystemScript() {
         engine.customData[activationKey(ship)] = TimeflowActivation(target, link)
     }
 
-    /**
-     * IN/ACTIVE/OUT 每帧：目标与所属战机时流按 effectLevel 渐入/渐出，刷新三方 jitter 与
-     * 时流弧线。目标消亡/离场：收弧线、停止对目标的时流写入与 jitter（系统窗口照常走完，
-     * 不强制关闭系统）；持续期间不做射程检查（规格：目标超出射程不会强制关闭系统）。
-     */
     private fun driveInterference(
         engine: CombatEngineAPI,
         ship: ShipAPI,
@@ -158,8 +108,6 @@ class GravTimeflowInterferenceSystemStats : BaseShipSystemScript() {
             for (fighter in wing.wingMembers) {
                 if (fighter.isHulk) continue
                 fighter.mutableStats.timeMult.modifyMult(TIMEFLOW_MOD_ID, timeMult)
-                // 战机体型小、数量多，用 setJitter（2 拷贝幽灵拷贝）而非 under 边缘抖动，
-                // 强度与发起舰同档（SELF_JITTER_MULT = 目标舰一半，观感「轻微」）
                 fighter.setJitter(
                     JITTER_KEY, JITTER_COLOR, selfJitterLevel, FIGHTER_JITTER_COPIES,
                     0f, selfRangeBonus,
@@ -167,9 +115,6 @@ class GravTimeflowInterferenceSystemStats : BaseShipSystemScript() {
             }
         }
 
-        // 发起舰/目标舰 jitter：只保留 setJitterUnder 边缘抖动（偏移拷贝渲染在船体之下，
-        // 仅轮廓外缘可见）——2026-10 实机反馈：setJitter 的全舰幽灵拷贝观感过重；
-        // 基准参数对齐原版“时流之壳” TemporalShellStats（目标满额、发起舰一半）
         ship.setJitterUnder(
             JITTER_KEY, JITTER_UNDER_COLOR, selfJitterLevel, SELF_JITTER_UNDER_COPIES,
             0f, SELF_JITTER_UNDER_BASE_RANGE + selfRangeBonus,
@@ -184,11 +129,7 @@ class GravTimeflowInterferenceSystemStats : BaseShipSystemScript() {
 
     private data class JitterParams(val level: Float, val rangeBonus: Float)
 
-    /**
-     * 对齐原版“时流之壳”（[com.fs.starfarer.api.impl.combat.TemporalShellStats]）的 jitter 包络计算：
-     * IN 段按充能时长折算并拉升 rangeBonus，ACTIVE 段满额（maxRangeBonus = 10f），
-     * OUT 段按 effectLevel 衰减，最终 level 取平方根。
-     */
+    // jitter 包络对齐原版 TemporalShellStats
     private fun computeJitterParams(
         ship: ShipAPI,
         state: ShipSystemStatsScript.State,
@@ -199,7 +140,6 @@ class GravTimeflowInterferenceSystemStats : BaseShipSystemScript() {
         var rangeBonus = 0f
         when (state) {
             ShipSystemStatsScript.State.IN -> {
-                // 对齐原版：effectLevel / (1f / chargeUpDur)，chargeUpDur 为 0 时结果为 0
                 val chargeUpDur = ship.system?.chargeUpDur ?: 0f
                 rawLevel = (clampedEffect * chargeUpDur).coerceIn(0f, 1f)
                 rangeBonus = rawLevel * MAX_JITTER_RANGE_BONUS
@@ -214,7 +154,6 @@ class GravTimeflowInterferenceSystemStats : BaseShipSystemScript() {
                 rangeBonus = clampedEffect * MAX_JITTER_RANGE_BONUS
             }
 
-            // driveInterference 只对 IN/ACTIVE/OUT 调用，COOLDOWN/IDLE 仅为穷尽性兜底
             ShipSystemStatsScript.State.COOLDOWN,
             ShipSystemStatsScript.State.IDLE,
             -> Unit
@@ -222,7 +161,6 @@ class GravTimeflowInterferenceSystemStats : BaseShipSystemScript() {
         return JitterParams(kotlin.math.sqrt(rawLevel), rangeBonus)
     }
 
-    /** 目标侧时流修饰配对解除（unapply 调用；对已消亡战机为无副作用的空 unmodify）。 */
     private fun removeTargetTimeflow(target: ShipAPI) {
         target.mutableStats.timeMult.unmodifyMult(TIMEFLOW_MOD_ID)
         for (wing in target.allWings) {
@@ -233,10 +171,6 @@ class GravTimeflowInterferenceSystemStats : BaseShipSystemScript() {
         }
     }
 
-    /**
-     * 目标解析（熵放大器模式）：AI 旗标 [ShipwideAIFlags.AIFlags.TARGET_FOR_SHIP_SYSTEM] 优先，
-     * 否则取 shipTarget（玩家锁定的友军舰船）；校验友军/非战机非无人机/存活非残骸与系统射程。
-     */
     private fun findTarget(ship: ShipAPI): ShipAPI? {
         var target: ShipAPI? = null
         if (ship.shipAI != null && ship.aiFlags.hasFlag(ShipwideAIFlags.AIFlags.TARGET_FOR_SHIP_SYSTEM)) {
@@ -254,8 +188,7 @@ class GravTimeflowInterferenceSystemStats : BaseShipSystemScript() {
     private fun isValidTarget(ship: ShipAPI, target: ShipAPI?): Boolean =
         target != null && target !== ship && target.owner == ship.owner &&
                 !target.isFighter && !target.isDrone && !target.isHulk && target.isAlive &&
-                // 空间站（含模块）不可选（2026-10 实机：增益不应落在空间站实体上；
-                // 注意 isStation 仅覆盖站体本体，模块需另行排除）
+                // isStation 仅覆盖站体本体，空间站模块需另行排除
                 !target.isStation && !target.isStationModule
 
     override fun isUsable(system: ShipSystemAPI, ship: ShipAPI): Boolean =
@@ -265,7 +198,6 @@ class GravTimeflowInterferenceSystemStats : BaseShipSystemScript() {
         if (system.isOutOfAmmo) return null
         if (system.state != ShipSystemAPI.SystemState.IDLE) return null
         if (findTarget(ship) != null) return null
-        // 有锁定的友军舰船但不可用（超射程）→ 超出射程；无锁定/锁定无效 → 无有效目标
         val raw = ship.shipTarget
         return if (raw != null && isValidTarget(ship, raw)) {
             I18n[I18n.Categories.MOD, "ui.grav_timeflow.info.out_of_range"]
@@ -287,7 +219,6 @@ class GravTimeflowInterferenceSystemStats : BaseShipSystemScript() {
             )
 
             ShipSystemStatsScript.State.ACTIVE -> {
-                // 状态行仅玩家舰渲染：从玩家舰的激活闩取目标名；缺席（异常路径）退化为无名行
                 val engine = Global.getCombatEngine()
                 val playerShip = engine?.playerShip
                 val activation = if (playerShip != null) {
@@ -321,32 +252,25 @@ class GravTimeflowInterferenceSystemStats : BaseShipSystemScript() {
     companion object {
         private val log = Global.getLogger(GravTimeflowInterferenceSystemStats::class.java)
 
-        /** 目标与战机时流修饰句柄（目标/战机 mutableStats 上的稳定 id，apply/unapply 严格配对）。 */
         private const val TIMEFLOW_MOD_ID = "astd_grav_timeflow_interference_buff"
 
-        /** 激活闩 customData 键前缀（每船一条，unapply 清除）；键用 ship.id（战斗内唯一）。 */
         private const val ACTIVATION_KEY = "astd_grav_timeflow_activation:"
 
-        /** jitter 源句柄（自身/目标/战机共用同一 source，覆盖式刷新；结束停止刷新自然消退）。 */
+        // 原版 jitter 无显式清除路径，结束停止刷新后由衰减机制自然消退
         private val JITTER_KEY = Any()
 
-        /** jitter 配色（透镜紫；alpha 55 / 155 对齐原版“时流之壳” TemporalShellStats，原版配色为蓝）。 */
         private val JITTER_COLOR = Color(165, 80, 255, 55)
         private val JITTER_UNDER_COLOR = Color(165, 80, 255, 155)
 
-        /** 原版 TemporalShellStats 的最大 jitter 扩散加成（su）。 */
         private const val MAX_JITTER_RANGE_BONUS = 10f
 
-        /** 目标舰边缘 jitter 参数（under 拷贝数/基础半径对齐原版 TemporalShellStats 的 under 口径）。 */
         private const val TARGET_JITTER_UNDER_COPIES = 25
         private const val TARGET_JITTER_UNDER_BASE_RANGE = 7f
 
-        /** 次级 jitter 强度乘区（目标舰的一半效果）：发起舰边缘 jitter 与目标所属战机 jitter 共用。 */
         private const val SELF_JITTER_MULT = 0.5f
         private const val SELF_JITTER_UNDER_COPIES = 12
         private const val SELF_JITTER_UNDER_BASE_RANGE = 3.5f
 
-        /** 目标所属战机 jitter 拷贝数。 */
         private const val FIGHTER_JITTER_COPIES = 2
 
         private fun activationKey(ship: ShipAPI): String = "$ACTIVATION_KEY${ship.id}"

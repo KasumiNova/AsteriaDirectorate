@@ -3,10 +3,6 @@ package cn.kasuminova.astd.renderer.effect.system
 import java.awt.Color
 import kotlin.math.roundToInt
 
-/**
- * XC-001「坠星残响」冷色视觉调色板：落叶飞花为蓝白冷色系系统，
- * 全船 halo / bloom / 引擎 flare 统一取这里的冷色基底与插值工具。
- */
 internal object Xc001ColdPalette {
 
     val coldCore: Color = Color(122, 232, 255)

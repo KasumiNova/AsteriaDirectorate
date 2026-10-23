@@ -6,9 +6,7 @@ export type ShaderRenderParams = {
   primaryColor: [number, number, number, number];
   accentColor: [number, number, number, number];
   intensity: number;
-  /** 实例随机种子（按 seed 随机布局的 shader 用；缺省 0，当前内置预设未使用）。 */
   seed?: number;
-  /** 动画变体编号（多变体 shader 用；缺省 0，当前内置预设未使用）。 */
   variant?: number;
 };
 

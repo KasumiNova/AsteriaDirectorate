@@ -16,7 +16,7 @@ import org.lwjgl.util.vector.Vector2f
 /**
  * 坠星残响取景舞台（[StarfallEchoStageAccess] 实现，战斗级生命周期）。
  *
- * 持有 xc_001 默认场景与 trail_pause_probe 探针共享的舞台状态：锚点、兜底弹体
+ * 持有 xc_001 默认场景与 trail_pause_probe 探针共享的舞台状态：锚点、备用弹体
  * （武器拒射时 spawnProjectile 直出）与合成截图曲线取景参数。诊断 JSON 尾部对所有场景
  * 读取 [fallbackProjectile] 三字段，故本舞台由枢纽持有并随上下文开放。
  */
@@ -114,8 +114,7 @@ class StarfallEchoStage : StarfallEchoStageAccess {
 
     private fun evidenceReady(engine: CombatEngineAPI): Boolean {
         val telemetry = ProjectileVfxDriverPlugin.telemetrySnapshot(engine)
-        // Static Trail 迁移（2026-09）后拖尾长度由 BoxUtil 托管、不再有可视长度遥测；
-        // 截图成熟度按飞行时长判定（拖尾三段时长远短于本窗口）。
+        // 拖尾长度由 BoxUtil 托管、无可视长度遥测；截图成熟度按飞行时长判定（拖尾三段时长远短于本窗口）。
         return telemetry.lastElapsed >= SCREENSHOT_FLIGHT_SECONDS
     }
 
@@ -195,8 +194,8 @@ class StarfallEchoStage : StarfallEchoStageAccess {
     }
 
     /**
-     * 坠星残响合成截图场景的参考参数（旧管线 spec 的数值，2026-09 Static Trail 迁移后 policy 不再建模这些字段，
-     * 按场景常量固化——本曲线只服务截图取景，与运行期拖尾无关）。
+     * 坠星残响合成截图场景的参考参数（policy 不建模这些字段，按场景常量固化；
+     * 本曲线只服务截图取景，与运行期拖尾无关）。
      */
     private fun automationPreviewTrack(age: Float): ASTDProjectileVfxLayout.PreviewFlightTrack {
         return ASTDProjectileVfxLayout.previewFlightTrack(

@@ -1,14 +1,7 @@
 package cn.kasuminova.astd.impl.render
 
 /**
- * 马赫环航迹发射器（持续型，首发：坠星残响）：弹体飞行中按节拍在弹体当前位置留一枚
- * 拍扁椭圆环（定向沿飞行方向、横向压扁 [flatten]），环不跟弹——可带前飞动量
- * （[speedMin]/[speedMax]，方向 = 发射瞬间弹体 facing），借统一粒子池包络自然
- * 存活超过弹体死亡（缓慢扩大渐透明），无需消亡移交。
- *
- * 渲染后端为统一粒子池（PooledCombatVfx sprite 池）：池槽位 CPU 侧积分尺寸增速
- * （[growthStart]→[growthEnd] 线性扩大折成 scaleRate），alpha 由池三段包络
- * （[fadeIn]/[full]/[fadeOut]）驱动；贴图须 loadTexture 预加载（池绑定侧负责）。
+ * 弹体飞行期间周期性留下的椭圆环。环生成后不跟随弹体，由粒子池推进尺寸、位置和透明度。
  */
 data class MachRingSpec(
     /** 发射节拍（秒）：每满一拍留一枚环。 */

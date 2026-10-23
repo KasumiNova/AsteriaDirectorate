@@ -16,12 +16,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/**
- * 坠星残响机制数值（blue/10-signature.md）的契约测试：
- * 爆炸半径/伤害纯函数映射（恒爆炸：半径 = 基础 ×(层数+1)，每层消耗 +50% 第 5 发伤害）、
- * 弹匣禁射闸、连射序数推进、谐振易伤与爆炸倍率的五档查表解析。
- * 难度系数经 [DifficultyTuningImpl.installScaleForTests] 注入走完整查表链路（对齐 JointTuningTest 先例）。
- */
 class StarfallEchoTuningTest {
 
     @AfterTest
@@ -29,7 +23,6 @@ class StarfallEchoTuningTest {
         DifficultyTuningImpl.installScaleForTests(null)
     }
 
-    /** 注入难度系数并返回单例读取面（测后经 [clearOverride] 复位）。 */
     private fun tuning(scale: Float): DifficultyTuningImpl {
         DifficultyTuningImpl.installScaleForTests(scale)
         return DifficultyTuningImpl
@@ -47,7 +40,7 @@ class StarfallEchoTuningTest {
 
     @Test
     fun `第5发伤害 每层被消耗谐振提升五成`() {
-        val panel = 750f * StarfallEchoTuning.FINAL_DAMAGE_MULT // 第 5 发面板 = 单发 750 ×200%
+        val panel = 750f * StarfallEchoTuning.FINAL_DAMAGE_MULT
         assertEquals(panel, finalShotDamage(panel, 0), "0 层 = 面板原值")
         assertEquals(panel * (1f + FINAL_STACK_DAMAGE_BONUS * 4), finalShotDamage(panel, 4), "4 层 = 面板 ×(1+0.5×4)")
         assertEquals(0f, finalShotBonusDamage(panel, 0), "0 层无直击补伤")
@@ -56,7 +49,7 @@ class StarfallEchoTuningTest {
 
     @Test
     fun `爆炸伤害 谐振层数加成口径 第5发总伤乘难度倍率`() {
-        val panel = 750f * StarfallEchoTuning.FINAL_DAMAGE_MULT // 第 5 发面板 = 单发 750 ×200%
+        val panel = 750f * StarfallEchoTuning.FINAL_DAMAGE_MULT
         assertEquals(panel * 3f, explosionDamage(panel, 4, 1f), "4 层 = 面板 ×（1 + 50%×4）= 面板 ×300%（与直击总伤同口径）")
         assertEquals(panel * 1.5f, explosionDamage(panel, 1, 1f), "1 层 = 面板 ×150%")
         assertEquals(panel, explosionDamage(panel, 0, 1f), "0 层无谐振加成 = 面板原值")
@@ -82,12 +75,10 @@ class StarfallEchoTuningTest {
 
     @Test
     fun `谐振易伤与爆炸倍率五档查表 玩家固定砺刃档`() {
-        // 玩家来源（owner == 0）固定按我方档位（默认砺刃 k2 = 设计基准）取值，与敌方档位无关
         val player = StarfallEchoTuning.resolve(tuning(5f), isPlayer = true)
         assertEquals(0.10f, player.vulnPerStack, 1e-6f)
         assertEquals(1.00f, player.explosionDamageMult, 1e-6f)
 
-        // 敌方阵营按轨一 k_s 逐档查表
         assertEquals(0.05f, StarfallEchoTuning.resolve(tuning(1f), isPlayer = false).vulnPerStack, 1e-6f)
         assertEquals(0.125f, StarfallEchoTuning.resolve(tuning(3f), isPlayer = false).vulnPerStack, 1e-6f)
         assertEquals(0.20f, StarfallEchoTuning.resolve(tuning(5f), isPlayer = false).vulnPerStack, 1e-6f)

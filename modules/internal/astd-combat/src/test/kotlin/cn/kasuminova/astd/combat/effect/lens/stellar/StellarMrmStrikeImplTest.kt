@@ -23,14 +23,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-/**
- * 规格 08 §4.1 用例 3/13/14/15（+面板异常防线补测）：桩引擎完整驱动
- * [StellarMrmStrikeImpl.strike]——断言 applyDamage 次数/数值/类型/EMP 量、
- * 逐武器电弧数、撞线 removeEntity 与爆炸恒触发。
- *
- * 直接命中目标存活时与区域内目标同额吃 AOE（对齐七星「hit 爆炸整体缩放」裁定口径，
- * 规格 §2.2 过滤式 `it !== target 已死体` 按「目标已死才豁免」解读）。
- */
 class StellarMrmStrikeImplTest {
     private var warnCapture: WarnCapture? = null
 
@@ -51,7 +43,6 @@ class StellarMrmStrikeImplTest {
 
     private data class ArcRecord(val from: Vector2f, val to: Vector2f)
 
-    /** 记录型桩引擎：customData 真实 map、inPlay 动态集合、applyDamage/电弧/裂隙视觉全记录。 */
     private class StubEngineWorld {
         val customData = HashMap<String, Any?>()
         val inPlay = mutableSetOf<CombatEntityAPI>()
@@ -92,8 +83,6 @@ class StellarMrmStrikeImplTest {
                 nullable(Vector2f::class.java), nullable(CombatEntityAPI::class.java),
                 anyFloat(), nullable(Color::class.java), nullable(Color::class.java),
             )
-            // 裂隙爆炸视觉（RiftExplosionVfx）：每次注册计数一枚，实体桩带真实 location/velocity
-            // （生成循环会 set 二者并读回算回漂速度）。
             doAnswer {
                 riftCount++
                 mock(CombatEntityAPI::class.java).also { entity ->
@@ -115,7 +104,6 @@ class StellarMrmStrikeImplTest {
         return p
     }
 
-    /** 武器桩：currHealth 真实可变（setCurrHealth 写入可读回），供 EMP 逐武器扣减断言。 */
     private fun stubWeapon(x: Float, disabled: Boolean, maxHealth: Float = 300f): WeaponAPI {
         val w = mock(WeaponAPI::class.java)
         var health = maxHealth
@@ -208,12 +196,10 @@ class StellarMrmStrikeImplTest {
 
         strike(world, projectile, fighter, shieldHit = false, victims = listOf(fighter, bystander), point = hitPoint)
 
-        // 玩家 owner=0 恒 v2：增伤 100×1.0、AOE 100×1.0；EMP 100×4 走逐武器 setCurrHealth。
         assertEquals(3, world.damages.size, "增伤 + AOE(存活直击目标同额) + AOE(波及舰)；EMP 不占引擎伤害通路")
         val bonus = world.damages[0]
         assertEquals(fighter, bonus.target); assertEquals(100f, bonus.amount)
         assertEquals(DamageType.ENERGY, bonus.type); assertEquals(0f, bonus.emp)
-        // 命中点 (505,8) 距舰心 √89 ≈ 9.43 > 0.9×10 = 9 → 命中侧压点（不再是舰心）
         assertEquals(504.77f, bonus.point?.x ?: Float.NaN, 1e-2f, "增伤落点 = 命中侧压点（统一入口口径）")
         assertEquals(7.63f, bonus.point?.y ?: Float.NaN, 1e-2f)
         val aoeDirect = world.damages[1]
@@ -222,7 +208,6 @@ class StellarMrmStrikeImplTest {
         assertEquals(bystander, aoeBystander.target); assertEquals(100f, aoeBystander.amount)
         assertTrue(world.damages.all { it.bypass }, "目标无盾 → bypassShields=true（统一入口口径）")
 
-        // 全部武器 EMP：存活武器各扣 400（300 上限扣至 0 触发原版熄火），已瘫痪武器跳过。
         assertEquals(0f, w1.currHealth, "w1 存活武器 300-400 扣至 0（原版组件熄火阈值）")
         assertEquals(0f, w2.currHealth, "w2 存活武器 300-400 扣至 0")
         assertEquals(300f, w3.currHealth, "w3 已瘫痪武器跳过 EMP 扣减")

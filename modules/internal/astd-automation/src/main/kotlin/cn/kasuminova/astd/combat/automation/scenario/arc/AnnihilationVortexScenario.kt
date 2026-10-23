@@ -18,11 +18,8 @@ import org.lwjgl.util.vector.Vector2f
 
 /**
  * 湮灭涡旋场景。
- *
- * 拆分自 ASTDAutomationCombatPlugin 的同名 if-else 分支，相位机/断言/证据写出口径原样迁移。
  */
 class AnnihilationVortexScenario : AbstractAutomationScenario() {
-    // ==== annihilation vortex 场景状态（相位机 MOUNT → ABSORB → COLLAPSE → EMPTY_PREP → EMPTY_FIRE → ENEMY_SCALE → HOST_DEATH → COMPLETED） ====
     private var avPhase = AV_PHASE_MOUNT
     private var avPhaseStartedAt = 0f
     private var avAbsorbBaseline = 0
@@ -61,8 +58,8 @@ class AnnihilationVortexScenario : AbstractAutomationScenario() {
         val engine = ctx.engine
         engine.setDoNotEndCombat(true)
         lockAvCamera(engine)
-        // HUD 状态条目仅 devMode 渲染（2026-07-29 审批裁定）：本场景为 dev-only 舞台，
-        // 开启 devMode 以目检吞噬池 HUD 与敌版三档（进程被早退杀掉，设置不落盘）。
+        // HUD 状态条目仅 devMode 渲染：本场景为 dev-only 舞台，
+        // 开启 devMode 以目检吞噬池 HUD 与敌版三档（进程被早退杀掉，设置不会保存到磁盘）。
         Global.getSettings().isDevMode = true
         // 与其他场景一致：reserves 部署放到 advance()，init 阶段渲染器未就绪。
         ctx.writeDiagnostics("CombatReady")
@@ -119,7 +116,7 @@ class AnnihilationVortexScenario : AbstractAutomationScenario() {
 
     /**
      * 舞台保活与站位（范式同 stabilizeEdaShips）：保留舰 AI + 逐帧 currAngle 对准 + setForceFireOneFrame
-     * 绕 AutofireAI 死锁（01/03 实证路径）。[keepPlayerAlive]=false 时不再回满玩家舰体。
+     * 绕 AutofireAI 死锁。[keepPlayerAlive]=false 时不再回满玩家舰体。
      */
     private fun stabilizeAvShips(
         engine: CombatEngineAPI,
@@ -263,7 +260,7 @@ class AnnihilationVortexScenario : AbstractAutomationScenario() {
                 stabilizeAvShips(engine, playerFire = false, feederFire = false)
                 if (!avProjectilesSwept) {
                     avProjectilesSwept = true
-                    // 净空：清掉在场弹体，保证下一发爆发为空池（保底 500 证据不被残余投喂污染）。
+                    // 净空：清掉在场弹体，保证下一发爆发为空池（下限 500 证据不被残余投喂污染）。
                     for (p in engine.projectiles.toList()) engine.removeEntity(p)
                 }
                 if (ctx.elapsed - avPhaseStartedAt >= AV_EMPTY_PREP_SECONDS) {
@@ -357,8 +354,8 @@ class AnnihilationVortexScenario : AbstractAutomationScenario() {
             }
 
             AV_PHASE_HOST_DEATH -> {
-                // 击杀对象 = 协同槽 odyssey_A（非旗舰）：宿主死亡机制验证与旗舰解耦——
-                // 杀旗舰会弹出增援/换旗舰对话框遮住整个画面，COMPLETED 截图舞台将无画面可拍（第三轮实证）。
+                // 击杀对象 = 协同槽 odyssey_A（非旗舰）：宿主死亡机制验证与旗舰解耦，
+                // 杀旗舰会弹出增援/换旗舰对话框遮住整个画面，COMPLETED 截图舞台将无画面可拍。
                 stabilizeAvShips(engine, playerFire = false, feederFire = false, synergyFire = !avHostKilled)
                 if (!avHostKilled && synergyAv?.isFiring == true && synergy != null) {
                     // 中束击杀宿主：池应自回收（INFO + telemetry），不得触发坍缩。
@@ -419,8 +416,8 @@ class AnnihilationVortexScenario : AbstractAutomationScenario() {
             }
 
             avPhase == AV_PHASE_COMPLETED -> {
-                // 截图门控：爆发中段才上报 Completed——SSOptimizer 在上报时刻连拍三帧，
-                // 2s on / 9s off 爆发循环下随机时刻大概率拍到无束空场；保底超时防舞台卡死。
+                // 截图门控：爆发中段才上报 Completed，SSOptimizer 在上报时刻连拍三帧，
+                // 2s on / 9s off 爆发循环下随机时刻大概率拍到无束空场；舞台超时作为保险防止卡死。
                 val midBurst = avBeamOnSince >= 0f && ctx.elapsed - avBeamOnSince >= AV_COMPLETED_BEAM_ON_SECONDS
                 if (midBurst || ctx.elapsed - avPhaseStartedAt >= AV_COMPLETED_STAGE_TIMEOUT) "Completed" else "CombatReady"
             }
@@ -460,7 +457,7 @@ class AnnihilationVortexScenario : AbstractAutomationScenario() {
         json.appendLine("  \"runtimeElapsedSeconds\": 0,")
         json.appendLine("  \"runtimeTrackedCount\": ${vfxTelemetry.trackedCount},")
         json.appendLine("  \"runtimeLastProjectileSpecId\": ${jsonString(vfxTelemetry.lastProjectileSpecId)},")
-        // ---- 机制证据（规格 04 §4.2 烟测检查点）----
+        // 机制证据
         json.appendLine("  \"avPhase\": \"$avPhase\",")
         json.appendLine("  \"avPlayerSlotId\": ${jsonString(avPlayerW?.slot?.id)},")
         json.appendLine("  \"avSynergySlotId\": ${jsonString(avSynergyW?.slot?.id)},")
@@ -576,7 +573,7 @@ class AnnihilationVortexScenario : AbstractAutomationScenario() {
         // EMPTY_PREP：清场后等待武器 9s 冷却 settle 再点空池爆发。
         private const val AV_EMPTY_PREP_SECONDS = 10f
 
-        // 空池保底：玩家 v2 AOE 倍率 1.0 → max(0, 500)×1.0 = 500。
+        // 空池下限：玩家 v2 AOE 倍率 1.0 → max(0, 500)×1.0 = 500。
         private const val AV_EXPECT_EMPTY_DAMAGE = 500f
         private const val AV_EMPTY_DAMAGE_TOLERANCE = 1f
 
@@ -587,7 +584,7 @@ class AnnihilationVortexScenario : AbstractAutomationScenario() {
         // HOST_DEATH：击杀后观察窗（池自回收 + 无坍缩断言）。
         private const val AV_HOST_DEATH_SETTLE_SECONDS = 3f
 
-        // COMPLETED 截图门控：爆发进行中满此时长才上报 Completed（保证截图帧含束体/涡旋）；保底舞台超时。
+        // COMPLETED 截图门控：爆发进行中满此时长才上报 Completed（保证截图帧含束体/涡旋）；舞台超时作为保险。
         private const val AV_COMPLETED_BEAM_ON_SECONDS = 0.8f
         private const val AV_COMPLETED_STAGE_TIMEOUT = 15f
         private const val AV_PHASE_TIMEOUT = 90f

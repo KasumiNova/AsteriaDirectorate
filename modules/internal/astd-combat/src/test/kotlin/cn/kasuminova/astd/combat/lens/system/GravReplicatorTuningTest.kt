@@ -5,12 +5,6 @@ import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-/**
- * 引力空间复制器数值规格：复制体伤害比例三锚点折算（v1 35% / v2 50% / v5 100%）、
- * 复制辐能比例（v1 60% / v2 50% / v5 20%，玩家固定 v2）、复制时序（0.5s/1.0s 两发）、
- * 激活辐能（基础最大辐能容量 10% 软辐能）。
- * 经 [DifficultyTuningImpl.installScaleForTests] 走完整映射链路（对齐 GravPhaseDeckTuningTest 先例）。
- */
 class GravReplicatorTuningTest {
 
     @AfterTest

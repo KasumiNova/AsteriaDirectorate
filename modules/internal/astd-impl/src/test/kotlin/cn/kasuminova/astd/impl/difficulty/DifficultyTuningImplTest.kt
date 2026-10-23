@@ -9,10 +9,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/**
- * 轨一读取面全链路：注入系数 → [DifficultyTuningImpl.value] → 三锚点映射；
- * 档位解析（[DifficultySettingsKeys.resolveTier]）的命中/自定义/回退路径。
- */
 class DifficultyTuningImplTest {
 
     private val entry = ScalingEntry(v1 = 6f, v2 = 13f, v5 = 18f)
@@ -45,7 +41,6 @@ class DifficultyTuningImplTest {
 
     @Test
     fun `档位解析命中预设档`() {
-        // 测试环境 i18n 回退为 "category:key" 回声串，与注册侧同源，精确匹配仍然成立
         val names = DifficultySettingsKeys.tierDisplayNames()
         val resolved = DifficultySettingsKeys.resolveTier(names[0], 2f)
         assertTrue(resolved.matched)

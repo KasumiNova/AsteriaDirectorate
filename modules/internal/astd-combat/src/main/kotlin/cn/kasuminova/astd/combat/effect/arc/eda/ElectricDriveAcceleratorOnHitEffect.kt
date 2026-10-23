@@ -17,24 +17,8 @@ import org.lazywizard.lazylib.MathUtils
 import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
 
-/**
- * 电驱加速炮的不稳定装药命中结算（规格 03 §2.3）：挂 `.proj` 的 `onHitEffect`。
- *
- * 命中时按三锚点上限 [0, maxPct] 均匀随机追加一次 [DamageType.KINETIC] 伤害
- * （SIC「武备升级」激活时固定取上限值，见 [ElectricDriveAcceleratorDifficulty.chargeRollPct]；
- * 以命中当发实际伤害为基准，随修正自然缩放），同帧触发玩家可见反馈：
- * 弹着点小型能量闪（中心亮粒 + 径向散射粒，克制不抢 500su 拖尾主视觉）。
- * 追加伤害不再单独飘浮字——同帧 applyDamage 的数值会随主伤害数字一并叠加显示，
- * 额外补字只会叠字（2026-09 实机观测裁定）。
- *
- * 结算随机走共享 [CombatRandom] 确定性序列：每武器实例一条（Weapon 级状态
- * [ElectricDriveChargeState] 记 callIndex），连发每发是各自独立的取值事件，同事件不重掷。
- *
- * `applyDamage` 不触发二次 onHit 回环（00 §2 已核实），无连锁爆字。
- */
 class ElectricDriveAcceleratorOnHitEffect : OnHitEffectPlugin {
 
-    /** 装药上限为 0 / 无槽位两个异常分支的「一次/实例」日志闸（不静默、不刷屏）。 */
     private var warnedZeroMaxPct = false
     private var warnedMissingSlot = false
 
@@ -46,14 +30,11 @@ class ElectricDriveAcceleratorOnHitEffect : OnHitEffectPlugin {
         damageResult: ApplyDamageResultAPI,
         engine: CombatEngineAPI,
     ) {
-        // 1. 目标边界：hulk/phased 舰船不结算（同族 OnHit 统一口径）；
-        //    战机/导弹等非 Ship 目标照常结算（设计「射弹击中目标时」不限目标类型）。
         val ship = target as? ShipAPI
         if (ship != null && (ship.isHulk || ship.isPhased)) return
-        // 陨石等场景 point 可为 null；回退弹体当前位置（样板同款兜底）。
+        // 命中回调的 point 可能为 null，回退到弹体当前位置。
         val hitPoint = point ?: projectile.location ?: return
 
-        // 2. 来源解析：优先 projectile.source → 退化 weapon.ship；两者皆无 → INFO 日志并放弃结算（不静默）。
         val weapon = projectile.weapon
         val source = projectile.source ?: weapon?.ship
         if (source == null) {
@@ -64,8 +45,7 @@ class ElectricDriveAcceleratorOnHitEffect : OnHitEffectPlugin {
             log.info("[ASTD] EDA 装药放弃结算：弹体无武器引用（spec=${projectile.projectileSpecId}）")
             return
         }
-        // weapon.slot 为空属理论边界（弹道装饰武器场景）：Weapon 级 Buff 复合键必须有槽位
-        // （BuffHostImpl 对空槽抛 IllegalArgumentException），无法退化登记，WARN 一次并放弃结算。
+        // BuffHostImpl 对空槽武器抛 IllegalArgumentException，Weapon 级 Buff 无法退化登记。
         if (weapon.slot == null) {
             if (!warnedMissingSlot) {
                 warnedMissingSlot = true
@@ -74,7 +54,6 @@ class ElectricDriveAcceleratorOnHitEffect : OnHitEffectPlugin {
             return
         }
 
-        // 3. 难度取值：玩家按我方档位系数（每次命中取一次，不缓存）。
         val maxPct = ElectricDriveAcceleratorDifficulty.chargeMaxPct(DifficultyTuningImpl, source.owner)
         if (maxPct <= 0f) {
             if (!warnedZeroMaxPct) {
@@ -84,9 +63,6 @@ class ElectricDriveAcceleratorOnHitEffect : OnHitEffectPlugin {
             return
         }
 
-        // 4. 装药百分比：SIC「武备升级」激活时固定取随机区间上限（不消耗随机序列）；
-        //    未激活走共享 CombatRandom 确定性序列（BuffHost Weapon 级状态取 callIndex；
-        //    连发每发是各自独立的取值事件，00 §4.1）。
         val rollPct = ElectricDriveAcceleratorDifficulty.chargeRollPct(
             maxPct,
             SicWeaponUpgradeFlags.isArmamentUpgradeActive(source),
@@ -101,22 +77,15 @@ class ElectricDriveAcceleratorOnHitEffect : OnHitEffectPlugin {
             CombatRandom.nextFloatIn(state.seed, state.nextCallIndex(), 0f..maxPct)
         }
 
-        // 5. 结算：以命中当发实际伤害为基准；低于阈值不产生事件、不飘浮字（显式判定，非静默吞掉）。
         val extra = ElectricDriveAcceleratorDifficulty.extraDamage(projectile.damageAmount, rollPct)
         if (!ElectricDriveAcceleratorDifficulty.shouldApplyExtra(extra)) return
+        // applyDamage 不会触发二次 onHit 回调，无连锁结算。
         engine.applyDamage(target, hitPoint, extra, DamageType.KINETIC, 0f, false, true, source)
 
-        // 6. 玩家可见反馈（机制可视化铁律，同帧至少一个通道）：弹着点小型能量闪。
-        //    追加伤害不单独飘浮字（随主伤害数字叠加显示，额外补字只会叠字）。
         spawnChargeFlash(engine, hitPoint)
         recordTelemetry(engine, source, extra)
     }
 
-    /**
-     * 弹着点小型能量闪（规格 03 §3.2）：1 枚短寿命中心亮粒 + 5 粒径向散射粒，
-     * 表达装药不稳定泄能的瞬态爆点；白色微冷调，克制不抢 500su 拖尾主视觉。
-     * 粒子散布为一次性纯视觉随机，直接用 Misc.random / MathUtils 惯例（00 §4.1-2）。
-     */
     private fun spawnChargeFlash(engine: CombatEngineAPI, point: Vector2f) {
         engine.addHitParticle(point, ZERO_VEL, CENTER_FLASH_SIZE, 1f, CENTER_FLASH_DURATION, FLASH_COLOR)
         repeat(SCATTER_PARTICLES) {
@@ -134,7 +103,6 @@ class ElectricDriveAcceleratorOnHitEffect : OnHitEffectPlugin {
         }
     }
 
-    /** dev 自动化烟测证据计数（对齐 ChargeNeedleVfx 遥测先例）：按攻击方归属分开记次数与峰值。 */
     private fun recordTelemetry(engine: CombatEngineAPI, source: ShipAPI, extra: Float) {
         val playerCaused = source.owner == 0
         val countKey = if (playerCaused) TELEMETRY_EXTRA_COUNT_PLAYER else TELEMETRY_EXTRA_COUNT_OTHER
@@ -145,25 +113,18 @@ class ElectricDriveAcceleratorOnHitEffect : OnHitEffectPlugin {
     }
 
     companion object {
-        /** 玩家侧追加伤害结算次数遥测键（engine.customData）。 */
         const val TELEMETRY_EXTRA_COUNT_PLAYER = "astd_eda_extra_damage_count_player"
 
-        /** 玩家侧追加伤害峰值遥测键（玩家档应 ≤ 120 × 50% = 67.5）。 */
         const val TELEMETRY_EXTRA_MAX_PLAYER = "astd_eda_extra_damage_max_player"
 
-        /** 非玩家侧追加伤害结算次数遥测键（敌版三档证据）。 */
         const val TELEMETRY_EXTRA_COUNT_OTHER = "astd_eda_extra_damage_count_other"
 
-        /** 非玩家侧追加伤害峰值遥测键（k_s=5 时上限 120 × 150% = 180）。 */
         const val TELEMETRY_EXTRA_MAX_OTHER = "astd_eda_extra_damage_max_other"
 
-        /** 本场战斗玩家侧累计追加伤害结算次数（dev 自动化烟测读取）。 */
         fun extraDamageCountPlayer(engine: CombatEngineAPI): Int = engine.customData[TELEMETRY_EXTRA_COUNT_PLAYER] as? Int ?: 0
 
-        /** 本场战斗非玩家侧累计追加伤害结算次数（dev 自动化烟测读取）。 */
         fun extraDamageCountOther(engine: CombatEngineAPI): Int = engine.customData[TELEMETRY_EXTRA_COUNT_OTHER] as? Int ?: 0
 
-        /** 命中闪光色（白色微冷调）。 */
         private val FLASH_COLOR = Color(240, 245, 252)
 
         private val ZERO_VEL = Vector2f(0f, 0f)

@@ -10,13 +10,6 @@ import com.fs.starfarer.api.combat.MutableShipStatsAPI
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.ui.TooltipMakerAPI
 
-/**
- * 词缀 M-12：引擎辐能网隔离（[AffixRegistry.ID_ENGINE_FLUX_ISOLATION]）。
- * 按难度系数：提升 20%~40% 零辐能加速阈值；提升 25%~50% 零辐能加速的航速增益（最终乘区）。
- *
- * 实现口径：原版零辐能加速阈值基准为 0 辐能水平，"提升 X% 阈值"落地为
- * 允许在 X% 辐能水平以下仍触发零辐能加速（modifyFlat 比例值）。
- */
 class AffixEngineFluxIsolationHullMod : BaseHullMod() {
 
     data class Bonuses(

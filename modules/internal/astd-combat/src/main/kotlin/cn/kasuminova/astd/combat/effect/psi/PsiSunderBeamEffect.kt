@@ -16,17 +16,6 @@ import org.lwjgl.util.vector.Vector2f
 import java.util.WeakHashMap
 import kotlin.math.max
 
-/**
- * PSI-Ω「灵魂虹吸」：
- * - 基础伤害：weapon_data.csv 中定义（FRAG, 1000 DPS, 300 flux/s）。
- * - 额外效果：对目标持续照射会逐步增强“CR/PPT 抽取”。
- *   - 有人舰：每秒扣除当前 CR 的 0.2%~0.8%（随照射增强）。
- *   - 无人舰：每秒扣除最大 PPT 的 0.1%~0.4%（随照射增强）。
- *   - 命中护盾：上述抽取效率 ×0.2。
- *   - 回馈：抽取量的 50% 转化为自身 CR 恢复，并按舰体大小有折损（护卫 90% → 主力 30%）。
- *
- * 视觉：双螺旋束体 + 末端反向粒子流（随照射增强）。
- */
 class PsiSunderBeamEffect : BeamEffectPlugin {
 
     companion object {
@@ -50,7 +39,6 @@ class PsiSunderBeamEffect : BeamEffectPlugin {
 
         private const val RESTORE_FRACTION = 0.5f
 
-        /** 光束 VFX 树的 spec id（登记于 [BeamVfxSpecs]）。 */
         private const val BEAM_SPEC_ID = "astd_psi_omega"
 
         private const val KEY_PPT_DRAIN = "astd_psi_omega_ppt_drain"
@@ -59,7 +47,6 @@ class PsiSunderBeamEffect : BeamEffectPlugin {
         private const val KEY_PPT_RESTORE = "astd_psi_omega_ppt_restore"
         private const val STAT_PPT_RESTORE = "astd_psi_omega_ppt_restore_stat"
 
-        // PPT 回馈上限：最多额外 +50% 基础峰值时长（避免无限堆叠）
         private const val PPT_RESTORE_CAP_FRACTION = 0.5f
 
         private val states: WeakHashMap<BeamAPI, BeamState> = WeakHashMap()
@@ -73,7 +60,7 @@ class PsiSunderBeamEffect : BeamEffectPlugin {
             var baseWidth: Float = -1f,
             var driver: BeamVfxDriver? = null,
 
-            // 反馈可视化/调试：累积后以“每秒速率”显示，避免 0.x% 变化被 UI 取整吞掉
+            // 状态行按每秒速率显示：0.x% 的逐帧变化会被 UI 取整舍去。
             var statusT: Float = 0f,
             var statusDrain: Float = 0f,
             var statusRestoreApplied: Float = 0f,
@@ -101,7 +88,7 @@ class PsiSunderBeamEffect : BeamEffectPlugin {
         val beamActive = brightness > BEAM_ACTIVE_BRIGHTNESS_MIN && beam.length > 10f
 
         if (!beamActive) {
-            // 停火/束体消失：缓慢衰减层数；驱动以 firing=false 推进，束体节点按心跳自淡（复火再拉回，无重建）。
+            // 停火时驱动以 firing=false 推进，束体节点按心跳自淡，复火拉回无需重建。
             state.contact = max(0f, state.contact - amount * RAMP_DECAY_PER_SEC)
             state.target = null
             val ramp = (state.contact / state.rampDuration.coerceAtLeast(0.01f)).coerceIn(0f, 1f)
@@ -118,7 +105,6 @@ class PsiSunderBeamEffect : BeamEffectPlugin {
                 && brightness > DRAIN_BRIGHTNESS_MIN
 
         if (canDrain) {
-            // 新目标：重置 ramp，并重新 roll 持续时间（5~10s）
             if (state.target !== target) {
                 state.target = target
                 state.contact = 0f
@@ -126,7 +112,6 @@ class PsiSunderBeamEffect : BeamEffectPlugin {
             }
             state.contact += amount
         } else {
-            // 未命中舰船或命中非舰船：保留光束 VFX，但缓慢衰减汲取效率。
             state.contact = max(0f, state.contact - amount * RAMP_DECAY_PER_SEC)
             state.target = null
         }
@@ -149,13 +134,11 @@ class PsiSunderBeamEffect : BeamEffectPlugin {
                 drainCr(drainTarget, ramp, effMult, amount)
             }
 
-            // 回馈
             val restored = restoreSource(source, drainTarget, drained, ramp)
             appliedCr = restored.first
             appliedPptSec = restored.second
         }
 
-        // 玩家可见状态（仅玩家船）：提示“回馈”正在工作或 CR 已满
         if (engine.playerShip === source) {
             if (canDrain) {
                 state.statusT += amount
@@ -203,7 +186,6 @@ class PsiSunderBeamEffect : BeamEffectPlugin {
                 false,
             )
 
-            // 可选日志：仅 devMode，每 1s 输出一次
             if (canDrain && Global.getSettings().isDevMode) {
                 state.logT += amount
                 if (state.logT >= 1f) {
@@ -224,14 +206,9 @@ class PsiSunderBeamEffect : BeamEffectPlugin {
             }
         }
 
-        // 视觉：全 BoxUtil 光束（不依赖原版渲染），经 RenderEntity 新管线驱动。
         driveVfx(engine, beam, state, amount, firing = true, strength = ramp)
     }
 
-    /**
-     * 把本帧束几何/状态折成 [BeamFrame] 喂给该光束的 [BeamVfxDriver]（首帧惰性建树+驱动）。
-     * strength=ramp 决定束体颜色/宽度与命中特效频次；firing 决定束体常驻还是淡出。
-     */
     private fun driveVfx(engine: CombatEngineAPI, beam: BeamAPI, state: BeamState, amount: Float, firing: Boolean, strength: Float) {
         val driver = state.driver ?: run {
             val tree = BeamVfxSpecs.build(BEAM_SPEC_ID) ?: return
@@ -285,9 +262,6 @@ class PsiSunderBeamEffect : BeamEffectPlugin {
         }
     }
 
-    /**
-     * @return drained amount in CR fraction (0..1) for restore calculation
-     */
     private fun drainCr(target: ShipAPI, ramp: Float, mult: Float, amount: Float): Float {
         val cur = try {
             target.currentCR
@@ -306,9 +280,6 @@ class PsiSunderBeamEffect : BeamEffectPlugin {
         return delta
     }
 
-    /**
-     * @return drained amount as PPT fraction (0..1) for restore calculation
-     */
     private fun drainPpt(target: ShipAPI, ramp: Float, mult: Float, amount: Float): Float {
         val specBase = try {
             target.hullSpec.noCRLossTime
@@ -316,7 +287,7 @@ class PsiSunderBeamEffect : BeamEffectPlugin {
             0f
         }
         if (specBase <= 0.01f) {
-            // fallback：没有 PPT 概念的目标，按 CR 处理
+            // 无 PPT 概念的目标改按 CR 抽取处理。
             return drainCr(target, ramp, mult, amount)
         }
 
@@ -326,7 +297,7 @@ class PsiSunderBeamEffect : BeamEffectPlugin {
             null
         } ?: 0f
 
-        // 当前 effective 已包含我们的负 flat；因此 + drained0 作为“未抽取前”的最大 PPT 近似。
+        // computeEffective 已包含本机制的负 flat，加回 drained0 才是抽取前的最大 PPT。
         val maxNoDrain = try {
             target.mutableStats.peakCRDuration.computeEffective(specBase) + drained0
         } catch (_: Throwable) {
@@ -344,7 +315,6 @@ class PsiSunderBeamEffect : BeamEffectPlugin {
         }
 
         try {
-            // 通过降低“峰值持续时间 stat”来逼迫 peak time 剪短。
             target.mutableStats.peakCRDuration.modifyFlat(STAT_PPT_DRAIN, -drained)
         } catch (_: Throwable) {
         }
@@ -367,19 +337,16 @@ class PsiSunderBeamEffect : BeamEffectPlugin {
             else -> 0.6f
         }
 
-        // ramp 越高，回馈越“尖锐”；但上限仍为 50%
         val restore = drained * RESTORE_FRACTION * eff * (0.85f + 0.15f * ramp)
 
-        // PPT 回馈：把“回馈份额”按 source 的有效峰值时长换算为秒并累积到 peakCRDuration。
         val appliedPptSec = restorePpt(source, restore)
 
         try {
             val cur = source.currentCR
             val maxCr = source.mutableStats.maxCombatReadiness.modifiedValue
 
-            // 关键修复：某些情况下 maxCombatReadiness 的 modifiedValue 可能瞬间低于当前 CR。
-            // 若直接 min(maxCr, ...) 会把当前 CR 硬夹到更低值，表现为 85% -> 15% 的“异常掉 CR”。
-            // 这里保证“回馈”只会提高 CR（或保持不变），绝不降低。
+            // maxCombatReadiness 的 modifiedValue 可能瞬间低于当前 CR，直接 min 会把当前 CR 硬夹低；
+            // 回馈只许提高 CR 或保持不变。
             val cap = max(cur, maxCr).coerceIn(0f, 1f)
             val next = (cur + restore).coerceIn(0f, cap)
             source.currentCR = next
@@ -412,11 +379,10 @@ class PsiSunderBeamEffect : BeamEffectPlugin {
             base
         }.coerceAtLeast(1f)
 
-        // computeEffective 包含我们自己的 flat；扣回后得到“无本机制时”的有效峰值
+        // computeEffective 含本机制 flat，扣回 curBonus 才是无本机制时的有效峰值。
         val effectiveNoOur = (effectiveNow - curBonus).coerceAtLeast(1f)
         val capBonus = (effectiveNoOur * PPT_RESTORE_CAP_FRACTION).coerceAtLeast(0f)
 
-        // 将“CR 分数回馈”映射为“PPT 秒回馈”
         val addSec = (restoreCrFraction * effectiveNoOur).coerceAtLeast(0f)
 
         val nextBonus = (curBonus + addSec).coerceIn(0f, capBonus)

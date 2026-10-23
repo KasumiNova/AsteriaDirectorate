@@ -4,24 +4,9 @@ import com.fs.starfarer.api.EveryFrameScript
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.ShipVariantAPI
 
-/**
- * 不兼容船插延迟清理器。
- *
- * 动机：原版 `HullVariantSpec.updateStatsForOpCosts` 在**实时迭代** `variant.getHullMods()`
- * （LinkedHashSet 活性集合）期间回调 `applyEffectsBeforeShipCreation`（仅 `affectsOPCosts=true`
- * 的船插）；此时结构性 `removeMod` 必抛 `ConcurrentModificationException`（自动装配实机踩坑，
- * 堆栈 CoreAutofitPlugin.addExtraVentsAndCaps → computeOPCost → updateStatsForOpCosts）。
- * 而 `ShipFactory`/`FleetMember` 等路径迭代的是 `getAllMods()` 快照，无此问题。
- *
- * 约定：`applyEffectsBeforeShipCreation` 只允许检测并入队（[requestStrip]），真正的五路清理
- * （普通/permaMod/S-mod/S-modded built-in/suppressed）延后到安全点执行：
- * - `applyEffectsAfterShipCreation`（ShipFactory 快照迭代，战斗生成前即刻清理）；
- * - `advanceInCombat`（战斗内兜底）；
- * - 战役侧每帧 drainer（transient script，装配界面改动下一帧生效）。
- */
+// 原版 OP 结算会实时迭代 hullMods 并回调船插；requestStrip 只能入队，结构性移除必须延后到快照迭代外。
 object IncompatibleHullmodStripper {
 
-    /** 战役 drainer 注册标记（`$` 前缀键不随存档持久化，读档后自动重新注册）。 */
     private const val DRAINER_KEY = "\$astd_incompatible_hullmod_stripper"
 
     private data class StripRequest(
@@ -34,10 +19,6 @@ object IncompatibleHullmodStripper {
 
     private val log = Global.getLogger(IncompatibleHullmodStripper::class.java)
 
-    /**
-     * 检测 [variant] 是否装有 [forbiddenIds] 中的船插；有则入队等待清理。
-     * 本方法不做任何结构性修改，在任意回调上下文（含 OP 结算实时迭代）中均安全。
-     */
     fun requestStrip(variant: ShipVariantAPI?, forbiddenIds: Set<String>, sourceId: String) {
         variant ?: return
         val hit = forbiddenIds.any { forbiddenId ->
@@ -53,10 +34,6 @@ object IncompatibleHullmodStripper {
         ensureCampaignDrainer()
     }
 
-    /**
-     * 执行全部待清理请求并清空队列。只能在快照迭代或迭代外的安全点调用
-     * （AfterCreation / advanceInCombat / 战役每帧 drainer）。
-     */
     fun drainPending() {
         if (pending.isEmpty()) return
         val requests = pending.toList()
@@ -79,7 +56,6 @@ object IncompatibleHullmodStripper {
         }
     }
 
-    /** 战役侧 drainer 只需注册一次（transient，不进存档；读档后经 `$` 键自动重注册）。 */
     private fun ensureCampaignDrainer() {
         val sector = Global.getSector() ?: return
         if (sector.memoryWithoutUpdate.getBoolean(DRAINER_KEY)) return

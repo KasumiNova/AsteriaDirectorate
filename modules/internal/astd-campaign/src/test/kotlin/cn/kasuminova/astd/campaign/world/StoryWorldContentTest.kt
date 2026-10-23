@@ -6,12 +6,8 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-/**
- * 剧情状况数值缩放（k_s 三锚点端点命中）。
- */
 class StoryWorldContentTest {
 
-    /** 测试用固定 k_s 的轨一实现（不触碰 LunaLib/全局单例）。 */
     private class FixedTuning(override val fixedScale: Float) : DifficultyTuning {
         override fun value(entry: ScalingEntry): Float = entry.map.value(fixedScale, entry.v1, entry.v2, entry.v5)
     }

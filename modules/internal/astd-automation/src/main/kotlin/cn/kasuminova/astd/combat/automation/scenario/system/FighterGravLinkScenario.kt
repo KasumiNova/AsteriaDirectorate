@@ -13,11 +13,8 @@ import org.lwjgl.util.vector.Vector2f
 
 /**
  * 飞蓬战机引力联结器场景（断言点 A~G）。
- *
- * 拆分自 ASTDAutomationCombatPlugin 的同名 if-else 分支，相位机/断言/证据写出口径原样迁移。
  */
 class FighterGravLinkScenario : AbstractAutomationScenario() {
-    // ==== 飞蓬战机引力联结器场景状态（相位机 SPAWN → WAIT_WINGS → ACTIVATE → OBSERVE_ACTIVE → WAIT_RECALL → RELAUNCH → COMPLETED） ====
     private var fglPhase = FGL_PHASE_SPAWN
     private var fglPhaseStartedAt = 0f
 
@@ -41,7 +38,7 @@ class FighterGravLinkScenario : AbstractAutomationScenario() {
 
     // 断言点 E 强化底账：各已装联队甲板 numLost 合计（原版语义：numLost 只在战机真正被击毁
     // 路径自增，land 召回不计），召回前后不变才能区分「被召回」与「被击毁」。
-    // fglNumLostAtActivation 仅作诊断证据；判定基线是 fglNumLostBeforeRecall——与
+    // fglNumLostAtActivation 仅作诊断证据；判定基线是 fglNumLostBeforeRecall，与
     // fglHardFluxBeforeRecall 同样按 ACTIVE 最后一帧滚动采样，把归因窗收窄到召回前后 ~1s，
     // 避免激活→召回整段交战期（约 16s）内正常战损被误判为「召回与击毁混淆」。
     private var fglNumLostAtActivation = -1
@@ -79,7 +76,7 @@ class FighterGravLinkScenario : AbstractAutomationScenario() {
         val engine = ctx.engine
         engine.setDoNotEndCombat(true)
         lockFglCamera(engine)
-        // 与其他场景一致：reserves 部署放到 advance()，init 阶段渲染器未就绪。
+        // reserves 部署放到 advance()，init 阶段渲染器未就绪。
         ctx.writeDiagnostics("CombatReady")
         ctx.writeTelemetry("CombatReady", findFglPlayer(engine), null)
         ctx.log.info("[ASTD-Automation] scenario=${ASTDInGameAutomationScenario.FGL_SCENARIO_ID} combat plugin initialized")
@@ -91,7 +88,7 @@ class FighterGravLinkScenario : AbstractAutomationScenario() {
     private fun findFglEnemy(engine: CombatEngineAPI): ShipAPI? =
         engine.ships.firstOrNull { ship -> ship.owner != 0 && ship.hullSpec?.hullId == FGL_ENEMY_HULL && !ship.isFighter }
 
-    /** 该舰全部联队的在外战机（wing 枚举口径，与系统脚本 applyFighterBuffs 同一观测面）。 */
+    /** 该舰全部联队的在外战机（wing 枚举方式，与系统脚本 applyFighterBuffs 同一观测面）。 */
     private fun fglPlayerFighters(player: ShipAPI): List<ShipAPI> =
         player.allWings.flatMap { wing -> wing.wingMembers }.filter { !it.isHulk }
 
@@ -129,11 +126,11 @@ class FighterGravLinkScenario : AbstractAutomationScenario() {
     }
 
     /**
-     * 舞台保活与站位（范式同 stabilizeSmShips）：双方逐帧奶血 + 钉死锚点 + 保留舰 AI
-     * （航母联队出库/补员链路依赖 AI 存活，SM 秃鹰航母判例同款）。
-     * 母舰辐能绝不重置——断言点 D（软辐能累积）与 F（软→硬转化）依赖真实辐能读数；
+     * 舞台保活与站位（范式同 stabilizeSmShips）：双方逐帧回血 + 钉死锚点 + 保留舰 AI
+     * （航母联队出库/补员链路依赖 AI 存活，同 SM 秃鹰航母场景）。
+     * 母舰辐能绝不重置：断言点 D（软辐能累积）与 F（软→硬转化）依赖真实辐能读数；
      * [forceShield] 于系统激活期强制开盾：护盾维持耗散（640/s）压低净耗散，
-     * 令 800/s 软辐能产出（16000×5%，原版 CSV 结算）转为母舰 currFlux 净上涨（口径见 FGL_EXPECT_FLUX_RISE）。
+     * 令 800/s 软辐能产出（16000×5%，原版 CSV 结算）转为母舰 currFlux 净上涨（判定依据见 FGL_EXPECT_FLUX_RISE）。
      */
     private fun stabilizeFglShips(engine: CombatEngineAPI, forceShield: Boolean) {
         val player = findFglPlayer(engine)
@@ -171,7 +168,7 @@ class FighterGravLinkScenario : AbstractAutomationScenario() {
         val fighters = if (player != null && !player.isHulk) fglPlayerFighters(player) else emptyList()
         fglFightersInPlayMax = maxOf(fglFightersInPlayMax, fighters.size)
         // 单联队在场数峰值全程采样（不限 WAIT_WINGS）：联队在 WAIT_WINGS 阶段仍可能处于
-        // 爬编途中，峰值可能到 ACTIVE/RELAUNCH 才出现（仅作诊断证据，口径见常量区注释）。
+        // 爬编途中，峰值可能到 ACTIVE/RELAUNCH 才出现（仅作诊断证据，判定依据见常量区注释）。
         if (player != null) {
             for (wing in player.allWings) {
                 fglWingSizeMax = maxOf(fglWingSizeMax, wing.wingMembers.count { !it.isHulk })
@@ -243,7 +240,7 @@ class FighterGravLinkScenario : AbstractAutomationScenario() {
                             fglActivateAttempts++
                             player.useSystem()
                         }
-                        // 超时兜底独立于冷却分支：即便系统处于长冷却，相位也必须收口判失败。
+                        // 超时判定独立于冷却分支：即便系统处于长冷却，超时也必须判失败。
                         if (ctx.elapsed - fglPhaseStartedAt >= FGL_ACTIVATE_TIMEOUT) {
                             ctx.failureReason = "fgl activate timeout: ${FGL_ACTIVATE_TIMEOUT}s 内系统未点亮" +
                                     "（attempts=$fglActivateAttempts state=${system.state} cd=${system.cooldownRemaining}）"
@@ -261,7 +258,7 @@ class FighterGravLinkScenario : AbstractAutomationScenario() {
                         fglHullDamageTakenMultMin = minOf(fglHullDamageTakenMultMin, fighter.mutableStats.hullDamageTakenMult.modifiedValue)
                     }
                     // 断言点 D 基线延迟采样：相位进入即开盾，settle 0.5s 待护盾维持耗散
-                    // 稳定后才采基线（口径见 fglObserveFluxBaseline 注释）。
+                    // 稳定后才采基线（依据见 fglObserveFluxBaseline 注释）。
                     if (fglObserveFluxBaseline < 0f && ctx.elapsed - fglActivatedAt >= FGL_OBSERVE_BASELINE_SETTLE_SECONDS) {
                         fglObserveFluxBaseline = player.fluxTracker.currFlux
                     }
@@ -300,7 +297,7 @@ class FighterGravLinkScenario : AbstractAutomationScenario() {
             FGL_PHASE_WAIT_RECALL -> {
                 stabilizeFglShips(engine, forceShield = true)
                 // toggle 主动关闭路径验证：玩家再次按键同路径补发 useSystem()（ACTIVE → OUT →
-                // 召回结算）。不用 system.deactivate()——其等价 forceDeactivate，直接跳
+                // 召回结算）。不用 system.deactivate()，其等价 forceDeactivate，直接跳
                 // COOLDOWN、跳过 OUT 窗口，召回结算不会触发。
                 // 关闭时机等 currFlux ≥ FGL_MANUAL_CANCEL_MIN_FLUX：断言点 F（软硬转化 ≥300）
                 // 需要转化前有足够软辐能存量（净涨 ~40/s，约 ACTIVE 10s 后达成，早于 15s 上限）。
@@ -342,7 +339,7 @@ class FighterGravLinkScenario : AbstractAutomationScenario() {
                         .sumOf { it.numLost }
                 }
                 if (fglRecallDetectedAt >= 0f && ctx.elapsed - fglRecallDetectedAt >= FGL_RECALL_SETTLE_SECONDS) {
-                    // 断言点 E：底账 identity 全部消失 且 numLost 合计不变——identity 全清单独
+                    // 断言点 E：底账 identity 全部消失 且 numLost 合计不变。identity 全清单独
                     // 无法区分「被击毁」与「被 land 召回」（原版语义：numLost 只在击毁路径自增，
                     // land 召回不计），两者同时成立才证明召回路径生效。
                     fglRecordedFightersCleared = engine.ships.none {
@@ -359,8 +356,8 @@ class FighterGravLinkScenario : AbstractAutomationScenario() {
                                     "（断言点 E：召回窗内有击毁，无法归因 land 召回）"
                             transitionFglPhase(FGL_PHASE_FAILED)
                         }
-                        // 断言点 F：软→硬转化阈显式 ≥1000。外部来源不可能满足——敌方仅秃鹰
-                        // 双阔剑联队，1s settle 窗内战机火力对护盾产生的硬辐能贡献在数十量级。
+                        // 断言点 F：软→硬转化判据，外部来源不可能满足：敌方仅秃鹰双阔剑联队，
+                        // 1s settle 窗内战机火力对护盾产生的硬辐能贡献在数十量级。
                         fglHardFluxAfterRecall - fglHardFluxBeforeRecall < FGL_EXPECT_HARD_FLUX_RISE -> {
                             ctx.failureReason = "fgl hard flux rise=${"%.0f".format(fglHardFluxAfterRecall - fglHardFluxBeforeRecall)}" +
                                     " < $FGL_EXPECT_HARD_FLUX_RISE（before=${"%.0f".format(fglHardFluxBeforeRecall)}" +
@@ -448,7 +445,7 @@ class FighterGravLinkScenario : AbstractAutomationScenario() {
         json.appendLine("  \"runtimeElapsedSeconds\": 0,")
         json.appendLine("  \"runtimeTrackedCount\": ${vfxTelemetry.trackedCount},")
         json.appendLine("  \"runtimeLastProjectileSpecId\": ${jsonString(vfxTelemetry.lastProjectileSpecId)},")
-        // ---- 机制证据（断言点 A~G）----
+        // 机制证据（断言点 A~G）
         json.appendLine("  \"fglPhase\": \"$fglPhase\",")
         json.appendLine("  \"fglSystemId\": ${jsonString(fglSystem?.id)},")
         json.appendLine("  \"fglSystemState\": ${jsonString(fglSystem?.state?.name)},")
@@ -496,26 +493,26 @@ class FighterGravLinkScenario : AbstractAutomationScenario() {
         private const val FGL_SPAWN_SETTLE_SECONDS = 0.6f
 
         // WAIT_WINGS（断言点 A）：玩家侧固定 v2 档 → 每甲板 extraDeploymentLimit 锚定 round(2×(1+1.5))=5；
-        // 单联队在场 ≥3 超出基础编制 num=2（wing_data.csv 口径），为扩容生效的直接证据
-        // （总在场数口径无效：3 甲板基础编制合计已达 6）。
+        // 单联队在场 ≥3 超出基础编制 num=2（wing_data.csv 数值），为扩容生效的直接证据
+        // （总在场数无法判别：3 甲板基础编制合计已达 6）。
         private const val FGL_EXPECT_EXTRA_DEPLOYMENT_LIMIT = 5
         private const val FGL_EXPANDED_WING_MIN = 3
 
-        // 在场峰值/单联队峰值全程采样，仅作诊断证据，不作硬断言：满编口径（总在场 15 /
-        // 单联队 5）受交战 RNG 影响——敌方阔剑可在爬编期击落战机（实机曾 numLost 0→1 致
-        // 峰值 14），且 wingMembers 计数不覆盖额外编制（实机曾在场 15 而单联队峰值仅 3）。
+        // 在场峰值/单联队峰值全程采样，仅作诊断证据，不作硬断言：满编判定（总在场 15 /
+        // 单联队 5）受交战 RNG 影响，敌方阔剑可在爬编期击落战机（出现 numLost 0→1 时
+        // 峰值降为 14），且 wingMembers 计数不覆盖额外编制（在场 15 时单联队峰值可能仅 3）。
         // 扩容的机制级硬证据由 WAIT_WINGS 的 extraDeploymentLimit==5 + 单联队超基础编制承担。
         private const val FGL_MIN_FIGHTERS_FOR_ACTIVATION = 2
 
         // ACTIVATE：useSystem() 可能被原版起飞动画窗（giveCommand 的 isLiftingOffOrLanding
-        // 闸门）静默吞掉，按帧重试直到 system.isOn；超时兜底判失败（点亮本身即机制断言）。
+        // 闸门）静默吞掉，按帧重试直到 system.isOn；超时判失败（点亮本身即机制断言）。
         private const val FGL_ACTIVATE_TIMEOUT = 10f
 
         // OBSERVE_ACTIVE（断言点 B/C/D）：玩家恒 v2 → 时流 ×2.5（界 2.4）、四承伤 ×0.5（界 0.51）；
         // 软辐能 800/s（基础最大辐能 16000×5%，原版 CSV 结算）对冲盾开净耗散 760/s（耗散 1400 − 护盾维持 640）
         // 后净涨 ≈40/s。断言点 D 基线在相位进入（开盾生效）后 settle 0.5s 采样：护盾维持 640/s
         // 恒定贯穿整个观测窗，净涨只能来自系统产出（无系统时净 -760/s，判别力成立），
-        // 基线后约 2.5s 达成 +100，观测窗 2~5s 收口（上限净涨 ≈180）。
+        // 基线后约 2.5s 达成 +100，观测窗 2~5s 内完成（上限净涨 ≈180）。
         private const val FGL_OBSERVE_MIN_SECONDS = 2f
         private const val FGL_OBSERVE_TIMEOUT = 5f
         private const val FGL_OBSERVE_BASELINE_SETTLE_SECONDS = 0.5f
@@ -524,16 +521,16 @@ class FighterGravLinkScenario : AbstractAutomationScenario() {
         private const val FGL_EXPECT_FLUX_RISE = 100f
 
         // WAIT_RECALL（断言点 E/F）：currFlux ≥ FGL_MANUAL_CANCEL_MIN_FLUX 时补发 useSystem()
-        // 验证 toggle 主动关闭路径（玩家再次按键同路径；不用 deactivate()——其直接跳 COOLDOWN、
-        // 跳过 OUT 窗口）；召回检测后 settle 1.5s 采样硬辐能峰值与 identity 清点——OUT 召回
+        // 验证 toggle 主动关闭路径（玩家再次按键同路径；不用 deactivate()，其直接跳 COOLDOWN、
+        // 跳过 OUT 窗口）；召回检测后 settle 1.5s 采样硬辐能峰值与 identity 清点：OUT 召回
         // 特效窗为 1.0s（CSV down），land 在窗口末（effectLevel ≤0.05，约 0.95s）执行，settle 需覆盖。
-        // 关闭前的最低辐能门槛：断言点 F 阈值显式 ≥300——敌方仅秃鹰双阔剑联队，settle 窗内
+        // 关闭前的最低辐能门槛：断言点 F 阈值显式 ≥300，敌方仅秃鹰双阔剑联队，settle 窗内
         // 战机火力对护盾的硬辐能贡献在数十量级，外部来源不可能满足，上升只能归因 OUT 首帧
         // setHardFlux(currFlux) 转化；ACTIVE 期净涨 ~40/s，400 约 10s 达成（早于 15s 上限）。
         private const val FGL_MANUAL_CANCEL_MIN_FLUX = 400f
 
         // toggle 主动关闭的补发节流（秒）：单次 useSystem() 可能被原版闸门吞掉（同 ACTIVATE），
-        // 未检测到召回前按该间隔重发，确保「主动取消」路径被真实验证而非静默落到 15s 上限收口。
+        // 未检测到召回前按该间隔重发，确保「主动取消」路径被真实验证而非静默落到 15s 上限。
         private const val FGL_MANUAL_CANCEL_RETRY_SECONDS = 0.5f
         private const val FGL_RECALL_SETTLE_SECONDS = 1.5f
         private const val FGL_EXPECT_HARD_FLUX_RISE = 300f

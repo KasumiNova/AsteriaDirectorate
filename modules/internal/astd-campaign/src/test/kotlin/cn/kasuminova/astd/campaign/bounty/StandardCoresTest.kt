@@ -5,15 +5,10 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 
-/**
- * 制式核心（量产级 G/B/A/O）：分档表（00-ai-cores.md 等级锚点 + 固有技能）、
- * 舰队核心配置分档映射与确定性、核心打捞区间与旗舰保底。
- */
 class StandardCoresTest {
 
     @Test
     fun `分档表等级与技能数符合设计锚点且技能表无重复`() {
-        // docs/design/skills/00-ai-cores.md：G=4 / B=6 / A=8 / O=11，技能数 = 等级（含固有技能）
         val expect = mapOf(
             StandardCores.Tier.G to Triple("astd_ai_core_g", 4, 4),
             StandardCores.Tier.B to Triple("astd_ai_core_b", 6, 6),
@@ -27,12 +22,10 @@ class StandardCoresTest {
             assertTrue(tier.officerSkills.toSet().size == tier.officerSkills.size, "$tier 技能表不得有重复")
             assertEquals("graphics/portraits/astd_portrait_core_${tier.name.lowercase()}.png", tier.portrait)
         }
-        // 原版 autoPointsMult：GAMMA/BETA/ALPHA/OMEGA = 2/3/4/5
         assertEquals(2f, StandardCores.Tier.G.autoPointsMult)
         assertEquals(3f, StandardCores.Tier.B.autoPointsMult)
         assertEquals(4f, StandardCores.Tier.A.autoPointsMult)
         assertEquals(5f, StandardCores.Tier.O.autoPointsMult)
-        // O 级不作为可获取物品存在
         assertEquals(
             mapOf(
                 StandardCores.Tier.G to true,
@@ -74,7 +67,6 @@ class StandardCoresTest {
                 assertTrue(escort in escortAllowed, "T$tier 僚舰档位 $escort 超出允许集 $escortAllowed")
                 assertNotEquals(StandardCores.Tier.O, escort, "O 档仅旗舰使用")
             }
-            // 同种子确定
             assertEquals(plan, StandardCores.planFleetCores(24, tier, 42L), "T$tier 同种子方案应确定")
         }
         assertEquals(emptyList(), StandardCores.planFleetCores(0, 3, 42L))
@@ -99,21 +91,16 @@ class StandardCoresTest {
         )
         for (seed in 0L until 64L) {
             val loot = StandardCores.rollCoreLoot(installed, seed)
-            // 掉落池 = 实际装舰的可打捞核心（O 永不掉落）
             assertTrue(loot.keys.all { it in setOf(installed[0], installed[2]) }, "掉落越出已装可打捞池：$loot")
-            // 旗舰（G）保底必掉
             assertEquals(installed[0], loot.keys.first(), "旗舰核心保底必掉：$loot")
-            // 单 id 数量不超过装舰数；总量在 [1, 可打捞装舰数=3]
             assertTrue((loot[installed[0]] ?: 0) <= 2)
             assertTrue((loot[installed[2]] ?: 0) <= 1)
             assertTrue(loot.values.sum() in 1..3, "打捞总量越界：$loot")
         }
-        // 全 O 舰队（理论边界）：无可打捞核心 → 空表
         assertEquals(
             emptyMap(),
             StandardCores.rollCoreLoot(listOf(StandardCores.Tier.O.commodityId, StandardCores.Tier.O.commodityId), 1L),
         )
-        // 旗舰 O + 僚舰可打捞：僚舰判定全空时按「至少一枚」强制掉落索引最小可打捞者
         val oFlag = listOf(
             StandardCores.Tier.O.commodityId,
             StandardCores.Tier.A.commodityId,
@@ -123,7 +110,6 @@ class StandardCoresTest {
         assertEquals(mapOf(StandardCores.Tier.A.commodityId to 1), forced)
     }
 
-    /** 找一个两枚僚舰 50% 判定全部落空的种子（按判定的确定性消费顺序正演；找不到即环境异常）。 */
     private fun findAllMissSeed(): Long {
         for (seed in 0L until 10000L) {
             val rnd = java.util.Random(seed)

@@ -5,13 +5,6 @@ import com.fs.starfarer.api.combat.MutableShipStatsAPI
 import com.fs.starfarer.api.impl.combat.BaseShipSystemScript
 import com.fs.starfarer.api.plugins.ShipSystemStatsScript
 
-/**
- * astd_high_energy_loader（高能装填）
- *
- * 作为偏通用的“短时武器增幅系统”（3s）：
- * - 提升能量武器射速/弹速
- * - 以轻度幅耗增加作为代价（保持反制面）
- */
 class HighEnergyLoaderSystemStats : BaseShipSystemScript() {
 
     companion object {

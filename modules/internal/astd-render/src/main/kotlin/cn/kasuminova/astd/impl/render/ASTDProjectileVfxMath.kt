@@ -3,12 +3,6 @@ package cn.kasuminova.astd.impl.render
 import kotlin.math.max
 import kotlin.math.min
 
-/**
- * 弹体 VFX 共享数值函数。
- *
- * Static Trail 迁移（2026-09）后仅保留 [ASTDProjectileVfxLayout] 预览函数族仍在消费的子集；
- * 噪声/ribbon 波形/历史采样等旧渲染栈函数已随 texTrail/head 体系删除。
- */
 object ASTDProjectileVfxMath {
     fun clamp(value: Float, min: Float, max: Float): Float = min(max, max(min, value))
 

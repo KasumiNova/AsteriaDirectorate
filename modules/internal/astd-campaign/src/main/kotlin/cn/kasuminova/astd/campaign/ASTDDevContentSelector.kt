@@ -11,13 +11,6 @@ import com.fs.starfarer.api.loading.FighterWingSpecAPI
 import com.fs.starfarer.api.loading.HullModSpecAPI
 import com.fs.starfarer.api.loading.WeaponSpecAPI
 
-/**
- * Dev-only content filter for the test storage.
- *
- * Hidden/codex visibility is intentionally not a reject condition. The storage is for debugging
- * full mod setups, while still avoiding implementation-only content such as ship modules,
- * decorative weapons and ship-system weapons.
- */
 object ASTDDevContentSelector {
 
     data class ShipRow(

@@ -8,14 +8,6 @@ import com.fs.starfarer.api.mission.FleetSide;
 import com.fs.starfarer.api.mission.MissionDefinitionAPI;
 import com.fs.starfarer.api.mission.MissionDefinitionPlugin;
 
-/**
- * Dev-only mission surface for gravity phase cloak friendly-fire defensive dive in-game automation.
- * <p>
- * 舜华孤立待命（敌靶舰远锚 7000su，观测窗内不会接战），插件周期性生成友方
- * （owner 与本舰同侧）hellbore 直射弹直指本舰——验证 GravityPhaseCloakAI 的
- * collectFriendly 防御链路（友军火力并入 defensiveSoon 触发紧急下潜）实机生效：
- * 投喂后 1.5s 内出现下潜沿记一次命中，60s 观测窗内命中 ≥2 次判 Completed。
- */
 public final class MissionDefinition implements MissionDefinitionPlugin {
     @Override
     public void defineMission(final MissionDefinitionAPI api) {

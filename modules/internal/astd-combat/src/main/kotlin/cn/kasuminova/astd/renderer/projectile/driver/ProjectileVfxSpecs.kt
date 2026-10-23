@@ -14,38 +14,14 @@ import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.max
 import kotlin.math.roundToInt
 
-/**
- * 弹体特效手写 DSL 构建函数库（Static Trail + Box 螺栓管线）。
- * 每个 projectileSpecId 对应一个无状态构建函数，每次生成弹体都重新调用（不缓存），以支持调试期字面量热交换。
- * 注意：Static Trail 拖尾层的 StaticTrailData（vRAM 池配置）按 BoxUtil 约束为常量并缓存，热交换对拖尾层不生效。
- *
- * 绝大多数弹体（[simpleProjectileVfx]）只需 4 个高层旋钮（主色/宽/长/体型档），拖尾主体为固定四层贴图混合
- * （twin 外带 + smooth 核心 + zappy 装饰 ×2，参数见文件底部常量与纯函数）；弹头由 Box 螺栓组件承担
- * （SpriteEntity 双趟烘焙彗形贴图，默认开启、染近白单色系），原版螺栓视觉由 .proj 屏蔽
- * （ss-csv 侧 `ProjectileProjSpec.boxBolt`）。
- */
+// BoxUtil 会缓存 StaticTrailData 的 vRAM 池配置，拖尾参数的字面量热交换不会生效。
 object ProjectileVfxSpecs {
 
-    /**
-     * projectileSpecId → 构建函数（参数 = 武器面板射程 su，null 时用 spec 固定带长）。加入一个即接入本管线。
-     *
-     * 当前接入：坠星残响双配色（普通蓝白 / 第 5 发红色——后者为纯 VFX 键，第 5 发与普通弹
-     * 同 spec，由 OnFire 脚本打标记并显式 track）+ 坠星残翼主弹/子射弹 + 其余 simpleProjectileVfx spec（四层惯例）。
-     */
     private val builders: Map<String, (Float?) -> ProjectileVfx> = mapOf(
-        // 坠星残响（XC-001 内置主炮，blue/10-signature.md）：通用四层拖尾（蓝白）+ 开火锥状冲击 +
-        // 三角碎片/马赫环持续发射器层（树内组件，统一粒子池渲染）。
         "astd_starfall_echo_shot" to { range -> starfallEchoShot("astd_starfall_echo_shot", range) },
-        // 坠星残响第 5 发（200% 弹体）：红色同款拖尾 + 三枚同位光斑
-        // （SMOOTH 圆斑 / SHARP_DISC 顺向大光柱 / SHARP_DISC 转 90° 横向光柱）。
         "astd_starfall_echo_shot_final" to { range -> starfallEchoFinalShot("astd_starfall_echo_shot_final", range) },
-        // 坠星残翼主弹（XC-002 内置主炮，blue/10-signature.md 坠星残翼节）：紫色锥形射弹，
-        // 通用四层拖尾 + 同色三角碎片航迹（0.01s×2，统一向前缓慢飞行）+ 同色马赫环（0.1s 一枚）；
-        // 炮口一次性 Flare 已移除（设计案特效节修订：炮口大光斑并入螺栓弹头层）。
         "astd_starfall_wing_shot" to { range -> starfallWingShot("astd_starfall_wing_shot", range) },
-        // 坠星残翼追踪子射弹：紫色小光团（装饰层关闭保持群体可读性——星尘光尘同款裁定），带长固定。
-        // 子射弹为真实 MissileAPI（追踪 AI 需要）：bolt 组件默认对导弹自禁用，须显式接管补回弹头；
-        // 导弹 spec 无 length/width 键，螺栓尺寸显式给定（全长 28 × 全宽 8，对齐带宽 14 的弹头观感）。
+        // BoxUtil 的 bolt 组件对 MissileAPI 默认禁用，导弹需要弹头时必须显式 bolt { onMissile() } 接管
         "astd_starfall_wing_mote" to {
             simpleProjectileVfx("astd_starfall_wing_mote", violet(), width = 5f, length = 260f) {
                 bolt {
@@ -66,7 +42,6 @@ object ProjectileVfxSpecs {
                 }
             }
         },
-        // 电荷针刺族：固定短拖尾 180、无 zappy 装饰层（去随机扭转抖动）、宽度 −75%。
         "astd_charge_needle_shot" to {
             simpleProjectileVfx(
                 "astd_charge_needle_shot",
@@ -87,7 +62,6 @@ object ProjectileVfxSpecs {
                 decorTrail = false
             )
         },
-        // 电驱加速炮：黄色射弹（美术裁定），trail 长 = 射程×25%、宽 −50%，尾色金→红渐变；开火火光与射弹同色。
         "astd_electric_drive_accelerator_shot" to { range ->
             simpleProjectileVfx(
                 "astd_electric_drive_accelerator_shot",
@@ -102,10 +76,6 @@ object ProjectileVfxSpecs {
                 decorTrail = false
             )
         },
-        // 穷距相位轨道炮：ARC 冷蓝白弹体 + 长距离明亮拖尾（蓝→淡绿渐变尾），trail 长 = 射程×50%、宽 −35%、
-        // 装饰层关闭（大弹体主角光环留给外带/核心）；弹头补 SMOOTH 光斑强化弹体发光，开火附带炮口锥面碎片；
-        // 马赫环发射器 0.2s 一枚（环半径 30 对齐 16su 宽弹体观感，前飞动量 = 弹速 1800×0.5 = 900su/s，
-        // 颜色跟随 qiongjueBlue 调色板 140,199,255）。
         "astd_qiongjue_phase_railgun_shot" to { range ->
             simpleProjectileVfx(
                 "astd_qiongjue_phase_railgun_shot",
@@ -129,8 +99,6 @@ object ProjectileVfxSpecs {
                 }
             }
         },
-        // 正电子冲击波：小型 PD 弹体克制处理（width 5 / length 90 短拖尾，不抢主炮视觉——设计案特效节）；
-        // 开火火光为小槽规格锥面冲击。
         "astd_positron_shockwave_shot" to {
             simpleProjectileVfx(
                 "astd_positron_shockwave_shot",
@@ -140,8 +108,6 @@ object ProjectileVfxSpecs {
                 muzzleBurst = MuzzleBurst(length = 55f, halfAngleDeg = 24f, duration = 0.25f),
             )
         },
-        // 重型离子脉冲：trail 长 = 射程×25%、宽 −25%；弹头光斑强化弹体发光，开火附带炮口锥面碎片；
-        // 航迹三角碎片发射器（0.02s×1 片，配色跟随 heavyIonPulseColor 调色板：主色 140,199,255、核心近白）。
         "astd_heavy_ion_pulse_shot" to { range ->
             simpleProjectileVfx(
                 "astd_heavy_ion_pulse_shot",
@@ -169,46 +135,29 @@ object ProjectileVfxSpecs {
                 }
             }
         },
-        // 辉星 MRM（规格 08 §3.1）：LENS 紫辉星弹体/拖尾（爆炸为裂隙组件蓝色族），trail 长 = 射程×50%、recede 0；
-        // width=10 表达 1.5× 弹体体量（介于 spc3 中型 6 与穷距大型 12 之间）。两 spec 值完全一致属刻意（同一弹头两种发射器）。
         "astd_stellar_mrm_launcher_shot" to { range -> stellarMrmShot("astd_stellar_mrm_launcher_shot", range) },
         "astd_stellar_mrm_pod_shot" to { range -> stellarMrmShot("astd_stellar_mrm_pod_shot", range) },
-        // 星尘光尘（联制线内置导弹）：小型环绕弹体（width 4 / length 200，装饰层关闭保持环绕群可读性），
-        // ARC 蓝 / LENS 紫双线配色（设计案 20-joint.md §武器特效）。带长固定，不随射程折算。
         "astd_lh_stardust_mote_arc" to {
             simpleProjectileVfx("astd_lh_stardust_mote_arc", qiongjueBlue(), width = 4f, length = 200f, decorTrail = false)
         },
         "astd_lh_stardust_mote_lens" to {
             simpleProjectileVfx("astd_lh_stardust_mote_lens", violet(), width = 4f, length = 200f, decorTrail = false)
         },
-        // 贯星之矛（规格 09 §3.1）：width=36 大圆形弹体 + glowScale 4.0 放大带宽（公式派生）。
         "astd_piercing_lance_shot" to ::piercingLanceShot,
-        // 摧锋鱼雷（blue/30-superlative.md §特效）：ARC 冷蓝白，trail 长 = 射程×50%、recede 0（带体亮头直抵弹头），
-        // 弹头处 SMOOTH 光斑 + .proj glowSprite 弹体形状发光层（原版链路，美术预染色贴图）共同承担鱼雷辉光。
         "astd_cuifeng_torpedo_shot" to { range -> cuifengTorpedoShot("astd_cuifeng_torpedo_shot", range) },
-        // 源生冰晶 MIRV 母弹（purple/30-superlative.md §特效 + 13 号美术需求）：色族独立为冰蓝（不套 LENS 紫），trail 长 = 射程×50%、recede 0。
         "astd_ice_shard_mirv_shot" to { range -> iceShardMirvShot("astd_ice_shard_mirv_shot", range) },
-        // 双子星 DEM 双弹头（规格 10 §特效）：脚本 spawn 弹体不触发 onFireEffect，由 GeminiDemSalvoOnFireEffect
-        // 显式 ProjectileVfxDriverPlugin.track 接入。动能冷蓝白（同引擎焰色 140,190,255）/ 高爆共振红
-        // （255,40,60，与 payload 光束/爆炸三色同族），width 5 小型导弹（12×25 贴图），带长固定 400
-        // （追踪段摆动弹道在带上可读），recede 0（带体亮头直抵弹头，同摧锋/辉星导弹口径）；
-        // bolt 组件对 MissileAPI 自动禁用，本体贴图走原版渲染；飞行发光层走 .proj 原版 glowSprite 链路
-        // （美术预染色红/蓝贴图，glowColor 白），不再叠 SMOOTH 光斑（双层辉光叠加会过曝）。
         "astd_gemini_dem_kinetic_msl" to {
             simpleProjectileVfx("astd_gemini_dem_kinetic_msl", geminiKineticBlue(), width = 5f, length = 400f, recede = 0f, decorTrail = false)
         },
         "astd_gemini_dem_he_msl" to {
             simpleProjectileVfx("astd_gemini_dem_he_msl", geminiHeRed(), width = 5f, length = 400f, recede = 0f, decorTrail = false)
         },
-        // 战机版弹头链（数据驱动 ×0.75 削弱）：弹体 spec 独立，拖尾配色/口径与舰装版完全一致
         "astd_gemini_dem_kinetic_fighter_msl" to {
             simpleProjectileVfx("astd_gemini_dem_kinetic_fighter_msl", geminiKineticBlue(), width = 5f, length = 400f, recede = 0f, decorTrail = false)
         },
         "astd_gemini_dem_he_fighter_msl" to {
             simpleProjectileVfx("astd_gemini_dem_he_fighter_msl", geminiHeRed(), width = 5f, length = 400f, recede = 0f, decorTrail = false)
         },
-        // 源生冰晶子射弹：15 枚小冰晶成群，弹体本体由 spriteBody 接管（BoxUtil SpriteEntity 逐帧跟随，normal alpha 对齐原版
-        // 导弹贴图语义），原版贴图渲染由 .proj 的 sprite=BUtil_NONE.png 屏蔽，bolt 显式关闭（本体贴图取代螺栓）。
         "astd_ice_shard_sub_msl" to {
             simpleProjectileVfx("astd_ice_shard_sub_msl", iceBlue(), width = 6f, length = 120f, decorTrail = false, recede = -10f) {
                 bolt { off() }
@@ -221,11 +170,6 @@ object ProjectileVfxSpecs {
 
     private val installed = AtomicBoolean(false)
 
-    /**
-     * 把全部武器特效构建函数注册进 [ProjectileVfxRegistry]（幂等）。
-     * 战斗装配点（CombatVfxBootstrap）显式调用一次；[has]/[build] 也会兜底触发，
-     * 保证渲染驱动侧查表前注册已完成。
-     */
     fun install() {
         if (installed.compareAndSet(false, true)) {
             builders.forEach { (id, builder) -> ProjectileVfxRegistry.register(id, builder) }
@@ -237,48 +181,17 @@ object ProjectileVfxSpecs {
         return ProjectileVfxRegistry.has(projectileSpecId)
     }
 
-    /** 现构建一份新蓝图 + 策略；未迁移的 spec 返回 null（调用方回落旧管线）。 */
     fun build(projectileSpecId: String, weaponRangeSu: Float? = null): ProjectileVfx? {
         install()
         return ProjectileVfxRegistry.build(projectileSpecId, weaponRangeSu)
     }
 
-    /**
-     * 炮口锥面冲击规格（[simpleProjectileVfx] 的 muzzleBurst 参数）。
-     * 默认值为中大型舰炮口径（穷距轨道炮/彗星冲击波同款）；小槽武器缩小，旗舰级武器放大。
-     */
     private data class MuzzleBurst(
         val length: Float = 120f,
         val halfAngleDeg: Float = 20f,
         val duration: Float = 0.35f,
     )
 
-    /**
-     * 通用弹体特效：4 高层旋钮 → 四层贴图拖尾混合（Static Trail）。
-     *
-     * 四层构图（美术裁定，全弹体统一）：
-     * - twin 外带（layer1 垫底）：全宽 [bandWidth]×[BAND_WIDTH_MULT]×[trailWidthScale]；
-     * - smooth 核心（layer2）：宽度 −50%（[CORE_WIDTH_RATIO]）；
-     * - zappy 装饰 ×2（layer3，[decorTrail]=false 时省略）：[arcWidth]（0.6×外带），带尾端自旋/漂移抖动。
-     * 各层两段上色 alpha 不再按层缩放（统一 [brightness] 乘算），bloom 由 [trailGlow] 全层统一供给。
-     *
-     * 弹头为 Box 螺栓（近白单色系染色，见 `bolt{}` 与 [boltColor]）；带体两段上色（亮头 → 暗尾）。
-     * 派生公式全部为内部纯函数（[bandWidth] 等），登记行只填差异；目检微调优先改公式常量。
-     *
-     * @param length 固定带长（su）；[rangeRatio] 非空且 [range] 可用时被射程折算取代（作为射程缺失时的基线）。
-     * @param range 武器面板射程（su，构建期传入）。
-     * @param rangeRatio 拖尾带长 = 射程 × 本比例（非空启用；长度折算后按 5su 取整）。
-     * @param trailWidthScale 拖尾宽度倍率（各层带体统一乘算）。
-     * @param brightness 带体亮度倍率（各层两段上色 alpha 统一乘算，钳 0..1）。
-     * @param trailGlow 拖尾层 bloom 发光强度（0..1，全层统一乘算；热交换对拖尾层不生效需重启）。
-     * @param tailColor 拖尾尾色（自选 RGB，null = 同色压暗淡化；非空 = 头色 → 尾色两段渐变，rgb 直取、
-     *   alpha 乘层透明度，如蓝→淡绿、金→红）。
-     * @param boltFlare 弹头 SMOOTH 光斑尺寸（su，null = 不加；组件层，支持字面量热交换）。
-     * @param muzzleBurst 开火瞬间在炮口附加一发锥面冲击（三角碎片 + 刺束 + 顶点闪光，ConeImpactVfx 一发即走）；
-     *   null = 不加。配色自动取弹体主色，尺寸规格见 [MuzzleBurst]。
-     * @param decorTrail 是否带 zappy 电弧装饰层 ×2（关闭同时去掉其随机扭转/漂移抖动）。
-     * @param recede 带体退距显式值（null = 自动取弹体长度 ×0.2，tracker 运行期解析）。
-     */
     private fun simpleProjectileVfx(
         id: String,
         color: ASTDColor,
@@ -318,15 +231,13 @@ object ProjectileVfxSpecs {
             glow(trailGlow)
         }
         if (decorTrail) {
-            // 两条 zappy 装饰层共用 layer 3（renderOrder 相同，绘制先后由实体树声明序稳定保证）；
-            // 层名 zappy_0/zappy_1 必须互异——StaticTrailData 池按「树 id + 层名」缓存，同名会键冲突。
             repeat(2) { count ->
                 staticTrail("zappy_$count", TEX_ZAPPY) {
                     layer(3); width(arcWidth(bandW)); length(bandLen)
                     colors(bandHeadColor(color, brightness).hex(), bandTailColor(color, brightness, tailColor).hex())
                     tile(arcTile(bandLen), arcScroll(bandLen))
                     recede?.let { recede(it) }
-                    // 尾端漂移卷曲：angular 必须配合非零 velocity 才生效（自旋旋转的是漂移偏移矢量）
+                    // BoxUtil 仅在漂移速度非零时应用节点自旋，angularOut 必须与 velocityOut 配套。
                     angularOut()
                     velocityOut(-12f, -6f, 12f, 6f)
                     glow(trailGlow)
@@ -362,10 +273,6 @@ object ProjectileVfxSpecs {
         extra()
     }
 
-    /**
-     * 坠星残响普通弹：simpleProjectileVfx 四层惯例（蓝白），带长 = 射程 ×50%，弹头 SMOOTH 光斑 +
-     * 开火锥状冲击（通用口径）+ 三角碎片/马赫环持续发射器（原 .wpn EveryFrame 逐帧发射迁移进树）。
-     */
     private fun starfallEchoShot(id: String, range: Float?): ProjectileVfx = simpleProjectileVfx(
         id,
         starfallBlue(),
@@ -378,7 +285,6 @@ object ProjectileVfxSpecs {
         boltFlare = 100f,
         muzzleBurst = MuzzleBurst(),
     ) {
-        // 航迹三角碎片：0.01s×3 颗，弹体位置散布 8、沿飞行向 100~150su/s ±8°，小尺寸短寿命（普通蓝白）。
         shardWake("wake") {
             cadence(0.01f, 3)
             emission(scatterRadius = 8f, speedMin = 100f, speedMax = 150f, spreadDeg = 8f)
@@ -391,7 +297,6 @@ object ProjectileVfxSpecs {
                 timerFullLo = 0.15f, timerFullHi = 0.3f, timerFadeOut = 0.3f,
             )
         }
-        // 马赫环：0.2s 一枚，半径 30、拍扁 0.45、0.7→3 扩大，包络 0.05+0.05+0.4 = 0.5s；前飞动量对齐碎片速度域。
         machRing("ring") {
             cadence(0.2f, 30f)
             color(0x78BEFFFF, alpha = 1f)
@@ -400,11 +305,6 @@ object ProjectileVfxSpecs {
         }
     }
 
-    /**
-     * 坠星残响第 5 发（弹体 200% 尺寸）：同款红色拖尾（宽度 ×2 由弹体口径表达）+
-     * 三枚同位光斑——SMOOTH 圆斑（弹头柔光）、SHARP_DISC 顺向大光柱、SHARP_DISC 转 90° 横向光柱 +
-     * 共振红配色的三角碎片/马赫环发射器（半径/尺寸 ×2）。
-     */
     private fun starfallEchoFinalShot(id: String, range: Float?): ProjectileVfx = simpleProjectileVfx(
         id,
         starfallFinalRed(),
@@ -417,13 +317,6 @@ object ProjectileVfxSpecs {
         boltFlare = 90f,
         muzzleBurst = MuzzleBurst(length = 200f, halfAngleDeg = 24f, duration = 0.4f),
     ) {
-//        boxFlare("light") {
-//            style(BoxFlareStyle.SMOOTH)
-//            colors(0xFFEDE6FF, 0xFF5A3CA0)
-//            size(100f, 100f)
-//            glow(0.2f, 4f)
-//            offset(-40f)
-//        }
         boxFlare("pillar") {
             style(BoxFlareStyle.SMOOTH_DISC, facingOffsetDeg = 45f)
             colors(0xFFEDE6FF, 0xFF5A3CA0)
@@ -438,7 +331,6 @@ object ProjectileVfxSpecs {
             glow(1.2f, 4f)
             offset(-45f)
         }
-        // 共振红航迹发射器：碎片/马赫环口径 ×2（shardLength 68、环半径 70），节拍与普通弹一致。
         shardWake("wake") {
             cadence(0.01f, 3)
             emission(scatterRadius = 8f, speedMin = 100f, speedMax = 150f, spreadDeg = 8f)
@@ -459,12 +351,6 @@ object ProjectileVfxSpecs {
         }
     }
 
-    /**
-     * 坠星残翼主弹（规格 10-signature 坠星残翼节）：紫色锥形射弹（violet 主色，与 .proj fringe 同族）。
-     * 通用四层拖尾 + 同色三角碎片航迹发射器（0.01s×2，统一向前缓慢飞行 spreadDeg 0）+
-     * 同色马赫环（0.1s 一枚，口径对齐坠星残响普通弹）；炮口一次性 Flare 不走本管线
-     * （StarfallWingOnFireEffect 脚本承担，设计案特效节）。
-     */
     private fun starfallWingShot(id: String, range: Float?): ProjectileVfx = simpleProjectileVfx(
         id,
         violet(),
@@ -476,7 +362,6 @@ object ProjectileVfxSpecs {
         boltFlare = 68f,
         muzzleBurst = MuzzleBurst(length = 160f, halfAngleDeg = 30f, duration = 0.5f)
     ) {
-        // 航迹三角碎片：0.01s×2 颗，弹体位置散布 8、统一向前缓慢飞行（20~40su/s，零散布角）。
         shardWake("wake") {
             cadence(0.01f, 2)
             emission(scatterRadius = 8f, speedMin = 20f, speedMax = 40f, spreadDeg = 0f)
@@ -497,10 +382,6 @@ object ProjectileVfxSpecs {
         }
     }
 
-    /**
-     * 辉星 MRM：simpleProjectileVfx 四层惯例 + 带长 = 射程 ×50% + recede 0（带体亮头直抵弹头）+
-     * 弹头处 SMOOTH 光斑（light：柔边球光，补导弹本体贴图之外的辉光）。
-     */
     private fun stellarMrmShot(id: String, range: Float?): ProjectileVfx = simpleProjectileVfx(
         id,
         violet(),
@@ -520,11 +401,6 @@ object ProjectileVfxSpecs {
         }
     }
 
-    // 贯星之矛（规格 09 §3.1）：冷蓝白 ARC 主色内联字面量；width 36 / glowScale 4.0 大圆形弹体观感；
-    // 带长 = 射程 ×85%（基线 260），recede 0（带体亮头直抵弹头），亮度 +25%。
-    // 追加：BoxUtil 水平光斑 core（锚在弹体前端 = 螺栓头部）+ 弹头处 SMOOTH 光斑 light（50su 柔边球光）+
-    // 原版 EMP 锚点电弧（发射点固定 → 弹体头部拉伸）+ 发射瞬间发射点扭曲（PiercingLanceVfx.spawnMuzzleDistortion）+
-    // 大规格炮口锥面冲击（旗舰级开火火光）。
     private fun piercingLanceShot(range: Float?): ProjectileVfx = simpleProjectileVfx(
         "astd_piercing_lance_shot",
         ASTDColor(0.55f, 0.78f, 1f, 0.95f),
@@ -543,8 +419,6 @@ object ProjectileVfxSpecs {
             glow(1.6f, 4f)
             style(BoxFlareStyle.SMOOTH_DISC)
             fixedFacing(0f)
-//            flicker(1.3f)
-//            noise(0.4f)
         }
         boxFlare("light") {
             size(40f, 40f)
@@ -552,8 +426,6 @@ object ProjectileVfxSpecs {
             glow(0.2f, 4f)
             style(BoxFlareStyle.SMOOTH)
             fixedFacing(0f)
-//            flicker(1.3f)
-//            noise(0.4f)
         }
         anchorArc("arc") {
             thickness(10f)
@@ -564,8 +436,6 @@ object ProjectileVfxSpecs {
         })
     }
 
-    // 摧锋鱼雷：simpleProjectileVfx 四层惯例 + 带长 = 射程 ×50% + recede 0（带体亮头直抵弹头）+
-    // 弹头处 SMOOTH 光斑（light：柔边球光，补 .proj glowSprite 弹体形状发光层之外的弥散辉光，ARC 冷蓝白调色）。
     private fun cuifengTorpedoShot(id: String, range: Float?): ProjectileVfx = simpleProjectileVfx(
         id,
         qiongjueBlue(),
@@ -584,8 +454,6 @@ object ProjectileVfxSpecs {
         }
     }
 
-    // 源生冰晶 MIRV 母弹：simpleProjectileVfx 四层惯例（同辉星/摧锋口径），冰蓝族调色（iceBlue 主色 ≈170,225,255，
-    // 13 号美术需求色族独立为冰蓝、不套 LENS 紫，同批爆炸/烟尾/炮口焰已同步冰蓝化）；弹头光斑高光留近白冰蓝。
     private fun iceShardMirvShot(id: String, range: Float?): ProjectileVfx = simpleProjectileVfx(
         id,
         iceBlue(),
@@ -604,39 +472,28 @@ object ProjectileVfxSpecs {
         }
     }
 
-    // 坠星残响：ARC 冷蓝白（与普通弹同族）；第 5 发共振红（255,90,60，与 .proj fringe 同族）。
     private fun starfallBlue() = ASTDColor(0.55f, 0.78f, 1f, 1f)
     private fun starfallFinalRed() = ASTDColor(1f, 0.35f, 0.24f, 1f)
 
-    // 双子星 DEM 弹头：配色锚 .proj 引擎焰色与 payload 光束（动能 140,190,255 冷蓝白 / 高爆 255,40,60 共振红），组内内联。
     private fun geminiKineticBlue() = ASTDColor(0.55f, 0.75f, 1f, 1f)
     private fun geminiHeRed() = ASTDColor(1f, 0.16f, 0.24f, 1f)
 
-    // 正电子冲击波：冷蓝白系（全局美术约定「正电子用白色弹体与明亮拖尾」），分支内内联字面量。
     private fun positronWhiteBlue() = ASTDColor(0.62f, 0.82f, 1f, 1f)
 
-    // 电驱加速炮：黄色弹体（美术裁定），分支内内联字面量。
     private fun electricYellow() = ASTDColor(1f, 0.82f, 0.25f, 1f)
 
-    // 电驱加速炮拖尾尾色（自选 RGB）：金→红渐变的余烬红端（alpha 乘层透明度）。
     private fun emberRedTail() = ASTDColor(0.35f, 0.1f, 0.04f, 0.6f)
 
-    // 穷距相位轨道炮：ARC 冷蓝白（与重离子脉冲同族；弹体弹头仍近白，拖尾读蓝色相）。
     private fun qiongjueBlue() = ASTDColor(0.55f, 0.78f, 1f, 1f)
 
-    // 穷距拖尾尾色（自选 RGB）：蓝→淡绿渐变的淡绿端（alpha 乘层透明度）。
     private fun paleGreenTail() = ASTDColor(0.19f, 0.35f, 0.25f, 0.6f)
 
-    // 调色板：颜色沿用旧管线数值（视觉已目检回归，不宜再动）。
     private fun violet() = ASTDColor(0.66f, 0.42f, 1f, 1f)
 
-    // 源生冰晶族：冰蓝主色（13 号美术需求 RGB(170,225,255)，色族独立为冰蓝、不套 LENS 紫），组内内联。
     private fun iceBlue() = ASTDColor(0.67f, 0.88f, 1f, 1f)
 
-    // 重型离子脉冲：ARC 冷蓝白（全局美术约定，与电荷针刺同色系）。新共享调色板只允许收口人添加（00 §3），本组内联私有函数。
     private fun heavyIonPulseColor() = ASTDColor(0.55f, 0.78f, 1f, 1f)
 
-    // 电荷针刺：ARC 冷蓝白（全局美术约定）。新共享调色板只允许收口人添加（00 §3），本组内联私有函数。
     private fun chargeNeedleColor() = ASTDColor(0.55f, 0.78f, 1f, 1f)
 
     private fun ASTDColor.a(alpha: Float): ASTDColor = copy(alpha = alpha.coerceIn(0f, 1f))
@@ -651,34 +508,21 @@ internal const val TEX_TWIN = "graphics/fx/astd_trails_twin.png"
 internal const val TEX_SMOOTH = "graphics/fx/astd_trails_smooth.png"
 internal const val TEX_ZAPPY = "graphics/fx/astd_trails_zappy.png"
 
-// —— 拖尾混合常量（美术裁定，公式守护测试锚点）——
-
-/** 带宽总倍率（宽度翻倍裁定）：外带全宽 = [bandWidth] × 本值。 */
 internal const val BAND_WIDTH_MULT = 2f
 
-/** 核心层（smooth）宽度比：外带 ×0.5。 */
 internal const val CORE_WIDTH_RATIO = 0.5f
 
-// —— 观感翻译公式（内部纯函数，供 simpleProjectileVfx 与公式守护测试共用）——
-
-/** 0.5 粒度取整。 */
 internal fun round05(v: Float): Float = (v * 2f).roundToInt() / 2f
 
-/** 5 粒度取整。 */
 internal fun round5(v: Float): Float = (v / 5f).roundToInt() * 5f
 
-/** 贴图拖尾外带基准全宽：0.35×旧宽 锚 aod7 的 96→30；3.15×glowScale 锚旧 glow 视觉全宽（widthBase 3.5 × g）。 */
 internal fun bandWidth(width: Float, glowScale: Float): Float = round05(max(0.35f * width, 3.15f * glowScale))
 
-/** zappy 装饰带宽度：0.6×外带。 */
 internal fun arcWidth(bandW: Float): Float = round05(bandW * 0.6f)
 
-/** 两段上色的头部色：mix(主色, 白, 0.45)，alpha = 主色 alpha×0.78×[alphaScale]（保持主色饱和——0.78 白混合会把琥珀等暖色洗成近白，与弹头光晕产生色差接缝）。 */
 internal fun bandHeadColor(color: ASTDColor, alphaScale: Float = 1f): ASTDColor =
     mixWhite(color, 0.45f).copy(alpha = (color.alpha * 0.78f * alphaScale).coerceIn(0f, 1f))
 
-/** 两段上色的尾部色：[tail] 缺省 = 主色 rgb×0.16、alpha 0.07×[alphaScale]（对标 0x0A1C3810）；
- * [tail] 非空 = 自选尾色直取（rgb 原样，alpha = 尾色 alpha × [alphaScale]），头色 → 尾色两段渐变。 */
 internal fun bandTailColor(color: ASTDColor, alphaScale: Float = 1f, tail: ASTDColor? = null): ASTDColor {
     if (tail != null) {
         return ASTDColor(tail.red, tail.green, tail.blue, (tail.alpha * alphaScale).coerceIn(0f, 1f))
@@ -688,20 +532,14 @@ internal fun bandTailColor(color: ASTDColor, alphaScale: Float = 1f, tail: ASTDC
     )
 }
 
-/** 外带/核心平铺周期：L/2.4（aod7 的 420→140~200 区间居中）。 */
 internal fun mainTile(length: Float): Float = round5(length / 2.4f)
 
-/** 外带/核心滚动速度：L/6。 */
 internal fun mainScroll(length: Float): Float = round5(length / 6f)
 
-/** 装饰带平铺周期：L/2（更快更密的电弧）。 */
 internal fun arcTile(length: Float): Float = round5(length / 2f)
 
-/** 装饰带滚动速度：L/4.5。 */
 internal fun arcScroll(length: Float): Float = round5(length / 4.5f)
 
-/** Box 螺栓弹头染色：mix(主色, 白, 0.7)，alpha 0.78（原版 coreColor 近白口径；弹头只染单色系，
- * 武器主色由拖尾带体承担——原版 fringeColor 属 projtrail 外带语义）。 */
 internal fun boltColor(color: ASTDColor): ASTDColor = mixWhite(color, 0.7f).copy(alpha = 0.78f)
 
 private fun mixWhite(color: ASTDColor, t: Float): ASTDColor = ASTDColor(
@@ -711,7 +549,6 @@ private fun mixWhite(color: ASTDColor, t: Float): ASTDColor = ASTDColor(
     color.alpha,
 )
 
-/** ASTDColor → java.awt.Color（ConeImpactVfxSpec 等 awt 调色入口）。 */
 private fun awt(color: ASTDColor): Color = Color(
     color.red.coerceIn(0f, 1f),
     color.green.coerceIn(0f, 1f),

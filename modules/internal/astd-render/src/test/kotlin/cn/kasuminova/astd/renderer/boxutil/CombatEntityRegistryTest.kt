@@ -5,8 +5,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class CombatEntityRegistryTest {
-
-    /** 假实体：仅携带 delete 状态，验证登记簿逻辑不依赖 BoxUtil/GL。 */
     private class FakeEntity {
         var deleted = false
         var deleteFailures = 0
@@ -60,7 +58,6 @@ class CombatEntityRegistryTest {
         assertEquals(1, result.deleted)
         assertEquals(1, result.failures)
         assertTrue(result.firstFailure is RuntimeException)
-        // 失败条目留簿，成功条目出簿
         assertEquals(1, registry.size)
     }
 

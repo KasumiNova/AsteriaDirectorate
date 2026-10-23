@@ -20,11 +20,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/**
- * 规格 10 §4.1 用例 1~8（2026-09 同步机制重做：弃一次性爆发伤害，改持续增伤乘区 + 紫色视觉状态）：
- * 同步窗口判定、恰界/越界、同种/异种配对、异源规则、触发清零、难度取值三档与 WARN 路径
- * ——显式注入 registry/now/tuning/onWarn 驱动真实判定逻辑。
- */
 class GeminiDemSyncHandlerTest {
 
     private fun stubEngine(): CombatEngineAPI {
@@ -33,7 +28,6 @@ class GeminiDemSyncHandlerTest {
         return engine
     }
 
-    /** 弹头 demDrone stub：增伤乘区落在 mutableStats.energyWeaponDamageMult 上；紫色视觉写在实体 customData。 */
     private fun stubMissile(id: String, owner: Int): Pair<ShipAPI, MutableStat> {
         val stat = mock(MutableStat::class.java)
         val stats = mock(MutableShipStatsAPI::class.java)
@@ -46,7 +40,6 @@ class GeminiDemSyncHandlerTest {
         return ship to stat
     }
 
-    /** 注入系数的 DifficultyTuning fake：走真实 ScalingMap 映射（三锚点映射逻辑即被测面）。 */
     private fun fakeTuning(scale: Float): DifficultyTuning = object : DifficultyTuning {
         override val fixedScale: Float = scale
         override fun value(entry: ScalingEntry): Float = entry.map.value(scale, entry.v1, entry.v2, entry.v5)
@@ -73,11 +66,9 @@ class GeminiDemSyncHandlerTest {
             GeminiDemSyncHandler.recordHit(engine, target, WarheadKind.HE, p2, missile, now = 10.8f, registry = registry),
             "异种配对 Δt=0.8s ≤1s 应触发",
         )
-        // 玩家来源（owner==0）固定 v2：1 + 1.0 = 2.0，两枚弹头同实体各施一次
         verify(stat, org.mockito.Mockito.times(2)).modifyMult(GeminiDemDifficulty.SYNC_STAT_MOD_ID, 2.0f)
         assertTrue(registry.isEmpty(), "触发即清，不重复触发")
         assertEquals(1, GeminiDemSyncHandler.syncTriggerCount(engine))
-        // 紫色视觉状态：写在弹头 demDrone 实体 customData，到期 = 触发时刻 + SYNC_VISUAL_DURATION
         assertEquals(
             10.8f + GeminiDemDifficulty.SYNC_VISUAL_DURATION,
             missile.customData[GeminiDemDifficulty.SYNC_VISUAL_KEY] as? Float,
@@ -186,7 +177,6 @@ class GeminiDemSyncHandlerTest {
 
     @Test
     fun `用例8 难度取值：玩家恒 v2、敌版轨一三档、source 缺失 WARN 取 v2`() {
-        // 玩家（owner==0）：tuning fake 给破晓档也恒取 v2（1 + 1.0 = 2.0）
         run {
             val engine = stubEngine()
             val target = mock(ShipAPI::class.java)
@@ -197,7 +187,6 @@ class GeminiDemSyncHandlerTest {
             GeminiDemSyncHandler.recordHit(engine, target, WarheadKind.HE, p2, missile, tuning = fakeTuning(5f), now = 10.5f, registry = registry)
             verify(stat, org.mockito.Mockito.times(2)).modifyMult(GeminiDemDifficulty.SYNC_STAT_MOD_ID, 2.0f)
         }
-        // 敌版轨一三档：1 + 0.5 = 1.5 / 1 + 1.0 = 2.0 / 1 + 2.5 = 3.5
         val expected = listOf(1f to 1.5f, 2f to 2.0f, 5f to 3.5f)
         for ((scale, mult) in expected) {
             val engine = stubEngine()
@@ -218,7 +207,6 @@ class GeminiDemSyncHandlerTest {
             GeminiDemSyncHandler.recordHit(engine, target, WarheadKind.HE, p2, missile, tuning = fakeTuning(scale), now = 10.5f, registry = registry)
             verify(stat, org.mockito.Mockito.times(2)).modifyMult(GeminiDemDifficulty.SYNC_STAT_MOD_ID, mult)
         }
-        // source 为 null：取 v2 且 WARN 被记录（来源解析失败 + 两侧实体不可施加各一条）
         run {
             val engine = stubEngine()
             val target = mock(ShipAPI::class.java)

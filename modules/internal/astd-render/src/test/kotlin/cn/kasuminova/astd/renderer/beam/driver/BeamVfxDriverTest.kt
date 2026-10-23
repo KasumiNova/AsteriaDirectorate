@@ -12,16 +12,8 @@ import kotlin.test.assertNull
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
-/**
- * 光束驱动的逻辑自检：喂 [BeamFrame] 序列，验证折成 [cn.kasuminova.astd.api.render.FrameState] 的字段映射，
- * 以及 firing→停火→复火→dispose 的生命周期。走无引擎路径（`advanceForTests`，束体节点不建 BoxUtil），
- * 只盯驱动本身的帧构造与状态机，不触碰渲染后端。
- */
 class BeamVfxDriverTest {
-
     private fun newDriver(): BeamVfxDriverImpl {
-        // 驱动只吃树接口（onAttach/advance/onDetach），空树即可盯驱动的帧构造与状态机；
-        // 具体光束树（BeamVfxSpecs）在 astd-combat，本模块不反向依赖。
         return BeamVfxDriverImpl(BeamHostImpl("beam@test", baseWidth = 20f), renderEntity("beam@test") {})
     }
 

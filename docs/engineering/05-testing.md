@@ -1,7 +1,7 @@
 # 测试流程（构建 / 部署 / 弹体 VFX）
 
 本文档用于在本仓库内快速验证：
-- `ss-csv` 生成的 CSV 是否正确落盘
+- `ss-csv` 是否正确生成并写入 CSV 文件
 - mod 的生产目录是否可部署
 - `ProjectileSpecOnFireDispatcher` 与 `ProjectileVfxRegistry` 的弹体 VFX 是否按 `projectileSpecId` 生效
 
@@ -41,7 +41,7 @@
 - `${starsector.gameDir}/mods/${mod.id}`
 
 > 注意：实际加载到游戏里的 mod 目录是 `${mod.id}`（默认 `asteria_directorate`），
-> 而不是仓库文件夹名 `StarsectorModDemo`。
+> 与仓库文件夹名 `StarsectorModDemo` 无关。
 
 另外还有一个 `deployToStarsector` 任务，会把 production 目录复制到 `starsector.modsDir` 下。
 - 需要在 `gradle.properties` 中设置 `starsector.modsDir`。

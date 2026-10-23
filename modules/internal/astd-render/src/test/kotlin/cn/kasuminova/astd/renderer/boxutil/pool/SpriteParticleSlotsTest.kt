@@ -5,12 +5,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/**
- * SpriteParticleSlots 纯逻辑测试：槽位认领/回收、CPU 侧积分（位置/自转）、
- * 三段包络 alpha 派生、容量耗尽时按游标覆盖最旧槽位。
- */
 class SpriteParticleSlotsTest {
-
     private fun spawnDefault(slots: SpriteParticleSlots, fadeIn: Float = 0.1f, full: Float = 0.2f, fadeOut: Float = 0.3f): Int =
         slots.spawn(
             posX = 100f, posY = 200f,
@@ -51,18 +46,13 @@ class SpriteParticleSlotsTest {
         val slots = SpriteParticleSlots(4)
         spawnDefault(slots)
 
-        // age=0：fadeIn 起点 alpha=0。
         slots.forEachActive { _, alpha -> assertEquals(0f, alpha, 1e-4f, "fadeIn 起点 alpha=0") }
-        // age=0.05：fadeIn 半程 alpha=0.5。
         slots.advance(0.05f)
         slots.forEachActive { _, alpha -> assertEquals(0.5f, alpha, 1e-4f, "fadeIn 半程 alpha=0.5") }
-        // age=0.15：full 段 alpha=1。
         slots.advance(0.10f)
         slots.forEachActive { _, alpha -> assertEquals(1f, alpha, 1e-4f, "full 段 alpha=1") }
-        // age=0.45：fadeOut 半程 alpha=0.5。
         slots.advance(0.30f)
         slots.forEachActive { _, alpha -> assertEquals(0.5f, alpha, 1e-4f, "fadeOut 半程 alpha=0.5") }
-        // age=0.60：包络走完，回收。
         slots.advance(0.15f)
         assertEquals(0, slots.activeCount, "包络走完必须回收")
         slots.forEachActive { _, _ -> throw AssertionError("回收后不得再有活跃槽位") }
@@ -75,7 +65,6 @@ class SpriteParticleSlotsTest {
         val b = spawnDefault(slots)
         assertEquals(2, slots.activeCount)
 
-        // 池满：第三颗覆盖最旧槽位（a），活跃数不变。
         val c = spawnDefault(slots)
         assertEquals(a, c, "池满必须覆盖最旧槽位")
         assertEquals(2, slots.activeCount, "覆盖不增加活跃数")

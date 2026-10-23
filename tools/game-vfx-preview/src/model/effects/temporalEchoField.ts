@@ -1,12 +1,5 @@
-/**
- * 时滞回声场特效。
- *
- * 一个通用区域特效：多层半透明残影环、流动尘点与缓慢错位的扫描带，表现时间迟滞或空间干扰。
- * 可用于减速场、隐形残留、传感器干扰或区域异常。
- */
 import type { EffectDefinition } from '../effectDefinition';
 
-/** 时滞回声场的 fragment shader（不含公共头）。 */
 export const TEMPORAL_ECHO_FIELD_FRAGMENT_SHADER = `
 uniform float u_fieldSize;
 uniform float u_bandCount;
@@ -51,7 +44,6 @@ void main() {
 }
 `;
 
-/** 紫蓝时滞回声场特效定义。 */
 export const TEMPORAL_ECHO_FIELD: EffectDefinition = {
   id: 'temporal-echo-field',
   name: 'Temporal Echo Field',

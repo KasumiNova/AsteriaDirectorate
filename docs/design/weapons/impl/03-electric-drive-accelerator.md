@@ -1,23 +1,23 @@
 # 电驱加速炮 逐件实现规格 v1（待评审）
 
-> **修订注记（2026-09-19 二轮）**：面板数值已调整为——射程 750、单发伤害 120、单发辐能 140、
+> **修订注记（2026-09-19 二轮）**：面板数值已调整为，射程 750、单发伤害 120、单发辐能 140、
 > 备弹 32、burst size 2（`.wpn` 双管 ALTERNATING 交替射击，每触发 2 弹）、burst delay 0.1s、
-> chargedown 0.3s、damage/second 600、energy/second 700（连发周期 0.4s 推导口径）；
-> 追加伤害浮字已移除（同帧 applyDamage 数值随主伤害数字叠加显示，额外补字只会叠字——
-> 实机观测裁定），命中反馈仅保留弹着点小型能量闪。
+> chargedown 0.3s、damage/second 600、energy/second 700（连发周期 0.4s 推导规则）；
+> 追加伤害浮字已移除（同帧 applyDamage 数值随主伤害数字叠加显示，额外补字只会叠字，
+> 实机观测确认），命中反馈仅保留弹着点小型能量闪。
 > 正文散落的旧数值（800/80/88/30/0.15/1.0、LINKED 双管 2×4、浮字要求、[0, 45] 区间、
 > 射程期望 1000/900/800）均以本注记为准；自动化场景期望射程已同步为 950/850/750、
 > 每触发弹数期望为 2。
 
 > 依据：`docs/design/weapons/impl/00-共享基建.md` v1（Buff API / CombatRandom / HUD 通道 / 合并协议）、`docs/design/weapons/90-首批实装计划.md` v6 §3 与全局约定、设计案定稿 `blue/20-production.md`「电驱加速炮」v1.0（2026-07-28）。
 > 状态：规划文档，不改动 `src/` 与 `ss-csv/`。
-> API 核查时间：2026-07-29，对照 `starfarer.api.jar`（0.98）javap 签名、原版数据文件与现有 `src/` 代码逐条核实（`EveryFrameWeaponEffectPlugin.advance(float, CombatEngineAPI, WeaponAPI)`、`OnHitEffectPlugin.onHit(...)`、`ShipAPI.getFluxLevel()/getHardFluxLevel()`、`MutableShipStatsAPI.getBallisticWeaponRangeBonus()`（`StatBonus.modifyFlat/unmodify` 存在）、`WeaponAPI` 无 `setRange`、`CombatEngineAPI.applyDamage(8 参)/addFloatingDamageText/addHitParticle/maintainStatusForPlayerShip`、`DamagingProjectileAPI.getDamageAmount()/getSource()/getWeapon()/getProjectileSpecId()`、`Misc.getRandom(long, int)`、`WeaponBlueprintItemPlugin.init` 反编译确认 params = 裸武器 id，均存在/属实；`SettingsAPI.isDevMode()` 存在——调试/烟测专属 HUD 门控用）。
+> API 核查时间：2026-07-29，对照 `starfarer.api.jar`（0.98）javap 签名、原版数据文件与现有 `src/` 代码逐条核实（`EveryFrameWeaponEffectPlugin.advance(float, CombatEngineAPI, WeaponAPI)`、`OnHitEffectPlugin.onHit(...)`、`ShipAPI.getFluxLevel()/getHardFluxLevel()`、`MutableShipStatsAPI.getBallisticWeaponRangeBonus()`（`StatBonus.modifyFlat/unmodify` 存在）、`WeaponAPI` 无 `setRange`、`CombatEngineAPI.applyDamage(8 参)/addFloatingDamageText/addHitParticle/maintainStatusForPlayerShip`、`DamagingProjectileAPI.getDamageAmount()/getSource()/getWeapon()/getProjectileSpecId()`、`Misc.getRandom(long, int)`、`WeaponBlueprintItemPlugin.init` 反编译确认 params = 裸武器 id，均存在/属实；`SettingsAPI.isDevMode()` 存在，调试/烟测专属 HUD 门控用）。
 > 复用承诺：随机结算走共享 `CombatRandom`（确定性序列）；Weapon 级状态走共享 Buff API（`getOrCreateBuffByWeapon`）；HUD 走 §4.2 通道（`maintainStatusForPlayerShip` + 浮字）；弹体特效走 `ProjectileVfxSpecs.simpleProjectileVfx` texTrail 管线。不另起状态表、不自造随机源。
 
 ## 0. 核查后对上游文档的三处修正（实装以本规格为准）
 
-1. **「散射 2」没有 `projectileCount` 字段**。原版 `weapon_data.csv` 列头、`WeaponSpecLoader`（混淆 jar strings）、`WeaponSpecAPI` 全方法均无此字段。90 计划 §3.1 表格中的「`projectileCount`（散射）| 2」落实为：**`.wpn` 双炮管 offsets + `barrelMode: "LINKED"`**——原版无 LINKED 双管实弹先例（LINKED 多管仅见于导弹架），每触发 8 弹（双管 × burst 4）的实际弹数/散射角/动画必须烟测目检确认（90 计划 §3.6 风险已登记）。
-2. **`special_items.csv` 的 plugin params 是裸武器 id，不是 `weapon:<id>`**。反编译 `WeaponBlueprintItemPlugin.init`：直接 `settings.getWeaponSpec(stack.specialData.data)`，带前缀会拿到 null。01-charge-needle.md §1.5 已于 2026-07-29 按同一裁决回改为裸 id，两份文档口径一致。
+1. **「散射 2」没有 `projectileCount` 字段**。原版 `weapon_data.csv` 列头、`WeaponSpecLoader`（混淆 jar strings）、`WeaponSpecAPI` 全方法均无此字段。90 计划 §3.1 表格中的「`projectileCount`（散射）| 2」落实为：**`.wpn` 双炮管 offsets + `barrelMode: "LINKED"`**，原版无 LINKED 双管实弹先例（LINKED 多管仅见于导弹架），每触发 8 弹（双管 × burst 4）的实际弹数/散射角/动画必须烟测目检确认（90 计划 §3.6 风险已登记）。
+2. **`special_items.csv` 的 plugin params 是裸武器 id，不是 `weapon:<id>`**。反编译 `WeaponBlueprintItemPlugin.init`：直接 `settings.getWeaponSpec(stack.specialData.data)`，带前缀会拿到 null。01-charge-needle.md §1.5 已于 2026-07-29 按同一结论回改为裸 id，两份文档规则一致。
 3. **`.wpn` 只有一个 `everyFrameEffect` 槽位**。电驱需要自定义 everyFrame 做净空加速，无法再挂 `CombatVfxBootstrapEveryFrameEffect`；故 `ElectricDriveAcceleratorWeaponEffect.advance` 内必须自行调用 `CombatVfxBootstrap.ensureInstalled(engine)`（`internal object`，同模块可达），否则弹体 VFX 管线不启动。
 
 ---
@@ -34,10 +34,10 @@ number 段位按 00-共享基建 §3 预分配：**9213**。`WeaponDataEntry(), 
 |---|---|---|
 | id | `astd_electric_drive_accelerator` | |
 | name | `weaponName(id)` | 走 i18n 键 |
-| tier / rarity | 1 / 1 | 量产件（对齐电荷针刺口径） |
-| baseValue | 11000 | **提案待裁定**（按 OP15 对标电荷针刺 6000/OP9 的单价带） |
+| tier / rarity | 1 / 1 | 量产件（对齐电荷针刺规则） |
+| baseValue | 11000 | **提案待确认**（按 OP15 对标电荷针刺 6000/OP9 的单价带） |
 | range | 800 | |
-| damagePerSecond | 160 | 持续 2 弹/s × 80（设计案备弹经济口径） |
+| damagePerSecond | 160 | 持续 2 弹/s × 80（设计案备弹经济规则） |
 | damagePerShot | 80 | 动能 |
 | emp | 0 | |
 | impact | 4 | **提案**（原版动能对照：针刺 50 伤 impact=1、轨道炮 100 伤 impact=10） |
@@ -45,14 +45,14 @@ number 段位按 00-共享基建 §3 预分配：**9213**。`WeaponDataEntry(), 
 | ops | 15 | |
 | ammo / ammoPerSec / reloadSize | 30 / 2.0 / 8 | 重装 4s/+8 → 8/4=2.0 |
 | type | `KINETIC` | weapon_data 的 type 列 = DamageType（`.wpn` 的 type=BALLISTIC 是另一维度，勿混） |
-| energyPerShot / energyPerSecond | 88 / 176 | 88 为「每颗子弹 88」裁定口径；176 = 2 弹/s × 88 |
+| energyPerShot / energyPerSecond | 88 / 176 | 88 为「每颗子弹 88」确认规则；176 = 2 弹/s × 88 |
 | chargedown / burstSize / burstDelay | 1.0 / 4 / 0.15 | 发射冷却 1s + 连发 4；散射 2 不在此表（走 `.wpn` LINKED 双管，见 §0-1） |
-| minSpread / maxSpread / spreadPerShot / spreadDecayPerSec | 1.0 / 8.0 / 0.5 / 4.0 | **提案待裁定**（「中等精确度」；原版重型针刺 1/10 对照） |
-| projSpeed | 1000 | **提案待裁定**（设计案未给定；原版轨道炮 1000 对照，射程 800 → 飞行 0.8s） |
+| minSpread / maxSpread / spreadPerShot / spreadDecayPerSec | 1.0 / 8.0 / 0.5 / 4.0 | **提案待确认**（「中等精确度」；原版重型针刺 1/10 对照） |
+| projSpeed | 1000 | **提案待确认**（设计案未给定；原版轨道炮 1000 对照，射程 800 → 飞行 0.8s） |
 | tags | `astd_production` | |
 | groupTag / tech | `astd` / `弧光阵列` | |
 | primaryRoleStr | `SsI18n.t("weapon.$id.primaryRoleStr")` | |
-| customPrimary | `SsI18n.t("weapon.$id.tooltip.customPrimary")` | 3 个 `{%s}` 占位与 HL 三段一一对应（2026-07-29 字段分工铁律 + 占位规则） |
+| customPrimary | `SsI18n.t("weapon.$id.tooltip.customPrimary")` | 3 个 `{%s}` 占位与 HL 三段一一对应（2026-07-29 字段分工规则 + 占位规则） |
 | number | 9213 | |
 | projSpec | 见下 | |
 
@@ -66,7 +66,7 @@ number 段位按 00-共享基建 §3 预分配：**9213**。`WeaponDataEntry(), 
 
 ### 1.2 `Catalog_Descriptions.kt`
 
-WEAPON 分组尾部（`Desc_astd_psi_omega` 之后，与其他武器分支的追加行共存，收口人按 id 字典序归位）：
+WEAPON 分组尾部（`Desc_astd_psi_omega` 之后，与其他武器分支的追加行共存，合并负责人按 id 字典序归位）：
 
 ```kotlin
 object Desc_astd_electric_drive_accelerator : LocalizedDescription("astd_electric_drive_accelerator", "WEAPON")
@@ -100,14 +100,14 @@ object Desc_astd_electric_drive_accelerator : LocalizedDescription("astd_electri
 
 挂载点说明：
 
-- **双炮管 ±4su 横向 offsets + `barrelMode: "LINKED"`** = 设计案「散射 2」的落点（§0-1）；连发 4 由 weapon_data 的 burst 列承担，合计每触发 8 弹。offsets 绝对值提案，烟测目检双管出弹点是否穿模。
-- `everyFrameEffect` → 净空加速逻辑；其内部兼负 `CombatVfxBootstrap.ensureInstalled`（§0-3）。**不挂** `onFireEffect`——`.proj` 上的 `ProjectileSpecOnFireDispatcher` 已覆盖弹体 VFX 路由（aod7 即此形态）。
+- **双炮管 ±4su 横向 offsets + `barrelMode: "LINKED"`** = 设计案「散射 2」的实现位置（§0-1）；连发 4 由 weapon_data 的 burst 列承担，合计每触发 8 弹。offsets 绝对值提案，烟测目检双管出弹点是否穿模。
+- `everyFrameEffect` → 净空加速逻辑；其内部兼负 `CombatVfxBootstrap.ensureInstalled`（§0-3）。**不挂** `onFireEffect`，`.proj` 上的 `ProjectileSpecOnFireDispatcher` 已覆盖弹体 VFX 路由（aod7 即此形态）。
 - `fireSoundTwo = autocannon_fire`：`astd_spc3.wpn` 已在用的原版音效 id。
 - 炮口贴图暂不配（BUtil_NONE 全隐 + MUZZLE_FLASH），美术资源到位后只换贴图路径，不动结构。
 
 ### 1.4 i18n 键清单（`ss-csv/src/main/resources/i18n/zh-cn.properties` 文件末尾集中追加）
 
-机制文案为设计案定稿原文 + v2 数值插入（2026-07-29 字段分工铁律，审批通过）：
+机制文案为设计案定稿原文 + v2 数值插入（2026-07-29 字段分工规则，审批通过）：
 
 ```properties
 # Weapon 名称
@@ -125,7 +125,7 @@ desc.astd_electric_drive_accelerator.text1=弹链供弹的加速实弹炮，以�
 desc.astd_electric_drive_accelerator.notes=
 ```
 
-HUD 文本不进 properties，走 `contents/data/strings/strings.json`（MOD 类，见 §2.4）；状态条目仅调试与烟测模式显示，正常玩家不可见（2026-07-29 审批裁定）：
+HUD 文本不进 properties，走 `contents/data/strings/strings.json`（MOD 类，见 §2.4）；状态条目仅调试与烟测模式显示，正常玩家不可见（2026-07-29 审批确认）：
 
 ```json
 "ui.eda.range_status.title": "电驱加速炮",
@@ -134,7 +134,7 @@ HUD 文本不进 properties，走 `contents/data/strings/strings.json`（MOD 类
 
 ### 1.5 `special_items.csv` 条目（`contents/data/campaign/special_items.csv` 文件末尾追加，order 段位 9202）
 
-**order 列口径（2026-07-29 实机发现）**：原版 CSV 解析强制数字，留空启动即 JSONException；各组按合并协议预分配段位直填。
+**order 列规则（2026-07-29 实机发现）**：原版 CSV 解析强制数字，留空启动即 JSONException；各组按合并协议预分配段位直填。
 
 量产件 P2 走单件蓝图（90 计划 §14）。plugin params = **裸武器 id**（§0-2）；带 `single_bp` 标签时 params 必填（`ASTDDevContentSelector.SPECIAL_ITEM_PARAM_REQUIRED_TAGS/IDS` 核实），dev 仓储自动投放。ss-csv 无任何 `SPECIAL_ITEMS` 条目（已核实生成器只写有entry的目标），本文件为纯手维护，生成不会覆盖。
 
@@ -142,7 +142,7 @@ HUD 文本不进 properties，走 `contents/data/strings/strings.json`（MOD 类
 电驱加速炮蓝图,astd_electric_drive_accelerator_bp,"weapon_bp, single_bp, no_drop, no_drop_salvage",菀星设计局-星坠,,11000,1,0,,graphics/icons/cargo/blueprint_weapons.png,ui_chip_pickup,ui_weapon_bp_drop,com.fs.starfarer.api.campaign.impl.items.WeaponBlueprintItemPlugin,astd_electric_drive_accelerator,使重工业设施能够制造“电驱加速炮”。,9202
 ```
 
-`no_drop, no_drop_salvage` 为 P6 前口径（P6 接入量产蓝图投放时摘除）。
+`no_drop, no_drop_salvage` 为 P6 前规则（P6 接入量产蓝图投放时摘除）。
 
 ---
 
@@ -159,8 +159,8 @@ HUD 文本不进 properties，走 `contents/data/strings/strings.json`（MOD 类
 
 说明：
 
-- 弹体特效**不单设 Vfx 类**（修正 90 计划 §3.2 的 `ElectricDriveAcceleratorVfx` 行）——对齐 spc3 模式，`ProjectileVfxSpecs.builders` 一行登记即可。
-- 四个类均按用户规范写齐接口/类注释（类简介、动机、成员作用）；`ElectricDriveChargeState` 作为 `Buff` 实现须写清 `isHostValid` 语义（宿主船在场 且 `weapon.spec.weaponId` 仍为本武器——对齐 00 §6 换装回收验证）。
+- 弹体特效**不单设 Vfx 类**（修正 90 计划 §3.2 的 `ElectricDriveAcceleratorVfx` 行），对齐 spc3 模式，`ProjectileVfxSpecs.builders` 一行登记即可。
+- 四个类均按用户规范写齐接口/类注释（类简介、动机、成员作用）；`ElectricDriveChargeState` 作为 `Buff` 实现须写清 `isHostValid` 语义（宿主船在场 且 `weapon.spec.weaponId` 仍为本武器，对齐 00 §6 换装回收验证）。
 - 射程/装药逻辑跨两个插件复用的部分全部收进 `ElectricDriveAcceleratorDifficulty` 纯函数，插件只做 API 接线，无重复逻辑。
 
 ### 2.2 难度锚点与取值调用点
@@ -194,7 +194,7 @@ object ElectricDriveAcceleratorDifficulty {
 
     /**
      * 辐能衰减系数：level ≤ 0.2 → 1.0；level ≥ 0.4 → 0.0；中间线性。
-     * level 先 coerceIn(0f,1f)；NaN 按 0 加成处理（返回 0f，调用侧 WARN，不静默）。
+     * level 先 coerceIn(0f,1f)；NaN 按 0 加成处理（返回 0f，调用侧 WARN 记日志）。
      */
     fun fluxDecayFactor(level: Float): Float
 
@@ -207,7 +207,7 @@ object ElectricDriveAcceleratorDifficulty {
     /** 追加伤害触发阈值：extra ≥ 1f 才 applyDamage（roll=0 附近不产生 0 伤害事件与浮字）。 */
     fun shouldApplyExtra(extra: Float): Boolean
 
-    /** 随机种子派生：shipId.hashCode() * 31 + slotId.hashCode()（00 §4.1 口径，战斗内稳定）。 */
+    /** 随机种子派生：shipId.hashCode() * 31 + slotId.hashCode()（00 §4.1 规则，战斗内稳定）。 */
     fun seedOf(shipId: String, slotId: String): Long
 }
 ```
@@ -224,9 +224,9 @@ override fun onHit(projectile, target, point, shieldHit, damageResult, engine) {
     //    战机/导弹等非 Ship 目标照常结算（设计「射弹击中目标时」不限目标类型）。
     val ship = target as? ShipAPI
     if (ship != null && (ship.isHulk || ship.isPhased)) return
-    val hitPoint = point ?: projectile.location   // 陨石等场景 point 可为 null（样板同款兜底）
+    val hitPoint = point ?: projectile.location   // 陨石等场景 point 可为 null（样板同款默认处理）
 
-    // 2. 来源解析：优先 projectile.source → 退化 weapon.ship；两者皆无 → INFO 日志并放弃结算（不得静默）。
+    // 2. 来源解析：优先 projectile.source → 退化 weapon.ship；两者皆无 → 记 INFO 并放弃结算。
     val weapon = projectile.weapon
     val source = projectile.source ?: weapon?.ship
     if (source == null) { log.info("[ASTD] EDA 装药放弃结算：弹体无来源（spec=${projectile.projectileSpecId}）"); return }
@@ -249,7 +249,7 @@ override fun onHit(projectile, target, point, shieldHit, damageResult, engine) {
 
     // 6. 玩家可见反馈：伤害浮字 + 小型能量闪（§3.2，克制不抢拖尾主视觉）。
     //    浮字去留待 spike 验证（2026-07-29 审批意见）：若 applyDamage 原生已弹字则删除下一行；
-    //    验证结论必须写入 PR 描述，禁止静默二选一。
+    //    验证结论必须写入 PR 描述，禁止无记录地二选一。
     engine.addFloatingDamageText(hitPoint, extra, FLOATY_COLOR, target, source)
     // 小型能量闪（§3.2）：中心亮粒 + 径向散射粒
     engine.addHitParticle(hitPoint, ZERO_VEL, 30f, 1f, 0.15f, Color.WHITE)
@@ -281,8 +281,8 @@ override fun advance(amount, engine, weapon) {
         ship.mutableStats.ballisticWeaponRangeBonus.unmodify(modId)  // 不挂 0 值 flat 污染 stat 明细
     }
 
-    // HUD：仅调试/烟测模式 + 玩家船可见（2026-07-29 审批裁定：正常玩家不显示该条目；
-    // maintainStatusForPlayerShip 本就只渲染玩家船，此处显式守门省无效调用）
+    // HUD：仅调试/烟测模式 + 玩家船可见（2026-07-29 审批确认：正常玩家不显示该条目；
+    // maintainStatusForPlayerShip 本就只渲染玩家船，此处显式检查以避免无效调用）
     if (bonus > 0f && ship === engine.playerShip && Global.getSettings().isDevMode()) {
         engine.maintainStatusForPlayerShip(
             "astd_eda_range_status", ICON,
@@ -294,9 +294,9 @@ override fun advance(amount, engine, weapon) {
 }
 ```
 
-**已知副作用（照 90 计划 §3.6 风险 7 登记，不掩饰）**：`ballisticWeaponRangeBonus` 是舰体乘区，加成作用于**全舰实弹武器**；且 `EveryFrameWeaponEffectPlugin` 无 dispose 钩子，战斗内卸载武器后 modifier 残留至本场结束。无 `WeaponAPI.setRange`（javap 全表核实）；`WeaponSpecAPI.setMaxRange` 存在但改的是加载期共享 spec（全场同型武器一起变），**禁用**。代码注释中写明该限制。**本项风险列入收口清单（2026-07-29 审批裁定）：任务收尾时明确注明，十组全部收尾后单独解决，不在本分支内处置。**
+**已知副作用（照 90 计划 §3.6 风险 7 登记，不掩饰）**：`ballisticWeaponRangeBonus` 是舰体乘区，加成作用于**全舰实弹武器**；且 `EveryFrameWeaponEffectPlugin` 无 dispose 钩子，战斗内卸载武器后 modifier 残留至本场结束。无 `WeaponAPI.setRange`（javap 全表核实）；`WeaponSpecAPI.setMaxRange` 存在但改的是加载期共享 spec（全场同型武器一起变），**禁用**。代码注释中写明该限制。**本项风险列入待处理清单（2026-07-29 审批确认）：任务完成时明确注明，十组全部完成后单独解决，不在本分支内处置。**
 
-**状态机**：`ElectricDriveChargeState : Buff`——`lifetime = HOST_BOUND`；`isHostValid()` = `engine.isEntityInPlay(ship) && ship.isAlive && weapon.spec.weaponId == WEAPON_ID`（换装回收对齐 00 §6）；`advance/onRemove` 默认空实现（无衰减语义，纯载体）；`nextCallIndex()` 单调递增不复位。
+**状态机**：`ElectricDriveChargeState : Buff`，`lifetime = HOST_BOUND`；`isHostValid()` = `engine.isEntityInPlay(ship) && ship.isAlive && weapon.spec.weaponId == WEAPON_ID`（换装回收对齐 00 §6）；`advance/onRemove` 默认空实现（无衰减语义，纯载体）；`nextCallIndex()` 单调递增不复位。
 
 ### 2.4 玩家可见反馈（对照全局实现注意事项 2）
 
@@ -304,7 +304,7 @@ override fun advance(amount, engine, weapon) {
 |---|---|---|---|
 | 不稳定装药追加伤害 | `addFloatingDamageText`（去留待 spike 验证：applyDamage 原生弹字则删除，2026-07-29 审批意见） | 命中点白色浮字，数值=追加量 | 每次 extra ≥ 1f 的命中（敌我双方均可见） |
 | 不稳定装药手感 | `addHitParticle` 散射粒子 + 白色闪光（§3.2） | 弹着点小型能量闪 | 同上 |
-| 净空加速射程加成 | `maintainStatusForPlayerShip`（**仅调试与烟测模式显示**，正常玩家不显示——2026-07-29 审批裁定） | 左侧状态栏「电驱加速炮 / 射程加成：+N su」，正向（negative=false） | 调试/烟测下玩家船 bonus > 0 时每帧维护；归零即消失（不再 maintain） |
+| 净空加速射程加成 | `maintainStatusForPlayerShip`（**仅调试与烟测模式显示**，正常玩家不显示，2026-07-29 审批确认） | 左侧状态栏「电驱加速炮 / 射程加成：+N su」，正向（negative=false） | 调试/烟测下玩家船 bonus > 0 时每帧维护；归零即消失（不再 maintain） |
 | 净空加速可观测性 | 原版射程提示圈 | 射程加成直接改变射程圈半径 | 被动，烟测目检确认 |
 | 弹体 | texTrail 拖尾 | 白色弹体 + 500su 拖尾（§3） | 常驻 |
 
@@ -314,13 +314,13 @@ override fun advance(amount, engine, weapon) {
 
 | 场景 | 行为 |
 |---|---|
-| `chargeMaxPct ≤ 0`（自定义 k_s 极端值） | WARN 一次 + 跳过结算；禁止静默恒零 |
-| `rollPct ≈ 0` / `extra < 1f` | 不产生伤害事件、不飘浮字（阈值函数显式判定，不是静默吞掉） |
+| `chargeMaxPct ≤ 0`（自定义 k_s 极端值） | WARN 一次 + 跳过结算；禁止无日志恒零 |
+| `rollPct ≈ 0` / `extra < 1f` | 不产生伤害事件、不飘浮字（阈值函数显式判定后跳过） |
 | `fluxLevel` NaN | 按 0 加成 + WARN 一次；coerceIn(0f,1f) 防越界 |
 | `bonus == 0` | `unmodify(modId)`，不挂 0 值 flat 污染 stat 明细 |
 | `point == null` | 回退 `projectile.location` |
-| `projectile.source / weapon` 皆空 | INFO 日志 + 放弃结算（不得空 catch、不得静默） |
-| 同帧 LINKED 双管两发 onHit | 两个独立事件各自取随机值，callIndex 严格递增（00 §4.1 铁律：同事件不重掷；这里是两个事件） |
+| `projectile.source / weapon` 皆空 | INFO 日志 + 放弃结算（不得空 catch） |
+| 同帧 LINKED 双管两发 onHit | 两个独立事件各自取随机值，callIndex 严格递增（00 §4.1 规则：同事件不重掷；这里是两个事件） |
 | 目标 hulk / phased | 不结算 |
 | `weapon.slot` 为空（理论边界） | 退化用 `weapon.id` 拼 seed/modId（弹道装饰武器场景），WARN 一次 |
 | 射程加成反向计算 | 本机制无反算（直接 flat 加成）；无需除法防线 |
@@ -329,29 +329,29 @@ override fun advance(amount, engine, weapon) {
 
 ## 3. 特效面
 
-### 3.1 `ProjectileVfxSpecs.kt` 登记项（builders map 字面量末尾追加；白色调色板分支内内联，不收口共享）
+### 3.1 `ProjectileVfxSpecs.kt` 登记项（builders map 字面量末尾追加；白色调色板分支内内联，不沉淀为共享函数）
 
 ```kotlin
 "astd_electric_drive_accelerator_shot" to {
     simpleProjectileVfx(
         "astd_electric_drive_accelerator_shot",
-        // 美术裁定：白色射弹。内联字面量（合并协议：新调色板只允许收口人沉淀）。
+        // 美术确认：白色射弹。内联字面量（合并协议：新调色板只允许合并负责人沉淀）。
         VfxPalette(ASTDColor(1f, 1f, 1f, 0.9f), TEX_SMOOTH, TEX_ZAPPY),
-        width = 9f,     // 电荷针刺箭弹 6f × 1.5（设计裁定「粗细 1.5×」，以小型箭弹为基准）
-        length = 500f,  // 设计裁定：长 trail 拖尾 500su
+        width = 9f,     // 电荷针刺箭弹 6f × 1.5（设计确认「粗细 1.5×」，以小型箭弹为基准）
+        length = 500f,  // 设计确认：长 trail 拖尾 500su
     )
 },
 ```
 
-`length = 500f` 会驱动派生公式：`trailNodes` 达上限 24、`mainTile ≈ 205`、`headRecede = 40`——均为公式内自然结果，无需具名覆盖；目检若观感异常先调公式常量（00 §4.3 口径）。
+`length = 500f` 会驱动派生公式：`trailNodes` 达上限 24、`mainTile ≈ 205`、`headRecede = 40`，均为公式内自然结果，无需具名覆盖；目检若观感异常先调公式常量（00 §4.3 规则）。
 
 ### 3.2 命中特效
 
 不稳定装药命中反馈（2026-07-29 审批意见：原"2 粒 hitParticle"方案有偷懒倾向，升级为完整小型能量闪）：
 
 - **弹着点白色闪光**：`addHitParticle` 4~6 粒径向散射（初速 60~120、size 14~22、duration 0.25~0.4s，Color.WHITE 微冷调）+ 1 枚短寿命中心亮粒（size≈30、duration 0.15s）构成"小型能量闪"，表达装药不稳定泄能的瞬态爆点。
-- **手感层**：浮字（去留见 §2.3 spike 验证）与粒子同帧触发，满足"机制变化同帧至少一个反馈通道"铁律。
-- 参数为起始值，目检微调；保持克制不抢 500su 拖尾的主视觉（设计案"不抢视觉"口径不变），不引入新 RenderEntity 组件。
+- **手感层**：浮字（去留见 §2.3 spike 验证）与粒子同帧触发，满足"机制变化同帧至少一个反馈通道"规则。
+- 参数为起始值，目检微调；保持克制不抢 500su 拖尾的主视觉（设计案"不抢视觉"规则不变），不引入新 RenderEntity 组件。
 ---
 
 ## 4. 测试面
@@ -393,13 +393,13 @@ override fun advance(amount, engine, weapon) {
 | `ss-csv/.../weapondata/arc/Catalog_WeaponData_ARC.kt` | `Wpn_astd_electric_drive_accelerator`，number **9213**（预分配段位） | 文件末尾 |
 | `contents/data/campaign/special_items.csv` | `astd_electric_drive_accelerator_bp` 一行，order 段位 **9202** | 文件末尾 |
 | `src/.../projectile/driver/ProjectileVfxSpecs.kt` | builders map `"astd_electric_drive_accelerator_shot"` 条目 | map 字面量末尾；白色调色板内联（不留共享函数） |
-| `contents/data/strings/strings.json` | `ui.eda.*` 两个键 | **合并协议外补充项**：00 §3 未列此文件，HUD 文本必然多组共碰；同样键名空间隔离 + 对象末尾追加，提请收口人并入协议 |
+| `contents/data/strings/strings.json` | `ui.eda.*` 两个键 | **合并协议外补充项**：00 §3 未列此文件，HUD 文本必然多组共碰；同样键名空间隔离 + 对象末尾追加，提请合并负责人并入协议 |
 
-无冲突提示：与 01（电荷针刺）共用 `BUtil_NONE.png`、`autocannon_fire` 音效、`blueprint_weapons.png` 图标——只读引用，不产生合并冲突。params 格式冲突已裁决（§0-2，裸 id），01 已同步回改。
+无冲突提示：与 01（电荷针刺）共用 `BUtil_NONE.png`、`autocannon_fire` 音效、`blueprint_weapons.png` 图标，只读引用，不产生合并冲突。params 格式冲突已有结论（§0-2，裸 id），01 已同步回改。
 
 ### 5.2 对共享基建的依赖（只依赖、不改签名）
 
-- **Buff API**（`Buff` / `getOrCreateBuffByWeapon`）：`ElectricDriveChargeState` 的载体。未落地，阻塞本武器 OnHit 随机部分。
+- **Buff API**（`Buff` / `getOrCreateBuffByWeapon`）：`ElectricDriveChargeState` 的载体。尚未实现，阻塞本武器 OnHit 随机部分。
 - **CombatRandom**（`nextFloatIn(seed, callIndex, range)`）：装药随机唯一来源。
 - **HUD 通道**（00 §4.2）：状态栏与浮字入口照表使用。
 - 已就绪：`ProjectileVfxSpecs` / `ProjectileSpecOnFireDispatcher` / `DifficultyTuning(Impl)` / `CombatVfxBootstrap`。
@@ -420,10 +420,10 @@ override fun advance(amount, engine, weapon) {
 **数据面**
 
 - [ ] `Catalog_WeaponData_ARC.kt` 新 object 逐列与本规格 §1.1 一致；number = 9213 不与他组冲突
-- [ ] `./gradlew :ss-csv:generateSsCsv` 产物 weapon_data.csv 行列正确（散射 2 **不出现**在 CSV——它走 .wpn LINKED 双管）
+- [ ] `./gradlew :ss-csv:generateSsCsv` 产物 weapon_data.csv 行列正确（散射 2 **不出现**在 CSV，它走 .wpn LINKED 双管）
 - [ ] `.wpn` 双 offsets + `barrelMode: "LINKED"`、`everyFrameEffect` 类名全限定正确
 - [ ] zh-cn.properties 键齐全（name / text1 与设计案定稿原文逐字一致；customPrimary = 定稿原文 + v2 数值插入，审批通过）
-- [ ] special_items.csv params = **裸武器 id**、order = 9202（§1.5 口径）
+- [ ] special_items.csv params = **裸武器 id**、order = 9202（§1.5 规则）
 - [ ] strings.json `ui.eda.*` 两键就位
 
 **代码面**
@@ -441,7 +441,7 @@ override fun advance(amount, engine, weapon) {
 
 **测试面**
 
-- [ ] §4.1 七条用例全绿且均为真实逻辑调用（无 contain 测试）
+- [ ] §4.1 七条用例全部通过且均为真实逻辑调用（无 contain 测试）
 - [ ] §4.2 烟测 1~7 逐项过；到达终态即退出游戏
 
 **目检**

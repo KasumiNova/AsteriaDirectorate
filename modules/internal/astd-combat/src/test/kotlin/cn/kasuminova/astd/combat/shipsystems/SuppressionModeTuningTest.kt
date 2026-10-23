@@ -5,13 +5,6 @@ import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-/**
- * 压制模式数值规格（[SuppressionModeTuning]）：四项难度缩放的三锚点折算
- * （航速机动 40%/50%/80%、武器辐能减免 40%/50%/80%、射程 20%/30%/60%、护盾减伤 20%/30%/60%，
- * 玩家固定我方档位 v2）、恒定射速加成 +30%，以及硬辐能产出曲线
- * （第 0 秒 2%/s 线性爬坡，第 4 秒封顶 6%/s）。
- * 经 [DifficultyTuningImpl.installScaleForTests] 走完整映射链路（对齐 GravEmFieldTuningTest 先例）。
- */
 class SuppressionModeTuningTest {
 
     @AfterTest

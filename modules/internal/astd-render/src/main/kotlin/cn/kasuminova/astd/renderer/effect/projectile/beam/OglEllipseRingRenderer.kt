@@ -16,15 +16,6 @@ import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.sin
 
-/**
- * OpenGL（固定管线）绘制的“椭圆环”渲染器。
- *
- * 目标：替换粒子拼接的线圈环，让环看起来更像“连续线”。
- *
- * 注意：
- * - 这里绘制的是纯线框（line loop），使用 additive blending。
- * - 只做视觉，不影响碰撞/伤害。
- */
 object OglEllipseRingRenderer {
 
     private const val ENGINE_KEY = "astd_ogl_ellipse_ring_renderer"
@@ -38,9 +29,7 @@ object OglEllipseRingRenderer {
         val color: Color,
         val lineWidthPx: Float = 1.25f,
         val segments: Int = 64,
-        /** 沿半径方向外扩速度（世界单位/秒） */
         val expandSpeed: Float = 0f,
-        /** 切向速度（可选）：给一点“活性”，默认 0 */
         val tangentialSpeed: Float = 0f,
     )
 
@@ -69,9 +58,8 @@ object OglEllipseRingRenderer {
         if (existing != null && !existing.isExpired) return existing
 
         val r = Renderer()
-        // 这里不要手动调用 plugin.init(...)：该方法的参数类型在 API 中是 CombatEntityAPI，
-        // 由引擎在 addLayeredRenderingPlugin 时负责正确调用。
-        // 我们仅提前保存 CombatEngine 引用，避免 init 回调顺序差异导致的空指针。
+        // 禁止手动调用 plugin.init(...)：API 参数类型为 CombatEntityAPI，由引擎在 addLayeredRenderingPlugin 时调用；
+        // 仅提前保存 CombatEngine 引用，避免 init 回调顺序差异导致空指针
         r.bindEngine(engine)
         engine.addLayeredRenderingPlugin(r)
         engine.customData[ENGINE_KEY] = r
@@ -82,7 +70,6 @@ object OglEllipseRingRenderer {
 
         private var engine: CombatEngineAPI? = null
 
-        /** 环实例表。 */
         private val rings = ArrayList<RingInstance>(256)
         private var expired = false
 
@@ -109,7 +96,6 @@ object OglEllipseRingRenderer {
                     expandSpeed = spec.expandSpeed,
                     tangentialSpeed = spec.tangentialSpeed,
                     age = 0f,
-                    // 全环保留随机相位，避免同帧多环顶点完全重合的机械感。
                     phase = MathUtils.getRandomNumberInRange(0f, (2f * PI).toFloat()),
                 )
             )
@@ -136,9 +122,7 @@ object OglEllipseRingRenderer {
             if (eng.isPaused) return
             if (amount <= 0f) return
 
-            // 重要：不要因为 rings 暂时为空就把 plugin 标记为 expired。
-            // AOD-7 等武器是“按距离采样生成环”，中间可能会有空档；如果此时过期，
-            // 后续 spawn() 会拿到 customData 里的旧实例并被忽略，从而表现为“只有前几发有环”。
+            // rings 为空不能标记 expired：spawn() 会拿到 customData 里的旧实例并被忽略，表现为只有前几发有环
             if (rings.isEmpty()) return
 
             for (i in rings.size - 1 downTo 0) {
@@ -149,7 +133,6 @@ object OglEllipseRingRenderer {
                     continue
                 }
 
-                // 外扩：保持椭圆比例
                 if (r.expandSpeed > 0.01f) {
                     val da = r.expandSpeed * amount
                     val db = r.expandSpeed * amount
@@ -157,13 +140,10 @@ object OglEllipseRingRenderer {
                     r.b += db
                 }
 
-                // 轻微切向：用相位漂移模拟（避免每点单独速度）
                 if (abs(r.tangentialSpeed) > 0.01f) {
                     r.phase += r.tangentialSpeed * amount * 0.04f
                 }
             }
-
-            // rings 为空时保持常驻，等待下一次 spawn。
         }
 
         override fun render(layer: CombatEngineLayers, viewport: ViewportAPI) {
@@ -171,7 +151,6 @@ object OglEllipseRingRenderer {
             if (layer != CombatEngineLayers.ABOVE_SHIPS_AND_MISSILES_LAYER) return
             if (rings.isEmpty()) return
 
-            // 保存/设置 OpenGL 状态
             GL11.glPushAttrib(
                 GL11.GL_ENABLE_BIT or
                         GL11.GL_COLOR_BUFFER_BIT or
@@ -182,18 +161,16 @@ object OglEllipseRingRenderer {
             try {
                 GL11.glDisable(GL11.GL_TEXTURE_2D)
                 GL11.glEnable(GL11.GL_BLEND)
-                GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE) // additive
+                GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE)
                 GL11.glEnable(GL11.GL_LINE_SMOOTH)
                 GL11.glHint(GL11.GL_LINE_SMOOTH_HINT, GL11.GL_NICEST)
 
                 for (r in rings) {
-                    // alpha 随寿命衰减（smoothstep-ish）
                     val t = (r.age / r.duration).coerceIn(0f, 1f)
                     val fade = 1f - t
                     val a = r.a
                     val b = r.b
 
-                    // 预计算朝向轴：ux 沿弹道，vx 垂直弹道（环长轴）
                     val rad = Math.toRadians(r.facing.toDouble())
                     val ux = cos(rad).toFloat()
                     val uy = sin(rad).toFloat()
@@ -208,7 +185,6 @@ object OglEllipseRingRenderer {
                     val gg = (r.color.green / 255f).coerceIn(0f, 1f)
                     val bb = (r.color.blue / 255f).coerceIn(0f, 1f)
 
-                    // 双层线圈：外层更宽更淡，内层更细更亮（模拟轻微虚化）
                     drawEllipseLoop(
                         center = r.center,
                         ux = ux,
@@ -267,18 +243,16 @@ object OglEllipseRingRenderer {
             GL11.glColor4f(r, g, bCol, aCol.coerceIn(0f, 1f))
 
             GL11.glBegin(GL11.GL_LINE_LOOP)
-            // 绕一整圈均布 segments 个顶点（闭合由 LINE_LOOP 保证）。
             val step = (2f * PI).toFloat() / segments.toFloat()
             for (i in 0 until segments) {
                 val ang = phase + step * i
                 val ca = cos(ang.toDouble()).toFloat()
                 val sa = sin(ang.toDouble()).toFloat()
 
-                // 椭圆：侧向用 cos，沿向用 sin；长轴在侧向
                 val ox = vx * (a * ca) + ux * (b * sa)
                 val oy = vy * (a * ca) + uy * (b * sa)
 
-                // 注意：LayeredRenderingPlugin 的 render() 里 OpenGL 变换已处于“世界坐标系”。
+                // LayeredRenderingPlugin 的 render() 里 OpenGL 变换已处于世界坐标系
                 GL11.glVertex2f(center.x + ox, center.y + oy)
             }
             GL11.glEnd()

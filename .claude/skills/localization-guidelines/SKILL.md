@@ -1,5 +1,5 @@
 ---
-name: "localization-guidelines"
+name: localization-guidelines
 description: "本地化(I18n)规范：逻辑代码禁止硬编码文本，统一使用本项目 I18n API 与 strings.json/额外字符串表。"
 ---
 
@@ -22,11 +22,11 @@ description: "本地化(I18n)规范：逻辑代码禁止硬编码文本，统一
 - `descriptions.csv`（更偏“数据驱动描述”）
 - ss-csv 生成器自己的 `SsI18n`（构建期用，非运行时 UI）
 
-## 文本存放位置（真相来源）
+## 文本存放位置
 
 - 运行时主表：`contents/data/strings/strings.json`
   - 建议使用 `I18n.Categories.MOD`（即 modId `asteria_directorate`）作为 category。
-- 额外字符串表（兜底/扩展）：`contents/data/strings/bounty_strings.json`
+- 补充字符串表：`contents/data/strings/bounty_strings.json`
   - `I18n` 在 `settings.getString(category,key)` 找不到时，会尝试从该 JSON 按 category 读取。
 
 ## 必须遵守的规则
@@ -98,7 +98,7 @@ description: "本地化(I18n)规范：逻辑代码禁止硬编码文本，统一
 
 保持与现有约定一致（见 `strings.json` 中 `dialog.demo.*`、`dialog.watcher.*`）。
 
-## 常见坑位
+## 常见错误
 
 - **直接写中文**：后续翻译补丁无法覆盖。
 - **拼接字符串**：`"伤害：" + dmg` 使语序不可翻译；应把模板放到 strings，数值用占位符。

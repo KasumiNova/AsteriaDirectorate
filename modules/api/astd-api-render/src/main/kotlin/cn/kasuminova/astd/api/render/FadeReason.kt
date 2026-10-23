@@ -1,10 +1,7 @@
 package cn.kasuminova.astd.api.render
 
 /**
- * 触发一次性淡出的原因。由驱动/宿主在宿主终止事件发生时传入 [RenderEntity.beginFadeOut]，
- * 供节点区分收束节奏（例如命中收束通常比自然过期更快）。
- *
- * 宿主中立（设计 D6）：弹体与光束共用同一组语义。
+ * 一次性淡出的触发原因。由宿主传给 [RenderEntity.beginFadeOut]。
  */
 enum class FadeReason {
     /** 弹体命中 / 光束命中目标。 */

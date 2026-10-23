@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""astd_trails_* 拖尾贴图转置（一次性迁移工具，2026-09 Static Trail 迁移）。
+"""转置 astd_trails_* 拖尾贴图（一次性迁移工具，2026-09 Static Trail 迁移）。
 
-ASTD 旧自研 texTrail 约定：X=横向、Y=带长向（Y 向 REPEAT 平铺）。
-BoxUtil Static Trail 约定：u(X)=带长向平铺、v(Y)=横向。
-转置（transpose）后新图 X=带长向（原 Y，无缝循环保留）、Y=横向（原 X）。
+ASTD 旧自研 texTrail 约定：X 为横向、Y 为带长方向（Y 向 REPEAT 平铺）。
+BoxUtil Static Trail 约定：u(X) 沿带长方向平铺，v(Y) 为横向。
+转置后新图 X 为带长方向（原 Y，无缝循环保留），Y 为横向（原 X）。
 
-注意：对同一文件重复执行会转置回原样，本脚本只做一次性迁移，跑完即归档。
+本脚本只做一次性迁移，跑完即归档；对同一文件重复执行会转置回原样。
 """
 import sys
 from pathlib import Path

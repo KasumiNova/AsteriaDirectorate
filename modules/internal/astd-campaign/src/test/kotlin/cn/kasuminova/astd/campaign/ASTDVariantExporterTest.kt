@@ -23,20 +23,16 @@ import org.mockito.Mockito.`when`
 internal class ASTDVariantExporterTest {
 
     companion object {
-        // 原版 HullVariantSpec(JSONObject) 加载器强制读取的字段（缺失即加载失败）。
         private val LOADER_REQUIRED_KEYS = setOf(
             "displayName", "hullId", "variantId", "fluxVents", "fluxCapacitors", "weaponGroups",
         )
 
-        // 加载器可识别、导出器兼容比对的顶层字段全集；stock variant 不得出现超出此集合的字段。
-        // 其中 suppressedMods 原版 toJSONObject 同样不写出，仅属加载器可识别字段。
         private val SUPPORTED_KEYS = setOf(
             "displayName", "hullId", "variantId", "fluxVents", "fluxCapacitors", "quality",
             "goalVariant", "weaponGroups", "modules", "wings",
             "hullMods", "permaMods", "sMods", "sModdedBuiltIns", "suppressedMods", "tags",
         )
 
-        // 旧版本遗留字段，现行加载器静默忽略，导出器不写出。
         private val LEGACY_IGNORED_KEYS = setOf("mods")
     }
 

@@ -1,5 +1,4 @@
 {
-	# 菀星战斗智能 v2 候选稿 —— 寡言极简流
 	"name":"astd_wanxing_core_v2",
 	"personalities":["timid","cautious","steady","aggressive","reckless"],
 	"gender":["n"],

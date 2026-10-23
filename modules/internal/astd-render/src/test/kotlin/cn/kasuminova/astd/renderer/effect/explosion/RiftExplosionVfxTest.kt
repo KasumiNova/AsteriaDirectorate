@@ -6,11 +6,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/**
- * [RiftExplosionVfx] 纯函数面单测：buildRiftParams 参数映射（对齐原版
- * RiftCascadeMineExplosion.createStandardRiftParams 口径 + 本组件厚度同比缩放）
- * 与尺寸锚点常量（-30% 定案）——真实调用断言输出，不触引擎。
- */
 class RiftExplosionVfxTest {
 
     @Test

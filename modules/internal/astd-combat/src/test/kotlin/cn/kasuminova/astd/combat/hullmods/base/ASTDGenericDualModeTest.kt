@@ -15,18 +15,6 @@ import kotlin.test.assertNull
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
-/**
- * 通用（舰船无关）双模式验证：
- * 1. 注册表兜底——未显式注册的 ASTD 舰（如 astd_xc_101）经 [ASTDDualModeRegistry.genericConfigFor]
- *    反查到 [GENERIC_DUAL_MODE_CONFIG]，非 ASTD 舰不兜底。
- * 2. 通用配置上的「拆即切」状态机语义与专属舰一致（模式翻转 + 原版 automated 同步 + 同向 next marker）。
- * 3. 切换器缺失自动补装（[ensureDualModeSwitcherPresent]）：漏声明舰补装并自举到缺省载人模式；
- *    切换器在场不重复补装；拆即切在途（有模式状态、缺切换器）不抢先补装。
- *
- * 测试驱动方式：最小 FakeVariant 承载状态机触达的集合，未触达方法抛出（Fail Fast）。
- * Fake 本身不依赖 mock 框架；hullSpec / stats 等接口级协作者经 mockito 构造
- * （与模块内其它 hullmod 测试同例，构建约定统一走 mockito）。
- */
 class ASTDGenericDualModeTest {
 
     @Test
@@ -52,20 +40,17 @@ class ASTDGenericDualModeTest {
             null,
             "通用配置不应声明模式分版系统（前置：无系统互换）",
         )
-        // 专属舰的显式注册仍优先于兜底（configFor 只查显式注册表）
         assertNull(ASTDDualModeRegistry.configFor("astd_xc_101"), "未注册舰在显式注册表中应为空")
     }
 
     @Test
     fun `generic config switcher removal toggles crewed and automated`() {
         val variant = FakeGenericVariant()
-        // 初始稳定态：通用载人模式 + 切换器在位
         variant.addPermaMod(ASTDDualModeGenericIds.MODE_CREWED)
         variant.addPermaMod(ASTDDualModeGenericIds.NEXT_CREWED)
         variant.addMod(GENERIC_DUAL_MODE_CONFIG.switcherId)
         assertFalse(variant.hasASTDDualModeAutomated(GENERIC_DUAL_MODE_CONFIG), "前置：应处于载人模式")
 
-        // 第一次拆：载人 → 无人
         variant.removeMod(GENERIC_DUAL_MODE_CONFIG.switcherId)
         variant.activateDualMode(GENERIC_DUAL_MODE_CONFIG, GENERIC_DUAL_MODE_CONFIG.automatedModeId, null)
         variant.addMod(GENERIC_DUAL_MODE_CONFIG.switcherId)
@@ -77,7 +62,6 @@ class ASTDGenericDualModeTest {
         )
         assertTrue(variant.hasHullMod(GENERIC_DUAL_MODE_CONFIG.switcherId), "拆即切后切换器应被加回（常驻）")
 
-        // 第二次拆：无人 → 载人
         variant.removeMod(GENERIC_DUAL_MODE_CONFIG.switcherId)
         variant.activateDualMode(GENERIC_DUAL_MODE_CONFIG, GENERIC_DUAL_MODE_CONFIG.crewedModeId, null)
         variant.addMod(GENERIC_DUAL_MODE_CONFIG.switcherId)
@@ -91,7 +75,6 @@ class ASTDGenericDualModeTest {
 
     @Test
     fun `missing switcher is auto-installed and bootstraps to crewed mode`() {
-        // 漏声明场景（曾经的 astd_zw_001_Standard / astd_xc_104_Standard）：无切换器、无模式状态
         val variant = FakeGenericVariant(astdHullSpec())
         assertTrue(
             variant.ensureDualModeSwitcherPresent(GENERIC_DUAL_MODE_CONFIG),
@@ -122,7 +105,6 @@ class ASTDGenericDualModeTest {
 
     @Test
     fun `switcher bootstrap does not preempt remove-to-switch flip`() {
-        // 拆即切在途：模式状态在场、切换器刚被玩家拆下——补装会抢在 mode hullmod 翻转判定前加回切换器
         val variant = FakeGenericVariant(astdHullSpec())
         variant.addPermaMod(ASTDDualModeGenericIds.MODE_CREWED)
         variant.addPermaMod(ASTDDualModeGenericIds.NEXT_CREWED)
@@ -143,7 +125,6 @@ class ASTDGenericDualModeTest {
         val stats = statsOf(variant)
         assertTrue(variant.ensureDualModeSwitcherPresent(GENERIC_DUAL_MODE_CONFIG))
 
-        // 后续 stats 重建：切换器 hullmod 与载人 mode hullmod 同场结算，稳定态不得二次翻转
         ASTDDualModeSwitcherHullMod().applyEffectsBeforeShipCreation(
             ShipAPI.HullSize.CRUISER, stats, GENERIC_DUAL_MODE_CONFIG.switcherId,
         )
@@ -162,19 +143,16 @@ class ASTDGenericDualModeTest {
     fun `remove-to-switch flip completes after bootstrap stays out of the way`() {
         val variant = FakeGenericVariant(astdHullSpec())
         val stats = statsOf(variant)
-        // 拆即切现场：切换器在场 + 载人模式稳定态，玩家拆下切换器
         variant.addMod(GENERIC_DUAL_MODE_CONFIG.switcherId)
         variant.addPermaMod(ASTDDualModeGenericIds.MODE_CREWED)
         variant.addPermaMod(ASTDDualModeGenericIds.NEXT_CREWED)
         variant.removeMod(GENERIC_DUAL_MODE_CONFIG.switcherId)
 
-        // 同一轮 stats 重建中补装判定先行（奇点能源先于 mode hullmod 结算的情形）：不得抢先加回
         assertFalse(
             variant.ensureDualModeSwitcherPresent(GENERIC_DUAL_MODE_CONFIG),
             "拆即切在途不得补装",
         )
 
-        // 随后载人 mode hullmod 完成拆即切：翻转到无人模式并加回切换器
         ASTDCrewedModeHullMod().applyEffectsBeforeShipCreation(
             ShipAPI.HullSize.CRUISER, stats, GENERIC_DUAL_MODE_CONFIG.crewedModeId,
         )
@@ -194,7 +172,6 @@ class ASTDGenericDualModeTest {
 
     @Test
     fun `preview flip records pending mirror for real member`() {
-        // refit 预览路径：翻转作用于工作克隆（stats.variant），member.variant 是另一个实例（真实 variant）
         val clone = FakeGenericVariant(astdHullSpec())
         clone.addPermaMod(ASTDDualModeGenericIds.MODE_CREWED)
         clone.addPermaMod(ASTDDualModeGenericIds.NEXT_CREWED)
@@ -204,7 +181,6 @@ class ASTDGenericDualModeTest {
         val stats = statsOf(clone)
         `when`(stats.fleetMember).thenReturn(member)
 
-        // 拆即切：克隆上无切换器 → 翻转到无人模式；身份门不命中，由 mode hullmod 显式登记镜像
         ASTDCrewedModeHullMod().applyEffectsBeforeShipCreation(
             ShipAPI.HullSize.CRUISER, stats, GENERIC_DUAL_MODE_CONFIG.crewedModeId,
         )
@@ -265,12 +241,10 @@ class ASTDGenericDualModeTest {
         variant.activateDualMode(GENERIC_DUAL_MODE_CONFIG, GENERIC_DUAL_MODE_CONFIG.automatedModeId, null)
         assertTrue(variant.hasTag(NO_AUTO_PENALTY_TAG), "前置：无人模式默认挂标签")
 
-        // 选项热重载为关闭：下次 stats 刷新（ensureASTDDualModeState 内部调用本同步）收敛为无标签
         DualModeSettingsImpl.installExemptForTests(false)
         variant.syncDualModeAutoPenaltyTag(GENERIC_DUAL_MODE_CONFIG)
         assertFalse(variant.hasTag(NO_AUTO_PENALTY_TAG), "选项关闭后应在 stats 刷新收敛为无标签")
 
-        // 选项恢复开启：收敛回有标签（幂等：重复同步不产生额外写操作）
         DualModeSettingsImpl.installExemptForTests(true)
         variant.syncDualModeAutoPenaltyTag(GENERIC_DUAL_MODE_CONFIG)
         variant.syncDualModeAutoPenaltyTag(GENERIC_DUAL_MODE_CONFIG)
@@ -278,27 +252,18 @@ class ASTDGenericDualModeTest {
     }
 }
 
-/** 构造带 astd_ 舰体 id 的 hullSpec mock：仅 stub hullId（[isASTDShipVariant] 只读 hullId/baseHullId）。 */
 private fun astdHullSpec(hullId: String = "astd_zw_001"): ShipHullSpecAPI {
     val spec = mock(ShipHullSpecAPI::class.java)
     `when`(spec.hullId).thenReturn(hullId)
     return spec
 }
 
-/** 构造只持有指定 variant 的 stats mock（fleetMember 未 stub 返回 null：不触发战役侧身份门分支）。 */
 private fun statsOf(variant: ShipVariantAPI): MutableShipStatsAPI {
     val stats = mock(MutableShipStatsAPI::class.java)
     `when`(stats.variant).thenReturn(variant)
     return stats
 }
 
-/**
- * 最小 ShipVariantAPI 假实现：仅承载状态机触达的 permaMods / hullMods / tags 集合。
- * getHullSpec 默认返回 null（[activateDualMode] / [hasASTDDualModeAutomated] 不读 hullSpec）；
- * 需要经过 [isASTDShipVariant] 判定的路径（如 [ensureDualModeSwitcherPresent] 内部的
- * [ensureASTDDualModeState] 自举）经构造参数注入 [astdHullSpec]。
- * 其余方法抛 [notUsed]，确保状态机若触达预期外接口立即失败（Fail Fast）。Fake 本身不依赖 mock 框架。
- */
 private class FakeGenericVariant(
     private val hullSpec: ShipHullSpecAPI? = null,
 ) : ShipVariantAPI {

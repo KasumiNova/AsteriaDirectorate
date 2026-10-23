@@ -6,12 +6,6 @@ import com.fs.starfarer.api.combat.OnFireEffectPlugin
 import com.fs.starfarer.api.combat.WeaponAPI
 import cn.kasuminova.astd.combat.effect.generic.projectile.ProjectileSpecOnFireDispatcher as Impl
 
-/**
- * 兼容旧类路径：将 onFireEffect 代理到新实现。
- *
- * 当前实现位于：
- * cn.kasuminova.astd.combat.effect.generic.projectile.ProjectileSpecOnFireDispatcher
- */
 class ProjectileSpecOnFireDispatcher : OnFireEffectPlugin {
     private val impl = Impl()
 

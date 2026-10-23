@@ -8,14 +8,7 @@ import com.fs.starfarer.api.combat.ShipAPI
 import org.lwjgl.util.vector.Vector2f
 
 /**
- * 场景处理器抽象基类：持有运行上下文并向处理器体开放拆分前枢纽的共享工具方法。
- *
- * 成员全部为 [AutomationEvidence] 的同名委派——拆分前 24 个场景体以私有方法形式共享这些工具，
- * 迁移时保持调用点不更名，降低纯结构重构的行为漂移风险。
- *
- * 完成帧捕获的公共模板（[renderCompletedFrames]）对应拆分前 renderInUICoords 链中
- * 「完成且未满 3 帧 → 间隔节流 → 取景 staging → 写出 Completed 证据」的重复段；
- * 无专属捕获分支的场景直接继承 [AutomationScenario.renderCapture] 默认实现（坠星残响范式）。
+ * 场景处理器抽象基类：持有运行上下文，并向处理器体开放 [AutomationEvidence] 的共享工具方法委派。
  */
 abstract class AbstractAutomationScenario : AutomationScenario {
 
@@ -68,7 +61,7 @@ abstract class AbstractAutomationScenario : AutomationScenario {
 
     /**
      * 运行期遥测三字段诊断段（runtimeElapsedSeconds/TrackedCount/LastProjectileSpecId）。
-     * 拆分前 writeDiagnostics if-else 链的 else 分支：xc_001、trail_pause_probe 与 hip 场景共用。
+     * xc_001、trail_pause_probe 与 hip 场景共用。
      */
     protected fun appendRuntimeTelemetryDiagnostics(json: StringBuilder, vfxTelemetry: ProjectileVfxTelemetrySnapshot) {
         json.appendLine("  \"runtimeElapsedSeconds\": ${formatFloat(vfxTelemetry.lastElapsed)},")

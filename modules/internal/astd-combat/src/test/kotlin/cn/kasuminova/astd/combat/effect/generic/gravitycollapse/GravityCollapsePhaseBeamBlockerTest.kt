@@ -4,14 +4,10 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
-/**
- * 相位遮挡的线段-圆相交几何（[GravityCollapsePhaseBeamBlocker.segmentCircleEnterDistance]）回归测试。
- */
 class GravityCollapsePhaseBeamBlockerTest {
 
     @Test
     fun `正向命中圆——返回入射点距离`() {
-        // 线段 (0,0)→(100,0)，圆心 (50,0) 半径 10：入射点在 x=40。
         val t = GravityCollapsePhaseBeamBlocker.segmentCircleEnterDistance(
             0f, 0f, 100f, 0f, 100f, 50f, 0f, 10f,
         )
@@ -52,7 +48,6 @@ class GravityCollapsePhaseBeamBlockerTest {
 
     @Test
     fun `斜向命中——入射距离按几何关系计算`() {
-        // 线段 (0,0)→(100,100)，圆心 (50,50) 半径 10√2：投影距离 50√2，入射 = 50√2 - 10√2 = 40√2。
         val expected = (40.0 * Math.sqrt(2.0)).toFloat()
         val len = (100.0 * Math.sqrt(2.0)).toFloat()
         val t = GravityCollapsePhaseBeamBlocker.segmentCircleEnterDistance(

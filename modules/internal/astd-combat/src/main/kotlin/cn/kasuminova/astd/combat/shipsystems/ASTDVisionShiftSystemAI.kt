@@ -10,15 +10,6 @@ import com.fs.starfarer.api.combat.ShipwideAIFlags
 import com.fs.starfarer.api.util.IntervalUtil
 import com.fs.starfarer.api.util.Misc
 
-/**
- * 视界变速系统 AI：对当前集火目标（或射程内最高威胁敌舰）施放时流压制。
- *
- * 口径：长窗口（14s）长冷却（15s）的决斗向系统，不在琐碎目标上浪费——
- * 仅当锁定目标为存活非战机敌舰且处于系统射程（[VisionShiftTuning.SYSTEM_RANGE]，
- * 受 systemRangeBonus 加成，与 stats 脚本激活门禁同口径）内时激活；
- * 无锁定目标时选取射程内部署点最高的敌舰（压制高价值单位收益最大）。
- * 施放前 setShipTarget 定格目标，供 stats 脚本锁定读取。
- */
 class ASTDVisionShiftSystemAI : ShipSystemAIScript {
 
     companion object {
@@ -71,7 +62,6 @@ class ASTDVisionShiftSystemAI : ShipSystemAIScript {
         ship.useSystem()
     }
 
-    /** 射程判定：与 stats 脚本 [ASTDVisionShiftSystemStats] 的激活门禁同口径（碰撞半径和外推）。 */
     private fun withinRange(ship: ShipAPI, target: ShipAPI, range: Float): Boolean {
         val dist = Misc.getDistance(ship.location, target.location)
         return dist <= range + ship.collisionRadius + target.collisionRadius

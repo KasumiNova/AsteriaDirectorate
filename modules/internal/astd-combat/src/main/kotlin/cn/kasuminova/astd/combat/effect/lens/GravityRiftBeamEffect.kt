@@ -19,16 +19,7 @@ import com.fs.starfarer.api.util.Misc
 import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
 
-/**
- * 引力裂隙光束的 BeamEffect（astd_grav_rift_beam.wpn 的 beamEffect 字段）
- * （purple/20-production.md §2，2026-09-20 二轮重做）。
- *
- * 布雷机制**直接复刻原版裂隙洪流发射极**（[com.fs.starfarer.api.impl.combat.RiftCascadeEffect]）：
- * 光束满亮度且命中目标期间，按 [GravityRiftTuning.SPAWN_INTERVAL]（0.1s）沿目标周边弧线
- * 布一枚裂隙雷（弧线行走 [getNextArcLoc]：命中护盾时间距 ×0.67、bounds 吸附、
- * 布点间距 [GravityRiftTuning.SPAWN_SPACING]），数量 = (光束射程 − 上帧命中长度)/200 + 1、
- * 上限 [GravityRiftTuning.MAX_RIFTS]。
- */
+// 布雷机制复刻原版裂隙洪流发射极 RiftCascadeEffect。
 class GravityRiftBeamEffect : BeamEffectPlugin {
 
     private var arcFrom: Vector2f? = null
@@ -39,7 +30,6 @@ class GravityRiftBeamEffect : BeamEffectPlugin {
     private var untilNextSpawn = 0f
     private var spawnDir = 0f
 
-    /** 难度伤害区间（首帧惰性解析，取 drone 母舰；玩家舰按我方档位系数）。 */
     private var damageMin = -1f
     private var damageMax = -1f
 
@@ -105,7 +95,7 @@ class GravityRiftBeamEffect : BeamEffectPlugin {
         }
     }
 
-    /** 弧线行走取下一个布雷点（复刻原版 RiftCascadeEffect.getNextArcLoc，仅换布雷器 id 与 sizeMult 来源）。 */
+    // 复刻原版 RiftCascadeEffect.getNextArcLoc。
     private fun getNextArcLoc(engine: CombatEngineAPI, beam: BeamAPI, perSpawn: Float): Vector2f {
         var target = beam.damageTarget
         var radiusOverride = -1f
@@ -128,7 +118,6 @@ class GravityRiftBeamEffect : BeamEffectPlugin {
             if (prev != null) {
                 val dist = Misc.getDistance(start, prev)
                 if (dist < spacing) {
-                    // 与上一枚间距不足：沿弧线补足剩余间距后继续行走
                     return walkArc(target, radiusOverride, beam, spacing - dist, start)
                 }
             }
@@ -137,7 +126,6 @@ class GravityRiftBeamEffect : BeamEffectPlugin {
         return walkArc(target, radiusOverride, beam, spacing, from)
     }
 
-    /** 自 [from] 沿目标周边弧线行走 [perSpawn] 间距后的落点（含护盾减速、bounds 吸附）。 */
     private fun walkArc(
         target: CombatEntityAPI,
         radiusOverride: Float,
@@ -196,11 +184,11 @@ class GravityRiftBeamEffect : BeamEffectPlugin {
         return arcTo
     }
 
-    /** 当前序位裂隙的伤害乘区（视觉尺寸与伤害共用，原版同一约定）。 */
+    // 视觉尺寸与伤害共用同一乘区（原版约定）。
     private fun currentSizeMult(): Float =
         GravityRiftTuning.riftDamageMult(GravityRiftTuning.riftDamage(damageMin, damageMax, spawned, numToSpawn))
 
-    /** 裂隙地雷生成（对齐原版 RiftCascadeEffect.spawnMine 七步）。 */
+    // 对齐原版 RiftCascadeEffect.spawnMine。
     private fun spawnMine(engine: CombatEngineAPI, source: ShipAPI?, mineLoc: Vector2f) {
         val mine = engine.spawnProjectile(
             source, null, MINELAYER_ID, mineLoc, (Math.random() * 360.0).toFloat(), null,

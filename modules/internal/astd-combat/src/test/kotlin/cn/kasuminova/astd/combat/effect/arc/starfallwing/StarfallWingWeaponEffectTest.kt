@@ -26,26 +26,15 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-/**
- * 坠星残翼脚本碰撞结算与子射弹 onHit 钩子的真实逻辑验证（Mockito 桩 + 真 BuffHost + 真 MutableStat）：
- * - 船体穿透单点结算：拍到期一次 applyDamage，落点 = 射弹当前位置，伤害/EMP = 面板×穿透比例
- *   （bypassShields=true；装甲格分摊由原版装甲池承担，不逐格结算）；
- * - 主弹振频适应全局闩锁：重复结算只附加一次 1 层；
- * - 护盾接触行为：主弹恒穿盾（到期拍结算面板×穿透比例 + EMP、不移除弹体、拍外不结算）；
- * - 子射弹原版碰撞的 onHit 钩子：撞盾（shieldHit=true）附加 0.5 层振频适应，
- *   撞船体（shieldHit=false）不附加；伤害本身由原版结算，脚本不触碰。
- */
 class StarfallWingWeaponEffectTest {
 
     private val effect = StarfallWingWeaponEffect()
 
     @BeforeTest
     fun installBuffBackend() {
-        // buffHost() 扩展走 api 侧 BuffBackends 桥：测试环境装真后端（引擎为 null 时跳过心跳登记）。
         BuffInstall.install()
     }
 
-    /** 一次 applyDamage 调用的捕获记录。 */
     private data class DamageCall(
         val entity: CombatEntityAPI,
         val point: Vector2f,
@@ -81,7 +70,6 @@ class StarfallWingWeaponEffectTest {
         return proj
     }
 
-    /** 带护盾承伤 stat 的 stub 船：facing 0、舰心原点、承伤比 base 0.7。 */
     private fun stubTargetShip(): com.fs.starfarer.api.combat.ShipAPI {
         val ship = stubShip()
         `when`(ship.location).thenReturn(Vector2f(0f, 0f))
@@ -105,7 +93,6 @@ class StarfallWingWeaponEffectTest {
         assertEquals(1, calls.size, "一拍对一个目标只结算一次（不逐格遍历装甲）")
         val call = calls.single()
         assertTrue(call.entity === ship, "结算实体必须是目标舰")
-        // 期望从 tuning 纯函数派生（比例数值是调参面，不硬编码）
         assertEquals(StarfallWingTuning.pierceTickDamage(1000f), call.damage, 1e-4f, "单拍伤害 = 面板×穿透比例")
         assertEquals(StarfallWingTuning.pierceTickEmp(500f), call.emp, 1e-4f, "单拍 EMP = EMP 面板×穿透比例")
         assertEquals(DamageType.ENERGY, call.type)
@@ -138,17 +125,14 @@ class StarfallWingWeaponEffectTest {
         val proj = projectileOf(damage = 1000f, emp = 500f)
         val state = StarfallWingOnFireEffect.ProjectileState(stubWeapon("WS 001", "astd_starfall_wing"))
 
-        // 拍外接触：不结算
         val settledOutsideTick = effect.resolveShieldContact(engine, proj, state, ship, Vector2f(50f, 0f), tickDue = false)
         assertTrue(!settledOutsideTick && calls.isEmpty(), "拍率限外的主弹盾接触不得结算")
-        // 到期拍：穿盾结算
         val settled = effect.resolveShieldContact(engine, proj, state, ship, Vector2f(50f, 0f), tickDue = true)
 
         assertTrue(settled, "到期拍必须结算")
         verify(engine, never()).removeEntity(proj)
         assertEquals(1, calls.size)
         val call = calls.single()
-        // 期望从 tuning 纯函数派生（比例数值是调参面，不硬编码）
         assertEquals(StarfallWingTuning.pierceTickDamage(1000f), call.damage, 1e-4f, "穿盾拍 = 面板×穿透比例")
         assertEquals(StarfallWingTuning.pierceTickEmp(500f), call.emp, 1e-4f, "穿盾拍附带 EMP 面板×穿透比例")
         assertTrue(!call.bypassShield, "盾结算 bypassShield=false")
@@ -166,18 +150,15 @@ class StarfallWingWeaponEffectTest {
         val proj = projectileOf(damage = 200f, emp = 0f)
         val impact = mock(com.fs.starfarer.api.combat.listeners.ApplyDamageResultAPI::class.java)
 
-        // 撞船体：不附加（伤害由原版碰撞结算，脚本不触碰）
         onHit.onHit(proj, ship, Vector2f(30f, -10f), false, impact, engine)
         assertTrue(
             ship.getBuff(StarfallWingAdaptationStacks.BUFF_ID) == null,
             "撞船体不附加振频适应",
         )
 
-        // 撞盾：附加 0.5 层
         onHit.onHit(proj, ship, Vector2f(50f, 0f), true, impact, engine)
         val buff = ship.getBuff(StarfallWingAdaptationStacks.BUFF_ID) as? StarfallWingAdaptationStacks
         assertEquals(0.5f, buff?.stacks ?: -1f, 1e-4f, "子射弹撞盾附加 0.5 层振频适应")
-        // 重复撞盾可继续叠加（无弹体级闩锁，每枚子射弹独立一次原版碰撞）
         onHit.onHit(proj, ship, Vector2f(50f, 0f), true, impact, engine)
         assertEquals(1f, buff?.stacks ?: -1f, 1e-4f, "两次撞盾累计 1 层")
     }
@@ -189,7 +170,6 @@ class StarfallWingWeaponEffectTest {
         `when`(missile.location).thenReturn(Vector2f(50f, 0f))
         `when`(missile.collisionRadius).thenReturn(10f)
 
-        // 主弹：穿透比例面板 + EMP 穿透结算，不消散；重复接触被单次穿越闩锁拦截
         val main = projectileOf(damage = 1000f, emp = 500f)
         val mainState = StarfallWingOnFireEffect.ProjectileState(stubWeapon("WS 001", "astd_starfall_wing"))
         val mainHit = effect.pierceSimpleTarget(
@@ -198,7 +178,6 @@ class StarfallWingWeaponEffectTest {
         )
         assertTrue(mainHit)
         verify(engine, never()).removeEntity(main)
-        // 期望从 tuning 纯函数派生（比例数值是调参面，不硬编码）
         assertEquals(StarfallWingTuning.pierceTickDamage(1000f), calls.single().damage, 1e-4f)
         assertEquals(StarfallWingTuning.pierceTickEmp(500f), calls.single().emp, 1e-4f)
         calls.clear()

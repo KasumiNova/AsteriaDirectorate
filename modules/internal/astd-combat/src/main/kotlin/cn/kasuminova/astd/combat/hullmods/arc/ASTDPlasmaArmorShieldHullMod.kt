@@ -32,38 +32,27 @@ import java.awt.Color
 class ASTDPlasmaArmorShieldHullMod : BaseHullMod() {
 
     companion object {
-        /** 禁装船插列表：真相来源 [HullmodIncompatibility]。 */
         private val FORBIDDEN_HULLMOD_IDS: Set<String> =
             HullmodIncompatibility.forbiddenByController(ASTDArcProductionShipIds.HULLMOD_PLASMA_ARMOR_SHIELD)
 
-        /** 最大装甲值削减比例（三锚点 -60%/-50%/-20%，削减量口径）。 */
         val MAX_ARMOR_PENALTY = ScalingEntry(0.60f, 0.50f, 0.20f)
 
-        /** 正前方（±30°）装甲计算值比例（三锚点 25%/30%/45%）。与 [ARMOR_SIDE_MAX] 同值以保证 30° 分段连续，勿单独改动。 */
         val ARMOR_FRONT = ScalingEntry(0.25f, 0.30f, 0.45f)
 
-        /** 侧前方装甲计算值比例近端（30° 处，三锚点 25%/30%/45%）。与 [ARMOR_FRONT] 同值以保证分段连续，勿单独改动。 */
         val ARMOR_SIDE_MAX = ScalingEntry(0.25f, 0.30f, 0.45f)
 
-        /** 侧前方装甲计算值比例远端（90° 处，三锚点 15%/20%/35%）。与 [ARMOR_REAR_MAX] 同值以保证 90° 分段连续，勿单独改动。 */
         val ARMOR_SIDE_MIN = ScalingEntry(0.15f, 0.20f, 0.35f)
 
-        /** 后方装甲计算值比例近端（90° 处，三锚点 15%/20%/35%）。与 [ARMOR_SIDE_MIN] 同值以保证分段连续，勿单独改动。 */
         val ARMOR_REAR_MAX = ScalingEntry(0.15f, 0.20f, 0.35f)
 
-        /** 后方装甲计算值比例远端（180° 处，三锚点 5%/10%/25%）。 */
         val ARMOR_REAR_MIN = ScalingEntry(0.05f, 0.10f, 0.25f)
 
-        /** 护盾能量承伤乘区（三锚点 -10%/-15%/-30%）。 */
         val ENERGY_SHIELD_MULT = ScalingEntry(0.90f, 0.85f, 0.70f)
 
-        /** 护盾动能承伤乘区（三锚点 -22%/-33%/-66%）。 */
         val KINETIC_SHIELD_MULT = ScalingEntry(0.78f, 0.67f, 0.34f)
 
-        /** 护盾高爆承伤乘区（三锚点 +44%/+33%/+0%）。 */
         val HE_SHIELD_MULT = ScalingEntry(1.44f, 1.33f, 1.00f)
 
-        /** 护盾破片承伤乘区（三锚点 +75%/+50%/+0%）。 */
         val FRAG_SHIELD_MULT = ScalingEntry(1.75f, 1.50f, 1.00f)
 
         private const val SPIKE_THRESHOLD_MAX_FLUX_FRACTION = 0.05f
@@ -75,7 +64,6 @@ class ASTDPlasmaArmorShieldHullMod : BaseHullMod() {
         private const val SHIELD_ARC_BIAS_ANGLE_KEY = "astd_plasma_shield_arc_bias_angle"
         private const val SHIELD_ARC_BIAS_WEIGHT_KEY = "astd_plasma_shield_arc_bias_weight"
 
-        /** 本帧难度结算值缓存（advanceInCombat 写入，承伤监听器读取）。 */
         private const val VALUES_CACHE_KEY = "astd_plasma_shield_values"
 
         private val PREVENTED_DAMAGE_BLUE = Color(104, 212, 255, 235)
@@ -83,7 +71,6 @@ class ASTDPlasmaArmorShieldHullMod : BaseHullMod() {
 
         private val THEME = HullmodThemes.ARC_PRISM
 
-        /** 难度结算值（三锚点映射后；护盾乘区为承伤倍率，装甲为计算值比例，armorPenalty 为削减量）。 */
         internal data class Values(
             val energyShieldMult: Float,
             val kineticShieldMult: Float,
@@ -158,9 +145,7 @@ class ASTDPlasmaArmorShieldHullMod : BaseHullMod() {
         maintainShieldVisualsEvenWhenPaused(ship, engine)
         if (engine.isPaused || ship.isHulk || !ship.isAlive) return
 
-        // 难度缩放乘区逐帧写入（同 id 覆盖，幂等）：护盾四系承伤 + 最大装甲值削减
         val values = Values.resolve(ship.owner == 0)
-        // 缓存本帧结算值供承伤监听器复用，避免每次命中重复做 10 路难度取值
         ship.setCustomData(VALUES_CACHE_KEY, values)
         val stats = ship.mutableStats
         val id = ASTDArcProductionShipIds.HULLMOD_PLASMA_ARMOR_SHIELD
@@ -203,7 +188,6 @@ class ASTDPlasmaArmorShieldHullMod : BaseHullMod() {
         width: Float,
         isForModSpec: Boolean
     ) {
-        // tooltip 展示口径：无舰上下文（装配面板）按我方档位展示（默认砺刃 v2）
         val values = Values.resolve(ship == null || ship.owner == 0)
         tooltip.hullmodCard(width, THEME, null) {
             para("ui.hullmod.plasma_armor_shield.desc")

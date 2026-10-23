@@ -25,66 +25,17 @@ import java.awt.Color
 import kotlin.math.cos
 import kotlin.math.sin
 
-/**
- * 引力磁暴发生器（Gravity Storm Generator，系统 id：astd_grav_storm）——密蒙级（ZW-002）舰船系统。
- * 原版「量子干扰」（acausaldisruptor / [com.fs.starfarer.api.impl.combat.AcausalDisruptorStats]）的增强基线。
- *
- * 状态机（.system 建议口径：toggle=true + in 4s / out 1.5s / cooldown 24s，见装配侧接线说明）：
- * - **IN（充能，≤[GravStormTuning.MAX_CHARGE_SECONDS]s）**：激活代价由原版 CSV 结算
- *   （`f/u (base cap)` = 20% 基础辐能容量软辐能，IDLE→IN 瞬间一次性产出，图鉴可见）；
- *   首帧闩建立充能态（描边选框 attach）；充能期间紫色 jitter（幅度随充能进度）
- *   + 锥状射程描边选框（[GravStormConeIndicator]）+ 全类型伤害减免
- *   + 装饰性电弧（纯视觉，每波数量 2→8、间隔 0.5s→0.1s 随充能进度渐变，
- *   与空放装饰电弧同一生成逻辑）+ 充能进度写入 ship.customData [CHARGE_PROGRESS_KEY]
- *   （引力电子干扰力场读取后波形光斑反向聚集加速）。
- *   - 充能不足 [GravStormTuning.PHASE_LOCKOUT_SECONDS] 期间相位系统锁定：每帧把相位 cloak
- *     压入 COOLDOWN 并钉住小余量（原版 ChargeTracker 实证该态按键不激活），玩家按相位键无效；
- *   - 锁定解除后充能期间进入相位 → 结束充能并立即按当前充能进度释放（电弧 + 强制过载，
- *     锁定口径等同最小充能故恒达释放下限），随后 [ShipSystemAPI.deactivate] 进冷却。
- *     该路径依赖 .system 的 `canUseWhileRightClickSystemOn=true`：原版 PhaseCloakSystem
- *     每帧把相位中处于激活态的 toggle 主系统 forceDeactivate 直压 COOLDOWN（先于本脚本
- *     apply 执行，无此 flag 时脚本永远看不到相位中的 IN 态，释放不会触发）；相位中的
- *     误激活由 [isUsable]（!isPhased，经 ShipSystemStatsScriptAdvanced 激活闸）拦截；
- *   - 玩家再次按键（toggle 系统原版路径：IN 再按 → OUT，OUT 计时按充能进度折算）→ 提前结束：
- *     充能 ≥ [GravStormTuning.MIN_CHARGE_SECONDS] 释放，不足则视为取消（deactivate 进冷却）；
- *   - 充满 4s 自然进入 ACTIVE，首帧释放并 [ShipSystemAPI.forceState] 归位完整释放窗口；
- *     ACTIVE 首帧若已相位（IN 末帧进相位与充满同帧竞态：原版同一帧内 ChargeTracker.advance
- *     先于脚本 apply 执行，chargeTick 的相位分支来不及拦截）同样按相位口径满充能立即释放。
- * - **OUT（释放窗口 [GravStormTuning.RELEASE_WINDOW_SECONDS]s）**：锁定充能结束时前方 60° 锥
- *   （射程 [GravStormTuning.BASE_RANGE] 经 systemRangeBonus 折算）内全部敌对舰船（含相位单位
- *   与战机——战机按护卫舰档结算电弧数与过载、单发伤害经 [GravStormTuning.FIGHTER_DAMAGE_MULT]
- *   折算为 50%，不含残骸），释放瞬间对全部锁定目标一次性打出紫色 EMP 电弧
- *   （spawnEmpArc 不穿盾口径：中盾只吃能量伤害；落点随机取目标武器/引擎槽位附近；
- *   发射点为母舰真实碰撞箱随机边缘），并在释放瞬间施加按舰级 × 充能占比插值的强制过载；
- *   过载触发硬辐能→软辐能转化（[GravStormTuning.hardToSoftRatio]：按各被过载目标的舰级档位
- *   × 过载时长累加总比例，对密蒙自身当前硬辐能一次性结算等额转化，总辐能不变）；
- *   锥内无锁定目标时改为向前方 60° 锥发射一批装饰性电弧（spawnEmpArcVisual 纯视觉，无伤害）。
- *   释放窗口存续期即伤害减免存续期（电弧已全部打出，窗口内不再追加）。
- * - **unapply**：解除伤害减免、描边选框收口、清理激活态。
- *
- * 目标锁定后不再跟踪（电弧朝释放时锁定的目标实体一次性打出；目标在释放瞬间已消亡则其电弧跳过）。
- * 超载色收口由 [OverloadColorResetPlugin] 托管（对齐原版量子干扰的 overloadColor 复原路径）。
- *
- * Fail Fast：战斗内 engine/ship API 均为安全访问，全程不包 try；BoxUtil 实体注册失败有 WARN 日志。
- */
 class GravStormSystemStats : BaseShipSystemScript() {
 
-    /** 充能期状态（IN 首帧建立，释放/取消/unapply 清除）。 */
     private class ChargeState(
         val indicator: GravStormConeIndicator?,
     ) {
-        /**
-         * IN 每帧记录的充能进度（0-1）。提前释放强度结算只读此自持进度：
-         * toggle 系统 IN 再按转 OUT 时 OUT 计时按充能进度折算，OUT 首帧 effectLevel
-         * 已是释放窗口口径，不可当作充能进度使用。
-         */
+        // toggle 系统转 OUT 后 effectLevel 按释放窗口折算，充能进度只能自持记录
         var chargeProgress: Float = 0f
 
-        /** 充能装饰电弧节拍计时器（间隔随充能进度渐变，见 [GravStormTuning.chargeArcInterval]）。 */
         var arcTimer: Float = 0f
     }
 
-    /** 单目标打击计划：电弧数（多目标衰减后）、单发伤害系数（战机折算）与强制过载时长；电弧在释放瞬间一次性全部打出。 */
     internal class TargetPlan(
         val target: ShipAPI,
         val arcCount: Int,
@@ -131,13 +82,7 @@ class GravStormSystemStats : BaseShipSystemScript() {
         engine.customData.remove(activationKey(ship))
     }
 
-    /**
-     * ACTIVE 首帧处理（internal 供单元测试直接驱动）：充满 4s 自然落入 ACTIVE（toggle 口径下
-     * active 段无限长），立即满充能释放并归位释放窗口；activation 闩防 ACTIVE 段多帧重复触发。
-     * 已相位按「相位结束充能」口径满充能立即释放并进冷却——原版同一帧内 ChargeTracker.advance
-     * 先于脚本 apply 执行，IN 末帧进入相位来不及走 [chargeTick] 的相位分支就会被状态机直接
-     * 顶进 ACTIVE，此处是该口径的末道闸。[releaseFn] 仅测试注入（见 [endChargeByPhase]）。
-     */
+    // 原版同一帧内 ChargeTracker.advance 先于脚本 apply：IN 末帧进相位会被状态机直接顶进 ACTIVE，此处按相位规则满充能释放
     internal fun onActiveEntered(
         engine: CombatEngineAPI,
         ship: ShipAPI,
@@ -154,14 +99,6 @@ class GravStormSystemStats : BaseShipSystemScript() {
         system.forceState(ShipSystemAPI.SystemState.OUT, 0f)
     }
 
-    /**
-     * 相位结束充能（internal 供单元测试直接驱动）：充能期间进入相位的统一口径——
-     * 立即按当前充能进度释放（电弧 + 强制过载全额结算，设计案「期间舰船进入相位也会结束
-     * 充能」），随后 deactivate 进冷却。相位锁定口径等同最小充能
-     * （[GravStormTuning.PHASE_LOCKOUT_SECONDS]），进入相位时充能必已达释放下限。
-     * [releaseFn] 仅测试注入（release 内含音效/扭曲等运行时静态调用，无头测试以桩替代），
-     * 游戏内恒走 [release]。
-     */
     internal fun endChargeByPhase(
         engine: CombatEngineAPI,
         ship: ShipAPI,
@@ -173,12 +110,6 @@ class GravStormSystemStats : BaseShipSystemScript() {
         system.deactivate()
     }
 
-    /**
-     * IN 每帧：首帧闩建立充能态（描边选框 attach；激活软辐能代价由原版 CSV 结算）；
-     * 充能不足 [GravStormTuning.PHASE_LOCKOUT_SECONDS] 期间锁定相位系统（每帧把相位 cloak
-     * 压入 COOLDOWN 并钉住小余量，玩家按键无效）；锁定解除后进入相位则结束充能并立即释放；
-     * jitter 与描边选框随充能进度增强。
-     */
     private fun chargeTick(
         engine: CombatEngineAPI,
         ship: ShipAPI,
@@ -196,17 +127,14 @@ class GravStormSystemStats : BaseShipSystemScript() {
         val progress = effectLevel.coerceIn(0f, 1f)
         val chargeSeconds = progress * GravStormTuning.MAX_CHARGE_SECONDS
         if (GravStormTuning.phaseLockoutActive(chargeSeconds)) {
-            // 充能前段相位锁定：相位 cloak 不可激活（每帧归位 IDLE），玩家按键无效
             suppressPhaseCloak(ship)
         } else if (ship.isPhased) {
-            // 锁定解除后充能期间进入相位：结束充能并立即按当前充能进度释放（锁定口径等同
-            // 最小充能，走到此分支充能必已达 MIN，恒为释放而非取消），随后进冷却
             endChargeByPhase(engine, ship, system, chargeSeconds)
             return
         }
 
         charge.chargeProgress = progress
-        // 充能进度共享给引力电子干扰力场（波形光斑反向聚集加速）；释放/取消时随充能态一并清除
+        // 充能进度供 GravEmFieldHullMod 读取
         ship.setCustomData(CHARGE_PROGRESS_KEY, progress)
         val range = ASTDArcCombatUtil.effectiveSystemRange(ship, GravStormTuning.BASE_RANGE)
         charge.indicator?.update(range, CONE_ALPHA_BASE + CONE_ALPHA_SPAN * progress)
@@ -216,11 +144,6 @@ class GravStormSystemStats : BaseShipSystemScript() {
         ship.setJitterUnder(id, JITTER_UNDER_COLOR, JITTER_LEVEL_BASE + JITTER_LEVEL_SPAN * progress, 20, 0f, 4f + 8f * progress)
     }
 
-    /**
-     * 充能装饰电弧（纯视觉）：节拍间隔随充能进度 0.5s→0.1s 缩短，每波数量 2→8 增多
-     * （[GravStormTuning.chargeArcInterval]/[GravStormTuning.chargeArcCount]）；
-     * 单道生成逻辑与空放装饰电弧共用（[spawnDecorativeArc]）。
-     */
     private fun driveChargeArcs(
         engine: CombatEngineAPI,
         ship: ShipAPI,
@@ -236,13 +159,7 @@ class GravStormSystemStats : BaseShipSystemScript() {
         }
     }
 
-    /**
-     * 相位锁定（充能前段 [GravStormTuning.PHASE_LOCKOUT_SECONDS] 口径）：每帧把相位 cloak
-     * 剩余冷却钉为 [GravStormTuning.PHASE_LOCKOUT_COOLDOWN_REMAINING]——
-     * ShipSystemAPI.setCooldownRemaining 一步置 COOLDOWN 态（原版 ChargeTracker.startCooldown
-     * 实证），COOLDOWN 态下玩家按键仅置失败标记不再激活，相位脚本 unapply 即撤 phased；
-     * cloak 已处于更长的自然冷却时不改写（不缩短既有冷却）。
-     */
+    // 原版 ShipSystemAPI.setCooldownRemaining 一步置 COOLDOWN 态，COOLDOWN 下按键仅置失败标记不再激活
     private fun suppressPhaseCloak(ship: ShipAPI) {
         val cloak = ship.phaseCloak ?: return
         if (cloak.state != ShipSystemAPI.SystemState.COOLDOWN ||
@@ -252,12 +169,6 @@ class GravStormSystemStats : BaseShipSystemScript() {
         }
     }
 
-    /**
-     * OUT 每帧：首帧（释放闩缺席）为玩家提前结束路径——释放强度只读充能态自持的充能进度
-     * （OUT 首帧 effectLevel 已是折算后释放窗口口径，不可当作充能进度）；达到最小充能则
-     * 释放并归位完整释放窗口，不足或充能态缺席则取消进冷却。电弧在释放瞬间已一次性打出，
-     * 后续帧无追加结算，窗口存续期仅作伤害减免存续。
-     */
     private fun releaseTick(engine: CombatEngineAPI, ship: ShipAPI, system: ShipSystemAPI) {
         if (engine.customData[activationKey(ship)] != null) return
         val charge = engine.customData[chargeKey(ship)] as? ChargeState
@@ -266,16 +177,11 @@ class GravStormSystemStats : BaseShipSystemScript() {
             release(engine, ship, chargeSeconds)
             system.forceState(ShipSystemAPI.SystemState.OUT, 0f)
         } else {
-            // 最小充能不足：结束充能且不放电弧，仍进正常冷却
             disposeCharge(engine, ship)
             system.deactivate()
         }
     }
 
-    /**
-     * 释放：锁定锥内敌对目标、按舰级与目标数结算电弧计划并对全部锁定目标一次性打出电弧、
-     * 施加强制过载、播放扩散扭曲与释放音效、描边选框收口；锥内无锁定目标时改为装饰性电弧齐射。
-     */
     private fun release(engine: CombatEngineAPI, ship: ShipAPI, chargeSeconds: Float) {
         disposeCharge(engine, ship)
 
@@ -292,7 +198,6 @@ class GravStormSystemStats : BaseShipSystemScript() {
             plans += TargetPlan(
                 target = target,
                 arcCount = GravStormTuning.finalArcCount(baseCount, targets.size),
-                // 战机目标：电弧数与过载对齐护卫舰档，单发伤害折算 50%
                 damageMult = if (target.isFighter) GravStormTuning.FIGHTER_DAMAGE_MULT else 1f,
                 overloadSeconds = GravStormTuning.overloadDuration(overloadAnchor, chargeNorm),
             )
@@ -309,11 +214,9 @@ class GravStormSystemStats : BaseShipSystemScript() {
         spawnReleaseDistortion(engine, ship)
         Global.getSoundPlayer().playSound(RELEASE_SOUND_ID, 1f, 1f, ship.location, ship.velocity)
 
-        // 释放闩：OUT 窗口存续期在场（自动化取证与 releaseTick 首帧判定共用），OUT 结束/unapply 清除
         engine.customData[activationKey(ship)] = true
     }
 
-    /** 锥状锁定：前方 60° 锥、有效射程内（计目标碰撞半径余量）的敌对舰船；含相位单位与战机，不含残骸。 */
     private fun scanConeTargets(engine: CombatEngineAPI, ship: ShipAPI, range: Float): List<ShipAPI> {
         val result = ArrayList<ShipAPI>()
         for (target in engine.ships) {
@@ -329,20 +232,11 @@ class GravStormSystemStats : BaseShipSystemScript() {
         return result
     }
 
-    /**
-     * 空放装饰电弧（锥内无锁定目标）：向前方 60° 锥内发射
-     * [DECOR_ARC_COUNT_MIN]~[DECOR_ARC_COUNT_MAX] 道纯视觉电弧（单道生成见 [spawnDecorativeArc]）。
-     */
     private fun spawnDecorativeArcs(engine: CombatEngineAPI, ship: ShipAPI, range: Float) {
         val count = MathUtils.getRandomNumberInRange(DECOR_ARC_COUNT_MIN, DECOR_ARC_COUNT_MAX)
         repeat(count) { spawnDecorativeArc(engine, ship, range) }
     }
 
-    /**
-     * 单道装饰电弧（纯视觉，无伤害结算；空放齐射与充能期渐变波共用）：
-     * 发射点为母舰碰撞箱随机边缘，落点在射程内随机
-     * （[DECOR_ARC_DIST_MIN_FRACTION]~[DECOR_ARC_DIST_MAX_FRACTION] × 有效射程，前方 60° 锥内）。
-     */
     private fun spawnDecorativeArc(engine: CombatEngineAPI, ship: ShipAPI, range: Float) {
         val from = hullBoundaryPoint(ship)
         val angle = ship.facing + MathUtils.getRandomNumberInRange(
@@ -366,12 +260,6 @@ class GravStormSystemStats : BaseShipSystemScript() {
         engine.spawnEmpArcVisual(from, ship, to, ship, DECOR_ARC_THICKNESS, ARC_FRINGE, ARC_CORE, params)
     }
 
-    /**
-     * 强制过载：释放瞬间施加；已过载/排气目标跳过（对齐原版量子干扰口径），紫色过载色由插件托管复原。
-     * 硬辐能→软辐能转化（[convertHardToSoft]）按实际被过载的目标逐个累加比例贡献，
-     * 全部过载结算完毕后在循环外对释放舰船自身一次性扣除——只读一次自身 hardFlux，
-     * 避免逐目标结算中途改写自身辐能状态污染后续比例基数。
-     */
     internal fun applyOverloads(engine: CombatEngineAPI, ship: ShipAPI, plans: List<TargetPlan>) {
         val tracked = ArrayList<ShipAPI>(plans.size)
         var totalRatio = 0f
@@ -397,14 +285,7 @@ class GravStormSystemStats : BaseShipSystemScript() {
         }
     }
 
-    /**
-     * 硬辐能→软辐能转化（对释放舰船自身一次性结算）：[totalRatio] 为所有被过载目标的
-     * 比例贡献累加（每目标 过载秒数 × 舰级档位 [GravStormTuning.hardToSoftPerSecond]），
-     * 转化量 = 自身当前硬辐能 × 总比例——hardFlux -= x，总辐能不变则软辐能自动 +x
-     * （设计意图：磁暴以自身辐能形态劣化为代价换取群体过载）。
-     * 只需 setHardFlux 即完成等额转化：setHardFlux 不动 currFlux，软辐能 = currFlux − hardFlux
-     * 自动 +x；不得再调 increaseFlux——其第二参 true 加的是硬辐能且总辐能 +x，与转化语义相反。
-     */
+    // 只调 setHardFlux 完成等额转化：increaseFlux 第二参 true 加的是硬辐能且总辐能 +x，与转化语义相反
     internal fun convertHardToSoft(ship: ShipAPI, totalRatio: Float) {
         val tracker = ship.fluxTracker
         val amount = tracker.hardFlux * totalRatio
@@ -412,7 +293,6 @@ class GravStormSystemStats : BaseShipSystemScript() {
         tracker.hardFlux -= amount
     }
 
-    /** 单发电弧：母舰碰撞箱随机边缘 → 目标武器/引擎槽位附近随机点；不穿盾（中盾只吃能量伤害）。伤害经 [TargetPlan.damageMult] 折算（战机目标为护卫舰档 50%）。 */
     private fun fireArc(engine: CombatEngineAPI, ship: ShipAPI, plan: TargetPlan, values: GravStormTuning.Values) {
         val target = plan.target
         if (!target.isAlive || target.isHulk) return
@@ -428,7 +308,6 @@ class GravStormSystemStats : BaseShipSystemScript() {
         )
     }
 
-    /** 电弧落点：目标全部武器槽位与引擎槽位中随机取一点 + 小散布；均无则取舰体周边随机点。 */
     private fun randomSlotPoint(target: ShipAPI): Vector2f {
         val points = ArrayList<Vector2f>()
         for (weapon in target.allWeapons) {
@@ -448,7 +327,6 @@ class GravStormSystemStats : BaseShipSystemScript() {
         return MathUtils.getRandomPointInCircle(base, SLOT_POINT_SCATTER)
     }
 
-    /** 释放瞬间：以舰体为中心向外扩散的圆形扭曲（时序 0.5s 淡入 / 0.5s 满值 / 0.5s 淡出）。 */
     private fun spawnReleaseDistortion(engine: CombatEngineAPI, ship: ShipAPI) {
         BoxUtilCombatVfx.ensureReady(engine)
         val r = ship.collisionRadius
@@ -472,14 +350,12 @@ class GravStormSystemStats : BaseShipSystemScript() {
         }
     }
 
-    /** 充能态收口：描边选框 dispose + 移除首帧闩与充能进度共享键（释放/取消/相位打断/unapply 共用）。 */
     private fun disposeCharge(engine: CombatEngineAPI, ship: ShipAPI) {
         ship.removeCustomData(CHARGE_PROGRESS_KEY)
         val charge = engine.customData.remove(chargeKey(ship)) as? ChargeState ?: return
         charge.indicator?.dispose()
     }
 
-    /** 舰体真实碰撞箱随机边缘点（exactBounds 随机段上插值；无碰撞箱时按碰撞半径近似）。 */
     private fun hullBoundaryPoint(ship: ShipAPI): Vector2f {
         val bounds = ship.exactBounds
         if (bounds != null) {
@@ -528,7 +404,6 @@ class GravStormSystemStats : BaseShipSystemScript() {
                 false,
             )
         }
-        // 相位锁定提示行：充能前段（不足 PHASE_LOCKOUT_SECONDS）期间维持，提示玩家相位系统被抑制
         if (index == 1 && state == ShipSystemStatsScript.State.IN &&
             GravStormTuning.phaseLockoutActive(effectLevel.coerceIn(0f, 1f) * GravStormTuning.MAX_CHARGE_SECONDS)
         ) {
@@ -540,7 +415,6 @@ class GravStormSystemStats : BaseShipSystemScript() {
         return null
     }
 
-    /** 过载色复原托管：目标退出过载/消亡即复原其过载色，全部复原后自移除（对齐原版量子干扰路径）。 */
     private class OverloadColorResetPlugin(
         private val engine: CombatEngineAPI,
         private val tracked: MutableList<ShipAPI>,
@@ -561,53 +435,33 @@ class GravStormSystemStats : BaseShipSystemScript() {
     companion object {
         private val log = Global.getLogger(GravStormSystemStats::class.java)
 
-        /** 释放音效：模组 sounds.json 单变体池 astd_grav_storm_release（钉死原版 shields_burnout_dweller.ogg 采样，避免原版 shield_burnout 池随机到另一变体）。 */
         private const val RELEASE_SOUND_ID = "astd_grav_storm_release"
-
-        /** 电弧命中音效（原版 EMP 发射器命中音）。 */
         private const val ARC_IMPACT_SOUND_ID = "system_emp_emitter_impact"
 
-        /** 电弧配色（透镜协议紫）。 */
         private val ARC_FRINGE = Color(186, 120, 255, 200)
         private val ARC_CORE = Color(238, 215, 255, 160)
-
-        /** 强制过载配色（对齐原版量子干扰 OVERLOAD_COLOR 的品红系，偏透镜紫）。 */
         private val OVERLOAD_COLOR = Color(215, 130, 255, 255)
 
-        /** 电弧厚度（su）。 */
         private const val ARC_THICKNESS = 7f
-
-        /** 电弧落点小散布半径（su）。 */
         private const val SLOT_POINT_SCATTER = 15f
 
-        /** 空放装饰电弧：数量区间、落点距离占有效射程的比例区间、厚度（su）。 */
         private const val DECOR_ARC_COUNT_MIN = 8
         private const val DECOR_ARC_COUNT_MAX = 14
         private const val DECOR_ARC_DIST_MIN_FRACTION = 0.3f
         private const val DECOR_ARC_DIST_MAX_FRACTION = 0.9f
         private const val DECOR_ARC_THICKNESS = 7f
 
-        /** 描边选框 alpha：基底 + 充能进度增量（描边实体侧再乘基准透明度，整体低于旧填充贴图口径）。 */
         private const val CONE_ALPHA_BASE = 0.15f
         private const val CONE_ALPHA_SPAN = 0.35f
 
-        /** 充能 jitter 强度：基底 + 充能进度增量。 */
         private const val JITTER_LEVEL_BASE = 0.5f
         private const val JITTER_LEVEL_SPAN = 1f
 
         private val JITTER_COLOR = Color(190, 130, 255, 75)
         private val JITTER_UNDER_COLOR = Color(190, 130, 255, 155)
 
-        /** 充能态 customData 键前缀（每船一条，释放/取消/unapply 清除）。 */
         private const val CHARGE_KEY = "astd_grav_storm_charge:"
-
-        /**
-         * 充能进度共享键（ship.customData，IN 每帧写入 0-1，释放/取消/unapply 随充能态清除）：
-         * 引力电子干扰力场（GravEmFieldHullMod）读取后驱动波形光斑反向聚集加速。
-         */
         internal const val CHARGE_PROGRESS_KEY = "astd_grav_storm_charge_progress"
-
-        /** 激活态 customData 键前缀（每船一条，OUT 结束/unapply 清除）。 */
         private const val ACTIVATION_KEY = "astd_grav_storm_activation:"
 
         private fun chargeKey(ship: ShipAPI): String = "$CHARGE_KEY${ship.id}"

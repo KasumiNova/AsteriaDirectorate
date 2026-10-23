@@ -11,12 +11,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/**
- * 正电子冲击波自动开火协同认领（2026-10 裁定）的纯逻辑验证：
- * - [PositronShockwaveFireControl.neededWeapons]：导弹按 ceil(耐久 ÷ 面板 150) 分配管数，战机恒 1；
- * - [PositronShockwaveFireControl.freshClaimCount]：同舰 + 未过期 + 非自身三条件同时满足才计入；
- * - [PositronShockwaveFireControl.purgeStale]：超时条目回收。
- */
 class PositronShockwaveFireControlTest {
 
     @Test

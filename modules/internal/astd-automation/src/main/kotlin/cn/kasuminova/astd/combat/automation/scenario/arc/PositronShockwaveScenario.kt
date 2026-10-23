@@ -15,12 +15,9 @@ import com.fs.starfarer.api.util.Misc
 import org.lwjgl.util.vector.Vector2f
 
 /**
- * 正电子冲击波场景（规格 06 §4.2 烟测检查点）。
- *
- * 拆分自 ASTDAutomationCombatPlugin 的同名 if-else 分支，相位机/断言/证据写出口径原样迁移。
+ * 正电子冲击波场景。
  */
 class PositronShockwaveScenario : AbstractAutomationScenario() {
-    // ==== positron shockwave 场景状态（相位机 MOUNT → PASS_THROUGH → SPLASH → FUSE → COMPLETED） ====
     private var psPhase = PS_PHASE_MOUNT
     private var psPhaseStartedAt = 0f
 
@@ -47,8 +44,8 @@ class PositronShockwaveScenario : AbstractAutomationScenario() {
         val engine = ctx.engine
         engine.setDoNotEndCombat(true)
         lockPsCamera(engine)
-        // 引爆计数浮字仅 devMode 渲染（2026-07-29 审批裁定）：本场景为 dev-only 舞台，
-        // 开启 devMode 以目检「近炸命中 ×n」浮字（进程被早退杀掉，设置不落盘）。
+        // 引爆计数浮字仅 devMode 渲染：本场景为 dev-only 舞台，
+        // 开启 devMode 以目检「近炸命中 ×n」浮字（进程被早退杀掉，设置不会保存到磁盘）。
         Global.getSettings().isDevMode = true
         // 与其他场景一致：reserves 部署放到 advance()，init 阶段渲染器未就绪。
         ctx.writeDiagnostics("CombatReady")
@@ -97,9 +94,8 @@ class PositronShockwaveScenario : AbstractAutomationScenario() {
 
     /**
      * 舞台保活与站位（范式同 stabilizeQjShips）：保留舰 AI + 逐帧 currAngle 对准正东 +
-     * setForceFireOneFrame 绕 AutofireAI 死锁（01/03/05 实证路径）；玩家辐能逐帧清零。
-     * 警戒靶舰盾舞台性常关；PASS_THROUGH 相位不逐帧奶（HP 即「无触碰体积」观测面），
-     * 进入相位时奶满一次。
+     * setForceFireOneFrame 绕 AutofireAI 死锁；玩家辐能逐帧清零。
+     * 警戒靶舰盾舞台性常关；IMPACT 相位不逐帧回血（HP 即撞舰伤害观测面），进入相位时回满一次。
      */
     private fun stabilizePsShips(engine: CombatEngineAPI, fire: Boolean) {
         val player = findPsPlayer(engine)
@@ -152,7 +148,7 @@ class PositronShockwaveScenario : AbstractAutomationScenario() {
     /**
      * FUSE/COMPLETED 相位导弹投喂：每 [PS_MISSILE_FEED_INTERVAL] 从靶舰右前方 820su 处左右舷交替
      * 生成一发鱼叉（weapon=null + weaponId 直接生成导弹实体，范式同 lens phase-2 投喂），
-     * 初速 250su/s 指向玩家锚点。spawn 返回 null 视为 weaponId 不可用——记失败原因转 FAILED。
+     * 初速 250su/s 指向玩家锚点。spawn 返回 null 视为 weaponId 不可用，记失败原因转 FAILED。
      */
     private fun feedPsMissiles(engine: CombatEngineAPI) {
         if (ctx.elapsed < psMissileFeedAt) return
@@ -210,9 +206,9 @@ class PositronShockwaveScenario : AbstractAutomationScenario() {
                         }
 
                         else -> {
-                            // 进入撞舰相位：靶舰奶满一次作伤害观测基线（本相位不逐帧奶）；
-                            // 装甲整格剥除——警戒级装甲全额吸收破片伤害会令舰体读数恒满
-                            // （2026-09 撞舰裁定后首次实机暴露），与逐帧 toggleOff 护盾同口径剥除防御层，
+                            // 进入撞舰相位：靶舰回满一次作伤害观测基线（本相位不逐帧回血）；
+                            // 装甲整格剥除，警戒级装甲全额吸收破片伤害会令舰体读数恒满，
+                            // 与逐帧 toggleOff 护盾同样剥除防御层，
                             // 直读撞舰引爆 + 锥面结算的舰体伤害
                             target?.hitpoints = target.maxHitpoints
                             target?.let { stripPsTargetArmor(it) }
@@ -349,7 +345,7 @@ class PositronShockwaveScenario : AbstractAutomationScenario() {
         json.appendLine("  \"runtimeElapsedSeconds\": 0,")
         json.appendLine("  \"runtimeTrackedCount\": ${vfxTelemetry.trackedCount},")
         json.appendLine("  \"runtimeLastProjectileSpecId\": ${jsonString(vfxTelemetry.lastProjectileSpecId)},")
-        // ---- 机制证据（规格 06 §4.2 烟测检查点）----
+        // 机制证据
         json.appendLine("  \"psPhase\": \"$psPhase\",")
         json.appendLine("  \"psSlotId\": ${jsonString(psWeapon?.slot?.id)},")
         json.appendLine("  \"psWeaponRange\": ${formatFloat(psWeapon?.range ?: -1f)},")
@@ -414,7 +410,7 @@ class PositronShockwaveScenario : AbstractAutomationScenario() {
     }
 
     private companion object {
-        // 正电子冲击波场景：相位机、锚点与期望证据（规格 06 §4.2 烟测检查点）。
+        // 正电子冲击波场景：相位机、锚点与期望证据。
         private const val PS_PHASE_MOUNT = "MOUNT"
         private const val PS_PHASE_IMPACT = "IMPACT"
         private const val PS_PHASE_SPLASH = "SPLASH"
@@ -437,7 +433,7 @@ class PositronShockwaveScenario : AbstractAutomationScenario() {
         private const val PS_EXPECT_RANGE = 600f
         private const val PS_RANGE_TOLERANCE = 5f
 
-        // IMPACT（2026-09 修订：弹体识别舰船碰撞，撞舰即时引爆）：靶舰锚在弹道上，
+        // IMPACT（弹体识别舰船碰撞，撞舰即时引爆）：靶舰锚在弹道上，
         // 撞舰引爆 ≥3 次且目标掉血 ≥50；期间近炸/满射程计数必须恒 0（弹体不应飞过 400su 靶舰）。
         private const val PS_IMPACT_DETONATIONS = 3
         private const val PS_IMPACT_MIN_DAMAGE = 50f
@@ -456,7 +452,7 @@ class PositronShockwaveScenario : AbstractAutomationScenario() {
         private const val PS_MISSILE_SPAWN_Y = 80f
         private const val PS_MISSILE_INITIAL_SPEED = 250f
 
-        // COMPLETED 截图门控：近炸引爆近 1.2s 内发生才上报（锥面 VFX/浮字入帧）；保底舞台超时。
+        // COMPLETED 截图门控：近炸引爆近 1.2s 内发生才上报（锥面 VFX/浮字入帧）；舞台超时作为保险。
         private const val PS_COMPLETED_DETONATE_WINDOW = 1.2f
         private const val PS_COMPLETED_STAGE_TIMEOUT = 25f
         private const val PS_PHASE_TIMEOUT = 60f

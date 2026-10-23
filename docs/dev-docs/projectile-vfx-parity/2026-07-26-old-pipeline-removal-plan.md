@@ -27,14 +27,14 @@
 ### 1.2 死代码簇（趁机一并删除）
 
 `ProjectileVfxPresets.kt` / `CodeProjectileRenderer.kt` / `CompositeProjectileVisual.kt` / `ProjectileVfxEnhancer.kt`
-——四者互相引用，**主源零外部调用方**（OldPathRemovalTest 的 allowlist 只是准许存在，不是活路）。
+，四者互相引用，**主源零外部调用方**（OldPathRemovalTest 的 allowlist 只是准许存在，不是活路）。
 
 仅被该死簇引用、随之孤儿化的：
 - `combat/effect/lens/signature/singularity/SingularityAccretionDiskVisual.kt`
 - `SingularityRetargetPulseVisual.kt`
 - `SingularityShotDownDetonationVisual.kt`
 
-（注意：`SingularityDetonationFx` 是活的——`SingularityOnHitEffect` 在用，保留。）
+（注意：`SingularityDetonationFx` 是活的，`SingularityOnHitEffect` 在用，保留。）
 
 ### 1.3 新旧共享层（**保留**，建议随迁）
 
@@ -93,7 +93,7 @@ AOD-7 自动化场景（SSOptimizer 截图取证链路）引用：
 ## 3. 风险与取舍
 
 - **tsm2 奇点三视觉被删**：AccretionDisk/RetargetPulse/ShotDownDetonation 原是旧 Preset 给奇点导弹的在飞视觉，迁移时未进新 DSL spec，本次随死簇删除。目检已确认当前表现可接受；若日后想找回，从 git 历史恢复并改写为新管线节点。
-- **parity 安全网消失**：删旧管线后即无「新旧等价」可测，几何回归靠保留的 15 个数学测试 + golden 拓扑测试。这是迁移收官的既定取舍，不是遗漏。
+- **parity 参照测试移除**：删旧管线后即无「新旧等价」可测，几何回归靠保留的 15 个数学测试 + golden 拓扑测试。这是迁移完成时的既定取舍，已记录在执行计划中。
 - ~~**搬迁 PR 与删除 PR 分开提交**~~：实际执行时删除与搬迁编译互相依赖（旧文件同包引用共享类型），合为一个提交（0e24dc2）并在提交信息中注明。
 
 ## 4. 执行偏差记录（实际 vs 计划）
@@ -104,7 +104,7 @@ AOD-7 自动化场景（SSOptimizer 截图取证链路）引用：
   - `ProjectileVfxPresets.kt` 内的 `spawnRing` 被 `HighFluxShieldPressureOnHitEffect`/`Fdp4DelayedFission` 使用，抽出为独立文件 `ProjectileVfxUtil.kt` 保留。教训：死簇分析须查文件内部每个 object 的外部引用，不能只查文件名。
 - **scanner 相关（ProjectileVfxKeys 的 SCAN_* / DispatchState 计数）是死类**，随 P5.2 一并删除；DispatchState/CombatVfxBootstrap 的空 catch 全部补 log.warn（CLAUDE.md 规范）。
 - **ASTDProjectileHistoryNode 归属微调**：数据类放 `api/render`（FrameState 在 api 层，避免 api→impl 反向依赖），采样器 `ASTDProjectileHistory` 在 `impl/render`。
-- **自动化遥测**：新链为 `ProjectileVfxDriver.telemetry` → `ProjectileVfxDriverPlugin.telemetrySnapshot(engine)`（trackedCount/lastProjectileSpecId/lastElapsed/lastVisibleLength/lastBeamAlpha/lastWorldUnitsPerPixel）；diagnostics 删 `runtimeLastPresetId` 字段。`VFX_PRESET_ID = "aod7_shot"` 常量保留为 SSOptimizer 跨仓契约描述符（其 helper/verifier 硬编码该字面值，已加注释说明）。
+- **自动化遥测**：新链为 `ProjectileVfxDriver.telemetry` → `ProjectileVfxDriverPlugin.telemetrySnapshot(engine)`（trackedCount/lastProjectileSpecId/lastElapsed/lastVisibleLength/lastBeamAlpha/lastWorldUnitsPerPixel）；diagnostics 删 `runtimeLastPresetId` 字段。`VFX_PRESET_ID = "aod7_shot"` 常量保留为 SSOptimizer 跨仓约定描述符（其 helper/verifier 硬编码该字面值，已加注释说明）。
 - **ProjectileVfxOldPathRemovalTest 未改写为守卫测试**：属 CLAUDE.md 禁止的「验证功能是否删除」+ 纯源码 contain 测试，直接删除。
 - **P5.4b 剪旧渲染入口**：7 个 renderer 的 `*RenderLayer` 层类、`ASTDProjectileVfxRenderLayer` 接口、`ASTDProjectileVfxFadeReason`、`TrailRenderer.createEntity` 全删；保留 `*ForTests` 纯数学、`TrailRenderer.applyLayer`（RenderEntityImpl 在用）、`BodyRenderManager.Handle`、`ASTDProjectileVfxLayerFadeState`（RenderEntityImpl/MeshRenderComponents 在用）。引用层类的 7 个测试方法随之删除（BodyRenderManager 覆盖由独立测试承担）。
 - **几何测试夹具化**：13 个几何测试从已删 Catalog 取数改为 `GeometryTestFixtures.Aod7Fixture`（旧 aod7 preset 数值 1:1 硬编码）+ `testContext()`。

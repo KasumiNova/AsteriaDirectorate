@@ -10,9 +10,7 @@ import com.fs.starfarer.api.campaign.TextPanelAPI
 import com.fs.starfarer.api.campaign.rules.MemoryAPI
 import java.awt.Color
 
-/**
- * 对话运行时上下文（模板可复用的“胶水层”）。
- */
+/** 对话运行时上下文。 */
 class DialogContext internal constructor(
     val dialog: InteractionDialogAPI,
     val target: SectorEntityToken?,

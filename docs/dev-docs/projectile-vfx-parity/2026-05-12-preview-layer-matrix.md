@@ -1,4 +1,4 @@
-# Projectile VFX Preview Layer Matrix — 2026-05-12
+# Projectile VFX Preview Layer Matrix: 2026-05-12
 
 ## 自动化静态 artifact
 

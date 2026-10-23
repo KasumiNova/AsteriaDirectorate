@@ -17,13 +17,11 @@ import org.lwjgl.util.vector.Vector2f
 /**
  * 相位绕后验证矩阵场景基类（舜华/密蒙巡洋/茑萝航母满装配 AI 对抗，锤头为高速对照组）。
  *
- * 四场景共用一套相位机与证据口径，子类只提供舰队构成（[playerHullId]/[enemyHullId]）、
+ * 四场景共用一套相位机与证据判定，子类只提供舰队构成（[playerHullId]/[enemyHullId]）、
  * 判定模式（[mode]）与启用判定；判据按模式分支：FLANK 判绕后证据（观测窗内下潜 ≥1 且
  * 扫描幅度/上浮方位差达标），HEALTH 判航母相位节奏健康（下潜/上浮各 ≥2，航母走位天然
- * 绕行，验证不憋死不卡潜而非绕后幅度），CONTROL_NO_FLANK 判高速目标全程零绕后旗标帧
+ * 绕行，验证相位循环正常而非绕后幅度），CONTROL_NO_FLANK 判高速目标全程零绕后旗标帧
  * （且至少下潜一次证明相位 AI 在运行）。
- *
- * 移植自 ai-opt 分支单体插件 advancePfScenario（fb2357f/0d83a38），相位机/断言/证据写出口径原样迁移。
  */
 abstract class AbstractPhaseFlankScenario : AbstractAutomationScenario() {
 
@@ -41,8 +39,8 @@ abstract class AbstractPhaseFlankScenario : AbstractAutomationScenario() {
 
     override val pausePolicy: PausePolicy = PausePolicy.FORCE_UNPAUSE
 
-    // 观测面：相位状态边沿——下潜计数、相位中绕敌舰的方位角扫描幅度（去卷绕累计）、
-    // 每次上浮时「敌舰艏向 vs 敌→己方位角」差值。绕后意图生效时扫描幅度/上浮方位差显著。
+    // 观测面：相位状态边沿，包括下潜计数、相位中绕敌舰的方位角扫描幅度（去卷绕累计）、
+    // 每次上浮时「敌舰艏向 vs 敌→己方位角」差值。绕后意图生效时扫描幅度与上浮方位差显著。
     private var pfPhase = PF_PHASE_OBSERVE
     private var pfDiveCount = 0
     private var pfSurfaceCount = 0
@@ -55,14 +53,14 @@ abstract class AbstractPhaseFlankScenario : AbstractAutomationScenario() {
     private var pfSweepMax = 0f
     private var pfCombatStartAt = -1f
 
-    // 走位驱动探针：相位帧数 / 其中 PHASE_ATTACK_RUN 旗标在场的帧数 / 相位中最大航速——
-    // 区分「旗标没挂上」与「旗标挂了但走位模块没响应」两类失效。
+    // 走位驱动探针：相位帧数 / 其中 PHASE_ATTACK_RUN 旗标在场的帧数 / 相位中最大航速，
+    // 用于区分「旗标没挂上」与「旗标挂了但走位模块没响应」两类失效。
     private var pfPhasedFrames = 0
     private var pfAttackRunFrames = 0
     private var pfPhasedSpeedMax = 0f
 
     // 生存判据探针：贴盾上浮计数与上浮最近间距 / 高威胁投射物命中跟踪（弹体消失帧
-    // 按最后位置与本舰碰撞圈判命中，区分相位/非相位——相位中不可被命中，命中即硬吃）。
+    // 按最后位置与本舰碰撞圈判命中，区分相位与非相位：相位中不可被命中，命中即硬吃）。
     private var pfSurfaceHugCount = 0
     private var pfSurfaceClosestDist = Float.MAX_VALUE
     private val pfTorpedoActive = HashMap<DamagingProjectileAPI, Vector2f>()
@@ -73,11 +71,11 @@ abstract class AbstractPhaseFlankScenario : AbstractAutomationScenario() {
         super.init(ctx)
         val engine = ctx.engine
         engine.setDoNotEndCombat(true)
-        // 玩家后备恰 1 艘时通用块保留 vanilla 静默 deployAll（单舰场景范式）——本场景需要
-        // 玩家舰留在 reserves 由 deployPfReserveShips 锚点入场，关断闸门把静默部署一并跳过
+        // 玩家舰留在 reserves 由 deployPfReserveShips 锚点入场；vanilla 对恰 1 艘后备的玩家方
+        // 会静默 deployAll，关断部署对话框闸门一并跳过静默部署
         (engine.combatUI as? CombatState)?.setShowDeploymentDialogOnStart(false)
         lockPfCamera(engine)
-        // 与其他场景一致：reserves 部署放到 advance()，init 阶段渲染器未就绪。
+        // reserves 部署放到 advance()，init 阶段渲染器未就绪。
         ctx.writeDiagnostics("CombatReady")
         ctx.writeTelemetry("CombatReady", findPfPlayer(engine), null)
         ctx.log.info("[ASTD-Automation] scenario=$scenarioId combat plugin initialized")
@@ -126,7 +124,7 @@ abstract class AbstractPhaseFlankScenario : AbstractAutomationScenario() {
         ).toFloat()
         val phased = player.isPhased
         if (phased && !pfWasPhased) {
-            // 下潜沿：重置本次相位的扫描累计
+            // 下潜沿：重置当前相位的扫描累计
             pfDiveCount++
             pfSweepLastBearing = bearing
             pfSweepUnwrapped = 0f
@@ -144,8 +142,8 @@ abstract class AbstractPhaseFlankScenario : AbstractAutomationScenario() {
             pfSurfaceCount++
             val bearingDiff = Math.abs(Misc.getAngleDiff(enemy.facing, bearing))
             pfSurfaceBearingDiffMax = maxOf(pfSurfaceBearingDiffMax, bearingDiff)
-            // 贴盾上浮探针：落点间距低于（本舰碰撞半径 + 敌舰有效半径）× [PF_SURFACE_HUG_FRAC]——
-            // 敌舰护盾开启时有效半径取护盾半径（贴护盾外缘同样贴脸，对齐 AI 侧口径）
+            // 贴盾上浮探针：上浮位置间距低于（本舰碰撞半径 + 敌舰有效半径）× [PF_SURFACE_HUG_FRAC]；
+            // 敌舰护盾开启时有效半径取护盾半径（贴护盾外缘同样贴脸，与 AI 侧判定一致）
             val enemyShield = enemy.shield
             val enemyEffRadius =
                 if (enemyShield != null && enemyShield.isOn) {
@@ -214,7 +212,7 @@ abstract class AbstractPhaseFlankScenario : AbstractAutomationScenario() {
     }
 
     /**
-     * 相位对抗观测：不钉位、不清辐能、不动舰 AI——两舰满装配 AI 自由对抗，
+     * 相位对抗观测：不钉位、不清辐能、不动舰 AI，两舰满装配 AI 自由对抗，
      * 逐帧回满双方舰体（保住对抗时长；辐能保留，相位 AI 的辐能压力链路输入保持真实）。
      */
     override fun advance(ctx: AutomationCombatContext, amount: Float) {
@@ -229,7 +227,7 @@ abstract class AbstractPhaseFlankScenario : AbstractAutomationScenario() {
         if (player != null && !player.isHulk) player.hitpoints = player.maxHitpoints
         if (enemy != null && !enemy.isHulk) enemy.hitpoints = enemy.maxHitpoints
         // 玩家舰身份照 GRG 范式赋予（不锁操控，AI 自由对抗）：CombatState.setPlayerShip
-        // 会把舰 AI 收进 prevAI 并置空（玩家接管口径），系统 AI 挂在舰 AI 上会随之停转，
+        // 会把舰 AI 收进 prevAI 并置空（玩家接管语义），系统 AI 挂在舰 AI 上会随之停转，
         // 必须补建默认舰 AI（config 必须空实例：传 null 会让 BasicShipAI.pickManeuver NPE）
         if (player != null && !player.isHulk) {
             engine.setPlayerShipExternal(player)
@@ -309,7 +307,7 @@ abstract class AbstractPhaseFlankScenario : AbstractAutomationScenario() {
                 }
 
                 PfMode.SURVIVAL -> {
-                    // 违规即败：贴盾上浮或非相位硬吃高威胁投射物（用户实机两症状的判据化）；
+                    // 违规即败：贴盾上浮或非相位硬吃高威胁投射物；
                     // 生存窗内相位节奏健康（下潜 ≥2）且零违规即 Completed
                     val violation = when {
                         pfSurfaceHugCount > 0 ->
@@ -375,7 +373,7 @@ abstract class AbstractPhaseFlankScenario : AbstractAutomationScenario() {
         json.appendLine("  \"runtimeElapsedSeconds\": 0,")
         json.appendLine("  \"runtimeTrackedCount\": ${vfxTelemetry.trackedCount},")
         json.appendLine("  \"runtimeLastProjectileSpecId\": ${jsonString(vfxTelemetry.lastProjectileSpecId)},")
-        // ---- 机制证据（相位 AI：判定模式 / 下潜计数 / 相位扫描幅度 / 上浮方位差 / 走位驱动探针）----
+        // 机制证据（相位 AI：判定模式 / 下潜计数 / 相位扫描幅度 / 上浮方位差 / 走位驱动探针）
         json.appendLine("  \"pfPhase\": \"$pfPhase\",")
         json.appendLine("  \"pfMode\": \"$mode\",")
         json.appendLine("  \"pfSystemId\": ${jsonString(pfCloak?.id)},")
@@ -389,7 +387,7 @@ abstract class AbstractPhaseFlankScenario : AbstractAutomationScenario() {
         json.appendLine("  \"pfPhasedSpeedMax\": ${formatFloat(pfPhasedSpeedMax)},")
         json.appendLine("  \"pfCombatSeconds\": ${formatFloat(if (pfCombatStartAt < 0f) 0f else ctx.elapsed - pfCombatStartAt)},")
         json.appendLine("  \"pfPlayerCurrFlux\": ${formatFloat(pfPlayer?.fluxTracker?.currFlux ?: -1f)},")
-        // ---- 生存判据探针（贴盾上浮 / 高威胁投射物命中）----
+        // 生存判据探针（贴盾上浮 / 高威胁投射物命中）
         json.appendLine("  \"pfSurfaceHugCount\": $pfSurfaceHugCount,")
         json.appendLine("  \"pfSurfaceClosestDist\": ${formatFloat(if (pfSurfaceClosestDist == Float.MAX_VALUE) -1f else pfSurfaceClosestDist)},")
         json.appendLine("  \"pfTorpedoHits\": $pfTorpedoHits,")
@@ -407,7 +405,7 @@ abstract class AbstractPhaseFlankScenario : AbstractAutomationScenario() {
         private const val PF_CAMERA_VISIBLE_HEIGHT = 4500f
 
         // FLANK 成功判据（达其一即证明绕后走位生效）：相位中绕敌方位角扫描幅度 / 上浮时相对敌艏方位差。
-        // 修复前原版走位旗标 PHASE_ATTACK_RUN 无人管理，舜华下潜后原地罚站，两值都趋近 0。
+        // 原版走位旗标 PHASE_ATTACK_RUN 无人管理时下潜后原地不动，两值趋近 0。
         private const val PF_SWEEP_MIN_DEG = 60f
         private const val PF_SURFACE_BEARING_MIN_DEG = 100f
         private const val PF_OBSERVE_TIMEOUT = 90f
@@ -418,10 +416,10 @@ abstract class AbstractPhaseFlankScenario : AbstractAutomationScenario() {
         // SURVIVAL 判据：生存窗 60s（窗内下潜 ≥2 且零违规即 Completed，违规即 Failed）。
         private const val PF_SURVIVAL_WINDOW_SEC = 60f
 
-        // 贴盾上浮判线：上浮落点间距 <（本舰碰撞半径 + 敌舰有效半径）× 本值（对齐 AI 侧 SURFACE_PROXIMITY_FRAC 口径）。
+        // 贴盾上浮判线：上浮上浮位置间距 <（本舰碰撞半径 + 敌舰有效半径）× 本值（与 AI 侧 SURFACE_PROXIMITY_FRAC 一致）。
         private const val PF_SURFACE_HUG_FRAC = 0.9f
 
-        // 高威胁投射物口径：单发伤害 ≥ 本值才跟踪（鱼雷级；滤掉点防/机关炮流弹）。
+        // 高威胁投射物阈值：单发伤害 ≥ 本值才跟踪（鱼雷级；滤掉点防与机关炮流弹）。
         private const val PF_TORPEDO_DAMAGE_MIN = 1000f
 
         // 命中判定余量：弹体消失帧最后位置距本舰中心 ≤ 碰撞半径 + 本值判命中（覆盖爆炸核心半径）。

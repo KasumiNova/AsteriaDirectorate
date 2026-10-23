@@ -1,20 +1,20 @@
 ---
-name: "texture-loading-guidelines"
+name: texture-loading-guidelines
 description: "贴图加载规范：代码侧渲染的自定义贴图必须 loadTexture 预加载；SpriteAPI 为共享缓存实例须逐帧重置状态；附排查清单。"
 ---
 
 # Skill：贴图加载与 SpriteAPI 使用规范
 
-## 背景（反复踩过的坑）
+## 延迟加载行为
 
 在 SSOptimizer 等延迟加载环境下，Starsector 只会把**被数据文件引用过**的贴图上传 GL
 （`.wpn`/`.ship`/`sprites.json`/hullmod 图标等）。代码里直接 `Global.getSettings().getSprite(path)`
-拿到的是 `textureID=0` 的空壳实例：
+会返回 `textureID=0` 的实例：
 
-- **不报错、不抛异常**，attach/加载日志一切正常；
-- 渲染循环照常执行，但屏幕上什么都画不出来。
+- 不抛出异常，attach 和加载日志正常；
+- 渲染循环照常执行，但贴图不会显示。
 
-已踩案例：制式核心军官头像黑壳、武器常驻发光贴图完全不渲染（战斗内逐帧渲染仍不可见）。
+已观察到的现象：制式核心军官头像显示为黑色，武器常驻发光贴图在战斗内逐帧渲染时仍不可见。
 
 ## 强制规则
 
@@ -46,7 +46,7 @@ description: "贴图加载规范：代码侧渲染的自定义贴图必须 loadT
 ## 装配界面（refit）不发光的机制说明
 
 - 原版 `turretGlowSprite`/`hardpointGlowSprite` 的 alpha 由开火/充能驱动（glowAmount、chargeProgress），
-  待机时恒为 0，因此**装配界面、图鉴里所有武器 glow 都不显示**——这是原版一致行为，不是 bug。
+  待机时恒为 0，因此**装配界面、图鉴里所有武器 glow 都不显示**，属于原版一致行为。
 - 装配界面的舰船展示走真实 Ship 渲染管线（`ShipDisplayPanel` 调 `ship.render`），
   但没有公开 API 可注入额外渲染层；按仓库规范禁止用反射挂 CoreUI 面板。
 - 如需装配界面也可见发光，唯一规范内方案是**把常亮发光烘进底图**（普通混合），

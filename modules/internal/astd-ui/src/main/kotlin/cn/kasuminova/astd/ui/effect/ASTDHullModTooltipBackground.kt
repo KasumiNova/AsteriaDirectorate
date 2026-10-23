@@ -14,32 +14,25 @@ import java.awt.Color
 /**
  * ASTD 船插 Tooltip 统一全息背景。
  *
- * 视觉规格（原型竞标终版，见 temp/fx-bakeoff/refine/）：
- * - 主风格 [HullmodBackgroundStyleConfig.STYLE_CORNER_PULSE]（k3-01 角标脉冲）：四角 L 形角标呼吸
- *   （嵌套三角描边/顶点光/能量核装饰按需求暂时移除），底层三角晶格 + 竖直扫描带 +
- *   漂浮微三角粒子铺满全面板，CRT 细扫描线与暗角收边，整体为暗色全息面板质感；
- * - 备选风格 [HullmodBackgroundStyleConfig.STYLE_PRISM_LATTICE]（deepseek-02 棱镜栅格）：紧贴边缘的面板
- *   结构边框 + 棱镜刻度 + 边框爬行光点，四角楔形线框 + 错落光锥，角部全息晶格，
- *   发光元素严格收敛于四角与边缘、中央文字区近黑静默；
- * - 颜色单点收口：全部发光元素跟随船插主题色（[accentColor] 随 Theme 传入）。
+ * 风格由 [HullmodBackgroundStyleConfig] 切换：STYLE_CORNER_PULSE 为四角 L 形角标呼吸 +
+ * 底层三角晶格 + 竖直扫描带 + 漂浮微三角粒子，CRT 细扫描线与暗角收边；
+ * STYLE_PRISM_LATTICE 为贴边结构边框 + 棱镜刻度 + 边框爬行光点 + 角部楔形线框与光锥，
+ * 发光元素集中在四角与边缘，中央文字区近黑；
+ * 全部发光元素跟随船插主题色（[accentColor] 随 Theme 传入）。
  *
- * GPU 负载控制（原型阶段实测教训：setInterval 叠加 requestAnimationFrame 造成
- * rAF 回调无限注册泄漏，每分钟每帧多渲染上千次，可将 GPU 打满）：
- * - Tooltip 面板渲染面积小（通常 < 600x400），时间由 [advance] 驱动、随游戏主循环推进，
- *   无任何自启动定时器；
- * - corner-pulse 角部装饰限制在角点 95 归一单位半径内（continue 早退，归一系定义见
- *   [FRAGMENT_CORNER_PULSE] 注释），prism-lattice 的 lattice/角部结构按权重早退，中央区域零循环开销。
+ * GPU 负载控制：时间由 [advance] 驱动、随游戏主循环推进，禁止自启动定时器；
+ * corner-pulse 角部装饰限制在角点 95 归一单位半径内早退（归一系定义见
+ * [FRAGMENT_CORNER_PULSE] 注释），prism-lattice 的 lattice/角部结构按权重早退，
+ * 中央区域零循环开销。
  *
- * 渲染通道评估：BoxUtil 的渲染实体（SpriteEntity/TrailEntity 等）面向战斗/星图世界层，
+ * 渲染通道：BoxUtil 渲染实体（SpriteEntity/TrailEntity 等）面向战斗/星图世界层，
  * 不提供 UI 面板内绘制工具；Tooltip 背景必须落在 UI stencil 裁剪区内嵌 GL 绘制，
- * 故沿用 GLSL 全屏四边形路径（本仓库唯一可用通道，与原版字体渲染同一固定管线）。
+ * 故使用 GLSL 全屏四边形路径。
  *
- * 排版对齐（0.98 原版源码核验，详见 [renderBelow]）：addCustom 组件位于 tooltip
- * 内容流（x = 内容面板 + 5），addPostDescriptionSection 传入的 width 为内容流宽，
- * 直接按该几何绘制会比船插背景左右各窄约 12px（refit，总宽 = 流宽 + 24）或
- * 15/5px（图鉴，外层 box = 流宽 + 20）。渲染时读取 tooltip 自身位置（实现类即
- * UIComponent）按宿主类型换算 chrome 区域，使背景铺满船插背景的内侧区域；
- * 底部另按 [BOTTOM_EXTEND] 向下扩展，补偿内容流底部过小的内边距。
+ * 排版对齐（详见 [renderBelow]）：addCustom 组件位于 tooltip 内容流（x = 内容面板 + 5），
+ * addPostDescriptionSection 传入的 width 为内容流宽，直接按该几何绘制会比船插背景
+ * 左右各窄一截。渲染时读取 tooltip 自身位置按宿主类型换算 chrome 区域，使背景铺满
+ * 船插背景内侧；底部另按 [BOTTOM_EXTEND] 向下扩展，补偿内容流底部过小的内边距。
  *
  * 编辑器镜像预设：`tools/tooltip-style-editor/src/model/defaultHullmodPreset.ts`
  * （shader id `corner-pulse` / `prism-lattice`，u_origin 在编辑器内以 (0,0) 全画布代入）。
@@ -68,14 +61,14 @@ class ASTDHullModTooltipBackground private constructor(
         if (h <= 0f) return
         val p = pos ?: return
 
-        // 原版排版机制（0.98 源码核验）：addCustom 的组件落在内容流上
-        // （x = 内容面板 + 5），而传入的 width 是内容流宽，直接按 (p.x, flowWidth)
-        // 绘制会比船插背景左右各窄一截。两种宿主的几何：
+        // 原版排版机制：addCustom 的组件落在内容流上（x = 内容面板 + 5），
+        // 而传入的 width 是内容流宽，直接按 (p.x, flowWidth) 绘制会比船插背景左右各窄一截。
+        // 两种宿主的几何：
         // - refit 等带边框 tooltip（StandardTooltipV2Expandable）：总宽 = 内容流宽 + 24
         //   （内容面板 +10、左右各 7px 边框垫区），背景铺满内容面板区域、避开边框纹理；
         // - 图鉴（CodexDetailPanel）：mainText 无边框，宽度即内容流宽，外层 box 按
         //   wrapTooltipWithBox 常量外扩 10px 并带 1px 深色描边，背景铺满 box 描边内侧。
-        // 两种宿主以「chrome 宽 - 内容流宽」是否大于 20 区分（24 vs 0）。
+        // 两种宿主以 chrome 宽减内容流宽是否大于 20 区分（24 vs 0）。
         val chrome = (tooltip as UIComponentAPI).position
         val quadX: Float
         val quadWidth: Float
@@ -145,7 +138,7 @@ class ASTDHullModTooltipBackground private constructor(
         /**
          * 顶点着色器：以 varying 传递顶点的 CPU 侧逻辑坐标。
          *
-         * 注意：禁止使用 gl_FragCoord 换算面板局部坐标——它是物理 framebuffer 像素，
+         * 禁止使用 gl_FragCoord 换算面板局部坐标：它是物理 framebuffer 像素，
          * 与 SS UI 逻辑坐标（u_origin）在显示缩放/高分屏下存在比例差，会导致
          * 角部早退全部命中、背景完全消失。gl_Vertex 与 u_origin 同属逻辑坐标空间，
          * 差值插值后与物理像素解耦，任何缩放下自洽。
@@ -159,14 +152,12 @@ class ASTDHullModTooltipBackground private constructor(
         """
 
         /**
-         * k3-01 角标脉冲 fragment shader（GLSL 110 兼容）。
+         * 角标脉冲 fragment shader（GLSL 110 兼容）。
          *
          * 坐标系：面板局部逻辑坐标（v_pos - u_origin）除以 uiScale 后的归一空间，y 向上；
          * 面板宽度归一：以编辑器 580px 为基准（uiScale = clamp(u_resolution.x / 580, 0.6, 1.0)），
          * frag/res/uv 及全部像素尺寸元素（角标/晶格/粒子/扫描带/角部早退半径）均定义在归一空间，
-         * 窄面板上等比缩小、占比与基准一致；编辑器镜像以 gl_FragCoord / uiScale 等价代入；
-         * 与原型差异：uRes→u_resolution、ACCENT→u_accentColor.rgb、
-         * 输出 alpha 0.92*u_alphaMult（与旧版面板一致）、角部循环 95 归一单位半径早退。
+         * 窄面板上等比缩小、占比与基准一致；编辑器镜像以 gl_FragCoord / uiScale 等价代入。
          */
         private const val FRAGMENT_CORNER_PULSE = """
             uniform float u_time;
@@ -227,18 +218,18 @@ class ASTDHullModTooltipBackground private constructor(
 
               col += vec3(0.005, 0.010, 0.01875) * (1.0 - uv.y);
 
-              // ---- base triangular lattice ----
+              // base triangular lattice
               float g = triGrid(frag, 56.0);
               float gridLine = 1.0 - smoothstep(0.0, 1.2, g);
               col += accent * gridLine * 0.1;
 
-              // ---- vertical sweep band ----
+              // vertical sweep band
               float sweepY = mod(u_time * 81.0, res.y + 240.0) - 120.0;
               float band = exp(-pow((frag.y - sweepY) / 46.0, 2.0));
               col += accent * gridLine * band * 0.11;
               col += accent * band * 0.012;
 
-              // ---- drifting micro-triangle particles ----
+              // drifting micro-triangle particles
               {
                 float cell = 90.0;
                 vec2 gp = frag + vec2(0.0, u_time * 7.0);
@@ -253,8 +244,7 @@ class ASTDHullModTooltipBackground private constructor(
                 col += accent * a;
               }
 
-              // ---- corner ornaments: L-shaped brackets ----
-              // (nested triangle strokes / apex light / energy core temporarily removed per spec)
+              // corner ornaments: L-shaped brackets
               for (int i = 0; i < 4; i++) {
                 vec2 corner;
                 if (i == 0) { corner = vec2(10.0, 10.0); }
@@ -282,18 +272,18 @@ class ASTDHullModTooltipBackground private constructor(
                 col += accent * (1.0 - smoothstep(0.5, 1.5, bl2)) * 0.38;
               }
 
-              // ---- thin border ----
+              // thin border
               float bd = min(min(frag.x, res.x - frag.x), min(frag.y, res.y - frag.y));
               col += accent * (1.0 - smoothstep(0.0, 1.0, bd)) * 0.10;
 
-              // ---- CRT scanlines (period locked to logical px, avoids sub-pixel moire) ----
+              // CRT scanlines (period locked to logical px, avoids sub-pixel moire)
               col *= 0.96 + 0.04 * sin(frag.y * uiScale * PI);
 
-              // ---- vignette ----
+              // vignette
               vec2 q = uv - 0.5;
               col *= 1.0 - 0.32 * dot(q, q);
 
-              // ---- dither against banding ----
+              // dither against banding
               col += (hash12(frag + fract(u_time) * 13.7) - 0.5) * 0.008;
 
               // soft highlight rolloff, no hard clipping
@@ -304,16 +294,12 @@ class ASTDHullModTooltipBackground private constructor(
         """
 
         /**
-         * deepseek-02 棱镜栅格 fragment shader（GLSL 110 兼容，备选风格）。
+         * 棱镜栅格 fragment shader（GLSL 110 兼容）。
          *
          * 坐标系：面板局部逻辑像素（v_pos - u_origin）换算为以面板中心为原点、
-         * 短边归一（p = (2px - res) / res.y），与原型一致；
-         * 与原型差异：u_res→u_resolution、u_acc→u_accentColor.rgb、移除未使用的 u_deep/PI/TAU、
-         * 输出 alpha 0.92*u_alphaMult；扩散三角环与旋转三角主轴已按需求移除，
-         * lattice 与角部结构按权重早退；PANEL 由 (0.955, 0.915) 改为 (1.0, 1.0)，
-         * 描边/刻度/角部结构紧贴面板边缘（外侧衰减由 UI stencil 裁剪）；
-         * 角根核心由原型的独立 col+= 并入 acc3（改按 cmask*clip 缩放：核心 e 折半径
-         * ~3.9px，贴边后角点外侧部分随 stencil 一并裁剪，视觉可忽略）。
+         * 短边归一（p = (2px - res) / res.y）；lattice 与角部结构按权重早退；
+         * PANEL = (1.0, 1.0)，描边/刻度/角部结构紧贴面板边缘，外侧衰减由 UI stencil 裁剪；
+         * 角根核心并入 acc3 按 cmask*clip 缩放，贴边后角点外侧部分随 stencil 一并裁剪。
          */
         private const val FRAGMENT_PRISM_LATTICE = """
             uniform float u_time;
@@ -394,7 +380,7 @@ class ASTDHullModTooltipBackground private constructor(
 
               vec3 col = vec3(0.0);
 
-              // ---- holo lattice: weight-gated early-out, center fully dark ----
+              // holo lattice: weight-gated early-out, center fully dark
               float cw = exp(-mix(length(cu), max(cu.x, cu.y), 0.68) * 6.0);
               if (cw > 0.004) {
                 vec2 dir = normalize(p + 1e-5);
@@ -418,7 +404,7 @@ class ASTDHullModTooltipBackground private constructor(
                        (0.35 + 0.65 * max(0.0, sin(t * 1.6 + cell * 40.0))) * 0.30;
               }
 
-              // ---- panel border: crisp tactical structure line ----
+              // panel border: crisp tactical structure line
               float bd, barc;
               rectOutline(p, hp, bd, barc);
               float perim = 4.0 * (hp.x + hp.y);
@@ -439,7 +425,7 @@ class ASTDHullModTooltipBackground private constructor(
               col += acc * exp(-d1 * 140.0) * edge * 0.45;
               col += acc * exp(-d2 * 110.0) * edge * 0.25;
 
-              // ---- corners: prism structure (expanding rings / rotating axes removed per spec) ----
+              // corners: prism structure
               float C = 0.56;
               float cmask = 1.0 - smoothstep(C * 0.70, C * 1.20, length(cu));
               float clip  = smoothstep(-0.004, 0.0015, cu.x) * smoothstep(-0.004, 0.0015, cu.y);
@@ -478,14 +464,14 @@ class ASTDHullModTooltipBackground private constructor(
 
               col += acc3 * cmask * clip;
 
-              // ---- inscribed guide lines ----
+              // inscribed guide lines
               vec2 c0 = hp - vec2(0.060, 0.060);
               float d00 = min(min(min(abs(p.x - c0.x), abs(p.x + c0.x)),
                                   abs(p.y - c0.y)), abs(p.y + c0.y));
               float line00 = 1.0 - smoothstep(0.0, 0.0022, d00);
               col += acc * (line00 * 0.16 + exp(-d00 * 120.0) * 0.04) * (0.5 + 0.5 * sin(t * 1.55));
 
-              // ---- atmosphere & tonemap ----
+              // atmosphere & tonemap
               col *= 0.98 + 0.02 * hash21(px * 0.7 + fract(t) * 53.1);
 
               // deepen center darkness, keep center near-black

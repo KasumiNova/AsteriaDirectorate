@@ -16,10 +16,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/**
- * 奇点稳定器锚定判定（[ASTDSingularityStabilizerHullMod.resolveTimeAnchor] 纯函数全分支）
- * 与安全协议超驰延迟清理（applyEffectsBeforeShipCreation 只入队 → [IncompatibleHullmodStripper.drainPending] 五路清理）验证。
- */
 class SingularityStabilizerHullModTest {
 
     @Test
@@ -66,7 +62,6 @@ class SingularityStabilizerHullModTest {
         ASTDSingularityStabilizerHullMod()
             .applyEffectsBeforeShipCreation(ShipAPI.HullSize.FRIGATE, stats, "test")
 
-        // 创建前回调不得结构性移除（原版 OP 结算实时迭代 hullMods 期间回调，removeMod 必抛 CME）
         verify(variant, never()).removeMod(HullMods.SAFETYOVERRIDES)
         assertTrue(sMods.contains(HullMods.SAFETYOVERRIDES))
 

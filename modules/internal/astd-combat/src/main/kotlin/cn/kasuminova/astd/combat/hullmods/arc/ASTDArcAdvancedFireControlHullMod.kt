@@ -16,23 +16,6 @@ import com.fs.starfarer.api.combat.WeaponAPI
 import com.fs.starfarer.api.ui.TooltipMakerAPI
 import java.awt.Color
 
-/**
- * 先进火控集成（烽燧 XC-102 内置船插）：以固定射程劣势换取持续开火下的进攻性增益。
- *
- * 固定效果（装配期写入，不随难度）：
- * - 舰船武器射程 -20%（弹道/能量/光束三条射程乘区）；
- * - 武器辐能产出 +20%（弹道/能量/光束三条辐耗乘区）。
- *
- * 持续性加成（2026-10 裁定，随难度系数）：大型非点防武器持续开火时经 [RAMP_DURATION] 秒
- * 线性爬坡至满额，停火后同时长衰减——
- * - 武器辐能产出 -30%/-40%/-70%（在固定 +20% 基础上向满额乘区插值）；
- * - 非导弹武器射速 +10%/+20%/+50%；
- * - 非导弹武器伤害 +10%/+20%/+50%（弹道/能量/光束）；
- * - 射弹飞行速度 +15%/+20%/+35%。
- *
- * 难度取值：advanceInCombat 逐帧按 owner 结算（玩家侧我方档位，默认砺刃 v2；
- * 敌方/友军 AI 轨一 k_s 映射），tooltip 无舰上下文按我方档位展示。
- */
 class ASTDArcAdvancedFireControlHullMod : BaseHullMod() {
 
     companion object {
@@ -40,16 +23,12 @@ class ASTDArcAdvancedFireControlHullMod : BaseHullMod() {
         private const val BASELINE_WEAPON_FLUX_MULT = 1.20f
         private const val RAMP_DURATION = 6f
 
-        /** 满 ramp 武器辐耗总乘区（三锚点 -30%/-40%/-70%）。 */
         val FULL_RAMP_WEAPON_FLUX = ScalingEntry(0.70f, 0.60f, 0.30f)
 
-        /** 满 ramp 非导弹武器射速加成（三锚点 +10%/+20%/+50%，小数口径）。 */
         val RAMP_ROF_BOOST = ScalingEntry(0.10f, 0.20f, 0.50f)
 
-        /** 满 ramp 非导弹武器伤害加成（三锚点 +10%/+20%/+50%，小数口径）。 */
         val RAMP_DAMAGE_BOOST = ScalingEntry(0.10f, 0.20f, 0.50f)
 
-        /** 满 ramp 射弹飞行速度加成（三锚点 +15%/+20%/+35%，小数口径）。 */
         val RAMP_PROJ_SPEED_BOOST = ScalingEntry(0.15f, 0.20f, 0.35f)
 
         private const val BASELINE_STAT_ID = "astd_arc_advanced_fire_control_baseline"
@@ -58,7 +37,6 @@ class ASTDArcAdvancedFireControlHullMod : BaseHullMod() {
         private val THEME = HullmodThemes.ARC
     }
 
-    /** 难度结算值（三锚点映射后，小数口径）。 */
     internal data class RampValues(
         val fullRampFluxMult: Float,
         val rofBoost: Float,
@@ -171,7 +149,6 @@ class ASTDArcAdvancedFireControlHullMod : BaseHullMod() {
         width: Float,
         isForModSpec: Boolean
     ) {
-        // tooltip 展示口径：无舰上下文（装配面板）按我方档位展示（默认砺刃 v2）
         val values = RampValues.resolve(ship == null || ship.owner == 0)
         tooltip.hullmodCard(width, THEME, spec?.displayName) {
             para("ui.hullmod.arc_advanced_fire_control.desc")

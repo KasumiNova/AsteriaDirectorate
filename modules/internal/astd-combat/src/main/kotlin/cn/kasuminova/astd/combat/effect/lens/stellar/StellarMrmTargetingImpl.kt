@@ -6,13 +6,6 @@ import com.fs.starfarer.api.combat.ShipAPI
 import org.lazywizard.lazylib.MathUtils
 import org.lwjgl.util.vector.Vector2f
 
-/**
- * [StellarMrmTargeting] 的无状态实现（规格 08 §2.1）：战机优先/最近舰兜底/
- * 排除友军-hulk-导弹-不在场-超射程的筛选矩阵。
- *
- * 无人机（isDrone）按 2026-07-29 裁定与普通舰船同档纳入兜底；
- * 输入允许混入 MissileAPI 等非舰船实体——类型过滤在此完成，导弹永不入选。
- */
 object StellarMrmTargetingImpl : StellarMrmTargeting {
 
     override fun select(

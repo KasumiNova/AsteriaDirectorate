@@ -21,11 +21,8 @@ import org.lwjgl.util.vector.Vector2f
 
 /**
  * 舜华引力空间复制器/折跃器场景（断言点 GSR-A~GSR-F）。
- *
- * 拆分自 ASTDAutomationCombatPlugin 的同名 if-else 分支，相位机/断言/证据写出口径原样迁移。
  */
 class GravReplicatorScenario : AbstractAutomationScenario() {
-    // ==== 舜华引力空间复制器/折跃器场景状态（相位机 SPAWN → ACTIVATE → OBSERVE_COOLDOWN → FOLD_FEED → COMPLETED） ====
     private var gsrPhase = GSR_PHASE_SPAWN
     private var gsrPhaseStartedAt = 0f
 
@@ -73,7 +70,7 @@ class GravReplicatorScenario : AbstractAutomationScenario() {
         val engine = ctx.engine
         engine.setDoNotEndCombat(true)
         lockGsrCamera(engine)
-        // 与其他场景一致：reserves 部署放到 advance()，init 阶段渲染器未就绪。
+        // reserves 部署放到 advance()，init 阶段渲染器未就绪。
         ctx.writeDiagnostics("CombatReady")
         ctx.writeTelemetry("CombatReady", findGsrPlayer(engine), null)
         ctx.log.info("[ASTD-Automation] scenario=${ASTDInGameAutomationScenario.GSR_SCENARIO_ID} combat plugin initialized")
@@ -117,7 +114,7 @@ class GravReplicatorScenario : AbstractAutomationScenario() {
     /**
      * 舞台保活与站位（范式同 stabilizeGsShips）：双方逐帧钉死锚点 + 舰 AI 置空。
      * 玩家舰逐帧封锁相位斗篷（zw_101 为相位驱逐舰：进相位折跃停判，本场景观测面不含相位路径）
-     * 并压盾兜底；[playerFire] 仅在 ACTIVATE 相位强制单发脉冲激光的那帧放开开火闸
+     * 并压盾；[playerFire] 仅在 ACTIVATE 相位强制单发脉冲激光的那帧放开开火闸
      * （isHoldFireOneFrame 会吞 setForceFireOneFrame，范式同 xc_001 默认场景先清 holdFire 再强火）。
      */
     private fun stabilizeGsrShips(engine: CombatEngineAPI, playerFire: Boolean, zeroPlayerFlux: Boolean, blockSystem: Boolean) {
@@ -125,8 +122,8 @@ class GravReplicatorScenario : AbstractAutomationScenario() {
         val enemy = findGsrEnemy(engine)
         if (player != null && !player.isHulk) {
             engine.setPlayerShipExternal(player)
-            // 保留舰 AI（preserveAI=true）：实机验证 setForceFireOneFrame 对无舰 AI 的舞台舰不生效
-            // （范式同电荷针刺重型直控开火路径）；移动/相位/系统由钉位与命令封锁兜底。
+            // 保留舰 AI（preserveAI=true）：Starsector 0.98 中 setForceFireOneFrame 对无舰 AI 的舞台舰不生效
+            // （范式同电荷针刺重型直控开火路径）；移动/相位/系统由钉位与命令封锁处理。
             stabilizeShip(player, GSR_PLAYER_ANCHOR, 0f, allowFire = playerFire, preserveAI = true)
             player.hitpoints = player.maxHitpoints
             if (zeroPlayerFlux) {
@@ -155,7 +152,7 @@ class GravReplicatorScenario : AbstractAutomationScenario() {
      * 投喂一发折跃判定弹（范式同 feedGhostSignalMissiles：weapon=null + weaponId 直生成，
      * source=敌靶舰保证 owner 敌对）：靶舰东侧 GSR_FEED_SPAWN_DIST 起垂直舰心线西射，
      * 纵向散布保证全部穿过折跃判定圈（碰撞圈 +200su）。返回弹体 identityHash；spawn 失败
-     * 走 FAILED 上报（Fail Fast，同幽灵信号投喂口径）。
+     * 走 FAILED 上报（Fail Fast，同幽灵信号投喂）。
      */
     private fun gsrFeedShot(engine: CombatEngineAPI, player: ShipAPI, enemy: ShipAPI): Int? {
         val spread = MathUtils.getRandomNumberInRange(-GSR_FEED_SPREAD, GSR_FEED_SPREAD)
@@ -169,7 +166,7 @@ class GravReplicatorScenario : AbstractAutomationScenario() {
         return System.identityHashCode(spawned)
     }
 
-    /** 本舰实弹分类统计（断言点 GSR-C 观测面）：首见弹按伤害口径分类——复制体出生即原弹 ×0.5，严格分流。 */
+    /** 本舰实弹分类统计（断言点 GSR-C 观测面）：首见弹按伤害分类，复制体出生即原弹 ×0.5，严格分流。 */
     private fun trackGsrOwnProjectiles(engine: CombatEngineAPI, player: ShipAPI) {
         for (proj in engine.projectiles) {
             if (proj.source !== player || proj is MissileAPI) continue
@@ -186,8 +183,8 @@ class GravReplicatorScenario : AbstractAutomationScenario() {
             } else {
                 gsrReplicaShots++
                 gsrReplicaDamageMax = maxOf(gsrReplicaDamageMax, damage)
-                // 收敛射向证据：复制弹朝向与原发弹朝向的角差（环带随机出生点 → 指向同一终点
-                // 必然与原射向有夹角；退化为 0 即复制弹与原弹平行，是收敛失效的直接特征）。
+                // 射向校正证据：复制弹朝向与原发弹朝向的角差（环带随机出生点 → 指向同一终点
+                // 必然与原射向有夹角；退化为 0 即复制弹与原弹平行，是校正失效的直接特征）。
                 // 闸门用 gsrOrigDamage 而非 gsrOrigFacing：朝向合法域含负值，不能用负数当未初始化哨兵。
                 if (gsrOrigDamage >= 0f) {
                     gsrReplicaFacingMaxDelta = maxOf(
@@ -232,8 +229,8 @@ class GravReplicatorScenario : AbstractAutomationScenario() {
 
             GSR_PHASE_ACTIVATE -> {
                 // 开火窗口：激活 +0.3s 起逐帧强火直至首见原发弹（脉冲激光 1s 射速，窗口内恰一发）。
-                // setForceFireOneFrame 必须逐帧调用且舰 AI 在场（无 AI 舞台舰不生效，针刺场景实机验证）；
-                // 不得 setRemainingCooldownTo(0f)——逐帧重置会把开火周期反复归零导致零弹体。
+                // setForceFireOneFrame 必须逐帧调用且舰 AI 在场（Starsector 0.98 中无 AI 舞台舰不生效）；
+                // 不得 setRemainingCooldownTo(0f)，逐帧重置会把开火周期反复归零导致零弹体。
                 val inFireWindow = gsrActivatedAt >= 0f && gsrOriginalShots < 1 &&
                         ctx.elapsed - gsrActivatedAt >= GSR_FIRE_DELAY_SECONDS
                 // 辐能清零闸只认原版状态机：IDLE 才清零。激活代价在首个 apply 帧计入
@@ -287,13 +284,13 @@ class GravReplicatorScenario : AbstractAutomationScenario() {
                                 if (gsrPrevFlux >= 0f && delta >= GSR_SPIKE_MIN_DELTA) gsrFluxSpikes += delta
                                 gsrPrevFlux = currFlux
                             }
-                            // 结算宽限：ACTIVE 2s 转 COOLDOWN 后多等 0.5s——晚发的原发弹复制调度
+                            // 结算宽限：ACTIVE 2s 转 COOLDOWN 后多等 0.5s，晚发的原发弹复制调度
                             // （发射 +0.5s/+1.0s，由舰船 listener 队列推进，不随系统关闭取消）可能压线落地。
                             if (system.state == ShipSystemAPI.SystemState.COOLDOWN &&
                                 ctx.elapsed - gsrActivatedAt >= GSR_EVAL_GRACE_SECONDS
                             ) {
                                 val capacity = player.mutableStats.fluxCapacity.baseValue
-                                // 镜像 CSV entry `f/u (base cap)` = 0.1（激活软辐能已迁移原版结算，tuning 常量已删）
+                                // 镜像 CSV entry `f/u (base cap)` = 0.1（激活软辐能走原版结算）
                                 val expectedActivation = capacity * GSR_ACTIVATION_FLUX_FRACTION_OF_CAP
                                 val fluxPerShot = replicaWeapon.fluxCostToFire
                                 val halfSpikes = gsrFluxSpikes.count {
@@ -540,7 +537,7 @@ class GravReplicatorScenario : AbstractAutomationScenario() {
         json.appendLine("  \"runtimeElapsedSeconds\": 0,")
         json.appendLine("  \"runtimeTrackedCount\": ${vfxTelemetry.trackedCount},")
         json.appendLine("  \"runtimeLastProjectileSpecId\": ${jsonString(vfxTelemetry.lastProjectileSpecId)},")
-        // ---- 机制证据（断言点 GSR-A~GSR-F）----
+        // 机制证据（断言点 GSR-A~GSR-F）
         json.appendLine("  \"gsrPhase\": \"$gsrPhase\",")
         json.appendLine("  \"gsrSystemId\": ${jsonString(gsrSystem?.id)},")
         json.appendLine("  \"gsrSystemState\": ${jsonString(gsrSystem?.state?.name)},")
@@ -584,18 +581,18 @@ class GravReplicatorScenario : AbstractAutomationScenario() {
         private const val GSR_SPAWN_SETTLE_SECONDS = 1.0f
 
         // 复制器观测武器（MissionDefinition 装入 WS0001 中型协同槽的原版脉冲激光：能量实弹、
-        // 非光束非装饰，正落复制口径）与折跃投喂弹种（原版轻机枪：伤害 25 ≤ 50 走基础概率 v2 50%）。
+        // 非光束非装饰，正落在复制范围内）与折跃投喂弹种（原版轻机枪：伤害 25 ≤ 50 走基础概率 v2 50%）。
         private const val GSR_REPLICA_WEAPON_ID = "pulselaser"
         private const val GSR_FEED_WEAPON_ID = "lightmg"
 
 
         // 投喂弹道：靶舰东侧 450su 起垂直舰心线西射，纵向散布 ±80su。lightmg 射程仅 300su、
-        // 折跃判定圈 = 碰撞圈 +200su（驱逐舰 ≈260su），入圈行程 ≈190su 留足衰减余量——
+        // 折跃判定圈 = 碰撞圈 +200su（驱逐舰 ≈260su），入圈行程 ≈190su 留足衰减余量，
         // fade 中的弹体被 tryFold 跳过（isFading 提前返回），过远投喂会在进圈前 fade 而零判定。
         private const val GSR_FEED_SPAWN_DIST = 450f
         private const val GSR_FEED_SPREAD = 80f
 
-        // 折跃判定入圈距离上限（碰撞圈 +200su 的观测口径；驱逐舰碰撞半径 60 量级，取 300su 宽松界）。
+        // 折跃判定入圈距离上限（碰撞圈 +200su 的观测判定；驱逐舰碰撞半径 60 量级，取 300su 宽松界）。
         private const val GSR_FOLD_ENTER_DIST = 300f
 
         // SPAWN（断言点 GSR-A）：系统非冷却期光束承伤乘区 v2 ×0.75（界 [0.73, 0.77]）。
@@ -603,21 +600,21 @@ class GravReplicatorScenario : AbstractAutomationScenario() {
         private const val GSR_BEAM_MULT_IDLE_MAX = 0.77f
 
         // ACTIVATE（断言点 GSR-B/C）：激活软辐能 = 基础容量 ×10%（运行时读 baseValue 求期望，
-        // 界 ±25% 容忍逐帧耗散的帧量化）；+0.3s 强制单发；辐能尖峰口径——开火 ≈1×单发辐能
+        // 界 ±25% 容忍逐帧耗散的帧量化）；+0.3s 强制单发；辐能尖峰判定：开火 ≈1×单发辐能
         // （界 [0.8, 1.2]×f）、每发复制 ≈0.5×单发辐能（界 [0.3, 0.7]×f），尖峰起判 20
         // （远高于逐帧耗散 300/s × 帧间隔 ≈ 5 的底噪）；复制体伤害界 [0.45, 0.55]×原弹。
         private const val GSR_ACTIVATE_TIMEOUT = 10f
 
-        /** 激活软辐能占基础辐能容量比例：镜像 CSV entry `f/u (base cap)` = 0.1（原版结算，tuning 常量已删）。 */
+        /** 激活软辐能占基础辐能容量比例：镜像 CSV entry `f/u (base cap)` = 0.1（原版结算）。 */
         private const val GSR_ACTIVATION_FLUX_FRACTION_OF_CAP = 0.1f
         private const val GSR_ACTIVATION_FLUX_TOLERANCE = 0.25f
         private const val GSR_FIRE_DELAY_SECONDS = 0.3f
 
-        // 复制弹收敛射向断言下限（度）：环带出生点偏离原弹道轴 → 收敛射向与原射向必有夹角；
-        // 取 max 口径（任一发复制弹明显收敛即通过），随机出生点恰好压在弹道轴上的概率近零。
+        // 复制弹射向校正断言下限（度）：环带出生点偏离原弹道轴 → 校正射向与原射向必有夹角；
+        // 取 max（任一发复制弹完成校正即通过），随机出生点恰好压在弹道轴上的概率近零。
         private const val GSR_REPLICA_CONVERGE_MIN_DELTA = 0.5f
 
-        // 结算宽限：ACTIVE（2s）转 COOLDOWN 后再等 0.5s 才评估复制证据——晚发原发弹的
+        // 结算宽限：ACTIVE（2s）转 COOLDOWN 后再等 0.5s 才评估复制证据，晚发原发弹的
         // 第二发复制（发射 +1.0s，listener 队列推进不随系统关闭取消）可能压线落地。
         private const val GSR_EVAL_GRACE_SECONDS = 2.5f
         private const val GSR_SPIKE_MIN_DELTA = 20f
@@ -637,7 +634,7 @@ class GravReplicatorScenario : AbstractAutomationScenario() {
         private const val GSR_COOLDOWN_BEAM_MULT_MAX = 1.02f
         private const val GSR_COOLDOWN_TIMEOUT = 20f
 
-        // FOLD_FEED（断言点 GSR-F）：投喂 30 发（0.25s 间隔）统计三态标记——50% 基础概率下
+        // FOLD_FEED（断言点 GSR-F）：投喂 30 发（0.25s 间隔）统计三态标记，50% 基础概率下
         // 30 发全同侧概率 ~2e-9，folded/no_fold 各 ≥1 且至少一发 folded 镜像后远离舰心。
         private const val GSR_FOLD_FEED_COUNT = 30
         private const val GSR_FOLD_FEED_INTERVAL = 0.25f

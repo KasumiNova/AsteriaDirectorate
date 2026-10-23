@@ -16,8 +16,6 @@ import org.lwjgl.util.vector.Vector2f
 
 /**
  * ARC production 舰船 VFX/tooltip 场景。
- *
- * 拆分自 ASTDAutomationCombatPlugin 的同名 if-else 分支，相位机/断言/证据写出口径原样迁移。
  */
 class ArcProductionScenario : AbstractAutomationScenario() {
     private val arcProductionAnchors = mapOf(

@@ -24,54 +24,8 @@ import com.fs.starfarer.api.combat.ShipVariantAPI
 import com.fs.starfarer.api.ui.TooltipMakerAPI
 import java.awt.Color
 
-/**
- * 先进电子对抗网络（Advanced ECM Network，hullmod id：astd_advanced_ecm_network）——决明级（ZW-001）内置插件。
- *
- * 仅对决明级生效（[isApplicableToShip] / advanceInCombat 入口 [hasHullId] guard）。
- * advanceInCombat 每帧驱动（接入原版 ElectronicWarfareScript 结算链路，数值见
- * [AdvancedEcmNetworkTuning]）：
- *
- * 1. **演算核心**：
- *    - 网络贡献：自身强度 + Σ 存活友军按舰级分档贡献，写入本舰
- *      electronic_warfare_flat（同 id 覆盖，幂等；原版逐舰累加即得舰队总额）。
- *      友军枚举走 [AffixShared.aliveAllies]（存活、非战机/无人机/残骸）。
- *    - 敌方反制：每艘存活敌舰的 electronic_warfare_flat 被 clamp 到按舰级上限
- *      （4/8/12/16%）：先 unmodify 本网络修饰读他源终值，超出上限再写负向 flat 修正。
- * 2. **战术反制**（合并原引力电子干扰力场 astd_grav_ew_field 的全部机制）：
- *    - 最大效果提升：对本侧舰队全部指挥官的 dynamic stat electronic_warfare_max 写
- *      flat 增量（难度缩放基础值 + 每个被本侧占领战术点的额外加计，
- *      [AdvancedEcmNetworkTuning.commanderBoost]）。注意 PersonAPI 的 dynamic stat
- *      跨战斗存活，必须逐帧对账（指挥官离场立即 unmodify）并在 hulk/离场/战斗结束
- *      路径全量收口；跨战斗残留另有 [purgeEcmCommanderBoosts] 安全网。
- *    - 占领加速：对全部存活友军舰船（含本舰）的 dynamic stat
- *      [AdvancedEcmNetworkTuning.CAP_RATE_STAT] 写乘区，逐帧对账收口。
- *    - 附加四项减益：复算原版公式（[AdvancedEcmNetworkTuning.penaltyDealt]）得出本侧
- *      实际造成的 EW 效果，幅度 = 实际效果百分数（[AdvancedEcmNetworkTuning.debuffMagnitude]，
- *      与原版射程减益口径一致），对全部存活敌舰施加最终乘区（modifyMult）：
- *      empDamageTakenMult / shieldDamageTakenMult 提升（EMP 抗性与护盾效率降低）、
- *      systemCooldownBonus 提升（战术系统冷却时间增加）、systemRegenBonus 削减
- *      （战术系统充能时间增加）。受影响的玩家船走
- *      [CombatEngineAPI.maintainStatusForPlayerShip] 在状态栏 HUD 显示。
- *
- * 被修饰目标集合（clamp / 减益 / 指挥官 / 占领加速四路）逐帧对账：失效目标
- * （离场/残骸化/敌我变化/不再超限/EW 效果归零）立即 unmodify，不留 stat 残留。
- *
- * 阵营语义：按 ship.owner 判定本侧——zw_001 在敌方时增益与减益对玩家方对称生效。
- *
- * 互斥：无法安装电子对抗组件（ecm）/电子反对抗组件（eccm）——走
- * [IncompatibleHullmodStripper] 延迟清理（真相来源 [HullmodIncompatibility]，
- * SKILL: hullmod-incompatibility-guidelines）。
- *
- * 失效条件：舰船残骸化（hulk 分支全量收口）；舰船撤离战场（非残骸化）或战斗结束由
- * [DepartedShipCleanupWatcher] 探活收口（含指挥官修饰——防止泄漏到后续战斗/存档）。
- *
- * 状态隔离：HullModEffect 实例按 hullmod 规格全局共享，逐舰状态挂 [ShipAPI.getCustomData]
- * （战斗内随实体生命周期）。customData 首写必须走 [ShipAPI.setCustomData]
- * （字段惰性为 null 时 getCustomData() 返回一次性空表，同 GravEmFieldHullMod 口径）。
- */
 class AdvancedEcmNetworkHullMod : BaseHullMod() {
 
-    /** 单舰网络状态：四路被修饰目标集合（clamp/减益/指挥官/占领加速）+ 离场哨兵安装标记。 */
     private class NetworkState {
         val clamped = HashSet<ShipAPI>()
         val debuffed = HashSet<ShipAPI>()
@@ -105,10 +59,6 @@ class AdvancedEcmNetworkHullMod : BaseHullMod() {
 
         val state = ship.customData[STATE_KEY] as? NetworkState
 
-        // 残骸化：四路修饰全量收口、解除本舰自身的 ECM 贡献写入后移除本舰状态。
-        // 注：原版 CombatFleetManager.shipDestroyed 会把阵亡舰移出 deployed 集合，残骸的
-        // electronic_warfare_flat 本就不再计入 EW 汇总；此处显式收口是「死亡即失效」的
-        // 明确语义落点（同时覆盖 owner 变更等原版移除前提之外的边界）
         if (ship.isHulk) {
             ship.mutableStats.dynamic.getMod(AdvancedEcmNetworkTuning.ECM_FLAT_STAT).unmodifyFlat(HULLMOD_ID)
             if (state != null) {
@@ -118,7 +68,7 @@ class AdvancedEcmNetworkHullMod : BaseHullMod() {
             return
         }
 
-        // 首写走 setCustomData（见类注释 customData 写入契约）
+        // customData 首次写入必须调用 setCustomData；getCustomData 返回的空表不持久。
         val activeState = state ?: NetworkState().also { ship.setCustomData(STATE_KEY, it) }
         if (!activeState.departedWatcherInstalled) {
             activeState.departedWatcherInstalled = true
@@ -142,7 +92,6 @@ class AdvancedEcmNetworkHullMod : BaseHullMod() {
         applyEwDebuff(engine, ship, activeState, modId)
     }
 
-    /** 网络贡献：自身 + 存活友军分档，写本舰 electronic_warfare_flat（同 id 覆盖，幂等）。 */
     private fun applyNetworkContribution(ship: ShipAPI, values: AdvancedEcmNetworkTuning.Values) {
         var frigates = 0
         var destroyers = 0
@@ -162,7 +111,6 @@ class AdvancedEcmNetworkHullMod : BaseHullMod() {
         )
     }
 
-    /** 敌方反制：每艘存活敌舰贡献 clamp 到舰级上限，逐帧对账收口。 */
     private fun applyEnemyClamp(
         engine: CombatEngineAPI,
         ship: ShipAPI,
@@ -185,12 +133,10 @@ class AdvancedEcmNetworkHullMod : BaseHullMod() {
         reconcileTracked(state.clamped, seen) { unclamp(it, modId) }
     }
 
-    /** 反制收口：解除本网络在目标上的 clamp 修正。 */
     private fun unclamp(target: ShipAPI, modId: String) {
         target.mutableStats.dynamic.getMod(AdvancedEcmNetworkTuning.ECM_FLAT_STAT).unmodifyFlat(modId)
     }
 
-    /** 最大效果提升：本侧全部指挥官 electronic_warfare_max flat 增量（含占领点加计），逐帧对账收口。 */
     private fun applyCommanderBoost(
         engine: CombatEngineAPI,
         ship: ShipAPI,
@@ -205,13 +151,11 @@ class AdvancedEcmNetworkHullMod : BaseHullMod() {
             commander.stats.dynamic.getMod(AdvancedEcmNetworkTuning.EW_MAX_STAT)
                 .modifyFlat(modId, boost)
         }
-        // 对账：不再担任本侧指挥官的既有目标立即 unmodify（指挥官 stat 跨战斗存活，必须收口）
         reconcileTracked(state.boostedCommanders, commanders) {
             it.stats.dynamic.getMod(AdvancedEcmNetworkTuning.EW_MAX_STAT).unmodifyFlat(modId)
         }
     }
 
-    /** 占领加速：全部存活友军舰船（含本舰，非战机/无人机/残骸）写占领速率乘区，逐帧对账收口。 */
     private fun applyCaptureRateBoost(
         engine: CombatEngineAPI,
         ship: ShipAPI,
@@ -231,11 +175,6 @@ class AdvancedEcmNetworkHullMod : BaseHullMod() {
         }
     }
 
-    /**
-     * 附加四项减益：复算原版公式得本侧实际 EW 效果（上限按原版 int 截断口径），
-     * 幅度 = 实际效果百分数，逐帧对账收口；受影响的玩家船写状态栏 HUD。
-     * 前提：原版 ElectronicWarfareScript 只处理 0/1 两侧对抗（player/enemy），本方 owner 非 0 时对方即 0。
-     */
     private fun applyEwDebuff(
         engine: CombatEngineAPI,
         ship: ShipAPI,
@@ -267,7 +206,6 @@ class AdvancedEcmNetworkHullMod : BaseHullMod() {
         reconcileTracked(state.debuffed, seen) { unmodifyDebuff(it, modId) }
     }
 
-    /** 减益收口：解除本网络在目标上的全部减益修饰（与 [applyEwDebuff] 写入面严格一一对应）。 */
     private fun unmodifyDebuff(target: ShipAPI, modId: String) {
         val stats = target.mutableStats
         stats.empDamageTakenMult.unmodifyMult(modId)
@@ -276,7 +214,6 @@ class AdvancedEcmNetworkHullMod : BaseHullMod() {
         stats.systemRegenBonus.unmodifyMult(modId)
     }
 
-    /** 阵营 ECM 总额复算（与 ElectronicWarfareScript.getTotalAndMaximum 同口径）：非战机/非站模块部署舰累加 + 传感阵列目标。 */
     private fun sideEcmTotal(engine: CombatEngineAPI, owner: Int): Float {
         val manager = engine.getFleetManager(owner) ?: return 0f
         var total = 0f
@@ -293,7 +230,6 @@ class AdvancedEcmNetworkHullMod : BaseHullMod() {
         return total
     }
 
-    /** 阵营最大效果复算（与 ElectronicWarfareScript 同口径）：10 + 各指挥官 electronic_warfare_max 的最大值；无指挥官为 0。 */
     private fun sideEcmMax(engine: CombatEngineAPI, owner: Int): Float {
         val manager = engine.getFleetManager(owner) ?: return 0f
         var max = 0f
@@ -307,7 +243,6 @@ class AdvancedEcmNetworkHullMod : BaseHullMod() {
         return max
     }
 
-    /** 全量收口：clamp + 四项减益 + 指挥官增幅 + 占领加速（hulk/离场/战斗结束路径共用）。 */
     private fun cleanup(state: NetworkState, modId: String) {
         for (target in state.clamped) unclamp(target, modId)
         state.clamped.clear()
@@ -323,7 +258,6 @@ class AdvancedEcmNetworkHullMod : BaseHullMod() {
         state.captureBoosted.clear()
     }
 
-    /** 被减益的玩家船左侧状态行（每帧调用刷新）：四项减益当前幅度。 */
     private fun maintainDebuffStatus(engine: CombatEngineAPI, magnitude: Float) {
         engine.maintainStatusForPlayerShip(
             STATUS_KEY,
@@ -344,7 +278,6 @@ class AdvancedEcmNetworkHullMod : BaseHullMod() {
         width: Float,
         isForModSpec: Boolean,
     ) {
-        // tooltip 展示口径：无舰上下文（装配面板）按我方档位展示（默认砺刃 v2）
         val values = AdvancedEcmNetworkTuning.resolve(DifficultyTuningImpl, ship == null || ship.owner == 0)
         tooltip.hullmodCard(width, THEME, spec?.displayName) {
             para("ui.hullmod.advanced_ecm_network.desc", hl("奇点核心", HullmodThemes.LENS.nameColor))
@@ -472,28 +405,21 @@ class AdvancedEcmNetworkHullMod : BaseHullMod() {
         }
 
     companion object {
-        /** Hullmod 注册 id（csv/注册接线由装配侧完成；互斥表控制方键）。 */
         const val HULLMOD_ID = AdvancedEcmNetworkTuning.HULLMOD_ID
 
-        /** 禁装船插列表：真相来源 [HullmodIncompatibility]。 */
         private val FORBIDDEN_HULLMOD_IDS: Set<String> =
             HullmodIncompatibility.forbiddenByController(HULLMOD_ID)
 
         private const val HULL_ID = "astd_zw_001"
 
-        /** 逐舰网络状态挂载键（ShipAPI.customData，战斗内随实体生命周期）。 */
         private const val STATE_KEY = "astd_advanced_ecm_network_state"
 
-        /** 修饰句柄前缀：按源舰 id 区分（多网络源各自收口，互不误清）。 */
         private const val MOD_ID_PREFIX = AdvancedEcmNetworkTuning.MOD_ID_PREFIX
 
-        /** 被减益玩家船的状态行键。 */
         private const val STATUS_KEY = "astd_advanced_ecm_network_status"
 
-        /** 透镜线紫主题预设（与 [GravEmFieldHullMod] 一致，透镜协议视觉统一）。 */
         private val THEME = HullmodThemes.LENS
 
-        /** 百分数单位（10 = 10%）格式化：整值去小数。 */
         private fun percent(value: Float): String =
             if (value == value.toInt().toFloat()) "${value.toInt()}%" else "$value%"
 
@@ -506,15 +432,6 @@ class AdvancedEcmNetworkHullMod : BaseHullMod() {
     }
 }
 
-/**
- * 战斗级安全网：清理双方舰队指挥官 electronic_warfare_max 上前一场战斗残留的网络增幅修饰。
- *
- * 指挥官 PersonAPI 的 dynamic stat 跨战斗/跨存档存活：正常路径（逐帧对账 + hulk 分支 +
- * DepartedShipCleanupWatcher）已覆盖战斗内全部收口，但直接结束战斗/读档等路径可能跳过收口，
- * 残留项会永久生效且每场叠加。本函数在每场战斗初始化时调用一次
- * （ASTDGlobalCombatPlugin.init），按 [AdvancedEcmNetworkTuning.MOD_ID_PREFIX] 与已删除的
- * 旧引力电子干扰力场前缀 [AdvancedEcmNetworkTuning.LEGACY_MOD_ID_PREFIX] 识别并清除残留。
- */
 fun purgeEcmCommanderBoosts(engine: CombatEngineAPI) {
     var purged = 0
     for (owner in 0..1) {

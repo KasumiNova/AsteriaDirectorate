@@ -65,8 +65,7 @@ void main() {
   gl_FragColor = vec4(vec3(0.0, 0.008, 0.01) + u_primaryColor.rgb * vignette * 0.22 + band, 1.0);
 }
 `.trim(),
-  // 游戏内 ASTDHullModTooltipBackground 主风格（corner-pulse，k3-01 角标脉冲）的编辑器镜像：
-  // u_origin 以 (0,0) 全画布代入，输出 alpha 固定 0.92。
+  // 对应游戏内 corner-pulse；u_origin 取 (0,0)，alpha 固定为 0.92。
   cornerPulse: `
 precision highp float;
 
@@ -142,8 +141,6 @@ void main() {
     col += accent * a;
   }
 
-  // corner ornaments: L-shaped brackets
-  // (nested triangle strokes / apex light / energy core temporarily removed per spec)
   for (int i = 0; i < 4; i++) {
     vec2 corner;
     if (i == 0) { corner = vec2(10.0, 10.0); }
@@ -151,7 +148,7 @@ void main() {
     else if (i == 2) { corner = vec2(res.x - 10.0, res.y - 10.0); }
     else { corner = vec2(10.0, res.y - 10.0); }
 
-    // early-out: bracket arm reach 50.4 units + glow ~20, normalized 580px-baseline space
+    // 在 580 像素基准坐标中，95 单位外的片段不参与角标计算。
     if (distance(frag, corner) > 95.0) continue;
 
     float phase = float(i) * 1.7;
@@ -184,8 +181,7 @@ void main() {
   gl_FragColor = vec4(col, 0.92);
 }
 `.trim(),
-  // 游戏内 ASTDHullModTooltipBackground 备选风格（prism-lattice，deepseek-02 棱镜栅格）镜像：
-  // u_origin 以 (0,0) 代入，输出 alpha 固定 0.92；扩散三角环与旋转主轴已移除。
+  // 对应游戏内 prism-lattice；u_origin 取 (0,0)，alpha 固定为 0.92。
   prismLattice: `
 precision highp float;
 
@@ -193,7 +189,6 @@ uniform float u_time;
 uniform vec2 u_resolution;
 uniform vec4 u_accentColor;
 
-// panel half-extents in p units: border flush with the panel edge
 const vec2 PANEL = vec2(1.0, 1.0);
 
 float hash21(vec2 p) {

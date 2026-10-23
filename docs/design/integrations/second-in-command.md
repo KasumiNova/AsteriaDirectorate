@@ -3,21 +3,21 @@
 > 纯调研+设计文档，不涉及代码改动。调研日期：2026-09-27。
 > 对象版本：SecondInCommand 1.8.0（gameVersion 0.98a-RC5，作者 Lukas04）。
 
-## 0. 调研来源与结论先行
+## 0. 调研来源与接入方式
 
-- 本机已装模组：`/mnt/store/Games/Starsector098-linux/mods/SecondInCommand/`，**附带完整 `src/` 源码与全部数据文件**，是本次调研的主依据。
+- 本机已装模组：`/mnt/store/Games/Starsector098-linux/mods/SecondInCommand/`，附带完整 `src/` 源码与全部数据文件，是本次调研的主依据。
 - `dev-resources/sources/second_in_command/`：同一模组的反编译 Java 副本，用于核对 Kotlin 源码未覆盖的类（如 `SCBaseAptitudePlugin`、`SCOfficer`、`SCAptitudeSection`）。
 - GitHub 仓库未能定位（GitHub API 搜索与 `github.com/Lukas04/SecondInCommand` 均不可达），无官方集成文档；本文全部 API 结论从 1.8.0 源码反推。
 
-核心结论：**SiC 的天赋/技能注册是纯数据驱动的**——它用 `getMergedSpreadsheetDataForMod` 合并所有启用模组在同路径下的 CSV。ASTD 只需在自己模组目录放置对应 CSV 行 + 提供插件类即可接入，不需要任何注册代码；SiC 缺失时这些 CSV 永远不会被读取，天然软依赖。
+SiC 通过 `getMergedSpreadsheetDataForMod` 合并所有启用模组在同路径下的 CSV，以数据驱动方式注册天赋和技能。ASTD 只需在自己模组目录放置对应 CSV 行并提供插件类即可接入，不需要注册代码。SiC 缺失时不会读取这些 CSV，因此可作为软依赖。
 
 ## 1. SecondInCommand 接入点清单
 
 ### 1.1 天赋/技能注册机制（数据驱动，零注册代码）
 
-- `SCModPlugin.onApplicationLoad` 依次调用 `SCSpecStore.loadCategoriesFromCSV()` / `loadAptitudeSpecsFromCSV()` / `loadSkillSpecsFromCSV()`，三者均用 `Global.getSettings().getMergedSpreadsheetDataForMod("id", "data/config/secondInCommand/<文件>", "second_in_command")` 加载——merged 语义意味着**任何启用模组在同一路径放置的同名 CSV 行都会被合并进来**。
+- `SCModPlugin.onApplicationLoad` 依次调用 `SCSpecStore.loadCategoriesFromCSV()` / `loadAptitudeSpecsFromCSV()` / `loadSkillSpecsFromCSV()`，三者均用 `Global.getSettings().getMergedSpreadsheetDataForMod("id", "data/config/secondInCommand/<文件>", "second_in_command")` 加载，merged 语义意味着**任何启用模组在同一路径放置的同名 CSV 行都会被合并进来**。
   来源：`mods/SecondInCommand/src/second_in_command/SCModPlugin.kt:50-63`、`src/second_in_command/specs/SCSpecStore.kt:35-134`。
-- 插件类加载：`SCAptitudeSpec.getPlugin()` 用 `Global.getSettings().scriptClassLoader.loadClass(pluginPath).newInstance()`——scriptClassLoader 覆盖所有模组 jar，ASTD jar 内的 Kotlin 类可直接被加载，类路径写全限定名即可。
+- 插件类加载：`SCAptitudeSpec.getPlugin()` 用 `Global.getSettings().scriptClassLoader.loadClass(pluginPath).newInstance()`，scriptClassLoader 覆盖所有模组 jar，ASTD jar 内的 Kotlin 类可直接被加载，类路径写全限定名即可。
   来源：`src/second_in_command/specs/SCAptitudeSpec.kt:20-29`。
 - **关键陷阱**：SiC 从 CSV 的 `fs_rowSource` 列用 `filterModPath` 反推 mods 下的**文件夹名**，再 `enabledModsCopy.find { it.dirName == modName }!!`（非空断言）。ASTD 安装文件夹名必须与 ModSpec 的 dirName 一致（当前为 `mods/ASTD`）；玩家若重命名文件夹，SiC 加载 ASTD 的行时会直接 NPE 崩溃。
   来源：`SCSpecStore.kt:93-94, 125, 139-146`。
@@ -45,7 +45,7 @@
 - `getNPCFleetSpawnWeight(data, fleet)`：**抽象方法必须实现**，决定 NPC 舰队 roll 到该天赋的权重（`AptitudeAutomated` 的范式：舰队含无人舰给权重，否则 0；旗舰无人舰给 `Float.MAX_VALUE` 必中）。
 - `getMarketSpawnweight(market)`：市场通讯目录雇佣池权重（默认=CSV spawnWeight，可按阵营/市场调权，见 `AptitudeAutomated.kt:60-66`；消费方 `ExecutiveOfficerCommAdder.kt:73`）。
 - `getCryopodSpawnWeight(system)`：休眠舱/残骸打捞投放权重（消费方 `ExecutiveOfficerSalvageSpecialGenerator.kt:52-56`）。
-- `guaranteePick(fleet)`：NPC 舰队保底必中钩子，默认 false。
+- `guaranteePick(fleet)`：控制 NPC 舰队是否必选该天赋的钩子，默认 false。
 - `addCodexDescription(tooltip)`：Codex 条目文案。
 
 技能插件基类 `second_in_command.specs.SCBaseSkillPlugin`
@@ -66,7 +66,7 @@
 
 - SiC 模组 id：`second_in_command`（`mods/SecondInCommand/mod_info.json:2`，与 `SCUtils.MOD_ID` 一致）。
 - **数据+插件路径免检测**：SiC 未启用时 ASTD 的 SC CSV 不会被读取、插件类不会被加载，无需门控。
-- **仅直调 SiC API 的代码需要门控**（剧情奖励副官）：`Global.getSettings().modManager.isModEnabled("second_in_command")`，且按 ASTD 既有 IndEvo 模式做软依赖隔离文件——全部 SiC 类引用集中在一个文件，入口先过 `isEnabled()` 缓存判定。
+- **仅直调 SiC API 的代码需要门控**（剧情奖励副官）：`Global.getSettings().modManager.isModEnabled("second_in_command")`，且按 ASTD 既有 IndEvo 模式做软依赖隔离文件，全部 SiC 类引用集中在一个文件，入口先过 `isEnabled()` 缓存判定。
   参照：`modules/internal/astd-campaign/src/main/kotlin/cn/kasuminova/astd/campaign/world/IndEvoWorldExtras.kt:19-80`。
 - 编译期：根 `build.gradle.kts` 的 SDG GAME_DIR 模式自动把已装模组 jar 挂到 compileOnly（`build.gradle.kts:56, 73-133`），SiC 已装于游戏目录即可直接编译引用，无需新增依赖声明。
 - ASTD 的 mod_info.json **不得**把 second_in_command 写进 dependencies（保持软依赖）。
@@ -77,7 +77,7 @@
 ### 2.1 定位
 
 天赋名建议：**「引力相位工程院」**（id：`astd_sc_grav_phase`，可按文案规范再议）。
-设定口吻：菀星设计局外派的技术军官——对照 SiC「无人战舰」天赋是"自动化舰队许可"，本天赋是"总局技术体系授权"：相位舰运用规范、引力武器火控条令、量产 AI 核心的协处理规程，三位一体，对应 85 号文档的 AI 核心分级体系与相位/引力两条装备主线。
+设定口吻：菀星设计局外派的技术军官，对照 SiC「无人战舰」天赋是"自动化舰队许可"，本天赋是"总局技术体系授权"：相位舰运用规范、引力武器火控条令、量产 AI 核心的协处理规程，三位一体，对应 85 号文档的 AI 核心分级体系与相位/引力两条装备主线。
 
 - color：菀星紫（取 ASTD 主色系 RGBA）。
 - categories：**建议留空**。挂 `sc_cat_automated` 会与 SiC「无人战舰」互斥，而 ASTD 量产 AI 核心舰队恰恰需要两者共存。
@@ -112,7 +112,7 @@
 
 ## 3. 实现步骤拆分
 
-1. **数据文件**（根工程 contents 装配侧，不经 astd-csv 生成器——ss-csv 体系只管 ASTD 自有 CSV，SC 文件是第三方格式手写；落地前确认 `contents/.ss-csv-manifest` 不接管该路径）：
+1. **数据文件**（根工程 contents 装配侧，不经 astd-csv 生成器，ss-csv 体系只管 ASTD 自有 CSV，SC 文件是第三方格式手写；落地前确认 `contents/.ss-csv-manifest` 不接管该路径）：
    - `contents/data/config/secondInCommand/SCAptitudes.csv`：天赋一行；
    - `contents/data/config/secondInCommand/SCSkills.csv`：技能约 10 行；
    - `contents/data/world/factions/default_ranks.json`：`executive_officer_astd_sc_grav_phase` 职位条目；
@@ -133,7 +133,7 @@
 ## 4. 风险与待定项
 
 - **API 无官方承诺**：SiC 无公开集成文档（GitHub 未定位），以上接口反推自 1.8.0 源码；SiC 升级可能改 CSV 格式或基类签名。文档锁定对接版本 1.8.0，SiC 更新后需回归。
-- **文件夹名敏感**：`SCSpecStore.filterModPath` + `!!` 断言意味着玩家重命名 ASTD 安装文件夹会崩溃（SiC 侧缺陷，非个例——所有第三方天赋同病），需在发布说明注明"不要重命名模组文件夹"。
+- **文件夹名敏感**：`SCSpecStore.filterModPath` + `!!` 断言意味着玩家重命名 ASTD 安装文件夹会崩溃（SiC 侧缺陷，非个例，所有第三方天赋同病），需在发布说明注明"不要重命名模组文件夹"。
 - **卸载 SiC 的存档**：SCOfficer/SCData 存玩家 memory 并随存档序列化，卸载 SiC 本身即坏档，与 ASTD 无关，但文案上别承诺"可随时卸载"。
 - 待定项：
   1. 天赋是否给 `startingOption`（开局可选）；

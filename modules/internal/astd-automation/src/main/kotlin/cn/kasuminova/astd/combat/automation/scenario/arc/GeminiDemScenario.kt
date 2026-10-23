@@ -22,12 +22,9 @@ import com.fs.starfarer.api.mission.FleetSide
 import org.lwjgl.util.vector.Vector2f
 
 /**
- * 双子星 DEM 场景（规格 10 §4.2 烟测检查点）。
- *
- * 拆分自 ASTDAutomationCombatPlugin 的同名 if-else 分支，相位机/断言/证据写出口径原样迁移。
+ * 双子星 DEM 场景。
  */
 class GeminiDemScenario : AbstractAutomationScenario() {
-    // ==== gemini dem 场景状态（相位机 MOUNT → SALVO → KILL_ONE → POD → ENEMY_SCALE → COMPLETED） ====
     private var gdPhase = GD_PHASE_MOUNT
     private var gdPhaseStartedAt = 0f
 
@@ -40,8 +37,8 @@ class GeminiDemScenario : AbstractAutomationScenario() {
     private val gdAiClassTriplesSeen = mutableSetOf<String>()
 
     // SALVO 相位：齐射后 ammo 采样（一轮一耗证据）与 R2 读数基线。
-    // ammo 绝对值断言走 spec 层（weapon_data.csv 口径）；运行时 maxAmmo 可能受环境 stat 加成
-    // （实机判例：本机任务环境 missileAmmoBonus ×2，launcher 2→4 / pod 4→8），
+    // ammo 绝对值断言走 spec 层（weapon_data.csv 数值）；运行时 maxAmmo 可能受环境 stat 加成
+    // （本机任务环境 missileAmmoBonus ×2，launcher 2→4 / pod 4→8），
     // 故「一次触发一轮齐射」用基线差分断言（before-1），不吃环境倍率。
     private var gdLauncherAmmoBaseline = -1
     private var gdLauncherAmmoAfterSalvo = -1
@@ -49,7 +46,7 @@ class GeminiDemScenario : AbstractAutomationScenario() {
     private var gdSalvoTargetMinHp = Float.MAX_VALUE
 
     // 双弹均命中后的照射期收尾门控：payload 光束 firingTime=1s + EMP 节律宽限 0.3s，
-    // 首伤帧即断言会在 EMP 电弧计数尚未累积时误判（实机判例：arcs 终值 9 但首伤帧读数为 0）。
+    // 首伤帧即断言会在 EMP 电弧计数尚未累积时误判（首伤帧 EMP 电弧读数仍为 0）。
     private var gdBothHitsAt = -1f
 
     // KILL_ONE 相位：同步计数基线与高爆弹头移除守卫。
@@ -148,9 +145,9 @@ class GeminiDemScenario : AbstractAutomationScenario() {
     }
 
     /**
-     * 舞台保活与站位（范式同 stabilizeSsShips）：玩家舰逐帧奶（ENEMY_SCALE 除外）+ 辐能清零 +
+     * 舞台保活与站位（范式同 stabilizeSsShips）：玩家舰逐帧回血（ENEMY_SCALE 除外）+ 辐能清零 +
      * force fire 独占驱动；靶舰盾舞台性常关（payload 光束/同步冲击须落船体出 HP 证据），
-     * 相位证据以 HP 基线/最小值观测，相位收尾由调用方补奶防靶舰沉没。
+     * 相位证据以 HP 基线/最小值观测，相位收尾由调用方补满血量防靶舰沉没。
      */
     private fun stabilizeGdShips(engine: CombatEngineAPI, fireLauncher: Boolean, firePod: Boolean) {
         val player = findGdPlayer(engine)
@@ -158,7 +155,7 @@ class GeminiDemScenario : AbstractAutomationScenario() {
         val carrier = findGdEnemyCarrier(engine)
         if (player != null && !player.isHulk) {
             engine.setPlayerShipExternal(player)
-            // 舞台舰一律摘除 AI（实机判例：保留 AI 会每帧抢开盾，与 toggleOff 拉锯污染掉血证据）。
+            // 舞台舰一律摘除 AI（保留 AI 会每帧抢开盾，与 toggleOff 拉锯污染掉血证据）。
             stabilizeShip(player, GD_PLAYER_ANCHOR, 0f, allowFire = true, preserveAI = false)
             player.shipTarget = target ?: carrier
             if (gdPhase != GD_PHASE_ENEMY_SCALE) player.hitpoints = player.maxHitpoints
@@ -190,7 +187,7 @@ class GeminiDemScenario : AbstractAutomationScenario() {
             setGdAutofire(carrier, false)
             findGdPod(carrier)?.let {
                 it.currAngle = 180f
-                // 部署免疫闸（实机判例：reserves 手动 spawn 舰船部署后数秒内脚本 applyDamage 可能全额无效）
+                // 部署免疫闸（Starsector 0.98 中 reserves 手动 spawn 舰船部署后数秒内脚本 applyDamage 可能全额无效）
                 it.setForceFireOneFrame(
                     gdPhase == GD_PHASE_ENEMY_SCALE && ctx.elapsed - gdPhaseStartedAt >= GD_ENEMY_SETTLE_SECONDS,
                 )
@@ -215,10 +212,11 @@ class GeminiDemScenario : AbstractAutomationScenario() {
     }
 
     /**
-     * R1 轮询（规格 10 §5 风险表 R1 首选验证项）：遍历出生登记簿中的弹头原始引用，三路读 AI
+     * R1 轮询：遍历出生登记簿中的弹头原始引用，三路读 AI
      * （`getAI()` = DEMScript WAIT 段的读取路径 / `getMissileAI()` / `getUnwrappedMissileAI()`）。
-     * 实机判例（2026-07-29 烟测）：`engine.getMissiles()` 不含脚本 spawn 的弹头，
-     * customData/weaponSpec 扫描观测面全部落空；登记簿原始引用是唯一可靠观测面。
+     * 脚本 spawn 的弹头由 ProjectileFactory.spawnMissile 末尾无条件 addObject 入队，
+     * 引擎 flush 后进入 `engine.getMissiles()`，同帧扫描读不到；
+     * 登记簿保存原始引用，不受入队时序影响，是读弹头 AI 的可靠来源。
      * 本观测面只作诊断（类名三元组首次出现记日志），相位断言用供给侧遥测
      * （SalvoOnFireEffect.TELEMETRY_TRACK_AI_*）+ payload 命中（DEMScript 接管的硬证据）。
      */
@@ -233,7 +231,7 @@ class GeminiDemScenario : AbstractAutomationScenario() {
                 missile.unwrappedMissileAI,
             )
             // 包装弹头 getAI/getMissileAI 读回是引擎 Wrapper（非 GuidedMissileAI），
-            // 真实实例只在 unwrapped 读回——三路全扫，不取 firstNotNull（实机判例：取首路恒为包装）
+            // 真实实例只在 unwrapped 读回，三路全扫，不取 firstNotNull（首路恒为引擎包装）
             val trackAi = reads.filterIsInstance<GeminiDemTrackAI>().firstOrNull()
             if (trackAi != null && gdTrackAiSeen.add(key)) {
                 if ((trackAi as GuidedMissileAI).target != null) gdTrackTargetNonNull++
@@ -281,7 +279,7 @@ class GeminiDemScenario : AbstractAutomationScenario() {
                         GeminiDemDifficulty.HE_WEAPON_ID,
                         GeminiDemDifficulty.KINETIC_PAYLOAD_ID,
                         GeminiDemDifficulty.HE_PAYLOAD_ID,
-                        // 战机版弹头链（数据驱动 ×0.75 削弱）：四件隐藏 spec 同口径校验
+                        // 战机版弹头链（数据驱动 ×0.75 削弱）：四件隐藏 spec 统一校验
                         GeminiDemDifficulty.KINETIC_FIGHTER_WEAPON_ID,
                         GeminiDemDifficulty.HE_FIGHTER_WEAPON_ID,
                         GeminiDemDifficulty.KINETIC_PAYLOAD_FIGHTER_ID,
@@ -298,7 +296,7 @@ class GeminiDemScenario : AbstractAutomationScenario() {
                         .firstOrNull { id ->
                             Global.getSettings().getWeaponSpec(id)?.aiHints?.contains(WeaponAPI.AIHints.SYSTEM) != true
                         }
-                    // 战机型发射武器 spec（射程削弱 2000→1500 的实机核对面）
+                    // 战机型发射武器 spec 射程核对（射程削弱 2000→1500）
                     val fighterRange = Global.getSettings().getWeaponSpec(GeminiDemDifficulty.FIGHTER_WEAPON_ID)?.maxRange ?: -1f
                     when {
                         launcherSlot != GD_PLAYER_SLOT_LAUNCHER || podSlot != GD_PLAYER_SLOT_POD -> {
@@ -360,7 +358,7 @@ class GeminiDemScenario : AbstractAutomationScenario() {
                 stabilizeGdShips(engine, fireLauncher = true, firePod = false)
                 if (warheads >= 2) {
                     // burst=2 第二发在首发 +0.1s 落账：采样须持续刷新到断言时刻，
-                    // 否则首帧快照只记到引擎第一次扣弹（实机判例：快照 7、实际终值 6）
+                    // 否则首帧快照只记到引擎第一次扣弹
                     gdLauncherAmmoAfterSalvo = launcher?.ammo ?: -1
                 }
                 if (kineticHits >= 1 && heHits >= 1) {
@@ -409,8 +407,8 @@ class GeminiDemScenario : AbstractAutomationScenario() {
                                 "[ASTD-Automation] gd salvo evidence: targetHp ${gdSalvoTargetHpBaseline}→min ${gdSalvoTargetMinHp} " +
                                         "（R2 读数：payload+sync 落船体；beamDamage 面板见 payload 首伤帧日志）",
                             )
-                            // DEMScript 接管硬证据 = payload 光束命中本身（payload 只能由 DEMScript 打击段结算，
-                            // 规格 §0.1 事实 #7）；包装弹头读回观测面（gdDemTakeoverSeen）只作诊断。
+                            // DEMScript 接管硬证据 = payload 光束命中本身（payload 只能由 DEMScript 打击段结算）；
+                            // 包装弹头读回观测面（gdDemTakeoverSeen）只作诊断。
                             if (gdDemTakeoverSeen.isEmpty()) {
                                 ctx.log.info("[ASTD-Automation] gd R1 note: 包装弹头读回未见 DEMScript（payload 命中已为接管硬证据）")
                             }
@@ -429,7 +427,7 @@ class GeminiDemScenario : AbstractAutomationScenario() {
             GD_PHASE_KILL_ONE -> {
                 stabilizeGdShips(engine, fireLauncher = true, firePod = false)
                 if (warheads - gdKillWarheadsBaseline >= 2) {
-                    // 出生登记簿是唯一可靠观测面（engine.getMissiles() 不含脚本 spawn 弹头，实机判例）；
+                    // 登记簿直接读取弹头原始引用（脚本 spawn 的弹头经 addObject 入队，引擎 flush 后才出现在 engine.getMissiles()）；
                     // 相位内持续移除全部在场高爆弹头（击落一枚模拟；相位内多轮齐射时后续高爆同样拆解）。
                     val liveHe = GeminiDemSalvoOnFireEffect.warheadsOf(engine)
                         .filter { it.weaponId == GeminiDemDifficulty.HE_WEAPON_ID && engine.isEntityInPlay(it.missile) }
@@ -470,7 +468,7 @@ class GeminiDemScenario : AbstractAutomationScenario() {
             GD_PHASE_POD -> {
                 stabilizeGdShips(engine, fireLauncher = false, firePod = true)
                 if (salvoCount - gdPodSalvoBaseline >= 1) {
-                    // 同 SALVO 相位判例：burst 第二发 +0.1s 落账，采样持续刷新到断言时刻
+                    // 同 SALVO 相位：burst 第二发 +0.1s 落账，采样持续刷新到断言时刻
                     gdPodAmmoAfterSalvo = pod?.ammo ?: -1
                 }
                 if (kineticHits - gdPodKineticBaseline >= 1 && heHits - gdPodHeBaseline >= 1) {
@@ -520,7 +518,7 @@ class GeminiDemScenario : AbstractAutomationScenario() {
                             target?.hitpoints = target.maxHitpoints
                             transitionGdPhase(GD_PHASE_COMPLETED)
                         }
-                        // 部署免疫宽限（实机判例同 SS：source 为敌版舰时脚本伤害在部署后数秒内可能全额无效）
+                        // 部署免疫宽限（同七星场景：source 为敌版舰时脚本伤害在部署后数秒内可能全额无效）
                         ctx.elapsed - gdEnemyFirstSyncAt > GD_ENEMY_GRACE_SECONDS -> {
                             ctx.failureReason = "gd enemy sync player minHp=$gdEnemyMinPlayerHp（敌版同步应命中玩家舰掉血）"
                             transitionGdPhase(GD_PHASE_FAILED)
@@ -585,7 +583,7 @@ class GeminiDemScenario : AbstractAutomationScenario() {
         json.appendLine("  \"runtimeElapsedSeconds\": 0,")
         json.appendLine("  \"runtimeTrackedCount\": ${vfxTelemetry.trackedCount},")
         json.appendLine("  \"runtimeLastProjectileSpecId\": ${jsonString(vfxTelemetry.lastProjectileSpecId)},")
-        // ---- 机制证据（规格 10 §4.2 烟测检查点）----
+        // 机制证据
         json.appendLine("  \"gdPhase\": \"$gdPhase\",")
         json.appendLine("  \"gdLauncherSlotId\": ${jsonString(gdLauncher?.slot?.id)},")
         json.appendLine("  \"gdPodSlotId\": ${jsonString(gdPod?.slot?.id)},")
@@ -610,7 +608,7 @@ class GeminiDemScenario : AbstractAutomationScenario() {
     }
 
     private companion object {
-        // 双子星 DEM 场景：相位机、锚点与期望证据（规格 10 §4.2 烟测检查点）。
+        // 双子星 DEM 场景：相位机、锚点与期望证据。
         private const val GD_PHASE_MOUNT = "MOUNT"
         private const val GD_PHASE_SALVO = "SALVO"
         private const val GD_PHASE_KILL_ONE = "KILL_ONE"
@@ -629,18 +627,18 @@ class GeminiDemScenario : AbstractAutomationScenario() {
         private const val GD_CAMERA_VISIBLE_HEIGHT = 1500f
         private const val GD_MOUNT_SETTLE_SECONDS = 0.6f
 
-        // MOUNT 相位校验：射程断言基线 2000（无射程向 hullmod 干扰）；战机型 spec 射程 1500（削弱口径）。
+        // MOUNT 相位校验：射程断言基线 2000（无射程向 hullmod 干扰）；战机型 spec 射程 1500（削弱数值）。
         private const val GD_EXPECT_RANGE = 2000f
         private const val GD_FIGHTER_EXPECT_RANGE = 1500f
         private const val GD_RANGE_TOLERANCE = 5f
         private const val GD_LAUNCHER_AMMO = 4
         private const val GD_POD_AMMO = 8
 
-        // 一轮齐射弹药消耗（实机判例 2026-09-26：双管 ALTERNATING 挂点单发 onFire 仅一次但引擎按双管各耗 1，
+        // 一轮齐射弹药消耗（Starsector 0.98 中双管 ALTERNATING 挂点单发 onFire 仅一次但引擎按双管各耗 1，
         // 一轮齐射稳定 -2；语义对齐「一轮齐射两枚弹头」）。
         private const val GD_AMMO_PER_SALVO = 2
 
-        // SALVO：动能光束每轮打击 EMP 电弧预算恰 5 道（0.2s 节律固定预算，与照射时长解耦，规格 §2.1）。
+        // SALVO：动能光束每轮打击 EMP 电弧预算恰 5 道（0.2s 节律固定预算，与照射时长解耦）。
         private const val GD_EMP_ARC_MIN = 5
         private const val GD_EMP_ARC_MAX = 5
 
@@ -652,12 +650,12 @@ class GeminiDemScenario : AbstractAutomationScenario() {
         private const val GD_ENEMY_V5_MULT = 3.5f
         private const val GD_MULT_TOLERANCE = 0.001f
 
-        // ENEMY_SCALE：敌版舰部署免疫窗口（秒，同 SS_ENEMY_MULTI_SETTLE_SECONDS 实机判例）与掉血宽限。
+        // ENEMY_SCALE：敌版舰部署免疫窗口（秒，取值依据同 SS_ENEMY_MULTI_SETTLE_SECONDS）与掉血宽限。
         private const val GD_ENEMY_SETTLE_SECONDS = 4.0f
         private const val GD_ENEMY_GRACE_SECONDS = 20f
         private const val GD_HP_DROP_MIN = 50f
 
-        // COMPLETED 截图门控：payload 打击近 2.5s 内发生才上报（双色尾焰/锁定激光/光束入帧）；保底舞台超时。
+        // COMPLETED 截图门控：payload 打击近 2.5s 内发生才上报（双色尾焰/锁定激光/光束入帧）；舞台超时作为保险。
         private const val GD_COMPLETED_STRIKE_WINDOW = 2.5f
         private const val GD_COMPLETED_STAGE_TIMEOUT = 30f
         private const val GD_PHASE_TIMEOUT = 60f

@@ -15,7 +15,6 @@ class PlaceholderHullMod : BaseHullMod() {
         width: Float,
         isForModSpec: Boolean,
     ) {
-        // spec 在渲染路径必然已注入（BaseHullMod.init），直接取 id 拼接该类 4 个 id 各自的 desc key
         tooltip.hullmodCard(width, HullmodThemes.CREWED, spec?.displayName) {
             para("ui.hullmod.${spec.id.removePrefix("astd_")}.desc")
         }

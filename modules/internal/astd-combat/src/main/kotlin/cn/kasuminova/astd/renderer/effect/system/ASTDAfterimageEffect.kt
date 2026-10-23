@@ -101,7 +101,6 @@ internal object ASTDAfterimageEffect {
 
                     val scale = 1f + snapshot.growth * t
                     sprite.setAdditiveBlend()
-                    // 不透明度只走 alphaMult 一路：color alpha 再乘一次会变成 alpha²（双重衰减）
                     sprite.alphaMult = alpha
                     sprite.color = snapshot.color
                     sprite.angle = snapshot.facing - 90f

@@ -15,23 +15,10 @@ import com.fs.starfarer.api.combat.listeners.ApplyDamageResultAPI
 import com.fs.starfarer.api.util.Misc
 import org.lwjgl.util.vector.Vector2f
 
-/**
- * 电荷针刺 / 重型电荷针刺的命中路由（规格 01 §2.3）：挂两个 `.proj` 的 `onHitEffect`。
- *
- * - 护盾命中 → 目标舰电荷淤积叠层（[ChargeNeedleStacks]：维持最终乘区 + 体型固定软辐能，
- *   两项之和 capped 目标最终耗散 200%）+ 冷蓝白轻粒子；
- * - 船体/装甲命中 → 按难度五档查表概率泄放 EMP 电弧（[ChargeNeedleVfx.discharge]，真实 `spawnEmpArc` 结算）。
- *
- * 两分支互斥（`shieldHit` 二分），无交叉结算；`applyDamage` 不经手（EMP 电弧自带结算），无二次 onHit 回环。
- * 难度取值每次命中调用 [ChargeNeedleTuning.resolve] 一次（不缓存）；泄放随机走共享 [CombatRandom]，
- * 每武器实例一个确定性序列（Weapon 级标记 Buff [ChargeNeedleShots] 记 callIndex），同帧同事件不二次取值。
- */
 class ChargeNeedleOnHitEffect : OnHitEffectPlugin {
 
-    /** 无盾/零耗盾目标 DEBUG 日志闸（一次/船，按宿主身份去重）。 */
     private val debugLoggedNoUpkeepShips = mutableSetOf<String>()
 
-    /** 游离弹（无源舰/武器）泄放随机退化 WARN 日志闸（一次/目标船）。 */
     private val warnedFreeProjectileShips = mutableSetOf<String>()
 
     override fun onHit(
@@ -44,15 +31,12 @@ class ChargeNeedleOnHitEffect : OnHitEffectPlugin {
     ) {
         if (engine.isPaused) return
 
-        // 只淤积/泄放舰船；战机/陨石等豁免。
         val ship = target as? ShipAPI ?: return
         if (ship.isHulk || ship.isPhased) return
 
-        // 某些实体命中回调 point 可能为 null；回退弹体当前位置（同族 OnHit 统一口径）。
+        // 命中回调的 point 可能为 null，回退到弹体当前位置。
         val hitPoint = point ?: projectile.location ?: return
 
-        // 玩家按我方档位系数取值，每次命中处调用（非缓存）；projectile.source 为 null（游离弹）按非玩家口径。
-        // 固定软辐能分档依据目标舰体型（hullSize 实时读取）。
         val values = ChargeNeedleTuning.resolve(DifficultyTuningImpl, isPlayer = projectile.source?.owner == 0, ship.hullSize)
 
         if (shieldHit) {
@@ -62,7 +46,6 @@ class ChargeNeedleOnHitEffect : OnHitEffectPlugin {
         }
     }
 
-    /** 护盾命中：淤积叠层 + 轻粒子。 */
     private fun applyShieldHit(
         projectile: DamagingProjectileAPI,
         ship: ShipAPI,
@@ -72,7 +55,6 @@ class ChargeNeedleOnHitEffect : OnHitEffectPlugin {
     ) {
         val baseUpkeep = ship.hullSpec.shieldSpec?.upkeepCost ?: 0f
         if (baseUpkeep <= 0f) {
-            // 无盾/零耗盾目标不淤积（安全闸豁免分支的防御日志也在此，一次/船）。
             val shipKey = ship.id ?: ship.hullSpec.hullId ?: "unknown"
             if (debugLoggedNoUpkeepShips.add(shipKey)) {
                 log.debug("电荷针刺命中护盾但目标基础维持 ≤ 0（$baseUpkeep），不淤积: ship=$shipKey")
@@ -85,7 +67,6 @@ class ChargeNeedleOnHitEffect : OnHitEffectPlugin {
             ?: ChargeNeedleStacks(ship, engine, host).also { host.register(it) }
         buff.perStack = values.perStack
         buff.flatPerStack = values.flatFluxPerStack
-        // SIC「武备升级」：来源舰带标记时淤积的固定软辐能不再受目标护盾状态门控（同 perStack 覆盖口径）
         buff.fluxRegardlessOfShield =
             SicWeaponUpgradeFlags.isArmamentUpgradeActive(projectile.source ?: projectile.weapon?.ship)
         buff.addStacks(1)
@@ -94,7 +75,6 @@ class ChargeNeedleOnHitEffect : OnHitEffectPlugin {
         ChargeNeedleVfx.shieldHitParticles(engine, hitPoint, ship)
     }
 
-    /** 船体/装甲命中：概率泄放 EMP 电弧（结算随机走共享 CombatRandom）。 */
     private fun applyHullHit(
         projectile: DamagingProjectileAPI,
         ship: ShipAPI,
@@ -111,7 +91,6 @@ class ChargeNeedleOnHitEffect : OnHitEffectPlugin {
             } as ChargeNeedleShots
             CombatRandom.nextFloatIn(shots.seed, shots.callIndex++, 0f..1f)
         } else {
-            // 游离弹无稳定种子来源：泄放随机退化为 Misc.random（非确定性边缘路径，WARN 一次/目标船不静默）。
             val shipKey = ship.id ?: ship.hullSpec.hullId ?: "unknown"
             if (warnedFreeProjectileShips.add(shipKey)) {
                 log.warn("电荷针刺游离弹（无源舰/武器）命中，泄放随机退化为 Misc.random（非确定性）: target=$shipKey")

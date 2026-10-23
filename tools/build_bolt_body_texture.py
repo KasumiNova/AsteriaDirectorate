@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
-"""生成 astd_bolt_body.png：Box 螺栓弹头贴图。
+"""生成 Box 螺栓弹头贴图 astd_bolt_body.png。
 
 以原版 projbody.png（32×16，彗形白图，alpha 沿全长近似不透明）为基底，
-把原版 ProjectileRenderer 的逐顶点 alpha 梯度（头角全亮 -> 中段减半 -> 尾端透明）
-与几何收窄（头全宽 -> 尾半宽）烘焙进 alpha 通道，供 BoltRenderComponent
-以单颗 SpriteEntity 均匀染色渲染出原版螺栓观感。
+把原版 ProjectileRenderer 的逐顶点 alpha 梯度与几何收窄烘焙进 alpha 通道，
+供 BoltRenderComponent 以单颗 SpriteEntity 均匀染色渲染。
 
-输出：contents/graphics/fx/astd_bolt_body.png（128×32，X=带长向，头在右/u=1——
-SpriteEntity 的 u=0 映射局部 -X 即飞行后方，与原版 texCoord 方向相反，故成品水平翻转）
+输出：contents/graphics/fx/astd_bolt_body.png（128×32，X 为带长方向，头在右/u=1。
+SpriteEntity 的 u=0 映射局部 -X，即飞行后方，与原版 texCoord 方向相反，因此成品需水平翻转。）
 """
 
 from PIL import Image

@@ -18,9 +18,6 @@ private data class GenArgs(
     val schemaDir: Path,
     val scanPkg: String,
     val commentMode: CommentMode,
-    // 产物清单输出路径（可选）：写入本次生成的全部文件（相对 outDir，一行一个）。
-    // 供直写受管目录（如 contents/）的调用方在下一次生成前按清单清理陈旧产物——
-    // 生成器只写不删，条目删除/改名后旧文件会残留并扩散成加载错误。
     val manifestPath: Path?,
 )
 
@@ -112,7 +109,6 @@ private fun generate(args: GenArgs): GenResult {
     val grouped = entries.groupBy { it.target }
 
     var files = 0
-    // 本次生成的全部产物（相对 outDir），供 --manifest 清单输出。
     val written = mutableListOf<String>()
 
     fun record(path: Path) {
@@ -123,7 +119,6 @@ private fun generate(args: GenArgs): GenResult {
         val header = readHeader(args.schemaDir.resolve(target.headerSchemaFile))
         val sorted = list.sortedBy { it.key }
 
-        // Validate duplicate keys (almost always duplicate ids)
         val dup = sorted.groupBy { it.key }.filterValues { it.size > 1 }
         if (dup.isNotEmpty()) {
             error("Duplicate keys for ${target.name}: ${dup.keys.joinToString(", ")}")
@@ -134,7 +129,6 @@ private fun generate(args: GenArgs): GenResult {
         record(outFile)
         files++
 
-        // Sidecar comments (legacy/safe)
         if (args.commentMode.sidecar) {
             val commentLines = sorted.mapNotNull { e ->
                 val c = e.javaClass.getAnnotation(SsCsvComment::class.java)?.value
@@ -181,7 +175,6 @@ private fun scanEntries(scanPkg: String): List<SsCsvEntry> {
                 .filter { it.isFinal }
                 .mapNotNull { ci ->
                     val cls = ci.loadClass()
-                    // Kotlin object instances have a public static INSTANCE field
                     val instance = try {
                         cls.getField("INSTANCE").get(null)
                     } catch (_: Throwable) {
@@ -260,7 +253,6 @@ private fun formatNumber(n: Number): String = when (n) {
 
 private fun formatDouble(d: Double): String {
     if (d.isNaN() || d.isInfinite()) return d.toString()
-    // BigDecimal.valueOf(Double) uses a canonical string representation and is stable for common values.
     val s = BigDecimal.valueOf(d).stripTrailingZeros().toPlainString()
     return if (s == "-0") "0" else s
 }
@@ -280,9 +272,7 @@ private fun writeText(path: Path, text: String) {
 private fun csvEscape(s: String): String = CsvCodec.csvEscape(s)
 
 private fun commentCsvLine(columnCount: Int, comment: String): String {
-    // Starsector often supports comment lines starting with '#'.
-    // Ensure the line *actually* starts with '#' (no CSV quoting prefix), otherwise it may not be treated as a comment.
-    // Also replace commas to keep the "name-only" comment-row shape stable.
+    // 注释行必须以 '#' 开头（不能有 CSV 引号前缀），逗号会破坏注释行形状。
     val normalized = comment
         .replace('\r', ' ')
         .replace('\n', ' ')

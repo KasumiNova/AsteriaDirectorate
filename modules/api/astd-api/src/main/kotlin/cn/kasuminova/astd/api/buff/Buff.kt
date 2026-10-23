@@ -1,15 +1,9 @@
 package cn.kasuminova.astd.api.buff
 
 /**
- * 舰船/武器级战斗状态的最小承载单位。
+ * 舰船或武器的战斗状态。
  *
- * 动机：统一首批叠层机制（电荷针刺淤积、穷距持续演算等）的存取与生命周期语义，
- * 替代各自手搓 customData 读写的散件实现；与既有 `StackingShipBuffs`（到期一次性清零语义）并存，
- * 本接口族面向「连续流失/窗口流失」等 `StackingShipBuffs` 不覆盖的语义。
- *
- * Buff 本身不渲染、不分正负中性；任何特殊数值机制必须配玩家可见表现（HUD/特效/浮字），
- * 由具体 Buff 实现在 [advance] 内调用 `maintainStatusForPlayerShip` / 浮字 / 粒子通道表达，
- * 禁止有机制无反馈。
+ * 所有方法仅在战斗主线程调用。实现负责在 [advance] 中更新状态与玩家反馈，在 [onRemove] 中撤销属性修改。
  */
 interface Buff {
     /**

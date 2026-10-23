@@ -10,23 +10,11 @@ import com.fs.starfarer.api.util.Misc
 import org.lwjgl.util.vector.Vector2f
 import kotlin.math.abs
 
-/**
- * 战斗级 Hullmod（逐帧光环/压制类）共用基础设施：
- * - [aliveEnemies]：存活敌舰枚举（与 affix.AffixShared.aliveAllies 对称口径）；
- * - [reconcileTracked]：被修饰目标集合逐帧对账（失效目标立即收口，不留 stat 残留）；
- * - [hasHullId]：按 hullId/baseHullId 判定舰型；
- * - [DepartedShipCleanupWatcher]：舰船离场（非残骸化）或战斗结束后的收口哨兵。
- *   advanceInCombat 在舰船撤离战场后不再被调用，写在外界目标/指挥官身上的 stat 修饰会失去
- *   收口路径（指挥官 PersonAPI 的 dynamic stat 甚至跨战斗存活），必须由哨兵探活补收口。
- */
-
-/** 枚举战场上存活的敌军舰船（不含自身、战机、无人机与残骸）。 */
 fun aliveEnemies(engine: CombatEngineAPI, ship: ShipAPI): List<ShipAPI> =
     engine.ships.filter {
         it !== ship && it.owner != ship.owner && it.isAlive && !it.isHulk && !it.isFighter && !it.isDrone
     }
 
-/** 被修饰目标集合逐帧对账：本帧未再出现的既有目标执行 [unmodify] 并移出，本帧目标并入集合。 */
 fun <T> reconcileTracked(tracked: MutableSet<T>, seen: Collection<T>, unmodify: (T) -> Unit) {
     tracked.removeAll { target ->
         val stale = target !in seen
@@ -36,16 +24,11 @@ fun <T> reconcileTracked(tracked: MutableSet<T>, seen: Collection<T>, unmodify: 
     tracked += seen
 }
 
-/** 舰型判定（hullId 或 baseHullId 命中；null 安全）。 */
 fun ShipAPI?.hasHullId(hullId: String): Boolean {
     val s = this ?: return false
     return s.hullSpec?.hullId == hullId || s.hullSpec?.baseHullId == hullId
 }
 
-/**
- * 乘区偏移量 → 带符号百分数读数（0.2 → "+20%"；-0.1 → "-10%"），整值去小数、保留一位小数。
- * hullmod tooltip 难度变量注入的统一格式化（奇点能源/先进火控集成等共用）。
- */
 fun signedPercentOf(delta: Float): String {
     val pct = delta * 100f
     val rounded = Math.round(pct * 10f) / 10f
@@ -57,11 +40,9 @@ fun signedPercentOf(delta: Float): String {
     return if (pct > 0f) "+$body%" else "$body%"
 }
 
-/** 比例 → 无符号百分数读数（0.3 → "30%"），整值去小数、保留一位小数。 */
 fun unsignedPercentOf(fraction: Float): String =
     signedPercentOf(fraction).removePrefix("+")
 
-/** 相位舰船判定（相位限定效果的统一生效条件，按变体 hullSpec 判定；affix 与军官技能共用）。 */
 fun isPhaseShip(stats: MutableShipStatsAPI): Boolean =
     stats.variant?.hullSpec?.isPhase == true
 
@@ -71,11 +52,6 @@ private const val SIDE_ARMOR_FRACTION_MAX = 0.30f
 private const val REAR_ARMOR_FRACTION_MIN = 0.10f
 private const val REAR_ARMOR_FRACTION_MAX = 0.20f
 
-/**
- * 着弹方位装甲比例（默认档位口径，砺刃 v2 锚点值）：以舰船朝向为基准，正面 ±30° 取满额比例，
- * 向两侧/正后线性衰减。菀星战斗智能的相位上浮减伤使用本默认口径；
- * 等离子装甲护盾走参数化重载（难度缩放值随舰结算）。
- */
 fun directionalArmorFraction(ship: ShipAPI, hitPoint: Vector2f): Float =
     directionalArmorFraction(
         ship, hitPoint,
@@ -84,10 +60,6 @@ fun directionalArmorFraction(ship: ShipAPI, hitPoint: Vector2f): Float =
         REAR_ARMOR_FRACTION_MIN, REAR_ARMOR_FRACTION_MAX,
     )
 
-/**
- * 着弹方位装甲比例（参数化）：正面 ±30° 取 [front]；侧前 30°~90° 由 [sideMax] 线性衰减至
- * [sideMin]；后方 90°~180° 由 [rearMax] 线性衰减至 [rearMin]。
- */
 fun directionalArmorFraction(
     ship: ShipAPI,
     hitPoint: Vector2f,
@@ -109,11 +81,6 @@ fun directionalArmorFraction(
 
 private fun lerpArmor(a: Float, b: Float, t: Float): Float = a + (b - a) * t.coerceIn(0f, 1f)
 
-/**
- * 离场/战斗结束收口哨兵：宿主舰船撤离战场（retreat 等非残骸化移除）或战斗已结束时，
- * 执行一次 [cleanup] 并自移除。残骸化不经过本路径（hulk 仍在 engine 视图中，
- * 由 hullmod advanceInCombat 的 hulk 分支收口）。
- */
 class DepartedShipCleanupWatcher(
     private val engine: CombatEngineAPI,
     private val ship: ShipAPI,

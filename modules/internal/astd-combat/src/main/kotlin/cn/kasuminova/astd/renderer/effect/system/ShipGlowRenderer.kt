@@ -22,65 +22,27 @@ import java.util.IdentityHashMap
 import kotlin.math.cos
 import kotlin.math.sin
 
-/**
- * ASTD 舰船覆盖发光层（bloom / 装饰灯）渲染器：战斗内以池化 BoxUtil SpriteEntity
- * （[PooledCombatVfx.checkoutSprite] 租约，additive）完全代替原版装饰武器渲染
- * （原版侧由 [ASTDShipGlowEffect] 把装饰武器 alpha 压 0），装配界面仍走原版渲染。
- *
- * 动机：原版装饰武器渲染无法做发光外扩（bloom 泛光）与运行期换色；
- * 统一走 BoxUtil 实体后，引力相位等系统可经 [setRecolor] 把发光层实时切换为
- * 预生成的颜色变体（如 `_red.png`），并与原色层交叉淡入淡出。
- *
- * 接线：
- * - [preloadTextures]：onApplicationLoad 扫描全部「DECORATIVE 且贴图在
- *   `graphics/ships/` 下」的武器并预载贴图（战斗中 loadTexture 会损坏 SSOptimizer
- *   上传队列，必须在此完成）；同时为引力相位舰船预载红色变体；
- * - 覆盖层装饰武器的 everyFrameEffect（[ASTDShipGlowEffect]）每帧调用
- *   [onWeaponFrame] 登记舰船并驱动基底颜色；
- * - 换色方（引力相位）每帧调用 [setRecolor]（blend=0 视为清除）。
- *
- * 约束：每舰仅支持一个覆盖层武器（attachments 以舰为 key）；覆盖层贴图是与舰体
- * sprite 同画布的整幅对齐图，实体按舰体中心摆放并做 sprite 中心补偿，不使用武器
- * 槽位偏移（槽位坐标仅服务于装配界面的原版静态渲染）。
- */
 object ShipGlowRenderer {
 
     private const val ENGINE_KEY = "astd_ship_glow_renderer"
 
-    /** Sector memory key：贴图恢复脚本注册去重。 */
     private const val MEMORY_RESTORE_SCRIPT_ADDED = "\$astd_ship_glow_restore_script_added"
 
-    /** 覆盖层贴图路径前缀（ASTD 舰体覆盖层约定放在 ships 目录）。 */
     private const val OVERLAY_SPRITE_PREFIX = "graphics/ships/"
 
     private val log = AstdLog.logger
 
-    /** BoxUtil 直载纹理信息（texId + 实际图像在 POT 画布上的 UV 端点）。 */
     private class TextureInfo(val texId: Int, val uEnd: Float, val vEnd: Float)
 
-    /** 覆盖层武器 id → 贴图路径（preloadTextures 填充）。 */
     private val overlaySpritePaths = HashMap<String, String>()
 
-    /**
-     * 预加载成功的贴图路径 → BoxUtil TextureManager 直载纹理；渲染只使用此表内的贴图。
-     * 必须走 TextureManager 真 GL 上传：vanilla `getSprite` 在本环境（SSOptimizer 懒加载）
-     * 给出的 textureId 未真实上传，BoxUtil 直绑采样恒为 (0,0,0,0) 被片段着色器 discard，
-     * 已由三基元对照实验证实（vanilla 贴图 sprite 零像素，TextureManager 贴图正常出图）。
-     */
     private val textures = HashMap<String, TextureInfo>()
 
-    /** 覆盖层武器 id → 红色变体路径（仅引力相位舰船预载）。 */
     private val redVariantPaths = HashMap<String, String>()
 
-    /**
-     * 被压制原版装饰层贴图 → 原始颜色。
-     * weapon.sprite 是规格级共享缓存实例，战斗中压 alpha 会污染装配界面渲染
-     * （武器 render 每帧覆写 alphaMult 但不触碰 color，压 alphaMult 无效、压 color 会残留），
-     * 必须由战役侧恢复脚本（[SpriteRestoreScript]）显式还原。
-     */
+    // weapon.sprite 是规格级共享实例，战斗内修改的颜色会残留到装配界面，必须保存并在战役侧恢复。
     private val suppressedSprites = IdentityHashMap<SpriteAPI, Color>()
 
-    /** 压制原版装饰武器渲染：首次登记原始颜色后把颜色 alpha 压 0（每帧调用，幂等）。 */
     fun suppressVanillaSprite(sprite: SpriteAPI) {
         suppressedSprites.getOrPut(sprite) { Color(sprite.color.red, sprite.color.green, sprite.color.blue, sprite.color.alpha) }
         if (sprite.color.alpha != 0) {
@@ -88,7 +50,6 @@ object ShipGlowRenderer {
         }
     }
 
-    /** 恢复全部被压制贴图的原始颜色并清空登记（战役侧每帧调用；战斗进行时战役脚本不推进，天然互斥）。 */
     fun restoreSuppressedSprites() {
         if (suppressedSprites.isEmpty()) return
         for ((sprite, color) in suppressedSprites) {
@@ -101,7 +62,6 @@ object ShipGlowRenderer {
         suppressedSprites.clear()
     }
 
-    /** 战役侧常驻恢复脚本（onGameLoad 注册，幂等去重）。 */
     fun ensureRestoreScriptRegistered() {
         val sector = Global.getSector() ?: return
         val mem = sector.memoryWithoutUpdate
@@ -110,17 +70,12 @@ object ShipGlowRenderer {
         mem.set(MEMORY_RESTORE_SCRIPT_ADDED, true)
     }
 
-    /**
-     * 装饰层贴图恢复脚本：战役侧每帧还原被战斗内压制污染的共享贴图颜色。
-     * 战斗激活时战役脚本不推进，不会与战斗内的每帧压制互相打架。
-     */
     class SpriteRestoreScript : EveryFrameScript {
         override fun isDone(): Boolean = false
         override fun runWhilePaused(): Boolean = true
         override fun advance(amount: Float) = restoreSuppressedSprites()
     }
 
-    /** 预加载覆盖层贴图（onApplicationLoad 调用）。 */
     fun preloadTextures() {
         for (spec in Global.getSettings().allWeaponSpecs) {
             val id = spec.weaponId ?: continue
@@ -130,7 +85,6 @@ object ShipGlowRenderer {
             if (load(path)) overlaySpritePaths[id] = path
         }
 
-        // 引力相位舰船的覆盖层红色变体（相位换色由本渲染器承接）
         for (hull in Global.getSettings().allShipHullSpecs) {
             if (!hull.isPhase || hull.shipDefenseId != GravityPhaseVisualEffect.SYSTEM_ID) continue
             val overlayWeaponId = hull.builtInWeapons?.values?.firstOrNull { it in overlaySpritePaths } ?: continue
@@ -142,7 +96,6 @@ object ShipGlowRenderer {
 
     private fun load(path: String): Boolean {
         return try {
-            // vanilla 缓存仍需要：装配界面原版渲染与压制恢复走 SpriteAPI
             Global.getSettings().loadTexture(path)
             val tex = TextureManager.loadTexture(path)
             if (tex[0] <= 0) {
@@ -157,29 +110,21 @@ object ShipGlowRenderer {
         }
     }
 
-    /** 是否为覆盖层装饰武器（[ASTDShipGlowEffect] 据此禁用原版渲染并转发本渲染器）。 */
     fun isOverlayWeapon(weaponId: String): Boolean = weaponId in overlaySpritePaths
 
-    /**
-     * 引力相位换色入口：blend>0 时把该舰覆盖层切换为红色变体并按 blend 交叉淡入，
-     * blend<=0 恢复为原色层。舰船未被登记（无覆盖层）时静默忽略。
-     */
     fun setRecolor(ship: ShipAPI, blend: Float) {
         val engine = Global.getCombatEngine() ?: return
         val plugin = engine.customData[ENGINE_KEY] as? Plugin ?: return
         plugin.setRecolor(ship, blend)
     }
 
-    /** 每帧由覆盖层装饰武器的 everyFrameEffect 驱动：登记舰船 + 当帧基底颜色。 */
     fun onWeaponFrame(engine: CombatEngineAPI, weapon: WeaponAPI, baseColor: Color) {
         val plugin = engine.customData[ENGINE_KEY] as? Plugin ?: return
         plugin.track(weapon, baseColor)
     }
 
-    /** 渲染器是否已在该战斗中安装（[ASTDShipGlowEffect] 据此决定是否压制原版渲染）。 */
     fun isReady(engine: CombatEngineAPI): Boolean = engine.customData[ENGINE_KEY] is Plugin
 
-    /** 战斗开始由 CombatVfxBootstrap 安装。 */
     fun ensureInstalled(engine: CombatEngineAPI) {
         if (engine.customData[ENGINE_KEY] != null) return
         try {
@@ -193,7 +138,6 @@ object ShipGlowRenderer {
         }
     }
 
-    /** 舰船的覆盖层实体组：原色层租约 + 换色层租约（换色层按需检出）。 */
     private class Attachment(
         val ship: ShipAPI,
         val weaponId: String,
@@ -201,7 +145,6 @@ object ShipGlowRenderer {
         var recolor: SpriteLease?,
         var recolorBlend: Float = 0f,
         var baseColor: Color = Color.WHITE,
-        /** 舰体贴图中心补偿（覆盖层与舰体 sprite 同画布）。 */
         val centerOffsetX: Float,
         val centerOffsetY: Float,
     )
@@ -211,7 +154,6 @@ object ShipGlowRenderer {
         private val attachments = LinkedHashMap<Int, Attachment>()
         private val missingRecolorWarned = HashSet<String>()
 
-        /** 实体创建失败的舰船（不再重试，避免每帧重建实体与刷屏告警）。 */
         private val failedShips = HashSet<Int>()
 
         fun track(weapon: WeaponAPI, baseColor: Color) {
@@ -261,16 +203,10 @@ object ShipGlowRenderer {
             )
         }
 
-        /**
-         * 检出租约：raw texId 绑定 + UV 按 POT 画布端点、glowPower=0.05、ignoreIllumination。
-         * 纯手动模式（无看门狗）：alpha 由 updateAttachment 逐帧驱动，舰船 hulk/移除即 release。
-         * 材质其余口径对齐出厂 new SpriteEntity()：alphaToEmissive=1、additionEmissive=true。
-         */
         private fun createEntity(ship: ShipAPI, path: String): SpriteLease? {
             val tex = textures[path] ?: return null
             val shipSprite = ship.spriteAPI ?: return null
-            // 非实例化直绘（同 BoltRenderComponent 已验证路径）：顶点着色器 p_noneData
-            // 分支直接用实体模型矩阵；FIXED_2D 单实例路径在本环境实测零像素（SSBO 数据未生效），故不用。
+            // FIXED_2D 单实例路径在当前 BoxUtil/SSOptimizer 环境不产生像素，必须使用实体本体变换的非实例化渲染。
             return PooledCombatVfx.checkoutSprite(
                 engine,
                 SpriteLeaseKey(

@@ -8,13 +8,6 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
 
-/**
- * 小工具：把“beam/weapon 的真实朝向与端点”统一成一条线段。
- *
- * 设计目标：
- * - VFX 一律跟随【实际】朝向（优先 BeamAPI 的 from/to，其次 WeaponAPI.currAngle）。
- * - 避免用“请求角度/预期角度”去画效果，导致表现与真实光束不一致。
- */
 object BeamLineUtil {
 
     data class BeamLine(
@@ -26,9 +19,6 @@ object BeamLineUtil {
         val perpUnit: Vector2f,
     )
 
-    /**
-     * 直接由两点生成一条线段（适用于 ship system / combat plugin 等“没有 Weapon/Beam 对象”的场景）。
-     */
     fun fromPoints(from: Vector2f, to: Vector2f): BeamLine? {
         val f = Vector2f(from)
         val t = Vector2f(to)
@@ -40,12 +30,6 @@ object BeamLineUtil {
         return build(f, t, facing)
     }
 
-    /**
-     * 优先用 [beam] 的 from/to。
-     *
-     * 若 beam 为空，可用 weapon.currAngle + [fallbackRange] 生成一条“估算线”，
-     * 用于充能期/beam 尚未建立时的纯视觉效果。
-     */
     fun fromBeamOrWeapon(weapon: WeaponAPI, beam: BeamAPI?, fallbackRange: Float? = null): BeamLine? {
         val (from, to, facing) = if (beam != null) {
             val f = Vector2f(beam.from)

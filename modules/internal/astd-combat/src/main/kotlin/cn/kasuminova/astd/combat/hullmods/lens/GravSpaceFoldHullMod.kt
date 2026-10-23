@@ -23,35 +23,6 @@ import org.lazywizard.lazylib.MathUtils
 import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
 
-/**
- * 引力空间折跃器（Gravity Space Folder，hullmod id：astd_grav_space_fold）——舜华级（ZW-101）内置插件。
- *
- * 仅对舜华级生效（[isApplicableToShip] / advanceInCombat 入口 [isZw101Ship] guard）。
- * advanceInCombat 每帧驱动两效果：
- *
- * 1. **空间折跃**：舰船碰撞圈 + [GravSpaceFoldTuning.FOLD_RANGE_BONUS]su 范围内的所有敌对
- *    射弹与导弹（owner 与本舰不同；engine.projectiles 与 engine.missiles 两表并查，
- *    弹体判定标记天然去重），每个弹体进入范围时一次性判定
- *    （三态标记写入弹体 customData [FOLD_MARK_KEY]：未判定 → 判定不折跃 / 已折跃，
- *    两个终态均不再触发，成功折跃只发生一次）：
- *    命中则镜像折跃至舰船中心对称点（[GravSpaceFoldTuning.mirroredPosition]），
- *    保持原速度向量与朝向，弹体由此飞离舰船。
- *    概率 = 基础值 + 按弹体伤害线性加计，触及上限封顶（[GravSpaceFoldTuning.foldChance]）。
- *    每次成功折跃：起始位置一次收拢扭曲（60→20su）+ 4 个红色星云；
- *    目标位置一次扩散扭曲（20→60su）+ 4 个红色星云（[spawnFoldVfx]）。
- * 2. **光束散射**：舰船光束承伤乘区（beamDamageTakenMult，[GravSpaceFoldTuning.BEAM_DAMAGE_TAKEN_REDUCTION]）。
- *    减免随失效条件动态开关，故每帧 unmodify → 条件满足再 modify（不走
- *    applyEffectsAfterShipCreation 的一次性口径）。
- *
- * 失效条件（两效果共用）：舰船处于相位状态（[ShipAPI.isPhased]），或舰船系统处于冷却
- * （[ShipSystemAPI.SystemState.COOLDOWN]；IN/ACTIVE/OUT 激活过程不失效）。
- *
- * 玩家状态行：BaseHullMod 无 getStatusData 接口，状态行走官方
- * [CombatEngineAPI.maintainStatusForPlayerShip]（每帧调用刷新，仅玩家船渲染）。
- *
- * 状态隔离：HullModEffect 实例按 hullmod 规格全局共享，本插件无逐舰字段状态
- * （折跃判定标记挂在弹体实体 customData 上，随实体回收）。
- */
 class GravSpaceFoldHullMod : BaseHullMod() {
 
     override fun advanceInCombat(ship: ShipAPI, amount: Float) {
@@ -79,7 +50,6 @@ class GravSpaceFoldHullMod : BaseHullMod() {
         foldProjectiles(engine, ship, values)
     }
 
-    /** 敌对弹体折跃判定与执行（两表并查：射弹表 + 导弹表；三态判定标记去重防双表重入）。 */
     private fun foldProjectiles(engine: CombatEngineAPI, ship: ShipAPI, values: GravSpaceFoldTuning.Values) {
         val foldRange = ship.collisionRadius + GravSpaceFoldTuning.FOLD_RANGE_BONUS
         for (proj in engine.projectiles) {
@@ -101,10 +71,7 @@ class GravSpaceFoldHullMod : BaseHullMod() {
         if (proj.isFading || proj.isExpired) return
         if (Misc.getDistance(ship.location, proj.location) > foldRange) return
 
-        // 每弹体只判定一次：三态标记（未判定 / 判定不折跃 / 已折跃），两个终态入口直接跳过——
-        // 折跃成功的弹体镜像后可能仍在范围内，不得再次触发镜像与特效。
-        // 首写必须走 setCustomData（实体级 customData 惰性为 null 时 getCustomData()
-        // 返回一次性空表，直接 put 写入虚空）。
+        // customData 首次写入必须调用 setCustomData；getCustomData 返回的空表不持久。
         val mark = proj.customData[FOLD_MARK_KEY] as? String
         val roll = if (mark == null) MathUtils.getRandomNumberInRange(0f, 1f) else 0f
         val (newMark, doFold) = GravSpaceFoldTuning.resolveFold(
@@ -116,16 +83,11 @@ class GravSpaceFoldHullMod : BaseHullMod() {
 
         val oldPos = Vector2f(proj.location)
         val newPos = GravSpaceFoldTuning.mirroredPosition(ship.location, proj.location)
-        // 保持原速度向量与朝向：只改写位置，弹体由此飞离舰船
         proj.location.set(newPos)
         spawnFoldVfx(engine, oldPos, expanding = false)
         spawnFoldVfx(engine, newPos, expanding = true)
     }
 
-    /**
-     * 折跃一次性视觉：扭曲（时序 0.25s/0.5s/0.25s）+ 4 个红色星云（40~80su）。
-     * 起始位置收拢（60→20su），目标位置扩散（20→60su）。
-     */
     private fun spawnFoldVfx(engine: CombatEngineAPI, point: Vector2f, expanding: Boolean) {
         BoxUtilCombatVfx.ensureReady(engine)
 
@@ -170,7 +132,6 @@ class GravSpaceFoldHullMod : BaseHullMod() {
         }
     }
 
-    /** 玩家船左侧状态行（每帧调用刷新）：台词短句 + 当前难度档位的折跃概率区间与光束减免。 */
     private fun maintainStatusBar(engine: CombatEngineAPI, ship: ShipAPI, values: GravSpaceFoldTuning.Values) {
         engine.maintainStatusForPlayerShip(
             STATUS_KEY,
@@ -193,7 +154,6 @@ class GravSpaceFoldHullMod : BaseHullMod() {
         width: Float,
         isForModSpec: Boolean,
     ) {
-        // tooltip 展示口径：无舰上下文（装配面板）按我方档位展示（默认砺刃 v2）
         val values = GravSpaceFoldTuning.resolve(DifficultyTuningImpl, ship == null || ship.owner == 0)
         tooltip.hullmodCard(width, THEME, spec?.displayName) {
             para("ui.hullmod.grav_space_fold.desc", hl("奇点核心", HullmodThemes.LENS.nameColor))
@@ -229,16 +189,12 @@ class GravSpaceFoldHullMod : BaseHullMod() {
 
         private const val HULL_ID = "astd_zw_101"
 
-        /** 光束承伤减免修饰句柄。 */
         private const val BEAM_DR_MOD_ID = "astd_grav_space_fold_beam_dr"
 
-        /** 弹体折跃判定标记键（弹体实体 customData，值为三态字符串，随实体回收）。 */
         private const val FOLD_MARK_KEY = "astd_grav_space_fold_rolled"
 
-        /** 玩家船状态行键。 */
         private const val STATUS_KEY = "astd_grav_space_fold_status"
 
-        // 折跃星云爆发口径
         private const val FOLD_NEBULA_COUNT = 4
         private const val FOLD_NEBULA_OFFSET_MIN = 8f
         private const val FOLD_NEBULA_OFFSET_MAX = 24f
@@ -248,7 +204,6 @@ class GravSpaceFoldHullMod : BaseHullMod() {
 
         private val ZERO = Vector2f(0f, 0f)
 
-        /** 透镜线紫主题预设（与 [ASTDGravPhaseDeckHullMod] 一致，透镜协议视觉统一）。 */
         private val THEME = HullmodThemes.LENS
 
         private fun percent(value: Float): String = "${(value * 100f).toInt()}%"

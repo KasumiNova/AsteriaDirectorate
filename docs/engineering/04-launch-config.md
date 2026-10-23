@@ -16,7 +16,7 @@ runGame 是 `JavaExec` 任务，JVM 与项目 toolchain 无关：探测到的运
 2. `starsector.javaHome` / `STARSECTOR_JAVA_HOME` / `JBR17_HOME`：指定 JDK 根目录
 3. 游戏目录自带运行时：`zulu25_<os>` 优先，旧版 `jre[_<os>]` 其次
 4. `~/.jdks/` 下的 JBR（`jbr-*`，按名称倒序）
-5. 当前运行 Gradle 的 JVM 兜底
+5. 最后回退到当前运行 Gradle 的 JVM
 
 可再加约束过滤候选（不满足的候选直接跳过，全部不满足则报错并列出探测结果）：
 

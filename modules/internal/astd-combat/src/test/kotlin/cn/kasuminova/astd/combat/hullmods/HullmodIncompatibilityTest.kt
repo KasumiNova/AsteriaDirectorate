@@ -9,10 +9,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-/**
- * 船插互斥注册表校验：五路控制方映射、候选并集解析，
- * 以及控制方船插的 strip 列表与注册表同源（集中定义回归防线）。
- */
 class HullmodIncompatibilityTest {
 
     @Test
@@ -28,7 +24,6 @@ class HullmodIncompatibilityTest {
         assertTrue("hardenedshieldemitter" in plasmaShield, "熔壁等离子装甲护盾须禁装强化护盾")
         assertTrue("shield_shunt" in plasmaShield, "熔壁等离子装甲护盾须禁装护盾分流器")
 
-        // 奇点稳定器蓝/紫双变体登记同一禁装集合
         for (stabilizerId in listOf(ASTDSingularityStabilizerHullMod.ID_ARC, ASTDSingularityStabilizerHullMod.ID_LENS)) {
             val singularity = HullmodIncompatibility.forbiddenByController(stabilizerId)
             assertTrue("safetyoverrides" in singularity, "奇点稳定器（$stabilizerId）须禁装安全协议超驰")

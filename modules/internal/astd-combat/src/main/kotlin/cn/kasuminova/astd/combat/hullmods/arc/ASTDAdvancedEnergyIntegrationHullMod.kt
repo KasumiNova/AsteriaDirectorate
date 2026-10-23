@@ -18,42 +18,20 @@ import com.fs.starfarer.api.combat.ShipVariantAPI
 import com.fs.starfarer.api.ui.TooltipMakerAPI
 import java.awt.Color
 
-/**
- * 先进能量集成（XC-001 星坠内置船插）：武器线路与辐能管理系统的深度集成与装配优化。
- *
- * 效果（2026-10 裁定，随难度系数）：
- * - 武器辐能产生 -10%/-15%/-30%（不再局限于能量武器：实弹/能量/光束/导弹四条辐耗乘区）；
- * - 射弹飞行速度 +15%/+20%/+35%（实弹+能量，不再局限于能量射弹）；
- * - 炮塔转向速度 +25%/+50%/+125%。
- *
- * 固定效果（装配期写入，不随难度）：
- * - 非导弹武器装配点消耗 −2/−4/−8（小/中/大槽，实弹+能量）；
- * - 无法安装炮塔装甲、高级炮塔陀螺仪——互斥走 [IncompatibleHullmodStripper] 延迟清理
- *   （真相来源 [HullmodIncompatibility]，SKILL: hullmod-incompatibility-guidelines）。
- *
- * 难度取值：advanceInCombat 逐帧按 owner 结算（玩家侧我方档位，默认砺刃 v2；
- * 敌方/友军 AI 轨一 k_s 映射），tooltip 无舰上下文按我方档位展示。
- */
 class ASTDAdvancedEnergyIntegrationHullMod : BaseHullMod() {
 
     companion object {
-        /** Hullmod 注册 id（互斥表控制方键）。 */
         const val MOD_ID = "astd_arc_advanced_energy_integration"
 
-        /** 禁装船插列表：真相来源 [HullmodIncompatibility]。 */
         private val FORBIDDEN_HULLMOD_IDS: Set<String> =
             HullmodIncompatibility.forbiddenByController(MOD_ID)
 
-        /** 武器辐能产生乘区（三锚点 -10%/-15%/-30%）。 */
         val WEAPON_FLUX = ScalingEntry(0.90f, 0.85f, 0.70f)
 
-        /** 射弹飞行速度乘区（三锚点 +15%/+20%/+35%）。 */
         val PROJ_SPEED = ScalingEntry(1.15f, 1.20f, 1.35f)
 
-        /** 炮塔转向速度乘区（三锚点 +25%/+50%/+125%）。 */
         val TURN_RATE = ScalingEntry(1.25f, 1.50f, 2.25f)
 
-        // 非导弹武器 OP 折扣：小 -2, 中 -4, 大 -8（固定，不随难度）
         private const val SMALL_OP_DISCOUNT = -2f
         private const val MEDIUM_OP_DISCOUNT = -4f
         private const val LARGE_OP_DISCOUNT = -8f
@@ -61,7 +39,6 @@ class ASTDAdvancedEnergyIntegrationHullMod : BaseHullMod() {
         private val THEME = HullmodThemes.ARC
     }
 
-    /** 难度结算值（三锚点映射后）。 */
     internal data class Values(
         val weaponFluxMult: Float,
         val projSpeedMult: Float,
@@ -83,7 +60,6 @@ class ASTDAdvancedEnergyIntegrationHullMod : BaseHullMod() {
         // 只检测入队：本回调可能在原版 OP 结算的 hullMods 实时迭代内触发，结构性移除会抛 CME
         IncompatibleHullmodStripper.requestStrip(variant, FORBIDDEN_HULLMOD_IDS, MOD_ID)
 
-        // 非导弹武器 OP 折扣（固定）
         stats.dynamic.getMod("small_ballistic_mod").modifyFlat(id, SMALL_OP_DISCOUNT)
         stats.dynamic.getMod("small_energy_mod").modifyFlat(id, SMALL_OP_DISCOUNT)
         stats.dynamic.getMod("medium_ballistic_mod").modifyFlat(id, MEDIUM_OP_DISCOUNT)
@@ -120,7 +96,6 @@ class ASTDAdvancedEnergyIntegrationHullMod : BaseHullMod() {
         width: Float,
         isForModSpec: Boolean
     ) {
-        // tooltip 展示口径：无舰上下文（装配面板）按我方档位展示（默认砺刃 v2）
         val values = Values.resolve(ship == null || ship.owner == 0)
         tooltip.hullmodCard(width, THEME, spec?.displayName) {
             para("ui.hullmod.aei.summary")

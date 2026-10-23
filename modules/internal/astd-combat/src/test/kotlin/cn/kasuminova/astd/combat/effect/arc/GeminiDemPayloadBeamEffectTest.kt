@@ -21,16 +21,8 @@ import org.mockito.Mockito.`when`
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-/**
- * 规格 10 §4.1 用例 9~10（EMP 电弧口径：每轮打击预算 5 道 × 0.2s 节律，
- * 单道 EMP = 面板 1000 × 总量难度倍率 × 20%——玩家恒 v2 单道 400）：
- * 首伤帧一次性登记（防照射期重复）、动能节律 EMP 电弧打满预算即止、高爆无电弧、
- * 停火后状态移除可重新触发、hulk/战机目标不登记不触发、
- * 战机版 payload 按 weaponId 识别（数据驱动削弱链），EMP 单道乘算 ×0.75。
- */
 class GeminiDemPayloadBeamEffectTest {
 
-    /** 玩家来源（owner=0）恒 v2：单道 EMP = 面板 × v2 总量 × 单道占比。 */
     private val empPerArcPlayerV2 =
         GeminiDemDifficulty.WARHEAD_PANEL_DAMAGE * GeminiDemDifficulty.EMP_TOTAL_FRACTION.v2 * GeminiDemDifficulty.EMP_ARC_SHARE_OF_TOTAL
 
@@ -48,7 +40,6 @@ class GeminiDemPayloadBeamEffectTest {
         `when`(ship.owner).thenReturn(owner)
         `when`(ship.isHulk).thenReturn(hulk)
         `when`(ship.isFighter).thenReturn(fighter)
-        // 同步触发会对双弹头 demDrone stats 施加乘区（applySyncMult）并写实体 customData（markSyncVisual），必须可触达
         val stats = mock(MutableShipStatsAPI::class.java)
         `when`(stats.energyWeaponDamageMult).thenReturn(mock(MutableStat::class.java))
         `when`(ship.mutableStats).thenReturn(stats)
@@ -77,7 +68,6 @@ class GeminiDemPayloadBeamEffectTest {
         return beam
     }
 
-    /** 持续伤害帧驱动 beam 推进 [frames] × [frameSeconds] 秒。 */
     private fun burn(effect: GeminiDemPayloadBeamEffect, engine: CombatEngineAPI, beam: BeamAPI, frames: Int, frameSeconds: Float = 0.05f) {
         repeat(frames) { effect.advance(frameSeconds, engine, beam) }
     }
@@ -90,7 +80,6 @@ class GeminiDemPayloadBeamEffectTest {
         val source = stubShip("P1", 0)
 
         val kinetic = stubBeam(GeminiDemDifficulty.KINETIC_PAYLOAD_ID, target, source)
-        // 1.5s 照射（30 × 0.05s）：首道随首伤帧立即打出，其后于累积 0.2/0.4/0.6/0.8s 各一道，预算 5 道打满后不再产生
         burn(effect, engine, kinetic, 30)
         verify(engine, times(5)).spawnEmpArc(
             source, kinetic.to, target, target, DamageType.ENERGY,
@@ -103,7 +92,6 @@ class GeminiDemPayloadBeamEffectTest {
 
         val he = stubBeam(GeminiDemDifficulty.HE_PAYLOAD_ID, target, source)
         burn(effect, engine, he, 30)
-        // 电弧总数不变（高爆无 EMP）；同步共振已被动能+高爆异种配对触发一次
         assertEquals(5, GeminiDemPayloadBeamEffect.empArcCount(engine))
         assertEquals(1, GeminiDemPayloadBeamEffect.heHitCount(engine))
         assertEquals(1, GeminiDemSyncHandler.syncTriggerCount(engine), "动能+高爆 1s 窗内配对触发同步")
@@ -126,19 +114,16 @@ class GeminiDemPayloadBeamEffectTest {
         `when`(beam.to).thenReturn(Vector2f(50f, 60f))
         `when`(beam.source).thenReturn(source)
 
-        // 第一轮：开火 + 伤害帧 → 首伤帧登记 + 首道电弧随首伤帧立即打出
         `when`(weapon.isFiring).thenReturn(true)
         `when`(beam.didDamageThisFrame()).thenReturn(true)
         effect.advance(0.016f, engine, beam)
         assertEquals(1, GeminiDemPayloadBeamEffect.kineticHitCount(engine))
         assertEquals(1, GeminiDemPayloadBeamEffect.empArcCount(engine))
 
-        // 停火：状态移除
         `when`(beam.didDamageThisFrame()).thenReturn(false)
         `when`(weapon.isFiring).thenReturn(false)
         effect.advance(0.016f, engine, beam)
 
-        // 第二轮：再次开火 + 1.5s 伤害帧 → 再登记一次 + 打满新一轮 5 道预算
         `when`(weapon.isFiring).thenReturn(true)
         `when`(beam.didDamageThisFrame()).thenReturn(true)
         `when`(engine.getTotalElapsedTime(false)).thenReturn(20f)
@@ -180,8 +165,6 @@ class GeminiDemPayloadBeamEffectTest {
         val target = stubShip("T1", 1)
         val source = stubShip("P1", 0)
 
-        // 数据驱动削弱链：光束伤害由战机版 spec dps 折算（引擎侧），脚本侧只剩 EMP 单道乘算；
-        // 战机版动能 payload 同样按动能命中登记（同步配对口径与舰装一致）
         val beam = stubBeam(GeminiDemDifficulty.KINETIC_PAYLOAD_FIGHTER_ID, target, source)
         burn(effect, engine, beam, 30)
 

@@ -1,5 +1,5 @@
 ---
-name: "weapon-csv-guidelines"
+name: weapon-csv-guidelines
 description: "weapon_data.csv 编辑规范：关键字段、列对齐、引号安全与 ss-csv 工作流。"
 ---
 
@@ -31,11 +31,11 @@ description: "weapon_data.csv 编辑规范：关键字段、列对齐、引号�
 
 ## 列对齐与缺省值
 
-`weapon_data.csv` 一旦列错位，会导致：
+`weapon_data.csv` 列错位会导致：
 
 - `tags/groupTag/tech/...` 串列
 - `noDPSInTooltip/number` 被错读
-- 游戏侧读取异常（可能静默，也可能表现诡异）
+- 游戏读取异常，可能不报告错误，也可能产生错误行为
 
 规则：
 
@@ -55,7 +55,7 @@ description: "weapon_data.csv 编辑规范：关键字段、列对齐、引号�
 - 只有明确需要覆盖 `contents/` 才执行写回任务（需 `-PssCsvForce=true`）
 - 写回后复查 `weapon_data.csv` 列对齐与引号完整性
 
-## 常见坑位清单
+## 常见错误
 
 - 列错位：中间段数值列留空导致整体右移
 - 引号错误：字段内含逗号/换行但未加引号

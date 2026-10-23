@@ -1,5 +1,5 @@
 ---
-name: "dialog-dsl-guidelines"
+name: dialog-dsl-guidelines
 description: "Dialog DSL 使用指南：对话图、节点、选项、动作、延迟文本队列与常见用法。"
 ---
 
@@ -87,12 +87,12 @@ description: "Dialog DSL 使用指南：对话图、节点、选项、动作、�
 - **整体节奏缩放**：`DIALOG_TIME_SCALE = 0.5f` 统一作用于 TextPanel 推入动画与
   文本队列（行间间隔/淡入淡出均放慢一倍）；节点 `onAdvance` 拿原始 `amount`，计时逻辑不受影响
 
-**关闭语义（closed 防误清）**：
+**关闭后的处理**：
 
-- `closeInternal` 执行后插件进入 `closed` 终态：`advance`/`optionSelected`/选项刷新全部停摆
-- 关键动机：`onClose` 宿主钩子（如 `BarEventDialogPlugin.endEvent` → `BarCMD.showOptions`）
-  会**同步**重建宿主选项面板；若本插件在关闭后继续当帧的选项刷新，会把宿主刚加好的
-  「继续/离开酒吧」清成空白，玩家卡死
+- `closeInternal` 执行后插件进入 `closed` 终态：`advance`/`optionSelected`/选项刷新全部停止
+- `onClose` 宿主钩子（如 `BarEventDialogPlugin.endEvent` → `BarCMD.showOptions`）
+  会**同步**重建宿主选项面板；若本插件在关闭后继续当帧的选项刷新，会清除宿主刚添加的
+  「继续/离开酒吧」选项，使玩家无法继续
 - 因此：节点/选项动作里触发 `ctx.close()` 后，不要再期待本插件对面板做任何写操作
 
 **Escape 关闭**：
@@ -115,7 +115,7 @@ description: "Dialog DSL 使用指南：对话图、节点、选项、动作、�
 - `campaign/dialog/story/StorySiteDialog.kt`：timed 描写节点 → 菜单节点的最小结构
 - `campaign/dialog/story/PrologueAgentBarEvent.kt`：酒馆事件宿主接入（`onClose` 交还宿主插件）
 
-## 常见坑位
+## 常见错误
 
 - 文本队列还在输出，选项仍可点 → 没有启用 `timedNode` 或锁定逻辑
 - 选项未刷新 → 忘记 `markOptionsDirty()`（enqueue 会自动触发）

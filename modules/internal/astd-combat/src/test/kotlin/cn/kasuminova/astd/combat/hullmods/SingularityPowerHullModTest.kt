@@ -15,12 +15,6 @@ import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-/**
- * 奇点能源（[ASTDSingularityPowerHullMod]，2026-10 难度系数裁定）stat 写入验证：
- * - 装配期只写环境抗性（corona_resistance ×0，战役侧读取面）；
- * - 战斗内逐帧写排辐/过载/三类武器辐耗乘区，玩家侧取我方档位（默认砺刃 v2），敌方按 k_s 映射；
- * - tooltip 百分数格式化（[signedPercentOf]）。
- */
 class SingularityPowerHullModTest {
 
     private val hullmod = ASTDSingularityPowerHullMod()
@@ -64,9 +58,7 @@ class SingularityPowerHullModTest {
         val map = StatMap()
         hullmod.applyEffectsBeforeShipCreation(ShipAPI.HullSize.CRUISER, stubStats(map), "test")
 
-        // 负面环境影响 -100%（corona_resistance 归零，原版 SolarShielding 判例）
         assertEquals(0f, map.environment.modifiedValue, 1e-6f)
-        // 难度缩放项不在装配期写入（战斗内逐帧通道）
         assertEquals(1f, map.ventRate.modifiedValue, 1e-6f)
         assertEquals(100f, map.overloadTime.computeEffective(100f), 1e-3f)
         assertEquals(100f, map.ballisticFlux.computeEffective(100f), 1e-3f)
@@ -78,7 +70,6 @@ class SingularityPowerHullModTest {
         val map = StatMap()
         hullmod.advanceInCombat(stubShip(owner = 0, stubStats(map)), 0.016f)
 
-        // 排辐 +20% / 过载 -20% / 武器辐耗 -10%（砺刃 v2 锚点）
         assertEquals(1.2f, map.ventRate.modifiedValue, 1e-6f)
         assertEquals(80f, map.overloadTime.computeEffective(100f), 1e-3f)
         assertEquals(90f, map.ballisticFlux.computeEffective(100f), 1e-3f)
@@ -92,7 +83,6 @@ class SingularityPowerHullModTest {
         val map = StatMap()
         hullmod.advanceInCombat(stubShip(owner = 1, stubStats(map)), 0.016f)
 
-        // 迟暮 v1 锚点：排辐 +10% / 过载 -10% / 武器辐耗 -5%
         assertEquals(1.1f, map.ventRate.modifiedValue, 1e-6f)
         assertEquals(90f, map.overloadTime.computeEffective(100f), 1e-3f)
         assertEquals(95f, map.ballisticFlux.computeEffective(100f), 1e-3f)
@@ -101,7 +91,6 @@ class SingularityPowerHullModTest {
         val mapV5 = StatMap()
         hullmod.advanceInCombat(stubShip(owner = 1, stubStats(mapV5)), 0.016f)
 
-        // 破晓 v5 锚点：排辐 +50% / 过载 -50% / 武器辐耗 -25%
         assertEquals(1.5f, mapV5.ventRate.modifiedValue, 1e-6f)
         assertEquals(50f, mapV5.overloadTime.computeEffective(100f), 1e-3f)
         assertEquals(75f, mapV5.ballisticFlux.computeEffective(100f), 1e-3f)

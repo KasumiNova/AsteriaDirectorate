@@ -13,21 +13,6 @@ import com.fs.starfarer.api.util.Misc
 import second_in_command.SCData
 import second_in_command.specs.SCBaseSkillPlugin
 
-/**
- * 精英狼群（astd_sc_elite_wolfpack）——影响所有护卫舰/驱逐舰/巡洋舰，
- * 主力舰与战机不生效（[SicTuning.wolfpackBonusEntry] 对不适用舰级返回 null）
- * （docs/design/skills/10-sic-skills.md 阶段三；数值声明见 [SicTuning]）。
- *
- * 机制落点（applyEffectsBeforeShipCreation）：
- * - 部署点提升（负面平衡，固定值无缩放）：`dynamic.getMod(Stats.DEPLOYMENT_POINTS_MOD).modifyMult(1 + x)`；
- * - 全面属性加成（按舰级选 entry 后统一乘区）：装甲/结构/辐能容量与耗散/航速/加减速/
- *   转向/三类武器射程、伤害、射速/三类备弹恢复/舰船系统射程与充能。
- *   两个语义特判：
- *   - `systemCooldownBonus` 是冷却时间乘区（值越低冷却越短；原版 SystemsExpertise 以
- *     modifyMult(id, 1 - x) 实现冷却减免），故按 1 - x 写入而非 1 + x；
- *   - `zeroFluxMinimumFluxLevel` 是 flat 阈值语义（零辐能加速的辐能水平门槛），
- *     不套乘区，跳过。
- */
 class EliteWolfpackSkill : SCBaseSkillPlugin() {
 
     override fun getAffectsString(): String =
@@ -106,10 +91,8 @@ class EliteWolfpackSkill : SCBaseSkillPlugin() {
         stats.ballisticAmmoRegenMult.modifyMult(id, mult)
         stats.energyAmmoRegenMult.modifyMult(id, mult)
         stats.missileAmmoRegenMult.modifyMult(id, mult)
-        // 冷却时间是反向语义（值越低冷却越短，原版 SystemsExpertise 口径）
         stats.systemCooldownBonus.modifyMult(id, 1f - bonus)
         stats.systemRangeBonus.modifyMult(id, mult)
         stats.systemRegenBonus.modifyMult(id, mult)
-        // zeroFluxMinimumFluxLevel 为 flat 阈值语义（零辐能加速门槛），不套乘区，跳过
     }
 }

@@ -9,10 +9,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/**
- * 规格 08 §4.1 用例 1/2/4/5/6/11：撞线阈值三档、严格小于边界、战机增伤三档、
- * 武器 EMP 三档、爆炸倍率与固定半径、领先瞄准点——全部真实调用 [StellarMrmStrikeMath] 纯函数。
- */
 class StellarMrmStrikeMathTest {
     private var warnCapture: WarnCapture? = null
 

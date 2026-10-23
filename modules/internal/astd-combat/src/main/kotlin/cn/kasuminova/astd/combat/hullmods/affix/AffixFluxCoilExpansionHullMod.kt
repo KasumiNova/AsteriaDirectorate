@@ -10,11 +10,6 @@ import com.fs.starfarer.api.combat.MutableShipStatsAPI
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.ui.TooltipMakerAPI
 
-/**
- * 词缀 S-03：极限辐能线圈扩容（[AffixRegistry.ID_FLUX_COIL_EXPANSION]）。
- * 按难度系数：提升 20%~40% 辐能容量（最终乘区）；降低 20% 辐能耗散（固定值）。
- * 与六相冰辐能网络、电网深化升级互斥（抽取时强制）。
- */
 class AffixFluxCoilExpansionHullMod : BaseHullMod() {
 
     data class Bonuses(
@@ -24,7 +19,6 @@ class AffixFluxCoilExpansionHullMod : BaseHullMod() {
     companion object {
         val CAPACITY = ScalingEntry(v1 = 1.20f, v2 = 1.30f, v5 = 1.40f)
 
-        /** 辐能耗散惩罚（固定 -20%）。 */
         const val DISSIPATION_MULT = 0.80f
 
         fun bonuses(tuning: DifficultyTuning): Bonuses = Bonuses(

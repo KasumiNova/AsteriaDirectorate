@@ -21,13 +21,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-/**
- * [ExplosionStrikeImpl] 统一结算入口的真实逻辑验证：
- * - 舰体压点数学（clampIntoHull 纯函数直驱 + resolveDamagePoint 经 ShipAPI 桩全路径）；
- * - 线性衰减数学（[LinearExplosionFalloffImpl.damageFor] 直驱）；
- * - strike 全流程：内置过滤矩阵、victimFilter 终判、落点/bypass 口径、返回受害清单；
- * - 0 值防线（radius 非正、damage/emp 非法、护盾数据异常）全部 WARN 不静默。
- */
 class ExplosionStrikeImplTest {
     private val captures = mutableListOf<WarnCapture>()
 
@@ -36,8 +29,6 @@ class ExplosionStrikeImplTest {
         captures.forEach { it.detach() }
         captures.clear()
     }
-
-    // ---- 桩 ----
 
     private data class DamageRecord(
         val target: CombatEntityAPI,
@@ -111,8 +102,6 @@ class ExplosionStrikeImplTest {
         return shield
     }
 
-    // ---- 舰体压点数学（纯函数直驱）----
-
     @Test
     fun `压点 - 爆心在 0_9 倍碰撞半径内原样返回`() {
         val center = Vector2f(1000f, 1000f)
@@ -139,8 +128,6 @@ class ExplosionStrikeImplTest {
         assertEquals(500f, same.x, 1e-3f)
         assertEquals(500f, same.y, 1e-3f)
     }
-
-    // ---- 统一落点解析（ShipAPI 桩全路径）----
 
     @Test
     fun `落点 - 盾覆盖爆心取盾面点且 bypass 口径为覆盖`() {
@@ -179,8 +166,6 @@ class ExplosionStrikeImplTest {
         assertTrue(capture.messages().any { it.contains("护盾数据异常") }, "必须记 WARN: ${capture.messages()}")
     }
 
-    // ---- 线性衰减数学（直驱）----
-
     @Test
     fun `线性衰减 - 核心区内全额到半径线性降到最低`() {
         val falloff = LinearExplosionFalloffImpl(coreRadius = 50f, minDamage = 100f)
@@ -202,8 +187,6 @@ class ExplosionStrikeImplTest {
         assertEquals(1000f, FullExplosionFalloffImpl.damageFor(1000f, 0f, 200f), 1e-3f)
         assertEquals(1000f, FullExplosionFalloffImpl.damageFor(1000f, 199f, 200f), 1e-3f)
     }
-
-    // ---- strike 全流程 ----
 
     @Test
     fun `结算 - 敌舰命中侧压点加bypass 导弹取爆心点 友军残骸相位过期弹剔除`() {
@@ -296,8 +279,6 @@ class ExplosionStrikeImplTest {
 
         assertEquals(240f, world.damages.single().emp, 1e-3f)
     }
-
-    // ---- 0 值防线 ----
 
     @Test
     fun `防线 - radius 非正 WARN 且不结算`() {

@@ -4,12 +4,6 @@ import cn.kasuminova.astd.renderer.shader.base.ShaderEffectLayer
 import com.fs.starfarer.api.combat.BaseCombatLayeredRenderingPlugin
 import com.fs.starfarer.api.combat.CombatEngineAPI
 
-/**
- * Combat-scoped shader runtime host.
- *
- * A combat engine owns one runtime instance. The runtime owns submissions and
- * installs one layered plugin that performs all shader rendering.
- */
 class CombatShaderRuntime private constructor(private val host: ShaderRuntimeHost) {
     private val queue = ShaderRenderQueue()
     private val plugin = ShaderLayerPlugin(queue)
@@ -33,7 +27,6 @@ class CombatShaderRuntime private constructor(private val host: ShaderRuntimeHos
         isExpired = true
     }
 
-    /** 测试入口（跨模块测试可达，故 public）：该层当前的提交快照。 */
     fun snapshotsForTests(layer: ShaderEffectLayer): List<ShaderSubmission> = queue.snapshotsForLayer(layer)
 
     companion object {
@@ -51,9 +44,6 @@ class CombatShaderRuntime private constructor(private val host: ShaderRuntimeHos
     }
 }
 
-/**
- * Small host boundary used to keep runtime tests free of Starsector proxies.
- */
 interface ShaderRuntimeHost {
     val customData: MutableMap<String, Any?>
     val isPaused: Boolean

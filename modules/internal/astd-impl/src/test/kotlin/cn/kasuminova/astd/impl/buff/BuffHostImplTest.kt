@@ -11,14 +11,10 @@ import kotlin.test.assertNull
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
-/**
- * 规格 §1.4-1/2/4：复合键隔离与换装不可见、getOrCreate 幂等、同键覆盖 WARN。
- */
 class BuffHostImplTest {
 
     @BeforeTest
     fun installBuffBackend() {
-        // api 扩展函数族走 BuffBackends 桥：本模块测试装真后端（引擎为 null 时跳过心跳登记）。
         BuffInstall.install()
     }
 
@@ -54,7 +50,6 @@ class BuffHostImplTest {
 
         hostA.register(StubBuff(id = "astd_test_weapon_buff"), weapon)
 
-        // 复合键不含 ship 引用：键级联在各自 customData 上，换船即查不到。
         assertNull(hostB.findByWeapon("astd_test_weapon_buff", weapon))
     }
 
@@ -66,11 +61,9 @@ class BuffHostImplTest {
         val oldWeapon = stubWeapon(slotId = "WS0001", weaponId = "astd_old_cannon")
         host.register(oldBuff, oldWeapon)
 
-        // 同槽位换装：登记 weaponId 与当前武器不符，视为不存在。
         val newWeapon = stubWeapon(slotId = "WS0001", weaponId = "astd_new_cannon")
         assertNull(host.findByWeapon("astd_test_weapon_buff", newWeapon))
 
-        // 换装属正常流程：重新注册替换残留时回收旧 Buff 但不记 WARN（WARN 只给程序错误的重复注册）。
         val newBuff = StubBuff(id = "astd_test_weapon_buff")
         host.register(newBuff, newWeapon)
         assertEquals(1, oldBuff.removeCalls)
@@ -94,7 +87,6 @@ class BuffHostImplTest {
 
         assertSame(first, second)
         assertEquals(1, creatorCalls)
-        // 幂等前提：buffHost 本身也幂等（同一 host 实例）。
         assertSame(ship.buffHost(), ship.buffHost())
     }
 

@@ -22,12 +22,9 @@ import com.fs.starfarer.api.util.Misc
 import org.lwjgl.util.vector.Vector2f
 
 /**
- * 重型离子脉冲场景（规格 02 §4.2 烟测检查点）。
- *
- * 拆分自 ASTDAutomationCombatPlugin 的同名 if-else 分支，相位机/断言/证据写出口径原样迁移。
+ * 重型离子脉冲场景。
  */
 class HeavyIonPulseScenario : AbstractAutomationScenario() {
-    // === Heavy ion pulse scenario fields ===
     private var hipPhase = HIP_PHASE_MOUNT
     private var hipPhaseStartedAt = 0f
 
@@ -68,8 +65,8 @@ class HeavyIonPulseScenario : AbstractAutomationScenario() {
         val engine = ctx.engine
         engine.setDoNotEndCombat(true)
         lockHipCamera(engine)
-        // 贯穿浮字与 FPS 仅 devMode 渲染（2026-07-29 审批裁定先例）：本场景为 dev-only 舞台，
-        // 开启 devMode 以目检 EMP 贯穿补伤浮字（进程被早退杀掉，设置不落盘）。
+        // 贯穿浮字与 FPS 仅 devMode 渲染：本场景为 dev-only 舞台，
+        // 开启 devMode 以目检 EMP 贯穿补伤浮字（进程被早退杀掉，设置不会保存到磁盘）。
         Global.getSettings().isDevMode = true
         ctx.writeDiagnostics("CombatReady")
         ctx.writeTelemetry("CombatReady", findHipPlayer(engine), null)
@@ -112,8 +109,8 @@ class HeavyIonPulseScenario : AbstractAutomationScenario() {
     }
 
     /**
-     * 贯穿相位舞台守卫：逐帧摘除目标舰的 EMP 抗性削减叠层 Buff（2026-09 新增机制），
-     * 保持舞台钉死的近零抗性（0.01）不被命中叠层抬升——贯穿条件是 mult < 0.1，
+     * 贯穿相位舞台守卫：逐帧摘除目标舰的 EMP 抗性削减叠层 Buff，
+     * 保持舞台钉死的近零抗性（0.01）不被命中叠层抬升，贯穿条件是 mult < 0.1，
      * 叠层两次即越过阈值会令贯穿舞台永久停摆。抗性削减机制本身的正确性由单测承担。
      */
     private fun stripHipResistStacks(ship: ShipAPI?) {
@@ -122,11 +119,11 @@ class HeavyIonPulseScenario : AbstractAutomationScenario() {
     }
 
     /**
-     * 舞台保活与站位（范式同 stabilizeGdShips）：双舰逐帧奶 + 辐能清零 + 钉死锚点 +
+     * 舞台保活与站位（范式同 stabilizeGdShips）：双舰逐帧回血 + 辐能清零 + 钉死锚点 +
      * force fire 独占驱动（autofire 关闭）；护盾按相位策略逐帧拨杆（保留 AI 让原版威胁追踪工作，
      * 拨杆在每帧 AI 之后执行覆盖其决定，范式同电荷针刺相位机）。
-     * 敌方开火带部署免疫闸（GD/SS 实机判例：reserves 手动 spawn 舰船部署后数秒内脚本 applyDamage
-     * 可能全额无效；且此前相位敌舰武器被 EMP 瘫痪需要恢复窗口）。
+     * 敌方开火带部署免疫闸（Starsector 0.98 中 reserves 手动 spawn 舰船部署后数秒内脚本 applyDamage
+     * 可能全额无效；前一相位敌舰武器被 EMP 瘫痪也需要恢复窗口）。
      */
     private fun stabilizeHipShips(engine: CombatEngineAPI, playerFire: Boolean, enemyFire: Boolean) {
         val player = findHipPlayer(engine)
@@ -175,7 +172,7 @@ class HeavyIonPulseScenario : AbstractAutomationScenario() {
         }
     }
 
-    /** 玩家舰当前被瘫痪武器数（§2.5 待验证项观测面：贯穿追加 EMP 是否穿透 mult≈0 的抗性减免）。 */
+    /** 玩家舰当前被瘫痪武器数（观测贯穿追加 EMP 是否穿透 mult≈0 的抗性减免）。 */
     private fun hipDisabledWeaponCount(ship: ShipAPI?): Int = ship?.allWeapons?.count { it.isDisabled } ?: 0
 
     override fun advance(ctx: AutomationCombatContext, amount: Float) {
@@ -269,7 +266,7 @@ class HeavyIonPulseScenario : AbstractAutomationScenario() {
                         }
                     }
                 }
-                // §2.5 待验证项正向对照：mult=1.0 的敌舰在本相位应被面板 EMP 瘫痪武器/引擎
+                // 正向对照：mult=1.0 的敌舰在本相位应被面板 EMP 瘫痪武器/引擎
                 // （证明舞台 EMP 瘫痪机制生效，反衬 PIERCE_K5 mult≈0 目标的 disabled=0 读数）。
                 hipHullEnemyMaxDisabled = maxOf(hipHullEnemyMaxDisabled, hipDisabledWeaponCount(enemy))
                 if (dischargePlayer >= HIP_HULL_MIN_DISCHARGE && playerWeapon != null &&
@@ -282,8 +279,8 @@ class HeavyIonPulseScenario : AbstractAutomationScenario() {
                                 "enemyMaxDisabled=$hipHullEnemyMaxDisabled（mult=1.0 正向对照：EMP 瘫痪机制生效）",
                     )
                     // k_s=5 玩家恒 v2：玩家来源无贯穿（贯穿为破晓敌版逐项解锁）；敌舰 mult→0.01f 令贯穿条件成立，
-                    // 若玩家口径漂移出 v2 则此相位必产出贯穿浮字（反面断言）。
-                    // （2026-07-29 A9 修复后 mult 必须为近零而非绝对 0——0 乘区下贯穿按设计整体跳过，泄漏反而不可见。）
+                    // 若玩家档位漂移出 v2 则此相位必产出贯穿浮字（反面断言）。
+                    // mult 必须为近零而非绝对 0：0 乘区下贯穿按设计整体跳过，泄漏反而不可见。
                     DifficultyTuningImpl.installScaleForTests(5f)
                     enemy?.mutableStats?.empDamageTakenMult?.modifyMult(HIP_RESIST_MOD_ID, 0.01f)
                     hipScale5PlayerHitsBaseline = hitsPlayer
@@ -307,10 +304,9 @@ class HeavyIonPulseScenario : AbstractAutomationScenario() {
                                     "（k_s=5 玩家恒 v2；本相位玩家累计泄放 $disDelta 次、泄放仍按 v2 口径）",
                         )
                         // 敌版 k_s=2 无贯穿（反面）：玩家停火，敌版开火落玩家船体。
-                        // 玩家 mult 钉 0.01f（近零抗性）：原 0f 舞台为 A9 证明所用（绝对 0 乘区下
-                        // 任何折算补偿无效，A9 修复后该舞台会令贯穿整体跳过、K5 相位永不触发）；
-                        // 0.01f 恰处折算下限，引擎二次乘算后实际结算精确回补 extra（显示值=实际结算量），
-                        // K5 相位借此验证补偿链路与 applied 遥测断言（2026-07-29 A9 裁定方案 a）。
+                        // 玩家 mult 钉 0.01f（近零抗性）：绝对 0 乘区下折算补偿无效、贯穿整体跳过、
+                        // K5 相位永不触发；0.01f 恰处折算下限，引擎二次乘算后实际结算精确回补
+                        // extra（显示值=实际结算量），K5 相位借此验证补偿链路与 applied 遥测断言。
                         DifficultyTuningImpl.installScaleForTests(2f)
                         enemy?.mutableStats?.empDamageTakenMult?.unmodifyMult(HIP_RESIST_MOD_ID)
                         player?.mutableStats?.empDamageTakenMult?.modifyMult(HIP_RESIST_MOD_ID, 0.01f)
@@ -323,8 +319,8 @@ class HeavyIonPulseScenario : AbstractAutomationScenario() {
 
             HIP_PHASE_PIERCE_K2 -> {
                 stabilizeHipShips(engine, playerFire = false, enemyFire = true)
-                // 贯穿舞台守卫（2026-09 修订）：逐帧摘除 EMP 抗性削减叠层 Buff，保持玩家侧钉死的
-                // 近零抗性（0.01）不被新机制抬升——抗性削减机制另有专项验证，不在贯穿舞台内叠加。
+                // 贯穿舞台守卫：逐帧摘除 EMP 抗性削减叠层 Buff，保持玩家侧钉死的
+                // 近零抗性（0.01）不被新机制抬升，抗性削减机制另有专项验证，不在贯穿舞台内叠加。
                 stripHipResistStacks(player)
                 val hitsDelta = hitsOther - hipK2EnemyHitsBaseline
                 if (hitsDelta >= HIP_K2_MIN_ENEMY_HITS) {
@@ -361,7 +357,7 @@ class HeavyIonPulseScenario : AbstractAutomationScenario() {
                     val lastMult = HeavyIonPulseVfx.telemetryFloat(engine, HeavyIonPulseVfx.TELEMETRY_PIERCE_LAST_MULT)
                     val lastBase = HeavyIonPulseVfx.telemetryFloat(engine, HeavyIonPulseVfx.TELEMETRY_PIERCE_LAST_BASE_EMP)
                     val lastArc = HeavyIonPulseVfx.telemetryFloat(engine, HeavyIonPulseVfx.TELEMETRY_PIERCE_LAST_ARC_EMP)
-                    // A9 裁定方案 a（2026-07-29）硬断言：施加量 = extra / max(mult, 0.01)（折算补偿），
+                    // 贯穿折算补偿断言：施加量 = extra / max(mult, 0.01)，
                     // 引擎二次乘算后实际结算回补到 extra（遥测双证：applied 通道 + 公式复算）。
                     val expectedApplied = lastExtra / maxOf(lastMult, HeavyIonPulseTuning.PIERCE_COMPENSATION_FLOOR)
                     if (kotlin.math.abs(lastApplied - expectedApplied) > 0.5f) {
@@ -434,7 +430,7 @@ class HeavyIonPulseScenario : AbstractAutomationScenario() {
     }
 
     private companion object {
-        // 重型离子脉冲场景：相位机、锚点与期望证据（规格 02 §4.2 烟测检查点）。
+        // 重型离子脉冲场景：相位机、锚点与期望证据。
         private const val HIP_PHASE_MOUNT = "MOUNT"
         private const val HIP_PHASE_SHIELD = "SHIELD"
         private const val HIP_PHASE_HULL = "HULL"
@@ -451,7 +447,7 @@ class HeavyIonPulseScenario : AbstractAutomationScenario() {
         private const val HIP_CAMERA_VISIBLE_HEIGHT = 760f
         private const val HIP_MOUNT_SETTLE_SECONDS = 0.6f
 
-        // MOUNT 相位校验：射程 800 / spec maxAmmo 24（weapon_data.csv 口径，2026-09 修订）/ 双炮管 offsets（ALTERNATING 交替射击证据）。
+        // MOUNT 相位校验：射程 800 / spec maxAmmo 24（weapon_data.csv 数值）/ 双炮管 offsets（ALTERNATING 交替射击证据）。
         private const val HIP_EXPECT_RANGE = 800f
         private const val HIP_RANGE_TOLERANCE = 5f
         private const val HIP_AMMO = 24
@@ -470,13 +466,13 @@ class HeavyIonPulseScenario : AbstractAutomationScenario() {
         // PIERCE_K2：相位内敌方船体命中 ≥8 次后断言贯穿增量 0（v2 档无贯穿）。
         private const val HIP_K2_MIN_ENEMY_HITS = 8
 
-        // PIERCE_K5：mult≈0 目标下每次船体命中必贯穿，采样 ≥3 次贯穿事件强化 §2.5 待验证项读数。
+        // PIERCE_K5：mult≈0 目标下每次船体命中必贯穿，采样 ≥3 次贯穿事件。
         private const val HIP_K5_MIN_PIERCE = 3
 
-        // 敌方开火部署免疫闸（GD/SS 实机判例同款；兼作敌舰武器 EMP 瘫痪恢复窗口）。
+        // 敌方开火部署免疫闸（同 GD/SS 场景；兼作敌舰武器 EMP 瘫痪恢复窗口）。
         private const val HIP_ENEMY_SETTLE_SECONDS = 4.0f
 
-        // COMPLETED 截图门控：泄放/贯穿事件近 2.5s 内发生才上报（电弧/浮字/新鲜拖尾入帧）；保底舞台超时。
+        // COMPLETED 截图门控：泄放/贯穿事件近 2.5s 内发生才上报（电弧/浮字/新鲜拖尾入帧）；舞台超时作为保险。
         private const val HIP_COMPLETED_EVENT_WINDOW = 2.5f
         private const val HIP_COMPLETED_STAGE_TIMEOUT = 30f
         private const val HIP_PHASE_TIMEOUT = 90f

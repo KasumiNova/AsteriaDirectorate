@@ -15,28 +15,10 @@ import com.fs.starfarer.api.combat.listeners.ApplyDamageResultAPI
 import com.fs.starfarer.api.util.Misc
 import org.lwjgl.util.vector.Vector2f
 
-/**
- * 重型离子脉冲的命中路由（规格 02 §2.3，结构对照 01 电荷针刺）：挂 `.proj` 的 `onHitEffect`。
- *
- * - 护盾命中 → 直接返回（EMP 对盾无效，面板 EMP 亦不产生贯穿话题）；
- * - 船体/装甲命中 → 必叠 1 层 EMP 抗性削减（[HeavyIonPulseEmpResistStacks]，最多 20 层、
- *   每 2 秒消散 1 层——0.5 层/s 连续消散，超出目标抗性的削减量转化为 EMP 易伤——隐藏机制不入描述）
- *   + 按难度五档查表概率泄放 EMP 电弧（[HeavyIonPulseVfx.discharge]，真实 `spawnEmpArc` 结算，
- *   基准 EMP = 弹体面板值）
- *   +（破晓敌版限定）EMP 贯穿补伤（[HeavyIonPulseVfx.pierce]，面板命中 EMP 与本次电弧 EMP 一起补）。
- *
- * 结算顺序：泄放判定与电弧结算在前，贯穿补伤在后一次性覆盖「面板 EMP + 本次电弧 EMP」两笔；
- * 贯穿走 `applyDamage`（不触发 onHitEffect），无二次 onHit 回环。
- *
- * 难度取值每次命中调用 [HeavyIonPulseTuning.resolve] 一次（不缓存）；泄放随机走共享 [CombatRandom]，
- * 每武器实例一个确定性序列（Weapon 级标记 Buff [HeavyIonPulseShots] 记 callIndex），同帧同事件不二次取值。
- */
 class HeavyIonPulseOnHitEffect : OnHitEffectPlugin {
 
-    /** `baseEmp ≤ 0` 配置异常 WARN 闸（一次/武器 id）。 */
     private val warnedZeroEmpWeaponIds = mutableSetOf<String>()
 
-    /** 游离弹（无源舰/武器）泄放随机退化 WARN 闸（一次/目标船）。 */
     private val warnedFreeProjectileShips = mutableSetOf<String>()
 
     override fun onHit(
@@ -49,21 +31,16 @@ class HeavyIonPulseOnHitEffect : OnHitEffectPlugin {
     ) {
         if (engine.isPaused) return
 
-        // EMP 对盾无效（原版特性），面板 EMP 亦不产生贯穿话题。
         if (shieldHit) return
 
-        // 只对舰船泄放/贯穿；战机/陨石豁免。
         val ship = target as? ShipAPI ?: return
         if (ship.isHulk || ship.isPhased) return
 
-        // 某些实体命中回调 point 可能为 null；回退弹体当前位置（同族 OnHit 统一口径）。
+        // 命中回调的 point 可能为 null，回退到弹体当前位置。
         val hitPoint = point ?: projectile.location ?: return
 
-        // 玩家按我方档位系数取值，每次命中处调用（非缓存）；projectile.source 为 null（游离弹）按非玩家口径。
         val values = HeavyIonPulseTuning.resolve(DifficultyTuningImpl, isPlayer = projectile.source?.owner == 0)
 
-        // 面板 600 × 武器侧修正；≤ 0 属配置异常（emp 列被清/被其他 mod 清零）——
-        // 面板 EMP 是本件存在意义，归零不静默：WARN 一次/武器 id 后泄放与贯穿全部跳过。
         val baseEmp = projectile.empAmount
         if (baseEmp <= 0f) {
             val weaponKey = projectile.weapon?.id ?: projectile.projectileSpecId ?: "unknown"
@@ -75,19 +52,15 @@ class HeavyIonPulseOnHitEffect : OnHitEffectPlugin {
 
         HeavyIonPulseVfx.recordHullHit(engine, projectile.source)
 
-        // EMP 抗性削减：船体/装甲命中必叠 1 层（与泄放判定独立）。
         val host = ship.buffHost()
         val resistBuff = host.find(HeavyIonPulseEmpResistStacks.BUFF_ID) as? HeavyIonPulseEmpResistStacks
             ?: HeavyIonPulseEmpResistStacks(ship, engine, host).also { host.register(it) }
         resistBuff.perStack = values.empResistPerStack
-        // SIC「武备升级」：来源舰带标记时超 100% 的 EMP 抗性削弱转为能量易伤（同 perStack 覆盖口径）
         resistBuff.armamentUpgrade =
             SicWeaponUpgradeFlags.isArmamentUpgradeActive(projectile.source ?: projectile.weapon?.ship)
         resistBuff.addStacks(1)
         if (projectile.source != null && projectile.source == engine.playerShip) resistBuff.showOnPlayerHud = true
 
-        // 瘫痪电弧：结算随机走共享 CombatRandom（同帧同事件不二次取值）。
-        // 基准 EMP 直取弹体面板值（baseEmp），难度倍率五档查表。
         val roll = dischargeRoll(projectile, ship)
         var arcEmp = 0f
         if (HeavyIonPulseTuning.shouldDischarge(roll, values.dischargeChance)) {
@@ -95,10 +68,6 @@ class HeavyIonPulseOnHitEffect : OnHitEffectPlugin {
             HeavyIonPulseVfx.discharge(engine, source = projectile.source, from = hitPoint, target = ship, emp = arcEmp)
         }
 
-        // EMP 贯穿（破晓敌版限定）：面板命中 EMP 与电弧 EMP 一起补。
-        // 折算补偿（A9 裁定方案 a）：applyDamage 的 empDamage 会被目标 empDamageTakenMult 再乘一次，
-        // 施加量为 extra/max(mult, 0.01)，引擎二次乘算后实际结算回补到 extra；mult ≤ 0 完全免疫时
-        // applied = 0 整体跳过（补偿无法突破 0 乘区，不弹假浮字）。
         if (HeavyIonPulseTuning.pierceActive(values.isPlayer, DifficultyTuningImpl.fixedScale)) {
             val mult = ship.mutableStats.empDamageTakenMult.modifiedValue
             val extra = HeavyIonPulseTuning.empPierceExtra(baseEmp + arcEmp, mult)
@@ -112,7 +81,6 @@ class HeavyIonPulseOnHitEffect : OnHitEffectPlugin {
         }
     }
 
-    /** 泄放结算随机取值：每武器实例一个确定性序列；游离弹退化为 Misc.random（WARN 一次/目标船不静默）。 */
     private fun dischargeRoll(projectile: DamagingProjectileAPI, ship: ShipAPI): Float {
         val sourceShip = projectile.source ?: projectile.weapon?.ship
         val weapon = projectile.weapon

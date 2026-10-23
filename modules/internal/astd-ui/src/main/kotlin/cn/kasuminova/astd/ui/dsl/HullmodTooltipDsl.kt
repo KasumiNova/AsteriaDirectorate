@@ -8,14 +8,13 @@ import com.fs.starfarer.api.util.Misc
 import java.awt.Color
 
 /**
- * Hullmod Tooltip 卡片 DSL——本模组全部船插 tooltip 的统一渲染风格与路径。
+ * Hullmod Tooltip 卡片 DSL，本模组全部船插 tooltip 的统一渲染路径。
  *
- * 设计同构于 Dialog DSL（`dialogGraph { node(...) }`）：DSL 块先构建出数据声明
- * （[HullmodTooltipSpec]），再由统一渲染器落地到 [TooltipMakerAPI]；
+ * DSL 块先构建数据声明（[HullmodTooltipSpec]），再由统一渲染器渲染到 [TooltipMakerAPI]；
  * 骨架（顶部间距 + 全息背景 + 标题）只存在于 [hullmodCard] 一处。
  *
- * 用法：`addPostDescriptionSection` 内联声明卡片，**每次调用现场构建**——
- * 刻意的每帧构建便于热重载调整后即时观察文案内容：
+ * 用法：`addPostDescriptionSection` 内联声明卡片，每次调用现场构建，
+ * 便于热重载调整后即时观察文案内容：
  * ```kotlin
  * override fun addPostDescriptionSection(tooltip: TooltipMakerAPI, hullSize: ShipAPI.HullSize?, ship: ShipAPI?, width: Float, isForModSpec: Boolean) {
  *     tooltip.hullmodCard(width, HullmodThemes.ARC, spec?.displayName) {
@@ -52,11 +51,7 @@ enum class HullmodTone {
     RED,
 }
 
-/**
- * Hullmod tooltip 主题：标题/分节/背景强调色与语义三色。
- *
- * 注：等离子装甲护盾与原 ARC_PRISM 变体的 nameColor 微差（150,232,255 / 160,236,255）合并为后者。
- */
+/** Hullmod tooltip 主题：标题/分节/背景强调色与语义三色。 */
 data class HullmodTheme(
     /** 标题与表格值列的主色。 */
     val nameColor: Color,
@@ -88,7 +83,7 @@ data class HullmodTheme(
     }
 }
 
-/** 内置主题预设：覆盖全模组船插的既有配色（迁移自各 hullmod 内联 Theme，逐色保持一致）。 */
+/** 内置主题预设。 */
 object HullmodThemes {
     /** 弧光线标准蓝（烽燧/缙云等 ARC 量产内置）。 */
     val ARC = HullmodTheme(
@@ -188,7 +183,7 @@ internal class ParaBlock(
  * 直接对内联模板做变量/高亮格式化（`%name%` / `<param:#RRGGBB:name>` / `%%`），
  * 便于游戏内热重载调整文案。
  *
- * 仅开发阶段临时使用：发布场景禁止出现，定稿文案必须迁回 strings.json 并改用 [ParaBlock]。
+ * 仅开发期调文案用：发布场景禁止出现，定稿文案必须放在 strings.json 并改用 [ParaBlock]。
  */
 internal class PlainTextBlock(
     val text: String,
@@ -220,7 +215,7 @@ internal class TableRow(
     val args: List<RuntimeVar> = emptyList(),
 )
 
-/** 双列表格块（62/38 分栏、行高 24f、表头默认 属性/效果；[plain] 语义同 [HeadingBlock.plain]，仅作用于表头）。 */
+/** 双列表格块（表头默认 属性/效果；[plain] 语义同 [HeadingBlock.plain]，仅作用于表头）。 */
 internal class TableBlock(
     val headerAKey: String,
     val headerBKey: String,
@@ -235,9 +230,7 @@ internal class SpacerBlock(val height: Float) : HullmodBlock
 /**
  * 直渲染块：持有对 [TooltipMakerAPI] 的直接渲染回调，由渲染器在卡片内按声明序执行。
  * 仅供不走 I18n 键/块模型的既有渲染辅助接入（如 SIC 风格行着色）；
- * para/heading/table 表达得了的内容禁止用本块绕过块模型。
- * 配合 hullmodCard contentInset 使用时 custom 块无需任何特殊处理（内缩的 X 偏移由
- * belowLeft 约束链自链首继承），可添加多个元素。
+ * para/heading/table 表达得了的内容禁止使用。
  */
 internal class CustomBlock(val render: (TooltipMakerAPI) -> Unit) : HullmodBlock
 
@@ -275,7 +268,7 @@ class HullmodCardBuilder {
     /**
      * 直写段落（不读 I18n 键，文本内联便于热重载调文案；可混排静态高亮 [hl] 与运行期变量 [v]）。
      *
-     * 仅开发阶段临时使用：发布场景禁止调用，定稿文案必须迁回 strings.json 并改用 [para]。
+     * 仅开发期调文案用：发布场景禁止调用，定稿文案必须放在 strings.json 并改用 [para]。
      */
     fun plainText(text: String, padTop: Float = 8f, vararg args: ParaArg) {
         blocks += PlainTextBlock(text, padTop, args.toList())
@@ -284,7 +277,7 @@ class HullmodCardBuilder {
     /**
      * 直写段落（默认间距、仅行内参数版本）。
      *
-     * 仅开发阶段临时使用：发布场景禁止调用，定稿文案必须迁回 strings.json 并改用 [para]。
+     * 仅开发期调文案用：发布场景禁止调用，定稿文案必须放在 strings.json 并改用 [para]。
      */
     fun plainText(text: String, vararg args: ParaArg) {
         blocks += PlainTextBlock(text, 8f, args.toList())
@@ -293,7 +286,7 @@ class HullmodCardBuilder {
     /**
      * 直写段落（显式正文色版本）。
      *
-     * 仅开发阶段临时使用：发布场景禁止调用，定稿文案必须迁回 strings.json 并改用 [para]。
+     * 仅开发期调文案用：发布场景禁止调用，定稿文案必须放在 strings.json 并改用 [para]。
      */
     fun plainText(text: String, color: Color, padTop: Float = 8f, vararg args: ParaArg) {
         blocks += PlainTextBlock(text, padTop, args.toList(), color)
@@ -307,7 +300,7 @@ class HullmodCardBuilder {
     /**
      * 直写分节标题（不读 I18n 键，文本内联）。
      *
-     * 仅开发阶段临时使用：发布场景禁止调用，定稿文案必须迁回 strings.json 并改用 [heading]。
+     * 仅开发期调文案用：发布场景禁止调用，定稿文案必须放在 strings.json 并改用 [heading]。
      */
     fun headingPlain(text: String, padTop: Float = 12f) {
         blocks += HeadingBlock(text, padTop, plain = true)
@@ -328,7 +321,7 @@ class HullmodCardBuilder {
     /**
      * 直写双列表格（表头不读 I18n 键；行内文本用 [HullmodTableBuilder.rowPlain]）。
      *
-     * 仅开发阶段临时使用：发布场景禁止调用，定稿文案必须迁回 strings.json 并改用 [table]。
+     * 仅开发期调文案用：发布场景禁止调用，定稿文案必须放在 strings.json 并改用 [table]。
      */
     fun tablePlain(
         headerA: String,
@@ -390,7 +383,7 @@ class HullmodTableBuilder {
     /**
      * 直写一行（标签/值不读 I18n 键，文本内联；标签列 + 值列同一语义色）。
      *
-     * 仅开发阶段临时使用：发布场景禁止调用，定稿文案必须迁回 strings.json 并改用 [row]。
+     * 仅开发期调文案用：发布场景禁止调用，定稿文案必须放在 strings.json 并改用 [row]。
      */
     fun rowPlain(label: String, value: String, tone: HullmodTone = HullmodTone.DEFAULT) {
         rows += TableRow(label, value, tone, tone, plain = true)
@@ -399,7 +392,7 @@ class HullmodTableBuilder {
     /**
      * 直写一行（标签列与值列分别指定语义色）。
      *
-     * 仅开发阶段临时使用：发布场景禁止调用，定稿文案必须迁回 strings.json 并改用 [row]。
+     * 仅开发期调文案用：发布场景禁止调用，定稿文案必须放在 strings.json 并改用 [row]。
      */
     fun rowPlain(label: String, value: String, labelTone: HullmodTone, valueTone: HullmodTone) {
         rows += TableRow(label, value, labelTone, valueTone, plain = true)
@@ -438,12 +431,11 @@ fun TooltipMakerAPI.hullmodCard(
     HullmodCardRenderer.render(this, width, title, theme, hullmodTooltip(block), topGapFill, contentInset)
 }
 
-// ========== 渲染器（唯一落地路径） ==========
+// ========== 渲染器 ==========
 
 /**
- * Hullmod 卡片的统一渲染器：数据声明 → TooltipMakerAPI 调用。
- * 表格几何（行高 24f、62/38 分栏、宽度 `max(width-20, 280)`）与多色高亮通路
- * （[I18nUi.addParaRendered]）全模组只此一份。
+ * Hullmod 卡片渲染器：数据声明到 TooltipMakerAPI 调用的唯一路径，
+ * 多色高亮通路（[I18nUi.addParaRendered]）全模组只此一份。
  */
 internal object HullmodCardRenderer {
 
@@ -459,20 +451,14 @@ internal object HullmodCardRenderer {
         contentInset: Float,
     ) {
         tooltip.buildWith {
-            spacer(topGapFill) // 填充 Hullmod Tooltip 顶部空隙（无预留空隙的宿主传 0）
+            spacer(topGapFill)
             withHullmodBackground(accentColor = theme.accentColor, width = width) {
-                // 无内缩宿主：文本换行宽收窄 2×inset（元素右移见 shiftChainRootX），卡片结束后恢复原值
                 val prevWidthOverride = tooltip.textWidthOverride
                 if (contentInset > 0f) {
                     tooltip.setTextWidthOverride(width - 2f * contentInset)
                 }
 
                 spacer(6f) // 拉开空隙用于展示背景特效
-                // 内缩左偏移：只把链首元素右移 inset。内容流是 belowLeft 约束链，
-                // 后续元素的 x 以链首 x 为基准自动继承；若逐元素设置 X 对齐偏移，
-                // 每个元素的基准已含前序偏移，偏移量按块序累加形成阶梯（真实
-                // PositionImpl 语义仿真验证），且对约束图的逐元素事后改写正是
-                // 行距异常的来源。
                 shiftChainRootX(tooltip, contentInset)
                 if (!title.isNullOrEmpty()) {
                     heading(title, theme.nameColor, theme.headerBackground, 6f)
@@ -510,10 +496,10 @@ internal object HullmodCardRenderer {
     }
 
     /**
-     * 内容水平内缩的 X 偏移落地：对链首元素（卡片首个占位 spacer）设置一次 X 对齐偏移
+     * 内容水平内缩的 X 偏移：只对链首元素（卡片首个占位 spacer）设置一次
      * （[TooltipMakerAPI.getPrev] + [com.fs.starfarer.api.ui.PositionAPI.setXAlignOffset]）。
-     * 内容流是 belowLeft 约束链，后续元素的 x 以链首 x 为基准逐环继承，全链均匀右移
-     * [inset]；禁止逐元素设置——基准 x 已含前序偏移，会按块序累加成阶梯。
+     * 内容流是 belowLeft 约束链，后续元素的 x 以链首 x 为基准逐环继承，全链均匀右移 [inset]；
+     * 禁止逐元素设置，基准 x 已含前序偏移，会按块序累加成阶梯。
      * inset ≤ 0（原版船插宿主）时不做任何事。
      */
     private fun shiftChainRootX(tooltip: TooltipMakerAPI, inset: Float) {

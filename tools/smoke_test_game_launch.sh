@@ -301,7 +301,6 @@ if [[ "$MODE" == "game" || "$MODE" == "automation" || "$MODE" == "campaign-accep
         AUTOMATION_OUTPUT_DIR="${ASTD_AUTOMATION_OUTPUT_DIR:-$GAME_DIR/ssoptimizer-automation-output}"
         AUTOMATION_SCENARIO="${ASTD_AUTOMATION_SCENARIO:-xc_001_starfall_echo_basic}"
         EXTRA_OPTS="$EXTRA_OPTS -Dssoptimizer.automation.enabled=true -Dssoptimizer.automation.scenario=${AUTOMATION_SCENARIO} -Dssoptimizer.automation.outputDir=${AUTOMATION_OUTPUT_DIR} -Dssoptimizer.automation.requireScreenshotFile=true"
-        # 清掉上一轮的遥测，避免早退逻辑吃到陈旧 Completed 状态而秒杀本轮游戏
         rm -f "$AUTOMATION_OUTPUT_DIR/astd-ingame-automation-telemetry.json"
     fi
     if [[ "$MODE" == "campaign-acceptance" ]]; then

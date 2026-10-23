@@ -8,10 +8,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 
-/**
- * 规格 §4.1 / §6 风险表：确定性派生语义（对齐 Misc.getRandom，其类初始化依赖游戏内 Settings
- * 无法在裸单测触达，CombatRandom 逐位复现其算法）与 0 值防线。
- */
 class CombatRandomTest {
     private val captures = mutableListOf<WarnCapture>()
 
@@ -23,7 +19,6 @@ class CombatRandomTest {
 
     @Test
     fun `derivation matches the verified Misc-getRandom algorithm bit for bit`() {
-        // jar 反编译核实的参照算法：new Random(seed) 丢弃 numCalls 个 nextLong，再以 new Random(r.nextLong()) 出序列。
         fun reference(seed: Long, numCalls: Int): Random {
             val r = Random(seed)
             repeat(numCalls) { r.nextLong() }
@@ -75,7 +70,6 @@ class CombatRandomTest {
 
     @Test
     fun `zero seed stays deterministic instead of falling back to shared random`() {
-        // Misc.getRandom(0, *) 返回全局共享随机（非确定性）；CombatRandom 必须归一化。
         val range = 0.5f..2f
         assertEquals(
             CombatRandom.nextFloatIn(0L, 4, range),

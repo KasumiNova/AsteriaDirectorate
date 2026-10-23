@@ -11,19 +11,6 @@ import org.lwjgl.opengl.GL11
 import java.awt.Color
 import java.util.EnumSet
 
-/**
- * 挂载弹体光效层：为登记武器的 `RENDER_LOADED_MISSILES` 装填弹体叠加加法混合光效贴图。
- *
- * 原版装填弹体只渲染弹体底图，没有发光槽位；本层按 `WeaponAPI.getMissileRenderData()`
- * 逐管在弹体中心叠加同画布光效贴图，透明度跟随原版装填渲染的 brightness
- * （发射熄管 / 冷却回填的明暗变化自动同步），弹药耗尽整管熄灭。
- *
- * 与 [GeminiDemRackVisuals] 的分工：DEM 导轨需要逐管红/蓝双色染色与齐射成组隐藏，
- * 语义专属保持独立；本层只服务「单弹种、单张光效贴图」的通用挂载件，不做染色。
- *
- * 接线：[preloadTextures]（onApplicationLoad，战斗中 loadTexture 会损坏 SSOptimizer 上传队列）
- * + [ensureInstalled]（CombatVfxBootstrap）。扫描/渲染管线与 [WeaponGlowLayer] 同构。
- */
 internal object LoadedMissileGlowLayer {
 
     private const val ENGINE_KEY = "astd_loaded_missile_glow_layer"
@@ -31,7 +18,6 @@ internal object LoadedMissileGlowLayer {
 
     private val log = Global.getLogger(LoadedMissileGlowLayer::class.java)
 
-    /** 登记：武器 id → 弹体光效贴图（与弹体同画布同朝向，加法混合）。同一弹体的多个槽位件共用同一张。 */
     private val GLOW_PATHS = mapOf(
         "astd_cuifeng_torpedo" to "graphics/weapons/astd_cuifeng_missile_glow.png",
         "astd_cuifeng_launcher" to "graphics/weapons/astd_cuifeng_missile_glow.png",
@@ -39,16 +25,10 @@ internal object LoadedMissileGlowLayer {
         "astd_ice_shard_mirv_pod" to "graphics/weapons/astd_ice_shard_missile_glow.png",
     )
 
-    /** preloadTextures 加载成功的贴图路径集合；渲染只使用此集合内的路径。 */
     private val loadedPaths = HashSet<String>()
 
-    /** 无 missileRenderData 告警去重（缺失 RENDER_LOADED_MISSILES 时为 null）。 */
     private val missingRenderDataWarned = HashSet<String>()
 
-    /**
-     * 预加载弹体光效贴图（SSOptimizer 延迟加载下未被数据文件引用的贴图不会上传 GL，
-     * 裸 getSprite 是 textureID=0 空壳）。
-     */
     fun preloadTextures() {
         for (path in GLOW_PATHS.values.toSet()) {
             try {
@@ -136,7 +116,7 @@ internal object LoadedMissileGlowLayer {
                     val weapon = att.weapon
                     val ship = weapon.ship ?: continue
                     if (ship.isHulk || weapon.isDisabled) continue
-                    // 原版装填渲染以 ammo > 0 为闸门；弹药耗尽时 brightness 保持击发后的陈旧值，须自行同闸
+                    // 弹药耗尽后原版 brightness 可能保留旧值，必须按 ammo 跳过渲染。
                     if (weapon.ammo <= 0) continue
                     val renderData = weapon.missileRenderData
                     if (renderData == null) {
@@ -150,7 +130,6 @@ internal object LoadedMissileGlowLayer {
                         val brightness = data.brightness.coerceIn(0f, 1f)
                         if (brightness <= 0.002f) continue
 
-                        // SpriteAPI 为全局共享缓存实例，尺寸/混合状态可能被其他渲染方改写，须逐帧重取并重置
                         val sprite = Global.getSettings().getSprite(att.spritePath)
                         sprite.setAdditiveBlend()
                         sprite.color = Color(255, 255, 255, 255)

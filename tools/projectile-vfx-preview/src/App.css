@@ -493,7 +493,7 @@ body {
   min-height: 0;
 }
 
-/* === Tab Animation Hack (Preserving Accessible DOM for tests) === */
+/* 非活动标签保留在 DOM 中，供辅助技术和测试查询。 */
 .tab-pane {
   display: block;
 }
@@ -641,7 +641,6 @@ body {
   margin-right: 8px;
   vertical-align: middle;
   overflow: hidden;
-  /* Grid transparency background */
   background-image: linear-gradient(45deg, #808080 25%, transparent 25%),
                     linear-gradient(-45deg, #808080 25%, transparent 25%),
                     linear-gradient(45deg, transparent 75%, #808080 75%),

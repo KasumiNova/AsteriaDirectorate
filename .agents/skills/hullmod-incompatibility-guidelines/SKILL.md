@@ -1,5 +1,5 @@
 ---
-name: "hullmod-incompatibility-guidelines"
+name: hullmod-incompatibility-guidelines
 description: "船插互斥/禁装实现规范：当内置船插或特殊舰体需要禁止、清理或提示不兼容船插时使用。"
 ---
 
@@ -19,7 +19,7 @@ description: "船插互斥/禁装实现规范：当内置船插或特殊舰体�
 
 ## 推荐硬禁止模式
 
-> ⚠️ **CME 判例（必读）**：原版 `HullVariantSpec.updateStatsForOpCosts` 会**实时迭代** `variant.getHullMods()`
+> **ConcurrentModificationException 风险**：原版 `HullVariantSpec.updateStatsForOpCosts` 会**实时迭代** `variant.getHullMods()`
 > （LinkedHashSet 活性集合）并回调 `applyEffectsBeforeShipCreation`（仅 `affectsOPCosts()=true` 的船插）。
 > 在该回调里结构性 `removeMod` 会在自动装配路径抛出 `ConcurrentModificationException`
 > （堆栈：CoreAutofitPlugin.addExtraVentsAndCaps → computeOPCost → updateStatsForOpCosts）。
@@ -30,9 +30,9 @@ description: "船插互斥/禁装实现规范：当内置船插或特殊舰体�
 > - BeforeCreation：`IncompatibleHullmodStripper.requestStrip(variant, FORBIDDEN_IDS, sourceId)`（只检测入队）；
 > - AfterCreation / advanceInCombat：`requestStrip(...)` 后 `IncompatibleHullmodStripper.drainPending()`
 >   （ShipFactory 快照迭代，安全）；
-> - 战役侧由 stripper 自注册的 transient 每帧 drainer 兜底（装配界面改动下一帧生效）。
+> - 战役侧由 stripper 自注册的 transient 每帧 drainer 处理（装配界面改动下一帧生效）。
 
-在控制方船插中集中定义禁止列表，并在船插内委托 stripper。禁止列表的唯一真相来源是
+在控制方船插中集中定义禁止列表，并在船插内委托 stripper。禁止列表的唯一定义位置是
 `cn.kasuminova.astd.combat.hullmods.HullmodIncompatibility`（控制方 id → 禁装集合），
 船插的 strip 列表与赏金装配管线（BountyFleetTunerImpl 候选过滤）都必须从它取数，
 禁止在船插内另写一份字面量集合：
@@ -59,12 +59,12 @@ override fun applyEffectsAfterShipCreation(ship: ShipAPI, id: String) {
 ## 要求 UI 直接阻止安装时
 
 - 如果候选船插由本项目实现：在候选船插中实现 `isApplicableToShip()` / `getUnapplicableReason()` / 必要时 `canBeAddedOrRemovedNow()`。
-- 如果候选船插是原版或第三方：不要假装控制方内置船插能让它灰掉；需要 agent/AccessTransformer 包装候选 effect，或接受“安装后立即清理”的产品行为。
+- 如果候选船插是原版或第三方：控制方内置船插无法使其灰掉；需要 agent/AccessTransformer 包装候选 effect，或接受“安装后立即清理”的产品行为。
 
 ## 测试约束
 
 - 测试必须覆盖普通 hullmod、permaMod、S-mod、S-modded built-in 的清理（经 `drainPending()` 驱动断言）。
 - 必须断言 `applyEffectsBeforeShipCreation` **不做**结构性移除（`verify(never()).removeMod(...)`），
-  作为 OP 结算实时迭代 CME 的回归防线。
+  防止 OP 结算实时迭代再次引发 CME。
 - 测试应断言禁止列表集中定义，避免散落字符串。
 - 若有玩家可见提示，按 `copy-style-guidelines` 审查文案。

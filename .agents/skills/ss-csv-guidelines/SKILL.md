@@ -1,6 +1,6 @@
 ---
-name: "ss-csv-guidelines"
-description: "ss-csv 使用规范与编辑规范：生成流程、目录约定、entry 规则、schema header 真相来源；以及 .system/.proj/.wpn 等副产物的指定格式编辑规范（不手改生成物，改 entry/outputs 后生成）。"
+name: ss-csv-guidelines
+description: "ss-csv 使用规范与编辑规范：生成流程、目录约定、entry 规则、schema header 定义；以及 .system/.proj/.wpn 等副产物的指定格式编辑规范（不手改生成物，改 entry/outputs 后生成）。"
 ---
 
 # Skill：ss-csv 使用规范与 CSV 编辑规范
@@ -19,15 +19,14 @@ description: "ss-csv 使用规范与编辑规范：生成流程、目录约定�
 
 以及与这些 CSV 同步生成的 `.system` / `.proj` / `.wpn` / 其他 JSON 文件。
 
-> 强化约定：当你要编辑 `.system` / `.proj` / `.wpn` 等 **非 CSV** 文件时，也应把它们视为 ss-csv 体系的一部分来处理：
-> - 先判断它是否由 ss-csv 生成/管理
-> - 若是副产物：不要手改文件本体，应改 entry/outputs 并重新生成
+> 编辑 `.system` / `.proj` / `.wpn` 等 **非 CSV** 文件时，也必须先判断是否由 ss-csv 生成或管理。
+> 若是副产物，禁止手改文件本体，必须改 entry/outputs 并重新生成。
 
-## 核心原则
+## 基本规则
 
 - **默认只生成到 build**：优先运行 `:astd-csv:generateSsCsv`，产物在 `build/generated/ss-csv/`。
 - **避免手改生成物**：不要手改 `build/**` 与 `contents/**` 下由 ss-csv 管理的 CSV；应修改 `ss-csv` 的 entries。
-- **schema header 是真相来源**：`tools/_schema_headers/*.header.csv` 的首行是列定义真相；生成器只读取首行。
+- **列定义以 schema header 为准**：`tools/_schema_headers/*.header.csv` 的首行定义各列；生成器只读取首行。
 - **按 key 排序 + 去重**：生成器按 `SsCsvEntry.key` 排序，重复 key 会直接失败。
 - **遵守仓库全局约束**：ss-csv 的生成/写回流程以 `.agents/AGENTS.md` 为准（默认只生成到 build）。
 
@@ -45,8 +44,8 @@ description: "ss-csv 使用规范与编辑规范：生成流程、目录约定�
 
 生成器只会实例化 **final 类**，并通过 `INSTANCE` 获取 Kotlin `object` 实例。
 
-- ✅ 推荐：`object Wpn_xxx : WeaponDataEntry()`
-- ❌ 不推荐：普通 `class` / 非 final 类型（不会被扫描/实例化）
+- 正确：`object Wpn_xxx : WeaponDataEntry()`
+- 错误：普通 `class` / 非 final 类型（不会被扫描/实例化）
 
 ### 2) 选择合适的基类
 
@@ -59,7 +58,7 @@ description: "ss-csv 使用规范与编辑规范：生成流程、目录约定�
 - `HullModEntry` → `hull_mods.csv`
 - `DescriptionEntry` → `descriptions.csv`
 
-迁移期/无损行迁移：
+保留原始 CSV 行：
 
 - `MigratedCsvLineEntry`（实现 `SsCsvCellsEntry`）：保留原始 CSV 行字符串，按 header 输出 cells
 
@@ -124,7 +123,7 @@ description: "ss-csv 使用规范与编辑规范：生成流程、目录约定�
 
 ## 非 CSV 副产物编辑规范（.system / .proj / .wpn / 其他 JSON）
 
-### 0) 先判断：这个文件是否属于 ss-csv 的“生成物”？
+### 0) 生成物判定
 
 满足以下任一条件，就按“生成物”处理：
 
@@ -134,8 +133,8 @@ description: "ss-csv 使用规范与编辑规范：生成流程、目录约定�
 
 **规则**：
 
-- ✅ 生成物：改 `ss-csv` 的 entry/outputs → 重新生成 →（必要时）写回
-- ❌ 不要直接手改 `contents/` 下的生成物（会被覆盖，且会让“真相来源”分裂）
+- 生成物：改 `ss-csv` 的 entry/outputs → 重新生成 →（必要时）写回
+- 禁止直接手改 `contents/` 下的生成物，否则重新生成会覆盖修改，并导致生成定义与文件内容不一致
 
 ### 1) `.system`（舰船系统 JSON）
 
@@ -169,9 +168,7 @@ description: "ss-csv 使用规范与编辑规范：生成流程、目录约定�
 
 ### 3) `.wpn`（武器 spec JSON）
 
-`SsExtraOutputs` 的设计目标包含“weapon_data.csv + <id>.wpn (+ projectiles)”这一类输出，但当前仓库中 `.wpn` 是否由 ss-csv 生成，取决于是否存在对应的 outputs 实现。
-
-因此：
+`SsExtraOutputs` 可输出 `weapon_data.csv + <id>.wpn (+ projectiles)`。`.wpn` 是否由 ss-csv 生成，取决于是否存在对应的 outputs 实现。
 
 - 若你确认某 `.wpn` 是由 ss-csv 管理/生成的：遵循本节规则，改 entry/outputs，不手改文件。
 - 若当前没有 ss-csv 输出实现、且该 `.wpn` 是手写资源：可以修改，但建议同步规划迁移路径，避免未来引入 `.wpn` 生成后出现覆盖冲突。
@@ -183,7 +180,7 @@ description: "ss-csv 使用规范与编辑规范：生成流程、目录约定�
 3. 运行 `:astd-csv:generateSsCsv`，检查 `build/generated/ss-csv/**` 输出。
 4. **仅在明确需要**写回 `contents/` 时，执行 `:astd-csv:writeSsCsvToContents -PssCsvForce=true`。
 
-## 常见坑
+## 常见错误
 
 - Entry 不在 `entries.catalog` 包内 → 不会被扫描。
 - 不是 `object` / 不是 final → 不会被实例化。

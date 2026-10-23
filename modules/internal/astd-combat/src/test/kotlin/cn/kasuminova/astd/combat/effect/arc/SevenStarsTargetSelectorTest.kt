@@ -14,11 +14,6 @@ import kotlin.test.assertNull
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
-/**
- * 规格 07 §4.1 用例 7~10：目标排序（可摧毁优先/最近次优）、过滤矩阵、
- * 终结最近敌舰、护盾不预估的已知简化——手工构造候选值对象列表驱动
- * [cn.kasuminova.astd.combat.effect.arc.sevenstars.SevenStarsTargetSelector] 纯函数重载，不 mock 引擎（实体桩仅作标签与属性载体）。
- */
 class SevenStarsTargetSelectorTest {
 
     private val origin = Vector2f(0f, 0f)
@@ -53,14 +48,12 @@ class SevenStarsTargetSelectorTest {
 
     @Test
     fun `用例7 目标排序：可摧毁优先，同可摧毁时距离近者在前`() {
-        // A 可摧毁但更远（300su），B 不可摧毁但更近（100su），aoeDamage=200 → A 在前。
         val a = Candidate(stubMissile(owner = 1, x = 300f, y = 0f, hitpoints = 100f), 100f, 300f * 300f)
         val b = Candidate(stubMissile(owner = 1, x = 100f, y = 0f, hitpoints = 500f), 500f, 100f * 100f)
         val sorted = SevenStarsTargetSelector.sortPdCandidates(listOf(b, a), aoeDamage = 200f)
         assertSame(a, sorted[0], "可摧毁优先于距离")
         assertSame(b, sorted[1])
 
-        // 两者皆可摧毁 → 距离近者在前（对照场景）。
         val c = Candidate(stubMissile(owner = 1, x = 300f, y = 0f, hitpoints = 150f), 150f, 300f * 300f)
         val d = Candidate(stubMissile(owner = 1, x = 100f, y = 0f, hitpoints = 100f), 100f, 100f * 100f)
         val sorted2 = SevenStarsTargetSelector.sortPdCandidates(listOf(c, d), aoeDamage = 200f)
@@ -100,7 +93,6 @@ class SevenStarsTargetSelectorTest {
         assertTrue(overlapMissile in entities, "dist=0 重叠目标纳入")
         assertTrue(normalFighter in entities, "正常敌战机纳入")
 
-        // dist=0 重叠目标经排序位于首位（无除零）。
         val sorted = SevenStarsTargetSelector.sortPdCandidates(candidates, aoeDamage = 10f)
         assertSame(overlapMissile, sorted[0].entity, "dist=0 且同不可摧毁时距离最近排首位")
     }
@@ -132,8 +124,6 @@ class SevenStarsTargetSelectorTest {
 
     @Test
     fun `用例10 护盾不预估的已知简化：低结构带盾战机仍判可摧毁`() {
-        // 已知简化（规格 §2.2）：可摧毁预估只看剩余结构值，护盾吸收不预估——
-        // 断言当前行为，防后续误改语义。
         val shieldedFighter = Candidate(
             stubShip(owner = 1, x = 300f, y = 0f, hitpoints = 50f, fighter = true),
             50f,

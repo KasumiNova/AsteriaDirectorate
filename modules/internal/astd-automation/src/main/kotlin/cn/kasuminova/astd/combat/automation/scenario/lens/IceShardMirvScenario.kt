@@ -20,11 +20,8 @@ import org.lwjgl.util.vector.Vector2f
 
 /**
  * 源生冰晶 MIRV 场景（玩家版基础验证）。
- *
- * 拆分自 ASTDAutomationCombatPlugin 的同名 if-else 分支，相位机/断言/证据写出口径原样迁移。
  */
 class IceShardMirvScenario : AbstractAutomationScenario() {
-    // ==== 源生冰晶 MIRV 场景状态（相位机 MOUNT → SPLIT → ATTACH → COMPLETED；玩家版基础验证） ====
     private var iceShardPhase = ICE_SHARD_PHASE_MOUNT
     private var iceShardPhaseStartedAt = 0f
 
@@ -91,7 +88,7 @@ class IceShardMirvScenario : AbstractAutomationScenario() {
     }
 
     /**
-     * 舞台保活与站位（范式同 stabilizeSmShips）：双舰逐帧奶 + 辐能清零 + 钉死锚点 +
+     * 舞台保活与站位（范式同 stabilizeSmShips）：双舰逐帧回血 + 辐能清零 + 钉死锚点 +
      * force fire 独占驱动（autofire 关闭）。玩家武器瞄准敌方巡洋舰（原版追踪导弹 AI
      * 目标源 = shipTarget，分裂引信读 AI 目标判定 600su）；靶舰盾常关
      * （子冰晶仅命中舰体附着，命中护盾无附加效果）。
@@ -335,7 +332,7 @@ class IceShardMirvScenario : AbstractAutomationScenario() {
         json.appendLine("  \"runtimeElapsedSeconds\": 0,")
         json.appendLine("  \"runtimeTrackedCount\": ${vfxTelemetry.trackedCount},")
         json.appendLine("  \"runtimeLastProjectileSpecId\": ${jsonString(vfxTelemetry.lastProjectileSpecId)},")
-        // ---- 机制证据（源生冰晶 MIRV 烟测检查点：装配 / 引信+分裂 / 附着周期伤害+特效）----
+        // 机制证据：装配 / 引信+分裂 / 附着周期伤害+特效
         json.appendLine("  \"iceShardPhase\": \"$iceShardPhase\",")
         json.appendLine("  \"iceShardMirvSlotId\": ${jsonString(iceShardMirv?.slot?.id)},")
         json.appendLine("  \"iceShardPodSlotId\": ${jsonString(iceShardPod?.slot?.id)},")
@@ -351,7 +348,7 @@ class IceShardMirvScenario : AbstractAutomationScenario() {
         json.appendLine("  \"iceShardSplitVfx\": ${iceShardTeleCount(engine, IceShardMirvVfx.TELEMETRY_SPLIT_VFX)},")
         json.appendLine("  \"iceShardAttachNebula\": ${iceShardTeleCount(engine, IceShardMirvVfx.TELEMETRY_ATTACH_NEBULA)},")
         json.appendLine("  \"iceShardOwnProjectiles\": ${engine.projectiles.count { it.projectileSpecId == ASTDInGameAutomationScenario.ICE_SHARD_MIRV_PROJECTILE_SPEC_ID }},")
-        // 子冰晶弹体 spec id（astd_ice_shard_sub_msl，目录登记口径；子武器隐藏不装配）。
+        // 子冰晶弹体 spec id（astd_ice_shard_sub_msl，目录登记；子武器隐藏不装配）。
         json.appendLine("  \"iceShardSubShardsInPlay\": ${engine.missiles.count { it.projectileSpecId == ICE_SHARD_SUB_SHARD_SPEC_ID }},")
     }
 
@@ -374,7 +371,7 @@ class IceShardMirvScenario : AbstractAutomationScenario() {
         private const val ICE_SHARD_CAMERA_VISIBLE_HEIGHT = 1700f
         private const val ICE_SHARD_MOUNT_SETTLE_SECONDS = 0.6f
 
-        // MOUNT 相位校验：射程 1600 / ammo 1/2 / 发射舱 burst 2 / OP 6/12 / no_drop 两件套（weapon_data.csv 口径）。
+        // MOUNT 相位校验：射程 1600 / ammo 1/2 / 发射舱 burst 2 / OP 6/12 / no_drop 两件套（weapon_data.csv 数值）。
         private const val ICE_SHARD_EXPECT_RANGE = 1600f
         private const val ICE_SHARD_RANGE_TOLERANCE = 5f
         private const val ICE_SHARD_MIRV_AMMO = 1
@@ -384,10 +381,10 @@ class IceShardMirvScenario : AbstractAutomationScenario() {
         private const val ICE_SHARD_POD_OP = 12f
         private val ICE_SHARD_REQUIRED_TAGS = setOf("no_drop", "no_drop_salvage")
 
-        // SPLIT 相位校验：子冰晶生成数 == 分裂次数 ×15（设计案定稿单母弹 15 枚）。
+        // SPLIT 相位校验：子冰晶生成数 == 分裂次数 ×15（单母弹 15 枚）。
         private const val ICE_SHARD_EXPECT_SHARDS_PER_SPLIT = 15
 
-        // COMPLETED 截图门控：附着/周期伤害事件近 2.5s 内发生才上报（附着星云/冰晶散布入帧）；保底舞台超时。
+        // COMPLETED 截图门控：附着/周期伤害事件近 2.5s 内发生才上报（附着星云/冰晶散布入帧）；舞台超时作为保险。
         private const val ICE_SHARD_COMPLETED_EVENT_WINDOW = 2.5f
         private const val ICE_SHARD_COMPLETED_STAGE_TIMEOUT = 30f
         private const val ICE_SHARD_PHASE_TIMEOUT = 90f

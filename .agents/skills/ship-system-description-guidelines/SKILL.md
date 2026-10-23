@@ -1,5 +1,5 @@
 ---
-name: "ship-system-description-guidelines"
+name: ship-system-description-guidelines
 description: "Use when editing Starsector SHIP_SYSTEM rows in descriptions.csv or ss-csv description i18n, especially text1/text2/text3/text4/text5 field placement, multiline effect text, and refit/codex tooltip behavior."
 ---
 
@@ -23,8 +23,6 @@ description: "Use when editing Starsector SHIP_SYSTEM rows in descriptions.csv o
 - `text4` 暂时作用不明；没有确认用途前保持为空，避免文本显示在未知位置。
 - `text5` 为效果文本，用于说明系统实际作用。
 
-关键词：text1 为图鉴界面的首行描述文本；text2 为类型短词；text3 为装配界面的舰船信息文本；text4 暂时作用不明；text5 为效果文本；text1 / text5 支持原生换行。
-
 ## 换行规则
 
 - `text1 / text5 支持原生换行`。
@@ -36,7 +34,7 @@ description: "Use when editing Starsector SHIP_SYSTEM rows in descriptions.csv o
 
 - 需要在图鉴和装配界面都显示同一首行描述时，将 `text1` 复制到 `text3`。
 - 多段系统效果合并到 `text5`，用原生换行拆分。
-- 数值高亮沿用原版 `{{...}}}` 标记；百分号一律使用半角 `%`（本仓库 2026-09 裁定口径，禁用全角 `％`）。按目标 CSV 分流：descriptions.csv 各列为字面渲染，写裸 `%`（含 `{{50%}}` 高亮，原版有同款先例）；hull_mods.csv 的 desc/short 列走 `String.format`，字面 `%` 必须写 `%%`。
+- 数值高亮沿用原版 `{{...}}}` 标记；百分号一律使用半角 `%`，禁用全角 `％`。按目标 CSV 分流：descriptions.csv 各列为字面渲染，写裸 `%`（含 `{{50%}}` 高亮，原版有同款先例）；hull_mods.csv 的 desc/short 列走 `String.format`，字面 `%` 必须写 `%%`。
 - `text2` 必须是短词，不写短句。
 - 不确定 `text4` 的显示位置前，不把效果文本放入 `text4`。
 

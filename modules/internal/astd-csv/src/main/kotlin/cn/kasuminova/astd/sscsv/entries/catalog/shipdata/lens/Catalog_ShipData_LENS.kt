@@ -3,8 +3,6 @@ package cn.kasuminova.astd.sscsv.entries.catalog.shipdata.lens
 import cn.kasuminova.astd.sscsv.entries.ShipDataEntry
 import cn.kasuminova.astd.sscsv.entries.catalog.shipdata.shipName
 
-/** LENS 设计系舰体数据（ship_data.csv）。 */
-
 object Ship_astd_zw_001 : ShipDataEntry() {
     override val id: String = "astd_zw_001"
     override val name: String = shipName(id)
@@ -27,16 +25,10 @@ object Ship_astd_zw_001 : ShipDataEntry() {
 
     override val fighterBays: Int = 3
 
-    // 对齐原版航空战列舰（Legion）与本舰 zw_102 判例 hints "CARRIER, COMBAT, NO_AUTO_ESCORT"：
-    // 决明为 4 甲板母舰 + 半巡洋平台（purple/10-unique.md §1 定位「锚点控场型指挥舰 / 4 甲板母舰」），
-    // 需要 CARRIER 令图鉴分类与 ShipHullSpec.isCarrier() 成立；其电战潮汐/引力场均为自身中圈机制，
-    // 缺 COMBAT + NO_AUTO_ESCORT 时原版 BasicShipAI 会让航母自动护航友舰并回避交战，
-    // 导致旗舰脱离战场中圈、机制半径形同虚设（判例注释详见 [Ship_astd_zw_102]）。
     override val hints: String = "CARRIER, COMBAT, NO_AUTO_ESCORT"
     override val shieldType: String = "OMNI"
     override val shieldArc: Int = 240
 
-    // 护盾维持 360 = 耗散 900 × 0.4。
     override val shieldUpkeep: Double = 0.4
     override val shieldEfficiency: Double = 0.6
     override val minCrew: Int = 200
@@ -58,13 +50,6 @@ object Ship_astd_zw_001 : ShipDataEntry() {
     override val number: Int = 9104
 }
 
-/**
- * 舜华级（ZW-101）：相位驱逐舰·量产档（purple/20-production.md §3，2026-09 D27 全重做）。
- *
- * 防御方式由 FRONT 护盾改为相位（复用紫菀防御系统「引力相位」astd_gravity_phase），
- * hints 必须带 PHASE（原版 ShipHullSpec.isPhase() 判定口径，见 [Ship_astd_zw_002] 注释）。
- * 相位激活/维持 200 辐能 = 辐能容量比例 200/8500 ≈ 0.0235。
- */
 object Ship_astd_zw_101 : ShipDataEntry() {
     override val id: String = "astd_zw_101"
     override val name: String = shipName(id)
@@ -72,7 +57,6 @@ object Ship_astd_zw_101 : ShipDataEntry() {
     override val tech: String = "菀星设计局-紫菀"
     override val systemId: String = "astd_grav_replicator"
 
-    // 自动战斗分数对齐原版相位驱逐舰（灾星 fp=15）；部署点 20 由 supplies/rec 承担。
     override val fleetPts: Int = 15
     override val hitpoints: Int = 5000
     override val armorRating: Int = 700
@@ -133,17 +117,9 @@ object Ship_astd_zw_102 : ShipDataEntry() {
     override val shieldType: String = "OMNI"
     override val shieldArc: Int = 240
 
-    // 护盾维持 640 = 耗散 1200 * 0.5333
     override val shieldUpkeep: Double = 0.5333
     override val shieldEfficiency: Double = 0.6
 
-    // 对齐原版军团级（Legion，航空战列舰）hints 判例 "CARRIER, COMBAT, NO_AUTO_ESCORT"：
-    // - CARRIER：图鉴「航母」分类的判定 hint（原版 ShipBlueprintRow 按 hints 分类），
-    //   同时令 ShipHullSpec.isCarrier() 为 true；
-    // - COMBAT + NO_AUTO_ESCORT：战斗航母口径。原版 BasicShipAI 对 CARRIER 舰默认走
-    //   「自动护航友舰/回避交战」机动（hints 无 NO_AUTO_ESCORT 且甲板完好数 ≥ 66% 时
-    //   触发 EscortTarget 机动并抢占目标选择），OrderResponseModule 对无 COMBAT 的航母
-    //   不响应 STRIKE 类任务的交战引导；缺这两个 hint 会导致飞蓬 AI 倾向脱离战场。
     override val hints: String = "CARRIER, COMBAT, NO_AUTO_ESCORT"
     override val minCrew: Int = 500
     override val maxCrew: Int = 1000
@@ -171,7 +147,6 @@ object Ship_astd_zw_002 : ShipDataEntry() {
     override val tech: String = "菀星设计局-紫菀"
     override val systemId: String = "astd_grav_storm"
 
-    // 自动战斗分数对齐原版相位巡洋舰（厄运 fp=22）；部署点 40 由 supplies/rec 承担。
     override val fleetPts: Int = 22
     override val hitpoints: Int = 8000
     override val armorRating: Int = 1200
@@ -185,16 +160,12 @@ object Ship_astd_zw_002 : ShipDataEntry() {
     override val turnAcceleration: Int = 80
     override val mass: Int = 1500
 
-    // 密蒙：相位化改造——防御方式由 FRONT 护盾改为自定义相位系统「引力相位」
-    // （defense id=astd_gravity_phase，stats 脚本 GravityPhaseCloakStats 为后续特效接入点）。
-    // hints 必须带 PHASE：原版 ShipHullSpec.isPhase() 仅在 hints 含 PHASE 或
-    // defense id 恰为原版 "phasecloak" 时返回 true，自定义相位系统 id 不走第二个分支，
-    // 缺此 hint 会导致装配面板按护盾舰显示、相位船插不可安装、图鉴不收录。
+    // hints 必须带 PHASE：原版 ShipHullSpec.isPhase() 仅在 hints 含 PHASE 或 defense id 恰为
+    // 原版 "phasecloak" 时返回 true，自定义相位系统 id 不走第二个分支。
     override val hints: String = "PHASE"
     override val shieldType: String = "PHASE"
     override val defenseId: String = "astd_gravity_phase"
 
-    // 相位激活/维持辐能均为 400：ship_data 的 phase cost/upkeep 是辐能容量比例（400/12000）。
     override val phaseCost: Double = 0.0333
     override val phaseUpkeep: Double = 0.0333
     override val minCrew: Int = 100
@@ -216,14 +187,6 @@ object Ship_astd_zw_002 : ShipDataEntry() {
     override val number: Int = 9112
 }
 
-/**
- * 茑萝级（ZW-103）：相位护航航母（purple/20-production.md §2，2026-09 D27 全重做）。
- *
- * 防御方式由 FRONT 护盾改为相位（复用紫菀防御系统「引力相位」astd_gravity_phase），
- * hints 必须带 PHASE（原版 ShipHullSpec.isPhase() 判定口径，见 [Ship_astd_zw_002] 注释）。
- * 2 个内置机库（variant 固定内置战机联队），槽位仅 2x 中型能量（全向）。
- * 相位激活/维持 200 辐能 = 辐能容量比例 200/8000 = 0.025。
- */
 object Ship_astd_zw_103 : ShipDataEntry() {
     override val id: String = "astd_zw_103"
     override val name: String = shipName(id)
@@ -231,7 +194,6 @@ object Ship_astd_zw_103 : ShipDataEntry() {
     override val tech: String = "菀星设计局-紫菀"
     override val systemId: String = "astd_grav_rift_generator"
 
-    // 自动战斗分数对齐原版相位驱逐舰（灾星 fp=15）；部署点 24 由 supplies/rec 承担。
     override val fleetPts: Int = 15
     override val hitpoints: Int = 5000
     override val armorRating: Int = 800
@@ -246,15 +208,10 @@ object Ship_astd_zw_103 : ShipDataEntry() {
     override val turnAcceleration: Int = 80
     override val mass: Int = 1750
 
-    // PHASE：自定义相位系统 id 不走原版 isPhase() 的 "phasecloak" 分支，必须显式声明
-    // （见 [Ship_astd_zw_002] 注释）。CARRIER：护航航母定位（2 内置机库），对齐原版纯航母
-    // （Astral/苍鹭/兀鹫 hints 仅 CARRIER）——相位护航航母舰体脆弱、不抢交战引导，
-    // 故不加 COMBAT / NO_AUTO_ESCORT（与 zw_102 战斗航母口径区分）。
     override val hints: String = "PHASE, CARRIER"
     override val shieldType: String = "PHASE"
     override val defenseId: String = "astd_gravity_phase"
 
-    // 相位激活/维持辐能均为 200：ship_data 的 phase cost/upkeep 是辐能容量比例（200/8000）。
     override val phaseCost: Double = 0.025
     override val phaseUpkeep: Double = 0.025
     override val minCrew: Int = 20
@@ -276,9 +233,6 @@ object Ship_astd_zw_103 : ShipDataEntry() {
     override val number: Int = 9113
 }
 
-/**
- * 茑萝级内置相位无人战机「游丝」（purple/20-production.md §2 内置战机）。
- */
 object Ship_astd_zw_103_fighter : ShipDataEntry() {
     override val id: String = "astd_zw_103_fighter"
     override val name: String = shipName(id)
@@ -304,9 +258,6 @@ object Ship_astd_zw_103_fighter : ShipDataEntry() {
     override val number: Int = 9121
 }
 
-/**
- * 双子座（LENS 量产轰炸联队单机，purple/30-fighters.md §双子座 v1 定案）。
- */
 object Ship_astd_gemini_bomber : ShipDataEntry() {
     override val id: String = "astd_gemini_bomber"
     override val name: String = shipName(id)
@@ -331,9 +282,6 @@ object Ship_astd_gemini_bomber : ShipDataEntry() {
     override val number: Int = 9130
 }
 
-/**
- * 电涌（LENS 量产战斗联队单机）。
- */
 object Ship_astd_surge_fighter : ShipDataEntry() {
     override val id: String = "astd_surge_fighter"
     override val name: String = shipName(id)
@@ -359,13 +307,6 @@ object Ship_astd_surge_fighter : ShipDataEntry() {
     override val number: Int = 9131
 }
 
-/**
- * 引力井（LENS 量产支援联队单机，purple/30-fighters.md §引力井 v1 定案）。
- *
- * 3 机编组无人支援战斗机：挂战机版小型 GCP PD（数据全量复用舰装版 astd_gcp2，仅不渲染贴图），
- * wing role=SUPPORT、支援范围 2000（贴身护卫行为走原版支援战斗机原生 AI，标签显示为「最大支援范围」）。
- * 护盾全向 180° 效率 0.6；战术系统为原版闪现（displacer）。
- */
 object Ship_astd_gravwell_interceptor : ShipDataEntry() {
     override val id: String = "astd_gravwell_interceptor"
     override val name: String = shipName(id)

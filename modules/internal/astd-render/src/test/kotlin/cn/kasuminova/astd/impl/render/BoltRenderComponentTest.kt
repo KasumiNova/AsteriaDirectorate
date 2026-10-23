@@ -7,18 +7,9 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 
-/**
- * Box 螺栓几何与尺寸裁定纯函数（[boltFrame]/[hitGlowScale]/[resolveBoltDimensions]）的完整逻辑验证。
- *
- * 锚点：贴图跨 [tailEnd → 弹体位置]（原版 body 带体区间）、X 向缩放 = 覆盖长/spec.length
- * （TrailExtender distanceRatio 出生伸入同语义）、命中光晕伤害缩放 sqrt(damage/250) 钳 [0.8, 2.5]、
- * 尺寸裁定 override 优先/spec 缺失时 override 齐全仍可渲染（脚本 spawn 弹体 projectileSpec 为 null 判例）。
- */
 class BoltRenderComponentTest {
-
     @Test
     fun `全速飞行时缩放拉满且中心在头尾中点`() {
-        // tail 在 head 正后 100（满距离比）→ span=100=specLength → scaleX=1
         val frame = boltFrame(
             head = Vector2f(100f, 0f),
             tail = Vector2f(0f, 0f),
@@ -32,7 +23,6 @@ class BoltRenderComponentTest {
 
     @Test
     fun `出生瞬间 tail 在炮口时缩放下限钳住`() {
-        // tail=head（出生）：span=0 → scaleX 钳到下限 0.02
         val frame = boltFrame(
             head = Vector2f(50f, 0f),
             tail = Vector2f(50f, 0f),
@@ -45,7 +35,6 @@ class BoltRenderComponentTest {
 
     @Test
     fun `伸入半程时缩放随覆盖长比例`() {
-        // tail 在 head 正后 40 → scaleX=0.4
         val frame = boltFrame(
             head = Vector2f(100f, 0f),
             tail = Vector2f(60f, 0f),
@@ -80,7 +69,6 @@ class BoltRenderComponentTest {
 
     @Test
     fun `导弹合成尾点：沿朝向反推全长 喂 boltFrame 后拉满且中心退半程`() {
-        // 0° 朝向：尾 = 头 − (specLength, 0)
         val tail = boltTailBehindHead(Vector2f(100f, 20f), 0f, 28f)
         assertEquals(72f, tail.x, 1e-3f)
         assertEquals(20f, tail.y, 1e-3f)
@@ -102,9 +90,6 @@ class BoltRenderComponentTest {
 
     @Test
     fun `实弹尾点重构：距离取 tailEnd 真值 方向沿位移朝向`() {
-        // 发射舰高速侧移判例：位移朝向 0°，tailEnd 沿 projectile.facing（上偏）摆在 (60, 30)，
-        // 距离真值 50；重构尾点必须落在位移朝向上 (50, 0) 而非照搬 tailEnd——
-        // 照搬会把螺栓中心拽离真实弹道（位置漂移），只跟 facing 定向则与拖尾角偏差（角度漂移）。
         val head = Vector2f(100f, 0f)
         val tailTruth = Vector2f(60f, 30f)
         val dist = sqrt((100f - 60f) * (100f - 60f) + 30f * 30f)
@@ -115,14 +100,12 @@ class BoltRenderComponentTest {
         assertEquals(0.5f, frame.scaleX, 1e-3f, "距离真值 50/100 驱动出生伸入缩放")
         assertEquals(75f, frame.center.x, 1e-3f)
         assertEquals(0f, frame.center.y, 1e-3f)
-        // 参照组：照搬 tailTruth 的旧行为，中心会被拽到 y=15（侧偏的一半）——回归断言
         assertEquals(15f, (head.y + tailTruth.y) / 2f, 1e-3f)
     }
 
     @Test
     fun `尺寸裁定 spec 缺失但 override 齐全仍可渲染`() {
-        // 脚本 spawnProjectile 产出的 MissileAPI 其 projectileSpec 为 null（实机判例）：
-        // 显式接管路径（length/width override 齐全）不依赖 spec
+        // 脚本 spawnProjectile 产出的 MissileAPI 其 projectileSpec 为 null
         val dims = resolveBoltDimensions(
             lengthOverride = 28f, widthOverride = 8f,
             specLength = null, specWidth = null, specHitGlowRadius = null,

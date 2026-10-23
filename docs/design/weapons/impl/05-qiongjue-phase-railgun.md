@@ -2,8 +2,8 @@
 
 > 依据：`docs/design/weapons/impl/00-共享基建.md`（Buff API / 合并协议 / HUD 通道）、`docs/design/weapons/90-首批实装计划.md` v6 §5、`docs/design/weapons/blue/20-production.md`「"穷距"相位轨道炮」（定案 v1.0，2026-07-29）。
 > 状态：规划文档，不改动 `src/` 与 `ss-csv/`。
-> 代码核查时间：2026-07-29。全部落点已对照 `starfarer.api.jar`（/mnt/store/Games/Starsector098-linux）与现有 `src/`、`ss-csv/` 代码逐条核实。
-> 武器 id：`astd_qiongjue_phase_railgun`（90-计划提案，本规格按此落地；收口前再确认一次）。
+> 代码核查时间：2026-07-29。全部 API 调用位置已对照 `starfarer.api.jar`（/mnt/store/Games/Starsector098-linux）与现有 `src/`、`ss-csv/` 代码逐条核实。
+> 武器 id：`astd_qiongjue_phase_railgun`（90-计划提案，本规格按此实现；合并前再确认一次）。
 
 ---
 
@@ -14,7 +14,7 @@
 | 90-计划条目 | 本规格落位 | 原因 |
 |---|---|---|
 | `QiongjuePhaseRailgunState`（挂 `weapon.customData`） | `QiongjueCalcStacks : StackableBuff`，**2026-09 修订后挂 Ship 级 `ship.customData["astd_buff:ship:astd_qiongjue_stacks"]`**（全舰同型武器共享一份；修订前为 Weapon 级复合键 `astd_buff:weapon:astd_qiongjue_stacks:<slotId>`） | `WeaponAPI` 无 customData（jar 已核实）；加成只作用于同型武器实例：伤害走逐命中 `DamageAPI` 通道、射速由本 Buff 遍历 `ship.allWeapons` 逐槽位压缩冷却，故状态无需再按槽位分桶 |
-| `QiongjuePhaseRailgunWeaponEffect`（`.wpn` everyFrameEffect） | 衰减/数值刷新/HUD 全部并入 `QiongjueCalcStacks.advance()`，由基建 `BuffTickPlugin` 心跳驱动 | 避免每帧双通道；`.wpn` 的 everyFrameEffect 改挂现成的 `CombatVfxBootstrapEveryFrameEffect` 作 VFX 安全网（aod7/spc3 同款） |
+| `QiongjuePhaseRailgunWeaponEffect`（`.wpn` everyFrameEffect） | 衰减/数值刷新/HUD 全部并入 `QiongjueCalcStacks.advance()`，由基建 `BuffTickPlugin` 心跳驱动 | 避免每帧双通道；`.wpn` 的 everyFrameEffect 改挂现成的 `CombatVfxBootstrapEveryFrameEffect`，负责 onFire 未触发时补装 VFX dispatcher（aod7/spc3 同款） |
 | `QiongjuePhaseRailgunDifficulty` | 保留（object + ScalingEntry 常量，对标 `ASTDVirtualParticleLatticeWebHullMod` 的 `DEFENSIVE_CAP` 模式） | — |
 
 ---
@@ -23,16 +23,16 @@
 
 ### 1.1 ss-csv catalog 条目（`Catalog_WeaponData_ARC.kt`）
 
-新增 `object Wpn_astd_qiongjue_phase_railgun : WeaponDataEntry(), SsProjProjectileOutputs`，追加在**文件末尾**（收口人按 number 升序归位）。逐列取值：
+新增 `object Wpn_astd_qiongjue_phase_railgun : WeaponDataEntry(), SsProjProjectileOutputs`，追加在**文件末尾**（合并负责人按 number 升序归位）。逐列取值：
 
 | 字段（Kotlin 属性） | 值 | 依据 |
 |---|---|---|
 | `id` | `"astd_qiongjue_phase_railgun"` | 90-计划提案 |
 | `name` | `weaponName(id)` | 走 i18n |
-| `tier` | `2`（提案） | aod7/spc3 signature 为 3；量产大主炮提案 2，收口人对齐量产件口径 |
-| `baseValue` | `25000`（提案） | 低于 signature 件（50000），收口人统一 |
+| `tier` | `2`（提案） | aod7/spc3 signature 为 3；量产大主炮提案 2，合并负责人对齐量产件规则 |
+| `baseValue` | `25000`（提案） | 低于 signature 件（50000），合并负责人统一 |
 | `range` | `1100` | 定案固定值（2026-09 修订：1200 → 1100） |
-| `damagePerSecond` | 默认 `0` 不覆写（充能武器 tooltip DPS 由 damage/shot ÷ 周期派生；旧显式 300 口径作废） | 2026-10 对齐代码现状 |
+| `damagePerSecond` | 默认 `0` 不覆写（充能武器 tooltip DPS 由 damage/shot ÷ 周期派生；旧显式 300 规则作废） | 2026-10 对齐代码现状 |
 | `damagePerShot` | `640` | 2026-10 对齐代码现状（旧 600 作废） |
 | `chargeup` | `1.0` | 1s 开火充能（2026-09 起显式登记，机制上参与周期总时长） |
 | `chargedown` | `1.5` | 定案 2.5s 总开火间隔 = 1s 充能 + 1.5s 冷却（2026-09 修订：2.0 → 1.5；非 beam 必须走 chargedown/burst，避免 tooltip 除 0） |
@@ -40,12 +40,12 @@
 | `turnRate` | `8`（提案，目检微调） | 定案「非常慢」 |
 | `turnRateStr` | `"非常慢"` | tooltip 展示 |
 | `accuracyStr` | `"完美"` | 定案完美精度 |
-| `autofireAccBonus` | `1` | 完美精度（对齐原版高斯炮口径） |
+| `autofireAccBonus` | `1` | 完美精度（对齐原版高斯炮规则） |
 | `minSpread` / `maxSpread` / `spreadPerShot` / `spreadDecayPerSec` | 默认 `0` 不覆写 | 完美精度 |
 | `type` | `"KINETIC"` | 定案动能 |
 | `energyPerShot` | `960` | 2026-10 对齐代码现状（辐伤比 1.5；旧 900 作废） |
 | `energyPerSecond` | 默认 `0` 不覆写 | 充能武器该列会被 ChargeFireTracker 在充能期按秒真实扣辐，留空；tooltip 持续辐能由派生公式算回 450/s（旧显式 450 作废） |
-| `projSpeed` | `1800` | 2026-10 对齐代码现状（旧 1200 裁定作废） |
+| `projSpeed` | `1800` | 2026-10 对齐代码现状（旧 1200 确认作废） |
 | `ops` | `28` | 2026-10 对齐代码现状（旧 27 作废） |
 | `ammo` / `ammoPerSec` / `reloadSize` | 默认 `0` 不覆写（无限弹药） | 定案无弹匣 |
 | `aiHints` | 默认空（不覆写） | 非 PD |
@@ -53,7 +53,7 @@
 | `groupTag` | `"astd"`；`tech` | `"弧光阵列"` |
 | `primaryRoleStr` | `SsI18n.t("weapon.$id.primaryRoleStr")` | gcp/spc3 同款 |
 | `customPrimary` | `SsI18n.t("weapon.$id.tooltip.customPrimary")` | gcp 同款；机制文案含 v2 数值，**3 个 `{%s}` 占位**与 HL 三段一一对应 |
-| `customPrimaryHL` | `SsI18n.t("weapon.$id.tooltip.customPrimaryHL")` | 高亮数值与"难度系数"（2026-07-29 字段分工铁律） |
+| `customPrimaryHL` | `SsI18n.t("weapon.$id.tooltip.customPrimaryHL")` | 高亮数值与"难度系数"（2026-07-29 字段分工规则） |
 | `number` | **`9214`** | 00-共享基建 §3 预分配段（穷距 9214） |
 
 `projSpec`：**不用** `ProjectileProjSpec.standard()`（其 length=24/width=8 不符合弹体隐藏四件套），显式构造，照 `Wpn_astd_aod7` 样板：
@@ -102,7 +102,7 @@ override val projSpec: ProjectileProjSpec = ProjectileProjSpec(
 }
 ```
 
-- 插件挂载点：`everyFrameEffect` = 现成 VFX 安全网（机制逻辑不在这里，见 §0）；`onHitEffect` / `onFireEffect` 在 `.proj`（由 ss-csv 生成）。
+- 插件挂载点：`everyFrameEffect` 挂现成的 `CombatVfxBootstrapEveryFrameEffect`，仅承担 VFX dispatcher 补装（机制逻辑不在这里，见 §0）；`onHitEffect` / `onFireEffect` 在 `.proj`（由 ss-csv 生成）。
 - **美术资产待补**：`graphics/weapons/astd_qiongjue_base.png` / `astd_qiongjue_gun.png`（命名对齐 `astd_ftb_omega_base.png` 现有惯例）。机制分支阶段允许先填 `graphics/fx/empty.png` 跑烟测，但**本武器在贴图到位前不算完工**（列入验收目检项）。
 - `fireSoundTwo = gauss_cannon_fire`：已实装（1100 射程动能主炮定位对齐高斯听觉；音效 id 已在原版 `data/config/sounds.json` 核实存在，原版 `gauss.wpn` 同款。2026-10 修订：旧提案 `gauss_fire` 经核实不存在，已更正）。
 - `turretOffsets`/`visualRecoil` 数值为提案，随贴图到位后按实尺寸校正。
@@ -111,12 +111,12 @@ override val projSpec: ProjectileProjSpec = ProjectileProjSpec(
 
 | 键 | 值 | 来源 |
 |---|---|---|
-| `weapon.astd_qiongjue_phase_railgun.name` | `"穷距" 相位轨道炮` | 定案名（「」为原版字体无效符号，禁用）；2026-09 修订：`“穷距”相位轨道炮`（弯引号、无空格）→ `"穷距" 相位轨道炮`（ASCII 引号 + 空格，`.properties`/CSV 转义口径统一） |
-| `weapon.astd_qiongjue_phase_railgun.tooltip.customPrimary` | `全舰同型武器连续命中同一目标会逐步提高这些武器的伤害与射速（每层 {%s}，至多 {%s} 层）；切换目标会损失大部分加成，长时间未命中也会逐渐衰减。效果受到{%s}影响。` | 设计案 tip 原文 + v2 数值插入（2026-07-29 字段分工铁律，审批通过）；2026-09 修订：叠层升级为全舰同型武器共享，文案由「本武器」改为「全舰同型武器…这些武器」 |
-| `weapon.astd_qiongjue_phase_railgun.tooltip.customPrimaryHL` | `5% | 10 | 难度系数` | 字段分工铁律：高亮数值与"难度系数"；2026-10 修订：对齐代码 `PER_STACK_BONUS` v2 = 5%（旧 6.25% → 4% 口径作废） |
+| `weapon.astd_qiongjue_phase_railgun.name` | `"穷距" 相位轨道炮` | 定案名（「」为原版字体无效符号，禁用）；2026-09 修订：`“穷距”相位轨道炮`（弯引号、无空格）→ `"穷距" 相位轨道炮`（ASCII 引号 + 空格，`.properties`/CSV 转义规则统一） |
+| `weapon.astd_qiongjue_phase_railgun.tooltip.customPrimary` | `全舰同型武器连续命中同一目标会逐步提高这些武器的伤害与射速（每层 {%s}，至多 {%s} 层）；切换目标会损失大部分加成，长时间未命中也会逐渐衰减。效果受到{%s}影响。` | 设计案 tip 原文 + v2 数值插入（2026-07-29 字段分工规则，审批通过）；2026-09 修订：叠层升级为全舰同型武器共享，文案由「本武器」改为「全舰同型武器…这些武器」 |
+| `weapon.astd_qiongjue_phase_railgun.tooltip.customPrimaryHL` | `5% | 10 | 难度系数` | 字段分工规则：高亮数值与"难度系数"；2026-10 修订：对齐代码 `PER_STACK_BONUS` v2 = 5%（旧 6.25% → 4% 规则作废） |
 | `weapon.astd_qiongjue_phase_railgun.primaryRoleStr` | `压制` | 2026-07-29 审批修正（弃「远程压制,持续打击」提案） |
 | `desc.astd_qiongjue_phase_railgun.text1` | `弧光科研部的长程动能主炮。使用独特的相位弹头来干扰敌方护盾稳定性，持续施加动能压力，并在击中后持续校准武器自身的相位谐波。` | 设计案文案原文（2026-07-29 用户换稿） |
-| `desc.astd_qiongjue_phase_railgun.notes` | **不添加** | 设计案未提供 notes；可选字段留空，禁止自创（字段分工铁律） |
+| `desc.astd_qiongjue_phase_railgun.notes` | **不添加** | 设计案未提供 notes；可选字段留空，禁止自创（字段分工规则） |
 
 - `desc.*.text2~text5`：不登记（见 §1.1）。
 - HUD 状态条与浮字文案走 `I18n[I18n.Categories.MOD, ...]`（`LensMarkStatusBar.kt` 同款），键 `ui.qiongjue.status.calc`（`持续演算`）、`ui.qiongjue.status.stacks`（`层数 {stacks}/10 · 伤害 +{dmg}% · 射速 +{rof}%`）、`ui.qiongjue.float.transfer`（`演算转移`），登记在 MOD 类字符串表（非本 properties 文件，按 localization-guidelines）。2026-09 修订：满层「演算完成」浮字与其键 `ui.qiongjue.float.full` 已删除。
@@ -129,14 +129,14 @@ object Desc_astd_qiongjue_phase_railgun : LocalizedDescription("astd_qiongjue_ph
 
 ### 1.4 `contents/data/campaign/special_items.csv` 条目（文件末尾追加，order 段位 9203）
 
-**order 列口径（2026-07-29 实机发现）**：原版 CSV 解析强制数字，留空启动即 JSONException；各组按合并协议预分配段位直填。
+**order 列规则（2026-07-29 实机发现）**：原版 CSV 解析强制数字，留空启动即 JSONException；各组按合并协议预分配段位直填。
 
 ```
 武器蓝图：“穷距”相位轨道炮,astd_qiongjue_railgun_bp,"single_bp, astd",弧光阵列,,2000,1000,1,,graphics/icons/cargo/blueprint_hightech.png,ui_chip_pickup,ui_weapon_bp_drop,com.fs.starfarer.api.campaign.impl.items.WeaponBlueprintItemPlugin,astd_qiongjue_phase_railgun,使重工业设施能够制造出该蓝图所描述的武器。,9203
 ```
 
 - `plugin params` = 武器 id（`WeaponBlueprintItemPlugin` 从 stack special data 读 params 取 weapon，jar 已核实类存在且持 `WeaponSpecAPI weapon` 字段）。
-- `base price = 2000` 对齐原版 `weapon_bp` 行；量产件统一定价由收口人对齐。
+- `base price = 2000` 对齐原版 `weapon_bp` 行；量产件统一定价由合并负责人对齐。
 - P2 阶段由 `AsteriaTestCampaignBootstrap` dev 仓储自动投放（90-计划 §14）。
 
 ---
@@ -150,11 +150,11 @@ object Desc_astd_qiongjue_phase_railgun : LocalizedDescription("astd_qiongjue_ph
 | 类名 | 接口/实现 | 职责 | 挂载点 | 文件路径 |
 |---|---|---|---|---|
 | `QiongjuePhaseRailgunOnHitEffect` | `OnHitEffectPlugin` 实现（jar 签名已核实：`onHit(projectile, target, point, shieldHit, damageResult, engine)`） | 命中结算：目标类型过滤 → 同/异目标叠层/折算 → 刷新命中时间 → 触发浮字/命中锥面特效 | `.proj` 的 `onHitEffect` | `src/main/kotlin/cn/kasuminova/astd/combat/effect/arc/qiongjue/QiongjuePhaseRailgunOnHitEffect.kt` |
-| `QiongjueCalcStacks` | `StackableBuff : Buff` 实现（基建接口，decayMode = `WINDOWED`） | **全舰同型武器共享**叠层状态（层数/当前目标/最后命中时间/衰减累加器；2026-09 修订：Weapon 级 → Ship 级共享一份）；`advance` 内做 3s 窗口衰减 + 射速 spike（遍历 `ship.allWeapons` 逐槽位冷却跳沿压缩，§2.4 收口结论）+ 玩家 HUD，层数归零自移除；伤害乘区不在此类落地（见下行） | 基建 `BuffHost` **Ship 级**键 `astd_buff:ship:astd_qiongjue_stacks`，由 `BuffTickPlugin` 心跳 | 同包 `QiongjueCalcStacks.kt` |
-| `QiongjueDamageDealtModifier` | `DamageDealtModifier` 实现（combat.listeners） | **伤害乘区逐命中落地通道**（2026-07-29 实机修订）：烟测实证同舰同 spec 武器共享 `weapon.damage.modifier` 底层 MutableStat（双穷距互乘 1.625²），故每次命中回调按 `projectile.weapon` 的 weaponId 过滤后读取 Ship 级共享层数，向该发弹体独立的 `DamageAPI` 写入乘区，天然逐武器隔离且只加成同型武器；每舰一个实例（`ensure` 幂等），无 Buff/层数 0/非穷距弹体时返回 null 零开销放行 | `ShipAPI.addListener`（OnHit 首次命中时 `ensure`） | 同包 `QiongjueDamageDealtModifier.kt` |
+| `QiongjueCalcStacks` | `StackableBuff : Buff` 实现（基建接口，decayMode = `WINDOWED`） | **全舰同型武器共享**叠层状态（层数/当前目标/最后命中时间/衰减累加器；2026-09 修订：Weapon 级 → Ship 级共享一份）；`advance` 内做 3s 窗口衰减 + 射速 spike（遍历 `ship.allWeapons` 逐槽位冷却跳沿压缩，§2.4 确定结论）+ 玩家 HUD，层数归零自移除；伤害乘区不在此类实现（见下行） | 基建 `BuffHost` **Ship 级**键 `astd_buff:ship:astd_qiongjue_stacks`，由 `BuffTickPlugin` 心跳 | 同包 `QiongjueCalcStacks.kt` |
+| `QiongjueDamageDealtModifier` | `DamageDealtModifier` 实现（combat.listeners） | **伤害乘区逐命中实现通道**（2026-07-29 实机修订）：烟测实证同舰同 spec 武器共享 `weapon.damage.modifier` 底层 MutableStat（双穷距互乘 1.625²），故每次命中回调按 `projectile.weapon` 的 weaponId 过滤后读取 Ship 级共享层数，向该发弹体独立的 `DamageAPI` 写入乘区，天然逐武器隔离且只加成同型武器；每舰一个实例（`ensure` 幂等），无 Buff/层数 0/非穷距弹体时返回 null 零开销放行 | `ShipAPI.addListener`（OnHit 首次命中时 `ensure`） | 同包 `QiongjueDamageDealtModifier.kt` |
 | `QiongjueStackMath` | 纯函数 object（不依赖 Starsector API） | 叠层/折算/衰减/倍率/难度取值的纯逻辑核心，供单测完整驱动 | 被上述两类调用 | 同包 `QiongjueStackMath.kt` |
 | `QiongjuePhaseRailgunDifficulty` | object | 三条 `ScalingEntry` 常量（每层加成/切换保留/衰减速率）+ `WEAPON_ID` | 被 `QiongjueStackMath` / `QiongjueCalcStacks` 调用 | 同包 `QiongjuePhaseRailgunDifficulty.kt` |
-| `ShipAPI.qiongjueCalcStacks()` 扩展 | 顶层扩展函数 | 本包内强类型入口（`getBuff(BUFF_ID) as? QiongjueCalcStacks`，**无参**——Ship 级共享后不再按武器定位），不沉淀公共 API（00-共享基建 §1.3 口径） | 被 OnHit / DamageDealtModifier / 烟测脚本调用 | 同包 `QiongjueCalcStacks.kt` 内 |
+| `ShipAPI.qiongjueCalcStacks()` 扩展 | 顶层扩展函数 | 本包内强类型入口（`getBuff(BUFF_ID) as? QiongjueCalcStacks`，**无参**，Ship 级共享后不再按武器定位），不沉淀公共 API（00-共享基建 §1.3 规则） | 被 OnHit / DamageDealtModifier / 烟测脚本调用 | 同包 `QiongjueCalcStacks.kt` 内 |
 
 难度三锚点（`ScalingEntry`，LINEAR 即可，无超线性收益）：
 
@@ -170,16 +170,16 @@ const val DECAY_WINDOW_SECONDS = 3f
 
 ### 2.2 核心逻辑伪代码
 
-**OnHit（`QiongjuePhaseRailgunOnHitEffect.onHit`）**——结算顺序：
+**OnHit（`QiongjuePhaseRailgunOnHitEffect.onHit`）**，结算顺序：
 
 ```kotlin
 1. target !is ShipAPI 或 target.isFighter/isHulk/isPhased → return（战机/导弹不叠层、不触发异目标折算）
 2. ship = projectile.source ?: projectile.weapon?.ship
    ship == null → log INFO（弹体无来源，放弃结算）+ return
-   （2026-09 修订：Ship 级共享后不再要求 projectile.weapon 非空——槽位仅用于射速 spike 定位）
+   （2026-09 修订：Ship 级共享后不再要求 projectile.weapon 非空，槽位仅用于射速 spike 定位）
 3. buff = ship.buffHost().find(BUFF_ID) as? QiongjueCalcStacks
        ?: QiongjueCalcStacks(ship, engine, host).also { host.register(it) }
-   （BUFF_ID = "astd_qiongjue_stacks"，Ship 级单键——全舰同型武器共享一份层数/目标）
+   （BUFF_ID = "astd_qiongjue_stacks"，Ship 级单键，全舰同型武器共享一份层数/目标）
 4. hitTime = engine.getTotalElapsedTime(false)
 5. val targetShip = target as ShipAPI
    when {
@@ -203,15 +203,15 @@ const val DECAY_WINDOW_SECONDS = 3f
 ```kotlin
 1. now = engine.getTotalElapsedTime(false)
 2. 难度取值：perStack/decayRate = QiongjueStackMath.resolve(entry, ship.owner) 每帧重取
-   （玩家 owner==0 恒 v2；AI 走 DifficultyTuningImpl.value(entry)——LunaLib 热变更即时生效，成本可忽略）
+   （玩家 owner==0 恒 v2；AI 走 DifficultyTuningImpl.value(entry)，LunaLib 热变更即时生效，成本可忽略）
 3. 衰减（WINDOWED 语义由 QiongjueStackMath.decayAdvance 落实）：
    3s 窗口内重置 pendingDecay；窗口后按 decayRate 累积扣层
    层数归零 → host.remove(this) 自行移除（下次命中重建），无残留心跳
-4. 数值落地（2026-07-29 实机修订，取代初版双 stat 乘区伪码）：
-   // 伤害乘区：不写 weapon.damage.modifier——烟测实证同舰同 spec 武器共享底层
+4. 数值实现（2026-07-29 实机修订，取代初版双 stat 乘区伪码）：
+   // 伤害乘区：不写 weapon.damage.modifier，烟测实证同舰同 spec 武器共享底层
    // MutableStat（双穷距互乘污染），改由 QiongjueDamageDealtModifier 逐命中写入
    // 该发弹体独立 DamageAPI，本 Buff 层数为其唯一数据源（按 weaponId 过滤，只加成同型武器）
-   // 射速：spike 逐门穷距检测开火周期起点（§2.4 收口结论；2026-09 修订：单武器 → 遍历全舰同型武器）
+   // 射速：spike 逐门穷距检测开火周期起点（§2.4 确定结论；2026-09 修订：单武器 → 遍历全舰同型武器）
    val mult = QiongjueStackMath.mult(stacks, perStack)
    for (w in ship.allWeapons) {
        if (w?.spec?.weaponId != WEAPON_ID) continue
@@ -233,7 +233,7 @@ const val DECAY_WINDOW_SECONDS = 3f
 - `isHostValid()`：`ship` 在场 && `!ship.isHulk` && `ship.allWeapons.any { it?.spec?.weaponId == WEAPON_ID }`（全舰同型武器全部拆卸 → false → 心跳回收；`WeaponSlotAPI.getId()` 与 `ShipAPI.getAllWeapons()` jar 已核实）。
 - `onRemove()`：**无持久 stat 写入，无需清理**（伤害乘区走逐命中 DamageAPI 通道随伤害事件消亡；射速 spike 的冷却读数为瞬态，不写任何 modifier）。
 
-**难度取值调用点（玩家固定 v2 口径）**——`QiongjueStackMath.resolve(entry, owner)` 纯函数：
+**难度取值调用点（玩家固定 v2 规则）**，`QiongjueStackMath.resolve(entry, owner)` 纯函数：
 
 ```kotlin
 fun resolve(entry: ScalingEntry, owner: Int): Float =
@@ -248,7 +248,7 @@ fun resolve(entry: ScalingEntry, owner: Int): Float =
 |---|---|---|
 | 叠层层数/增伤/增速 | 左侧状态栏 `maintainStatusForPlayerShip`（每帧刷新，样板 `LensMarkStatusBar.kt`） | 「持续演算」层数 x/10 · 伤害 +a% · 射速 +b%；negative=false；图标 = `graphics/weapons/astd_qiongjue_base.png`（美术待补前用 `graphics/hullmods/astd_lens_array_core.png` 之外的 ARC 侧现有图标，实装时挑定） |
 | 异目标折算 | 自定义浮字 `engine.addFloatingText(point, "演算转移", ...)` | 仅命中来源为玩家船时显示（避免满屏 AI 浮字），白色 |
-| 满层达成 | **不再弹浮字**（2026-09 用户裁定） | 满层状态由 HUD 层数读数承担（层数 x/10 到顶即达），不打断视觉焦点；`ui.qiongjue.float.full` 字符串键与 `TELEMETRY_FULL_PLAYER/OTHER` 遥测一并删除 |
+| 满层达成 | **不再弹浮字**（2026-09 用户确认） | 满层状态由 HUD 层数读数承担（层数 x/10 到顶即达），不打断视觉焦点；`ui.qiongjue.float.full` 字符串键与 `TELEMETRY_FULL_PLAYER/OTHER` 遥测一并删除 |
 | 叠层生效本体 | 伤害数字自然变大 + 射速自然加快（原版伤害浮字自带） | 不额外加浮字，避免噪音 |
 | 命中反馈 | 小号锥面冲击特效（纯视觉，无结算） | 基建 `ConeImpactVfx` 小号参数（§3.2） |
 | 弹体 | texTrail 管线 | §3 |
@@ -261,15 +261,15 @@ fun resolve(entry: ScalingEntry, owner: Int): Float =
 | 折算 floor 归零 | `stacks=1, retain=25%` → `floor(0.25)=0`，本次命中后 = 1；明确合法，无 WARN |
 | `retainPct = 0`（极端自定义 k_s） | `floor(stacks * 0) = 0`，无除零；合法 |
 | `decayRate = 0`（极端自定义 k_s） | 层数不衰减；**每个 buff 实例 WARN 一次**（难度配置异常必须可见），继续运行 |
-| 目标失效（hulk/移除） | 命中判定时检查 `isTargetAlive()`（`target != null && !target.isHulk && engine.isEntityInPlay(target)`）；失效视为「无旧目标」→ 不折算直接 +1（规格裁定：打死目标后转火属正常行为，不吃切换惩罚；层数从最后命中时间起自然衰减）。此裁定列入验收确认项 |
+| 目标失效（hulk/移除） | 命中判定时检查 `isTargetAlive()`（`target != null && !target.isHulk && engine.isEntityInPlay(target)`）；失效视为「无旧目标」→ 不折算直接 +1（规格确认：打死目标后转火属正常行为，不吃切换惩罚；层数从最后命中时间起自然衰减）。此确认列入验收确认项 |
 | `projectile.weapon == null` | 不影响结算（Ship 级共享后不再需要槽位/武器引用定位层数，仅 INFO 记录无来源弹体）；`projectile.source == null` → INFO 放弃 |
-| 同舰双穷距（2026-09 修订） | 层数与目标**全舰同型共享一份**（w1 积累的层数 w2 同样受益，两门各自压缩本槽位冷却）；加成仍只作用于同型武器实例——伤害走逐命中通道按 weaponId 过滤（2026-07-29 实机修订：初版 stat 乘区在双穷距场景共享底层 MutableStat 互乘污染，已废弃） |
+| 同舰双穷距（2026-09 修订） | 层数与目标**全舰同型共享一份**（w1 积累的层数 w2 同样受益，两门各自压缩本槽位冷却）；加成仍只作用于同型武器实例，伤害走逐命中通道按 weaponId 过滤（2026-07-29 实机修订：初版 stat 乘区在双穷距场景共享底层 MutableStat 互乘污染，已废弃） |
 | 伤害/射速为乘区正算（`1 + stacks*x` 直接乘） | 不涉及从终值反推修正量，无除零点 |
 | 衰减累加器 | `pendingDecay` 上限 clamp 到 `stacks + 1f`（长时间挂机恢复后不会一次性狂扣，帧率抖动下扣层速率不失真） |
 
-**射速修正方案已 spike 收口（2026-07-29，91 §4.3 C2 消缺）**：Starsector 无 per-weapon RoF API。初版候选 `ship.mutableStats.ballisticRoFMult` 全舰乘区会污染同舰其他实弹武器，**已弃用**；实装采用 **`weapon.setRemainingCooldownTo(cooldown / mult)` 开火周期起点一次性扣减**——跳沿判定（`cooldownRemaining - lastCooldown > 0.5f`）保证每周期只写一次，规避 01 判例的每帧重置问题；烟测遥测（`astd_qiongjue_spike_applied` 计数）+ 目检确认冷却压缩生效且不抖动。
+**射速修正方案已通过 spike 确定（2026-07-29，91 §4.3 C2 消缺）**：Starsector 无 per-weapon RoF API。初版候选 `ship.mutableStats.ballisticRoFMult` 全舰乘区会污染同舰其他实弹武器，**已弃用**；实装采用 **`weapon.setRemainingCooldownTo(cooldown / mult)` 开火周期起点一次性扣减**，跳沿判定（`cooldownRemaining - lastCooldown > 0.5f`）保证每周期只写一次，规避 01 判例的每帧重置问题；烟测遥测（`astd_qiongjue_spike_applied` 计数）+ 目检确认冷却压缩生效且不抖动。
 
-**2026-09 修订（压缩口径实证）**：`cooldownRemaining` 含充能段——开火周期起点读数上跳的是**整个周期**（1s 充能 + 1.5s 冷却 = 2.5s），故 spike 压缩的是全周期而非仅冷却段。烟测实证：满层（v2 每层 5% → mult 1.5）射速间隔 ≈ 2.5 / 1.5 ≈ **1.67s**（2026-10 对齐代码每层加成口径；旧配置 2s 周期 / 1.625 实测 1.2376s，同一口径）。
+**2026-09 修订（压缩规则实证）**：`cooldownRemaining` 含充能段，开火周期起点读数上跳的是**整个周期**（1s 充能 + 1.5s 冷却 = 2.5s），故 spike 压缩的是全周期，不只冷却段。烟测实证：满层（v2 每层 5% → mult 1.5）射速间隔 ≈ 2.5 / 1.5 ≈ **1.67s**（2026-10 对齐代码每层加成规则；旧配置 2s 周期 / 1.625 实测 1.2376s，同一规则）。
 
 ### 2.5 测试面
 
@@ -290,10 +290,10 @@ fun resolve(entry: ScalingEntry, owner: Int): Float =
 烟测检查点（`deployMod` + `launchSmokeTestGame`，到达终态即退出）：
 
 1. 装配界面：1100 射程、28 OP、tooltip 名称（`"穷距" 相位轨道炮`）/tip/角色文案正确、非常慢转向手感。
-2. 连续命中同一目标：HUD 层数递增、伤害浮字增大、射速加快可感知（2.5s → 满层约 1.67s；`cooldownRemaining` 含充能段，spike 压缩全周期）。
+2. 连续命中同一目标：HUD 层数递增、伤害浮字增大、射速加快可察觉（2.5s → 满层约 1.67s；`cooldownRemaining` 含充能段，spike 压缩全周期）。
 3. 切换目标：浮字「演算转移」+ 层数折算下降。
 4. 停火 3s 后：层数按速率流失，HUD 同步。
-5. 打死目标后转火新目标：不折算（裁定项，目检确认）。
+5. 打死目标后转火新目标：不折算（确认项，目检确认）。
 6. 同舰双穷距：两门共享同一份层数/目标（w1 建层后 w2 首发即享满层乘区），两门各自压缩本槽位冷却。
 7. 敌版 AI 装配：三档难度下敌舰叠层速度差异可观测（devMode）。
 8. devMode FPS：BuffTickPlugin + 本 buff 每帧开销无异常。
@@ -339,10 +339,10 @@ fun resolve(entry: ScalingEntry, owner: Int): Float =
 
 ### 3.2 命中特效
 
-命中反馈（2026-07-29 审批裁定：弃 `addHitParticle` 白闪，改用小号锥状冲击特效）：
+命中反馈（2026-07-29 审批确认：弃 `addHitParticle` 白闪，改用小号锥状冲击特效）：
 
-- 命中瞬间沿射弹矢量触发**基建锥面 VFX 小号版**（`ConeImpactVfx`，第 0 波 PR#2 产物，与正电子/贯星同族）：纯视觉调用，锥角/锥长按"约贯星 25% 规模"起始（起始提案 halfAngle≈12°、range≈90su、冷白主色），无伤害结算——穷距没有锥状冲击机制，此处仅借用锥面视觉表达相位弹头的命中质构。
-- 参数目检微调；依赖第 0 波基建先合并（本组在第 1 波，时序天然满足，编排册依赖表无需新增条目——视觉复用非代码阻塞项）。
+- 命中瞬间沿射弹矢量触发**基建锥面 VFX 小号版**（`ConeImpactVfx`，第 0 波 PR#2 产物，与正电子/贯星同族）：纯视觉调用，锥角/锥长按"约贯星 25% 规模"起始（起始提案 halfAngle≈12°、range≈90su、冷白主色），无伤害结算，穷距没有锥状冲击机制，此处仅借用锥面视觉表达相位弹头的命中质构。
+- 参数目检微调；依赖第 0 波基建先合并（本组在第 1 波，时序天然满足，编排册依赖表无需新增条目，视觉复用非代码阻塞项）。
 
 ---
 
@@ -352,11 +352,11 @@ fun resolve(entry: ScalingEntry, owner: Int): Float =
 
 | 共享文件 | 本分支动作 | 键名空间/位置约定 |
 |---|---|---|
-| `ss-csv/.../weapondata/arc/Catalog_WeaponData_ARC.kt` | 追加 `Wpn_astd_qiongjue_phase_railgun` | **number=9214**（预分配段）；object 追加文件末尾，收口人按 number 升序归位 |
+| `ss-csv/.../weapondata/arc/Catalog_WeaponData_ARC.kt` | 追加 `Wpn_astd_qiongjue_phase_railgun` | **number=9214**（预分配段）；object 追加文件末尾，合并负责人按 number 升序归位 |
 | `ss-csv/.../strings/Catalog_Descriptions.kt` | 追加 `Desc_astd_qiongjue_phase_railgun` | WEAPON 分组尾部（`Desc_astd_psi_omega` 之后） |
 | `ss-csv/.../i18n/zh-cn.properties` | 追加 §1.3 五个键 | `weapon.astd_qiongjue_phase_railgun.*` / `desc.astd_qiongjue_phase_railgun.*`，集中插文件末尾 |
 | `contents/data/campaign/special_items.csv` | 追加蓝图行（§1.4） | 文件末尾；order = **9203** |
-| `src/.../renderer/projectile/driver/ProjectileVfxSpecs.kt` | builders map 末尾追加条目（§3.1） | 内联 `VfxPalette` 字面量，**不新增调色板函数**（white() 等只允许收口人加） |
+| `src/.../renderer/projectile/driver/ProjectileVfxSpecs.kt` | builders map 末尾追加条目（§3.1） | 内联 `VfxPalette` 字面量，**不新增调色板函数**（white() 等只允许合并负责人加） |
 | `contents/data/weapons/astd_qiongjue_phase_railgun.wpn` | 新文件 | 无冲突 |
 | `src/.../combat/effect/arc/qiongjue/*.kt` + 测试 | 新文件 | 无冲突（子包本组独占） |
 
@@ -367,9 +367,9 @@ fun resolve(entry: ScalingEntry, owner: Int): Float =
 | 依赖 | 状态 | 阻塞关系 |
 |---|---|---|
 | Buff API（`api/buff/*` + `impl/buff/*`：Buff/StackableBuff/WINDOWED/BuffHost/BuffAccess/BuffTickPlugin） | 基建 PR #1，**必须先合 main** | 硬阻塞：本武器叠层承载全部依赖 |
-| `DifficultyTuning` / `ScalingEntry` | 已落地 main（`DifficultyTuningImpl`） | 就绪 |
-| `ProjectileVfxSpecs` / `ProjectileSpecOnFireDispatcher` / `CombatVfxBootstrapEveryFrameEffect` | 已落地 main | 就绪 |
-| `ConeImpactHandler` | 正电子组落地 | **不依赖** |
+| `DifficultyTuning` / `ScalingEntry` | 已合入 main（`DifficultyTuningImpl`） | 就绪 |
+| `ProjectileVfxSpecs` / `ProjectileSpecOnFireDispatcher` / `CombatVfxBootstrapEveryFrameEffect` | 已合入 main | 就绪 |
+| `ConeImpactHandler` | 正电子组实现 | **不依赖** |
 | HUD 通道（`maintainStatusForPlayerShip` / `addFloatingText`） | jar + 现有样板 | 就绪 |
 
 ### 4.3 实现顺序内位置
@@ -377,10 +377,10 @@ fun resolve(entry: ScalingEntry, owner: Int): Float =
 90-计划 §12 第 **5** 位（湮灭涡旋之后、正电子之前）；实际开工以 Buff API 合并进 main 为前提。分支内实现顺序建议：
 
 1. `QiongjueStackMath` + 单测（纯逻辑先行，TDD）。
-2. `QiongjueCalcStacks` + `OnHitEffect` 胶水层。
+2. `QiongjueCalcStacks` + `OnHitEffect` 衔接代码。
 3. 数据面（catalog/.wpn/i18n/special_items）→ `generateSsCsv` → 烟测层数逻辑。
-4. 射速 spike（§2.4，已收口为 `setRemainingCooldownTo` 跳沿扣减）+ 伤害乘区目检。
-5. VFX 登记 + HUD/浮字 + 目检收口。
+4. 射速 spike（§2.4，已确定为 `setRemainingCooldownTo` 跳沿扣减）+ 伤害乘区目检。
+5. VFX 登记 + HUD/浮字 + 完成目检。
 
 ---
 
@@ -401,10 +401,10 @@ fun resolve(entry: ScalingEntry, owner: Int): Float =
 - [ ] 叠层状态为 **Ship 级单键**（全舰同型共享一份），**未**出现 `weapon.customData` 用法
 - [ ] 战机/导弹命中不叠层不折算；同/异/失效目标三分支语义与 §2.2 一致
 - [ ] 玩家固定 v2：`QiongjueStackMath.resolve(entry, owner)` 唯一入口；无散落取值
-- [ ] 射速采用 `setRemainingCooldownTo` 跳沿扣减（§2.4 收口结论）；初版 RoF 全舰乘区已废弃，无残留写入
+- [ ] 射速采用 `setRemainingCooldownTo` 跳沿扣减（§2.4 确定结论）；初版 RoF 全舰乘区已废弃，无残留写入
 - [ ] 层数归零自移除（`host.remove`）；伤害乘区走逐命中 `DamageAPI`、无持久 stat 写入
 - [ ] 无空 catch、无反射、无 XxxManager/Service 命名；decayRate=0 有一次性 WARN
-- [ ] HUD/浮字通道按 §2.3 接入（机制可视化铁律）；满层「演算完成」浮字与其字符串键/遥测已删除、无残留引用
+- [ ] HUD/浮字通道按 §2.3 接入（机制可视化规则）；满层「演算完成」浮字与其字符串键/遥测已删除、无残留引用
 
 **特效面**
 
@@ -413,12 +413,12 @@ fun resolve(entry: ScalingEntry, owner: Int): Float =
 
 **测试面**
 
-- [ ] §2.5 九条单测全绿，全部驱动 `QiongjueStackMath` 真实逻辑（无 contain 测试）
+- [ ] §2.5 九条单测全部通过，全部驱动 `QiongjueStackMath` 真实逻辑（无 contain 测试）
 - [ ] 烟测八个检查点过录屏/截图；automation 到终态即退出（无干等超时）
 
 **目检**
 
-- [ ] 满层 v2 伤害 960（640 × 1.5）/ 间隔 ≈1.67s → DPS ≈576 可感知
+- [ ] 满层 v2 伤害 960（640 × 1.5）/ 间隔 ≈1.67s → DPS ≈576 可察觉
 - [ ] 切换目标浮字 + 层数下降；停火 3s 衰减开始；HUD 层数/百分比与日志一致
 - [ ] 同舰双穷距共享同一份层数（w2 首发即享满层乘区）；敌版 AI 正常使用（无「追不上目标不开火」僵持，90-计划风险项）
-- [ ] 目标死亡转火不折算（规格裁定项，用户确认）
+- [ ] 目标死亡转火不折算（规格确认项，用户确认）

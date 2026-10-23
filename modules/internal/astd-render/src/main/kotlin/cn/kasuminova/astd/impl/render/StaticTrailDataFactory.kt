@@ -10,45 +10,22 @@ import org.lwjgl.util.vector.Vector4f
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.roundToInt
 
-/**
- * [StaticTrailSpec] → BoxUtil [StaticTrailData] 的翻译与缓存。
- *
- * StaticTrailData 是"一种拖尾风格 + 一块专属 vRAM 环形池"的常量配置（池以 id 为键，配置须 const），
- * 故按 `树 id/层名` 缓存复用——调试期 DSL 字面量热交换对拖尾层不生效（需重启），附加层不受影响。
- *
- * 时长语义折算：DSL 声明预期带长（世界单位），Static Trail 只接受节点总寿命（秒）——
- * 总寿命 = 带长 / 弹体速度，再按 [FADE_IN_RATIO]/[FULL_RATIO]/[FADE_OUT_RATIO] 切三段
- * （对齐旧逐节点寿命观感：淡入 5%、满亮至 60%、线性消散到尾）。
- */
+// StaticTrailData 是带专属 vRAM 环形池的常量配置，必须按树和层缓存复用。
 object StaticTrailDataFactory {
 
     private val log = Global.getLogger(StaticTrailDataFactory::class.java)
     private val cache = ConcurrentHashMap<String, StaticTrailData>()
 
-    /** 三段时间占节点总寿命的比例（对齐旧 dissolveStart=0.6 观感：满亮后线性消散）。
-     * 淡入 12%（原 5%）：带体亮度在弹头后方渐起，避免带体亮头与原版螺栓弹头（additive 高亮）同位叠加出彗星状过曝团。 */
     internal const val FADE_IN_RATIO = 0.12f
     internal const val FULL_RATIO = 0.48f
     internal const val FADE_OUT_RATIO = 0.4f
 
-    /** 节点总寿命下限（秒）：BoxUtil 要求三段总和 ≥ 0.1，留余量防边界拒绝。 */
     internal const val MIN_TOTAL_DURATION = 0.15f
-
-    /** 节点总寿命上限（秒）：vRAM 预算 = 时长 × 采样率，长寿拖尾显存线性膨胀。 */
     internal const val MAX_TOTAL_DURATION = 10f
 
-    /** vRAM 池初始容量（同风格并发拖尾条数；高射速武器同走廊多发取足量，池不足会自扩容）。 */
     private const val INIT_CAPACITY: Short = 256
-
-    /** 缓存键带长分桶粒度（su）：平衡射程连续变化下的池数量与寿命精度。 */
     private const val LENGTH_BUCKET_SU = 25f
 
-    /**
-     * 取（或建）一条拖尾层的 StaticTrailData。
-     * 缓存键带带长分桶（25su 粒度）：射程比例带长的 spec 在构建期按武器面板射程折算，不同射程需要各自的
-     * 三段时长（寿命烘进 StaticTrailData），共用同一会导致拖尾长度不随射程变化；分桶限制池数量。
-     * @param projectileSpeedSuPerSec 弹体速度（su/s，取 `DamagingProjectileAPI.getMoveSpeed`），用于带长→寿命折算。
-     */
     fun trailData(treeId: String, layerName: String, spec: StaticTrailSpec, projectileSpeedSuPerSec: Float): StaticTrailData =
         cache.getOrPut("$treeId/$layerName@${(spec.bandLength / LENGTH_BUCKET_SU).roundToInt() * LENGTH_BUCKET_SU}") {
             build(treeId, layerName, spec, projectileSpeedSuPerSec)
@@ -87,7 +64,6 @@ object StaticTrailDataFactory {
         return data
     }
 
-    /** 带长→节点总寿命折算（秒）：带长 / 弹体速度，钳到 [MIN_TOTAL_DURATION, MAX_TOTAL_DURATION]。 */
     internal fun totalDurationSeconds(bandLength: Float, speedSuPerSec: Float): Float =
         (bandLength.coerceAtLeast(0f) / speedSuPerSec.coerceAtLeast(MIN_SPEED_SU_PER_SEC))
             .coerceIn(MIN_TOTAL_DURATION, MAX_TOTAL_DURATION)

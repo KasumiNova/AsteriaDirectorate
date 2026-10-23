@@ -5,16 +5,10 @@ import com.fs.starfarer.api.combat.CombatEngineAPI
 import org.lwjgl.util.vector.Vector2f
 
 /**
- * 「绽放辉星」通用特效入口：在指定世界坐标叠放一组 BoxUtil FlareEntity 光斑，
- * 存续期内各枚光斑尺寸线性扩散、透明度线性归零，到期销毁（坠落残响爆心十字辉星、
- * 摧锋鱼雷命中十字辉星的共用抽取）。
+ * 在指定位置生成一组 BoxUtil 光斑，并按给定时长扩散和渐隐。
  *
- * FlareEntity 无内建尺寸关键帧（只有全局计时器），扩散/渐隐由实现侧的逐帧插件推进；
- * 计时器参数（[timerFadeIn]/[timerFull]/[timerFadeOut]）只负责钉住实体生命周期，
- * 默认钉超长 full，观感动画全部由扩散/渐隐驱动。
- *
- * 降级口径：无 GL 环境（单测/无头）或任一实体注册失败时整组放弃（已建实体删除），
- * 记 WARN 日志并返回 0，调用方其余特效构成不受影响。
+ * 仅在战斗主线程调用。[spawn] 会创建渲染实体，并在到期后删除；无 GL 环境或任一实体注册失败时，
+ * 删除已创建的实体、记录 WARN 并返回 0。
  */
 interface BloomFlareVfx {
 

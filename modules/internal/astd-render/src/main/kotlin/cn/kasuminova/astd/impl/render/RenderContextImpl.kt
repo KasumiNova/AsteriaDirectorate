@@ -8,9 +8,6 @@ import com.fs.starfarer.api.combat.CombatEngineAPI
 import java.util.ArrayDeque
 import java.util.Deque
 
-/**
- * [RenderContext] 实现。驱动每帧构造一份贯穿本次遍历；[stack] 每帧新建，遍历进出节点时压弹。
- */
 class RenderContextImpl(
     override val engine: CombatEngineAPI?,
     override val host: RenderHost,

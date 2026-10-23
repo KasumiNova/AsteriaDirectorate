@@ -17,13 +17,10 @@ import org.lwjgl.util.vector.Vector2f
  * 友伤防御下潜实测场景（lens_phase_friendly_beam）：孤立舜华 + 周期性友方直射弹投喂。
  *
  * 敌靶舰远锚 7000su 观测窗内不会接战，舜华孤立待命；插件每 [PFB_FEED_INTERVAL_SEC]s
- * 投喂一发友方直射弹，投喂后 [PFB_HIT_WINDOW_SEC]s 内出现下潜沿记一次命中——验证
+ * 投喂一发友方直射弹，投喂后 [PFB_HIT_WINDOW_SEC]s 内出现下潜沿记一次命中，验证
  * GravityPhaseCloakAI 的 collectFriendly 防御链路（友军火力并入 defensiveSoon 触发
- * 紧急下潜）在实机端到端生效。成功判据：[PFB_OBSERVE_TIMEOUT]s 观测窗内命中
+ * 紧急下潜）在真实战斗环境端到端生效。成功判据：[PFB_OBSERVE_TIMEOUT]s 观测窗内命中
  * ≥ [PFB_HITS_REQUIRED] 次。
- *
- * 移植自 ai-opt 分支单体插件 advancePfbScenario（0d83a38 + 78383b0 补 AI 修复），
- * 投喂/判定/证据写出口径原样迁移。
  */
 class PhaseFriendlyBeamScenario : AbstractAutomationScenario() {
     private var pfbPhase = PFB_PHASE_OBSERVE
@@ -46,7 +43,7 @@ class PhaseFriendlyBeamScenario : AbstractAutomationScenario() {
         engine.setDoNotEndCombat(true)
         // 同 pf 场景：玩家舰留在 reserves 由 deployPfbReserveShips 锚点入场，关断静默部署闸门
         (engine.combatUI as? CombatState)?.setShowDeploymentDialogOnStart(false)
-        // 与其他场景一致：reserves 部署放到 advance()，init 阶段渲染器未就绪。
+        // reserves 部署放到 advance()，init 阶段渲染器未就绪。
         ctx.writeDiagnostics("CombatReady")
         ctx.writeTelemetry("CombatReady", findPfbPlayer(engine), null)
         ctx.log.info("[ASTD-Automation] scenario=${ASTDInGameAutomationScenario.PFB_SCENARIO_ID} combat plugin initialized")
@@ -88,8 +85,8 @@ class PhaseFriendlyBeamScenario : AbstractAutomationScenario() {
     }
 
     /**
-     * 投喂一发友方直射弹（范式同 gsrFeedShot，但 source=本舰保证 owner 与本舰同侧——
-     * collectFriendly 口径按 owner == ship.owner 收集）：本舰 400su 圈上按投喂序数
+     * 投喂一发友方直射弹（范式同 gsrFeedShot，但 source=本舰保证 owner 与本舰同侧，
+     * collectFriendly 按 owner == ship.owner 收集）：本舰 400su 圈上按投喂序数
      * 取黄金角方向生成 hellbore，直指生成时刻的舰心。hellbore 弹速 500su/s，生成后
      * ~0.2s 进入相位 AI 的 soon 窗口（0.6s），扫描节拍内有多次命中采样机会。
      */
@@ -129,7 +126,7 @@ class PhaseFriendlyBeamScenario : AbstractAutomationScenario() {
         val enemy = findPfbEnemy(engine)
         if (player != null && !player.isHulk) player.hitpoints = player.maxHitpoints
         if (enemy != null && !enemy.isHulk) enemy.hitpoints = enemy.maxHitpoints
-        // 同 pf 场景：玩家舰身份会清空舰 AI（CombatState.setPlayerShip 口径），补建默认舰 AI
+        // 同 pf 场景：玩家舰身份会清空舰 AI（CombatState.setPlayerShip 语义），补建默认舰 AI
         if (player != null && !player.isHulk) {
             engine.setPlayerShipExternal(player)
             if (player.shipAI == null) {
@@ -209,7 +206,7 @@ class PhaseFriendlyBeamScenario : AbstractAutomationScenario() {
         json.appendLine("  \"runtimeElapsedSeconds\": 0,")
         json.appendLine("  \"runtimeTrackedCount\": ${vfxTelemetry.trackedCount},")
         json.appendLine("  \"runtimeLastProjectileSpecId\": ${jsonString(vfxTelemetry.lastProjectileSpecId)},")
-        // ---- 机制证据（友伤防御下潜：投喂数 / 命中窗内下潜数 / 总下潜数）----
+        // 机制证据（友伤防御下潜：投喂数 / 命中窗内下潜数 / 总下潜数）
         json.appendLine("  \"pfbPhase\": \"$pfbPhase\",")
         json.appendLine("  \"pfbFeedCount\": $pfbFeedCount,")
         json.appendLine("  \"pfbDiveHits\": $pfbDiveHits,")
@@ -227,7 +224,7 @@ class PhaseFriendlyBeamScenario : AbstractAutomationScenario() {
         private val PFB_ENEMY_ANCHOR = Vector2f(7000f, 0f)
         private const val PFB_CAMERA_VISIBLE_HEIGHT = 3000f
 
-        // 投喂弹：原版 hellbore（750 HE、弹速 500su/s），本舰 400su 圈生成直指舰心——
+        // 投喂弹：原版 hellbore（750 HE、弹速 500su/s），本舰 400su 圈生成直指舰心，
         // 生成后 ~0.2s 进入 soon 窗口（0.6s），单发伤害越过紧急下潜阈值（max(300, 舰体×5%)）。
         private const val PFB_FEED_WEAPON_ID = "hellbore"
         private const val PFB_FEED_SPAWN_DIST = 400f

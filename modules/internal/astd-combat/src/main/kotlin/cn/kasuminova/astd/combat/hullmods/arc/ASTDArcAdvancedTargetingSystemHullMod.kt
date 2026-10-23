@@ -21,74 +21,33 @@ import com.fs.starfarer.api.ui.TooltipMakerAPI
 import java.awt.Color
 import kotlin.math.roundToInt
 
-/**
- * 高级舰装集成（列星级 XC-103 内置 Hullmod，规格 blue/20-production.md §驱逐舰-独特 Hullmod）：
- * 目标定位系统与武器管线集成。
- *
- * 随难度系数的效果（2026-10 裁定，advanceInCombat 逐帧按 owner 结算）：
- * 1. 非导弹武器射程 +15%/+20%/+40%（弹道/能量/光束三条射程乘区）；
- * 2. 射弹飞行速度 +15%/+20%/+40%（实弹与能量武器）；
- * 3. 武器辐能产出 -15%/-20%/-40%（实弹/能量/光束/导弹四条辐耗乘区）；
- * 4. 基础射程低于阈值的非导弹武器获得额外基础射程补偿，阈值|增益档位
- *    600|150 / 700|200 / 1000|350（战斗内 WeaponBaseRangeModifier 监听器逐武器结算，
- *    see [shortRangeFlatBonus]）。
- *
- * 固定效果（装配期写入，不随难度）：
- * 5. 小型武器装配点 -1 再 -20%，中型武器 -2 再 -20%
- *    （WeaponOPCostModifier 监听器，装配结算唯一入口 [weaponOpCost]）；
- * 6. 不兼容任何其他目标定位系统——互斥走 [IncompatibleHullmodStripper] 延迟清理：
- *    applyEffectsBeforeShipCreation 只检测入队（原版 updateStatsForOpCosts 实时迭代 hullMods
- *    期间回调本方法，结构性 removeMod 必抛 CME），五路清理延后到 AfterCreation/advanceInCombat/
- *    战役每帧 drainer 安全点执行；原版候选船插不受控无法灰掉，接受"装上即清理"行为
- *    （SKILL: hullmod-incompatibility-guidelines）。
- *
- * OP 减免与短射程补偿数学抽为纯函数（单元测试直接驱动）。
- *
- * 注意：必须重写 [affectsOPCosts] 返回 true——装配界面 OP 走 variant.statsForOpCosts，
- * 仅当任一船插声明影响 OP 时该 stats 才会创建并回调 applyEffectsBeforeShipCreation
- * （原版 HullVariantSpec.updateStatsForOpCosts 判例，DiableAvionicsMountBI 同口径）。
- */
 class ASTDArcAdvancedTargetingSystemHullMod : BaseHullMod() {
 
     companion object {
-        /** 非导弹武器射程加成（三锚点 +15%/+20%/+40%，百分数口径）。 */
         val RANGE_PERCENT = ScalingEntry(15f, 20f, 40f)
 
-        /** 射弹飞行速度加成（三锚点 +15%/+20%/+40%，百分数口径）。 */
         val PROJECTILE_SPEED_PERCENT = ScalingEntry(15f, 20f, 40f)
 
-        /** 武器辐能产出加成（三锚点 -15%/-20%/-40%，百分数口径）。 */
         val WEAPON_FLUX_PERCENT = ScalingEntry(-15f, -20f, -40f)
 
-        /** 短射程补偿阈值（三锚点 600/700/1000 su）。 */
         val SHORT_RANGE_THRESHOLD = ScalingEntry(600f, 700f, 1000f)
 
-        /** 短射程补偿增益上限（三锚点 150/200/350 su）。 */
         val SHORT_RANGE_MAX_FLAT = ScalingEntry(150f, 200f, 350f)
 
         private const val SMALL_WEAPON_OP_FLAT_REDUCTION = 1
         private const val MEDIUM_WEAPON_OP_FLAT_REDUCTION = 2
         private const val OP_PERCENT_REDUCTION = 0.2f
 
-        /** 禁装船插列表：真相来源 [HullmodIncompatibility]，此处保留别名供单测断言集中定义。 */
         internal val INCOMPATIBLE_TARGETING_HULLMODS: Set<String> =
             HullmodIncompatibility.forbiddenByController(ASTDArcProductionShipIds.HULLMOD_ARC_ADVANCED_TARGETING_SYSTEM)
 
         private val THEME = HullmodThemes.ARC
 
-        /**
-         * 短射程武器基础射程补偿（纯函数）：基础射程 < [threshold] 时补偿
-         * min(阈值 - 基础射程, [maxFlat])，其余 0。
-         */
         internal fun shortRangeFlatBonus(baseRange: Float, threshold: Float, maxFlat: Float): Float {
             if (baseRange <= 0f || baseRange >= threshold) return 0f
             return (threshold - baseRange).coerceAtMost(maxFlat)
         }
 
-        /**
-         * 武器装配点减免（纯函数）：小型 -[SMALL_WEAPON_OP_FLAT_REDUCTION]、
-         * 中型 -[MEDIUM_WEAPON_OP_FLAT_REDUCTION]，随后统一 -20%，下限 0；大型与其他槽位不动。
-         */
         internal fun weaponOpCost(size: WeaponAPI.WeaponSize?, currentCost: Int): Int {
             val flat = when (size) {
                 WeaponAPI.WeaponSize.SMALL -> SMALL_WEAPON_OP_FLAT_REDUCTION
@@ -99,7 +58,6 @@ class ASTDArcAdvancedTargetingSystemHullMod : BaseHullMod() {
         }
     }
 
-    /** 难度结算值（三锚点映射后）。 */
     internal data class Values(
         val rangePercent: Float,
         val projSpeedPercent: Float,
@@ -167,7 +125,6 @@ class ASTDArcAdvancedTargetingSystemHullMod : BaseHullMod() {
         width: Float,
         isForModSpec: Boolean
     ) {
-        // tooltip 展示口径：无舰上下文（装配面板）按我方档位展示（默认砺刃 v2）
         val values = Values.resolve(ship == null || ship.owner == 0)
         tooltip.hullmodCard(width, THEME, spec?.displayName) {
             para("ui.hullmod.arc_advanced_targeting_system.desc")

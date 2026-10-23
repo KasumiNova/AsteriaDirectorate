@@ -1,6 +1,5 @@
 plugins {
     kotlin("jvm")
-    // testFixtures 暴露 CsvTestUtil 给其它模块/根工程的测试（仓库级 CSV 数据校验共用）。
     `java-test-fixtures`
 }
 
@@ -37,20 +36,16 @@ tasks.register<JavaExec>("generateSsCsv") {
 
     dependsOn(tasks.named("classes"))
 
-    // Kotlin top-level main
     mainClass.set("cn.kasuminova.astd.sscsv.gen.SsCsvGeneratorKt")
     classpath = sourceSets["main"].runtimeClasspath
 
-    // I18n: 默认 zh-cn；可通过 -Psscsv.locale=en-us 切换。
     systemProperties["sscsv.locale"] = (project.findProperty("sscsv.locale") as? String)?.trim()?.ifBlank { "zh-cn" } ?: "zh-cn"
 
     val outDir = rootProject.layout.buildDirectory.dir("generated/ss-csv").get().asFile
     val schemaDir = rootProject.projectDir.resolve("tools/_schema_headers")
 
     doFirst {
-        // 生成器只写不删：条目删除/改名后旧产物会残留在输出目录，并沿 mod_production →
-        // 部署目录扩散成致命加载错误（如 ship_systems.csv is missing systems）。
-        // 每次生成前清空输出目录（build 目录，全量再生，无增量损失）。
+        // 生成器只写不删：条目删除/改名后旧产物会残留并沿部署目录扩散成加载错误，每次生成前清空输出目录。
         delete(outDir)
     }
 
@@ -75,10 +70,7 @@ tasks.register<JavaExec>("writeSsCsvToContents") {
 
     val outDir = rootProject.projectDir.resolve("contents")
     val schemaDir = rootProject.projectDir.resolve("tools/_schema_headers")
-    // 产物清单：记录上一次直写 contents 的全部生成物（相对 contents 根，一行一个）。
-    // 生成器只写不删，条目删除/改名后旧产物会残留并沿 mod_production → 部署目录扩散成
-    // 致命加载错误（如 ship_systems.csv is missing systems）；每次直写前先按清单清理。
-    // 清单不进 mod 产物（根工程 copyContents 已 exclude），也不入 git（本地状态文件）。
+    // 生成器只写不删：每次直写前必须按上一次产物清单清理残留旧产物，否则旧文件会扩散成加载错误。
     val manifestFile = outDir.resolve(".ss-csv-manifest")
 
     doFirst {
@@ -94,7 +86,7 @@ tasks.register<JavaExec>("writeSsCsvToContents") {
                 .filter { it.isNotEmpty() }
                 .forEach { rel ->
                     val stale = outDir.resolve(rel).normalize()
-                    // 防越界：清单条目必须落在 contents 内才允许删除。
+                    // 清单条目必须落在 contents 内才允许删除。
                     if (stale.startsWith(outDir.normalize()) && stale.isFile) {
                         stale.delete()
                     }
@@ -115,7 +107,6 @@ val validateSsCsvClassRefs by tasks.registering {
     group = "verification"
     description = "校验 ss-csv 生成/contents 中的脚本类路径是否存在"
     dependsOn(tasks.named("generateSsCsv"))
-    // 类产物分散在根工程与各 astd 模块，全量依赖（astd-csv 自身是生成工具，不含游戏类）。
     dependsOn(":classes")
     listOf(
         ":astd-api", ":astd-api-render",
@@ -141,7 +132,6 @@ val validateSsCsvClassRefs by tasks.registering {
                     val text = runCatching { file.readText() }.getOrNull() ?: return@forEach
                     regex.findAll(text).forEach { match ->
                         val fqn = match.value
-                        // 跳过末段以小写开头的匹配——那是包名而非类名
                         val lastSegment = fqn.substringAfterLast('.')
                         if (lastSegment.firstOrNull()?.isUpperCase() == true) {
                             classNames.add(fqn)

@@ -49,7 +49,7 @@ Starsector 模组开发项目模板（已预置 Asteria Directorate 示例内容
 
 ## 构建任务
 
-### 核心任务
+### 常用任务
 
 - `./gradlew build` - 构建项目并自动打包 Mod（会自动执行 `zipModProduction`）
 - `./gradlew jar` - 仅编译并打包 JAR
@@ -98,7 +98,7 @@ starsector.gameDir=/path/to/your/starsector
 4. 运行 `./gradlew build` 构建并打包
 5. 生成的 ZIP 文件在 `build/` 目录
 
-如果你需要一套“能进游戏跑起来”的占位数据/贴图（用于验证 CSV/.ship/.variant/.system 引用链路），见：
+如果需要用于启动游戏的占位数据或贴图，以验证 CSV/.ship/.variant/.system 引用关系，见：
 - `tools/README.md`
 
 ## 插件架构说明

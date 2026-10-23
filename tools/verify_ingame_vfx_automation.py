@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify ASTD first-version in-game VFX automation evidence.
+"""Verify ASTD in-game VFX automation evidence.
 
 The script accepts a telemetry JSON produced by ASTDAutomationCombatPlugin and
 checks the minimum acceptance contract for the Arc Flare + 坠星残响 scenario.
@@ -95,7 +95,7 @@ def _projectile_component_bbox(mask: np.ndarray, min_area: int) -> tuple[int, in
 
 
 def _suppress_preview_grid_lines(rgb: np.ndarray) -> np.ndarray:
-    """Remove editor grid strokes before projectile component extraction."""
+    """在弹体组件提取前移除编辑器预览截图中的网格线。"""
     cleaned = rgb.copy()
     luma = (0.299 * cleaned[:, :, 0]) + (0.587 * cleaned[:, :, 1]) + (0.114 * cleaned[:, :, 2])
     grid_like = (
@@ -113,7 +113,7 @@ def _suppress_preview_grid_lines(rgb: np.ndarray) -> np.ndarray:
 
 
 def _suppress_screenshot_tactical_lines(rgb: np.ndarray) -> np.ndarray:
-    """Remove combat tactical range/targeting guide strokes before projectile metrics."""
+    """在弹体测量前移除战斗截图中的射程与瞄准辅助线。"""
     cleaned = rgb.copy()
     luma = (0.299 * cleaned[:, :, 0]) + (0.587 * cleaned[:, :, 1]) + (0.114 * cleaned[:, :, 2])
     yellow_line = (
@@ -512,11 +512,7 @@ def _arc_production_data_from_log(log_path: Path, ssoptimizer_data: dict | None 
 
 
 def _diagnostics_from_log(log_path: Path, scenario: str, ssoptimizer_data: dict | None = None) -> dict | None:
-    """Reconstruct the latest diagnostics JSON for a scenario from starsector.log.
-
-    SSOptimizer patches writeTelemetry to a no-op inside the script sandbox, so the
-    only authoritative evidence is the diagnostics line emitted by writeDiagnostics.
-    """
+    """SSOptimizer 在脚本沙箱中将 writeTelemetry 改为空操作，需从 writeDiagnostics 日志重建证据。"""
     try:
         lines = log_path.read_text(encoding="utf-8", errors="replace").splitlines()
     except FileNotFoundError:
@@ -549,19 +545,12 @@ def _diagnostics_from_log(log_path: Path, scenario: str, ssoptimizer_data: dict 
 
 
 def _default_scenario_data_from_log(log_path: Path, ssoptimizer_data: dict | None = None) -> dict | None:
-    """Reconstruct default-scenario (EXPECTED) evidence from starsector.log.
-
-    SSOptimizer 独立助手写入遥测的身份字段是编译期硬编码常量（场景/武器改名后不同步），
-    默认场景的权威证据是 ASTD 插件的 Completed 日志行（LOG_COMPLETED_PATTERN 字面量含
-    场景/武器/弹体 spec）与 diagnostics JSON（scenario 过滤 + runtimeLastProjectileSpecId）。
-    """
+    """SSOptimizer 独立助手的遥测身份字段是编译期常量，场景或武器改名后需从 ASTD 日志重建证据。"""
     diagnostics = _diagnostics_from_log(log_path, EXPECTED["scenario"])
     if diagnostics is None:
         return None
     if diagnostics.get("runtimeLastProjectileSpecId") != EXPECTED["projectileSpecId"]:
         return None
-    # _data_from_log 内部校验 Completed 标记并从 EXPECTED 静态身份建数据（身份断言等价于
-    # 正则字面量命中），截图证据由 SSOptimizer 遥测并入。
     return _merge_screenshot_evidence(_data_from_log(log_path), ssoptimizer_data)
 
 
@@ -1021,7 +1010,7 @@ def _check_ship_template_shape(image: Image.Image, errors: list[str]) -> list[st
 
 
 def _check_projectile_structure(path: Path) -> tuple[tuple[int, int, int, int, int], dict[str, float]] | None:
-    """Measure the projectile VFX structure of one screenshot; None when nothing measurable."""
+    """测量单张截图的弹体特效结构；无可测内容时返回 None。"""
     projectile_roi = _crop_projectile_roi(path, (0.36, 0.32, 0.88, 0.70))
     if projectile_roi is None:
         return None
@@ -1075,9 +1064,8 @@ def _check_screenshot_pixels(path: Path, errors: list[str], frames: list[str] | 
 
     details.extend(_check_ship_template_shape(image, errors))
 
-    # 弹体结构在主截图与连拍帧中择一达标即可：SSOptimizer 在 Completed 上报时刻异步连拍三帧
-    # （捕获与上报间存在秒级延迟），坠星残响的马赫环/碎片簇在部分帧会把弹体组件拉成块状，
-    # 单帧不过不意味特效缺席。
+    # SSOptimizer 在 Completed 上报时异步连拍三帧，捕获与上报之间存在秒级延迟。
+    # 马赫环和碎片簇会在部分帧中改变弹体组件形状，因此任一帧通过结构检查即可。
     candidates = [path] + [Path(frame) for frame in (frames or []) if Path(frame).is_file()]
     measured = [
         (candidate, result)

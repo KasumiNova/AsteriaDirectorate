@@ -25,13 +25,6 @@ import kotlin.math.min
 import kotlin.math.pow
 import kotlin.math.sin
 
-/**
- * 引力坍缩炮（Gravity Collapse）光束的节点族——把旧 `GravityCollapseBeamVfx` 那个 1170 行、7 类效果混杂、
- * 40+ 空 catch 的巨类拆成一效果一节点（迁移计划 §5）。束体 4 件套走公共 [BeamCoreComponent]；本文件是其余 5 类
- * 独立效果 + 起手函数。几何统一读 [RenderContext.frame]（intensity=level 控宽/密度，fadeMul 控淡出包络）。
- */
-
-/** 引力坍缩炮共用调色与亮度（旧 `GravityCollapseBeamVfx.companion` 的颜色族）。 */
 object GcBeam {
     const val BRIGHTNESS_MUL = 0.65f
     const val WHITE_CORE_MUL = 1.09375f
@@ -46,10 +39,7 @@ object GcBeam {
     private fun lerp(a: Float, b: Float, t: Float): Float = a + (b - a) * t
     fun lerpF(a: Float, b: Float, t: Float): Float = lerp(a, b, t)
 
-    /** GravityCollapse 束体给公共 [BeamCoreComponent] 的规格：白芯+粉边核心、暗红辉光、tip 0.80 taper、
-     *  淡出由 fadeMul 整体收束（变细+变淡）、固定色（不逐帧 lerp）、不施加填充淡化。 */
     fun coreSpec(): BeamCoreSpec {
-        // coreW = baseWidth×(9 + 8×level)（baseWidth 由宿主传 s×wMul）；glowW = coreW×2.15。
         val baseAlphaCore = 0.62f * BRIGHTNESS_MUL
         val baseEmCore = 2.85f * BRIGHTNESS_MUL * WHITE_CORE_MUL
         val baseAlphaGlow = 0.18f * BRIGHTNESS_MUL
@@ -80,7 +70,6 @@ object GcBeam {
     }
 }
 
-/** 由本帧几何（origin/facing/length）重建一条 [BeamLineUtil.BeamLine]，供各 GC 节点取 dirUnit/perpUnit。 */
 internal fun FrameState.beamLine(): BeamLineUtil.BeamLine? {
     val rad = Math.toRadians(facing.toDouble())
     val dir = Vector2f(cos(rad).toFloat(), sin(rad).toFloat())
@@ -90,12 +79,6 @@ internal fun FrameState.beamLine(): BeamLineUtil.BeamLine? {
 
 private fun beamCoreSprites(): Pair<SpriteAPI, SpriteAPI>? = BeamSprites.load()
 
-// ============================ 沿束光圈环（main + sub + muzzle） ============================
-
-/**
- * 沿束前进的光圈环 + 炮口脉冲环（旧 advance:372-486 的三处 upsert）。后端复用 [AttachedBeamSpriteRingRenderer]
- * （按 key 持久管理实例），本节点只负责每帧 upsert 与 detach 时 remove。fadeMul≤0.001 时不 upsert（对齐旧 ringFade 门控）。
- */
 class BeamRingComponent(
     id: String,
     private val scale: Float = 1f,
@@ -194,13 +177,6 @@ class BeamRingComponent(
     }
 }
 
-// ============================ 炮口光锥（起手 burst + 持续 spray + 几何渐长） ============================
-
-/**
- * 炮口光锥（旧 spawnMuzzleConeBurst / spawnMuzzleConeSpray / advanceGrowingCones，三段散落合为一节点）：
- * - 起手一次性 burst（可选，[startupBurst]=true 时含爆炸/火花/立即锥；weapon 宿主用，system 宿主自绘故置 false）；
- * - firing 期间周期性 spray 出「几何渐长」的短锥（内部保留列表逐帧插值长/宽/alpha）。
- */
 class BeamMuzzleComponent(
     id: String,
     private val scale: Float = 1f,
@@ -251,7 +227,6 @@ class BeamMuzzleComponent(
     }
 
     override fun onDetachSelf() {
-        // 池化租约：立即泊车归还（alpha 归零），不走 delete（实体常驻池内复用）
         growingCones.forEach { it.lease.release() }
         growingCones.clear()
     }
@@ -285,7 +260,6 @@ class BeamMuzzleComponent(
     private fun spawnMuzzleConeBurst(engine: CombatEngineAPI, center: Vector2f, facing: Float, level: Float) {
         val t = level.coerceIn(0f, 1f)
         val s = scale.coerceIn(0.35f, 2.25f)
-        // 组件级贴图门保留：失败 WARN 语义与预载职责不变（池侧加载命中同一缓存）
         sprites(engine) ?: return
 
         val count = GcBeam.lerpF(MUZZLE_CONE_COUNT_MIN.toFloat(), MUZZLE_CONE_COUNT_MAX.toFloat(), t).toInt()
@@ -298,14 +272,11 @@ class BeamMuzzleComponent(
             val len = GcBeam.lerpF(MUZZLE_CONE_LEN_MIN, MUZZLE_CONE_LEN_MAX, Math.random().toFloat()) * (0.85f + 0.35f * t) * s * MUZZLE_CONE_GEOM_MUL
             val baseW = GcBeam.lerpF(70f, 125f, t) * 0.90f * 0.60f * s * MUZZLE_CONE_GEOM_MUL
             val tipW = (baseW * 0.08f).coerceAtLeast(1.2f * s * MUZZLE_CONE_GEOM_MUL)
-            // 池化一次性包络检出：几何/颜色/alpha 逐字一致，包络(0, FULL, FADE_OUT) 与旧
-            // setGlobalTimer(0, MUZZLE_CONE_FULL, MUZZLE_CONE_FADE_OUT) 线性淡出逐帧等价，到期自动泊车
             PooledCombatVfx.checkoutTrail(
                 engine, BURST_POOL_KEY,
                 TrailLeaseSpec(
                     location = center,
                     facingDeg = ang,
-                    // 节点序对齐 FromCenter：node[0]=炮口基部，START_* 作用于基部
                     nodes = listOf(Vector2f(0f, 0f), Vector2f(len, 0f)),
                     startWidth = baseW,
                     endWidth = tipW,
@@ -325,7 +296,6 @@ class BeamMuzzleComponent(
         val t = (level * fade).coerceIn(0f, 1f)
         if (t <= 0.001f) return
         val s = scale.coerceIn(0.35f, 2.25f)
-        // 组件级贴图门保留：失败 WARN 语义与预载职责不变（池侧加载命中同一缓存）
         sprites(engine) ?: return
 
         val count = 2
@@ -338,8 +308,6 @@ class BeamMuzzleComponent(
             val len = GcBeam.lerpF(120f, 210f, MathUtils.getRandomNumberInRange(0f, 1f)) * (0.85f + 0.35f * t) * s * sizeMul * MUZZLE_CONE_GEOM_MUL
             val baseW = GcBeam.lerpF(55f, 95f, t) * 0.60f * s * sizeMul * MUZZLE_CONE_GEOM_MUL
             val tipW = (baseW * 0.10f).coerceAtLeast(1.2f * s * MUZZLE_CONE_GEOM_MUL)
-            // 池化手动租约：渐长/淡出 alpha 由 advanceGrowingCones 逐帧驱动（与旧 manual alpha ×
-            // globalTimer(0, 0.22, 0.33) 逐帧等价），淡出走完显式 release 归还
             val lease = PooledCombatVfx.checkoutTrail(
                 engine, SPRAY_POOL_KEY,
                 TrailLeaseSpec(
@@ -354,9 +322,6 @@ class BeamMuzzleComponent(
                     endAlpha = 0.03f * GcBeam.BRIGHTNESS_MUL,
                     startEmissiveAlpha = 1.75f * GcBeam.BRIGHTNESS_MUL,
                     endEmissiveAlpha = 0.45f * GcBeam.BRIGHTNESS_MUL,
-                    // 看门狗兜底：正常由 advanceGrowingCones 逐帧驱动并触活；宿主停更未 detach 时
-                    // heartbeat 秒后快照当前 alpha 经 SPRAY_CONE_FADE_OUT 线性淡出自动泊车，
-                    // 防锥体滞留与槽位永久占用（与 GeminiDem/BeamCore 同口径）
                     watchdogHeartbeat = SPRAY_WATCHDOG_HEARTBEAT,
                     watchdogFadeOut = SPRAY_CONE_FADE_OUT,
                 ),
@@ -382,13 +347,10 @@ class BeamMuzzleComponent(
             }
             val e = c.lease.entity
             if (e.hasDelete()) {
-                // 池实体被外部路径回收（战斗切换 purge 等）：弃租约摘表
                 it.remove(); continue
             }
 
             val age = now - c.createdAt
-            // 旧 globalTimer(0, 0.22, 0.33) 语义的手动复刻：渐长期 alpha 走 smoothstep t，
-            // 渐长完成后 0.33s 线性淡出，走完归还租约（旧为定时器到点自删）
             val fadeOutMul = if (age <= c.growDuration) 1f else {
                 (1f - (age - c.growDuration) / SPRAY_CONE_FADE_OUT).coerceIn(0f, 1f)
             }
@@ -427,7 +389,6 @@ class BeamMuzzleComponent(
             e.startEmissiveAlpha = eBase
             e.endEmissiveAlpha = eTip
             e.setStateVanilla(muzzle, BoxUtilCombatVfx.normalizeFacingDeg(c.facing))
-            // 看门狗触活：本帧仍在驱动即归零停更计时（淡出途中触活复活回手动，对齐重钉 timer 语义）
             c.lease.touch()
         }
     }
@@ -453,19 +414,10 @@ class BeamMuzzleComponent(
         private const val MUZZLE_CONE_FADE_OUT = 0.42f
         private const val MUZZLE_CONE_GEOM_MUL = 0.60f
 
-        /** spray 锥渐长后的线性淡出（旧 globalTimer fadeOut=0.33 逐字）。 */
         private const val SPRAY_CONE_FADE_OUT = 0.33f
 
-        /**
-         * spray 租约看门狗心跳：正常推进节奏为每帧（advanceGrowingCones 逐帧驱动并触活），
-         * 0.15s ≈ 9 帧余量（与 GeminiDem KEEPALIVE 同口径）；宿主停更未 detach 时触发快照淡出泊车。
-         */
         private const val SPRAY_WATCHDOG_HEARTBEAT = 0.15f
 
-        /**
-         * 起手 burst 锥池化租约键（初始容量 = 典型峰值估算：5~10 条/次开火 × 寿命 0.5s 内并发开火
-         * 约 3 艘，取 32）。池满按需扩容，触及硬上限（默认 8× 初始容量）才拒发 + 节流 WARN。
-         */
         private val BURST_POOL_KEY = TrailLeaseKey(
             layer = CombatEngineLayers.ABOVE_SHIPS_AND_MISSILES_LAYER,
             coreSpritePath = BeamSprites.CORE_PATH,
@@ -474,10 +426,6 @@ class BeamMuzzleComponent(
             capacity = 32,
         )
 
-        /**
-         * 持续 spray 渐长锥池化租约键（初始容量 = 典型峰值估算：2 条/0.333s × 寿命 0.55s ≈ 4 条/束，
-         * 并发 4 束取 16）。池满按需扩容，触及硬上限（默认 8× 初始容量）才拒发 + 节流 WARN。
-         */
         private val SPRAY_POOL_KEY = TrailLeaseKey(
             layer = CombatEngineLayers.ABOVE_SHIPS_AND_MISSILES_LAYER,
             coreSpritePath = BeamSprites.CORE_PATH,
@@ -488,12 +436,6 @@ class BeamMuzzleComponent(
     }
 }
 
-// ============================ 沿束 ambient nebula ============================
-
-/**
- * 沿束散发的红色 nebula 尘埃（旧 emitAmbientBeamNebula）。纯每帧抛引擎粒子，无常驻句柄；用累积器控频，
- * 密度随束长线性增长、随 fadeMul 收敛。fadeMul≤0.001 或束长<80 时不抛（对齐旧门控）。
- */
 class BeamAmbientComponent(
     id: String,
     private val scale: Float = 1f,
@@ -577,12 +519,6 @@ class BeamAmbientComponent(
     }
 }
 
-// ============================ 装饰微束 ============================
-
-/**
- * 绕主束的装饰微束（旧 spawnDecorativeMicroBeams）。用 [TaperedBeamTrailsVfx.spawn] 抛短寿命细束（自管生命周期）。
- * 仅在 fadeMul>0.999（满态、非淡出）时按 trailInterval 刷新（对齐旧门控）。
- */
 class BeamMicroBeamComponent(
     id: String,
     private val scale: Float = 1f,
@@ -656,12 +592,6 @@ class BeamMicroBeamComponent(
     }
 }
 
-// ============================ 螺旋粒子 ============================
-
-/**
- * 绕束旋进的红色螺旋粒子（旧 advance:508-548 内联 40 行提成节点）。纯每帧抛引擎粒子，用累积器控频。
- * 仅在 fadeMul>0.999（满态）时抛（对齐旧门控）。
- */
 class BeamHelixParticleComponent(
     id: String,
 ) : RenderEntityImpl(id, CombatEngineLayers.ABOVE_PARTICLES, RENDER_ORDER) {

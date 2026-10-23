@@ -21,26 +21,6 @@ import org.lwjgl.util.vector.Vector2f
 import second_in_command.SCData
 import second_in_command.specs.SCBaseSkillPlugin
 
-/**
- * 维度分流（astd_sc_dim_shunt）——影响所有相位舰船
- * （docs/design/skills/10-sic-skills.md 阶段三；数值声明见 [SicTuning]）。
- *
- * 相位判定：variant 基础/改造舰体 spec 的 isPhase（与引力调谐同一口径）。
- *
- * 机制落点（applyEffectsAfterShipCreation 幂等挂 [DimShuntListener]，SIC
- * `if (!ship.hasListenerOfClass(X)) ship.addListener(X)` 范式），同一监听器内两个独立效果：
- * - 装甲减伤计算值：按舰级三锚点（[SicTuning.dimArmorEntry]），强制排辐/过载中翻倍，
- *   上限为最大装甲值（armorRating）× 25%（翻倍状态下上限同样翻倍），见 [SicTuning.dimArmorBonus]；
- *   伤害乘区口径复用菀星战斗智能相位上浮减伤（[ASTDCombatIntelTuning.bonusArmorDamageRatio] +
- *   [ASTDArmorDamageReduction.hitStrength] + [directionalArmorFraction]）——按「装甲 + 减伤值」结算，
- *   不与原版装甲重复计数。所有伤害类型生效；护盾命中（shieldHit）不生效；
- * - 能量伤害吸收：仅 dmg.type == ENERGY——伤害减免 [SicTuning.DIM_ENERGY_ABSORB] 比例，
- *   被减免的额度等额转化为硬辐能耗散（[SicTuning.dimEnergyAbsorbed]）。
- *   FluxTrackerAPI 无 decreaseHardFlux（starfarer.api.jar 核实），以 setHardFlux/setCurrFlux
- *   组合实现等额硬辐能耗散（currFlux 同步扣减且不低于新的 hardFlux）。
- *
- * 难度数值在监听器内逐命中实时解析（LunaLib 设置变更即时生效）。
- */
 class DimShuntSkill : SCBaseSkillPlugin() {
 
     override fun getAffectsString(): String =
@@ -92,10 +72,6 @@ class DimShuntSkill : SCBaseSkillPlugin() {
         }
     }
 
-    /**
-     * 维度分流承伤监听器（机制依据见外层类 KDoc）：装甲减伤计算值与能量伤害吸收两个独立效果，
-     * 护盾命中两者均不生效；非能量伤害不吸收但装甲减伤照常。
-     */
     private class DimShuntListener(
         private val ship: ShipAPI,
         private val isPlayer: Boolean,
@@ -122,7 +98,6 @@ class DimShuntSkill : SCBaseSkillPlugin() {
             return null
         }
 
-        /** 装甲减伤计算值（与相位上浮减伤同一伤害乘区口径；命中点缺失时无法定向结算，跳过本效果）。 */
         private fun applyArmorBonus(param: Any?, dmg: DamageAPI, point: Vector2f?) {
             val hitPoint = point ?: return
             val base = DifficultyTuningImpl.valueFor(SicTuning.dimArmorEntry(ship.hullSize), isPlayer)
@@ -146,7 +121,6 @@ class DimShuntSkill : SCBaseSkillPlugin() {
             }
         }
 
-        /** 能量伤害吸收：减免吸收比例的伤害，被减免额度等额转化为硬辐能耗散。 */
         private fun applyEnergyAbsorb(dmg: DamageAPI) {
             if (dmg.type != DamageType.ENERGY) return
             val absorbFraction = DifficultyTuningImpl.valueFor(SicTuning.DIM_ENERGY_ABSORB, isPlayer)
@@ -162,10 +136,8 @@ class DimShuntSkill : SCBaseSkillPlugin() {
     }
 
     companion object {
-        /** 装甲减伤计算值的 dmg.modifier key。 */
         private const val ARMOR_STAT_ID = "astd_sc_dim_shunt_armor"
 
-        /** 能量伤害吸收的 dmg.modifier key。 */
         private const val ABSORB_STAT_ID = "astd_sc_dim_shunt_absorb"
     }
 }

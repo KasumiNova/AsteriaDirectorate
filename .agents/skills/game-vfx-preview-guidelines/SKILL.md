@@ -1,5 +1,5 @@
 ---
-name: "game-vfx-preview-guidelines"
+name: game-vfx-preview-guidelines
 description: "Use when creating or modifying the generic game VFX preview tool under tools/game-vfx-preview, especially UI, Material Design 3, WebGL renderer, effect presets, or preview validation."
 ---
 
@@ -31,7 +31,7 @@ This skill applies to `tools/game-vfx-preview/`, the generic browser preview wor
 - Prefer WebGL over Canvas 2D for VFX rendering.
 - Model effects as shader/mesh-friendly data so they can be ported to LWJGL with minimal reinterpretation.
 - Avoid Canvas-style immediate drawing semantics such as line strokes for core effects.
-- The first bundled effect preset is `rotating-blue-starburst`; it should be implemented as a full-screen WebGL shader pass, not a stack of 2D lines.
+- The `rotating-blue-starburst` preset must be implemented as a full-screen WebGL shader pass, not a stack of 2D lines.
 - Expose effect parameters through typed presets and uniforms.
 
 ## Validation

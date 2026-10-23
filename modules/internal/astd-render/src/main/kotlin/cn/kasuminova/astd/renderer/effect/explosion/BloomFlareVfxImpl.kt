@@ -13,14 +13,6 @@ import org.boxutil.units.standard.entity.FlareEntity
 import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
 
-/**
- * [BloomFlareVfx] 的 BoxUtil 实现（模组内通用组件；首批接入点：坠星残响爆心十字辉星、
- * 摧锋鱼雷命中十字辉星）。
- *
- * 每枚光斑：钉住生命周期（全局计时器由调用方给定，默认超长 full）→ 逐帧插件线性推进
- * 尺寸扩散与透明度归零 → 到期删除实体并自注销。任一光斑建实体（无 GL 环境构造抛异常）
- * 或注册失败即整组放弃（已建实体删除）并记 WARN——调用方的其余特效构成不受影响。
- */
 object BloomFlareVfxImpl : BloomFlareVfx {
 
     private val log = Global.getLogger(BloomFlareVfxImpl::class.java)
@@ -56,7 +48,6 @@ object BloomFlareVfxImpl : BloomFlareVfx {
         return created.size
     }
 
-    /** 建一枚钉住生命周期的光斑；失败（无 GL 环境构造异常 / addEntity 非 0）记 WARN 返回 null。 */
     private fun buildFlare(
         engine: CombatEngineAPI,
         center: Vector2f,
@@ -65,7 +56,7 @@ object BloomFlareVfxImpl : BloomFlareVfx {
         timerFull: Float,
         timerFadeOut: Float,
     ): FlareEntity? {
-        // FlareEntity 构造在无 GL 环境（单测/无头）会抛异常，收住并降级为无辉星
+        // FlareEntity 在无 GL 环境构造时会抛异常，失败时必须记录日志并放弃该光斑组。
         val entity = try {
             FlareEntity()
         } catch (t: Throwable) {
@@ -84,7 +75,7 @@ object BloomFlareVfxImpl : BloomFlareVfx {
         entity.isSyncFlick = false
         entity.glowPower = spec.glowPower
         entity.noisePower = spec.noisePower
-        // 用 Color 重载：BoxUtil 的 setCoreColor(float×4) 有源码 bug（误写 fringe 槽位，BoxFlareComponent 注记）
+        // BoxUtil setCoreColor(float×4) 会误写 fringe 通道，必须走 Color 重载。
         entity.setCoreColor(spec.coreColor.toAwt())
         entity.setFringeColor(spec.fringeColor.toAwt())
         entity.setSize(spec.sizeStart, spec.heightStart)
@@ -100,7 +91,6 @@ object BloomFlareVfxImpl : BloomFlareVfx {
         return entity
     }
 
-    /** 单枚光斑的动画轨迹：尺寸从 ([sizeStart], [heightStart]) 线性扩散到 ([sizeEnd], [heightEnd])。 */
     private class FlareTrack(entity: FlareEntity, spec: BloomFlareSpec) {
         val entity: FlareEntity = entity
         val sizeStart: Float = spec.sizeStart
@@ -109,7 +99,6 @@ object BloomFlareVfxImpl : BloomFlareVfx {
         val heightEnd: Float = spec.heightEnd
     }
 
-    /** 绽放辉星推进插件：存续期内尺寸线性扩散、透明度线性归零，到期删实体自注销。 */
     private class BloomFlareAnimPlugin(
         private val engine: CombatEngineAPI,
         private val durationSeconds: Float,
@@ -117,8 +106,6 @@ object BloomFlareVfxImpl : BloomFlareVfx {
         private val follow: BloomFlareVfx.FlareFollow?,
     ) : BaseEveryFrameCombatPlugin() {
         private var elapsed = 0f
-
-        /** 跟随锚点回调的复用向量（每帧填入当前世界坐标）。 */
         private val followVec = Vector2f()
 
         override fun advance(amount: Float, events: MutableList<InputEventAPI>?) {
@@ -144,7 +131,6 @@ object BloomFlareVfxImpl : BloomFlareVfx {
     }
 }
 
-/** ASTDColor（0..1 浮点）→ awt Color（0..255）。 */
 private fun ASTDColor.toAwt(): Color = Color(
     (red.coerceIn(0f, 1f) * 255f).toInt(),
     (green.coerceIn(0f, 1f) * 255f).toInt(),

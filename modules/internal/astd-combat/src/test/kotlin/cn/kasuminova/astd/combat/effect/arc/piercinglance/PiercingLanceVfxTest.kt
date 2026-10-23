@@ -17,10 +17,8 @@ class PiercingLanceVfxTest {
             assertTrue(seed.size in 18f..52f, "尺寸越界: ${seed.size}")
             assertTrue(seed.durationSeconds in 1.5f..2.5f, "存续越界（平均 2s ± 0.5）: ${seed.durationSeconds}")
         }
-        // 大小速度均不等（随机序列下出现全同参数的概率可忽略）
         assertTrue(seeds.map { it.speed }.toSet().size > 1, "速度应有差异")
         assertTrue(seeds.map { it.size }.toSet().size > 1, "尺寸应有差异")
-        // 方向铺满四周：均匀基角 ± 0.3 rad 抖动，任意两颗夹角不超过 2π/count + 0.6
         val maxGap = 2f * Math.PI.toFloat() / seeds.size + 0.6f + 1e-3f
         val sorted = seeds.map { it.angleRad }.sorted()
         for (i in sorted.indices) {
@@ -31,7 +29,6 @@ class PiercingLanceVfxTest {
 
     @Test
     fun `星云爆发计划存续均值约 2 秒`() {
-        // 大样本均值回归：随机流锁定种子后多次采样总均值应落在 2s ± 0.1
         val random = Random(7)
         val durations = (1..40).flatMap { nebulaBurstSeeds(random) }.map { it.durationSeconds }
         assertEquals(2.0f, durations.average().toFloat(), 0.1f, "存续均值应约 2s")

@@ -1,12 +1,5 @@
-/**
- * 相位裂隙特效。
- *
- * 一条斜向空间裂缝：黑色核心裂隙、双侧高亮撕裂边缘、细碎相位碎片与轻微折射光晕。
- * 适合表现跃迁裂口、空间撕裂、相位武器命中或护盾破裂边缘。
- */
 import type { EffectDefinition } from '../effectDefinition';
 
-/** 相位裂隙的 fragment shader（不含公共头）。 */
 export const PHASE_RIFT_FRAGMENT_SHADER = `
 uniform float u_slitWidth;
 uniform float u_length;
@@ -30,7 +23,6 @@ void main() {
   float axial = abs(along) / max(u_length, 1e-4);
   float endFade = 1.0 - smoothstep(0.74, 1.0, axial);
 
-  // 裂隙边缘沿轴向抖动，形成不规则空间撕裂线。
   float edgeNoise = fbm(vec2(along * 5.4 + u_time * u_drift, across * 16.0));
   float jagged = (edgeNoise - 0.5) * u_fracture * 0.055 * endFade;
   float warpedAcross = across + jagged;
@@ -38,17 +30,14 @@ void main() {
   float coreWidth = u_slitWidth * (0.65 + 0.35 * sin(along * 10.0 + u_time * TAU * u_drift));
   float darkCore = exp(-pow(warpedAcross / max(coreWidth, 1e-4), 2.0)) * endFade;
 
-  // 双侧发光裂边。
   float edgeDistance = abs(abs(warpedAcross) - u_slitWidth * 1.7);
   float hotEdge = exp(-pow(edgeDistance / max(u_slitWidth * 0.75, 1e-4), 2.0)) * endFade;
   float outerGlow = exp(-abs(warpedAcross) / max(u_slitWidth * 8.0, 1e-4)) * endFade;
 
-  // 从裂缝边缘剥离出的相位碎片。
   float shardNoise = fbm(vec2(along * 28.0 - u_time * u_drift * 3.0, warpedAcross * 42.0));
   float shardBand = exp(-pow(edgeDistance / max(u_slitWidth * 3.2, 1e-4), 2.0));
   float shards = pow(shardNoise, 9.0) * shardBand * endFade * u_fracture;
 
-  // 裂缝两端轻微闪烁。
   float tip = exp(-pow((abs(along) - u_length * 0.74) / 0.09, 2.0) - pow(warpedAcross / 0.11, 2.0));
 
   float energy = (hotEdge * 1.8 + outerGlow * u_glow * 0.62 + shards * 1.4 + tip * 0.8) * u_exposure;
@@ -64,7 +53,6 @@ void main() {
 }
 `;
 
-/** 蓝紫相位裂隙特效定义。 */
 export const PHASE_RIFT_SLIT: EffectDefinition = {
   id: 'phase-rift-slit',
   name: 'Phase Rift Slit',

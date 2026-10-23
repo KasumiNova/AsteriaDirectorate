@@ -25,11 +25,11 @@ import org.lwjgl.opengl.Display
 /**
  * Dev-only combat automation surface for validating Arc Flare + 坠星残响 runtime VFX in game.
  *
- * 分发主干：场景逻辑全部下沉到 [AutomationScenario] 处理器（见 combat.automation 包，
+ * 分发主干：场景逻辑全部委托给 [AutomationScenario] 处理器（见 combat.automation 包，
  * 注册表 [AutomationScenarioRegistryImpl]），本类只保留通用 init 闸门、按暂停策略的 advance 分发、
  * renderInUICoords 捕获分发与诊断 JSON 编排（公共头尾 + 活跃场景证据段）。
  *
- * 外部硬契约（不得破坏）：
+ * 外部硬性约束（不得破坏）：
  * - 类 FQN 被 23 个 MissionDefinition.java 以 `new ASTDAutomationCombatPlugin()` 引用；
  * - [writeTelemetry] 四参私有方法是 SSOptimizer 的 ASM 注入点（签名逐字节保留）；
  * - 诊断日志行格式 `[ASTD-Automation] diagnostics state=$state json=...` 被
@@ -37,7 +37,7 @@ import org.lwjgl.opengl.Display
  */
 class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin(), AutomationCombatContext {
 
-    /** 共享日志器：类目固定为本类，保证 starsector.log 行格式与拆分前一致。 */
+    /** 共享日志器：类目固定为本类，保证 starsector.log 行格式统一。 */
     override val log: Logger = Global.getLogger(ASTDAutomationCombatPlugin::class.java)
 
     private var engineRef: CombatEngineAPI? = null
@@ -69,11 +69,11 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin(), AutomationComba
         this.engineRef = engine
         // 关闭原版开局部署对话框（仅多舰场景）：CombatState.traverse 的弹框闸门在 engine.init()
         // （即本方法）返回后才判定，玩家后备 != 1 艘时弹「增援部署」对话框（过期快照不刷新、
-        // 公开 API 无关闭入口、常驻遮屏；2026-07-30 反编译 CombatState 实锤）。
-        // 关键约束（2026-07-31 坠星残响前身场景回归实锤）：静默 deployAll 与弹框在同一闸门块内——
-        // 玩家后备 == 1 艘时 vanilla 走静默 deployAll（不弹框但会部署），此处关断会把静默部署
-        // 一并跳过，单舰场景（如 xc_001_starfall_echo_basic）将无船可部署。故仅在后备 != 1 艘
-        // （必弹框路径）时关断；单舰路径本就不弹框，保留 flag 让 vanilla 静默部署。
+        // 公开 API 无关闭入口、常驻遮屏）。
+        // 静默 deployAll 与弹框在同一闸门块内：玩家后备 == 1 艘时 vanilla 走静默 deployAll
+        // （不弹框但会部署），此处关断会把静默部署一并跳过，单舰场景（如 xc_001_starfall_echo_basic）
+        // 将无船可部署。故仅在后备 != 1 艘（必弹框路径）时关断；单舰路径本就不弹框，
+        // 保留 flag 让 vanilla 静默部署。
         val combatUI = engine.combatUI
         if (combatUI is CombatState) {
             val playerReserves = engine.getFleetManager(0).reservesCopy.size
@@ -91,9 +91,9 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin(), AutomationComba
     override fun advance(amount: Float, events: MutableList<InputEventAPI>?) {
         val combatEngine = engineRef ?: return
         when (activeHandler.pausePolicy) {
-            // 暂停对照语义场景（grg/tpp）：刻意不 unpause——grg 的 SCREENSHOT_VOLLEY 取景定格靠
+            // 暂停对照场景（grg/tpp）：刻意不 unpause，grg 的 SCREENSHOT_VOLLEY 取景定格靠
             // setPaused(true) 冻结舞台（截图捕获与 Completed 上报间有秒级异步延迟，不冻结拍不到 ACTIVE
-            // 段的光束）；暂停期插件 advance 仍按真实 amount 推进（obf 实证），相位机计时不受影响。
+            // 段的光束）；暂停期插件 advance 仍按真实 amount 推进，相位机计时不受影响。
             PausePolicy.KEEP_PAUSED -> Unit
             PausePolicy.FORCE_UNPAUSE -> if (combatEngine.isPaused) combatEngine.isPaused = false
             PausePolicy.SKIP_WHEN_PAUSED -> if (combatEngine.isPaused) return
@@ -185,10 +185,10 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin(), AutomationComba
             appendLine("  \"shipSpriteCenterX\": ${formatFloat(shipSprite?.centerX ?: -1f)},")
             appendLine("  \"shipSpriteCenterY\": ${formatFloat(shipSprite?.centerY ?: -1f)},")
             appendLine("  \"failureReason\": ${jsonString(failureReason)},")
-            // 原版开局部署对话框状态探针（2026-07-30 关断修复的回归证据）：插件 init 在多舰
-            // （后备 != 1）场景已调 CombatState.setShowDeploymentDialogOnStart(false)，单舰场景
-            // 保留闸门让 vanilla 静默 deployAll（2026-07-31 修正）；本字段在 CombatReady 与各相位
-            // 写出时采样，任何时刻为 true 都说明闸门被重新打开（多舰场景会常驻遮屏）。
+            // 原版开局部署对话框状态探针：插件 init 在多舰（后备 != 1）场景已调
+            // CombatState.setShowDeploymentDialogOnStart(false)，单舰场景保留闸门让 vanilla
+            // 静默 deployAll；本字段在 CombatReady 与各相位写出时采样，任何时刻为 true 都说明
+            // 闸门被重新打开（多舰场景会常驻遮屏）。
             appendLine("  \"deploymentDialogShowing\": ${engine.combatUI?.isShowingDeploymentDialog},")
             activeHandler.appendDiagnostics(this@ASTDAutomationCombatPlugin, this, vfxTelemetry)
             appendLine("  \"fallbackInPlay\": ${starfallEcho.fallbackProjectile?.let { engine.isEntityInPlay(it) } ?: false},")

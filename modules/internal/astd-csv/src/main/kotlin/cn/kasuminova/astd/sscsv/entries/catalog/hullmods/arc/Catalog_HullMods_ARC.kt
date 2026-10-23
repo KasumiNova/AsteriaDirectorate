@@ -5,12 +5,6 @@ import cn.kasuminova.astd.sscsv.entries.catalog.hullmods.TAGS_BUILTIN
 import cn.kasuminova.astd.sscsv.entries.catalog.hullmods.hullmodName
 import cn.kasuminova.astd.sscsv.i18n.SsI18n
 
-/** ARC 设计系 HullMod（原始数据来自 `contents/data/hullmods/hull_mods.csv`）。 */
-
-/**
- * 奇点能源·蓝变体（星坠系全舰内置）：与紫变体共用效果脚本
- * [cn.kasuminova.astd.combat.hullmods.base.ASTDSingularityPowerHullMod]，仅贴图与设计类型不同。
- */
 object HullMod_astd_arc_singularity_power : HullModEntry() {
     override val id: String = "astd_arc_singularity_power"
     override val name: String = hullmodName(id)
@@ -23,10 +17,6 @@ object HullMod_astd_arc_singularity_power : HullModEntry() {
     override val sprite: String = "graphics/hullmods/astd_arc_singularity_power.png"
 }
 
-/**
- * 纳米重构协议·蓝变体（星坠系舰内置）：与紫变体共用效果脚本
- * [cn.kasuminova.astd.combat.hullmods.base.ASTDNanoRestorationProtocolHullMod]，仅贴图与设计类型不同。
- */
 object HullMod_astd_arc_nano_restoration_protocol : HullModEntry() {
     override val id: String = "astd_arc_nano_restoration_protocol"
     override val name: String = hullmodName(id)
@@ -39,10 +29,6 @@ object HullMod_astd_arc_nano_restoration_protocol : HullModEntry() {
     override val sprite: String = "graphics/hullmods/astd_nano_restoration_protocol_arc.png"
 }
 
-/**
- * 先进能量集成（XC-001 星坠内置船插，规格 10-unique §1）：
- * 能量射弹速度 +20%、能量武器辐能消耗 −15%、武器转向速率 +30%、非导弹武器 OP 折扣 −2/−4/−8。
- */
 object HullMod_astd_arc_advanced_energy_integration : HullModEntry() {
     override val id: String = "astd_arc_advanced_energy_integration"
     override val name: String = hullmodName(id)
@@ -55,11 +41,6 @@ object HullMod_astd_arc_advanced_energy_integration : HullModEntry() {
     override val sprite: String = "graphics/hullmods/astd_arc_advanced_energy_integration.png"
 }
 
-/**
- * 虚数之翼（XC-002 星翼内置船插，规格 blue/10-unique.md XC-002 节）：
- * 战术系统激活后 3s 内逐渐削减的最大航速/机动性加成；武器伤害随当前航速占最大航速
- * 比例缩放（0% 航速 −25%、100% 航速 +50%、超上限每 1% 再 +2%；难度三锚点见实现）。
- */
 object HullMod_astd_imaginary_wings : HullModEntry() {
     override val id: String = "astd_imaginary_wings"
     override val name: String = hullmodName(id)

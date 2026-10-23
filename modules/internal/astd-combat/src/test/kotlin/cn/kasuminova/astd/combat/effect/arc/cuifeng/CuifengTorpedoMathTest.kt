@@ -3,10 +3,6 @@ package cn.kasuminova.astd.combat.effect.arc.cuifeng
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-/**
- * [CuifengTorpedoMath] 纯计算面全量驱动：二段式速度曲线分段点 / 辐能自适应线性区间
- * 边界 / 舰体自适应正向差值语义 / 0 值防线返回值。
- */
 class CuifengTorpedoMathTest {
 
     @Test
@@ -41,19 +37,14 @@ class CuifengTorpedoMathTest {
 
     @Test
     fun `辐能自适应增伤：面板乘难度倍率乘进度系数`() {
-        // 砺刃 v2 x=0.5、辐能 65%（系数 0.5）：1500 × 0.5 × 0.5 = 375
         assertEquals(375f, CuifengTorpedoMath.fluxAdaptiveBonus(1500f, 0.5f, 0.65f), 1e-4f)
-        // 辐能 30%（系数 0）→ 无增伤
         assertEquals(0f, CuifengTorpedoMath.fluxAdaptiveBonus(1500f, 0.5f, 0.3f), 1e-6f)
     }
 
     @Test
     fun `舰体自适应增伤：档位加正向部署点差值，负差值不扣减`() {
-        // 巡洋舰档位 40% + 超出基准 10 点 × 4%：1500 × (0.4 + 0.4) = 1200
         assertEquals(1200f, CuifengTorpedoMath.hullAdaptiveBonus(1500f, 0.4f, 30f, 20f, 0.04f), 1e-2f)
-        // 等于基准：仅档位增伤 1500 × 0.4 = 600
         assertEquals(600f, CuifengTorpedoMath.hullAdaptiveBonus(1500f, 0.4f, 20f, 20f, 0.04f), 1e-4f)
-        // 低于基准：差值不计（设计案「差值增伤」只取正向）→ 仍仅档位 600
         assertEquals(600f, CuifengTorpedoMath.hullAdaptiveBonus(1500f, 0.4f, 15f, 20f, 0.04f), 1e-4f)
     }
 }

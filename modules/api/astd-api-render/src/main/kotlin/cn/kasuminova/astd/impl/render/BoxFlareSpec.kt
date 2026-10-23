@@ -18,14 +18,9 @@ enum class BoxFlareStyle {
 }
 
 /**
- * BoxUtil 光斑（泛用组件，首发：贯星之矛）：在弹体视觉头部挂一枚 FlareEntity，
- * 每帧跟随 [cn.kasuminova.astd.api.render.RenderContext] 的 frame.origin / facing。
+ * 跟随弹体头部的 BoxUtil 光斑参数。
  *
- * 观感语义：横向 lens-flare 式盘状光斑（smoothDisc：沿朝向铺开、横向薄），core/fringe 双色，
- * 内置闪烁（宽度脉动 + 明灭同步，见 BoxUtil BUtil_FlareShader），emissive 通道吃 bloom。
- * 弹体消亡后按树 fade 窗口降 globalAlpha 淡出，detach 时删除实体。
- *
- * 本组件只做「配置 + 跟随 + 淡出」；绘制完全由 BoxUtil 渲染管线承担。
+ * 位置与朝向每帧取自 [cn.kasuminova.astd.api.render.FrameState]，弹体淡出时同步渐隐。
  */
 data class BoxFlareSpec(
     /** 光斑全尺寸（世界单位）：width 沿朝向、height 横向；width >> height 即水平光条。 */

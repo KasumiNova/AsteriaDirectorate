@@ -8,13 +8,6 @@ import com.fs.starfarer.api.mission.FleetSide;
 import com.fs.starfarer.api.mission.MissionDefinitionAPI;
 import com.fs.starfarer.api.mission.MissionDefinitionPlugin;
 
-/**
- * Dev-only mission surface for gravity phase cloak AI survival check (ZW-103 vs brilliant) in-game automation.
- * <p>
- * 茑萝级航母（astd_zw_103）对辉煌级（brilliant，台风鱼雷发射架满挂）：
- * SURVIVAL 判定——贴盾上浮 / 非相位硬吃高威胁投射物任一发生即 Failed，
- * 生存窗 60s 内下潜 ≥2 且零违规即 Completed。
- */
 public final class MissionDefinition implements MissionDefinitionPlugin {
     @Override
     public void defineMission(final MissionDefinitionAPI api) {

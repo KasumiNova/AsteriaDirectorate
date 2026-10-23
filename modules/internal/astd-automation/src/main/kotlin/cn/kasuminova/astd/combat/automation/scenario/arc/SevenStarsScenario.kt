@@ -15,12 +15,9 @@ import com.fs.starfarer.api.util.Misc
 import org.lwjgl.util.vector.Vector2f
 
 /**
- * “七星”折跃发射器场景（规格 07 §4.2 烟测检查点）。
- *
- * 拆分自 ASTDAutomationCombatPlugin 的同名 if-else 分支，相位机/断言/证据写出口径原样迁移。
+ * “七星”折跃发射器场景。
  */
 class SevenStarsScenario : AbstractAutomationScenario() {
-    // ==== seven stars 场景状态（相位机 MOUNT → NOKILL → CHAIN → TERMINAL → ENEMY_MULTI → COMPLETED） ====
     private var ssPhase = SS_PHASE_MOUNT
     private var ssPhaseStartedAt = 0f
 
@@ -127,9 +124,9 @@ class SevenStarsScenario : AbstractAutomationScenario() {
     }
 
     /**
-     * 舞台保活与站位（范式同 stabilizePsShips）：玩家舰逐帧奶 + 辐能清零 + force fire 独占驱动；
-     * 靶舰盾舞台性常关（终结单段证据要求伤害落到船体），TERMINAL 相位不奶靶舰 B（HP 下降即
-     * 「单段终结命中」观测面）；ENEMY_MULTI 相位不奶玩家（HP 下降即「敌版多段打玩家」观测面）。
+     * 舞台保活与站位（范式同 stabilizePsShips）：玩家舰逐帧回血 + 辐能清零 + force fire 独占驱动；
+     * 靶舰盾舞台性常关（终结单段证据要求伤害落到船体），TERMINAL 相位不给靶舰 B 回血（HP 下降即
+     * 「单段终结命中」观测面）；ENEMY_MULTI 相位不给玩家回血（HP 下降即「敌版多段打玩家」观测面）。
      */
     private fun stabilizeSsShips(engine: CombatEngineAPI, fire: Boolean) {
         val player = findSsPlayer(engine)
@@ -137,8 +134,8 @@ class SevenStarsScenario : AbstractAutomationScenario() {
         val carrier = findSsEnemyCarrier(engine)
         if (player != null && !player.isHulk) {
             engine.setPlayerShipExternal(player)
-            // 舞台舰一律摘除 AI（实机判例：保留 AI 会每帧抢开盾，与 stabilize 的 toggleOff
-            // 形成拉锯——终结单段 125 被盾面全额吸收，「命中掉血」观测面拿到 HP 满值误判失败）。
+            // 舞台舰一律摘除 AI（保留 AI 会每帧抢开盾，与 stabilize 的 toggleOff
+            // 形成拉锯，终结单段 125 被盾面全额吸收，「命中掉血」观测面拿到 HP 满值误判失败）。
             stabilizeShip(player, SS_PLAYER_ANCHOR, 0f, allowFire = fire, preserveAI = false)
             player.shipTarget = target
             if (ssPhase != SS_PHASE_ENEMY_MULTI) player.hitpoints = player.maxHitpoints
@@ -169,9 +166,9 @@ class SevenStarsScenario : AbstractAutomationScenario() {
             val w = findSsWeapon(carrier)
             if (w != null) {
                 w.currAngle = 180f
-                // 部署免疫闸（实机判例第 7 轮：reserves 手动 spawn 舰船在部署后 ~2.5s 内，
-                // 其作为 source 的脚本 applyDamage 同样全额无效——敌版多段终结前两段 0 伤害、
-                // 2.5s 后各段正常掉血）——敌版舰部署后 4s 内不放行开火（同 SS_TERMINAL_SETTLE_SECONDS）。
+                // 部署免疫闸（Starsector 0.98 中 reserves 手动 spawn 舰船在部署后 ~2.5s 内，
+                // 其作为 source 的脚本 applyDamage 同样全额无效，敌版多段终结前两段 0 伤害、
+                // 2.5s 后各段正常掉血）：敌版舰部署后 4s 内不放行开火（同 SS_TERMINAL_SETTLE_SECONDS）。
                 w.setForceFireOneFrame(
                     ssPhase == SS_PHASE_ENEMY_MULTI &&
                             ctx.elapsed - ssPhaseStartedAt >= SS_ENEMY_MULTI_SETTLE_SECONDS,
@@ -228,10 +225,10 @@ class SevenStarsScenario : AbstractAutomationScenario() {
 
     /**
      * NOKILL 相位投喂：环形稠密投喂（同 feedSsMissiles 路径）且每发 HP 增压至
-     * [SS_NOKILL_MISSILE_HP]（裂隙爆炸不可摧毁）——实机判例（裂隙改版首跑）：单发直飞
-     * 增压鱼叉 ~4s 飞出折跃范围，链在 1~2 跳即无候选进终结，拿不到「固定 7 跳」证据；
-     * 环形投喂令候选持续在场，实证零击杀链跑满 7 跳再进终结（2026-08 裂隙改版移除
-     * 击杀续跳门槛）。
+     * [SS_NOKILL_MISSILE_HP]（裂隙爆炸不可摧毁）：单发直飞
+     * 增压鱼叉约 4s 飞出折跃范围，链在 1~2 跳即无候选进终结，拿不到「固定 7 跳」证据；
+     * 环形投喂令候选持续在场，零击杀链可跑满 7 跳再进终结（现行裂隙机制
+     * 无击杀续跳门槛）。
      */
     private fun feedSsNokillMissiles(engine: CombatEngineAPI) {
         feedSsMissiles(engine, atPlayerSide = true, unkillable = true)
@@ -295,7 +292,7 @@ class SevenStarsScenario : AbstractAutomationScenario() {
                 // 固定 7 跳定案证据面：对不可摧毁增压鱼叉零击杀链仍跑满 7 跳且 7 次延迟爆炸
                 // 全部结算（flash delta >= 7 保证 pending 队列排空，规避 0.5s 延迟爆炸的
                 // 计数竞态）；随后终结判定的延迟段（0.5s 后结算）对靶舰 A 的命中在本相位
-                // 不断言——A 在转段即移除，存续终端段命中落空属预期（resolveTerminal 守护）。
+                // 不断言，A 在转段即移除，存续终端段命中落空属预期（resolveTerminal 守护）。
                 if (chainJumpsMax >= SS_CHAIN_MAX_JUMPS && flash - ssNokillFlashBaseline >= SS_CHAIN_MAX_JUMPS) {
                     when {
                         kills - ssNokillKillsBaseline != 0 -> {
@@ -326,7 +323,7 @@ class SevenStarsScenario : AbstractAutomationScenario() {
                 feedSsMissiles(engine, atPlayerSide = true)
                 ssChainFpsTicks++
                 // 延迟爆炸排空闸（裂隙改版：爆炸结算滞后折跃 0.5s，「无舰消散」判定点早于末跳
-                // 爆炸结算点）——flash delta >= 7 保证至少一条完整 7 跳链的爆炸全部结算完毕，
+                // 爆炸结算点），flash delta >= 7 保证至少一条完整 7 跳链的爆炸全部结算完毕，
                 // kills/rift 断言不读半结算状态。
                 if (chainJumpsMax >= SS_CHAIN_MIN_JUMPS && dissipateNoShip - ssChainNoShipBaseline >= 1 &&
                     flash - ssChainFlashBaseline >= SS_CHAIN_MAX_JUMPS
@@ -369,13 +366,13 @@ class SevenStarsScenario : AbstractAutomationScenario() {
             }
 
             SS_PHASE_TERMINAL -> {
-                // 盾折叠闸（实机判例：靶舰 B 部署时 OMNI 盾处于开启态，toggleOff 后仍有 ~1s 折叠
-                // 窗口继续挡伤——窗口内终结单段 125 被盾面全额吸收，「命中掉血」观测面拿到 HP 满值
-                // 误判失败）——盾确认关闭且折叠完毕（activeArc 归零）后才放行开火。
+                // 盾折叠闸（Starsector 0.98 中靶舰部署时 OMNI 盾处于开启态，toggleOff 后仍有 ~1s 折叠
+                // 窗口继续挡伤，窗口内终结单段 125 被盾面全额吸收，「命中掉血」观测面拿到 HP 满值
+                // 误判失败）：盾确认关闭且折叠完毕（activeArc 归零）后才放行开火。
                 val shieldFolded = target?.shield?.let { !it.isOn && it.activeArc <= 0f } != false
-                // 在飞链沉降闸（实机判例第 2 轮：CHAIN 相位末发连跳在 B 舰部署同帧「无处可去」转终结，
-                // 盾折叠闸只拦新开火、拦不住已在飞的链脚本——其终结单段打在未折叠盾面上
-                // 全额吸收，terminalSingle 基线已过、HP 满值误判失败）——盾未折叠完毕期间
+                // 在飞链沉降闸（CHAIN 相位末发连跳在 B 舰部署同帧「无处可去」转终结，
+                // 盾折叠闸只拦新开火、拦不住已在飞的链脚本，其终结单段打在未折叠盾面上
+                // 全额吸收，terminalSingle 基线已过、HP 满值误判失败）：盾未折叠完毕期间
                 // 逐帧重定基线，把 stale 终结段吞进基线；盾折叠后的终结段必落船体，皆有效证据。
                 val settled = ctx.elapsed - ssPhaseStartedAt >= SS_TERMINAL_SETTLE_SECONDS
                 stabilizeSsShips(engine, fire = shieldFolded && settled)
@@ -397,8 +394,8 @@ class SevenStarsScenario : AbstractAutomationScenario() {
                             DifficultyTuningImpl.installScaleForTests(5f)
                             transitionSsPhase(SS_PHASE_ENEMY_MULTI)
                         }
-                        // 部署免疫宽限（实机判例第 8 轮：spawn 免疫窗口非固定时长——同相位同 4.0s
-                        // 时刻第 7 轮掉血、第 8 轮满血，随后 ~11.7s 正常掉血）——首发终结未掉血
+                        // 部署免疫宽限（spawn 免疫窗口非固定时长，同相位同一 4.0s
+                        // 时刻可能掉血或满血，~11.7s 后正常掉血）：首发终结未掉血
                         // 不立即判负，武器保持 force fire（2s/发连发），宽限期内任一段掉血即通过。
                         ctx.elapsed - ssPhaseStartedAt > SS_TERMINAL_GRACE_SECONDS -> {
                             ctx.failureReason = "ss terminal target hp=${target?.hitpoints}/${target?.maxHitpoints}（单段 50% 终结应命中掉血）"
@@ -414,7 +411,7 @@ class SevenStarsScenario : AbstractAutomationScenario() {
                 if (player != null && !player.isHulk) {
                     ssEnemyMinPlayerHp = minOf(ssEnemyMinPlayerHp, player.hitpoints)
                 }
-                // 入场闸加逐段电弧计数（实机判例：enterTerminal 入口即 bump multi，段间隔 0.12s
+                // 入场闸加逐段电弧计数（enterTerminal 入口即 bump multi，段间隔 0.12s
                 // 尚未引爆任何一段，按入口判证据会拿到 empArcs=0 误判失败）。
                 if (terminalMulti - ssEnemyMultiBaseline >= 1 && terminalEmpArcs >= SS_ENEMY_MULTI_MIN_SEGMENTS) {
                     when {
@@ -435,7 +432,7 @@ class SevenStarsScenario : AbstractAutomationScenario() {
                             transitionSsPhase(SS_PHASE_COMPLETED)
                         }
                         // 部署免疫宽限（同 SS_PHASE_TERMINAL 注：source 为敌版舰时其脚本伤害在
-                        // 部署后数秒内可能全额无效，窗口非固定时长）——2s/发连发，宽限期内
+                        // 部署后数秒内可能全额无效，窗口非固定时长）：2s/发连发，宽限期内
                         // 任一段掉血即通过。
                         ctx.elapsed - ssPhaseStartedAt > SS_ENEMY_MULTI_GRACE_SECONDS -> {
                             ctx.failureReason = "ss enemy multi player minHp=$ssEnemyMinPlayerHp（多段终结应命中玩家舰掉血）"
@@ -501,7 +498,7 @@ class SevenStarsScenario : AbstractAutomationScenario() {
         json.appendLine("  \"runtimeElapsedSeconds\": 0,")
         json.appendLine("  \"runtimeTrackedCount\": ${vfxTelemetry.trackedCount},")
         json.appendLine("  \"runtimeLastProjectileSpecId\": ${jsonString(vfxTelemetry.lastProjectileSpecId)},")
-        // ---- 机制证据（规格 07 §4.2 烟测检查点）----
+        // 机制证据
         json.appendLine("  \"ssPhase\": \"$ssPhase\",")
         json.appendLine("  \"ssSlotId\": ${jsonString(ssWeapon?.slot?.id)},")
         json.appendLine("  \"ssWeaponRange\": ${formatFloat(ssWeapon?.range ?: -1f)},")
@@ -556,7 +553,7 @@ class SevenStarsScenario : AbstractAutomationScenario() {
     }
 
     private companion object {
-        // “七星”折跃发射器场景：相位机、锚点与期望证据（规格 07 §4.2 烟测检查点）。
+        // “七星”折跃发射器场景：相位机、锚点与期望证据。
         private const val SS_PHASE_MOUNT = "MOUNT"
         private const val SS_PHASE_NOKILL = "NOKILL"
         private const val SS_PHASE_CHAIN = "CHAIN"
@@ -589,20 +586,19 @@ class SevenStarsScenario : AbstractAutomationScenario() {
         private const val SS_CHAIN_MIN_KILLS = 3
         private const val SS_CHAIN_MIN_FPS = 30f
 
-        // TERMINAL：靶舰掉血下限（单段 50% = 125 能量 vs 装甲减免后实机 ~9 船体，门槛按可见掉血定）。
+        // TERMINAL：靶舰掉血下限（单段 50% = 125 能量，装甲减免后约 9 船体伤害，门槛按可见掉血定）。
         private const val SS_TERMINAL_HP_DROP_MIN = 5f
 
-        // TERMINAL：在飞链沉降窗口（秒）——相位入场后该窗口内不放行开火且逐帧重定终结基线，
+        // TERMINAL：在飞链沉降窗口（秒），相位入场后该窗口内不放行开火且逐帧重定终结基线，
         // 吞掉 CHAIN 末发 stale 链脚本打在未折叠盾面上的终结段（见 SS_PHASE_TERMINAL 注）。
-        // 取 4s 的另一重原因（实机判例第 6 轮）：reserves 手动 spawn 的舰船部署后约 2~3s 内
-        // applyDamage 全额无效（部署后 1.3s 舰心+bypass 同点 0 伤害、3.3s 同点正常掉血），
-        // 窗口须覆盖该免疫期，否则终结证据必然拿到 HP 满值。
+        // 取 4s 的另一重原因：Starsector 0.98 中 reserves 手动 spawn 的舰船部署后约 2~3s 内
+        // applyDamage 全额无效，窗口须覆盖该免疫期，否则终结证据必然拿到 HP 满值。
         private const val SS_TERMINAL_SETTLE_SECONDS = 4.0f
 
-        // ENEMY_MULTI：敌版舰部署免疫窗口（秒，同 SS_TERMINAL_SETTLE_SECONDS 实机判例）。
+        // ENEMY_MULTI：敌版舰部署免疫窗口（秒，取值依据同 SS_TERMINAL_SETTLE_SECONDS）。
         private const val SS_ENEMY_MULTI_SETTLE_SECONDS = 4.0f
 
-        // 部署免疫宽限（秒）：免疫窗口非固定时长（实机判例第 8 轮同 4.0s 时刻两轮结果相反），
+        // 部署免疫宽限（秒）：免疫窗口非固定时长（同一 4.0s 时刻可能掉血或满血），
         // 首发终结未掉血不立即判负，2s/发连发在宽限期内补段；远小于相位超时 90s。
         private const val SS_TERMINAL_GRACE_SECONDS = 15f
         private const val SS_ENEMY_MULTI_GRACE_SECONDS = 15f
@@ -621,7 +617,7 @@ class SevenStarsScenario : AbstractAutomationScenario() {
         private const val SS_MISSILE_RING_SPEED = 40f
         private const val SS_MISSILE_INITIAL_SPEED = 250f
 
-        // COMPLETED 截图门控：裂隙爆炸近 0.6s 内发生才上报（特效入帧）；保底舞台超时。
+        // COMPLETED 截图门控：裂隙爆炸近 0.6s 内发生才上报（特效入帧）；舞台超时作为保险。
         private const val SS_COMPLETED_FLASH_WINDOW = 0.6f
         private const val SS_COMPLETED_STAGE_TIMEOUT = 25f
         private const val SS_PHASE_TIMEOUT = 90f

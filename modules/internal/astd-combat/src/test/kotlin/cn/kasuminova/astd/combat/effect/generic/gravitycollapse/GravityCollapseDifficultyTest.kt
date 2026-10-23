@@ -6,13 +6,6 @@ import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-/**
- * 引力坍缩炮难度锚点回归：锁定四档武器的三锚点数值与线性映射口径
- * （k_s=1 取下限 / k_s=2 落在两点线性插值 / k_s=5 取上限）。
- *
- * 数值需求来源：weapon_data tooltip 文案（0.5s | 比例 | 减速 | 时长 | 难度系数）。
- * 穿甲打击强度 2026-10 起为「单次结算伤害 × 档位倍率」固定口径（不缩放），不在本测试锚定范围。
- */
 class GravityCollapseDifficultyTest {
 
     @AfterTest
@@ -114,7 +107,6 @@ class GravityCollapseDifficultyTest {
     private fun spec(weaponId: String) =
         GravityCollapseWeaponSpecs.forWeaponId(weaponId) ?: error("缺少坍缩炮配置：$weaponId")
 
-    /** 难度解析只消费五条锚点，其余字段取默认。 */
     private fun cfg(weaponId: String): GravityCollapseOnHitConfig {
         val s = spec(weaponId)
         return GravityCollapseOnHitConfig(

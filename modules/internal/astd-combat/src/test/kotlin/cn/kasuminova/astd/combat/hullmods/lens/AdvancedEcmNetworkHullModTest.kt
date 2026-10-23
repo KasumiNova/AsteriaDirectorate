@@ -14,16 +14,6 @@ import kotlin.test.Test
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/**
- * 先进电子对抗网络（[AdvancedEcmNetworkHullMod]）互斥行为验证：
- * - 电子对抗组件（ecm）/电子反对抗组件（eccm）互斥：创建前只检测入队
- *   （[IncompatibleHullmodStripper]，OP 结算实时迭代 CME 防线），drain/创建后安全点
- *   五路清理（普通/permaMod/S-mod/S-modded built-in/suppressed）；
- * - 非决明级变体不入队（guard 口径）；
- * - isApplicableToShip 软提示：装有冲突船插时不可安装，洁净决明级可安装。
- *
- * 对齐 ASTDArcAdvancedTargetingSystemHullModTest 先例。
- */
 class AdvancedEcmNetworkHullModTest {
 
     private val hullmod = AdvancedEcmNetworkHullMod()
@@ -56,8 +46,6 @@ class AdvancedEcmNetworkHullModTest {
 
         hullmod.applyEffectsBeforeShipCreation(ShipAPI.HullSize.CRUISER, statsOf(variant), "test")
 
-        // 创建前回调不得做任何结构性移除：原版 updateStatsForOpCosts 实时迭代 hullMods
-        // 期间回调本方法，removeMod 会抛 ConcurrentModificationException（自动装配实机判例）
         verify(variant, never()).removeMod(HullMods.ECM)
         verify(variant, never()).removeMod(HullMods.ECCM)
         verify(variant, never()).removePermaMod(HullMods.ECM)
@@ -65,7 +53,6 @@ class AdvancedEcmNetworkHullModTest {
 
         IncompatibleHullmodStripper.drainPending()
 
-        // drain 后五路全清：普通 + permaMod + suppressed 走 variant 移除调用，S-mod 与 S-modded built-in 走集合移除
         verify(variant).removeMod(HullMods.ECM)
         verify(variant).removeMod(HullMods.ECCM)
         verify(variant).removePermaMod(HullMods.ECM)
@@ -85,7 +72,6 @@ class AdvancedEcmNetworkHullModTest {
 
         hullmod.applyEffectsAfterShipCreation(ship, "test")
 
-        // AfterCreation 走 ShipFactory 快照迭代，安全点内立即完成清理
         verify(variant).removeMod(HullMods.ECCM)
         verify(variant).removePermaMod(HullMods.ECCM)
         verify(variant).removeSuppressedMod(HullMods.ECCM)
@@ -103,7 +89,6 @@ class AdvancedEcmNetworkHullModTest {
         hullmod.applyEffectsBeforeShipCreation(ShipAPI.HullSize.CRUISER, statsOf(variant), "test")
         IncompatibleHullmodStripper.drainPending()
 
-        // guard 未命中即不入队，drain 后也不得触碰该变体
         verify(variant, never()).removeMod(HullMods.ECM)
         verify(variant, never()).removePermaMod(HullMods.ECM)
     }

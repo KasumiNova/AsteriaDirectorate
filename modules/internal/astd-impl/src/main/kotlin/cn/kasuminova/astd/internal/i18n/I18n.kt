@@ -6,12 +6,6 @@ import java.awt.Color
 
 object I18n {
 
-    /**
-     * 额外字符串表：用于把“非 strings.json 的翻译/文本”独立放在单独文件中维护。
-     *
-     * 说明：Starsector 默认仅加载 `data/strings/strings.json` 进 StringManager。
-     * 这里提供一个“兜底读取”：当 [settings.getString] 找不到时，从这些额外 JSON 里取。
-     */
     private val EXTRA_STRING_TABLE_PATHS: List<String> = listOf(
         "data/strings/bounty_strings.json",
         "data/strings/systems_strings.json",
@@ -20,47 +14,23 @@ object I18n {
 
     private val log by lazy { Global.getLogger(I18n::class.java) }
 
-    /**
-     * category -> (key -> value)
-     *
-     * 说明：
-     * - Starsector 默认仅加载 `data/strings/strings.json` 进 StringManager。
-     * - 这里提供一个“兜底读取”：当 [settings.getString] 找不到时，从额外 JSON 里取。
-     */
     private val extraStringTablesByCategory: Map<String, JSONObject> by lazy {
         loadExtraStringTables()
     }
 
-    /**
-     * 命名占位符格式：
-     * - `%key%` （支持 `%%` 转义为字面 `%`）
-     *
-     * 通用“可高亮变量”标记（由翻译文本决定是否高亮 + 颜色）：
-     * - `<param:#RRGGBB:key>`
-     *
-     * 说明：
-     * - 在不支持高亮文本显示的地方，`<param:...>` 会被当作普通变量替换（即忽略高亮语义）。
-     * - 颜色只在 UI 层被使用（[I18nUi]），纯字符串场景不会注入任何富文本。
-     *
-     * - 未提供的 key：默认保留原样（便于发现漏传参）
-     */
     private const val PARAM_TAG_PREFIX: String = "<param:"
 
     data class Highlight(val text: String, val color: Color)
 
-    /** 渲染结果：用于把“替换后的全文”与“需要高亮的片段”一起返回给 UI 层。 */
     data class Rendered(
         val text: String,
-        /** 仅在支持高亮的 UI 场景使用（见 [I18nUi]）。 */
         val highlights: List<Highlight> = emptyList()
     )
 
     enum class Categories {
 
-        /** 推荐：用 modId 作为 category，便于翻译补丁覆盖与避免 key 冲突。 */
         MOD("asteria_directorate"),
 
-        /** 如果你希望按系统/领域分组，也可以继续使用类似 hull_mods 的 category。 */
         HULL_MODS("hull_mods"),
         ;
 
@@ -72,21 +42,12 @@ object I18n {
 
     }
 
-    /** 读取字符串（不做任何替换）。 */
     operator fun get(key: String): String = get(category = null, key = key)
 
-    /** 读取字符串（不做任何替换）。 */
     operator fun get(category: Categories, key: String): String = get(category.id, key)
 
-    /** 读取字符串（不做任何替换）。 */
     operator fun get(category: String?, key: String): String = tryGet(category, key)
 
-    /**
-     * 读取并做替换（不含高亮信息）。
-     *
-     * - `%key%` 与 `<param:...>` 都会被替换为值
-     * - `<param:...>` 的“高亮语义”会被忽略（仅输出纯文本）
-     */
     fun t(key: String, vararg vars: Pair<String, Any?>): String =
         tInternal(category = null, key = key, vars = vars)
 
@@ -99,13 +60,6 @@ object I18n {
     private fun tInternal(category: String?, key: String, vars: Array<out Pair<String, Any?>>): String =
         renderPlain(tryGet(category, key), vars)
 
-    /**
-     * 读取并做替换，同时返回“需要高亮的片段（包含颜色）”。
-     *
-     * 用法示例：
-     * - `val r = I18n.tr(Categories.MOD, "ui.cost", "cost" to cost)`
-     * - `I18nUi.addPara(tooltip, Categories.MOD, "ui.cost", pad, baseColor, "cost" to cost)`
-     */
     fun tr(key: String, vararg vars: Pair<String, Any?>): Rendered = tr(category = null, key = key, vars = vars)
 
     fun tr(category: Categories, key: String, vararg vars: Pair<String, Any?>): Rendered = tr(category = category.id, key = key, vars = vars)
@@ -113,10 +67,6 @@ object I18n {
     fun tr(category: String?, key: String, vararg vars: Pair<String, Any?>): Rendered =
         renderRich(tryGet(category, key), vars)
 
-    /**
-     * 直接格式化内联模板（不查字符串表），变量/高亮语法与 [tr] 相同。
-     * 供游戏内热重载调文案等需要文本内联的场景使用（如 hullmod tooltip DSL 的 plainText）。
-     */
     fun format(template: String, vararg vars: Pair<String, Any?>): Rendered = renderRich(template, vars)
 
     private fun tryGet(category: String?, key: String): String {
@@ -130,25 +80,20 @@ object I18n {
 
         try {
             return Global.getSettings().getString(category, key)
-        } catch (_: Throwable) {
-            // ignore & fallback
+        } catch (t: Throwable) {
+            log.info("I18n: string lookup failed: category=$category key=$key (${t.message})")
         }
 
         return category?.let { if (it.isNotEmpty()) "$it:" else "" } + key
     }
 
-    // --- Java-friendly wrappers -------------------------------------------------
-
-    /** Java 侧便捷读取（不做替换）。 */
     @JvmStatic
     fun j(category: String?, key: String): String = tryGet(category, key)
 
-    /** Java 侧便捷读取（替换 1 个变量）。 */
     @JvmStatic
     fun j1(category: String?, key: String, varName: String, value: Any?): String =
         t(category, key, varName to value)
 
-    /** Java 侧便捷读取（替换 2 个变量）。 */
     @JvmStatic
     fun j2(category: String?, key: String, varName1: String, value1: Any?, varName2: String, value2: Any?): String =
         t(category, key, varName1 to value1, varName2 to value2)
@@ -164,7 +109,6 @@ object I18n {
                     val cat = it.next() as? String ?: continue
                     val obj = root.optJSONObject(cat) ?: continue
 
-                    // 合并同 category：后加载的文件会覆盖同 key。
                     val existing = out[cat]
                     if (existing == null) {
                         out[cat] = obj
@@ -177,7 +121,6 @@ object I18n {
                     }
                 }
             } catch (_: Throwable) {
-                // 可选文件：缺失/损坏均不致命
                 log.info("I18n: no/invalid extra string tables at $path")
             }
         }
@@ -302,12 +245,7 @@ object I18n {
         return map
     }
 
-    /**
-     * 解析 `<param:#RRGGBB:key>` 的内部部分：`#RRGGBB:key`
-     * 返回 key + Color。
-     */
     private fun parseParamTag(inner: String): Pair<String, Color>? {
-        // 期望：#FFFFFF:some.key
         if (inner.length < 9) return null
         if (inner[0] != '#') return null
         if (inner[7] != ':') return null
@@ -324,7 +262,6 @@ object I18n {
     }
 
     private fun unescapePercents(template: String): String {
-        // 仅处理 `%%` -> `%`，其余保持原样（未替换的占位符可被肉眼发现）。
         if (!template.contains("%%")) return template
         return template.replace("%%", "%")
     }

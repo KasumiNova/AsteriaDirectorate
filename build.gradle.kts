@@ -15,15 +15,10 @@ plugins {
 
 group = "cn.kasuminova"
 
-/**
- * release 打包统一开关：`-Pastd.release=true` 产出玩家向干净包。
- * 开启后：automation 内容与类不进包、jars 只剩主 jar（无 sources / 验收 agent jar）、
- * 主 jar manifest 不带 Premain-Class、版本默认 0.1.0。
- */
+/** `-Pastd.release=true` 排除开发验收内容并生成玩家包。 */
 val astdRelease: Boolean =
     providers.gradleProperty("astd.release").map(String::toBooleanStrict).orElse(false).get()
 
-/** 模组版本：`-Pastd.modVersion` 显式覆盖；release 默认 0.1.0，dev 默认 1.0-SNAPSHOT。flows 到 mod_info / jar 名 / zip 名。 */
 val astdModVersion: String =
     providers.gradleProperty("astd.modVersion").orElse(if (astdRelease) "0.1.0" else "1.0-SNAPSHOT").get()
 
@@ -41,18 +36,13 @@ starsector {
     dependency("MagicLib", "MagicLib")
     dependency("shaderLib", "GraphicsLib")
     dependency("BoxUtil", "zz BoxUtil")
-    // LunaLib 为可选前置：不声明进 mod_info 依赖（未装也能加载），
-    // 运行时经 LunaLibSupport.isAvailable()（modManager.isModEnabled）检测；
-    // 编译期经各模块的已装模组 jar 桥（astdGameCompileOnlyJars，扫描 mods/ 全部 mod_info）挂 compileOnly。
     gameDependencyMode.set(GameDependencyMode.GAME_DIR)
     gameDir.fileValue(file(providers.gradleProperty("starsector.gameDir").get()))
     launchMode.set(LaunchMode.NANOFORGE)
     decompilerVersion.set(providers.gradleProperty("decompiler.version").orElse("1.9.3"))
 }
 
-// dev 启动默认开启 SSOptimizer 调试端（sso-debug HTTP JSON-RPC，127.0.0.1:8471，token 见游戏目录
-// ssoptimizer-debug-output/debug-token），供装配导出等游戏内脚本秒级调试；仅注入本地 runGame。
-// 关闭：-Pastd.ssoDebug=false。工作流见 .agents/skills/workflow-ssoptimizer-script-debug。
+// 本地 runGame 默认开启 SSOptimizer 调试端，可用 -Pastd.ssoDebug=false 关闭。
 val astdSsoDebug: Boolean =
     providers.gradleProperty("astd.ssoDebug").map(String::toBooleanStrict).orElse(true).get()
 
@@ -70,18 +60,13 @@ repositories {
 }
 
 dependencies {
-    // 根装配工程：mod 插件入口类引用 campaign/combat/impl 的装配点。
     implementation(project(":astd-campaign"))
     implementation(project(":astd-combat"))
     implementation(project(":astd-impl"))
 
     testImplementation(kotlin("test"))
-    // 仓库纪律/数据校验测试共用的 CSV 读取工具（astd-csv testFixtures）。
     testImplementation(testFixtures(project(":astd-csv")))
-    // 战斗 API（ShipAPI/WeaponAPI/CombatEngineAPI 均为 jar 接口）单测桩：禁止反射手搓代理，统一走 mockito。
     testImplementation("org.mockito:mockito-core:5.5.0")
-    // SDG GAME_DIR 模式自动把游戏 jar 与已装模组 jar 挂到 compileOnly，无需单独声明模组依赖。
-    // agent 字节码改写用 ASM：游戏与已装模组的 mod_info.json 均不导出 ASM，显式声明（版本与 NanoForge 运行时对齐）。
     compileOnly("org.ow2.asm:asm:9.8")
     compileOnly("org.ow2.asm:asm-commons:9.8")
 }
@@ -95,22 +80,12 @@ configurations {
     }
 }
 
-// ---------------------------------------------------------------------------
-// 多模块约定：SDG GAME_DIR 只给应用插件的根工程接线，以下为各 astd 模块装配同等
-// compileOnly（游戏根目录 jar + starfarer-core jar + 已装模组 mod_info.json 的 jars 桥），
-// 并统一 toolchain / 测试依赖 / test 配置继承。模块自身只声明 plugins 与内部 project 依赖。
-// ---------------------------------------------------------------------------
-
-/** 参与游戏代码编译的 astd 模块（astd-csv 是纯生成工具，不在此列）。 */
 val astdModulePaths = listOf(
     ":astd-api", ":astd-api-render",
     ":astd-impl", ":astd-ui", ":astd-render", ":astd-combat", ":astd-campaign", ":astd-automation",
 )
 
-/**
- * 与 SDG GAME_DIR + 第三方 mod 依赖桥等价的 compileOnly jar 清单
- * （逻辑对齐 SdgModPlugin.wireGameDirDeps / ModJarIndexImpl，含 `#` 注释与尾逗号宽松解析）。
- */
+/** 与 SDG 的 GAME_DIR 依赖解析保持一致，兼容 mod_info.json 的 `#` 注释和尾逗号。 */
 val astdGameCompileOnlyJars: List<File> by lazy {
     val gameDir = file(providers.gradleProperty("starsector.gameDir").get())
     val jars = mutableListOf<File>()
@@ -151,7 +126,6 @@ astdModulePaths.forEach { path ->
             tasks.withType<KotlinCompile>().configureEach {
                 compilerOptions.jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
             }
-            // 模块测试默认工作目录是模块目录；仓库级测试用相对路径读 contents/，统一钉到根目录。
             tasks.withType<Test>().configureEach {
                 workingDir = rootProject.projectDir
             }
@@ -160,7 +134,6 @@ astdModulePaths.forEach { path ->
             dependencies.add("compileOnly", files(astdGameCompileOnlyJars))
             dependencies.add("testImplementation", "org.jetbrains.kotlin:kotlin-test")
             dependencies.add("testImplementation", "org.mockito:mockito-core:5.5.0")
-            // testFixtures 源集与 test 同等接线（游戏 jar 在 compileOnly，mock/log4j 桩需要）。
             plugins.withId("java-test-fixtures") {
                 configurations.named("testFixturesCompileOnly") { extendsFrom(configurations.compileOnly.get()) }
                 configurations.named("testFixturesRuntimeOnly") { extendsFrom(configurations.compileOnly.get()) }
@@ -278,8 +251,7 @@ tasks.register<Exec>("smokeTestLauncher") {
     commandLine("bash", "tools/smoke_test_game_launch.sh", starsectorGameDir, "30", "launcher")
 }
 
-// automation 场景可由外部 ASTD_AUTOMATION_SCENARIO 环境变量覆盖（默认 ARC production，
-// 保持既有行为）；阶段一决明场景通过 ASTD_AUTOMATION_SCENARIO=lens_phase1_foundation 启动。
+// automation 场景可由 ASTD_AUTOMATION_SCENARIO 环境变量覆盖，默认 arc_production_ships_vfx_tooltip。
 val smokeTestScenario: String =
     (System.getenv("ASTD_AUTOMATION_SCENARIO")?.takeIf { it.isNotBlank() })
         ?: "arc_production_ships_vfx_tooltip"

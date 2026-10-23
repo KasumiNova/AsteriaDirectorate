@@ -1,12 +1,5 @@
-/**
- * 虚空切割束特效。
- *
- * 一道带黑色核心的切割光束：中心为空洞暗线，两侧紫白高温边缘不断抖动并剥离细小电弧。
- * 适合表现切割激光、裂解束、空间撕裂型持续武器。
- */
 import type { EffectDefinition } from '../effectDefinition';
 
-/** 虚空切割束的 fragment shader（不含公共头）。 */
 export const VOID_CUTTER_BEAM_FRAGMENT_SHADER = `
 uniform float u_gapWidth;
 uniform float u_edgeWidth;
@@ -53,7 +46,6 @@ void main() {
 }
 `;
 
-/** 紫黑虚空切割束特效定义。 */
 export const VOID_CUTTER_BEAM: EffectDefinition = {
   id: 'void-cutter-beam',
   name: 'Void Cutter Beam',

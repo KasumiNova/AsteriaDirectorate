@@ -49,7 +49,7 @@
 - **禁止反射**：不要为“兼容性探测”引入反射/动态 class lookup。
 - **Java 版本**：Java 17；除非用户明确要求，否则不做降级兼容处理。
 - **避免单文件巨型实现**：优先复用现有基类/工具类并按职责拆分。
-- **严禁最小实现**：所有需求都必须完整实现，不要为了“先跑起来”而偷工减料。
+- **完整实现**：所有需求都必须完整实现，禁止以“先跑起来”为由缩减功能。
 
 ## 规范优先（Skills）
 
@@ -70,12 +70,12 @@
 - `returnFormat`
 - `doNotDo`
 
-## ss-csv（核心约定）
+## ss-csv 约定
 
 - 模块已迁移：`modules/internal/astd-csv`（Gradle 子项目 `:astd-csv`）。
 - 安全生成到 `build/generated/ss-csv/`：`./gradlew :astd-csv:generateSsCsv`
 - 覆盖写回 `contents/`（危险，仅在用户明确要求时）：`./gradlew :astd-csv:writeSsCsvToContents -PssCsvForce=true`
-- schema header 真相来源：`tools/_schema_headers/*.header.csv`（生成器只读首行）。
+- schema header 定义以 `tools/_schema_headers/*.header.csv` 为准（生成器只读首行）。
 - Catalog 扫描包：`cn.kasuminova.astd.sscsv.entries.catalog`
 
 ## 入口点与调试
