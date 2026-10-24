@@ -37,6 +37,7 @@
 ## 常用工作流（Gradle）
 
 - `./gradlew build`：构建（并 zip `mod_production` 到 `build/`）。
+- `./gradlew verifyProductionDependencies -Pastd.release=true`：检查生产 JAR 的外部类引用是否超出原版及声明支持的模组运行库。
 - `./gradlew modProduction`：只组装生产目录。
 - `./gradlew deployMod`：部署到 `${starsector.gameDir}/mods/${mod.id}`。
 - `./gradlew runGame`：NanoForge 链启动游戏（JVM 选择规则与调试参数见 `docs/engineering/04-launch-config.md`）。

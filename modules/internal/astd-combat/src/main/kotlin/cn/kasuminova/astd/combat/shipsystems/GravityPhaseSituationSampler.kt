@@ -9,13 +9,12 @@ import com.fs.starfarer.api.combat.ShipSystemAPI
 import com.fs.starfarer.api.combat.ShipwideAIFlags
 import com.fs.starfarer.api.combat.WeaponAPI
 import cn.kasuminova.astd.combat.shipsystems.base.PhaseSituation
-import org.apache.logging.log4j.LogManager
 import org.lwjgl.util.vector.Vector2f
 
 internal class GravityPhaseSituationSampler {
 
     companion object {
-        private val log = LogManager.getLogger(GravityPhaseSituationSampler::class.java)
+        private val log = Global.getLogger(GravityPhaseSituationSampler::class.java)
 
         internal const val SOON_WINDOW_SEC = 0.6f
         internal const val NEAR_WINDOW_SEC = 1.2f

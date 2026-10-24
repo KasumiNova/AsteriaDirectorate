@@ -2,6 +2,7 @@ package cn.kasuminova.astd.combat.shipsystems
 
 import cn.kasuminova.astd.combat.shipsystems.base.PhaseDecisionContext
 import cn.kasuminova.astd.combat.shipsystems.base.PhaseOrder
+import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.combat.ShipCommand
@@ -9,13 +10,12 @@ import com.fs.starfarer.api.combat.ShipSystemAIScript
 import com.fs.starfarer.api.combat.ShipSystemAPI
 import com.fs.starfarer.api.combat.ShipwideAIFlags
 import com.fs.starfarer.api.util.IntervalUtil
-import org.apache.logging.log4j.LogManager
 import org.lwjgl.util.vector.Vector2f
 
 class GravityPhaseCloakAI : ShipSystemAIScript {
 
     companion object {
-        private val log = LogManager.getLogger(GravityPhaseCloakAI::class.java)
+        private val log = Global.getLogger(GravityPhaseCloakAI::class.java)
 
         // 对齐原版斗篷开关最小间隔 0.5s
         private const val TOGGLE_GUARD_SEC = 0.5f

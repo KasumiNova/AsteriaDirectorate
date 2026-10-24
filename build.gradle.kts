@@ -86,6 +86,18 @@ val astdModulePaths = listOf(
 )
 
 /** 与 SDG 的 GAME_DIR 依赖解析保持一致，兼容 mod_info.json 的 `#` 注释和尾逗号。 */
+val readAstdGameModInfo: (File) -> Map<*, *>? = { infoFile ->
+    val cleaned = infoFile.readText()
+        .replace(Regex("(?m)#.*$"), "")
+        .replace(Regex(",(\\s*[}\\]])"), "$1")
+    try {
+        groovy.json.JsonSlurper().setType(groovy.json.JsonParserType.LAX).parseText(cleaned) as Map<*, *>
+    } catch (e: Exception) {
+        logger.warn("ASTD: 解析 ${infoFile.absolutePath} 失败，跳过该模组依赖桥：${e.message}")
+        null
+    }
+}
+
 val astdGameCompileOnlyJars: List<File> by lazy {
     val gameDir = file(providers.gradleProperty("starsector.gameDir").get())
     val jars = mutableListOf<File>()
@@ -95,18 +107,39 @@ val astdGameCompileOnlyJars: List<File> by lazy {
     for (modDir in modDirs) {
         val infoFile = modDir.resolve("mod_info.json")
         if (!infoFile.isFile) continue
-        val cleaned = infoFile.readText()
-            .replace(Regex("(?m)#.*$"), "")
-            .replace(Regex(",(\\s*[}\\]])"), "$1")
-        val parsed = try {
-            groovy.json.JsonSlurper().setType(groovy.json.JsonParserType.LAX).parseText(cleaned) as Map<*, *>
-        } catch (e: Exception) {
-            logger.warn("ASTD: 解析 ${infoFile.absolutePath} 失败，跳过该模组依赖桥：${e.message}")
-            continue
-        }
+        val parsed = readAstdGameModInfo(infoFile) ?: continue
         if ((parsed["id"] as? String) == "asteria_directorate") continue
         val modJars = (parsed["jars"] as? List<*>)?.filterIsInstance<String>().orEmpty()
         jars += modJars.map { modDir.resolve(it) }.filter { it.isFile }
+    }
+    jars.distinct()
+}
+
+val astdProductionModIds = listOf(
+    "lw_lazylib", "MagicLib", "shaderLib", "BoxUtil", "IndEvo", "lunalib", "second_in_command",
+)
+
+val astdProductionRuntimeJars: List<File> by lazy {
+    val gameDir = file(providers.gradleProperty("starsector.gameDir").get())
+    val jars = mutableListOf<File>()
+    jars += fileTree(gameDir) { include("*.jar") }.files
+    jars += fileTree(gameDir.resolve("starfarer-core")) { include("*.jar") }.files
+    val missingModIds = astdProductionModIds.toMutableSet()
+    val modDirs = gameDir.resolve("mods").listFiles { f -> f.isDirectory } ?: emptyArray()
+    for (modDir in modDirs) {
+        val infoFile = modDir.resolve("mod_info.json")
+        if (!infoFile.isFile) continue
+        val parsed = readAstdGameModInfo(infoFile) ?: continue
+        val modId = parsed["id"] as? String ?: continue
+        if (!missingModIds.remove(modId)) continue
+        val modJars = (parsed["jars"] as? List<*>)?.filterIsInstance<String>().orEmpty()
+        val resolved = modJars.map { modDir.resolve(it) }
+        val missingJar = resolved.firstOrNull { !it.isFile }
+        if (missingJar != null) throw GradleException("生产依赖检查缺少模组 JAR：${missingJar.absolutePath}")
+        jars += resolved
+    }
+    if (missingModIds.isNotEmpty()) {
+        throw GradleException("生产依赖检查缺少模组：${missingModIds.sorted().joinToString()}")
     }
     jars.distinct()
 }
@@ -240,9 +273,33 @@ tasks.named<Sync>("copyContents") {
     }
 }
 
+val verifyProductionDependencies = tasks.register<Exec>("verifyProductionDependencies") {
+    group = "verification"
+    description = "使用 jdeps 检查生产 JAR 是否引用原版及声明支持模组之外的类。"
+    dependsOn("jar")
+    doFirst {
+        if (!astdRelease) throw GradleException("生产依赖检查必须使用 -Pastd.release=true")
+        commandLine(
+            "python3",
+            rootProject.file("tools/check_production_dependencies.py").absolutePath,
+            "--jar",
+            tasks.named<Jar>("jar").get().archiveFile.get().asFile.absolutePath,
+            "--class-path",
+            astdProductionRuntimeJars.joinToString(File.pathSeparator) { it.absolutePath },
+            "--report",
+            layout.buildDirectory.file("reports/production-dependencies/jdeps.txt").get().asFile.absolutePath,
+        )
+    }
+}
+
+tasks.named("check") {
+    if (astdRelease) dependsOn(verifyProductionDependencies)
+}
+
 tasks.named<Zip>("zipModProduction") {
     includeEmptyDirs = false
     eachFile { path = "Asteria Directorate/$path" }
+    if (astdRelease) dependsOn(verifyProductionDependencies)
 }
 
 val starsectorGameDir: String = providers.gradleProperty("starsector.gameDir")
