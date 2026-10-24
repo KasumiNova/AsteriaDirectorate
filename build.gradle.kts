@@ -240,6 +240,11 @@ tasks.named<Sync>("copyContents") {
     }
 }
 
+tasks.named<Zip>("zipModProduction") {
+    includeEmptyDirs = false
+    eachFile { path = "Asteria Directorate/$path" }
+}
+
 val starsectorGameDir: String = providers.gradleProperty("starsector.gameDir")
     .orElse("/mnt/store/Games/Starsector098-linux")
     .get()
