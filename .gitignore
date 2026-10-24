@@ -26,3 +26,5 @@ build
 starsector.log
 contents/.ss-csv-manifest
 temp/
+
+*.mp4
