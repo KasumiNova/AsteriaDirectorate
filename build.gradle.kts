@@ -116,7 +116,7 @@ val astdGameCompileOnlyJars: List<File> by lazy {
 }
 
 val astdProductionModIds = listOf(
-    "lw_lazylib", "MagicLib", "shaderLib", "BoxUtil", "IndEvo", "lunalib", "second_in_command",
+    "lw_lazylib", "MagicLib", "shaderLib", "BoxUtil", "IndEvo", "lunalib", "second_in_command", "shipmasterysystem",
 )
 
 val astdProductionRuntimeJars: List<File> by lazy {

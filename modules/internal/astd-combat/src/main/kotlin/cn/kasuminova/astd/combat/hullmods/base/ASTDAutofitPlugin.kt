@@ -11,15 +11,36 @@ import com.fs.starfarer.api.fleet.FleetMemberAPI
 import com.fs.starfarer.api.plugins.AutofitPlugin
 import com.fs.starfarer.api.plugins.AutofitPlugin.AutofitPluginDelegate
 import com.fs.starfarer.api.plugins.impl.CoreAutofitPlugin
+import java.util.Random
 import org.apache.log4j.Logger
 
-class ASTDAutofitPlugin(fleetCommander: PersonAPI?) : CoreAutofitPlugin(fleetCommander) {
+class ASTDAutofitPlugin(
+    fleetCommander: PersonAPI?,
+    private val combinedAutofit: AutofitPlugin? = null,
+) : CoreAutofitPlugin(fleetCommander) {
 
     private val logger: Logger = Logger.getLogger(ASTDAutofitPlugin::class.java)
 
+    init {
+        if (combinedAutofit != null) {
+            options.clear()
+            options.addAll(combinedAutofit.options)
+        }
+    }
+
+    override fun setRandom(random: Random) {
+        super.setRandom(random)
+        combinedAutofit?.setRandom(random)
+    }
+
+    override fun getCreditCost(): Int = combinedAutofit?.creditCost ?: super.getCreditCost()
+
+    override fun getRating(current: ShipVariantAPI, target: ShipVariantAPI, delegate: AutofitPluginDelegate): Float =
+        combinedAutofit?.getRating(current, target, delegate) ?: super.getRating(current, target, delegate)
+
     override fun doFit(current: ShipVariantAPI, target: ShipVariantAPI, maxSMods: Int, delegate: AutofitPluginDelegate) {
         if (fittingModule) {
-            super.doFit(current, target, maxSMods, delegate)
+            performFit(current, target, maxSMods, delegate)
             return
         }
         val config = ASTDDualModeRegistry.configForVariant(current)
@@ -29,7 +50,7 @@ class ASTDAutofitPlugin(fleetCommander: PersonAPI?) : CoreAutofitPlugin(fleetCom
         val preFitCaptain = if (preFitMode != null) member?.captain else null
         ASTDDualModeMirror.beginAutofitSuppression()
         try {
-            super.doFit(current, target, maxSMods, delegate)
+            performFit(current, target, maxSMods, delegate)
         } finally {
             ASTDDualModeMirror.endAutofitSuppression()
         }
@@ -46,6 +67,19 @@ class ASTDAutofitPlugin(fleetCommander: PersonAPI?) : CoreAutofitPlugin(fleetCom
         }
         val postFitMode = activeDualModeId(current, config)
         restoreCaptainIfModeUnchanged(member, preFitCaptain, preFitMode, postFitMode)
+    }
+
+    private fun performFit(
+        current: ShipVariantAPI,
+        target: ShipVariantAPI,
+        maxSMods: Int,
+        delegate: AutofitPluginDelegate,
+    ) {
+        if (combinedAutofit != null) {
+            combinedAutofit.doFit(current, target, maxSMods, delegate)
+        } else {
+            super.doFit(current, target, maxSMods, delegate)
+        }
     }
 
     private fun restoreCaptainIfModeUnchanged(
@@ -102,7 +136,8 @@ object ASTDAutofitPluginPicker {
         if (!dualModeRelevant) return null
 
         val commander = member.fleetCommanderForStats ?: member.fleetCommander
-        return PluginPick(ASTDAutofitPlugin(commander), PickPriority.MOD_SPECIFIC)
+        val combinedAutofit = ShipMasteryAutofitIntegration.createIfEnabled(member)
+        return PluginPick(ASTDAutofitPlugin(commander, combinedAutofit), PickPriority.MOD_SPECIFIC)
     }
 }
 

@@ -13,6 +13,7 @@ description: "ss-csv 使用规范与编辑规范：生成流程、目录约定�
 
 - `data/weapons/weapon_data.csv`
 - `data/hulls/ship_data.csv`
+- `data/hulls/wing_data.csv`
 - `data/shipsystems/ship_systems.csv`
 - `data/hullmods/hull_mods.csv`
 - `data/strings/descriptions.csv`
@@ -53,6 +54,7 @@ description: "ss-csv 使用规范与编辑规范：生成流程、目录约定�
 
 - `WeaponDataEntry` → `weapon_data.csv`
 - `ShipDataEntry` → `ship_data.csv`
+- `WingDataEntry` → `wing_data.csv`
 - `ShipSystemEntry` → `ship_systems.csv`
 - `ShipSystemWithSystemFileEntry` → `ship_systems.csv` + `data/shipsystems/<id>.system`
 - `HullModEntry` → `hull_mods.csv`
@@ -99,6 +101,7 @@ description: "ss-csv 使用规范与编辑规范：生成流程、目录约定�
 - 约定：
   - `weapon.<id>.name`
   - `system.<id>.name`
+  - `wing.<id>.roleDesc`
   - `desc.<id>.<text1|text2|text3|text4|notes>`
 - properties 中的 `\n` 会被解析为真实换行。
 

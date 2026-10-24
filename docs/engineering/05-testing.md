@@ -62,6 +62,7 @@
 这会覆盖 ss-csv 管理的全部 CSV（目标清单见 `CsvTarget.kt`）：
 - `contents/data/weapons/weapon_data.csv`
 - `contents/data/hulls/ship_data.csv`
+- `contents/data/hulls/wing_data.csv`
 - `contents/data/shipsystems/ship_systems.csv`
 - `contents/data/hullmods/hull_mods.csv`
 - `contents/data/strings/descriptions.csv`

@@ -7,6 +7,7 @@ enum class CsvTarget(
     WEAPON_DATA("data/weapons/weapon_data.csv", "weapon_data.header.csv"),
     DESCRIPTIONS("data/strings/descriptions.csv", "descriptions.header.csv"),
     SHIP_DATA("data/hulls/ship_data.csv", "ship_data.header.csv"),
+    WING_DATA("data/hulls/wing_data.csv", "wing_data.header.csv"),
     SHIP_SYSTEMS("data/shipsystems/ship_systems.csv", "ship_systems.header.csv"),
     HULL_MODS("data/hullmods/hull_mods.csv", "hull_mods.header.csv"),
     SKILL_DATA(
