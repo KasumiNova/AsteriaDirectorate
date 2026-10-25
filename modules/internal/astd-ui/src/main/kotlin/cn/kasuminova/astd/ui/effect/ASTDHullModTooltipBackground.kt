@@ -1,5 +1,9 @@
 package cn.kasuminova.astd.ui.effect
 
+import cn.kasuminova.astd.impl.render.ShaderClip
+import cn.kasuminova.astd.impl.render.ShaderCompatibility
+import cn.kasuminova.astd.impl.render.ShaderGlState
+import cn.kasuminova.astd.impl.render.ShaderQuadRenderer
 import cn.kasuminova.astd.impl.ui.HullmodBackgroundStyleConfig
 import cn.kasuminova.astd.ui.render.ASTDStencilRenderer
 import com.fs.starfarer.api.Global
@@ -82,43 +86,33 @@ class ASTDHullModTooltipBackground private constructor(
         val y = p.y - h - BOTTOM_EXTEND
         val quadHeight = h + BOTTOM_EXTEND
 
-        GL11.glPushAttrib(GL11.GL_ENABLE_BIT or GL11.GL_COLOR_BUFFER_BIT)
-        GL11.glPushMatrix()
-        GL11.glEnable(GL11.GL_BLEND)
-        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA)
-
-        ASTDStencilRenderer.withStencilMask(quadX, y, quadWidth, quadHeight) {
-            renderShaderQuad(quadX, y, quadWidth, quadHeight, alphaMult)
+        ShaderGlState.withSavedState {
+            GL11.glEnable(GL11.GL_BLEND)
+            GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA)
+            ASTDStencilRenderer.withStencilMask(quadX, y, quadWidth, quadHeight) {
+                renderShaderQuad(quadX, y, quadWidth, quadHeight, alphaMult)
+            }
         }
-
-        GL11.glPopMatrix()
-        GL11.glPopAttrib()
     }
 
     private fun renderShaderQuad(x: Float, y: Float, w: Float, h: Float, alphaMult: Float) {
         val program = shaderProgram()
-        val previousProgram = GL11.glGetInteger(GL20.GL_CURRENT_PROGRAM)
         val r = accentColor.red / 255f
         val g = accentColor.green / 255f
         val b = accentColor.blue / 255f
         val a = accentColor.alpha / 255f * alphaMult
 
-        GL11.glDisable(GL11.GL_TEXTURE_2D)
         GL20.glUseProgram(program)
+        ShaderCompatibility.uploadClip(
+            program,
+            ShaderClip.ui(Global.getSettings().screenWidth, Global.getSettings().screenHeight),
+        )
         GL20.glUniform1f(GL20.glGetUniformLocation(program, "u_time"), timeAcc)
         GL20.glUniform2f(GL20.glGetUniformLocation(program, "u_origin"), x, y)
         GL20.glUniform2f(GL20.glGetUniformLocation(program, "u_resolution"), w, h)
         GL20.glUniform4f(GL20.glGetUniformLocation(program, "u_accentColor"), r, g, b, a)
         GL20.glUniform1f(GL20.glGetUniformLocation(program, "u_alphaMult"), alphaMult)
-
-        GL11.glBegin(GL11.GL_QUADS)
-        GL11.glVertex2f(x, y)
-        GL11.glVertex2f(x + w, y)
-        GL11.glVertex2f(x + w, y + h)
-        GL11.glVertex2f(x, y + h)
-        GL11.glEnd()
-
-        GL20.glUseProgram(previousProgram)
+        quadRenderer.draw(x, y, w, h)
     }
 
     companion object {
@@ -136,23 +130,13 @@ class ASTDHullModTooltipBackground private constructor(
         private val shaderProgramIds = IntArray(HullmodBackgroundStyleConfig.STYLE_COUNT)
 
         /**
-         * 顶点着色器：以 varying 传递顶点的 CPU 侧逻辑坐标。
+         * 角标脉冲 fragment shader（GLSL 110 / GLSL ES 100 共享语法）。
          *
+         * 顶点由 [ShaderCompatibility] 统一提供，以 varying 传递 CPU 侧逻辑坐标。
          * 禁止使用 gl_FragCoord 换算面板局部坐标：它是物理 framebuffer 像素，
          * 与 SS UI 逻辑坐标（u_origin）在显示缩放/高分屏下存在比例差，会导致
-         * 角部早退全部命中、背景完全消失。gl_Vertex 与 u_origin 同属逻辑坐标空间，
+         * 角部早退全部命中、背景完全消失。a_position 与 u_origin 同属逻辑坐标空间，
          * 差值插值后与物理像素解耦，任何缩放下自洽。
-         */
-        private const val VERTEX_SHADER_SOURCE = """
-            varying vec2 v_pos;
-            void main() {
-              v_pos = gl_Vertex.xy;
-              gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
-            }
-        """
-
-        /**
-         * 角标脉冲 fragment shader（GLSL 110 兼容）。
          *
          * 坐标系：面板局部逻辑坐标（v_pos - u_origin）除以 uiScale 后的归一空间，y 向上；
          * 面板宽度归一：以编辑器 580px 为基准（uiScale = clamp(u_resolution.x / 580, 0.6, 1.0)），
@@ -486,6 +470,8 @@ class ASTDHullModTooltipBackground private constructor(
             }
         """
 
+        private val quadRenderer = ShaderQuadRenderer()
+
         private fun shaderProgram(): Int {
             val style = HullmodBackgroundStyleConfig.activeStyle
             val cached = shaderProgramIds[style]
@@ -496,44 +482,9 @@ class ASTDHullModTooltipBackground private constructor(
                 HullmodBackgroundStyleConfig.STYLE_PRISM_LATTICE -> FRAGMENT_PRISM_LATTICE
                 else -> throw IllegalStateException("Unknown hullmod background style: $style")
             }
-            // 编译失败时统一清理已创建的 shader 对象后重抛，避免按帧泄漏 GL 对象
-            var vertexShader = 0
-            var fragmentShader = 0
-            try {
-                vertexShader = compileShader(GL20.GL_VERTEX_SHADER, VERTEX_SHADER_SOURCE, style)
-                fragmentShader = compileShader(GL20.GL_FRAGMENT_SHADER, fragmentSource, style)
-            } catch (e: Exception) {
-                if (vertexShader != 0) GL20.glDeleteShader(vertexShader)
-                if (fragmentShader != 0) GL20.glDeleteShader(fragmentShader)
-                throw e
-            }
-            val program = GL20.glCreateProgram()
-            GL20.glAttachShader(program, vertexShader)
-            GL20.glAttachShader(program, fragmentShader)
-            GL20.glLinkProgram(program)
-            GL20.glDeleteShader(vertexShader)
-            GL20.glDeleteShader(fragmentShader)
-
-            if (GL20.glGetProgrami(program, GL20.GL_LINK_STATUS) == GL11.GL_FALSE) {
-                val message = GL20.glGetProgramInfoLog(program, 4096)
-                GL20.glDeleteProgram(program)
-                throw IllegalStateException("Failed to link tooltip background shader $SHADER_ID style=$style: $message")
-            }
-
+            val program = ShaderCompatibility.compileProgram("$SHADER_ID-style-$style", fragmentSource)
             shaderProgramIds[style] = program
             return program
-        }
-
-        private fun compileShader(type: Int, source: String, style: Int): Int {
-            val shader = GL20.glCreateShader(type)
-            GL20.glShaderSource(shader, source)
-            GL20.glCompileShader(shader)
-            if (GL20.glGetShaderi(shader, GL20.GL_COMPILE_STATUS) == GL11.GL_FALSE) {
-                val message = GL20.glGetShaderInfoLog(shader, 4096)
-                GL20.glDeleteShader(shader)
-                throw IllegalStateException("Failed to compile tooltip background shader $SHADER_ID style=$style: $message")
-            }
-            return shader
         }
 
         @JvmStatic

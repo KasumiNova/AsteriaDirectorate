@@ -1,5 +1,8 @@
 package cn.kasuminova.astd.renderer.shader.runtime
 
+import cn.kasuminova.astd.impl.render.ShaderClip
+import cn.kasuminova.astd.impl.render.ShaderCompatibility
+import cn.kasuminova.astd.impl.render.ShaderQuadRenderer
 import cn.kasuminova.astd.renderer.shader.base.ShaderBlendMode
 import cn.kasuminova.astd.renderer.shader.base.ShaderEffectLayer
 import cn.kasuminova.astd.renderer.shader.base.ShaderGeometrySpec
@@ -14,6 +17,7 @@ import java.util.EnumSet
 class ShaderLayerPlugin(private val queue: ShaderRenderQueue) : BaseCombatLayeredRenderingPlugin(CombatEngineLayers.ABOVE_PARTICLES) {
     private var expired = false
     private val programCache = ShaderProgramCache()
+    private val quadRenderer = ShaderQuadRenderer()
 
     override fun getActiveLayers(): EnumSet<CombatEngineLayers> {
         return EnumSet.of(
@@ -31,6 +35,7 @@ class ShaderLayerPlugin(private val queue: ShaderRenderQueue) : BaseCombatLayere
     override fun cleanup() {
         expired = true
         programCache.deleteAll()
+        quadRenderer.cleanup()
     }
 
     override fun advance(amount: Float) {
@@ -43,15 +48,16 @@ class ShaderLayerPlugin(private val queue: ShaderRenderQueue) : BaseCombatLayere
         val shaderLayer = shaderLayer(layer)
         val snapshots = queue.snapshotsForLayer(shaderLayer)
         if (snapshots.isEmpty()) return
+        val clip = ShaderClip.world(viewport.center.x, viewport.center.y, viewport.visibleWidth, viewport.visibleHeight)
 
         ShaderStateGuard.withSavedState {
-            GL11.glDisable(GL11.GL_TEXTURE_2D)
             GL11.glDisable(GL11.GL_CULL_FACE)
             GL11.glEnable(GL11.GL_BLEND)
             for (submission in snapshots) {
                 applyBlend(submission.spec.material.blendMode)
                 val program = programCache.programFor(submission.spec.program)
                 GL20.glUseProgram(program)
+                ShaderCompatibility.uploadClip(program, clip)
                 uploadUniforms(program, submission)
                 renderGeometry(submission)
             }
@@ -89,16 +95,7 @@ class ShaderLayerPlugin(private val queue: ShaderRenderQueue) : BaseCombatLayere
     private fun renderWorldQuad(submission: ShaderSubmission, geometry: ShaderGeometrySpec.WorldQuad) {
         val center = submission.center
         val extent = geometry.halfExtentWorld
-        GL11.glBegin(GL11.GL_QUADS)
-        GL11.glTexCoord2f(0f, 0f)
-        GL11.glVertex2f(center.x - extent, center.y - extent)
-        GL11.glTexCoord2f(1f, 0f)
-        GL11.glVertex2f(center.x + extent, center.y - extent)
-        GL11.glTexCoord2f(1f, 1f)
-        GL11.glVertex2f(center.x + extent, center.y + extent)
-        GL11.glTexCoord2f(0f, 1f)
-        GL11.glVertex2f(center.x - extent, center.y + extent)
-        GL11.glEnd()
+        quadRenderer.draw(center.x - extent, center.y - extent, extent * 2f, extent * 2f)
     }
 
     companion object {

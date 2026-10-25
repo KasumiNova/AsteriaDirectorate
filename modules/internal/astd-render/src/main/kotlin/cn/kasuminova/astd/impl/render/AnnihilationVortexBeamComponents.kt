@@ -287,14 +287,7 @@ private object AvVortexShader {
         )
     }
 
-    private const val VERTEX_SHADER_SOURCE = """
-        varying vec2 v_uv;
-
-        void main() {
-          v_uv = gl_MultiTexCoord0.xy;
-          gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
-        }
-    """
+    private const val VERTEX_SHADER_SOURCE = ShaderCompatibility.VERTEX_SHADER_SOURCE
 
     // NOTE: GLSL comments must be ASCII only - Starsector's GL driver fails to lex
     // multibyte UTF-8 in comments ("unexpected end of file"). Do not use CJK here.

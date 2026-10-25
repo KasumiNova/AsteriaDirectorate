@@ -1,6 +1,7 @@
 package cn.kasuminova.astd.renderer.effect.system
 
 import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcProductionShipIds
+import cn.kasuminova.astd.impl.render.ShaderCompatibility
 import cn.kasuminova.astd.renderer.shader.base.ShaderBlendMode
 import cn.kasuminova.astd.renderer.shader.base.ShaderEffectKey
 import cn.kasuminova.astd.renderer.shader.base.ShaderEffectLayer
@@ -196,14 +197,7 @@ internal object Xc102ShockwaveRingEffect : ShipSystemShaderEffect {
         ),
     )
 
-    private const val VERTEX_SHADER_SOURCE = """
-        varying vec2 v_uv;
-
-        void main() {
-          v_uv = gl_MultiTexCoord0.xy;
-          gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
-        }
-    """
+    private const val VERTEX_SHADER_SOURCE = ShaderCompatibility.VERTEX_SHADER_SOURCE
 
     private const val FRAGMENT_SHADER_SOURCE = """
         uniform float u_time;

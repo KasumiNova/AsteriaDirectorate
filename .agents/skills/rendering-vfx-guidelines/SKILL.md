@@ -88,6 +88,13 @@ description: "渲染/特效规范：优先使用 BoxUtil 的高性能实现，�
 
 目的：避免扫描式“给所有弹体加曳光”造成噪音与性能浪费。
 
+## 自定义 Shader 的 OpenGL ES 兼容
+
+- 自定义 Shader 统一使用 `ShaderCompatibility` 编译、上传裁剪坐标，并由 `ShaderQuadRenderer` 通过 VBO 绘制。
+- 源码使用桌面 GLSL 110 与 GLSL ES 100 的公共语法；禁止 `gl_Vertex`、`gl_MultiTexCoord0`、`gl_ModelViewProjectionMatrix` 等固定管线内建变量，禁止 `glBegin/glEnd` 和客户端顶点数组。
+- 顶点输入使用显式 `attribute`；世界与 UI 坐标分别通过 `ShaderClip.world/ui` 转换，不读取固定管线矩阵。片元源码不自带 `#version` 或 `precision`，由兼容层按运行时 GLSL 版本注入。
+- 修改自定义 Shader 后执行 `python3 tools/validate_shader_compatibility.py`。该工具从生产 Kotlin 常量提取源码，验证桌面／GLES 编译链接，并在 Mesa surfaceless EGL 的 GLES2 上下文中实际绘制检查。Mesa 验证不能替代 Android GPU 真机验证。
+
 ## Debug / Profiling 建议
 
 - **先确认触发源**：
