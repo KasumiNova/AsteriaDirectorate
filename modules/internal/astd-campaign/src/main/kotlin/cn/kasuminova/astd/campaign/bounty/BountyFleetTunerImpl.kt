@@ -1,5 +1,6 @@
 package cn.kasuminova.astd.campaign.bounty
 
+import cn.kasuminova.astd.api.campaign.BountySettings
 import cn.kasuminova.astd.campaign.bounty.core.BountyFitRules
 import cn.kasuminova.astd.campaign.bounty.core.BountyFleetTuner
 import cn.kasuminova.astd.campaign.bounty.core.BountyOfficerSkills
@@ -9,6 +10,7 @@ import cn.kasuminova.astd.campaign.integration.sic.SicIntegration
 import cn.kasuminova.astd.combat.hullmods.HullmodIncompatibility
 import cn.kasuminova.astd.combat.hullmods.base.ASTDDualModeRegistry
 import cn.kasuminova.astd.combat.hullmods.base.activateDualMode
+import cn.kasuminova.astd.impl.campaign.BountySettingsImpl
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.campaign.CampaignFleetAPI
 import com.fs.starfarer.api.characters.MutableCharacterStatsAPI
@@ -34,6 +36,7 @@ import org.magiclib.bounty.MagicBountyLoader
 class BountyFleetTunerImpl(
     private val fitRules: BountyFitRules = BountyFitRulesImpl(),
     private val random: Random = Random(),
+    private val bountySettings: BountySettings = BountySettingsImpl,
 ) : BountyFleetTuner {
 
     private val log: Logger = Global.getLogger(BountyFleetTunerImpl::class.java)
@@ -47,10 +50,13 @@ class BountyFleetTunerImpl(
 
         val bountyKey = bountyKeyOf(fleet)
         val poolConfig = BountyPoolConfig.forBountyKey(bountyKey)
+        val fillToFleetCap = bountySettings.fillToFleetCap
         refreshVariants(fleet)
         replaceExcludedEscorts(fleet)
-        fillToMaxFleetSize(fleet, poolConfig)
-        enforceHalfAstd(fleet, poolConfig)
+        reinforceFleet(fleet, poolConfig, fillToFleetCap)
+        if (fillToFleetCap) {
+            enforceHalfAstd(fleet, poolConfig)
+        }
         reorderFleet(fleet)
         assignCrew(fleet, bountyKey)
         installExtraFittings(fleet)
@@ -73,17 +79,23 @@ class BountyFleetTunerImpl(
         }
     }
 
-    private fun fillToMaxFleetSize(fleet: CampaignFleetAPI, config: BountyPoolConfig) {
-        val cap = maxFleetSizeSetting()
+    private fun reinforceFleet(fleet: CampaignFleetAPI, config: BountyPoolConfig, fillToFleetCap: Boolean) {
+        val presetSize = fleet.fleetData.membersListCopy.size
+        val fleetCap = if (fillToFleetCap) maxFleetSizeSetting() else 0
+        val targetSize = reinforcementTargetSize(fillToFleetCap, presetSize, fleetCap)
         var addedAstd = 0
         var addedRemnant = 0
         var guard = MAX_PICK_ATTEMPTS
-        while (fleet.fleetData.membersListCopy.size < cap && guard-- > 0) {
-            val size = pickSizeByComposition(fleet) ?: return
-            when (BountyPoolConfig.pickPoolSide(addedAstd, addedRemnant)) {
+        while (fleet.fleetData.membersListCopy.size < targetSize && guard-- > 0) {
+            val size = pickSizeByComposition(fleet) ?: break
+            when (reinforcementPoolSide(fillToFleetCap, addedAstd, addedRemnant)) {
                 PoolSide.ASTD -> if (pickAstdEscortIntoFleet(fleet, size, config)) addedAstd++
                 PoolSide.REMNANT -> if (pickRemnantEscortIntoFleet(fleet, size, config)) addedRemnant++
             }
+        }
+        val finalSize = fleet.fleetData.membersListCopy.size
+        if (finalSize < targetSize) {
+            log.warn("[ASTD] 赏金舰队 ${fleet.name} 补齐未完成：目标 $targetSize 艘，实际 $finalSize 艘")
         }
     }
 
@@ -639,6 +651,12 @@ class BountyFleetTunerImpl(
             val aiCap = Global.getSettings().getInt("maxShipsInAIFleet")
             return if (aiCap > 0) aiCap else Global.getSettings().getInt("maxShipsInFleet")
         }
+
+        fun reinforcementTargetSize(fillToFleetCap: Boolean, presetSize: Int, fleetCap: Int): Int =
+            if (fillToFleetCap) fleetCap else presetSize * 2
+
+        fun reinforcementPoolSide(fillToFleetCap: Boolean, addedAstd: Int, addedRemnant: Int): PoolSide =
+            if (fillToFleetCap) BountyPoolConfig.pickPoolSide(addedAstd, addedRemnant) else PoolSide.REMNANT
 
         fun smodCostFor(spec: HullModSpecAPI, size: ShipAPI.HullSize): Int = when (size) {
             ShipAPI.HullSize.CAPITAL_SHIP -> spec.capitalCost

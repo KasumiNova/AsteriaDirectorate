@@ -245,6 +245,24 @@ class BountyFleetTuningTest {
     }
 
     @Test
+    fun `关闭上限补齐时仅补充余晖且总规模翻倍`() {
+        assertEquals(16, BountyFleetTunerImpl.reinforcementTargetSize(false, presetSize = 8, fleetCap = 30))
+        assertEquals(40, BountyFleetTunerImpl.reinforcementTargetSize(false, presetSize = 20, fleetCap = 30))
+        val additions = List(8) { index ->
+            BountyFleetTunerImpl.reinforcementPoolSide(false, addedAstd = 0, addedRemnant = index)
+        }
+        assertEquals(List(8) { PoolSide.REMNANT }, additions)
+    }
+
+    @Test
+    fun `开启上限补齐时保留游戏上限与混编规则`() {
+        assertEquals(30, BountyFleetTunerImpl.reinforcementTargetSize(true, presetSize = 8, fleetCap = 30))
+        assertEquals(PoolSide.ASTD, BountyFleetTunerImpl.reinforcementPoolSide(true, 0, 0))
+        assertEquals(PoolSide.REMNANT, BountyFleetTunerImpl.reinforcementPoolSide(true, 1, 0))
+        assertEquals(PoolSide.ASTD, BountyFleetTunerImpl.reinforcementPoolSide(true, 1, 1))
+    }
+
+    @Test
     fun `双侧混编池覆盖全部作战舰级且池内变体均有技能表登记`() {
         val combatSizes = setOf(
             ShipAPI.HullSize.CAPITAL_SHIP,

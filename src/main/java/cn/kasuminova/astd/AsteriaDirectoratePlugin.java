@@ -56,7 +56,7 @@ public final class AsteriaDirectoratePlugin extends BaseModPlugin {
         if (LunaLibSupport.INSTANCE.isAvailable()) {
             DifficultySettingsRegistrar.INSTANCE.register();
         } else {
-            logger.info("[ASTD] 未检测到 LunaLib：难度档位与双模式免自动化点数开关不可用，全部使用默认值");
+            logger.info("[ASTD] 未检测到 LunaLib：模组设置不可用，全部使用默认值");
         }
         // 自定义贴图必须在应用加载阶段预加载，战斗或裸 getSprite 路径中加载会导致渲染异常。
         WeaponGlowLayer.INSTANCE.preloadTextures();

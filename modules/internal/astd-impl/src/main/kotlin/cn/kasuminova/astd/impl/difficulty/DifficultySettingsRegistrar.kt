@@ -1,6 +1,7 @@
 package cn.kasuminova.astd.impl.difficulty
 
 import cn.kasuminova.astd.api.AstdLog
+import cn.kasuminova.astd.impl.campaign.BountySettingsImpl
 import cn.kasuminova.astd.impl.combat.DualModeSettingsImpl
 import cn.kasuminova.astd.impl.ui.HullmodBackgroundStyleConfig
 import cn.kasuminova.astd.internal.i18n.I18n
@@ -75,6 +76,20 @@ object DifficultySettingsRegistrar {
                 "",
             )
         }
+        LunaSettings.SettingsCreator.addHeader(
+            keys.MOD_ID,
+            "astd_bounty_header",
+            I18n[category, "settings.bounty.header"],
+            "",
+        )
+        LunaSettings.SettingsCreator.addBoolean(
+            keys.MOD_ID,
+            BountySettingsImpl.FIELD_FILL_TO_FLEET_CAP,
+            I18n[category, "settings.bounty.fill_to_fleet_cap.fieldName"],
+            I18n[category, "settings.bounty.fill_to_fleet_cap.tooltip"],
+            BountySettingsImpl.DEFAULT_FILL_TO_FLEET_CAP,
+            "",
+        )
         LunaSettings.SettingsCreator.refresh()
 
         applyCurrentSettings()
@@ -108,6 +123,10 @@ object DifficultySettingsRegistrar {
         val freeAutoPoints = LunaSettings.getBoolean(keys.MOD_ID, DualModeSettingsImpl.FIELD_FREE_AUTO_POINTS)
             ?: DualModeSettingsImpl.DEFAULT_FREE_AUTO_POINTS
         DualModeSettingsImpl.applyResolvedExempt(freeAutoPoints)
+
+        val fillToFleetCap = LunaSettings.getBoolean(keys.MOD_ID, BountySettingsImpl.FIELD_FILL_TO_FLEET_CAP)
+            ?: BountySettingsImpl.DEFAULT_FILL_TO_FLEET_CAP
+        BountySettingsImpl.applyResolvedFillToFleetCap(fillToFleetCap)
 
         val bgStyleSelected = LunaSettings.getString(keys.MOD_ID, HullmodBackgroundStyleConfig.FIELD_STYLE).orEmpty()
         if (!HullmodBackgroundStyleConfig.applySelectedName(bgStyleSelected) && bgStyleSelected.isNotEmpty()) {
