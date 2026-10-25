@@ -20,7 +20,7 @@ val astdRelease: Boolean =
     providers.gradleProperty("astd.release").map(String::toBooleanStrict).orElse(false).get()
 
 val astdModVersion: String =
-    providers.gradleProperty("astd.modVersion").orElse(if (astdRelease) "0.1.0" else "1.0-SNAPSHOT").get()
+    providers.gradleProperty("astd.modVersion").orElse(if (astdRelease) "0.1.2" else "1.0-SNAPSHOT").get()
 
 version = astdModVersion
 
@@ -28,8 +28,8 @@ starsector {
     modId.set("asteria_directorate")
     deployDirName.set("ASTD")
     modName.set("Asteria Directorate")
-    author.set("Hikari_Nova")
-    description.set("Description")
+    author.set("Hikari_Nova, 五六式海猫(五六猫)")
+    description.set("高价值赏金(HVB) 扩展包，讲述着一个鼎盛强大的军工复合体在大崩塌后没落的故事。")
     gameVersion.set("0.98a")
     modPlugin.set("cn.kasuminova.astd.AsteriaDirectoratePlugin")
     dependency("lw_lazylib", "LazyLib")
