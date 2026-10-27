@@ -44,7 +44,7 @@ object Wpn_astd_starfall_echo : WeaponDataEntry(), SsJsonOutputs {
     override val ammoPerSec: Double = 0.5
     override val reloadSize: Int = 5
 
-    override val tags: String = "energy20, astd_signature"
+    override val tags: String = "energy20, no_drop, no_drop_salvage, astd_signature"
     override val groupTag: String = "astd"
     override val tech: String = "菀星设计局-星坠"
     override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
@@ -189,7 +189,7 @@ object Wpn_astd_starfall_wing : WeaponDataEntry(), SsProjProjectileOutputs {
     override val energyPerShot: Int = 1000
     override val projSpeed: Int = 1500
 
-    override val tags: String = "energy20, astd_signature"
+    override val tags: String = "energy20, no_drop, no_drop_salvage, astd_signature"
     override val groupTag: String = "astd"
     override val tech: String = "菀星设计局-星坠"
     override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
