@@ -27,6 +27,7 @@ object StoryWorldBootstrap {
         sector.addTransientScript(EventHorizonShieldScript())
         sector.addTransientScript(BountyFleetTuneScript())
         sector.addTransientScript(BountyCoreLootScript())
+        sector.addTransientScript(StorySystemRevealScript())
 
         if (!sector.memoryWithoutUpdate.getBoolean(StandardCoreCampaignPlugin.MEMORY_PLUGIN_ADDED)) {
             sector.registerPlugin(StandardCoreCampaignPlugin())
