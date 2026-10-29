@@ -5,7 +5,6 @@
   # 随机混编与舰队上限补强由 BountyFleetTunerImpl 完成。
   # target_portrait 指向模组 AI 头像池 contents/graphics/portraits/astd_portrait_core_*.png。
   "astd_bounty_rogue_1":{
-    "trigger_market_id":["astd_story_market_main_station","astd_story_market_shiguang"],
     "trigger_marketFaction_any":["independent","derelict"],
     "trigger_player_minLevel":3,
     "trigger_min_fleet_size":40,
@@ -46,7 +45,6 @@
     "location_distance":"FAR"
   },
   "astd_bounty_rogue_2":{
-    "trigger_market_id":["astd_story_market_main_station","astd_story_market_shiguang"],
     "trigger_marketFaction_any":["independent","derelict"],
     "trigger_player_minLevel":5,
     "trigger_min_fleet_size":80,
@@ -92,7 +90,6 @@
     "location_distance":"FAR"
   },
   "astd_bounty_rogue_3":{
-    "trigger_market_id":["astd_story_market_main_station","astd_story_market_shiguang"],
     "trigger_marketFaction_any":["independent","derelict"],
     "trigger_player_minLevel":7,
     "trigger_min_fleet_size":120,
@@ -138,7 +135,6 @@
     "location_distance":"FAR"
   },
   "astd_bounty_rogue_4":{
-    "trigger_market_id":["astd_story_market_main_station","astd_story_market_shiguang"],
     "trigger_marketFaction_any":["independent","derelict"],
     "trigger_player_minLevel":9,
     "trigger_min_fleet_size":160,
@@ -186,7 +182,6 @@
     "location_distance":"FAR"
   },
   "astd_bounty_rogue_5":{
-    "trigger_market_id":["astd_story_market_main_station","astd_story_market_shiguang"],
     "trigger_marketFaction_any":["independent","derelict"],
     "trigger_player_minLevel":11,
     "trigger_min_fleet_size":200,
@@ -234,7 +229,6 @@
     "location_distance":"FAR"
   },
   "astd_bounty_rogue_6":{
-    "trigger_market_id":["astd_story_market_main_station","astd_story_market_shiguang"],
     "trigger_marketFaction_any":["independent","derelict"],
     "trigger_player_minLevel":13,
     "trigger_min_fleet_size":240,
@@ -282,7 +276,6 @@
     "location_distance":"FAR"
   },
   "astd_bounty_xc_002":{
-    "trigger_market_id":["astd_story_market_main_station","astd_story_market_shiguang"],
     "trigger_marketFaction_any":["independent","derelict"],
     "trigger_player_minLevel":14,
     "trigger_min_fleet_size":250,
@@ -329,7 +322,6 @@
     "location_distance":"FAR"
   },
   "astd_bounty_zw_002":{
-    "trigger_market_id":["astd_story_market_main_station","astd_story_market_shiguang"],
     "trigger_marketFaction_any":["independent","derelict"],
     "trigger_player_minLevel":14,
     "trigger_min_fleet_size":260,
@@ -379,7 +371,6 @@
     "location_distance":"FAR"
   },
   "astd_bounty_zw_001":{
-    "trigger_market_id":["astd_story_market_main_station","astd_story_market_shiguang"],
     "trigger_marketFaction_any":["independent","derelict"],
     "trigger_player_minLevel":14,
     "trigger_min_fleet_size":260,
@@ -429,7 +420,6 @@
     "location_distance":"FAR"
   },
   "astd_bounty_xc_001":{
-    "trigger_market_id":["astd_story_market_main_station","astd_story_market_shiguang"],
     "trigger_marketFaction_any":["independent","derelict"],
     "trigger_player_minLevel":14,
     "trigger_min_fleet_size":280,
