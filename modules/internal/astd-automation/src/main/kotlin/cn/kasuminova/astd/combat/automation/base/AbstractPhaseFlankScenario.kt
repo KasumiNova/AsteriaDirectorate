@@ -212,8 +212,7 @@ abstract class AbstractPhaseFlankScenario : AbstractAutomationScenario() {
     }
 
     /**
-     * 相位对抗观测：不钉位、不清辐能、不动舰 AI，两舰满装配 AI 自由对抗，
-     * 逐帧回满双方舰体（保住对抗时长；辐能保留，相位 AI 的辐能压力链路输入保持真实）。
+     * 相位对抗观测：不钉位、不清辐能、不动舰 AI，两舰满装配 AI 自由对抗。
      */
     override fun advance(ctx: AutomationCombatContext, amount: Float) {
         val engine = ctx.engine
@@ -224,8 +223,6 @@ abstract class AbstractPhaseFlankScenario : AbstractAutomationScenario() {
 
         val player = findPfPlayer(engine)
         val enemy = findPfEnemy(engine)
-        if (player != null && !player.isHulk) player.hitpoints = player.maxHitpoints
-        if (enemy != null && !enemy.isHulk) enemy.hitpoints = enemy.maxHitpoints
         // 玩家舰身份照 GRG 范式赋予（不锁操控，AI 自由对抗）：CombatState.setPlayerShip
         // 会把舰 AI 收进 prevAI 并置空（玩家接管语义），系统 AI 挂在舰 AI 上会随之停转，
         // 必须补建默认舰 AI（config 必须空实例：传 null 会让 BasicShipAI.pickManeuver NPE）

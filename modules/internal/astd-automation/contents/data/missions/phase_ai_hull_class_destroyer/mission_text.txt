@@ -1,0 +1,1 @@
+Verify destroyer phase AI engagement behavior with real weapons and damage.

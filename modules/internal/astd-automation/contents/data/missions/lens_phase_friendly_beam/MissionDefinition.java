@@ -18,9 +18,10 @@ public final class MissionDefinition implements MissionDefinitionPlugin {
         api.setFleetTagline(FleetSide.ENEMY, "Distant dummy target cruiser");
 
         api.addToFleet(FleetSide.PLAYER, ASTDInGameAutomationScenario.PFB_VARIANT_ID, FleetMemberType.SHIP, false);
+        api.addToFleet(FleetSide.PLAYER, ASTDInGameAutomationScenario.PFB_FRIENDLY_VARIANT_ID, FleetMemberType.SHIP, false);
         api.addToFleet(FleetSide.ENEMY, ASTDInGameAutomationScenario.PFB_ENEMY_VARIANT_ID, FleetMemberType.SHIP, false);
 
-        api.addBriefingItem("Deploy shun-hua isolated and observe defensive dives against fed friendly shots.");
+        api.addBriefingItem("Deploy shun-hua + friendly wolf firing real weapons; observe defensive dives.");
 
         api.initMap(-9000f, 9000f, -6000f, 6000f);
         api.setBackgroundSpriteName("graphics/backgrounds/background2.jpg");

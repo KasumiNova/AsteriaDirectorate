@@ -101,6 +101,23 @@ object ASTDInGameAutomationScenario {
     const val PFB_VARIANT_ID: String = "astd_zw_101_Standard"
     const val PFB_ENEMY_VARIANT_ID: String = "dominator_Assault"
     const val PFB_ENEMY_HULL_ID: String = "dominator"
+    const val PFB_FRIENDLY_HULL_ID: String = "wolf"
+    const val PFB_FRIENDLY_VARIANT_ID: String = "wolf_Starting"
+
+    const val PHASE_AI_LONG_RANGE_ID: String = "phase_ai_long_range_engagement"
+    const val PHASE_AI_DEM_EVASION_ID: String = "phase_ai_dem_evasion"
+    const val PHASE_AI_BURST_PROTECTION_ID: String = "phase_ai_burst_protection"
+    const val PHASE_AI_FLANK_DAMAGE_ID: String = "phase_ai_flank_damage"
+    const val PHASE_AI_RECOVERY_ID: String = "phase_ai_recovery"
+    const val PHASE_AI_TARGET_TURN_ID: String = "phase_ai_target_turn"
+    const val PHASE_AI_MULTI_ENEMY_ID: String = "phase_ai_multi_enemy"
+    const val PHASE_AI_SEED_1_ID: String = "phase_ai_seed_1"
+    const val PHASE_AI_SEED_2_ID: String = "phase_ai_seed_2"
+    const val PHASE_AI_SEED_3_ID: String = "phase_ai_seed_3"
+    const val PHASE_AI_SEED_4_ID: String = "phase_ai_seed_4"
+    const val PHASE_AI_SEED_5_ID: String = "phase_ai_seed_5"
+    const val PHASE_AI_SEED_6_ID: String = "phase_ai_seed_6"
+
     const val SHIP_ID: String = "astd_xc_001"
     const val VARIANT_ID: String = "astd_xc_001_Standard"
     const val WEAPON_ID: String = "astd_starfall_echo"
@@ -278,6 +295,26 @@ object ASTDInGameAutomationScenario {
         val scenario = System.getProperty(SCENARIO_PROPERTY, SCENARIO_ID)
         return enabled && scenario == PFB_SCENARIO_ID
     }
+
+    private fun isScenarioEnabled(id: String): Boolean {
+        val enabled = System.getProperty(ENABLED_PROPERTY)?.equals("true", ignoreCase = true) == true
+        val scenario = System.getProperty(SCENARIO_PROPERTY, SCENARIO_ID)
+        return enabled && scenario == id
+    }
+
+    fun isPhaseAiLongRangeEnabled(): Boolean = isScenarioEnabled(PHASE_AI_LONG_RANGE_ID)
+    fun isPhaseAiDemEvasionEnabled(): Boolean = isScenarioEnabled(PHASE_AI_DEM_EVASION_ID)
+    fun isPhaseAiBurstProtectionEnabled(): Boolean = isScenarioEnabled(PHASE_AI_BURST_PROTECTION_ID)
+    fun isPhaseAiFlankDamageEnabled(): Boolean = isScenarioEnabled(PHASE_AI_FLANK_DAMAGE_ID)
+    fun isPhaseAiRecoveryEnabled(): Boolean = isScenarioEnabled(PHASE_AI_RECOVERY_ID)
+    fun isPhaseAiTargetTurnEnabled(): Boolean = isScenarioEnabled(PHASE_AI_TARGET_TURN_ID)
+    fun isPhaseAiMultiEnemyEnabled(): Boolean = isScenarioEnabled(PHASE_AI_MULTI_ENEMY_ID)
+    fun isPhaseAiSeed1Enabled(): Boolean = isScenarioEnabled(PHASE_AI_SEED_1_ID)
+    fun isPhaseAiSeed2Enabled(): Boolean = isScenarioEnabled(PHASE_AI_SEED_2_ID)
+    fun isPhaseAiSeed3Enabled(): Boolean = isScenarioEnabled(PHASE_AI_SEED_3_ID)
+    fun isPhaseAiSeed4Enabled(): Boolean = isScenarioEnabled(PHASE_AI_SEED_4_ID)
+    fun isPhaseAiSeed5Enabled(): Boolean = isScenarioEnabled(PHASE_AI_SEED_5_ID)
+    fun isPhaseAiSeed6Enabled(): Boolean = isScenarioEnabled(PHASE_AI_SEED_6_ID)
 
     fun outputDir(): Path {
         val explicit = System.getProperty(OUTPUT_DIR_PROPERTY)?.takeIf { it.isNotBlank() }

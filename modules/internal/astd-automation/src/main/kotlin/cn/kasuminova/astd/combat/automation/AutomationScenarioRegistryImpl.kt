@@ -25,6 +25,24 @@ import cn.kasuminova.astd.combat.automation.scenario.system.PhaseFlankScenario
 import cn.kasuminova.astd.combat.automation.scenario.system.PhaseFlankZw002Scenario
 import cn.kasuminova.astd.combat.automation.scenario.system.PhaseFlankZw103Scenario
 import cn.kasuminova.astd.combat.automation.scenario.system.PhaseFriendlyBeamScenario
+import cn.kasuminova.astd.combat.automation.scenario.system.phaseai.PhaseAiBurstProtectionScenario
+import cn.kasuminova.astd.combat.automation.scenario.system.phaseai.PhaseAiDemEvasionScenario
+import cn.kasuminova.astd.combat.automation.scenario.system.phaseai.PhaseAiFlankDamageScenario
+import cn.kasuminova.astd.combat.automation.scenario.system.phaseai.PhaseAiLongRangeScenario
+import cn.kasuminova.astd.combat.automation.scenario.system.phaseai.PhaseAiMultiEnemyScenario
+import cn.kasuminova.astd.combat.automation.scenario.system.phaseai.PhaseAiRecoveryScenario
+import cn.kasuminova.astd.combat.automation.scenario.system.phaseai.PhaseAiTargetTurnScenario
+import cn.kasuminova.astd.combat.automation.scenario.system.phaseai.PhaseAiSeed1Scenario
+import cn.kasuminova.astd.combat.automation.scenario.system.phaseai.PhaseAiSeed2Scenario
+import cn.kasuminova.astd.combat.automation.scenario.system.phaseai.PhaseAiSeed3Scenario
+import cn.kasuminova.astd.combat.automation.scenario.system.phaseai.PhaseAiSeed4Scenario
+import cn.kasuminova.astd.combat.automation.scenario.system.phaseai.PhaseAiSeed5Scenario
+import cn.kasuminova.astd.combat.automation.scenario.system.phaseai.PhaseAiSeed6Scenario
+import cn.kasuminova.astd.combat.automation.scenario.system.phaseai.PhaseAiCooldownScenario
+import cn.kasuminova.astd.combat.automation.scenario.system.phaseai.PhaseAiEnemyWindowScenario
+import cn.kasuminova.astd.combat.automation.scenario.system.phaseai.PhaseAiHullClassDestroyerScenario
+import cn.kasuminova.astd.combat.automation.scenario.system.phaseai.PhaseAiHullClassCruiserScenario
+import cn.kasuminova.astd.combat.automation.scenario.system.phaseai.PhaseAiHullClassCarrierScenario
 import cn.kasuminova.astd.combat.automation.scenario.xc.RiftShiftScenario
 import cn.kasuminova.astd.combat.automation.scenario.xc.StarfallEchoScenario
 import cn.kasuminova.astd.combat.automation.scenario.xc.TrailPauseProbeScenario
@@ -50,6 +68,24 @@ class AutomationScenarioRegistryImpl : AutomationScenarioRegistry {
         PhaseFlankControlScenario(),
         PhaseFlankBrilliantScenario(),
         PhaseFriendlyBeamScenario(),
+        PhaseAiLongRangeScenario(),
+        PhaseAiDemEvasionScenario(),
+        PhaseAiBurstProtectionScenario(),
+        PhaseAiFlankDamageScenario(),
+        PhaseAiRecoveryScenario(),
+        PhaseAiTargetTurnScenario(),
+        PhaseAiMultiEnemyScenario(),
+        PhaseAiSeed1Scenario(),
+        PhaseAiSeed2Scenario(),
+        PhaseAiSeed3Scenario(),
+        PhaseAiSeed4Scenario(),
+        PhaseAiSeed5Scenario(),
+        PhaseAiSeed6Scenario(),
+        PhaseAiCooldownScenario(),
+        PhaseAiEnemyWindowScenario(),
+        PhaseAiHullClassDestroyerScenario(),
+        PhaseAiHullClassCruiserScenario(),
+        PhaseAiHullClassCarrierScenario(),
         RiftShiftScenario(),
         TrailPauseProbeScenario(),
         PiercingLanceScenario(),

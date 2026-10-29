@@ -420,6 +420,15 @@ if [[ "$MODE" == "campaign-acceptance" ]]; then
     fi
 fi
 
+if [[ "$MODE" == "automation" ]]; then
+    if grep -q "\"scenario\": \"${AUTOMATION_SCENARIO}\".*\"state\": \"Completed\"" "$LOG_FILE" 2>/dev/null; then
+        echo "OK: ASTD automation completed scenario=${AUTOMATION_SCENARIO}"
+    else
+        echo "FAIL: ASTD automation did not complete scenario=${AUTOMATION_SCENARIO}"
+        PASS=false
+    fi
+fi
+
 echo ""
 if $PASS; then
     echo "=== Smoke Test PASSED ==="

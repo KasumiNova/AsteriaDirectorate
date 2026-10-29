@@ -1,0 +1,1 @@
+Verify that phase cooldown advances real weapon volleys and produces effective damage.

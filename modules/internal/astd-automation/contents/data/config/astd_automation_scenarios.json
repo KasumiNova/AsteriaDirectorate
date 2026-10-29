@@ -441,10 +441,12 @@
       "missionId": "lens_phase_friendly_beam",
       "shipIds": [
         "astd_zw_101",
+        "wolf",
         "dominator"
       ],
       "variantIds": [
         "astd_zw_101_Standard",
+        "wolf_Starting",
         "dominator_Assault"
       ],
       "systemId": "astd_gravity_phase",
@@ -453,7 +455,536 @@
         "pfbFeedCount",
         "pfbDiveHits",
         "pfbDiveTotal",
-        "pfbCombatSeconds"
+        "pfbCombatSeconds",
+        "pfbLastProjectileSeenAt"
+      ]
+    },
+    {
+      "id": "phase_ai_long_range_engagement",
+      "missionId": "phase_ai_long_range_engagement",
+      "shipIds": [
+        "astd_zw_101",
+        "dominator"
+      ],
+      "variantIds": [
+        "astd_zw_101_Standard",
+        "dominator_Assault"
+      ],
+      "systemId": "astd_gravity_phase",
+      "requiredEvidence": [
+        "paiPhase",
+        "paiDiagnosticsHealthy",
+        "paiDeploymentCount",
+        "paiPlayerHullDamage",
+        "paiPlayerFireCount",
+        "paiTotalEnemyHpDrop",
+        "paiDiveCount",
+        "paiSurfaceCount",
+        "paiCombatSeconds"
+      ]
+    },
+    {
+      "id": "phase_ai_dem_evasion",
+      "missionId": "phase_ai_dem_evasion",
+      "shipIds": [
+        "astd_zw_101",
+        "conquest"
+      ],
+      "variantIds": [
+        "astd_zw_101_Standard",
+        "astd_test_conquest_dem"
+      ],
+      "systemId": "astd_gravity_phase",
+      "requiredEvidence": [
+        "paiPhase",
+        "paiDiagnosticsHealthy",
+        "paiDeploymentCount",
+        "paiPlayerHullDamage",
+        "paiPlayerFireCount",
+        "paiTotalEnemyHpDrop",
+        "paiDiveCount",
+        "demThreatCount",
+        "demValidSequenceCount",
+        "paiCombatSeconds"
+      ]
+    },
+    {
+      "id": "phase_ai_burst_protection",
+      "missionId": "phase_ai_burst_protection",
+      "shipIds": [
+        "astd_zw_101",
+        "dominator"
+      ],
+      "variantIds": [
+        "astd_zw_101_Standard",
+        "dominator_Assault"
+      ],
+      "systemId": "astd_gravity_phase",
+      "requiredEvidence": [
+        "paiPhase",
+        "paiDiagnosticsHealthy",
+        "paiDeploymentCount",
+        "paiPlayerHullDamage",
+        "paiPlayerFireCount",
+        "paiTotalEnemyHpDrop",
+        "paiBurstInterruptionCount",
+        "paiDiveCount",
+        "paiCombatSeconds"
+      ]
+    },
+    {
+      "id": "phase_ai_flank_damage",
+      "missionId": "phase_ai_flank_damage",
+      "shipIds": [
+        "astd_zw_101",
+        "dominator"
+      ],
+      "variantIds": [
+        "astd_zw_101_Standard",
+        "dominator_Assault"
+      ],
+      "systemId": "astd_gravity_phase",
+      "requiredEvidence": [
+        "paiPhase",
+        "paiDiagnosticsHealthy",
+        "paiDeploymentCount",
+        "paiPlayerHullDamage",
+        "paiPlayerFireCount",
+        "paiTotalEnemyHpDrop",
+        "paiCompletedRoutes",
+        "paiSurfaceFireWithinWindowCount",
+        "paiCombatSeconds"
+      ]
+    },
+    {
+      "id": "phase_ai_recovery",
+      "missionId": "phase_ai_recovery",
+      "shipIds": [
+        "astd_zw_101",
+        "dominator"
+      ],
+      "variantIds": [
+        "astd_zw_101_Standard",
+        "dominator_Assault"
+      ],
+      "systemId": "astd_gravity_phase",
+      "requiredEvidence": [
+        "paiPhase",
+        "paiDiagnosticsHealthy",
+        "paiDeploymentCount",
+        "paiPlayerHullDamage",
+        "paiHardFluxPeak",
+        "paiRecoveryLateralDisplacement",
+        "hardFluxPeakRatio",
+        "recoveryPhasesCount",
+        "paiCombatSeconds"
+      ]
+    },
+    {
+      "id": "phase_ai_target_turn",
+      "missionId": "phase_ai_target_turn",
+      "shipIds": [
+        "astd_zw_101",
+        "dominator"
+      ],
+      "variantIds": [
+        "astd_zw_101_Standard",
+        "dominator_Assault"
+      ],
+      "systemId": "astd_gravity_phase",
+      "requiredEvidence": [
+        "paiPhase",
+        "paiDiagnosticsHealthy",
+        "paiDeploymentCount",
+        "paiPlayerHullDamage",
+        "paiPlayerFireCount",
+        "paiTotalEnemyHpDrop",
+        "paiMaxRouteReplans",
+        "paiCombatSeconds"
+      ]
+    },
+    {
+      "id": "phase_ai_multi_enemy",
+      "missionId": "phase_ai_multi_enemy",
+      "shipIds": [
+        "astd_zw_101",
+        "wolf",
+        "dominator",
+        "eagle"
+      ],
+      "variantIds": [
+        "astd_zw_101_Standard",
+        "wolf_Starting",
+        "dominator_Assault",
+        "eagle_Assault"
+      ],
+      "systemId": "astd_gravity_phase",
+      "requiredEvidence": [
+        "paiPhase",
+        "paiDiagnosticsHealthy",
+        "paiDeploymentCount",
+        "paiPlayerHullDamage",
+        "paiPlayerFireCount",
+        "paiTotalEnemyHpDrop",
+        "paiDiveCount",
+        "paiCombatSeconds"
+      ]
+    },
+    {
+      "id": "phase_ai_seed_1",
+      "missionId": "phase_ai_seed_1",
+      "shipIds": [
+        "astd_zw_101",
+        "astd_zw_002",
+        "astd_zw_103",
+        "dominator",
+        "conquest",
+        "hammerhead",
+        "eagle"
+      ],
+      "variantIds": [
+        "astd_zw_101_Standard",
+        "astd_zw_002_Standard",
+        "astd_zw_103_Standard",
+        "dominator_Assault",
+        "conquest_Standard",
+        "hammerhead_Balanced",
+        "eagle_Assault"
+      ],
+      "systemId": "astd_gravity_phase",
+      "requiredEvidence": [
+        "paiPhase",
+        "paiDiagnosticsHealthy",
+        "paiDeploymentCount",
+        "paiPlayerHullDamage",
+        "paiPlayerFireCount",
+        "paiTotalEnemyHpDrop",
+        "paiDiveCount",
+        "seedValue",
+        "seedPlayerHullId",
+        "seedEnemyHullId",
+        "seedDistance",
+        "seedBearingDeg",
+        "seedEnemyCount",
+        "seedLongestPhaseSec",
+        "paiCombatSeconds"
+      ]
+    },
+    {
+      "id": "phase_ai_seed_2",
+      "missionId": "phase_ai_seed_2",
+      "shipIds": [
+        "astd_zw_101",
+        "astd_zw_002",
+        "astd_zw_103",
+        "dominator",
+        "conquest",
+        "hammerhead",
+        "eagle"
+      ],
+      "variantIds": [
+        "astd_zw_101_Standard",
+        "astd_zw_002_Standard",
+        "astd_zw_103_Standard",
+        "dominator_Assault",
+        "conquest_Standard",
+        "hammerhead_Balanced",
+        "eagle_Assault"
+      ],
+      "systemId": "astd_gravity_phase",
+      "requiredEvidence": [
+        "paiPhase",
+        "paiDiagnosticsHealthy",
+        "paiDeploymentCount",
+        "paiPlayerHullDamage",
+        "paiPlayerFireCount",
+        "paiTotalEnemyHpDrop",
+        "paiDiveCount",
+        "seedValue",
+        "seedPlayerHullId",
+        "seedEnemyHullId",
+        "seedDistance",
+        "seedBearingDeg",
+        "seedEnemyCount",
+        "seedLongestPhaseSec",
+        "paiCombatSeconds"
+      ]
+    },
+    {
+      "id": "phase_ai_seed_3",
+      "missionId": "phase_ai_seed_3",
+      "shipIds": [
+        "astd_zw_101",
+        "astd_zw_002",
+        "astd_zw_103",
+        "dominator",
+        "conquest",
+        "hammerhead",
+        "eagle"
+      ],
+      "variantIds": [
+        "astd_zw_101_Standard",
+        "astd_zw_002_Standard",
+        "astd_zw_103_Standard",
+        "dominator_Assault",
+        "conquest_Standard",
+        "hammerhead_Balanced",
+        "eagle_Assault"
+      ],
+      "systemId": "astd_gravity_phase",
+      "requiredEvidence": [
+        "paiPhase",
+        "paiDiagnosticsHealthy",
+        "paiDeploymentCount",
+        "paiPlayerHullDamage",
+        "paiPlayerFireCount",
+        "paiTotalEnemyHpDrop",
+        "paiDiveCount",
+        "seedValue",
+        "seedPlayerHullId",
+        "seedEnemyHullId",
+        "seedDistance",
+        "seedBearingDeg",
+        "seedEnemyCount",
+        "seedLongestPhaseSec",
+        "paiCombatSeconds"
+      ]
+    },
+    {
+      "id": "phase_ai_seed_4",
+      "missionId": "phase_ai_seed_4",
+      "shipIds": [
+        "astd_zw_101",
+        "astd_zw_002",
+        "astd_zw_103",
+        "dominator",
+        "conquest",
+        "hammerhead",
+        "eagle"
+      ],
+      "variantIds": [
+        "astd_zw_101_Standard",
+        "astd_zw_002_Standard",
+        "astd_zw_103_Standard",
+        "dominator_Assault",
+        "conquest_Standard",
+        "hammerhead_Balanced",
+        "eagle_Assault"
+      ],
+      "systemId": "astd_gravity_phase",
+      "requiredEvidence": [
+        "paiPhase",
+        "paiDiagnosticsHealthy",
+        "paiDeploymentCount",
+        "paiPlayerHullDamage",
+        "paiPlayerFireCount",
+        "paiTotalEnemyHpDrop",
+        "paiDiveCount",
+        "seedValue",
+        "seedPlayerHullId",
+        "seedEnemyHullId",
+        "seedDistance",
+        "seedBearingDeg",
+        "seedEnemyCount",
+        "seedLongestPhaseSec",
+        "paiCombatSeconds"
+      ]
+    },
+    {
+      "id": "phase_ai_seed_5",
+      "missionId": "phase_ai_seed_5",
+      "shipIds": [
+        "astd_zw_101",
+        "astd_zw_002",
+        "astd_zw_103",
+        "dominator",
+        "conquest",
+        "hammerhead",
+        "eagle"
+      ],
+      "variantIds": [
+        "astd_zw_101_Standard",
+        "astd_zw_002_Standard",
+        "astd_zw_103_Standard",
+        "dominator_Assault",
+        "conquest_Standard",
+        "hammerhead_Balanced",
+        "eagle_Assault"
+      ],
+      "systemId": "astd_gravity_phase",
+      "requiredEvidence": [
+        "paiPhase",
+        "paiDiagnosticsHealthy",
+        "paiDeploymentCount",
+        "paiPlayerHullDamage",
+        "paiPlayerFireCount",
+        "paiTotalEnemyHpDrop",
+        "paiDiveCount",
+        "seedValue",
+        "seedPlayerHullId",
+        "seedEnemyHullId",
+        "seedDistance",
+        "seedBearingDeg",
+        "seedEnemyCount",
+        "seedLongestPhaseSec",
+        "paiCombatSeconds"
+      ]
+    },
+    {
+      "id": "phase_ai_seed_6",
+      "missionId": "phase_ai_seed_6",
+      "shipIds": [
+        "astd_zw_101",
+        "astd_zw_002",
+        "astd_zw_103",
+        "dominator",
+        "conquest",
+        "hammerhead",
+        "eagle"
+      ],
+      "variantIds": [
+        "astd_zw_101_Standard",
+        "astd_zw_002_Standard",
+        "astd_zw_103_Standard",
+        "dominator_Assault",
+        "conquest_Standard",
+        "hammerhead_Balanced",
+        "eagle_Assault"
+      ],
+      "systemId": "astd_gravity_phase",
+      "requiredEvidence": [
+        "paiPhase",
+        "paiDiagnosticsHealthy",
+        "paiDeploymentCount",
+        "paiPlayerHullDamage",
+        "paiPlayerFireCount",
+        "paiTotalEnemyHpDrop",
+        "paiDiveCount",
+        "seedValue",
+        "seedPlayerHullId",
+        "seedEnemyHullId",
+        "seedDistance",
+        "seedBearingDeg",
+        "seedEnemyCount",
+        "seedLongestPhaseSec",
+        "paiCombatSeconds"
+      ]
+    },
+    {
+      "id": "phase_ai_cooldown",
+      "missionId": "phase_ai_cooldown",
+      "shipIds": [
+        "astd_zw_101",
+        "dominator"
+      ],
+      "variantIds": [
+        "astd_zw_101_Standard",
+        "dominator_Assault"
+      ],
+      "systemId": "astd_gravity_phase",
+      "requiredEvidence": [
+        "paiPhase",
+        "paiDiagnosticsHealthy",
+        "paiDeploymentCount",
+        "paiPlayerFireCount",
+        "paiTotalEnemyHpDrop",
+        "paiDiveCount",
+        "paiSurfaceCount",
+        "cooldownSequencesFound",
+        "paiCombatSeconds"
+      ]
+    },
+    {
+      "id": "phase_ai_enemy_window",
+      "missionId": "phase_ai_enemy_window",
+      "shipIds": [
+        "astd_zw_101",
+        "dominator"
+      ],
+      "variantIds": [
+        "astd_zw_101_Standard",
+        "dominator_Assault"
+      ],
+      "systemId": "astd_gravity_phase",
+      "requiredEvidence": [
+        "paiPhase",
+        "paiDiagnosticsHealthy",
+        "paiDeploymentCount",
+        "paiPlayerFireCount",
+        "paiTotalEnemyHpDrop",
+        "enemyOverloadCount",
+        "enemyVentCount",
+        "windowAttackCount",
+        "paiCombatSeconds"
+      ]
+    },
+    {
+      "id": "phase_ai_hull_class_destroyer",
+      "missionId": "phase_ai_hull_class_destroyer",
+      "shipIds": [
+        "astd_zw_101",
+        "hammerhead"
+      ],
+      "variantIds": [
+        "astd_zw_101_Standard",
+        "hammerhead_Balanced"
+      ],
+      "systemId": "astd_gravity_phase",
+      "requiredEvidence": [
+        "paiPhase",
+        "paiDiagnosticsHealthy",
+        "paiDeploymentCount",
+        "paiPlayerFireCount",
+        "paiTotalEnemyHpDrop",
+        "destroyerFireCount",
+        "destroyerAvgRange",
+        "paiCombatSeconds"
+      ]
+    },
+    {
+      "id": "phase_ai_hull_class_cruiser",
+      "missionId": "phase_ai_hull_class_cruiser",
+      "shipIds": [
+        "astd_zw_002",
+        "eagle"
+      ],
+      "variantIds": [
+        "astd_zw_002_Standard",
+        "eagle_Assault"
+      ],
+      "systemId": "astd_gravity_phase",
+      "requiredEvidence": [
+        "paiPhase",
+        "paiDiagnosticsHealthy",
+        "paiDeploymentCount",
+        "paiPlayerFireCount",
+        "paiTotalEnemyHpDrop",
+        "cruiserFireCount",
+        "cruiserAvgRange",
+        "paiCombatSeconds"
+      ]
+    },
+    {
+      "id": "phase_ai_hull_class_carrier",
+      "missionId": "phase_ai_hull_class_carrier",
+      "shipIds": [
+        "astd_zw_103",
+        "dominator"
+      ],
+      "variantIds": [
+        "astd_zw_103_Standard",
+        "dominator_Assault"
+      ],
+      "systemId": "astd_gravity_phase",
+      "requiredEvidence": [
+        "paiPhase",
+        "paiDiagnosticsHealthy",
+        "paiDeploymentCount",
+        "paiPlayerFireCount",
+        "paiTotalEnemyHpDrop",
+        "carrierFireCount",
+        "carrierAvgRange",
+        "paiCombatSeconds"
       ]
     }
   ]
