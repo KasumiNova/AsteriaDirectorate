@@ -3,9 +3,11 @@ package cn.kasuminova.astd.combat.effect.arc
 import cn.kasuminova.astd.api.difficulty.DifficultyTuning
 import cn.kasuminova.astd.api.difficulty.ScalingEntry
 import cn.kasuminova.astd.combat.effect.arc.eda.ElectricDriveAcceleratorDifficulty
+import cn.kasuminova.astd.combat.effect.arc.eda.ElectricDriveAcceleratorRangeModifier
 import cn.kasuminova.astd.combat.effect.arc.eda.ElectricDriveChargeState
 import cn.kasuminova.astd.impl.buff.stubShip
 import cn.kasuminova.astd.impl.buff.stubWeapon
+import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import org.mockito.Mockito.`when`
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -92,5 +94,38 @@ class ElectricDriveAcceleratorLogicTest {
         val hulkShip = stubShip(hulk = true)
         `when`(hulkShip.isAlive).thenReturn(false)
         assertFalse(ElectricDriveChargeState(hulkShip, weapon, 1L).isHostValid())
+    }
+
+    @Test
+    fun `用例8 射程监听器仅同类武器生效且随辐能衰减`() {
+        DifficultyTuningImpl.installPlayerScaleForTests(2f)
+        try {
+            val modifier = ElectricDriveAcceleratorRangeModifier()
+            val ship = stubShip()
+            `when`(ship.owner).thenReturn(0)
+            `when`(ship.fluxLevel).thenReturn(0.1f)
+            val eda = stubWeapon("WS 001", ElectricDriveChargeState.WEAPON_ID)
+            val other = stubWeapon("WS 002", "astd_other_weapon")
+
+            // 同类武器获得加成（玩家 v2 档 200 × 满额衰减系数），异类武器归零
+            assertEquals(200f, modifier.getWeaponRangeFlatMod(ship, eda), 1e-4f)
+            assertEquals(0f, modifier.getWeaponRangeFlatMod(ship, other), 1e-6f)
+            // percent/mult 通道恒为中性值
+            assertEquals(0f, modifier.getWeaponRangePercentMod(ship, eda), 1e-6f)
+            assertEquals(1f, modifier.getWeaponRangeMultMod(ship, eda), 1e-6f)
+
+            // 辐能过半衰减
+            `when`(ship.fluxLevel).thenReturn(0.3f)
+            assertEquals(100f, modifier.getWeaponRangeFlatMod(ship, eda), 1e-4f)
+            // NaN 防线
+            `when`(ship.fluxLevel).thenReturn(Float.NaN)
+            assertEquals(0f, modifier.getWeaponRangeFlatMod(ship, eda), 1e-6f)
+
+            // hulk 不加成
+            val hulk = stubShip(hulk = true)
+            assertEquals(0f, modifier.getWeaponRangeFlatMod(hulk, eda), 1e-6f)
+        } finally {
+            DifficultyTuningImpl.installPlayerScaleForTests(null)
+        }
     }
 }

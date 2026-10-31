@@ -1,5 +1,11 @@
 # 电驱加速炮 逐件实现规格 v1（待评审）
 
+> **修订注记（2026-11-01）**：净空加速射程加成改走 `WeaponRangeModifier` 监听器
+> （`ElectricDriveAcceleratorRangeModifier`，由 WeaponEffect 按舰注册），
+> 原版 `Weapon.getRange()` 每次实时重算并咨询监听器，加成随辐能动态伸缩且仅作用于同类武器；
+> §2.3 登记的「全舰实弹共享 + 无 dispose 残留」副作用随之消解。
+> 监听器无状态，hulk/异类武器/NaN 辐能均返回 0。
+
 > **修订注记（2026-09-19 二轮）**：面板数值已调整为，射程 750、单发伤害 120、单发辐能 140、
 > 备弹 32、burst size 2（`.wpn` 双管 ALTERNATING 交替射击，每触发 2 弹）、burst delay 0.1s、
 > chargedown 0.3s、damage/second 600、energy/second 700（连发周期 0.4s 推导规则）；
@@ -294,7 +300,7 @@ override fun advance(amount, engine, weapon) {
 }
 ```
 
-**已知副作用（照 90 计划 §3.6 风险 7 登记，不掩饰）**：`ballisticWeaponRangeBonus` 是舰体乘区，加成作用于**全舰实弹武器**；且 `EveryFrameWeaponEffectPlugin` 无 dispose 钩子，战斗内卸载武器后 modifier 残留至本场结束。无 `WeaponAPI.setRange`（javap 全表核实）；`WeaponSpecAPI.setMaxRange` 存在但改的是加载期共享 spec（全场同型武器一起变），**禁用**。代码注释中写明该限制。**本项风险列入待处理清单（2026-07-29 审批确认）：任务完成时明确注明，十组全部完成后单独解决，不在本分支内处置。**
+**已知副作用（2026-11-01 已解决）**：原实现走舰体乘区 `ballisticWeaponRangeBonus`，加成作用于**全舰实弹武器**且 modifier 残留；现改走 `WeaponRangeModifier` 监听器按武器结算（仅 `astd_electric_drive_accelerator` 受益），射程查询时实时求值，无残留。`WeaponSpecAPI.setMaxRange` 改的是加载期共享 spec（全场同型武器一起变），**仍禁用**。
 
 **状态机**：`ElectricDriveChargeState : Buff`，`lifetime = HOST_BOUND`；`isHostValid()` = `engine.isEntityInPlay(ship) && ship.isAlive && weapon.spec.weaponId == WEAPON_ID`（换装回收对齐 00 §6）；`advance/onRemove` 默认空实现（无衰减语义，纯载体）；`nextCallIndex()` 单调递增不复位。
 
