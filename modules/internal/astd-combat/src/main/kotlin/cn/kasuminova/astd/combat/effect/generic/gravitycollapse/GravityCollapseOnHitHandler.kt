@@ -5,6 +5,7 @@ import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BeamAPI
+import com.fs.starfarer.api.combat.CollisionClass
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEntityAPI
 import com.fs.starfarer.api.combat.DamageType
@@ -98,6 +99,11 @@ internal class GravityCollapseOnHitHandler(
         val source = weapon.ship
         val owner = source?.owner
         val radius = config.aoeRadius.coerceAtLeast(1f)
+        // 战机挂载光束（RAY_FIGHTER/NONE 碰撞类）穿透友军，AOE 同样不结算友军，与原版碰撞矩阵一致。
+        val beamCollisionClass = weapon.projectileCollisionClass
+        val pierceAllies = !config.affectAlliesAndNeutral ||
+                beamCollisionClass == CollisionClass.RAY_FIGHTER ||
+                beamCollisionClass == CollisionClass.NONE
 
         if (config.affectNonShips) {
             val entities = CombatUtils.getEntitiesWithinRange(point, radius)
@@ -108,7 +114,7 @@ internal class GravityCollapseOnHitHandler(
                 // 对飞行中的非导弹射弹 applyDamage 会触发其 onHit 链路，直接跳过。
                 if (other is DamagingProjectileAPI && other !is MissileAPI) continue
 
-                if (!config.affectAlliesAndNeutral && owner != null) {
+                if (pierceAllies && owner != null) {
                     val otherOwner = other.owner
                     if (otherOwner == owner) continue
                 }
@@ -131,7 +137,7 @@ internal class GravityCollapseOnHitHandler(
         } else {
             for (other in engine.ships) {
                 if (source != null && other === source) continue
-                if (!config.affectAlliesAndNeutral && owner != null && other.owner == owner) continue
+                if (pierceAllies && owner != null && other.owner == owner) continue
                 if (other.isHulk && !config.affectHulks) continue
 
                 val distToHull = (MathUtils.getDistance(point, other.location) - other.collisionRadius).coerceAtLeast(0f)

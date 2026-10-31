@@ -7,10 +7,11 @@ import cn.kasuminova.astd.renderer.beam.driver.BeamVfxDriver
 import cn.kasuminova.astd.renderer.beam.driver.BeamVfxDriverImpl
 import cn.kasuminova.astd.renderer.beam.driver.BeamVfxSpecs
 import cn.kasuminova.astd.renderer.effect.projectile.beam.BeamLineUtil
+import cn.kasuminova.astd.renderer.effect.projectile.beam.BeamVisualClipper
+import com.fs.starfarer.api.combat.BeamAPI
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.EveryFrameWeaponEffectPlugin
 import com.fs.starfarer.api.combat.WeaponAPI
-import org.lazywizard.lazylib.MathUtils
 import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
 
@@ -45,8 +46,9 @@ class GravityCollapseBeamEveryFrameEffect : EveryFrameWeaponEffectPlugin {
 
     private var lastChargeLevel: Float = 0f
 
-    // charge-up 期间原版 beam 仍会造成伤害（即使渲染被隐藏），充能阶段必须临时把 weapon/beam 的 damage 置 0，离开后恢复。
-    private var suppressedWeaponDamage: Float? = null
+    // 原版 beam 伤害在整个充能-发射-淡出周期内全部抑制（坍缩 AOE 为唯一伤害来源），仅在完全静默时恢复。
+    // BeamWeaponRay 的伤害按帧结算，advance 先于武器推进与碰撞执行，此处置 0 即覆盖本帧。
+    private val damageSuppressor = GravityCollapseDamageSuppressor()
 
     private fun ensureInit(weaponId: String) {
         if (initedForWeaponId == weaponId) return
@@ -167,20 +169,16 @@ class GravityCollapseBeamEveryFrameEffect : EveryFrameWeaponEffectPlugin {
         }.coerceAtLeast(0f)
 
         if (beam != null && chargeLevel >= 0.999f && beamBrightness > 0.05f) {
-            restoreVanillaDamageIfNeeded(weapon)
-            val line = BeamLineUtil.fromBeamOrWeapon(weapon, beam)
-            if (line != null) {
-                val blockedTo = GravityCollapsePhaseBeamBlocker.findNearestBlockPoint(
-                    engine, line.from, line.to, weapon.ship,
-                )
-                val effectiveLine = if (blockedTo != null) {
-                    line.copy(
-                        to = blockedTo,
-                        length = MathUtils.getDistance(line.from, blockedTo),
-                    )
-                } else {
-                    line
-                }
+            suppressVanillaDamage(weapon, beam)
+            // 原版光束无视相位舰；自绘束体与坍缩 AOE 以相位舰为遮挡。原版 beam 本体伤害已全周期抑制。
+            // 碰撞类别随原版 beam（战机挂载为 RAY_FIGHTER，仅与敌方碰撞）：此时友军不遮挡、不受 AOE。
+            val effectiveLine = try {
+                BeamVisualClipper.resolve(engine, weapon, phasedShipsBlock = true, beamCollisionClass = weapon.projectileCollisionClass)
+            } catch (t: Throwable) {
+                warnOnce("BeamVisualClipper.resolve", t)
+                null
+            }
+            if (effectiveLine != null) {
                 lastLine = effectiveLine
 
                 if (!beamStarted) {
@@ -197,8 +195,9 @@ class GravityCollapseBeamEveryFrameEffect : EveryFrameWeaponEffectPlugin {
                 driveBeam(engine, effectiveLine, amount, reach = reach, fadeMul = 1f)
 
                 // 原版 burstDamage = dps × ((chargeup + chargedown) × 0.333 + burstDuration)（WeaponSpreadsheetLoader 公式）；非爆发光束回退 dps。
+                // 面板伤害读压制前的原始值（压制后 weapon.damage.damage 恒为 0）。
                 val panelDamage = try {
-                    val dps = weapon.damage?.damage ?: 0f
+                    val dps = damageSuppressor.originalDamageOf(weapon) ?: (weapon.damage?.damage ?: 0f)
                     val ws = weapon.spec
                     if (ws != null && ws.burstDuration > 0f) {
                         dps * ((ws.beamChargeupTime + ws.beamChargedownTime) * 0.333f + ws.burstDuration)
@@ -217,7 +216,7 @@ class GravityCollapseBeamEveryFrameEffect : EveryFrameWeaponEffectPlugin {
 
         // cooldown 期间 chargeLevel 也可能处于 (0,1)，淡出判断必须先于充能判断。
         if (beamStarted) {
-            restoreVanillaDamageIfNeeded(weapon)
+            suppressVanillaDamage(weapon, beam)
             val line = lastLine
             val fs = fadeStartedAt ?: run {
                 fadeStartedAt = now
@@ -238,6 +237,7 @@ class GravityCollapseBeamEveryFrameEffect : EveryFrameWeaponEffectPlugin {
                 beamDriver?.dispose()
                 beamDriver = null
                 hit.reset()
+                restoreVanillaDamageIfNeeded(weapon)
             }
 
             lastChargeLevel = chargeLevel
@@ -246,7 +246,7 @@ class GravityCollapseBeamEveryFrameEffect : EveryFrameWeaponEffectPlugin {
 
         val isCharging = cooldownRemaining <= 0.01f && chargeLevel > 0.001f && chargeLevel < 0.999f
         if (isCharging) {
-            suppressVanillaDamageDuringCharge(weapon, beam)
+            suppressVanillaDamage(weapon, beam)
             try {
                 cu?.advance(engine, amount, weapon, chargeLevel)
             } catch (t: Throwable) {
@@ -268,40 +268,19 @@ class GravityCollapseBeamEveryFrameEffect : EveryFrameWeaponEffectPlugin {
         lastChargeLevel = chargeLevel
     }
 
-    private fun suppressVanillaDamageDuringCharge(weapon: WeaponAPI, beam: com.fs.starfarer.api.combat.BeamAPI?) {
-        // weapon.damage.damage 是每秒伤害值，置 0 即阻断引擎结算；部分路径取 beam.damage，一并置 0。
+    private fun suppressVanillaDamage(weapon: WeaponAPI, beam: BeamAPI?) {
         try {
-            val d = weapon.damage
-            if (d != null) {
-                if (suppressedWeaponDamage == null) {
-                    suppressedWeaponDamage = d.damage
-                }
-                d.damage = 0f
-            }
+            damageSuppressor.suppress(weapon, beam)
         } catch (t: Throwable) {
-            warnOnce("suppress.weaponDamage", t)
-        }
-
-        try {
-            val bd = beam?.damage
-            if (bd != null) {
-                bd.damage = 0f
-            }
-        } catch (t: Throwable) {
-            warnOnce("suppress.beamDamage", t)
+            warnOnce("suppress.damage", t)
         }
     }
 
     private fun restoreVanillaDamageIfNeeded(weapon: WeaponAPI) {
-        val saved = suppressedWeaponDamage ?: return
         try {
-            val d = weapon.damage
-            if (d != null) {
-                d.damage = saved
-            }
+            damageSuppressor.restore(weapon)
         } catch (t: Throwable) {
-            warnOnce("restore.weaponDamage", t)
+            warnOnce("restore.damage", t)
         }
-        suppressedWeaponDamage = null
     }
 }

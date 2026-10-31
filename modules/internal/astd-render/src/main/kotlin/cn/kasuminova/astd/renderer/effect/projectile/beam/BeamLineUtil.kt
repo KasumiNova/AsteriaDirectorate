@@ -68,6 +68,20 @@ object BeamLineUtil {
         return build(from, to, facing)
     }
 
+    fun fromRay(from: Vector2f, facing: Float, length: Float): BeamLine {
+        val rad = Math.toRadians(facing.toDouble())
+        val dirUnit = Vector2f(cos(rad).toFloat(), sin(rad).toFloat())
+        val f = Vector2f(from)
+        return BeamLine(
+            from = f,
+            to = Vector2f(f.x + dirUnit.x * length, f.y + dirUnit.y * length),
+            facing = facing,
+            length = length,
+            dirUnit = dirUnit,
+            perpUnit = Vector2f(-dirUnit.y, dirUnit.x),
+        )
+    }
+
     private fun build(from: Vector2f, to: Vector2f, facing: Float): BeamLine? {
         val dx = (to.x - from.x)
         val dy = (to.y - from.y)
