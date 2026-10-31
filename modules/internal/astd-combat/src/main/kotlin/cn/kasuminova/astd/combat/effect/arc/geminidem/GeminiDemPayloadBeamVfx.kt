@@ -45,6 +45,8 @@ class GeminiDemPayloadBeamVfx : EveryFrameWeaponEffectPlugin {
 
         var syncBlend = 0f
 
+        var sinceLastDamage = Float.MAX_VALUE
+
         var lastFrom: Vector2f? = null
         var lastFacing = 0f
         var lastLength = 0f
@@ -62,12 +64,21 @@ class GeminiDemPayloadBeamVfx : EveryFrameWeaponEffectPlugin {
         }
 
         val beam = weapon.beams?.firstOrNull()
-        val firing = beam != null && weapon.isFiring && beam.brightness > 0.05f
-
         val states = statesOf(engine)
         var state = states[weapon]
 
-        if (firing && beam != null) {
+        // 存活口径与 GeminiDemPayloadBeamEffect 一致：可见照射、本帧伤害或末次伤害后的宽限期内均视为仍在命中。
+        val damaging = beam?.didDamageThisFrame() == true
+        val sinceLastDamage = if (damaging) 0f else {
+            (state?.takeIf { it.beam === beam }?.sinceLastDamage ?: Float.MAX_VALUE) + amount
+        }
+        val live = beam != null && GeminiDemPayloadBeamFrame.isDamageLive(
+            firingVisible = weapon.isFiring && beam.brightness > 0.05f,
+            damagingThisFrame = damaging,
+            sinceLastDamage = sinceLastDamage,
+        )
+
+        if (live && beam != null) {
             var newBurst = false
             if (state == null) {
                 state = BeamVisualState()
@@ -85,11 +96,15 @@ class GeminiDemPayloadBeamVfx : EveryFrameWeaponEffectPlugin {
             }
 
             state.beam = beam
+            state.sinceLastDamage = sinceLastDamage
+            state.fading = false
+            state.fadeElapsed = 0f
             state.activeElapsed += amount
 
-            val from = Vector2f(beam.from)
-            val facing = Misc.getAngleInDegrees(from, beam.to)
-            val length = MathUtils.getDistance(from, beam.to).coerceAtLeast(1f)
+            val line = GeminiDemPayloadBeamFrame.endpoint(engine, weapon)
+            val from = Vector2f(line.from)
+            val facing = line.facing
+            val length = line.length
             state.lastFrom = from
             state.lastFacing = facing
             state.lastLength = length

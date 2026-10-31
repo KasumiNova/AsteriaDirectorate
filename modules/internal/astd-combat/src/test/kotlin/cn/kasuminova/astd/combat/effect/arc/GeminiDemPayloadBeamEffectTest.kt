@@ -47,6 +47,19 @@ class GeminiDemPayloadBeamEffectTest {
         return ship
     }
 
+    // 发射点 (50,0)、朝向 90°、射程 60：无遮挡时解算端点为 (50,60)，与 beam.to 桩值一致。
+    private fun stubPayloadWeapon(payloadWeaponId: String, source: ShipAPI? = null): WeaponAPI {
+        val spec = mock(WeaponSpecAPI::class.java)
+        `when`(spec.weaponId).thenReturn(payloadWeaponId)
+        val weapon = mock(WeaponAPI::class.java)
+        `when`(weapon.spec).thenReturn(spec)
+        `when`(weapon.getFirePoint(0)).thenReturn(Vector2f(50f, 0f))
+        `when`(weapon.currAngle).thenReturn(90f)
+        `when`(weapon.range).thenReturn(60f)
+        `when`(weapon.ship).thenReturn(source)
+        return weapon
+    }
+
     private fun stubBeam(
         payloadWeaponId: String,
         target: ShipAPI,
@@ -54,10 +67,7 @@ class GeminiDemPayloadBeamEffectTest {
         firing: Boolean = true,
         damaging: Boolean = true,
     ): BeamAPI {
-        val spec = mock(WeaponSpecAPI::class.java)
-        `when`(spec.weaponId).thenReturn(payloadWeaponId)
-        val weapon = mock(WeaponAPI::class.java)
-        `when`(weapon.spec).thenReturn(spec)
+        val weapon = stubPayloadWeapon(payloadWeaponId, source)
         `when`(weapon.isFiring).thenReturn(firing)
         val beam = mock(BeamAPI::class.java)
         `when`(beam.weapon).thenReturn(weapon)
@@ -104,10 +114,7 @@ class GeminiDemPayloadBeamEffectTest {
         val target = stubShip("T1", 1)
         val source = stubShip("P1", 0)
 
-        val spec = mock(WeaponSpecAPI::class.java)
-        `when`(spec.weaponId).thenReturn(GeminiDemDifficulty.KINETIC_PAYLOAD_ID)
-        val weapon = mock(WeaponAPI::class.java)
-        `when`(weapon.spec).thenReturn(spec)
+        val weapon = stubPayloadWeapon(GeminiDemDifficulty.KINETIC_PAYLOAD_ID, source)
         val beam = mock(BeamAPI::class.java)
         `when`(beam.weapon).thenReturn(weapon)
         `when`(beam.damageTarget).thenReturn(target)

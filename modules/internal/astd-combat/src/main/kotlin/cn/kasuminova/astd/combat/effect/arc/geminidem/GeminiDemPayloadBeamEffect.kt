@@ -13,7 +13,7 @@ import java.awt.Color
 import java.util.IdentityHashMap
 
 // 原版 payload 光束伤害按约 4Hz tick 落账（didDamageThisFrame 多数帧为 false），
-// EMP 节律按照射期每帧累积，末次伤害帧起 EMP_GRACE_SECONDS 宽限内视为仍在命中。
+// EMP 节律按照射期每帧累积，末次伤害帧起 GeminiDemPayloadBeamFrame.DAMAGE_GRACE_SECONDS 宽限内视为仍在命中。
 class GeminiDemPayloadBeamEffect : BeamEffectPlugin {
 
     private class BeamState {
@@ -41,7 +41,8 @@ class GeminiDemPayloadBeamEffect : BeamEffectPlugin {
         beam.fringeColor = COLOR_TRANSPARENT
         beam.width = 0.01f
 
-        val weaponId = beam.weapon?.spec?.weaponId
+        val weapon = beam.weapon ?: return
+        val weaponId = weapon.spec?.weaponId
         val kind = when (weaponId) {
             GeminiDemDifficulty.KINETIC_PAYLOAD_ID, GeminiDemDifficulty.KINETIC_PAYLOAD_FIGHTER_ID ->
                 GeminiDemSyncHandler.WarheadKind.KINETIC
@@ -56,7 +57,7 @@ class GeminiDemPayloadBeamEffect : BeamEffectPlugin {
 
         // fires_one_burst 爆发光束在 isFiring 翻转后伤害 tick 仍在继续，停火清理必须容忍该窗口。
         val damaging = beam.didDamageThisFrame()
-        if (beam.weapon?.isFiring != true && !damaging) {
+        if (!weapon.isFiring && !damaging) {
             beamStates.remove(beam)
             return
         }
@@ -64,25 +65,26 @@ class GeminiDemPayloadBeamEffect : BeamEffectPlugin {
         val state = beamStates.getOrPut(beam) { BeamState() }
         val target = beam.damageTarget as? ShipAPI
         if (damaging && target != null) {
+            val hitPoint = GeminiDemPayloadBeamFrame.endpoint(engine, weapon).to
             state.lastTarget = target
-            state.lastPoint.set(beam.to)
+            state.lastPoint.set(hitPoint)
             state.sinceLastDamage = 0f
             if (!state.firstHitDone) {
                 state.firstHitDone = true
-                onFirstHit(engine, beam, state, kind, target)
+                onFirstHit(engine, beam, state, kind, target, hitPoint)
                 state.eligible = !target.isHulk && !target.isFighter
             }
         } else {
             state.sinceLastDamage += amount
         }
 
-        val arcOwner = beam.source?.owner ?: beam.weapon?.ship?.owner
+        val arcOwner = beam.source?.owner ?: weapon.ship?.owner
         val upgradeActive = arcOwner != null && SicWeaponUpgradeFlags.isArmamentUpgradeActiveForOwner(engine, arcOwner)
 
         val heArcs = kind == GeminiDemSyncHandler.WarheadKind.HE && upgradeActive && state.syncResonated
         if ((kind != GeminiDemSyncHandler.WarheadKind.KINETIC && !heArcs) || !state.eligible) return
         val empTarget = state.lastTarget ?: return
-        if (state.sinceLastDamage > EMP_GRACE_SECONDS) return
+        if (state.sinceLastDamage > GeminiDemPayloadBeamFrame.DAMAGE_GRACE_SECONDS) return
         if (state.arcsFired >= GeminiDemDifficulty.EMP_ARC_COUNT) return
         if (empTarget.isHulk || !engine.isEntityInPlay(empTarget)) {
             state.lastTarget = null
@@ -138,6 +140,7 @@ class GeminiDemPayloadBeamEffect : BeamEffectPlugin {
         state: BeamState,
         kind: GeminiDemSyncHandler.WarheadKind,
         target: ShipAPI,
+        hitPoint: Vector2f,
     ) {
         if (target.isHulk) {
             log.debug("双子星 DEM payload：目标为残骸（${target.id}），不登记不触发同步（光束伤害照常）")
@@ -161,7 +164,7 @@ class GeminiDemPayloadBeamEffect : BeamEffectPlugin {
         }
 
         state.syncResonated =
-            GeminiDemSyncHandler.recordHit(engine, target, kind, beam.to, beam.source) ||
+            GeminiDemSyncHandler.recordHit(engine, target, kind, hitPoint, beam.source) ||
                     GeminiDemSyncHandler.wasResonated(engine, target)
     }
 
@@ -178,9 +181,6 @@ class GeminiDemPayloadBeamEffect : BeamEffectPlugin {
 
         // spawnEmpArc 不提供命中点参数，命中位置由原版在目标舰上自行选取。
         private const val EMP_ARC_MAX_RANGE = 10_000f
-
-        // 原版伤害 tick 约 4Hz（间隔约 0.25s），命中宽限须大于 tick 间隔。
-        private const val EMP_GRACE_SECONDS = 0.3f
 
         const val TELEMETRY_EMP_ARCS = "astd_gemini_dem_emp_arc_count"
 
