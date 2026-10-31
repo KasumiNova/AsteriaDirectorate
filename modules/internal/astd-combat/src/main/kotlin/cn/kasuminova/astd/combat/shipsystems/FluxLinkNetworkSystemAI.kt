@@ -1,6 +1,6 @@
 package cn.kasuminova.astd.combat.shipsystems
 
-import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcAuraUtil
+import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.combat.ShipSystemAIScript
@@ -10,7 +10,11 @@ import com.fs.starfarer.api.util.IntervalUtil
 import org.lazywizard.lazylib.MathUtils
 import org.lwjgl.util.vector.Vector2f
 
-class ASTDArcSharedFluxNetworkSystemAI : ShipSystemAIScript {
+/**
+ * 「辐能链接网络」系统 AI：友舰辐能压力高且自身辐能充裕时开启；自身辐能逼近上限、
+ * 过载/排气或撤退时关闭。
+ */
+class FluxLinkNetworkSystemAI : ShipSystemAIScript {
 
     companion object {
         private const val SCAN_INTERVAL_SEC = 0.60f
@@ -45,24 +49,13 @@ class ASTDArcSharedFluxNetworkSystemAI : ShipSystemAIScript {
         if (engine.isPaused || ship.isHulk) return
 
         val tracker = ship.fluxTracker ?: return
-        val fluxLevel = try {
-            tracker.fluxLevel
-        } catch (_: Throwable) {
-            0f
-        }
-        val overloadedOrVenting = try {
-            tracker.isOverloadedOrVenting
-        } catch (_: Throwable) {
-            false
-        }
+        val fluxLevel = tracker.fluxLevel
+        val overloadedOrVenting = tracker.isOverloadedOrVenting
         val retreating = isRetreating()
 
         if (system.isOn || system.state == ShipSystemAPI.SystemState.IN || system.state == ShipSystemAPI.SystemState.ACTIVE) {
             if (fluxLevel > SOURCE_ABORT_FLUX || overloadedOrVenting || retreating) {
-                try {
-                    ship.useSystem()
-                } catch (_: Throwable) {
-                }
+                ship.useSystem()
             }
             return
         }
@@ -76,38 +69,27 @@ class ASTDArcSharedFluxNetworkSystemAI : ShipSystemAIScript {
             scanInited = true
         }
 
-        val wantsNetwork = cachedScan.eligibleCount >= 2 ||
-                (cachedScan.pressuredValue >= 1.5f && !cachedScan.enemyPressure)
+        val wantsNetwork = cachedScan.eligibleCount >= 2 && cachedScan.pressuredValue >= 1f ||
+                cachedScan.pressuredValue >= 1.5f && !cachedScan.enemyPressure
         if (wantsNetwork) {
-            try {
-                ship.useSystem()
-            } catch (_: Throwable) {
-            }
+            ship.useSystem()
         }
     }
 
     private fun scanFriendlies(engine: CombatEngineAPI, source: ShipAPI): ScanResult {
-        val ships = try {
-            engine.ships
-        } catch (_: Throwable) {
-            null
-        } ?: return ScanResult(0, 0f, false)
+        val range = FluxLinkNetworkTuning.resolve(DifficultyTuningImpl, source.owner == 0).range
         var eligible = 0
         var value = 0f
         var nearbyEnemy = false
 
-        for (candidate in ships) {
+        for (candidate in engine.ships) {
             if (candidate === source || candidate.isHulk) continue
             val distance = MathUtils.getDistance(source.location, candidate.location)
             if (candidate.owner == source.owner) {
-                if (candidate.isFighter || candidate.isDrone) continue
-                if (distance > ASTDArcAuraUtil.XC_102_SYSTEM_MAX_RANGE) continue
+                if (candidate.isFighter || candidate.isDrone || candidate.isStationModule) continue
+                if (distance > range) continue
                 eligible++
-                val flux = try {
-                    candidate.fluxTracker?.fluxLevel ?: 0f
-                } catch (_: Throwable) {
-                    0f
-                }
+                val flux = candidate.fluxTracker?.fluxLevel ?: 0f
                 val sizeValue = when (candidate.hullSize) {
                     ShipAPI.HullSize.CAPITAL_SHIP -> 2.2f
                     ShipAPI.HullSize.CRUISER -> 1.6f
@@ -126,13 +108,9 @@ class ASTDArcSharedFluxNetworkSystemAI : ShipSystemAIScript {
 
     private fun isRetreating(): Boolean {
         val flags = this.flags ?: return false
-        return try {
-            flags.hasFlag(ShipwideAIFlags.AIFlags.RUN_QUICKLY) ||
-                    flags.hasFlag(ShipwideAIFlags.AIFlags.BACK_OFF) ||
-                    flags.hasFlag(ShipwideAIFlags.AIFlags.BACKING_OFF)
-        } catch (_: Throwable) {
-            false
-        }
+        return flags.hasFlag(ShipwideAIFlags.AIFlags.RUN_QUICKLY) ||
+                flags.hasFlag(ShipwideAIFlags.AIFlags.BACK_OFF) ||
+                flags.hasFlag(ShipwideAIFlags.AIFlags.BACKING_OFF)
     }
 
     private data class ScanResult(

@@ -5,9 +5,6 @@ object ASTDArcProductionShipIds {
     const val HULL_XC_101 = "astd_xc_101"
     const val HULL_XC_103 = "astd_xc_103"
 
-    const val EFFECT_XC_102_SHOCKWAVE_RING = "astd_xc_102_shockwave_ring"
-    const val PROGRAM_XC_102_SHOCKWAVE_RING = "astd_xc_102_shockwave_ring_program"
-
     const val HULLMOD_ARC_ADVANCED_FIRE_CONTROL = "astd_arc_advanced_fire_control"
     const val HULLMOD_PLASMA_ARMOR_SHIELD = "astd_plasma_armor_shield"
     const val HULLMOD_IONIZED_RECOIL_ACCUMULATOR = "astd_ionized_recoil_accumulator"
@@ -18,7 +15,6 @@ object ASTDArcProductionShipIds {
     const val SYSTEM_SUPPRESSION_MODE = "astd_suppression_mode"
 
     const val STAT_ARC_ADVANCED_FIRE_CONTROL = "astd_arc_advanced_fire_control"
-    const val STAT_ARC_SHARED_FLUX_NETWORK = "astd_arc_shared_flux_network"
     const val STAT_PLASMA_ARMOR_SHIELD = "astd_plasma_armor_shield"
     const val STAT_PLASMA_ARMOR_SHIELD_SPIKE = "astd_plasma_armor_shield_spike"
     const val STAT_PLASMA_ARMOR_SHIELD_BOOST = "astd_plasma_armor_shield_boost"
@@ -26,7 +22,6 @@ object ASTDArcProductionShipIds {
     const val STAT_ARC_ADVANCED_TARGETING_SYSTEM = "astd_arc_advanced_targeting_system"
     const val STAT_SUPPRESSION_MODE = "astd_suppression_mode"
 
-    const val DATA_ARC_SHARED_FLUX_TARGETS = "astd_arc_shared_flux_network_targets"
     const val DATA_PLASMA_SHIELD_BOOST_LEVEL = "astd_plasma_shield_boost_level"
 
     val UNIQUE_HULLMOD_IDS = setOf(

@@ -1,7 +1,6 @@
 package cn.kasuminova.astd.combat.hullmods.arc
 
 import cn.kasuminova.astd.internal.debug.ASTDInGameAutomationScenario
-import cn.kasuminova.astd.renderer.effect.system.Xc102ShockwaveRingEffect
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.EmpArcEntityAPI
@@ -11,12 +10,11 @@ import org.lazywizard.lazylib.MathUtils
 import org.lwjgl.util.vector.Vector2f
 import org.magiclib.util.MagicLensFlare
 import java.awt.Color
-import kotlin.math.roundToInt
 
 object ASTDArcProductionVfx {
-    const val TELEMETRY_XC_102_SHOCKWAVE_FRAMES = "xc102ShockwaveFrames"
-    const val TELEMETRY_XC_102_SHOCKWAVE_RADIUS = "xc102ShockwaveRadius"
-    const val TELEMETRY_XC_102_SHOCKWAVE_FLUX_PRESSURE = "xc102ShockwaveFluxPressure"
+    const val TELEMETRY_FLUX_LINK_TRANSFERRED_FLUX = "fluxLinkTransferredFlux"
+    const val TELEMETRY_FLUX_LINK_TRANSFER_FRAMES = "fluxLinkTransferFrames"
+    const val TELEMETRY_FLUX_LINK_ACTIVE_LINKS = "fluxLinkActiveLinks"
     const val TELEMETRY_XC_101_SHIELD_OPEN = "xc101ShieldOpen"
     const val TELEMETRY_XC_101_SYSTEM_ACTIVE = "xc101SystemActive"
     const val TELEMETRY_XC_101_SHIELD_ARC_EMISSIONS = "xc101ShieldArcEmissions"
@@ -49,19 +47,6 @@ object ASTDArcProductionVfx {
 
     fun counter(engine: CombatEngineAPI, key: String): Int =
         engine.customData["$TELEMETRY_PREFIX$key"] as? Int ?: 0
-
-    fun renderXc102ShockwaveRing(
-        engine: CombatEngineAPI,
-        source: ShipAPI,
-        level: Float,
-        pressureRatio: Float,
-    ) {
-        val pressure = pressureRatio.coerceIn(0f, 1f)
-        val frame = Xc102ShockwaveRingEffect.render(engine, source, level, pressure) ?: return
-        incrementCounter(engine, TELEMETRY_XC_102_SHOCKWAVE_FRAMES)
-        setCounter(engine, TELEMETRY_XC_102_SHOCKWAVE_RADIUS, frame.outerRadiusWorld.roundToInt().coerceAtLeast(1))
-        setCounter(engine, TELEMETRY_XC_102_SHOCKWAVE_FLUX_PRESSURE, (pressure * 1000f).roundToInt().coerceAtLeast(1))
-    }
 
     fun emitPlasmaShieldArc(engine: CombatEngineAPI, ship: ShipAPI, boosted: Boolean, preferredAngle: Float? = null) {
         val shield = ship.shield ?: return

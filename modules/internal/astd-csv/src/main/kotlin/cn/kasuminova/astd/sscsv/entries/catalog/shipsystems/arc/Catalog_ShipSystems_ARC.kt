@@ -69,10 +69,10 @@ object Sys_astd_arc_shared_flux_network : ShipSystemWithSystemFileEntry() {
     override val id: String = "astd_arc_shared_flux_network"
     override val name: String = systemName(id)
 
-    override val statsScript: String = "cn.kasuminova.astd.combat.shipsystems.ASTDArcSharedFluxNetworkSystemStats"
+    override val statsScript: String = "cn.kasuminova.astd.combat.shipsystems.FluxLinkNetworkSystemStats"
 
     override val aiType: String = "CUSTOM"
-    override val aiScript: String = "cn.kasuminova.astd.combat.shipsystems.ASTDArcSharedFluxNetworkSystemAI"
+    override val aiScript: String = "cn.kasuminova.astd.combat.shipsystems.FluxLinkNetworkSystemAI"
 
     override val chargeUp: Double = 0.5
     override val active: Double = 10.0
@@ -148,7 +148,7 @@ object Sys_astd_suppression_mode : ShipSystemWithSystemFileEntry() {
     override val down: Double = 1.0
     override val cooldown: Double = 10.0
 
-    // 持续硬辐能基线 2%/s 走原版 CSV 结算；第 4 秒起的爬坡增量由脚本补差（曲线无法用 CSV 表达）。
+    // 持续硬辐能基线 2%/s 走原版 CSV 结算；第 4 秒起的爬坡增量由脚本补差 (曲线无法用 CSV 表达)。
     override val fluxPerSecondBaseCap: Double = 0.02
     override val hardFlux: Boolean = true
 

@@ -194,9 +194,9 @@ class ArcProductionScenario : AbstractAutomationScenario() {
     private fun arcProductionEvidenceReady(engine: CombatEngineAPI): Boolean {
         if (ctx.elapsed < 1.25f) return false
         return listOf(
-            ASTDArcProductionVfx.TELEMETRY_XC_102_SHOCKWAVE_FRAMES,
-            ASTDArcProductionVfx.TELEMETRY_XC_102_SHOCKWAVE_RADIUS,
-            ASTDArcProductionVfx.TELEMETRY_XC_102_SHOCKWAVE_FLUX_PRESSURE,
+            ASTDArcProductionVfx.TELEMETRY_FLUX_LINK_TRANSFERRED_FLUX,
+            ASTDArcProductionVfx.TELEMETRY_FLUX_LINK_TRANSFER_FRAMES,
+            ASTDArcProductionVfx.TELEMETRY_FLUX_LINK_ACTIVE_LINKS,
             ASTDArcProductionVfx.TELEMETRY_XC_101_SHIELD_OPEN,
             ASTDArcProductionVfx.TELEMETRY_XC_101_SYSTEM_ACTIVE,
             ASTDArcProductionVfx.TELEMETRY_XC_101_SHIELD_ARC_EMISSIONS,

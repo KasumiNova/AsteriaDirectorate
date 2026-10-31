@@ -27,6 +27,8 @@ class GravTimeflowLinkVfx private constructor(
     private val mainArc: CurveEntity,
     private val filaments: List<CurveEntity>,
     private val shards: TriShardComponent,
+    private val theme: Theme,
+    private val fadeOutSeconds: Float,
 ) {
 
     private var time = 0f
@@ -36,7 +38,10 @@ class GravTimeflowLinkVfx private constructor(
 
     private var nebulaEmitAcc = 0f
 
-    fun update(elapsed: Float, effectLevel: Float) {
+    /**
+     * @param intensity 传输/作用强度 0~1：调制亮度（下限 30%）、束体粗细（下限 60%）与摆动/jitter 幅度（全比例）。
+     */
+    fun update(elapsed: Float, effectLevel: Float, intensity: Float = 1f) {
         if (dead) return
         time += elapsed
 
@@ -44,24 +49,27 @@ class GravTimeflowLinkVfx private constructor(
         val to = target.location
         val dist = Misc.getDistance(from, to)
         val facing = BoxUtilCombatVfx.normalizeFacingDeg(Misc.getAngleInDegrees(from, to))
-        val alphaEnv = effectLevel.coerceIn(0f, 1f)
+        val clampedIntensity = intensity.coerceIn(0f, 1f)
+        val brightnessEnv = effectLevel.coerceIn(0f, 1f) * (0.3f + 0.7f * clampedIntensity)
+        val widthScale = theme.sizeScale * (0.6f + 0.4f * clampedIntensity)
+        val jitterScale = theme.jitterScale * clampedIntensity
 
-        val mainAmp = min(dist * MAIN_ARC_DIST_FRACTION, MAIN_ARC_MAX)
+        val mainAmp = min(dist * MAIN_ARC_DIST_FRACTION, MAIN_ARC_MAX) * jitterScale
         val breathe = 0.85f + 0.15f * sin(time * MAIN_BREATHE_SPEED)
 
-        updateMain(facing, dist, alphaEnv, mainAmp, breathe)
+        updateMain(facing, dist, brightnessEnv, widthScale, mainAmp, breathe)
         for (i in filaments.indices) {
-            updateFilament(filaments[i], i, facing, dist, alphaEnv, mainAmp, breathe)
+            updateFilament(filaments[i], i, facing, dist, brightnessEnv, widthScale, mainAmp, breathe, jitterScale)
         }
-        updateParticles(elapsed, from, facing, dist, alphaEnv, mainAmp, breathe)
+        updateParticles(elapsed, from, facing, dist, brightnessEnv, mainAmp, breathe)
     }
 
     fun dispose() {
         if (dead) return
         dead = true
-        if (!mainArc.hasDelete()) mainArc.setGlobalTimer(0f, 0f, FADE_OUT_SECONDS)
+        if (!mainArc.hasDelete()) mainArc.setGlobalTimer(0f, 0f, fadeOutSeconds)
         for (filament in filaments) {
-            if (!filament.hasDelete()) filament.setGlobalTimer(0f, 0f, FADE_OUT_SECONDS)
+            if (!filament.hasDelete()) filament.setGlobalTimer(0f, 0f, fadeOutSeconds)
         }
     }
 
@@ -79,7 +87,7 @@ class GravTimeflowLinkVfx private constructor(
     private fun tipEnv(t: Float): Float =
         (t / TIP_FRACTION).coerceIn(0f, 1f) * ((1f - t) / TIP_FRACTION).coerceIn(0f, 1f)
 
-    private fun updateMain(facing: Float, dist: Float, alphaEnv: Float, mainAmp: Float, breathe: Float) {
+    private fun updateMain(facing: Float, dist: Float, alphaEnv: Float, widthScale: Float, mainAmp: Float, breathe: Float) {
         if (mainArc.hasDelete()) return
         mainArc.setStateVanilla(Vector2f(source.location), facing)
         val nodes = mainArc.nodes ?: return
@@ -92,10 +100,10 @@ class GravTimeflowLinkVfx private constructor(
             val tip = tipEnv(t)
             val node = nodes[i]
             node.setLocation(t * dist, lateral)
-            node.width = MAIN_WIDTH * (0.5f + 0.5f * tip)
+            node.width = MAIN_WIDTH * widthScale * (0.5f + 0.5f * tip)
             val alpha = MAIN_ALPHA * alphaEnv * tip
-            node.setColor(lerpColor(MAIN_DIM, MAIN_BRIGHT, flowBrightness(t, 0f), alpha))
-            node.setEmissiveColor(lerpColor(MAIN_EMISSIVE_DIM, MAIN_EMISSIVE_BRIGHT, flowBrightness(t, 0f), alpha))
+            node.setColor(lerpColor(theme.mainDim, theme.mainBright, flowBrightness(t, 0f), alpha))
+            node.setEmissiveColor(lerpColor(theme.mainEmissiveDim, theme.mainEmissiveBright, flowBrightness(t, 0f), alpha))
         }
         mainArc.setNodeRefreshAllFromCurrentIndex()
         mainArc.submitNodes()
@@ -107,8 +115,10 @@ class GravTimeflowLinkVfx private constructor(
         facing: Float,
         dist: Float,
         alphaEnv: Float,
+        widthScale: Float,
         mainAmp: Float,
         breathe: Float,
+        jitterScale: Float,
     ) {
         if (entity.hasDelete()) return
         entity.setStateVanilla(Vector2f(source.location), facing)
@@ -118,7 +128,7 @@ class GravTimeflowLinkVfx private constructor(
 
         val phase = index.toFloat() / FILAMENT_COUNT
         val seed = index * 5.77f
-        val amp = min(FILAMENT_AMP, dist * FILAMENT_AMP_DIST_FRACTION)
+        val amp = min(FILAMENT_AMP, dist * FILAMENT_AMP_DIST_FRACTION) * jitterScale
         for (i in 0..lastIdx) {
             val t = i.toFloat() / lastIdx.toFloat()
             val envelope = sin(PI.toFloat() * t)
@@ -128,10 +138,10 @@ class GravTimeflowLinkVfx private constructor(
             val tip = tipEnv(t)
             val node = nodes[i]
             node.setLocation(t * dist, lateral)
-            node.width = FILAMENT_WIDTH * (0.5f + 0.5f * tip)
+            node.width = FILAMENT_WIDTH * widthScale * (0.5f + 0.5f * tip)
             val alpha = FILAMENT_ALPHA * alphaEnv * tip
-            node.setColor(lerpColor(FILAMENT_DIM, FILAMENT_BRIGHT, flowBrightness(t, phase), alpha))
-            node.setEmissiveColor(lerpColor(FILAMENT_DIM, FILAMENT_BRIGHT, flowBrightness(t, phase), alpha))
+            node.setColor(lerpColor(theme.filamentDim, theme.filamentBright, flowBrightness(t, phase), alpha))
+            node.setEmissiveColor(lerpColor(theme.filamentDim, theme.filamentBright, flowBrightness(t, phase), alpha))
         }
         entity.setNodeRefreshAllFromCurrentIndex()
         entity.submitNodes()
@@ -185,7 +195,7 @@ class GravTimeflowLinkVfx private constructor(
                 NEBULA_RAMP_UP,
                 NEBULA_FULL,
                 MathUtils.getRandomNumberInRange(NEBULA_DURATION_LO, NEBULA_DURATION_HI),
-                Color(NEBULA_COLOR.red, NEBULA_COLOR.green, NEBULA_COLOR.blue, alpha),
+                Color(theme.nebula.red, theme.nebula.green, theme.nebula.blue, alpha),
             )
         }
     }
@@ -198,6 +208,54 @@ class GravTimeflowLinkVfx private constructor(
         private const val TEX_FILAMENT = "graphics/fx/astd_timeflow_filament.png"
 
         private val loadedPaths = HashSet<String>()
+
+        /**
+         * 链路主题：颜色组与整体尺寸/摆动缩放。
+         *
+         * @property sizeScale 束体粗细缩放（辐能链接网络为 0.67，即时流干涉器的 2/3）
+         * @property jitterScale 弧线摆动/jitter 幅度缩放
+         */
+        class Theme(
+            val mainDim: Color,
+            val mainBright: Color,
+            val mainEmissiveDim: Color,
+            val mainEmissiveBright: Color,
+            val filamentDim: Color,
+            val filamentBright: Color,
+            val shardCore: Color,
+            val shardFringe: Color,
+            val nebula: Color,
+            val sizeScale: Float = 1f,
+            val jitterScale: Float = 1f,
+        )
+
+        /** 引力时流干涉器：紫色主题。 */
+        val TIMEFLOW = Theme(
+            mainDim = Color(120, 50, 220),
+            mainBright = Color(185, 105, 255),
+            mainEmissiveDim = Color(140, 60, 235),
+            mainEmissiveBright = Color(205, 140, 255),
+            filamentDim = Color(130, 60, 225),
+            filamentBright = Color(200, 125, 255),
+            shardCore = Color(215, 150, 255),
+            shardFringe = Color(140, 60, 235),
+            nebula = Color(150, 70, 240),
+        )
+
+        /** 辐能链接网络：蓝色主题，束体大小与 jitter 强度为时流干涉器的 2/3。 */
+        val FLUX_LINK = Theme(
+            mainDim = Color(40, 80, 220),
+            mainBright = Color(90, 160, 255),
+            mainEmissiveDim = Color(50, 100, 235),
+            mainEmissiveBright = Color(120, 185, 255),
+            filamentDim = Color(45, 90, 230),
+            filamentBright = Color(110, 175, 255),
+            shardCore = Color(150, 205, 255),
+            shardFringe = Color(50, 100, 235),
+            nebula = Color(60, 110, 240),
+            sizeScale = 0.67f,
+            jitterScale = 0.67f,
+        )
 
         private const val FILAMENT_COUNT = 6
 
@@ -251,22 +309,10 @@ class GravTimeflowLinkVfx private constructor(
 
         private val ZERO_VEL = Vector2f(0f, 0f)
 
-        private val MAIN_DIM = Color(120, 50, 220)
-        private val MAIN_BRIGHT = Color(185, 105, 255)
-        private val MAIN_EMISSIVE_DIM = Color(140, 60, 235)
-        private val MAIN_EMISSIVE_BRIGHT = Color(205, 140, 255)
-        private val FILAMENT_DIM = Color(130, 60, 225)
-        private val FILAMENT_BRIGHT = Color(200, 125, 255)
-
-        private val SHARD_CORE_COLOR = Color(215, 150, 255)
-        private val SHARD_FRINGE_COLOR = Color(140, 60, 235)
-
-        private val NEBULA_COLOR = Color(150, 70, 240)
-
-        private const val LOG_ONCE_TEXTURE = "astd_grav_timeflow_link_log_texture_once"
-        private const val LOG_ONCE_CREATE = "astd_grav_timeflow_link_log_create_once"
-        private const val LOG_ONCE_INVALID = "astd_grav_timeflow_link_log_invalid_once"
-        private const val LOG_ONCE_ADD = "astd_grav_timeflow_link_log_add_once"
+        private const val LOG_ONCE_TEXTURE = "_log_texture_once"
+        private const val LOG_ONCE_CREATE = "_log_create_once"
+        private const val LOG_ONCE_INVALID = "_log_invalid_once"
+        private const val LOG_ONCE_ADD = "_log_add_once"
 
         // 未被数据文件引用的贴图必须在 onApplicationLoad 预载，否则 SSOptimizer 下 getSprite 可能返回 textureID=0 的实例。
         @JvmStatic
@@ -276,16 +322,32 @@ class GravTimeflowLinkVfx private constructor(
                     Global.getSettings().loadTexture(path)
                     loadedPaths += path
                 } catch (t: Throwable) {
-                    log.warn("[ASTD] ${GravTimeflowTuning.SYSTEM_ID} 时流弧线贴图预载失败: $path", t)
+                    log.warn("[ASTD] 链路弧线贴图预载失败: $path", t)
                 }
             }
         }
 
-        fun attach(engine: CombatEngineAPI, source: ShipAPI, target: ShipAPI): GravTimeflowLinkVfx? {
+    /**
+     * 挂载一条源舰到目标舰的链路弧。
+     *
+     * @param theme 颜色/尺寸主题，默认 [TIMEFLOW]
+     * @param logTag 日志与 warn-once 键前缀（一般为调用方系统 id）
+     * @param fadeIn 弧线淡入时间（秒）；默认瞬时出现（时流干涉器语义）
+     * @param fadeOut 弧线淡出时间（秒）；[dispose] 后按此时长收束
+     */
+    fun attach(
+        engine: CombatEngineAPI,
+        source: ShipAPI,
+        target: ShipAPI,
+        theme: Theme = TIMEFLOW,
+        logTag: String = GravTimeflowTuning.SYSTEM_ID,
+        fadeIn: Float = 0f,
+        fadeOut: Float = FADE_OUT_SECONDS,
+    ): GravTimeflowLinkVfx? {
             if (TEX_MAIN !in loadedPaths || TEX_FILAMENT !in loadedPaths) {
                 warnOnce(
-                    engine, LOG_ONCE_TEXTURE,
-                    "[ASTD] ${GravTimeflowTuning.SYSTEM_ID} 时流弧线贴图未成功预载" +
+                    engine, "$logTag$LOG_ONCE_TEXTURE",
+                    "[ASTD] $logTag 链路弧线贴图未成功预载" +
                             "（main=${TEX_MAIN in loadedPaths}，filament=${TEX_FILAMENT in loadedPaths}），弧线视觉缺席",
                 )
                 return null
@@ -293,14 +355,14 @@ class GravTimeflowLinkVfx private constructor(
             BoxUtilCombatVfx.ensureReady(engine)
 
             val created = ArrayList<CurveEntity>(1 + FILAMENT_COUNT)
-            val main = createArc(engine, TEX_MAIN, TEX_PIXELS_MAIN, TEX_SPEED_MAIN, glowPower = 0.8f)
+            val main = createArc(engine, logTag, theme, TEX_MAIN, TEX_PIXELS_MAIN, TEX_SPEED_MAIN, glowPower = 0.8f, fadeIn)
             if (main == null) {
                 return null
             }
             created += main
             val filaments = ArrayList<CurveEntity>(FILAMENT_COUNT)
             repeat(FILAMENT_COUNT) {
-                val filament = createArc(engine, TEX_FILAMENT, TEX_PIXELS_FILAMENT, TEX_SPEED_FILAMENT, glowPower = 1.4f)
+                val filament = createArc(engine, logTag, theme, TEX_FILAMENT, TEX_PIXELS_FILAMENT, TEX_SPEED_FILAMENT, glowPower = 1.4f, fadeIn)
                 if (filament == null) {
                     for (entity in created) entity.delete()
                     return null
@@ -310,10 +372,10 @@ class GravTimeflowLinkVfx private constructor(
             }
 
             val shards = TriShardComponent(
-                "astd_grav_timeflow_shards/${source.id}",
+                "${logTag}_shards/${source.id}",
                 80f,
-                SHARD_CORE_COLOR,
-                SHARD_FRINGE_COLOR,
+                theme.shardCore,
+                theme.shardFringe,
                 TriShardSpec(
                     batchCount = 1,
                     layer = CombatEngineLayers.BELOW_SHIPS_LAYER,
@@ -329,24 +391,27 @@ class GravTimeflowLinkVfx private constructor(
                     timerFadeOut = 0.45f,
                 ),
             )
-            return GravTimeflowLinkVfx(engine, source, target, main, filaments, shards)
+            return GravTimeflowLinkVfx(engine, source, target, main, filaments, shards, theme, fadeOut)
         }
 
         private fun createArc(
             engine: CombatEngineAPI,
+            logTag: String,
+            theme: Theme,
             texturePath: String,
             texturePixels: Float,
             textureSpeed: Float,
             glowPower: Float,
+            fadeIn: Float,
         ): CurveEntity? {
             val entity = try {
                 CurveEntity()
             } catch (t: Throwable) {
-                warnOnce(engine, LOG_ONCE_CREATE, "[ASTD] ${GravTimeflowTuning.SYSTEM_ID} 时流弧线建实体失败（${t.javaClass.simpleName}），弧线视觉缺席", t)
+                warnOnce(engine, "$logTag$LOG_ONCE_CREATE", "[ASTD] $logTag 链路弧线建实体失败（${t.javaClass.simpleName}），弧线视觉缺席", t)
                 return null
             }
             if (!entity.isValid) {
-                warnOnce(engine, LOG_ONCE_INVALID, "[ASTD] ${GravTimeflowTuning.SYSTEM_ID} 时流弧线实体无效（GL43/curve shader 不可用），弧线视觉缺席")
+                warnOnce(engine, "$logTag$LOG_ONCE_INVALID", "[ASTD] $logTag 链路弧线实体无效（GL43/curve shader 不可用），弧线视觉缺席")
                 entity.delete()
                 return null
             }
@@ -362,14 +427,14 @@ class GravTimeflowLinkVfx private constructor(
             entity.materialData.isIgnoreIllumination = true
             entity.texturePixels = texturePixels
             entity.textureSpeed = textureSpeed
-            entity.setGlobalTimer(0f, FULL_SECONDS, 0f)
+            entity.setGlobalTimer(fadeIn, FULL_SECONDS, 0f)
 
             val nodes = ArrayList<NodeData>(NODE_COUNT)
             repeat(NODE_COUNT) {
                 val node = NodeData(Vector2f(0f, 0f))
                 node.setWidth(MAIN_WIDTH)
-                node.setColor(MAIN_DIM)
-                node.setEmissiveColor(MAIN_EMISSIVE_DIM)
+                node.setColor(theme.mainDim)
+                node.setEmissiveColor(theme.mainEmissiveDim)
                 nodes += node
             }
             entity.nodes = nodes
@@ -378,7 +443,7 @@ class GravTimeflowLinkVfx private constructor(
 
             val state = BoxUtilCombatVfx.addEntity(engine, entity)
             if (state != 0) {
-                warnOnce(engine, LOG_ONCE_ADD, "[ASTD] ${GravTimeflowTuning.SYSTEM_ID} 时流弧线 addEntity 失败（state=$state），弧线视觉缺席")
+                warnOnce(engine, "$logTag$LOG_ONCE_ADD", "[ASTD] $logTag 链路弧线 addEntity 失败（state=$state），弧线视觉缺席")
                 entity.delete()
                 return null
             }

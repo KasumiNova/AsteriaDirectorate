@@ -194,13 +194,13 @@ class ASTDAutomationCombatPlugin : BaseEveryFrameCombatPlugin(), AutomationComba
             appendLine("  \"fallbackInPlay\": ${starfallEcho.fallbackProjectile?.let { engine.isEntityInPlay(it) } ?: false},")
             appendLine("  \"fallbackExpired\": ${starfallEcho.fallbackProjectile?.isExpired ?: false},")
             appendLine("  \"fallbackFading\": ${starfallEcho.fallbackProjectile?.isFading ?: false},")
-            appendLine("  \"xc102ShockwaveFrames\": ${ASTDArcProductionVfx.counter(engine, ASTDArcProductionVfx.TELEMETRY_XC_102_SHOCKWAVE_FRAMES)},")
-            appendLine("  \"xc102ShockwaveRadius\": ${ASTDArcProductionVfx.counter(engine, ASTDArcProductionVfx.TELEMETRY_XC_102_SHOCKWAVE_RADIUS)},")
+            appendLine("  \"fluxLinkTransferredFlux\": ${ASTDArcProductionVfx.counter(engine, ASTDArcProductionVfx.TELEMETRY_FLUX_LINK_TRANSFERRED_FLUX)},")
+            appendLine("  \"fluxLinkTransferFrames\": ${ASTDArcProductionVfx.counter(engine, ASTDArcProductionVfx.TELEMETRY_FLUX_LINK_TRANSFER_FRAMES)},")
             appendLine(
-                "  \"xc102ShockwaveFluxPressure\": ${
+                "  \"fluxLinkActiveLinks\": ${
                     ASTDArcProductionVfx.counter(
                         engine,
-                        ASTDArcProductionVfx.TELEMETRY_XC_102_SHOCKWAVE_FLUX_PRESSURE
+                        ASTDArcProductionVfx.TELEMETRY_FLUX_LINK_ACTIVE_LINKS
                     )
                 },"
             )

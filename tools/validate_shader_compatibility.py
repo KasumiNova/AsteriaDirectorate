@@ -54,14 +54,6 @@ VERTEX_SPEC = ShaderSpec(
 
 FRAGMENT_SPECS = (
     ShaderSpec(
-        slug="xc102_shockwave_ring",
-        display_name="Xc102ShockwaveRingEffect",
-        path=REPO_ROOT
-        / "modules/internal/astd-combat/src/main/kotlin/cn/kasuminova/astd/renderer/effect/system/Xc102ShockwaveRingEffect.kt",
-        constant="FRAGMENT_SHADER_SOURCE",
-        stage="frag",
-    ),
-    ShaderSpec(
         slug="annihilation_vortex_beam",
         display_name="AnnihilationVortexBeamComponents",
         path=REPO_ROOT
