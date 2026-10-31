@@ -9,6 +9,7 @@ dependencies {
     implementation(project(":astd-api"))
     implementation(project(":astd-impl"))
     implementation(project(":astd-ui"))
+    implementation(project(":astd-render"))
     implementation(project(":astd-combat"))
 
     testImplementation(testFixtures(project(":astd-csv")))
