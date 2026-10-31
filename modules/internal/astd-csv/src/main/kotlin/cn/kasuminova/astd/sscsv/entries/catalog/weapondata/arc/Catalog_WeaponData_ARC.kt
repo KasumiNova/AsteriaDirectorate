@@ -44,7 +44,7 @@ object Wpn_astd_starfall_echo : WeaponDataEntry(), SsJsonOutputs {
     override val ammoPerSec: Double = 0.5
     override val reloadSize: Int = 5
 
-    override val tags: String = "energy20, no_drop, no_drop_salvage, astd_signature"
+    override val tags: String = "energy20, no_drop, no_drop_salvage, astd_signature, no_sell"
     override val groupTag: String = "astd"
     override val tech: String = "菀星设计局-星坠"
     override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
@@ -75,7 +75,7 @@ object Wpn_astd_xc_001_lights : WeaponDataEntry() {
     override val range: Int = 0
     override val turnRate: Int = 0
     override val type: String = "OTHER"
-    override val tags: String = "no_drop, no_drop_salvage"
+    override val tags: String = "no_drop, no_drop_salvage, no_sell"
     override val aiHints: Set<AiHint> = setOf(AiHint.SYSTEM)
     override val tech: String = "菀星设计局-星坠"
     override val noDpsInTooltip: Boolean = true
@@ -90,7 +90,7 @@ object Wpn_astd_xc_001_lights_bloom : WeaponDataEntry() {
     override val range: Int = 0
     override val turnRate: Int = 0
     override val type: String = "OTHER"
-    override val tags: String = "no_drop, no_drop_salvage"
+    override val tags: String = "no_drop, no_drop_salvage, no_sell"
     override val aiHints: Set<AiHint> = setOf(AiHint.SYSTEM)
     override val tech: String = "菀星设计局-星坠"
     override val noDpsInTooltip: Boolean = true
@@ -105,7 +105,7 @@ object Wpn_astd_xc_002_bloom : WeaponDataEntry() {
     override val range: Int = 0
     override val turnRate: Int = 0
     override val type: String = "OTHER"
-    override val tags: String = "no_drop, no_drop_salvage"
+    override val tags: String = "no_drop, no_drop_salvage, no_sell"
     override val aiHints: Set<AiHint> = setOf(AiHint.SYSTEM)
     override val tech: String = "菀星设计局-星坠"
     override val noDpsInTooltip: Boolean = true
@@ -120,7 +120,7 @@ object Wpn_astd_xc_103_bloom : WeaponDataEntry() {
     override val range: Int = 0
     override val turnRate: Int = 0
     override val type: String = "OTHER"
-    override val tags: String = "no_drop, no_drop_salvage"
+    override val tags: String = "no_drop, no_drop_salvage, no_sell"
     override val aiHints: Set<AiHint> = setOf(AiHint.SYSTEM)
     override val tech: String = "菀星设计局-星坠"
     override val noDpsInTooltip: Boolean = true
@@ -135,7 +135,7 @@ object Wpn_astd_xc_102_bloom : WeaponDataEntry() {
     override val range: Int = 0
     override val turnRate: Int = 0
     override val type: String = "OTHER"
-    override val tags: String = "no_drop, no_drop_salvage"
+    override val tags: String = "no_drop, no_drop_salvage, no_sell"
     override val aiHints: Set<AiHint> = setOf(AiHint.SYSTEM)
     override val tech: String = "菀星设计局-星坠"
     override val noDpsInTooltip: Boolean = true
@@ -150,7 +150,7 @@ object Wpn_astd_xc_104_bloom : WeaponDataEntry() {
     override val range: Int = 0
     override val turnRate: Int = 0
     override val type: String = "OTHER"
-    override val tags: String = "no_drop, no_drop_salvage"
+    override val tags: String = "no_drop, no_drop_salvage, no_sell"
     override val aiHints: Set<AiHint> = setOf(AiHint.SYSTEM)
     override val tech: String = "菀星设计局-星坠"
     override val noDpsInTooltip: Boolean = true
@@ -165,7 +165,7 @@ object Wpn_astd_xc_101_bloom : WeaponDataEntry() {
     override val range: Int = 0
     override val turnRate: Int = 0
     override val type: String = "OTHER"
-    override val tags: String = "no_drop, no_drop_salvage"
+    override val tags: String = "no_drop, no_drop_salvage, no_sell"
     override val aiHints: Set<AiHint> = setOf(AiHint.SYSTEM)
     override val tech: String = "菀星设计局-星坠"
     override val noDpsInTooltip: Boolean = true
@@ -189,7 +189,7 @@ object Wpn_astd_starfall_wing : WeaponDataEntry(), SsProjProjectileOutputs {
     override val energyPerShot: Int = 1000
     override val projSpeed: Int = 1500
 
-    override val tags: String = "energy20, no_drop, no_drop_salvage, astd_signature"
+    override val tags: String = "energy20, no_drop, no_drop_salvage, astd_signature, no_sell"
     override val groupTag: String = "astd"
     override val tech: String = "菀星设计局-星坠"
     override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")

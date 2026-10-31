@@ -21,7 +21,7 @@ object Wpn_astd_lh_001_bloom : WeaponDataEntry() {
     override val range: Int = 0
     override val turnRate: Int = 0
     override val type: String = "OTHER"
-    override val tags: String = "no_drop, no_drop_salvage"
+    override val tags: String = "no_drop, no_drop_salvage, no_sell"
     override val aiHints: Set<AiHint> = setOf(AiHint.SYSTEM)
     override val tech: String = "菀星设计局-星坠"
     override val noDpsInTooltip: Boolean = true
@@ -36,7 +36,7 @@ object Wpn_astd_lh_002_bloom : WeaponDataEntry() {
     override val range: Int = 0
     override val turnRate: Int = 0
     override val type: String = "OTHER"
-    override val tags: String = "no_drop, no_drop_salvage"
+    override val tags: String = "no_drop, no_drop_salvage, no_sell"
     override val aiHints: Set<AiHint> = setOf(AiHint.SYSTEM)
     override val tech: String = "菀星设计局-紫菀"
     override val noDpsInTooltip: Boolean = true
@@ -73,7 +73,7 @@ object Wpn_astd_lh_stardust_launcher_arc : WeaponDataEntry(), SsProjMissileOutpu
 
     override val flightTime: Double = 60.0
     override val projHitpoints: Int = 400
-    override val tags: String = "no_drop, no_drop_salvage"
+    override val tags: String = "no_drop, no_drop_salvage, no_sell"
     override val tech: String = "联制"
 
     override val aiHints: Set<AiHint> = setOf(AiHint.NO_MANUAL_FIRE)
@@ -114,7 +114,7 @@ object Wpn_astd_lh_stardust_launcher_lens : WeaponDataEntry(), SsProjMissileOutp
     override val launchSpeed: Int = 200
     override val flightTime: Double = 60.0
     override val projHitpoints: Int = 400
-    override val tags: String = "no_drop, no_drop_salvage"
+    override val tags: String = "no_drop, no_drop_salvage, no_sell"
     override val tech: String = "联制"
 
     override val aiHints: Set<AiHint> = setOf(AiHint.NO_MANUAL_FIRE)

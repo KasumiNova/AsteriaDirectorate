@@ -22,7 +22,7 @@ object Wpn_astd_zw_001_bloom : WeaponDataEntry() {
     override val range: Int = 0
     override val turnRate: Int = 0
     override val type: String = "OTHER"
-    override val tags: String = "no_drop, no_drop_salvage"
+    override val tags: String = "no_drop, no_drop_salvage, no_sell"
     override val aiHints: Set<AiHint> = setOf(AiHint.SYSTEM)
     override val tech: String = "菀星设计局-紫菀"
     override val noDpsInTooltip: Boolean = true
@@ -37,7 +37,7 @@ object Wpn_astd_zw_002_bloom : WeaponDataEntry() {
     override val range: Int = 0
     override val turnRate: Int = 0
     override val type: String = "OTHER"
-    override val tags: String = "no_drop, no_drop_salvage"
+    override val tags: String = "no_drop, no_drop_salvage, no_sell"
     override val aiHints: Set<AiHint> = setOf(AiHint.SYSTEM)
     override val tech: String = "菀星设计局-紫菀"
     override val noDpsInTooltip: Boolean = true
@@ -52,7 +52,7 @@ object Wpn_astd_zw_101_bloom : WeaponDataEntry() {
     override val range: Int = 0
     override val turnRate: Int = 0
     override val type: String = "OTHER"
-    override val tags: String = "no_drop, no_drop_salvage"
+    override val tags: String = "no_drop, no_drop_salvage, no_sell"
     override val aiHints: Set<AiHint> = setOf(AiHint.SYSTEM)
     override val tech: String = "菀星设计局-紫菀"
     override val noDpsInTooltip: Boolean = true
@@ -67,7 +67,7 @@ object Wpn_astd_zw_102_bloom : WeaponDataEntry() {
     override val range: Int = 0
     override val turnRate: Int = 0
     override val type: String = "OTHER"
-    override val tags: String = "no_drop, no_drop_salvage"
+    override val tags: String = "no_drop, no_drop_salvage, no_sell"
     override val aiHints: Set<AiHint> = setOf(AiHint.SYSTEM)
     override val tech: String = "菀星设计局-紫菀"
     override val noDpsInTooltip: Boolean = true
@@ -82,7 +82,7 @@ object Wpn_astd_zw_103_bloom : WeaponDataEntry() {
     override val range: Int = 0
     override val turnRate: Int = 0
     override val type: String = "OTHER"
-    override val tags: String = "no_drop, no_drop_salvage"
+    override val tags: String = "no_drop, no_drop_salvage, no_sell"
     override val aiHints: Set<AiHint> = setOf(AiHint.SYSTEM)
     override val tech: String = "菀星设计局-紫菀"
     override val noDpsInTooltip: Boolean = true
@@ -97,7 +97,7 @@ object Wpn_astd_gemini_bomber_bloom : WeaponDataEntry() {
     override val range: Int = 0
     override val turnRate: Int = 0
     override val type: String = "OTHER"
-    override val tags: String = "no_drop, no_drop_salvage"
+    override val tags: String = "no_drop, no_drop_salvage, no_sell"
     override val aiHints: Set<AiHint> = setOf(AiHint.SYSTEM)
     override val tech: String = "菀星设计局-紫菀"
     override val noDpsInTooltip: Boolean = true
@@ -112,7 +112,7 @@ object Wpn_astd_surge_fighter_bloom : WeaponDataEntry() {
     override val range: Int = 0
     override val turnRate: Int = 0
     override val type: String = "OTHER"
-    override val tags: String = "no_drop, no_drop_salvage"
+    override val tags: String = "no_drop, no_drop_salvage, no_sell"
     override val aiHints: Set<AiHint> = setOf(AiHint.SYSTEM)
     override val tech: String = "菀星设计局-紫菀"
     override val noDpsInTooltip: Boolean = true
@@ -127,7 +127,7 @@ object Wpn_astd_gravwell_interceptor_bloom : WeaponDataEntry() {
     override val range: Int = 0
     override val turnRate: Int = 0
     override val type: String = "OTHER"
-    override val tags: String = "no_drop, no_drop_salvage"
+    override val tags: String = "no_drop, no_drop_salvage, no_sell"
     override val aiHints: Set<AiHint> = setOf(AiHint.SYSTEM)
     override val tech: String = "菀星设计局-紫菀"
     override val noDpsInTooltip: Boolean = true
@@ -142,7 +142,7 @@ object Wpn_astd_zw_103_fighter_bloom : WeaponDataEntry() {
     override val range: Int = 0
     override val turnRate: Int = 0
     override val type: String = "OTHER"
-    override val tags: String = "no_drop, no_drop_salvage"
+    override val tags: String = "no_drop, no_drop_salvage, no_sell"
     override val aiHints: Set<AiHint> = setOf(AiHint.SYSTEM)
     override val tech: String = "菀星设计局-紫菀"
     override val noDpsInTooltip: Boolean = true
