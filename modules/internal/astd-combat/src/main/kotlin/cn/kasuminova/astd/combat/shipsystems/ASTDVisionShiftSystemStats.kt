@@ -302,16 +302,20 @@ class ASTDVisionShiftSystemStats : BaseShipSystemScript() {
             val engine = Global.getCombatEngine() ?: return null
             val mark = engine.customData[markKey] as? VisionMark ?: return null
             if (mark.target !== host) return null
+            // 弹道/光束归因其发射舰；舰船直伤（撞击等）归因其自身
             val attacker = when (param) {
-                is ShipAPI -> param
-                is DamagingProjectileAPI -> param.source
                 is BeamAPI -> param.source
+                is DamagingProjectileAPI -> param.source
+                is ShipAPI -> param
                 else -> null
-            }
-            if (attacker !== mark.source) return null
-            val mult = mark.values.damageFromSelfMult
-            if (mult != 1f) {
-                damage.modifier.modifyMult(statId, mult)
+            } ?: return null
+            if (attacker === mark.source) {
+                val mult = mark.values.damageFromSelfMult
+                if (mult != 1f) {
+                    damage.modifier.modifyMult(statId, mult)
+                }
+            } else {
+                damage.modifier.modifyMult(statId, mark.values.damageFromOthersMult)
             }
             return null
         }
