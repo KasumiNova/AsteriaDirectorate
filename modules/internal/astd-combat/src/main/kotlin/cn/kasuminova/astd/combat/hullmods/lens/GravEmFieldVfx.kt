@@ -1,12 +1,12 @@
 package cn.kasuminova.astd.combat.hullmods.lens
 
 import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
+import cn.kasuminova.astd.renderer.boxutil.pool.FlareParticlePool
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEngineLayers
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.util.Misc
-import org.boxutil.base.SimpleParticleControlData
 import org.boxutil.units.standard.entity.FlareEntity
 import org.lazywizard.lazylib.MathUtils
 import org.lwjgl.util.vector.Vector2f
@@ -18,11 +18,6 @@ import kotlin.math.sin
 internal object GravEmFieldVfx {
 
     private val log = Global.getLogger(GravEmFieldVfx::class.java)
-
-    private class FlarePool(
-        val entity: FlareEntity,
-        val controller: SimpleParticleControlData,
-    )
 
     internal class CenterFlare internal constructor(
         private val entity: FlareEntity,
@@ -45,14 +40,8 @@ internal object GravEmFieldVfx {
     }
 
     fun disposeWavePools(engine: CombatEngineAPI) {
-        disposePool(engine, GLOW_POOL_KEY)
-        disposePool(engine, PILLAR_POOL_KEY)
-    }
-
-    private fun disposePool(engine: CombatEngineAPI, key: String) {
-        val pool = engine.customData[key] as? FlarePool ?: return
-        BoxUtilCombatVfx.removeEntity(pool.entity)
-        engine.customData.remove(key)
+        FlareParticlePool.dispose(engine, GLOW_POOL_KEY)
+        FlareParticlePool.dispose(engine, PILLAR_POOL_KEY)
     }
 
     fun spawnWave(engine: CombatEngineAPI, ship: ShipAPI, phaseBlend: Float, chargeGather: Float = 0f) {
@@ -97,14 +86,8 @@ internal object GravEmFieldVfx {
                 fadeOut = WAVE_FADE_OUT
             }
             val scale = MathUtils.getRandomNumberInRange(WAVE_SCALE_MIN, WAVE_SCALE_MAX)
-            glowPool.controller.addParticle(
-                from, 0f, 0f, velocity, Vector2f(scale, scale), ZERO,
-                core, fringe, fadeIn, full, fadeOut,
-            )
-            pillarPool.controller.addParticle(
-                from, outAngle, 0f, velocity, Vector2f(scale, scale), ZERO,
-                core, fringe, fadeIn, full, fadeOut,
-            )
+            glowPool.spawn(from, 0f, velocity, scale, scale, core, fringe, fadeIn, full, fadeOut)
+            pillarPool.spawn(from, outAngle, velocity, scale, scale, core, fringe, fadeIn, full, fadeOut)
         }
     }
 
@@ -150,53 +133,20 @@ internal object GravEmFieldVfx {
         return CenterFlare(entity, radius * 2f)
     }
 
-    private fun poolOf(engine: CombatEngineAPI, key: String, smooth: Boolean): FlarePool? {
-        if (engine.customData[key] == DISABLED) return null
-        val existing = engine.customData[key] as? FlarePool
-        if (existing != null && !existing.entity.hasDelete()) return existing
-        val created = createPool(engine, key, smooth) ?: return null
-        engine.customData[key] = created
-        return created
-    }
-
-    private fun createPool(engine: CombatEngineAPI, key: String, smooth: Boolean): FlarePool? {
-        BoxUtilCombatVfx.ensureReady(engine)
-        val entity = try {
-            FlareEntity()
-        } catch (t: Throwable) {
-            warnOnce(engine, key, "[ASTD] 引力电子干扰力场波形光斑池建实体失败（${t.javaClass.simpleName}，smooth=$smooth），本池视觉本场缺席", t)
-            return null
-        }
-        entity.setLayer(CombatEngineLayers.ABOVE_SHIPS_AND_MISSILES_LAYER)
-        entity.setAdditiveBlend()
-        entity.isFlick = false
-        entity.glowPower = 0.1f
+    private fun poolOf(engine: CombatEngineAPI, key: String, smooth: Boolean): FlareParticlePool? =
         if (smooth) {
-            entity.setSmooth()
-            entity.setSize(WAVE_GLOW_SIZE, WAVE_GLOW_SIZE)
+            FlareParticlePool.obtain(
+                engine, key, CombatEngineLayers.ABOVE_SHIPS_AND_MISSILES_LAYER,
+                smooth = true, sizeX = WAVE_GLOW_SIZE, sizeY = WAVE_GLOW_SIZE,
+                capacity = WAVE_POOL_CAPACITY, maxDuration = WAVE_MAX_DUR,
+            )
         } else {
-            entity.setSmoothDisc()
-            entity.setSize(WAVE_PILLAR_LENGTH, WAVE_PILLAR_WIDTH)
+            FlareParticlePool.obtain(
+                engine, key, CombatEngineLayers.ABOVE_SHIPS_AND_MISSILES_LAYER,
+                smooth = false, sizeX = WAVE_PILLAR_LENGTH, sizeY = WAVE_PILLAR_WIDTH,
+                capacity = WAVE_POOL_CAPACITY, maxDuration = WAVE_MAX_DUR,
+            )
         }
-        entity.autoAspect()
-        entity.setStateVanilla(ZERO, 0f)
-        entity.setGlobalTimer(0f, RESIDENT_FULL_SECONDS, 0f)
-
-        val controller = SimpleParticleControlData(WAVE_POOL_CAPACITY, WAVE_MAX_DUR, -5120f, false)
-        entity.setControlData(controller)
-        entity.setAutoSubmitEntityData(false)
-        entity.setAutoSubmitModelMatrix(false)
-        entity.submitEntityData()
-        entity.submitModelMatrix()
-
-        val state = BoxUtilCombatVfx.addEntity(engine, entity)
-        if (state != 0) {
-            warnOnce(engine, key, "[ASTD] 引力电子干扰力场波形光斑池注册失败（addEntity 返回 $state，smooth=$smooth），本池视觉本场缺席")
-            entity.delete()
-            return null
-        }
-        return FlarePool(entity, controller)
-    }
 
     private fun warnOnce(engine: CombatEngineAPI, key: String, message: String, t: Throwable? = null) {
         if (engine.customData[key] == DISABLED) return
