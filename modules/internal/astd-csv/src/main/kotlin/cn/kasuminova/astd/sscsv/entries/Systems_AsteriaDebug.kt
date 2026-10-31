@@ -2,7 +2,7 @@ package cn.kasuminova.astd.sscsv.entries
 
 import cn.kasuminova.astd.sscsv.annotations.SsCsvComment
 
-@SsCsvComment("ARC 唯一舰 Arc Flare 的系统（占位实现）。")
+@SsCsvComment("ARC 唯一舰 Arc Flare 的系统 (占位实现)。")
 object TacticalOverdrive : ShipSystemEntry() {
     override val id: String = "astd_tactical_overdrive"
     override val name: String = "战术超频"

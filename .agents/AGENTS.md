@@ -12,6 +12,8 @@
     <rule id="no-reflection" />
     <rule id="java17" />
     <rule id="avoid-monolith" />
+    <!-- 游戏内可见文本禁用全角符号：「」 《》 【】 “” （），详见 docs/design/copy/00-文案与标点规范.md -->
+    <rule id="no-fullwidth-symbols-in-game-text" />
   </constraints>
   <longTasks prefer="subAgent" templateFields="task,readOnlyScope,keywords,returnFormat,doNotDo" />
 </copilot>

@@ -1,5 +1,5 @@
 {
-  # 6 个前置赏金（astd_bounty_rogue_1..6）逐级解锁 4 个唯一原型舰终局目标。
+  # 6 个前置赏金 (astd_bounty_rogue_1..6) 逐级解锁 4 个唯一原型舰终局目标。
   # ActiveBounty 完成时向全局记忆写入 $<bountyId>_succeeded，trigger_memKeys_all 检查前置条件。
   # fleet_preset_ships 与 min_FP 相等时，MagicLib 不会随机补强；
   # 随机混编与舰队上限补强由 BountyFleetTunerImpl 完成。

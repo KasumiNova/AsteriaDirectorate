@@ -76,7 +76,7 @@ object Sys_astd_gravity_phase : ShipSystemWithSystemFileEntry() {
     override val deactivateSound: String = "system_phase_cloak_deactivate"
     override val outOfUsesSound: String = "system_phase_cloak_collision"
 
-    // 相位披风 .system 必备字段（对齐原版 phasecloak.system）。
+    // 相位披风 .system 必备字段 (对齐原版 phasecloak.system)。
     override val extraSystemRawFields: Map<String, String> = linkedMapOf(
         "runScriptWhilePaused" to "true",
         "runScriptWhileIdle" to "true",

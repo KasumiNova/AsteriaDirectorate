@@ -117,7 +117,7 @@ abstract class WeaponDataEntry : SsCsvEntry {
         "base value" to baseValue,
         "range" to range,
         "damage/second" to damagePerSecond,
-        // 原版约定：beam（damage/second 非空）时，damage/shot 需要留空；否则面板/tooltip 可能会走“单发伤害”分支导致显示异常。
+        // 原版约定：beam (damage/second 非空)时，damage/shot 需要留空；否则面板/tooltip 可能会走“单发伤害”分支导致显示异常。
         "damage/shot" to damagePerShot.takeUnless { it == 0 && damagePerSecond != 0 },
         "emp" to emp,
         "impact" to impact,
