@@ -19,6 +19,7 @@ import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.combat.WeaponAPI
 import com.fs.starfarer.api.impl.combat.dem.DEMScript
 import com.fs.starfarer.api.mission.FleetSide
+import com.fs.starfarer.api.util.Misc
 import org.lwjgl.util.vector.Vector2f
 
 /**
@@ -72,6 +73,21 @@ class GeminiDemScenario : AbstractAutomationScenario() {
     // COMPLETED 截图门控：最近一次 payload 首伤帧时刻（截图帧需含双色尾焰/锁定激光/光束）。
     private var gdLastStrikeAt = -1f
     private var gdLastTrackedStrikeCount = 0
+
+    // dem_drone 观测面（诊断）：锁定激光（组 0）/ payload（组 1）发射与束体状态，
+    // 用于区分「锁定激光未发射」与「发射但不可见」两类故障；数值为最近一次轮询快照。
+    private var gdDroneLogAt = -1f
+    private var gdDroneCount = 0
+    private var gdTLaserRange = -1f
+    private var gdTLaserFiring = false
+    private var gdTLaserBeams = 0
+    private var gdTLaserBeamLen = -1f
+    private var gdTLaserBrightness = -1f
+    private var gdTLaserBeamsEverSeen = 0
+    private var gdPayloadRange = -1f
+    private var gdPayloadFiring = false
+    private var gdPayloadBeams = 0
+    private var gdLaserProbeCaptured = false
 
     override val scenarioId: String = ASTDInGameAutomationScenario.GD_SCENARIO_ID
     override val pausePolicy: PausePolicy = PausePolicy.FORCE_UNPAUSE
@@ -244,6 +260,76 @@ class GeminiDemScenario : AbstractAutomationScenario() {
         }
     }
 
+    /**
+     * dem_drone 观测面（诊断）：DEMScript 触发后 createFXDrone 生成的无人机随弹头同步，
+     * 组 0 = 锁定激光（SIGNAL 段发射）、组 1 = payload（FIRE 段发射）。
+     * 轮询其发射/束体状态快照，0.25s 节流一条日志；锁定激光束体首次出现时单独记事件。
+     */
+    private fun pollGdDrones(engine: CombatEngineAPI) {
+        val drones = engine.ships.filter { it.hullSpec?.hullId == GD_DRONE_HULL }
+        gdDroneCount = drones.size
+        if (drones.isEmpty()) return
+        val target = findGdTarget(engine)
+        val shouldLog = ctx.elapsed - gdDroneLogAt >= GD_DRONE_LOG_INTERVAL
+        for ((index, drone) in drones.withIndex()) {
+            val laser = drone.weaponGroupsCopy.getOrNull(0)?.weaponsCopy?.firstOrNull() ?: continue
+            val payload = drone.weaponGroupsCopy.getOrNull(1)?.weaponsCopy?.firstOrNull()
+            val laserBeam = laser.beams?.firstOrNull()
+            if (index == 0) {
+                gdTLaserRange = laser.range
+                gdTLaserFiring = laser.isFiring
+                gdTLaserBeams = laser.beams?.size ?: 0
+                gdTLaserBeamLen = laserBeam?.length ?: -1f
+                gdTLaserBrightness = laserBeam?.brightness ?: -1f
+                gdPayloadRange = payload?.range ?: -1f
+                gdPayloadFiring = payload?.isFiring ?: false
+                gdPayloadBeams = payload?.beams?.size ?: 0
+                if (gdTLaserBeams > gdTLaserBeamsEverSeen) {
+                    gdTLaserBeamsEverSeen = gdTLaserBeams
+                    ctx.log.info(
+                        "[ASTD-Automation] gd drone: 锁定激光束体首次出现 id=${laser.id} " +
+                                "beams=$gdTLaserBeams len=$gdTLaserBeamLen brightness=$gdTLaserBrightness",
+                    )
+                }
+            }
+            if (shouldLog) {
+                val distToTarget = target?.let { Misc.getDistance(drone.location, it.location) } ?: -1f
+                ctx.log.info(
+                    "[ASTD-Automation] gd drone#$index: laser(id=${laser.id} range=${laser.range} firing=${laser.isFiring} " +
+                            "beams=${laser.beams?.size ?: 0}) payload(id=${payload?.id} range=${payload?.range} " +
+                            "firing=${payload?.isFiring} beams=${payload?.beams?.size ?: 0}) " +
+                            "drone=(${"%.0f".format(drone.location.x)},${"%.0f".format(drone.location.y)}) " +
+                            "facing=${"%.0f".format(drone.facing)} distToTarget=${"%.0f".format(distToTarget)}",
+                )
+            }
+        }
+        if (shouldLog) gdDroneLogAt = ctx.elapsed
+    }
+
+    /** 锁定激光（组 0）在射的 dem_drone 数量（探针截图条件：双弹束体同时在射才抓帧）。 */
+    private fun countFiringTargetingLasers(engine: CombatEngineAPI): Int =
+        engine.ships.count { drone ->
+            drone.hullSpec?.hullId == GD_DRONE_HULL &&
+                    drone.weaponGroupsCopy.getOrNull(0)?.weaponsCopy?.firstOrNull()?.let {
+                        it.isFiring && (it.beams?.isNotEmpty() == true)
+                    } == true
+        }
+
+    /**
+     * 锁定激光截图探针（ASTD_GD_LASER_PROBE=1 启用）：截图只能在渲染帧内取 framebuffer
+     * （helper 仅对 "Completed" 状态抓帧，TrailPauseProbeScenario 同范式），
+     * 锁定激光束体在射的首个渲染帧写一次 "Completed" 遥测，令 helper 抓取含锁定激光的画面。
+     */
+    override fun renderCapture(ctx: AutomationCombatContext) {
+        if (!GD_LASER_PROBE_ENABLED || gdLaserProbeCaptured) return
+        if (countFiringTargetingLasers(ctx.engine) < GD_LASER_PROBE_MIN_DRONES) return
+        gdLaserProbeCaptured = true
+        val player = findGdPlayer(ctx.engine)
+        ctx.writeDiagnostics("LaserProbe", player)
+        ctx.writeTelemetry("Completed", player, findGdLauncher(player))
+        ctx.log.info("[ASTD-Automation] gd laser probe captured at elapsed=${ctx.elapsed}")
+    }
+
     override fun advance(ctx: AutomationCombatContext, amount: Float) {
         val engine = ctx.engine
 
@@ -251,6 +337,7 @@ class GeminiDemScenario : AbstractAutomationScenario() {
         deployGdReserveShips(engine)
         lockGdCamera(engine)
         pollGdWarheads(engine)
+        pollGdDrones(engine)
 
         val player = findGdPlayer(engine)
         val target = findGdTarget(engine)
@@ -605,6 +692,17 @@ class GeminiDemScenario : AbstractAutomationScenario() {
         json.appendLine("  \"gdHitRegistered\": ${GeminiDemSyncHandler.hitRegisteredCount(engine)},")
         json.appendLine("  \"gdEnemyMinPlayerHp\": ${formatFloat(gdEnemyMinPlayerHp)},")
         json.appendLine("  \"gdWarheadsInPlay\": ${engine.missiles.count { it.customData[GeminiDemDifficulty.SALVO_KEY] != null }},")
+        // dem_drone 观测面快照（锁定激光发射/束体证据）
+        json.appendLine("  \"gdDroneCount\": $gdDroneCount,")
+        json.appendLine("  \"gdTLaserRange\": ${formatFloat(gdTLaserRange)},")
+        json.appendLine("  \"gdTLaserFiring\": $gdTLaserFiring,")
+        json.appendLine("  \"gdTLaserBeams\": $gdTLaserBeams,")
+        json.appendLine("  \"gdTLaserBeamsEverSeen\": $gdTLaserBeamsEverSeen,")
+        json.appendLine("  \"gdTLaserBeamLen\": ${formatFloat(gdTLaserBeamLen)},")
+        json.appendLine("  \"gdTLaserBrightness\": ${formatFloat(gdTLaserBrightness)},")
+        json.appendLine("  \"gdPayloadRange\": ${formatFloat(gdPayloadRange)},")
+        json.appendLine("  \"gdPayloadFiring\": $gdPayloadFiring,")
+        json.appendLine("  \"gdPayloadBeams\": $gdPayloadBeams,")
     }
 
     private companion object {
@@ -618,6 +716,12 @@ class GeminiDemScenario : AbstractAutomationScenario() {
         private const val GD_PHASE_FAILED = "FAILED"
         private const val GD_PLAYER_HULL = "conquest"
         private const val GD_TARGET_HULL = "dominator"
+        private const val GD_DRONE_HULL = "dem_drone"
+        private const val GD_DRONE_LOG_INTERVAL = 0.25f
+
+        // 锁定激光截图探针开关（环境变量 ASTD_GD_LASER_PROBE=1，仅诊断用途）与抓帧条件（双弹束体同时在射）。
+        private val GD_LASER_PROBE_ENABLED: Boolean = System.getenv("ASTD_GD_LASER_PROBE") == "1"
+        private const val GD_LASER_PROBE_MIN_DRONES = 2
         private const val GD_PLAYER_SLOT_LAUNCHER = "WS 019"
         private const val GD_PLAYER_SLOT_POD = "WS 001"
         private val GD_PLAYER_ANCHOR = Vector2f(0f, 0f)
