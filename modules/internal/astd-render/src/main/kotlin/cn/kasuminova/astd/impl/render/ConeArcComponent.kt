@@ -73,7 +73,8 @@ class ConeArcComponent(
                 activateArc(engine, arc)
             }
             val entity = arc.entity ?: continue
-            if (entity.hasDelete()) {
+            // 泊车（parkEntity）会 resetNodes 清空节点但不 delete 实体，租约失效后继续改写会越界。
+            if (entity.hasDelete() || arc.lease?.active != true) {
                 arc.entity = null
                 arc.lease = null
                 continue
@@ -104,6 +105,10 @@ class ConeArcComponent(
         val a = expandedHalfAxis(arc.aSide0, arc.expandSpeed, driveAge)
         val b = expandedHalfAxis(arc.bAlong0, arc.expandSpeed, driveAge)
         val nodes = entity.nodes
+        if (nodes == null || nodes.size < UNIT_NODES.size) {
+            log.warn("锥面弧曲梁节点数不足（id=$id，实际 ${nodes?.size ?: "null"} < ${UNIT_NODES.size}），本弧跳过本帧改写")
+            return
+        }
         for (i in UNIT_NODES.indices) {
             val u = UNIT_NODES[i]
             nodes[i].set(b * u.x, a * u.y)
