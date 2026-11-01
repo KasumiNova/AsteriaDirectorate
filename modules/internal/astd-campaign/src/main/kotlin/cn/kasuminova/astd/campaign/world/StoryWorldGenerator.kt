@@ -106,14 +106,32 @@ object StoryWorldGenerator {
                 var changed = false
                 for (conditionId in marketSpec.conditionIds) {
                     if (!market.hasCondition(conditionId)) {
-                        market.addCondition(conditionId)
+                        addSurveyedCondition(market, conditionId)
                         changed = true
                         log.info("[ASTD] 殖民地 ${marketSpec.marketId} 补挂原生行星状况 $conditionId（殖民兼容热修复）")
+                    } else {
+                        val existing = market.getFirstCondition(conditionId) ?: continue
+                        if (!existing.isSurveyed) {
+                            existing.isSurveyed = true
+                            log.info("[ASTD] 殖民地 ${marketSpec.marketId} 状况 $conditionId 补标记已勘测")
+                        }
                     }
                 }
                 if (changed) market.reapplyConditions()
             }
         }
+    }
+
+    /**
+     * 殖民地市场的状况必须标记为已勘测。
+     *
+     * 原版 [com.fs.starfarer.campaign.econ.Market.addCondition] 按 `condition_gen_data.csv` 的 `reqSurvey`
+     * 把条件重置为未勘测（废墟、肥沃农田、稀有矿石等都需要勘测），而殖民地市场本身是完整勘测的。
+     * 未勘测条件不会进入殖民地条件图标条，表现为兰台可见状况只剩 4 个。
+     */
+    internal fun addSurveyedCondition(market: MarketAPI, conditionId: String) {
+        val conditionKey = market.addCondition(conditionId)
+        market.getSpecificCondition(conditionKey)?.isSurveyed = true
     }
 
     private val LEGACY_SALVAGEABLE_STATION_TYPES = setOf(
@@ -442,7 +460,7 @@ object StoryWorldGenerator {
         entity.market = market
         entity.setFaction(spec.factionId)
         for (conditionId in spec.conditionIds) {
-            market.addCondition(conditionId)
+            addSurveyedCondition(market, conditionId)
         }
         for (industryId in spec.industryIds) {
             if (!market.hasIndustry(industryId)) {

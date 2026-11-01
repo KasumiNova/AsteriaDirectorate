@@ -204,7 +204,7 @@ object StoryWorldMigrations {
                 }
                 for (conditionId in marketSpec.conditionIds) {
                     if (!market.hasCondition(conditionId)) {
-                        market.addCondition(conditionId)
+                        StoryWorldGenerator.addSurveyedCondition(market, conditionId)
                         changed = true
                         log.info("[ASTD] ${marketSpec.marketId} 补挂状况 $conditionId")
                     }
