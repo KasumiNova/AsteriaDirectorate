@@ -1,6 +1,6 @@
 name,id,flux/second,f/s (base rate),f/s (base cap),flux/use,f/u (base rate),f/u (base cap),cr/u,max uses,regen,charge up,active,down,cooldown,toggle,noDissipation,noHardDissipation,hardFlux,noFiring,noTurning,noStrafing,noAccel,noShield,noVent,isPhaseCloak,tags,icon
-弧光共享辐能网络,astd_arc_shared_flux_network,0,0,0,0,0,0,0,,,0.5,10,0.5,20,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,,graphics/icons/hullsys/ammo_feeder.png
-落叶飞花（战机型）,astd_burst_flow_fighter,0,0,0,0,0,0,0,2,0.1,0.1,1,0.1,1,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,,graphics/icons/hullsys/temporal_shell.png
+辐能链接网络,astd_arc_shared_flux_network,0,0,0,0,0,0,0,,,0.5,10,0.5,20,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,,graphics/icons/hullsys/ammo_feeder.png
+落叶飞花 (战机型),astd_burst_flow_fighter,0,0,0,0,0,0,0,2,0.1,0.1,1,0.1,1,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,,graphics/icons/hullsys/temporal_shell.png
 战机引力联结器,astd_fighter_grav_link,0,0,0.05,0,0,0,0,,,0.5,15,1,25,TRUE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,,graphics/icons/hullsys/recall_device.png
 火力引导阵列,astd_fire_control_array,0,0,0,0,0,0,0,,,0.5,10,0.5,16,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,,graphics/icons/hullsys/ammo_feeder.png
 引力空间复制器,astd_grav_replicator,0,0,0,0,0,0.1,0,,,0,2,0,12,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,,graphics/icons/hullsys/entropy_amplifier.png

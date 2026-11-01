@@ -2,7 +2,7 @@
     "id": "astd_arc_shared_flux_network",
     "type": "STAT_MOD",
     "aiType": "CUSTOM",
-    "aiScript": "cn.kasuminova.astd.combat.shipsystems.ASTDArcSharedFluxNetworkSystemAI",
-    "statsScript": "cn.kasuminova.astd.combat.shipsystems.ASTDArcSharedFluxNetworkSystemStats",
+    "aiScript": "cn.kasuminova.astd.combat.shipsystems.FluxLinkNetworkSystemAI",
+    "statsScript": "cn.kasuminova.astd.combat.shipsystems.FluxLinkNetworkSystemStats",
     "useSound": "system_ammo_feeder"
 }
