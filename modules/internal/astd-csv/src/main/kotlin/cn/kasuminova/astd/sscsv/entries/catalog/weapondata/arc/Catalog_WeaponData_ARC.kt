@@ -988,8 +988,12 @@ object Wpn_astd_gemini_dem_targetinglaser_kinetic : WeaponDataEntry() {
     override val id: String = "astd_gemini_dem_targetinglaser_kinetic"
     override val name: String = weaponName(id)
     override val tier: Int = 0
-    override val baseValue: Int = 0
+    override val baseValue: Int = 1
+    override val damagePerSecond: Int = 100
+    override val turnRate: Int = 200
     override val type: String = "ENERGY"
+    override val chargeup: Double = 0.05
+    override val chargedown: Double = 0.05
     override val beamSpeed: Int = 1000000
     override val aiHints: Set<AiHint> = setOf(AiHint.SYSTEM)
     override val tags: String = "no_drop, no_drop_salvage"
@@ -1002,8 +1006,12 @@ object Wpn_astd_gemini_dem_targetinglaser_he : WeaponDataEntry() {
     override val id: String = "astd_gemini_dem_targetinglaser_he"
     override val name: String = weaponName(id)
     override val tier: Int = 0
-    override val baseValue: Int = 0
+    override val baseValue: Int = 1
+    override val damagePerSecond: Int = 100
+    override val turnRate: Int = 200
     override val type: String = "ENERGY"
+    override val chargeup: Double = 0.05
+    override val chargedown: Double = 0.05
     override val beamSpeed: Int = 1000000
     override val aiHints: Set<AiHint> = setOf(AiHint.SYSTEM)
     override val tags: String = "no_drop, no_drop_salvage"
