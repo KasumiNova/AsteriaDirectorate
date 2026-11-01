@@ -21,6 +21,7 @@ class GeminiDemSalvoOnFireEffect(
 ) : OnFireEffectPlugin {
 
     override fun onFire(projectile: DamagingProjectileAPI, weapon: WeaponAPI, engine: CombatEngineAPI) {
+        GeminiDemDroneDebugProbe.installIfEnabled(engine)
         val ship = weapon.ship
         if (ship == null) {
             log.warn("双子星 DEM 齐射：weapon.ship 为 null（weapon=${weapon.id}），放行 dummy 正常飞行，不生成双弹头")
