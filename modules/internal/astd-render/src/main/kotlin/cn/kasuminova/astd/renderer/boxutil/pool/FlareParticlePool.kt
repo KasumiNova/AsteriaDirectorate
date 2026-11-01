@@ -11,7 +11,8 @@ import java.awt.Color
 /**
  * BoxUtil FlareEntity 批量粒子池：一个常驻实体挂 [SimpleParticleControlData]，支持高频一次性粒子。
  *
- * 池以 `engine.customData` 为作用域，战斗结束随引擎释放；同一 key 重复 [obtain] 返回现有实例。
+ * 池以 `engine.customData` 为作用域，战斗结束随引擎释放；同一 key 重复 [obtain] 返回现有实例，
+ * 但控制器已清空（上一批粒子全部结算）的池会因 BoxUtil 提交游标残留缺陷一律重建。
  * 创建/注册失败会记录 WARN 日志并以 key 标记本场战斗禁用（后续 obtain 直接返回 null）。
  */
 class FlareParticlePool private constructor(
@@ -22,7 +23,7 @@ class FlareParticlePool private constructor(
 
     val expired: Boolean get() = entity.hasDelete()
 
-    /** 最近一次 spawn 的战斗时间戳；用于空闲超时判定。 */
+    /** 最近一次成功 spawn 的战斗时间戳；用于空闲超时与控制器清空判定。 */
     var lastSpawnTime: Float = Float.NEGATIVE_INFINITY
         private set
 
@@ -42,12 +43,27 @@ class FlareParticlePool private constructor(
         full: Float,
         fadeOut: Float,
     ) {
-        controller.addParticle(
+        val data = controller.addParticle(
             location, facingDeg, 0f, velocity, Vector2f(sizeX, sizeY), ZERO,
             core, fringe, fadeIn, full, fadeOut,
         )
+        if (data == null) {
+            if (!spawnFailureLogged) {
+                spawnFailureLogged = true
+                log.warn("[ASTD] FlareEntity 粒子池 spawn 被控制器拒绝（粒子控制器未就绪或已失效），本池后续同类失败不再重复告警")
+            }
+            return
+        }
         lastSpawnTime = engine.getTotalElapsedTime(false)
     }
+
+    /** 控制器已清空（上一批粒子全部结算）：残留提交游标可能导致下同批量粒子整批不可见，必须重建。 */
+    val controllerCleared: Boolean
+        get() = lastSpawnTime > Float.NEGATIVE_INFINITY &&
+            engine.getTotalElapsedTime(false) > lastSpawnTime &&
+            entity.renderingCount == 0
+
+    private var spawnFailureLogged = false
 
     fun dispose() {
         BoxUtilCombatVfx.removeEntity(entity)
@@ -66,7 +82,8 @@ class FlareParticlePool private constructor(
          *
          * @param smooth true 为 SMOOTH 圆形光斑，false 为 SMOOTH_DISC 长条（按朝向拉伸）。
          * @param sizeX/sizeY 池基础尺寸（世界单位），单个粒子再乘 spawn 的缩放倍率。
-         * @param idleTimeout 池空闲超时（秒）：距上次 spawn 超过该时长后再次 obtain 会重建池。
+         * @param idleTimeout 池空闲超时（秒）：距上次 spawn 超过该时长后再次 obtain 会重建池；
+         * 控制器已清空时不受此限，直接重建。
          */
         fun obtain(
             engine: CombatEngineAPI,
@@ -84,8 +101,11 @@ class FlareParticlePool private constructor(
             val existing = engine.customData[key] as? FlareParticlePool
             if (existing != null && !existing.expired) {
                 val now = engine.getTotalElapsedTime(false)
-                // 池闲置超过 idleTimeout 后 SimpleParticleControlData 内部不再可靠唤醒粒子，整体重建
-                if (now - existing.lastSpawnTime <= idleTimeout) return existing
+                // BoxUtil SimpleParticleControlData.clearParticles() 漏复位提交游标 state[4]：
+                // 控制器清空后若下一批粒子数恰好等于残留游标，提交块被整体跳过，整批粒子不可见。
+                // 控制器已清空的池一律重建，不复用；同帧连续 spawn 时 renderingCount 尚未提交（恒 0），
+                // 由 controllerCleared 内部的时间守卫排除，不会误判。
+                if (!existing.controllerCleared && now - existing.lastSpawnTime <= idleTimeout) return existing
                 existing.dispose()
             }
             val created = create(engine, key, layer, smooth, sizeX, sizeY, capacity, maxDuration, glowPower)
