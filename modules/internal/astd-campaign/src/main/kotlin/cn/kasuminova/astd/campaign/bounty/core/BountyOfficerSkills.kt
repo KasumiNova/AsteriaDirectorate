@@ -87,6 +87,46 @@ object BountyOfficerSkills {
             "combat_endurance", "energy_weapon_mastery", "field_modulation", "gunnery_implants",
             "helmsmanship", "missile_specialization", "polarized_armor", "systems_expertise",
         ),
+        "astd_xc_101_Combat" to listOf(
+            "combat_endurance", "field_modulation", "gunnery_implants", "helmsmanship",
+            "missile_specialization", "ordnance_expert", "systems_expertise", "target_analysis",
+        ),
+        "astd_xc_101_Ranged" to listOf(
+            "combat_endurance", "field_modulation", "gunnery_implants", "helmsmanship",
+            "missile_specialization", "ordnance_expert", "systems_expertise", "target_analysis",
+        ),
+        "astd_xc_102_Ranged" to listOf(
+            "combat_endurance", "field_modulation", "gunnery_implants", "helmsmanship",
+            "missile_specialization", "ordnance_expert", "polarized_armor", "systems_expertise",
+        ),
+        "astd_xc_103_Combat" to listOf(
+            "combat_endurance", "field_modulation", "gunnery_implants", "helmsmanship",
+            "missile_specialization", "polarized_armor", "systems_expertise", "target_analysis",
+        ),
+        "astd_xc_103_Suppression" to listOf(
+            "combat_endurance", "field_modulation", "gunnery_implants", "helmsmanship",
+            "missile_specialization", "ordnance_expert", "systems_expertise", "target_analysis",
+        ),
+        "astd_xc_104_Standard" to listOf(
+            "combat_endurance", "field_modulation", "gunnery_implants", "helmsmanship",
+            "missile_specialization", "ordnance_expert", "systems_expertise", "target_analysis",
+        ),
+        "astd_zw_001_Carrier" to listOf(
+            "combat_endurance", "field_modulation", "gunnery_implants", "helmsmanship",
+            "missile_specialization", "point_defense", "polarized_armor", "systems_expertise",
+        ),
+        "astd_zw_002_Paralysis" to listOf(
+            "combat_endurance", "field_modulation", "helmsmanship", "impact_mitigation",
+            "missile_specialization", "polarized_armor", "systems_expertise", "target_analysis",
+        ),
+        "astd_zw_103_Combat" to listOf(
+            "combat_endurance", "energy_weapon_mastery", "field_modulation", "gunnery_implants",
+            "helmsmanship", "missile_specialization", "polarized_armor", "systems_expertise",
+        ),
+        "astd_zw_103_Paralysis" to listOf(
+            "combat_endurance", "energy_weapon_mastery", "field_modulation", "gunnery_implants",
+            "helmsmanship", "missile_specialization", "polarized_armor", "systems_expertise",
+        ),
     )
 
     fun forVariant(variantId: String?): List<String>? = TABLES[variantId]

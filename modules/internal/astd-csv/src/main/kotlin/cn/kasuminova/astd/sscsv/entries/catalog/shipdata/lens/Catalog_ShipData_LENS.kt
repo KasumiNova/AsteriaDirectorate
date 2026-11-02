@@ -30,7 +30,7 @@ object Ship_astd_zw_001 : ShipDataEntry() {
     override val shieldArc: Int = 240
 
     override val shieldUpkeep: Double = 0.4
-    override val shieldEfficiency: Double = 0.6
+    override val shieldEfficiency: Double = 0.70
     override val minCrew: Int = 200
     override val maxCrew: Int = 400
     override val cargo: Int = 400
@@ -118,7 +118,7 @@ object Ship_astd_zw_102 : ShipDataEntry() {
     override val shieldArc: Int = 240
 
     override val shieldUpkeep: Double = 0.5333
-    override val shieldEfficiency: Double = 0.6
+    override val shieldEfficiency: Double = 0.70
 
     override val hints: String = "CARRIER, COMBAT, NO_AUTO_ESCORT"
     override val minCrew: Int = 500
@@ -252,7 +252,7 @@ object Ship_astd_zw_103_fighter : ShipDataEntry() {
     override val shieldType: String = "FRONT"
     override val shieldArc: Int = 270
     override val shieldUpkeep: Double = 0.3
-    override val shieldEfficiency: Double = 0.6
+    override val shieldEfficiency: Double = 0.70
     override val minCrew: Int = 0
     override val maxCrew: Int = 0
     override val number: Int = 9121
@@ -276,7 +276,7 @@ object Ship_astd_gemini_bomber : ShipDataEntry() {
     override val shieldType: String = "FRONT"
     override val shieldArc: Int = 240
     override val shieldUpkeep: Double = 0.3
-    override val shieldEfficiency: Double = 0.6
+    override val shieldEfficiency: Double = 0.70
     override val minCrew: Int = 0
     override val maxCrew: Int = 0
     override val number: Int = 9130
@@ -301,7 +301,7 @@ object Ship_astd_surge_fighter : ShipDataEntry() {
     override val shieldType: String = "FRONT"
     override val shieldArc: Int = 270
     override val shieldUpkeep: Double = 0.3
-    override val shieldEfficiency: Double = 0.6
+    override val shieldEfficiency: Double = 0.70
     override val minCrew: Int = 0
     override val maxCrew: Int = 0
     override val number: Int = 9131
@@ -326,7 +326,7 @@ object Ship_astd_gravwell_interceptor : ShipDataEntry() {
     override val shieldType: String = "OMNI"
     override val shieldArc: Int = 180
     override val shieldUpkeep: Double = 0.3
-    override val shieldEfficiency: Double = 0.6
+    override val shieldEfficiency: Double = 0.70
     override val minCrew: Int = 0
     override val maxCrew: Int = 0
     override val number: Int = 9132

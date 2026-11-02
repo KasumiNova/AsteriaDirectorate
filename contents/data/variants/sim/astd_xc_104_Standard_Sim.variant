@@ -1,0 +1,48 @@
+{
+    "displayName": "Standard",
+    "fluxCapacitors": 10,
+    "fluxVents": 9,
+    "hullId": "astd_xc_104",
+    "hullMods": [
+        "astd_dual_mode_switcher",
+        "astd_mode_crewed",
+        "stabilizedshieldemitter",
+        "hardenedshieldemitter",
+        "unstable_injector",
+        "astd_mode_next_crewed"
+    ],
+    "permaMods": [
+        "astd_mode_crewed",
+        "astd_mode_next_crewed"
+    ],
+    "quality": 1,
+    "sMods": [],
+    "variantId": "astd_xc_104_Standard_Sim",
+    "tags": [
+        "ship_recoverable"
+    ],
+    "weaponGroups": [
+        {
+            "autofire": true,
+            "mode": "LINKED",
+            "weapons": {
+                "WS0001": "astd_gcp4"
+            }
+        },
+        {
+            "autofire": false,
+            "mode": "ALTERNATING",
+            "weapons": {
+                "WS0003": "sabot",
+                "WS0004": "sabot"
+            }
+        },
+        {
+            "autofire": true,
+            "mode": "LINKED",
+            "weapons": {
+                "WS0002": "lightneedler"
+            }
+        }
+    ]
+}

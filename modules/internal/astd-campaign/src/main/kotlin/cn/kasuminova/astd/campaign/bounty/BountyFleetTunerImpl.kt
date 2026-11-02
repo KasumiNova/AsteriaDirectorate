@@ -107,12 +107,50 @@ class BountyFleetTunerImpl(
         return picker.pick()
     }
 
+    private val discoveredAstdPools: Map<ShipAPI.HullSize, List<String>> by lazy { discoverAstdPools() }
+
+    private fun astdPoolFor(size: ShipAPI.HullSize): List<String> {
+        val discovered = discoveredAstdPools[size].orEmpty()
+        if (discovered.isNotEmpty()) return discovered
+        log.warn("[ASTD] ASTD 装配发现为空，$size 舰级退回静态池")
+        return BountyPoolConfig.ASTD_POOLS[size].orEmpty()
+    }
+
+    /**
+     * 发现全部 ASTD 生产装配，使每个装配都有机会出现在赏金舰队中。
+     *
+     * 只收 goalVariant 的 STOCK 装配，跳过唯一舰（astd_unique）与发布范围外舰体，
+     * 与 [isEscortExcludedHull] 口径保持一致。
+     */
+    private fun discoverAstdPools(): Map<ShipAPI.HullSize, List<String>> {
+        val settings = Global.getSettings()
+        val pools = mutableMapOf<ShipAPI.HullSize, MutableList<String>>()
+        for (variantId in settings.allVariantIds) {
+            if (!variantId.startsWith(ASTD_HULL_PREFIX)) continue
+            val variant = settings.getVariant(variantId) ?: continue
+            if (!variant.isStockVariant || variant.source != VariantSource.STOCK) continue
+            if (!variant.isGoalVariant) continue
+            val hull = variant.hullSpec ?: continue
+            if (hull.hullSize == ShipAPI.HullSize.FIGHTER) continue
+            val unique = hull.tags.contains(UNIQUE_HULL_TAG)
+            if (isEscortExcludedHull(hull.hullId, unique)) continue
+            val emptyFit = variant.fittedWeaponSlots.isEmpty() && variant.wings.isEmpty()
+            if (emptyFit) {
+                log.warn("[ASTD] ASTD 装配发现跳过空装配：$variantId")
+                continue
+            }
+            pools.getOrPut(hull.hullSize) { mutableListOf() }.add(variantId)
+        }
+        log.info("[ASTD] ASTD 装配发现完成：" + pools.entries.joinToString { (size, ids) -> "$size=${ids.size}" })
+        return pools
+    }
+
     private fun pickAstdEscortIntoFleet(
         fleet: CampaignFleetAPI,
         size: ShipAPI.HullSize,
         config: BountyPoolConfig,
     ): Boolean {
-        val pool = BountyPoolConfig.ASTD_POOLS[size].orEmpty()
+        val pool = astdPoolFor(size)
         if (pool.isEmpty()) return false
 
         if (config.destroyerBestOf > 1 && size == ShipAPI.HullSize.DESTROYER) {

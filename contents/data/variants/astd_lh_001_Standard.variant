@@ -1,17 +1,16 @@
 {
     "displayName": "Standard",
     "fluxCapacitors": 10,
-    "fluxVents": 8,
+    "fluxVents": 9,
     "goalVariant": true,
     "hullId": "astd_lh_001",
     "hullMods": [
-        "stabilizedshieldemitter",
+        "astd_dual_mode_switcher",
         "frontemitter",
         "hardenedshieldemitter",
-        "fluxbreakers",
         "magazines",
         "astd_mode_crewed",
-        "astd_dual_mode_switcher",
+        "unstable_injector",
         "astd_mode_next_crewed"
     ],
     "permaMods": [
@@ -21,6 +20,9 @@
     "quality": 1,
     "sMods": [],
     "variantId": "astd_lh_001_Standard",
+    "tags": [
+        "ship_recoverable"
+    ],
     "weaponGroups": [
         {
             "autofire": false,

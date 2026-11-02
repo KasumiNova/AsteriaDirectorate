@@ -1,17 +1,17 @@
 {
     "displayName": "Standard",
     "fluxCapacitors": 20,
-    "fluxVents": 19,
+    "fluxVents": 20,
     "goalVariant": true,
     "hullId": "astd_xc_002",
     "hullMods": [
+        "astd_dual_mode_switcher",
         "frontemitter",
         "hardenedshieldemitter",
         "stabilizedshieldemitter",
         "targetingunit",
-        "fluxbreakers",
         "astd_mode_crewed",
-        "astd_dual_mode_switcher",
+        "advancedoptics",
         "astd_mode_next_crewed"
     ],
     "permaMods": [
@@ -21,6 +21,9 @@
     "quality": 1,
     "sMods": [],
     "variantId": "astd_xc_002_Standard",
+    "tags": [
+        "ship_recoverable"
+    ],
     "weaponGroups": [
         {
             "autofire": false,
@@ -33,14 +36,8 @@
             "autofire": true,
             "mode": "LINKED",
             "weapons": {
-                "WS 002": "astd_electric_drive_accelerator"
-            }
-        },
-        {
-            "autofire": true,
-            "mode": "LINKED",
-            "weapons": {
-                "WS 003": "astd_heavy_charge_needle"
+                "WS 002": "astd_gcp8",
+                "WS 003": "astd_gcp8"
             }
         }
     ],

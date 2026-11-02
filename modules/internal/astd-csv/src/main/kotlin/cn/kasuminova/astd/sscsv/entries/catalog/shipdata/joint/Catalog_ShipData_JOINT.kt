@@ -25,7 +25,7 @@ object Ship_astd_lh_001 : ShipDataEntry() {
     override val shieldArc: Int = 240
 
     override val shieldUpkeep: Double = 0.4
-    override val shieldEfficiency: Double = 0.65
+    override val shieldEfficiency: Double = 0.75
     override val minCrew: Int = 4
     override val maxCrew: Int = 12
     override val cargo: Int = 40
@@ -67,7 +67,7 @@ object Ship_astd_lh_002 : ShipDataEntry() {
     override val shieldArc: Int = 240
 
     override val shieldUpkeep: Double = 0.4
-    override val shieldEfficiency: Double = 0.65
+    override val shieldEfficiency: Double = 0.75
     override val minCrew: Int = 4
     override val maxCrew: Int = 12
     override val cargo: Int = 40

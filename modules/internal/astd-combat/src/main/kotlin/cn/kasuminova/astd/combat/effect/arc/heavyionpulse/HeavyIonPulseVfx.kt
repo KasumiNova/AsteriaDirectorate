@@ -13,8 +13,8 @@ object HeavyIonPulseVfx {
     private val ARC_FRINGE = Color(140, 200, 255)
     private val ARC_CORE = Color(225, 242, 255)
 
-    // spawnEmpArc 的 soundId 为 null 时原版不播音效。
-    private const val ARC_SOUND_ID = "shock_repeater_emp_impact"
+    // spawnEmpArc 的 soundId 为 null 时原版不播音效；这里沿用原版 tachyon lance 的电弧打击音。
+    private const val ARC_SOUND_ID = "tachyon_lance_emp_impact"
 
     private val feedback: CombatFeedback = CombatFeedbackImpl
 

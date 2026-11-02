@@ -1,14 +1,15 @@
 {
     "displayName": "Fighter",
-    "fluxCapacitors": 30,
-    "fluxVents": 21,
+    "fluxCapacitors": 50,
+    "fluxVents": 12,
+    "goalVariant": true,
     "hullId": "astd_zw_102",
     "hullMods": [
-        "frontemitter",
-        "stabilizedshieldemitter",
+        "astd_dual_mode_switcher",
         "targetingunit",
         "astd_mode_crewed",
-        "astd_dual_mode_switcher",
+        "advancedoptics",
+        "expanded_deck_crew",
         "astd_mode_next_crewed"
     ],
     "permaMods": [
@@ -18,12 +19,21 @@
     "quality": 1,
     "sMods": [],
     "variantId": "astd_zw_102_Fighter",
+    "tags": [
+        "ship_recoverable"
+    ],
     "weaponGroups": [
         {
             "autofire": true,
             "mode": "LINKED",
             "weapons": {
-                "WS0001": "astd_gcp12",
+                "WS0001": "tachyonlance"
+            }
+        },
+        {
+            "autofire": false,
+            "mode": "LINKED",
+            "weapons": {
                 "WS0002": "astd_gcp12"
             }
         },
@@ -34,24 +44,11 @@
                 "WS0003": "astd_gemini_dem_pod",
                 "WS0013": "astd_gemini_dem_pod"
             }
-        },
-        {
-            "autofire": true,
-            "mode": "LINKED",
-            "weapons": {
-                "WS0004": "astd_gcp2",
-                "WS0005": "astd_positron_shockwave",
-                "WS0007": "astd_positron_shockwave",
-                "WS0008": "astd_gcp2",
-                "WS0009": "astd_positron_shockwave",
-                "WS0010": "astd_gcp2"
-            }
         }
     ],
     "wings": [
         "astd_surge_fighter_wing",
         "astd_surge_fighter_wing",
         "astd_surge_fighter_wing"
-    ],
-    "goalVariant": true
+    ]
 }

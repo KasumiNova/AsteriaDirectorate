@@ -68,7 +68,7 @@ object Wing_astd_surge_fighter_wing : WingDataEntry() {
     override val num: Int = 2
     override val role: String = "FIGHTER"
     override val roleDesc: String = wingRoleDesc(id)
-    override val refit: Int = 12
+    override val refit: Int = 15
     override val baseValue: Int = 8000
     override val number: Int = 9134
 }

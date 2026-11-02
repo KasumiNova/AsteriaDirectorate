@@ -1,0 +1,56 @@
+{
+    "displayName": "Ranged",
+    "fluxCapacitors": 49,
+    "fluxVents": 50,
+    "goalVariant": true,
+    "hullId": "astd_xc_102",
+    "hullMods": [
+        "astd_dual_mode_switcher",
+        "astd_mode_crewed",
+        "frontemitter",
+        "hardenedshieldemitter",
+        "stabilizedshieldemitter",
+        "heavyarmor",
+        "advancedoptics",
+        "fluxbreakers",
+        "astd_mode_next_crewed"
+    ],
+    "permaMods": [
+        "astd_mode_crewed",
+        "astd_mode_next_crewed"
+    ],
+    "quality": 1,
+    "sMods": [],
+    "variantId": "astd_xc_102_Ranged",
+    "tags": [
+        "ship_recoverable"
+    ],
+    "weaponGroups": [
+        {
+            "autofire": true,
+            "mode": "LINKED",
+            "weapons": {
+                "WS0001": "gauss",
+                "WS0002": "gauss"
+            }
+        },
+        {
+            "autofire": true,
+            "mode": "LINKED",
+            "weapons": {
+                "WS0003": "astd_gcp12"
+            }
+        },
+        {
+            "autofire": true,
+            "mode": "LINKED",
+            "weapons": {
+                "WS0004": "gravitonbeam",
+                "WS0009": "hveldriver",
+                "WS0010": "hveldriver",
+                "WS0015": "gravitonbeam",
+                "WS0016": "gravitonbeam"
+            }
+        }
+    ]
+}

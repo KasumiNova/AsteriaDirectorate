@@ -25,7 +25,7 @@ object Ship_astd_xc_001 : ShipDataEntry() {
     override val shieldType: String = "OMNI"
     override val shieldArc: Int = 180
     override val shieldUpkeep: Double = 0.37
-    override val shieldEfficiency: Double = 0.70
+    override val shieldEfficiency: Double = 0.80
     override val minCrew: Int = 400
     override val maxCrew: Int = 1000
     override val cargo: Int = 300
@@ -68,7 +68,7 @@ object Ship_astd_xc_002 : ShipDataEntry() {
     override val shieldType: String = "OMNI"
     override val shieldArc: Int = 180
     override val shieldUpkeep: Double = 0.32
-    override val shieldEfficiency: Double = 0.70
+    override val shieldEfficiency: Double = 0.80
     override val minCrew: Int = 10
     override val maxCrew: Int = 250
     override val cargo: Int = 60
@@ -131,7 +131,7 @@ object Ship_astd_xc_102 : ShipDataEntry() {
     override val shieldArc: Int = 240
 
     override val shieldUpkeep: Double = 0.5357
-    override val shieldEfficiency: Double = 0.70
+    override val shieldEfficiency: Double = 0.80
     override val minCrew: Int = 400
     override val maxCrew: Int = 800
     override val cargo: Int = 800
@@ -174,7 +174,7 @@ object Ship_astd_xc_101 : ShipDataEntry() {
     override val shieldArc: Int = 360
 
     override val shieldUpkeep: Double = 0.56
-    override val shieldEfficiency: Double = 1.00
+    override val shieldEfficiency: Double = 0.80
     override val minCrew: Int = 150
     override val maxCrew: Int = 300
     override val cargo: Int = 400
@@ -217,7 +217,7 @@ object Ship_astd_xc_103 : ShipDataEntry() {
     override val shieldArc: Int = 200
 
     override val shieldUpkeep: Double = 0.48
-    override val shieldEfficiency: Double = 0.70
+    override val shieldEfficiency: Double = 0.80
     override val minCrew: Int = 50
     override val maxCrew: Int = 70
     override val cargo: Int = 80
@@ -258,7 +258,7 @@ object Ship_astd_xc_104 : ShipDataEntry() {
     override val shieldType: String = "FRONT"
     override val shieldArc: Int = 120
     override val shieldUpkeep: Double = 0.6
-    override val shieldEfficiency: Double = 0.8
+    override val shieldEfficiency: Double = 0.80
     override val minCrew: Int = 5
     override val maxCrew: Int = 15
     override val cargo: Int = 15
