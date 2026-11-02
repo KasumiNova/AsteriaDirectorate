@@ -133,6 +133,9 @@ class ASTDPlasmaArmorShieldHullMod : BaseHullMod() {
 
     override fun applyEffectsBeforeShipCreation(hullSize: ShipAPI.HullSize, stats: MutableShipStatsAPI, id: String) {
         stripForbiddenHullMods(stats.variant)
+        // 必须在此处扣减：ArmorGrid 在 Ship 构造期用 armorBonus 结算一次最大装甲值，之后再改 armorBonus 不会回写网格
+        val isPlayer = (stats.fleetMember?.owner ?: 0) == 0
+        stats.armorBonus.modifyMult(ASTDArcProductionShipIds.HULLMOD_PLASMA_ARMOR_SHIELD, 1f - Values.resolve(isPlayer).armorPenalty)
     }
 
     override fun applyEffectsAfterShipCreation(ship: ShipAPI, id: String) {
@@ -153,7 +156,6 @@ class ASTDPlasmaArmorShieldHullMod : BaseHullMod() {
         stats.kineticShieldDamageTakenMult.modifyMult(id, values.kineticShieldMult)
         stats.highExplosiveShieldDamageTakenMult.modifyMult(id, values.heShieldMult)
         stats.fragmentationShieldDamageTakenMult.modifyMult(id, values.fragShieldMult)
-        stats.armorBonus.modifyMult(id, 1f - values.armorPenalty)
 
         val shield = ship.shield
         if (shield?.isOn == true) {
@@ -348,7 +350,8 @@ class ASTDPlasmaArmorShieldHullMod : BaseHullMod() {
             if (target !== ship || ship.isHulk || !ship.isAlive) return null
             if (!shieldHit && !isArmorHit(hitPoint)) return null
 
-            val finalMaxArmor = ship.mutableStats.armorBonus.computeEffective(ship.armorGrid.armorRating).coerceAtLeast(1f)
+            // armorGrid.armorRating 已是 armorBonus 结算后的最终最大装甲值，再乘一次会重复计算
+            val finalMaxArmor = ship.armorGrid.armorRating.coerceAtLeast(1f)
             val boostMult = 1f + boostLevel(ship)
             val values = ship.customData[VALUES_CACHE_KEY] as? Values ?: Values.resolve(ship.owner == 0)
             val armor = finalMaxArmor * directionalArmorFraction(

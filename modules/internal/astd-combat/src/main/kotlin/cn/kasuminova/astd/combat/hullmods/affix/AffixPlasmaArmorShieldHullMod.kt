@@ -61,7 +61,8 @@ class AffixPlasmaArmorShieldHullMod : BaseHullMod() {
             if (target !== ship || damage == null || !shieldHit || point == null) return null
             if (!ship.isAlive || ship.isHulk) return null
 
-            val maxArmor = ship.mutableStats.armorBonus.computeEffective(ship.armorGrid.armorRating).coerceAtLeast(1f)
+            // armorGrid.armorRating 已是 armorBonus 结算后的最终最大装甲值，再乘一次会重复计算
+            val maxArmor = ship.armorGrid.armorRating.coerceAtLeast(1f)
             val armorValue = maxArmor * armorFraction
             val incoming = effectiveDamageAmount(damage)
             if (incoming <= 0f) return null

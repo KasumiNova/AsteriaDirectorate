@@ -174,7 +174,7 @@ object Ship_astd_xc_101 : ShipDataEntry() {
     override val shieldArc: Int = 360
 
     override val shieldUpkeep: Double = 0.56
-    override val shieldEfficiency: Double = 0.80
+    override val shieldEfficiency: Double = 1.00
     override val minCrew: Int = 150
     override val maxCrew: Int = 300
     override val cargo: Int = 400

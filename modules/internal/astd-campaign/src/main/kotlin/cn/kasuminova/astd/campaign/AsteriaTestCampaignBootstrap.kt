@@ -1,5 +1,6 @@
 package cn.kasuminova.astd.campaign
 
+import cn.kasuminova.astd.campaign.world.StoryWorldGenerator
 import com.fs.starfarer.api.EveryFrameScript
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.campaign.SectorAPI
@@ -171,7 +172,7 @@ object AsteriaTestCampaignBootstrap {
         if (!market.hasIndustry(Industries.POPULATION)) {
             market.addIndustry(Industries.POPULATION)
         }
-        if (!market.hasIndustry(Industries.SPACEPORT)) {
+        if (!StoryWorldGenerator.hasIndustryOrUpgrade(market, Industries.SPACEPORT)) {
             market.addIndustry(Industries.SPACEPORT)
         }
         market.setHasSpaceport(true)

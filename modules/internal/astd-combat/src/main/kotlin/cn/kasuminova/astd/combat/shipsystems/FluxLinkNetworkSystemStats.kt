@@ -41,6 +41,11 @@ class FluxLinkNetworkSystemStats : BaseShipSystemScript() {
         val engine = Global.getCombatEngine() ?: return
         if (engine.isPaused) return
         val ship = stats.entity as? ShipAPI ?: return
+        if (!effectLevel.isFinite()) {
+            reportNonFinite("effectLevel", effectLevel, ship)
+            teardown(engine, ship)
+            return
+        }
         if (ship.isHulk || ship.hitpoints <= 0f) {
             teardown(engine, ship)
             return
@@ -59,13 +64,26 @@ class FluxLinkNetworkSystemStats : BaseShipSystemScript() {
             return
         }
 
-        val amount = engine.elapsedInLastFrame.coerceIn(0.001f, 0.25f)
+        val rawElapsed = engine.elapsedInLastFrame
+        if (!rawElapsed.isFinite() || rawElapsed <= 0f) {
+            reportNonFinite("elapsedInLastFrame", rawElapsed, ship)
+            return
+        }
+        val amount = rawElapsed.coerceAtMost(0.25f)
         val range = ASTDArcCombatUtil.effectiveSystemRange(ship, values.range)
+        if (!range.isFinite() || range <= 0f) {
+            reportNonFinite("range", range, ship)
+            return
+        }
         val links = links(engine, ship)
         val activeIds = HashSet<String>()
 
         // 含自身增益后的耗散，即状态栏展示给玩家的「自身辐能耗散」
         val dissipation = ship.mutableStats.fluxDissipation.modifiedValue
+        if (!dissipation.isFinite() || dissipation <= 0f) {
+            reportNonFinite("dissipation", dissipation, ship)
+            return
+        }
         val maxRate = (dissipation * values.transferRate * level).coerceAtLeast(1f)
         var activeLinkCount = 0
         var transferredThisFrame = 0f
@@ -127,8 +145,12 @@ class FluxLinkNetworkSystemStats : BaseShipSystemScript() {
             iterator.remove()
         }
 
-        ASTDArcProductionVfx.incrementCounter(engine, ASTDArcProductionVfx.TELEMETRY_FLUX_LINK_TRANSFERRED_FLUX, transferredThisFrame.roundToInt())
-        if (transferredThisFrame > 0f) ASTDArcProductionVfx.incrementCounter(engine, ASTDArcProductionVfx.TELEMETRY_FLUX_LINK_TRANSFER_FRAMES)
+        if (transferredThisFrame.isFinite()) {
+            ASTDArcProductionVfx.incrementCounter(engine, ASTDArcProductionVfx.TELEMETRY_FLUX_LINK_TRANSFERRED_FLUX, transferredThisFrame.roundToInt())
+            if (transferredThisFrame > 0f) ASTDArcProductionVfx.incrementCounter(engine, ASTDArcProductionVfx.TELEMETRY_FLUX_LINK_TRANSFER_FRAMES)
+        } else {
+            reportNonFinite("transferredThisFrame", transferredThisFrame, ship)
+        }
         ASTDArcProductionVfx.setCounter(engine, ASTDArcProductionVfx.TELEMETRY_FLUX_LINK_ACTIVE_LINKS, activeLinkCount)
     }
 
@@ -180,13 +202,13 @@ class FluxLinkNetworkSystemStats : BaseShipSystemScript() {
         val softDesired = minOf((targetTracker.currFlux - targetTracker.hardFlux).coerceAtLeast(0f), softBudget)
         val hardDesired = minOf(targetTracker.hardFlux, hardBudget)
         val desired = softDesired + hardDesired
-        if (desired <= 0f) return 0f
+        if (!desired.isFinite() || desired <= 0f) return 0f
 
         val scale = if (desired > totalCap) totalCap / desired else 1f
         val soft = softDesired * scale
         val hard = hardDesired * scale
         val total = soft + hard
-        if (total <= 0f) return 0f
+        if (!total.isFinite() || total <= 0f) return 0f
 
         if (soft > 0f) targetTracker.decreaseFlux(soft)
         if (hard > 0f) {
@@ -260,7 +282,20 @@ class FluxLinkNetworkSystemStats : BaseShipSystemScript() {
     private fun formatPercent(value: Float): String =
         "${(value.coerceAtLeast(0f) * 100f).roundToInt()}%"
 
+    /**
+     * 非有限数值（NaN/Infinity）告警：同一实例只报一次，避免每帧刷日志；
+     * 调用方负责跳过当帧计算，不得静默归零。
+     */
+    private fun reportNonFinite(what: String, value: Float, ship: ShipAPI?) {
+        if (nonFiniteReported) return
+        nonFiniteReported = true
+        log.warn("[ASTD] 辐能链接网络检测到非有限数值 $what=$value（ship=${ship?.id}/${ship?.name}），已跳过当帧传输；若持续出现请反馈该日志")
+    }
+
+    private var nonFiniteReported = false
+
     companion object {
+        private val log = Global.getLogger(FluxLinkNetworkSystemStats::class.java)
         private const val RATE_SMOOTHING = 3f
         private const val LINK_FADE_IN = 0.5f
         private const val LINK_FADE_OUT = 1.0f

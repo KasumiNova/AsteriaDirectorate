@@ -188,13 +188,33 @@ object StoryWorldGenerator {
                 if (marketSpec.conditionOnly || marketSpec.industryIds.isEmpty()) continue
                 val market = sector.economy.getMarket(marketSpec.marketId) ?: continue
                 for (industryId in marketSpec.industryIds) {
-                    if (!market.hasIndustry(industryId)) {
-                        market.addIndustry(industryId)
-                        log.info("[ASTD] 市场 ${marketSpec.marketId} 补齐缺失产业 $industryId（旧档热修复）")
-                    }
+                    if (hasIndustryOrUpgrade(market, industryId)) continue
+                    market.addIndustry(industryId)
+                    log.info("[ASTD] 市场 ${marketSpec.marketId} 补齐缺失产业 $industryId（旧档热修复）")
                 }
             }
         }
+    }
+
+    /**
+     * 市场是否已有 [industryId] 或它的任一下游升级产业。
+     *
+     * 升级是"移除原产业 + 新增升级产业"（原版 [MarketAPI.removeIndustry]），
+     * 已经升到特大型港口的市场里不再存在 `spaceport` 条目，只按 id 判空会把基础产业重复补回来。
+     */
+    internal fun hasIndustryOrUpgrade(market: MarketAPI, industryId: String): Boolean =
+        reachesIndustryOrUpgrade(market.industries.mapNotNull { it.spec?.id }.toSet(), industryId) {
+            Global.getSettings().getIndustrySpec(it)?.upgrade
+        }
+
+    /** 纯判定：沿升级链从 [industryId] 走到任一已在 [present] 中的产业，即视为该产业仍然存在。 */
+    internal fun reachesIndustryOrUpgrade(present: Set<String>, industryId: String, upgradeOf: (String) -> String?): Boolean {
+        var current: String? = industryId
+        while (current != null) {
+            if (current in present) return true
+            current = upgradeOf(current)
+        }
+        return false
     }
 
     // Boggled TASC 等 mod 会直接解引用 getSubmarket(Submarkets.SUBMARKET_STORAGE)，市场缺仓储子市场时会空指针崩溃
