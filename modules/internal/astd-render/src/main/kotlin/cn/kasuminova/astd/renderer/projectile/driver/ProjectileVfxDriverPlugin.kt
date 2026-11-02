@@ -44,23 +44,26 @@ class ProjectileVfxDriverPlugin : BaseEveryFrameCombatPlugin() {
     }
 
     /**
-     * 为未经过武器开火管线登记的弹体补挂特效。
+     * 兜底补挂未经过武器开火管线登记的弹体。
      *
      * 原版仅在 MissileWeapon 的开火路径调用 OnFireEffectPlugin，CombatEngineAPI.spawnProjectile
-     * 直接走 ProjectileFactory，因此复制、召唤、脚本生成等外部弹体永远不会触发 onFire。
-     * 这里每帧扫描一次弹体列表补齐，已登记弹体由 IdentityHashMap 去重。
+     * 直接走 ProjectileFactory，因此复制、召唤、脚本生成等外部弹体不会触发 onFire。
+     * 自有生成点应直接调用 [track] 拿首帧视觉，这里只负责第三方来源，逐帧扫描。
+     *
+     * getProjectiles 返回引擎维护的活列表，增删通过 CombatEngine 的延迟队列合并，遍历期间不修改，
+     * 无需拷贝。筛选顺序按开销从低到高：identity 查表 → spec 注册表 → 弹体状态 → isEntityInPlay
+     * （后者内部对 objectsToRemove/objectsToAdd 做线性 contains，代价最高，只对候选弹体调用）。
      */
     private fun adoptUntracked(combatEngine: CombatEngineAPI) {
         val projectiles = combatEngine.projectiles
         if (projectiles.isEmpty()) return
-        // 列表由引擎维护，spec.onFire 可能在本轮扫描中生成新弹体，先拷贝避免并发修改。
-        val snapshot = ArrayList(projectiles)
-        for (projectile in snapshot) {
+        for (projectile in projectiles) {
             if (trackedByProjectile.containsKey(projectile)) continue
-            // 已进入消散/命中结算的弹体不再补挂，否则会重新生成已经淡出的特效。
-            if (projectile.isExpired || projectile.isFading || !combatEngine.isEntityInPlay(projectile)) continue
             val specId = projectile.projectileSpecId
             if (specId.isNullOrBlank() || !ProjectileVfxRegistry.has(specId)) continue
+            // 已进入消散/命中结算的弹体不再补挂，否则会重新生成已经淡出的特效。
+            if (projectile.isExpired || projectile.isFading) continue
+            if (!combatEngine.isEntityInPlay(projectile)) continue
             if (attach(combatEngine, projectile, specId)) {
                 logAdoptedOnce(combatEngine, specId, projectile)
             }

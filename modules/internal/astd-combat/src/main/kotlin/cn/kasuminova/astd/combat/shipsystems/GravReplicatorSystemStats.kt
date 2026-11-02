@@ -4,6 +4,7 @@ import cn.kasuminova.astd.combat.lens.system.GravReplicatorTuning
 import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import cn.kasuminova.astd.internal.i18n.I18n
 import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
+import cn.kasuminova.astd.renderer.projectile.driver.ProjectileVfxDriverPlugin
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEngineLayers
@@ -188,6 +189,8 @@ class GravReplicatorSystemStats : BaseShipSystemScript() {
             if (spawned is DamagingProjectileAPI) {
                 spawned.damageAmount = GravReplicatorTuning.replicaDamage(order.damageAmount, values.damageRatio)
                 spawned.setCustomData(SCAN_MARK_KEY, true)
+                // spawnProjectile 不经过武器开火管线，不会触发 OnFireEffectPlugin，需在此直接登记视觉。
+                ProjectileVfxDriverPlugin.track(engine, spawned, spawned.projectileSpecId)
             } else {
                 log.warn("引力空间复制器 spawnProjectile 未产出伤害弹体（weaponId=${order.weaponId}，ship=${ship.id}），本发复制无伤害结算")
             }
