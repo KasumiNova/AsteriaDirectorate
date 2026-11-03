@@ -295,6 +295,7 @@ class ASTDIonizedRecoilAccumulatorHullMod : BaseHullMod() {
             var bestScore = Float.MAX_VALUE
             for (candidate in engine.ships) {
                 if (candidate.owner == ship.owner || candidate.isAlly || !candidate.isAlive || candidate.isHulk) continue
+                if (candidate.isPhased) continue
                 val dist = MathUtils.getDistance(ship.location, candidate.location)
                 if (dist > range) continue
                 val priority = when {

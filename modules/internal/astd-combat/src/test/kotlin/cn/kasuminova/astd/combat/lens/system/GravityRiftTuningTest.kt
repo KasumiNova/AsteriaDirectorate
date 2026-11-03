@@ -24,17 +24,17 @@ class GravityRiftTuningTest {
         resolveAt(1f).let { v ->
             assertEquals(750f, v.damageMin, 1e-6f)
             assertEquals(1250f, v.damageMax, 1e-6f)
-            assertEquals(0.50f, v.damageTakenReduction, 1e-6f)
+            assertEquals(0.10f, v.damageTakenReduction, 1e-6f)
         }
         resolveAt(2f).let { v ->
             assertEquals(1000f, v.damageMin, 1e-6f)
             assertEquals(1500f, v.damageMax, 1e-6f)
-            assertEquals(0.60f, v.damageTakenReduction, 1e-6f)
+            assertEquals(0.20f, v.damageTakenReduction, 1e-6f)
         }
         resolveAt(5f).let { v ->
             assertEquals(1750f, v.damageMin, 1e-6f)
             assertEquals(2250f, v.damageMax, 1e-6f)
-            assertEquals(0.90f, v.damageTakenReduction, 1e-6f)
+            assertEquals(0.50f, v.damageTakenReduction, 1e-6f)
         }
     }
 
@@ -43,12 +43,12 @@ class GravityRiftTuningTest {
         resolveAt(1f, isPlayer = true).let { v ->
             assertEquals(1000f, v.damageMin, 1e-6f)
             assertEquals(1500f, v.damageMax, 1e-6f)
-            assertEquals(0.60f, v.damageTakenReduction, 1e-6f)
+            assertEquals(0.20f, v.damageTakenReduction, 1e-6f)
         }
         resolveAt(5f, isPlayer = true).let { v ->
             assertEquals(1000f, v.damageMin, 1e-6f)
             assertEquals(1500f, v.damageMax, 1e-6f)
-            assertEquals(0.60f, v.damageTakenReduction, 1e-6f)
+            assertEquals(0.20f, v.damageTakenReduction, 1e-6f)
         }
     }
 

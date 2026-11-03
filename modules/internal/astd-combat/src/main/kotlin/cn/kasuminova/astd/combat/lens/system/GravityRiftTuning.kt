@@ -44,7 +44,7 @@ object GravityRiftTuning {
 
     val RIFT_DAMAGE_MAX = ScalingEntry(1250f, 1500f, 2250f)
 
-    val DAMAGE_TAKEN_REDUCTION = ScalingEntry(0.50f, 0.60f, 0.90f)
+    val DAMAGE_TAKEN_REDUCTION = ScalingEntry(0.10f, 0.20f, 0.50f)
 
     data class Values(
         val damageMin: Float,

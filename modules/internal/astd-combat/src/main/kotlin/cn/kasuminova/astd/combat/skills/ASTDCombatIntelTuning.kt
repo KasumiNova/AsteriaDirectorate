@@ -33,10 +33,10 @@ object ASTDCombatIntelTuning {
     const val STAT_FLAT_REDUCTION = "astd_combat_intel_flat_reduction"
 
     val PEAK_CR_BONUS = ScalingEntry(0.10f, 0.20f, 0.50f)
-    val SURFACE_ARMOR_FRIGATE = ScalingEntry(500f, 625f, 1000f)
-    val SURFACE_ARMOR_DESTROYER = ScalingEntry(1000f, 1250f, 2000f)
-    val SURFACE_ARMOR_CRUISER = ScalingEntry(1500f, 1875f, 3000f)
-    val SURFACE_ARMOR_CAPITAL = ScalingEntry(2000f, 2500f, 4000f)
+    val SURFACE_ARMOR_FRIGATE = ScalingEntry(100f, 200f, 500f)
+    val SURFACE_ARMOR_DESTROYER = ScalingEntry(200f, 400f, 1000f)
+    val SURFACE_ARMOR_CRUISER = ScalingEntry(300f, 600f, 1500f)
+    val SURFACE_ARMOR_CAPITAL = ScalingEntry(400f, 800f, 2000f)
     val SURFACE_ARMOR_DECAY = ScalingEntry(1.5f, 2f, 3.5f)
     val SHIELD_FLAT_REDUCTION = ScalingEntry(5f, 10f, 25f)
     val ARMOR_FLAT_REDUCTION = ScalingEntry(10f, 20f, 50f)

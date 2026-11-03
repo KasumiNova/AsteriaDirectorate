@@ -41,6 +41,7 @@ class GravityRiftSystemStats : BaseShipSystemScript() {
         val target: ShipAPI,
         val anchorOffset: Vector2f,
         val vortex: GravityRiftVortexVisual,
+        val followTarget: Boolean,
     ) {
         var beamDrone: ShipAPI? = null
     }
@@ -134,11 +135,18 @@ class GravityRiftSystemStats : BaseShipSystemScript() {
             return
         }
 
-        val anchorOffset = sampleVortexAnchor(target)
+        // 难度系数 5（破晓）保持旧行为：锚点打护盾死角且旋涡/光束跟随目标；
+        // 其余难度锚定护盾覆盖位置，旋涡展开后不跟随目标移动
+        val aggressive = difficultyScale(ship) >= AGGRESSIVE_DIFFICULTY_SCALE
+        val anchorOffset = sampleVortexAnchor(target, preferShieldCovered = !aggressive)
         val vortexRadius = 65f
-        val vortex = GravityRiftVortexVisual.spawn(engine, target, anchorOffset, vortexRadius)
+        val vortex = if (aggressive) {
+            GravityRiftVortexVisual.spawn(engine, target, anchorOffset, vortexRadius)
+        } else {
+            GravityRiftVortexVisual.spawnAtFixed(engine, Vector2f.add(target.location, anchorOffset, null), vortexRadius)
+        }
 
-        engine.customData[activationKey(ship)] = RiftActivation(target, anchorOffset, vortex)
+        engine.customData[activationKey(ship)] = RiftActivation(target, anchorOffset, vortex, followTarget = aggressive)
         engine.customData[TELEMETRY_TARGET_KEY + ship.id] = target.id
         engine.customData[TELEMETRY_VORTEX_KEY + ship.id] = 1
     }
@@ -202,7 +210,7 @@ class GravityRiftSystemStats : BaseShipSystemScript() {
         drone.facing = Misc.getAngleInDegrees(anchor, activation.target.location)
         drone.addListener(
             BeamDroneController(
-                engine, drone, beamWeapon, activation.target, activation.vortex,
+                engine, drone, beamWeapon, activation.target, activation.vortex, activation.followTarget,
             ),
         )
         engine.addEntity(drone)
@@ -217,6 +225,7 @@ class GravityRiftSystemStats : BaseShipSystemScript() {
         private val weapon: WeaponAPI,
         private val target: ShipAPI,
         private val vortex: GravityRiftVortexVisual,
+        private val followTarget: Boolean,
     ) : AdvanceableListener {
         private var elapsed = 0f
         private var lastFacing = drone.facing
@@ -230,7 +239,7 @@ class GravityRiftSystemStats : BaseShipSystemScript() {
             }
             val from = vortex.currentAnchor()
             drone.location.set(from)
-            if (target.isAlive && !target.isHulk) {
+            if (followTarget && target.isAlive && !target.isHulk) {
                 lastFacing = Misc.getAngleInDegrees(from, target.location)
             }
             drone.facing = lastFacing
@@ -281,7 +290,7 @@ class GravityRiftSystemStats : BaseShipSystemScript() {
         }
     }
 
-    private fun sampleVortexAnchor(target: ShipAPI): Vector2f {
+    private fun sampleVortexAnchor(target: ShipAPI, preferShieldCovered: Boolean): Vector2f {
         var first: Vector2f? = null
         repeat(ANCHOR_SAMPLES) {
             val angle = MathUtils.getRandomNumberInRange(0f, 360f)
@@ -291,12 +300,17 @@ class GravityRiftSystemStats : BaseShipSystemScript() {
             if (first == null) first = Vector2f(offset)
             val point = Vector2f.add(target.location, offset, null)
             val shield = target.shield
-            if (shield == null || !shield.isOn || !shield.isWithinArc(point)) {
+            val covered = shield != null && shield.isOn && shield.isWithinArc(point)
+            if (covered == preferShieldCovered) {
                 return Vector2f(offset)
             }
         }
         return first ?: Vector2f(0f, 0f)
     }
+
+    /** 玩家阵营取我方强度系数，其余阵营取敌方难度系数。 */
+    private fun difficultyScale(ship: ShipAPI): Float =
+        if (ship.owner == 0) DifficultyTuningImpl.playerFixedScale else DifficultyTuningImpl.fixedScale
 
     private fun findTarget(ship: ShipAPI): ShipAPI? {
         var target: ShipAPI? = null
@@ -346,6 +360,9 @@ class GravityRiftSystemStats : BaseShipSystemScript() {
         private const val ANCHOR_SAMPLES = 8
         private const val ANCHOR_RADIUS_MIN_FRAC = 2f
         private const val ANCHOR_RADIUS_MAX_FRAC = 2.5f
+
+        /** 达到该难度系数（破晓）时保持旧行为：锚点打护盾死角且跟随目标。 */
+        private const val AGGRESSIVE_DIFFICULTY_SCALE = 5f
 
         private val JITTER_COLOR = Color(255, 80, 80, 55)
         private val JITTER_UNDER_COLOR = Color(255, 40, 40, 155)

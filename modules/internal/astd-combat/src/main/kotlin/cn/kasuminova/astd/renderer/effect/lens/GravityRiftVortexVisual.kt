@@ -106,13 +106,32 @@ class GravityRiftVortexVisual private constructor(
         ): GravityRiftVortexVisual {
             Global.getSettings().loadTexture(TEXTURE_PATH)
             val plugin = GravityRiftVortexVisual(engine, target, Vector2f(anchorOffset), radius)
+            return register(engine, plugin, plugin.currentAnchor())
+        }
+
+        /** 在固定世界坐标展开旋涡，不跟随任何舰船。 */
+        fun spawnAtFixed(
+            engine: CombatEngineAPI,
+            location: Vector2f,
+            radius: Float,
+        ): GravityRiftVortexVisual {
+            Global.getSettings().loadTexture(TEXTURE_PATH)
+            val plugin = GravityRiftVortexVisual(engine, null, Vector2f(0f, 0f), radius)
+            return register(engine, plugin, Vector2f(location))
+        }
+
+        private fun register(
+            engine: CombatEngineAPI,
+            plugin: GravityRiftVortexVisual,
+            anchor: Vector2f,
+        ): GravityRiftVortexVisual {
             val entity = engine.addLayeredRenderingPlugin(plugin)
             if (entity == null) {
-                log.error("引力旋涡 addLayeredRenderingPlugin 返回 null（target=${target?.id}），本次旋涡视觉缺失")
+                log.error("引力旋涡 addLayeredRenderingPlugin 返回 null（anchor=$anchor），本次旋涡视觉缺失")
                 return plugin
             }
-            entity.location.set(plugin.currentAnchor())
-            plugin.lastAnchor.set(entity.location)
+            entity.location.set(anchor)
+            plugin.lastAnchor.set(anchor)
             plugin.anchorInitialized = true
             return plugin
         }
