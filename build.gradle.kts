@@ -20,7 +20,7 @@ val astdRelease: Boolean =
     providers.gradleProperty("astd.release").map(String::toBooleanStrict).orElse(false).get()
 
 val astdModVersion: String =
-    providers.gradleProperty("astd.modVersion").orElse(if (astdRelease) "0.1.8" else "1.0-SNAPSHOT").get()
+    providers.gradleProperty("astd.modVersion").orElse(if (astdRelease) "0.1.9" else "1.0-SNAPSHOT").get()
 
 version = astdModVersion
 
