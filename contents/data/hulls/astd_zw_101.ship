@@ -4,7 +4,7 @@
   "hullSize": "DESTROYER",
   "spriteName": "graphics/ships/astd_zw_101.png",
   "style": "ASTD_LENS",
-  "height": 195,
+  "height": 196,
   "width": 116,
   "center": [58.5, 95],
   "collisionRadius": 97,

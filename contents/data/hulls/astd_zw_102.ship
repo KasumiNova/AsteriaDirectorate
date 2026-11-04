@@ -5,7 +5,7 @@
   "spriteName": "graphics/ships/astd_zw_102.png",
   "style": "ASTD_LENS",
   "height": 310,
-  "width": 395,
+  "width": 396,
   "center": [198, 154.5],
   "collisionRadius": 201,
   "shieldCenter": [0, -0],

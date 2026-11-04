@@ -4,7 +4,7 @@
   "hullSize": "DESTROYER",
   "spriteName": "graphics/ships/astd_xc_002.png",
   "style": "ASTD_ARC",
-  "height": 263,
+  "height": 264,
   "width": 202,
   "center": [101, 129.5],
   "collisionRadius": 112,

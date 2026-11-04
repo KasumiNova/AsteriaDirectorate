@@ -5,7 +5,7 @@
   "spriteName": "graphics/ships/astd_ast_101.png",
   "style": "ASTD_ARC",
   "height": 92,
-  "width": 127,
+  "width": 128,
   "center": [63.5, 46],
   "collisionRadius": 64,
   "shieldCenter": [0, -0],

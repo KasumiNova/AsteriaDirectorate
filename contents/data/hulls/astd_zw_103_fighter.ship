@@ -4,7 +4,7 @@
   "hullSize": "FIGHTER",
   "spriteName": "graphics/ships/astd_zw_103_fighter.png",
   "style": "ASTD_LENS",
-  "height": 55,
+  "height": 56,
   "width": 58,
   "center": [29, 28],
   "collisionRadius": 27.5,
