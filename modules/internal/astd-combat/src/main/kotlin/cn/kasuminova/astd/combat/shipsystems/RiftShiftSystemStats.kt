@@ -68,11 +68,15 @@ class RiftShiftSystemStats : PhaseCloakStats() {
         val from = Vector2f(ship.location)
         val dir = RiftShiftTuning.shiftDirection(ship.velocity, ship.facing)
         val maxDist = ship.mutableStats.systemRangeBonus.computeEffective(RiftShiftTuning.SHIFT_DISTANCE)
-        val target = resolveShiftTargetPoint(ship)
-        val dist = if (target != null) {
-            RiftShiftTuning.resolveShiftDistance(maxDist, MathUtils.getDistance(from, target))
+        val aiTarget = resolveAiTargetPoint(ship)
+        val dist = if (aiTarget != null) {
+            RiftShiftTuning.resolveShiftDistance(maxDist, MathUtils.getDistance(from, aiTarget))
         } else {
-            maxDist
+            RiftShiftTuning.resolveSpeedScaledDistance(
+                maxDist,
+                ship.velocity.length(),
+                ship.mutableStats.maxSpeed.modifiedValue,
+            )
         }
         if (dist < RiftShiftTuning.ANCHOR_SPACING) {
             log.warn("[ASTD] 裂隙折跃折跃长度不足一个点位间距（${dist}su，maxDist=${maxDist}su），本次不开裂隙")
@@ -97,15 +101,11 @@ class RiftShiftSystemStats : PhaseCloakStats() {
         ensureRiftPlugin(engine)
     }
 
-    // AI 决策通道 SYSTEM_TARGET_COORDS 为原版 MineStrikeStats 同款注入通道，优先于玩家鼠标坐标
-    private fun resolveShiftTargetPoint(ship: ShipAPI): Vector2f? {
-        val flags = ship.aiFlags
-        if (flags != null && flags.hasFlag(ShipwideAIFlags.AIFlags.SYSTEM_TARGET_COORDS)) {
-            val custom = flags.getCustom(ShipwideAIFlags.AIFlags.SYSTEM_TARGET_COORDS) as? Vector2f
-            if (custom != null) return Vector2f(custom)
-        }
-        val mouse = ship.mouseTarget ?: return null
-        return Vector2f(mouse)
+    // AI 决策通道 SYSTEM_TARGET_COORDS 为原版 MineStrikeStats 同款注入通道；玩家手操不再读取鼠标坐标，改按航速比例取距
+    private fun resolveAiTargetPoint(ship: ShipAPI): Vector2f? {
+        val flags = ship.aiFlags ?: return null
+        if (!flags.hasFlag(ShipwideAIFlags.AIFlags.SYSTEM_TARGET_COORDS)) return null
+        return (flags.getCustom(ShipwideAIFlags.AIFlags.SYSTEM_TARGET_COORDS) as? Vector2f)?.let { Vector2f(it) }
     }
 
     // spawn 后以 SilentMineAI 替换原版自动挂载的 GuidedProximityFuseAI：原版引信在弹体消退时走 trigger→primed→windup→explode 全链放音

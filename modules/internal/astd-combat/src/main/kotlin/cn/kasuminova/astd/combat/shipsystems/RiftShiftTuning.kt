@@ -47,6 +47,12 @@ object RiftShiftTuning {
     fun resolveShiftDistance(maxDistance: Float, targetDistance: Float): Float =
         targetDistance.coerceIn(maxDistance * MIN_SHIFT_FRACTION, maxDistance)
 
+    // 玩家手操通道：折跃距离按当前航速占最大航速的比例等比取 0~maxDistance
+    fun resolveSpeedScaledDistance(maxDistance: Float, currentSpeed: Float, maxSpeed: Float): Float {
+        if (maxSpeed <= 0f) return 0f
+        return maxDistance * (currentSpeed / maxSpeed).coerceIn(0f, 1f)
+    }
+
     fun shiftDurationSeconds(maxDistance: Float, shiftDistance: Float): Float =
         SHIFT_DURATION_MAX * (shiftDistance / maxDistance).coerceIn(MIN_SHIFT_FRACTION, 1f)
 

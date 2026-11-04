@@ -65,6 +65,16 @@ class RiftShiftTuningTest {
     }
 
     @Test
+    fun `航速比例折跃长度 等比映射并钳制`() {
+        val max = 1000f
+        assertEquals(0f, RiftShiftTuning.resolveSpeedScaledDistance(max, 0f, 200f), 1e-4f, "静止时折跃距离为 0")
+        assertEquals(500f, RiftShiftTuning.resolveSpeedScaledDistance(max, 100f, 200f), 1e-4f, "半速折跃半距")
+        assertEquals(max, RiftShiftTuning.resolveSpeedScaledDistance(max, 200f, 200f), 1e-4f, "满速折跃满距")
+        assertEquals(max, RiftShiftTuning.resolveSpeedScaledDistance(max, 400f, 200f), 1e-4f, "超速（如异能增速）钳到满距")
+        assertEquals(0f, RiftShiftTuning.resolveSpeedScaledDistance(max, 100f, 0f), 1e-4f, "最大航速非法时距离为 0")
+    }
+
+    @Test
     fun `动态拉开时长 按折跃距离占比线性映射`() {
         val max = RiftShiftTuning.SHIFT_DISTANCE
         val full = RiftShiftTuning.shiftDurationSeconds(max, max)

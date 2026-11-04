@@ -24,22 +24,22 @@ class FoldingDeckTuningTest {
 
     @Test
     fun `三锚点精确取档 k_s 1 2 5`() {
-        assertEquals(1.0f, wingSizeMultAt(1f), 1e-6f)
-        assertEquals(1.5f, wingSizeMultAt(2f), 1e-6f)
-        assertEquals(3.0f, wingSizeMultAt(5f), 1e-6f)
+        assertEquals(0.5f, wingSizeMultAt(1f), 1e-6f)
+        assertEquals(1.0f, wingSizeMultAt(2f), 1e-6f)
+        assertEquals(2.5f, wingSizeMultAt(5f), 1e-6f)
     }
 
     @Test
     fun `玩家固定 v2 与 k_s 无关`() {
-        assertEquals(1.5f, wingSizeMultAt(1f, isPlayer = true), 1e-6f)
-        assertEquals(1.5f, wingSizeMultAt(5f, isPlayer = true), 1e-6f)
+        assertEquals(1.0f, wingSizeMultAt(1f, isPlayer = true), 1e-6f)
+        assertEquals(1.0f, wingSizeMultAt(5f, isPlayer = true), 1e-6f)
     }
 
     @Test
     fun `联队规模折算 共轭终端 2 机基线`() {
+        assertEquals(3, FoldingDeckTuning.wingSizeLimit(2, 0.5f))
         assertEquals(4, FoldingDeckTuning.wingSizeLimit(2, 1.0f))
-        assertEquals(5, FoldingDeckTuning.wingSizeLimit(2, 1.5f))
-        assertEquals(8, FoldingDeckTuning.wingSizeLimit(2, 3.0f))
+        assertEquals(7, FoldingDeckTuning.wingSizeLimit(2, 2.5f))
     }
 
     @Test
@@ -51,9 +51,9 @@ class FoldingDeckTuningTest {
 
     @Test
     fun `战机补充速率换算为整备时长乘区`() {
-        assertEquals(1f / 1.4f, refitTimeMultAt(2f), 1e-6f)
-        assertEquals(1f / 1.2f, refitTimeMultAt(1f), 1e-6f)
-        assertEquals(0.5f, refitTimeMultAt(5f), 1e-6f)
-        assertEquals(1f / 1.4f, refitTimeMultAt(5f, isPlayer = true), 1e-6f)
+        assertEquals(1f / 1.3f, refitTimeMultAt(2f), 1e-6f)
+        assertEquals(1f / 1.15f, refitTimeMultAt(1f), 1e-6f)
+        assertEquals(1f / 1.75f, refitTimeMultAt(5f), 1e-6f)
+        assertEquals(1f / 1.3f, refitTimeMultAt(5f, isPlayer = true), 1e-6f)
     }
 }

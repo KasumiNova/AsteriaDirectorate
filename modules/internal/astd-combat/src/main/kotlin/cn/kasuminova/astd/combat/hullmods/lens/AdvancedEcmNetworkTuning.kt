@@ -24,7 +24,7 @@ object AdvancedEcmNetworkTuning {
 
     const val LEGACY_MOD_ID_PREFIX = "astd_grav_ew_field:"
 
-    val SELF_ECM = ScalingEntry(15f, 20f, 35f)
+    val SELF_ECM = ScalingEntry(5f, 10f, 25f)
 
     val ALLY_ECM_FRIGATE = ScalingEntry(2f, 4f, 8f)
 

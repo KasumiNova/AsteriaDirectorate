@@ -37,15 +37,15 @@ class ASTDPlasmaArmorShieldHullMod : BaseHullMod() {
 
         val MAX_ARMOR_PENALTY = ScalingEntry(0.60f, 0.50f, 0.20f)
 
-        val ARMOR_FRONT = ScalingEntry(0.25f, 0.30f, 0.45f)
+        val ARMOR_FRONT = ScalingEntry(0.10f, 0.20f, 0.50f)
 
-        val ARMOR_SIDE_MAX = ScalingEntry(0.25f, 0.30f, 0.45f)
+        val ARMOR_SIDE_MAX = ScalingEntry(0.10f, 0.20f, 0.50f)
 
-        val ARMOR_SIDE_MIN = ScalingEntry(0.15f, 0.20f, 0.35f)
+        val ARMOR_SIDE_MIN = ScalingEntry(0.05f, 0.10f, 0.25f)
 
-        val ARMOR_REAR_MAX = ScalingEntry(0.15f, 0.20f, 0.35f)
+        val ARMOR_REAR_MAX = ScalingEntry(0.05f, 0.10f, 0.25f)
 
-        val ARMOR_REAR_MIN = ScalingEntry(0.05f, 0.10f, 0.25f)
+        val ARMOR_REAR_MIN = ScalingEntry(0.025f, 0.05f, 0.125f)
 
         val ENERGY_SHIELD_MULT = ScalingEntry(0.90f, 0.85f, 0.70f)
 

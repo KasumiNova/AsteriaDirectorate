@@ -1,6 +1,9 @@
 package cn.kasuminova.astd.combat.hullmods.arc
 
+import cn.kasuminova.astd.api.difficulty.ScalingEntry
 import cn.kasuminova.astd.api.render.BloomFlareVfx
+import cn.kasuminova.astd.combat.hullmods.base.unsignedPercentOf
+import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import cn.kasuminova.astd.impl.render.ASTDColor
 import cn.kasuminova.astd.impl.render.BloomFlareSpec
 import cn.kasuminova.astd.impl.render.BoxFlareStyle
@@ -9,6 +12,7 @@ import cn.kasuminova.astd.ui.dsl.HullmodThemes
 import cn.kasuminova.astd.ui.dsl.HullmodTone
 import cn.kasuminova.astd.ui.dsl.hl
 import cn.kasuminova.astd.ui.dsl.hullmodCard
+import cn.kasuminova.astd.ui.dsl.v
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseHullMod
 import com.fs.starfarer.api.combat.BeamAPI
@@ -35,7 +39,7 @@ class ASTDIonizedRecoilAccumulatorHullMod : BaseHullMod() {
     companion object {
         private const val COOLDOWN_SECONDS = 1f
         private const val RANGE = 800f
-        private const val HARD_FLUX_CONVERT_FRACTION = 0.03f
+        val HARD_FLUX_CONVERT_FRACTION = ScalingEntry(0.005f, 0.01f, 0.025f)
         private const val SOFT_FLUX_MULT = 1f
         private const val EMP_MULT = 2f
         private const val BASE_PROC_CHANCE = 0.25f
@@ -86,6 +90,7 @@ class ASTDIonizedRecoilAccumulatorHullMod : BaseHullMod() {
         width: Float,
         isForModSpec: Boolean
     ) {
+        val fluxFractionPct = unsignedPercentOf(DifficultyTuningImpl.valueFor(HARD_FLUX_CONVERT_FRACTION, ship == null || ship.owner == 0))
         tooltip.hullmodCard(width, THEME, null) {
             para("ui.hullmod.ionized_recoil_accumulator.desc")
             heading("ui.hullmod.ionized_recoil_accumulator.section.effect")
@@ -119,7 +124,8 @@ class ASTDIonizedRecoilAccumulatorHullMod : BaseHullMod() {
             para(
                 "ui.hullmod.ionized_recoil_accumulator.line.flux_conversion",
                 // 高亮声明序必须与文本序一致（I18nUi 前向 indexOf 匹配），否则丢色
-                hl("3%", HullmodTone.HIGHLIGHT),
+                v("pct", fluxFractionPct),
+                hl(fluxFractionPct, HullmodTone.HIGHLIGHT),
                 hl("等额", HullmodTone.HIGHLIGHT),
                 hl("800su", HullmodTone.HIGHLIGHT),
                 hl("能量武器射程", HullmodTone.HIGHLIGHT),
@@ -192,7 +198,8 @@ class ASTDIonizedRecoilAccumulatorHullMod : BaseHullMod() {
         private fun convertHardFlux(conversionMult: Float): Float {
             val tracker = ship.fluxTracker
             val currHardFlux = tracker.hardFlux
-            val converted = (currHardFlux * HARD_FLUX_CONVERT_FRACTION * conversionMult.coerceAtLeast(0f)).coerceAtLeast(0f)
+            val fraction = DifficultyTuningImpl.valueFor(HARD_FLUX_CONVERT_FRACTION, ship.owner == 0)
+            val converted = (currHardFlux * fraction * conversionMult.coerceAtLeast(0f)).coerceAtLeast(0f)
             if (converted <= 0f) return 0f
             val newHardFlux = (currHardFlux - converted).coerceAtLeast(0f)
             tracker.hardFlux = newHardFlux

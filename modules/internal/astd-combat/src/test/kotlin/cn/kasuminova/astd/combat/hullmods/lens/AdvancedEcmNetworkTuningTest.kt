@@ -141,7 +141,7 @@ class AdvancedEcmNetworkTuningTest {
     fun `三锚点精确取档 k_s 1 2 5`() {
         DifficultyTuningImpl.installScaleForTests(1f)
         val v1 = AdvancedEcmNetworkTuning.resolve(DifficultyTuningImpl, isPlayer = false)
-        assertEquals(15f, v1.selfEcm, 1e-6f)
+        assertEquals(5f, v1.selfEcm, 1e-6f)
         assertEquals(2f, v1.allyEcmFrigate, 1e-6f)
         assertEquals(4f, v1.allyEcmDestroyer, 1e-6f)
         assertEquals(6f, v1.allyEcmCruiser, 1e-6f)
@@ -152,7 +152,7 @@ class AdvancedEcmNetworkTuningTest {
 
         DifficultyTuningImpl.installScaleForTests(2f)
         val v2 = AdvancedEcmNetworkTuning.resolve(DifficultyTuningImpl, isPlayer = false)
-        assertEquals(20f, v2.selfEcm, 1e-6f)
+        assertEquals(10f, v2.selfEcm, 1e-6f)
         assertEquals(4f, v2.allyEcmFrigate, 1e-6f)
         assertEquals(8f, v2.allyEcmDestroyer, 1e-6f)
         assertEquals(12f, v2.allyEcmCruiser, 1e-6f)
@@ -163,7 +163,7 @@ class AdvancedEcmNetworkTuningTest {
 
         DifficultyTuningImpl.installScaleForTests(5f)
         val v5 = AdvancedEcmNetworkTuning.resolve(DifficultyTuningImpl, isPlayer = false)
-        assertEquals(35f, v5.selfEcm, 1e-6f)
+        assertEquals(25f, v5.selfEcm, 1e-6f)
         assertEquals(8f, v5.allyEcmFrigate, 1e-6f)
         assertEquals(16f, v5.allyEcmDestroyer, 1e-6f)
         assertEquals(24f, v5.allyEcmCruiser, 1e-6f)

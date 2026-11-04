@@ -8,9 +8,9 @@ object FoldingDeckTuning {
 
     const val OP_COST_MULT = 2.0f
 
-    val WING_SIZE_BONUS = ScalingEntry(1.0f, 1.5f, 3.0f)
+    val WING_SIZE_BONUS = ScalingEntry(0.5f, 1.0f, 2.5f)
 
-    val REFIT_RATE_BONUS = ScalingEntry(0.2f, 0.4f, 1.0f)
+    val REFIT_RATE_BONUS = ScalingEntry(0.15f, 0.3f, 0.75f)
 
     const val EXTRA_FIGHTER_DURATION = 1e7f
 

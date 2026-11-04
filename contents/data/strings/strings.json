@@ -309,7 +309,7 @@
 		"ui.hullmod.ionized_recoil_accumulator.line.beam_proc": "如果伤害是由光束造成的，则减少 90% 的触发概率。",
 		"ui.hullmod.ionized_recoil_accumulator.line.damage_proc": "受到的单次伤害越高，触发概率越高，反之越低。",
 		"ui.hullmod.ionized_recoil_accumulator.section.flux_damage": "电弧打击",
-		"ui.hullmod.ionized_recoil_accumulator.line.flux_conversion": "触发电弧打击时，会将自身当前的 3% 硬辐能转换为等额软辐能，对 800su 范围 (受到能量武器射程的影响)内的非导弹目标造成能量伤害。",
+		"ui.hullmod.ionized_recoil_accumulator.line.flux_conversion": "触发电弧打击时，会将自身当前的 %pct% 硬辐能转换为等额软辐能，对 800su 范围 (受到能量武器射程的影响)内的非导弹目标造成能量伤害。",
 		"ui.hullmod.ionized_recoil_accumulator.line.damage": "伤害为转换的硬辐能量的 100% 的能量伤害和 200% EMP 伤害。",
 		"ui.hullmod.ionized_recoil_accumulator.line.targeting": "打击优先随机选择未下线的武器或引擎。",
 		"ui.hullmod.ionized_recoil_accumulator.line.cooldown": "打击效果具有 1s 的固定冷却时间。",
