@@ -33,7 +33,7 @@
     "affix.astd_affix_aggressive_swarm_network.name": "激进式集群作战网络",
     "affix.astd_affix_aggressive_swarm_network.desc": "指挥点恢复大幅提升；周期性对敌方高价值目标发起歼灭指令。",
     "affix.astd_affix_singularity_drive.name": "奇点驱动",
-    "affix.astd_affix_singularity_drive.desc": "峰值时间巨幅延长、武器辐耗降低、免疫环境峰值惩罚；搭载子系统"奇点爆发"。",
+    "affix.astd_affix_singularity_drive.desc": "峰值时间巨幅延长、武器辐耗降低、免疫环境峰值惩罚；搭载子系统 \"奇点爆发\"。",
     "affix.astd_affix_singularity_drive.subsystem": "奇点爆发"
   }
 }
