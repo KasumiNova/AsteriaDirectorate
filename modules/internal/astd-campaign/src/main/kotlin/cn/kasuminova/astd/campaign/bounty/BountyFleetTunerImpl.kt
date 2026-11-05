@@ -56,9 +56,9 @@ class BountyFleetTunerImpl(
         val bountyKey = bountyKeyOf(fleet)
         val poolConfig = BountyPoolConfig.forBountyKey(bountyKey)
         val fillToFleetCap = bountySettings.fillToFleetCap
-        if (tunedVersion in LEGACY_TUNE_VERSION until CURRENT_TUNE_VERSION) {
-            reconcilePresetComposition(fleet, bountyKey)
-        }
+        // 版本 0 既可能是新生成舰队（裁校幂等，配额内全保留），也可能是调谐器引入前生成的历史舰队
+        // （旧 minFP/scaling 配置随机补强出的超编混编），统一裁校后再补齐，两种来源最终口径一致
+        reconcilePresetComposition(fleet, bountyKey)
         refreshVariants(fleet)
         replaceExcludedEscorts(fleet)
         reinforceFleet(fleet, poolConfig, fillToFleetCap)
@@ -81,7 +81,8 @@ class BountyFleetTunerImpl(
     }
 
     /**
-     * 旧版本调谐舰队的组成迁移：模组更新下调预设规模后，已生成舰队（含未接取）不会自动跟随新预设。
+     * 组成裁校：模组更新下调预设规模后，已生成舰队（含未接取）不会自动跟随新预设；
+     * 调谐器引入前生成的历史舰队（无版本标记）同样是旧配置随机补强的产物。
      * 以悬赏 spec 的预设变体配额为准保留成员（旗舰恒保留），配额外的混编/补强成员全部清退，
      * 由后续补齐阶段按现行规则重抽，最终规模与新生成舰队口径一致。
      */
@@ -97,7 +98,7 @@ class BountyFleetTunerImpl(
 
         val members = fleet.fleetData.membersListCopy.filter { !it.isFighterWing }
         val keep = planPresetRetention(
-            members.map { it.isFlagship to stockVariantIdOf(it.variant.originalVariant, it.variant.hullVariantId) },
+            members.map { it.isFlagship to (resolveStockVariantId(it.variant) ?: it.variant.hullVariantId) },
             quotas,
         )
         var removed = 0
@@ -455,22 +456,41 @@ class BountyFleetTunerImpl(
         return officer
     }
 
-    /** 赏金舰队的 inflater 势力 knownWeapons/knownFighters 为空，充气会把全舰重洗成空壳：以 stock 变体重新克隆修复并摘除 inflater；现状 tag 全量随克隆保留（MagicLib 的 SMod 打捞保留与旗舰可恢复标记只打在运行时变体上，stock 克隆不含）。 */
+    /** 赏金舰队的 inflater 势力 knownWeapons/knownFighters 为空，充气会把全舰重洗成空壳：以 stock 变体重新克隆修复并摘除 inflater；现状 tag 全量随克隆保留（MagicLib 的 SMod 打捞保留与旗舰可恢复标记只打在运行时变体上，stock 克隆不含）。originalVariant 随存档持久化，必须回填 stock id，否则存档后变体 id 运行时化导致再调谐无法回溯。 */
     private fun refreshVariants(fleet: CampaignFleetAPI) {
         for (member in fleet.fleetData.membersListCopy) {
             val current = member.variant
-            val stockId = stockVariantIdOf(current.originalVariant, current.hullVariantId)
-            val stock = Global.getSettings().getVariant(stockId)
+            val stockId = resolveStockVariantId(current)
+            val stock = stockId?.let { Global.getSettings().getVariant(it) }
             if (stock == null) {
-                log.warn("[ASTD] 赏金舰队成员 ${member.hullId} 变体无法回溯 stock（$stockId），按现状克隆防护")
+                log.warn("[ASTD] 赏金舰队成员 ${member.hullId} 变体无法回溯 stock（${current.hullVariantId}），按现状克隆防护")
             }
             val cloned = (stock ?: current).clone()
             current.tags.forEach { cloned.addTag(it) }
             cloned.addTag(Tags.TAG_NO_AUTOFIT)
-            cloned.setOriginalVariant(null)
+            cloned.setOriginalVariant(if (stock != null) stockId else current.originalVariant)
             member.setVariant(cloned, false, false)
         }
         fleet.setInflater(null)
+    }
+
+    /** (hullId, 变体显示名) → stock 变体 id 索引：旧存档（v3 之前调谐）的成员变体 originalVariant 被清空且 id 已运行时化，只能靠名称指纹找回 stock。 */
+    private val stockVariantIdsByName: Map<Pair<String, String>, String> by lazy {
+        val settings = Global.getSettings()
+        val index = mutableMapOf<Pair<String, String>, String>()
+        for (id in settings.allVariantIds) {
+            val variant = settings.getVariant(id) ?: continue
+            if (variant.source != VariantSource.STOCK) continue
+            val hull = variant.hullSpec ?: continue
+            index.putIfAbsent(hull.hullId to variant.displayName.orEmpty(), id)
+        }
+        index
+    }
+
+    private fun resolveStockVariantId(variant: ShipVariantAPI): String? {
+        val direct = stockVariantIdOf(variant.originalVariant, variant.hullVariantId)
+        if (Global.getSettings().getVariant(direct) != null) return direct
+        return stockVariantIdsByName[variant.hullSpec.hullId to variant.displayName.orEmpty()]
     }
 
     /** SHU 必须先于 SMod 安装：SMod 装上的护盾系船插会被等离子充能护盾的互斥拆除，名额不回填。 */
@@ -633,8 +653,8 @@ class BountyFleetTunerImpl(
         const val TUNED_MEMKEY: String = "\$astd_bounty_tuned"
         const val TUNE_VERSION_MEMKEY: String = "\$astd_bounty_tune_version"
 
-        /** 调谐规则版本：1 = 初版（仅有 TUNED_MEMKEY 布尔标记）；2 = 目标定位互斥/相位实盾过滤 + 预设组成迁移。调谐规则再变动时递增。 */
-        const val CURRENT_TUNE_VERSION: Int = 2
+        /** 调谐规则版本：1 = 初版（仅有 TUNED_MEMKEY 布尔标记）；2 = 目标定位互斥/相位实盾过滤 + 预设组成迁移；3 = minFP 对齐预设总 FP（裁掉 MagicLib 阶段随机补强）；4 = 关闭 MagicLib 玩家舰队规模缩放 + originalVariant 回填/名称指纹回溯修复迁移断链；5 = 组成裁校覆盖版本 0（调谐器引入前生成的历史舰队不再跳过裁校直接补强翻倍）。调谐规则再变动时递增。 */
+        const val CURRENT_TUNE_VERSION: Int = 5
         const val LEGACY_TUNE_VERSION: Int = 1
         const val ASTD_FACTION_ID: String = "asteria_directorate"
         const val ASTD_HULL_PREFIX: String = "astd_"

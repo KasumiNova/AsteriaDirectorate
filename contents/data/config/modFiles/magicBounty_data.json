@@ -1,7 +1,7 @@
 {
   # 6 个前置赏金 (astd_bounty_rogue_1..6) 逐级解锁 4 个唯一原型舰终局目标。
   # ActiveBounty 完成时向全局记忆写入 $<bountyId>_succeeded，trigger_memKeys_all 检查前置条件。
-  # fleet_preset_ships 与 min_FP 相等时，MagicLib 不会随机补强；
+  # fleet_preset_ships 与 min_FP 相等时，MagicLib 不会随机补强；fleet_min_FP 必须与预设总 FP 保持同步（下调预设船只时务必同步下调，否则 MagicLib 会在生成阶段用势力 doctrine 随机补强到 min_FP）。
   # 随机混编与舰队上限补强由 BountyFleetTunerImpl 完成。
   # target_portrait 指向模组 AI 头像池 contents/graphics/portraits/astd_portrait_core_*.png。
   "astd_bounty_rogue_1":{
@@ -26,14 +26,13 @@
     "fleet_faction":"ML_bounty",
     "fleet_transponder":false,
     "fleet_composition_faction":"asteria_directorate",
-    "fleet_min_FP":200,
+    "fleet_min_FP":78,
     "fleet_preset_ships":{
       "astd_xc_103_Standard":2,
       "astd_zw_101_Standard":1,
       "astd_zw_103_Standard":1
     },
-    "fleet_scaling_multiplier":1.1,
-    "fleet_no_multiplier":false,
+    "fleet_scaling_multiplier":0,
     "target_first_name":"验收协议",
     "target_last_name":"戊己",
     "target_portrait":"graphics/portraits/astd_portrait_core_g.png",
@@ -68,7 +67,7 @@
     "fleet_faction":"ML_bounty",
     "fleet_transponder":false,
     "fleet_composition_faction":"asteria_directorate",
-    "fleet_min_FP":350,
+    "fleet_min_FP":165,
     "fleet_preset_ships":{
       "astd_xc_101_Standard":1,
       "astd_xc_103_Standard":3,
@@ -77,8 +76,7 @@
       "astd_lh_001_Standard":1,
       "astd_lh_002_Standard":1
     },
-    "fleet_scaling_multiplier":1.1,
-    "fleet_no_multiplier":false,
+    "fleet_scaling_multiplier":0,
     "target_first_name":"猎歼协议",
     "target_last_name":"游徼",
     "target_portrait":"graphics/portraits/astd_portrait_core_b.png",
@@ -113,7 +111,7 @@
     "fleet_faction":"ML_bounty",
     "fleet_transponder":false,
     "fleet_composition_faction":"asteria_directorate",
-    "fleet_min_FP":500,
+    "fleet_min_FP":236,
     "fleet_preset_ships":{
       "astd_xc_101_Standard":2,
       "astd_xc_103_Standard":4,
@@ -122,8 +120,7 @@
       "astd_lh_001_Standard":2,
       "astd_lh_002_Standard":1
     },
-    "fleet_scaling_multiplier":1.1,
-    "fleet_no_multiplier":false,
+    "fleet_scaling_multiplier":0,
     "target_first_name":"折冲协议",
     "target_last_name":"折冲",
     "target_portrait":"graphics/portraits/astd_portrait_core_b.png",
@@ -158,7 +155,7 @@
     "fleet_faction":"ML_bounty",
     "fleet_transponder":false,
     "fleet_composition_faction":"asteria_directorate",
-    "fleet_min_FP":600,
+    "fleet_min_FP":322,
     "fleet_preset_ships":{
       "astd_xc_102_Standard":1,
       "astd_xc_101_Standard":2,
@@ -169,8 +166,7 @@
       "astd_lh_001_Standard":3,
       "astd_lh_002_Standard":2
     },
-    "fleet_scaling_multiplier":1.1,
-    "fleet_no_multiplier":false,
+    "fleet_scaling_multiplier":0,
     "target_first_name":"破阵协议",
     "target_last_name":"果毅",
     "target_portrait":"graphics/portraits/astd_portrait_core_a.png",
@@ -205,7 +201,7 @@
     "fleet_faction":"ML_bounty",
     "fleet_transponder":false,
     "fleet_composition_faction":"asteria_directorate",
-    "fleet_min_FP":800,
+    "fleet_min_FP":414,
     "fleet_preset_ships":{
       "astd_zw_102_Hybrid":1,
       "astd_zw_102_Bomber":1,
@@ -216,8 +212,7 @@
       "astd_lh_001_Standard":3,
       "astd_lh_002_Standard":2
     },
-    "fleet_scaling_multiplier":1.1,
-    "fleet_no_multiplier":false,
+    "fleet_scaling_multiplier":0,
     "target_first_name":"干涉协议",
     "target_last_name":"司辰",
     "target_portrait":"graphics/portraits/astd_portrait_core_a.png",
@@ -252,7 +247,7 @@
     "fleet_faction":"ML_bounty",
     "fleet_transponder":false,
     "fleet_composition_faction":"asteria_directorate",
-    "fleet_min_FP":850,
+    "fleet_min_FP":402,
     "fleet_preset_ships":{
       "astd_xc_102_Standard":1,
       "astd_zw_102_Hybrid":1,
@@ -263,8 +258,7 @@
       "astd_lh_001_Standard":4,
       "astd_lh_002_Standard":2
     },
-    "fleet_scaling_multiplier":1.1,
-    "fleet_no_multiplier":false,
+    "fleet_scaling_multiplier":0,
     "target_first_name":"终审协议",
     "target_last_name":"司隶",
     "target_portrait":"graphics/portraits/astd_portrait_core_a.png",
@@ -299,7 +293,7 @@
     "fleet_faction":"ML_bounty",
     "fleet_transponder":false,
     "fleet_composition_faction":"asteria_directorate",
-    "fleet_min_FP":1000,
+    "fleet_min_FP":593,
     "fleet_preset_ships":{
       "astd_xc_102_Standard":1,
       "astd_zw_102_Hybrid":1,
@@ -310,8 +304,7 @@
       "astd_lh_001_Standard":6,
       "astd_lh_002_Standard":3
     },
-    "fleet_scaling_multiplier":1.1,
-    "fleet_no_multiplier":false,
+    "fleet_scaling_multiplier":0,
     "target_first_name":"孤品主控",
     "target_last_name":"执刃",
     "target_portrait":"graphics/portraits/astd_portrait_core_o.png",
@@ -346,7 +339,7 @@
     "fleet_faction":"ML_bounty",
     "fleet_transponder":false,
     "fleet_composition_faction":"asteria_directorate",
-    "fleet_min_FP":1100,
+    "fleet_min_FP":541,
     "fleet_preset_ships":{
       "astd_xc_102_Standard":1,
       "astd_zw_102_Hybrid":1,
@@ -359,8 +352,7 @@
       "astd_lh_001_Standard":3,
       "astd_lh_002_Standard":6
     },
-    "fleet_scaling_multiplier":1.1,
-    "fleet_no_multiplier":false,
+    "fleet_scaling_multiplier":0,
     "target_first_name":"孤品主控",
     "target_last_name":"司瞑",
     "target_portrait":"graphics/portraits/astd_portrait_core_o.png",
@@ -395,7 +387,7 @@
     "fleet_faction":"ML_bounty",
     "fleet_transponder":false,
     "fleet_composition_faction":"asteria_directorate",
-    "fleet_min_FP":1100,
+    "fleet_min_FP":560,
     "fleet_preset_ships":{
       "astd_xc_102_Standard":1,
       "astd_zw_102_Hybrid":1,
@@ -408,8 +400,7 @@
       "astd_lh_001_Standard":3,
       "astd_lh_002_Standard":6
     },
-    "fleet_scaling_multiplier":1.1,
-    "fleet_no_multiplier":false,
+    "fleet_scaling_multiplier":0,
     "target_first_name":"孤品主控",
     "target_last_name":"还瞳",
     "target_portrait":"graphics/portraits/astd_portrait_core_o.png",
@@ -444,7 +435,7 @@
     "fleet_faction":"ML_bounty",
     "fleet_transponder":false,
     "fleet_composition_faction":"asteria_directorate",
-    "fleet_min_FP":1200,
+    "fleet_min_FP":631,
     "fleet_preset_ships":{
       "astd_xc_102_Standard":1,
       "astd_xc_102_Combat":1,
@@ -457,8 +448,7 @@
       "astd_lh_001_Standard":6,
       "astd_lh_002_Standard":3
     },
-    "fleet_scaling_multiplier":1.1,
-    "fleet_no_multiplier":false,
+    "fleet_scaling_multiplier":0,
     "target_first_name":"终审主控",
     "target_last_name":"菀星-00",
     "target_portrait":"graphics/portraits/astd_portrait_core_o.png",
