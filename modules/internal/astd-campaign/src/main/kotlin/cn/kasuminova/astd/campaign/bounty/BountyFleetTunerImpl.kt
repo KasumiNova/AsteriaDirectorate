@@ -15,7 +15,6 @@ import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.campaign.CampaignFleetAPI
 import com.fs.starfarer.api.characters.MutableCharacterStatsAPI
 import com.fs.starfarer.api.characters.PersonAPI
-import com.fs.starfarer.api.combat.ShieldAPI
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.combat.ShipHullSpecAPI
 import com.fs.starfarer.api.combat.ShipVariantAPI
@@ -46,11 +45,20 @@ class BountyFleetTunerImpl(
 
     override fun tuneIfNeeded(fleet: CampaignFleetAPI) {
         val memory = fleet.memoryWithoutUpdate
-        if (memory.getBoolean(TUNED_MEMKEY)) return
+        val tunedVersion = when {
+            memory.contains(TUNE_VERSION_MEMKEY) -> memory.getInt(TUNE_VERSION_MEMKEY)
+            // 初版调谐只有 boolean 标记，视作版本 1
+            memory.getBoolean(TUNED_MEMKEY) -> LEGACY_TUNE_VERSION
+            else -> 0
+        }
+        if (tunedVersion >= CURRENT_TUNE_VERSION) return
 
         val bountyKey = bountyKeyOf(fleet)
         val poolConfig = BountyPoolConfig.forBountyKey(bountyKey)
         val fillToFleetCap = bountySettings.fillToFleetCap
+        if (tunedVersion in LEGACY_TUNE_VERSION until CURRENT_TUNE_VERSION) {
+            reconcilePresetComposition(fleet, bountyKey)
+        }
         refreshVariants(fleet)
         replaceExcludedEscorts(fleet)
         reinforceFleet(fleet, poolConfig, fillToFleetCap)
@@ -64,8 +72,47 @@ class BountyFleetTunerImpl(
 
         fleet.fleetData.setSyncNeeded()
         fleet.fleetData.syncIfNeeded()
-        memory.set(TUNED_MEMKEY, true)
-        log.info("[ASTD] 赏金舰队 ${fleet.name} 后处理完成，最终规模 ${fleet.fleetData.membersListCopy.size} 艘 / ${fleet.fleetPoints} FP")
+        memory.unset(TUNED_MEMKEY)
+        memory.set(TUNE_VERSION_MEMKEY, CURRENT_TUNE_VERSION)
+        log.info(
+            "[ASTD] 赏金舰队 ${fleet.name} 后处理完成（调谐版本 $tunedVersion → $CURRENT_TUNE_VERSION），" +
+                "最终规模 ${fleet.fleetData.membersListCopy.size} 艘 / ${fleet.fleetPoints} FP",
+        )
+    }
+
+    /**
+     * 旧版本调谐舰队的组成迁移：模组更新下调预设规模后，已生成舰队（含未接取）不会自动跟随新预设。
+     * 以悬赏 spec 的预设变体配额为准保留成员（旗舰恒保留），配额外的混编/补强成员全部清退，
+     * 由后续补齐阶段按现行规则重抽，最终规模与新生成舰队口径一致。
+     */
+    private fun reconcilePresetComposition(fleet: CampaignFleetAPI, bountyKey: String?) {
+        val spec = bountyKey?.let { MagicBountyLoader.getBountyData(it) }
+        if (spec == null) {
+            log.warn("[ASTD] 赏金舰队 ${fleet.name} 组成迁移缺少悬赏 spec（$bountyKey），跳过裁校")
+            return
+        }
+        val quotas = mutableMapOf<String, Int>()
+        spec.fleet_preset_ships?.forEach { (variantId, count) -> quotas.merge(variantId, count.toInt(), Int::plus) }
+        spec.fleet_flagship_variant?.let { quotas.merge(it, 1, Int::plus) }
+
+        val members = fleet.fleetData.membersListCopy.filter { !it.isFighterWing }
+        val keep = planPresetRetention(
+            members.map { it.isFlagship to stockVariantIdOf(it.variant.originalVariant, it.variant.hullVariantId) },
+            quotas,
+        )
+        var removed = 0
+        members.forEachIndexed { index, member ->
+            if (!keep[index]) {
+                fleet.fleetData.removeFleetMember(member)
+                removed++
+            }
+        }
+        if (removed > 0) {
+            log.info(
+                "[ASTD] 赏金舰队 ${fleet.name} 组成迁移：清退配额外成员 $removed 艘，" +
+                    "保留 ${members.size - removed} 艘，由补齐阶段按现行规则重抽",
+            )
+        }
     }
 
     private fun bountyKeyOf(fleet: CampaignFleetAPI): String? =
@@ -438,8 +485,8 @@ class BountyFleetTunerImpl(
             if (member.isCivilian || member.isFighterWing) continue
             val hull = member.hullSpec
             val variant = member.variant
-            val phase = hull.isPhase
-            val hasShield = hull.shieldType != ShieldAPI.ShieldType.NONE
+            val phase = fitRules.isPhaseShip(hull.isPhase, hull.shieldType)
+            val hasShield = fitRules.hasRealShield(hull.shieldType)
             val missileCapable = hull.allWeaponSlotsCopy.any { it.weaponType in MISSILE_CAPABLE_SLOT_TYPES }
 
             val installedShu = if (shuAvailable) installShuHullmod(variant, hull, neutralStats) else null
@@ -463,7 +510,8 @@ class BountyFleetTunerImpl(
         installedShu: String?,
     ) {
         val hull = member.hullSpec
-        val bannedByController = HullmodIncompatibility.forbiddenCandidates(hull.builtInMods + variant.hullMods)
+        // 在场船插集合随安装推进：原版船插间互斥（如目标定位系）只挡候选方，已装 SMod 也要参与后续候选过滤
+        val presentHullmods = (hull.builtInMods + variant.hullMods).toMutableSet()
         // 名额与原版装配 UI 一致：Misc.getCurrSpecialMods 只计 perma∩sMod 的非内建/非隐藏/非 D 插船插
         val initial = Misc.getMaxPermanentMods(member, neutralStats) - Misc.getCurrSpecialMods(variant)
         if (initial <= 0) {
@@ -478,10 +526,11 @@ class BountyFleetTunerImpl(
             if (remaining <= 0) break
             Global.getSettings().getHullModSpec(id) ?: continue
             if (hull.builtInMods.contains(id) || variant.hullMods.contains(id)) continue
-            if (id in bannedByController) continue
+            if (id in HullmodIncompatibility.forbiddenCandidates(presentHullmods)) continue
             if (fitRules.isSmodBlockedByShu(id, installedShu)) continue
             if (!fitRules.isSmodApplicable(id, phase, hasShield, missileCapable)) continue
             variant.addPermaMod(id, true)
+            presentHullmods += id
             remaining--
             installed++
         }
@@ -523,18 +572,18 @@ class BountyFleetTunerImpl(
 
     private fun isShuApplicable(hullmodId: String, variant: ShipVariantAPI, hull: ShipHullSpecAPI): Boolean =
         when (hullmodId) {
-            BountyFitRules.SHU_PLASMA_DYNAMO -> hull.shieldType != ShieldAPI.ShieldType.NONE
+            BountyFitRules.SHU_PLASMA_DYNAMO -> fitRules.hasRealShield(hull.shieldType)
             else -> fitRules.shuConflicts(hullmodId).none { variant.hullMods.contains(it) }
         }
 
     private fun fillExtraMods(variant: ShipVariantAPI, hull: ShipHullSpecAPI, neutralStats: MutableCharacterStatsAPI) {
         val installedShu = variant.hullMods.firstOrNull { it.startsWith(BountyFitRules.SHU_ID_PREFIX) }
         val shuConflicts = fitRules.shuConflicts(installedShu)
-        val bannedByController = HullmodIncompatibility.forbiddenCandidates(hull.builtInMods + variant.hullMods)
+        val presentHullmods = (hull.builtInMods + variant.hullMods).toMutableSet()
         var budgetLeft = fitRules.reclaimBudget(hull.hullSize)
         for (id in fitRules.extraModPriority()) {
             if (id in shuConflicts) continue
-            if (id in bannedByController) continue
+            if (id in HullmodIncompatibility.forbiddenCandidates(presentHullmods)) continue
             val spec = Global.getSettings().getHullModSpec(id) ?: continue
             if (hull.builtInMods.contains(id) || variant.hullMods.contains(id)) continue
             val cost = smodCostFor(spec, hull.hullSize)
@@ -548,6 +597,7 @@ class BountyFleetTunerImpl(
                 continue
             }
             variant.addMod(id)
+            presentHullmods += id
         }
     }
 
@@ -581,6 +631,11 @@ class BountyFleetTunerImpl(
     companion object {
         const val BOUNTY_KEY_PREFIX: String = "astd_bounty_"
         const val TUNED_MEMKEY: String = "\$astd_bounty_tuned"
+        const val TUNE_VERSION_MEMKEY: String = "\$astd_bounty_tune_version"
+
+        /** 调谐规则版本：1 = 初版（仅有 TUNED_MEMKEY 布尔标记）；2 = 目标定位互斥/相位实盾过滤 + 预设组成迁移。调谐规则再变动时递增。 */
+        const val CURRENT_TUNE_VERSION: Int = 2
+        const val LEGACY_TUNE_VERSION: Int = 1
         const val ASTD_FACTION_ID: String = "asteria_directorate"
         const val ASTD_HULL_PREFIX: String = "astd_"
 
@@ -592,6 +647,30 @@ class BountyFleetTunerImpl(
 
         fun stockVariantIdOf(originalVariant: String?, hullVariantId: String): String =
             originalVariant ?: hullVariantId
+
+        /**
+         * 预设保留方案：旗舰恒保留，其余成员按预设变体配额逐个保留，配额外裁掉。
+         * 入参为 (是否旗舰, stock 变体 id) 列表，返回等长的保留标记。
+         */
+        fun planPresetRetention(
+            members: List<Pair<Boolean, String>>,
+            presetQuotas: Map<String, Int>,
+        ): List<Boolean> {
+            val remaining = presetQuotas.toMutableMap()
+            return members.map { (flagship, variantId) ->
+                if (flagship) {
+                    true
+                } else {
+                    val quota = remaining[variantId] ?: 0
+                    if (quota > 0) {
+                        remaining[variantId] = quota - 1
+                        true
+                    } else {
+                        false
+                    }
+                }
+            }
+        }
 
         val EXCLUDED_HULL_IDS: Set<String> = setOf("astd_xc_104")
 

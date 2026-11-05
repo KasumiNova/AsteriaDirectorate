@@ -8,6 +8,21 @@ import com.fs.starfarer.api.impl.campaign.ids.HullMods
 
 object HullmodIncompatibility {
 
+    /**
+     * 原版目标定位系船插互斥组（含历史别名 id）。原版的互斥只在候选方 isApplicableToShip 判定
+     * （AdvancedTargetingCore 自身判定被注释，恒可装），程序化加装（赏金 SMod 管线 addPermaMod）
+     * 不经过装配 UI 判定，必须在此补全为双向映射，否则会出现内建先进目标定位核心与 SMod
+     * 目标定位系统叠加的非法组合。
+     */
+    val TARGETING_FAMILY: Set<String> = setOf(
+        "targetingunit",
+        "integratedtargetingunit",
+        "dedicated_targeting_core",
+        "dedicatedtargetingcore",
+        "advancedcore",
+        HullMods.DISTRIBUTED_FIRE_CONTROL,
+    )
+
     val FORBIDDEN_BY_CONTROLLER: Map<String, Set<String>> = mapOf(
         ASTDArcProductionShipIds.HULLMOD_ARC_ADVANCED_TARGETING_SYSTEM to setOf(
             "targetingunit",
@@ -33,7 +48,7 @@ object HullmodIncompatibility {
             HullMods.ECM,
             HullMods.ECCM,
         ),
-    )
+    ) + TARGETING_FAMILY.associateWith { TARGETING_FAMILY - it }
 
     fun forbiddenByController(controllerHullmodId: String): Set<String> =
         FORBIDDEN_BY_CONTROLLER[controllerHullmodId].orEmpty()

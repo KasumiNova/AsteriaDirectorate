@@ -1,5 +1,6 @@
 package cn.kasuminova.astd.campaign.bounty.core
 
+import com.fs.starfarer.api.combat.ShieldAPI
 import com.fs.starfarer.api.combat.ShipAPI
 
 interface BountyFitRules {
@@ -41,6 +42,14 @@ interface BountyFitRules {
             "magazines" -> missileCapable
             else -> true
         }
+
+    /** 原版 isPhase 仅认 hint PHASE 或 defenseId == "phasecloak"，ASTD 相位舰（引力相位）两条都不满足，须按 PHASE 防护类型补判。 */
+    fun isPhaseShip(isPhaseHint: Boolean, shieldType: ShieldAPI.ShieldType): Boolean =
+        isPhaseHint || shieldType == ShieldAPI.ShieldType.PHASE
+
+    /** 实盾判定：PHASE 防护类型的舰体没有护盾，护盾系船插/升级不得适用。 */
+    fun hasRealShield(shieldType: ShieldAPI.ShieldType): Boolean =
+        shieldType != ShieldAPI.ShieldType.NONE && shieldType != ShieldAPI.ShieldType.PHASE
 
     fun planOpReclaim(caps: Int, vents: Int, opPerUnit: Int, neededOp: Int, budget: Int): Pair<Int, Int> {
         if (opPerUnit <= 0 || neededOp <= 0 || budget < opPerUnit) return 0 to 0

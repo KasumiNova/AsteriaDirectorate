@@ -12,7 +12,7 @@ import kotlin.test.assertTrue
 class HullmodIncompatibilityTest {
 
     @Test
-    fun `五路控制方船插映射齐备`() {
+    fun `控制方船插映射齐备`() {
         val arcTargeting = HullmodIncompatibility.forbiddenByController(
             ASTDArcProductionShipIds.HULLMOD_ARC_ADVANCED_TARGETING_SYSTEM,
         )
@@ -61,6 +61,26 @@ class HullmodIncompatibilityTest {
                 HullmodIncompatibility.forbiddenByController(ASTDArcProductionShipIds.HULLMOD_PLASMA_ARMOR_SHIELD).size,
             banned.size,
         )
+    }
+
+    @Test
+    fun `原版目标定位系船插双向互斥`() {
+        // 原版互斥只在候选方 isApplicableToShip 判定，赏金 SMod 管线程序化加装必须依赖本注册表双向拦截
+        val bannedByAdvancedCore = HullmodIncompatibility.forbiddenCandidates(listOf("advancedcore"))
+        assertTrue("targetingunit" in bannedByAdvancedCore, "内建先进目标定位核心须禁装目标定位系统")
+        assertTrue("dedicated_targeting_core" in bannedByAdvancedCore, "内建先进目标定位核心须禁装专注型目标锁定核心")
+        assertTrue("distributed_fire_control" in bannedByAdvancedCore, "内建先进目标定位核心须禁装分布式火控")
+
+        val bannedByItu = HullmodIncompatibility.forbiddenCandidates(listOf("targetingunit"))
+        assertTrue("advancedcore" in bannedByItu, "已装目标定位系统须禁装先进目标定位核心")
+        assertTrue("dedicated_targeting_core" in bannedByItu, "已装目标定位系统须禁装专注型目标锁定核心")
+
+        HullmodIncompatibility.TARGETING_FAMILY.forEach { id ->
+            val banned = HullmodIncompatibility.forbiddenCandidates(listOf(id))
+            HullmodIncompatibility.TARGETING_FAMILY.filter { it != id }.forEach { other ->
+                assertTrue(other in banned, "目标定位系 $id 在场时 $other 应被禁装")
+            }
+        }
     }
 
     @Test

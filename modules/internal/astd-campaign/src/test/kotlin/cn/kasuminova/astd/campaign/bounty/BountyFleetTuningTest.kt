@@ -4,6 +4,8 @@ import cn.kasuminova.astd.campaign.bounty.core.BountyFitRules
 import cn.kasuminova.astd.campaign.bounty.core.BountyOfficerSkills
 import cn.kasuminova.astd.campaign.bounty.core.BountyPoolConfig
 import cn.kasuminova.astd.campaign.bounty.core.PoolSide
+import cn.kasuminova.astd.combat.hullmods.HullmodIncompatibility
+import com.fs.starfarer.api.combat.ShieldAPI
 import com.fs.starfarer.api.combat.ShipAPI
 import java.util.Random
 import kotlin.test.Test
@@ -112,6 +114,36 @@ class BountyFleetTuningTest {
     }
 
     @Test
+    fun `预设组成迁移保留旗舰与配额内成员并裁掉配额外成员`() {
+        val quotas = mapOf("astd_xc_101_Standard" to 1, "astd_xc_103_Standard" to 2)
+        val members = listOf(
+            true to "astd_xc_101_Standard",
+            false to "astd_xc_103_Standard",
+            false to "astd_xc_103_Standard",
+            false to "astd_xc_103_Standard",
+            false to "radiant_Standard",
+            false to "astd_zw_101_Standard",
+        )
+        assertEquals(
+            listOf(true, true, true, false, false, false),
+            BountyFleetTunerImpl.planPresetRetention(members, quotas),
+            "旗舰恒保留，预设变体按配额保留，超额与池外混编成员一律裁掉",
+        )
+        assertEquals(
+            listOf(true, false, false),
+            BountyFleetTunerImpl.planPresetRetention(
+                listOf(true to "astd_xc_101_Standard", false to "astd_xc_101_Standard", false to "radiant_Standard"),
+                emptyMap(),
+            ),
+            "空配额只留旗舰",
+        )
+        assertEquals(
+            emptyList(),
+            BountyFleetTunerImpl.planPresetRetention(emptyList(), quotas),
+        )
+    }
+
+    @Test
     fun `stock 变体回溯优先取 originalVariant`() {
         assertEquals("astd_xc_101_Standard", BountyFleetTunerImpl.stockVariantIdOf("astd_xc_101_Standard", "fleet_123_0"))
         assertEquals("astd_zw_101_Standard", BountyFleetTunerImpl.stockVariantIdOf(null, "astd_zw_101_Standard"))
@@ -167,6 +199,40 @@ class BountyFleetTuningTest {
         listOf("targetingunit", "heavyarmor").forEach {
             assertTrue(fitRules.isSmodApplicable(it, phase = true, hasShield = false, missileCapable = false))
             assertTrue(fitRules.isSmodApplicable(it, phase = false, hasShield = true, missileCapable = true))
+        }
+    }
+
+    @Test
+    fun `相位舰判定补认自定义相位防护且实盾判定排除相位与无盾`() {
+        // 原版 isPhase 仅认 hint PHASE 或 defenseId == "phasecloak"，ASTD 引力相位舰（shield type = PHASE）须按防护类型补判
+        assertTrue(fitRules.isPhaseShip(isPhaseHint = false, shieldType = ShieldAPI.ShieldType.PHASE))
+        assertTrue(fitRules.isPhaseShip(isPhaseHint = true, shieldType = ShieldAPI.ShieldType.OMNI))
+        assertFalse(fitRules.isPhaseShip(isPhaseHint = false, shieldType = ShieldAPI.ShieldType.OMNI))
+
+        assertFalse(fitRules.hasRealShield(ShieldAPI.ShieldType.PHASE), "相位防护不等于护盾")
+        assertFalse(fitRules.hasRealShield(ShieldAPI.ShieldType.NONE))
+        assertTrue(fitRules.hasRealShield(ShieldAPI.ShieldType.OMNI))
+        assertTrue(fitRules.hasRealShield(ShieldAPI.ShieldType.FRONT))
+
+        // 相位舰不应通过护盾系 SMod 适用性，但应通过相位系候选
+        assertFalse(
+            fitRules.isSmodApplicable("hardenedshieldemitter", phase = true, hasShield = false, missileCapable = true),
+            "相位舰不得内插强化护盾",
+        )
+        assertTrue(fitRules.isSmodApplicable("adaptive_coils", phase = true, hasShield = false, missileCapable = true))
+    }
+
+    @Test
+    fun `SMod 候选中的目标定位系成员被互斥注册表覆盖`() {
+        val targetingCandidates = BountyFitRules.SMOD_PRIORITY.filter { it in HullmodIncompatibility.TARGETING_FAMILY }
+        assertTrue(targetingCandidates.isNotEmpty(), "目标定位系应至少有一个 SMod 候选被回归覆盖")
+        targetingCandidates.forEach { id ->
+            HullmodIncompatibility.TARGETING_FAMILY.filter { it != id }.forEach { present ->
+                assertTrue(
+                    id in HullmodIncompatibility.forbiddenCandidates(listOf(present)),
+                    "在场 $present 时 SMod 候选 $id 应被互斥过滤",
+                )
+            }
         }
     }
 
