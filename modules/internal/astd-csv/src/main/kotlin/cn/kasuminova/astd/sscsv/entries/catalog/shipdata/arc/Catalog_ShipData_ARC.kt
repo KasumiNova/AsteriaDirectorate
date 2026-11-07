@@ -121,11 +121,11 @@ object Ship_astd_xc_102 : ShipDataEntry() {
     override val maxFlux: Int = 25000
     override val fluxDissipation: Int = 1400
     override val ordnancePoints: Int = 360
-    override val maxSpeed: Int = 40
-    override val acceleration: Int = 20
+    override val maxSpeed: Int = 30
+    override val acceleration: Int = 15
     override val deceleration: Int = 15
-    override val maxTurnRate: Int = 20
-    override val turnAcceleration: Int = 20
+    override val maxTurnRate: Int = 10
+    override val turnAcceleration: Int = 15
     override val mass: Int = 4000
     override val shieldType: String = "OMNI"
     override val shieldArc: Int = 240

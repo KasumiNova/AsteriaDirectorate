@@ -177,8 +177,8 @@
     {
       "id": "WS0018",
       "size": "LARGE",
-      "type": "BUILT_IN",
-      "mount": "HIDDEN",
+      "type": "DECORATIVE",
+      "mount": "HARDPOINT",
       "arc": 0,
       "angle": 0,
       "locations": [68.5, -0]
