@@ -633,11 +633,11 @@ object Wpn_astd_gemini_dem_launcher : WeaponDataEntry(), SsProjMissileOutputs {
     override val turnRate: Int = 30
     override val ops: Int = 14
     override val ammo: Int = 4
-    override val ammoPerSec: Double = 0.0333
+    override val ammoPerSec: Double = 0.0286
     override val reloadSize: Int = 2
 
     override val type: String = "ENERGY"
-    override val chargedown: Double = 12.0
+    override val chargedown: Double = 15.0
     override val burstSize: Int = 2
     override val burstDelay: Double = 0.1
     override val projSpeed: Int = 225
@@ -688,10 +688,10 @@ object Wpn_astd_gemini_dem_pod : WeaponDataEntry() {
     override val turnRate: Int = 30
     override val ops: Int = 28
     override val ammo: Int = 8
-    override val ammoPerSec: Double = 0.0666
+    override val ammoPerSec: Double = 0.0571
     override val reloadSize: Int = 2
     override val type: String = "ENERGY"
-    override val chargedown: Double = 12.0
+    override val chargedown: Double = 10.0
     override val burstSize: Int = 2
     override val burstDelay: Double = 0.1
     override val projSpeed: Int = 225
