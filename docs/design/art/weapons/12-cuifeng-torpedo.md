@@ -12,7 +12,7 @@
 ## 2. 现状
 
 - 小型（`astd_cuifeng_torpedo`）已实装**无发射架**形态：炮塔/挂点 sprite 均为 BoxUtil 空白贴图 `graphics/textures/BUtil_NONE.png`，保留 `RENDER_LOADED_MISSILES` 只渲染待发弹体本体；物品图标由原版 WeaponIconRenderer 渲染弹体本体，不需要独立图标贴图
-- 中型发射架（`astd_cuifeng_launcher`）已交付独立贴图：36×44 底图（炮塔/挂点共用，兼作图标）+ `WeaponGlowLayer` 派生常驻微光层（`_glow_ambient` / `_hp_glow_ambient`）
+- 中型发射架（`astd_cuifeng_launcher`）已交付独立贴图：36×44 底图（炮塔/挂点共用，兼作图标，常驻微光已烘入底图）
 - 弹体已用自制 `graphics/weapons/astd_cuifeng_missile.png`（13×35），同图承担挂点待发弹体（RENDER_LOADED_MISSILES）与飞行本体（.proj sprite）渲染；粗壮度仍待美术重画，重画后替换同一路径即可
 - 弹体 VFX 已实装：ARC 冷蓝白拖尾（带长 = 射程 50%，亮头直抵弹头）+ 弹头 SMOOTH 光斑 + 命中双叠十字辉星与蓝白爆炸星云，不需要特效贴图
 - 弹体走原版渲染路径（`.proj` sprite），弹头朝上
@@ -23,8 +23,7 @@
 
 | 资产 | 文件命名 | 画布基准 | 说明 |
 |---|---|---|---|
-| 中型发射架底图 | `astd_cuifeng_launcher_base.png` | 36×44 | 炮塔/挂点共用，兼作图标 |
-| 中型发射架常驻微光 | `astd_cuifeng_launcher_glow_ambient.png` / `astd_cuifeng_launcher_hp_glow_ambient.png` | 36×44 | WeaponGlowLayer AMBIENT 档（冷却期常驻） |
+| 中型发射架底图 | `astd_cuifeng_launcher_base.png` | 36×44 | 炮塔/挂点共用，兼作图标；常驻微光已烘入 |
 
 待补：
 

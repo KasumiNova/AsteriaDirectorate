@@ -11,7 +11,7 @@
 
 ## 2. 现状
 
-- 小/中发射架已交付独立贴图（`astd_ice_shard_mirv_base.png` 28×26 / `astd_ice_shard_mirv_pod_base.png` 34×27，底部透明边已裁除），配 `WeaponGlowLayer` 常驻微光层（`_glow_ambient` / `_hp_glow_ambient`，冰蓝 RGB(140,217,255) 族）
+- 小/中发射架已交付独立贴图（`astd_ice_shard_mirv_base.png` 28×26 / `astd_ice_shard_mirv_pod_base.png` 34×27，底部透明边已裁除），常驻微光已烘入底图（冰蓝 RGB(140,217,255) 族）
 - 母弹已用自绘 `astd_ice_shard_missile.png`（15×27，底部透明边已裁除），同图承担挂点装填渲染与飞行本体渲染；配冰蓝挂载光效层 `astd_ice_shard_missile_glow.png`（`LoadedMissileGlowLayer` 加法叠加，透明度跟随装填 brightness）
 - 子冰晶射弹已有 v1 贴图 `contents/graphics/fx/astd_ice_shard.png`（菱形冰晶），走 spriteBody 渲染路径（BoxUtil SpriteEntity），**尖端朝右**，与原版弹体渲染的朝上约定相差 90°，精修时必须保持朝右
 - 弹体 VFX 已实装冰蓝族（色族独立为冰蓝，不套 LENS 紫）：母弹冰蓝白拖尾 + 弹头光斑；分裂冰蓝闪光与星云（音效沿用原版飓风 MIRV）；子冰晶短拖尾；附着后每 1s 在命中点渲染淡蓝星云。全部代码管线，不需要特效贴图
@@ -22,10 +22,8 @@
 
 | 资产 | 文件命名 | 画布 | 说明 |
 |---|---|---|---|
-| 小型发射架底图 | `astd_ice_shard_mirv_base.png` | 28×26 | 炮塔/挂点共用，兼作图标 |
-| 小型发射架常驻微光 | `astd_ice_shard_mirv_glow_ambient.png` / `astd_ice_shard_mirv_hp_glow_ambient.png` | 28×26 | WeaponGlowLayer AMBIENT 档（冰蓝） |
-| 中型发射舱底图 | `astd_ice_shard_mirv_pod_base.png` | 34×27 | 炮塔/挂点共用，兼作图标；双联弹位（burst 2） |
-| 中型发射舱常驻微光 | `astd_ice_shard_mirv_pod_glow_ambient.png` / `astd_ice_shard_mirv_pod_hp_glow_ambient.png` | 34×27 | WeaponGlowLayer AMBIENT 档（冰蓝） |
+| 小型发射架底图 | `astd_ice_shard_mirv_base.png` | 28×26 | 炮塔/挂点共用，兼作图标；常驻微光已烘入（冰蓝） |
+| 中型发射舱底图 | `astd_ice_shard_mirv_pod_base.png` | 34×27 | 炮塔/挂点共用，兼作图标；双联弹位（burst 2）；常驻微光已烘入（冰蓝） |
 | 母弹弹体 | `astd_ice_shard_missile.png` | 15×27 | 两槽位共用母弹，弹头朝上；同图承担挂点装填渲染 |
 | 母弹挂载光效层 | `astd_ice_shard_missile_glow.png` | 15×27 | LoadedMissileGlowLayer（冰蓝，加法混合） |
 

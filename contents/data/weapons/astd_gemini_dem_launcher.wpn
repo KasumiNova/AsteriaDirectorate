@@ -4,7 +4,7 @@
     "type": "MISSILE",
     "size": "MEDIUM",
     "turretSprite": "graphics/weapons/astd_gemini_dem_launcher.png",
-    "hardpointSprite": "graphics/weapons/astd_gemini_dem_launcher.png",
+    "hardpointSprite": "graphics/weapons/astd_gemini_dem_launcher_hp.png",
     "hardpointOffsets": [17.5, 6, 17.5, -6],
     "turretOffsets": [7.5, 6, 7.5, -6],
     "hardpointAngleOffsets": [0, 0],
