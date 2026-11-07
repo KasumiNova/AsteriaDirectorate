@@ -18,10 +18,10 @@ object FluxLinkNetworkTuning {
     val RANGE = ScalingEntry(1000f, 1200f, 1800f)
 
     /** 传输速率：每秒以自身辐能耗散的该比例从友舰抽取辐能。 */
-    val TRANSFER_RATE = ScalingEntry(0.20f, 0.25f, 0.40f)
+    val TRANSFER_RATE = ScalingEntry(0.40f, 0.50f, 0.80f)
 
     /** 全链路总传输速率上限：自身最终辐能耗散的该倍率，超额时优先辐能水平最高的友舰。 */
-    const val TOTAL_RATE_CAP = 1.5f
+    const val TOTAL_RATE_CAP = 2.0f
 
     /** 硬辐能传输倍率：友舰硬辐能部分按 传输速率 × 该比例 传输。 */
     val HARD_TRANSFER_MULT = ScalingEntry(0.20f, 0.25f, 0.40f)

@@ -75,7 +75,7 @@ object Sys_astd_arc_shared_flux_network : ShipSystemWithSystemFileEntry() {
     override val aiScript: String = "cn.kasuminova.astd.combat.shipsystems.FluxLinkNetworkSystemAI"
 
     override val chargeUp: Double = 0.5
-    override val active: Double = 10.0
+    override val active: Double = 15.0
     override val down: Double = 0.5
     override val cooldown: Double = 20.0
 
