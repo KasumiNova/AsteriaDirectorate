@@ -178,7 +178,7 @@
       "id": "WS0018",
       "size": "LARGE",
       "type": "BUILT_IN",
-      "mount": "HARDPOINT",
+      "mount": "HIDDEN",
       "arc": 0,
       "angle": 0,
       "locations": [68.5, -0]
