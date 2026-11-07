@@ -92,10 +92,10 @@ object ProjectileVfxSpecs {
                 decorTrail = false
             ) {
                 machRing("ring") {
-                    cadence(0.1f, 30f)
+                    cadence(0.1f, 20f)
                     color(0x8CC7FFFF, alpha = 1f)
                     shape(flatten = 0.5f, growthStart = 0.5f, growthEnd = 2.5f, fadeIn = 0.05f, full = 0.05f, fadeOut = 0.5f)
-                    momentum(900f)
+                    momentum(300f)
                 }
             }
         },
@@ -103,9 +103,10 @@ object ProjectileVfxSpecs {
             simpleProjectileVfx(
                 "astd_positron_shockwave_shot",
                 positronWhiteBlue(),
-                width = 5f,
+                width = 10f,
                 length = 90f,
                 muzzleBurst = MuzzleBurst(length = 55f, halfAngleDeg = 24f, duration = 0.25f),
+                decorTrail = true
             )
         },
         "astd_heavy_ion_pulse_shot" to { range ->
@@ -212,7 +213,10 @@ object ProjectileVfxSpecs {
     ): ProjectileVfx = projectileVfx(id) {
         fade { out(0.18f); hit(0.1f); expire(0.22f) }
 
-        bolt { color(boltColor(color).hex()) }
+        bolt {
+            color(boltColor(color).hex())
+            size(length, width * 0.6f)
+        }
 
         val bandLen = if (rangeRatio != null && range != null) round5(range * rangeRatio) else length
         val bandW = bandWidth(width, glowScale) * BAND_WIDTH_MULT * trailWidthScale
@@ -221,10 +225,12 @@ object ProjectileVfxSpecs {
             colors(bandHeadColor(color, brightness).hex(), bandTailColor(color, brightness, tailColor).hex())
             tile(mainTile(bandLen), mainScroll(bandLen))
             recede?.let { recede(it) }
+            angularOut()
+            velocityOut(-4f, -2f, 4f, 2f)
             glow(trailGlow)
         }
         staticTrail("core", TEX_SMOOTH) {
-            layer(2); width(round05(bandW * CORE_WIDTH_RATIO)); length(bandLen)
+            layer(2); width(round05(bandW * CORE_WIDTH_RATIO)); length(bandLen * 1.5f)
             colors(bandHeadColor(color, brightness).hex(), bandTailColor(color, brightness, tailColor).hex())
             tile(mainTile(bandLen), mainScroll(bandLen))
             recede?.let { recede(it) }
@@ -239,7 +245,7 @@ object ProjectileVfxSpecs {
                     recede?.let { recede(it) }
                     // BoxUtil 仅在漂移速度非零时应用节点自旋，angularOut 必须与 velocityOut 配套。
                     angularOut()
-                    velocityOut(-12f, -6f, 12f, 6f)
+                    velocityOut(-20f, -5f, 20f, 5f)
                     glow(trailGlow)
                 }
             }
@@ -344,7 +350,7 @@ object ProjectileVfxSpecs {
             )
         }
         machRing("ring") {
-            cadence(0.15f, 50f)
+            cadence(0.15f, 30f)
             color(0xFF5A3CFF, alpha = 1f)
             shape(flatten = 0.5f, growthStart = 0.5f, growthEnd = 2.5f, fadeIn = 0.05f, full = 0.05f, fadeOut = 0.4f)
             momentum(800f, 1000f)
@@ -375,7 +381,7 @@ object ProjectileVfxSpecs {
             )
         }
         machRing("ring") {
-            cadence(0.2f, 35f)
+            cadence(0.2f, 25f)
             color(0xAA6EFFFF, alpha = 1f)
             shape(flatten = 0.5f, growthStart = 0.7f, growthEnd = 3f, fadeIn = 0.05f, full = 0.05f, fadeOut = 0.5f)
             momentum(200f, 400f)
@@ -444,14 +450,8 @@ object ProjectileVfxSpecs {
         range = range,
         rangeRatio = 0.5f,
         recede = 0f,
+        decorTrail = false
     ) {
-        boxFlare("light") {
-            style(BoxFlareStyle.SMOOTH)
-            colors(ASTDColor(0xD0E8FF).a(0.5f).hex(), ASTDColor(0x78BEFF).a(0.5f).hex())
-            size(30f, 30f)
-            glow(0.1f, 4f)
-            noise(0.1f)
-        }
     }
 
     private fun iceShardMirvShot(id: String, range: Float?): ProjectileVfx = simpleProjectileVfx(
@@ -462,14 +462,8 @@ object ProjectileVfxSpecs {
         range = range,
         rangeRatio = 0.5f,
         recede = 0f,
+        decorTrail = false
     ) {
-        boxFlare("light") {
-            style(BoxFlareStyle.SMOOTH)
-            colors(ASTDColor(0xEAF6FFFF).a(0.5f).hex(), ASTDColor(0x9BD8FFc1).a(0.5f).hex())
-            size(30f, 30f)
-            glow(0.1f, 4f)
-            noise(0.1f)
-        }
     }
 
     private fun starfallBlue() = ASTDColor(0.55f, 0.78f, 1f, 1f)

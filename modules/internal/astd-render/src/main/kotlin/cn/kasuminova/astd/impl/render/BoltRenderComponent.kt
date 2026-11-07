@@ -113,7 +113,7 @@ class BoltRenderComponent(
                 baseSizeHalfHeight = specWidth / 2f,
                 color = tint,
                 emissiveColor = tint,
-                glowPower = 0.5f,
+                glowPower = 0.1f,
                 alphaToEmissive = 1f,
                 isAdditionEmissive = true,
                 isIgnoreIllumination = true,
