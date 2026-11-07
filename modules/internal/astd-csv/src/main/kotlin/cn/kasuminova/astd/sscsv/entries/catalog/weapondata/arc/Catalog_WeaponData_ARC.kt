@@ -1134,10 +1134,35 @@ private fun cuifengTorpedoProjSpec(): MissileProjSpec = MissileProjSpec(
     explosionRadius = 150,
     armingTime = 0.0,
     flameoutTime = 0.5,
-    noEngineGlowTime = 999.0,
+    // 原版引擎焰渲染条件为 timeSinceFizzling <= flameoutTime - noEngineGlowTime，
+    // 999 会全程压制引擎焰；摧锋的尾部喷焰与双子星同款 QUAD_STRIP 实现。
+    noEngineGlowTime = 0.0,
     fadeTime = 0.25,
     engineSpec = MissileEngineSpec(turnAcc = 2000, turnRate = 500, acc = 2000, dec = 2000),
-    engineSlots = emptyList(),
+    engineSlots = listOf(
+        MissileEngineSlot(
+            id = "ES1",
+            loc = Vec2i(-17, 0),
+            style = "CUSTOM",
+            styleSpec = MissileEngineSlotStyleSpec(
+                mode = "QUAD_STRIP",
+                engineColor = Rgba(140, 190, 255, 255),
+                glowSizeMult = 2.5,
+                contrailDuration = 1.0,
+                contrailWidthMult = 1.0,
+                contrailWidthAddedFractionAtEnd = 2.5,
+                contrailMinSeg = 5,
+                contrailMaxSpeedMult = 0.5,
+                contrailAngularVelocityMult = 0.5,
+                contrailSpawnDistMult = 1.0,
+                contrailColor = Rgba(120, 170, 255, 75),
+                type = "GLOW",
+            ),
+            width = 7.0,
+            length = 40.0,
+            angle = 180.0,
+        ),
+    ),
 )
 
 object Wpn_astd_cuifeng_torpedo : WeaponDataEntry(), SsProjMissileOutputs {
