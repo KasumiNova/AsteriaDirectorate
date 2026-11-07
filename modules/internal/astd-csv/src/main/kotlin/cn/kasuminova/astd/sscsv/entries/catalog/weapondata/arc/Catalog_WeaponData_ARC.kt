@@ -52,6 +52,9 @@ object Wpn_astd_starfall_echo : WeaponDataEntry(), SsJsonOutputs {
     override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
     override val number: Int = 9001
 
+    // 穿透语义走原版内建机制（passThroughMissiles/Fighters）：命中敌方导弹/战机结算伤害但不停弹。
+    // 注意：不得改用 HITS_SHIPS_* 等非 PROJECTILE_* 碰撞类别——原版 CombatEngine.advanceObjects
+    // 对非白名单类别的实体强制限速 600 su/s，高速弹体会因此飞不满射程。
     val projSpec: ProjectileProjSpec = ProjectileProjSpec.boxBolt(
         id = "astd_starfall_echo_shot",
         onFireEffect = "cn.kasuminova.astd.combat.effect.arc.starfallecho.StarfallEchoOnFireEffect",
@@ -60,7 +63,7 @@ object Wpn_astd_starfall_echo : WeaponDataEntry(), SsJsonOutputs {
         coreColor = Rgba(240, 248, 255, 200),
         length = 120.0,
         width = 24.0,
-    )
+    ).copy(passThroughMissiles = true, passThroughFighters = true)
 
     override fun jsonExtraFiles(): List<GeneratedJsonFile> = listOf(
         GeneratedJsonFile("data/weapons/proj/${projSpec.id}.proj", projSpec.toJson()),

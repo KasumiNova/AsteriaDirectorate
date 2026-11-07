@@ -30,6 +30,10 @@ data class ProjectileProjSpec(
     val hitGlowRadius: Double? = null,
     // null 时不写 bulletSprite 键，走原版默认弹体渲染。
     val bulletSprite: String? = null,
+    // 原版穿透机制：命中敌方导弹/战机时正常结算伤害但不置 didDamage、不回卷，弹体继续飞行。
+    // 仅在值为 true 时写出对应键。
+    val passThroughMissiles: Boolean = false,
+    val passThroughFighters: Boolean = false,
 ) {
     fun toJson(): Map<String, Any?> = linkedMapOf(
         "id" to id,
@@ -48,6 +52,8 @@ data class ProjectileProjSpec(
         "pixelsPerTexel" to pixelsPerTexel,
         "hitGlowRadius" to hitGlowRadius,
         "bulletSprite" to bulletSprite,
+        "passThroughMissiles" to if (passThroughMissiles) true else null,
+        "passThroughFighters" to if (passThroughFighters) true else null,
     ).filterValues { it != null }
 
     companion object {
