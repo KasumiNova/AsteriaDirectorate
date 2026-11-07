@@ -55,8 +55,8 @@ object Wpn_astd_lh_stardust_launcher_arc : WeaponDataEntry(), SsProjMissileOutpu
 
     override val emp: Int = 400
     override val turnRate: Int = 30
-    override val ammo: Int = 8
-    override val ammoPerSec: Double = 0.25
+    override val ammo: Int = 6
+    override val ammoPerSec: Double = 0.1667
     override val reloadSize: Int = 2
     override val type: String = "ENERGY"
 
@@ -100,8 +100,8 @@ object Wpn_astd_lh_stardust_launcher_lens : WeaponDataEntry(), SsProjMissileOutp
     override val damagePerShot: Int = 400
     override val emp: Int = 400
     override val turnRate: Int = 30
-    override val ammo: Int = 8
-    override val ammoPerSec: Double = 0.25
+    override val ammo: Int = 6
+    override val ammoPerSec: Double = 0.1667
     override val reloadSize: Int = 2
     override val type: String = "ENERGY"
     override val energyPerShot: Int = 200

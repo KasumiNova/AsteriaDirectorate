@@ -19,6 +19,9 @@ object StardustMoteTuning {
 
     const val MAX_ALIVE_MOTES_PER_WEAPON = 4
 
+    // 备弹达到（满值 - 2）时无视存活光尘上限无条件发射，避免弹药自恢复在满弹时被浪费。
+    const val REGEN_AMMO_HEADROOM = 2
+
     val ARC_COLOR = Color(100, 165, 255, 255)
 
     val LENS_COLOR = Color(186, 120, 255, 255)

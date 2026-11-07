@@ -11,6 +11,7 @@ import org.lazywizard.lazylib.MathUtils
 import org.lwjgl.util.vector.Vector2f
 
 // 原版自动开火 AI 要求目标进入射界/射程才开火，舰尾 arc 0 槽位的发射器因此从不开火，本 AI 无条件开火。
+// 备弹达到（满值 - REGEN_AMMO_HEADROOM）时无视存活光尘上限继续发射，让弹药自恢复持续转化为光尘而非溢出浪费。
 class StardustLauncherAutofireAI(
     private val weapon: WeaponAPI,
 ) : AutofireAIPlugin {
@@ -20,7 +21,11 @@ class StardustLauncherAutofireAI(
     override fun advance(amount: Float) {
         val engine = Global.getCombatEngine() ?: return
         if (engine.isPaused) return
-        shouldFire = weapon.ammo > 0 && countAliveMotes(engine.missiles) < StardustMoteTuning.MAX_ALIVE_MOTES_PER_WEAPON
+        shouldFire = shouldFire(
+            ammo = weapon.ammo,
+            maxAmmo = weapon.maxAmmo,
+            aliveMotes = countAliveMotes(engine.missiles),
+        )
     }
 
     private fun countAliveMotes(missiles: List<MissileAPI>): Int {
@@ -52,6 +57,12 @@ class StardustLauncherAutofireAI(
 
     companion object {
         private const val TARGET_POINT_DISTANCE = 100f
+
+        internal fun shouldFire(ammo: Int, maxAmmo: Int, aliveMotes: Int): Boolean {
+            if (ammo <= 0) return false
+            if (aliveMotes < StardustMoteTuning.MAX_ALIVE_MOTES_PER_WEAPON) return true
+            return ammo >= (maxAmmo - StardustMoteTuning.REGEN_AMMO_HEADROOM).coerceAtLeast(1)
+        }
     }
 }
 
