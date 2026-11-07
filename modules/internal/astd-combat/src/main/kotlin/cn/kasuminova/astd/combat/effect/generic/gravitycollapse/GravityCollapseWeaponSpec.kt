@@ -8,6 +8,9 @@ internal data class GravityCollapseWeaponSpec(
     val beamWidthMul: Float = 1f,
     val aoeRadius: Float = 200f,
 
+    // 光束是否穿透导弹（不被导弹遮挡）；PD 型必须保持 false 以拦截导弹。
+    val pierceMissiles: Boolean = false,
+
     val aoeRequireDamageTarget: Boolean = true,
     val aoeAffectAlliesAndNeutral: Boolean = false,
     val aoeAffectNonShips: Boolean = false,
@@ -57,6 +60,7 @@ internal object GravityCollapseWeaponSpecs {
             beamScale = 1.0f,
             beamWidthMul = 0.80f,
             aoeRadius = 400f,
+            pierceMissiles = true,
             aoeRequireDamageTarget = false,
             aoeAffectAlliesAndNeutral = true,
             aoeAffectNonShips = true,
@@ -71,6 +75,7 @@ internal object GravityCollapseWeaponSpecs {
             beamScale = 0.85f,
             beamWidthMul = 0.49f,
             aoeRadius = 300f,
+            pierceMissiles = true,
             aoeRequireDamageTarget = false,
             aoeAffectAlliesAndNeutral = true,
             aoeAffectNonShips = true,
@@ -85,6 +90,7 @@ internal object GravityCollapseWeaponSpecs {
             beamScale = 0.70f,
             beamWidthMul = 0.49f,
             aoeRadius = 200f,
+            pierceMissiles = true,
             aoeRequireDamageTarget = false,
             aoeAffectAlliesAndNeutral = true,
             aoeAffectNonShips = true,

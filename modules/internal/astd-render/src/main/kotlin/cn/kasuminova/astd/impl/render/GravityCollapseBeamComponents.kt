@@ -169,9 +169,9 @@ class BeamRingComponent(
         const val RENDER_ORDER = 40
         private const val RING_SPACING = 150f
         private const val RING_TRAVEL_SPEED = 260f
-        private const val RING_BASE_SIZE_MUL = 0.65f
-        private const val RING_VISIBILITY_SIZE_MUL = 1.75f
-        private const val RING_START_SCALE = 2.0f
+        private const val RING_BASE_SIZE_MUL = 0.45f
+        private const val RING_VISIBILITY_SIZE_MUL = 1.25f
+        private const val RING_START_SCALE = 1.5f
         private const val SUB_RING_SCALE = 0.70f
         private const val SUB_RING_DISTANCE_OFFSET = -20f
     }

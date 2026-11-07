@@ -1,8 +1,11 @@
 package cn.kasuminova.astd.renderer.effect.projectile.beam
 
 import com.fs.starfarer.api.combat.CollisionClass
+import com.fs.starfarer.api.combat.CombatEngineAPI
+import com.fs.starfarer.api.combat.MissileAPI
 import com.fs.starfarer.api.combat.ShieldAPI
 import com.fs.starfarer.api.combat.ShipAPI
+import com.fs.starfarer.api.combat.WeaponAPI
 import org.lwjgl.util.vector.Vector2f
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.mock
@@ -129,5 +132,53 @@ class BeamVisualClipperTest {
         val len = (100.0 * Math.sqrt(2.0)).toFloat()
         val t = BeamVisualClipper.rayCircleEnterDistance(0f, 0f, inv, inv, len, 50f, 50f, (10.0 * Math.sqrt(2.0)).toFloat())
         assertEquals((40.0 * Math.sqrt(2.0)).toFloat(), t!!, 1e-2f)
+    }
+
+    private fun stubMissile(x: Float, y: Float, radius: Float, owner: Int): MissileAPI {
+        val missile = mock(MissileAPI::class.java)
+        `when`(missile.location).thenReturn(Vector2f(x, y))
+        `when`(missile.collisionRadius).thenReturn(radius)
+        `when`(missile.owner).thenReturn(owner)
+        `when`(missile.collisionClass).thenReturn(CollisionClass.MISSILE_NO_FF)
+        `when`(missile.isFizzling).thenReturn(false)
+        `when`(missile.didDamage()).thenReturn(false)
+        return missile
+    }
+
+    private fun resolveWithMissiles(
+        missiles: List<MissileAPI>,
+        sourceOwner: Int?,
+        missilesBlock: Boolean = true,
+    ): Float {
+        val engine = mock(CombatEngineAPI::class.java)
+        val source = if (sourceOwner != null) stubShip(0f, 0f, 10f, owner = sourceOwner) else null
+        val weapon = mock(WeaponAPI::class.java)
+        `when`(weapon.getFirePoint(0)).thenReturn(Vector2f(0f, 0f))
+        `when`(weapon.currAngle).thenReturn(0f)
+        `when`(weapon.range).thenReturn(500f)
+        `when`(weapon.ship).thenReturn(source)
+        `when`(engine.ships).thenReturn(emptyList())
+        `when`(engine.missiles).thenReturn(missiles)
+        `when`(engine.asteroids).thenReturn(emptyList())
+        return BeamVisualClipper.resolve(
+            engine, weapon,
+            phasedShipsBlock = false,
+            beamCollisionClass = CollisionClass.RAY,
+            missilesBlock = missilesBlock,
+        ).length
+    }
+
+    @Test
+    fun `敌方导弹遮挡束体，友军导弹任何情况下不遮挡`() {
+        val enemy = stubMissile(200f, 0f, 10f, owner = 1)
+        val friendly = stubMissile(100f, 0f, 10f, owner = 0)
+        assertEquals(190f, resolveWithMissiles(listOf(enemy, friendly), sourceOwner = 0), 1e-3f)
+        assertEquals(500f, resolveWithMissiles(listOf(friendly), sourceOwner = 0), 1e-3f)
+    }
+
+    @Test
+    fun `missilesBlock 为 false 时敌方导弹不遮挡`() {
+        val enemy = stubMissile(200f, 0f, 10f, owner = 1)
+        assertEquals(500f, resolveWithMissiles(listOf(enemy), sourceOwner = 0, missilesBlock = false), 1e-3f)
     }
 }

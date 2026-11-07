@@ -18,31 +18,37 @@ object BeamVisualClipper {
 
     /**
      * @param beamCollisionClass 原版光束的碰撞类别；为 [CollisionClass.NONE] 或
-     * [CollisionClass.RAY_FIGHTER]（战机挂载武器）时友军单位与友军导弹不遮挡束体，
+     * [CollisionClass.RAY_FIGHTER]（战机挂载武器）时友军单位不遮挡束体，
      * 与原版碰撞矩阵中该两类光束仅与敌方舰船碰撞的行为一致。
+     * @param missilesBlock 导弹是否遮挡束体；原版碰撞矩阵中光束仅与敌方导弹碰撞，
+     * 友军导弹任何情况下都不遮挡。为 false 时所有导弹均不遮挡（非 PD 武器的穿透需求）。
      */
     fun resolve(
         engine: CombatEngineAPI,
         weapon: WeaponAPI,
         phasedShipsBlock: Boolean,
         beamCollisionClass: CollisionClass? = null,
+        missilesBlock: Boolean = true,
     ): BeamLineUtil.BeamLine {
         val from: Vector2f = weapon.getFirePoint(0)
         val facing = weapon.currAngle
         val friendlyTransparent = beamCollisionClass == CollisionClass.NONE ||
                 beamCollisionClass == CollisionClass.RAY_FIGHTER
         var line = clip(engine.ships, weapon.ship, from, facing, weapon.range, phasedShipsBlock, friendlyTransparent)
-
-        // 原版光束会被导弹拦截（PD 光束的本质用途），自绘端点必须同步裁剪
         var nearest = line.length
-        for (missile in engine.missiles) {
-            if (missile.collisionClass == CollisionClass.NONE || missile.isFizzling || missile.didDamage()) continue
-            if (friendlyTransparent && missile.owner == weapon.ship?.owner) continue
-            val loc = missile.location
-            val d = rayCircleEnterDistance(
-                from.x, from.y, line.dirUnit.x, line.dirUnit.y, nearest, loc.x, loc.y, missile.collisionRadius,
-            ) ?: continue
-            if (d < nearest) nearest = d
+
+        // 原版光束会被敌方导弹拦截（PD 光束的本质用途），自绘端点必须同步裁剪
+        if (missilesBlock) {
+            val sourceOwner = weapon.ship?.owner
+            for (missile in engine.missiles) {
+                if (missile.collisionClass == CollisionClass.NONE || missile.isFizzling || missile.didDamage()) continue
+                if (sourceOwner != null && missile.owner == sourceOwner) continue
+                val loc = missile.location
+                val d = rayCircleEnterDistance(
+                    from.x, from.y, line.dirUnit.x, line.dirUnit.y, nearest, loc.x, loc.y, missile.collisionRadius,
+                ) ?: continue
+                if (d < nearest) nearest = d
+            }
         }
 
         // 原版碰撞矩阵中 RAY/RAY_FIGHTER 对 ASTEROID 均为 ANY，陨石/残骸遮挡束体；NONE 类光束除外

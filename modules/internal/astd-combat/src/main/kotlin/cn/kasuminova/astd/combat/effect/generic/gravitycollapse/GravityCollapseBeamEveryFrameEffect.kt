@@ -172,8 +172,14 @@ class GravityCollapseBeamEveryFrameEffect : EveryFrameWeaponEffectPlugin {
             suppressVanillaDamage(weapon, beam)
             // 原版光束无视相位舰；自绘束体与坍缩 AOE 以相位舰为遮挡。原版 beam 本体伤害已全周期抑制。
             // 碰撞类别随原版 beam（战机挂载为 RAY_FIGHTER，仅与敌方碰撞）：此时友军不遮挡、不受 AOE。
+            // 非 PD 型穿透导弹（missilesBlock = false）；PD 型保持导弹遮挡以承担拦截职责。
             val effectiveLine = try {
-                BeamVisualClipper.resolve(engine, weapon, phasedShipsBlock = true, beamCollisionClass = weapon.projectileCollisionClass)
+                BeamVisualClipper.resolve(
+                    engine, weapon,
+                    phasedShipsBlock = true,
+                    beamCollisionClass = weapon.projectileCollisionClass,
+                    missilesBlock = spec?.pierceMissiles != true,
+                )
             } catch (t: Throwable) {
                 warnOnce("BeamVisualClipper.resolve", t)
                 null
