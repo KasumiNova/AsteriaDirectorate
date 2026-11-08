@@ -207,13 +207,49 @@ object Wpn_astd_starfall_wing : WeaponDataEntry(), SsProjProjectileOutputs {
     override val projSpec: ProjectileProjSpec = ProjectileProjSpec.boxBolt(
         id = "astd_starfall_wing_shot",
         onFireEffect = "cn.kasuminova.astd.combat.effect.arc.starfallwing.StarfallWingOnFireEffect",
-        onHitEffect = null,
-        collisionClass = "NONE",
-        collisionClassByFighter = "NONE",
+        onHitEffect = "cn.kasuminova.astd.combat.effect.arc.starfallwing.StarfallWingShotOnHitEffect",
+        // 普通光梭走原版碰撞与命中链路；不能用非 PROJECTILE_* 类别，否则被强制限速 600 su/s。
+        collisionClass = "PROJECTILE_NO_FF",
+        collisionClassByFighter = "PROJECTILE_FIGHTER",
         fringeColor = Rgba(170, 110, 255, 255),
         coreColor = Rgba(240, 225, 255, 200),
         length = 70.0,
         width = 7.0,
+    )
+}
+
+/**
+ * 断熵贯通弹的隐藏载体：spec 仅经 spawnProjectile 取用，不装配、不出现在任何槽位。
+ * 碰撞类别 NONE，命中由 [cn.kasuminova.astd.combat.effect.arc.starfallwing.StarfallWingWeaponEffect] 逐帧扫掠结算。
+ */
+object Wpn_astd_starfall_wing_empowered_launcher : WeaponDataEntry(), SsProjProjectileOutputs {
+    override val id: String = "astd_starfall_wing_empowered_launcher"
+    override val name: String = weaponName(id)
+    override val tier: Int = 5
+    override val baseValue: Int = 0
+    override val range: Int = 900
+    override val damagePerShot: Int = 400
+    override val emp: Int = 300
+    override val turnRate: Int = 30
+    override val type: String = "ENERGY"
+    override val projSpeed: Int = 1500
+    override val tags: String = "no_drop, no_drop_salvage, no_sell"
+    override val aiHints: Set<AiHint> = setOf(AiHint.SYSTEM)
+    override val tech: String = "菀星设计局-星坠"
+    override val noDpsInTooltip: Boolean = true
+    override val number: Int = 9135
+
+    override val projSpec: ProjectileProjSpec = ProjectileProjSpec.boxBolt(
+        id = "astd_starfall_wing_empowered_shot",
+        onFireEffect = "cn.kasuminova.astd.combat.effect.generic.ProjectileSpecOnFireDispatcher",
+        onHitEffect = null,
+        collisionClass = "NONE",
+        collisionClassByFighter = "NONE",
+        fringeColor = Rgba(210, 90, 255, 255),
+        coreColor = Rgba(255, 200, 255, 220),
+        // 弹体尺寸为普通光梭（70 × 7）的 150%
+        length = 105.0,
+        width = 10.5,
     )
 }
 
