@@ -2,6 +2,7 @@ package cn.kasuminova.astd.combat.hullmods.lens
 
 import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
 import cn.kasuminova.astd.renderer.boxutil.pool.FlareParticlePool
+import cn.kasuminova.astd.renderer.effect.lens.GravEmFieldMagneticVisual
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEngineLayers
@@ -88,6 +89,37 @@ internal object GravEmFieldVfx {
             val scale = MathUtils.getRandomNumberInRange(WAVE_SCALE_MIN, WAVE_SCALE_MAX)
             glowPool.spawn(from, 0f, velocity, scale, scale, core, fringe, fadeIn, full, fadeOut)
             pillarPool.spawn(from, outAngle, velocity, scale, scale, core, fringe, fadeIn, full, fadeOut)
+        }
+    }
+
+    fun maintainMagneticVisual(
+        engine: CombatEngineAPI,
+        ship: ShipAPI,
+        current: GravEmFieldMagneticVisual?,
+        phaseBlend: Float,
+        fieldBlend: Float,
+    ): GravEmFieldMagneticVisual? {
+        if (engine.customData[MAGNETIC_DISABLED_KEY] == DISABLED) return null
+        if ((current == null || current.expired) && fieldBlend <= 0f) return null
+        val visual = if (current == null || current.expired) {
+            createMagneticVisual(engine, ship)
+        } else {
+            current
+        }
+        visual?.update(
+            lerpColor(FIELD_CORE, PHASE_CORE, phaseBlend),
+            lerpColor(FIELD_FRINGE, PHASE_FRINGE, phaseBlend),
+            fieldBlend,
+        )
+        return visual
+    }
+
+    private fun createMagneticVisual(engine: CombatEngineAPI, ship: ShipAPI): GravEmFieldMagneticVisual? {
+        return try {
+            GravEmFieldMagneticVisual.spawn(engine, ship)
+        } catch (t: Throwable) {
+            warnOnce(engine, MAGNETIC_DISABLED_KEY, "[ASTD] 引力电子干扰力场磁场创建失败（${t.javaClass.simpleName}），磁场视觉本场缺席", t)
+            null
         }
     }
 
@@ -188,6 +220,8 @@ internal object GravEmFieldVfx {
     private const val PILLAR_POOL_KEY = "astd_grav_em_field_pillar_pool"
 
     private const val CENTER_DISABLED_KEY = "astd_grav_em_field_center_disabled"
+
+    private const val MAGNETIC_DISABLED_KEY = "astd_grav_em_field_magnetic_disabled"
 
     private const val DISABLED = "disabled"
 

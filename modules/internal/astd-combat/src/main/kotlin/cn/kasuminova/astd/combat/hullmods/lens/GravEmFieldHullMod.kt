@@ -4,6 +4,7 @@ import cn.kasuminova.astd.combat.hullmods.lens.GravEmFieldHullMod.Companion.isZw
 import cn.kasuminova.astd.combat.shipsystems.GravStormSystemStats
 import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import cn.kasuminova.astd.internal.i18n.I18n
+import cn.kasuminova.astd.renderer.effect.lens.GravEmFieldMagneticVisual
 import cn.kasuminova.astd.ui.dsl.HullmodThemes
 import cn.kasuminova.astd.ui.dsl.HullmodTone
 import cn.kasuminova.astd.ui.dsl.hl
@@ -26,6 +27,7 @@ class GravEmFieldHullMod : BaseHullMod() {
         val affected = HashSet<ShipAPI>()
         var waveTimer = 0f
         var centerFlare: GravEmFieldVfx.CenterFlare? = null
+        var magneticVisual: GravEmFieldMagneticVisual? = null
         var departedWatcherInstalled = false
 
         var phaseBlend = 0f
@@ -45,10 +47,12 @@ class GravEmFieldHullMod : BaseHullMod() {
                 state.affected.clear()
                 state.centerFlare?.dispose()
                 state.centerFlare = null
+                state.magneticVisual?.dispose()
+                state.magneticVisual = null
                 ship.removeCustomData(STATE_KEY)
             }
             GravEmFieldVfx.disposeWavePools(engine)
-            log.info("[ASTD] 引力电子干扰力场：舰船离场（ship=${ship.id}），中心光斑/波形池/压制修饰已收口")
+            log.info("[ASTD] 引力电子干扰力场：舰船离场（ship=${ship.id}），中心光斑/磁场/波形池/压制修饰已收口")
             engine.removePlugin(this)
         }
     }
@@ -64,6 +68,7 @@ class GravEmFieldHullMod : BaseHullMod() {
             if (state != null) {
                 for (target in state.affected) unmodifyTarget(target, modIdOf(ship))
                 state.centerFlare?.dispose()
+                state.magneticVisual?.dispose()
                 ship.removeCustomData(STATE_KEY)
             }
             return
@@ -82,9 +87,18 @@ class GravEmFieldHullMod : BaseHullMod() {
                     state.centerFlare = GravEmFieldVfx.maintainCenterFlare(
                         engine, ship, state.centerFlare, state.phaseBlend, state.fieldBlend,
                     )
-                } else if (state.centerFlare != null) {
-                    state.centerFlare?.dispose()
-                    state.centerFlare = null
+                    state.magneticVisual = GravEmFieldVfx.maintainMagneticVisual(
+                        engine, ship, state.magneticVisual, state.phaseBlend, state.fieldBlend,
+                    )
+                } else {
+                    if (state.centerFlare != null) {
+                        state.centerFlare?.dispose()
+                        state.centerFlare = null
+                    }
+                    if (state.magneticVisual != null) {
+                        state.magneticVisual?.dispose()
+                        state.magneticVisual = null
+                    }
                 }
             }
             return
@@ -121,6 +135,9 @@ class GravEmFieldHullMod : BaseHullMod() {
 
         activeState.centerFlare = GravEmFieldVfx.maintainCenterFlare(
             engine, ship, activeState.centerFlare, activeState.phaseBlend, activeState.fieldBlend,
+        )
+        activeState.magneticVisual = GravEmFieldVfx.maintainMagneticVisual(
+            engine, ship, activeState.magneticVisual, activeState.phaseBlend, activeState.fieldBlend,
         )
         driveWaveVisuals(engine, ship, activeState, amount)
 
