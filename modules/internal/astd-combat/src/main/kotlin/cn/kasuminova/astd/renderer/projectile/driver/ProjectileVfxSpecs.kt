@@ -361,15 +361,17 @@ object ProjectileVfxSpecs {
     private fun starfallWingShot(id: String, range: Float?): ProjectileVfx = simpleProjectileVfx(
         id,
         starfallBlue(),
-        width = 14f,
-        length = 260f,
+        // 尺寸对齐 .proj 声明（138x34）；弹体贴图为不可见占位、碰撞由武器脚本扫掠结算，
+        // recede 会让碰撞领先视觉头部 ~36px，故归零
+        width = 34f,
+        length = 138f,
         range = range,
-        // 拖尾必须短于弹间距（0.15s 射速 × 1500 弹速 = 225su），否则相邻弹拖尾连成一片，
-        // 视觉上像单个长射弹，前一发命中时会被误判为"未碰撞先结算"
-        rangeRatio = 0.2f,
+        rangeRatio = 0.5f,
         trailGlow = 0.8f,
         boltFlare = 40f,
-        muzzleBurst = MuzzleBurst(length = 90f, halfAngleDeg = 24f, duration = 0.25f)
+        muzzleBurst = MuzzleBurst(length = 90f, halfAngleDeg = 24f, duration = 0.25f),
+        recede = 0f,
+        decorTrail = false
     ) {
         shardWake("wake") {
             cadence(0.04f, 1)
@@ -388,25 +390,28 @@ object ProjectileVfxSpecs {
     private fun starfallWingEmpoweredShot(id: String, range: Float?): ProjectileVfx = simpleProjectileVfx(
         id,
         empoweredVioletRed(),
-        width = 21f,
-        length = 390f,
+        // 与普通弹共用 138x34 的 .proj，视觉按比例放大；recede 归零原因同 starfallWingShot
+        width = 48f,
+        length = 200f,
         range = range,
-        rangeRatio = 0.2f,
+        rangeRatio = 0.5f,
         trailGlow = 0.9f,
         boltFlare = 60f,
-        muzzleBurst = MuzzleBurst(length = 140f, halfAngleDeg = 26f, duration = 0.35f)
+        muzzleBurst = MuzzleBurst(length = 140f, halfAngleDeg = 26f, duration = 0.35f),
+        recede = 0f,
+        decorTrail = false
     ) {
         boxFlare("pillar") {
             style(BoxFlareStyle.SMOOTH_DISC, facingOffsetDeg = 45f)
             colors(0xFFEDE6FF, 0xD246FFA0)
-            size(160f, 8f)
+            size(120f, 6f)
             glow(1.2f, 4f)
             offset(-30f)
         }
         boxFlare("pillar_cross") {
             style(BoxFlareStyle.SMOOTH_DISC, facingOffsetDeg = 45f + 90f)
             colors(0xFFEDE6FF, 0xD246FFA0)
-            size(160f, 8f)
+            size(120f, 6f)
             glow(1.2f, 4f)
             offset(-30f)
         }
