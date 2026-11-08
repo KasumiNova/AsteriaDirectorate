@@ -361,10 +361,8 @@ object ProjectileVfxSpecs {
     private fun starfallWingShot(id: String, range: Float?): ProjectileVfx = simpleProjectileVfx(
         id,
         starfallBlue(),
-        // 尺寸对齐 .proj 声明（138x34）；弹体贴图为不可见占位、碰撞由武器脚本扫掠结算，
-        // recede 会让碰撞领先视觉头部 ~36px，故归零
-        width = 34f,
-        length = 138f,
+        width = 14f,
+        length = 260f,
         range = range,
         rangeRatio = 0.5f,
         trailGlow = 0.8f,
@@ -390,15 +388,13 @@ object ProjectileVfxSpecs {
     private fun starfallWingEmpoweredShot(id: String, range: Float?): ProjectileVfx = simpleProjectileVfx(
         id,
         empoweredVioletRed(),
-        // 与普通弹共用 138x34 的 .proj，视觉按比例放大；recede 归零原因同 starfallWingShot
-        width = 48f,
-        length = 200f,
+        width = 21f,
+        length = 390f,
         range = range,
         rangeRatio = 0.5f,
         trailGlow = 0.9f,
         boltFlare = 60f,
         muzzleBurst = MuzzleBurst(length = 140f, halfAngleDeg = 26f, duration = 0.35f),
-        recede = 0f,
         decorTrail = false
     ) {
         boxFlare("pillar") {

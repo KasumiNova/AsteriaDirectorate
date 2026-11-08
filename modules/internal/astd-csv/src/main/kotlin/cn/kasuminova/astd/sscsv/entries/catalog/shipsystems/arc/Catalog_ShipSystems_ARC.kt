@@ -14,7 +14,7 @@ object Sys_astd_rift_shift : ShipSystemWithSystemFileEntry() {
     override val aiScript: String = "cn.kasuminova.astd.combat.shipsystems.StarwingShiftSystemAI"
 
     override val maxUses: Int = 3
-    override val regen: Double = 10.0
+    override val regen: Double = 0.1
 
     override val chargeUp: Double = 0.1
     override val active: Double = 0.25

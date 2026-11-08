@@ -212,8 +212,8 @@ object Wpn_astd_starfall_wing : WeaponDataEntry(), SsProjProjectileOutputs {
         collisionClassByFighter = "NONE",
         fringeColor = Rgba(170, 110, 255, 255),
         coreColor = Rgba(240, 225, 255, 200),
-        length = 138.0,
-        width = 34.0,
+        length = 70.0,
+        width = 7.0,
     )
 }
 
