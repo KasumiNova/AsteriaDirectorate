@@ -1,5 +1,6 @@
 package cn.kasuminova.astd.combat.effect.arc.starfallwing
 
+import cn.kasuminova.astd.combat.hullmods.arc.ImaginaryWingsTuning
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.MissileAIPlugin
@@ -11,6 +12,7 @@ import org.lazywizard.lazylib.VectorUtils
 import org.lwjgl.util.vector.Vector2f
 import kotlin.math.abs
 
+/** 星羽追踪光矢制导：射出 [ImaginaryWingsTuning.MOTE_TRACK_DELAY] 秒后加速至 1100su/s 强追踪目标。 */
 class StarfallWingMoteAi(
     private val missile: MissileAPI,
     initialTarget: ShipAPI?,
@@ -24,7 +26,7 @@ class StarfallWingMoteAi(
         missile.interruptContrail()
         missile.spriteAlphaOverride = 0f
         missile.glowRadius = 0f
-        if (!StarfallWingTuning.moteTrackingActive(missile.flightTime)) return
+        if (missile.flightTime < ImaginaryWingsTuning.MOTE_TRACK_DELAY) return
         val source = missile.source ?: return
         if (!isValidTarget(engine, target, source)) {
             target = nearestEnemyShip(engine, source, missile.location, TARGET_REFRESH_RANGE)
@@ -42,7 +44,7 @@ class StarfallWingMoteAi(
     }
 
     private fun applyVelocityToward(amount: Float, facing: Float) {
-        val desired = MathUtils.getPointOnCircumference(null, PURSUIT_SPEED, facing)
+        val desired = MathUtils.getPointOnCircumference(null, ImaginaryWingsTuning.MOTE_PURSUIT_SPEED, facing)
         val lerp = (amount * 14f).coerceIn(0f, 1f)
         missile.velocity.x += (desired.x - missile.velocity.x) * lerp
         missile.velocity.y += (desired.y - missile.velocity.y) * lerp
@@ -57,8 +59,6 @@ class StarfallWingMoteAi(
     }
 
     companion object {
-        private const val PURSUIT_SPEED = 900f
-
         private const val TARGET_REFRESH_RANGE = 1400f
 
         fun nearestEnemyShip(engine: CombatEngineAPI, source: ShipAPI, near: Vector2f, range: Float): ShipAPI? {

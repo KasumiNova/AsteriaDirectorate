@@ -30,11 +30,11 @@ class PiercePassTrackerTest {
     }
 
     @Test
-    fun `振频适应全局闩锁 首个目标附加后任何目标不再附加 且不随穿越重置`() {
+    fun `首舰命中闩锁 首个目标附加后任何目标不再附加 且不随穿越重置`() {
         val tracker = PiercePassTracker()
-        assertTrue(tracker.tryLatchAdaptation(), "首次附加放行")
-        assertFalse(tracker.tryLatchAdaptation(), "闩锁后不再附加")
+        assertTrue(tracker.tryLatchFirstShip(), "首次附加放行")
+        assertFalse(tracker.tryLatchFirstShip(), "闩锁后不再附加")
         tracker.retainContacts(emptySet())
-        assertFalse(tracker.tryLatchAdaptation(), "穿越重置不得影响振频适应闩锁")
+        assertFalse(tracker.tryLatchFirstShip(), "穿越重置不得影响首舰命中闩锁")
     }
 }

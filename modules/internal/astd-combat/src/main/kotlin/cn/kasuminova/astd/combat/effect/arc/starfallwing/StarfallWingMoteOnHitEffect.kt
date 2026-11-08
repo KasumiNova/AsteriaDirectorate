@@ -8,6 +8,7 @@ import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.combat.listeners.ApplyDamageResultAPI
 import org.lwjgl.util.vector.Vector2f
 
+/** 星羽光矢命中护盾时附加 1 层 [StarfallWingErosionStacks] 振频蚀穿。 */
 class StarfallWingMoteOnHitEffect : OnHitEffectPlugin {
 
     override fun onHit(
@@ -20,8 +21,6 @@ class StarfallWingMoteOnHitEffect : OnHitEffectPlugin {
     ) {
         if (!shieldHit) return
         val ship = target as? ShipAPI ?: return
-        StarfallWingAdaptationStacks.attachStacks(
-            ship, engine, StarfallWingTuning.MOTE_STACKS_ON_SHIELD, projectile.source,
-        )
+        StarfallWingErosionStacks.attachLayer(ship, engine, projectile.source)
     }
 }

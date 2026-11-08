@@ -9,35 +9,24 @@ import org.lwjgl.util.vector.Vector2f
 class StarfallWingTuningTest {
 
     @Test
-    fun `承伤比映射 层数线性抬升承伤比且封顶 1`() {
-        assertEquals(1f / 0.7f, StarfallWingTuning.adaptationShieldMult(0.7f, 5f), 1e-6f)
-        assertEquals(1f / 0.7f, StarfallWingTuning.adaptationShieldMult(0.7f, 3f), 1e-6f)
-        assertEquals(0.8f / 0.7f, StarfallWingTuning.adaptationShieldMult(0.7f, 1f), 1e-6f)
-        assertEquals(1f, StarfallWingTuning.adaptationShieldMult(0.7f, 0f), 1e-6f)
+    fun `振频蚀穿承伤比映射 层数线性劣化承伤效率且封顶 1`() {
+        assertEquals(0.82f / 0.8f, StarfallWingTuning.erosionShieldMult(0.8f, 1), 1e-6f, "1 层 +2% 劣化")
+        assertEquals(1f / 0.8f, StarfallWingTuning.erosionShieldMult(0.8f, 15), 1e-6f, "满层劣化至 1.0 封顶")
+        assertEquals(1f / 0.8f, StarfallWingTuning.erosionShieldMult(0.8f, 20), 1e-6f, "超层数仍封顶 1.0")
+        assertEquals(1f, StarfallWingTuning.erosionShieldMult(0.8f, 0), 1e-6f, "无层数不劣化")
     }
 
     @Test
-    fun `承伤比映射 免伤与等额承伤护盾恒 1`() {
-        assertEquals(1f, StarfallWingTuning.adaptationShieldMult(0f, 10f), "base≤0 为免伤规格，不产生除零")
-        assertEquals(1f, StarfallWingTuning.adaptationShieldMult(1f, 10f), "base≥1 已等额承伤，无削弱空间")
-        assertEquals(1f, StarfallWingTuning.adaptationShieldMult(1.2f, 10f))
+    fun `振频蚀穿承伤比映射 免伤与等额承伤护盾恒 1`() {
+        assertEquals(1f, StarfallWingTuning.erosionShieldMult(0f, 10), "base≤0 为免伤规格，不产生除零")
+        assertEquals(1f, StarfallWingTuning.erosionShieldMult(1f, 10), "base≥1 已等额承伤，无削弱空间")
+        assertEquals(1f, StarfallWingTuning.erosionShieldMult(1.2f, 10))
     }
 
     @Test
-    fun `子射弹追踪闸门 延迟窗内不追踪 满 1s 开追踪`() {
-        assertFalse(StarfallWingTuning.moteTrackingActive(0f), "射出瞬间惯性直飞")
-        assertFalse(
-            StarfallWingTuning.moteTrackingActive(StarfallWingTuning.MOTE_TRACK_DELAY_SECONDS - 0.01f),
-            "延迟窗内不索敌不转向",
-        )
-        assertTrue(
-            StarfallWingTuning.moteTrackingActive(StarfallWingTuning.MOTE_TRACK_DELAY_SECONDS),
-            "满延迟即开追踪（闭区间下界）",
-        )
-        assertTrue(
-            StarfallWingTuning.moteTrackingActive(StarfallWingTuning.MOTE_TRACK_DELAY_SECONDS + 1f),
-            "延迟窗后持续追踪",
-        )
+    fun `穿透 tick 伤害与 EMP 同比例面板折算`() {
+        assertEquals(100f, StarfallWingTuning.pierceTickDamage(400f), 1e-6f)
+        assertEquals(75f, StarfallWingTuning.pierceTickEmp(300f), 1e-6f)
     }
 
     @Test

@@ -21,6 +21,7 @@ object ProjectileVfxSpecs {
         "astd_starfall_echo_shot" to { range -> starfallEchoShot("astd_starfall_echo_shot", range) },
         "astd_starfall_echo_shot_final" to { range -> starfallEchoFinalShot("astd_starfall_echo_shot_final", range) },
         "astd_starfall_wing_shot" to { range -> starfallWingShot("astd_starfall_wing_shot", range) },
+        "astd_starfall_wing_empowered_shot" to { range -> starfallWingEmpoweredShot("astd_starfall_wing_empowered_shot", range) },
         // BoxUtil 的 bolt 组件对 MissileAPI 默认禁用，导弹需要弹头时必须显式 bolt { onMissile() } 接管
         "astd_starfall_wing_mote" to {
             simpleProjectileVfx("astd_starfall_wing_mote", violet(), width = 5f, length = 260f) {
@@ -359,32 +360,65 @@ object ProjectileVfxSpecs {
 
     private fun starfallWingShot(id: String, range: Float?): ProjectileVfx = simpleProjectileVfx(
         id,
-        violet(),
-        width = 34f,
-        length = 450f,
+        starfallBlue(),
+        width = 14f,
+        length = 260f,
         range = range,
         rangeRatio = 0.5f,
         trailGlow = 0.8f,
-        boltFlare = 68f,
-        muzzleBurst = MuzzleBurst(length = 160f, halfAngleDeg = 30f, duration = 0.5f)
+        boltFlare = 40f,
+        muzzleBurst = MuzzleBurst(length = 90f, halfAngleDeg = 24f, duration = 0.25f)
     ) {
         shardWake("wake") {
-            cadence(0.01f, 2)
+            cadence(0.04f, 1)
+            emission(scatterRadius = 6f, speedMin = 20f, speedMax = 40f, spreadDeg = 0f)
+            shardLength(24f)
+            colors(core = 0xF0F8FFFF, fringe = 0x78BEFFFF)
+            shard(
+                sizeMul = 0.2f, sizeMin = 3f, sizeMax = 6f,
+                spinMin = 90f, spinMax = 360f,
+                alphaLo = 120, alphaHi = 180,
+                timerFullLo = 0.15f, timerFullHi = 0.3f, timerFadeOut = 0.3f,
+            )
+        }
+    }
+
+    private fun starfallWingEmpoweredShot(id: String, range: Float?): ProjectileVfx = simpleProjectileVfx(
+        id,
+        empoweredVioletRed(),
+        width = 21f,
+        length = 390f,
+        range = range,
+        rangeRatio = 0.5f,
+        trailGlow = 0.9f,
+        boltFlare = 60f,
+        muzzleBurst = MuzzleBurst(length = 140f, halfAngleDeg = 26f, duration = 0.35f)
+    ) {
+        boxFlare("pillar") {
+            style(BoxFlareStyle.SMOOTH_DISC, facingOffsetDeg = 45f)
+            colors(0xFFEDE6FF, 0xD246FFA0)
+            size(160f, 8f)
+            glow(1.2f, 4f)
+            offset(-30f)
+        }
+        boxFlare("pillar_cross") {
+            style(BoxFlareStyle.SMOOTH_DISC, facingOffsetDeg = 45f + 90f)
+            colors(0xFFEDE6FF, 0xD246FFA0)
+            size(160f, 8f)
+            glow(1.2f, 4f)
+            offset(-30f)
+        }
+        shardWake("wake") {
+            cadence(0.02f, 3)
             emission(scatterRadius = 8f, speedMin = 20f, speedMax = 40f, spreadDeg = 0f)
             shardLength(34f)
-            colors(core = 0xF0E1FFFF, fringe = 0xAA6EFFFF)
+            colors(core = 0xFFEBE1FF, fringe = 0xD246FFFF)
             shard(
                 sizeMul = 0.2f, sizeMin = 4f, sizeMax = 9f,
                 spinMin = 90f, spinMax = 360f,
                 alphaLo = 120, alphaHi = 180,
                 timerFullLo = 0.15f, timerFullHi = 0.3f, timerFadeOut = 0.3f,
             )
-        }
-        machRing("ring") {
-            cadence(0.2f, 25f)
-            color(0xAA6EFFFF, alpha = 1f)
-            shape(flatten = 0.5f, growthStart = 0.7f, growthEnd = 3f, fadeIn = 0.05f, full = 0.05f, fadeOut = 0.5f)
-            momentum(200f, 400f)
         }
     }
 
@@ -483,6 +517,8 @@ object ProjectileVfxSpecs {
     private fun paleGreenTail() = ASTDColor(0.19f, 0.35f, 0.25f, 0.6f)
 
     private fun violet() = ASTDColor(0.66f, 0.42f, 1f, 1f)
+
+    private fun empoweredVioletRed() = ASTDColor(0.82f, 0.27f, 1f, 1f)
 
     private fun iceBlue() = ASTDColor(0.67f, 0.88f, 1f, 1f)
 

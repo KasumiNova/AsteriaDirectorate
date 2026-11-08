@@ -8,7 +8,7 @@ class PiercePassTracker {
     // 键按引用相等：CombatEntityAPI 不保证 equals 语义。
     private val settled = Collections.newSetFromMap(IdentityHashMap<Any, Boolean>())
 
-    private var adaptationLatched = false
+    private var firstShipLatched = false
 
     fun touch(target: Any) {
         settled.add(target)
@@ -18,9 +18,9 @@ class PiercePassTracker {
 
     fun trySettleOnce(target: Any): Boolean = settled.add(target)
 
-    fun tryLatchAdaptation(): Boolean {
-        if (adaptationLatched) return false
-        adaptationLatched = true
+    fun tryLatchFirstShip(): Boolean {
+        if (firstShipLatched) return false
+        firstShipLatched = true
         return true
     }
 
