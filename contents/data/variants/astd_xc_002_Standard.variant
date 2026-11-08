@@ -41,7 +41,5 @@
             }
         }
     ],
-    "wings": [
-        "astd_gravwell_interceptor_wing"
-    ]
+    "wings": []
 }

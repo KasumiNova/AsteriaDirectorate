@@ -180,17 +180,21 @@ object Wpn_astd_starfall_wing : WeaponDataEntry(), SsProjProjectileOutputs {
     override val name: String = weaponName(id)
     override val tier: Int = 3
     override val baseValue: Int = 50000
-    override val range: Int = 1200
-    override val damagePerShot: Int = 1000
-    override val emp: Int = 500
+    override val range: Int = 900
+    override val damagePerShot: Int = 200
+    override val emp: Int = 80
 
-    override val chargedown: Double = 1.5
+    override val chargedown: Double = 0.15
     override val burstSize: Int = 1
     override val burstDelay: Double = 0.0
     override val turnRate: Int = 30
     override val type: String = "ENERGY"
-    override val energyPerShot: Int = 1000
+    override val energyPerShot: Int = 160
     override val projSpeed: Int = 1500
+
+    override val ammo: Int = 24
+    override val ammoPerSec: Double = 4.0
+    override val reloadSize: Int = 1
 
     override val tags: String = "energy20, no_drop, no_drop_salvage, astd_signature, no_sell"
     override val groupTag: String = "astd"
@@ -221,10 +225,11 @@ object Wpn_astd_starfall_wing_mote_launcher : WeaponDataEntry(), SsProjMissileOu
     override val range: Int = 1200
 
     override val damagePerShot: Int = 200
+    override val emp: Int = 100
     override val turnRate: Int = 30
     override val type: String = "ENERGY"
-    override val projSpeed: Int = 900
-    override val flightTime: Double = 2.0
+    override val projSpeed: Int = 1100
+    override val flightTime: Double = 2.5
     override val projHitpoints: Int = 10000
     override val tags: String = "no_drop, no_drop_salvage, astd_signature"
     override val aiHints: Set<AiHint> = setOf(AiHint.SYSTEM)
@@ -249,84 +254,12 @@ object Wpn_astd_starfall_wing_mote_launcher : WeaponDataEntry(), SsProjMissileOu
         flameoutTime = 0.5,
         noEngineGlowTime = 999.0,
         fadeTime = 0.25,
+        // 追踪段极速 1100 su/s，引擎机动按追踪段全额可达标定
         engineSpec = MissileEngineSpec(
-            turnAcc = 1800,
-            turnRate = 1440,
-            acc = 1800,
-            dec = 1600,
-        ),
-        engineSlots = emptyList(),
-    )
-}
-
-object Wpn_astd_rift_mine_layer : WeaponDataEntry(), SsProjMissileOutputs {
-    override val id: String = "astd_rift_mine_layer"
-    override val name: String = weaponName(id)
-    override val tier: Int = 5
-    override val baseValue: Int = 0
-    override val range: Int = 0
-
-    override val damagePerShot: Int = 4000
-    override val type: String = "ENERGY"
-    override val projSpeed: Int = 0
-    override val flightTime: Double = 10.0
-    override val projHitpoints: Int = 10000
-    override val tags: String = "no_drop, no_drop_salvage, astd_signature"
-    override val aiHints: Set<AiHint> = setOf(AiHint.SYSTEM)
-    override val groupTag: String = ""
-    override val tech: String = "菀星设计局-星坠"
-    override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
-    override val noDpsInTooltip: Boolean = true
-    override val number: Int = 9133
-
-    override val projSpec: MissileProjSpec = MissileProjSpec(
-        id = "astd_rift_mine",
-        missileType = "PHASE_MINE",
-        behaviorSpec = mapOf(
-            "behavior" to "PROXIMITY_FUSE",
-            "range" to 0,
-            "slowToMaxSpeed" to false,
-            "delay" to 3,
-            "pingSound" to "mine_ping",
-            "pingColor" to listOf(170, 110, 255, 0),
-            "pingRadius" to 0,
-            "pingDuration" to 0.25,
-            "windupSound" to "mine_windup_heavy",
-            "windupDelay" to 1,
-            "explosionSpec" to mapOf(
-                "duration" to 0.1,
-                "radius" to 0,
-                "coreRadius" to 0,
-                "collisionClass" to "MISSILE_FF",
-                "collisionClassByFighter" to "MISSILE_FF",
-                "particleSizeMin" to 3.0,
-                "particleSizeRange" to 3.0,
-                "particleDuration" to 1,
-                "particleCount" to 0,
-                "particleColor" to listOf(170, 110, 255, 0),
-                "explosionColor" to listOf(170, 110, 255, 0),
-                "useDetailedExplosion" to false,
-                "sound" to "mine_explosion",
-            ),
-        ),
-        sprite = "graphics/textures/BUtil_NONE.png",
-        size = Vec2i(4, 4),
-        center = Vec2(2, 2),
-        collisionRadius = 20,
-        collisionClass = "NONE",
-        collisionClassAfterFlameout = "NONE",
-        renderTargetIndicator = false,
-        explosionColor = Rgba(170, 110, 255, 0),
-        explosionRadius = 0,
-        armingTime = 0.0,
-        flameoutTime = 0.5,
-        noEngineGlowTime = 999.0,
-        fadeTime = 0.25,
-        engineSpec = MissileEngineSpec(
-            turnAcc = 0,
-            turnRate = 0,
-            acc = 0,
-            dec = 0,
+            turnAcc = 2400,
+            turnRate = 1800,
+            acc = 2400,
+            dec = 2000,
         ),
         engineSlots = emptyList(),
     )

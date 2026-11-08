@@ -7,16 +7,19 @@ object Sys_astd_rift_shift : ShipSystemWithSystemFileEntry() {
     override val id: String = "astd_rift_shift"
     override val name: String = systemName(id)
 
-    override val statsScript: String = "cn.kasuminova.astd.combat.shipsystems.RiftShiftSystemStats"
+    override val statsScript: String = "cn.kasuminova.astd.combat.shipsystems.StarwingShiftSystemStats"
 
     override val systemType: String = "PHASE_CLOAK"
     override val aiType: String = "CUSTOM"
-    override val aiScript: String = "cn.kasuminova.astd.combat.shipsystems.RiftShiftSystemAI"
+    override val aiScript: String = "cn.kasuminova.astd.combat.shipsystems.StarwingShiftSystemAI"
 
-    override val chargeUp: Double = 0.25
-    override val active: Double = 1.0
-    override val down: Double = 0.25
-    override val cooldown: Double = 8.0
+    override val maxUses: Int = 3
+    override val regen: Double = 10.0
+
+    override val chargeUp: Double = 0.1
+    override val active: Double = 0.25
+    override val down: Double = 0.15
+    override val cooldown: Double = 0.5
 
     override val hardFlux: Boolean = true
     override val noHardDissipation: Boolean = true
