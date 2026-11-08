@@ -14,5 +14,7 @@
     "textureScrollSpeed": 0,
     "pixelsPerTexel": 1,
     "hitGlowRadius": 25,
-    "bulletSprite": "graphics/textures/BUtil_NONE.png"
+    "bulletSprite": "graphics/textures/BUtil_NONE.png",
+    "passThroughMissiles": true,
+    "passThroughFighters": true
 }

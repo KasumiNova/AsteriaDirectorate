@@ -15,7 +15,7 @@
     "explosionRadius": 150,
     "armingTime": 0,
     "flameoutTime": 0.5,
-    "noEngineGlowTime": 999,
+    "noEngineGlowTime": 0,
     "fadeTime": 0.25,
     "engineSpec": {
         "turnAcc": 2000,
@@ -23,5 +23,28 @@
         "acc": 2000,
         "dec": 2000
     },
-    "engineSlots": []
+    "engineSlots": [
+        {
+            "id": "ES1",
+            "loc": [-17, 0],
+            "style": "CUSTOM",
+            "styleSpec": {
+                "mode": "QUAD_STRIP",
+                "engineColor": [140, 190, 255, 255],
+                "glowSizeMult": 2.5,
+                "contrailDuration": 1,
+                "contrailWidthMult": 1,
+                "contrailWidthAddedFractionAtEnd": 2.5,
+                "contrailMinSeg": 5,
+                "contrailMaxSpeedMult": 0.5,
+                "contrailAngularVelocityMult": 0.5,
+                "contrailSpawnDistMult": 1,
+                "contrailColor": [120, 170, 255, 75],
+                "type": "GLOW"
+            },
+            "width": 7,
+            "length": 40,
+            "angle": 180
+        }
+    ]
 }
