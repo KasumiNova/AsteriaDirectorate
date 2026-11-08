@@ -340,15 +340,14 @@
       "requiredEvidence": [
         "xc2Phase",
         "xc2SystemId",
-        "xc2RestDamageMultMin",
         "xc2ShiftDisplacementMax",
-        "xc2SpeedMultMax",
-        "xc2ContactHpDrop",
-        "xc2ClosureHpDrop",
+        "xc2ChargeAtEmerge",
+        "xc2OverdriveSeen",
         "xc2MainShots",
+        "xc2EmpoweredSeen",
         "xc2MotesSeen",
         "xc2WeaponHpDrop",
-        "xc2AdaptationStacksMax"
+        "xc2ErosionStacksMax"
       ]
     },
     {

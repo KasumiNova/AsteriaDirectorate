@@ -25,7 +25,7 @@ import cn.kasuminova.astd.combat.automation.scenario.system.PhaseFlankScenario
 import cn.kasuminova.astd.combat.automation.scenario.system.PhaseFlankZw002Scenario
 import cn.kasuminova.astd.combat.automation.scenario.system.PhaseFlankZw103Scenario
 import cn.kasuminova.astd.combat.automation.scenario.system.PhaseFriendlyBeamScenario
-import cn.kasuminova.astd.combat.automation.scenario.xc.RiftShiftScenario
+import cn.kasuminova.astd.combat.automation.scenario.xc.StarwingShiftScenario
 import cn.kasuminova.astd.combat.automation.scenario.xc.StarfallEchoScenario
 import cn.kasuminova.astd.combat.automation.scenario.xc.TrailPauseProbeScenario
 
@@ -50,7 +50,7 @@ class AutomationScenarioRegistryImpl : AutomationScenarioRegistry {
         PhaseFlankControlScenario(),
         PhaseFlankBrilliantScenario(),
         PhaseFriendlyBeamScenario(),
-        RiftShiftScenario(),
+        StarwingShiftScenario(),
         TrailPauseProbeScenario(),
         PiercingLanceScenario(),
         StellarMrmScenario(),
