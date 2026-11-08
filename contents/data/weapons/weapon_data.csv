@@ -128,7 +128,7 @@ PSI-Ω 灵能裂解束,astd_psi_omega,5,1,50000,1000,1000,,0,0,10,30,,,,FRAGMENT
 振频适应：每层削弱其 {%s} 的最终护盾承伤效率，至多被抬升至 {%s}。
 
 效果受到{%s}影响。",0.05s | 20% | 1 | 0.2s | 20% | 0.5 | 10% | 1.0 | 难度系数,,,FALSE,9002
-坠星残翼 子射弹 (隐藏),astd_starfall_wing_mote_launcher,5,1,0,1200,0,200,0,0,30,0,,,,ENERGY,0,0,0,0,0,0,0,0,0,0,0,900,0,2,10000,0,0,SYSTEM,"no_drop, no_drop_salvage, astd_signature",,菀星设计局-星坠,,系统联动,,,,,,,,,TRUE,9132
+星羽追踪光矢 (隐藏),astd_starfall_wing_mote_launcher,5,1,0,1200,0,200,100,0,30,0,,,,ENERGY,0,0,0,0,0,0,0,0,0,0,0,550,0,2.5,10000,0,0,"PD_ALSO,SYSTEM","no_drop, no_drop_salvage, astd_signature",,菀星设计局-星坠,,点防御，反舰,,,,,,,,,TRUE,9132
 辉星 MRM 发射器,astd_stellar_mrm_launcher,3,1,15000,2500,0,100,0,0,30,4,8,0.2,1,ENERGY,60,0,0,1,1,0,0,0,0,0,0,750,200,4,200,0,0,"ANTI_FTR,DO_NOT_AIM,PD","pd6, missile7, no_drop, no_drop_salvage, restricted, codex_unlockable",astd,菀星设计局-紫菀,,"反战机,区域防空",快,优秀,,,"优先追猎战机的高速导弹。命中战机机体时对其全部武器释放 {%s} 的 EMP；无论撞上什么，撞击处都会绽放十字辉星，造成 {%s} 的范围能量伤害。
 
 效果受到{%s}影响。",400% | 100% | 难度系数,,,FALSE,9217

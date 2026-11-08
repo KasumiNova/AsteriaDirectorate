@@ -92,46 +92,51 @@ class ASTDImaginaryWingsHullMod : BaseHullMod(), DamageDealtModifier, DamageTake
         if (pool.barrageTimer > 0f) pool.barrageTimer -= amount
         if (pool.charge < ImaginaryWingsTuning.BARRAGE_THRESHOLD) return
         if (pool.barrageTimer > 0f) return
-        if (!enemyInRange(engine, ship, ImaginaryWingsTuning.BARRAGE_RANGE)) return
+        if (!threatInRange(engine, ship, ImaginaryWingsTuning.BARRAGE_RANGE)) return
+
+        val pairs = StarfallWingMotes.wingSlotPairs(ship)
+        if (pairs.isEmpty()) return
 
         pool.barrageTimer += ImaginaryWingsTuning.BARRAGE_INTERVAL
         pool.consume(ImaginaryWingsTuning.BARRAGE_COST)
 
         val target = resolveMoteTarget(engine, ship, pool)
-        val index = pool.barrageAnchorIndex % ImaginaryWingsTuning.WING_ANCHORS.size
+        val (left, right) = pairs[pool.barrageAnchorIndex % pairs.size]
         pool.barrageAnchorIndex++
-        for (side in intArrayOf(1, -1)) {
-            val anchor = ImaginaryWingsTuning.WING_ANCHORS[index]
-            StarfallWingMotes.spawn(
-                engine, ship,
-                ImaginaryWingsTuning.anchorWorld(ship, anchor, side),
-                ImaginaryWingsTuning.launchAngleDeg(ship.facing, side),
-                target,
-            )
-        }
+        StarfallWingMotes.spawnFromSlot(engine, ship, left, target)
+        StarfallWingMotes.spawnFromSlot(engine, ship, right, target)
     }
 
-    private fun enemyInRange(engine: CombatEngineAPI, ship: ShipAPI, range: Float): Boolean {
+    /** 弹幕触发条件按点防定位放宽：射程内存在敌舰、敌机或来袭导弹任一即开火。 */
+    private fun threatInRange(engine: CombatEngineAPI, ship: ShipAPI, range: Float): Boolean {
         for (candidate in engine.ships) {
             val other = candidate as? ShipAPI ?: continue
             if (other === ship || other.owner == ship.owner) continue
-            if (!other.isAlive || other.isHulk || other.isFighter || other.isDrone) continue
+            if (!other.isAlive || other.isHulk) continue
             if (MathUtils.getDistance(ship.location, other.location) <= range) return true
+        }
+        for (missile in engine.missiles) {
+            if (missile.owner == ship.owner) continue
+            if (missile.isExpired || missile.isFading) continue
+            if (MathUtils.getDistance(ship.location, missile.location) <= range) return true
         }
         return false
     }
 
-    private fun resolveMoteTarget(engine: CombatEngineAPI, ship: ShipAPI, pool: ImaginaryCharge): ShipAPI? {
+    private fun resolveMoteTarget(engine: CombatEngineAPI, ship: ShipAPI, pool: ImaginaryCharge): CombatEntityAPI? {
+        // 手动锁定与主炮命中的敌舰仍是最高优先（玩家意图优先于点防自动接管）
         val locked = ship.shipTarget
         if (isValidMoteTarget(engine, locked, ship)) return locked
         if (isValidMoteTarget(engine, pool.lastMainGunHit, ship)) return pool.lastMainGunHit
-        return StarfallWingMoteAi.nearestEnemyShip(engine, ship, ship.location, ImaginaryWingsTuning.BARRAGE_RANGE)
+        return StarfallWingMoteAi.acquirePointDefenseTarget(
+            engine, ship, ship.location,
+        )
     }
 
     private fun isValidMoteTarget(engine: CombatEngineAPI, target: ShipAPI?, ship: ShipAPI): Boolean {
         if (target == null || target === ship) return false
         if (!engine.isEntityInPlay(target)) return false
-        if (!target.isAlive || target.isHulk || target.isFighter || target.isDrone) return false
+        if (!target.isAlive || target.isHulk || target.isPhased) return false
         return target.owner != ship.owner
     }
 

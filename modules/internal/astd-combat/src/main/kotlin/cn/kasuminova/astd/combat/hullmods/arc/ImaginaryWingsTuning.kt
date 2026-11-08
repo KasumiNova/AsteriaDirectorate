@@ -50,9 +50,18 @@ object ImaginaryWingsTuning {
 
     const val MOTE_TRACK_DELAY = 0.25f
 
-    const val MOTE_PURSUIT_SPEED = 1100f
+    const val MOTE_PURSUIT_SPEED = 550f
 
     const val MOTE_FLIGHT_TIME = 2.5f
+
+    /** 光矢接敌半径，与发射器射程字段一致：点防优先接管该范围内来袭的导弹与战机。 */
+    const val MOTE_ENGAGE_RANGE = 1200f
+
+    /** 追踪段横向机动强度，乘进速度矢量插值系数；值越小转得越钝。 */
+    const val MOTE_TURN_AGILITY = 7f
+
+    /** 光矢发射口取自舰体系统槽位，左右舷各此数量。 */
+    const val WING_SLOT_PAIRS = 3
 
     /** 光翼发射锚点（舰体相对坐标，x 前 / y 左）：左舷 3 枚，右舷镜像。 */
     val WING_ANCHORS: List<Vector2f> = listOf(

@@ -229,7 +229,7 @@ class StarwingShiftSystemStats : PhaseCloakStats() {
         }
         if (valid(ship.shipTarget)) return ship.shipTarget
         if (valid(pool.lastMainGunHit)) return pool.lastMainGunHit
-        return StarfallWingMoteAi.nearestEnemyShip(engine, ship, ship.location, ImaginaryWingsTuning.BARRAGE_RANGE)
+        return StarfallWingMoteAi.nearestShip(engine, ship, ship.location, ImaginaryWingsTuning.BARRAGE_RANGE, fightersOnly = false)
     }
 
     private fun easeProgress(t: Float): Float {

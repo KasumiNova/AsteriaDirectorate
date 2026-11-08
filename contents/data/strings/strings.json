@@ -417,7 +417,7 @@
 		"ui.hullmod.imaginary_wings.section.charge": "虚数充能",
 		"ui.hullmod.imaginary_wings.line.charge": "战斗中每秒自然恢复 %regen%% 虚数充能；本舰非导弹武器每次命中敌舰恢复 +%hit%%，内置主炮的 [断熵] 强化贯通弹命中敌舰时恢复 +%empowered%%。",
 		"ui.hullmod.imaginary_wings.section.barrage": "星羽翼装弹幕",
-		"ui.hullmod.imaginary_wings.line.barrage": "虚数充能不低于 %threshold%% 且 %range% su 内存在敌舰时，每 %interval% 秒消耗 %cost%% 充能，从两侧光翼交替射出 2 枚追踪星羽光矢，单枚造成 %damage% 能量伤害与 %emp% 点 EMP 伤害。",
+		"ui.hullmod.imaginary_wings.line.barrage": "虚数充能不低于 %threshold%% 且 %range% su 内存在敌方目标时，每 %interval% 秒消耗 %cost%% 充能，从两侧光翼交替射出 2 枚追踪星羽光矢，单枚造成 %damage% 能量伤害与 %emp% 点 EMP 伤害。光矢按点防定位运作，优先拦截来袭导弹与战机，无此类目标时转为反舰追击。",
 		"ui.hullmod.imaginary_wings.line.erosion": "星羽光矢命中护盾时为目标附加 1 层持续 %dur% 秒的 [振频蚀穿]，每层使其护盾承伤效率劣化 %per%%，至多叠加 %max% 层。",
 		"ui.hullmod.imaginary_wings.section.glide": "虚数滑翔",
 		"ui.hullmod.imaginary_wings.line.glide": "零辐能加速的触发阈值放宽至 %flux%%；随当前航速与基础最大航速的比例，非导弹武器射速与备弹恢复至多 +%rof%%，所受射弹与导弹伤害至多 -%reduction%%。",

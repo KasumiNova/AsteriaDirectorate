@@ -228,11 +228,11 @@ object Wpn_astd_starfall_wing_mote_launcher : WeaponDataEntry(), SsProjMissileOu
     override val emp: Int = 100
     override val turnRate: Int = 30
     override val type: String = "ENERGY"
-    override val projSpeed: Int = 1100
+    override val projSpeed: Int = 550
     override val flightTime: Double = 2.5
     override val projHitpoints: Int = 10000
     override val tags: String = "no_drop, no_drop_salvage, astd_signature"
-    override val aiHints: Set<AiHint> = setOf(AiHint.SYSTEM)
+    override val aiHints: Set<AiHint> = setOf(AiHint.SYSTEM, AiHint.PD_ALSO)
     override val groupTag: String = ""
     override val tech: String = "菀星设计局-星坠"
     override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
@@ -254,12 +254,12 @@ object Wpn_astd_starfall_wing_mote_launcher : WeaponDataEntry(), SsProjMissileOu
         flameoutTime = 0.5,
         noEngineGlowTime = 999.0,
         fadeTime = 0.25,
-        // 追踪段极速 1100 su/s，引擎机动按追踪段全额可达标定
+        // 点防定位：追踪段最高速 550 su/s（射程 1200 内可覆盖），机动按该航速标定
         engineSpec = MissileEngineSpec(
-            turnAcc = 2400,
-            turnRate = 1800,
-            acc = 2400,
-            dec = 2000,
+            turnAcc = 1200,
+            turnRate = 900,
+            acc = 1200,
+            dec = 1000,
         ),
         engineSlots = emptyList(),
     )

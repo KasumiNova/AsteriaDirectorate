@@ -16,7 +16,7 @@ class ImaginaryCharge {
     /** 星羽翼装弹幕的 0.3s 节拍剩余秒数。 */
     var barrageTimer = 0f
 
-    /** 弹幕锚点轮换序号（左右舷各按 0..2 循环）。 */
+    /** 弹幕所用系统槽位对的轮换序号。 */
     var barrageAnchorIndex = 0
 
     /** 超翼过载剩余秒数（>0 表示窗口内）。 */
