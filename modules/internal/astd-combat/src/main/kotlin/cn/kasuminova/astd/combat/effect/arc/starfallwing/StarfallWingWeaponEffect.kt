@@ -1,8 +1,10 @@
 package cn.kasuminova.astd.combat.effect.arc.starfallwing
 
+import cn.kasuminova.astd.api.AstdLog
 import cn.kasuminova.astd.combat.effect.generic.CombatVfxBootstrap
 import cn.kasuminova.astd.combat.hullmods.arc.ImaginaryCharge
 import cn.kasuminova.astd.combat.hullmods.arc.ImaginaryWingsTuning
+import cn.kasuminova.astd.impl.combat.DcrDamageAttribution
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEntityAPI
 import com.fs.starfarer.api.combat.DamageType
@@ -18,13 +20,20 @@ import java.util.IdentityHashMap
 import kotlin.math.ceil
 
 /**
- * 坠星残翼弹体驱动：碰撞类别 NONE 下由脚本结算全部命中。
- * 普通光梭接触首个目标即结算全额伤害并消散；断熵贯通弹每 0.05s 对贴面目标结算 25% 面板伤害并全程穿透。
+ * 坠星残翼断熵贯通弹驱动：该弹体碰撞类别 NONE，由脚本每 0.05s 对贴面目标结算 25% 面板伤害并全程穿透。
+ * 普通光梭走原版碰撞与命中链路，不进入本插件。
  */
 class StarfallWingWeaponEffect : EveryFrameWeaponEffectPlugin {
 
+    private val log = AstdLog.logger
+
+    private val warnedSites = HashSet<String>()
+
+    private fun logOnce(site: String, message: String) {
+        if (warnedSites.add(site)) log.warn(message)
+    }
+
     class ProjectileState(
-        val empowered: Boolean,
         val ownerWeapon: WeaponAPI,
         var pierceTimer: Float = 0f,
         var lastPierceLocation: Vector2f? = null,
@@ -53,76 +62,8 @@ class StarfallWingWeaponEffect : EveryFrameWeaponEffectPlugin {
             val from = state.lastPierceLocation ?: Vector2f(proj.location)
             val to = Vector2f(proj.location)
             state.lastPierceLocation = to
-            if (state.empowered) {
-                advanceEmpowered(engine, proj, state, from, to, amount)
-            } else {
-                if (advanceNormal(engine, proj, from, to)) states.remove(proj)
-            }
+            advanceEmpowered(engine, proj, state, from, to, amount)
         }
-    }
-
-    // ---------- 普通光梭：接触结算全额伤害并消散 ----------
-
-    private fun advanceNormal(
-        engine: CombatEngineAPI,
-        proj: DamagingProjectileAPI,
-        from: Vector2f,
-        to: Vector2f,
-    ): Boolean {
-        val source = proj.source
-        val owner = source?.owner ?: 0
-
-        for (candidate in engine.ships) {
-            val ship = candidate as? ShipAPI ?: continue
-            if (ship === source || ship.owner == owner) continue
-            if (!ship.isAlive && !ship.isHulk) continue
-            val contact = sweepContact(ship, from, to, proj.collisionRadius) ?: continue
-            val shieldContact = shieldCoversAt(ship, contact, proj.collisionRadius)
-            if (shieldContact) {
-                engine.applyDamage(
-                    ship, shieldSurfacePoint(ship, contact), proj.damageAmount,
-                    DamageType.ENERGY, proj.empAmount, false, false, source, true,
-                )
-                spawnShieldSpark(engine, contact)
-            } else {
-                engine.applyDamage(
-                    ship, contact, proj.damageAmount,
-                    DamageType.ENERGY, proj.empAmount, true, false, source, true,
-                )
-            }
-            creditMainGunHit(ship, proj, source)
-            consumeProjectile(engine, proj)
-            return true
-        }
-
-        for (missile in engine.missiles) {
-            if (missile === proj || missile.owner == owner || missile.isExpired) continue
-            if (!touchesSimpleTarget(missile, from, to, proj.collisionRadius)) continue
-            engine.applyDamage(
-                missile, surfaceContactPoint(missile.location, missile.collisionRadius, from, to),
-                proj.damageAmount, DamageType.ENERGY, proj.empAmount, false, false, source, true,
-            )
-            consumeProjectile(engine, proj)
-            return true
-        }
-
-        for (asteroid in engine.asteroids) {
-            if (asteroid.owner == owner || !engine.isEntityInPlay(asteroid)) continue
-            if (!touchesSimpleTarget(asteroid, from, to, proj.collisionRadius)) continue
-            engine.applyDamage(
-                asteroid, surfaceContactPoint(asteroid.location, asteroid.collisionRadius, from, to),
-                proj.damageAmount, DamageType.ENERGY, proj.empAmount, false, false, source, true,
-            )
-            consumeProjectile(engine, proj)
-            return true
-        }
-
-        return false
-    }
-
-    private fun consumeProjectile(engine: CombatEngineAPI, proj: DamagingProjectileAPI) {
-        // API 层无 setDidDamage（仅 MissileAPI 暴露），脚本命中按超时消散路径淡出，视觉差异可忽略
-        engine.removeEntity(proj)
     }
 
     // ---------- 断熵贯通弹：贴面 tick 穿透 ----------
@@ -137,7 +78,7 @@ class StarfallWingWeaponEffect : EveryFrameWeaponEffectPlugin {
     ) {
         state.pierceTimer += amount
         val contacted = Collections.newSetFromMap<CombatEntityAPI>(IdentityHashMap())
-        if (pierceSweep(engine, proj, state, from, to, contacted)) {
+        if (pierceSweep(engine, proj, state, state.ownerWeapon.displayName, from, to, contacted)) {
             state.pierceTimer = 0f
         }
         state.passContacts.retainContacts(contacted)
@@ -147,12 +88,13 @@ class StarfallWingWeaponEffect : EveryFrameWeaponEffectPlugin {
         engine: CombatEngineAPI,
         proj: DamagingProjectileAPI,
         state: ProjectileState,
+        weaponName: String,
         from: Vector2f,
         to: Vector2f,
         contactedTargets: MutableSet<CombatEntityAPI>,
     ): Boolean {
         val source = proj.source
-        val owner = source?.owner ?: 0
+        val owner = ownerOf(proj)
         val projRadius = proj.collisionRadius
         val swept = MathUtils.getDistance(from, to)
         val tickDueGlobal = state.pierceTimer >= StarfallWingTuning.PIERCE_TICK_SECONDS
@@ -178,33 +120,36 @@ class StarfallWingWeaponEffect : EveryFrameWeaponEffectPlugin {
             val tickDue = tickDueGlobal || firstContact
             if (!tickDue) continue
 
+            val tickDamage = StarfallWingTuning.pierceTickDamage(proj.damageAmount)
+            val tickEmp = StarfallWingTuning.pierceTickEmp(StarfallWingTuning.EMPOWERED_EMP)
             if (shieldCoversAt(ship, contact, projRadius)) {
                 engine.applyDamage(
-                    ship, shieldSurfacePoint(ship, contact), StarfallWingTuning.pierceTickDamage(proj.damageAmount),
-                    DamageType.ENERGY, StarfallWingTuning.pierceTickEmp(StarfallWingTuning.EMPOWERED_EMP),
+                    ship, shieldSurfacePoint(ship, contact), tickDamage,
+                    DamageType.ENERGY, tickEmp,
                     false, false, source, true,
                 )
                 spawnShieldSpark(engine, contact)
             } else {
                 engine.applyDamage(
-                    ship, Vector2f(proj.location), StarfallWingTuning.pierceTickDamage(proj.damageAmount),
-                    DamageType.ENERGY, StarfallWingTuning.pierceTickEmp(StarfallWingTuning.EMPOWERED_EMP),
+                    ship, Vector2f(proj.location), tickDamage,
+                    DamageType.ENERGY, tickEmp,
                     true, false, source, true,
                 )
             }
+            DcrDamageAttribution.clarify(source, ship, DamageType.ENERGY, tickDamage, tickEmp, weaponName)
             latchFirstShipHit(engine, proj, state, ship)
             damaged = true
         }
 
         for (missile in engine.missiles) {
             if (missile === proj || missile.owner == owner || missile.isExpired) continue
-            if (pierceSimpleTarget(engine, proj, state, missile, from, to, midX, midY, swept, projRadius, contactedTargets)) {
+            if (pierceSimpleTarget(engine, proj, state, weaponName, missile, from, to, midX, midY, swept, projRadius, contactedTargets)) {
                 damaged = true
             }
         }
         for (asteroid in engine.asteroids) {
             if (asteroid.owner == owner || !engine.isEntityInPlay(asteroid)) continue
-            if (pierceSimpleTarget(engine, proj, state, asteroid, from, to, midX, midY, swept, projRadius, contactedTargets)) {
+            if (pierceSimpleTarget(engine, proj, state, weaponName, asteroid, from, to, midX, midY, swept, projRadius, contactedTargets)) {
                 damaged = true
             }
         }
@@ -226,21 +171,16 @@ class StarfallWingWeaponEffect : EveryFrameWeaponEffectPlugin {
         pool.add(ImaginaryWingsTuning.EMPOWERED_HIT_GAIN)
         pool.tryHitGain(ImaginaryWingsTuning.HIT_GAIN)
         pool.lastMainGunHit = ship
-        for (side in intArrayOf(1, -1)) {
-            val anchor = ImaginaryWingsTuning.WING_ANCHORS[1]
-            StarfallWingMotes.spawn(
-                engine, source,
-                ImaginaryWingsTuning.anchorWorld(source, anchor, side),
-                ImaginaryWingsTuning.launchAngleDeg(source.facing, side),
-                ship,
-            )
-        }
+        val pair = StarfallWingMotes.centralSlotPair(source) ?: return
+        StarfallWingMotes.spawnFromSlot(engine, source, pair.first, ship)
+        StarfallWingMotes.spawnFromSlot(engine, source, pair.second, ship)
     }
 
     private fun pierceSimpleTarget(
         engine: CombatEngineAPI,
         proj: DamagingProjectileAPI,
         state: ProjectileState,
+        weaponName: String,
         target: CombatEntityAPI,
         from: Vector2f,
         to: Vector2f,
@@ -259,12 +199,15 @@ class StarfallWingWeaponEffect : EveryFrameWeaponEffectPlugin {
         }
         contactedTargets.add(target)
         if (!state.passContacts.trySettleOnce(target)) return false
+        val tickDamage = StarfallWingTuning.pierceTickDamage(proj.damageAmount)
+        val tickEmp = StarfallWingTuning.pierceTickEmp(StarfallWingTuning.EMPOWERED_EMP)
         engine.applyDamage(
             target, surfaceContactPoint(target.location, target.collisionRadius, from, to),
-            StarfallWingTuning.pierceTickDamage(proj.damageAmount),
-            DamageType.ENERGY, StarfallWingTuning.pierceTickEmp(StarfallWingTuning.EMPOWERED_EMP),
+            tickDamage,
+            DamageType.ENERGY, tickEmp,
             false, false, proj.source, true,
         )
+        DcrDamageAttribution.clarify(proj.source, target, DamageType.ENERGY, tickDamage, tickEmp, weaponName)
         return true
     }
 
@@ -288,15 +231,12 @@ class StarfallWingWeaponEffect : EveryFrameWeaponEffectPlugin {
         return hullContact
     }
 
-    private fun touchesSimpleTarget(target: CombatEntityAPI, from: Vector2f, to: Vector2f, projRadius: Float): Boolean {
-        return StarfallWingTuning.distanceToSegment(target.location, from, to) <= target.collisionRadius + projRadius
-    }
-
-    private fun creditMainGunHit(ship: ShipAPI, proj: DamagingProjectileAPI, source: ShipAPI?) {
-        if (source == null) return
-        val pool = ImaginaryCharge.of(source)
-        pool.tryHitGain(ImaginaryWingsTuning.HIT_GAIN)
-        if (!ship.isFighter && ship.isAlive) pool.lastMainGunHit = ship
+    private fun ownerOf(proj: DamagingProjectileAPI): Int {
+        val source = proj.source
+        if (source == null) {
+            logOnce("owner:${proj.projectileSpecId}", "[ASTD] 星羽弹体缺少发射源（weapon=${proj.projectileSpecId}），本次按敌对过滤跳过该弹体")
+        }
+        return source?.owner ?: proj.owner
     }
 
     private fun shieldCoversAt(ship: ShipAPI, point: Vector2f, touchRadius: Float): Boolean {
@@ -329,9 +269,15 @@ class StarfallWingWeaponEffect : EveryFrameWeaponEffectPlugin {
     }
 
     private fun shieldSurfacePoint(ship: ShipAPI, contactPoint: Vector2f): Vector2f {
-        val shield = ship.shield ?: return Vector2f(ship.location)
+        val shield = ship.shield ?: run {
+            logOnce("shield:${ship.id}", "[ASTD] 星羽命中判定为护盾但舰船无护盾实例（ship=${ship.id}），伤害结算在舰体中心")
+            return Vector2f(ship.location)
+        }
         val radius = shield.radius
-        if (radius <= 0f) return Vector2f(ship.location)
+        if (radius <= 0f) {
+            logOnce("shield-radius:${ship.id}", "[ASTD] 星羽命中判定为护盾但护盾半径为 $radius（ship=${ship.id}），伤害结算在舰体中心")
+            return Vector2f(ship.location)
+        }
         // Misc 的静态初始化依赖游戏运行时（单测直接 ExceptionInInitializerError），角度用 atan2 直算。
         val angle = Math.toDegrees(
             kotlin.math.atan2(

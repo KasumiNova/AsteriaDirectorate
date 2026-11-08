@@ -13,6 +13,7 @@ object StarfallWingTuning {
     const val WEAPON_ID = "astd_starfall_wing"
     const val SHOT_SPEC_ID = "astd_starfall_wing_shot"
     const val EMPOWERED_SHOT_SPEC_ID = "astd_starfall_wing_empowered_shot"
+    const val EMPOWERED_LAUNCHER_ID = "astd_starfall_wing_empowered_launcher"
     const val MOTE_WEAPON_ID = "astd_starfall_wing_mote_launcher"
     const val MOTE_SPEC_ID = "astd_starfall_wing_mote"
 
@@ -24,11 +25,8 @@ object StarfallWingTuning {
     /** 超翼过载期触发周期：迟暮 4 / 砺刃 3 / 破晓 2。 */
     val EMPOWERED_PERIOD_OVERDRIVE = ScalingEntry(4f, 3f, 2f)
 
-    const val EMPOWERED_DAMAGE_MULT = 2f
-
+    /** 断熵弹 EMP 面板值，穿透 tick 按 [PIERCE_TICK_RATIO] 折算。 */
     const val EMPOWERED_EMP = 300f
-
-    const val EMPOWERED_SIZE_MULT = 1.5f
 
     const val PIERCE_TICK_SECONDS = 0.05f
 

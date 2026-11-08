@@ -1,12 +1,9 @@
 package cn.kasuminova.astd.combat.hullmods.arc
 
 import cn.kasuminova.astd.api.difficulty.ScalingEntry
-import org.lazywizard.lazylib.MathUtils
-import org.lwjgl.util.vector.Vector2f
 
 /**
  * 虚数之翼（星翼-级 astd_xc_002）全部机制数值。
- * 设计来源：docs/design/ships/blue/10-unique.md#星翼级、docs/design/weapons/blue/10-signature.md#坠星残翼。
  */
 object ImaginaryWingsTuning {
 
@@ -63,13 +60,6 @@ object ImaginaryWingsTuning {
     /** 光矢发射口取自舰体系统槽位，左右舷各此数量。 */
     const val WING_SLOT_PAIRS = 3
 
-    /** 光翼发射锚点（舰体相对坐标，x 前 / y 左）：左舷 3 枚，右舷镜像。 */
-    val WING_ANCHORS: List<Vector2f> = listOf(
-        Vector2f(0f, 68f),
-        Vector2f(-35f, 76f),
-        Vector2f(-62f, 68f),
-    )
-
     // ---------- 虚数滑翔 ----------
 
     const val ZERO_FLUX_THRESHOLD = 0.2f
@@ -102,23 +92,4 @@ object ImaginaryWingsTuning {
     val SHIFT_AMMO_RELOAD = ScalingEntry(8f, 12f, 18f)
 
     val SHIFT_SOFT_FLUX = ScalingEntry(800f, 1200f, 2000f)
-
-    /** 光翼锚点换算世界坐标：facing 旋转 + 舰体位置；side=1 左舷原样，side=-1 右舷镜像。 */
-    fun anchorWorld(ship: com.fs.starfarer.api.combat.ShipAPI, anchor: Vector2f, side: Int): Vector2f {
-        val rad = Math.toRadians(ship.facing.toDouble())
-        val cos = kotlin.math.cos(rad).toFloat()
-        val sin = kotlin.math.sin(rad).toFloat()
-        val lx = anchor.x
-        val ly = anchor.y * side
-        return Vector2f(
-            ship.location.x + lx * cos - ly * sin,
-            ship.location.y + lx * sin + ly * cos,
-        )
-    }
-
-    /** 光翼外扩发射角：左舷朝向 facing+180∓jitter 的后外侧扇面（jitter 45°~75° 相对舰尾轴）。 */
-    fun launchAngleDeg(facing: Float, side: Int): Float {
-        val jitter = MathUtils.getRandomNumberInRange(45f, 75f)
-        return facing + side * (180f - jitter)
-    }
 }

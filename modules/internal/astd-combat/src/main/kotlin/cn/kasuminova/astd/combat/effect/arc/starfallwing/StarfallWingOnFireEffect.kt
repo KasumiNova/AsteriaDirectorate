@@ -30,14 +30,10 @@ class StarfallWingOnFireEffect : OnFireEffectPlugin {
 
         if (counter.shots % period != 0) {
             ProjectileVfxDriverPlugin.track(engine, projectile, StarfallWingTuning.SHOT_SPEC_ID)
-            StarfallWingWeaponEffect.projectileStates(engine)[projectile] =
-                StarfallWingWeaponEffect.ProjectileState(
-                    empowered = false, ownerWeapon = weapon, lastPierceLocation = Vector2f(projectile.location),
-                )
             return
         }
 
-        // 断熵升格：spawnProjectile 指定 specId 的 7 参重载恒 NPE，重生成走武器自身 spec 的 6 参重载。
+        // 断熵升格：以隐藏载体武器的 spec 重生成贯通弹，spec 由 entry 保证尺寸与颜色。
         val source = ship
         if (source == null) {
             log.warn("坠星残翼断熵升格跳过：源舰缺失: weapon=${weapon.id}")
@@ -47,25 +43,21 @@ class StarfallWingOnFireEffect : OnFireEffectPlugin {
 
         val loc = Vector2f(projectile.location)
         val facing = projectile.facing
-        val baseDamage = projectile.damageAmount
-        val baseRadius = projectile.collisionRadius
         engine.removeEntity(projectile)
 
+        // 第二参传实际主炮：spawnProjectile 用它取射程与加成，spec 仍由载体武器 id 决定。
         val spawned = engine.spawnProjectile(
-            source, weapon, StarfallWingTuning.WEAPON_ID, loc, facing, Vector2f(source.velocity),
+            source, weapon, StarfallWingTuning.EMPOWERED_LAUNCHER_ID, loc, facing, Vector2f(source.velocity),
         ) as? DamagingProjectileAPI
         if (spawned == null) {
             log.warn("坠星残翼断熵升格失败：spawnProjectile 未产出 DamagingProjectileAPI: weapon=${weapon.id}")
             return
         }
-        spawned.setDamageAmount(baseDamage * StarfallWingTuning.EMPOWERED_DAMAGE_MULT)
-        spawned.damage.fluxComponent = StarfallWingTuning.EMPOWERED_EMP
-        spawned.collisionRadius = baseRadius * StarfallWingTuning.EMPOWERED_SIZE_MULT
         // 脚本 spawn 的弹体不触发 onFireEffect，拖尾必须显式登记。
         ProjectileVfxDriverPlugin.track(engine, spawned, StarfallWingTuning.EMPOWERED_SHOT_SPEC_ID)
         StarfallWingWeaponEffect.projectileStates(engine)[spawned] =
             StarfallWingWeaponEffect.ProjectileState(
-                empowered = true, ownerWeapon = weapon, lastPierceLocation = Vector2f(spawned.location),
+                ownerWeapon = weapon, lastPierceLocation = Vector2f(spawned.location),
             )
     }
 

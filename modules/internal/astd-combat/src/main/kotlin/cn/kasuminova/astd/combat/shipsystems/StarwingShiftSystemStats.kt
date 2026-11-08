@@ -9,6 +9,7 @@ import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import cn.kasuminova.astd.internal.i18n.I18n
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
+import com.fs.starfarer.api.combat.CombatEntityAPI
 import com.fs.starfarer.api.combat.GuidedMissileAI
 import com.fs.starfarer.api.combat.MissileAPI
 import com.fs.starfarer.api.combat.MutableShipStatsAPI
@@ -194,17 +195,9 @@ class StarwingShiftSystemStats : PhaseCloakStats() {
         }
 
         val target = resolveSalvoTarget(engine, ship, pool)
-        var index = 0
-        for (anchor in ImaginaryWingsTuning.WING_ANCHORS) {
-            for (side in intArrayOf(1, -1)) {
-                StarfallWingMotes.spawn(
-                    engine, ship,
-                    ImaginaryWingsTuning.anchorWorld(ship, anchor, side),
-                    ImaginaryWingsTuning.launchAngleDeg(ship.facing, side) + index * 10f - 10f,
-                    target,
-                )
-            }
-            index++
+        for ((left, right) in StarfallWingMotes.wingSlotPairs(ship)) {
+            StarfallWingMotes.spawnFromSlot(engine, ship, left, target)
+            StarfallWingMotes.spawnFromSlot(engine, ship, right, target)
         }
 
         val reload = DifficultyTuningImpl.valueFor(ImaginaryWingsTuning.SHIFT_AMMO_RELOAD, isPlayer).toInt()
@@ -221,7 +214,7 @@ class StarwingShiftSystemStats : PhaseCloakStats() {
         pool.overdriveRemaining = ImaginaryWingsTuning.OVERDRIVE_SECONDS
     }
 
-    private fun resolveSalvoTarget(engine: CombatEngineAPI, ship: ShipAPI, pool: ImaginaryCharge): ShipAPI? {
+    private fun resolveSalvoTarget(engine: CombatEngineAPI, ship: ShipAPI, pool: ImaginaryCharge): CombatEntityAPI? {
         fun valid(t: ShipAPI?): Boolean {
             if (t == null || t === ship) return false
             if (!engine.isEntityInPlay(t) || !t.isAlive || t.isHulk || t.isFighter || t.isDrone) return false
@@ -229,7 +222,8 @@ class StarwingShiftSystemStats : PhaseCloakStats() {
         }
         if (valid(ship.shipTarget)) return ship.shipTarget
         if (valid(pool.lastMainGunHit)) return pool.lastMainGunHit
-        return StarfallWingMoteAi.nearestShip(engine, ship, ship.location, ImaginaryWingsTuning.BARRAGE_RANGE, fightersOnly = false)
+        // 光矢按点防定位运作，齐射同样沿用导弹 → 战机 → 舰船的接敌优先级
+        return StarfallWingMoteAi.acquirePointDefenseTarget(engine, ship, ship.location)
     }
 
     private fun easeProgress(t: Float): Float {

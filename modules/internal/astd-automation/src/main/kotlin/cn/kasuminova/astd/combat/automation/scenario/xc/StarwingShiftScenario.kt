@@ -48,6 +48,7 @@ class StarwingShiftScenario : AbstractAutomationScenario() {
     private var xc2MotesSeen = 0
     private val xc2SeenMain = mutableSetOf<Int>()
     private val xc2SeenMotes = mutableSetOf<Int>()
+    private val xc2EmpoweredStateSeen = mutableSetOf<Int>()
     private var xc2ErosionStacksMax = 0
 
     // 武器相位掉血证据：穿透 tick 累计伤害超统治者级原始结构值，改为「舞台结构冗余 +
@@ -179,15 +180,29 @@ class StarwingShiftScenario : AbstractAutomationScenario() {
         lockCameraAt(engine, XC2_CAMERA_CENTER, XC2_CAMERA_VISIBLE_HEIGHT)
     }
 
-    /** 供给登记核对：主弹/断熵弹走弹体状态表 ever-seen identity；星羽按 engine.missiles 扫描 specId 计数。 */
+    /**
+     * 供给登记核对：主弹按 engine.projectiles 扫描两套 spec 计数，断熵弹同时校验状态表登记；
+     * 星羽按 engine.missiles 扫描 specId 计数。普通光梭走原版碰撞，不再登记弹体状态。
+     */
     private fun trackXc2WeaponSupply(engine: CombatEngineAPI, weapon: WeaponAPI) {
-        for ((proj, state) in StarfallWingWeaponEffect.projectileStates(engine)) {
-            if (state.ownerWeapon !== weapon) continue
+        for (proj in engine.projectiles) {
+            val specId = proj.projectileSpecId ?: continue
+            val empowered = when (specId) {
+                StarfallWingTuning.EMPOWERED_SHOT_SPEC_ID -> true
+                StarfallWingTuning.SHOT_SPEC_ID -> false
+                else -> continue
+            }
+            if (proj.source?.owner != 0) continue
             val key = System.identityHashCode(proj)
             if (xc2SeenMain.add(key)) {
                 xc2MainShots++
-                if (state.empowered) xc2EmpoweredSeen++
+                if (empowered) xc2EmpoweredSeen++
             }
+        }
+        for ((proj, state) in StarfallWingWeaponEffect.projectileStates(engine)) {
+            if (state.ownerWeapon !== weapon) continue
+            if (proj.projectileSpecId != StarfallWingTuning.EMPOWERED_SHOT_SPEC_ID) continue
+            xc2EmpoweredStateSeen.add(System.identityHashCode(proj))
         }
         for (missile in engine.missiles) {
             if (missile.projectileSpecId != StarfallWingTuning.MOTE_SPEC_ID) continue
@@ -440,6 +455,12 @@ class StarwingShiftScenario : AbstractAutomationScenario() {
                                 transitionXc2Phase(XC2_PHASE_FAILED)
                             }
 
+                            xc2EmpoweredStateSeen.size < XC2_EXPECT_EMPOWERED -> {
+                                ctx.failureReason = "xc2 empowered states=${xc2EmpoweredStateSeen.size}" +
+                                        " < $XC2_EXPECT_EMPOWERED（断言点 XC2-E：强化贯通弹未登记扫掠状态）"
+                                transitionXc2Phase(XC2_PHASE_FAILED)
+                            }
+
                             weaponDrop < XC2_EXPECT_WEAPON_HP_DROP -> {
                                 ctx.failureReason = "xc2 weapon damage shortfall: hpDrop=${"%.0f".format(weaponDrop)}" +
                                         " < $XC2_EXPECT_WEAPON_HP_DROP（断言点 XC2-F：普通弹全额接触结算 + 断熵穿透 tick）"
@@ -563,11 +584,11 @@ class StarwingShiftScenario : AbstractAutomationScenario() {
         private const val XC2_SPAWN_SETTLE_SECONDS = 0.6f
 
         // SHIFT（断言点 XC2-A/B/C）：折跃位移界从 SHIFT_DISTANCE 常量 ±100su 派生（容忍钉位恢复帧）；
-        // 折跃全程 0.5s（IN 0.1 + ACTIVE 0.25 + OUT 0.15），1.2s 内不钉舰位；1.5s 评估位移；
+        // 折跃全程 0.85s（IN 0.15 + ACTIVE 0.6 + OUT 0.1），1.0s 内不钉舰位；1.5s 评估位移；
         // 现身充能快照界 [55, 85]（拉满 100 - 齐射 30 = 70，容忍快照前的回充与首拍弹幕消耗）；
         // 2.5s 转武器相位（超翼过载 3s 窗口内完成快照即可）。
         private const val XC2_ACTIVATE_TIMEOUT = 10f
-        private const val XC2_SHIFT_PIN_FREE_SECONDS = 1.2f
+        private const val XC2_SHIFT_PIN_FREE_SECONDS = 1.0f
         private const val XC2_SHIFT_ASSERT_SECONDS = 1.5f
         private const val XC2_SHIFT_DISPLACEMENT_TOLERANCE = 100f
         private const val XC2_SHIFT_DISPLACEMENT_MIN = ImaginaryWingsTuning.SHIFT_DISTANCE - XC2_SHIFT_DISPLACEMENT_TOLERANCE
