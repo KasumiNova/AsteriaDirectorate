@@ -1,49 +1,68 @@
 package cn.kasuminova.astd.combat.shipsystems
 
+import cn.kasuminova.astd.api.AstdLog
 import cn.kasuminova.astd.combat.effect.arc.starfallwing.StarfallWingMoteAi
 import cn.kasuminova.astd.combat.effect.arc.starfallwing.StarfallWingMotes
 import cn.kasuminova.astd.combat.effect.arc.starfallwing.StarfallWingTuning
 import cn.kasuminova.astd.combat.hullmods.arc.ImaginaryCharge
 import cn.kasuminova.astd.combat.hullmods.arc.ImaginaryWingsTuning
+import cn.kasuminova.astd.impl.combat.ExplosionStrikeImpl
+import cn.kasuminova.astd.impl.combat.LinearExplosionFalloffImpl
 import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import cn.kasuminova.astd.internal.i18n.I18n
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEntityAPI
+import com.fs.starfarer.api.combat.DamageType
 import com.fs.starfarer.api.combat.GuidedMissileAI
 import com.fs.starfarer.api.combat.MissileAPI
 import com.fs.starfarer.api.combat.MutableShipStatsAPI
 import com.fs.starfarer.api.combat.ShipAPI
-import com.fs.starfarer.api.impl.combat.PhaseCloakStats
+import com.fs.starfarer.api.combat.ShipCommand
+import com.fs.starfarer.api.combat.ShipSystemAPI
+import com.fs.starfarer.api.impl.combat.BaseShipSystemScript
 import com.fs.starfarer.api.plugins.ShipSystemStatsScript
-import com.fs.starfarer.api.util.Misc
 import org.lazywizard.lazylib.MathUtils
-import org.lwjgl.input.Mouse
+import org.lazywizard.lazylib.combat.CombatUtils
 import org.lwjgl.util.vector.Vector2f
 import kotlin.math.cos
+import kotlin.math.pow
 import kotlin.math.sin
+import kotlin.math.sqrt
 
 /**
  * 星翼折跃（astd_rift_shift，星翼-级舰船系统）。
- * 0.1s 切入 → 0.25s 相位滑行（2.5x 时流、3 倍转向对齐准星）→ 0.15s 现身收束；
- * 进出双次净空力场，现身满额星羽齐射、主炮瞬装、软幅排散并进入 3s 超翼过载。
+ * 切入延迟后沿运动方向做 easeInOutExpo 曲线位移（位移期间锁定转向，不改相位、不改时流），落点产生冲击；
+ * 现身结算净空力场、星羽齐射、主炮瞬装、软幅排散与超翼过载。
  * 透支折跃的充能池逻辑由 [cn.kasuminova.astd.combat.hullmods.arc.ASTDImaginaryWingsHullMod] 管理。
  */
-class StarwingShiftSystemStats : PhaseCloakStats() {
+class StarwingShiftSystemStats : BaseShipSystemScript() {
+
+    private val log = AstdLog.logger
+
+    private val warnedSites = HashSet<String>()
+
+    private fun logOnce(site: String, message: String) {
+        if (warnedSites.add(site)) log.warn(message)
+    }
 
     private class ShiftState {
         var started = false
-        var outFired = false
-        val start = Vector2f()
-        val dir = Vector2f(1f, 0f)
+        var arrived = false
+        var travelStartTime = -1f
+        var lockedFacing = 0f
         var dist = 0f
-        var startTime = 0f
-        var lastFrameTime = 0f
+        val origin = Vector2f()
+        val dir = Vector2f(1f, 0f)
+        val lastPosition = Vector2f()
     }
 
     override fun apply(stats: MutableShipStatsAPI, id: String, state: ShipSystemStatsScript.State, effectLevel: Float) {
-        super.apply(stats, id, state, effectLevel)
-        val ship = stats.entity as? ShipAPI ?: return
+        val ship = stats.entity as? ShipAPI
+        if (ship == null) {
+            logOnce("entity", "[ASTD] 星翼折跃 apply 收到非舰船实体，系统状态未推进（id=$id）")
+            return
+        }
         if (ship.isHulk) return
         val engine = Global.getCombatEngine() ?: return
 
@@ -55,70 +74,107 @@ class StarwingShiftSystemStats : PhaseCloakStats() {
             return
         }
 
-        // 滑行期间 2.5x 舰船时流（PhaseCloakStats 上限 3x，dynamic 系数 0.75）
-        // 必须写 getStat：getMaxTimeMult 读取的是 getValue，只查 stats 表而非 mods 表
-        stats.dynamic.getStat("phase_time_mult").modifyFlat(id, ImaginaryWingsTuning.SHIFT_TIME_MULT_DYNAMIC)
-
+        val system = ship.system ?: return
         val shift = engine.customData.getOrPut(key) { ShiftState() } as ShiftState
         val now = engine.getTotalElapsedTime(false)
 
-        if (state == ShipSystemStatsScript.State.IN && !shift.started) {
-            shift.started = true
-            shift.start.set(ship.location)
-            shift.dir.set(shiftDirection(ship))
-            shift.dist = ship.mutableStats.systemRangeBonus.computeEffective(ImaginaryWingsTuning.SHIFT_DISTANCE)
-            shift.startTime = now
-            clearPulse(engine, ship)
-            StarwingShiftVfx.burstAlongPath(engine, shift.start, shift.dir, shift.dist)
+        if (!shift.started) beginShift(engine, ship, system, shift)
+        when (state) {
+            ShipSystemStatsScript.State.ACTIVE -> glide(engine, ship, system, shift, now)
+            ShipSystemStatsScript.State.OUT -> arrive(engine, ship, system, shift, now)
+            else -> Unit
         }
-
-        if (state == ShipSystemStatsScript.State.IN || state == ShipSystemStatsScript.State.ACTIVE) {
-            alignFacingToAim(engine, ship, shift, now)
-        }
-
-        if (state == ShipSystemStatsScript.State.ACTIVE) {
-            // progress 只对齐 ACTIVE 滑行窗口，需扣除 IN（chargeUp）阶段耗时
-            val chargeUp = ship.system?.chargeUpDur ?: 0f
-            val progress = ((now - shift.startTime - chargeUp) / ACTIVE_GLIDE_SECONDS).coerceIn(0f, 1f)
-            val eased = easeProgress(progress)
-            ship.location.set(
-                shift.start.x + shift.dir.x * shift.dist * eased,
-                shift.start.y + shift.dir.y * shift.dist * eased,
-            )
-        }
-
-        if (state == ShipSystemStatsScript.State.OUT && !shift.outFired) {
-            shift.outFired = true
-            ship.location.set(
-                shift.start.x + shift.dir.x * shift.dist,
-                shift.start.y + shift.dir.y * shift.dist,
-            )
-            val exitSpeed = ship.mutableStats.maxSpeed.modifiedValue * EXIT_SPEED_MULT
-            ship.velocity.set(shift.dir.x * exitSpeed, shift.dir.y * exitSpeed)
-            clearPulse(engine, ship)
-            StarwingShiftVfx.emergePulse(engine, ship.location)
-            resolveEmerge(engine, ship)
-        }
-
-        shift.lastFrameTime = now
     }
 
     override fun unapply(stats: MutableShipStatsAPI, id: String) {
-        super.unapply(stats, id)
-        stats.dynamic.getStat("phase_time_mult").unmodifyFlat(id)
+        val ship = stats.entity as? ShipAPI ?: return
+        val engine = Global.getCombatEngine() ?: return
+        engine.customData.remove(STATE_KEY_PREFIX + ship.id)
+        // unapply 是残骸化、脚本移除等旁路的唯一回收点，透支标记必须在这里同步清空
+        ImaginaryCharge.of(ship).overdraftActive = false
     }
 
-    // 原版 PhaseCloakStats.maintainStatus 硬编码英文状态文本，此处按相同结构输出 I18n 文本
-    override fun maintainStatus(playerShip: ShipAPI, state: ShipSystemStatsScript.State, effectLevel: Float) {
-        if (effectLevel <= VULNERABLE_FRACTION) return
-        val cloak = playerShip.phaseCloak ?: playerShip.system ?: return
-        Global.getCombatEngine()?.maintainStatusForPlayerShip(
-            STATUSKEY2, cloak.specAPI.iconSpriteName, cloak.displayName,
-            I18n[I18n.Categories.MOD, "system.rift_shift.status.0"], false,
+    override fun getStatusData(
+        index: Int,
+        state: ShipSystemStatsScript.State,
+        effectLevel: Float,
+    ): ShipSystemStatsScript.StatusData? {
+        if (index != 0) return null
+        val key = when (state) {
+            ShipSystemStatsScript.State.IN -> "system.rift_shift.status.in"
+            ShipSystemStatsScript.State.ACTIVE -> "system.rift_shift.status.active"
+            ShipSystemStatsScript.State.OUT -> "system.rift_shift.status.out"
+            else -> return null
+        }
+        return ShipSystemStatsScript.StatusData(I18n[I18n.Categories.MOD, key], false)
+    }
+
+    // ---------- 位移 ----------
+
+    private fun beginShift(engine: CombatEngineAPI, ship: ShipAPI, system: ShipSystemAPI, shift: ShiftState) {
+        shift.started = true
+        shift.dist = ship.mutableStats.systemRangeBonus.computeEffective(ImaginaryWingsTuning.SHIFT_DISTANCE)
+        clearPulse(engine, ship)
+        StarwingShiftVfx.activate(engine, ship.location, ship.facing, system.chargeUpDur + system.chargeActiveDur)
+    }
+
+    private fun beginTravel(ship: ShipAPI, shift: ShiftState, now: Float) {
+        shift.origin.set(ship.location)
+        shift.dir.set(shiftDirection(ship))
+        shift.lastPosition.set(shift.origin)
+        shift.lockedFacing = ship.facing
+        shift.travelStartTime = now
+    }
+
+    private fun glide(engine: CombatEngineAPI, ship: ShipAPI, system: ShipSystemAPI, shift: ShiftState, now: Float) {
+        if (shift.arrived) return
+        if (shift.travelStartTime < 0f) beginTravel(ship, shift, now)
+        lockTurn(ship, shift)
+        // 冲击必须落在到达终点的同一帧：位移走完后立刻结算，不等 OUT 段那 0.1s 收束
+        if (now - shift.travelStartTime >= system.chargeActiveDur) {
+            arrive(engine, ship, system, shift, now)
+            return
+        }
+        val next = travelPoint(shift, system, now)
+        StarwingShiftVfx.trail(engine, ship, shift.lastPosition, next)
+        shift.lastPosition.set(next)
+        ship.location.set(next)
+    }
+
+    private fun travelPoint(shift: ShiftState, system: ShipSystemAPI, now: Float): Vector2f {
+        val progress = ((now - shift.travelStartTime) / system.chargeActiveDur).coerceIn(0f, 1f)
+        val eased = easeInOutExpo(progress)
+        return Vector2f(
+            shift.origin.x + shift.dir.x * shift.dist * eased,
+            shift.origin.y + shift.dir.y * shift.dist * eased,
         )
     }
 
-    // ---------- 位移与朝向 ----------
+    private fun arrive(engine: CombatEngineAPI, ship: ShipAPI, system: ShipSystemAPI, shift: ShiftState, now: Float) {
+        if (shift.arrived) return
+        shift.arrived = true
+        if (shift.travelStartTime < 0f) beginTravel(ship, shift, now)
+        lockTurn(ship, shift)
+
+        // 中途关停时只结算已经走完的那一段，不做满距离瞬移
+        val end = travelPoint(shift, system, now)
+        StarwingShiftVfx.trail(engine, ship, shift.lastPosition, end)
+        ship.location.set(end)
+        val exitSpeed = ship.mutableStats.maxSpeed.modifiedValue * EXIT_SPEED_MULT
+        ship.velocity.set(shift.dir.x * exitSpeed, shift.dir.y * exitSpeed)
+
+        clearPulse(engine, ship)
+        StarwingShiftVfx.impact(engine, ship)
+        impactStrike(engine, ship, end)
+        resolveEmerge(engine, ship)
+    }
+
+    private fun lockTurn(ship: ShipAPI, shift: ShiftState) {
+        ship.facing = shift.lockedFacing
+        ship.angularVelocity = 0f
+        ship.blockCommandForOneFrame(ShipCommand.TURN_LEFT)
+        ship.blockCommandForOneFrame(ShipCommand.TURN_RIGHT)
+    }
 
     private fun shiftDirection(ship: ShipAPI): Vector2f {
         if (ship.velocity.lengthSquared() > 1f) {
@@ -130,36 +186,48 @@ class StarwingShiftSystemStats : PhaseCloakStats() {
         return Vector2f(cos(rad).toFloat(), sin(rad).toFloat())
     }
 
-    /** 滑行期间舰首以 3 倍转向速率平滑对齐鼠标准星（AI 对齐当前攻击目标）。 */
-    private fun alignFacingToAim(engine: CombatEngineAPI, ship: ShipAPI, shift: ShiftState, now: Float) {
-        val aim = resolveAimPoint(engine, ship, shift) ?: return
-        val desired = Misc.getAngleInDegrees(ship.location, aim)
-        val dt = (now - shift.lastFrameTime).coerceIn(0f, 0.1f)
-        if (dt <= 0f) return
-        val maxTurn = ship.mutableStats.maxTurnRate.modifiedValue * ImaginaryWingsTuning.SHIFT_TURN_MULT * dt
-        val diff = MathUtils.getShortestRotation(ship.facing, desired)
-        ship.facing += diff.coerceIn(-maxTurn, maxTurn)
+    private fun easeInOutExpo(t: Float): Float = when {
+        t <= 0f -> 0f
+        t >= 1f -> 1f
+        t < 0.5f -> 2f.pow(20f * t - 10f) / 2f
+        else -> (2f - 2f.pow(-20f * t + 10f)) / 2f
     }
 
-    private fun resolveAimPoint(engine: CombatEngineAPI, ship: ShipAPI, shift: ShiftState): Vector2f? {
-        if (ship === engine.playerShip) {
-            val viewport = engine.viewport ?: return null
-            return Vector2f(
-                viewport.convertScreenXToWorldX(Mouse.getX().toFloat()),
-                viewport.convertScreenYToWorldY(Mouse.getY().toFloat()),
-            )
-        }
-        val target = ship.shipTarget
-        if (target != null && target.isAlive && !target.isHulk) return Vector2f(target.location)
-        return Vector2f(
-            shift.start.x + shift.dir.x * shift.dist,
-            shift.start.y + shift.dir.y * shift.dist,
+    // ---------- 落点冲击 ----------
+
+    private fun impactStrike(engine: CombatEngineAPI, ship: ShipAPI, center: Vector2f) {
+        val radius = ImaginaryWingsTuning.SHIFT_IMPACT_RADIUS
+        val victims = ExplosionStrikeImpl.strike(
+            engine = engine,
+            center = center,
+            radius = radius,
+            damage = ImaginaryWingsTuning.SHIFT_IMPACT_DAMAGE,
+            damageType = DamageType.ENERGY,
+            emp = 0f,
+            source = ship,
+            owner = ship.owner,
+            falloff = LinearExplosionFalloffImpl(coreRadius = 0f, minDamage = 0f),
         )
+        for (victim in victims) {
+            val dx = victim.location.x - center.x
+            val dy = victim.location.y - center.y
+            val dist = sqrt(dx * dx + dy * dy)
+            val surfaceDist = (dist - victim.collisionRadius).coerceAtLeast(0f)
+            val falloff = (1f - surfaceDist / radius).coerceIn(0f, 1f)
+            if (falloff <= 0f) continue
+            val direction = if (dist > 1f) Vector2f(dx, dy) else Vector2f(shiftOutward(ship))
+            CombatUtils.applyForce(victim, direction, ImaginaryWingsTuning.SHIFT_IMPACT_FORCE * falloff)
+        }
+    }
+
+    private fun shiftOutward(ship: ShipAPI): Vector2f {
+        val rad = Math.toRadians(ship.facing.toDouble())
+        return Vector2f(cos(rad).toFloat(), sin(rad).toFloat())
     }
 
     // ---------- 净空力场 ----------
 
-    /** 抹除 250su 内单发 ≤600 的敌方非导弹射弹，>600 的重型射弹永久削减伤害；并断开所有锁定本舰的敌方导弹诱导。 */
+    /** 抹除半径内单发伤害不超过阈值的敌方非导弹射弹，超过阈值的重型射弹永久削减伤害；并断开所有锁定本舰的敌方导弹诱导。 */
     private fun clearPulse(engine: CombatEngineAPI, ship: ShipAPI) {
         val reduction = DifficultyTuningImpl.valueFor(ImaginaryWingsTuning.CLEAR_HEAVY_REDUCTION, ship.owner == 0)
         val radius = ImaginaryWingsTuning.CLEAR_RADIUS
@@ -187,7 +255,7 @@ class StarwingShiftSystemStats : PhaseCloakStats() {
         val isPlayer = ship.owner == 0
 
         if (pool.overdraftActive) {
-            // 透支折跃：不拉满不扣 30%，齐射免费；50% 已在激活边沿扣除
+            // 透支折跃跳过拉满与扣费，成本已在激活边沿结算
             pool.overdraftActive = false
         } else {
             pool.charge = ImaginaryWingsTuning.SALVO_REFILL
@@ -226,15 +294,8 @@ class StarwingShiftSystemStats : PhaseCloakStats() {
         return StarfallWingMoteAi.acquirePointDefenseTarget(engine, ship, ship.location)
     }
 
-    private fun easeProgress(t: Float): Float {
-        val x = t.coerceIn(0f, 1f)
-        return x * x * (3f - 2f * x)
-    }
-
     companion object {
         private const val STATE_KEY_PREFIX = "astd_starwing_shift_state:"
-
-        private const val ACTIVE_GLIDE_SECONDS = 0.25f
 
         private const val EXIT_SPEED_MULT = 1.5f
     }

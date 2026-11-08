@@ -78,10 +78,12 @@ object ImaginaryWingsTuning {
 
     const val SHIFT_DISTANCE = 400f
 
-    /** 相位滑行时流倍率 2.5x，对应 PhaseCloakStats dynamic 键 phase_time_mult（上限 3x）。 */
-    const val SHIFT_TIME_MULT_DYNAMIC = 0.75f
+    const val SHIFT_IMPACT_RADIUS = 350f
 
-    const val SHIFT_TURN_MULT = 3f
+    const val SHIFT_IMPACT_DAMAGE = 400f
+
+    /** 落点冲击推力，单位同 CombatUtils.applyForce，按目标表面距离线性衰减。 */
+    const val SHIFT_IMPACT_FORCE = 1500f
 
     const val CLEAR_RADIUS = 250f
 

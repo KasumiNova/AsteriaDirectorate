@@ -1,9 +1,9 @@
 {
     "id": "astd_rift_shift",
-    "type": "PHASE_CLOAK",
+    "type": "STAT_MOD",
     "aiType": "CUSTOM",
-    "aiScript": "cn.kasuminova.astd.combat.shipsystems.RiftShiftSystemAI",
-    "statsScript": "cn.kasuminova.astd.combat.shipsystems.RiftShiftSystemStats",
+    "aiScript": "cn.kasuminova.astd.combat.shipsystems.StarwingShiftSystemAI",
+    "statsScript": "cn.kasuminova.astd.combat.shipsystems.StarwingShiftSystemStats",
     "useSound": "system_phase_cloak_activate",
     "deactivateSound": "system_phase_cloak_deactivate",
     "outOfUsesSound": "system_phase_cloak_collision",
@@ -11,17 +11,6 @@
     "runScriptWhileIdle": true,
     "blockActionsWhileChargingDown": false,
     "canNotCauseOverload": true,
-    "effectColor1": [190,140,255,255],
-    "effectColor2": [130,80,255,150],
-    "clampTurnRateAfter": true,
-    "clampMaxSpeedAfter": true,
-    "engineGlowColor": [0,0,0,0],
-    "engineGlowContrailColor": [0,0,0,0],
-    "engineGlowLengthMult": 0,
-    "engineGlowWidthMult": 0,
-    "engineGlowGlowMult": 0,
-    "soundFilterType": "LOWPASS",
-    "soundFilterGain": 0.8,
-    "soundFilterGainHF": 0.25,
-    "shipAlpha": 1
+    "effectColor1": [150,205,255,255],
+    "effectColor2": [120,190,255,150]
 }

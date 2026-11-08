@@ -5,6 +5,7 @@ import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseEveryFrameCombatPlugin
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEngineLayers
+import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.graphics.SpriteAPI
 import com.fs.starfarer.api.input.InputEventAPI
 import org.boxutil.base.api.InstanceDataAPI
@@ -51,11 +52,12 @@ object PooledCombatVfx {
         scaleRateX: Float = 0f, scaleRateY: Float = 0f,
         color: Color, emissiveColor: Color,
         fadeIn: Float, full: Float, fadeOut: Float,
+        anchor: ShipAPI? = null,
     ): Boolean {
         val binding = manager(engine).spritePools.getOrPut(key) { SpritePoolBinding(engine, key) }
         return binding.spawn(
             x, y, velX, velY, facingDeg, turnRateDeg, scaleX, scaleY, scaleRateX, scaleRateY,
-            color, emissiveColor, fadeIn, full, fadeOut,
+            color, emissiveColor, fadeIn, full, fadeOut, anchor,
         )
     }
 
@@ -165,6 +167,7 @@ object PooledCombatVfx {
             scaleRateX: Float, scaleRateY: Float,
             color: Color, emissiveColor: Color,
             fadeIn: Float, full: Float, fadeOut: Float,
+            anchor: ShipAPI?,
         ): Boolean {
             if (broken) return false
             if (entity == null && createEntity() == null) return false
@@ -172,7 +175,7 @@ object PooledCombatVfx {
                 x, y, velX, velY, facingDeg, turnRateDeg, scaleX, scaleY, scaleRateX, scaleRateY,
                 color.red, color.green, color.blue, color.alpha,
                 emissiveColor.red, emissiveColor.green, emissiveColor.blue, emissiveColor.alpha,
-                fadeIn, full, fadeOut,
+                fadeIn, full, fadeOut, anchor,
             )
             return true
         }

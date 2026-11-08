@@ -1,5 +1,7 @@
 package cn.kasuminova.astd.renderer.boxutil.pool
 
+import com.fs.starfarer.api.combat.ShipAPI
+
 internal class SpriteParticleSlots(val capacity: Int) {
 
     init {
@@ -30,6 +32,9 @@ internal class SpriteParticleSlots(val capacity: Int) {
         var eg = 0
         var eb = 0
         var ea = 0
+        var anchor: ShipAPI? = null
+        var anchorX = 0f
+        var anchorY = 0f
     }
 
     internal val slots = Array(capacity) { Slot() }
@@ -48,6 +53,7 @@ internal class SpriteParticleSlots(val capacity: Int) {
         r: Int, g: Int, b: Int, a: Int,
         er: Int, eg: Int, eb: Int, ea: Int,
         fadeIn: Float, full: Float, fadeOut: Float,
+        anchor: ShipAPI? = null,
     ): Int {
         val index = claimIndex()
         val s = slots[index]
@@ -75,6 +81,11 @@ internal class SpriteParticleSlots(val capacity: Int) {
         s.eg = eg
         s.eb = eb
         s.ea = ea
+        s.anchor = anchor
+        if (anchor != null) {
+            s.anchorX = anchor.location.x
+            s.anchorY = anchor.location.y
+        }
         return index
     }
 
@@ -86,6 +97,19 @@ internal class SpriteParticleSlots(val capacity: Int) {
                 s.active = false
                 activeCount--
                 continue
+            }
+            // 锚点跟随只叠加锚点的每帧位移增量，粒子自身速度与相对偏移全部保留；
+            // 锚点残骸化后清空，粒子停在最后位置继续走完包络
+            val anchor = s.anchor
+            if (anchor != null) {
+                if (anchor.isHulk || !anchor.isAlive) {
+                    s.anchor = null
+                } else {
+                    s.posX += anchor.location.x - s.anchorX
+                    s.posY += anchor.location.y - s.anchorY
+                    s.anchorX = anchor.location.x
+                    s.anchorY = anchor.location.y
+                }
             }
             s.posX += s.velX * amount
             s.posY += s.velY * amount

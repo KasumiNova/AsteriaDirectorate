@@ -9,23 +9,23 @@ object Sys_astd_rift_shift : ShipSystemWithSystemFileEntry() {
 
     override val statsScript: String = "cn.kasuminova.astd.combat.shipsystems.StarwingShiftSystemStats"
 
-    override val systemType: String = "PHASE_CLOAK"
+    // 折跃不进相位、不改时流，仅借系统状态机做位移，故用通用 STAT_MOD 外壳。
+    override val systemType: String = "STAT_MOD"
     override val aiType: String = "CUSTOM"
     override val aiScript: String = "cn.kasuminova.astd.combat.shipsystems.StarwingShiftSystemAI"
 
     override val maxUses: Int = 3
     override val regen: Double = 0.1
 
-    override val chargeUp: Double = 0.1
-    override val active: Double = 0.25
-    override val down: Double = 0.15
+    override val chargeUp: Double = 0.15
+    override val active: Double = 0.6
+    override val down: Double = 0.1
     override val cooldown: Double = 0.5
 
     override val hardFlux: Boolean = true
     override val noHardDissipation: Boolean = true
     override val noFiring: Boolean = true
     override val noShield: Boolean = true
-    override val isPhaseCloak: Boolean = true
 
     override val icon: String = "graphics/icons/hullsys/displacer.png"
     override val useSound: String = "system_phase_cloak_activate"
@@ -37,19 +37,8 @@ object Sys_astd_rift_shift : ShipSystemWithSystemFileEntry() {
         "runScriptWhileIdle" to "true",
         "blockActionsWhileChargingDown" to "false",
         "canNotCauseOverload" to "true",
-        "effectColor1" to "[190,140,255,255]",
-        "effectColor2" to "[130,80,255,150]",
-        "clampTurnRateAfter" to "true",
-        "clampMaxSpeedAfter" to "true",
-        "engineGlowColor" to "[0,0,0,0]",
-        "engineGlowContrailColor" to "[0,0,0,0]",
-        "engineGlowLengthMult" to "0",
-        "engineGlowWidthMult" to "0",
-        "engineGlowGlowMult" to "0",
-        "soundFilterType" to "\"LOWPASS\"",
-        "soundFilterGain" to "0.8",
-        "soundFilterGainHF" to "0.25",
-        "shipAlpha" to "1",
+        "effectColor1" to "[150,205,255,255]",
+        "effectColor2" to "[120,190,255,150]",
     )
 }
 
