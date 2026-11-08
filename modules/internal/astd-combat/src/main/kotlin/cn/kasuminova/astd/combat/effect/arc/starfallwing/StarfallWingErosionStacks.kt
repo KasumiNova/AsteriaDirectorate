@@ -4,7 +4,6 @@ import cn.kasuminova.astd.api.buff.Buff
 import cn.kasuminova.astd.api.buff.BuffHost
 import cn.kasuminova.astd.api.buff.BuffLifetime
 import cn.kasuminova.astd.api.buff.buffHost
-import cn.kasuminova.astd.api.buff.getBuff
 import cn.kasuminova.astd.api.combat.CombatFeedback
 import cn.kasuminova.astd.impl.combat.CombatFeedbackImpl
 import cn.kasuminova.astd.internal.i18n.I18n
@@ -60,10 +59,12 @@ class StarfallWingErosionStacks(
     }
 
     private fun refreshShieldMult() {
-        val base = ship.mutableStats.shieldDamageTakenMult.baseValue
-        ship.mutableStats.shieldDamageTakenMult.modifyMult(
-            BUFF_ID, StarfallWingTuning.erosionShieldMult(base, layers.size),
-        )
+        val stat = ship.mutableStats.shieldDamageTakenMult
+        // 劣化基数是"排除自身修饰后的有效承伤效率"：技能/船插走的是 modifyMult，baseValue 恒为 1.0，
+        // 直接读 baseValue 会让绝大多数目标永远不产生劣化
+        val own = stat.getMultStatMod(BUFF_ID)?.value ?: 1f
+        val effective = if (own != 0f) stat.modifiedValue / own else stat.modifiedValue
+        stat.modifyMult(BUFF_ID, StarfallWingTuning.erosionShieldMult(effective, layers.size))
     }
 
     private fun maintainHud() {
@@ -114,6 +115,3 @@ class StarfallWingErosionStacks(
         }
     }
 }
-
-fun ShipAPI.starfallWingErosionStacks(): StarfallWingErosionStacks? =
-    getBuff(StarfallWingErosionStacks.BUFF_ID) as? StarfallWingErosionStacks

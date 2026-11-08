@@ -179,16 +179,28 @@ class ASTDImaginaryWingsHullMod : BaseHullMod(), DamageDealtModifier, DamageTake
         point: Vector2f?,
         shieldHit: Boolean,
     ): String? {
-        val proj = param as? DamagingProjectileAPI ?: return null
-        if (proj is MissileAPI) return null
+        // 弹体与光束都算"非导弹武器命中"；BeamAPI 不继承 DamagingProjectileAPI，需单独取源舰
+        val source: ShipAPI
+        val isMainGun: Boolean
+        when (param) {
+            is DamagingProjectileAPI -> {
+                if (param is MissileAPI) return null
+                source = param.source ?: return null
+                isMainGun = param.weapon?.id == StarfallWingTuning.WEAPON_ID
+            }
+            is BeamAPI -> {
+                source = param.weapon?.ship ?: return null
+                isMainGun = false
+            }
+            else -> return null
+        }
         val victim = target as? ShipAPI ?: return null
-        val source = proj.source ?: return null
         if (victim.owner == source.owner) return null
         if (source.hullSpec?.hullId != HULL_ID && source.hullSpec?.baseHullId != HULL_ID) return null
 
         val pool = ImaginaryCharge.of(source)
         pool.tryHitGain(ImaginaryWingsTuning.HIT_GAIN)
-        if (proj.weapon?.id == StarfallWingTuning.WEAPON_ID && !victim.isFighter && victim.isAlive) {
+        if (isMainGun && !victim.isFighter && victim.isAlive) {
             pool.lastMainGunHit = victim
         }
         return null
@@ -201,7 +213,7 @@ class ASTDImaginaryWingsHullMod : BaseHullMod(), DamageDealtModifier, DamageTake
         point: Vector2f?,
         shieldHit: Boolean,
     ): String? {
-        if (param !is DamagingProjectileAPI || param is BeamAPI) return null
+        if (param !is DamagingProjectileAPI) return null
         val ship = target as? ShipAPI ?: return null
         val dmg = damage ?: return null
         val baseMaxSpeed = ship.mutableStats.maxSpeed.baseValue
@@ -229,7 +241,7 @@ class ASTDImaginaryWingsHullMod : BaseHullMod(), DamageDealtModifier, DamageTake
         val glideRof = DifficultyTuningImpl.valueFor(ImaginaryWingsTuning.GLIDE_ROF_PERCENT, isPlayer).toInt()
         val glideReduction = DifficultyTuningImpl.valueFor(ImaginaryWingsTuning.GLIDE_DAMAGE_REDUCTION, isPlayer)
         tooltip.hullmodCard(width, THEME, spec?.displayName) {
-            para("ui.hullmod.imaginary_wings.desc", hl("奇点核心", HullmodThemes.LENS.nameColor))
+            para("ui.hullmod.imaginary_wings.desc")
             heading("ui.hullmod.imaginary_wings.section.charge")
             para(
                 "ui.hullmod.imaginary_wings.line.charge",
@@ -255,7 +267,7 @@ class ASTDImaginaryWingsHullMod : BaseHullMod(), DamageDealtModifier, DamageTake
                 v("per", (StarfallWingTuning.EROSION_TAKEN_PER_STACK * 100f).toInt()),
                 v("max", StarfallWingTuning.EROSION_MAX_STACKS),
                 v("dur", StarfallWingTuning.EROSION_DURATION_SECONDS.toInt()),
-                hl("2%", HullmodTone.HIGHLIGHT),
+                hl("${(StarfallWingTuning.EROSION_TAKEN_PER_STACK * 100f).toInt()}%", HullmodTone.HIGHLIGHT),
             )
             heading("ui.hullmod.imaginary_wings.section.glide")
             para(

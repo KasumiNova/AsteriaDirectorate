@@ -1,6 +1,5 @@
 package cn.kasuminova.astd.combat.effect.arc.starfallwing
 
-import cn.kasuminova.astd.api.AstdLog
 import cn.kasuminova.astd.combat.effect.generic.CombatVfxBootstrap
 import cn.kasuminova.astd.combat.hullmods.arc.ImaginaryCharge
 import cn.kasuminova.astd.combat.hullmods.arc.ImaginaryWingsTuning
@@ -36,16 +35,21 @@ class StarfallWingWeaponEffect : EveryFrameWeaponEffectPlugin {
         if (engine.isPaused) return
         // .wpn 只有一个 everyFrameEffect 槽，bootstrap 必须由此代行。
         CombatVfxBootstrap.ensureInstalled(engine)
-        StarfallWingVfx.advance(engine, amount)
+        // VFX 全局共享，多武器实例同帧推进会加速寿命，按帧去重
+        if (engine.customData[KEY_VFX_ADVANCED_AT] != engine.getTotalElapsedTime(false)) {
+            engine.customData[KEY_VFX_ADVANCED_AT] = engine.getTotalElapsedTime(false)
+            StarfallWingVfx.advance(engine, amount)
+        }
 
         val states = projectileStates(engine)
         for ((proj, state) in states.entries.toList()) {
-            // 弹体状态表按战斗全局共享，多舰同装时只驱动本武器的弹体，避免重复结算
-            if (state.ownerWeapon !== weapon) continue
+            // 失效弹体不论归属都要清，武器被毁后其状态不再有人驱动
             if (!engine.isEntityInPlay(proj)) {
                 states.remove(proj)
                 continue
             }
+            // 弹体状态表按战斗全局共享，多舰同装时只驱动本武器的弹体，避免重复结算
+            if (state.ownerWeapon !== weapon) continue
             val from = state.lastPierceLocation ?: Vector2f(proj.location)
             val to = Vector2f(proj.location)
             state.lastPierceLocation = to
@@ -218,7 +222,10 @@ class StarfallWingWeaponEffect : EveryFrameWeaponEffectPlugin {
         if (ship.isFighter || !ship.isAlive || ship.isHulk) return
         if (!state.passContacts.tryLatchFirstShip()) return
         val source = proj.source ?: return
-        ImaginaryCharge.of(source).add(ImaginaryWingsTuning.EMPOWERED_HIT_GAIN)
+        val pool = ImaginaryCharge.of(source)
+        pool.add(ImaginaryWingsTuning.EMPOWERED_HIT_GAIN)
+        pool.tryHitGain(ImaginaryWingsTuning.HIT_GAIN)
+        pool.lastMainGunHit = ship
         for (side in intArrayOf(1, -1)) {
             val anchor = ImaginaryWingsTuning.WING_ANCHORS[1]
             StarfallWingMotes.spawn(
@@ -356,7 +363,7 @@ class StarfallWingWeaponEffect : EveryFrameWeaponEffectPlugin {
 
         private const val KEY_PROJECTILE_STATES = "astd_starfall_wing_projectile_states"
 
-        private val log = AstdLog.logger
+        private const val KEY_VFX_ADVANCED_AT = "astd_starfall_wing_vfx_advanced_at"
 
         @Suppress("UNCHECKED_CAST")
         fun projectileStates(engine: CombatEngineAPI): IdentityHashMap<DamagingProjectileAPI, ProjectileState> {

@@ -46,14 +46,17 @@ class StarwingShiftSystemStats : PhaseCloakStats() {
         if (ship.isHulk) return
         val engine = Global.getCombatEngine() ?: return
 
-        val key = STATE_KEY_PREFIX + System.identityHashCode(ship)
+        val key = STATE_KEY_PREFIX + ship.id
         if (state == ShipSystemStatsScript.State.IDLE || state == ShipSystemStatsScript.State.COOLDOWN) {
             engine.customData.remove(key)
+            // 系统被 EMP 等打断导致 OUT 结算未执行时，透支标记不能留到下一次折跃
+            ImaginaryCharge.of(ship).overdraftActive = false
             return
         }
 
         // 滑行期间 2.5x 舰船时流（PhaseCloakStats 上限 3x，dynamic 系数 0.75）
-        stats.dynamic.getMod("phase_time_mult").modifyFlat(id, ImaginaryWingsTuning.SHIFT_TIME_MULT_DYNAMIC)
+        // 必须写 getStat：getMaxTimeMult 读取的是 getValue，只查 stats 表而非 mods 表
+        stats.dynamic.getStat("phase_time_mult").modifyFlat(id, ImaginaryWingsTuning.SHIFT_TIME_MULT_DYNAMIC)
 
         val shift = engine.customData.getOrPut(key) { ShiftState() } as ShiftState
         val now = engine.getTotalElapsedTime(false)
@@ -101,7 +104,7 @@ class StarwingShiftSystemStats : PhaseCloakStats() {
 
     override fun unapply(stats: MutableShipStatsAPI, id: String) {
         super.unapply(stats, id)
-        stats.dynamic.getMod("phase_time_mult").unmodifyFlat(id)
+        stats.dynamic.getStat("phase_time_mult").unmodifyFlat(id)
     }
 
     // 原版 PhaseCloakStats.maintainStatus 硬编码英文状态文本，此处按相同结构输出 I18n 文本

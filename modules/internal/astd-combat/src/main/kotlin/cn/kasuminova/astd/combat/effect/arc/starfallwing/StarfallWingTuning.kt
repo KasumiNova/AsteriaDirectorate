@@ -16,9 +16,6 @@ object StarfallWingTuning {
     const val MOTE_WEAPON_ID = "astd_starfall_wing_mote_launcher"
     const val MOTE_SPEC_ID = "astd_starfall_wing_mote"
 
-    /** 断熵强化贯通弹标记（customData）。 */
-    const val EMPOWERED_MARK_KEY = "astd_starfall_wing_empowered"
-
     // ---------- 断熵强化贯通弹 ----------
 
     /** 常态触发周期（每第 N 发升格）：迟暮 6 / 砺刃 6 / 破晓 4。 */

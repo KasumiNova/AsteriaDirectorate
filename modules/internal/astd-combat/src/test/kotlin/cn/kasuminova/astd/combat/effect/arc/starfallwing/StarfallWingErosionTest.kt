@@ -110,6 +110,21 @@ class StarfallWingErosionTest {
     }
 
     @Test
+    fun `振频蚀穿对承伤效率已为 1 的目标不产生劣化`() {
+        val engine = mock(CombatEngineAPI::class.java)
+        val ship = erosionTarget(baseShieldTaken = 1.0f)
+        repeat(StarfallWingTuning.EROSION_MAX_STACKS) {
+            StarfallWingErosionStacks.attachLayer(ship, engine, null)
+        }
+        assertEquals(
+            1.0f,
+            ship.mutableStats.shieldDamageTakenMult.modifiedValue,
+            1e-4f,
+            "设计口径封顶 1.0，无减伤的目标不受蚀穿影响",
+        )
+    }
+
+    @Test
     fun `虚数充能池 入账消耗钳制与共鸣冷却闸门`() {
         val ship = stubShip()
         val pool = cn.kasuminova.astd.combat.hullmods.arc.ImaginaryCharge.of(ship)

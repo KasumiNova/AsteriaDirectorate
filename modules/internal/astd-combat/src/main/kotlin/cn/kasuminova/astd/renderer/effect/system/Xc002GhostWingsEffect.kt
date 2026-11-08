@@ -186,23 +186,28 @@ object Xc002GhostWingsEffect {
             // 残影：低档不产生；中高档 0.08s 节拍；过载期加密到 0.04s 且拖更久
             val afterimageInterval = if (overdrive) AFTERIMAGE_INTERVAL_OVERDRIVE else AFTERIMAGE_INTERVAL_MID
             val afterimageDuration = if (overdrive) AFTERIMAGE_DURATION_OVERDRIVE else AFTERIMAGE_DURATION
-            att.afterimageTimer += amount
-            if (pool.charge >= TIER_MID && att.afterimageTimer >= afterimageInterval && SPRITE_DARK in loadedSprites) {
-                att.afterimageTimer -= afterimageInterval
-                ASTDAfterimageEffect.spawn(
-                    engine,
-                    ASTDAfterimageEffect.Snapshot(
-                        spritePath = SPRITE_DARK,
-                        location = Vector2f(ship.location),
-                        facing = ship.facing,
-                        width = WING_WIDTH,
-                        height = WING_HEIGHT,
-                        color = att.tint,
-                        startAlpha = AFTERIMAGE_ALPHA,
-                        duration = afterimageDuration,
-                        growth = 0f,
-                    ),
-                )
+            if (pool.charge >= TIER_MID && SPRITE_DARK in loadedSprites) {
+                att.afterimageTimer += amount
+                if (att.afterimageTimer >= afterimageInterval) {
+                    // 单帧最多一张，避免低档积压的计时在跨档后爆发式生成
+                    att.afterimageTimer = 0f
+                    ASTDAfterimageEffect.spawn(
+                        engine,
+                        ASTDAfterimageEffect.Snapshot(
+                            spritePath = SPRITE_DARK,
+                            location = Vector2f(ship.location),
+                            facing = ship.facing,
+                            width = WING_WIDTH,
+                            height = WING_HEIGHT,
+                            color = att.tint,
+                            startAlpha = AFTERIMAGE_ALPHA,
+                            duration = afterimageDuration,
+                            growth = 0f,
+                        ),
+                    )
+                }
+            } else {
+                att.afterimageTimer = 0f
             }
 
             updateWingtips(att, amount, chargeFrac)
@@ -316,6 +321,19 @@ object Xc002GhostWingsEffect {
 
         private fun renderHudBar(ship: ShipAPI) {
             val pool = ImaginaryCharge.of(ship)
+            // MagicUI 文字路径不重置 MODELVIEW，世界坐标渲染层里必须先将 MODELVIEW 归一，否则文字被相机矩阵甩出屏幕
+            GL11.glMatrixMode(GL11.GL_MODELVIEW)
+            GL11.glPushMatrix()
+            GL11.glLoadIdentity()
+            try {
+                drawHudBar(ship, pool)
+            } finally {
+                GL11.glMatrixMode(GL11.GL_MODELVIEW)
+                GL11.glPopMatrix()
+            }
+        }
+
+        private fun drawHudBar(ship: ShipAPI, pool: ImaginaryCharge) {
             if (pool.inOverdrive) {
                 val seconds = pool.overdriveRemaining
                 val fill = (seconds / ImaginaryWingsTuning.OVERDRIVE_SECONDS).coerceIn(0f, 1f)

@@ -1,9 +1,9 @@
 package cn.kasuminova.astd.combat.effect.arc.starfallwing
 
+import cn.kasuminova.astd.api.AstdLog
 import cn.kasuminova.astd.combat.hullmods.arc.ImaginaryCharge
 import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import cn.kasuminova.astd.renderer.projectile.driver.ProjectileVfxDriverPlugin
-import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.DamagingProjectileAPI
 import com.fs.starfarer.api.combat.OnFireEffectPlugin
@@ -59,8 +59,8 @@ class StarfallWingOnFireEffect : OnFireEffectPlugin {
             return
         }
         spawned.setDamageAmount(baseDamage * StarfallWingTuning.EMPOWERED_DAMAGE_MULT)
+        spawned.damage.fluxComponent = StarfallWingTuning.EMPOWERED_EMP
         spawned.collisionRadius = baseRadius * StarfallWingTuning.EMPOWERED_SIZE_MULT
-        spawned.setCustomData(StarfallWingTuning.EMPOWERED_MARK_KEY, true)
         // 脚本 spawn 的弹体不触发 onFireEffect，拖尾必须显式登记。
         ProjectileVfxDriverPlugin.track(engine, spawned, StarfallWingTuning.EMPOWERED_SHOT_SPEC_ID)
         StarfallWingWeaponEffect.projectileStates(engine)[spawned] =
@@ -74,7 +74,7 @@ class StarfallWingOnFireEffect : OnFireEffectPlugin {
     companion object {
         private const val KEY_FIRE_COUNTERS = "astd_starfall_wing_fire_counters"
 
-        private val log = Global.getLogger(StarfallWingOnFireEffect::class.java)
+        private val log = AstdLog.logger
 
         @Suppress("UNCHECKED_CAST")
         private fun fireCounter(engine: CombatEngineAPI, weapon: WeaponAPI): FireCounter {

@@ -40,8 +40,6 @@ object ImaginaryWingsTuning {
 
     const val BARRAGE_RANGE = 1100f
 
-    const val BARRAGE_MOTES_PER_WAVE = 2
-
     // ---------- 星羽追踪光矢 ----------
 
     val MOTE_DAMAGE = ScalingEntry(120f, 150f, 250f)
@@ -55,8 +53,6 @@ object ImaginaryWingsTuning {
     const val MOTE_PURSUIT_SPEED = 1100f
 
     const val MOTE_FLIGHT_TIME = 2.5f
-
-    const val MOTE_SALVO_COUNT = 6
 
     /** 光翼发射锚点（舰体相对坐标，x 前 / y 左）：左舷 3 枚，右舷镜像。 */
     val WING_ANCHORS: List<Vector2f> = listOf(
