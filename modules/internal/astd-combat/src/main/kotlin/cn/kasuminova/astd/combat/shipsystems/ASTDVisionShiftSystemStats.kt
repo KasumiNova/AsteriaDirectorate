@@ -258,19 +258,8 @@ class ASTDVisionShiftSystemStats : BaseShipSystemScript() {
     }
 
     private fun spawnAfterimage(engine: CombatEngineAPI, ship: ShipAPI) {
-        ASTDAfterimageEffect.spawn(
-            engine,
-            ASTDAfterimageEffect.Snapshot(
-                spritePath = ship.hullSpec.spriteName,
-                location = Vector2f(ship.location),
-                facing = ship.facing,
-                width = ship.spriteAPI.width,
-                height = ship.spriteAPI.height,
-                color = AFTERIMAGE_COLOR,
-                startAlpha = 0.9f,
-                duration = 1f,
-                growth = 0.05f,
-            ),
+        ASTDAfterimageEffect.spawnShip(
+            engine, ship, Vector2f(ship.location), AFTERIMAGE_COLOR, startAlpha = 0.9f, duration = 1f, growth = 0.05f,
         )
     }
 

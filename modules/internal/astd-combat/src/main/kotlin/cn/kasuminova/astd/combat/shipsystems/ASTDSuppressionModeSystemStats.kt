@@ -151,19 +151,8 @@ class ASTDSuppressionModeSystemStats : BaseShipSystemScript() {
             return
         }
         engine.customData[timerKey] = elapsed - AFTERIMAGE_INTERVAL
-        ASTDAfterimageEffect.spawn(
-            engine,
-            ASTDAfterimageEffect.Snapshot(
-                spritePath = ship.hullSpec.spriteName,
-                location = Vector2f(ship.location),
-                facing = ship.facing,
-                width = ship.spriteAPI.width,
-                height = ship.spriteAPI.height,
-                color = AFTERIMAGE_COLOR,
-                startAlpha = 0.95f,
-                duration = 0.5f,
-                growth = 0.05f,
-            ),
+        ASTDAfterimageEffect.spawnShip(
+            engine, ship, Vector2f(ship.location), AFTERIMAGE_COLOR, startAlpha = 0.95f, duration = 0.5f, growth = 0.05f,
         )
         ASTDArcProductionVfx.incrementCounter(engine, ASTDArcProductionVfx.TELEMETRY_XC_103_SYSTEM_AFTERIMAGES)
     }

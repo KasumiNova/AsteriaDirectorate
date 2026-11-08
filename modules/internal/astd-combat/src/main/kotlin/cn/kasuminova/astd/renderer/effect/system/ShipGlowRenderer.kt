@@ -112,6 +112,14 @@ object ShipGlowRenderer {
 
     fun isOverlayWeapon(weaponId: String): Boolean = weaponId in overlaySpritePaths
 
+    fun overlayPathFor(ship: ShipAPI): String? {
+        for (weapon in ship.allWeapons) {
+            val weaponId = weapon.spec?.weaponId ?: continue
+            overlaySpritePaths[weaponId]?.let { return it }
+        }
+        return null
+    }
+
     fun setRecolor(ship: ShipAPI, blend: Float) {
         val engine = Global.getCombatEngine() ?: return
         val plugin = engine.customData[ENGINE_KEY] as? Plugin ?: return

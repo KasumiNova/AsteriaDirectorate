@@ -316,21 +316,8 @@ internal object GravityPhaseVisualEffect {
         }
 
         private fun spawnAfterimage(ship: ShipAPI) {
-            val sprite = ship.spriteAPI ?: return
-            val spritePath = ship.hullSpec?.spriteName ?: return
-            ASTDAfterimageEffect.spawn(
-                engine,
-                ASTDAfterimageEffect.Snapshot(
-                    spritePath = spritePath,
-                    location = Vector2f(ship.location),
-                    facing = ship.facing,
-                    width = sprite.width,
-                    height = sprite.height,
-                    color = AFTERIMAGE_COLOR,
-                    startAlpha = AFTERIMAGE_ALPHA,
-                    duration = AFTERIMAGE_DURATION,
-                    growth = 0f,
-                ),
+            ASTDAfterimageEffect.spawnShip(
+                engine, ship, Vector2f(ship.location), AFTERIMAGE_COLOR, AFTERIMAGE_ALPHA, AFTERIMAGE_DURATION,
             )
         }
     }
