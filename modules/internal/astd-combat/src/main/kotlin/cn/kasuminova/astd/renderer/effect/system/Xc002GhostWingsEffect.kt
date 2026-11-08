@@ -3,15 +3,14 @@ package cn.kasuminova.astd.renderer.effect.system
 import cn.kasuminova.astd.api.AstdLog
 import cn.kasuminova.astd.combat.hullmods.arc.ImaginaryCharge
 import cn.kasuminova.astd.combat.hullmods.arc.ImaginaryWingsTuning
-import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
+import cn.kasuminova.astd.internal.i18n.I18n
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseCombatLayeredRenderingPlugin
+import com.fs.starfarer.api.combat.BaseEveryFrameCombatPlugin
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEngineLayers
 import com.fs.starfarer.api.combat.ShipAPI
-import com.fs.starfarer.api.combat.ShipSystemAPI
 import com.fs.starfarer.api.combat.ViewportAPI
-import org.boxutil.units.standard.entity.FlareEntity
 import org.lwjgl.opengl.GL11
 import org.lwjgl.util.vector.Vector2f
 import org.magiclib.util.MagicUI
@@ -19,22 +18,24 @@ import java.awt.Color
 import java.util.EnumSet
 import kotlin.math.cos
 import kotlin.math.roundToInt
+import kotlin.random.Random
 
 /**
- * 星翼-级虚数光翼渲染：按虚数充能档位（<30% / 30~80% / >80%）驱动呼吸频率、着色与残影密度，
- * 高档位在两侧翼尖维持微型十字星芒；折跃滑行与超翼过载期间整体转入虚数紫红。
- * 玩家舰额外在 HUD 绘制充能条（过载期转为倒计时条）。
+ * 星翼-级虚数光翼渲染：按虚数充能档位驱动呼吸频率与残影密度，贴图始终保持原色。
+ * 光翼 alpha 越高抖动幅度越大。玩家舰的充能条由独立的每帧插件在 UI 坐标阶段绘制。
  */
 object Xc002GhostWingsEffect {
 
     private const val ENGINE_KEY = "astd_xc_002_ghost_wings"
 
+    private const val HUD_ENGINE_KEY = "astd_xc_002_ghost_wings_hud"
+
     const val HULL_ID = "astd_xc_002"
     const val SPRITE_DARK = "graphics/ships/astd_xc_002_ghost_dark.png"
     const val SPRITE_LIGHT = "graphics/ships/astd_xc_002_ghost_light.png"
 
-    private const val WING_WIDTH = 208f
-    private const val WING_HEIGHT = 273f
+    private const val WING_WIDTH = 202f
+    private const val WING_HEIGHT = 264f
 
     private const val TIER_MID = 30f
     private const val TIER_HIGH = 80f
@@ -45,27 +46,39 @@ object Xc002GhostWingsEffect {
 
     private const val BREATH_ALPHA_MIN = 0.15f
 
+    private const val JITTER_AMPLITUDE = 2.5f
+
+    /** drawHUDStatusBar 的 HUD 纵向偏移：所有 HUD 状态条都从舰船屏幕坐标上方 16px 起。 */
+    private const val HUD_BAR_OFFSET_Y = 16f
+
+    /** 状态词与充能条左缘的水平间距。 */
+    private const val LABEL_GAP = 5f
+
+    /** 状态词字号，与 MagicUI 状态文本的 10 号字体一致。 */
+    private const val LABEL_FONT_SIZE = 10f
+
+    /** MagicUI.getTextWidth 以 14 号字体量取，换算到状态词字号需按比例缩放。 */
+    private const val MAGICUI_TEXT_FONT_SIZE = 14f
+
+    /** 状态词纵向微调：10 号字在 5px 高条带上做视觉居中（条顶距锚点 15px，字高 10px）。 */
+    private const val LABEL_OFFSET_Y = -3.5f
+
     private const val AFTERIMAGE_INTERVAL_MID = 0.08f
     private const val AFTERIMAGE_INTERVAL_OVERDRIVE = 0.04f
     private const val AFTERIMAGE_ALPHA = 0.12f
     private const val AFTERIMAGE_DURATION = 0.4f
     private const val AFTERIMAGE_DURATION_OVERDRIVE = 0.5f
 
-    private const val WINGTIP_FLARE_SIZE = 30f
-    private const val WINGTIP_FLARE_PULSE = 8f
-
-    private val TINT_LOW = Color(170, 200, 255)
-    private val TINT_HIGH = Color(160, 130, 255)
-    private val TINT_OVERDRIVE = Color(210, 70, 255)
-
-    private val HUD_CHARGE_BLUE = Color(120, 170, 255)
-    private val HUD_CHARGE_VIOLET = Color(160, 130, 255)
-    private val HUD_OVERDRIVE = Color(210, 70, 255)
-    private val HUD_BORDER = Color(40, 30, 70, 200)
+    private val HUD_CHARGE_LOW = Color(120, 170, 255)
+    private val HUD_CHARGE_READY = Color(150, 205, 255)
+    private val HUD_OVERDRIVE = Color(110, 225, 255)
+    private val HUD_BORDER = Color(30, 50, 90, 200)
 
     private val log = AstdLog.logger
 
     private val loadedSprites = mutableSetOf<String>()
+
+    private val labelFontMissing = java.util.concurrent.atomic.AtomicBoolean(false)
 
     fun preloadTextures() {
         var loaded = 0
@@ -82,13 +95,23 @@ object Xc002GhostWingsEffect {
     }
 
     fun ensureInstalled(engine: CombatEngineAPI) {
-        if (engine.customData[ENGINE_KEY] != null) return
-        try {
-            val plugin = Plugin(engine)
-            engine.addLayeredRenderingPlugin(plugin)
-            engine.customData[ENGINE_KEY] = plugin
-        } catch (t: Throwable) {
-            log.warn("[ASTD] 虚数之翼渲染器安装失败", t)
+        if (engine.customData[ENGINE_KEY] == null) {
+            try {
+                val plugin = Plugin(engine)
+                engine.addLayeredRenderingPlugin(plugin)
+                engine.customData[ENGINE_KEY] = plugin
+            } catch (t: Throwable) {
+                log.warn("[ASTD] 虚数之翼渲染器安装失败", t)
+            }
+        }
+        if (engine.customData[HUD_ENGINE_KEY] == null) {
+            try {
+                val hud = HudPlugin(engine)
+                engine.addPlugin(hud)
+                engine.customData[HUD_ENGINE_KEY] = hud
+            } catch (t: Throwable) {
+                log.warn("[ASTD] 虚数之翼充能条插件安装失败", t)
+            }
         }
     }
 
@@ -97,27 +120,13 @@ object Xc002GhostWingsEffect {
         plugin.track(ship)
     }
 
-    private class WingtipFlares(
-        val left: FlareEntity,
-        val right: FlareEntity,
-    ) {
-        val expired: Boolean get() = left.hasDelete() || right.hasDelete()
-
-        fun dispose() {
-            if (!left.hasDelete()) BoxUtilCombatVfx.removeEntity(left)
-            if (!right.hasDelete()) BoxUtilCombatVfx.removeEntity(right)
-        }
-    }
-
     private class Attachment(
         val ship: ShipAPI,
         var breathPhase: Float = 0f,
         var afterimageTimer: Float = 0f,
         var alpha: Float = 0f,
-        var tint: Color = Color.WHITE,
-        var wingtips: WingtipFlares? = null,
-        var wingtipDisabled: Boolean = false,
-        var pulsePhase: Float = 0f,
+        var jitterX: Float = 0f,
+        var jitterY: Float = 0f,
     )
 
     private class Plugin(private val engine: CombatEngineAPI) : BaseCombatLayeredRenderingPlugin(
@@ -149,7 +158,6 @@ object Xc002GhostWingsEffect {
                 val att = it.next().value
                 val ship = att.ship
                 if (ship.isHulk || !engine.isEntityInPlay(ship)) {
-                    att.wingtips?.dispose()
                     it.remove()
                     continue
                 }
@@ -162,34 +170,26 @@ object Xc002GhostWingsEffect {
             val pool = ImaginaryCharge.of(ship)
             val chargeFrac = (pool.charge / ImaginaryWingsTuning.CHARGE_MAX).coerceIn(0f, 1f)
             val overdrive = pool.inOverdrive
-            val systemActive = ship.system?.state == ShipSystemAPI.SystemState.ACTIVE ||
-                ship.system?.state == ShipSystemAPI.SystemState.IN ||
-                ship.system?.state == ShipSystemAPI.SystemState.OUT
 
             val period = when {
-                overdrive || chargeFrac * ImaginaryWingsTuning.CHARGE_MAX >= TIER_HIGH -> BREATH_PERIOD_HIGH
+                overdrive || pool.charge >= TIER_HIGH -> BREATH_PERIOD_HIGH
                 pool.charge >= TIER_MID -> BREATH_PERIOD_MID
                 else -> BREATH_PERIOD_LOW
             }
             att.breathPhase = (att.breathPhase + amount / period) % 1f
-            // 充能越满呼吸亮度上限越高，低档只剩微弱电容辉光
             val alphaCap = 0.5f + 0.5f * chargeFrac
-            att.alpha = (BREATH_ALPHA_MIN + (alphaCap - BREATH_ALPHA_MIN) *
-                (0.5f - 0.5f * cos((att.breathPhase * 2f * Math.PI).toFloat())))
+            att.alpha = BREATH_ALPHA_MIN + (alphaCap - BREATH_ALPHA_MIN) *
+                (0.5f - 0.5f * cos((att.breathPhase * 2f * Math.PI).toFloat()))
 
-            att.tint = when {
-                overdrive || systemActive -> TINT_OVERDRIVE
-                pool.charge < TIER_MID -> TINT_LOW
-                else -> lerpColor(TINT_LOW, TINT_HIGH, (pool.charge - TIER_MID) / (TIER_HIGH - TIER_MID))
-            }
+            val amplitude = JITTER_AMPLITUDE * att.alpha
+            att.jitterX = (Random.nextFloat() * 2f - 1f) * amplitude
+            att.jitterY = (Random.nextFloat() * 2f - 1f) * amplitude
 
-            // 残影：低档不产生；中高档 0.08s 节拍；过载期加密到 0.04s 且拖更久
             val afterimageInterval = if (overdrive) AFTERIMAGE_INTERVAL_OVERDRIVE else AFTERIMAGE_INTERVAL_MID
             val afterimageDuration = if (overdrive) AFTERIMAGE_DURATION_OVERDRIVE else AFTERIMAGE_DURATION
             if (pool.charge >= TIER_MID && SPRITE_DARK in loadedSprites) {
                 att.afterimageTimer += amount
                 if (att.afterimageTimer >= afterimageInterval) {
-                    // 单帧最多一张，避免低档积压的计时在跨档后爆发式生成
                     att.afterimageTimer = 0f
                     ASTDAfterimageEffect.spawn(
                         engine,
@@ -199,7 +199,7 @@ object Xc002GhostWingsEffect {
                             facing = ship.facing,
                             width = WING_WIDTH,
                             height = WING_HEIGHT,
-                            color = att.tint,
+                            color = Color.WHITE,
                             startAlpha = AFTERIMAGE_ALPHA,
                             duration = afterimageDuration,
                             growth = 0f,
@@ -209,81 +209,6 @@ object Xc002GhostWingsEffect {
             } else {
                 att.afterimageTimer = 0f
             }
-
-            updateWingtips(att, amount, chargeFrac)
-        }
-
-        /** 高充能档位（>80%）在两侧翼尖维持微型十字星芒，随呼吸脉动。 */
-        private fun updateWingtips(att: Attachment, amount: Float, chargeFrac: Float) {
-            val ship = att.ship
-            val high = poolChargeOf(ship) >= TIER_HIGH
-            if (!high) {
-                att.wingtips?.dispose()
-                att.wingtips = null
-                return
-            }
-            var flares = att.wingtips
-            if (flares == null || flares.expired) {
-                flares?.dispose()
-                flares = if (att.wingtipDisabled) null else createWingtips(ship, att)
-                att.wingtips = flares ?: return
-            }
-            att.pulsePhase = (att.pulsePhase + amount / BREATH_PERIOD_HIGH) % 1f
-            val pulse = 0.5f - 0.5f * cos((att.pulsePhase * 2f * Math.PI).toFloat())
-            val size = WINGTIP_FLARE_SIZE + WINGTIP_FLARE_PULSE * pulse * chargeFrac
-            val anchor = ImaginaryWingsTuning.WING_ANCHORS.last()
-            val tint = att.tint
-            val left = ImaginaryWingsTuning.anchorWorld(ship, anchor, 1)
-            val right = ImaginaryWingsTuning.anchorWorld(ship, anchor, -1)
-            flares.left.setLocation(left)
-            flares.left.setSize(size, size)
-            flares.left.setCoreColor(tint)
-            flares.right.setLocation(right)
-            flares.right.setSize(size, size)
-            flares.right.setCoreColor(tint)
-        }
-
-        private fun poolChargeOf(ship: ShipAPI): Float = ImaginaryCharge.of(ship).charge
-
-        private fun createWingtips(ship: ShipAPI, att: Attachment): WingtipFlares? {
-            BoxUtilCombatVfx.ensureReady(engine)
-            val left = createWingtipFlare(ship, 1, att) ?: return null
-            val right = createWingtipFlare(ship, -1, att)
-            if (right == null) {
-                BoxUtilCombatVfx.removeEntity(left)
-                return null
-            }
-            return WingtipFlares(left, right)
-        }
-
-        private fun createWingtipFlare(ship: ShipAPI, side: Int, att: Attachment): FlareEntity? {
-            val entity = try {
-                FlareEntity()
-            } catch (t: Throwable) {
-                att.wingtipDisabled = true
-                log.warn("[ASTD] 虚数之翼翼尖星芒建实体失败（${t.javaClass.simpleName}），本舰星芒缺席", t)
-                return null
-            }
-            entity.setLayer(CombatEngineLayers.ABOVE_SHIPS_AND_MISSILES_LAYER)
-            entity.setAdditiveBlend()
-            entity.setSharpDisc()
-            entity.isFlick = false
-            entity.glowPower = 0f
-            entity.noisePower = 0.1f
-            entity.setCoreColor(TINT_HIGH)
-            entity.setFringeColor(TINT_OVERDRIVE)
-            entity.setSize(WINGTIP_FLARE_SIZE, WINGTIP_FLARE_SIZE)
-            // 常驻计时器钉超长 full，生命周期由档位逻辑显式 dispose
-            entity.setGlobalTimer(0f, 1e7f, 0f)
-            entity.setStateVanilla(ImaginaryWingsTuning.anchorWorld(ship, ImaginaryWingsTuning.WING_ANCHORS.last(), side), 0f)
-            val state = BoxUtilCombatVfx.addEntity(engine, entity)
-            if (state != 0) {
-                att.wingtipDisabled = true
-                log.warn("[ASTD] 虚数之翼翼尖星芒注册失败（addEntity 返回 $state），本舰星芒缺席")
-                entity.delete()
-                return null
-            }
-            return entity
         }
 
         override fun render(layer: CombatEngineLayers, viewport: ViewportAPI) {
@@ -303,25 +228,39 @@ object Xc002GhostWingsEffect {
                     if (ship.isHulk || !engine.isEntityInPlay(ship)) continue
                     val alpha = att.alpha * viewport.alphaMult
                     if (alpha <= 0.002f) continue
-                    // BoxUtil 实体快照与舰船渲染存在时相差，本体必须在 render 阶段直接采样舰船位置和朝向。
-                    renderWing(SPRITE_DARK, ship, att.tint, alpha)
-                    renderWing(SPRITE_LIGHT, ship, att.tint, alpha)
+                    renderWing(SPRITE_DARK, att, alpha)
+                    renderWing(SPRITE_LIGHT, att, alpha)
                 }
             } finally {
                 GL11.glPopAttrib()
             }
-
-            // HUD 充能条（MagicUI 内部已过滤非玩家舰与 HUD 隐藏状态）
-            for ((_, att) in attachments) {
-                val ship = att.ship
-                if (ship !== engine.playerShip) continue
-                renderHudBar(ship)
-            }
         }
 
-        private fun renderHudBar(ship: ShipAPI) {
-            val pool = ImaginaryCharge.of(ship)
-            // MagicUI 文字路径不重置 MODELVIEW，世界坐标渲染层里必须先将 MODELVIEW 归一，否则文字被相机矩阵甩出屏幕
+        private fun renderWing(spritePath: String, att: Attachment, alpha: Float) {
+            if (spritePath !in loadedSprites) return
+            val ship = att.ship
+            val sprite = Global.getSettings().getSprite(spritePath)
+            sprite.setAdditiveBlend()
+            sprite.color = Color.WHITE
+            sprite.alphaMult = alpha
+            sprite.setSize(WING_WIDTH, WING_HEIGHT)
+            sprite.angle = ship.facing - 90f
+            sprite.renderAtCenter(ship.location.x + att.jitterX, ship.location.y + att.jitterY)
+        }
+    }
+
+    private class HudPlugin(private val engine: CombatEngineAPI) : BaseEveryFrameCombatPlugin() {
+
+        override fun renderInUICoords(viewport: ViewportAPI) {
+            val ship = engine.playerShip ?: return
+            if (!ship.isAlive || ship.isHulk) return
+            if (ship.hullSpec?.hullId != HULL_ID && ship.hullSpec?.baseHullId != HULL_ID) return
+            val pool = ImaginaryCharge.peek(ship) ?: return
+            // MagicUI 文字路径在现有投影上追加 glOrtho 且不改回矩阵模式与视口，必须以单位矩阵起步并整体隔离
+            GL11.glPushAttrib(GL11.GL_TRANSFORM_BIT or GL11.GL_VIEWPORT_BIT or GL11.GL_ENABLE_BIT or GL11.GL_COLOR_BUFFER_BIT or GL11.GL_CURRENT_BIT)
+            GL11.glMatrixMode(GL11.GL_PROJECTION)
+            GL11.glPushMatrix()
+            GL11.glLoadIdentity()
             GL11.glMatrixMode(GL11.GL_MODELVIEW)
             GL11.glPushMatrix()
             GL11.glLoadIdentity()
@@ -330,42 +269,54 @@ object Xc002GhostWingsEffect {
             } finally {
                 GL11.glMatrixMode(GL11.GL_MODELVIEW)
                 GL11.glPopMatrix()
+                GL11.glMatrixMode(GL11.GL_PROJECTION)
+                GL11.glPopMatrix()
+                GL11.glPopAttrib()
             }
         }
 
         private fun drawHudBar(ship: ShipAPI, pool: ImaginaryCharge) {
-            if (pool.inOverdrive) {
-                val seconds = pool.overdriveRemaining
-                val fill = (seconds / ImaginaryWingsTuning.OVERDRIVE_SECONDS).coerceIn(0f, 1f)
-                MagicUI.drawHUDStatusBar(
-                    ship, fill, HUD_OVERDRIVE, HUD_BORDER, 0f,
-                    "${(seconds * 10f).roundToInt() / 10f}s", null, true,
+            val viewport = engine.viewport ?: return
+            val overdrive = pool.inOverdrive
+            val fill = if (overdrive) {
+                (pool.overdriveRemaining / ImaginaryWingsTuning.OVERDRIVE_SECONDS).coerceIn(0f, 1f)
+            } else {
+                (pool.charge / ImaginaryWingsTuning.CHARGE_MAX).coerceIn(0f, 1f)
+            }
+            val color = when {
+                overdrive -> HUD_OVERDRIVE
+                pool.charge < ImaginaryWingsTuning.OVERDRAFT_THRESHOLD -> HUD_CHARGE_LOW
+                else -> HUD_CHARGE_READY
+            }
+            MagicUI.drawHUDStatusBar(ship, fill, color, HUD_BORDER, 0f, null, null, true)
+            // 状态词独立绘制在条下方，与 drawHUDStatusBar 使用同一套屏幕坐标与 HUD 偏移
+            if (MagicUI.TODRAW10 == null) {
+                if (labelFontMissing.compareAndSet(false, true)) {
+                    log.warn("[ASTD] MagicUI 小字号字体缺失（TODRAW10 为空），虚数之翼充能条的状态词无法绘制")
+                }
+                return
+            }
+            val label = if (overdrive) {
+                I18n.t(
+                    I18n.Categories.MOD, "hud.imaginary_wings.line.overdrive",
+                    "value" to (pool.overdriveRemaining * 10f).roundToInt() / 10f,
                 )
             } else {
-                val fill = (pool.charge / ImaginaryWingsTuning.CHARGE_MAX).coerceIn(0f, 1f)
-                val color = if (pool.charge < ImaginaryWingsTuning.OVERDRAFT_THRESHOLD) HUD_CHARGE_BLUE else HUD_CHARGE_VIOLET
-                MagicUI.drawHUDStatusBar(
-                    ship, fill, color, HUD_BORDER, 0f,
-                    "${pool.charge.roundToInt()}%", null, true,
+                I18n.t(
+                    I18n.Categories.MOD, "hud.imaginary_wings.line.charge",
+                    "value" to pool.charge.roundToInt(),
                 )
             }
+            // 状态词贴在充能条左缘：MagicUI 的状态条与状态文本都先加同一份 HUD 偏移、再整体乘 UI_SCALING，
+            // 因此按未缩放单位算好条左缘后直接减文字宽度即可，HUD 偏移与缩放都会自然抵消
+            val screenX = viewport.convertWorldXtoScreenX(ship.location.x).toInt().toFloat()
+            val screenY = viewport.convertWorldYtoScreenY(ship.location.y).toInt().toFloat()
+            val textWidth = MagicUI.getTextWidth(label) * (LABEL_FONT_SIZE / MAGICUI_TEXT_FONT_SIZE)
+            val anchor = Vector2f(
+                screenX - textWidth - LABEL_GAP,
+                screenY + HUD_BAR_OFFSET_Y + LABEL_OFFSET_Y,
+            )
+            MagicUI.addStatusText(ship, label, color, anchor)
         }
-
-        private fun renderWing(spritePath: String, ship: ShipAPI, tint: Color, alpha: Float) {
-            if (spritePath !in loadedSprites) return
-            val sprite = Global.getSettings().getSprite(spritePath)
-            sprite.setAdditiveBlend()
-            sprite.color = Color(tint.red, tint.green, tint.blue, 255)
-            sprite.alphaMult = alpha
-            sprite.setSize(WING_WIDTH, WING_HEIGHT)
-            sprite.angle = ship.facing - 90f
-            sprite.renderAtCenter(ship.location.x, ship.location.y)
-        }
-    }
-
-    private fun lerpColor(a: Color, b: Color, t: Float): Color {
-        val u = t.coerceIn(0f, 1f)
-        fun channel(x: Int, y: Int) = (x + (y - x) * u).roundToInt().coerceIn(0, 255)
-        return Color(channel(a.red, b.red), channel(a.green, b.green), channel(a.blue, b.blue))
     }
 }
