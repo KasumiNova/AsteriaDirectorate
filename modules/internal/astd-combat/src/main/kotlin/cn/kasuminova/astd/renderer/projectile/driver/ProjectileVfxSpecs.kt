@@ -364,7 +364,9 @@ object ProjectileVfxSpecs {
         width = 14f,
         length = 260f,
         range = range,
-        rangeRatio = 0.5f,
+        // 拖尾必须短于弹间距（0.15s 射速 × 1500 弹速 = 225su），否则相邻弹拖尾连成一片，
+        // 视觉上像单个长射弹，前一发命中时会被误判为"未碰撞先结算"
+        rangeRatio = 0.2f,
         trailGlow = 0.8f,
         boltFlare = 40f,
         muzzleBurst = MuzzleBurst(length = 90f, halfAngleDeg = 24f, duration = 0.25f)
@@ -389,7 +391,7 @@ object ProjectileVfxSpecs {
         width = 21f,
         length = 390f,
         range = range,
-        rangeRatio = 0.5f,
+        rangeRatio = 0.2f,
         trailGlow = 0.9f,
         boltFlare = 60f,
         muzzleBurst = MuzzleBurst(length = 140f, halfAngleDeg = 26f, duration = 0.35f)
