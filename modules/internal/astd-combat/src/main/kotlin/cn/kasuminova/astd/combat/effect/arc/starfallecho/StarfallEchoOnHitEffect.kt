@@ -2,6 +2,7 @@ package cn.kasuminova.astd.combat.effect.arc.starfallecho
 
 import cn.kasuminova.astd.api.buff.buffHost
 import cn.kasuminova.astd.combat.effect.arc.starfallecho.StarfallEchoOnFireEffect.Companion.FINAL_SHOT_MARK_KEY
+import cn.kasuminova.astd.impl.combat.DcrDamageAttribution
 import cn.kasuminova.astd.impl.combat.ExplosionStrikeImpl
 import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import com.fs.starfarer.api.combat.CombatEngineAPI
@@ -85,6 +86,7 @@ class StarfallEchoOnHitEffect : OnHitEffectPlugin {
                 DamageType.ENERGY, 0f,
                 !covered, false, source, true,
             )
+            DcrDamageAttribution.clarify(source, ship, DamageType.ENERGY, bonus, 0f, projectile.weapon?.displayName)
         }
 
         // 直击目标豁免 AOE 避免重复结算；模块舰（空间站）逐模块全额结算会按模块数倍数击穿，按站选举一名代表。
@@ -112,6 +114,7 @@ class StarfallEchoOnHitEffect : OnHitEffectPlugin {
                     DamageType.ENERGY, 0f,
                     victim is ShipAPI && !covered, false, source, true,
                 )
+                DcrDamageAttribution.clarify(source, victim, DamageType.ENERGY, damage, 0f, projectile.weapon?.displayName)
             }
         }
 

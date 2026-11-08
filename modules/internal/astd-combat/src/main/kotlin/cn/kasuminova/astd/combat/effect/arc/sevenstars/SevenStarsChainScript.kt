@@ -16,6 +16,7 @@ class SevenStarsChainScript(
     private val source: ShipAPI?,
     private val tuning: SevenStarsDifficulty.SevenStarsTuning,
     private val panelDamage: Float,
+    private val weaponName: String?,
     private val jumpRange: Float,
     private val owner: Int,
     initialJumps: Int,
@@ -159,6 +160,7 @@ class SevenStarsChainScript(
             panelDamage = panelDamage,
             mult = pending.mult,
             aoeRadius = SevenStarsDifficulty.AOE_RADIUS,
+            weaponName = weaponName,
         )
         SevenStarsVfx.riftBlast(engine, pending.at, scale = flashScale(pending.jumpIndex))
         bumpTelemetry(engine, TELEMETRY_FLASH)
@@ -232,6 +234,7 @@ class SevenStarsChainScript(
                 damage = panelDamage * pending.fraction,
                 emp = pending.emp,
                 source = source,
+                weaponName = weaponName,
             )
         }
         SevenStarsVfx.riftBlast(engine, pending.at, scale = scale)

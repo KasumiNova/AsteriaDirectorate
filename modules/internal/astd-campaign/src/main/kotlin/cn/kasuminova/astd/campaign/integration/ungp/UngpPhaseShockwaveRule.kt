@@ -1,5 +1,6 @@
 package cn.kasuminova.astd.campaign.integration.ungp
 
+import cn.kasuminova.astd.impl.combat.DcrDamageAttribution
 import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
 import cn.kasuminova.astd.renderer.boxutil.pool.FlareParticlePool
 import cn.kasuminova.astd.renderer.boxutil.pool.PooledCombatVfx
@@ -115,6 +116,7 @@ class UngpPhaseShockwaveRule : UngpRuleEffect(), UNGP_CombatTag {
             Vector2f(target.location)
         }
         engine.applyDamage(target, point, damage, DamageType.ENERGY, damage, false, true, ship, false)
+        DcrDamageAttribution.clarify(ship, target, DamageType.ENERGY, damage, damage, rule?.name)
         applyPush(target.location, target.velocity, center, push * targetFactor)
     }
 

@@ -2,6 +2,7 @@ package cn.kasuminova.astd.combat.effect.arc.sevenstars
 
 import cn.kasuminova.astd.combat.effect.arc.sevenstars.SevenStarsDamageHandler.TERMINAL_CORE_RADIUS
 import cn.kasuminova.astd.combat.effect.arc.sevenstars.SevenStarsDamageHandler.TERMINAL_SPACING
+import cn.kasuminova.astd.impl.combat.DcrDamageAttribution
 import cn.kasuminova.astd.impl.combat.ExplosionStrikeImpl
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
@@ -36,6 +37,7 @@ object SevenStarsDamageHandler {
         panelDamage: Float,
         mult: Float,
         aoeRadius: Float,
+        weaponName: String?,
     ): Int {
         val damage = panelDamage * mult
         val targets = LinkedHashSet<CombatEntityAPI>()
@@ -64,6 +66,7 @@ object SevenStarsDamageHandler {
                 source,
                 true,
             )
+            DcrDamageAttribution.clarify(source, target, DamageType.ENERGY, damage, 0f, weaponName)
             if ((target as? ShipAPI)?.isHulk == true ||
                 !engine.isEntityInPlay(target) ||
                 (target as? MissileAPI)?.isExpired == true
@@ -81,6 +84,7 @@ object SevenStarsDamageHandler {
         damage: Float,
         emp: Float,
         source: ShipAPI?,
+        weaponName: String?,
     ) {
         engine.applyDamage(
             ship,
@@ -93,6 +97,7 @@ object SevenStarsDamageHandler {
             source,
             true,
         )
+        DcrDamageAttribution.clarify(source, ship, DamageType.ENERGY, damage, emp, weaponName)
     }
 
     // 走位取点沿用原版 RiftCascadeEffect.getNextArcLoc 的碰撞箱贴边算法。

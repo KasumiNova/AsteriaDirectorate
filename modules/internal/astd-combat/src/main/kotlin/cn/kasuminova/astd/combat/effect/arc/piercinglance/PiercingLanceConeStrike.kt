@@ -53,6 +53,7 @@ object PiercingLanceConeStrike {
             hitShips = true,
             hitFighters = true,
             hitMissiles = true,
+            weaponName = projectile.weapon?.displayName,
         )
     }
 

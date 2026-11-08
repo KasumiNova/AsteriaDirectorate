@@ -27,4 +27,18 @@ interface AnnihilationVortexCollapse {
         damage: Float,
         source: ShipAPI?,
     ): Int
+
+    /**
+     * 带战报归属的坍缩结算，与 [resolve] 的差异仅在于把伤害登记到 [weaponName]。
+     *
+     * [weaponName] 为空时行为与 [resolve] 完全一致；归属不改变伤害数值与目标筛选。
+     */
+    fun resolve(
+        engine: CombatEngineAPI,
+        center: Vector2f,
+        radius: Float,
+        damage: Float,
+        source: ShipAPI?,
+        weaponName: String?,
+    ): Int
 }

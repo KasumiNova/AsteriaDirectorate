@@ -76,6 +76,7 @@ class HeavyIonPulseOnHitEffect : OnHitEffectPlugin {
                 HeavyIonPulseVfx.pierce(
                     engine, ship, hitPoint, extra, applied,
                     source = projectile.source, mult = mult, baseEmp = baseEmp, arcEmp = arcEmp,
+                    weaponName = projectile.weapon?.displayName,
                 )
             }
         }

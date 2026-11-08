@@ -6,6 +6,7 @@ import cn.kasuminova.astd.api.combat.ConeTargetFilter
 import cn.kasuminova.astd.combat.effect.arc.positronshockwave.PositronShockwaveFuseScript.Companion.detonate
 import cn.kasuminova.astd.combat.effect.base.SicWeaponUpgradeFlags
 import cn.kasuminova.astd.impl.combat.ConeImpactHandler
+import cn.kasuminova.astd.impl.combat.DcrDamageAttribution
 import cn.kasuminova.astd.impl.render.ConeImpactVfx
 import cn.kasuminova.astd.impl.render.ConeImpactVfxSpec
 import com.fs.starfarer.api.Global
@@ -130,6 +131,7 @@ class PositronShockwaveFuseScript(
             if (engine.customData[claimKey] == true) return
             engine.customData[claimKey] = true
             var dealtDamage = spec.damage
+            val weaponName = projectile.weapon?.displayName
             val targets = ConeImpactHandler.resolve(
                 engine,
                 ConeImpactSpec(
@@ -152,6 +154,7 @@ class PositronShockwaveFuseScript(
                         }
                         (spec.damage * (1f + swarm * spec.densityBonus)).also { dealtDamage = it }
                     },
+                    weaponName = weaponName,
                 ),
             )
             val fighterExtraHe = PositronShockwaveDifficulty.fighterExtraHeDamage(
@@ -163,6 +166,7 @@ class PositronShockwaveFuseScript(
                     engine.applyDamage(
                         target, loc, fighterExtraHe, DamageType.HIGH_EXPLOSIVE, 0f, true, false, source, true,
                     )
+                    DcrDamageAttribution.clarify(source, target, DamageType.HIGH_EXPLOSIVE, fighterExtraHe, 0f, weaponName)
                 }
             }
             bumpTelemetry(engine, detonateTelemetryKey)

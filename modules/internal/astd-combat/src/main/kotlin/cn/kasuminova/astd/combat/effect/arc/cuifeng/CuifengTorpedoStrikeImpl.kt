@@ -1,6 +1,7 @@
 package cn.kasuminova.astd.combat.effect.arc.cuifeng
 
 import cn.kasuminova.astd.api.combat.CuifengTorpedoStrike
+import cn.kasuminova.astd.impl.combat.DcrDamageAttribution
 import cn.kasuminova.astd.impl.combat.ExplosionStrikeImpl
 import cn.kasuminova.astd.impl.combat.FullExplosionFalloffImpl
 import com.fs.starfarer.api.Global
@@ -74,6 +75,7 @@ object CuifengTorpedoStrikeImpl : CuifengTorpedoStrike {
                     target, ExplosionStrikeImpl.resolveDamagePoint(target, point), totalBonus,
                     DamageType.ENERGY, 0f, !covered, false, source, true,
                 )
+                DcrDamageAttribution.clarify(source, target, DamageType.ENERGY, totalBonus, 0f, projectile.weapon?.displayName)
                 bump(engine, TELE_ADAPTIVE_HITS)
                 engine.customData[TELE_LAST_ADAPTIVE_BONUS + ownerSuffix(owner)] = totalBonus
             }
@@ -99,6 +101,7 @@ object CuifengTorpedoStrikeImpl : CuifengTorpedoStrike {
                 victim !== projectile && !(victim === target && engine.isEntityInPlay(victim))
             },
             playSound = true,
+            weaponName = projectile.weapon?.displayName,
             coarseQuery = coarseQuery,
         )
         for (victim in aoeVictims) {

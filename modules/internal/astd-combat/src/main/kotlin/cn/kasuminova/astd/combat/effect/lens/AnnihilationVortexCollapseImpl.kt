@@ -25,6 +25,15 @@ class AnnihilationVortexCollapseImpl(
         radius: Float,
         damage: Float,
         source: ShipAPI?,
+    ): Int = resolve(engine, center, radius, damage, source, null)
+
+    override fun resolve(
+        engine: CombatEngineAPI,
+        center: Vector2f,
+        radius: Float,
+        damage: Float,
+        source: ShipAPI?,
+        weaponName: String?,
     ): Int {
         if (source == null) {
             if (!warnedNullSource) {
@@ -43,6 +52,7 @@ class AnnihilationVortexCollapseImpl(
             emp = 0f, source, source.owner,
             FullExplosionFalloffImpl,
             playSound = true,
+            weaponName = weaponName,
             coarseQuery = { c, r -> coarseQuery(engine, c, r) },
         ).size
     }

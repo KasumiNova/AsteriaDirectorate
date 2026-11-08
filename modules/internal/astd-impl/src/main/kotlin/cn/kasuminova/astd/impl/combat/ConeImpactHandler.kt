@@ -107,6 +107,7 @@ object ConeImpactHandler {
                     spec.source,
                     true,
                 )
+                DcrDamageAttribution.clarify(spec.source, target, spec.damageType, settledDamage, emp, spec.weaponName)
             }
         }
         return hits

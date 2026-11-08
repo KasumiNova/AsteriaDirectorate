@@ -55,7 +55,25 @@ object ExplosionStrikeImpl : ExplosionStrike {
         playSound: Boolean,
     ): List<CombatEntityAPI> = strike(
         engine, center, radius, damage, damageType, emp, source, owner,
-        falloff, victimFilter, playSound, LAZYLIB_COARSE_QUERY,
+        falloff, victimFilter, playSound, null, LAZYLIB_COARSE_QUERY,
+    )
+
+    override fun strike(
+        engine: CombatEngineAPI,
+        center: Vector2f,
+        radius: Float,
+        damage: Float,
+        damageType: DamageType,
+        emp: Float,
+        source: ShipAPI?,
+        owner: Int,
+        falloff: ExplosionFalloff,
+        victimFilter: (CombatEntityAPI) -> Boolean,
+        playSound: Boolean,
+        weaponName: String?,
+    ): List<CombatEntityAPI> = strike(
+        engine, center, radius, damage, damageType, emp, source, owner,
+        falloff, victimFilter, playSound, weaponName, LAZYLIB_COARSE_QUERY,
     )
 
     fun strike(
@@ -70,6 +88,7 @@ object ExplosionStrikeImpl : ExplosionStrike {
         falloff: ExplosionFalloff,
         victimFilter: (CombatEntityAPI) -> Boolean = { true },
         playSound: Boolean = true,
+        weaponName: String? = null,
         coarseQuery: (Vector2f, Float) -> List<CombatEntityAPI> = LAZYLIB_COARSE_QUERY,
     ): List<CombatEntityAPI> {
         if (radius.isNaN() || radius <= 0f) {
@@ -103,11 +122,13 @@ object ExplosionStrikeImpl : ExplosionStrike {
             val dmgPoint = (victim as? ShipAPI)?.let { resolveDamagePoint(it, center) } ?: Vector2f(center)
             val dist = MathUtils.getDistance(center, victim.location)
             val surfaceDist = (dist - victim.collisionRadius).coerceAtLeast(0f)
+            val victimDamage = falloff.damageFor(settledDamage, surfaceDist, radius)
             engine.applyDamage(
-                victim, dmgPoint, falloff.damageFor(settledDamage, surfaceDist, radius),
+                victim, dmgPoint, victimDamage,
                 damageType, settledEmp,
                 victim is ShipAPI && !covered, false, source, playSound,
             )
+            DcrDamageAttribution.clarify(source, victim, damageType, victimDamage, settledEmp, weaponName)
             victims += victim
         }
         return victims

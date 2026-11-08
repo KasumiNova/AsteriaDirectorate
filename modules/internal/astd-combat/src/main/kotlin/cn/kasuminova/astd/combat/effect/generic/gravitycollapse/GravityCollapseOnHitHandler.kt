@@ -1,6 +1,7 @@
 package cn.kasuminova.astd.combat.effect.generic.gravitycollapse
 
 import cn.kasuminova.astd.combat.effect.base.SicWeaponUpgradeFlags
+import cn.kasuminova.astd.impl.combat.DcrDamageAttribution
 import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
 import com.fs.starfarer.api.Global
@@ -132,7 +133,7 @@ internal class GravityCollapseOnHitHandler(
                 val distToSurface = (MathUtils.getDistance(point, loc) - cr).coerceAtLeast(0f)
                 if (distToSurface > radius) continue
 
-                applyTickToEntity(engine, source, other, point, tickDamageBase, values)
+                applyTickToEntity(engine, source, other, point, tickDamageBase, values, weapon.displayName)
             }
         } else {
             for (other in engine.ships) {
@@ -143,7 +144,7 @@ internal class GravityCollapseOnHitHandler(
                 val distToHull = (MathUtils.getDistance(point, other.location) - other.collisionRadius).coerceAtLeast(0f)
                 if (distToHull > radius) continue
 
-                applyTickToEntity(engine, source, other, point, tickDamageBase, values)
+                applyTickToEntity(engine, source, other, point, tickDamageBase, values, weapon.displayName)
             }
         }
 
@@ -157,6 +158,7 @@ internal class GravityCollapseOnHitHandler(
         point: Vector2f,
         damage: Float,
         values: GravityCollapseDifficulty.ResolvedValues,
+        weaponName: String,
     ) {
         val ship = other as? ShipAPI
         val shieldCovered = ship?.let { shieldCovers(it, point) } ?: false
@@ -193,6 +195,7 @@ internal class GravityCollapseOnHitHandler(
                 source,
                 true,
             )
+            DcrDamageAttribution.clarify(source, other, DamageType.HIGH_EXPLOSIVE, inputDamage, 0f, weaponName)
         }
 
         if (ship == null || ship.isHulk || shieldCovered) return

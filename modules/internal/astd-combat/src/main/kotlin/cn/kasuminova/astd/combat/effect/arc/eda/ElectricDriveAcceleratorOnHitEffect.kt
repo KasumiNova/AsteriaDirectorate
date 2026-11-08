@@ -3,6 +3,7 @@ package cn.kasuminova.astd.combat.effect.arc.eda
 import cn.kasuminova.astd.api.buff.getOrCreateBuffByWeapon
 import cn.kasuminova.astd.combat.effect.base.SicWeaponUpgradeFlags
 import cn.kasuminova.astd.impl.combat.CombatRandom
+import cn.kasuminova.astd.impl.combat.DcrDamageAttribution
 import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
@@ -81,6 +82,7 @@ class ElectricDriveAcceleratorOnHitEffect : OnHitEffectPlugin {
         if (!ElectricDriveAcceleratorDifficulty.shouldApplyExtra(extra)) return
         // applyDamage 不会触发二次 onHit 回调，无连锁结算。
         engine.applyDamage(target, hitPoint, extra, DamageType.KINETIC, 0f, false, true, source)
+        DcrDamageAttribution.clarify(source, target, DamageType.KINETIC, extra, 0f, weapon.displayName)
 
         spawnChargeFlash(engine, hitPoint)
         recordTelemetry(engine, source, extra)

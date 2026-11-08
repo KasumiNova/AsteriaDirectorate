@@ -46,6 +46,28 @@ interface ExplosionStrike {
     ): List<CombatEntityAPI>
 
     /**
+     * 带战报归属的范围爆炸结算，与 [strike] 的差异仅在于把每名受害者的伤害登记到 [weaponName]。
+     *
+     * [weaponName] 为空时行为与 [strike] 完全一致。归属只影响战斗统计的武器名归档，
+     * 不改变伤害数值、落点与目标筛选；对舰船目标的登记以 [source] 非空为前提。
+     * 未启用 Detailed Combat Results 时归属静默跳过。
+     */
+    fun strike(
+        engine: CombatEngineAPI,
+        center: Vector2f,
+        radius: Float,
+        damage: Float,
+        damageType: DamageType,
+        emp: Float,
+        source: ShipAPI?,
+        owner: Int,
+        falloff: ExplosionFalloff,
+        victimFilter: (CombatEntityAPI) -> Boolean,
+        playSound: Boolean,
+        weaponName: String?,
+    ): List<CombatEntityAPI>
+
+    /**
      * 返回伤害结算位置。护盾覆盖时返回盾面点，否则返回爆心或舰体内的截断点。
      * 护盾中心缺失或半径非正时记录 WARN，并使用舰体内的截断点。
      * 不走 [strike] 的单次直击与终结结算也必须先经本方法取点，禁止直接使用爆心。

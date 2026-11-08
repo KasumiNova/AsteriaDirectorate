@@ -2,6 +2,7 @@ package cn.kasuminova.astd.combat.effect.arc.heavyionpulse
 
 import cn.kasuminova.astd.api.combat.CombatFeedback
 import cn.kasuminova.astd.impl.combat.CombatFeedbackImpl
+import cn.kasuminova.astd.impl.combat.DcrDamageAttribution
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.DamageType
 import com.fs.starfarer.api.combat.ShipAPI
@@ -60,9 +61,11 @@ object HeavyIonPulseVfx {
         source: ShipAPI?,
         mult: Float,
         baseEmp: Float,
-        arcEmp: Float
+        arcEmp: Float,
+        weaponName: String?
     ) {
         engine.applyDamage(ship, point, 0f, DamageType.ENERGY, applied, false, false, source)
+        DcrDamageAttribution.clarify(source, ship, DamageType.ENERGY, 0f, applied, weaponName)
         feedback.floatingDamage(engine, point, extra, ARC_CORE, ship, source)
         engine.addHitParticle(point, Vector2f(), 30f, 1f, 0.2f, ARC_CORE)
 

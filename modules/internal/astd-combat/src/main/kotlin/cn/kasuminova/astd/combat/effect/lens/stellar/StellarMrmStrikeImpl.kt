@@ -2,6 +2,7 @@ package cn.kasuminova.astd.combat.effect.lens.stellar
 
 import cn.kasuminova.astd.api.combat.StellarMrmStrike
 import cn.kasuminova.astd.combat.effect.lens.stellar.StellarMrmStrikeImpl.LAZYLIB_COARSE_QUERY
+import cn.kasuminova.astd.impl.combat.DcrDamageAttribution
 import cn.kasuminova.astd.impl.combat.ExplosionStrikeImpl
 import cn.kasuminova.astd.impl.combat.FullExplosionFalloffImpl
 import cn.kasuminova.astd.renderer.effect.explosion.RiftExplosionVfx
@@ -81,11 +82,13 @@ object StellarMrmStrikeImpl : StellarMrmStrike {
 
         if (target is ShipAPI && target.isFighter && !shieldHit && !target.isHulk) {
             val covered = ExplosionStrikeImpl.shieldCovers(target, point)
+            val bonusDamage = StellarMrmStrikeMath.fighterBonusDamage(panel, fBonus)
             engine.applyDamage(
                 target, ExplosionStrikeImpl.resolveDamagePoint(target, point),
-                StellarMrmStrikeMath.fighterBonusDamage(panel, fBonus),
+                bonusDamage,
                 DamageType.ENERGY, 0f, !covered, false, source, true,
             )
+            DcrDamageAttribution.clarify(source, target, DamageType.ENERGY, bonusDamage, 0f, projectile.weapon?.displayName)
             bump(engine, TELE_BONUS_HITS)
             // 原版 EMP 通路（emp-only applyDamage / spawnEmpArc）均无法送达战机武器组件，
             // 只能逐武器扣 currHealth 结算，熄火与自修由原版组件机制完成。
@@ -115,6 +118,7 @@ object StellarMrmStrikeImpl : StellarMrmStrike {
                 victim !== projectile && !(victim === target && !engine.isEntityInPlay(victim))
             },
             playSound = true,
+            weaponName = projectile.weapon?.displayName,
             coarseQuery = coarseQuery,
         )
         for (victim in aoeVictims) {

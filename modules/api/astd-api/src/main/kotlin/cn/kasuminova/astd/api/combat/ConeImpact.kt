@@ -53,6 +53,12 @@ data class ConeImpactSpec(
      * 回调对每个目标返回相同的伤害值。
      */
     val damageAdjust: ConeDamageAdjust? = null,
+
+    /**
+     * 战报归属的武器名；null 时不登记归属，战报把本次伤害记为未知来源。
+     * 归属不改变伤害数值与目标筛选，仅在 Detailed Combat Results 启用时对舰船目标生效。
+     */
+    val weaponName: String? = null,
 )
 
 /** 判断通过类型、归属与几何筛选的目标是否接受伤害。 */

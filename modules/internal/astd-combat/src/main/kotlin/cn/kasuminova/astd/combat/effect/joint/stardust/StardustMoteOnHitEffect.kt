@@ -1,5 +1,6 @@
 package cn.kasuminova.astd.combat.effect.joint.stardust
 
+import cn.kasuminova.astd.impl.combat.DcrDamageAttribution
 import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
@@ -34,17 +35,21 @@ class StardustMoteOnHitEffect : OnHitEffectPlugin {
 
         when {
             target is MissileAPI -> {
+                val damage = base * values.antiMissileBonus
                 engine.applyDamage(
-                    projectile, target, point, base * values.antiMissileBonus,
+                    projectile, target, point, damage,
                     DamageType.ENERGY, 0f, false, false, source, true,
                 )
+                DcrDamageAttribution.clarify(source, target, DamageType.ENERGY, damage, 0f, projectile.weapon?.displayName)
             }
 
             target is ShipAPI && target.isFighter -> {
+                val damage = base * values.antiFighterBonus
                 engine.applyDamage(
-                    projectile, target, point, base * values.antiFighterBonus,
+                    projectile, target, point, damage,
                     DamageType.ENERGY, 0f, false, false, source, true,
                 )
+                DcrDamageAttribution.clarify(source, target, DamageType.ENERGY, damage, 0f, projectile.weapon?.displayName)
             }
 
             target is ShipAPI -> {

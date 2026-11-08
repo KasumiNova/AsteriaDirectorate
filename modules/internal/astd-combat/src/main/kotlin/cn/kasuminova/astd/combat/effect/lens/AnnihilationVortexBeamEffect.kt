@@ -155,7 +155,7 @@ class AnnihilationVortexBeamEffect : EveryFrameWeaponEffectPlugin {
                 } else if (center != null) {
                     val damage = AnnihilationVortexDifficulty.collapseDamage(p.convertedTotal, aoeMult)
                     val collapseRadius = AnnihilationVortexDifficulty.collapseRadiusFor(radius)
-                    val hits = collapse.resolve(engine, center, collapseRadius, damage, ship)
+                    val hits = collapse.resolve(engine, center, collapseRadius, damage, ship, weapon.displayName)
                     AnnihilationVortexVfx.collapse(engine, center, collapseRadius)
                     telemetryInc(engine, TELEMETRY_COLLAPSE_COUNT)
                     telemetryRecord(

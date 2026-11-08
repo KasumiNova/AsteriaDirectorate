@@ -1,6 +1,7 @@
 package cn.kasuminova.astd.combat.effect.lens.iceshard
 
 import cn.kasuminova.astd.renderer.projectile.driver.ProjectileVfxDriverPlugin
+import cn.kasuminova.astd.impl.combat.DcrDamageAttribution
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseEveryFrameCombatPlugin
 import com.fs.starfarer.api.combat.CollisionClass
@@ -111,6 +112,7 @@ class IceShardAttachScript(
                     ship, Vector2f(worldPoint), tick,
                     DamageType.ENERGY, 0f, true, false, source, true,
                 )
+                DcrDamageAttribution.clarify(source, ship, DamageType.ENERGY, tick, 0f, shard.weapon?.displayName)
                 engine.customData[TELEMETRY_TICKS] = (engine.customData[TELEMETRY_TICKS] as? Int ?: 0) + 1
             }
             IceShardMirvVfx.spawnAttachNebula(engine, worldPoint, random)
