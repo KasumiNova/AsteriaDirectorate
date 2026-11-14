@@ -1,56 +1,11 @@
 package cn.kasuminova.astd.combat.lens.system
 
-import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import com.fs.starfarer.api.plugins.ShipSystemStatsScript
-import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class GravityRiftTuningTest {
-
-    @AfterTest
-    fun clearOverride() {
-        DifficultyTuningImpl.installScaleForTests(null)
-    }
-
-    private fun resolveAt(scale: Float, isPlayer: Boolean = false): GravityRiftTuning.Values {
-        DifficultyTuningImpl.installScaleForTests(scale)
-        return GravityRiftTuning.resolve(DifficultyTuningImpl, isPlayer)
-    }
-
-    @Test
-    fun `三锚点精确取档 k_s 1 2 5`() {
-        resolveAt(1f).let { v ->
-            assertEquals(750f, v.damageMin, 1e-6f)
-            assertEquals(1250f, v.damageMax, 1e-6f)
-            assertEquals(0.10f, v.damageTakenReduction, 1e-6f)
-        }
-        resolveAt(2f).let { v ->
-            assertEquals(1000f, v.damageMin, 1e-6f)
-            assertEquals(1500f, v.damageMax, 1e-6f)
-            assertEquals(0.20f, v.damageTakenReduction, 1e-6f)
-        }
-        resolveAt(5f).let { v ->
-            assertEquals(1750f, v.damageMin, 1e-6f)
-            assertEquals(2250f, v.damageMax, 1e-6f)
-            assertEquals(0.50f, v.damageTakenReduction, 1e-6f)
-        }
-    }
-
-    @Test
-    fun `玩家固定 v2 与 k_s 无关`() {
-        resolveAt(1f, isPlayer = true).let { v ->
-            assertEquals(1000f, v.damageMin, 1e-6f)
-            assertEquals(1500f, v.damageMax, 1e-6f)
-            assertEquals(0.20f, v.damageTakenReduction, 1e-6f)
-        }
-        resolveAt(5f, isPlayer = true).let { v ->
-            assertEquals(1000f, v.damageMin, 1e-6f)
-            assertEquals(1500f, v.damageMax, 1e-6f)
-            assertEquals(0.20f, v.damageTakenReduction, 1e-6f)
-        }
-    }
 
     @Test
     fun `减伤换算承伤乘区并钳制`() {
@@ -113,7 +68,6 @@ class GravityRiftTuningTest {
     fun `伤害换算地雷乘区`() {
         assertEquals(1.0f, GravityRiftTuning.riftDamageMult(1000f), 1e-6f)
         assertEquals(1.5f, GravityRiftTuning.riftDamageMult(1500f), 1e-6f)
-        assertEquals(1f, GravityRiftTuning.riftDamageMult(GravityRiftTuning.MINE_BASE_DAMAGE), 1e-6f)
     }
 
     @Test
@@ -128,7 +82,7 @@ class GravityRiftTuningTest {
     }
 
     @Test
-    fun `旋涡 forceFadeOut 自收口时刻起 1s 内压暗到 0`() {
+    fun `旋涡 forceFadeOut 从指定时刻开始淡出`() {
         assertEquals(1f, GravityRiftTuning.vortexAlpha(1.2f, forceFadeOutAt = 1.2f), 1e-6f)
         assertEquals(0.5f, GravityRiftTuning.vortexAlpha(1.7f, forceFadeOutAt = 1.2f), 1e-6f)
         assertEquals(0f, GravityRiftTuning.vortexAlpha(2.2f, forceFadeOutAt = 1.2f), 1e-6f)

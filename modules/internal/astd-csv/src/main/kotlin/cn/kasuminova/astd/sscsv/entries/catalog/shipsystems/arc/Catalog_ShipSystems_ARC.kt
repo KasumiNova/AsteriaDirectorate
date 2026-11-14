@@ -18,8 +18,10 @@ object Sys_astd_gression_charge : ShipSystemWithSystemFileEntry() {
     override val down: Double = 0.5
     override val cooldown: Double = 8.0
 
-    override val icon: String = "graphics/icons/hullsys/displacer.png"
-    override val useSound: String = "system_phase_cloak_activate"
+    override val icon: String = "graphics/icons/hullsys/plasma_burn.png"
+    override val useSound: String = "system_plasma_burn"
+    override val loopSound: String = "system_plasma_burn_loop"
+    override val outOfUsesSound: String = "engine_disabled"
 
     override val extraSystemRawFields: Map<String, String> = linkedMapOf(
         "effectColor" to "[30,85,245,255]",

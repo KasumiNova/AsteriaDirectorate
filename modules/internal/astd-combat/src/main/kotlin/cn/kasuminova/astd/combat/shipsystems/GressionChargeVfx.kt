@@ -21,17 +21,17 @@ object GressionChargeVfx {
     private val FRINGE = ASTDColor(0xFF8CCDFF)
 
     private val TRAIL_COLOR = FRINGE.toAwt(255)
-    private val ENGINE_FLAME get() = Color(255, 75, 75, 255)
-    private val ENGINE_CONTRAIL get() = Color(255, 100, 100, 100)
+    private val ENGINE_FLAME = Color(255, 75, 75, 255)
+    private val ENGINE_CONTRAIL = Color(255, 100, 100, 100)
 
     private val JITTER_UNDER = FRINGE.toAwt(155)
     private val JITTER = FRINGE.toAwt(55)
 
-    private const val TRAIL_SPACING = 100f
+    private const val TRAIL_SPACING = 50f
     private const val TRAIL_INTERVAL = 0.1f
-    private const val TRAIL_ALPHA = 0.32f
+    private const val TRAIL_ALPHA = 0.7f
     private const val TRAIL_DURATION = 1.1f
-    private const val TRAIL_GROWTH = 0.85f
+    private const val TRAIL_GROWTH = 0.5f
 
     private const val FLAME_EXTEND = 1f
     private const val ENGINE_SHIFT_LEVEL = 1f

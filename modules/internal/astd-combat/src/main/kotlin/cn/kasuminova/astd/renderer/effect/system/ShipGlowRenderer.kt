@@ -77,15 +77,24 @@ object ShipGlowRenderer {
     }
 
     fun preloadTextures() {
-        for (spec in Global.getSettings().allWeaponSpecs) {
-            val id = spec.weaponId ?: continue
+        val settings = Global.getSettings()
+        val hulls = settings.allShipHullSpecs
+        val weaponIds = LinkedHashSet<String>()
+        settings.allWeaponSpecs.mapNotNullTo(weaponIds) { it.weaponId }
+        // allWeaponSpecs 不包含隐藏装饰武器，舰体内置发光层必须从 builtInWeapons 取得。
+        for (hull in hulls) {
+            weaponIds.addAll(hull.builtInWeapons.values)
+        }
+        for (id in weaponIds) {
+            if (!id.startsWith("astd_")) continue
+            val spec = settings.getWeaponSpec(id)
             if (spec.type != WeaponAPI.WeaponType.DECORATIVE) continue
             val path = spec.turretSpriteName ?: continue
             if (!path.startsWith(OVERLAY_SPRITE_PREFIX)) continue
             if (load(path)) overlaySpritePaths[id] = path
         }
 
-        for (hull in Global.getSettings().allShipHullSpecs) {
+        for (hull in hulls) {
             if (!hull.isPhase || hull.shipDefenseId != GravityPhaseVisualEffect.SYSTEM_ID) continue
             val overlayWeaponId = hull.builtInWeapons?.values?.firstOrNull { it in overlaySpritePaths } ?: continue
             val redPath = overlaySpritePaths.getValue(overlayWeaponId).removeSuffix(".png") + "_red.png"

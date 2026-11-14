@@ -16,7 +16,7 @@ import kotlin.math.sin
 class StardustMoteAI(missile: MissileAPI) : MoteAIScript(missile) {
 
     init {
-        // 本舰不运行原版 MoteControlScript，motes 共享列表的注册与死弹修剪由本类承担。
+        // 本 AI 不运行原版 MoteControlScript，共享光尘列表的注册与失效光尘移除由本类承担。
         if (missile.source != null) {
             data.motes.add(missile)
         }
@@ -30,8 +30,8 @@ class StardustMoteAI(missile: MissileAPI) : MoteAIScript(missile) {
         }
     }
 
-    // 覆写原版 doFlocking 移除同伴 cohesion 聚合（光尘各自环绕源舰）；波动时基用自身 elapsed，
-    // 原版 SharedMoteAIData.elapsed 由 MoteControlScript 驱动，本链路不运行该脚本（恒不增长）。
+    // 覆写原版 doFlocking 去掉同伴 cohesion 聚合，光尘各自环绕源舰；波动相位改用自身 elapsed，
+    // 原版 SharedMoteAIData.elapsed 由 MoteControlScript 推进，本类不运行该脚本，该值不会增长。
     override fun doFlocking() {
         val source = missile.source ?: return
         val engine = Global.getCombatEngine() ?: return
@@ -102,28 +102,31 @@ class StardustMoteAI(missile: MissileAPI) : MoteAIScript(missile) {
         data.motes.removeIf { !engine.isMissileAlive(it) }
         val source = missile.source ?: return
 
-        target = pickMissile(engine)
-            ?: pickShip(engine, fighters = true)
-                    ?: pickShip(engine, fighters = false)
+        // data.motes 是同一来源舰船共享的存活光尘列表，ARC/LENS 同组计数并含自身；
+        // 占用数由 getNumMotesTargeting 统计且已排除自身，避免自身占位触发切换。
+        val limit = StardustMoteTuning.moteTargetLimit(data.motes.size)
+        target = pickMissile(engine, limit)
+            ?: pickShip(engine, fighters = true, limit = limit)
+                    ?: pickShip(engine, fighters = false, limit = limit)
         if (source.isHulk) target = null
     }
 
-    private fun pickMissile(engine: CombatEngineAPI): CombatEntityAPI? =
+    private fun pickMissile(engine: CombatEngineAPI, limit: Int): CombatEntityAPI? =
         CombatUtils.getMissilesWithinRange(missile.location, resolveEngageRange())
             .asSequence()
             .filter { it.owner != missile.owner && it.owner != 100 }
             .filter { isInEngageRange(it) }
-            .filter { getNumMotesTargeting(it) < StardustMoteTuning.MAX_MOTES_PER_TARGET }
+            .filter { getNumMotesTargeting(it) < limit }
             .minByOrNull { MathUtils.getDistance(missile.location, it.location) }
 
-    private fun pickShip(engine: CombatEngineAPI, fighters: Boolean): CombatEntityAPI? =
+    private fun pickShip(engine: CombatEngineAPI, fighters: Boolean, limit: Int): CombatEntityAPI? =
         CombatUtils.getShipsWithinRange(missile.location, resolveEngageRange())
             .asSequence()
             .filter { it.owner != missile.owner && it.owner != 100 }
             .filter { if (fighters) it.isFighter else !it.isFighter }
             .filter { it.isAlive && !it.isHulk && !it.isPhased && it.isTargetable }
             .filter { isInEngageRange(it) }
-            .filter { getNumMotesTargeting(it) < StardustMoteTuning.MAX_MOTES_PER_TARGET }
+            .filter { getNumMotesTargeting(it) < limit }
             .minByOrNull { MathUtils.getDistance(missile.location, it.location) }
 
     private fun isInEngageRange(entity: CombatEntityAPI): Boolean {
@@ -139,7 +142,7 @@ class StardustMoteAI(missile: MissileAPI) : MoteAIScript(missile) {
         val weapon = missile.weapon
         if (weapon == null) {
             StardustMoteTuning.warnOnce("missingWeapon") {
-                "星尘光尘 ${missile.projectileSpecId} 无武器实例可查射程（脚本生成路径？），按缺省 800su 接敌半径兜底"
+                "星尘光尘 ${missile.projectileSpecId} 无武器实例可查射程（脚本生成路径？），改用缺省 800su 接敌半径"
             }
         }
         val range = weapon?.range ?: StardustMoteTuning.DEFAULT_ENGAGE_RANGE

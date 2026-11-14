@@ -7,7 +7,7 @@ import com.fs.starfarer.api.combat.ShipAPI
 
 object VisionShiftTuning {
 
-    const val SYSTEM_RANGE = 750f
+    const val SYSTEM_RANGE = 1000f
 
     val SELF_TIME_BONUS = ScalingEntry(0.50f, 0.75f, 1.0f)
 
@@ -21,7 +21,6 @@ object VisionShiftTuning {
 
     val DAMAGE_FROM_SELF_BONUS = ScalingEntry(0.25f, 0.625f, 1.0f)
 
-    /** 标记目标受到来自其他单位（非施放舰）伤害的减免比例，按难度系数逐档查表（k_s 1~5：75%/60%/45%/35%/20%）。 */
     val DAMAGE_FROM_OTHERS_REDUCTION = ScalingTable(0.75f, 0.60f, 0.45f, 0.35f, 0.20f)
 
     data class Values(

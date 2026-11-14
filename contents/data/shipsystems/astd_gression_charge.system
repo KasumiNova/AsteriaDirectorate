@@ -1,0 +1,12 @@
+{
+    "id": "astd_gression_charge",
+    "type": "STAT_MOD",
+    "aiType": "CUSTOM",
+    "aiScript": "cn.kasuminova.astd.combat.shipsystems.GressionChargeSystemAI",
+    "statsScript": "cn.kasuminova.astd.combat.shipsystems.GressionChargeSystemStats",
+    "useSound": "system_phase_cloak_activate",
+    "effectColor": [30,85,245,255],
+    "flameoutOnImpactChance": 0.0,
+    "allowFlameoutOnImpactWithFriendly": false,
+    "clampMaxSpeedAfter": true
+}

@@ -2,7 +2,6 @@ package cn.kasuminova.astd.combat.shipsystems
 
 import cn.kasuminova.astd.combat.hullmods.arc.ASTDArcCombatUtil
 import cn.kasuminova.astd.combat.lens.system.GravityRiftTuning
-import cn.kasuminova.astd.combat.shipsystems.GravityRiftSystemAI.Companion.ENGAGE_RANGE_FRAC
 import cn.kasuminova.astd.combat.shipsystems.GravityRiftSystemAI.Companion.SCAN_INTERVAL_SEC
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.ShipAPI
@@ -15,9 +14,7 @@ import com.fs.starfarer.api.util.Misc
 class GravityRiftSystemAI : ShipSystemAIScript {
 
     companion object {
-        private const val SCAN_INTERVAL_SEC = 0.4f
-
-        private const val ENGAGE_RANGE_FRAC = 0.95f
+        private const val SCAN_INTERVAL_SEC = 0.1f
 
         private const val TARGET_FLAG_DURATION = 1.5f
     }
@@ -51,24 +48,21 @@ class GravityRiftSystemAI : ShipSystemAIScript {
         scanInterval.advance(amount)
         if (!scanInterval.intervalElapsed()) return
 
-        if (system.isOn) return
-        if (system.cooldownRemaining > 0f) return
-        if (!system.canBeActivated()) return
+        if (system.state != ShipSystemAPI.SystemState.IDLE) return
         if (ship.isPhased) return
 
         val range = ASTDArcCombatUtil.effectiveSystemRange(ship, GravityRiftTuning.SYSTEM_RANGE)
-        val engageRange = range * ENGAGE_RANGE_FRAC
-        val victim = pickTarget(engine, ship, engageRange) ?: return
+        val victim = pickTarget(engine, ship, range) ?: return
 
-        // TARGET_FOR_SHIP_SYSTEM 是原版目标锁定系统（熵放大器等）AI 向 stats 传递目标的约定旗标
+        // 引擎处理 useSystem 指令时，isUsable 通过此旗标读取施放目标。
         ship.aiFlags.setFlag(ShipwideAIFlags.AIFlags.TARGET_FOR_SHIP_SYSTEM, TARGET_FLAG_DURATION, victim)
-        ship.useSystem()
+        if (system.canBeActivated()) ship.useSystem()
     }
 
     private fun pickTarget(engine: CombatEngineAPI, ship: ShipAPI, engageRange: Float): ShipAPI? {
         val current = ship.shipTarget
         if (current != null && isValidVictim(ship, current) &&
-            Misc.getDistance(ship.location, current.location) <= engageRange
+            Misc.getDistance(ship.location, current.location) <= engageRange + ship.collisionRadius + current.collisionRadius
         ) {
             return current
         }
@@ -76,10 +70,9 @@ class GravityRiftSystemAI : ShipSystemAIScript {
         var best: ShipAPI? = null
         var bestDist = Float.MAX_VALUE
         for (candidate in engine.ships) {
-            if (candidate.isFighter) continue
             if (!isValidVictim(ship, candidate)) continue
             val dist = Misc.getDistance(ship.location, candidate.location)
-            if (dist <= engageRange && dist < bestDist) {
+            if (dist <= engageRange + ship.collisionRadius + candidate.collisionRadius && dist < bestDist) {
                 best = candidate
                 bestDist = dist
             }
@@ -88,5 +81,6 @@ class GravityRiftSystemAI : ShipSystemAIScript {
     }
 
     private fun isValidVictim(ship: ShipAPI, candidate: ShipAPI): Boolean =
-        candidate.owner != ship.owner && !candidate.isHulk && !candidate.isPhased && candidate.isAlive
+        candidate !== ship && candidate.owner != ship.owner && !candidate.isFighter &&
+                !candidate.isHulk && !candidate.isPhased && candidate.isAlive
 }

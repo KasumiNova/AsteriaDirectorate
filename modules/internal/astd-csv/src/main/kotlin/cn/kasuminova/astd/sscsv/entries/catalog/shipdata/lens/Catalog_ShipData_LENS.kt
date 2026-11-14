@@ -208,7 +208,7 @@ object Ship_astd_zw_103 : ShipDataEntry() {
     override val turnAcceleration: Int = 80
     override val mass: Int = 1750
 
-    override val hints: String = "PHASE, CARRIER"
+    override val hints: String = "PHASE, CARRIER, COMBAT, NO_AUTO_ESCORT"
     override val shieldType: String = "PHASE"
     override val defenseId: String = "astd_gravity_phase"
 

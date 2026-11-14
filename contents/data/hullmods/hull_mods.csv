@@ -40,3 +40,4 @@ P空间深潜器 (词缀·隐藏),astd_affix_pspace_diver,1,1,astd_hidden,,,0,TR
 等离子装甲护盾,astd_plasma_armor_shield,2,1,菀星设计局-星坠,astd_builtin,,0,FALSE,TRUE,FALSE,0,0,0,0,cn.kasuminova.astd.combat.hullmods.arc.ASTDPlasmaArmorShieldHullMod,,装甲-护盾承压耦合,,graphics/hullmods/astd_plasma_armor_shield.png
 智能联结,astd_sc_intel_link,3,0,,"no_drop, no_drop_salvage",,0,FALSE,TRUE,FALSE,0,0,0,0,cn.kasuminova.astd.combat.hullmods.ASTDIntelLinkHullMod,,集成菀星制式核心：精英化菀星战斗智能,,graphics/icons/skills/astd_skill_combat_intel.png
 测试：护盾覆盖率 (隐藏),astd_test_shield_coverage,1,1,astd_hidden,,,0,TRUE,TRUE,TRUE,0,0,0,0,cn.kasuminova.astd.combat.hullmods.AsteriaTestShieldCoverageHullMod,,护盾覆盖 (测试),,graphics/hullmods/astd_arc_singularity_power.png
+矢量增压推进器,astd_vector_boost_thruster,2,1,菀星设计局-星坠,astd_builtin,,0,FALSE,TRUE,FALSE,0,0,0,0,cn.kasuminova.astd.combat.hullmods.arc.ASTDVectorBoostThrusterHullMod,,占位 (调试),,graphics/hullmods/astd_plasma_armor_shield.png

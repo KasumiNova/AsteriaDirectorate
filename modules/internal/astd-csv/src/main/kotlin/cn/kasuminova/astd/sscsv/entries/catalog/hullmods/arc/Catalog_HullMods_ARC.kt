@@ -1,7 +1,6 @@
 package cn.kasuminova.astd.sscsv.entries.catalog.hullmods.arc
 
 import cn.kasuminova.astd.sscsv.entries.HullModEntry
-import cn.kasuminova.astd.sscsv.entries.catalog.hullmods.PLACEHOLDER_SHORT
 import cn.kasuminova.astd.sscsv.entries.catalog.hullmods.TAGS_BUILTIN
 import cn.kasuminova.astd.sscsv.entries.catalog.hullmods.hullmodName
 import cn.kasuminova.astd.sscsv.i18n.SsI18n
@@ -98,7 +97,7 @@ object HullMod_astd_vector_boost_thruster : HullModEntry() {
     override val tech: String = "菀星设计局-星坠"
     override val tags: String = TAGS_BUILTIN
     override val script: String = "cn.kasuminova.astd.combat.hullmods.arc.ASTDVectorBoostThrusterHullMod"
-    override val short: String = PLACEHOLDER_SHORT
+    override val short: String = SsI18n.t("hullmod.$id.short")
     override val sprite: String = "graphics/hullmods/astd_plasma_armor_shield.png"
 }
 

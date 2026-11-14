@@ -14,7 +14,6 @@ class ASTDVisionShiftSystemAI : ShipSystemAIScript {
 
     companion object {
         private const val SCAN_INTERVAL_SEC = 0.5f
-        private const val HIGH_FLUX = 0.85f
     }
 
     private var ship: ShipAPI? = null
@@ -45,7 +44,7 @@ class ASTDVisionShiftSystemAI : ShipSystemAIScript {
         if (!scanInterval.intervalElapsed()) return
 
         val fluxTracker = ship.fluxTracker
-        if (fluxTracker != null && (fluxTracker.isOverloadedOrVenting || fluxTracker.fluxLevel >= HIGH_FLUX)) return
+        if (fluxTracker != null && fluxTracker.isOverloadedOrVenting) return
 
         val range = ASTDArcCombatUtil.effectiveSystemRange(ship, VisionShiftTuning.SYSTEM_RANGE)
         var chosen = validTarget(ship, engine, ship.shipTarget)

@@ -12,9 +12,7 @@ import kotlin.math.sqrt
 
 object GravityRiftTuning {
 
-    const val SYSTEM_RANGE = 1000f
-
-    const val BEAM_RANGE = 1000f
+    const val SYSTEM_RANGE = 1200f
 
     const val MAX_RIFTS = 5
 

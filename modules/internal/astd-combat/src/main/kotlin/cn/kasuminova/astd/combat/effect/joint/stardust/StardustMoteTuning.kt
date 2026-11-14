@@ -15,7 +15,9 @@ object StardustMoteTuning {
 
     const val DEFAULT_ENGAGE_RANGE = 800f
 
-    const val MAX_MOTES_PER_TARGET = 4
+    const val MIN_MOTES_PER_TARGET = 4
+
+    const val MOTE_TARGET_LIMIT_PERCENT = 60
 
     const val MAX_ALIVE_MOTES_PER_WEAPON = 4
 
@@ -32,6 +34,10 @@ object StardustMoteTuning {
         val shipEmpMult: Float,
     )
 
+    // 整数除法向下取整，存活光尘不足下限时按 MIN_MOTES_PER_TARGET 处理。
+    fun moteTargetLimit(aliveMotes: Int): Int =
+        maxOf(MIN_MOTES_PER_TARGET, aliveMotes * MOTE_TARGET_LIMIT_PERCENT / 100)
+
     fun resolve(tuning: DifficultyTuning, isPlayer: Boolean): Values = Values(
         antiMissileBonus = tuning.valueFor(ANTI_MISSILE_BONUS, isPlayer),
         antiFighterBonus = tuning.valueFor(ANTI_FIGHTER_BONUS, isPlayer),
@@ -40,7 +46,7 @@ object StardustMoteTuning {
 
     fun colorForProj(projectileSpecId: String): Color {
         if (!StardustMoteIds.isStardustProj(projectileSpecId)) {
-            warnOnce("unknownProj:$projectileSpecId") { "星尘光尘配色收到未知弹体 spec：$projectileSpecId，按 ARC 蓝兜底" }
+            warnOnce("unknownProj:$projectileSpecId") { "星尘光尘配色收到未知弹体 spec：$projectileSpecId，按 ARC 蓝显示" }
         }
         return if (projectileSpecId == StardustMoteIds.PROJ_LENS) LENS_COLOR else ARC_COLOR
     }

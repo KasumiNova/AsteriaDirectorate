@@ -140,6 +140,7 @@ PSI-Ω 灵能裂解束,astd_psi_omega,5,1,50000,1000,1000,,0,0,10,30,,,,FRAGMENT
 烽燧 Bloom 描边层 (隐藏),astd_xc_102_bloom,5,1,0,0,0,0,0,0,0,0,,,,OTHER,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,SYSTEM,"no_drop, no_drop_salvage, no_sell",,菀星设计局-星坠,,,,,,,,,,,TRUE,9130
 列星 Bloom 描边层 (隐藏),astd_xc_103_bloom,5,1,0,0,0,0,0,0,0,0,,,,OTHER,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,SYSTEM,"no_drop, no_drop_salvage, no_sell",,菀星设计局-星坠,,,,,,,,,,,TRUE,9128
 逐电 Bloom 描边层 (隐藏),astd_xc_104_bloom,5,1,0,0,0,0,0,0,0,0,,,,OTHER,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,SYSTEM,"no_drop, no_drop_salvage, no_sell",,菀星设计局-星坠,,,,,,,,,,,TRUE,9131
+贯虹 Bloom 描边层 (隐藏),astd_xc_105_bloom,5,1,0,0,0,0,0,0,0,0,,,,OTHER,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,SYSTEM,"no_drop, no_drop_salvage, no_sell",,菀星设计局-星坠,,,,,,,,,,,TRUE,9136
 决明 Bloom 描边层 (隐藏),astd_zw_001_bloom,5,1,0,0,0,0,0,0,0,0,,,,OTHER,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,SYSTEM,"no_drop, no_drop_salvage, no_sell",,菀星设计局-紫菀,,,,,,,,,,,TRUE,9206
 密蒙 Bloom 描边层 (隐藏),astd_zw_002_bloom,5,1,0,0,0,0,0,0,0,0,,,,OTHER,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,SYSTEM,"no_drop, no_drop_salvage, no_sell",,菀星设计局-紫菀,,,,,,,,,,,TRUE,9230
 舜华 Bloom 描边层 (隐藏),astd_zw_101_bloom,5,1,0,0,0,0,0,0,0,0,,,,OTHER,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,SYSTEM,"no_drop, no_drop_salvage, no_sell",,菀星设计局-紫菀,,,,,,,,,,,TRUE,9232
