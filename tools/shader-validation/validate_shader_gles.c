@@ -29,6 +29,18 @@ typedef struct {
  * u_origin 取 [-32, -32]，使 UI 片元的 v_pos - u_origin 落在 [0, 64]。
  */
 static const UniformSpec UNIFORM_SPECS[] = {
+    {"u_range", 1, {48.0f}},
+    {"u_halfAngle", 1, {0.6f}},
+    {"u_texture", 1, {0.0f}},
+    {"u_tip", 2, {24.0f, 0.0f}},
+    {"u_forward", 2, {1.0f, 0.0f}},
+    {"u_length", 1, {48.0f}},
+    {"u_width", 1, {48.0f}},
+    {"u_repeat", 1, {2.0f}},
+    {"u_flow", 1, {0.75f}},
+    {"u_edgeSoft", 1, {0.12f}},
+    {"u_tipFade", 1, {0.055f}},
+    {"u_tailFade", 1, {0.32f}},
     {"u_time", 1, {0.75f}},
     {"u_resolution", 2, {RENDER_SIZE, RENDER_SIZE}},
     {"u_origin", 2, {-RENDER_SIZE / 2.0f, -RENDER_SIZE / 2.0f}},
@@ -172,6 +184,7 @@ static int uniform_components(GLenum type) {
         case GL_FLOAT:
         case GL_INT:
         case GL_BOOL:
+        case GL_SAMPLER_2D:
             return 1;
         case GL_FLOAT_VEC2:
             return 2;
@@ -200,6 +213,7 @@ static int apply_uniform(GLint location, GLenum type, const UniformSpec *spec) {
             break;
         case GL_INT:
         case GL_BOOL:
+        case GL_SAMPLER_2D:
             glUniform1i(location, (GLint) spec->values[0]);
             break;
         default:
@@ -330,12 +344,14 @@ static int setup_egl(EGLDisplay *out_display, EGLContext *out_context) {
 }
 
 static void usage(const char *program) {
-    fprintf(stderr, "用法：%s --vertex <顶点着色器> --program <名称>=<片元着色器> [--program ...]\n",
+    fprintf(stderr, "用法：%s --vertex <顶点着色器> --program <名称>=<片元着色器> [--program ...] [--texture <RGBA文件> <宽> <高>]\n",
             program);
 }
 
 int main(int argc, char **argv) {
     const char *vertex_path = NULL;
+    const char *texture_path = NULL;
+    int texture_width = 0, texture_height = 0;
     Program programs[MAX_PROGRAMS];
     int program_count = 0;
     memset(programs, 0, sizeof(programs));
@@ -343,6 +359,10 @@ int main(int argc, char **argv) {
     for (int index = 1; index < argc; index++) {
         if (strcmp(argv[index], "--vertex") == 0 && index + 1 < argc) {
             vertex_path = argv[++index];
+        } else if (strcmp(argv[index], "--texture") == 0 && index + 3 < argc) {
+            texture_path = argv[++index];
+            texture_width = atoi(argv[++index]);
+            texture_height = atoi(argv[++index]);
         } else if (strcmp(argv[index], "--program") == 0 && index + 1 < argc) {
             if (program_count >= MAX_PROGRAMS) {
                 fprintf(stderr, "程序数量超过上限 %d\n", MAX_PROGRAMS);
@@ -403,6 +423,34 @@ int main(int argc, char **argv) {
     }
     glViewport(0, 0, RENDER_SIZE, RENDER_SIZE);
     drain_gl_errors("FBO 创建", &target_ok);
+
+    GLuint sample_texture = 0;
+    if (texture_path != NULL) {
+        if (texture_width <= 0 || texture_height <= 0 || texture_width > 4096 || texture_height > 4096) {
+            fprintf(stderr, "纹理尺寸无效\n");
+            return 2;
+        }
+        size_t size = (size_t) texture_width * texture_height * 4;
+        unsigned char *data = malloc(size);
+        FILE *file = fopen(texture_path, "rb");
+        if (data == NULL || file == NULL || fread(data, 1, size, file) != size) {
+            fprintf(stderr, "无法读取 RGBA 纹理：%s\n", texture_path);
+            if (file != NULL) fclose(file);
+            free(data);
+            return 2;
+        }
+        fclose(file);
+        glGenTextures(1, &sample_texture);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, sample_texture);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, texture_width, texture_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+        free(data);
+        drain_gl_errors("上传流纹", &target_ok);
+    }
 
     static const GLfloat vertices[] = {
         -32.0f, -32.0f, 0.0f, 0.0f,
@@ -526,6 +574,37 @@ int main(int argc, char **argv) {
                 program->ok = 0;
             }
 
+            if (glGetUniformLocation(gl_program, "u_texture") >= 0) {
+                if (sample_texture == 0) {
+                    fprintf(stderr, "  采样器验证缺少 --texture 参数\n");
+                    program->ok = 0;
+                } else {
+                    GLuint blank_texture = 0;
+                    const unsigned char blank[] = {255, 255, 255, 0};
+                    glGenTextures(1, &blank_texture);
+                    glBindTexture(GL_TEXTURE_2D, blank_texture);
+                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, blank);
+                    glClear(GL_COLOR_BUFFER_BIT);
+                    glDrawArrays(GL_TRIANGLES, 0, 6);
+                    unsigned char without_texture[sizeof(pixels)];
+                    glReadPixels(0, 0, RENDER_SIZE, RENDER_SIZE, GL_RGBA, GL_UNSIGNED_BYTE, without_texture);
+                    int changed = 0;
+                    for (int pixel = 0; pixel < RENDER_SIZE * RENDER_SIZE; pixel++) {
+                        if (pixels[pixel * 4 + 3] != without_texture[pixel * 4 + 3]) changed++;
+                    }
+                    printf("真实纹理与透明纹理的 alpha 差异：%d 像素\n", changed);
+                    if (changed == 0) {
+                        fprintf(stderr, "  纹理未影响渲染输出\n");
+                        program->ok = 0;
+                    }
+                    glBindTexture(GL_TEXTURE_2D, sample_texture);
+                    glDeleteTextures(1, &blank_texture);
+                    drain_gl_errors("纹理采样对照", &program->ok);
+                }
+            }
+
             glDisableVertexAttribArray(0);
             glDisableVertexAttribArray(1);
             glUseProgram(0);
@@ -542,6 +621,7 @@ int main(int argc, char **argv) {
     glDeleteBuffers(1, &vertex_buffer);
     glDeleteFramebuffers(1, &framebuffer);
     glDeleteTextures(1, &color_texture);
+    if (sample_texture != 0) glDeleteTextures(1, &sample_texture);
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);

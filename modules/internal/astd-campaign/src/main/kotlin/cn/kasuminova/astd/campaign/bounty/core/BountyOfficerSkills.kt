@@ -111,6 +111,18 @@ object BountyOfficerSkills {
             "combat_endurance", "field_modulation", "gunnery_implants", "helmsmanship",
             "missile_specialization", "ordnance_expert", "systems_expertise", "target_analysis",
         ),
+        "astd_xc_105_Standard" to listOf(
+            "combat_endurance", "field_modulation", "gunnery_implants", "helmsmanship",
+            "missile_specialization", "ordnance_expert", "systems_expertise", "target_analysis",
+        ),
+        "astd_xc_105_Ranged" to listOf(
+            "combat_endurance", "energy_weapon_mastery", "field_modulation", "gunnery_implants",
+            "helmsmanship", "missile_specialization", "systems_expertise", "target_analysis",
+        ),
+        "astd_xc_105_Strike" to listOf(
+            "combat_endurance", "field_modulation", "gunnery_implants", "helmsmanship",
+            "missile_specialization", "ordnance_expert", "systems_expertise", "target_analysis",
+        ),
         "astd_zw_001_Carrier" to listOf(
             "combat_endurance", "field_modulation", "gunnery_implants", "helmsmanship",
             "missile_specialization", "point_defense", "polarized_armor", "systems_expertise",

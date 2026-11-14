@@ -49,8 +49,12 @@ class ShaderRenderQueue {
     }
 
     fun snapshotsForLayer(layer: ShaderEffectLayer): List<ShaderSubmission> {
-        return (oneShots.asSequence() + keyed.values.asSequence())
+        // oneShot 提交时 submittedAt 与 startedAt 相等，只表示出生时刻；ageSeconds 必须在当前 elapsedSeconds 下重算
+        val oneShotSnapshots = oneShots.asSequence()
             .filter { it.spec.layer == layer }
+            .map { it.copy(submittedAt = elapsedSeconds) }
+        val keyedSnapshots = keyed.values.asSequence().filter { it.spec.layer == layer }
+        return (oneShotSnapshots + keyedSnapshots)
             .sortedWith(SUBMISSION_ORDER)
             .toList()
     }

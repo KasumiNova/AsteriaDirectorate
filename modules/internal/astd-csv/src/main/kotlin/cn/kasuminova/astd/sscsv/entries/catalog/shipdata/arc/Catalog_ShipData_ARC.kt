@@ -275,3 +275,45 @@ object Ship_astd_xc_104 : ShipDataEntry() {
     override val codexVariantId: String = "astd_xc_104_Empty"
     override val number: Int = 9110
 }
+
+object Ship_astd_xc_105 : ShipDataEntry() {
+    override val id: String = "astd_xc_105"
+    override val name: String = shipName(id)
+    override val designation: String = "巡洋舰"
+    override val tech: String = "菀星设计局-星坠"
+    override val systemId: String = "astd_gression_charge"
+
+    override val fleetPts: Int = 27
+    override val hitpoints: Int = 12000
+    override val armorRating: Int = 1400
+    override val maxFlux: Int = 12000
+    override val fluxDissipation: Int = 850
+    override val ordnancePoints: Int = 185
+    override val maxSpeed: Int = 80
+    override val acceleration: Int = 40
+    override val deceleration: Int = 40
+    override val maxTurnRate: Int = 30
+    override val turnAcceleration: Int = 30
+    override val mass: Int = 1800
+    override val shieldType: String = "OMNI"
+    override val shieldArc: Int = 240
+    override val shieldUpkeep: Double = 420.0 / 850.0
+    override val shieldEfficiency: Double = 0.80
+    override val minCrew: Int = 125
+    override val maxCrew: Int = 250
+    override val cargo: Int = 300
+    override val fuel: Int = 250
+    override val fuelPerLy: Int = 3
+    override val range: Int = 33
+    override val maxBurn: Int = 8
+    override val baseValue: Int = 200000
+    override val crPercentPerDay: Double = 3.0
+    override val crToDeploy: Double = 12.0
+    override val peakCrSec: Int = 560
+    override val crLossPerSec: Double = 0.25
+    override val suppliesRec: Int = 27
+    override val suppliesPerMonth: Int = 27
+    override val tags: String = "astd_production"
+    override val codexVariantId: String = "astd_xc_105_Empty"
+    override val number: Int = 9114
+}

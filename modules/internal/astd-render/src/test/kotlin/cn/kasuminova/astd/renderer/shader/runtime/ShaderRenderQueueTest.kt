@@ -12,6 +12,7 @@ import cn.kasuminova.astd.renderer.shader.base.ShaderUniformSet
 import org.lwjgl.util.vector.Vector2f
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class ShaderRenderQueueTest {
     @Test
@@ -44,6 +45,38 @@ class ShaderRenderQueueTest {
         val snapshot = queue.snapshotsForLayer(ShaderEffectLayer.AboveParticles).single()
         assertEquals(12f, snapshot.center.x)
         assertEquals(34f, snapshot.center.y)
+    }
+
+    @Test
+    fun `one-shot snapshot age advances from birth time at current queue time`() {
+        val queue = ShaderRenderQueue()
+        queue.advance(2f)
+        queue.emit(submission("pulse_effect"))
+
+        queue.advance(0.4f)
+        val first = queue.snapshotsForLayer(ShaderEffectLayer.AboveParticles).single()
+        assertEquals(0.4f, first.ageSeconds, 0.00001f)
+        assertEquals(2f, first.startedAt, 0.00001f)
+
+        val repeated = queue.snapshotsForLayer(ShaderEffectLayer.AboveParticles).single()
+        assertEquals(0.4f, repeated.ageSeconds, 0.00001f)
+
+        queue.advance(0.2f)
+        val second = queue.snapshotsForLayer(ShaderEffectLayer.AboveParticles).single()
+        assertEquals(0.6f, second.ageSeconds, 0.00001f)
+        assertEquals(2f, second.startedAt, 0.00001f)
+    }
+
+    @Test
+    fun `one-shot expiry still counts from birth time`() {
+        val queue = ShaderRenderQueue()
+        queue.emit(submission("pulse_effect"))
+
+        queue.advance(0.9f)
+        assertEquals(0.9f, queue.snapshotsForLayer(ShaderEffectLayer.AboveParticles).single().ageSeconds, 0.00001f)
+
+        queue.advance(0.2f)
+        assertTrue(queue.snapshotsForLayer(ShaderEffectLayer.AboveParticles).isEmpty())
     }
 
     private fun submission(

@@ -15,6 +15,7 @@ import cn.kasuminova.astd.combat.hullmods.base.ASTDDualModeRefitListener;
 import cn.kasuminova.astd.impl.buff.BuffInstall;
 import cn.kasuminova.astd.impl.difficulty.DifficultySettingsRegistrar;
 import cn.kasuminova.astd.impl.difficulty.LunaLibSupport;
+import cn.kasuminova.astd.renderer.effect.system.GressionFlowWrapVfx;
 import cn.kasuminova.astd.renderer.effect.system.WeaponGlowLayer;
 import cn.kasuminova.astd.renderer.effect.system.GeminiDemRackVisuals;
 import cn.kasuminova.astd.renderer.effect.system.GravityPhaseVisualEffect;
@@ -59,6 +60,7 @@ public final class AsteriaDirectoratePlugin extends BaseModPlugin {
             logger.info("[ASTD] 未检测到 LunaLib：模组设置不可用，全部使用默认值");
         }
         // 自定义贴图必须在应用加载阶段预加载，战斗或裸 getSprite 路径中加载会导致渲染异常。
+        GressionFlowWrapVfx.INSTANCE.preloadTextures();
         WeaponGlowLayer.INSTANCE.preloadTextures();
         LoadedMissileGlowLayer.INSTANCE.preloadTextures();
         GeminiDemRackVisuals.INSTANCE.preloadTextures();

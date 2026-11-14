@@ -3,13 +3,38 @@ package cn.kasuminova.astd.sscsv.entries.catalog.shipsystems.arc
 import cn.kasuminova.astd.sscsv.entries.ShipSystemWithSystemFileEntry
 import cn.kasuminova.astd.sscsv.entries.catalog.shipsystems.systemName
 
+object Sys_astd_gression_charge : ShipSystemWithSystemFileEntry() {
+    override val id: String = "astd_gression_charge"
+    override val name: String = systemName(id)
+
+    override val statsScript: String = "cn.kasuminova.astd.combat.shipsystems.GressionChargeSystemStats"
+
+    override val systemType: String = "STAT_MOD"
+    override val aiType: String = "CUSTOM"
+    override val aiScript: String = "cn.kasuminova.astd.combat.shipsystems.GressionChargeSystemAI"
+
+    override val chargeUp: Double = 0.5
+    override val active: Double = 3.0
+    override val down: Double = 0.5
+    override val cooldown: Double = 8.0
+
+    override val icon: String = "graphics/icons/hullsys/displacer.png"
+    override val useSound: String = "system_phase_cloak_activate"
+
+    override val extraSystemRawFields: Map<String, String> = linkedMapOf(
+        "effectColor" to "[30,85,245,255]",
+        "flameoutOnImpactChance" to "0.0",
+        "allowFlameoutOnImpactWithFriendly" to "false",
+        "clampMaxSpeedAfter" to "true",
+    )
+}
+
 object Sys_astd_rift_shift : ShipSystemWithSystemFileEntry() {
     override val id: String = "astd_rift_shift"
     override val name: String = systemName(id)
 
     override val statsScript: String = "cn.kasuminova.astd.combat.shipsystems.StarwingShiftSystemStats"
 
-    // 折跃不进相位、不改时流，仅借系统状态机做位移，故用通用 STAT_MOD 外壳。
     override val systemType: String = "STAT_MOD"
     override val aiType: String = "CUSTOM"
     override val aiScript: String = "cn.kasuminova.astd.combat.shipsystems.StarwingShiftSystemAI"

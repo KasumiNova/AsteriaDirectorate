@@ -1,6 +1,7 @@
 package cn.kasuminova.astd.sscsv.entries.catalog.hullmods.arc
 
 import cn.kasuminova.astd.sscsv.entries.HullModEntry
+import cn.kasuminova.astd.sscsv.entries.catalog.hullmods.PLACEHOLDER_SHORT
 import cn.kasuminova.astd.sscsv.entries.catalog.hullmods.TAGS_BUILTIN
 import cn.kasuminova.astd.sscsv.entries.catalog.hullmods.hullmodName
 import cn.kasuminova.astd.sscsv.i18n.SsI18n
@@ -87,6 +88,18 @@ object HullMod_astd_ionized_recoil_accumulator : HullModEntry() {
     override val script: String = "cn.kasuminova.astd.combat.hullmods.arc.ASTDIonizedRecoilAccumulatorHullMod"
     override val short: String = SsI18n.t("hullmod.$id.short")
     override val sprite: String = "graphics/hullmods/astd_ionized_recoil_accumulator.png"
+}
+
+object HullMod_astd_vector_boost_thruster : HullModEntry() {
+    override val id: String = "astd_vector_boost_thruster"
+    override val name: String = hullmodName(id)
+    override val tier: Int = 2
+    override val rarity: Int = 1
+    override val tech: String = "菀星设计局-星坠"
+    override val tags: String = TAGS_BUILTIN
+    override val script: String = "cn.kasuminova.astd.combat.hullmods.arc.ASTDVectorBoostThrusterHullMod"
+    override val short: String = PLACEHOLDER_SHORT
+    override val sprite: String = "graphics/hullmods/astd_plasma_armor_shield.png"
 }
 
 object HullMod_astd_arc_advanced_targeting_system : HullModEntry() {

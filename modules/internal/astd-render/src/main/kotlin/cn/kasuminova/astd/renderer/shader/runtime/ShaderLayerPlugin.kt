@@ -6,11 +6,15 @@ import cn.kasuminova.astd.impl.render.ShaderQuadRenderer
 import cn.kasuminova.astd.renderer.shader.base.ShaderBlendMode
 import cn.kasuminova.astd.renderer.shader.base.ShaderEffectLayer
 import cn.kasuminova.astd.renderer.shader.base.ShaderGeometrySpec
+import cn.kasuminova.astd.renderer.shader.base.ShaderTextureWrap
 import cn.kasuminova.astd.renderer.shader.base.ShaderUniformValue
+import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseCombatLayeredRenderingPlugin
 import com.fs.starfarer.api.combat.CombatEngineLayers
 import com.fs.starfarer.api.combat.ViewportAPI
 import org.lwjgl.opengl.GL11
+import org.lwjgl.opengl.GL12
+import org.lwjgl.opengl.GL13
 import org.lwjgl.opengl.GL20
 import java.util.EnumSet
 
@@ -18,6 +22,7 @@ class ShaderLayerPlugin(private val queue: ShaderRenderQueue) : BaseCombatLayere
     private var expired = false
     private val programCache = ShaderProgramCache()
     private val quadRenderer = ShaderQuadRenderer()
+    private val textureCache = ShaderTextureCache()
 
     override fun getActiveLayers(): EnumSet<CombatEngineLayers> {
         return EnumSet.of(
@@ -36,10 +41,11 @@ class ShaderLayerPlugin(private val queue: ShaderRenderQueue) : BaseCombatLayere
         expired = true
         programCache.deleteAll()
         quadRenderer.cleanup()
+        textureCache.clear()
     }
 
     override fun advance(amount: Float) {
-        if (expired) return
+        if (expired || Global.getCombatEngine()?.isPaused == true) return
         queue.advance(amount)
     }
 
@@ -59,7 +65,7 @@ class ShaderLayerPlugin(private val queue: ShaderRenderQueue) : BaseCombatLayere
                 GL20.glUseProgram(program)
                 ShaderCompatibility.uploadClip(program, clip)
                 uploadUniforms(program, submission)
-                renderGeometry(submission)
+                renderTexturedGeometry(program, submission)
             }
         }
     }
@@ -84,6 +90,37 @@ class ShaderLayerPlugin(private val queue: ShaderRenderQueue) : BaseCombatLayere
                 is ShaderUniformValue.BooleanValue -> GL20.glUniform1i(location, if (value.value) 1 else 0)
             }
         }
+    }
+
+    private fun renderTexturedGeometry(program: Int, submission: ShaderSubmission) {
+        val texture = submission.spec.material.texture
+        if (texture == null) {
+            renderGeometry(submission)
+            return
+        }
+        val textureId = textureCache.textureIdFor(texture.path) ?: return
+        val activeUnit = GL11.glGetInteger(GL13.GL_ACTIVE_TEXTURE)
+        GL13.glActiveTexture(GL13.GL_TEXTURE0)
+        val binding = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D)
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, textureId)
+        val wrapS = GL11.glGetTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S)
+        val wrapT = GL11.glGetTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T)
+        try {
+            GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, texture.wrapU.glValue())
+            GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, texture.wrapV.glValue())
+            GL20.glUniform1i(GL20.glGetUniformLocation(program, "u_texture"), 0)
+            renderGeometry(submission)
+        } finally {
+            GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, wrapS)
+            GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, wrapT)
+            GL11.glBindTexture(GL11.GL_TEXTURE_2D, binding)
+            GL13.glActiveTexture(activeUnit)
+        }
+    }
+
+    private fun ShaderTextureWrap.glValue(): Int = when (this) {
+        ShaderTextureWrap.Repeat -> GL11.GL_REPEAT
+        ShaderTextureWrap.Clamp -> GL12.GL_CLAMP_TO_EDGE
     }
 
     private fun renderGeometry(submission: ShaderSubmission) {

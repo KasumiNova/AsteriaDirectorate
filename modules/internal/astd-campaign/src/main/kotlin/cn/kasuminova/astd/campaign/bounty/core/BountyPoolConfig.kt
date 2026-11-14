@@ -28,6 +28,9 @@ data class BountyPoolConfig(
             ),
             ShipAPI.HullSize.CRUISER to listOf(
                 "astd_xc_101_Standard",
+                "astd_xc_105_Standard",
+                "astd_xc_105_Ranged",
+                "astd_xc_105_Strike",
             ),
             ShipAPI.HullSize.DESTROYER to listOf(
                 "astd_xc_103_Standard",

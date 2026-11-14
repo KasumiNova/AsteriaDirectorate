@@ -38,6 +38,11 @@ object HullmodIncompatibility {
             HullMods.SHIELD_SHUNT,
             HullMods.HARDENED_SHIELDS,
         ),
+        ASTDArcProductionShipIds.HULLMOD_VECTOR_BOOST_THRUSTER to setOf(
+            HullMods.UNSTABLE_INJECTOR,
+            HullMods.AUXILIARY_THRUSTERS,
+            HullMods.SAFETYOVERRIDES,
+        ),
         ASTDAdvancedEnergyIntegrationHullMod.MOD_ID to setOf(
             HullMods.ARMOREDWEAPONS,
             HullMods.TURRETGYROS,

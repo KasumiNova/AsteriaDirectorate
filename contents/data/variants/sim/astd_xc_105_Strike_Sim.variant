@@ -1,0 +1,64 @@
+{
+    "displayName": "Strike",
+    "fluxCapacitors": 30,
+    "fluxVents": 23,
+    "hullId": "astd_xc_105",
+    "hullMods": [
+        "astd_dual_mode_switcher",
+        "astd_mode_crewed",
+        "missleracks",
+        "targetingunit",
+        "stabilizedshieldemitter",
+        "astd_mode_next_crewed"
+    ],
+    "permaMods": [
+        "astd_mode_crewed",
+        "astd_mode_next_crewed"
+    ],
+    "quality": 1,
+    "tags": [
+        "ship_recoverable"
+    ],
+    "variantId": "astd_xc_105_Strike_Sim",
+    "weaponGroups": [
+        {
+            "autofire": true,
+            "mode": "LINKED",
+            "weapons": {
+                "WS0004": "astd_gcp8",
+                "WS0005": "astd_gcp8"
+            }
+        },
+        {
+            "autofire": false,
+            "mode": "LINKED",
+            "weapons": {
+                "WS0001": "astd_cuifeng_launcher"
+            }
+        },
+        {
+            "autofire": false,
+            "mode": "ALTERNATING",
+            "weapons": {
+                "WS0002": "sabotpod",
+                "WS0003": "sabotpod"
+            }
+        },
+        {
+            "autofire": true,
+            "mode": "LINKED",
+            "weapons": {
+                "WS0006": "lightneedler",
+                "WS0007": "lightneedler"
+            }
+        },
+        {
+            "autofire": true,
+            "mode": "LINKED",
+            "weapons": {
+                "WS0008": "astd_gcp2",
+                "WS0009": "astd_gcp2"
+            }
+        }
+    ]
+}

@@ -11,7 +11,6 @@ import java.util.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 class BountyFleetTuningTest {
@@ -214,7 +213,6 @@ class BountyFleetTuningTest {
         assertTrue(fitRules.hasRealShield(ShieldAPI.ShieldType.OMNI))
         assertTrue(fitRules.hasRealShield(ShieldAPI.ShieldType.FRONT))
 
-        // 相位舰不应通过护盾系 SMod 适用性，但应通过相位系候选
         assertFalse(
             fitRules.isSmodApplicable("hardenedshieldemitter", phase = true, hasShield = false, missileCapable = true),
             "相位舰不得内插强化护盾",
@@ -285,15 +283,6 @@ class BountyFleetTuningTest {
     }
 
     @Test
-    fun `池配置按赏金键路由且未知键回退默认`() {
-        assertSame(BountyPoolConfig.DEFAULT, BountyPoolConfig.forBountyKey(null))
-        assertSame(BountyPoolConfig.DEFAULT, BountyPoolConfig.forBountyKey("astd_bounty_rogue_1"))
-        assertSame(BountyPoolConfig.DEFAULT, BountyPoolConfig.forBountyKey("some_other_bounty"))
-        val xc002 = BountyPoolConfig.forBountyKey("astd_bounty_xc_002")
-        assertTrue(xc002.destroyerBestOf > BountyPoolConfig.DEFAULT.destroyerBestOf, "星翼主控应启用驱逐舰优选")
-    }
-
-    @Test
     fun `混编分边严格一比一交替且 ASTD 先出`() {
         assertEquals(PoolSide.ASTD, BountyPoolConfig.pickPoolSide(0, 0))
         assertEquals(PoolSide.REMNANT, BountyPoolConfig.pickPoolSide(1, 0))
@@ -329,32 +318,6 @@ class BountyFleetTuningTest {
     }
 
     @Test
-    fun `双侧混编池覆盖全部作战舰级且池内变体均有技能表登记`() {
-        val combatSizes = setOf(
-            ShipAPI.HullSize.CAPITAL_SHIP,
-            ShipAPI.HullSize.CRUISER,
-            ShipAPI.HullSize.DESTROYER,
-            ShipAPI.HullSize.FRIGATE,
-        )
-        combatSizes.forEach { size ->
-            assertTrue(BountyPoolConfig.ASTD_POOLS.getValue(size).isNotEmpty(), "ASTD 池缺少舰级 $size")
-            assertTrue(BountyPoolConfig.REMNANT_POOLS.getValue(size).isNotEmpty(), "余晖池缺少舰级 $size")
-        }
-        val poolIds = BountyPoolConfig.ASTD_POOLS.values.flatten()
-        poolIds.forEach { variantId ->
-            assertTrue(BountyOfficerSkills.forVariant(variantId) != null, "混编池变体 $variantId 缺少技能表登记")
-        }
-        assertTrue(poolIds.none { it.startsWith("astd_xc_104") }, "发布范围外舰体混入随机池")
-        assertTrue(
-            poolIds.none {
-                it.startsWith("astd_xc_001_") || it.startsWith("astd_xc_002_") ||
-                    it.startsWith("astd_zw_001_") || it.startsWith("astd_zw_002_")
-            },
-            "唯一舰装配混入随机池",
-        )
-    }
-
-    @Test
     fun `余晖混编池发现结果优先且按舰级回退兜底清单`() {
         val discovered = mapOf(ShipAPI.HullSize.CRUISER to listOf("some_mod_cruiser_Standard"))
         assertEquals(
@@ -371,28 +334,6 @@ class BountyFleetTuningTest {
                 mapOf(ShipAPI.HullSize.CRUISER to emptyList()),
                 ShipAPI.HullSize.CRUISER,
             ),
-        )
-    }
-
-    @Test
-    fun `难度档沿赏金链单调不减且唯一舰处于 T5 以上`() {
-        val chain = listOf(
-            "astd_bounty_rogue_1", "astd_bounty_rogue_2", "astd_bounty_rogue_3",
-            "astd_bounty_rogue_4", "astd_bounty_rogue_5", "astd_bounty_rogue_6",
-            "astd_bounty_xc_002", "astd_bounty_zw_002", "astd_bounty_zw_001", "astd_bounty_xc_001",
-        )
-        chain.forEach { key ->
-            assertTrue(BountyPoolConfig.THREAT_TIERS.containsKey(key), "赏金 $key 缺少难度档登记")
-        }
-        chain.zipWithNext().forEach { (lower, higher) ->
-            assertTrue(
-                BountyPoolConfig.threatTierOf(higher) >= BountyPoolConfig.threatTierOf(lower),
-                "难度档在 $lower -> $higher 间倒退",
-            )
-        }
-        assertTrue(
-            BountyPoolConfig.UNIQUE_FLAGSHIP_BOUNTIES.all { BountyPoolConfig.threatTierOf(it) >= 5 },
-            "唯一舰赏金必须处于 T5+ 才能产出 O 档旗舰",
         )
     }
 

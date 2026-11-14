@@ -54,6 +54,22 @@ VERTEX_SPEC = ShaderSpec(
 
 FRAGMENT_SPECS = (
     ShaderSpec(
+        slug="gression_impact_wave",
+        display_name="GressionImpactVfx",
+        path=REPO_ROOT
+        / "modules/internal/astd-combat/src/main/kotlin/cn/kasuminova/astd/renderer/effect/system/GressionImpactVfx.kt",
+        constant="FRAGMENT_SHADER_SOURCE",
+        stage="frag",
+    ),
+    ShaderSpec(
+        slug="gression_flow_wrap",
+        display_name="GressionFlowWrapVfx",
+        path=REPO_ROOT
+        / "modules/internal/astd-combat/src/main/kotlin/cn/kasuminova/astd/renderer/effect/system/GressionFlowWrapVfx.kt",
+        constant="FRAGMENT_SHADER_SOURCE",
+        stage="frag",
+    ),
+    ShaderSpec(
         slug="annihilation_vortex_beam",
         display_name="AnnihilationVortexBeamComponents",
         path=REPO_ROOT
@@ -239,7 +255,14 @@ def build_c_validator(cc: str, pkg_config: str, binary: Path) -> None:
 def run_gles_validator(
     binary: Path, vertex: Path, fragments: list[tuple[ShaderSpec, Path]]
 ) -> tuple[bool, dict[str, bool]]:
-    command = [str(binary), "--vertex", str(vertex)]
+    from PIL import Image
+
+    texture_path = binary.parent / "gression-flow.rgba"
+    with Image.open(REPO_ROOT / "contents/graphics/fx/astd_gression_flow.png") as image:
+        image = image.convert("RGBA")
+        texture_path.write_bytes(image.tobytes())
+        width, height = image.size
+    command = [str(binary), "--vertex", str(vertex), "--texture", str(texture_path), str(width), str(height)]
     for spec, path in fragments:
         command += ["--program", f"{spec.slug}={path}"]
     environment = os.environ.copy()

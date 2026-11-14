@@ -1,11 +1,11 @@
 package cn.kasuminova.astd.renderer.effect.system
 
 import cn.kasuminova.astd.combat.hullmods.base.isASTDShip
-import cn.kasuminova.astd.renderer.effect.system.ASTDVectorThrustEngineManager.ENGINE_LEVELS_KEY
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.BaseEveryFrameCombatPlugin
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.ShipAPI
+import com.fs.starfarer.api.combat.ShipSystemAPI
 import com.fs.starfarer.api.combat.ShipEngineControllerAPI.ShipEngineAPI
 import com.fs.starfarer.api.input.InputEventAPI
 import java.util.IdentityHashMap
@@ -52,6 +52,12 @@ internal object ASTDVectorThrustEngineManager {
         }
     }
 
+    fun setSystemFullFlame(engine: CombatEngineAPI, ship: ShipAPI, enabled: Boolean): Float {
+        if (enabled) ensureInstalled(engine)
+        val plugin = engine.customData[ENGINE_KEY] as? Plugin ?: return 0f
+        return plugin.setSystemFullFlame(ship, enabled)
+    }
+
     private class EngineState(
         val engine: ShipEngineAPI,
         val thrustAxisX: Float,
@@ -64,6 +70,9 @@ internal object ASTDVectorThrustEngineManager {
     private class Attachment(
         val ship: ShipAPI,
         val engines: List<EngineState>,
+        var systemFullFlame: Boolean = false,
+        var systemFlameElapsed: Float = 0f,
+        var systemStartLevels: FloatArray = FloatArray(0),
     )
 
     private class Plugin(private val combatEngine: CombatEngineAPI) : BaseEveryFrameCombatPlugin() {
@@ -88,12 +97,9 @@ internal object ASTDVectorThrustEngineManager {
             val it = attachments.entries.iterator()
             while (it.hasNext()) {
                 val (_, att) = it.next()
-                val gone = try {
-                    att.ship.isHulk || att.ship.hitpoints <= 0f || !combatEngine.isEntityInPlay(att.ship)
-                } catch (_: Throwable) {
-                    true
-                }
+                val gone = att.ship.isHulk || att.ship.hitpoints <= 0f || !combatEngine.isEntityInPlay(att.ship)
                 if (gone) {
+                    att.ship.removeCustomData(ENGINE_LEVELS_KEY)
                     it.remove()
                     continue
                 }
@@ -101,13 +107,22 @@ internal object ASTDVectorThrustEngineManager {
             }
         }
 
-        private fun scanShips() {
-            val ships = try {
-                combatEngine.ships
-            } catch (_: Throwable) {
-                null
-            } ?: return
+        fun setSystemFullFlame(ship: ShipAPI, enabled: Boolean): Float {
+            val key = System.identityHashCode(ship)
+            val att = attachments[key] ?: if (enabled && !ship.isHulk) {
+                createAttachment(ship)?.also { attachments[key] = it }
+            } else null
+            att ?: return 0f
+            if (enabled && !att.systemFullFlame) {
+                att.systemFlameElapsed = 0f
+                att.systemStartLevels = FloatArray(att.engines.size) { att.engines[it].level }
+            }
+            att.systemFullFlame = enabled
+            return flameBlend(att)
+        }
 
+        private fun scanShips() {
+            val ships = combatEngine.ships
             for (ship in ships) {
                 if (ship.isFighter || ship.isHulk) continue
                 if (!ship.isASTDShip()) continue
@@ -119,11 +134,8 @@ internal object ASTDVectorThrustEngineManager {
         }
 
         private fun createAttachment(ship: ShipAPI): Attachment? {
-            val engines = try {
-                ship.engineController?.shipEngines
-            } catch (_: Throwable) {
-                null
-            } ?: return null
+            if (ship.isFighter || !ship.isASTDShip()) return null
+            val engines = ship.engineController?.shipEngines ?: return null
             if (engines.isEmpty()) return null
 
             val shipFacingRad = Math.toRadians(ship.facing.toDouble())
@@ -135,30 +147,17 @@ internal object ASTDVectorThrustEngineManager {
             for (engine in engines) {
                 if (engine == null) continue
                 if (engine.isPermanentlyDisabled) continue
-                val slot = try {
-                    engine.engineSlot
-                } catch (_: Throwable) {
-                    null
-                } ?: continue
-                val angle = try {
-                    slot.angle
-                } catch (_: Throwable) {
-                    180f
-                }
+                val slot = engine.engineSlot
+                val angle = slot.angle
                 val thrustAngle = Math.toRadians((angle + 180f).toDouble())
                 val fx = cos(thrustAngle).toFloat()
                 val fy = sin(thrustAngle).toFloat()
 
-                var rx = 0f
-                var ry = 0f
-                try {
-                    val eLoc = engine.location
-                    val dx = eLoc.x - shipLoc.x
-                    val dy = eLoc.y - shipLoc.y
-                    rx = dx * cosF + dy * sinF
-                    ry = -dx * sinF + dy * cosF
-                } catch (_: Throwable) {
-                }
+                val eLoc = engine.location
+                val dx = eLoc.x - shipLoc.x
+                val dy = eLoc.y - shipLoc.y
+                val rx = dx * cosF + dy * sinF
+                val ry = -dx * sinF + dy * cosF
                 val turnMoment = rx * fy - ry * fx
 
                 states += EngineState(
@@ -171,38 +170,33 @@ internal object ASTDVectorThrustEngineManager {
                 )
             }
             if (states.isEmpty()) return null
-            try {
-                log.info("[ASTD] vector-thrust attached ship=${ship.hullSpec?.hullId} engines=${states.size}")
-            } catch (_: Throwable) {
-            }
+            log.info("[ASTD] vector-thrust attached ship=${ship.hullSpec?.hullId} engines=${states.size}")
             return Attachment(ship, states)
+        }
+
+        private fun flameBlend(att: Attachment): Float {
+            val ramp = (att.systemFlameElapsed / 0.35f).coerceIn(0f, 1f)
+            return ramp * ramp * (3f - 2f * ramp)
         }
 
         private fun updateAttachment(att: Attachment, amount: Float) {
             val ship = att.ship
-            val controller = try {
-                ship.engineController
-            } catch (_: Throwable) {
-                null
-            } ?: return
+            val controller = ship.engineController ?: return
+            val fullFlame = att.systemFullFlame && ship.system?.state == ShipSystemAPI.SystemState.ACTIVE
+            if (!fullFlame) att.systemFullFlame = false
+            if (fullFlame) att.systemFlameElapsed += amount
+            val blend = flameBlend(att)
 
             var intentX = 0f
             var intentY = 0f
-            var braking = false
-            try {
-                if (controller.isAccelerating) intentX += 1f
-                if (controller.isDecelerating || controller.isAcceleratingBackwards) braking = true
-                if (controller.isStrafingLeft) intentY += 1f
-                if (controller.isStrafingRight) intentY -= 1f
-            } catch (_: Throwable) {
-            }
+            if (controller.isAccelerating) intentX += 1f
+            val braking = controller.isDecelerating || controller.isAcceleratingBackwards
+            if (controller.isStrafingLeft) intentY += 1f
+            if (controller.isStrafingRight) intentY -= 1f
 
             var turnIntent = 0f
-            try {
-                if (controller.isTurningLeft) turnIntent += 1f
-                if (controller.isTurningRight) turnIntent -= 1f
-            } catch (_: Throwable) {
-            }
+            if (controller.isTurningLeft) turnIntent += 1f
+            if (controller.isTurningRight) turnIntent -= 1f
 
             val hasTranslation = abs(intentX) > 0.01f || abs(intentY) > 0.01f
             val hasTurn = abs(turnIntent) > 0.01f
@@ -226,13 +220,10 @@ internal object ASTDVectorThrustEngineManager {
                 ship.setCustomData(ENGINE_LEVELS_KEY, levels)
             }
 
-            for (st in att.engines) {
+            for ((index, st) in att.engines.withIndex()) {
                 val engine = st.engine
-                val usable = try {
-                    !engine.isDisabled && !engine.isPermanentlyDisabled
-                } catch (_: Throwable) {
-                    false
-                }
+                val usable = !controller.isFlamedOut && !controller.isFlamingOut &&
+                    !controller.isDisabled && !engine.isDisabled && !engine.isPermanentlyDisabled
 
                 // 熄火引擎禁止调用 setFlameLevel，否则会干扰原版的熄火修复计时。
                 if (!usable) {
@@ -260,17 +251,13 @@ internal object ASTDVectorThrustEngineManager {
                     LOW_FLAME + (FULL_FLAME - LOW_FLAME) * norm
                 }
 
-                st.level = moveToward(st.level, target, if (target > st.level) ATTACK_PER_SEC else RELEASE_PER_SEC, amount)
-
-                val slot = try {
-                    engine.engineSlot
-                } catch (_: Throwable) {
-                    null
-                } ?: continue
-                try {
-                    controller.setFlameLevel(slot, st.level.coerceIn(0f, 1f))
-                } catch (_: Throwable) {
+                st.level = if (fullFlame) {
+                    att.systemStartLevels[index] + (FULL_FLAME - att.systemStartLevels[index]) * blend
+                } else {
+                    moveToward(st.level, target, if (target > st.level) ATTACK_PER_SEC else RELEASE_PER_SEC, amount)
                 }
+
+                controller.setFlameLevel(engine.engineSlot, st.level.coerceIn(0f, 1f))
                 levels[st.engine] = st.level
             }
         }

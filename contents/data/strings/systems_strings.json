@@ -3,6 +3,10 @@
     "system.high_energy_loader.status.0": "高能装填：能量武器过驱",
     "system.high_energy_loader.status.1": "幅耗上升",
 
+    "system.gression_charge.status.in": "蓄能",
+    "system.gression_charge.status.active": "冲刺",
+    "system.gression_charge.status.out": "已突破",
+
     "system.rift_shift.status.in": "折跃蓄势",
     "system.rift_shift.status.active": "虚数滑行，锁定转向",
     "system.rift_shift.status.out": "现身冲击",

@@ -64,6 +64,9 @@
 		},
 		"combatLarge":{
 			"astd_xc_101_Standard":10,
+			"astd_xc_105_Standard":10,
+			"astd_xc_105_Ranged":10,
+			"astd_xc_105_Strike":10,
 		},
 		"combatCapital":{
 			"astd_xc_102_Standard":10,

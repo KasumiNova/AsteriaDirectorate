@@ -29,6 +29,7 @@ object Desc_astd_zw_102 : LocalizedDescription("astd_zw_102", "SHIP")
 object Desc_astd_zw_101 : LocalizedDescription("astd_zw_101", "SHIP")
 object Desc_astd_xc_002 : LocalizedDescription("astd_xc_002", "SHIP")
 object Desc_astd_xc_101 : LocalizedDescription("astd_xc_101", "SHIP")
+object Desc_astd_xc_105 : LocalizedDescription("astd_xc_105", "SHIP")
 object Desc_astd_xc_103 : LocalizedDescription("astd_xc_103", "SHIP")
 
 object Desc_astd_arc_shared_flux_network : LocalizedDescription("astd_arc_shared_flux_network", "SHIP_SYSTEM")
@@ -42,6 +43,7 @@ object Desc_astd_grav_timeflow_interference : LocalizedDescription("astd_grav_ti
 object Desc_astd_rift_shift : LocalizedDescription("astd_rift_shift", "SHIP_SYSTEM")
 object Desc_astd_grav_replicator : LocalizedDescription("astd_grav_replicator", "SHIP_SYSTEM")
 object Desc_astd_burst_flow_fighter : LocalizedDescription("astd_burst_flow_fighter", "SHIP_SYSTEM")
+object Desc_astd_gression_charge : LocalizedDescription("astd_gression_charge", "SHIP_SYSTEM")
 
 object Desc_astd_lh_001 : LocalizedDescription("astd_lh_001", "SHIP")
 object Desc_astd_lh_002 : LocalizedDescription("astd_lh_002", "SHIP")

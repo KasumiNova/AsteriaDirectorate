@@ -160,6 +160,21 @@ object Wpn_astd_xc_104_bloom : WeaponDataEntry() {
     override val number: Int = 9131
 }
 
+object Wpn_astd_xc_105_bloom : WeaponDataEntry() {
+    override val id: String = "astd_xc_105_bloom"
+    override val name: String = weaponName(id)
+    override val tier: Int = 5
+    override val baseValue: Int = 0
+    override val range: Int = 0
+    override val turnRate: Int = 0
+    override val type: String = "OTHER"
+    override val tags: String = "no_drop, no_drop_salvage, no_sell"
+    override val aiHints: Set<AiHint> = setOf(AiHint.SYSTEM)
+    override val tech: String = "菀星设计局-星坠"
+    override val noDpsInTooltip: Boolean = true
+    override val number: Int = 9136
+}
+
 object Wpn_astd_xc_101_bloom : WeaponDataEntry() {
     override val id: String = "astd_xc_101_bloom"
     override val name: String = weaponName(id)
