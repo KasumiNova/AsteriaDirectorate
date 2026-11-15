@@ -77,7 +77,20 @@ internal class ASTDDevContentSelectorTest {
         assertFalse(ASTDDevContentSelector.isDevStorageWeapon(rows.getValue("astd_xc_002_bloom").toWeaponRow()))
         assertFalse(ASTDDevContentSelector.isDevStorageWeapon(rows.getValue("astd_xc_101_bloom").toWeaponRow()))
         assertFalse(ASTDDevContentSelector.isDevStorageWeapon(rows.getValue("astd_xc_103_bloom").toWeaponRow()))
-        assertFalse(ASTDDevContentSelector.isDevStorageWeapon(rows.getValue("astd_starfall_wing_mote_launcher").toWeaponRow()))
+
+        val systemHintWeapon = ASTDDevContentSelector.WeaponRow(
+            id = "sample_system_hint_weapon",
+            type = "ENERGY",
+            hints = setOf("SYSTEM"),
+            tags = setOf("no_drop", "no_drop_salvage", "no_sell"),
+            groupTag = "",
+            primaryRoleStr = "",
+            noDpsInTooltip = true,
+        )
+        assertFalse(
+            ASTDDevContentSelector.isDevStorageWeapon(systemHintWeapon),
+            "SYSTEM AI hint marks a script-only carrier and must stay out of dev storage.",
+        )
 
         val vanillaRows = CsvTestUtil.readRowsById(Path.of("/mnt/store/Games/Starsector098-linux/data/weapons/weapon_data.csv"))
         assertTrue(ASTDDevContentSelector.isDevStorageWeapon(vanillaRows.getValue("lightmg").toWeaponRow()))

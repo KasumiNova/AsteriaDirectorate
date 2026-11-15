@@ -30,6 +30,7 @@ class BoltRenderComponent(
     private var specWidth = 0f
     private var hitGlowRadius = 0f
     private var missileMode = false
+    private var visualScale = 1f
 
     override fun onAttachSelf(ctx: RenderContext): Boolean {
         val engine = ctx.engine ?: return false
@@ -57,6 +58,7 @@ class BoltRenderComponent(
         specLength = dims.length
         specWidth = dims.width
         hitGlowRadius = dims.hitGlowRadius
+        visualScale = ProjectileVisualScale.read(ctx.host) ?: 1f
         try {
             Global.getSettings().openStream(spec.texturePath).use { }
         } catch (e: Exception) {
@@ -148,16 +150,19 @@ class BoltRenderComponent(
             specLength = specLength,
         )
         val alpha = brightness * brightness * spec.color.alpha
-        val scale = Vector2f(frame.scaleX, 1f)
+        // scaleX 由亮度伸入进度决定；视觉缩放整体乘在其上，并同步把中心后移，保持弹头前端锚定弹体位置
+        val scale = Vector2f(frame.scaleX * visualScale, visualScale)
+        val span = frame.scaleX * specLength
+        val center = boltAnchoredCenter(frame.center, frame.facingDeg, span, visualScale)
         val lease = boltLease ?: return
-        lease.entity.setStateVanilla(frame.center, frame.facingDeg, scale)
+        lease.entity.setStateVanilla(center, frame.facingDeg, scale)
         lease.entity.materialData.colorAlpha = alpha
         lease.touch()
     }
 
     // 原版屏蔽后 fringeColor alpha=0，引擎自发 hit particle 不可见，需手动补偿命中光晕
     private fun spawnHitGlow(engine: CombatEngineAPI, projectile: DamagingProjectileAPI) {
-        val scale = hitGlowScale(projectile.damageAmount)
+        val scale = hitGlowScale(projectile.damageAmount) * visualScale
         val tint = Color(
             (spec.color.red.coerceIn(0f, 1f) * 255f).toInt(),
             (spec.color.green.coerceIn(0f, 1f) * 255f).toInt(),
@@ -230,6 +235,21 @@ internal fun boltFrame(
 
 internal fun hitGlowScale(damageAmount: Float): Float =
     (sqrt((damageAmount.coerceAtLeast(0f)) / 250f)).coerceIn(0.8f, 2.5f)
+
+/**
+ * 按视觉缩放把螺栓中心沿朝向后移，使缩放后的前端仍落在原头的世界位置。
+ *
+ * 螺栓绕中心缩放，长度由 [span] 放大到 `span × visualScale`，前端因此前移 `span × (visualScale − 1) / 2`，
+ * 中心需回退同样的量。
+ */
+internal fun boltAnchoredCenter(center: Vector2f, facingDeg: Float, span: Float, visualScale: Float): Vector2f {
+    val shift = span * (visualScale - 1f) / 2f
+    val rad = Math.toRadians(facingDeg.toDouble())
+    return Vector2f(
+        center.x - (kotlin.math.cos(rad) * shift).toFloat(),
+        center.y - (kotlin.math.sin(rad) * shift).toFloat(),
+    )
+}
 
 internal fun boltTailBehindHead(head: Vector2f, facingDeg: Float, tailDistance: Float): Vector2f {
     val rad = Math.toRadians(facingDeg.toDouble())

@@ -41,8 +41,8 @@ object Sys_astd_rift_shift : ShipSystemWithSystemFileEntry() {
     override val aiType: String = "CUSTOM"
     override val aiScript: String = "cn.kasuminova.astd.combat.shipsystems.StarwingShiftSystemAI"
 
-    override val maxUses: Int = 3
-    override val regen: Double = 0.1
+    override val maxUses: Int = 2
+    override val regen: Double = 1.0 / 15.0
 
     override val chargeUp: Double = 0.15
     override val active: Double = 0.6
@@ -52,7 +52,6 @@ object Sys_astd_rift_shift : ShipSystemWithSystemFileEntry() {
     override val hardFlux: Boolean = true
     override val noHardDissipation: Boolean = true
     override val noFiring: Boolean = true
-    override val noShield: Boolean = true
 
     override val icon: String = "graphics/icons/hullsys/displacer.png"
     override val useSound: String = "system_phase_cloak_activate"
@@ -167,7 +166,6 @@ object Sys_astd_suppression_mode : ShipSystemWithSystemFileEntry() {
     override val down: Double = 1.0
     override val cooldown: Double = 10.0
 
-    // 持续硬辐能基线 2%/s 走原版 CSV 结算；第 4 秒起的爬坡增量由脚本补差 (曲线无法用 CSV 表达)。
     override val fluxPerSecondBaseCap: Double = 0.02
     override val hardFlux: Boolean = true
 

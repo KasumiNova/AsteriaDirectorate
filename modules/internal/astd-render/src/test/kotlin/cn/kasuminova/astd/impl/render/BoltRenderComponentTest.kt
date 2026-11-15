@@ -142,4 +142,33 @@ class BoltRenderComponentTest {
         assertEquals(2f, hitGlowScale(1000f), 1e-3f)
         assertEquals(2.5f, hitGlowScale(10000f), 1e-3f, "上限钳 2.5")
     }
+
+    @Test
+    fun `视觉缩放不改变缩放时中心位置`() {
+        val frame = boltFrame(Vector2f(100f, 0f), Vector2f(0f, 0f), 0f, 100f)
+        val center = boltAnchoredCenter(frame.center, frame.facingDeg, frame.scaleX * 100f, 1f)
+        assertEquals(frame.center.x, center.x, 1e-4f)
+        assertEquals(frame.center.y, center.y, 1e-4f)
+    }
+
+    @Test
+    fun `视觉缩放中心后移使前端锚定原头位置`() {
+        // 头 100 尾 0，span 100：缩放 s 后长度 100s，前端应仍在 x=100
+        val frame = boltFrame(Vector2f(100f, 0f), Vector2f(0f, 0f), 0f, 100f)
+        for (scale in listOf(0.5f, 1.5f, 2.5f)) {
+            val center = boltAnchoredCenter(frame.center, frame.facingDeg, frame.scaleX * 100f, scale)
+            val renderedLength = frame.scaleX * 100f * scale
+            assertEquals(100f, center.x + renderedLength / 2f, 1e-3f, "缩放 $scale 时前端偏离原头")
+            assertEquals(0f, center.y, 1e-4f)
+        }
+    }
+
+    @Test
+    fun `视觉缩放中心后移在任意朝向下沿朝向后移`() {
+        val frame = boltFrame(Vector2f(0f, 0f), Vector2f(-50f, 0f), 0f, 100f)
+        val span = frame.scaleX * 100f
+        val center = boltAnchoredCenter(Vector2f(0f, 0f), 90f, span, 3f)
+        assertEquals(0f, center.x, 1e-3f)
+        assertEquals(-span, center.y, 1e-3f, "90 度朝向应沿 -Y 后移 span×(s−1)/2")
+    }
 }

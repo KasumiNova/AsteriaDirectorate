@@ -52,9 +52,6 @@ object Wpn_astd_starfall_echo : WeaponDataEntry(), SsJsonOutputs {
     override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
     override val number: Int = 9001
 
-    // 穿透语义走原版内建机制（passThroughMissiles/Fighters）：命中敌方导弹/战机结算伤害但不停弹。
-    // 注意：不得改用 HITS_SHIPS_* 等非 PROJECTILE_* 碰撞类别——原版 CombatEngine.advanceObjects
-    // 对非白名单类别的实体强制限速 600 su/s，高速弹体会因此飞不满射程。
     val projSpec: ProjectileProjSpec = ProjectileProjSpec.boxBolt(
         id = "astd_starfall_echo_shot",
         onFireEffect = "cn.kasuminova.astd.combat.effect.arc.starfallecho.StarfallEchoOnFireEffect",
@@ -195,21 +192,22 @@ object Wpn_astd_starfall_wing : WeaponDataEntry(), SsProjProjectileOutputs {
     override val name: String = weaponName(id)
     override val tier: Int = 3
     override val baseValue: Int = 50000
-    override val range: Int = 900
-    override val damagePerShot: Int = 200
-    override val emp: Int = 80
+    override val range: Int = 1000
+    override val damagePerShot: Int = 300
+    override val emp: Int = 0
 
-    override val chargedown: Double = 0.15
+    override val chargedown: Double = 0.2
     override val burstSize: Int = 1
     override val burstDelay: Double = 0.0
     override val turnRate: Int = 30
     override val type: String = "ENERGY"
-    override val energyPerShot: Int = 160
-    override val projSpeed: Int = 1500
+    override val energyPerShot: Int = 400
+    override val projSpeed: Int = 1100
 
-    override val ammo: Int = 24
-    override val ammoPerSec: Double = 4.0
+    override val ammo: Int = 16
+    override val ammoPerSec: Double = 1.0
     override val reloadSize: Int = 1
+    override val aiHints: Set<AiHint> = setOf(AiHint.DO_NOT_AIM)
 
     override val tags: String = "energy20, no_drop, no_drop_salvage, astd_signature, no_sell"
     override val groupTag: String = "astd"
@@ -223,7 +221,6 @@ object Wpn_astd_starfall_wing : WeaponDataEntry(), SsProjProjectileOutputs {
         id = "astd_starfall_wing_shot",
         onFireEffect = "cn.kasuminova.astd.combat.effect.arc.starfallwing.StarfallWingOnFireEffect",
         onHitEffect = "cn.kasuminova.astd.combat.effect.arc.starfallwing.StarfallWingShotOnHitEffect",
-        // 普通光梭走原版碰撞与命中链路；不能用非 PROJECTILE_* 类别，否则被强制限速 600 su/s。
         collisionClass = "PROJECTILE_NO_FF",
         collisionClassByFighter = "PROJECTILE_FIGHTER",
         fringeColor = Rgba(170, 110, 255, 255),
@@ -233,21 +230,17 @@ object Wpn_astd_starfall_wing : WeaponDataEntry(), SsProjProjectileOutputs {
     )
 }
 
-/**
- * 断熵贯通弹的隐藏载体：spec 仅经 spawnProjectile 取用，不装配、不出现在任何槽位。
- * 碰撞类别 NONE，命中由 [cn.kasuminova.astd.combat.effect.arc.starfallwing.StarfallWingWeaponEffect] 逐帧扫掠结算。
- */
-object Wpn_astd_starfall_wing_empowered_launcher : WeaponDataEntry(), SsProjProjectileOutputs {
-    override val id: String = "astd_starfall_wing_empowered_launcher"
+object Wpn_astd_starfall_wing_shuttle_launcher : WeaponDataEntry(), SsProjProjectileOutputs {
+    override val id: String = "astd_starfall_wing_shuttle_launcher"
     override val name: String = weaponName(id)
     override val tier: Int = 5
     override val baseValue: Int = 0
-    override val range: Int = 900
-    override val damagePerShot: Int = 400
-    override val emp: Int = 300
+    override val range: Int = 1000
+    override val damagePerShot: Int = 300
+    override val emp: Int = 0
     override val turnRate: Int = 30
     override val type: String = "ENERGY"
-    override val projSpeed: Int = 1500
+    override val projSpeed: Int = 1100
     override val tags: String = "no_drop, no_drop_salvage, no_sell"
     override val aiHints: Set<AiHint> = setOf(AiHint.SYSTEM)
     override val tech: String = "菀星设计局-星坠"
@@ -255,65 +248,16 @@ object Wpn_astd_starfall_wing_empowered_launcher : WeaponDataEntry(), SsProjProj
     override val number: Int = 9135
 
     override val projSpec: ProjectileProjSpec = ProjectileProjSpec.boxBolt(
-        id = "astd_starfall_wing_empowered_shot",
+        id = "astd_starfall_wing_shuttle",
         onFireEffect = "cn.kasuminova.astd.combat.effect.generic.ProjectileSpecOnFireDispatcher",
-        onHitEffect = null,
-        collisionClass = "NONE",
-        collisionClassByFighter = "NONE",
-        fringeColor = Rgba(210, 90, 255, 255),
-        coreColor = Rgba(255, 200, 255, 220),
-        // 弹体尺寸为普通光梭（70 × 7）的 150%
-        length = 105.0,
-        width = 10.5,
-    )
-}
-
-object Wpn_astd_starfall_wing_mote_launcher : WeaponDataEntry(), SsProjMissileOutputs {
-    override val id: String = "astd_starfall_wing_mote_launcher"
-    override val name: String = weaponName(id)
-    override val tier: Int = 5
-    override val baseValue: Int = 0
-    override val range: Int = 1200
-
-    override val damagePerShot: Int = 200
-    override val emp: Int = 100
-    override val turnRate: Int = 30
-    override val type: String = "ENERGY"
-    override val projSpeed: Int = 550
-    override val flightTime: Double = 2.5
-    override val projHitpoints: Int = 10000
-    override val tags: String = "no_drop, no_drop_salvage, astd_signature"
-    override val aiHints: Set<AiHint> = setOf(AiHint.SYSTEM, AiHint.PD_ALSO)
-    override val groupTag: String = ""
-    override val tech: String = "菀星设计局-星坠"
-    override val primaryRoleStr: String = SsI18n.t("weapon.$id.primaryRoleStr")
-    override val noDpsInTooltip: Boolean = true
-    override val number: Int = 9132
-
-    override val projSpec: MissileProjSpec = MissileProjSpec(
-        id = "astd_starfall_wing_mote",
-        missileType = "MISSILE",
-        onHitEffect = "cn.kasuminova.astd.combat.effect.arc.starfallwing.StarfallWingMoteOnHitEffect",
-        sprite = "graphics/textures/BUtil_NONE.png",
-        size = Vec2i(4, 4),
-        center = Vec2(2, 2),
-        collisionRadius = 7,
-        collisionClass = "MISSILE_NO_FF",
-        explosionColor = Rgba(170, 110, 255, 180),
-        explosionRadius = 24,
-        armingTime = 0.05,
-        flameoutTime = 0.5,
-        noEngineGlowTime = 999.0,
-        fadeTime = 0.25,
-        // 点防定位：追踪段最高速 550 su/s（射程 1200 内可覆盖），机动按该航速标定
-        engineSpec = MissileEngineSpec(
-            turnAcc = 1200,
-            turnRate = 900,
-            acc = 1200,
-            dec = 1000,
-        ),
-        engineSlots = emptyList(),
-    )
+        onHitEffect = "cn.kasuminova.astd.combat.effect.arc.starfallwing.StarfallWingShotOnHitEffect",
+        collisionClass = "PROJECTILE_NO_FF",
+        collisionClassByFighter = "PROJECTILE_FIGHTER",
+        fringeColor = Rgba(170, 110, 255, 255),
+        coreColor = Rgba(240, 225, 255, 200),
+        length = 70.0,
+        width = 7.0,
+    ).copy(fadeTime = 0.5, passThroughMissiles = true, passThroughFighters = false)
 }
 
 object Wpn_astd_charge_needle : WeaponDataEntry(), SsProjProjectileOutputs {

@@ -36,8 +36,15 @@ class ShardWakeComponent(
     internal var accumulator = 0f
         private set
 
+    private var visualScale = 1f
+
     init {
         addChild(shards)
+    }
+
+    override fun onAttachSelf(ctx: RenderContext): Boolean {
+        visualScale = ProjectileVisualScale.read(ctx.host) ?: 1f
+        return true
     }
 
     override fun advanceSelf(ctx: RenderContext, amount: Float) {
@@ -51,12 +58,12 @@ class ShardWakeComponent(
     private fun emit(ctx: RenderContext) {
         val frame = ctx.frame
         repeat(spec.perTick) {
-            val pos = MathUtils.getRandomPointInCircle(frame.origin, spec.scatterRadius)
-            val speed = MathUtils.getRandomNumberInRange(spec.speedMin, spec.speedMax)
+            val pos = MathUtils.getRandomPointInCircle(frame.origin, spec.scatterRadius * visualScale)
+            val speed = MathUtils.getRandomNumberInRange(spec.speedMin, spec.speedMax) * visualScale
             val vel = MathUtils.getPointOnCircumference(
                 Vector2f(), speed, frame.facing + MathUtils.getRandomNumberInRange(-spec.spreadDeg, spec.spreadDeg),
             )
-            shards.addShard(0, pos, vel)
+            shards.addShard(0, pos, vel, visualScale)
         }
     }
 

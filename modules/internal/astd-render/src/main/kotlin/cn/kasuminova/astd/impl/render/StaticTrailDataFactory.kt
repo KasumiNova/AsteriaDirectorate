@@ -23,24 +23,98 @@ object StaticTrailDataFactory {
     internal const val MIN_TOTAL_DURATION = 0.15f
     internal const val MAX_TOTAL_DURATION = 10f
 
+    /** 逐实例缩放量化步长。0.5~2.5 落到 41 档，档数与池数量有界。 */
+    internal const val SCALE_BUCKET_STEP = 0.05f
+
     private const val INIT_CAPACITY: Short = 256
+    private const val SCALED_INIT_CAPACITY: Short = 32
     private const val LENGTH_BUCKET_SU = 25f
+    private const val SPEED_BUCKET_SU = 25f
 
-    fun trailData(treeId: String, layerName: String, spec: StaticTrailSpec, projectileSpeedSuPerSec: Float): StaticTrailData =
-        cache.getOrPut("$treeId/$layerName@${(spec.bandLength / LENGTH_BUCKET_SU).roundToInt() * LENGTH_BUCKET_SU}") {
-            build(treeId, layerName, spec, projectileSpeedSuPerSec)
+    fun trailData(
+        treeId: String,
+        layerName: String,
+        spec: StaticTrailSpec,
+        projectileSpeedSuPerSec: Float,
+    ): StaticTrailData = trailData(treeId, layerName, spec, projectileSpeedSuPerSec, null)
+
+    /**
+     * [visualScale] 为 null 时该弹体未启用缩放。
+     *
+     * [projectileSpeedSuPerSec] 是寿命折算基准速度（主炮面板速度或弹体 spec 速度），不随实例速度加成变化。
+     * 缩放启用时带长与速度同乘缩放值，总寿命与缩放档无关。
+     */
+    fun trailData(
+        treeId: String,
+        layerName: String,
+        spec: StaticTrailSpec,
+        projectileSpeedSuPerSec: Float,
+        visualScale: Float?,
+    ): StaticTrailData {
+        val sampling = resolveTrailSampling(treeId, layerName, spec.bandLength, projectileSpeedSuPerSec, visualScale)
+        return cache.getOrPut(sampling.cacheKey) { build(treeId, layerName, spec, sampling) }
+    }
+
+    internal class TrailSampling(
+        val cacheKey: String,
+        /** 传给 [StaticTrailData] 的池标识。BoxUtil 以 [StaticTrailData] 为池键，其 equals 只比较 id。 */
+        val dataId: String,
+        val bandLength: Float,
+        val speedSuPerSec: Float,
+        val scale: Float,
+        val initCapacity: Short,
+    )
+
+    internal fun resolveTrailSampling(
+        treeId: String,
+        layerName: String,
+        baseBandLength: Float,
+        baseSpeedSuPerSec: Float,
+        visualScale: Float?,
+    ): TrailSampling {
+        // 带长与时长一律取桶值：缓存键只含桶，配置必须由桶唯一决定，不得沿用首个调用方的原始带长
+        val lengthBucket = (baseBandLength / LENGTH_BUCKET_SU).roundToInt() * LENGTH_BUCKET_SU
+        val speedBucket = (baseSpeedSuPerSec / SPEED_BUCKET_SU).roundToInt() * SPEED_BUCKET_SU
+        if (visualScale == null) {
+            return TrailSampling(
+                cacheKey = "$treeId/$layerName@$lengthBucket",
+                dataId = "$treeId/$layerName",
+                bandLength = lengthBucket,
+                speedSuPerSec = baseSpeedSuPerSec,
+                scale = 1f,
+                initCapacity = INIT_CAPACITY,
+            )
         }
+        val scaleBucket = scaleBucketOf(visualScale)
+        val scale = scaleBucket * SCALE_BUCKET_STEP
+        return TrailSampling(
+            cacheKey = "${treeId}/$layerName@${lengthBucket}_${speedBucket}_$scaleBucket",
+            dataId = "$treeId/$layerName@${lengthBucket}_${speedBucket}_$scaleBucket",
+            bandLength = lengthBucket * scale,
+            speedSuPerSec = speedBucket * scale,
+            scale = scale,
+            initCapacity = SCALED_INIT_CAPACITY,
+        )
+    }
 
-    private fun build(treeId: String, layerName: String, spec: StaticTrailSpec, projectileSpeedSuPerSec: Float): StaticTrailData {
-        val total = totalDurationSeconds(spec.bandLength, projectileSpeedSuPerSec)
-        val data = StaticTrailData("$treeId/$layerName", INIT_CAPACITY)
+    internal fun scaleBucketOf(visualScale: Float): Int = (visualScale / SCALE_BUCKET_STEP).roundToInt()
+
+    private fun build(
+        treeId: String,
+        layerName: String,
+        spec: StaticTrailSpec,
+        sampling: TrailSampling,
+    ): StaticTrailData {
+        val scale = sampling.scale
+        val total = totalDurationSeconds(sampling.bandLength, sampling.speedSuPerSec)
+        val data = StaticTrailData(sampling.dataId, sampling.initCapacity)
             .setDurFadeIn(total * FADE_IN_RATIO)
             .setDurFull(total * FULL_RATIO)
             .setDurFadeOut(total * FADE_OUT_RATIO)
-            .setSizeIn(spec.width)
-            .setSizeOut(spec.width * spec.tailWidthRatio)
-            .setTexturePixels(spec.tileLength)
-            .setTextureSpeed(spec.scrollSpeed)
+            .setSizeIn(spec.width * scale)
+            .setSizeOut(spec.width * spec.tailWidthRatio * scale)
+            .setTexturePixels(spec.tileLength * scale)
+            .setTextureSpeed(spec.scrollSpeed * scale)
             .setColorIn(spec.headColor.toVector4f())
             .setColorOut(spec.tailColor.toVector4f())
             .setAdditiveBlend(true)
@@ -60,7 +134,10 @@ object StaticTrailDataFactory {
             data.material.setEmissiveColor(spec.headColor.toVector4f())
             data.material.glowPower = spec.glowPower
         }
-        log.info("[ASTD] static trail registered: id=$treeId/$layerName total=${total}s speed=$projectileSpeedSuPerSec tex=${spec.texturePath}")
+        log.info(
+            "[ASTD] static trail registered: id=${sampling.dataId} total=${total}s " +
+                "speed=${sampling.speedSuPerSec} scale=$scale tex=${spec.texturePath}",
+        )
         return data
     }
 

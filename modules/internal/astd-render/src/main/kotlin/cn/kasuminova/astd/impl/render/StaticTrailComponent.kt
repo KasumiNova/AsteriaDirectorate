@@ -26,7 +26,9 @@ class StaticTrailComponent(
             return false
         }
         BoxUtilCombatVfx.ensureReady(engine)
-        val data = StaticTrailDataFactory.trailData(treeId, layerName, spec, projectile.moveSpeed)
+        val visualScale = ProjectileVisualScale.read(ctx.host)
+        val baseSpeed = ProjectileVisualScale.baseSpeed(projectile)
+        val data = StaticTrailDataFactory.trailData(treeId, layerName, spec, baseSpeed, visualScale)
         val added = CombatRenderingManager.addStaticTrail(
             data,
             projectile,

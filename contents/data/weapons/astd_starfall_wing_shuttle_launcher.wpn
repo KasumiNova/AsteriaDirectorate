@@ -1,9 +1,8 @@
 {
-    "id": "astd_starfall_wing_empowered_launcher",
+    "id": "astd_starfall_wing_shuttle_launcher",
     "specClass": "projectile",
-    "type": "ENERGY",
+    "type": "SYSTEM",
     "size": "LARGE",
-    "displayArcRadius": 700,
     "turretSprite": "graphics/fx/empty.png",
     "turretGunSprite": "graphics/fx/empty.png",
     "hardpointSprite": "graphics/fx/empty.png",
@@ -24,7 +23,7 @@
         "particleSizeRange": 16.0,
         "particleDuration": 0.25,
         "particleCount": 22,
-        "particleColor": [210, 90, 255, 220]
+        "particleColor": [170, 110, 255, 220]
     },
-    "projectileSpecId": "astd_starfall_wing_empowered_shot"
+    "projectileSpecId": "astd_starfall_wing_shuttle"
 }

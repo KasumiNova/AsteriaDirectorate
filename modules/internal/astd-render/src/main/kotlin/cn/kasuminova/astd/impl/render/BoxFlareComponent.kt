@@ -3,8 +3,7 @@ package cn.kasuminova.astd.impl.render
 import cn.kasuminova.astd.api.render.FadeReason
 import cn.kasuminova.astd.api.render.RenderContext
 import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx
-import cn.kasuminova.astd.renderer.boxutil.BoxUtilCombatVfx.addEntity
-import com.fs.starfarer.api.Global
+import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEngineLayers
 import org.boxutil.units.standard.entity.FlareEntity
 import org.lwjgl.util.vector.Vector2f
@@ -26,20 +25,34 @@ class BoxFlareComponent(
     internal val spec: BoxFlareSpec,
 ) : RenderEntityImpl(id, CombatEngineLayers.ABOVE_PARTICLES, RENDER_ORDER_FLARE) {
 
-    private val log = Global.getLogger(BoxFlareComponent::class.java)
-    private var flare: FlareEntity? = null
+    private var lease: FlareLease? = null
     private var disabled = false
     private var fadeStartElapsed = -1f
     private var fadeSeconds = 0.15f
+    private var visualScale = 1f
 
     override fun onAttachSelf(ctx: RenderContext): Boolean {
         val engine = ctx.engine ?: return false
-        val entity = FlareEntity()
+        visualScale = ProjectileVisualScale.read(ctx.host) ?: 1f
+        val entity = FlareEntityPool.checkout(engine, spec.boxLayer)
+        if (entity == null) {
+            disabled = true
+            return true
+        }
+        applyLeaseConfig(entity)
+        lease = FlareLease(engine, entity)
+        syncFlare(ctx)
+        return true
+    }
+
+    /** 租约复用时实体带着上一次的形态，必须整体复位后按本弹 spec 重配。 */
+    private fun applyLeaseConfig(entity: FlareEntity) {
+        entity.reset()
         entity.setLayer(spec.boxLayer)
         entity.setAdditiveBlend()
         entity.applyFlareStyle(spec.style)
         entity.discRatio = spec.discRatio
-        entity.setSize(spec.width, spec.height)
+        entity.setSize(spec.width * visualScale, spec.height * visualScale)
         entity.autoAspect()
         entity.isFlick = spec.flick
         entity.flickerAnimationRateMulti = spec.flickerRate
@@ -49,31 +62,20 @@ class BoxFlareComponent(
         entity.setCoreColor(spec.coreColor.toAwt())
         entity.setFringeColor(spec.fringeColor.toAwt())
         entity.setGlobalTimer(0.05f, FLARE_FULL_SECONDS, 0.1f)
-        BoxUtilCombatVfx.ensureReady(engine)
-        val state = addEntity(engine, entity)
-        if (state != 0) {
-            log.warn("ASTD box flare 注册失败（addEntity 返回 $state）：id=$id，本弹体光斑层缺失，其余特效层照常")
-            entity.delete()
-            disabled = true
-            return true
-        }
-        flare = entity
-        syncFlare(ctx)
-        return true
     }
 
     override fun advanceSelf(ctx: RenderContext, amount: Float) {
         if (disabled) return
-        val entity = flare ?: return
-        if (entity.hasDelete()) {
-            flare = null
+        val current = lease ?: return
+        if (current.entity.hasDelete()) {
+            lease = null
             return
         }
         syncFlare(ctx)
     }
 
     private fun syncFlare(ctx: RenderContext) {
-        val entity = flare ?: return
+        val entity = lease?.entity ?: return
         val frame = ctx.frame
         if (fadeStartElapsed < 0f && frame.phase == cn.kasuminova.astd.api.render.RenderPhase.FadingOut) {
             fadeStartElapsed = frame.elapsed
@@ -81,9 +83,11 @@ class BoxFlareComponent(
         val fadeMul = if (fadeStartElapsed < 0f) 1f
         else (1f - (frame.elapsed - fadeStartElapsed) / fadeSeconds).coerceIn(0f, 1f)
         val rad = Math.toRadians(frame.facing.toDouble())
+        // 位移量与光斑尺寸同源，随视觉缩放同步，保持光斑相对弹体的对位
+        val offset = spec.offsetX * visualScale
         val pos = Vector2f(
-            frame.origin.x + (cos(rad) * spec.offsetX).toFloat(),
-            frame.origin.y + (sin(rad) * spec.offsetX).toFloat(),
+            frame.origin.x + (cos(rad) * offset).toFloat(),
+            frame.origin.y + (sin(rad) * offset).toFloat(),
         )
         val facing = spec.fixedFacingDeg ?: BoxUtilCombatVfx.normalizeFacingDeg(frame.facing + spec.facingOffsetDeg)
         entity.setStateVanilla(pos, facing)
@@ -95,9 +99,12 @@ class BoxFlareComponent(
     }
 
     override fun onDetachSelf() {
-        flare?.delete()
-        flare = null
+        val current = lease ?: return
+        lease = null
+        FlareEntityPool.release(current.engine, spec.boxLayer, current.entity)
     }
+
+    private class FlareLease(val engine: CombatEngineAPI, val entity: FlareEntity)
 
     companion object {
         const val RENDER_ORDER_FLARE = StaticTrailComponent.RENDER_ORDER_BASE + 8

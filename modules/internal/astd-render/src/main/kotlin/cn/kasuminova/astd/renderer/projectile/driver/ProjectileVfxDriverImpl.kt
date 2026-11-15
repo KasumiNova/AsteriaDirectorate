@@ -47,7 +47,7 @@ class ProjectileVfxDriverImpl(
             return
         }
         val inPlay = engine.isEntityInPlay(active)
-        val alive = inPlay && !active.isExpired && !active.isFading
+        val alive = inPlay && !active.isExpired && !active.didDamage()
         val location = if (inPlay) active.location else null
         val facing = if (inPlay) active.facing else 0f
         advanceInternal(engine, location, facing, amount, alive)
@@ -137,7 +137,7 @@ class ProjectileVfxDriverImpl(
         endpoint = null,
         worldUnitsPerPixel = referenceWorldUnitsPerPixel(engine),
         active = phase == RenderPhase.Active,
-        intensity = 1f,
+        intensity = projectile?.let { if (it.isFading) it.brightness.coerceIn(0f, 1f) else 1f } ?: 1f,
         phase = phase,
         flightProgress = 0f,
         dissolve = 0f,

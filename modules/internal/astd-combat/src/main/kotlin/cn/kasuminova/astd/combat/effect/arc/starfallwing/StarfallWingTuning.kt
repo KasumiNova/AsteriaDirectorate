@@ -1,92 +1,75 @@
 package cn.kasuminova.astd.combat.effect.arc.starfallwing
 
 import cn.kasuminova.astd.api.difficulty.ScalingEntry
-import org.lwjgl.util.vector.Vector2f
-import kotlin.math.sqrt
+import com.fs.starfarer.api.combat.DamageType
+import kotlin.math.PI
+import kotlin.math.acos
+import kotlin.math.sin
+import kotlin.math.ln
+import kotlin.math.min
+import kotlin.math.pow
 
-/**
- * 坠星残翼（星翼-级内置主炮）机制数值。
- * 虚数充能/星羽弹幕/折跃相关数值见 [cn.kasuminova.astd.combat.hullmods.arc.ImaginaryWingsTuning]。
- */
 object StarfallWingTuning {
-
     const val WEAPON_ID = "astd_starfall_wing"
     const val SHOT_SPEC_ID = "astd_starfall_wing_shot"
-    const val EMPOWERED_SHOT_SPEC_ID = "astd_starfall_wing_empowered_shot"
-    const val EMPOWERED_LAUNCHER_ID = "astd_starfall_wing_empowered_launcher"
-    const val MOTE_WEAPON_ID = "astd_starfall_wing_mote_launcher"
-    const val MOTE_SPEC_ID = "astd_starfall_wing_mote"
+    const val SHUTTLE_SPEC_ID = "astd_starfall_wing_shuttle"
+    const val SHUTTLE_LAUNCHER_ID = "astd_starfall_wing_shuttle_launcher"
+    const val SHOT_STATE_KEY = "astd_starfall_wing_shot_state"
+    const val VISUAL_SCALE_KEY = "astd_projectile_visual_scale"
+    const val BASE_SPEED_KEY = "astd_projectile_base_speed"
+    const val CHARGE_FRACTION = 0.1f
+    val DAMAGE_FACTOR = ScalingEntry(0.75f, 1f, 1.75f)
+    val ARC_MIN = ScalingEntry(1f, 2f, 5f)
+    val ARC_MAX = ScalingEntry(2f, 4f, 10f)
+    val POWER_MIN = ScalingEntry(0.4f, 0.5f, 0.8f)
+    val POWER_MAX = ScalingEntry(1.4f, 1.5f, 1.8f)
+    val CHARGE_CONVERSION = ScalingEntry(0.07f, 0.1f, 0.19f)
+    val HIT_GAIN = ScalingEntry(3f, 4f, 7f)
+    val RED_HULL_DAMAGE = ScalingEntry(0.01f, 0.02f, 0.05f)
+    val GOLD_HARD_FLUX = ScalingEntry(0.005f, 0.01f, 0.025f)
+    const val TURN_RATE = 240f
+    const val SWAY_DEGREES = 20f
+    const val TARGET_SCAN_INTERVAL = 0.1f
 
-    // ---------- 断熵强化贯通弹 ----------
-
-    /** 常态触发周期（每第 N 发升格）：迟暮 6 / 砺刃 6 / 破晓 4。 */
-    val EMPOWERED_PERIOD = ScalingEntry(6f, 6f, 4f)
-
-    /** 超翼过载期触发周期：迟暮 4 / 砺刃 3 / 破晓 2。 */
-    val EMPOWERED_PERIOD_OVERDRIVE = ScalingEntry(4f, 3f, 2f)
-
-    /** 断熵弹 EMP 面板值，穿透 tick 按 [PIERCE_TICK_RATIO] 折算。 */
-    const val EMPOWERED_EMP = 300f
-
-    const val PIERCE_TICK_SECONDS = 0.05f
-
-    const val PIERCE_TICK_RATIO = 0.25f
-
-    fun pierceTickDamage(panel: Float): Float = panel * PIERCE_TICK_RATIO
-
-    fun pierceTickEmp(empPanel: Float): Float = empPanel * PIERCE_TICK_RATIO
-
-    // ---------- 振频蚀穿 ----------
-
-    const val EROSION_TAKEN_PER_STACK = 0.02f
-
-    const val EROSION_MAX_STACKS = 15
-
-    const val EROSION_DURATION_SECONDS = 4f
-
-    /** 每层 +2% 加法劣化最终护盾承伤效率，劣化后不超过 1.0。 */
-    fun erosionShieldMult(baseTaken: Float, stacks: Int): Float {
-        if (baseTaken <= 0f || baseTaken >= 1.0f) return 1f
-        val target = (baseTaken + EROSION_TAKEN_PER_STACK * stacks.coerceAtLeast(0))
-            .coerceAtMost(1.0f)
-        return target / baseTaken
+    enum class ShuttleType(val damageType: DamageType, val damageFactor: Float, val radius: Float, val vfxId: String) {
+        BLUE(DamageType.ENERGY, 1f, 150f, "astd_starfall_wing_blue"),
+        RED(DamageType.HIGH_EXPLOSIVE, 1f, 150f, "astd_starfall_wing_red"),
+        GOLD(DamageType.KINETIC, 1f, 150f, "astd_starfall_wing_gold"),
+        PURPLE(DamageType.FRAGMENTATION, 3f, 300f, "astd_starfall_wing_purple"),
     }
 
-    // ---------- 几何工具（穿透扫掠用） ----------
-
-    fun distanceToSegment(p: Vector2f, a: Vector2f, b: Vector2f): Float {
-        val abx = b.x - a.x
-        val aby = b.y - a.y
-        val lenSq = abx * abx + aby * aby
-        if (lenSq <= 1e-6f) {
-            val dx = p.x - a.x
-            val dy = p.y - a.y
-            return sqrt(dx * dx + dy * dy)
-        }
-        val t = (((p.x - a.x) * abx + (p.y - a.y) * aby) / lenSq).coerceIn(0f, 1f)
-        val cx = a.x + abx * t
-        val cy = a.y + aby * t
-        val dx = p.x - cx
-        val dy = p.y - cy
-        return sqrt(dx * dx + dy * dy)
+    fun power(randomUnit: Float, spentCharge: Float, minimum: Float, maximum: Float, conversion: Float): Float {
+        require(randomUnit in 0f..1f && spentCharge >= 0f && minimum > 0f && maximum >= minimum && conversion >= 0f)
+        return minimum + (maximum - minimum) * randomUnit + spentCharge * conversion
     }
 
-    fun closestPointOnSegment(p: Vector2f, a: Vector2f, b: Vector2f): Vector2f {
-        val abx = b.x - a.x
-        val aby = b.y - a.y
-        val lenSq = abx * abx + aby * aby
-        if (lenSq <= 1e-6f) return Vector2f(a)
-        val t = (((p.x - a.x) * abx + (p.y - a.y) * aby) / lenSq).coerceIn(0f, 1f)
-        return Vector2f(a.x + abx * t, a.y + aby * t)
+    fun sizeFactor(power: Float): Float {
+        if (power <= 2f) return power
+        // 对递减的尺寸增长率积分，避免跨越衰减档位时弹体反而缩小。
+        return 2f + 0.2f / ln(2f) * (1f - 0.5f.pow((power - 2f) / 0.2f))
     }
 
-    fun pointInPolygon(p: Vector2f, segments: List<Pair<Vector2f, Vector2f>>): Boolean {
-        var inside = false
-        for ((a, b) in segments) {
-            val intersects = (a.y > p.y) != (b.y > p.y) &&
-                p.x < (b.x - a.x) * (p.y - a.y) / (b.y - a.y) + a.x
-            if (intersects) inside = !inside
-        }
-        return inside
+    fun speedFactor(power: Float): Float = 1f + (power - 1f) * 0.5f
+
+    fun turnRate(speed: Float): Float = TURN_RATE * maxOf(1f, speed / 1100f)
+
+    fun turnToward(facing: Float, targetFacing: Float, maxTurn: Float): Float {
+        val difference = ((targetFacing - facing) % 360f + 540f) % 360f - 180f
+        return ((facing + difference.coerceIn(-maxTurn, maxTurn)) % 360f + 360f) % 360f
     }
+
+    fun arcOffset(progress: Float, phase: Float): Float {
+        if (progress <= 0f || progress >= 0.45f) return 0f
+        val side = sin(phase)
+        val amplitude = (if (side < 0f) -1f else 1f) * (0.6f + 0.4f * kotlin.math.abs(side))
+        return sin(progress / 0.45f * PI.toFloat()) * amplitude * SWAY_DEGREES
+    }
+
+    fun approachOffset(progress: Float, phase: Float, targetDistance: Float, remainingRange: Float, speed: Float = 0f): Float {
+        if (remainingRange <= targetDistance || targetDistance <= maxOf(150f, speed * 0.1f)) return 0f
+        val budgetAngle = Math.toDegrees(acos((targetDistance / remainingRange).coerceIn(0f, 1f)).toDouble()).toFloat() * 0.35f
+        val offset = arcOffset(progress, phase)
+        return offset.coerceIn(-min(SWAY_DEGREES, budgetAngle), min(SWAY_DEGREES, budgetAngle))
+    }
+
 }

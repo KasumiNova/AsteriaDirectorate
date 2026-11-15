@@ -20,29 +20,10 @@ object ProjectileVfxSpecs {
     private val builders: Map<String, (Float?) -> ProjectileVfx> = mapOf(
         "astd_starfall_echo_shot" to { range -> starfallEchoShot("astd_starfall_echo_shot", range) },
         "astd_starfall_echo_shot_final" to { range -> starfallEchoFinalShot("astd_starfall_echo_shot_final", range) },
-        "astd_starfall_wing_shot" to { range -> starfallWingShot("astd_starfall_wing_shot", range) },
-        "astd_starfall_wing_empowered_shot" to { range -> starfallWingEmpoweredShot("astd_starfall_wing_empowered_shot", range) },
-        // BoxUtil 的 bolt 组件对 MissileAPI 默认禁用，导弹需要弹头时必须显式 bolt { onMissile() } 接管
-        "astd_starfall_wing_mote" to {
-            simpleProjectileVfx("astd_starfall_wing_mote", violet(), width = 5f, length = 260f) {
-                bolt {
-                    onMissile()
-                    size(28f, 10f)
-                }
-                shardWake("wake") {
-                    cadence(0.02f, 1)
-                    emission(scatterRadius = 8f, speedMin = 20f, speedMax = 40f, spreadDeg = 0f)
-                    shardLength(34f)
-                    colors(core = 0xF0E1FFFF, fringe = 0xAA6EFFFF)
-                    shard(
-                        sizeMul = 0.2f, sizeMin = 3f, sizeMax = 6f,
-                        spinMin = 90f, spinMax = 360f,
-                        alphaLo = 120, alphaHi = 180,
-                        timerFullLo = 0.15f, timerFullHi = 0.3f, timerFadeOut = 0.3f,
-                    )
-                }
-            }
-        },
+        "astd_starfall_wing_blue" to { range -> starfallWingShuttle("astd_starfall_wing_blue", range, ASTDColor(0xFF5AAFFF), ASTDColor(0xFFAA55FF)) },
+        "astd_starfall_wing_red" to { range -> starfallWingShuttle("astd_starfall_wing_red", range, ASTDColor(0xFFFF504B), ASTDColor(0xFFFFB54B)) },
+        "astd_starfall_wing_gold" to { range -> starfallWingShuttle("astd_starfall_wing_gold", range, ASTDColor(0xFFFFCD46), ASTDColor(0xFFFF6A38)) },
+        "astd_starfall_wing_purple" to { range -> starfallWingShuttle("astd_starfall_wing_purple", range, ASTDColor(0xFFC364FF), ASTDColor(0xFF626BFF)) },
         "astd_charge_needle_shot" to {
             simpleProjectileVfx(
                 "astd_charge_needle_shot",
@@ -358,66 +339,41 @@ object ProjectileVfxSpecs {
         }
     }
 
-    private fun starfallWingShot(id: String, range: Float?): ProjectileVfx = simpleProjectileVfx(
-        id,
-        starfallBlue(),
-        width = 14f,
+    private fun starfallWingShuttle(id: String, range: Float?, head: ASTDColor, tail: ASTDColor): ProjectileVfx = simpleProjectileVfx(
+        id, head,
+        width = 12f,
         length = 260f,
         range = range,
-        rangeRatio = 0.5f,
-        trailGlow = 0.8f,
-        boltFlare = 40f,
-        muzzleBurst = MuzzleBurst(length = 90f, halfAngleDeg = 24f, duration = 0.25f),
+        rangeRatio = 0.35f,
+        trailGlow = 0.6f,
+        tailColor = tail,
         recede = 0f,
-        decorTrail = false
+        decorTrail = false,
     ) {
-        shardWake("wake") {
-            cadence(0.04f, 1)
-            emission(scatterRadius = 6f, speedMin = 20f, speedMax = 40f, spreadDeg = 0f)
-            shardLength(24f)
-            colors(core = 0xF0F8FFFF, fringe = 0x78BEFFFF)
-            shard(
-                sizeMul = 0.2f, sizeMin = 3f, sizeMax = 6f,
-                spinMin = 90f, spinMax = 360f,
-                alphaLo = 120, alphaHi = 180,
-                timerFullLo = 0.15f, timerFullHi = 0.3f, timerFadeOut = 0.3f,
-            )
+        bolt { size(70f, 7f) }
+        for (angle in listOf(45f, 135f)) {
+            boxFlare("cross_$angle") {
+                style(BoxFlareStyle.SHARP_DISC, facingOffsetDeg = angle)
+                colors(mixWhite(head, 0.35f).hex(), head.a(0.9f).hex())
+                size(80f, 6f)
+                glow(0.65f, 4f)
+                offset(-15f)
+            }
         }
-    }
-
-    private fun starfallWingEmpoweredShot(id: String, range: Float?): ProjectileVfx = simpleProjectileVfx(
-        id,
-        empoweredVioletRed(),
-        width = 21f,
-        length = 390f,
-        range = range,
-        rangeRatio = 0.5f,
-        trailGlow = 0.9f,
-        boltFlare = 60f,
-        muzzleBurst = MuzzleBurst(length = 140f, halfAngleDeg = 26f, duration = 0.35f),
-        decorTrail = false
-    ) {
-        boxFlare("pillar") {
-            style(BoxFlareStyle.SMOOTH_DISC, facingOffsetDeg = 45f)
-            colors(0xFFEDE6FF, 0xD246FFA0)
-            size(120f, 6f)
-            glow(1.2f, 4f)
-            offset(-30f)
-        }
-        boxFlare("pillar_cross") {
-            style(BoxFlareStyle.SMOOTH_DISC, facingOffsetDeg = 45f + 90f)
-            colors(0xFFEDE6FF, 0xD246FFA0)
-            size(120f, 6f)
-            glow(1.2f, 4f)
-            offset(-30f)
+        boxFlare("star_core") {
+            style(BoxFlareStyle.SMOOTH)
+            colors(mixWhite(head, 0.5f).hex(), head.a(0.5f).hex())
+            size(24f, 24f)
+            glow(0.35f, 4f)
+            offset(-15f)
         }
         shardWake("wake") {
             cadence(0.02f, 3)
-            emission(scatterRadius = 8f, speedMin = 20f, speedMax = 40f, spreadDeg = 0f)
-            shardLength(34f)
-            colors(core = 0xFFEBE1FF, fringe = 0xD246FFFF)
+            emission(scatterRadius = 6f, speedMin = 20f, speedMax = 40f, spreadDeg = 12f)
+            shardLength(28f)
+            colors(core = mixWhite(head, 0.7f).hex(), fringe = head.hex())
             shard(
-                sizeMul = 0.2f, sizeMin = 4f, sizeMax = 9f,
+                sizeMul = 0.2f, sizeMin = 3f, sizeMax = 6f,
                 spinMin = 90f, spinMax = 360f,
                 alphaLo = 120, alphaHi = 180,
                 timerFullLo = 0.15f, timerFullHi = 0.3f, timerFadeOut = 0.3f,
@@ -520,8 +476,6 @@ object ProjectileVfxSpecs {
     private fun paleGreenTail() = ASTDColor(0.19f, 0.35f, 0.25f, 0.6f)
 
     private fun violet() = ASTDColor(0.66f, 0.42f, 1f, 1f)
-
-    private fun empoweredVioletRed() = ASTDColor(0.82f, 0.27f, 1f, 1f)
 
     private fun iceBlue() = ASTDColor(0.67f, 0.88f, 1f, 1f)
 

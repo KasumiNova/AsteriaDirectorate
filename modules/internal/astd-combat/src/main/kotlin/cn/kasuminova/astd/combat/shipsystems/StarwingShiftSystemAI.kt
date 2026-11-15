@@ -1,5 +1,7 @@
 package cn.kasuminova.astd.combat.shipsystems
 
+import cn.kasuminova.astd.combat.hullmods.arc.ImaginaryWingsTuning
+import cn.kasuminova.astd.combat.effect.arc.starfallwing.StarfallWingTuning
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.combat.ShipSystemAIScript
@@ -9,10 +11,6 @@ import com.fs.starfarer.api.util.IntervalUtil
 import org.lazywizard.lazylib.MathUtils
 import org.lwjgl.util.vector.Vector2f
 
-/**
- * 星翼折跃 AI：位移距离固定（[cn.kasuminova.astd.combat.hullmods.arc.ImaginaryWingsTuning.SHIFT_DISTANCE]），
- * 方向由激活瞬间的舰速/舰首决定，AI 只判定时机——导弹规避、高幅/残结构撤退、中距接敌突进。
- */
 class StarwingShiftSystemAI : ShipSystemAIScript {
 
     private var ship: ShipAPI? = null
@@ -33,9 +31,8 @@ class StarwingShiftSystemAI : ShipSystemAIScript {
         val engine = this.engine ?: return
         if (engine.isPaused || ship.isHulk) return
         if (system.state != ShipSystemAPI.SystemState.IDLE) return
-        if (!system.canBeActivated()) return
+        if (system.ammo <= 0 || !system.canBeActivated() || ship.fluxTracker.isOverloadedOrVenting) return
 
-        // 导弹规避为即时反应，不走扫描节拍
         if (missileThreat(ship, engine) && shieldNotCoveringDanger(ship, missileDangerDir)) {
             ship.useSystem()
             return
@@ -65,8 +62,14 @@ class StarwingShiftSystemAI : ShipSystemAIScript {
             return
         }
 
-        // 接敌突进：本舰正朝目标机动时折跃缩短距离，现身齐射+过载正好衔接输出窗口
-        if (distance in ENGAGE_MIN_RANGE..ENGAGE_MAX_RANGE && approach >= ENGAGE_APPROACH_MIN) {
+        val weapon = ship.allWeapons.firstOrNull { it.id == StarfallWingTuning.WEAPON_ID } ?: return
+        val shiftDistance = ship.mutableStats.systemRangeBonus.computeEffective(ImaginaryWingsTuning.SHIFT_DISTANCE)
+        val projectedDistance = StarwingShiftMath.distanceAfterShift(distance, shiftDistance, approach)
+        val surfaceDistance = distance - ship.collisionRadius - nearest.collisionRadius
+        val projectedSurfaceDistance = projectedDistance - ship.collisionRadius - nearest.collisionRadius
+        if (surfaceDistance > weapon.range * 0.8f && approach >= ENGAGE_APPROACH_MIN &&
+            projectedSurfaceDistance in (weapon.range * 0.25f)..weapon.range && projectedDistance < distance
+        ) {
             ship.useSystem()
         }
     }
@@ -102,7 +105,7 @@ class StarwingShiftSystemAI : ShipSystemAIScript {
         for (candidate in engine.ships) {
             val other = candidate as? ShipAPI ?: continue
             if (other === ship || other.owner == ship.owner) continue
-            if (!other.isAlive || other.isHulk || other.isFighter) continue
+            if (!other.isAlive || other.isHulk || other.isFighter || other.isPhased) continue
             val distance = MathUtils.getDistance(ship.location, other.location)
             if (distance < bestDistance) {
                 best = other
@@ -119,8 +122,6 @@ class StarwingShiftSystemAI : ShipSystemAIScript {
         private const val RETREAT_FLUX_THRESHOLD = 0.75f
         private const val RETREAT_HULL_THRESHOLD = 0.4f
 
-        private const val ENGAGE_MIN_RANGE = 400f
-        private const val ENGAGE_MAX_RANGE = 1500f
         private const val ENGAGE_APPROACH_MIN = 0.5f
 
         private const val MISSILE_COUNT_THRESHOLD = 3
