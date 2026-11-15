@@ -594,7 +594,7 @@ object Wpn_astd_gemini_dem_launcher : WeaponDataEntry(), SsProjMissileOutputs {
         collisionClass = "MISSILE_NO_FF",
         explosionColor = Rgba(0, 0, 0, 0),
         explosionRadius = 0,
-        flameoutTime = 0.5,
+        flameoutTime = 2.0,
         noEngineGlowTime = 999.0,
         fadeTime = 0.25,
         engineSpec = MissileEngineSpec(turnAcc = 1800, turnRate = 1440, acc = 1800, dec = 1600),
@@ -720,7 +720,7 @@ private fun geminiDemWarheadProjSpec(
     explosionColor = explosionColor,
     explosionRadius = 50,
     armingTime = 0.3,
-    flameoutTime = 0.5,
+    flameoutTime = 2.0,
     noEngineGlowTime = 0.0,
     fadeTime = 0.25,
     engineSpec = MissileEngineSpec(turnAcc = 225, turnRate = 75, acc = 600, dec = 105),
@@ -1061,9 +1061,7 @@ private fun cuifengTorpedoProjSpec(): MissileProjSpec = MissileProjSpec(
     explosionColor = Rgba(140, 190, 255, 160),
     explosionRadius = 150,
     armingTime = 0.0,
-    flameoutTime = 0.5,
-    // 原版引擎焰渲染条件为 timeSinceFizzling <= flameoutTime - noEngineGlowTime，
-    // 999 会全程压制引擎焰；摧锋的尾部喷焰与双子星同款 QUAD_STRIP 实现。
+    flameoutTime = 1.0,
     noEngineGlowTime = 0.0,
     fadeTime = 0.25,
     engineSpec = MissileEngineSpec(turnAcc = 2000, turnRate = 500, acc = 2000, dec = 2000),
