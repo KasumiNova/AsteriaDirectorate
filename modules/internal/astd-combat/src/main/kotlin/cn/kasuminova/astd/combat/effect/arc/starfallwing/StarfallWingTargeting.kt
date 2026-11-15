@@ -28,8 +28,8 @@ internal object StarfallWingTargeting {
         candidateScore - currentScore > SWITCH_MARGIN
 
     fun classOf(isFighter: Boolean, locked: Boolean, inRange: Boolean): Int = when {
-        isFighter -> StarfallWingShot.AVAILABILITY_FIGHTER
         locked && inRange -> StarfallWingShot.AVAILABILITY_LOCK
+        isFighter -> StarfallWingShot.AVAILABILITY_FIGHTER
         inRange -> StarfallWingShot.AVAILABILITY_SHIP
         else -> StarfallWingShot.AVAILABILITY_SHIP_OUT_OF_RANGE
     }
@@ -101,7 +101,7 @@ internal object StarfallWingTargeting {
 internal class StarfallWingTargetPool<K : Any> {
     private val claims = HashMap<K, StarfallWingShot>()
 
-    fun isOpen(candidate: K, shot: StarfallWingShot): Boolean = claims[candidate].let { it == null || it === shot }
+    fun isOpen(candidate: K, shot: StarfallWingShot?): Boolean = claims[candidate].let { it == null || it === shot }
 
     fun claim(candidate: K, shot: StarfallWingShot) {
         claims[candidate] = shot

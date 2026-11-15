@@ -146,7 +146,7 @@ internal class StarfallWingGuidance private constructor(private val engine: Comb
             val range = StarfallWingAvoidance.scanRange(flight.shot.speed, remaining)
             flight.obstacles = starfallWingScanObstacles(
                 engine, projectile.location, range, projectile.collisionRadius,
-                flight.shot.target?.isFighter == true, projectile.source, flight.shot.target,
+                flight.shot.target?.isFighter == true, source = projectile.source, target = flight.shot.target,
             )
             flight.avoidRemaining = StarfallWingAvoidance.SCAN_INTERVAL
         }
@@ -166,7 +166,7 @@ internal class StarfallWingGuidance private constructor(private val engine: Comb
         ship != null && ship.owner != owner && ship.owner != 100 && ship.isAlive && !ship.isHulk &&
             !ship.isPhased && ship.isTargetable && engine.isEntityInPlay(ship)
 
-    private fun claimOpen(candidate: ShipAPI, shot: StarfallWingShot): Boolean =
+    private fun claimOpen(candidate: ShipAPI, shot: StarfallWingShot?): Boolean =
         !candidate.isFighter || claims.isOpen(candidate, shot)
 
     private fun bind(flight: Flight, next: ShipAPI?) {
@@ -200,20 +200,21 @@ internal class StarfallWingGuidance private constructor(private val engine: Comb
 
     private fun locked(projectile: DamagingProjectileAPI): ShipAPI? = projectile.source?.shipTarget
 
-    private fun choose(flight: Flight, remaining: Float): ShipAPI? {
-        val projectile = flight.projectile
-        val shot = flight.shot
-        val current = shot.target
+    private fun choose(flight: Flight, remaining: Float): ShipAPI? =
+        choose(flight.projectile, flight.shot.speed, remaining, flight.shot)
+
+    private fun choose(projectile: DamagingProjectileAPI, speed: Float, remaining: Float, shot: StarfallWingShot?): ShipAPI? {
+        val current = shot?.target
         val lock = locked(projectile)
         var best: ShipAPI? = null
         var bestClass = Int.MAX_VALUE
         var bestScore = -Float.MAX_VALUE
-        if (lock != null && !lock.isFighter && valid(lock, projectile.owner) && claimOpen(lock, shot) &&
+        if (lock != null && valid(lock, projectile.owner) && claimOpen(lock, shot) &&
             inReach(projectile, lock, remaining)
         ) {
             best = lock
             bestClass = StarfallWingShot.AVAILABILITY_LOCK
-            bestScore = score(flight, lock, remaining)
+            bestScore = score(projectile, speed, lock, remaining)
         }
         if (best == null) {
             for (candidate in engine.ships) {
@@ -223,7 +224,7 @@ internal class StarfallWingGuidance private constructor(private val engine: Comb
                     candidate.isFighter, false, inReach(projectile, candidate, remaining),
                 )
                 if (candidateClass > bestClass) continue
-                val candidateScore = score(flight, candidate, remaining)
+                val candidateScore = score(projectile, speed, candidate, remaining)
                 if (candidateClass < bestClass || candidateScore > bestScore) {
                     best = candidate
                     bestClass = candidateClass
@@ -237,26 +238,28 @@ internal class StarfallWingGuidance private constructor(private val engine: Comb
             )
             if (best == null) return current
             if (currentClass < bestClass) return current
-            if (currentClass == bestClass && !StarfallWingTargeting.outbids(bestScore, score(flight, current, remaining))) {
+            if (currentClass == bestClass && !StarfallWingTargeting.outbids(bestScore, score(projectile, speed, current, remaining))) {
                 return current
             }
         }
         return best
     }
 
-    private fun rawScore(flight: Flight, candidate: ShipAPI, remaining: Float): Float {
-        val projectile = flight.projectile
+    private fun rawScore(flight: Flight, candidate: ShipAPI, remaining: Float): Float =
+        rawScore(flight.projectile, flight.shot.speed, candidate, remaining)
+
+    private fun rawScore(projectile: DamagingProjectileAPI, speed: Float, candidate: ShipAPI, remaining: Float): Float {
         return StarfallWingTargeting.aimScore(
             candidate.location.x - projectile.location.x,
             candidate.location.y - projectile.location.y,
             candidate.velocity.x, candidate.velocity.y, candidate.collisionRadius,
-            projectile.facing, flight.shot.speed,
-            StarfallWingTuning.turnRate(flight.shot.speed), remaining,
+            projectile.facing, speed,
+            StarfallWingTuning.turnRate(speed), remaining,
         )
     }
 
-    private fun score(flight: Flight, candidate: ShipAPI, remaining: Float): Float =
-        StarfallWingTargeting.withLockBonus(rawScore(flight, candidate, remaining), candidate === locked(flight.projectile))
+    private fun score(projectile: DamagingProjectileAPI, speed: Float, candidate: ShipAPI, remaining: Float): Float =
+        StarfallWingTargeting.withLockBonus(rawScore(projectile, speed, candidate, remaining), candidate === locked(projectile))
 
     private fun inReach(projectile: DamagingProjectileAPI, target: ShipAPI, remaining: Float): Boolean {
         val dx = target.location.x - projectile.location.x
@@ -268,16 +271,28 @@ internal class StarfallWingGuidance private constructor(private val engine: Comb
     companion object {
         private const val KEY = "astd_starfall_wing_guidance"
 
+        private fun of(engine: CombatEngineAPI): StarfallWingGuidance =
+            engine.customData[KEY] as? StarfallWingGuidance ?: StarfallWingGuidance(engine).also {
+                engine.customData[KEY] = it
+                engine.addPlugin(it)
+            }
+
+        fun launchTarget(engine: CombatEngineAPI, projectile: DamagingProjectileAPI, speed: Float, range: Float): ShipAPI? {
+            val plugin = of(engine)
+            plugin.releaseInactive()
+            return plugin.choose(projectile, speed, range, null)
+        }
+
         fun track(engine: CombatEngineAPI, projectile: DamagingProjectileAPI, shot: StarfallWingShot) {
-            val plugin = engine.customData[KEY] as? StarfallWingGuidance
-                ?: StarfallWingGuidance(engine).also {
-                    engine.customData[KEY] = it
-                    engine.addPlugin(it)
-                }
+            track(engine, projectile, shot, launchTarget(engine, projectile, shot.speed, shot.range))
+        }
+
+        fun track(engine: CombatEngineAPI, projectile: DamagingProjectileAPI, shot: StarfallWingShot, target: ShipAPI?) {
+            val plugin = of(engine)
             plugin.releaseInactive()
             val flight = Flight(projectile, shot)
             plugin.flights += flight
-            plugin.bind(flight, plugin.choose(flight, shot.range))
+            plugin.bind(flight, target)
             flight.scanRemaining = StarfallWingTuning.TARGET_SCAN_INTERVAL
             shot.target?.let {
                 val dx = it.location.x - projectile.location.x

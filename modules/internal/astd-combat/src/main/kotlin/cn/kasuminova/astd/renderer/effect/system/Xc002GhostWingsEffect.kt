@@ -16,6 +16,7 @@ import com.fs.starfarer.api.combat.CombatEngineLayers
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.combat.ViewportAPI
 import com.fs.starfarer.api.input.InputEventAPI
+import org.lazywizard.lazylib.ui.LazyFont
 import org.lwjgl.opengl.GL11
 import org.lwjgl.util.vector.Vector2f
 import org.magiclib.util.MagicUI
@@ -48,9 +49,7 @@ object Xc002GhostWingsEffect {
 
     private const val LABEL_FONT_SIZE = 10f
 
-    private const val MAGICUI_TEXT_FONT_SIZE = 14f
-
-    private const val LABEL_OFFSET_Y = -3.5f
+    private const val HUD_BAR_HEIGHT = 5f
 
     private const val AFTERIMAGE_INTERVAL_MID = 0.08f
     private const val AFTERIMAGE_ALPHA = 0.12f
@@ -260,6 +259,7 @@ object Xc002GhostWingsEffect {
     private class HudPlugin(private val engine: CombatEngineAPI) : BaseEveryFrameCombatPlugin() {
 
         override fun renderInUICoords(viewport: ViewportAPI) {
+            if (!engine.isUIShowingHUD) return
             val ship = engine.playerShip ?: return
             if (!ship.isAlive || ship.isHulk) return
             if (ship.hullSpec?.hullId != HULL_ID && ship.hullSpec?.baseHullId != HULL_ID) return
@@ -290,7 +290,8 @@ object Xc002GhostWingsEffect {
             val color = if (pool.charge > ImaginaryWingsTuning.EXCHANGE_THRESHOLD) HUD_CHARGE_READY else HUD_CHARGE_LOW
             MagicUI.drawHUDStatusBar(ship, fill, color, HUD_BORDER, 0f, null, null, true)
 
-            if (MagicUI.TODRAW10 == null) {
+            val text = MagicUI.TODRAW10
+            if (text == null) {
                 if (labelFontMissing.compareAndSet(false, true)) {
                     log.warn("[ASTD] MagicUI 小字号字体缺失（TODRAW10 为空），虚数之翼充能条的状态词无法绘制")
                 }
@@ -300,12 +301,26 @@ object Xc002GhostWingsEffect {
             val label = I18n[I18n.Categories.MOD, "hud.imaginary_wings.line.label"]
             val screenX = viewport.convertWorldXtoScreenX(ship.location.x).toInt().toFloat()
             val screenY = viewport.convertWorldYtoScreenY(ship.location.y).toInt().toFloat()
-            val width = maxOf(MagicUI.getTextWidth(percent), MagicUI.getTextWidth(label)) *
-                (LABEL_FONT_SIZE / MAGICUI_TEXT_FONT_SIZE)
-            val x = screenX - width - LABEL_GAP
-            val y = screenY + HUD_BAR_OFFSET_Y + LABEL_OFFSET_Y
-            MagicUI.addStatusText(ship, percent, color, Vector2f(x, y + 6f))
-            MagicUI.addStatusText(ship, label, color, Vector2f(x, y - 6f))
+            val anchor = text.anchor
+            val alignment = text.alignment
+            val fontSize = text.fontSize
+            val previousText = text.text
+            val previousColor = text.baseColor
+            try {
+                text.anchor = LazyFont.TextAnchor.CENTER_RIGHT
+                text.alignment = LazyFont.TextAlignment.RIGHT
+                text.fontSize = LABEL_FONT_SIZE * MagicUI.UI_SCALING
+                MagicUI.addStatusText(
+                    ship, "$percent\n$label", color,
+                    Vector2f(screenX - LABEL_GAP, screenY + HUD_BAR_OFFSET_Y + HUD_BAR_HEIGHT / 2f),
+                )
+            } finally {
+                text.anchor = anchor
+                text.alignment = alignment
+                text.fontSize = fontSize
+                text.text = previousText
+                text.baseColor = previousColor
+            }
         }
     }
 }

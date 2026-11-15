@@ -2,7 +2,6 @@ package cn.kasuminova.astd.combat.effect.arc.starfallwing
 
 import com.fs.starfarer.api.combat.CollisionClass
 import com.fs.starfarer.api.combat.CombatEngineAPI
-import com.fs.starfarer.api.combat.CombatEntityAPI
 import com.fs.starfarer.api.combat.ShipAPI
 import org.lwjgl.util.vector.Vector2f
 import kotlin.math.asin
@@ -99,17 +98,24 @@ internal object StarfallWingAvoidance {
     }
 }
 
+internal fun starfallWingIgnoresObstacle(ship: ShipAPI, source: ShipAPI?, target: ShipAPI?): Boolean {
+    if (source === ship) return true
+    if (target == null) return false
+    return (ship.parentStation ?: ship) === (target.parentStation ?: target)
+}
+
 internal fun starfallWingScanObstacles(
     engine: CombatEngineAPI,
     origin: Vector2f,
     range: Float,
     projectileRadius: Float,
     ignoreFighters: Boolean,
-    vararg exempt: CombatEntityAPI?,
+    source: ShipAPI?,
+    target: ShipAPI?,
 ): List<StarfallWingBody> {
     val obstacles = ArrayList<StarfallWingBody>()
     for (ship in engine.ships) {
-        if (exempt.any { it === ship }) continue
+        if (starfallWingIgnoresObstacle(ship, source, target)) continue
         if (ship.collisionClass == CollisionClass.NONE) continue
         if (ship.isPhased) continue
         if (ignoreFighters && ship.isFighter && !ship.isHulk) continue

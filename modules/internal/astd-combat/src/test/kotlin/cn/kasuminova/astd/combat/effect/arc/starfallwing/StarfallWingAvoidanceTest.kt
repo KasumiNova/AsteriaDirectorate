@@ -1,6 +1,9 @@
 package cn.kasuminova.astd.combat.effect.arc.starfallwing
 
+import com.fs.starfarer.api.combat.ShipAPI
 import org.lwjgl.util.vector.Vector2f
+import org.mockito.Mockito.mock
+import org.mockito.Mockito.`when`
 import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.cos
@@ -8,6 +11,7 @@ import kotlin.math.hypot
 import kotlin.math.sin
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class StarfallWingAvoidanceTest {
@@ -20,6 +24,12 @@ class StarfallWingAvoidanceTest {
 
     private fun steer(vararg obstacles: StarfallWingBody, distance: Float = 900f, latched: Float = 0f) =
         StarfallWingAvoidance.steer(origin, 0f, speed, distance, obstacles.toList(), latched)
+
+    private fun ship(parent: ShipAPI? = null): ShipAPI {
+        val ship = mock(ShipAPI::class.java)
+        `when`(ship.parentStation).thenReturn(parent)
+        return ship
+    }
 
     @Test
     fun `前方障碍把航向压离障碍一侧且左右对称`() {
@@ -101,6 +111,51 @@ class StarfallWingAvoidanceTest {
         val short = StarfallWingAvoidance.scanRange(600f, 5000f)
         assertTrue(short < 5000f, "高速下窗口不应无限制扩张，实际 $short")
         assertTrue(short > 600f * StarfallWingAvoidance.LOOKAHEAD_SECONDS, "窗口须覆盖预测航程")
+    }
+
+    @Test
+    fun `锁定主体时主体与全部模块不参与避障`() {
+        val root = ship()
+        val module = ship(root)
+
+        assertTrue(starfallWingIgnoresObstacle(root, source = null, target = root), "主体自身不参与避障")
+        assertTrue(starfallWingIgnoresObstacle(module, source = null, target = root), "主体的模块不参与避障")
+        assertFalse(starfallWingIgnoresObstacle(ship(), source = null, target = root), "独立舰仍需规避")
+    }
+
+    @Test
+    fun `锁定模块时主体与兄弟模块不参与避障`() {
+        val root = ship()
+        val module = ship(root)
+        val sibling = ship(root)
+
+        assertTrue(starfallWingIgnoresObstacle(module, source = null, target = module), "被锁定的模块自身不参与避障")
+        assertTrue(starfallWingIgnoresObstacle(sibling, source = null, target = module), "兄弟模块不参与避障")
+        assertTrue(starfallWingIgnoresObstacle(root, source = null, target = module), "主体不参与避障")
+    }
+
+    @Test
+    fun `另一主体的模块与独立舰仍参与避障`() {
+        val target = ship(ship())
+        val otherRoot = ship()
+        val otherModule = ship(otherRoot)
+
+        assertFalse(starfallWingIgnoresObstacle(otherModule, source = null, target = target), "另一主体的模块不同舰")
+        assertFalse(starfallWingIgnoresObstacle(otherRoot, source = null, target = target), "另一主体不同舰")
+    }
+
+    @Test
+    fun `目标为空时仅排除弹药来源舰自身`() {
+        val source = ship()
+        val sourceModule = ship(source)
+        val other = ship()
+
+        assertTrue(starfallWingIgnoresObstacle(source, source = source, target = null), "来源舰自身不参与避障")
+        assertFalse(
+            starfallWingIgnoresObstacle(sourceModule, source = source, target = null),
+            "目标为空时不得按来源舰的模块归属忽略",
+        )
+        assertFalse(starfallWingIgnoresObstacle(other, source = source, target = null), "目标为空时其他舰仍需规避")
     }
 
     @Test

@@ -41,7 +41,9 @@ class StarfallWingTargetingTest {
         assertEquals(StarfallWingTargeting.classOf(isFighter = false, locked = false, inRange = false), demoted)
 
         val fighterLock = StarfallWingTargeting.classOf(isFighter = true, locked = true, inRange = true)
-        assertEquals(StarfallWingShot.AVAILABILITY_FIGHTER, fighterLock)
+        assertEquals(StarfallWingShot.AVAILABILITY_LOCK, fighterLock)
+        val farFighterLock = StarfallWingTargeting.classOf(isFighter = true, locked = true, inRange = false)
+        assertEquals(StarfallWingShot.AVAILABILITY_FIGHTER, farFighterLock)
     }
 
     @Test

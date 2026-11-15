@@ -38,11 +38,16 @@ class StarfallWingOnFireEffect : OnFireEffectPlugin {
             DifficultyTuningImpl.valueFor(StarfallWingTuning.POWER_MAX, isPlayer),
             DifficultyTuningImpl.valueFor(StarfallWingTuning.CHARGE_CONVERSION, isPlayer),
         )
-        val type = StarfallWingTuning.ShuttleType.entries.random()
+        val speedFactor = StarfallWingTuning.speedFactor(power)
+        val target = StarfallWingGuidance.launchTarget(engine, projectile, baseSpeed * speedFactor, weapon.range)
+        val shielded = target != null && !target.isFighter &&
+            StarfallWingSelection.shieldedApproach(projectile.location, target, engine.ships)
+        val type = StarfallWingSelection.choose(
+            Random.nextFloat(), target != null, target?.isFighter == true, shielded,
+        )
         val damage = baseDamage * type.damageFactor * power *
             DifficultyTuningImpl.valueFor(StarfallWingTuning.DAMAGE_FACTOR, isPlayer)
         val sizeFactor = StarfallWingTuning.sizeFactor(power)
-        val speedFactor = StarfallWingTuning.speedFactor(power)
         val carrier = Global.getSettings().getWeaponSpec(StarfallWingTuning.SHUTTLE_LAUNCHER_ID)
             .projectileSpec as ProjectileSpec
         val shotSpec = carrier.clone()
@@ -69,7 +74,7 @@ class StarfallWingOnFireEffect : OnFireEffectPlugin {
         spawned.setCustomData(StarfallWingTuning.SHOT_STATE_KEY, state)
         spawned.setCustomData(StarfallWingTuning.VISUAL_SCALE_KEY, sizeFactor)
         spawned.setCustomData(StarfallWingTuning.BASE_SPEED_KEY, baseSpeed)
-        StarfallWingGuidance.track(engine, spawned, state)
+        StarfallWingGuidance.track(engine, spawned, state, target)
         ProjectileVfxDriverPlugin.track(engine, spawned, type.vfxId)
     }
 }

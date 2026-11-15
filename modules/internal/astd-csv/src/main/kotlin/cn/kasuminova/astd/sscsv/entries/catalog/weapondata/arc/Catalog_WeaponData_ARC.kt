@@ -193,7 +193,7 @@ object Wpn_astd_starfall_wing : WeaponDataEntry(), SsProjProjectileOutputs {
     override val tier: Int = 3
     override val baseValue: Int = 50000
     override val range: Int = 1000
-    override val damagePerShot: Int = 300
+    override val damagePerShot: Int = 250
     override val emp: Int = 0
 
     override val chargedown: Double = 0.2
@@ -201,7 +201,7 @@ object Wpn_astd_starfall_wing : WeaponDataEntry(), SsProjProjectileOutputs {
     override val burstDelay: Double = 0.0
     override val turnRate: Int = 30
     override val type: String = "ENERGY"
-    override val energyPerShot: Int = 400
+    override val energyPerShot: Int = 350
     override val projSpeed: Int = 1100
 
     override val ammo: Int = 16
@@ -236,7 +236,7 @@ object Wpn_astd_starfall_wing_shuttle_launcher : WeaponDataEntry(), SsProjProjec
     override val tier: Int = 5
     override val baseValue: Int = 0
     override val range: Int = 1000
-    override val damagePerShot: Int = 300
+    override val damagePerShot: Int = 250
     override val emp: Int = 0
     override val turnRate: Int = 30
     override val type: String = "ENERGY"
