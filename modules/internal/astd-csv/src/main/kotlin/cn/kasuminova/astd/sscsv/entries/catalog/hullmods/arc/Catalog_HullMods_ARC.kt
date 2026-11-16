@@ -98,7 +98,7 @@ object HullMod_astd_vector_boost_thruster : HullModEntry() {
     override val tags: String = TAGS_BUILTIN
     override val script: String = "cn.kasuminova.astd.combat.hullmods.arc.ASTDVectorBoostThrusterHullMod"
     override val short: String = SsI18n.t("hullmod.$id.short")
-    override val sprite: String = "graphics/hullmods/astd_plasma_armor_shield.png"
+    override val sprite: String = "graphics/hullmods/astd_vector_boost_thruster.png"
 }
 
 object HullMod_astd_arc_advanced_targeting_system : HullModEntry() {

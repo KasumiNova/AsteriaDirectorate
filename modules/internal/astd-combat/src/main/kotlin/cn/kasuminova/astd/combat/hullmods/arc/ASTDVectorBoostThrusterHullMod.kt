@@ -136,7 +136,7 @@ class ASTDVectorBoostThrusterHullMod : BaseHullMod() {
     }
 
     companion object {
-        private val THEME = HullmodThemes.ARC_PRISM
+        private val THEME = HullmodThemes.ARC
 
         internal val FORBIDDEN_HULLMOD_IDS: Set<String> =
             HullmodIncompatibility.forbiddenByController(ASTDArcProductionShipIds.HULLMOD_VECTOR_BOOST_THRUSTER)
