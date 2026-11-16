@@ -34,11 +34,11 @@ class StarfallWingShot(
     var avoidanceDeflection: Float = 0f
         internal set
 
-    private var hit = false
+    private var exploded = false
 
-    fun claimHit(): Boolean {
-        if (hit) return false
-        hit = true
+    fun claimExplosion(): Boolean {
+        if (exploded) return false
+        exploded = true
         return true
     }
 
@@ -58,6 +58,7 @@ class StarfallWingShot(
 internal class StarfallWingGuidance private constructor(private val engine: CombatEngineAPI) : BaseEveryFrameCombatPlugin() {
     private class Flight(val projectile: DamagingProjectileAPI, val shot: StarfallWingShot) {
         val previous = Vector2f(projectile.location)
+        val launchDamage = projectile.damageAmount
         val launchFacing = projectile.facing
         var arcDistance = shot.range
         var scanRemaining = 0f
@@ -72,7 +73,9 @@ internal class StarfallWingGuidance private constructor(private val engine: Comb
     override fun advance(amount: Float, events: MutableList<InputEventAPI>?) {
         if (engine.isPaused || amount <= 0f) return
         releaseInactive()
-        for (flight in flights) step(flight, amount)
+        for (flight in flights) {
+            if (engine.isEntityInPlay(flight.projectile) && !flight.projectile.isFading) step(flight, amount)
+        }
         if (flights.isEmpty()) {
             engine.customData.remove(KEY)
             engine.removePlugin(this)
@@ -80,14 +83,30 @@ internal class StarfallWingGuidance private constructor(private val engine: Comb
     }
 
     private fun releaseInactive() {
+        var expired: MutableList<Flight>? = null
         val iterator = flights.iterator()
         while (iterator.hasNext()) {
             val flight = iterator.next()
             val projectile = flight.projectile
-            if (!engine.isEntityInPlay(projectile) || projectile.didDamage() || projectile.isFading) {
+            if (projectile.didDamage()) {
                 bind(flight, null)
                 iterator.remove()
+            } else if (!engine.isEntityInPlay(projectile) || projectile.isExpired) {
+                bind(flight, null)
+                iterator.remove()
+                if (flight.shot.claimExplosion()) {
+                    if (expired == null) expired = ArrayList()
+                    expired.add(flight)
+                }
+            } else if (projectile.isFading) {
+                bind(flight, null)
             }
+        }
+        // 伤害回调可能再次发射星梭，必须结束 flights 遍历后再结算爆炸。
+        expired?.forEach { flight ->
+            StarfallWingExplosion.explode(
+                engine, flight.projectile, flight.shot, flight.projectile.location, flight.launchDamage,
+            )
         }
     }
 

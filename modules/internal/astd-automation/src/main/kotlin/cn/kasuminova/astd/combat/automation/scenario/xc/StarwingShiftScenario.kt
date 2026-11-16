@@ -106,6 +106,7 @@ class StarwingShiftScenario : AbstractAutomationScenario() {
     private var xc2WeaponDiagLogged = false
     private var xc2ImpactProbe: StarwingImpactProbe? = null
     private var xc2TargetProbe: StarwingTargetProbe? = null
+    private var xc2ExplosionProbe: StarwingExplosionProbe? = null
 
     override val scenarioId: String = ASTDInGameAutomationScenario.XC002_SCENARIO_ID
     override val pausePolicy: PausePolicy = PausePolicy.FORCE_UNPAUSE
@@ -983,6 +984,18 @@ class StarwingShiftScenario : AbstractAutomationScenario() {
                     val probe = xc2TargetProbe ?: StarwingTargetProbe(ctx, player, enemy, weapon).also { xc2TargetProbe = it }
                     if (probe.advance()) {
                         probe.close()
+                        transitionXc2Phase(XC2_PHASE_EXPLOSION)
+                    } else if (ctx.failureReason != null) {
+                        transitionXc2Phase(XC2_PHASE_FAILED)
+                    }
+                }
+            }
+
+            XC2_PHASE_EXPLOSION -> {
+                if (player != null && enemy != null && weapon != null) {
+                    val probe = xc2ExplosionProbe ?: StarwingExplosionProbe(ctx, player, enemy, weapon).also { xc2ExplosionProbe = it }
+                    if (probe.advance()) {
+                        probe.close()
                         transitionXc2Phase(XC2_PHASE_COMPLETED)
                     } else if (ctx.failureReason != null) {
                         transitionXc2Phase(XC2_PHASE_FAILED)
@@ -1012,7 +1025,7 @@ class StarwingShiftScenario : AbstractAutomationScenario() {
 
             xc2Phase == XC2_PHASE_FAILED -> "Failed"
             xc2Phase != XC2_PHASE_COMPLETED &&
-                    ctx.elapsed - xc2PhaseStartedAt > XC2_PHASE_TIMEOUT -> {
+                    ctx.elapsed - xc2PhaseStartedAt > (if (xc2Phase == XC2_PHASE_EXPLOSION) XC2_EXPLOSION_TIMEOUT else XC2_PHASE_TIMEOUT) -> {
                 ctx.failureReason = "xc2 phase timeout: $xc2Phase（displacement=${"%.0f".format(xc2ShiftDisplacementMax)} " +
                         "clearPush=${"%.1f".format(xc2ClearDisplacementMax)} shuttles=$xc2ShuttleSeen " +
                         "types=${xc2ShuttleTypes.size} coastFade=${"%.2f".format(if (xc2CoastFadeAt >= 0f) ctx.elapsed - xc2CoastFadeAt else -1f)}）"
@@ -1028,10 +1041,11 @@ class StarwingShiftScenario : AbstractAutomationScenario() {
             xc2EmpProbe = null
             xc2ImpactProbe?.close()
             xc2TargetProbe?.close()
+            xc2ExplosionProbe?.close()
         }
         if (state == "Completed" && !ctx.completed) {
             ctx.markCompleted()
-            ctx.log.info("[ASTD-Automation] Completed: xc_002_rift_shift_basic shift/clear/exchange/shuttle/coast/impact/target evidence observed")
+            ctx.log.info("[ASTD-Automation] Completed: xc_002_rift_shift_basic shift/clear/exchange/shuttle/coast/impact/target/explosion evidence observed")
         }
         if (ctx.elapsed - ctx.lastWriteAt >= 0.18f || state == "Completed" || state == "Failed") {
             ctx.lastWriteAt = ctx.elapsed
@@ -1056,6 +1070,8 @@ class StarwingShiftScenario : AbstractAutomationScenario() {
         json.appendLine("  \"xc2ImpactCasesPassed\": ${xc2ImpactProbe?.completedCases ?: 0},")
         json.appendLine("  \"xc2TargetStage\": ${jsonString(xc2TargetProbe?.stageName)},")
         json.appendLine("  \"xc2TargetStagesPassed\": ${xc2TargetProbe?.passedStages ?: 0},")
+        json.appendLine("  \"xc2ExplosionCase\": ${jsonString(xc2ExplosionProbe?.caseName)},")
+        json.appendLine("  \"xc2ExplosionCasesPassed\": ${xc2ExplosionProbe?.completedCases ?: 0},")
         json.appendLine("  \"xc2SystemId\": ${jsonString(xc2System?.id)},")
         json.appendLine("  \"xc2SystemState\": ${jsonString(xc2System?.state?.name)},")
         json.appendLine("  \"xc2SystemCooldownRemaining\": ${formatFloat(xc2System?.cooldownRemaining ?: -1f)},")
@@ -1118,6 +1134,7 @@ class StarwingShiftScenario : AbstractAutomationScenario() {
         private const val XC2_PHASE_COAST = "COAST"
         private const val XC2_PHASE_IMPACT = "IMPACT"
         private const val XC2_PHASE_TARGET = "TARGET"
+        private const val XC2_PHASE_EXPLOSION = "EXPLOSION"
         private const val XC2_PHASE_COMPLETED = "COMPLETED"
         private const val XC2_PHASE_FAILED = "FAILED"
         private const val XC2_PLAYER_HULL = "astd_xc_002"
@@ -1180,6 +1197,7 @@ class StarwingShiftScenario : AbstractAutomationScenario() {
         private const val XC2_COAST_MISSILE_LEAD = 0.6f
         private const val XC2_COAST_MIN_MISSILE_CONTACTS = 3
         private const val XC2_PHASE_TIMEOUT = 120f
+        private const val XC2_EXPLOSION_TIMEOUT = 240f
 
         private const val XC2_STAGE_ENEMY_HULL_BUFFER = 500000f
     }

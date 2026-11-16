@@ -148,11 +148,11 @@ class StarfallWingTuningTest {
     }
 
     @Test
-    fun `一次弹体只能结算一次命中`() {
+    fun `命中和消散竞争同一弹体的唯一爆炸结算`() {
         val first = StarfallWingShot(StarfallWingTuning.ShuttleType.BLUE, 1f, 1200f, 900f, 0f)
         val other = StarfallWingShot(StarfallWingTuning.ShuttleType.RED, 1f, 1200f, 900f, 0f)
-        assertTrue(first.claimHit())
-        assertFalse(first.claimHit())
-        assertTrue(other.claimHit())
+        assertTrue(first.claimExplosion())
+        assertFalse(first.claimExplosion())
+        assertTrue(other.claimExplosion())
     }
 }

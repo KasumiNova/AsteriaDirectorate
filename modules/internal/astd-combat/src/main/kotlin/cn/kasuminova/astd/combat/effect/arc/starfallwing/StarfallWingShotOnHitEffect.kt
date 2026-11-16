@@ -4,7 +4,6 @@ import cn.kasuminova.astd.api.AstdLog
 import cn.kasuminova.astd.combat.hullmods.arc.ImaginaryCharge
 import cn.kasuminova.astd.impl.combat.DcrDamageAttribution
 import cn.kasuminova.astd.impl.combat.ExplosionStrikeImpl
-import cn.kasuminova.astd.impl.combat.LinearExplosionFalloffImpl
 import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEntityAPI
@@ -16,8 +15,6 @@ import com.fs.starfarer.api.combat.OnHitEffectPlugin
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.combat.listeners.ApplyDamageResultAPI
 import com.fs.starfarer.api.combat.listeners.DamageDealtModifier
-import org.lazywizard.lazylib.MathUtils
-import org.lazywizard.lazylib.combat.CombatUtils
 import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
 
@@ -60,7 +57,7 @@ class StarfallWingShotOnHitEffect : OnHitEffectPlugin {
             return
         }
         if (target is MissileAPI) return
-        if (!shot.claimHit()) return
+        if (!shot.claimExplosion()) return
         val source = projectile.source
         if (shot.type != StarfallWingTuning.ShuttleType.BLUE) {
             DcrDamageAttribution.clarify(
@@ -106,30 +103,6 @@ class StarfallWingShotOnHitEffect : OnHitEffectPlugin {
                 else -> Unit
             }
         }
-        val radius = shot.type.radius
-        val damage = projectile.damageAmount
-        val falloff = LinearExplosionFalloffImpl(0f, 0f)
-        for (victim in CombatUtils.getEntitiesWithinRange(location, radius)) {
-            if (victim === target || victim.owner == projectile.owner || victim.owner == 100) continue
-            if (victim !is ShipAPI && victim !is MissileAPI) continue
-            if (victim is ShipAPI && (victim.isHulk || victim.isPhased)) continue
-            if (victim is MissileAPI && victim.isExpired) continue
-            val ship = victim as? ShipAPI
-            val covered = ship != null && ExplosionStrikeImpl.shieldCovers(ship, location)
-            val damagePoint = ship?.let { ExplosionStrikeImpl.resolveDamagePoint(it, location) }
-                ?: Vector2f(location)
-            val surfaceDistance = (MathUtils.getDistance(location, victim.location) - victim.collisionRadius)
-                .coerceAtLeast(0f)
-            val victimDamage = falloff.damageFor(damage, surfaceDistance, radius)
-            if (victimDamage <= 0f) continue
-            engine.applyDamage(
-                damageParam, victim, damagePoint, victimDamage, shot.type.damageType, 0f,
-                ship != null && !covered, false, source, true,
-            )
-            DcrDamageAttribution.clarify(
-                source, victim, shot.type.damageType, victimDamage, 0f, projectile.weapon?.displayName,
-            )
-        }
-        StarfallWingVfx.explosion(engine, location, shot.type)
+        StarfallWingExplosion.explode(engine, projectile, shot, location, projectile.damageAmount, target)
     }
 }
