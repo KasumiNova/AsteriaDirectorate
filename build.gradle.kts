@@ -27,7 +27,7 @@ version = astdModVersion
 starsector {
     modId.set("asteria_directorate")
     deployDirName.set("ASTD")
-    modName.set("Asteria Directorate")
+    modName.set("Asteria Directorate 菀星设计总局")
     author.set("Hikari_Nova, 五六式海猫(五六猫)")
     description.set("高价值赏金(HVB) 扩展包，讲述着一个鼎盛强大的军工复合体在大崩塌后没落的故事。")
     gameVersion.set("0.98a")
