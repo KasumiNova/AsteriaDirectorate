@@ -161,7 +161,7 @@
 		"ui.hullmod.export.section.pulse_active": "激活影响 (坍缩折跃)",
 		"ui.hullmod.export.section.note": "说明",
 		"ui.hullmod.export.section.mode": "模式特征",
-		"ui.hullmod.export.difficulty_note": "以上效果受到 难度系数 影响。",
+		"ui.hullmod.export.difficulty_note": "<param:#FFE024:难度系数> 船插: 可在模组 <param:#FFE024:菀星设计总局> 的 Lunalib 设置中调整相关机制数值。",
 
 		"ui.hullmod.aei.summary": "<param:#FF9600:菀星设计局-星坠> 独特的舰船结构设计。星坠将反应堆、武器线路与辐能管理系统深度集成，全面提升武器系统效能。",
 		"ui.hullmod.aei.attr.op": "非导弹武器装配点消耗",

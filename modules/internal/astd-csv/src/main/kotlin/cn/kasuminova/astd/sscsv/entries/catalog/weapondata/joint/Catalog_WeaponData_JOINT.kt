@@ -80,6 +80,8 @@ object Wpn_astd_lh_stardust_launcher_arc : WeaponDataEntry(), SsProjMissileOutpu
     override val primaryRoleStr: String = SsI18n.t("weapon.astd_lh_stardust_launcher.primaryRoleStr")
     override val customPrimary: String = SsI18n.t("weapon.$id.tooltip.customPrimary")
     override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
+    override val customAncillary: String = SsI18n.t("weapon.$id.tooltip.customAncillary")
+    override val customAncillaryHL: String = SsI18n.t("weapon.$id.tooltip.customAncillaryHL")
     override val number: Int = 9240
 
     override val projSpec: MissileProjSpec = stardustMoteProj(
@@ -121,6 +123,8 @@ object Wpn_astd_lh_stardust_launcher_lens : WeaponDataEntry(), SsProjMissileOutp
     override val primaryRoleStr: String = SsI18n.t("weapon.astd_lh_stardust_launcher.primaryRoleStr")
     override val customPrimary: String = SsI18n.t("weapon.$id.tooltip.customPrimary")
     override val customPrimaryHL: String = SsI18n.t("weapon.$id.tooltip.customPrimaryHL")
+    override val customAncillary: String = SsI18n.t("weapon.$id.tooltip.customAncillary")
+    override val customAncillaryHL: String = SsI18n.t("weapon.$id.tooltip.customAncillaryHL")
     override val number: Int = 9241
 
     override val projSpec: MissileProjSpec = stardustMoteProj(
