@@ -6,7 +6,7 @@ import cn.kasuminova.astd.sscsv.entries.catalog.wingdata.wingRoleDesc
 object Wing_astd_conjugate_terminal_wing : WingDataEntry() {
     override val id: String = "astd_conjugate_terminal_wing"
     override val variant: String = "astd_conjugate_terminal"
-    override val tags: String = "no_drop, no_sell, auto_fighter, restricted, hide_in_codex"
+    override val tags: String = "no_drop, no_sell, auto_fighter, restricted, hide_in_codex, no_dealer"
     override val tier: Int = 3
     override val fleetPts: Int = 6
     override val formation: String = "BOX"
@@ -22,7 +22,7 @@ object Wing_astd_conjugate_terminal_wing : WingDataEntry() {
 object Wing_astd_zw_103_wing : WingDataEntry() {
     override val id: String = "astd_zw_103_wing"
     override val variant: String = "astd_zw_103_fighter_Fighter"
-    override val tags: String = "no_drop, no_sell, auto_fighter, restricted, hide_in_codex"
+    override val tags: String = "no_drop, no_sell, auto_fighter, restricted, hide_in_codex, no_dealer"
     override val tier: Int = 3
     override val fleetPts: Int = 6
     override val formation: String = "V"
@@ -39,7 +39,7 @@ object Wing_astd_zw_103_wing : WingDataEntry() {
 object Wing_astd_gemini_bomber_wing : WingDataEntry() {
     override val id: String = "astd_gemini_bomber_wing"
     override val variant: String = "astd_gemini_bomber_Bomber"
-    override val tags: String = "auto_fighter, bomber5, bomber, astd_production"
+    override val tags: String = "auto_fighter, bomber5, bomber, astd_production, no_sell, no_dealer"
     override val tier: Int = 2
     override val fleetPts: Int = 8
     override val opCost: Int = 20
@@ -58,7 +58,7 @@ object Wing_astd_gemini_bomber_wing : WingDataEntry() {
 object Wing_astd_surge_fighter_wing : WingDataEntry() {
     override val id: String = "astd_surge_fighter_wing"
     override val variant: String = "astd_surge_fighter_Fighter"
-    override val tags: String = "auto_fighter, fighter4, fighter, astd_production"
+    override val tags: String = "auto_fighter, fighter4, fighter, astd_production, no_sell, no_dealer"
     override val tier: Int = 2
     override val fleetPts: Int = 5
     override val opCost: Int = 16
@@ -76,7 +76,7 @@ object Wing_astd_surge_fighter_wing : WingDataEntry() {
 object Wing_astd_gravwell_interceptor_wing : WingDataEntry() {
     override val id: String = "astd_gravwell_interceptor_wing"
     override val variant: String = "astd_gravwell_interceptor_Interceptor"
-    override val tags: String = "auto_fighter, support3, fighter, astd_production"
+    override val tags: String = "auto_fighter, support3, fighter, astd_production, no_sell, no_dealer"
     override val tier: Int = 2
     override val fleetPts: Int = 5
     override val opCost: Int = 15

@@ -45,7 +45,7 @@ object Ship_astd_zw_001 : ShipDataEntry() {
     override val crLossPerSec: Double = 0.25
     override val suppliesRec: Int = 30
     override val suppliesPerMonth: Int = 30
-    override val tags: String = "astd_unique"
+    override val tags: String = "astd_unique, no_sell, no_dealer"
     override val codexVariantId: String = "astd_zw_001_Empty"
     override val number: Int = 9104
 }
@@ -88,7 +88,7 @@ object Ship_astd_zw_101 : ShipDataEntry() {
     override val crLossPerSec: Double = 0.25
     override val suppliesRec: Int = 18
     override val suppliesPerMonth: Int = 18
-    override val tags: String = "astd_production"
+    override val tags: String = "astd_production, no_sell, no_dealer"
     override val codexVariantId: String = "astd_zw_101_Empty"
     override val number: Int = 9105
 }
@@ -135,7 +135,7 @@ object Ship_astd_zw_102 : ShipDataEntry() {
     override val crLossPerSec: Double = 0.25
     override val suppliesRec: Int = 55
     override val suppliesPerMonth: Int = 55
-    override val tags: String = "astd_production"
+    override val tags: String = "astd_production, no_sell, no_dealer"
     override val codexVariantId: String = "astd_zw_102_Empty"
     override val number: Int = 9111
 }
@@ -182,7 +182,7 @@ object Ship_astd_zw_002 : ShipDataEntry() {
     override val crLossPerSec: Double = 0.25
     override val suppliesRec: Int = 40
     override val suppliesPerMonth: Int = 40
-    override val tags: String = "astd_unique"
+    override val tags: String = "astd_unique, no_sell, no_dealer"
     override val codexVariantId: String = "astd_zw_002_Empty"
     override val number: Int = 9112
 }
@@ -228,7 +228,7 @@ object Ship_astd_zw_103 : ShipDataEntry() {
     override val crLossPerSec: Double = 0.25
     override val suppliesRec: Int = 22
     override val suppliesPerMonth: Int = 22
-    override val tags: String = "astd_production"
+    override val tags: String = "astd_production, no_sell, no_dealer"
     override val codexVariantId: String = "astd_zw_103_Empty"
     override val number: Int = 9113
 }
@@ -236,6 +236,7 @@ object Ship_astd_zw_103 : ShipDataEntry() {
 object Ship_astd_zw_103_fighter : ShipDataEntry() {
     override val id: String = "astd_zw_103_fighter"
     override val name: String = shipName(id)
+    override val tags: String = "no_sell, no_dealer"
     override val designation: String = "重型战斗机"
     override val tech: String = "菀星设计局-紫菀"
     override val systemId: String = "astd_burst_flow_fighter"
@@ -261,6 +262,7 @@ object Ship_astd_zw_103_fighter : ShipDataEntry() {
 object Ship_astd_gemini_bomber : ShipDataEntry() {
     override val id: String = "astd_gemini_bomber"
     override val name: String = shipName(id)
+    override val tags: String = "no_sell, no_dealer"
     override val designation: String = "轰炸机"
     override val tech: String = "菀星设计局-紫菀"
     override val hitpoints: Int = 800
@@ -285,6 +287,7 @@ object Ship_astd_gemini_bomber : ShipDataEntry() {
 object Ship_astd_surge_fighter : ShipDataEntry() {
     override val id: String = "astd_surge_fighter"
     override val name: String = shipName(id)
+    override val tags: String = "no_sell, no_dealer"
     override val designation: String = "战斗机"
     override val tech: String = "菀星设计局-紫菀"
     override val systemId: String = "plasmajets"
@@ -310,6 +313,7 @@ object Ship_astd_surge_fighter : ShipDataEntry() {
 object Ship_astd_gravwell_interceptor : ShipDataEntry() {
     override val id: String = "astd_gravwell_interceptor"
     override val name: String = shipName(id)
+    override val tags: String = "no_sell, no_dealer"
     override val designation: String = "支援战斗机"
     override val tech: String = "菀星设计局-紫菀"
     override val systemId: String = "displacer"

@@ -40,7 +40,7 @@ object Ship_astd_lh_001 : ShipDataEntry() {
     override val crLossPerSec: Double = 0.5
     override val suppliesRec: Int = 16
     override val suppliesPerMonth: Int = 16
-    override val tags: String = "astd_production"
+    override val tags: String = "astd_production, no_sell, no_dealer"
     override val codexVariantId: String = "astd_lh_001_Empty"
     override val number: Int = 9119
 }
@@ -82,7 +82,7 @@ object Ship_astd_lh_002 : ShipDataEntry() {
     override val crLossPerSec: Double = 0.5
     override val suppliesRec: Int = 17
     override val suppliesPerMonth: Int = 17
-    override val tags: String = "astd_production"
+    override val tags: String = "astd_production, no_sell, no_dealer"
     override val codexVariantId: String = "astd_lh_002_Empty"
     override val number: Int = 9120
 }
