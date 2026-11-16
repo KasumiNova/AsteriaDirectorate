@@ -10,6 +10,7 @@ import cn.kasuminova.astd.combat.automation.scenario.arc.HeavyIonPulseScenario
 import cn.kasuminova.astd.combat.automation.scenario.arc.PositronShockwaveScenario
 import cn.kasuminova.astd.combat.automation.scenario.arc.QiongjueRailgunScenario
 import cn.kasuminova.astd.combat.automation.scenario.arc.SevenStarsScenario
+import cn.kasuminova.astd.combat.automation.scenario.description.DifficultyTooltipScenario
 import cn.kasuminova.astd.combat.automation.scenario.lens.CuifengTorpedoScenario
 import cn.kasuminova.astd.combat.automation.scenario.lens.IceShardMirvScenario
 import cn.kasuminova.astd.combat.automation.scenario.lens.PiercingLanceScenario
@@ -65,6 +66,7 @@ class AutomationScenarioRegistryImpl : AutomationScenarioRegistry {
         ElectricDriveScenario(),
         ChargeNeedleScenario(),
         ArcProductionScenario(),
+        DifficultyTooltipScenario(),
         defaultHandler,
     )
 }

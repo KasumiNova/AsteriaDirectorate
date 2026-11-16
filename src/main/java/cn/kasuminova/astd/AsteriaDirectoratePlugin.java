@@ -4,6 +4,7 @@ import cn.kasuminova.astd.campaign.AsteriaTestCampaignBootstrap;
 import cn.kasuminova.astd.campaign.bounty.StandardCores;
 import cn.kasuminova.astd.campaign.integration.sic.SicIntegration;
 import cn.kasuminova.astd.campaign.world.StoryWorldBootstrap;
+import cn.kasuminova.astd.combat.description.DifficultyDescriptions;
 import cn.kasuminova.astd.combat.effect.arc.positronshockwave.PositronShockwaveAutofireAiPicker;
 import cn.kasuminova.astd.combat.effect.joint.stardust.StardustLauncherAutofireAiPicker;
 import cn.kasuminova.astd.combat.effect.joint.stardust.StardustMoteAiPicker;
@@ -56,9 +57,13 @@ public final class AsteriaDirectoratePlugin extends BaseModPlugin {
         // DifficultySettingsRegistrar 引用 lunalib.*，未安装 LunaLib 时必须避免加载该类。
         if (LunaLibSupport.INSTANCE.isAvailable()) {
             DifficultySettingsRegistrar.INSTANCE.register();
+            DifficultySettingsRegistrar.INSTANCE.setDescriptionsRefresh(
+                () -> DifficultyDescriptions.INSTANCE.refreshIfChanged()
+            );
         } else {
             logger.info("[ASTD] 未检测到 LunaLib：模组设置不可用，全部使用默认值");
         }
+        DifficultyDescriptions.INSTANCE.initialize();
         // 自定义贴图必须在应用加载阶段预加载，战斗或裸 getSprite 路径中加载会导致渲染异常。
         GressionFlowWrapVfx.INSTANCE.preloadTextures();
         WeaponGlowLayer.INSTANCE.preloadTextures();
@@ -86,6 +91,7 @@ public final class AsteriaDirectoratePlugin extends BaseModPlugin {
 
     @Override
     public void onGameLoad(boolean newGame) {
+        DifficultyDescriptions.INSTANCE.refresh();
         ShipGlowRenderer.INSTANCE.ensureRestoreScriptRegistered();
         StoryWorldBootstrap.INSTANCE.onGameLoad(newGame);
         // 0.98 的 ModPlugin 不继承 CampaignPlugin，必须使用固定 id 注册。

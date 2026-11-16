@@ -10,6 +10,7 @@ object I18n {
         "data/strings/bounty_strings.json",
         "data/strings/systems_strings.json",
         "data/strings/settings_strings.json",
+        "data/strings/tooltip_strings.json",
     )
 
     private val log by lazy { Global.getLogger(I18n::class.java) }
@@ -19,6 +20,8 @@ object I18n {
     }
 
     private const val PARAM_TAG_PREFIX: String = "<param:"
+
+    private const val MISSING_STRING_PREFIX: String = "Missing string: ["
 
     data class Highlight(val text: String, val color: Color)
 
@@ -68,6 +71,30 @@ object I18n {
         renderRich(tryGet(category, key), vars)
 
     fun format(template: String, vararg vars: Pair<String, Any?>): Rendered = renderRich(template, vars)
+
+    fun formatPlain(template: String, vararg vars: Pair<String, Any?>): String = renderPlain(template, vars)
+
+    /**
+     * 读取原文，保留 `{%s}`、`%%` 等原生标记，不做变量替换后的二次转义。
+     * 缺失 key 抛出异常；登记为空串属于合法内容并原样返回。
+     */
+    fun requiredRaw(category: Categories, key: String): String {
+        val table = extraStringTablesByCategory[category.id]
+        if (table != null && table.has(key)) {
+            return table.getString(key)
+        }
+
+        val raw = try {
+            Global.getSettings().getString(category.id, key)
+        } catch (failure: RuntimeException) {
+            log.error("I18n: required string lookup failed: category=${category.id} key=$key", failure)
+            throw IllegalStateException("I18n: missing required string: category=${category.id} key=$key", failure)
+        }
+        // 原版对缺失 key 返回 "Missing string: [key]" 文本。
+        if (raw != null && raw != MISSING_STRING_PREFIX + key + "]") return raw
+
+        throw IllegalStateException("I18n: missing required string: category=${category.id} key=$key")
+    }
 
     private fun tryGet(category: String?, key: String): String {
         if (!category.isNullOrBlank()) {
@@ -259,11 +286,6 @@ object I18n {
         val rgb = hex.toInt(16)
         val color = Color((rgb shr 16) and 0xFF, (rgb shr 8) and 0xFF, rgb and 0xFF)
         return key to color
-    }
-
-    private fun unescapePercents(template: String): String {
-        if (!template.contains("%%")) return template
-        return template.replace("%%", "%")
     }
 
 }

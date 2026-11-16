@@ -18,6 +18,8 @@ repositories {
 dependencies {
     implementation(kotlin("stdlib"))
     implementation("io.github.classgraph:classgraph:4.8.179")
+
+    testImplementation(kotlin("test"))
 }
 
 kotlin {

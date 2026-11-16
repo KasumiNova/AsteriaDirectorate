@@ -2,6 +2,7 @@ package cn.kasuminova.astd.sscsv.entries
 
 import cn.kasuminova.astd.sscsv.CsvTarget
 import cn.kasuminova.astd.sscsv.SsCsvEntry
+import cn.kasuminova.astd.sscsv.i18n.SsI18n
 
 abstract class WeaponDataEntry : SsCsvEntry {
     final override val target: CsvTarget = CsvTarget.WEAPON_DATA
@@ -156,13 +157,16 @@ abstract class WeaponDataEntry : SsCsvEntry {
         "trackingStr" to trackingStr,
         "turnRateStr" to turnRateStr,
         "accuracyStr" to accuracyStr,
-        "customPrimary" to customPrimary,
-        "customPrimaryHL" to customPrimaryHL,
-        "customAncillary" to customAncillary,
-        "customAncillaryHL" to customAncillaryHL,
+        "customPrimary" to tooltipField("customPrimary", customPrimary),
+        "customPrimaryHL" to tooltipField("customPrimaryHL", customPrimaryHL),
+        "customAncillary" to tooltipField("customAncillary", customAncillary),
+        "customAncillaryHL" to tooltipField("customAncillaryHL", customAncillaryHL),
         "noDPSInTooltip" to if (noDpsInTooltip) "TRUE" else "FALSE",
         "number" to number,
     )
+
+    private fun tooltipField(field: String, fallback: String): String =
+        SsI18n.baseline("weapon.$id.tooltip.$field") ?: fallback
 
     private fun encodeAiHintsForCsv(): String? {
         if (aiHints.isEmpty()) {

@@ -12,6 +12,12 @@ object DifficultySettingsRegistrar {
 
     private val category get() = I18n.Categories.MOD
 
+    private var descriptionsRefresh: Runnable? = null
+
+    fun setDescriptionsRefresh(refresh: Runnable) {
+        descriptionsRefresh = refresh
+    }
+
     fun register() {
         val keys = DifficultySettingsKeys
         val tierNames = keys.tierDisplayNames()
@@ -132,5 +138,8 @@ object DifficultySettingsRegistrar {
         if (!HullmodBackgroundStyleConfig.applySelectedName(bgStyleSelected) && bgStyleSelected.isNotEmpty()) {
             AstdLog.logger.warn("[ASTD] 船插背景风格显示名未命中：'$bgStyleSelected'，回退默认风格（角标脉冲）")
         }
+
+        // 两套强度与其他设置全部应用完成后再通知，描述刷新不得读取中间态。
+        descriptionsRefresh?.run()
     }
 }

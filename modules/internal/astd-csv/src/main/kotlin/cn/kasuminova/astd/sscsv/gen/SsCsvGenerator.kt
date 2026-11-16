@@ -6,6 +6,8 @@ import cn.kasuminova.astd.sscsv.SsCsvCellsEntry
 import cn.kasuminova.astd.sscsv.SsCsvEntry
 import cn.kasuminova.astd.sscsv.SsExtraOutputs
 import cn.kasuminova.astd.sscsv.annotations.SsCsvComment
+import cn.kasuminova.astd.sscsv.i18n.SsI18n
+import cn.kasuminova.astd.sscsv.tooltip.TooltipStringsExport
 import io.github.classgraph.ClassGraph
 import java.math.BigDecimal
 import java.nio.charset.StandardCharsets
@@ -106,6 +108,11 @@ private data class GenResult(val entriesFound: Int, val filesWritten: Int)
 
 private fun generate(args: GenArgs): GenResult {
     val entries = scanEntries(args.scanPkg)
+    val tooltipFiles = TooltipStringsExport.files(
+        registry = SsI18n.tooltipRegistry(),
+        csvEntries = entries,
+        duplicateStringKeys = SsI18n.duplicateStringKeys(),
+    )
     val grouped = entries.groupBy { it.target }
 
     var files = 0
@@ -152,7 +159,7 @@ private fun generate(args: GenArgs): GenResult {
 
     val extraFiles = entries
         .filterIsInstance<SsExtraOutputs>()
-        .flatMap { it.extraFiles() }
+        .flatMap { it.extraFiles() } + tooltipFiles
 
     files += writeExtraFiles(args.outDir, extraFiles)
     extraFiles.forEach { record(args.outDir.resolve(it.relativePath.replace('\\', '/'))) }
