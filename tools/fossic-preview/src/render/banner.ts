@@ -37,8 +37,8 @@ function drawStripes(ctx: CanvasRenderingContext2D, phase: number): void {
   ctx.beginPath()
   ctx.rect(1390, 268, 430, 34)
   ctx.clip()
-  ctx.strokeStyle = 'rgba(200, 170, 238, 0.38)'
-  ctx.lineWidth = 5
+  ctx.strokeStyle = 'rgba(200, 170, 238, 0.2)'
+  ctx.lineWidth = 2
   const offset = phase * 48
   for (let x = 1320 + offset; x < 1900; x += 48) {
     ctx.beginPath()
@@ -50,13 +50,54 @@ function drawStripes(ctx: CanvasRenderingContext2D, phase: number): void {
 }
 
 function drawArrows(ctx: CanvasRenderingContext2D, phase: number): void {
-  const offset = phase * 240
-  for (let x = -300 + offset; x < 1550; x += 240) {
-    ctx.fillStyle = 'rgba(116, 220, 232, 0.075)'
-    polygon(ctx, [[x, 58], [x + 82, 58], [x + 142, 180], [x + 82, 302], [x, 302], [x + 60, 180]])
-    ctx.fillStyle = 'rgba(116, 220, 232, 0.12)'
-    polygon(ctx, [[x + 26, 156], [x + 67, 156], [x + 91, 180], [x + 67, 204], [x + 26, 204], [x + 50, 180]])
+  ctx.save()
+  ctx.strokeStyle = colors.arc
+  ctx.lineWidth = 2
+  for (let index = 0; index < 3; index++) {
+    const x = 1170 + index * 42
+    ctx.globalAlpha = 0.12 + 0.07 * Math.sin(phase * Math.PI * 2 - index * 0.8)
+    ctx.beginPath()
+    ctx.moveTo(x, 149)
+    ctx.lineTo(x + 18, 180)
+    ctx.lineTo(x, 211)
+    ctx.stroke()
   }
+  ctx.restore()
+}
+
+function drawEdgeDetails(ctx: CanvasRenderingContext2D, phase: number): void {
+  ctx.save()
+  ctx.strokeStyle = colors.arc
+  ctx.fillStyle = colors.arc
+  ctx.lineWidth = 1
+  ctx.globalAlpha = 0.2
+  for (const y of [24, 336]) {
+    ctx.beginPath()
+    ctx.moveTo(80, y)
+    ctx.lineTo(1824, y)
+    for (let x = 80; x <= 1824; x += 32) {
+      const length = (x - 80) % 128 === 0 ? 8 : 3
+      ctx.moveTo(x, y)
+      ctx.lineTo(x, y + (y < height / 2 ? length : -length))
+    }
+    ctx.stroke()
+  }
+  ctx.beginPath()
+  ctx.rect(1116, 56, 240, 248)
+  ctx.clip()
+  ctx.globalAlpha = 0.1
+  for (const radius of [88, 108]) {
+    ctx.beginPath()
+    ctx.arc(1234, 180, radius, -1.3, 1.3)
+    ctx.stroke()
+    ctx.beginPath()
+    ctx.arc(1234, 180, radius, Math.PI - 1.3, Math.PI + 1.3)
+    ctx.stroke()
+  }
+  const angle = phase * Math.PI * 2
+  ctx.globalAlpha = 0.38
+  ctx.fillRect(1234 + Math.cos(angle) * 108 - 2, 180 + Math.sin(angle) * 108 - 2, 4, 4)
+  ctx.restore()
 }
 
 /** 按四秒周期绘制横幅，时间单位为秒。 */
@@ -77,11 +118,6 @@ export function drawBanner(
     ctx.restore()
   }
 
-  ctx.fillStyle = 'rgba(232, 236, 242, 0.035)'
-  setFont(ctx, 476, 600, true)
-  ctx.fillText(settings.bannerKicker.toUpperCase(), -20, 340)
-
-  drawArrows(ctx, phase)
   ctx.fillStyle = 'rgba(5, 8, 11, 0.88)'
   polygon(ctx, [[80, 48], [1120, 48], [1200, 180], [1120, 312], [80, 312], [26, 180]])
   ctx.fillStyle = 'rgba(8, 11, 15, 0.92)'
@@ -98,14 +134,8 @@ export function drawBanner(
     }
   }
 
-  const scanX = -500 + phase * 3000
-  const scan = ctx.createLinearGradient(scanX - 180, 0, scanX + 180, 0)
-  scan.addColorStop(0, 'rgba(109, 224, 232, 0)')
-  scan.addColorStop(0.5, 'rgba(142, 231, 235, 0.12)')
-  scan.addColorStop(1, 'rgba(109, 224, 232, 0)')
-  ctx.fillStyle = scan
-  polygon(ctx, [[scanX - 150, 0], [scanX + 80, 0], [scanX - 20, 360], [scanX - 250, 360]])
-
+  drawEdgeDetails(ctx, phase)
+  drawArrows(ctx, phase)
   drawStripes(ctx, phase)
   ctx.fillStyle = colors.arc
   ctx.fillRect(80, 47, 190, 3)
@@ -123,12 +153,9 @@ export function drawBanner(
   const kicker = settings.bannerKicker.toUpperCase()
   const kickerTracking = setFittedFont(ctx, kicker, 32, 960, 500, 4)
   drawTrackedText(ctx, kicker, 100, 96, kickerTracking)
-  ctx.save()
-  ctx.globalAlpha = 0.9 + Math.sin(phase * Math.PI * 2) * 0.1
   ctx.fillStyle = colors.paper
   setFittedFont(ctx, settings.bannerTitle, 144, 1000)
   ctx.fillText(settings.bannerTitle, 96, 250)
-  ctx.restore()
 
   ctx.textAlign = 'right'
   ctx.fillStyle = colors.paper

@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from 'react'
 import PosterCanvas from './components/PosterCanvas'
 import VideoConverter from './components/VideoConverter'
-import { heroShipIds, shipById } from './data/ships'
+import { ships } from './data/ships'
 import { terminateFFmpeg } from './ffmpeg/engine'
 import { encodeBanner, encodePoster } from './ffmpeg/webp'
 import type { BannerFormat, PosterFormat } from './ffmpeg/webp'
@@ -12,10 +12,9 @@ import { layoutSpecs } from './render/shared'
 import type { ExportScale, PosterLayout, PosterSettings } from './render/shared'
 
 const defaultSettings: PosterSettings = {
-  layout: 'hero',
-  mainShipId: 'astd_xc_001',
+  layout: 'atlasArc',
   bloom: 1.1,
-  backgroundBrightness: 82,
+  backgroundBrightness: 100,
   showGrid: true,
   showAnnotations: true,
   showSafeArea: false,
@@ -25,18 +24,21 @@ const defaultSettings: PosterSettings = {
   bannerFps: BANNER_DEFAULT_FRAME_RATE,
 }
 
+const seriesCounts = {
+  ARC: String(ships.filter((ship) => ship.series === 'ARC').length).padStart(2, '0'),
+  LENS: String(ships.filter((ship) => ship.series === 'LENS').length).padStart(2, '0'),
+}
+
 const layoutNames: Record<PosterLayout, string> = {
-  hero: '主视觉编辑',
   atlasArc: '星坠设计图版',
   atlasLens: '紫菀设计图版',
   banner: '通用横幅编辑',
 }
 
-type IconName = 'hero' | 'atlas' | 'arc' | 'banner' | 'grid' | 'label' | 'safe' | 'reset' | 'export' | 'video' | 'play' | 'pause'
+type IconName = 'atlas' | 'arc' | 'banner' | 'grid' | 'label' | 'safe' | 'reset' | 'export' | 'video' | 'play' | 'pause'
 
 function Icon({ name }: { name: IconName }) {
   const paths: Record<IconName, React.ReactNode> = {
-    hero: <><rect x="3" y="5" width="18" height="14" /><path d="M7 15l4-5 3 3 3-4 4 6" /></>,
     atlas: <><rect x="4" y="3" width="16" height="18" /><path d="M8 7h8M8 11h8M8 15h4" /></>,
     arc: <><path d="M4 4h16v16H4z" /><path d="M4 10h16M10 4v16" /></>,
     banner: <><path d="M3 6h18v12H3zM8 10h8M8 14h5" /></>,
@@ -107,7 +109,6 @@ export default function App() {
   const { assets, errors: assetErrors, pending } = usePosterAssets()
   const { ready: fontsReady, error: fontError } = useRubikFont()
   const spec = layoutSpecs[settings.layout]
-  const mainShip = shipById.get(settings.mainShipId)
   const isBanner = settings.layout === 'banner'
   const animatedBanner = isBanner && !bannerStatic
   const exportWidth = spec.width * exportScale
@@ -189,13 +190,11 @@ export default function App() {
   }
 
   const blocked = exporting || videoBusy || !resourcesReady || Boolean(renderError)
-  const footerText = settings.layout === 'hero' && mainShip
-    ? `主舰 / ${mainShip.name}`
-    : settings.layout === 'atlasArc'
-      ? 'ARC / 07 HULLS'
-      : settings.layout === 'atlasLens'
-        ? 'LENS / 06 HULLS'
-        : `${settings.bannerFps} FPS / ${BANNER_DURATION_SECONDS} SEC / LOOP`
+  const footerText = settings.layout === 'atlasArc'
+    ? `ARC / ${seriesCounts.ARC} HULLS`
+    : settings.layout === 'atlasLens'
+      ? `LENS / ${seriesCounts.LENS} HULLS`
+      : `${settings.bannerFps} FPS / ${BANNER_DURATION_SECONDS} SEC / LOOP`
 
   return (
     <div className="workbench">
@@ -208,7 +207,6 @@ export default function App() {
       <div className="workspace">
         <nav className="tool-rail" aria-label="工作台工具">
           <div className="rail-group">
-            <button disabled={exporting || videoBusy} className={settings.layout === 'hero' && !videoOpen ? 'is-active' : ''} title="横版主视觉" aria-label="切换到横版主视觉" onClick={() => changeLayout('hero')}><Icon name="hero" /></button>
             <button disabled={exporting || videoBusy} className={settings.layout === 'atlasArc' && !videoOpen ? 'is-active' : ''} title="星坠设计" aria-label="切换到星坠设计图鉴" onClick={() => changeLayout('atlasArc')}><Icon name="atlas" /></button>
             <button disabled={exporting || videoBusy} className={settings.layout === 'atlasLens' && !videoOpen ? 'is-active' : ''} title="紫菀设计" aria-label="切换到紫菀设计图鉴" onClick={() => changeLayout('atlasLens')}><Icon name="arc" /></button>
             <button disabled={exporting || videoBusy} className={settings.layout === 'banner' && !videoOpen ? 'is-active' : ''} title="通用横幅" aria-label="切换到通用横幅" onClick={() => changeLayout('banner')}><Icon name="banner" /></button>
@@ -229,7 +227,7 @@ export default function App() {
           <div className="preview-meta"><div><span className="meta-index">{String(Object.keys(layoutNames).indexOf(settings.layout) + 1).padStart(2, '0')}</span><span>{layoutNames[settings.layout]}</span></div><span>{isBanner ? exportWidth : spec.width} × {isBanner ? exportHeight : spec.height} PX</span></div>
           <div className={`canvas-stage canvas-stage--${settings.layout}`}>
             <div className="canvas-registration canvas-registration--top" />
-            <PosterCanvas settings={settings} assets={assets} fontsReady={fontsReady} playing={playing} scale={isBanner ? exportScale : 1} onRenderError={onRenderError} />
+            <PosterCanvas settings={settings} assets={assets} resourcesReady={resourcesReady} playing={playing} scale={isBanner ? exportScale : 1} onRenderError={onRenderError} />
             <div className="canvas-registration canvas-registration--bottom" />
           </div>
           <div className="preview-footer"><span>CANVAS 2D</span><span>{footerText}</span><span>{isBanner ? (playing ? '循环播放中' : '已暂停') : '预览等比缩放'}</span></div>
@@ -241,21 +239,11 @@ export default function App() {
             <section className="panel-section">
               <h2><span>01</span>版式</h2>
               <div className="layout-options">
-                <button disabled={exporting || videoBusy} className={settings.layout === 'hero' ? 'is-selected' : ''} onClick={() => changeLayout('hero')}><span>主视觉</span><small>2560 × 1440</small></button>
-                <button disabled={exporting || videoBusy} className={settings.layout === 'atlasArc' ? 'is-selected' : ''} onClick={() => changeLayout('atlasArc')}><span>星坠设计</span><small>ARC / 07</small></button>
-                <button disabled={exporting || videoBusy} className={settings.layout === 'atlasLens' ? 'is-selected' : ''} onClick={() => changeLayout('atlasLens')}><span>紫菀设计</span><small>LENS / 06</small></button>
+                <button disabled={exporting || videoBusy} className={settings.layout === 'atlasArc' ? 'is-selected' : ''} onClick={() => changeLayout('atlasArc')}><span>星坠设计</span><small>ARC / {seriesCounts.ARC}</small></button>
+                <button disabled={exporting || videoBusy} className={settings.layout === 'atlasLens' ? 'is-selected' : ''} onClick={() => changeLayout('atlasLens')}><span>紫菀设计</span><small>LENS / {seriesCounts.LENS}</small></button>
                 <button disabled={exporting || videoBusy} className={settings.layout === 'banner' ? 'is-selected' : ''} onClick={() => changeLayout('banner')}><span>通用横幅</span><small>1920 × 360</small></button>
               </div>
             </section>
-
-            {settings.layout === 'hero' && (
-              <section className="panel-section">
-                <h2><span>02</span>主舰</h2>
-                <label className="select-label" htmlFor="main-ship">编队中心舰体</label>
-                <div className="select-wrap"><select id="main-ship" value={settings.mainShipId} onChange={(event) => update('mainShipId', event.target.value)}>{heroShipIds.map((id) => { const ship = shipById.get(id)!; return <option key={id} value={id}>{ship.name} / {ship.designation}</option> })}</select></div>
-                {mainShip && <div className="ship-readout"><span>{mainShip.series}</span><span>{mainShip.id.toUpperCase()}</span></div>}
-              </section>
-            )}
 
             {isBanner && (
               <section className="panel-section banner-fields">
@@ -269,20 +257,20 @@ export default function App() {
             )}
 
             <section className="panel-section">
-              <h2><span>03</span>画面</h2>
+              <h2><span>{isBanner ? '03' : '02'}</span>画面</h2>
               {!isBanner && <Slider label="发光强度" value={settings.bloom} min={0} max={2} step={0.05} displayValue={settings.bloom.toFixed(2)} onChange={(value) => update('bloom', value)} />}
               <Slider label="背景亮度" value={settings.backgroundBrightness} min={40} max={120} step={1} displayValue={`${settings.backgroundBrightness}%`} onChange={(value) => update('backgroundBrightness', value)} />
             </section>
 
             <section className="panel-section panel-section--toggles">
-              <h2><span>04</span>辅助信息</h2>
+              <h2><span>{isBanner ? '04' : '03'}</span>辅助信息</h2>
               <Toggle label="坐标网格" description="低对比技术网格" checked={settings.showGrid} onChange={(value) => update('showGrid', value)} />
               <Toggle label="技术标注" description="编号与定位线" checked={settings.showAnnotations} onChange={(value) => update('showAnnotations', value)} />
               <Toggle label="安全边距" description="显示画面安全区域" checked={settings.showSafeArea} onChange={(value) => update('showSafeArea', value)} />
             </section>
 
             <section className="panel-section export-section">
-              <h2><span>05</span>导出</h2>
+              <h2><span>{isBanner ? '05' : '04'}</span>导出</h2>
               {isBanner && <div className="export-scale" aria-label="横幅导出类型"><button disabled={exporting} className={!bannerStatic ? 'is-selected' : ''} aria-pressed={!bannerStatic} onClick={() => { setBannerStatic(false); setNotice(''); setExportError('') }}>动画</button><button disabled={exporting} className={bannerStatic ? 'is-selected' : ''} aria-pressed={bannerStatic} onClick={() => { setBannerStatic(true); setNotice(''); setExportError('') }}>静态图</button></div>}
               {animatedBanner ? (
                 <div className="export-scale export-scale--formats" aria-label="动画格式">{(['webp', 'gif', 'png'] as BannerFormat[]).map((format) => <button key={format} disabled={exporting} className={bannerFormat === format ? 'is-selected' : ''} aria-pressed={bannerFormat === format} onClick={() => { setBannerFormat(format); setNotice(''); setExportError('') }}>{format === 'png' ? 'APNG' : format.toUpperCase()}</button>)}</div>

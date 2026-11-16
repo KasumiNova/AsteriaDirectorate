@@ -85,13 +85,8 @@ button svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke
 .layout-options span { display: block; font-size: 12px; }
 .layout-options small { display: block; margin-top: 5px; color: var(--faint); font: 9px "Rubik", sans-serif; }
 .layout-options .is-selected small { color: #8fa497; }
-.panel-section.is-disabled h2, .panel-section.is-disabled .select-label, .panel-section.is-disabled .ship-readout { opacity: .45; }
-.select-label { display: block; margin-bottom: 7px; color: var(--muted); font-size: 10px; }
-.select-wrap { position: relative; }
-.select-wrap::after { content: ""; position: absolute; right: 12px; top: 14px; width: 6px; height: 6px; border-right: 1px solid var(--muted); border-bottom: 1px solid var(--muted); transform: rotate(45deg); pointer-events: none; }
 select { width: 100%; height: 36px; appearance: none; padding: 0 32px 0 10px; border: 1px solid #343b36; background: #101311; color: var(--text); font-size: 12px; }
 select:disabled { color: var(--faint); cursor: not-allowed; }
-.ship-readout { display: flex; justify-content: space-between; margin-top: 8px; color: var(--faint); font: 9px "Rubik", sans-serif; letter-spacing: .04em; }
 .slider-control + .slider-control { margin-top: 20px; }
 .slider-heading { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 11px; }
 .slider-heading label { color: #b9c0bb; }
@@ -130,8 +125,7 @@ input[type="range"]::-moz-range-thumb { width: 8px; height: 14px; border: 1px so
 .global-error { position: fixed; z-index: 20; left: 76px; bottom: 18px; max-width: min(620px, calc(100vw - 100px)); display: flex; flex-direction: column; gap: 4px; padding: 12px 15px; border: 1px solid #8f514b; background: #2a1816; color: #e0aaa1; font-size: 11px; box-shadow: 0 8px 30px rgba(0,0,0,.35); }
 .global-error strong { margin-bottom: 3px; font-size: 12px; }
 
-.layout-options button:nth-child(3) { border-left: 0; }
-.layout-options button:nth-child(n+3) { border-top: 1px solid var(--line); }
+.layout-options button:nth-child(3) { grid-column: 1 / -1; border-left: 0; border-top: 1px solid var(--line); }
 .banner-fields label { display: block; margin-top: 12px; color: var(--muted); font-size: 10px; }
 .banner-fields input { width: 100%; height: 35px; margin-top: 7px; padding: 0 10px; border: 1px solid #343b36; background: #101311; color: var(--text); font-size: 12px; }
 .playback-button { width: 100%; height: 34px; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 15px; border: 1px solid #3b4740; background: #19211c; color: var(--accent); font-size: 11px; }

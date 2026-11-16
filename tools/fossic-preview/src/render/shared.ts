@@ -1,11 +1,10 @@
 import type { Ship } from '../data/ships'
 
-export type PosterLayout = 'hero' | 'atlasArc' | 'atlasLens' | 'banner'
+export type PosterLayout = 'atlasArc' | 'atlasLens' | 'banner'
 export type ExportScale = 0.25 | 0.5 | 1 | 2
 
 export interface PosterSettings {
   layout: PosterLayout
-  mainShipId: string
   bloom: number
   backgroundBrightness: number
   showGrid: boolean
@@ -25,7 +24,6 @@ export interface LayoutSpec {
 }
 
 export const layoutSpecs: Record<PosterLayout, LayoutSpec> = {
-  hero: { width: 2560, height: 1440 },
   atlasArc: { width: 1920, height: 2400 },
   atlasLens: { width: 1920, height: 2400 },
   banner: { width: 1920, height: 360 },
@@ -35,7 +33,6 @@ export const colors = {
   paper: '#ececf2',
   muted: '#9996ad',
   faint: '#615d73',
-  accent: '#c6b5ee',
   arc: '#82dcf2',
   lens: '#c69af0',
 }
@@ -80,25 +77,6 @@ export function drawTrackedText(
     ctx.fillText(character, cursor, y)
     cursor += ctx.measureText(character).width + tracking
   }
-}
-
-export function drawCornerFrame(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-  cut = 12,
-): void {
-  ctx.beginPath()
-  ctx.moveTo(x + cut, y)
-  ctx.lineTo(x + width, y)
-  ctx.lineTo(x + width, y + height - cut)
-  ctx.lineTo(x + width - cut, y + height)
-  ctx.lineTo(x, y + height)
-  ctx.lineTo(x, y + cut)
-  ctx.closePath()
-  ctx.stroke()
 }
 
 export function drawSafeArea(

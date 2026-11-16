@@ -19,15 +19,17 @@ interface Placement {
   shipClass: ShipClass
   x: number
   y: number
+  compactLabel?: boolean
   labelY: number
 }
 
 const arcPlacements: Placement[] = [
-  { id: 'astd_xc_001', shipClass: 'CAPITAL_SHIP', x: 500, y: 480, labelY: 880 },
-  { id: 'astd_xc_102', shipClass: 'CAPITAL_SHIP', x: 1320, y: 500, labelY: 880 },
-  { id: 'astd_xc_101', shipClass: 'CRUISER', x: 340, y: 1240, labelY: 1500 },
-  { id: 'astd_xc_002', shipClass: 'DESTROYER', x: 920, y: 1240, labelY: 1500 },
-  { id: 'astd_xc_103', shipClass: 'DESTROYER', x: 1430, y: 1240, labelY: 1500 },
+  { id: 'astd_xc_001', shipClass: 'CAPITAL_SHIP', x: 500, y: 525, labelY: 930 },
+  { id: 'astd_xc_102', shipClass: 'CAPITAL_SHIP', x: 1320, y: 525, labelY: 930 },
+  { id: 'astd_xc_101', shipClass: 'CRUISER', x: 320, y: 1240, labelY: 1500, compactLabel: true },
+  { id: 'astd_xc_105', shipClass: 'CRUISER', x: 760, y: 1240, labelY: 1500, compactLabel: true },
+  { id: 'astd_xc_002', shipClass: 'DESTROYER', x: 1200, y: 1240, labelY: 1500, compactLabel: true },
+  { id: 'astd_xc_103', shipClass: 'DESTROYER', x: 1600, y: 1240, labelY: 1500, compactLabel: true },
   { id: 'astd_xc_104', shipClass: 'FRIGATE', x: 560, y: 1850, labelY: 2070 },
   { id: 'astd_lh_001', shipClass: 'FRIGATE', x: 1280, y: 1850, labelY: 2070 },
 ]
@@ -79,39 +81,60 @@ function drawBackground(ctx: CanvasRenderingContext2D, assets: ImageAssets, sett
   }
 }
 
-function drawGeometry(ctx: CanvasRenderingContext2D, series: ShipSeries): void {
+function drawGeometry(ctx: CanvasRenderingContext2D, series: ShipSeries, placements: Placement[]): void {
   const accent = series === 'ARC' ? colors.arc : colors.lens
   ctx.save()
-  ctx.fillStyle = accent
-  ctx.globalAlpha = 0.055
-  ctx.beginPath()
-  ctx.moveTo(1580, 270)
-  ctx.lineTo(1760, 270)
-  ctx.lineTo(1870, 490)
-  ctx.lineTo(1760, 710)
-  ctx.lineTo(1580, 710)
-  ctx.lineTo(1690, 490)
-  ctx.closePath()
-  ctx.fill()
-  ctx.beginPath()
-  ctx.moveTo(1730, 1170)
-  ctx.lineTo(1920, 1030)
-  ctx.lineTo(1920, 1450)
-  ctx.lineTo(1810, 1530)
-  ctx.closePath()
-  ctx.fill()
-  ctx.globalAlpha = 0.16
-  ctx.lineWidth = 5
   ctx.strokeStyle = accent
-  for (let x = 70; x < 330; x += 42) {
+  ctx.fillStyle = accent
+  ctx.lineWidth = 1
+  ctx.globalAlpha = 0.16
+  for (const x of [56, width - 56]) {
     ctx.beginPath()
-    ctx.moveTo(x, 2208)
-    ctx.lineTo(x + 70, 2148)
+    ctx.moveTo(x, 240)
+    ctx.lineTo(x, 2160)
+    for (let y = 240; y <= 2160; y += 32) {
+      const length = (y - 240) % 160 === 0 ? 18 : 7
+      ctx.moveTo(x, y)
+      ctx.lineTo(x + (x < width / 2 ? length : -length), y)
+    }
     ctx.stroke()
   }
-  ctx.globalAlpha = 0.55
-  ctx.fillRect(1600, 158, 82, 4)
-  ctx.fillRect(1700, 158, 34, 4)
+  placements.forEach(({ x, y, shipClass }) => {
+    const radius = shipClass === 'CAPITAL_SHIP' ? 270 : shipClass === 'CRUISER' ? 196 : 152
+    ctx.globalAlpha = 0.075
+    ctx.beginPath()
+    if (series === 'ARC') {
+      for (const side of [-1, 1]) {
+        ctx.moveTo(x + side * radius * 0.65, y - radius * 0.75)
+        ctx.lineTo(x + side * radius, y - radius * 0.4)
+        ctx.lineTo(x + side * radius, y + radius * 0.4)
+        ctx.lineTo(x + side * radius * 0.65, y + radius * 0.75)
+      }
+    } else {
+      ctx.ellipse(x, y, radius * 1.25, radius * 0.72, -Math.PI / 6, 0.12, Math.PI * 0.9)
+      ctx.stroke()
+      ctx.beginPath()
+      ctx.ellipse(x, y, radius * 1.25, radius * 0.72, -Math.PI / 6, Math.PI + 0.12, Math.PI * 1.9)
+    }
+    ctx.stroke()
+    ctx.globalAlpha = 0.16
+    for (const side of [-1, 1]) {
+      ctx.beginPath()
+      ctx.moveTo(x + side * radius - 6, y)
+      ctx.lineTo(x + side * radius + 6, y)
+      ctx.moveTo(x + side * radius, y - 6)
+      ctx.lineTo(x + side * radius, y + 6)
+      ctx.stroke()
+    }
+  })
+  ctx.globalAlpha = 0.25
+  for (let index = 0; index < 7; index++) {
+    ctx.fillRect(96 + index * 18, 2196, index === 0 ? 9 : 3, 12)
+    ctx.fillRect(1824 - index * 18, 2196, 3, index % 3 === 0 ? 12 : 6)
+  }
+  ctx.globalAlpha = 0.45
+  ctx.fillRect(1600, 158, 82, 3)
+  ctx.fillRect(1700, 158, 34, 3)
   ctx.restore()
 }
 
@@ -167,9 +190,28 @@ function drawLabel(
   x: number,
   y: number,
   showAnnotations: boolean,
+  compact = false,
 ): void {
   ctx.save()
   ctx.textAlign = 'left'
+  if (compact) {
+    ctx.textAlign = 'center'
+    ctx.fillStyle = colors.paper
+    setFont(ctx, 48, 500)
+    ctx.fillText(ship.name, x, y)
+    ctx.fillStyle = colors.muted
+    setFont(ctx, 28, 400)
+    ctx.fillText(ship.designation, x, y + 44)
+    if (showAnnotations) {
+      ctx.fillStyle = colors.arc
+      ctx.fillRect(x - 20, y - 50, 40, 2)
+      ctx.fillStyle = colors.muted
+      setFont(ctx, 24, 400, true)
+      ctx.fillText(ship.id.toUpperCase(), x, y + 86)
+    }
+    ctx.restore()
+    return
+  }
   if (showAnnotations) {
     ctx.strokeStyle = 'rgba(151, 180, 174, 0.38)'
     ctx.lineWidth = 2
@@ -230,7 +272,7 @@ function drawPlacements(
       halo: 0.08,
     })
     if (!drawn) throw new Error(`图鉴舰体绘制失败，检查主贴图与发光层：${placement.id}`)
-    drawLabel(ctx, ship, placement.x, placement.labelY, settings.showAnnotations)
+    drawLabel(ctx, ship, placement.x, placement.labelY, settings.showAnnotations, placement.compactLabel)
   })
 }
 
@@ -256,13 +298,13 @@ export function drawAtlas(
   series: ShipSeries,
 ): void {
   drawBackground(ctx, assets, settings)
-  drawGeometry(ctx, series)
   const placements = series === 'ARC' ? arcPlacements : lensPlacements
+  drawGeometry(ctx, series, placements)
   drawHeader(ctx, series, placements.length)
   if (series === 'ARC') {
     drawSection(ctx, 'CAPITAL_SHIP', 216)
-    drawSection(ctx, 'CRUISER', 1030, 96, 760)
-    drawSection(ctx, 'DESTROYER', 1030, 840, 1824)
+    drawSection(ctx, 'CRUISER', 1030, 96, 940)
+    drawSection(ctx, 'DESTROYER', 1030, 1020, 1824)
     drawSection(ctx, 'FRIGATE', 1650)
   } else {
     drawSection(ctx, 'CAPITAL_SHIP', 216)

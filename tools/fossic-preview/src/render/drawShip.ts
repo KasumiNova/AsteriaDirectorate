@@ -6,12 +6,10 @@ export interface DrawShipOptions {
   x: number
   y: number
   width: number
-  rotation?: number
   bloom?: number
   halo?: number
 }
 
-/** 以中心点绘制舰船，主贴图与发光层保持相同尺寸和变换。 */
 export function drawShip(
   ctx: CanvasRenderingContext2D,
   ship: Ship,
@@ -27,7 +25,6 @@ export function drawShip(
   const halo = options.halo ?? 0.14
   ctx.save()
   ctx.translate(options.x, options.y)
-  ctx.rotate(((options.rotation ?? 0) * Math.PI) / 180)
   ctx.imageSmoothingEnabled = true
   ctx.imageSmoothingQuality = 'high'
   ctx.drawImage(sprite, -options.width / 2, -height / 2, options.width, height)

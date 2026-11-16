@@ -34,6 +34,7 @@ export const ships: Ship[] = [
   ship('astd_xc_102', '烽燧', '主力舰', 'ARC', 'CAPITAL_SHIP'),
   ship('astd_xc_103', '列星', '驱逐舰', 'ARC', 'DESTROYER'),
   ship('astd_xc_104', '逐电', '护卫舰', 'ARC', 'FRIGATE'),
+  ship('astd_xc_105', '贯虹', '巡洋舰', 'ARC', 'CRUISER'),
   ship('astd_zw_001', '决明', '指挥巡洋舰', 'LENS', 'CRUISER'),
   ship('astd_zw_002', '密蒙', '相位巡洋舰', 'LENS', 'CRUISER'),
   ship('astd_zw_101', '舜华', '相位驱逐舰', 'LENS', 'DESTROYER'),
@@ -52,14 +53,6 @@ export const ships: Ship[] = [
 ]
 
 export const shipById = new Map(ships.map((item) => [item.id, item]))
-
-export const heroShipIds = [
-  'astd_xc_001',
-  'astd_zw_001',
-  'astd_zw_002',
-  'astd_xc_102',
-  'astd_zw_102',
-]
 
 export const classLabels: Record<ShipClass, string> = {
   CAPITAL_SHIP: '主力舰',

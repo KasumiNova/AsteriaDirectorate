@@ -6,27 +6,26 @@ import type { ImageAssets, PosterSettings } from '../render/shared'
 interface PosterCanvasProps {
   settings: PosterSettings
   assets: ImageAssets
-  fontsReady: boolean
+  resourcesReady: boolean
   playing: boolean
   scale: number
   onRenderError: (message: string) => void
 }
 
 const labels = {
-  hero: '横版舰船主视觉预览',
-  atlasArc: '星坠设计七艘舰船技术图版预览',
-  atlasLens: '紫菀设计六艘舰船技术图版预览',
+  atlasArc: '星坠设计舰船技术图版预览',
+  atlasLens: '紫菀设计舰船技术图版预览',
   banner: '循环动画横幅预览',
 }
 
-export default function PosterCanvas({ settings, assets, fontsReady, playing, scale, onRenderError }: PosterCanvasProps) {
+export default function PosterCanvas({ settings, assets, resourcesReady, playing, scale, onRenderError }: PosterCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const timeRef = useRef(0)
   const spec = layoutSpecs[settings.layout]
 
   useEffect(() => {
     const canvas = canvasRef.current
-    if (!canvas || !fontsReady) return
+    if (!canvas || !resourcesReady) return
     let frame = 0
     let active = true
     const start = performance.now() - timeRef.current * 1000
@@ -55,7 +54,7 @@ export default function PosterCanvas({ settings, assets, fontsReady, playing, sc
       active = false
       cancelAnimationFrame(frame)
     }
-  }, [assets, fontsReady, onRenderError, playing, scale, settings])
+  }, [assets, resourcesReady, onRenderError, playing, scale, settings])
 
   return (
     <canvas
