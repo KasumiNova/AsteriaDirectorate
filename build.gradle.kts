@@ -20,7 +20,7 @@ val astdRelease: Boolean =
     providers.gradleProperty("astd.release").map(String::toBooleanStrict).orElse(false).get()
 
 val astdModVersion: String =
-    providers.gradleProperty("astd.modVersion").orElse(if (astdRelease) "0.1.12" else "1.0-SNAPSHOT").get()
+    providers.gradleProperty("astd.modVersion").orElse(if (astdRelease) "0.2.0" else "1.0-SNAPSHOT").get()
 
 version = astdModVersion
 
@@ -269,6 +269,7 @@ tasks.named<Sync>("copyContents") {
     // ss-csv 直写 contents 的本地产物清单（.ss-csv-manifest），不属于 mod 内容。
     exclude(".ss-csv-manifest")
     from(layout.buildDirectory.dir("generated/ss-csv"))
+    from("LICENSE", "LICENSE-CODE", "LICENSE-ASSETS", "CHANGELOG.md")
     if (astdIncludeAutomation) {
         from("modules/internal/astd-automation/contents")
     }
