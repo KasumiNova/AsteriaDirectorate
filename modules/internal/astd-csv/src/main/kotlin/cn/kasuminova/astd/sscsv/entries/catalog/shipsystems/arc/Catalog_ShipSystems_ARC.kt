@@ -98,6 +98,7 @@ object Sys_astd_arc_shared_flux_network : ShipSystemWithSystemFileEntry() {
     override val cooldown: Double = 20.0
 
     override val icon: String = "graphics/icons/hullsys/ammo_feeder.png"
+    override val useSound: String? = null
     override val loopSound: String = "astd_arc_shared_flux_network_loop"
 }
 
