@@ -10,8 +10,9 @@
 - `contents/graphics/ships/`
 - `contents/graphics/weapons/`
 - `contents/graphics/hullmods/`
+- `contents/sounds/`
 
-在模组发行包中，上述目录分别对应 `graphics/factions/`、`graphics/ships/`、`graphics/weapons/` 和 `graphics/hullmods/`。
+在模组发行包中，上述目录分别对应 `graphics/factions/`、`graphics/ships/`、`graphics/weapons/`、`graphics/hullmods/` 和 `sounds/`。
 
 受许可资源的副本在移动、重命名、嵌入或重新打包后继续适用本许可。本许可仅授予许可方有权授予的权利。第三方内容依其权利人的授权处理。本许可不改变独立程序代码的 MIT 授权。
 
