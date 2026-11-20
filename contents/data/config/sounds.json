@@ -45,13 +45,13 @@
 		{"file": "sounds/astd_gcp12_fire.ogg", "pitch": 1, "volume": 1}
 	],
 	"astd_gcp12_loop": [
-		{"file": "sounds/astd_gcp12_loop.ogg", "pitch": 1, "volume": 0.7}
+		{"file": "sounds/astd_gcp12_loop.ogg", "pitch": 1, "volume": 1}
 	],
 	"astd_gemini_dem_launcher_fire": [
-		{"file": "sounds/astd_gemini_dem_launcher_fire.ogg", "pitch": 1, "volume": 1}
+		{"file": "sounds/astd_gemini_dem_launcher_fire.ogg", "pitch": 1, "volume": 1.5}
 	],
 	"astd_gemini_dem_launcher_aim": [
-		{"file": "sounds/astd_gemini_dem_launcher_aim.ogg", "pitch": 1, "volume": 0.7}
+		{"file": "sounds/astd_gemini_dem_launcher_aim.ogg", "pitch": 1, "volume": 1.5}
 	],
 	"astd_gemini_dem_launcher_beam": [
 		{"file": "sounds/astd_gemini_dem_launcher_beam.ogg", "pitch": 1, "volume": 0.85}
@@ -74,7 +74,7 @@
 		{"file": "sounds/astd_qiongjue_phase_railgun_fire.ogg", "pitch": 1, "volume": 1}
 	],
 	"astd_positron_shockwave_fire": [
-		{"file": "sounds/astd_positron_shockwave_fire.ogg", "pitch": 1, "volume": 0.8}
+		{"file": "sounds/astd_positron_shockwave_fire.ogg", "pitch": 1, "volume": 0.3}
 	],
 	"astd_positron_shockwave_burst": [
 		{"file": "sounds/astd_positron_shockwave_burst.ogg", "pitch": 1, "volume": 0.9}
@@ -98,7 +98,7 @@
 		{"file": "sounds/astd_grav_timeflow_interference_activate.ogg", "pitch": 1, "volume": 1}
 	],
 	"astd_grav_timeflow_interference_loop": [
-		{"file": "sounds/astd_grav_timeflow_interference_loop.ogg", "pitch": 1, "volume": 0.65}
+		{"file": "sounds/astd_grav_timeflow_interference_loop.ogg", "pitch": 1, "volume": 1}
 	],
 	"astd_arc_shared_flux_network_loop": [
 		{"file": "sounds/astd_arc_shared_flux_network_loop.ogg", "pitch": 1, "volume": 0.65}
@@ -110,7 +110,7 @@
 		{"file": "sounds/astd_lh_002_vision_shift_activate.ogg", "pitch": 1, "volume": 1}
 	],
 	"astd_lh_002_vision_shift_loop": [
-		{"file": "sounds/astd_lh_002_vision_shift_loop.ogg", "pitch": 1, "volume": 0.65}
+		{"file": "sounds/astd_lh_002_vision_shift_loop.ogg", "pitch": 1, "volume": 1}
 	],
 	"astd_rift_shift_activate": [
 		{"file": "sounds/astd_rift_shift_activate.ogg", "pitch": 1, "volume": 1}

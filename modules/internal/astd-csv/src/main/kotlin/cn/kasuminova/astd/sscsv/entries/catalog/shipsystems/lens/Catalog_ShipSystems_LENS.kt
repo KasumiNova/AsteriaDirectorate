@@ -190,7 +190,7 @@ object Sys_astd_burst_flow_fighter : ShipSystemWithSystemFileEntry() {
     override val cooldown: Double = 1.0
 
     override val icon: String = "graphics/icons/hullsys/temporal_shell.png"
-    override val useSound: String = "system_temporalshell"
+    override val useSound: String = "astd_lh_001_burst_flow_activate"
 }
 
 object Sys_astd_holographic_decoy : ShipSystemWithSystemFileEntry() {
