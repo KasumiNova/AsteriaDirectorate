@@ -14,5 +14,6 @@
     "renderHints": ["RENDER_LOADED_MISSILES"],
     "projectileSpecId": "astd_gemini_dem_dummy",
     "everyFrameEffect": "cn.kasuminova.astd.combat.effect.arc.geminidem.GeminiDemRackEveryFrameEffect",
-    "fireSoundTwo": "dragonfire_fire"
+    "playFullFireSoundOne": true,
+    "fireSoundOne": "astd_gemini_dem_launcher_fire"
 }

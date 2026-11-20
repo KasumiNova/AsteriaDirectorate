@@ -42,7 +42,7 @@
     },
     "projectileSpecId": "astd_heavy_ion_pulse_shot",
     "everyFrameEffect": "cn.kasuminova.astd.combat.effect.generic.CombatVfxBootstrapEveryFrameEffect",
-    "fireSoundTwo": "ion_pulser_fire",
+    "fireSoundTwo": "astd_heavy_ion_pulse_fire",
     "turretGlowSprite": "graphics/weapons/astd_heavy_ion_pulse_glow.png",
     "hardpointGlowSprite": "graphics/weapons/astd_heavy_ion_pulse_hp_glow.png",
     "glowColor": [

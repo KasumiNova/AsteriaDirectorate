@@ -12,7 +12,8 @@ object Sys_astd_grav_timeflow_interference : ShipSystemWithSystemFileEntry() {
     override val aiType: String = "CUSTOM"
     override val aiScript: String =
         "cn.kasuminova.astd.combat.shipsystems.GravTimeflowInterferenceSystemAI"
-    override val useSound: String = "system_temporalshell"
+    override val useSound: String = "astd_grav_timeflow_interference_activate"
+    override val loopSound: String = "astd_grav_timeflow_interference_loop"
 
     override val chargeUp: Double = 0.5
     override val active: Double = 10.0
@@ -31,7 +32,8 @@ object Sys_astd_fighter_grav_link : ShipSystemWithSystemFileEntry() {
     override val aiType: String = "CUSTOM"
     override val aiScript: String =
         "cn.kasuminova.astd.combat.shipsystems.FighterGravLinkSystemAI"
-    override val useSound: String = "system_recall_device"
+    override val useSound: String = "astd_fighter_grav_link_activate"
+    override val deactivateSound: String = "astd_fighter_grav_link_end"
 
     override val chargeUp: Double = 0.5
     override val active: Double = 15.0

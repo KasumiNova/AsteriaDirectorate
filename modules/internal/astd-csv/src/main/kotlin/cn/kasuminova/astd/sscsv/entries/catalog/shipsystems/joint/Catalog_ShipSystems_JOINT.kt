@@ -20,7 +20,7 @@ object Sys_astd_lh_001_burst_flow : ShipSystemWithSystemFileEntry() {
 
     override val icon: String = "graphics/icons/hullsys/temporal_shell.png"
 
-    override val useSound: String = "system_temporalshell"
+    override val useSound: String = "astd_lh_001_burst_flow_activate"
 }
 
 object Sys_astd_lh_002_vision_shift : ShipSystemWithSystemFileEntry() {
@@ -38,7 +38,7 @@ object Sys_astd_lh_002_vision_shift : ShipSystemWithSystemFileEntry() {
 
     override val icon: String = "graphics/icons/hullsys/quantum_disruptor.png"
 
-    override val useSound: String = "system_entropy"
-    override val loopSound: String = "system_entropy_loop"
+    override val useSound: String = "astd_lh_002_vision_shift_activate"
+    override val loopSound: String = "astd_lh_002_vision_shift_loop"
     override val deactivateSound: String = "system_entropy_off"
 }

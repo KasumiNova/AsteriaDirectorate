@@ -8,6 +8,8 @@ import cn.kasuminova.astd.renderer.beam.driver.BeamVfxDriverImpl
 import cn.kasuminova.astd.renderer.beam.driver.BeamVfxSpecs
 import cn.kasuminova.astd.renderer.effect.projectile.beam.BeamLineUtil
 import cn.kasuminova.astd.renderer.effect.projectile.beam.BeamVisualClipper
+import com.fs.starfarer.api.Global
+import com.fs.starfarer.api.SoundAPI
 import com.fs.starfarer.api.combat.BeamAPI
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.EveryFrameWeaponEffectPlugin
@@ -38,6 +40,8 @@ class GravityCollapseBeamEveryFrameEffect : EveryFrameWeaponEffectPlugin {
     private var beamDriver: BeamVfxDriver? = null
     private var onHit: GravityCollapseOnHitHandler? = null
     private var chargeUpVfx: BeamChargeUpVfx? = null
+    private var firingLoopId: String? = null
+    private var chargeSound: SoundAPI? = null
 
     private var beamStarted = false
     private var beamStartedAt: Float? = null
@@ -53,6 +57,10 @@ class GravityCollapseBeamEveryFrameEffect : EveryFrameWeaponEffectPlugin {
     private fun ensureInit(weaponId: String) {
         if (initedForWeaponId == weaponId) return
         initedForWeaponId = weaponId
+        firingLoopId = when (weaponId) {
+            "astd_gcp4", "astd_gcp8", "astd_gcp12" -> "${weaponId}_loop"
+            else -> null
+        }
 
         val s = GravityCollapseWeaponSpecs.forWeaponId(weaponId)
         spec = s
@@ -168,6 +176,12 @@ class GravityCollapseBeamEveryFrameEffect : EveryFrameWeaponEffectPlugin {
             0f
         }.coerceAtLeast(0f)
 
+        val isCharging = cooldownRemaining <= 0.01f && chargeLevel > 0.001f && chargeLevel < 0.999f
+        if (!isCharging) {
+            chargeSound?.stop()
+            chargeSound = null
+        }
+
         if (beam != null && chargeLevel >= 0.999f && beamBrightness > 0.05f) {
             suppressVanillaDamage(weapon, beam)
             // 原版光束无视相位舰；自绘束体与坍缩 AOE 以相位舰为遮挡。原版 beam 本体伤害已全周期抑制。
@@ -187,6 +201,12 @@ class GravityCollapseBeamEveryFrameEffect : EveryFrameWeaponEffectPlugin {
             if (effectiveLine != null) {
                 lastLine = effectiveLine
 
+                firingLoopId?.let { loopId ->
+                    val player = Global.getSoundPlayer()
+                    val muzzle = weapon.getFirePoint(0)
+                    if (!beamStarted) player.playSound("${weaponId}_fire", 1f, 1f, muzzle, weapon.ship.velocity)
+                    player.playLoop(loopId, weapon, 1f, 1f, muzzle, weapon.ship.velocity)
+                }
                 if (!beamStarted) {
                     beamStarted = true
                     fadeStartedAt = null
@@ -250,8 +270,12 @@ class GravityCollapseBeamEveryFrameEffect : EveryFrameWeaponEffectPlugin {
             return
         }
 
-        val isCharging = cooldownRemaining <= 0.01f && chargeLevel > 0.001f && chargeLevel < 0.999f
         if (isCharging) {
+            if (firingLoopId != null && lastChargeLevel <= 0.001f) {
+                chargeSound = Global.getSoundPlayer().playSound(
+                    "${weaponId}_chargeup", 1f, 1f, weapon.getFirePoint(0), weapon.ship.velocity,
+                )
+            }
             suppressVanillaDamage(weapon, beam)
             try {
                 cu?.advance(engine, amount, weapon, chargeLevel)

@@ -54,8 +54,8 @@ object Sys_astd_rift_shift : ShipSystemWithSystemFileEntry() {
     override val noFiring: Boolean = true
 
     override val icon: String = "graphics/icons/hullsys/displacer.png"
-    override val useSound: String = "system_phase_cloak_activate"
-    override val deactivateSound: String = "system_phase_cloak_deactivate"
+    override val useSound: String = "astd_rift_shift_activate"
+    override val deactivateSound: String = "astd_rift_shift_end"
     override val outOfUsesSound: String = "system_phase_cloak_collision"
 
     override val extraSystemRawFields: Map<String, String> = linkedMapOf(
@@ -98,6 +98,7 @@ object Sys_astd_arc_shared_flux_network : ShipSystemWithSystemFileEntry() {
     override val cooldown: Double = 20.0
 
     override val icon: String = "graphics/icons/hullsys/ammo_feeder.png"
+    override val loopSound: String = "astd_arc_shared_flux_network_loop"
 }
 
 object Sys_astd_fire_control_array : ShipSystemWithSystemFileEntry() {

@@ -83,7 +83,7 @@ class StarfallWingShotOnHitEffect : OnHitEffectPlugin {
                     val damagePoint = if (shieldHit) ExplosionStrikeImpl.resolveDamagePoint(target, location) else location
                     engine.applyDamage(
                         damageParam, target, damagePoint, bonus, DamageType.HIGH_EXPLOSIVE, 0f,
-                        !shieldHit, false, source, true,
+                        !shieldHit, false, source, false,
                     )
                     DcrDamageAttribution.clarify(
                         source, target, DamageType.HIGH_EXPLOSIVE, bonus, 0f, projectile.weapon?.displayName,

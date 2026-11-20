@@ -73,7 +73,7 @@ object CuifengTorpedoStrikeImpl : CuifengTorpedoStrike {
                 val covered = ExplosionStrikeImpl.shieldCovers(target, point)
                 engine.applyDamage(
                     target, ExplosionStrikeImpl.resolveDamagePoint(target, point), totalBonus,
-                    DamageType.ENERGY, 0f, !covered, false, source, true,
+                    DamageType.ENERGY, 0f, !covered, false, source, false,
                 )
                 DcrDamageAttribution.clarify(source, target, DamageType.ENERGY, totalBonus, 0f, projectile.weapon?.displayName)
                 bump(engine, TELE_ADAPTIVE_HITS)
@@ -100,7 +100,7 @@ object CuifengTorpedoStrikeImpl : CuifengTorpedoStrike {
             victimFilter = { victim ->
                 victim !== projectile && !(victim === target && engine.isEntityInPlay(victim))
             },
-            playSound = true,
+            playSound = false,
             weaponName = projectile.weapon?.displayName,
             coarseQuery = coarseQuery,
         )

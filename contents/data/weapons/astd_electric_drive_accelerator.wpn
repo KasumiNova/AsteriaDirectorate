@@ -42,7 +42,7 @@
     },
     "projectileSpecId": "astd_electric_drive_accelerator_shot",
     "everyFrameEffect": "cn.kasuminova.astd.combat.effect.arc.eda.ElectricDriveAcceleratorWeaponEffect",
-    "fireSoundTwo": "autocannon_fire",
+    "fireSoundTwo": "astd_electric_drive_accelerator_fire",
     "turretGlowSprite": "graphics/weapons/astd_electric_drive_accelerator_glow.png",
     "hardpointGlowSprite": "graphics/weapons/astd_electric_drive_accelerator_hp_glow.png",
     "glowColor": [

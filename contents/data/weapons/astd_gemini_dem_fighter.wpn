@@ -13,5 +13,6 @@
     "animationType": "SMOKE",
     "renderHints": ["RENDER_LOADED_MISSILES"],
     "projectileSpecId": "astd_gemini_dem_dummy",
-    "fireSoundTwo": "dragonfire_fire"
+    "playFullFireSoundOne": true,
+    "fireSoundOne": "astd_gemini_dem_launcher_fire"
 }

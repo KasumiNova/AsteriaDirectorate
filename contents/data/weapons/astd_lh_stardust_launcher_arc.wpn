@@ -24,5 +24,5 @@
         "particleColor": [100, 165, 255, 190]
     },
     "projectileSpecId": "astd_lh_stardust_mote_arc",
-    "fireSoundTwo": "mote_attractor_launch_mote"
+    "fireSoundTwo": "astd_lh_stardust_launcher_arc_fire"
 }

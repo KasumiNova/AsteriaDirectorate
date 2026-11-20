@@ -156,6 +156,7 @@ class PositronShockwaveFuseScript(
                     },
                     weaponName = weaponName,
                 ),
+                playImpactSound = false,
             )
             val fighterExtraHe = PositronShockwaveDifficulty.fighterExtraHeDamage(
                 dealtDamage, SicWeaponUpgradeFlags.isArmamentUpgradeActive(source),
@@ -164,7 +165,7 @@ class PositronShockwaveFuseScript(
                 for (target in targets) {
                     if (target !is ShipAPI || !target.isFighter || target.isHulk) continue
                     engine.applyDamage(
-                        target, loc, fighterExtraHe, DamageType.HIGH_EXPLOSIVE, 0f, true, false, source, true,
+                        target, loc, fighterExtraHe, DamageType.HIGH_EXPLOSIVE, 0f, true, false, source, false,
                     )
                     DcrDamageAttribution.clarify(source, target, DamageType.HIGH_EXPLOSIVE, fighterExtraHe, 0f, weaponName)
                 }
@@ -194,7 +195,7 @@ class PositronShockwaveFuseScript(
             )
             bumpTelemetry(engine, TELEMETRY_CONE_VFX)
             engine.spawnExplosion(loc, ZERO, FLASH_COLOR, spec.range * 0.25f, 0.15f)
-            Global.getSoundPlayer().playSound("explosion_flak", 1f, 0.9f, loc, ZERO)
+            Global.getSoundPlayer().playSound("astd_positron_shockwave_burst", 1f, 1f, loc, ZERO)
 
             if (Global.getSettings().isDevMode && source?.owner == 0 && targets.isNotEmpty()) {
                 engine.addFloatingText(loc, "近炸命中 ×${targets.size}", 16f, FLOATY_COLOR, source, 0f, 0f)

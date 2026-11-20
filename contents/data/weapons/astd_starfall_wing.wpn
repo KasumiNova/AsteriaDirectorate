@@ -41,5 +41,6 @@
     },
     "projectileSpecId": "astd_starfall_wing_shot",
     "everyFrameEffect": "cn.kasuminova.astd.combat.effect.generic.CombatVfxBootstrapEveryFrameEffect",
-    "fireSoundTwo": "autocannon_fire"
+    "noImpactSounds": true,
+    "fireSoundTwo": "astd_starfall_echo_fire"
 }

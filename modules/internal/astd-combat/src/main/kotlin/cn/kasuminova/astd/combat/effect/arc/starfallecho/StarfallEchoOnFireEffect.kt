@@ -21,16 +21,12 @@ class StarfallEchoOnFireEffect : OnFireEffectPlugin {
         state.ordinal = ordinal
         state.lastFireTime = now
 
-        if (ordinal < StarfallEchoTuning.BURST_SIZE) {
-            ProjectileVfxDriverPlugin.track(engine, projectile, SPEC_ID_NORMAL)
-            return
-        }
-
-        // spawnProjectile 指定 specId 的 7 参重载恒 NPE（原版加载器不给 projectile 类 spec 填 damage），
-        // 重生成走武器自身 spec 的 6 参重载，第 5 发身份由 customData 标记承载。
         val source = weapon.ship ?: projectile.source
-        if (source == null) {
-            log.warn("坠星残响第 5 发替换跳过：源舰缺失: weapon=${weapon.id}")
+        if (ordinal < StarfallEchoTuning.BURST_SIZE || source == null) {
+            if (ordinal == StarfallEchoTuning.BURST_SIZE) {
+                log.warn("坠星残响第 5 发替换跳过：源舰缺失: weapon=${weapon.id}")
+            }
+            Global.getSoundPlayer().playSound("astd_starfall_echo_fire", 1f, 1f, projectile.location, source?.velocity ?: Vector2f())
             ProjectileVfxDriverPlugin.track(engine, projectile, SPEC_ID_NORMAL)
             return
         }
@@ -52,6 +48,7 @@ class StarfallEchoOnFireEffect : OnFireEffectPlugin {
         spawned.collisionRadius = baseRadius * StarfallEchoTuning.FINAL_SIZE_MULT
         spawned.setCustomData(FINAL_SHOT_MARK_KEY, true)
         source.fluxTracker.increaseFlux(StarfallEchoTuning.FINAL_FLUX_EXTRA, false)
+        Global.getSoundPlayer().playSound("astd_starfall_echo_final_fire", 1f, 1f, loc, source.velocity)
         // 脚本 spawn 的弹体不触发 onFireEffect，拖尾必须显式登记。
         ProjectileVfxDriverPlugin.track(engine, spawned, SPEC_ID_FINAL)
     }

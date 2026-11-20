@@ -40,6 +40,5 @@
         ]
     },
     "projectileSpecId": "astd_starfall_echo_shot",
-    "everyFrameEffect": "cn.kasuminova.astd.combat.effect.arc.starfallecho.StarfallEchoWeaponEffect",
-    "fireSoundTwo": "autocannon_fire"
+    "everyFrameEffect": "cn.kasuminova.astd.combat.effect.arc.starfallecho.StarfallEchoWeaponEffect"
 }

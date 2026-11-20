@@ -1,11 +1,121 @@
 {
-	"astd_grav_storm_release":{
-		"sounds":[
-			{
-				"file":"sounds/sfx_shields/shields_burnout_dweller.ogg",
-				"pitch":1,
-				"volume":1
-			},
-		],
-	},
+	"astd_grav_storm_release": [
+		{"file": "sounds/sfx_shields/shields_burnout_dweller.ogg", "pitch": 1, "volume": 1}
+	],
+	"astd_charge_needle_fire": [
+		{"file": "sounds/astd_charge_needle_fire01.ogg", "pitch": 1, "volume": 0.8},
+		{"file": "sounds/astd_charge_needle_fire02.ogg", "pitch": 1, "volume": 0.8},
+		{"file": "sounds/astd_charge_needle_fire03.ogg", "pitch": 1, "volume": 0.8},
+		{"file": "sounds/astd_charge_needle_fire04.ogg", "pitch": 1, "volume": 0.8},
+		{"file": "sounds/astd_charge_needle_fire05.ogg", "pitch": 1, "volume": 0.8}
+	],
+	"astd_cuifeng_torpedo_fire": [
+		{"file": "sounds/astd_cuifeng_torpedo_fire.ogg", "pitch": 1, "volume": 1}
+	],
+	"astd_cuifeng_torpedo_hit": [
+		{"file": "sounds/astd_cuifeng_torpedo_hit.ogg", "pitch": 1, "volume": 1}
+	],
+	"astd_electric_drive_accelerator_fire": [
+		{"file": "sounds/astd_electric_drive_accelerator_fire01.ogg", "pitch": 1, "volume": 0.85},
+		{"file": "sounds/astd_electric_drive_accelerator_fire02.ogg", "pitch": 1, "volume": 0.85},
+		{"file": "sounds/astd_electric_drive_accelerator_fire03.ogg", "pitch": 1, "volume": 0.85}
+	],
+	"astd_gcp4_chargeup": [
+		{"file": "sounds/astd_gcp12_chargeup.ogg", "pitch": 1, "volume": 0.5}
+	],
+	"astd_gcp4_fire": [
+		{"file": "sounds/astd_gcp12_fire.ogg", "pitch": 1, "volume": 0.5}
+	],
+	"astd_gcp4_loop": [
+		{"file": "sounds/astd_gcp12_loop.ogg", "pitch": 1, "volume": 0.35}
+	],
+	"astd_gcp8_chargeup": [
+		{"file": "sounds/astd_gcp12_chargeup.ogg", "pitch": 1, "volume": 0.75}
+	],
+	"astd_gcp8_fire": [
+		{"file": "sounds/astd_gcp12_fire.ogg", "pitch": 1, "volume": 0.75}
+	],
+	"astd_gcp8_loop": [
+		{"file": "sounds/astd_gcp12_loop.ogg", "pitch": 1, "volume": 0.525}
+	],
+	"astd_gcp12_chargeup": [
+		{"file": "sounds/astd_gcp12_chargeup.ogg", "pitch": 1, "volume": 1}
+	],
+	"astd_gcp12_fire": [
+		{"file": "sounds/astd_gcp12_fire.ogg", "pitch": 1, "volume": 1}
+	],
+	"astd_gcp12_loop": [
+		{"file": "sounds/astd_gcp12_loop.ogg", "pitch": 1, "volume": 0.7}
+	],
+	"astd_gemini_dem_launcher_fire": [
+		{"file": "sounds/astd_gemini_dem_launcher_fire.ogg", "pitch": 1, "volume": 1}
+	],
+	"astd_gemini_dem_launcher_aim": [
+		{"file": "sounds/astd_gemini_dem_launcher_aim.ogg", "pitch": 1, "volume": 0.7}
+	],
+	"astd_gemini_dem_launcher_beam": [
+		{"file": "sounds/astd_gemini_dem_launcher_beam.ogg", "pitch": 1, "volume": 0.85}
+	],
+	"astd_gemini_dem_launcher_arc": [
+		{"file": "sounds/astd_gemini_dem_launcher_arc.ogg", "pitch": 1, "volume": 0.85}
+	],
+	"astd_heavy_ion_pulse_fire": [
+		{"file": "sounds/astd_heavy_ion_pulse_fire01.ogg", "pitch": 1, "volume": 0.95},
+		{"file": "sounds/astd_heavy_ion_pulse_fire02.ogg", "pitch": 1, "volume": 0.95},
+		{"file": "sounds/astd_heavy_ion_pulse_fire03.ogg", "pitch": 1, "volume": 0.95},
+		{"file": "sounds/astd_heavy_ion_pulse_fire04.ogg", "pitch": 1, "volume": 0.95}
+	],
+	"astd_lh_stardust_launcher_arc_fire": [
+		{"file": "sounds/astd_lh_stardust_launcher_arc_fire01.ogg", "pitch": 1, "volume": 0.8},
+		{"file": "sounds/astd_lh_stardust_launcher_arc_fire02.ogg", "pitch": 1, "volume": 0.8},
+		{"file": "sounds/astd_lh_stardust_launcher_arc_fire03.ogg", "pitch": 1, "volume": 0.8}
+	],
+	"astd_qiongjue_phase_railgun_fire": [
+		{"file": "sounds/astd_qiongjue_phase_railgun_fire.ogg", "pitch": 1, "volume": 1}
+	],
+	"astd_positron_shockwave_fire": [
+		{"file": "sounds/astd_positron_shockwave_fire.ogg", "pitch": 1, "volume": 0.8}
+	],
+	"astd_positron_shockwave_burst": [
+		{"file": "sounds/astd_positron_shockwave_burst.ogg", "pitch": 1, "volume": 0.9}
+	],
+	"astd_starfall_echo_fire": [
+		{"file": "sounds/astd_starfall_echo_fire.ogg", "pitch": 1, "volume": 0.85}
+	],
+	"astd_starfall_echo_final_fire": [
+		{"file": "sounds/astd_starfall_echo_final_fire.ogg", "pitch": 1, "volume": 1}
+	],
+	"astd_starfall_echo_final_explosion": [
+		{"file": "sounds/astd_starfall_echo_final_explosion.ogg", "pitch": 1, "volume": 1}
+	],
+	"astd_fighter_grav_link_activate": [
+		{"file": "sounds/astd_fighter_grav_link_activate.ogg", "pitch": 1, "volume": 1}
+	],
+	"astd_fighter_grav_link_end": [
+		{"file": "sounds/astd_fighter_grav_link_end.ogg", "pitch": 1, "volume": 1}
+	],
+	"astd_grav_timeflow_interference_activate": [
+		{"file": "sounds/astd_grav_timeflow_interference_activate.ogg", "pitch": 1, "volume": 1}
+	],
+	"astd_grav_timeflow_interference_loop": [
+		{"file": "sounds/astd_grav_timeflow_interference_loop.ogg", "pitch": 1, "volume": 0.65}
+	],
+	"astd_arc_shared_flux_network_loop": [
+		{"file": "sounds/astd_arc_shared_flux_network_loop.ogg", "pitch": 1, "volume": 0.65}
+	],
+	"astd_lh_001_burst_flow_activate": [
+		{"file": "sounds/astd_lh_001_burst_flow_activate.ogg", "pitch": 1, "volume": 1}
+	],
+	"astd_lh_002_vision_shift_activate": [
+		{"file": "sounds/astd_lh_002_vision_shift_activate.ogg", "pitch": 1, "volume": 1}
+	],
+	"astd_lh_002_vision_shift_loop": [
+		{"file": "sounds/astd_lh_002_vision_shift_loop.ogg", "pitch": 1, "volume": 0.65}
+	],
+	"astd_rift_shift_activate": [
+		{"file": "sounds/astd_rift_shift_activate.ogg", "pitch": 1, "volume": 1}
+	],
+	"astd_rift_shift_end": [
+		{"file": "sounds/astd_rift_shift_end.ogg", "pitch": 1, "volume": 1}
+	]
 }

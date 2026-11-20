@@ -55,12 +55,13 @@ internal object StarfallWingExplosion {
             if (victimDamage <= 0f) continue
             engine.applyDamage(
                 damageParam, victim, damagePoint, victimDamage, shot.type.damageType, 0f,
-                ship != null && !covered, false, source, true,
+                ship != null && !covered, false, source, false,
             )
             DcrDamageAttribution.clarify(
                 source, victim, shot.type.damageType, victimDamage, 0f, projectile.weapon?.displayName,
             )
         }
+        Global.getSoundPlayer().playSound("astd_starfall_echo_final_explosion", 1f, 0.2f, location, directTarget?.velocity ?: Vector2f())
         scatterFlares(engine, projectile, shot.type, location, directTarget)
         StarfallWingVfx.explosion(engine, location, shot.type)
     }

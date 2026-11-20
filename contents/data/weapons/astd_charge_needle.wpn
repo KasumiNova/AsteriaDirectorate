@@ -38,7 +38,7 @@
     },
     "projectileSpecId": "astd_charge_needle_shot",
     "everyFrameEffect": "cn.kasuminova.astd.combat.effect.generic.CombatVfxBootstrapEveryFrameEffect",
-    "fireSoundTwo": "needler_fire",
+    "fireSoundTwo": "astd_charge_needle_fire",
     "turretGlowSprite": "graphics/weapons/astd_charge_needle_glow.png",
     "hardpointGlowSprite": "graphics/weapons/astd_charge_needle_hp_glow.png",
     "glowColor": [

@@ -23,5 +23,6 @@
     },
     "projectileSpecId": "astd_cuifeng_torpedo_shot",
     "everyFrameEffect": "cn.kasuminova.astd.combat.effect.generic.CombatVfxBootstrapEveryFrameEffect",
-    "fireSoundTwo": "reaper_fire"
+    "noImpactSounds": true,
+    "fireSoundTwo": "astd_cuifeng_torpedo_fire"
 }

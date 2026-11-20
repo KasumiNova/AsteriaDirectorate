@@ -31,6 +31,13 @@ object ConeImpactHandler {
         engine: CombatEngineAPI,
         spec: ConeImpactSpec,
         coarseQuery: (Vector2f, Float) -> List<CombatEntityAPI> = LAZYLIB_COARSE_QUERY,
+    ): List<CombatEntityAPI> = resolve(engine, spec, playImpactSound = true, coarseQuery = coarseQuery)
+
+    fun resolve(
+        engine: CombatEngineAPI,
+        spec: ConeImpactSpec,
+        playImpactSound: Boolean,
+        coarseQuery: (Vector2f, Float) -> List<CombatEntityAPI> = LAZYLIB_COARSE_QUERY,
     ): List<CombatEntityAPI> {
         val dirLen = sqrt(spec.direction.x * spec.direction.x + spec.direction.y * spec.direction.y)
         if (dirLen.isNaN() || dirLen < 1e-6f) {
@@ -105,7 +112,7 @@ object ConeImpactHandler {
                     false,
                     false,
                     spec.source,
-                    true,
+                    playImpactSound,
                 )
                 DcrDamageAttribution.clarify(spec.source, target, spec.damageType, settledDamage, emp, spec.weaponName)
             }

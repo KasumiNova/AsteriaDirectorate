@@ -5,6 +5,7 @@ import cn.kasuminova.astd.combat.effect.arc.starfallecho.StarfallEchoOnFireEffec
 import cn.kasuminova.astd.impl.combat.DcrDamageAttribution
 import cn.kasuminova.astd.impl.combat.ExplosionStrikeImpl
 import cn.kasuminova.astd.impl.difficulty.DifficultyTuningImpl
+import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEntityAPI
 import com.fs.starfarer.api.combat.DamageType
@@ -84,7 +85,7 @@ class StarfallEchoOnHitEffect : OnHitEffectPlugin {
             engine.applyDamage(
                 ship, ExplosionStrikeImpl.resolveDamagePoint(ship, hitPoint), bonus,
                 DamageType.ENERGY, 0f,
-                !covered, false, source, true,
+                !covered, false, source, false,
             )
             DcrDamageAttribution.clarify(source, ship, DamageType.ENERGY, bonus, 0f, projectile.weapon?.displayName)
         }
@@ -112,7 +113,7 @@ class StarfallEchoOnHitEffect : OnHitEffectPlugin {
                 engine.applyDamage(
                     victim, dmgPoint, damage,
                     DamageType.ENERGY, 0f,
-                    victim is ShipAPI && !covered, false, source, true,
+                    victim is ShipAPI && !covered, false, source, false,
                 )
                 DcrDamageAttribution.clarify(source, victim, DamageType.ENERGY, damage, 0f, projectile.weapon?.displayName)
             }
@@ -120,6 +121,7 @@ class StarfallEchoOnHitEffect : OnHitEffectPlugin {
 
         buff?.consume()
 
+        Global.getSoundPlayer().playSound("astd_starfall_echo_final_explosion", 1f, 1f, hitPoint, ship?.velocity ?: Vector2f())
         StarfallEchoVfx.explosion(engine, hitPoint, stacks, radius, hitFacingDeg(ship, hitPoint))
     }
 

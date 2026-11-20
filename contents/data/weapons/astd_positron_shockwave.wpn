@@ -31,7 +31,8 @@
     },
     "projectileSpecId": "astd_positron_shockwave_shot",
     "everyFrameEffect": "cn.kasuminova.astd.combat.effect.generic.CombatVfxBootstrapEveryFrameEffect",
-    "fireSoundTwo": "flak_fire",
+    "noImpactSounds": true,
+    "fireSoundTwo": "astd_positron_shockwave_fire",
     "turretGlowSprite": "graphics/weapons/astd_positron_shockwave_glow.png",
     "hardpointGlowSprite": "graphics/weapons/astd_positron_shockwave_hp_glow.png",
     "glowColor": [

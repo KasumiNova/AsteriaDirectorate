@@ -1,6 +1,7 @@
 package cn.kasuminova.astd.combat.effect.arc.cuifeng
 
 import cn.kasuminova.astd.api.combat.CuifengTorpedoStrike
+import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.CombatEntityAPI
 import com.fs.starfarer.api.combat.DamagingProjectileAPI
@@ -22,6 +23,7 @@ class CuifengTorpedoOnHitEffect : OnHitEffectPlugin {
     ) {
         if (engine.isPaused) return
         val hitPoint = point ?: projectile.location ?: return
+        Global.getSoundPlayer().playSound("astd_cuifeng_torpedo_hit", 1f, 1f, hitPoint, target.velocity)
         strike.strike(engine, projectile, target, hitPoint, shieldHit)
     }
 }
