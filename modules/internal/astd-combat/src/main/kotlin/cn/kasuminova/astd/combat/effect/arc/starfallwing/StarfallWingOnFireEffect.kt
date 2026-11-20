@@ -9,13 +9,12 @@ import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.DamagingProjectileAPI
 import com.fs.starfarer.api.combat.OnFireEffectPlugin
 import com.fs.starfarer.api.combat.WeaponAPI
-import com.fs.starfarer.combat.entities.Ship
-import com.fs.starfarer.combat.systems.Weapon
-import com.fs.starfarer.loading.specs.ProjectileFactory
-import com.fs.starfarer.loading.specs.ProjectileSpec
+import com.fs.starfarer.api.loading.ProjectileSpecAPI
 import org.lwjgl.util.vector.Vector2f
 import kotlin.math.PI
 import kotlin.random.Random
+
+private const val SHUTTLE_SPEED_MOD = "astd_starfall_wing_shuttle_spawn_speed"
 
 class StarfallWingOnFireEffect : OnFireEffectPlugin {
     override fun onFire(projectile: DamagingProjectileAPI, weapon: WeaponAPI, engine: CombatEngineAPI) {
@@ -48,14 +47,18 @@ class StarfallWingOnFireEffect : OnFireEffectPlugin {
         val damage = baseDamage * type.damageFactor * power *
             DifficultyTuningImpl.valueFor(StarfallWingTuning.DAMAGE_FACTOR, isPlayer)
         val sizeFactor = StarfallWingTuning.sizeFactor(power)
-        val carrier = Global.getSettings().getWeaponSpec(StarfallWingTuning.SHUTTLE_LAUNCHER_ID)
-            .projectileSpec as ProjectileSpec
-        val shotSpec = carrier.clone()
-        shotSpec.setMoveSpeed(projectile.projectileSpec.getMoveSpeed(null, null) * speedFactor)
-        val spawned = ProjectileFactory.spawnBallisticProjectile(
-            source as Ship, weapon as Weapon, shotSpec,
-            Vector2f(projectile.location), projectile.facing, Vector2f(),
-        )
+        val launcherId = StarfallWingTuning.SHUTTLE_LAUNCHER_ID
+        val carrierSpec = Global.getSettings().getWeaponSpec(launcherId).projectileSpec as ProjectileSpecAPI
+        val speedRatio = projectile.projectileSpec.getMoveSpeed(null, null) / carrierSpec.getMoveSpeed(null, null)
+        val speedStat = source.mutableStats.energyProjectileSpeedMult
+        // 原生弹体在生成时按弹速计算寿命与纵向碰撞段。
+        speedStat.modifyMult(SHUTTLE_SPEED_MOD, speedRatio * speedFactor)
+        val spawned = try {
+            engine.spawnProjectile(source, weapon, launcherId, Vector2f(projectile.location), projectile.facing, Vector2f())
+                as DamagingProjectileAPI
+        } finally {
+            speedStat.unmodifyMult(SHUTTLE_SPEED_MOD)
+        }
         engine.removeEntity(projectile)
         spawned.damage.type = type.damageType
         spawned.setDamageAmount(damage)

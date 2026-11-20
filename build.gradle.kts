@@ -213,12 +213,9 @@ tasks.withType<Jar>().configureEach {
     }
 }
 
-// release 模式：dev 验收 agent 类不进主 jar（agent 仅经 -javaagent + Premain-Class 激活，release 无此入口；
-// 代码与数据侧均无对 cn.kasuminova.astd.agent 的引用）。
-tasks.named<Jar>("jar") {
-    if (astdRelease) {
-        exclude("cn/kasuminova/astd/agent/**")
-    }
+// 开发验收 Agent 的读档接口仅在映射版引擎中可用。
+if (astdRelease) {
+    sourceSets.main { java.exclude("cn/kasuminova/astd/agent/**") }
 }
 
 // 验收 agent jar 仅 dev 构建注册；release 模式下 SDG copyJars 的附加产物汇集自然不含它。

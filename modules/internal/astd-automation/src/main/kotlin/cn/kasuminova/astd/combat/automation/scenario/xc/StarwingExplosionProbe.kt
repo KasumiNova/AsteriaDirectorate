@@ -9,6 +9,7 @@ import cn.kasuminova.astd.combat.effect.arc.starfallwing.StarfallWingVfx
 import com.fs.starfarer.api.combat.CombatEntityAPI
 import com.fs.starfarer.api.combat.DamageAPI
 import com.fs.starfarer.api.combat.DamagingProjectileAPI
+import com.fs.starfarer.api.combat.EngineSlotAPI
 import com.fs.starfarer.api.combat.MissileAPI
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.combat.ShipCommand
@@ -18,6 +19,7 @@ import com.fs.starfarer.api.combat.listeners.DamageListener
 import com.fs.starfarer.api.combat.listeners.DamageTakenModifier
 import com.fs.starfarer.combat.entities.Missile
 import org.lwjgl.util.vector.Vector2f
+import java.awt.Color
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.sin
@@ -545,8 +547,11 @@ internal class StarwingExplosionProbe(
         val ORIGIN = Vector2f(-650f, 300f)
         val PLAYER_ANCHOR = Vector2f(-1200f, -900f)
 
-        fun flareColors(flare: MissileAPI) = (flare as Missile).engineLocations.map {
-            flare.engineController.flameColorShifter.getCurrForBase(it.color)
+        fun flareColors(flare: MissileAPI): List<Color> {
+            val shifter = flare.engineController.flameColorShifter
+            // 导弹喷口只登记在实体的 engineLocations，shipEngines 仅包含舰船与战机的引擎。
+            val slots: List<EngineSlotAPI> = (flare as Missile).engineLocations
+            return slots.map { shifter.getCurrForBase(it.color) }
         }
     }
 }
