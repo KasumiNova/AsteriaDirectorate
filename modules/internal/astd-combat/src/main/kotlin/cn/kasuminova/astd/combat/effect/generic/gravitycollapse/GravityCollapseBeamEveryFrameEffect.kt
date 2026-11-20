@@ -40,7 +40,9 @@ class GravityCollapseBeamEveryFrameEffect : EveryFrameWeaponEffectPlugin {
     private var beamDriver: BeamVfxDriver? = null
     private var onHit: GravityCollapseOnHitHandler? = null
     private var chargeUpVfx: BeamChargeUpVfx? = null
-    private var firingLoopId: String? = null
+    private lateinit var chargeSoundId: String
+    private lateinit var fireSoundId: String
+    private lateinit var firingLoopId: String
     private var chargeSound: SoundAPI? = null
 
     private var beamStarted = false
@@ -57,10 +59,6 @@ class GravityCollapseBeamEveryFrameEffect : EveryFrameWeaponEffectPlugin {
     private fun ensureInit(weaponId: String) {
         if (initedForWeaponId == weaponId) return
         initedForWeaponId = weaponId
-        firingLoopId = when (weaponId) {
-            "astd_gcp4", "astd_gcp8", "astd_gcp12" -> "${weaponId}_loop"
-            else -> null
-        }
 
         val s = GravityCollapseWeaponSpecs.forWeaponId(weaponId)
         spec = s
@@ -72,6 +70,14 @@ class GravityCollapseBeamEveryFrameEffect : EveryFrameWeaponEffectPlugin {
             chargeUpVfx = null
             return
         }
+
+        val soundPrefix = when (weaponId) {
+            "astd_gcp2", "astd_gcp_fighter" -> "astd_gcp4"
+            else -> weaponId
+        }
+        chargeSoundId = "${soundPrefix}_chargeup"
+        fireSoundId = "${soundPrefix}_fire"
+        firingLoopId = "${soundPrefix}_loop"
 
         onHit = GravityCollapseOnHitHandler(
             config = GravityCollapseOnHitConfig(
@@ -201,13 +207,11 @@ class GravityCollapseBeamEveryFrameEffect : EveryFrameWeaponEffectPlugin {
             if (effectiveLine != null) {
                 lastLine = effectiveLine
 
-                firingLoopId?.let { loopId ->
-                    val player = Global.getSoundPlayer()
-                    val muzzle = weapon.getFirePoint(0)
-                    if (!beamStarted) player.playSound("${weaponId}_fire", 1f, 1f, muzzle, weapon.ship.velocity)
-                    player.playLoop(loopId, weapon, 1f, 1f, muzzle, weapon.ship.velocity)
-                }
+                val player = Global.getSoundPlayer()
+                val muzzle = weapon.getFirePoint(0)
+                player.playLoop(firingLoopId, weapon, 1f, 1f, muzzle, weapon.ship.velocity)
                 if (!beamStarted) {
+                    player.playSound(fireSoundId, 1f, 1f, muzzle, weapon.ship.velocity)
                     beamStarted = true
                     fadeStartedAt = null
                     beamStartedAt = now
@@ -271,9 +275,9 @@ class GravityCollapseBeamEveryFrameEffect : EveryFrameWeaponEffectPlugin {
         }
 
         if (isCharging) {
-            if (firingLoopId != null && lastChargeLevel <= 0.001f) {
+            if (lastChargeLevel <= 0.001f) {
                 chargeSound = Global.getSoundPlayer().playSound(
-                    "${weaponId}_chargeup", 1f, 1f, weapon.getFirePoint(0), weapon.ship.velocity,
+                    chargeSoundId, 1f, 1f, weapon.getFirePoint(0), weapon.ship.velocity,
                 )
             }
             suppressVanillaDamage(weapon, beam)
