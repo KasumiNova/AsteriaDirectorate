@@ -45,9 +45,11 @@ object ASTDDualModeMirror {
         for ((member, modeId) in batch) {
             val variant = member.variant ?: continue
             val config = ASTDDualModeRegistry.configForVariant(variant) ?: continue
-            if (ASTDAutofitPlugin.activeDualModeId(variant, config) == modeId) continue
-            variant.activateDualMode(config, modeId, null)
-            log.info("[ASTD] 双模式镜像：${member.id} 真实 variant 模式位已镜像为 $modeId")
+            if (ASTDAutofitPlugin.activeDualModeId(variant, config) != modeId) {
+                variant.activateDualMode(config, modeId, null)
+                log.info("[ASTD] 舰船 ${member.id} 已切换至 $modeId")
+            }
+            clearIncompatibleDualModeCaptain(member, config)
         }
     }
 }

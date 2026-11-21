@@ -175,10 +175,9 @@ fun ShipVariantAPI.activateDualMode(config: ASTDDualModeConfig, modeId: String, 
         removePermaMod("automated")
     }
     syncDualModeAutoPenaltyTag(config)
-    // 仅当前生效 variant 才允许清理舰长并登记镜像；克隆 variant（装配预览）禁止触碰真实成员
+    // 改装预览持有装配副本，舰长属于真实舰船。
     val member = stats?.fleetMember
     if (member != null && member.variant === this) {
-        clearIncompatibleDualModeCaptain(member, config)
         ASTDDualModeMirror.record(member, modeId)
     }
 }
@@ -231,37 +230,14 @@ private fun ShipVariantAPI.setDualModeNextMarker(config: ASTDDualModeConfig, mar
     addPermaMod(markerId)
 }
 
-internal fun clearIncompatibleDualModeCaptain(member: FleetMemberAPI?, config: ASTDDualModeConfig) {
-    if (member == null) return
-    val captain = try {
-        member.captain
-    } catch (_: Throwable) {
-        null
-    } ?: return
+internal fun clearIncompatibleDualModeCaptain(member: FleetMemberAPI, config: ASTDDualModeConfig) {
+    val fleet = member.fleetData?.fleet ?: return
+    if (!fleet.isPlayerFleet) return
+    val captain = member.captain ?: return
     if (captain.isDefault) return
-    val variant = try {
-        member.variant
-    } catch (_: Throwable) {
-        null
-    } ?: return
-    val automated = variant.hasASTDDualModeAutomated(config)
-    val aiCoreId = try {
-        captain.aiCoreId
-    } catch (_: Throwable) {
-        null
-    }
-    val incompatible = if (automated) aiCoreId == null else aiCoreId != null
-    if (!incompatible) return
-    if (aiCoreId != null) {
-        try {
-            Global.getSector()?.playerFleet?.cargo?.addCommodity(aiCoreId, 1f)
-        } catch (_: Throwable) {
-            // refit 外上下文可能无玩家舰队，归还失败接受核心丢失，不得因此崩溃
-        }
-    }
-    try {
-        member.captain = null
-    } catch (_: Throwable) {
-        // refit 外上下文卸载可能失败，不得因此崩溃
-    }
+    val coreId = captain.aiCoreId
+    if (member.variant.hasASTDDualModeAutomated(config) == (coreId != null)) return
+
+    if (coreId != null) fleet.cargo.addCommodity(coreId, 1f)
+    member.captain = null
 }

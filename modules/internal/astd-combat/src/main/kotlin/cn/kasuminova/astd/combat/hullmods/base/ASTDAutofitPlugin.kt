@@ -1,7 +1,6 @@
 package cn.kasuminova.astd.combat.hullmods.base
 
 import cn.kasuminova.astd.combat.hullmods.base.ASTDAutofitPlugin.Companion.resolveAutofitGoalMode
-import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.PluginPick
 import com.fs.starfarer.api.campaign.BaseCampaignPlugin
 import com.fs.starfarer.api.campaign.CampaignPlugin.PickPriority
@@ -12,14 +11,11 @@ import com.fs.starfarer.api.plugins.AutofitPlugin
 import com.fs.starfarer.api.plugins.AutofitPlugin.AutofitPluginDelegate
 import com.fs.starfarer.api.plugins.impl.CoreAutofitPlugin
 import java.util.Random
-import org.apache.log4j.Logger
 
 class ASTDAutofitPlugin(
     fleetCommander: PersonAPI?,
     private val combinedAutofit: AutofitPlugin? = null,
 ) : CoreAutofitPlugin(fleetCommander) {
-
-    private val logger: Logger = Logger.getLogger(ASTDAutofitPlugin::class.java)
 
     init {
         if (combinedAutofit != null) {
@@ -47,7 +43,6 @@ class ASTDAutofitPlugin(
         val preFitMode = activeDualModeId(current, config)
         val preFitHadSwitcher = config != null && current.hasHullMod(config.switcherId)
         val member = delegate.fleetMember
-        val preFitCaptain = if (preFitMode != null) member?.captain else null
         ASTDDualModeMirror.beginAutofitSuppression()
         try {
             performFit(current, target, maxSMods, delegate)
@@ -62,11 +57,12 @@ class ASTDAutofitPlugin(
 
         val desiredMode = resolveAutofitGoalMode(current, target, config, preFitMode)
         if (desiredMode != null && activeDualModeId(current, config) != desiredMode) {
-            current.activateDualMode(config, desiredMode, delegate.ship?.mutableStats)
+            current.activateDualMode(config, desiredMode)
             delegate.syncUIWithVariant(current)
         }
-        val postFitMode = activeDualModeId(current, config)
-        restoreCaptainIfModeUnchanged(member, preFitCaptain, preFitMode, postFitMode)
+        if (member != null && member.variant === current && desiredMode != null && desiredMode != preFitMode) {
+            ASTDDualModeMirror.record(member, desiredMode)
+        }
     }
 
     private fun performFit(
@@ -80,27 +76,6 @@ class ASTDAutofitPlugin(
         } else {
             super.doFit(current, target, maxSMods, delegate)
         }
-    }
-
-    private fun restoreCaptainIfModeUnchanged(
-        member: FleetMemberAPI?,
-        preFitCaptain: PersonAPI?,
-        preFitMode: String?,
-        postFitMode: String?,
-    ) {
-        if (member == null || preFitCaptain == null || preFitMode == null) return
-        if (postFitMode != preFitMode) return
-        if (member.captain != null) return
-        val aiCoreId = preFitCaptain.aiCoreId
-        if (aiCoreId != null) {
-            val cargo = Global.getSector()?.playerFleet?.cargo
-            if (cargo != null) {
-                cargo.removeCommodity(aiCoreId, 1f)
-            } else {
-                logger.warn("ASTDAutofitPlugin: 还原 AI 核心舰长时玩家货舱不可达，核心退回件无法核销（$aiCoreId）")
-            }
-        }
-        member.captain = preFitCaptain
     }
 
     companion object {

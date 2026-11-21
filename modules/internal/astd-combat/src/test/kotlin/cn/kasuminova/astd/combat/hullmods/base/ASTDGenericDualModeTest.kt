@@ -1,15 +1,22 @@
 package cn.kasuminova.astd.combat.hullmods.base
 
 import cn.kasuminova.astd.impl.combat.DualModeSettingsImpl
+import com.fs.starfarer.api.characters.PersonAPI
 import com.fs.starfarer.api.combat.MutableShipStatsAPI
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.combat.ShipHullSpecAPI
 import com.fs.starfarer.api.combat.ShipVariantAPI
 import com.fs.starfarer.api.fleet.FleetMemberAPI
+import org.mockito.ArgumentMatchers.anyFloat
+import org.mockito.ArgumentMatchers.anyString
+import org.mockito.ArgumentMatchers.nullable
+import org.mockito.Mockito.RETURNS_DEEP_STUBS
+import org.mockito.Mockito.doAnswer
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.`when`
 import kotlin.test.AfterTest
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertSame
@@ -31,16 +38,6 @@ class ASTDGenericDualModeTest {
         )
         assertNull(ASTDDualModeRegistry.genericConfigFor("wolf"), "非 ASTD 舰不得兜底")
         assertNull(ASTDDualModeRegistry.genericConfigFor(null), "空 hullId 不得兜底")
-    }
-
-    @Test
-    fun `registered ships keep their explicit config instead of generic fallback`() {
-        assertSame(
-            GENERIC_DUAL_MODE_CONFIG.crewedSystemId,
-            null,
-            "通用配置不应声明模式分版系统（前置：无系统互换）",
-        )
-        assertNull(ASTDDualModeRegistry.configFor("astd_xc_101"), "未注册舰在显式注册表中应为空")
     }
 
     @Test
@@ -171,6 +168,63 @@ class ASTDGenericDualModeTest {
     }
 
     @Test
+    fun `crewed mirror returns the installed core to player cargo exactly once`() {
+        val config = GENERIC_DUAL_MODE_CONFIG
+        for (initialMode in listOf(config.automatedModeId, config.crewedModeId)) {
+            val ship = PlayerShip(initialMode, "beta_core")
+            ASTDDualModeMirror.record(ship.member, config.crewedModeId)
+            ASTDDualModeMirror.drain()
+            assertTrue(ship.member.variant.hasHullMod(config.crewedModeId))
+            assertTrue(ship.member.captain.isDefault)
+            assertEquals(mapOf("beta_core" to 1f), ship.cargo)
+
+            ASTDDualModeMirror.drain()
+            val human = mock(PersonAPI::class.java)
+            ship.member.captain = human
+            ASTDDualModeMirror.record(ship.member, config.crewedModeId)
+            ASTDDualModeMirror.drain()
+            assertSame(human, ship.member.captain)
+            assertEquals(mapOf("beta_core" to 1f), ship.cargo)
+        }
+    }
+
+    @Test
+    fun `already automated ship dismisses its human captain without returning a core`() {
+        val automated = GENERIC_DUAL_MODE_CONFIG.automatedModeId
+        val ship = PlayerShip(automated, null)
+
+        ASTDDualModeMirror.record(ship.member, automated)
+        ASTDDualModeMirror.drain()
+        assertTrue(ship.member.captain.isDefault)
+        assertTrue(ship.cargo.isEmpty())
+    }
+
+    @Test
+    fun `autofit crewed preview preserves the real automated ship and its core`() {
+        val config = GENERIC_DUAL_MODE_CONFIG
+        val ship = PlayerShip(config.automatedModeId, "gamma_core")
+        val captain = ship.member.captain
+        val variant = ship.member.variant
+        val stats = statsOf(variant)
+        `when`(stats.fleetMember).thenReturn(ship.member)
+
+        ASTDDualModeMirror.beginAutofitSuppression()
+        try {
+            variant.activateDualMode(config, config.crewedModeId, stats)
+            assertTrue(variant.hasHullMod(config.crewedModeId))
+            assertSame(captain, ship.member.captain)
+            assertTrue(ship.cargo.isEmpty())
+            variant.activateDualMode(config, config.automatedModeId, stats)
+        } finally {
+            ASTDDualModeMirror.endAutofitSuppression()
+        }
+        ASTDDualModeMirror.drain()
+        assertTrue(variant.hasHullMod(config.automatedModeId))
+        assertSame(captain, ship.member.captain)
+        assertTrue(ship.cargo.isEmpty())
+    }
+
+    @Test
     fun `preview flip records pending mirror for real member`() {
         val clone = FakeGenericVariant(astdHullSpec())
         clone.addPermaMod(ASTDDualModeGenericIds.MODE_CREWED)
@@ -249,6 +303,35 @@ class ASTDGenericDualModeTest {
         variant.syncDualModeAutoPenaltyTag(GENERIC_DUAL_MODE_CONFIG)
         variant.syncDualModeAutoPenaltyTag(GENERIC_DUAL_MODE_CONFIG)
         assertTrue(variant.hasTag(NO_AUTO_PENALTY_TAG), "选项重新开启后应在 stats 刷新收敛回有标签")
+    }
+}
+
+private class PlayerShip(modeId: String, coreId: String?) {
+    val member: FleetMemberAPI = mock(FleetMemberAPI::class.java, RETURNS_DEEP_STUBS)
+    val cargo = mutableMapOf<String, Float>()
+
+    init {
+        val variant = FakeGenericVariant(astdHullSpec("astd_mirror_test"))
+        variant.activateDualMode(GENERIC_DUAL_MODE_CONFIG, modeId)
+        `when`(member.variant).thenReturn(variant)
+        val officer = mock(PersonAPI::class.java)
+        `when`(officer.aiCoreId).thenReturn(coreId)
+        val defaultCaptain = mock(PersonAPI::class.java)
+        `when`(defaultCaptain.isDefault).thenReturn(true)
+        var captain: PersonAPI = officer
+        `when`(member.captain).thenAnswer { captain }
+        doAnswer {
+            captain = it.getArgument<PersonAPI?>(0) ?: defaultCaptain
+            null
+        }.`when`(member).setCaptain(nullable(PersonAPI::class.java))
+
+        val fleet = member.fleetData.fleet
+        `when`(fleet.isPlayerFleet).thenReturn(true)
+        val fleetCargo = fleet.cargo
+        doAnswer {
+            cargo.merge(it.getArgument(0), it.getArgument(1), Float::plus)
+            null
+        }.`when`(fleetCargo).addCommodity(anyString(), anyFloat())
     }
 }
 

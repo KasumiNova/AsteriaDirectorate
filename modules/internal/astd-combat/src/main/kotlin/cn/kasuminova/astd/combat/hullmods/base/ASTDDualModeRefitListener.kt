@@ -22,11 +22,11 @@ class ASTDDualModeRefitListener : RefitScreenListener {
             val target = if (variant.hasASTDDualModeAutomated(config)) config.crewedModeId else config.automatedModeId
             variant.activateDualMode(config, target, null)
             variant.addMod(config.switcherId)
-            log.info("[ASTD] 装配提交收敛：${member.id} 拆即切补翻转到 $target")
+            log.info("[ASTD] 舰船 ${member.id} 在保存装配时切换至 $target")
+        } else {
+            return
         }
 
-        if (member.fleetData?.fleet?.isPlayerFleet == true) {
-            clearIncompatibleDualModeCaptain(member, config)
-        }
+        clearIncompatibleDualModeCaptain(member, config)
     }
 }
