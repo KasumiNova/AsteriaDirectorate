@@ -120,7 +120,7 @@ object Sys_astd_grav_rift_generator : ShipSystemWithSystemFileEntry() {
     override val cooldown: Double = 12.0
 
     override val icon: String = "graphics/icons/hullsys/mine_strike.png"
-    override val useSound: String = "riftcascade_windup"
+    override val useSound: String = "astd_grav_rift_generator_activate"
 }
 
 object Sys_astd_grav_storm : ShipSystemWithSystemFileEntry() {
@@ -149,7 +149,8 @@ object Sys_astd_grav_storm : ShipSystemWithSystemFileEntry() {
     )
 
     override val icon: String = "graphics/icons/hullsys/quantum_disruptor.png"
-    override val useSound: String = "system_quantumdisruptor"
+    override val useSound: String = "astd_grav_storm_activate"
+    override val loopSound: String = "astd_grav_storm_loop"
 }
 
 object Sys_astd_grav_replicator : ShipSystemWithSystemFileEntry() {
@@ -171,7 +172,8 @@ object Sys_astd_grav_replicator : ShipSystemWithSystemFileEntry() {
     override val fluxUseBaseCap: Double = 0.1
 
     override val icon: String = "graphics/icons/hullsys/entropy_amplifier.png"
-    override val useSound: String = "system_entropy"
+    override val useSound: String? = null
+    override val loopSound: String = "astd_grav_replicator_loop"
 }
 
 object Sys_astd_burst_flow_fighter : ShipSystemWithSystemFileEntry() {

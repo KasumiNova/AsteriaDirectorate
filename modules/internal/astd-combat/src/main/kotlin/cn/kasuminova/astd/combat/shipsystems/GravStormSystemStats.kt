@@ -183,6 +183,7 @@ class GravStormSystemStats : BaseShipSystemScript() {
     }
 
     private fun release(engine: CombatEngineAPI, ship: ShipAPI, chargeSeconds: Float) {
+        if (engine.customData.put(activationKey(ship), true) != null) return
         disposeCharge(engine, ship)
 
         val values = GravStormTuning.resolve(DifficultyTuningImpl, ship.owner == 0)
@@ -208,13 +209,13 @@ class GravStormSystemStats : BaseShipSystemScript() {
             spawnDecorativeArcs(engine, ship, range)
         } else {
             for (plan in plans) {
-                repeat(plan.arcCount) { fireArc(engine, ship, plan, values) }
+                repeat(plan.arcCount) { index ->
+                    fireArc(engine, ship, plan, values, impactSound = if (index == 0) LIGHTNING_SOUND_ID else null)
+                }
             }
         }
+        Global.getSoundPlayer().playSound("astd_grav_storm_release", 1f, 1f, ship.location, ship.velocity)
         spawnReleaseDistortion(engine, ship)
-        Global.getSoundPlayer().playSound(RELEASE_SOUND_ID, 1f, 1f, ship.location, ship.velocity)
-
-        engine.customData[activationKey(ship)] = true
     }
 
     private fun scanConeTargets(engine: CombatEngineAPI, ship: ShipAPI, range: Float): List<ShipAPI> {
@@ -293,7 +294,13 @@ class GravStormSystemStats : BaseShipSystemScript() {
         tracker.hardFlux -= amount
     }
 
-    private fun fireArc(engine: CombatEngineAPI, ship: ShipAPI, plan: TargetPlan, values: GravStormTuning.Values) {
+    private fun fireArc(
+        engine: CombatEngineAPI,
+        ship: ShipAPI,
+        plan: TargetPlan,
+        values: GravStormTuning.Values,
+        impactSound: String?,
+    ) {
         val target = plan.target
         if (!target.isAlive || target.isHulk) return
         val from = hullBoundaryPoint(ship)
@@ -303,7 +310,7 @@ class GravStormSystemStats : BaseShipSystemScript() {
             ship, from, ship, target,
             DamageType.ENERGY,
             values.arcEnergyDamage * plan.damageMult, values.arcEmpDamage * plan.damageMult,
-            maxRange, ARC_IMPACT_SOUND_ID,
+            maxRange, impactSound,
             ARC_THICKNESS, ARC_FRINGE, ARC_CORE,
         )
     }
@@ -435,8 +442,7 @@ class GravStormSystemStats : BaseShipSystemScript() {
     companion object {
         private val log = Global.getLogger(GravStormSystemStats::class.java)
 
-        private const val RELEASE_SOUND_ID = "astd_grav_storm_release"
-        private const val ARC_IMPACT_SOUND_ID = "system_emp_emitter_impact"
+        private const val LIGHTNING_SOUND_ID = "astd_grav_storm_lightning"
 
         private val ARC_FRINGE = Color(186, 120, 255, 200)
         private val ARC_CORE = Color(238, 215, 255, 160)

@@ -172,7 +172,9 @@ object Sys_astd_suppression_mode : ShipSystemWithSystemFileEntry() {
     override val hardFlux: Boolean = true
 
     override val icon: String = "graphics/icons/hullsys/ammo_feeder.png"
-    override val useSound: String = "system_ammo_feeder"
+    override val useSound: String = "astd_suppression_mode_activate"
+    override val loopSound: String = "astd_suppression_mode_loop"
+    override val deactivateSound: String = "astd_suppression_mode_end"
 }
 
 object Sys_astd_static_discharge : ShipSystemWithSystemFileEntry() {

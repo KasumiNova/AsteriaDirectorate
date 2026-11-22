@@ -2,6 +2,33 @@
 	"astd_grav_storm_release": [
 		{"file": "sounds/sfx_shields/shields_burnout_dweller.ogg", "pitch": 1, "volume": 1}
 	],
+	"astd_grav_storm_activate": [
+		{"file": "sounds/astd_grav_storm_activate.ogg", "pitch": 1, "volume": 1}
+	],
+	"astd_grav_storm_loop": [
+		{"file": "sounds/astd_grav_storm_loop.ogg", "pitch": 1, "volume": 2}
+	],
+	"astd_grav_storm_lightning": [
+		{"file": "sounds/astd_grav_storm_lightning.ogg", "pitch": 1, "volume": 1}
+	],
+	"astd_grav_replicator_loop": [
+		{"file": "sounds/astd_grav_replicator_loop.ogg", "pitch": 1, "volume": 3}
+	],
+	"astd_grav_rift_generator_activate": [
+		{"file": "sounds/astd_grav_rift_generator_activate.ogg", "pitch": 1, "volume": 2}
+	],
+	"astd_grav_rift_generator_fire": [
+		{"file": "sounds/astd_grav_rift_generator_fire.ogg", "pitch": 1, "volume": 1}
+	],
+	"astd_suppression_mode_activate": [
+		{"file": "sounds/astd_suppression_mode_activate.ogg", "pitch": 1, "volume": 1}
+	],
+	"astd_suppression_mode_loop": [
+		{"file": "sounds/astd_suppression_mode_loop.ogg", "pitch": 1, "volume": 1}
+	],
+	"astd_suppression_mode_end": [
+		{"file": "sounds/astd_suppression_mode_end.ogg", "pitch": 1, "volume": 1}
+	],
 	"astd_charge_needle_fire": [
 		{"file": "sounds/astd_charge_needle_fire01.ogg", "pitch": 1, "volume": 1},
 		{"file": "sounds/astd_charge_needle_fire02.ogg", "pitch": 1, "volume": 1},

@@ -19,9 +19,9 @@ import com.fs.starfarer.api.util.Misc
 import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
 
-// 布雷机制复刻原版裂隙洪流发射极 RiftCascadeEffect。
 class GravityRiftBeamEffect : BeamEffectPlugin {
 
+    private var fireSoundPlayed = false
     private var arcFrom: Vector2f? = null
     private var prevMineLoc: Vector2f? = null
     private var doneSpawningMines = false
@@ -34,6 +34,10 @@ class GravityRiftBeamEffect : BeamEffectPlugin {
     private var damageMax = -1f
 
     override fun advance(amount: Float, engine: CombatEngineAPI, beam: BeamAPI) {
+        if (!fireSoundPlayed) {
+            fireSoundPlayed = true
+            Global.getSoundPlayer().playSound("astd_grav_rift_generator_fire", 1f, 1f, beam.from, beam.source.velocity)
+        }
         if (beam.brightness < 1f) return
         if (doneSpawningMines) return
 
