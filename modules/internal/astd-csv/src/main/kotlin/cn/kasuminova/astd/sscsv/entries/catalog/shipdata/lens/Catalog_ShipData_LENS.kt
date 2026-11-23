@@ -147,7 +147,7 @@ object Ship_astd_zw_002 : ShipDataEntry() {
     override val tech: String = "菀星设计局-紫菀"
     override val systemId: String = "astd_grav_storm"
 
-    override val fleetPts: Int = 22
+    override val fleetPts: Int = 30
     override val hitpoints: Int = 8000
     override val armorRating: Int = 1200
     override val maxFlux: Int = 12000
@@ -194,7 +194,7 @@ object Ship_astd_zw_103 : ShipDataEntry() {
     override val tech: String = "菀星设计局-紫菀"
     override val systemId: String = "astd_grav_rift_generator"
 
-    override val fleetPts: Int = 15
+    override val fleetPts: Int = 18
     override val hitpoints: Int = 5000
     override val armorRating: Int = 800
     override val maxFlux: Int = 8000
@@ -208,7 +208,7 @@ object Ship_astd_zw_103 : ShipDataEntry() {
     override val turnAcceleration: Int = 80
     override val mass: Int = 1750
 
-    override val hints: String = "PHASE, CARRIER, COMBAT, NO_AUTO_ESCORT"
+    override val hints: String = "PHASE, CARRIER, COMBAT"
     override val shieldType: String = "PHASE"
     override val defenseId: String = "astd_gravity_phase"
 
