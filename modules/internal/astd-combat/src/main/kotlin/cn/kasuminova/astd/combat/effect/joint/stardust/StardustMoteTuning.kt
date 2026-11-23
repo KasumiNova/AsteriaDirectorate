@@ -13,7 +13,7 @@ object StardustMoteTuning {
 
     val SHIP_EMP_MULT = ScalingEntry(1.0f, 3.0f, 5.0f)
 
-    const val DEFAULT_ENGAGE_RANGE = 800f
+    const val DEFAULT_ENGAGE_RANGE = 1200f
 
     const val MIN_MOTES_PER_TARGET = 4
 

@@ -49,14 +49,14 @@ object Wpn_astd_lh_stardust_launcher_arc : WeaponDataEntry(), SsProjMissileOutpu
     override val tier: Int = 5
     override val rarity: Int = 1
     override val baseValue: Int = 0
-    override val range: Int = 800
+    override val range: Int = 1200
 
     override val damagePerShot: Int = 400
 
     override val emp: Int = 400
     override val turnRate: Int = 30
     override val ammo: Int = 6
-    override val ammoPerSec: Double = 0.1667
+    override val ammoPerSec: Double = 1 / 7.5
     override val reloadSize: Int = 2
     override val type: String = "ENERGY"
 
@@ -74,7 +74,8 @@ object Wpn_astd_lh_stardust_launcher_arc : WeaponDataEntry(), SsProjMissileOutpu
     override val flightTime: Double = 60.0
     override val projHitpoints: Int = 400
     override val tags: String = "no_drop, no_drop_salvage, no_sell"
-    override val tech: String = "联制"
+    override val tech: String = "菀星设计局-星坠"
+    override val noDpsInTooltip: Boolean = true
 
     override val aiHints: Set<AiHint> = setOf(AiHint.NO_MANUAL_FIRE)
     override val primaryRoleStr: String = SsI18n.t("weapon.astd_lh_stardust_launcher.primaryRoleStr")
@@ -98,12 +99,12 @@ object Wpn_astd_lh_stardust_launcher_lens : WeaponDataEntry(), SsProjMissileOutp
     override val tier: Int = 5
     override val rarity: Int = 1
     override val baseValue: Int = 0
-    override val range: Int = 800
+    override val range: Int = 1200
     override val damagePerShot: Int = 400
     override val emp: Int = 400
     override val turnRate: Int = 30
     override val ammo: Int = 6
-    override val ammoPerSec: Double = 0.1667
+    override val ammoPerSec: Double = 1 / 7.5
     override val reloadSize: Int = 2
     override val type: String = "ENERGY"
     override val energyPerShot: Int = 200
@@ -117,7 +118,8 @@ object Wpn_astd_lh_stardust_launcher_lens : WeaponDataEntry(), SsProjMissileOutp
     override val flightTime: Double = 60.0
     override val projHitpoints: Int = 400
     override val tags: String = "no_drop, no_drop_salvage, no_sell"
-    override val tech: String = "联制"
+    override val tech: String = "菀星设计局-紫菀"
+    override val noDpsInTooltip: Boolean = true
 
     override val aiHints: Set<AiHint> = setOf(AiHint.NO_MANUAL_FIRE)
     override val primaryRoleStr: String = SsI18n.t("weapon.astd_lh_stardust_launcher.primaryRoleStr")
