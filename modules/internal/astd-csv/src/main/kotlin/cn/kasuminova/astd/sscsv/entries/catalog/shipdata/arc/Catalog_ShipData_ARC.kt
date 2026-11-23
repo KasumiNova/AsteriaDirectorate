@@ -8,7 +8,7 @@ object Ship_astd_xc_001 : ShipDataEntry() {
     override val name: String = shipName(id)
     override val designation: String = "战列舰"
     override val tech: String = "菀星设计局-星坠"
-    override val systemId: String = "astd_lh_001_burst_flow"
+    override val systemId: String = "astd_xc_001_burst_flow"
 
     override val fleetPts: Int = 30
     override val hitpoints: Int = 20000

@@ -15,6 +15,20 @@ object BurstFlowTuning {
 
     val MOMENTUM_BONUS = ScalingEntry(1.5f, 2.0f, 3.0f)
 
+    private val STARFALL_TIME_BONUS = ScalingEntry(1f, 1.5f, 3f)
+    private val STARFALL_BONUS = ScalingEntry(1f, 2f, 5f)
+
+    fun starfall(tuning: DifficultyTuning, isPlayer: Boolean): Values {
+        val mult = 1f + tuning.valueFor(STARFALL_BONUS, isPlayer)
+        return Values(
+            timeMult = 1f + tuning.valueFor(STARFALL_TIME_BONUS, isPlayer),
+            speedManeuverMult = mult,
+            ammoRegenMult = mult,
+            fluxDissipationMult = mult,
+            momentumMult = tuning.valueFor(MOMENTUM_BONUS, isPlayer),
+        )
+    }
+
     data class Values(
         val timeMult: Float,
         val speedManeuverMult: Float,

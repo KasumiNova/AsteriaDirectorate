@@ -3,6 +3,24 @@ package cn.kasuminova.astd.sscsv.entries.catalog.shipsystems.arc
 import cn.kasuminova.astd.sscsv.entries.ShipSystemWithSystemFileEntry
 import cn.kasuminova.astd.sscsv.entries.catalog.shipsystems.systemName
 
+object Sys_astd_xc_001_burst_flow : ShipSystemWithSystemFileEntry() {
+    override val id: String = "astd_xc_001_burst_flow"
+    override val name: String = systemName(id)
+    override val statsScript: String = "cn.kasuminova.astd.combat.shipsystems.ASTDStarfallBloomSystemStats"
+    override val aiType: String = "CUSTOM"
+    override val aiScript: String = "cn.kasuminova.astd.combat.shipsystems.ASTDBurstFlowSystemAI"
+
+    override val maxUses: Int = 2
+    override val regen: Double = 1.0 / 12.0
+    override val chargeUp: Double = 0.0
+    override val active: Double = 2.0
+    override val down: Double = 0.0
+    override val cooldown: Double = 2.0
+
+    override val icon: String = "graphics/icons/hullsys/temporal_shell.png"
+    override val useSound: String = "astd_xc_001_burst_flow_activate"
+}
+
 object Sys_astd_gression_charge : ShipSystemWithSystemFileEntry() {
     override val id: String = "astd_gression_charge"
     override val name: String = systemName(id)

@@ -40,6 +40,7 @@ object Desc_astd_fighter_grav_link : LocalizedDescription("astd_fighter_grav_lin
 object Desc_astd_grav_rift_generator : LocalizedDescription("astd_grav_rift_generator", "SHIP_SYSTEM")
 object Desc_astd_grav_storm : LocalizedDescription("astd_grav_storm", "SHIP_SYSTEM")
 object Desc_astd_grav_timeflow_interference : LocalizedDescription("astd_grav_timeflow_interference", "SHIP_SYSTEM")
+object Desc_astd_xc_001_burst_flow : LocalizedDescription("astd_xc_001_burst_flow", "SHIP_SYSTEM")
 object Desc_astd_rift_shift : LocalizedDescription("astd_rift_shift", "SHIP_SYSTEM")
 object Desc_astd_grav_replicator : LocalizedDescription("astd_grav_replicator", "SHIP_SYSTEM")
 object Desc_astd_burst_flow_fighter : LocalizedDescription("astd_burst_flow_fighter", "SHIP_SYSTEM")

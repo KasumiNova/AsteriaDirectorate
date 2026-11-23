@@ -130,6 +130,9 @@
 	"astd_arc_shared_flux_network_loop": [
 		{"file": "sounds/astd_arc_shared_flux_network_loop.ogg", "pitch": 1, "volume": 0.65}
 	],
+	"astd_xc_001_burst_flow_activate": [
+		{"file": "sounds/astd_lh_001_burst_flow_activate.ogg", "pitch": 0.8, "volume": 2}
+	],
 	"astd_lh_001_burst_flow_activate": [
 		{"file": "sounds/astd_lh_001_burst_flow_activate.ogg", "pitch": 1, "volume": 1.5}
 	],

@@ -33,6 +33,7 @@
 		"system.suppression_mode.status.default.in": "压制模式展开中",
 		"system.suppression_mode.status.default.active": "火力平台已锚定",
 		"system.suppression_mode.status.default.out": "压制模式收束中",
+		"system.xc_001_burst_flow.status.active": "烁雨繁花已激活",
 		"system.burst_flow.status.default.in": "飞花蓄势中",
 		"system.burst_flow.status.default.active": "落叶飞花已激活",
 		"system.burst_flow.status.default.out": "花影收束中",
