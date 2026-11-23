@@ -1,7 +1,5 @@
 package cn.kasuminova.astd.combat.shipsystems
 
-import cn.kasuminova.astd.combat.shipsystems.ASTDBurstFlowSystemAI.Companion.AMMO_LOW_RATIO
-import cn.kasuminova.astd.combat.shipsystems.ASTDBurstFlowSystemAI.Companion.ENGAGE_RANGE_MULT
 import com.fs.starfarer.api.combat.CombatEngineAPI
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.combat.ShipSystemAIScript
@@ -53,7 +51,7 @@ class ASTDBurstFlowSystemAI : ShipSystemAIScript {
 
         val engaged = isEngaged(ship, engine)
 
-        if (engaged && system.ammo > 1 && hasLowAmmoWeapon(ship)) {
+        if (engaged && system.ammo > 0 && hasLowAmmoWeapon(ship)) {
             ship.useSystem()
             return
         }

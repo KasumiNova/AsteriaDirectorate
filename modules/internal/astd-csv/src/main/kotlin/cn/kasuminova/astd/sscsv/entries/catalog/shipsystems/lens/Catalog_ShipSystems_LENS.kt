@@ -186,9 +186,9 @@ object Sys_astd_burst_flow_fighter : ShipSystemWithSystemFileEntry() {
 
     override val maxUses: Int = 2
     override val regen: Double = 0.1
-    override val chargeUp: Double = 0.1
+    override val chargeUp: Double = 0.0
     override val active: Double = 1.0
-    override val down: Double = 0.1
+    override val down: Double = 0.0
     override val cooldown: Double = 1.0
 
     override val icon: String = "graphics/icons/hullsys/temporal_shell.png"
