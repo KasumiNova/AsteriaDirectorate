@@ -23,47 +23,74 @@ class StarfallEchoResonanceStacks(
 
     var showOnPlayerHud: Boolean = false
 
-    private var stacksInt: Int = 0
+    private var stacksInt = 0
+    private var lastDecayOrHitAt = 0f
 
     override val id: String get() = BUFF_ID
     override val lifetime: BuffLifetime get() = BuffLifetime.HOST_BOUND
-
-    override val decayMode: StackDecayMode get() = StackDecayMode.CONTINUOUS
-
-    override val stacks: Int get() = stacksInt
+    override val decayMode: StackDecayMode get() = StackDecayMode.WINDOWED
+    override val stacks: Int get() = activeStacks(engine.getTotalElapsedTime(false))
     override val maxStacks: Int get() = StarfallEchoTuning.RESONANCE_MAX_STACKS
 
+    private fun activeStacks(now: Float): Int {
+        val elapsedIntervals = ((now - lastDecayOrHitAt) / StarfallEchoTuning.RESONANCE_DECAY_INTERVAL).toInt()
+        return (stacksInt - elapsedIntervals).coerceIn(0, stacksInt)
+    }
+
+    private fun settleDecay(now: Float): Boolean {
+        val remaining = activeStacks(now)
+        if (remaining == stacksInt) return false
+        lastDecayOrHitAt += (stacksInt - remaining) * StarfallEchoTuning.RESONANCE_DECAY_INTERVAL
+        stacksInt = remaining
+        return true
+    }
+
     override fun addStacks(n: Int): Int {
+        val now = engine.getTotalElapsedTime(false)
+        settleDecay(now)
         val before = stacksInt
-        stacksInt = (stacksInt + n).coerceIn(0, maxStacks)
-        if (stacksInt != before) refreshVulnerability()
+        stacksInt = (before + n.coerceIn(-maxStacks, maxStacks)).coerceIn(0, maxStacks)
+        if (n > 0) lastDecayOrHitAt = now
+        if (stacksInt == 0) host.remove(this) else refreshVulnerability()
         return stacksInt - before
     }
 
     fun consume(): Int {
-        val consumed = stacksInt
-        if (consumed <= 0) return 0
-        stacksInt = 0
+        if (stacksInt == 0) return 0
+        val consumed = stacks
         host.remove(this)
         return consumed
     }
 
     override fun advance(amount: Float) {
-        if (stacksInt <= 0) return
+        if (settleDecay(engine.getTotalElapsedTime(false))) {
+            if (stacksInt == 0) {
+                host.remove(this)
+                return
+            }
+            refreshVulnerability()
+        }
         maintainHud()
     }
 
     override fun isHostValid(): Boolean = ship.isAlive && !ship.isHulk && engine.isEntityInPlay(ship)
 
     override fun onRemove() {
-        ship.mutableStats.armorDamageTakenMult.unmodifyMult(BUFF_ID)
-        ship.mutableStats.hullDamageTakenMult.unmodifyMult(BUFF_ID)
+        stacksInt = 0
+        val stats = ship.mutableStats
+        stats.shieldDamageTakenMult.unmodifyMult(BUFF_ID)
+        stats.armorDamageTakenMult.unmodifyMult(BUFF_ID)
+        stats.hullDamageTakenMult.unmodifyMult(BUFF_ID)
+        stats.empDamageTakenMult.unmodifyMult(BUFF_ID)
     }
 
     private fun refreshVulnerability() {
         val mult = 1f + stacksInt * perStack
-        ship.mutableStats.armorDamageTakenMult.modifyMult(BUFF_ID, mult)
-        ship.mutableStats.hullDamageTakenMult.modifyMult(BUFF_ID, mult)
+        val stats = ship.mutableStats
+        stats.shieldDamageTakenMult.modifyMult(BUFF_ID, mult)
+        stats.armorDamageTakenMult.modifyMult(BUFF_ID, mult)
+        stats.hullDamageTakenMult.modifyMult(BUFF_ID, mult)
+        stats.empDamageTakenMult.modifyMult(BUFF_ID, mult)
     }
 
     private fun maintainHud() {

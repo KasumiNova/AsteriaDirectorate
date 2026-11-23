@@ -7,7 +7,8 @@ object StarfallEchoTuning {
 
     const val BURST_SIZE = 5
 
-    const val RESONANCE_MAX_STACKS = 4
+    const val RESONANCE_MAX_STACKS = 8
+    const val RESONANCE_DECAY_INTERVAL = 2f
 
     const val EXPLOSION_BASE_RADIUS = 150f
 
@@ -19,9 +20,7 @@ object StarfallEchoTuning {
 
     const val FINAL_FLUX_EXTRA = 2250f
 
-    const val AMMO_GATE = 5
-
-    const val BURST_RESET_SECONDS = 0.4f
+    const val AMMO_GATE = BURST_SIZE
 
     val RESONANCE_VULN_PER_STACK = ScalingTable(0.05f, 0.10f, 0.125f, 0.15f, 0.20f)
 
@@ -52,6 +51,6 @@ object StarfallEchoTuning {
 
     fun canFire(ammo: Int, inBurst: Boolean): Boolean = inBurst || ammo >= AMMO_GATE
 
-    fun nextBurstOrdinal(prevOrdinal: Int, lastFireTime: Float, now: Float): Int =
-        if (now - lastFireTime > BURST_RESET_SECONDS) 1 else prevOrdinal + 1
+    // 原版先递增已发弹数，再同步调用 onFire，返回后才结束齐射；此处余时等于剩余发数乘连射间隔。
+    fun isFinalShot(inBurst: Boolean, burstTimeRemaining: Float): Boolean = inBurst && burstTimeRemaining == 0f
 }
