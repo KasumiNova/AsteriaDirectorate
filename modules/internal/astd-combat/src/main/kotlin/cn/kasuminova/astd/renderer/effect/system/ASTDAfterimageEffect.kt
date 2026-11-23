@@ -11,7 +11,6 @@ import com.fs.starfarer.api.combat.ViewportAPI
 import org.lwjgl.opengl.GL11
 import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
-import java.util.EnumSet
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -46,7 +45,6 @@ internal object ASTDAfterimageEffect {
         renderer.add(snapshot)
     }
 
-    /** 以舰体贴图生成残影；舰船挂有发光层（*_bloom）时同步叠加发光层。location 为舰船逻辑中心。 */
     fun spawnShip(
         engine: CombatEngineAPI,
         ship: ShipAPI,
@@ -102,7 +100,7 @@ internal object ASTDAfterimageEffect {
     }
 
     private class Renderer(private val engine: CombatEngineAPI) :
-        BaseCombatLayeredRenderingPlugin(CombatEngineLayers.ABOVE_SHIPS_AND_MISSILES_LAYER) {
+        BaseCombatLayeredRenderingPlugin(CombatEngineLayers.BELOW_SHIPS_LAYER) {
         private val snapshots = ArrayList<Snapshot>(64)
         private var expired = false
 
@@ -110,8 +108,6 @@ internal object ASTDAfterimageEffect {
             if (expired) return
             snapshots += snapshot.copy(location = Vector2f(snapshot.location))
         }
-
-        override fun getActiveLayers(): EnumSet<CombatEngineLayers> = EnumSet.of(CombatEngineLayers.ABOVE_SHIPS_AND_MISSILES_LAYER)
 
         override fun getRenderRadius(): Float = Float.MAX_VALUE
 
@@ -134,7 +130,7 @@ internal object ASTDAfterimageEffect {
         }
 
         override fun render(layer: CombatEngineLayers, viewport: ViewportAPI) {
-            if (expired || layer != CombatEngineLayers.ABOVE_SHIPS_AND_MISSILES_LAYER || snapshots.isEmpty()) return
+            if (expired || layer != this.layer || snapshots.isEmpty()) return
 
             GL11.glPushAttrib(GL11.GL_ENABLE_BIT or GL11.GL_COLOR_BUFFER_BIT)
             try {
