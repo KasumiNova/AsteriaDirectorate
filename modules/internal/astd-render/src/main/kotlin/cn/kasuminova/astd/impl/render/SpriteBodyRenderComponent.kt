@@ -7,7 +7,6 @@ import cn.kasuminova.astd.renderer.boxutil.pool.PooledCombatVfx
 import cn.kasuminova.astd.renderer.boxutil.pool.SpriteLease
 import cn.kasuminova.astd.renderer.boxutil.pool.SpriteLeaseKey
 import cn.kasuminova.astd.renderer.boxutil.pool.SpriteLeaseSpec
-import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.CombatEngineLayers
 import com.fs.starfarer.api.combat.DamagingProjectileAPI
 import com.fs.starfarer.api.combat.MissileAPI
@@ -19,20 +18,12 @@ class SpriteBodyRenderComponent(
     internal val spec: SpriteBodySpec,
 ) : RenderEntityImpl(id, CombatEngineLayers.ABOVE_SHIPS_LAYER, RENDER_ORDER_SPRITE_BODY) {
 
-    private val log = Global.getLogger(SpriteBodyRenderComponent::class.java)
     private var spriteLease: SpriteLease? = null
     private var disabled = false
 
     override fun onAttachSelf(ctx: RenderContext): Boolean {
         val engine = ctx.engine ?: return false
         val projectile = (ctx.host as? ProjectileHost)?.projectile ?: return false
-        try {
-            Global.getSettings().openStream(spec.texturePath).use { }
-        } catch (e: Exception) {
-            log.warn("ASTD sprite body texture unreadable: id=$id path=${spec.texturePath}", e)
-            disabled = true
-            return true
-        }
 
         // 材质必须对齐 SpriteEntity 默认初始化，避免池化复用后 emissive 透明度丢失。
         val lease = PooledCombatVfx.checkoutSprite(

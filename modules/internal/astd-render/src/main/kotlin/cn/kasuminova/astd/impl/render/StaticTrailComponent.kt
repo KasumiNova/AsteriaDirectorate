@@ -19,16 +19,15 @@ class StaticTrailComponent(
     override fun onAttachSelf(ctx: RenderContext): Boolean {
         val engine = ctx.engine ?: return false
         val projectile = (ctx.host as? ProjectileHost)?.projectile ?: return false
-        try {
-            Global.getSettings().openStream(spec.texturePath).use { }
-        } catch (e: Exception) {
-            log.warn("ASTD static trail texture unreadable: id=$id path=${spec.texturePath}", e)
-            return false
-        }
         BoxUtilCombatVfx.ensureReady(engine)
         val visualScale = ProjectileVisualScale.read(ctx.host)
         val baseSpeed = ProjectileVisualScale.baseSpeed(projectile)
-        val data = StaticTrailDataFactory.trailData(treeId, layerName, spec, baseSpeed, visualScale)
+        val data = try {
+            StaticTrailDataFactory.trailData(treeId, layerName, spec, baseSpeed, visualScale)
+        } catch (e: RuntimeException) {
+            log.warn("ASTD static trail initialization failed: id=$id path=${spec.texturePath}", e)
+            return false
+        }
         val added = CombatRenderingManager.addStaticTrail(
             data,
             projectile,

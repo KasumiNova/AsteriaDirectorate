@@ -59,13 +59,6 @@ class BoltRenderComponent(
         specWidth = dims.width
         hitGlowRadius = dims.hitGlowRadius
         visualScale = ProjectileVisualScale.read(ctx.host) ?: 1f
-        try {
-            Global.getSettings().openStream(spec.texturePath).use { }
-        } catch (e: Exception) {
-            log.warn("ASTD box bolt texture unreadable: id=$id path=${spec.texturePath}", e)
-            disabled = true
-            return true
-        }
 
         val lease = checkoutBolt(engine, projectile)
         if (lease == null) {
@@ -150,7 +143,6 @@ class BoltRenderComponent(
             specLength = specLength,
         )
         val alpha = brightness * brightness * spec.color.alpha
-        // scaleX 由亮度伸入进度决定；视觉缩放整体乘在其上，并同步把中心后移，保持弹头前端锚定弹体位置
         val scale = Vector2f(frame.scaleX * visualScale, visualScale)
         val span = frame.scaleX * specLength
         val center = boltAnchoredCenter(frame.center, frame.facingDeg, span, visualScale)
