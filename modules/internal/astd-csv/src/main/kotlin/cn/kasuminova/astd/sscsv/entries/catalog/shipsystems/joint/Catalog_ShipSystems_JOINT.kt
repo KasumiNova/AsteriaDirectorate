@@ -16,7 +16,7 @@ object Sys_astd_lh_001_burst_flow : ShipSystemWithSystemFileEntry() {
     override val chargeUp: Double = 0.0
     override val active: Double = 1.0
     override val down: Double = 0.0
-    override val cooldown: Double = 0.8
+    override val cooldown: Double = 1.0
 
     override val icon: String = "graphics/icons/hullsys/temporal_shell.png"
 
