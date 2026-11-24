@@ -13,7 +13,7 @@ object Ship_astd_xc_001 : ShipDataEntry() {
     override val fleetPts: Int = 45
     override val hitpoints: Int = 20000
     override val armorRating: Int = 1500
-    override val maxFlux: Int = 24000
+    override val maxFlux: Int = 22000
     override val fluxDissipation: Int = 1200
     override val ordnancePoints: Int = 300
     override val maxSpeed: Int = 60
